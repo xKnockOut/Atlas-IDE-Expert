@@ -21,6 +21,9 @@ procedure Register;
 implementation
 
 uses
+  // Vorn, damit die folgenden Units gleichnamige Bezeichner aus Vcl.Menus verdecken; gebraucht wird nur TMenuItem
+  // (#900).
+  Vcl.Menus,
   Winapi.Windows,
   Winapi.ShellAPI,
   System.SysUtils,
@@ -228,6 +231,10 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Tests.Runner,
+  Atlas.IDE.Tasks.Runner,
+  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Runs,
+  Atlas.Core.Tasks.Adapters.Process,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens;
 
@@ -268,6 +275,8 @@ var
   // Einzelnen Test ausführen bzw. im Debugger starten (#585), lebt mit Tests; abschaltbar über TestDebug.
   TestDebugger: TAtlasIdeTestDebugger;
   TestsLens: TAtlasIdeTestsLens;
+  // Projektaufgaben aus atlas.json (#900), abschaltbar über tasks.enabled.
+  ProjectTasks: TAtlasIdeTasks;
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
   // Tastenkürzel der Editorbefehle (#399).
@@ -1148,6 +1157,11 @@ begin
   Result := TAtlasIdeSettings.Current.GenerateMenu;
 end;
 
+function SearchReplaceVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.SearchReplace;
+end;
+
 function MetricsReportVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.MetricsReport;
@@ -1216,6 +1230,27 @@ end;
 function StartProfilesVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.StartProfiles and TAtlasIdeStartProfiles.Started;
+end;
+
+/// <summary>Befehle der Projektaufgaben (#900) sichtbar?</summary>
+function TasksVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TasksEnabled and (ProjectTasks <> nil);
+end;
+
+/// <summary>AProc der Projektaufgaben (#900), abgesichert; ohne Läufer nichts.</summary>
+function TasksCommand(const AProc: TProc<TAtlasIdeTasks>): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      if ProjectTasks <> nil then
+        TAtlasGuard.Run(TAtlasFeature.Tasks,
+          procedure
+          begin
+            AProc(ProjectTasks);
+          end);
+    end;
 end;
 
 procedure RegisterPalette;
@@ -1469,6 +1504,8 @@ begin
   // Atlas-Suche (#877, #878).
   Add('Atlas.Search', TAtlasTextId.SearchCommand, TAtlasIdeSearch.Show);
   Add('Atlas.SearchInMethod', TAtlasTextId.SearchInMethodCommand, TAtlasIdeSearch.ShowInMethod);
+  // Ersetzen (#893); nur sichtbar, solange search.replace an ist.
+  Add('Atlas.SearchReplace', TAtlasTextId.SearchReplaceCommand, TAtlasIdeSearch.ShowReplace, SearchReplaceVisible);
   Add('Atlas.SearchNext', TAtlasTextId.SearchNextCommand, TAtlasIdeSearch.FindNext);
   Add('Atlas.SearchPrevious', TAtlasTextId.SearchPreviousCommand, TAtlasIdeSearch.FindPrevious);
   Add('Atlas.SearchClear', TAtlasTextId.SearchClearCommand, TAtlasIdeSearch.ClearHighlights);
@@ -1621,6 +1658,43 @@ begin
       if TestDebugger <> nil then
         TAtlasGuard.Run(TAtlasFeature.Build, TestDebugger.DebugAtCursor);
     end, TestDebugVisible);
+  // Projektaufgaben (#900): sichtbar, solange tasks.enabled an ist und der Läufer läuft.
+  Add('Atlas.RunTask', TAtlasTextId.TasksRunCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.Choose;
+      end), TasksVisible);
+  Add('Atlas.RunChecks', TAtlasTextId.TasksRunChecksCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.RunChecks;
+      end), TasksVisible);
+  Add('Atlas.RepeatTask', TAtlasTextId.TasksRepeatCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.RepeatLast;
+      end), TasksVisible);
+  Add('Atlas.CancelTasks', TAtlasTextId.TasksCancelCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.CancelAll;
+      end), TasksVisible);
+  Add('Atlas.TasksOutput', TAtlasTextId.TasksOutputCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.ToggleOutput;
+      end), TasksVisible);
+  Add('Atlas.TasksFindings', TAtlasTextId.TasksFindingsCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.ChooseFindings;
+      end), TasksVisible);
   // Startprofile (#575): Auswahl für das aktive Projekt; sichtbar, solange StartProfiles an ist.
   Add('Atlas.StartProfile', TAtlasTextId.StartProfilesCommand,
     Guarded(TAtlasFeature.Build, TAtlasIdeStartProfiles.ShowPicker), StartProfilesVisible);
@@ -1949,6 +2023,12 @@ begin
     function: TAtlasReleaseSettings
     begin
       Result := ReleaseSettings();
+    end));
+  // Projektaufgaben vor dem Build (#900, tasks.beforeBuild); ohne Läufer (tasks.enabled aus) nichts.
+  Events.Add(TAtlasIdeTasks.CreateParticipant(
+    function: TAtlasIdeTasks
+    begin
+      Result := ProjectTasks;
     end));
   // Compilermeldungen aus dem Reiter „Build“ an den Server (#528).
   Events.Add(TAtlasMessageViewReader.Create(
@@ -2949,6 +3029,62 @@ begin
     TAtlasProblemsController.Current.ClearTests;
 end;
 
+/// <summary>Prozessstart der Projektaufgaben (Adapter, #900); eigene Routine, damit die Referenz nichts aus
+/// StartTasks einfängt.</summary>
+function TaskProcess: TAtlasTaskProcessRun;
+begin
+  Result :=
+    function(const ATask: TAtlasTaskDefinition; ACodePage: Integer; const ACancelled: TFunc<Boolean>;
+      const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult
+    begin
+      Result := TAtlasTaskProcess.Run(ATask, ACodePage, ACancelled, AOnLine);
+    end;
+end;
+
+/// <summary>Projektaufgaben (#900): Läufer mit Neubau nach bestandener Prüfung über den Build-Läufer (#261) und
+/// Ergebnis für die Schnellaktion „Aufgaben“ (#764).</summary>
+procedure StartTasks;
+begin
+  ProjectTasks := TAtlasIdeTasks.Create(TaskProcess());
+  ProjectTasks.OnRebuild :=
+    function(const AProject: TAtlasCompileProject; out AReason: string): Boolean
+    var
+      Request: TAtlasBuildRequest;
+    begin
+      if BuildRunner = nil then
+      begin
+        AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
+        Exit(False);
+      end;
+      Request := Default(TAtlasBuildRequest);
+      Request.Project := AProject.FileName;
+      Request.Kind := AProject.Kind;
+      // Auftraggeber '' wie ein Build des Benutzers: Tests nach dem Build und die übrigen Teilnehmer laufen mit.
+      Result := BuildRunner.Start(Request, '',
+        procedure(const AReport: TAtlasBuildReport; const AError: string)
+        begin
+        end, AReason);
+    end;
+  ProjectTasks.OnFinished :=
+    procedure(const AProject: string; const ARun: TAtlasTaskRun)
+    begin
+      if (Welcome <> nil) and (Welcome.QuickActions <> nil) and (AProject <> '') then
+        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+          procedure
+          begin
+            Welcome.QuickActions.TaskFinished(AProject, ARun);
+          end);
+    end;
+end;
+
+procedure StopTasks;
+begin
+  // Laufende Aufgaben enden mit dem Läufer; ihre Befunde verschwinden mit ihm.
+  FreeAndNil(ProjectTasks);
+  if TAtlasProblemsController.Current <> nil then
+    TAtlasProblemsController.Current.ClearTasks;
+end;
+
 const
   StartProfileExtra = 'startProfile';
 
@@ -3547,6 +3683,25 @@ begin
     begin
       Result := TAtlasIdeStartProfiles.Run(AProject, AProfile, True, AReason);
     end;
+  // Knopf „Aufgaben ▾“ (#900): Projektaufgaben aus der atlas.json des Projekts über den Aufgabenläufer.
+  Welcome.QuickActions.OnTaskNames :=
+    function(const AProject: string): TArray<string>
+    begin
+      Result := nil;
+      if TasksVisible then
+        Result := ProjectTasks.TaskNamesOf(AProject);
+    end;
+  Welcome.QuickActions.OnRunTask :=
+    function(const AProject, AName: string; out AReason: string): Boolean
+    begin
+      AReason := '';
+      if not TasksVisible then
+      begin
+        AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff);
+        Exit(False);
+      end;
+      Result := ProjectTasks.RunInProject(AProject, AName, AReason);
+    end;
   // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
   Welcome.ContinueWork := TAtlasIdeContinue.Create(
     procedure(AText: string)
@@ -3648,6 +3803,18 @@ begin
     begin
       if KeyMap <> nil then
         KeyMap.ShowWindow;
+    end;
+  // Untermenü Aufgaben (#900): ohne Läufer bzw. mit tasks.enabled aus ausgeblendet.
+  MainMenu.OnTasksMenu :=
+    procedure(AMenu: TMenuItem)
+    begin
+      AMenu.Visible := TasksVisible;
+      if AMenu.Visible then
+        TAtlasGuard.Run(TAtlasFeature.Tasks,
+          procedure
+          begin
+            ProjectTasks.FillMenu(AMenu);
+          end);
     end;
   MainMenu.OnWelcome :=
     procedure
@@ -3794,6 +3961,17 @@ begin
       Result := Tests <> nil;
     end,
     StartTests, StopTests);
+  // Projektaufgaben (#900): nur im normalen Start und solange tasks.enabled an ist.
+  Features.AddWanted('Tasks',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TasksEnabled;
+    end,
+    function: Boolean
+    begin
+      Result := ProjectTasks <> nil;
+    end,
+    StartTasks, StopTasks);
   // Startprofile (#575): nur im normalen Start und solange StartProfiles an ist; liest .atlas über TeamFile.
   Features.AddWanted('StartProfiles',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -4348,6 +4526,9 @@ begin
       TAtlasIdeStatusBar.ApplySettings;
       // search.resultsInMessages (#878).
       TAtlasIdeSearch.ApplySettings;
+      // tasks.onlyFindings und Tasten der Projektaufgaben (#900).
+      if ProjectTasks <> nil then
+        ProjectTasks.ApplySettings;
       // editor.stickyScroll* (#506).
       TAtlasIdeStickyScroll.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).

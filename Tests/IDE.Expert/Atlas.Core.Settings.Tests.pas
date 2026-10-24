@@ -127,6 +127,8 @@ type
     /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure ReleaseGuardOptions;
+    [Test]
+    procedure TasksOptions;
     /// <summary>Beim Öffnen bauen: build.onOpen, build.onOpenKind, build.onOpenScope, build.onOpenDelayMs und
     /// build.onOpenExclude mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
@@ -160,6 +162,7 @@ uses
   Atlas.Core.Notifications.Center,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Welcome.QuickActions,
+  Atlas.Core.Tasks.Definitions,
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Welcome.Issues,
   Atlas.Core.Settings.Plugin,
@@ -860,7 +863,7 @@ var
 begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.WelcomePageQuickActions, 'standardmäßig an');
-  Assert.AreEqual('build,tests,run,pull,folder,console', Settings.WelcomePageQuickActionsItems);
+  Assert.AreEqual('build,tests,run,pull,folder,console,tasks', Settings.WelcomePageQuickActionsItems);
   Assert.AreEqual('wt.exe', Settings.WelcomePageQuickActionsConsole);
   Assert.AreEqual($4042, Settings.WelcomePageQuickActionsBuildKey, 'Strg+B');
   Assert.AreEqual($4054, Settings.WelcomePageQuickActionsTestKey, 'Strg+T');
@@ -982,6 +985,52 @@ begin
   Assert.AreEqual('warn', Loaded.BuildGate);
   Assert.AreEqual('Release, Ship', Loaded.ReleaseConfigs);
   Assert.AreEqual(Settings.ReleaseChecks, Loaded.ReleaseChecks);
+end;
+
+procedure TAtlasPluginSettingsTests.TasksOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+  Mode: TAtlasTaskBeforeBuild;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.TasksEnabled, 'tasks.enabled standardmäßig an (#900)');
+  Assert.IsTrue(Settings.TasksProblemsFromOutput);
+  Assert.AreEqual('off', Settings.TasksBeforeBuild);
+  Assert.IsTrue(Settings.TasksSaveBeforeRun);
+  Assert.IsFalse(Settings.TasksRunChecksParallel);
+  Assert.IsFalse(Settings.TasksOnlyFindings);
+  // Normalisieren: Groß-/Kleinschreibung egal, Unbekanntes = off.
+  Settings.TasksBeforeBuild := ' Block ';
+  Settings.Normalize;
+  Assert.AreEqual('block', Settings.TasksBeforeBuild);
+  Settings.TasksBeforeBuild := 'immer';
+  Settings.Normalize;
+  Assert.AreEqual('off', Settings.TasksBeforeBuild);
+  // Die Einstellungen kennen die Projektaufgaben nicht (A-09): dieselben Werte wie dort.
+  for Mode := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
+  begin
+    Settings.TasksBeforeBuild := UpperCase(TAtlasTasks.BeforeBuildNames[Mode]);
+    Settings.Normalize;
+    Assert.AreEqual(TAtlasTasks.BeforeBuildNames[Mode], Settings.TasksBeforeBuild);
+  end;
+  // Speichern und Laden, jede Einstellung abweichend von der Vorgabe.
+  Settings.TasksEnabled := False;
+  Settings.TasksProblemsFromOutput := False;
+  Settings.TasksBeforeBuild := 'warn';
+  Settings.TasksSaveBeforeRun := False;
+  Settings.TasksRunChecksParallel := True;
+  Settings.TasksOnlyFindings := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.TasksEnabled, 'abschaltbar');
+  Assert.IsFalse(Loaded.TasksProblemsFromOutput);
+  Assert.AreEqual('warn', Loaded.TasksBeforeBuild);
+  Assert.IsFalse(Loaded.TasksSaveBeforeRun);
+  Assert.IsTrue(Loaded.TasksRunChecksParallel);
+  Assert.IsTrue(Loaded.TasksOnlyFindings);
 end;
 
 procedure TAtlasPluginSettingsTests.BuildOnOpenOptions;

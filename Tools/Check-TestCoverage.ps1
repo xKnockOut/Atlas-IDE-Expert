@@ -53,6 +53,7 @@ $Exempt = @{
     'Atlas.Core.Updates.Adapters.HttpSource'            = 'HTTP-Zugriff; die Auswertung testet Atlas.Core.Updates'
     'Atlas.Core.Ci.Adapters.Http'                       = 'HTTP-Zugriff; die Anbieter testen Atlas.Core.Ci.Providers.*'
     'Atlas.Core.Ci.Adapters.Credentials'                = 'Anmeldeinformationsverwaltung von Windows'
+    'Atlas.Core.Tasks.Adapters.Process'                 = 'Prozessstart mit Pipe und Job-Objekt; die Befehlszeile testet Atlas.Core.Tasks.Commands'
     'Shell.Application'                                 = 'Einstieg des Servers (Prozessstart, Konsole)'
 }
 

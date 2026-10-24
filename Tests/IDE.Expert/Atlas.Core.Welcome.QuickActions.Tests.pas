@@ -310,7 +310,9 @@ var
 begin
   Items := TAtlasWelcomeQuickActions.ParseItems(TAtlasWelcomeQuickActions.DefaultItems);
   Assert.IsTrue(Items = [TAtlasQuickAction.Build, TAtlasQuickAction.Tests, TAtlasQuickAction.Run,
-    TAtlasQuickAction.Pull, TAtlasQuickAction.Folder, TAtlasQuickAction.Console], 'Vorgabe: alle');
+    TAtlasQuickAction.Pull, TAtlasQuickAction.Folder, TAtlasQuickAction.Console, TAtlasQuickAction.Tasks],
+    'Vorgabe: alle');
+  Assert.AreEqual('tests,tasks', TAtlasWelcomeQuickActions.NormalizedItems('Tasks tests'));
   Assert.AreEqual('build,pull,console', TAtlasWelcomeQuickActions.NormalizedItems(' Console; PULL build build x'),
     'feste Reihenfolge, jeder einmal, Unbekanntes fällt weg');
   Assert.AreEqual('', TAtlasWelcomeQuickActions.NormalizedItems(''), 'leer = keiner');
@@ -334,6 +336,13 @@ begin
   Assert.IsTrue(Buttons[0].HasMenu and Buttons[2].HasMenu, 'Konfiguration bzw. Startprofil wählbar');
   Assert.IsFalse(Buttons[1].HasMenu);
   Assert.IsTrue(Buttons[0].Enabled and Buttons[1].Enabled and Buttons[3].Enabled);
+  // „Aufgaben ▾“ (#900): Auswahl der Aufgabe; braucht die IDE nicht, geht also auch, wenn sie beschäftigt ist.
+  Buttons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Tasks], Vcs(True, 'git', 0), False, True);
+  Assert.AreEqual(1, Integer(Length(Buttons)));
+  Assert.IsTrue(Buttons[0].HasMenu and Buttons[0].Enabled);
+  Assert.IsFalse(TAtlasWelcomeQuickActions.UsesIde(TAtlasQuickAction.Tasks));
+  Buttons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Tasks], Vcs(True, 'git', 0), True);
+  Assert.IsFalse(Buttons[0].Enabled, 'auf dem Projekt läuft schon eine Aktion');
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeQuickActions.Buttons([], Vcs(True, 'git', 0), False))));
 end;
 
@@ -698,12 +707,12 @@ begin
   // Alle Knöpfe, Pull (Index 3) wegen lokaler Änderungen gesperrt.
   Buttons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
     TAtlasWelcomeQuickActions.DefaultItems), Vcs(True, 'git', 1), False);
-  Assert.AreEqual(6, Integer(Length(Buttons)));
+  Assert.AreEqual(7, Integer(Length(Buttons)));
   Assert.AreEqual(0, TAtlasWelcomeQuickActions.MoveButton(Buttons, -1, 1), 'rechts: erster Knopf');
-  Assert.AreEqual(5, TAtlasWelcomeQuickActions.MoveButton(Buttons, -1, -1), 'links: letzter Knopf');
+  Assert.AreEqual(6, TAtlasWelcomeQuickActions.MoveButton(Buttons, -1, -1), 'links: letzter Knopf');
   Assert.AreEqual(4, TAtlasWelcomeQuickActions.MoveButton(Buttons, 2, 1), 'überspringt gesperrten Pull');
   Assert.AreEqual(2, TAtlasWelcomeQuickActions.MoveButton(Buttons, 4, -1));
-  Assert.AreEqual(5, TAtlasWelcomeQuickActions.MoveButton(Buttons, 5, 1), 'bleibt am Ende');
+  Assert.AreEqual(6, TAtlasWelcomeQuickActions.MoveButton(Buttons, 6, 1), 'bleibt am Ende');
   Assert.AreEqual(-1, TAtlasWelcomeQuickActions.MoveButton(nil, -1, 1));
 end;
 

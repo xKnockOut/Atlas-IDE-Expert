@@ -54,6 +54,9 @@ type
     procedure ReadsMcpDisabledTools;
     [Test]
     procedure ReadsMcpGlobalSettings;
+    /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
+    [Test]
+    procedure ChecksTasks;
     [Test]
     procedure ReadsStringLiteral;
     [Test]
@@ -1001,6 +1004,31 @@ begin
   Settings := TConfigurationParser.ParseLayered('{"mcp": {"globalSettings": true}}',
     '{"mcp": {"globalSettings": false}}', Issues);
   Assert.IsFalse(Settings.McpGlobalSettings, 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksTasks;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"tasks": [{"name": "Delphi-12-Prüfung", "command": "pwsh", "args": ["Tools/Check-Delphi12.ps1"],' +
+    ' "cwd": "${projectDir}", "group": "check", "matcher": "pwsh", "key": "Ctrl+Alt+1", "timeoutSec": 300,' +
+    ' "beforeBuild": "block", "env": {"NO_COLOR": "1"}},' +
+    ' {"name": "Fremd", "command": "lint.exe", "matcher": {"regex": "^(?<file>[^:]+):(?<line>\\d+) (?<message>.*)$",' +
+    ' "severity": "warning", "severityMap": {"SCHLIMM": "error"}}}]}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'Beispiel aus dem Issue ohne Meldung');
+  Assert.IsTrue(Settings.Tasks.StartsWith('['), Settings.Tasks);
+  Settings := Parse('{"tasks": [{"name": "A", "command": "x", "group": "lint", "matcher": "eslint", "timeoutSec": -1,' +
+    ' "beforeBuild": "stop", "foo": 1}, {"name": "a", "command": ""}, {"command": "y"}, 3,' +
+    ' {"name": "M", "command": "z", "matcher": {"severityMap": {"X": "fatal"}}}]}', Issues);
+  // group, matcher, timeoutSec, beforeBuild, foo; Doppelname a und leerer command; ohne name; 3; Muster ohne regex
+  // und severityMap-Wert.
+  Assert.AreEqual(11, Integer(Length(Issues)));
+  Parse('{"tasks": {"name": "A"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  Settings := TConfigurationParser.ParseLayered('{"tasks": []}', '{"tasks": [{"name": "B", "command": "b"}]}',
+    Issues);
+  Assert.IsTrue(Settings.Tasks.Contains('"B"'), 'Datei vor Editor');
 end;
 
 procedure TConfigurationParserTests.ReadsMcpDisabledTools;

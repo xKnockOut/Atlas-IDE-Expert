@@ -2801,6 +2801,61 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | SU18 | Leiste öffnen, ins Fenster Meldungen oder Struktur klicken, dann nacheinander ins Suchfeld, auf ein Kästchen, in die Bereichsliste und auf ↓ klicken | Jeder Klick wirkt beim ersten Mal (Fokus bleibt in der Leiste, Kästchen schaltet um); holt die IDE den Fokus zurück, steht „Suchleiste: Fokus nach dem Klick …“ mit Fensterklasse im Diagnoseprotokoll |
 | SU19 | In einer Methode Strg+F, Bereich auf „Methode“ stellen, Esc; dann erneut Strg+F (auch in einer anderen Methode) | Bereich steht wieder auf „Unit“ (erster Eintrag der Liste); „Methode“ nur nach gezielter Wahl in der Liste oder mit Strg+Umschalt+Alt+F |
 
+## Suchleiste: Ersetzen, Regex, Verlauf, Bereiche über Dateien (#893)
+
+Vorbereitung: Projektgruppe mit zwei Projekten; in Projekt A die Units `Kunden.pas` (offen, mit ungespeicherter Änderung `IntToStr(Kunde.Nr)`) und `Rechnung.pas` (nicht offen, enthält `IntToStr(Rechnung.Nr)` zweimal), `Alt.pas` schreibgeschützt mit einem Treffer. Einstellungen `search.replace`, `search.regex`, `search.multiFile` an, `search.history` = 20.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ER1 | Strg+H im Editor | Leiste mit Zeile „Ersetzen durch“, Knopf ▾ links; Strg+F öffnet sie ohne die Zeile (▸) |
+| ER2 | Suchen `Nr`, Ersetzen `Nummer`, „Alle ersetzen“ in einer Unit | Alle Treffer der Unit ersetzt, „n Ersetzungen in 1 Datei“ in der Leiste; ein Strg+Z nimmt alles zurück |
+| ER3 | „Ersetzen“ mehrmals | Erster Klick springt zum Treffer (markiert), jeder weitere ersetzt den markierten und springt zum nächsten; Enter im Ersetzen-Feld wirkt wie „Ersetzen“, Strg+Enter wie „Alle ersetzen“ |
+| ER4 | `.*` an, Suchen `IntToStr\((\w+)\.Nr\)`, Ersetzen `$1.Nr.ToString` | Vorschau-Zeile „Vorschau: ~~IntToStr(Kunde.Nr)~~ → **Kunde.Nr.ToString**“; „Ersetzen“ ergibt `Kunde.Nr.ToString` |
+| ER5 | `.*` an, Suchen `(abc` | Suchfeld rot umrandet, Zeile „Ungültiger Ausdruck: …“ mit dem Text der Regex-Engine; keine Rahmen im Editor, Zähler leer, „Ersetzen“/„Alle ersetzen“ ändern nichts |
+| ER6 | `.*` und „Bezeichner“ an, Suchen `Nr` in einer Unit mit `// Nr` und `'Nr'` | Treffer nur im Code, nicht in Kommentar und String |
+| ER7 | Bereich „Projekt“, Suchen `IntToStr` | Zähler „Suche … n Treffer in m Dateien“, danach „n Treffer in m Dateien“; Treffer auch in `Rechnung.pas` (nicht offen) und in der ungespeicherten Änderung von `Kunden.pas`; die IDE bleibt währenddessen bedienbar (kein Eintrag des Einfrier-Wächters) |
+| ER8 | Wie ER7, dann Enter | Reiter „Atlas-Suche“ mit Kopfzeile „Suche nach „IntToStr“ in Projekt“, Treffer je Datei, Abschluss „n Treffer in m von k Dateien“; Doppelklick springt |
+| ER9 | Bereich „Projektgruppe“ mit großem Projekt, sofort „Abbrechen“ | Suche endet, Zähler „Abgebrochen nach n Dateien.“ |
+| ER10 | Wie ER7, F3 mehrmals | Springt über alle Treffer, nach dem letzten der aktiven Datei in die nächste Datei (wird geöffnet), am Ende Umlauf mit Meldung |
+| ER11 | Wie ER7 mit `.*`, „Auswählen …“ | Fenster „Atlas-Suche: Ersetzen“: je Datei Kopfzeile mit ☑, darunter Treffer mit Zeile, Text und „vorher → nachher“; Klick aufs Häkchen bzw. Leertaste schaltet, Datei-Häkchen schaltet alle ihre Treffer; Doppelklick springt |
+| ER12 | Wie ER11, zwei Treffer abhaken, „Ausgewählte ersetzen“ | Nur die angehakten ersetzt; `Alt.pas` als schreibgeschützt gemeldet und übersprungen; „n Ersetzungen in m Dateien · 1 übersprungen …“; „Letzte Atlas-Änderung zurücknehmen“ nimmt alles in allen Dateien zurück; Kodierung (ANSI/UTF-8) und Zeilenenden von `Rechnung.pas` unverändert |
+| ER13 | Wie ER11, vor „Ausgewählte ersetzen“ eine Trefferzeile von Hand ändern | Die Datei wird als „seit der Suche geändert“ gemeldet und nicht ersetzt |
+| ER14 | Zwei Suchen nacheinander, Leiste schließen, IDE neu starten, Strg+F, Pfeil hoch | Die vorige Suche steht im Feld (auch wenn die letzte noch drin stand); Pfeil runter zurück; Alt+↓ öffnet die Liste; im Ersetzen-Feld eigener Verlauf |
+| ER15 | `search.replace` aus | Keine Ersetzen-Zeile, kein Knopf ▸; Strg+H öffnet den IDE-Dialog „Ersetzen“; Befehl fehlt in der Palette |
+| ER16 | `search.regex` aus | Keine Option `.*`, keine Vorschau |
+| ER17 | `search.history` = 0 | Pfeil hoch ändert nichts, keine Verlaufsliste |
+| ER18 | `search.multiFile` aus | Bereiche nur Methode, Unit, Auswahl; offenes Fenster „Atlas-Suche: Ersetzen“ verschwindet |
+
+## Projektaufgaben aus atlas.json (#900)
+
+Vorbereitung: Projekt mit `atlas.json` neben der `.dproj`, Abschnitt `tasks` mit drei Aufgaben: `lint` (Gruppe `check`, `command` `pwsh`, `args` `["-File", "Tools/Lint.ps1"]`, `key` `Ctrl+Alt+1`, Matcher `dcc`), `tests` (Gruppe `test`, Matcher `generic`, gibt `Kunden.pas(88,5): error Test fehlgeschlagen` aus und endet mit Exit-Code 1), `eigen` (Gruppe `other`, Matcher als Objekt mit eigenem `regex` und `severityMap`). `Tools/Lint.ps1` gibt `Kunden.pas(88) Warning: W1000 Veraltet` aus. `tasks.enabled` und `tasks.problemsFromOutput` an, `tasks.beforeBuild` = `off`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PA1 | Strg+Alt+1 im Editor | Register „Atlas-Aufgaben“ öffnet sich, Kopfzeile „▶ lint läuft: …“ mit Befehlszeile, darunter die Ausgabe zeilenweise, sobald sie kommt (**Abnahme**) |
+| PA2 | Wie PA1, Lauf endet | Kopfzeile fett und grün „lint: Exit-Code 0, …, 1 Befund“; die Zeile mit `Kunden.pas(88)` ist eine Fundstelle, Doppelklick springt nach `Kunden.pas` Zeile 88 |
+| PA3 | Wie PA2, Problemliste ansehen | Warnung W1000 in Zeile 88 mit Quelle `lint`; im Editor markiert (**Abnahme**) |
+| PA4 | In `Lint.ps1` die Ausgabe entfernen, PA1 wiederholen | Der Befund aus PA3 verschwindet aus Problemliste und Editor (ein neuer Lauf ersetzt die Befunde seiner Aufgabe) |
+| PA5 | Befehl „Aufgabe ausführen …“, `tests` wählen | Kopfzeile rot „tests: Exit-Code 1, …“, Fehler in Zeile 88 in der Problemliste |
+| PA6 | „Letzte Aufgabe wiederholen“ | `tests` läuft erneut |
+| PA7 | Aufgabe mit `Start-Sleep 60` starten, „Aufgaben abbrechen“ | Lauf endet sofort, Kopfzeile „…: abgebrochen, …“; im Task-Manager kein `pwsh` der Aufgabe mehr |
+| PA8 | `timeoutSec` = 3 bei einer langen Aufgabe | Nach 3 s „…: nach 3 s abgebrochen (Zeitlimit), …“ |
+| PA9 | `tasks.beforeBuild` = `warn`, `lint` gibt einen Fehler aus, Strg+F9 | `lint` läuft vor dem Compile, der Build läuft trotzdem, der Befund steht in der Problemliste |
+| PA10 | `tasks.beforeBuild` = `block`, wie PA9 | Compile wird abgebrochen, Meldung „lint: 1 Fehler, Build abgebrochen“; nach Behebung läuft Strg+F9 durch („Atlas-Aufgaben bestanden, … wird gebaut.“) (**Abnahme**) |
+| PA11 | `beforeBuild` = `off` an der Aufgabe `lint`, global `block` | `lint` läuft nicht vor dem Build |
+| PA12 | `tasks.runChecksParallel` an, zwei check-Aufgaben, „Alle Prüfungen ausführen“ | Beide Kopfzeilen „▶ … läuft“ erscheinen gleichzeitig |
+| PA13 | Aufgabe `eigen` mit eigenem Regex und `severityMap` `{"E": "error", "W": "warning"}` | Fundstellen mit Schwere aus der Abbildung |
+| PA14 | `tasks.onlyFindings` an bzw. Befehl „Aufgaben: nur Befunde / ganze Ausgabe“ | Register zeigt je Lauf nur Kopfzeile und Fundstellen; erneut umschalten zeigt die ganze Ausgabe |
+| PA15 | „Aufgaben: Befunde ein- oder ausblenden …“, `lint` | „lint: Befunde ausgeblendet“, Befunde verschwinden aus der Problemliste; noch einmal blendet sie ein |
+| PA16 | Ungültige `tasks` in `atlas.json` (fehlendes `command`, doppelter Name) | Konfigurationsmeldung zum Abschnitt `tasks`; keine Ausnahme |
+| PA17 | `command` = `gibtsnicht` | „…: Programm „gibtsnicht“ nicht gefunden (gesucht in … und in PATH)“, keine Ausnahme |
+| PA18 | Atlas › Aufgaben | Untermenü mit den Aufgaben nach Gruppen und ihren Tasten; ohne `tasks` Eintrag „(keine Aufgaben in atlas.json)“ |
+| PA19 | Willkommensseite, Schnellaktion „Aufgaben ▾“ (Haken in den Einstellungen setzen, siehe Übergabe) | Menü mit den Aufgaben; nach dem Lauf das Ergebnis unter dem Knopf |
+| PA20 | Einstellungen › Compiler › Projektaufgaben: `tasks.enabled` aus | Keine Befehle, kein Menü Atlas › Aufgaben, kein Statusfeld, keine Schnellaktion, Strg+Alt+1 gehört wieder der IDE, kein Lauf vor dem Build |
+| PA21 | `tasks.problemsFromOutput` aus, PA1 | Ausgabe im Register wie zuvor, aber keine Befunde in Problemliste und Editor |
+| PA22 | Aufgabe läuft, Atlas-Package entladen | Kein Absturz; der Prozess wird beendet, das Register „Atlas-Aufgaben“ verschwindet |
+| PA23 | `tasks.saveBeforeRun` an, Unit ändern (ungespeichert), Aufgabe starten | Die Unit ist vor dem Start gespeichert |
+
 ## Werte im Hover beim Debuggen (#891)
 
 Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge), einem Record-Array `Kunden` und einer lokalen Variablen `I`, Haltepunkt in einer Methode, die alle drei verwendet. Atlas-Tooltip an (`editor.hoverTooltip`), `debug.hoverValues` an.

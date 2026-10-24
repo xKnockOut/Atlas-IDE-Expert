@@ -43,6 +43,9 @@
 // unter Ansicht › Atlas › Architektur; sichtbar nur bei architecture.enabled.
 // Unter Navigation die Abschnittssprünge, der Rücksprung und „Methode suchen“
 // der Editorleiste (#1101); sie arbeiten auch ohne die Leiste.
+// Untermenü „Aufgaben“ (#900): Beim Öffnen des Atlas-Menüs füllt
+// OnTasksMenu es mit den Projektaufgaben bzw. blendet es aus (ohne Haken oder
+// mit tasks.enabled aus).
 // Aufbau: häufige Befehle direkt, der Rest in Untermenüs (Navigation, Suchen,
 // Kopieren, Änderungen, Anzeige mit den Schaltern, Index, Hilfe und Diagnose).
 
@@ -110,6 +113,9 @@ type
     FSymbolPathItem: TMenuItem;
     /// <summary>„Auswirkungen anzeigen“ (#1120), sichtbar nach navigation.impact.</summary>
     FImpactItem: TMenuItem;
+    /// <summary>Untermenü „Aufgaben“ (#900).</summary>
+    FTasksGroup: TMenuItem;
+    FOnTasksMenu: TProc<TMenuItem>;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
@@ -154,6 +160,8 @@ type
     property OnSetup: TProc read FOnSetup write FOnSetup;
     /// <summary>„Tastenkürzel-Übersicht…“ (#520).</summary>
     property OnKeyMap: TProc read FOnKeyMap write FOnKeyMap;
+    /// <summary>Untermenü „Aufgaben“ beim Öffnen füllen bzw. ausblenden (#900); ohne Haken ausgeblendet.</summary>
+    property OnTasksMenu: TProc<TMenuItem> read FOnTasksMenu write FOnTasksMenu;
     /// <summary>Eintrag „Tastenkürzel-Übersicht…“ nach keys.overview ein- oder ausblenden.</summary>
     procedure UpdateKeyMap;
     /// <summary>„Atlas-Start“ öffnen (#753, #1114).</summary>
@@ -309,6 +317,10 @@ begin
   FImpactItem := AddItem(TAtlasTextId.ImpactCommand, 9, ResultsClick);
   FParent.Add(NewLine);
   AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
+  // Projektaufgaben (#900): Inhalt beim Öffnen (RootClick); ein Platzhalter, damit der Pfeil erscheint.
+  FTasksGroup := AddGroup(TAtlasTextId.MenuGroupTasks);
+  AddItem(TAtlasTextId.TasksMenuEmpty, 0, nil).Enabled := False;
+  FTasksGroup.Visible := False;
   AddGroup(TAtlasTextId.MenuGroupCopy);
   AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
   AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
@@ -482,6 +494,12 @@ begin
     UpdateKeyMap;
     for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
       FToggles[Toggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(Toggle));
+    if FTasksGroup <> nil then
+    begin
+      FTasksGroup.Visible := Assigned(FOnTasksMenu);
+      if Assigned(FOnTasksMenu) then
+        FOnTasksMenu(FTasksGroup);
+    end;
     // Anweisungen mitfärben wirkt nur mit der Paarfärbung (#653).
     FToggles[TAtlasToggle.PairOwners].Enabled := TAtlasIdeQuickToggles.Checked('PairColors');
     Names := '';

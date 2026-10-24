@@ -589,6 +589,7 @@ begin
   Assert.AreEqual('Architekturübersicht', TAtlasGuard.FeatureName(TAtlasFeature.Architecture));
   Assert.AreEqual('Unit-Beziehungen', TAtlasGuard.FeatureName(TAtlasFeature.UnitRelations));
   Assert.AreEqual('Weg zwischen Symbolen', TAtlasGuard.FeatureName(TAtlasFeature.SymbolPath));
+  Assert.AreEqual('Projektaufgaben', TAtlasGuard.FeatureName(TAtlasFeature.Tasks));
 end;
 
 procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;

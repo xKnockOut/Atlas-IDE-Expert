@@ -92,6 +92,9 @@ type
     MaxUndoDepth = 200;
     MinUndoMaxSizeMb = 1;
     MaxUndoMaxSizeMb = 1024;
+    /// <summary>search.history (#893): Vorgabe und Höchstwert.</summary>
+    DefaultSearchHistory = 20;
+    MaxSearchHistory = 100;
     /// <summary>Grenzen für welcomePage.maxProjects (#592); wie TAtlasWelcomeProjects.MinMax/MaxMax.</summary>
     MinWelcomeProjects = 1;
     MaxWelcomeProjects = 30;
@@ -270,6 +273,21 @@ type
     /// <summary>Treffer der Atlas-Suche im Reiter „Atlas-Suche“ des Fensters Meldungen auflisten (#878,
     /// search.resultsInMessages; Enter bzw. „In Meldungen“ in der Suchleiste). Vorgabe an.</summary>
     SearchResultsInMessages: Boolean;
+    /// <summary>Ersetzen-Zeile der Suchleiste und Strg+H (#893, search.replace); aus = keine Ersetzen-Zeile, Strg+H
+    /// gehört der IDE. Vorgabe an.</summary>
+    SearchReplace: Boolean;
+    /// <summary>Option „.*“ (regulärer Ausdruck) und Vorschau in der Suchleiste (#893, search.regex). Vorgabe an.
+    /// </summary>
+    SearchRegex: Boolean;
+    /// <summary>Länge des Such- und Ersetzen-Verlaufs (#893, search.history; 0 = kein Verlauf, Vorgabe 20).
+    /// </summary>
+    SearchHistory: Integer;
+    /// <summary>Bereiche „Offene Dateien“, „Projekt“, „Projektgruppe“ in der Suchleiste (#893, search.multiFile).
+    /// Vorgabe an.</summary>
+    SearchMultiFile: Boolean;
+    /// <summary>Suchleiste mit Ersetzen-Zeile (#893, TShortCut, 0 = keine; Vorgabe Strg+H); nur mit
+    /// search.replaceIdeSearch und search.replace.</summary>
+    SearchReplaceKey: Integer;
     /// <summary>Taste für die Atlas-Suchleiste (#878, TShortCut, 0 = keine; Vorgabe Strg+F).</summary>
     SearchKey: Integer;
     /// <summary>Nächster Treffer der letzten Atlas-Suche (#878; Vorgabe F3).</summary>
@@ -420,6 +438,25 @@ type
     /// <summary>Verhalten bei Verstößen (build.gate, #529): off, warn (beide melden nur) oder block (bricht den
     /// Build ab). Wirkt bisher nur auf den Release-Wächter.</summary>
     BuildGate: string;
+    /// <summary>Projektaufgaben (#900, tasks.enabled): Aufgaben aus dem Abschnitt „tasks“ von atlas.json mit Befehlen,
+    /// Menü Atlas › Aufgaben, Tasten je Aufgabe, Statusfeld und Schnellaktion. Aus = keine Befehle, kein Menü, keine
+    /// Tasten und kein Lauf vor dem Build.</summary>
+    TasksEnabled: Boolean;
+    /// <summary>Fundstellen der Ausgabe als Befunde in Problemliste und Editor (tasks.problemsFromOutput); aus = nur
+    /// die Ausgabe im Register „Atlas-Aufgaben“.</summary>
+    TasksProblemsFromOutput: Boolean;
+    /// <summary>Aufgaben der Gruppe „check“ vor jedem Compile/Build (tasks.beforeBuild): off, warn (Build läuft,
+    /// Befunde erscheinen) oder block (Exit-Code ungleich 0 oder Fehler brechen den Build ab). „beforeBuild“ einer
+    /// Aufgabe überschreibt den Wert.</summary>
+    TasksBeforeBuild: string;
+    /// <summary>Geänderte Dateien vor dem Start einer Aufgabe speichern (tasks.saveBeforeRun).</summary>
+    TasksSaveBeforeRun: Boolean;
+    /// <summary>„Alle Prüfungen ausführen“ und der Lauf vor dem Build starten die check-Aufgaben gleichzeitig
+    /// (tasks.runChecksParallel); aus = nacheinander.</summary>
+    TasksRunChecksParallel: Boolean;
+    /// <summary>Register „Atlas-Aufgaben“ zeigt nur die erkannten Fundstellen (tasks.onlyFindings); aus = die ganze
+    /// Ausgabe. Umschaltbar über den Befehl „Aufgaben: nur Befunde / ganze Ausgabe“.</summary>
+    TasksOnlyFindings: Boolean;
     /// <summary>Konfigurationen, die außer „Release“ als Release gelten (build.releaseConfigs), durch Komma
     /// getrennt.</summary>
     ReleaseConfigs: string;
@@ -1011,7 +1048,7 @@ type
     /// Knöpfe in der Zeile unter der Maus bzw. mit dem Fokus; aus = keine Knöpfe, keine Tasten.</summary>
     WelcomePageQuickActions: Boolean;
     /// <summary>Gezeigte Knöpfe (#764, welcomePage.quickActions.items): Namen durch Komma getrennt, in der
-    /// Reihenfolge build, tests, run, pull, folder, console; '' = keiner.</summary>
+    /// Reihenfolge build, tests, run, pull, folder, console, tasks (#900); '' = keiner.</summary>
     WelcomePageQuickActionsItems: string;
     /// <summary>Programm für „Konsole“ (#764, welcomePage.quickActions.console): wt.exe (Vorgabe), cmd.exe,
     /// powershell.exe, pwsh.exe oder ein anderes; ohne Windows-Terminal nimmt Atlas cmd.exe.</summary>
@@ -1127,8 +1164,22 @@ const
 const
   /// <summary>Knöpfe der Schnellaktionen (#764) wie TAtlasWelcomeQuickActions.Names (Test prüft Gleichheit; die
   /// Einstellungen kennen die Willkommensseite nicht, A-09).</summary>
-  QuickActionNames: array[0..5] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console');
+  QuickActionNames: array[0..6] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
   QuickActionsDefaultConsole = 'wt.exe';
+  /// <summary>Werte von tasks.beforeBuild (#900) wie TAtlasTasks.BeforeBuildNames; die Einstellungen kennen die
+  /// Projektaufgaben nicht (A-09, sonst Feature-Zyklus), der Test hält beide gleich.</summary>
+  TasksBeforeBuildNames: array[0..2] of string = ('off', 'warn', 'block');
+
+/// <summary>tasks.beforeBuild: bekannter Wert klein, sonst „off“.</summary>
+function NormalizedTasksBeforeBuild(const AText: string): string;
+var
+  Name: string;
+begin
+  for Name in TasksBeforeBuildNames do
+    if SameText(Trim(AText), Name) then
+      Exit(Name);
+  Result := TasksBeforeBuildNames[0];
+end;
 
 /// <summary>Bekannte Knöpfe aus AText (Komma, Semikolon, Leerzeichen; Groß-/Kleinschreibung egal) in fester
 /// Reihenfolge, jeder einmal; '' = keiner.</summary>
@@ -1136,7 +1187,7 @@ function NormalizedQuickActionItems(const AText: string): string;
 var
   Part: string;
   Index: Integer;
-  Wanted: array[0..5] of Boolean;
+  Wanted: array[Low(QuickActionNames)..High(QuickActionNames)] of Boolean;
 begin
   for Index := Low(Wanted) to High(Wanted) do
     Wanted[Index] := False;
@@ -1346,6 +1397,11 @@ begin
   Result.HideElementKey := $40BE; // Strg+.
   Result.SearchReplaceIde := True;
   Result.SearchResultsInMessages := True;
+  Result.SearchReplace := True;
+  Result.SearchRegex := True;
+  Result.SearchHistory := DefaultSearchHistory;
+  Result.SearchMultiFile := True;
+  Result.SearchReplaceKey := $4048; // Strg+H
   Result.SearchKey := $4046; // Strg+F
   Result.SearchNextKey := $72; // F3
   Result.SearchPreviousKey := $2072; // Umschalt+F3
@@ -1410,6 +1466,12 @@ begin
   Result.ShowInterfaceCost := True;
   Result.ReleaseGuard := True;
   Result.BuildGate := 'off';
+  Result.TasksEnabled := True;
+  Result.TasksProblemsFromOutput := True;
+  Result.TasksBeforeBuild := 'off';
+  Result.TasksSaveBeforeRun := True;
+  Result.TasksRunChecksParallel := False;
+  Result.TasksOnlyFindings := False;
   Result.ReleaseConfigs := TAtlasReleaseGuard.ReleaseConfiguration;
   Result.ReleaseChecks := TAtlasReleaseChecks.Defaults.ToText;
   Result.TestDebug := True;
@@ -1754,6 +1816,7 @@ begin
   if WelcomePageActiveLayout = '' then
     WelcomePageActiveLayout := DefaultWelcomeLayoutName;
   BuildGate := TAtlasReleaseGuard.GateNames[TAtlasReleaseGuard.GateOf(BuildGate)];
+  TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
   ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
@@ -1872,6 +1935,8 @@ begin
   NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
   PreviousProblemKey := EnsureRange(PreviousProblemKey, 0, $FFFF);
   SearchKey := EnsureRange(SearchKey, 0, $FFFF);
+  SearchReplaceKey := EnsureRange(SearchReplaceKey, 0, $FFFF);
+  SearchHistory := EnsureRange(SearchHistory, 0, MaxSearchHistory);
   SearchNextKey := EnsureRange(SearchNextKey, 0, $FFFF);
   SearchPreviousKey := EnsureRange(SearchPreviousKey, 0, $FFFF);
   SearchMethodKey := EnsureRange(SearchMethodKey, 0, $FFFF);
@@ -1960,6 +2025,11 @@ begin
   SearchReplaceIde := AStore.ReadInteger('SearchReplaceIde', BoolValue(Default.SearchReplaceIde)) <> 0;
   SearchResultsInMessages := AStore.ReadInteger('SearchResultsInMessages',
     BoolValue(Default.SearchResultsInMessages)) <> 0;
+  SearchReplace := AStore.ReadInteger('SearchReplace', BoolValue(Default.SearchReplace)) <> 0;
+  SearchRegex := AStore.ReadInteger('SearchRegex', BoolValue(Default.SearchRegex)) <> 0;
+  SearchHistory := AStore.ReadInteger('SearchHistory', Default.SearchHistory);
+  SearchMultiFile := AStore.ReadInteger('SearchMultiFile', BoolValue(Default.SearchMultiFile)) <> 0;
+  SearchReplaceKey := AStore.ReadInteger('SearchReplaceKey', Default.SearchReplaceKey);
   SearchKey := AStore.ReadInteger('SearchKey', Default.SearchKey);
   SearchNextKey := AStore.ReadInteger('SearchNextKey', Default.SearchNextKey);
   SearchPreviousKey := AStore.ReadInteger('SearchPreviousKey', Default.SearchPreviousKey);
@@ -2027,6 +2097,14 @@ begin
   ShowInterfaceCost := AStore.ReadInteger('ShowInterfaceCost', BoolValue(Default.ShowInterfaceCost)) <> 0;
   ReleaseGuard := AStore.ReadInteger('ReleaseGuard', BoolValue(Default.ReleaseGuard)) <> 0;
   BuildGate := AStore.ReadString('BuildGate', Default.BuildGate);
+  TasksEnabled := AStore.ReadInteger('TasksEnabled', BoolValue(Default.TasksEnabled)) <> 0;
+  TasksProblemsFromOutput := AStore.ReadInteger('TasksProblemsFromOutput',
+    BoolValue(Default.TasksProblemsFromOutput)) <> 0;
+  TasksBeforeBuild := AStore.ReadString('TasksBeforeBuild', Default.TasksBeforeBuild);
+  TasksSaveBeforeRun := AStore.ReadInteger('TasksSaveBeforeRun', BoolValue(Default.TasksSaveBeforeRun)) <> 0;
+  TasksRunChecksParallel := AStore.ReadInteger('TasksRunChecksParallel',
+    BoolValue(Default.TasksRunChecksParallel)) <> 0;
+  TasksOnlyFindings := AStore.ReadInteger('TasksOnlyFindings', BoolValue(Default.TasksOnlyFindings)) <> 0;
   ReleaseConfigs := AStore.ReadString('ReleaseConfigs', Default.ReleaseConfigs);
   ReleaseChecks := AStore.ReadString('ReleaseChecks', Default.ReleaseChecks);
   TestDebug := AStore.ReadInteger('TestDebug', BoolValue(Default.TestDebug)) <> 0;
@@ -2431,6 +2509,11 @@ begin
   AStore.WriteInteger('HideElementKey', HideElementKey);
   AStore.WriteInteger('SearchReplaceIde', BoolValue(SearchReplaceIde));
   AStore.WriteInteger('SearchResultsInMessages', BoolValue(SearchResultsInMessages));
+  AStore.WriteInteger('SearchReplace', BoolValue(SearchReplace));
+  AStore.WriteInteger('SearchRegex', BoolValue(SearchRegex));
+  AStore.WriteInteger('SearchHistory', SearchHistory);
+  AStore.WriteInteger('SearchMultiFile', BoolValue(SearchMultiFile));
+  AStore.WriteInteger('SearchReplaceKey', SearchReplaceKey);
   AStore.WriteInteger('SearchKey', SearchKey);
   AStore.WriteInteger('SearchNextKey', SearchNextKey);
   AStore.WriteInteger('SearchPreviousKey', SearchPreviousKey);
@@ -2494,6 +2577,12 @@ begin
   AStore.WriteInteger('ShowInterfaceCost', BoolValue(ShowInterfaceCost));
   AStore.WriteInteger('ReleaseGuard', BoolValue(ReleaseGuard));
   AStore.WriteString('BuildGate', BuildGate);
+  AStore.WriteInteger('TasksEnabled', BoolValue(TasksEnabled));
+  AStore.WriteInteger('TasksProblemsFromOutput', BoolValue(TasksProblemsFromOutput));
+  AStore.WriteString('TasksBeforeBuild', TasksBeforeBuild);
+  AStore.WriteInteger('TasksSaveBeforeRun', BoolValue(TasksSaveBeforeRun));
+  AStore.WriteInteger('TasksRunChecksParallel', BoolValue(TasksRunChecksParallel));
+  AStore.WriteInteger('TasksOnlyFindings', BoolValue(TasksOnlyFindings));
   AStore.WriteString('ReleaseConfigs', ReleaseConfigs);
   AStore.WriteString('ReleaseChecks', ReleaseChecks);
   AStore.WriteInteger('TestDebug', BoolValue(TestDebug));

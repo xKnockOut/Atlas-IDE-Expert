@@ -118,6 +118,8 @@ type
     procedure ReadIndex(ANode: TJsonNode);
     procedure ReadArchitecture(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
+    procedure ReadTasks(ANode: TJsonNode);
+    procedure ReadTaskMatcher(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
     function ParseRoot: TJsonNode;
@@ -2038,6 +2040,155 @@ begin
   FSettings.Formatting := mSettings;
 end;
 
+procedure TValidator.ReadTaskMatcher(ANode: TJsonNode);
+var
+  Index, Item: Integer;
+  Key, Text: string;
+  HasRegex: Boolean;
+begin
+  if ANode.Kind = TJsonKind.String_ then
+  begin
+    if IndexStr(ANode.Value, ['dcc', 'pwsh', 'msbuild', 'generic', 'none']) < 0 then
+      ReportNode(ANode, 'Erlaubt sind "dcc", "pwsh", "msbuild", "generic", "none" oder ein Objekt mit "regex"');
+    Exit;
+  end;
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"matcher" muss ein Name oder ein Objekt mit "regex" sein');
+    Exit;
+  end;
+  HasRegex := False;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'regex' then
+    begin
+      if ExpectString(ANode[Index], 'regex', Text) then
+        if Text = '' then
+          ReportNode(ANode[Index], '"regex" darf nicht leer sein')
+        else
+          HasRegex := True;
+    end
+    else if Key = 'severity' then
+    begin
+      if ExpectString(ANode[Index], 'severity', Text) and (IndexStr(Text, ['error', 'warning', 'info']) < 0) then
+        ReportNode(ANode[Index], 'Erlaubt sind "error", "warning" und "info"');
+    end
+    else if Key = 'severityMap' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(ANode[Index], '"severityMap" muss ein Objekt Wort → error, warning oder info sein');
+        Continue;
+      end;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'severityMap', Text) and
+          (IndexStr(Text, ['error', 'warning', 'info']) < 0) then
+          ReportNode(ANode[Index][Item], 'Erlaubt sind "error", "warning" und "info"');
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Angabe "%s" im Muster; erlaubt: regex, severity, severityMap', [Key]), False);
+  end;
+  if not HasRegex then
+    ReportNode(ANode, 'Eigenes Muster ohne "regex"');
+end;
+
+procedure TValidator.ReadTasks(ANode: TJsonNode);
+var
+  Index, Inner, Item, Number: Integer;
+  Task, Value: TJsonNode;
+  Key, Text: string;
+  Names: TList<string>;
+  HasName, HasCommand: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"tasks" muss eine Liste von Aufgaben sein');
+    Exit;
+  end;
+  FSettings.Tasks := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+  Names := TList<string>.Create;
+  try
+    for Index := 0 to ANode.Count - 1 do
+    begin
+      Task := ANode[Index];
+      if Task.Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(Task, 'Eine Aufgabe ist ein Objekt mit "name" und "command"');
+        Continue;
+      end;
+      HasName := False;
+      HasCommand := False;
+      for Inner := 0 to Task.Count - 1 do
+      begin
+        Key := Task.Keys[Inner];
+        Value := Task[Inner];
+        if Key = 'name' then
+        begin
+          if ExpectString(Value, 'name', Text) and (Trim(Text) <> '') then
+          begin
+            HasName := True;
+            // Gleicher Name: Die spätere Aufgabe wäre nie erreichbar (Projekt vor global gilt nur zwischen Dateien).
+            if Names.IndexOf(AnsiLowerCase(Trim(Text))) >= 0 then
+              ReportNode(Value, Format('Die Aufgabe "%s" gibt es schon', [Trim(Text)]))
+            else
+              Names.Add(AnsiLowerCase(Trim(Text)));
+          end;
+        end
+        else if Key = 'command' then
+          HasCommand := ExpectString(Value, 'command', Text) and (Trim(Text) <> '')
+        else if (Key = 'cwd') or (Key = 'key') then
+          ExpectString(Value, Key, Text)
+        else if Key = 'args' then
+        begin
+          if Value.Kind <> TJsonKind.Array_ then
+            ReportNode(Value, '"args" muss eine Liste von Texten sein')
+          else
+            for Item := 0 to Value.Count - 1 do
+              if Value[Item].Kind <> TJsonKind.Number then
+                ExpectString(Value[Item], 'args', Text);
+        end
+        else if Key = 'env' then
+        begin
+          if Value.Kind <> TJsonKind.Object_ then
+            ReportNode(Value, '"env" muss ein Objekt Name → Wert sein')
+          else
+            for Item := 0 to Value.Count - 1 do
+              ExpectString(Value[Item], 'env', Text);
+        end
+        else if Key = 'group' then
+        begin
+          if ExpectString(Value, 'group', Text) and (IndexStr(Text, ['check', 'build', 'test', 'other']) < 0) then
+            ReportNode(Value, 'Erlaubt sind "check", "build", "test" und "other"');
+        end
+        else if Key = 'beforeBuild' then
+        begin
+          if ExpectString(Value, 'beforeBuild', Text) and (IndexStr(Text, ['off', 'warn', 'block']) < 0) then
+            ReportNode(Value, 'Erlaubt sind "off", "warn" und "block"');
+        end
+        else if Key = 'timeoutSec' then
+        begin
+          if not ((Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Number) and (Number >= 0) and
+            (Number <= 86400)) then
+            ReportNode(Value, '"timeoutSec" muss eine ganze Zahl von 0 bis 86400 sein');
+        end
+        else if Key = 'matcher' then
+          ReadTaskMatcher(Value)
+        else
+          Report(Task.KeyStarts[Inner], Task.KeyStarts[Inner] + Length(Key) + 2,
+            Format('Unbekannte Angabe "%s" in einer Aufgabe', [Key]), False);
+      end;
+      if not HasName then
+        ReportNode(Task, 'Aufgabe ohne "name"');
+      if not HasCommand then
+        ReportNode(Task, 'Aufgabe ohne "command"');
+    end;
+  finally
+    Names.Free;
+  end;
+end;
+
 function TValidator.ParseRoot: TJsonNode;
 begin
   try
@@ -2249,6 +2400,8 @@ begin
         if ExpectString(Value, Key, Text) then
           FSettings.TraceFile := Text;
       end
+      else if Key = 'tasks' then
+        ReadTasks(Value)
       else if Key = 'format' then
       begin
         if Value.Kind = TJsonKind.Object_ then
@@ -2518,6 +2671,8 @@ begin
       Result.MinConfidence := FileSettings.MinConfidence;
       Result.MinConfidenceGiven := FileSettings.MinConfidenceGiven;
     end
+    else if Key = 'tasks' then
+      Result.Tasks := FileSettings.Tasks
     else if Key = 'format' then
     begin
       Result.Format := FileSettings.Format;

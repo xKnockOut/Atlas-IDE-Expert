@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..55] of string = (
+  GlobalSettingPaths: array[0..56] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -63,11 +63,12 @@ const
     'hints',
     'directives',
     'mcp.disabledTools',
+    'tasks',
     'logLevel',
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..34] of string = (
+  ProjectSettingPaths: array[0..35] of string = (
     'minDelphiVersion',
     'encoding',
     'project',
@@ -102,7 +103,8 @@ const
     'minConfidence',
     'exclude',
     'mcp.globalSettings',
-    'format');
+    'format',
+    'tasks');
 
 /// <summary>Experimentelle Schlüssel (x-experimental, #834): wirken nur mit experimental.enabled.</summary>
 function ExperimentalSettingPaths: TArray<string>;
