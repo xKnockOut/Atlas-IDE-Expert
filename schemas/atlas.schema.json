@@ -1388,6 +1388,33 @@
       "x-control": "Liste",
       "x-issue": "#284"
     },
+    "deadCode": {
+      "type": "object",
+      "description": "Toter Code: Elemente, die als verwendet gelten, obwohl ihr Name im Code nicht vorkommt (RTTI, Serialisierung, Plugins). Gilt für unused-private-member, unused-public-member und unused-declaration, zusätzlich zu den Optionen keepAttributes und keepPatterns der Regeln.",
+      "additionalProperties": false,
+      "properties": {
+        "keepAttributes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Attributnamen ohne \"Attribute\", z. B. \"JsonName\": Alle Mitglieder eines Typs mit diesem Attribut gelten als verwendet."
+        },
+        "keepPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Namensmuster mit * und ?, auch als Typ.Name, z. B. \"*Handler\" oder \"TPlugin.*\": Passende Elemente gelten als verwendet."
+        }
+      },
+      "x-scope": "project",
+      "x-page": "Prüfregeln",
+      "x-control": "Liste mit Hinzufügen/Entfernen",
+      "x-issue": "#64"
+    },
     "dfmPropertyRules": {
       "type": "array",
       "default": [],
@@ -1598,6 +1625,24 @@
           "type": "boolean",
           "default": false,
           "description": "Zuordnung Kurz-ID (doc#4) → Pfad lokal speichern, nur für die eigene Analyse. Der Export nimmt sie nie mit."
+        },
+        "usesCycleLive": {
+          "type": "boolean",
+          "default": true,
+          "description": "Zirkuläre Unit-Referenz schon beim Tippen melden (Regel uses-cycle): Ein Zyklus, in dem jede Kante im interface-Teil liegt, ist ein Fehler am auslösenden uses-Eintrag mit dem kürzesten Pfad; jede Unit im Hover springt an ihren uses-Eintrag. Schnellkorrektur „In implementation-uses verschieben“, wenn kein Bezeichner der Unit im interface-Teil gebraucht wird, sonst Sprung zu diesen Bezeichnern und „Graph zeigen“. Berücksichtigt den ungespeicherten Stand offener Units. false: keine Meldung im Editor; die projektweite Prüfung (--check, find_unused_code) bleibt.",
+          "x-scope": "project",
+          "x-page": "Prüfregeln",
+          "x-control": "Kontrollkästchen",
+          "x-issue": "#896"
+        },
+        "usesCycleImplementation": {
+          "type": "boolean",
+          "default": false,
+          "description": "Im Editor auch Zyklen mit mindestens einer implementation-Kante melden, als Hinweis (der Compiler erlaubt sie). Braucht usesCycleLive.",
+          "x-scope": "project",
+          "x-page": "Prüfregeln",
+          "x-control": "Kontrollkästchen",
+          "x-issue": "#896"
         }
       },
       "x-scope": "global",

@@ -1993,6 +1993,16 @@ begin
   Assert.Contains(Paths, '|completion.senderCast|');
   Assert.DoesNotContain(Paths, '|index.projectGroup|');
   Assert.DoesNotContain(Paths, '|language|');
+  // Unit-Zyklus beim Tippen (#896): Glied mit eigener Seite und eigenem Ort im sonst globalen diagnostics.
+  Assert.Contains(Paths, '|diagnostics.usesCycleLive|');
+  Assert.Contains(Paths, '|diagnostics.usesCycleImplementation|');
+  Assert.DoesNotContain(Paths, '|diagnostics.log|');
+  for Field in Project do
+    if Field.Path = 'diagnostics.usesCycleLive' then
+    begin
+      Assert.AreEqual('Prüfregeln', Field.Page);
+      Assert.AreEqual('true', Field.DefaultJson);
+    end;
   Paths := '|';
   for Field in Global do
     Paths := Paths + Field.Path + '|';

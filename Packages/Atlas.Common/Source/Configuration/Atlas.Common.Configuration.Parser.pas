@@ -45,17 +45,17 @@ uses
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  BooleanRuleOptions: array[0..21] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+  BooleanRuleOptions: array[0..22] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields',
     'allowSingleLineExit', 'allowSameLine', 'allowComments', 'onlyAfterRaisingCode', 'allowInProgram', 'unitLevel',
     'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem', 'ignoreOverrides', 'requirePublic',
-    'checkReturns');
+    'checkReturns', 'implementation');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..30] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..31] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
     'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
-    'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes');
+    'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes', 'unitKinds');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
@@ -87,6 +87,7 @@ type
     procedure ReadExclude(ANode: TJsonNode);
     procedure ReadMcp(ANode: TJsonNode);
     procedure ReadUsesKeep(ANode: TJsonNode);
+    procedure ReadDeadCode(ANode: TJsonNode);
     procedure ReadSlashCommands(ANode: TJsonNode);
     procedure ReadCompleteBlocks(ANode: TJsonNode);
     procedure ReadExperimental(ANode: TJsonNode);
@@ -555,6 +556,42 @@ begin
   for Index := 0 to ANode.Count - 1 do
     if ExpectString(ANode[Index], 'usesKeep', Value) then
       FSettings.UsesKeep := FSettings.UsesKeep + [Value];
+end;
+
+procedure TValidator.ReadDeadCode(ANode: TJsonNode);
+var
+  Index, Item: Integer;
+  Key, Value: string;
+  Values: TArray<string>;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"deadCode" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if (Key = 'keepAttributes') or (Key = 'keepPatterns') then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], Format('"deadCode.%s" muss eine Liste von Texten sein', [Key]));
+        Continue;
+      end;
+      Values := nil;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'deadCode.' + Key, Value) then
+          Values := Values + [Value];
+      if Key = 'keepAttributes' then
+        FSettings.DeadCodeKeepAttributes := Values
+      else
+        FSettings.DeadCodeKeepPatterns := Values;
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "deadCode.%s"', [Key]), False);
+  end;
 end;
 
 procedure TValidator.ReadSlashCommands(ANode: TJsonNode);
@@ -1615,6 +1652,10 @@ begin
     end
     else if Key = 'logMapFile' then
       ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsLogMapFile)
+    else if Key = 'usesCycleLive' then
+      ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsUsesCycleLive)
+    else if Key = 'usesCycleImplementation' then
+      ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsUsesCycleImplementation)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "diagnostics.%s"', [Key]), False);
@@ -2027,6 +2068,8 @@ begin
         ReadSortUses(Value)
       else if Key = 'usesKeep' then
         ReadUsesKeep(Value)
+      else if Key = 'deadCode' then
+        ReadDeadCode(Value)
       else if Key = 'memoryBudgetMb' then
       begin
         if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Budget) and (Budget >= 0) then
@@ -2364,6 +2407,8 @@ begin
       Result.DiagnosticsLog := FileSettings.DiagnosticsLog;
       Result.DiagnosticsLogDays := FileSettings.DiagnosticsLogDays;
       Result.DiagnosticsLogMapFile := FileSettings.DiagnosticsLogMapFile;
+      Result.DiagnosticsUsesCycleLive := FileSettings.DiagnosticsUsesCycleLive;
+      Result.DiagnosticsUsesCycleImplementation := FileSettings.DiagnosticsUsesCycleImplementation;
     end
     else if Key = 'index' then
     begin
@@ -2414,6 +2459,11 @@ begin
     end
     else if Key = 'usesKeep' then
       Result.UsesKeep := FileSettings.UsesKeep
+    else if Key = 'deadCode' then
+    begin
+      Result.DeadCodeKeepAttributes := FileSettings.DeadCodeKeepAttributes;
+      Result.DeadCodeKeepPatterns := FileSettings.DeadCodeKeepPatterns;
+    end
     else if Key = 'memoryBudgetMb' then
       Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb
     else if Key = 'requestTimeoutMs' then

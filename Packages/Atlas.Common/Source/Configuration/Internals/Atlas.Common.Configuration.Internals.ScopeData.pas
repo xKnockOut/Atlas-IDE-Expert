@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..47] of string = (
+  GlobalSettingPaths: array[0..49] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -47,7 +47,9 @@ const
     'architecture.includeLibraryUnits',
     'architecture.centralUnits',
     'requestTimeoutMs',
-    'diagnostics',
+    'diagnostics.log',
+    'diagnostics.logDays',
+    'diagnostics.logMapFile',
     'highlight',
     'inlayHints',
     'codeLens',
@@ -59,7 +61,7 @@ const
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..30] of string = (
+  ProjectSettingPaths: array[0..33] of string = (
     'encoding',
     'project',
     'config',
@@ -79,11 +81,14 @@ const
     'refactoring',
     'sortUses',
     'usesKeep',
+    'deadCode',
     'dfmPropertyRules',
     'index.exclude',
     'architecture.exclude',
     'architecture.baseline',
     'architecture.failOn',
+    'diagnostics.usesCycleLive',
+    'diagnostics.usesCycleImplementation',
     'stringLiteral',
     'memberOrder',
     'testUnits',

@@ -71,6 +71,9 @@ type
     /// <summary>#909: Tab wandert reihum über die Aktionen unter den Befunden.</summary>
     [Test]
     procedure NextProblemHitCycles;
+    /// <summary>#896: Unit-Zyklus mit anklickbaren Units und „Graph zeigen“.</summary>
+    [Test]
+    procedure CycleUnitsAreLinks;
     /// <summary>#110: published-Mitglieder als Tabellen mit Schaltern.</summary>
     [Test]
     procedure PublishedMembersAsTables;
@@ -585,6 +588,76 @@ begin
   HoverView.Problems := [Plain, Unused, Moved];
   HoverInput.View := HoverView;
   Assert.AreEqual('1:0|1:1|2:2|', Codes(Build(HoverInput)));
+end;
+
+procedure THoverLayoutTests.CycleUnitsAreLinks;
+
+  function Related(const AMessage: string; ALine: Integer): TAtlasProblemRelated;
+  begin
+    Result.Uri := 'file:///c%3A/p/' + AMessage + '.pas';
+    Result.Line := ALine;
+    Result.Character := 2;
+    Result.Message := AMessage;
+  end;
+
+  function Codes(const ALayout: TAtlasHoverLayout): string;
+  var
+    Hit: TAtlasHoverHit;
+    Problem, Item: Integer;
+    Action: TAtlasHoverProblemAction;
+  begin
+    Result := '';
+    for Hit in ALayout.Hits do
+      if Hit.Kind = TAtlasHoverHitKind.ProblemAction then
+      begin
+        TAtlasHoverLayout.DecodeProblemAction(Hit.Index, Problem, Action, Item);
+        if Action in [TAtlasHoverProblemAction.Related, TAtlasHoverProblemAction.ShowGraph] then
+          Result := Result + IntToStr(Problem) + ':' + IntToStr(Ord(Action)) + ':' + IntToStr(Item) + '|';
+      end;
+  end;
+
+var
+  HoverView: TAtlasHoverView;
+  Cycle, Plain: TAtlasProblem;
+  HoverInput: TAtlasHoverInput;
+  Layout: TAtlasHoverLayout;
+  Item: TAtlasHoverItem;
+  Texts, Problem, Index: Integer;
+  Action: TAtlasHoverProblemAction;
+begin
+  TAtlasHoverLayout.DecodeProblemAction(TAtlasHoverLayout.ProblemActionCode(2, TAtlasHoverProblemAction.Related, 3),
+    Problem, Action, Index);
+  Assert.AreEqual(2, Problem);
+  Assert.AreEqual(3, Index);
+  Assert.IsTrue(Action = TAtlasHoverProblemAction.Related);
+  Plain := Default(TAtlasProblem);
+  Plain.Message := 'x';
+  Cycle := Default(TAtlasProblem);
+  Cycle.Severity := TAtlasProblemSeverity.Error;
+  Cycle.Source := 'Atlas';
+  Cycle.Code := TAtlasProblem.UsesCycleCode;
+  Cycle.Message := 'Zirkuläre Unit-Referenz';
+  Cycle.Related := [Related('uC', 3), Related('uA', 3), Related('uB', 3), Related('uC', 3)];
+  HoverView := View('');
+  HoverView.Problems := [Plain, Cycle];
+  HoverInput := Input(HoverView, 600);
+  HoverInput.Texts.ShowGraph := 'Graph zeigen';
+  Layout := Build(HoverInput);
+  // Jede Unit des Pfads ist ein Link mit ihrer Stelle, dahinter „Graph zeigen“.
+  Assert.AreEqual('1:6:0|1:6:1|1:6:2|1:6:3|1:7:0|', Codes(Layout));
+  Texts := 0;
+  for Item in Layout.Items do
+    if (Item.Kind = TAtlasHoverItemKind.Text) and (Item.Text = ' → ') then
+      Inc(Texts);
+  Assert.AreEqual(3, Texts, 'Pfeile zwischen den Units');
+  // Ohne Text kein „Graph zeigen“; andere Regeln ohne Stellen haben keine solche Zeile.
+  HoverInput.Texts.ShowGraph := '';
+  Assert.AreEqual('1:6:0|1:6:1|1:6:2|1:6:3|', Codes(Build(HoverInput)));
+  Cycle.Code := 'empty-except';
+  Cycle.Related := nil;
+  HoverView.Problems := [Plain, Cycle];
+  HoverInput.View := HoverView;
+  Assert.AreEqual('', Codes(Build(HoverInput)));
 end;
 
 function Finding(ASeverity: TAtlasProblemSeverity; const ASource, ACode, AMessage, AFix: string): TAtlasProblem;

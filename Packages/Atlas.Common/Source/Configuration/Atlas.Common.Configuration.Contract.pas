@@ -498,6 +498,11 @@ type
     SortUsesByNamespace: Boolean;
     /// <summary>Units, die "ungenutzte uses entfernen" nie entfernt (#284).</summary>
     UsesKeep: TArray<string>;
+    /// <summary>Toter Code (#64): Attribute (z. B. JsonName) und Namensmuster (z. B. *Handler), deren Elemente als
+    /// verwendet gelten (deadCode.keepAttributes, deadCode.keepPatterns); für unused-private-member,
+    /// unused-public-member und unused-declaration.</summary>
+    DeadCodeKeepAttributes: TArray<string>;
+    DeadCodeKeepPatterns: TArray<string>;
     /// <summary>Klartext als String-Literal (#312).</summary>
     StringLiteral: TStringLiteralSettings;
     /// <summary>Klassenmitglieder ordnen (#89).</summary>
@@ -515,6 +520,12 @@ type
     DiagnosticsLog: Boolean;
     DiagnosticsLogDays: Integer;
     DiagnosticsLogMapFile: Boolean;
+    /// <summary>Unit-Zyklen beim Tippen melden (#896, diagnostics.usesCycleLive): uses-cycle in den Diagnosen des
+    /// Editors; die projektweite Prüfung (#64) bleibt davon unberührt.</summary>
+    DiagnosticsUsesCycleLive: Boolean;
+    /// <summary>Im Editor auch Zyklen mit implementation-Kante, als Hinweis (#896,
+    /// diagnostics.usesCycleImplementation).</summary>
+    DiagnosticsUsesCycleImplementation: Boolean;
     /// <summary>Umfang des Index (#648): alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und
     /// der Bibliotheks- und Suchpfade der Installation; False = nur über uses erreichbare (bisher).</summary>
     IndexProjectGroup: Boolean;
@@ -963,6 +974,8 @@ begin
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;
+  Result.DeadCodeKeepAttributes := nil;
+  Result.DeadCodeKeepPatterns := nil;
   Result.StringLiteral := TStringLiteralSettings.Default;
   Result.MemberOrder := TMemberOrderSettings.Default;
   Result.TestUnits := TTestUnitSettings.Default;
@@ -973,6 +986,8 @@ begin
   Result.DiagnosticsLog := True;
   Result.DiagnosticsLogDays := 7;
   Result.DiagnosticsLogMapFile := False;
+  Result.DiagnosticsUsesCycleLive := True;
+  Result.DiagnosticsUsesCycleImplementation := False;
   Result.IndexProjectGroup := True;
   Result.McpGlobalSettings := True;
   Result.IndexSearchPaths := True;

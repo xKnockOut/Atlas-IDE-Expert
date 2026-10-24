@@ -101,6 +101,7 @@ uses
   Shell.Compiler,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Index.Scheduler,
+  Atlas.Common.Architecture.UsesService,
   Shell.Platform,
   Shell.Workspace,
   Shell.Diagnostics;
@@ -188,6 +189,8 @@ type
     FWatchedFiles: TLspWatchedFiles;
     /// <summary>Aktive Unit nach der Tipp-Pause neu in den Index (#492).</summary>
     FIndexRefresh: TLspIndexRefresh;
+    /// <summary>uses-Listen der übernommenen Puffer (#896): bei Änderung andere offene Units neu prüfen.</summary>
+    FUsesChanges: TLspUsesChanges;
     /// <summary>Build-Ergebnisse und Compilermeldungen aus der IDE (#528).</summary>
     FIdeBuild: TLspIdeBuild;
     /// <summary>Projektkontext aus der IDE (#396).</summary>
@@ -202,6 +205,8 @@ type
     FLooseConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
+    /// <summary>Uses-Graph über FIndex für uses-cycle und unused-unit (#64); lebt so lange wie der Index.</summary>
+    FUsesGraph: TUsesGraphService;
     // Ordner des Arbeitsbereichs. Ändern nur im Thread der Nachrichtenschleife,
     // unter FWorkspacesLock, weil Anfrage-Threads lesen.
     FWorkspaces: TObjectList<TShellWorkspace>;
@@ -511,6 +516,7 @@ uses
   Shell.Commands.Index,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Builtin.General,
@@ -991,6 +997,7 @@ var
   Index: ISymbolIndex;
 begin
   FIndex := TSymbolIndex.Create;
+  FUsesGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
   // Declared(X) in {$IF} fragt den Index (#847). Die Referenz hält den Index, bis Destroy den Anbieter abmeldet.
   Index := FIndex;
   TPascalPreprocessor.SetDeclaredProvider(
@@ -1875,6 +1882,7 @@ procedure TServerComposition.WireWatchedFiles;
 begin
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
+  FUsesChanges := TLspUsesChanges.Create;
   FIndexRefresh := TLspIndexRefresh.Create(TLspIndexRefresh.DefaultDelayMs,
     procedure(const AFileName, AText: string)
     var
@@ -1894,6 +1902,10 @@ begin
           Updated := True;
       if Updated then
         FLogger.Debug(Format('Index nach Tipp-Pause aktualisiert: %s', [ExtractFileName(AFileName)]));
+      // Geänderte uses (#896): Ein Unit-Zyklus anderer offener Units kann über diese Unit laufen; der Graph
+      // folgt dem Index, die Neuprüfung ist gebündelt.
+      if Updated and FUsesChanges.Changed(AFileName, AText) and (FSyntaxDiagnostics <> nil) then
+        FSyntaxDiagnostics.RefreshLater;
     end);
   FIndexRefresh.OnError :=
     procedure(E: Exception)
@@ -2043,6 +2055,7 @@ begin
   TPascalPreprocessor.SetDeclaredProvider(nil);
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   FreeAndNil(FIndexRefresh);
+  FreeAndNil(FUsesChanges);
   // Vor der Verbindung: Beide Wächter rufen FConnection.
   FreeAndNil(FFileWatcher);
   FreeAndNil(FParentWatcher);
@@ -2125,6 +2138,7 @@ begin
   FIndexScheduler.Free;
   FLooseConfiguration.Free;
   FWorkspaceFolders.Free;
+  FreeAndNil(FUsesGraph);
   FIndex := nil;
   FDocumentSymbols.Free;
   FFoldingRanges.Free;
@@ -2703,7 +2717,6 @@ var
   Built: TArray<TRuleProject>;
   Project: TRuleProject;
   MainSources: TArray<string>;
-  Source, Text: string;
 begin
   Built := nil;
   MainSources := nil;
@@ -2724,25 +2737,10 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  // Hauptquelltexte und Formulardateien außerhalb der Sperre lesen.
+  // Hauptquelltexte und Formulardateien außerhalb der Sperre lesen (dieselbe Regel wie find_unused_code, #64).
   for Index := 0 to High(Built) do
-  begin
-    if ReadSourceText(MainSources[Index], Text) then
-    begin
-      Built[Index].Kind := TRuleProjectFiles.KindOfSource(MainSources[Index], Text);
-      Built[Index].IsTest := TRuleProjectFiles.IsTestSource(Text);
-    end
-    else if SameText(ExtractFileExt(MainSources[Index]), '.dpk') then
-      Built[Index].Kind := TRuleProjectKind.Package;
-    for Source in Built[Index].Sources do
-      if SameText(ExtractFileExt(Source), '.pas') then
-      begin
-        if TFile.Exists(ChangeFileExt(Source, '.dfm')) then
-          Built[Index].Forms := Built[Index].Forms + [ChangeFileExt(Source, '.dfm')]
-        else if TFile.Exists(ChangeFileExt(Source, '.fmx')) then
-          Built[Index].Forms := Built[Index].Forms + [ChangeFileExt(Source, '.fmx')];
-      end;
-  end;
+    Built[Index] := TRuleProjectFiles.ProjectOf(Built[Index].FileName, MainSources[Index], Built[Index].Sources,
+      ReadSourceText);
   TMonitor.Enter(FWorkspacesLock);
   try
     // Inzwischen ein anderes Projekt geladen: Das Ergebnis gilt für diese Prüfung, aber nicht als Vorrat.
@@ -4259,7 +4257,11 @@ begin
   AContext.Index := FIndex;
   AContext.EnsureUnit := EnsureUnit;
   // Projekte der Gruppe für unused-public-member (#1102); still, solange Projekte laden oder der Index läuft.
-  AContext.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText, RuleProjectsComplete);
+  AContext.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText, RuleProjectsComplete,
+    FUsesGraph);
+  // Editor-Prüfung (#896): Diagnosen, Code-Aktionen, Slash-Befehle und Baseline wie im Editor; uses-cycle folgt
+  // dort diagnostics.usesCycleLive.
+  AContext.Live := True;
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
   // Mit Pfad, damit Korrekturen die Formulardatei ändern können (#309).
   if SameText(ExtractFileExt(FileName), '.pas') then
@@ -4296,6 +4298,7 @@ var
   Namespaces: TArray<string>;
   Namespace: string;
   LibraryRoots: TArray<string>;
+  GraphOptions: TUsesGraphOptions;
 begin
   // Neues Projekt oder neue Installation: Der Compiler bekommt eine neue Chance (#40).
   if FCompileLock <> nil then
@@ -4330,6 +4333,13 @@ begin
   end;
   FDefinition.Namespaces := Namespaces;
   FHover.Namespaces := Namespaces;
+  // Uses-Graph (#64) löst Namen ohne Namensraum über dieselbe Liste auf; neu aufgebaut nur bei Änderung.
+  GraphOptions := FUsesGraph.Options;
+  if string.Join(';', GraphOptions.Namespaces) <> string.Join(';', Namespaces) then
+  begin
+    GraphOptions.Namespaces := Namespaces;
+    FUsesGraph.SetOptions(GraphOptions);
+  end;
   FDocumentHighlights.Namespaces := Namespaces;
   FLinkedEditing.Namespaces := Namespaces;
   FReferences.Namespaces := Namespaces;
@@ -4362,6 +4372,7 @@ begin
         if TLspIndexRefresh.Applies(TDocumentUris.ToPath(ADocument.Uri)) then
         begin
           FIndexRefresh.Closed(TDocumentUris.ToPath(ADocument.Uri));
+          FUsesChanges.Forget(TDocumentUris.ToPath(ADocument.Uri));
           HandleWatchedFiles([TFileChange.Create(TDocumentUris.ToPath(ADocument.Uri), TFileChangeKind.Changed)]);
         end;
     end;
