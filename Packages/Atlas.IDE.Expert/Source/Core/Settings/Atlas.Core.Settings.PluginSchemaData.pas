@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4313] of string = (
+  Lines: array[0..4331] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -227,6 +227,10 @@ const
     '    "commands.outline": {',
     '      "caption": "Gliederung",',
     '      "captionEn": "Outline"',
+    '    },',
+    '    "commands.symbolPath": {',
+    '      "caption": "Weg zwischen Symbolen",',
+    '      "captionEn": "Symbol path"',
     '    },',
     '    "commands.generateMenu": {',
     '      "caption": "Erzeugen-Menü",',
@@ -3265,6 +3269,21 @@ const
     '      "x-caption": "Gliederung",',
     '      "x-captionEn": "Outline",',
     '      "x-issue": "#537"',
+    '    },',
+    '    "SymbolPath": {',
+    '      "description": "Befehl „Weg zwischen Symbolen…“ im Menü Atlas, im Kontextmenü des Editors („Weg von hier nach…“) und in der Befehlspalette: kürzester Weg zwischen zwei Symbolen oder Units über A' +
+      'ufrufe, Felder, Interfaces, Vererbung und uses als Kette im Ergebnisfenster, auf Wunsch in der Architekturkarte. Aus = Befehl und Menüeinträge fehlen.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "navigation.symbolPath",',
+    '      "x-area": "editor",',
+    '      "x-page": "Befehle",',
+    '      "x-parent": "",',
+    '      "x-node": "commands.symbolPath",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Weg zwischen Symbolen",',
+    '      "x-captionEn": "Symbol path",',
+    '      "x-issue": "#1117"',
     '    },',
     '    "OutlineAlphabetical": {',
     '      "description": "Gliederung alphabetisch statt in Quelltextreihenfolge sortieren (auch über den Knopf im Fenster).",',

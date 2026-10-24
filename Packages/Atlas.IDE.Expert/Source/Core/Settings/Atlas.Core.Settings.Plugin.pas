@@ -539,6 +539,9 @@ type
     /// <summary>Zustand: Das Fenster „Unit-Beziehungen“ (#593) wurde einmal rechts neben die Projektverwaltung
     /// gelegt (ui.unitRelationsWindowPlaced); danach gilt die Lage aus dem Desktop der IDE.</summary>
     UnitRelationsWindowPlaced: Boolean;
+    /// <summary>Befehl „Weg zwischen Symbolen…“ mit Menü- und Kontextmenüeintrag (#1117, navigation.symbolPath in
+    /// settings.json); Vorgabe an.</summary>
+    SymbolPath: Boolean;
     /// <summary>Hauptschalter der experimentellen Funktionen (#834, experimental.enabled, liegt in settings.json):
     /// aus = keine Einstellung mit x-experimental wirkt, auch wenn sie an ist; Vorgabe aus.</summary>
     ExperimentalEnabled: Boolean;
@@ -1447,6 +1450,7 @@ begin
   Result.ArchitectureCentralUnits := 15;
   Result.ArchitectureWindowPlaced := False;
   Result.UnitRelationsWindowPlaced := False;
+  Result.SymbolPath := True;
   Result.ExperimentalEnabled := False;
   Result.SetupChecklist := True;
   Result.SetupChecklistSeen := False;
@@ -2077,6 +2081,7 @@ begin
     BoolValue(Default.ArchitectureWindowPlaced)) <> 0;
   UnitRelationsWindowPlaced := AStore.ReadInteger('UnitRelationsWindowPlaced',
     BoolValue(Default.UnitRelationsWindowPlaced)) <> 0;
+  SymbolPath := AStore.ReadInteger('SymbolPath', BoolValue(Default.SymbolPath)) <> 0;
   ExperimentalEnabled := AStore.ReadInteger('ExperimentalEnabled', BoolValue(Default.ExperimentalEnabled)) <> 0;
   SetupChecklist := AStore.ReadInteger('SetupChecklist', BoolValue(Default.SetupChecklist)) <> 0;
   SetupChecklistSeen := AStore.ReadInteger('SetupChecklistSeen', BoolValue(Default.SetupChecklistSeen)) <> 0;
@@ -2522,6 +2527,7 @@ begin
   AStore.WriteInteger('ArchitectureCentralUnits', ArchitectureCentralUnits);
   AStore.WriteInteger('ArchitectureWindowPlaced', BoolValue(ArchitectureWindowPlaced));
   AStore.WriteInteger('UnitRelationsWindowPlaced', BoolValue(UnitRelationsWindowPlaced));
+  AStore.WriteInteger('SymbolPath', BoolValue(SymbolPath));
   AStore.WriteInteger('ExperimentalEnabled', BoolValue(ExperimentalEnabled));
   AStore.WriteInteger('SetupChecklist', BoolValue(SetupChecklist));
   AStore.WriteInteger('SetupChecklistSeen', BoolValue(SetupChecklistSeen));

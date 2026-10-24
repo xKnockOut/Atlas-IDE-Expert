@@ -61,6 +61,7 @@ uses
   Atlas.Common.Lsp.Todos,
   Atlas.Common.Lsp.Architecture,
   Atlas.Common.Lsp.UnitRelations,
+  Atlas.Common.Lsp.SymbolPath,
   Atlas.Common.Architecture.Service,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesService,
@@ -104,7 +105,6 @@ uses
   Shell.Compiler,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Index.Scheduler,
-  Atlas.Common.Architecture.UsesService,
   Shell.Platform,
   Shell.Workspace,
   Shell.Diagnostics;
@@ -170,6 +170,7 @@ type
     /// und Befehle zum Verschieben und Entfernen von uses-Einträgen.</summary>
     FUnitRelationsGraph: TUsesGraphService;
     FUnitRelations: TLspUnitRelations;
+    FSymbolPath: TLspSymbolPath;
     FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
@@ -418,6 +419,10 @@ type
     /// architecture.scope).</summary>
     function ArchitectureSourceFor(const AFileName, AScope: string; out ARequest: TArchitectureRequest;
       out ASettings: TServerSettings): Boolean;
+    /// <summary>Einstellungen und Namensräume für den Weg zwischen Symbolen (#1117) zum Arbeitsbereich von
+    /// AFileName.</summary>
+    function SymbolPathSourceFor(const AFileName: string; out ASettings: TServerSettings;
+      out ANamespaces: TArray<string>): Boolean;
     function HintSettingsFor(const AUri: string): THintSettings;
     /// <summary>Begründungen (#1123): hints.rationale, Marken, TODO-Marken und ADR-Ordner des Arbeitsbereichs.
     /// </summary>
@@ -541,7 +546,6 @@ uses
   Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Rules.Checker,
-  Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Builtin.General,
@@ -1251,6 +1255,19 @@ begin
       Result := UnitRelationsOptionsFor(AFileName);
     end);
   FUnitRelations.Attach(FDispatcher);
+  // Weg zwischen Symbolen (#1117): eigener Uses-Graph samt Bibliotheks-Units, Fundstellen wie oben.
+  FSymbolPath := TLspSymbolPath.Create(FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
+        Result := nil;
+    end,
+    EnsureUnit, SymbolPathSourceFor);
+  FSymbolPath.Attach(FDispatcher);
   // Rekursionssymbole im Editorrand (#623).
   FRecursion := TLspRecursion.Create(ReadSourceText);
   // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
@@ -1560,6 +1577,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.UseUnitInfo(AArguments);
+    end);
+  FCommands.Register(TLspSymbolPath.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FSymbolPath.Execute(AArguments);
     end);
   FCommands.Register(TLspRecursion.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2140,6 +2162,7 @@ begin
   FCodeLens.Free;
   FMetrics.Free;
   FTodos.Free;
+  FSymbolPath.Free;
   FArchitecture.Free;
   FArchitectureService.Free;
   FUnitRelations.Free;
@@ -4061,6 +4084,31 @@ begin
     if AProject then
       ASource.Files := Workspace.ProjectFiles;
     Result := True;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.SymbolPathSourceFor(const AFileName: string; out ASettings: TServerSettings;
+  out ANamespaces: TArray<string>): Boolean;
+var
+  Source: TLspMetricsSource;
+  Workspace: TShellWorkspace;
+begin
+  ASettings := TServerSettings.Default;
+  ANamespaces := nil;
+  Result := MetricsSourceFor(AFileName, True, Source);
+  if not Result then
+    Exit;
+  ASettings := Source.Settings;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := nil;
+    if AFileName <> '' then
+      Workspace := WorkspaceOf(AFileName);
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    if Workspace <> nil then
+      ANamespaces := Workspace.Namespaces;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;

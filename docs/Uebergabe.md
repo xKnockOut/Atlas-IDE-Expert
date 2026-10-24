@@ -1122,3 +1122,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **#1119 Treffersicherheit:** Branch `after-release/1119-treffersicherheit`, PR #1153. Server: `Atlas.Common.Lsp.ReferenceConfidence` (`TReferenceClassifier`), `atlasConfidence` je Treffer, `atlasUnchanged` beim Umbenennen, MCP trennt sicher/erschlossen, Einstellungen `references.inferred`/`references.textMatches`. Plugin: Ergebnisfenster mit Abschnitten und Filter „Nur sichere“, Umbenennen-Vorschau „Nicht geändert, bitte prüfen“. Umbenennen ändert dieselbe Menge wie vorher. Handtests TS1–TS10. Die Pfadsuche aus #1117 ist nicht enthalten.
 - **Erkenntnis:** Auch der Syntaxbaum des Editors (nur aktive Zweige) enthält alle Token (`TParser.FAllTokens`); inaktive Treffer erkennt man deshalb über die Position, nicht über fehlende Token.
 - **Offen:** Delphi-Build und Tests aller drei Branches; Anhebung von #268 auf high wartet auf Marco.
+
+## Weg zwischen Symbolen (#1117, 23.10.2026, Entwurfs-PR, nur FPC)
+
+- **Server:** `Atlas.Common.Architecture.SymbolPath` (Suche, Text, JSON) und `Atlas.Common.Lsp.SymbolPath` (`atlas/symbolPath`, Befehl `atlas.symbolPath`); MCP-Werkzeug `find_path` in `Shell.Mcp` mit eigenem Uses-Graphen samt Bibliotheks-Units. Neu für alle MCP-Werkzeuge: `notifications/cancelled` bricht ab wie `$/cancelRequest` (`TJsonRpcPendingRequests.Observe`).
+- **Index-Eigenheit:** Routinen stehen zweimal im Index (Deklaration und Rumpf); die Suche führt beide auf einen Knoten zusammen (`Canonical`), sonst gab es Scheinmehrdeutigkeiten.
+- **Plugin:** `Atlas.Core.SymbolPath.Model`, `Atlas.UI.SymbolPath.Chain`/`Dialog`, `Atlas.IDE.SymbolPath.Service`; Ergebnisfenster zeigt die Kette statt des Baums; Karte `ShowRoute`; Kontextmenü kennt jetzt Einträge mit Sichtbarkeit (`AddWhen`, `UpdateVisibility`).
+- **Einstellung:** `navigation.symbolPath` (Seite Befehle statt „Editor“ wie im Issue, gleiche Seite wie #1120). Auf dem Branch von #1120 liegt im selben Abschnitt `navigation` auch `impact`; beim Zusammenführen beide Felder behalten.
+- Ungebaut in Delphi; Handtests SP1–SP19 in `docs/Atlas-Testfaelle.md`.

@@ -17,6 +17,9 @@
 // - „Änderungen zum Stand“ (ShowChanges, #1121): Mit einem Vergleich stehen
 //   neue uses-Kanten grün, entfernte (zwischen Units, die es noch gibt) rot
 //   gestrichelt.
+// - ShowRoute markiert einen festen Weg aus „Weg zwischen Symbolen“ (#1117)
+//   ebenso; er bleibt, bis Esc, ein Umschalt+Klick oder neue Daten ihn
+//   aufheben.
 // Bedienung sonst: Mausrad zoomt um den Mauszeiger, Ziehen verschiebt, Klick
 // wählt eine Unit (OnSelect; ihre Kanten werden hervorgehoben), Doppelklick
 // oder Enter öffnet sie (OnOpen), + und − zoomen, 0 passt ein. Namen
@@ -60,6 +63,8 @@ type
     FPath: TArray<Integer>;
     FPathEdges: TArray<Boolean>;
     FPathNodes: TArray<Boolean>;
+    /// <summary>Units eines festen Wegs (ShowRoute); nil = Weg aus ShortestPath.</summary>
+    FRoute: TArray<Integer>;
     FDragging: Boolean;
     FMoved: Boolean;
     FDragX: Integer;
@@ -108,6 +113,10 @@ type
     function ShowPath(AFrom, ATo: Integer): Boolean;
     /// <summary>Weg aufheben; meldet OnPathChanged, wenn einer bestand.</summary>
     procedure ClearPath;
+    /// <summary>Festen Weg markieren (#1117): AUnits in Reihenfolge, AEdges Nummern in Model.Edges (aus
+    /// TAtlasArchitectureModel.RouteOf). Blendet ausgeblendete Teilsysteme der Units ein und meldet
+    /// OnPathChanged.</summary>
+    procedure ShowRoute(const AUnits, AEdges: TArray<Integer>);
     /// <summary>Alle Teilsysteme wieder einblenden.</summary>
     procedure ShowAllSubsystems;
     property Model: TAtlasArchitectureModel read FModel;
@@ -126,6 +135,8 @@ type
     property PathTo: Integer read FPathTo;
     property PathFound: Boolean read FPathFound;
     property Path: TArray<Integer> read FPath;
+    /// <summary>Units eines festen Wegs aus ShowRoute, nil sonst.</summary>
+    property Route: TArray<Integer> read FRoute;
     property OnSelect: TProc<Integer> read FOnSelect write FOnSelect;
     property OnOpen: TProc<Integer> read FOnOpen write FOnOpen;
     property OnPathChanged: TProc read FOnPathChanged write FOnPathChanged;
@@ -190,7 +201,8 @@ end;
 
 function TAtlasArchitectureMap.HasPath: Boolean;
 begin
-  Result := FPathFound and (Length(FPath) > 0);
+  // Ein fester Weg (#1117) kann aus einer einzigen Unit bestehen.
+  Result := FPathFound and ((Length(FPath) > 0) or (Length(FRoute) > 0));
 end;
 
 function TAtlasArchitectureMap.UnitVisible(AUnit: Integer): Boolean;
@@ -266,6 +278,7 @@ begin
   FPath := nil;
   FPathEdges := nil;
   FPathNodes := nil;
+  FRoute := nil;
   FSelected := -1;
   if SelectedName <> '' then
     FSelected := FModel.IndexOf(SelectedName);
@@ -303,10 +316,22 @@ end;
 
 procedure TAtlasArchitectureMap.ComputePath;
 var
-  Edge: Integer;
+  Edge, Unit_: Integer;
 begin
   FPathEdges := nil;
   FPathNodes := nil;
+  if Length(FRoute) > 0 then
+  begin
+    // Fester Weg (#1117): bleibt, auch wenn implementation-uses aus sind.
+    FPathFound := True;
+    SetLength(FPathEdges, Length(FModel.Edges));
+    SetLength(FPathNodes, Length(FModel.Units));
+    for Unit_ in FRoute do
+      FPathNodes[Unit_] := True;
+    for Edge in FPath do
+      FPathEdges[Edge] := True;
+    Exit;
+  end;
   FPathFound := FModel.ShortestPath(FPathFrom, FPathTo, FShowImplementation, FHidden, FPath);
   if not FPathFound then
     Exit;
@@ -335,8 +360,43 @@ begin
   end;
   FPathFrom := AFrom;
   FPathTo := ATo;
+  FRoute := nil;
   ComputePath;
   Result := FPathFound;
+  Invalidate;
+  PathChanged;
+end;
+
+procedure TAtlasArchitectureMap.ShowRoute(const AUnits, AEdges: TArray<Integer>);
+var
+  Unit_, Edge: Integer;
+begin
+  for Unit_ in AUnits do
+    if (Unit_ < 0) or (Unit_ > High(FModel.Units)) then
+    begin
+      ClearPath;
+      Exit;
+    end;
+  for Edge in AEdges do
+    if (Edge < 0) or (Edge > High(FModel.Edges)) then
+    begin
+      ClearPath;
+      Exit;
+    end;
+  if Length(AUnits) = 0 then
+  begin
+    ClearPath;
+    Exit;
+  end;
+  // Ein Teilsystem des Wegs ausgeblendet: wieder einblenden, sonst wäre der Weg lückenhaft.
+  for Unit_ in AUnits do
+    if FModel.IsHidden(Unit_, FHidden) then
+      FHidden[FModel.Units[Unit_].Subsystem] := False;
+  FRoute := AUnits;
+  FPath := AEdges;
+  FPathFrom := AUnits[0];
+  FPathTo := AUnits[High(AUnits)];
+  ComputePath;
   Invalidate;
   PathChanged;
 end;
@@ -351,6 +411,7 @@ begin
   FPath := nil;
   FPathEdges := nil;
   FPathNodes := nil;
+  FRoute := nil;
   Invalidate;
   PathChanged;
 end;

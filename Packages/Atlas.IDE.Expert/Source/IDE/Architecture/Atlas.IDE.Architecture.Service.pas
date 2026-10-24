@@ -25,6 +25,9 @@
 //   zeigt das Fenster auf „Zentrale Units“, sortiert nach „gesamt abhängig“
 //   (RecompileCount des Uses-Graphen).
 // - architecture.enabled aus schließt das Fenster.
+// - ShowRoute (#1117) zeigt das Fenster mit einem Weg aus „Weg zwischen
+//   Symbolen“ auf der Karte; fehlen die Daten noch, wird erst gerechnet und
+//   der Weg danach markiert.
 // Den Server erreicht der Dienst über ARun (Install), damit er die
 // Zusammensetzung des Plugins nicht kennen muss. Nur im Hauptthread.
 
@@ -52,6 +55,9 @@ type
     class procedure ShowWindow; static;
     /// <summary>Fenster auf „Zentrale Units“ nach „gesamt abhängig“ absteigend (#554).</summary>
     class procedure ShowRanking; static;
+    /// <summary>Fenster zeigen und die Units AUnits (Reihenfolge des Wegs) als Weg markieren (#1117); False,
+    /// solange architecture.enabled aus ist.</summary>
+    class function ShowRoute(const AUnits: TArray<string>): Boolean; static;
     class procedure ApplySettings; static;
     class procedure ThemeChanged; static;
     class function Enabled: Boolean; static;
@@ -91,6 +97,8 @@ type
     FCompareWith: string;
     /// <summary>False nach „Vergleich aufheben“.</summary>
     FCompare: Boolean;
+    /// <summary>Weg (#1117), der nach der nächsten Antwort markiert wird; nil = keiner.</summary>
+    FRoute: TArray<string>;
     procedure Wire(AFrame: TAtlasArchitectureFrame);
     function ProjectUri(out AUri: string): Boolean;
     procedure ChangeScope(const AScope: string);
@@ -105,6 +113,10 @@ type
     procedure EnsureData;
     procedure Save(const AFileName: string);
     procedure ApplySettings;
+    /// <summary>Weg auf der Karte markieren, sobald Daten da sind.</summary>
+    procedure ShowRoute(const AUnits: TArray<string>);
+    /// <summary>Wartenden Weg markieren; nichts ohne Weg oder Daten.</summary>
+    procedure ApplyRoute;
   end;
 
 function Active: Boolean;
@@ -337,7 +349,10 @@ begin
           else if not Enabled then
             Current.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureDisabled), False)
           else
+          begin
             Current.SetModel(Model);
+            ApplyRoute;
+          end;
         end);
     end) then
   begin
@@ -384,6 +399,29 @@ begin
         end);
     end) then
     Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureNoServer), True);
+end;
+
+procedure TArchitectureState.ShowRoute(const AUnits: TArray<string>);
+begin
+  FRoute := AUnits;
+  ApplyRoute;
+end;
+
+procedure TArchitectureState.ApplyRoute;
+var
+  Frame: TAtlasArchitectureFrame;
+  Units, Edges: TArray<Integer>;
+begin
+  Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
+  if (Length(FRoute) = 0) or (Frame = nil) or not Frame.HasModel then
+    Exit;
+  if Frame.Model.RouteOf(FRoute, Units, Edges) then
+    Frame.Map.ShowRoute(Units, Edges)
+  else
+    Frame.Map.ClearPath;
+  FRoute := nil;
+  // Die Karte zeigen, nicht eine Tabelle.
+  Frame.Pages.ActivePageIndex := 0;
 end;
 
 procedure TArchitectureState.ApplySettings;
@@ -448,6 +486,15 @@ begin
   Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
   if (FState <> nil) and Active and (Frame <> nil) then
     Frame.ShowCostRanking;
+end;
+
+class function TAtlasIdeArchitecture.ShowRoute(const AUnits: TArray<string>): Boolean;
+begin
+  Result := (FState <> nil) and Active;
+  if not Result then
+    Exit;
+  ShowWindow;
+  TArchitectureState(FState).ShowRoute(AUnits);
 end;
 
 class procedure TAtlasIdeArchitecture.ApplySettings;

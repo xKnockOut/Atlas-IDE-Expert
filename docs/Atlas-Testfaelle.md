@@ -6601,3 +6601,29 @@ Voraussetzung: Projektgruppe mit den Units uA, uB, uC (uA nennt uB, uB nennt uC,
 | ZL9 | `diagnostics.usesCycleLive` aus | Keine Meldung beim Tippen; `atlas --check` und `find_unused_code` melden den Zyklus weiter |
 | ZL10 | Problemliste, `check_code` über MCP und `atlas --check` nach ZL1 | Dieselbe Meldung mit demselben Text an derselben Stelle |
 | ZL11 | Projekt mit 2000 Units, Zyklus über alle; im uses tippen | Kein Hängen der IDE; die Meldung erscheint nach dem Tippen ohne merkliche Verzögerung |
+
+## Weg zwischen Symbolen (#1117)
+
+Voraussetzung: Server läuft in der IDE, Referenzprojekt (#94) mit Form `TKundenForm` (Ereignishandler `btnSpeichernClick` ruft `FService.Speichern`), `TKundenService` mit Feld `FRepo: IKundenRepo`, Interface `IKundenRepo` mit zwei Umsetzungen (`TKundenRepo`, `TCacheRepo`) und `TDatenbank`; Index fertig aufgebaut. Claude Code mit dem Atlas-MCP-Server verbunden.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SP1 | MCP: `find_path` von `TKundenForm` nach `TDatenbank` | „Kürzester Weg (N Schritte):“ über `btnSpeichernClick` (enthält), `TKundenService.Speichern` (ruft auf), `IKundenRepo.Laden` (ruft auf), `TKundenRepo.Laden` (umgesetzt von, `[erschlossen]`), `TDatenbank.Abfrage` (ruft auf); Zeilen stimmen mit dem Quelltext (**Abnahme**) |
+| SP2 | MCP: `find_path` zwischen zwei Units ohne Abhängigkeit | „Kein Weg in höchstens 8 Schritten.“ (**Abnahme**) |
+| SP3 | MCP: `find_path` mit `from` = `Laden` | Liste der Treffer mit Fundstelle und Bitte um qualifizierte Angabe, kein Weg (**Abnahme**) |
+| SP4 | MCP: `find_path` von `uKundenForm` nach `uDatenbank` mit `via: ["uses"]`; dieselben Units in der Architekturkarte per Umschalt+Klick | Nur uses-Kanten, derselbe Weg wie auf der Karte (**Abnahme**) |
+| SP5 | SP1 dreimal hintereinander, auch nach Neustart des Servers | Jedes Mal derselbe Weg (**Abnahme**) |
+| SP6 | `requestTimeoutMs` auf 200 setzen, `find_path` über eine Projektgruppe mit etwa 2000 Units mit `maxSteps` 16; danach mit Vorgabe und 8 Schritten | Erst „Kein Weg gefunden in N Schritten (Suche nach X Knoten abgebrochen: Zeitlimit …)“, nie ein stilles „kein Weg“; mit Vorgabe Antwort unter 2 s (**Abnahme**) |
+| SP7 | `"mcp": {"disabledTools": ["find_path"]}`; danach `navigation.symbolPath` aus | `find_path` fehlt jeweils in `tools/list` (**Abnahme**) |
+| SP8 | Claude Code bricht einen langen `find_path` ab (Esc) | Der Server bricht ab (`notifications/cancelled`), das Protokoll zeigt keine weiter laufende Suche |
+| SP9 | *Atlas › Weg zwischen Symbolen …*; „TKunden“ tippen | Dialog mit „Von“, „Nach“, „Höchstens Schritte“ (8) und „Alle gleich kurzen Wege“; nach kurzer Pause Vorschläge unter dem Feld, ↓ geht in die Liste, Enter übernimmt, Esc schließt erst die Liste, dann den Dialog |
+| SP10 | „Suchen“ mit leerem „Nach“ | Der Dialog bleibt offen und sagt „Bitte „Von“ und „Nach“ angeben.“ |
+| SP11 | SP1 über den Dialog | Ergebnisfenster mit gezeichneter Kette: Kästen mit Symbol, Unit und Datei:Zeile, Pfeile mit Kantenart; die Kante zu `TKundenRepo.Laden` gestrichelt mit „[erschlossen]“; Statuszeile mit Schritten, Knoten und Dauer (**Abnahme**) |
+| SP12 | In der Kette ↑/↓, Doppelklick auf einen Kasten und auf einen Pfeil, Enter | Auswahl wandert, Doppelklick und Enter springen zur Fundstelle des Symbols bzw. der Kante (**Abnahme**) |
+| SP13 | Im Editor auf `btnSpeichernClick`, Rechtsklick *Atlas › Weg von hier nach …* | Dialog mit „Von“ = `TKundenForm.btnSpeichernClick`, Fokus in „Nach“ |
+| SP14 | Befehlspalette „Weg zwischen Symbolen …“ | Öffnet denselben Dialog mit der letzten Eingabe |
+| SP15 | „In Architekturkarte zeigen“ | Fenster *Atlas-Architektur* öffnet sich (rechnet, falls nötig), die Units des Wegs sind markiert, darunter „Weg zwischen Symbolen (n Units, Esc hebt auf): …“; Esc hebt auf (**Abnahme**) |
+| SP16 | `architecture.enabled` aus, SP11 | Kein Knopf „In Architekturkarte zeigen“ |
+| SP17 | „Alle gleich kurzen Wege“, Weg mit zwei Umsetzungen | Bis zu fünf Wege mit Überschrift „Weg 1“, „Weg 2“ …; Statuszeile „…, n Wege gleich lang …“ |
+| SP18 | `navigation.symbolPath` aus (Schnellschalter) | Kein Eintrag im Menü Atlas, in der Befehlspalette und im Kontextmenü (**Abnahme**) |
+| SP19 | IDE in hellem und dunklem Thema, Oberfläche Englisch | Kette lesbar, Kantenarten englisch („calls“, „implemented by“) |
