@@ -49,7 +49,13 @@ Für `unused-public-member` (#1102) prüft
 `TUnusedPublicMemberTests.ReferenceProjectMatchesMarkers` RefApp als Ganzes:
 genau die markierten Zeilen müssen gemeldet werden, jede weitere Meldung ist ein
 Fehlalarm. `TKundenSuche.Anmelden` ist markiert, weil nur RefDaten es aufruft und
-RefDaten nicht zu RefApp gehört.
+RefDaten nicht zu RefApp gehört. `TPluginAufruf.Melden` ist ein Gegenbeispiel: Der
+Test setzt `deadCode.keepAttributes` auf `Schnittstelle` (#64).
+Für `uses-cycle` und `unused-unit` (#64) prüft
+`TDeadCodeTests.ReferenceProjectMatchesMarkers` RefApp ebenso: der Zyklus
+`Ref.Formulare.Haupt` ↔ `Ref.Formulare.Detail` über implementation-uses und die
+Units, die nur `RefApp.dpr` nennt. `unused-declaration` läuft je Datei und trägt
+`// ERWARTET:` wie die übrigen Regeln.
 
 Regeln, die die RTL im Index brauchen (z. B. `System.Contnrs.TObjectStack`),
 schweigen ohne Symbolindex. Ihre Treffer tragen `// ERWARTET-INDEX: <regel-id>`.

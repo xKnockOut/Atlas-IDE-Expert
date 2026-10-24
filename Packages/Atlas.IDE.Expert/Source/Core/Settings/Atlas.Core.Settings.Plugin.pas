@@ -406,6 +406,10 @@ type
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530). Wirkt
     /// bisher auf „Tests nach dem Build“ (#69).</summary>
     BuildZeroHints: Boolean;
+    /// <summary>Kosten einer Änderung im interface-Teil in der Statusleiste (#554, build.showInterfaceCost):
+    /// „interface-Änderung: N Units werden neu kompiliert“, solange die Einfügemarke im interface steht. Aus = kein
+    /// Feld.</summary>
+    ShowInterfaceCost: Boolean;
     /// <summary>Release-Build-Wächter (#533, build.releaseGuard): vor make und build in einer Release-Konfiguration
     /// die Projektoptionen prüfen, dazu der Befehl „Release-Build prüfen“ (Atlas.CheckRelease) mit Tipp. Aus = keine
     /// Prüfung, Befehl und Tipp verschwinden.</summary>
@@ -519,6 +523,22 @@ type
     /// <summary>Menüeintrag „Prozesse am Projekt…“ (#62, diagnostics.processes): Index-Cache, Sperre und
     /// angemeldete LSP- und MCP-Prozesse; Vorgabe an.</summary>
     DiagnosticsProcesses: Boolean;
+    /// <summary>Architekturübersicht (#1118, architecture.enabled in settings.json): Fenster „Atlas-Architektur“,
+    /// Bericht und get_architecture; Vorgabe an.</summary>
+    ArchitectureEnabled: Boolean;
+    /// <summary>Umfang der Übersicht (architecture.scope): 'project' oder 'projectGroup' (Vorgabe).</summary>
+    ArchitectureScope: string;
+    /// <summary>Bibliotheks-Units (RTL, VCL, Fremdbibliotheken) mitzählen (architecture.includeLibraryUnits).
+    /// </summary>
+    ArchitectureIncludeLibraryUnits: Boolean;
+    /// <summary>So viele zentrale Units (architecture.centralUnits, 5–100, Vorgabe 15).</summary>
+    ArchitectureCentralUnits: Integer;
+    /// <summary>Zustand: Das Fenster „Atlas-Architektur“ wurde einmal rechts neben die Projektverwaltung
+    /// gelegt (ui.architectureWindowPlaced); danach gilt die Lage aus dem Desktop der IDE.</summary>
+    ArchitectureWindowPlaced: Boolean;
+    /// <summary>Zustand: Das Fenster „Unit-Beziehungen“ (#593) wurde einmal rechts neben die Projektverwaltung
+    /// gelegt (ui.unitRelationsWindowPlaced); danach gilt die Lage aus dem Desktop der IDE.</summary>
+    UnitRelationsWindowPlaced: Boolean;
     /// <summary>Hauptschalter der experimentellen Funktionen (#834, experimental.enabled, liegt in settings.json):
     /// aus = keine Einstellung mit x-experimental wirkt, auch wenn sie an ist; Vorgabe aus.</summary>
     ExperimentalEnabled: Boolean;
@@ -579,6 +599,10 @@ type
     UnitSearchEnabled: Boolean;
     /// <summary>Strg+F12 und Ansicht › Units öffnen das Atlas-Fenster statt des IDE-Dialogs (#777, unitSearch.replaceIdeDialog); Vorgabe an.</summary>
     UnitSearchReplaceIdeDialog: Boolean;
+    /// <summary>Alt+F11 und Datei › Unit verwenden öffnen das Atlas-Fenster im Modus „Unit verwenden“ (#786, unitSearch.replaceUseUnitDialog); Vorgabe an.</summary>
+    UnitSearchReplaceUseUnitDialog: Boolean;
+    /// <summary>Umschalt+F12 und Ansicht › Formulare öffnen das Atlas-Fenster mit Filter Formulare (#786, unitSearch.replaceFormsDialog); Vorgabe an.</summary>
+    UnitSearchReplaceFormsDialog: Boolean;
     /// <summary>Eingeklappte Gruppen je Projektgruppe merken (#777, unitSearch.rememberCollapsed); Vorgabe an.</summary>
     UnitSearchRememberCollapsed: Boolean;
     /// <summary>Chipzeile mit Herkunft und Art (#777, unitSearch.filters); Vorgabe an.</summary>
@@ -629,6 +653,12 @@ type
     PeekHeightLines: Integer;
     /// <summary>Bei Routinen auch die Implementierung zeigen (#505, peek.showImplementation).</summary>
     PeekShowImplementation: Boolean;
+    /// <summary>Erschlossene Verwendungen zeigen (#1119, references.inferred in settings.json).</summary>
+    ReferencesInferred: Boolean;
+    /// <summary>Namen in String-Literalen als erschlossene Verwendung (#1119, references.textMatches).</summary>
+    ReferencesTextMatches: Boolean;
+    /// <summary>Aufrufhierarchie auch als Diagramm (#1122, callHierarchy.diagram).</summary>
+    CallHierarchyDiagram: Boolean;
     /// <summary>Kürzel „Definition einblenden“ (#505, keys.peekDefinition); Vorgabe Alt+F12.</summary>
     PeekDefinitionKey: Integer;
     /// <summary>Kürzel „Referenzen einblenden“ (#505, keys.peekReferences); Vorgabe Umschalt+Alt+F12.</summary>
@@ -1366,6 +1396,7 @@ begin
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
   Result.BuildZeroHints := False;
+  Result.ShowInterfaceCost := True;
   Result.ReleaseGuard := True;
   Result.BuildGate := 'off';
   Result.ReleaseConfigs := TAtlasReleaseGuard.ReleaseConfiguration;
@@ -1409,6 +1440,13 @@ begin
   Result.DiagnosticModeKey := $E044; // Strg+Umschalt+Alt+D
   Result.DiagnosticModeKeyPriority := False;
   Result.DiagnosticsProcesses := True;
+  // Wie die Vorgaben im Schema (atlas.schema.json, architecture).
+  Result.ArchitectureEnabled := True;
+  Result.ArchitectureScope := 'projectGroup';
+  Result.ArchitectureIncludeLibraryUnits := False;
+  Result.ArchitectureCentralUnits := 15;
+  Result.ArchitectureWindowPlaced := False;
+  Result.UnitRelationsWindowPlaced := False;
   Result.ExperimentalEnabled := False;
   Result.SetupChecklist := True;
   Result.SetupChecklistSeen := False;
@@ -1434,6 +1472,8 @@ begin
   Result.BugReportAnonymize := True;
   Result.UnitSearchEnabled := True;
   Result.UnitSearchReplaceIdeDialog := True;
+  Result.UnitSearchReplaceUseUnitDialog := True;
+  Result.UnitSearchReplaceFormsDialog := True;
   Result.UnitSearchRememberCollapsed := True;
   Result.UnitSearchFilters := True;
   Result.UnitSearchFilterSyntax := True;
@@ -1458,6 +1498,9 @@ begin
   Result.Peek := True;
   Result.PeekHeightLines := 15;
   Result.PeekShowImplementation := True;
+  Result.ReferencesInferred := True;
+  Result.ReferencesTextMatches := False;
+  Result.CallHierarchyDiagram := True;
   Result.PeekDefinitionKey := $807B; // Alt+F12
   Result.PeekReferencesKey := $A07B; // Umschalt+Alt+F12
   Result.Outline := True;
@@ -1662,6 +1705,8 @@ begin
   ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, MinPatternLines, MaxPatternLines);
   OpenDelayMs := EnsureRange(OpenDelayMs, 0, MaxOpenDelay);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
+  ArchitectureScope := Choice(ArchitectureScope, ['projectGroup', 'project']);
+  ArchitectureCentralUnits := EnsureRange(ArchitectureCentralUnits, 5, 100);
   // TShortCut ist ein Word.
   PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
   WelcomePageSearchKey := EnsureRange(WelcomePageSearchKey, 0, $FFFF);
@@ -1964,6 +2009,7 @@ begin
   TestsAfterBuild := AStore.ReadInteger('TestsAfterBuild', BoolValue(Default.TestsAfterBuild)) <> 0;
   TestsBuildFirst := AStore.ReadInteger('TestsBuildFirst', BoolValue(Default.TestsBuildFirst)) <> 0;
   BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
+  ShowInterfaceCost := AStore.ReadInteger('ShowInterfaceCost', BoolValue(Default.ShowInterfaceCost)) <> 0;
   ReleaseGuard := AStore.ReadInteger('ReleaseGuard', BoolValue(Default.ReleaseGuard)) <> 0;
   BuildGate := AStore.ReadString('BuildGate', Default.BuildGate);
   ReleaseConfigs := AStore.ReadString('ReleaseConfigs', Default.ReleaseConfigs);
@@ -2022,6 +2068,15 @@ begin
     AStore.ReadInteger('DiagnosticModeKeyPriority', BoolValue(Default.DiagnosticModeKeyPriority)) <> 0;
   DiagnosticsProcesses :=
     AStore.ReadInteger('DiagnosticsProcesses', BoolValue(Default.DiagnosticsProcesses)) <> 0;
+  ArchitectureEnabled := AStore.ReadInteger('ArchitectureEnabled', BoolValue(Default.ArchitectureEnabled)) <> 0;
+  ArchitectureScope := AStore.ReadString('ArchitectureScope', Default.ArchitectureScope);
+  ArchitectureIncludeLibraryUnits := AStore.ReadInteger('ArchitectureIncludeLibraryUnits',
+    BoolValue(Default.ArchitectureIncludeLibraryUnits)) <> 0;
+  ArchitectureCentralUnits := AStore.ReadInteger('ArchitectureCentralUnits', Default.ArchitectureCentralUnits);
+  ArchitectureWindowPlaced := AStore.ReadInteger('ArchitectureWindowPlaced',
+    BoolValue(Default.ArchitectureWindowPlaced)) <> 0;
+  UnitRelationsWindowPlaced := AStore.ReadInteger('UnitRelationsWindowPlaced',
+    BoolValue(Default.UnitRelationsWindowPlaced)) <> 0;
   ExperimentalEnabled := AStore.ReadInteger('ExperimentalEnabled', BoolValue(Default.ExperimentalEnabled)) <> 0;
   SetupChecklist := AStore.ReadInteger('SetupChecklist', BoolValue(Default.SetupChecklist)) <> 0;
   SetupChecklistSeen := AStore.ReadInteger('SetupChecklistSeen', BoolValue(Default.SetupChecklistSeen)) <> 0;
@@ -2047,6 +2102,10 @@ begin
   BugReportAnonymize := AStore.ReadInteger('BugReportAnonymize', BoolValue(Default.BugReportAnonymize)) <> 0;
   UnitSearchEnabled := AStore.ReadInteger('UnitSearchEnabled', BoolValue(Default.UnitSearchEnabled)) <> 0;
   UnitSearchReplaceIdeDialog := AStore.ReadInteger('UnitSearchReplaceIdeDialog', BoolValue(Default.UnitSearchReplaceIdeDialog)) <> 0;
+  UnitSearchReplaceUseUnitDialog := AStore.ReadInteger('UnitSearchReplaceUseUnitDialog',
+    BoolValue(Default.UnitSearchReplaceUseUnitDialog)) <> 0;
+  UnitSearchReplaceFormsDialog := AStore.ReadInteger('UnitSearchReplaceFormsDialog',
+    BoolValue(Default.UnitSearchReplaceFormsDialog)) <> 0;
   UnitSearchRememberCollapsed := AStore.ReadInteger('UnitSearchRememberCollapsed', BoolValue(Default.UnitSearchRememberCollapsed)) <> 0;
   UnitSearchFilters := AStore.ReadInteger('UnitSearchFilters', BoolValue(Default.UnitSearchFilters)) <> 0;
   UnitSearchFilterSyntax := AStore.ReadInteger('UnitSearchFilterSyntax', BoolValue(Default.UnitSearchFilterSyntax)) <> 0;
@@ -2073,6 +2132,9 @@ begin
   PeekHeightLines := AStore.ReadInteger('PeekHeightLines', Default.PeekHeightLines);
   PeekShowImplementation := AStore.ReadInteger('PeekShowImplementation',
     BoolValue(Default.PeekShowImplementation)) <> 0;
+  ReferencesInferred := AStore.ReadInteger('ReferencesInferred', BoolValue(Default.ReferencesInferred)) <> 0;
+  ReferencesTextMatches := AStore.ReadInteger('ReferencesTextMatches', BoolValue(Default.ReferencesTextMatches)) <> 0;
+  CallHierarchyDiagram := AStore.ReadInteger('CallHierarchyDiagram', BoolValue(Default.CallHierarchyDiagram)) <> 0;
   PeekDefinitionKey := AStore.ReadInteger('PeekDefinitionKey', Default.PeekDefinitionKey);
   PeekReferencesKey := AStore.ReadInteger('PeekReferencesKey', Default.PeekReferencesKey);
   Outline := AStore.ReadInteger('Outline', BoolValue(Default.Outline)) <> 0;
@@ -2411,6 +2473,7 @@ begin
   AStore.WriteInteger('TestsAfterBuild', BoolValue(TestsAfterBuild));
   AStore.WriteInteger('TestsBuildFirst', BoolValue(TestsBuildFirst));
   AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
+  AStore.WriteInteger('ShowInterfaceCost', BoolValue(ShowInterfaceCost));
   AStore.WriteInteger('ReleaseGuard', BoolValue(ReleaseGuard));
   AStore.WriteString('BuildGate', BuildGate);
   AStore.WriteString('ReleaseConfigs', ReleaseConfigs);
@@ -2453,6 +2516,12 @@ begin
   AStore.WriteInteger('DiagnosticModeKey', DiagnosticModeKey);
   AStore.WriteInteger('DiagnosticModeKeyPriority', BoolValue(DiagnosticModeKeyPriority));
   AStore.WriteInteger('DiagnosticsProcesses', BoolValue(DiagnosticsProcesses));
+  AStore.WriteInteger('ArchitectureEnabled', BoolValue(ArchitectureEnabled));
+  AStore.WriteString('ArchitectureScope', ArchitectureScope);
+  AStore.WriteInteger('ArchitectureIncludeLibraryUnits', BoolValue(ArchitectureIncludeLibraryUnits));
+  AStore.WriteInteger('ArchitectureCentralUnits', ArchitectureCentralUnits);
+  AStore.WriteInteger('ArchitectureWindowPlaced', BoolValue(ArchitectureWindowPlaced));
+  AStore.WriteInteger('UnitRelationsWindowPlaced', BoolValue(UnitRelationsWindowPlaced));
   AStore.WriteInteger('ExperimentalEnabled', BoolValue(ExperimentalEnabled));
   AStore.WriteInteger('SetupChecklist', BoolValue(SetupChecklist));
   AStore.WriteInteger('SetupChecklistSeen', BoolValue(SetupChecklistSeen));
@@ -2477,6 +2546,8 @@ begin
   AStore.WriteInteger('BugReportAnonymize', BoolValue(BugReportAnonymize));
   AStore.WriteInteger('UnitSearchEnabled', BoolValue(UnitSearchEnabled));
   AStore.WriteInteger('UnitSearchReplaceIdeDialog', BoolValue(UnitSearchReplaceIdeDialog));
+  AStore.WriteInteger('UnitSearchReplaceUseUnitDialog', BoolValue(UnitSearchReplaceUseUnitDialog));
+  AStore.WriteInteger('UnitSearchReplaceFormsDialog', BoolValue(UnitSearchReplaceFormsDialog));
   AStore.WriteInteger('UnitSearchRememberCollapsed', BoolValue(UnitSearchRememberCollapsed));
   AStore.WriteInteger('UnitSearchFilters', BoolValue(UnitSearchFilters));
   AStore.WriteInteger('UnitSearchFilterSyntax', BoolValue(UnitSearchFilterSyntax));
@@ -2501,6 +2572,9 @@ begin
   AStore.WriteInteger('Peek', BoolValue(Peek));
   AStore.WriteInteger('PeekHeightLines', PeekHeightLines);
   AStore.WriteInteger('PeekShowImplementation', BoolValue(PeekShowImplementation));
+  AStore.WriteInteger('ReferencesInferred', BoolValue(ReferencesInferred));
+  AStore.WriteInteger('ReferencesTextMatches', BoolValue(ReferencesTextMatches));
+  AStore.WriteInteger('CallHierarchyDiagram', BoolValue(CallHierarchyDiagram));
   AStore.WriteInteger('PeekDefinitionKey', PeekDefinitionKey);
   AStore.WriteInteger('PeekReferencesKey', PeekReferencesKey);
   AStore.WriteInteger('Outline', BoolValue(Outline));

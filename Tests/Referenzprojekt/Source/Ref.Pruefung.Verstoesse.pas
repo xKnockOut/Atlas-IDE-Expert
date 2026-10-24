@@ -1,4 +1,4 @@
-﻿unit Ref.Pruefung.Verstoesse;
+﻿unit Ref.Pruefung.Verstoesse; // ERWARTET-PROJEKT: unused-unit
 
 // Bewusst eingebaute Regelverstöße. Jede Zeile mit "// ERWARTET: <regel>"
 // muss genau diesen Treffer liefern, Zeilen mit "// KEIN-TREFFER: <regel>"
@@ -40,7 +40,13 @@ implementation
 
 type
   TKnoten = class
+  private
+    procedure Vergessen; // ERWARTET: unused-private-member
   end;
+
+procedure TKnoten.Vergessen;
+begin
+end;
 
 function OhneErgebnis(AWert: Integer): Integer; // ERWARTET: result-not-set
 begin
@@ -97,7 +103,7 @@ begin
   Abort; // ERWARTET: unreachable-code
 end;
 
-function RueckwaertsSummieren(const AWerte: TArray<Integer>): Integer;
+function RueckwaertsSummieren(const AWerte: TArray<Integer>): Integer; // ERWARTET: unused-declaration
 var
   I: Integer;
 begin
@@ -106,7 +112,7 @@ begin
     Inc(Result, AWerte[I]);
 end;
 
-procedure NameUebernehmen(var AName: string);
+procedure NameUebernehmen(var AName: string); // ERWARTET: unused-declaration
 begin
   AName := AName; // ERWARTET: self-assignment
 end;
@@ -123,7 +129,7 @@ begin
   Exit; // ERWARTET: redundant-jump
 end;
 
-procedure StapelLesen;
+procedure StapelLesen; // ERWARTET: unused-declaration
 var
   Offen: TObjectStack; // ERWARTET-INDEX: legacy-stack-queue
   Knoten: TKnoten;
@@ -138,7 +144,7 @@ begin
   end;
 end;
 
-procedure StapelGenerisch;
+procedure StapelGenerisch; // ERWARTET: unused-declaration
 var
   Fertig: TObjectStack<TKnoten>; // KEIN-TREFFER: legacy-stack-queue
 begin

@@ -49,6 +49,7 @@ $Exempt = @{
     'Atlas.Core.Files.Adapters.FolderWatcher'           = 'Ordnerbeobachtung des Systems (ReadDirectoryChangesW)'
     'Atlas.Core.Files.Contract'                         = 'nur Typen, ohne Logik'
     'Atlas.Core.Settings.PluginSchemaData'              = 'erzeugt; Update-ConfigDoc prüft sie gegen Schema und Parser'
+    'Atlas.Core.Results.CallDiagramTemplate'            = 'erzeugt; Update-ArchitectureMap.ps1 prüft sie gegen Aufrufdiagramm.html'
     'Atlas.Core.Updates.Adapters.HttpSource'            = 'HTTP-Zugriff; die Auswertung testet Atlas.Core.Updates'
     'Atlas.Core.Ci.Adapters.Http'                       = 'HTTP-Zugriff; die Anbieter testen Atlas.Core.Ci.Providers.*'
     'Atlas.Core.Ci.Adapters.Credentials'                = 'Anmeldeinformationsverwaltung von Windows'

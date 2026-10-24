@@ -25,6 +25,9 @@ type
     /// </summary>
     [Test]
     procedure EditorStatusBarOptions;
+    /// <summary>#1122: Aufrufdiagramm standardmäßig an, abschaltbar, übersteht Speichern und Laden.</summary>
+    [Test]
+    procedure CallHierarchyDiagramOption;
     /// <summary>Schnelle Lesezeichen (#1104): Vorgaben laut Issue, Grenzen, Speichern und Laden.</summary>
     [Test]
     procedure QuickBookmarkOptions;
@@ -138,6 +141,8 @@ type
     [Test]
     procedure RoutesServerSettingsToGlobalFile;
     [Test]
+    procedure ArchitectureSettingsLiveInGlobalFile;
+    [Test]
     procedure KeepsCommentsAndOtherKeys;
     [Test]
     procedure MigratesRegistryValuesOnce;
@@ -242,11 +247,14 @@ begin
   Assert.AreEqual(0, Settings.TestUnitKey, 'Testunit-Wechsel ohne Kürzel (#189)');
   Assert.IsTrue(Settings.CodeLensTestUnit, 'Code Lens Testunit standardmäßig an (#189)');
   Assert.IsTrue(Settings.CodeLensMetrics, 'Code Lens Metriken standardmäßig an (#66)');
+  Assert.IsTrue(Settings.ReferencesInferred, 'erschlossene Verwendungen standardmäßig an (#1119)');
+  Assert.IsFalse(Settings.ReferencesTextMatches, 'Textfunde standardmäßig aus (#1119)');
   Assert.IsTrue(Settings.CodeLensTests, 'Code Lens „Test ausführen“ standardmäßig an (#69)');
   Assert.IsTrue(Settings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(Settings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
   Assert.IsTrue(Settings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
   Assert.IsFalse(Settings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
+  Assert.IsTrue(Settings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
   Assert.IsTrue(Settings.StartProfiles, 'Startprofile standardmäßig an (#575)');
   Assert.IsTrue(Settings.StartProfilesStatusField, 'Startprofil in der Statusleiste standardmäßig an (#575)');
   Assert.IsTrue(Settings.TestDebug, 'Test debuggen standardmäßig da (#585)');
@@ -345,6 +353,7 @@ begin
   Settings.TestsAfterBuild := True;
   Settings.TestsBuildFirst := False;
   Settings.BuildZeroHints := True;
+  Settings.ShowInterfaceCost := False;
   Settings.StartProfiles := False;
   Settings.StartProfilesStatusField := False;
   Settings.TestDebug := False;
@@ -428,6 +437,7 @@ begin
   Assert.IsTrue(Loaded.TestsAfterBuild);
   Assert.IsFalse(Loaded.TestsBuildFirst);
   Assert.IsTrue(Loaded.BuildZeroHints);
+  Assert.IsFalse(Loaded.ShowInterfaceCost, 'build.showInterfaceCost (#554)');
   Assert.IsFalse(Loaded.StartProfiles);
   Assert.IsFalse(Loaded.StartProfilesStatusField);
   Assert.IsFalse(Loaded.TestDebug, 'Test debuggen (#585)');
@@ -1061,6 +1071,8 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.UnitSearchEnabled);
   Assert.IsTrue(Settings.UnitSearchReplaceIdeDialog, 'überschreibt Strg+F12 standardmäßig');
+  Assert.IsTrue(Settings.UnitSearchReplaceUseUnitDialog, 'überschreibt Alt+F11 standardmäßig (#786)');
+  Assert.IsTrue(Settings.UnitSearchReplaceFormsDialog, 'überschreibt Umschalt+F12 standardmäßig (#786)');
   Assert.IsTrue(Settings.UnitSearchRememberCollapsed);
   Assert.IsTrue(Settings.UnitSearchFilters);
   Assert.IsTrue(Settings.UnitSearchFilterSyntax);
@@ -1086,6 +1098,8 @@ begin
   // Speichern und Laden.
   Settings.UnitSearchEnabled := False;
   Settings.UnitSearchReplaceIdeDialog := False;
+  Settings.UnitSearchReplaceUseUnitDialog := False;
+  Settings.UnitSearchReplaceFormsDialog := False;
   Settings.UnitSearchRememberCollapsed := False;
   Settings.UnitSearchFilters := False;
   Settings.UnitSearchFilterSyntax := False;
@@ -1107,6 +1121,8 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.UnitSearchEnabled);
   Assert.IsFalse(Loaded.UnitSearchReplaceIdeDialog);
+  Assert.IsFalse(Loaded.UnitSearchReplaceUseUnitDialog);
+  Assert.IsFalse(Loaded.UnitSearchReplaceFormsDialog);
   Assert.IsFalse(Loaded.SearchResultsInMessages);
   Assert.IsFalse(Loaded.UnitSearchRememberCollapsed);
   Assert.IsFalse(Loaded.UnitSearchFilters);
@@ -1835,6 +1851,8 @@ begin
   Store.WriteInteger('InlayHints', 1);
   Store.WriteInteger('CompileOnSave', 1);
   Store.WriteInteger('CodeLensMetrics', 0);
+  Store.WriteInteger('ReferencesInferred', 0);
+  Store.WriteInteger('ReferencesTextMatches', 1);
   Store.WriteInteger('PairColors', 0);
   Store.WriteString('ServerPath', 'C:\Atlas\AtlasServer.exe');
   Assert.Contains(Routed.Text, '"slashCommands": {');
@@ -1842,6 +1860,12 @@ begin
   Assert.Contains(Routed.Text, '"parameterNames": true');
   Assert.Contains(Routed.Text, '"onSave": true');
   Assert.Contains(Routed.Text, '"metrics": false', 'codeLens.metrics in settings.json (#66)');
+  // Treffersicherheit (#1119): Server und Plugin lesen denselben Wert.
+  Assert.Contains(Routed.Text, '"references": {');
+  Assert.Contains(Routed.Text, '"inferred": false');
+  Assert.Contains(Routed.Text, '"textMatches": true');
+  Assert.AreEqual(0, Store.ReadInteger('ReferencesInferred', 1));
+  Assert.AreEqual(-1, Registry.ReadInteger('ReferencesInferred', -1));
   // Reine Plugin-Werte bleiben in der Registry.
   Assert.DoesNotContain(Routed.Text, 'PairColors');
   Assert.AreEqual(0, Registry.ReadInteger('PairColors', 1));
@@ -1852,6 +1876,56 @@ begin
   Assert.IsFalse(TAtlasSettingsScopes.TryRouted('PairColors', Setting));
   Assert.AreEqual(Integer(Length(TAtlasSettingsScopes.Routed) + 1), Integer(Length(TAtlasSettingsScopes.IdeManagedPaths)));
   Assert.AreEqual('delphiVersion', TAtlasSettingsScopes.IdeManagedPaths[0]);
+end;
+
+procedure TAtlasSettingsScopesTests.ArchitectureSettingsLiveInGlobalFile;
+var
+  Registry: IAtlasSettingsStore;
+  Routed: TAtlasRoutedSettingsStore;
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  // Architekturübersicht (#1118): Plugin und Server lesen architecture.* aus settings.json.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ArchitectureEnabled);
+  Assert.AreEqual('projectGroup', Settings.ArchitectureScope);
+  Assert.IsFalse(Settings.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(15, Settings.ArchitectureCentralUnits);
+  Registry := TMemoryStore.Create;
+  Routed := TAtlasRoutedSettingsStore.Create(Registry, '');
+  Store := Routed;
+  Settings.ArchitectureEnabled := False;
+  Settings.ArchitectureScope := 'project';
+  Settings.ArchitectureIncludeLibraryUnits := True;
+  Settings.ArchitectureCentralUnits := 30;
+  Settings.Save(Store);
+  Assert.Contains(Routed.Text, '"architecture": {');
+  Assert.Contains(Routed.Text, '"scope": "project"');
+  Assert.Contains(Routed.Text, '"includeLibraryUnits": true');
+  Assert.Contains(Routed.Text, '"centralUnits": 30');
+  Assert.AreEqual(-1, Registry.ReadInteger('ArchitectureEnabled', -1), 'nicht in der Registry');
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.ArchitectureEnabled);
+  Assert.AreEqual('project', Loaded.ArchitectureScope);
+  Assert.IsTrue(Loaded.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(30, Loaded.ArchitectureCentralUnits);
+  // Unbekannter Umfang und Zahl außerhalb der Grenzen fallen auf gültige Werte.
+  Loaded.ArchitectureScope := 'irgendwas';
+  Loaded.ArchitectureCentralUnits := 0;
+  Loaded.Normalize;
+  Assert.AreEqual('projectGroup', Loaded.ArchitectureScope);
+  Assert.AreEqual(5, Loaded.ArchitectureCentralUnits);
+  // Der Zustand „Fenster einmal rechts angelegt“ bleibt in der Registry.
+  Assert.IsFalse(TAtlasPluginSettings.Defaults.ArchitectureWindowPlaced);
+  Loaded.ArchitectureWindowPlaced := True;
+  Loaded.Save(Store);
+  Assert.AreEqual(1, Registry.ReadInteger('ArchitectureWindowPlaced', -1));
+  // Ebenso für das Fenster „Unit-Beziehungen“ (#593).
+  Assert.IsFalse(TAtlasPluginSettings.Defaults.UnitRelationsWindowPlaced);
+  Loaded.UnitRelationsWindowPlaced := True;
+  Loaded.Save(Store);
+  Assert.AreEqual(1, Registry.ReadInteger('UnitRelationsWindowPlaced', -1));
 end;
 
 procedure TAtlasSettingsScopesTests.KeepsCommentsAndOtherKeys;
@@ -1927,6 +2001,16 @@ begin
   Assert.Contains(Paths, '|completion.senderCast|');
   Assert.DoesNotContain(Paths, '|index.projectGroup|');
   Assert.DoesNotContain(Paths, '|language|');
+  // Unit-Zyklus beim Tippen (#896): Glied mit eigener Seite und eigenem Ort im sonst globalen diagnostics.
+  Assert.Contains(Paths, '|diagnostics.usesCycleLive|');
+  Assert.Contains(Paths, '|diagnostics.usesCycleImplementation|');
+  Assert.DoesNotContain(Paths, '|diagnostics.log|');
+  for Field in Project do
+    if Field.Path = 'diagnostics.usesCycleLive' then
+    begin
+      Assert.AreEqual('Prüfregeln', Field.Page);
+      Assert.AreEqual('true', Field.DefaultJson);
+    end;
   Paths := '|';
   for Field in Global do
     Paths := Paths + Field.Path + '|';
@@ -1950,7 +2034,8 @@ begin
   Assert.Contains(Paths, '|rules|');
   // Jedes umgeleitete Feld ist im Schema global.
   for Field in Fields do
-    if Pos('|' + Field.Path + '|', '|index.projectGroup|memoryBudgetMb|compiler.onSave|slashCommands.enabled|') > 0 then
+    if Pos('|' + Field.Path + '|',
+      '|index.projectGroup|memoryBudgetMb|compiler.onSave|slashCommands.enabled|references.inferred|') > 0 then
       Assert.IsTrue(Field.Global, Field.Path);
 end;
 
@@ -2042,6 +2127,22 @@ begin
   Assert.IsFalse(Loaded.ProblemsWindowOpenFirst);
   Assert.AreEqual('normal', Loaded.ProblemsWindowClosedUnits);
   Assert.IsFalse(Loaded.ProblemsWindowShowCleanActive);
+end;
+
+procedure TAtlasPluginSettingsTests.CallHierarchyDiagramOption;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.CallHierarchyDiagram, 'Aufrufdiagramm standardmäßig an');
+  Settings.CallHierarchyDiagram := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('CallHierarchyDiagram', 1));
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.CallHierarchyDiagram);
 end;
 
 procedure TAtlasPluginSettingsTests.EditorToolbarOptions;

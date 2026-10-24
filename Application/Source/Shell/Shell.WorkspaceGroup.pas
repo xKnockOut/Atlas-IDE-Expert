@@ -23,6 +23,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Rules.ProjectFiles,
+  Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Architecture.UsesService,
   Shell.Workspace;
 
 type
@@ -46,6 +48,9 @@ type
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102), bis Invalidate; unter FLock.</summary>
     FRuleProjects: TArray<TRuleProject>;
     FHasRuleProjects: Boolean;
+    /// <summary>Uses-Graph über FIndex für projektweite Regeln (#64) und die MCP-Werkzeuge; einer für die Gruppe,
+    /// statt je Prüfung einen eigenen aufzubauen.</summary>
+    FUsesGraph: TUsesGraphService;
     function Workspaces: TArray<TShellWorkspace>;
     procedure Prepare(AWorkspace: TShellWorkspace);
     function RuleProjects: TArray<TRuleProject>;
@@ -73,6 +78,12 @@ type
     /// <summary>Projektkontext für die Prüfregeln (#1112): Anwendungsart, Formulare der .dpr und die Dienste
     /// mit Index, Nachladen über alle Projekte und den Projekten der Gruppe.</summary>
     function RuleProject(const AFileName: string): TCheckProject;
+    /// <summary>Projekte der Gruppe für projektweite Regeln (#1102, #64) mit dem Uses-Graphen der Gruppe; still,
+    /// solange Projekte laden oder der Index läuft.</summary>
+    function RuleProjectFiles: IRuleProjectFiles;
+    /// <summary>Uses-Graph der Gruppe (#64) mit den Namensräumen des Hauptprojekts; neu aufgebaut wird er nur bei
+    /// einer Änderung.</summary>
+    function UsesGraph: TUsesGraphService;
     /// <summary>Projekte der Gruppe neu ermitteln (nach geänderten Projektdateien).</summary>
     procedure Invalidate;
     property Main: TShellWorkspace read FMain;
@@ -129,10 +140,12 @@ begin
   FOthers := TObjectList<TShellWorkspace>.Create(True);
   FCacheRoot := TIndexCacheDirectory.DefaultRoot;
   FMain := TShellWorkspace.Create(ARoot, ExtractFileName(ARoot), AStore, FTransport, ALogger, AIndex, AProgressToken);
+  FUsesGraph := TUsesGraphService.Create(AIndex, TUsesGraphOptions.Default);
 end;
 
 destructor TShellWorkspaceGroup.Destroy;
 begin
+  FUsesGraph.Free;
   FOthers.Free;
   FMain.Free;
   FFinishedEvent.Free;
@@ -297,8 +310,7 @@ begin
   for Workspace in Workspaces do
     if Workspace.RuleProject(Project, MainSource) then
     begin
-      TShellWorkspace.CompleteRuleProject(Project, MainSource, FReadText);
-      Result := Result + [Project];
+      Result := Result + [TRuleProjectFiles.ProjectOf(Project.FileName, MainSource, Project.Sources, FReadText)];
     end;
   System.TMonitor.Enter(FLock);
   try
@@ -332,11 +344,30 @@ begin
     begin
       Result := EnsureUnit(AUnitName);
     end;
-  Result.Services.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, FReadText,
+  Result.Services.ProjectFiles := RuleProjectFiles;
+end;
+
+function TShellWorkspaceGroup.UsesGraph: TUsesGraphService;
+var
+  mOptions: TUsesGraphOptions;
+begin
+  mOptions := FUsesGraph.Options;
+  if string.Join(';', mOptions.Namespaces) <> string.Join(';', FMain.Namespaces) then
+  begin
+    mOptions.Namespaces := FMain.Namespaces;
+    FUsesGraph.SetOptions(mOptions);
+  end;
+  Result := FUsesGraph;
+end;
+
+function TShellWorkspaceGroup.RuleProjectFiles: IRuleProjectFiles;
+begin
+  Result := TRuleProjectFiles.Create(RuleProjects, FIndex, FReadText,
     function(out AReason: string): Boolean
     begin
       Result := Ready(AReason);
-    end);
+    end,
+    UsesGraph);
 end;
 
 end.

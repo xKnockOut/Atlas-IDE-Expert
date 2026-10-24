@@ -58,6 +58,10 @@ type
     [Test]
     procedure MetricsAsMarkdownAndJson;
     [Test]
+    procedure ArchitectureAsMarkdownAndHtml;
+    [Test]
+    procedure ArchitectureCompareFailsOnNewCycle;
+    [Test]
     procedure SuppressionStatsGiveZero;
     [Test]
     procedure UpdatedBaselineHidesFindings;
@@ -221,6 +225,71 @@ begin
   Assert.IsTrue(Trim(OutputText) <> '');
   Assert.AreEqual(0, Run(['--check', TPath.Combine(FFolder, 'Src'), '--metrics', '--format', 'json']));
   Assert.Contains(OutputText, 'Gut.pas');
+end;
+
+procedure TShellLinterTests.ArchitectureAsMarkdownAndHtml;
+var
+  Report: string;
+begin
+  // Architekturbericht (#1118): Gut verwendet Kaputt nicht; ein eigener Zyklus A ↔ B über implementation.
+  TFile.WriteAllText(Path('Src/A.pas'), 'unit A;'#13#10'interface'#13#10'uses B;'#13#10'implementation'#13#10'end.');
+  TFile.WriteAllText(Path('Src/B.pas'), 'unit B;'#13#10'interface'#13#10'implementation'#13#10'uses A;'#13#10'end.');
+  Report := Path('Bericht/architektur.md');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--architecture', Report])));
+  Assert.Contains(TFile.ReadAllText(Report, TEncoding.UTF8), '# Architektur: Src');
+  Assert.Contains(TFile.ReadAllText(Report, TEncoding.UTF8), 'A → B → A');
+  Report := Path('architektur.html');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--architecture', Report])));
+  Assert.Contains(TFile.ReadAllText(Report, TEncoding.UTF8), '"name":"Gut"');
+  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--architecture', Path('architektur.pdf')])));
+  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Path('Fehlt'),
+    '--architecture', Report])));
+  TFile.WriteAllText(Path('Src/atlas.json'), '{"architecture": {"enabled": false}}');
+  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--architecture', Report])), 'ausgeschaltet: kein Bericht');
+end;
+
+procedure TShellLinterTests.ArchitectureCompareFailsOnNewCycle;
+var
+  Source, Older, Newer, Second: string;
+begin
+  // Architekturvergleich (#1121): Stand ohne Zyklus speichern, dann kommt A ↔ B dazu.
+  Source := TPath.Combine(FFolder, 'Src');
+  TFile.WriteAllText(Path('Src/A.pas'), 'unit A;'#13#10'interface'#13#10'uses B;'#13#10'implementation'#13#10'end.');
+  TFile.WriteAllText(Path('Src/B.pas'), 'unit B;'#13#10'interface'#13#10'implementation'#13#10'end.');
+  Older := Path('Stand/alt.json');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
+    Older])));
+  Assert.Contains(TFile.ReadAllText(Older, TEncoding.UTF8), '"format": 2');
+  // Gleicher Stand: byteweise gleiche Datei, kein Fehler.
+  Second := Path('Stand/zweiter.json');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
+    Second, '--compare', Older, '--output', FOutput])));
+  Assert.AreEqual(TFile.ReadAllText(Older, TEncoding.UTF8), TFile.ReadAllText(Second, TEncoding.UTF8));
+  Assert.Contains(OutputText, 'Neue Zyklen: 0');
+  TFile.WriteAllText(Path('Src/B.pas'), 'unit B;'#13#10'interface'#13#10'implementation'#13#10'uses A;'#13#10'end.');
+  Newer := Path('Stand/neu.json');
+  Assert.AreEqual(1, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
+    Newer, '--compare', Older, '--output', FOutput])), 'newCycle ist die Vorgabe');
+  Assert.Contains(OutputText, 'Neue Zyklen: 1');
+  Assert.Contains(OutputText, 'Ergebnis: Abweichung newCycle');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
+    Newer, '--compare', Older, '--fail-on', 'centralGrowth,subsystemChange', '--output', FOutput])));
+  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
+    Newer, '--compare', Older, '--fail-on', 'error'])), 'unbekannte Abweichung');
+  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
+    Newer, '--compare', Path('fehlt.json')])), 'Stand fehlt');
+  // architecture.failOn aus atlas.json; Bericht mit architecture.baseline bekommt den Abschnitt „Vergleich“.
+  TFile.WriteAllText(Path('Src/atlas.json'), '{"architecture": {"failOn": ["newCrossLink"], "baseline": "' +
+    StringReplace(Older, '\', '/', [rfReplaceAll]) + '"}}');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
+    Newer, '--compare', Older, '--output', FOutput])));
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
+    Path('bericht.md')])));
+  Assert.Contains(TFile.ReadAllText(Path('bericht.md'), TEncoding.UTF8), '### Neue Zyklen (1)');
 end;
 
 procedure TShellLinterTests.SuppressionStatsGiveZero;

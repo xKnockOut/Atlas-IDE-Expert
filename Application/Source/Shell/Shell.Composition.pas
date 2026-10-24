@@ -59,6 +59,11 @@ uses
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
+  Atlas.Common.Lsp.Architecture,
+  Atlas.Common.Lsp.UnitRelations,
+  Atlas.Common.Architecture.Service,
+  Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Architecture.UsesService,
   Atlas.Common.Lsp.Recursion,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
@@ -99,6 +104,7 @@ uses
   Shell.Compiler,
   Atlas.Common.Diagnostics.Contract,
   Atlas.Common.Index.Scheduler,
+  Atlas.Common.Architecture.UsesService,
   Shell.Platform,
   Shell.Workspace,
   Shell.Diagnostics;
@@ -156,6 +162,14 @@ type
     FMetrics: TLspMetrics;
     /// <summary>TODO-Übersicht (#68): Befehl atlas.server.todos.</summary>
     FTodos: TLspTodos;
+    /// <summary>Architekturübersicht (#1118): Dienst mit Zwischenspeicher je Index-Generation, Anfrage
+    /// atlas/architecture und Befehl atlas.architecture.saveReport.</summary>
+    FArchitectureService: TArchitectureService;
+    FArchitecture: TLspArchitecture;
+    /// <summary>Unit-Beziehungen (#593): eigener Uses-Graph mit Bibliotheks-Units, Anfrage atlas/unitRelations
+    /// und Befehle zum Verschieben und Entfernen von uses-Einträgen.</summary>
+    FUnitRelationsGraph: TUsesGraphService;
+    FUnitRelations: TLspUnitRelations;
     FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
@@ -178,6 +192,8 @@ type
     FWatchedFiles: TLspWatchedFiles;
     /// <summary>Aktive Unit nach der Tipp-Pause neu in den Index (#492).</summary>
     FIndexRefresh: TLspIndexRefresh;
+    /// <summary>uses-Listen der übernommenen Puffer (#896): bei Änderung andere offene Units neu prüfen.</summary>
+    FUsesChanges: TLspUsesChanges;
     /// <summary>Build-Ergebnisse und Compilermeldungen aus der IDE (#528).</summary>
     FIdeBuild: TLspIdeBuild;
     /// <summary>Projektkontext aus der IDE (#396).</summary>
@@ -192,6 +208,8 @@ type
     FLooseConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
+    /// <summary>Uses-Graph über FIndex für uses-cycle und unused-unit (#64); lebt so lange wie der Index.</summary>
+    FUsesGraph: TUsesGraphService;
     // Ordner des Arbeitsbereichs. Ändern nur im Thread der Nachrichtenschleife,
     // unter FWorkspacesLock, weil Anfrage-Threads lesen.
     FWorkspaces: TObjectList<TShellWorkspace>;
@@ -383,6 +401,9 @@ type
     /// <summary>Index und usesKeep für /sortuses (#297) und die uses-Diagnosen (#621); False, solange die
     /// Code-Aktionen fehlen.</summary>
     function UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
+    /// <summary>Optionen des Graphen der Unit-Beziehungen (#593): Wurzel und Namensräume des Projekts der
+    /// Datei, ohne Ausschlüsse der Architektur, damit „Wird verwendet von“ vollständig bleibt.</summary>
+    function UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
     /// <summary>Regeltreffer der Zeile ALine mit Erklärung aus dem Katalog und sicherer Korrektur (/fix,
     /// /explain, #300); False ohne Prüfregeln für die Datei.</summary>
     function SlashFindingsAt(const AUri, AText: string; ALine: Integer; out AFindings: TArray<TSlashFinding>): Boolean;
@@ -392,6 +413,11 @@ type
     /// <summary>Einstellungen, Wurzel und Dateien für die Code-Metriken (#66): Datei, Projekt (.dproj/.dpr/.dpk),
     /// Ordner oder '' (einziger Arbeitsbereich).</summary>
     function MetricsSourceFor(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
+    /// <summary>Anfrage der Architekturübersicht (#1118) zum Arbeitsbereich von AFileName: Einstellungen, Wurzel,
+    /// Titel, Namensräume und Dateien des Projekts (AScope "project") bzw. aller Projekte (sonst; leer =
+    /// architecture.scope).</summary>
+    function ArchitectureSourceFor(const AFileName, AScope: string; out ARequest: TArchitectureRequest;
+      out ASettings: TServerSettings): Boolean;
     function HintSettingsFor(const AUri: string): THintSettings;
     /// <summary>Begründungen (#1123): hints.rationale, Marken, TODO-Marken und ADR-Ordner des Arbeitsbereichs.
     /// </summary>
@@ -404,6 +430,8 @@ type
     /// <summary>Formatroutinen für den Parameter-Hint (#451): eingebaute, formatMethods der Regel format-args
     /// (atlas.json) und formatFunctions der Projektdatei .atlas (Projektkontext der IDE).</summary>
     function FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
+    /// <summary>"references" (#1119): Treffersicherheit für Verwendungen, Aufrufer und Umbenennen.</summary>
+    function ReferenceSettingsFor(const AUri: string): TReferenceSettings;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
     function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
     function FormatStyleFor(const AUri: string): TFormatStyle;
@@ -513,6 +541,7 @@ uses
   Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Rules.Checker,
+  Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Builtin.General,
@@ -945,6 +974,7 @@ var
   mIndex: ISymbolIndex;
 begin
   FIndex := TSymbolIndex.Create;
+  FUsesGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
   // Declared(X) in {$IF} fragt den Index (#847). Die Referenz hält den Index, bis Destroy den Anbieter abmeldet.
   mIndex := FIndex;
   TPascalPreprocessor.SetDeclaredProvider(
@@ -1025,11 +1055,13 @@ begin
     ReadSourceText,
     ProjectSourceFiles,
     EnsureUnit);
+  FReferences.SettingsFor := ReferenceSettingsFor;
   FReferences.Attach(FDispatcher);
   FRename := TLspRename.Create(FDocuments, FIndex,
     ReadSourceText,
     ProjectSourceFiles,
     EnsureUnit);
+  FRename.SettingsFor := ReferenceSettingsFor;
   FRename.Attach(FDispatcher);
 end;
 
@@ -1152,6 +1184,7 @@ begin
     ReadSourceText,
     ProjectSourceFiles,
     EnsureUnit);
+  FHierarchies.SettingsFor := ReferenceSettingsFor;
   FHierarchies.Attach(FDispatcher);
   FImplementations := TLspImplementations.Create(FDocuments, FIndex,
     EnsureUnit);
@@ -1183,6 +1216,41 @@ begin
   // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
   FTodos := TLspTodos.Create(MetricsSourceFor,
     ReadSourceText);
+  // Architekturübersicht (#1118): Fundstellen der uses-Einträge mit den Defines des Projekts der Datei.
+  FArchitectureService := TArchitectureService.Create(FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
+        Result := nil;
+    end);
+  FArchitecture := TLspArchitecture.Create(FArchitectureService, ArchitectureSourceFor);
+  FArchitecture.Attach(FDispatcher);
+  // Unit-Beziehungen (#593): Wurzel und Namensräume wie die Architektur; die uses-Analyse der Code-Aktionen
+  // entsteht erst weiter unten, daher über UsesContextFor.
+  FUnitRelationsGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
+  FUnitRelations := TLspUnitRelations.Create(FUnitRelationsGraph,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
+        Result := nil;
+    end,
+    function(const AUri: string; out AContext: TUsesContext): Boolean
+    begin
+      Result := UsesContextFor(AUri, AContext);
+    end,
+    function(const AFileName: string): TUsesGraphOptions
+    begin
+      Result := UnitRelationsOptionsFor(AFileName);
+    end);
+  FUnitRelations.Attach(FDispatcher);
   // Rekursionssymbole im Editorrand (#623).
   FRecursion := TLspRecursion.Create(ReadSourceText);
   // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
@@ -1457,6 +1525,41 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FTodos.Execute(AArguments);
+    end);
+  FCommands.Register(TLspArchitecture.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FArchitecture.Execute(AArguments);
+    end);
+  FCommands.Register(TLspArchitecture.SaveCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FArchitecture.SaveReport(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Execute(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.MoveCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Move(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.RemoveCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Remove(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.CostCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Cost(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.UseUnitCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.UseUnitInfo(AArguments);
     end);
   FCommands.Register(TLspRecursion.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1757,6 +1860,7 @@ procedure TServerComposition.WireWatchedFiles;
 begin
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
+  FUsesChanges := TLspUsesChanges.Create;
   FIndexRefresh := TLspIndexRefresh.Create(TLspIndexRefresh.DefaultDelayMs,
     procedure(const AFileName, AText: string)
     var
@@ -1776,6 +1880,10 @@ begin
           Updated := True;
       if Updated then
         FLogger.Debug(Format('Index nach Tipp-Pause aktualisiert: %s', [ExtractFileName(AFileName)]));
+      // Geänderte uses (#896): Ein Unit-Zyklus anderer offener Units kann über diese Unit laufen; der Graph
+      // folgt dem Index, die Neuprüfung ist gebündelt.
+      if Updated and FUsesChanges.Changed(AFileName, AText) and (FSyntaxDiagnostics <> nil) then
+        FSyntaxDiagnostics.RefreshLater;
     end);
   FIndexRefresh.OnError :=
     procedure(E: Exception)
@@ -1931,6 +2039,7 @@ begin
   TPascalPreprocessor.SetDeclaredProvider(nil);
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   FreeAndNil(FIndexRefresh);
+  FreeAndNil(FUsesChanges);
   // Vor der Verbindung: Beide Wächter rufen FConnection.
   FreeAndNil(FFileWatcher);
   FreeAndNil(FParentWatcher);
@@ -2013,6 +2122,7 @@ begin
   FIndexScheduler.Free;
   FLooseConfiguration.Free;
   FWorkspaceFolders.Free;
+  FreeAndNil(FUsesGraph);
   FIndex := nil;
   FDocumentSymbols.Free;
   FFoldingRanges.Free;
@@ -2030,6 +2140,10 @@ begin
   FCodeLens.Free;
   FMetrics.Free;
   FTodos.Free;
+  FArchitecture.Free;
+  FArchitectureService.Free;
+  FUnitRelations.Free;
+  FUnitRelationsGraph.Free;
   FRecursion.Free;
   FBaseline.Free;
   FInlayHints.Free;
@@ -2604,9 +2718,10 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  // Hauptquelltexte und Formulardateien außerhalb der Sperre lesen.
+  // Hauptquelltexte und Formulardateien außerhalb der Sperre lesen (dieselbe Regel wie find_unused_code, #64).
   for mIndex := 0 to High(Built) do
-    TShellWorkspace.CompleteRuleProject(Built[mIndex], MainSources[mIndex], ReadSourceText);
+    Built[mIndex] := TRuleProjectFiles.ProjectOf(Built[mIndex].FileName, MainSources[mIndex], Built[mIndex].Sources,
+      ReadSourceText);
   TMonitor.Enter(FWorkspacesLock);
   try
     // Inzwischen ein anderes Projekt geladen: Das Ergebnis gilt für diese Prüfung, aber nicht als Vorrat.
@@ -3893,6 +4008,11 @@ begin
     Result := Result + Context.FormatFunctions;
 end;
 
+function TServerComposition.ReferenceSettingsFor(const AUri: string): TReferenceSettings;
+begin
+  Result := SettingsFor(AUri).References;
+end;
+
 function TServerComposition.RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
 begin
   Result := SettingsFor(AUri).Refactoring;
@@ -3941,6 +4061,77 @@ begin
     if AProject then
       ASource.Files := Workspace.ProjectFiles;
     Result := True;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.ArchitectureSourceFor(const AFileName, AScope: string;
+  out ARequest: TArchitectureRequest; out ASettings: TServerSettings): Boolean;
+var
+  Source: TLspMetricsSource;
+  Workspace: TShellWorkspace;
+  Scope: string;
+  Files: TArray<string>;
+begin
+  ARequest := Default(TArchitectureRequest);
+  ASettings := TServerSettings.Default;
+  Result := MetricsSourceFor(AFileName, True, Source);
+  if not Result then
+    Exit;
+  ASettings := Source.Settings;
+  ARequest := TArchitectureRequest.FromSettings(ASettings);
+  Scope := AScope;
+  if Scope = '' then
+    Scope := ASettings.ArchitectureScope;
+  ARequest.Scope := Scope;
+  ARequest.Root := Source.Root;
+  ARequest.Title := Source.Title;
+  if Scope = 'project' then
+    ARequest.Files := Source.Files
+  else
+  begin
+    // Projektgruppe (#648): die Dateien aller geladenen Projekte.
+    Files := nil;
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      for Workspace in FWorkspaces do
+        Files := Files + Workspace.ProjectFiles;
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+    ARequest.Files := Files;
+  end;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := nil;
+    if AFileName <> '' then
+      Workspace := WorkspaceOf(AFileName);
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    if Workspace <> nil then
+      ARequest.Namespaces := Workspace.Namespaces;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
+var
+  Workspace: TShellWorkspace;
+begin
+  Result := TUsesGraphOptions.Default;
+  Result.IncludeLibrary := True;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := nil;
+    if AFileName <> '' then
+      Workspace := WorkspaceOf(AFileName);
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    if Workspace <> nil then
+    begin
+      Result.Root := Workspace.Root;
+      Result.Namespaces := Workspace.Namespaces;
+    end;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -4137,7 +4328,10 @@ begin
     AContext.Services.EnsureUnit := nil;
   end;
   AContext.Services.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText,
-    RuleProjectsComplete);
+    RuleProjectsComplete, FUsesGraph);
+  // Editor-Prüfung (#896): Diagnosen, Code-Aktionen, Slash-Befehle und Baseline wie im Editor; uses-cycle folgt
+  // dort diagnostics.usesCycleLive.
+  AContext.Live := True;
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
   // Mit Pfad, damit Korrekturen die Formulardatei ändern können (#309).
   if SameText(ExtractFileExt(FileName), '.pas') then
@@ -4174,6 +4368,7 @@ var
   Namespaces: TArray<string>;
   Namespace: string;
   LibraryRoots: TArray<string>;
+  GraphOptions: TUsesGraphOptions;
 begin
   // Neues Projekt oder neue Installation: Der Compiler bekommt eine neue Chance (#40).
   if FCompileLock <> nil then
@@ -4208,6 +4403,13 @@ begin
   end;
   FDefinition.Namespaces := Namespaces;
   FHover.Namespaces := Namespaces;
+  // Uses-Graph (#64) löst Namen ohne Namensraum über dieselbe Liste auf; neu aufgebaut nur bei Änderung.
+  GraphOptions := FUsesGraph.Options;
+  if string.Join(';', GraphOptions.Namespaces) <> string.Join(';', Namespaces) then
+  begin
+    GraphOptions.Namespaces := Namespaces;
+    FUsesGraph.SetOptions(GraphOptions);
+  end;
   FDocumentHighlights.Namespaces := Namespaces;
   FLinkedEditing.Namespaces := Namespaces;
   FReferences.Namespaces := Namespaces;
@@ -4240,6 +4442,7 @@ begin
         if TLspIndexRefresh.Applies(TDocumentUris.ToPath(ADocument.Uri)) then
         begin
           FIndexRefresh.Closed(TDocumentUris.ToPath(ADocument.Uri));
+          FUsesChanges.Forget(TDocumentUris.ToPath(ADocument.Uri));
           HandleWatchedFiles([TFileChange.Create(TDocumentUris.ToPath(ADocument.Uri), TFileChangeKind.Changed)]);
         end;
     else

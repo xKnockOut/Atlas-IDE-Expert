@@ -12,6 +12,8 @@
 //   oberen Editor auf Zeile und Zeichen aus den Argumenten (Sprung zur
 //   Freigabe, #915), atlas.showSignatureHelp setzt ihn ebenso und öffnet
 //   den Parameter-Hint (OnSignatureHelp, setzt die Composition; #1007),
+//   atlas.showUnitRelations zeigt die Unit-Beziehungen der Unit im Editor
+//   („Graph zeigen“ an einem Unit-Zyklus, OnUnitRelations; #896),
 //   atlas.changeSignature (#100) und
 //   atlas.moveClass (#103) öffnen ihren Dialog, alle anderen gehen als
 //   workspace/executeCommand an den Server.
@@ -87,6 +89,7 @@ type
     FStepList: TFunc<Boolean, Boolean>;
     FOnPlaceholders: TAtlasPlaceholdersProc;
     FOnSignatureHelp: TProc;
+    FOnUnitRelations: TProc;
   private
     class function Session: TLspSession; static;
     class procedure Say(const AText: string); static;
@@ -159,6 +162,9 @@ type
     /// <summary>Parameter-Hint an der Schreibmarke öffnen (atlas.showSignatureHelp, #1007); setzt die Composition,
     /// nil = nur der Sprung.</summary>
     class property OnSignatureHelp: TProc read FOnSignatureHelp write FOnSignatureHelp;
+    /// <summary>Unit-Beziehungen der Unit im Editor zeigen (atlas.showUnitRelations, #896); setzt die
+    /// Composition, nil = nichts.</summary>
+    class property OnUnitRelations: TProc read FOnUnitRelations write FOnUnitRelations;
   end;
 
 implementation
@@ -219,6 +225,7 @@ const
   OpenFileCommand = 'atlas.openFile';
   GoToPositionCommand = 'atlas.goToPosition';
   ShowSignatureHelpCommand = 'atlas.showSignatureHelp';
+  ShowUnitRelationsCommand = 'atlas.showUnitRelations';
   QualifiedNameCommand = 'atlas.server.qualifiedName';
   TestUnitCommand = 'atlas.server.testUnit';
 
@@ -476,6 +483,15 @@ begin
     begin
       TAtlasIdeResults.FindReferences;
     end);
+  // Aufrufdiagramm (#1122): Das Kontextmenü entsteht einmal, deshalb gilt callHierarchy.diagram hier ab dem
+  // nächsten Start; Palette und Menü Atlas folgen sofort.
+  if TAtlasIdeResults.CallDiagramAllowed then
+    FContextMenu.AddGuarded(TAtlasFeature.Results, 'Atlas.CallDiagram',
+      TAtlasStrings.Text(TAtlasTextId.CallDiagramCommand), nil,
+      procedure
+      begin
+        TAtlasIdeResults.ShowCallDiagram;
+      end);
   FContextMenu.Add('-', nil, nil);
   FContextMenu.Add('Atlas.SwitchTestUnit', TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
     function: Integer
@@ -638,6 +654,7 @@ begin
   FProblemsOf := nil;
   FOnPlaceholders := nil;
   FOnSignatureHelp := nil;
+  FOnUnitRelations := nil;
 end;
 
 class procedure TAtlasIdeEditorCommands.EnsureContextMenus;
@@ -1374,6 +1391,13 @@ begin
     finally
       Arguments.Free;
     end;
+    Exit;
+  end;
+  if ACommand = ShowUnitRelationsCommand then
+  begin
+    // Client-Befehl: „Graph zeigen“ an einem Unit-Zyklus (#896).
+    if Assigned(FOnUnitRelations) then
+      FOnUnitRelations();
     Exit;
   end;
   if ACommand = TAtlasIdeChangeSignature.ClientCommand then

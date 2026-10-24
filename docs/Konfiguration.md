@@ -36,14 +36,17 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `slashCommands` | global (settings.json) | object | – |  | Schnellbefehle: Eine Zeile, die mit /name beginnt, wird nach Enter ausgeführt und verschwindet. Nach / schlägt die Vervollständigung alle Befehle vor. |
 | `sortUses` | Projekt (atlas.json) | boolean string | `false` | `true`, `false`, `"alphabetic"`, `"namespace"` | "uses aufräumen" (source.organizeImports, z. B. beim Speichern) sortiert die uses: true oder "alphabetic" alphabetisch, "namespace" nach Namespace gruppiert (System, Vcl, ... und Units ohne Namespace zuletzt). Achtung: Die Reihenfolge bestimmt die Initialisierung der Units. |
 | `usesKeep` | Projekt (atlas.json) | array<string> | `` |  | Units, die "ungenutzte uses entfernen" nie entfernt, zusätzlich zu allen Units mit initialization-Abschnitt. |
+| `deadCode` | Projekt (atlas.json) | object | – |  | Toter Code: Elemente, die als verwendet gelten, obwohl ihr Name im Code nicht vorkommt (RTTI, Serialisierung, Plugins). Gilt für unused-private-member, unused-public-member und unused-declaration, zusätzlich zu den Optionen keepAttributes und keepPatterns der Regeln. |
 | `dfmPropertyRules` | Projekt (atlas.json) | array<object> | `` |  | Eigenschaftsregeln für Formulardateien: Vorgaben für Komponenten-Properties, gemeldet als dfm-property am Feld der Komponente in der Unit. Nicht gespeicherte Properties gelten mit ihrem default-Wert. |
 | `memoryBudgetMb` | global (settings.json) | integer | `768` | 0… | Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `index` | gemischt, siehe unten | object | – |  | Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. |
+| `architecture` | gemischt, siehe unten | object | – |  | Architekturübersicht aus dem Index: zentrale Units, Teilsysteme, Zyklen und Querverbindungen im Fenster „Atlas-Architektur“, als Bericht (Markdown oder HTML, auch AtlasServer --architecture) und im MCP-Werkzeug get_architecture. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
-| `diagnostics` | global (settings.json) | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
+| `diagnostics` | gemischt, siehe unten | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
 | `highlight` | global (settings.json) | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code Lens im Editor. |
+| `references` | global (settings.json) | object | – |  | Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein Interface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen. |
 | `hints` | global (settings.json) | object | – |  | Anzeige von XMLDoc-Kommentaren (///) und Begründungen (// WHY: …, #1123) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas. |
 | `directives` | global (settings.json) | object | – |  | Hilfen in Compiler-Direktiven: Vervollständigung und Hover für Direktiven wie {$R+} oder {$WARN …} und für bedingte Symbole in {$IFDEF}, {$IFNDEF}, {$IF Defined(…)}, {$DEFINE} und {$UNDEF}. |
 | `stringLiteral` | Projekt (atlas.json) | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
@@ -163,6 +166,13 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `slashCommands.enumHelper` | global (settings.json) | boolean | `true` |  | /helper für eine Aufzählung legt die Namenstabelle cNames sowie ToString und FromString an. Aus: ein leerer record helper wie bei anderen Typen. |
 | `slashCommands.setHelper` | global (settings.json) | boolean | `true` |  | /helper für eine Menge (set of) legt Contains, ToText, Toggle und All an. Aus: ein leerer record helper wie bei anderen Typen. |
 
+## deadCode
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `deadCode.keepAttributes` | Projekt (atlas.json) | array<string> | `` |  | Attributnamen ohne "Attribute", z. B. "JsonName": Alle Mitglieder eines Typs mit diesem Attribut gelten als verwendet. |
+| `deadCode.keepPatterns` | Projekt (atlas.json) | array<string> | `` |  | Namensmuster mit * und ?, auch als Typ.Name, z. B. "*Handler" oder "TPlugin.*": Passende Elemente gelten als verwendet. |
+
 ## index
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
@@ -176,6 +186,18 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `index.cacheMaxMb` | global (settings.json) | integer | `256` | 0…1048576 | Höchstgröße des Cache-Ordners in MB; darüber gehen die am längsten nicht benutzten Caches zuerst. 0 = ohne Grenze. |
 | `index.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["**/Demos/**","**/Samples/**"]` | Ordner oder Dateien, die nicht indiziert werden (Glob-Muster gegen den vollen Pfad: *, **, ?). |
 
+## architecture
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `architecture.enabled` | global (settings.json) | boolean | `true` |  | Hauptschalter: false = kein Fenster, kein Menüeintrag, kein Bericht, kein get_architecture. |
+| `architecture.scope` | global (settings.json) | string | `"projectGroup"` | `"project"`, `"projectGroup"` | Umfang der Auswertung: nur das aktive Projekt oder die ganze Projektgruppe. |
+| `architecture.includeLibraryUnits` | global (settings.json) | boolean | `false` |  | Units aus RTL, VCL und den Bibliothekspfaden mitzählen; aus = nur Units der Projekte und ihrer Suchpfade. |
+| `architecture.centralUnits` | global (settings.json) | integer | `15` | 5…100 | Wie viele zentrale Units Fenster, Bericht und get_architecture zeigen. |
+| `architecture.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["Tests/**","*.Tests"]` | Units, die nicht in die Auswertung eingehen: Glob-Muster auf den Unit-Namen oder den Pfad relativ zum Projekt (*, **, ?). |
+| `architecture.baseline` | Projekt (atlas.json) | string | `""` | z. B. `"architektur-main.json"` | Gespeicherter Architekturstand (JSON aus AtlasServer --architecture <Datei.json> oder „Stand speichern …“), Pfad relativ zum Projekt: Fenster, Bericht und get_architecture vergleichen automatisch damit. Leer = kein Vergleich. |
+| `architecture.failOn` | Projekt (atlas.json) | array<string> | `"newCycle"` |  | Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Units mit stark gewachsener Abhängigkeit. |
+
 ## diagnostics
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
@@ -183,6 +205,8 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `diagnostics.log` | global (settings.json) | boolean | `true` |  | Anonymisiertes Diagnoselog schreiben (%LOCALAPPDATA%\Atlas\Logs\Diagnose). |
 | `diagnostics.logDays` | global (settings.json) | integer | `7` | 1…365 | Aufbewahrung des Diagnoselogs in Tagen. |
 | `diagnostics.logMapFile` | global (settings.json) | boolean | `false` |  | Zuordnung Kurz-ID (doc#4) → Pfad lokal speichern, nur für die eigene Analyse. Der Export nimmt sie nie mit. |
+| `diagnostics.usesCycleLive` | Projekt (atlas.json) | boolean | `true` |  | Zirkuläre Unit-Referenz schon beim Tippen melden (Regel uses-cycle): Ein Zyklus, in dem jede Kante im interface-Teil liegt, ist ein Fehler am auslösenden uses-Eintrag mit dem kürzesten Pfad; jede Unit im Hover springt an ihren uses-Eintrag. Schnellkorrektur „In implementation-uses verschieben“, wenn kein Bezeichner der Unit im interface-Teil gebraucht wird, sonst Sprung zu diesen Bezeichnern und „Graph zeigen“. Berücksichtigt den ungespeicherten Stand offener Units. false: keine Meldung im Editor; die projektweite Prüfung (--check, find_unused_code) bleibt. |
+| `diagnostics.usesCycleImplementation` | Projekt (atlas.json) | boolean | `false` |  | Im Editor auch Zyklen mit mindestens einer implementation-Kante melden, als Hinweis (der Compiler erlaubt sie). Braucht usesCycleLive. |
 
 ## highlight
 
@@ -209,6 +233,13 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `codeLens.metrics` | global (settings.json) | boolean | `true` |  | Kennzahlen über jeder Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive Komplexität, Parameteranzahl. Die Grenzwerte stehen bei den Regeln metric-* unter "max". |
+
+## references
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `references.inferred` | global (settings.json) | boolean | `true` |  | Erschlossene Treffer zeigen: über ein Interface, das die Klasse umsetzt, über die überschriebene Methode eines Vorfahren, nicht eindeutige Überladungen, gleicher Name mit unbekanntem Typ (with, unbekannter Ausdruck) und Stellen in inaktiven Zweigen; aus = nur sichere Treffer wie bisher. |
+| `references.textMatches` | global (settings.json) | boolean | `false` |  | Auch den Namen in String-Literalen als erschlossen melden, etwa für RTTI oder MethodAddress('Speichern'). |
 
 ## hints
 

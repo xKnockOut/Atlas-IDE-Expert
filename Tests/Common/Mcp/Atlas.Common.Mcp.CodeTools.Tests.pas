@@ -94,6 +94,9 @@ const
     '  W := TWorker.Create;'#10 +
     '  W.Run;'#10 +
     'end;'#10 +
+    // Start wird verwendet, sonst meldet unused-declaration (#64) es bei check_code.
+    'initialization'#10 +
+    '  Start;'#10 +
     'end.';
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
@@ -358,11 +361,13 @@ end;
 
 procedure TMcpCodeToolsTests.CheckCodeUsesProjectDefines;
 const
-  // Der WIN64-Zweig ist sonst sauber: Datei und Unit heißen gleich, X ruft sich nicht selbst auf.
+  // Der WIN64-Zweig ist sonst sauber: Datei und Unit heißen gleich, X ruft sich nicht selbst auf und wird im
+  // initialization-Teil verwendet (unused-declaration, #64).
   ZielFile = 'C:\P\Ziel.pas';
   Win64Unit =
     'unit Ziel;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10 +
-    '{$IFDEF WIN64}'#10'  Exit;'#10'{$ELSE}'#10'  if then'#10'{$ENDIF}'#10'end;'#10'end.';
+    '{$IFDEF WIN64}'#10'  Exit;'#10'{$ELSE}'#10'  if then'#10'{$ENDIF}'#10'end;'#10 +
+    'initialization'#10'  X;'#10'end.';
 var
   Tools: TMcpCodeTools;
   Win64: TCheckSourceFunc;

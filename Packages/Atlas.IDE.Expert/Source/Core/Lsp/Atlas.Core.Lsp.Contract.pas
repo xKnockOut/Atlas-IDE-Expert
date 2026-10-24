@@ -1,7 +1,8 @@
 ﻿unit Atlas.Core.Lsp.Contract;
 
 // Werttypen, die der LSP-Client (TLspSession) liefert und die Features darüber verwenden (A-09): Probleme
-// (Diagnosen, #398), Symbole der projektweiten Suche und Einträge der Typ- und Aufrufhierarchie (#400).
+// (Diagnosen, #398), Symbole der projektweiten Suche und Einträge der Typ- und Aufrufhierarchie (#400),
+// Treffersicherheit einer Fundstelle (#1119).
 // Sie liegen im Lsp-Feature, weil die Protokollschicht unten liegt; Atlas.Core.Problems.Contract und
 // Atlas.Core.Results.Model führen sie als Alias weiter. Positionen sind 0-basiert in UTF-16-Einheiten.
 
@@ -16,6 +17,15 @@ type
   TAtlasProblemSeverity = (Error, Warning, Information, Hint);
   {$SCOPEDENUMS OFF}
 
+  /// <summary>Weitere Stelle zu einer Meldung aus relatedInformation (#896), z. B. der uses-Eintrag einer Unit
+  /// auf dem Pfad eines Unit-Zyklus: URI, Stelle (0-basiert) und Beschriftung.</summary>
+  TAtlasProblemRelated = record
+    Uri: string;
+    Line: Integer;
+    Character: Integer;
+    Message: string;
+  end;
+
   TAtlasProblem = record
   public const
     CompilerSource = 'dcc';
@@ -26,6 +36,8 @@ type
     /// <summary>Sprachmerkmal einer neueren Delphi-Version (#1126); ebenfalls ohne Unterdrückung per Kommentar.
     /// </summary>
     LanguageFeatureCode = 'language-feature';
+    /// <summary>Regel der Unit-Zyklen (#64, #896): Pfad mit anklickbaren Units und „Graph zeigen“ im Hover.</summary>
+    UsesCycleCode = 'uses-cycle';
     /// <summary>Zustände aus data.uses.state (#621).</summary>
     UsesUnused = 'unused';
     UsesInitialization = 'initialization';
@@ -78,6 +90,8 @@ type
     /// Setzt der Problemspeicher; ConfirmedCode ist der Code des Compilers.</summary>
     Confirmed: Boolean;
     ConfirmedCode: string;
+    /// <summary>Weitere Stellen aus relatedInformation (#896); im Befund-Hover anklickbar. nil ohne.</summary>
+    Related: TArray<TAtlasProblemRelated>;
     function IsCompiler: Boolean;
     /// <summary>Text der Spalte „Compiler“ (#1024): bestätigter Code, Code einer Compilermeldung bzw. die Codes
     /// der Regel ("E2034, E2035"); '' ohne.</summary>
@@ -113,6 +127,19 @@ type
     Character: Integer;
   end;
 
+  /// <summary>Treffersicherheit einer Fundstelle (#1119) aus atlasConfidence des Servers.</summary>
+  TAtlasConfidence = record
+    /// <summary>Erschlossen statt sicher: vor dem Umbenennen prüfen.</summary>
+    Inferred: Boolean;
+    /// <summary>Grund wie im LSP: "interface", "virtual", "ambiguous", "unresolved", "inactiveBranch", "text";
+    /// '' bei sicheren Treffern.</summary>
+    Reason: string;
+    /// <summary>Erklärung des Servers für den Hinweis, etwa „Aufruf über ISpeicherbar.Speichern …“.</summary>
+    Explanation: string;
+    /// <summary>Aus dem Feld atlasConfidence von AItem; ohne das Feld sicher (ältere Server).</summary>
+    class function FromJson(const AItem: TJSONValue): TAtlasConfidence; static;
+  end;
+
 {$SCOPEDENUMS ON}
   /// <summary>Richtung einer Hierarchie: Aufrufer, Aufgerufene, Vorfahren, Nachfahren.</summary>
   TAtlasHierarchyDirection = (Incoming, Outgoing, Supertypes, Subtypes);
@@ -129,9 +156,36 @@ type
     Character: Integer;
     /// <summary>Der Eintrag als JSON, so wie ihn der Server für Folgeanfragen zurückhaben will.</summary>
     Raw: string;
+    /// <summary>Eingehende Aufrufe (#1119): sicher oder erschlossen.</summary>
+    Confidence: TAtlasConfidence;
+    /// <summary>Aufruf über ein Interface bzw. eine virtuelle Methode (#1122): "interface", "virtual" oder ''
+    /// (atlasDispatch des Servers).</summary>
+    Dispatch: string;
+    /// <summary>Umsetzungen, die der Aufruf erreichen kann; 0 ohne Dispatch.</summary>
+    Implementations: Integer;
   end;
 
 implementation
+
+{ TAtlasConfidence }
+
+class function TAtlasConfidence.FromJson(const AItem: TJSONValue): TAtlasConfidence;
+var
+  Value: TJSONValue;
+begin
+  Result := Default(TAtlasConfidence);
+  if not (AItem is TJSONObject) then
+    Exit;
+  Value := TJSONObject(AItem).GetValue('atlasConfidence');
+  if not (Value is TJSONObject) then
+    Exit;
+  Result.Inferred := TJSONObject(Value).GetValue<string>('level', '') = 'inferred';
+  if Result.Inferred then
+  begin
+    Result.Reason := TJSONObject(Value).GetValue<string>('reason', '');
+    Result.Explanation := TJSONObject(Value).GetValue<string>('detail', '');
+  end;
+end;
 
 { TAtlasProblem }
 
@@ -236,8 +290,9 @@ end;
 
 class function TAtlasProblem.FromJson(const AItem: TJSONObject): TAtlasProblem;
 var
-  Tags, CodeValue, Data, Inactive, UsesData, Codes: TJSONValue;
+  Tags, CodeValue, Data, Inactive, UsesData, Codes, RelatedItems: TJSONValue;
   Tag, Item: TJSONValue;
+  Related: TAtlasProblemRelated;
 begin
   Result := Default(TAtlasProblem);
   Result.StartLine := AItem.GetValue<Integer>('range.start.line', 0);
@@ -288,6 +343,18 @@ begin
       Result.UsesState := TJSONObject(UsesData).GetValue<string>('state', '');
     end;
   end;
+  RelatedItems := AItem.GetValue('relatedInformation');
+  if RelatedItems is TJSONArray then
+    for Item in TJSONArray(RelatedItems) do
+      if Item is TJSONObject then
+      begin
+        Related.Uri := TJSONObject(Item).GetValue<string>('location.uri', '');
+        Related.Line := TJSONObject(Item).GetValue<Integer>('location.range.start.line', 0);
+        Related.Character := TJSONObject(Item).GetValue<Integer>('location.range.start.character', 0);
+        Related.Message := TJSONObject(Item).GetValue<string>('message', '');
+        if Related.Uri <> '' then
+          Result.Related := Result.Related + [Related];
+      end;
   Tags := AItem.GetValue('tags');
   if Tags is TJSONArray then
     for Tag in TJSONArray(Tags) do

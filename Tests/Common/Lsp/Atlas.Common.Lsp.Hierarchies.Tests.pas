@@ -34,6 +34,8 @@ type
     procedure OutgoingCallsFromBody;
     [Test]
     procedure ItemRoundTripsThroughJson;
+    [Test]
+    procedure OutgoingCallsMarkInterfaceAndVirtual;
   end;
 
 implementation
@@ -46,7 +48,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Lsp.ReferenceConfidence;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -92,6 +95,54 @@ const
     '  Rechne;'#10 +
     'end;'#10 +
     'end.';
+
+  DispatchFile = 'C:\P\Ablauf.pas';
+
+  // Aufrufe über ein Interface (zwei Umsetzungen) und eine virtuelle Methode (Basis und eine Überschreibung;
+  // TSpaet erbt nur), dazu ein gewöhnlicher Aufruf (#1122).
+  UnitDispatch =
+    'unit Ablauf;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  ISpeicher = interface'#10 +
+    '    procedure Speichern;'#10 +
+    '  end;'#10 +
+    '  TDatei = class(TInterfacedObject, ISpeicher)'#10 +
+    '    procedure Speichern;'#10 +
+    '  end;'#10 +
+    '  TNetz = class(TInterfacedObject, ISpeicher)'#10 +
+    '    procedure Speichern;'#10 +
+    '  end;'#10 +
+    '  TLader = class'#10 +
+    '    procedure Laden; virtual;'#10 +
+    '  end;'#10 +
+    '  TSchnell = class(TLader)'#10 +
+    '    procedure Laden; override;'#10 +
+    '  end;'#10 +
+    '  TSpaet = class(TSchnell)'#10 +
+    '  end;'#10 +
+    'procedure Ablauf(const S: ISpeicher; L: TLader);'#10 +
+    'procedure Fertig;'#10 +
+    'implementation'#10 +
+    'procedure TDatei.Speichern; begin end;'#10 +
+    'procedure TNetz.Speichern; begin end;'#10 +
+    'procedure TLader.Laden; begin end;'#10 +
+    'procedure TSchnell.Laden; begin end;'#10 +
+    'procedure Fertig; begin end;'#10 +
+    'procedure Ablauf(const S: ISpeicher; L: TLader);'#10 +
+    'begin'#10 +
+    '  S.Speichern;'#10 +
+    '  L.Laden;'#10 +
+    '  Fertig;'#10 +
+    'end;'#10 +
+    'end.';
+
+function ReadDispatch(const AFileName: string; out AText: string): Boolean;
+begin
+  Result := SameText(AFileName, DispatchFile);
+  if Result then
+    AText := UnitDispatch;
+end;
 
 function PositionOf(const AText, AMarker: string): TTextPosition;
 var
@@ -246,6 +297,53 @@ begin
   Assert.AreEqual(Ord(Item.SymbolKind), Ord(Back.SymbolKind));
   Assert.AreEqual(Item.SelectionRange.StartPos.Line, Back.SelectionRange.StartPos.Line);
   Assert.AreEqual(HauptFile, Back.FileName);
+end;
+
+procedure TLspHierarchiesTests.OutgoingCallsMarkInterfaceAndVirtual;
+var
+  Index: ISymbolIndex;
+  Resolver: TNameResolver;
+  Tree: TSyntaxTree;
+  Item: THierarchyItem;
+  Calls: TArray<THierarchyCall>;
+  Json: TJSONArray;
+  Dispatch: TJSONValue;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText(UnitDispatch, DispatchFile, nil));
+  Resolver := TNameResolver.Create(Index);
+  try
+    Tree := TPascalParser.Parse(UnitDispatch);
+    try
+      Assert.IsTrue(TLspHierarchies.CallItemAt(Resolver, Tree, DispatchFile,
+        PositionOf(UnitDispatch, 'Ablauf(const S: ISpeicher; L: TLader);'#10'begin'), Item));
+    finally
+      Tree.Free;
+    end;
+    Calls := TLspHierarchies.OutgoingCalls(Resolver, Index, Item, ReadDispatch, nil);
+    Assert.AreEqual('Speichern(1) Laden(1) Fertig(1)', Names(Calls));
+    Assert.AreEqual(Ord(TReferenceReason.Interface_), Ord(Calls[0].Dispatch));
+    Assert.AreEqual(2, Calls[0].Implementations);
+    Assert.AreEqual(Ord(TReferenceReason.Virtual), Ord(Calls[1].Dispatch));
+    Assert.AreEqual(2, Calls[1].Implementations);
+    Assert.AreEqual(Ord(TReferenceReason.None), Ord(Calls[2].Dispatch));
+    Json := TLspHierarchies.CallsToJson(Calls, 'to');
+    try
+      Dispatch := Json.Items[0].FindValue('atlasDispatch');
+      Assert.IsNotNull(Dispatch);
+      Assert.AreEqual('interface', Dispatch.GetValue<string>('kind'));
+      Assert.AreEqual(2, Dispatch.GetValue<Integer>('implementations'));
+      Assert.AreEqual('virtual', Json.Items[1].GetValue<string>('atlasDispatch.kind'));
+      Assert.IsNull(Json.Items[2].FindValue('atlasDispatch'));
+    finally
+      Json.Free;
+    end;
+    // Ohne Index wie bisher: keine Kennzeichnung.
+    Calls := TLspHierarchies.OutgoingCalls(Resolver, Item, ReadDispatch);
+    Assert.AreEqual(Ord(TReferenceReason.None), Ord(Calls[0].Dispatch));
+  finally
+    Resolver.Free;
+  end;
 end;
 
 initialization

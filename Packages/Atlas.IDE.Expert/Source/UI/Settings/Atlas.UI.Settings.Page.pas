@@ -229,6 +229,11 @@ type
     FDiagnosticMode: TCheckBox;
     /// <summary>„Prozesse am Projekt…“ (#62).</summary>
     FDiagnosticsProcesses: TCheckBox;
+    // Architekturübersicht (#1118).
+    FArchitecture: TCheckBox;
+    FArchitectureScope: TAtlasChoiceBox;
+    FArchitectureLibrary: TCheckBox;
+    FArchitectureCentral: TEdit;
     FSetupChecklist: TCheckBox;
     FShortcutTips: TCheckBox;
     FShortcutTipsScope: TAtlasChoiceBox;
@@ -275,6 +280,8 @@ type
     FTestsBuildFirst: TCheckBox;
     FTestsAfterBuild: TCheckBox;
     FBuildZeroHints: TCheckBox;
+    /// <summary>Kosten einer interface-Änderung in der Statusleiste (#554).</summary>
+    FShowInterfaceCost: TCheckBox;
     /// <summary>Release-Build-Wächter (#533): Schalter, build.gate, weitere Release-Konfigurationen und je Prüfung
     /// ein Haken (ohne Sollwert) bzw. eine Auswahl „nicht prüfen / Soll aus / Soll an“.</summary>
     FReleaseGuard: TCheckBox;
@@ -309,6 +316,9 @@ type
     FPeekShowImplementation: TCheckBox;
     FPeekDefinitionKey: TEdit;
     FPeekReferencesKey: TEdit;
+    FReferencesInferred: TCheckBox;
+    FReferencesTextMatches: TCheckBox;
+    FCallHierarchyDiagram: TCheckBox;
     FOutline: TCheckBox;
     FOutlineAlphabetical: TCheckBox;
     FOutlineFollowCursor: TCheckBox;
@@ -473,6 +483,8 @@ type
     // Units suchen (#777).
     FUnitSearchEnabled: TCheckBox;
     FUnitSearchReplace: TCheckBox;
+    FUnitSearchReplaceUseUnit: TCheckBox;
+    FUnitSearchReplaceForms: TCheckBox;
     FUnitSearchPathStyle: TAtlasChoiceBox;
     FUnitSearchGroupBy: TAtlasChoiceBox;
     FUnitSearchRememberCollapsed: TCheckBox;
@@ -1053,6 +1065,10 @@ type
     property TestsBuildFirstCheck: TCheckBox read FTestsBuildFirst;
     property TestsAfterBuildCheck: TCheckBox read FTestsAfterBuild;
     property BuildZeroHintsCheck: TCheckBox read FBuildZeroHints;
+    property ShowInterfaceCostCheck: TCheckBox read FShowInterfaceCost;
+    /// <summary>Zum Testen: Alt+F11 und Umschalt+F12 übernehmen (#786).</summary>
+    property UnitSearchReplaceUseUnitCheck: TCheckBox read FUnitSearchReplaceUseUnit;
+    property UnitSearchReplaceFormsCheck: TCheckBox read FUnitSearchReplaceForms;
     /// <summary>Zum Testen: Release-Build-Wächter (#533).</summary>
     property ReleaseGuardCheck: TCheckBox read FReleaseGuard;
     property BuildGateChoice: TAtlasChoiceBox read FBuildGate;
@@ -1114,6 +1130,9 @@ type
     property ProblemsWindowKey: TEdit read FProblemsWindowKey;
     /// <summary>Zum Testen: Prüffenster und Seite Prüfregeln (#909).</summary>
     property ProblemsWindowCheck: TCheckBox read FProblemsWindow;
+    property ArchitectureCheck: TCheckBox read FArchitecture;
+    property ArchitectureScopeChoice: TAtlasChoiceBox read FArchitectureScope;
+    property ArchitectureCentralEdit: TEdit read FArchitectureCentral;
     property ProblemsWindowScopeChoice: TAtlasChoiceBox read FProblemsWindowScope;
     property ProblemsWindowGroupByChoice: TAtlasChoiceBox read FProblemsWindowGroupBy;
     property ProblemsWindowCompilerCheck: TCheckBox read FProblemsWindowCompiler;
@@ -1455,6 +1474,13 @@ begin
   FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
   // Menüeintrag „Prozesse am Projekt…“ (#62).
   FDiagnosticsProcesses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticsProcesses));
+  // Architekturübersicht (#1118): Unterpunkt „Architektur“ über x-node; Reihenfolge wie die Werte von
+  // architecture.scope (projectGroup, project).
+  FArchitecture := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitecture));
+  FArchitectureScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureScope),
+    [TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup), TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject)]);
+  FArchitectureLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureLibrary));
+  FArchitectureCentral := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureCentral));
   // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
   FSetupChecklist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist));
   // Hauptschalter der experimentellen Funktionen (#834).
@@ -1593,6 +1619,8 @@ begin
   // Atlas-Statusleiste unten im Editorfenster (#1155).
   FEditorStatusBar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBar));
   FEditorStatusBarItems := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBarItems));
+  // Aufrufdiagramm (#1122).
+  FCallHierarchyDiagram := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCallHierarchyDiagram));
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
   FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
@@ -1762,6 +1790,7 @@ begin
   FTestsBuildFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsBuildFirst));
   FTestsAfterBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAfterBuild));
   FBuildZeroHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildZeroHints));
+  FShowInterfaceCost := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShowInterfaceCost));
   // Startprofile (#575).
   FStartProfiles := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfiles));
   FStartProfilesStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfilesStatusField));
@@ -1865,6 +1894,9 @@ begin
   FPeekShowImplementation := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPeekImplementation));
   FPeekDefinitionKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekDefinitionCommand));
   FPeekReferencesKey := AddKey(TAtlasStrings.Text(TAtlasTextId.PeekReferencesCommand));
+  // Treffersicherheit der Verwendungen (#1119).
+  FReferencesInferred := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesInferred));
+  FReferencesTextMatches := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsReferencesTextMatches));
   FOutline := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutline));
   FOutlineAlphabetical := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineAlphabetical));
   FOutlineFollowCursor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOutlineFollowCursor));
@@ -1954,6 +1986,7 @@ begin
   Bind('InlayCharHints', FInlayCharHints);
   Bind('Problems', FProblems);
   Bind('ProblemsWindow', FProblemsWindow);
+  Bind('ArchitectureEnabled', FArchitecture);
   Bind('ProblemsLive', FProblemsLive);
   Bind('HoverProblemActions', FHoverProblemActions);
   Bind('Notes', FNotes);
@@ -2710,6 +2743,9 @@ begin
   FMarks.Bind(FPeekShowImplementation, ['PeekShowImplementation']);
   FMarks.Bind(FPeekDefinitionKey, ['PeekDefinitionKey']);
   FMarks.Bind(FPeekReferencesKey, ['PeekReferencesKey']);
+  FMarks.Bind(FReferencesInferred, ['ReferencesInferred']);
+  FMarks.Bind(FReferencesTextMatches, ['ReferencesTextMatches']);
+  FMarks.Bind(FCallHierarchyDiagram, ['CallHierarchyDiagram']);
   FMarks.Bind(FOutline, ['Outline']);
   FMarks.Bind(FOutlineAlphabetical, ['OutlineAlphabetical']);
   FMarks.Bind(FOutlineFollowCursor, ['OutlineFollowCursor']);
@@ -2904,6 +2940,10 @@ begin
   FMarks.Bind(FStatusField, ['StatusField']);
   FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
   FMarks.Bind(FDiagnosticsProcesses, ['DiagnosticsProcesses']);
+  FMarks.Bind(FArchitecture, ['ArchitectureEnabled']);
+  FMarks.Bind(FArchitectureScope, ['ArchitectureScope']);
+  FMarks.Bind(FArchitectureLibrary, ['ArchitectureIncludeLibraryUnits']);
+  FMarks.Bind(FArchitectureCentral, ['ArchitectureCentralUnits']);
   FMarks.Bind(FExperimentalEnabled, ['ExperimentalEnabled']);
   FMarks.Bind(FSetupChecklist, ['SetupChecklist']);
   FMarks.Bind(FShortcutTips, ['ShortcutTips']);
@@ -2928,6 +2968,7 @@ begin
   FMarks.Bind(FTestsBuildFirst, ['TestsBuildFirst']);
   FMarks.Bind(FTestsAfterBuild, ['TestsAfterBuild']);
   FMarks.Bind(FBuildZeroHints, ['BuildZeroHints']);
+  FMarks.Bind(FShowInterfaceCost, ['ShowInterfaceCost']);
   FMarks.Bind(FStartProfiles, ['StartProfiles']);
   FMarks.Bind(FStartProfilesStatusField, ['StartProfilesStatusField']);
   FMarks.Bind(FTestDebug, ['TestDebug']);
@@ -2946,6 +2987,8 @@ begin
   FMarks.Bind(FUndoNewFiles, ['UndoMultiFileNewFiles']);
   FMarks.Bind(FUnitSearchEnabled, ['UnitSearchEnabled']);
   FMarks.Bind(FUnitSearchReplace, ['UnitSearchReplaceIdeDialog']);
+  FMarks.Bind(FUnitSearchReplaceUseUnit, ['UnitSearchReplaceUseUnitDialog']);
+  FMarks.Bind(FUnitSearchReplaceForms, ['UnitSearchReplaceFormsDialog']);
   FMarks.Bind(FUnitSearchKey, ['UnitSearchKey']);
   FMarks.Bind(FUnitSearchPathStyle, ['UnitSearchPathStyle']);
   FMarks.Bind(FUnitSearchGroupBy, ['UnitSearchGroupBy']);
@@ -4482,6 +4525,8 @@ procedure TAtlasSettingsPage.AddUnitSearchSection;
 begin
   FUnitSearchEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchEnabled));
   FUnitSearchReplace := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplace));
+  FUnitSearchReplaceUseUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplaceUseUnit));
+  FUnitSearchReplaceForms := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplaceForms));
   FUnitSearchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchKey));
   FUnitSearchPathStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathStyle),
     [TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathRelative),
@@ -4819,6 +4864,9 @@ begin
   FPeekShowImplementation.Checked := ASettings.PeekShowImplementation;
   FPeekDefinitionKey.Text := ShortCutToText(TShortCut(ASettings.PeekDefinitionKey));
   FPeekReferencesKey.Text := ShortCutToText(TShortCut(ASettings.PeekReferencesKey));
+  FReferencesInferred.Checked := ASettings.ReferencesInferred;
+  FReferencesTextMatches.Checked := ASettings.ReferencesTextMatches;
+  FCallHierarchyDiagram.Checked := ASettings.CallHierarchyDiagram;
   FOutline.Checked := ASettings.Outline;
   FOutlineAlphabetical.Checked := ASettings.OutlineAlphabetical;
   FOutlineFollowCursor.Checked := ASettings.OutlineFollowCursor;
@@ -5028,6 +5076,10 @@ begin
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
   FDiagnosticsProcesses.Checked := ASettings.DiagnosticsProcesses;
+  FArchitecture.Checked := ASettings.ArchitectureEnabled;
+  FArchitectureScope.Choice := Max(0, IndexText(ASettings.ArchitectureScope, ['projectGroup', 'project']));
+  FArchitectureLibrary.Checked := ASettings.ArchitectureIncludeLibraryUnits;
+  FArchitectureCentral.Text := IntToStr(ASettings.ArchitectureCentralUnits);
   FExperimentalEnabled.Checked := ASettings.ExperimentalEnabled;
   // Checked löst OnClick nur bei einer Änderung aus.
   FHangTestRow.Visible := ASettings.DiagnosticMode;
@@ -5070,6 +5122,7 @@ begin
   FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
   FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
   FBuildZeroHints.Checked := ASettings.BuildZeroHints;
+  FShowInterfaceCost.Checked := ASettings.ShowInterfaceCost;
   LoadRelease(ASettings);
   FStartProfiles.Checked := ASettings.StartProfiles;
   FStartProfilesStatusField.Checked := ASettings.StartProfilesStatusField;
@@ -5100,6 +5153,8 @@ begin
   FBugReportAnonymize.Checked := ASettings.BugReportAnonymize;
   FUnitSearchEnabled.Checked := ASettings.UnitSearchEnabled;
   FUnitSearchReplace.Checked := ASettings.UnitSearchReplaceIdeDialog;
+  FUnitSearchReplaceUseUnit.Checked := ASettings.UnitSearchReplaceUseUnitDialog;
+  FUnitSearchReplaceForms.Checked := ASettings.UnitSearchReplaceFormsDialog;
   FUnitSearchKey.Text := ShortCutToText(TShortCut(ASettings.UnitSearchKey));
   FUnitSearchPathStyle.Choice := ChoiceOf(ASettings.UnitSearchPathStyle, UnitSearchPathStyles);
   FUnitSearchGroupBy.Choice := ChoiceOf(ASettings.UnitSearchGroupBy, UnitSearchGroupings);
@@ -5234,6 +5289,9 @@ begin
   ASettings.PeekShowImplementation := FPeekShowImplementation.Checked;
   ASettings.PeekDefinitionKey := Integer(TextToShortCut(Trim(FPeekDefinitionKey.Text)));
   ASettings.PeekReferencesKey := Integer(TextToShortCut(Trim(FPeekReferencesKey.Text)));
+  ASettings.ReferencesInferred := FReferencesInferred.Checked;
+  ASettings.ReferencesTextMatches := FReferencesTextMatches.Checked;
+  ASettings.CallHierarchyDiagram := FCallHierarchyDiagram.Checked;
   ASettings.Outline := FOutline.Checked;
   ASettings.OutlineAlphabetical := FOutlineAlphabetical.Checked;
   ASettings.OutlineFollowCursor := FOutlineFollowCursor.Checked;
@@ -5480,6 +5538,13 @@ begin
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
   ASettings.DiagnosticsProcesses := FDiagnosticsProcesses.Checked;
+  ASettings.ArchitectureEnabled := FArchitecture.Checked;
+  if FArchitectureScope.Choice = 1 then
+    ASettings.ArchitectureScope := 'project'
+  else
+    ASettings.ArchitectureScope := 'projectGroup';
+  ASettings.ArchitectureIncludeLibraryUnits := FArchitectureLibrary.Checked;
+  ASettings.ArchitectureCentralUnits := StrToIntDef(FArchitectureCentral.Text, ASettings.ArchitectureCentralUnits);
   ASettings.ExperimentalEnabled := FExperimentalEnabled.Checked;
   ASettings.SetupChecklist := FSetupChecklist.Checked;
   ASettings.ShortcutTips := FShortcutTips.Checked;
@@ -5521,6 +5586,7 @@ begin
   ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
   ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;
   ASettings.BuildZeroHints := FBuildZeroHints.Checked;
+  ASettings.ShowInterfaceCost := FShowInterfaceCost.Checked;
   SaveRelease(ASettings);
   ASettings.StartProfiles := FStartProfiles.Checked;
   ASettings.StartProfilesStatusField := FStartProfilesStatusField.Checked;
@@ -5548,6 +5614,8 @@ begin
   ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.Choice)));
   ASettings.UnitSearchEnabled := FUnitSearchEnabled.Checked;
   ASettings.UnitSearchReplaceIdeDialog := FUnitSearchReplace.Checked;
+  ASettings.UnitSearchReplaceUseUnitDialog := FUnitSearchReplaceUseUnit.Checked;
+  ASettings.UnitSearchReplaceFormsDialog := FUnitSearchReplaceForms.Checked;
   ASettings.UnitSearchKey := Integer(TextToShortCut(Trim(FUnitSearchKey.Text)));
   ASettings.UnitSearchPathStyle := UnitSearchPathStyles[EnsureRange(FUnitSearchPathStyle.Choice, 0, 2)];
   ASettings.UnitSearchGroupBy := UnitSearchGroupings[EnsureRange(FUnitSearchGroupBy.Choice, 0, 2)];

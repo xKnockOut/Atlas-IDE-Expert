@@ -12,6 +12,10 @@ type
     [Test]
     procedure MergesLayersPerKey;
     [Test]
+    procedure ReadsArchitectureSettings;
+    [Test]
+    procedure ReadsArchitectureComparisonSettings;
+    [Test]
     procedure ReadsAllSettings;
     [Test]
     procedure EmptyObjectGivesDefaults;
@@ -29,6 +33,9 @@ type
     procedure ReadsInlayHints;
     [Test]
     procedure ReadsCodeLens;
+    /// <summary>"references" (#1119): erschlossene Treffer an, Textfunde aus.</summary>
+    [Test]
+    procedure ReadsReferences;
     [Test]
     procedure MetricsSwitchesOffMetricRules;
     [Test]
@@ -161,6 +168,69 @@ begin
   Assert.AreEqual(1252, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{"encoding": "cp1252"}',
     Issues).DefaultEncoding);
   Assert.AreEqual(1250, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{}', Issues).DefaultEncoding);
+end;
+
+procedure TConfigurationParserTests.ReadsArchitectureComparisonSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Architekturvergleich (#1121)
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual('', Settings.ArchitectureBaseline);
+  Assert.AreEqual('newCycle', string.Join(',', Settings.ArchitectureFailOn));
+  Settings := Parse('{"architecture": {"baseline": " Stand/main.json ", "failOn": ["newCycle", "centralGrowth"]}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('Stand/main.json', Settings.ArchitectureBaseline);
+  Assert.AreEqual('newCycle,centralGrowth', string.Join(',', Settings.ArchitectureFailOn));
+  Settings := Parse('{"architecture": {"failOn": []}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(0, Integer(Length(Settings.ArchitectureFailOn)));
+  Settings := Parse('{"architecture": {"baseline": 3, "failOn": ["newCycle", "error"]}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.AreEqual('newCycle', string.Join(',', Settings.ArchitectureFailOn));
+  Parse('{"architecture": {"failOn": "newCycle"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{}', '{"architecture": {"baseline": "a.json", ' +
+    '"failOn": ["subsystemChange"]}}', Issues);
+  Assert.AreEqual('a.json', Settings.ArchitectureBaseline);
+  Assert.AreEqual('subsystemChange', string.Join(',', Settings.ArchitectureFailOn));
+end;
+
+procedure TConfigurationParserTests.ReadsArchitectureSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Architekturübersicht (#1118)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.ArchitectureEnabled);
+  Assert.AreEqual('projectGroup', Settings.ArchitectureScope);
+  Assert.IsFalse(Settings.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(15, Settings.ArchitectureCentralUnits);
+  Assert.AreEqual(0, Integer(Length(Settings.ArchitectureExclude)));
+  Settings := Parse('{"architecture": {"enabled": false, "scope": "project", "includeLibraryUnits": true, ' +
+    '"centralUnits": 40, "exclude": ["Tests/**", "*.Tests"]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.ArchitectureEnabled);
+  Assert.AreEqual('project', Settings.ArchitectureScope);
+  Assert.IsTrue(Settings.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(40, Settings.ArchitectureCentralUnits);
+  Assert.AreEqual('Tests/**|*.Tests', string.Join('|', Settings.ArchitectureExclude));
+  Settings := Parse('{"architecture": {"enabled": 1, "scope": "alles", "centralUnits": 4, "exclude": "Tests", ' +
+    '"x": true}}', Issues);
+  Assert.AreEqual(5, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.ArchitectureEnabled);
+  Assert.AreEqual('projectGroup', Settings.ArchitectureScope);
+  Assert.AreEqual(15, Settings.ArchitectureCentralUnits);
+  Settings := Parse('{"architecture": {"centralUnits": 101}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Parse('{"architecture": []}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"architecture": {"centralUnits": 30}}',
+    '{"architecture": {"exclude": ["Demo/**"]}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Settings.ArchitectureExclude)));
 end;
 
 procedure TConfigurationParserTests.MergesLayersPerKey;
@@ -974,6 +1044,30 @@ begin
   // Die Datei ersetzt den Block aus dem Editor.
   Settings := TConfigurationParser.ParseLayered('{"codeLens": {"metrics": false}}', '{"codeLens": {}}', Issues);
   Assert.IsTrue(Settings.CodeLens.Metrics);
+end;
+
+procedure TConfigurationParserTests.ReadsReferences;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.References.Inferred);
+  Assert.IsFalse(Settings.References.TextMatches);
+  Settings := Parse('{"references": {"inferred": false, "textMatches": true}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.References.Inferred);
+  Assert.IsTrue(Settings.References.TextMatches);
+  Settings := Parse('{"references": {"inferred": 1, "x": true}}', Issues);
+  Assert.IsTrue(Settings.References.Inferred);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsFalse(Issues[1].IsError);
+  Parse('{"references": true}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Die Datei ersetzt den Block aus dem Editor.
+  Settings := TConfigurationParser.ParseLayered('{"references": {"inferred": false}}', '{"references": {}}', Issues);
+  Assert.IsTrue(Settings.References.Inferred);
 end;
 
 procedure TConfigurationParserTests.MetricsSwitchesOffMetricRules;

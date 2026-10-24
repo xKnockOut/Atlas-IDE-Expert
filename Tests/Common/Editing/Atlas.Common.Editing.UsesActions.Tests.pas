@@ -25,9 +25,13 @@ type
     [Test]
     procedure MovesUnitUsedOnlyInImplementation;
     [Test]
+    procedure MovesUnitToInterface;
+    [Test]
     procedure UnitUsedInInterfaceIsNotMoved;
     [Test]
     procedure SortsByNamespace;
+    [Test]
+    procedure InterfaceUsagesNameTheNeed;
     [Test]
     procedure MissingUnitIsSuggested;
     [Test]
@@ -36,6 +40,8 @@ type
     procedure ApplyingTwiceGivesSameResult;
     [Test]
     procedure AddsUnitsToMatchingSection;
+    [Test]
+    procedure AddsUnitsToChosenSection;
     /// <summary>#621: ungenutzt, wegen initialization oder usesKeep behalten, nur in der implementation.</summary>
     [Test]
     procedure EntriesNameTheirState;
@@ -217,12 +223,57 @@ begin
     'procedure P;'#10'begin'#10'  Foo; Baz;'#10'end;'#10), Apply(Text, Edits));
 end;
 
+procedure TUsesActionsTests.MovesUnitToInterface;
+var
+  Text: string;
+  Edits: TArray<TRuleEdit>;
+begin
+  // Unit-Beziehungen (#593): aus dem implementation- ins interface-uses, auch ohne interface-uses.
+  Text := Source('Units.A', '', 'Units.B, Units.C', '');
+  Assert.IsTrue(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(Text), Text, ['Units.C'], #10, Edits));
+  Assert.AreEqual(Source('Units.A,'#10'  Units.C', '', 'Units.B', ''), Apply(Text, Edits));
+  Text := Source('', '', 'Units.B', '');
+  Assert.IsTrue(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(Text), Text, ['Units.B'], #10, Edits));
+  Assert.AreEqual('unit U;'#10'interface'#10#10'uses'#10'  Units.B;'#10'implementation'#10#10'end.', Apply(Text, Edits),
+    'leere Liste fällt weg, neue entsteht');
+  Text := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
+  Assert.IsFalse(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(Text), Text, ['Units.B'], #10, Edits),
+    'Programm ohne interface');
+end;
+
 procedure TUsesActionsTests.UnitUsedInInterfaceIsNotMoved;
 var
   Text: string;
 begin
   Text := Source('Units.A', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'  Foo;'#10'end;'#10);
   Assert.AreEqual(0, Integer(Length(TUsesActions.MovableUnits(TPascalLexer.Tokenize(Text), Info))));
+end;
+
+procedure TUsesActionsTests.InterfaceUsagesNameTheNeed;
+var
+  Text: string;
+  Found: TArray<TUsesInterfaceUsage>;
+begin
+  // Unit-Zyklus (#896): Bezeichner im interface-Teil, auch qualifiziert über den Unit-Namen; nicht im uses,
+  // nicht im implementation-Teil.
+  Text := Source('Units.Kunde', 'type'#10'  TA = class(TKunde) end;'#10'  TB = Kunde.TListe;'#10, 'Units.Kunde',
+    'var X: TKunde;'#10);
+  Found := TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(Text), 'Units.Kunde',
+    TArray<string>.Create('TKunde', 'TListe'));
+  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual('TKunde', Found[0].Name);
+  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(13, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('Kunde', Found[1].Name);
+  Assert.AreEqual('TListe', Found[2].Name);
+  // Nur im implementation-Teil gebraucht: verschiebbar.
+  Text := Source('Units.Kunde', '', '', 'var X: TKunde;'#10);
+  Assert.AreEqual(0, Integer(Length(TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(Text), 'Units.Kunde',
+    TArray<string>.Create('TKunde')))));
+  // Programme haben keinen interface-Teil.
+  Text := 'program P;'#10'uses'#10'  Units.Kunde;'#10'var X: TKunde;'#10'begin'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TUsesActions.InterfaceUsages(TPascalLexer.Tokenize(Text), 'Units.Kunde',
+    TArray<string>.Create('TKunde')))));
 end;
 
 procedure TUsesActionsTests.SortsByNamespace;
@@ -317,6 +368,32 @@ begin
   // Programm: das einzige uses.
   Text := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
   Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.C'], Declaring, nil, #10, Edits, Added));
+  Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(Text, Edits));
+end;
+
+procedure TUsesActionsTests.AddsUnitsToChosenSection;
+var
+  Text: string;
+  Edits: TArray<TRuleEdit>;
+  Added: TArray<string>;
+begin
+  // Unit verwenden (#786): Der Umschalter gilt fest, auch wenn der interface-Teil Foo aus Units.A nennt.
+  Text := Source('Units.B', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'end;'#10);
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.A', 'Units.C', 'Units.B'], Declaring, nil,
+    TUsesAddTarget.Implementation_, #10, Edits, Added));
+  Assert.AreEqual('Units.A,Units.C', string.Join(',', Added), 'ohne Duplikat');
+  Assert.AreEqual(1, Integer(Length(Edits)), 'ein Edit, also ein Rückgängig-Schritt');
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B;'#10'procedure P(X: Foo);'#10 +
+    'implementation'#10#10'uses'#10'  Units.A, Units.C;'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.',
+    Apply(Text, Edits));
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.C'], Declaring, nil,
+    TUsesAddTarget.Interface_, #10, Edits, Added));
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'procedure P(X: Foo);'#10 +
+    'implementation'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', Apply(Text, Edits));
+  // Programm: das einzige uses, gleich welcher Abschnitt.
+  Text := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.C'], Declaring, nil,
+    TUsesAddTarget.Implementation_, #10, Edits, Added));
   Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(Text, Edits));
 end;
 

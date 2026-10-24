@@ -54,6 +54,7 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IndexTools,
@@ -67,6 +68,10 @@ uses
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeBuilds,
   Atlas.Common.Mcp.TestTools,
+  Atlas.Common.Mcp.DeadCodeTools,
+  Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Architecture.UsesService,
+  Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Compiler.Contract,
   Atlas.Text.Lines,
@@ -84,6 +89,11 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Builtin,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Service,
+  Atlas.Common.Architecture.Report,
+  Atlas.Common.Architecture.Comparison,
   Atlas.Common.Projects.Contract,
   Shell.Platform,
   Atlas.Common.Diagnostics.Anonymizer,
@@ -416,8 +426,15 @@ begin
     end;
 end;
 
+type
+  /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt); mit ACompareWith
+  /// (absoluter Pfad eines gespeicherten Stands, #1121) der Text des Vergleichs.</summary>
+  TMcpArchitectureFunc = reference to function(ASection: TArchitectureSection;
+    const AUnit, ACompareWith: string): string;
+
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
-  AGroup: TShellWorkspaceGroup; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools);
+  AGroup: TShellWorkspaceGroup; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools;
+  const AArchitecture: TMcpArchitectureFunc);
 var
   CheckSource: TCheckSourceFunc;
   CheckProject: TCheckProjectFunc;
@@ -702,6 +719,31 @@ begin
       Result := TMcpCodeTools.Metrics(AGroup.Main.Configuration.Settings, ARoot, Files, ReadSourceText,
         SameText(Format, 'json'));
     end);
+  AServer.AddTool('get_architecture',
+    'Architekturübersicht (#1118) aus dem uses-Graphen: Teilsysteme (Gruppen eng verbundener Units), zentrale ' +
+    'Units, Zyklen und Querverbindungen zwischen Teilsystemen, je mit Datei:Zeile der uses-Einträge. Mit "unit" ' +
+    'der Steckbrief einer Unit (Teilsystem, Abhängigkeiten, Zyklen, Ausreißer). Mit "compareWith" der Vergleich ' +
+    'mit einem gespeicherten Stand (#1121): neue und entfernte Zyklen, Querverbindungen und uses-Kanten zwischen ' +
+    'Teilsystemen, Teilsystemwechsel, gewachsene zentrale Units, neue und entfernte Units. Umfang und ' +
+    'Bibliotheks-Units aus architecture.* in atlas.json.',
+    '{"type":"object","properties":{' +
+      '"section":{"type":"string","enum":["overview","central","subsystems","cycles","crossLinks"],' +
+        '"description":"Abschnitt; Vorgabe overview"},' +
+      '"unit":{"type":"string","description":"Steckbrief dieser Unit statt eines Abschnitts"},' +
+      '"compareWith":{"type":"string","description":"Gespeicherter Stand (JSON aus AtlasServer --architecture ' +
+        '<Datei.json>), Pfad relativ zum Projekt: liefert die Abschnitte des Vergleichs"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      Section: TArchitectureSection;
+      CompareWith: string;
+    begin
+      if not TArchitectureReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), Section) then
+        raise EMcpToolError.Create('"section" ist overview, central, subsystems, cycles oder crossLinks');
+      CompareWith := TMcpServer.OptionalString(AArguments, 'compareWith');
+      if CompareWith <> '' then
+        CompareWith := AGuard.Resolve(CompareWith);
+      Result := AArchitecture(Section, TMcpServer.OptionalString(AArguments, 'unit'), CompareWith);
+    end);
   AServer.AddTool('get_todos',
     'TODO-Übersicht (#68): Kommentare // TODO, // FIXME und das Format der IDE-To-Do-Liste ' +
     '{ TODO 1 -oPerson -cKategorie : Text } aus allen Dateien des Projekts, mit Priorität, Person und Kategorie. ' +
@@ -872,6 +914,72 @@ begin
     end, TMcpToolKind.Write);
 end;
 
+/// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei den Prüfregeln (#1112).</summary>
+procedure RegisterDeadCodeTools(AServer: TMcpServer; AGroup: TShellWorkspaceGroup; const AIndex: ISymbolIndex;
+  const ARoot: string; AGuard: TMcpPathGuard);
+begin
+  AServer.AddTool('find_unused_code',
+    'Ungenutzter Code (#64): private und öffentliche Member, Deklarationen nur im implementation-Teil und Units, ' +
+    'die nur das Programm nennt, mit dem Index aller Projekte der Gruppe wie im Editor. Schweregrad, Optionen und ' +
+    'deadCode.keepAttributes/keepPatterns aus atlas.json gelten. Als Markdown-Bericht oder als JSON-Daten.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Pfad einer .pas-Datei; leer = alle Projektdateien"},' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":"markdown (Vorgabe) oder json"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      FileName, Format: string;
+      Files: TArray<string>;
+    begin
+      FileName := TMcpServer.OptionalString(AArguments, 'file');
+      Format := TMcpServer.OptionalString(AArguments, 'format');
+      if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+        raise EMcpToolError.Create('"format" ist markdown oder json');
+      if FileName <> '' then
+        Files := [AGuard.Resolve(FileName)]
+      else
+        Files := AGroup.Main.ProjectFiles;
+      if Length(Files) = 0 then
+        raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      Result := TMcpDeadCodeTools.FindUnused(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, Files,
+        AIndex, AGroup.RuleProjectFiles, AGroup.Main.Namespaces, SameText(Format, 'json'));
+    end);
+  AServer.AddTool('get_unit_dependencies',
+    'Abhängigkeiten einer Unit (#64): direkte uses und die Units, die sie verwenden, je mit Abschnitt ' +
+    '(interface/implementation), auf Wunsch die transitiven Hüllen, dazu die Zyklen durch die Unit mit ' +
+    'vollständigem Pfad. Nur Units der Projekte, ohne RTL/VCL. Als Markdown oder als JSON-Daten.',
+    '{"type":"object","properties":{' +
+      '"unit":{"type":"string","description":"Unit-Name (Ref.Daten) oder Pfad der .pas-Datei"},' +
+      '"direction":{"type":"string","enum":["uses","usedBy","both"],"description":"Richtung; Vorgabe both"},' +
+      '"transitive":{"type":"boolean","description":"Auch die transitiven Hüllen; Vorgabe false"},' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":"markdown (Vorgabe) oder json"}},' +
+      '"required":["unit"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      UnitName, Format, Text: string;
+      Direction: TMcpUsesDirection;
+      Transitive: Boolean;
+    begin
+      UnitName := TMcpServer.RequiredString(AArguments, 'unit');
+      if (Pos('\', UnitName) > 0) or (Pos('/', UnitName) > 0) or SameText(ExtractFileExt(UnitName), '.pas') then
+        UnitName := AGuard.Resolve(UnitName);
+      if not TMcpDeadCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction'), Direction) then
+        raise EMcpToolError.Create('"direction" ist uses, usedBy oder both');
+      if not AArguments.TryGetValue<Boolean>('transitive', Transitive) then
+        Transitive := False;
+      Format := TMcpServer.OptionalString(AArguments, 'format');
+      if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+        raise EMcpToolError.Create('"format" ist markdown oder json');
+      Text := '';
+      AGroup.UsesGraph.Read(
+        procedure(const AUses: TUsesGraph)
+        begin
+          Text := TMcpDeadCodeTools.UnitDependencies(AUses, UnitName, ARoot, Direction, Transitive,
+            SameText(Format, 'json'));
+        end);
+      Result := Text;
+    end);
+end;
+
 class function TMcpShell.ToolNames: TArray<string>;
 var
   Server: TMcpServer;
@@ -882,7 +990,8 @@ begin
   // Nur registrieren, nicht aufrufen: Die Werkzeuge greifen erst beim Aufruf auf ihre Dienste zu.
   Server := TMcpServer.Create('Atlas', '0');
   try
-    RegisterTools(Server, nil, nil, nil, '', nil, nil);
+    RegisterTools(Server, nil, nil, nil, '', nil, nil, nil);
+    RegisterDeadCodeTools(Server, nil, nil, nil, nil, '', nil);
     Listed := Server.ListTools;
     try
       for Tool in Listed.GetValue<TJSONArray>('tools') do
@@ -916,6 +1025,7 @@ var
   Root, Warning: string;
   Anonymizer: ILogAnonymizer;
   AllFiles: TFunc<TArray<string>>;
+  Architecture: TArchitectureService;
   EnsureAny: TFunc<string, Boolean>;
   GlobalSettings: string;
 begin
@@ -1012,12 +1122,31 @@ begin
       Result := EnsureAny(AUnitName);
     end);
   Edit.DirtyFiles := EditorDirtyFiles;
+  // Architekturübersicht (#1118): derselbe Dienst wie atlas/architecture und --architecture.
+  Architecture := TArchitectureService.Create(Index,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      // Defines des Projekts, zu dem die Datei gehört (Projektgruppe, #1112).
+      if not Group.WorkspaceOf(AFileName).Defines(Result) then
+        Result := nil;
+    end);
   // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860).
   Edit.CheckSource := CheckSourceOf(Group);
   Code.CheckSource := Edit.CheckSource;
   // Prüfregeln mit Symbolindex und Projektdiensten wie im Server (#1112).
   Edit.CheckProject := CheckProjectOf(Group);
   Code.CheckProject := Edit.CheckProject;
+  // Treffersicherheit wie im Editor (#1119).
+  Code.SettingsFor :=
+    function(const AUri: string): TReferenceSettings
+    begin
+      Result := Workspace.Configuration.Settings.References;
+    end;
+  Edit.SettingsFor := Code.SettingsFor;
   Edit.Audit :=
     procedure(const AText: string)
     begin
@@ -1029,13 +1158,54 @@ begin
   try
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
-    RegisterTools(Server, Tools, Code, Group, Root, Guard, Edit);
+    RegisterTools(Server, Tools, Code, Group, Root, Guard, Edit,
+      function(ASection: TArchitectureSection; const AUnit, ACompareWith: string): string
+      var
+        Settings: TServerSettings;
+        Request: TArchitectureRequest;
+        Overview: TArchitectureOverview;
+        Comparison: TArchitectureComparison;
+        FailOn: TArchitectureFailKinds;
+        Error: string;
+      begin
+        Settings := Workspace.Configuration.Settings;
+        if not Settings.ArchitectureEnabled then
+          raise EMcpToolError.Create('Architekturübersicht ist ausgeschaltet (architecture.enabled)');
+        Request := TArchitectureRequest.FromSettings(Settings);
+        Request.Title := ExtractFileName(Root);
+        Request.Root := Root;
+        Request.Namespaces := Workspace.Namespaces;
+        // Projektgruppe (#648): die Dateien aller geladenen Projekte, sonst nur die des Hauptprojekts.
+        if Request.Scope = 'project' then
+          Request.Files := Workspace.ProjectFiles
+        else
+          Request.Files := AllFiles();
+        if Length(Request.Files) = 0 then
+          raise EMcpToolError.Create('Kein Projekt geladen');
+        Overview := Architecture.Overview(Request);
+        if ACompareWith <> '' then
+        begin
+          if not TArchitectureComparer.CompareWithFile(ACompareWith, Overview, Comparison, Error) then
+            raise EMcpToolError.Create(Error);
+          if not TArchitectureComparer.ParseKinds(Settings.ArchitectureFailOn, FailOn, Error) then
+            FailOn := TArchitectureComparer.DefaultFailOn;
+          Result := TArchitectureComparer.Text(Comparison, FailOn, TArchitectureReport.TextLimit);
+        end
+        else if AUnit <> '' then
+          Result := TArchitectureReport.UnitText(Overview, AUnit)
+        else
+          Result := TArchitectureReport.Text(Overview, ASection, TArchitectureReport.TextLimit);
+      end);
+    RegisterDeadCodeTools(Server, Group, Index, Root, Guard);
     // Sicherheit (#99).
     Server.Restricted := AOptions.Restricted;
     Server.OnDisabledTools :=
       function: TArray<string>
       begin
         Result := Workspace.Configuration.Settings.McpDisabledTools;
+        // Abgeschaltete Funktion (#227): Werkzeug gar nicht anbieten.
+        if not Workspace.Configuration.Settings.ArchitectureEnabled then
+          Result := Result + ['get_architecture'];
       end;
     Server.OnAudit :=
       procedure(AText: string)
@@ -1098,6 +1268,7 @@ begin
     Edit.Free;
     Code.Free;
     Tools.Free;
+    Architecture.Free;
     Group.Free;
   end;
 end;

@@ -290,12 +290,9 @@ type
     class function MergeRuleProjects(const AProjects: TArray<TCheckProject>;
       const AFileName: string): TCheckProject; static;
     /// <summary>Projekt dieses Arbeitsbereichs für projektweite Regeln (#1102) mit Datei und Quelltexten, dazu
-    /// der Hauptquelltext; False ohne geladenes Projekt. Threadsicher, liest keine Dateien.</summary>
+    /// der Hauptquelltext; False ohne geladenes Projekt. Threadsicher, liest keine Dateien; Art, Test-Projekt und
+    /// Formulare ergänzt TRuleProjectFiles.ProjectOf außerhalb von Sperren.</summary>
     function RuleProject(out AProject: TRuleProject; out AMainSource: string): Boolean;
-    /// <summary>Art, Test-Projekt und Formulardateien von AProject aus dem Hauptquelltext AMainSource; liest
-    /// Dateien, deshalb außerhalb von Sperren aufrufen.</summary>
-    class procedure CompleteRuleProject(var AProject: TRuleProject; const AMainSource: string;
-      const AReadText: TRuleProjectReadText); static;
     /// <summary>Projekt geladen und Index fertig (#1102, #1112)? Sonst der Grund in AReason. Ein Arbeitsbereich
     /// ohne geladenes Projekt kann Verwendungen enthalten, die keiner kennt. Threadsicher.</summary>
     function RuleReady(out AReason: string): Boolean;
@@ -1351,28 +1348,6 @@ begin
   AProject.FileName := ProjectFileName;
   AProject.Sources := ProjectFiles;
   AMainSource := Info.MainSource;
-end;
-
-class procedure TShellWorkspace.CompleteRuleProject(var AProject: TRuleProject; const AMainSource: string;
-  const AReadText: TRuleProjectReadText);
-var
-  Source, Text: string;
-begin
-  if AReadText(AMainSource, Text) then
-  begin
-    AProject.Kind := TRuleProjectFiles.KindOfSource(AMainSource, Text);
-    AProject.IsTest := TRuleProjectFiles.IsTestSource(Text);
-  end
-  else if SameText(ExtractFileExt(AMainSource), '.dpk') then
-    AProject.Kind := TRuleProjectKind.Package;
-  for Source in AProject.Sources do
-    if SameText(ExtractFileExt(Source), '.pas') then
-    begin
-      if TFile.Exists(ChangeFileExt(Source, '.dfm')) then
-        AProject.Forms := AProject.Forms + [ChangeFileExt(Source, '.dfm')]
-      else if TFile.Exists(ChangeFileExt(Source, '.fmx')) then
-        AProject.Forms := AProject.Forms + [ChangeFileExt(Source, '.fmx')];
-    end;
 end;
 
 function TShellWorkspace.RuleReady(out AReason: string): Boolean;

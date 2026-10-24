@@ -127,7 +127,7 @@ uses
   Atlas.Common.Rules.Suppressions;
 
 type
-  TRuleReport = class(TInterfacedObject, IRuleReport)
+  TRuleReport = class(TInterfacedObject, IRuleReport, IRuleRelatedReport)
   private
     FRuleId: string;
     FSeverity: TRuleSeverity;
@@ -143,6 +143,8 @@ type
       const AFixes: TArray<TRuleFix>);
     procedure AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string; AConfidence: TRuleConfidence;
       const AFixes: TArray<TRuleFix>);
+    procedure AddRelated(const ARange: TTextRange; const AMessage, ADetails: string; ASeverity: TRuleSeverity;
+      const AFixes: TArray<TRuleFix>; const ARelated: TArray<TRuleRelated>);
   end;
 
 /// <summary>Hinweis unit-too-deep an der tiefsten Stelle einer Unit, deren Baum tiefer als MaxTreeDepth ist
@@ -272,6 +274,27 @@ begin
   Finding.Confidence := TRuleConfidence.High;
   Finding.Fixes := AFixes;
   Finding.Details := '';
+  FFindings.Add(Finding);
+end;
+
+procedure TRuleReport.AddRelated(const ARange: TTextRange; const AMessage, ADetails: string; ASeverity: TRuleSeverity;
+  const AFixes: TArray<TRuleFix>; const ARelated: TArray<TRuleRelated>);
+var
+  Finding: TRuleFinding;
+begin
+  if ASeverity = TRuleSeverity.Off then
+    Exit;
+  Finding.RuleId := FRuleId;
+  Finding.Range := ARange;
+  Finding.Message := AMessage;
+  if ASeverity = TRuleSeverity.Default then
+    Finding.Severity := FSeverity
+  else
+    Finding.Severity := ASeverity;
+  Finding.Confidence := TRuleConfidence.High;
+  Finding.Fixes := AFixes;
+  Finding.Details := ADetails;
+  Finding.Related := ARelated;
   FFindings.Add(Finding);
 end;
 
@@ -556,6 +579,12 @@ begin
       Context.FreeFieldsFreeAndNil := SameText(Settings.Refactoring.FreeFieldsStyle, 'freeAndNil');
       Context.AccessorsProtected := Settings.Completion.AccessorSection = TCompletionAccessorSection.Protected;
       Context.Formatting := Settings.Formatting;
+      Context.KeepAttributes := Settings.DeadCodeKeepAttributes;
+      Context.KeepPatterns := Settings.DeadCodeKeepPatterns;
+      Context.NoUsesCycleLive := not Settings.DiagnosticsUsesCycleLive;
+      Context.UsesCycleImplementation := Settings.DiagnosticsUsesCycleImplementation;
+      Context.SortUses := Settings.SortUses;
+      Context.SortUsesByNamespace := Settings.SortUsesByNamespace;
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
       // Erst in einer Interface-Variablen halten: Check nimmt den Report als

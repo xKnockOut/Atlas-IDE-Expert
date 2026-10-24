@@ -5,7 +5,9 @@
 // enthält. Es entsteht beim ersten Gebrauch, folgt dem IDE-Thema und lässt
 // sich wie die Fenster der IDE andocken. Beim Entladen des Packages gibt
 // Release es frei. Das Fenster trägt das Atlas-Symbol (#751) zum IDE-Thema;
-// ApplyTheme färbt nach einem Themenwechsel um, samt Symbol.
+// ApplyTheme färbt nach einem Themenwechsel um, samt Symbol. Das
+// Aufrufdiagramm (#1122) ist nur erlaubt, solange DiagramAllowed True liefert
+// (callHierarchy.diagram); ApplySettings überträgt das nach einer Änderung.
 
 interface
 
@@ -32,12 +34,23 @@ type
     /// <summary>Liste der Notizen (#545): bearbeiten, löschen.</summary>
     OnNoteEdit: TAtlasNoteAction;
     OnNoteDelete: TAtlasNoteAction;
+    /// <summary>Aufrufdiagramm erlaubt (#1122, callHierarchy.diagram); nil = nein. Setzt die Composition.</summary>
+    DiagramAllowed: TFunc<Boolean>;
+    /// <summary>Datei gehört zu einem Projekt der Gruppe („Nur Projekt-Units“ im Diagramm); nil = alle.</summary>
+    IsProjectFile: TFunc<string, Boolean>;
   public
     /// <summary>Fenster zeigen (bei Bedarf anlegen); nil, wenn die IDE keine andockbaren Fenster anbietet.</summary>
     class function Frame: TAtlasResultsFrame; static;
     class procedure ShowEntries(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>); static;
+    /// <summary>Verwendungen getrennt nach Treffersicherheit (#1119): „Sicher“ und „Erschlossen“.</summary>
+    class procedure ShowReferences(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>); static;
     class procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
-      const ARoots: TArray<TAtlasHierarchyItem>); static;
+      const ARoots: TArray<TAtlasHierarchyItem>); overload; static;
+    /// <summary>Wie oben; AAsDiagram: gleich als Aufrufdiagramm (#1122), sofern erlaubt.</summary>
+    class procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
+      const ARoots: TArray<TAtlasHierarchyItem>; AAsDiagram: Boolean); overload; static;
+    /// <summary>Nach geänderten Einstellungen: Diagramm erlauben oder abschalten (#1122).</summary>
+    class procedure ApplySettings; static;
     /// <summary>Liste „Atlas-Änderungen“ (#721), neueste Sätze zuerst.</summary>
     class procedure ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>); static;
     /// <summary>Notizen des Projekts (#545); ASelectId: diese Notiz wählen.</summary>
@@ -242,14 +255,43 @@ begin
     Target.ShowEntries(ATitle, TAtlasResults.Group(AEntries));
 end;
 
-class procedure TAtlasIdeResultsWindow.ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
-  const ARoots: TArray<TAtlasHierarchyItem>);
+class procedure TAtlasIdeResultsWindow.ShowReferences(const ATitle: string;
+  const AEntries: TArray<TAtlasResultEntry>);
 var
   Target: TAtlasResultsFrame;
 begin
   Target := Frame;
   if Target <> nil then
-    Target.ShowHierarchy(ATitle, ADirection, ARoots);
+    Target.ShowRated(ATitle, AEntries, TAtlasStrings.Text(TAtlasTextId.ResultsSureGroup),
+      TAtlasStrings.Text(TAtlasTextId.ResultsInferredGroup));
+end;
+
+class procedure TAtlasIdeResultsWindow.ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
+  const ARoots: TArray<TAtlasHierarchyItem>);
+begin
+  ShowHierarchy(ATitle, ADirection, ARoots, False);
+end;
+
+class procedure TAtlasIdeResultsWindow.ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
+  const ARoots: TArray<TAtlasHierarchyItem>; AAsDiagram: Boolean);
+var
+  Target: TAtlasResultsFrame;
+begin
+  Target := Frame;
+  if Target = nil then
+    Exit;
+  Target.DiagramAllowed := Assigned(DiagramAllowed) and DiagramAllowed();
+  Target.IsProjectFile := IsProjectFile;
+  Target.ShowHierarchy(ATitle, ADirection, ARoots, AAsDiagram);
+end;
+
+class procedure TAtlasIdeResultsWindow.ApplySettings;
+var
+  Target: TAtlasResultsFrame;
+begin
+  Target := ExistingFrame;
+  if Target <> nil then
+    Target.DiagramAllowed := Assigned(DiagramAllowed) and DiagramAllowed();
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>);

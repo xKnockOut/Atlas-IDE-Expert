@@ -43,6 +43,9 @@ const
   GoToPositionCommand = 'atlas.goToPosition';
   /// <summary>Wie GoToPositionCommand; danach öffnet der Client den Parameter-Hint an der Stelle (#1007).</summary>
   ShowSignatureHelpCommand = 'atlas.showSignatureHelp';
+  /// <summary>Client-Befehl, der die Unit-Beziehungen (#593) der Datei der Aktion zeigt, z. B. „Graph zeigen“ an
+  /// einem Unit-Zyklus (#896).</summary>
+  ShowUnitRelationsCommand = 'atlas.showUnitRelations';
   /// <summary>Kennungen der uses-Aktionen für den Hover des Plugins (#621), in data.tag.</summary>
   UsesRemoveTag = 'uses.remove';
   UsesRemoveAllTag = 'uses.removeAll';
