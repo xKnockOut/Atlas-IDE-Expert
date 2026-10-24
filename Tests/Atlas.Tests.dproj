@@ -1018,6 +1018,9 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Results\Atlas.Core.Results.DataFlow.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Results.DataFlow.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Results.DataFlow.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.AccessChains.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.AccessViolation.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.AccessViolation.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AccessChains.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Debug.AccessViolation.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Debug.AccessViolation.Tests.pas"/>
