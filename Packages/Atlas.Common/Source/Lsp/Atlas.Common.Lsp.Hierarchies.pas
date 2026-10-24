@@ -98,6 +98,17 @@ type
     /// <summary>Routine oder Methode an APosition, als Deklaration.</summary>
     class function CallItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const APosition: TTextPosition; out AItem: THierarchyItem): Boolean; static;
+    /// <summary>Symbol jeder Art an APosition (Routine, Typ, Feld, Konstante …), als Deklaration (#1120).</summary>
+    class function SymbolItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+      const APosition: TTextPosition; out AItem: THierarchyItem): Boolean; static;
+    /// <summary>Routine mit Rumpf, in der APosition steht, als Aufrufer (procedure TFoo.Bar → Bar in TFoo). False
+    /// außerhalb von Routinen und im Kopf der Routine selbst, der deklariert und nicht aufruft.</summary>
+    class function CallerAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+      out AItem: THierarchyItem): Boolean; static;
+    /// <summary>Element zu einem Symbol aus dem Index.</summary>
+    class function ItemOf(const AUnitName, AFileName: string; const ASymbol: TIndexSymbol): THierarchyItem; static;
+    /// <summary>Ist das Element eine Routine oder Methode?</summary>
+    class function IsRoutine(const AItem: THierarchyItem): Boolean; static;
     class function IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AItem: THierarchyItem;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText;
       const ACancellation: IJsonRpcCancellationToken = nil): TArray<THierarchyCall>; overload; static;
@@ -286,7 +297,11 @@ begin
   begin
     if Token.Offset >= ANode.EndOffset then
       Break;
-    if (Token.Offset >= ANode.StartOffset) and (Token.Kind = TPascalTokenKind.Identifier) and
+    // Erst ab dem Knoten: Ein Semikolon davor (unit X;) beendete die Suche sonst vor dem Kopf, und der Name
+    // fehlte in SelectionRange (#1120).
+    if Token.Offset < ANode.StartOffset then
+      Continue;
+    if (Token.Kind = TPascalTokenKind.Identifier) and
       (SameText(Token.Text, Result.Name) or SameText(Token.Text, '&' + Result.Name)) then
     begin
       // Bei TFoo.Bar das letzte Vorkommen im Kopf; der Name folgt dem Typ.
@@ -464,6 +479,46 @@ begin
     Result := DeclarationAt(ATree, AFileName, APosition, RoutineKinds, AItem);
 end;
 
+class function TLspHierarchies.SymbolItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const APosition: TTextPosition; out AItem: THierarchyItem): Boolean;
+var
+  Resolved: TResolvedSymbol;
+begin
+  Resolved := AResolver.Resolve(ATree, AFileName, APosition);
+  Result := Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local];
+  if Result then
+    AItem := FromResolved(Resolved)
+  else
+    Result := DeclarationAt(ATree, AFileName, APosition, [Low(TIndexSymbolKind)..High(TIndexSymbolKind)], AItem);
+end;
+
+class function TLspHierarchies.CallerAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+  out AItem: THierarchyItem): Boolean;
+var
+  Routine, Header: TSyntaxNode;
+begin
+  Result := False;
+  Routine := EnclosingRoutine(ATree.Root, APosition);
+  if Routine = nil then
+    Exit;
+  // Der Kopf der Implementierung (procedure TFoo.Bar) ist kein Aufruf.
+  Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
+  if (Header <> nil) and RangeContains(NodeRange(Header), APosition) then
+    Exit;
+  AItem := RoutineItem(ATree, Routine, AFileName);
+  Result := True;
+end;
+
+class function TLspHierarchies.ItemOf(const AUnitName, AFileName: string; const ASymbol: TIndexSymbol): THierarchyItem;
+begin
+  Result := FromIndex(AUnitName, AFileName, ASymbol);
+end;
+
+class function TLspHierarchies.IsRoutine(const AItem: THierarchyItem): Boolean;
+begin
+  Result := AItem.SymbolKind in RoutineKinds;
+end;
+
 class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AItem: THierarchyItem; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
   const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
@@ -482,7 +537,6 @@ var
   Keys: TDictionary<string, Integer>;
   Locations: TArray<TReferenceLocation>;
   Location: TReferenceLocation;
-  Routine, Header: TSyntaxNode;
   Caller: THierarchyItem;
   Call: THierarchyCall;
   Key: string;
@@ -513,14 +567,8 @@ begin
         Tree := TSyntaxTreeCache.Parse(Text);
         Trees.Add(UpperCase(Location.FileName), Tree);
       end;
-      Routine := EnclosingRoutine(Tree.Root, Location.Range.StartPos);
-      if Routine = nil then
+      if not CallerAt(Tree, Location.FileName, Location.Range.StartPos, Caller) then
         Continue;
-      // Der Kopf der Implementierung (procedure TFoo.Bar) ist kein Aufruf.
-      Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
-      if (Header <> nil) and RangeContains(NodeRange(Header), Location.Range.StartPos) then
-        Continue;
-      Caller := RoutineItem(Tree, Routine, Location.FileName);
       // Sichere und erschlossene Aufrufe desselben Aufrufers getrennt, damit der Editor sie unterscheidet.
       Key := ItemKey(Caller) + '|' + Location.Confidence.LevelName + '|' + Location.Confidence.ReasonName;
       if Keys.TryGetValue(Key, Slot) then

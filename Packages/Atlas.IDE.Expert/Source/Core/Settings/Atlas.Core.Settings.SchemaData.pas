@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2340] of string = (
+  Lines: array[0..2352] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2045,7 +2045,8 @@ const
     '    "navigation": {',
     '      "type": "object",',
     '      "description": "Navigation über den Code: Weg zwischen zwei Symbolen oder Units über Aufrufe, Felder, Interfaces, Vererbung und uses (Plugin-Befehl „Weg zwischen Symbolen…“, MCP-Werkzeug find_pa' +
-      'th).",',
+      'th) und Auswirkungsanalyse: Was ist betroffen, wenn ich ein Symbol ändere? Aufrufer, Verweise, Overrides, Interface-Umsetzungen und Formularbindungen nach Ebenen, dazu die betroffenen Tests (Plugin-Be' +
+      'fehl „Auswirkungen anzeigen“, MCP-Werkzeug get_impact).",',
     '      "additionalProperties": false,',
     '      "properties": {',
     '        "symbolPath": {',
@@ -2053,13 +2054,26 @@ const
     '          "default": true,',
     '          "description": "Befehl „Weg zwischen Symbolen…“ im Plugin mit Einträgen im Menü Atlas, im Kontextmenü des Editors („Weg von hier nach…“) und in der Befehlspalette; aus = Befehl und Menüeintr' +
       'äge fehlen. Das MCP-Werkzeug schaltet mcp.disabledTools (find_path) ab."',
+    '        },',
+    '        "impact": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Befehl „Auswirkungen anzeigen“ im Plugin mit Einträgen im Kontextmenü, im Menü Atlas und in der Befehlspalette; aus = Befehl und Menüeinträge fehlen. Das MCP-Werkzeug schalte' +
+      't mcp.disabledTools (get_impact) ab."',
+    '        },',
+    '        "impactDepth": {',
+    '          "type": "integer",',
+    '          "default": 2,',
+    '          "minimum": 1,',
+    '          "maximum": 5,',
+    '          "description": "Vorgabe der Tiefe der Auswirkungsanalyse in IDE und MCP: 1 = nur direkte Aufrufer und Verweise, jede weitere Ebene geht einen Schritt weiter zurück."',
     '        }',
     '      },',
     '      "x-scope": "global",',
     '      "x-area": "editor",',
     '      "x-page": "Befehle",',
-    '      "x-control": "Kontrollkästchen",',
-    '      "x-issue": "#1117"',
+    '      "x-control": "Kontrollkästchen, Zahlenfeld",',
+    '      "x-issue": "#1117, #1120"',
     '    },',
     '    "hints": {',
     '      "type": "object",',

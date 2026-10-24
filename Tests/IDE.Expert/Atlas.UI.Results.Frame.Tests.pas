@@ -23,12 +23,27 @@ type
     procedure MarksInferredEntriesAndCallers;
   end;
 
+  /// <summary>Auswirkungsanalyse (#1120): Abschnitte, Baum nach Ursachen, Tiefe und Testlauf.</summary>
+  [TestFixture]
+  TAtlasResultsFrameImpactTests = class
+  public
+    [Test]
+    procedure SectionsAndCauseTree;
+    [Test]
+    procedure DepthAndRunTestsCallBack;
+    [Test]
+    procedure TextsOfPlacesFormsAndLimits;
+    [Test]
+    procedure OtherListsHideImpactControls;
+  end;
+
 implementation
 
 uses
   System.SysUtils,
   Vcl.Forms,
   Atlas.Core.Results.Model,
+  Atlas.Core.Lsp.Contract,
   Atlas.UI.Strings,
   Atlas.UI.Results.Frame;
 
@@ -140,7 +155,172 @@ begin
     TAtlasResultsFrame.HierarchyText(Item));
 end;
 
+{ TAtlasResultsFrameImpactTests }
+
+function Place(const AName, AFileName: string; ALine, ALevel, ACause: Integer): TAtlasImpactPlace;
+begin
+  Result := Default(TAtlasImpactPlace);
+  Result.Item.Name := AName;
+  Result.Item.FileName := AFileName;
+  Result.Item.Line := ALine;
+  Result.Level := ALevel;
+  Result.Edge := 'call';
+  Result.Cause := ACause;
+  Result.UseLine := ALine + 2;
+  Result.UseCount := 1;
+end;
+
+function SampleImpact: TAtlasImpact;
+var
+  Form: TAtlasImpactForm;
+  Test: TAtlasImpactTest;
+begin
+  Result := Default(TAtlasImpact);
+  Result.Symbol.Name := 'Ziel';
+  Result.Depth := 2;
+  Result.Places := TArray<TAtlasImpactPlace>.Create(Place('Hilfe', 'C:\P\Werkzeug.pas', 31, 1, -1),
+    Place('Button1Click', 'C:\P\Haupt.pas', 9, 2, 0), Place('PrueftHilfe', 'C:\P\Werkzeug.Tests.pas', 11, 2, 0));
+  Result.Places[0].UseCount := 2;
+  Form := Default(TAtlasImpactForm);
+  Form.FileName := 'C:\P\Haupt.dfm';
+  Form.Line := 2;
+  Form.Text := 'OnClick = Button1Click';
+  Result.Places[1].Forms := TArray<TAtlasImpactForm>.Create(Form);
+  Result.Places[2].Test := 'Werkzeug.Tests.TWerkzeugTests.PrueftHilfe';
+  Test := Default(TAtlasImpactTest);
+  Test.Name := 'Werkzeug.Tests.TWerkzeugTests.PrueftHilfe';
+  Test.RunNames := TArray<string>.Create(Test.Name);
+  Test.FileName := 'C:\P\Werkzeug.Tests.pas';
+  Test.Line := 11;
+  Test.Level := 2;
+  Result.Tests := TArray<TAtlasImpactTest>.Create(Test);
+  Result.DepthReached := True;
+  Result.Unexpanded := 2;
+end;
+
+procedure TAtlasResultsFrameImpactTests.SectionsAndCauseTree;
+var
+  Host: TForm;
+  Frame: TAtlasResultsFrame;
+begin
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TAtlasResultsFrame.Create(Host);
+    Frame.Parent := Host;
+    Frame.ShowImpact('Auswirkungen', SampleImpact);
+    Assert.IsTrue(Frame.ShowsImpact);
+    // Direkt (1): Hilfe; Indirekt (2): Hilfe › Button1Click › Formular, PrueftHilfe; Tests (1); Grenze.
+    Assert.AreEqual(10, Integer(Frame.Tree.Items.Count));
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactDirect, [1]), Frame.Tree.Items[0].Text);
+    Assert.AreEqual('Hilfe  (Werkzeug.pas:32)  ×2', Frame.Tree.Items[1].Text);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactIndirect, [2]), Frame.Tree.Items[2].Text);
+    Assert.AreEqual(2, Frame.Tree.Items[4].Level, 'Button1Click unter Hilfe');
+    Assert.AreEqual(3, Frame.Tree.Items[5].Level, 'Formular unter dem Handler');
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactForm, ['OnClick = Button1Click', 'Haupt.dfm', 3]),
+      Frame.Tree.Items[5].Text);
+    Assert.AreEqual('PrueftHilfe  (Werkzeug.Tests.pas:12)  · Test', Frame.Tree.Items[6].Text);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactTests, [1]), Frame.Tree.Items[7].Text);
+    Assert.AreEqual('Werkzeug.Tests.TWerkzeugTests.PrueftHilfe  (Werkzeug.Tests.pas:12)', Frame.Tree.Items[8].Text);
+    Assert.AreEqual('⚠ ' + TAtlasStrings.Fmt(TAtlasTextId.ImpactLimitDepth, [2, 2]), Frame.Tree.Items[9].Text);
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasResultsFrameImpactTests.DepthAndRunTestsCallBack;
+var
+  Host: TForm;
+  Frame: TAtlasResultsFrame;
+  Depth: Integer;
+  Names: TArray<string>;
+begin
+  Depth := 0;
+  Names := nil;
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TAtlasResultsFrame.Create(Host);
+    Frame.Parent := Host;
+    Frame.OnImpactDepth :=
+      procedure(ADepth: Integer)
+      begin
+        Depth := ADepth;
+      end;
+    Frame.OnImpactRunTests :=
+      procedure(const AImpact: TAtlasImpact)
+      begin
+        Names := AImpact.RunNames;
+      end;
+    Frame.ShowImpact('Auswirkungen', SampleImpact);
+    Assert.IsTrue(Frame.DepthBox.Visible);
+    Assert.AreEqual(5, Integer(Frame.DepthBox.Items.Count));
+    Assert.AreEqual(1, Frame.DepthBox.ItemIndex, 'Tiefe 2');
+    Assert.AreEqual(0, Depth, 'Anzeigen löst keine neue Anfrage aus');
+    Frame.DepthBox.ItemIndex := 3;
+    Frame.DepthBox.OnChange(Frame.DepthBox);
+    Assert.AreEqual(4, Depth);
+    Assert.IsTrue(Frame.RunTestsButton.Enabled);
+    Frame.RunTestsButton.Click;
+    Assert.AreEqual(1, Integer(Length(Names)));
+    Assert.AreEqual('Werkzeug.Tests.TWerkzeugTests.PrueftHilfe', Names[0]);
+  finally
+    Host.Free;
+  end;
+  Names := nil;
+end;
+
+procedure TAtlasResultsFrameImpactTests.TextsOfPlacesFormsAndLimits;
+var
+  Item: TAtlasImpactPlace;
+  Impact: TAtlasImpact;
+  Limits: TArray<string>;
+begin
+  Item := Place('TKind', 'C:\P\Werkzeug.pas', 10, 1, -1);
+  Item.Edge := 'override';
+  Assert.AreEqual('TKind  (Werkzeug.pas:11)  · ' + TAtlasStrings.Text(TAtlasTextId.ImpactEdgeOverride),
+    TAtlasResultsFrame.ImpactPlaceText(Item));
+  Item.Edge := 'reference';
+  Item.Terminal := True;
+  Item.Item.Name := 'Haupt';
+  Assert.AreEqual('Haupt · ' + TAtlasStrings.Text(TAtlasTextId.ImpactUnitLevel) + '  (Werkzeug.pas:13)  · ' +
+    TAtlasStrings.Text(TAtlasTextId.ImpactEdgeReference), TAtlasResultsFrame.ImpactPlaceText(Item));
+  Impact := Default(TAtlasImpact);
+  Impact.CountReached := True;
+  Impact.MaxPlaces := 1000;
+  Impact.TimeReached := True;
+  Impact.TimeoutMs := 8000;
+  Limits := TAtlasResultsFrame.ImpactLimitTexts(Impact);
+  Assert.AreEqual(2, Integer(Length(Limits)));
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactLimitCount, [1000]), Limits[0]);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactLimitTime, [8000]), Limits[1]);
+  Limits := nil;
+end;
+
+procedure TAtlasResultsFrameImpactTests.OtherListsHideImpactControls;
+var
+  Host: TForm;
+  Frame: TAtlasResultsFrame;
+  Impact: TAtlasImpact;
+begin
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := TAtlasResultsFrame.Create(Host);
+    Frame.Parent := Host;
+    Impact := SampleImpact;
+    Impact.Tests := nil;
+    Frame.ShowImpact('Auswirkungen', Impact);
+    Assert.IsFalse(Frame.RunTestsButton.Enabled, 'ohne Tests nichts auszuführen');
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ImpactNoTests), Frame.Tree.Items[7].Text);
+    Frame.ShowEntries('Implementierungen', TAtlasResults.Group(Sample));
+    Assert.IsFalse(Frame.ShowsImpact);
+    Assert.IsFalse(Frame.DepthBox.Visible);
+    Assert.IsFalse(Frame.RunTestsButton.Visible);
+  finally
+    Host.Free;
+  end;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasResultsFrameRatedTests);
+  TDUnitX.RegisterTestFixture(TAtlasResultsFrameImpactTests);
 
 end.

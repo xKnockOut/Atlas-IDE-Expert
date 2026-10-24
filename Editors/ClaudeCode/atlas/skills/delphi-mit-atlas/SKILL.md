@@ -18,6 +18,7 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
    - `get_rationale` vor einem Umbau: warum eine Unit oder ein Symbol so gebaut ist (Begründungskommentare mit Zeile)
    - `get_type_hierarchy` für Vorfahren und Nachfahren
    - `find_references` bzw. `get_call_hierarchy` für Verwendungen und Aufrufe
+   - `get_impact` vor einer Änderung an einer Methode oder einem Typ: betroffene Stellen über mehrere Ebenen und die Tests, die danach mit `run_tests` laufen sollten
    - `get_unit_outline` statt eine ganze Unit zu lesen
    - `get_dfm_info` bzw. `get_component_info` für Formulare und Komponenten
 

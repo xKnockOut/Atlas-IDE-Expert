@@ -54,6 +54,7 @@ uses
   Atlas.Common.Lsp.SignatureHelp,
   Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Lsp.Impact,
   Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.CodeLens,
@@ -155,6 +156,7 @@ type
     FCompletion: TLspCompletion;
     FSignatureHelp: TLspSignatureHelp;
     FHierarchies: TLspHierarchies;
+    FImpact: TImpactAnalysis;
     FImplementations: TLspImplementations;
     FInlayHints: TLspInlayHints;
     FCodeLens: TLspCodeLens;
@@ -437,6 +439,9 @@ type
     function FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
     /// <summary>"references" (#1119): Treffersicherheit für Verwendungen, Aufrufer und Umbenennen.</summary>
     function ReferenceSettingsFor(const AUri: string): TReferenceSettings;
+    /// <summary>Auswirkungsanalyse (#1120): Tiefe aus "navigation", Treffersicherheit, Testunits des Testprogramms
+    /// und ein Zeitlimit unter dem der Anfrage, damit die Antwort mit Hinweis statt eines Abbruchs kommt.</summary>
+    function ImpactOptionsFor(const AUri: string): TImpactOptions;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
     function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
     function FormatStyleFor(const AUri: string): TFormatStyle;
@@ -1190,6 +1195,12 @@ begin
     EnsureUnit);
   FHierarchies.SettingsFor := ReferenceSettingsFor;
   FHierarchies.Attach(FDispatcher);
+  FImpact := TImpactAnalysis.Create(FDocuments, FIndex,
+    ReadSourceText,
+    ProjectSourceFiles,
+    EnsureUnit);
+  FImpact.OptionsFor := ImpactOptionsFor;
+  FImpact.Attach(FDispatcher);
   FImplementations := TLspImplementations.Create(FDocuments, FIndex,
     EnsureUnit);
   FImplementations.Attach(FDispatcher);
@@ -2171,6 +2182,7 @@ begin
   FBaseline.Free;
   FInlayHints.Free;
   FImplementations.Free;
+  FImpact.Free;
   FHierarchies.Free;
   FSignatureHelp.Free;
   FCompletion.Free;
@@ -4036,6 +4048,25 @@ begin
   Result := SettingsFor(AUri).References;
 end;
 
+function TServerComposition.ImpactOptionsFor(const AUri: string): TImpactOptions;
+var
+  Context: TTestUnitContext;
+  Text: string;
+begin
+  Result := TImpactOptions.Default;
+  Result.Depth := SettingsFor(AUri).Navigation.ImpactDepth;
+  Result.References := ReferenceSettingsFor(AUri);
+  // Vier Fünftel des Zeitlimits der Anfrage: Danach bräche der Watchdog sie ohne Ergebnis ab.
+  Result.TimeoutMs := Integer(FRequestTimeout div 5 * 4);
+  if TestUnitContextFor(AUri, Context) then
+  begin
+    Text := '';
+    if (Context.TestProgram <> '') and not ReadSourceText(Context.TestProgram, Text) then
+      Text := '';
+    Result.Tests := TImpactTestScope.FromProgram(Context.Settings.Pattern, Text);
+  end;
+end;
+
 function TServerComposition.RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
 begin
   Result := SettingsFor(AUri).Refactoring;
@@ -4465,6 +4496,7 @@ begin
   FCompletion.Namespaces := Namespaces;
   FSignatureHelp.Namespaces := Namespaces;
   FHierarchies.Namespaces := Namespaces;
+  FImpact.Namespaces := Namespaces;
   FImplementations.Namespaces := Namespaces;
   FInlayHints.Namespaces := Namespaces;
   FCodeLens.Namespaces := Namespaces;

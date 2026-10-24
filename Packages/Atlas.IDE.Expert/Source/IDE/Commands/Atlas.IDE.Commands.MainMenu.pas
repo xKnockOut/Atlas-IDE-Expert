@@ -108,6 +108,8 @@ type
     FUnitRelationsItem: TMenuItem;
     FViewUnitRelations: TMenuItem;
     FSymbolPathItem: TMenuItem;
+    /// <summary>„Auswirkungen anzeigen“ (#1120), sichtbar nach navigation.impact.</summary>
+    FImpactItem: TMenuItem;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
@@ -177,6 +179,7 @@ uses
   Atlas.Core.Diagnostics.Processes,
   Atlas.UI.Diagnostics.ProcessesDialog,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.Results.Impact,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Bookmarks.Service,
@@ -203,8 +206,9 @@ const
   EditorIds: array[0..11] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
     'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode');
-  ResultsIds: array[0..8] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
-    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow', 'Atlas.CallDiagram');
+  ResultsIds: array[0..9] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
+    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow', 'Atlas.CallDiagram',
+    'Atlas.Impact');
   // Editorleiste (#1101), je Tag von SectionClick.
   SectionIds: array[0..5] of string = ('Atlas.GotoInterface', 'Atlas.GotoImplementation', 'Atlas.GotoUses',
     'Atlas.GotoInitialization', 'Atlas.ReturnFromSection', 'Atlas.FindMethod');
@@ -302,6 +306,7 @@ begin
   FCallDiagramItem := AddItem(TAtlasTextId.CallDiagramCommand, 8, ResultsClick);
   AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
   AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
+  FImpactItem := AddItem(TAtlasTextId.ImpactCommand, 9, ResultsClick);
   FParent.Add(NewLine);
   AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
   AddGroup(TAtlasTextId.MenuGroupCopy);
@@ -692,6 +697,9 @@ begin
   // Weg zwischen Symbolen (#1117) nach navigation.symbolPath.
   if FSymbolPathItem <> nil then
     FSymbolPathItem.Visible := TAtlasIdeSymbolPath.Enabled;
+  // Auswirkungen anzeigen (#1120) nach navigation.impact.
+  if FImpactItem <> nil then
+    FImpactItem.Visible := TAtlasIdeImpact.Enabled;
   // Benannte Lesezeichen (#622) nach bookmarks.named, schnelle (#1104) nach bookmarks.quick; das Fenster zeigt
   // beide.
   Marks := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
@@ -760,6 +768,7 @@ begin
         5: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
         6: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
         8: TAtlasIdeResults.ShowCallDiagram;
+        9: TAtlasIdeImpact.ShowAtCursor;
       else
         TAtlasIdeResults.ShowWindow;
       end;

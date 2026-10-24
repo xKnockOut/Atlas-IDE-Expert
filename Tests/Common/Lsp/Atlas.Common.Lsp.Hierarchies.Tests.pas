@@ -269,6 +269,10 @@ begin
   Assert.AreEqual('Bar(2) Baz(1)', Names(Calls));
   Assert.AreEqual('TFoo', Calls[0].Item.Container);
   Assert.AreEqual(15, Calls[0].Ranges[0].StartPos.Line);
+  // Auswahl ist der Name im Kopf (procedure TFoo.Bar), nicht der Anfang der Routine (#1120).
+  Assert.AreEqual(11, Calls[0].Item.SelectionRange.StartPos.Line);
+  Assert.AreEqual(15, Calls[0].Item.SelectionRange.StartPos.Character);
+  Assert.AreEqual(18, Calls[0].Item.SelectionRange.EndPos.Character);
   // Der Kopf von TFoo.Baz ist kein Aufruf von Baz.
   Assert.AreEqual('Bar(1)', Names(TLspHierarchies.IncomingCalls(FResolver, FIndex, ItemAt('Baz;'#10'  end', True),
     [HauptFile, WerkzeugFile], ReadFile)));

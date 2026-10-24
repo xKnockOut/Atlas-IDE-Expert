@@ -239,6 +239,11 @@ type
     /// <summary>Nächste Ebene unter AItem in Richtung ADirection (#400).</summary>
     function HierarchyChildren(ADirection: TAtlasHierarchyDirection;
       const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+    /// <summary>Auswirkungen des Symbols am Fundort bis zur Tiefe ADepth (atlas/impact, #1120); ohne Symbol leer.
+    /// </summary>
+    function Impact(const AFileName: string; ALine, ACharacter, ADepth: Integer): TAtlasImpact;
+    /// <summary>Antwort von atlas/impact (#1120); ohne Objekt leer (kein Symbol am Cursor).</summary>
+    class function ImpactFromJson(const AValue: TJSONValue): TAtlasImpact; static;
     /// <summary>Code-Aktionen für ARange (textDocument/codeAction, #399), Reihenfolge des Servers.</summary>
     function CodeActions(const AFileName: string; const ARange: TLspRange): TArray<TLspCodeAction>; overload;
     /// <summary>Wie oben mit eigener Wartezeit, etwa für die Glühbirne der Zeilenleiste (#768), die den Editor
@@ -1221,6 +1226,95 @@ begin
   Result.Raw := Entry.ToJSON;
 end;
 
+function ImpactFormsOf(const AValue: TJSONValue): TArray<TAtlasImpactForm>;
+var
+  Item: TJSONValue;
+  Form: TAtlasImpactForm;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(AValue) do
+    if Item is TJSONObject then
+    begin
+      Form.FileName := TLspSession.UriToPath(TJSONObject(Item).GetValue<string>('uri', ''));
+      Form.Line := TJSONObject(Item).GetValue<Integer>('range.start.line', 0);
+      Form.Character := TJSONObject(Item).GetValue<Integer>('range.start.character', 0);
+      Form.Text := TJSONObject(Item).GetValue<string>('text', '');
+      Result := Result + [Form];
+    end;
+end;
+
+class function TLspSession.ImpactFromJson(const AValue: TJSONValue): TAtlasImpact;
+var
+  Root, Entry: TJSONObject;
+  List, Item, Ranges, First, Names, Name: TJSONValue;
+  Place: TAtlasImpactPlace;
+  Test: TAtlasImpactTest;
+begin
+  Result := Default(TAtlasImpact);
+  if not (AValue is TJSONObject) then
+    Exit;
+  Root := TJSONObject(AValue);
+  Result.Symbol := HierarchyItemOf(Root.GetValue('symbol'));
+  Result.SymbolForms := ImpactFormsOf(Root.GetValue('symbolForms'));
+  Result.Depth := Root.GetValue<Integer>('depth', 0);
+  Result.DepthReached := Root.GetValue<Boolean>('limits.depth', False);
+  Result.CountReached := Root.GetValue<Boolean>('limits.count', False);
+  Result.TimeReached := Root.GetValue<Boolean>('limits.time', False);
+  Result.Unexpanded := Root.GetValue<Integer>('unexpanded', 0);
+  Result.MaxPlaces := Root.GetValue<Integer>('maxPlaces', 0);
+  Result.TimeoutMs := Root.GetValue<Integer>('timeoutMs', 0);
+  List := Root.GetValue('places');
+  if List is TJSONArray then
+    for Item in TJSONArray(List) do
+    begin
+      if not (Item is TJSONObject) then
+        Continue;
+      Entry := TJSONObject(Item);
+      Place := Default(TAtlasImpactPlace);
+      Place.Item := HierarchyItemOf(Entry.GetValue('item'));
+      Place.Item.Confidence := TAtlasConfidence.FromJson(Entry);
+      Place.Level := Entry.GetValue<Integer>('level', 0);
+      Place.Edge := Entry.GetValue<string>('edge', '');
+      Place.Cause := Entry.GetValue<Integer>('cause', -1);
+      Place.UseLine := Place.Item.Line;
+      Place.UseCharacter := Place.Item.Character;
+      Ranges := Entry.GetValue('ranges');
+      if (Ranges is TJSONArray) and (TJSONArray(Ranges).Count > 0) then
+      begin
+        Place.UseCount := TJSONArray(Ranges).Count;
+        First := TJSONArray(Ranges).Items[0];
+        Place.UseLine := First.GetValue<Integer>('start.line', Place.UseLine);
+        Place.UseCharacter := First.GetValue<Integer>('start.character', Place.UseCharacter);
+      end;
+      Place.Forms := ImpactFormsOf(Entry.GetValue('forms'));
+      Place.Terminal := Entry.GetValue<Boolean>('terminal', False);
+      Place.Test := Entry.GetValue<string>('test', '');
+      Result.Places := Result.Places + [Place];
+    end;
+  List := Root.GetValue('tests');
+  if List is TJSONArray then
+    for Item in TJSONArray(List) do
+    begin
+      if not (Item is TJSONObject) then
+        Continue;
+      Entry := TJSONObject(Item);
+      Test := Default(TAtlasImpactTest);
+      Test.Name := Entry.GetValue<string>('name', '');
+      Names := Entry.GetValue('run');
+      if Names is TJSONArray then
+        for Name in TJSONArray(Names) do
+          Test.RunNames := Test.RunNames + [Name.Value];
+      if Test.RunNames = nil then
+        Test.RunNames := TArray<string>.Create(Test.Name);
+      Test.FileName := TLspSession.UriToPath(Entry.GetValue<string>('uri', ''));
+      Test.Line := Entry.GetValue<Integer>('line', 0);
+      Test.Level := Entry.GetValue<Integer>('level', 0);
+      Result.Tests := Result.Tests + [Test];
+    end;
+end;
+
 function TLspSession.PrepareHierarchy(ADirection: TAtlasHierarchyDirection; const AFileName: string; ALine,
   ACharacter: Integer): TArray<TAtlasHierarchyItem>;
 var
@@ -1237,6 +1331,22 @@ begin
       for Item in TJSONArray(Response) do
         if Item is TJSONObject then
           Result := Result + [HierarchyItemOf(Item)];
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.Impact(const AFileName: string; ALine, ACharacter, ADepth: Integer): TAtlasImpact;
+var
+  Params: TJSONObject;
+  Response: TJSONValue;
+begin
+  Params := PositionParams(AFileName, ALine, ACharacter);
+  Params.AddPair('depth', TJSONNumber.Create(ADepth));
+  // Mehrere Referenzsuchen über das ganze Projekt; der Server begrenzt die Zeit selbst und meldet es.
+  Response := FClient.Request('atlas/impact', Params, FTimeoutMs * 30);
+  try
+    Result := ImpactFromJson(Response);
   finally
     Response.Free;
   end;
