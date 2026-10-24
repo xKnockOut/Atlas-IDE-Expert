@@ -2965,6 +2965,112 @@ Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge),
 | DH11 | Schnellschalter bzw. *Tools › Optionen › Atlas › Debuggen*: „Variablenwerte im Hover beim Debuggen“ aus | Hover zeigt keinen Wert mehr; wieder an: Wert wieder da |
 | DH12 | Atlas-Tooltip aus (`editor.hoverTooltip`), Maus auf `I` am Haltepunkt | Tooltip der IDE zeigt `I = <Wert>` vor dem Hover-Text |
 | DH13 | Sprachausgabe (Narrator) an, Maus auf `I` | Ansage beginnt mit `I = <Wert>` |
+
+## Visualisierer für häufige Typen (#835)
+
+Vorbereitung: VCL-Projekt (Win32) mit `Kunden: TObjectList<TKunde>` (drei Kunden mit `Name`), `Werte: TList<Integer>` (1, 2, 3), `Index: TDictionary<string, Integer>` (zwei Paare), einer `TFDQuery` (oder `TClientDataSet`) mit 10 Sätzen und Feldern `Name`, `Ort`, `Daten: TBytes` (300 Bytes), `Strom: TMemoryStream` mit „Hello“, `Json: TJSONObject` (`{"a":1,"b":[1,2]}`), `Farbe: TColor = clWebDodgerBlue`, `G: TGUID`, `P: TPoint`, `R: TRect`, `Bild: TBitmap` (64 × 32, 24 Bit, bunt). Haltepunkt nach dem Füllen; `Query.Edit` vorher aufrufen und `Name` ändern. `debug.visualizers` an, Auswertung „auch Getter von Eigenschaften“.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VI1 | F9 bis zum Haltepunkt, `Kunden` in Überwachte Ausdrücke | Wert `TObjectList<TKunde> · Count = 3 · [Meier, Schulz, Öztürk]` (**Abnahme**) |
+| VI2 | `Werte`, `Index` überwachen | `TList<Integer> · Count = 3 · [1, 2, 3]`; `TDictionary<string,Integer> · Count = 2 · {…: …}` |
+| VI3 | `Query` überwachen (im Zustand Edit, Satz 3) | `TFDQuery · dsEdit · 3/10 · Name = …, Ort = …` (**Abnahme**) |
+| VI4 | `Daten`, `Strom` überwachen | `300 Bytes · 48 65 …` mit Text; Stream mit Länge und „Hello“ |
+| VI5 | `Json` überwachen, Auswertung auf „auch Funktionsaufrufe“ | `{"a":1,"b":[1,2]}`; mit „nur Felder“ bzw. „Getter“ Anzahl und Schlüssel ohne Aufruf |
+| VI6 | `Farbe`, `G`, `P`, `R` überwachen | `clWebDodgerBlue · $1E90FF`; `{XXXXXXXX-…}`; `(10, 20)`; `(10, 20)–(110, 70)` |
+| VI7 | `Bild` überwachen | `TBitmap · 64 × 32 · pf24bit` |
+| VI8 | Lupe an `Kunden` → „Mit Atlas anzeigen …“ | Fenster mit Tabelle Nr./Wert, drei Zeilen; Zeilen markieren, Strg+C, in den Editor einfügen: Text mit Tabulatoren (**Abnahme**) |
+| VI9 | Lupe an `Query` | Tabelle Feld/Typ/Wert/Alter Wert; beim geänderten Feld steht der alte Wert |
+| VI10 | Lupe an `Daten` und an einem `TBytes` mit 16 MB | Hex-Zeilen mit Adresse, Bytes und Text; 16 MB scrollen flüssig |
+| VI11 | Lupe an `Json` (Auswertung „auch Funktionsaufrufe“) | Baum mit `a: 1`, `b [2]` usw. |
+| VI12 | Lupe an `Bild` und an `Farbe` | Bild in Originalgröße vor Schachbrett; Farbfeld in DodgerBlue mit Text |
+| VI13 | Ansichtsfenster offen lassen, F8 | Inhalt ausgegraut, „Nicht verfügbar: Das Programm läuft.“; nach dem Halt neuer Inhalt |
+| VI14 | Maus im Editor auf `Kunden` (Atlas-Tooltip) | Oben im Tooltip die aufbereitete Zeile statt der Objektdarstellung |
+| VI15 | Win64-Debugger: Maus auf `Kunden` und `Query` | Tooltip zeigt die aufbereitete Zeile (IDE-Visualisierer laufen dort nicht) |
+| VI16 | Optionen › Debuggen: „Datenmengen“ aus, OK | `Query` zeigt wieder den Text der IDE; Liste unverändert |
+| VI17 | `debug.visualizers.timeoutMs` = 20, große Liste mit langsamen Gettern | Kein Hänger; Wert fällt auf den Text der IDE zurück |
+| VI18 | Hauptschalter (Schnellschalter) aus | Überwachte Ausdrücke und Tooltip zeigen die Texte der IDE; Optionen › Debugger › Visualisierer listet keine Atlas-Einträge mehr |
+| VI19 | Package bei offenem Ansichtsfenster deinstallieren | Fenster schließt, kein Fehler |
+| VI20 | Optionen › Debugger › Visualisierer der IDE | Je eingeschalteter Art ein Eintrag „Atlas: …“ mit Beschreibung |
+
+## Eigene Wertdarstellung beim Debuggen (#854)
+
+Vorbereitung: VCL-Projekt (Win32) mit `TKunde = class` (Felder `FName`, `FOrt`, `FNr: Integer`, Eigenschaften `Name` und `Ort` direkt auf die Felder, `Saldo: Currency` mit Getter `GetSaldo`), darüber `// atlas-debug: '{Name}, {Ort} (Nr {FNr})'` und `// atlas-debug-children: Name, Ort`. `TAuftrag = record` mit `[AtlasDebugDisplay('Auftrag {Nr}: {Betrag:0.00} €')]` (Unit `Atlas.Debug.Attributes` aus `Setup/Vorlagen` im Projekt). Haltepunkt nach dem Anlegen von `Kunde` und `Auftrag`. Optionen › Debuggen: „Eigene Wertdarstellungen“ an, „Getter und Funktionsaufrufe in Vorlagen erlauben“ aus.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WD1 | F9 bis zum Haltepunkt, `Kunde` in Überwachte Ausdrücke | Wert `Meier, Berlin (Nr 7)` (**Abnahme**) |
+| WD2 | `Auftrag` überwachen | `Auftrag 12: 99,50 €` (Format nach Gebietsschema) |
+| WD3 | Maus im Editor auf `Kunde` (Atlas-Tooltip), auch im Win64-Debugger | Tooltip zeigt `Meier, Berlin (Nr 7)` (**Abnahme**) |
+| WD4 | Vorlage auf `'{Name}: {Saldo}'` ändern, speichern, neu debuggen | `Meier: {?Saldo}` (Getter ohne Erlaubnis nicht aufgerufen) |
+| WD5 | „Getter und Funktionsaufrufe in Vorlagen erlauben“ an, Wert neu auswerten | `Meier: 1234,5` |
+| WD6 | Lupe an `Kunde` → „Mit Atlas anzeigen …“ | Tabelle Feld/Wert nur mit `Name` und `Ort`; „Alle Felder“ an: alle Felder (`FName`, `FOrt`, `FNr` …) |
+| WD7 | `.atlas` im Projekt: `"debugDisplayRules": {"TPoint": "({X}|{Y})"}`, debuggen, `P: TPoint` überwachen | `(10|20)`; eine Regel im Quelltext gewinnt gegen die Projektdatei |
+| WD8 | In `.atlas` `"debugDisplayRules": {"TKunde": 3}` | Projektdatei meldet falschen Typ, Debuggen läuft ohne diese Regel |
+| WD9 | Abgeleitete Klasse `TStammkunde = class(TKunde)` ohne eigene Regel überwachen | Darstellung von `TKunde` |
+| WD10 | Im Kommentar `// atlas-debug: '{Na` tippen | Vervollständigung bietet `Name`, `FName` … des Typs an; ebenso nach `atlas-debug-children:` (**Abnahme**) |
+| WD11 | Vorlage `'{Nmae}'` speichern | Warnung `debug-display-placeholder` unter `Nmae`: „TKunde hat kein Mitglied „Nmae“ …“ |
+| WD12 | Vorlage `'{Name'` speichern | Warnung „Ungültige Wertdarstellung: …“ an der offenen Klammer |
+| WD13 | `// atlas-debug-children: Name, Telefon` | Warnung unter `Telefon` |
+| WD14 | Klasse von einem Vorfahren aus einer nicht indizierten Unit ableiten, unbekanntes Mitglied nennen | Keine Warnung (Regel schweigt bei unbekanntem Vorfahren) |
+| WD15 | Server neu starten, während das Programm angehalten ist | Regeln aus `.atlas` gelten weiter; Regeln aus dem Quelltext spätestens 15 s nach dem Neustart wieder |
+| WD16 | Schnellschalter „Eigene Wertdarstellungen“ aus | Überwachte Ausdrücke und Tooltip zeigen die Texte der IDE; „Atlas: eigene Wertdarstellung“ fehlt in Optionen › Debugger › Visualisierer |
+| WD17 | Package bei offenem Ansichtsfenster deinstallieren | Fenster schließt, kein Fehler |
+
+## Gezielt hineinspringen (#836)
+
+Vorbereitung: VCL-Projekt (Win32, Debug) mit `TKunde = class` (Eigenschaft `Name` mit Getter `GetName`, virtuelle Methode `Speichere`), `TStammkunde = class(TKunde)` mit `override` von `Speichere`, Prozedur `Pruefe(const S: string): Boolean`. In einer Methode die Zeile `Speichere(Kunde.Name, Format('%d', [N]));` und darunter `if Pruefe(A) and Pruefe(B) then Tu;`, `Kunde` zur Laufzeit ein `TStammkunde`. Haltepunkt auf die erste Zeile. Optionen › Debuggen: „Gezielt hineinspringen“ an, Taste Strg+Alt+F7.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GH1 | F9 bis zum Haltepunkt, Strg+Alt+F7 | Liste unter der Zeile: `1  TKunde.GetName  (Getter)`, `2  Format` ausgegraut „ohne Debug-DCUs“, `3  TStammkunde.Speichere` (**Abnahme**) |
+| GH2 | In GH1 Ziffer 3 | Programm hält am `begin` von `TStammkunde.Speichere`; `GetName` lief, ohne anzuhalten; keine Atlas-Haltepunkte in der Haltepunktliste (**Abnahme**) |
+| GH3 | Wie GH1, ↓ und Enter | ↓ überspringt die ausgegraute Zeile; Enter springt in `TStammkunde.Speichere` |
+| GH4 | Wie GH1, Ziffer 2 | Nichts passiert, die Liste bleibt offen |
+| GH5 | Wie GH1, Esc; dann Klick in den Editor | Liste schließt, das Programm bleibt angehalten |
+| GH6 | Projektoption „Mit Debug-DCUs“ an, neu bauen, GH1 | `Format` ist wählbar, Ziffer 2 hält in `System.SysUtils` |
+| GH7 | Zeile `if Pruefe(A) and Pruefe(B) then Tu;` mit `A` falsch, Strg+Alt+F7, das zweite `Pruefe` | Programm hält an der Folgezeile; Meldungsfenster: „… wurde nicht aufgerufen …“ |
+| GH8 | Zeile mit nur einem Aufruf (`Tu;`), Strg+Alt+F7 | Keine Liste, wirkt wie F7 |
+| GH9 | Zeile ohne Aufruf (`N := 1;`), Strg+Alt+F7 | Keine Liste, wirkt wie F7 |
+| GH10 | `Kunde` als `IKunde` (Interface) deklariert, GH1 | Laufzeitklasse über `(Kunde as TObject).ClassName`; Ziel ist `TStammkunde.Speichere` |
+| GH11 | Ohne laufendes Programm Strg+Alt+F7 im Editor | Die Taste geht an die IDE (oder tut nichts), keine Meldung von Atlas |
+| GH12 | Ohne laufendes Programm Befehlspalette › „Gezielt hineinspringen“ | Meldung „Gezielt hineinspringen geht nur, solange das Programm angehalten ist.“ |
+| GH13 | Kontextmenü › Atlas › „Gezielt hineinspringen“ im angehaltenen Programm | Wie GH1 |
+| GH14 | Haltepunkt des Benutzers in `TKunde.GetName`, GH1 und Ziffer 3 | Programm hält zuerst in `GetName`; die Atlas-Haltepunkte sind danach entfernt |
+| GH15 | Zeile mit `inherited Create(AOwner);` und `X := TListe.Create;` | `inherited` und `Konstruktor` als Art; Sprung in den Konstruktor des Vorfahren bzw. von `TListe` |
+| GH16 | „Gezielt hineinspringen“ aus, Strg+Alt+F7 | Die Taste gehört der IDE; Palette und Kontextmenü melden „Gezielt hineinspringen ist ausgeschaltet …“ |
+| GH17 | Tastenkürzel-Übersicht öffnen | Eintrag „Gezielt hineinspringen“ mit Strg+Alt+F7, Konflikt rot, falls die IDE die Taste belegt |
+| GH18 | Package deinstallieren, während die Liste offen bzw. ein Sprung läuft | Kein Fehler; keine Atlas-Haltepunkte bleiben zurück |
+
+## Beim nächsten Ereignis anhalten (#856)
+
+Vorbereitung: VCL-Projekt (Win32, Debug) mit Formular `TfrmKunde` (`frmKunde`): Knöpfe `btnSpeichern` und `btnOk`, beide `OnClick = btnSpeichernClick`; Knopf `btnHilfe` ohne Handler, dem `FormCreate` per Code `btnHilfe.OnClick := HilfeClick;` zuweist; `TFDMemTable` `Tabelle` mit `BeforePost`; `TActionList` mit `actDrucken` (`OnExecute`, `OnUpdate`); `TTimer` `Timer1` mit `Interval = 50` und `OnTimer`; `OnPaint` an einer `TPaintBox`, `OnMouseMove` am Formular. Zweites Formular `TfrmInfo`, anfangs unsichtbar. Programm mit F9 starten. Optionen › Debuggen: „Beim nächsten Ereignis anhalten“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EB1 | Menü Start › „Beim nächsten Ereignis anhalten…“ | Dialog mit Ereignisarten (Maus, Tastatur, Aktionen vorgewählt), „Häufige Ereignisse einschließen“ aus, „Alle Formulare“; darunter „N Handler an M Stellen“ |
+| EB2 | In EB1 nur „Maus“, OK; im Programm auf `btnSpeichern` klicken | Halt in der ersten Anweisung von `btnSpeichernClick`; Leiste „Angehalten: btnSpeichern.OnClick → TfrmKunde.btnSpeichernClick“ (**Abnahme**) |
+| EB3 | Nach EB2 Haltepunktliste öffnen | Keine Haltepunkte der Gruppe `Atlas.Ereignis` mehr (**Abnahme**) |
+| EB4 | Wie EB2, aber auf `btnOk` klicken | Leiste nennt `btnOk.OnClick` (über `Sender.Name`) (**Abnahme**) |
+| EB5 | Nach EB2 in der Leiste „Weiter beobachten“, dann auf `btnOk` klicken | Zweiter Halt in `btnSpeichernClick`, Leiste nennt `btnOk.OnClick` (**Abnahme**) |
+| EB6 | „Maus“, OK; Maus über das Formular bewegen und die PaintBox neu zeichnen lassen | Kein Halt in `OnMouseMove`/`OnPaint` (**Abnahme**) |
+| EB7 | Wie EB6 mit „Häufige Ereignisse einschließen“ | Halt beim ersten `OnMouseMove` bzw. `OnPaint` |
+| EB8 | „Maus“, OK; auf `btnHilfe` klicken | Halt in `HilfeClick` (im Code zugewiesen) (**Abnahme**) |
+| EB9 | Nur „Timer“, OK | `Timer1` (50 ms) ist ausgenommen, die Zahl im Dialog zählt ihn nicht; mit „Häufige Ereignisse“ hält er |
+| EB10 | Nur „Datenbank“, OK; Datensatz speichern | Halt in `TabelleBeforePost`, Leiste „Tabelle.BeforePost → …“ |
+| EB11 | Nur „Aktionen“, OK; Menüpunkt mit `actDrucken` | Halt in `OnExecute`, nicht in `OnUpdate` (ausgenommen) |
+| EB12 | „Nur sichtbare Formulare“ bei laufendem Programm | Atlas hält kurz an und läuft weiter; Handler von `TfrmInfo` bekommen keinen Haltepunkt (Zahl in der Meldung) |
+| EB13 | „Ein Formular“ › `TfrmInfo` | Nur dessen Handler; Klick auf `btnSpeichern` hält nicht |
+| EB14 | Während der Beobachtung Befehl erneut aufrufen | Meldung „Beobachtung beendet, Haltepunkte entfernt“; Haltepunktliste ohne `Atlas.Ereignis` |
+| EB15 | Während der Beobachtung Programm beenden | Meldung „Das Programm ist beendet …“; keine Atlas-Haltepunkte zurück |
+| EB16 | Haltepunkt des Benutzers an anderer Stelle greift während der Beobachtung | Meldung „hielt an einer anderen Stelle …“; Atlas-Haltepunkte entfernt, der des Benutzers bleibt |
+| EB17 | Ohne laufendes Programm Befehlspalette › „Beim nächsten Ereignis anhalten“ | Meldung „Es läuft kein Programm im Debugger.“ |
+| EB18 | Optionen › Debuggen: aus | Menüpunkt unter Start und Eintrag in der Befehlspalette fehlen (**Abnahme**) |
+| EB19 | `debug.breakOnNextEvent.excluded` auf `OnPaint; OnResize` | Gespeichert als `OnPaint, OnResize`; `OnMouseMove` gilt nicht mehr als häufig, `OnResize` schon |
+| EB20 | Handler `FormShow` nur im Vorfahren `TfrmBasis` implementiert | Halt im Vorfahren; nicht auffindbare Rümpfe werden gemeldet („… bleiben unbeobachtet“) |
+| EB21 | EB2 und EB5 unter dem Win64-Debugger (LLDB) | Wie unter Win32 (**Abnahme**) |
+| EB22 | Package deinstallieren während der Beobachtung | Kein Fehler; keine Atlas-Haltepunkte bleiben zurück |
+
 ## Kein Hängen, während der Server indexiert (#874)
 
 Vorher: Eine große Projektgruppe öffnen (Index läuft, Fortschritt im Statusfeld), „Diagnosemodus“ an.

@@ -141,6 +141,7 @@ uses
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Editor.NewLine,
   Atlas.IDE.Editor.Unwrap,
+  Atlas.IDE.Debug.StepInto,
   Atlas.IDE.Problems.Service;
 
 /// <summary>Zeilen verschieben bzw. duplizieren (#634), gesichert.</summary>
@@ -556,6 +557,14 @@ begin
           begin
             TAtlasIdeUnwrap.Run;
           end);
+      end);
+  // Gezielt hineinspringen (#836): nur im angehaltenen Zustand; sonst geht die Taste an die IDE weiter.
+  if Settings.DebugStepIntoTarget then
+    AddAttemptKey(TAtlasFeature.Debugger, Settings.DebugStepIntoTargetKey,
+      TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand),
+      function: Boolean
+      begin
+        Result := TAtlasIdeStepInto.TryRun;
       end);
   // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
   if Settings.UnitSearchEnabled then

@@ -509,6 +509,7 @@ uses
   Atlas.Common.Lsp.CompletionExceptions,
   Atlas.Common.Lsp.CompletionSyntax,
   Atlas.Common.Editing.DataFieldNames,
+  Atlas.Common.Lsp.CompletionDebugDisplay,
   Atlas.Common.Editing.GuardFree,
   Atlas.Common.Editing.ContextSnippets,
   Atlas.Common.Editing.CodeActions,
@@ -2248,6 +2249,14 @@ begin
     begin
       Result := TCompletionOutcome.Next;
       if DataNameItems(ARequest, AAnswer.Exclusive) then
+        Result := TCompletionOutcome.Answered;
+    end);
+  // Platzhalter in Wertdarstellungen (#854): in // atlas-debug: bzw. [AtlasDebugDisplay] nur die Mitglieder des Typs.
+  AddCase(FTextCases,
+    function(ARequest: TCompletionRequest; AAnswer: TCompletionAnswer): TCompletionOutcome
+    begin
+      Result := TCompletionOutcome.Next;
+      if TCompletionDebugDisplay.Items(ARequest, AAnswer.Exclusive) then
         Result := TCompletionOutcome.Answered;
     end);
   // Mit Baum und Resolver, in dieser Reihenfolge.

@@ -11,7 +11,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
 | [Compiler vorab](#gruppe-compiler) | 77 |
-| [Robustheit und Muster](#gruppe-robustness) | 13 |
+| [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
@@ -238,6 +238,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`random-without-randomize`](#random-without-randomize) | Random ohne Randomize | Code Smell | Hinweis |
 | [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
+| [`debug-display-placeholder`](#debug-display-placeholder) | Wertdarstellung nennt unbekanntes Mitglied | Bug | Warnung |
 | [`null-compare`](#null-compare) | Vergleich mit Null statt VarIsNull oder IsNull | Code Smell | Warnung |
 | [`path-concat-without-delimiter`](#path-concat-without-delimiter) | Pfad ohne Trennzeichen zusammengesetzt | Bug | Warnung |
 | [`hardcoded-path`](#hardcoded-path) | Fester Dateipfad im Code | Code Smell | Hinweis |
@@ -2892,6 +2893,31 @@ Richtig:
 ```pascal
 Edit.Text := '';
 Edit.SetFocus;
+```
+
+<a id="debug-display-placeholder"></a>
+### debug-display-placeholder
+
+**Wertdarstellung nennt unbekanntes Mitglied** · Bug · Warnung · Gruppe Robustheit und Muster
+
+Eine Regel für die Wertdarstellung beim Debuggen über einem Typ (// atlas-debug: '{Name}, {Ort}', [AtlasDebugDisplay('…')], // atlas-debug-children: Name, Ort oder [AtlasDebugChildren('…')]) nennt einen Platzhalter oder ein Unterelement, das weder Feld noch Eigenschaft noch Methode des Typs oder eines Vorfahren ist, oder die Vorlage ist ungültig (offene oder leere Klammer). Im Debugger bliebe ein solcher Platzhalter leer ({?Name}). Vorfahren kommen aus der Unit und dem Index; ist ein Vorfahr unbekannt, schweigt die Regel für den Typ. Mitglieder von TObject (ClassName, ToString, …) gelten immer als bekannt.
+
+Mit Treffer:
+
+```pascal
+// atlas-debug: '{Name}, {Stadt}'
+TKunde = class
+  Name, Ort: string;
+end;
+```
+
+Richtig:
+
+```pascal
+// atlas-debug: '{Name}, {Ort}'
+TKunde = class
+  Name, Ort: string;
+end;
 ```
 
 <a id="component-palette-icon"></a>

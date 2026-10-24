@@ -105,6 +105,14 @@ type
     /// <summary>Übersichtsleiste (#519): Vorgaben, Arten normalisiert, Speichern und Laden.</summary>
     [Test]
     procedure OverviewRulerOptions;
+    [Test]
+    procedure DebugVisualizerOptions;
+    [Test]
+    procedure DebugDisplayRuleOptions;
+    [Test]
+    procedure DebugStepIntoTargetOptions;
+    [Test]
+    procedure DebugBreakOnNextEventOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -1940,6 +1948,124 @@ begin
   Loaded.OverviewRulerKinds := '';
   Loaded.Normalize;
   Assert.AreEqual('', Loaded.OverviewRulerKinds, 'leer = keine Marken');
+end;
+
+procedure TAtlasPluginSettingsTests.DebugDisplayRuleOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #854: an, Aufrufe aus; beide überleben Speichern und Laden.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugDisplayRules);
+  Assert.IsFalse(Settings.DebugDisplayRulesAllowCalls);
+  Settings.DebugDisplayRules := False;
+  Settings.DebugDisplayRulesAllowCalls := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugDisplayRules);
+  Assert.IsTrue(Loaded.DebugDisplayRulesAllowCalls);
+end;
+
+procedure TAtlasPluginSettingsTests.DebugStepIntoTargetOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #836: an mit Strg+Alt+F7; Schalter und Taste überleben Speichern und Laden, 0 = keine Taste.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugStepIntoTarget);
+  Assert.AreEqual($C076, Settings.DebugStepIntoTargetKey);
+  Settings.DebugStepIntoTarget := False;
+  Settings.DebugStepIntoTargetKey := 0;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugStepIntoTarget);
+  Assert.AreEqual(0, Loaded.DebugStepIntoTargetKey);
+  Loaded.DebugStepIntoTargetKey := -5;
+  Loaded.Normalize;
+  Assert.AreEqual(0, Loaded.DebugStepIntoTargetKey);
+end;
+
+procedure TAtlasPluginSettingsTests.DebugBreakOnNextEventOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #856: an, ausgenommen OnPaint, OnMouseMove und OnUpdate; die Liste wird beim Normalisieren bereinigt.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugBreakOnNextEvent);
+  Assert.AreEqual('OnPaint, OnMouseMove, OnUpdate', Settings.DebugBreakOnNextEventExcluded);
+  Settings.DebugBreakOnNextEvent := False;
+  Settings.DebugBreakOnNextEventExcluded := 'OnPaint, OnResize';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugBreakOnNextEvent);
+  Assert.AreEqual('OnPaint, OnResize', Loaded.DebugBreakOnNextEventExcluded);
+  Loaded.DebugBreakOnNextEventExcluded := ' OnPaint ;; OnResize,';
+  Loaded.Normalize;
+  Assert.AreEqual('OnPaint, OnResize', Loaded.DebugBreakOnNextEventExcluded);
+end;
+
+procedure TAtlasPluginSettingsTests.DebugVisualizerOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugVisualizers);
+  Assert.AreEqual('lists,dictionaries,dataSets,bytes,json,colors,guid,geometry,graphics',
+    Settings.DebugVisualizerTypes);
+  Assert.AreEqual('Name,Caption,Text', Settings.DebugVisualizerNameFields);
+  Assert.AreEqual(120, Settings.DebugVisualizerMaxLength);
+  Assert.AreEqual(200, Settings.DebugVisualizerTimeoutMs);
+  Assert.AreEqual(4000000, Settings.DebugVisualizerMaxImagePixels);
+  Assert.AreEqual('properties', Settings.DebugVisualizerEvaluation);
+  Settings.DebugVisualizers := False;
+  Settings.DebugVisualizerTypes := 'json,lists';
+  Settings.DebugVisualizerNameFields := 'Bezeichnung';
+  Settings.DebugVisualizerMaxLength := 80;
+  Settings.DebugVisualizerTimeoutMs := 500;
+  Settings.DebugVisualizerMaxImagePixels := 100000;
+  Settings.DebugVisualizerEvaluation := 'calls';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugVisualizers);
+  Assert.AreEqual('lists,json', Loaded.DebugVisualizerTypes, 'feste Reihenfolge');
+  Assert.AreEqual('Bezeichnung', Loaded.DebugVisualizerNameFields);
+  Assert.AreEqual(80, Loaded.DebugVisualizerMaxLength);
+  Assert.AreEqual(500, Loaded.DebugVisualizerTimeoutMs);
+  Assert.AreEqual(100000, Loaded.DebugVisualizerMaxImagePixels);
+  Assert.AreEqual('calls', Loaded.DebugVisualizerEvaluation);
+  // Grenzen und unbekannte Werte.
+  Loaded.DebugVisualizerTypes := 'gibtsnicht, Colors';
+  Loaded.DebugVisualizerNameFields := ' Name , ,Name, Text ';
+  Loaded.DebugVisualizerMaxLength := 5;
+  Loaded.DebugVisualizerTimeoutMs := 100000;
+  Loaded.DebugVisualizerMaxImagePixels := 1;
+  Loaded.DebugVisualizerEvaluation := 'alles';
+  Loaded.Normalize;
+  Assert.AreEqual('colors', Loaded.DebugVisualizerTypes);
+  Assert.AreEqual('Name,Text', Loaded.DebugVisualizerNameFields);
+  Assert.AreEqual(20, Loaded.DebugVisualizerMaxLength);
+  Assert.AreEqual(5000, Loaded.DebugVisualizerTimeoutMs);
+  Assert.AreEqual(10000, Loaded.DebugVisualizerMaxImagePixels);
+  Assert.AreEqual('fields', Loaded.DebugVisualizerEvaluation, 'unbekannt = erster Wert');
+  Loaded.DebugVisualizerTypes := '';
+  Loaded.Normalize;
+  Assert.AreEqual('', Loaded.DebugVisualizerTypes, 'leer = keine Art');
 end;
 
 { TAtlasSettingsScopesTests }

@@ -231,6 +231,7 @@ uses
   Atlas.IDE.Editor.LinkedEditing,
   Atlas.IDE.Editor.SmartPaste,
   Atlas.IDE.Editor.Unwrap,
+  Atlas.IDE.Debug.StepInto,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.SymbolPath.Service,
   Atlas.Core.Editor.WorkspacePlan,
@@ -324,6 +325,12 @@ begin
     procedure
     begin
       TAtlasIdeUnwrap.Dismiss;
+    end);
+  // Gezielt hineinspringen (#836): die Liste gehört zum Ausführungspunkt in der bisherigen Ansicht.
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeStepInto.Dismiss;
     end);
 end;
 
@@ -497,6 +504,19 @@ begin
     procedure
     begin
       FormatCode;
+    end);
+  // Gezielt hineinspringen (#836); aus oder ohne angehaltenes Programm meldet der Aufruf das.
+  FContextMenu.AddGuarded(TAtlasFeature.Debugger, 'Atlas.StepIntoTarget',
+    TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.DebugStepIntoTarget then
+        Result := TAtlasIdeSettings.Current.DebugStepIntoTargetKey;
+    end,
+    procedure
+    begin
+      TAtlasIdeStepInto.Run;
     end);
   FContextMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure

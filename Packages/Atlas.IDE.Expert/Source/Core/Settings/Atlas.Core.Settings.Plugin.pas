@@ -484,6 +484,43 @@ type
     /// Atlas den Ausdruck unter der Maus über den Debugger der IDE aus und zeigt den Wert oben im Tooltip (bzw.
     /// im Tooltip der IDE, wenn der eigene aus ist); aus = kein Wert.</summary>
     DebugHoverValues: Boolean;
+    /// <summary>Visualisierer für häufige Typen (#835, debug.visualizers): Ersatztexte für Listen, Dictionaries,
+    /// Datenmengen, Bytes und Streams, JSON, Farben, TGUID, Geometrie und Grafiken im Hover, in Überwachten
+    /// Ausdrücken und Lokalen Variablen, dazu das Ansichtsfenster über die Lupe; aus = die IDE zeigt ihre Texte.
+    /// </summary>
+    DebugVisualizers: Boolean;
+    /// <summary>Arten der Visualisierer (debug.visualizers.types), kommagetrennt, normalisiert.</summary>
+    DebugVisualizerTypes: string;
+    /// <summary>Namensfelder für Objekte in Listen (debug.visualizers.nameFields).</summary>
+    DebugVisualizerNameFields: string;
+    /// <summary>Höchstlänge des Ersatztexts (debug.visualizers.maxLength).</summary>
+    DebugVisualizerMaxLength: Integer;
+    /// <summary>Zeitlimit je Auswertung in ms (debug.visualizers.timeoutMs).</summary>
+    DebugVisualizerTimeoutMs: Integer;
+    /// <summary>Größtes gelesenes Bild in Pixeln (debug.visualizers.maxImagePixels).</summary>
+    DebugVisualizerMaxImagePixels: Integer;
+    /// <summary>fields, properties oder calls (debug.visualizers.evaluation).</summary>
+    DebugVisualizerEvaluation: string;
+    /// <summary>Eigene Wertdarstellungen (#854, debug.displayRules): Regeln aus // atlas-debug:,
+    /// [AtlasDebugDisplay] und der Projektdatei .atlas im Hover, in Überwachten Ausdrücken und Lokalen Variablen;
+    /// aus = die IDE zeigt ihre eigenen Werte.</summary>
+    DebugDisplayRules: Boolean;
+    /// <summary>Getter und Funktionsaufrufe in Vorlagen auswerten (debug.displayRules.allowCalls); aus = nur Felder
+    /// und Eigenschaften mit direktem Feldzugriff.</summary>
+    DebugDisplayRulesAllowCalls: Boolean;
+    /// <summary>Gezielt hineinspringen (#836, debug.stepIntoTarget): Befehl mit Tastenkürzel, Kontextmenü und
+    /// Befehlspalette, der im angehaltenen Zustand die Aufrufe der Anweisung zur Wahl stellt; aus = Kürzel frei, kein
+    /// Menüeintrag.</summary>
+    DebugStepIntoTarget: Boolean;
+    /// <summary>Tastenkürzel „Gezielt hineinspringen“ (debug.stepIntoTarget.key, 0 = keins).</summary>
+    DebugStepIntoTargetKey: Integer;
+    /// <summary>Beim nächsten Ereignis anhalten (#856, debug.breakOnNextEvent): Befehl im Menü Start und in der
+    /// Befehlspalette, der vorübergehende Haltepunkte auf die Ereignis-Handler setzt; aus = kein Befehl, kein
+    /// Menüeintrag.</summary>
+    DebugBreakOnNextEvent: Boolean;
+    /// <summary>Häufige Ereignisse, die nur auf ausdrückliche Wahl beobachtet werden
+    /// (debug.breakOnNextEvent.excluded, kommagetrennt).</summary>
+    DebugBreakOnNextEventExcluded: string;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -1155,6 +1192,8 @@ uses
   Atlas.Core.Build.Verdict,
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.OverviewKinds,
+  Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Debug.EventBreak,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.Settings.StatusBarItems;
@@ -1492,6 +1531,19 @@ begin
   Result.TestDebug := True;
   Result.TestBreakAtStart := True;
   Result.DebugHoverValues := True;
+  Result.DebugVisualizers := True;
+  Result.DebugVisualizerTypes := TAtlasVisualizers.KindsText(TAtlasVisualizers.AllKinds);
+  Result.DebugVisualizerNameFields := TAtlasVisualizers.DefaultNameFields;
+  Result.DebugVisualizerMaxLength := TAtlasVisualizerOptions.DefaultMaxLength;
+  Result.DebugVisualizerTimeoutMs := TAtlasVisualizerOptions.DefaultTimeoutMs;
+  Result.DebugVisualizerMaxImagePixels := TAtlasVisualizerOptions.DefaultMaxImagePixels;
+  Result.DebugVisualizerEvaluation := TAtlasVisualizers.EvaluationNames[TAtlasVisualizerEvaluation.Properties];
+  Result.DebugDisplayRules := True;
+  Result.DebugDisplayRulesAllowCalls := False;
+  Result.DebugStepIntoTarget := True;
+  Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
+  Result.DebugBreakOnNextEvent := True;
+  Result.DebugBreakOnNextEventExcluded := TAtlasEventBreak.DefaultExcluded;
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.TodoList := True;
@@ -1900,6 +1952,7 @@ begin
   NewLineBelowKey := EnsureRange(NewLineBelowKey, 0, $FFFF);
   NewLineAboveKey := EnsureRange(NewLineAboveKey, 0, $FFFF);
   UnwrapKey := EnsureRange(UnwrapKey, 0, $FFFF);
+  DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -1922,6 +1975,16 @@ begin
   NextChangeKey := EnsureRange(NextChangeKey, 0, $FFFF);
   PreviousChangeKey := EnsureRange(PreviousChangeKey, 0, $FFFF);
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
+  DebugVisualizerTypes := TAtlasVisualizers.NormalizeKinds(DebugVisualizerTypes);
+  DebugVisualizerNameFields := TAtlasVisualizers.NormalizeNameFields(DebugVisualizerNameFields);
+  DebugBreakOnNextEventExcluded := TAtlasEventBreak.NormalizeExcluded(DebugBreakOnNextEventExcluded);
+  DebugVisualizerMaxLength := EnsureRange(DebugVisualizerMaxLength, TAtlasVisualizerOptions.MinMaxLength,
+    TAtlasVisualizerOptions.MaxMaxLength);
+  DebugVisualizerTimeoutMs := EnsureRange(DebugVisualizerTimeoutMs, TAtlasVisualizerOptions.MinTimeoutMs,
+    TAtlasVisualizerOptions.MaxTimeoutMs);
+  DebugVisualizerMaxImagePixels := EnsureRange(DebugVisualizerMaxImagePixels,
+    TAtlasVisualizerOptions.MinMaxImagePixels, TAtlasVisualizerOptions.MaxMaxImagePixels);
+  DebugVisualizerEvaluation := Choice(DebugVisualizerEvaluation, TAtlasVisualizers.EvaluationNames);
   JumpToMatchKey := EnsureRange(JumpToMatchKey, 0, $FFFF);
   JumpToMatchSelectKey := EnsureRange(JumpToMatchSelectKey, 0, $FFFF);
   MoveLinesUpKey := EnsureRange(MoveLinesUpKey, 0, $FFFF);
@@ -2131,6 +2194,22 @@ begin
   TestDebug := AStore.ReadInteger('TestDebug', BoolValue(Default.TestDebug)) <> 0;
   TestBreakAtStart := AStore.ReadInteger('TestBreakAtStart', BoolValue(Default.TestBreakAtStart)) <> 0;
   DebugHoverValues := AStore.ReadInteger('DebugHoverValues', BoolValue(Default.DebugHoverValues)) <> 0;
+  DebugVisualizers := AStore.ReadInteger('DebugVisualizers', BoolValue(Default.DebugVisualizers)) <> 0;
+  DebugVisualizerTypes := AStore.ReadString('DebugVisualizerTypes', Default.DebugVisualizerTypes);
+  DebugVisualizerNameFields := AStore.ReadString('DebugVisualizerNameFields', Default.DebugVisualizerNameFields);
+  DebugVisualizerMaxLength := AStore.ReadInteger('DebugVisualizerMaxLength', Default.DebugVisualizerMaxLength);
+  DebugVisualizerTimeoutMs := AStore.ReadInteger('DebugVisualizerTimeoutMs', Default.DebugVisualizerTimeoutMs);
+  DebugVisualizerMaxImagePixels := AStore.ReadInteger('DebugVisualizerMaxImagePixels',
+    Default.DebugVisualizerMaxImagePixels);
+  DebugVisualizerEvaluation := AStore.ReadString('DebugVisualizerEvaluation', Default.DebugVisualizerEvaluation);
+  DebugDisplayRules := AStore.ReadInteger('DebugDisplayRules', BoolValue(Default.DebugDisplayRules)) <> 0;
+  DebugDisplayRulesAllowCalls := AStore.ReadInteger('DebugDisplayRulesAllowCalls',
+    BoolValue(Default.DebugDisplayRulesAllowCalls)) <> 0;
+  DebugStepIntoTarget := AStore.ReadInteger('DebugStepIntoTarget', BoolValue(Default.DebugStepIntoTarget)) <> 0;
+  DebugStepIntoTargetKey := AStore.ReadInteger('DebugStepIntoTargetKey', Default.DebugStepIntoTargetKey);
+  DebugBreakOnNextEvent := AStore.ReadInteger('DebugBreakOnNextEvent', BoolValue(Default.DebugBreakOnNextEvent)) <> 0;
+  DebugBreakOnNextEventExcluded := AStore.ReadString('DebugBreakOnNextEventExcluded',
+    Default.DebugBreakOnNextEventExcluded);
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
     BoolValue(Default.StartProfilesStatusField)) <> 0;
@@ -2612,6 +2691,19 @@ begin
   AStore.WriteInteger('TestDebug', BoolValue(TestDebug));
   AStore.WriteInteger('TestBreakAtStart', BoolValue(TestBreakAtStart));
   AStore.WriteInteger('DebugHoverValues', BoolValue(DebugHoverValues));
+  AStore.WriteInteger('DebugVisualizers', BoolValue(DebugVisualizers));
+  AStore.WriteString('DebugVisualizerTypes', DebugVisualizerTypes);
+  AStore.WriteString('DebugVisualizerNameFields', DebugVisualizerNameFields);
+  AStore.WriteInteger('DebugVisualizerMaxLength', DebugVisualizerMaxLength);
+  AStore.WriteInteger('DebugVisualizerTimeoutMs', DebugVisualizerTimeoutMs);
+  AStore.WriteInteger('DebugVisualizerMaxImagePixels', DebugVisualizerMaxImagePixels);
+  AStore.WriteString('DebugVisualizerEvaluation', DebugVisualizerEvaluation);
+  AStore.WriteInteger('DebugDisplayRules', BoolValue(DebugDisplayRules));
+  AStore.WriteInteger('DebugDisplayRulesAllowCalls', BoolValue(DebugDisplayRulesAllowCalls));
+  AStore.WriteInteger('DebugStepIntoTarget', BoolValue(DebugStepIntoTarget));
+  AStore.WriteInteger('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
+  AStore.WriteInteger('DebugBreakOnNextEvent', BoolValue(DebugBreakOnNextEvent));
+  AStore.WriteString('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));

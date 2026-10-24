@@ -63,6 +63,14 @@ type
     /// <summary>#786: Alt+F11 und Umschalt+F12 auf der Seite „Units suchen“.</summary>
     [Test]
     procedure UseUnitAndFormsDialogsRoundTrip;
+    [Test]
+    procedure DebugVisualizersRoundTrip;
+    [Test]
+    procedure DebugDisplayRulesRoundTrip;
+    [Test]
+    procedure DebugStepIntoTargetRoundTrip;
+    [Test]
+    procedure DebugBreakOnNextEventRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
@@ -183,6 +191,7 @@ uses
   System.Classes,
   System.UITypes,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Debug.Visualizers,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
@@ -1100,6 +1109,110 @@ begin
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.UnitSearchReplaceUseUnitCheck.Checked);
     Assert.IsTrue(Page.UnitSearchReplaceFormsCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DebugDisplayRulesRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  // #854: Schalter und Aufrufe in Vorlagen.
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.DebugDisplayRulesCheck.Checked);
+    Assert.IsFalse(Page.DebugDisplayRulesAllowCallsCheck.Checked);
+    Page.DebugDisplayRulesCheck.Checked := False;
+    Page.DebugDisplayRulesAllowCallsCheck.Checked := True;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.DebugDisplayRules);
+    Assert.IsTrue(Saved.DebugDisplayRulesAllowCalls);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DebugStepIntoTargetRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  // #836: Schalter und Taste auf dem Reiter Debuggen.
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.DebugStepIntoTargetCheck.Checked);
+    Assert.AreEqual(ShortCutToText(TShortCut($C076)), Page.DebugStepIntoTargetKeyEdit.Text);
+    Page.DebugStepIntoTargetCheck.Checked := False;
+    Page.DebugStepIntoTargetKeyEdit.Text := ShortCutToText(TShortCut($6076));
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.DebugStepIntoTarget);
+    Assert.AreEqual($6076, Saved.DebugStepIntoTargetKey);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DebugBreakOnNextEventRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  // #856: Schalter und ausgenommene Ereignisse auf dem Reiter Debuggen; die Liste wird beim Speichern bereinigt.
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.DebugBreakOnNextEventCheck.Checked);
+    Assert.AreEqual('OnPaint, OnMouseMove, OnUpdate', Page.DebugBreakOnNextEventExcludedEdit.Text);
+    Page.DebugBreakOnNextEventCheck.Checked := False;
+    Page.DebugBreakOnNextEventExcludedEdit.Text := 'OnPaint;OnResize';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.DebugBreakOnNextEvent);
+    Assert.AreEqual('OnPaint, OnResize', Saved.DebugBreakOnNextEventExcluded);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DebugVisualizersRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+  Kind: TAtlasVisualizerKind;
+begin
+  // #835: Hauptschalter, Haken je Art, Namensfelder, Grenzen, Auswertung als Auswahl.
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.DebugVisualizersCheck.Checked);
+    for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+      Assert.IsTrue(Page.DebugVisualizerKindCheck(Kind).Checked);
+    Assert.AreEqual('Name,Caption,Text', Page.DebugVisualizerNameFieldsEdit.Text);
+    Assert.AreEqual('120', Page.DebugVisualizerMaxLengthEdit.Text);
+    Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Properties), Page.DebugVisualizerEvaluationBox.Choice);
+    Page.DebugVisualizersCheck.Checked := False;
+    Page.DebugVisualizerKindCheck(TAtlasVisualizerKind.Json).Checked := False;
+    Page.DebugVisualizerKindCheck(TAtlasVisualizerKind.Graphics).Checked := False;
+    Page.DebugVisualizerNameFieldsEdit.Text := 'Bezeichnung, Name';
+    Page.DebugVisualizerMaxLengthEdit.Text := '99999';
+    Page.DebugVisualizerEvaluationBox.Choice := Ord(TAtlasVisualizerEvaluation.Calls);
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.DebugVisualizers);
+    Assert.AreEqual('lists,dictionaries,dataSets,bytes,colors,guid,geometry', Saved.DebugVisualizerTypes);
+    Assert.AreEqual('Bezeichnung,Name', Saved.DebugVisualizerNameFields);
+    Assert.AreEqual(TAtlasVisualizerOptions.MaxMaxLength, Saved.DebugVisualizerMaxLength);
+    Assert.AreEqual('calls', Saved.DebugVisualizerEvaluation);
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.DebugVisualizerKindCheck(TAtlasVisualizerKind.Json).Checked);
+    Assert.IsTrue(Page.DebugVisualizerKindCheck(TAtlasVisualizerKind.Lists).Checked);
+    Assert.AreEqual(Ord(TAtlasVisualizerEvaluation.Calls), Page.DebugVisualizerEvaluationBox.Choice);
   finally
     Page.Free;
   end;

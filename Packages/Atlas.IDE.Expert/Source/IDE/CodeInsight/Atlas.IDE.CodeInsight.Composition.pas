@@ -198,6 +198,10 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Editor.Hide,
   Atlas.IDE.StartProfiles.Service,
+  Atlas.IDE.Debug.Visualizers,
+  Atlas.IDE.Debug.DisplayRules,
+  Atlas.IDE.Debug.StepInto,
+  Atlas.IDE.Debug.EventBreak,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Hover.Editor,
@@ -1167,6 +1171,26 @@ begin
   TAtlasIdeUnwrap.Run;
 end;
 
+function StepIntoTargetVisible: Boolean;
+begin
+  Result := TAtlasIdeStepInto.Enabled;
+end;
+
+procedure StepIntoTarget;
+begin
+  TAtlasIdeStepInto.Run;
+end;
+
+function BreakOnNextEventVisible: Boolean;
+begin
+  Result := TAtlasIdeEventBreak.Enabled;
+end;
+
+procedure BreakOnNextEvent;
+begin
+  TAtlasIdeEventBreak.Run;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1540,6 +1564,12 @@ begin
     NewLineAroundVisible);
   // Umschließung entfernen (#657); nur sichtbar, solange keys.unwrap an ist.
   Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.Unwrap, Unwrap), UnwrapVisible);
+  // Gezielt hineinspringen (#836); nur sichtbar, solange debug.stepIntoTarget an ist.
+  Add('Atlas.StepIntoTarget', TAtlasTextId.StepIntoTargetCommand,
+    Guarded(TAtlasFeature.Debugger, StepIntoTarget), StepIntoTargetVisible);
+  // Beim nächsten Ereignis anhalten (#856); nur sichtbar, solange debug.breakOnNextEvent an ist.
+  Add('Atlas.BreakOnNextEvent', TAtlasTextId.EventBreakCommand,
+    Guarded(TAtlasFeature.Debugger, BreakOnNextEvent), BreakOnNextEventVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.MultiCursor, MultiCursorNext), MultiCursorVisible);
@@ -2948,6 +2978,30 @@ begin
     begin
       MessageLine(AText);
     end);
+  // Gezielt hineinspringen (#836): Liste der Aufrufe am Ausführungspunkt; Meldungen in der Meldungsansicht.
+  TAtlasIdeStepInto.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  // Beim nächsten Ereignis anhalten (#856): Eintrag im Menü Start; Meldungen in der Meldungsansicht.
+  TAtlasIdeEventBreak.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ die Lesezeichen von Atlas.
   TAtlasIdeOverviewRuler.Bookmarks :=
@@ -3007,6 +3061,8 @@ begin
   TAtlasIdeLineMove.Uninstall;
   TAtlasIdeBlockComment.Uninstall;
   TAtlasIdeUnwrap.Uninstall;
+  TAtlasIdeStepInto.Uninstall;
+  TAtlasIdeEventBreak.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;
@@ -3275,6 +3331,18 @@ procedure StartStartProfiles;
 begin
   TAtlasIdeStartProfiles.SetStatusHandler(ShowStartProfileStatus);
   TAtlasIdeStartProfiles.Start;
+end;
+
+procedure StartDisplayRules;
+begin
+  // Nur eine laufende Sitzung; die Regeln warten sonst auf den nächsten Versuch.
+  TAtlasIdeDisplayRules.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
 end;
 
 procedure StopStartProfiles;
@@ -4150,6 +4218,39 @@ begin
       Result := TAtlasIdeStartProfiles.Started;
     end,
     StartStartProfiles, StopStartProfiles);
+  // Visualisierer für häufige Typen (#835): nur im normalen Start und solange debug.visualizers an ist.
+  Features.AddWanted('Visualizers',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.DebugVisualizers;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeVisualizers.Started;
+    end,
+    procedure
+    begin
+      TAtlasIdeVisualizers.Start;
+    end,
+    procedure
+    begin
+      TAtlasIdeVisualizers.Stop;
+    end);
+  // Eigene Wertdarstellungen (#854): nur im normalen Start und solange debug.displayRules an ist.
+  Features.AddWanted('DisplayRules',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.DebugDisplayRules;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDisplayRules.Started;
+    end,
+    StartDisplayRules,
+    procedure
+    begin
+      TAtlasIdeDisplayRules.Stop;
+    end);
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   Features.Add('Undo', TAtlasSafeLevel.Safe,
     function: Boolean
@@ -4691,6 +4792,8 @@ begin
       TAtlasIdeEditorToolbar.ApplySettings;
       // editor.statusBar* (#1155); das Atlas-Feld zieht um oder zurück (RequestRefresh unten).
       TAtlasIdeStatusBar.ApplySettings;
+      // debug.breakOnNextEvent (#856).
+      TAtlasIdeEventBreak.ApplySettings;
       // search.resultsInMessages (#878).
       TAtlasIdeSearch.ApplySettings;
       // tasks.onlyFindings und Tasten der Projektaufgaben (#900).
@@ -4711,6 +4814,10 @@ begin
       TAtlasIdeTeamFile.Refresh;
       // Wirksame experimentelle Funktionen im Statusfeld und im Protokoll (#834).
       TAtlasIdeExperimental.ApplySettings;
+      // debug.visualizers aus: abmelden; Arten geändert: neu anmelden (#835).
+      TAtlasIdeVisualizers.ApplySettings;
+      // debug.displayRules aus: abmelden; an: Regeln beim nächsten Takt neu lesen (#854).
+      TAtlasIdeDisplayRules.ApplySettings;
       // startProfiles.enabled aus: Zeitgeber und Feld weg (RegisterFeatures startet sie wieder);
       // startProfiles.statusField oder .atlas geändert: Feld neu melden (#575).
       if not TAtlasIdeSettings.Current.StartProfiles then

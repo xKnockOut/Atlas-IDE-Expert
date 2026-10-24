@@ -23,8 +23,11 @@ type
     Value: string;
     NameRange: TTextRange;
     ValueRange: TTextRange;
-    /// <summary>Ereignis wie OnClick = Button1Click: Wert ist ein Methodenname.</summary>
+    /// <summary>Ereignis wie OnClick = Button1Click oder BeforePost = TabelleBeforePost (Datenmengen haben
+    /// Ereignisse ohne On, #856): Wert ist ein Methodenname.</summary>
     function IsEvent: Boolean;
+    /// <summary>Name einer Ereignis-Eigenschaft: On, Before oder After, dann ein Großbuchstabe.</summary>
+    class function IsEventName(const AName: string): Boolean; static;
   end;
 
   TDfmObject = class
@@ -65,13 +68,24 @@ implementation
 
 { TDfmProperty }
 
+class function TDfmProperty.IsEventName(const AName: string): Boolean;
+
+  function Prefixed(const APrefix: string): Boolean;
+  begin
+    Result := (Length(AName) > Length(APrefix)) and SameText(Copy(AName, 1, Length(APrefix)), APrefix) and
+      CharInSet(AName[Length(APrefix) + 1], ['A'..'Z']);
+  end;
+
+begin
+  Result := Prefixed('On') or Prefixed('Before') or Prefixed('After');
+end;
+
 function TDfmProperty.IsEvent: Boolean;
 var
   Index: Integer;
 begin
-  // OnXyz mit einem Bezeichner als Wert.
-  Result := (Length(Name) > 2) and SameText(Copy(Name, 1, 2), 'On') and CharInSet(Name[3], ['A'..'Z']) and
-    (Value <> '') and CharInSet(Value[1], ['A'..'Z', 'a'..'z', '_']);
+  // OnXyz, BeforeXyz oder AfterXyz mit einem Bezeichner als Wert.
+  Result := IsEventName(Name) and (Value <> '') and CharInSet(Value[1], ['A'..'Z', 'a'..'z', '_']);
   if Result then
     for Index := 2 to Length(Value) do
       if not CharInSet(Value[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) then

@@ -37,6 +37,7 @@ uses
   Atlas.Common.Rules.Builtin.SlashCommands,
   Atlas.Common.Rules.Builtin.Metrics,
   Atlas.Common.Rules.Builtin.Todos,
+  Atlas.Common.Rules.Builtin.DebugDisplay,
   Atlas.Common.Rules.Builtin.Recursion,
   Atlas.Common.Rules.Builtin.Deprecated,
   Atlas.Common.Rules.Builtin.ForwardDeclarations,
@@ -113,6 +114,7 @@ begin
     RegisterSlashCommandRules(Registry);
     RegisterMetricRules(Registry);
     RegisterTodoRules(Registry);
+    RegisterDebugDisplayRules(Registry);
     RegisterRecursionRules(Registry);
     RegisterDeprecatedRules(Registry);
     RegisterForwardDeclarationRules(Registry);
