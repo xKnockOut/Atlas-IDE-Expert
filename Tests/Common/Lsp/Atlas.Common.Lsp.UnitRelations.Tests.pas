@@ -4,7 +4,9 @@
 // Tiefe, Generation und ungenutzten Einträgen, der Befehl atlas.unitRelations,
 // Verschieben zwischen interface- und implementation-uses über
 // atlas.server.moveUses und Entfernen nur ungenutzter Einträge über
-// atlas.server.removeUses.
+// atlas.server.removeUses; Kosten einer interface-Änderung über
+// atlas.interfaceCost und nur im implementation gebrauchte interface-Einträge
+// (#554).
 
 interface
 
@@ -41,6 +43,10 @@ type
     procedure MoveRejectsWrongTargets;
     [Test]
     procedure RemovesOnlyUnusedEntries;
+    [Test]
+    procedure MarksEntriesNeededOnlyInImplementation;
+    [Test]
+    procedure CostCommandAnswersRecompileCount;
   end;
 
 implementation
@@ -333,6 +339,80 @@ begin
       begin
         FRelations.Remove(Args).Free;
       end, EJsonRpcError, 'B wird verwendet');
+  finally
+    Args.Free;
+  end;
+end;
+
+procedure TLspUnitRelationsTests.MarksEntriesNeededOnlyInImplementation;
+var
+  Params: TJSONObject;
+  Answer: TJSONValue;
+  Uses_: TJSONArray;
+begin
+  // TB aus B wird nur in der implementation gebraucht: B lässt sich verschieben.
+  FTexts.AddOrSetValue(FileOf('A'), 'unit A;'#10'interface'#10'uses'#10'  B;'#10'implementation'#10'uses'#10'  C;'#10 +
+    'var'#10'  V: TB;'#10'end.');
+  Params := TJSONObject.Create;
+  try
+    Params.AddPair('uri', FileOf('A'));
+    Answer := FRelations.Request(Params);
+    try
+      Uses_ := Answer.GetValue<TJSONArray>('uses');
+      Assert.AreEqual('B', Uses_.Items[0].GetValue<string>('name'));
+      Assert.IsTrue(Uses_.Items[0].GetValue<Boolean>('onlyImplementation'));
+      Assert.IsNull((Uses_.Items[0] as TJSONObject).GetValue('unused'));
+      Assert.IsNull((Uses_.Items[1] as TJSONObject).GetValue('onlyImplementation'), 'C steht schon dort');
+      Assert.IsTrue(Uses_.Items[1].GetValue<Boolean>('unused'));
+    finally
+      Answer.Free;
+    end;
+  finally
+    Params.Free;
+  end;
+end;
+
+procedure TLspUnitRelationsTests.CostCommandAnswersRecompileCount;
+var
+  Args: TJSONArray;
+  Answer: TJSONValue;
+begin
+  Args := Arguments([FileOf('A')]);
+  try
+    Answer := FRelations.Cost(Args);
+    try
+      Assert.IsTrue(Answer.GetValue<Boolean>('found'));
+      Assert.AreEqual('A', Answer.GetValue<string>('unit'));
+      Assert.AreEqual(2, Answer.GetValue<Integer>('recompileCount'), 'B und D');
+      Assert.AreEqual('B', Answer.GetValue<TJSONArray>('units').Items[0].Value);
+      Assert.AreEqual('D', Answer.GetValue<TJSONArray>('units').Items[1].Value);
+      Assert.AreEqual(FIndex.Generation, Answer.GetValue<Int64>('generation'));
+      Assert.IsTrue(FGraph.Options.IncludeLibrary, 'derselbe Graph wie atlas/unitRelations');
+    finally
+      Answer.Free;
+    end;
+  finally
+    Args.Free;
+  end;
+  Args := Arguments([FileOf('C')]);
+  try
+    Answer := FRelations.Cost(Args);
+    try
+      // A verwendet C nur im implementation: A wird neu übersetzt, B und D nicht.
+      Assert.AreEqual(1, Answer.GetValue<Integer>('recompileCount'));
+    finally
+      Answer.Free;
+    end;
+  finally
+    Args.Free;
+  end;
+  Args := TJSONArray.Create;
+  try
+    Assert.WillRaise(
+      procedure
+      begin
+        FRelations.Cost(Args).Free;
+      end, EJsonRpcError);
   finally
     Args.Free;
   end;

@@ -278,6 +278,8 @@ type
     FTestsBuildFirst: TCheckBox;
     FTestsAfterBuild: TCheckBox;
     FBuildZeroHints: TCheckBox;
+    /// <summary>Kosten einer interface-Änderung in der Statusleiste (#554).</summary>
+    FShowInterfaceCost: TCheckBox;
     /// <summary>Release-Build-Wächter (#533): Schalter, build.gate, weitere Release-Konfigurationen und je Prüfung
     /// ein Haken (ohne Sollwert) bzw. eine Auswahl „nicht prüfen / Soll aus / Soll an“.</summary>
     FReleaseGuard: TCheckBox;
@@ -1056,6 +1058,7 @@ type
     property TestsBuildFirstCheck: TCheckBox read FTestsBuildFirst;
     property TestsAfterBuildCheck: TCheckBox read FTestsAfterBuild;
     property BuildZeroHintsCheck: TCheckBox read FBuildZeroHints;
+    property ShowInterfaceCostCheck: TCheckBox read FShowInterfaceCost;
     /// <summary>Zum Testen: Release-Build-Wächter (#533).</summary>
     property ReleaseGuardCheck: TCheckBox read FReleaseGuard;
     property BuildGateChoice: TAtlasChoiceBox read FBuildGate;
@@ -1771,6 +1774,7 @@ begin
   FTestsBuildFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsBuildFirst));
   FTestsAfterBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAfterBuild));
   FBuildZeroHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildZeroHints));
+  FShowInterfaceCost := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShowInterfaceCost));
   // Startprofile (#575).
   FStartProfiles := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfiles));
   FStartProfilesStatusField := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStartProfilesStatusField));
@@ -2948,6 +2952,7 @@ begin
   FMarks.Bind(FTestsBuildFirst, ['TestsBuildFirst']);
   FMarks.Bind(FTestsAfterBuild, ['TestsAfterBuild']);
   FMarks.Bind(FBuildZeroHints, ['BuildZeroHints']);
+  FMarks.Bind(FShowInterfaceCost, ['ShowInterfaceCost']);
   FMarks.Bind(FStartProfiles, ['StartProfiles']);
   FMarks.Bind(FStartProfilesStatusField, ['StartProfilesStatusField']);
   FMarks.Bind(FTestDebug, ['TestDebug']);
@@ -5092,6 +5097,7 @@ begin
   FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
   FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
   FBuildZeroHints.Checked := ASettings.BuildZeroHints;
+  FShowInterfaceCost.Checked := ASettings.ShowInterfaceCost;
   LoadRelease(ASettings);
   FStartProfiles.Checked := ASettings.StartProfiles;
   FStartProfilesStatusField.Checked := ASettings.StartProfilesStatusField;
@@ -5552,6 +5558,7 @@ begin
   ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
   ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;
   ASettings.BuildZeroHints := FBuildZeroHints.Checked;
+  ASettings.ShowInterfaceCost := FShowInterfaceCost.Checked;
   SaveRelease(ASettings);
   ASettings.StartProfiles := FStartProfiles.Checked;
   ASettings.StartProfilesStatusField := FStartProfilesStatusField.Checked;

@@ -1566,6 +1566,11 @@ begin
     begin
       Result := FUnitRelations.Remove(AArguments);
     end);
+  FCommands.Register(TLspUnitRelations.CostCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Cost(AArguments);
+    end);
   FCommands.Register(TLspRecursion.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin

@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4253] of string = (
+  Lines: array[0..4264] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1021,6 +1021,17 @@ const
     '      "x-caption": "Build nur ohne Warnungen und Hinweise erfolgreich",',
     '      "x-captionEn": "Build succeeds only without warnings and hints",',
     '      "x-issue": "#530"',
+    '    },',
+    '    "ShowInterfaceCost": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "build.showInterfaceCost",',
+    '      "x-area": "build",',
+    '      "x-page": "Compiler",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-caption": "Kosten einer interface-Änderung in der Statusleiste",',
+    '      "x-captionEn": "Cost of an interface change in the status bar",',
+    '      "x-issue": "#554"',
     '    },',
     '    "WelcomePage": {',
     '      "type": "boolean",',

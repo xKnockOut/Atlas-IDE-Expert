@@ -6196,7 +6196,7 @@ Voraussetzung: Server läuft in der IDE, Testprojekt mit `A` (interface uses `B`
 | UB1 | `A.pas` im Editor, zum ersten Mal *Ansicht › Atlas › Unit-Beziehungen* | Fenster *Unit-Beziehungen* als Reiter neben der Projektverwaltung; Kopf „A“, „n Units neu übersetzen · Zyklus“; „Verwendet (4)“ und „Wird verwendet von (3)“ aufgeklappt |
 | UB2 | „Verwendet“ ansehen | `B  intf · Zyklus` rot, `C  impl`; Gruppe „Bibliothek (2)“ eingeklappt, darin `System.SysUtils` und `Vcl.Forms · ungenutzt` abgeblendet (**Abnahme**) |
 | UB3 | Maus über `B`; über den Kopf | Tooltip „Zyklus über interface-uses: A → B → A“; der Kopf zeigt denselben Rundweg (**Abnahme**) |
-| UB4 | „Wird verwendet von“ | Genau drei, nach Name: `B  intf`, `E  intf`, `F  impl` (**Abnahme**) |
+| UB4 | „Wird verwendet von“ | Genau drei, nach Name: „über interface-uses (2)“ mit `B  intf`, `E  intf`, „über implementation-uses (1)“ mit `F  impl` (seit #554) (**Abnahme**) |
 | UB5 | Zahl „Units neu übersetzen“ mit dem Reiter *Zentrale Units* der Architekturübersicht („gesamt abhängig“) und `get_architecture` vergleichen | Gleiche Zahl (**Abnahme**) |
 | UB6 | Doppelklick auf `C`; zurück zu `A`; Strg+Doppelklick auf `C` | `C.pas` öffnet sich und das Fenster zeigt sofort `C`; zurück in `A` steht sofort der gemerkte Stand (unter 300 ms); Strg+Doppelklick setzt den Cursor auf `C` im uses von `A` (**Abnahme**) |
 | UB7 | Rechtsklick auf `B`, „In implementation verschieben“; Strg+Z | `B` steht im implementation-uses von `A` (Server-Edit), der Zyklus verschwindet nach kurzer Zeit aus dem Fenster; Strg+Z stellt das uses in einem Schritt wieder her (**Abnahme**) |
@@ -6210,3 +6210,22 @@ Voraussetzung: Server läuft in der IDE, Testprojekt mit `A` (interface uses `B`
 | UB15 | Datei ohne Pascal (z. B. `.dfm`) bzw. Server beendet | „Keine Pascal-Datei im Editor“ bzw. „Der Atlas-Server läuft nicht“ |
 | UB16 | `architecture.enabled` aus (Schnellschalter) | Fenster schließt sich, Menüeinträge und Palettenbefehl fehlen |
 | UB17 | Hell und dunkel, englische IDE-Sprache | Rot und Grau gut lesbar; „Unit relations“, „Uses (n)“, „Used by (n)“, „units to recompile“ |
+
+## Kosten einer interface-Änderung (#554)
+
+Voraussetzung: Server läuft in der IDE, Testprojekt mit der Kette `Oben` (interface uses `Mitte`) → `Mitte` (interface uses `Unten`) → `Unten`, dazu `Neben` (interface uses `Hilfe`, gebraucht wird `Hilfe` nur in einer Methode im implementation-Teil); `architecture.enabled` und `build.showInterfaceCost` an. Index fertig.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IK1 | `Unten.pas`, Einfügemarke in den interface-Teil (etwa in eine Typdeklaration) | Statusleiste: „interface-Änderung: 2 Units werden neu kompiliert“ (**Abnahme**) |
+| IK2 | Maus über das Feld | Tooltip „Eine Änderung im interface von Unten übersetzt neu: Mitte, Oben. Klick: …“ |
+| IK3 | Einfügemarke in den implementation-Teil, dann in den Unit-Kopf | Feld verschwindet sofort, beim Zurück ins interface erscheint es wieder (**Abnahme**) |
+| IK4 | `Mitte.pas` im interface; `Oben.pas` im interface | „1 Unit wird neu kompiliert“; bei `Oben` kein Feld (0 Units) |
+| IK5 | In `Mitte` `Unten` ins implementation-uses verschieben, speichern, zurück zu `Unten` ins interface | Nach wenigen Sekunden „1 Unit wird neu kompiliert“ (nur noch `Mitte`) |
+| IK6 | Klick auf das Feld | Fenster *Unit-Beziehungen* zeigt `Unten`; „Wird verwendet von“ mit „über interface-uses (1)“ und `Mitte` |
+| IK7 | `Neben.pas`, Befehlspalette „Abhängigkeiten dieser Unit“ | *Unit-Beziehungen* für `Neben`; `Hilfe  intf · nur in implementation gebraucht`, Kopf „… · 1 ins implementation-uses verschiebbar“, Tooltip nennt den Grund (**Abnahme**) |
+| IK8 | Rechtsklick auf `Hilfe`, „In implementation verschieben“; Strg+Z | `Hilfe` steht im implementation-uses, die Markierung verschwindet; Strg+Z stellt es in einem Schritt wieder her |
+| IK9 | Befehlspalette „Teuerste Units bei interface-Änderungen“ (vorher in *Zentrale Units* nach Name sortieren) | Architekturübersicht auf *Zentrale Units*, sortiert nach „gesamt abhängig“ absteigend; `Unten` steht vor `Oben` |
+| IK10 | `.dpr` im Editor; Server beenden | Kein Feld; ohne Server kein Feld und keine Fehlermeldung |
+| IK11 | *Compiler › Kosten einer interface-Änderung in der Statusleiste* aus | Feld verschwindet sofort, die beiden Befehle bleiben; `architecture.enabled` aus nimmt Feld und Befehle weg |
+| IK12 | Englische IDE-Sprache | „interface change: 2 units will be recompiled“, „Dependencies of this unit“, „Most expensive units for interface changes“ |

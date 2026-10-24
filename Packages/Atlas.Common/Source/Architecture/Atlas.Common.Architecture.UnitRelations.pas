@@ -20,7 +20,13 @@
 //   erreicht wird; weitere Vorkommen sind „Repeated“ ohne Kinder. So bleibt
 //   der Baum endlich und höchstens so groß wie der Graph.
 // - Ungenutzte Einträge (Unused) nennt der Aufrufer (TUsesActions.Entries),
-//   damit das Fenster „Eintrag entfernen“ nur dort anbietet.
+//   damit das Fenster „Eintrag entfernen“ nur dort anbietet; ebenso
+//   interface-Einträge, die nur im implementation-Teil gebraucht werden
+//   (OnlyImplementation, #554): Sie lassen sich ins implementation-uses
+//   verschieben und senken so die Kosten einer interface-Änderung.
+// - InterfaceCost (#554) ist der kleine Teil davon für die Statusleiste:
+//   RecompileCount und die ersten Units, die neu übersetzt werden, ohne
+//   Text, Fundstellen und Bäume.
 
 interface
 
@@ -44,6 +50,8 @@ type
     /// <summary>Rundweg über interface-uses, etwa "A → B → A"; '' ohne Zyklus.</summary>
     CyclePath: string;
     Unused: Boolean;
+    /// <summary>Steht im interface-uses, gebraucht wird die Unit nur im implementation-Teil (#554).</summary>
+    OnlyImplementation: Boolean;
     /// <summary>Kommt im Baum schon weiter oben vor und wird hier nicht aufgeklappt.</summary>
     Repeated: Boolean;
     /// <summary>Fundstelle des uses-Eintrags; Line = -1 ohne.</summary>
@@ -68,6 +76,17 @@ type
     InCycle: Boolean;
     /// <summary>Kürzester Rundweg über interface-uses durch die Unit.</summary>
     CyclePath: string;
+  end;
+
+  /// <summary>Kosten einer Änderung im interface-Teil (#554).</summary>
+  TUnitInterfaceCost = record
+    Found: Boolean;
+    UnitName: string;
+    FileName: string;
+    /// <summary>Units, die nach einer Änderung im interface neu übersetzt werden.</summary>
+    RecompileCount: Integer;
+    /// <summary>Die ersten davon nach Name (höchstens ALimit von InterfaceCost).</summary>
+    Units: TArray<string>;
   end;
 
   TUnitRelationsBuilder = class
@@ -95,6 +114,16 @@ type
     /// <summary>Beziehungen der Unit in AFileName; ADepth 1 = direkt, 0 = alle Ebenen. AUnused: Namen
     /// ungenutzter Einträge der Unit.</summary>
     function Build(const AFileName: string; ADepth: Integer; const AUnused: TArray<string>): TUnitRelations;
+      overload;
+    /// <summary>Wie oben; AOnlyImplementation: interface-Einträge, die nur im implementation-Teil gebraucht
+    /// werden (#554).</summary>
+    function Build(const AFileName: string; ADepth: Integer; const AUnused,
+      AOnlyImplementation: TArray<string>): TUnitRelations; overload;
+    /// <summary>Kosten einer interface-Änderung der Unit in AFileName (#554); Units mit höchstens ALimit
+    /// Namen.</summary>
+    class function InterfaceCost(AGraph: TUsesGraph; const AFileName: string; ALimit: Integer): TUnitInterfaceCost;
+      static;
+    class function CostToJson(const ACost: TUnitInterfaceCost): TJSONObject; static;
     /// <summary>JSON der Antwort von atlas/unitRelations (ohne "generation").</summary>
     class function ToJson(const ARelations: TUnitRelations): TJSONObject; static;
     class function SectionName(ASection: TUsesSection): string; static;
@@ -104,6 +133,7 @@ implementation
 
 uses
   System.StrUtils,
+  System.Math,
   Atlas.Common.Editing.UsesClause;
 
 function ContainsNode(ANode: Integer; const ANodes: TArray<Integer>): Boolean;
@@ -129,6 +159,17 @@ begin
       Break;
     end;
   Result := ChangeFileExt(Result, '');
+end;
+
+/// <summary>Steht AName (auch mit oder ohne Namensraum geschrieben) in ANames?</summary>
+function NamedIn(const AName: string; const ANames: TArray<string>): Boolean;
+var
+  Name: string;
+begin
+  for Name in ANames do
+    if SameText(Name, AName) or EndsText('.' + Name, AName) or EndsText('.' + AName, Name) then
+      Exit(True);
+  Result := False;
 end;
 
 { TUnitRelationsBuilder }
@@ -405,13 +446,18 @@ end;
 
 function TUnitRelationsBuilder.Build(const AFileName: string; ADepth: Integer;
   const AUnused: TArray<string>): TUnitRelations;
+begin
+  Result := Build(AFileName, ADepth, AUnused, nil);
+end;
+
+function TUnitRelationsBuilder.Build(const AFileName: string; ADepth: Integer; const AUnused,
+  AOnlyImplementation: TArray<string>): TUnitRelations;
 var
   Cycle: TUsesCycle;
   Member, Index, Child, Target: Integer;
   Expanded: TArray<Boolean>;
   Distance: TArray<Integer>;
   Tree: TArray<TUnitRelation>;
-  Unused: string;
   Node: TUsesNode;
 begin
   Result := Default(TUnitRelations);
@@ -503,10 +549,50 @@ begin
     end;
   end;
   for Index := 0 to High(Result.Uses_) do
-    for Unused in AUnused do
-      if SameText(Unused, Result.Uses_[Index].Name) or
-        EndsText('.' + Unused, Result.Uses_[Index].Name) or EndsText('.' + Result.Uses_[Index].Name, Unused) then
-        Result.Uses_[Index].Unused := True;
+  begin
+    Result.Uses_[Index].Unused := NamedIn(Result.Uses_[Index].Name, AUnused);
+    Result.Uses_[Index].OnlyImplementation := (Result.Uses_[Index].Section = TUsesSection.Interface_) and
+      NamedIn(Result.Uses_[Index].Name, AOnlyImplementation);
+  end;
+end;
+
+class function TUnitRelationsBuilder.InterfaceCost(AGraph: TUsesGraph; const AFileName: string;
+  ALimit: Integer): TUnitInterfaceCost;
+var
+  Node, Index: Integer;
+  Units: TArray<Integer>;
+begin
+  Result := Default(TUnitInterfaceCost);
+  Result.FileName := AFileName;
+  Result.UnitName := BareName(AFileName);
+  Node := AGraph.IndexOfFile(AFileName);
+  if Node < 0 then
+    Exit;
+  Result.Found := True;
+  Result.UnitName := AGraph.Node(Node).UnitName;
+  Result.FileName := AGraph.Node(Node).FileName;
+  // RecompileSet ist schon nach Name sortiert.
+  Units := AGraph.RecompileSet(Node);
+  Result.RecompileCount := Length(Units);
+  SetLength(Result.Units, Min(Max(ALimit, 0), Length(Units)));
+  for Index := 0 to High(Result.Units) do
+    Result.Units[Index] := AGraph.Node(Units[Index]).UnitName;
+end;
+
+class function TUnitRelationsBuilder.CostToJson(const ACost: TUnitInterfaceCost): TJSONObject;
+var
+  List: TJSONArray;
+  Name: string;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('found', TJSONBool.Create(ACost.Found));
+  Result.AddPair('unit', ACost.UnitName);
+  Result.AddPair('file', ACost.FileName);
+  Result.AddPair('recompileCount', TJSONNumber.Create(ACost.RecompileCount));
+  List := TJSONArray.Create;
+  for Name in ACost.Units do
+    List.Add(Name);
+  Result.AddPair('units', List);
 end;
 
 function RelationJson(const ARelation: TUnitRelation): TJSONObject;
@@ -529,6 +615,8 @@ begin
   end;
   if ARelation.Unused then
     Result.AddPair('unused', TJSONBool.Create(True));
+  if ARelation.OnlyImplementation then
+    Result.AddPair('onlyImplementation', TJSONBool.Create(True));
   if ARelation.Repeated then
     Result.AddPair('repeated', TJSONBool.Create(True));
   if ARelation.Line >= 0 then
