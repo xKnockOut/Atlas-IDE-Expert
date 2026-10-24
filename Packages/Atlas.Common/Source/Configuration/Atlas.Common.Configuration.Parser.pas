@@ -1623,6 +1623,77 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.EnumTables)
     else if Key = 'enumTablesResourceStrings' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.EnumTablesResourceStrings)
+    else if Key = 'extractInterface' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExtractInterface)
+    else if Key = 'extractSuperclass' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExtractSuperclass)
+    else if Key = 'extractSuperclassTarget' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'sameUnit') then
+          FSettings.Refactoring.ExtractSuperclassTarget := 'sameUnit'
+        else if SameText(Value, 'newUnit') then
+          FSettings.Refactoring.ExtractSuperclassTarget := 'newUnit'
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassTarget" muss "sameUnit" oder "newUnit" sein');
+    end
+    else if Key = 'extractSuperclassNameSuffix' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if IsValidIdent(Trim(Value)) then
+          FSettings.Refactoring.ExtractSuperclassNameSuffix := Trim(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassNameSuffix" muss ein Bezeichner wie "Base" sein');
+    end
+    else if Key = 'extractSuperclassMethodMode' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['move', 'abstract']) then
+          FSettings.Refactoring.ExtractSuperclassMethodMode := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassMethodMode" muss "move" oder "abstract" sein');
+    end
+    else if Key = 'extractSuperclassRaiseVisibility' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'protected') then
+          FSettings.Refactoring.ExtractSuperclassRaiseVisibility := 'protected'
+        else if SameText(Value, 'strictProtected') then
+          FSettings.Refactoring.ExtractSuperclassRaiseVisibility := 'strictProtected'
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassRaiseVisibility" muss "protected" oder ' +
+            '"strictProtected" sein');
+    end
+    else if Key = 'moveMember' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MoveMember)
+    else if Key = 'inlineAccessor' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessor)
+    else if Key = 'inlineAccessorEqualityCheck' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessorEqualityCheck)
+    else if Key = 'inlineAccessorBulk' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessorBulk)
+    else if Key = 'inlineAccessorDiagnostic' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessorDiagnostic)
+    else if Key = 'safeDelete' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SafeDelete)
+    else if Key = 'safeDeletePreviewWhenUnused' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SafeDeletePreviewWhenUnused)
+    else if Key = 'safeDeleteCascade' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['ask', 'always', 'never']) then
+          FSettings.Refactoring.SafeDeleteCascade := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.safeDeleteCascade" muss "ask", "always" oder "never" sein');
+    end
+    else if Key = 'safeDeleteIncludeOverrides' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['ask', 'always', 'never']) then
+          FSettings.Refactoring.SafeDeleteIncludeOverrides := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.safeDeleteIncludeOverrides" muss "ask", "always" oder "never" sein');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

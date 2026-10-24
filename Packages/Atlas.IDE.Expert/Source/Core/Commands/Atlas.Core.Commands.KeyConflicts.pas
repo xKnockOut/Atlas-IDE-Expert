@@ -47,7 +47,7 @@ type
   /// und QuickBookmarkJump (je eine Zeile für die Tasten 1–9, Key ist die Taste für 1) stehen mit eigener Wahl auch
   /// auf der Seite „Tastenkonflikte“; NextBookmark und PreviousBookmark nur in der Übersicht. Gezielt
   /// hineinspringen (#836) nur in der Übersicht. Neue Funktionen
-  /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
+  /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht. Sicher löschen (#716).</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
@@ -58,7 +58,7 @@ type
     MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
-    PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType);
+    PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -279,7 +279,9 @@ begin
       ASettings.DebugStepIntoTarget),
     // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T ist in der IDE „To-Do-Eintrag hinzufügen“; bewusst
     // übernommen, darum mit Vorrang. Aus = die IDE behält die Taste.
-    Create(TAtlasKeyFunction.ExpressionType, Word(ASettings.ExpressionTypeKey), True, ASettings.ExpressionType)];
+    Create(TAtlasKeyFunction.ExpressionType, Word(ASettings.ExpressionTypeKey), True, ASettings.ExpressionType),
+    // Sicher löschen (#716): aus = Kürzel frei.
+    Create(TAtlasKeyFunction.SafeDelete, Word(ASettings.SafeDeleteKey), Shared, ASettings.SafeDelete)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -454,6 +456,8 @@ begin
         ASettings.DebugStepIntoTargetKey := Entry.Key;
       TAtlasKeyFunction.ExpressionType:
         ASettings.ExpressionTypeKey := Entry.Key;
+      TAtlasKeyFunction.SafeDelete:
+        ASettings.SafeDeleteKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

@@ -107,6 +107,8 @@ type
     /// Laden.</summary>
     [Test]
     procedure MethodPlacementOptions;
+    [Test]
+    procedure SafeDeleteOptions;
     /// <summary>Markierung beim Tippen umschließen (#672): Vorgaben, Speichern und Laden.</summary>
     [Test]
     procedure WrapSelectionOptions;
@@ -2043,6 +2045,27 @@ begin
   Loaded.UnwrapKey := $1FFFF;
   Loaded.Normalize;
   Assert.AreEqual($FFFF, Loaded.UnwrapKey);
+end;
+
+procedure TAtlasPluginSettingsTests.SafeDeleteOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.SafeDelete);
+  Assert.AreEqual($802E, Settings.SafeDeleteKey, 'Alt+Entf');
+  Settings.SafeDelete := False;
+  Settings.SafeDeleteKey := $402E;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.SafeDelete);
+  Assert.AreEqual($402E, Loaded.SafeDeleteKey);
+  Loaded.SafeDeleteKey := -1;
+  Loaded.Normalize;
+  Assert.AreEqual(0, Loaded.SafeDeleteKey);
 end;
 
 procedure TAtlasPluginSettingsTests.GitChangeOptions;

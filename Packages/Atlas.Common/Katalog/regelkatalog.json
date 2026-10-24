@@ -2189,6 +2189,16 @@
       "good": "procedure TImport.Pruefen;\nbegin\n  // Absichtlich leer.\nend;"
     },
     {
+      "id": "trivial-accessor",
+      "name": "Accessor method only reads or writes a field",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "A getter whose body is only Result := FName; (also Exit(FName), Self.FName) or a setter whose body is only FName := Value; (with refactoring.inlineAccessorEqualityCheck also if FName <> Value then FName := Value;). The property can point to the field directly. Only methods that are not virtual, dynamic, override or abstract, not class methods, not overloaded or generic, implement no interface method (also via a method resolution clause), have no index specifier and are not used by other members of the class; the field belongs to the class and has the type of the property. Silent unless refactoring.inlineAccessorDiagnostic is on (default off) and refactoring.inlineAccessor is on. Medium confidence: calls in other units are not visible to the rule. No quick fix in the rule; the code action \"Replace accessor GetName with field FName\" at the same place checks calls with the reference search and replaces it.",
+      "bad": "property Name: string read GetName write FName;\n...\nfunction TCustomer.GetName: string;\nbegin\n  Result := FName;\nend;",
+      "good": "property Name: string read FName write FName;"
+    },
+    {
       "id": "write-only-property",
       "name": "Property without read",
       "category": "code-smell",

@@ -579,6 +579,9 @@ begin
       Context.FreeFieldsFreeAndNil := SameText(Settings.Refactoring.FreeFieldsStyle, 'freeAndNil');
       Context.NoMethodKind := not Settings.Refactoring.MethodKind;
       Context.MethodKindStatic := Settings.Refactoring.MethodKindStatic;
+      Context.InlineAccessorDiagnostic := Settings.Refactoring.InlineAccessor and
+        Settings.Refactoring.InlineAccessorDiagnostic;
+      Context.NoAccessorEqualityCheck := not Settings.Refactoring.InlineAccessorEqualityCheck;
       Context.AccessorsProtected := Settings.Completion.AccessorSection = TCompletionAccessorSection.Protected;
       Context.Formatting := Settings.Formatting;
       Context.KeepAttributes := Settings.DeadCodeKeepAttributes;
