@@ -47,7 +47,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code Lens im Editor. |
 | `references` | global (settings.json) | object | – |  | Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein Interface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen. |
-| `navigation` | global (settings.json) | object | – |  | Navigation über den Code: Weg zwischen zwei Symbolen oder Units über Aufrufe, Felder, Interfaces, Vererbung und uses (Plugin-Befehl „Weg zwischen Symbolen…“, MCP-Werkzeug find_path). |
+| `navigation` | global (settings.json) | object | – |  | Navigation über den Code: Weg zwischen zwei Symbolen oder Units über Aufrufe, Felder, Interfaces, Vererbung und uses (Plugin-Befehl „Weg zwischen Symbolen…“, MCP-Werkzeug find_path) und Auswirkungsanalyse: Was ist betroffen, wenn ich ein Symbol ändere? Aufrufer, Verweise, Overrides, Interface-Umsetzungen und Formularbindungen nach Ebenen, dazu die betroffenen Tests (Plugin-Befehl „Auswirkungen anzeigen“, MCP-Werkzeug get_impact). |
 | `hints` | global (settings.json) | object | – |  | Anzeige von XMLDoc-Kommentaren (///) und Begründungen (// WHY: …, #1123) im Hover-Tooltip und im Detailpanel der Vervollständigung des IDE-Plugins. Der Server bereitet die Doku immer vollständig auf; die Werte steuern nur die Anzeige. Ohne Angabe gelten die Werte aus Tools › Optionen › Drittanbieter › Atlas. |
 | `directives` | global (settings.json) | object | – |  | Hilfen in Compiler-Direktiven: Vervollständigung und Hover für Direktiven wie {$R+} oder {$WARN …} und für bedingte Symbole in {$IFDEF}, {$IFNDEF}, {$IF Defined(…)}, {$DEFINE} und {$UNDEF}. |
 | `stringLiteral` | Projekt (atlas.json) | object | – |  | Code-Aktionen „Als String-Literal“ und „Als Klartext kopieren“. |
@@ -247,6 +247,8 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `navigation.symbolPath` | global (settings.json) | boolean | `true` |  | Befehl „Weg zwischen Symbolen…“ im Plugin mit Einträgen im Menü Atlas, im Kontextmenü des Editors („Weg von hier nach…“) und in der Befehlspalette; aus = Befehl und Menüeinträge fehlen. Das MCP-Werkzeug schaltet mcp.disabledTools (find_path) ab. |
+| `navigation.impact` | global (settings.json) | boolean | `true` |  | Befehl „Auswirkungen anzeigen“ im Plugin mit Einträgen im Kontextmenü, im Menü Atlas und in der Befehlspalette; aus = Befehl und Menüeinträge fehlen. Das MCP-Werkzeug schaltet mcp.disabledTools (get_impact) ab. |
+| `navigation.impactDepth` | global (settings.json) | integer | `2` | 1…5 | Vorgabe der Tiefe der Auswirkungsanalyse in IDE und MCP: 1 = nur direkte Aufrufer und Verweise, jede weitere Ebene geht einen Schritt weiter zurück. |
 
 ## hints
 

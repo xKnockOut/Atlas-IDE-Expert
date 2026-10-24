@@ -19,6 +19,7 @@ uses
   Atlas.Core.Undo.Contract,
   Atlas.Core.Notes.Store,
   Atlas.Core.SymbolPath.Model,
+  Atlas.Core.Lsp.Contract,
   Atlas.UI.Results.Frame;
 
 type
@@ -41,6 +42,9 @@ type
     IsProjectFile: TFunc<string, Boolean>;
     /// <summary>„In Architekturkarte zeigen“ eines Wegs zwischen Symbolen (#1117).</summary>
     OnShowRoute: TAtlasShowRoute;
+    /// <summary>Auswirkungsanalyse (#1120): andere Tiefe, betroffene Tests ausführen.</summary>
+    OnImpactDepth: TAtlasImpactDepthChange;
+    OnImpactRunTests: TAtlasImpactRunTests;
   public
     /// <summary>Fenster zeigen (bei Bedarf anlegen); nil, wenn die IDE keine andockbaren Fenster anbietet.</summary>
     class function Frame: TAtlasResultsFrame; static;
@@ -64,6 +68,8 @@ type
       AMapAvailable: Boolean); static;
     /// <summary>Hinweis statt einer Kette (Suche läuft, Fehler).</summary>
     class procedure ShowSymbolPathMessage(const ATitle, AText: string); static;
+    /// <summary>Auswirkungen einer Änderung am Symbol (#1120): direkt, indirekt, Tests.</summary>
+    class procedure ShowImpact(const ATitle: string; const AImpact: TAtlasImpact); static;
     /// <summary>Frame, falls das Fenster schon existiert; legt nichts an und holt nichts nach vorn.</summary>
     class function ExistingFrame: TAtlasResultsFrame; static;
     /// <summary>Fenstersymbol (#751) zum aktiven IDE-Thema.</summary>
@@ -183,6 +189,18 @@ begin
     begin
       if Assigned(TAtlasIdeResultsWindow.OnShowRoute) then
         TAtlasIdeResultsWindow.OnShowRoute(AUnits);
+    end;
+  ResultsFrame.OnImpactDepth :=
+    procedure(ADepth: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnImpactDepth) then
+        TAtlasIdeResultsWindow.OnImpactDepth(ADepth);
+    end;
+  ResultsFrame.OnImpactRunTests :=
+    procedure(const AImpact: TAtlasImpact)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnImpactRunTests) then
+        TAtlasIdeResultsWindow.OnImpactRunTests(AImpact);
     end;
   ResultsFrame.OnExpand :=
     function(ADirection: TAtlasHierarchyDirection; const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>
@@ -346,6 +364,15 @@ begin
     Target.ShowSymbolPathMessage(ATitle, AText);
 end;
 
+class procedure TAtlasIdeResultsWindow.ShowImpact(const ATitle: string; const AImpact: TAtlasImpact);
+var
+  Target: TAtlasResultsFrame;
+begin
+  Target := Frame;
+  if Target <> nil then
+    Target.ShowImpact(ATitle, AImpact);
+end;
+
 class function TAtlasIdeResultsWindow.ExistingFrame: TAtlasResultsFrame;
 begin
   Result := nil;
@@ -393,6 +420,8 @@ begin
   OnNoteEdit := nil;
   OnNoteDelete := nil;
   OnShowRoute := nil;
+  OnImpactDepth := nil;
+  OnImpactRunTests := nil;
   // Meldet ab und gibt die Form nur frei, wenn die IDE sie nicht schon zerstört hat.
   FreeAndNil(Host);
 end;

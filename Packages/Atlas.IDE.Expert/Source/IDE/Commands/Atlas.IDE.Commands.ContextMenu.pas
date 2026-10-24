@@ -15,9 +15,10 @@
 // einem Neustart.
 // Einträge mit einer Kennung der Befehlspalette melden sich bei den
 // Tastenkürzel-Tipps (#600) als Aufruf per Kontextmenü.
-// Einträge mit Sichtbarkeit (AddWhen, etwa „Weg von hier nach …“ nach
-// navigation.symbolPath, #1117) blendet UpdateVisibility nach geänderten
-// Einstellungen aus bzw. ein; auch das ohne OnUpdate.
+// Einträge mit Sichtbarkeit nach Einstellung (AddWhen, etwa „Weg von hier nach …“
+// nach navigation.symbolPath, #1117, oder „Auswirkungen anzeigen“ nach
+// navigation.impact, #1120) blendet UpdateVisibility aus bzw. ein; aufgerufen
+// beim Registrieren und nach jeder Einstellungsänderung, nie aus OnUpdate.
 
 interface
 

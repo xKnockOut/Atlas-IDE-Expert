@@ -3,11 +3,10 @@
 // Projekte der Gruppe für projektweite Prüfregeln (#1102, unused-public-member):
 // Umsetzung von IRuleProjectFiles über den Symbolindex.
 //
-// - NameIn fragt zuerst die Verwendungen des Index (#492, index.usages): Je
-//   Projekt-Unit liegen dort alle Bezeichner außer Deklarationen, sortiert nach
-//   dem Namen in Großbuchstaben. Fehlen sie (index.usages aus, ausgelagert, Unit
-//   noch nicht im Index) oder ist der Name ein Wort, das der Index nicht als
-//   Verwendung zählt (Direktiven, Self, Result), sucht NameIn im Text.
+// - NameIn fragt zuerst die Verwendungen des Index (#492, index.usages, über
+//   TIndexUsages). Kann der Index es nicht sagen (index.usages aus, ausgelagert,
+//   Unit noch nicht im Index, Wort, das er nicht als Verwendung zählt), sucht
+//   NameIn im Text.
 // - Units mit Include-Dateien: Was im Text der Unit nicht steht, kann in einer
 //   Include-Datei stehen; ist eine davon nicht lesbar, ist die Antwort Unknown.
 // - Kind und IsTest leitet KindOfSource bzw. IsTestSource aus dem Hauptquelltext
@@ -44,7 +43,6 @@ type
     /// <summary>Der Uses-Graph-Dienst; ohne hereingereichten einer über FIndex. nil ohne Index.</summary>
     function UsesGraph: TUsesGraphService;
     function TextHasName(const AText, AName: string): Boolean;
-    function UsagesHaveName(const AUsages: TArray<TIndexUsage>; const AName: string): Boolean;
   public
     /// <summary>AIndex darf nil sein (dann sucht NameIn im Text); AComplete nil = vollständig.</summary>
     constructor Create(const AProjects: TArray<TRuleProject>; const AIndex: ISymbolIndex;
@@ -76,20 +74,11 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Index.Usages,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Profiles;
-
-const
-  // Wörter, die der Index nicht als Verwendung erfasst (Atlas.Common.Index.Extractor, CollectUsages):
-  // Direktiven nach Routinenköpfen sowie Self und Result. Für solche Namen sucht NameIn im Text.
-  UncountedWords: array[0..34] of string = (
-    'abstract', 'assembler', 'cdecl', 'deprecated', 'dispid', 'dynamic', 'experimental',
-    'export', 'external', 'far', 'final', 'forward', 'inline', 'library', 'local',
-    'near', 'noreturn', 'overload', 'override', 'pascal', 'platform',
-    'register', 'reintroduce', 'safecall', 'static', 'stdcall', 'unsafe', 'varargs',
-    'virtual', 'winapi', 'delayed', 'sealed', 'nodefault', 'self', 'result');
 
 { TRuleProjectFiles }
 
@@ -296,29 +285,6 @@ begin
   end;
 end;
 
-function TRuleProjectFiles.UsagesHaveName(const AUsages: TArray<TIndexUsage>; const AName: string): Boolean;
-var
-  Low, High_, Middle, Order: Integer;
-  Key: string;
-begin
-  // Sortiert nach UpperCase(Name), ordinal (TIndexExtractor.CollectUsages).
-  Key := UpperCase(AName);
-  Low := 0;
-  High_ := High(AUsages);
-  while Low <= High_ do
-  begin
-    Middle := (Low + High_) div 2;
-    Order := CompareStr(UpperCase(AUsages[Middle].Name), Key);
-    if Order = 0 then
-      Exit(True);
-    if Order < 0 then
-      Low := Middle + 1
-    else
-      High_ := Middle - 1;
-  end;
-  Result := False;
-end;
-
 function TRuleProjectFiles.NameIn(const AFileName, AName: string): TRuleNameAnswer;
 var
   Indexed: TUnitIndex;
@@ -326,14 +292,14 @@ var
   Text, Include: string;
 begin
   HasUnit := (FIndex <> nil) and FIndex.FindFile(AFileName, Indexed);
-  if HasUnit and Indexed.UsagesIndexed and not Indexed.UsagesOffloaded and
-    (IndexText(AName, UncountedWords) < 0) and (Indexed.Includes = nil) then
-  begin
+  if HasUnit then
     // Deklarationen zählen nicht als Verwendung; der Name kann trotzdem als Deklaration in der Datei stehen.
-    if UsagesHaveName(Indexed.Usages, AName) then
-      Exit(TRuleNameAnswer.Present);
-    Exit(TRuleNameAnswer.Absent);
-  end;
+    case TIndexUsages.Lookup(Indexed, AName) of
+      TIndexUsageAnswer.Present:
+        Exit(TRuleNameAnswer.Present);
+      TIndexUsageAnswer.Absent:
+        Exit(TRuleNameAnswer.Absent);
+    end;
   if not ReadText(AFileName, Text) then
     Exit(TRuleNameAnswer.Unknown);
   if TextHasName(Text, AName) then

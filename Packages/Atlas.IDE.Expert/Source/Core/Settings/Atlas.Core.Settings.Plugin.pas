@@ -49,6 +49,9 @@ type
     MaxXmlDocLines = 50;
     MinPeekLines = 5;
     MaxPeekLines = 60;
+    /// <summary>Grenzen für navigation.impactDepth (#1120).</summary>
+    MinImpactDepth = 1;
+    MaxImpactDepth = 5;
     /// <summary>Grenzen für editor.stickyScrollMaxLines (#506).</summary>
     MinStickyLines = 1;
     MaxStickyLines = 10;
@@ -662,6 +665,11 @@ type
     ReferencesTextMatches: Boolean;
     /// <summary>Aufrufhierarchie auch als Diagramm (#1122, callHierarchy.diagram).</summary>
     CallHierarchyDiagram: Boolean;
+    /// <summary>Befehl „Auswirkungen anzeigen“ mit Menüeinträgen (#1120, navigation.impact in settings.json).</summary>
+    Impact: Boolean;
+    /// <summary>Vorgabe der Tiefe der Auswirkungsanalyse (#1120, navigation.impactDepth), MinImpactDepth bis
+    /// MaxImpactDepth.</summary>
+    ImpactDepth: Integer;
     /// <summary>Kürzel „Definition einblenden“ (#505, keys.peekDefinition); Vorgabe Alt+F12.</summary>
     PeekDefinitionKey: Integer;
     /// <summary>Kürzel „Referenzen einblenden“ (#505, keys.peekReferences); Vorgabe Umschalt+Alt+F12.</summary>
@@ -1505,6 +1513,8 @@ begin
   Result.ReferencesInferred := True;
   Result.ReferencesTextMatches := False;
   Result.CallHierarchyDiagram := True;
+  Result.Impact := True;
+  Result.ImpactDepth := 2;
   Result.PeekDefinitionKey := $807B; // Alt+F12
   Result.PeekReferencesKey := $A07B; // Umschalt+Alt+F12
   Result.Outline := True;
@@ -1797,6 +1807,7 @@ begin
   NavForwardKey := EnsureRange(NavForwardKey, 0, $FFFF);
   LastEditKey := EnsureRange(LastEditKey, 0, $FFFF);
   PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
+  ImpactDepth := EnsureRange(ImpactDepth, MinImpactDepth, MaxImpactDepth);
   StickyScrollMaxLines := EnsureRange(StickyScrollMaxLines, MinStickyLines, MaxStickyLines);
   SelectionMatchesMinLength := EnsureRange(SelectionMatchesMinLength, MinSelectionMatchLength,
     MaxSelectionMatchLength);
@@ -2140,6 +2151,8 @@ begin
   ReferencesInferred := AStore.ReadInteger('ReferencesInferred', BoolValue(Default.ReferencesInferred)) <> 0;
   ReferencesTextMatches := AStore.ReadInteger('ReferencesTextMatches', BoolValue(Default.ReferencesTextMatches)) <> 0;
   CallHierarchyDiagram := AStore.ReadInteger('CallHierarchyDiagram', BoolValue(Default.CallHierarchyDiagram)) <> 0;
+  Impact := AStore.ReadInteger('Impact', BoolValue(Default.Impact)) <> 0;
+  ImpactDepth := AStore.ReadInteger('ImpactDepth', Default.ImpactDepth);
   PeekDefinitionKey := AStore.ReadInteger('PeekDefinitionKey', Default.PeekDefinitionKey);
   PeekReferencesKey := AStore.ReadInteger('PeekReferencesKey', Default.PeekReferencesKey);
   Outline := AStore.ReadInteger('Outline', BoolValue(Default.Outline)) <> 0;
@@ -2581,6 +2594,8 @@ begin
   AStore.WriteInteger('ReferencesInferred', BoolValue(ReferencesInferred));
   AStore.WriteInteger('ReferencesTextMatches', BoolValue(ReferencesTextMatches));
   AStore.WriteInteger('CallHierarchyDiagram', BoolValue(CallHierarchyDiagram));
+  AStore.WriteInteger('Impact', BoolValue(Impact));
+  AStore.WriteInteger('ImpactDepth', ImpactDepth);
   AStore.WriteInteger('PeekDefinitionKey', PeekDefinitionKey);
   AStore.WriteInteger('PeekReferencesKey', PeekReferencesKey);
   AStore.WriteInteger('Outline', BoolValue(Outline));

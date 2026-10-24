@@ -105,10 +105,15 @@ type
     class function SureOnly: TReferenceSettings; static;
   end;
 
-  /// <summary>Navigation über den Code ("navigation", #1117).</summary>
+  /// <summary>Navigation über den Code ("navigation"): Weg zwischen Symbolen (#1117) und Auswirkungsanalyse
+  /// (#1120).</summary>
   TNavigationSettings = record
     /// <summary>IDE-Befehl „Weg zwischen Symbolen…“ mit Menü- und Kontextmenüeintrag.</summary>
     SymbolPath: Boolean;
+    /// <summary>Befehl „Auswirkungen anzeigen“ im Plugin mit seinen Menüeinträgen.</summary>
+    Impact: Boolean;
+    /// <summary>Vorgabe der Tiefe der Auswirkungsanalyse in IDE und MCP (1–5).</summary>
+    ImpactDepth: Integer;
     class function Default: TNavigationSettings; static;
   end;
 
@@ -812,6 +817,8 @@ end;
 class function TNavigationSettings.Default: TNavigationSettings;
 begin
   Result.SymbolPath := True;
+  Result.Impact := True;
+  Result.ImpactDepth := 2;
 end;
 
 { TCodeLensSettings }
