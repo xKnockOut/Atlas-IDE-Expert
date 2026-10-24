@@ -1179,6 +1179,40 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#836"
     },
+    "DebugStepFilters": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "debug.stepFilters",
+      "x-area": "debug",
+      "x-feature": "Debugger",
+      "x-page": "Debuggen",
+      "x-quickToggle": true,
+      "x-caption": "Schrittfilter beim Hineinspringen",
+      "x-captionEn": "Step filters when stepping into",
+      "x-issue": "#850"
+    },
+    "DebugStepFilterKinds": {
+      "description": "Welche Arten eigener Routinen F7 überspringt, kommagetrennt: getters und setters (read- bzw. write-Methode einer Eigenschaft mit genau einer einfachen Anweisung), trivial (nur eine Zuweisung an Result oder ein Feld ohne Aufruf), operators (class operator), emptyConstructors (Konstruktor oder Destruktor, der nur inherited aufruft); unbekannte Namen fallen weg, leer = keine.",
+      "type": "string",
+      "default": "getters,trivial",
+      "x-key": "debug.stepFilters.kinds",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.stepFilters",
+      "x-control": "Kontrollkästchen je Art",
+      "x-issue": "#850"
+    },
+    "DebugStepFilterPatterns": {
+      "description": "Weitere Methoden, die F7 überspringt: Muster Unit.Klasse.Methode mit * als Platzhalter (auch über Punkte), durch ; getrennt; vorn dürfen Teile fehlen (TBasisForm.*, *.Log*). Das Kontextmenü „Beim Hineinspringen überspringen“ trägt die Methode an der Schreibmarke ein.",
+      "type": "string",
+      "default": "",
+      "x-key": "debug.stepFilters.patterns",
+      "x-area": "debug",
+      "x-page": "Debuggen",
+      "x-parent": "debug.stepFilters",
+      "x-control": "Textfeld",
+      "x-issue": "#850"
+    },
     "DebugStepIntoTargetKey": {
       "description": "Tastenkürzel „Gezielt hineinspringen“ (0 = keins).",
       "type": "integer",

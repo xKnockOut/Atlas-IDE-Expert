@@ -365,6 +365,10 @@ type
     /// <summary>„Umschließung entfernen“ (#657): Konstrukte am Cursor mit Varianten und Vorschau.</summary>
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
     function StepTargets(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Schrittfilter (#850): Routine an [uri, line] mit Namen und Arten.</summary>
+    function StepFilter(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Schrittfilter (#850): Treffer der Arten und Muster über alle Projekt-Units.</summary>
+    function StepFilterCounts(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
     function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
@@ -511,6 +515,7 @@ uses
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Builtin.FormFields,
@@ -523,6 +528,7 @@ uses
   Atlas.Common.Lsp.InvertBoolean,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.StepTargets,
+  Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
   Atlas.Common.Editing.SmartPaste,
@@ -1508,6 +1514,16 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := StepTargets(AArguments);
+    end);
+  FCommands.Register(TLspStepFilter.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := StepFilter(AArguments);
+    end);
+  FCommands.Register(TLspStepFilter.CountsCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := StepFilterCounts(AArguments);
     end);
   FCommands.Register(TLspUnitRename.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3380,6 +3396,76 @@ begin
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Gezielt hineinspringen: %d Aufrufe', [(Answer.GetValue('calls') as TJSONArray).Count]));
   Result := Answer;
+end;
+
+function TServerComposition.StepFilter(const AArguments: TJSONArray): TJSONValue;
+var
+  mUri, mFileName, mText: string;
+  mLine: Integer;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mTree: TSyntaxTree;
+  mAnswer: TJSONObject;
+begin
+  // Argumente: URI und Zeile (ab 0) des Halts nach F7 bzw. des Methodenkopfs im Kontextmenü (#850).
+  if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONNumber) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "line" fehlen');
+  mUri := AArguments.Items[0].Value;
+  mLine := TJSONNumber(AArguments.Items[1]).AsInt;
+  if FDocuments.TryGet(mUri, mDocument) then
+  begin
+    mShared := TSyntaxTreeCache.Get(mDocument, nil);
+    mAnswer := TLspStepFilter.Execute(mShared.Tree, mDocument.Text, mLine);
+  end
+  else
+  begin
+    // Nach F7 steht der Halt oft in einer Datei, die der Editor erst jetzt öffnet: selbst lesen.
+    mFileName := TDocumentUris.ToPath(mUri);
+    if not ReadSourceText(mFileName, mText) then
+      raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht lesbar.');
+    mTree := TPascalParser.Parse(mText);
+    try
+      mAnswer := TLspStepFilter.Execute(mTree, mText, mLine);
+    finally
+      mTree.Free;
+    end;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Schrittfilter: Routine %s', [BoolToStr(mAnswer.GetValue<Boolean>('found', False), True)]));
+  Result := mAnswer;
+end;
+
+function TServerComposition.StepFilterCounts(const AArguments: TJSONArray): TJSONValue;
+var
+  mPatterns: TArray<string>;
+  mCounts: TLspStepFilterCounts;
+  mUnit: TUnitIndex;
+  mText: string;
+  mTree: TSyntaxTree;
+begin
+  // Argument: Liste der Muster (#850). Gezählt werden die Projekt-Units, Bibliotheken nicht.
+  mPatterns := TLspStepFilter.ReadPatterns(AArguments);
+  mCounts := TLspStepFilter.NewCounts(mPatterns);
+  for mUnit in FIndex.Units do
+  begin
+    if mUnit.Library_ or (mUnit.FileName = '') then
+      Continue;
+    if mCounts.Files >= TLspStepFilter.MaxFiles then
+    begin
+      mCounts.Truncated := True;
+      Break;
+    end;
+    if not ReadSourceText(mUnit.FileName, mText) then
+      Continue;
+    mTree := TPascalParser.Parse(mText);
+    try
+      TLspStepFilter.AddCounts(mTree, mText, mPatterns, mCounts);
+    finally
+      mTree.Free;
+    end;
+  end;
+  FLogger.Info(Format('Schrittfilter: %d Dateien, %d Routinen', [mCounts.Files, mCounts.Routines]));
+  Result := TLspStepFilter.CountsToJson(mCounts);
 end;
 
 function TServerComposition.MoveClass(const AArguments: TJSONArray): TJSONValue;

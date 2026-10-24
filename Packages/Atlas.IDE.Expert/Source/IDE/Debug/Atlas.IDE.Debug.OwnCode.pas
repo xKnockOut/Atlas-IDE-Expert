@@ -5,9 +5,9 @@
 //   - Aufrufstapel: IOTAThread.GetCallCount/GetCallHeader/GetCallPos (über
 //     TAtlasIdeDebugSession.ReadStack, mit csWait unter LLDB).
 //   - Schritte: IOTAProcess.Run(ormRunUntilReturn) setzt bis zur Rückkehr fort.
-//   - Was der Benutzer gedrückt hat, meldet die OTA nicht. Atlas hängt sich
-//     deshalb an die Aktion „Einzelne Anweisung“ (F7) der IDE
-//     (RunTraceIntoCommand, sonst die Aktion mit F7) und merkt sich den Schritt.
+//   - Was der Benutzer gedrückt hat, meldet die OTA nicht. Den Schritt
+//     „Einzelne Anweisung“ (F7) meldet TAtlasIdeDebugTrace, auch wenn Atlas
+//     selbst hineinspringt (Schrittfilter #850); Atlas merkt ihn sich.
 //   - Den Editor setzt IOTAActionServices/IOTAEditView (Sprung, Markierung).
 // Ablauf:
 //   - F7: Hält der Schritt in Code ohne Quelltext (oberster Rahmen ohne Datei,
@@ -28,17 +28,17 @@ interface
 uses
   System.SysUtils,
   System.Classes,
-  System.Actions,
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Debug.CallStack,
-  Atlas.IDE.Debug.Session;
+  Atlas.IDE.Debug.Session,
+  Atlas.IDE.Debug.Trace;
 
 type
   TAtlasIdeDebugOwnCode = class
   public const
-    /// <summary>Name der Aktion „Einzelne Anweisung“ (F7) in der Aktionsliste der IDE.</summary>
-    TraceIntoAction = 'RunTraceIntoCommand';
+    /// <summary>Name des Empfängers bei TAtlasIdeDebugTrace.</summary>
+    TraceHandler = 'OwnCode';
     /// <summary>So lange wartet Atlas höchstens auf das Schließen des Exception-Dialogs.</summary>
     JumpWaitMs = 120000;
     IntervalMs = 150;
@@ -50,19 +50,6 @@ type
       procedure DebugStopped(AStop: TAtlasDebugStop); override;
       procedure DebugEnded; override;
     end;
-    /// <summary>Hängt an der Aktion „Einzelne Anweisung“: merkt den Schritt, dann die Aktion wie bisher.</summary>
-    TTraceHook = class(TComponent)
-    private
-      FAction: TContainedAction;
-      FOriginal: TNotifyEvent;
-      FBypass: Boolean;
-      procedure Execute(Sender: TObject);
-    protected
-      procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    public
-      constructor Create(AAction: TContainedAction); reintroduce;
-      destructor Destroy; override;
-    end;
     TTicker = class
     public
       procedure StepTick(Sender: TObject);
@@ -70,7 +57,6 @@ type
     end;
   private class var
     FListener: IAtlasIdeDebugListener;
-    FHook: TTraceHook;
     FTicker: TTicker;
     FStepTimer: TTimer;
     FJumpTimer: TTimer;
@@ -84,7 +70,6 @@ type
     FJumpStarted: UInt64;
     FJumpQuiet: Integer;
     FJumpRetries: Integer;
-    class function FindTraceInto: TContainedAction; static;
     class procedure Stepped; static;
     class procedure CheckStep; static;
     class procedure ScheduleJump; static;
@@ -99,14 +84,13 @@ type
     class procedure ToggleSetting(const AMessage: TProc<string>); static;
     /// <summary>Für Tests und Studie: Hängt Atlas an der Aktion „Einzelne Anweisung“?</summary>
     class function Hooked: Boolean; static;
+    /// <summary>Gemeldeter Schritt (TAtlasIdeDebugTrace): nur „Einzelne Anweisung“ zählt.</summary>
+    class procedure Traced(AKind: TAtlasTraceKind); static;
   end;
 
 implementation
 
 uses
-  Winapi.Windows,
-  Vcl.ActnList,
-  Vcl.Menus,
   Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Debug.OwnCode,
@@ -115,57 +99,6 @@ uses
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Strings;
-
-{ TAtlasIdeDebugOwnCode.TTraceHook }
-
-constructor TAtlasIdeDebugOwnCode.TTraceHook.Create(AAction: TContainedAction);
-begin
-  inherited Create(nil);
-  FAction := AAction;
-  FOriginal := AAction.OnExecute;
-  FAction.OnExecute := Execute;
-  FAction.FreeNotification(Self);
-end;
-
-destructor TAtlasIdeDebugOwnCode.TTraceHook.Destroy;
-begin
-  if FAction <> nil then
-  begin
-    FAction.RemoveFreeNotification(Self);
-    FAction.OnExecute := FOriginal;
-  end;
-  inherited Destroy;
-end;
-
-procedure TAtlasIdeDebugOwnCode.TTraceHook.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent = FAction) then
-    FAction := nil;
-end;
-
-procedure TAtlasIdeDebugOwnCode.TTraceHook.Execute(Sender: TObject);
-begin
-  if FBypass or (FAction = nil) then
-    Exit;
-  // Merken darf den Schritt nie verhindern.
-  TAtlasGuard.Run(TAtlasFeature.Debugger, TAtlasIdeDebugOwnCode.Stepped);
-  if Assigned(FOriginal) then
-  begin
-    FOriginal(Sender);
-    Exit;
-  end;
-  // Ohne eigenes OnExecute erledigt die IDE die Aktion über ihre Liste: kurz abhängen und ausführen.
-  FBypass := True;
-  FAction.OnExecute := nil;
-  try
-    FAction.Execute;
-  finally
-    if FAction <> nil then
-      FAction.OnExecute := Execute;
-    FBypass := False;
-  end;
-end;
 
 { TAtlasIdeDebugOwnCode.TTicker }
 
@@ -225,33 +158,7 @@ begin
   Result.OnTimer := AOnTimer;
 end;
 
-class function TAtlasIdeDebugOwnCode.FindTraceInto: TContainedAction;
-var
-  Services: INTAServices;
-  Index: Integer;
-  Action: TContainedAction;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
-    Exit;
-  for Index := 0 to Services.ActionList.ActionCount - 1 do
-  begin
-    Action := Services.ActionList.Actions[Index];
-    if SameText(Action.Name, TraceIntoAction) then
-      Exit(Action);
-  end;
-  // Ersatz: die Aktion mit F7.
-  for Index := 0 to Services.ActionList.ActionCount - 1 do
-  begin
-    Action := Services.ActionList.Actions[Index];
-    if (Action is TCustomAction) and (TCustomAction(Action).ShortCut = ShortCut(VK_F7, [])) then
-      Exit(Action);
-  end;
-end;
-
 class procedure TAtlasIdeDebugOwnCode.Start(const AMessage: TProc<string>);
-var
-  Action: TContainedAction;
 begin
   FMessage := AMessage;
   if FTicker = nil then
@@ -260,14 +167,11 @@ begin
     FStepTimer := NewTimer(FTicker.StepTick);
   if FJumpTimer = nil then
     FJumpTimer := NewTimer(FTicker.JumpTick);
-  if FHook = nil then
-  begin
-    Action := FindTraceInto;
-    if Action <> nil then
-      FHook := TTraceHook.Create(Action)
-    else
-      TAtlasGuard.Log('Nur eigener Code: Aktion „Einzelne Anweisung“ nicht gefunden; F7 bleibt unverändert');
-  end;
+  TAtlasIdeDebugTrace.AddHandler(TraceHandler,
+    procedure(AKind: TAtlasTraceKind; AOrigin: TAtlasTraceOrigin)
+    begin
+      Traced(AKind);
+    end);
   if FListener = nil then
   begin
     FListener := TListener.Create;
@@ -281,7 +185,7 @@ begin
   if FListener <> nil then
     TAtlasIdeDebugSession.RemoveListener(FListener);
   FListener := nil;
-  FreeAndNil(FHook);
+  TAtlasIdeDebugTrace.RemoveHandler(TraceHandler);
   FreeAndNil(FStepTimer);
   FreeAndNil(FJumpTimer);
   FreeAndNil(FTicker);
@@ -298,7 +202,13 @@ end;
 
 class function TAtlasIdeDebugOwnCode.Hooked: Boolean;
 begin
-  Result := FHook <> nil;
+  Result := TAtlasIdeDebugTrace.Hooked(TAtlasTraceKind.TraceInto);
+end;
+
+class procedure TAtlasIdeDebugOwnCode.Traced(AKind: TAtlasTraceKind);
+begin
+  if AKind = TAtlasTraceKind.TraceInto then
+    Stepped;
 end;
 
 class procedure TAtlasIdeDebugOwnCode.ToggleSetting(const AMessage: TProc<string>);

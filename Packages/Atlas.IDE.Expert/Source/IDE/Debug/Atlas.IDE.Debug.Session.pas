@@ -124,6 +124,9 @@ type
     /// <summary>Bis zu AMax Rahmen des Aufrufstapels von AThread (oberster zuerst).</summary>
     class function ReadStack(const AThread: IOTAThread; AMax: Integer;
       out AFrames: TAtlasDebugFrames): TAtlasDebugStackRead; static;
+    /// <summary>Anzahl der Rahmen des Aufrufstapels von AThread, ohne sie zu lesen (Schrittfilter #850: Ist der
+    /// Schritt in eine neue Routine gegangen?).</summary>
+    class function StackDepth(const AThread: IOTAThread; out ADepth: Integer): TAtlasDebugStackRead; static;
     /// <summary>Name des Threads ('' ohne).</summary>
     class function ThreadName(const AThread: IOTAThread): string; static;
     /// <summary>Prozess fortsetzen (F9); False ohne angehaltenen Prozess.</summary>
@@ -479,6 +482,29 @@ begin
       AThread.GetCallPos(Index, FileName, Line);
       AFrames := AFrames + [TAtlasDebugFrame.Create(AThread.GetCallHeader(Index), FileName, Line)];
     end;
+    Result := TAtlasDebugStackRead.Ready;
+  finally
+    AThread.EndCallStackAccess;
+  end;
+end;
+
+class function TAtlasIdeDebugSession.StackDepth(const AThread: IOTAThread; out ADepth: Integer): TAtlasDebugStackRead;
+var
+  mAccess: TOTACallStackState;
+begin
+  ADepth := 0;
+  Result := TAtlasDebugStackRead.None;
+  if AThread = nil then
+    Exit;
+  mAccess := AThread.StartCallStackAccess;
+  try
+    case mAccess of
+      csWait:
+        Exit(TAtlasDebugStackRead.Wait);
+      csInaccessible:
+        Exit;
+    end;
+    ADepth := AThread.GetCallCount;
     Result := TAtlasDebugStackRead.Ready;
   finally
     AThread.EndCallStackAccess;

@@ -63,6 +63,8 @@ type
     procedure DebugDisplayRulesRoundTrip;
     [Test]
     procedure DebugStepIntoTargetRoundTrip;
+    [Test]
+    procedure DebugStepFiltersRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
@@ -179,6 +181,7 @@ uses
   System.UITypes,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Text.StepFilter,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Welcome.QuickActions,
@@ -1168,6 +1171,34 @@ begin
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.DebugStepIntoTarget);
     Assert.AreEqual($6076, Saved.DebugStepIntoTargetKey);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DebugStepFiltersRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  // #850: Schalter, Kontrollkästchen je Art und Muster auf dem Reiter Debuggen.
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.DebugStepFiltersCheck.Checked);
+    Assert.IsTrue(Page.DebugStepFilterKindCheck(TStepFilterKind.Getters).Checked);
+    Assert.IsFalse(Page.DebugStepFilterKindCheck(TStepFilterKind.Setters).Checked);
+    Assert.IsTrue(Page.DebugStepFilterKindCheck(TStepFilterKind.Trivial).Checked);
+    Assert.AreEqual('', Page.DebugStepFilterPatternsEdit.Text);
+    Page.DebugStepFiltersCheck.Checked := False;
+    Page.DebugStepFilterKindCheck(TStepFilterKind.Getters).Checked := False;
+    Page.DebugStepFilterKindCheck(TStepFilterKind.EmptyConstructors).Checked := True;
+    Page.DebugStepFilterPatternsEdit.Text := ' *.Log* ; ;TBasisForm.*';
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.DebugStepFilters);
+    Assert.AreEqual('trivial,emptyConstructors', Saved.DebugStepFilterKinds);
+    Assert.AreEqual('*.Log*;TBasisForm.*', Saved.DebugStepFilterPatterns, 'bereinigt');
   finally
     Page.Free;
   end;

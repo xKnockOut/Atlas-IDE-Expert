@@ -996,7 +996,13 @@ uses
   Atlas.UI.Debug.AccessViolation.Tests in 'IDE.Expert\Atlas.UI.Debug.AccessViolation.Tests.pas',
   Atlas.Core.Lsp.AccessChains.Tests in 'IDE.Expert\Atlas.Core.Lsp.AccessChains.Tests.pas',
   Atlas.Core.Settings.VisualizerKinds in '..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.VisualizerKinds.pas',
-  Atlas.Core.Settings.VisualizerKinds.Tests in 'IDE.Expert\Atlas.Core.Settings.VisualizerKinds.Tests.pas';
+  Atlas.Core.Settings.VisualizerKinds.Tests in 'IDE.Expert\Atlas.Core.Settings.VisualizerKinds.Tests.pas',
+  Atlas.Text.StepFilter.Tests in 'Text\Atlas.Text.StepFilter.Tests.pas',
+  Atlas.Common.Lsp.StepFilter.Tests in 'Common\Lsp\Atlas.Common.Lsp.StepFilter.Tests.pas',
+  Atlas.Core.Debug.StepFilter in '..\Packages\Atlas.IDE.Expert\Source\Core\Debug\Atlas.Core.Debug.StepFilter.pas',
+  Atlas.Core.Debug.StepFilter.Tests in 'IDE.Expert\Atlas.Core.Debug.StepFilter.Tests.pas',
+  Atlas.UI.Debug.StepFilterFrame in '..\Packages\Atlas.IDE.Expert\Source\UI\Debug\Atlas.UI.Debug.StepFilterFrame.pas',
+  Atlas.UI.Debug.StepFilterFrame.Tests in 'IDE.Expert\Atlas.UI.Debug.StepFilterFrame.Tests.pas';
 
 // Atlas-Symbol (#751) für die UI-Tests.
 {$R '..\Packages\Atlas.IDE.Expert\Resources\Symbol\Atlas.Symbol.res'}

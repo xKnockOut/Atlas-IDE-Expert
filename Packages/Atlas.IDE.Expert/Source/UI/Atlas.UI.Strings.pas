@@ -785,7 +785,19 @@ type
     DebugAvStateFailed, DebugAvStateFreed, DebugAvStateInvalid, DebugAvStateOutOfRange, DebugAvWhereAssigned,
     DebugAvEvaluate, DebugAvCopy, DebugAvMore, DebugAvMessage, DebugAvCopyHeader, DebugAvCopyChecked,
     // Einstellungen Zugriffsverletzung erklären (#865)
-    SettingsDebugExplainAccessViolation, SettingsDebugExplainAccessViolationAllowCalls);
+    SettingsDebugExplainAccessViolation, SettingsDebugExplainAccessViolationAllowCalls,
+    // Schrittfilter beim Hineinspringen (#850)
+    SettingsDebugStepFilters, SettingsDebugStepFilterPatterns, StepFilterKindGetters, StepFilterKindSetters,
+    StepFilterKindTrivial, StepFilterKindOperators, StepFilterKindEmptyConstructors, StepFilterCaption,
+    StepFilterWindowCommand, StepFilterStepIntoAnywayCommand, StepFilterSkipCommand, StepFilterUnskipCommand,
+    StepFilterOff, StepFilterNotStopped, StepFilterNoRoutine, StepFilterFailed, StepFilterAdded,
+    StepFilterAlready, StepFilterRemoved, StepFilterStillByPattern, StepFilterStillByKind, StepFilterNotSkipped,
+    StepFilterEnabled, StepFilterKindsHeader, StepFilterPatternsHeader, StepFilterColumnKind,
+    StepFilterColumnPattern, StepFilterColumnHits, StepFilterPatternHint, StepFilterAdd, StepFilterRemove,
+    StepFilterRefresh, StepFilterCounting, StepFilterSummary, StepFilterTruncated, StepFilterNoCounts,
+    StepFilterSession, StepFilterLast, StepFilterShiftHint,
+    // Schrittfilter: Grund eines Urteils (#850)
+    StepFilterByPattern, StepFilterInactive);
 
   TAtlasStrings = class
   private class var
@@ -2527,7 +2539,28 @@ const
      'Ausdruck auswerten', 'Erklärung kopieren', '… %d weitere', 'Zugriffsverletzung in %s: %s',
      'Zugriffsverletzung erklärt (Atlas)', 'Geprüft:',
      'Zugriffsverletzungen erklären (welcher Teil war nil)',
-     'Getter und Funktionsaufrufe bei der Auswertung erlauben'),
+     'Getter und Funktionsaufrufe bei der Auswertung erlauben',
+     'Schrittfilter beim Hineinspringen (F7)',
+     'Weitere Methoden überspringen (Unit.Klasse.Methode, * als Platzhalter, durch ; getrennt):',
+     'Getter von Eigenschaften (eine Anweisung)', 'Setter von Eigenschaften (eine Anweisung)',
+     'Triviale Routinen (nur eine Zuweisung an Result oder ein Feld)', 'Klassen-Operatoren (class operator)',
+     'Konstruktoren und Destruktoren, die nur inherited aufrufen', 'Schrittfilter', 'Schrittfilter…',
+     'Trotzdem hineinspringen (ohne Schrittfilter)', 'Beim Hineinspringen überspringen',
+     'Nicht mehr überspringen', 'Schrittfilter sind aus (debug.stepFilters).',
+     'Trotzdem hineinspringen: Das Programm ist nicht angehalten.',
+     'Schrittfilter: An der Schreibmarke steht keine Methode.',
+     'Schrittfilter: Die Anfrage an den Server ist gescheitert (%s).',
+     'Schrittfilter: %s wird beim Hineinspringen übersprungen.',
+     'Schrittfilter: %s wird schon übersprungen (%s).', 'Schrittfilter: %s wird nicht mehr übersprungen.',
+     'Schrittfilter: %s wird weiter über das Muster %s übersprungen; entfernen im Fenster „Schrittfilter“.',
+     'Schrittfilter: %s wird weiter übersprungen (%s); die Art im Fenster „Schrittfilter“ abwählen.',
+     'Schrittfilter: %s wird nicht übersprungen.', 'Schrittfilter an', 'Arten eigener Routinen', 'Muster', 'Art',
+     'Muster', 'Treffer', 'Unit.Klasse.Methode, * als Platzhalter (*.Log*, TBasisForm.*)', 'Hinzufügen',
+     'Entfernen', 'Neu zählen', 'Zähle im Index …', '%d Routinen in %d Dateien des Projekts',
+     ' (nur die ersten %d Dateien)', 'Treffer gibt es erst mit laufendem Server.',
+     'In dieser Debug-Sitzung übersprungen: %d', ' · zuletzt %s (%s)',
+     'Umschalt+F7 springt einmal ohne Filter hinein; ein Haltepunkt in einer übersprungenen Routine greift wie gewohnt.',
+     'Muster %s', 'Der Ablauf ist aus: debug.stepFilters einschalten oder Atlas nicht abgesichert starten.'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4164,7 +4197,24 @@ const
      'cannot be evaluated', 'freed', 'invalid', 'index out of range', 'Where is %s assigned?',
      'Evaluate expression', 'Copy explanation', '… %d more', 'Access violation in %s: %s',
      'Access violation explained (Atlas)', 'Checked:',
-     'Explain access violations (which part was nil)', 'Allow getters and function calls during evaluation'));
+     'Explain access violations (which part was nil)', 'Allow getters and function calls during evaluation',
+     'Step filters when stepping into (F7)',
+     'Also skip methods (Unit.Class.Method, * as wildcard, separated by ;):', 'Property getters (one statement)',
+     'Property setters (one statement)', 'Trivial routines (one assignment to Result or a field)',
+     'Class operators (class operator)', 'Constructors and destructors that only call inherited', 'Step filters',
+     'Step filters…', 'Step into anyway (without step filters)', 'Skip when stepping into', 'Stop skipping',
+     'Step filters are off (debug.stepFilters).', 'Step into anyway: the program is not paused.',
+     'Step filters: there is no method at the cursor.', 'Step filters: the request to the server failed (%s).',
+     'Step filters: %s is skipped when stepping into.', 'Step filters: %s is already skipped (%s).',
+     'Step filters: %s is no longer skipped.',
+     'Step filters: %s is still skipped by the pattern %s; remove it in the Step filters window.',
+     'Step filters: %s is still skipped (%s); clear that kind in the Step filters window.',
+     'Step filters: %s is not skipped.', 'Step filters on', 'Kinds of own routines', 'Patterns', 'Kind',
+     'Pattern', 'Matches', 'Unit.Class.Method, * as wildcard (*.Log*, TBaseForm.*)', 'Add', 'Remove',
+     'Count again', 'Counting in the index …', '%d routines in %d project files', ' (first %d files only)',
+     'Matches need a running server.', 'Skipped in this debug session: %d', ' · last %s (%s)',
+     'Shift+F7 steps in once without filters; a breakpoint in a skipped routine stops as usual.',
+     'pattern %s', 'Not active: turn on debug.stepFilters or start Atlas in normal mode.'));
 
 { TAtlasStrings }
 
