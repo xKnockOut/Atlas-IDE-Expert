@@ -188,6 +188,7 @@ uses
   Atlas.IDE.Debug.Unavailable,
   Atlas.IDE.Debug.DialogCompletion,
   Atlas.IDE.Debug.Evaluate,
+  Atlas.IDE.Debug.AccessViolation,
   Atlas.Core.Completion.Contract,
   Atlas.Core.Completion.Providers.Expression,
   Atlas.IDE.Build.CompilerSwitches,
@@ -3046,6 +3047,34 @@ begin
     end);
 end;
 
+/// <summary>Zugriffsverletzung erklären (#865): Knöpfe der Leiste über den Datenfluss (#690) und das Fenster
+/// „Auswerten“ (#784); die Debug-Schicht kennt beide nicht.</summary>
+procedure StartDebugAccessViolation;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeDebugAccessViolation.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  TAtlasIdeDebugAccessViolation.SetWhereAssigned(
+    procedure(const AFileName: string; ALine, ACharacter: Integer; const AName: string)
+    begin
+      TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Sources, AFileName, ALine, ACharacter, AName);
+    end);
+  TAtlasIdeDebugAccessViolation.SetEvaluate(
+    procedure(const AExpression: string)
+    begin
+      TAtlasIdeDebugEvaluate.ShowWindow(AExpression);
+    end);
+end;
+
 procedure ReleaseDebugUnavailable;
 begin
   TAtlasEditorHover.OnExplain := nil;
@@ -4146,6 +4175,17 @@ begin
       Result := TAtlasIdeDebugUnavailable.Started;
     end,
     StartDebugUnavailable, ReleaseDebugUnavailable);
+  // Zugriffsverletzung erklären (#865): Zuhörer des Exception-Verlaufs und Zeichner; aus = nur die Meldung.
+  Features.AddWanted('DebugAccessViolation',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugExplainAccessViolation;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugAccessViolation.Started;
+    end,
+    StartDebugAccessViolation, TAtlasIdeDebugAccessViolation.Release);
   // Vervollständigung in Debugger-Dialogen (#538): aus = kein Zeitgeber, kein Tastatur-Hook.
   Features.AddWanted('DebugDialogCompletion',
     function(ALevel: TAtlasSafeLevel): Boolean

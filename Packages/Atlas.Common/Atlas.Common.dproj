@@ -445,6 +445,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugUnavailable.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExpressionCompletion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DataFlow.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AccessChains.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

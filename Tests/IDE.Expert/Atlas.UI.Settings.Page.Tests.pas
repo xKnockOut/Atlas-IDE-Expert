@@ -1046,6 +1046,8 @@ begin
     Assert.IsTrue(Page.DebugCompletionInDialogsCheck.Checked, 'debug.completionInDialogs (#538)');
     Assert.IsTrue(Page.DebugEvaluateWindowCheck.Checked, 'debug.evaluateWindow (#784)');
     Assert.IsTrue(Page.DebugEvaluateReplaceCtrlF7Check.Checked, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+    Assert.IsTrue(Page.DebugExplainAccessViolationCheck.Checked, 'debug.explainAccessViolation (#865)');
+    Assert.IsFalse(Page.DebugExplainAccessViolationAllowCallsCheck.Checked, 'debug.explainAccessViolation.allowCalls (#865)');
     Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked, 'debug.exceptionHistory (#517)');
     Assert.IsTrue(Page.DebugJustMyCodeCheck.Checked, 'debug.justMyCode (#578)');
     Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked, 'debug.exceptionBanner (#783)');
@@ -1060,6 +1062,8 @@ begin
     Page.DebugCompletionInDialogsCheck.Checked := False;
     Page.DebugEvaluateWindowCheck.Checked := False;
     Page.DebugEvaluateReplaceCtrlF7Check.Checked := False;
+    Page.DebugExplainAccessViolationCheck.Checked := False;
+    Page.DebugExplainAccessViolationAllowCallsCheck.Checked := True;
     Page.DebugExceptionHistoryCheck.Checked := False;
     Page.DebugJustMyCodeCheck.Checked := False;
     Page.DebugExceptionBannerCheck.Checked := True;
@@ -1076,6 +1080,8 @@ begin
     Assert.IsFalse(Saved.DebugCompletionInDialogs);
     Assert.IsFalse(Saved.DebugEvaluateWindow);
     Assert.IsFalse(Saved.DebugEvaluateReplaceCtrlF7);
+    Assert.IsFalse(Saved.DebugExplainAccessViolation);
+    Assert.IsTrue(Saved.DebugExplainAccessViolationAllowCalls);
     Assert.IsFalse(Saved.DebugExceptionHistory);
     Assert.IsFalse(Saved.DebugJustMyCode);
     Assert.IsTrue(Saved.DebugExceptionBanner);
@@ -1089,6 +1095,8 @@ begin
     Saved.DebugCompletionInDialogs := True;
     Saved.DebugEvaluateWindow := True;
     Saved.DebugEvaluateReplaceCtrlF7 := True;
+    Saved.DebugExplainAccessViolation := True;
+    Saved.DebugExplainAccessViolationAllowCalls := False;
     Saved.DebugExceptionHistory := True;
     Saved.DebugJustMyCode := True;
     Saved.DebugExceptionBanner := False;
@@ -1102,6 +1110,8 @@ begin
     Assert.IsTrue(Page.DebugCompletionInDialogsCheck.Checked);
     Assert.IsTrue(Page.DebugEvaluateWindowCheck.Checked);
     Assert.IsTrue(Page.DebugEvaluateReplaceCtrlF7Check.Checked);
+    Assert.IsTrue(Page.DebugExplainAccessViolationCheck.Checked);
+    Assert.IsFalse(Page.DebugExplainAccessViolationAllowCallsCheck.Checked);
     Assert.IsTrue(Page.DebugExceptionHistoryCheck.Checked);
     Assert.IsTrue(Page.DebugJustMyCodeCheck.Checked);
     Assert.IsFalse(Page.DebugExceptionBannerCheck.Checked);

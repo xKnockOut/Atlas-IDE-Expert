@@ -9,6 +9,13 @@
 //   3. Knöpfe Anhalten, Fortsetzen, Klasse ignorieren, Nur an dieser Stelle
 //      ignorieren (nur mit TAtlasDebugBannerInfo.CanIgnoreLocation), Meldung
 //      kopieren; rechts die Tastenhinweise als Fußzeile.
+// Erklärung einer Zugriffsverletzung (#865, SetExplanation): zwischen Zeile 2
+// und den Knöpfen eine Zeile mit dem Ergebnis („Auftrag.Kunde ist nil“ und
+// Feld bzw. Versatz), darunter die geprüften Glieder mit ✓/✗ (höchstens
+// MaxExplanationLines, dann „… n weitere“) und eine Zeile mit den Knöpfen
+// „Wo wird X zugewiesen?“, „Ausdruck auswerten“, „Erklärung kopieren“. Die
+// Höhe wächst mit den Zeilen. Während Atlas prüft, steht nur die Ergebniszeile
+// („Atlas prüft …“) da.
 // Gezeichnet wird alles selbst (kein Fokus, keine Fenster für Knöpfe), damit
 // der Editor die Tasten behält; die Tasten F8, F9 und Esc fängt die IDE-Schicht.
 // Ausgelöst wird beim Loslassen auf demselben Knopf. Was ein Knopf tut,
@@ -30,7 +37,8 @@ uses
 
 type
   {$SCOPEDENUMS ON}
-  TAtlasDebugBarAction = (None, BreakHere, Continue, IgnoreClass, IgnoreLocation, Copy, Open);
+  TAtlasDebugBarAction = (None, BreakHere, Continue, IgnoreClass, IgnoreLocation, Copy, Open, WhereAssigned, Evaluate,
+    CopyExplanation);
   {$SCOPEDENUMS OFF}
 
   TAtlasDebugBarActionEvent = reference to procedure(AAction: TAtlasDebugBarAction);
@@ -38,6 +46,7 @@ type
   TAtlasDebugExceptionBar = class(TCustomControl)
   private
     FInfo: TAtlasDebugBannerInfo;
+    FExplanation: TAtlasDebugBannerExplanation;
     FColors: TAtlasColors;
     FRects: array[TAtlasDebugBarAction] of TRect;
     FHot: TAtlasDebugBarAction;
@@ -48,7 +57,13 @@ type
     function RowHeight: Integer;
     function ActionCaption(AAction: TAtlasDebugBarAction): string;
     function DetailText: string;
+    function ExplanationRows: Integer;
+    function ExplanationHas(AAction: TAtlasDebugBarAction): Boolean;
+    function ShownLines: Integer;
+    function RowTop(ARow: Integer): Integer;
+    procedure ApplyHeight;
     procedure Layout;
+    procedure PaintExplanation(const AFrame: TRect);
     procedure DrawButton(AAction: TAtlasDebugBarAction);
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
@@ -62,9 +77,15 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure SetInfo(const AInfo: TAtlasDebugBannerInfo);
+    /// <summary>Erklärung zeigen bzw. mit Active = False entfernen; die Höhe passt sich an.</summary>
+    procedure SetExplanation(const AExplanation: TAtlasDebugBannerExplanation);
     procedure SetColors(const AColors: TAtlasColors);
     /// <summary>Höhe der Leiste bei APPI (drei Zeilen, 78 px bei 96 DPI).</summary>
-    class function BarHeight(APPI: Integer): Integer; static;
+    class function BarHeight(APPI: Integer): Integer; overload; static;
+    /// <summary>Höhe bei APPI mit ARows Zeilen.</summary>
+    class function BarHeight(APPI, ARows: Integer): Integer; overload; static;
+    /// <summary>Zeilen der Leiste: drei, mit Erklärung mehr.</summary>
+    function Rows: Integer;
     /// <summary>Knopf bzw. Ortszeile unter dem Punkt (Client); None = nichts.</summary>
     function ActionAt(X, Y: Integer): TAtlasDebugBarAction;
     /// <summary>Fläche eines Knopfs (Client); leer, wenn er fehlt.</summary>
@@ -74,6 +95,7 @@ type
     /// <summary>Zeile 2 als Text (für Tests und Tooltip).</summary>
     property Detail: string read DetailText;
     property Info: TAtlasDebugBannerInfo read FInfo;
+    property Explanation: TAtlasDebugBannerExplanation read FExplanation;
     property OnAction: TAtlasDebugBarActionEvent read FOnAction write FOnAction;
   end;
 
@@ -89,6 +111,11 @@ const
   BarButtons: array[0..4] of TAtlasDebugBarAction = (TAtlasDebugBarAction.BreakHere,
     TAtlasDebugBarAction.Continue, TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation,
     TAtlasDebugBarAction.Copy);
+  /// <summary>Knöpfe der Erklärung in Reihenfolge.</summary>
+  ExplanationButtons: array[0..2] of TAtlasDebugBarAction = (TAtlasDebugBarAction.WhereAssigned,
+    TAtlasDebugBarAction.Evaluate, TAtlasDebugBarAction.CopyExplanation);
+  /// <summary>Höchstens so viele geprüfte Glieder; der Rest als „… n weitere“.</summary>
+  MaxExplanationLines = 6;
   BaseRow = 24;
   Padding = 6;
   Gap = 6;
@@ -117,7 +144,67 @@ end;
 
 class function TAtlasDebugExceptionBar.BarHeight(APPI: Integer): Integer;
 begin
-  Result := MulDiv(3 * BaseRow + Padding, Max(APPI, 96), 96);
+  Result := BarHeight(APPI, 3);
+end;
+
+class function TAtlasDebugExceptionBar.BarHeight(APPI, ARows: Integer): Integer;
+begin
+  Result := MulDiv(ARows * BaseRow + Padding, Max(APPI, 96), 96);
+end;
+
+function TAtlasDebugExceptionBar.ShownLines: Integer;
+begin
+  Result := Min(Length(FExplanation.Lines), MaxExplanationLines);
+end;
+
+function TAtlasDebugExceptionBar.ExplanationRows: Integer;
+begin
+  Result := 0;
+  if not FExplanation.Active then
+    Exit;
+  // Ergebniszeile; fertig auch Glieder, „… n weitere“ und die Knöpfe.
+  Result := 1;
+  if FExplanation.Busy then
+    Exit;
+  Inc(Result, ShownLines);
+  if Length(FExplanation.Lines) > MaxExplanationLines then
+    Inc(Result);
+  if (FExplanation.WhereName <> '') or (FExplanation.EvaluateExpression <> '') or (FExplanation.CopyText <> '') then
+    Inc(Result);
+end;
+
+function TAtlasDebugExceptionBar.ExplanationHas(AAction: TAtlasDebugBarAction): Boolean;
+begin
+  Result := False;
+  if not FExplanation.Active or FExplanation.Busy then
+    Exit;
+  case AAction of
+    TAtlasDebugBarAction.WhereAssigned:
+      Result := FExplanation.WhereName <> '';
+    TAtlasDebugBarAction.Evaluate:
+      Result := FExplanation.EvaluateExpression <> '';
+    TAtlasDebugBarAction.CopyExplanation:
+      Result := FExplanation.CopyText <> '';
+  end;
+end;
+
+function TAtlasDebugExceptionBar.Rows: Integer;
+begin
+  Result := 3 + ExplanationRows;
+end;
+
+function TAtlasDebugExceptionBar.RowTop(ARow: Integer): Integer;
+begin
+  Result := Scale(Padding div 2) + ARow * RowHeight;
+end;
+
+procedure TAtlasDebugExceptionBar.ApplyHeight;
+begin
+  Constraints.MinHeight := 0;
+  Constraints.MaxHeight := 0;
+  Height := BarHeight(CurrentPPI, Rows);
+  Constraints.MinHeight := Height;
+  Constraints.MaxHeight := Height;
 end;
 
 procedure TAtlasDebugExceptionBar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
@@ -125,9 +212,7 @@ begin
   Constraints.MinHeight := 0;
   Constraints.MaxHeight := 0;
   inherited ChangeScale(M, D, isDpiChange);
-  Height := BarHeight(CurrentPPI);
-  Constraints.MinHeight := Height;
-  Constraints.MaxHeight := Height;
+  ApplyHeight;
   FLaidOut := False;
 end;
 
@@ -146,6 +231,14 @@ begin
   FInfo := AInfo;
   FLaidOut := False;
   Hint := FInfo.Message;
+  Invalidate;
+end;
+
+procedure TAtlasDebugExceptionBar.SetExplanation(const AExplanation: TAtlasDebugBannerExplanation);
+begin
+  FExplanation := AExplanation;
+  ApplyHeight;
+  FLaidOut := False;
   Invalidate;
 end;
 
@@ -168,6 +261,12 @@ begin
       Result := TAtlasStrings.Text(TAtlasTextId.DebugBannerIgnoreLocation);
     TAtlasDebugBarAction.Copy:
       Result := TAtlasStrings.Text(TAtlasTextId.DebugBannerCopy);
+    TAtlasDebugBarAction.WhereAssigned:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.DebugAvWhereAssigned, [FExplanation.WhereName]);
+    TAtlasDebugBarAction.Evaluate:
+      Result := TAtlasStrings.Text(TAtlasTextId.DebugAvEvaluate);
+    TAtlasDebugBarAction.CopyExplanation:
+      Result := TAtlasStrings.Text(TAtlasTextId.DebugAvCopy);
   else
     Result := '';
   end;
@@ -213,7 +312,21 @@ begin
     FRects[TAtlasDebugBarAction.Open] := Rect(Scale(Padding + Gap), Scale(Padding div 2) + RowHeight,
       Scale(Padding + Gap) + Width_, Scale(Padding div 2) + 2 * RowHeight);
   end;
-  Top := Scale(Padding div 2) + 2 * RowHeight + Scale(2);
+  // Knöpfe der Erklärung in ihrer letzten Zeile (über den Knöpfen der Leiste).
+  if FExplanation.Active and not FExplanation.Busy then
+  begin
+    Top := RowTop(Rows - 2) + Scale(2);
+    Left := Scale(Padding + Gap);
+    for Action in ExplanationButtons do
+    begin
+      if not ExplanationHas(Action) then
+        Continue;
+      Width_ := Canvas.TextWidth(ActionCaption(Action)) + Scale(16);
+      FRects[Action] := Rect(Left, Top, Left + Width_, Top + RowHeight - Scale(4));
+      Inc(Left, Width_ + Scale(Gap));
+    end;
+  end;
+  Top := RowTop(Rows - 1) + Scale(2);
   Left := Scale(Padding + Gap);
   for Action in BarButtons do
   begin
@@ -264,6 +377,9 @@ begin
   if (AAction = TAtlasDebugBarAction.IgnoreLocation) and not FInfo.CanIgnoreLocation then
     Exit;
   if (AAction = TAtlasDebugBarAction.Open) and not FInfo.HasLocation then
+    Exit;
+  if (AAction in [TAtlasDebugBarAction.WhereAssigned, TAtlasDebugBarAction.Evaluate,
+    TAtlasDebugBarAction.CopyExplanation]) and not ExplanationHas(AAction) then
     Exit;
   if Assigned(FOnAction) then
     FOnAction(AAction);
@@ -365,17 +481,97 @@ begin
     DT_END_ELLIPSIS);
   Canvas.Font.Style := [];
 
-  // Zeile 3: Knöpfe, rechts die Tastenhinweise.
+  PaintExplanation(Frame);
+
+  // Letzte Zeile: Knöpfe, rechts die Tastenhinweise.
   for Action in BarButtons do
     DrawButton(Action);
   Canvas.Font := Font;
   Canvas.Font.Color := ToColor(FColors.Muted);
   Canvas.Brush.Style := bsClear;
   Text := TAtlasStrings.Text(TAtlasTextId.DebugBannerKeys);
-  Line := Rect(FRects[TAtlasDebugBarAction.Copy].Right + Scale(Gap), Frame.Top + 2 * RowHeight,
-    Frame.Right - Scale(Gap), Frame.Bottom);
+  Line := Rect(FRects[TAtlasDebugBarAction.Copy].Right + Scale(Gap), RowTop(Rows - 1), Frame.Right - Scale(Gap),
+    Frame.Bottom);
   if Line.Width > Canvas.TextWidth(Text) then
     DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_RIGHT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+end;
+
+function MarkColor(const AColors: TAtlasColors; AMark: TAtlasDebugBannerMark): TColor;
+begin
+  case AMark of
+    TAtlasDebugBannerMark.Ok:
+      Result := ToColor(AColors.Add);
+    TAtlasDebugBannerMark.Bad:
+      Result := ToColor(AColors.Error);
+  else
+    Result := ToColor(AColors.Muted);
+  end;
+end;
+
+procedure TAtlasDebugExceptionBar.PaintExplanation(const AFrame: TRect);
+var
+  Line: TRect;
+  Text: string;
+  Index, Row, Indent: Integer;
+  Action: TAtlasDebugBarAction;
+begin
+  if not FExplanation.Active then
+    Exit;
+  // Trennlinie über der Erklärung.
+  Canvas.Pen.Color := ToColor(FColors.Line);
+  Canvas.MoveTo(AFrame.Left + Scale(Gap), RowTop(2) + Scale(1));
+  Canvas.LineTo(AFrame.Right - Scale(Gap), RowTop(2) + Scale(1));
+  Canvas.Brush.Style := bsClear;
+  Canvas.Font := Font;
+  Line := Rect(AFrame.Left + Scale(Gap), RowTop(2), AFrame.Right - Scale(Gap), RowTop(3));
+  if FExplanation.Busy then
+    Canvas.Font.Color := ToColor(FColors.Muted)
+  else
+  begin
+    Canvas.Font.Style := [fsBold];
+    Canvas.Font.Color := MarkColor(FColors, FExplanation.HeadlineMark);
+    if FExplanation.HeadlineMark = TAtlasDebugBannerMark.Neutral then
+      Canvas.Font.Color := ToColor(FColors.Warn);
+  end;
+  Text := FExplanation.Headline;
+  DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+    DT_END_ELLIPSIS);
+  Inc(Line.Left, Canvas.TextWidth(Text));
+  Canvas.Font.Style := [];
+  if (FExplanation.Detail <> '') and not FExplanation.Busy then
+  begin
+    Canvas.Font.Color := ToColor(FColors.Muted);
+    Text := ' ' + #$00B7 + ' ' + FExplanation.Detail;
+    DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+      DT_END_ELLIPSIS);
+  end;
+  if FExplanation.Busy then
+    Exit;
+  // Geprüfte Glieder, eingerückt, Zeichen in der Farbe des Zustands.
+  Indent := Canvas.TextWidth(TAtlasDebugBannerLine.MarkText(TAtlasDebugBannerMark.Bad)) + Scale(Gap);
+  Row := 3;
+  for Index := 0 to ShownLines - 1 do
+  begin
+    Line := Rect(AFrame.Left + Scale(2 * Gap), RowTop(Row), AFrame.Right - Scale(Gap), RowTop(Row + 1));
+    Canvas.Font.Color := MarkColor(FColors, FExplanation.Lines[Index].Mark);
+    Text := TAtlasDebugBannerLine.MarkText(FExplanation.Lines[Index].Mark);
+    DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+    Inc(Line.Left, Indent);
+    Canvas.Font.Color := ToColor(FColors.Text);
+    Text := FExplanation.Lines[Index].Text;
+    DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+      DT_END_ELLIPSIS);
+    Inc(Row);
+  end;
+  if Length(FExplanation.Lines) > MaxExplanationLines then
+  begin
+    Line := Rect(AFrame.Left + Scale(2 * Gap) + Indent, RowTop(Row), AFrame.Right - Scale(Gap), RowTop(Row + 1));
+    Canvas.Font.Color := ToColor(FColors.Muted);
+    Text := TAtlasStrings.Fmt(TAtlasTextId.DebugAvMore, [Length(FExplanation.Lines) - MaxExplanationLines]);
+    DrawText(Canvas.Handle, PChar(Text), -1, Line, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  end;
+  for Action in ExplanationButtons do
+    DrawButton(Action);
 end;
 
 procedure TAtlasDebugExceptionBar.MouseMove(Shift: TShiftState; X, Y: Integer);

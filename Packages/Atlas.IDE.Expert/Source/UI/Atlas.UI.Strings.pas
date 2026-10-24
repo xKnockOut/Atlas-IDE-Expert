@@ -769,7 +769,16 @@ type
     DataFlowOutsides, DataFlowAddress, DataFlowAddresses, DataFlowPlace, DataFlowPlaces, DataFlowVia,
     DataFlowUnsafe, DataFlowUnsafePointer, DataFlowUnsafeAddress, DataFlowOriginLiteral, DataFlowOriginInput,
     DataFlowOriginOutput, DataFlowOriginUse, DataFlowOriginOutside, DataFlowOriginAddress, DataFlowOriginOpen,
-    DataFlowLeafConstant, DataFlowLeafOutside, DataFlowLeafCycle, DataFlowLeafDepth);
+    DataFlowLeafConstant, DataFlowLeafOutside, DataFlowLeafCycle, DataFlowLeafDepth,
+    // Zugriffsverletzung erklären (#865)
+    DebugAvAnalysing, DebugAvNil, DebugAvField, DebugAvFieldEstimated, DebugAvOffset, DebugAvVmt, DebugAvFreed,
+    DebugAvFreedPattern, DebugAvFreedHeader, DebugAvFreedMemory, DebugAvFreedMemoryDetail, DebugAvInvalid,
+    DebugAvOutOfRange, DebugAvAmbiguous, DebugAvAmbiguousSeveral, DebugAvAmbiguousNone, DebugAvStatements,
+    DebugAvNoChains, DebugAvNoServer, DebugAvStateCall, DebugAvStateNotEvaluated, DebugAvStateNotReached,
+    DebugAvStateFailed, DebugAvStateFreed, DebugAvStateInvalid, DebugAvStateOutOfRange, DebugAvWhereAssigned,
+    DebugAvEvaluate, DebugAvCopy, DebugAvMore, DebugAvMessage, DebugAvCopyHeader, DebugAvCopyChecked,
+    // Einstellungen Zugriffsverletzung erklären (#865)
+    SettingsDebugExplainAccessViolation, SettingsDebugExplainAccessViolationAllowCalls);
 
   TAtlasStrings = class
   private class var
@@ -2440,7 +2449,22 @@ const
      'Außerhalb des Projekts', 'Außerhalb des Projekts', 'Adresse genommen', 'Adressen genommen', 'Stelle',
      'Stellen', 'über %s', 'unsicher: %s', 'Zeiger', 'Adresse', 'Literal', 'Wert kommt von außen',
      'Wert geht nach außen', 'nur verwendet', 'außerhalb des Projekts', 'Wert kann sich über die Adresse ändern',
-     'ohne bekannte Quelle', 'Konstante', 'außerhalb des Projekts', 'Zyklus', 'Tiefe erreicht'),
+     'ohne bekannte Quelle', 'Konstante', 'außerhalb des Projekts', 'Zyklus', 'Tiefe erreicht',
+     'Atlas prüft, welcher Teil der Zeile nil war …', '%s ist nil', 'Zugriff auf Feld %s (Versatz %s)',
+     'Zugriff auf Feld %s (Versatz %s, geschätzt)', 'Versatz %s, kein Feld bekannt',
+     'Zugriff auf die VMT (virtuelle Methode, is/as oder ClassType)', '%s ist bereits freigegeben',
+     'Füllmuster des Speichermanagers %s', 'Kopf des Objekts trägt das Füllmuster des Speichermanagers',
+     'Zugriff auf freigegebenen Speicher',
+     'Adresse %s liegt im Füllmuster des Speichermanagers; vermutlich ist ein Objekt der Zeile freigegeben',
+     '%s zeigt ins Leere (%s)', 'Index %s = %d liegt außerhalb von %s (Länge %d)', 'Ursache nicht eindeutig',
+     '%d Glieder kommen in Frage', 'kein geprüftes Glied ist nil oder freigegeben', '%d Anweisungen in der Zeile',
+     'keine Zugriffskette in der Zeile', 'Atlas-Server antwortet nicht',
+     'nicht ausgewertet: ruft etwas auf (debug.explainAccessViolation.allowCalls)', 'nicht ausgewertet',
+     'nicht erreicht', 'nicht auswertbar', 'freigegeben', 'ungültig', 'Index außerhalb', 'Wo wird %s zugewiesen?',
+     'Ausdruck auswerten', 'Erklärung kopieren', '… %d weitere', 'Zugriffsverletzung in %s: %s',
+     'Zugriffsverletzung erklärt (Atlas)', 'Geprüft:',
+     'Zugriffsverletzungen erklären (welcher Teil war nil)',
+     'Getter und Funktionsaufrufe bei der Auswertung erlauben'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4007,7 +4031,21 @@ const
      'Addresses taken', 'Place', 'Places', 'via %s', 'unsafe: %s', 'pointer', 'address', 'literal',
      'value comes from outside', 'value leaves the program', 'only used', 'outside the project',
      'value may change through the address', 'no known source', 'constant', 'outside the project', 'cycle',
-     'depth reached'));
+     'depth reached',
+     'Atlas is checking which part of the line was nil …', '%s is nil', 'Access to field %s (offset %s)',
+     'Access to field %s (offset %s, estimated)', 'Offset %s, no known field',
+     'Access to the VMT (virtual method, is/as or ClassType)', '%s has already been freed',
+     'Memory manager fill pattern %s', 'The object header carries the memory manager fill pattern',
+     'Access to freed memory',
+     'Address %s lies in the memory manager fill pattern; an object on the line has probably been freed',
+     '%s points nowhere (%s)', 'Index %s = %d is outside %s (length %d)', 'Cause not clear',
+     '%d links are candidates', 'no checked link is nil or freed', '%d statements on the line',
+     'no access chain on the line', 'Atlas server does not answer',
+     'not evaluated: calls code (debug.explainAccessViolation.allowCalls)', 'not evaluated', 'not reached',
+     'cannot be evaluated', 'freed', 'invalid', 'index out of range', 'Where is %s assigned?',
+     'Evaluate expression', 'Copy explanation', '… %d more', 'Access violation in %s: %s',
+     'Access violation explained (Atlas)', 'Checked:',
+     'Explain access violations (which part was nil)', 'Allow getters and function calls during evaluation'));
 
 { TAtlasStrings }
 

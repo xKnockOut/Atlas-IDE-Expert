@@ -26,6 +26,10 @@
 //     (TAtlasKeyHook); sonst berührt Atlas keine Taste.
 //   - Fortsetzen von anderer Stelle, neuer Halt, Ende der Sitzung schließen
 //     die Leiste.
+//   - Erklärung (#865): Atlas.IDE.Debug.AccessViolation reicht über Explain
+//     die Erklärung einer Zugriffsverletzung je Halt herein; sie erscheint
+//     unter der Meldung, sobald die Leiste für diesen Halt steht. Die Knöpfe
+//     der Erklärung meldet die Leiste an SetExplanationHandler.
 // Ohne debug.exceptionBanner ist nichts angemeldet, der Dialog der IDE bleibt
 // unverändert. Nur im Hauptthread verwenden.
 
@@ -91,6 +95,10 @@ type
     FQuiet: Integer;
     FShown: TAtlasDebugException;
     FShownInfo: TAtlasDebugBannerInfo;
+    FShownStop: Integer;
+    FExplanation: TAtlasDebugBannerExplanation;
+    FExplanationStop: Integer;
+    FExplanationHandler: TProc<TAtlasDebugBarAction>;
     class procedure ExceptionTaken(const AStop: TAtlasDebugExceptionStop); static;
     class procedure CheckShow; static;
     class procedure ShowBar; static;
@@ -112,6 +120,13 @@ type
     /// <summary>Kennt Atlas die IDE-Version, für die es übersetzt ist?</summary>
     class function KnownVersion: Boolean; static;
     class function Visible: Boolean; static;
+    /// <summary>Erklärung für den Halt AStop (#865); erscheint, sobald die Leiste für ihn steht.</summary>
+    class procedure Explain(AStop: Integer; const AExplanation: TAtlasDebugBannerExplanation); static;
+    /// <summary>Steht die Leiste für AStop oder kommt sie gleich (Dialog noch offen)?</summary>
+    class function Covers(AStop: Integer): Boolean; static;
+    /// <summary>Empfänger der Knöpfe der Erklärung (Wo zugewiesen, Auswerten, Erklärung kopieren); nil = keiner.
+    /// </summary>
+    class procedure SetExplanationHandler(const AHandler: TProc<TAtlasDebugBarAction>); static;
   end;
 
 implementation
@@ -244,6 +259,9 @@ begin
   FShown := Default(TAtlasDebugException);
   FShownInfo := Default(TAtlasDebugBannerInfo);
   FPending := Default(TAtlasDebugExceptionStop);
+  FExplanation := Default(TAtlasDebugBannerExplanation);
+  FExplanationStop := 0;
+  FShownStop := 0;
   FMessage := nil;
 end;
 
@@ -255,6 +273,25 @@ end;
 class function TAtlasIdeDebugExceptionBar.Visible: Boolean;
 begin
   Result := (FBar <> nil) and FBar.Visible;
+end;
+
+class procedure TAtlasIdeDebugExceptionBar.Explain(AStop: Integer; const AExplanation: TAtlasDebugBannerExplanation);
+begin
+  FExplanation := AExplanation;
+  FExplanationStop := AStop;
+  if (FBar <> nil) and FBar.Visible and (FShownStop = AStop) then
+    FBar.SetExplanation(AExplanation);
+end;
+
+class function TAtlasIdeDebugExceptionBar.Covers(AStop: Integer): Boolean;
+begin
+  Result := Started and TAtlasIdeSettings.Current.DebugExceptionBanner and
+    ((Visible and (FShownStop = AStop)) or (FHasPending and (FPending.Stop = AStop)));
+end;
+
+class procedure TAtlasIdeDebugExceptionBar.SetExplanationHandler(const AHandler: TProc<TAtlasDebugBarAction>);
+begin
+  FExplanationHandler := AHandler;
 end;
 
 class procedure TAtlasIdeDebugExceptionBar.ApplySettings;
@@ -417,6 +454,12 @@ begin
   end;
   FBar.SetColors(TAtlasIdeStyle.Colors);
   FBar.SetInfo(FShownInfo);
+  FShownStop := FPending.Stop;
+  // Erklärung einer Zugriffsverletzung nur für diesen Halt (#865).
+  if FExplanationStop = FShownStop then
+    FBar.SetExplanation(FExplanation)
+  else
+    FBar.SetExplanation(Default(TAtlasDebugBannerExplanation));
   FBar.Top := 0;
   FBar.Visible := True;
   if not TAtlasKeyHook.Contains(FKeys) then
@@ -461,6 +504,9 @@ begin
     TAtlasDebugBarAction.Open:
       if FShownInfo.HasLocation then
         TAtlasIdeNavigation.MarkLine(FShownInfo.FileName, FShownInfo.Line - 1);
+    TAtlasDebugBarAction.WhereAssigned, TAtlasDebugBarAction.Evaluate, TAtlasDebugBarAction.CopyExplanation:
+      if Assigned(FExplanationHandler) then
+        FExplanationHandler(AAction);
   end;
 end;
 

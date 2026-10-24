@@ -3,7 +3,8 @@
 // Exception-Leiste (#783), Darstellung: feste Höhe, Zeile 2 mit Thread,
 // ausgeblendeten Ebenen und erster eigener Zeile, Knöpfe in Reihenfolge,
 // „Nur an dieser Stelle ignorieren“ nur mit Ort, Klick meldet die Aktion erst
-// beim Loslassen auf demselben Knopf.
+// beim Loslassen auf demselben Knopf. Erklärung einer Zugriffsverletzung
+// (#865): mehr Zeilen, eigene Knöpfe nur mit Inhalt.
 
 interface
 
@@ -31,6 +32,8 @@ type
     procedure IgnoreLocationOnlyWithLocation;
     [Test]
     procedure ClickReportsActionOnRelease;
+    [Test]
+    procedure ExplanationGrowsAndAddsButtons;
   end;
 
 implementation
@@ -157,6 +160,55 @@ begin
   TBarAccess(FBar).MouseUp(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
   Assert.AreEqual(Ord(TAtlasDebugBarAction.Continue), Ord(Reported));
   FBar.OnAction := nil;
+end;
+
+procedure TAtlasDebugExceptionBarTests.ExplanationGrowsAndAddsButtons;
+var
+  Explanation: TAtlasDebugBannerExplanation;
+  Reported: TAtlasDebugBarAction;
+  Index: Integer;
+begin
+  FBar.SetInfo(SampleInfo(True));
+  // Während der Prüfung: eine Zeile mehr, keine Knöpfe der Erklärung.
+  Explanation := Default(TAtlasDebugBannerExplanation);
+  Explanation.Active := True;
+  Explanation.Busy := True;
+  Explanation.Headline := 'Atlas prüft';
+  Explanation.WhereName := 'Kunde';
+  FBar.SetExplanation(Explanation);
+  Assert.AreEqual(4, FBar.Rows);
+  Assert.AreEqual(TAtlasDebugExceptionBar.BarHeight(FBar.CurrentPPI, 4), FBar.Height);
+  Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.WhereAssigned).IsEmpty);
+  // Fertig: Ergebniszeile, 8 Glieder (6 gezeigt, „… 2 weitere“), Knopfzeile.
+  Explanation.Busy := False;
+  Explanation.Headline := 'Auftrag.Kunde ist nil';
+  for Index := 1 to 8 do
+    Explanation.Lines := Explanation.Lines + [TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Ok,
+      'Glied ' + IntToStr(Index))];
+  Explanation.CopyText := 'Text';
+  FBar.SetExplanation(Explanation);
+  Assert.AreEqual(3 + 1 + 6 + 1 + 1, FBar.Rows);
+  Assert.IsFalse(FBar.ActionRect(TAtlasDebugBarAction.WhereAssigned).IsEmpty);
+  Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.Evaluate).IsEmpty, 'ohne Ausdruck kein Knopf');
+  Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.WhereAssigned).Right <
+    FBar.ActionRect(TAtlasDebugBarAction.CopyExplanation).Left);
+  Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.WhereAssigned).Bottom <=
+    FBar.ActionRect(TAtlasDebugBarAction.Continue).Top, 'über den Knöpfen der Leiste');
+  Reported := TAtlasDebugBarAction.None;
+  FBar.OnAction :=
+    procedure(AAction: TAtlasDebugBarAction)
+    begin
+      Reported := AAction;
+    end;
+  FBar.Trigger(TAtlasDebugBarAction.Evaluate);
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(Reported));
+  FBar.Trigger(TAtlasDebugBarAction.CopyExplanation);
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.CopyExplanation), Ord(Reported));
+  FBar.OnAction := nil;
+  // Ohne Erklärung wieder drei Zeilen.
+  FBar.SetExplanation(Default(TAtlasDebugBannerExplanation));
+  Assert.AreEqual(3, FBar.Rows);
+  Assert.AreEqual(TAtlasDebugExceptionBar.BarHeight(FBar.CurrentPPI), FBar.Height);
 end;
 
 end.

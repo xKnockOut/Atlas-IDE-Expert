@@ -578,6 +578,10 @@ contains
   Atlas.IDE.Debug.EvaluateWindow in 'Source\IDE\Debug\Atlas.IDE.Debug.EvaluateWindow.pas',
   Atlas.IDE.Debug.Evaluate in 'Source\IDE\Debug\Atlas.IDE.Debug.Evaluate.pas',
   Atlas.Core.Lsp.DataFlow in 'Source\Core\Lsp\Atlas.Core.Lsp.DataFlow.pas',
-  Atlas.Core.Results.DataFlow in 'Source\Core\Results\Atlas.Core.Results.DataFlow.pas';
+  Atlas.Core.Results.DataFlow in 'Source\Core\Results\Atlas.Core.Results.DataFlow.pas',
+  Atlas.Core.Debug.AccessViolation in 'Source\Core\Debug\Atlas.Core.Debug.AccessViolation.pas',
+  Atlas.UI.Debug.AccessViolation in 'Source\UI\Debug\Atlas.UI.Debug.AccessViolation.pas',
+  Atlas.IDE.Debug.AccessViolation in 'Source\IDE\Debug\Atlas.IDE.Debug.AccessViolation.pas',
+  Atlas.Core.Lsp.AccessChains in 'Source\Core\Lsp\Atlas.Core.Lsp.AccessChains.pas';
 
 end.
