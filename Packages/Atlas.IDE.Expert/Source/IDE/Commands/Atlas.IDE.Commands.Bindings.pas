@@ -585,6 +585,13 @@ begin
             TAtlasIdeExpressionType.Run;
           end);
       end, True);
+  // Sicher löschen (#716): aus = das Kürzel gehört der IDE.
+  if Settings.SafeDelete then
+    AddKey(TAtlasFeature.EditorCommands, Settings.SafeDeleteKey, TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand),
+      procedure
+      begin
+        TAtlasIdeEditorCommands.SafeDelete;
+      end);
   // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
   if Settings.UnitSearchEnabled then
     AddKey(TAtlasFeature.UnitSearch, Settings.UnitSearchKey, TAtlasStrings.Text(TAtlasTextId.UnitSearchTitle),

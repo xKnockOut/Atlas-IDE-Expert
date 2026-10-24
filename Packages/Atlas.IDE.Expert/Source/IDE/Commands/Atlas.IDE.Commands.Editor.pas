@@ -17,8 +17,9 @@
 //   den Parameter-Hint (OnSignatureHelp, setzt die Composition; #1007),
 //   atlas.showUnitRelations zeigt die Unit-Beziehungen der Unit im Editor
 //   („Graph zeigen“ an einem Unit-Zyklus, OnUnitRelations; #896),
-//   atlas.changeSignature (#100) und
-//   atlas.moveClass (#103) öffnen ihren Dialog, atlas.invertBoolean (#715) und
+//   atlas.changeSignature (#100), atlas.moveClass (#103),
+//   atlas.extractInterface (#664), atlas.extractSuperclass (#713) und
+//   atlas.moveMember (#675) öffnen ihren Dialog, atlas.invertBoolean (#715) und
 //   atlas.promoteVariable (#668) fragen einen Namen, alle anderen gehen als
 //   workspace/executeCommand an den Server.
 // - Auswahl erweitern und verkleinern (textDocument/selectionRange).
@@ -132,6 +133,8 @@ type
     class procedure ExpandSelection; static;
     class procedure ShrinkSelection; static;
     class procedure GoToTypeDefinition; static;
+    /// <summary>„Sicher löschen“ für das Symbol am Cursor (#716, Alt+Entf).</summary>
+    class procedure SafeDelete; static;
     /// <summary>Cursor zum Gegenstück der Methode am Cursor (Deklaration ⇄ Implementierung, #775); False ohne
     /// Gegenstück, dann ohne Meldung (die Taste geht an die IDE weiter).</summary>
     class function TryToggleMethod: Boolean; static;
@@ -227,7 +230,13 @@ uses
   Atlas.Core.Problems.InlineHints,
   Atlas.IDE.Editor.ChangeSignature,
   Atlas.IDE.Editor.MoveClass,
+  Atlas.IDE.Editor.ExtractInterface,
+  Atlas.IDE.Editor.ExtractSuperclass,
+  Atlas.IDE.Editor.MoveMember,
   Atlas.IDE.Editor.PropertyFromAccessors,
+  Atlas.IDE.Editor.InlineAccessor,
+  Atlas.IDE.Editor.SafeDelete,
+  Atlas.Core.Editor.SafeDelete,
   Atlas.IDE.Editor.InvertBoolean,
   Atlas.IDE.Editor.DisableWarning,
   Atlas.IDE.Editor.MissingUnit,
@@ -974,6 +983,24 @@ begin
     Result := TTextDefines.Predefined(Target.Platform, CompilerVersion) + Target.Defines;
 end;
 
+class procedure TAtlasIdeEditorCommands.SafeDelete;
+var
+  View: IOTAEditView;
+  FileName: string;
+  Lines: TArray<string>;
+  Selection: TLspRange;
+begin
+  if not Current(View, FileName, Lines, Selection) then
+    Exit;
+  TAtlasIdeSafeDelete.Execute(Session, TAtlasSafeDelete.Arguments(TLspSession.PathToUri(FileName),
+    Selection.StartPos.Line, Selection.StartPos.Character),
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+    procedure(AText: string)
+    begin
+      Say(AText);
+    end);
+end;
+
 class function TAtlasIdeEditorCommands.TryToggleMethod: Boolean;
 var
   Editors: IOTAEditorServices;
@@ -1618,6 +1645,28 @@ begin
       end);
     Exit;
   end;
+  if ACommand = TAtlasIdeInlineAccessor.ClientCommand then
+  begin
+    // Client-Befehl: Vorschau „Zugriffsmethode durch Feld ersetzen“ (#717); er fragt den Server selbst.
+    TAtlasIdeInlineAccessor.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeSafeDelete.ClientCommand then
+  begin
+    // Client-Befehl: „Sicher löschen“ (#716) prüfen, nachfragen, löschen; er fragt den Server selbst.
+    TAtlasIdeSafeDelete.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
   if ACommand = TAtlasIdeInvertBoolean.ClientCommand then
   begin
     // Client-Befehl: Namen abfragen und „Boolean umkehren“ (#715); er fragt den Server selbst.
@@ -1750,6 +1799,39 @@ begin
   begin
     // Client-Befehl: „Tabellen nachziehen“ (#667), ohne Namensabfrage.
     TAtlasIdeEnumTables.ExecuteSync(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeExtractInterface.ClientCommand then
+  begin
+    // Client-Befehl: Dialog und „Interface herauslösen“ (#664); er fragt den Server selbst.
+    TAtlasIdeExtractInterface.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeExtractSuperclass.ClientCommand then
+  begin
+    // Client-Befehl: Dialog und „Basisklasse herauslösen“ (#713); er fragt den Server selbst.
+    TAtlasIdeExtractSuperclass.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMoveMember.ClientCommand then
+  begin
+    // Client-Befehl: Dialog und „Mitglied verschieben“ (#675); er fragt den Server selbst.
+    TAtlasIdeMoveMember.Execute(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin

@@ -414,6 +414,9 @@ begin
   Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(Entries, TAtlasKeyFunction.ExpressionType).Status(
     TAtlasKeyConflicts.OwnerOf($6054, TAtlasKeyConflicts.KnownIdeKeys))));
   Assert.AreEqual('Atlas.ExpressionType', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ExpressionType));
+  // Sicher löschen (#716): Alt+Entf.
+  Assert.AreEqual($802E, Integer(EntryOf(Entries, TAtlasKeyFunction.SafeDelete).Key));
+  Assert.AreEqual('Atlas.SafeDelete', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SafeDelete));
   // Fenster „Atlas-Prüfung“ (#909): Strg+Alt+P.
   Assert.AreEqual($C050, Integer(EntryOf(Entries, TAtlasKeyFunction.ProblemsWindow).Key));
   Assert.AreEqual('Atlas.ProblemsWindow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ProblemsWindow));
@@ -512,6 +515,7 @@ begin
   Settings.ToggleBlockComment := False;
   Settings.NewLineAround := False;
   Settings.Unwrap := False;
+  Settings.SafeDelete := False;
   Settings.ProblemsWindow := False;
   Settings.DebugStepIntoTarget := False;
   Settings.ExpressionType := False;
@@ -531,7 +535,7 @@ begin
       TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode, TAtlasKeyFunction.ToggleBlockComment,
       TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove, TAtlasKeyFunction.Unwrap,
       TAtlasKeyFunction.ProblemsWindow, TAtlasKeyFunction.StepIntoTarget,
-      TAtlasKeyFunction.ExpressionType] then
+      TAtlasKeyFunction.ExpressionType, TAtlasKeyFunction.SafeDelete] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

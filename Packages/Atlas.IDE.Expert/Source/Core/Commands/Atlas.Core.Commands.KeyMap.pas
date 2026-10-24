@@ -378,6 +378,8 @@ begin
       Result := 'Atlas.StepIntoTarget';
     TAtlasKeyFunction.ExpressionType:
       Result := 'Atlas.ExpressionType';
+    TAtlasKeyFunction.SafeDelete:
+      Result := 'Atlas.SafeDelete';
   else
     Result := '';
   end;

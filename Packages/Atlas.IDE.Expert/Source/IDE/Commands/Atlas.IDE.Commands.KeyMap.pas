@@ -148,6 +148,8 @@ const
     // Gezielt hineinspringen (#836): Editorbefehl.
     3,
     // Typ des markierten Ausdrucks (#689): Editorbefehl.
+    3,
+    // Sicher löschen (#716): Editorbefehl.
     3);
 
 type

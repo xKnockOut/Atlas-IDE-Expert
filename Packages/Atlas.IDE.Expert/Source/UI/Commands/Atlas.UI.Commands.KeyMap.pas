@@ -360,6 +360,8 @@ begin
       Id := TAtlasTextId.StepIntoTargetCommand;
     TAtlasKeyFunction.ExpressionType:
       Id := TAtlasTextId.ExpressionTypeCommand;
+    TAtlasKeyFunction.SafeDelete:
+      Id := TAtlasTextId.SafeDeleteCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

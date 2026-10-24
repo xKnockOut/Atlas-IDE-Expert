@@ -1034,6 +1034,11 @@ type
     /// <summary>Methodenrümpfe in Deklarationsreihenfolge (#660, editor.methodPlacement): off, declaration oder
     /// alphabetical; off schaltet Verschieben und Befehl ab.</summary>
     MethodPlacement: string;
+    /// <summary>Sicher löschen (#716, keys.safeDelete): Kürzel im Editor; aus = Kürzel frei, kein Menüeintrag
+    /// (die Code-Aktion schaltet refactoring.safeDelete).</summary>
+    SafeDelete: Boolean;
+    /// <summary>Kürzel „Sicher löschen“ (#716); Vorgabe Alt+Entf.</summary>
+    SafeDeleteKey: Integer;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -1876,6 +1881,8 @@ begin
   Result.ExpressionTypeConstValue := True;
   Result.ExpressionTypeKey := $6054; // Strg+Umschalt+T
   Result.MethodPlacement := 'declaration';
+  Result.SafeDelete := True;
+  Result.SafeDeleteKey := $802E; // Alt+Entf
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -2120,6 +2127,7 @@ begin
   DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
   ExpressionTypeKey := EnsureRange(ExpressionTypeKey, 0, $FFFF);
   MethodPlacement := Choice(MethodPlacement, AtlasMethodPlacements);
+  SafeDeleteKey := EnsureRange(SafeDeleteKey, 0, $FFFF);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -2627,6 +2635,8 @@ begin
     BoolValue(Default.ExpressionTypeConstValue)) <> 0;
   ExpressionTypeKey := AStore.ReadInteger('ExpressionTypeKey', Default.ExpressionTypeKey);
   MethodPlacement := AStore.ReadString('MethodPlacement', Default.MethodPlacement);
+  SafeDelete := AStore.ReadInteger('SafeDelete', BoolValue(Default.SafeDelete)) <> 0;
+  SafeDeleteKey := AStore.ReadInteger('SafeDeleteKey', Default.SafeDeleteKey);
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
@@ -3116,6 +3126,8 @@ begin
   AStore.WriteInteger('ExpressionTypeConstValue', BoolValue(ExpressionTypeConstValue));
   AStore.WriteInteger('ExpressionTypeKey', ExpressionTypeKey);
   AStore.WriteString('MethodPlacement', MethodPlacement);
+  AStore.WriteInteger('SafeDelete', BoolValue(SafeDelete));
+  AStore.WriteInteger('SafeDeleteKey', SafeDeleteKey);
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));

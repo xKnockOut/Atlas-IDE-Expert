@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 14 |
 | [Architektur](#gruppe-architecture) | 5 |
-| [Stil und Metriken](#gruppe-style) | 52 |
+| [Stil und Metriken](#gruppe-style) | 53 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -368,6 +368,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
 | [`default-parameter`](#default-parameter) | Standardparameter statt Überladung | Code Smell | Warnung |
 | [`empty-routine`](#empty-routine) | Leere Methode | Code Smell | Hinweis |
+| [`trivial-accessor`](#trivial-accessor) | Zugriffsmethode liest bzw. setzt nur ein Feld | Code Smell | Hinweis |
 | [`write-only-property`](#write-only-property) | Property ohne read | Code Smell | Hinweis |
 | [`xmldoc-mismatch`](#xmldoc-mismatch) | XMLDoc passt nicht zur Signatur | Code Smell | Hinweis |
 | [`missing-begin-end`](#missing-begin-end) | Bedingung oder Schleife ohne begin … end | Code Smell | Hinweis |
@@ -4315,6 +4316,30 @@ procedure TImport.Pruefen;
 begin
   // Absichtlich leer.
 end;
+```
+
+<a id="trivial-accessor"></a>
+### trivial-accessor
+
+**Zugriffsmethode liest bzw. setzt nur ein Feld** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Ein Getter, dessen Rumpf nur Result := FName; enthält (auch Exit(FName), Self.FName), oder ein Setter, dessen Rumpf nur FName := Value; enthält (mit refactoring.inlineAccessorEqualityCheck auch if FName <> Value then FName := Value;). Die Property kann direkt auf das Feld zeigen. Nur Methoden, die nicht virtual, dynamic, override oder abstract, keine class-Methoden, nicht überladen oder generisch sind, keine Interface-Methode implementieren (auch nicht über eine Methodenzuordnung), keinen index haben und von keinem anderen Mitglied der Klasse benutzt werden; das Feld gehört zur Klasse und hat den Typ der Property. Stumm, solange refactoring.inlineAccessorDiagnostic aus ist (Vorgabe) oder refactoring.inlineAccessor aus ist. Sicherheit mittel: Aufrufe in anderen Units sieht die Regel nicht. Keine Korrektur in der Regel; die Code-Aktion „Zugriffsmethode GetName durch Feld FName ersetzen“ an derselben Stelle prüft die Aufrufe mit der Referenzsuche und ersetzt.
+
+Mit Treffer:
+
+```pascal
+property Name: string read GetName write FName;
+...
+function TCustomer.GetName: string;
+begin
+  Result := FName;
+end;
+```
+
+Richtig:
+
+```pascal
+property Name: string read FName write FName;
 ```
 
 <a id="write-only-property"></a>

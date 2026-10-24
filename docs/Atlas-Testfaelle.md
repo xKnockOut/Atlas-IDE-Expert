@@ -3594,6 +3594,107 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TPanelHost = 
 | IB10 | `"refactoring": {"invertBooleanAntonyms": {"Verbose": "Silent"}}`, Strg+. auf `FVerbose` | „Bedeutung umkehren (FVerbose → FSilent)“ (**Abnahme**) |
 | IB11 | `"refactoring": {"invertBoolean": false}` in atlas.json | Keine Aktion „Bedeutung umkehren“ mehr (**Abnahme**) |
 
+## Interface aus Klasse herauslösen (#664)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Kunden.pas`: `TKunde = class private FName: string; public constructor Create; procedure Speichern(const APfad: string = ''); function Laden(AStream: TStream): Boolean; overload; class function Neu: TKunde; property Name: string read FName write FName; end;` und eine zweite Unit `Bestand.pas` im Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EI1 | Strg+. auf `TKunde = class` | „Interface aus TKunde herauslösen …“; auf `Speichern` nicht |
+| EI2 | Aktion wählen | Dialog mit Name `IKunde`, Ziel-Unit „Kunden (diese Unit)“; `Speichern`, `Laden` und `Name` angehakt; `Create` und `Neu` grau mit Grund; „Keine“ sperrt „Vorschau …“ mit Hinweis, „Alle“ hakt nur die wählbaren an |
+| EI3 | „Vorschau …“, dann „Herauslösen“ | Vor `TKunde` steht `IKunde = interface` mit `['{GUID}']`, `procedure Speichern(const APfad: string = '');`, `function Laden(AStream: TStream): Boolean; overload;`, `function GetName: string;`, `procedure SetName(const Value: string);` und `property Name: string read GetName write SetName;`; `TKunde = class(TInterfacedObject, IKunde)`, private `GetName`/`SetName` mit Rumpf, Property liest über sie; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| EI4 | Wie EI3, Ziel-Unit `Kunden.Schnittstellen` eintippen | Neue Unit mit dem Interface und `uses System.Classes;` (für `TStream`), eingetragen in `.dpr` und `.dproj`; `Kunden.pas` bindet sie im interface ein; die neue Unit öffnet sich; Projekt kompiliert (**Abnahme**) |
+| EI5 | Wie EI3, Ziel-Unit `Bestand` aus der Liste | Interface am Ende des interface-Teils von `Bestand.pas`, deren uses um fehlende Units ergänzt |
+| EI6 | Klasse `TKunde = class(TComponent)` | Vorfahr bleibt, Liste `class(TComponent, IKunde)`; kein Hinweis |
+| EI7 | Klasse `TKunde = class(TPersistent)` | `class(TPersistent, IKunde)`; Hinweis „TPersistent implementiert IInterface nicht: TKunde fehlen _AddRef, _Release und QueryInterface …“ im Dialog und in der Vorschau |
+| EI8 | Getter `GetName` protected, Property `Name` angehakt | `GetName` kommt ins Interface, Hinweis in der Vorschau |
+| EI9 | Methode mit Parameter vom Typ aus `Kunden.pas` selbst, Ziel `Kunden.Schnittstellen` | Abbruch mit Meldung „… Kreisverweis …“ |
+| EI10 | Name `TKunde` oder `begin` im Dialog | Fehlerzeile, „Vorschau …“ gesperrt; Name eines vorhandenen Typs: Meldung vom Server |
+| EI11 | `"refactoring": {"extractInterface": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
+
+## Basisklasse herauslösen (#713)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Export.pas`: `TPdfExport = class(TComponent, IExport) private FItems: TStrings; FTitle: string; procedure WritePage(const AText: string); public constructor Create(AOwner: TComponent); override; destructor Destroy; override; procedure Run; property Title: string read FTitle write FTitle; end;`. Im Konstruktor `inherited Create(AOwner); FItems := TStringList.Create;`, im Destruktor `FItems.Free; inherited;`, `Run` ruft `WritePage` mit `FItems`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ES1 | Strg+. auf `TPdfExport = class` | „Basisklasse aus TPdfExport herauslösen …“; auf `Run` nicht |
+| ES2 | Aktion wählen | Dialog mit Name `TExportBase`, Ziel-Unit „Export (diese Unit)“; Felder, Methoden und Property mit Art und Sichtbarkeit, nichts angehakt; Konstruktor und Destruktor fehlen, Hinweis zu Konstruktoren unten; Knöpfe „Abhängigkeiten“ und „Nur abstrakt“ sichtbar |
+| ES3 | Nur `Run` anhaken | Fehlerzeile „„Run“ benutzt „FItems“ (bzw. „WritePage“): bitte mitnehmen oder abstrakt deklarieren.“, „Vorschau …“ gesperrt; „Abhängigkeiten“ hakt `WritePage` und `FItems` an, Fehler weg |
+| ES4 | ES3, „Vorschau …“, dann „Herauslösen“ | Über `TPdfExport` steht `TExportBase = class(TComponent)` mit `FItems`, `WritePage`, `Run` und eigenem Konstruktor (`inherited Create(AOwner); FItems := TStringList.Create;`) und Destruktor; `TPdfExport = class(TExportBase, IExport)`; die Rümpfe heißen `TExportBase.…`; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| ES5 | Nur `Run` anhaken, „Nur abstrakt“ | Oben `procedure Run; virtual; abstract;`, unten `procedure Run; override;` mit dem alten Rumpf; `WritePage` muss nicht mit |
+| ES6 | `FTitle` und `Title` anhaken, `WritePage` bleibt | `FTitle` oben private, `Title` public; kein Hinweis |
+| ES7 | `WritePage` (private) anhaken, `Run` bleibt unten | `WritePage` oben `protected`, Hinweis „WritePage wird protected, weil TPdfExport es weiter benutzt.“ in der Vorschau |
+| ES8 | Wie ES7 mit `"refactoring": {"extractSuperclassRaiseVisibility": "strictProtected"}` | `strict protected` statt `protected` |
+| ES9 | Ziel-Unit `ExportBase` eintippen | Neue Unit `ExportBase.pas` mit der Basisklasse und den nötigen uses (`System.Classes`), eingetragen in `.dpr` und `.dproj`; `Export.pas` bindet sie ein; Atlas springt dorthin; kompiliert (**Abnahme**) |
+| ES10 | `"refactoring": {"extractSuperclassTarget": "newUnit", "extractSuperclassMethodMode": "abstract", "extractSuperclassNameSuffix": "Core"}` | Dialog schlägt `TExportCore` und Unit `ExportCore` vor, Methoden stehen auf „Methode (abstrakt)“ |
+| ES11 | Generische Klasse `TBox<T: class> = class` mit Feld und Methode | `TBoxBase<T: class> = class`, `TBox<T: class> = class(TBoxBase<T>)`, Rumpf `TBoxBase<T>.…`; kompiliert |
+| ES12 | Name `TPdfExport`, `begin` oder ein vorhandener Typ | Fehlerzeile bzw. Meldung vom Server, nichts geändert |
+| ES13 | `"refactoring": {"extractSuperclass": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
+
+## Mitglied in Vorfahr oder Nachfahren verschieben (#675)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Shapes.pas`: `TShape = class protected FName: string; public procedure Draw; virtual; end;`, `TCircle = class(TShape) private FRadius: Double; function Area: Double; public procedure Scale(AFactor: Double); procedure Describe; end;` und `TSquare = class(TShape) public procedure Describe; end;`. `Scale` setzt `FRadius`, `Describe` ruft `Area`. Zweite Unit `Shapes.Extra.pas` mit `TRing = class(TCircle) end;` und einer Prozedur, die `TCircle.Scale` aufruft.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MM1 | Strg+. auf `procedure Describe;` in `TCircle` | „„Describe“ in Vorfahr verschieben …“ und „„Describe“ in Nachfahren verschieben …“; auf `TCircle = class` keine dieser Aktionen |
+| MM2 | Strg+. auf `procedure Describe;` in `TSquare` | Nur „in Vorfahr verschieben …“ (keine Nachfahren) |
+| MM3 | MM1, „in Vorfahr verschieben …“ | Dialog mit Ziel-Klappliste `TShape`, `Describe` angehakt, Kästchen „Gleichnamige Methoden anderer Nachfahren überschreiben (override)“ angehakt, Knöpfe „Abhängigkeiten“ und „Nur abstrakt“ |
+| MM4 | Nur `Describe` angehakt lassen | Fehlerzeile, dass `Describe` `Area` benutzt; „Abhängigkeiten“ hakt `Area` an, Fehler weg |
+| MM5 | Vorschau, Übernehmen | `Describe` und `Area` stehen in `TShape` (`Describe` mit `virtual`), Rümpfe heißen `TShape.…`; `TSquare.Describe` hat `override`; Atlas springt zu `TShape` |
+| MM6 | Rückgängig, MM3 mit „Nur abstrakt“ auf `Describe` | `TShape` bekommt `procedure Describe; virtual; abstract;`, `TCircle.Describe` `override` und bleibt samt Rumpf; `Area` wird nicht verlangt |
+| MM7 | Rückgängig, MM3 ohne Kästchen „… überschreiben (override)“ | Vorschau warnt, dass `TSquare.Describe` die neue Methode verdeckt; keine `override` in `TSquare` |
+| MM8 | `FRadius` nach oben verschieben, `Scale` bleibt | `FRadius` steht in `TShape` als `protected`, Hinweis in der Vorschau |
+| MM9 | In `TShape` eine Methode `Describe` anlegen, MM3 | Meldung „TShape hat schon ein Mitglied Describe.“; nichts geändert |
+| MM10 | Strg+. auf `procedure Scale` in `TCircle`, „in Nachfahren verschieben …“ | Meldung mit Fundstelle `Shapes.Extra.pas:N`, weil `Scale` außerhalb benutzt wird |
+| MM11 | Aufruf in `Shapes.Extra.pas` entfernen, MM10 wiederholen | Dialog mit Kontrollliste `TRing (Shapes.Extra)`, Kästchen „Methoden im Vorfahren abstrakt lassen …“ angehakt; Übernehmen: `TCircle.Scale` wird `virtual; abstract;`, `TRing` bekommt `procedure Scale(AFactor: Double); override;` samt Rumpf, `Shapes.Extra` die nötigen uses |
+| MM12 | Rückgängig, MM11 ohne „abstrakt lassen“ | `Scale` verschwindet aus `TCircle` ganz und steht in `TRing`; `FRadius` wird `protected` |
+| MM13 | Klasse ohne Abschnitte (`TFoo = class(TShape) FX: Integer; end;`), Feld nach oben | `FX` steht in `TShape` vor den Methoden im passenden Abschnitt, Code übersetzt |
+| MM14 | `"refactoring": {"moveMember": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
+
+## Triviale Zugriffsmethode durch Feld ersetzen (#717)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Kunde.pas`: `TKunde = class private FName: string; FAlter: Integer; FFarbe: TColor; function GetName: string; procedure SetName(const Value: string); function GetAlter: Integer; procedure SetAlter(const Value: Integer); procedure SetFarbe(const Value: TColor); public property Name: string read GetName write SetName; property Alter: Integer read GetAlter write SetAlter; property Farbe: TColor read FFarbe write SetFarbe; end;`. `GetName` = `Result := FName;`, `SetName` = `if FName <> Value then FName := Value;`, `GetAlter` = `Exit(FAlter);`, `SetAlter` = `FAlter := Value;`, `SetFarbe` setzt `FFarbe` und ruft `Invalidate`. Zweite Unit `Auswertung.pas` ruft `Kunde.GetAlter` auf.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TZ1 | Strg+. auf `property Name` | „Zugriffsmethoden GetName und SetName durch Feld ersetzen“, „Alle trivialen Zugriffsmethoden der Unit ersetzen (4)“, „Alle trivialen Zugriffsmethoden des Projekts ersetzen …“ |
+| TZ2 | Strg+. auf `procedure SetName` in der Klasse und im Rumpf | „Zugriffsmethode SetName durch Feld FName ersetzen“ samt Sammelaktionen |
+| TZ3 | Strg+. auf `property Farbe` und auf `SetFarbe` | Keine Aktion zum Ersetzen (Setter mit Benachrichtigung) |
+| TZ4 | TZ1, erste Aktion | Vorschau „2 Zugriffsmethoden: … Änderungen in 1 Dateien“; Übernehmen: `property Name: string read FName write FName;`, `GetName` und `SetName` samt Rümpfen weg, Code übersetzt; Rückgängig je Datei ein Schritt |
+| TZ5 | Strg+. auf `property Alter`, Aktion | Vorschau mit Hinweis „TKunde.GetAlter bleibt: Es wird noch aufgerufen (Auswertung.pas:N).“; nur `SetAlter` wird ersetzt (`read GetAlter write FAlter`) |
+| TZ6 | Strg+. auf `function GetAlter`, Aktion | Meldung „Zugriffsmethode durch Feld ersetzen fehlgeschlagen: TKunde.GetAlter bleibt: …“; nichts geändert |
+| TZ7 | Rückgängig, Strg+. auf `TKunde = class`, „… der Unit ersetzen (4)“ | Vorschau über alle vier, GetAlter mit Hinweis; danach nur noch GetAlter und SetFarbe in der Klasse |
+| TZ8 | Zweite Unit mit eigener Klasse und trivialem Getter, „… des Projekts ersetzen …“ | Vorschau über beide Units; beide übernommen |
+| TZ9 | `TKunde = class(TInterfacedObject, IKunde)`, `IKunde` deklariert `function GetName: string;` | Für `GetName` keine Aktion, für `SetName` weiter |
+| TZ10 | `GetName` als `virtual;` deklariert | Für `GetName` keine Aktion |
+| TZ11 | `"refactoring": {"inlineAccessorDiagnostic": true}` | Hinweis an `GetName`, `SetName`, `GetAlter`, `SetAlter` (Regel `trivial-accessor`), nicht an `SetFarbe`; Glühbirne an der Meldung bietet das Ersetzen; mit zusätzlich `"inlineAccessorEqualityCheck": false` kein Hinweis und keine Aktion an `SetName` |
+| TZ12 | `"refactoring": {"inlineAccessor": false}` bzw. `{"inlineAccessorBulk": false}` | Keine Aktion mehr bzw. nur noch die einzelne Aktion ohne Sammelaktionen (**Abnahme**) |
+
+## Sicher löschen (#716)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit `Formen.pas`: `TForm = class private FCache: Integer; FSize: Integer; public procedure Draw; virtual; procedure Ungenutzt; procedure Genutzt; procedure Auffrischen; function GetSize: Integer; property Size: Integer read GetSize; end;` (`Auffrischen` benutzt `FCache` und als einzige Routine `Hilfen.Doppelt`), `Kreis.pas` mit `TKreis = class(TForm) procedure Draw; override; end;`, `Nutzer.pas` ruft `Genutzt` und `Doppelt` auf, `Hilfen.pas` mit `function Doppelt(A: Integer): Integer;`, `Haupt.pas`/`Haupt.dfm` mit `Button1: TButton` und `Button1Click` als OnClick.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SL1 | Cursor auf `procedure Ungenutzt;`, Alt+Entf | Ohne Rückfrage gelöscht: Deklaration und Rumpf weg, eine Zeile in der Meldungsansicht; Strg+Z nimmt es zurück |
+| SL2 | Strg+. auf `procedure Genutzt;` | Aktion „Methode „Genutzt“ sicher löschen …“ |
+| SL3 | Aktion aus SL2 wählen | Dialog „„Genutzt“ wird noch verwendet (1 Stellen)“ mit `Nutzer.pas:…`; Knöpfe Anzeigen, Trotzdem löschen, Abbrechen |
+| SL4 | In SL3 „Anzeigen“ | Ergebnisfenster „Verwendungen von „Genutzt““ mit der Stelle; nichts gelöscht |
+| SL5 | In SL3 „Trotzdem löschen“ | Vorschau mit Hinweis „Trotz 1 Verwendungen gelöscht.“; Löschen übernimmt |
+| SL6 | Alt+Entf auf `procedure Draw; virtual;` | Rückfrage „„Draw“ wird in 1 Nachfahren überschrieben … Überschreibungen mitlöschen?“; Ja: `TKreis.Draw` verschwindet mit (zwei Dateien) |
+| SL7 | Wie SL6, Nein | Die Überschreibung zählt als Verwendung: Dialog wie SL3 |
+| SL8 | Alt+Entf auf `procedure Auffrischen;` | Rückfrage „Danach unbenutzt: FCache, uses Hilfen … Mitlöschen?“; Ja: Feld und uses-Eintrag fallen mit, `FSize` bleibt |
+| SL9 | Alt+Entf auf `property Size` | Folgeschritt nennt `GetSize`; Ja löscht Property und Getter samt Rumpf, dann auch `FSize` |
+| SL10 | Alt+Entf auf `Button1Click` in `Haupt.pas` | Verwendung `Haupt.dfm` (Ereignis); auf `Button1` die Komponente |
+| SL11 | Alt+Entf auf `FA` in `FA, FB: Integer;` | Nur `FA` verschwindet, `FB: Integer;` bleibt |
+| SL12 | Alt+Entf auf einer Konstante mit `///`-Kommentar, die als letzte im `const`-Abschnitt steht | Doku-Kommentar und Abschnitt fallen mit |
+| SL13 | Alt+Entf auf der Zeile `unit Hilfen;` | Verwendungen `Formen.pas` und `Nutzer.pas` (benutzen Symbole); Trotzdem löschen zeigt die Vorschau mit der gelöschten Datei, eine Unit, die `Hilfen` nur einbindet, verliert den uses-Eintrag; die Datei landet im Papierkorb und fehlt im Projekt |
+| SL14 | Alt+Entf auf einer published-Methode ohne Verwendungen | Gelöscht, Hinweis „… ist published: Formulare und RTTI können es ansprechen.“ |
+| SL15 | `"refactoring": {"safeDeletePreviewWhenUnused": true, "safeDeleteCascade": "never", "safeDeleteIncludeOverrides": "always"}` | SL1 zeigt die Vorschau; SL8 fragt nicht und lässt `FCache` stehen; SL6 löscht die Überschreibung ohne Frage |
+| SL16 | `"refactoring": {"safeDelete": false}` bzw. Einstellungen › Befehle „Sicher löschen“ aus | Keine Code-Aktion bzw. Alt+Entf gehört wieder der IDE, kein Menüeintrag (**Abnahme**) |
+
 ## Atlas-Spalte in der Zeilenleiste (#768)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasis = class procedure Zeichne; virtual; end;`, `TKnopf = class(TBasis) procedure Zeichne; override; end;` und einer zweiten Nachfahrklasse, die `Zeichne` ebenfalls überschreibt; ein Compilerfehler in einer Zeile.

@@ -490,6 +490,36 @@ type
     VarBlockMerge: Boolean;
     /// <summary>Reihenfolge beim Aufräumen: usage, alpha oder none (#644).</summary>
     VarBlockSort: string;
+    /// <summary>Code-Aktion „Interface aus Klasse herauslösen“ (#664).</summary>
+    ExtractInterface: Boolean;
+    /// <summary>Code-Aktion „Basisklasse herauslösen“ (#713).</summary>
+    ExtractSuperclass: Boolean;
+    /// <summary>Vorgabe für das Ziel: sameUnit oder newUnit (#713).</summary>
+    ExtractSuperclassTarget: string;
+    /// <summary>Endung des vorgeschlagenen Namens; Custom als Präfix TCustom… (#713).</summary>
+    ExtractSuperclassNameSuffix: string;
+    /// <summary>Vorgabe je Methode: move oder abstract (#713).</summary>
+    ExtractSuperclassMethodMode: string;
+    /// <summary>Sichtbarkeit gehobener private-Mitglieder: protected oder strictProtected (#713).</summary>
+    ExtractSuperclassRaiseVisibility: string;
+    /// <summary>Code-Aktionen „In Vorfahr/Nachfahren verschieben“ (#675).</summary>
+    MoveMember: Boolean;
+    /// <summary>Code-Aktion „Zugriffsmethode durch Feld ersetzen“ (#717).</summary>
+    InlineAccessor: Boolean;
+    /// <summary>Setter mit Gleichheitsprüfung als trivial behandeln (#717).</summary>
+    InlineAccessorEqualityCheck: Boolean;
+    /// <summary>Sammelaktionen für Unit und Projekt (#717).</summary>
+    InlineAccessorBulk: Boolean;
+    /// <summary>Hinweis-Diagnose trivial-accessor an trivialen Zugriffsmethoden (#717).</summary>
+    InlineAccessorDiagnostic: Boolean;
+    /// <summary>„Sicher löschen“ (#716).</summary>
+    SafeDelete: Boolean;
+    /// <summary>Auch ohne Verwendungen erst die Vorschau zeigen (#716).</summary>
+    SafeDeletePreviewWhenUnused: Boolean;
+    /// <summary>Freigewordenes mitlöschen: ask, always oder never (#716).</summary>
+    SafeDeleteCascade: string;
+    /// <summary>Überschreibungen einer virtuellen Methode mitlöschen: ask, always oder never (#716).</summary>
+    SafeDeleteIncludeOverrides: string;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -1028,6 +1058,21 @@ begin
   Result.VarBlock := True;
   Result.VarBlockMerge := True;
   Result.VarBlockSort := 'usage';
+  Result.ExtractInterface := True;
+  Result.ExtractSuperclass := True;
+  Result.ExtractSuperclassTarget := 'sameUnit';
+  Result.ExtractSuperclassNameSuffix := 'Base';
+  Result.ExtractSuperclassMethodMode := 'move';
+  Result.ExtractSuperclassRaiseVisibility := 'protected';
+  Result.MoveMember := True;
+  Result.InlineAccessor := True;
+  Result.InlineAccessorEqualityCheck := True;
+  Result.InlineAccessorBulk := True;
+  Result.InlineAccessorDiagnostic := False;
+  Result.SafeDelete := True;
+  Result.SafeDeletePreviewWhenUnused := False;
+  Result.SafeDeleteCascade := 'ask';
+  Result.SafeDeleteIncludeOverrides := 'ask';
 end;
 
 { TCompletionSettings }
