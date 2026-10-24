@@ -3,6 +3,9 @@
 // Daten des Parameter-Hints (#436): Signaturen eines Aufrufs mit der Lage der
 // Parameter im Text, aktiver Signatur und aktivem Parameter, wie sie der
 // Server über textDocument/signatureHelp liefert (#32).
+// Platzhalter (#451): Bei Format und anderen Formatroutinen ordnet der Server
+// unter "format" jedem Platzhalter sein Argument in der Liste [...] zu, mit der
+// Lage im Dokument und einem erkannten Problem.
 
 interface
 
@@ -32,12 +35,59 @@ type
     MismatchArgument: Integer;
   end;
 
+  /// <summary>Lage im Dokument: Zeile und Zeichen ab 0, Ende exklusiv.</summary>
+  TAtlasFormatRange = record
+    StartLine: Integer;
+    StartCharacter: Integer;
+    EndLine: Integer;
+    EndCharacter: Integer;
+    function IsEmpty: Boolean;
+  end;
+
+  TAtlasFormatPlaceholder = record
+    Text: string;
+    /// <summary>Typbuchstabe klein (d u e f g n m p s x); #0 bei ungültigen Platzhaltern.</summary>
+    TypeChar: Char;
+    Valid: Boolean;
+    /// <summary>Argumente ab 0, -1 = keins.</summary>
+    Argument: Integer;
+    WidthArgument: Integer;
+    PrecisionArgument: Integer;
+    /// <summary>Nur wenn der Formatstring als Literal im Aufruf steht.</summary>
+    HasRange: Boolean;
+    Range: TAtlasFormatRange;
+  end;
+
+  {$SCOPEDENUMS ON}
+  TAtlasFormatProblem = (None, Invalid, TooManyArguments, TypeConflict);
+  {$SCOPEDENUMS OFF}
+
+  TAtlasSignatureFormat = record
+    Found: Boolean;
+    FormatParameter: Integer;
+    ListParameter: Integer;
+    /// <summary>Höchstes verwendetes Argument + 1; -1 bei Index "*".</summary>
+    ArgumentCount: Integer;
+    /// <summary>Eintrag der Liste am Cursor, -1 außerhalb.</summary>
+    ActiveArgument: Integer;
+    Placeholders: TArray<TAtlasFormatPlaceholder>;
+    /// <summary>Einträge der Liste, auch leere.</summary>
+    Arguments: TArray<TAtlasFormatRange>;
+    Problem: TAtlasFormatProblem;
+    ProblemPlaceholder: Integer;
+    ProblemArgument: Integer;
+    /// <summary>Art des Literals beim Typkonflikt: string, char, integer, float, boolean.</summary>
+    ProblemKind: string;
+  end;
+
   TAtlasSignatureHelp = record
     Signatures: TArray<TAtlasSignature>;
     /// <summary>Vom Server gewählte Signatur bzw. -1.</summary>
     ActiveSignature: Integer;
     /// <summary>Vom Server ermittelter Parameter bzw. -1.</summary>
     ActiveParameter: Integer;
+    /// <summary>Platzhalter einer Formatroutine (#451).</summary>
+    Format: TAtlasSignatureFormat;
     function IsEmpty: Boolean;
   end;
 
@@ -64,6 +114,13 @@ begin
     Result := Copy(ALabel, Start + 1, Stop - Start)
   else
     Result := '';
+end;
+
+{ TAtlasFormatRange }
+
+function TAtlasFormatRange.IsEmpty: Boolean;
+begin
+  Result := (StartLine = EndLine) and (StartCharacter >= EndCharacter);
 end;
 
 { TAtlasSignatureHelp }

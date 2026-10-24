@@ -267,6 +267,10 @@ begin
   Assert.Contains(mFound[3].Message, 'Argument 2 (AName) kommt im Formatstring nicht vor');
   Assert.Contains(mFound[4].Message, 'In %q ist');
   Assert.Contains(mFound[5].Message, '%d erwartet eine Ganzzahl');
+  // FormatBuf (#451): Der Formatstring steht an Stelle 3, die Länge direkt vor der Liste zählt nicht.
+  mFound := Findings(Source('', '  FormatBuf(S, 10, ''%d'', 2, [AName]);'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.Contains(mFound[0].Message, '%d erwartet eine Ganzzahl');
   // Andere Methoden namens Format bleiben ohne Auflösung still.
   TRuleAssert.Silent(TFormatArgsRule.Create, Source('', '  S := Writer.Format(''%d'', [AName]);'#10 +
     '  S := FormatFloat(''%d'', ABetrag);'#10));

@@ -2412,6 +2412,118 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | UT5 | `TStringList.Create(Unbekannt, ` (nicht deklarierter Name) | Keine Variante wegen des Typs gedämpft |
 | UT6 | In UT1 mit Alt+↑ die gedämpfte Variante wählen | Sie wird gezeigt, bleibt aber gedämpft |
 
+## Parameter-Hint: Platzhalter von Format (#451)
+
+Voraussetzung: Server läuft in der IDE, `completion.formatPlaceholders` an (Vorgabe).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FP1 | `Format('%s hat %d Einträge', [AName, ` tippen | Hint-Zeile oben in der Doku-Fläche in Akzentfarbe: „Platzhalter 2 von 2 erwartet ganzzahlig“; im Editor `%s` und `AName` in einer Farbe, `%d` in einer zweiten |
+| FP2 | In FP1 den Cursor in `AName` setzen | Nach kurzer Pause „Platzhalter 1 von 2 erwartet String“ |
+| FP3 | In FP1 `Count, X` weitertippen | Fehlerfarbe: „Mehr Argumente als Platzhalter: Argument 3 wird nicht ausgegeben.“ |
+| FP4 | `Format('%d', ['Text'` | Fehlerfarbe: „Platzhalter 1 (%d) erwartet ganzzahlig, Argument 1 ist ein String: EConvertError zur Laufzeit.“ |
+| FP5 | `Format('%q', [` | Fehlerfarbe: „Ungültiger Platzhalter %q: EConvertError zur Laufzeit.“; `%q` nicht eingefärbt |
+| FP6 | `Format('%1:s %0:s', [A, B` mit Cursor in `A` | „Platzhalter 2 von 2 erwartet String“; `%0:s` und `A` gleich gefärbt |
+| FP7 | `Format('%*.*f', [Breite, Stellen, Wert` mit Cursor in `Breite` bzw. `Stellen` | „Breite für Platzhalter 1 von 1 (%*.*f), ganzzahlig“ bzw. „Genauigkeit …“; alle drei Argumente in der Farbe des Platzhalters |
+| FP8 | `const cMuster = 'Kunde %s';` und `Format(cMuster, [` | Zeile „Platzhalter 1 von 1 erwartet String“; im Formatstring nichts eingefärbt (steht nicht im Aufruf), das Argument schon |
+| FP9 | `Format('%s' + ' (%d)', [A, B` | Beide Platzhalter in ihren Stücken eingefärbt, Zuordnung wie in einem Literal |
+| FP10 | `FmtStr(mText, '%d', [N`, `StrFmt(mPuffer, '%s', [S`, `raise Exception.CreateFmt('%s', [S` | Zeile und Farben wie in FP1 |
+| FP11 | `.atlas` mit `"formatFunctions": [{"name": "Protokoll", "formatIndex": 1}]`, eigene `procedure Protokoll(AStufe: Integer; const AFormat: string; const AArgs: array of const)`; `Protokoll(1, '%s', [` | Zeile und Farben wie bei Format; ohne den Eintrag nichts |
+| FP12 | atlas.json `"format-args": {"formatMethods": ["TLogger.LogFmt"]}`; `Log.LogFmt('%d', [` | Zeile und Farben wie bei Format |
+| FP13 | Hint mit Esc schließen bzw. Cursor aus dem Aufruf bewegen | Färbung im Editor verschwindet sofort |
+| FP14 | Tools › Optionen › Atlas › Vervollständigung: „Platzhalter von Format im Parameter-Hint zuordnen und einfärben“ aus; FP1 | Hint wie bisher ohne Platzhalter-Zeile, keine Färbung; der Schalter ist ohne Parameter-Hint ausgegraut |
+| FP15 | Helles und dunkles Thema; FP1 mit sieben Platzhaltern | Farben gut lesbar, der siebte Platzhalter hat die Farbe des ersten |
+| FP16 | `Format(mMuster, [A` mit Variable `mMuster` | Keine Platzhalter-Zeile, keine Färbung; Hint sonst wie bisher |
+
+## Attribute nach „[“ (#465)
+
+Voraussetzung: Server läuft in der IDE, DUnitX im Bibliothekspfad indiziert, `completion.attributes` an (Vorgabe).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AT1 | Unit ohne DUnitX in uses; vor einer Methode `[Te` tippen | `Test`, `TestCase`, `TearDown` mit Badge `at` und Marke „+ DUnitX.TestFramework“; nur je einmal |
+| AT2 | AT1, `TestCase` übernehmen | Eingefügt `TestCase` (ohne Attribute), `DUnitX.TestFramework` in uses ergänzt |
+| AT3 | Mit DUnitX in uses `[` tippen bzw. Strg+Leer nach `[` | Oben `Test`, `TestCase`, `TestFixture`, `Setup`, `TearDown`, dann `weak`, `unsafe`, `volatile`, `Ref`, danach eigene Attribute; keine anderen Klassen |
+| AT4 | `[TestCase` in der Liste markieren | Rechts `(const ACaseName: string; const AValues: string; …)`; bei einem Attribut ohne eigenen Konstruktor die Unit |
+| AT5 | `[TestCase('Fall', ` tippen | Parameter-Hint mit dem Konstruktor von TestCaseAttribute, zweiter Parameter hervorgehoben |
+| AT6 | `[Test, Te` und `[TestCase('a', '1'), Te` | Wieder nur Attribute |
+| AT7 | `procedure Lies([` in der Deklaration; `[R` | `Ref` angeboten |
+| AT8 | `if X in [`, `A := [`, `Liste[`, `IFoo = interface` und darunter `[` | Gewöhnliche Liste bzw. keine Attribute |
+| AT9 | Eigenes `MarkeAttribute = class(TCustomAttribute)` und `TNurKlasse = class` in der Unit; `[` | `Marke` angeboten, `TNurKlasse` nicht |
+| AT10 | `"completion": {"attributes": false}` in atlas.json; AT1 | Gewöhnliche Liste mit `TestAttribute` usw. samt Endung |
+
+## Unvollständiger Code (#457)
+
+Voraussetzung: Server läuft in der IDE, `completion.syntaxNotice` an (Vorgabe). Unit mit Klasse `TF` und zwei Methoden `A` und `B`.
+
+| Nr. | Schritte | Erwartet |
+| --- | --- | --- |
+| UC1 | In `B` vor dem Cursor `X := (1 + ;` schreiben, eine Zeile tiefer Strg+Leer | Liste mit Einträgen, oben Warnleiste „Ergebnisse möglicherweise unvollständig · Syntaxfehler in Zeile n“ (n = Zeile des Fehlers) |
+| UC2 | UC1, auf „Zeile n“ klicken | Liste schließt, Caret steht in der genannten Zeile an der Fehlerstelle |
+| UC3 | In `A` ein `end;` entfernen (Block bleibt offen), in `B` Strg+Leer | keine Warnleiste |
+| UC4 | In `B` `X := Foo.` tippen | Mitgliederliste ohne Warnleiste (die Tippstelle zählt nicht) |
+| UC5 | Fehler nur hinter dem Cursor in derselben Methode | keine Warnleiste |
+| UC6 | In der Klassendeklaration `procedure A(;`, eine Zeile tiefer Strg+Leer | Warnleiste mit der Zeile von `A` |
+| UC7 | Fehler in einer anderen Klasse derselben Unit | keine Warnleiste |
+| UC8 | Stelle, an der der Server nichts vorschlägt (UC1, Fehler davor), Strg+Leer | leerer Zustand mit Leiste „Kontext unklar · Syntaxfehler in Zeile n“ und dem Fehlertext darunter |
+| UC9 | UC1, Fehler beheben, weitertippen | Warnleiste verschwindet mit der nächsten Antwort |
+| UC10 | `"completion": {"syntaxNotice": false}` in atlas.json; UC1 | keine Warnleiste |
+
+## Exception-Klassen (#483)
+
+Voraussetzung: Server läuft in der IDE, `completion.exceptionClasses` an (Vorgabe), Code-Vorlagen an. Projekt mit eigener Klasse `EAppError = class(Exception)` und einer Klasse `TWorker`.
+
+| Nr. | Schritte | Erwartet |
+| --- | --- | --- |
+| EX1 | In einer Methode `raise ` tippen, Liste öffnen | nur Exception-Klassen; `EAppError` vor `Exception`, `EConvertError`; kein `TWorker`, keine Variablen |
+| EX2 | EX1, `EAppError` übernehmen | `raise EAppError.Create('')`, Cursor zwischen den Anführungszeichen |
+| EX3 | EX1, `EAppError.CreateFmt` übernehmen | `raise EAppError.CreateFmt('', [])`, Cursor im Text, Tab springt in die Klammer |
+| EX4 | `try Value := StrToInt(S); except on E: ` tippen | Überschrift „Aus dem try-Block“, darin zuerst `EConvertError`; darunter „Allgemein“ |
+| EX5 | Eigene Routine mit `/// <exception cref="EAppError">…</exception>` im try aufrufen, `on E: ` | `EAppError` in „Aus dem try-Block“, in der Reihenfolge der Aufrufe |
+| EX6 | `except on E: EConvertError do …; on E: ` | `EConvertError` fehlt in der Liste |
+| EX7 | `except on E: Exception do …; on E: ` | `EConvertError` u. a. mit Warnmarke „nie erreicht: Exception davor“ (Fläche) |
+| EX8 | Zweig vor `on E: Exception do` einfügen (`on E: ` darüber) | keine Warnmarke |
+| EX9 | `on E: ` in einem try ohne bekannte Aufrufe | keine Gruppenüberschriften, nur Exception-Klassen |
+| EX10 | Klasse aus nicht eingebundener Unit (z. B. `EFOpenError` ohne `System.Classes`) nach `LoadFromFile` im try | Eintrag mit „+ System.Classes“; Übernahme ergänzt uses |
+| EX11 | `"completion": {"snippets": false}`; EX2 | Übernahme `EAppError.Create('')` ohne Platzhalter, Einträge bleiben |
+| EX12 | `"completion": {"exceptionClasses": false}`; EX1 und EX4 | gewöhnliche Liste ohne Filter, Gruppen und Marken |
+
+## with-Blöcke (#481)
+
+Voraussetzung: Server läuft in der IDE, `completion.withOrigin` an (Vorgabe). Formular `TForm1` mit Feld bzw. Eigenschaft `Name`, Methode mit `qryOrders: TFDQuery`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WB1 | `with qryOrders do` und darin `Na` tippen | Eintrag `Name` mit Marke „aus qryOrders“ und Warnmarke „verdeckt Self.Name“ (Warnfläche); `Name` nur einmal |
+| WB2 | WB1, Detailpanel | „Mitglied von qryOrders (with)“ und „Verdeckt: Eigenschaft TComponent.Name“ (bzw. Feld) |
+| WB3 | Lokale Variable `Active` und `with qryOrders do Act` | „aus qryOrders“, „verdeckt lokale Variable Active“ |
+| WB4 | `with qryOrders do` und `Op` | `Open` mit „aus qryOrders“, ohne Warnung |
+| WB5 | `with qryOrders do with qryOther do Na` sowie `with qryOrders, qryOther do Na` | „aus qryOther“ |
+| WB6 | `with Self.FQuery do` | Marke „aus Self.FQuery“ |
+| WB7 | Hinter dem with-Block `Na` | `Name` mit Herkunft des Formulars, ohne „aus …“ |
+| WB8 | Strg+Leer auf `with` | „with auflösen“ oben; danach übersetzt der Code und verhält sich gleich; ein Rückgängig-Schritt |
+| WB9 | Helles und dunkles Thema | Warnfläche lesbar |
+| WB10 | `"completion": {"withOrigin": false}` in atlas.json; WB1 | `Name` ohne Marken; das Mitglied von qryOrders gilt weiter |
+
+## Anonyme Methoden (#468)
+
+Voraussetzung: Server läuft in der IDE, `completion.anonymousMethods` an (Vorgabe), Code-Vorlagen an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AM1 | `uses System.Threading;` in einer Methode `TTask.Run(` tippen | Liste öffnet sich allein mit einem Eintrag `procedure`, Badge `sn`, Tag `TProc`, rechts „anonyme Methode“ |
+| AM2 | AM1, Enter | `procedure`, darunter `begin` und `end` eine Ebene tiefer als die Aufrufzeile, Cursor eingerückt im Rumpf; danach `)` von Hand |
+| AM3 | `TList<TCustomer>`-Variable `L`; `L.Sort(TComparer<TCustomer>.Construct(` | Gerüst `function(const Left: TCustomer; const Right: TCustomer): Integer` (eigene Namen der Deklaration) mit `Result := ` |
+| AM4 | Eigene Methode `function Finde(const AFilter: TPredicate<TCustomer>): TCustomer;`, Aufruf `Finde(` | `function(const Value: TCustomer): Boolean`, im Rumpf `Result := ` mit Cursor dahinter |
+| AM5 | `TProc<string, Integer>` als Parameter; Aufruf mit `(` | `procedure(const Value1: string; const Value2: Integer)` |
+| AM6 | Projekt mit Parameterpräfix `A` (#452); AM4 | `function(const AValue: TCustomer): Boolean` |
+| AM7 | Variable `P: TProc<string>`; `P := ` und Strg+Leer | Gerüst oben, darunter die übrige Liste |
+| AM8 | `TTask.Run(pro` und Strg+Leer | Gerüst ersetzt `pro` |
+| AM9 | `Button1.OnClick := ` (Ereignis `of object`) | Kein Gerüst, nur die Ereignis-Zuweisung (#444) |
+| AM10 | Alias `TKundenFilter = TPredicate<TCustomer>;` als Parametertyp; Aufruf mit `(` | `function(const Value: TCustomer): Boolean` |
+| AM11 | `"completion": {"anonymousMethods": false}` in atlas.json; AM1 | Kein Gerüst; nach `(` bleibt die Liste zu |
+| AM12 | `"completion": {"snippets": false}`; AM2 | Gerüst als Klartext ohne Cursor im Rumpf; Einrückung prüfen |
+
 ## Typargumente nach Constraints (#450)
 
 | Nr. | Schritte | Erwartet |

@@ -1607,6 +1607,16 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.UsesDetails)
     else if Key = 'inheritedCall' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.InheritedCall)
+    else if Key = 'attributes' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.Attributes)
+    else if Key = 'anonymousMethods' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.AnonymousMethods)
+    else if Key = 'withOrigin' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.WithOrigin)
+    else if Key = 'exceptionClasses' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.ExceptionClasses)
+    else if Key = 'syntaxNotice' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.SyntaxNotice)
     else if Key = 'sameNameVariants' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.SameNameVariants)
     else if Key = 'showFmxUnits' then

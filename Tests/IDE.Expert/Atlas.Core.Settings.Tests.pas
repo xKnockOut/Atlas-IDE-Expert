@@ -583,6 +583,7 @@ begin
   Assert.IsTrue(Settings.CommitCharacters);
   Assert.IsTrue(Settings.AutoUses);
   Assert.IsTrue(Settings.ParameterHints);
+  Assert.IsTrue(Settings.FormatPlaceholders);
   Assert.AreEqual(150, Settings.OpenDelayMs);
   // Auswahl mit Rahmen und Marke (#447).
   Assert.IsTrue(Settings.SelectionMarker);
@@ -591,6 +592,7 @@ begin
   Settings.SelectionMarker := False;
   Settings.AutoUses := False;
   Settings.ParameterHints := False;
+  Settings.FormatPlaceholders := False;
   Settings.OpenDelayMs := 400;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
@@ -599,6 +601,7 @@ begin
   Assert.IsFalse(Loaded.SelectionMarker);
   Assert.IsFalse(Loaded.AutoUses);
   Assert.IsFalse(Loaded.ParameterHints);
+  Assert.IsFalse(Loaded.FormatPlaceholders);
   Assert.AreEqual(400, Loaded.OpenDelayMs);
   Store.WriteInteger('OpenDelayMs', 99999);
   Loaded.Load(Store);

@@ -323,6 +323,23 @@ type
     /// <summary>Nach "inherited " zuerst der vollständige Aufruf der Vorfahrmethode mit den eigenen Parametern,
     /// in Konstruktoren und Destruktoren auch die übrigen; abstrakte fehlen (#482). Aus: nur die Namen.</summary>
     InheritedCall: Boolean;
+    /// <summary>Nach "[" vor einer Deklaration nur Attributklassen ohne Endung Attribute, bekannte zuerst, dazu
+    /// die Compiler-Attribute (#465). Aus: die gewöhnliche Liste.</summary>
+    Attributes: Boolean;
+    /// <summary>Erwartet ein Argument oder eine Zuweisung einen Methodenreferenztyp, oben ein Gerüst
+    /// "procedure(…) begin end" bzw. "function(…): T" mit passender Signatur (#468). Aus: kein Gerüst.</summary>
+    AnonymousMethods: Boolean;
+    /// <summary>In with-Blöcken Mitglieder des with-Objekts mit „aus Ausdruck“ und der Warnung „verdeckt Self.Name“
+    /// bzw. „verdeckt lokale Variable Name“ (#481). Aus: ohne Herkunft.</summary>
+    WithOrigin: Boolean;
+    /// <summary>Nach "raise " und "on E: " nur Exception-Klassen; nach raise mit Create('') bzw. CreateFmt, nach on
+    /// zuerst die aus dem try-Block (XMLDoc), ohne schon behandelte, mit Warnung bei unerreichbaren Zweigen (#483).
+    /// Aus: die gewöhnliche Liste.</summary>
+    ExceptionClasses: Boolean;
+    /// <summary>Hinweis bei unvollständigem Code (#457): Steht vor dem Cursor in der aktuellen Routine bzw.
+    /// Klassendeklaration ein Syntaxfehler, meldet die Antwort „eingeschränkt“ samt Fehlerzeile (ohne Einträge
+    /// „unbekannt“). Aus: kein Hinweis.</summary>
+    SyntaxNotice: Boolean;
     /// <summary>Gleichnamige Bezeichner aus verschiedenen Units als Varianten mit ihrer Unit; die vom Compiler
     /// gewählte zuerst mit „aktiv“ (#475). Aus: nur die aktive.</summary>
     SameNameVariants: Boolean;
@@ -883,6 +900,11 @@ begin
   Result.AssignAllFields := False;
   Result.UsesDetails := True;
   Result.InheritedCall := True;
+  Result.Attributes := True;
+  Result.AnonymousMethods := True;
+  Result.WithOrigin := True;
+  Result.ExceptionClasses := True;
+  Result.SyntaxNotice := True;
   Result.SameNameVariants := True;
   Result.SameNameInsert := TCompletionSameNameInsert.Prefix;
   Result.ShowFmxUnits := False;

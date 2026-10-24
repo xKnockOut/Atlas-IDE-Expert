@@ -51,11 +51,12 @@ type
     /// API, kein Serverstart (Code-Review K-03). False = nichts zu tun (Complete sofort).
     /// AData geht unverändert an Fetch (nicht übernommen, muss bis zum Ende von Fetch leben).</summary>
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; virtual;
-    /// <summary>Im Hintergrund. Ausnahmen gelten als leeres Ergebnis. AIncomplete: Die Liste ist
-    /// gekürzt, beim Weitertippen neu fragen (#431). AEmit liefert Teilergebnisse vorab (#616), auch aus
+    /// <summary>Im Hintergrund. Ausnahmen gelten als leeres Ergebnis. AState.Incomplete: Die Liste ist
+    /// gekürzt, beim Weitertippen neu fragen (#431); AState.Syntax: Hinweis bei unvollständigem Code (#457).
+    /// AEmit liefert Teilergebnisse vorab (#616), auch aus
     /// anderen Threads, aber nur bis Fetch zurückkehrt; das Ergebnis kommt danach dazu.</summary>
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; virtual; abstract;
+      const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; virtual; abstract;
     /// <summary>Weitere Arbeit im Hintergrund (z. B. Details nachfragen); Shutdown wartet auch darauf.</summary>
     procedure RunInBackground(const AWork: TProc);
     /// <summary>Für Aufrufe per TAtlasMainThread.Queue: nur ausführen, solange Token.Alive gilt.</summary>
@@ -229,10 +230,10 @@ begin
         procedure
         var
           Items: TAtlasCompletionItems;
-          Incomplete: Boolean;
+          State: TAtlasFetchState;
         begin
           Items := nil;
-          Incomplete := False;
+          State := Default(TAtlasFetchState);
           try
             Items := Fetch(Context, Data,
               function: Boolean
@@ -243,20 +244,23 @@ begin
               begin
                 if (Length(AItems) > 0) and IsCurrent(Generation) then
                   Sink.AddItems(AItems);
-              end, Incomplete);
+              end, State);
           except
             // Server weg, Zeitlimit oder unerwartete Antwort: keine Einträge; Fehler zählt die Sicherung (#493).
             on E: Exception do
             begin
               Items := nil;
+              State := Default(TAtlasFetchState);
               Failed(E);
             end;
           end;
           if IsCurrent(Generation) then
           begin
             Sink.AddItems(Items);
-            if Incomplete then
+            if State.Incomplete then
               Sink.MarkIncomplete;
+            if State.Syntax.Trust <> TAtlasSyntaxTrust.Sure then
+              Sink.MarkSyntax(State.Syntax);
             Sink.Complete;
           end;
         end);
