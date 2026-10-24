@@ -25,7 +25,8 @@
 // Schweregrad, Meldung, Regel-ID bzw. Meldungsnummer und Herkunft; ohne
 // Bezeichner zeigt der Tooltip nur sie.
 // Im angehaltenen Debugger steht darüber der Wert des Ausdrucks unter der Maus
-// (#891): Akzentbalken, Ausdruck, Wert bzw. „wird ausgewertet …“.
+// (#891): Akzentbalken, Ausdruck, Wert bzw. „wird ausgewertet …“; bei „kein
+// Zugriff“ die Ursache mit Korrekturen als Verweise (#840, OnDebugFix).
 // Ohne Fokus wie alle Atlas-Fenster; Klicks kommen trotzdem an (MA_NOACTIVATE).
 // Beim Wechsel des Inhalts bleibt die Position, das Fenster wächst höchstens.
 // Satz (P-09): Positionen, Klickflächen und Bausteine rechnet
@@ -78,6 +79,7 @@ type
     FOnAction: TAtlasHoverActionEvent;
     FOnUrl: TAtlasHoverUrlEvent;
     FOnProblemAction: TAtlasHoverProblemActionEvent;
+    FOnDebugFix: TAtlasHoverIndexEvent;
     FProblemActions: Boolean;
     FHideCompilerCode: Boolean;
     FDoc: TAtlasDocView;
@@ -154,6 +156,9 @@ type
     property OnUrl: TAtlasHoverUrlEvent read FOnUrl write FOnUrl;
     /// <summary>Aktion unter einem uses-Hinweis (#621).</summary>
     property OnProblemAction: TAtlasHoverProblemActionEvent read FOnProblemAction write FOnProblemAction;
+    /// <summary>Klick auf eine Korrektur unter „kein Zugriff“ (#840); AIndex in View.DebugValue.Note.Fixes.
+    /// </summary>
+    property OnDebugFix: TAtlasHoverIndexEvent read FOnDebugFix write FOnDebugFix;
     /// <summary>Aktionszeile unter Regelbefunden (hover.problemActions, #909).</summary>
     property ProblemActions: Boolean read FProblemActions write SetProblemActions;
     /// <summary>problems.showCompilerCode aus (#1024).</summary>
@@ -429,6 +434,8 @@ begin
   Result.Configure := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure);
   Result.Stale := TAtlasStrings.Text(TAtlasTextId.ProblemsStale);
   Result.DebugPending := TAtlasStrings.Text(TAtlasTextId.HoverDebugPending);
+  Result.DebugExplaining := TAtlasStrings.Text(TAtlasTextId.HoverDebugExplaining);
+  Result.DebugChecked := TAtlasStrings.Text(TAtlasTextId.HoverDebugChecked);
   Result.PublishedSummary := TAtlasStrings.Text(TAtlasTextId.PublishedSummary);
   Result.PublishedInherited := TAtlasStrings.Text(TAtlasTextId.PublishedInherited);
   Result.PublishedOnlyDefaults := TAtlasStrings.Text(TAtlasTextId.PublishedOnlyDefaults);
@@ -760,6 +767,9 @@ begin
     // Schalter und Abschnitte der published-Mitglieder (#110).
     TAtlasHoverHitKind.Published:
       TogglePublished(TAtlasHoverPublishedToggle(Hit.Index));
+    TAtlasHoverHitKind.DebugFix:
+      if Assigned(FOnDebugFix) then
+        FOnDebugFix(Self, Hit.Index);
   end;
 end;
 

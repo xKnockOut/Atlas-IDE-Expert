@@ -24,20 +24,15 @@
 interface
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Settings.VisualizerKinds;
 
 type
   {$SCOPEDENUMS ON}
-  TAtlasVisualizerKind = (Lists, Dictionaries, DataSets, Bytes, Json, Colors, Guid, Geometry, Graphics);
-  /// <summary>Wie weit Atlas für einen Wert auswerten darf (debug.visualizers.evaluation): nur Felder, auch Getter
-  /// von Eigenschaften, auch Funktionsaufrufe.</summary>
-  TAtlasVisualizerEvaluation = (Fields, Properties, Calls);
   TAtlasVisualizerViewMode = (None, Table, Hex, Tree, Image, Color, Text);
   /// <summary>Spalten der Tabellenansicht; die Oberfläche setzt die Überschriften.</summary>
   TAtlasVisualizerColumn = (Index, Value, Key, Field, FieldType, OldValue);
   {$SCOPEDENUMS OFF}
-
-  TAtlasVisualizerKinds = set of TAtlasVisualizerKind;
 
   /// <summary>Anmeldung beim Debugger: Typname, mit Nachfahren, generisch.</summary>
   TAtlasVisualizerType = record
@@ -60,15 +55,6 @@ type
 
   TAtlasVisualizerOptions = record
   public const
-    DefaultMaxLength = 120;
-    MinMaxLength = 20;
-    MaxMaxLength = 2000;
-    DefaultTimeoutMs = 200;
-    MinTimeoutMs = 20;
-    MaxTimeoutMs = 5000;
-    DefaultMaxImagePixels = 4000000;
-    MinMaxImagePixels = 10000;
-    MaxMaxImagePixels = 64000000;
     /// <summary>Elemente im Ersatztext.</summary>
     PreviewItems = 5;
     /// <summary>Zeilen der Tabellenansicht.</summary>
@@ -123,22 +109,7 @@ type
   end;
 
   TAtlasVisualizers = class
-  public const
-    AllKinds = [Low(TAtlasVisualizerKind)..High(TAtlasVisualizerKind)];
-    KindNames: array[TAtlasVisualizerKind] of string = ('lists', 'dictionaries', 'dataSets', 'bytes', 'json',
-      'colors', 'guid', 'geometry', 'graphics');
-    EvaluationNames: array[TAtlasVisualizerEvaluation] of string = ('fields', 'properties', 'calls');
-    DefaultNameFields = 'Name,Caption,Text';
   public
-    /// <summary>Kommagetrennte Arten wie in debug.visualizers.types; unbekannte fallen weg, '' = keine.</summary>
-    class function ParseKinds(const AText: string): TAtlasVisualizerKinds; static;
-    class function KindsText(AKinds: TAtlasVisualizerKinds): string; static;
-    /// <summary>Normalisiert die Liste: bekannte Namen in fester Reihenfolge, Groß-/Kleinschreibung wie oben.</summary>
-    class function NormalizeKinds(const AText: string): string; static;
-    class function ParseEvaluation(const AText: string): TAtlasVisualizerEvaluation; static;
-    /// <summary>Kommagetrennte Feldnamen (debug.visualizers.nameFields), getrimmt, ohne leere und doppelte.</summary>
-    class function ParseNameFields(const AText: string): TArray<string>; static;
-    class function NormalizeNameFields(const AText: string): string; static;
     /// <summary>Typnamen, für die sich der Visualisierer der Art beim Debugger anmeldet.</summary>
     class function SupportedTypes(AKind: TAtlasVisualizerKind): TArray<TAtlasVisualizerType>; static;
     /// <summary>Name ohne Units in allen Teilen: „System.Generics.Collections.TList<Unit1.TKunde>“ →
@@ -419,11 +390,11 @@ end;
 class function TAtlasVisualizerOptions.Defaults: TAtlasVisualizerOptions;
 begin
   Result := Default(TAtlasVisualizerOptions);
-  Result.Kinds := TAtlasVisualizers.AllKinds;
-  Result.NameFields := TAtlasVisualizers.ParseNameFields(TAtlasVisualizers.DefaultNameFields);
-  Result.MaxLength := DefaultMaxLength;
+  Result.Kinds := TAtlasVisualizerSettings.AllKinds;
+  Result.NameFields := TAtlasVisualizerSettings.ParseNameFields(TAtlasVisualizerSettings.DefaultNameFields);
+  Result.MaxLength := TAtlasVisualizerSettings.DefaultMaxLength;
   Result.Evaluation := TAtlasVisualizerEvaluation.Properties;
-  Result.MaxImagePixels := DefaultMaxImagePixels;
+  Result.MaxImagePixels := TAtlasVisualizerSettings.DefaultMaxImagePixels;
 end;
 
 { TAtlasVisualizerFormat }
@@ -951,72 +922,6 @@ begin
 end;
 
 { TAtlasVisualizers }
-
-class function TAtlasVisualizers.ParseKinds(const AText: string): TAtlasVisualizerKinds;
-var
-  Part: string;
-  Kind: TAtlasVisualizerKind;
-begin
-  Result := [];
-  for Part in AText.Split([',', ';']) do
-    for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
-      if SameText(Trim(Part), KindNames[Kind]) then
-        Include(Result, Kind);
-end;
-
-class function TAtlasVisualizers.KindsText(AKinds: TAtlasVisualizerKinds): string;
-var
-  Kind: TAtlasVisualizerKind;
-begin
-  Result := '';
-  for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
-    if Kind in AKinds then
-    begin
-      if Result <> '' then
-        Result := Result + ',';
-      Result := Result + KindNames[Kind];
-    end;
-end;
-
-class function TAtlasVisualizers.NormalizeKinds(const AText: string): string;
-begin
-  Result := KindsText(ParseKinds(AText));
-end;
-
-class function TAtlasVisualizers.ParseEvaluation(const AText: string): TAtlasVisualizerEvaluation;
-var
-  Item: TAtlasVisualizerEvaluation;
-begin
-  for Item := Low(TAtlasVisualizerEvaluation) to High(TAtlasVisualizerEvaluation) do
-    if SameText(Trim(AText), EvaluationNames[Item]) then
-      Exit(Item);
-  Result := TAtlasVisualizerEvaluation.Properties;
-end;
-
-class function TAtlasVisualizers.ParseNameFields(const AText: string): TArray<string>;
-var
-  Part, Name, Known: string;
-  Seen: Boolean;
-begin
-  Result := nil;
-  for Part in AText.Split([',', ';']) do
-  begin
-    Name := Trim(Part);
-    if (Name = '') or not IsValidIdent(Name) then
-      Continue;
-    Seen := False;
-    for Known in Result do
-      if SameText(Known, Name) then
-        Seen := True;
-    if not Seen then
-      Result := Result + [Name];
-  end;
-end;
-
-class function TAtlasVisualizers.NormalizeNameFields(const AText: string): string;
-begin
-  Result := string.Join(',', ParseNameFields(AText));
-end;
 
 class function TAtlasVisualizers.SupportedTypes(AKind: TAtlasVisualizerKind): TArray<TAtlasVisualizerType>;
 

@@ -20,7 +20,8 @@ interface
 uses
   System.SysUtils,
   ToolsAPI,
-  Atlas.Core.Debug.Visualizers;
+  Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Settings.VisualizerKinds;
 
 type
   TAtlasIdeDebugEvaluator = class

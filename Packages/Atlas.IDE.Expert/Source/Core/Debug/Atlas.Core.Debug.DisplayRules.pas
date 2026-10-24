@@ -25,7 +25,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Text.DebugDisplay,
-  Atlas.Core.Debug.Visualizers;
+  Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Settings.VisualizerKinds;
 
 type
   TAtlasDisplayRule = record

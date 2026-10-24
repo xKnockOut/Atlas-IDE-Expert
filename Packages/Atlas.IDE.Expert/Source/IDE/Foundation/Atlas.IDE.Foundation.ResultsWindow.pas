@@ -5,7 +5,8 @@
 // enthält. Es entsteht beim ersten Gebrauch, folgt dem IDE-Thema und lässt
 // sich wie die Fenster der IDE andocken. Beim Entladen des Packages gibt
 // Release es frei. Das Fenster trägt das Atlas-Symbol (#751) zum IDE-Thema;
-// ApplyTheme färbt nach einem Themenwechsel um, samt Symbol.
+// ApplyTheme färbt nach einem Themenwechsel um, samt Symbol. ShowDataFlow zeigt den Baum des Datenflusses
+// (#690); OnFlowExpand und OnFlowFilter holen die nächste Ebene bzw. die erste neu.
 
 interface
 
@@ -16,6 +17,7 @@ uses
   Atlas.Core.Results.Model,
   Atlas.Core.Undo.Contract,
   Atlas.Core.Notes.Store,
+  Atlas.Core.Lsp.DataFlow,
   Atlas.UI.Results.Frame;
 
 type
@@ -32,6 +34,9 @@ type
     /// <summary>Liste der Notizen (#545): bearbeiten, löschen.</summary>
     OnNoteEdit: TAtlasNoteAction;
     OnNoteDelete: TAtlasNoteAction;
+    /// <summary>Datenfluss (#690): nächste Ebene bzw. Filter geändert.</summary>
+    OnFlowExpand: TAtlasDataFlowExpand;
+    OnFlowFilter: TAtlasDataFlowFilter;
   public
     /// <summary>Fenster zeigen (bei Bedarf anlegen); nil, wenn die IDE keine andockbaren Fenster anbietet.</summary>
     class function Frame: TAtlasResultsFrame; static;
@@ -43,6 +48,9 @@ type
     /// <summary>Notizen des Projekts (#545); ASelectId: diese Notiz wählen.</summary>
     class procedure ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
       const ASelectId: string); static;
+    /// <summary>Baum des Datenflusses (#690) mit Tiefengrenze und den Filtern der Anfrage.</summary>
+    class procedure ShowDataFlow(const ATitle: string; ADirection: TAtlasDataFlowDirection;
+      const AResult: TAtlasDataFlowResult; AMaxDepth: Integer; AOnlyProject, AExcludeTests: Boolean); static;
     /// <summary>Frame, falls das Fenster schon existiert; legt nichts an und holt nichts nach vorn.</summary>
     class function ExistingFrame: TAtlasResultsFrame; static;
     /// <summary>Fenstersymbol (#751) zum aktiven IDE-Thema.</summary>
@@ -164,6 +172,20 @@ begin
       if Assigned(TAtlasIdeResultsWindow.OnExpand) then
         Result := TAtlasIdeResultsWindow.OnExpand(ADirection, AItem);
     end;
+  ResultsFrame.OnFlowExpand :=
+    function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
+      const APath: TArray<string>): TAtlasDataFlowResult
+    begin
+      Result := Default(TAtlasDataFlowResult);
+      if Assigned(TAtlasIdeResultsWindow.OnFlowExpand) then
+        Result := TAtlasIdeResultsWindow.OnFlowExpand(ADirection, ASource, APath);
+    end;
+  ResultsFrame.OnFlowFilter :=
+    procedure(AOnlyProject, AExcludeTests: Boolean)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnFlowFilter) then
+        TAtlasIdeResultsWindow.OnFlowFilter(AOnlyProject, AExcludeTests);
+    end;
   TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
 end;
 
@@ -271,6 +293,16 @@ begin
     Target.ShowNotes(ATitle, AGroups, ASelectId);
 end;
 
+class procedure TAtlasIdeResultsWindow.ShowDataFlow(const ATitle: string; ADirection: TAtlasDataFlowDirection;
+  const AResult: TAtlasDataFlowResult; AMaxDepth: Integer; AOnlyProject, AExcludeTests: Boolean);
+var
+  Target: TAtlasResultsFrame;
+begin
+  Target := Frame;
+  if Target <> nil then
+    Target.ShowDataFlow(ATitle, ADirection, AResult, AMaxDepth, AOnlyProject, AExcludeTests);
+end;
+
 class function TAtlasIdeResultsWindow.ExistingFrame: TAtlasResultsFrame;
 begin
   Result := nil;
@@ -317,6 +349,8 @@ begin
   OnChangeDiff := nil;
   OnNoteEdit := nil;
   OnNoteDelete := nil;
+  OnFlowExpand := nil;
+  OnFlowFilter := nil;
   // Meldet ab und gibt die Form nur frei, wenn die IDE sie nicht schon zerstört hat.
   FreeAndNil(Host);
 end;
