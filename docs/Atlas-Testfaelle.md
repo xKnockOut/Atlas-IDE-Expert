@@ -2675,6 +2675,21 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | MOS11 | In atlas.json `"rules": { "method-without-self": "hint" }`, Problems-Ansicht | Hinweis „TRechner.Doppelt braucht Self nicht …“ mit Schnellkorrektur „In class-Methode umwandeln“; ohne Eintrag kein Hinweis (experimentell); im Profil strict aktiv |
 | MOS12 | `refactoring.methodKind` aus | Keine Marke, keine Aktionen, kein Hinweis; `refactoring.methodKindMarker` aus: Aktionen bleiben, nur die Marke fehlt |
 
+## Typ-Alias einführen und auflösen (#681)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TAL1 | In einer Klasse `FGroups: TDictionary<string, TList<TKunde>>;`, Cursor auf `TList`, Alt+Enter | „Typ-Alias einführen (TDictionary<string, TList<TKunde>>)“, dazu „…, nur diese Stelle“ und „…, im Projekt“; außerdem „Typ-Alias einführen (TList<TKunde>)“ für den inneren Ausdruck; Cursor auf `TDictionary` nur die ersten drei |
+| TAL2 | Erste Aktion, Namen `TKundeGroups` übernehmen, Vorschau prüfen, übernehmen, übersetzen | `TKundeGroups = TDictionary<string, TList<TKunde>>;` im type-Abschnitt vor der Klasse, alle gleichen Ausdrücke der Unit ersetzt; Projekt übersetzt |
+| TAL3 | Ausdruck `TList<TKunde>` in der Klasse TKunde selbst (Feld `FKinder: TList<TKunde>`) | Alias vor TKunde, davor die Vorwärtsdeklaration `TKunde = class;`, Warnung in der Vorschau; übersetzt |
+| TAL4 | „…, im Projekt“ mit einer zweiten Unit, die die erste einbindet und `TList<Kunden.TKunde>` nutzt, und einer dritten mit eigenem `TKunde` | Alias im interface-Teil; die zweite Unit ersetzt, die dritte bleibt; übersetzt |
+| TAL5 | `FWerte: array of array of Double;` und `FAktion: reference to function(A: Integer): string;` | Aktionen mit Vorschlag `TWerte` bzw. `TAktionFunc`; nach dem Einführen übersetzt das Projekt |
+| TAL6 | In `TBox<T> = class` das Feld `FItems: TList<T>;` | Aktion grau mit Grund „Kein Typ-Alias: Der Ausdruck nutzt den generischen Parameter T …“; Parameter `const A: array of Integer` ohne Aktion |
+| TAL7 | Name eines vorhandenen Typs eingeben (`TKunde`) | „Typ-Alias einführen fehlgeschlagen: Der Name TKunde ist schon vergeben“ |
+| TAL8 | Cursor auf den Namen von `TListe = TList<TKunde>;`, „Alias auflösen (TListe)“, Verwendungen in zwei Units, eine davon `TListe.Create` | Alle Stellen werden `TList<TKunde>` (auch `TList<TKunde>.Create`), fehlende uses ergänzt, Alias entfernt; übersetzt |
+| TAL9 | Alias `TWerte = array of Integer;`, als Feldtyp und als Parametertyp verwendet, auflösen; dann `TNeu = type Integer;` | Feld ersetzt, Parameter behält den Alias mit Warnung, Alias bleibt; bei `type Integer` keine Aktion bzw. Fehler mit Grund |
+| TAL10 | `refactoring.typeAlias` aus; dann an und `refactoring.typeAliasScope` = project | Keine der Aktionen; danach ersetzt die erste Aktion im Projekt, die anderen beiden heißen „nur diese Stelle“ und „in der Unit“ |
+
 ## Methode aus Aufruf anlegen (#472)
 
 | Nr. | Schritte | Erwartet |

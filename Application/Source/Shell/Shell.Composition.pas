@@ -357,6 +357,12 @@ type
     /// <summary>Methode ohne Self umwandeln (#686): das WorkspaceEdit der gewählten Umwandlung über alle Dateien.
     /// </summary>
     function MethodKind(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Typ-Alias einführen und auflösen (#681): Code-Aktionen an APosition.</summary>
+    function TypeAliasActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Typ-Alias einführen (#681): das WorkspaceEdit mit dem gewählten Namen und der Reichweite.</summary>
+    function TypeAlias(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Alias auflösen (#681): das WorkspaceEdit über alle Verwendungen.</summary>
+    function InlineTypeAlias(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Umschließung entfernen“ (#657): Konstrukte am Cursor mit Varianten und Vorschau.</summary>
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
@@ -516,6 +522,8 @@ uses
   Atlas.Common.Lsp.PromoteVariable,
   Atlas.Common.Lsp.AnonymousMethods,
   Atlas.Common.Lsp.MethodWithoutSelf,
+  Atlas.Common.Lsp.TypeAlias,
+  Atlas.Common.Editing.TypeAlias,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
@@ -1395,6 +1403,7 @@ begin
       Result := Result + PromoteVariableActions(AUri, ARange.StartPos);
       Result := Result + AnonymousMethodActions(AUri, ARange.StartPos);
       Result := Result + MethodKindActions(AUri, ARange.StartPos);
+      Result := Result + TypeAliasActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
@@ -1488,6 +1497,16 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := MethodKind(AArguments);
+    end);
+  FCommands.Register(TLspTypeAlias.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TypeAlias(AArguments);
+    end);
+  FCommands.Register(TLspTypeAlias.InlineApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := InlineTypeAlias(AArguments);
     end);
   FCommands.Register(TLspUnwrap.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -3497,6 +3516,116 @@ begin
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Methode ohne Self umwandeln: %d Änderungen, %d Aufrufe, %d Warnungen',
     [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('calls') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.TypeAliasActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+  Scope: TTypeAliasScope;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.TypeAlias or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  if not TTypeAlias.ScopeOf(Settings.TypeAliasScope, Scope) then
+    Scope := TTypeAliasScope.InUnit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspTypeAlias.Actions(Shared.Tree, Document.Text, AUri, APosition, Scope,
+        TLspTypeAlias.Lookup(Resolver));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.TypeAlias(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Context: TTypeAliasContext;
+begin
+  // Argumente: URI, Position, Name, Reichweite.
+  if (AArguments = nil) or (AArguments.Count < 4) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Argumente "uri", "position", "name" und "scope" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).TypeAlias then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Typ-Alias einführen" ist abgeschaltet (refactoring.typeAlias).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspTypeAlias.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+      AArguments.Items[2].Value, Trim(AArguments.Items[3].Value), Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Typ-Alias einführen: %d Stellen, %d Dateien, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.InlineTypeAlias(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Context: TTypeAliasContext;
+begin
+  // Argumente: URI, Position des Alias-Namens.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).TypeAlias then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Alias auflösen" ist abgeschaltet (refactoring.typeAlias).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspTypeAlias.ExecuteInline(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+      Context);
+  finally
+    Resolver.Free;
+  end;
+  FLogger.Info(Format('Alias auflösen: %d Stellen, %d Dateien, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
     (Answer.GetValue('warnings') as TJSONArray).Count]));
   Result := Answer;
 end;

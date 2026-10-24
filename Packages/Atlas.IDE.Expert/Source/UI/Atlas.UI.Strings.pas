@@ -710,7 +710,11 @@ type
     // Methode ohne Self (#686): Marke und Code-Aktion.
     SettingsInlayMethodHints, ElementInlayMethodHints, ElementInlayMethodHintsPlural, InlayMethodWithoutSelf,
     MethodKindTitle, MethodKindFailed, MethodKindNothing, MethodKindPreviewHint, MethodKindApply, MethodKindDone,
-    MethodKindWarning);
+    MethodKindWarning,
+    // Typ-Alias einführen und auflösen (#681).
+    TypeAliasTitle, TypeAliasPrompt, TypeAliasFailed, TypeAliasNothing, TypeAliasPreviewHint, TypeAliasApply,
+    TypeAliasDone, TypeAliasWarning, InlineTypeAliasTitle, InlineTypeAliasFailed, InlineTypeAliasNothing,
+    InlineTypeAliasApply, InlineTypeAliasDone);
 
   TAtlasStrings = class
   private class var
@@ -2327,7 +2331,20 @@ const
      '%d Änderungen in %d Datei',
      'Umwandeln',
      'Umgewandelt: %d Änderungen in %d Dateien',
-     'Warnung: %s'),
+     'Warnung: %s',
+     'Typ-Alias einführen',
+     'Name des Alias:',
+     'Typ-Alias einführen fehlgeschlagen: %s',
+     'Typ-Alias einführen: nichts zu ändern.',
+     '%d Änderungen in %d Dateien',
+     'Einführen',
+     'Typ-Alias eingeführt: %d Änderungen in %d Dateien',
+     'Warnung: %s',
+     'Alias auflösen',
+     'Alias auflösen fehlgeschlagen: %s',
+     'Alias auflösen: nichts zu ändern.',
+     'Auflösen',
+     'Alias aufgelöst: %d Änderungen in %d Dateien'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3848,7 +3865,20 @@ const
      '%d changes in %d file',
      'Convert',
      'Converted: %d changes in %d files',
-     'Warning: %s'));
+     'Warning: %s',
+     'Introduce type alias',
+     'Alias name:',
+     'Introducing the type alias failed: %s',
+     'Introduce type alias: nothing to change.',
+     '%d changes in %d files',
+     'Introduce',
+     'Type alias introduced: %d changes in %d files',
+     'Warning: %s',
+     'Inline alias',
+     'Inlining the alias failed: %s',
+     'Inline alias: nothing to change.',
+     'Inline',
+     'Alias inlined: %d changes in %d files'));
 
 { TAtlasStrings }
 

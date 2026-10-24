@@ -416,6 +416,10 @@ type
     MethodKindMarker: Boolean;
     /// <summary>class-Methoden mit static erzeugen (#686).</summary>
     MethodKindStatic: Boolean;
+    /// <summary>Code-Aktionen „Typ-Alias einführen“ und „Alias auflösen“ (#681).</summary>
+    TypeAlias: Boolean;
+    /// <summary>Reichweite der ersten Aktion „Typ-Alias einführen“: here, unit oder project (#681).</summary>
+    TypeAliasScope: string;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -882,6 +886,8 @@ begin
   Result.MethodKind := True;
   Result.MethodKindMarker := True;
   Result.MethodKindStatic := True;
+  Result.TypeAlias := True;
+  Result.TypeAliasScope := 'unit';
 end;
 
 { TCompletionSettings }

@@ -1398,6 +1398,16 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MethodKindMarker)
     else if Key = 'methodKindStatic' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MethodKindStatic)
+    else if Key = 'typeAlias' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.TypeAlias)
+    else if Key = 'typeAliasScope' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'here') or SameText(Value, 'unit') or SameText(Value, 'project') then
+          FSettings.Refactoring.TypeAliasScope := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.typeAliasScope" muss "here", "unit" oder "project" sein');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);

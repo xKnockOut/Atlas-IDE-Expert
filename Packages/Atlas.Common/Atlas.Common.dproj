@@ -305,6 +305,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.AnonymousMethods.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodWithoutSelf.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeAlias.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TypeAlias.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.PromoteVariable.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PromoteVariable.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.RoutineLocals.pas"/>
