@@ -74,6 +74,7 @@ uses
   Atlas.Common.Rules.Builtin.TypeRestrictions,
   Atlas.Common.Rules.Builtin.Units,
   Atlas.Common.Rules.Builtin.PublicMembers,
+  Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Rules.Builtin.XmlDoc,
   Atlas.Common.Rules.Builtin.Unresolved;
 
@@ -144,6 +145,7 @@ begin
     RegisterTypeRestrictionRules(Registry);
     RegisterUnitRules(Registry);
     RegisterPublicMemberRules(Registry);
+    RegisterDeadCodeRules(Registry);
     RegisterXmlDocRules(Registry);
     Result := Registry.Rules;
   finally

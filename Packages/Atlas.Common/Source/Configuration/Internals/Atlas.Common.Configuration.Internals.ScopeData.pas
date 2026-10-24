@@ -59,7 +59,7 @@ const
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..30] of string = (
+  ProjectSettingPaths: array[0..31] of string = (
     'encoding',
     'project',
     'config',
@@ -79,6 +79,7 @@ const
     'refactoring',
     'sortUses',
     'usesKeep',
+    'deadCode',
     'dfmPropertyRules',
     'index.exclude',
     'architecture.exclude',
