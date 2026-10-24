@@ -714,7 +714,11 @@ type
     // Typ-Alias einführen und auflösen (#681).
     TypeAliasTitle, TypeAliasPrompt, TypeAliasFailed, TypeAliasNothing, TypeAliasPreviewHint, TypeAliasApply,
     TypeAliasDone, TypeAliasWarning, InlineTypeAliasTitle, InlineTypeAliasFailed, InlineTypeAliasNothing,
-    InlineTypeAliasApply, InlineTypeAliasDone);
+    InlineTypeAliasApply, InlineTypeAliasDone,
+    // Aufzählung mit Namenstabelle (#667).
+    EnumTableTitle, EnumTablePrompt, EnumTableFailed, EnumTableNothing, EnumTablesPreviewHint, EnumTableApply,
+    EnumTableDone, EnumTablesWarning, EnumTablesSyncTitle, EnumTablesSyncFailed, EnumTablesSyncNothing,
+    EnumTablesSyncApply, EnumTablesSyncDone);
 
   TAtlasStrings = class
   private class var
@@ -2344,7 +2348,20 @@ const
      'Alias auflösen fehlgeschlagen: %s',
      'Alias auflösen: nichts zu ändern.',
      'Auflösen',
-     'Alias aufgelöst: %d Änderungen in %d Dateien'),
+     'Alias aufgelöst: %d Änderungen in %d Dateien',
+     'Namenstabelle anlegen',
+     'Name der Tabelle:',
+     'Namenstabelle anlegen fehlgeschlagen: %s',
+     'Namenstabelle anlegen: nichts zu ändern.',
+     '%d Änderungen in %d Dateien',
+     'Anlegen',
+     'Namenstabelle angelegt: %d Änderungen in %d Dateien',
+     'Warnung: %s',
+     'Tabellen nachziehen',
+     'Tabellen nachziehen fehlgeschlagen: %s',
+     'Tabellen nachziehen: Alle Tabellen und case-Anweisungen passen schon.',
+     'Nachziehen',
+     'Tabellen nachgezogen: %d Änderungen in %d Dateien'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3878,7 +3895,20 @@ const
      'Inlining the alias failed: %s',
      'Inline alias: nothing to change.',
      'Inline',
-     'Alias inlined: %d changes in %d files'));
+     'Alias inlined: %d changes in %d files',
+     'Create name table',
+     'Table name:',
+     'Creating the name table failed: %s',
+     'Create name table: nothing to change.',
+     '%d changes in %d files',
+     'Create',
+     'Name table created: %d changes in %d files',
+     'Warning: %s',
+     'Update tables',
+     'Updating the tables failed: %s',
+     'Update tables: all tables and case statements already match.',
+     'Update',
+     'Tables updated: %d changes in %d files'));
 
 { TAtlasStrings }
 

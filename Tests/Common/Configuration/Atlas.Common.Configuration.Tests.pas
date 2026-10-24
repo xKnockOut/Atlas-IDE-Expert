@@ -673,6 +673,13 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.AreEqual('unit', Parse('{"refactoring": {"typeAliasScope": "datei"}}', Issues).Refactoring.TypeAliasScope);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // #667: Aufzählung mit Namenstabelle.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.EnumTables);
+  Assert.IsFalse(Parse('{}', Issues).Refactoring.EnumTablesResourceStrings);
+  Assert.IsFalse(Parse('{"refactoring": {"enumTables": false}}', Issues).Refactoring.EnumTables);
+  Assert.IsTrue(Parse('{"refactoring": {"enumTablesResourceStrings": true}}',
+    Issues).Refactoring.EnumTablesResourceStrings);
+  Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +

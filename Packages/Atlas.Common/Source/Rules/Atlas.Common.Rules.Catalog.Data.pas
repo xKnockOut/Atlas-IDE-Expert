@@ -3719,8 +3719,9 @@ begin
     '      "group": "compiler",' + #10 +
     '      "description": "A typed constant or initialized variable of a static array type has more or fewer elements than its index range (like E2072), typically after adding a value to an enumeration (ar' +
     'ray[TStatus] of string); checked per dimension and for named array types of the file. Record constants whose fields are in a different order than declared are reported as well (like E2083). Index rang' +
-    'es: subranges with constant bounds, enumerations without own values, Boolean, Byte, Char and so on. Declarations with conditional directives count as unsure. Quick fixes: add the missing entries with ' +
-    'a placeholder (name of the enumeration value as a comment), put the fields in the order of the declaration.",' + #10 +
+    'es: subranges with constant bounds, enumerations without own values, Boolean, Byte, Char and so on. Declarations with conditional directives count as unsure. Quick fixes: over an enumeration, add miss' +
+    'ing or remove surplus entries at their position (recognized by texts, identifiers and comments naming the value; otherwise appended and labelled as estimated), new strings get the text of the value na' +
+    'me, other types a default value with a {TODO value} comment (#667); over other ranges, add the missing entries with a placeholder; put the fields in the order of the declaration.",' + #10 +
     '      "bad": "StatusText: array[TStatus] of string = (''Neu'', ''Offen'', ''Geschlossen'');  // TStatus has 4 values",' + #10 +
     '      "good": "StatusText: array[TStatus] of string = (''Neu'', ''Offen'', ''Geschlossen'', ''''{stArchiviert});",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -7015,8 +7016,10 @@ begin
     '      "name": "Initialisierung einer Konstanten passt nicht",' + #10 +
     '      "description": "Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ hat mehr oder weniger Elemente als ihr Indexbereich (wie E2072), typisch nach einem neuen Wert in ' +
     'einer Aufzählung (array[TStatus] of string); geprüft je Dimension und auch für benannte Array-Typen der Datei. Ebenso Record-Konstanten, deren Felder in anderer Reihenfolge als deklariert stehen (wie ' +
-    'E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: fehlende E' +
-    'inträge mit Platzhalter ergänzen (Name des Aufzählungswerts als Kommentar), Felder in die Reihenfolge der Deklaration bringen."' + #10 +
+    'E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: über einer' +
+    ' Aufzählung fehlende Einträge an ihrer Stelle ergänzen bzw. überzählige entfernen (erkannt an Texten, Bezeichnern und Kommentaren mit dem Wertnamen; sonst hinten und als geschätzt benannt), neue Strin' +
+    'gs mit dem Text aus dem Namen, andere Typen mit Standardwert und Kommentar {TODO Wert} (#667); über anderen Bereichen fehlende Einträge mit Platzhalter ergänzen; Felder in die Reihenfolge der Deklarat' +
+    'ion bringen."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "case-selector-not-ordinal",' + #10 +

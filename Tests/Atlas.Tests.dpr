@@ -195,6 +195,8 @@ uses
   Atlas.Common.Lsp.MethodWithoutSelf.Tests in 'Common\Lsp\Atlas.Common.Lsp.MethodWithoutSelf.Tests.pas',
   Atlas.Common.Editing.TypeAlias.Tests in 'Common\Editing\Atlas.Common.Editing.TypeAlias.Tests.pas',
   Atlas.Common.Lsp.TypeAlias.Tests in 'Common\Lsp\Atlas.Common.Lsp.TypeAlias.Tests.pas',
+  Atlas.Common.Editing.EnumTables.Tests in 'Common\Editing\Atlas.Common.Editing.EnumTables.Tests.pas',
+  Atlas.Common.Lsp.EnumTables.Tests in 'Common\Lsp\Atlas.Common.Lsp.EnumTables.Tests.pas',
   Atlas.Common.Editing.PromoteVariable.Tests in 'Common\Editing\Atlas.Common.Editing.PromoteVariable.Tests.pas',
   Atlas.Common.Lsp.PromoteVariable.Tests in 'Common\Lsp\Atlas.Common.Lsp.PromoteVariable.Tests.pas',
   Atlas.Common.Lsp.DocWiki.Tests in 'Common\Lsp\Atlas.Common.Lsp.DocWiki.Tests.pas',

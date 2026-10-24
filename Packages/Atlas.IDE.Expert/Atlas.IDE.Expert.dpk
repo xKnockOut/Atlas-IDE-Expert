@@ -158,6 +158,7 @@ contains
   Atlas.IDE.Editor.AnonymousMethod in 'Source\IDE\Editor\Atlas.IDE.Editor.AnonymousMethod.pas',
   Atlas.IDE.Editor.MethodKind in 'Source\IDE\Editor\Atlas.IDE.Editor.MethodKind.pas',
   Atlas.IDE.Editor.TypeAlias in 'Source\IDE\Editor\Atlas.IDE.Editor.TypeAlias.pas',
+  Atlas.IDE.Editor.EnumTables in 'Source\IDE\Editor\Atlas.IDE.Editor.EnumTables.pas',
   Atlas.IDE.Foundation.KeyHook in 'Source\IDE\Foundation\Atlas.IDE.Foundation.KeyHook.pas',
   Atlas.IDE.Signature.Editor in 'Source\IDE\Signature\Atlas.IDE.Signature.Editor.pas',
   Atlas.IDE.Completion.Editor in 'Source\IDE\Completion\Atlas.IDE.Completion.Editor.pas',

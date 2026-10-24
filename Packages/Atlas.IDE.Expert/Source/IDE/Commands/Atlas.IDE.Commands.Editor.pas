@@ -207,6 +207,7 @@ uses
   Atlas.IDE.Editor.AnonymousMethod,
   Atlas.IDE.Editor.MethodKind,
   Atlas.IDE.Editor.TypeAlias,
+  Atlas.IDE.Editor.EnumTables,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
@@ -1487,6 +1488,28 @@ begin
   begin
     // Client-Befehl: „Alias auflösen“ (#681), ohne Namensabfrage.
     TAtlasIdeTypeAlias.ExecuteInline(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeEnumTables.ClientCommand then
+  begin
+    // Client-Befehl: Namen abfragen und „Namenstabelle anlegen“ (#667); er fragt den Server selbst.
+    TAtlasIdeEnumTables.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeEnumTables.SyncClientCommand then
+  begin
+    // Client-Befehl: „Tabellen nachziehen“ (#667), ohne Namensabfrage.
+    TAtlasIdeEnumTables.ExecuteSync(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin
