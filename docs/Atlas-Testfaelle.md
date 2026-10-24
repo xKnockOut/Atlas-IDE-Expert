@@ -2675,6 +2675,21 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | MOS11 | In atlas.json `"rules": { "method-without-self": "hint" }`, Problems-Ansicht | Hinweis „TRechner.Doppelt braucht Self nicht …“ mit Schnellkorrektur „In class-Methode umwandeln“; ohne Eintrag kein Hinweis (experimentell); im Profil strict aktiv |
 | MOS12 | `refactoring.methodKind` aus | Keine Marke, keine Aktionen, kein Hinweis; `refactoring.methodKindMarker` aus: Aktionen bleiben, nur die Marke fehlt |
 
+## Aufzählung mit Namenstabelle (#667)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NTB1 | `TOrderState = (osNew, osPaid, osPaymentDue);` im interface-Teil, Cursor auf den Namen, Alt+Enter | „Namenstabelle anlegen (TOrderState)“, „…, im implementation-Teil“, „Tabellen von TOrderState nachziehen“ |
+| NTB2 | „Namenstabelle anlegen“, Namen `COrderStateNames` übernehmen | Hinter dem Typ `const COrderStateNames: array[TOrderState] of string = ('New', 'Paid', 'Payment due');`, folgende Typen in einem neuen type-Abschnitt; übersetzt |
+| NTB3 | Im implementation-Teil anlegen, Unit mit `uses` im implementation-Teil | Tabelle direkt hinter diesem uses; übersetzt |
+| NTB4 | `refactoring.enumTablesResourceStrings` = true, NTB2 | resourcestring `SOrderStateNew = 'New';` usw. und `array[TOrderState] of PResStringRec = (@SOrderStateNew, …)`; `LoadResString(COrderStateNames[osPaid])` liefert 'Paid' |
+| NTB5 | Typ `TCode = (cA = 1, cB = 5)` bzw. Name eines vorhandenen Bezeichners eingeben | Keine Tabellen-Aktion bzw. „Namenstabelle anlegen fehlgeschlagen: Der Name … ist schon vergeben“ |
+| NTB6 | `osCancelled` zwischen `osPaid` und `osPaymentDue` einfügen, Cursor in die Tabelle aus NTB2 | Problems zeigt „… osCancelled fehlt (wie E2072)“; Glühbirne „Fehlenden Eintrag ergänzen (osCancelled)“ setzt `'Cancelled'` zwischen `'Paid'` und `'Payment due'`; übersetzt |
+| NTB7 | Mehrzeilige Integer-Tabelle mit `// osNew`-Kommentaren je Zeile, ein Element aus dem Typ löschen | „Überzähligen Eintrag entfernen (…)“ entfernt genau die Zeile des gelöschten Elements |
+| NTB8 | Tabelle `array[TOrderState] of Integer = (1, 2)` ohne Kommentare | „Fehlenden Eintrag ergänzen (osPaymentDue), Stelle geschätzt“ hängt `0 {TODO osPaymentDue}` hinten an |
+| NTB9 | Zwei weitere Units mit Tabellen über TOrderState und eine `case` ohne else, dritte Unit mit eigenem gleichnamigem Typ; auf dem Typ „Tabellen von TOrderState nachziehen“ | Vorschau listet jede Tabelle und die case-Anweisung „Datei, Zeile n: …“, geschätzte Stellen als Warnung; nach Übernahme übersetzt das Projekt, die dritte Unit bleibt unverändert |
+| NTB10 | `refactoring.enumTables` aus | Keine der Aktionen auf Typ und Tabelle; die Regel `constant-initializer-mismatch` meldet weiter |
+
 ## Typ-Alias einführen und auflösen (#681)
 
 | Nr. | Schritte | Erwartet |

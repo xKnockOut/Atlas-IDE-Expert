@@ -1215,6 +1215,18 @@
           "x-control": "Auswahl",
           "x-issue": "#681"
         },
+        "enumTables": {
+          "type": "boolean",
+          "default": true,
+          "description": "Code-Aktionen für Tabellen über Aufzählungen (array[TTyp] of …): „Namenstabelle anlegen“ auf einem Aufzählungstyp ohne feste Werte schreibt hinter den Typ (oder in den implementation-Teil) const CTypNames: array[TTyp] of string mit Texten aus den Elementnamen (gemeinsames Kleinbuchstaben-Präfix weg, CamelCase getrennt: osPaymentDue → 'Payment due'); der Name ist änderbar. An einer Tabelle, deren Einträge nicht mehr zum Typ passen, „Fehlenden Eintrag ergänzen“ bzw. „Überzähligen Eintrag entfernen“ an der richtigen Stelle (erkannt an Texten, Bezeichnern und Kommentaren wie {osPaid}; sonst geschätzt und so benannt). „Tabellen von TTyp nachziehen“ ändert alle Tabellen über den Typ im Projekt und ergänzt fehlende Zweige in case-Anweisungen ohne else, mit Vorschau.",
+          "x-issue": "#667"
+        },
+        "enumTablesResourceStrings": {
+          "type": "boolean",
+          "default": false,
+          "description": "„Namenstabelle anlegen“ schreibt je Element einen resourcestring (übersetzbar) und eine Tabelle array[TTyp] of PResStringRec mit @-Verweisen; lesen mit LoadResString(CTypNames[X]).",
+          "x-issue": "#667"
+        },
         "tryFinally": {
           "type": "boolean",
           "default": true,

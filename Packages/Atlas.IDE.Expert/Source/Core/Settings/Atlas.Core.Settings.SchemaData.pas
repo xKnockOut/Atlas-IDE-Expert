@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2077] of string = (
+  Lines: array[0..2089] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1313,6 +1313,22 @@ const
       'deren beiden Reichweiten stehen als eigene Aktionen daneben.",',
     '          "x-control": "Auswahl",',
     '          "x-issue": "#681"',
+    '        },',
+    '        "enumTables": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen für Tabellen über Aufzählungen (array[TTyp] of …): „Namenstabelle anlegen“ auf einem Aufzählungstyp ohne feste Werte schreibt hinter den Typ (oder in den implem' +
+      'entation-Teil) const CTypNames: array[TTyp] of string mit Texten aus den Elementnamen (gemeinsames Kleinbuchstaben-Präfix weg, CamelCase getrennt: osPaymentDue → ''Payment due''); der Name ist änderba' +
+      'r. An einer Tabelle, deren Einträge nicht mehr zum Typ passen, „Fehlenden Eintrag ergänzen“ bzw. „Überzähligen Eintrag entfernen“ an der richtigen Stelle (erkannt an Texten, Bezeichnern und Kommentare' +
+      'n wie {osPaid}; sonst geschätzt und so benannt). „Tabellen von TTyp nachziehen“ ändert alle Tabellen über den Typ im Projekt und ergänzt fehlende Zweige in case-Anweisungen ohne else, mit Vorschau.",',
+    '          "x-issue": "#667"',
+    '        },',
+    '        "enumTablesResourceStrings": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "„Namenstabelle anlegen“ schreibt je Element einen resourcestring (übersetzbar) und eine Tabelle array[TTyp] of PResStringRec mit @-Verweisen; lesen mit LoadResString(CTypName' +
+      's[X]).",',
+    '          "x-issue": "#667"',
     '        },',
     '        "tryFinally": {',
     '          "type": "boolean",',
