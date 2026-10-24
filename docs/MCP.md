@@ -79,16 +79,33 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
 
 ## Werkzeuge entwickeln und prüfen
 
-Neue oder geänderte Werkzeuge erst mit dem [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) prüfen, bevor Claude sie benutzt. Er zeigt Werkzeuge, Ressourcen und Eingabeschemas so, wie ein Client sie sieht, ruft Werkzeuge mit eigenen Argumenten auf und zeigt die rohen JSON-RPC-Nachrichten. Das trennt Fehler im Server von Fehlern in Beschreibung oder Schema, die nur dazu führen, dass Claude ein Werkzeug falsch aufruft.
+Neue oder geänderte Werkzeuge erst ohne Claude prüfen (#1125). Zwei Skripte, beide unter `pwsh` (Windows, Linux) und Windows PowerShell 5.1:
+
+| Skript | Wofür |
+|---|---|
+| `Tools/Start-McpInspector.ps1` | [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) gegen AtlasServer: Werkzeuge, Ressourcen und Eingabeschemas so, wie ein Client sie sieht, Aufrufe mit eigenen Argumenten und die rohen JSON-RPC-Nachrichten |
+| `Tools/Test-McpTools.ps1` | Probelauf: jedes Werkzeug einmal mit Beispielargumenten in einer Serversitzung, Schema- und Antwortprüfung, roher Mitschnitt als JSON Lines |
+
+Das trennt Fehler im Server von Fehlern in Beschreibung oder Schema, die nur dazu führen, dass Claude ein Werkzeug falsch aufruft. Server ist ohne `-Server` `Output\Win64\Debug\Bin\AtlasServer.exe`, unter Linux `Output/Linux64/Bin/AtlasServer`, sonst `AtlasServer` aus dem PATH. Der Inspector braucht Node.js ab 22.19 und wird beim ersten Aufruf in fester Version geladen.
+
+### MCP Inspector
 
 ```powershell
-# Oberfläche im Browser (Server: Output\Win64\Debug\Bin\AtlasServer.exe, sonst -Server angeben)
-pwsh Tools/Start-McpInspector.ps1
+# Oberfläche im Browser: links Server verbinden, oben "Tools", rechts "Messages" mit jedem Aufruf roh
+pwsh Tools/Start-McpInspector.ps1 -ProjectRoot Tests/Referenzprojekt
 
-# Kommandozeile, Ergebnis als JSON
-pwsh Tools/Start-McpInspector.ps1 -Method tools/list
-pwsh Tools/Start-McpInspector.ps1 -Method tools/call -Tool get_diagnostics -Arguments @{ file = 'Application/AtlasServer.dpr' }
+# Oberfläche im Terminal (SSH, Cloud-Sitzung)
+pwsh Tools/Start-McpInspector.ps1 -Tui
+
+# Kommandozeile, ein Aufruf, Ergebnis als JSON
+pwsh Tools/Start-McpInspector.ps1 -Method tools/list -Strict
+pwsh Tools/Start-McpInspector.ps1 -Method tools/call -Tool qualified_name -Arguments @{ file = 'Application/AtlasServer.dpr'; line = 1; column = 9; withParameters = $true }
+pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://conventions -Output konventionen.json
 ```
+
+- `-Strict` gibt bei `tools/list` die Schema-Prüfung des Inspectors aus (Pfad, Problem, Vorschlag) und endet mit Exit-Code 6, wenn ein Schema bei Clients nicht portabel ist.
+- `-Restricted` startet den Server mit `--restricted` (nur lesende Werkzeuge), `-Log` mit `--log`.
+- Der Server startet über eine erzeugte Sitzungskonfiguration (`--config`); Schalter wie `--mcp` landen so beim Server, nicht beim Inspector. Geheimnisse hält der Inspector nur im Speicher (`MCP_INSPECTOR_SECRET_STORE=memory`), Atlas braucht keine.
 
 Ohne PowerShell, z. B. in einer Cloud-Sitzung mit dem Linux-Server:
 
@@ -97,10 +114,35 @@ npx -y @modelcontextprotocol/inspector@2.12.0 --cli AtlasServer --mcp --root . -
   --tool-name hook_check --tool-arg file=Application/Source/Shell/Shell.Mcp.pas
 ```
 
+### Probelauf aller Werkzeuge
+
+```powershell
+pwsh Tools/Test-McpTools.ps1                       # alle Werkzeuge, Ordner Tests/Referenzprojekt
+pwsh Tools/Test-McpTools.ps1 -Tool find_symbol -Arguments @{ name = 'TKundenSuche' }
+pwsh Tools/Test-McpTools.ps1 -Tool run_tests -WithProcessTools -Arguments @{ tests = @('Unit.Fixture') }
+```
+
+Das Skript spricht den Server direkt über stdio an. Der Index entsteht nur einmal, der ganze Lauf dauert wenige Sekunden (der Inspector startet den Server je Kommandozeilenaufruf neu). Geprüft wird:
+
+- `initialize`, `tools/list`, `resources/list` und `resources/templates/list` antworten ohne Fehler.
+- Jedes Werkzeug hat eine Beschreibung, `inputSchema` vom Typ `object`, jeder Pflichtparameter steht in `properties`, jeder Parameter hat eine Beschreibung.
+- Jedes Werkzeug antwortet auf sein Beispiel ohne JSON-RPC-Fehler, ohne `isError` und nicht leer, und die Antwort enthält den erwarteten Text.
+- Jede Ressource lässt sich lesen.
+
+Die Beispiele stehen in `Tools/Mcp/Werkzeug-Beispiele.json` und beziehen sich auf das Referenzprojekt (`Tests/Referenzprojekt`). Zeilen und Spalten stehen dort als Platzhalter (`{{zeile:procedure TRefAnzeige.SetStil}}`, `{{spalte:SetStil}}`), damit verschobene Zeilen die Beispiele nicht brechen. Werkzeuge mit `"process": true` (`build_project`, `run_tests`) brauchen die IDE oder ein Testprojekt und laufen nur mit `-WithProcessTools`. Mit `-Tool` und `-Arguments` ruft das Skript ein Werkzeug mit eigenen Argumenten auf, auch mit Listen und Objekten, und gibt die Antwort aus.
+
+Der Mitschnitt (`Output/Mcp/probe-<Zeit>.jsonl`) enthält jede Nachricht roh, eine je Zeile: `{"zeit":"…","richtung":"an Server"|"vom Server","nachricht":{…}}`. Exit-Code 0: alles in Ordnung, 1: Befunde, 3: Server fehlt oder antwortet nicht.
+
+### Ablauf für ein neues Werkzeug
+
+1. Werkzeug in `Shell.Mcp.pas` registrieren, Logik in `Atlas.Common.Mcp.*` mit DUnitX-Tests.
+2. Zeile in der Tabelle oben ergänzen; `TMcpShellTests.ToolsListMatchesDocumentation` prüft das.
+3. Beispiel in `Tools/Mcp/Werkzeug-Beispiele.json` eintragen; ohne Eintrag scheitert der Probelauf.
+4. Bauen, dann `pwsh Tools/Start-McpInspector.ps1 -Method tools/list -Strict` und `pwsh Tools/Test-McpTools.ps1`.
+5. Grenzfälle im Inspector von Hand: fehlende Pflichtparameter, falsche Typen, unbekannte Dateien, große Ergebnisse.
+
 Worauf achten:
 
 - Beschreibung und Parameterbeschreibungen sagen, wann das Werkzeug hilft und was es liefert; Claude wählt nur danach aus.
 - Pflichtparameter stehen in `required`; ein fehlender Pflichtparameter liefert eine verständliche Fehlermeldung (`EMcpToolError`), keine Ausnahme mit Stapel.
 - Große Ergebnisse sind begrenzt (z. B. `MaxFindings`) und sagen, wie viel weggelassen wurde.
-- Neue Werkzeuge stehen in der Tabelle oben; `TMcpShellTests.ToolsListMatchesDocumentation` prüft das.
-
