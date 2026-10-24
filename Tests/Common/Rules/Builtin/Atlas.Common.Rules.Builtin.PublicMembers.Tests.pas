@@ -2,7 +2,8 @@
 
 // Tests der Regel unused-public-member (#1102): Beispiel aus dem Issue,
 // Verwendungen aus anderen Units (Aufruf, Methodenzeiger, inherited, Formular,
-// String-Literal), gleichnamige Mitglieder anderer Klassen, Schweigen bei
+// String-Literal), gleichnamige Mitglieder anderer Klassen, Typen und globale
+// Variablen des interface-Teils samt deadCode.keep* (#64), Schweigen bei
 // unvollständigem Index, nicht lesbaren Dateien, Packages, Include-Dateien und
 // unbekannten Vorfahren, alle Optionen, off/exclude, die Neuprüfung nach einer
 // Änderung in einer anderen Unit und eine Zeitmessung.
@@ -34,6 +35,10 @@ type
     procedure SilentWithIncludeOrUnknownAncestor;
     [Test]
     procedure UnitLevelRoutinesAndConstants;
+    [Test]
+    procedure UnitTypesAndVariables;
+    [Test]
+    procedure DeadCodeKeepSettings;
     [Test]
     procedure VisibilitiesAndMemberKinds;
     [Test]
@@ -619,6 +624,8 @@ begin
   end;
   Data.Projects := [Project(TPath.Combine(Folder, 'RefApp.dproj'), TRuleProjectKind.Application, False, Sources,
     Forms)];
+  // TPluginAufruf trägt [Schnittstelle]: Mit deadCode.keepAttributes gilt Melden als verwendet (#64).
+  Data.Config := '{"deadCode": {"keepAttributes": ["Schnittstelle"]}}';
   // Erwartet: genau die markierten Zeilen, sonst nichts (jede weitere Meldung ist ein Fehlalarm).
   Expected := '';
   Actual := '';
@@ -634,6 +641,64 @@ begin
   end;
   Assert.AreEqual(Expected, Actual);
   Assert.IsTrue(Expected <> '', 'Keine Markierungen im Referenzprojekt');
+end;
+
+procedure TUnusedPublicMemberTests.UnitTypesAndVariables;
+const
+  TypesFile = 'C:\P\Kunden.Typen.pas';
+var
+  Data: TScenario;
+begin
+  Data := Scenario('');
+  Data.Put(TypesFile,
+    'unit Kunden.Typen;'#10'interface'#10'type'#10 +
+    '  TUngenutzt = class'#10'  public'#10'    function Kopie: TUngenutzt;'#10'  end;'#10 +
+    '  TFarbe = (Rot, Gruen);'#10 +
+    '  BehaltenAttribute = class(TCustomAttribute)'#10'  end;'#10 +
+    '  [Behalten]'#10'  TMarkiert = class'#10'  end;'#10 +
+    '  TRegistriert = class'#10'  end;'#10 +
+    '  TGenutzt = record'#10'  end;'#10 +
+    'var'#10'  Zaehler: Integer;'#10'  Genutzt: Integer;'#10 +
+    'implementation'#10 +
+    'function TUngenutzt.Kopie: TUngenutzt;'#10'begin'#10'  Result := TUngenutzt.Create;'#10'end;'#10 +
+    'initialization'#10'  RegisterClass(TRegistriert);'#10'end.');
+  Data.Put(MainFile, 'unit Kunden.Main;'#10'interface'#10'uses'#10'  Kunden.Service, Kunden.Typen;'#10 +
+    'procedure Start;'#10'implementation'#10'procedure Start;'#10'var'#10'  G: TGenutzt;'#10'begin'#10 +
+    '  Genutzt := 1;'#10'end;'#10'end.');
+  Data.Projects[0].Sources := Data.Projects[0].Sources + [TypesFile];
+  // Eigene Deklaration und eigene Methoden zählen nicht; Attribut, Kurzform [Behalten] und RegisterClass schon.
+  Assert.AreEqual(
+    'Öffentlicher Typ TUngenutzt wird im Projekt nirgends verwendet.'#10 +
+    'Öffentliche Methode TUngenutzt.Kopie wird im Projekt nirgends verwendet.'#10 +
+    'Öffentlicher Typ TFarbe wird im Projekt nirgends verwendet.'#10 +
+    'Globale Variable Zaehler wird im Projekt nirgends verwendet.'#10, Messages(Run(Data, TypesFile)));
+  // unitKinds: nur Routinen und Konstanten wie vor #64.
+  Data.Config := '{"rules": {"unused-public-member": {"unitKinds": ["routine", "constant"]}}}';
+  Assert.AreEqual('Öffentliche Methode TUngenutzt.Kopie wird im Projekt nirgends verwendet.'#10,
+    Messages(Run(Data, TypesFile)));
+  // memberKinds wirkt nicht mehr auf die Unit-Ebene.
+  Data.Config := '{"rules": {"unused-public-member": {"memberKinds": ["property"]}}}';
+  Assert.AreEqual(
+    'Öffentlicher Typ TUngenutzt wird im Projekt nirgends verwendet.'#10 +
+    'Öffentlicher Typ TFarbe wird im Projekt nirgends verwendet.'#10 +
+    'Globale Variable Zaehler wird im Projekt nirgends verwendet.'#10, Messages(Run(Data, TypesFile)));
+end;
+
+procedure TUnusedPublicMemberTests.DeadCodeKeepSettings;
+var
+  Data: TScenario;
+begin
+  Data := Scenario('');
+  // deadCode.keepPatterns aus den Einstellungen und keepPatterns der Regel gelten zusammen.
+  Data.Config := '{"deadCode": {"keepPatterns": ["*Xml"]}, "rules": {"unused-public-member": ' +
+    '{"keepPatterns": ["MaxKunden"]}}}';
+  Assert.AreEqual('Öffentliche Property TKundenService.LetzterFehler wird im Projekt nirgends verwendet.'#10,
+    Messages(Run(Data, ServiceFile)));
+  // deadCode.keepAttributes: alle Mitglieder eines Typs mit dem Attribut.
+  Data.Put(ServiceFile, StringReplace(ServiceText, '  TKundenService = class', '  [Api]'#10'  TKundenService = class',
+    []));
+  Data.Config := '{"deadCode": {"keepAttributes": ["Api"]}}';
+  Assert.AreEqual('', Messages(Run(Data, ServiceFile)));
 end;
 
 procedure TUnusedPublicMemberTests.ParserChecksOptions;

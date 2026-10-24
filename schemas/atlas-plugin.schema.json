@@ -70,6 +70,10 @@
       "caption": "Einstellungen übertragen",
       "captionEn": "Transfer settings"
     },
+    "general.architecture": {
+      "caption": "Architektur",
+      "captionEn": "Architecture"
+    },
     "editor.pairs": {
       "caption": "Paarfärbung",
       "captionEn": "Pair colouring"
@@ -194,6 +198,10 @@
       "caption": "Einblenden",
       "captionEn": "Peek"
     },
+    "commands.references": {
+      "caption": "Verwendungen",
+      "captionEn": "Usages"
+    },
     "commands.outline": {
       "caption": "Gliederung",
       "captionEn": "Outline"
@@ -303,6 +311,73 @@
       "x-area": "general",
       "x-page": "Allgemein",
       "x-issue": "#62"
+    },
+    "ArchitectureEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Architekturübersicht aus dem uses-Graphen: Fenster „Atlas-Architektur“, Bericht und MCP-Werkzeug get_architecture; aus = kein Menüeintrag, kein Fenster.",
+      "x-key": "architecture.enabled",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-node": "general.architecture",
+      "x-feature": "Architecture",
+      "x-quickToggle": true,
+      "x-caption": "Architekturübersicht",
+      "x-captionEn": "Architecture overview",
+      "x-issue": "#1118"
+    },
+    "ArchitectureScope": {
+      "type": "string",
+      "enum": [
+        "projectGroup",
+        "project"
+      ],
+      "default": "projectGroup",
+      "description": "Umfang: alle Projekte der Gruppe oder nur das aktive Projekt.",
+      "x-key": "architecture.scope",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-parent": "architecture.enabled",
+      "x-issue": "#1118"
+    },
+    "ArchitectureIncludeLibraryUnits": {
+      "type": "boolean",
+      "default": false,
+      "description": "Units aus RTL, VCL und Fremdbibliotheken mitzählen.",
+      "x-key": "architecture.includeLibraryUnits",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-parent": "architecture.enabled",
+      "x-issue": "#1118"
+    },
+    "ArchitectureCentralUnits": {
+      "type": "integer",
+      "default": 15,
+      "minimum": 5,
+      "maximum": 100,
+      "description": "So viele zentrale Units in der Tabelle.",
+      "x-key": "architecture.centralUnits",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-parent": "architecture.enabled",
+      "x-issue": "#1118"
+    },
+    "ArchitectureWindowPlaced": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "ui.architectureWindowPlaced",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-state": true
+    },
+    "UnitRelationsWindowPlaced": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "ui.unitRelationsWindowPlaced",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-state": true,
+      "x-issue": "#593"
     },
     "ExperimentalEnabled": {
       "type": "boolean",
@@ -928,6 +1003,17 @@
       "x-caption": "Build nur ohne Warnungen und Hinweise erfolgreich",
       "x-captionEn": "Build succeeds only without warnings and hints",
       "x-issue": "#530"
+    },
+    "ShowInterfaceCost": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "build.showInterfaceCost",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-control": "Kontrollkästchen",
+      "x-caption": "Kosten einer interface-Änderung in der Statusleiste",
+      "x-captionEn": "Cost of an interface change in the status bar",
+      "x-issue": "#554"
     },
     "WelcomePage": {
       "type": "boolean",
@@ -2802,6 +2888,20 @@
       "x-area": "editor",
       "x-page": "Units suchen"
     },
+    "UnitSearchReplaceUseUnitDialog": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.replaceUseUnitDialog",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
+    "UnitSearchReplaceFormsDialog": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.replaceFormsDialog",
+      "x-area": "editor",
+      "x-page": "Units suchen"
+    },
     "UnitSearchRememberCollapsed": {
       "type": "boolean",
       "default": true,
@@ -3012,6 +3112,46 @@
       "x-caption": "Definition einblenden",
       "x-captionEn": "Peek definition",
       "x-issue": "#505"
+    },
+    "ReferencesInferred": {
+      "description": "Verwendungen, Aufrufhierarchie und Umbenennen zeigen neben den sicheren Stellen erschlossene mit Grund (Aufruf über ein Interface, überschriebene Methode, unklare Überladung, unbekannter Typ, inaktiver Zweig); Umbenennen ändert sie nicht und listet sie zum Prüfen. Aus = nur sichere Treffer.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "references.inferred",
+      "x-area": "editor",
+      "x-page": "Befehle",
+      "x-parent": "",
+      "x-node": "commands.references",
+      "x-quickToggle": true,
+      "x-caption": "Erschlossene Verwendungen",
+      "x-captionEn": "Inferred usages",
+      "x-issue": "#1119"
+    },
+    "ReferencesTextMatches": {
+      "description": "Auch den Namen in String-Literalen als erschlossene Verwendung melden (RTTI, MethodAddress).",
+      "type": "boolean",
+      "default": false,
+      "x-key": "references.textMatches",
+      "x-area": "editor",
+      "x-page": "Befehle",
+      "x-parent": "references.inferred",
+      "x-node": "commands.references",
+      "x-issue": "#1119"
+    },
+    "CallHierarchyDiagram": {
+      "description": "Aufrufhierarchie auch als Diagramm: Umschalter „Diagramm“ im Ergebnisfenster und Befehl „Aufrufdiagramm“ (ausgehend oder eingehend, Ebenen aufklappbar, Aufrufe über Interface oder virtuelle Methode gestrichelt, Export als HTML). Aus = nur die Baumansicht.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "callHierarchy.diagram",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "",
+      "x-node": "",
+      "x-control": "Kontrollkästchen „Aufrufdiagramm“; Umschalter „Diagramm“ im Ergebnisfenster",
+      "x-quickToggle": true,
+      "x-caption": "Aufrufdiagramm",
+      "x-captionEn": "Call diagram",
+      "x-issue": "#1122"
     },
     "PeekHeightLines": {
       "description": "Höhe des Fensters von „Definition einblenden“ in Editorzeilen (5 bis 60).",

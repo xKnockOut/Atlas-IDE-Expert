@@ -39,6 +39,8 @@
 // Tastenkürzel-Tipps (#600) als Aufruf per Menü (TAtlasIdeShortcutTips.Invoked).
 // „Atlas-Prüfung“ (#909) öffnet das Fenster der Befunde, auch unter Ansicht ›
 // Atlas › Prüfung; sichtbar nur bei problems.window.
+// „Architekturübersicht“ (#1118) öffnet das Fenster „Atlas-Architektur“, auch
+// unter Ansicht › Atlas › Architektur; sichtbar nur bei architecture.enabled.
 // Unter Navigation die Abschnittssprünge, der Rücksprung und „Methode suchen“
 // der Editorleiste (#1101); sie arbeiten auch ohne die Leiste.
 // Aufbau: häufige Befehle direkt, der Rest in Untermenüs (Navigation, Suchen,
@@ -84,6 +86,7 @@ type
     FWelcomeLine: TMenuItem;
     FViewStart: TMenuItem;
     FNoteItems: TArray<TMenuItem>;
+    FCallDiagramItem: TMenuItem;
     FBookmarkItems: TArray<TMenuItem>;
     FQuickItems: TArray<TMenuItem>;
     /// <summary>„Erzeugen…“ (#719), sichtbar nach keys.generateMenu.</summary>
@@ -97,6 +100,13 @@ type
     /// <summary>„Atlas-Prüfung“ (#909) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FProblemsItem: TMenuItem;
     FViewAtlas: TMenuItem;
+    FViewProblems: TMenuItem;
+    /// <summary>„Architekturübersicht“ (#1118) im Atlas-Menü und unter Ansicht › Atlas.</summary>
+    FArchitectureItem: TMenuItem;
+    FViewArchitecture: TMenuItem;
+    /// <summary>Fenster „Unit-Beziehungen“ (#593) im Atlas-Menü und unter Ansicht › Atlas.</summary>
+    FUnitRelationsItem: TMenuItem;
+    FViewUnitRelations: TMenuItem;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
@@ -107,6 +117,8 @@ type
     procedure BookmarksClick(Sender: TObject);
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
+    procedure ArchitectureClick(Sender: TObject);
+    procedure UnitRelationsClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
@@ -167,6 +179,8 @@ uses
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Outline.Service,
+  Atlas.IDE.Architecture.Service,
+  Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Commands.Editor,
@@ -186,8 +200,8 @@ const
   EditorIds: array[0..11] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
     'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode');
-  ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
-    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
+  ResultsIds: array[0..8] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
+    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow', 'Atlas.CallDiagram');
   // Editorleiste (#1101), je Tag von SectionClick.
   SectionIds: array[0..5] of string = ('Atlas.GotoInterface', 'Atlas.GotoImplementation', 'Atlas.GotoUses',
     'Atlas.GotoInitialization', 'Atlas.ReturnFromSection', 'Atlas.FindMethod');
@@ -256,6 +270,8 @@ begin
   AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
+  FArchitectureItem := AddItem(TAtlasTextId.ArchitectureCommand, 0, ArchitectureClick);
+  FUnitRelationsItem := AddItem(TAtlasTextId.UnitRelationsCommand, 0, UnitRelationsClick);
   FRoot.Add(NewLine);
   AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
@@ -277,6 +293,8 @@ begin
   AddItem(TAtlasTextId.MenuImplementations, 1, ResultsClick);
   AddItem(TAtlasTextId.MenuIncoming, 3, ResultsClick);
   AddItem(TAtlasTextId.MenuOutgoing, 4, ResultsClick);
+  // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
+  FCallDiagramItem := AddItem(TAtlasTextId.CallDiagramCommand, 8, ResultsClick);
   AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
   AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
   FParent.Add(NewLine);
@@ -349,13 +367,21 @@ begin
       FViewStart.Caption := TAtlasStrings.Text(TAtlasTextId.MenuWelcomeStart);
       FViewStart.OnClick := WelcomeClick;
       Services.MainMenu.Items[Index].Add(FViewStart);
-      // Ansicht › Atlas › Prüfung (#909).
+      // Ansicht › Atlas › Prüfung (#909) und Architektur (#1118).
       FViewAtlas := TMenuItem.Create(FRoot);
       FViewAtlas.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuAtlas);
-      Item := TMenuItem.Create(FViewAtlas);
-      Item.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuWindow);
-      Item.OnClick := ProblemsClick;
-      FViewAtlas.Add(Item);
+      FViewProblems := TMenuItem.Create(FViewAtlas);
+      FViewProblems.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuWindow);
+      FViewProblems.OnClick := ProblemsClick;
+      FViewAtlas.Add(FViewProblems);
+      FViewArchitecture := TMenuItem.Create(FViewAtlas);
+      FViewArchitecture.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureViewMenu);
+      FViewArchitecture.OnClick := ArchitectureClick;
+      FViewAtlas.Add(FViewArchitecture);
+      FViewUnitRelations := TMenuItem.Create(FViewAtlas);
+      FViewUnitRelations.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsViewMenu);
+      FViewUnitRelations.OnClick := UnitRelationsClick;
+      FViewAtlas.Add(FViewUnitRelations);
       Services.MainMenu.Items[Index].Add(FViewAtlas);
       Break;
     end;
@@ -626,6 +652,9 @@ begin
   // Prozesse am Projekt (#62) nach diagnostics.processes.
   if FProcessesItem <> nil then
     FProcessesItem.Visible := TAtlasIdeSettings.Current.DiagnosticsProcesses;
+  // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
+  if FCallDiagramItem <> nil then
+    FCallDiagramItem.Visible := TAtlasIdeSettings.Current.CallHierarchyDiagram;
   // Notizen (#545) nach ihrer Einstellung.
   for Item in FNoteItems do
     Item.Visible := TAtlasIdeSettings.Current.Notes;
@@ -641,8 +670,20 @@ begin
   // Atlas-Prüfung (#909) nach problems.window.
   if FProblemsItem <> nil then
     FProblemsItem.Visible := TAtlasIdeProblems.Enabled;
+  if FViewProblems <> nil then
+    FViewProblems.Visible := TAtlasIdeProblems.Enabled;
+  // Architekturübersicht (#1118) nach architecture.enabled.
+  if FArchitectureItem <> nil then
+    FArchitectureItem.Visible := TAtlasIdeArchitecture.Enabled;
+  if FViewArchitecture <> nil then
+    FViewArchitecture.Visible := TAtlasIdeArchitecture.Enabled;
+  // Unit-Beziehungen (#593) am selben Schalter.
+  if FUnitRelationsItem <> nil then
+    FUnitRelationsItem.Visible := TAtlasIdeUnitRelations.Enabled;
+  if FViewUnitRelations <> nil then
+    FViewUnitRelations.Visible := TAtlasIdeUnitRelations.Enabled;
   if FViewAtlas <> nil then
-    FViewAtlas.Visible := TAtlasIdeProblems.Enabled;
+    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled;
   // Benannte Lesezeichen (#622) nach bookmarks.named, schnelle (#1104) nach bookmarks.quick; das Fenster zeigt
   // beide.
   Marks := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
@@ -710,6 +751,7 @@ begin
         4: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
         5: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
         6: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
+        8: TAtlasIdeResults.ShowCallDiagram;
       else
         TAtlasIdeResults.ShowWindow;
       end;
@@ -837,6 +879,26 @@ begin
     procedure
     begin
       TAtlasIdeProblems.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.ArchitectureClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.Architecture');
+  TAtlasGuard.Run(TAtlasFeature.Architecture,
+    procedure
+    begin
+      TAtlasIdeArchitecture.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.UnitRelationsClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.UnitRelations');
+  TAtlasGuard.Run(TAtlasFeature.UnitRelations,
+    procedure
+    begin
+      TAtlasIdeUnitRelations.ShowWindow;
     end);
 end;
 

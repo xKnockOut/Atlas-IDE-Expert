@@ -6054,6 +6054,24 @@ Voraussetzung: Server läuft in der IDE mit einer Projektgruppe aus Anwendung un
 | OM10 | `"unused-public-member": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
 | OM11 | Großes Projekt (mehrere hundert Units): Service-Unit bearbeiten | Keine spürbare Verzögerung der Diagnosen; im Diagnoselog keine Zeitüberschreitung der Regel |
 
+## Toter Code und Unit-Abhängigkeiten (#64)
+
+Voraussetzung: Server läuft in der IDE mit einer Projektgruppe aus Anwendung und Testprojekt; Index fertig aufgebaut. Claude Code mit dem Atlas-MCP-Server am selben Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UZ1 | Unit A nennt B im interface-uses, B nennt A im implementation-uses; `atlas --check` bzw. `find_unused_code` | Warnung `uses-cycle` am uses-Eintrag in beiden Units: „Zirkuläre Unit-Referenz: A → B → A (über implementation-uses)“ mit den Kanten und Abschnitt. Im Editor schweigt sie seit #896, solange `diagnostics.usesCycleImplementation` aus ist (**Abnahme**) |
+| UZ2 | Beide Einträge aus UZ1 ins interface-uses; dann mit Delphi übersetzen | Fehler „Zirkuläre Unit-Referenz: A → B → A“, in den Details „Alle Kanten liegen im interface-Teil: Der Compiler lehnt den Zyklus ab (F2047).“; dcc meldet F2047 an derselben Stelle |
+| UZ3 | Zyklus über drei Units (A → B → C → A); `"uses-cycle": {"implementation": false}` | Erst Meldung mit dem ganzen Rundweg; mit der Option nur noch reine interface-Zyklen |
+| UZ4 | Private Routine, Konstante, Variable und Typ nur im implementation-Teil, nirgends verwendet; eine davon nur in einer anderen ungenutzten Routine benutzt | Hinweise `unused-declaration` „Routine X wird nirgends verwendet.“ usw.; die nur intern benutzte bleibt still, solange ihr Nutzer existiert. Korrektur „Als bewusst vorhanden markieren (lsp-ignore)“ (**Abnahme**) |
+| UZ5 | Handler aus der .dfm, Routine per Name als String, Unit mit `{$I …}`, Deklaration auch im interface | Keine Meldung `unused-declaration` |
+| UZ6 | Unit, die nur die .dpr im uses nennt und keine andere Unit verwendet | Hinweis `unused-unit` „Unit X wird von keiner anderen Unit verwendet; nur App.dpr nennt sie im uses.“; mit `initialization`-Abschnitt oder Verwendung eines Symbols in der .dpr keine Meldung |
+| UZ7 | Öffentlicher Typ und globale Variable im interface, nirgends verwendet; `"unused-public-member": {"unitKinds": ["routine"]}` | Erst „Öffentlicher Typ …“ bzw. „Globale Variable …“ von `unused-public-member`; mit der Option nur noch Routinen |
+| UZ8 | Optionen › Atlas › Prüfregeln: `deadCode.keepAttributes` = `Schnittstelle`, `deadCode.keepPatterns` = `Test*`; Klasse mit `[Schnittstelle]`, Routine `TestHilfe` | Keine Meldung für beide, weder von `unused-public-member` noch von `unused-declaration` oder `unused-private-member` |
+| UZ9 | Claude Code: `find_unused_code` ohne Argumente, mit `file`, mit `format: "json"`; während der Index lädt | Markdown je Datei mit Zeile, Regel und Konfidenz; nur die Datei; JSON mit `findings`/`total`; beim Laden der Hinweis, dass projektweite Regeln schweigen |
+| UZ10 | Claude Code: `get_unit_dependencies` mit `unit: "A"` aus UZ1, mit `direction: "usedBy"`, `transitive: true`, mit Pfad statt Name, mit RTL-Unit | uses und Nutzer mit Abschnitt, der Zyklus A → B → A; nur Nutzer; die transitiven Hüllen; gleiches Ergebnis über den Pfad; RTL-Unit: Hinweis, dass sie nicht im Uses-Graphen steht |
+| UZ11 | `"uses-cycle": "off"`, `"unused-declaration": "off"`, `"unused-unit": "off"`, `"group:architecture": "off"` bzw. `mcp.disabledTools` mit beiden Werkzeugen | Keine Meldungen der Regeln; die Werkzeuge fehlen in tools/list |
+
 ## SELECT * im Code (#967)
 
 Voraussetzung: Server läuft in der IDE mit Projekt; Regel `sql-select-star` in den Einstellungen auf „Hinweis“ (Standard aus).
@@ -6422,3 +6440,164 @@ Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiz
 | VB9 | Ohne `symbols` bzw. mit `[]`; `"forbidden-symbol": "off"`; Profil strict | Ohne Liste keine Meldung; aus keine Meldung; im Profil strict ist die Regel an |
 | VB10 | Atlas-Repo selbst öffnen (seine atlas.json verbietet Write/Writeln, GetStdHandle(STD_OUTPUT_HANDLE) und TThread.Queue/ForceQueue(nil, …) im Plugin) | Keine Meldung in den Quellen; eine eingefügte Zeile `TThread.Queue(nil, nil);` in einer Unit unter `Packages/Atlas.IDE.Expert/Source` wird als Fehler gemeldet, ebenso von `pwsh Tools/Check-MainThreadQueue.ps1` |
 
+## Architekturübersicht (#1118)
+
+Voraussetzung: Server läuft in der IDE, Projektgruppe aus dem Referenzprojekt (#94) mit drei Namensräumen (etwa `App.Data.*`, `App.Ui.*`, `App.Net.*`), einer absichtlich falsch einsortierten Unit (`App.Ui.DbHelfer` mit uses nur auf `App.Data.*`), einem Zyklus über implementation und einem reinen interface-Zyklus in einer Kopie; Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ARC1 | Zum ersten Mal *Ansicht › Atlas › Architektur* | Fenster *Atlas-Architektur* öffnet sich als Reiter neben der Projektverwaltung (rechts); Statuszeile erst „Berechne die Architekturübersicht …“, dann „n Units · 3 Teilsysteme · … · Index-Stand … · … ms“ |
+| ARC2 | Fenster an eine andere Stelle ziehen, IDE neu starten, Fenster wieder öffnen; *Atlas › Architekturübersicht* und Befehlspalette „Architekturübersicht“ | Es bleibt an der neuen Stelle (kein erneutes Andocken rechts); Menü und Palette öffnen dasselbe Fenster |
+| ARC3 | Reiter *Teilsysteme* | Drei Teilsysteme „Data“, „Ui“, „Net“ mit Zusammenhalt; `App.Ui.DbHelfer` als Ausreißer „mehr Kanten nach Data“ (**Abnahme**) |
+| ARC4 | Reiter *Zentrale Units*, Spaltenköpfe anklicken | Direkt/gesamt abhängig und verwendet wie in `get_architecture`; zweiter Klick sortiert umgekehrt; „gesamt abhängig“ stimmt mit „Units neu übersetzen“ (#554) überein |
+| ARC5 | Reiter *Zyklen*, uses-Eintrag doppelklicken | Zyklus über implementation mit vollständigem Rundweg; der Doppelklick springt an Zeile und Spalte des uses-Eintrags; der interface-Zyklus steht als „Zyklus nur über interface (F2047)“ |
+| ARC6 | Reiter *Querverbindungen* | Die einzelne Kante zwischen zwei sonst getrennten Teilsystemen mit Grund „selten“ und Fundstelle; Doppelklick springt hin |
+| ARC7 | *Übersicht*: Mausrad, Ziehen, Klick, Doppelklick, +, −, 0, „Einpassen“, „Namen“ | Zoom um den Mauszeiger, Verschieben, Steckbrief der gewählten Unit unter der Karte, Doppelklick öffnet die Unit; Namen nur zentraler Units, solange weit herausgezoomt |
+| ARC8 | Unit wählen, Umschalt+Klick auf eine andere; dann gegen die Richtung; Esc | Kürzester Weg hervorgehoben, Rest blass, Zeile „Kürzester Weg (n Schritte …): A → … → B“ wie die HTML-Karte bzw. `find_path` mit `via: ["uses"]`; gegen die Richtung „Kein Weg: …“; Esc hebt auf |
+| ARC9 | „Zyklen markieren“, „implementation-uses“ aus, „Teilsysteme ▾“ ein Teilsystem abwählen, „Alle einblenden“ | Zyklen in Fehlerfarbe; ohne implementation-uses verschwinden gepunktete Kanten und der Weg wird neu gesucht; ein abgewähltes Teilsystem samt Units und Kanten verschwindet |
+| ARC10 | Filter „cache“; Umfang „Projekt“; „Bibliotheks-Units“ | Karte, Tabelle und Bäume grenzen sich ein; Umfang und Bibliothek rechnen neu und stehen danach auch unter Tools › Optionen › Atlas › Allgemein › Architektur |
+| ARC11 | „Bericht speichern …“ als `.html` und `.md`; dasselbe mit `AtlasServer --check <Gruppe> --architecture bericht.html` | Gleiche Zahlen in Fenster, Markdown und HTML; die HTML-Seite öffnet ohne Netz, „Weg zeigen“ und „Zyklen markieren“ funktionieren |
+| ARC12 | `"architecture": {"exclude": ["Tests/**"]}` in atlas.json (Projekt-Einstellungen) | Testunits fehlen; die Statuszeile nennt „ausgeschlossen: Tests/**“ |
+| ARC13 | IDE in hellem und dunklem Thema | Karte, Listen und Statuszeile lesbar, Teilsystemfarben passend zum Thema |
+| ARC14 | Projektgruppe mit etwa 2000 Units, „Neu berechnen“ | Rechnung im Hintergrund unter 2 s, IDE bleibt bedienbar, kein Eintrag des Einfrier-Wächters (#501) |
+| ARC15 | `architecture.enabled` aus (Schnellschalter) | Kein Menüeintrag, kein Palettenbefehl, ein offenes Fenster schließt sich, `get_architecture` fehlt in `tools/list`, `--architecture` endet mit Exit-Code 3 |
+
+## Architekturvergleich (#1121)
+
+Voraussetzung wie oben (#1118); Projekt unter Versionsverwaltung.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ARV1 | Im Fenster „Stand speichern …“, Datei `architektur.json` im Projektordner; ohne Änderung erneut speichern | Datei entsteht (Statuszeile „… gespeichert“); zweites Speichern ergibt keine Änderung im Diff der Versionsverwaltung |
+| ARV2 | In einer Unit von `App.Data.*` ein uses auf eine Unit von `App.Ui.*` ergänzen, die ihrerseits `App.Data.*` braucht, speichern, Index fertig; „Vergleichen mit …“ und `architektur.json` wählen | Reiter *Vergleich*: „Verglichen mit architektur.json (…): n Änderungen · verletzt: newCycle“, Abschnitt „Neue Zyklen (1)“ mit dem Rundweg, neue Querverbindung bzw. uses-Kante zwischen Teilsystemen; Statuszeile „· Vergleich: n Änderungen“ |
+| ARV3 | Reiter *Übersicht* nach ARV2 | Die neue Kante grün; „Änderungen zum Stand“ aus: wieder in normaler Farbe; mit „Zyklen markieren“ ist die Zykluskante rot |
+| ARV4 | Ein uses zwischen zwei Teilsystemen entfernen, „Neu berechnen“ | Die entfernte Kante erscheint rot gestrichelt; Abschnitt „Entfernte uses-Kanten zwischen Teilsystemen“ |
+| ARV5 | Doppelklick auf einen Eintrag im Reiter *Vergleich*; Filter „data“ | Die Unit öffnet sich; nur Einträge mit `data` im Namen bleiben |
+| ARV6 | In `atlas.json` `"architecture": {"baseline": "architektur.json"}`, Fenster schließen, IDE neu starten, Fenster öffnen | Vergleich ohne Wahl; „Vergleich aufheben“ zeigt den Hinweis „Kein Vergleich …“, Karte ohne Farben |
+| ARV7 | `architektur.json` durch Text „kaputt“ ersetzen, „Neu berechnen“ | Übersicht erscheint, Reiter *Vergleich* und Statuszeile „Vergleich nicht möglich: Architekturstand ist beschädigt …“ |
+| ARV8 | „Bericht speichern …“ als HTML und Markdown mit aktivem Vergleich | Beide enthalten den Abschnitt „Vergleich“; in der HTML-Karte „Änderungen zum Stand“ mit grünen und rot gestrichelten Kanten |
+| ARV9 | Konsole: `AtlasServer --check . --architecture neu.json --compare architektur.json` mit neuem Zyklus; dann mit `--fail-on centralGrowth`; ohne Abweichung | Text mit den Abschnitten und „Ergebnis: …“, Exit-Code 1; mit `centralGrowth` (ohne Wachstum) 0; ohne Abweichung 0; unlesbarer Stand oder `--fail-on falsch` Exit-Code 3 |
+| ARV10 | Claude Code: `get_architecture` mit `compareWith: "architektur.json"` | Die Abschnitte des Vergleichs; Pfad außerhalb des Projekts wird abgelehnt |
+| ARV11 | Hell und dunkel | Grün und Rot auf der Karte und im Reiter gut lesbar |
+
+## Treffersicherheit der Verwendungen (#1119)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `IKunde` mit `Speichern`, `TKunde = class(TBasis, IKunde)` überschreibt `TBasis.Speichern` (virtual); Aufrufe über `S: IKunde`, `B: TBasis`, `K: TKunde`, einer in `{$IFDEF DEBUG}` bei Release-Konfiguration, und `MethodAddress('Speichern')`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TS1 | Cursor auf `TKunde.Speichern`, *Referenzen* | Ergebnisfenster mit „Sicher (n)“ (Aufrufe über `K`, Deklaration, Rumpf) und „Erschlossen (n) · vor dem Umbenennen prüfen“; beide aufgeklappt (**Abnahme**) |
+| TS2 | Maus über die erschlossenen Zeilen | Zeilen beginnen mit „≈“ und enden mit „[über Interface]“, „[überschrieben]“ bzw. „[inaktiver Zweig]“; Tooltip etwa „Aufruf über IKunde.Speichern; TKunde ist die einzige Umsetzung“ bzw. „In einem inaktiven Zweig: Bedingung DEBUG nicht erfüllt“ |
+| TS3 | „Nur sichere“ rechts im Kopf an- und abhaken | Nur die sicheren Zeilen ohne Abschnittsköpfe, danach wieder beide Abschnitte. Bei *Implementierungen* oder einem Symbol ohne erschlossene Treffer ist der Filter ausgeblendet |
+| TS4 | *Symbol umbenennen…* auf `TKunde.Speichern` | Vorschau „Wird geändert (n)“ (sichere und der inaktive Zweig) und „Nicht geändert, bitte prüfen (n)“ (Interface, überschrieben); nach dem Übernehmen sind nur die Stellen aus „Wird geändert“ geändert, ein Rückgängig-Schritt (Strg+Alt+Z) |
+| TS5 | *Aufrufer* von `TKunde.Speichern` | Aufrufer über `K` oben, über `S` und `B` darunter mit „≈“ und Grund; Aufklappen lädt weiter |
+| TS6 | *Definition einblenden* der Verwendungen (Peek) | Erschlossene Ausschnitte mit „≈“ vor der Zeile |
+| TS7 | Optionen › Atlas › Befehle › Verwendungen: „Erschlossene Verwendungen zeigen“ aus, TS1 wiederholen | Nur sichere Treffer wie vor #1119, kein Filter, keine Abschnitte; auch als Schnellschalter |
+| TS8 | „Auch Namen in Strings als Verwendung melden“ an, TS1 wiederholen | Zusätzlich `MethodAddress('Speichern')` unter „Erschlossen“ mit „[im Text]“, markiert ist nur der Name ohne Anführungszeichen; das Kontrollkästchen ist nur bedienbar, solange „Erschlossene Verwendungen zeigen“ an ist |
+| TS9 | In Claude Code `find_references` und `rename_symbol` (dryRun) für `TKunde.Speichern` | „n Verwendungen …, a sicher, b erschlossen:“, sichere zuerst, dann „Erschlossen, vor dem Umbenennen prüfen:“ mit „– erschlossen (interface): …“; rename_symbol endet mit „Nicht geändert, bitte prüfen (b erschlossene Stellen):“ |
+| TS10 | Englische IDE-Sprache | „Sure (n)“, „Inferred (n) · check before renaming“, „Sure only“, Gründe auf Englisch |
+
+## Aufrufdiagramm (#1122)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `TForm1.Start` ruft `Laden` und `Speichern`, `Laden` ruft `Lesen` (drei Ebenen); `Lesen` ruft über `S: ISpeicher` `S.Schreiben` mit zwei umsetzenden Klassen; `Rekursiv` ruft sich selbst; `Viele` ruft zehn Routinen; `Start` ruft auch `IntToStr`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AD1 | Cursor auf `TForm1.Start`, Befehlspalette „Aufrufdiagramm“ | Ergebnisfenster im Diagramm: links `TForm1.Start`, daneben die erste Ebene `Laden` und `Speichern` mit Datei:Zeile; Umschalter „Diagramm“ angehakt, Leiste mit „Ausgehend: Aufgerufene“ gewählt (**Abnahme**) |
+| AD2 | Klick auf `Laden`, erneut Klick, nochmals Klick | Erster Klick lädt `Lesen` als neue Spalte; zweiter klappt zu, dritter wieder auf ohne neue Anfrage (**Abnahme**) |
+| AD3 | Doppelklick auf `Lesen`; Enter auf einem gewählten Kasten | Editor springt zur Deklaration von `Lesen` bzw. der gewählten Routine (**Abnahme**) |
+| AD4 | `Lesen` aufklappen | Kante zu `ISpeicher.Schreiben` gestrichelt mit „2 Umsetzungen“; Tooltip mit Fundstelle und Erklärung (**Abnahme**) |
+| AD5 | Aufrufdiagramm für `Rekursiv` | Bogen in Warnfarbe zurück zu `Rekursiv`, kein weiterer Kasten, kein Hängen (**Abnahme**) |
+| AD6 | Aufrufdiagramm für `Viele` | Acht Kästen und „+ 2 …“; Klick darauf zeigt alle zehn (**Abnahme**) |
+| AD7 | „Nur Projekt-Units“ abhaken und wieder anhaken | `IntToStr` (System.SysUtils) erscheint abgesetzt und verschwindet wieder (**Abnahme**) |
+| AD8 | „Eingehend: Aufrufer“ wählen | Titel „Aufrufer von …“, dieselbe Wurzel mit ihren Aufrufern; zurück auf „Ausgehend“ lädt wieder die Aufgerufenen (**Abnahme**) |
+| AD9 | „Als HTML speichern …“, Datei im Browser ohne Netz öffnen | Datei entsteht (Titelzeile „… · Aufrufdiagramm gespeichert: …“); im Browser dieselben Kästen, gestrichelte Kante mit Zahl, Bogen zurück, „+ N …“; Klick klappt auf und zu, „nur Projekt-Units“ filtert, Mausrad zoomt (**Abnahme**) |
+| AD10 | Mausrad, Ziehen, Tasten + − 0, „Einpassen“ | Zoom um den Mauszeiger, Verschieben, Einpassen des ganzen Diagramms |
+| AD11 | *Aufrufer* aus dem Menü Atlas, Umschalter „Diagramm“ an und aus | Wechsel zwischen Baum und Diagramm; bei *Vorfahren*/*Nachfahren* ist der Umschalter ausgeblendet |
+| AD12 | Optionen › Atlas › Editor: „Aufrufdiagramm …“ aus (auch als Schnellschalter) | Umschalter im Ergebnisfenster weg, Befehl fehlt in Palette und Menü Atlas; nach Neustart auch im Kontextmenü (**Abnahme**) |
+| AD13 | Hell und dunkel, englische IDE-Sprache | Kästen, Linien und Schrift gut lesbar; „Call diagram“, „Diagram“, „Project units only“, „Save as HTML …“ |
+| AD14 | Claude Code: `get_call_hierarchy` für `Lesen`, `direction: "outgoing"` | `Schreiben` mit „[über Interface, 2 Umsetzungen]“ |
+
+## Unit-Beziehungen (#593)
+
+Voraussetzung: Server läuft in der IDE, Testprojekt mit `A` (interface uses `B`, `System.SysUtils`, `Vcl.Forms`; implementation uses `C`), `B` (interface uses `A`, also ein interface-Zyklus), `C` (uses `Daten`), Verwendern `E` (interface uses `A`) und `F` (implementation uses `A`); in `A` wird `Vcl.Forms` nicht gebraucht. Index fertig.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UB1 | `A.pas` im Editor, zum ersten Mal *Ansicht › Atlas › Unit-Beziehungen* | Fenster *Unit-Beziehungen* als Reiter neben der Projektverwaltung; Kopf „A“, „n Units neu übersetzen · Zyklus“; „Verwendet (4)“ und „Wird verwendet von (3)“ aufgeklappt |
+| UB2 | „Verwendet“ ansehen | `B  intf · Zyklus` rot, `C  impl`; Gruppe „Bibliothek (2)“ eingeklappt, darin `System.SysUtils` und `Vcl.Forms · ungenutzt` abgeblendet (**Abnahme**) |
+| UB3 | Maus über `B`; über den Kopf | Tooltip „Zyklus über interface-uses: A → B → A“; der Kopf zeigt denselben Rundweg (**Abnahme**) |
+| UB4 | „Wird verwendet von“ | Genau drei, nach Name: „über interface-uses (2)“ mit `B  intf`, `E  intf`, „über implementation-uses (1)“ mit `F  impl` (seit #554) (**Abnahme**) |
+| UB5 | Zahl „Units neu übersetzen“ mit dem Reiter *Zentrale Units* der Architekturübersicht („gesamt abhängig“) und `get_architecture` vergleichen | Gleiche Zahl (**Abnahme**) |
+| UB6 | Doppelklick auf `C`; zurück zu `A`; Strg+Doppelklick auf `C` | `C.pas` öffnet sich und das Fenster zeigt sofort `C`; zurück in `A` steht sofort der gemerkte Stand (unter 300 ms); Strg+Doppelklick setzt den Cursor auf `C` im uses von `A` (**Abnahme**) |
+| UB7 | Rechtsklick auf `B`, „In implementation verschieben“; Strg+Z | `B` steht im implementation-uses von `A` (Server-Edit), der Zyklus verschwindet nach kurzer Zeit aus dem Fenster; Strg+Z stellt das uses in einem Schritt wieder her (**Abnahme**) |
+| UB8 | Rechtsklick auf `C`, „In interface verschieben“ | `C` steht im interface-uses; ohne interface-uses entsteht eines |
+| UB9 | Rechtsklick auf `Vcl.Forms`, „Eintrag entfernen“; Rechtsklick auf `B` | Eintrag weg; bei `B` (benutzt) fehlt „Eintrag entfernen“ |
+| UB10 | „Pfad kopieren“ auf `C`, in einen Editor einfügen | Vollständiger Pfad von `C.pas` |
+| UB11 | „alle Ebenen“; Filter „dat“; Filter leeren | Unter `C` hängt `Daten`, unter `B` steht `A · siehe oben`; mit Filter nur `C` mit `Daten`, aufgeklappt; leer wieder alles |
+| UB12 | Gruppe „Bibliothek“ aufklappen, `E` wählen, in `A` tippen und warten | Aufklappen und Auswahl bleiben, wenn das Fenster nachfragt (etwa alle 2 s) |
+| UB13 | Architekturübersicht, Strg+Doppelklick auf eine Unit in Karte, *Zentrale Units* oder *Teilsysteme* | Fenster *Unit-Beziehungen* zeigt diese Unit, bis der Editor eine andere Datei zeigt; ohne Strg öffnet der Doppelklick weiter die Unit |
+| UB14 | `.dpr` im Editor; Kontextmenü auf einem Eintrag, „In interface verschieben“ | Programm ohne interface: Kopfzeile meldet „Der Server hat die Änderung abgelehnt …“ |
+| UB15 | Datei ohne Pascal (z. B. `.dfm`) bzw. Server beendet | „Keine Pascal-Datei im Editor“ bzw. „Der Atlas-Server läuft nicht“ |
+| UB16 | `architecture.enabled` aus (Schnellschalter) | Fenster schließt sich, Menüeinträge und Palettenbefehl fehlen |
+| UB17 | Hell und dunkel, englische IDE-Sprache | Rot und Grau gut lesbar; „Unit relations“, „Uses (n)“, „Used by (n)“, „units to recompile“ |
+
+## Kosten einer interface-Änderung (#554)
+
+Voraussetzung: Server läuft in der IDE, Testprojekt mit der Kette `Oben` (interface uses `Mitte`) → `Mitte` (interface uses `Unten`) → `Unten`, dazu `Neben` (interface uses `Hilfe`, gebraucht wird `Hilfe` nur in einer Methode im implementation-Teil); `architecture.enabled` und `build.showInterfaceCost` an. Index fertig.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IK1 | `Unten.pas`, Einfügemarke in den interface-Teil (etwa in eine Typdeklaration) | Statusleiste: „interface-Änderung: 2 Units werden neu kompiliert“ (**Abnahme**) |
+| IK2 | Maus über das Feld | Tooltip „Eine Änderung im interface von Unten übersetzt neu: Mitte, Oben. Klick: …“ |
+| IK3 | Einfügemarke in den implementation-Teil, dann in den Unit-Kopf | Feld verschwindet sofort, beim Zurück ins interface erscheint es wieder (**Abnahme**) |
+| IK4 | `Mitte.pas` im interface; `Oben.pas` im interface | „1 Unit wird neu kompiliert“; bei `Oben` kein Feld (0 Units) |
+| IK5 | In `Mitte` `Unten` ins implementation-uses verschieben, speichern, zurück zu `Unten` ins interface | Nach wenigen Sekunden „1 Unit wird neu kompiliert“ (nur noch `Mitte`) |
+| IK6 | Klick auf das Feld | Fenster *Unit-Beziehungen* zeigt `Unten`; „Wird verwendet von“ mit „über interface-uses (1)“ und `Mitte` |
+| IK7 | `Neben.pas`, Befehlspalette „Abhängigkeiten dieser Unit“ | *Unit-Beziehungen* für `Neben`; `Hilfe  intf · nur in implementation gebraucht`, Kopf „… · 1 ins implementation-uses verschiebbar“, Tooltip nennt den Grund (**Abnahme**) |
+| IK8 | Rechtsklick auf `Hilfe`, „In implementation verschieben“; Strg+Z | `Hilfe` steht im implementation-uses, die Markierung verschwindet; Strg+Z stellt es in einem Schritt wieder her |
+| IK9 | Befehlspalette „Teuerste Units bei interface-Änderungen“ (vorher in *Zentrale Units* nach Name sortieren) | Architekturübersicht auf *Zentrale Units*, sortiert nach „gesamt abhängig“ absteigend; `Unten` steht vor `Oben` |
+| IK10 | `.dpr` im Editor; Server beenden | Kein Feld; ohne Server kein Feld und keine Fehlermeldung |
+| IK11 | *Compiler › Kosten einer interface-Änderung in der Statusleiste* aus | Feld verschwindet sofort, die beiden Befehle bleiben; `architecture.enabled` aus nimmt Feld und Befehle weg |
+| IK12 | Englische IDE-Sprache | „interface change: 2 units will be recompiled“, „Dependencies of this unit“, „Most expensive units for interface changes“ |
+
+## Unit verwenden und Formulare suchen (#786)
+
+Voraussetzung: Server läuft in der IDE, Testprojekt mit `Kunde.Import` (interface uses `Atlas.Common.Log.Format`, `SysUtils`), `Kunde.Ansicht` (interface uses `Kunde.Import`), `Kunde.Bericht` (implementation uses `Kunde.Import`), `Kunde.Daten`, `Kunde.Liste` (beide ohne Bezug), einem Formular, einem Frame und einem Datenmodul; `unitSearch.enabled`, `unitSearch.replaceUseUnitDialog`, `unitSearch.replaceFormsDialog` und `architecture.enabled` an. Index fertig.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UV1 | `Kunde.Import.pas` im Editor, Alt+F11 | Fenster mit Kopfzeile „Unit verwenden in Kunde.Import“, Umschalter rechts auf implementation |
+| UV2 | Nach `Format` suchen | `Atlas.Common.Log.Format` ausgegraut mit „schon in uses“ (**Abnahme**); `System.SysUtils` ebenso; `Kunde.Import` selbst ausgegraut |
+| UV3 | Zeile `Kunde.Ansicht` wählen | Kennzeichen „Kreis über Kunde.Ansicht“ grau (Hinweis), Fußzeile „Erlaubter Kreis (nur ein Hinweis): Kunde.Import → Kunde.Ansicht → Kunde.Import“ |
+| UV4 | Strg+I (oder Klick auf interface) | Kennzeichen wird zur Warnung „⚠ Kreis über Kunde.Ansicht“, Fußzeile „Kreisbezug, den der Compiler ablehnt (F2047): …“ (**Abnahme**); `Kunde.Bericht` bleibt Hinweis |
+| UV5 | Zurück auf implementation, `Kunde.Daten` und `Kunde.Liste` mit Leertaste markieren, Enter | Fenster schließt; beide stehen im implementation-uses von `Kunde.Import` (neu angelegt, falls keins da war), jede einmal; Meldung „2 Units … aufgenommen“ (**Abnahme**) |
+| UV6 | Strg+Z | Beide Einträge verschwinden in einem Schritt (**Abnahme**) |
+| UV7 | Alt+F11, `Atlas.Common.Log.Format` und `Kunde.Daten` markieren, Enter | Nur `Kunde.Daten` wird eingefügt, kein Duplikat |
+| UV8 | Alt+F11 mit einer `.dfm` oder ohne Editor | Meldung, dass keine Unit offen ist; kein Fenster |
+| UV9 | Umschalt+F12 | Fenster „Formulare suchen“, Chip `t:form\|frame\|dm` im Suchfeld, nur Formulare, Frames und Datenmodule (**Abnahme**) |
+| UV10 | Formular wählen, Enter; dann Umschalt+F12, Umschalt+Enter | Enter öffnet den Designer (**Abnahme**); Umschalt+Enter öffnet den Quelltext |
+| UV11 | Chip `t:form\|frame\|dm` entfernen | Alle Units erscheinen |
+| UV12 | Umschalttaste halten und *Datei › Unit verwenden* bzw. *Ansicht › Formulare* klicken; Befehlspalette „IDE-Dialog Unit verwenden“, „IDE-Dialog Formulare“ | Jeweils der Dialog der IDE |
+| UV13 | *Units suchen › Alt+F11 …* und *Umschalt+F12 …* aus, Alt+F11 und Umschalt+F12 | Die Dialoge der IDE, sofort ohne Neustart (**Abnahme**) |
+| UV14 | Server beenden, Alt+F11 | Meldung „kein Server“ und der Dialog der IDE |
+| UV15 | Befehlspalette „Unit verwenden (Atlas)“ und „Formulare suchen (Atlas)“ | Das Atlas-Fenster im jeweiligen Modus, auch mit abgeschalteter Übernahme |
+| UV16 | Englische IDE-Sprache | „Use unit in Kunde.Import“, „already in uses“, „Cycle via …“, „Find forms“ |
+
+## Zirkuläre Unit-Referenz beim Tippen (#896)
+
+Voraussetzung: Projektgruppe mit den Units uA, uB, uC (uA nennt uB, uB nennt uC, jeweils im interface-uses); Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZL1 | In uC ins interface-uses `uA` tippen, nicht speichern | Nach kurzer Pause Fehler `uses-cycle` am Eintrag `uA`: „Zirkuläre Unit-Referenz: uC → uA → uB → uC“ (**Abnahme**) |
+| ZL2 | ZL1, dann uA und uB geöffnet lassen und dort ohne Speichern die Einträge ändern (z. B. `uB` aus uA entfernen) | Die Meldung in uC verschwindet ohne Speichern; nach Rückgängig erscheint sie wieder. Auch beim Öffnen von uC steht sie sofort da |
+| ZL3 | Maus über die Meldung aus ZL1 | Im Hover sind uC, uA, uB, uC Verweise; ein Klick springt an den uses-Eintrag der Unit in der jeweiligen Datei; dahinter der Verweis „Graph zeigen“ (**Abnahme**) |
+| ZL4 | „Graph zeigen“ im Hover oder die Korrektur „Graph zeigen (Unit-Beziehungen)“ | Das Fenster Unit-Beziehungen (#593) öffnet sich für die aktuelle Unit |
+| ZL5 | uC braucht im interface keinen Bezeichner aus uA; Glühbirne am Eintrag | Korrektur „In implementation-uses verschieben“; danach steht uA im implementation-uses, mit `sortUses` sortiert wie „uses aufräumen“; die Meldung verschwindet (**Abnahme**) |
+| ZL6 | uC nutzt im interface einen Typ aus uA (z. B. `TA` als Parametertyp) | Kein Verschieben; stattdessen „Zu TA springen (Zeile N, braucht uA im interface)“ (bis fünf Sprünge) und „Graph zeigen“; in den Details „Im interface-Teil gebraucht: TA (Zeile N)“ |
+| ZL7 | uC nennt sich selbst im uses | Fehler „Zirkuläre Unit-Referenz: uC → uC“ mit Korrektur „Eintrag entfernen“, auch ohne Projekt |
+| ZL8 | Zyklus nur über implementation-uses; erst Standard, dann Optionen › Atlas › Prüfregeln „Unit-Zyklen über implementation zeigen“ (`diagnostics.usesCycleImplementation`) an | Erst keine Meldung im Editor; danach ein Hinweis „… (über implementation-uses)“ |
+| ZL9 | `diagnostics.usesCycleLive` aus | Keine Meldung beim Tippen; `atlas --check` und `find_unused_code` melden den Zyklus weiter |
+| ZL10 | Problemliste, `check_code` über MCP und `atlas --check` nach ZL1 | Dieselbe Meldung mit demselben Text an derselben Stelle |
+| ZL11 | Projekt mit 2000 Units, Zyklus über alle; im uses tippen | Kein Hängen der IDE; die Meldung erscheint nach dem Tippen ohne merkliche Verzögerung |

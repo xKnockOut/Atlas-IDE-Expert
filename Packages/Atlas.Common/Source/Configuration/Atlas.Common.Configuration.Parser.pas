@@ -45,18 +45,18 @@ uses
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  BooleanRuleOptions: array[0..23] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+  BooleanRuleOptions: array[0..24] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields',
     'allowSingleLineExit', 'allowSameLine', 'allowComments', 'onlyAfterRaisingCode', 'allowInProgram', 'unitLevel',
     'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem', 'ignoreOverrides', 'requirePublic',
-    'checkReturns', 'checkFree', 'allowFirstElement');
+    'checkReturns', 'checkFree', 'allowFirstElement', 'implementation');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..32] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..33] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
     'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
     'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes', 'allowTypes',
-    'formatMethods');
+    'formatMethods', 'unitKinds');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Erlaubte Arten in symbols von forbidden-symbol (#1133); wie TForbiddenSymbolRule.TryParseKind.</summary>
@@ -91,12 +91,14 @@ type
     procedure ReadExclude(ANode: TJsonNode);
     procedure ReadMcp(ANode: TJsonNode);
     procedure ReadUsesKeep(ANode: TJsonNode);
+    procedure ReadDeadCode(ANode: TJsonNode);
     procedure ReadSlashCommands(ANode: TJsonNode);
     procedure ReadCompleteBlocks(ANode: TJsonNode);
     procedure ReadExperimental(ANode: TJsonNode);
     procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadCodeLens(ANode: TJsonNode);
+    procedure ReadReferences(ANode: TJsonNode);
     procedure CheckTodoKeywords(ANode: TJsonNode);
     procedure CheckForbiddenSymbols(ANode: TJsonNode);
     procedure ReadHints(ANode: TJsonNode);
@@ -113,6 +115,7 @@ type
     procedure ReadCompletion(ANode: TJsonNode);
     procedure ReadDiagnostics(ANode: TJsonNode);
     procedure ReadIndex(ANode: TJsonNode);
+    procedure ReadArchitecture(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -563,6 +566,42 @@ begin
       FSettings.UsesKeep := FSettings.UsesKeep + [Value];
 end;
 
+procedure TValidator.ReadDeadCode(ANode: TJsonNode);
+var
+  Index, Item: Integer;
+  Key, Value: string;
+  Values: TArray<string>;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"deadCode" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if (Key = 'keepAttributes') or (Key = 'keepPatterns') then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], Format('"deadCode.%s" muss eine Liste von Texten sein', [Key]));
+        Continue;
+      end;
+      Values := nil;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'deadCode.' + Key, Value) then
+          Values := Values + [Value];
+      if Key = 'keepAttributes' then
+        FSettings.DeadCodeKeepAttributes := Values
+      else
+        FSettings.DeadCodeKeepPatterns := Values;
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "deadCode.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadSlashCommands(ANode: TJsonNode);
 var
   Index, Item: Integer;
@@ -880,6 +919,29 @@ begin
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "codeLens.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.ReadReferences(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"references" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'inferred' then
+      ExpectBoolean(ANode[Index], Key, FSettings.References.Inferred)
+    else if Key = 'textMatches' then
+      ExpectBoolean(ANode[Index], Key, FSettings.References.TextMatches)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "references.%s"', [Key]), False);
   end;
 end;
 
@@ -1692,6 +1754,10 @@ begin
     end
     else if Key = 'logMapFile' then
       ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsLogMapFile)
+    else if Key = 'usesCycleLive' then
+      ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsUsesCycleLive)
+    else if Key = 'usesCycleImplementation' then
+      ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsUsesCycleImplementation)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "diagnostics.%s"', [Key]), False);
@@ -1752,6 +1818,82 @@ begin
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "index.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.ReadArchitecture(ANode: TJsonNode);
+var
+  Index, Item, Number: Integer;
+  Key, Value: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"architecture" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'enabled' then
+      ExpectBoolean(ANode[Index], Key, FSettings.ArchitectureEnabled)
+    else if Key = 'scope' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.String_) and ((ANode[Index].Value = 'project') or
+        (ANode[Index].Value = 'projectGroup')) then
+        FSettings.ArchitectureScope := ANode[Index].Value
+      else
+        ReportNode(ANode[Index], '"architecture.scope" muss "project" oder "projectGroup" sein');
+    end
+    else if Key = 'includeLibraryUnits' then
+      ExpectBoolean(ANode[Index], Key, FSettings.ArchitectureIncludeLibraryUnits)
+    else if Key = 'centralUnits' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.Number) and TryStrToInt(ANode[Index].Value, Number) and (Number >= 5) and
+        (Number <= 100) then
+        FSettings.ArchitectureCentralUnits := Number
+      else
+        ReportNode(ANode[Index], '"architecture.centralUnits" muss eine ganze Zahl von 5 bis 100 sein');
+    end
+    else if Key = 'exclude' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], '"architecture.exclude" muss eine Liste von Mustern sein');
+        Continue;
+      end;
+      FSettings.ArchitectureExclude := nil;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'architecture.exclude', Value) then
+          FSettings.ArchitectureExclude := FSettings.ArchitectureExclude + [Value];
+    end
+    else if Key = 'baseline' then
+    begin
+      if ExpectString(ANode[Index], 'architecture.baseline', Value) then
+        FSettings.ArchitectureBaseline := Trim(Value);
+    end
+    else if Key = 'failOn' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], '"architecture.failOn" muss eine Liste aus newCycle, newCrossLink, ' +
+          'subsystemChange und centralGrowth sein');
+        Continue;
+      end;
+      FSettings.ArchitectureFailOn := nil;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'architecture.failOn', Value) then
+        begin
+          if (Value = 'newCycle') or (Value = 'newCrossLink') or (Value = 'subsystemChange') or
+            (Value = 'centralGrowth') then
+            FSettings.ArchitectureFailOn := FSettings.ArchitectureFailOn + [Value]
+          else
+            ReportNode(ANode[Index][Item], Format('"architecture.failOn": unbekannte Abweichung "%s" (erlaubt: ' +
+              'newCycle, newCrossLink, subsystemChange, centralGrowth)', [Value]));
+        end;
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "architecture.%s"', [Key]), False);
   end;
 end;
 
@@ -1994,6 +2136,8 @@ begin
         ReadInlayHints(Value)
       else if Key = 'codeLens' then
         ReadCodeLens(Value)
+      else if Key = 'references' then
+        ReadReferences(Value)
       else if Key = 'hints' then
         ReadHints(Value)
       else if Key = 'directives' then
@@ -2020,6 +2164,8 @@ begin
         ReadDiagnostics(Value)
       else if Key = 'index' then
         ReadIndex(Value)
+      else if Key = 'architecture' then
+        ReadArchitecture(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
       else if Key = 'completeBlocks' then
@@ -2034,6 +2180,8 @@ begin
         ReadSortUses(Value)
       else if Key = 'usesKeep' then
         ReadUsesKeep(Value)
+      else if Key = 'deadCode' then
+        ReadDeadCode(Value)
       else if Key = 'memoryBudgetMb' then
       begin
         if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Budget) and (Budget >= 0) then
@@ -2344,6 +2492,8 @@ begin
       Result.InlayHints := FileSettings.InlayHints
     else if Key = 'codeLens' then
       Result.CodeLens := FileSettings.CodeLens
+    else if Key = 'references' then
+      Result.References := FileSettings.References
     else if Key = 'hints' then
       Result.Hints := FileSettings.Hints
     else if Key = 'directives' then
@@ -2371,6 +2521,8 @@ begin
       Result.DiagnosticsLog := FileSettings.DiagnosticsLog;
       Result.DiagnosticsLogDays := FileSettings.DiagnosticsLogDays;
       Result.DiagnosticsLogMapFile := FileSettings.DiagnosticsLogMapFile;
+      Result.DiagnosticsUsesCycleLive := FileSettings.DiagnosticsUsesCycleLive;
+      Result.DiagnosticsUsesCycleImplementation := FileSettings.DiagnosticsUsesCycleImplementation;
     end
     else if Key = 'index' then
     begin
@@ -2382,6 +2534,16 @@ begin
       Result.IndexRemoveOrphans := FileSettings.IndexRemoveOrphans;
       Result.IndexCacheMaxAgeDays := FileSettings.IndexCacheMaxAgeDays;
       Result.IndexCacheMaxMb := FileSettings.IndexCacheMaxMb;
+    end
+    else if Key = 'architecture' then
+    begin
+      Result.ArchitectureEnabled := FileSettings.ArchitectureEnabled;
+      Result.ArchitectureScope := FileSettings.ArchitectureScope;
+      Result.ArchitectureIncludeLibraryUnits := FileSettings.ArchitectureIncludeLibraryUnits;
+      Result.ArchitectureCentralUnits := FileSettings.ArchitectureCentralUnits;
+      Result.ArchitectureExclude := FileSettings.ArchitectureExclude;
+      Result.ArchitectureBaseline := FileSettings.ArchitectureBaseline;
+      Result.ArchitectureFailOn := FileSettings.ArchitectureFailOn;
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
@@ -2411,6 +2573,11 @@ begin
     end
     else if Key = 'usesKeep' then
       Result.UsesKeep := FileSettings.UsesKeep
+    else if Key = 'deadCode' then
+    begin
+      Result.DeadCodeKeepAttributes := FileSettings.DeadCodeKeepAttributes;
+      Result.DeadCodeKeepPatterns := FileSettings.DeadCodeKeepPatterns;
+    end
     else if Key = 'memoryBudgetMb' then
       Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb
     else if Key = 'requestTimeoutMs' then

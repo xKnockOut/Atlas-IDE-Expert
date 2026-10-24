@@ -40,6 +40,9 @@ jobs:
       - name: Konfigurationsdoku aktuell
         shell: pwsh
         run: ./Tools/Update-ConfigDoc.ps1 -Check
+      - name: Vorlage der Architekturkarte eingebettet (#1118)
+        shell: pwsh
+        run: ./Tools/Update-ArchitectureMap.ps1 -Check
       - name: Wächter für experimentelle Funktionen (#834)
         shell: pwsh
         run: ./Tools/Test-Experimental.ps1

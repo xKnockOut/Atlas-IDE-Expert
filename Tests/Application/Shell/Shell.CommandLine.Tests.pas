@@ -197,6 +197,19 @@ begin
   Assert.AreEqual(0, Integer(Length(Options.Warnings)));
   Assert.IsTrue(Options.NoIndex, '--no-index (#1112)');
   Assert.AreEqual('C:\Cache', Options.IndexCacheFolder);
+  Assert.AreEqual('', Options.ArchitectureFile);
+  Options := TCommandLineOptions.Parse(['--architecture=Bericht.html']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('Bericht.html', Options.ArchitectureFile, '--architecture (#1118)');
+  Assert.AreEqual('', Options.CheckTarget);
+  // Vergleich (#1121): Abweichungsarten bei --fail-on ohne Warnung, der Wert bleibt für den Bericht.
+  Options := TCommandLineOptions.Parse(['--architecture', 'neu.json', '--compare', 'alt.json', '--fail-on',
+    'newCycle,centralGrowth']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('alt.json', Options.CompareFile);
+  Assert.AreEqual('newCycle,centralGrowth', Options.FailOnText);
+  Options := TCommandLineOptions.Parse(['--fail-on', 'irgendwas']);
+  Assert.AreEqual(1, Integer(Length(Options.Warnings)));
 end;
 
 procedure TCommandLineOptionsTests.ReadsFailOnAndSourceRoot;

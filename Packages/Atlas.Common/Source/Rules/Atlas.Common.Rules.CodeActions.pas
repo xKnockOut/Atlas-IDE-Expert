@@ -120,6 +120,9 @@ begin
           Action.Command := ShowSignatureHelpCommand;
         Action.CommandArguments := [IntToStr(Fix.JumpTo.Line), IntToStr(Fix.JumpTo.Character)];
       end;
+      // „Graph zeigen“ an einem Unit-Zyklus (#896): der Client öffnet die Unit-Beziehungen.
+      if Fix.ShowsUnitRelations then
+        Action.Command := ShowUnitRelationsCommand;
       Action.IsPreferred := First and not Fix.Alternative;
       Action.RuleId := Finding.RuleId;
       Action.DiagnosticRange := Finding.Range;

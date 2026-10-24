@@ -84,6 +84,8 @@ type
     ProjectMainSource: string;
     /// <summary>Abbruch zwischen den Prüfregeln; nil = nie. Setzt Compute.</summary>
     Cancelled: TRuleCancelled;
+    /// <summary>Prüfung für den Editor (TRuleContext.Live, #896); die Komposition setzt es.</summary>
+    Live: Boolean;
   end;
 
   /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
@@ -715,6 +717,9 @@ var
   Fix: TRuleFix;
   Codes: TJSONArray;
   Code: string;
+  Related: TRuleRelated;
+  RelatedItems: TJSONArray;
+  Location, RelatedItem: TJSONObject;
 begin
   case AFinding.Severity of
     TRuleSeverity.Error:
@@ -762,6 +767,22 @@ begin
   if AFinding.Details <> '' then
     Data.AddPair('details', AFinding.Details);
   Result.AddPair('data', Data);
+  // Weitere Stellen (#896), z. B. die uses-Einträge eines Zyklus: anklickbar im Befund-Hover.
+  if AFinding.Related <> nil then
+  begin
+    RelatedItems := TJSONArray.Create;
+    for Related in AFinding.Related do
+    begin
+      Location := TJSONObject.Create;
+      Location.AddPair('uri', TDocumentUris.FromPath(Related.FileName));
+      Location.AddPair('range', TLspPositions.RangeToJson(Related.Range));
+      RelatedItem := TJSONObject.Create;
+      RelatedItem.AddPair('location', Location);
+      RelatedItem.AddPair('message', Related.Message);
+      RelatedItems.AddElement(RelatedItem);
+    end;
+    Result.AddPair('relatedInformation', RelatedItems);
+  end;
   // Veraltete Symbole durchgestrichen (#38), aber nicht platform, library oder experimental (#1018).
   if (AFinding.RuleId = DeprecatedSymbolRuleId) and TDeprecatedSymbolRule.IsDeprecation(AFinding.Message) then
   begin
@@ -894,6 +915,7 @@ begin
   Context.AutoCreateForms := ARules.AutoCreateForms;
   Context.ProjectMainSource := ARules.ProjectMainSource;
   Context.Cancelled := ARules.Cancelled;
+  Context.Live := ARules.Live;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
 end;
 

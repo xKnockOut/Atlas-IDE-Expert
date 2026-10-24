@@ -24,6 +24,7 @@ uses
   Winapi.Windows,
   Winapi.ShellAPI,
   System.SysUtils,
+  System.StrUtils,
   System.Classes,
   System.Types,
   System.Win.Registry,
@@ -75,6 +76,9 @@ uses
   Atlas.IDE.Results.Peek,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
+  Atlas.IDE.Architecture.Service,
+  Atlas.IDE.UnitRelations.Service,
+  Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.UI.EditorToolbar.Customize,
@@ -972,6 +976,16 @@ begin
   Result := TAtlasIdeSettings.Current.Outline;
 end;
 
+function ArchitectureVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.ArchitectureEnabled;
+end;
+
+function UnitRelationsVisible: Boolean;
+begin
+  Result := TAtlasIdeUnitRelations.Enabled;
+end;
+
 function JumpToMatchVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.JumpToMatch;
@@ -1132,6 +1146,12 @@ begin
   Result := TAtlasIdeSettings.Current.Notes;
 end;
 
+/// <summary>Befehl „Aufrufdiagramm“ (#1122) sichtbar?</summary>
+function CallDiagramVisible: Boolean;
+begin
+  Result := TAtlasIdeResults.CallDiagramAllowed;
+end;
+
 /// <summary>Export, Import und Zurücksetzen der Einstellungen (#723): settings.exportImport.</summary>
 function SettingsTransferVisible: Boolean;
 begin
@@ -1253,6 +1273,18 @@ begin
   // Gliederungsfenster (#537); nur sichtbar, solange outline.enabled an ist.
   Add('Atlas.Outline', TAtlasTextId.OutlineCommand,
     Guarded(TAtlasFeature.Outline, TAtlasIdeOutline.ShowWindow), OutlineVisible);
+  // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
+  Add('Atlas.Architecture', TAtlasTextId.ArchitectureCommand,
+    Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowWindow), ArchitectureVisible);
+  // Unit-Beziehungen (#593); am selben Schalter wie die Architektur (derselbe Uses-Graph).
+  Add('Atlas.UnitRelations', TAtlasTextId.UnitRelationsCommand,
+    Guarded(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowWindow), UnitRelationsVisible);
+  // Kosten einer interface-Änderung (#554): Verwender nach Abschnitt und verschiebbare uses der Unit im Editor,
+  // dazu die teuersten Units in der Architekturübersicht.
+  Add('Atlas.UnitDependencies', TAtlasTextId.UnitDependenciesCommand,
+    Guarded(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent), UnitRelationsVisible);
+  Add('Atlas.InterfaceCostRanking', TAtlasTextId.InterfaceCostRankingCommand,
+    Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowRanking), ArchitectureVisible);
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
     Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
@@ -1317,6 +1349,9 @@ begin
     Guarded(TAtlasFeature.MultiCursor, MultiCursorBelow), MultiCursorVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
+  // Aufrufdiagramm (#1122); nur sichtbar, solange callHierarchy.diagram an ist.
+  Add('Atlas.CallDiagram', TAtlasTextId.CallDiagramCommand,
+    Guarded(TAtlasFeature.Results, TAtlasIdeResults.ShowCallDiagram), CallDiagramVisible);
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
   Add('Atlas.Subtypes', TAtlasTextId.MenuSubtypes, Hierarchy(TAtlasHierarchyDirection.Subtypes));
   Add('Atlas.ResultsWindow', TAtlasTextId.MenuResultsWindow, TAtlasIdeResults.ShowWindow);
@@ -1403,7 +1438,16 @@ begin
     begin
       TAtlasIdeUnitSearch.Show;
     end);
-  Add('Atlas.UnitSearchIde', TAtlasTextId.UnitSearchIdeDialog, TAtlasIdeUnitSearch.ShowIdeDialog);
+  Add('Atlas.UnitSearchIde', TAtlasTextId.UnitSearchIdeDialog,
+    procedure
+    begin
+      TAtlasIdeUnitSearch.ShowIdeDialog;
+    end);
+  // Unit verwenden und Formulare suchen (#786), mit den Dialogen der IDE als Ausweg.
+  Add('Atlas.UseUnit', TAtlasTextId.UseUnitCommand, TAtlasIdeUnitSearch.ShowUseUnit);
+  Add('Atlas.UseUnitIde', TAtlasTextId.UseUnitIdeDialog, TAtlasIdeUnitSearch.ShowUseUnitIdeDialog);
+  Add('Atlas.Forms', TAtlasTextId.FormsCommand, TAtlasIdeUnitSearch.ShowForms);
+  Add('Atlas.FormsIde', TAtlasTextId.FormsIdeDialog, TAtlasIdeUnitSearch.ShowFormsIdeDialog);
   // Atlas-Suche (#877, #878).
   Add('Atlas.Search', TAtlasTextId.SearchCommand, TAtlasIdeSearch.Show);
   Add('Atlas.SearchInMethod', TAtlasTextId.SearchInMethodCommand, TAtlasIdeSearch.ShowInMethod);
@@ -1699,6 +1743,8 @@ end;
 
 const
   ProblemCountsExtra = 'problemCounts';
+  /// <summary>Kosten einer interface-Änderung (#554).</summary>
+  InterfaceCostExtra = 'interfaceCost';
 
 procedure RegisterStatusField;
 begin
@@ -2364,10 +2410,27 @@ begin
   // Kennung; „Regel einstellen…“ öffnet die Einstellungsseite auf der Regel.
   TAtlasEditorHover.OnProblemAction :=
     procedure(const AProblem: TAtlasProblem; const ATag: string)
+    var
+      Item: Integer;
     begin
       if ATag = 'rule.configure' then
       begin
         TAtlasOptionsRegistration.ShowRule(AProblem.Code);
+        Exit;
+      end;
+      // Unit-Zyklus (#896): Unit im Pfad springt an ihren uses-Eintrag, „Graph zeigen“ öffnet die
+      // Unit-Beziehungen der Unit im Editor.
+      if StartsStr('related:', ATag) then
+      begin
+        Item := StrToIntDef(Copy(ATag, Length('related:') + 1, MaxInt), -1);
+        if (Item >= 0) and (Item <= High(AProblem.Related)) then
+          TAtlasIdeNavigation.GoToLocation(TLspSession.UriToPath(AProblem.Related[Item].Uri),
+            AProblem.Related[Item].Line, AProblem.Related[Item].Character);
+        Exit;
+      end;
+      if ATag = 'cycle.showGraph' then
+      begin
+        TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
         Exit;
       end;
       TAtlasIdeEditorCommands.ApplyTagged(TLspRange.Create(AProblem.StartLine, AProblem.StartCharacter,
@@ -2382,6 +2445,12 @@ begin
         Result := TAtlasProblemsController.Current.ForFile(AFileName);
     end;
   // Schnellkorrektur „Signaturhilfe öffnen“ (#1007): nach dem Sprung der Parameter-Hint wie mit der Taste.
+  // „Graph zeigen“ als Code-Aktion an einem Unit-Zyklus (#896, atlas.showUnitRelations).
+  TAtlasIdeEditorCommands.OnUnitRelations :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
+    end;
   TAtlasIdeEditorCommands.OnSignatureHelp :=
     procedure
     begin
@@ -2436,6 +2505,43 @@ begin
         Result := Manager.ActiveSession;
     end);
   TAtlasIdeOutline.Install;
+  // Fenster „Atlas-Architektur“ (#1118): fragt den Server über RunCommandAsync.
+  TAtlasIdeArchitecture.Install(
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.ActiveSession <> nil) and
+        Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
+    end);
+  // Fenster „Unit-Beziehungen“ (#593): fragt regelmäßig nach, daher nicht über den einen Hintergrundbefehl von
+  // RunCommandAsync (der bliebe sonst für Architektur und Co. belegt), und startet keinen Server.
+  TAtlasIdeUnitRelations.Install(
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.RunningSession <> nil);
+      if Result then
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
+    end);
+  // Kosten einer interface-Änderung (#554) im Zusatzfeld der Statusleiste; Klick zeigt die Abhängigkeiten.
+  TAtlasIdeUnitRelations.SetCostHandler(
+    procedure(const AText, AHint: string)
+    begin
+      if StatusField = nil then
+        Exit;
+      if AText = '' then
+        StatusField.SetExtra(InterfaceCostExtra, '', '', nil)
+      else
+        StatusField.SetExtra(InterfaceCostExtra, AText, AHint,
+          procedure(APoint: TPoint)
+          begin
+            TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
+          end);
+    end);
+  // Strg+Doppelklick in der Architekturkarte zeigt die Unit dort.
+  TAtlasIdeArchitecture.OnUnitRelations :=
+    procedure(AFileName: string)
+    begin
+      TAtlasIdeUnitRelations.ShowFor(AFileName);
+    end;
   TAtlasIdeBreadcrumbs.Install;
   // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
   StartEditorToolbar;
@@ -2623,6 +2729,8 @@ begin
   TAtlasIdeCommentContinuation.Uninstall;
   TAtlasIdeStatementCompletion.Uninstall;
   TAtlasIdeOutline.Uninstall;
+  TAtlasIdeArchitecture.Uninstall;
+  TAtlasIdeUnitRelations.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
   TAtlasIdeSearch.Uninstall;
@@ -4129,6 +4237,8 @@ begin
       TAtlasIdeBookmarks.ThemeChanged;
       TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
+      TAtlasIdeArchitecture.ThemeChanged;
+      TAtlasIdeUnitRelations.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeEditorToolbar.ThemeChanged;
       TAtlasIdeStatusBar.ThemeChanged;
@@ -4179,6 +4289,11 @@ begin
       TAtlasIdeProblems.ApplySettings;
       // outline.* (#537).
       TAtlasIdeOutline.ApplySettings;
+      // architecture.* (#1118).
+      TAtlasIdeArchitecture.ApplySettings;
+      TAtlasIdeUnitRelations.ApplySettings;
+      // callHierarchy.diagram (#1122).
+      TAtlasIdeResultsWindow.ApplySettings;
       // editor.breadcrumbs* (#590).
       TAtlasIdeBreadcrumbs.ApplySettings;
       // editor.toolbar* (#1101).

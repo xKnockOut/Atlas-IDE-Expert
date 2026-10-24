@@ -93,6 +93,18 @@ type
     class function Default: TCodeLensSettings; static;
   end;
 
+  /// <summary>Treffersicherheit der Verwendungen ("references", #1119).</summary>
+  TReferenceSettings = record
+    /// <summary>Erschlossene Treffer zeigen (über ein Interface, eine überschriebene Methode, nicht eindeutige
+    /// Überladung, unbekannter Typ, inaktiver Zweig); aus = nur sichere, wie vor #1119.</summary>
+    Inferred: Boolean;
+    /// <summary>Auch Namen in String-Literalen als erschlossen melden (RTTI, MethodAddress).</summary>
+    TextMatches: Boolean;
+    class function Default: TReferenceSettings; static;
+    /// <summary>Nur sichere Treffer wie vor #1119, für Umbauten, die nur eindeutige Stellen ändern.</summary>
+    class function SureOnly: TReferenceSettings; static;
+  end;
+
   /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654, #770). Der Server bereitet die Doku
   /// immer vollständig auf und gibt die Werte nur weiter.</summary>
   THintSettings = record
@@ -466,6 +478,7 @@ type
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
+    References: TReferenceSettings;
     Hints: THintSettings;
     Directives: TDirectiveSettings;
     Highlight: THighlightSettings;
@@ -513,6 +526,11 @@ type
     SortUsesByNamespace: Boolean;
     /// <summary>Units, die "ungenutzte uses entfernen" nie entfernt (#284).</summary>
     UsesKeep: TArray<string>;
+    /// <summary>Toter Code (#64): Attribute (z. B. JsonName) und Namensmuster (z. B. *Handler), deren Elemente als
+    /// verwendet gelten (deadCode.keepAttributes, deadCode.keepPatterns); für unused-private-member,
+    /// unused-public-member und unused-declaration.</summary>
+    DeadCodeKeepAttributes: TArray<string>;
+    DeadCodeKeepPatterns: TArray<string>;
     /// <summary>Klartext als String-Literal (#312).</summary>
     StringLiteral: TStringLiteralSettings;
     /// <summary>Klassenmitglieder ordnen (#89).</summary>
@@ -530,6 +548,12 @@ type
     DiagnosticsLog: Boolean;
     DiagnosticsLogDays: Integer;
     DiagnosticsLogMapFile: Boolean;
+    /// <summary>Unit-Zyklen beim Tippen melden (#896, diagnostics.usesCycleLive): uses-cycle in den Diagnosen des
+    /// Editors; die projektweite Prüfung (#64) bleibt davon unberührt.</summary>
+    DiagnosticsUsesCycleLive: Boolean;
+    /// <summary>Im Editor auch Zyklen mit implementation-Kante, als Hinweis (#896,
+    /// diagnostics.usesCycleImplementation).</summary>
+    DiagnosticsUsesCycleImplementation: Boolean;
     /// <summary>Umfang des Index (#648): alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und
     /// der Bibliotheks- und Suchpfade der Installation; False = nur über uses erreichbare (bisher).</summary>
     IndexProjectGroup: Boolean;
@@ -544,6 +568,20 @@ type
     IndexRemoveOrphans: Boolean;
     IndexCacheMaxAgeDays: Integer;
     IndexCacheMaxMb: Integer;
+    /// <summary>Architekturübersicht (#1118): Hauptschalter (aus = kein Fenster, kein Bericht, kein
+    /// get_architecture), Umfang ("project" oder "projectGroup"), Bibliotheks-Units mitzählen, Länge der Liste
+    /// zentraler Units (5..100) und Glob-Muster für Units, die nicht eingehen (Unit-Name oder Pfad relativ zum
+    /// Projekt).</summary>
+    ArchitectureEnabled: Boolean;
+    ArchitectureScope: string;
+    ArchitectureIncludeLibraryUnits: Boolean;
+    ArchitectureCentralUnits: Integer;
+    ArchitectureExclude: TArray<string>;
+    /// <summary>Architekturvergleich (#1121): gespeicherter Stand (Pfad relativ zum Projekt, '' = keiner), mit dem
+    /// Fenster und Bericht automatisch vergleichen, und die Abweichungen, die --compare als Fehler meldet
+    /// (newCycle, newCrossLink, subsystemChange, centralGrowth; Vorgabe newCycle).</summary>
+    ArchitectureBaseline: string;
+    ArchitectureFailOn: TArray<string>;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -747,6 +785,20 @@ begin
   Result.ControlChars := True;
 end;
 
+{ TReferenceSettings }
+
+class function TReferenceSettings.Default: TReferenceSettings;
+begin
+  Result.Inferred := True;
+  Result.TextMatches := False;
+end;
+
+class function TReferenceSettings.SureOnly: TReferenceSettings;
+begin
+  Result.Inferred := False;
+  Result.TextMatches := False;
+end;
+
 { TCodeLensSettings }
 
 class function TCodeLensSettings.Default: TCodeLensSettings;
@@ -935,6 +987,7 @@ begin
   Result.Formatting := TFormatStyle.Default;
   Result.InlayHints := TInlayHintSettings.Default;
   Result.CodeLens := TCodeLensSettings.Default;
+  Result.References := TReferenceSettings.Default;
   Result.Hints := THintSettings.Default;
   Result.Directives := TDirectiveSettings.Default;
   Result.Highlight := THighlightSettings.Default;
@@ -958,6 +1011,8 @@ begin
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;
+  Result.DeadCodeKeepAttributes := nil;
+  Result.DeadCodeKeepPatterns := nil;
   Result.StringLiteral := TStringLiteralSettings.Default;
   Result.MemberOrder := TMemberOrderSettings.Default;
   Result.TestUnits := TTestUnitSettings.Default;
@@ -968,6 +1023,8 @@ begin
   Result.DiagnosticsLog := True;
   Result.DiagnosticsLogDays := 7;
   Result.DiagnosticsLogMapFile := False;
+  Result.DiagnosticsUsesCycleLive := True;
+  Result.DiagnosticsUsesCycleImplementation := False;
   Result.IndexProjectGroup := True;
   Result.McpGlobalSettings := True;
   Result.IndexSearchPaths := True;
@@ -978,6 +1035,13 @@ begin
   Result.IndexRemoveOrphans := True;
   Result.IndexCacheMaxAgeDays := 14;
   Result.IndexCacheMaxMb := 256;
+  Result.ArchitectureEnabled := True;
+  Result.ArchitectureScope := 'projectGroup';
+  Result.ArchitectureIncludeLibraryUnits := False;
+  Result.ArchitectureCentralUnits := 15;
+  Result.ArchitectureExclude := nil;
+  Result.ArchitectureBaseline := '';
+  Result.ArchitectureFailOn := ['newCycle'];
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';

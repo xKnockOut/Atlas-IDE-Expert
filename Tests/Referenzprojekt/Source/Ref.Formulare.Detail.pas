@@ -1,6 +1,10 @@
 ﻿unit Ref.Formulare.Detail;
 
 // Geerbtes Formular: die DFM beginnt mit inherited.
+//
+// Ref.Formulare.Haupt verwendet diese Unit im implementation-uses, diese Unit
+// verwendet Ref.Formulare.Haupt ebenso: ein erlaubter Zyklus über
+// implementation-uses, den uses-cycle mit vollständigem Pfad meldet (#64).
 
 interface
 
@@ -30,6 +34,9 @@ var
 
 implementation
 
+uses
+  Ref.Formulare.Haupt; // ERWARTET-PROJEKT: uses-cycle
+
 {$R *.dfm}
 
 procedure TDetailFormular.Initialisieren;
@@ -47,6 +54,8 @@ procedure TDetailFormular.SchliessenButtonClick(Sender: TObject);
 begin
   inherited;
   NameEdit.Clear;
+  // Auswahl im Hauptformular zurücksetzen; dafür steht Ref.Formulare.Haupt im implementation-uses.
+  HauptFormular.KundenListe.ItemIndex := -1;
 end;
 
 end.

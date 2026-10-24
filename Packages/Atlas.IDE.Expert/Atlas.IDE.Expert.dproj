@@ -180,6 +180,7 @@
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Setup.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas"/>
+        <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.UseUnit.pas"/>
         <DCCReference Include="Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas"/>
         <DCCReference Include="Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas"/>
         <DCCReference Include="Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Commands.pas"/>
@@ -424,6 +425,9 @@
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
         <DCCReference Include="Source\Core\Results\Atlas.Core.Results.Model.pas"/>
+        <DCCReference Include="Source\Core\Results\Atlas.Core.Results.CallDiagramTemplate.pas"/>
+        <DCCReference Include="Source\Core\Results\Atlas.Core.Results.CallDiagram.pas"/>
+        <DCCReference Include="Source\UI\Results\Atlas.UI.Results.CallDiagram.pas"/>
         <DCCReference Include="Source\UI\Results\Atlas.UI.Results.Frame.pas">
             <Form>AtlasResultsFrame</Form>
             <FormType>dfm</FormType>
@@ -572,6 +576,24 @@
         <DCCReference Include="Source\UI\Editor\Atlas.UI.Editor.Peek.pas"/>
         <DCCReference Include="Source\IDE\Results\Atlas.IDE.Results.Peek.pas"/>
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.Model.pas"/>
+        <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.Model.pas"/>
+        <DCCReference Include="Source\UI\Architecture\Atlas.UI.Architecture.Map.pas"/>
+        <DCCReference Include="Source\UI\Architecture\Atlas.UI.Architecture.Frame.pas">
+            <Form>AtlasArchitectureFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\Architecture\Atlas.IDE.Architecture.Window.pas"/>
+        <DCCReference Include="Source\IDE\Architecture\Atlas.IDE.Architecture.Service.pas"/>
+        <DCCReference Include="Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas"/>
+        <DCCReference Include="Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas"/>
+        <DCCReference Include="Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas">
+            <Form>AtlasUnitRelationsFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\IDE\UnitRelations\Atlas.IDE.UnitRelations.Window.pas"/>
+        <DCCReference Include="Source\IDE\UnitRelations\Atlas.IDE.UnitRelations.Service.pas"/>
         <DCCReference Include="Source\UI\Outline\Atlas.UI.Outline.Frame.pas">
             <Form>AtlasOutlineFrame</Form>
             <FormType>dfm</FormType>

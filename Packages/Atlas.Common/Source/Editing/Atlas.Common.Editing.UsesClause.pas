@@ -31,6 +31,9 @@ type
     Name: string;
     Range: TTextRange;
     List: TUsesListKind;
+    /// <summary>Steht im interface-Teil einer Unit (#268); in Programmen, Packages und im
+    /// implementation-Teil False.</summary>
+    InInterface: Boolean;
   end;
 
   /// <summary>Eine uses-Liste (#284).</summary>
@@ -238,13 +241,26 @@ var
   AfterIn: Boolean;
   Reference: TUsesReference;
   List: TUsesListKind;
+  IsUnit: Boolean;
+  Implementation_: Integer;
 begin
   Result := nil;
+  // Abschnitt je Eintrag (#268): in einer Unit gilt alles vor "implementation" als interface.
+  First := FirstIndex(ATokens);
+  IsUnit := (First >= 0) and ATokens[First].IsKeyword('unit');
+  Implementation_ := Length(ATokens);
+  for Index := 0 to High(ATokens) do
+    if ATokens[Index].IsKeyword('implementation') then
+    begin
+      Implementation_ := Index;
+      Break;
+    end;
   Index := 0;
   while Index <= High(ATokens) do
   begin
     if IsListStart(ATokens, Index) then
     begin
+      Reference.InInterface := IsUnit and (Index < Implementation_);
       List := TUsesListKind.UsesList;
       if SameText(ATokens[Index].Text, 'contains') then
         List := TUsesListKind.ContainsList

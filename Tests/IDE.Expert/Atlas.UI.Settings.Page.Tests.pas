@@ -57,6 +57,9 @@ type
     /// <summary>#585: Test debuggen und Haltepunkt am Anfang auf dem Reiter Debuggen.</summary>
     [Test]
     procedure TestDebugRoundTrip;
+    /// <summary>#786: Alt+F11 und Umschalt+F12 auf der Seite „Units suchen“.</summary>
+    [Test]
+    procedure UseUnitAndFormsDialogsRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
@@ -95,6 +98,9 @@ type
     procedure EditorStatusBarRoundTrip;
     [Test]
     procedure QuickBookmarksRoundTrip;
+    /// <summary>#1122: Kontrollkästchen „Aufrufdiagramm“ liest und schreibt callHierarchy.diagram.</summary>
+    [Test]
+    procedure CallHierarchyDiagramRoundTrip;
     [Test]
     procedure WelcomeSettingsRoundTrip;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
@@ -937,11 +943,13 @@ begin
     Assert.IsTrue(Page.TestsBuildFirstCheck.Checked);
     Assert.IsFalse(Page.TestsAfterBuildCheck.Checked);
     Assert.IsFalse(Page.BuildZeroHintsCheck.Checked);
+    Assert.IsTrue(Page.ShowInterfaceCostCheck.Checked, 'Kosten einer interface-Änderung standardmäßig an (#554)');
     Page.CodeLensTestsCheck.Checked := False;
     Page.TestRunCheck.Checked := False;
     Page.TestsBuildFirstCheck.Checked := False;
     Page.TestsAfterBuildCheck.Checked := True;
     Page.BuildZeroHintsCheck.Checked := True;
+    Page.ShowInterfaceCostCheck.Checked := False;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsFalse(Saved.CodeLensTests);
@@ -949,8 +957,10 @@ begin
     Assert.IsFalse(Saved.TestsBuildFirst);
     Assert.IsTrue(Saved.TestsAfterBuild);
     Assert.IsTrue(Saved.BuildZeroHints);
+    Assert.IsFalse(Saved.ShowInterfaceCost);
     Page.LoadFrom(Saved);
     Assert.IsFalse(Page.CodeLensTestsCheck.Checked);
+    Assert.IsFalse(Page.ShowInterfaceCostCheck.Checked);
     Assert.IsTrue(Page.TestsAfterBuildCheck.Checked);
   finally
     Page.Free;
@@ -1052,6 +1062,32 @@ begin
     Assert.IsFalse(Page.TestDebugCheck.Checked);
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
     Assert.IsTrue(Page.DebugHoverValuesCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.UseUnitAndFormsDialogsRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.UnitSearchReplaceUseUnitCheck.Checked, 'Alt+F11 standardmäßig übernommen');
+    Assert.IsTrue(Page.UnitSearchReplaceFormsCheck.Checked, 'Umschalt+F12 standardmäßig übernommen');
+    Page.UnitSearchReplaceUseUnitCheck.Checked := False;
+    Page.UnitSearchReplaceFormsCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.UnitSearchReplaceUseUnitDialog);
+    Assert.IsFalse(Saved.UnitSearchReplaceFormsDialog);
+    Assert.IsTrue(Saved.UnitSearchReplaceIdeDialog, 'Strg+F12 bleibt');
+    Saved.UnitSearchReplaceFormsDialog := True;
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.UnitSearchReplaceUseUnitCheck.Checked);
+    Assert.IsTrue(Page.UnitSearchReplaceFormsCheck.Checked);
   finally
     Page.Free;
   end;
@@ -2144,6 +2180,29 @@ begin
     Page.SaveTo(Saved);
     Assert.AreEqual('method,status', Saved.EditorStatusBarItems);
     Assert.IsTrue(Saved.EditorStatusBar);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.CallHierarchyDiagramRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Settings, Saved: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Settings.CallHierarchyDiagram := False;
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(Settings);
+    Saved := TAtlasPluginSettings.Defaults;
+    Assert.IsTrue(Saved.CallHierarchyDiagram);
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.CallHierarchyDiagram, 'aus bleibt aus');
+    Settings.CallHierarchyDiagram := True;
+    Page.LoadFrom(Settings);
+    Page.SaveTo(Saved);
+    Assert.IsTrue(Saved.CallHierarchyDiagram, 'an bleibt an');
   finally
     Page.Free;
   end;
