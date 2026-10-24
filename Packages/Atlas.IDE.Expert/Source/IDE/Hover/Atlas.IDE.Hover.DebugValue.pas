@@ -10,6 +10,9 @@
 //     einer Schleife darauf; das Ergebnis geht über TAtlasMainThread an den
 //     Rückruf, der Notifier wird erst danach im Hauptthread abgemeldet.
 //   - Eine neue Auswertung oder Cancel verwirft die laufende.
+//   - Fenster „Auswerten“ (#784): Auswerten auf Wunsch mit Nebenwirkungen
+//     (eseAll, Funktionsaufrufe erlaubt) und Ändern über IOTAThread.Modify,
+//     das sich auf den zuletzt ausgewerteten Ausdruck bezieht.
 
 interface
 
@@ -62,7 +65,15 @@ type
     /// <summary>Wertet AExpression aus (ALine 1-basiert). Sofort fertig: Wert bzw. Fehler; verzögert:
     /// Pending, AOnDone kommt später im Hauptthread. None ohne angehaltenen Prozess.</summary>
     function Evaluate(const AExpression, AFileName: string; ALine: Integer;
-      const AOnDone: TAtlasDebugValueEvent): TAtlasDebugValue;
+      const AOnDone: TAtlasDebugValueEvent): TAtlasDebugValue; overload;
+    /// <summary>Wie oben; ASideEffects erlaubt Funktionsaufrufe im Ausdruck (#784).</summary>
+    function Evaluate(const AExpression, AFileName: string; ALine: Integer; ASideEffects: Boolean;
+      const AOnDone: TAtlasDebugValueEvent): TAtlasDebugValue; overload;
+    /// <summary>Setzt AExpression auf ANewValue (#784): erst auswerten, dann IOTAThread.Modify. AResult: neuer Wert
+    /// bzw. Fehlertext; leer, wenn der Debugger verzögert antwortet (dann beim nächsten Auswerten sichtbar).
+    /// </summary>
+    class function Modify(const AExpression, AFileName: string; ALine: Integer; const ANewValue: string;
+      out AResult: string): Boolean; static;
     /// <summary>Wie Evaluate, wartet aber nicht auf eine verzögerte Antwort (Tooltip der IDE).</summary>
     class function EvaluateNow(const AExpression, AFileName: string; ALine: Integer): TAtlasDebugValue; static;
     /// <summary>Laufende Auswertung verwerfen; ihr Ergebnis kommt nicht mehr.</summary>
@@ -85,15 +96,19 @@ type
   end;
 
 function RunEvaluate(const AThread: IOTAThread; const AExpression, AFileName: string;
-  ALine: Integer): TOutcome;
+  ALine: Integer; ASideEffects: Boolean): TOutcome;
 var
   Buffer: array[0..BufferSize - 1] of Char;
   CanModify: Boolean;
   ResultAddr, ResultSize, ResultVal: LongWord;
 begin
   FillChar(Buffer, SizeOf(Buffer), 0);
-  Result.Code := AThread.Evaluate(AExpression, @Buffer[0], Length(Buffer), CanModify, eseNone, '', ResultAddr,
-    ResultSize, ResultVal, AFileName, ALine);
+  if ASideEffects then
+    Result.Code := AThread.Evaluate(AExpression, @Buffer[0], Length(Buffer), CanModify, eseAll, '', ResultAddr,
+      ResultSize, ResultVal, AFileName, ALine)
+  else
+    Result.Code := AThread.Evaluate(AExpression, @Buffer[0], Length(Buffer), CanModify, eseNone, '', ResultAddr,
+      ResultSize, ResultVal, AFileName, ALine);
   Result.Text := Buffer;
 end;
 
@@ -231,6 +246,12 @@ end;
 
 function TAtlasIdeDebugValues.Evaluate(const AExpression, AFileName: string; ALine: Integer;
   const AOnDone: TAtlasDebugValueEvent): TAtlasDebugValue;
+begin
+  Result := Evaluate(AExpression, AFileName, ALine, False, AOnDone);
+end;
+
+function TAtlasIdeDebugValues.Evaluate(const AExpression, AFileName: string; ALine: Integer; ASideEffects: Boolean;
+  const AOnDone: TAtlasDebugValueEvent): TAtlasDebugValue;
 var
   Thread: IOTAThread;
   Outcome: TOutcome;
@@ -240,7 +261,7 @@ begin
   Thread := StoppedThread;
   if (Thread = nil) or (AExpression = '') then
     Exit;
-  Outcome := RunEvaluate(Thread, AExpression, AFileName, ALine);
+  Outcome := RunEvaluate(Thread, AExpression, AFileName, ALine, ASideEffects);
   case Outcome.Code of
     erOK:
       Result := TAtlasDebugValue.Evaluated(AExpression, Outcome.Text);
@@ -269,11 +290,38 @@ begin
   Thread := StoppedThread;
   if (Thread = nil) or (AExpression = '') then
     Exit;
-  Outcome := RunEvaluate(Thread, AExpression, AFileName, ALine);
+  Outcome := RunEvaluate(Thread, AExpression, AFileName, ALine, False);
   if Outcome.Code = erOK then
     Result := TAtlasDebugValue.Evaluated(AExpression, Outcome.Text)
   else
     Result := TAtlasDebugValue.Failed(AExpression, Outcome.Text);
+end;
+
+class function TAtlasIdeDebugValues.Modify(const AExpression, AFileName: string; ALine: Integer;
+  const ANewValue: string; out AResult: string): Boolean;
+var
+  Thread: IOTAThread;
+  Outcome: TOutcome;
+  Buffer: array[0..BufferSize - 1] of Char;
+  ResultVal: Integer;
+  Code: TOTAEvaluateResult;
+begin
+  AResult := '';
+  Thread := StoppedThread;
+  if (Thread = nil) or (AExpression = '') then
+    Exit(False);
+  // Modify ändert den zuletzt ausgewerteten Ausdruck: erst auswerten, ohne Nebenwirkungen.
+  Outcome := RunEvaluate(Thread, AExpression, AFileName, ALine, False);
+  if Outcome.Code <> erOK then
+  begin
+    AResult := Outcome.Text;
+    Exit(False);
+  end;
+  FillChar(Buffer, SizeOf(Buffer), 0);
+  ResultVal := 0;
+  Code := Thread.Modify(ANewValue, @Buffer[0], Length(Buffer), ResultVal);
+  AResult := Buffer;
+  Result := Code in [erOK, erDeferred];
 end;
 
 end.

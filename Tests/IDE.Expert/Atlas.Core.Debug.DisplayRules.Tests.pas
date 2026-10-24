@@ -48,6 +48,7 @@ uses
   System.SysUtils,
   Atlas.Text.DebugDisplay,
   Atlas.Core.Debug.Visualizers,
+  Atlas.Core.Settings.VisualizerKinds,
   Atlas.Core.Debug.DisplayRules;
 
 const

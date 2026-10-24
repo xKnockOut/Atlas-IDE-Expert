@@ -628,7 +628,7 @@ const
     'Bezeichner mitziehen', 'Code Lens', 'Navigationsverlauf', 'Definition einblenden', 'Einfügen mit uses-Ergänzung',
     'Markierung umschließen', 'Umschließung entfernen', 'Ausblenden am Element', 'Atlas-Suche', 'Units suchen',
     'Erzeugen-Menü', 'Kommentar und Muster fortsetzen', 'Schnellbefehle', 'Gehe zu Definition', 'Editorleiste',
-    'Schnelle Lesezeichen', 'Debugger-Hilfen');
+    'Schnelle Lesezeichen', 'Debuggen');
 begin
   Result := Names[AFeature];
 end;

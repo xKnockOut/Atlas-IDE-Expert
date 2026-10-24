@@ -204,6 +204,7 @@ uses
   Atlas.IDE.Editor.SmartPaste,
   Atlas.IDE.Editor.Unwrap,
   Atlas.IDE.Debug.StepInto,
+  Atlas.IDE.Debug.StepFilter,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Foundation.Navigation;
@@ -487,6 +488,20 @@ begin
     procedure
     begin
       TAtlasIdeStepInto.Run;
+    end);
+  // Schrittfilter (#850): Routine an der Schreibmarke als Muster in debug.stepFilters.patterns aufnehmen bzw.
+  // entfernen; der Aufruf meldet, was danach noch filtert.
+  FContextMenu.AddGuarded(TAtlasFeature.Debugger, 'Atlas.StepFilterSkip',
+    TAtlasStrings.Text(TAtlasTextId.StepFilterSkipCommand), nil,
+    procedure
+    begin
+      TAtlasIdeDebugStepFilter.SkipAtCursor;
+    end);
+  FContextMenu.AddGuarded(TAtlasFeature.Debugger, 'Atlas.StepFilterUnskip',
+    TAtlasStrings.Text(TAtlasTextId.StepFilterUnskipCommand), nil,
+    procedure
+    begin
+      TAtlasIdeDebugStepFilter.UnskipAtCursor;
     end);
   FContextMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure
