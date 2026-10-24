@@ -24,6 +24,7 @@ uses
   Winapi.Windows,
   Winapi.ShellAPI,
   System.SysUtils,
+  System.StrUtils,
   System.Classes,
   System.Types,
   System.Win.Registry,
@@ -77,6 +78,7 @@ uses
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
   Atlas.IDE.UnitRelations.Service,
+  Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.UI.EditorToolbar.Customize,
@@ -2384,10 +2386,27 @@ begin
   // Kennung; „Regel einstellen…“ öffnet die Einstellungsseite auf der Regel.
   TAtlasEditorHover.OnProblemAction :=
     procedure(const AProblem: TAtlasProblem; const ATag: string)
+    var
+      Item: Integer;
     begin
       if ATag = 'rule.configure' then
       begin
         TAtlasOptionsRegistration.ShowRule(AProblem.Code);
+        Exit;
+      end;
+      // Unit-Zyklus (#896): Unit im Pfad springt an ihren uses-Eintrag, „Graph zeigen“ öffnet die
+      // Unit-Beziehungen der Unit im Editor.
+      if StartsStr('related:', ATag) then
+      begin
+        Item := StrToIntDef(Copy(ATag, Length('related:') + 1, MaxInt), -1);
+        if (Item >= 0) and (Item <= High(AProblem.Related)) then
+          TAtlasIdeNavigation.GoToLocation(TLspSession.UriToPath(AProblem.Related[Item].Uri),
+            AProblem.Related[Item].Line, AProblem.Related[Item].Character);
+        Exit;
+      end;
+      if ATag = 'cycle.showGraph' then
+      begin
+        TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
         Exit;
       end;
       TAtlasIdeEditorCommands.ApplyTagged(TLspRange.Create(AProblem.StartLine, AProblem.StartCharacter,
@@ -2402,6 +2421,12 @@ begin
         Result := TAtlasProblemsController.Current.ForFile(AFileName);
     end;
   // Schnellkorrektur „Signaturhilfe öffnen“ (#1007): nach dem Sprung der Parameter-Hint wie mit der Taste.
+  // „Graph zeigen“ als Code-Aktion an einem Unit-Zyklus (#896, atlas.showUnitRelations).
+  TAtlasIdeEditorCommands.OnUnitRelations :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
+    end;
   TAtlasIdeEditorCommands.OnSignatureHelp :=
     procedure
     begin

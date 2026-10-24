@@ -741,7 +741,9 @@ type
     // „Unit verwenden“ und „Formulare suchen“ (#786).
     UseUnitTitle, UseUnitTitleNone, FormsTitle, UseUnitInUses, UseUnitCycle, UseUnitCycleWarning, UseUnitCycleHint, UseUnitHints,
     FormsHints, UseUnitNothing, UseUnitCommand, FormsCommand, UseUnitIdeDialog, FormsIdeDialog, SettingsUnitSearchReplaceUseUnit,
-    SettingsUnitSearchReplaceForms);
+    SettingsUnitSearchReplaceForms,
+    // Unit-Zyklus beim Tippen (#896).
+    HoverShowGraph);
 
   TAtlasStrings = class
   private class var
@@ -2494,7 +2496,8 @@ const
      'IDE-Dialog Unit verwenden',
      'IDE-Dialog Formulare',
      'Alt+F11 und Datei › Unit verwenden öffnen das Atlas-Fenster',
-     'Umschalt+F12 und Ansicht › Formulare öffnen das Atlas-Fenster'),
+     'Umschalt+F12 und Ansicht › Formulare öffnen das Atlas-Fenster',
+     'Graph zeigen'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4151,7 +4154,8 @@ const
      'IDE dialog Use Unit',
      'IDE dialog Forms',
      'Alt+F11 and File › Use Unit open the Atlas window',
-     'Shift+F12 and View › Forms open the Atlas window'));
+     'Shift+F12 and View › Forms open the Atlas window',
+     'Show graph'));
 
 { TAtlasStrings }
 

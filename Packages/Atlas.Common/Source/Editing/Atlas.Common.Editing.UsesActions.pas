@@ -17,6 +17,10 @@
 //   behalten, oder nur in der implementation gebraucht. Inaktive Zweige der
 //   bedingten Kompilierung zählen dabei nicht, so werden auch Listen mit
 //   {$IFDEF} geprüft. RemoveEntries streicht einzelne Einträge auch dort.
+// - InterfaceUsages (#896) nennt die Stellen im interface-Teil, wegen derer
+//   eine Unit im interface-uses stehen muss, mit derselben großzügigen
+//   Namensprüfung wie MovableUnits. Leer heißt: Sie kann ins
+//   implementation-uses, z. B. um einen Unit-Zyklus aufzulösen.
 
 interface
 
@@ -77,6 +81,13 @@ type
     State: TUsesEntryState;
   end;
 
+  /// <summary>Ein Bezeichner im interface-Teil, wegen dessen eine Unit im interface-uses stehen muss (#896).
+  /// </summary>
+  TUsesInterfaceUsage = record
+    Name: string;
+    Range: TTextRange;
+  end;
+
   TUsesActions = class
   public
     /// <summary>Auffällige Einträge der uses-Listen in Quelltextreihenfolge (#621). Token in AInactive
@@ -93,6 +104,11 @@ type
     /// <summary>Entfernbare Units in Reihenfolge der uses-Listen.</summary>
     class function UnusedUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc;
       const AKeep: TArray<string>): TArray<string>; static;
+    /// <summary>Bezeichner im interface-Teil einer Unit (außerhalb der uses-Listen), die einen der Namen ANames
+    /// (interface-Symbole der Unit AUnitName, auch Mitglieder) oder den letzten Teil von AUnitName nennen (#896),
+    /// in Quelltextreihenfolge. Leer in Programmen und wenn die Unit im interface nicht gebraucht wird.</summary>
+    class function InterfaceUsages(const ATokens: TArray<TPascalToken>; const AUnitName: string;
+      const ANames: TArray<string>): TArray<TUsesInterfaceUsage>; static;
     /// <summary>interface-Units, die nur im implementation-Teil gebraucht werden.</summary>
     class function MovableUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc): TArray<string>; static;
     /// <summary>Edits, die AUnits aus allen schlichten Listen streichen.</summary>
@@ -511,6 +527,59 @@ begin
         end;
   finally
     Identifiers.Free;
+  end;
+end;
+
+class function TUsesActions.InterfaceUsages(const ATokens: TArray<TPascalToken>; const AUnitName: string;
+  const ANames: TArray<string>): TArray<TUsesInterfaceUsage>;
+var
+  Usage: TUsesInterfaceUsage;
+  Clauses: TArray<TUsesClauseInfo>;
+  Names: TDictionary<string, Boolean>;
+  Name: string;
+  Index, ClauseIndex: Integer;
+  IsUnit: Boolean;
+begin
+  Result := nil;
+  IsUnit := False;
+  for Index := 0 to High(ATokens) do
+    if not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
+      IsUnit := ATokens[Index].IsKeyword('unit');
+      Break;
+    end;
+  if not IsUnit then
+    Exit;
+  Clauses := TUsesClauses.Clauses(ATokens);
+  Names := TDictionary<string, Boolean>.Create;
+  try
+    // Qualifizierter Zugriff wie uKunde.TKunde zählt wie in UsageOf.
+    Names.AddOrSetValue(LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)), True);
+    for Name in ANames do
+      Names.AddOrSetValue(LowerCase(Bare(Name)), True);
+    ClauseIndex := 0;
+    Index := 0;
+    while Index <= High(ATokens) do
+    begin
+      if (ClauseIndex <= High(Clauses)) and (Index = Clauses[ClauseIndex].UsesIndex) then
+      begin
+        Index := Clauses[ClauseIndex].Semicolon + 1;
+        Inc(ClauseIndex);
+        Continue;
+      end;
+      if ATokens[Index].IsKeyword('implementation') then
+        Break;
+      if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
+        Names.ContainsKey(LowerCase(Bare(ATokens[Index].Text))) then
+      begin
+        Usage.Name := Bare(ATokens[Index].Text);
+        Usage.Range := TTextRange.Create(ATokens[Index].StartPos, ATokens[Index].EndPos);
+        Result := Result + [Usage];
+      end;
+      Inc(Index);
+    end;
+  finally
+    Names.Free;
   end;
 end;
 

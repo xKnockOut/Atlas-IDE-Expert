@@ -189,6 +189,8 @@ type
     FWatchedFiles: TLspWatchedFiles;
     /// <summary>Aktive Unit nach der Tipp-Pause neu in den Index (#492).</summary>
     FIndexRefresh: TLspIndexRefresh;
+    /// <summary>uses-Listen der übernommenen Puffer (#896): bei Änderung andere offene Units neu prüfen.</summary>
+    FUsesChanges: TLspUsesChanges;
     /// <summary>Build-Ergebnisse und Compilermeldungen aus der IDE (#528).</summary>
     FIdeBuild: TLspIdeBuild;
     /// <summary>Projektkontext aus der IDE (#396).</summary>
@@ -1880,6 +1882,7 @@ procedure TServerComposition.WireWatchedFiles;
 begin
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
+  FUsesChanges := TLspUsesChanges.Create;
   FIndexRefresh := TLspIndexRefresh.Create(TLspIndexRefresh.DefaultDelayMs,
     procedure(const AFileName, AText: string)
     var
@@ -1899,6 +1902,10 @@ begin
           Updated := True;
       if Updated then
         FLogger.Debug(Format('Index nach Tipp-Pause aktualisiert: %s', [ExtractFileName(AFileName)]));
+      // Geänderte uses (#896): Ein Unit-Zyklus anderer offener Units kann über diese Unit laufen; der Graph
+      // folgt dem Index, die Neuprüfung ist gebündelt.
+      if Updated and FUsesChanges.Changed(AFileName, AText) and (FSyntaxDiagnostics <> nil) then
+        FSyntaxDiagnostics.RefreshLater;
     end);
   FIndexRefresh.OnError :=
     procedure(E: Exception)
@@ -2048,6 +2055,7 @@ begin
   TPascalPreprocessor.SetDeclaredProvider(nil);
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   FreeAndNil(FIndexRefresh);
+  FreeAndNil(FUsesChanges);
   // Vor der Verbindung: Beide Wächter rufen FConnection.
   FreeAndNil(FFileWatcher);
   FreeAndNil(FParentWatcher);
@@ -4251,6 +4259,9 @@ begin
   // Projekte der Gruppe für unused-public-member (#1102); still, solange Projekte laden oder der Index läuft.
   AContext.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText, RuleProjectsComplete,
     FUsesGraph);
+  // Editor-Prüfung (#896): Diagnosen, Code-Aktionen, Slash-Befehle und Baseline wie im Editor; uses-cycle folgt
+  // dort diagnostics.usesCycleLive.
+  AContext.Live := True;
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
   // Mit Pfad, damit Korrekturen die Formulardatei ändern können (#309).
   if SameText(ExtractFileExt(FileName), '.pas') then
@@ -4361,6 +4372,7 @@ begin
         if TLspIndexRefresh.Applies(TDocumentUris.ToPath(ADocument.Uri)) then
         begin
           FIndexRefresh.Closed(TDocumentUris.ToPath(ADocument.Uri));
+          FUsesChanges.Forget(TDocumentUris.ToPath(ADocument.Uri));
           HandleWatchedFiles([TFileChange.Create(TDocumentUris.ToPath(ADocument.Uri), TFileChangeKind.Changed)]);
         end;
     end;

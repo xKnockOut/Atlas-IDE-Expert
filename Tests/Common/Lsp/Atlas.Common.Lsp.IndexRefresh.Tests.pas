@@ -14,6 +14,8 @@ type
     procedure AppliesPascalSourcesOnly;
     [Test]
     procedure LastTextWinsAfterPause;
+    [Test]
+    procedure UsesChangesOnlyForUsesLists;
   end;
 
 implementation
@@ -67,7 +69,7 @@ begin
       Refresh.Changed('C:\P\A.pas', 'eins');
       Refresh.Changed('C:\P\A.pas', 'zwei');
       Refresh.Changed('C:\P\A.pas', 'drei');
-      Assert.AreEqual(wrSignaled, Done.WaitFor(2000));
+      Assert.IsTrue(Done.WaitFor(2000) = wrSignaled, 'nach der Pause übernommen');
       Sleep(100);
     finally
       Refresh.Free;
@@ -78,6 +80,27 @@ begin
     Done.Free;
   end;
   Applied := '';
+end;
+
+procedure TLspIndexRefreshTests.UsesChangesOnlyForUsesLists;
+var
+  Changes: TLspUsesChanges;
+begin
+  Changes := TLspUsesChanges.Create;
+  try
+    Assert.IsTrue(Changes.Changed('C:\P\A.pas', 'unit A; interface uses B; implementation end.'), 'erster Stand');
+    Assert.IsFalse(Changes.Changed('C:\P\A.pas', 'unit A; interface uses B; implementation var X: Integer; end.'),
+      'Änderung außerhalb der uses');
+    Assert.IsTrue(Changes.Changed('c:\p\a.pas', 'unit A; interface uses B, C; implementation end.'), 'Eintrag ergänzt');
+    Assert.IsTrue(Changes.Changed('C:\P\A.pas', 'unit A; interface implementation uses B, C; end.'),
+      'zwischen interface und implementation verschoben');
+    Changes.Forget('C:\P\A.pas');
+    Assert.IsTrue(Changes.Changed('C:\P\A.pas', 'unit A; interface implementation uses B, C; end.'),
+      'nach dem Schließen wieder erster Stand');
+    Assert.AreEqual('I:B|M:C', TLspUsesChanges.Signature('unit A; interface uses B; implementation uses C; end.'));
+  finally
+    Changes.Free;
+  end;
 end;
 
 initialization

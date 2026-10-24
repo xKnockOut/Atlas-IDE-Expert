@@ -20,6 +20,9 @@ type
     /// <summary>atlasConfidence (#1119): erschlossen mit Grund; ohne Feld sicher.</summary>
     [Test]
     procedure ConfidenceFromJson;
+    /// <summary>relatedInformation (#896): Stellen eines Unit-Zyklus.</summary>
+    [Test]
+    procedure RelatedFromJson;
   end;
 
 implementation
@@ -48,6 +51,32 @@ begin
   Assert.AreEqual(9, Problem.EndCharacter);
   Assert.IsTrue(Problem.Severity = Atlas.Core.Lsp.Contract.TAtlasProblemSeverity.Warning);
   Assert.AreEqual('Achtung (W1000)', Problem.Caption);
+end;
+
+procedure TLspContractTests.RelatedFromJson;
+var
+  Json: TJSONObject;
+  Problem: Atlas.Core.Lsp.Contract.TAtlasProblem;
+begin
+  Json := TJSONObject.ParseJSONValue('{"range":{"start":{"line":3,"character":2},"end":{"line":3,"character":4}},' +
+    '"severity":1,"code":"uses-cycle","source":"Atlas","message":"Zyklus","relatedInformation":[' +
+    '{"location":{"uri":"file:///c%3A/p/B.pas","range":{"start":{"line":5,"character":2},"end":{"line":5,' +
+    '"character":4}}},"message":"uC"},{"location":{"uri":"","range":{}},"message":"leer"},' +
+    '{"location":{"uri":"file:///c%3A/p/C.pas","range":{"start":{"line":3,"character":2},"end":{"line":3,' +
+    '"character":4}}},"message":"uA"}]}') as TJSONObject;
+  try
+    Problem := Atlas.Core.Lsp.Contract.TAtlasProblem.FromJson(Json);
+  finally
+    Json.Free;
+  end;
+  // Einträge ohne URI fallen weg.
+  Assert.AreEqual(2, Integer(Length(Problem.Related)));
+  Assert.AreEqual('uC', Problem.Related[0].Message);
+  Assert.AreEqual('file:///c%3A/p/B.pas', Problem.Related[0].Uri);
+  Assert.AreEqual(5, Problem.Related[0].Line);
+  Assert.AreEqual(2, Problem.Related[0].Character);
+  Assert.AreEqual('uA', Problem.Related[1].Message);
+  Problem.Related := nil;
 end;
 
 procedure TLspContractTests.ConfidenceFromJson;

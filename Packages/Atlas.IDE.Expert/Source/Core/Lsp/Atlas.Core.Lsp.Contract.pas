@@ -17,6 +17,15 @@ type
   TAtlasProblemSeverity = (Error, Warning, Information, Hint);
   {$SCOPEDENUMS OFF}
 
+  /// <summary>Weitere Stelle zu einer Meldung aus relatedInformation (#896), z. B. der uses-Eintrag einer Unit
+  /// auf dem Pfad eines Unit-Zyklus: URI, Stelle (0-basiert) und Beschriftung.</summary>
+  TAtlasProblemRelated = record
+    Uri: string;
+    Line: Integer;
+    Character: Integer;
+    Message: string;
+  end;
+
   TAtlasProblem = record
   public const
     CompilerSource = 'dcc';
@@ -24,6 +33,8 @@ type
     ConfirmedSource = 'Atlas + dcc';
     /// <summary>Regel der Syntaxfehler des Servers (#1022); lässt sich nicht per Kommentar unterdrücken.</summary>
     SyntaxCode = 'syntax';
+    /// <summary>Regel der Unit-Zyklen (#64, #896): Pfad mit anklickbaren Units und „Graph zeigen“ im Hover.</summary>
+    UsesCycleCode = 'uses-cycle';
     /// <summary>Zustände aus data.uses.state (#621).</summary>
     UsesUnused = 'unused';
     UsesInitialization = 'initialization';
@@ -76,6 +87,8 @@ type
     /// Setzt der Problemspeicher; ConfirmedCode ist der Code des Compilers.</summary>
     Confirmed: Boolean;
     ConfirmedCode: string;
+    /// <summary>Weitere Stellen aus relatedInformation (#896); im Befund-Hover anklickbar. nil ohne.</summary>
+    Related: TArray<TAtlasProblemRelated>;
     function IsCompiler: Boolean;
     /// <summary>Text der Spalte „Compiler“ (#1024): bestätigter Code, Code einer Compilermeldung bzw. die Codes
     /// der Regel ("E2034, E2035"); '' ohne.</summary>
@@ -274,8 +287,9 @@ end;
 
 class function TAtlasProblem.FromJson(const AItem: TJSONObject): TAtlasProblem;
 var
-  Tags, CodeValue, Data, Inactive, UsesData, Codes: TJSONValue;
+  Tags, CodeValue, Data, Inactive, UsesData, Codes, RelatedItems: TJSONValue;
   Tag, Item: TJSONValue;
+  Related: TAtlasProblemRelated;
 begin
   Result := Default(TAtlasProblem);
   Result.StartLine := AItem.GetValue<Integer>('range.start.line', 0);
@@ -326,6 +340,18 @@ begin
       Result.UsesState := TJSONObject(UsesData).GetValue<string>('state', '');
     end;
   end;
+  RelatedItems := AItem.GetValue('relatedInformation');
+  if RelatedItems is TJSONArray then
+    for Item in TJSONArray(RelatedItems) do
+      if Item is TJSONObject then
+      begin
+        Related.Uri := TJSONObject(Item).GetValue<string>('location.uri', '');
+        Related.Line := TJSONObject(Item).GetValue<Integer>('location.range.start.line', 0);
+        Related.Character := TJSONObject(Item).GetValue<Integer>('location.range.start.character', 0);
+        Related.Message := TJSONObject(Item).GetValue<string>('message', '');
+        if Related.Uri <> '' then
+          Result.Related := Result.Related + [Related];
+      end;
   Tags := AItem.GetValue('tags');
   if Tags is TJSONArray then
     for Tag in TJSONArray(Tags) do

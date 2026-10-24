@@ -520,6 +520,12 @@ type
     DiagnosticsLog: Boolean;
     DiagnosticsLogDays: Integer;
     DiagnosticsLogMapFile: Boolean;
+    /// <summary>Unit-Zyklen beim Tippen melden (#896, diagnostics.usesCycleLive): uses-cycle in den Diagnosen des
+    /// Editors; die projektweite Prüfung (#64) bleibt davon unberührt.</summary>
+    DiagnosticsUsesCycleLive: Boolean;
+    /// <summary>Im Editor auch Zyklen mit implementation-Kante, als Hinweis (#896,
+    /// diagnostics.usesCycleImplementation).</summary>
+    DiagnosticsUsesCycleImplementation: Boolean;
     /// <summary>Umfang des Index (#648): alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und
     /// der Bibliotheks- und Suchpfade der Installation; False = nur über uses erreichbare (bisher).</summary>
     IndexProjectGroup: Boolean;
@@ -980,6 +986,8 @@ begin
   Result.DiagnosticsLog := True;
   Result.DiagnosticsLogDays := 7;
   Result.DiagnosticsLogMapFile := False;
+  Result.DiagnosticsUsesCycleLive := True;
+  Result.DiagnosticsUsesCycleImplementation := False;
   Result.IndexProjectGroup := True;
   Result.McpGlobalSettings := True;
   Result.IndexSearchPaths := True;

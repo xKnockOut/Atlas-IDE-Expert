@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2133] of string = (
+  Lines: array[0..2151] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1730,6 +1730,26 @@ const
     '          "type": "boolean",',
     '          "default": false,',
     '          "description": "Zuordnung Kurz-ID (doc#4) → Pfad lokal speichern, nur für die eigene Analyse. Der Export nimmt sie nie mit."',
+    '        },',
+    '        "usesCycleLive": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Zirkuläre Unit-Referenz schon beim Tippen melden (Regel uses-cycle): Ein Zyklus, in dem jede Kante im interface-Teil liegt, ist ein Fehler am auslösenden uses-Eintrag mit dem' +
+      ' kürzesten Pfad; jede Unit im Hover springt an ihren uses-Eintrag. Schnellkorrektur „In implementation-uses verschieben“, wenn kein Bezeichner der Unit im interface-Teil gebraucht wird, sonst Sprung z' +
+      'u diesen Bezeichnern und „Graph zeigen“. Berücksichtigt den ungespeicherten Stand offener Units. false: keine Meldung im Editor; die projektweite Prüfung (--check, find_unused_code) bleibt.",',
+    '          "x-scope": "project",',
+    '          "x-page": "Prüfregeln",',
+    '          "x-control": "Kontrollkästchen",',
+    '          "x-issue": "#896"',
+    '        },',
+    '        "usesCycleImplementation": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Im Editor auch Zyklen mit mindestens einer implementation-Kante melden, als Hinweis (der Compiler erlaubt sie). Braucht usesCycleLive.",',
+    '          "x-scope": "project",',
+    '          "x-page": "Prüfregeln",',
+    '          "x-control": "Kontrollkästchen",',
+    '          "x-issue": "#896"',
     '        }',
     '      },',
     '      "x-scope": "global",',
