@@ -1063,6 +1063,8 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.UnitSearchEnabled);
   Assert.IsTrue(Settings.UnitSearchReplaceIdeDialog, 'überschreibt Strg+F12 standardmäßig');
+  Assert.IsTrue(Settings.UnitSearchReplaceUseUnitDialog, 'überschreibt Alt+F11 standardmäßig (#786)');
+  Assert.IsTrue(Settings.UnitSearchReplaceFormsDialog, 'überschreibt Umschalt+F12 standardmäßig (#786)');
   Assert.IsTrue(Settings.UnitSearchRememberCollapsed);
   Assert.IsTrue(Settings.UnitSearchFilters);
   Assert.IsTrue(Settings.UnitSearchFilterSyntax);
@@ -1088,6 +1090,8 @@ begin
   // Speichern und Laden.
   Settings.UnitSearchEnabled := False;
   Settings.UnitSearchReplaceIdeDialog := False;
+  Settings.UnitSearchReplaceUseUnitDialog := False;
+  Settings.UnitSearchReplaceFormsDialog := False;
   Settings.UnitSearchRememberCollapsed := False;
   Settings.UnitSearchFilters := False;
   Settings.UnitSearchFilterSyntax := False;
@@ -1109,6 +1113,8 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.UnitSearchEnabled);
   Assert.IsFalse(Loaded.UnitSearchReplaceIdeDialog);
+  Assert.IsFalse(Loaded.UnitSearchReplaceUseUnitDialog);
+  Assert.IsFalse(Loaded.UnitSearchReplaceFormsDialog);
   Assert.IsFalse(Loaded.SearchResultsInMessages);
   Assert.IsFalse(Loaded.UnitSearchRememberCollapsed);
   Assert.IsFalse(Loaded.UnitSearchFilters);

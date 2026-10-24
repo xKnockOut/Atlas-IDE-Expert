@@ -27,6 +27,13 @@
 // - InterfaceCost (#554) ist der kleine Teil davon für die Statusleiste:
 //   RecompileCount und die ersten Units, die neu übersetzt werden, ohne
 //   Text, Fundstellen und Bäume.
+// - UseCandidates (#786, „Unit verwenden“): alle Units, die die Unit schon
+//   (auch über Umwege) verwenden. Nimmt die Unit eine davon ins interface
+//   auf und führt der Rückweg nur über interface-uses, entsteht ein
+//   Kreisbezug, den der Compiler ablehnt (F2047, InterfacePath); sonst ist es
+//   ein erlaubter Kreis über implementation-uses (Path), nur ein Hinweis.
+//   Die Wege kommen aus einer Rückwärtssuche je Abschnittswahl, nicht aus
+//   einer Suche je Unit.
 
 interface
 
@@ -89,6 +96,24 @@ type
     Units: TArray<string>;
   end;
 
+  /// <summary>Eine Unit, deren Aufnahme in die uses einen Kreis schließt (#786).</summary>
+  TUnitUseCandidate = record
+    Name: string;
+    FileName: string;
+    /// <summary>Kreis über interface-uses, etwa "A → B → C → A"; '' ohne.</summary>
+    InterfacePath: string;
+    /// <summary>Kürzester Kreis über alle uses.</summary>
+    Path: string;
+  end;
+
+  TUnitUseInfo = record
+    Found: Boolean;
+    UnitName: string;
+    FileName: string;
+    /// <summary>Nach Name.</summary>
+    Candidates: TArray<TUnitUseCandidate>;
+  end;
+
   TUnitRelationsBuilder = class
   private
     FGraph: TUsesGraph;
@@ -124,6 +149,10 @@ type
     class function InterfaceCost(AGraph: TUsesGraph; const AFileName: string; ALimit: Integer): TUnitInterfaceCost;
       static;
     class function CostToJson(const ACost: TUnitInterfaceCost): TJSONObject; static;
+    /// <summary>Units, die die Unit in AFileName verwenden, mit dem Kreis, den ihre Aufnahme schlösse (#786).
+    /// </summary>
+    class function UseCandidates(AGraph: TUsesGraph; const AFileName: string): TUnitUseInfo; static;
+    class function UseInfoToJson(const AInfo: TUnitUseInfo): TJSONObject; static;
     /// <summary>JSON der Antwort von atlas/unitRelations (ohne "generation").</summary>
     class function ToJson(const ARelations: TUnitRelations): TJSONObject; static;
     class function SectionName(ASection: TUsesSection): string; static;
@@ -593,6 +622,116 @@ begin
   for Name in ACost.Units do
     List.Add(Name);
   Result.AddPair('units', List);
+end;
+
+/// <summary>Nächster Schritt zur Unit ATarget je Knoten (Rückwärtssuche über die eingehenden Kanten); -1 =
+/// erreicht ATarget nicht, ATarget selbst trägt sich ein.</summary>
+function NextTowards(AGraph: TUsesGraph; ATarget: Integer; AInterfaceOnly: Boolean): TArray<Integer>;
+var
+  Queue: TQueue<Integer>;
+  Current: Integer;
+  Ref: TUsesEdgeRef;
+  Source: TUsesNode;
+begin
+  SetLength(Result, AGraph.NodeCount);
+  for Current := 0 to High(Result) do
+    Result[Current] := -1;
+  Result[ATarget] := ATarget;
+  Queue := TQueue<Integer>.Create;
+  try
+    Queue.Enqueue(ATarget);
+    while Queue.Count > 0 do
+    begin
+      Current := Queue.Dequeue;
+      for Ref in AGraph.Node(Current).Incoming do
+      begin
+        Source := AGraph.Node(Ref.Source);
+        if not Source.Active or (Result[Ref.Source] >= 0) then
+          Continue;
+        if AInterfaceOnly and (Source.Outgoing[Ref.Item].Section <> TUsesSection.Interface_) then
+          Continue;
+        Result[Ref.Source] := Current;
+        Queue.Enqueue(Ref.Source);
+      end;
+    end;
+  finally
+    Queue.Free;
+  end;
+end;
+
+/// <summary>"Ziel → X → … → Ziel" über die Schritte ANext; '' ohne Weg.</summary>
+function CirclePath(AGraph: TUsesGraph; ATarget, AStart: Integer; const ANext: TArray<Integer>): string;
+var
+  Node: Integer;
+begin
+  Result := '';
+  if (AStart = ATarget) or (ANext[AStart] < 0) then
+    Exit;
+  Result := AGraph.Node(ATarget).UnitName;
+  Node := AStart;
+  while Node <> ATarget do
+  begin
+    Result := Result + ' → ' + AGraph.Node(Node).UnitName;
+    Node := ANext[Node];
+  end;
+  Result := Result + ' → ' + AGraph.Node(ATarget).UnitName;
+end;
+
+class function TUnitRelationsBuilder.UseCandidates(AGraph: TUsesGraph; const AFileName: string): TUnitUseInfo;
+var
+  Target, Node: Integer;
+  ByInterface, ByAny, Order: TArray<Integer>;
+  Candidate: TUnitUseCandidate;
+begin
+  Result := Default(TUnitUseInfo);
+  Result.FileName := AFileName;
+  Result.UnitName := BareName(AFileName);
+  Target := AGraph.IndexOfFile(AFileName);
+  if Target < 0 then
+    Exit;
+  Result.Found := True;
+  Result.UnitName := AGraph.Node(Target).UnitName;
+  Result.FileName := AGraph.Node(Target).FileName;
+  ByInterface := NextTowards(AGraph, Target, True);
+  ByAny := NextTowards(AGraph, Target, False);
+  // Nach Name: dieselbe Reihenfolge wie die übrigen Listen des Graphen.
+  Order := AGraph.Dependents(Target, AllUsesSections);
+  for Node in Order do
+  begin
+    if ByAny[Node] < 0 then
+      Continue;
+    Candidate := Default(TUnitUseCandidate);
+    Candidate.Name := AGraph.Node(Node).UnitName;
+    Candidate.FileName := AGraph.Node(Node).FileName;
+    Candidate.InterfacePath := CirclePath(AGraph, Target, Node, ByInterface);
+    Candidate.Path := CirclePath(AGraph, Target, Node, ByAny);
+    Result.Candidates := Result.Candidates + [Candidate];
+  end;
+end;
+
+class function TUnitRelationsBuilder.UseInfoToJson(const AInfo: TUnitUseInfo): TJSONObject;
+var
+  List: TJSONArray;
+  Candidate: TUnitUseCandidate;
+  Item: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('found', TJSONBool.Create(AInfo.Found));
+  Result.AddPair('unit', AInfo.UnitName);
+  Result.AddPair('file', AInfo.FileName);
+  List := TJSONArray.Create;
+  for Candidate in AInfo.Candidates do
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('name', Candidate.Name);
+    if Candidate.FileName <> '' then
+      Item.AddPair('file', Candidate.FileName);
+    if Candidate.InterfacePath <> '' then
+      Item.AddPair('interfacePath', Candidate.InterfacePath);
+    Item.AddPair('path', Candidate.Path);
+    List.AddElement(Item);
+  end;
+  Result.AddPair('cycles', List);
 end;
 
 function RelationJson(const ARelation: TUnitRelation): TJSONObject;

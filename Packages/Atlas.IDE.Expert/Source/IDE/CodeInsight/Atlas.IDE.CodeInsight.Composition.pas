@@ -1434,7 +1434,16 @@ begin
     begin
       TAtlasIdeUnitSearch.Show;
     end);
-  Add('Atlas.UnitSearchIde', TAtlasTextId.UnitSearchIdeDialog, TAtlasIdeUnitSearch.ShowIdeDialog);
+  Add('Atlas.UnitSearchIde', TAtlasTextId.UnitSearchIdeDialog,
+    procedure
+    begin
+      TAtlasIdeUnitSearch.ShowIdeDialog;
+    end);
+  // Unit verwenden und Formulare suchen (#786), mit den Dialogen der IDE als Ausweg.
+  Add('Atlas.UseUnit', TAtlasTextId.UseUnitCommand, TAtlasIdeUnitSearch.ShowUseUnit);
+  Add('Atlas.UseUnitIde', TAtlasTextId.UseUnitIdeDialog, TAtlasIdeUnitSearch.ShowUseUnitIdeDialog);
+  Add('Atlas.Forms', TAtlasTextId.FormsCommand, TAtlasIdeUnitSearch.ShowForms);
+  Add('Atlas.FormsIde', TAtlasTextId.FormsIdeDialog, TAtlasIdeUnitSearch.ShowFormsIdeDialog);
   // Atlas-Suche (#877, #878).
   Add('Atlas.Search', TAtlasTextId.SearchCommand, TAtlasIdeSearch.Show);
   Add('Atlas.SearchInMethod', TAtlasTextId.SearchInMethodCommand, TAtlasIdeSearch.ShowInMethod);

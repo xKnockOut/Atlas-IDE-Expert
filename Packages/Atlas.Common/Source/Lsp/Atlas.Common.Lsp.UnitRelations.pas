@@ -28,6 +28,11 @@
 //   "file", "recompileCount", "units" (die ersten CostUnits Namen),
 //   "generation"}. Ohne Text, Fundstellen und Bäume, also billig genug, um
 //   beim Tippen nachzufragen.
+// Befehl atlas.useUnitInfo (#786, „Unit verwenden“, Alt+F11): Argumente
+//   [uri] liefert {"found", "unit", "file", "inUses" (die Einträge beider
+//   uses-Listen, wie geschrieben, nach den aktiven Defines), "cycles" (je
+//   Unit, die die Unit schon verwendet: "name", "file", "path" und, wenn der
+//   Rückweg nur über interface-uses führt, "interfacePath"), "generation"}.
 //
 // Der Graph enthält Bibliotheks-Units (soweit im Index), damit „Verwendet“
 // sie mit Datei zeigt; Namensräume kommen je Datei aus OptionsFor.
@@ -57,6 +62,7 @@ type
     MoveCommand = 'atlas.server.moveUses';
     RemoveCommand = 'atlas.server.removeUses';
     CostCommand = 'atlas.interfaceCost';
+    UseUnitCommand = 'atlas.useUnitInfo';
     /// <summary>So viele Namen nennt atlas.interfaceCost höchstens.</summary>
     CostUnits = 10;
   private
@@ -87,6 +93,8 @@ type
     function Remove(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Befehl atlas.interfaceCost [uri] (#554).</summary>
     function Cost(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Befehl atlas.useUnitInfo [uri] (#786).</summary>
+    function UseUnitInfo(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Edits, die AUnit in den Abschnitt ATarget verschieben; False mit AError.</summary>
     class function MoveEdits(const AText, AUnit: string; ATarget: TUsesSection; out AEdits: TArray<TTextEdit>;
       out AError: string): Boolean; static;
@@ -284,6 +292,30 @@ begin
     begin
       Answer := TUnitRelationsBuilder.CostToJson(TUnitRelationsBuilder.InterfaceCost(AGraph, FileName, CostUnits));
     end);
+  Answer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
+  Result := Answer;
+end;
+
+function TLspUnitRelations.UseUnitInfo(const AArguments: TJSONArray): TJSONValue;
+var
+  FileName: string;
+  Answer: TJSONObject;
+  List: TJSONArray;
+  Reference: TUsesReference;
+begin
+  FileName := FileOf(AArguments, 0);
+  EnsureOptions(FileName);
+  Answer := nil;
+  FGraph.Read(
+    procedure(const AGraph: TUsesGraph)
+    begin
+      Answer := TUnitRelationsBuilder.UseInfoToJson(TUnitRelationsBuilder.UseCandidates(AGraph, FileName));
+    end);
+  // „schon in uses“ aus dem Text, wie ihn der Editor gerade hat.
+  List := TJSONArray.Create;
+  for Reference in TUsesLocator.UsesReferences(TextOf(FileName), DefinesOf(FileName)) do
+    List.Add(Reference.Name);
+  Answer.AddPair('inUses', List);
   Answer.AddPair('generation', TJSONNumber.Create(FGraph.Generation));
   Result := Answer;
 end;

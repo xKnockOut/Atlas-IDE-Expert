@@ -61,6 +61,13 @@ type
     KeptByAllowlist,
     /// <summary>Steht im interface, gebraucht wird sie nur in der implementation.</summary>
     OnlyImplementation);
+
+  /// <summary>Wohin AddUnits die Units schreibt (#786): selbst entscheiden oder ein Abschnitt fest.</summary>
+  TUsesAddTarget = (
+    /// <summary>interface, wenn der interface-Teil ein Symbol der Unit nennt, sonst implementation.</summary>
+    Auto,
+    Interface_,
+    Implementation_);
   {$SCOPEDENUMS OFF}
 
   /// <summary>Ein auffälliger uses-Eintrag mit Position des Namens (#621).</summary>
@@ -111,7 +118,13 @@ type
     /// die eigene Unit entfallen; AAdded nennt die eingetragenen. False ohne Edit.</summary>
     class function AddUnits(const ATokens: TArray<TPascalToken>; const AUnits: TArray<string>;
       const ADeclaring: TUnitsDeclaringFunc; const ANamespaces: TArray<string>; const ALineBreak: string;
-      out AEdits: TArray<TTextEdit>; out AAdded: TArray<string>): Boolean; static;
+      out AEdits: TArray<TTextEdit>; out AAdded: TArray<string>): Boolean; overload; static;
+    /// <summary>Wie oben, aber mit festem Abschnitt (#786, „Unit verwenden“ mit Umschalter interface /
+    /// implementation); in Programmen und Units ohne implementation landet alles im einzigen uses.</summary>
+    class function AddUnits(const ATokens: TArray<TPascalToken>; const AUnits: TArray<string>;
+      const ADeclaring: TUnitsDeclaringFunc; const ANamespaces: TArray<string>; ATarget: TUsesAddTarget;
+      const ALineBreak: string; out AEdits: TArray<TTextEdit>; out AAdded: TArray<string>): Boolean; overload;
+      static;
   end;
 
 implementation
@@ -673,6 +686,13 @@ end;
 class function TUsesActions.AddUnits(const ATokens: TArray<TPascalToken>; const AUnits: TArray<string>;
   const ADeclaring: TUnitsDeclaringFunc; const ANamespaces: TArray<string>; const ALineBreak: string;
   out AEdits: TArray<TTextEdit>; out AAdded: TArray<string>): Boolean;
+begin
+  Result := AddUnits(ATokens, AUnits, ADeclaring, ANamespaces, TUsesAddTarget.Auto, ALineBreak, AEdits, AAdded);
+end;
+
+class function TUsesActions.AddUnits(const ATokens: TArray<TPascalToken>; const AUnits: TArray<string>;
+  const ADeclaring: TUnitsDeclaringFunc; const ANamespaces: TArray<string>; ATarget: TUsesAddTarget;
+  const ALineBreak: string; out AEdits: TArray<TTextEdit>; out AAdded: TArray<string>): Boolean;
 var
   Used, ForInterface, ForImplementation, InterfaceNeeds: TArray<string>;
   Identifiers: TDictionary<string, Integer>;
@@ -699,7 +719,8 @@ begin
     end;
   // Units, die Bezeichner des interface-Teils deklarieren.
   InterfaceNeeds := nil;
-  if (InterfaceOffset >= 0) and (ImplementationOffset >= 0) and Assigned(ADeclaring) then
+  if (ATarget = TUsesAddTarget.Auto) and (InterfaceOffset >= 0) and (ImplementationOffset >= 0) and
+    Assigned(ADeclaring) then
   begin
     Identifiers := CollectIdentifiers(ATokens, TUsesClauses.Clauses(ATokens));
     try
@@ -717,7 +738,8 @@ begin
     if (Trim(Name) = '') or SameText(Name, Own) or ContainsText_(AAdded, Name) or
       TUsesClauses.IsUsed(Used, Name, ANamespaces) then
       Continue;
-    if ContainsText_(InterfaceNeeds, Name) or (ImplementationOffset < 0) then
+    if (ImplementationOffset < 0) or (ATarget = TUsesAddTarget.Interface_) or
+      ((ATarget = TUsesAddTarget.Auto) and ContainsText_(InterfaceNeeds, Name)) then
       ForInterface := ForInterface + [Name]
     else
       ForImplementation := ForImplementation + [Name];

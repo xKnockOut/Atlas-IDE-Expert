@@ -479,6 +479,8 @@ type
     // Units suchen (#777).
     FUnitSearchEnabled: TCheckBox;
     FUnitSearchReplace: TCheckBox;
+    FUnitSearchReplaceUseUnit: TCheckBox;
+    FUnitSearchReplaceForms: TCheckBox;
     FUnitSearchPathStyle: TAtlasChoiceBox;
     FUnitSearchGroupBy: TAtlasChoiceBox;
     FUnitSearchRememberCollapsed: TCheckBox;
@@ -1059,6 +1061,9 @@ type
     property TestsAfterBuildCheck: TCheckBox read FTestsAfterBuild;
     property BuildZeroHintsCheck: TCheckBox read FBuildZeroHints;
     property ShowInterfaceCostCheck: TCheckBox read FShowInterfaceCost;
+    /// <summary>Zum Testen: Alt+F11 und Umschalt+F12 übernehmen (#786).</summary>
+    property UnitSearchReplaceUseUnitCheck: TCheckBox read FUnitSearchReplaceUseUnit;
+    property UnitSearchReplaceFormsCheck: TCheckBox read FUnitSearchReplaceForms;
     /// <summary>Zum Testen: Release-Build-Wächter (#533).</summary>
     property ReleaseGuardCheck: TCheckBox read FReleaseGuard;
     property BuildGateChoice: TAtlasChoiceBox read FBuildGate;
@@ -2971,6 +2976,8 @@ begin
   FMarks.Bind(FUndoNewFiles, ['UndoMultiFileNewFiles']);
   FMarks.Bind(FUnitSearchEnabled, ['UnitSearchEnabled']);
   FMarks.Bind(FUnitSearchReplace, ['UnitSearchReplaceIdeDialog']);
+  FMarks.Bind(FUnitSearchReplaceUseUnit, ['UnitSearchReplaceUseUnitDialog']);
+  FMarks.Bind(FUnitSearchReplaceForms, ['UnitSearchReplaceFormsDialog']);
   FMarks.Bind(FUnitSearchKey, ['UnitSearchKey']);
   FMarks.Bind(FUnitSearchPathStyle, ['UnitSearchPathStyle']);
   FMarks.Bind(FUnitSearchGroupBy, ['UnitSearchGroupBy']);
@@ -4505,6 +4512,8 @@ procedure TAtlasSettingsPage.AddUnitSearchSection;
 begin
   FUnitSearchEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchEnabled));
   FUnitSearchReplace := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplace));
+  FUnitSearchReplaceUseUnit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplaceUseUnit));
+  FUnitSearchReplaceForms := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchReplaceForms));
   FUnitSearchKey := AddKey(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchKey));
   FUnitSearchPathStyle := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathStyle),
     [TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPathRelative),
@@ -5128,6 +5137,8 @@ begin
   FBugReportAnonymize.Checked := ASettings.BugReportAnonymize;
   FUnitSearchEnabled.Checked := ASettings.UnitSearchEnabled;
   FUnitSearchReplace.Checked := ASettings.UnitSearchReplaceIdeDialog;
+  FUnitSearchReplaceUseUnit.Checked := ASettings.UnitSearchReplaceUseUnitDialog;
+  FUnitSearchReplaceForms.Checked := ASettings.UnitSearchReplaceFormsDialog;
   FUnitSearchKey.Text := ShortCutToText(TShortCut(ASettings.UnitSearchKey));
   FUnitSearchPathStyle.Choice := ChoiceOf(ASettings.UnitSearchPathStyle, UnitSearchPathStyles);
   FUnitSearchGroupBy.Choice := ChoiceOf(ASettings.UnitSearchGroupBy, UnitSearchGroupings);
@@ -5586,6 +5597,8 @@ begin
   ASettings.UndoMultiFileNewFiles := TAtlasUndoNames.NewFilesName(TAtlasNewFilesMode(Max(0, FUndoNewFiles.Choice)));
   ASettings.UnitSearchEnabled := FUnitSearchEnabled.Checked;
   ASettings.UnitSearchReplaceIdeDialog := FUnitSearchReplace.Checked;
+  ASettings.UnitSearchReplaceUseUnitDialog := FUnitSearchReplaceUseUnit.Checked;
+  ASettings.UnitSearchReplaceFormsDialog := FUnitSearchReplaceForms.Checked;
   ASettings.UnitSearchKey := Integer(TextToShortCut(Trim(FUnitSearchKey.Text)));
   ASettings.UnitSearchPathStyle := UnitSearchPathStyles[EnsureRange(FUnitSearchPathStyle.Choice, 0, 2)];
   ASettings.UnitSearchGroupBy := UnitSearchGroupings[EnsureRange(FUnitSearchGroupBy.Choice, 0, 2)];

@@ -57,6 +57,9 @@ type
     /// <summary>#585: Test debuggen und Haltepunkt am Anfang auf dem Reiter Debuggen.</summary>
     [Test]
     procedure TestDebugRoundTrip;
+    /// <summary>#786: Alt+F11 und Umschalt+F12 auf der Seite „Units suchen“.</summary>
+    [Test]
+    procedure UseUnitAndFormsDialogsRoundTrip;
     /// <summary>Benannte Lesezeichen (#622): zwei Schalter auf dem Reiter Editor, Taste bei den Befehlen.</summary>
     [Test]
     procedure BookmarksRoundTrip;
@@ -1057,6 +1060,32 @@ begin
     Assert.IsFalse(Page.TestDebugCheck.Checked);
     Assert.IsTrue(Page.TestBreakAtStartCheck.Checked);
     Assert.IsTrue(Page.DebugHoverValuesCheck.Checked);
+  finally
+    Page.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.UseUnitAndFormsDialogsRoundTrip;
+var
+  Page: TAtlasSettingsPage;
+  Saved: TAtlasPluginSettings;
+begin
+  Page := TAtlasSettingsPage.Create(nil);
+  try
+    Page.LoadFrom(TAtlasPluginSettings.Defaults);
+    Assert.IsTrue(Page.UnitSearchReplaceUseUnitCheck.Checked, 'Alt+F11 standardmäßig übernommen');
+    Assert.IsTrue(Page.UnitSearchReplaceFormsCheck.Checked, 'Umschalt+F12 standardmäßig übernommen');
+    Page.UnitSearchReplaceUseUnitCheck.Checked := False;
+    Page.UnitSearchReplaceFormsCheck.Checked := False;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsFalse(Saved.UnitSearchReplaceUseUnitDialog);
+    Assert.IsFalse(Saved.UnitSearchReplaceFormsDialog);
+    Assert.IsTrue(Saved.UnitSearchReplaceIdeDialog, 'Strg+F12 bleibt');
+    Saved.UnitSearchReplaceFormsDialog := True;
+    Page.LoadFrom(Saved);
+    Assert.IsFalse(Page.UnitSearchReplaceUseUnitCheck.Checked);
+    Assert.IsTrue(Page.UnitSearchReplaceFormsCheck.Checked);
   finally
     Page.Free;
   end;

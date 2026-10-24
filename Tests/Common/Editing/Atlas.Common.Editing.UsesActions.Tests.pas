@@ -38,6 +38,8 @@ type
     procedure ApplyingTwiceGivesSameResult;
     [Test]
     procedure AddsUnitsToMatchingSection;
+    [Test]
+    procedure AddsUnitsToChosenSection;
     /// <summary>#621: ungenutzt, wegen initialization oder usesKeep behalten, nur in der implementation.</summary>
     [Test]
     procedure EntriesNameTheirState;
@@ -337,6 +339,32 @@ begin
   // Programm: das einzige uses.
   Text := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
   Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.C'], Declaring, nil, #10, Edits, Added));
+  Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(Text, Edits));
+end;
+
+procedure TUsesActionsTests.AddsUnitsToChosenSection;
+var
+  Text: string;
+  Edits: TArray<TRuleEdit>;
+  Added: TArray<string>;
+begin
+  // Unit verwenden (#786): Der Umschalter gilt fest, auch wenn der interface-Teil Foo aus Units.A nennt.
+  Text := Source('Units.B', 'procedure P(X: Foo);'#10, '', 'procedure P(X: Foo);'#10'begin'#10'end;'#10);
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.A', 'Units.C', 'Units.B'], Declaring, nil,
+    TUsesAddTarget.Implementation_, #10, Edits, Added));
+  Assert.AreEqual('Units.A,Units.C', string.Join(',', Added), 'ohne Duplikat');
+  Assert.AreEqual(1, Integer(Length(Edits)), 'ein Edit, also ein Rückgängig-Schritt');
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B;'#10'procedure P(X: Foo);'#10 +
+    'implementation'#10#10'uses'#10'  Units.A, Units.C;'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.',
+    Apply(Text, Edits));
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.C'], Declaring, nil,
+    TUsesAddTarget.Interface_, #10, Edits, Added));
+  Assert.AreEqual('unit U;'#10'interface'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'procedure P(X: Foo);'#10 +
+    'implementation'#10'procedure P(X: Foo);'#10'begin'#10'end;'#10'end.', Apply(Text, Edits));
+  // Programm: das einzige uses, gleich welcher Abschnitt.
+  Text := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
+  Assert.IsTrue(TUsesActions.AddUnits(TPascalLexer.Tokenize(Text), ['Units.C'], Declaring, nil,
+    TUsesAddTarget.Implementation_, #10, Edits, Added));
   Assert.AreEqual('program P;'#10'uses'#10'  Units.B,'#10'  Units.C;'#10'begin'#10'end.', Apply(Text, Edits));
 end;
 
