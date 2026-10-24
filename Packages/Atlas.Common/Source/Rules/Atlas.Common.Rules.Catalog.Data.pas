@@ -156,6 +156,31 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "uses-cycle",' + #10 +
+    '      "name": "Circular unit reference via uses",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "architecture",' + #10 +
+    '      "description": "A uses entry leads, through the uses clauses of other units, back to the unit itself. If every edge of the cycle is in an interface section, the compiler rejects it (like F2047) ' +
+    'and the finding is an error; cycles with at least one implementation edge are allowed by Delphi but couple the units tightly (initialization order, recompiling, testing) and are reported with the rule' +
+    '''s severity (option implementation). The message shows the complete shortest path (A → B → C → A), the finding hover each edge with its section. Based on the shared uses graph over the symbol index (#' +
+    '268), with inactive conditional branches hidden; the checked unit counts with its editor text. Silent without projects (linter, file without project), while projects are loading or the index is incomp' +
+    'lete, and for units the uses graph does not know.",' + #10 +
+    '      "bad": "unit uKunde;\ninterface\nuses uAuftrag;   // uAuftrag uses uKunde in its interface\n",' + #10 +
+    '      "good": "unit uKunde;\ninterface\n// common types moved to uTypen, used by both\nuses uTypen;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "F2047"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "implementation",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Also report cycles with at least one edge in an implementation section (allowed by the compiler)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "architecture-role-import",' + #10 +
     '      "name": "Import violates the role matrix",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -3802,13 +3827,16 @@ begin
     '      "category": "code-smell",' + #10 +
     '      "severity": "hint",' + #10 +
     '      "group": "style",' + #10 +
-    '      "description": "A public or published method, constant or property (optionally also protected members, fields and class variables, and unit-level routines and constants of the interface section)' +
-    ' is used nowhere in the projects of the project group. The search is project-wide via the symbol index: only files whose index usages contain the name are parsed, and every occurrence is resolved by n' +
-    'ame resolution; an occurrence that cannot be resolved counts as a use. Names in form files (.dfm/.fmx) and in string literals count as uses. Considered used: interface implementations and members of i' +
-    'nterfaces, virtual, dynamic, override, abstract and message methods, constructors, destructors, operators, enumerators, default properties, implements, members with attributes, published members of TP' +
-    'ersistent descendants (streaming), of classes registered with RegisterComponents, RegisterClass or RegisterClasses and of test fixtures, published methods while a form file cannot be read, property ac' +
-    'cessors, exported routines, class helpers, members of classes with an unknown ancestor. Silent while projects are loading or the index is incomplete, when a file cannot be read, for units with include' +
-    ' files and for units of packages or libraries (external users) unless projectKinds allows them. Quick fix: mark as intentionally public (lsp-ignore comment).",' + #10 +
+    '      "description": "A public or published method, constant or property (optionally also protected members, fields and class variables), or a routine, constant, type or global variable of the interfa' +
+    'ce section (option unitKinds) is used nowhere in the projects of the project group. The search is project-wide via the symbol index: only files whose index usages contain the name are parsed, and ever' +
+    'y occurrence is resolved by name resolution; an occurrence that cannot be resolved counts as a use. Names in form files (.dfm/.fmx) and in string literals count as uses. Considered used: interface imp' +
+    'lementations and members of interfaces, virtual, dynamic, override, abstract and message methods, constructors, destructors, operators, enumerators, default properties, implements, members with attrib' +
+    'utes, published members of TPersistent descendants (streaming), of classes registered with RegisterComponents, RegisterClass or RegisterClasses and of test fixtures, published methods while a form fil' +
+    'e cannot be read, property accessors, exported routines, class helpers, members of classes with an unknown ancestor. Silent while projects are loading or the index is incomplete, when a file cannot be' +
+    ' read, for units with include files and for units of packages or libraries (external users) unless projectKinds allows them. For types, occurrences in their own declaration and in the bodies of their ' +
+    'own methods (including the TType.Name header) do not count; types registered with RegisterComponents, RegisterClass or RegisterClasses count as used, and for attribute classes (XyzAttribute) the short' +
+    ' form [Xyz] counts. deadCode.keepAttributes and deadCode.keepPatterns from the settings apply in addition to keepAttributes and keepPatterns. Quick fix: mark as intentionally public (lsp-ignore commen' +
+    't).",' + #10 +
     '      "bad": "  TExport = class\n  public\n    procedure ExportiereAlsXml;\n  end;\n// ExportiereAlsXml is called nowhere in the project group",' + #10 +
     '      "good": "  TExport = class\n  public\n    procedure ExportiereAlsJson; // called by TMainForm\n  end;",' + #10 +
     '      "options": [' + #10 +
@@ -3829,7 +3857,7 @@ begin
     '            "constant",' + #10 +
     '            "property"' + #10 +
     '          ],' + #10 +
-    '          "description": "Member kinds that are checked: method, constant, property, field, classVar."' + #10 +
+    '          "description": "Member kinds of types that are checked: method, constant, property, field, classVar. Unit-level declarations follow unitKinds."' + #10 +
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "projectKinds",' + #10 +
@@ -3843,7 +3871,18 @@ begin
     '          "name": "unitLevel",' + #10 +
     '          "type": "boolean",' + #10 +
     '          "default": true,' + #10 +
-    '          "description": "Also check routines and constants declared in the interface section of a unit."' + #10 +
+    '          "description": "Also check declarations of the interface section of a unit (kinds from unitKinds)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "unitKinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "routine",' + #10 +
+    '            "constant",' + #10 +
+    '            "type",' + #10 +
+    '            "variable"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Unit-level kinds that are checked with unitLevel: routine, constant, type, variable. Helpers are never reported (they are used through the extended type)."' + #10 +
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "scope",' + #10 +
@@ -3874,6 +3913,44 @@ begin
     '          "type": "string-list",' + #10 +
     '          "default": [],' + #10 +
     '          "description": "Name patterns (* and ?) for members that are always considered used, e.g. \"TPlugin.*\" or \"*Callback\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-declaration",' + #10 +
+    '      "name": "Declaration in the implementation section never used",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A routine, type, constant or global variable declared in the implementation section of a unit (or in a program or library) is used nowhere in the unit; the compiler does not repo' +
+    'rt these. Any occurrence of the name as an identifier counts as a use, also in inactive conditional branches; not counted are the declarations themselves (including forward declarations), occurrences ' +
+    'in the routine''s own body (recursion) and, for types, occurrences in their own declaration and in the bodies of their own methods including the TType.Name header. For attribute classes (XyzAttribute) ' +
+    'the short form [Xyz] counts. Considered used (service shared with unused-public-member): exported routines, declarations with attributes, names matching deadCode.keepPatterns, types with an attribute ' +
+    'from deadCode.keepAttributes, and names from the form file. Bodies of interface routines are left to unused-public-member. Silent for units with include files. Quick fix: mark as intentionally present' +
+    ' (lsp-ignore comment).",' + #10 +
+    '      "bad": "implementation\n\nprocedure AltesFormat(const AText: string);  // called nowhere\nbegin\nend;",' + #10 +
+    '      "good": "implementation\n\nprocedure NeuesFormat(const AText: string);\nbegin\nend;\n\nprocedure Exportieren;\nbegin\n  NeuesFormat(''x'');\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-unit",' + #10 +
+    '      "name": "Unit not used by any other unit",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A unit of an application is used by no other unit of the uses graph: at most programs name it in their uses clause, and they use none of its identifiers outside the uses clause (' +
+    'Application.CreateForm(TForm1, Form1) counts as a use). Units with an initialization or finalization section (registrations, side effects at start-up) count as used. Medium confidence: code outside th' +
+    'e project group, scripts or packages loaded at run time can still use the unit. Silent for units of packages and libraries (users outside the group) unless projectKinds allows them, without projects, ' +
+    'while projects are loading or the index is incomplete, and for units the uses graph does not know. Reported at the unit name in the header.",' + #10 +
+    '      "bad": "program App;\nuses\n  Haupt,\n  AltExport;  // AltExport is used nowhere else",' + #10 +
+    '      "good": "program App;\nuses\n  Haupt;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "projectKinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "application"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Project kinds whose units are checked: application, package, library."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -4966,6 +5043,21 @@ begin
     '        {' + #10 +
     '          "name": "layers",' + #10 +
     '          "description": "Schichtregeln: [{\"from\": Glob, \"deny\": [Globs], \"allow\": [Globs]}]."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "uses-cycle",' + #10 +
+    '      "name": "Zirkuläre Unit-Referenz über uses",' + #10 +
+    '      "description": "Ein uses-Eintrag führt über die uses-Listen anderer Units zurück zur eigenen Unit. Liegt jede Kante des Zyklus im interface-Abschnitt, lehnt der Compiler ihn ab (wie F2047), und ' +
+    'der Befund ist ein Fehler; Zyklen mit mindestens einer implementation-Kante erlaubt Delphi, sie koppeln die Units aber eng (Initialisierungsreihenfolge, Neuübersetzen, Testen) und erscheinen mit dem S' +
+    'chweregrad der Regel (Option implementation). Die Meldung zeigt den vollständigen kürzesten Pfad (A → B → C → A), der Befund-Hover jede Kante mit ihrem Abschnitt. Grundlage ist der gemeinsame Uses-Gra' +
+    'ph über den Symbolindex (#268), inaktive Zweige der bedingten Kompilierung ausgeblendet; die geprüfte Unit zählt mit ihrem Editor-Stand. Still ohne Projekte (Linter, Datei ohne Projekt), solange Proje' +
+    'kte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "implementation",' + #10 +
+    '          "description": "Auch Zyklen mit mindestens einer Kante im implementation-Abschnitt melden (vom Compiler erlaubt)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -7003,14 +7095,16 @@ begin
     '    {' + #10 +
     '      "id": "unused-public-member",' + #10 +
     '      "name": "Öffentliches Mitglied wird im Projekt nie verwendet",' + #10 +
-    '      "description": "Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen sowie Routinen und Konstanten im interface-Abschn' +
-    'itt einer Unit) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren Verwendungen im Index den Namen enthalten, werden geles' +
-    'en, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in Formulardateien (.dfm/.fmx) und in String-Literalen zähle' +
-    'n als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract oder message, Konstruktoren, Destruktoren, Operatoren, En' +
-    'umeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming), von Klassen aus RegisterComponents, RegisterClass oder RegisterClass' +
-    'es und von Testklassen, published-Methoden, solange eine Formulardatei nicht lesbar ist, Property-Zugriffsmethoden, exportierte Routinen, Klassenhelfer und Mitglieder von Klassen mit unbekanntem Vorfa' +
-    'hren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei Units von Packages oder Bibliotheken (Nutzer außerhalb des' +
-    ' Projekts), außer projectKinds lässt sie zu. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).",' + #10 +
+    '      "description": "Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen) bzw. eine Routine, Konstante, ein Typ oder eine ' +
+    'globale Variable im interface-Abschnitt einer Unit (Option unitKinds) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren V' +
+    'erwendungen im Index den Namen enthalten, werden gelesen, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in For' +
+    'mulardateien (.dfm/.fmx) und in String-Literalen zählen als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract ode' +
+    'r message, Konstruktoren, Destruktoren, Operatoren, Enumeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming), von Klassen au' +
+    's RegisterComponents, RegisterClass oder RegisterClasses und von Testklassen, published-Methoden, solange eine Formulardatei nicht lesbar ist, Property-Zugriffsmethoden, exportierte Routinen, Klassenh' +
+    'elfer und Mitglieder von Klassen mit unbekanntem Vorfahren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei Unit' +
+    's von Packages oder Bibliotheken (Nutzer außerhalb des Projekts), außer projectKinds lässt sie zu. Bei Typen zählen Vorkommen in der eigenen Deklaration und in den Rümpfen der eigenen Methoden (samt K' +
+    'opf TTyp.Name) nicht; Typen aus RegisterComponents, RegisterClass oder RegisterClasses gelten als verwendet, bei Attributklassen (XyzAttribute) zählt auch die Kurzform [Xyz]. deadCode.keepAttributes u' +
+    'nd deadCode.keepPatterns aus den Einstellungen gelten zusätzlich zu keepAttributes und keepPatterns. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).",' + #10 +
     '      "options": [' + #10 +
     '        {' + #10 +
     '          "name": "visibilities",' + #10 +
@@ -7018,7 +7112,7 @@ begin
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "memberKinds",' + #10 +
-    '          "description": "Geprüfte Mitgliedsarten: method, constant, property, field, classVar."' + #10 +
+    '          "description": "Geprüfte Arten von Typmitgliedern: method, constant, property, field, classVar. Deklarationen auf Unit-Ebene richten sich nach unitKinds."' + #10 +
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "projectKinds",' + #10 +
@@ -7027,7 +7121,11 @@ begin
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "unitLevel",' + #10 +
-    '          "description": "Auch Routinen und Konstanten aus dem interface-Abschnitt einer Unit prüfen."' + #10 +
+    '          "description": "Auch Deklarationen des interface-Abschnitts einer Unit prüfen (Arten aus unitKinds)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "unitKinds",' + #10 +
+    '          "description": "Mit unitLevel geprüfte Arten auf Unit-Ebene: routine, constant, type, variable. Helfer werden nie gemeldet (sie werden über den erweiterten Typ verwendet)."' + #10 +
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "scope",' + #10 +
@@ -7048,6 +7146,30 @@ begin
     '        {' + #10 +
     '          "name": "keepPatterns",' + #10 +
     '          "description": "Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. \"TPlugin.*\" oder \"*Callback\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-declaration",' + #10 +
+    '      "name": "Deklaration im implementation-Abschnitt wird nie verwendet",' + #10 +
+    '      "description": "Eine Routine, ein Typ, eine Konstante oder eine globale Variable aus dem implementation-Abschnitt einer Unit (bzw. aus einem Programm oder einer DLL) wird in der Unit nirgends ve' +
+    'rwendet; der Compiler meldet das nicht. Jedes Vorkommen des Namens als Bezeichner zählt als Verwendung, auch in inaktiven Zweigen; nicht zählen die Deklarationen selbst (auch forward), Vorkommen im ei' +
+    'genen Rumpf (Rekursion) und bei Typen Vorkommen in der eigenen Deklaration und in den Rümpfen der eigenen Methoden samt Kopf TTyp.Name. Bei Attributklassen (XyzAttribute) zählt auch die Kurzform [Xyz]' +
+    '. Gelten als verwendet (Dienst, den auch unused-public-member nutzt): exportierte Routinen, Deklarationen mit Attributen, Namen aus deadCode.keepPatterns, Typen mit einem Attribut aus deadCode.keepAtt' +
+    'ributes und Namen aus der Formulardatei. Rümpfe von Routinen des interface-Abschnitts prüft unused-public-member. Still bei Units mit Include-Dateien. Korrektur: als bewusst vorhanden markieren (lsp-i' +
+    'gnore-Kommentar)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-unit",' + #10 +
+    '      "name": "Unit wird von keiner anderen Unit verwendet",' + #10 +
+    '      "description": "Eine Unit einer Anwendung verwendet keine andere Unit des Uses-Graphen: Höchstens Programme nennen sie im uses, und sie verwenden außerhalb ihres uses keinen ihrer Bezeichner (Ap' +
+    'plication.CreateForm(TForm1, Form1) zählt als Verwendung). Units mit initialization- oder finalization-Abschnitt (Registrierungen, Seiteneffekte beim Start) gelten als verwendet. Konfidenz mittel: Cod' +
+    'e außerhalb der Projektgruppe, Skripte oder zur Laufzeit geladene Packages können die Unit trotzdem nutzen. Still bei Units von Packages und DLLs (Nutzer außerhalb der Gruppe), solange projectKinds si' +
+    'e nicht erlaubt, ohne Projekte, solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt. Gemeldet am Unit-Namen im Kopf.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "projectKinds",' + #10 +
+    '          "description": "Projektarten, deren Units geprüft werden: application, package, library."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +

@@ -168,6 +168,14 @@ type
   TRuleNameAnswer = (Absent, Present, Unknown);
 {$SCOPEDENUMS OFF}
 
+  /// <summary>Ein uses-Eintrag auf einem Weg durch den Uses-Graphen (#64): die Unit, zu der er führt, und ob
+  /// er im interface-Teil steht.</summary>
+  TRuleUsesStep = record
+    UnitName: string;
+    FileName: string;
+    InInterface: Boolean;
+  end;
+
   /// <summary>Die Projekte der Gruppe für projektweite Regeln wie unused-public-member (#1102); nil = unbekannt
   /// (Linter, Datei ohne Projekt), die Regeln schweigen.</summary>
   IRuleProjectFiles = interface
@@ -183,6 +191,14 @@ type
     function NameIn(const AFileName, AName: string): TRuleNameAnswer;
     /// <summary>Text der Datei, geöffnete Dokumente zuerst; False, wenn sie nicht lesbar ist.</summary>
     function ReadText(const AFileName: string; out AText: string): Boolean;
+    /// <summary>Kürzester Weg über uses von der Unit AFromUnit (Name wie im uses, auch ohne Namensraum) zur
+    /// Datei AToFile (#64): je uses-Eintrag ein Schritt, der letzte führt zu AToFile. Mit AInterfaceOnly nur
+    /// über Einträge im interface-Teil. nil, wenn es keinen Weg gibt oder der Uses-Graph (#268) eine der
+    /// Units nicht kennt.</summary>
+    function UsesPath(const AFromUnit, AToFile: string; AInterfaceOnly: Boolean): TArray<TRuleUsesStep>;
+    /// <summary>Units, die AFileName direkt im uses nennen, auch Programme und Packages (#64); False, wenn
+    /// der Uses-Graph die Unit nicht kennt.</summary>
+    function UsedBy(const AFileName: string; out AUsers: TArray<TRuleUsesStep>): Boolean;
   end;
 
   /// <summary>Alles, was eine Regel über die geprüfte Datei wissen darf.</summary>
@@ -256,6 +272,11 @@ type
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt, diese Regeln schweigen.
     /// </summary>
     ProjectFiles: IRuleProjectFiles;
+    /// <summary>Attribute und Namensmuster, deren Elemente als verwendet gelten (deadCode.keepAttributes und
+    /// deadCode.keepPatterns, #64); setzt TRuleEngine.Run. Regeln für ungenutzten Code nehmen sie zu ihren
+    /// eigenen Optionen dazu.</summary>
+    KeepAttributes: TArray<string>;
+    KeepPatterns: TArray<string>;
   end;
 
   /// <summary>Sammelt die Treffer einer Regel. Ohne Angabe gilt Konfidenz High.</summary>

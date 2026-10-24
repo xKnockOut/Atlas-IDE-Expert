@@ -1,4 +1,4 @@
-﻿unit Ref.Daten.Verwendung;
+﻿unit Ref.Daten.Verwendung; // ERWARTET-PROJEKT: unused-unit
 
 // Nutzt Typen aus einer Include-Datei einer anderen Unit (#500):
 // Strg+Klick auf TAuftrag springt nach Ref.Daten.Auftraege.inc.
