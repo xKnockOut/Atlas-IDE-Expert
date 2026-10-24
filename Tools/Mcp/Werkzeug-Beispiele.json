@@ -105,6 +105,30 @@
     "run_tests": {
       "arguments": {},
       "process": true
+    },
+    "get_architecture": {
+      "arguments": {},
+      "contains": "# Architektur: "
+    },
+    "get_unit_dependencies": {
+      "arguments": { "unit": "Ref.Formulare.Haupt" },
+      "contains": "Ref.Daten.Suche"
+    },
+    "find_path": {
+      "arguments": { "from": "Ref.Formulare.Haupt", "to": "Ref.Daten.Suche" },
+      "contains": "Ref.Daten.Suche"
+    },
+    "get_impact": {
+      "arguments": { "name": "TKundenSuche.Suchen", "depth": 2 },
+      "contains": "TKundenSuche"
+    },
+    "get_rationale": {
+      "arguments": { "name": "TRefAnzeige" },
+      "contains": "TRefAnzeige"
+    },
+    "find_unused_code": {
+      "arguments": { "file": "Source/Ref.Pruefung.Verstoesse.pas", "format": "json" },
+      "contains": "\"total\""
     }
   },
   "resources": {
