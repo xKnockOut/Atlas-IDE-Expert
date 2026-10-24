@@ -197,6 +197,13 @@ begin
   try
     Assert.IsTrue(Document.Root.Properties[4].IsEvent);
     Assert.IsFalse(Document.Root.Properties[1].IsEvent);
+    // Ereignisse von Datenmengen ohne On (#856); Wörter wie Online oder Afterglow zählen nicht.
+    Assert.IsTrue(TDfmProperty.IsEventName('BeforePost'));
+    Assert.IsTrue(TDfmProperty.IsEventName('AfterScroll'));
+    Assert.IsTrue(TDfmProperty.IsEventName('OnCalcFields'));
+    Assert.IsFalse(TDfmProperty.IsEventName('Online'));
+    Assert.IsFalse(TDfmProperty.IsEventName('Afterglow'));
+    Assert.IsFalse(TDfmProperty.IsEventName('Before'));
     Assert.AreEqual('Button1Click', Document.Root.Children[0].Properties[1].Value);
     Assert.AreEqual(8, Document.Root.Children[0].Properties[1].ValueRange.StartPos.Line);
   finally

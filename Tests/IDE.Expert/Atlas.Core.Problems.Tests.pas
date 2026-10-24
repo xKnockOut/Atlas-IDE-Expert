@@ -44,6 +44,10 @@ type
     [Test]
     procedure TestFailuresStayBesideServerDiagnostics;
     [Test]
+    procedure TaskProblemsReplacePerTaskAndVanishOnEditedLines;
+    [Test]
+    procedure HiddenTasksAreLeftOutAndFilesOnlyWithTasksDrop;
+    [Test]
     procedure ClearTestsDropsFilesOnlyWithTests;
     [Test]
     procedure ProblemColorErrorIsError;
@@ -504,6 +508,77 @@ begin
     Shown := Store.ForFile('C:\P\T.pas');
     Assert.AreEqual(6, Shown[1].StartLine);
     Assert.IsFalse(Shown[1].Stale, 'unverändert: nicht blass');
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.TaskProblemsReplacePerTaskAndVanishOnEditedLines;
+var
+  Store: TAtlasProblemStore;
+  Shown: TArray<TAtlasProblem>;
+begin
+  Store := TAtlasProblemStore.Create;
+  try
+    Store.Update('C:\P\A.pas', 'a'#10'b'#10'c'#10'd', True, [Problem(0, 0, 'Regel')], '1', True);
+    Store.SetTaskProblems('Delphi-12-Prüfung', [TPair<string, TAtlasProblem>.Create('C:\P\A.pas',
+      Problem(2, 0, '"is not" gibt es erst ab Delphi 13')), TPair<string, TAtlasProblem>.Create('C:\P\A.pas',
+      Problem(3, 0, 'zweiter Verstoß'))]);
+    Store.SetTaskProblems('Konsole', [TPair<string, TAtlasProblem>.Create('C:\P\A.pas', Problem(1, 0, 'stdout'))]);
+    Shown := Store.ForFile('C:\P\A.pas');
+    Assert.AreEqual(4, Integer(Length(Shown)));
+    Assert.AreEqual('Delphi-12-Prüfung', Shown[2].Source, 'Quelle = Name der Aufgabe');
+    Assert.AreEqual(2, Store.TaskCount('delphi-12-prüfung'));
+    Assert.AreEqual('Delphi-12-Prüfung|Konsole', string.Join('|', Store.TaskNames));
+    // Neuer Lauf ersetzt nur die Befunde dieser Aufgabe.
+    Store.SetTaskProblems('Delphi-12-Prüfung', [TPair<string, TAtlasProblem>.Create('C:\P\A.pas',
+      Problem(3, 0, 'zweiter Verstoß'))]);
+    Assert.AreEqual(1, Store.TaskCount('Delphi-12-Prüfung'));
+    Assert.AreEqual(1, Store.TaskCount('Konsole'));
+    // Zeile 3 („d“) geändert: ihr Befund fällt weg, der Befund in Zeile 1 bleibt.
+    Store.Edit('C:\P\A.pas', 'a'#10'b'#10'c'#10'dd');
+    Assert.AreEqual(0, Store.TaskCount('Delphi-12-Prüfung'));
+    Assert.AreEqual(1, Store.TaskCount('Konsole'));
+    // Zeile davor eingefügt: der übrige Befund wandert mit.
+    Store.Edit('C:\P\A.pas', 'neu'#10'a'#10'b'#10'c'#10'dd');
+    Shown := Store.ForFile('C:\P\A.pas');
+    Assert.AreEqual(2, Integer(Length(Shown)));
+    Assert.AreEqual('stdout', Shown[1].Message);
+    Assert.AreEqual(2, Shown[1].StartLine);
+    // Server liefert neu: Aufgabenbefunde bleiben.
+    Store.Update('C:\P\A.pas', 'neu'#10'a'#10'b'#10'c'#10'dd', True, nil, '2', True);
+    Assert.AreEqual(1, Store.TaskCount('Konsole'));
+    Store.ClearTask('Konsole');
+    Assert.AreEqual(0, Integer(Length(Store.TaskNames)));
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasProblemsTests.HiddenTasksAreLeftOutAndFilesOnlyWithTasksDrop;
+var
+  Store: TAtlasProblemStore;
+  Version: Integer;
+begin
+  Store := TAtlasProblemStore.Create;
+  try
+    Store.SetTaskProblems('Lint', [TPair<string, TAtlasProblem>.Create('C:\P\B.pas', Problem(0, 0, 'x'))]);
+    Store.SetTests([TPair<string, TAtlasProblem>.Create('C:\P\B.pas', Problem(1, 0, 'Test'))]);
+    Assert.IsFalse(Store.Contains('C:\P\B.pas'), 'nur Aufgaben und Tests: nicht vom Server');
+    Assert.AreEqual(2, Integer(Length(Store.ForFile('C:\P\B.pas'))));
+    Version := Store.Version;
+    Store.SetTaskHidden('lint', True);
+    Assert.IsTrue(Store.Version > Version);
+    Assert.IsTrue(Store.TaskHidden('LINT'));
+    Assert.AreEqual(1, Integer(Length(Store.ForFile('C:\P\B.pas'))), 'ausgeblendet');
+    Assert.AreEqual(1, Store.TaskCount('Lint'), 'gezählt wird auch ausgeblendet');
+    Store.SetTaskHidden('Lint', False);
+    Assert.AreEqual(2, Integer(Length(Store.ForFile('C:\P\B.pas'))));
+    // Tests weg: die Datei bleibt wegen der Aufgabe.
+    Store.ClearTests;
+    Assert.AreEqual(1, Integer(Length(Store.Files)));
+    Store.ClearTasks;
+    Assert.AreEqual(0, Integer(Length(Store.Files)), 'Datei nur mit Aufgaben fällt weg');
   finally
     Store.Free;
   end;

@@ -51,6 +51,12 @@ type
   TLinterShell = class
   public
     class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--architecture (#1118): Architekturbericht des Ziels aus --check (sonst des aktuellen Ordners)
+    /// als Markdown oder HTML nach der Endung der Datei, als .json der Stand für den Vergleich (#1121). Berichte
+    /// vergleichen mit --compare, sonst mit architecture.baseline. Mit --compare steht der Text des Vergleichs auf
+    /// stdout (bzw. in --output); Exit-Code 1, wenn eine Abweichung aus --fail-on (sonst architecture.failOn)
+    /// vorkommt, sonst 0; bei Fehlern 3.</summary>
+    class function Architecture(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>--clear-cache: löscht alle Index-Caches, die keine laufende Instanz nutzt (#184).</summary>
     class function ClearCache: Integer; static;
   end;
@@ -103,6 +109,12 @@ uses
   Atlas.Common.Logging.Providers.Logger,
   Atlas.Common.Logging.Providers.StreamSink,
   Shell.WorkspaceGroup,
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Service,
+  Atlas.Common.Architecture.Report,
+  Atlas.Common.Architecture.Snapshot,
+  Atlas.Common.Architecture.Comparison,
   Shell.Platform,
   Shell.VcsChanges,
   Shell.Bootstrap;
@@ -125,6 +137,32 @@ begin
     WriteText(Stream, AText + sLineBreak);
   finally
     Stream.Free;
+  end;
+end;
+
+/// <summary>Ergebnis nach --output (UTF-8 ohne BOM), sonst auf stdout.</summary>
+procedure WriteOutput(const AOptions: TCommandLineOptions; const AText: string);
+var
+  Encoding: TEncoding;
+  Stream: TStream;
+begin
+  if AOptions.OutputFile <> '' then
+  begin
+    Encoding := TUTF8Encoding.Create(False);
+    try
+      TFile.WriteAllText(AOptions.OutputFile, AText, Encoding);
+    finally
+      Encoding.Free;
+    end;
+  end
+  else
+  begin
+    Stream := TStdStreams.CreateOutput;
+    try
+      WriteText(Stream, AText);
+    finally
+      Stream.Free;
+    end;
   end;
 end;
 
@@ -443,6 +481,147 @@ begin
   end;
 end;
 
+class function TLinterShell.Architecture(const AOptions: TCommandLineOptions): Integer;
+var
+  Target, ConfigRoot, Root, FileName, Text: string;
+  Settings: TServerSettings;
+  Sources: TCheckSourceFunc;
+  Source: TCheckSource;
+  Index: ISymbolIndex;
+  Service: TArchitectureService;
+  Request: TArchitectureRequest;
+  Overview: TArchitectureOverview;
+  FileFormat: TFileFormat;
+  Warning, Extension, Baseline, Error: string;
+  FailOn: TArchitectureFailKinds;
+  Comparison: TArchitectureComparison;
+  Compared: Boolean;
+begin
+  for Warning in AOptions.Warnings do
+    WriteError(Warning);
+  Extension := LowerCase(ExtractFileExt(AOptions.ArchitectureFile));
+  if (Extension <> '.md') and (Extension <> '.html') and (Extension <> '.htm') and (Extension <> '.json') then
+  begin
+    WriteError('--architecture erwartet eine .md-, .html- oder .json-Datei');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  FailOn := [];
+  if (AOptions.CompareFile <> '') and (AOptions.FailOnText <> '') and
+    not TArchitectureComparer.ParseKindList(AOptions.FailOnText, FailOn, Error) then
+  begin
+    WriteError('--fail-on: ' + Error);
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  Target := AOptions.CheckTarget;
+  if Target = '' then
+    Target := GetCurrentDir;
+  if not (TFile.Exists(Target) or TDirectory.Exists(Target)) then
+  begin
+    WriteError(Format('Ziel "%s" nicht gefunden', [Target]));
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  try
+    if TDirectory.Exists(Target) then
+      ConfigRoot := TPath.GetFullPath(Target)
+    else
+      ConfigRoot := ExtractFileDir(TPath.GetFullPath(Target));
+    Settings := LoadSettings(ConfigRoot);
+    if not Settings.ArchitectureEnabled then
+    begin
+      WriteError('Architekturübersicht ist ausgeschaltet (architecture.enabled in atlas.json oder settings.json)');
+      Exit(TFindingsOutput.ExitFailure);
+    end;
+    TFileEncodingDefaults.SetFolder(ConfigRoot, Settings.DefaultEncoding);
+    // Dieselben Dateien und Symbole wie --check; der Index enthält nur das Projekt (keine Bibliothek).
+    Index := TSymbolIndex.Create;
+    for FileName in CollectFiles(Target, Settings, Root, Sources) do
+      try
+        Text := TFileEncoding.LoadFromFile(FileName, FileFormat);
+        Source := Sources(FileName);
+        Index.AddUnit(TIndexExtractor.ExtractText(Text, FileName, Source.Defines, Source.ResolveInclude));
+      except
+        on E: Exception do
+          WriteError(Format('%s: %s', [FileName, E.Message]));
+      end;
+    Service := TArchitectureService.Create(Index,
+      function(const AFileName: string; out AText: string): Boolean
+      var
+        Format_: TFileFormat;
+      begin
+        try
+          AText := TFileEncoding.LoadFromFile(AFileName, Format_);
+          Result := True;
+        except
+          AText := '';
+          Result := False;
+        end;
+      end,
+      function(const AFileName: string): TArray<string>
+      begin
+        Result := Sources(AFileName).Defines;
+      end);
+    try
+      Request := TArchitectureRequest.FromSettings(Settings);
+      Request.Root := Root;
+      if TDirectory.Exists(Target) then
+        Request.Title := ExtractFileName(ExcludeTrailingPathDelimiter(TPath.GetFullPath(Target)))
+      else
+        Request.Title := ChangeFileExt(ExtractFileName(Target), '');
+      Overview := Service.Overview(Request);
+    finally
+      Service.Free;
+    end;
+    // Vergleich (#1121): --compare relativ zum aktuellen Ordner, sonst architecture.baseline relativ zum Projekt.
+    if AOptions.CompareFile <> '' then
+      Baseline := TPath.GetFullPath(AOptions.CompareFile)
+    else
+      Baseline := TArchitectureComparer.ResolvePath(ConfigRoot, Settings.ArchitectureBaseline);
+    if (AOptions.CompareFile = '') or (AOptions.FailOnText = '') then
+      if not TArchitectureComparer.ParseKinds(Settings.ArchitectureFailOn, FailOn, Error) then
+        FailOn := TArchitectureComparer.DefaultFailOn;
+    Compared := False;
+    if Baseline <> '' then
+    begin
+      Compared := TArchitectureComparer.CompareWithFile(Baseline, Overview, Comparison, Error);
+      if not Compared then
+      begin
+        WriteError(Error);
+        // Ohne lesbaren Stand kann --compare nichts prüfen; der Bericht mit architecture.baseline entsteht trotzdem.
+        if AOptions.CompareFile <> '' then
+          Exit(TFindingsOutput.ExitFailure);
+      end;
+    end;
+    if Extension = '.json' then
+      TArchitectureSnapshots.Save(AOptions.ArchitectureFile, TArchitectureSnapshots.FromOverview(Overview))
+    else
+    begin
+      ForceDirectories(ExtractFileDir(TPath.GetFullPath(AOptions.ArchitectureFile)));
+      if Compared then
+        TFile.WriteAllBytes(AOptions.ArchitectureFile, TEncoding.UTF8.GetBytes(TArchitectureReport.ForFile(Overview,
+          AOptions.ArchitectureFile, Comparison, FailOn)))
+      else
+        TFile.WriteAllBytes(AOptions.ArchitectureFile, TEncoding.UTF8.GetBytes(TArchitectureReport.ForFile(Overview,
+          AOptions.ArchitectureFile)));
+    end;
+    WriteError(Format('Architekturbericht %s: %d Units, %d Teilsysteme, %d Zyklen, %d Querverbindungen',
+      [AOptions.ArchitectureFile, Length(Overview.Units), Length(Overview.Subsystems), Length(Overview.Cycles),
+      Length(Overview.CrossLinks)]));
+    Result := TFindingsOutput.ExitClean;
+    if Compared and (AOptions.CompareFile <> '') then
+    begin
+      WriteOutput(AOptions, TArchitectureComparer.Text(Comparison, FailOn, 0) + sLineBreak);
+      if Comparison.Kinds * FailOn <> [] then
+        Result := TFindingsOutput.ExitFindings;
+    end;
+  except
+    on E: Exception do
+    begin
+      WriteError(E.Message);
+      Result := TFindingsOutput.ExitFailure;
+    end;
+  end;
+end;
+
 class function TLinterShell.ClearCache: Integer;
 begin
   try
@@ -471,7 +650,6 @@ var
   FileFormat: TFileFormat;
   Encoding: TEncoding;
   Output: string;
-  Stream: TStream;
   Warning: string;
   Stats: TSuppressionStats;
   Findings: TArray<TRuleFinding>;
@@ -543,7 +721,7 @@ begin
     Filter.MinSeverity := AOptions.MinSeverity;
 
     Rules := BuiltinRules;
-    Descriptors := [TFileChecker.SyntaxDescriptor];
+    Descriptors := [TFileChecker.SyntaxDescriptor, TFileChecker.LanguageFeatureDescriptor];
     for Rule in Rules do
       Descriptors := Descriptors + [Rule.Descriptor];
 
@@ -739,24 +917,7 @@ begin
       Git.Free;
       Stats.Free;
     end;
-    if AOptions.OutputFile <> '' then
-    begin
-      Encoding := TUTF8Encoding.Create(False);
-      try
-        TFile.WriteAllText(AOptions.OutputFile, Output, Encoding);
-      finally
-        Encoding.Free;
-      end;
-    end
-    else
-    begin
-      Stream := TStdStreams.CreateOutput;
-      try
-        WriteText(Stream, Output);
-      finally
-        Stream.Free;
-      end;
-    end;
+    WriteOutput(AOptions, Output);
     if AOptions.SuppressionStats or AOptions.Metrics or AOptions.Todos then
       Result := TFindingsOutput.ExitClean
     else

@@ -1,4 +1,4 @@
-﻿unit Ref.Pruefung.Verstoesse;
+﻿unit Ref.Pruefung.Verstoesse; // ERWARTET-PROJEKT: unused-unit
 
 // Bewusst eingebaute Regelverstöße. Jede Zeile mit "// ERWARTET: <regel>"
 // muss genau diesen Treffer liefern, Zeilen mit "// KEIN-TREFFER: <regel>"
@@ -11,6 +11,9 @@
 // "// ERWARTET-INDEX: <regel>" markiert Treffer von Regeln, die die RTL im
 // Index brauchen (z. B. legacy-stack-queue, #1106). Der Golden-Korpus prüft
 // je Datei ohne Index; diese Marker prüfen die Tests der Regel mit RTL-Stubs.
+// "// ERWARTET-OPTION: <regel>" markiert Treffer von Regeln, die erst mit
+// Optionen etwas melden (forbidden-symbol, #1133); die Tests der Regel prüfen
+// sie mit der Liste aus README.md.
 
 interface
 
@@ -37,7 +40,13 @@ implementation
 
 type
   TKnoten = class
+  private
+    procedure Vergessen; // ERWARTET: unused-private-member
   end;
+
+procedure TKnoten.Vergessen;
+begin
+end;
 
 function OhneErgebnis(AWert: Integer): Integer; // ERWARTET: result-not-set
 begin
@@ -94,7 +103,7 @@ begin
   Abort; // ERWARTET: unreachable-code
 end;
 
-function RueckwaertsSummieren(const AWerte: TArray<Integer>): Integer;
+function RueckwaertsSummieren(const AWerte: TArray<Integer>): Integer; // ERWARTET: unused-declaration
 var
   I: Integer;
 begin
@@ -103,7 +112,7 @@ begin
     Inc(Result, AWerte[I]);
 end;
 
-procedure NameUebernehmen(var AName: string);
+procedure NameUebernehmen(var AName: string); // ERWARTET: unused-declaration
 begin
   AName := AName; // ERWARTET: self-assignment
 end;
@@ -120,7 +129,7 @@ begin
   Exit; // ERWARTET: redundant-jump
 end;
 
-procedure StapelLesen;
+procedure StapelLesen; // ERWARTET: unused-declaration
 var
   Offen: TObjectStack; // ERWARTET-INDEX: legacy-stack-queue
   Knoten: TKnoten;
@@ -135,7 +144,7 @@ begin
   end;
 end;
 
-procedure StapelGenerisch;
+procedure StapelGenerisch; // ERWARTET: unused-declaration
 var
   Fertig: TObjectStack<TKnoten>; // KEIN-TREFFER: legacy-stack-queue
 begin
@@ -185,6 +194,79 @@ procedure TDrucker.Vorbereiten;
 begin
   inherited; // ERWARTET: inherited-without-ancestor
   Stoppen;
+end;
+
+type
+  TBlatt = class(TKnoten)
+  public
+    Wert: Integer;
+  end;
+
+  TAst = class(TKnoten)
+  public
+    Kinder: Integer;
+  end;
+
+procedure Umwandeln(AKnoten: TKnoten; ABlatt: TBlatt);
+begin
+  TAst(ABlatt).Kinder := 1; // ERWARTET: unrelated-class-cast
+  TAst(AKnoten).Kinder := 2; // KEIN-TREFFER: unrelated-class-cast
+end;
+
+procedure AltMelden(const AText: string);
+begin
+end;
+
+procedure Melden(const AText: string);
+var
+  mAufgabe: TThreadProcedure;
+begin
+  Writeln(AText); // ERWARTET-OPTION: forbidden-symbol
+  Writeln(ErrOutput, AText);
+  AltMelden(AText); // ERWARTET-OPTION: forbidden-symbol
+  mAufgabe := procedure
+    begin
+    end;
+  TThread.Queue(nil, mAufgabe); // ERWARTET-OPTION: forbidden-symbol
+  TThread.Queue(TThread.CurrentThread, mAufgabe);
+end;
+
+procedure Aufraeumen(ABlatt: TBlatt; AKnoten: TKnoten);
+begin
+  TBlatt(ABlatt).Wert := 0; // ERWARTET: redundant-cast
+  TBlatt(AKnoten).Wert := 1; // KEIN-TREFFER: redundant-cast
+  TObject(ABlatt).Free; // ERWARTET: redundant-cast
+end;
+
+procedure Senden(const AText: string; AStrom: TStream);
+begin
+  AStrom.WriteBuffer(PChar(@AText[1])^, Length(AText) * SizeOf(Char)); // ERWARTET: first-char-address
+  AStrom.WriteBuffer(PChar(AText)^, Length(AText) * SizeOf(Char)); // KEIN-TREFFER: first-char-address
+end;
+
+procedure Suchen(const AWerte: TArray<Integer>; AWert: Integer; out AGefunden: Boolean);
+var
+  mWert: Integer;
+begin
+  AGefunden := False;
+  for mWert in AWerte do // ERWARTET: loop-runs-at-most-once
+  begin
+    if mWert = AWert then
+      AGefunden := True;
+    Exit;
+  end;
+  for mWert in AWerte do // KEIN-TREFFER: loop-runs-at-most-once
+    if mWert = AWert then
+    begin
+      AGefunden := True;
+      Exit;
+    end;
+end;
+
+function Beschriften(const AName: string; AAnzahl: Integer): string;
+begin
+  Result := Format('%d Einträge für %s', [AName, AAnzahl]); // ERWARTET: format-args
+  Result := Format('%s: %d Einträge', [AName, AAnzahl]); // KEIN-TREFFER: format-args
 end;
 
 end.

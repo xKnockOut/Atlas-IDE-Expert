@@ -14,6 +14,8 @@ type
     [Test]
     procedure ObserveTracksRequestAndExecutesCancelRequest;
     [Test]
+    procedure ObserveExecutesMcpCancelled;
+    [Test]
     procedure ObservePassesOtherMessagesOn;
     [Test]
     procedure IgnoresCancelForReleasedRequest;
@@ -137,6 +139,18 @@ begin
   Assert.IsFalse(Observe(Pending, '{"jsonrpc":"2.0","id":7,"method":"langsam"}'));
   Assert.IsTrue(Observe(Pending, '{"jsonrpc":"2.0","method":"$/cancelRequest","params":{"id":7}}'));
   Assert.IsTrue(AcquireJson(Pending, '7').IsCancellationRequested);
+end;
+
+procedure TJsonRpcPendingRequestsTests.ObserveExecutesMcpCancelled;
+var
+  Pending: IJsonRpcPendingRequests;
+begin
+  // MCP bricht mit notifications/cancelled und params.requestId ab (#1117).
+  Pending := TJsonRpcPendingRequests.Create;
+  Assert.IsFalse(Observe(Pending, '{"jsonrpc":"2.0","id":"a1","method":"tools/call"}'));
+  Assert.IsTrue(Observe(Pending, '{"jsonrpc":"2.0","method":"notifications/cancelled",' +
+    '"params":{"requestId":"a1","reason":"Nutzer"}}'));
+  Assert.IsTrue(AcquireJson(Pending, '"a1"').IsCancellationRequested);
 end;
 
 procedure TJsonRpcPendingRequestsTests.ObservePassesOtherMessagesOn;

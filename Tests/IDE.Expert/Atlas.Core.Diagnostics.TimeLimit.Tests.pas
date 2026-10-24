@@ -83,6 +83,7 @@ type
     destructor Destroy; override;
     procedure AddItems(const AItems: TAtlasCompletionItems);
     procedure MarkIncomplete;
+    procedure MarkSyntax(const ANotice: TAtlasSyntaxNotice);
     procedure Complete;
     function WaitDone(ATimeoutMs: Cardinal): Boolean;
     function Names: string;
@@ -105,7 +106,7 @@ type
   TFailingFetchProvider = class(TAtlasAsyncCompletionProvider)
   protected
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
+      const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   end;
 
   /// <summary>Wie eine Zeitüberschreitung in Composite: Cancel kommt, während Prepare noch läuft (A-13).</summary>
@@ -113,7 +114,7 @@ type
   protected
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
+      const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   public
     Fetches: Integer;
   end;
@@ -123,7 +124,7 @@ type
   protected
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
+      const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   public
     PrepareThread: TThreadID;
   end;
@@ -138,9 +139,9 @@ begin
 end;
 
 function TCancelInPrepareProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
 begin
-  AIncomplete := False;
+  AState := Default(TAtlasFetchState);
   TInterlocked.Increment(Fetches);
   Result := nil;
 end;
@@ -155,9 +156,9 @@ begin
 end;
 
 function TThreadRecordingProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
 begin
-  AIncomplete := False;
+  AState := Default(TAtlasFetchState);
   Result := nil;
 end;
 
@@ -193,6 +194,10 @@ begin
 end;
 
 procedure TSink.MarkIncomplete;
+begin
+end;
+
+procedure TSink.MarkSyntax(const ANotice: TAtlasSyntaxNotice);
 begin
 end;
 
@@ -247,9 +252,9 @@ end;
 { TFailingFetchProvider }
 
 function TFailingFetchProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
 begin
-  AIncomplete := False;
+  AState := Default(TAtlasFetchState);
   raise EInvalidOpException.Create('Fetch kaputt');
 end;
 

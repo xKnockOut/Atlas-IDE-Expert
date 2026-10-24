@@ -45,19 +45,23 @@ uses
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  BooleanRuleOptions: array[0..21] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+  BooleanRuleOptions: array[0..24] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields',
     'allowSingleLineExit', 'allowSameLine', 'allowComments', 'onlyAfterRaisingCode', 'allowInProgram', 'unitLevel',
     'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem', 'ignoreOverrides', 'requirePublic',
-    'checkReturns');
+    'checkReturns', 'checkFree', 'allowFirstElement', 'implementation');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..30] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  StringListRuleOptions: array[0..33] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
     'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
-    'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes');
+    'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes', 'allowTypes',
+    'formatMethods', 'unitKinds');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
   DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
+  /// <summary>Erlaubte Arten in symbols von forbidden-symbol (#1133); wie TForbiddenSymbolRule.TryParseKind.</summary>
+  ForbiddenSymbolKinds: array[0..6] of string = ('routine', 'type', 'constant', 'field', 'property', 'enumValue',
+    'identifier');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
   NumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
@@ -87,13 +91,17 @@ type
     procedure ReadExclude(ANode: TJsonNode);
     procedure ReadMcp(ANode: TJsonNode);
     procedure ReadUsesKeep(ANode: TJsonNode);
+    procedure ReadDeadCode(ANode: TJsonNode);
     procedure ReadSlashCommands(ANode: TJsonNode);
     procedure ReadCompleteBlocks(ANode: TJsonNode);
     procedure ReadExperimental(ANode: TJsonNode);
     procedure ReadSortUses(ANode: TJsonNode);
     procedure ReadInlayHints(ANode: TJsonNode);
     procedure ReadCodeLens(ANode: TJsonNode);
+    procedure ReadReferences(ANode: TJsonNode);
+    procedure ReadNavigation(ANode: TJsonNode);
     procedure CheckTodoKeywords(ANode: TJsonNode);
+    procedure CheckForbiddenSymbols(ANode: TJsonNode);
     procedure ReadHints(ANode: TJsonNode);
     procedure ReadDirectives(ANode: TJsonNode);
     procedure ReadStringLiteral(ANode: TJsonNode);
@@ -108,7 +116,10 @@ type
     procedure ReadCompletion(ANode: TJsonNode);
     procedure ReadDiagnostics(ANode: TJsonNode);
     procedure ReadIndex(ANode: TJsonNode);
+    procedure ReadArchitecture(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
+    procedure ReadTasks(ANode: TJsonNode);
+    procedure ReadTaskMatcher(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
     function ParseRoot: TJsonNode;
@@ -325,7 +336,7 @@ begin
           else if (Value.Keys[Inner] = 'minLines') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 1)) then
             ReportNode(Value[Inner], '"minLines" muss eine ganze Zahl ab 1 sein')
-          // Mindestzahl der Vergleiche von string-if-chain (#1066).
+          // Mindestzahl der Vergleiche von string-if-chain (#1066) bzw. der Zweige von prefer-case (#646).
           else if (Value.Keys[Inner] = 'min') and not ((Value[Inner].Kind = TJsonKind.Number) and
             TryStrToInt(Value[Inner].Value, Limit) and (Limit >= 2)) then
             ReportNode(Value[Inner], '"min" muss eine ganze Zahl ab 2 sein')
@@ -367,6 +378,9 @@ begin
           else if (Value.Keys[Inner] = 'kinds') and (Rule.Id = 'deprecated-symbol') and
             not IsStringListOf(Value[Inner], DeprecationKinds) then
             ReportNode(Value[Inner], '"kinds" darf nur "deprecated", "experimental", "platform" und "library" enthalten')
+          // Verbotene Symbole von forbidden-symbol (#1133).
+          else if (Value.Keys[Inner] = 'symbols') and (Rule.Id = 'forbidden-symbol') then
+            CheckForbiddenSymbols(Value[Inner])
           // Suchquelle von uses-unit-not-found (#1016).
           else if (Value.Keys[Inner] = 'searchPaths') and
             (IndexStr(Value[Inner].Value, ['project', 'atlas', 'both']) < 0) then
@@ -553,6 +567,42 @@ begin
   for Index := 0 to ANode.Count - 1 do
     if ExpectString(ANode[Index], 'usesKeep', Value) then
       FSettings.UsesKeep := FSettings.UsesKeep + [Value];
+end;
+
+procedure TValidator.ReadDeadCode(ANode: TJsonNode);
+var
+  Index, Item: Integer;
+  Key, Value: string;
+  Values: TArray<string>;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"deadCode" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if (Key = 'keepAttributes') or (Key = 'keepPatterns') then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], Format('"deadCode.%s" muss eine Liste von Texten sein', [Key]));
+        Continue;
+      end;
+      Values := nil;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'deadCode.' + Key, Value) then
+          Values := Values + [Value];
+      if Key = 'keepAttributes' then
+        FSettings.DeadCodeKeepAttributes := Values
+      else
+        FSettings.DeadCodeKeepPatterns := Values;
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "deadCode.%s"', [Key]), False);
+  end;
 end;
 
 procedure TValidator.ReadSlashCommands(ANode: TJsonNode);
@@ -793,6 +843,67 @@ begin
   end;
 end;
 
+procedure TValidator.CheckForbiddenSymbols(ANode: TJsonNode);
+var
+  mIndex, mInner: Integer;
+  mItem, mValue: TJsonNode;
+  mKey: string;
+  mSeverity: TRuleSeverity;
+  mHasName: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"symbols" muss eine Liste von Objekten mit "name" sein');
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    mItem := ANode[mIndex];
+    if mItem.Kind <> TJsonKind.Object_ then
+    begin
+      ReportNode(mItem, 'Ein Eintrag von "symbols" ist ein Objekt mit "name", z. B. {"name": "System.Writeln"}');
+      Continue;
+    end;
+    mHasName := False;
+    for mInner := 0 to mItem.Count - 1 do
+    begin
+      mKey := mItem.Keys[mInner];
+      mValue := mItem[mInner];
+      if mKey = 'name' then
+      begin
+        mHasName := True;
+        if (mValue.Kind <> TJsonKind.String_) or (Trim(mValue.Value) = '') then
+          ReportNode(mValue, '"name" muss ein nicht leerer Text sein');
+      end
+      else if mKey = 'kind' then
+      begin
+        if (mValue.Kind <> TJsonKind.String_) or (IndexText(mValue.Value, ForbiddenSymbolKinds) < 0) then
+          ReportNode(mValue, '"kind" muss routine, type, constant, field, property, enumValue oder identifier sein');
+      end
+      else if (mKey = 'message') or (mKey = 'replacement') then
+      begin
+        if mValue.Kind <> TJsonKind.String_ then
+          ReportNode(mValue, Format('"%s" muss ein Text sein', [mKey]));
+      end
+      else if mKey = 'severity' then
+      begin
+        if (mValue.Kind <> TJsonKind.String_) or not TConfigurationParser.TryParseSeverity(mValue.Value, mSeverity) then
+          ReportNode(mValue, 'Unbekannter Schweregrad; erlaubt: off, hint, info, warning, error');
+      end
+      else if (mKey = 'units') or (mKey = 'firstArgument') or (mKey = 'allowFirstArgument') then
+      begin
+        if not IsStringList(mValue) then
+          ReportNode(mValue, Format('"%s" muss eine Liste von Texten sein', [mKey]));
+      end
+      else
+        ReportNode(mValue, Format('Unbekannter Schlüssel "%s"; erlaubt: name, kind, message, replacement, ' +
+          'severity, units, firstArgument, allowFirstArgument', [mKey]));
+    end;
+    if not mHasName then
+      ReportNode(mItem, 'Eintrag von "symbols" ohne "name"');
+  end;
+end;
+
 procedure TValidator.ReadCodeLens(ANode: TJsonNode);
 var
   Index: Integer;
@@ -811,6 +922,61 @@ begin
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "codeLens.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.ReadReferences(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"references" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'inferred' then
+      ExpectBoolean(ANode[Index], Key, FSettings.References.Inferred)
+    else if Key = 'textMatches' then
+      ExpectBoolean(ANode[Index], Key, FSettings.References.TextMatches)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "references.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.ReadNavigation(ANode: TJsonNode);
+var
+  Index, Depth: Integer;
+  Key: string;
+  Value: TJsonNode;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"navigation" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    Value := ANode[Index];
+    if Key = 'symbolPath' then
+      ExpectBoolean(Value, Key, FSettings.Navigation.SymbolPath)
+    else if Key = 'impact' then
+      ExpectBoolean(Value, Key, FSettings.Navigation.Impact)
+    else if Key = 'impactDepth' then
+    begin
+      if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Depth) and (Depth >= 1) and (Depth <= 5) then
+        FSettings.Navigation.ImpactDepth := Depth
+      else
+        ReportNode(Value, '"impactDepth" muss eine ganze Zahl von 1 bis 5 sein');
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "navigation.%s"', [Key]), False);
   end;
 end;
 
@@ -839,7 +1005,7 @@ end;
 
 procedure TValidator.ReadHints(ANode: TJsonNode);
 var
-  Index, Lines: Integer;
+  Index, Lines, Item: Integer;
   Key, Text: string;
   Value: TJsonNode;
   Full, ExpandSet: Boolean;
@@ -892,6 +1058,29 @@ begin
     end
     else if Key = 'publishedMembers' then
       ExpectBoolean(Value, Key, FSettings.Hints.PublishedMembers)
+    else if Key = 'rationale' then
+      ExpectBoolean(Value, Key, FSettings.Hints.Rationale)
+    else if Key = 'rationaleMarkers' then
+    begin
+      // Begründungen (#1123): eigene Marken ersetzen die Vorgabe.
+      if Value.Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(Value, '"rationaleMarkers" muss eine Liste von Marken sein');
+        Continue;
+      end;
+      FSettings.Hints.RationaleMarkers := nil;
+      for Item := 0 to Value.Count - 1 do
+        if ExpectString(Value[Item], 'rationaleMarkers', Text) then
+          if Trim(Text) = '' then
+            ReportNode(Value[Item], '"rationaleMarkers" darf keine leere Marke enthalten')
+          else
+            FSettings.Hints.RationaleMarkers := FSettings.Hints.RationaleMarkers + [Trim(Text)];
+    end
+    else if Key = 'adrFolder' then
+    begin
+      if ExpectString(Value, Key, Text) then
+        FSettings.Hints.AdrFolder := Trim(Text);
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "hints.%s"', [Key]), False);
@@ -1248,6 +1437,14 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ClassActions)
     else if Key = 'explicitType' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExplicitType)
+    else if Key = 'compilerFixes' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.CompilerFixes)
+    else if Key = 'missingUnit' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MissingUnit)
+    else if Key = 'disableWarning' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.DisableWarning)
+    else if Key = 'disableWarningReason' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.DisableWarningReason)
     else if Key = 'extract' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.Extract)
     else if Key = 'completeCase' then
@@ -1340,8 +1537,22 @@ begin
         else
           ReportNode(ANode[Index], '"refactoring.freeFieldsStyle" muss "free" oder "freeAndNil" sein');
     end
+    else if Key = 'suggestConst' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SuggestConst)
     else if Key = 'invertBoolean' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InvertBoolean)
+    else if Key = 'varBlock' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.VarBlock)
+    else if Key = 'varBlockMerge' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.VarBlockMerge)
+    else if Key = 'varBlockSort' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['usage', 'alpha', 'none']) then
+          FSettings.Refactoring.VarBlockSort := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.varBlockSort" muss "usage", "alpha" oder "none" sein');
+    end
     else if Key = 'invertBooleanAntonyms' then
     begin
       // {"Hidden": "Visible"}: Name → Gegenteil, beide Richtungen.
@@ -1370,6 +1581,119 @@ begin
     end
     else if Key = 'invertBooleanIncludeDfm' then
       ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InvertBooleanIncludeDfm)
+    else if Key = 'ifCase' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.IfCase)
+    else if Key = 'conditions' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.Conditions)
+    else if Key = 'conditionalExpression' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ConditionalExpression)
+    else if Key = 'nestedRoutine' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.NestedRoutine)
+    else if Key = 'promoteVariable' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.PromoteVariable)
+    else if Key = 'anonymousMethod' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.AnonymousMethod)
+    else if Key = 'anonymousMethodDeferredCapture' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'forward') then
+          FSettings.Refactoring.AnonymousMethodDeferredCapture := 'forward'
+        else if SameText(Value, 'fields') then
+          FSettings.Refactoring.AnonymousMethodDeferredCapture := 'fields'
+        else
+          ReportNode(ANode[Index], '"refactoring.anonymousMethodDeferredCapture" muss "forward" oder "fields" sein');
+    end
+    else if Key = 'methodKind' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MethodKind)
+    else if Key = 'methodKindMarker' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MethodKindMarker)
+    else if Key = 'methodKindStatic' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MethodKindStatic)
+    else if Key = 'typeAlias' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.TypeAlias)
+    else if Key = 'typeAliasScope' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'here') or SameText(Value, 'unit') or SameText(Value, 'project') then
+          FSettings.Refactoring.TypeAliasScope := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.typeAliasScope" muss "here", "unit" oder "project" sein');
+    end
+    else if Key = 'enumTables' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.EnumTables)
+    else if Key = 'enumTablesResourceStrings' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.EnumTablesResourceStrings)
+    else if Key = 'extractInterface' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExtractInterface)
+    else if Key = 'extractSuperclass' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.ExtractSuperclass)
+    else if Key = 'extractSuperclassTarget' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'sameUnit') then
+          FSettings.Refactoring.ExtractSuperclassTarget := 'sameUnit'
+        else if SameText(Value, 'newUnit') then
+          FSettings.Refactoring.ExtractSuperclassTarget := 'newUnit'
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassTarget" muss "sameUnit" oder "newUnit" sein');
+    end
+    else if Key = 'extractSuperclassNameSuffix' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if IsValidIdent(Trim(Value)) then
+          FSettings.Refactoring.ExtractSuperclassNameSuffix := Trim(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassNameSuffix" muss ein Bezeichner wie "Base" sein');
+    end
+    else if Key = 'extractSuperclassMethodMode' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['move', 'abstract']) then
+          FSettings.Refactoring.ExtractSuperclassMethodMode := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassMethodMode" muss "move" oder "abstract" sein');
+    end
+    else if Key = 'extractSuperclassRaiseVisibility' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if SameText(Value, 'protected') then
+          FSettings.Refactoring.ExtractSuperclassRaiseVisibility := 'protected'
+        else if SameText(Value, 'strictProtected') then
+          FSettings.Refactoring.ExtractSuperclassRaiseVisibility := 'strictProtected'
+        else
+          ReportNode(ANode[Index], '"refactoring.extractSuperclassRaiseVisibility" muss "protected" oder ' +
+            '"strictProtected" sein');
+    end
+    else if Key = 'moveMember' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.MoveMember)
+    else if Key = 'inlineAccessor' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessor)
+    else if Key = 'inlineAccessorEqualityCheck' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessorEqualityCheck)
+    else if Key = 'inlineAccessorBulk' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessorBulk)
+    else if Key = 'inlineAccessorDiagnostic' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.InlineAccessorDiagnostic)
+    else if Key = 'safeDelete' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SafeDelete)
+    else if Key = 'safeDeletePreviewWhenUnused' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Refactoring.SafeDeletePreviewWhenUnused)
+    else if Key = 'safeDeleteCascade' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['ask', 'always', 'never']) then
+          FSettings.Refactoring.SafeDeleteCascade := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.safeDeleteCascade" muss "ask", "always" oder "never" sein');
+    end
+    else if Key = 'safeDeleteIncludeOverrides' then
+    begin
+      if ExpectString(ANode[Index], Key, Value) then
+        if MatchText(Value, ['ask', 'always', 'never']) then
+          FSettings.Refactoring.SafeDeleteIncludeOverrides := LowerCase(Value)
+        else
+          ReportNode(ANode[Index], '"refactoring.safeDeleteIncludeOverrides" muss "ask", "always" oder "never" sein');
+    end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "refactoring.%s"', [Key]), False);
@@ -1515,6 +1839,16 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.UsesDetails)
     else if Key = 'inheritedCall' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.InheritedCall)
+    else if Key = 'attributes' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.Attributes)
+    else if Key = 'anonymousMethods' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.AnonymousMethods)
+    else if Key = 'withOrigin' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.WithOrigin)
+    else if Key = 'exceptionClasses' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.ExceptionClasses)
+    else if Key = 'syntaxNotice' then
+      ExpectBoolean(ANode[Index], Key, FSettings.Completion.SyntaxNotice)
     else if Key = 'sameNameVariants' then
       ExpectBoolean(ANode[Index], Key, FSettings.Completion.SameNameVariants)
     else if Key = 'showFmxUnits' then
@@ -1590,6 +1924,10 @@ begin
     end
     else if Key = 'logMapFile' then
       ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsLogMapFile)
+    else if Key = 'usesCycleLive' then
+      ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsUsesCycleLive)
+    else if Key = 'usesCycleImplementation' then
+      ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsUsesCycleImplementation)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "diagnostics.%s"', [Key]), False);
@@ -1650,6 +1988,82 @@ begin
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "index.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.ReadArchitecture(ANode: TJsonNode);
+var
+  Index, Item, Number: Integer;
+  Key, Value: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"architecture" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'enabled' then
+      ExpectBoolean(ANode[Index], Key, FSettings.ArchitectureEnabled)
+    else if Key = 'scope' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.String_) and ((ANode[Index].Value = 'project') or
+        (ANode[Index].Value = 'projectGroup')) then
+        FSettings.ArchitectureScope := ANode[Index].Value
+      else
+        ReportNode(ANode[Index], '"architecture.scope" muss "project" oder "projectGroup" sein');
+    end
+    else if Key = 'includeLibraryUnits' then
+      ExpectBoolean(ANode[Index], Key, FSettings.ArchitectureIncludeLibraryUnits)
+    else if Key = 'centralUnits' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.Number) and TryStrToInt(ANode[Index].Value, Number) and (Number >= 5) and
+        (Number <= 100) then
+        FSettings.ArchitectureCentralUnits := Number
+      else
+        ReportNode(ANode[Index], '"architecture.centralUnits" muss eine ganze Zahl von 5 bis 100 sein');
+    end
+    else if Key = 'exclude' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], '"architecture.exclude" muss eine Liste von Mustern sein');
+        Continue;
+      end;
+      FSettings.ArchitectureExclude := nil;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'architecture.exclude', Value) then
+          FSettings.ArchitectureExclude := FSettings.ArchitectureExclude + [Value];
+    end
+    else if Key = 'baseline' then
+    begin
+      if ExpectString(ANode[Index], 'architecture.baseline', Value) then
+        FSettings.ArchitectureBaseline := Trim(Value);
+    end
+    else if Key = 'failOn' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Array_ then
+      begin
+        ReportNode(ANode[Index], '"architecture.failOn" muss eine Liste aus newCycle, newCrossLink, ' +
+          'subsystemChange und centralGrowth sein');
+        Continue;
+      end;
+      FSettings.ArchitectureFailOn := nil;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'architecture.failOn', Value) then
+        begin
+          if (Value = 'newCycle') or (Value = 'newCrossLink') or (Value = 'subsystemChange') or
+            (Value = 'centralGrowth') then
+            FSettings.ArchitectureFailOn := FSettings.ArchitectureFailOn + [Value]
+          else
+            ReportNode(ANode[Index][Item], Format('"architecture.failOn": unbekannte Abweichung "%s" (erlaubt: ' +
+              'newCycle, newCrossLink, subsystemChange, centralGrowth)', [Value]));
+        end;
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "architecture.%s"', [Key]), False);
   end;
 end;
 
@@ -1761,6 +2175,155 @@ begin
   FSettings.Formatting := mSettings;
 end;
 
+procedure TValidator.ReadTaskMatcher(ANode: TJsonNode);
+var
+  Index, Item: Integer;
+  Key, Text: string;
+  HasRegex: Boolean;
+begin
+  if ANode.Kind = TJsonKind.String_ then
+  begin
+    if IndexStr(ANode.Value, ['dcc', 'pwsh', 'msbuild', 'generic', 'none']) < 0 then
+      ReportNode(ANode, 'Erlaubt sind "dcc", "pwsh", "msbuild", "generic", "none" oder ein Objekt mit "regex"');
+    Exit;
+  end;
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"matcher" muss ein Name oder ein Objekt mit "regex" sein');
+    Exit;
+  end;
+  HasRegex := False;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'regex' then
+    begin
+      if ExpectString(ANode[Index], 'regex', Text) then
+        if Text = '' then
+          ReportNode(ANode[Index], '"regex" darf nicht leer sein')
+        else
+          HasRegex := True;
+    end
+    else if Key = 'severity' then
+    begin
+      if ExpectString(ANode[Index], 'severity', Text) and (IndexStr(Text, ['error', 'warning', 'info']) < 0) then
+        ReportNode(ANode[Index], 'Erlaubt sind "error", "warning" und "info"');
+    end
+    else if Key = 'severityMap' then
+    begin
+      if ANode[Index].Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(ANode[Index], '"severityMap" muss ein Objekt Wort → error, warning oder info sein');
+        Continue;
+      end;
+      for Item := 0 to ANode[Index].Count - 1 do
+        if ExpectString(ANode[Index][Item], 'severityMap', Text) and
+          (IndexStr(Text, ['error', 'warning', 'info']) < 0) then
+          ReportNode(ANode[Index][Item], 'Erlaubt sind "error", "warning" und "info"');
+    end
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Angabe "%s" im Muster; erlaubt: regex, severity, severityMap', [Key]), False);
+  end;
+  if not HasRegex then
+    ReportNode(ANode, 'Eigenes Muster ohne "regex"');
+end;
+
+procedure TValidator.ReadTasks(ANode: TJsonNode);
+var
+  Index, Inner, Item, Number: Integer;
+  Task, Value: TJsonNode;
+  Key, Text: string;
+  Names: TList<string>;
+  HasName, HasCommand: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"tasks" muss eine Liste von Aufgaben sein');
+    Exit;
+  end;
+  FSettings.Tasks := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+  Names := TList<string>.Create;
+  try
+    for Index := 0 to ANode.Count - 1 do
+    begin
+      Task := ANode[Index];
+      if Task.Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(Task, 'Eine Aufgabe ist ein Objekt mit "name" und "command"');
+        Continue;
+      end;
+      HasName := False;
+      HasCommand := False;
+      for Inner := 0 to Task.Count - 1 do
+      begin
+        Key := Task.Keys[Inner];
+        Value := Task[Inner];
+        if Key = 'name' then
+        begin
+          if ExpectString(Value, 'name', Text) and (Trim(Text) <> '') then
+          begin
+            HasName := True;
+            // Gleicher Name: Die spätere Aufgabe wäre nie erreichbar (Projekt vor global gilt nur zwischen Dateien).
+            if Names.IndexOf(AnsiLowerCase(Trim(Text))) >= 0 then
+              ReportNode(Value, Format('Die Aufgabe "%s" gibt es schon', [Trim(Text)]))
+            else
+              Names.Add(AnsiLowerCase(Trim(Text)));
+          end;
+        end
+        else if Key = 'command' then
+          HasCommand := ExpectString(Value, 'command', Text) and (Trim(Text) <> '')
+        else if (Key = 'cwd') or (Key = 'key') then
+          ExpectString(Value, Key, Text)
+        else if Key = 'args' then
+        begin
+          if Value.Kind <> TJsonKind.Array_ then
+            ReportNode(Value, '"args" muss eine Liste von Texten sein')
+          else
+            for Item := 0 to Value.Count - 1 do
+              if Value[Item].Kind <> TJsonKind.Number then
+                ExpectString(Value[Item], 'args', Text);
+        end
+        else if Key = 'env' then
+        begin
+          if Value.Kind <> TJsonKind.Object_ then
+            ReportNode(Value, '"env" muss ein Objekt Name → Wert sein')
+          else
+            for Item := 0 to Value.Count - 1 do
+              ExpectString(Value[Item], 'env', Text);
+        end
+        else if Key = 'group' then
+        begin
+          if ExpectString(Value, 'group', Text) and (IndexStr(Text, ['check', 'build', 'test', 'other']) < 0) then
+            ReportNode(Value, 'Erlaubt sind "check", "build", "test" und "other"');
+        end
+        else if Key = 'beforeBuild' then
+        begin
+          if ExpectString(Value, 'beforeBuild', Text) and (IndexStr(Text, ['off', 'warn', 'block']) < 0) then
+            ReportNode(Value, 'Erlaubt sind "off", "warn" und "block"');
+        end
+        else if Key = 'timeoutSec' then
+        begin
+          if not ((Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Number) and (Number >= 0) and
+            (Number <= 86400)) then
+            ReportNode(Value, '"timeoutSec" muss eine ganze Zahl von 0 bis 86400 sein');
+        end
+        else if Key = 'matcher' then
+          ReadTaskMatcher(Value)
+        else
+          Report(Task.KeyStarts[Inner], Task.KeyStarts[Inner] + Length(Key) + 2,
+            Format('Unbekannte Angabe "%s" in einer Aufgabe', [Key]), False);
+      end;
+      if not HasName then
+        ReportNode(Task, 'Aufgabe ohne "name"');
+      if not HasCommand then
+        ReportNode(Task, 'Aufgabe ohne "command"');
+    end;
+  finally
+    Names.Free;
+  end;
+end;
+
 function TValidator.ParseRoot: TJsonNode;
 begin
   try
@@ -1812,6 +2375,16 @@ begin
             FSettings.DelphiVersion := BdsVersionOf(Text);
             FSettings.DelphiVersionRange := TTextRange.Create(PositionAt(Value.Start), PositionAt(Value.Stop));
           end;
+      end
+      else if Key = 'minDelphiVersion' then
+      begin
+        if ExpectString(Value, Key, Text) then
+          if Text = '' then
+            FSettings.MinDelphiVersion := ''
+          else if BdsVersionOf(Text) = '' then
+            ReportNode(Value, 'Unbekannte Delphi-Version; erwartet z. B. "12" oder "23.0" für Delphi 12, "11" oder "22.0" für Delphi 11')
+          else
+            FSettings.MinDelphiVersion := BdsVersionOf(Text);
       end
       else if Key = 'language' then
       begin
@@ -1882,6 +2455,10 @@ begin
         ReadInlayHints(Value)
       else if Key = 'codeLens' then
         ReadCodeLens(Value)
+      else if Key = 'references' then
+        ReadReferences(Value)
+      else if Key = 'navigation' then
+        ReadNavigation(Value)
       else if Key = 'hints' then
         ReadHints(Value)
       else if Key = 'directives' then
@@ -1908,6 +2485,8 @@ begin
         ReadDiagnostics(Value)
       else if Key = 'index' then
         ReadIndex(Value)
+      else if Key = 'architecture' then
+        ReadArchitecture(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
       else if Key = 'completeBlocks' then
@@ -1922,6 +2501,8 @@ begin
         ReadSortUses(Value)
       else if Key = 'usesKeep' then
         ReadUsesKeep(Value)
+      else if Key = 'deadCode' then
+        ReadDeadCode(Value)
       else if Key = 'memoryBudgetMb' then
       begin
         if (Value.Kind = TJsonKind.Number) and TryStrToInt(Value.Value, Budget) and (Budget >= 0) then
@@ -1954,6 +2535,8 @@ begin
         if ExpectString(Value, Key, Text) then
           FSettings.TraceFile := Text;
       end
+      else if Key = 'tasks' then
+        ReadTasks(Value)
       else if Key = 'format' then
       begin
         if Value.Kind = TJsonKind.Object_ then
@@ -2184,6 +2767,8 @@ begin
       Result.DelphiVersion := FileSettings.DelphiVersion;
       Result.DelphiVersionRange := FileSettings.DelphiVersionRange;
     end
+    else if Key = 'minDelphiVersion' then
+      Result.MinDelphiVersion := FileSettings.MinDelphiVersion
     else if Key = 'language' then
       Result.Language := FileSettings.Language
     else if Key = 'encoding' then
@@ -2221,6 +2806,8 @@ begin
       Result.MinConfidence := FileSettings.MinConfidence;
       Result.MinConfidenceGiven := FileSettings.MinConfidenceGiven;
     end
+    else if Key = 'tasks' then
+      Result.Tasks := FileSettings.Tasks
     else if Key = 'format' then
     begin
       Result.Format := FileSettings.Format;
@@ -2230,6 +2817,10 @@ begin
       Result.InlayHints := FileSettings.InlayHints
     else if Key = 'codeLens' then
       Result.CodeLens := FileSettings.CodeLens
+    else if Key = 'references' then
+      Result.References := FileSettings.References
+    else if Key = 'navigation' then
+      Result.Navigation := FileSettings.Navigation
     else if Key = 'hints' then
       Result.Hints := FileSettings.Hints
     else if Key = 'directives' then
@@ -2257,6 +2848,8 @@ begin
       Result.DiagnosticsLog := FileSettings.DiagnosticsLog;
       Result.DiagnosticsLogDays := FileSettings.DiagnosticsLogDays;
       Result.DiagnosticsLogMapFile := FileSettings.DiagnosticsLogMapFile;
+      Result.DiagnosticsUsesCycleLive := FileSettings.DiagnosticsUsesCycleLive;
+      Result.DiagnosticsUsesCycleImplementation := FileSettings.DiagnosticsUsesCycleImplementation;
     end
     else if Key = 'index' then
     begin
@@ -2268,6 +2861,16 @@ begin
       Result.IndexRemoveOrphans := FileSettings.IndexRemoveOrphans;
       Result.IndexCacheMaxAgeDays := FileSettings.IndexCacheMaxAgeDays;
       Result.IndexCacheMaxMb := FileSettings.IndexCacheMaxMb;
+    end
+    else if Key = 'architecture' then
+    begin
+      Result.ArchitectureEnabled := FileSettings.ArchitectureEnabled;
+      Result.ArchitectureScope := FileSettings.ArchitectureScope;
+      Result.ArchitectureIncludeLibraryUnits := FileSettings.ArchitectureIncludeLibraryUnits;
+      Result.ArchitectureCentralUnits := FileSettings.ArchitectureCentralUnits;
+      Result.ArchitectureExclude := FileSettings.ArchitectureExclude;
+      Result.ArchitectureBaseline := FileSettings.ArchitectureBaseline;
+      Result.ArchitectureFailOn := FileSettings.ArchitectureFailOn;
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
@@ -2297,6 +2900,11 @@ begin
     end
     else if Key = 'usesKeep' then
       Result.UsesKeep := FileSettings.UsesKeep
+    else if Key = 'deadCode' then
+    begin
+      Result.DeadCodeKeepAttributes := FileSettings.DeadCodeKeepAttributes;
+      Result.DeadCodeKeepPatterns := FileSettings.DeadCodeKeepPatterns;
+    end
     else if Key = 'memoryBudgetMb' then
       Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb
     else if Key = 'requestTimeoutMs' then

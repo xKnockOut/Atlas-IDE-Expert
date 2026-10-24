@@ -408,6 +408,15 @@ begin
   // Umschließung entfernen (#657): Strg+Umschalt+Entf.
   Assert.AreEqual($602E, Integer(EntryOf(Entries, TAtlasKeyFunction.Unwrap).Key));
   Assert.AreEqual('Atlas.Unwrap', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.Unwrap));
+  // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T mit Vorrang vor „To-Do-Eintrag hinzufügen“.
+  Assert.AreEqual($6054, Integer(EntryOf(Entries, TAtlasKeyFunction.ExpressionType).Key));
+  Assert.IsTrue(EntryOf(Entries, TAtlasKeyFunction.ExpressionType).Priority);
+  Assert.AreEqual(Ord(TAtlasKeyStatus.AtlasWins), Ord(EntryOf(Entries, TAtlasKeyFunction.ExpressionType).Status(
+    TAtlasKeyConflicts.OwnerOf($6054, TAtlasKeyConflicts.KnownIdeKeys))));
+  Assert.AreEqual('Atlas.ExpressionType', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ExpressionType));
+  // Sicher löschen (#716): Alt+Entf.
+  Assert.AreEqual($802E, Integer(EntryOf(Entries, TAtlasKeyFunction.SafeDelete).Key));
+  Assert.AreEqual('Atlas.SafeDelete', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SafeDelete));
   // Fenster „Atlas-Prüfung“ (#909): Strg+Alt+P.
   Assert.AreEqual($C050, Integer(EntryOf(Entries, TAtlasKeyFunction.ProblemsWindow).Key));
   Assert.AreEqual('Atlas.ProblemsWindow', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.ProblemsWindow));
@@ -424,6 +433,9 @@ begin
   Assert.AreEqual('Atlas.QuickBookmarkToggle', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.QuickBookmark));
   Assert.AreEqual('Atlas.NextBookmark', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.NextBookmark));
   Assert.AreEqual('Atlas.PreviousBookmark', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.PreviousBookmark));
+  // Gezielt hineinspringen (#836): Strg+Alt+F7, aus = Kürzel frei.
+  Assert.AreEqual($C076, Integer(EntryOf(Entries, TAtlasKeyFunction.StepIntoTarget).Key));
+  Assert.AreEqual('Atlas.StepIntoTarget', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.StepIntoTarget));
   Assert.AreEqual(Ord(TAtlasKeySource.Binding), Ord(TAtlasKeyMap.SourceOf(TAtlasKeyFunction.TestUnit)));
   Settings.EditorKeysPriority := True;
   Assert.IsTrue(EntryOf(TAtlasKeyEntry.AllFromSettings(Settings), TAtlasKeyFunction.UnitSearch).Priority);
@@ -503,7 +515,10 @@ begin
   Settings.ToggleBlockComment := False;
   Settings.NewLineAround := False;
   Settings.Unwrap := False;
+  Settings.SafeDelete := False;
   Settings.ProblemsWindow := False;
+  Settings.DebugStepIntoTarget := False;
+  Settings.ExpressionType := False;
   Entries := TAtlasKeyEntry.AllFromSettings(Settings);
   for Entry in Entries do
     if Entry.Func in [TAtlasKeyFunction.MethodToggleUp, TAtlasKeyFunction.MethodToggleDown,
@@ -519,7 +534,8 @@ begin
       TAtlasKeyFunction.MultiCursorSkip, TAtlasKeyFunction.MultiCursorLineEnds, TAtlasKeyFunction.MultiCursorAbove,
       TAtlasKeyFunction.MultiCursorBelow, TAtlasKeyFunction.FormatCode, TAtlasKeyFunction.ToggleBlockComment,
       TAtlasKeyFunction.NewLineBelow, TAtlasKeyFunction.NewLineAbove, TAtlasKeyFunction.Unwrap,
-      TAtlasKeyFunction.ProblemsWindow] then
+      TAtlasKeyFunction.ProblemsWindow, TAtlasKeyFunction.StepIntoTarget,
+      TAtlasKeyFunction.ExpressionType, TAtlasKeyFunction.SafeDelete] then
     begin
       Assert.IsTrue(Entry.Disabled, 'abgeschaltet: ' + IntToStr(Ord(Entry.Func)));
       Assert.AreEqual(Ord(TAtlasKeyStatus.NoKey), Ord(Entry.Status('IDE: Klassennavigation')),

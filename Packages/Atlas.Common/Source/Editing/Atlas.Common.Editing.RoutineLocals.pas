@@ -1,8 +1,9 @@
 ﻿unit Atlas.Common.Editing.RoutineLocals;
 
 // Lokale Namen einer Routine und ihre Zugriffe, gemeinsam für Extrahieren
-// (#50) und Einbetten (#103): Parameter, var- und const-Abschnitt,
-// Inline-Variablen und for var mit ihrem Gültigkeitsbereich; Zugriff eines
+// (#50) und Einbetten (#103), auch für anonyme Methoden (#680): Parameter,
+// var- und const-Abschnitt, Inline-Variablen und for var mit ihrem
+// Gültigkeitsbereich; Zugriff eines
 // Bezeichners (Lesen, Schreiben, beides) und das Entfernen von Namen aus
 // einem var-Eintrag.
 
@@ -49,7 +50,8 @@ type
     class function IsInlineFor(const ATokens: TArray<TPascalToken>; AFor: TSyntaxNode): Boolean; static;
     /// <summary>Typ als Text, wenn das erste Kind ein Typ ist; sonst ''.</summary>
     class function TypeChildText(const AText: string; ANode: TSyntaxNode): string; static;
-    /// <summary>Lokale Namen der Routine: Parameter, var- und const-Abschnitt, Inline-Variablen, for var.</summary>
+    /// <summary>Lokale Namen der Routine (auch einer anonymen Methode): Parameter, var- und const-Abschnitt,
+    /// Inline-Variablen, for var; leer ohne Rumpf.</summary>
     class function Collect(const AText: string; ATree: TSyntaxTree; ARoutine: TSyntaxNode): TArray<TRoutineLocal>;
       static;
     /// <summary>Lokaler Name AName, der an AOffset gilt (innerster zuerst); -1 ohne.</summary>
@@ -126,14 +128,20 @@ var
   Name: string;
   List: TList<TRoutineLocal>;
 begin
+  Result := nil;
   Body := TRoutineBody.BodyOf(ARoutine);
+  if Body = nil then
+    Exit;
   List := TList<TRoutineLocal>.Create;
   Nodes := TList<TSyntaxNode>.Create;
   try
     Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
     Parameters := nil;
     if Header <> nil then
-      Parameters := Header.FindChild(TSyntaxKind.Parameters);
+      Parameters := Header.FindChild(TSyntaxKind.Parameters)
+    else if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
+      // Die anonyme Methode trägt ihre Parameter selbst (#680).
+      Parameters := ARoutine.FindChild(TSyntaxKind.Parameters);
     if Parameters <> nil then
       for Index := 0 to Parameters.ChildCount - 1 do
         // "A, B: Integer" ist ein Knoten mit beiden Namen.
@@ -272,10 +280,10 @@ var
   Names, Kept: TArray<string>;
   Name: string;
   Tokens: TArray<TPascalToken>;
-  Colon: Integer;
+  Colon, Next: Integer;
   Section: TSyntaxNode;
   Index: Integer;
-  AllRemoved: Boolean;
+  AllRemoved, Shared: Boolean;
 begin
   Names := ADecl.Name.Split([',']);
   Kept := nil;
@@ -304,16 +312,31 @@ begin
       for Name in Section[Index].Name.Split([',']) do
         if IndexText(Trim(Name), ARemoved) < 0 then
           AllRemoved := False;
-  if AllRemoved then
+  if AllRemoved and (Section[0] = ADecl) then
   begin
-    if Section[0] = ADecl then
-      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Section.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0),
-        '')]
-    else
-      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0), '')];
-  end
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Section.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0), '')];
+    Exit;
+  end;
+  // Steht auf den Zeilen des Eintrags weiterer Code ("var" davor, ein Eintrag dahinter, #644), fällt nur der
+  // Eintrag selbst weg, nicht die Zeile.
+  Tokens := ATree.Tokens;
+  Next := -1;
+  Shared := False;
+  for Index := 0 to High(Tokens) do
+    if (Tokens[Index].Kind <> TPascalTokenKind.Comment) and (Tokens[Index].Text <> '') and
+      (Tokens[Index].StartPos.Line >= ADecl.StartPos.Line) and (Tokens[Index].StartPos.Line <= ADecl.EndPos.Line) and
+      ((Tokens[Index].Offset < ADecl.StartOffset) or (Tokens[Index].Offset >= ADecl.EndOffset)) then
+    begin
+      Shared := True;
+      if (Next < 0) and (Tokens[Index].Offset >= ADecl.EndOffset) then
+        Next := Index;
+    end;
+  if not Shared then
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0), '')]
+  else if Next >= 0 then
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos, Tokens[Next].StartPos), '')]
   else
-    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos.Line, 0, ADecl.EndPos.Line + 1, 0), '')];
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ADecl.StartPos, ADecl.EndPos), '')];
 end;
 
 end.

@@ -1,4 +1,4 @@
-# Atlas: Testfälle in der IDE
+﻿# Atlas: Testfälle in der IDE
 
 Bei Delphi 12 heißen BPL und Protokoll `…290.bpl` und `…290.log` statt `…370`.
 
@@ -1778,6 +1778,96 @@ Voraussetzung: VCL-Projekt `Kasse.dproj` mit den Konfigurationen Debug und Relea
 | RW17 | Hintergrundprüfung nach dem Speichern (#548) und Syntaxprüfung in Release mit DEBUG | Keine Meldung des Wächters, kein Abbruch |
 | RW18 | Projektgruppe mit zwei Release-Projekten, eines mit DEBUG, *Alle erzeugen* mit block | Das Projekt mit DEBUG wird abgebrochen, die Meldung nennt dessen Namen; das andere prüft der Wächter ohne Befund (ob die IDE danach weiterbaut, entscheidet sie) |
 
+## Prüfung vor dem Kompilieren (#529)
+
+Voraussetzung: VCL-Projekt `Kasse.dproj` (Main.pas, Daten.pas), einmal erfolgreich kompiliert, Server läuft, Optionen › Atlas › *Compiler*: „Prüfung vor dem Compile“ (`build.gate`) = block, Zeitlimit 300 ms. Regel `empty-except` auf Schweregrad Fehler, `with-statement` auf Warnung.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PV1 | In Main.pas ein `begin` löschen (Syntaxfehler, nicht speichern), *Projekt › Compilieren* | Der Compile startet nicht. Atlas-Gruppe: „Prüfung vor dem Compile: 1 Fehler in Kasse.dproj (1 geänderte Unit(s) geprüft):“, darunter „[syntax] …“ mit Datei und Zeile; „Compile abgebrochen (build.gate = block) …“ und „Atlas: Compile abgebrochen – Kasse.dproj: 1 Fehler der Prüfung vor dem Compile“. Doppelklick auf die Zeile springt an die Stelle (Akzeptanz: block mit Syntaxfehler) |
+| PV2 | Nach PV1 binnen 10 s noch einmal *Compilieren* | Der Compile läuft (und scheitert am Compiler); Meldung „bewusst übergangen …“. Nach mehr als 10 s wieder Abbruch |
+| PV3 | `build.gate` = warn, wie PV1 | Der Compile läuft; die Treffer stehen trotzdem in der Atlas-Gruppe (Akzeptanz: warn) |
+| PV4 | Fehler beheben, in Daten.pas ein leeres `except … end` einfügen (`empty-except` = Fehler), block, *Compilieren* | Abbruch mit „[empty-except] …“ in Daten.pas; nur Daten.pas wurde geprüft („1 geänderte Unit(s)“) |
+| PV5 | `empty-except` auf Warnung stellen, nur einen `with`-Block einfügen, *Compilieren* | Kein Treffer, kein Abbruch (Akzeptanz: Warnung blockiert nie) |
+| PV6 | Erfolgreich kompilieren, ohne Änderung noch einmal *Compilieren* | Keine Meldung von Atlas (keine geänderte Unit) |
+| PV7 | *Projekt › Syntaxprüfung*, Code Insight (Strg+Leertaste) und die Hintergrundprüfung nach dem Speichern bei einem Syntaxfehler | Keine Prüfung, kein Abbruch durch Atlas |
+| PV8 | `build_project` von Claude Code mit Syntaxfehler | Keine Prüfung durch Atlas (Auftrag) |
+| PV9 | Zeitlimit 50 ms, großes Projekt ohne Ausgabedatei (Clean), *Compilieren* | Der Compile läuft sofort; einmal „Zeitlimit von 50 ms (build.gateTimeoutMs) überschritten …“, beim nächsten Compile nicht mehr (Akzeptanz: höchstens Zeitlimit) |
+| PV10 | Server beenden (Statusfeld › Server beenden), Syntaxfehler, *Compilieren* | Keine Prüfung, der Server startet nicht; der Compiler meldet den Fehler |
+| PV11 | `build.gate` = off | Keine Prüfung; der Release-Wächter (#533) meldet in Release weiter nur |
+
+## Schranke für Hinweise und Warnungen (#530)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SH1 | Projekt mit einer unbenutzten lokalen Variablen (H2164) bauen, Vorgaben | Atlas-Gruppe des Meldungsfensters (Reiter bleibt „Build“): „Build <Projekt> erfolgreich, aber 1 Hinweis“, darunter die Meldung H2164; Doppelklick springt in die Zeile |
+| SH2 | Dasselbe Projekt ohne Warnungen und Hinweise bauen | „Build <Projekt> erfolgreich: 0 Fehler, 0 Warnungen, 0 Hinweise“, keine Meldungszeile |
+| SH3 | `build.zeroHints` an, Build aus SH1 | „Build <Projekt> gilt als gescheitert: 1 Hinweis (build.zeroHints)“, die Atlas-Gruppe kommt nach vorn; Benachrichtigungszentrale: roter Eintrag „Build gilt als gescheitert (build.zeroHints)“ mit „Zur Meldung“ |
+| SH4 | Wie SH3 mit einem DUnitX-Testprojekt und „Tests nach dem Build“ an | Die Tests starten nicht; ohne den Hinweis starten sie |
+| SH5 | `build.zeroHints` aus, `build.warningsAsErrors` = `W1035`, Build mit W1035 (Funktion ohne Ergebniszuweisung) und W1036 | „… gilt als gescheitert: 2 Warnungen; W1035 zählt als Fehler (build.warningsAsErrors)“, Meldungszeile zeigt auf W1035; nur W1036: erfolgreich mit „1 Warnung“ |
+| SH6 | Einstellungsseite *Compiler*: in „Codes, die als Fehler zählen“ `w1035 h2164 x1` eintragen, speichern, Seite neu öffnen | Steht als `W1035, H2164` da |
+| SH7 | Build aus SH1, dann *Aktuelle Compilermeldungen in die Basislinie* (Befehlspalette) | Meldungsfenster: „Compilermeldungen in die Basislinie übernommen: …\atlas-baseline.json (1 Compilermeldungen; 1 neu, 0 entfernt, 0 unverändert)“; die Datei enthält einen Eintrag mit `"rule": "h2164"` |
+| SH8 | Nach SH7 erneut bauen, `build.zeroHints` an | „Build <Projekt> erfolgreich: 0 Fehler, 0 Warnungen, 0 Hinweise (1 weitere in der Basislinie)“; Tests nach dem Build laufen |
+| SH9 | Nach SH7 zwei Zeilen über der Variablen einfügen und bauen | Die Meldung zählt weiter nicht (Zuordnung über den Zeileninhalt) |
+| SH10 | Nach SH7 eine zweite unbenutzte Variable hinzufügen und bauen | „… 1 Hinweis (1 weitere in der Basislinie)“; die Meldungszeile zeigt auf die neue Variable |
+| SH11 | Nach SH7 *Baseline des Projekts aktualisieren* (#97) | Der Eintrag `h2164` bleibt in `atlas-baseline.json`; SH8 gilt weiter |
+| SH12 | Server beenden (Atlas aus- und wieder einschalten, ohne Datei zu öffnen), Build aus SH8 | Ohne laufenden Server zählt die Meldung wieder („1 Hinweis“), Atlas startet den Server dafür nicht |
+| SH13 | `build.summary` aus, Build aus SH1; dann zusätzlich `build.zeroHints` an | Ohne zeroHints keine Zusammenfassung; mit zeroHints erscheint die rote Zusammenfassung trotzdem |
+| SH14 | `baseline.update` aus | *Aktuelle Compilermeldungen in die Basislinie* fehlt in der Befehlspalette |
+| SH15 | Befehl aus SH7 ohne vorherigen Build bzw. nach einem Build ohne Warnungen | „Keine Warnungen oder Hinweise aus dem letzten Build von <Projekt> für die Basislinie.“ |
+
+## Compilerwarnung gezielt abschalten (#531)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WA1 | Aufruf einer `deprecated`-Routine, bauen (W1000), Cursor auf die Zeile, Strg+. | Aktionen „W1000 hier abschalten ({$WARN SYMBOL_DEPRECATED OFF})“ (bevorzugt), „W1000 in <Routine> abschalten …“, „W1000 in der ganzen Unit abschalten …“, „W1000 im ganzen Projekt abschalten (Projektoptionen)“ |
+| WA2 | „hier abschalten“, Begründung „Altlast“ | Über der Zeile `{$WARN SYMBOL_DEPRECATED OFF} // Altlast`, darunter `{$WARN SYMBOL_DEPRECATED ON}`, beide mit der Einrückung der Zeile; nach dem nächsten Compile ist W1000 weg |
+| WA3 | Nach WA2 einmal Strg+Z | Beide Schalter sind auf einmal weg |
+| WA4 | Unbenutzte lokale Variable (H2164), bauen, Strg+. auf der Variablen | Kein „hier abschalten“; „H2164 in <Routine> abschalten ({$HINTS OFF})“ ist bevorzugt; ausgeführt steht `{$HINTS OFF}` vor dem Routinenkopf und `{$HINTS ON}` hinter ihrem `end;`, nach dem Compile ist H2164 weg |
+| WA5 | Hinweis außerhalb einer Ablaufmeldung (z. B. H2443), „hier abschalten“ | `{$HINTS OFF}` … `{$HINTS ON}` um die Zeile; prüfen, ob der Hinweis danach weg ist |
+| WA6 | „in der ganzen Unit abschalten“ | Eine Zeile `{$WARN … OFF}` direkt unter `unit X;`, kein ON |
+| WA7 | Warnung ohne Bezeichner in der Tabelle (z. B. W1073 unter Delphi 12) | Titel „… ({$WARNINGS OFF}: betrifft alle Warnungen)“; nach dem Ausführen im Meldungsfenster der Hinweis, dass alle Warnungen betroffen sind |
+| WA8 | „im ganzen Projekt abschalten“, Rückfrage mit Nein, dann mit Ja | Nein: nichts geändert. Ja: Projekt geändert (Sternchen), *Projekt › Optionen › Compiler-Meldungen* zeigt die Warnung aus; in der .dproj steht `<DCC_SYMBOL_DEPRECATED>false</DCC_SYMBOL_DEPRECATED>` in der Basiskonfiguration; nach dem Compile ist W1000 im ganzen Projekt weg |
+| WA9 | `refactoring.disableWarningReason` = false, WA2 wiederholen | Keine Rückfrage, kein Kommentar |
+| WA10 | Begründungsdialog mit Abbrechen schließen | Nichts eingefügt |
+| WA11 | `refactoring.disableWarning` = false | Keine dieser Aktionen im Menü |
+| WA12 | Fehlerzeile (E2003) und Zeile ohne Meldung | Keine dieser Aktionen |
+
+## Schnellkorrekturen für Compilermeldungen, Teil 2 (#549)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Unit mit `TJSONArray.Count` ohne `System.Generics.Collections` bauen (H2443), Strg+. auf der Zeile | „uses System.Generics.Collections ergänzen (H2443)“ trägt die Unit ins implementation-uses ein; der nächste Compile meldet H2443 nicht mehr |
+| SK2 | `var L: TStringList;` ohne `System.Classes`, bauen (E2003), Strg+. am Zeilenanfang | „uses System.Classes ergänzen (E2003: TStringList)“ an erster Stelle |
+| SK3 | Wie SK2, Cursor auf `TStringList` | Nur die gewohnte Aktion „uses System.Classes ergänzen“, nicht doppelt |
+| SK4 | `X := 0;` direkt vor `X := 1;` (H2077) | „Wirkungslose Zuweisung an X entfernen (H2077)“ löscht die Zeile |
+| SK5 | `X := Foo();` mit unbenutztem Ergebnis (H2077) | „Zuweisung an X entfernen, nur Foo aufrufen“ ergibt `Foo();`; der Aufruf bleibt |
+| SK6 | `X := Zaehler;` (Funktion ohne Klammern, H2077) | Keine Korrektur für H2077 |
+| SK7 | `function F: Integer;` mit Result nur in einem if-Zweig (W1035), Strg+. auf dem end | `Result := Default(Integer);` direkt hinter begin, mit der Einrückung der ersten Anweisung |
+| SK8 | `S := A;` mit `A: AnsiString` (W1057) bzw. umgekehrt (W1058) | `S := string(A);` bzw. `A := AnsiString(S);` |
+| SK9 | Zwei W1057 in der Datei | Zusätzlich „Alle W1057 in der Datei beheben (2)“; ein Strg+Z nimmt beide zurück |
+| SK10 | Jede Korrektur aus SK1–SK8, danach Strg+Z | Die Korrektur ist mit einem Schritt vollständig zurückgenommen |
+| SK11 | `refactoring.compilerFixes` = false | Keine dieser Aktionen |
+| SK12 | Deutsche IDE (Meldungen auf Deutsch), SK1, SK2, SK4 | Gleiche Korrekturen wie mit englischer Ausgabe |
+
+## Unit nicht gefunden: Suchpfad ergänzen (#550)
+
+Vorbereitung: Projekt `Kasse.dproj` mit den Konfigurationen Debug und Release (Win32, Win64); Unit `Werkzeug.pas` in `Source\Common`, das in keinem Suchpfad steht; Ordner `..\Gemeinsam\Debug` mit `Protokoll.pas` nur im Suchpfad von Debug.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UG1 | `uses Werkzeug;` in `Kasse.dpr`, bauen (F2613), Strg+. auf der uses-Zeile | „Ordner Source\Common in den Suchpfad von Debug aufnehmen“ (bevorzugt), „… aller Konfigurationen aufnehmen“, „Werkzeug.pas ins Projekt aufnehmen“ (**Abnahme**) |
+| UG2 | UG1, „… in den Suchpfad von Debug aufnehmen“, *Projekt › Optionen › Delphi-Compiler › Suchpfad* (Debug) | `Source\Common` steht vorn, relativ; das Geerbte (`$(DCC_UnitSearchPath)`) bleibt; das Projekt gilt als geändert; erneut bauen kompiliert (**Abnahme**) |
+| UG3 | UG1, „… aller Konfigurationen aufnehmen“ | Eintrag in der Basiskonfiguration („Alle Konfigurationen“); Debug und Release kompilieren |
+| UG4 | Aktive Konfiguration Release, `uses Protokoll;`, bauen | „Ordner ..\Gemeinsam\Debug in den Suchpfad von Release aufnehmen (steht in Debug, Win32)“; danach kompiliert Release (**Abnahme**) |
+| UG5 | UG1, „Werkzeug.pas ins Projekt aufnehmen“ | Die Unit steht in der Projektverwaltung und in der dpr; erneut ausführen: „Werkzeug.pas gehört schon zum Projekt …“ |
+| UG6 | Aktion aus UG2 zweimal ausführen | Zweites Mal: „Source\Common steht schon im Suchpfad …“, kein doppelter Eintrag |
+| UG7 | Plattform Linux64 (oder eine andere Nicht-Windows-Plattform), Unit mit `uses Winapi.Windows;`, bauen | Eine Aktion „Winapi.Windows gibt es für Linux64 nicht (nur Win32, Win64)“; kein Pfadvorschlag; Klick zeigt den Hinweis |
+| UG8 | `uses GibtEsNicht;`, bauen, Strg+. | „GibtEsNicht nicht gefunden: durchsuchte Orte anzeigen“; Klick zeigt Projektordner, Projekte der Gruppe, Suchpfade der anderen Konfigurationen, Bibliotheken und Index |
+| UG9 | Projektgruppe mit zweitem Projekt, dessen Ordner `Teile.pas` enthält; im ersten `uses Teile;`, bauen | „Ordner … in den Suchpfad … aufnehmen (aus <Projekt2>.dproj)“ |
+| UG10 | `refactoring.missingUnit` = false | Keine dieser Aktionen |
+| UG11 | Deutsche IDE (Meldung F2613 auf Deutsch) sowie eine Meldung F1026 (Datei 'Werkzeug.dcu' nicht gefunden) | Gleiche Aktionen wie UG1 |
+
 ## Units suchen (#777)
 
 Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testprojekt; Server läuft; Einstellungen auf Vorgabe.
@@ -2412,6 +2502,118 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | UT5 | `TStringList.Create(Unbekannt, ` (nicht deklarierter Name) | Keine Variante wegen des Typs gedämpft |
 | UT6 | In UT1 mit Alt+↑ die gedämpfte Variante wählen | Sie wird gezeigt, bleibt aber gedämpft |
 
+## Parameter-Hint: Platzhalter von Format (#451)
+
+Voraussetzung: Server läuft in der IDE, `completion.formatPlaceholders` an (Vorgabe).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FP1 | `Format('%s hat %d Einträge', [AName, ` tippen | Hint-Zeile oben in der Doku-Fläche in Akzentfarbe: „Platzhalter 2 von 2 erwartet ganzzahlig“; im Editor `%s` und `AName` in einer Farbe, `%d` in einer zweiten |
+| FP2 | In FP1 den Cursor in `AName` setzen | Nach kurzer Pause „Platzhalter 1 von 2 erwartet String“ |
+| FP3 | In FP1 `Count, X` weitertippen | Fehlerfarbe: „Mehr Argumente als Platzhalter: Argument 3 wird nicht ausgegeben.“ |
+| FP4 | `Format('%d', ['Text'` | Fehlerfarbe: „Platzhalter 1 (%d) erwartet ganzzahlig, Argument 1 ist ein String: EConvertError zur Laufzeit.“ |
+| FP5 | `Format('%q', [` | Fehlerfarbe: „Ungültiger Platzhalter %q: EConvertError zur Laufzeit.“; `%q` nicht eingefärbt |
+| FP6 | `Format('%1:s %0:s', [A, B` mit Cursor in `A` | „Platzhalter 2 von 2 erwartet String“; `%0:s` und `A` gleich gefärbt |
+| FP7 | `Format('%*.*f', [Breite, Stellen, Wert` mit Cursor in `Breite` bzw. `Stellen` | „Breite für Platzhalter 1 von 1 (%*.*f), ganzzahlig“ bzw. „Genauigkeit …“; alle drei Argumente in der Farbe des Platzhalters |
+| FP8 | `const cMuster = 'Kunde %s';` und `Format(cMuster, [` | Zeile „Platzhalter 1 von 1 erwartet String“; im Formatstring nichts eingefärbt (steht nicht im Aufruf), das Argument schon |
+| FP9 | `Format('%s' + ' (%d)', [A, B` | Beide Platzhalter in ihren Stücken eingefärbt, Zuordnung wie in einem Literal |
+| FP10 | `FmtStr(mText, '%d', [N`, `StrFmt(mPuffer, '%s', [S`, `raise Exception.CreateFmt('%s', [S` | Zeile und Farben wie in FP1 |
+| FP11 | `.atlas` mit `"formatFunctions": [{"name": "Protokoll", "formatIndex": 1}]`, eigene `procedure Protokoll(AStufe: Integer; const AFormat: string; const AArgs: array of const)`; `Protokoll(1, '%s', [` | Zeile und Farben wie bei Format; ohne den Eintrag nichts |
+| FP12 | atlas.json `"format-args": {"formatMethods": ["TLogger.LogFmt"]}`; `Log.LogFmt('%d', [` | Zeile und Farben wie bei Format |
+| FP13 | Hint mit Esc schließen bzw. Cursor aus dem Aufruf bewegen | Färbung im Editor verschwindet sofort |
+| FP14 | Tools › Optionen › Atlas › Vervollständigung: „Platzhalter von Format im Parameter-Hint zuordnen und einfärben“ aus; FP1 | Hint wie bisher ohne Platzhalter-Zeile, keine Färbung; der Schalter ist ohne Parameter-Hint ausgegraut |
+| FP15 | Helles und dunkles Thema; FP1 mit sieben Platzhaltern | Farben gut lesbar, der siebte Platzhalter hat die Farbe des ersten |
+| FP16 | `Format(mMuster, [A` mit Variable `mMuster` | Keine Platzhalter-Zeile, keine Färbung; Hint sonst wie bisher |
+
+## Attribute nach „[“ (#465)
+
+Voraussetzung: Server läuft in der IDE, DUnitX im Bibliothekspfad indiziert, `completion.attributes` an (Vorgabe).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AT1 | Unit ohne DUnitX in uses; vor einer Methode `[Te` tippen | `Test`, `TestCase`, `TearDown` mit Badge `at` und Marke „+ DUnitX.TestFramework“; nur je einmal |
+| AT2 | AT1, `TestCase` übernehmen | Eingefügt `TestCase` (ohne Attribute), `DUnitX.TestFramework` in uses ergänzt |
+| AT3 | Mit DUnitX in uses `[` tippen bzw. Strg+Leer nach `[` | Oben `Test`, `TestCase`, `TestFixture`, `Setup`, `TearDown`, dann `weak`, `unsafe`, `volatile`, `Ref`, danach eigene Attribute; keine anderen Klassen |
+| AT4 | `[TestCase` in der Liste markieren | Rechts `(const ACaseName: string; const AValues: string; …)`; bei einem Attribut ohne eigenen Konstruktor die Unit |
+| AT5 | `[TestCase('Fall', ` tippen | Parameter-Hint mit dem Konstruktor von TestCaseAttribute, zweiter Parameter hervorgehoben |
+| AT6 | `[Test, Te` und `[TestCase('a', '1'), Te` | Wieder nur Attribute |
+| AT7 | `procedure Lies([` in der Deklaration; `[R` | `Ref` angeboten |
+| AT8 | `if X in [`, `A := [`, `Liste[`, `IFoo = interface` und darunter `[` | Gewöhnliche Liste bzw. keine Attribute |
+| AT9 | Eigenes `MarkeAttribute = class(TCustomAttribute)` und `TNurKlasse = class` in der Unit; `[` | `Marke` angeboten, `TNurKlasse` nicht |
+| AT10 | `"completion": {"attributes": false}` in atlas.json; AT1 | Gewöhnliche Liste mit `TestAttribute` usw. samt Endung |
+
+## Unvollständiger Code (#457)
+
+Voraussetzung: Server läuft in der IDE, `completion.syntaxNotice` an (Vorgabe). Unit mit Klasse `TF` und zwei Methoden `A` und `B`.
+
+| Nr. | Schritte | Erwartet |
+| --- | --- | --- |
+| UC1 | In `B` vor dem Cursor `X := (1 + ;` schreiben, eine Zeile tiefer Strg+Leer | Liste mit Einträgen, oben Warnleiste „Ergebnisse möglicherweise unvollständig · Syntaxfehler in Zeile n“ (n = Zeile des Fehlers) |
+| UC2 | UC1, auf „Zeile n“ klicken | Liste schließt, Caret steht in der genannten Zeile an der Fehlerstelle |
+| UC3 | In `A` ein `end;` entfernen (Block bleibt offen), in `B` Strg+Leer | keine Warnleiste |
+| UC4 | In `B` `X := Foo.` tippen | Mitgliederliste ohne Warnleiste (die Tippstelle zählt nicht) |
+| UC5 | Fehler nur hinter dem Cursor in derselben Methode | keine Warnleiste |
+| UC6 | In der Klassendeklaration `procedure A(;`, eine Zeile tiefer Strg+Leer | Warnleiste mit der Zeile von `A` |
+| UC7 | Fehler in einer anderen Klasse derselben Unit | keine Warnleiste |
+| UC8 | Stelle, an der der Server nichts vorschlägt (UC1, Fehler davor), Strg+Leer | leerer Zustand mit Leiste „Kontext unklar · Syntaxfehler in Zeile n“ und dem Fehlertext darunter |
+| UC9 | UC1, Fehler beheben, weitertippen | Warnleiste verschwindet mit der nächsten Antwort |
+| UC10 | `"completion": {"syntaxNotice": false}` in atlas.json; UC1 | keine Warnleiste |
+
+## Exception-Klassen (#483)
+
+Voraussetzung: Server läuft in der IDE, `completion.exceptionClasses` an (Vorgabe), Code-Vorlagen an. Projekt mit eigener Klasse `EAppError = class(Exception)` und einer Klasse `TWorker`.
+
+| Nr. | Schritte | Erwartet |
+| --- | --- | --- |
+| EX1 | In einer Methode `raise ` tippen, Liste öffnen | nur Exception-Klassen; `EAppError` vor `Exception`, `EConvertError`; kein `TWorker`, keine Variablen |
+| EX2 | EX1, `EAppError` übernehmen | `raise EAppError.Create('')`, Cursor zwischen den Anführungszeichen |
+| EX3 | EX1, `EAppError.CreateFmt` übernehmen | `raise EAppError.CreateFmt('', [])`, Cursor im Text, Tab springt in die Klammer |
+| EX4 | `try Value := StrToInt(S); except on E: ` tippen | Überschrift „Aus dem try-Block“, darin zuerst `EConvertError`; darunter „Allgemein“ |
+| EX5 | Eigene Routine mit `/// <exception cref="EAppError">…</exception>` im try aufrufen, `on E: ` | `EAppError` in „Aus dem try-Block“, in der Reihenfolge der Aufrufe |
+| EX6 | `except on E: EConvertError do …; on E: ` | `EConvertError` fehlt in der Liste |
+| EX7 | `except on E: Exception do …; on E: ` | `EConvertError` u. a. mit Warnmarke „nie erreicht: Exception davor“ (Fläche) |
+| EX8 | Zweig vor `on E: Exception do` einfügen (`on E: ` darüber) | keine Warnmarke |
+| EX9 | `on E: ` in einem try ohne bekannte Aufrufe | keine Gruppenüberschriften, nur Exception-Klassen |
+| EX10 | Klasse aus nicht eingebundener Unit (z. B. `EFOpenError` ohne `System.Classes`) nach `LoadFromFile` im try | Eintrag mit „+ System.Classes“; Übernahme ergänzt uses |
+| EX11 | `"completion": {"snippets": false}`; EX2 | Übernahme `EAppError.Create('')` ohne Platzhalter, Einträge bleiben |
+| EX12 | `"completion": {"exceptionClasses": false}`; EX1 und EX4 | gewöhnliche Liste ohne Filter, Gruppen und Marken |
+
+## with-Blöcke (#481)
+
+Voraussetzung: Server läuft in der IDE, `completion.withOrigin` an (Vorgabe). Formular `TForm1` mit Feld bzw. Eigenschaft `Name`, Methode mit `qryOrders: TFDQuery`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WB1 | `with qryOrders do` und darin `Na` tippen | Eintrag `Name` mit Marke „aus qryOrders“ und Warnmarke „verdeckt Self.Name“ (Warnfläche); `Name` nur einmal |
+| WB2 | WB1, Detailpanel | „Mitglied von qryOrders (with)“ und „Verdeckt: Eigenschaft TComponent.Name“ (bzw. Feld) |
+| WB3 | Lokale Variable `Active` und `with qryOrders do Act` | „aus qryOrders“, „verdeckt lokale Variable Active“ |
+| WB4 | `with qryOrders do` und `Op` | `Open` mit „aus qryOrders“, ohne Warnung |
+| WB5 | `with qryOrders do with qryOther do Na` sowie `with qryOrders, qryOther do Na` | „aus qryOther“ |
+| WB6 | `with Self.FQuery do` | Marke „aus Self.FQuery“ |
+| WB7 | Hinter dem with-Block `Na` | `Name` mit Herkunft des Formulars, ohne „aus …“ |
+| WB8 | Strg+Leer auf `with` | „with auflösen“ oben; danach übersetzt der Code und verhält sich gleich; ein Rückgängig-Schritt |
+| WB9 | Helles und dunkles Thema | Warnfläche lesbar |
+| WB10 | `"completion": {"withOrigin": false}` in atlas.json; WB1 | `Name` ohne Marken; das Mitglied von qryOrders gilt weiter |
+
+## Anonyme Methoden (#468)
+
+Voraussetzung: Server läuft in der IDE, `completion.anonymousMethods` an (Vorgabe), Code-Vorlagen an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AM1 | `uses System.Threading;` in einer Methode `TTask.Run(` tippen | Liste öffnet sich allein mit einem Eintrag `procedure`, Badge `sn`, Tag `TProc`, rechts „anonyme Methode“ |
+| AM2 | AM1, Enter | `procedure`, darunter `begin` und `end` eine Ebene tiefer als die Aufrufzeile, Cursor eingerückt im Rumpf; danach `)` von Hand |
+| AM3 | `TList<TCustomer>`-Variable `L`; `L.Sort(TComparer<TCustomer>.Construct(` | Gerüst `function(const Left: TCustomer; const Right: TCustomer): Integer` (eigene Namen der Deklaration) mit `Result := ` |
+| AM4 | Eigene Methode `function Finde(const AFilter: TPredicate<TCustomer>): TCustomer;`, Aufruf `Finde(` | `function(const Value: TCustomer): Boolean`, im Rumpf `Result := ` mit Cursor dahinter |
+| AM5 | `TProc<string, Integer>` als Parameter; Aufruf mit `(` | `procedure(const Value1: string; const Value2: Integer)` |
+| AM6 | Projekt mit Parameterpräfix `A` (#452); AM4 | `function(const AValue: TCustomer): Boolean` |
+| AM7 | Variable `P: TProc<string>`; `P := ` und Strg+Leer | Gerüst oben, darunter die übrige Liste |
+| AM8 | `TTask.Run(pro` und Strg+Leer | Gerüst ersetzt `pro` |
+| AM9 | `Button1.OnClick := ` (Ereignis `of object`) | Kein Gerüst, nur die Ereignis-Zuweisung (#444) |
+| AM10 | Alias `TKundenFilter = TPredicate<TCustomer>;` als Parametertyp; Aufruf mit `(` | `function(const Value: TCustomer): Boolean` |
+| AM11 | `"completion": {"anonymousMethods": false}` in atlas.json; AM1 | Kein Gerüst; nach `(` bleibt die Liste zu |
+| AM12 | `"completion": {"snippets": false}`; AM2 | Gerüst als Klartext ohne Cursor im Rumpf; Einrückung prüfen |
+
 ## Typargumente nach Constraints (#450)
 
 | Nr. | Schritte | Erwartet |
@@ -2606,6 +2808,134 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | EX13 | Cursor auf das Wort `with`, Strg+Leertaste | Erster Eintrag „with auflösen“; Enter löst wie EX10 auf |
 | EX14 | `refactoring.extract`, `refactoring.completeCase` bzw. `refactoring.resolveWith` aus | Die jeweiligen Aktionen (und der Eintrag aus EX13) fehlen |
 
+## if-Kette und case (#646)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IFC1 | `if Kind = 1 then Neu else if (Kind = 2) or (Kind = 3) then Oeffnen else if (Kind >= 4) and (Kind <= 6) then Speichern else Beenden;` (Kind: Integer), Cursor auf dem ersten `if`, Alt+Enter | „In case umwandeln“ ergibt `case Kind of 1: Neu; 2, 3: Oeffnen; 4..6: Speichern; else Beenden; end;`, eingerückt wie die Umgebung (`format.indent`) |
+| IFC2 | Dasselbe mit `Kind in [7, 9..11]` und mit Aufzählungswerten (`Align = alLeft`) bzw. Zeichen (`C = 'a'`) | Marken `7, 9..11` bzw. `alLeft` bzw. `'a'` |
+| IFC3 | Ein Zweig mit zwei Anweisungen in begin … end, ein Zweig mit Kommentar davor und dahinter | Nur dieser Zweig bekommt begin … end; beide Kommentare stehen danach im case, nichts geht verloren |
+| IFC4 | Kette mit `Kind = 2` doppelt, mit überlappendem Bereich, mit `GetKind() = 1`, mit String-Vergleich, mit unbekanntem Typ | Aktion fehlt |
+| IFC5 | Kette mit `{$IFDEF}` zwischen den Zweigen bzw. mit einem Kommentar zwischen `else` und `if` | Aktion fehlt (Kommentar ginge sonst verloren) |
+| IFC6 | `case Kind of 1: Neu; 2, 3: Oeffnen; 4..6: Speichern; else Beenden; end;`, Cursor auf `case`, „In if-Kette umwandeln“ | `if Kind in [2, 3] then …` bzw. für Kind: Integer `Kind in [2, 3]` (0..255) und `(Kind >= 4) and (Kind <= 6)`; else-Zweig als letztes else; Bei Zeichen-Selektor eine or-Kette statt Menge (keine W1050) |
+| IFC7 | case mit leerem Zweig `5: ;` bzw. mit verschachteltem if ohne else | Leerer Zweig wird `begin end`, das innere if bekommt begin … end, damit else nicht an ihm hängt |
+| IFC8 | `refactoring.ifCase` aus | Beide Aktionen fehlen |
+| IFC9 | Regel `prefer-case` in atlas.json einschalten (`"prefer-case": {"severity": "hint"}`), Kette mit 4 Zweigen und mit 3 Zweigen; dann `"min": 3` | Hinweis „4 Zweige vergleichen denselben Ausdruck …“ nur bei der langen Kette, mit `min` 3 auch bei der kürzeren; Schnellkorrektur wie IFC1 |
+
+## Bedingungen umformen (#656)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BU1 | `if (I = 1) or Ready then A else begin B; C; end;`, Cursor auf `if`, Alt+Enter, „Bedingung umkehren“ | `if (I <> 1) and not Ready then begin B; C; end else A;`, eingerückt wie die Umgebung, ein Rückgängig-Schritt |
+| BU2 | Dasselbe mit `Assigned(P) and (P.Count > 0)`, mit `I in [1, 2]` und mit `not Ready` | `not Assigned(P) or (P.Count <= 0)` (Reihenfolge bleibt), `not (I in [1, 2])`, `Ready`; nie `not A = B` |
+| BU3 | `if A then X else if B then Y else Z;`, auf dem ersten `if` | Das innere if steht in begin … end vor dem neuen else; auf dem zweiten `if` wird nur dieses Glied umgekehrt |
+| BU4 | Letzte Anweisung einer Methode `if Assigned(P) then begin … end;`, „Frühen Ausstieg einführen (Exit)“ | `if not Assigned(P) then Exit;`, der Rumpf rückt eine Ebene aus, begin … end entfällt, Kommentare bleiben bei ihrer Anweisung |
+| BU5 | Dasselbe als letzte Anweisung in while/for/repeat, auch `for … do if A then begin … end;` | `if … then Continue;`; bei for ohne begin … end bekommt der Rumpf einen |
+| BU6 | if mit nachfolgender Anweisung, mit else, mit `var X := …` im Zweig oder im Hauptprogramm | „Frühen Ausstieg einführen“ fehlt; mit else gibt es nur „Bedingung umkehren“ |
+| BU7 | `if A or B then if C then X;`, auf dem äußeren oder inneren `if`, „Verschachtelte if zusammenfassen“ | `if (A or B) and C then X;`; mit else am inneren if oder einer zweiten Anweisung fehlt die Aktion |
+| BU8 | Cursor auf `not` in `if not not Ready then`, `X and not (A <> B)`, `not True`; dann `refactoring.conditions` aus | „Doppelte Verneinung entfernen“ ergibt `Ready`, `X and (A = B)`, `False`; ausgeschaltet fehlen alle vier Aktionen |
+
+## if-Anweisung und Bedingungsausdruck (#684)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BA1 | Projekt für Delphi 13: `if Fertig then Caption := 'Bereit' else Caption := 'Läuft';`, Cursor auf `if`, Alt+Enter, „In bedingten Ausdruck umwandeln“ | `Caption := if Fertig then 'Bereit' else 'Läuft';`, ein Rückgängig-Schritt |
+| BA2 | Dasselbe mit `Exit(1)`/`Exit(2)`, mit `Log(I, 'a')`/`Log(I, 'b')` und mit `if A then X := 1 else if B then X := 2 else X := 3;` | `Exit(if … then 1 else 2);`, `Log(I, if … then 'a' else 'b');`, `X := if A then 1 else if B then 2 else 3;`; ab drei Bedingungen fehlt die Aktion |
+| BA3 | Zweige mit `'a'` und `1`, mit zwei verschiedenen Klassen, mit `Log(F(1))`/`Log(G(2))`, ohne else, mit Kommentar im Zweig | Keine Aktion |
+| BA4 | Cursor in `X := (if A then I + 1 else 2) * 3;`, „In if-Anweisung umwandeln“ | `if A then X := (I + 1) * 3 else X := 2 * 3;`, mehrzeilig eingerückt wie die Umgebung |
+| BA5 | Dasselbe für `X := if A then (if B then 1 else 2) else 3;` und `var Y: Integer := if A then 1 else 2;` | Inneres if in begin … end vor dem else; `var Y: Integer;` und danach die if-Anweisung; ohne Typ (`var Y := …`) keine Aktion |
+| BA6 | `X := IfThen(A, 1, 2) + 1;` mit `System.Math` in uses, Cursor auf `IfThen`, „IfThen durch bedingten Ausdruck ersetzen“ | `X := (if A then 1 else 2) + 1;`; ein eigenes `IfThen` der Unit bekommt keine Aktion |
+| BA7 | Projekt für Delphi 12 (`delphiVersion` 23.0) mit zwei Bedingungsausdrücken | Je ein Fehler `conditional-expression-version` (wie E2029), Korrektur „In if-Anweisung umwandeln“, „Alle korrigieren“ wandelt beide um; „In bedingten Ausdruck umwandeln“ und IfThen-Ersetzung fehlen, keine zweite Warnung zum Sprachmerkmal |
+| BA8 | Bedingungsausdruck in `{$IF CompilerVersion >= 37} … {$ENDIF}`, dann `refactoring.conditionalExpression` aus | Kein Fehler im versionsabhängigen Zweig; ausgeschaltet fehlen alle drei Aktionen |
+
+## Lokale Routine und Methode (#663)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LRM1 | In `procedure TForm1.Rechne;` eine lokale `procedure Addiere(N: Integer);`, die `Summe := Summe + N + FZaehler;` und `Text := Name;` schreibt (Summe, Text lokal, Name Parameter `const`); Cursor auf den Kopf von `Addiere`, Alt+Enter, „In private Methode umwandeln“ | Vorschau mit „Neue Signatur: procedure TForm1.Addiere(N: Integer; var Summe: Integer; var Text: string; const Name: string);“ und der Zahl der Aufrufe; nach „Übernehmen“ steht die Methode hinter `TForm1.Rechne`, die Deklaration im private-Abschnitt, die Aufrufe bekommen die Argumente, `FZaehler` wird kein Parameter; ein Rückgängig-Schritt |
+| LRM2 | Dasselbe in einer freien Routine mit lokaler Konstante `Grenze = 10;`, die die lokale Routine nutzt, „Aus Routine herauslösen“ | Routine steht vor der äußeren, mit eigenem `const Grenze = 10;`; Record-Variable (`TPoint`) als `const`-Parameter |
+| LRM3 | Lokale Routine ruft sich selbst auf; der Name ist in der Klasse schon vergeben | Rekursiver Aufruf bekommt die Argumente; neuer Name mit Nummer (`Zeige2`) |
+| LRM4 | Lokale Routine in einer lokalen Routine, Cursor auf den inneren Kopf, Alt+Enter | Am Ende der Liste ein Hinweis „Aus Routine herauslösen“; Wählen meldet „geht hier nicht: … erst diese umwandeln“ |
+| LRM5 | Lokale Routine, die `Result` der äußeren Funktion setzt, eine andere lokale Routine aufruft, einen lokalen Typ nutzt, `with` enthält oder als `@Routine` benutzt wird | Keine Aktion |
+| LRM6 | Private Methode `Hilfe(Wert: Integer)` mit genau einem Aufruf `Self.Hilfe(I)` in `TForm1.Rechne`, Cursor auf ihren Kopf (Klasse oder Implementierung), „Als lokale Routine einbetten“ | Vorschau „Neue lokale Routine in TForm1.Rechne: …“; danach lokale Routine vor dem `begin` von `Rechne`, Deklaration aus der Klasse entfernt, Aufruf `Hilfe(I)` |
+| LRM7 | Dieselbe Methode `virtual`, `override`, öffentlich, mit zwei Aufrufern, ohne Aufruf, als `Button1.OnClick := Hilfe` oder über ein anderes Objekt benutzt; Aufrufer hat eine Variable mit einem Namen, den der Rumpf meint | Keine Aktion |
+| LRM8 | Freie Routine `Zeige(const Name: string; Anzahl: Integer)` der Implementierung, einziger Aufruf `Zeige(Name, Zahl)` mit Parameter `Name` und Variable `Zahl: Integer` des Aufrufers, „In lokale Routine umwandeln (durchgereichte Parameter entfernen)“ | Lokale Routine ohne Parameter, der Rumpf nutzt `Name` und `Zahl`; ein geschriebener Wertparameter bleibt; steht die Routine im interface, keine Aktion |
+| LRM9 | `refactoring.nestedRoutine` aus | Keine der vier Aktionen |
+
+## Lokale Variable und Feld (#668)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LVF1 | In `procedure TForm1.Rechne;` mit `var LZeile: Integer;` Cursor auf `LZeile`, Alt+Enter, „In Feld umwandeln (LZeile → FZeile)“ | Namensabfrage mit `FZeile`; nach Bestätigung Vorschau, dann `FZeile: Integer;` hinter dem letzten Feld im private-Abschnitt, alle Verwendungen umbenannt, der var-Eintrag weg (bei einzigem Eintrag auch `var`); ein Rückgängig-Schritt |
+| LVF2 | Dasselbe für `var LSumme: Integer := 0;` und `var LNeu := TStringList.Create;` (mit `LNeu.Free` am Ende) | `FSumme := 0;` bleibt als Zuweisung; `FNeu: TStringList;` mit abgeleitetem Typ, die Vorschau warnt zur Lebensdauer |
+| LVF3 | Namen in der Abfrage auf ein vorhandenes Feld, ein geerbtes Mitglied (`Caption`), `begin` oder einen Namen ändern, den eine andere Methode der Klasse anders meint | Meldung „Umwandeln fehlgeschlagen: …“ mit dem Grund, nichts geändert |
+| LVF4 | Klasse ohne private-Abschnitt; Record mit Methode | Neuer `private`-Abschnitt vor `end` bzw. Feld im Record |
+| LVF5 | Privates `FTemp: Integer;`, das nur `TForm1.Rechne` benutzt und dort zuerst schreibt (auch als `Self.FTemp`), Cursor auf das Feld oder eine Verwendung, „In lokale Variable umwandeln (FTemp → LTemp)“ | `LTemp: Integer;` im var-Abschnitt von `Rechne`, Verwendungen ohne `Self.`, das Feld weg (ein leerer private-Abschnitt auch) |
+| LVF6 | Feld in zwei Methoden, zuerst gelesen (`Inc(FTemp)`), nur in einem Zweig geschrieben, hinter einer Property, published, als Komponente in der .dfm, in einer lokalen Routine oder in einer rekursiven Methode | Keine Aktion |
+| LVF7 | `refactoring.promoteVariable` aus | Keine der beiden Aktionen; „Boolean umkehren“ fragt weiter den Namen und zeigt die Vorschau wie vorher |
+
+## Anonyme Methode und Methode (#680)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AMU1 | In `procedure TForm1.FormCreate(Sender: TObject);` steht `Button1.OnClick := procedure(Sender: TObject) begin Caption := 'x'; end;` (in einem Projekt, das das übersetzt); Cursor auf `procedure`, Alt+Enter, „In Methode umwandeln (HandleClick)“ | Namensabfrage mit `HandleClick`; Vorschau „Erfasst keine Variablen …“; danach `Button1.OnClick := HandleClick;`, `procedure HandleClick(Sender: TObject);` im private-Abschnitt, Rumpf hinter `FormCreate`; ein Rückgängig-Schritt |
+| AMU2 | `LSum` und `LFactor` lokal, `FList.ForEach(procedure(const AItem: Integer) begin LSum := LSum + AItem * LFactor; end);` umwandeln, übersetzen und ausführen | Vorschlag `ProcessItem`, Methode `ProcessItem(const AItem: Integer; var LSum: Integer; LFactor: Integer)`, an der Stelle eine kurze anonyme Methode `ProcessItem(AItem, LSum, LFactor)`; die Summe ist dieselbe wie vorher |
+| AMU3 | `TThread.Queue(nil, procedure begin Memo1.Lines.Add(LText); end);` mit lokaler `LText` umwandeln, `refactoring.anonymousMethodDeferredCapture` = `forward` | Vorschau erklärt die Weiterleitung; an der Stelle bleibt `procedure begin UpdateInMainThread(LText); end`, die Ausgabe ist dieselbe |
+| AMU4 | Wie AMU3 mit `fields` | `FText := LText;` vor der Anweisung, `TThread.Queue(nil, UpdateInMainThread);`, Feld `FText: string;`, die Vorschau warnt; schreibt die anonyme Methode eine Variable, bleibt es bei der Weiterleitung mit Begründung |
+| AMU5 | `FList.Sort(TComparer<TKunde>.Construct(function(const A, B: TKunde): Integer begin Result := CompareText(A.Name, B.Name); end));` | Vorschlag `CompareByName`, an der Stelle `TComparer<TKunde>.Construct(CompareByName)`, Sortierung unverändert |
+| AMU6 | Anonyme Methode in einer freien Routine (`TParallel.For` mit Zähler) | „In Routine umwandeln (ProcessIndex)“: Routine der Unit vor der äußeren Routine, Zähler als `var`-Parameter, Ergebnis wie vorher |
+| AMU7 | Anonyme Methode, die `Result` der äußeren Funktion setzt, eine lokale Routine der äußeren aufruft oder in einer lokalen Routine steht; Namen in der Abfrage auf ein vorhandenes Mitglied oder `begin` ändern | Keine Aktion bzw. „Umwandeln fehlgeschlagen: …“ mit Grund |
+| AMU8 | Private Methode `ProcessItem`, genau einmal als `FList.ForEach(ProcessItem)` übergeben (Parameter vom Typ `TProc<Integer>` oder eigenes `reference to`), Cursor auf ihren Kopf, „Als anonyme Methode einbetten“ | Vorschau, dann steht der Rumpf als `procedure(const AItem: Integer) … end` an der Stelle, Methode und Deklaration sind weg |
+| AMU9 | Dasselbe für eine Methode an `Timer1.OnTimer` (TNotifyEvent), eine Methode, die in der .dfm steht, die zweimal übergeben oder direkt aufgerufen wird | Keine Einbetten-Aktion |
+| AMU10 | `refactoring.anonymousMethod` aus | Keine der beiden Aktionen; „Lokale Variable und Feld umwandeln“ fragt weiter den Namen und zeigt die Vorschau wie vorher |
+
+## Methode ohne Self (#686)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MOS1 | In einer Klasse `function TRechner.Doppelt(A: Integer): Integer; begin Result := A * 2; end;` (ohne Felder), Datei öffnen | Hinter dem Kopf der Implementierung die graue Marke „ohne Self“ (englische IDE: „no Self“); nicht hinter Methoden, die Felder, Properties, Self oder inherited nutzen |
+| MOS2 | Rechtsklick auf die Marke, „Ausblenden“ hier; danach Einstellung „Marke ohne Self“ auf der Seite Editor aus | Marke verschwindet an dieser Zeile bzw. überall; nach Wiedereinschalten wieder da |
+| MOS3 | Cursor auf den Kopf von `Doppelt`, Alt+Enter | Aktionen „In class-Methode umwandeln“, „In class-Methode umwandeln, Aufrufe über TRechner“, „In freie Routine umwandeln“; ohne Parameter einfachen Typs kein Helper |
+| MOS4 | „In class-Methode umwandeln“, Vorschau prüfen, übernehmen, übersetzen | Deklaration `class function Doppelt(A: Integer): Integer; static;`, Implementierung `class function TRechner.Doppelt…`; Aufrufe über Instanzen unverändert; Projekt übersetzt |
+| MOS5 | `refactoring.methodKindStatic` = false, MOS4 wiederholen; dann eine Methode, die eine class-Methode der Klasse aufruft | Ohne `static`; im zweiten Fall auch mit Schalter an kein `static`, die Vorschau warnt |
+| MOS6 | „…, Aufrufe über TRechner“ mit Aufrufen `R.Doppelt(2)` in zwei Units und einem `Liefere.Doppelt(2)` | Vorschau listet jeden Aufruf „Datei, Zeile n: alt → neu“; `R.Doppelt` wird `TRechner.Doppelt`; bei `Liefere` Warnung, dass der Ausdruck nicht mehr ausgewertet wird; übersetzt |
+| MOS7 | „In freie Routine umwandeln“ für eine Methode, die nur in der eigenen Unit aufgerufen wird | Methode aus der Klasse entfernt, Routine steht vor ihrem ersten Aufrufer, Aufrufe ohne Empfänger; class-Konstanten der Klasse im Rumpf als `TRechner.X`; übersetzt |
+| MOS8 | Wie MOS7, aber eine zweite Unit ruft auf, die selbst eine Routine gleichen Namens hat | Deklaration vor `implementation`; in der zweiten Unit `Rechner.Doppelt(…)`; übersetzt |
+| MOS9 | `function TPruefer.IstLeer(const S: string): Boolean; begin Result := Trim(S) = ''; end;` in einer Unit mit `uses System.SysUtils`, „In Record-Helper für string verschieben“ | Neuer Helper `T<Unit>StringHelper` (weil der RTL-Helper sichtbar ist) mit Warnung in der Vorschau, Aufrufe `P.IstLeer(X)` → `X.IstLeer`; übersetzt; in einer Unit mit eigenem Record-Helper für string wird dieser erweitert |
+| MOS10 | Methode, die als Ereignis in der .dfm steht, virtuelle Methode, Überladung, Methode, die als `@TObj.M` oder Methodenzeiger übergeben wird | Keine Marke, keine Aktion; über atlas.server.methodKind ein Fehler mit Grund |
+| MOS11 | In atlas.json `"rules": { "method-without-self": "hint" }`, Problems-Ansicht | Hinweis „TRechner.Doppelt braucht Self nicht …“ mit Schnellkorrektur „In class-Methode umwandeln“; ohne Eintrag kein Hinweis (experimentell); im Profil strict aktiv |
+| MOS12 | `refactoring.methodKind` aus | Keine Marke, keine Aktionen, kein Hinweis; `refactoring.methodKindMarker` aus: Aktionen bleiben, nur die Marke fehlt |
+
+## Aufzählung mit Namenstabelle (#667)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NTB1 | `TOrderState = (osNew, osPaid, osPaymentDue);` im interface-Teil, Cursor auf den Namen, Alt+Enter | „Namenstabelle anlegen (TOrderState)“, „…, im implementation-Teil“, „Tabellen von TOrderState nachziehen“ |
+| NTB2 | „Namenstabelle anlegen“, Namen `COrderStateNames` übernehmen | Hinter dem Typ `const COrderStateNames: array[TOrderState] of string = ('New', 'Paid', 'Payment due');`, folgende Typen in einem neuen type-Abschnitt; übersetzt |
+| NTB3 | Im implementation-Teil anlegen, Unit mit `uses` im implementation-Teil | Tabelle direkt hinter diesem uses; übersetzt |
+| NTB4 | `refactoring.enumTablesResourceStrings` = true, NTB2 | resourcestring `SOrderStateNew = 'New';` usw. und `array[TOrderState] of PResStringRec = (@SOrderStateNew, …)`; `LoadResString(COrderStateNames[osPaid])` liefert 'Paid' |
+| NTB5 | Typ `TCode = (cA = 1, cB = 5)` bzw. Name eines vorhandenen Bezeichners eingeben | Keine Tabellen-Aktion bzw. „Namenstabelle anlegen fehlgeschlagen: Der Name … ist schon vergeben“ |
+| NTB6 | `osCancelled` zwischen `osPaid` und `osPaymentDue` einfügen, Cursor in die Tabelle aus NTB2 | Problems zeigt „… osCancelled fehlt (wie E2072)“; Glühbirne „Fehlenden Eintrag ergänzen (osCancelled)“ setzt `'Cancelled'` zwischen `'Paid'` und `'Payment due'`; übersetzt |
+| NTB7 | Mehrzeilige Integer-Tabelle mit `// osNew`-Kommentaren je Zeile, ein Element aus dem Typ löschen | „Überzähligen Eintrag entfernen (…)“ entfernt genau die Zeile des gelöschten Elements |
+| NTB8 | Tabelle `array[TOrderState] of Integer = (1, 2)` ohne Kommentare | „Fehlenden Eintrag ergänzen (osPaymentDue), Stelle geschätzt“ hängt `0 {TODO osPaymentDue}` hinten an |
+| NTB9 | Zwei weitere Units mit Tabellen über TOrderState und eine `case` ohne else, dritte Unit mit eigenem gleichnamigem Typ; auf dem Typ „Tabellen von TOrderState nachziehen“ | Vorschau listet jede Tabelle und die case-Anweisung „Datei, Zeile n: …“, geschätzte Stellen als Warnung; nach Übernahme übersetzt das Projekt, die dritte Unit bleibt unverändert |
+| NTB10 | `refactoring.enumTables` aus | Keine der Aktionen auf Typ und Tabelle; die Regel `constant-initializer-mismatch` meldet weiter |
+
+## Typ-Alias einführen und auflösen (#681)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TAL1 | In einer Klasse `FGroups: TDictionary<string, TList<TKunde>>;`, Cursor auf `TList`, Alt+Enter | „Typ-Alias einführen (TDictionary<string, TList<TKunde>>)“, dazu „…, nur diese Stelle“ und „…, im Projekt“; außerdem „Typ-Alias einführen (TList<TKunde>)“ für den inneren Ausdruck; Cursor auf `TDictionary` nur die ersten drei |
+| TAL2 | Erste Aktion, Namen `TKundeGroups` übernehmen, Vorschau prüfen, übernehmen, übersetzen | `TKundeGroups = TDictionary<string, TList<TKunde>>;` im type-Abschnitt vor der Klasse, alle gleichen Ausdrücke der Unit ersetzt; Projekt übersetzt |
+| TAL3 | Ausdruck `TList<TKunde>` in der Klasse TKunde selbst (Feld `FKinder: TList<TKunde>`) | Alias vor TKunde, davor die Vorwärtsdeklaration `TKunde = class;`, Warnung in der Vorschau; übersetzt |
+| TAL4 | „…, im Projekt“ mit einer zweiten Unit, die die erste einbindet und `TList<Kunden.TKunde>` nutzt, und einer dritten mit eigenem `TKunde` | Alias im interface-Teil; die zweite Unit ersetzt, die dritte bleibt; übersetzt |
+| TAL5 | `FWerte: array of array of Double;` und `FAktion: reference to function(A: Integer): string;` | Aktionen mit Vorschlag `TWerte` bzw. `TAktionFunc`; nach dem Einführen übersetzt das Projekt |
+| TAL6 | In `TBox<T> = class` das Feld `FItems: TList<T>;` | Aktion grau mit Grund „Kein Typ-Alias: Der Ausdruck nutzt den generischen Parameter T …“; Parameter `const A: array of Integer` ohne Aktion |
+| TAL7 | Name eines vorhandenen Typs eingeben (`TKunde`) | „Typ-Alias einführen fehlgeschlagen: Der Name TKunde ist schon vergeben“ |
+| TAL8 | Cursor auf den Namen von `TListe = TList<TKunde>;`, „Alias auflösen (TListe)“, Verwendungen in zwei Units, eine davon `TListe.Create` | Alle Stellen werden `TList<TKunde>` (auch `TList<TKunde>.Create`), fehlende uses ergänzt, Alias entfernt; übersetzt |
+| TAL9 | Alias `TWerte = array of Integer;`, als Feldtyp und als Parametertyp verwendet, auflösen; dann `TNeu = type Integer;` | Feld ersetzt, Parameter behält den Alias mit Warnung, Alias bleibt; bei `type Integer` keine Aktion bzw. Fehler mit Grund |
+| TAL10 | `refactoring.typeAlias` aus; dann an und `refactoring.typeAliasScope` = project | Keine der Aktionen; danach ersetzt die erste Aktion im Projekt, die anderen beiden heißen „nur diese Stelle“ und „in der Unit“ |
+
 ## Methode aus Aufruf anlegen (#472)
 
 | Nr. | Schritte | Erwartet |
@@ -2689,6 +3019,127 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | SU18 | Leiste öffnen, ins Fenster Meldungen oder Struktur klicken, dann nacheinander ins Suchfeld, auf ein Kästchen, in die Bereichsliste und auf ↓ klicken | Jeder Klick wirkt beim ersten Mal (Fokus bleibt in der Leiste, Kästchen schaltet um); holt die IDE den Fokus zurück, steht „Suchleiste: Fokus nach dem Klick …“ mit Fensterklasse im Diagnoseprotokoll |
 | SU19 | In einer Methode Strg+F, Bereich auf „Methode“ stellen, Esc; dann erneut Strg+F (auch in einer anderen Methode) | Bereich steht wieder auf „Unit“ (erster Eintrag der Liste); „Methode“ nur nach gezielter Wahl in der Liste oder mit Strg+Umschalt+Alt+F |
 
+## Suchleiste: Ersetzen, Regex, Verlauf, Bereiche über Dateien (#893)
+
+Vorbereitung: Projektgruppe mit zwei Projekten; in Projekt A die Units `Kunden.pas` (offen, mit ungespeicherter Änderung `IntToStr(Kunde.Nr)`) und `Rechnung.pas` (nicht offen, enthält `IntToStr(Rechnung.Nr)` zweimal), `Alt.pas` schreibgeschützt mit einem Treffer. Einstellungen `search.replace`, `search.regex`, `search.multiFile` an, `search.history` = 20.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ER1 | Strg+H im Editor | Leiste mit Zeile „Ersetzen durch“, Knopf ▾ links; Strg+F öffnet sie ohne die Zeile (▸) |
+| ER2 | Suchen `Nr`, Ersetzen `Nummer`, „Alle ersetzen“ in einer Unit | Alle Treffer der Unit ersetzt, „n Ersetzungen in 1 Datei“ in der Leiste; ein Strg+Z nimmt alles zurück |
+| ER3 | „Ersetzen“ mehrmals | Erster Klick springt zum Treffer (markiert), jeder weitere ersetzt den markierten und springt zum nächsten; Enter im Ersetzen-Feld wirkt wie „Ersetzen“, Strg+Enter wie „Alle ersetzen“ |
+| ER4 | `.*` an, Suchen `IntToStr\((\w+)\.Nr\)`, Ersetzen `$1.Nr.ToString` | Vorschau-Zeile „Vorschau: ~~IntToStr(Kunde.Nr)~~ → **Kunde.Nr.ToString**“; „Ersetzen“ ergibt `Kunde.Nr.ToString` |
+| ER5 | `.*` an, Suchen `(abc` | Suchfeld rot umrandet, Zeile „Ungültiger Ausdruck: …“ mit dem Text der Regex-Engine; keine Rahmen im Editor, Zähler leer, „Ersetzen“/„Alle ersetzen“ ändern nichts |
+| ER6 | `.*` und „Bezeichner“ an, Suchen `Nr` in einer Unit mit `// Nr` und `'Nr'` | Treffer nur im Code, nicht in Kommentar und String |
+| ER7 | Bereich „Projekt“, Suchen `IntToStr` | Zähler „Suche … n Treffer in m Dateien“, danach „n Treffer in m Dateien“; Treffer auch in `Rechnung.pas` (nicht offen) und in der ungespeicherten Änderung von `Kunden.pas`; die IDE bleibt währenddessen bedienbar (kein Eintrag des Einfrier-Wächters) |
+| ER8 | Wie ER7, dann Enter | Reiter „Atlas-Suche“ mit Kopfzeile „Suche nach „IntToStr“ in Projekt“, Treffer je Datei, Abschluss „n Treffer in m von k Dateien“; Doppelklick springt |
+| ER9 | Bereich „Projektgruppe“ mit großem Projekt, sofort „Abbrechen“ | Suche endet, Zähler „Abgebrochen nach n Dateien.“ |
+| ER10 | Wie ER7, F3 mehrmals | Springt über alle Treffer, nach dem letzten der aktiven Datei in die nächste Datei (wird geöffnet), am Ende Umlauf mit Meldung |
+| ER11 | Wie ER7 mit `.*`, „Auswählen …“ | Fenster „Atlas-Suche: Ersetzen“: je Datei Kopfzeile mit ☑, darunter Treffer mit Zeile, Text und „vorher → nachher“; Klick aufs Häkchen bzw. Leertaste schaltet, Datei-Häkchen schaltet alle ihre Treffer; Doppelklick springt |
+| ER12 | Wie ER11, zwei Treffer abhaken, „Ausgewählte ersetzen“ | Nur die angehakten ersetzt; `Alt.pas` als schreibgeschützt gemeldet und übersprungen; „n Ersetzungen in m Dateien · 1 übersprungen …“; „Letzte Atlas-Änderung zurücknehmen“ nimmt alles in allen Dateien zurück; Kodierung (ANSI/UTF-8) und Zeilenenden von `Rechnung.pas` unverändert |
+| ER13 | Wie ER11, vor „Ausgewählte ersetzen“ eine Trefferzeile von Hand ändern | Die Datei wird als „seit der Suche geändert“ gemeldet und nicht ersetzt |
+| ER14 | Zwei Suchen nacheinander, Leiste schließen, IDE neu starten, Strg+F, Pfeil hoch | Die vorige Suche steht im Feld (auch wenn die letzte noch drin stand); Pfeil runter zurück; Alt+↓ öffnet die Liste; im Ersetzen-Feld eigener Verlauf |
+| ER15 | `search.replace` aus | Keine Ersetzen-Zeile, kein Knopf ▸; Strg+H öffnet den IDE-Dialog „Ersetzen“; Befehl fehlt in der Palette |
+| ER16 | `search.regex` aus | Keine Option `.*`, keine Vorschau |
+| ER17 | `search.history` = 0 | Pfeil hoch ändert nichts, keine Verlaufsliste |
+| ER18 | `search.multiFile` aus | Bereiche nur Methode, Unit, Auswahl; offenes Fenster „Atlas-Suche: Ersetzen“ verschwindet |
+
+## Projektaufgaben aus atlas.json (#900)
+
+Vorbereitung: Projekt mit `atlas.json` neben der `.dproj`, Abschnitt `tasks` mit drei Aufgaben: `lint` (Gruppe `check`, `command` `pwsh`, `args` `["-File", "Tools/Lint.ps1"]`, `key` `Ctrl+Alt+1`, Matcher `dcc`), `tests` (Gruppe `test`, Matcher `generic`, gibt `Kunden.pas(88,5): error Test fehlgeschlagen` aus und endet mit Exit-Code 1), `eigen` (Gruppe `other`, Matcher als Objekt mit eigenem `regex` und `severityMap`). `Tools/Lint.ps1` gibt `Kunden.pas(88) Warning: W1000 Veraltet` aus. `tasks.enabled` und `tasks.problemsFromOutput` an, `tasks.beforeBuild` = `off`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PA1 | Strg+Alt+1 im Editor | Register „Atlas-Aufgaben“ öffnet sich, Kopfzeile „▶ lint läuft: …“ mit Befehlszeile, darunter die Ausgabe zeilenweise, sobald sie kommt (**Abnahme**) |
+| PA2 | Wie PA1, Lauf endet | Kopfzeile fett und grün „lint: Exit-Code 0, …, 1 Befund“; die Zeile mit `Kunden.pas(88)` ist eine Fundstelle, Doppelklick springt nach `Kunden.pas` Zeile 88 |
+| PA3 | Wie PA2, Problemliste ansehen | Warnung W1000 in Zeile 88 mit Quelle `lint`; im Editor markiert (**Abnahme**) |
+| PA4 | In `Lint.ps1` die Ausgabe entfernen, PA1 wiederholen | Der Befund aus PA3 verschwindet aus Problemliste und Editor (ein neuer Lauf ersetzt die Befunde seiner Aufgabe) |
+| PA5 | Befehl „Aufgabe ausführen …“, `tests` wählen | Kopfzeile rot „tests: Exit-Code 1, …“, Fehler in Zeile 88 in der Problemliste |
+| PA6 | „Letzte Aufgabe wiederholen“ | `tests` läuft erneut |
+| PA7 | Aufgabe mit `Start-Sleep 60` starten, „Aufgaben abbrechen“ | Lauf endet sofort, Kopfzeile „…: abgebrochen, …“; im Task-Manager kein `pwsh` der Aufgabe mehr |
+| PA8 | `timeoutSec` = 3 bei einer langen Aufgabe | Nach 3 s „…: nach 3 s abgebrochen (Zeitlimit), …“ |
+| PA9 | `tasks.beforeBuild` = `warn`, `lint` gibt einen Fehler aus, Strg+F9 | `lint` läuft vor dem Compile, der Build läuft trotzdem, der Befund steht in der Problemliste |
+| PA10 | `tasks.beforeBuild` = `block`, wie PA9 | Compile wird abgebrochen, Meldung „lint: 1 Fehler, Build abgebrochen“; nach Behebung läuft Strg+F9 durch („Atlas-Aufgaben bestanden, … wird gebaut.“) (**Abnahme**) |
+| PA11 | `beforeBuild` = `off` an der Aufgabe `lint`, global `block` | `lint` läuft nicht vor dem Build |
+| PA12 | `tasks.runChecksParallel` an, zwei check-Aufgaben, „Alle Prüfungen ausführen“ | Beide Kopfzeilen „▶ … läuft“ erscheinen gleichzeitig |
+| PA13 | Aufgabe `eigen` mit eigenem Regex und `severityMap` `{"E": "error", "W": "warning"}` | Fundstellen mit Schwere aus der Abbildung |
+| PA14 | `tasks.onlyFindings` an bzw. Befehl „Aufgaben: nur Befunde / ganze Ausgabe“ | Register zeigt je Lauf nur Kopfzeile und Fundstellen; erneut umschalten zeigt die ganze Ausgabe |
+| PA15 | „Aufgaben: Befunde ein- oder ausblenden …“, `lint` | „lint: Befunde ausgeblendet“, Befunde verschwinden aus der Problemliste; noch einmal blendet sie ein |
+| PA16 | Ungültige `tasks` in `atlas.json` (fehlendes `command`, doppelter Name) | Konfigurationsmeldung zum Abschnitt `tasks`; keine Ausnahme |
+| PA17 | `command` = `gibtsnicht` | „…: Programm „gibtsnicht“ nicht gefunden (gesucht in … und in PATH)“, keine Ausnahme |
+| PA18 | Atlas › Aufgaben | Untermenü mit den Aufgaben nach Gruppen und ihren Tasten; ohne `tasks` Eintrag „(keine Aufgaben in atlas.json)“ |
+| PA19 | Willkommensseite, Schnellaktion „Aufgaben ▾“ (Haken in den Einstellungen setzen, siehe Übergabe) | Menü mit den Aufgaben; nach dem Lauf das Ergebnis unter dem Knopf |
+| PA20 | Einstellungen › Compiler › Projektaufgaben: `tasks.enabled` aus | Keine Befehle, kein Menü Atlas › Aufgaben, kein Statusfeld, keine Schnellaktion, Strg+Alt+1 gehört wieder der IDE, kein Lauf vor dem Build |
+| PA21 | `tasks.problemsFromOutput` aus, PA1 | Ausgabe im Register wie zuvor, aber keine Befunde in Problemliste und Editor |
+| PA22 | Aufgabe läuft, Atlas-Package entladen | Kein Absturz; der Prozess wird beendet, das Register „Atlas-Aufgaben“ verschwindet |
+| PA23 | `tasks.saveBeforeRun` an, Unit ändern (ungespeichert), Aufgabe starten | Die Unit ist vor dem Start gespeichert |
+
+## Exception-Verlauf beim Debuggen (#517)
+
+Vorbereitung: Testprogramm aus `docs/Studie-Exception-Dialog.md` (vier Knöpfe), `debug.exceptionHistory` an, *Tools › Optionen › Debugger › Sprach-Exceptions* „Bei Sprach-Exceptions benachrichtigen“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EV1 | Atlas › „Atlas: Exception-Verlauf“ bzw. Befehlspalette `Atlas.DebugExceptions` | Andockbares Fenster „Atlas: Exceptions“ mit dem Hinweis „Noch keine Exception in dieser Debug-Sitzung.“ |
+| EV2 | F9, Knopf 1, zehnmal im Dialog „Fortsetzen“ | Ein Eintrag `EConvertError` mit Meldung `'x' is not a valid integer value` (bzw. deutsch), Anzahl 10, Ort `Unit1.pas:<Zeile von StrToInt>` (**Abnahme**) |
+| EV3 | Doppelklick bzw. Enter auf den Eintrag | Unit1.pas öffnet an der auslösenden Zeile (**Abnahme**) |
+| EV4 | Knopf 2, „Fortsetzen“ | Neuer Eintrag `EInvalidOp` mit Meldung `Nicht erlaubt: 'Wert'` (Hochkommas in der Meldung) |
+| EV5 | Knopf 3 | Eintrag `EAccessViolation` mit Ort `Unit1.pas:<Zeile>` |
+| EV6 | Knopf 4 | Eintrag `EAbort`, Spalte Thread „Lader (<Kennung>)“; die übrigen „Hauptthread <Kennung>“ |
+| EV7 | Klassenauswahl „EConvertError“, dann Filter „valid“ | Nur passende Einträge; „Alle Klassen“ zeigt wieder alle; ↓ im Filter führt in die Liste |
+| EV8 | Rechtsklick auf `EConvertError` › „EConvertError künftig ignorieren“; Programm neu starten (Strg+F2, F9), Knopf 1 | Meldungsansicht „Atlas: EConvertError wird künftig ignoriert …“; im neuen Lauf schließt Atlas jeden Dialog selbst, der Eintrag steht grau mit „10 · ignoriert“ (**Abnahme**) |
+| EV9 | Rechtsklick › „Bei EConvertError wieder anhalten“, Knopf 1 | Der Dialog bleibt wieder stehen |
+| EV10 | Strg+C auf einem Eintrag, in einen Editor einfügen | Klasse und Meldung, Routine, Datei(Zeile), Thread, Anzahl |
+| EV11 | Programm beenden, Fenster ansehen; erneut F9 | Verlauf bleibt nach dem Ende stehen; der neue Lauf beginnt leer |
+| EV12 | Kontextmenü › „Verlauf leeren“ | Liste leer, Hinweis wieder da |
+| EV13 | Win64 (Delphi 13: LLDB), EV2 bis EV5 | Wie Win32; liefert der Debugger den Stapel verzögert, steht der Ort trotzdem (bis 1 s später) |
+| EV14 | Schnellschalter bzw. *Tools › Optionen › Atlas › Debuggen* „Exception-Verlauf beim Debuggen“ aus, Knopf 2 | Fenster schließt, Befehl und Menüpunkt fehlen; der Dialog der IDE verhält sich wie ohne Atlas, auch für zuvor ignorierte Klassen |
+| EV15 | Helles und dunkles Thema wechseln, Fenster offen | Liste, Filter und Auswahl folgen dem Thema; ignorierte Zeilen grau und lesbar |
+| EV16 | Studie `docs/Studie-Exception-Dialog.md` S1–S8 in Delphi 12 und 13 | Ergebnisse in die Tabelle eintragen und in #783 kommentieren |
+
+## Nur eigener Code beim Debuggen (#578)
+
+Vorbereitung: Testprogramm aus `docs/Studie-Exception-Dialog.md`, Projekt in `C:\Projekte\Demo`; ohne Debug-DCUs (*Projekt › Optionen › Delphi-Compiler › Kompilieren › Mit Debug-DCUs* aus). `debug.justMyCode` an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EC1 | F9, Knopf 1 (`StrToInt('x')`), im Dialog „Anhalten“ | Der Editor steht in Unit1.pas auf der Zeile mit `StrToInt`, die Zeile ist markiert; Meldung „Atlas: Exception in Bibliothekscode; eigener Code: Unit1.pas:<Zeile> (n Ebenen darüber …)“ (**Abnahme**) |
+| EC2 | Wie EC1 mit Debug-DCUs an | Die IDE zeigt erst System.SysUtils.pas, Atlas springt danach zur eigenen Zeile; der Aufrufstapel der IDE enthält weiter den Ursprung |
+| EC3 | Haltepunkt auf einer Zeile mit `StrToInt('1')`, F7 | Kein Sprung in die CPU-Ansicht; der Debugger steht auf der nächsten eigenen Zeile (**Abnahme**) |
+| EC4 | Haltepunkt auf einem Aufruf einer eigenen Methode, F7 | Normaler Schritt in die eigene Methode |
+| EC5 | Fenster „Atlas: Exceptions“, Eintrag aus EC1 wählen | Ort = eigene Zeile; unten der Aufrufstapel: „… n Bibliotheksrahmen“ grau, darunter `Button1Click` normal; Doppelklick auf die Gruppe klappt auf, Doppelklick auf `Button1Click` springt |
+| EC6 | Strg+C auf dem Eintrag | Text enthält den Aufrufstapel mit Dateien und Zeilen |
+| EC7 | *Tools › Optionen › Atlas › Debuggen*: „Weitere Ordner mit eigenem Code“ = Ordner einer Komponente mit Quelltext; Exception in der Komponente | Atlas springt nicht weg, die Komponente gilt als eigener Code |
+| EC8 | Befehlspalette „Atlas: Nur eigener Code beim Debuggen umschalten“ | Meldung „… ist aus“; EC1 und EC3 verhalten sich wie ohne Atlas (CPU-Ansicht bzw. Ursprung), der Stapel im Fenster ist nicht zusammengefasst; erneut: wieder an (**Abnahme**) |
+| EC9 | Knopf 1, im Dialog „Fortsetzen“ | Kein Sprung |
+| EC10 | Win64 (LLDB), EC1 und EC3 | Wie Win32 |
+| EC11 | Diagnoseprotokoll nach dem Start | Keine Zeile „Aktion „Einzelne Anweisung“ nicht gefunden“ (sonst Aktionsname für die Studie notieren) |
+
+## Exception-Leiste beim Debuggen (#783)
+
+Vorbereitung: Testprogramm aus `docs/Studie-Exception-Dialog.md`, Projekt in `C:\Projekte\Demo`; *Tools › Optionen › Atlas › Debuggen* „Exception-Verlauf beim Debuggen“, „Nur eigener Code beim Debuggen“ und „Exception-Leiste statt Dialog“ an. Delphi 12 bzw. 13.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EB1 | F9, Knopf 1 (`StrToFloat('x')` statt `StrToInt`) | Kein Dialog bleibt stehen (höchstens kurzes Aufblitzen); oben im Editor die Leiste: `EConvertError`, Meldung, „Thread: Hauptthread …“, „n Ebenen ausgeblendet“, `Unit1.TForm1.Button1Click (Unit1.pas:<Zeile>)`; die Zeile ist markiert (**Abnahme**) |
+| EB2 | Wie EB1, dann F9 (Fokus im Editor) | Programm läuft weiter, Leiste weg (**Abnahme**) |
+| EB3 | Wie EB1, dann F8 bzw. Esc | Leiste weg, Prozess bleibt angehalten; danach wirkt F8 wieder als „Gesamte Routine“ (**Abnahme**) |
+| EB4 | Wie EB1, Knopf „Fortsetzen“ bzw. „Anhalten“ in der Leiste | Wie EB2 bzw. EB3 |
+| EB5 | Knopf 1 dreimal in einer Sitzung | Ab dem zweiten Mal rechts „2× an dieser Stelle“, dann „3×“ |
+| EB6 | „Nur an dieser Stelle ignorieren“, Programm neu starten, Knopf 1 | Kein Halt; im Fenster „Atlas: Exceptions“ ein grauer Eintrag, der zählt; Meldung „… wird in diesem Projekt künftig still fortgesetzt“ (**Abnahme**) |
+| EB7 | Nach EB6: eine zweite Zeile mit `StrToFloat('y')` in einer anderen Methode | Der Debugger hält dort mit Leiste (**Abnahme**) |
+| EB8 | „Klasse ignorieren“ | Prozess läuft weiter; Knopf 1 und EB7 halten nicht mehr; im Verlauf grau; Rechtsklick › „Wieder anhalten“ hebt es auf |
+| EB9 | „Meldung kopieren“, in einen Editor einfügen | Klasse, Meldung, Routine, Datei(Zeile), Thread und der Aufrufstapel |
+| EB10 | Klick auf die Ortszeile der Leiste | Springt zur Zeile und markiert sie |
+| EB11 | *Debuggen* „Nur an dieser Stelle ignorieren“ aus, Knopf 1 | Der Knopf fehlt; Orte aus EB6 wirken nicht mehr (Halt mit Leiste) |
+| EB12 | „Exception-Leiste statt Dialog“ aus (bzw. Schnellschalter), Knopf 1 | Der IDE-Dialog erscheint wie ohne Atlas, keine Leiste (**Abnahme**) |
+| EB13 | Befehlspalette „Atlas: Exception-Dialog der IDE in dieser Debug-Sitzung zeigen“, Knopf 1 | Dialog der IDE bleibt; nach „Anhalten“ im Dialog kommt die Leiste; nach Programmende und neuem Start ersetzt die Leiste den Dialog wieder |
+| EB14 | Knopf 1, im Dialog (EB13) „Fortsetzen“ | Keine Leiste |
+| EB15 | Win64 (Delphi 13: LLDB), EB1 bis EB7 | Wie Win32 (**Abnahme**) |
+| EB16 | Helles und dunkles Thema, Leiste offen | Fläche, Akzentrahmen, Knöpfe und Texte folgen dem Thema, alles lesbar |
+| EB17 | Brotkrumen und Editorleiste an, EB1 | Die Leiste steht ganz oben, darunter Brotkrumen und Editorleiste unverändert |
+| EB18 | Studie S12–S17 (`docs/Studie-Exception-Dialog.md`) | Ergebnisse eintragen und in #783 kommentieren (**Abnahme**) |
+
 ## Werte im Hover beim Debuggen (#891)
 
 Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge), einem Record-Array `Kunden` und einer lokalen Variablen `I`, Haltepunkt in einer Methode, die alle drei verwendet. Atlas-Tooltip an (`editor.hoverTooltip`), `debug.hoverValues` an.
@@ -2708,6 +3159,139 @@ Vorbereitung: Ein kleines VCL-Projekt mit `FList: TStringList` (drei Einträge),
 | DH11 | Schnellschalter bzw. *Tools › Optionen › Atlas › Debuggen*: „Variablenwerte im Hover beim Debuggen“ aus | Hover zeigt keinen Wert mehr; wieder an: Wert wieder da |
 | DH12 | Atlas-Tooltip aus (`editor.hoverTooltip`), Maus auf `I` am Haltepunkt | Tooltip der IDE zeigt `I = <Wert>` vor dem Hover-Text |
 | DH13 | Sprachausgabe (Narrator) an, Maus auf `I` | Ansage beginnt mit `I = <Wert>` |
+
+## Visualisierer für häufige Typen (#835)
+
+Vorbereitung: VCL-Projekt (Win32) mit `Kunden: TObjectList<TKunde>` (drei Kunden mit `Name`), `Werte: TList<Integer>` (1, 2, 3), `Index: TDictionary<string, Integer>` (zwei Paare), einer `TFDQuery` (oder `TClientDataSet`) mit 10 Sätzen und Feldern `Name`, `Ort`, `Daten: TBytes` (300 Bytes), `Strom: TMemoryStream` mit „Hello“, `Json: TJSONObject` (`{"a":1,"b":[1,2]}`), `Farbe: TColor = clWebDodgerBlue`, `G: TGUID`, `P: TPoint`, `R: TRect`, `Bild: TBitmap` (64 × 32, 24 Bit, bunt). Haltepunkt nach dem Füllen; `Query.Edit` vorher aufrufen und `Name` ändern. `debug.visualizers` an, Auswertung „auch Getter von Eigenschaften“.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VI1 | F9 bis zum Haltepunkt, `Kunden` in Überwachte Ausdrücke | Wert `TObjectList<TKunde> · Count = 3 · [Meier, Schulz, Öztürk]` (**Abnahme**) |
+| VI2 | `Werte`, `Index` überwachen | `TList<Integer> · Count = 3 · [1, 2, 3]`; `TDictionary<string,Integer> · Count = 2 · {…: …}` |
+| VI3 | `Query` überwachen (im Zustand Edit, Satz 3) | `TFDQuery · dsEdit · 3/10 · Name = …, Ort = …` (**Abnahme**) |
+| VI4 | `Daten`, `Strom` überwachen | `300 Bytes · 48 65 …` mit Text; Stream mit Länge und „Hello“ |
+| VI5 | `Json` überwachen, Auswertung auf „auch Funktionsaufrufe“ | `{"a":1,"b":[1,2]}`; mit „nur Felder“ bzw. „Getter“ Anzahl und Schlüssel ohne Aufruf |
+| VI6 | `Farbe`, `G`, `P`, `R` überwachen | `clWebDodgerBlue · $1E90FF`; `{XXXXXXXX-…}`; `(10, 20)`; `(10, 20)–(110, 70)` |
+| VI7 | `Bild` überwachen | `TBitmap · 64 × 32 · pf24bit` |
+| VI8 | Lupe an `Kunden` → „Mit Atlas anzeigen …“ | Fenster mit Tabelle Nr./Wert, drei Zeilen; Zeilen markieren, Strg+C, in den Editor einfügen: Text mit Tabulatoren (**Abnahme**) |
+| VI9 | Lupe an `Query` | Tabelle Feld/Typ/Wert/Alter Wert; beim geänderten Feld steht der alte Wert |
+| VI10 | Lupe an `Daten` und an einem `TBytes` mit 16 MB | Hex-Zeilen mit Adresse, Bytes und Text; 16 MB scrollen flüssig |
+| VI11 | Lupe an `Json` (Auswertung „auch Funktionsaufrufe“) | Baum mit `a: 1`, `b [2]` usw. |
+| VI12 | Lupe an `Bild` und an `Farbe` | Bild in Originalgröße vor Schachbrett; Farbfeld in DodgerBlue mit Text |
+| VI13 | Ansichtsfenster offen lassen, F8 | Inhalt ausgegraut, „Nicht verfügbar: Das Programm läuft.“; nach dem Halt neuer Inhalt |
+| VI14 | Maus im Editor auf `Kunden` (Atlas-Tooltip) | Oben im Tooltip die aufbereitete Zeile statt der Objektdarstellung |
+| VI15 | Win64-Debugger: Maus auf `Kunden` und `Query` | Tooltip zeigt die aufbereitete Zeile (IDE-Visualisierer laufen dort nicht) |
+| VI16 | Optionen › Debuggen: „Datenmengen“ aus, OK | `Query` zeigt wieder den Text der IDE; Liste unverändert |
+| VI17 | `debug.visualizers.timeoutMs` = 20, große Liste mit langsamen Gettern | Kein Hänger; Wert fällt auf den Text der IDE zurück |
+| VI18 | Hauptschalter (Schnellschalter) aus | Überwachte Ausdrücke und Tooltip zeigen die Texte der IDE; Optionen › Debugger › Visualisierer listet keine Atlas-Einträge mehr |
+| VI19 | Package bei offenem Ansichtsfenster deinstallieren | Fenster schließt, kein Fehler |
+| VI20 | Optionen › Debugger › Visualisierer der IDE | Je eingeschalteter Art ein Eintrag „Atlas: …“ mit Beschreibung |
+
+## Eigene Wertdarstellung beim Debuggen (#854)
+
+Vorbereitung: VCL-Projekt (Win32) mit `TKunde = class` (Felder `FName`, `FOrt`, `FNr: Integer`, Eigenschaften `Name` und `Ort` direkt auf die Felder, `Saldo: Currency` mit Getter `GetSaldo`), darüber `// atlas-debug: '{Name}, {Ort} (Nr {FNr})'` und `// atlas-debug-children: Name, Ort`. `TAuftrag = record` mit `[AtlasDebugDisplay('Auftrag {Nr}: {Betrag:0.00} €')]` (Unit `Atlas.Debug.Attributes` aus `Setup/Vorlagen` im Projekt). Haltepunkt nach dem Anlegen von `Kunde` und `Auftrag`. Optionen › Debuggen: „Eigene Wertdarstellungen“ an, „Getter und Funktionsaufrufe in Vorlagen erlauben“ aus.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WD1 | F9 bis zum Haltepunkt, `Kunde` in Überwachte Ausdrücke | Wert `Meier, Berlin (Nr 7)` (**Abnahme**) |
+| WD2 | `Auftrag` überwachen | `Auftrag 12: 99,50 €` (Format nach Gebietsschema) |
+| WD3 | Maus im Editor auf `Kunde` (Atlas-Tooltip), auch im Win64-Debugger | Tooltip zeigt `Meier, Berlin (Nr 7)` (**Abnahme**) |
+| WD4 | Vorlage auf `'{Name}: {Saldo}'` ändern, speichern, neu debuggen | `Meier: {?Saldo}` (Getter ohne Erlaubnis nicht aufgerufen) |
+| WD5 | „Getter und Funktionsaufrufe in Vorlagen erlauben“ an, Wert neu auswerten | `Meier: 1234,5` |
+| WD6 | Lupe an `Kunde` → „Mit Atlas anzeigen …“ | Tabelle Feld/Wert nur mit `Name` und `Ort`; „Alle Felder“ an: alle Felder (`FName`, `FOrt`, `FNr` …) |
+| WD7 | `.atlas` im Projekt: `"debugDisplayRules": {"TPoint": "({X}|{Y})"}`, debuggen, `P: TPoint` überwachen | `(10|20)`; eine Regel im Quelltext gewinnt gegen die Projektdatei |
+| WD8 | In `.atlas` `"debugDisplayRules": {"TKunde": 3}` | Projektdatei meldet falschen Typ, Debuggen läuft ohne diese Regel |
+| WD9 | Abgeleitete Klasse `TStammkunde = class(TKunde)` ohne eigene Regel überwachen | Darstellung von `TKunde` |
+| WD10 | Im Kommentar `// atlas-debug: '{Na` tippen | Vervollständigung bietet `Name`, `FName` … des Typs an; ebenso nach `atlas-debug-children:` (**Abnahme**) |
+| WD11 | Vorlage `'{Nmae}'` speichern | Warnung `debug-display-placeholder` unter `Nmae`: „TKunde hat kein Mitglied „Nmae“ …“ |
+| WD12 | Vorlage `'{Name'` speichern | Warnung „Ungültige Wertdarstellung: …“ an der offenen Klammer |
+| WD13 | `// atlas-debug-children: Name, Telefon` | Warnung unter `Telefon` |
+| WD14 | Klasse von einem Vorfahren aus einer nicht indizierten Unit ableiten, unbekanntes Mitglied nennen | Keine Warnung (Regel schweigt bei unbekanntem Vorfahren) |
+| WD15 | Server neu starten, während das Programm angehalten ist | Regeln aus `.atlas` gelten weiter; Regeln aus dem Quelltext spätestens 15 s nach dem Neustart wieder |
+| WD16 | Schnellschalter „Eigene Wertdarstellungen“ aus | Überwachte Ausdrücke und Tooltip zeigen die Texte der IDE; „Atlas: eigene Wertdarstellung“ fehlt in Optionen › Debugger › Visualisierer |
+| WD17 | Package bei offenem Ansichtsfenster deinstallieren | Fenster schließt, kein Fehler |
+
+## Gezielt hineinspringen (#836)
+
+Vorbereitung: VCL-Projekt (Win32, Debug) mit `TKunde = class` (Eigenschaft `Name` mit Getter `GetName`, virtuelle Methode `Speichere`), `TStammkunde = class(TKunde)` mit `override` von `Speichere`, Prozedur `Pruefe(const S: string): Boolean`. In einer Methode die Zeile `Speichere(Kunde.Name, Format('%d', [N]));` und darunter `if Pruefe(A) and Pruefe(B) then Tu;`, `Kunde` zur Laufzeit ein `TStammkunde`. Haltepunkt auf die erste Zeile. Optionen › Debuggen: „Gezielt hineinspringen“ an, Taste Strg+Alt+F7.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GH1 | F9 bis zum Haltepunkt, Strg+Alt+F7 | Liste unter der Zeile: `1  TKunde.GetName  (Getter)`, `2  Format` ausgegraut „ohne Debug-DCUs“, `3  TStammkunde.Speichere` (**Abnahme**) |
+| GH2 | In GH1 Ziffer 3 | Programm hält am `begin` von `TStammkunde.Speichere`; `GetName` lief, ohne anzuhalten; keine Atlas-Haltepunkte in der Haltepunktliste (**Abnahme**) |
+| GH3 | Wie GH1, ↓ und Enter | ↓ überspringt die ausgegraute Zeile; Enter springt in `TStammkunde.Speichere` |
+| GH4 | Wie GH1, Ziffer 2 | Nichts passiert, die Liste bleibt offen |
+| GH5 | Wie GH1, Esc; dann Klick in den Editor | Liste schließt, das Programm bleibt angehalten |
+| GH6 | Projektoption „Mit Debug-DCUs“ an, neu bauen, GH1 | `Format` ist wählbar, Ziffer 2 hält in `System.SysUtils` |
+| GH7 | Zeile `if Pruefe(A) and Pruefe(B) then Tu;` mit `A` falsch, Strg+Alt+F7, das zweite `Pruefe` | Programm hält an der Folgezeile; Meldungsfenster: „… wurde nicht aufgerufen …“ |
+| GH8 | Zeile mit nur einem Aufruf (`Tu;`), Strg+Alt+F7 | Keine Liste, wirkt wie F7 |
+| GH9 | Zeile ohne Aufruf (`N := 1;`), Strg+Alt+F7 | Keine Liste, wirkt wie F7 |
+| GH10 | `Kunde` als `IKunde` (Interface) deklariert, GH1 | Laufzeitklasse über `(Kunde as TObject).ClassName`; Ziel ist `TStammkunde.Speichere` |
+| GH11 | Ohne laufendes Programm Strg+Alt+F7 im Editor | Die Taste geht an die IDE (oder tut nichts), keine Meldung von Atlas |
+| GH12 | Ohne laufendes Programm Befehlspalette › „Gezielt hineinspringen“ | Meldung „Gezielt hineinspringen geht nur, solange das Programm angehalten ist.“ |
+| GH13 | Kontextmenü › Atlas › „Gezielt hineinspringen“ im angehaltenen Programm | Wie GH1 |
+| GH14 | Haltepunkt des Benutzers in `TKunde.GetName`, GH1 und Ziffer 3 | Programm hält zuerst in `GetName`; die Atlas-Haltepunkte sind danach entfernt |
+| GH15 | Zeile mit `inherited Create(AOwner);` und `X := TListe.Create;` | `inherited` und `Konstruktor` als Art; Sprung in den Konstruktor des Vorfahren bzw. von `TListe` |
+| GH16 | „Gezielt hineinspringen“ aus, Strg+Alt+F7 | Die Taste gehört der IDE; Palette und Kontextmenü melden „Gezielt hineinspringen ist ausgeschaltet …“ |
+| GH17 | Tastenkürzel-Übersicht öffnen | Eintrag „Gezielt hineinspringen“ mit Strg+Alt+F7, Konflikt rot, falls die IDE die Taste belegt |
+| GH18 | Package deinstallieren, während die Liste offen bzw. ein Sprung läuft | Kein Fehler; keine Atlas-Haltepunkte bleiben zurück |
+
+## Beim nächsten Ereignis anhalten (#856)
+
+Vorbereitung: VCL-Projekt (Win32, Debug) mit Formular `TfrmKunde` (`frmKunde`): Knöpfe `btnSpeichern` und `btnOk`, beide `OnClick = btnSpeichernClick`; Knopf `btnHilfe` ohne Handler, dem `FormCreate` per Code `btnHilfe.OnClick := HilfeClick;` zuweist; `TFDMemTable` `Tabelle` mit `BeforePost`; `TActionList` mit `actDrucken` (`OnExecute`, `OnUpdate`); `TTimer` `Timer1` mit `Interval = 50` und `OnTimer`; `OnPaint` an einer `TPaintBox`, `OnMouseMove` am Formular. Zweites Formular `TfrmInfo`, anfangs unsichtbar. Programm mit F9 starten. Optionen › Debuggen: „Beim nächsten Ereignis anhalten“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EB1 | Menü Start › „Beim nächsten Ereignis anhalten…“ | Dialog mit Ereignisarten (Maus, Tastatur, Aktionen vorgewählt), „Häufige Ereignisse einschließen“ aus, „Alle Formulare“; darunter „N Handler an M Stellen“ |
+| EB2 | In EB1 nur „Maus“, OK; im Programm auf `btnSpeichern` klicken | Halt in der ersten Anweisung von `btnSpeichernClick`; Leiste „Angehalten: btnSpeichern.OnClick → TfrmKunde.btnSpeichernClick“ (**Abnahme**) |
+| EB3 | Nach EB2 Haltepunktliste öffnen | Keine Haltepunkte der Gruppe `Atlas.Ereignis` mehr (**Abnahme**) |
+| EB4 | Wie EB2, aber auf `btnOk` klicken | Leiste nennt `btnOk.OnClick` (über `Sender.Name`) (**Abnahme**) |
+| EB5 | Nach EB2 in der Leiste „Weiter beobachten“, dann auf `btnOk` klicken | Zweiter Halt in `btnSpeichernClick`, Leiste nennt `btnOk.OnClick` (**Abnahme**) |
+| EB6 | „Maus“, OK; Maus über das Formular bewegen und die PaintBox neu zeichnen lassen | Kein Halt in `OnMouseMove`/`OnPaint` (**Abnahme**) |
+| EB7 | Wie EB6 mit „Häufige Ereignisse einschließen“ | Halt beim ersten `OnMouseMove` bzw. `OnPaint` |
+| EB8 | „Maus“, OK; auf `btnHilfe` klicken | Halt in `HilfeClick` (im Code zugewiesen) (**Abnahme**) |
+| EB9 | Nur „Timer“, OK | `Timer1` (50 ms) ist ausgenommen, die Zahl im Dialog zählt ihn nicht; mit „Häufige Ereignisse“ hält er |
+| EB10 | Nur „Datenbank“, OK; Datensatz speichern | Halt in `TabelleBeforePost`, Leiste „Tabelle.BeforePost → …“ |
+| EB11 | Nur „Aktionen“, OK; Menüpunkt mit `actDrucken` | Halt in `OnExecute`, nicht in `OnUpdate` (ausgenommen) |
+| EB12 | „Nur sichtbare Formulare“ bei laufendem Programm | Atlas hält kurz an und läuft weiter; Handler von `TfrmInfo` bekommen keinen Haltepunkt (Zahl in der Meldung) |
+| EB13 | „Ein Formular“ › `TfrmInfo` | Nur dessen Handler; Klick auf `btnSpeichern` hält nicht |
+| EB14 | Während der Beobachtung Befehl erneut aufrufen | Meldung „Beobachtung beendet, Haltepunkte entfernt“; Haltepunktliste ohne `Atlas.Ereignis` |
+| EB15 | Während der Beobachtung Programm beenden | Meldung „Das Programm ist beendet …“; keine Atlas-Haltepunkte zurück |
+| EB16 | Haltepunkt des Benutzers an anderer Stelle greift während der Beobachtung | Meldung „hielt an einer anderen Stelle …“; Atlas-Haltepunkte entfernt, der des Benutzers bleibt |
+| EB17 | Ohne laufendes Programm Befehlspalette › „Beim nächsten Ereignis anhalten“ | Meldung „Es läuft kein Programm im Debugger.“ |
+| EB18 | Optionen › Debuggen: aus | Menüpunkt unter Start und Eintrag in der Befehlspalette fehlen (**Abnahme**) |
+| EB19 | `debug.breakOnNextEvent.excluded` auf `OnPaint; OnResize` | Gespeichert als `OnPaint, OnResize`; `OnMouseMove` gilt nicht mehr als häufig, `OnResize` schon |
+| EB20 | Handler `FormShow` nur im Vorfahren `TfrmBasis` implementiert | Halt im Vorfahren; nicht auffindbare Rümpfe werden gemeldet („… bleiben unbeobachtet“) |
+| EB21 | EB2 und EB5 unter dem Win64-Debugger (LLDB) | Wie unter Win32 (**Abnahme**) |
+| EB22 | Package deinstallieren während der Beobachtung | Kein Fehler; keine Atlas-Haltepunkte bleiben zurück |
+
+## Schrittfilter beim Hineinspringen (#850)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert. Unit `Kunden` mit `TKunde = class` (Feld `FName`, `property Name: string read GetName write SetName` mit `GetName` = `Result := FName;` und `SetName` = `FName := Value;`, `function Anzahl: Integer` = `Result := FAnzahl;`, `class operator Add`, `constructor Create` = `inherited Create;`), `TLog.LogSchreiben(const S: string)` und eine Methode `Speichere`, die in einer Zeile `Ausgabe(Kunde.Name + IntToStr(Kunde.Anzahl))` und in der nächsten `LogSchreiben('x')` ruft. Vorgabe `debug.stepFilters` an, Arten `getters,trivial`, keine Muster. Win32 und Win64 (LLDB) je einmal.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SF1 | Haltepunkt auf der Zeile mit `Kunde.Name`, F9, F7 | Kein Halt in `GetName` und `Anzahl`; der Debugger steht im `begin` von `Ausgabe` (**Abnahme**) |
+| SF2 | SF1 mit `debug.stepFilters` aus (Schnellschalter) | F7 hält in `GetName` wie ohne Atlas (**Abnahme**) |
+| SF3 | Haltepunkt in `GetName`, dann SF1 | Der Debugger hält in `GetName` (Haltepunkt geht vor) |
+| SF4 | SF1, Umschalt+F7 | Halt in `GetName`; das nächste F7 filtert wieder (**Abnahme**) |
+| SF5 | Befehlspalette „Trotzdem hineinspringen (ohne Schrittfilter)“ | Wie SF4; ohne angehaltenes Programm die Meldung „Trotzdem hineinspringen: Das Programm ist nicht angehalten.“ |
+| SF6 | Cursor in `LogSchreiben`, Kontextmenü „Beim Hineinspringen überspringen“ | Meldung „Schrittfilter: Kunden.TLog.LogSchreiben wird beim Hineinspringen übersprungen.“; F7 auf der Zeile mit `LogSchreiben` hält nicht darin (**Abnahme**) |
+| SF7 | SF6 noch einmal | „… wird schon übersprungen (Muster Kunden.TLog.LogSchreiben).“ |
+| SF8 | Cursor in `GetName`, „Beim Hineinspringen überspringen“ | „… wird schon übersprungen (Getter von Eigenschaften (eine Anweisung)).“, kein neues Muster |
+| SF9 | Cursor in `LogSchreiben`, „Nicht mehr überspringen“ | „… wird nicht mehr übersprungen.“; Muster weg. Mit zusätzlichem Muster `*.Log*`: „… wird weiter über das Muster *.Log* übersprungen …“ |
+| SF10 | Cursor in `GetName`, „Nicht mehr überspringen“ | „… wird weiter übersprungen (Getter …); die Art im Fenster „Schrittfilter“ abwählen.“ |
+| SF11 | Befehlspalette „Schrittfilter…“ | Andockbares Fenster mit Schalter, fünf Arten (Getter, Setter, trivial, Operatoren, leere Konstruktoren) samt Treffern, Muster mit Treffern, Zeile „n Routinen in m Dateien des Projekts“ (**Abnahme**) |
+| SF12 | Im Fenster Art „Setter“ an, `Kunde.Name := 'x'` mit F7 | Kein Halt in `SetName`; Einstellung gespeichert (Einstellungsseite Debuggen zeigt den Haken) |
+| SF13 | Im Fenster Muster `TKunde.*` hinzufügen (Enter), mit F2 in `TKunde.Get*` ändern, mit Entf entfernen | Liste und Treffer passen; ungültige Muster (Leerzeichen, nur `*`) und doppelte nimmt das Fenster nicht an |
+| SF14 | „Neu zählen“ ohne laufenden Server | „Treffer gibt es erst mit laufendem Server.“, kein Hänger |
+| SF15 | Nach SF1 im Fenster | „In dieser Debug-Sitzung übersprungen: 2 · zuletzt Kunden.TKunde.Anzahl (Triviale Routinen …)“; neue Debug-Sitzung: wieder 0 |
+| SF16 | Schalter im Fenster aus | F7 wie ohne Atlas, Sitzungszeile „Der Ablauf ist aus …“; Schalter an: filtert wieder, ohne Neustart |
+| SF17 | Exception in einer gefilterten Routine | Der Debugger hält an der Exception, kein weiteres „Bis zur Rückkehr“ |
+| SF18 | F7 in eine Routine mit 20 Aufrufen gefilterter Getter in einer Zeile | Höchstens 16 übersprungen, dann bleibt der Debugger stehen; keine Endlosschleife |
+| SF19 | Diagnoselog, „Nur eigener Code“ (#578) an: F7 in Code ohne Quelltext und in einen Getter | Beides verhält sich wie einzeln; Aktionsname für Umschalt+F7 im Log bzw. Issue notieren (**Studie**: `RunTraceToSourceCommand`) |
+| SF20 | Helles und dunkles Thema | Fenster gut lesbar, Kopfzeilen fett, Hinweis grau |
+
 ## Kein Hängen, während der Server indexiert (#874)
 
 Vorher: Eine große Projektgruppe öffnen (Index läuft, Fortschritt im Statusfeld), „Diagnosemodus“ an.
@@ -3010,6 +3594,107 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TPanelHost = 
 | IB10 | `"refactoring": {"invertBooleanAntonyms": {"Verbose": "Silent"}}`, Strg+. auf `FVerbose` | „Bedeutung umkehren (FVerbose → FSilent)“ (**Abnahme**) |
 | IB11 | `"refactoring": {"invertBoolean": false}` in atlas.json | Keine Aktion „Bedeutung umkehren“ mehr (**Abnahme**) |
 
+## Interface aus Klasse herauslösen (#664)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Kunden.pas`: `TKunde = class private FName: string; public constructor Create; procedure Speichern(const APfad: string = ''); function Laden(AStream: TStream): Boolean; overload; class function Neu: TKunde; property Name: string read FName write FName; end;` und eine zweite Unit `Bestand.pas` im Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EI1 | Strg+. auf `TKunde = class` | „Interface aus TKunde herauslösen …“; auf `Speichern` nicht |
+| EI2 | Aktion wählen | Dialog mit Name `IKunde`, Ziel-Unit „Kunden (diese Unit)“; `Speichern`, `Laden` und `Name` angehakt; `Create` und `Neu` grau mit Grund; „Keine“ sperrt „Vorschau …“ mit Hinweis, „Alle“ hakt nur die wählbaren an |
+| EI3 | „Vorschau …“, dann „Herauslösen“ | Vor `TKunde` steht `IKunde = interface` mit `['{GUID}']`, `procedure Speichern(const APfad: string = '');`, `function Laden(AStream: TStream): Boolean; overload;`, `function GetName: string;`, `procedure SetName(const Value: string);` und `property Name: string read GetName write SetName;`; `TKunde = class(TInterfacedObject, IKunde)`, private `GetName`/`SetName` mit Rumpf, Property liest über sie; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| EI4 | Wie EI3, Ziel-Unit `Kunden.Schnittstellen` eintippen | Neue Unit mit dem Interface und `uses System.Classes;` (für `TStream`), eingetragen in `.dpr` und `.dproj`; `Kunden.pas` bindet sie im interface ein; die neue Unit öffnet sich; Projekt kompiliert (**Abnahme**) |
+| EI5 | Wie EI3, Ziel-Unit `Bestand` aus der Liste | Interface am Ende des interface-Teils von `Bestand.pas`, deren uses um fehlende Units ergänzt |
+| EI6 | Klasse `TKunde = class(TComponent)` | Vorfahr bleibt, Liste `class(TComponent, IKunde)`; kein Hinweis |
+| EI7 | Klasse `TKunde = class(TPersistent)` | `class(TPersistent, IKunde)`; Hinweis „TPersistent implementiert IInterface nicht: TKunde fehlen _AddRef, _Release und QueryInterface …“ im Dialog und in der Vorschau |
+| EI8 | Getter `GetName` protected, Property `Name` angehakt | `GetName` kommt ins Interface, Hinweis in der Vorschau |
+| EI9 | Methode mit Parameter vom Typ aus `Kunden.pas` selbst, Ziel `Kunden.Schnittstellen` | Abbruch mit Meldung „… Kreisverweis …“ |
+| EI10 | Name `TKunde` oder `begin` im Dialog | Fehlerzeile, „Vorschau …“ gesperrt; Name eines vorhandenen Typs: Meldung vom Server |
+| EI11 | `"refactoring": {"extractInterface": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
+
+## Basisklasse herauslösen (#713)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Export.pas`: `TPdfExport = class(TComponent, IExport) private FItems: TStrings; FTitle: string; procedure WritePage(const AText: string); public constructor Create(AOwner: TComponent); override; destructor Destroy; override; procedure Run; property Title: string read FTitle write FTitle; end;`. Im Konstruktor `inherited Create(AOwner); FItems := TStringList.Create;`, im Destruktor `FItems.Free; inherited;`, `Run` ruft `WritePage` mit `FItems`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ES1 | Strg+. auf `TPdfExport = class` | „Basisklasse aus TPdfExport herauslösen …“; auf `Run` nicht |
+| ES2 | Aktion wählen | Dialog mit Name `TExportBase`, Ziel-Unit „Export (diese Unit)“; Felder, Methoden und Property mit Art und Sichtbarkeit, nichts angehakt; Konstruktor und Destruktor fehlen, Hinweis zu Konstruktoren unten; Knöpfe „Abhängigkeiten“ und „Nur abstrakt“ sichtbar |
+| ES3 | Nur `Run` anhaken | Fehlerzeile „„Run“ benutzt „FItems“ (bzw. „WritePage“): bitte mitnehmen oder abstrakt deklarieren.“, „Vorschau …“ gesperrt; „Abhängigkeiten“ hakt `WritePage` und `FItems` an, Fehler weg |
+| ES4 | ES3, „Vorschau …“, dann „Herauslösen“ | Über `TPdfExport` steht `TExportBase = class(TComponent)` mit `FItems`, `WritePage`, `Run` und eigenem Konstruktor (`inherited Create(AOwner); FItems := TStringList.Create;`) und Destruktor; `TPdfExport = class(TExportBase, IExport)`; die Rümpfe heißen `TExportBase.…`; kompiliert; Strg+Z nimmt es in einem Schritt zurück (**Abnahme**) |
+| ES5 | Nur `Run` anhaken, „Nur abstrakt“ | Oben `procedure Run; virtual; abstract;`, unten `procedure Run; override;` mit dem alten Rumpf; `WritePage` muss nicht mit |
+| ES6 | `FTitle` und `Title` anhaken, `WritePage` bleibt | `FTitle` oben private, `Title` public; kein Hinweis |
+| ES7 | `WritePage` (private) anhaken, `Run` bleibt unten | `WritePage` oben `protected`, Hinweis „WritePage wird protected, weil TPdfExport es weiter benutzt.“ in der Vorschau |
+| ES8 | Wie ES7 mit `"refactoring": {"extractSuperclassRaiseVisibility": "strictProtected"}` | `strict protected` statt `protected` |
+| ES9 | Ziel-Unit `ExportBase` eintippen | Neue Unit `ExportBase.pas` mit der Basisklasse und den nötigen uses (`System.Classes`), eingetragen in `.dpr` und `.dproj`; `Export.pas` bindet sie ein; Atlas springt dorthin; kompiliert (**Abnahme**) |
+| ES10 | `"refactoring": {"extractSuperclassTarget": "newUnit", "extractSuperclassMethodMode": "abstract", "extractSuperclassNameSuffix": "Core"}` | Dialog schlägt `TExportCore` und Unit `ExportCore` vor, Methoden stehen auf „Methode (abstrakt)“ |
+| ES11 | Generische Klasse `TBox<T: class> = class` mit Feld und Methode | `TBoxBase<T: class> = class`, `TBox<T: class> = class(TBoxBase<T>)`, Rumpf `TBoxBase<T>.…`; kompiliert |
+| ES12 | Name `TPdfExport`, `begin` oder ein vorhandener Typ | Fehlerzeile bzw. Meldung vom Server, nichts geändert |
+| ES13 | `"refactoring": {"extractSuperclass": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
+
+## Mitglied in Vorfahr oder Nachfahren verschieben (#675)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Shapes.pas`: `TShape = class protected FName: string; public procedure Draw; virtual; end;`, `TCircle = class(TShape) private FRadius: Double; function Area: Double; public procedure Scale(AFactor: Double); procedure Describe; end;` und `TSquare = class(TShape) public procedure Describe; end;`. `Scale` setzt `FRadius`, `Describe` ruft `Area`. Zweite Unit `Shapes.Extra.pas` mit `TRing = class(TCircle) end;` und einer Prozedur, die `TCircle.Scale` aufruft.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MM1 | Strg+. auf `procedure Describe;` in `TCircle` | „„Describe“ in Vorfahr verschieben …“ und „„Describe“ in Nachfahren verschieben …“; auf `TCircle = class` keine dieser Aktionen |
+| MM2 | Strg+. auf `procedure Describe;` in `TSquare` | Nur „in Vorfahr verschieben …“ (keine Nachfahren) |
+| MM3 | MM1, „in Vorfahr verschieben …“ | Dialog mit Ziel-Klappliste `TShape`, `Describe` angehakt, Kästchen „Gleichnamige Methoden anderer Nachfahren überschreiben (override)“ angehakt, Knöpfe „Abhängigkeiten“ und „Nur abstrakt“ |
+| MM4 | Nur `Describe` angehakt lassen | Fehlerzeile, dass `Describe` `Area` benutzt; „Abhängigkeiten“ hakt `Area` an, Fehler weg |
+| MM5 | Vorschau, Übernehmen | `Describe` und `Area` stehen in `TShape` (`Describe` mit `virtual`), Rümpfe heißen `TShape.…`; `TSquare.Describe` hat `override`; Atlas springt zu `TShape` |
+| MM6 | Rückgängig, MM3 mit „Nur abstrakt“ auf `Describe` | `TShape` bekommt `procedure Describe; virtual; abstract;`, `TCircle.Describe` `override` und bleibt samt Rumpf; `Area` wird nicht verlangt |
+| MM7 | Rückgängig, MM3 ohne Kästchen „… überschreiben (override)“ | Vorschau warnt, dass `TSquare.Describe` die neue Methode verdeckt; keine `override` in `TSquare` |
+| MM8 | `FRadius` nach oben verschieben, `Scale` bleibt | `FRadius` steht in `TShape` als `protected`, Hinweis in der Vorschau |
+| MM9 | In `TShape` eine Methode `Describe` anlegen, MM3 | Meldung „TShape hat schon ein Mitglied Describe.“; nichts geändert |
+| MM10 | Strg+. auf `procedure Scale` in `TCircle`, „in Nachfahren verschieben …“ | Meldung mit Fundstelle `Shapes.Extra.pas:N`, weil `Scale` außerhalb benutzt wird |
+| MM11 | Aufruf in `Shapes.Extra.pas` entfernen, MM10 wiederholen | Dialog mit Kontrollliste `TRing (Shapes.Extra)`, Kästchen „Methoden im Vorfahren abstrakt lassen …“ angehakt; Übernehmen: `TCircle.Scale` wird `virtual; abstract;`, `TRing` bekommt `procedure Scale(AFactor: Double); override;` samt Rumpf, `Shapes.Extra` die nötigen uses |
+| MM12 | Rückgängig, MM11 ohne „abstrakt lassen“ | `Scale` verschwindet aus `TCircle` ganz und steht in `TRing`; `FRadius` wird `protected` |
+| MM13 | Klasse ohne Abschnitte (`TFoo = class(TShape) FX: Integer; end;`), Feld nach oben | `FX` steht in `TShape` vor den Methoden im passenden Abschnitt, Code übersetzt |
+| MM14 | `"refactoring": {"moveMember": false}` in atlas.json | Keine Aktion mehr (**Abnahme**) |
+
+## Triviale Zugriffsmethode durch Feld ersetzen (#717)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit Unit `Kunde.pas`: `TKunde = class private FName: string; FAlter: Integer; FFarbe: TColor; function GetName: string; procedure SetName(const Value: string); function GetAlter: Integer; procedure SetAlter(const Value: Integer); procedure SetFarbe(const Value: TColor); public property Name: string read GetName write SetName; property Alter: Integer read GetAlter write SetAlter; property Farbe: TColor read FFarbe write SetFarbe; end;`. `GetName` = `Result := FName;`, `SetName` = `if FName <> Value then FName := Value;`, `GetAlter` = `Exit(FAlter);`, `SetAlter` = `FAlter := Value;`, `SetFarbe` setzt `FFarbe` und ruft `Invalidate`. Zweite Unit `Auswertung.pas` ruft `Kunde.GetAlter` auf.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TZ1 | Strg+. auf `property Name` | „Zugriffsmethoden GetName und SetName durch Feld ersetzen“, „Alle trivialen Zugriffsmethoden der Unit ersetzen (4)“, „Alle trivialen Zugriffsmethoden des Projekts ersetzen …“ |
+| TZ2 | Strg+. auf `procedure SetName` in der Klasse und im Rumpf | „Zugriffsmethode SetName durch Feld FName ersetzen“ samt Sammelaktionen |
+| TZ3 | Strg+. auf `property Farbe` und auf `SetFarbe` | Keine Aktion zum Ersetzen (Setter mit Benachrichtigung) |
+| TZ4 | TZ1, erste Aktion | Vorschau „2 Zugriffsmethoden: … Änderungen in 1 Dateien“; Übernehmen: `property Name: string read FName write FName;`, `GetName` und `SetName` samt Rümpfen weg, Code übersetzt; Rückgängig je Datei ein Schritt |
+| TZ5 | Strg+. auf `property Alter`, Aktion | Vorschau mit Hinweis „TKunde.GetAlter bleibt: Es wird noch aufgerufen (Auswertung.pas:N).“; nur `SetAlter` wird ersetzt (`read GetAlter write FAlter`) |
+| TZ6 | Strg+. auf `function GetAlter`, Aktion | Meldung „Zugriffsmethode durch Feld ersetzen fehlgeschlagen: TKunde.GetAlter bleibt: …“; nichts geändert |
+| TZ7 | Rückgängig, Strg+. auf `TKunde = class`, „… der Unit ersetzen (4)“ | Vorschau über alle vier, GetAlter mit Hinweis; danach nur noch GetAlter und SetFarbe in der Klasse |
+| TZ8 | Zweite Unit mit eigener Klasse und trivialem Getter, „… des Projekts ersetzen …“ | Vorschau über beide Units; beide übernommen |
+| TZ9 | `TKunde = class(TInterfacedObject, IKunde)`, `IKunde` deklariert `function GetName: string;` | Für `GetName` keine Aktion, für `SetName` weiter |
+| TZ10 | `GetName` als `virtual;` deklariert | Für `GetName` keine Aktion |
+| TZ11 | `"refactoring": {"inlineAccessorDiagnostic": true}` | Hinweis an `GetName`, `SetName`, `GetAlter`, `SetAlter` (Regel `trivial-accessor`), nicht an `SetFarbe`; Glühbirne an der Meldung bietet das Ersetzen; mit zusätzlich `"inlineAccessorEqualityCheck": false` kein Hinweis und keine Aktion an `SetName` |
+| TZ12 | `"refactoring": {"inlineAccessor": false}` bzw. `{"inlineAccessorBulk": false}` | Keine Aktion mehr bzw. nur noch die einzelne Aktion ohne Sammelaktionen (**Abnahme**) |
+
+## Sicher löschen (#716)
+
+Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit `Formen.pas`: `TForm = class private FCache: Integer; FSize: Integer; public procedure Draw; virtual; procedure Ungenutzt; procedure Genutzt; procedure Auffrischen; function GetSize: Integer; property Size: Integer read GetSize; end;` (`Auffrischen` benutzt `FCache` und als einzige Routine `Hilfen.Doppelt`), `Kreis.pas` mit `TKreis = class(TForm) procedure Draw; override; end;`, `Nutzer.pas` ruft `Genutzt` und `Doppelt` auf, `Hilfen.pas` mit `function Doppelt(A: Integer): Integer;`, `Haupt.pas`/`Haupt.dfm` mit `Button1: TButton` und `Button1Click` als OnClick.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SL1 | Cursor auf `procedure Ungenutzt;`, Alt+Entf | Ohne Rückfrage gelöscht: Deklaration und Rumpf weg, eine Zeile in der Meldungsansicht; Strg+Z nimmt es zurück |
+| SL2 | Strg+. auf `procedure Genutzt;` | Aktion „Methode „Genutzt“ sicher löschen …“ |
+| SL3 | Aktion aus SL2 wählen | Dialog „„Genutzt“ wird noch verwendet (1 Stellen)“ mit `Nutzer.pas:…`; Knöpfe Anzeigen, Trotzdem löschen, Abbrechen |
+| SL4 | In SL3 „Anzeigen“ | Ergebnisfenster „Verwendungen von „Genutzt““ mit der Stelle; nichts gelöscht |
+| SL5 | In SL3 „Trotzdem löschen“ | Vorschau mit Hinweis „Trotz 1 Verwendungen gelöscht.“; Löschen übernimmt |
+| SL6 | Alt+Entf auf `procedure Draw; virtual;` | Rückfrage „„Draw“ wird in 1 Nachfahren überschrieben … Überschreibungen mitlöschen?“; Ja: `TKreis.Draw` verschwindet mit (zwei Dateien) |
+| SL7 | Wie SL6, Nein | Die Überschreibung zählt als Verwendung: Dialog wie SL3 |
+| SL8 | Alt+Entf auf `procedure Auffrischen;` | Rückfrage „Danach unbenutzt: FCache, uses Hilfen … Mitlöschen?“; Ja: Feld und uses-Eintrag fallen mit, `FSize` bleibt |
+| SL9 | Alt+Entf auf `property Size` | Folgeschritt nennt `GetSize`; Ja löscht Property und Getter samt Rumpf, dann auch `FSize` |
+| SL10 | Alt+Entf auf `Button1Click` in `Haupt.pas` | Verwendung `Haupt.dfm` (Ereignis); auf `Button1` die Komponente |
+| SL11 | Alt+Entf auf `FA` in `FA, FB: Integer;` | Nur `FA` verschwindet, `FB: Integer;` bleibt |
+| SL12 | Alt+Entf auf einer Konstante mit `///`-Kommentar, die als letzte im `const`-Abschnitt steht | Doku-Kommentar und Abschnitt fallen mit |
+| SL13 | Alt+Entf auf der Zeile `unit Hilfen;` | Verwendungen `Formen.pas` und `Nutzer.pas` (benutzen Symbole); Trotzdem löschen zeigt die Vorschau mit der gelöschten Datei, eine Unit, die `Hilfen` nur einbindet, verliert den uses-Eintrag; die Datei landet im Papierkorb und fehlt im Projekt |
+| SL14 | Alt+Entf auf einer published-Methode ohne Verwendungen | Gelöscht, Hinweis „… ist published: Formulare und RTTI können es ansprechen.“ |
+| SL15 | `"refactoring": {"safeDeletePreviewWhenUnused": true, "safeDeleteCascade": "never", "safeDeleteIncludeOverrides": "always"}` | SL1 zeigt die Vorschau; SL8 fragt nicht und lässt `FCache` stehen; SL6 löscht die Überschreibung ohne Frage |
+| SL16 | `"refactoring": {"safeDelete": false}` bzw. Einstellungen › Befehle „Sicher löschen“ aus | Keine Code-Aktion bzw. Alt+Entf gehört wieder der IDE, kein Menüeintrag (**Abnahme**) |
+
 ## Atlas-Spalte in der Zeilenleiste (#768)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TBasis = class procedure Zeichne; virtual; end;`, `TKnopf = class(TBasis) procedure Zeichne; override; end;` und einer zweiten Nachfahrklasse, die `Zeichne` ebenfalls überschreibt; ein Compilerfehler in einer Zeile.
@@ -3252,6 +3937,405 @@ Voraussetzung: Einstellungen auf Vorgabe; Unit, in der `Kunde` mehrfach vorkommt
 | GT10 | Schnellschalter „Gleichen Text wie die Markierung hervorheben“ aus | Keine Hervorhebung, keine Anzahl; F3 wie vor #709 (**Abnahme**) |
 | GT11 | Strg+. auf der Anzahl › Ausblenden „In dieser Datei“ | Keine Hervorhebung in dieser Datei, in anderen weiter |
 | GT12 | Thema hell/dunkel wechseln | Hervorhebung und Anzahl in beiden Themen gut lesbar |
+
+## Austrittspunkte hervorheben (#698)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index; Einstellungen auf Vorgabe; Unit `Austritt.pas` mit
+
+```pascal
+uses Lader; // Lader: /// <exception cref="EFehler"> an procedure Lade; EFehler = class(EBasis)
+
+procedure Fehler;
+begin
+  raise EFehler.Create('x');
+end;
+
+function TKunde.Wert(A: Integer): Integer;
+var
+  I: Integer;
+begin
+  if A < 0 then
+    Exit;
+  if A = 0 then
+    Exit(1);
+  if A > 99 then
+    Fehler;
+  try
+    Lade;
+  except
+    on E: EBasis do
+      raise;
+  end;
+  for I := 0 to A do
+  begin
+    if I = 5 then
+      Break;
+    Continue;
+  end;
+  Result := A;
+end;
+```
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AX1 | Cursor auf das erste `Exit` | Nach kurzer Pause in der Warnfarbe hinterlegt: beide `Exit`, der Aufruf `Fehler` (löst immer aus), `raise;` und das abschließende `end` nicht (vorher steht `Result := A`, der Weg endet dort trotzdem: `end` hinterlegt); das erste `Exit` in der Fehlerfarbe, weil dort `Result` fehlt. Hinter dem Kopf `TKunde.Wert` die Marke „5 Austritte · Result fehlt auf einem Weg“ (**Abnahme**) |
+| AX2 | Cursor auf `Wert` im Kopf, dann auf `raise` | Dieselbe Hervorhebung und Marke wie in AX1 |
+| AX3 | Cursor auf `Result` | Zusätzlich `Result := A` in der Farbe für Hinzugefügtes; Austritte ohne Ergebnis rot; Marke wie in AX1 |
+| AX4 | In AX1 F3 mehrmals, dann Umschalt+F3 | Springt reihum von Stelle zu Stelle (auch auf das `end`), am Ende wieder zur ersten; Umschalt+F3 rückwärts. Die Hervorhebung bleibt dabei stehen (**Abnahme**) |
+| AX5 | Cursor auf `on` bzw. auf `EBasis` im Handler | `Lade` in der Fehlerfarbe (löst laut XMLDoc `EFehler` aus, das von `EBasis` abstammt), der Handler selbst in der Warnfarbe; keine Marke am Kopf |
+| AX6 | Cursor auf `Break` | `for`, `do`, das `end` der Schleife, `Break` und `Continue` in der Akzentfarbe |
+| AX7 | Cursor auf eine Zeile ohne Auslöser (z. B. `Lade`), oder etwas tippen | Hervorhebung und Marke verschwinden sofort |
+| AX8 | Text mit F3 markiert lassen (Markierungssuche, #709) | F3 springt zum nächsten gleichen Text wie bisher, nicht zu Austritten |
+| AX9 | Lokale Routine und anonyme Methode mit eigenem `Exit` in `Wert`; Cursor auf das `Exit` der äußeren Routine | Nur die Austritte von `Wert` hinterlegt, nicht die der lokalen Routine oder der anonymen Methode |
+| AX10 | Optionen › Editor › Austrittspunkte: „Auf except/on die auslösenden Aufrufe zeigen“ aus; Cursor auf `on` | Keine Hervorhebung |
+| AX11 | „Auf Break/Continue die Schleife zeigen“ aus; Cursor auf `Break` | Keine Hervorhebung |
+| AX12 | „Marke mit der Anzahl am Routinenkopf“ aus | Hervorhebung wie in AX1, aber ohne Marke |
+| AX13 | In `atlas.json` `"highlight": {"exitKeywords": ["raise"]}`, Cursor auf `raise` | Die `Exit` zählen nicht mehr als Austritt; Aufrufe von Routinen, die immer auslösen, weiter |
+| AX14 | Strg+. auf der Marke › „In dieser Datei ausblenden“ | In dieser Datei keine Hervorhebung, in anderen weiter |
+| AX15 | Schnellschalter „Austrittspunkte hervorheben“ aus (`editor.exitPoints`) | Keine Hervorhebung, keine Marke; F3 wie ohne #698 (**Abnahme**) |
+| AX16 | Server beenden, Cursor auf `Exit` | Keine Hervorhebung, kein Hängen des Editors; nach dem Neustart des Servers wieder da |
+| AX17 | Thema hell/dunkel wechseln | Farben und Marke in beiden Themen gut lesbar |
+
+## Neu zugewiesene Variablen unterstreichen (#712)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Einstellungen auf Vorgabe (`highlight.reassigned` an, Arten „Lokale Variablen“ und „Wertparameter“, gepunktet, Themenfarbe); Unit `Zuweisung.pas` mit
+
+```pascal
+type
+  TZaehler = class
+    FStand: Integer;
+    procedure Rechne(A: Integer; var B: Integer; const C: Integer);
+  end;
+
+procedure Erhoehe(var X: Integer);
+begin
+  Inc(X);
+end;
+
+procedure TZaehler.Rechne(A: Integer; var B: Integer; const C: Integer);
+var
+  Summe, Fest, Zaehler, I: Integer;
+begin
+  Fest := 10;
+  Summe := 0;
+  for I := 1 to 3 do
+    Summe := Summe + I;
+  A := A + Fest;
+  B := A;
+  Erhoehe(Zaehler);
+  FStand := 1;
+  FStand := 2;
+  var Wert := C * 2;
+  B := B + Wert + Summe;
+end;
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| UZ1 | Unit öffnen, 1 s warten | `Summe` und `A` sind an jeder Stelle gepunktet unterstrichen (Deklaration, Zuweisungen, Lesestellen); `Fest`, `Wert`, `C`, `I` und `B` nicht (**Abnahme**) |
+| UZ2 | Maus auf `Summe` | Hover zeigt unter der Linie „Neu zugewiesen: 2 Zuweisungen (Zeilen …)“ mit den Zeilen von `Summe := 0;` und `Summe := Summe + I;` (**Abnahme**) |
+| UZ3 | Maus auf `Fest` | Keine Zeile „Neu zugewiesen“ |
+| UZ4 | Maus auf `A` | „Einmal neu zugewiesen (Zeile …)“ mit der Zeile von `A := A + Fest;` |
+| UZ5 | `Zaehler`, dann eine zweite Zeile `Erhoehe(Zaehler);` | Zuerst nicht unterstrichen (eine Zuweisung über den var-Parameter); mit der zweiten Zeile unterstrichen, Hover „2 Zuweisungen“ |
+| UZ6 | Seite Atlas › Einstellungen › Hervorhebung › Neu zugewiesene Variablen: „Schleifenzähler“ an, OK | `I` ist jetzt unterstrichen, Hover „Einmal neu zugewiesen“ mit der Zeile der for-Schleife |
+| UZ7 | „Var-Parameter“ an | `B` unterstrichen (Zuweisungen `B := A;` und `B := B + …`) |
+| UZ8 | „Felder“ an | `FStand` unterstrichen, auch in der Klassendeklaration, nicht nur in `Rechne` |
+| UZ9 | „Wertparameter“ aus | `A` nicht mehr unterstrichen, Hover auf `A` ohne „Neu zugewiesen“ (**Abnahme**) |
+| UZ10 | Linienart „Durchgezogen“, dann „Welle“ | Linie sofort durchgezogen bzw. flache Welle; sie sitzt über der Wellenlinie eines Problems in derselben Zeile, beide lesbar |
+| UZ11 | Farbe `#FF00FF` | Linie magenta; `theme` wieder Akzentfarbe des Themas; unlesbarer Wert (`rot`) wird beim Speichern zu `theme` |
+| UZ12 | In `Summe := 0;` tippen (Zeile ändert sich) | Linie in dieser Zeile verschwindet sofort, nach der Tipp-Pause (0,7 s) erscheint der neue Stand; andere Zeilen bleiben ruhig (**Abnahme**) |
+| UZ13 | Neue Zeile `Fest := 11;` einfügen | Nach der Tipp-Pause ist `Fest` überall unterstrichen |
+| UZ14 | Rechtsklick bzw. Strg+. auf eine Linie › Element ausblenden „In dieser Datei“ | Keine Linien in dieser Datei, in anderen weiter |
+| UZ15 | Schnellschalter „Neu zugewiesene Variablen“ aus | Keine Linien, kein Hover-Zusatz; wieder an: Linien nach spätestens 1 s |
+| UZ16 | Server beenden | Keine Fehlermeldung, Linien bleiben bis zur nächsten Änderung; nach Neustart des Servers erscheinen sie wieder (nach höchstens 5 s) |
+| UZ17 | atlas.json `"refactoring": {"suggestConst": true}`, Cursor auf `Fest`, Strg+. | (UZ13 vorher rückgängig) „Als Konstante deklarieren (const Fest)“; Anwenden: `Fest` verschwindet aus dem var-Abschnitt, `Fest := 10;` wird `const Fest: Integer = 10;` |
+| UZ18 | Wie UZ17 auf `var Wert := C * 2;` | Wird `const Wert = C * 2;`; mit `minDelphiVersion` unter 10.3 kein Angebot |
+| UZ19 | Thema hell/dunkel wechseln | Linie in beiden Themen sichtbar, aber zurückhaltend |
+| UZ20 | Großer Unit (5000 Zeilen) öffnen und tippen | Editor bleibt flüssig; die Anfrage läuft im Hintergrund |
+
+## Typ des markierten Ausdrucks (#689)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; Einstellungen auf Vorgabe (`hints.expressionType` an, Umwandlungen und Wert an, Kürzel Strg+Umschalt+T); Unit `Ausdruck.pas` mit
+
+```pascal
+unit Ausdruck;
+
+interface
+
+uses
+  System.SysUtils, System.Generics.Collections;
+
+type
+  TFarbe = (Rot, Gruen, Blau);
+  TFarben = set of TFarbe;
+  TKunde = class
+    Name: string;
+  end;
+  PKunde = ^TKunde;
+  TPreis = Currency;
+  TRec = record
+    A: Integer;
+    B: Byte;
+    C: Int64;
+  end;
+  TGruppen = TList<TKunde>;
+
+implementation
+
+function Max(A, B: Integer): Integer; overload;
+begin
+  Result := A;
+end;
+
+function Max(A, B: Double): Double; overload;
+begin
+  Result := A;
+end;
+
+procedure Leer;
+begin
+end;
+
+procedure Probe;
+const
+  Faktor = 3;
+var
+  Price, Shipping: TPreis;
+  Count: Integer;
+  Big: Int64;
+  D: Double;
+  S: string;
+  V: Variant;
+  G: TGruppen;
+  K: TKunde;
+  P: PKunde;
+  Farben: TFarben;
+  F: TProc;
+begin
+  Price := Price * Count + Shipping;
+  Big := Count + Big;
+  D := Max(D, Count);
+  Count := SizeOf(TRec) * 2;
+  Count := Faktor * 4;
+  S := V;
+  K := G[0];
+  K := G.First;
+  S := P^.Name;
+  Farben := Farben + [Blau];
+  K := TKunde(K);
+  F := procedure begin end;
+  Count := Count + S;
+  Count := Unbekannt + 1;
+  Leer;
+end;
+
+end.
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| AY1 | `Price * Count + Shipping` markieren, Strg+Umschalt+T | Tooltip unter der Schreibmarke: Ausdruck, darunter fett in Akzentfarbe `TPreis = Currency`, dann „Count: Integer wird zu Currency erweitert“ und „Strg+Umschalt+T erneut: umschließender Ausdruck“; der Ausdruck ist im Editor dezent hinterlegt (**Abnahme**) |
+| AY2 | Ohne Markierung Schreibmarke in `Count` derselben Zeile, Strg+Umschalt+T | Ausdruck `Count`, Typ `Integer` |
+| AY3 | Direkt danach noch einmal Strg+Umschalt+T | Ausdruck `Price * Count`, Hervorhebung wächst mit (**Abnahme**) |
+| AY4 | Noch einmal | `Price * Count + Shipping` |
+| AY5 | Noch einmal | Tooltip bleibt unverändert (die Zuweisung ist kein Ausdruck) |
+| AY6 | Schreibmarke eine Stelle weiter, Strg+Umschalt+T | Beginnt wieder beim kleinsten Ausdruck an der neuen Stelle |
+| AY7 | `Count + Big` markieren | `Int64`, „Count: Integer wird zu Int64 erweitert“ |
+| AY8 | `Max(D, Count)` markieren | `Double`, Zeile „Überladung: function Max(A, B: Double): Double;“, Umwandlung von `Count` zu Double |
+| AY9 | `SizeOf(TRec) * 2` markieren | `Integer`, Zeile `= 32` |
+| AY10 | `Faktor * 4` markieren | `Integer`, `= 12` |
+| AY11 | In `S := V` die Schreibmarke auf `V` | `Variant`, „V: Variant wird zu string umgewandelt“ |
+| AY12 | `G[0]` und `G.First` je markieren | `TKunde` (T der Liste eingesetzt, Standard-Property) |
+| AY13 | In `K := G[0]` die Schreibmarke auf `G` | `TGruppen = TList<TKunde>` |
+| AY14 | `P^.Name`, `Farben + [Blau]`, `TKunde(K)` je markieren | `string`, `TFarben`, `TKunde` |
+| AY15 | `procedure begin end` markieren | `reference to procedure` |
+| AY16 | `Count + S` markieren | Statt des Typs in Fehlerfarbe „Kein Typ: + passt nicht zu Integer und string“ |
+| AY17 | `Unbekannt + 1` markieren, dann Schreibmarke auf `Leer` | „Kein Typ: unbekannter Name Unbekannt“ bzw. „Kein Typ: Leer liefert keinen Wert“ |
+| AY18 | Schreibmarke auf `begin` | „Kein Ausdruck an dieser Stelle“, ohne Zeile zum Erweitern |
+| AY19 | AY1 wiederholen, auf `TPreis = Currency` klicken | Tooltip schließt, der Editor springt zur Deklaration `TPreis = Currency;` (**Abnahme**) |
+| AY20 | Tooltip zeigen, dann Esc bzw. eine Pfeiltaste bzw. ein Klick in den Editor bzw. Mausrad bzw. Tippen bzw. anderer Editorreiter | Tooltip und Hervorhebung verschwinden; nur Esc wird geschluckt, alle anderen Tasten wirken im Editor |
+| AY21 | Optionen › Editor › Typ des Ausdrucks: „Implizite Umwandlungen nennen“ und „Wert konstanter Ausdrücke zeigen“ aus, AY1 und AY9 wiederholen | Ohne Umwandlungszeile bzw. ohne `= 32` |
+| AY22 | „Typ des markierten Ausdrucks anzeigen“ aus | Strg+Umschalt+T fügt wieder einen To-Do-Eintrag ein (IDE), Befehlspalette ohne „Typ des Ausdrucks“ (**Abnahme**) |
+| AY23 | Kürzel auf Strg+Alt+Y ändern, Tastenkürzel-Übersicht öffnen | Neue Taste wirkt, Übersicht nennt „Typ des Ausdrucks“ mit der neuen Taste |
+| AY24 | Sprache Englisch, AY1 | „Count: Integer is widened to Currency“, „Ctrl+Shift+T again: enclosing expression“ |
+| AY25 | Bei angehaltenem Server Strg+Umschalt+T | Zeile in der Meldungsansicht, kein Tooltip |
+
+## Methoden in Deklarationsreihenfolge (#660)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; `editor.methodPlacement` auf Vorgabe (`declaration`); Unit `Reihe.pas` mit
+
+```pascal
+unit Reihe;
+
+interface
+
+type
+  TKunde = class
+  public
+    procedure Laden;
+    procedure Speichern(A: Integer); overload;
+    procedure Speichern(const S: string); overload;
+    class function Neu: TKunde;
+    procedure Pruefen;
+  end;
+
+  TAussen = class
+  public type
+    TInnen = class
+      procedure Lauf;
+    end;
+  public
+    procedure Machen;
+  end;
+
+implementation
+
+procedure TAussen.Machen;
+begin
+end;
+
+// Speichert als Text.
+procedure TKunde.Speichern(const S: string);
+begin
+end;
+
+procedure Hilfe;
+begin
+end;
+
+class function TKunde.Neu: TKunde;
+begin
+  Result := nil;
+end;
+
+{$REGION 'Laden'}
+procedure TKunde.Laden;
+begin
+end;
+{$ENDREGION}
+
+procedure TAussen.TInnen.Lauf;
+begin
+end;
+
+procedure TKunde.Speichern(A: Integer);
+begin
+end;
+
+end.
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| MO1 | Menü Atlas › „implementation wie Klasse ordnen“ | Vorschau „Methoden ordnen“ mit „4 Methoden wandern an die Stelle ihrer Deklaration, 1 bleiben stehen.“; Einträge „↑ 4  TKunde.Speichern“, „↓ 3  TAussen.Machen“, „↓ 1  TAussen.TInnen.Lauf“, „bleibt: in einer Region  TKunde.Laden“ (**Abnahme**) |
+| MO2 | In MO1 „Ordnen“ | Reihenfolge: `TKunde.Speichern(A: Integer)`, `// Speichert als Text.` mit `TKunde.Speichern(const S: string)`, `Hilfe`, `TKunde.Neu`, Region mit `TKunde.Laden`, `TAussen.Machen`, `TAussen.TInnen.Lauf`; Meldung „4 Methoden verschoben.“; Unit kompiliert (**Abnahme**) |
+| MO3 | Strg+Z nach MO2 | Ursprüngliche Reihenfolge in einem Schritt |
+| MO4 | MO2 wiederholen, dann den Befehl erneut | Meldung „Die Methoden stehen schon in der Reihenfolge der Klasse.“, keine Vorschau |
+| MO5 | In MO1 auf einen Eintrag doppelklicken | Editor springt zum Kopf der Methode |
+| MO6 | In MO1 „Abbrechen“ | Text unverändert |
+| MO7 | Rumpf `TKunde.Neu` in `{$IFDEF DEBUG}` … `{$ENDIF}` setzen, MO1 | Eintrag „bleibt: in einem {$IFDEF}  TKunde.Neu“, der Rumpf bleibt beim Ordnen stehen |
+| MO8 | Kommentar über `TKunde.Speichern(const S: string)` mit einer Leerzeile Abstand, MO2 | Kommentar bleibt an seiner Stelle, nur der Rumpf wandert |
+| MO9 | Befehlspalette „implementation wie Klasse ordnen“ und Kontextmenü des Editors › Atlas › „implementation wie Klasse ordnen“ | Gleiche Vorschau wie MO1 |
+| MO10 | Nach MO2 Schreibmarke in `Pruefen` (Deklaration), Strg+Umschalt+C | Der neue Rumpf `procedure TKunde.Pruefen;` steht direkt hinter `TKunde.Neu` (vor der Region), die Schreibmarke im neuen Rumpf (**Abnahme**) |
+| MO11 | Strg+Z direkt nach MO10 | Ein Schritt: Deklaration und Rumpf wie vor Strg+Umschalt+C, nichts verschoben übrig (**Abnahme**) |
+| MO12 | In `TKunde` vor `Laden` `procedure Erste;` deklarieren, Strg+Umschalt+C | Neuer Rumpf vor `TKunde.Speichern(A: Integer)` (erste Methode der Klasse, `Laden` steht in der Region) |
+| MO13 | In `TKunde` hinter `Pruefen` `procedure Letzte;` deklarieren, Strg+Umschalt+C | Neuer Rumpf direkt hinter `TKunde.Pruefen` |
+| MO14 | Neue Klasse `TLeer = class procedure Eins; end;` hinter `TAussen`, Strg+Umschalt+C | Rumpf `TLeer.Eins` hinter `TAussen.TInnen.Lauf` (letzter Rumpf der Klasse davor) |
+| MO15 | Code-Aktion „Methode anlegen“ (#443) für eine neue Methode von `TKunde` | Der Rumpf landet an der Stelle seiner Deklaration |
+| MO16 | Methode von Hand tippen: `procedure TKunde.Hand;`, `begin`, `end;` am Ende vor `end.`, mit Pausen | Atlas verschiebt nichts, solange keine Deklaration passt; nach dem Deklarieren von `Hand` hinter `Neu` bleibt der Rumpf, wo er ist |
+| MO17 | Rumpf von Hand mit Ausschneiden/Einfügen an eine andere Stelle setzen | Atlas verschiebt ihn nicht zurück (der Kopf war schon da) |
+| MO18 | Optionen › Editor › „Methodenrümpfe ordnen“: „alphabetisch“, MO1 | Je Klasse nach dem Namen: `TKunde.Neu`, `TKunde.Pruefen`, `TKunde.Speichern(A: Integer)`, `TKunde.Speichern(const S: string)` |
+| MO19 | Optionen: „aus“, MO10 wiederholen | Rumpf bleibt, wo die IDE ihn hinsetzt; Menüeintrag fehlt, Kontextmenü und Palette melden „Methodenreihenfolge ist abgeschaltet (editor.methodPlacement = off).“ (**Abnahme**) |
+| MO20 | Atlas über das Menü ausschalten, MO10 | Kein Verschieben |
+| MO21 | Server anhalten, MO1 | Zeile „kein Server“ in der Meldungsansicht, keine Vorschau |
+| MO22 | Server anhalten, MO10 | Rumpf bleibt, wo die IDE ihn hinsetzt, keine Meldung |
+| MO23 | Zwei Units offen, Strg+Umschalt+C in der zweiten direkt nach dem Wechsel und nach einer Sekunde | Nach einer Sekunde wie MO10; unmittelbar nach dem Wechsel darf der Rumpf stehen bleiben |
+| MO24 | Sprache Englisch, MO1 | „Order methods“, „↑ 4  TKunde.Speichern“, „stays: inside a region  TKunde.Laden“ |
+| MO25 | MO10 und anschließend „Letzte Atlas-Änderung zurücknehmen“ (Strg+Alt+Z) | Keine Zugriffsverletzung; Meldung zu fehlendem bzw. abweichendem Stand oder Zurücknahme der letzten Atlas-Änderung |
+
+## var-Block pflegen (#644)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, Delphi 10.3 oder neuer; `refactoring.varBlock`, `refactoring.varBlockMerge` und `refactoring.varBlockSort` auf Vorgabe (`true`, `true`, `usage`); Unit `Bloecke.pas` mit
+
+```pascal
+unit Bloecke;
+
+interface
+
+implementation
+
+uses
+  System.Classes, System.SysUtils;
+
+procedure Rechnen(B: Boolean);
+var
+  Text: string;
+  Unbenutzt: Integer;
+  C: Integer;
+  A: Integer;
+  // Zwischenspeicher
+  Liste: TStringList; // wird freigegeben
+begin
+  A := 1;
+  C := 2;
+  if B then
+  begin
+    Text := IntToStr(A);
+  end;
+  Liste := TStringList.Create;
+  try
+    Liste.Add(Text);
+  finally
+    Liste.Free;
+  end;
+  Writeln(C);
+end;
+
+procedure Sicher;
+var
+  Wert: Integer;
+begin
+  try
+    Wert := 1;
+  except
+    Writeln(Wert);
+  end;
+end;
+
+procedure Verschieben;
+begin
+  var Anzahl: Integer := 3;
+  var Name := 'x';
+  var Puffer := TStringList.Create;
+  // Ergebnis
+  var Summe: Int64; // wird gleich gesetzt
+  Summe := Anzahl;
+  Writeln(Name, Summe, Puffer.Count);
+end;
+
+end.
+```
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| VB1 | Schreibmarke auf `A` im var-Abschnitt von `Rechnen`, Strg+. | Glühbirnen „In Inline-Variable umwandeln (var A)“ und „var-Block aufräumen (ungenutzt: Unbenutzt)“ |
+| VB2 | In VB1 „In Inline-Variable umwandeln“ | `A: Integer;` verschwindet, `A := 1;` wird `var A := 1;`; Unit kompiliert (**Abnahme**) |
+| VB3 | Strg+Z, Schreibmarke auf `Text`, Strg+. › „In Inline-Variable umwandeln“ | `var Text: string;` steht vor `if B then` (nicht im inneren Block, weil `Liste.Add(Text)` außen liest) (**Abnahme**) |
+| VB4 | Strg+Z, Schreibmarke auf `Liste`, Strg+. › „In Inline-Variable umwandeln“ | `// Zwischenspeicher` und `var Liste := TStringList.Create; // wird freigegeben` stehen an der Zuweisung (Typ offensichtlich, Kommentare wandern mit); Unit kompiliert |
+| VB5 | Strg+Z; in `Sicher` Schreibmarke auf `Wert`, Strg+. › „In Inline-Variable umwandeln“ | `var Wert: Integer;` steht vor `try`, nicht im try-Teil, weil der except-Teil `Wert` liest (**Abnahme**) |
+| VB6 | Strg+Z; in `Rechnen` `TThread.Queue(nil, procedure begin Writeln(C) end);` ergänzen, Schreibmarke auf `C`, Strg+. | Keine Glühbirne „In Inline-Variable umwandeln“ (Capture in anonymer Methode) (**Abnahme**) |
+| VB7 | Strg+Z; Schreibmarke im var-Abschnitt (auf `var`), Strg+. › „var-Block aufräumen (ungenutzt: Unbenutzt)“ | Abschnitt: `A, C: Integer;`, `Text: string;`, `// Zwischenspeicher`, `Liste: TStringList; // wird freigegeben` (Reihenfolge der ersten Verwendung, `Unbenutzt` entfernt, Kommentare bleiben bei `Liste`); Unit kompiliert (**Abnahme**) |
+| VB8 | Strg+Z, atlas.json `"refactoring": {"varBlockSort": "alpha"}`, VB7 | Reihenfolge `A, C: Integer;`, `Liste` mit Kommentaren, `Text: string;` |
+| VB9 | atlas.json `"varBlockMerge": false` dazu, VB7 | `A: Integer;` und `C: Integer;` in eigenen Zeilen |
+| VB10 | atlas.json zurücksetzen, VB7 zweimal | Beim zweiten Mal keine Glühbirne „var-Block aufräumen“ (nichts mehr zu tun) |
+| VB11 | In `Verschieben` Schreibmarke auf `Anzahl`, Strg+. › „In var-Block verschieben (Anzahl)“ | Neuer Abschnitt `var` / `  Anzahl: Integer;` vor `begin`, die Zeile wird `Anzahl := 3;` (**Abnahme**) |
+| VB12 | Schreibmarke auf `Name`, Strg+. › „In var-Block verschieben (Name)“ | Eintrag `Name: string;` (Typ aus dem Ausdruck), Zeile `Name := 'x';` |
+| VB13 | Schreibmarke auf `Puffer`, Strg+. › „In var-Block verschieben (Puffer)“ | Eintrag `Puffer: TStringList;`, Zeile `Puffer := TStringList.Create;`; ohne `System.Classes` in uses ergänzt die Aktion es |
+| VB14 | Schreibmarke auf `Summe`, Strg+. › „In var-Block verschieben (Summe)“ | `// Ergebnis` und `Summe: Int64; // wird gleich gesetzt` stehen im var-Abschnitt, die Zeile im Rumpf ist weg |
+| VB15 | VB11 bis VB14, dann auf `Anzahl` im Abschnitt „In Inline-Variable umwandeln“ | Wieder `var Anzahl := 3;` (Hin und zurück ohne Bedeutungsänderung) |
+| VB16 | atlas.json `"refactoring": {"varBlock": false}`, VB1 und VB11 | Keine der drei Glühbirnen (**Abnahme**) |
+| VB17 | atlas.json `"delphiVersion": "19.0"` (Delphi 10.2), VB1 | „var-Block aufräumen“ ja, „In Inline-Variable umwandeln“ nein |
+| VB18 | `{$IFDEF DEBUG}` … `{$ENDIF}` um `Writeln(C);`, Schreibmarke auf `C`, Strg+. | Keine Umwandlung (bedingte Übersetzung) |
 
 ## Forward-Deklaration ergänzen (#685)
 
@@ -5942,6 +7026,24 @@ Voraussetzung: Server läuft in der IDE mit einer Projektgruppe aus Anwendung un
 | OM10 | `"unused-public-member": "off"`, `"group:style": "off"` bzw. `exclude` | Keine Meldung |
 | OM11 | Großes Projekt (mehrere hundert Units): Service-Unit bearbeiten | Keine spürbare Verzögerung der Diagnosen; im Diagnoselog keine Zeitüberschreitung der Regel |
 
+## Toter Code und Unit-Abhängigkeiten (#64)
+
+Voraussetzung: Server läuft in der IDE mit einer Projektgruppe aus Anwendung und Testprojekt; Index fertig aufgebaut. Claude Code mit dem Atlas-MCP-Server am selben Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UZ1 | Unit A nennt B im interface-uses, B nennt A im implementation-uses; `atlas --check` bzw. `find_unused_code` | Warnung `uses-cycle` am uses-Eintrag in beiden Units: „Zirkuläre Unit-Referenz: A → B → A (über implementation-uses)“ mit den Kanten und Abschnitt. Im Editor schweigt sie seit #896, solange `diagnostics.usesCycleImplementation` aus ist (**Abnahme**) |
+| UZ2 | Beide Einträge aus UZ1 ins interface-uses; dann mit Delphi übersetzen | Fehler „Zirkuläre Unit-Referenz: A → B → A“, in den Details „Alle Kanten liegen im interface-Teil: Der Compiler lehnt den Zyklus ab (F2047).“; dcc meldet F2047 an derselben Stelle |
+| UZ3 | Zyklus über drei Units (A → B → C → A); `"uses-cycle": {"implementation": false}` | Erst Meldung mit dem ganzen Rundweg; mit der Option nur noch reine interface-Zyklen |
+| UZ4 | Private Routine, Konstante, Variable und Typ nur im implementation-Teil, nirgends verwendet; eine davon nur in einer anderen ungenutzten Routine benutzt | Hinweise `unused-declaration` „Routine X wird nirgends verwendet.“ usw.; die nur intern benutzte bleibt still, solange ihr Nutzer existiert. Korrektur „Als bewusst vorhanden markieren (lsp-ignore)“ (**Abnahme**) |
+| UZ5 | Handler aus der .dfm, Routine per Name als String, Unit mit `{$I …}`, Deklaration auch im interface | Keine Meldung `unused-declaration` |
+| UZ6 | Unit, die nur die .dpr im uses nennt und keine andere Unit verwendet | Hinweis `unused-unit` „Unit X wird von keiner anderen Unit verwendet; nur App.dpr nennt sie im uses.“; mit `initialization`-Abschnitt oder Verwendung eines Symbols in der .dpr keine Meldung |
+| UZ7 | Öffentlicher Typ und globale Variable im interface, nirgends verwendet; `"unused-public-member": {"unitKinds": ["routine"]}` | Erst „Öffentlicher Typ …“ bzw. „Globale Variable …“ von `unused-public-member`; mit der Option nur noch Routinen |
+| UZ8 | Optionen › Atlas › Prüfregeln: `deadCode.keepAttributes` = `Schnittstelle`, `deadCode.keepPatterns` = `Test*`; Klasse mit `[Schnittstelle]`, Routine `TestHilfe` | Keine Meldung für beide, weder von `unused-public-member` noch von `unused-declaration` oder `unused-private-member` |
+| UZ9 | Claude Code: `find_unused_code` ohne Argumente, mit `file`, mit `format: "json"`; während der Index lädt | Markdown je Datei mit Zeile, Regel und Konfidenz; nur die Datei; JSON mit `findings`/`total`; beim Laden der Hinweis, dass projektweite Regeln schweigen |
+| UZ10 | Claude Code: `get_unit_dependencies` mit `unit: "A"` aus UZ1, mit `direction: "usedBy"`, `transitive: true`, mit Pfad statt Name, mit RTL-Unit | uses und Nutzer mit Abschnitt, der Zyklus A → B → A; nur Nutzer; die transitiven Hüllen; gleiches Ergebnis über den Pfad; RTL-Unit: Hinweis, dass sie nicht im Uses-Graphen steht |
+| UZ11 | `"uses-cycle": "off"`, `"unused-declaration": "off"`, `"unused-unit": "off"`, `"group:architecture": "off"` bzw. `mcp.disabledTools` mit beiden Werkzeugen | Keine Meldungen der Regeln; die Werkzeuge fehlen in tools/list |
+
 ## SELECT * im Code (#967)
 
 Voraussetzung: Server läuft in der IDE mit Projekt; Regel `sql-select-star` in den Einstellungen auf „Hinweis“ (Standard aus).
@@ -6203,3 +7305,491 @@ Voraussetzung: Delphi 13 (noreturn gibt es erst dort), Server läuft in der IDE 
 | NR4 | Rumpf ruft nur `Protokolliere(AText)` aus einer anderen Unit des Projekts auf, einmal ohne, einmal mit `noreturn` an Protokolliere | Ohne: Warnung wie NR1 (Index bekannt); mit: keine Meldung |
 | NR5 | Delphi 13 übersetzt das Beispiel aus NR1 | Der Compiler meldet selbst nichts; Atlas meldet NR1 (**Abnahme**: Die Regel deckt ab, was der Compiler nicht prüft) |
 | NR6 | `"noreturn-returns": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter und Schweregrad in der Gruppe |
+
+## Begründungen im Hover und MCP (#1123)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; im Projektordner `docs/adr/0007-ganzzahlen.md`; Tracker der Willkommensseite (#765) in der `.atlas` eingetragen (für BG6).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BG1 | Über einer Methode im interface `// WHY: Ganzzahlen genügen.`, im Rumpf ihrer Implementierung `// HACK: Umgeht QC 12345.`; Maus auf einen Aufruf der Methode | Tooltip zeigt unter Deklaration und XMLDoc den Abschnitt BEGRÜNDUNG mit `WHY Ganzzahlen genügen.` und `HACK Umgeht QC 12345.` (Marke halbfett in Akzentfarbe) |
+| BG2 | Mehrzeilig: `// WHY: Delphi 12 kennt keinen` und darunter `//      if-Ausdruck.` | Ein Eintrag „Delphi 12 kennt keinen if-Ausdruck.“ |
+| BG3 | Zwei Leerzeilen zwischen `// WHY: …` und der Deklaration | Kein Eintrag beim Symbol; mit einer Leerzeile wieder da |
+| BG4 | Fünf Begründungen an einem Symbol | Drei sichtbar, darunter „Mehr anzeigen ▾   2 weitere Begründungen“; Klick zeigt alle fünf |
+| BG5 | `// RATIONALE: siehe ADR-0007` und `// NOTE: siehe ADR 9` (keine Datei 0009) | `ADR-0007` ist unterstrichen, Klick öffnet `docs/adr/0007-ganzzahlen.md` in der IDE; `ADR 9` ist normaler Text |
+| BG6 | `// WHY: siehe #312` mit Tracker; dann ohne Tracker (Abschnitt `tracker` aus der `.atlas` entfernen, IDE neu starten) | Mit: `#312` unterstrichen, Klick öffnet das Issue im Browser; ohne: `#312` als Text |
+| BG7 | `// WHY: https://example.org/qc/1` | Link, Klick öffnet den Browser |
+| BG8 | atlas.json `"hints": {"rationaleMarkers": ["PERF"]}`, Kommentar `// PERF: Puffer wiederverwenden.` | Erscheint im Hover; `// WHY: …` erscheint nicht mehr |
+| BG9 | `// TODO: Aufräumen.` über einer Deklaration; dann `"rules": {"todo-comment": {"keywords": ["TODO", "HACK"]}}` | TODO nie unter BEGRÜNDUNG; mit der Option auch HACK nicht mehr, dafür in „TODOs des Projekts“ |
+| BG10 | `// NOTE: Nur für den Import.` zwischen `unit` und `interface`; Maus auf den Unit-Namen in einer uses-Klausel | Tooltip der Unit zeigt BEGRÜNDUNG mit dem NOTE-Eintrag |
+| BG11 | Claude Code: `get_declaration` für die Methode aus BG1; `get_rationale` mit `unit` und mit `name` | Abschnitt „Begründungen:“ mit `- WHY (Zeile n): …` und `- HACK (Zeile m): …`; `get_rationale` listet Unit-Einträge und alle Symbole mit Datei:Zeile |
+| BG12 | `"hints": {"rationale": false}` | Kein Abschnitt BEGRÜNDUNG im Hover, keiner in `get_declaration`; `get_rationale` liefert weiter; mit `"mcp": {"disabledTools": ["get_rationale"]}` fehlt das Werkzeug |
+| BG13 | Server mit altem Index-Cache (Format 26) starten | Cache wird verworfen und neu aufgebaut, danach erscheinen die Begründungen ohne Neuindizieren von Hand |
+
+## Harte Umwandlung zwischen nicht verwandten Klassen (#1129)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (VCL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HU1 | Das Beispiel aus #1129: `mEdit := Sender as TEdit; TButton(mEdit).Caption := 'OK';` | Warnung `unrelated-class-cast` an `TButton(mEdit)`: „TEdit und TButton sind nicht verwandt: Die Umwandlung zeigt auf ein Objekt mit anderem Aufbau.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| HU2 | Schnellkorrektur „In (mEdit as TButton) umwandeln“, danach Strg+Z | `(mEdit as TButton).Caption := 'OK';`, keine Meldung mehr; ein Undo-Schritt. `mButton := TButton(mEdit);` wird zu `mButton := mEdit as TButton;` (ohne Klammern) |
+| HU3 | `TButton(Sender)`, `TButton(mControl)` mit `mControl: TControl`, `TControl(mButton)` | Keine Meldung (TObject als Quelle, verwandte Klassen) |
+| HU4 | `TButton(mPointer)`, `TButton(mIntf)` mit einem Interface, `TControlClass(mEditClass)` | Keine Meldung |
+| HU5 | Zugriffsklasse `THackControl = class(TControl) end;` und `THackControl(mButton).Click`; danach ein Feld in `THackControl` ergänzen | Ohne Feld keine Meldung (gleicher Aufbau); mit Feld Meldung „TButton und THackControl sind nicht verwandt …“ |
+| HU6 | `"unrelated-class-cast": {"allowTypes": ["TEdit=TButton"]}` in atlas.json | Beispiel aus HU1 meldet nichts mehr; `TEdit(mButton)` weiterhin |
+| HU7 | Klasse mit Vorfahr aus einer Unit, die nicht im Index steht | Keine Meldung (Kette unbekannt) |
+| HU8 | `"unrelated-class-cast": "off"`, `"group:find-bugs": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `allowTypes` in der Gruppe |
+
+## Schleife läuft höchstens einmal (#1131)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SE1 | Das Beispiel aus #1131: `for mKunde in FKunden do begin if mKunde.Id = AId then Result := mKunde; Exit; end;` | Warnung `loop-runs-at-most-once` an `for`: „Jeder Durchlauf endet mit Exit: Die Schleife prüft nur das erste Element von FKunden. Gehört Exit in den if-Zweig?“; im Fenster „Atlas-Prüfung“ und im Befund-Hover; keine Schnellkorrektur (**Abnahme**) |
+| SE2 | `Exit` in den if-Zweig verschieben (`begin Result := mKunde; Exit; end`) | Meldung verschwindet |
+| SE3 | `for I := 0 to 9 do begin Inc(N); Break; end;`, `while N > 0 do raise …`, `repeat … Fehler; until …` mit einer Routine `Fehler`, die immer auslöst | Je eine Meldung („läuft höchstens einmal“ bzw. bei repeat „läuft genau einmal“) |
+| SE4 | if mit else und Sprung in beiden Zweigen; `case` mit else und Exit in allen Zweigen | Meldung „… endet mit einem Sprung …“ bei verschiedenen Sprüngen |
+| SE5 | Continue im Rumpf, Break nur in einer inneren Schleife, Exit nur in einer anonymen Methode, `try Exit; except Inc(N); end`, `TMonitor.Enter/Exit` im try … finally, `{$IFDEF}` um den Sprung | Keine Meldung |
+| SE6 | `"loop-runs-at-most-once": {"allowFirstElement": true}`; `for mKunde in FKunden do begin Result := mKunde; Exit; end;` und das Beispiel aus SE1 | Erstes still, SE1 weiterhin gemeldet (die Bedingung liest mKunde). Im Atlas-Repo ist die Option an: keine Meldung in den Quellen |
+| SE7 | `"loop-runs-at-most-once": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `allowFirstElement` in der Gruppe |
+
+## Formatstring und Argumente (#56)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FA1 | Das Beispiel aus #56: `S := Format('%d', [Name]);` mit `Name: string` | Fehler `format-args` an `Name`: „%d erwartet eine Ganzzahl, Name ist vom Typ string: EConvertError zur Laufzeit.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover; keine Schnellkorrektur (**Abnahme**) |
+| FA2 | `Format('%s', [Name])`, `Format(Fmt, [Name])` mit einer Variablen `Fmt`, `Format('%0:s %0:s', [A])` | Keine Meldung (**Abnahme**) |
+| FA3 | `Format('Wert %q', [N])`, `Format('100%', [])`, `Format('Breite %5', [N])`, `Format('%0:', [N])` | Je „Ungültiger Formatstring: …“ am Formatstring |
+| FA4 | `Format('%s hat %d', [Name])`; `Format('%s', [Name, N])` | Erstes: „braucht 2 Argumente, die Liste hat 1“; zweites mit mittlerer Sicherheit: „Argument 2 (N) kommt im Formatstring nicht vor …“ |
+| FA5 | `Format('%d', [AArt])` mit einer Aufzählung, `Format('%d', [AAktiv])` mit Boolean, `Format('%*d', [Name, N])` | Meldungen mit „Ord(AArt) übergeben.“, „BoolToStr(AAktiv, True) übergeben.“ bzw. „Das * in %*d erwartet eine Ganzzahl …“ |
+| FA6 | Formatstring als `const cZeile = cKopf + '%s: %d';` bzw. `resourcestring rsFehler = 'Fehler %d';` in derselben Unit und in einer anderen Unit des Projekts | Wie FA1 und FA4 geprüft |
+| FA7 | `raise EImport.CreateFmt('Zeile %d', [Name])`, `FmtStr(S, '%d', [Name])`; eine eigene Funktion `Format(const AText: string; const AWerte: array of const)` in der Unit | Die ersten beiden gemeldet, die eigene Funktion still |
+| FA8 | `"format-args": {"formatMethods": ["TLogger.LogFmt"]}`; `Log.LogFmt('%d', [Name])` | Erst mit der Option gemeldet |
+| FA9 | `"format-args": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden; `Format('%.2f', [X])` ohne TFormatSettings | Keine Meldung; die Regel steht mit Schalter, Schweregrad und der Option `formatMethods` in der Gruppe; `format-without-settings` meldet weiterhin |
+## Adresse des ersten Zeichens (#1130)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EZ1 | Das Beispiel aus #1130: `procedure Senden(const AText: string);` mit `WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));` | Warnung `first-char-address` an `@AText[1]`: „Bei leerem AText löst @AText[1] mit Bereichsprüfung einen Fehler aus. PChar(AText) ist auch für leere Strings sicher.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| EZ2 | Schnellkorrektur „Durch PChar(AText) ersetzen“, danach Strg+Z | `WriteBuffer(PChar(AText), …)`; ein Undo-Schritt. `PChar(@AText[1])` und `Pointer(@AText[1])` werden als Ganzes zu `PChar(AText)` bzw. `Pointer(AText)` |
+| EZ3 | `@AText[Low(AText)]`; `const A: AnsiString` bzw. `RawByteString` mit `@A[1]` | Gemeldet; bei AnsiString-Typen lautet die Korrektur `PAnsiChar(A)` |
+| EZ4 | `@AText[2]`, `@AKurz[1]` mit `ShortString`, `@ABytes[0]` mit `TBytes`, `PChar(AText)` | Keine Meldung |
+| EZ5 | Lokale Variable bzw. `var`-Parameter: `@mText[1]` | Meldung „… Zum Lesen ist PChar(mText) auch für leere Strings sicher, zum Schreiben vorher UniqueString(mText).“, keine Schnellkorrektur |
+| EZ6 | Projekt mit `{$R+}`: `@AText[1]` mit leerem `AText` ausführen | Laufzeitfehler ERangeError bestätigt die Meldung; mit `PChar(AText)` keiner |
+| EZ7 | `"first-char-address": "off"`, `"group:find-bugs": "off"` bzw. `exclude`; Seite Prüfregeln › Fehler finden | Keine Meldung; die Regel steht mit Schalter und Schweregrad in der Gruppe |
+
+## Überflüssige Typumwandlung (#1139)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UT1 | Das Beispiel aus #1139: Felder `FZeilen: TStringList; FStrom: TFileStream;` und in einer Methode `TStringList(FZeilen).Clear; TObject(FStrom).Free;` | Hinweis `redundant-cast` an `TStringList(FZeilen)`: „FZeilen ist schon TStringList: Die Umwandlung ist überflüssig.“ und an `TObject(FStrom)`: „Free ruft den virtuellen Destruktor: Die Umwandlung von FStrom nach TObject ist überflüssig.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| UT2 | Schnellkorrektur „Umwandlung entfernen“ an beiden, danach Strg+Z | `FZeilen.Clear; FStrom.Free;`; je ein Undo-Schritt. `(FZeilen as TStringList).Clear` wird zu `FZeilen.Clear` (Klammern fallen mit weg) |
+| UT3 | `mZahl: Integer; mZahl := Integer(mZahl);` und `mText := string(mText);` | Beide gemeldet |
+| UT4 | `type TFarbe = Integer;` mit `Integer(mFarbe)`; `Byte(mZahl)`; `Integer(cGrenze)` mit einer untypisierten Konstante | Keine Meldung |
+| UT5 | `Assert.AreEqual(2, Integer(mListe.Count))` und eine eigene überladene Prozedur `Zeigen(Integer)`/`Zeigen(Int64)` mit `Zeigen(Integer(mZahl))` | Keine Meldung (die Umwandlung kann die Überladung wählen); mit einer nicht überladenen Prozedur gemeldet |
+| UT6 | `TObject(mZeiger).Free` mit `mZeiger: Pointer`; Klasse mit eigener Methode `Free` und `TBasis(mEigen).Free` | Keine Meldung |
+| UT7 | `"redundant-cast": {"checkFree": false}` in atlas.json; Seite Prüfregeln › Stil | `TObject(FStrom).Free` meldet nichts mehr, `TStringList(FZeilen)` weiterhin; die Regel steht mit Schalter, Schweregrad und der Option `checkFree` in der Gruppe |
+| UT8 | `"redundant-cast": "off"` bzw. `exclude` | Keine Meldung |
+
+## Verbotenes Symbol (#1133)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index (RTL-Quellen indiziert).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VB1 | In atlas.json `"forbidden-symbol": {"symbols": [{"name": "System.Write*", "kind": "routine", "message": "Nur über ILogger"}]}`; in einer Methode `Writeln(AText);` | Warnung `forbidden-symbol` an `Writeln`: „Writeln ist in diesem Projekt verboten: Nur über ILogger (atlas.json › forbidden-symbol).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| VB2 | Eigene Methode `procedure Writeln(const AText: string);` in der Klasse und Aufruf `Writeln('x')` darin | Keine Meldung (aufgelöst als eigene Methode) |
+| VB3 | Eintrag `{"name": "System.SysUtils.FileExists", "replacement": "TFile.Exists"}`; `if FileExists(mName) then` und `System.SysUtils.FileExists(mName)` | Beide gemeldet; Schnellkorrektur „Durch TFile.Exists ersetzen“ ersetzt den ganzen Namen, Strg+Z nimmt sie in einem Schritt zurück |
+| VB4 | Eintrag `{"name": "Vcl.Forms.TApplication.ProcessMessages", "severity": "error"}`; `Application.ProcessMessages;` in einer Schleife | Fehler an `Application.ProcessMessages` |
+| VB5 | Eintrag `{"name": "System.Classes.TThread.*Queue", "firstArgument": ["nil"], "units": ["Atlas.IDE.*"]}`; `TThread.Queue(nil, P)` und `TThread.Queue(Self, P)` in einer Unit `Atlas.IDE.X` und in `Atlas.Common.X` | Nur `TThread.Queue(nil, P)` in `Atlas.IDE.X` gemeldet; mit `// lsp-ignore: forbidden-symbol` am Zeilenende keine Meldung |
+| VB6 | Eintrag `{"name": "System.Writeln", "allowFirstArgument": ["ErrOutput", "TextFile"]}`; `Writeln(ErrOutput, 'x')`, `Writeln(mLog, 'x')` mit `mLog: TextFile`, `Writeln('x')` | Nur `Writeln('x')` gemeldet |
+| VB7 | Arten: `kind` `type` (`var mListe: TList;`), `constant`, `field`, `property`, `enumValue` (`clRed`), `identifier` (Name ohne Auflösung) | Je ein Treffer an der Verwendung; Deklarationen gleichnamiger eigener Symbole und Werte einer eigenen Aufzählung bleiben still |
+| VB8 | Tools › Optionen › Atlas › Prüfregeln › Architektur › „Verbotenes Symbol verwendet“: Schalter an, Schweregrad Warnung, in der Tabelle „symbols“ eine Zeile `System.Writeln` / `routine` / `Nur über ILogger` eintragen, unten erscheint eine leere Zeile; danach eine Zeile leeren | atlas.json enthält `"symbols": [{"name": "System.Writeln", "kind": "routine", "message": "Nur über ILogger"}]`; die Spalten `units`, `firstArgument` und `allowFirstArgument` nehmen Listen mit „;“; die geleerte Zeile fällt weg, ohne Zeilen entfällt `symbols` (**Abnahme**) |
+| VB9 | Ohne `symbols` bzw. mit `[]`; `"forbidden-symbol": "off"`; Profil strict | Ohne Liste keine Meldung; aus keine Meldung; im Profil strict ist die Regel an |
+| VB10 | Atlas-Repo selbst öffnen (seine atlas.json verbietet Write/Writeln, GetStdHandle(STD_OUTPUT_HANDLE) und TThread.Queue/ForceQueue(nil, …) im Plugin) | Keine Meldung in den Quellen; eine eingefügte Zeile `TThread.Queue(nil, nil);` in einer Unit unter `Packages/Atlas.IDE.Expert/Source` wird als Fehler gemeldet, ebenso von `pwsh Tools/Check-MainThreadQueue.ps1` |
+
+## Architekturübersicht (#1118)
+
+Voraussetzung: Server läuft in der IDE, Projektgruppe aus dem Referenzprojekt (#94) mit drei Namensräumen (etwa `App.Data.*`, `App.Ui.*`, `App.Net.*`), einer absichtlich falsch einsortierten Unit (`App.Ui.DbHelfer` mit uses nur auf `App.Data.*`), einem Zyklus über implementation und einem reinen interface-Zyklus in einer Kopie; Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ARC1 | Zum ersten Mal *Ansicht › Atlas › Architektur* | Fenster *Atlas-Architektur* öffnet sich als Reiter neben der Projektverwaltung (rechts); Statuszeile erst „Berechne die Architekturübersicht …“, dann „n Units · 3 Teilsysteme · … · Index-Stand … · … ms“ |
+| ARC2 | Fenster an eine andere Stelle ziehen, IDE neu starten, Fenster wieder öffnen; *Atlas › Architekturübersicht* und Befehlspalette „Architekturübersicht“ | Es bleibt an der neuen Stelle (kein erneutes Andocken rechts); Menü und Palette öffnen dasselbe Fenster |
+| ARC3 | Reiter *Teilsysteme* | Drei Teilsysteme „Data“, „Ui“, „Net“ mit Zusammenhalt; `App.Ui.DbHelfer` als Ausreißer „mehr Kanten nach Data“ (**Abnahme**) |
+| ARC4 | Reiter *Zentrale Units*, Spaltenköpfe anklicken | Direkt/gesamt abhängig und verwendet wie in `get_architecture`; zweiter Klick sortiert umgekehrt; „gesamt abhängig“ stimmt mit „Units neu übersetzen“ (#554) überein |
+| ARC5 | Reiter *Zyklen*, uses-Eintrag doppelklicken | Zyklus über implementation mit vollständigem Rundweg; der Doppelklick springt an Zeile und Spalte des uses-Eintrags; der interface-Zyklus steht als „Zyklus nur über interface (F2047)“ |
+| ARC6 | Reiter *Querverbindungen* | Die einzelne Kante zwischen zwei sonst getrennten Teilsystemen mit Grund „selten“ und Fundstelle; Doppelklick springt hin |
+| ARC7 | *Übersicht*: Mausrad, Ziehen, Klick, Doppelklick, +, −, 0, „Einpassen“, „Namen“ | Zoom um den Mauszeiger, Verschieben, Steckbrief der gewählten Unit unter der Karte, Doppelklick öffnet die Unit; Namen nur zentraler Units, solange weit herausgezoomt |
+| ARC8 | Unit wählen, Umschalt+Klick auf eine andere; dann gegen die Richtung; Esc | Kürzester Weg hervorgehoben, Rest blass, Zeile „Kürzester Weg (n Schritte …): A → … → B“ wie die HTML-Karte bzw. `find_path` mit `via: ["uses"]`; gegen die Richtung „Kein Weg: …“; Esc hebt auf |
+| ARC9 | „Zyklen markieren“, „implementation-uses“ aus, „Teilsysteme ▾“ ein Teilsystem abwählen, „Alle einblenden“ | Zyklen in Fehlerfarbe; ohne implementation-uses verschwinden gepunktete Kanten und der Weg wird neu gesucht; ein abgewähltes Teilsystem samt Units und Kanten verschwindet |
+| ARC10 | Filter „cache“; Umfang „Projekt“; „Bibliotheks-Units“ | Karte, Tabelle und Bäume grenzen sich ein; Umfang und Bibliothek rechnen neu und stehen danach auch unter Tools › Optionen › Atlas › Allgemein › Architektur |
+| ARC11 | „Bericht speichern …“ als `.html` und `.md`; dasselbe mit `AtlasServer --check <Gruppe> --architecture bericht.html` | Gleiche Zahlen in Fenster, Markdown und HTML; die HTML-Seite öffnet ohne Netz, „Weg zeigen“ und „Zyklen markieren“ funktionieren |
+| ARC12 | `"architecture": {"exclude": ["Tests/**"]}` in atlas.json (Projekt-Einstellungen) | Testunits fehlen; die Statuszeile nennt „ausgeschlossen: Tests/**“ |
+| ARC13 | IDE in hellem und dunklem Thema | Karte, Listen und Statuszeile lesbar, Teilsystemfarben passend zum Thema |
+| ARC14 | Projektgruppe mit etwa 2000 Units, „Neu berechnen“ | Rechnung im Hintergrund unter 2 s, IDE bleibt bedienbar, kein Eintrag des Einfrier-Wächters (#501) |
+| ARC15 | `architecture.enabled` aus (Schnellschalter) | Kein Menüeintrag, kein Palettenbefehl, ein offenes Fenster schließt sich, `get_architecture` fehlt in `tools/list`, `--architecture` endet mit Exit-Code 3 |
+
+## Architekturvergleich (#1121)
+
+Voraussetzung wie oben (#1118); Projekt unter Versionsverwaltung.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ARV1 | Im Fenster „Stand speichern …“, Datei `architektur.json` im Projektordner; ohne Änderung erneut speichern | Datei entsteht (Statuszeile „… gespeichert“); zweites Speichern ergibt keine Änderung im Diff der Versionsverwaltung |
+| ARV2 | In einer Unit von `App.Data.*` ein uses auf eine Unit von `App.Ui.*` ergänzen, die ihrerseits `App.Data.*` braucht, speichern, Index fertig; „Vergleichen mit …“ und `architektur.json` wählen | Reiter *Vergleich*: „Verglichen mit architektur.json (…): n Änderungen · verletzt: newCycle“, Abschnitt „Neue Zyklen (1)“ mit dem Rundweg, neue Querverbindung bzw. uses-Kante zwischen Teilsystemen; Statuszeile „· Vergleich: n Änderungen“ |
+| ARV3 | Reiter *Übersicht* nach ARV2 | Die neue Kante grün; „Änderungen zum Stand“ aus: wieder in normaler Farbe; mit „Zyklen markieren“ ist die Zykluskante rot |
+| ARV4 | Ein uses zwischen zwei Teilsystemen entfernen, „Neu berechnen“ | Die entfernte Kante erscheint rot gestrichelt; Abschnitt „Entfernte uses-Kanten zwischen Teilsystemen“ |
+| ARV5 | Doppelklick auf einen Eintrag im Reiter *Vergleich*; Filter „data“ | Die Unit öffnet sich; nur Einträge mit `data` im Namen bleiben |
+| ARV6 | In `atlas.json` `"architecture": {"baseline": "architektur.json"}`, Fenster schließen, IDE neu starten, Fenster öffnen | Vergleich ohne Wahl; „Vergleich aufheben“ zeigt den Hinweis „Kein Vergleich …“, Karte ohne Farben |
+| ARV7 | `architektur.json` durch Text „kaputt“ ersetzen, „Neu berechnen“ | Übersicht erscheint, Reiter *Vergleich* und Statuszeile „Vergleich nicht möglich: Architekturstand ist beschädigt …“ |
+| ARV8 | „Bericht speichern …“ als HTML und Markdown mit aktivem Vergleich | Beide enthalten den Abschnitt „Vergleich“; in der HTML-Karte „Änderungen zum Stand“ mit grünen und rot gestrichelten Kanten |
+| ARV9 | Konsole: `AtlasServer --check . --architecture neu.json --compare architektur.json` mit neuem Zyklus; dann mit `--fail-on centralGrowth`; ohne Abweichung | Text mit den Abschnitten und „Ergebnis: …“, Exit-Code 1; mit `centralGrowth` (ohne Wachstum) 0; ohne Abweichung 0; unlesbarer Stand oder `--fail-on falsch` Exit-Code 3 |
+| ARV10 | Claude Code: `get_architecture` mit `compareWith: "architektur.json"` | Die Abschnitte des Vergleichs; Pfad außerhalb des Projekts wird abgelehnt |
+| ARV11 | Hell und dunkel | Grün und Rot auf der Karte und im Reiter gut lesbar |
+
+## Treffersicherheit der Verwendungen (#1119)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `IKunde` mit `Speichern`, `TKunde = class(TBasis, IKunde)` überschreibt `TBasis.Speichern` (virtual); Aufrufe über `S: IKunde`, `B: TBasis`, `K: TKunde`, einer in `{$IFDEF DEBUG}` bei Release-Konfiguration, und `MethodAddress('Speichern')`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TS1 | Cursor auf `TKunde.Speichern`, *Referenzen* | Ergebnisfenster mit „Sicher (n)“ (Aufrufe über `K`, Deklaration, Rumpf) und „Erschlossen (n) · vor dem Umbenennen prüfen“; beide aufgeklappt (**Abnahme**) |
+| TS2 | Maus über die erschlossenen Zeilen | Zeilen beginnen mit „≈“ und enden mit „[über Interface]“, „[überschrieben]“ bzw. „[inaktiver Zweig]“; Tooltip etwa „Aufruf über IKunde.Speichern; TKunde ist die einzige Umsetzung“ bzw. „In einem inaktiven Zweig: Bedingung DEBUG nicht erfüllt“ |
+| TS3 | „Nur sichere“ rechts im Kopf an- und abhaken | Nur die sicheren Zeilen ohne Abschnittsköpfe, danach wieder beide Abschnitte. Bei *Implementierungen* oder einem Symbol ohne erschlossene Treffer ist der Filter ausgeblendet |
+| TS4 | *Symbol umbenennen…* auf `TKunde.Speichern` | Vorschau „Wird geändert (n)“ (sichere und der inaktive Zweig) und „Nicht geändert, bitte prüfen (n)“ (Interface, überschrieben); nach dem Übernehmen sind nur die Stellen aus „Wird geändert“ geändert, ein Rückgängig-Schritt (Strg+Alt+Z) |
+| TS5 | *Aufrufer* von `TKunde.Speichern` | Aufrufer über `K` oben, über `S` und `B` darunter mit „≈“ und Grund; Aufklappen lädt weiter |
+| TS6 | *Definition einblenden* der Verwendungen (Peek) | Erschlossene Ausschnitte mit „≈“ vor der Zeile |
+| TS7 | Optionen › Atlas › Befehle › Verwendungen: „Erschlossene Verwendungen zeigen“ aus, TS1 wiederholen | Nur sichere Treffer wie vor #1119, kein Filter, keine Abschnitte; auch als Schnellschalter |
+| TS8 | „Auch Namen in Strings als Verwendung melden“ an, TS1 wiederholen | Zusätzlich `MethodAddress('Speichern')` unter „Erschlossen“ mit „[im Text]“, markiert ist nur der Name ohne Anführungszeichen; das Kontrollkästchen ist nur bedienbar, solange „Erschlossene Verwendungen zeigen“ an ist |
+| TS9 | In Claude Code `find_references` und `rename_symbol` (dryRun) für `TKunde.Speichern` | „n Verwendungen …, a sicher, b erschlossen:“, sichere zuerst, dann „Erschlossen, vor dem Umbenennen prüfen:“ mit „– erschlossen (interface): …“; rename_symbol endet mit „Nicht geändert, bitte prüfen (b erschlossene Stellen):“ |
+| TS10 | Englische IDE-Sprache | „Sure (n)“, „Inferred (n) · check before renaming“, „Sure only“, Gründe auf Englisch |
+
+## Aufrufdiagramm (#1122)
+
+Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `TForm1.Start` ruft `Laden` und `Speichern`, `Laden` ruft `Lesen` (drei Ebenen); `Lesen` ruft über `S: ISpeicher` `S.Schreiben` mit zwei umsetzenden Klassen; `Rekursiv` ruft sich selbst; `Viele` ruft zehn Routinen; `Start` ruft auch `IntToStr`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AD1 | Cursor auf `TForm1.Start`, Befehlspalette „Aufrufdiagramm“ | Ergebnisfenster im Diagramm: links `TForm1.Start`, daneben die erste Ebene `Laden` und `Speichern` mit Datei:Zeile; Umschalter „Diagramm“ angehakt, Leiste mit „Ausgehend: Aufgerufene“ gewählt (**Abnahme**) |
+| AD2 | Klick auf `Laden`, erneut Klick, nochmals Klick | Erster Klick lädt `Lesen` als neue Spalte; zweiter klappt zu, dritter wieder auf ohne neue Anfrage (**Abnahme**) |
+| AD3 | Doppelklick auf `Lesen`; Enter auf einem gewählten Kasten | Editor springt zur Deklaration von `Lesen` bzw. der gewählten Routine (**Abnahme**) |
+| AD4 | `Lesen` aufklappen | Kante zu `ISpeicher.Schreiben` gestrichelt mit „2 Umsetzungen“; Tooltip mit Fundstelle und Erklärung (**Abnahme**) |
+| AD5 | Aufrufdiagramm für `Rekursiv` | Bogen in Warnfarbe zurück zu `Rekursiv`, kein weiterer Kasten, kein Hängen (**Abnahme**) |
+| AD6 | Aufrufdiagramm für `Viele` | Acht Kästen und „+ 2 …“; Klick darauf zeigt alle zehn (**Abnahme**) |
+| AD7 | „Nur Projekt-Units“ abhaken und wieder anhaken | `IntToStr` (System.SysUtils) erscheint abgesetzt und verschwindet wieder (**Abnahme**) |
+| AD8 | „Eingehend: Aufrufer“ wählen | Titel „Aufrufer von …“, dieselbe Wurzel mit ihren Aufrufern; zurück auf „Ausgehend“ lädt wieder die Aufgerufenen (**Abnahme**) |
+| AD9 | „Als HTML speichern …“, Datei im Browser ohne Netz öffnen | Datei entsteht (Titelzeile „… · Aufrufdiagramm gespeichert: …“); im Browser dieselben Kästen, gestrichelte Kante mit Zahl, Bogen zurück, „+ N …“; Klick klappt auf und zu, „nur Projekt-Units“ filtert, Mausrad zoomt (**Abnahme**) |
+| AD10 | Mausrad, Ziehen, Tasten + − 0, „Einpassen“ | Zoom um den Mauszeiger, Verschieben, Einpassen des ganzen Diagramms |
+| AD11 | *Aufrufer* aus dem Menü Atlas, Umschalter „Diagramm“ an und aus | Wechsel zwischen Baum und Diagramm; bei *Vorfahren*/*Nachfahren* ist der Umschalter ausgeblendet |
+| AD12 | Optionen › Atlas › Editor: „Aufrufdiagramm …“ aus (auch als Schnellschalter) | Umschalter im Ergebnisfenster weg, Befehl fehlt in Palette und Menü Atlas; nach Neustart auch im Kontextmenü (**Abnahme**) |
+| AD13 | Hell und dunkel, englische IDE-Sprache | Kästen, Linien und Schrift gut lesbar; „Call diagram“, „Diagram“, „Project units only“, „Save as HTML …“ |
+| AD14 | Claude Code: `get_call_hierarchy` für `Lesen`, `direction: "outgoing"` | `Schreiben` mit „[über Interface, 2 Umsetzungen]“ |
+
+## Unit-Beziehungen (#593)
+
+Voraussetzung: Server läuft in der IDE, Testprojekt mit `A` (interface uses `B`, `System.SysUtils`, `Vcl.Forms`; implementation uses `C`), `B` (interface uses `A`, also ein interface-Zyklus), `C` (uses `Daten`), Verwendern `E` (interface uses `A`) und `F` (implementation uses `A`); in `A` wird `Vcl.Forms` nicht gebraucht. Index fertig.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UB1 | `A.pas` im Editor, zum ersten Mal *Ansicht › Atlas › Unit-Beziehungen* | Fenster *Unit-Beziehungen* als Reiter neben der Projektverwaltung; Kopf „A“, „n Units neu übersetzen · Zyklus“; „Verwendet (4)“ und „Wird verwendet von (3)“ aufgeklappt |
+| UB2 | „Verwendet“ ansehen | `B  intf · Zyklus` rot, `C  impl`; Gruppe „Bibliothek (2)“ eingeklappt, darin `System.SysUtils` und `Vcl.Forms · ungenutzt` abgeblendet (**Abnahme**) |
+| UB3 | Maus über `B`; über den Kopf | Tooltip „Zyklus über interface-uses: A → B → A“; der Kopf zeigt denselben Rundweg (**Abnahme**) |
+| UB4 | „Wird verwendet von“ | Genau drei, nach Name: „über interface-uses (2)“ mit `B  intf`, `E  intf`, „über implementation-uses (1)“ mit `F  impl` (seit #554) (**Abnahme**) |
+| UB5 | Zahl „Units neu übersetzen“ mit dem Reiter *Zentrale Units* der Architekturübersicht („gesamt abhängig“) und `get_architecture` vergleichen | Gleiche Zahl (**Abnahme**) |
+| UB6 | Doppelklick auf `C`; zurück zu `A`; Strg+Doppelklick auf `C` | `C.pas` öffnet sich und das Fenster zeigt sofort `C`; zurück in `A` steht sofort der gemerkte Stand (unter 300 ms); Strg+Doppelklick setzt den Cursor auf `C` im uses von `A` (**Abnahme**) |
+| UB7 | Rechtsklick auf `B`, „In implementation verschieben“; Strg+Z | `B` steht im implementation-uses von `A` (Server-Edit), der Zyklus verschwindet nach kurzer Zeit aus dem Fenster; Strg+Z stellt das uses in einem Schritt wieder her (**Abnahme**) |
+| UB8 | Rechtsklick auf `C`, „In interface verschieben“ | `C` steht im interface-uses; ohne interface-uses entsteht eines |
+| UB9 | Rechtsklick auf `Vcl.Forms`, „Eintrag entfernen“; Rechtsklick auf `B` | Eintrag weg; bei `B` (benutzt) fehlt „Eintrag entfernen“ |
+| UB10 | „Pfad kopieren“ auf `C`, in einen Editor einfügen | Vollständiger Pfad von `C.pas` |
+| UB11 | „alle Ebenen“; Filter „dat“; Filter leeren | Unter `C` hängt `Daten`, unter `B` steht `A · siehe oben`; mit Filter nur `C` mit `Daten`, aufgeklappt; leer wieder alles |
+| UB12 | Gruppe „Bibliothek“ aufklappen, `E` wählen, in `A` tippen und warten | Aufklappen und Auswahl bleiben, wenn das Fenster nachfragt (etwa alle 2 s) |
+| UB13 | Architekturübersicht, Strg+Doppelklick auf eine Unit in Karte, *Zentrale Units* oder *Teilsysteme* | Fenster *Unit-Beziehungen* zeigt diese Unit, bis der Editor eine andere Datei zeigt; ohne Strg öffnet der Doppelklick weiter die Unit |
+| UB14 | `.dpr` im Editor; Kontextmenü auf einem Eintrag, „In interface verschieben“ | Programm ohne interface: Kopfzeile meldet „Der Server hat die Änderung abgelehnt …“ |
+| UB15 | Datei ohne Pascal (z. B. `.dfm`) bzw. Server beendet | „Keine Pascal-Datei im Editor“ bzw. „Der Atlas-Server läuft nicht“ |
+| UB16 | `architecture.enabled` aus (Schnellschalter) | Fenster schließt sich, Menüeinträge und Palettenbefehl fehlen |
+| UB17 | Hell und dunkel, englische IDE-Sprache | Rot und Grau gut lesbar; „Unit relations“, „Uses (n)“, „Used by (n)“, „units to recompile“ |
+
+## Kosten einer interface-Änderung (#554)
+
+Voraussetzung: Server läuft in der IDE, Testprojekt mit der Kette `Oben` (interface uses `Mitte`) → `Mitte` (interface uses `Unten`) → `Unten`, dazu `Neben` (interface uses `Hilfe`, gebraucht wird `Hilfe` nur in einer Methode im implementation-Teil); `architecture.enabled` und `build.showInterfaceCost` an. Index fertig.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IK1 | `Unten.pas`, Einfügemarke in den interface-Teil (etwa in eine Typdeklaration) | Statusleiste: „interface-Änderung: 2 Units werden neu kompiliert“ (**Abnahme**) |
+| IK2 | Maus über das Feld | Tooltip „Eine Änderung im interface von Unten übersetzt neu: Mitte, Oben. Klick: …“ |
+| IK3 | Einfügemarke in den implementation-Teil, dann in den Unit-Kopf | Feld verschwindet sofort, beim Zurück ins interface erscheint es wieder (**Abnahme**) |
+| IK4 | `Mitte.pas` im interface; `Oben.pas` im interface | „1 Unit wird neu kompiliert“; bei `Oben` kein Feld (0 Units) |
+| IK5 | In `Mitte` `Unten` ins implementation-uses verschieben, speichern, zurück zu `Unten` ins interface | Nach wenigen Sekunden „1 Unit wird neu kompiliert“ (nur noch `Mitte`) |
+| IK6 | Klick auf das Feld | Fenster *Unit-Beziehungen* zeigt `Unten`; „Wird verwendet von“ mit „über interface-uses (1)“ und `Mitte` |
+| IK7 | `Neben.pas`, Befehlspalette „Abhängigkeiten dieser Unit“ | *Unit-Beziehungen* für `Neben`; `Hilfe  intf · nur in implementation gebraucht`, Kopf „… · 1 ins implementation-uses verschiebbar“, Tooltip nennt den Grund (**Abnahme**) |
+| IK8 | Rechtsklick auf `Hilfe`, „In implementation verschieben“; Strg+Z | `Hilfe` steht im implementation-uses, die Markierung verschwindet; Strg+Z stellt es in einem Schritt wieder her |
+| IK9 | Befehlspalette „Teuerste Units bei interface-Änderungen“ (vorher in *Zentrale Units* nach Name sortieren) | Architekturübersicht auf *Zentrale Units*, sortiert nach „gesamt abhängig“ absteigend; `Unten` steht vor `Oben` |
+| IK10 | `.dpr` im Editor; Server beenden | Kein Feld; ohne Server kein Feld und keine Fehlermeldung |
+| IK11 | *Compiler › Kosten einer interface-Änderung in der Statusleiste* aus | Feld verschwindet sofort, die beiden Befehle bleiben; `architecture.enabled` aus nimmt Feld und Befehle weg |
+| IK12 | Englische IDE-Sprache | „interface change: 2 units will be recompiled“, „Dependencies of this unit“, „Most expensive units for interface changes“ |
+
+## Unit verwenden und Formulare suchen (#786)
+
+Voraussetzung: Server läuft in der IDE, Testprojekt mit `Kunde.Import` (interface uses `Atlas.Common.Log.Format`, `SysUtils`), `Kunde.Ansicht` (interface uses `Kunde.Import`), `Kunde.Bericht` (implementation uses `Kunde.Import`), `Kunde.Daten`, `Kunde.Liste` (beide ohne Bezug), einem Formular, einem Frame und einem Datenmodul; `unitSearch.enabled`, `unitSearch.replaceUseUnitDialog`, `unitSearch.replaceFormsDialog` und `architecture.enabled` an. Index fertig.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UV1 | `Kunde.Import.pas` im Editor, Alt+F11 | Fenster mit Kopfzeile „Unit verwenden in Kunde.Import“, Umschalter rechts auf implementation |
+| UV2 | Nach `Format` suchen | `Atlas.Common.Log.Format` ausgegraut mit „schon in uses“ (**Abnahme**); `System.SysUtils` ebenso; `Kunde.Import` selbst ausgegraut |
+| UV3 | Zeile `Kunde.Ansicht` wählen | Kennzeichen „Kreis über Kunde.Ansicht“ grau (Hinweis), Fußzeile „Erlaubter Kreis (nur ein Hinweis): Kunde.Import → Kunde.Ansicht → Kunde.Import“ |
+| UV4 | Strg+I (oder Klick auf interface) | Kennzeichen wird zur Warnung „⚠ Kreis über Kunde.Ansicht“, Fußzeile „Kreisbezug, den der Compiler ablehnt (F2047): …“ (**Abnahme**); `Kunde.Bericht` bleibt Hinweis |
+| UV5 | Zurück auf implementation, `Kunde.Daten` und `Kunde.Liste` mit Leertaste markieren, Enter | Fenster schließt; beide stehen im implementation-uses von `Kunde.Import` (neu angelegt, falls keins da war), jede einmal; Meldung „2 Units … aufgenommen“ (**Abnahme**) |
+| UV6 | Strg+Z | Beide Einträge verschwinden in einem Schritt (**Abnahme**) |
+| UV7 | Alt+F11, `Atlas.Common.Log.Format` und `Kunde.Daten` markieren, Enter | Nur `Kunde.Daten` wird eingefügt, kein Duplikat |
+| UV8 | Alt+F11 mit einer `.dfm` oder ohne Editor | Meldung, dass keine Unit offen ist; kein Fenster |
+| UV9 | Umschalt+F12 | Fenster „Formulare suchen“, Chip `t:form\|frame\|dm` im Suchfeld, nur Formulare, Frames und Datenmodule (**Abnahme**) |
+| UV10 | Formular wählen, Enter; dann Umschalt+F12, Umschalt+Enter | Enter öffnet den Designer (**Abnahme**); Umschalt+Enter öffnet den Quelltext |
+| UV11 | Chip `t:form\|frame\|dm` entfernen | Alle Units erscheinen |
+| UV12 | Umschalttaste halten und *Datei › Unit verwenden* bzw. *Ansicht › Formulare* klicken; Befehlspalette „IDE-Dialog Unit verwenden“, „IDE-Dialog Formulare“ | Jeweils der Dialog der IDE |
+| UV13 | *Units suchen › Alt+F11 …* und *Umschalt+F12 …* aus, Alt+F11 und Umschalt+F12 | Die Dialoge der IDE, sofort ohne Neustart (**Abnahme**) |
+| UV14 | Server beenden, Alt+F11 | Meldung „kein Server“ und der Dialog der IDE |
+| UV15 | Befehlspalette „Unit verwenden (Atlas)“ und „Formulare suchen (Atlas)“ | Das Atlas-Fenster im jeweiligen Modus, auch mit abgeschalteter Übernahme |
+| UV16 | Englische IDE-Sprache | „Use unit in Kunde.Import“, „already in uses“, „Cycle via …“, „Find forms“ |
+
+## Zirkuläre Unit-Referenz beim Tippen (#896)
+
+Voraussetzung: Projektgruppe mit den Units uA, uB, uC (uA nennt uB, uB nennt uC, jeweils im interface-uses); Index fertig aufgebaut.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZL1 | In uC ins interface-uses `uA` tippen, nicht speichern | Nach kurzer Pause Fehler `uses-cycle` am Eintrag `uA`: „Zirkuläre Unit-Referenz: uC → uA → uB → uC“ (**Abnahme**) |
+| ZL2 | ZL1, dann uA und uB geöffnet lassen und dort ohne Speichern die Einträge ändern (z. B. `uB` aus uA entfernen) | Die Meldung in uC verschwindet ohne Speichern; nach Rückgängig erscheint sie wieder. Auch beim Öffnen von uC steht sie sofort da |
+| ZL3 | Maus über die Meldung aus ZL1 | Im Hover sind uC, uA, uB, uC Verweise; ein Klick springt an den uses-Eintrag der Unit in der jeweiligen Datei; dahinter der Verweis „Graph zeigen“ (**Abnahme**) |
+| ZL4 | „Graph zeigen“ im Hover oder die Korrektur „Graph zeigen (Unit-Beziehungen)“ | Das Fenster Unit-Beziehungen (#593) öffnet sich für die aktuelle Unit |
+| ZL5 | uC braucht im interface keinen Bezeichner aus uA; Glühbirne am Eintrag | Korrektur „In implementation-uses verschieben“; danach steht uA im implementation-uses, mit `sortUses` sortiert wie „uses aufräumen“; die Meldung verschwindet (**Abnahme**) |
+| ZL6 | uC nutzt im interface einen Typ aus uA (z. B. `TA` als Parametertyp) | Kein Verschieben; stattdessen „Zu TA springen (Zeile N, braucht uA im interface)“ (bis fünf Sprünge) und „Graph zeigen“; in den Details „Im interface-Teil gebraucht: TA (Zeile N)“ |
+| ZL7 | uC nennt sich selbst im uses | Fehler „Zirkuläre Unit-Referenz: uC → uC“ mit Korrektur „Eintrag entfernen“, auch ohne Projekt |
+| ZL8 | Zyklus nur über implementation-uses; erst Standard, dann Optionen › Atlas › Prüfregeln „Unit-Zyklen über implementation zeigen“ (`diagnostics.usesCycleImplementation`) an | Erst keine Meldung im Editor; danach ein Hinweis „… (über implementation-uses)“ |
+| ZL9 | `diagnostics.usesCycleLive` aus | Keine Meldung beim Tippen; `atlas --check` und `find_unused_code` melden den Zyklus weiter |
+| ZL10 | Problemliste, `check_code` über MCP und `atlas --check` nach ZL1 | Dieselbe Meldung mit demselben Text an derselben Stelle |
+| ZL11 | Projekt mit 2000 Units, Zyklus über alle; im uses tippen | Kein Hängen der IDE; die Meldung erscheint nach dem Tippen ohne merkliche Verzögerung |
+
+## Weg zwischen Symbolen (#1117)
+
+Voraussetzung: Server läuft in der IDE, Referenzprojekt (#94) mit Form `TKundenForm` (Ereignishandler `btnSpeichernClick` ruft `FService.Speichern`), `TKundenService` mit Feld `FRepo: IKundenRepo`, Interface `IKundenRepo` mit zwei Umsetzungen (`TKundenRepo`, `TCacheRepo`) und `TDatenbank`; Index fertig aufgebaut. Claude Code mit dem Atlas-MCP-Server verbunden.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SP1 | MCP: `find_path` von `TKundenForm` nach `TDatenbank` | „Kürzester Weg (N Schritte):“ über `btnSpeichernClick` (enthält), `TKundenService.Speichern` (ruft auf), `IKundenRepo.Laden` (ruft auf), `TKundenRepo.Laden` (umgesetzt von, `[erschlossen]`), `TDatenbank.Abfrage` (ruft auf); Zeilen stimmen mit dem Quelltext (**Abnahme**) |
+| SP2 | MCP: `find_path` zwischen zwei Units ohne Abhängigkeit | „Kein Weg in höchstens 8 Schritten.“ (**Abnahme**) |
+| SP3 | MCP: `find_path` mit `from` = `Laden` | Liste der Treffer mit Fundstelle und Bitte um qualifizierte Angabe, kein Weg (**Abnahme**) |
+| SP4 | MCP: `find_path` von `uKundenForm` nach `uDatenbank` mit `via: ["uses"]`; dieselben Units in der Architekturkarte per Umschalt+Klick | Nur uses-Kanten, derselbe Weg wie auf der Karte (**Abnahme**) |
+| SP5 | SP1 dreimal hintereinander, auch nach Neustart des Servers | Jedes Mal derselbe Weg (**Abnahme**) |
+| SP6 | `requestTimeoutMs` auf 200 setzen, `find_path` über eine Projektgruppe mit etwa 2000 Units mit `maxSteps` 16; danach mit Vorgabe und 8 Schritten | Erst „Kein Weg gefunden in N Schritten (Suche nach X Knoten abgebrochen: Zeitlimit …)“, nie ein stilles „kein Weg“; mit Vorgabe Antwort unter 2 s (**Abnahme**) |
+| SP7 | `"mcp": {"disabledTools": ["find_path"]}`; danach `navigation.symbolPath` aus | `find_path` fehlt jeweils in `tools/list` (**Abnahme**) |
+| SP8 | Claude Code bricht einen langen `find_path` ab (Esc) | Der Server bricht ab (`notifications/cancelled`), das Protokoll zeigt keine weiter laufende Suche |
+| SP9 | *Atlas › Weg zwischen Symbolen …*; „TKunden“ tippen | Dialog mit „Von“, „Nach“, „Höchstens Schritte“ (8) und „Alle gleich kurzen Wege“; nach kurzer Pause Vorschläge unter dem Feld, ↓ geht in die Liste, Enter übernimmt, Esc schließt erst die Liste, dann den Dialog |
+| SP10 | „Suchen“ mit leerem „Nach“ | Der Dialog bleibt offen und sagt „Bitte „Von“ und „Nach“ angeben.“ |
+| SP11 | SP1 über den Dialog | Ergebnisfenster mit gezeichneter Kette: Kästen mit Symbol, Unit und Datei:Zeile, Pfeile mit Kantenart; die Kante zu `TKundenRepo.Laden` gestrichelt mit „[erschlossen]“; Statuszeile mit Schritten, Knoten und Dauer (**Abnahme**) |
+| SP12 | In der Kette ↑/↓, Doppelklick auf einen Kasten und auf einen Pfeil, Enter | Auswahl wandert, Doppelklick und Enter springen zur Fundstelle des Symbols bzw. der Kante (**Abnahme**) |
+| SP13 | Im Editor auf `btnSpeichernClick`, Rechtsklick *Atlas › Weg von hier nach …* | Dialog mit „Von“ = `TKundenForm.btnSpeichernClick`, Fokus in „Nach“ |
+| SP14 | Befehlspalette „Weg zwischen Symbolen …“ | Öffnet denselben Dialog mit der letzten Eingabe |
+| SP15 | „In Architekturkarte zeigen“ | Fenster *Atlas-Architektur* öffnet sich (rechnet, falls nötig), die Units des Wegs sind markiert, darunter „Weg zwischen Symbolen (n Units, Esc hebt auf): …“; Esc hebt auf (**Abnahme**) |
+| SP16 | `architecture.enabled` aus, SP11 | Kein Knopf „In Architekturkarte zeigen“ |
+| SP17 | „Alle gleich kurzen Wege“, Weg mit zwei Umsetzungen | Bis zu fünf Wege mit Überschrift „Weg 1“, „Weg 2“ …; Statuszeile „…, n Wege gleich lang …“ |
+| SP18 | `navigation.symbolPath` aus (Schnellschalter) | Kein Eintrag im Menü Atlas, in der Befehlspalette und im Kontextmenü (**Abnahme**) |
+| SP19 | IDE in hellem und dunklem Thema, Oberfläche Englisch | Kette lesbar, Kantenarten englisch („calls“, „implemented by“) |
+
+## Auswirkungsanalyse (#1120)
+
+Voraussetzung: Server läuft in der IDE mit Projekt, Index und Testprojekt (DUnitX). Beispiel: `Ziel` wird von `Hilfe` zweimal aufgerufen, `Hilfe` von `Oben`, vom initialization-Teil einer Unit und vom Test `TWerkzeugTests.PrueftHilfe`; `Oben` vom Handler `TForm1.Button1Click`, der in der .dfm an `OnClick` hängt. Dazu `TBasis.Arbeite` (virtual) mit Override `TKind.Arbeite` und `IRechner.Rechne`, umgesetzt von `TKind.Rechne`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AW1 | Cursor auf `Ziel`, Kontextmenü *Atlas › Auswirkungen anzeigen* | Erst „Ermittle Auswirkungen von Ziel (Tiefe 2) …“, die IDE bleibt bedienbar; dann Titel „Auswirkungen von Ziel · Tiefe 2 · n Stellen“, „Direkt (1)“ mit „Hilfe … ×2“, „Indirekt (n)“ mit Hilfe › Oben, Unit-Ebene, PrueftHilfe · Test (**Abnahme**) |
+| AW2 | Rechts im Kopf „Tiefe:“ auf 3 | Neu gerechnet; unter Oben steht `Button1Click` mit Unterzeile „Formular: OnClick = Button1Click  (Unit1.dfm:n)“; „⚠ Tiefe 3 erreicht: …“ nur, wenn es weiterginge |
+| AW3 | Doppelklick auf eine Stelle und auf die Formularzeile | Sprung zur Verwendung der Ursache in der Stelle bzw. in die .dfm-Zeile |
+| AW4 | „Betroffene Tests (1)“ und „Betroffene Tests ausführen“ | Der Testläufer (#69) startet nur `…TWerkzeugTests.PrueftHilfe`; ohne betroffene Tests ist der Knopf gesperrt und die Zeile „Keine betroffenen Tests“ erscheint |
+| AW5 | Auswirkungen von `TBasis.Arbeite`, dann von `TKind.Arbeite` | „TKind.Arbeite · Override“ bzw. „TBasis.Arbeite · überschriebene Basismethode“ |
+| AW6 | Auswirkungen von `IRechner.Rechne`, dann von `TKind.Rechne` | „TKind.Rechne · Umsetzung“ bzw. „IRechner.Rechne · Interface-Methode“ |
+| AW7 | Zwei Routinen, die sich gegenseitig aufrufen, Tiefe 5 | Jede erscheint einmal, kein endloser Baum |
+| AW8 | Großes Projekt, Symbol mit vielen Verwendungen, Tiefe 5 | Ergebnis kommt innerhalb des Zeitlimits mit „⚠ Zeitlimit von … ms erreicht“ bzw. „Höchstzahl von 1000 Stellen erreicht“; die IDE friert nicht ein |
+| AW9 | *Optionen › Atlas › Befehle › Auswirkungen*: Befehl aus, Vorgabe der Tiefe 4 | Eintrag fehlt im Kontextmenü, unter *Atlas › Suchen* und in der Befehlspalette; wieder an: da, und die Analyse beginnt mit Tiefe 4 |
+| AW10 | In Claude Code `get_impact` mit `name` = `Ziel`, ohne und mit `depth` 3, dann `format` `json` | Text mit Baum, „Betroffene Tests:“, „run_tests tests: …“ und Grenzen; JSON wie atlas/impact |
+| AW11 | Englische IDE-Sprache | „Show impact“, „Direct (n)“, „Indirect (n)“, „Affected tests (n)“, „Run affected tests“, „Depth:“ |
+
+## Compiler-Schalter an der Cursorposition (#558)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet. Unit mit `{$R-}` in Zeile 10 und Code bis Zeile 30, Include-Datei `Optionen.inc` mit `{$Q-}` und `{$WARN SYMBOL_PLATFORM OFF}`, eingebunden in Zeile 5 einer zweiten Unit. Menü *Atlas › Atlas: Compiler-Schalter* bzw. Befehl `Atlas.CompilerSwitches`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CS1 | Cursor in Zeile 20 der ersten Unit | Zeile `R (RANGECHECKS)` mit Wert `−`, Projekt `+`, Herkunft „gesetzt in Zeile 10“, fett in der Warnfarbe (**Abnahme**) |
+| CS2 | Cursor in Zeile 5 (vor der Direktive) | `R` mit dem Wert der .dproj, Herkunft „Projektoption DCC_RangeChecking“ oder „Compiler-Vorgabe“; Wechsel spätestens 150 ms nach der letzten Bewegung |
+| CS3 | Cursor hinter `{$I Optionen.inc}` in der zweiten Unit | `Q` = `−`, Herkunft „gesetzt in Optionen.inc, Zeile …“; `SYMBOL_PLATFORM OFF` unter „Hinweise und Warnungen“ (**Abnahme**) |
+| CS4 | Unit ohne Direktiven | Alle Werte gleich der Projektoptionen (Debug: `R+`, `Q+`, `O−`; Release: `O+`), keine Zeile hervorgehoben, unten „Keine Abweichung von der .dproj.“ (**Abnahme**) |
+| CS5 | Projektoptionen: Ausrichtung 4, Hinweise aus, Warnung „Plattformspezifisches Symbol“ aus; speichern | `A` = `4`, `HINTS` = `OFF`, `SYMBOL_PLATFORM` = `OFF`, je Herkunft „Projektoption DCC_…“ (prüft die Eigenschaftsnamen) |
+| CS6 | `{$WARN SYMBOL_DEPRECATED OFF}` in Zeile 12, `{$WARN SYMBOL_DEPRECATED ON}` in Zeile 18; Cursor in 15 und 25 | In 15 `SYMBOL_DEPRECATED OFF` mit „gesetzt in Zeile 12“, in 25 keine Zeile mehr (**Abnahme**) |
+| CS7 | `{$PUSHOPT}{$R-}` … `{$POPOPT}`, Cursor dahinter | `R` wieder mit dem Wert davor |
+| CS8 | `{$IFDEF NIE}{$R-}{$ENDIF}` | Keine Wirkung auf `R` |
+| CS9 | Doppelklick auf die Zeile aus CS1 bzw. CS3 | Editor springt in Zeile 10 bzw. öffnet `Optionen.inc` an der Direktive |
+| CS10 | Doppelklick auf `Q` mit Herkunft Projektoption | Dialog „Projektoptionen“ öffnet sich; nach dem Schließen sofort neuer Stand |
+| CS11 | Abschnitt „Bedingte Symbole“ und „Ziel“ | `DEBUG` mit „Konfiguration Debug (.dproj)“, `WIN64` mit „Compiler-Vorgabe (Plattform Win64)“; Plattform und Konfiguration wie in der Projektverwaltung |
+| CS12 | `build.showSwitchesInStatusBar` an, Cursor aus CS1 | Statusleiste zeigt `R−`; Tooltip „R −: gesetzt in Zeile 10“; Klick öffnet das Fenster. Cursor in CS4: kein Feld (**Abnahme**) |
+| CS13 | Strg+C in der Liste | Zwischenablage enthält Abschnitte und Zeilen mit Tabulatoren |
+| CS14 | Server beendet bzw. Formular (.dfm) aktiv | Hinweis „Der Atlas-Server läuft nicht.“ bzw. „Keine Pascal-Datei im Editor.“; kein Statusfeld |
+| CS15 | Dunkles Thema | Liste, Köpfe und hervorgehobene Werte gut lesbar |
+| CS16 | `build.compilerSwitches` aus (Schnellschalter) | Fenster schließt, Befehl und Menüeintrag fehlen, kein Statusfeld, keine Anfrage an den Server (Diagnoseprotokoll) (**Abnahme**) |
+
+## „kein Zugriff auf Wert“ erklärt (#840)
+
+Vorbereitung: Atlas-Server läuft, Projekt mit den Konfigurationen Debug (Vorgabe: `O−`, Debug-Informationen an) und Release (`O+`, ohne Debug-Informationen). Routine `Summe` mit lokalen Variablen `I`, `Wert` (erst ab Zeile 12 gebraucht) und `Ergebnis` (nach Zeile 15 nicht mehr), Haltepunkt in Zeile 14. Hover über Variablen beim Halt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KZ1 | Deutsche IDE, Release starten, Hover über `I` | Fehlertext der IDE wird erkannt: Hover zeigt `‹kein Zugriff›` und „Das Programm läuft in der Konfiguration „Release“ ohne Debug-Informationen.“, Verweis „Mit Debug neu starten“ (**Abnahme**); den genauen Fehlertext der IDE im Issue notieren |
+| KZ2 | Englische IDE oder Win64 (LLDB), wie KZ1 | Ebenso erkannt; Text im Issue notieren (fehlt er, in `KnownTexts` nachtragen) |
+| KZ3 | KZ1, Klick „Mit Debug neu starten“ | Vorschau nennt „Debug“ und die bisherige Konfiguration; OK setzt das Programm zurück, wählt Debug und startet neu; Abbrechen ändert nichts (**Abnahme**) |
+| KZ4 | Debug-Start, `{$O+}` in Zeile 3 der Unit, Hover über `Ergebnis` in Zeile 17 (nach dem Halt dort) | Ursache „Die Optimierung ist an ($O+) …“ mit Zusatz „Nach Zeile 16 wird sie nicht mehr gebraucht.“, Herkunft „{$O+} in Unit.pas, Zeile 3“, Verweise „Optimierung für die Routine aus“, „{$O-} am Unit-Anfang“, „Zur Direktive“ (**Abnahme**) |
+| KZ5 | KZ4, Klick „Optimierung für die Routine aus“ | Vorschau mit `{$OPTIMIZATION OFF}` vor und `{$OPTIMIZATION ON}` nach der Routine (Zeilennummern); OK fügt beides ein, ein Strg+Z nimmt es zurück (**Abnahme**) |
+| KZ6 | KZ4, Klick „{$O-} am Unit-Anfang“ | `{$O-}` direkt unter `unit …;`; Strg+Z bzw. „Letzte Atlas-Änderung zurücknehmen“ nimmt es zurück |
+| KZ7 | KZ4, Klick „Zur Direktive“ | Editor springt in Zeile 3 |
+| KZ8 | Debug-Start, aktive Konfiguration danach auf Release umschalten, Hover wie KZ4 ohne `{$O+}` | Keine Optimierungs-Ursache: Es gilt die Konfiguration des Starts (O−) |
+| KZ9 | `{$D-}` bzw. `{$L-}` am Unit-Anfang, Debug-Start | Ursache „… ohne Debug-Informationen übersetzt ($D-)“ bzw. „… ohne lokale Symbole ($L-) …“ mit Herkunft und „Zur Direktive“ |
+| KZ10 | Haltepunkt in einer `inline`-Routine, die eingebettet aufgerufen wird; Hover über eine lokale Variable | Ursache „Die Routine … ist inline …“ (sofern die IDE „kein Zugriff“ meldet) |
+| KZ11 | Debug ohne Debug-DCUs, F7 in `SysUtils` (nur mit Quelltext), Hover über eine lokale Variable | Ursache „Der Halt liegt in Bibliothekscode …“, Verweis „Debug-DCUs verwenden“; Vorschau nennt Konfiguration, Projekt und alten Wert; OK setzt `DCC_DebugDCUs`, Meldungsansicht nennt den Weg zurück |
+| KZ12 | Fall ohne bekannte Ursache (etwa Debug, `O−`, Variable gültig, aber Fehlertext erscheint) | „Ursache unbekannt.“ und „Geprüft, ohne Treffer:“ mit sechs Punkten in der Reihenfolge der Prüfung |
+| KZ13 | Werte im Editor an (`debug.inlineValues`), Halt wie KZ4 | Am Zeilenende `Ergebnis = ‹kein Zugriff›` statt nichts; andere Fehler weiterhin ausgeblendet |
+| KZ14 | Server beendet, Hover wie KZ1 | Erklärung ohne Server: Release-Ursache bzw. Bibliothek, sonst „Ursache unbekannt“; kein Hänger |
+| KZ15 | `%LOCALAPPDATA%\Atlas\debug-unavailable.txt` mit einer Zeile, die einen sonst unbekannten Fehlertext trifft; Einstellungen speichern | Dieser Text gilt jetzt als „kein Zugriff“ |
+| KZ16 | `debug.explainUnavailable` aus (Schnellschalter) | Fehler wie vorher ausgeblendet, kein `‹kein Zugriff›` im Editor, keine Anfrage `atlas/debugUnavailable` (Diagnoseprotokoll) (**Abnahme**) |
+| KZ17 | Dunkles Thema | Kennzeichen in der Warnfarbe, Ursache, Herkunft und Verweise gut lesbar |
+
+## Vervollständigung in Debugger-Dialogen (#538)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert. Unit mit `TKunde = class` (Felder `Name: string`, `Umsatz: Integer`) und einer Routine mit lokalen Variablen `Kunde: TKunde` und `Summe: Integer`, Parameter `Anzahl`; Haltepunkt in einer Zeile mitten im Rumpf. Diagnoselog an (*Atlas › Diagnose*).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VD1 | Deutsche IDE (Delphi 12 und 13), Programm am Haltepunkt, Strg+F7, ein Feld anklicken | Diagnoselog: „Debug-Dialog erkannt: ‹Klasse› „Auswerten/Ändern“, Beschriftungen: …“; Klasse, Titel und Beschriftungen im Issue notieren (**Studie**) |
+| VD2 | VD1, im Ausdrucksfeld `Kun` tippen | Atlas-Popup unter dem Feld mit `Kunde` (lokale Variable), ohne Schlüsselwörter (**Abnahme**) |
+| VD3 | VD2, Enter | Feld enthält `Kunde`, Schreibmarke dahinter; Strg+Z im Feld nimmt es zurück |
+| VD4 | `Kunde.` tippen | Popup mit `Name` und `Umsatz` (Elemente von `TKunde`), keine lokalen Namen (**Abnahme**) |
+| VD5 | `Kunde.Na`, Tab | `Kunde.Name`; Enter danach wertet aus wie ohne Atlas |
+| VD6 | Popup offen, Pfeil hoch/runter, Bild auf/ab, Esc | Auswahl wandert; Esc schließt nur das Popup, nicht den Dialog |
+| VD7 | Popup zu, Esc | Dialog schließt wie ohne Atlas |
+| VD8 | Im leeren Feld Strg+Leer | Popup mit allen Namen am Ausführungspunkt (`Kunde`, `Summe`, `Anzahl`, Felder von `Self`, globale Namen) |
+| VD9 | `Kunde.Name` und `Summe` auswerten, Dialog schließen, neu öffnen, im leeren Feld Pfeil runter | Popup „Verlauf“ mit `Summe` vor `Kunde.Name`; Enter ersetzt das ganze Feld (**Abnahme**) |
+| VD10 | 25 verschiedene Ausdrücke auswerten, Pfeil runter im leeren Feld | Höchstens 20 Einträge, neuester zuerst; anderes Projekt aktiv: eigener Verlauf; IDE neu starten: Verlauf bleibt (`%LOCALAPPDATA%\Atlas\debug-expressions.json`) |
+| VD11 | Überwachung hinzufügen (Strg+F5), Ausdrucksfeld `Su` | Popup mit `Summe`; im Feld „Gruppenname“ kein Popup |
+| VD12 | Haltepunkt in einer anderen Routine bearbeiten (Rechtsklick › Haltepunkt-Eigenschaften), Feld „Bedingung“ `An` | Vorschläge aus dem Gültigkeitsbereich der Haltepunktzeile (Parameter jener Routine), nicht des Ausführungspunkts (**Abnahme**) |
+| VD13 | VD12, Weitere › „Ausdruck auswerten“ | Ebenso Popup; im Feld „Meldung protokollieren“ keins |
+| VD14 | Programm läuft nicht, Strg+F7, `Ku` | Vorschläge aus der Cursorzeile im Editor |
+| VD15 | Englische IDE: VD1, VD2, VD11, VD12 | Ebenso erkannt; Beschriftungen notieren (fehlende in `TAtlasDebugDialogs.FieldOf` nachtragen) |
+| VD16 | Server beendet, Strg+F7, `Ku` | Kein Popup, kein Hänger; Pfeil runter im leeren Feld zeigt den Verlauf weiter |
+| VD17 | Popup über dem modalen Dialog, Klick in einen Eintrag | Popup bleibt vor dem Dialog; Doppelklick übernimmt, der Fokus bleibt im Feld |
+| VD18 | `debug.completionInDialogs` aus (Schnellschalter) | Kein Popup, Pfeil runter öffnet die Liste der IDE wie ohne Atlas, kein Eintrag im Diagnoselog, keine Anfrage `atlas/expressionCompletion` (**Abnahme**) |
+| VD19 | Dunkles Thema | Popup wie im Editor gut lesbar |
+
+## Datenfluss (#690)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert. Unit `Daten` mit `TKonto = class` (Feld `FWert: Integer`, `property Wert: Integer read FWert write SetWert`, Setter `SetWert(AWert: Integer)` mit `FWert := AWert`), Funktion `Summe(A, B: Integer): Integer` mit `Result := A + B`, Konstante `cMax = 10`; Unit `Haupt` mit `X := 0` an zwei Stellen, `X := Summe(1, cMax)`, `Konto.Wert := X`, `Inc(X)`, `ReadLn(X)`, `P := @X` und eine DUnitX-Testunit `Haupt.Tests` mit `X := 99`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DF1 | Cursor auf `X`, Menü Atlas › Suchen › „Woher kommt der Wert?“ | Ergebnisfenster „Woher kommt X? (n Stellen)“, je Stelle Art, Ausdruck, `Haupt.pas:Zeile: Quelltextzeile` (**Abnahme**) |
+| DF2 | DF1 | „2 Zuweisungen: 0 — Literal“ mit beiden Fundorten darunter; `Inc(X)` als Änderung mit Zyklus; `ReadLn(X)` als Eingabe |
+| DF3 | Unter „Zuweisung: Summe(1, cMax)“ die Quelle „← Summe“ aufklappen | Lädt erst jetzt (kurz Sanduhr); darunter „Rückgabe: A + B“ mit „← A“, „← B“; unter A die Argumente der Aufrufer (`1`), `cMax` als Blatt „· Konstante“ (**Abnahme**) |
+| DF4 | Doppelklick bzw. Enter auf eine Stelle, einen Fundort, eine Quelle | Editor springt zur Zeile bzw. zur Deklaration (**Abnahme**) |
+| DF5 | Cursor auf `X`, „Wohin geht der Wert?“ | „Wohin geht X?“: `Konto.Wert := X` als Schreiben über die Property „über SetWert“, aufklappbar bis `FWert` |
+| DF6 | Unter einer Quelle immer weiter aufklappen | Nach `navigation.dataFlow.maxDepth` Ebenen (Vorgabe 6) „· Tiefe erreicht“ ohne Pfeil; Wert 2 in den Einstellungen und neu fragen: schon nach 2 Ebenen |
+| DF7 | Zwei Variablen, die sich gegenseitig zugewiesen werden (`A := B; B := A`), A aufklappen | Unter B steht A als „· Zyklus“, kein Endlosbaum |
+| DF8 | `P := @X` bzw. `Move(Y, X, 4)` | Stelle mit „⚠ unsicher: Adresse“ bzw. „Move“ |
+| DF9 | Filter „Tests ausblenden“ an | Die Zuweisung aus `Haupt.Tests` verschwindet, der Baum wird neu geholt; aus: wieder da |
+| DF10 | Filter „Nur Projektcode“ an, Cursor auf einem Parameter, dessen Routine auch aus einer Bibliothek aufgerufen wird | Nur Aufrufer aus Projektdateien |
+| DF11 | `navigation.dataFlow.excludeTests` an, neu fragen | „Tests ausblenden“ ist vorbelegt |
+| DF12 | Befehlspalette: „Woher kommt der Wert?“ und „Wohin geht der Wert?“ | Beide Befehle vorhanden, gleiches Ergebnis wie über das Menü |
+| DF13 | Cursor auf einem Leerzeichen bzw. Schlüsselwort | Meldungsansicht „nichts gefunden“, Ergebnisfenster unverändert |
+| DF14 | Server beendet, Befehl ausführen | Zeile „kein Server“, kein Dialog, kein Hänger |
+| DF15 | Andere Liste zeigen (Referenzen) | Filterleiste verschwindet |
+| DF16 | `navigation.dataFlow` aus (Schnellschalter) | Menüeinträge und Palettenbefehle verborgen; ein über eine Tastenbelegung ausgelöster Befehl meldet nur „Datenfluss ist ausgeschaltet …“, keine Anfrage `atlas/dataFlow` im Diagnoselog (**Abnahme**) |
+| DF17 | Dunkles und helles Thema | Baum, Pfeile, ⚠ und Filterleiste gut lesbar |
+| DF18 | Property `Wert` aus DF5: auf `FWert` in `read FWert` F12 bzw. Referenzen | Springt zum Feld, Referenzen enthalten die Property-Zeile (Ursache aus #690 behoben) |
+
+## Zugriffsverletzung erklären (#865)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert, `debug.exceptionHistory` an, `debug.exceptionBanner` an (sonst AV13). Unit `Kunden` mit `TAdresse = class` (Feld `FOrt: string`), `TKunde = class` (Felder `FName: string`, `FAdresse: TAdresse`, `property Adresse: TAdresse read FAdresse`, `property Name: string read GetName`), `TAuftrag = class` (Feld `FKunde: TKunde`, `property Kunde: TKunde read FKunde`, `function KundeLesen: TKunde`); im Formular Knöpfe mit `Auftrag.Kunde.Adresse.FOrt := 'Berlin'` (FKunde = nil), `Auftrag.Kunde.FAdresse.FOrt := 'x'` (FAdresse = nil), Zugriff nach `Kunde.Free`, `Liste[I].FName := 'x'` mit `{$R-}` und I = Länge, `Auftrag.KundeLesen.FName := 'x'`, zwei Anweisungen in einer Zeile (`A.F := 1; B.F := 2;` mit A und B nil). Win32 und Win64 (LLDB) je einmal.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AV1 | Knopf mit `Auftrag.Kunde.Adresse.FOrt := 'Berlin'`, `FKunde = nil` | Leiste: zuerst kurz „Atlas prüft …“, dann „`Auftrag.Kunde` ist nil“ in Rot; darunter „✓ Auftrag = $…“, „✗ Auftrag.Kunde = nil“ (**Abnahme**) |
+| AV2 | `Auftrag.Kunde.FAdresse.FOrt := 'x'` mit `FKunde = nil` (Leseadresse = Versatz von `FAdresse`, z. B. „Lesen von Adresse 0000001C“) | „`Auftrag.Kunde` ist nil · Zugriff auf Feld `FAdresse` (Versatz $1C)“; ohne „geschätzt“, wenn der Debugger den Versatz ausrechnet (**Abnahme**) |
+| AV3 | AV2, Diagnoselog | Anfrage `NativeInt(@TKunde(nil).FAdresse)` sichtbar; nimmt der Debugger sie nicht an, steht „(Versatz $…, geschätzt)“ |
+| AV4 | Projekt mit FastMM4 und `FullDebugMode` (bzw. FastMM5 im Debug-Modus), Zugriff auf ein freigegebenes Objekt | „`Kunde` ist bereits freigegeben“ mit Füllmuster bzw. „Kopf des Objekts trägt das Füllmuster“ (**Abnahme**) |
+| AV5 | AV4 ohne FullDebugMode | Kein falsches „freigegeben“; je nach Speicher „Ursache nicht eindeutig“ oder „Zugriff auf freigegebenen Speicher“ |
+| AV6 | `Liste[I].FName := 'x'` mit `{$R-}`, I = Length(Liste) | „Index I = n liegt außerhalb von Liste (Länge n)“ |
+| AV7 | `Auftrag.KundeLesen.FName := 'x'` bzw. Kette über die Property `Name` mit Getter, `allowCalls` aus | Glied „Auftrag.KundeLesen: nicht ausgewertet: ruft etwas auf …“; im Diagnoselog keine Auswertung mit Nebenwirkungen, ein Haltepunkt in `KundeLesen` hält nicht (**Abnahme**) |
+| AV8 | AV7 mit `debug.explainAccessViolation.allowCalls` an | Das Glied wird ausgewertet, Ergebnis wie AV1 |
+| AV9 | Zeile mit zwei Anweisungen, beide nil | „Ursache nicht eindeutig“ · „2 Glieder kommen in Frage“ · „2 Anweisungen in der Zeile“, beide Glieder mit ✗ |
+| AV10 | Englisches RAD Studio (oder englische Meldung „Read of address 0000001C“) | Adresse wird gelesen, Ergebnis wie AV1/AV2 (**Abnahme**) |
+| AV11 | AV1 und AV2 unter Win64 (LLDB) | Gleiches Ergebnis; Werte kommen verzögert, die Leiste zeigt bis dahin „Atlas prüft …“ (**Abnahme**) |
+| AV12 | AV1: Knöpfe „Wo wird Kunde zugewiesen?“, „Ausdruck auswerten“, „Erklärung kopieren“ | Ergebnisfenster „Woher kommt Kunde?“; Fenster „Auswerten“ mit Zeile `Auftrag.Kunde`; Zwischenablage mit Ergebnis, Meldung, Ort und Gliedern |
+| AV13 | `debug.exceptionBanner` aus, AV1 | Kein Balken; nach dem Schließen des IDE-Dialogs mit „Anhalten“ stehen „Zugriffsverletzung in Unit:Zeile: … ist nil“ und die Glieder in den Meldungen |
+| AV14 | AV1, Editor | `Auftrag.Kunde` ist rot unterstrichen; F9 bzw. Einzelschritt: Unterstreichung weg (**Abnahme**) |
+| AV15 | Zugriffsverletzung in der RTL (z. B. `TList.Get` ohne Debug-DCUs) | Leiste nur mit der Meldung, keine Erklärung, kein Hänger |
+| AV16 | `navigation.dataFlow` aus bzw. `debug.evaluateWindow` aus | Der jeweilige Knopf fehlt |
+| AV17 | Server beendet, AV1 | „Ursache nicht eindeutig“ · „Atlas-Server antwortet nicht“ |
+| AV18 | Dialog der IDE mit „Fortsetzen“ schließen | Keine Erklärung, keine Auswertung danach |
+| AV19 | `debug.explainAccessViolation` aus (Schnellschalter), AV1 | Leiste zeigt nur die Meldung, keine Auswertung im Diagnoselog, keine Unterstreichung (**Abnahme**) |
+| AV20 | Methode auf nil-Referenz mit implizitem Self (`FDaten.Count` in einer Methode, `Self = nil`) | „`Self` ist nil“, kein Knopf „Wo wird … zugewiesen?“ |
+| AV21 | Helles und dunkles Thema | Ergebniszeile, ✓/✗, Knöpfe und Unterstreichung gut lesbar |
+
+## Fenster „Auswerten“ (#784)
+
+Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert, Diagnoselog an. Unit mit `TKunde = class` (Felder `FName: string`, `FUmsatz: Integer`, Eigenschaft `Name` mit Getter), Record `TPunkt = record X, Y: Integer; end`, eine Methode von `TKunde` mit lokalen Variablen `Liste: TStringList` (drei Zeilen), `Zahl: Integer`, `Json: string` (`'{"a":1}'`), `P: TPunkt`, `Werte: array[0..2] of Integer`; in einer Schleife ändert sich `Zahl`. Haltepunkt in der Schleife. Win32 und Win64 je einmal.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AW1 | Programm am Haltepunkt, Cursor auf `Zahl`, Strg+F7 | Fenster „Atlas: Auswerten“ öffnet (angedockt oder schwebend), Eingabefeld enthält `Zahl` markiert (**Abnahme**) |
+| AW2 | AW1, Enter | Zeile `Zahl = 3` (Wert am Halt); Feld leer für den nächsten Ausdruck |
+| AW3 | `Self`, Enter, Zeile aufklappen | Kinder `FName`, `FUmsatz` (Felder aus dem Index) mit Werten; `Name` (Eigenschaft) fehlt (**Abnahme**) |
+| AW4 | „Nebenwirkungen erlauben“ an | Alle Werte neu ausgewertet, unter `Self` jetzt auch `Name`; wieder aus: `Name` fällt weg |
+| AW5 | F9 bis zum nächsten Halt | `Zahl` neu und in der Warnfarbe; unveränderte Werte normal; `FUmsatz` geändert → markiert (**Abnahme**) |
+| AW6 | `P` und `Werte` hinzufügen, aufklappen | `X`, `Y` bzw. `[0]`, `[1]`, `[2]` mit Werten |
+| AW7 | Server beenden, `Self` entfernen und neu hinzufügen, aufklappen | Kinder aus dem Ergebnis-String (`FName = 'Meier'`, …), kein Hänger |
+| AW8 | `Liste` hinzufügen, wählen, Ansicht „Zeilen“ | Unten die drei Zeilen der Liste untereinander (**Abnahme**) |
+| AW9 | Ausdruck mit Steuerzeichen (`'a'#9'b'#13#10'c'`), Ansicht „Text“ | `a→b␍␊` und Umbruch, `c` |
+| AW10 | `Json` wählen, Ansicht „JSON“; dann `Zahl`, „Hex“; dann `Json`, „Hex“ | Eingerücktes JSON; `$00000003 (3)`; Hinweis „Diese Ansicht passt nicht zum Wert“ und der Text |
+| AW11 | `Zahl` wählen, „Ändern …“ (oder F2), `42`, OK | Zeile zeigt `Zahl = 42`; F8: Programm rechnet mit 42 (**Abnahme**) |
+| AW12 | „Ändern …“ mit `abc` für `Zahl` | Meldung „Ändern von Zahl fehlgeschlagen: …“, Wert unverändert |
+| AW13 | Im Eingabefeld `FUmsatz`, Strg+Enter | Zeile fett (festgeheftet); IDE neu starten, Projekt öffnen, Fenster öffnen: Zeile wieder da; anderes Projekt: nicht da (**Abnahme**) |
+| AW14 | Festgeheftete Zeile wählen, „Lösen“; Feld `FName` unter `Self` wählen, „Festheften“ | Zeile nicht mehr fett; `Self.FName` als eigene festgeheftete Zeile |
+| AW15 | Diagnoselog nach dem Start | „Auswerten: Strg+F7 über die IDE-Aktion ‹Name›“; Namen im Issue notieren (**Studie**) |
+| AW16 | Umschalt+Strg+F7 bzw. Menü Start › Auswerten/Ändern mit Umschalt-Klick; Befehl „Atlas: Auswerten/Ändern (IDE-Dialog)“ | Dialog „Auswerten/Ändern“ der IDE |
+| AW17 | `debug.evaluateWindow.replaceCtrlF7` aus, Strg+F7 | Dialog der IDE; Atlas-Fenster über das Menü weiter erreichbar |
+| AW18 | `debug.evaluateWindow` aus (Schnellschalter) | Fenster weg, Menüeintrag und Befehle unsichtbar, Strg+F7 öffnet den Dialog der IDE (**Abnahme**) |
+| AW19 | Im leeren Eingabefeld Pfeil runter | Menü mit den zuletzt hinzugefügten Ausdrücken, neuester zuerst, höchstens 50; Klick setzt ihn ins Feld |
+| AW20 | Im Eingabefeld `Ku` tippen (`debug.completionInDialogs` an) | Atlas-Popup wie in „Auswerten/Ändern“ (#538), auch angedockt; Pfeil runter im leeren Feld zeigt das Verlaufsmenü des Fensters, nicht das Popup |
+| AW21 | Entf auf einer Zeile bzw. auf einem Feld; Programm beenden | Zeile entfernt (auf dem Feld die ganze Zeile); nach dem Ende „‹Programm nicht angehalten›“ |
+| AW22 | Dunkles und helles Thema | Baum, Ansicht und Knöpfe gut lesbar, geänderte Werte deutlich |
+
+## Werte im Editor beim Debuggen (#508)
+
+Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testunit mit einer Methode wie im Test `Atlas.Common.Lsp.InlineValues.Tests` (Felder `FCount`, `FName`, Parameter `Anzahl`, lokale `Summe`, `for var I`, `with Andere do`, Aufruf `GetSize`, Eigenschaft `Size`, eine `TDateTime`-Variable). *Tools › Optionen › Atlas › Debuggen* „Werte im Editor beim Debuggen“ an. Win32 und Win64.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IV1 | Haltepunkt in der Schleife, F9 | Am Ende der Schleifenzeile gedimmt `Summe = …, I = 0`; darüber `Summe = …, Anzahl = …` usw. bis zum Routinenanfang (**Abnahme**) |
+| IV2 | Wie IV1, dann F8 | `I = 1` (und `Summe`) in der Warnfarbe, gleich gebliebene Werte gedimmt (**Abnahme**) |
+| IV3 | Zeile mit `GetSize` und `Size` | Kein Wert für `GetSize` oder `Size`; Haltepunkt in `GetSize` wird dabei nie getroffen (**Abnahme**: kein Aufruf) |
+| IV4 | Zeile `Andere.FCount := 1;` und `with Andere do FCount := …` | Wert für `Andere`, keiner für `FCount` in diesen Zeilen |
+| IV5 | Variable `TDateTime` mit Datum und Uhrzeit | `Datum = 2026-10-23 14:05:00` statt einer Gleitkommazahl; reines Datum ohne Uhrzeit |
+| IV6 | String mit 100 Zeichen | Wert gekürzt mit „ …“ |
+| IV7 | Zeile mit mehr als 5 Bezeichnern | Höchstens 5 Werte; nach `debug.inlineValuesPerLine` = 2 und neuem Halt höchstens 2 |
+| IV8 | F9 (Programm läuft weiter) | Werte verschwinden sofort (**Abnahme**) |
+| IV9 | Schleife mit 20 Variablen, F8 zehnmal schnell hintereinander | Schritte fühlen sich nicht langsamer an als mit ausgeschalteter Einstellung (höchstens 100 ms pro Schritt, **Abnahme**) |
+| IV10 | Halt in RTL-Code ohne Quelltext (F7 in `IntToStr` ohne Debug-DCUs) | Keine Werte, keine Meldung |
+| IV11 | Zeile im Editor während des Halts ändern | Werte der geänderten Zeile verschwinden, andere bleiben |
+| IV12 | Win64 (LLDB): IV1, IV2 und F8 direkt nach dem Halt | Werte kommen (verzögert); kein F8 geht verloren, die Debug-Sitzung meldet jeden Halt |
+| IV13 | Schnellschalter „Werte im Editor beim Debuggen“ aus, dann F8 | Keine Werte, keine Anfrage an den Server (Diagnoseprotokoll), Verhalten wie ohne Atlas (**Abnahme**) |
+| IV14 | Server beendet, Halt | Keine Werte, keine Fehlermeldung |

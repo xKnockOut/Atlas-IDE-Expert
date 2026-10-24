@@ -253,6 +253,21 @@ begin
     Assert.AreEqual('Limit', Entry.Options[0].Description);
     Assert.AreEqual('["Count"]', Entry.Options[1].DefaultJson);
     Assert.AreEqual('', Entry.Options[2].DefaultJson);
+    Assert.AreEqual(0, Integer(Length(Entry.Options[0].Columns)));
+  finally
+    Catalog.Free;
+  end;
+  // Tabelle (#1133): Spalten mit Listen.
+  Catalog := TRuleCatalog.Create('{"rules":[{"id":"t","category":"code-smell","severity":"warning","options":[' +
+    '{"name":"symbols","type":"object-list","columns":[{"name":"name"},{"name":"units","list":true}],' +
+    '"default":[],"description":"Table"}]}]}');
+  try
+    Assert.IsTrue(Catalog.TryFind('t', Entry));
+    Assert.AreEqual('object-list', Entry.Options[0].Kind);
+    Assert.AreEqual(2, Integer(Length(Entry.Options[0].Columns)));
+    Assert.AreEqual('units', Entry.Options[0].Columns[1].Name);
+    Assert.IsFalse(Entry.Options[0].Columns[0].List);
+    Assert.IsTrue(Entry.Options[0].Columns[1].List);
   finally
     Catalog.Free;
   end;
@@ -361,6 +376,11 @@ begin
     '"type":"float"}]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","options":[{"type":"integer"}]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","options":{"name":"a"}}]}');
+  // object-list braucht Spalten mit Namen (#1133).
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","options":[{"name":"a",' +
+    '"type":"object-list"}]}]}');
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","options":[{"name":"a",' +
+    '"type":"object-list","columns":[{"list":true}]}]}]}');
 end;
 
 procedure TRuleCatalogTests.OverlayTranslatesOptionDescriptions;

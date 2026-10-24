@@ -15,6 +15,11 @@
 // redundant-jump (#1141): Beispiel aus dem Issue mit Korrektur, Continue am
 // Ende (auch im letzten if-Zweig, repeat, anonyme Methode), stille Fälle
 // (Exit(Wert), innere Blöcke, try, Marke, Direktiven), Abschalten.
+// loop-runs-at-most-once (#1131): Beispiel aus dem Issue, Schleifenarten und
+// Sprünge, alle Wege (if/else, case/else, try), stille Fälle (Weg ohne Sprung,
+// Continue, innere Schleife, anonyme Methode, Behandler ohne Sprung, case ohne
+// else, TMonitor.Exit), bedingte Direktiven, Option allowFirstElement,
+// Abschalten.
 
 interface
 
@@ -80,6 +85,25 @@ type
     procedure ContinueAtEndOfLoop;
     [Test]
     procedure SilentCases;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TLoopRunsAtMostOnceTests = class
+  public
+    [Test]
+    procedure IssueExample;
+    [Test]
+    procedure LoopKindsAndJumps;
+    [Test]
+    procedure AllPathsLeave;
+    [Test]
+    procedure SomePathContinuesIsSilent;
+    [Test]
+    procedure ConditionalDirectivesAreSilent;
+    [Test]
+    procedure AllowFirstElementOption;
     [Test]
     procedure OffAndExclude;
   end;
@@ -520,10 +544,135 @@ begin
     '{"rules": {"redundant-jump": {"exclude": ["Source/*.pas"]}}}', 'Source/Import.pas'))));
 end;
 
+{ TLoopRunsAtMostOnceTests }
+
+function OnceFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TLoopRunsAtMostOnceRule.Create, ASource, AConfig, APath);
+end;
+
+function OnceFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := OnceFindings(ASource, '', '');
+end;
+
+/// <summary>Methode TSuche.Finden mit den Anweisungen AStatements.</summary>
+function Suche(const AStatements: string): string;
+begin
+  Result := 'unit Suche;'#10'interface'#10'type'#10'  TKunde = class'#10'    Id: Integer;'#10'  end;'#10 +
+    '  TSuche = class'#10'    FKunden: TArray<TKunde>;'#10'    function Finden(AId: Integer): TKunde;'#10 +
+    '  end;'#10'implementation'#10'procedure Fehler;'#10'begin'#10'  raise Exception.Create(''x'');'#10'end;'#10 +
+    'function TSuche.Finden(AId: Integer): TKunde;'#10'var'#10'  mKunde: TKunde;'#10'  I: Integer;'#10 +
+    'begin'#10'  Result := nil;'#10 + AStatements + 'end;'#10'end.';
+end;
+
+procedure TLoopRunsAtMostOnceTests.IssueExample;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := OnceFindings(Suche('  for mKunde in FKunden do'#10'  begin'#10'    if mKunde.Id = AId then'#10 +
+    '      Result := mKunde;'#10'    Exit;'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(LoopRunsAtMostOnceRuleId, mFound[0].RuleId);
+  Assert.AreEqual('Jeder Durchlauf endet mit Exit: Die Schleife prüft nur das erste Element von FKunden. ' +
+    'Gehört Exit in den if-Zweig?', mFound[0].Message);
+  Assert.AreEqual(21, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(5, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+end;
+
+procedure TLoopRunsAtMostOnceTests.LoopKindsAndJumps;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := OnceFindings(Suche('  for I := 0 to 9 do'#10'  begin'#10'    Inc(AId);'#10'    Break;'#10'  end;'#10 +
+    '  while AId > 0 do'#10'    raise Exception.Create(''x'');'#10 +
+    '  repeat'#10'    Dec(AId);'#10'    Fehler;'#10'  until AId = 0;'#10 +
+    '  while AId > 0 do'#10'    Halt;'#10));
+  Assert.AreEqual(4, Integer(Length(mFound)));
+  Assert.AreEqual('Jeder Durchlauf endet mit Break: Die Schleife läuft höchstens einmal.', mFound[0].Message);
+  Assert.AreEqual('Jeder Durchlauf endet mit raise: Die Schleife läuft höchstens einmal.', mFound[1].Message);
+  Assert.AreEqual('Jeder Durchlauf endet mit Fehler: Die Schleife läuft genau einmal.', mFound[2].Message);
+  Assert.AreEqual('Jeder Durchlauf endet mit Halt: Die Schleife läuft höchstens einmal.', mFound[3].Message);
+end;
+
+procedure TLoopRunsAtMostOnceTests.AllPathsLeave;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // if mit else, case mit else, try … finally, try … except mit Sprung im Behandler.
+  mFound := OnceFindings(Suche('  for mKunde in FKunden do'#10'    if mKunde.Id = AId then'#10 +
+    '      Exit(mKunde)'#10'    else'#10'      Break;'#10 +
+    '  for I := 0 to 9 do'#10'    case I of'#10'      0: Exit;'#10'    else'#10'      Exit;'#10'    end;'#10 +
+    '  for I := 0 to 9 do'#10'    try'#10'      Inc(AId);'#10'    finally'#10'      Exit;'#10'    end;'#10 +
+    '  for I := 0 to 9 do'#10'    try'#10'      Exit;'#10'    except'#10'      Exit;'#10'    end;'#10));
+  Assert.AreEqual(4, Integer(Length(mFound)));
+  Assert.AreEqual('Jeder Durchlauf endet mit einem Sprung: Die Schleife prüft nur das erste Element von ' +
+    'FKunden.', mFound[0].Message);
+  Assert.AreEqual('Jeder Durchlauf endet mit Exit: Die Schleife läuft höchstens einmal.', mFound[1].Message);
+end;
+
+procedure TLoopRunsAtMostOnceTests.SomePathContinuesIsSilent;
+begin
+  // if ohne else, Sprung nur in einem Zweig, Continue, Break nur in innerer Schleife, Exit in anonymer Methode,
+  // Behandler ohne Sprung, case ohne else, goto.
+  TRuleAssert.Silent(TLoopRunsAtMostOnceRule.Create, Suche(
+    '  for mKunde in FKunden do'#10'    if mKunde.Id = AId then'#10'      Exit(mKunde);'#10 +
+    '  for mKunde in FKunden do'#10'    if mKunde.Id = AId then'#10'      Exit(mKunde)'#10'    else'#10 +
+    '      Inc(I);'#10 +
+    '  for I := 0 to 9 do'#10'  begin'#10'    if I = AId then'#10'      Continue;'#10'    Exit;'#10'  end;'#10 +
+    '  for I := 0 to 9 do'#10'    while AId > 0 do'#10'    begin'#10'      Dec(AId);'#10'      if AId = 3 then'#10 +
+    '        Break;'#10'    end;'#10 +
+    '  for I := 0 to 9 do'#10'    TThread.Queue(nil, procedure begin Exit; end);'#10 +
+    '  for I := 0 to 9 do'#10'    try'#10'      Exit;'#10'    except'#10'      Inc(AId);'#10'    end;'#10 +
+    '  for I := 0 to 9 do'#10'    case I of'#10'      0: Exit;'#10'    end;'#10 +
+    '  for I := 0 to 9 do'#10'  begin'#10'    TMonitor.Enter(Self);'#10'    try'#10'      Inc(AId);'#10 +
+    '    finally'#10'      TMonitor.Exit(Self);'#10'    end;'#10'  end;'#10));
+end;
+
+procedure TLoopRunsAtMostOnceTests.ConditionalDirectivesAreSilent;
+begin
+  TRuleAssert.Silent(TLoopRunsAtMostOnceRule.Create, Suche('  for mKunde in FKunden do'#10'  begin'#10 +
+    '    {$IFDEF ERSTER}'#10'    Exit(mKunde);'#10'    {$ELSE}'#10'    Inc(AId);'#10'    {$ENDIF}'#10'  end;'#10));
+end;
+
+procedure TLoopRunsAtMostOnceTests.AllowFirstElementOption;
+var
+  mSource: string;
+begin
+  mSource := Suche('  for mKunde in FKunden do'#10'  begin'#10'    Result := mKunde;'#10'    Exit;'#10'  end;'#10 +
+    '  for mKunde in FKunden do'#10'    Exit(mKunde);'#10 +
+    '  for mKunde in FKunden do'#10'  begin'#10'    if mKunde.Id = AId then'#10'      Result := mKunde;'#10 +
+    '    Exit;'#10'  end;'#10'  for I := 0 to 9 do'#10'    Exit;'#10 +
+    '  for mKunde in FKunden do'#10'  begin'#10'    if AId > 0 then'#10'      Exit(mKunde);'#10'    Exit(nil);'#10 +
+    '  end;'#10);
+  Assert.AreEqual(5, Integer(Length(OnceFindings(mSource, '', 'Suche.pas'))));
+  // Frei sind die for-in, deren Bedingungen mKunde nicht lesen; mit "if mKunde.Id = AId" bzw. bei for bleibt
+  // die Meldung.
+  Assert.AreEqual(2, Integer(Length(OnceFindings(mSource,
+    '{"rules": {"loop-runs-at-most-once": {"allowFirstElement": true}}}', 'Suche.pas'))));
+end;
+
+procedure TLoopRunsAtMostOnceTests.OffAndExclude;
+var
+  mSource: string;
+begin
+  mSource := Suche('  for I := 0 to 9 do'#10'    Exit;'#10);
+  Assert.AreEqual(1, Integer(Length(OnceFindings(mSource, '', 'Source/Suche.pas'))));
+  Assert.AreEqual(0, Integer(Length(OnceFindings(mSource, '{"rules": {"loop-runs-at-most-once": "off"}}',
+    'Source/Suche.pas'))));
+  Assert.AreEqual(0, Integer(Length(OnceFindings(mSource, '{"rules": {"group:find-bugs": "off"}}',
+    'Source/Suche.pas'))));
+  Assert.AreEqual(0, Integer(Length(OnceFindings(mSource,
+    '{"rules": {"loop-runs-at-most-once": {"exclude": ["Source/*.pas"]}}}', 'Source/Suche.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TConstantConditionTests);
   TDUnitX.RegisterTestFixture(TInfiniteLoopTests);
   TDUnitX.RegisterTestFixture(TLoopConditionUnchangedTests);
   TDUnitX.RegisterTestFixture(TRedundantJumpTests);
+  TDUnitX.RegisterTestFixture(TLoopRunsAtMostOnceTests);
 
 end.

@@ -129,6 +129,7 @@ uses
   Atlas.Core.Bookmarks.Quick,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Editor.Hide,
+  Atlas.IDE.Editor.ExitPoints,
   Atlas.IDE.Notifications.Service,
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.EditorToolbar.Service,
@@ -141,6 +142,8 @@ uses
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Editor.NewLine,
   Atlas.IDE.Editor.Unwrap,
+  Atlas.IDE.Debug.StepInto,
+  Atlas.IDE.Editor.ExpressionType,
   Atlas.IDE.Problems.Service;
 
 /// <summary>Zeilen verschieben bzw. duplizieren (#634), gesichert.</summary>
@@ -413,17 +416,32 @@ begin
             end);
           Result := True;
         end, False);
+    // Strg+H (#893): nur mit search.replace, sonst gehört die Taste der IDE.
+    if Settings.SearchReplace and (Settings.SearchReplaceKey <> 0) then
+      AddAttemptKey(TAtlasFeature.Search, Settings.SearchReplaceKey,
+        TAtlasStrings.Text(TAtlasTextId.SearchReplaceCommand),
+        function: Boolean
+        begin
+          TAtlasMainThread.ForceQueue(TAtlasFeature.EditorCommands,
+            procedure
+            begin
+              TAtlasGuard.Run(TAtlasFeature.Search, TAtlasIdeSearch.ShowReplace);
+            end);
+          Result := True;
+        end, False);
     if Settings.SearchNextKey <> 0 then
       AddAttemptKey(TAtlasFeature.Search, Settings.SearchNextKey, TAtlasStrings.Text(TAtlasTextId.SearchNextCommand),
         function: Boolean
         begin
-          Result := TAtlasIdeSearch.TryNext(False) or TAtlasIdeEditorCommands.TryFindSelection(False);
+          Result := TAtlasIdeExitPoints.TryJump(False) or TAtlasIdeSearch.TryNext(False) or
+            TAtlasIdeEditorCommands.TryFindSelection(False);
         end, False);
     if Settings.SearchPreviousKey <> 0 then
       AddAttemptKey(TAtlasFeature.Search, Settings.SearchPreviousKey, TAtlasStrings.Text(TAtlasTextId.SearchPreviousCommand),
         function: Boolean
         begin
-          Result := TAtlasIdeSearch.TryNext(True) or TAtlasIdeEditorCommands.TryFindSelection(True);
+          Result := TAtlasIdeExitPoints.TryJump(True) or TAtlasIdeSearch.TryNext(True) or
+            TAtlasIdeEditorCommands.TryFindSelection(True);
         end, False);
   end;
   AddKey(TAtlasFeature.Search, Settings.SearchMethodKey, TAtlasStrings.Text(TAtlasTextId.SearchInMethodCommand),
@@ -431,16 +449,18 @@ begin
     begin
       TAtlasIdeSearch.ShowInMethod;
     end);
-  // Markierung suchen: F3 bzw. Umschalt+F3 mit einzeiliger Markierung; sonst „Erneut suchen“ der IDE.
+  // Austrittspunkte (#698): F3 bzw. Umschalt+F3 springt reihum, solange die Hervorhebung steht und der Cursor auf
+  // einer ihrer Stellen liegt (dann gibt es keine Markierung). Markierung suchen: mit einzeiliger Markierung; sonst
+  // „Erneut suchen“ der IDE.
   AddAttemptKey(TAtlasFeature.EditorCommands, ShortCut(VK_F3, []), 'F3',
     function: Boolean
     begin
-      Result := TAtlasIdeEditorCommands.TryFindSelection(False);
+      Result := TAtlasIdeExitPoints.TryJump(False) or TAtlasIdeEditorCommands.TryFindSelection(False);
     end, False);
   AddAttemptKey(TAtlasFeature.EditorCommands, ShortCut(VK_F3, [ssShift]), 'Umschalt+F3',
     function: Boolean
     begin
-      Result := TAtlasIdeEditorCommands.TryFindSelection(True);
+      Result := TAtlasIdeExitPoints.TryJump(True) or TAtlasIdeEditorCommands.TryFindSelection(True);
     end, False);
   // Ausblenden am Element (#628): mit Rückfall, ohne Element behält die IDE die Taste (Strg+. = IDE Insight).
   if Settings.HideElementKey <> 0 then
@@ -543,6 +563,34 @@ begin
           begin
             TAtlasIdeUnwrap.Run;
           end);
+      end);
+  // Gezielt hineinspringen (#836): nur im angehaltenen Zustand; sonst geht die Taste an die IDE weiter.
+  if Settings.DebugStepIntoTarget then
+    AddAttemptKey(TAtlasFeature.Debugger, Settings.DebugStepIntoTargetKey,
+      TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand),
+      function: Boolean
+      begin
+        Result := TAtlasIdeStepInto.TryRun;
+      end);
+  // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T ist in der IDE „To-Do-Eintrag hinzufügen“; mit Vorrang
+  // übernommen. Aus = das Kürzel gehört der IDE.
+  if Settings.ExpressionType then
+    AddPriorityKey(TAtlasFeature.ExpressionType, Settings.ExpressionTypeKey,
+      TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand),
+      procedure
+      begin
+        TAtlasGuard.Run(TAtlasFeature.ExpressionType,
+          procedure
+          begin
+            TAtlasIdeExpressionType.Run;
+          end);
+      end, True);
+  // Sicher löschen (#716): aus = das Kürzel gehört der IDE.
+  if Settings.SafeDelete then
+    AddKey(TAtlasFeature.EditorCommands, Settings.SafeDeleteKey, TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand),
+      procedure
+      begin
+        TAtlasIdeEditorCommands.SafeDelete;
       end);
   // Units suchen (#777): aus = keine eigene Taste (die IDE behält Strg+F12 für ihren Dialog).
   if Settings.UnitSearchEnabled then

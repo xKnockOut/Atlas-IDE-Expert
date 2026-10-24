@@ -22,6 +22,8 @@
 //                        die Vorfahrenkette nicht bekannt, gelten Methoden von
 //                        Typen mit Interfaces als verwendet. Dazu Namen aus der
 //                        Formulardatei und Units mit Include-Dateien.
+//                        deadCode.keepAttributes und deadCode.keepPatterns
+//                        (#64) gelten auch hier.
 //                        Verwendung ist jedes Vorkommen des Namens als
 //                        Bezeichner außer Deklarationen und Methodenköpfen,
 //                        auch in inaktiven Zweigen. Korrektur: Deklaration
@@ -647,7 +649,8 @@ begin
   Occurrences := TDictionary<string, TList<TTextPosition>>.Create;
   Declared := TDictionary<string, TList<TTextPosition>>.Create;
   Seen := TDictionary<string, Boolean>.Create;
-  Considered := TConsideredUsed.Create(AContext.Index, Local, Tokens, nil, nil);
+  // deadCode.keepAttributes und deadCode.keepPatterns (#64).
+  Considered := TConsideredUsed.Create(AContext.Index, Local, Tokens, AContext.KeepAttributes, AContext.KeepPatterns);
   try
     for Token in Tokens do
       if Token.Kind = TPascalTokenKind.Identifier then

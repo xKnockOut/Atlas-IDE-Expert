@@ -13,7 +13,8 @@
 //   --rules <a,b>         nur diese Regeln
 //   --units <a,b>         nur diese Units (Name oder Glob-Muster für Pfade)
 //   --min-severity <S>    hint, info, warning, error
-//   --fail-on <S>         error (Standard), warning, never: ab welchem Treffer Exit-Code 1
+//   --fail-on <S>         error (Standard), warning, never: ab welchem Treffer Exit-Code 1;
+//                         mit --compare die Abweichungen (#1121, siehe unten)
 //   --source-root <Ordner> Wurzel der SARIF-Pfade (Standard: Git-Wurzel, sonst Ordner des Ziels)
 //   --profile <Name>      Regelprofil (#146), vor "profile" aus atlas.json
 //   --changed [<Basis>]   nur Dateien, die sich gegenüber der Merge-Base mit <Basis>
@@ -28,6 +29,15 @@
 //   --no-index            ohne Symbolindex prüfen (#1112); Regeln, die Typen anderer Units
 //                         oder der RTL brauchen, schweigen dann
 //   --index-cache <Ordner> Ordner der Index-Caches (Standard wie der Server, %LOCALAPPDATA%\Atlas)
+//
+// Architekturbericht (#1118):
+//   --architecture <Datei> Architekturübersicht des Ziels aus --check (Standard: aktueller Ordner)
+//                         als Markdown (.md) oder interaktive HTML-Seite (.html) schreiben,
+//                         als .json den Stand für einen späteren Vergleich (#1121)
+//   --compare <alt.json>  mit einem gespeicherten Stand vergleichen (#1121): Text des Vergleichs
+//                         auf stdout (bzw. --output), Exit-Code 1 bei einer Abweichung aus
+//                         --fail-on newCycle,newCrossLink,subsystemChange,centralGrowth
+//                         (Standard architecture.failOn, sonst newCycle)
 //
 // MCP-Modus (#48):
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
@@ -64,6 +74,9 @@ type
     MinSeverity: TRuleSeverity;
     /// <summary>Ab welchem Schweregrad Exit-Code 1 (#95); Standard Error.</summary>
     FailOn: TFailOn;
+    /// <summary>Wert von --fail-on wie angegeben; mit --compare die Abweichungsarten (#1121). '' = nicht angegeben.
+    /// </summary>
+    FailOnText: string;
     /// <summary>Quellwurzel für SARIF-Pfade (#95); '' = Git-Wurzel, sonst Ordner des Ziels.</summary>
     SourceRoot: string;
     /// <summary>Regelprofil für --check (#146); '' = aus atlas.json.</summary>
@@ -78,6 +91,10 @@ type
     NoIndex: Boolean;
     /// <summary>Ordner der Index-Caches für --check (#1112); '' = wie der Server.</summary>
     IndexCacheFolder: string;
+    /// <summary>--architecture: Zieldatei des Architekturberichts (#1118, .md oder .html); '' = keiner.</summary>
+    ArchitectureFile: string;
+    /// <summary>--compare: gespeicherter Architekturstand für den Vergleich (#1121); '' = keiner.</summary>
+    CompareFile: string;
     /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
@@ -113,7 +130,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Rules.Filter;
+  Atlas.Common.Rules.Filter,
+  Atlas.Common.Architecture.Comparison;
 
 { TCommandLineOptions }
 
@@ -205,6 +223,8 @@ var
   Level: TLogLevel;
   CheckFormat: TFindingsFormat;
   FailOn: TFailOn;
+  Kinds: TArchitectureFailKinds;
+  KindError: string;
   Severity: TRuleSeverity;
   ProcessId: Cardinal;
   Strings: TArray<TStringOption>;
@@ -220,7 +240,8 @@ begin
     StringOption('--check', @Result.CheckTarget), StringOption('--output', @Result.OutputFile),
     StringOption('--source-root', @Result.SourceRoot), StringOption('--profile', @Result.Profile),
     StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot),
-    StringOption('--index-cache', @Result.IndexCacheFolder)];
+    StringOption('--index-cache', @Result.IndexCacheFolder),
+    StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile)];
   Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
     FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),
     FlagOption('--include-uncommitted', @Result.IncludeUncommitted),
@@ -302,10 +323,14 @@ begin
     else if Name = '--fail-on' then
     begin
       if TakeValue then
+      begin
+        Result.FailOnText := Value;
         if TFindingsOutput.TryParseFailOn(Value, FailOn) then
           Result.FailOn := FailOn
-        else
+        // Abweichungsarten für --compare (#1121) prüft der Architekturbericht.
+        else if not TArchitectureComparer.ParseKindList(Value, Kinds, KindError) then
           AddWarning(Format('Unbekannter Wert "%s" für --fail-on, verwendet wird error', [Value]));
+      end;
     end
     else if Name = '--changed' then
     begin

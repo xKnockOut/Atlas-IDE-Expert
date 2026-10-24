@@ -328,6 +328,8 @@ begin
       Id := TAtlasTextId.SearchPreviousCommand;
     TAtlasKeyFunction.SearchMethod:
       Id := TAtlasTextId.SearchInMethodCommand;
+    TAtlasKeyFunction.SearchReplace:
+      Id := TAtlasTextId.SearchReplaceCommand;
     TAtlasKeyFunction.FormatCode:
       Id := TAtlasTextId.FormatCodeCommand;
     TAtlasKeyFunction.ToggleBlockComment:
@@ -354,6 +356,12 @@ begin
       Id := TAtlasTextId.NextBookmarkCommand;
     TAtlasKeyFunction.PreviousBookmark:
       Id := TAtlasTextId.PreviousBookmarkCommand;
+    TAtlasKeyFunction.StepIntoTarget:
+      Id := TAtlasTextId.StepIntoTargetCommand;
+    TAtlasKeyFunction.ExpressionType:
+      Id := TAtlasTextId.ExpressionTypeCommand;
+    TAtlasKeyFunction.SafeDelete:
+      Id := TAtlasTextId.SafeDeleteCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

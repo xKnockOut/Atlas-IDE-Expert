@@ -26,6 +26,8 @@ type
     procedure ForRangeAddsTryFinally;
     [Test]
     procedure FixWithOtherFiles;
+    [Test]
+    procedure UnitRelationsFixRunsClientCommand;
   end;
 
 implementation
@@ -114,6 +116,22 @@ begin
   Actions := TRuleCodeActions.ForFindings([Finding], Body, TTextRange.Create(5, 0, 5, 0));
   Assert.AreEqual('', Actions[0].Tag);
   Assert.IsFalse(Actions[0].IsPreferred);
+end;
+
+procedure TRuleCodeActionTests.UnitRelationsFixRunsClientCommand;
+var
+  Finding: TRuleFinding;
+  Actions: TArray<TCodeAction>;
+begin
+  // „Graph zeigen“ an einem Unit-Zyklus (#896): ohne Änderung, mit Client-Befehl.
+  Finding := Default(TRuleFinding);
+  Finding.RuleId := 'uses-cycle';
+  Finding.Range := TTextRange.Create(5, 2, 5, 3);
+  Finding.Fixes := [TRuleFix.UnitRelations('Graph zeigen (Unit-Beziehungen)')];
+  Actions := TRuleCodeActions.ForFindings([Finding], Body, TTextRange.Create(5, 0, 5, 0));
+  Assert.AreEqual('Graph zeigen (Unit-Beziehungen)', Actions[0].Title);
+  Assert.AreEqual(ShowUnitRelationsCommand, Actions[0].Command);
+  Assert.AreEqual(0, Integer(Length(Actions[0].Edits)));
 end;
 
 procedure TRuleCodeActionTests.FindingOutsideRangeIgnored;

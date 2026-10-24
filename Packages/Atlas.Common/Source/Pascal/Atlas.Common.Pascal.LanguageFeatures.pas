@@ -13,6 +13,11 @@
 // Binärliteral %1010               Delphi 11 Alexandria (BDS 22.0)
 // Mehrzeiliger String '''          Delphi 12 Athens (BDS 23.0)
 // If-Ausdruck, is not, not in      Delphi 13 Florence (BDS 37.0)
+//
+// Maßstab ist der Sprachstand (LanguageLevel, #1126): die ältere aus der
+// gewählten Version und minDelphiVersion des Projekts, damit Code, der auch
+// mit einer älteren Delphi-Version übersetzen muss, keine neueren Merkmale
+// bekommt.
 
 interface
 
@@ -44,6 +49,9 @@ type
     /// <summary>Wandelt "37.0" oder "37" in 37000 um; -1 bei ungültiger Angabe.</summary>
     class function ParseVersion(const AVersion: string): Integer; static;
     class function IsAvailable(AFeature: TLanguageFeature; const AVersion: string): Boolean; static;
+    /// <summary>Sprachstand (#1126): die ältere aus AVersion (gewählte Version) und AMinimum (minDelphiVersion
+    /// des Projekts). Eine ungültige oder leere Angabe zählt nicht; sind beide ungültig, ''.</summary>
+    class function LanguageLevel(const AVersion, AMinimum: string): string; static;
     /// <summary>Merkmale im Baum, die AVersion nicht kennt.</summary>
     class function Check(ATree: TSyntaxTree; const AVersion: string): TArray<TLanguageFeatureFinding>;
       overload; static;
@@ -133,6 +141,20 @@ var
 begin
   Version := ParseVersion(AVersion);
   Result := (Version < 0) or (Version >= ParseVersion(Minimums[AFeature]));
+end;
+
+class function TLanguageFeatures.LanguageLevel(const AVersion, AMinimum: string): string;
+var
+  Version, Minimum: Integer;
+begin
+  Version := ParseVersion(AVersion);
+  Minimum := ParseVersion(AMinimum);
+  if (Minimum >= 0) and ((Version < 0) or (Minimum < Version)) then
+    Result := Trim(AMinimum)
+  else if Version >= 0 then
+    Result := Trim(AVersion)
+  else
+    Result := '';
 end;
 
 procedure AddFinding(AList: TList<TLanguageFeatureFinding>; AFeature: TLanguageFeature;

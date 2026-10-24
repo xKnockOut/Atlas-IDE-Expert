@@ -12,6 +12,12 @@ type
     [Test]
     procedure MergesLayersPerKey;
     [Test]
+    procedure ReadsArchitectureSettings;
+    [Test]
+    procedure ReadsArchitectureComparisonSettings;
+    [Test]
+    procedure ReadsNavigationSymbolPath;
+    [Test]
     procedure ReadsAllSettings;
     [Test]
     procedure EmptyObjectGivesDefaults;
@@ -29,6 +35,11 @@ type
     procedure ReadsInlayHints;
     [Test]
     procedure ReadsCodeLens;
+    /// <summary>"references" (#1119): erschlossene Treffer an, Textfunde aus.</summary>
+    [Test]
+    procedure ReadsReferences;
+    [Test]
+    procedure ReadsNavigationImpact;
     [Test]
     procedure MetricsSwitchesOffMetricRules;
     [Test]
@@ -36,11 +47,16 @@ type
     [Test]
     procedure ChecksTodoKeywordsOption;
     [Test]
+    procedure ChecksForbiddenSymbolsOption;
+    [Test]
     procedure ReadsHints;
     [Test]
     procedure ReadsMcpDisabledTools;
     [Test]
     procedure ReadsMcpGlobalSettings;
+    /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
+    [Test]
+    procedure ChecksTasks;
     [Test]
     procedure ReadsStringLiteral;
     [Test]
@@ -82,6 +98,8 @@ type
     procedure PrefersNewFileOverLegacy;
     [Test]
     procedure ReadsDelphiProductNumbers;
+    [Test]
+    procedure ReadsMinDelphiVersion;
     [Test]
     procedure ReadsSortUses;
   end;
@@ -157,6 +175,92 @@ begin
   Assert.AreEqual(1252, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{"encoding": "cp1252"}',
     Issues).DefaultEncoding);
   Assert.AreEqual(1250, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{}', Issues).DefaultEncoding);
+end;
+
+procedure TConfigurationParserTests.ReadsArchitectureComparisonSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Architekturvergleich (#1121)
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual('', Settings.ArchitectureBaseline);
+  Assert.AreEqual('newCycle', string.Join(',', Settings.ArchitectureFailOn));
+  Settings := Parse('{"architecture": {"baseline": " Stand/main.json ", "failOn": ["newCycle", "centralGrowth"]}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('Stand/main.json', Settings.ArchitectureBaseline);
+  Assert.AreEqual('newCycle,centralGrowth', string.Join(',', Settings.ArchitectureFailOn));
+  Settings := Parse('{"architecture": {"failOn": []}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual(0, Integer(Length(Settings.ArchitectureFailOn)));
+  Settings := Parse('{"architecture": {"baseline": 3, "failOn": ["newCycle", "error"]}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.AreEqual('newCycle', string.Join(',', Settings.ArchitectureFailOn));
+  Parse('{"architecture": {"failOn": "newCycle"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{}', '{"architecture": {"baseline": "a.json", ' +
+    '"failOn": ["subsystemChange"]}}', Issues);
+  Assert.AreEqual('a.json', Settings.ArchitectureBaseline);
+  Assert.AreEqual('subsystemChange', string.Join(',', Settings.ArchitectureFailOn));
+end;
+
+procedure TConfigurationParserTests.ReadsNavigationSymbolPath;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Navigation.SymbolPath);
+  Settings := Parse('{"navigation": {"symbolPath": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Navigation.SymbolPath);
+  // Unbekannte Schlüssel sind Warnungen, falscher Typ ein Fehler.
+  Settings := Parse('{"navigation": {"symbolPath": 1, "x": 1}}', Issues);
+  Assert.IsTrue(Settings.Navigation.SymbolPath);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsFalse(Issues[1].IsError);
+  Parse('{"navigation": true}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Steht navigation in der Datei, gilt ihr Objekt ganz, auch mit den Vorgaben.
+  Settings := TConfigurationParser.ParseLayered('{"navigation": {"symbolPath": false}}', '{"navigation": {}}', Issues);
+  Assert.IsTrue(Settings.Navigation.SymbolPath);
+end;
+
+procedure TConfigurationParserTests.ReadsArchitectureSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Architekturübersicht (#1118)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.ArchitectureEnabled);
+  Assert.AreEqual('projectGroup', Settings.ArchitectureScope);
+  Assert.IsFalse(Settings.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(15, Settings.ArchitectureCentralUnits);
+  Assert.AreEqual(0, Integer(Length(Settings.ArchitectureExclude)));
+  Settings := Parse('{"architecture": {"enabled": false, "scope": "project", "includeLibraryUnits": true, ' +
+    '"centralUnits": 40, "exclude": ["Tests/**", "*.Tests"]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.ArchitectureEnabled);
+  Assert.AreEqual('project', Settings.ArchitectureScope);
+  Assert.IsTrue(Settings.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(40, Settings.ArchitectureCentralUnits);
+  Assert.AreEqual('Tests/**|*.Tests', string.Join('|', Settings.ArchitectureExclude));
+  Settings := Parse('{"architecture": {"enabled": 1, "scope": "alles", "centralUnits": 4, "exclude": "Tests", ' +
+    '"x": true}}', Issues);
+  Assert.AreEqual(5, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.ArchitectureEnabled);
+  Assert.AreEqual('projectGroup', Settings.ArchitectureScope);
+  Assert.AreEqual(15, Settings.ArchitectureCentralUnits);
+  Settings := Parse('{"architecture": {"centralUnits": 101}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Parse('{"architecture": []}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"architecture": {"centralUnits": 30}}',
+    '{"architecture": {"exclude": ["Demo/**"]}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Settings.ArchitectureExclude)));
 end;
 
 procedure TConfigurationParserTests.MergesLayersPerKey;
@@ -492,6 +596,36 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"completion": {"inheritedCall": 1}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Attribute nach "[" (#465)
+  Assert.IsTrue(Parse('{}', Issues).Completion.Attributes);
+  Assert.IsFalse(Parse('{"completion": {"attributes": false}}', Issues).Completion.Attributes);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"attributes": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Anonyme Methoden (#468)
+  Assert.IsTrue(Parse('{}', Issues).Completion.AnonymousMethods);
+  Assert.IsFalse(Parse('{"completion": {"anonymousMethods": false}}', Issues).Completion.AnonymousMethods);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"anonymousMethods": 0}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Herkunft in with-Blöcken (#481)
+  Assert.IsTrue(Parse('{}', Issues).Completion.WithOrigin);
+  Assert.IsFalse(Parse('{"completion": {"withOrigin": false}}', Issues).Completion.WithOrigin);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"withOrigin": "nein"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Exception-Klassen (#483)
+  Assert.IsTrue(Parse('{}', Issues).Completion.ExceptionClasses);
+  Assert.IsFalse(Parse('{"completion": {"exceptionClasses": false}}', Issues).Completion.ExceptionClasses);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"exceptionClasses": []}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Hinweis bei unvollständigem Code (#457)
+  Assert.IsTrue(Parse('{}', Issues).Completion.SyntaxNotice);
+  Assert.IsFalse(Parse('{"completion": {"syntaxNotice": false}}', Issues).Completion.SyntaxNotice);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"completion": {"syntaxNotice": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // Gleiche Namen aus verschiedenen Units (#475)
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameVariants);
   Assert.IsTrue(Parse('{}', Issues).Completion.SameNameInsert = TCompletionSameNameInsert.Prefix);
@@ -569,6 +703,17 @@ begin
   // Typ ausschreiben (#453)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.ExplicitType);
   Assert.IsFalse(Parse('{"refactoring": {"explicitType": false}}', Issues).Refactoring.ExplicitType);
+  // Schnellkorrekturen an Compilermeldungen (#549)
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.CompilerFixes);
+  Assert.IsFalse(Parse('{"refactoring": {"compilerFixes": false}}', Issues).Refactoring.CompilerFixes);
+  // Unit nicht gefunden: Suchpfad ergänzen (#550)
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MissingUnit);
+  Assert.IsFalse(Parse('{"refactoring": {"missingUnit": false}}', Issues).Refactoring.MissingUnit);
+  // Warnung gezielt abschalten (#531)
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.DisableWarning);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.DisableWarningReason);
+  Assert.IsFalse(Parse('{"refactoring": {"disableWarning": false}}', Issues).Refactoring.DisableWarning);
+  Assert.IsFalse(Parse('{"refactoring": {"disableWarningReason": false}}', Issues).Refactoring.DisableWarningReason);
   // #50: Extrahieren, case vervollständigen und with auflösen.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.Extract);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.CompleteCase);
@@ -623,6 +768,18 @@ begin
   Assert.IsFalse(Parse('{"refactoring": {"freeFields": false}}', Issues).Refactoring.FreeFields);
   Assert.AreEqual('freeAndNil', Parse('{"refactoring": {"freeFieldsStyle": "FreeAndNil"}}',
     Issues).Refactoring.FreeFieldsStyle);
+  // #712: Als Konstante deklarieren.
+  Assert.IsFalse(Parse('{}', Issues).Refactoring.SuggestConst);
+  Assert.IsTrue(Parse('{"refactoring": {"suggestConst": true}}', Issues).Refactoring.SuggestConst);
+  // #644: var-Block pflegen.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.VarBlock);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.VarBlockMerge);
+  Assert.AreEqual('usage', Parse('{}', Issues).Refactoring.VarBlockSort);
+  Assert.IsFalse(Parse('{"refactoring": {"varBlock": false}}', Issues).Refactoring.VarBlock);
+  Assert.IsFalse(Parse('{"refactoring": {"varBlockMerge": false}}', Issues).Refactoring.VarBlockMerge);
+  Assert.AreEqual('alpha', Parse('{"refactoring": {"varBlockSort": "Alpha"}}', Issues).Refactoring.VarBlockSort);
+  Assert.AreEqual('usage', Parse('{"refactoring": {"varBlockSort": "quer"}}', Issues).Refactoring.VarBlockSort);
+  Assert.AreEqual(1, Integer(Length(Issues)));
   // #715: Boolean umkehren.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.InvertBoolean);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.InvertBooleanIncludeDfm);
@@ -635,6 +792,52 @@ begin
     Issues).Refactoring.InvertBooleanFallbackPrefix);
   Assert.AreEqual('Verbose=Silent', string.Join(',', Parse('{"refactoring": {"invertBooleanAntonyms": ' +
     '{"Verbose": "Silent"}}}', Issues).Refactoring.InvertBooleanAntonyms));
+  // #646: if-Kette und case.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.IfCase);
+  Assert.IsFalse(Parse('{"refactoring": {"ifCase": false}}', Issues).Refactoring.IfCase);
+  // #656: Bedingungen umformen.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.Conditions);
+  Assert.IsFalse(Parse('{"refactoring": {"conditions": false}}', Issues).Refactoring.Conditions);
+  // #684: if-Anweisung und Bedingungsausdruck.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.ConditionalExpression);
+  Assert.IsFalse(Parse('{"refactoring": {"conditionalExpression": false}}', Issues).Refactoring.ConditionalExpression);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.NestedRoutine);
+  Assert.IsFalse(Parse('{"refactoring": {"nestedRoutine": false}}', Issues).Refactoring.NestedRoutine);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.PromoteVariable);
+  Assert.IsFalse(Parse('{"refactoring": {"promoteVariable": false}}', Issues).Refactoring.PromoteVariable);
+  // #680: anonyme Methode und Methode.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.AnonymousMethod);
+  Assert.IsFalse(Parse('{"refactoring": {"anonymousMethod": false}}', Issues).Refactoring.AnonymousMethod);
+  Assert.AreEqual('forward', Parse('{}', Issues).Refactoring.AnonymousMethodDeferredCapture);
+  Assert.AreEqual('fields', Parse('{"refactoring": {"anonymousMethodDeferredCapture": "Fields"}}',
+    Issues).Refactoring.AnonymousMethodDeferredCapture);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('forward', Parse('{"refactoring": {"anonymousMethodDeferredCapture": "felder"}}',
+    Issues).Refactoring.AnonymousMethodDeferredCapture);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // #686: Methode ohne Self.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MethodKind);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MethodKindMarker);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MethodKindStatic);
+  Assert.IsFalse(Parse('{"refactoring": {"methodKind": false}}', Issues).Refactoring.MethodKind);
+  Assert.IsFalse(Parse('{"refactoring": {"methodKindMarker": false}}', Issues).Refactoring.MethodKindMarker);
+  Assert.IsFalse(Parse('{"refactoring": {"methodKindStatic": false}}', Issues).Refactoring.MethodKindStatic);
+  // #681: Typ-Alias.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.TypeAlias);
+  Assert.IsFalse(Parse('{"refactoring": {"typeAlias": false}}', Issues).Refactoring.TypeAlias);
+  Assert.AreEqual('unit', Parse('{}', Issues).Refactoring.TypeAliasScope);
+  Assert.AreEqual('project', Parse('{"refactoring": {"typeAliasScope": "Project"}}', Issues).Refactoring.TypeAliasScope);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('unit', Parse('{"refactoring": {"typeAliasScope": "datei"}}', Issues).Refactoring.TypeAliasScope);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // #667: Aufzählung mit Namenstabelle.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.EnumTables);
+  Assert.IsFalse(Parse('{}', Issues).Refactoring.EnumTablesResourceStrings);
+  Assert.IsFalse(Parse('{"refactoring": {"enumTables": false}}', Issues).Refactoring.EnumTables);
+  Assert.IsTrue(Parse('{"refactoring": {"enumTablesResourceStrings": true}}',
+    Issues).Refactoring.EnumTablesResourceStrings);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
     '"propertyFromAccessorsSection": "private", "propertyFromAccessorsHideAccessors": "public"}}', Issues);
@@ -644,6 +847,65 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Parse('{"refactoring": {"invertBooleanAntonyms": {"Hidden": "1x"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // #664: Interface aus Klasse herauslösen.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.ExtractInterface);
+  Assert.IsFalse(Parse('{"refactoring": {"extractInterface": false}}', Issues).Refactoring.ExtractInterface);
+  Parse('{"refactoring": {"extractInterface": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // #713: Basisklasse herauslösen.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Refactoring.ExtractSuperclass);
+  Assert.AreEqual('sameUnit', Settings.Refactoring.ExtractSuperclassTarget);
+  Assert.AreEqual('Base', Settings.Refactoring.ExtractSuperclassNameSuffix);
+  Assert.AreEqual('move', Settings.Refactoring.ExtractSuperclassMethodMode);
+  Assert.AreEqual('protected', Settings.Refactoring.ExtractSuperclassRaiseVisibility);
+  Settings := Parse('{"refactoring": {"extractSuperclass": false, "extractSuperclassTarget": "newunit", ' +
+    '"extractSuperclassNameSuffix": "Custom", "extractSuperclassMethodMode": "Abstract", ' +
+    '"extractSuperclassRaiseVisibility": "strictprotected"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Refactoring.ExtractSuperclass);
+  Assert.AreEqual('newUnit', Settings.Refactoring.ExtractSuperclassTarget);
+  Assert.AreEqual('Custom', Settings.Refactoring.ExtractSuperclassNameSuffix);
+  Assert.AreEqual('abstract', Settings.Refactoring.ExtractSuperclassMethodMode);
+  Assert.AreEqual('strictProtected', Settings.Refactoring.ExtractSuperclassRaiseVisibility);
+  Parse('{"refactoring": {"extractSuperclassTarget": "otherUnit", "extractSuperclassNameSuffix": "1x", ' +
+    '"extractSuperclassMethodMode": "copy", "extractSuperclassRaiseVisibility": "public"}}', Issues);
+  Assert.AreEqual(4, Integer(Length(Issues)));
+  // #675: Mitglied verschieben.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MoveMember);
+  Assert.IsFalse(Parse('{"refactoring": {"moveMember": false}}', Issues).Refactoring.MoveMember);
+  Parse('{"refactoring": {"moveMember": 1}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // #717: Zugriffsmethode durch Feld ersetzen.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessor);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorEqualityCheck);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorBulk);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorDiagnostic);
+  Settings := Parse('{"refactoring": {"inlineAccessor": false, "inlineAccessorEqualityCheck": false, ' +
+    '"inlineAccessorBulk": false, "inlineAccessorDiagnostic": true}}', Issues);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessor);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorEqualityCheck);
+  Assert.IsFalse(Settings.Refactoring.InlineAccessorBulk);
+  Assert.IsTrue(Settings.Refactoring.InlineAccessorDiagnostic);
+  Parse('{"refactoring": {"inlineAccessorBulk": "ja"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // #716: Sicher löschen.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Refactoring.SafeDelete);
+  Assert.IsFalse(Settings.Refactoring.SafeDeletePreviewWhenUnused);
+  Assert.AreEqual('ask', Settings.Refactoring.SafeDeleteCascade);
+  Assert.AreEqual('ask', Settings.Refactoring.SafeDeleteIncludeOverrides);
+  Settings := Parse('{"refactoring": {"safeDelete": false, "safeDeletePreviewWhenUnused": true, ' +
+    '"safeDeleteCascade": "Always", "safeDeleteIncludeOverrides": "never"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Refactoring.SafeDelete);
+  Assert.IsTrue(Settings.Refactoring.SafeDeletePreviewWhenUnused);
+  Assert.AreEqual('always', Settings.Refactoring.SafeDeleteCascade);
+  Assert.AreEqual('never', Settings.Refactoring.SafeDeleteIncludeOverrides);
+  Settings := Parse('{"refactoring": {"safeDeleteCascade": "manchmal"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual('ask', Settings.Refactoring.SafeDeleteCascade);
   // Speicherbudget (#185)
   Assert.AreEqual(768, Parse('{}', Issues).MemoryBudgetMb, 'Vorgabe 768 MB (Rückmeldung 15.10.2026)');
   Assert.AreEqual(0, Parse('{"memoryBudgetMb": 0}', Issues).MemoryBudgetMb, '0 = unbegrenzt');
@@ -872,6 +1134,31 @@ begin
   Assert.IsFalse(Settings.McpGlobalSettings, 'Datei vor Editor');
 end;
 
+procedure TConfigurationParserTests.ChecksTasks;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"tasks": [{"name": "Delphi-12-Prüfung", "command": "pwsh", "args": ["Tools/Check-Delphi12.ps1"],' +
+    ' "cwd": "${projectDir}", "group": "check", "matcher": "pwsh", "key": "Ctrl+Alt+1", "timeoutSec": 300,' +
+    ' "beforeBuild": "block", "env": {"NO_COLOR": "1"}},' +
+    ' {"name": "Fremd", "command": "lint.exe", "matcher": {"regex": "^(?<file>[^:]+):(?<line>\\d+) (?<message>.*)$",' +
+    ' "severity": "warning", "severityMap": {"SCHLIMM": "error"}}}]}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'Beispiel aus dem Issue ohne Meldung');
+  Assert.IsTrue(Settings.Tasks.StartsWith('['), Settings.Tasks);
+  Settings := Parse('{"tasks": [{"name": "A", "command": "x", "group": "lint", "matcher": "eslint", "timeoutSec": -1,' +
+    ' "beforeBuild": "stop", "foo": 1}, {"name": "a", "command": ""}, {"command": "y"}, 3,' +
+    ' {"name": "M", "command": "z", "matcher": {"severityMap": {"X": "fatal"}}}]}', Issues);
+  // group, matcher, timeoutSec, beforeBuild, foo; Doppelname a und leerer command; ohne name; 3; Muster ohne regex
+  // und severityMap-Wert.
+  Assert.AreEqual(11, Integer(Length(Issues)));
+  Parse('{"tasks": {"name": "A"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  Settings := TConfigurationParser.ParseLayered('{"tasks": []}', '{"tasks": [{"name": "B", "command": "b"}]}',
+    Issues);
+  Assert.IsTrue(Settings.Tasks.Contains('"B"'), 'Datei vor Editor');
+end;
+
 procedure TConfigurationParserTests.ReadsMcpDisabledTools;
 var
   Settings: TServerSettings;
@@ -942,6 +1229,54 @@ begin
   Assert.IsTrue(Settings.CodeLens.Metrics);
 end;
 
+procedure TConfigurationParserTests.ReadsReferences;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.References.Inferred);
+  Assert.IsFalse(Settings.References.TextMatches);
+  Settings := Parse('{"references": {"inferred": false, "textMatches": true}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.References.Inferred);
+  Assert.IsTrue(Settings.References.TextMatches);
+  Settings := Parse('{"references": {"inferred": 1, "x": true}}', Issues);
+  Assert.IsTrue(Settings.References.Inferred);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsFalse(Issues[1].IsError);
+  Parse('{"references": true}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Die Datei ersetzt den Block aus dem Editor.
+  Settings := TConfigurationParser.ParseLayered('{"references": {"inferred": false}}', '{"references": {}}', Issues);
+  Assert.IsTrue(Settings.References.Inferred);
+end;
+
+procedure TConfigurationParserTests.ReadsNavigationImpact;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Navigation.Impact);
+  Assert.AreEqual(2, Settings.Navigation.ImpactDepth);
+  Settings := Parse('{"navigation": {"impact": false, "impactDepth": 4}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Navigation.Impact);
+  Assert.AreEqual(4, Settings.Navigation.ImpactDepth);
+  // Außerhalb von 1 bis 5 bleibt die Vorgabe; unbekannte Schlüssel sind Warnungen.
+  Settings := Parse('{"navigation": {"impactDepth": 9, "x": 1}}', Issues);
+  Assert.AreEqual(2, Settings.Navigation.ImpactDepth);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsFalse(Issues[1].IsError);
+  Parse('{"navigation": true}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"navigation": {"impactDepth": 5}}', '{"navigation": {}}', Issues);
+  Assert.AreEqual(2, Settings.Navigation.ImpactDepth);
+end;
+
 procedure TConfigurationParserTests.MetricsSwitchesOffMetricRules;
 var
   Settings: TServerSettings;
@@ -1002,6 +1337,58 @@ begin
   Parse('{"rules": {"xmldoc-mismatch": {"checkReturns": "nein"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.Contains(Issues[0].Message, '"checkReturns"');
+  // allowTypes von unrelated-class-cast (#1129).
+  Parse('{"rules": {"unrelated-class-cast": {"allowTypes": ["TEdit=TButton", "THackControl"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"unrelated-class-cast": {"allowTypes": "TEdit"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"allowTypes"');
+  // formatMethods von format-args (#56).
+  Parse('{"rules": {"format-args": {"formatMethods": ["TLogger.LogFmt", "Protokoll"]}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"format-args": {"formatMethods": "Protokoll"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"formatMethods"');
+  // checkFree von redundant-cast (#1139).
+  Parse('{"rules": {"redundant-cast": {"checkFree": false}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"redundant-cast": {"checkFree": "nein"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"checkFree"');
+  // allowFirstElement von loop-runs-at-most-once (#1131).
+  Parse('{"rules": {"loop-runs-at-most-once": {"allowFirstElement": true}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Parse('{"rules": {"loop-runs-at-most-once": {"allowFirstElement": "ja"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.Contains(Issues[0].Message, '"allowFirstElement"');
+end;
+
+procedure TConfigurationParserTests.ChecksForbiddenSymbolsOption;
+var
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // symbols von forbidden-symbol (#1133).
+  Parse('{"rules": {"forbidden-symbol": {"symbols": [{"name": "System.Write*", "kind": "routine", ' +
+    '"message": "Nur über ILogger", "replacement": "Log", "severity": "error", "units": ["App.*", "!App.Cli"], ' +
+    '"firstArgument": ["nil"], "allowFirstArgument": ["ErrOutput"]}, {"name": "Vcl.Forms.TApplication.' +
+    'ProcessMessages"}]}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Parse('{"rules": {"forbidden-symbol": {"symbols": {"name": "X"}}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"symbols"');
+  Parse('{"rules": {"forbidden-symbol": {"symbols": [{"kind": "type"}, "X", {"name": ""}]}}}', mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, 'ohne "name"');
+  Assert.Contains(mIssues[1].Message, 'ein Objekt');
+  Assert.Contains(mIssues[2].Message, '"name"');
+  Parse('{"rules": {"forbidden-symbol": {"symbols": [{"name": "X", "kind": "methode", "severity": "laut", ' +
+    '"units": "App", "message": 1, "farbe": "rot"}]}}}', mIssues);
+  Assert.AreEqual(5, Integer(Length(mIssues)));
+  Assert.Contains(mIssues[0].Message, '"kind"');
+  Assert.Contains(mIssues[1].Message, 'Schweregrad');
+  Assert.Contains(mIssues[2].Message, '"units"');
+  Assert.Contains(mIssues[3].Message, '"message"');
+  Assert.Contains(mIssues[4].Message, '"farbe"');
 end;
 
 procedure TConfigurationParserTests.ChecksTodoKeywordsOption;
@@ -1062,6 +1449,23 @@ begin
     '{"hints": {"xmlDocMaxLines": 5}}', Issues);
   Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(5, Settings.Hints.XmlDocMaxLines);
+  // Begründungen (#1123): Schalter, Marken, ADR-Ordner.
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.Hints.Rationale);
+  Assert.AreEqual(0, Integer(Length(Settings.Hints.RationaleMarkers)));
+  Assert.AreEqual('', Settings.Hints.AdrFolder);
+  Settings := Parse('{"hints": {"rationale": false, "rationaleMarkers": ["WHY", " PERF "], ' +
+    '"adrFolder": "doc/decisions"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.Hints.Rationale);
+  Assert.AreEqual('WHY PERF', string.Join(' ', Settings.Hints.RationaleMarkers));
+  Assert.AreEqual('doc/decisions', Settings.Hints.AdrFolder);
+  Settings := Parse('{"hints": {"rationale": "ja", "rationaleMarkers": ["WHY", ""], "adrFolder": 3}}', Issues);
+  Assert.AreEqual(3, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.Hints.Rationale);
+  Settings := Parse('{"hints": {"rationaleMarkers": "WHY"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.AreEqual(0, Integer(Length(Settings.Hints.RationaleMarkers)));
 end;
 
 procedure TServerSettingsTests.RuleSeverityFallsBackToDefault;
@@ -1143,6 +1547,22 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('19.0', Parse('{"delphiVersion": "10.2"}', Issues).DelphiVersion);
   Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+procedure TServerSettingsTests.ReadsMinDelphiVersion;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // #1126: älteste Version, mit der das Projekt übersetzen muss; Produktnummern wie bei delphiVersion.
+  Assert.AreEqual('', Parse('{}', Issues).MinDelphiVersion);
+  Assert.AreEqual('23.0', Parse('{"minDelphiVersion": "12"}', Issues).MinDelphiVersion);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('22.0', Parse('{"minDelphiVersion": "22.0"}', Issues).MinDelphiVersion);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('', Parse('{"minDelphiVersion": "7"}', Issues).MinDelphiVersion);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  // Die globale delphiVersion bleibt davon unberührt.
+  Assert.AreEqual('', Parse('{"minDelphiVersion": "12"}', Issues).DelphiVersion);
 end;
 
 procedure TServerSettingsTests.ReadsSortUses;

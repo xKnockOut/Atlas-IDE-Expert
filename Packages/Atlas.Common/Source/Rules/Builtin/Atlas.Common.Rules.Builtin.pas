@@ -37,10 +37,12 @@ uses
   Atlas.Common.Rules.Builtin.SlashCommands,
   Atlas.Common.Rules.Builtin.Metrics,
   Atlas.Common.Rules.Builtin.Todos,
+  Atlas.Common.Rules.Builtin.DebugDisplay,
   Atlas.Common.Rules.Builtin.Recursion,
   Atlas.Common.Rules.Builtin.Deprecated,
   Atlas.Common.Rules.Builtin.ForwardDeclarations,
   Atlas.Common.Rules.Builtin.FreeFields,
+  Atlas.Common.Rules.Builtin.TrivialAccessor,
   Atlas.Common.Rules.Builtin.Packages,
   Atlas.Common.Rules.Builtin.OpenTools,
   Atlas.Common.Rules.Builtin.Testing,
@@ -74,8 +76,14 @@ uses
   Atlas.Common.Rules.Builtin.TypeRestrictions,
   Atlas.Common.Rules.Builtin.Units,
   Atlas.Common.Rules.Builtin.PublicMembers,
+  Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Rules.Builtin.XmlDoc,
   Atlas.Common.Rules.Builtin.Naming,
+  Atlas.Common.Rules.Builtin.Casts,
+  Atlas.Common.Rules.Builtin.StringAddress,
+  Atlas.Common.Rules.Builtin.FormatArgs,
+  Atlas.Common.Rules.Builtin.ForbiddenSymbols,
+  Atlas.Common.Rules.Builtin.MethodWithoutSelf,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -108,10 +116,12 @@ begin
     RegisterSlashCommandRules(Registry);
     RegisterMetricRules(Registry);
     RegisterTodoRules(Registry);
+    RegisterDebugDisplayRules(Registry);
     RegisterRecursionRules(Registry);
     RegisterDeprecatedRules(Registry);
     RegisterForwardDeclarationRules(Registry);
     RegisterFreeFieldRules(Registry);
+    RegisterTrivialAccessorRules(Registry);
     RegisterPackageRules(Registry);
     RegisterOpenToolsRules(Registry);
     RegisterTestingRules(Registry);
@@ -145,8 +155,14 @@ begin
     RegisterTypeRestrictionRules(Registry);
     RegisterUnitRules(Registry);
     RegisterPublicMemberRules(Registry);
+    RegisterDeadCodeRules(Registry);
     RegisterXmlDocRules(Registry);
     RegisterNamingRules(Registry);
+    RegisterCastRules(Registry);
+    RegisterStringAddressRules(Registry);
+    RegisterFormatArgsRules(Registry);
+    RegisterForbiddenSymbolRules(Registry);
+    RegisterMethodWithoutSelfRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

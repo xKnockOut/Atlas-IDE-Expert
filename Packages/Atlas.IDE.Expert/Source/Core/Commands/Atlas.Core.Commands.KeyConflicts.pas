@@ -45,8 +45,9 @@ type
   /// Referenzen einblenden (#505), das Fenster „Atlas-Prüfung“ (#909) und die Abschnittssprünge zum interface- und
   /// implementation-Teil (#1101). Schnelle Lesezeichen (#1104): QuickBookmark (Strg+Umschalt+K), QuickBookmarkSet
   /// und QuickBookmarkJump (je eine Zeile für die Tasten 1–9, Key ist die Taste für 1) stehen mit eigener Wahl auch
-  /// auf der Seite „Tastenkonflikte“; NextBookmark und PreviousBookmark nur in der Übersicht. Neue Funktionen
-  /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht.</summary>
+  /// auf der Seite „Tastenkonflikte“; NextBookmark und PreviousBookmark nur in der Übersicht. Gezielt
+  /// hineinspringen (#836) nur in der Übersicht. Neue Funktionen
+  /// nur hinten anhängen: Die Ordnungszahl steckt in Kennungen der Übersicht. Sicher löschen (#716).</summary>
   TAtlasKeyFunction = (Palette, Check, Completion, Signature, QuickToggle, DiagnosticMode, CodeActions,
     ExpandSelection, ShrinkSelection, GoToImplementation, TypeDefinition, UndoChange, RedoChange, WelcomeSearch,
     MethodToggleUp, MethodToggleDown, TestUnit, UnitSearch, UnitSearchIde, Bookmark, GenerateMenu,
@@ -57,7 +58,7 @@ type
     MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
-    PreviousBookmark);
+    PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -251,6 +252,9 @@ begin
     Create(TAtlasKeyFunction.SearchNext, Word(ASettings.SearchNextKey), True, ASettings.SearchReplaceIde),
     Create(TAtlasKeyFunction.SearchPrevious, Word(ASettings.SearchPreviousKey), True, ASettings.SearchReplaceIde),
     Create(TAtlasKeyFunction.SearchMethod, Word(ASettings.SearchMethodKey), Shared),
+    // Suchen und ersetzen (#893): Strg+H wie Strg+F bewusst übernommen; mit search.replace aus gehört sie der IDE.
+    Create(TAtlasKeyFunction.SearchReplace, Word(ASettings.SearchReplaceKey), True,
+      ASettings.SearchReplaceIde and ASettings.SearchReplace),
     // Formatieren (#43): aus = keine Taste.
     Create(TAtlasKeyFunction.FormatCode, Word(ASettings.FormatCodeKey), Shared, ASettings.FormatCode),
     // Blockkommentar umschalten (#703): aus = Kürzel frei.
@@ -269,7 +273,15 @@ begin
     Create(TAtlasKeyFunction.SectionImplementation, Word(ASettings.GotoImplementationKey), Shared),
     // Nächstes/voriges Lesezeichen (#1104): Vorgabe ohne Taste.
     Create(TAtlasKeyFunction.NextBookmark, Word(ASettings.NextBookmarkKey), Shared, ASettings.QuickBookmarks),
-    Create(TAtlasKeyFunction.PreviousBookmark, Word(ASettings.PreviousBookmarkKey), Shared, ASettings.QuickBookmarks)];
+    Create(TAtlasKeyFunction.PreviousBookmark, Word(ASettings.PreviousBookmarkKey), Shared, ASettings.QuickBookmarks),
+    // Gezielt hineinspringen (#836): nur im angehaltenen Zustand, sonst geht die Taste an die IDE; aus = Kürzel frei.
+    Create(TAtlasKeyFunction.StepIntoTarget, Word(ASettings.DebugStepIntoTargetKey), Shared,
+      ASettings.DebugStepIntoTarget),
+    // Typ des markierten Ausdrucks (#689): Strg+Umschalt+T ist in der IDE „To-Do-Eintrag hinzufügen“; bewusst
+    // übernommen, darum mit Vorrang. Aus = die IDE behält die Taste.
+    Create(TAtlasKeyFunction.ExpressionType, Word(ASettings.ExpressionTypeKey), True, ASettings.ExpressionType),
+    // Sicher löschen (#716): aus = Kürzel frei.
+    Create(TAtlasKeyFunction.SafeDelete, Word(ASettings.SafeDeleteKey), Shared, ASettings.SafeDelete)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -403,6 +415,8 @@ begin
         ASettings.SearchPreviousKey := Entry.Key;
       TAtlasKeyFunction.SearchMethod:
         ASettings.SearchMethodKey := Entry.Key;
+      TAtlasKeyFunction.SearchReplace:
+        ASettings.SearchReplaceKey := Entry.Key;
       TAtlasKeyFunction.FormatCode:
         ASettings.FormatCodeKey := Entry.Key;
       TAtlasKeyFunction.ToggleBlockComment:
@@ -438,6 +452,12 @@ begin
         ASettings.NextBookmarkKey := Entry.Key;
       TAtlasKeyFunction.PreviousBookmark:
         ASettings.PreviousBookmarkKey := Entry.Key;
+      TAtlasKeyFunction.StepIntoTarget:
+        ASettings.DebugStepIntoTargetKey := Entry.Key;
+      TAtlasKeyFunction.ExpressionType:
+        ASettings.ExpressionTypeKey := Entry.Key;
+      TAtlasKeyFunction.SafeDelete:
+        ASettings.SafeDeleteKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;
@@ -512,6 +532,8 @@ begin
     TAtlasKeyOwner.Create(scShift or scAlt or $28, 'IDE: Spaltenblock nach unten markieren'), // VK_DOWN
     // Anweisung vervollständigen (#697) nimmt Strg+Umschalt+Enter mit Vorrang.
     TAtlasKeyOwner.Create(scCtrl or scShift or $0D, 'IDE: Referenzen suchen'), // VK_RETURN
+    // Typ des markierten Ausdrucks (#689) nimmt Strg+Umschalt+T mit Vorrang.
+    TAtlasKeyOwner.Create(scCtrl or scShift or Ord('T'), 'IDE: To-Do-Eintrag hinzufügen'),
     // Schnelle Lesezeichen (#1104): erster Teil der Faltungsakkorde.
     TAtlasKeyOwner.Create(scCtrl or scShift or Ord('K'), 'IDE: Faltung (Strg+Umschalt+K, dann U, E, A, T, O …)')];
   // Lesezeichen 0–9 der IDE; 0 bleibt immer bei ihr.

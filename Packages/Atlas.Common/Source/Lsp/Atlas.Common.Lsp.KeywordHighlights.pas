@@ -8,8 +8,11 @@
 // - Routinen: procedure/function/constructor/destructor mit begin und end,
 // - Direktiven: {$IF…}/{$ELSEIF}/{$ELSE}/{$ENDIF} und {$REGION}/{$ENDREGION},
 // - Ausstiegspunkte: auf Exit, raise, Abort, Halt (einstellbar) oder dem
-//   Routinennamen im Kopf alle Ausstiege samt end der Routine, ohne lokale
-//   Routinen und anonyme Methoden; auf Break/Continue Kopf und Ende der Schleife.
+//   Routinennamen im Kopf alle Ausstiege der Routine, ohne lokale Routinen und
+//   anonyme Methoden, das end nur, wenn ein Weg dort herausfällt; auf
+//   Break/Continue Kopf und Ende der Schleife samt ihrer Sprünge. Beides
+//   rechnet Atlas.Common.Semantics.ExitPoints (#698), dieselbe Analyse wie
+//   die Hervorhebung im Plugin.
 //
 // Blöcke werden über die Token mit einem Stapel gepaart, damit auch
 // unfertiger Code ohne Fehler bleibt: Fehlt ein Gegenstück, bleibt nur das
@@ -40,7 +43,8 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Semantics.ExitPoints;
 
 type
   TSyntaxKinds = set of TSyntaxKind;
@@ -420,94 +424,22 @@ begin
   ARanges := ARanges + [TTextRange.Create(AToken.StartPos, AToken.EndPos)];
 end;
 
-function InNested(ARoutine: TSyntaxNode; AOffset: Integer): Boolean;
-
+/// <summary>Austritte bzw. Schleifenteile über TExitPoints (#698): ohne Exceptions (except gehört zu den
+/// Blockpaaren), mit den Wörtern aus highlight.exitKeywords.</summary>
+function ExitRanges(ATree: TSyntaxTree; const APosition: TTextPosition;
+  const ASettings: THighlightSettings): TArray<TTextRange>;
 var
-  Node, Child: TSyntaxNode;
-  Index: Integer;
-begin
-  // Schleife statt Rekursion (Bericht M1): dem ersten Kind folgen, das AOffset enthält.
-  Result := False;
-  Node := ARoutine;
-  while Node <> nil do
-  begin
-    Child := nil;
-    for Index := 0 to Node.ChildCount - 1 do
-      if (AOffset >= Node[Index].StartOffset) and (AOffset < Node[Index].EndOffset) then
-      begin
-        Child := Node[Index];
-        Break;
-      end;
-    if (Child <> nil) and (Child.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
-      Exit(True);
-    Node := Child;
-  end;
-end;
-
-/// <summary>Ausstiegspunkte der Routine bzw. anonymen Methode ARoutine.</summary>
-function ExitPoints(ATree: TSyntaxTree; ARoutine: TSyntaxNode; const AKeywords: TArray<string>): TArray<TTextRange>;
-var
-  Tokens: TArray<TPascalToken>;
-  Block: TSyntaxNode;
-  Index, EndToken: Integer;
-  Token: TPascalToken;
+  Options: TExitPointOptions;
+  Found: TExitPointSet;
+  Point: TExitPoint;
 begin
   Result := nil;
-  Tokens := ATree.Tokens;
-  Block := ARoutine.FindChild(TSyntaxKind.Block);
-  if Block = nil then
-    Exit;
-  for Index := 0 to High(Tokens) do
-  begin
-    Token := Tokens[Index];
-    if Token.Offset >= Block.EndOffset then
-      Break;
-    if (Token.Offset < Block.StartOffset) or not (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) or
-      not MatchText(Token.Text, AKeywords) then
-      Continue;
-    // Foo.Exit ist kein Ausstieg.
-    if (Index > 0) and Tokens[Index - 1].IsSymbol('.') then
-      Continue;
-    if not InNested(Block, Token.Offset) then
-      AddToken(Result, Token);
-  end;
-  EndToken := LastKeywordBefore(Tokens, Block.StartOffset, Block.EndOffset, 'end');
-  if EndToken >= 0 then
-    AddToken(Result, Tokens[EndToken]);
-end;
-
-/// <summary>Kopf (und do) sowie Ende der Schleife ALoop.</summary>
-function LoopParts(ATree: TSyntaxTree; ALoop: TSyntaxNode): TArray<TTextRange>;
-var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
-  Body: TSyntaxNode;
-begin
-  Result := nil;
-  Tokens := ATree.Tokens;
-  Index := IndexOfOffset(Tokens, ALoop.StartOffset);
-  if Index >= 0 then
-    AddToken(Result, Tokens[Index]);
-  if ALoop.Kind = TSyntaxKind.RepeatStatement then
-  begin
-    Index := LastKeywordBefore(Tokens, ALoop.StartOffset, ALoop.EndOffset, 'until');
-    if Index >= 0 then
-      AddToken(Result, Tokens[Index]);
-    Exit;
-  end;
-  if ALoop.ChildCount = 0 then
-    Exit;
-  Body := ALoop[ALoop.ChildCount - 1];
-  // do vor dem Rumpf
-  Index := LastKeywordBefore(Tokens, ALoop.StartOffset, Body.StartOffset, 'do');
-  if Index >= 0 then
-    AddToken(Result, Tokens[Index]);
-  if Body.Kind = TSyntaxKind.Block then
-  begin
-    Index := LastKeywordBefore(Tokens, Body.StartOffset, Body.EndOffset, 'end');
-    if Index >= 0 then
-      AddToken(Result, Tokens[Index]);
-  end;
+  Options := TExitPointOptions.Default;
+  Options.Exceptions := False;
+  Options.Keywords := ASettings.ExitKeywords;
+  Found := TExitPoints.Find(ATree, nil, APosition, Options, nil, nil);
+  for Point in Found.Points do
+    Result := Result + [Point.Range];
 end;
 
 /// <summary>RoutineDecl mit Rumpf, in deren Kopf AOffset liegt.</summary>
@@ -604,7 +536,7 @@ begin
     if Routine = nil then
       Exit;
     if ASettings.ExitPoints then
-      ARanges := ByPosition(ExitPoints(ATree, Routine, ASettings.ExitKeywords));
+      ARanges := ByPosition(ExitRanges(ATree, APosition, ASettings));
     Exit(True);
   end;
   // Break und Continue: die Schleife
@@ -614,11 +546,7 @@ begin
     if Loop = nil then
       Exit;
     if ASettings.ExitPoints then
-    begin
-      ARanges := LoopParts(ATree, Loop);
-      AddToken(ARanges, Token);
-      ARanges := ByPosition(ARanges);
-    end;
+      ARanges := ByPosition(ExitRanges(ATree, APosition, ASettings));
     Exit(True);
   end;
   // Routinenname im Kopf einer Implementierung: Ausstiegspunkte
@@ -627,7 +555,7 @@ begin
     Routine := RoutineOfHeader(ATree.Root, Token.Offset);
     if (Routine = nil) or not SameText(Token.Text, ShortName(Routine.Name)) or not ASettings.ExitPoints then
       Exit;
-    ARanges := ByPosition(ExitPoints(ATree, Routine, ASettings.ExitKeywords));
+    ARanges := ByPosition(ExitRanges(ATree, APosition, ASettings));
     Exit(True);
   end;
   if Token.Kind = TPascalTokenKind.Directive then

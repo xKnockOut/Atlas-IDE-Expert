@@ -5,7 +5,9 @@
 // Desktop-Wechsel, Beenden) und versteckt sie beim Schließen über das X
 // samt Dock-Gastgeber. Ein Fenster gilt darum nur als brauchbar, wenn Form
 // UND Frame noch leben; sichtbar ist es nur, wenn auch alle Gastgeber
-// (Reiterseite, Dock-Fenster, Hauptfenster) sichtbar sind.
+// (Reiterseite, Dock-Fenster, Hauptfenster) sichtbar sind. Ein Fenster mit
+// fester Vorgabe (etwa „Atlas-Architektur“ rechts, #1118) wird nur beim
+// allerersten Anlegen dorthin gelegt; danach gilt der Desktop der IDE.
 
 {$SCOPEDENUMS ON}
 
@@ -31,6 +33,10 @@ type
     class function FrameUsable(AFormAlive, AFrameAlive: Boolean): Boolean; static;
     /// <summary>Wirklich sichtbar: Form sichtbar und jeder Gastgeber bis oben (Reihenfolge innen nach außen).</summary>
     class function Shown(AFormVisible: Boolean; const AHostsVisible: array of Boolean): Boolean; static;
+    /// <summary>Neu angelegtes, schwebendes Fenster an seinen Vorgabeplatz andocken: nur einmal (APlaced
+    /// merkt sich das) und nur, wenn das Ziel selbst angedockt ist. Ein Fenster, das der Desktop schon
+    /// angedockt wiederhergestellt hat, bleibt, wo es ist.</summary>
+    class function DockToDefault(ACreated, AFloating, APlaced, ATargetDocked: Boolean): Boolean; static;
   end;
 
 implementation
@@ -61,6 +67,11 @@ begin
   Result := AFormVisible;
   for Visible in AHostsVisible do
     Result := Result and Visible;
+end;
+
+class function TAtlasDockPlan.DockToDefault(ACreated, AFloating, APlaced, ATargetDocked: Boolean): Boolean;
+begin
+  Result := ACreated and AFloating and not APlaced and ATargetDocked;
 end;
 
 end.

@@ -20,6 +20,14 @@ type
     [Test]
     procedure ListsDiagnosticsWithLocation;
     [Test]
+    procedure HookDiagnosticsReportsWarningsAsHookOutput;
+    [Test]
+    procedure HookDiagnosticsIsEmptyForOtherFiles;
+    [Test]
+    procedure HookDiagnosticsIsEmptyWithoutFindings;
+    [Test]
+    procedure ParsesHookSeverity;
+    [Test]
     procedure ReportsMetrics;
     [Test]
     procedure ReportsTodosOfProjectFilesOnly;
@@ -86,6 +94,9 @@ const
     '  W := TWorker.Create;'#10 +
     '  W.Run;'#10 +
     'end;'#10 +
+    // Start wird verwendet, sonst meldet unused-declaration (#64) es bei check_code.
+    'initialization'#10 +
+    '  Start;'#10 +
     'end.';
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
@@ -194,6 +205,58 @@ begin
   Assert.Contains(Text, 'in 1 Dateien');
 end;
 
+procedure TMcpCodeToolsTests.HookDiagnosticsReportsWarningsAsHookOutput;
+var
+  Text: string;
+begin
+  Text := TMcpCodeTools.HookDiagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', 'C:\P\Kaputt.pas',
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := 'unit Kaputt;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10'  if then'#10'end;'#10'end.';
+      Result := True;
+    end, nil, nil, TRuleSeverity.Warning);
+  Assert.StartsWith('{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"', Text);
+  Assert.Contains(Text, 'C:\\P\\Kaputt.pas');
+  Assert.Contains(Text, '6:');
+end;
+
+procedure TMcpCodeToolsTests.HookDiagnosticsIsEmptyForOtherFiles;
+var
+  Read: Boolean;
+begin
+  Read := False;
+  Assert.AreEqual('', TMcpCodeTools.HookDiagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', 'C:\P\README.md',
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Read := True;
+      AText := 'if then';
+      Result := True;
+    end, nil, nil, TRuleSeverity.Warning));
+  Assert.IsFalse(Read, 'Andere Dateien liest hook_check gar nicht erst');
+end;
+
+procedure TMcpCodeToolsTests.HookDiagnosticsIsEmptyWithoutFindings;
+begin
+  Assert.AreEqual('', TMcpCodeTools.HookDiagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', 'C:\P\Gut.pas',
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := 'unit Gut;'#10'interface'#10'implementation'#10'end.';
+      Result := True;
+    end, nil, nil, TRuleSeverity.Error));
+end;
+
+procedure TMcpCodeToolsTests.ParsesHookSeverity;
+begin
+  Assert.IsTrue(TMcpCodeTools.ParseHookSeverity('') = TRuleSeverity.Warning);
+  Assert.IsTrue(TMcpCodeTools.ParseHookSeverity('Error') = TRuleSeverity.Error);
+  Assert.IsTrue(TMcpCodeTools.ParseHookSeverity('hint') = TRuleSeverity.Hint);
+  Assert.WillRaise(
+    procedure
+    begin
+      TMcpCodeTools.ParseHookSeverity('laut');
+    end, EMcpToolError);
+end;
+
 procedure TMcpCodeToolsTests.ReportsMetrics;
 var
   Text: string;
@@ -298,11 +361,13 @@ end;
 
 procedure TMcpCodeToolsTests.CheckCodeUsesProjectDefines;
 const
-  // Der WIN64-Zweig ist sonst sauber: Datei und Unit heißen gleich, X ruft sich nicht selbst auf.
+  // Der WIN64-Zweig ist sonst sauber: Datei und Unit heißen gleich, X ruft sich nicht selbst auf und wird im
+  // initialization-Teil verwendet (unused-declaration, #64).
   ZielFile = 'C:\P\Ziel.pas';
   Win64Unit =
     'unit Ziel;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10 +
-    '{$IFDEF WIN64}'#10'  Exit;'#10'{$ELSE}'#10'  if then'#10'{$ENDIF}'#10'end;'#10'end.';
+    '{$IFDEF WIN64}'#10'  Exit;'#10'{$ELSE}'#10'  if then'#10'{$ENDIF}'#10'end;'#10 +
+    'initialization'#10'  X;'#10'end.';
 var
   Tools: TMcpCodeTools;
   Win64: TCheckSourceFunc;

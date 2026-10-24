@@ -6,6 +6,8 @@
 //   - textDocument/prepareCallHierarchy, callHierarchy/incomingCalls, callHierarchy/outgoingCalls:
 //     aufrufende Routinen über die Referenzsuche, aufgerufene Routinen über die Namensauflösung
 //     der Bezeichner im Rumpf.
+// Eingehende Aufrufe tragen die Treffersicherheit der Referenzsuche (#1119):
+// Je Aufrufer und Einstufung ein Eintrag mit atlasConfidence.
 // Der Editor schickt das Element zurück; es wird über Datei, Name und Position der
 // Deklaration wiedergefunden.
 
@@ -22,6 +24,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Lsp.References;
 
 type
@@ -43,6 +47,12 @@ type
     Item: THierarchyItem;
     /// <summary>Aufrufstellen im Aufrufer.</summary>
     Ranges: TArray<TTextRange>;
+    /// <summary>Einstufung der Aufrufstellen (#1119); ausgehende Aufrufe sind immer sicher.</summary>
+    Confidence: TReferenceConfidence;
+    /// <summary>Aufruf über ein Interface bzw. eine virtuelle Methode (#1122), sonst None; mit der Zahl der
+    /// Umsetzungen, die er erreichen kann. Als atlasDispatch im LSP.</summary>
+    Dispatch: TReferenceReason;
+    Implementations: Integer;
   end;
 
   TLspHierarchies = class
@@ -60,6 +70,7 @@ type
     FReadText: TReferenceReadText;
     FFiles: TReferenceFilesProvider;
     FNamespaces: TArray<string>;
+    FSettingsFor: TReferenceSettingsProvider;
     function NewResolver: TNameResolver;
     function Prepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
       ACall: Boolean): TJSONValue;
@@ -87,17 +98,43 @@ type
     /// <summary>Routine oder Methode an APosition, als Deklaration.</summary>
     class function CallItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const APosition: TTextPosition; out AItem: THierarchyItem): Boolean; static;
+    /// <summary>Symbol jeder Art an APosition (Routine, Typ, Feld, Konstante …), als Deklaration (#1120).</summary>
+    class function SymbolItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+      const APosition: TTextPosition; out AItem: THierarchyItem): Boolean; static;
+    /// <summary>Routine mit Rumpf, in der APosition steht, als Aufrufer (procedure TFoo.Bar → Bar in TFoo). False
+    /// außerhalb von Routinen und im Kopf der Routine selbst, der deklariert und nicht aufruft.</summary>
+    class function CallerAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+      out AItem: THierarchyItem): Boolean; static;
+    /// <summary>Element zu einem Symbol aus dem Index.</summary>
+    class function ItemOf(const AUnitName, AFileName: string; const ASymbol: TIndexSymbol): THierarchyItem; static;
+    /// <summary>Ist das Element eine Routine oder Methode?</summary>
+    class function IsRoutine(const AItem: THierarchyItem): Boolean; static;
     class function IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AItem: THierarchyItem;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText;
-      const ACancellation: IJsonRpcCancellationToken = nil): TArray<THierarchyCall>; static;
+      const ACancellation: IJsonRpcCancellationToken = nil): TArray<THierarchyCall>; overload; static;
+    /// <summary>Wie oben, mit erschlossenen Aufrufen nach ASettings (#1119): je Aufrufer und Einstufung ein
+    /// Eintrag.</summary>
+    class function IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AItem: THierarchyItem;
+      const AFiles: TArray<string>; const AReadText: TReferenceReadText; const ASettings: TReferenceSettings;
+      const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>; overload; static;
     class function OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
-      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken = nil): TArray<THierarchyCall>; static;
+      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken = nil): TArray<THierarchyCall>; overload; static;
+    /// <summary>Wie oben; mit AIndex sind Aufrufe über ein Interface oder eine virtuelle Methode samt Zahl der
+    /// Umsetzungen gekennzeichnet (#1122).</summary>
+    class function OutgoingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AItem: THierarchyItem;
+      const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
+      overload; static;
+    /// <summary>Art des Aufrufs von AResolved (#1122): Interface_, Virtual oder None, dazu die Umsetzungen.</summary>
+    class function DispatchOf(const AIndex: ISymbolIndex; const AResolved: TResolvedSymbol;
+      out AImplementations: Integer): TReferenceReason; static;
     /// <summary>TypeHierarchyItem bzw. CallHierarchyItem. Der Aufrufer übernimmt das Objekt.</summary>
     class function ItemToJson(const AItem: THierarchyItem): TJSONObject; static;
     class function ItemFromJson(const AValue: TJSONValue; out AItem: THierarchyItem): Boolean; static;
     /// <summary>CallHierarchyIncomingCall[] (AKey 'from') bzw. OutgoingCall[] (AKey 'to').</summary>
     class function CallsToJson(const ACalls: TArray<THierarchyCall>; const AKey: string): TJSONArray; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
+    /// <summary>Einstellungen references.* je Datei; nicht gesetzt: Vorgaben.</summary>
+    property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
   end;
 
 implementation
@@ -110,6 +147,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.Internals.Cancellation;
 
 type
@@ -259,7 +297,11 @@ begin
   begin
     if Token.Offset >= ANode.EndOffset then
       Break;
-    if (Token.Offset >= ANode.StartOffset) and (Token.Kind = TPascalTokenKind.Identifier) and
+    // Erst ab dem Knoten: Ein Semikolon davor (unit X;) beendete die Suche sonst vor dem Kopf, und der Name
+    // fehlte in SelectionRange (#1120).
+    if Token.Offset < ANode.StartOffset then
+      Continue;
+    if (Token.Kind = TPascalTokenKind.Identifier) and
       (SameText(Token.Text, Result.Name) or SameText(Token.Text, '&' + Result.Name)) then
     begin
       // Bei TFoo.Bar das letzte Vorkommen im Kopf; der Name folgt dem Typ.
@@ -437,9 +479,56 @@ begin
     Result := DeclarationAt(ATree, AFileName, APosition, RoutineKinds, AItem);
 end;
 
+class function TLspHierarchies.SymbolItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const APosition: TTextPosition; out AItem: THierarchyItem): Boolean;
+var
+  Resolved: TResolvedSymbol;
+begin
+  Resolved := AResolver.Resolve(ATree, AFileName, APosition);
+  Result := Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local];
+  if Result then
+    AItem := FromResolved(Resolved)
+  else
+    Result := DeclarationAt(ATree, AFileName, APosition, [Low(TIndexSymbolKind)..High(TIndexSymbolKind)], AItem);
+end;
+
+class function TLspHierarchies.CallerAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
+  out AItem: THierarchyItem): Boolean;
+var
+  Routine, Header: TSyntaxNode;
+begin
+  Result := False;
+  Routine := EnclosingRoutine(ATree.Root, APosition);
+  if Routine = nil then
+    Exit;
+  // Der Kopf der Implementierung (procedure TFoo.Bar) ist kein Aufruf.
+  Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
+  if (Header <> nil) and RangeContains(NodeRange(Header), APosition) then
+    Exit;
+  AItem := RoutineItem(ATree, Routine, AFileName);
+  Result := True;
+end;
+
+class function TLspHierarchies.ItemOf(const AUnitName, AFileName: string; const ASymbol: TIndexSymbol): THierarchyItem;
+begin
+  Result := FromIndex(AUnitName, AFileName, ASymbol);
+end;
+
+class function TLspHierarchies.IsRoutine(const AItem: THierarchyItem): Boolean;
+begin
+  Result := AItem.SymbolKind in RoutineKinds;
+end;
+
 class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   const AItem: THierarchyItem; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
   const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
+begin
+  Result := IncomingCalls(AResolver, AIndex, AItem, AFiles, AReadText, TReferenceSettings.SureOnly, ACancellation);
+end;
+
+class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AItem: THierarchyItem; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
+  const ASettings: TReferenceSettings; const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
 var
   Text: string;
   Tree: TSyntaxTree;
@@ -448,7 +537,6 @@ var
   Keys: TDictionary<string, Integer>;
   Locations: TArray<TReferenceLocation>;
   Location: TReferenceLocation;
-  Routine, Header: TSyntaxNode;
   Caller: THierarchyItem;
   Call: THierarchyCall;
   Key: string;
@@ -464,7 +552,7 @@ begin
     Tree := TSyntaxTreeCache.Parse(Text);
     Trees.Add(UpperCase(AItem.FileName), Tree);
     Locations := TLspReferences.Find(AResolver, AIndex, Tree, AItem.FileName, AItem.SelectionRange.StartPos, False,
-      AFiles, AReadText, ACancellation);
+      AFiles, AReadText, ASettings, ACancellation);
     for Location in Locations do
     begin
       if Assigned(ACancellation) then
@@ -479,15 +567,10 @@ begin
         Tree := TSyntaxTreeCache.Parse(Text);
         Trees.Add(UpperCase(Location.FileName), Tree);
       end;
-      Routine := EnclosingRoutine(Tree.Root, Location.Range.StartPos);
-      if Routine = nil then
+      if not CallerAt(Tree, Location.FileName, Location.Range.StartPos, Caller) then
         Continue;
-      // Der Kopf der Implementierung (procedure TFoo.Bar) ist kein Aufruf.
-      Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
-      if (Header <> nil) and RangeContains(NodeRange(Header), Location.Range.StartPos) then
-        Continue;
-      Caller := RoutineItem(Tree, Routine, Location.FileName);
-      Key := ItemKey(Caller);
+      // Sichere und erschlossene Aufrufe desselben Aufrufers getrennt, damit der Editor sie unterscheidet.
+      Key := ItemKey(Caller) + '|' + Location.Confidence.LevelName + '|' + Location.Confidence.ReasonName;
       if Keys.TryGetValue(Key, Slot) then
       begin
         Call := Calls[Slot];
@@ -498,6 +581,15 @@ begin
       begin
         Call.Item := Caller;
         Call.Ranges := [Location.Range];
+        Call.Confidence := Location.Confidence;
+        // Erschlossen über Interface oder virtual: derselbe Aufruf erreicht auch andere Umsetzungen (#1122).
+        Call.Dispatch := TReferenceReason.None;
+        Call.Implementations := 0;
+        if Location.Confidence.Reason in [TReferenceReason.Interface_, TReferenceReason.Virtual] then
+        begin
+          Call.Dispatch := Location.Confidence.Reason;
+          Call.Implementations := Location.Confidence.Implementations;
+        end;
         Keys.Add(Key, Calls.Count);
         Calls.Add(Call);
       end;
@@ -512,6 +604,31 @@ end;
 
 class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AItem: THierarchyItem;
   const AReadText: TReferenceReadText; const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
+begin
+  Result := OutgoingCalls(AResolver, nil, AItem, AReadText, ACancellation);
+end;
+
+class function TLspHierarchies.DispatchOf(const AIndex: ISymbolIndex; const AResolved: TResolvedSymbol;
+  out AImplementations: Integer): TReferenceReason;
+begin
+  Result := TReferenceReason.None;
+  AImplementations := 0;
+  if (AIndex = nil) or (AResolved.Kind <> TResolvedKind.Symbol) or (AResolved.Container = '') or
+    not (AResolved.SymbolKind in RoutineKinds) then
+    Exit;
+  if TLspImplementations.IsInterfaceType(AIndex, AResolved.Container) then
+    Result := TReferenceReason.Interface_
+  else if AResolved.IsVirtual then
+    Result := TReferenceReason.Virtual
+  else
+    Exit;
+  AImplementations := TLspImplementations.ImplementationCount(AIndex, AResolved.Container, AResolved.Name,
+    Result = TReferenceReason.Interface_);
+end;
+
+class function TLspHierarchies.OutgoingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AItem: THierarchyItem; const AReadText: TReferenceReadText;
+  const ACancellation: IJsonRpcCancellationToken): TArray<THierarchyCall>;
 var
   Text: string;
   Tree: TSyntaxTree;
@@ -559,6 +676,8 @@ begin
       begin
         Call.Item := Callee;
         Call.Ranges := [TTextRange.Create(Token.StartPos, Token.EndPos)];
+        Call.Confidence := TReferenceConfidence.Sure;
+        Call.Dispatch := DispatchOf(AIndex, Resolved, Call.Implementations);
         Keys.Add(Key, Calls.Count);
         Calls.Add(Call);
       end;
@@ -626,7 +745,7 @@ end;
 class function TLspHierarchies.CallsToJson(const ACalls: TArray<THierarchyCall>; const AKey: string): TJSONArray;
 var
   Call: THierarchyCall;
-  Entry: TJSONObject;
+  Entry, Dispatch: TJSONObject;
   Ranges: TJSONArray;
   Range: TTextRange;
 begin
@@ -640,6 +759,16 @@ begin
     Entry.AddPair('fromRanges', Ranges);
     for Range in Call.Ranges do
       Ranges.AddElement(TLspPositions.RangeToJson(Range));
+    // Erweiterung (#1119); Editoren ohne Kenntnis übergehen das Feld.
+    Entry.AddPair('atlasConfidence', Call.Confidence.ToJson);
+    // Erweiterung (#1122): Aufruf über Interface bzw. virtuelle Methode mit der Zahl der Umsetzungen.
+    if Call.Dispatch <> TReferenceReason.None then
+    begin
+      Dispatch := TJSONObject.Create;
+      Dispatch.AddPair('kind', TReferenceConfidence.NameOfReason(Call.Dispatch));
+      Dispatch.AddPair('implementations', TJSONNumber.Create(Call.Implementations));
+      Entry.AddPair('atlasDispatch', Dispatch);
+    end;
   end;
 end;
 
@@ -741,14 +870,21 @@ function TLspHierarchies.HandleIncoming(const AParams: TJSONValue;
 var
   Resolver: TNameResolver;
   Files: TArray<string>;
+  Item: THierarchyItem;
+  Settings: TReferenceSettings;
 begin
   if Assigned(FFiles) then
     Files := FFiles()
   else
     Files := nil;
+  Item := ReadItem(AParams);
+  if Assigned(FSettingsFor) then
+    Settings := FSettingsFor(TDocumentUris.FromPath(Item.FileName))
+  else
+    Settings := TReferenceSettings.Default;
   Resolver := NewResolver;
   try
-    Result := CallsToJson(IncomingCalls(Resolver, FIndex, ReadItem(AParams), Files, FReadText, ACancellation), 'from');
+    Result := CallsToJson(IncomingCalls(Resolver, FIndex, Item, Files, FReadText, Settings, ACancellation), 'from');
   finally
     Resolver.Free;
   end;
@@ -761,7 +897,7 @@ var
 begin
   Resolver := NewResolver;
   try
-    Result := CallsToJson(OutgoingCalls(Resolver, ReadItem(AParams), FReadText, ACancellation), 'to');
+    Result := CallsToJson(OutgoingCalls(Resolver, FIndex, ReadItem(AParams), FReadText, ACancellation), 'to');
   finally
     Resolver.Free;
   end;

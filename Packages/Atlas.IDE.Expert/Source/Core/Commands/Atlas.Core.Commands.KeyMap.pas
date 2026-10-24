@@ -350,6 +350,8 @@ begin
       Result := 'Atlas.SearchPrevious';
     TAtlasKeyFunction.SearchMethod:
       Result := 'Atlas.SearchInMethod';
+    TAtlasKeyFunction.SearchReplace:
+      Result := 'Atlas.SearchReplace';
     TAtlasKeyFunction.FormatCode:
       Result := 'Atlas.FormatCode';
     TAtlasKeyFunction.ToggleBlockComment:
@@ -372,6 +374,12 @@ begin
       Result := 'Atlas.NextBookmark';
     TAtlasKeyFunction.PreviousBookmark:
       Result := 'Atlas.PreviousBookmark';
+    TAtlasKeyFunction.StepIntoTarget:
+      Result := 'Atlas.StepIntoTarget';
+    TAtlasKeyFunction.ExpressionType:
+      Result := 'Atlas.ExpressionType';
+    TAtlasKeyFunction.SafeDelete:
+      Result := 'Atlas.SafeDelete';
   else
     Result := '';
   end;

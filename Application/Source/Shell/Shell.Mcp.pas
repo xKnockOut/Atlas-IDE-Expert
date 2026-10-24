@@ -54,10 +54,13 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Mcp.Server,
   Atlas.Common.Mcp.IndexTools,
+  Atlas.Common.Lsp.Rationale,
   Atlas.Common.Mcp.CodeTools,
+  Atlas.Common.Lsp.Impact,
   Atlas.Common.Todos.Contract,
   Atlas.Common.Mcp.BuildTools,
   Atlas.Common.Mcp.Paths,
@@ -66,6 +69,10 @@ uses
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeBuilds,
   Atlas.Common.Mcp.TestTools,
+  Atlas.Common.Mcp.DeadCodeTools,
+  Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Architecture.UsesService,
+  Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Compiler.Contract,
   Atlas.Text.Lines,
@@ -82,6 +89,14 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Builtin,
+  Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Service,
+  Atlas.Common.Architecture.Report,
+  Atlas.Common.Architecture.Comparison,
+  Atlas.Common.Architecture.UsesLocator,
+  Atlas.Common.Architecture.SymbolPath,
+  Atlas.Common.Lsp.SymbolPath,
+  Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Projects.Contract,
   Shell.Platform,
   Atlas.Common.Diagnostics.Anonymizer,
@@ -414,8 +429,68 @@ begin
     end;
 end;
 
+type
+  /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt); mit ACompareWith
+  /// (absoluter Pfad eines gespeicherten Stands, #1121) der Text des Vergleichs.</summary>
+  TMcpArchitectureFunc = reference to function(ASection: TArchitectureSection;
+    const AUnit, ACompareWith: string): string;
+  /// <summary>Antwort von find_path (#1117) als Text.</summary>
+  TMcpFindPathFunc = reference to function(const ARequest: TSymbolPathRequest): string;
+
+/// <summary>find_path über einen eigenen Uses-Graphen samt Bibliotheks-Units. In eigener Routine, damit die
+/// anonyme Methode nicht den Rahmen von Run einfängt (Leck unter Delphi).</summary>
+function FindPathOf(const AIndex: ISymbolIndex; AGraphs: TUsesGraphService; ALocator: TUsesLocator;
+  AWorkspace: TShellWorkspace; const AEnsure: TFunc<string, Boolean>; const ARoot: string): TMcpFindPathFunc;
+begin
+  Result :=
+    function(const ARequest: TSymbolPathRequest): string
+    var
+      Request: TSymbolPathRequest;
+      Options: TUsesGraphOptions;
+      Namespaces: TArray<string>;
+      Token: IJsonRpcCancellationToken;
+    begin
+      Request := ARequest;
+      // Grenze requestTimeoutMs; Abbruch über notifications/cancelled des MCP-Clients.
+      Request.TimeoutMs := AWorkspace.Configuration.Settings.RequestTimeoutMs;
+      Namespaces := AWorkspace.Namespaces;
+      if string.Join(',', AGraphs.Options.Namespaces) <> string.Join(',', Namespaces) then
+      begin
+        Options := AGraphs.Options;
+        Options.Namespaces := Namespaces;
+        AGraphs.SetOptions(Options);
+      end;
+      Token := TJsonRpcCurrentRequest.Token;
+      Result := TSymbolPathSearch.Text(TSymbolPathSearch.Run(AIndex, AGraphs, ALocator,
+        function(const AFileName: string; out AText: string): Boolean
+        begin
+          Result := ReadSourceText(AFileName, AText);
+        end,
+        function(const AUnitName: string): Boolean
+        begin
+          Result := Assigned(AEnsure) and AEnsure(AUnitName);
+        end, Namespaces, Request,
+        function: Boolean
+        begin
+          Result := (Token <> nil) and Token.IsCancellationRequested;
+        end), ARoot);
+    end;
+end;
+
+/// <summary>Argumente von find_path; EMcpToolError bei ungültigen Werten.</summary>
+function FindPathRequest(const AArguments: TJSONObject): TSymbolPathRequest;
+begin
+  try
+    Result := TLspSymbolPath.ReadRequest(AArguments);
+  except
+    on E: EJsonRpcError do
+      raise EMcpToolError.Create(E.Message);
+  end;
+end;
+
 procedure RegisterTools(AServer: TMcpServer; ATools: TMcpIndexTools; ACode: TMcpCodeTools;
-  AGroup: TShellWorkspaceGroup; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools);
+  AGroup: TShellWorkspaceGroup; const ARoot: string; AGuard: TMcpPathGuard; AEdit: TMcpEditTools;
+  const AArchitecture: TMcpArchitectureFunc; const AFindPath: TMcpFindPathFunc);
 var
   CheckSource: TCheckSourceFunc;
   CheckProject: TCheckProjectFunc;
@@ -433,11 +508,23 @@ begin
       Result := ATools.FindSymbol(TMcpServer.RequiredString(AArguments, 'name'));
     end);
   AServer.AddTool('get_declaration',
-    'Vollständiger Quelltext der Deklaration eines Symbols, auch aus RTL/VCL, ohne die ganze Datei zu lesen.',
+    'Vollständiger Quelltext der Deklaration eines Symbols, auch aus RTL/VCL, ohne die ganze Datei zu lesen. ' +
+    'Dazu die Begründungen (// WHY:, // HACK:, // NOTE: … über der Deklaration und im Rumpf).',
     TMcpServer.StringSchema(['name'], ['Symbolname, am besten qualifiziert (TFoo.Bar)']),
     function(const AArguments: TJSONObject): string
     begin
       Result := ATools.Declaration(TMcpServer.RequiredString(AArguments, 'name'));
+    end);
+  AServer.AddTool('get_rationale',
+    'Begründungen (#1123): Kommentare wie // WHY:, // HACK:, // NOTE:, // IMPORTANT:, // RATIONALE: (Marken aus ' +
+    'hints.rationaleMarkers) einer Unit samt aller Symbole oder eines Symbols, mit Datei und Zeile. Erklärt, ' +
+    'warum Code so gebaut ist; Verweise wie ADR-0007 oder #312 stehen im Text.',
+    TMcpServer.StringSchema(['unit', 'name'], ['Unit-Name oder Pfad der .pas-Datei',
+      'Symbolname, am besten qualifiziert (TFoo.Bar); statt unit'], 0),
+    function(const AArguments: TJSONObject): string
+    begin
+      Result := ATools.Rationale(TMcpServer.OptionalString(AArguments, 'unit'),
+        TMcpServer.OptionalString(AArguments, 'name'));
     end);
   AServer.AddTool('get_type_hierarchy',
     'Vorfahren bis zur Wurzel und alle Nachfahren einer Klasse oder eines Interfaces mit Fundstellen.',
@@ -478,6 +565,31 @@ begin
       ACode.Namespaces := AGroup.Main.Namespaces;
       Result := ACode.CallHierarchy(TMcpServer.RequiredString(AArguments, 'name'),
         TMcpCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction')));
+    end);
+  AServer.AddTool('get_impact',
+    'Auswirkungsanalyse (#1120): Was ist betroffen, wenn sich ein Symbol ändert? Aufrufer und Verweise, ' +
+    'Overrides, überschriebene Basismethode, Interface-Methode und Umsetzungen sowie Formularbindungen, nach ' +
+    'Ebenen bis zur Tiefe (Vorgabe navigation.impactDepth), dazu die betroffenen DUnitX-Tests mit den Namen ' +
+    'für run_tests. Erschlossene Treffer mit Grund (#1119); erreichte Grenzen stehen am Ende.',
+    '{"type":"object","properties":{' +
+      '"name":{"type":"string","description":"Symbol, am besten qualifiziert (TFoo.Bar)"},' +
+      '"depth":{"type":"integer","minimum":1,"maximum":5,"description":"Ebenen; leer = navigation.impactDepth"},' +
+      '"format":{"type":"string","enum":["text","json"],"description":"text (Vorgabe) oder json wie atlas/impact"}' +
+      '},"required":["name"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      Name, Format: string;
+      Depth: Integer;
+    begin
+      Name := TMcpServer.RequiredString(AArguments, 'name');
+      Format := TMcpServer.OptionalString(AArguments, 'format');
+      if (Format <> '') and not SameText(Format, 'text') and not SameText(Format, 'json') then
+        raise EMcpToolError.Create('"format" ist text oder json');
+      ACode.Namespaces := AGroup.Main.Namespaces;
+      if AArguments.TryGetValue<Integer>('depth', Depth) then
+        Result := ACode.Impact(Name, Depth, SameText(Format, 'json'))
+      else
+        Result := ACode.Impact(Name, SameText(Format, 'json'));
     end);
   AServer.AddTool('get_last_build',
     'Ergebnis des letzten Builds, den der Benutzer in der IDE gestartet hat: Erfolg, Art, Zeitpunkt, Dauer, ' +
@@ -640,6 +752,29 @@ begin
         Result := Format('Hinweis: %s; Befunde, die den Symbolindex brauchen, können noch fehlen.',
           [Reason]) + sLineBreak + Result;
     end);
+  AServer.AddTool('hook_check',
+    'Für Hooks von Claude Code (PostToolUse nach Edit/Write, siehe Plugin atlas): Befunde ab severity ' +
+    '(Vorgabe warning) der gerade bearbeiteten Datei als Hook-Ausgabe mit additionalContext. Leer bei Dateien, ' +
+    'die kein Pascal-Quelltext sind, außerhalb des Arbeitsbereichs liegen oder keine Befunde haben. Abschalten ' +
+    'über mcp.disabledTools.',
+    TMcpServer.StringSchema(['file', 'severity'],
+      ['Pfad der bearbeiteten Datei (tool_input.file_path)', 'error, warning (Vorgabe), information oder hint'], 1),
+    function(const AArguments: TJSONObject): string
+    var
+      FileName: string;
+      Severity: TRuleSeverity;
+    begin
+      Severity := TMcpCodeTools.ParseHookSeverity(TMcpServer.OptionalString(AArguments, 'severity'));
+      try
+        FileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+      except
+        // Dateien außerhalb des Projekts gehen Atlas nichts an; eine Fehlermeldung je Bearbeitung wäre Rauschen.
+        on EMcpToolError do
+          Exit('');
+      end;
+      Result := TMcpCodeTools.HookDiagnostics(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, FileName,
+        ReadSourceText, CheckSource, CheckProject, Severity);
+    end);
   AServer.AddTool('get_metrics',
     'Code-Metriken (#66) je Methode: Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive ' +
     'Komplexität, Parameteranzahl; Grenzwerte aus atlas.json (Regeln metric-*, Option "max"). Als Markdown-Bericht ' +
@@ -664,6 +799,51 @@ begin
         raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
       Result := TMcpCodeTools.Metrics(AGroup.Main.Configuration.Settings, ARoot, Files, ReadSourceText,
         SameText(Format, 'json'));
+    end);
+  AServer.AddTool('get_architecture',
+    'Architekturübersicht (#1118) aus dem uses-Graphen: Teilsysteme (Gruppen eng verbundener Units), zentrale ' +
+    'Units, Zyklen und Querverbindungen zwischen Teilsystemen, je mit Datei:Zeile der uses-Einträge. Mit "unit" ' +
+    'der Steckbrief einer Unit (Teilsystem, Abhängigkeiten, Zyklen, Ausreißer). Mit "compareWith" der Vergleich ' +
+    'mit einem gespeicherten Stand (#1121): neue und entfernte Zyklen, Querverbindungen und uses-Kanten zwischen ' +
+    'Teilsystemen, Teilsystemwechsel, gewachsene zentrale Units, neue und entfernte Units. Umfang und ' +
+    'Bibliotheks-Units aus architecture.* in atlas.json.',
+    '{"type":"object","properties":{' +
+      '"section":{"type":"string","enum":["overview","central","subsystems","cycles","crossLinks"],' +
+        '"description":"Abschnitt; Vorgabe overview"},' +
+      '"unit":{"type":"string","description":"Steckbrief dieser Unit statt eines Abschnitts"},' +
+      '"compareWith":{"type":"string","description":"Gespeicherter Stand (JSON aus AtlasServer --architecture ' +
+        '<Datei.json>), Pfad relativ zum Projekt: liefert die Abschnitte des Vergleichs"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      Section: TArchitectureSection;
+      CompareWith: string;
+    begin
+      if not TArchitectureReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), Section) then
+        raise EMcpToolError.Create('"section" ist overview, central, subsystems, cycles oder crossLinks');
+      CompareWith := TMcpServer.OptionalString(AArguments, 'compareWith');
+      if CompareWith <> '' then
+        CompareWith := AGuard.Resolve(CompareWith);
+      Result := AArchitecture(Section, TMcpServer.OptionalString(AArguments, 'unit'), CompareWith);
+    end);
+  AServer.AddTool('find_path',
+    'Kürzester Weg zwischen zwei Symbolen oder Units (#1117), z. B. „Wie hängt TKundenForm mit TDatenbank ' +
+    'zusammen?“, in einem Aufruf statt vieler find_references/get_call_hierarchy. Kanten: uses, inherits, ' +
+    'implements (auch Interface → Umsetzung), hasField, parameter, result, calls, contains. Liefert die Kette ' +
+    'mit Kantenart und Datei:Zeile je Schritt; erschlossene Kanten (mehrere Umsetzungen) tragen [erschlossen]. ' +
+    '„Kein Weg“ ist eine verlässliche Antwort; bei mehrdeutigem Namen kommt die Trefferliste.',
+    '{"type":"object","properties":{' +
+      '"from":{"type":"string","description":"Start: Typ, Methode (TFoo.Bar), Routine, Feld, Property oder Unit"},' +
+      '"to":{"type":"string","description":"Ziel, Angabe wie bei from; ein Typ zählt samt seinen Mitgliedern"},' +
+      '"via":{"type":"array","items":{"type":"string","enum":["uses","inherits","implements","hasField",' +
+        '"parameter","result","calls","contains","library"]},' +
+        '"description":"Erlaubte Kantenarten (Vorgabe alle); library erlaubt RTL/VCL als Durchgang"},' +
+      '"maxSteps":{"type":"integer","minimum":1,"maximum":16,"description":"Höchstens so viele Schritte, ' +
+        'Vorgabe 8"},' +
+      '"all":{"type":"boolean","description":"Alle gleich kurzen Wege (höchstens 5) statt nur des ersten"}},' +
+      '"required":["from","to"]}',
+    function(const AArguments: TJSONObject): string
+    begin
+      Result := AFindPath(FindPathRequest(AArguments));
     end);
   AServer.AddTool('get_todos',
     'TODO-Übersicht (#68): Kommentare // TODO, // FIXME und das Format der IDE-To-Do-Liste ' +
@@ -835,6 +1015,72 @@ begin
     end, TMcpToolKind.Write);
 end;
 
+/// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei den Prüfregeln (#1112).</summary>
+procedure RegisterDeadCodeTools(AServer: TMcpServer; AGroup: TShellWorkspaceGroup; const AIndex: ISymbolIndex;
+  const ARoot: string; AGuard: TMcpPathGuard);
+begin
+  AServer.AddTool('find_unused_code',
+    'Ungenutzter Code (#64): private und öffentliche Member, Deklarationen nur im implementation-Teil und Units, ' +
+    'die nur das Programm nennt, mit dem Index aller Projekte der Gruppe wie im Editor. Schweregrad, Optionen und ' +
+    'deadCode.keepAttributes/keepPatterns aus atlas.json gelten. Als Markdown-Bericht oder als JSON-Daten.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Pfad einer .pas-Datei; leer = alle Projektdateien"},' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":"markdown (Vorgabe) oder json"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      FileName, Format: string;
+      Files: TArray<string>;
+    begin
+      FileName := TMcpServer.OptionalString(AArguments, 'file');
+      Format := TMcpServer.OptionalString(AArguments, 'format');
+      if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+        raise EMcpToolError.Create('"format" ist markdown oder json');
+      if FileName <> '' then
+        Files := [AGuard.Resolve(FileName)]
+      else
+        Files := AGroup.Main.ProjectFiles;
+      if Length(Files) = 0 then
+        raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      Result := TMcpDeadCodeTools.FindUnused(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, Files,
+        AIndex, AGroup.RuleProjectFiles, AGroup.Main.Namespaces, SameText(Format, 'json'));
+    end);
+  AServer.AddTool('get_unit_dependencies',
+    'Abhängigkeiten einer Unit (#64): direkte uses und die Units, die sie verwenden, je mit Abschnitt ' +
+    '(interface/implementation), auf Wunsch die transitiven Hüllen, dazu die Zyklen durch die Unit mit ' +
+    'vollständigem Pfad. Nur Units der Projekte, ohne RTL/VCL. Als Markdown oder als JSON-Daten.',
+    '{"type":"object","properties":{' +
+      '"unit":{"type":"string","description":"Unit-Name (Ref.Daten) oder Pfad der .pas-Datei"},' +
+      '"direction":{"type":"string","enum":["uses","usedBy","both"],"description":"Richtung; Vorgabe both"},' +
+      '"transitive":{"type":"boolean","description":"Auch die transitiven Hüllen; Vorgabe false"},' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":"markdown (Vorgabe) oder json"}},' +
+      '"required":["unit"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      UnitName, Format, Text: string;
+      Direction: TMcpUsesDirection;
+      Transitive: Boolean;
+    begin
+      UnitName := TMcpServer.RequiredString(AArguments, 'unit');
+      if (Pos('\', UnitName) > 0) or (Pos('/', UnitName) > 0) or SameText(ExtractFileExt(UnitName), '.pas') then
+        UnitName := AGuard.Resolve(UnitName);
+      if not TMcpDeadCodeTools.ParseDirection(TMcpServer.OptionalString(AArguments, 'direction'), Direction) then
+        raise EMcpToolError.Create('"direction" ist uses, usedBy oder both');
+      if not AArguments.TryGetValue<Boolean>('transitive', Transitive) then
+        Transitive := False;
+      Format := TMcpServer.OptionalString(AArguments, 'format');
+      if (Format <> '') and not SameText(Format, 'markdown') and not SameText(Format, 'json') then
+        raise EMcpToolError.Create('"format" ist markdown oder json');
+      Text := '';
+      AGroup.UsesGraph.Read(
+        procedure(const AUses: TUsesGraph)
+        begin
+          Text := TMcpDeadCodeTools.UnitDependencies(AUses, UnitName, ARoot, Direction, Transitive,
+            SameText(Format, 'json'));
+        end);
+      Result := Text;
+    end);
+end;
+
 class function TMcpShell.ToolNames: TArray<string>;
 var
   Server: TMcpServer;
@@ -845,7 +1091,8 @@ begin
   // Nur registrieren, nicht aufrufen: Die Werkzeuge greifen erst beim Aufruf auf ihre Dienste zu.
   Server := TMcpServer.Create('Atlas', '0');
   try
-    RegisterTools(Server, nil, nil, nil, '', nil, nil);
+    RegisterTools(Server, nil, nil, nil, '', nil, nil, nil, nil);
+    RegisterDeadCodeTools(Server, nil, nil, '', nil);
     Listed := Server.ListTools;
     try
       for Tool in Listed.GetValue<TJSONArray>('tools') do
@@ -879,6 +1126,10 @@ var
   Root, Warning: string;
   Anonymizer: ILogAnonymizer;
   AllFiles: TFunc<TArray<string>>;
+  Architecture: TArchitectureService;
+  PathGraphs: TUsesGraphService;
+  PathLocator: TUsesLocator;
+  PathOptions: TUsesGraphOptions;
   EnsureAny: TFunc<string, Boolean>;
   GlobalSettings: string;
 begin
@@ -929,6 +1180,12 @@ begin
       Result := Group.EnsureUnit(AUnitName);
     end;
   Tools := TMcpIndexTools.Create(Index, ReadSourceText);
+  // Begründungen (#1123): Einstellungen und ADR-Ordner des Arbeitsbereichs.
+  Tools.RationaleOptionsFunc :=
+    function: TRationaleOptions
+    begin
+      Result := TRationaleOptions.FromSettings(Workspace.Configuration.Settings, Root);
+    end;
   // Package einer Unit: .dpk unter dem Projektordner, deren contains sie führt.
   Tools.PackageOf :=
     function(const AUnitName: string): string
@@ -969,12 +1226,80 @@ begin
       Result := EnsureAny(AUnitName);
     end);
   Edit.DirtyFiles := EditorDirtyFiles;
+  // Architekturübersicht (#1118): derselbe Dienst wie atlas/architecture und --architecture.
+  Architecture := TArchitectureService.Create(Index,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      // Defines des Projekts, zu dem die Datei gehört (Projektgruppe, #1112).
+      if not Group.WorkspaceOf(AFileName).Defines(Result) then
+        Result := nil;
+    end);
+  // Weg zwischen Symbolen (#1117): eigener Uses-Graph samt Bibliotheks-Units (Start oder Ziel).
+  PathOptions := TUsesGraphOptions.Default;
+  PathOptions.IncludeLibrary := True;
+  PathGraphs := TUsesGraphService.Create(Index, PathOptions);
+  PathLocator := TUsesLocator.Create(
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      // Defines des Projekts, zu dem die Datei gehört (Projektgruppe, #1112).
+      if not Group.WorkspaceOf(AFileName).Defines(Result) then
+        Result := nil;
+    end);
   // Regelprüfung mit den Symbolen und Include-Dateien des Projekts (#860).
   Edit.CheckSource := CheckSourceOf(Group);
   Code.CheckSource := Edit.CheckSource;
   // Prüfregeln mit Symbolindex und Projektdiensten wie im Server (#1112).
   Edit.CheckProject := CheckProjectOf(Group);
   Code.CheckProject := Edit.CheckProject;
+  // Treffersicherheit wie im Editor (#1119).
+  Code.SettingsFor :=
+    function(const AUri: string): TReferenceSettings
+    begin
+      Result := Workspace.Configuration.Settings.References;
+    end;
+  Edit.SettingsFor := Code.SettingsFor;
+  // Auswirkungsanalyse (#1120): Tiefe aus navigation, Testunits aus testUnits und dem Testprogramm.
+  Code.ImpactOptionsFor :=
+    function(const AUri: string): TImpactOptions
+    var
+      Settings: TServerSettings;
+      Project, Candidate, Text: string;
+      Info: TProjectInfo;
+    begin
+      Settings := Workspace.Configuration.Settings;
+      Result := TImpactOptions.Default;
+      Result.Depth := Settings.Navigation.ImpactDepth;
+      Result.References := Settings.References;
+      // Kein Watchdog wie im LSP: großzügig, die Antwort meldet das erreichte Limit.
+      Result.TimeoutMs := 60000;
+      Project := Settings.TestUnits.Project;
+      if (Project <> '') and not TPath.IsPathRooted(Project) then
+        Project := TPath.Combine(Root, Project);
+      if Project = '' then
+        for Candidate in ProjectFilesUnder(Root) do
+          if IsTestProject(Candidate) then
+          begin
+            Project := Candidate;
+            Break;
+          end;
+      Text := '';
+      if (Project <> '') and FileExists(ChangeFileExt(Project, '.dproj')) and
+        LoadProject(ChangeFileExt(Project, '.dproj'), '', '', Info) and (Info.MainSource <> '') then
+        Project := Info.MainSource
+      else if Project <> '' then
+        Project := ChangeFileExt(Project, '.dpr');
+      if (Project <> '') and not ReadSourceText(Project, Text) then
+        Text := '';
+      Result.Tests := TImpactTestScope.FromProgram(Settings.TestUnits.Pattern, Text);
+    end;
   Edit.Audit :=
     procedure(const AText: string)
     begin
@@ -986,13 +1311,56 @@ begin
   try
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
-    RegisterTools(Server, Tools, Code, Group, Root, Guard, Edit);
+    RegisterTools(Server, Tools, Code, Group, Root, Guard, Edit,
+      function(ASection: TArchitectureSection; const AUnit, ACompareWith: string): string
+      var
+        Settings: TServerSettings;
+        Request: TArchitectureRequest;
+        Overview: TArchitectureOverview;
+        Comparison: TArchitectureComparison;
+        FailOn: TArchitectureFailKinds;
+        Error: string;
+      begin
+        Settings := Workspace.Configuration.Settings;
+        if not Settings.ArchitectureEnabled then
+          raise EMcpToolError.Create('Architekturübersicht ist ausgeschaltet (architecture.enabled)');
+        Request := TArchitectureRequest.FromSettings(Settings);
+        Request.Title := ExtractFileName(Root);
+        Request.Root := Root;
+        Request.Namespaces := Workspace.Namespaces;
+        // Projektgruppe (#648): die Dateien aller geladenen Projekte, sonst nur die des Hauptprojekts.
+        if Request.Scope = 'project' then
+          Request.Files := Workspace.ProjectFiles
+        else
+          Request.Files := AllFiles();
+        if Length(Request.Files) = 0 then
+          raise EMcpToolError.Create('Kein Projekt geladen');
+        Overview := Architecture.Overview(Request);
+        if ACompareWith <> '' then
+        begin
+          if not TArchitectureComparer.CompareWithFile(ACompareWith, Overview, Comparison, Error) then
+            raise EMcpToolError.Create(Error);
+          if not TArchitectureComparer.ParseKinds(Settings.ArchitectureFailOn, FailOn, Error) then
+            FailOn := TArchitectureComparer.DefaultFailOn;
+          Result := TArchitectureComparer.Text(Comparison, FailOn, TArchitectureReport.TextLimit);
+        end
+        else if AUnit <> '' then
+          Result := TArchitectureReport.UnitText(Overview, AUnit)
+        else
+          Result := TArchitectureReport.Text(Overview, ASection, TArchitectureReport.TextLimit);
+      end, FindPathOf(Index, PathGraphs, PathLocator, Workspace, EnsureAny, Root));
+    RegisterDeadCodeTools(Server, Group, Index, Root, Guard);
     // Sicherheit (#99).
     Server.Restricted := AOptions.Restricted;
     Server.OnDisabledTools :=
       function: TArray<string>
       begin
         Result := Workspace.Configuration.Settings.McpDisabledTools;
+        // Abgeschaltete Funktion (#227): Werkzeug gar nicht anbieten.
+        if not Workspace.Configuration.Settings.ArchitectureEnabled then
+          Result := Result + ['get_architecture'];
+        if not Workspace.Configuration.Settings.Navigation.SymbolPath then
+          Result := Result + ['find_path'];
       end;
     Server.OnAudit :=
       procedure(AText: string)
@@ -1055,6 +1423,9 @@ begin
     Edit.Free;
     Code.Free;
     Tools.Free;
+    Architecture.Free;
+    PathLocator.Free;
+    PathGraphs.Free;
     Group.Free;
   end;
 end;

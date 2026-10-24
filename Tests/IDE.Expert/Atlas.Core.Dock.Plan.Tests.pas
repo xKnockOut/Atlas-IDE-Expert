@@ -25,6 +25,8 @@ type
     procedure FrameNotUsableWithoutForm;
     [Test]
     procedure ShownNeedsAllHosts;
+    [Test]
+    procedure DocksToDefaultOnlyOnce;
   end;
 
 implementation
@@ -81,6 +83,17 @@ begin
   // Angedockt in einem versteckten Dock-Fenster: Form.Visible allein täuscht.
   Assert.IsFalse(TAtlasDockPlan.Shown(True, [True, False]));
   Assert.IsFalse(TAtlasDockPlan.Shown(False, [True]));
+end;
+
+procedure TAtlasDockPlanTests.DocksToDefaultOnlyOnce;
+begin
+  // Erstes Anlegen, schwebend, Ziel angedockt: an den Vorgabeplatz.
+  Assert.IsTrue(TAtlasDockPlan.DockToDefault(True, True, False, True));
+  // Schon einmal platziert, vom Desktop angedockt, nur gezeigt oder ohne angedocktes Ziel: nichts tun.
+  Assert.IsFalse(TAtlasDockPlan.DockToDefault(True, True, True, True));
+  Assert.IsFalse(TAtlasDockPlan.DockToDefault(True, False, False, True));
+  Assert.IsFalse(TAtlasDockPlan.DockToDefault(False, True, False, True));
+  Assert.IsFalse(TAtlasDockPlan.DockToDefault(True, True, False, False));
 end;
 
 initialization

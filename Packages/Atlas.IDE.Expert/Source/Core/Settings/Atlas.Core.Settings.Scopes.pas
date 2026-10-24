@@ -4,8 +4,9 @@
 // globale Schlüssel in %APPDATA%\Atlas\settings.json, Projekt-Schlüssel in
 // atlas.json (x-scope im Schema).
 // Ein Teil der globalen Server-Einstellungen steht auf den Reitern der
-// Optionsseite: Index, Speicher, XMLDoc, Inlay-Hints, Code-Metriken, Schnellbefehle und
-// Kompilieren nach dem Speichern. Sie gehören zu TAtlasPluginSettings, liegen
+// Optionsseite: Index, Speicher, XMLDoc, Inlay-Hints, Code-Metriken, Schnellbefehle,
+// Kompilieren nach dem Speichern, die Treffersicherheit der Verwendungen, der Weg
+// zwischen Symbolen und die Auswirkungsanalyse. Sie gehören zu TAtlasPluginSettings, liegen
 // aber in settings.json statt in der Registry; TAtlasRoutedSettingsStore leitet
 // sie dorthin um. So lesen Plugin und Server denselben Wert, und der Dialog
 // „Weitere globale Einstellungen“ blendet sie aus (IdeManagedPaths).
@@ -112,7 +113,20 @@ begin
     Setting('CodeLensMetrics', 'codeLens.metrics', True),
     Setting('Metrics', 'metrics', True),
     Setting('ExperimentalEnabled', 'experimental.enabled', True),
-    Setting('CompileOnSave', 'compiler.onSave', True)];
+    Setting('CompileOnSave', 'compiler.onSave', True),
+    // Architekturübersicht (#1118): Server (Fenster, Bericht, get_architecture) und Plugin lesen denselben Wert.
+    Setting('ArchitectureEnabled', 'architecture.enabled', True),
+    TextSetting('ArchitectureScope', 'architecture.scope'),
+    Setting('ArchitectureIncludeLibraryUnits', 'architecture.includeLibraryUnits', True),
+    Setting('ArchitectureCentralUnits', 'architecture.centralUnits', False),
+    // Treffersicherheit der Verwendungen (#1119).
+    Setting('ReferencesInferred', 'references.inferred', True),
+    Setting('ReferencesTextMatches', 'references.textMatches', True),
+    // Weg zwischen Symbolen (#1117).
+    Setting('SymbolPath', 'navigation.symbolPath', True),
+    // Auswirkungsanalyse (#1120).
+    Setting('Impact', 'navigation.impact', True),
+    Setting('ImpactDepth', 'navigation.impactDepth', False)];
 end;
 
 class function TAtlasSettingsScopes.TryRouted(const AName: string; out ASetting: TAtlasRoutedSetting): Boolean;

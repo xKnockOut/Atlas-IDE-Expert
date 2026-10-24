@@ -16,6 +16,7 @@
 // Absturzsicherheit (#493): Fehler zählt die Sicherung der Quelle
 // ProviderTitle, die nach 3 Fehlern in 5 Minuten nur den Parameter-Hint
 // vom Server abschaltet. Server weg bzw. dessen Zeitlimit zählt nicht.
+// Platzhalter (#451): "format" der Antwort kommt nach TAtlasSignatureHelp.Format.
 
 interface
 
@@ -108,6 +109,75 @@ begin
     Result := '';
 end;
 
+function RangeFromLsp(AValue: TJSONValue; out ARange: TAtlasFormatRange): Boolean;
+begin
+  ARange := Default(TAtlasFormatRange);
+  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Integer>('start.line', ARange.StartLine) and
+    TJSONObject(AValue).TryGetValue<Integer>('start.character', ARange.StartCharacter) and
+    TJSONObject(AValue).TryGetValue<Integer>('end.line', ARange.EndLine) and
+    TJSONObject(AValue).TryGetValue<Integer>('end.character', ARange.EndCharacter);
+end;
+
+/// <summary>Objekt "format" der Antwort (#451); Found = False ohne.</summary>
+function FormatFromLsp(AValue: TJSONValue): TAtlasSignatureFormat;
+var
+  Item, Items, Problem: TJSONValue;
+  Placeholder: TAtlasFormatPlaceholder;
+  Range: TAtlasFormatRange;
+  Kind, TypeText: string;
+begin
+  Result := Default(TAtlasSignatureFormat);
+  Result.ActiveArgument := -1;
+  Result.ProblemPlaceholder := -1;
+  Result.ProblemArgument := -1;
+  if not (AValue is TJSONObject) then
+    Exit;
+  Result.Found := True;
+  Result.FormatParameter := TJSONObject(AValue).GetValue<Integer>('formatParameter', -1);
+  Result.ListParameter := TJSONObject(AValue).GetValue<Integer>('listParameter', -1);
+  Result.ArgumentCount := TJSONObject(AValue).GetValue<Integer>('argumentCount', -1);
+  Result.ActiveArgument := TJSONObject(AValue).GetValue<Integer>('activeArgument', -1);
+  Items := TJSONObject(AValue).GetValue('placeholders');
+  if Items is TJSONArray then
+    for Item in TJSONArray(Items) do
+      if Item is TJSONObject then
+      begin
+        Placeholder := Default(TAtlasFormatPlaceholder);
+        Placeholder.Text := TJSONObject(Item).GetValue<string>('text', '');
+        TypeText := TJSONObject(Item).GetValue<string>('type', '');
+        if TypeText <> '' then
+          Placeholder.TypeChar := TypeText[1];
+        Placeholder.Valid := TJSONObject(Item).GetValue<Boolean>('valid', False);
+        Placeholder.Argument := TJSONObject(Item).GetValue<Integer>('argument', -1);
+        Placeholder.WidthArgument := TJSONObject(Item).GetValue<Integer>('width', -1);
+        Placeholder.PrecisionArgument := TJSONObject(Item).GetValue<Integer>('precision', -1);
+        Placeholder.HasRange := RangeFromLsp(TJSONObject(Item).GetValue('range'), Placeholder.Range);
+        Result.Placeholders := Result.Placeholders + [Placeholder];
+      end;
+  Items := TJSONObject(AValue).GetValue('arguments');
+  if Items is TJSONArray then
+    for Item in TJSONArray(Items) do
+    begin
+      if not RangeFromLsp(Item, Range) then
+        Range := Default(TAtlasFormatRange);
+      Result.Arguments := Result.Arguments + [Range];
+    end;
+  Problem := TJSONObject(AValue).GetValue('problem');
+  if Problem is TJSONObject then
+  begin
+    Kind := TJSONObject(Problem).GetValue<string>('kind', '');
+    if Kind = 'invalid' then
+      Result.Problem := TAtlasFormatProblem.Invalid
+    else if Kind = 'tooManyArguments' then
+      Result.Problem := TAtlasFormatProblem.TooManyArguments
+    else if Kind = 'typeConflict' then
+      Result.Problem := TAtlasFormatProblem.TypeConflict;
+    Result.ProblemPlaceholder := TJSONObject(Problem).GetValue<Integer>('placeholder', -1);
+    Result.ProblemArgument := TJSONObject(Problem).GetValue<Integer>('argument', -1);
+    Result.ProblemKind := TJSONObject(Problem).GetValue<string>('argumentKind', '');
+  end;
+end;
+
 class function TAtlasServerSignatureProvider.HelpFromLsp(AResponse: TJSONValue): TAtlasSignatureHelp;
 var
   Signatures, Parameters, LabelValue: TJSONValue;
@@ -123,6 +193,7 @@ begin
     Exit;
   Result.ActiveSignature := TJSONObject(AResponse).GetValue<Integer>('activeSignature', -1);
   Result.ActiveParameter := TJSONObject(AResponse).GetValue<Integer>('activeParameter', -1);
+  Result.Format := FormatFromLsp(TJSONObject(AResponse).GetValue('format'));
   Signatures := TJSONObject(AResponse).GetValue('signatures');
   if not (Signatures is TJSONArray) then
     Exit;

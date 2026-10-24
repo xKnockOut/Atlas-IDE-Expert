@@ -1,4 +1,4 @@
-﻿unit Ref.Sprache.Merkmale;
+﻿unit Ref.Sprache.Merkmale; // ERWARTET-PROJEKT: unused-unit
 
 // Sprachmerkmale für Navigation, Hover und Prüfregeln.
 
@@ -14,12 +14,12 @@ type
     function Formatieren(const AWert: Integer): string;
   end;
 
-  TDezimalFormatierer = class(TInterfacedObject, IFormatierer)
+  TDezimalFormatierer = class(TInterfacedObject, IFormatierer) // ERWARTET-PROJEKT: unused-public-member
   public
     function Formatieren(const AWert: Integer): string;
   end;
 
-  TStapel<T> = class
+  TStapel<T> = class // ERWARTET-PROJEKT: unused-public-member
   private
     FElemente: TList<T>;
   public
@@ -30,7 +30,7 @@ type
     function Anzahl: Integer; // ERWARTET-PROJEKT: unused-public-member
   end;
 
-  TPaar<TSchluessel, TWert> = record
+  TPaar<TSchluessel, TWert> = record // ERWARTET-PROJEKT: unused-public-member
     Schluessel: TSchluessel;
     Wert: TWert;
     constructor Create(const ASchluessel: TSchluessel; const AWert: TWert);
@@ -41,6 +41,17 @@ type
   end;
 
   TZaehlerFunktion = reference to function(const AText: string): Integer;
+
+  /// <summary>Markiert Klassen, die ein Plugin per RTTI aufruft. Der Test des Referenzprojekts setzt
+  /// deadCode.keepAttributes auf Schnittstelle (#64).</summary>
+  SchnittstelleAttribute = class(TCustomAttribute)
+  end;
+
+  [Schnittstelle]
+  TPluginAufruf = class
+  public
+    procedure Melden; // KEIN-TREFFER: unused-public-member
+  end;
 
 function Plattform: string; // ERWARTET-PROJEKT: unused-public-member
 function SummeQuadrate(const AWerte: TArray<Integer>): Integer; // ERWARTET-PROJEKT: unused-public-member
@@ -91,6 +102,12 @@ constructor TPaar<TSchluessel, TWert>.Create(const ASchluessel: TSchluessel; con
 begin
   Schluessel := ASchluessel;
   Wert := AWert;
+end;
+
+{ TPluginAufruf }
+
+procedure TPluginAufruf.Melden;
+begin
 end;
 
 { TStringHelfer }

@@ -4,7 +4,8 @@
 // Aufzählungen und Ganzzahlen, Klammern als Korrektur, keine Meldung bei
 // Boolean, unbekanntem Typ und geklammerter Form, Abschalten und Ausnahmen;
 // duplicate-condition (#928); string-index-base (#951); null-compare (#953);
-// pos-arguments-swapped (#1045); integer-division-to-float (#1046).
+// pos-arguments-swapped (#1045); integer-division-to-float (#1046);
+// conditional-expression-version (#684).
 
 interface
 
@@ -69,6 +70,12 @@ type
     procedure IntegerDivisionSilentCases;
     [Test]
     procedure IntegerDivisionOffAndExclude;
+    [Test]
+    procedure ConditionalExpressionVersionReportsWithFix;
+    [Test]
+    procedure ConditionalExpressionVersionFixAll;
+    [Test]
+    procedure ConditionalExpressionVersionSilentCases;
   end;
 
 implementation
@@ -81,6 +88,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Expressions,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
   Atlas.Tests.RuleAssert;
 
 const
@@ -617,6 +626,94 @@ begin
     '{"rules": {"group:find-bugs": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TIntegerDivisionToFloatRule.Create, Source,
     '{"rules": {"integer-division-to-float": {"exclude": ["Source/*.pas"]}}}', 'Source/Statistik.pas'))));
+end;
+
+function Werte(const AStatements: string): string;
+begin
+  Result := 'unit Werte;'#10'interface'#10'implementation'#10'procedure Setzen(Fertig: Boolean);'#10'var'#10 +
+    '  Wert: Integer;'#10'begin'#10 + AStatements + 'end;'#10'end.';
+end;
+
+/// <summary>Treffer von conditional-expression-version auf ASource für die Delphi-Version AVersion.</summary>
+function VersionFindings(const ASource, AVersion, AConfigJson: string): TArray<TRuleFinding>;
+var
+  Context: TRuleContext;
+begin
+  Context := Default(TRuleContext);
+  Context.UnitName := 'Werte';
+  Context.Text := ASource;
+  Context.DelphiVersion := AVersion;
+  Result := TRuleAssert.ContextFindings(TConditionalExpressionVersionRule.Create, Context, AConfigJson);
+end;
+
+procedure TExpressionRulesTests.ConditionalExpressionVersionReportsWithFix;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := VersionFindings(Werte('  Wert := if Fertig then 1 else 2;'#10), '23.0', '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(ConditionalExpressionVersionRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual('Bedingungsausdrücke gibt es erst ab Delphi 13 Florence (eingestellt: Delphi 12 Athens)',
+    Findings[0].Message);
+  Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
+  Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
+  Assert.AreEqual('In if-Anweisung umwandeln', Findings[0].Fixes[0].Title);
+  Assert.AreEqual(1, Integer(Length(Findings[0].Fixes[0].Edits)), 'ein Undo-Schritt');
+  Assert.AreEqual(Werte('  if Fertig then'#10'    Wert := 1'#10'  else'#10'    Wert := 2;'#10),
+    ApplyFixes(Werte('  Wert := if Fertig then 1 else 2;'#10), Findings));
+  // Verschachtelt: nur der äußerste Ausdruck.
+  Findings := VersionFindings(Werte('  Wert := if Fertig then 1 else if Wert > 0 then 2 else 3;'#10), '23.0', '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  // Ohne Umwandlung (Seiteneffekt im Rest) bleibt die Meldung ohne Korrektur.
+  Findings := VersionFindings(Werte('  Ausgeben(Lesen(1), if Fertig then 1 else 2);'#10), '22.0', '');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
+end;
+
+procedure TExpressionRulesTests.ConditionalExpressionVersionFixAll;
+var
+  Source, Fixed: string;
+  Findings: TArray<TRuleFinding>;
+  Tree: TSyntaxTree;
+begin
+  Source := Werte('  Wert := if Fertig then 1 else 2;'#10'  Exit(if Wert > 0 then Wert else 0);'#10);
+  Findings := VersionFindings(Source, '23.0', '');
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Fixed := ApplyFixes(Source, Findings);
+  Assert.AreEqual(Werte('  if Fertig then'#10'    Wert := 1'#10'  else'#10'    Wert := 2;'#10 +
+    '  if Wert > 0 then'#10'    Exit(Wert)'#10'  else'#10'    Exit(0);'#10), Fixed);
+  Tree := TPascalParser.Parse(Fixed);
+  try
+    Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)));
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual(0, Integer(Length(VersionFindings(Fixed, '23.0', ''))));
+end;
+
+procedure TExpressionRulesTests.ConditionalExpressionVersionSilentCases;
+var
+  Source: string;
+begin
+  Source := Werte('  Wert := if Fertig then 1 else 2;'#10);
+  // Ab Delphi 13 und ohne bekannte Version still.
+  Assert.AreEqual(0, Integer(Length(VersionFindings(Source, '37.0', ''))));
+  Assert.AreEqual(0, Integer(Length(VersionFindings(Source, '', ''))));
+  Assert.AreEqual(0, Integer(Length(VersionFindings(Source, '23.0',
+    '{"rules": {"conditional-expression-version": "off"}}'))));
+  // Zweige, die nach der Version fragen, sind gewollt; andere Bedingungen nicht.
+  Assert.AreEqual(0, Integer(Length(VersionFindings(Werte('  {$IF CompilerVersion >= 37}'#10 +
+    '  Wert := if Fertig then 1 else 2;'#10'  {$ELSE}'#10'  Wert := 1;'#10'  {$ENDIF}'#10), '23.0', ''))));
+  Assert.AreEqual(0, Integer(Length(VersionFindings(Werte('  {$IFDEF VER370}'#10 +
+    '  Wert := if Fertig then 1 else 2;'#10'  {$ENDIF}'#10), '23.0', ''))));
+  Assert.AreEqual(1, Integer(Length(VersionFindings(Werte('  {$IFDEF DEBUG}'#10 +
+    '  Wert := if Fertig then 1 else 2;'#10'  {$ENDIF}'#10), '23.0', ''))));
+  Assert.IsTrue(TConditionalExpressionVersionRule.IsVersionDirective('{$IF RTLVersion >= 37}'));
+  Assert.IsTrue(TConditionalExpressionVersionRule.IsVersionDirective('{$IFDEF VER360}'));
+  Assert.IsFalse(TConditionalExpressionVersionRule.IsVersionDirective('{$IFDEF SERVER360}'));
+  Assert.IsFalse(TConditionalExpressionVersionRule.IsVersionDirective('{$IFDEF DEBUG}'));
 end;
 
 initialization

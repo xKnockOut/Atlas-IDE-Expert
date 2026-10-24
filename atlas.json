@@ -1,5 +1,6 @@
 {
   "project": "Tests/Atlas.Tests.dproj",
+  "minDelphiVersion": "23.0",
   "rules": {
     "metric-method-length": "off",
     "metric-nesting-depth": "off",
@@ -13,6 +14,9 @@
     "metric-unit-length": "off",
     "metric-uses-count": "off",
     "metric-inheritance-depth": "off",
+    "loop-runs-at-most-once": {
+      "allowFirstElement": true
+    },
     "override-only-inherited": {
       "exclude": ["Tests/Common/Editing/Atlas.Common.Editing.ClassActions.OverrideGolden.pas"]
     },
@@ -29,6 +33,22 @@
       "severity": "warning",
       "prefixes": ["Atlas.Text", "Atlas.Common", "Atlas.Windows", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
       "allow": ["Atlas.Common.Dfm.Contract.TDfm*"]
+    },
+    "forbidden-symbol": {
+      "severity": "error",
+      "exclude": ["Tests/**", "Tools/**"],
+      "symbols": [
+        {"name": "System.Write", "kind": "routine", "message": "stdout gehört dem LSP-Protokoll, Diagnose über ILogger",
+          "allowFirstArgument": ["ErrOutput", "TextFile", "Text"]},
+        {"name": "System.Writeln", "kind": "routine", "message": "stdout gehört dem LSP-Protokoll, Diagnose über ILogger",
+          "allowFirstArgument": ["ErrOutput", "TextFile", "Text"]},
+        {"name": "Winapi.Windows.GetStdHandle", "message": "stdout-Handle nur über TStdStreams",
+          "firstArgument": ["STD_OUTPUT_HANDLE"], "units": ["!Atlas.Windows.Console.StdStreams"]},
+        {"name": "System.Classes.TThread.Queue", "message": "Einreihen ohne Besitzer überlebt das Entladen, TAtlasMainThread.Queue verwenden",
+          "firstArgument": ["nil"], "units": ["Atlas.Core.*", "Atlas.UI.*", "Atlas.IDE.*"]},
+        {"name": "System.Classes.TThread.ForceQueue", "message": "Einreihen ohne Besitzer überlebt das Entladen, TAtlasMainThread.ForceQueue verwenden",
+          "firstArgument": ["nil"], "units": ["Atlas.Core.*", "Atlas.UI.*", "Atlas.IDE.*"]}
+      ]
     }
   }
 }

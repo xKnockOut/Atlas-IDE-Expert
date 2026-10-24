@@ -14,6 +14,29 @@
 // Die Liste der persönlichen Notizen (#545) zeigt je Datei „Zeile: Titel“ und
 // verwaiste Notizen in einer Gruppe am Ende; Doppelklick oder Enter springt,
 // das Kontextmenü bearbeitet oder löscht die Notiz (Entf löscht ebenfalls).
+// Verwendungen mit erschlossenen Treffern (#1119) stehen in zwei Abschnitten,
+// „Sicher (n)“ und „Erschlossen (n) · vor dem Umbenennen prüfen“, darin nach
+// Unit gruppiert; erschlossene Zeilen tragen ≈ und ihren Grund, der Hinweis
+// unter der Maus erklärt ihn. „Nur sichere“ in der Titelzeile blendet die
+// erschlossenen aus. Erschlossene Aufrufer der Hierarchie sind ebenso markiert.
+// Aufrufhierarchien (#1122) lassen sich als Diagramm zeigen: Umschalter
+// „Diagramm“ in der Titelzeile (nur mit DiagramAllowed, also
+// callHierarchy.diagram), darunter eine Leiste mit Richtung (ausgehend oder
+// eingehend, lädt mit denselben Wurzeln neu), „Nur Projekt-Units“,
+// „Einpassen“ und „Als HTML speichern …“; die Ansicht selbst ist
+// TAtlasCallDiagramView, ihre Ebenen kommen über OnExpand wie im Baum.
+// Ein Weg zwischen Symbolen (#1117) erscheint statt des Baums als gezeichnete
+// Kette (TAtlasSymbolPathChain) mit Statuszeile; „In Architekturkarte
+// zeigen“ meldet die Units des ersten Wegs über OnShowRoute.
+// Die Auswirkungsanalyse (#1120) steht in drei Abschnitten: „Direkt“ (Ebene 1),
+// „Indirekt“ als Baum über die verursachende Stelle und „Betroffene Tests“;
+// Formularbindungen hängen unter ihrer Stelle, erreichte Grenzen stehen am
+// Ende. In der Titelzeile wählt „Tiefe“ 1–5 (OnImpactDepth rechnet neu), und
+// „Betroffene Tests ausführen“ gibt die Tests an OnImpactRunTests.
+// Datenfluss (#690): je Stelle „Art: Ausdruck · über X   Datei:Zeile: Quelltextzeile“, zusammengefasste
+// Stellen mit ihren Fundorten darunter, dann die Quellen bzw. Ziele (← bzw. →), die beim Aufklappen über
+// OnFlowExpand die nächste Ebene holen, bis zur Tiefengrenze. Konstanten, Stellen außerhalb des Projekts und
+// Zyklen bleiben Blätter. Oben die Filter „Nur Projektcode“ und „Tests ausblenden“ (OnFlowFilter).
 
 interface
 
@@ -29,10 +52,16 @@ uses
   Vcl.Menus,
   Vcl.ExtCtrls,
   Atlas.Core.Results.Model,
+  Atlas.Core.Lsp.Contract,
+  Atlas.Core.Lsp.DataFlow,
+  Atlas.Core.Results.DataFlow,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Atlas.Core.Undo.Contract,
-  Atlas.Core.Notes.Store;
+  Atlas.Core.Notes.Store,
+  Atlas.UI.Results.CallDiagram,
+  Atlas.Core.SymbolPath.Model,
+  Atlas.UI.SymbolPath.Chain;
 
 type
   TAtlasResultsOpen = reference to procedure(const AFileName: string; ALine, ACharacter: Integer);
@@ -44,11 +73,23 @@ type
   TAtlasChangeDiff = reference to procedure(ASetId: Integer; const AFileName: string);
   /// <summary>Notiz (#545) bearbeiten bzw. löschen.</summary>
   TAtlasNoteAction = reference to procedure(const ANoteId: string);
+  /// <summary>Units eines Wegs (#1117) auf der Architekturkarte zeigen.</summary>
+  TAtlasShowRoute = reference to procedure(const AUnits: TArray<string>);
+  /// <summary>Auswirkungsanalyse (#1120) mit anderer Tiefe neu rechnen.</summary>
+  TAtlasImpactDepthChange = reference to procedure(ADepth: Integer);
+  /// <summary>Betroffene Tests der gezeigten Analyse ausführen.</summary>
+  TAtlasImpactRunTests = reference to procedure(const AImpact: TAtlasImpact);
+  /// <summary>Nächste Ebene des Datenflusses (#690) unter ASource; APath: Schlüssel der Vorfahren samt ASource.
+  /// </summary>
+  TAtlasDataFlowExpand = reference to function(ADirection: TAtlasDataFlowDirection;
+    const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>): TAtlasDataFlowResult;
+  /// <summary>Filter des Datenflusses geändert: die erste Ebene neu holen.</summary>
+  TAtlasDataFlowFilter = reference to procedure(AOnlyProject, AExcludeTests: Boolean);
 
   TAtlasResultsFrame = class(TFrame)
   private type
 {$SCOPEDENUMS ON}
-    TNodeKind = (Group, Entry, Hierarchy, Placeholder, ChangeSet, ChangeFile, Note);
+    TNodeKind = (Group, Entry, Hierarchy, Placeholder, ChangeSet, ChangeFile, Note, Flow, FlowPlace, FlowSource);
 {$SCOPEDENUMS OFF}
     TNodeData = record
       Kind: TNodeKind;
@@ -62,6 +103,12 @@ type
       State: TAtlasChangeSetState;
       /// <summary>Kennung der Notiz (#545).</summary>
       NoteId: string;
+      /// <summary>Hinweis unter der Maus: Erklärung eines erschlossenen Treffers (#1119).</summary>
+      Hint: string;
+      /// <summary>Datenfluss (#690): Quelle, Pfad bis einschließlich der Quelle und Ebene ihrer Stelle.</summary>
+      FlowSource: TAtlasDataFlowSymbol;
+      FlowPath: TArray<string>;
+      FlowLevel: Integer;
     end;
   private
     FTitle: TLabel;
@@ -84,9 +131,64 @@ type
     FShowsNotes: Boolean;
     FOnNoteEdit: TAtlasNoteAction;
     FOnNoteDelete: TAtlasNoteAction;
+    FOnlySure: TCheckBox;
+    FRatedTitle: string;
+    FRatedEntries: TArray<TAtlasResultEntry>;
+    FSureCaption: string;
+    FInferredCaption: string;
+    FHintNode: TTreeNode;
+    /// <summary>Aufrufdiagramm (#1122).</summary>
+    FDiagramToggle: TCheckBox;
+    FDiagramBar: TPanel;
+    FOutgoing: TRadioButton;
+    FIncoming: TRadioButton;
+    FProjectOnly: TCheckBox;
+    FFitButton: TButton;
+    FSaveButton: TButton;
+    FDiagram: TAtlasCallDiagramView;
+    FRoots: TArray<TAtlasHierarchyItem>;
+    FDiagramAllowed: Boolean;
+    FUpdatingDiagram: Boolean;
+    FHierarchyTitle: string;
+    /// <summary>Weg zwischen Symbolen (#1117): Leiste, Statuszeile, Kette in einer Scrollbox.</summary>
+    FPathPanel: TPanel;
+    FPathStatus: TLabel;
+    FPathMap: TButton;
+    FPathBox: TScrollBox;
+    FPathChain: TAtlasSymbolPathChain;
+    FShowsPath: Boolean;
+    FOnShowRoute: TAtlasShowRoute;
+    FDepthLabel: TLabel;
+    FDepth: TComboBox;
+    FRunTests: TButton;
+    FImpact: TAtlasImpact;
+    FShowsImpact: Boolean;
+    FOnImpactDepth: TAtlasImpactDepthChange;
+    FOnImpactRunTests: TAtlasImpactRunTests;
+    FFlowBar: TPanel;
+    FOnlyProject: TCheckBox;
+    FExcludeTests: TCheckBox;
+    FShowsFlow: Boolean;
+    FFlowDirection: TAtlasDataFlowDirection;
+    FFlowMaxDepth: Integer;
+    FSettingFilter: Boolean;
+    FOnFlowExpand: TAtlasDataFlowExpand;
+    FOnFlowFilter: TAtlasDataFlowFilter;
+    procedure ShowPathPanel(AVisible: Boolean);
+    procedure PathMapClick(Sender: TObject);
+    procedure PathBoxResize(Sender: TObject);
+    function AddImpactPlace(AParent: TTreeNode; APlace: Integer): TTreeNode;
+    procedure AddImpactBranch(AParent: TTreeNode; ACause: Integer);
+    procedure AddImpactForms(AParent: TTreeNode; const AForms: TArray<TAtlasImpactForm>);
+    procedure DepthChange(Sender: TObject);
+    procedure RunTestsClick(Sender: TObject);
     function AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
     function DataOf(ANode: TTreeNode): TNodeData;
     procedure AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
+    procedure AddGroups(AParent: TTreeNode; const AGroups: TArray<TAtlasResultGroup>);
+    procedure RenderRated;
+    procedure OnlySureClick(Sender: TObject);
+    procedure TreeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure Clear(const ATitle: string);
     procedure OpenSelected;
     procedure TreeDblClick(Sender: TObject);
@@ -99,14 +201,43 @@ type
     procedure DiffClick(Sender: TObject);
     procedure NoteEditClick(Sender: TObject);
     procedure NoteDeleteClick(Sender: TObject);
+    function IsCallHierarchy: Boolean;
+    procedure UpdateDiagramControls;
+    procedure SetDiagramAllowed(AValue: Boolean);
+    function GetShowsDiagram: Boolean;
+    procedure SetShowsDiagram(AValue: Boolean);
+    procedure SetIsProjectFile(const AValue: TFunc<string, Boolean>);
+    procedure DiagramToggleClick(Sender: TObject);
+    procedure DirectionClick(Sender: TObject);
+    procedure ProjectOnlyClick(Sender: TObject);
+    procedure FitClick(Sender: TObject);
+    procedure SaveClick(Sender: TObject);
+    function DiagramLoad(ADirection: TAtlasHierarchyDirection;
+      const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+    procedure DiagramOpen(const AItem: TAtlasHierarchyItem);
+    procedure AddFlowNodes(AParent: TTreeNode; const ANodes: TArray<TAtlasDataFlowNode>; ALevel: Integer;
+      const APath: TArray<string>);
+    procedure ExpandFlowSource(ANode: TTreeNode; var AllowExpansion: Boolean);
+    procedure FlowFilterClick(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     /// <summary>Fundstellen nach Unit gruppiert; alle Gruppen aufgeklappt.</summary>
     procedure ShowEntries(const ATitle: string; const AGroups: TArray<TAtlasResultGroup>);
+    /// <summary>Fundstellen nach Treffersicherheit (#1119): ohne erschlossene wie ShowEntries; sonst zwei Abschnitte
+    /// mit ASureCaption bzw. AInferredCaption (Format mit der Anzahl), darin nach Unit gruppiert.</summary>
+    procedure ShowRated(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>;
+      const ASureCaption, AInferredCaption: string);
     /// <summary>Wurzeln einer Hierarchie; die erste Ebene wird gleich geladen.</summary>
     procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
-      const ARoots: TArray<TAtlasHierarchyItem>);
+      const ARoots: TArray<TAtlasHierarchyItem>); overload;
+    /// <summary>Wie oben; AAsDiagram: Aufrufhierarchie gleich als Diagramm (#1122, nur mit DiagramAllowed).</summary>
+    procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
+      const ARoots: TArray<TAtlasHierarchyItem>; AAsDiagram: Boolean); overload;
+    /// <summary>Aufrufhierarchie in Richtung ADirection mit denselben Wurzeln neu laden (Baum und Diagramm).</summary>
+    procedure SwitchDirection(ADirection: TAtlasHierarchyDirection);
+    /// <summary>Diagramm als eigenständige HTML-Datei (#1122) mit dem Titel des Fensters.</summary>
+    function DiagramHtml: string;
     /// <summary>Liste „Atlas-Änderungen“ (#721): neueste Sätze zuerst, je Satz seine Dateien (zugeklappt).
     /// AKeepSelection: den bisher gewählten Satz wieder wählen (nach Zurücknehmen).</summary>
     procedure ShowChanges(const ATitle: string; const ASets: TArray<TAtlasChangeSet>; ANow: TDateTime;
@@ -121,6 +252,11 @@ type
     /// <summary>Wie oben; ASelectId: diese Notiz wählen (nach Bearbeiten).</summary>
     procedure ShowNotes(const ATitle: string; const AGroups: TArray<TAtlasNoteGroup>;
       const ASelectId: string); overload;
+    /// <summary>Weg zwischen Symbolen (#1117) als Kette; AMapAvailable: Knopf „In Architekturkarte zeigen“
+    /// anbieten (Architekturübersicht an und ein Weg gefunden).</summary>
+    procedure ShowSymbolPath(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer; AMapAvailable: Boolean);
+    /// <summary>Statt der Kette nur ein Hinweis (Suche läuft, kein Server, Fehler).</summary>
+    procedure ShowSymbolPathMessage(const ATitle, AText: string);
     /// <summary>Kennung der gewählten Notiz; '' ohne.</summary>
     function SelectedNoteId: string;
     procedure EditSelectedNote;
@@ -129,10 +265,45 @@ type
     class function NoteGroupText(const AGroup: TAtlasNoteGroup): string; static;
     /// <summary>Eintrag: "42: Titel" bzw. verwaist "Kunde.pas, Zeile 42: Titel".</summary>
     class function NoteText(const ANote: TAtlasNote; AOrphaned: Boolean): string; static;
-    /// <summary>Text einer Fundstelle: "12: Kunde.Laden;" bzw. mit Vorschau "alt  →  neu".</summary>
+    /// <summary>Text einer Fundstelle: "12: Kunde.Laden;" bzw. mit Vorschau "alt  →  neu"; erschlossen
+    /// "≈ 12: S.Speichern;  [über Interface]" (#1119).</summary>
     class function EntryText(const AEntry: TAtlasResultEntry): string; static;
+    /// <summary>Kurzer Grund eines erschlossenen Treffers, etwa "über Interface"; '' bei sicheren.</summary>
+    class function ReasonText(const AConfidence: TAtlasConfidence): string; static;
     /// <summary>Text eines Hierarchie-Eintrags: "Laden · TKunde  (Kunden.pas:12)".</summary>
     class function HierarchyText(const AItem: TAtlasHierarchyItem): string; static;
+    /// <summary>Auswirkungsanalyse (#1120): Abschnitte „Direkt“, „Indirekt“ (Baum über die Ursache),
+    /// „Betroffene Tests“, darunter erreichte Grenzen; Tiefe und „Betroffene Tests ausführen“ in der Titelzeile.
+    /// </summary>
+    procedure ShowImpact(const ATitle: string; const AImpact: TAtlasImpact);
+    /// <summary>Text einer betroffenen Stelle: wie HierarchyText, mit Art (Override, Umsetzung …), Zahl der
+    /// Verwendungen und Test-Kennzeichen.</summary>
+    class function ImpactPlaceText(const APlace: TAtlasImpactPlace): string; static;
+    /// <summary>"Formular: OnClick = Button1Click  (Main.dfm:12)".</summary>
+    class function ImpactFormText(const AForm: TAtlasImpactForm): string; static;
+    /// <summary>Je erreichte Grenze eine Zeile; leer ohne.</summary>
+    class function ImpactLimitTexts(const AImpact: TAtlasImpact): TArray<string>; static;
+    /// <summary>Zeigt gerade eine Auswirkungsanalyse (#1120).</summary>
+    property ShowsImpact: Boolean read FShowsImpact;
+    property Impact: TAtlasImpact read FImpact;
+    property DepthBox: TComboBox read FDepth;
+    property RunTestsButton: TButton read FRunTests;
+    property OnImpactDepth: TAtlasImpactDepthChange read FOnImpactDepth write FOnImpactDepth;
+    property OnImpactRunTests: TAtlasImpactRunTests read FOnImpactRunTests write FOnImpactRunTests;
+    /// <summary>Datenfluss (#690): erste Ebene; AMaxDepth = navigation.dataFlow.maxDepth, die Filter wie
+    /// angefragt.</summary>
+    procedure ShowDataFlow(const ATitle: string; ADirection: TAtlasDataFlowDirection;
+      const AResult: TAtlasDataFlowResult; AMaxDepth: Integer; AOnlyProject, AExcludeTests: Boolean);
+    /// <summary>"Zuweisung" bzw. bei mehreren "3 Zuweisungen".</summary>
+    class function FlowKindText(AKind: TAtlasDataFlowKind; ACount: Integer): string; static;
+    /// <summary>"Zuweisung: A + B · über Summe  ⚠ unsicher: Zeiger   Haupt.pas:12: X := A + B;"; bei
+    /// zusammengefassten Stellen ohne Fundort (der steht darunter).</summary>
+    class function FlowNodeText(const ANode: TAtlasDataFlowNode): string; static;
+    /// <summary>"Haupt.pas:12: X := A + B;".</summary>
+    class function FlowPlaceText(const APlace: TAtlasDataFlowPlace): string; static;
+    /// <summary>"← Summe  (Daten.pas:11)" bzw. "→ A …", mit "· Konstante", "· Zyklus", "· Tiefe erreicht".</summary>
+    class function FlowSourceText(const AChild: TAtlasDataFlowChild; ADirection: TAtlasDataFlowDirection): string;
+      static;
     property Tree: TTreeView read FTree;
     property OnOpen: TAtlasResultsOpen read FOnOpen write FOnOpen;
     property OnExpand: TAtlasHierarchyExpand read FOnExpand write FOnExpand;
@@ -147,12 +318,41 @@ type
     property ShowsNotes: Boolean read FShowsNotes;
     property OnNoteEdit: TAtlasNoteAction read FOnNoteEdit write FOnNoteEdit;
     property OnNoteDelete: TAtlasNoteAction read FOnNoteDelete write FOnNoteDelete;
+    /// <summary>„Nur sichere“ (#1119); sichtbar, solange erschlossene Treffer da sind.</summary>
+    property OnlySure: TCheckBox read FOnlySure;
+    /// <summary>Diagramm erlaubt (callHierarchy.diagram, #1122); aus: Umschalter fehlt, nur der Baum.</summary>
+    property DiagramAllowed: Boolean read FDiagramAllowed write SetDiagramAllowed;
+    /// <summary>Zeigt gerade das Aufrufdiagramm statt des Baums.</summary>
+    property ShowsDiagram: Boolean read GetShowsDiagram write SetShowsDiagram;
+    /// <summary>Gehört die Datei zu einem Projekt der Gruppe („Nur Projekt-Units“)? nil: alle.</summary>
+    property IsProjectFile: TFunc<string, Boolean> write SetIsProjectFile;
+    property Direction: TAtlasHierarchyDirection read FDirection;
+    property DiagramToggle: TCheckBox read FDiagramToggle;
+    property DiagramBar: TPanel read FDiagramBar;
+    property OutgoingButton: TRadioButton read FOutgoing;
+    property IncomingButton: TRadioButton read FIncoming;
+    property ProjectOnly: TCheckBox read FProjectOnly;
+    property Diagram: TAtlasCallDiagramView read FDiagram;
+    /// <summary>Zeigt gerade einen Weg zwischen Symbolen (#1117).</summary>
+    property ShowsPath: Boolean read FShowsPath;
+    property PathChain: TAtlasSymbolPathChain read FPathChain;
+    property PathStatus: TLabel read FPathStatus;
+    property PathMapButton: TButton read FPathMap;
+    property OnShowRoute: TAtlasShowRoute read FOnShowRoute write FOnShowRoute;
+    /// <summary>Zeigt gerade einen Datenfluss (#690).</summary>
+    property ShowsFlow: Boolean read FShowsFlow;
+    property OnlyProjectCheck: TCheckBox read FOnlyProject;
+    property ExcludeTestsCheck: TCheckBox read FExcludeTests;
+    property OnFlowExpand: TAtlasDataFlowExpand read FOnFlowExpand write FOnFlowExpand;
+    property OnFlowFilter: TAtlasDataFlowFilter read FOnFlowFilter write FOnFlowFilter;
   end;
 
 implementation
 
 uses
   Winapi.Windows,
+  System.IOUtils,
+  Vcl.Dialogs,
   Atlas.UI.Strings,
   Atlas.UI.Undo.Messages;
 
@@ -178,6 +378,49 @@ begin
   FSymbol.LogicalSize := TAtlasSymbol.MenuSize;
   FSymbol.Align := alLeft;
   FSymbol.AlignWithMargins := True;
+  // Filter „Nur sichere“ (#1119), rechts in der Titelzeile.
+  FOnlySure := TCheckBox.Create(Self);
+  FOnlySure.Parent := Header;
+  FOnlySure.Align := alRight;
+  FOnlySure.AlignWithMargins := True;
+  FOnlySure.Caption := TAtlasStrings.Text(TAtlasTextId.ResultsOnlySure);
+  FOnlySure.Width := 110;
+  FOnlySure.Visible := False;
+  FOnlySure.OnClick := OnlySureClick;
+  // Umschalter Liste/Diagramm (#1122), nur bei Aufrufhierarchien.
+  FDiagramToggle := TCheckBox.Create(Self);
+  FDiagramToggle.Parent := Header;
+  FDiagramToggle.Align := alRight;
+  FDiagramToggle.AlignWithMargins := True;
+  FDiagramToggle.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramToggle);
+  FDiagramToggle.Width := 90;
+  FDiagramToggle.Visible := False;
+  FDiagramToggle.OnClick := DiagramToggleClick;
+  // Auswirkungsanalyse (#1120): Tiefe und Testlauf, rechts in der Titelzeile. Die Liste der Tiefen füllt
+  // ShowImpact: Ein Kombinationsfeld braucht dafür ein Fenster.
+  FRunTests := TButton.Create(Self);
+  FRunTests.Parent := Header;
+  FRunTests.Align := alRight;
+  FRunTests.AlignWithMargins := True;
+  FRunTests.Caption := TAtlasStrings.Text(TAtlasTextId.ImpactRunTests);
+  FRunTests.Width := 170;
+  FRunTests.Visible := False;
+  FRunTests.OnClick := RunTestsClick;
+  FDepth := TComboBox.Create(Self);
+  FDepth.Parent := Header;
+  FDepth.Align := alRight;
+  FDepth.AlignWithMargins := True;
+  FDepth.Style := csDropDownList;
+  FDepth.Width := 44;
+  FDepth.Visible := False;
+  FDepth.OnChange := DepthChange;
+  FDepthLabel := TLabel.Create(Self);
+  FDepthLabel.Parent := Header;
+  FDepthLabel.Align := alRight;
+  FDepthLabel.AlignWithMargins := True;
+  FDepthLabel.Layout := tlCenter;
+  FDepthLabel.Caption := TAtlasStrings.Text(TAtlasTextId.ImpactDepth);
+  FDepthLabel.Visible := False;
   FTitle := TLabel.Create(Self);
   FTitle.Parent := Header;
   FTitle.Align := alClient;
@@ -185,6 +428,84 @@ begin
   FTitle.AlignWithMargins := True;
   FTitle.ShowAccelChar := False;
   FTitle.EllipsisPosition := epEndEllipsis;
+  // Leiste des Diagramms: Richtung, Filter, Einpassen, HTML.
+  FDiagramBar := TPanel.Create(Self);
+  FDiagramBar.Parent := Self;
+  FDiagramBar.Align := alTop;
+  FDiagramBar.Top := Header.Top + Header.Height;
+  FDiagramBar.BevelOuter := bvNone;
+  FDiagramBar.ParentBackground := True;
+  FDiagramBar.Height := 26;
+  FDiagramBar.Visible := False;
+  FOutgoing := TRadioButton.Create(Self);
+  FOutgoing.Parent := FDiagramBar;
+  FOutgoing.Align := alLeft;
+  FOutgoing.AlignWithMargins := True;
+  FOutgoing.Width := 160;
+  FOutgoing.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramOutgoing);
+  FOutgoing.OnClick := DirectionClick;
+  FIncoming := TRadioButton.Create(Self);
+  FIncoming.Parent := FDiagramBar;
+  FIncoming.Align := alLeft;
+  FIncoming.AlignWithMargins := True;
+  FIncoming.Left := FOutgoing.Left + FOutgoing.Width + 1;
+  FIncoming.Width := 150;
+  FIncoming.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramIncoming);
+  FIncoming.OnClick := DirectionClick;
+  FProjectOnly := TCheckBox.Create(Self);
+  FProjectOnly.Parent := FDiagramBar;
+  FProjectOnly.Align := alLeft;
+  FProjectOnly.AlignWithMargins := True;
+  FProjectOnly.Left := FIncoming.Left + FIncoming.Width + 1;
+  FProjectOnly.Width := 140;
+  FProjectOnly.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramProjectOnly);
+  FProjectOnly.Checked := True;
+  FProjectOnly.OnClick := ProjectOnlyClick;
+  FSaveButton := TButton.Create(Self);
+  FSaveButton.Parent := FDiagramBar;
+  FSaveButton.Align := alRight;
+  FSaveButton.AlignWithMargins := True;
+  FSaveButton.Width := 150;
+  FSaveButton.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramSaveHtml);
+  FSaveButton.OnClick := SaveClick;
+  FFitButton := TButton.Create(Self);
+  FFitButton.Parent := FDiagramBar;
+  FFitButton.Align := alRight;
+  FFitButton.AlignWithMargins := True;
+  FFitButton.Width := 90;
+  FFitButton.Caption := TAtlasStrings.Text(TAtlasTextId.CallDiagramFit);
+  FFitButton.OnClick := FitClick;
+  FDiagram := TAtlasCallDiagramView.Create(Self);
+  FDiagram.Parent := Self;
+  FDiagram.Align := alClient;
+  FDiagram.Visible := False;
+  FDiagram.Hint := TAtlasStrings.Text(TAtlasTextId.CallDiagramHint);
+  FDiagram.OnLoad := DiagramLoad;
+  FDiagram.OnOpen := DiagramOpen;
+  // Filter des Datenflusses (#690); nur sichtbar, solange er gezeigt wird.
+  FFlowBar := TPanel.Create(Self);
+  FFlowBar.Parent := Self;
+  FFlowBar.Align := alTop;
+  FFlowBar.Top := Header.Top + Header.Height;
+  FFlowBar.BevelOuter := bvNone;
+  FFlowBar.ParentBackground := True;
+  FFlowBar.Height := 24;
+  FFlowBar.Visible := False;
+  FOnlyProject := TCheckBox.Create(Self);
+  FOnlyProject.Parent := FFlowBar;
+  FOnlyProject.Align := alLeft;
+  FOnlyProject.AlignWithMargins := True;
+  FOnlyProject.Width := 150;
+  FOnlyProject.Caption := TAtlasStrings.Text(TAtlasTextId.DataFlowOnlyProject);
+  FOnlyProject.OnClick := FlowFilterClick;
+  FExcludeTests := TCheckBox.Create(Self);
+  FExcludeTests.Parent := FFlowBar;
+  FExcludeTests.Align := alLeft;
+  FExcludeTests.AlignWithMargins := True;
+  FExcludeTests.Left := FOnlyProject.Left + FOnlyProject.Width + 1;
+  FExcludeTests.Width := 150;
+  FExcludeTests.Caption := TAtlasStrings.Text(TAtlasTextId.DataFlowExcludeTests);
+  FExcludeTests.OnClick := FlowFilterClick;
   FTree := TTreeView.Create(Self);
   FTree.Parent := Self;
   FTree.Align := alClient;
@@ -196,6 +517,8 @@ begin
   FTree.OnDblClick := TreeDblClick;
   FTree.OnKeyDown := TreeKeyDown;
   FTree.OnExpanding := TreeExpanding;
+  FTree.OnMouseMove := TreeMouseMove;
+  FTree.ShowHint := True;
   // Kontextmenü der Liste „Atlas-Änderungen“ (#721); in anderen Listen ohne Einträge.
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
@@ -221,6 +544,45 @@ begin
   FNoteDeleteItem.OnClick := NoteDeleteClick;
   FMenu.Items.Add(FNoteDeleteItem);
   FTree.PopupMenu := FMenu;
+  // Weg zwischen Symbolen (#1117): anfangs verborgen, ersetzt den Baum.
+  FPathPanel := TPanel.Create(Self);
+  FPathPanel.Parent := Self;
+  FPathPanel.Align := alClient;
+  FPathPanel.BevelOuter := bvNone;
+  FPathPanel.ShowCaption := False;
+  FPathPanel.ParentBackground := True;
+  FPathPanel.Visible := False;
+  FPathMap := TButton.Create(Self);
+  FPathMap.Parent := FPathPanel;
+  FPathMap.Align := alTop;
+  FPathMap.AlignWithMargins := True;
+  FPathMap.Caption := TAtlasStrings.Text(TAtlasTextId.SymbolPathShowMap);
+  FPathMap.OnClick := PathMapClick;
+  FPathMap.Visible := False;
+  FPathStatus := TLabel.Create(Self);
+  FPathStatus.Parent := FPathPanel;
+  FPathStatus.Align := alTop;
+  FPathStatus.AlignWithMargins := True;
+  FPathStatus.ShowAccelChar := False;
+  FPathStatus.WordWrap := True;
+  FPathBox := TScrollBox.Create(Self);
+  FPathBox.Parent := FPathPanel;
+  FPathBox.Align := alClient;
+  FPathBox.BorderStyle := bsNone;
+  FPathBox.VertScrollBar.Tracking := True;
+  FPathBox.HorzScrollBar.Visible := False;
+  FPathBox.OnResize := PathBoxResize;
+  FPathChain := TAtlasSymbolPathChain.Create(Self);
+  FPathChain.Parent := FPathBox;
+  FPathChain.Left := 0;
+  FPathChain.Top := 0;
+  FPathChain.Width := FPathBox.ClientWidth;
+  FPathChain.OnOpen :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      if Assigned(FOnOpen) then
+        FOnOpen(AFileName, ALine, ACharacter);
+    end;
 end;
 
 destructor TAtlasResultsFrame.Destroy;
@@ -229,11 +591,35 @@ begin
   inherited;
 end;
 
+class function TAtlasResultsFrame.ReasonText(const AConfidence: TAtlasConfidence): string;
+begin
+  Result := '';
+  if not AConfidence.Inferred then
+    Exit;
+  if AConfidence.Reason = 'interface' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInterface)
+  else if AConfidence.Reason = 'virtual' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonVirtual)
+  else if AConfidence.Reason = 'ambiguous' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonAmbiguous)
+  else if AConfidence.Reason = 'unresolved' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonUnresolved)
+  else if AConfidence.Reason = 'inactiveBranch' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInactiveBranch)
+  else if AConfidence.Reason = 'text' then
+    Result := TAtlasStrings.Text(TAtlasTextId.ReferenceReasonText)
+  else
+    // Gründe neuerer Server: wie geliefert.
+    Result := AConfidence.Reason;
+end;
+
 class function TAtlasResultsFrame.EntryText(const AEntry: TAtlasResultEntry): string;
 begin
   Result := Format('%d: %s', [AEntry.Line + 1, AEntry.Text]);
   if AEntry.Detail <> '' then
     Result := Result + '  →  ' + AEntry.Detail;
+  if AEntry.Confidence.Inferred then
+    Result := '≈ ' + Result + '  [' + ReasonText(AEntry.Confidence) + ']';
 end;
 
 class function TAtlasResultsFrame.HierarchyText(const AItem: TAtlasHierarchyItem): string;
@@ -243,6 +629,177 @@ begin
     Result := Result + ' · ' + AItem.Detail;
   if AItem.FileName <> '' then
     Result := Result + Format('  (%s:%d)', [ExtractFileName(AItem.FileName), AItem.Line + 1]);
+  if AItem.Confidence.Inferred then
+    Result := '≈ ' + Result + '  [' + ReasonText(AItem.Confidence) + ']';
+end;
+
+class function TAtlasResultsFrame.ImpactPlaceText(const APlace: TAtlasImpactPlace): string;
+var
+  Edge: string;
+begin
+  if APlace.Terminal then
+    Result := APlace.Item.Name + ' · ' + TAtlasStrings.Text(TAtlasTextId.ImpactUnitLevel) +
+      Format('  (%s:%d)', [ExtractFileName(APlace.Item.FileName), APlace.UseLine + 1])
+  else
+    Result := HierarchyText(APlace.Item);
+  Edge := '';
+  if APlace.Edge = 'reference' then
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeReference)
+  else if APlace.Edge = 'override' then
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeOverride)
+  else if APlace.Edge = 'baseMethod' then
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeBase)
+  else if APlace.Edge = 'interfaceMethod' then
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeInterface)
+  else if APlace.Edge = 'implementation' then
+    Edge := TAtlasStrings.Text(TAtlasTextId.ImpactEdgeImplementation);
+  if Edge <> '' then
+    Result := Result + '  · ' + Edge;
+  if APlace.UseCount > 1 then
+    Result := Result + Format('  ×%d', [APlace.UseCount]);
+  if APlace.Test <> '' then
+    Result := Result + '  · Test';
+end;
+
+class function TAtlasResultsFrame.ImpactFormText(const AForm: TAtlasImpactForm): string;
+begin
+  Result := Format(TAtlasStrings.Text(TAtlasTextId.ImpactForm), [AForm.Text, ExtractFileName(AForm.FileName),
+    AForm.Line + 1]);
+end;
+
+class function TAtlasResultsFrame.ImpactLimitTexts(const AImpact: TAtlasImpact): TArray<string>;
+begin
+  Result := nil;
+  if AImpact.DepthReached then
+    Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitDepth), [AImpact.Depth,
+      AImpact.Unexpanded])];
+  if AImpact.CountReached then
+    Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitCount), [AImpact.MaxPlaces])];
+  if AImpact.TimeReached then
+    Result := Result + [Format(TAtlasStrings.Text(TAtlasTextId.ImpactLimitTime), [AImpact.TimeoutMs])];
+end;
+
+procedure TAtlasResultsFrame.AddImpactForms(AParent: TTreeNode; const AForms: TArray<TAtlasImpactForm>);
+var
+  Form: TAtlasImpactForm;
+  Data: TNodeData;
+begin
+  for Form in AForms do
+  begin
+    Data := Default(TNodeData);
+    Data.Kind := TNodeKind.Entry;
+    Data.FileName := Form.FileName;
+    Data.Line := Form.Line;
+    Data.Character := Form.Character;
+    AddNode(AParent, ImpactFormText(Form), Data);
+  end;
+end;
+
+function TAtlasResultsFrame.AddImpactPlace(AParent: TTreeNode; APlace: Integer): TTreeNode;
+var
+  Place: TAtlasImpactPlace;
+  Data: TNodeData;
+begin
+  Place := FImpact.Places[APlace];
+  Data := Default(TNodeData);
+  Data.Kind := TNodeKind.Entry;
+  // Doppelklick springt zur Verwendung der Ursache in der Stelle.
+  Data.FileName := Place.Item.FileName;
+  Data.Line := Place.UseLine;
+  Data.Character := Place.UseCharacter;
+  Data.Hint := Place.Item.Confidence.Explanation;
+  Result := AddNode(AParent, ImpactPlaceText(Place), Data);
+  AddImpactForms(Result, Place.Forms);
+end;
+
+procedure TAtlasResultsFrame.AddImpactBranch(AParent: TTreeNode; ACause: Integer);
+var
+  Child: Integer;
+begin
+  // Jede Stelle hat genau eine Ursache: Der Baum endet, Zyklen gibt es nicht.
+  for Child in FImpact.Children(ACause) do
+    AddImpactBranch(AddImpactPlace(AParent, Child), Child);
+end;
+
+procedure TAtlasResultsFrame.ShowImpact(const ATitle: string; const AImpact: TAtlasImpact);
+var
+  Data: TNodeData;
+  Section, Node: TTreeNode;
+  Index, Depth: Integer;
+  Test: TAtlasImpactTest;
+  Limit: string;
+begin
+  Clear(ATitle);
+  FImpact := AImpact;
+  FShowsImpact := True;
+  FDepthLabel.Visible := True;
+  FDepth.Visible := True;
+  FRunTests.Visible := True;
+  FRunTests.Enabled := Length(AImpact.Tests) > 0;
+  if FDepth.Items.Count = 0 then
+    for Depth := 1 to 5 do
+      FDepth.Items.Add(IntToStr(Depth));
+  FDepth.OnChange := nil;
+  try
+    FDepth.ItemIndex := AImpact.Depth - 1;
+  finally
+    FDepth.OnChange := DepthChange;
+  end;
+  Data := Default(TNodeData);
+  Data.Kind := TNodeKind.Placeholder;
+  FTree.Items.BeginUpdate;
+  try
+    Section := AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactDirect), [AImpact.LevelCount(1)]), Data);
+    AddImpactForms(Section, AImpact.SymbolForms);
+    for Index := 0 to High(AImpact.Places) do
+      if AImpact.Places[Index].Level = 1 then
+        AddImpactPlace(Section, Index);
+    Section.Expand(False);
+    Section := AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactIndirect), [AImpact.CountFrom(2)]), Data);
+    for Index in AImpact.Children(-1) do
+      if Length(AImpact.Children(Index)) > 0 then
+      begin
+        Node := AddImpactPlace(Section, Index);
+        AddImpactBranch(Node, Index);
+      end;
+    Section.Expand(AImpact.CountFrom(2) <= 200);
+    if Length(AImpact.Tests) = 0 then
+      AddNode(nil, TAtlasStrings.Text(TAtlasTextId.ImpactNoTests), Data)
+    else
+    begin
+      Section := AddNode(nil, Format(TAtlasStrings.Text(TAtlasTextId.ImpactTests), [Length(AImpact.Tests)]), Data);
+      for Test in AImpact.Tests do
+      begin
+        Data.Kind := TNodeKind.Entry;
+        Data.FileName := Test.FileName;
+        Data.Line := Test.Line;
+        Data.Character := 0;
+        AddNode(Section, Test.Name + Format('  (%s:%d)', [ExtractFileName(Test.FileName), Test.Line + 1]),
+          Data);
+      end;
+      Data := Default(TNodeData);
+      Data.Kind := TNodeKind.Placeholder;
+      Section.Expand(False);
+    end;
+    for Limit in ImpactLimitTexts(AImpact) do
+      AddNode(nil, '⚠ ' + Limit, Data);
+  finally
+    FTree.Items.EndUpdate;
+  end;
+  if FTree.Items.Count > 0 then
+    FTree.Selected := FTree.Items[0];
+end;
+
+procedure TAtlasResultsFrame.DepthChange(Sender: TObject);
+begin
+  if FShowsImpact and (FDepth.ItemIndex >= 0) and Assigned(FOnImpactDepth) then
+    FOnImpactDepth(FDepth.ItemIndex + 1);
+end;
+
+procedure TAtlasResultsFrame.RunTestsClick(Sender: TObject);
+begin
+  if FShowsImpact and (Length(FImpact.Tests) > 0) and Assigned(FOnImpactRunTests) then
+    FOnImpactRunTests(FImpact);
 end;
 
 function TAtlasResultsFrame.AddNode(AParent: TTreeNode; const AText: string; const AData: TNodeData): TTreeNode;
@@ -265,10 +822,63 @@ begin
     Result := FData[Integer(Index)];
 end;
 
+procedure TAtlasResultsFrame.ShowPathPanel(AVisible: Boolean);
+begin
+  FShowsPath := AVisible;
+  FPathPanel.Visible := AVisible;
+  FTree.Visible := not AVisible;
+end;
+
+procedure TAtlasResultsFrame.PathBoxResize(Sender: TObject);
+begin
+  FPathChain.Width := FPathBox.ClientWidth;
+end;
+
+procedure TAtlasResultsFrame.PathMapClick(Sender: TObject);
+begin
+  if Assigned(FOnShowRoute) and (Length(FPathChain.Answer.Routes) > 0) then
+    FOnShowRoute(FPathChain.Answer.Routes[0].UnitNames);
+end;
+
+procedure TAtlasResultsFrame.ShowSymbolPath(const ATitle: string; const AAnswer: TAtlasSymbolPathAnswer;
+  AMapAvailable: Boolean);
+begin
+  Clear(ATitle);
+  ShowPathPanel(True);
+  FPathStatus.Caption := TAtlasSymbolPathChain.StatusText(AAnswer);
+  FPathMap.Visible := AMapAvailable and (Length(AAnswer.Routes) > 0);
+  FPathChain.SetAnswer(AAnswer);
+  FPathBox.VertScrollBar.Position := 0;
+  // Nur im gezeigten Fenster; SetFocus in einem verborgenen löst eine Ausnahme aus.
+  if FPathChain.Showing and FPathChain.CanFocus then
+    FPathChain.SetFocus;
+end;
+
+procedure TAtlasResultsFrame.ShowSymbolPathMessage(const ATitle, AText: string);
+begin
+  Clear(ATitle);
+  ShowPathPanel(True);
+  FPathStatus.Caption := AText;
+  FPathMap.Visible := False;
+  FPathChain.SetAnswer(Default(TAtlasSymbolPathAnswer));
+end;
+
 procedure TAtlasResultsFrame.Clear(const ATitle: string);
 begin
+  // Andere Listen zeigen immer den Baum; der Umschalter behält seinen Stand für die nächste Aufrufhierarchie.
+  FRoots := nil;
+  ShowPathPanel(False);
   FShowsChanges := False;
   FShowsNotes := False;
+  FOnlySure.Visible := False;
+  FShowsImpact := False;
+  FDepthLabel.Visible := False;
+  FDepth.Visible := False;
+  FRunTests.Visible := False;
+  FHintNode := nil;
+  FTree.Hint := '';
+  FShowsFlow := False;
+  FFlowBar.Visible := False;
   FTitle.Caption := ATitle;
   FTree.Items.BeginUpdate;
   try
@@ -277,40 +887,117 @@ begin
     FTree.Items.EndUpdate;
   end;
   FData.Clear;
+  UpdateDiagramControls;
 end;
 
-procedure TAtlasResultsFrame.ShowEntries(const ATitle: string; const AGroups: TArray<TAtlasResultGroup>);
+procedure TAtlasResultsFrame.AddGroups(AParent: TTreeNode; const AGroups: TArray<TAtlasResultGroup>);
 var
   Group: TAtlasResultGroup;
   Entry: TAtlasResultEntry;
   Data: TNodeData;
   GroupNode: TTreeNode;
 begin
+  for Group in AGroups do
+  begin
+    Data := Default(TNodeData);
+    Data.Kind := TNodeKind.Group;
+    Data.FileName := Group.FileName;
+    GroupNode := AddNode(AParent, Group.Caption, Data);
+    for Entry in Group.Entries do
+    begin
+      Data := Default(TNodeData);
+      Data.Kind := TNodeKind.Entry;
+      Data.FileName := Entry.FileName;
+      Data.Line := Entry.Line;
+      Data.Character := Entry.Character;
+      Data.Hint := Entry.Confidence.Explanation;
+      AddNode(GroupNode, EntryText(Entry), Data);
+    end;
+    GroupNode.Expand(False);
+  end;
+end;
+
+procedure TAtlasResultsFrame.ShowEntries(const ATitle: string; const AGroups: TArray<TAtlasResultGroup>);
+begin
   Clear(ATitle);
   FTree.Items.BeginUpdate;
   try
-    for Group in AGroups do
+    AddGroups(nil, AGroups);
+  finally
+    FTree.Items.EndUpdate;
+  end;
+  if FTree.Items.Count > 0 then
+    FTree.Selected := FTree.Items[0];
+end;
+
+procedure TAtlasResultsFrame.ShowRated(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>;
+  const ASureCaption, AInferredCaption: string);
+begin
+  FRatedTitle := ATitle;
+  FRatedEntries := AEntries;
+  FSureCaption := ASureCaption;
+  FInferredCaption := AInferredCaption;
+  RenderRated;
+end;
+
+procedure TAtlasResultsFrame.RenderRated;
+var
+  Sure, Inferred: TArray<TAtlasResultEntry>;
+  Entry: TAtlasResultEntry;
+  Data: TNodeData;
+  Section: TTreeNode;
+begin
+  Sure := TAtlasResults.SureOnly(FRatedEntries);
+  Inferred := nil;
+  for Entry in FRatedEntries do
+    if Entry.Confidence.Inferred then
+      Inferred := Inferred + [Entry];
+  if Length(Inferred) = 0 then
+  begin
+    ShowEntries(FRatedTitle, TAtlasResults.Group(FRatedEntries));
+    Exit;
+  end;
+  Clear(FRatedTitle);
+  FOnlySure.Visible := True;
+  FTree.Items.BeginUpdate;
+  try
+    if FOnlySure.Checked then
+      AddGroups(nil, TAtlasResults.Group(Sure))
+    else
     begin
       Data := Default(TNodeData);
-      Data.Kind := TNodeKind.Group;
-      Data.FileName := Group.FileName;
-      GroupNode := AddNode(nil, Group.Caption, Data);
-      for Entry in Group.Entries do
-      begin
-        Data := Default(TNodeData);
-        Data.Kind := TNodeKind.Entry;
-        Data.FileName := Entry.FileName;
-        Data.Line := Entry.Line;
-        Data.Character := Entry.Character;
-        AddNode(GroupNode, EntryText(Entry), Data);
-      end;
-      GroupNode.Expand(False);
+      Data.Kind := TNodeKind.Placeholder;
+      Section := AddNode(nil, Format(FSureCaption, [Length(Sure)]), Data);
+      AddGroups(Section, TAtlasResults.Group(Sure));
+      Section.Expand(False);
+      Section := AddNode(nil, Format(FInferredCaption, [Length(Inferred)]), Data);
+      AddGroups(Section, TAtlasResults.Group(Inferred));
+      Section.Expand(False);
     end;
   finally
     FTree.Items.EndUpdate;
   end;
   if FTree.Items.Count > 0 then
     FTree.Selected := FTree.Items[0];
+end;
+
+procedure TAtlasResultsFrame.OnlySureClick(Sender: TObject);
+begin
+  // Clear blendet den Filter aus und RenderRated wieder ein; Checked bleibt.
+  if Length(FRatedEntries) > 0 then
+    RenderRated;
+end;
+
+procedure TAtlasResultsFrame.TreeMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+var
+  Node: TTreeNode;
+begin
+  Node := FTree.GetNodeAt(X, Y);
+  if Node = FHintNode then
+    Exit;
+  FHintNode := Node;
+  FTree.Hint := DataOf(Node).Hint;
+  Application.CancelHint;
 end;
 
 procedure TAtlasResultsFrame.AddHierarchy(AParent: TTreeNode; const AItems: TArray<TAtlasHierarchyItem>);
@@ -327,6 +1014,7 @@ begin
     Data.Line := Item.Line;
     Data.Character := Item.Character;
     Data.Item := Item;
+    Data.Hint := Item.Confidence.Explanation;
     Node := AddNode(AParent, HierarchyText(Item), Data);
     // Platzhalter, damit sich der Knoten aufklappen lässt; geladen wird erst dann.
     Data := Default(TNodeData);
@@ -338,8 +1026,15 @@ end;
 procedure TAtlasResultsFrame.ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
   const ARoots: TArray<TAtlasHierarchyItem>);
 begin
+  ShowHierarchy(ATitle, ADirection, ARoots, False);
+end;
+
+procedure TAtlasResultsFrame.ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
+  const ARoots: TArray<TAtlasHierarchyItem>; AAsDiagram: Boolean);
+begin
   Clear(ATitle);
   FDirection := ADirection;
+  FRoots := ARoots;
   FTree.Items.BeginUpdate;
   try
     AddHierarchy(nil, ARoots);
@@ -351,6 +1046,153 @@ begin
     FTree.Selected := FTree.Items[0];
     FTree.Items[0].Expand(False);
   end;
+  FHierarchyTitle := ATitle;
+  UpdateDiagramControls;
+  if AAsDiagram or FDiagramToggle.Checked then
+    SetShowsDiagram(True);
+end;
+
+function TAtlasResultsFrame.IsCallHierarchy: Boolean;
+begin
+  Result := (Length(FRoots) > 0) and ((FDirection = TAtlasHierarchyDirection.Incoming) or
+    (FDirection = TAtlasHierarchyDirection.Outgoing));
+end;
+
+procedure TAtlasResultsFrame.UpdateDiagramControls;
+var
+  Possible, Showing: Boolean;
+begin
+  Possible := FDiagramAllowed and IsCallHierarchy;
+  FDiagramToggle.Visible := Possible;
+  Showing := Possible and FDiagramToggle.Checked;
+  FUpdatingDiagram := True;
+  try
+    FOutgoing.Checked := FDirection = TAtlasHierarchyDirection.Outgoing;
+    FIncoming.Checked := FDirection = TAtlasHierarchyDirection.Incoming;
+  finally
+    FUpdatingDiagram := False;
+  end;
+  FDiagramBar.Visible := Showing;
+  FDiagram.Visible := Showing;
+  FTree.Visible := not Showing;
+end;
+
+procedure TAtlasResultsFrame.SetDiagramAllowed(AValue: Boolean);
+begin
+  FDiagramAllowed := AValue;
+  if not AValue then
+    SetShowsDiagram(False)
+  else
+    UpdateDiagramControls;
+end;
+
+function TAtlasResultsFrame.GetShowsDiagram: Boolean;
+begin
+  Result := FDiagram.Visible;
+end;
+
+procedure TAtlasResultsFrame.SetShowsDiagram(AValue: Boolean);
+begin
+  AValue := AValue and FDiagramAllowed and IsCallHierarchy;
+  FUpdatingDiagram := True;
+  try
+    FDiagramToggle.Checked := AValue;
+  finally
+    FUpdatingDiagram := False;
+  end;
+  // Erst beim Umschalten laden; ein Wechsel zurück zum Baum behält die geladenen Ebenen nicht.
+  if AValue then
+  begin
+    FDiagram.ProjectOnly := FProjectOnly.Checked;
+    FDiagram.ShowRoots(FDirection, FRoots);
+  end;
+  UpdateDiagramControls;
+  if AValue and FDiagram.CanFocus then
+    FDiagram.SetFocus;
+end;
+
+procedure TAtlasResultsFrame.SetIsProjectFile(const AValue: TFunc<string, Boolean>);
+begin
+  FDiagram.IsProjectFile := AValue;
+end;
+
+procedure TAtlasResultsFrame.SwitchDirection(ADirection: TAtlasHierarchyDirection);
+const
+  Titles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
+    TAtlasTextId.ResultsOutgoing, TAtlasTextId.ResultsSupertypes, TAtlasTextId.ResultsSubtypes);
+var
+  Roots: TArray<TAtlasHierarchyItem>;
+  AsDiagram: Boolean;
+begin
+  if (Length(FRoots) = 0) or (ADirection = FDirection) then
+    Exit;
+  Roots := FRoots;
+  AsDiagram := ShowsDiagram;
+  ShowHierarchy(TAtlasStrings.Fmt(Titles[ADirection], [Roots[0].Name]), ADirection, Roots, AsDiagram);
+end;
+
+procedure TAtlasResultsFrame.DiagramToggleClick(Sender: TObject);
+begin
+  if not FUpdatingDiagram then
+    SetShowsDiagram(FDiagramToggle.Checked);
+end;
+
+procedure TAtlasResultsFrame.DirectionClick(Sender: TObject);
+begin
+  if FUpdatingDiagram then
+    Exit;
+  if FOutgoing.Checked then
+    SwitchDirection(TAtlasHierarchyDirection.Outgoing)
+  else if FIncoming.Checked then
+    SwitchDirection(TAtlasHierarchyDirection.Incoming);
+end;
+
+procedure TAtlasResultsFrame.ProjectOnlyClick(Sender: TObject);
+begin
+  FDiagram.ProjectOnly := FProjectOnly.Checked;
+end;
+
+procedure TAtlasResultsFrame.FitClick(Sender: TObject);
+begin
+  FDiagram.FitView;
+end;
+
+function TAtlasResultsFrame.DiagramHtml: string;
+begin
+  Result := FDiagram.Html(FHierarchyTitle);
+end;
+
+procedure TAtlasResultsFrame.SaveClick(Sender: TObject);
+var
+  Dialog: TSaveDialog;
+begin
+  Dialog := TSaveDialog.Create(Self);
+  try
+    Dialog.Filter := TAtlasStrings.Text(TAtlasTextId.CallDiagramSaveFilter);
+    Dialog.DefaultExt := 'html';
+    Dialog.FileName := TAtlasStrings.Text(TAtlasTextId.CallDiagramCommand) + '.html';
+    Dialog.Options := Dialog.Options + [ofOverwritePrompt, ofPathMustExist];
+    if not Dialog.Execute then
+      Exit;
+    TFile.WriteAllText(Dialog.FileName, DiagramHtml, TEncoding.UTF8);
+    FTitle.Caption := FHierarchyTitle + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.CallDiagramSaved, [Dialog.FileName]);
+  finally
+    Dialog.Free;
+  end;
+end;
+
+function TAtlasResultsFrame.DiagramLoad(ADirection: TAtlasHierarchyDirection;
+  const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+begin
+  Result := nil;
+  if Assigned(FOnExpand) then
+    Result := FOnExpand(ADirection, AItem);
+end;
+
+procedure TAtlasResultsFrame.DiagramOpen(const AItem: TAtlasHierarchyItem);
+begin
+  if Assigned(FOnOpen) and (AItem.FileName <> '') then
+    FOnOpen(AItem.FileName, AItem.Line, AItem.Character);
 end;
 
 procedure TAtlasResultsFrame.TreeExpanding(Sender: TObject; Node: TTreeNode; var AllowExpansion: Boolean);
@@ -360,6 +1202,11 @@ var
   Children: TArray<TAtlasHierarchyItem>;
 begin
   Data := DataOf(Node);
+  if (Data.Kind = TNodeKind.FlowSource) and not Data.Loaded then
+  begin
+    ExpandFlowSource(Node, AllowExpansion);
+    Exit;
+  end;
   if (Data.Kind <> TNodeKind.Hierarchy) or Data.Loaded then
     Exit;
   Index := NativeInt(Node.Data) - 1;
@@ -589,6 +1436,211 @@ begin
   ShowSelectedDiff;
 end;
 
+class function TAtlasResultsFrame.FlowKindText(AKind: TAtlasDataFlowKind; ACount: Integer): string;
+const
+  Singular: array[TAtlasDataFlowKind] of TAtlasTextId = (TAtlasTextId.DataFlowAssignment,
+    TAtlasTextId.DataFlowVarArgument, TAtlasTextId.DataFlowOutArgument, TAtlasTextId.DataFlowInput,
+    TAtlasTextId.DataFlowInitializer, TAtlasTextId.DataFlowLoop, TAtlasTextId.DataFlowCallerArgument,
+    TAtlasTextId.DataFlowReturn, TAtlasTextId.DataFlowPropertyWrite, TAtlasTextId.DataFlowPropertyRead,
+    TAtlasTextId.DataFlowModify, TAtlasTextId.DataFlowArgument, TAtlasTextId.DataFlowOutput, TAtlasTextId.DataFlowUse,
+    TAtlasTextId.DataFlowConstant, TAtlasTextId.DataFlowOutside, TAtlasTextId.DataFlowAddress,
+    TAtlasTextId.DataFlowPlace);
+  Plural: array[TAtlasDataFlowKind] of TAtlasTextId = (TAtlasTextId.DataFlowAssignments,
+    TAtlasTextId.DataFlowVarArguments, TAtlasTextId.DataFlowOutArguments, TAtlasTextId.DataFlowInputs,
+    TAtlasTextId.DataFlowInitializers, TAtlasTextId.DataFlowLoops, TAtlasTextId.DataFlowCallerArguments,
+    TAtlasTextId.DataFlowReturns, TAtlasTextId.DataFlowPropertyWrites, TAtlasTextId.DataFlowPropertyReads,
+    TAtlasTextId.DataFlowModifies, TAtlasTextId.DataFlowArguments, TAtlasTextId.DataFlowOutputs,
+    TAtlasTextId.DataFlowUses, TAtlasTextId.DataFlowConstants, TAtlasTextId.DataFlowOutsides,
+    TAtlasTextId.DataFlowAddresses, TAtlasTextId.DataFlowPlaces);
+begin
+  if ACount > 1 then
+    Result := Format('%d %s', [ACount, TAtlasStrings.Text(Plural[AKind])])
+  else
+    Result := TAtlasStrings.Text(Singular[AKind]);
+end;
+
+function UnsafeText(const AReason: string): string;
+begin
+  if AReason = 'pointer' then
+    Result := TAtlasStrings.Text(TAtlasTextId.DataFlowUnsafePointer)
+  else if AReason = 'address' then
+    Result := TAtlasStrings.Text(TAtlasTextId.DataFlowUnsafeAddress)
+  else if AReason = 'move' then
+    Result := 'Move'
+  else if AReason = 'fillchar' then
+    Result := 'FillChar'
+  else
+    Result := AReason;
+end;
+
+class function TAtlasResultsFrame.FlowPlaceText(const APlace: TAtlasDataFlowPlace): string;
+begin
+  Result := Format('%s:%d: %s', [ExtractFileName(APlace.FileName), APlace.Line + 1, APlace.LineText]);
+end;
+
+class function TAtlasResultsFrame.FlowNodeText(const ANode: TAtlasDataFlowNode): string;
+var
+  Origin: TAtlasDataFlowOrigin;
+begin
+  Result := FlowKindText(ANode.Kind, Length(ANode.Places));
+  if ANode.Detail <> '' then
+    Result := Result + ': ' + ANode.Detail;
+  if ANode.Via <> '' then
+    Result := Result + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.DataFlowVia, [ANode.Via]);
+  // Herkunft eines Blatts nur, wo die Art sie nicht schon nennt.
+  Origin := TAtlasDataFlowTree.Origin(ANode);
+  case Origin of
+    TAtlasDataFlowOrigin.Literal:
+      Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginLiteral);
+    TAtlasDataFlowOrigin.Open:
+      Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginOpen);
+    TAtlasDataFlowOrigin.Outside:
+      if ANode.Kind <> TAtlasDataFlowKind.Outside then
+        Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginOutside);
+    TAtlasDataFlowOrigin.Address:
+      Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginAddress);
+  end;
+  if ANode.Unsafe then
+    Result := Result + '  ⚠ ' + TAtlasStrings.Fmt(TAtlasTextId.DataFlowUnsafe, [UnsafeText(ANode.UnsafeReason)]);
+  if Length(ANode.Places) = 1 then
+    Result := Result + '   ' + FlowPlaceText(ANode.Places[0]);
+end;
+
+class function TAtlasResultsFrame.FlowSourceText(const AChild: TAtlasDataFlowChild;
+  ADirection: TAtlasDataFlowDirection): string;
+begin
+  if ADirection = TAtlasDataFlowDirection.Targets then
+    Result := '→ '
+  else
+    Result := '← ';
+  Result := Result + AChild.Source.Name;
+  if AChild.Source.FileName <> '' then
+    Result := Result + Format('  (%s:%d)', [ExtractFileName(AChild.Source.FileName), AChild.Source.Line + 1]);
+  case AChild.Source.Leaf of
+    TAtlasDataFlowLeaf.Constant:
+      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafConstant);
+    TAtlasDataFlowLeaf.Outside:
+      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafOutside);
+    TAtlasDataFlowLeaf.Cycle:
+      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafCycle);
+  else
+    if AChild.DepthReached then
+      Result := Result + ' · ' + TAtlasStrings.Text(TAtlasTextId.DataFlowLeafDepth);
+  end;
+end;
+
+procedure TAtlasResultsFrame.AddFlowNodes(AParent: TTreeNode; const ANodes: TArray<TAtlasDataFlowNode>;
+  ALevel: Integer; const APath: TArray<string>);
+var
+  Node: TAtlasDataFlowNode;
+  Child: TAtlasDataFlowChild;
+  Place: TAtlasDataFlowPlace;
+  Data: TNodeData;
+  FlowNode, SourceNode: TTreeNode;
+begin
+  for Node in ANodes do
+  begin
+    Place := TAtlasDataFlowTree.FirstPlace(Node);
+    Data := Default(TNodeData);
+    Data.Kind := TNodeKind.Flow;
+    Data.FileName := Place.FileName;
+    Data.Line := Place.Line;
+    Data.Character := Place.Character;
+    FlowNode := AddNode(AParent, FlowNodeText(Node), Data);
+    for Child in TAtlasDataFlowTree.Children(Node, ALevel, FFlowMaxDepth) do
+    begin
+      Data := Default(TNodeData);
+      if Child.Kind = TAtlasDataFlowChildKind.Place then
+      begin
+        Data.Kind := TNodeKind.FlowPlace;
+        Data.FileName := Child.Place.FileName;
+        Data.Line := Child.Place.Line;
+        Data.Character := Child.Place.Character;
+        AddNode(FlowNode, FlowPlaceText(Child.Place), Data);
+        Continue;
+      end;
+      Data.Kind := TNodeKind.FlowSource;
+      Data.FileName := Child.Source.FileName;
+      Data.Line := Child.Source.Line;
+      Data.Character := Child.Source.Character;
+      Data.FlowSource := Child.Source;
+      Data.FlowPath := TAtlasDataFlowTree.ChildPath(APath, Child.Source.Key);
+      Data.FlowLevel := ALevel;
+      Data.Loaded := not Child.Expandable;
+      SourceNode := AddNode(FlowNode, FlowSourceText(Child, FFlowDirection), Data);
+      if Child.Expandable then
+      begin
+        // Platzhalter, damit sich die Quelle aufklappen lässt; geladen wird erst dann.
+        Data := Default(TNodeData);
+        Data.Kind := TNodeKind.Placeholder;
+        AddNode(SourceNode, '…', Data);
+      end;
+    end;
+  end;
+end;
+
+procedure TAtlasResultsFrame.ShowDataFlow(const ATitle: string; ADirection: TAtlasDataFlowDirection;
+  const AResult: TAtlasDataFlowResult; AMaxDepth: Integer; AOnlyProject, AExcludeTests: Boolean);
+begin
+  Clear(ATitle);
+  FShowsFlow := True;
+  FFlowDirection := ADirection;
+  FFlowMaxDepth := TAtlasDataFlowTree.ClampDepth(AMaxDepth);
+  FSettingFilter := True;
+  try
+    FOnlyProject.Checked := AOnlyProject;
+    FExcludeTests.Checked := AExcludeTests;
+  finally
+    FSettingFilter := False;
+  end;
+  FFlowBar.Visible := True;
+  FTree.Items.BeginUpdate;
+  try
+    AddFlowNodes(nil, AResult.Nodes, 1, TArray<string>.Create(AResult.Symbol.Key));
+  finally
+    FTree.Items.EndUpdate;
+  end;
+  if FTree.Items.Count > 0 then
+    FTree.Selected := FTree.Items[0];
+end;
+
+procedure TAtlasResultsFrame.ExpandFlowSource(ANode: TTreeNode; var AllowExpansion: Boolean);
+var
+  Index: NativeInt;
+  Data: TNodeData;
+  Flow: TAtlasDataFlowResult;
+begin
+  Data := DataOf(ANode);
+  Index := NativeInt(ANode.Data) - 1;
+  Data.Loaded := True;
+  FData[Integer(Index)] := Data;
+  Flow := Default(TAtlasDataFlowResult);
+  if Assigned(FOnFlowExpand) then
+  begin
+    Screen.Cursor := crHourGlass;
+    try
+      Flow := FOnFlowExpand(FFlowDirection, Data.FlowSource, Data.FlowPath);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+  end;
+  FTree.Items.BeginUpdate;
+  try
+    ANode.DeleteChildren;
+    AddFlowNodes(ANode, Flow.Nodes, Data.FlowLevel + 1, Data.FlowPath);
+  finally
+    FTree.Items.EndUpdate;
+  end;
+  AllowExpansion := ANode.HasChildren;
+end;
+
+procedure TAtlasResultsFrame.FlowFilterClick(Sender: TObject);
+begin
+  if FSettingFilter or not FShowsFlow or not Assigned(FOnFlowFilter) then
+    Exit;
+  FOnFlowFilter(FOnlyProject.Checked, FExcludeTests.Checked);
+end;
+
 procedure TAtlasResultsFrame.OpenSelected;
 var
   Data: TNodeData;
@@ -601,7 +1653,8 @@ begin
     Exit;
   end;
   // Notizen (#545) springen zu ihrer Zeile, verwaiste zur zuletzt bekannten.
-  if (Data.Kind in [TNodeKind.Entry, TNodeKind.Hierarchy, TNodeKind.Note]) and (Data.FileName <> '') and
+  if (Data.Kind in [TNodeKind.Entry, TNodeKind.Hierarchy, TNodeKind.Note, TNodeKind.Flow, TNodeKind.FlowPlace,
+    TNodeKind.FlowSource]) and (Data.FileName <> '') and
     Assigned(FOnOpen) then
     FOnOpen(Data.FileName, Data.Line, Data.Character);
 end;

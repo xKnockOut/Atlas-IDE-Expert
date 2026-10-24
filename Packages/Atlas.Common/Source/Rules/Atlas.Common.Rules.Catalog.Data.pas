@@ -65,6 +65,21 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "language-feature",' + #10 +
+    '      "name": "Language feature of a newer Delphi version",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The code uses a language feature that the project''s language level does not know yet: inline variable and constant (Delphi 10.3), managed record with class operator Initialize/Fi' +
+    'nalize (Delphi 10.4), digit separator 1_000 and binary literal %1010 (Delphi 11), multiline string '''''' (Delphi 12), if expression, \"is not\" and \"not in\" (Delphi 13). The language level is the olde' +
+    'r of delphiVersion and minDelphiVersion in atlas.json: minDelphiVersion names the oldest Delphi version the project must still compile with (e.g. \"12\" for code shared by Delphi 12 and 13). Without e' +
+    'ither setting nothing is reported. Inactive {$IF CompilerVersion >= …} branches are not reported, so code for several versions can live side by side. Reported in the editor, by --check, check_code and' +
+    ' the Claude Code hook (hook_check). Code actions and slash commands do not generate features beyond the language level.",' + #10 +
+    '      "bad": "// minDelphiVersion \"12\"\nif Sender is not TButton then\n  Exit;",' + #10 +
+    '      "good": "if not (Sender is TButton) then\n  Exit;",' + #10 +
+    '      "level": "A"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "unused-suppression",' + #10 +
     '      "name": "Unused suppression",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -156,6 +171,31 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "uses-cycle",' + #10 +
+    '      "name": "Circular unit reference via uses",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "architecture",' + #10 +
+    '      "description": "A uses entry leads, through the uses clauses of other units, back to the unit itself. If every edge of the cycle is in an interface section, the compiler rejects it (like F2047) ' +
+    'and the finding is an error; cycles with at least one implementation edge are allowed by Delphi but couple the units tightly (initialization order, recompiling, testing) and are reported with the rule' +
+    '''s severity (option implementation). The message shows the complete shortest path (A → B → C → A), the finding hover each edge with its section. Based on the shared uses graph over the symbol index (#' +
+    '268), with inactive conditional branches hidden; the checked unit counts with its editor text. Silent without projects (linter, file without project), while projects are loading or the index is incomp' +
+    'lete, and for units the uses graph does not know.",' + #10 +
+    '      "bad": "unit uKunde;\ninterface\nuses uAuftrag;   // uAuftrag uses uKunde in its interface\n",' + #10 +
+    '      "good": "unit uKunde;\ninterface\n// common types moved to uTypen, used by both\nuses uTypen;",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "F2047"' + #10 +
+    '      ],' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "implementation",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Also report cycles with at least one edge in an implementation section (allowed by the compiler)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "architecture-role-import",' + #10 +
     '      "name": "Import violates the role matrix",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -214,6 +254,60 @@ begin
     '          "type": "string-list",' + #10 +
     '          "default": [],' + #10 +
     '          "description": "Approved exceptions \"Unit.Type\" as glob."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "forbidden-symbol",' + #10 +
+    '      "name": "Forbidden symbol used",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "architecture",' + #10 +
+    '      "description": "A list under \"symbols\" in atlas.json forbids routines, types, constants, fields, properties, enum values or identifiers, each with a message and a replacement. Matching uses na' +
+    'me resolution, not text: System.SysUtils.FileExists also hits FileExists, but not an own method of the same name. An entry may shorten the name from a dot boundary (TThread.Queue) and contain *. Ident' +
+    'ifiers of System without source (Writeln, Halt) count as System.<Name>. If the left part of a qualified name cannot be resolved at all (unit not indexed), the written name is compared with the end of ' +
+    'the entry. Per entry: kind (routine, type, constant, field, property, enumValue, identifier = by name without resolution), message, replacement, severity, units (unit name globs, \"!\" excludes), firs' +
+    'tArgument (only with this first argument, e.g. nil) and allowFirstArgument (allowed with this first argument, e.g. ErrOutput); both compare the argument text or the name of its type (TextFile). Off by' +
+    ' default and silent without a list; on in the strict profile. High confidence. Quick fix: replace with the configured replacement.",' + #10 +
+    '      "bad": "// atlas.json: \"forbidden-symbol\": {\"symbols\": [{\"name\": \"System.Write*\", \"kind\": \"routine\", \"message\": \"Only via ILogger\"}]}\nprocedure TImport.Report(const AText: strin' +
+    'g);\nbegin\n  Writeln(AText);\nend;",' + #10 +
+    '      "good": "procedure TImport.Report(const AText: string);\nbegin\n  FLogger.Info(AText);\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "symbols",' + #10 +
+    '          "type": "object-list",' + #10 +
+    '          "columns": [' + #10 +
+    '            {' + #10 +
+    '              "name": "name"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "kind"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "message"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "replacement"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "severity"' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "units",' + #10 +
+    '              "list": true' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "firstArgument",' + #10 +
+    '              "list": true' + #10 +
+    '            },' + #10 +
+    '            {' + #10 +
+    '              "name": "allowFirstArgument",' + #10 +
+    '              "list": true' + #10 +
+    '            }' + #10 +
+    '          ],' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Table of forbidden symbols, one object per entry: name (qualified, * allowed), kind (routine, type, constant, field, property, enumValue or identifier), message, replacement,' +
+    ' severity, units (globs, ! excludes), firstArgument and allowFirstArgument (argument texts or type names)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -830,6 +924,22 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "conditional-expression-version",' + #10 +
+    '      "name": "Conditional expression before Delphi 13",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The conditional expression X := if C then A else B exists only from Delphi 13 on; a project that must still compile with Delphi 12 or older fails here (like E2029). Reported is t' +
+    'he outermost expression, not inside {$IF} branches that test CompilerVersion, RTLVersion, VERnnn or Declared. Silent without a known Delphi version. Quick fix (also for the whole unit): convert to an ' +
+    'if statement, the statement repeated per branch; not offered when the rest of the statement has side effects.",' + #10 +
+    '      "bad": "Caption := if Done then ''Ready'' else ''Busy'';",' + #10 +
+    '      "good": "if Done then\n  Caption := ''Ready''\nelse\n  Caption := ''Busy'';",' + #10 +
+    '      "level": "A",' + #10 +
+    '      "compilerCodes": [' + #10 +
+    '        "E2029"' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "exception-not-raised",' + #10 +
     '      "name": "Exception created but not raised",' + #10 +
     '      "category": "bug",' + #10 +
@@ -918,6 +1028,41 @@ begin
     '      "good": "ShowMessage(PChar(string(C)));"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "unrelated-class-cast",' + #10 +
+    '      "name": "Hard cast between unrelated classes",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "TButton(Obj) checks nothing. If the static type of Obj is neither an ancestor nor a descendant of TButton (e.g. TEdit or TForm), the access reads memory of an object with a diffe' +
+    'rent layout. Reported only when both types are known for sure, both inheritance chains are known up to TObject and both declarations are always compiled together with the cast. Interfaces, pointers, n' +
+    'umbers, TObject as source and casts to or from class references (class of) stay silent, as does the accessor class trick: the target and its ancestors up to a common ancestor declare neither fields no' +
+    'r new virtual methods (THackControl = class(TControl)), so the layout is the same. High confidence. Quick fix: (Obj as TButton) checks the type at run time.",' + #10 +
+    '      "bad": "procedure TForm1.EditExit(Sender: TObject);\nvar\n  mEdit: TEdit;\nbegin\n  mEdit := Sender as TEdit;\n  TButton(mEdit).Caption := ''OK'';\nend;",' + #10 +
+    '      "good": "procedure TForm1.EditExit(Sender: TObject);\nvar\n  mEdit: TEdit;\nbegin\n  mEdit := Sender as TEdit;\n  (mEdit as TButton).Caption := ''OK'';\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowTypes",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Types that may be hard cast on purpose: a type name (as source or target) or a pair \"Source=Target\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "first-char-address",' + #10 +
+    '      "name": "Address of the first character via S[1]",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "@S[1] and PChar(@S[1]) raise a range check error for an empty string with {$R+}; without range checking they yield nil or garbage. The index access also forces a unique copy (Uni' +
+    'queString). PChar(S) and Pointer(S) are safe for empty strings too. Applies to string, UnicodeString, WideString, AnsiString, RawByteString and UTF8String, also S[Low(S)]; ShortString, arrays and othe' +
+    'r indexes stay silent. Reported only when the type of S is known for sure. High confidence. Quick fix for const parameters: replace with PChar(S) (PAnsiChar for AnsiString types), a surrounding PChar(' +
+    '…), PAnsiChar(…), PWideChar(…), PByte(…) or Pointer(…) is replaced as a whole. For other strings the pointer may be used for writing, where the unique copy is intended, so there is no quick fix and th' +
+    'e message names UniqueString(S).",' + #10 +
+    '      "bad": "procedure Send(const AText: string);\nbegin\n  WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));\nend;",' + #10 +
+    '      "good": "procedure Send(const AText: string);\nbegin\n  WriteBuffer(PChar(AText), Length(AText) * SizeOf(Char));\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "float-equality",' + #10 +
     '      "name": "Floating-point comparison with = or <>",' + #10 +
     '      "category": "bug",' + #10 +
@@ -948,6 +1093,31 @@ begin
     '"mm\"-\"dd'' or ''ddddd t''.",' + #10 +
     '      "bad": "Line := Format(''%.2f'', [Amount]);",' + #10 +
     '      "good": "Line := Format(''%.2f'', [Amount], TFormatSettings.Invariant);"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "format-args",' + #10 +
+    '      "name": "Format string does not match its arguments",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "error",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Format, FmtStr, FormatBuf, StrFmt, StrLFmt, WideFormat, WideFmtStr, Exception.CreateFmt or CreateFmtHelp and TStringBuilder.AppendFormat with a known format string (a literal, li' +
+    'terals joined with +, a const or resourcestring of the file or the index) whose placeholders do not match the argument list [...]: an invalid placeholder (%q, ''%'' or ''%5'' at the end, %0: without a typ' +
+    'e letter), fewer arguments than placeholders, or an argument of the wrong type: %d %u %x take only integers, %e %f %g %n %m only floating-point numbers, %s strings, characters and variants, %p pointer' +
+    's and objects, a * for width or precision an integer; variants fit everywhere. Boolean and enumeration values are reported at every type letter with Ord(...) or BoolToStr(..., True) as advice. All of ' +
+    'this raises EConvertError at runtime. An argument behind the last used one is reported with medium confidence (only without an index in the format string), it is never printed. Types are only checked ' +
+    'when they are known for sure; format strings from variables, index * and ranges stay silent. Own routines named Format stay silent when name resolution finds them. Shares its format string parser with' +
+    ' format-without-settings. No quick fix. High confidence.",' + #10 +
+    '      "bad": "Result := Format(''%d orders for %s'', [ACustomer.Name]);",' + #10 +
+    '      "good": "Result := Format(''%d orders for %s'', [ACustomer.OrderCount, ACustomer.Name]);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "formatMethods",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [],' + #10 +
+    '          "description": "Further routines with a format string followed by an array of const argument list, e.g. \"TLogger.LogFmt\" or \"Protokoll\". With a dot the method name after any qualifier co' +
+    'unts when name resolution cannot find the routine."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-exception-raised",' + #10 +
@@ -1091,6 +1261,27 @@ begin
     '      "description": "Parentheses around a whole condition or a single identifier add nothing. Off by default.",' + #10 +
     '      "bad": "if (Done) then\n  Exit;",' + #10 +
     '      "good": "if Done then\n  Exit;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-cast",' + #10 +
+    '      "name": "Redundant type cast",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "TStringList(List) with List: TStringList, X as TFoo with X: TFoo or Integer(Count) with Count: Integer change nothing. Likewise TObject(Obj).Free: Free calls the virtual destruct' +
+    'or and needs no cast (option checkFree). Reported only when the type of the source is known for sure and is declared with exactly the target name; aliases (TColorIndex = Integer), constants, routines ' +
+    'without a call, overloaded routines as source, arguments of overloaded calls (the cast may steer the overload), as with interfaces (QueryInterface) and Free redeclared in the class chain stay silent. ' +
+    'High confidence. Quick fix: remove the cast.",' + #10 +
+    '      "bad": "procedure TImport.Cleanup;\nbegin\n  TStringList(FLines).Clear;\n  TObject(FStream).Free;\nend;",' + #10 +
+    '      "good": "procedure TImport.Cleanup;\nbegin\n  FLines.Clear;\n  FStream.Free;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "checkFree",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": true,' + #10 +
+    '          "description": "Also report a class cast that only precedes Free (CastAndFree)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "redundant-begin-end",' + #10 +
@@ -1290,6 +1481,18 @@ begin
     '          "description": "Markers of open TODO entries (letters only)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "debug-display-placeholder",' + #10 +
+    '      "name": "Debugger display names an unknown member",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "robustness",' + #10 +
+    '      "description": "A debugger display rule above a type (// atlas-debug: ''{Name}, {City}'', [AtlasDebugDisplay(''…'')], // atlas-debug-children: Name, City or [AtlasDebugChildren(''…'')]) names a placeh' +
+    'older or child that is not a field, property or method of the type or one of its ancestors, or the template is invalid (unclosed or empty brace). In the debugger such a placeholder stays empty ({?Name' +
+    '}). Ancestors come from the unit and the index; when an ancestor is unknown the rule stays silent for that type. Members of TObject (ClassName, ToString, …) are always known.",' + #10 +
+    '      "bad": "// atlas-debug: ''{Name}, {Stadt}''\nTKunde = class\n  Name, Ort: string;\nend;",' + #10 +
+    '      "good": "// atlas-debug: ''{Name}, {Ort}''\nTKunde = class\n  Name, Ort: string;\nend;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "component-palette-icon",' + #10 +
@@ -2244,6 +2447,20 @@ begin
     'with its XML doc and body) only for private methods and routines without a declaration in the interface part that occur nowhere else in the file and fulfil no signature from outside.",' + #10 +
     '      "bad": "procedure TImport.Pruefen;\nbegin\nend;",' + #10 +
     '      "good": "procedure TImport.Pruefen;\nbegin\n  // Absichtlich leer.\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "trivial-accessor",' + #10 +
+    '      "name": "Accessor method only reads or writes a field",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A getter whose body is only Result := FName; (also Exit(FName), Self.FName) or a setter whose body is only FName := Value; (with refactoring.inlineAccessorEqualityCheck also if F' +
+    'Name <> Value then FName := Value;). The property can point to the field directly. Only methods that are not virtual, dynamic, override or abstract, not class methods, not overloaded or generic, imple' +
+    'ment no interface method (also via a method resolution clause), have no index specifier and are not used by other members of the class; the field belongs to the class and has the type of the property.' +
+    ' Silent unless refactoring.inlineAccessorDiagnostic is on (default off) and refactoring.inlineAccessor is on. Medium confidence: calls in other units are not visible to the rule. No quick fix in the r' +
+    'ule; the code action \"Replace accessor GetName with field FName\" at the same place checks calls with the reference search and replaces it.",' + #10 +
+    '      "bad": "property Name: string read GetName write FName;\n...\nfunction TCustomer.GetName: string;\nbegin\n  Result := FName;\nend;",' + #10 +
+    '      "good": "property Name: string read FName write FName;"' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "write-only-property",' + #10 +
@@ -3768,8 +3985,9 @@ begin
     '      "group": "compiler",' + #10 +
     '      "description": "A typed constant or initialized variable of a static array type has more or fewer elements than its index range (like E2072), typically after adding a value to an enumeration (ar' +
     'ray[TStatus] of string); checked per dimension and for named array types of the file. Record constants whose fields are in a different order than declared are reported as well (like E2083). Index rang' +
-    'es: subranges with constant bounds, enumerations without own values, Boolean, Byte, Char and so on. Declarations with conditional directives count as unsure. Quick fixes: add the missing entries with ' +
-    'a placeholder (name of the enumeration value as a comment), put the fields in the order of the declaration.",' + #10 +
+    'es: subranges with constant bounds, enumerations without own values, Boolean, Byte, Char and so on. Declarations with conditional directives count as unsure. Quick fixes: over an enumeration, add miss' +
+    'ing or remove surplus entries at their position (recognized by texts, identifiers and comments naming the value; otherwise appended and labelled as estimated), new strings get the text of the value na' +
+    'me, other types a default value with a {TODO value} comment (#667); over other ranges, add the missing entries with a placeholder; put the fields in the order of the declaration.",' + #10 +
     '      "bad": "StatusText: array[TStatus] of string = (''Neu'', ''Offen'', ''Geschlossen'');  // TStatus has 4 values",' + #10 +
     '      "good": "StatusText: array[TStatus] of string = (''Neu'', ''Offen'', ''Geschlossen'', ''''{stArchiviert});",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -3867,13 +4085,16 @@ begin
     '      "category": "code-smell",' + #10 +
     '      "severity": "hint",' + #10 +
     '      "group": "style",' + #10 +
-    '      "description": "A public or published method, constant or property (optionally also protected members, fields and class variables, and unit-level routines and constants of the interface section)' +
-    ' is used nowhere in the projects of the project group. The search is project-wide via the symbol index: only files whose index usages contain the name are parsed, and every occurrence is resolved by n' +
-    'ame resolution; an occurrence that cannot be resolved counts as a use. Names in form files (.dfm/.fmx) and in string literals count as uses. Considered used: interface implementations and members of i' +
-    'nterfaces, virtual, dynamic, override, abstract and message methods, constructors, destructors, operators, enumerators, default properties, implements, members with attributes, published members of TP' +
-    'ersistent descendants (streaming), of classes registered with RegisterComponents, RegisterClass or RegisterClasses and of test fixtures, published methods while a form file cannot be read, property ac' +
-    'cessors, exported routines, class helpers, members of classes with an unknown ancestor. Silent while projects are loading or the index is incomplete, when a file cannot be read, for units with include' +
-    ' files and for units of packages or libraries (external users) unless projectKinds allows them. Quick fix: mark as intentionally public (lsp-ignore comment).",' + #10 +
+    '      "description": "A public or published method, constant or property (optionally also protected members, fields and class variables), or a routine, constant, type or global variable of the interfa' +
+    'ce section (option unitKinds) is used nowhere in the projects of the project group. The search is project-wide via the symbol index: only files whose index usages contain the name are parsed, and ever' +
+    'y occurrence is resolved by name resolution; an occurrence that cannot be resolved counts as a use. Names in form files (.dfm/.fmx) and in string literals count as uses. Considered used: interface imp' +
+    'lementations and members of interfaces, virtual, dynamic, override, abstract and message methods, constructors, destructors, operators, enumerators, default properties, implements, members with attrib' +
+    'utes, published members of TPersistent descendants (streaming), of classes registered with RegisterComponents, RegisterClass or RegisterClasses and of test fixtures, published methods while a form fil' +
+    'e cannot be read, property accessors, exported routines, class helpers, members of classes with an unknown ancestor. Silent while projects are loading or the index is incomplete, when a file cannot be' +
+    ' read, for units with include files and for units of packages or libraries (external users) unless projectKinds allows them. For types, occurrences in their own declaration and in the bodies of their ' +
+    'own methods (including the TType.Name header) do not count; types registered with RegisterComponents, RegisterClass or RegisterClasses count as used, and for attribute classes (XyzAttribute) the short' +
+    ' form [Xyz] counts. deadCode.keepAttributes and deadCode.keepPatterns from the settings apply in addition to keepAttributes and keepPatterns. Quick fix: mark as intentionally public (lsp-ignore commen' +
+    't).",' + #10 +
     '      "bad": "  TExport = class\n  public\n    procedure ExportiereAlsXml;\n  end;\n// ExportiereAlsXml is called nowhere in the project group",' + #10 +
     '      "good": "  TExport = class\n  public\n    procedure ExportiereAlsJson; // called by TMainForm\n  end;",' + #10 +
     '      "options": [' + #10 +
@@ -3894,7 +4115,7 @@ begin
     '            "constant",' + #10 +
     '            "property"' + #10 +
     '          ],' + #10 +
-    '          "description": "Member kinds that are checked: method, constant, property, field, classVar."' + #10 +
+    '          "description": "Member kinds of types that are checked: method, constant, property, field, classVar. Unit-level declarations follow unitKinds."' + #10 +
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "projectKinds",' + #10 +
@@ -3908,7 +4129,18 @@ begin
     '          "name": "unitLevel",' + #10 +
     '          "type": "boolean",' + #10 +
     '          "default": true,' + #10 +
-    '          "description": "Also check routines and constants declared in the interface section of a unit."' + #10 +
+    '          "description": "Also check declarations of the interface section of a unit (kinds from unitKinds)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "unitKinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "routine",' + #10 +
+    '            "constant",' + #10 +
+    '            "type",' + #10 +
+    '            "variable"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Unit-level kinds that are checked with unitLevel: routine, constant, type, variable. Helpers are never reported (they are used through the extended type)."' + #10 +
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "scope",' + #10 +
@@ -3939,6 +4171,44 @@ begin
     '          "type": "string-list",' + #10 +
     '          "default": [],' + #10 +
     '          "description": "Name patterns (* and ?) for members that are always considered used, e.g. \"TPlugin.*\" or \"*Callback\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-declaration",' + #10 +
+    '      "name": "Declaration in the implementation section never used",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A routine, type, constant or global variable declared in the implementation section of a unit (or in a program or library) is used nowhere in the unit; the compiler does not repo' +
+    'rt these. Any occurrence of the name as an identifier counts as a use, also in inactive conditional branches; not counted are the declarations themselves (including forward declarations), occurrences ' +
+    'in the routine''s own body (recursion) and, for types, occurrences in their own declaration and in the bodies of their own methods including the TType.Name header. For attribute classes (XyzAttribute) ' +
+    'the short form [Xyz] counts. Considered used (service shared with unused-public-member): exported routines, declarations with attributes, names matching deadCode.keepPatterns, types with an attribute ' +
+    'from deadCode.keepAttributes, and names from the form file. Bodies of interface routines are left to unused-public-member. Silent for units with include files. Quick fix: mark as intentionally present' +
+    ' (lsp-ignore comment).",' + #10 +
+    '      "bad": "implementation\n\nprocedure AltesFormat(const AText: string);  // called nowhere\nbegin\nend;",' + #10 +
+    '      "good": "implementation\n\nprocedure NeuesFormat(const AText: string);\nbegin\nend;\n\nprocedure Exportieren;\nbegin\n  NeuesFormat(''x'');\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-unit",' + #10 +
+    '      "name": "Unit not used by any other unit",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A unit of an application is used by no other unit of the uses graph: at most programs name it in their uses clause, and they use none of its identifiers outside the uses clause (' +
+    'Application.CreateForm(TForm1, Form1) counts as a use). Units with an initialization or finalization section (registrations, side effects at start-up) count as used. Medium confidence: code outside th' +
+    'e project group, scripts or packages loaded at run time can still use the unit. Silent for units of packages and libraries (users outside the group) unless projectKinds allows them, without projects, ' +
+    'while projects are loading or the index is incomplete, and for units the uses graph does not know. Reported at the unit name in the header.",' + #10 +
+    '      "bad": "program App;\nuses\n  Haupt,\n  AltExport;  // AltExport is used nowhere else",' + #10 +
+    '      "good": "program App;\nuses\n  Haupt;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "projectKinds",' + #10 +
+    '          "type": "string-list",' + #10 +
+    '          "default": [' + #10 +
+    '            "application"' + #10 +
+    '          ],' + #10 +
+    '          "description": "Project kinds whose units are checked: application, package, library."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -4337,6 +4607,27 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "prefer-case",' + #10 +
+    '      "name": "if chain can be written as case",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "An if … else if chain with at least min branches (the final else counts) that compares the same ordinal expression (integer, character, enumeration; no side effects, no function ' +
+    'call) with constants: X = a, a = X, X in [a, b..c], (X >= a) and (X <= b), also combined with or. Labels must be literals, constant expressions, untyped constants or enumeration values, without duplic' +
+    'ates or overlaps. The type comes from name resolution; chains with unknown types and chains with directives stay silent. Off by default, high confidence. Quick fix: the code action In case umwandeln (' +
+    '#646, refactoring.ifCase); begin … end only where a branch has several statements, comments in the branches stay.",' + #10 +
+    '      "bad": "if Kind = 1 then Neu\nelse if (Kind = 2) or (Kind = 3) then Oeffnen\nelse if (Kind >= 4) and (Kind <= 6) then Speichern\nelse Beenden;",' + #10 +
+    '      "good": "case Kind of\n  1: Neu;\n  2, 3: Oeffnen;\n  4..6: Speichern;\nelse\n  Beenden;\nend;",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "min",' + #10 +
+    '          "type": "integer",' + #10 +
+    '          "default": 4,' + #10 +
+    '          "description": "Number of branches (the final else included) from which the rule reports; at least 2."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "constant-condition",' + #10 +
     '      "name": "Condition is always the same",' + #10 +
     '      "category": "bug",' + #10 +
@@ -4380,6 +4671,28 @@ begin
     'g loops (Sleep, ProcessMessages …), with, calls of local routines or variables captured by an anonymous method. Changes through X[…] count only when the condition reads X[…].",' + #10 +
     '      "bad": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\nend;",' + #10 +
     '      "good": "I := 0;\nwhile I < List.Count do\nbegin\n  Check(List[I]);\n  Inc(I);\nend;"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "loop-runs-at-most-once",' + #10 +
+    '      "name": "Loop runs at most once",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "find-bugs",' + #10 +
+    '      "description": "Every path through the body of a for, for-in, while or repeat loop ends with Exit, Break, raise, Halt, Abort, RunError, ExitProcess or a call of a routine of the file that raises' +
+    ', so the loop runs at most once. Usually an if is missing before the jump, or Continue was meant. A path counts as a jump for if with else and both branches, case with else and all branches, try … fin' +
+    'ally with the try or the finally part and try … except with the try part and every handler. Silent with Continue of this loop, goto or labels and conditional directives in the body; Break of inner loo' +
+    'ps does not count. Complements infinite-loop and loop-condition-unchanged. No quick fix, the intent is unclear; if the jump directly follows an if without else, the message asks whether it belongs int' +
+    'o the if branch. High confidence.",' + #10 +
+    '      "bad": "for mCustomer in FCustomers do\nbegin\n  if mCustomer.Id = AId then\n    Result := mCustomer;\n  Exit;\nend;",' + #10 +
+    '      "good": "for mCustomer in FCustomers do\n  if mCustomer.Id = AId then\n    Exit(mCustomer);",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowFirstElement",' + #10 +
+    '          "type": "boolean",' + #10 +
+    '          "default": false,' + #10 +
+    '          "description": "Do not report a for-in loop of simple statements that ends with Exit or Break (fetching the first element)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unconditional-recursion",' + #10 +
@@ -5001,6 +5314,19 @@ begin
     '        "E2035"' + #10 +
     '      ],' + #10 +
     '      "level": "T"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "method-without-self",' + #10 +
+    '      "name": "Method does not need Self",' + #10 +
+    '      "category": "code-smell",' + #10 +
+    '      "severity": "hint",' + #10 +
+    '      "group": "style",' + #10 +
+    '      "description": "A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, not an event of the form file, does not' +
+    ' implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (clas' +
+    's … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all chang' +
+    'ed calls.",' + #10 +
+    '      "bad": "function TRechner.Doppelt(A: Integer): Integer;\nbegin\n  Result := A * 2;  // no field, no Self\nend;",' + #10 +
+    '      "good": "class function TRechner.Doppelt(A: Integer): Integer; static;\nbegin\n  Result := A * 2;\nend;"' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
@@ -5024,6 +5350,15 @@ begin
     'E2059), label im interface-Teil (E2049) und goto auf eine nicht deklarierte Marke (E2031; eine Marke der umgebenden Routine meldet label-misuse als E2093). Nach einem offenen String oder Kommentar fal' +
     'len die Folgefehler weg, weil der Compiler dort abbricht. Inaktive {$IFDEF}-Zweige werden nicht gemeldet. Korrekturen: '';'' vor else entfernen (sicher, auch beim Speichern), '';'' ergänzen, String schlie' +
     'ßen, Kommentar am Ende seiner ersten Zeile schließen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "language-feature",' + #10 +
+    '      "name": "Sprachmerkmal einer neueren Delphi-Version",' + #10 +
+    '      "description": "Der Code nutzt ein Sprachmerkmal, das der Sprachstand des Projekts noch nicht kennt: Inline-Variable und -Konstante (Delphi 10.3), Managed Record mit class operator Initialize/Fi' +
+    'nalize (Delphi 10.4), Ziffern-Trennzeichen 1_000 und Binärliteral %1010 (Delphi 11), mehrzeiliger String '''''' (Delphi 12), If-Ausdruck, „is not“ und „not in“ (Delphi 13). Der Sprachstand ist die ältere' +
+    ' aus delphiVersion und minDelphiVersion in atlas.json: minDelphiVersion nennt die älteste Delphi-Version, mit der das Projekt noch übersetzen muss (z. B. „12“ für Code, den Delphi 12 und 13 übersetzen' +
+    '). Ohne beide Angaben meldet Atlas nichts. Inaktive Zweige {$IF CompilerVersion >= …} bleiben still, so kann Code für mehrere Versionen nebeneinander stehen. Gemeldet im Editor, von --check, check_cod' +
+    'e und dem Claude-Code-Hook (hook_check). Code-Aktionen und Schnellbefehle erzeugen keine Merkmale über den Sprachstand hinaus."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-suppression",' + #10 +
@@ -5075,6 +5410,21 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "uses-cycle",' + #10 +
+    '      "name": "Zirkuläre Unit-Referenz über uses",' + #10 +
+    '      "description": "Ein uses-Eintrag führt über die uses-Listen anderer Units zurück zur eigenen Unit. Liegt jede Kante des Zyklus im interface-Abschnitt, lehnt der Compiler ihn ab (wie F2047), und ' +
+    'der Befund ist ein Fehler; Zyklen mit mindestens einer implementation-Kante erlaubt Delphi, sie koppeln die Units aber eng (Initialisierungsreihenfolge, Neuübersetzen, Testen) und erscheinen mit dem S' +
+    'chweregrad der Regel (Option implementation). Die Meldung zeigt den vollständigen kürzesten Pfad (A → B → C → A), der Befund-Hover jede Kante mit ihrem Abschnitt. Grundlage ist der gemeinsame Uses-Gra' +
+    'ph über den Symbolindex (#268), inaktive Zweige der bedingten Kompilierung ausgeblendet; die geprüfte Unit zählt mit ihrem Editor-Stand. Still ohne Projekte (Linter, Datei ohne Projekt), solange Proje' +
+    'kte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "implementation",' + #10 +
+    '          "description": "Auch Zyklen mit mindestens einer Kante im implementation-Abschnitt melden (vom Compiler erlaubt)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "architecture-role-import",' + #10 +
     '      "name": "Import verletzt die Rollenmatrix",' + #10 +
     '      "description": "Ein uses-Eintrag verletzt die Importmatrix des Rollenkonzepts (Ausgabeartefakt, Feature, Rolle: Contract, Internals, Providers, Adapters, Composition, Hosting). Standardmäßig aus' +
@@ -5107,6 +5457,24 @@ begin
     '        {' + #10 +
     '          "name": "allow",' + #10 +
     '          "description": "Genehmigte Ausnahmen \"Unit.Typ\" als Glob."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "forbidden-symbol",' + #10 +
+    '      "name": "Verbotenes Symbol verwendet",' + #10 +
+    '      "description": "Eine Liste unter \"symbols\" in atlas.json verbietet Routinen, Typen, Konstanten, Felder, Properties, Aufzählungswerte oder Bezeichner, jeweils mit Meldung und Ersatz. Verglichen' +
+    ' wird über die Namensauflösung, nicht über Text: System.SysUtils.FileExists trifft auch FileExists, aber nicht eine eigene Methode gleichen Namens. Ein Eintrag darf den Namen ab einer Punktgrenze kürz' +
+    'en (TThread.Queue) und * enthalten. Bezeichner aus System ohne Quelltext (Writeln, Halt) gelten als System.<Name>. Ist der linke Teil eines qualifizierten Namens gar nicht auflösbar (Unit nicht indexi' +
+    'ert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacem' +
+    'ent, severity, units (Muster der Unit-Namen, \"!\" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput)' +
+    '; beide vergleichen den Text des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Er' +
+    'satz ersetzen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "symbols",' + #10 +
+    '          "description": "Tabelle der verbotenen Symbole, ein Objekt je Eintrag: name (qualifiziert, * erlaubt), kind (routine, type, constant, field, property, enumValue oder identifier), message, re' +
+    'placement, severity, units (Muster, ! schließt aus), firstArgument und allowFirstArgument (Texte oder Typnamen des Arguments)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -5452,6 +5820,13 @@ begin
     'urch downto ersetzen."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "conditional-expression-version",' + #10 +
+    '      "name": "Bedingungsausdruck vor Delphi 13",' + #10 +
+    '      "description": "Den Bedingungsausdruck X := if C then A else B gibt es erst ab Delphi 13; ein Projekt, das noch mit Delphi 12 oder älter übersetzen muss, scheitert hier (wie E2029). Gemeldet wir' +
+    'd der äußerste Ausdruck, nicht in Zweigen von {$IF}, die nach CompilerVersion, RTLVersion, VERnnn oder Declared fragen. Ohne bekannte Delphi-Version still. Korrektur (auch für die ganze Unit): in eine' +
+    ' if-Anweisung umwandeln, die Anweisung je Zweig wiederholt; nicht angeboten, wenn der Rest der Anweisung Seiteneffekte hat."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "exception-not-raised",' + #10 +
     '      "name": "Exception erzeugt, aber nicht ausgelöst",' + #10 +
     '      "description": "Ein Exception-Objekt wird als eigene Anweisung erzeugt. Ohne raise passiert nichts, und das Objekt bleibt als Speicherleck zurück."' + #10 +
@@ -5496,6 +5871,29 @@ begin
     '      "description": "PChar(C) mit einer Char-Variablen macht aus dem Zeichencode eine Adresse. Gemeint war ein String."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "unrelated-class-cast",' + #10 +
+    '      "name": "Harte Umwandlung zwischen nicht verwandten Klassen",' + #10 +
+    '      "description": "TButton(Obj) prüft nichts. Ist der statische Typ von Obj weder Vorfahr noch Nachfahr von TButton (z. B. TEdit oder TForm), liest der Zugriff Speicher eines Objekts mit anderem Au' +
+    'fbau. Gemeldet wird nur, wenn beide Typen sicher bekannt sind, beide Vererbungsketten bis TObject bekannt sind und beide Deklarationen immer mit der Umwandlung übersetzt werden. Interfaces, Zeiger, Za' +
+    'hlen, TObject als Quelle und Umwandlungen in oder aus Klassenreferenzen (class of) bleiben still, ebenso der Zugriffsklassen-Trick: Das Ziel und seine Vorfahren bis zu einem gemeinsamen Vorfahren dekl' +
+    'arieren weder Felder noch neue virtuelle Methoden (THackControl = class(TControl)), der Aufbau ist also derselbe. Sicherheit hoch. Korrektur: (Obj as TButton) prüft den Typ zur Laufzeit.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowTypes",' + #10 +
+    '          "description": "Typen, die absichtlich hart umgewandelt werden: ein Typname (als Quelle oder Ziel) oder ein Paar \"Quelle=Ziel\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "first-char-address",' + #10 +
+    '      "name": "Adresse des ersten Zeichens über S[1]",' + #10 +
+    '      "description": "@S[1] und PChar(@S[1]) lösen bei leerem String mit {$R+} einen Bereichsfehler aus, ohne Bereichsprüfung ergibt sich nil oder Müll. Außerdem erzwingt der Indexzugriff eine eindeut' +
+    'ige Kopie (UniqueString). PChar(S) und Pointer(S) sind auch für leere Strings sicher. Gilt für string, UnicodeString, WideString, AnsiString, RawByteString und UTF8String, auch S[Low(S)]; ShortString,' +
+    ' Arrays und andere Indizes bleiben still. Gemeldet wird nur, wenn der Typ von S sicher bekannt ist. Sicherheit hoch. Korrektur bei const-Parametern: durch PChar(S) ersetzen (PAnsiChar bei AnsiString-T' +
+    'ypen), ein umgebendes PChar(…), PAnsiChar(…), PWideChar(…), PByte(…) oder Pointer(…) wird als Ganzes ersetzt. Bei anderen Strings kann der Zeiger zum Schreiben dienen, dann ist die eigene Kopie gewoll' +
+    't; dort gibt es keine Korrektur, die Meldung nennt UniqueString(S)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "float-equality",' + #10 +
     '      "name": "Gleitkommavergleich mit = oder <>",' + #10 +
     '      "description": "Gleitkommawerte sind nach Berechnungen selten exakt gleich. Mit SameValue aus System.Math und einer Toleranz vergleichen. Vergleiche mit 0 werden nicht gemeldet."' + #10 +
@@ -5512,6 +5910,24 @@ begin
     '      "description": "Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenne' +
     'r, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format(''%d'', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (' +
     ': / . ,) wie ''yyyy\"-\"mm\"-\"dd'' oder ''ddddd t''."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "format-args",' + #10 +
+    '      "name": "Formatstring passt nicht zu den Argumenten",' + #10 +
+    '      "description": "Format, FmtStr, FormatBuf, StrFmt, StrLFmt, WideFormat, WideFmtStr, Exception.CreateFmt bzw. CreateFmtHelp und TStringBuilder.AppendFormat mit bekanntem Formatstring (Literal, mi' +
+    't + verbundene Literale, const oder resourcestring der Datei bzw. des Index), dessen Platzhalter nicht zur Argumentliste [...] passen: ungültiger Platzhalter (%q, ''%'' bzw. ''%5'' am Ende, %0: ohne Typbu' +
+    'chstaben), weniger Argumente als Platzhalter oder ein Argument vom falschen Typ: %d %u %x nur Ganzzahlen, %e %f %g %n %m nur Gleitkommazahlen, %s Strings, Zeichen und Variants, %p Zeiger und Objekte, ' +
+    'ein * für Breite bzw. Genauigkeit eine Ganzzahl; Variants passen überall. Boolean und Aufzählungswerte werden bei jedem Typbuchstaben gemeldet, mit Ord(...) bzw. BoolToStr(..., True) als Hinweis. All ' +
+    'das löst zur Laufzeit EConvertError aus. Ein Argument hinter dem letzten verwendeten wird mit mittlerer Sicherheit gemeldet (nur ohne Index im Formatstring), es wird nie ausgegeben. Typen werden nur g' +
+    'eprüft, wenn sie sicher bekannt sind; Formatstrings aus Variablen, Index * und Bereiche bleiben still. Eigene Routinen namens Format bleiben still, wenn die Namensauflösung sie findet. Teilt die Zerle' +
+    'gung der Formatstrings mit format-without-settings. Keine Korrektur. Sicherheit hoch.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "formatMethods",' + #10 +
+    '          "description": "Weitere Routinen mit Formatstring und folgender Argumentliste array of const, z. B. \"TLogger.LogFmt\" oder \"Protokoll\". Mit Punkt zählt ohne Namensauflösung der Methodenna' +
+    'me hinter einem beliebigen Qualifizierer."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-exception-raised",' + #10 +
@@ -5594,6 +6010,20 @@ begin
     '      "id": "redundant-parens",' + #10 +
     '      "name": "Überflüssige Klammern",' + #10 +
     '      "description": "Klammern um eine ganze Bedingung oder einen einzelnen Bezeichner bringen nichts. Standardmäßig aus."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "redundant-cast",' + #10 +
+    '      "name": "Überflüssige Typumwandlung",' + #10 +
+    '      "description": "TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destru' +
+    'ktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstan' +
+    'ten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu dek' +
+    'lariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "checkFree",' + #10 +
+    '          "description": "Auch eine Klassenumwandlung melden, die nur vor Free steht (CastAndFree)."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "redundant-begin-end",' + #10 +
@@ -5714,6 +6144,14 @@ begin
     '          "description": "Marken offener TODO-Einträge (nur Buchstaben)."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "debug-display-placeholder",' + #10 +
+    '      "name": "Wertdarstellung nennt unbekanntes Mitglied",' + #10 +
+    '      "description": "Eine Regel für die Wertdarstellung beim Debuggen über einem Typ (// atlas-debug: ''{Name}, {Ort}'', [AtlasDebugDisplay(''…'')], // atlas-debug-children: Name, Ort oder [AtlasDebugChi' +
+    'ldren(''…'')]) nennt einen Platzhalter oder ein Unterelement, das weder Feld noch Eigenschaft noch Methode des Typs oder eines Vorfahren ist, oder die Vorlage ist ungültig (offene oder leere Klammer). I' +
+    'm Debugger bliebe ein solcher Platzhalter leer ({?Name}). Vorfahren kommen aus der Unit und dem Index; ist ein Vorfahr unbekannt, schweigt die Regel für den Typ. Mitglieder von TObject (ClassName, ToS' +
+    'tring, …) gelten immer als bekannt."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "component-palette-icon",' + #10 +
@@ -6303,6 +6741,15 @@ begin
     'gnis-Handler, die in der Formulardatei stehen (die IDE entfernt leere beim Speichern), und Rümpfe mit Kommentar, etwa Überschreibungen, die bewusst nichts tun. Schnellkorrekturen: Kommentar zwischen b' +
     'egin und end einfügen; Methode entfernen (Deklaration samt XML-Doku und Rumpf) nur bei privaten Methoden und Routinen ohne Deklaration im interface-Teil, die sonst nirgends in der Datei vorkommen und ' +
     'keine Signatur von außen erfüllen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "trivial-accessor",' + #10 +
+    '      "name": "Zugriffsmethode liest bzw. setzt nur ein Feld",' + #10 +
+    '      "description": "Ein Getter, dessen Rumpf nur Result := FName; enthält (auch Exit(FName), Self.FName), oder ein Setter, dessen Rumpf nur FName := Value; enthält (mit refactoring.inlineAccessorEqu' +
+    'alityCheck auch if FName <> Value then FName := Value;). Die Property kann direkt auf das Feld zeigen. Nur Methoden, die nicht virtual, dynamic, override oder abstract, keine class-Methoden, nicht übe' +
+    'rladen oder generisch sind, keine Interface-Methode implementieren (auch nicht über eine Methodenzuordnung), keinen index haben und von keinem anderen Mitglied der Klasse benutzt werden; das Feld gehö' +
+    'rt zur Klasse und hat den Typ der Property. Stumm, solange refactoring.inlineAccessorDiagnostic aus ist (Vorgabe) oder refactoring.inlineAccessor aus ist. Sicherheit mittel: Aufrufe in anderen Units s' +
+    'ieht die Regel nicht. Keine Korrektur in der Regel; die Code-Aktion „Zugriffsmethode GetName durch Feld FName ersetzen“ an derselben Stelle prüft die Aufrufe mit der Referenzsuche und ersetzt."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "write-only-property",' + #10 +
@@ -7109,8 +7556,10 @@ begin
     '      "name": "Initialisierung einer Konstanten passt nicht",' + #10 +
     '      "description": "Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ hat mehr oder weniger Elemente als ihr Indexbereich (wie E2072), typisch nach einem neuen Wert in ' +
     'einer Aufzählung (array[TStatus] of string); geprüft je Dimension und auch für benannte Array-Typen der Datei. Ebenso Record-Konstanten, deren Felder in anderer Reihenfolge als deklariert stehen (wie ' +
-    'E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: fehlende E' +
-    'inträge mit Platzhalter ergänzen (Name des Aufzählungswerts als Kommentar), Felder in die Reihenfolge der Deklaration bringen."' + #10 +
+    'E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: über einer' +
+    ' Aufzählung fehlende Einträge an ihrer Stelle ergänzen bzw. überzählige entfernen (erkannt an Texten, Bezeichnern und Kommentaren mit dem Wertnamen; sonst hinten und als geschätzt benannt), neue Strin' +
+    'gs mit dem Text aus dem Namen, andere Typen mit Standardwert und Kommentar {TODO Wert} (#667); über anderen Bereichen fehlende Einträge mit Platzhalter ergänzen; Felder in die Reihenfolge der Deklarat' +
+    'ion bringen."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "case-selector-not-ordinal",' + #10 +
@@ -7154,14 +7603,16 @@ begin
     '    {' + #10 +
     '      "id": "unused-public-member",' + #10 +
     '      "name": "Öffentliches Mitglied wird im Projekt nie verwendet",' + #10 +
-    '      "description": "Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen sowie Routinen und Konstanten im interface-Abschn' +
-    'itt einer Unit) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren Verwendungen im Index den Namen enthalten, werden geles' +
-    'en, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in Formulardateien (.dfm/.fmx) und in String-Literalen zähle' +
-    'n als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract oder message, Konstruktoren, Destruktoren, Operatoren, En' +
-    'umeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming), von Klassen aus RegisterComponents, RegisterClass oder RegisterClass' +
-    'es und von Testklassen, published-Methoden, solange eine Formulardatei nicht lesbar ist, Property-Zugriffsmethoden, exportierte Routinen, Klassenhelfer und Mitglieder von Klassen mit unbekanntem Vorfa' +
-    'hren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei Units von Packages oder Bibliotheken (Nutzer außerhalb des' +
-    ' Projekts), außer projectKinds lässt sie zu. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).",' + #10 +
+    '      "description": "Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen) bzw. eine Routine, Konstante, ein Typ oder eine ' +
+    'globale Variable im interface-Abschnitt einer Unit (Option unitKinds) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren V' +
+    'erwendungen im Index den Namen enthalten, werden gelesen, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in For' +
+    'mulardateien (.dfm/.fmx) und in String-Literalen zählen als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract ode' +
+    'r message, Konstruktoren, Destruktoren, Operatoren, Enumeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming), von Klassen au' +
+    's RegisterComponents, RegisterClass oder RegisterClasses und von Testklassen, published-Methoden, solange eine Formulardatei nicht lesbar ist, Property-Zugriffsmethoden, exportierte Routinen, Klassenh' +
+    'elfer und Mitglieder von Klassen mit unbekanntem Vorfahren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei Unit' +
+    's von Packages oder Bibliotheken (Nutzer außerhalb des Projekts), außer projectKinds lässt sie zu. Bei Typen zählen Vorkommen in der eigenen Deklaration und in den Rümpfen der eigenen Methoden (samt K' +
+    'opf TTyp.Name) nicht; Typen aus RegisterComponents, RegisterClass oder RegisterClasses gelten als verwendet, bei Attributklassen (XyzAttribute) zählt auch die Kurzform [Xyz]. deadCode.keepAttributes u' +
+    'nd deadCode.keepPatterns aus den Einstellungen gelten zusätzlich zu keepAttributes und keepPatterns. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).",' + #10 +
     '      "options": [' + #10 +
     '        {' + #10 +
     '          "name": "visibilities",' + #10 +
@@ -7169,7 +7620,7 @@ begin
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "memberKinds",' + #10 +
-    '          "description": "Geprüfte Mitgliedsarten: method, constant, property, field, classVar."' + #10 +
+    '          "description": "Geprüfte Arten von Typmitgliedern: method, constant, property, field, classVar. Deklarationen auf Unit-Ebene richten sich nach unitKinds."' + #10 +
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "projectKinds",' + #10 +
@@ -7178,7 +7629,11 @@ begin
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "unitLevel",' + #10 +
-    '          "description": "Auch Routinen und Konstanten aus dem interface-Abschnitt einer Unit prüfen."' + #10 +
+    '          "description": "Auch Deklarationen des interface-Abschnitts einer Unit prüfen (Arten aus unitKinds)."' + #10 +
+    '        },' + #10 +
+    '        {' + #10 +
+    '          "name": "unitKinds",' + #10 +
+    '          "description": "Mit unitLevel geprüfte Arten auf Unit-Ebene: routine, constant, type, variable. Helfer werden nie gemeldet (sie werden über den erweiterten Typ verwendet)."' + #10 +
     '        },' + #10 +
     '        {' + #10 +
     '          "name": "scope",' + #10 +
@@ -7199,6 +7654,30 @@ begin
     '        {' + #10 +
     '          "name": "keepPatterns",' + #10 +
     '          "description": "Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. \"TPlugin.*\" oder \"*Callback\"."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-declaration",' + #10 +
+    '      "name": "Deklaration im implementation-Abschnitt wird nie verwendet",' + #10 +
+    '      "description": "Eine Routine, ein Typ, eine Konstante oder eine globale Variable aus dem implementation-Abschnitt einer Unit (bzw. aus einem Programm oder einer DLL) wird in der Unit nirgends ve' +
+    'rwendet; der Compiler meldet das nicht. Jedes Vorkommen des Namens als Bezeichner zählt als Verwendung, auch in inaktiven Zweigen; nicht zählen die Deklarationen selbst (auch forward), Vorkommen im ei' +
+    'genen Rumpf (Rekursion) und bei Typen Vorkommen in der eigenen Deklaration und in den Rümpfen der eigenen Methoden samt Kopf TTyp.Name. Bei Attributklassen (XyzAttribute) zählt auch die Kurzform [Xyz]' +
+    '. Gelten als verwendet (Dienst, den auch unused-public-member nutzt): exportierte Routinen, Deklarationen mit Attributen, Namen aus deadCode.keepPatterns, Typen mit einem Attribut aus deadCode.keepAtt' +
+    'ributes und Namen aus der Formulardatei. Rümpfe von Routinen des interface-Abschnitts prüft unused-public-member. Still bei Units mit Include-Dateien. Korrektur: als bewusst vorhanden markieren (lsp-i' +
+    'gnore-Kommentar)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "unused-unit",' + #10 +
+    '      "name": "Unit wird von keiner anderen Unit verwendet",' + #10 +
+    '      "description": "Eine Unit einer Anwendung verwendet keine andere Unit des Uses-Graphen: Höchstens Programme nennen sie im uses, und sie verwenden außerhalb ihres uses keinen ihrer Bezeichner (Ap' +
+    'plication.CreateForm(TForm1, Form1) zählt als Verwendung). Units mit initialization- oder finalization-Abschnitt (Registrierungen, Seiteneffekte beim Start) gelten als verwendet. Konfidenz mittel: Cod' +
+    'e außerhalb der Projektgruppe, Skripte oder zur Laufzeit geladene Packages können die Unit trotzdem nutzen. Still bei Units von Packages und DLLs (Nutzer außerhalb der Gruppe), solange projectKinds si' +
+    'e nicht erlaubt, ohne Projekte, solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt. Gemeldet am Unit-Namen im Kopf.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "projectKinds",' + #10 +
+    '          "description": "Projektarten, deren Units geprüft werden: application, package, library."' + #10 +
     '        }' + #10 +
     '      ]' + #10 +
     '    },' + #10 +
@@ -7392,6 +7871,20 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "prefer-case",' + #10 +
+    '      "name": "if-Kette lässt sich als case schreiben",' + #10 +
+    '      "description": "Eine if … else if-Kette mit mindestens min Zweigen (das abschließende else zählt mit) vergleicht denselben ordinalen Ausdruck (Ganzzahl, Zeichen, Aufzählung; ohne Seiteneffekte, ' +
+    'kein Funktionsaufruf) mit Konstanten: X = a, a = X, X in [a, b..c], (X >= a) and (X <= b), auch mit or verknüpft. Die Marken sind Literale, Konstantenausdrücke, untypisierte Konstanten oder Aufzählung' +
+    'swerte, ohne Doppelte und Überlappungen. Den Typ liefert die Namensauflösung; Ketten mit unbekanntem Typ und Ketten mit Direktiven bleiben still. Standard aus, Konfidenz hoch. Schnellkorrektur: die Co' +
+    'de-Aktion „In case umwandeln“ (#646, refactoring.ifCase); begin … end nur, wo ein Zweig mehrere Anweisungen hat, Kommentare in den Zweigen bleiben.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "min",' + #10 +
+    '          "description": "Ab so vielen Zweigen (das abschließende else eingeschlossen) meldet die Regel; mindestens 2."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "constant-condition",' + #10 +
     '      "name": "Bedingung ist immer gleich",' + #10 +
     '      "description": "Die Bedingung von if, while oder until steht fest: True, False, Vergleiche von Zahlen und untypisierte Konstanten der Datei, auch über and, or, xor und not (X or True ist immer w' +
@@ -7419,6 +7912,21 @@ begin
     'utine ist und mindestens eine direkt (nicht nur als X.Eigenschaft) vorkommt. Still bleiben Bedingungen mit Funktionsaufrufen, Feldern, globalen Variablen, var- und out-Parametern und Terminated, außer' +
     'dem Schleifen mit Ausgang (Break, Exit, raise …), Warteschleifen (Sleep, ProcessMessages …), with, Aufrufen lokaler Routinen und Variablen, die eine anonyme Methode erfasst. Änderungen über X[…] zähle' +
     'n nur, wenn die Bedingung X[…] liest."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "loop-runs-at-most-once",' + #10 +
+    '      "name": "Schleife läuft höchstens einmal",' + #10 +
+    '      "description": "Jeder Weg durch den Rumpf einer for-, for-in-, while- oder repeat-Schleife endet mit Exit, Break, raise, Halt, Abort, RunError, ExitProcess oder dem Aufruf einer Routine der Date' +
+    'i, die eine Ausnahme auslöst; die Schleife läuft also höchstens einmal. Meist fehlt ein if vor dem Sprung, oder ein Continue war gemeint. Ein Weg zählt als Sprung bei if mit else und beiden Zweigen, c' +
+    'ase mit else und allen Zweigen, try … finally mit try- oder finally-Teil und try … except mit try-Teil und jedem Behandler. Still bei Continue dieser Schleife, goto bzw. Marken und bedingten Direktive' +
+    'n im Rumpf; ein Break innerer Schleifen zählt nicht. Ergänzt infinite-loop und loop-condition-unchanged. Keine Korrektur, die Absicht ist unklar; steht der Sprung direkt hinter einem if ohne else, fra' +
+    'gt die Meldung, ob er in den if-Zweig gehört. Sicherheit hoch.",' + #10 +
+    '      "options": [' + #10 +
+    '        {' + #10 +
+    '          "name": "allowFirstElement",' + #10 +
+    '          "description": "for-in aus einfachen Anweisungen, das mit Exit bzw. Break endet (erstes Element holen), nicht melden."' + #10 +
+    '        }' + #10 +
+    '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unconditional-recursion",' + #10 +
@@ -7722,6 +8230,14 @@ begin
     ' wird nur, wenn der Name sicher genau eine Routine meint: Überladungen, varargs, Typumwandlungen, Variablen prozeduralen Typs, Bezeichner von System ohne Quelltext und Deklarationen in bedingten Zweig' +
     'en bleiben beim Compiler (E2250). Eine Funktion mit zu vielen Argumenten meldet die Regel nur bei bekanntem, nicht prozeduralem Ergebnistyp. Korrektur: Signaturhilfe öffnen setzt die Schreibmarke in d' +
     'ie Klammern und öffnet den Parameter-Hint (ergänzt () bei Bedarf)."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "method-without-self",' + #10 +
+    '      "name": "Methode braucht Self nicht",' + #10 +
+    '      "description": "Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, kein Ereignis der F' +
+    'ormulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorr' +
+    'ektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den ' +
+    'Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe."' + #10 +
     '    }' + #10 +
     '  ]' + #10 +
     '}' + #10 +
