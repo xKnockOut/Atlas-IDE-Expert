@@ -6,6 +6,10 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Sprachstand je Projekt (#1126, `minDelphiVersion` in atlas.json): älteste Delphi-Version, mit der das Projekt übersetzen muss. Neue Regel `language-feature` (Gruppe „Compiler vorab“) meldet Sprachmerkmale, die dieser Stand nicht kennt (If-Ausdruck, `is not`, `not in`, Inline-Variable, Managed Record, Ziffern-Trennzeichen, Binärliteral, mehrzeiliger String), jetzt auch in `--check`, `check_code` und dem Claude-Code-Hook `hook_check`; bisher nur im Editor und ohne Regel-ID. Maßstab ist die ältere aus `delphiVersion` bzw. laufender IDE und `minDelphiVersion`; Code-Aktionen, Schnellbefehle und Formatieren erzeugen keine neueren Merkmale. Projektdialog mit Auswahl aller bekannten Versionen. Das Atlas-Repo setzt `"minDelphiVersion": "23.0"`.
+- Claude-Code-Plugin: Der Hook ruft `hook_check` bei jedem Edit, Write und MultiEdit ohne `if`-Regel auf; `hook_check` übergeht andere Dateien selbst. Der Repo-Hook sagt einmal je Sitzung, was ohne pwsh ungeprüft bleibt, statt Check-Delphi12 still zu überspringen.
+
 ## [1.1.0] - 2026-10-24
 
 Schwerpunkte: schneller hinfinden (Schnell öffnen, Navigationsverlauf, Definition einblenden, Brotkrumen, Gliederung, Suchleiste, Editorleiste, schnelle Lesezeichen), besser vervollständigen, sicher umbauen (Extrahieren, Signatur ändern, Code-Aktionen), das Fenster „Atlas-Prüfung“ mit über 100 neuen Prüfregeln und der Gruppe „Compiler vorab“ sowie die Fehlerbehebungen seit 1.0.0 (Hänger, Server-Neustarts, Abstürze). Experimentelle Funktionen sind nach der Installation aus; sie wirken erst mit dem Hauptschalter `experimental.enabled` und ihrem eigenen Schalter.

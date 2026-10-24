@@ -1,5 +1,6 @@
 {
   "project": "Tests/Atlas.Tests.dproj",
+  "minDelphiVersion": "23.0",
   "rules": {
     "metric-method-length": "off",
     "metric-nesting-depth": "off",

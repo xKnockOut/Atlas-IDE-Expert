@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 76 |
+| [Compiler vorab](#gruppe-compiler) | 77 |
 | [Robustheit und Muster](#gruppe-robustness) | 13 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -150,6 +150,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | Regel | Name | Kategorie | Schweregrad |
 |---|---|---|---|
 | [`syntax`](#syntax) | Syntaxfehler | Bug | Fehler |
+| [`language-feature`](#language-feature) | Sprachmerkmal einer neueren Delphi-Version | Bug | Warnung |
 | [`for-high-to-low`](#for-high-to-low) | for-Schleife zählt mit to abwärts | Bug | Warnung |
 | [`deprecated-symbol`](#deprecated-symbol) | Veraltetes oder gebundenes Symbol | Code Smell | Warnung |
 | [`signature-mismatch`](#signature-mismatch) | Implementierung weicht von der Deklaration ab | Bug | Fehler |
@@ -418,6 +419,30 @@ if Gueltig then
   Speichern
 else
   Verwerfen;
+```
+
+<a id="language-feature"></a>
+### language-feature
+
+**Sprachmerkmal einer neueren Delphi-Version** · Bug · Warnung · Gruppe Compiler vorab
+
+Der Code nutzt ein Sprachmerkmal, das der Sprachstand des Projekts noch nicht kennt: Inline-Variable und -Konstante (Delphi 10.3), Managed Record mit class operator Initialize/Finalize (Delphi 10.4), Ziffern-Trennzeichen 1_000 und Binärliteral %1010 (Delphi 11), mehrzeiliger String ''' (Delphi 12), If-Ausdruck, „is not“ und „not in“ (Delphi 13). Der Sprachstand ist die ältere aus delphiVersion und minDelphiVersion in atlas.json: minDelphiVersion nennt die älteste Delphi-Version, mit der das Projekt noch übersetzen muss (z. B. „12“ für Code, den Delphi 12 und 13 übersetzen). Ohne beide Angaben meldet Atlas nichts. Inaktive Zweige {$IF CompilerVersion >= …} bleiben still, so kann Code für mehrere Versionen nebeneinander stehen. Gemeldet im Editor, von --check, check_code und dem Claude-Code-Hook (hook_check). Code-Aktionen und Schnellbefehle erzeugen keine Merkmale über den Sprachstand hinaus.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+// minDelphiVersion "12"
+if Sender is not TButton then
+  Exit;
+```
+
+Richtig:
+
+```pascal
+if not (Sender is TButton) then
+  Exit;
 ```
 
 <a id="unused-suppression"></a>

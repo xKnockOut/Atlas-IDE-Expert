@@ -65,6 +65,21 @@ begin
     '      ]' + #10 +
     '    },' + #10 +
     '    {' + #10 +
+    '      "id": "language-feature",' + #10 +
+    '      "name": "Language feature of a newer Delphi version",' + #10 +
+    '      "category": "bug",' + #10 +
+    '      "severity": "warning",' + #10 +
+    '      "group": "compiler",' + #10 +
+    '      "description": "The code uses a language feature that the project''s language level does not know yet: inline variable and constant (Delphi 10.3), managed record with class operator Initialize/Fi' +
+    'nalize (Delphi 10.4), digit separator 1_000 and binary literal %1010 (Delphi 11), multiline string '''''' (Delphi 12), if expression, \"is not\" and \"not in\" (Delphi 13). The language level is the olde' +
+    'r of delphiVersion and minDelphiVersion in atlas.json: minDelphiVersion names the oldest Delphi version the project must still compile with (e.g. \"12\" for code shared by Delphi 12 and 13). Without e' +
+    'ither setting nothing is reported. Inactive {$IF CompilerVersion >= …} branches are not reported, so code for several versions can live side by side. Reported in the editor, by --check, check_code and' +
+    ' the Claude Code hook (hook_check). Code actions and slash commands do not generate features beyond the language level.",' + #10 +
+    '      "bad": "// minDelphiVersion \"12\"\nif Sender is not TButton then\n  Exit;",' + #10 +
+    '      "good": "if not (Sender is TButton) then\n  Exit;",' + #10 +
+    '      "level": "A"' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
     '      "id": "unused-suppression",' + #10 +
     '      "name": "Unused suppression",' + #10 +
     '      "category": "code-smell",' + #10 +
@@ -5024,6 +5039,15 @@ begin
     'E2059), label im interface-Teil (E2049) und goto auf eine nicht deklarierte Marke (E2031; eine Marke der umgebenden Routine meldet label-misuse als E2093). Nach einem offenen String oder Kommentar fal' +
     'len die Folgefehler weg, weil der Compiler dort abbricht. Inaktive {$IFDEF}-Zweige werden nicht gemeldet. Korrekturen: '';'' vor else entfernen (sicher, auch beim Speichern), '';'' ergänzen, String schlie' +
     'ßen, Kommentar am Ende seiner ersten Zeile schließen."' + #10 +
+    '    },' + #10 +
+    '    {' + #10 +
+    '      "id": "language-feature",' + #10 +
+    '      "name": "Sprachmerkmal einer neueren Delphi-Version",' + #10 +
+    '      "description": "Der Code nutzt ein Sprachmerkmal, das der Sprachstand des Projekts noch nicht kennt: Inline-Variable und -Konstante (Delphi 10.3), Managed Record mit class operator Initialize/Fi' +
+    'nalize (Delphi 10.4), Ziffern-Trennzeichen 1_000 und Binärliteral %1010 (Delphi 11), mehrzeiliger String '''''' (Delphi 12), If-Ausdruck, „is not“ und „not in“ (Delphi 13). Der Sprachstand ist die ältere' +
+    ' aus delphiVersion und minDelphiVersion in atlas.json: minDelphiVersion nennt die älteste Delphi-Version, mit der das Projekt noch übersetzen muss (z. B. „12“ für Code, den Delphi 12 und 13 übersetzen' +
+    '). Ohne beide Angaben meldet Atlas nichts. Inaktive Zweige {$IF CompilerVersion >= …} bleiben still, so kann Code für mehrere Versionen nebeneinander stehen. Gemeldet im Editor, von --check, check_cod' +
+    'e und dem Claude-Code-Hook (hook_check). Code-Aktionen und Schnellbefehle erzeugen keine Merkmale über den Sprachstand hinaus."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-suppression",' + #10 +

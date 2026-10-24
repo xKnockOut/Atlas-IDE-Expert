@@ -1064,3 +1064,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Ungeprüft:** ob das Setup-Skript schon die Klone sieht (sonst greift nur der SessionStart-Hook, und der MCP-Server fehlt in der ersten Sitzung trotzdem); ob der Proxy im Setup-Skript Release-Dateien des privaten Repositorys lädt.
 - **Ebenfalls auf dem Branch (Commit fc56a8e), weitergeführt in eigenen Threads:** MCP-Werkzeug `hook_check` mit Plugin-Hook, Skill `/atlas:bauen`, Repo-Hook `nach-bearbeitung.sh` (Thread „Hooks und Bauen-Befehl im Atlas-Plugin“), `Tools/Start-McpInspector.ps1` (Thread „MCP Inspector für Atlas-Tools“). Delphi-Bau steht für beides aus.
 
+
+## Sprachstand minDelphiVersion und Claude-Code-Hook (#1126, 23.10.2026, Branch `claude/project-thread-ay4hwo`)
+- Aufbauend auf `claude/project-thread-e74he2` (fc56a8e, Hook `hook_check`, `/atlas:bauen`, Repo-Hook `nach-bearbeitung.sh`). Ungebaut mit Delphi; unter FPC übersetzt und probiert.
+- Neuer Projektschlüssel `minDelphiVersion` (atlas.json, Schema, Parser, Test, Dialog-Auswahl `TAtlasSettingChoices.KnownVersions`). `TLanguageFeatures.LanguageLevel` = die ältere aus gewählter Version und Mindestversion.
+- Regel `language-feature` (Katalog, Gruppe compiler): `TFileChecker.LanguageFeatureFindings` für Linter, MCP (`check_code`, `hook_check`) und Editor (`TLspSyntaxDiagnostics.BuildParams`, bisher Rohmeldung ohne Code). Nicht per `lsp-ignore` unterdrückbar wie `syntax` (Code-Aktion und `TAtlasProblem.CanSuppress` lassen sie aus).
+- Server: `LanguageLevelFor(AUri)` in `Shell.Composition` für Diagnosen, Formatieren, Schnellbefehle, Klassen-Aktionen, Inline-Var und mehrzeilige Strings; Hover und DocWiki nehmen weiter `DelphiVersionFor`. Rule-Engine-Kontext ebenso.
+- `atlas.json` des Repos: `"minDelphiVersion": "23.0"` (CLAUDE.md: muss mit Delphi 12 übersetzen).
+- Plugin-Hook ohne `if` (Semantik von `Edit(...)` für Write/MultiEdit ungeklärt); `hook_check` filtert selbst. Repo-Hook ohne pwsh: einmal je Sitzung `additionalContext`.
+- Geprüft: FPC-Tests der geänderten Units grün (zwei Fehlschläge in SyntaxDiagnostics/CodeTools auch auf fc56a8e, Harness-bedingt), `--check` und `hook_check` über MCP mit Probe-Datei, alle Check-Skripte grün. Offen: Delphi-Bau 0/0/0 (Win64-Gruppe, Win32-Plugin), Tests unter Delphi (u. a. `KnownVersionsForMinDelphiVersion`, `CanSuppress`), Live-Probe des Plugin-Hooks in einer Claude-Code-Sitzung.
