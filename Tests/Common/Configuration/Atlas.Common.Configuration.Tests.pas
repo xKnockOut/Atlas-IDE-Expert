@@ -703,6 +703,17 @@ begin
   // Typ ausschreiben (#453)
   Assert.IsTrue(Parse('{}', Issues).Refactoring.ExplicitType);
   Assert.IsFalse(Parse('{"refactoring": {"explicitType": false}}', Issues).Refactoring.ExplicitType);
+  // Schnellkorrekturen an Compilermeldungen (#549)
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.CompilerFixes);
+  Assert.IsFalse(Parse('{"refactoring": {"compilerFixes": false}}', Issues).Refactoring.CompilerFixes);
+  // Unit nicht gefunden: Suchpfad ergänzen (#550)
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.MissingUnit);
+  Assert.IsFalse(Parse('{"refactoring": {"missingUnit": false}}', Issues).Refactoring.MissingUnit);
+  // Warnung gezielt abschalten (#531)
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.DisableWarning);
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.DisableWarningReason);
+  Assert.IsFalse(Parse('{"refactoring": {"disableWarning": false}}', Issues).Refactoring.DisableWarning);
+  Assert.IsFalse(Parse('{"refactoring": {"disableWarningReason": false}}', Issues).Refactoring.DisableWarningReason);
   // #50: Extrahieren, case vervollständigen und with auflösen.
   Assert.IsTrue(Parse('{}', Issues).Refactoring.Extract);
   Assert.IsTrue(Parse('{}', Issues).Refactoring.CompleteCase);

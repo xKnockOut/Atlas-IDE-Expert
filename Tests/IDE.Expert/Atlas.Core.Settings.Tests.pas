@@ -129,6 +129,14 @@ type
     procedure ReleaseGuardOptions;
     [Test]
     procedure TasksOptions;
+    /// <summary>Prüfung vor dem Compile (#529): build.gateTimeoutMs mit Vorgabe, Grenzen, Speichern und Laden.
+    /// </summary>
+    [Test]
+    procedure BuildGateTimeoutOption;
+    /// <summary>Schranke für Hinweise und Warnungen (#530): build.summary und build.warningsAsErrors mit Vorgaben,
+    /// Normalisieren, Speichern und Laden.</summary>
+    [Test]
+    procedure BuildSummaryOptions;
     /// <summary>Beim Öffnen bauen: build.onOpen, build.onOpenKind, build.onOpenScope, build.onOpenDelayMs und
     /// build.onOpenExclude mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
@@ -1031,6 +1039,47 @@ begin
   Assert.IsFalse(Loaded.TasksSaveBeforeRun);
   Assert.IsTrue(Loaded.TasksRunChecksParallel);
   Assert.IsTrue(Loaded.TasksOnlyFindings);
+end;
+
+procedure TAtlasPluginSettingsTests.BuildGateTimeoutOption;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual(300, Settings.BuildGateTimeoutMs, 'Vorgabe 300 ms');
+  Settings.BuildGateTimeoutMs := 1;
+  Settings.Normalize;
+  Assert.AreEqual(50, Settings.BuildGateTimeoutMs, 'untere Grenze');
+  Settings.BuildGateTimeoutMs := 100000;
+  Settings.Normalize;
+  Assert.AreEqual(10000, Settings.BuildGateTimeoutMs, 'obere Grenze');
+  Settings.BuildGateTimeoutMs := 750;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.AreEqual(750, Loaded.BuildGateTimeoutMs);
+end;
+
+procedure TAtlasPluginSettingsTests.BuildSummaryOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.BuildSummary, 'Zusammenfassung standardmäßig an');
+  Assert.AreEqual('', Settings.BuildWarningsAsErrors);
+  Settings.BuildSummary := False;
+  Settings.BuildWarningsAsErrors := 'w1035; H2164 x123 W1035';
+  Settings.Normalize;
+  Assert.AreEqual('W1035, H2164', Settings.BuildWarningsAsErrors, 'groß, ohne Doppelte und Ungültiges');
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.BuildSummary);
+  Assert.AreEqual('W1035, H2164', Loaded.BuildWarningsAsErrors);
 end;
 
 procedure TAtlasPluginSettingsTests.BuildOnOpenOptions;

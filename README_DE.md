@@ -161,6 +161,11 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 
 ### Bauen, Testen, Debuggen
 
+- **Schranke für Hinweise und Warnungen:** Zusammenfassung nach jedem Build („erfolgreich, aber 2 Warnungen, 1 Hinweis“); wahlweise gilt ein Build mit Warnungen oder Hinweisen als gescheitert (`build.zeroHints`, `build.warningsAsErrors`), bekannte Altlasten kommen in die Basislinie
+- **Compilerwarnung gezielt abschalten:** Code-Aktion auf einer Warnung oder einem Hinweis des letzten Builds setzt `{$WARN SYMBOL_DEPRECATED OFF}` … `ON` (bzw. `{$HINTS OFF}`) um die Zeile, die Routine oder die Unit, auf Wunsch mit Begründung als Kommentar, oder schaltet die Warnung in den Projektoptionen ab (`refactoring.disableWarning`)
+- **Schnellkorrekturen für Compilermeldungen:** H2443 trägt die fehlende Unit ein, E2003 bietet die Units mit dem Bezeichner an, H2077 entfernt eine wirkungslose Zuweisung (ein Aufruf bleibt), W1035 fügt `Result := Default(T);` ein, W1057/W1058 setzen eine explizite String-Umwandlung; „Alle in der Datei beheben“ in einem Rückgängig-Schritt (`refactoring.compilerFixes`)
+- **Unit nicht gefunden:** Bei F2613/F1026 sucht Atlas im Projektordner, in der Projektgruppe, in den anderen Konfigurationen, in den Bibliotheken anderer Plattformen und im Index und bietet an, den Ordner in den Suchpfad dieser oder aller Konfigurationen aufzunehmen (relativ zur `.dproj`) oder die Unit ins Projekt; sonst „nur für Win32, Win64“ bzw. die durchsuchten Orte (`refactoring.missingUnit`)
+- **Prüfung vor dem Kompilieren:** prüft vor jedem Build die seit dem letzten erfolgreichen Compile geänderten Units auf Syntaxfehler und Regelfehler; melden oder Build abbrechen (`build.gate`)
 - **Release-Build-Wächter:** prüft vor einem Release-Build die Projektoptionen (DEBUG-Symbol, Debug-Informationen, …)
 - **DUnitX-Tests** aus dem Editor ausführen und einen einzelnen Test im Debugger starten (Code Lens an `[Test]` und `[TestFixture]`)
 - **Startprofile** für Parameter, Arbeitsordner, Umgebung und Host-Anwendung

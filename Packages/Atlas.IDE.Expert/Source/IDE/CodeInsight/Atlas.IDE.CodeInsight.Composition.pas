@@ -65,6 +65,8 @@ uses
   Atlas.IDE.Build.Runner,
   Atlas.IDE.Build.Inbox,
   Atlas.IDE.Build.ReleaseGuard,
+  Atlas.IDE.Build.Gate,
+  Atlas.IDE.Build.Summary,
   Atlas.IDE.Build.OpenBuild,
   Atlas.IDE.Editor.UnitRename,
   Atlas.IDE.Settings.Project,
@@ -223,6 +225,8 @@ uses
   Atlas.Core.Diagnostics.Teardown,
   Atlas.Core.Build.Inbox,
   Atlas.Core.Build.ReleaseGuard,
+  Atlas.Core.Build.Gate,
+  Atlas.Core.Build.Verdict,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Projects.Summary,
@@ -264,6 +268,8 @@ var
   CheckOnSave: TAtlasIdeCheckOnSave;
   // Bauen auf Auftrag über IOTAProjectBuilder (#261), z. B. für Claude Code; lebt mit den Compile-Ereignissen.
   BuildRunner: TAtlasIdeBuildRunner;
+  // Zusammenfassung und letzte Meldungen je Projekt (#530); lebt mit den Compile-Ereignissen.
+  BuildSummary: TAtlasIdeBuildSummary;
   // Eingang des MCP-Werkzeugs build_project (#261), abschaltbar über McpBuild.
   BuildInbox: TAtlasIdeBuildInbox;
   // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen); lebt mit den
@@ -808,6 +814,55 @@ begin
     GuardWarning(Reason);
 end;
 
+/// <summary>Antwort von atlas.baselineCompilerMessages (#530) in der Meldungsansicht.</summary>
+procedure ReportCompilerBaseline(AAnswer: TJSONValue);
+var
+  Added: TAtlasCompilerBaselineAdd;
+begin
+  if not TAtlasCompilerBaselineAdd.FromServer(AAnswer, Added) then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CompilerBaselineFailed));
+    Exit;
+  end;
+  MessageLine(TAtlasStrings.Fmt(TAtlasTextId.CompilerBaselineDone, [Added.FileName, Added.Total, Added.Added,
+    Added.Removed, Added.Unchanged]));
+  if Added.Skipped > 0 then
+    MessageLine(TAtlasStrings.Fmt(TAtlasTextId.CompilerBaselineSkipped, [Added.Skipped]));
+end;
+
+/// <summary>„Aktuelle Compilermeldungen in die Basislinie“ (#530): Warnungen und Hinweise des letzten Builds des
+/// aktiven Projekts über den Server in atlas-baseline.json; danach zählen nur neue Meldungen. Gehört zur Baseline
+/// (#97) und ist mit ihr abschaltbar (BaselineUpdate).</summary>
+procedure AddCompilerMessagesToBaseline;
+var
+  Project: IOTAProject;
+  Messages: TArray<TAtlasCompilerMessage>;
+begin
+  if (Manager = nil) or (BuildSummary = nil) or not TAtlasIdeSettings.Current.BaselineUpdate then
+    Exit;
+  Project := GetActiveProject;
+  if (Project = nil) or (Project.FileName = '') then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CompilerBaselineNoProject));
+    Exit;
+  end;
+  Messages := BuildSummary.Baselinable(Project.FileName);
+  if Length(Messages) = 0 then
+  begin
+    GuardWarning(TAtlasStrings.Fmt(TAtlasTextId.CompilerBaselineNone, [ExtractFileName(Project.FileName)]));
+    Exit;
+  end;
+  // Startet den Server bei Bedarf; der Befehl selbst läuft im Hintergrund.
+  if Manager.ActiveSession = nil then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CompilerBaselineFailed));
+    Exit;
+  end;
+  Manager.RunServerCommandAsync(TAtlasBuildVerdicts.AddCommand,
+    TAtlasBuildVerdicts.Arguments(TLspSession.PathToUri(Project.FileName), Messages),
+    TAtlasBuildVerdicts.AddTimeoutMs, ReportCompilerBaseline);
+end;
+
 var
   /// <summary>Letzter Filter der TODO-Liste (#68) in dieser Sitzung; Vorgabe für den Filterdialog.</summary>
   TodoFilter: TAtlasTodoFilter;
@@ -1209,6 +1264,100 @@ begin
     Settings.ReleaseChecks);
 end;
 
+/// <summary>Einstellungen der Prüfung vor dem Kompilieren (#529) aus den aktuellen Plugin-Einstellungen.</summary>
+function GateSettings: TAtlasGateSettings;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  Result := TAtlasGateSettings.Create(Settings.BuildGate, Settings.BuildGateTimeoutMs);
+end;
+
+/// <summary>Fragt den laufenden Server (#530), welche Meldungen eines Builds von AProjectFile in der Basislinie
+/// stehen; ohne laufenden Server nicht (False), dann zählt alles.</summary>
+function BaselineClassifier(const AProjectFile: string): TAtlasBuildClassify;
+var
+  FileName: string;
+begin
+  FileName := AProjectFile;
+  Result :=
+    function(const AMessages: TArray<TAtlasCompilerMessage>; const ADone: TAtlasBuildBaselined): Boolean
+    var
+      Count: Integer;
+      Done: TAtlasBuildBaselined;
+    begin
+      // Den Server startet Atlas dafür nicht (#874).
+      Result := (Manager <> nil) and (Manager.RunningSession <> nil);
+      if not Result then
+        Exit;
+      Count := Length(AMessages);
+      Done := ADone;
+      Manager.RunServerCommandAsync(TAtlasBuildVerdicts.ClassifyCommand,
+        TAtlasBuildVerdicts.Arguments(TLspSession.PathToUri(FileName), AMessages),
+        TAtlasBuildVerdicts.ClassifyTimeoutMs,
+        procedure(AAnswer: TJSONValue)
+        begin
+          // nil (Zeitlimit, älterer Server): BaselinedOf liefert nil, dann zählt alles.
+          Done(TAtlasBuildVerdicts.BaselinedOf(AAnswer, Count));
+        end);
+    end;
+end;
+
+/// <summary>Folgen eines bewerteten Builds (#530): Zusammenfassung, Eintrag der Benachrichtigungszentrale (#601) und
+/// Tests nach dem Build (#69), alle nach derselben Bewertung.</summary>
+procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+  const AVerdict: TAtlasBuildVerdict);
+var
+  Messages: TArray<TAtlasCompilerMessage>;
+  Project: TAtlasCompileProject;
+  Verdict: TAtlasBuildVerdict;
+begin
+  Messages := AMessages;
+  Project := AProject;
+  Verdict := AVerdict;
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      TAtlasIdeBuildSummary.Report(Messages, Project, Verdict, TAtlasIdeSettings.Current.BuildSummary);
+    end);
+  if Notifications <> nil then
+    TAtlasGuard.Run(TAtlasFeature.Notifications,
+      procedure
+      begin
+        Notifications.BuildEvaluated(Messages, Project, Verdict);
+      end);
+  if Tests <> nil then
+    TAtlasGuard.Run(TAtlasFeature.Build,
+      procedure
+      begin
+        Tests.BuildFinished(Project, Verdict.Effective);
+      end);
+end;
+
+/// <summary>Bewertet einen Build des Benutzers mit lesbaren Meldungen (#530): Basislinie über den Server,
+/// build.zeroHints und build.warningsAsErrors; dann BuildEvaluated (bei Server-Frage später im Hauptthread).
+/// </summary>
+procedure EvaluateBuild(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+  ASucceeded: Boolean);
+var
+  Settings: TAtlasPluginSettings;
+  Messages: TArray<TAtlasCompilerMessage>;
+  Project: TAtlasCompileProject;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  if BuildSummary <> nil then
+    BuildSummary.Remember(AProject.FileName, AMessages);
+  Messages := AMessages;
+  Project := AProject;
+  TAtlasBuildVerdicts.Run(Messages, ASucceeded,
+    TAtlasBuildVerdictSettings.Create(Settings.BuildZeroHints, Settings.BuildWarningsAsErrors),
+    BaselineClassifier(Project.FileName),
+    procedure(const AVerdict: TAtlasBuildVerdict)
+    begin
+      BuildEvaluated(Messages, Project, AVerdict);
+    end);
+end;
+
 function ReleaseGuardVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.ReleaseGuard;
@@ -1522,6 +1671,9 @@ begin
   Add('Atlas.TodoListFilter', TAtlasTextId.TodoFilterCommand, FilterProjectTodos, TodoListVisible);
   // Baseline des Projekts aktualisieren (#97); nur sichtbar, solange die Einstellung BaselineUpdate an ist.
   Add('Atlas.UpdateBaseline', TAtlasTextId.BaselineUpdateCommand, UpdateBaseline, BaselineUpdateVisible);
+  // Compilermeldungen des letzten Builds in die Baseline (#530); mit derselben Einstellung abschaltbar.
+  Add('Atlas.CompilerBaseline', TAtlasTextId.CompilerBaselineCommand, AddCompilerMessagesToBaseline,
+    BaselineUpdateVisible);
   // Eigenschaftsregeln anwenden (#309); nur sichtbar, solange die Einstellung DfmPropertyRules an ist.
   Add('Atlas.ApplyDfmRulesForm', TAtlasTextId.DfmRulesFormCommand,
     procedure
@@ -2030,6 +2182,18 @@ begin
     begin
       Result := ProjectTasks;
     end));
+  // Prüfung vor dem Kompilieren (#529): geänderte Units über den laufenden Server, nur Builds des Benutzers.
+  Events.Add(TAtlasIdeBuildGate.CreateParticipant(
+    function: TAtlasGateSettings
+    begin
+      Result := GateSettings();
+    end,
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end));
   // Compilermeldungen aus dem Reiter „Build“ an den Server (#528).
   Events.Add(TAtlasMessageViewReader.Create(
     procedure(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
@@ -2067,19 +2231,20 @@ begin
           begin
             BuildRunner.MessagesRead(Messages, Project);
           end);
-      // Eintrag „Build fertig“ bzw. Hintergrundprüfung in der Benachrichtigungszentrale (#601).
-      if Notifications <> nil then
+      // Build des Benutzers mit lesbaren Meldungen (#530): erst bewerten (Basislinie, build.zeroHints,
+      // build.warningsAsErrors), dann Zusammenfassung, Benachrichtigung (#601) und Tests nach dem Build (#69).
+      if AReadable and not AProject.Background then
+        TAtlasGuard.Run(TAtlasFeature.Build,
+          procedure
+          begin
+            EvaluateBuild(Messages, Project, Succeeded);
+          end)
+      // Hintergrundprüfung bzw. Build ohne lesbare Meldungen: Eintrag in der Benachrichtigungszentrale (#601).
+      else if Notifications <> nil then
         TAtlasGuard.Run(TAtlasFeature.Notifications,
           procedure
           begin
             Notifications.BuildFinished(Messages, Project, Succeeded, Readable);
-          end);
-      // Tests nach dem Build (#69); die Prüfung auf Warnungen und Hinweise (build.zeroHints) braucht die Meldungen.
-      if (Tests <> nil) and AReadable then
-        TAtlasGuard.Run(TAtlasFeature.Build,
-          procedure
-          begin
-            Tests.BuildFinished(Project, Succeeded, Messages);
           end);
       if Manager = nil then
         Exit;
@@ -2094,6 +2259,7 @@ begin
     end));
   Compile := TAtlasIdeCompileEvents.Create(Events);
   BuildRunner := TAtlasIdeBuildRunner.Create(Events);
+  BuildSummary := TAtlasIdeBuildSummary.Create;
 end;
 
 /// <summary>Sprache der IDE (#446): Eintrag für bds.exe unter HKCU\Software\Embarcadero\Locales (von
@@ -3862,6 +4028,7 @@ begin
       FreeAndNil(BuildInbox);
       FreeAndNil(BuildRunner);
       FreeAndNil(Compile);
+      FreeAndNil(BuildSummary);
     end);
   Features.Add('Watchdog', TAtlasSafeLevel.Normal,
     function: Boolean

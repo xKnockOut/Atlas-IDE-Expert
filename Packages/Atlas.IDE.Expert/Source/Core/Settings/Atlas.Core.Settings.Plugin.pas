@@ -424,19 +424,26 @@ type
     TestsAfterBuild: Boolean;
     /// <summary>Vor „Tests ausführen“ das Testprojekt bauen (make); aus = die vorhandene Test-EXE läuft.</summary>
     TestsBuildFirst: Boolean;
-    /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530). Wirkt
-    /// bisher auf „Tests nach dem Build“ (#69).</summary>
+    /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
+    /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
     /// <summary>Kosten einer Änderung im interface-Teil in der Statusleiste (#554, build.showInterfaceCost):
     /// „interface-Änderung: N Units werden neu kompiliert“, solange die Einfügemarke im interface steht. Aus = kein
     /// Feld.</summary>
     ShowInterfaceCost: Boolean;
+    /// <summary>Zusammenfassung nach jedem Build in der Atlas-Gruppe des Meldungsfensters (build.summary, #530).
+    /// Ein Build, den zeroHints oder warningsAsErrors scheitern lassen, wird auch ohne sie gemeldet.</summary>
+    BuildSummary: Boolean;
+    /// <summary>Codes von Warnungen und Hinweisen, die als Fehler zählen (build.warningsAsErrors, #530), z. B.
+    /// "W1035, H2164"; gespeichert in der Form von TAtlasBuildVerdicts.NormalizeCodes.</summary>
+    BuildWarningsAsErrors: string;
     /// <summary>Release-Build-Wächter (#533, build.releaseGuard): vor make und build in einer Release-Konfiguration
     /// die Projektoptionen prüfen, dazu der Befehl „Release-Build prüfen“ (Atlas.CheckRelease) mit Tipp. Aus = keine
     /// Prüfung, Befehl und Tipp verschwinden.</summary>
     ReleaseGuard: Boolean;
-    /// <summary>Verhalten bei Verstößen (build.gate, #529): off, warn (beide melden nur) oder block (bricht den
-    /// Build ab). Wirkt bisher nur auf den Release-Wächter.</summary>
+    /// <summary>Verhalten bei Verstößen (build.gate, #529): off, warn oder block (bricht den Build ab). Gilt für die
+    /// Prüfung vor dem Kompilieren (off = keine Prüfung) und den Release-Wächter (#533, off und warn melden nur).
+    /// </summary>
     BuildGate: string;
     /// <summary>Projektaufgaben (#900, tasks.enabled): Aufgaben aus dem Abschnitt „tasks“ von atlas.json mit Befehlen,
     /// Menü Atlas › Aufgaben, Tasten je Aufgabe, Statusfeld und Schnellaktion. Aus = keine Befehle, kein Menü, keine
@@ -457,6 +464,9 @@ type
     /// <summary>Register „Atlas-Aufgaben“ zeigt nur die erkannten Fundstellen (tasks.onlyFindings); aus = die ganze
     /// Ausgabe. Umschaltbar über den Befehl „Aufgaben: nur Befunde / ganze Ausgabe“.</summary>
     TasksOnlyFindings: Boolean;
+    /// <summary>Zeitlimit der Prüfung vor dem Kompilieren in ms (build.gateTimeoutMs, #529); danach läuft der
+    /// Compile ungeprüft.</summary>
+    BuildGateTimeoutMs: Integer;
     /// <summary>Konfigurationen, die außer „Release“ als Release gelten (build.releaseConfigs), durch Komma
     /// getrennt.</summary>
     ReleaseConfigs: string;
@@ -1141,6 +1151,8 @@ uses
   Atlas.Core.Generate.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.ReleaseGuard,
+  Atlas.Core.Build.Gate,
+  Atlas.Core.Build.Verdict,
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.OverviewKinds,
   Atlas.Core.Notifications.Sources,
@@ -1464,6 +1476,8 @@ begin
   Result.TestsBuildFirst := True;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
+  Result.BuildSummary := True;
+  Result.BuildWarningsAsErrors := '';
   Result.ReleaseGuard := True;
   Result.BuildGate := 'off';
   Result.TasksEnabled := True;
@@ -1472,6 +1486,7 @@ begin
   Result.TasksSaveBeforeRun := True;
   Result.TasksRunChecksParallel := False;
   Result.TasksOnlyFindings := False;
+  Result.BuildGateTimeoutMs := TAtlasBuildGateCheck.DefaultTimeoutMs;
   Result.ReleaseConfigs := TAtlasReleaseGuard.ReleaseConfiguration;
   Result.ReleaseChecks := TAtlasReleaseChecks.Defaults.ToText;
   Result.TestDebug := True;
@@ -1817,7 +1832,10 @@ begin
     WelcomePageActiveLayout := DefaultWelcomeLayoutName;
   BuildGate := TAtlasReleaseGuard.GateNames[TAtlasReleaseGuard.GateOf(BuildGate)];
   TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
+  BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildGateCheck.MinTimeoutMs,
+    TAtlasBuildGateCheck.MaxTimeoutMs);
   ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
+  BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
@@ -2095,6 +2113,8 @@ begin
   TestsBuildFirst := AStore.ReadInteger('TestsBuildFirst', BoolValue(Default.TestsBuildFirst)) <> 0;
   BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
   ShowInterfaceCost := AStore.ReadInteger('ShowInterfaceCost', BoolValue(Default.ShowInterfaceCost)) <> 0;
+  BuildSummary := AStore.ReadInteger('BuildSummary', BoolValue(Default.BuildSummary)) <> 0;
+  BuildWarningsAsErrors := AStore.ReadString('BuildWarningsAsErrors', Default.BuildWarningsAsErrors);
   ReleaseGuard := AStore.ReadInteger('ReleaseGuard', BoolValue(Default.ReleaseGuard)) <> 0;
   BuildGate := AStore.ReadString('BuildGate', Default.BuildGate);
   TasksEnabled := AStore.ReadInteger('TasksEnabled', BoolValue(Default.TasksEnabled)) <> 0;
@@ -2105,6 +2125,7 @@ begin
   TasksRunChecksParallel := AStore.ReadInteger('TasksRunChecksParallel',
     BoolValue(Default.TasksRunChecksParallel)) <> 0;
   TasksOnlyFindings := AStore.ReadInteger('TasksOnlyFindings', BoolValue(Default.TasksOnlyFindings)) <> 0;
+  BuildGateTimeoutMs := AStore.ReadInteger('BuildGateTimeoutMs', Default.BuildGateTimeoutMs);
   ReleaseConfigs := AStore.ReadString('ReleaseConfigs', Default.ReleaseConfigs);
   ReleaseChecks := AStore.ReadString('ReleaseChecks', Default.ReleaseChecks);
   TestDebug := AStore.ReadInteger('TestDebug', BoolValue(Default.TestDebug)) <> 0;
@@ -2575,6 +2596,8 @@ begin
   AStore.WriteInteger('TestsBuildFirst', BoolValue(TestsBuildFirst));
   AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
   AStore.WriteInteger('ShowInterfaceCost', BoolValue(ShowInterfaceCost));
+  AStore.WriteInteger('BuildSummary', BoolValue(BuildSummary));
+  AStore.WriteString('BuildWarningsAsErrors', BuildWarningsAsErrors);
   AStore.WriteInteger('ReleaseGuard', BoolValue(ReleaseGuard));
   AStore.WriteString('BuildGate', BuildGate);
   AStore.WriteInteger('TasksEnabled', BoolValue(TasksEnabled));
@@ -2583,6 +2606,7 @@ begin
   AStore.WriteInteger('TasksSaveBeforeRun', BoolValue(TasksSaveBeforeRun));
   AStore.WriteInteger('TasksRunChecksParallel', BoolValue(TasksRunChecksParallel));
   AStore.WriteInteger('TasksOnlyFindings', BoolValue(TasksOnlyFindings));
+  AStore.WriteInteger('BuildGateTimeoutMs', BuildGateTimeoutMs);
   AStore.WriteString('ReleaseConfigs', ReleaseConfigs);
   AStore.WriteString('ReleaseChecks', ReleaseChecks);
   AStore.WriteInteger('TestDebug', BoolValue(TestDebug));

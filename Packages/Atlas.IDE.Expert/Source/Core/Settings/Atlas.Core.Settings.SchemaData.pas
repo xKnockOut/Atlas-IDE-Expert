@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2435] of string = (
+  Lines: array[0..2459] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -1391,6 +1391,38 @@ const
     '          "description": "Code-Aktion „Typ ausschreiben“ auf dem Namen von var X := …, const X = … und for var X in … ohne Typangabe: fügt den abgeleiteten Typ ein (var Count: Integer := Lines.Count) ' +
       'und trägt seine Unit bei Bedarf ins uses ein.",',
     '          "x-issue": "#453"',
+    '        },',
+    '        "compilerFixes": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Schnellkorrekturen an Meldungen des letzten Compilerlaufs: H2443 trägt die Unit aus der Meldung ins uses ein, E2003 bietet die Units an, die den Bezeichner deklarieren (RTL u' +
+      'nd VCL zuerst), H2077 entfernt eine wirkungslose Zuweisung (bei einem Aufruf bleibt nur der Aufruf), W1035 fügt Result := Default(<Typ>); am Anfang der Funktion ein, W1057/W1058 setzen eine explizite ' +
+      'Umwandlung (string(…), AnsiString(…)). Gibt es dieselbe Meldung mehrmals in der Datei, dazu „Alle … in der Datei beheben“. Jede Korrektur ist ein Rückgängig-Schritt.",',
+    '          "x-issue": "#549"',
+    '        },',
+    '        "missingUnit": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen auf „Unit nicht gefunden“ (F2613, F1026) des letzten Compilerlaufs: Atlas sucht die Unit im Projektordner und seinen Unterordnern, in den anderen Projekten der ' +
+      'Gruppe, in den Suchpfaden der anderen Konfigurationen und Plattformen, in den Bibliothekspfaden anderer Plattformen und im Index. Für einen Fund: „Ordner in den Suchpfad dieser Konfiguration aufnehmen' +
+      '“, „… aller Konfigurationen“ (relativ zur .dproj, über die Projektoptionen der IDE) und für eine Quelle „Unit ins Projekt aufnehmen“. Gibt es die Unit nur für andere Plattformen, sagt die Aktion das (' +
+      '„Winapi.Windows gibt es für Linux64 nicht“); ohne Fund nennt sie die durchsuchten Orte.",',
+    '          "x-issue": "#550"',
+    '        },',
+    '        "disableWarning": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Code-Aktionen auf einer Warnung oder einem Hinweis des letzten Compilerlaufs: „W1000 hier abschalten“ setzt {$WARN SYMBOL_DEPRECATED OFF} vor und {$WARN SYMBOL_DEPRECATED ON}' +
+      ' hinter die Zeile, dazu Varianten um die Routine, für die ganze Unit und (nach Rückfrage) für das ganze Projekt in den Projektoptionen. Hinweise bekommen {$HINTS OFF}/{$HINTS ON}, Warnungen ohne eigen' +
+      'en Bezeichner {$WARNINGS OFF}/{$WARNINGS ON} (betrifft alle Warnungen). Ablaufmeldungen wie H2164 oder W1035 gibt es nur um die ganze Routine. Ein Rückgängig-Schritt.",',
+    '          "x-issue": "#531"',
+    '        },',
+    '        "disableWarningReason": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Beim Abschalten einer Warnung nach einer Begründung fragen; sie kommt als Kommentar hinter den Schalter ({$WARN SYMBOL_DEPRECATED OFF} // Altlast bis zur Umstellung). Leer er' +
+      'laubt. Aus: ohne Rückfrage, ohne Kommentar.",',
+    '          "x-issue": "#531"',
     '        },',
     '        "extract": {',
     '          "type": "boolean",',
