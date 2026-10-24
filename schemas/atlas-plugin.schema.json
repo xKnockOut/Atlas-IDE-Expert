@@ -366,6 +366,15 @@
       "x-page": "Allgemein",
       "x-state": true
     },
+    "UnitRelationsWindowPlaced": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "ui.unitRelationsWindowPlaced",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-state": true,
+      "x-issue": "#593"
+    },
     "ExperimentalEnabled": {
       "type": "boolean",
       "default": false,

@@ -18,7 +18,9 @@
 //   architecture.baseline; „Vergleichen mit …“ setzt den Stand für diese
 //   Sitzung ("compareWith"), „Vergleich aufheben“ schaltet ihn ab ("compare":
 //   false). Beides gilt auch für gespeicherte Berichte.
-// - Doppelklick öffnet die Unit bzw. springt zum uses-Eintrag.
+// - Doppelklick öffnet die Unit bzw. springt zum uses-Eintrag; Strg+Doppelklick
+//   auf eine Unit zeigt sie im Fenster „Unit-Beziehungen“ (#593) über
+//   OnUnitRelations, das die Zusammensetzung setzt.
 // - architecture.enabled aus schließt das Fenster.
 // Den Server erreicht der Dienst über ARun (Install), damit er die
 // Zusammensetzung des Plugins nicht kennen muss. Nur im Hauptthread.
@@ -37,6 +39,9 @@ type
   TAtlasIdeArchitecture = class
   private class var
     FState: TObject;
+  public class var
+    /// <summary>Strg+Doppelklick auf eine Unit (#593); setzt die Zusammensetzung des Plugins.</summary>
+    OnUnitRelations: TProc<string>;
   public
     class procedure Install(const ARun: TAtlasArchitectureRun); static;
     class procedure Uninstall; static;
@@ -142,6 +147,7 @@ begin
     Frame.OnLibraryChanged := nil;
     Frame.OnOpenUnit := nil;
     Frame.OnOpenLocation := nil;
+    Frame.OnUnitRelations := nil;
   end;
   inherited Destroy;
 end;
@@ -207,6 +213,14 @@ begin
     procedure(AFileName: string; ALine, ACharacter: Integer)
     begin
       TAtlasIdeNavigation.GoToLocation(AFileName, ALine - 1, ACharacter - 1);
+    end;
+  AFrame.OnUnitRelations :=
+    procedure(AFileName: string)
+    begin
+      if Assigned(TAtlasIdeArchitecture.OnUnitRelations) then
+        TAtlasIdeArchitecture.OnUnitRelations(AFileName)
+      else
+        TAtlasIdeNavigation.GoToLocation(AFileName, 0, 0);
     end;
   // Vom Desktop wiederhergestellt: rechnen, sobald der Aufbau durch ist (dann ist meist auch das Projekt da).
   TAtlasMainThread.Queue(TAtlasFeature.Architecture,
@@ -396,6 +410,7 @@ end;
 
 class procedure TAtlasIdeArchitecture.Uninstall;
 begin
+  OnUnitRelations := nil;
   FreeAndNil(FState);
   TAtlasIdeArchitectureWindow.Release;
 end;

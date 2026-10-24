@@ -267,6 +267,8 @@
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UsesGraph.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UsesLocator.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UsesService.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.UnitRelations.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.UnitRelations.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Louvain.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Overview.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Layout.pas"/>

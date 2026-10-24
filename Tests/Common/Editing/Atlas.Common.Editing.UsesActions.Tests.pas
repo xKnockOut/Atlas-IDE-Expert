@@ -25,6 +25,8 @@ type
     [Test]
     procedure MovesUnitUsedOnlyInImplementation;
     [Test]
+    procedure MovesUnitToInterface;
+    [Test]
     procedure UnitUsedInInterfaceIsNotMoved;
     [Test]
     procedure SortsByNamespace;
@@ -215,6 +217,24 @@ begin
   Assert.IsTrue(TUsesActions.MoveUnits(Tokens, Text, Units, #10, Edits));
   Assert.AreEqual(Source('Units.B', 'type'#10'  T = Bar;'#10, 'Units.C,'#10'  Units.A',
     'procedure P;'#10'begin'#10'  Foo; Baz;'#10'end;'#10), Apply(Text, Edits));
+end;
+
+procedure TUsesActionsTests.MovesUnitToInterface;
+var
+  Text: string;
+  Edits: TArray<TRuleEdit>;
+begin
+  // Unit-Beziehungen (#593): aus dem implementation- ins interface-uses, auch ohne interface-uses.
+  Text := Source('Units.A', '', 'Units.B, Units.C', '');
+  Assert.IsTrue(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(Text), Text, ['Units.C'], #10, Edits));
+  Assert.AreEqual(Source('Units.A,'#10'  Units.C', '', 'Units.B', ''), Apply(Text, Edits));
+  Text := Source('', '', 'Units.B', '');
+  Assert.IsTrue(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(Text), Text, ['Units.B'], #10, Edits));
+  Assert.AreEqual('unit U;'#10'interface'#10#10'uses'#10'  Units.B;'#10'implementation'#10#10'end.', Apply(Text, Edits),
+    'leere Liste fällt weg, neue entsteht');
+  Text := 'program P;'#10'uses'#10'  Units.B;'#10'begin'#10'end.';
+  Assert.IsFalse(TUsesActions.MoveUnitsToInterface(TPascalLexer.Tokenize(Text), Text, ['Units.B'], #10, Edits),
+    'Programm ohne interface');
 end;
 
 procedure TUsesActionsTests.UnitUsedInInterfaceIsNotMoved;

@@ -105,6 +105,9 @@ type
     /// <summary>„Architekturübersicht“ (#1118) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FArchitectureItem: TMenuItem;
     FViewArchitecture: TMenuItem;
+    /// <summary>Fenster „Unit-Beziehungen“ (#593) im Atlas-Menü und unter Ansicht › Atlas.</summary>
+    FUnitRelationsItem: TMenuItem;
+    FViewUnitRelations: TMenuItem;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
@@ -116,6 +119,7 @@ type
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
     procedure ArchitectureClick(Sender: TObject);
+    procedure UnitRelationsClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
@@ -177,6 +181,7 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
+  Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Commands.Editor,
@@ -268,6 +273,7 @@ begin
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
   FArchitectureItem := AddItem(TAtlasTextId.ArchitectureCommand, 0, ArchitectureClick);
+  FUnitRelationsItem := AddItem(TAtlasTextId.UnitRelationsCommand, 0, UnitRelationsClick);
   FRoot.Add(NewLine);
   AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
@@ -380,6 +386,10 @@ begin
       FViewArchitecture.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureViewMenu);
       FViewArchitecture.OnClick := ArchitectureClick;
       FViewAtlas.Add(FViewArchitecture);
+      FViewUnitRelations := TMenuItem.Create(FViewAtlas);
+      FViewUnitRelations.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsViewMenu);
+      FViewUnitRelations.OnClick := UnitRelationsClick;
+      FViewAtlas.Add(FViewUnitRelations);
       Services.MainMenu.Items[Index].Add(FViewAtlas);
       Break;
     end;
@@ -684,6 +694,11 @@ begin
     FArchitectureItem.Visible := TAtlasIdeArchitecture.Enabled;
   if FViewArchitecture <> nil then
     FViewArchitecture.Visible := TAtlasIdeArchitecture.Enabled;
+  // Unit-Beziehungen (#593) am selben Schalter.
+  if FUnitRelationsItem <> nil then
+    FUnitRelationsItem.Visible := TAtlasIdeUnitRelations.Enabled;
+  if FViewUnitRelations <> nil then
+    FViewUnitRelations.Visible := TAtlasIdeUnitRelations.Enabled;
   if FViewAtlas <> nil then
     FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled;
   // Benannte Lesezeichen (#622) nach bookmarks.named, schnelle (#1104) nach bookmarks.quick; das Fenster zeigt
@@ -891,6 +906,16 @@ begin
     procedure
     begin
       TAtlasIdeArchitecture.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.UnitRelationsClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.UnitRelations');
+  TAtlasGuard.Run(TAtlasFeature.UnitRelations,
+    procedure
+    begin
+      TAtlasIdeUnitRelations.ShowWindow;
     end);
 end;
 
