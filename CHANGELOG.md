@@ -8,8 +8,16 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ### Neu
 - Prüfung von Hand anstoßen (#1231): Klick auf die Live-Prüfung der Atlas-Statusleiste („live · geprüft vor …“) prüft alle Units neu, auch solche, die eine Prüfung zuvor übersprungen hat. Neuer Server-Befehl `atlas.server.recheck`.
+- Fortschritt der Projektprüfung (#1232): Solange nicht alle Units des Projekts geprüft sind, zeigt die Live-Prüfung der Atlas-Statusleiste den Stand in Prozent („live · geprüft vor 2 s · Projekt 45 %“); der Tooltip nennt „Projekt: 12 von 27 Units geprüft“.
+
+### Geändert
+- Mitlaufender Kopf zeigt große if/else-Blöcke (#1230, `editor.stickyScrollBlocks`, an): Ein if- oder else-Block mit begin … end ab `editor.stickyScrollBlockMinLines` Zeilen (Vorgabe 25) erscheint als eigene Kopfzeile, eingereiht nach seiner Lage zwischen Klasse und Routinen; Klick springt zum if bzw. else.
+- Mitlaufender Kopf in den Farben des Editors (#1229): Klammern und Blockwörter, mit „Anweisungen mitfärben“ (`PairOwners`) auch `procedure`, `function`, `class` usw., erscheinen in der Farbe ihrer Tiefe wie im Editor, mit den eigenen Paarfarben für Hell und Dunkel. Ohne Klammerfarben oder in Dateien, die sie ausblenden, bleibt der Kopf einfarbig.
 
 ### Behoben
+- Benachrichtigungen ohne Plakette (#1234): Zeigt die Atlas-Statusleiste den Status, ist das Atlas-Feld der Statuszeile 0 breit, und mit ihm verschwand die Plakette der ungelesenen Benachrichtigungen. Die Leiste zeigt sie jetzt selbst direkt hinter dem Status, in der Farbe des schwersten Eintrags; Klick öffnet die Liste.
+- Zugriffsverletzung beim Beenden von Delphi (#1233, `rtl370.bpl` in `TComponent.Notification`): Eine Komponente mit Atlas-Klasse hing nach dem Entladen von Atlas noch am Editorfenster; die IDE rief beim Freigeben des Fensters Code auf, der nicht mehr geladen war. Atlas gibt beim Entladen jetzt alles frei, was noch an Fenstern der IDE hängt, und nennt jede solche Komponente mit ihrer Owner-Kette im Protokoll.
+- Suchleiste fror ein (#1227): Die Suche hängte jeden Treffer einzeln an ein Array an und kopierte dabei jedes Mal alle bisherigen; ein einzelner Buchstabe in einer großen Unit kostete so Sekunden je Tastendruck. Außerdem suchte die Hervorhebung bei jedem Wechsel der Cursorzeile die ganze Unit neu, obwohl die Zeile nur beim Bereich „Methode“ zählt.
 - Kompilieren in einer normalen Delphi-IDE (#1238): Atlas.Common lief beim Bau beider Plattformen in einer Sitzung an F2046 „Zu wenig Arbeitsspeicher“. Ursache war der Regelkatalog, den der Generator als einen einzigen Ausdruck aus über 5000 verketteten Literalen erzeugte; jetzt ist er ein konstantes Zeilen-Array. Win64 und Win32 bauen in einer IDE durch (Spitze 1,7 GB statt am 32-Bit-Limit).
 - DFM-Parser (#1235): Lange Strings, die Delphi ab der Zeile nach `=` schreibt (`Hint =` und darunter `'Bla'#123 +`), meldeten „Property oder "end" erwartet“.
 - Mitlaufender Kopf (#1228): Beim Bildlauf blieben Reste alter Kopfzeilen stehen, weil der Editor die gemalten Pixel verschiebt. Solange der Kopf an ist, verschiebt der Editor nicht mehr (Delphi 13), und jeder Bildlauf zeichnet sofort neu.
