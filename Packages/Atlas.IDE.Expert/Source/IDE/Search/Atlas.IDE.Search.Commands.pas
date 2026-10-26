@@ -238,8 +238,11 @@ begin
   end;
   Text := TAtlasEditorBuffer.Text(View.Buffer);
   FLines := TTextLines.SplitLines(Text);
-  // Bei Bereich Methode hängt die Hervorhebung am Cursor; der wandert, also gehört er zum Schlüssel.
-  Key := Context.FileName + #0 + IntToStr(TAtlasIdeSearch.FVersion) + #0 + IntToStr(View.CursorPos.Line) + #0 + Text;
+  // Bei Bereich Methode hängt die Hervorhebung am Cursor; der wandert, also gehört er zum Schlüssel. Sonst nicht:
+  // Jede Cursorzeile suchte die ganze Unit neu (#1227).
+  Key := Context.FileName + #0 + IntToStr(TAtlasIdeSearch.FVersion) + #0 + Text;
+  if TAtlasIdeSearch.FLast.Scope = TAtlasSearchScope.Method then
+    Key := IntToStr(View.CursorPos.Line) + #0 + Key;
   if Key = FKey then
     Exit;
   FKey := Key;
