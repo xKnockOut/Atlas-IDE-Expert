@@ -28,6 +28,9 @@
 // dem Speichern). Die letzte Prüfung einer Datei (Datei, Dauer, Zeitpunkt)
 // steht in LastCheck für die Statuszeile des Fensters „Atlas-Prüfung“;
 // Checking meldet eine laufende Anfrage für die Atlas-Statusleiste (#1155).
+// Fallen Projekte weg (Projektgruppe geschlossen oder gewechselt,
+// TLspSession.ProjectsRemoved), verwirft der Controller alle Befunde und holt
+// neu: Pull-Diagnosen melden Dateien, die nicht mehr dazugehören, nie wieder.
 // Ergebnisse kommen über TThread.Queue in den Hauptthread; der Speicher wird
 // nur dort benutzt. Shutdown hält die Threads an, bevor die Sitzung endet: Der
 // Manager schließt dazwischen die Verbindung, damit laufende Anfragen sofort
@@ -152,6 +155,8 @@ type
     // Zähler (#509): zuletzt gemeldeter Stand.
     FCountsShown: Boolean;
     FCountsVersion: Integer;
+    // Zuletzt gesehener Zähler weggefallener Projekte der Sitzung.
+    FProjectsRemoved: Integer;
     class var FOnCounts: TAtlasProblemCountsProc;
     class var FLastCheck: TAtlasProblemsCheck;
     procedure PublishCounts;
@@ -621,6 +626,20 @@ begin
     end;
     // Bestätigte Compilermeldungen zusammenführen (problems.compilerMerge, #1024); ändert nur bei Wechsel.
     FStore.CompilerMerge := not SameText(TAtlasIdeSettings.Current.ProblemsCompilerMerge, 'both');
+    // Projektgruppe geschlossen oder gewechselt: Pull-Diagnosen melden weggefallene Dateien nie mehr, ihre
+    // Befunde blieben sonst im Speicher und im Fenster „Atlas-Prüfung“. Alles verwerfen und neu holen.
+    Session := FSession(False);
+    if (Session <> nil) and (Session.ProjectsRemoved <> FProjectsRemoved) then
+    begin
+      FProjectsRemoved := Session.ProjectsRemoved;
+      FLog('Projekte weggefallen: Befunde verworfen, Prüfung neu');
+      StopWorkers(False);
+      FStore.Clear;
+      FTexts.Clear;
+      FVersions.Clear;
+      FPulled.Clear;
+      Publish;
+    end;
     View := nil;
     // Ohne Fokus ändert sich der Puffer nur über Neuladen, das den Stand ohnehin als veraltet markiert:
     // dann weder Puffer lesen noch abgleichen (P-04). Freigeben, Stoppen und Veröffentlichen laufen weiter.

@@ -140,6 +140,7 @@ type
     FDocLock: TObject;
     FInitialized: Boolean;
     FProjects: TArray<string>;
+    FProjectsRemoved: Integer;
     /// <summary>Projektkontexte für initialize (#396).</summary>
     FContexts: TArray<TAtlasProjectContext>;
     /// <summary>Zuletzt gemeldeter Schlüssel je Projekt (#396).</summary>
@@ -172,6 +173,9 @@ type
     /// <summary>Projekte der Gruppe, aktives zuerst. Vor Initialize nur gemerkt, danach als
     /// didChangeWorkspaceFolders gemeldet, falls sich etwas geändert hat (#648).</summary>
     procedure SetProjects(const AProjects: TArray<string>);
+    /// <summary>Zählt jedes Melden weggefallener Projekte (Projektgruppe geschlossen oder gewechselt): Befunde
+    /// dieser Projekte liefert der Server nicht mehr, der Empfänger verwirft seine.</summary>
+    property ProjectsRemoved: Integer read FProjectsRemoved;
     /// <summary>Projektkontexte aus der IDE (#396). Vor Initialize nur gemerkt, danach jeder neue oder
     /// geänderte als atlas/projectContext gemeldet. Vor SetProjects aufrufen, damit ein neues Projekt
     /// gleich mit seinem Kontext geladen wird. Ergebnis: die neu gemeldeten oder für initialize
@@ -1842,6 +1846,8 @@ begin
   FProjects := AProjects;
   if (Length(Added) = 0) and (Length(Removed) = 0) then
     Exit;
+  if Length(Removed) > 0 then
+    Inc(FProjectsRemoved);
   FClient.Notify('workspace/didChangeWorkspaceFolders', TJSONObject.Create(TJSONPair.Create('event',
     TJSONObject.Create.AddPair('added', ProjectFolders(Added)).AddPair('removed', ProjectFolders(Removed)))));
 end;

@@ -119,6 +119,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Core.Editor.Elements,
+  Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.Problems.Controller;
 
 { TAtlasEditorPairs.TEvents }
@@ -568,6 +569,10 @@ begin
       Refresh(Context);
     Line := Context.LogicalLineNum - 1;
     if (Line < 0) or (Line > High(FGuides)) or (Length(FGuides[Line]) = 0) then
+      Exit;
+    // Unter dem mitlaufenden Kopf zeichnet der Kopf die Linien selbst, jede erst unter ihrem Element.
+    if (Rect.Height > 0) and
+      ((Rect.Top + Rect.Height div 2) div Rect.Height < TAtlasIdeStickyScroll.CoveredRows(Context.FileName)) then
       Exit;
     // Wie bei den Läufen: nur, wenn die Zeile zur Analyse passt.
     LineState := Context.LineState;
