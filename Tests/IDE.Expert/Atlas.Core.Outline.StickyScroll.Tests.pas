@@ -34,6 +34,12 @@ type
     procedure RowsJumpToTheName;
     [Test]
     procedure IndentCountsTabs;
+    /// <summary>#1229: procedure im Kopf in der Tiefenfarbe ihres Blocks, Klammer bis vor „…“.</summary>
+    [Test]
+    procedure HeaderKeywordsTakeTheirDepthColor;
+    /// <summary>#1230: Große if/else-Blöcke stehen als eigene Zeile im Kopf, nach ihrer Lage eingereiht.</summary>
+    [Test]
+    procedure BranchBlocksJoinTheHeader;
   end;
 
 implementation
@@ -46,7 +52,8 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Core.Outline.Model,
-  Atlas.Core.Outline.StickyScroll;
+  Atlas.Core.Outline.StickyScroll,
+  Atlas.Core.Editor.Pairs;
 
 type
   /// <summary>Zeilen (0-basiert) im erzeugten Quelltext.</summary>
@@ -309,6 +316,71 @@ begin
   Assert.AreEqual(4, TAtlasStickyScroll.IndentColumns('  '#9'x', 4));
   Assert.AreEqual(6, TAtlasStickyScroll.IndentColumns(#9'  x', 4));
   Assert.AreEqual(0, TAtlasStickyScroll.IndentColumns('x', 4));
+end;
+
+function TokensOfLine(const ATokens: TArray<TAtlasPairToken>; ALine: Integer): TArray<TAtlasPairToken>;
+var
+  Token: TAtlasPairToken;
+begin
+  Result := nil;
+  for Token in ATokens do
+    if Token.Line = ALine then
+      Result := Result + [Token];
+end;
+
+procedure TAtlasStickyScrollTests.BranchBlocksJoinTheHeader;
+var
+  Lines: TArray<string>;
+  Index: Integer;
+  Blocks: TArray<TAtlasStickyBlock>;
+  Rows: TAtlasStickyRows;
+begin
+  SetLength(Lines, 60);
+  for Index := 0 to High(Lines) do
+    Lines[Index] := '      Tue;';
+  Lines[2] := '  if Gueltig then';
+  Lines[3] := '  begin';
+  Lines[10] := '    else if Leer then';
+  Lines[11] := '    begin';
+  Lines[40] := '    end;';
+  Lines[50] := '  end;';
+  Blocks := TArray<TAtlasStickyBlock>.Create(TAtlasStickyBlock.Create(10, 4, 40), TAtlasStickyBlock.Create(2, 2, 50));
+  // Mitten im inneren Block: beide, der äußere zuerst, ohne Einrückung im Text.
+  Rows := TAtlasStickyScroll.Rows(nil, Lines, Blocks, 20, 3, 8);
+  Assert.AreEqual(2, Integer(Length(Rows)));
+  Assert.AreEqual('if Gueltig then', Rows[0].Text);
+  Assert.AreEqual(2, Rows[0].Indent);
+  Assert.AreEqual('else if Leer then', Rows[1].Text);
+  Assert.AreEqual(10, Rows[1].Line, 'Sprung zum else');
+  // Nach dem inneren Block nur noch der äußere; nach dem äußeren keiner.
+  Assert.AreEqual(1, Integer(Length(TAtlasStickyScroll.Rows(nil, Lines, Blocks, 44, 3, 8))));
+  Assert.AreEqual(0, Integer(Length(TAtlasStickyScroll.Rows(nil, Lines, Blocks, 55, 3, 8))));
+  // Eine Zeile: Zusammenfassung mit gekürzten Köpfen.
+  Rows := TAtlasStickyScroll.Rows(nil, Lines, Blocks, 20, 1, 8);
+  Assert.AreEqual(1, Integer(Length(Rows)));
+  Assert.AreEqual('if Gueltig then › else if Leer then', Rows[0].Text);
+end;
+
+procedure TAtlasStickyScrollTests.HeaderKeywordsTakeTheirDepthColor;
+const
+  Lines: array[0..5] of string = ('procedure Aussen;', '  procedure Innen(A,', '    B: Integer);', '  begin',
+    '  end;', 'begin');
+var
+  Tokens, Line1: TArray<TAtlasPairToken>;
+  Spans: TArray<TAtlasPairSpan>;
+begin
+  Tokens := TAtlasPairs.Analyze(string.Join(#10, Lines) + #10'end;');
+  Line1 := TokensOfLine(Tokens, 1);
+  // Kopf der inneren Routine ohne Einrückung, Parameterliste gekürzt: procedure in der Farbe ihres begin.
+  Spans := TAtlasPairs.Spans('procedure Innen(…): Boolean;', Lines[1], Line1, True);
+  Assert.IsTrue(Length(Spans) >= 1, 'procedure gefärbt');
+  Assert.AreEqual(1, Spans[0].Start);
+  Assert.AreEqual(9, Spans[0].Length);
+  Assert.AreEqual(TokensOfLine(Tokens, 3)[0].Depth, Spans[0].Depth, 'Tiefe des eigenen begin');
+  Assert.AreEqual('(', Copy('procedure Innen(…): Boolean;', Spans[High(Spans)].Start, 1), 'Klammer vor „…“');
+  // Ohne Besitzer (PairOwners aus) bleibt procedure ungefärbt wie im Editor.
+  for var Span in TAtlasPairs.Spans('procedure Innen(…): Boolean;', Lines[1], Line1, False) do
+    Assert.AreNotEqual(1, Span.Start);
 end;
 
 initialization

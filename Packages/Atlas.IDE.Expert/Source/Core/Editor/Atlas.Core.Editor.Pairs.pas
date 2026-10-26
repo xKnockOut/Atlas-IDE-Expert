@@ -55,8 +55,22 @@ type
     OwnerCharacter: Integer;
   end;
 
+  /// <summary>Gefärbter Teil eines abgeleiteten Texts, z. B. des mitlaufenden Kopfs (#1229); Start 1-basiert.
+  /// </summary>
+  TAtlasPairSpan = record
+    Start: Integer;
+    Length: Integer;
+    Depth: Integer;
+    Unpaired: Boolean;
+  end;
+
   TAtlasPairs = class
   public
+    /// <summary>Token der Quellzeile ALine (ALineTokens, Zeichenindex 0-basiert in ALine) als Teile von AText, der
+    /// die Zeile ohne Einrückung zeigt (#1229, mitlaufender Kopf). Nur Token, die dort unverändert stehen;
+    /// Besitzer (procedure, if …) nur mit AOwners.</summary>
+    class function Spans(const AText, ALine: string; const ALineTokens: TArray<TAtlasPairToken>;
+      AOwners: Boolean): TArray<TAtlasPairSpan>; static;
     /// <summary>Klammern und Blockwörter in AText, nach Position sortiert.</summary>
     class function Analyze(const AText: string): TArray<TAtlasPairToken>; overload; static;
     /// <summary>Wie Analyze; ABlocks erhält zusätzlich die gepaarten Blöcke in der Reihenfolge ihres Endes.</summary>
@@ -212,6 +226,32 @@ end;
 function IsKeyword(const AToken: TLexToken; const AWord: string): Boolean;
 begin
   Result := AToken.IsWord and not AToken.Plain and SameText(AToken.Text, AWord);
+end;
+
+class function TAtlasPairs.Spans(const AText, ALine: string; const ALineTokens: TArray<TAtlasPairToken>;
+  AOwners: Boolean): TArray<TAtlasPairSpan>;
+var
+  Offset: Integer;
+  Token: TAtlasPairToken;
+  Span: TAtlasPairSpan;
+begin
+  Result := nil;
+  // AText beginnt ohne Einrückung: Zeichenindex in der Zeile minus Einrückung.
+  Offset := System.Length(ALine) - System.Length(TrimLeft(ALine));
+  for Token in ALineTokens do
+  begin
+    if Token.Owner and not AOwners then
+      Continue;
+    Span.Start := Token.Character - Offset + 1;
+    Span.Length := Token.Length;
+    Span.Depth := Token.Depth;
+    Span.Unpaired := Token.Unpaired;
+    // Hinter einem gekürzten „(…)“ steht anderer Text: nur, was dort wirklich steht.
+    if (Span.Start < 1) or (Span.Start + Span.Length - 1 > System.Length(AText)) or
+      (Copy(AText, Span.Start, Span.Length) <> Copy(ALine, Token.Character + 1, Token.Length)) then
+      Continue;
+    Result := Result + [Span];
+  end;
 end;
 
 class function TAtlasPairs.DisplayLine(const ALine: string; ATabWidth: Integer): string;
