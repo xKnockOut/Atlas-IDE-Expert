@@ -510,8 +510,8 @@ begin
       for Index := 0 to High(FRows) do
         if not FRows[Index].Summary and (FRows[Index].Line = Guide.FirstLine) then
           Start := Index;
-      // Erst unter seiner Kopfzeile; ohne Kopfzeile beginnt die Linie unter dem Kopf.
-      if (Start < 0) or (ARowIndex <= Start) then
+      // Ab seiner Kopfzeile (dort mit Haken wie im Editor); ohne Kopfzeile beginnt die Linie unter dem Kopf.
+      if (Start < 0) or (ARowIndex < Start) then
         Continue;
       Cell := Context.EditorState.GetCharacterPosPx(Guide.Column, Context.EditorLineNum);
       X := Cell.Left - Max(2, Cell.Width div 3) - (Width - 1) div 2;
@@ -523,8 +523,18 @@ begin
       Pen := CreatePen(PS_SOLID, Width, ColorToRGB(TColor(LineColor)));
       Old := SelectObject(DC, Pen);
       try
-        MoveToEx(DC, X, ARect.Top, nil);
-        LineTo(DC, X, ARect.Bottom);
+        if ARowIndex = Start then
+        begin
+          MoveToEx(DC, X, ARect.Top + 2, nil);
+          LineTo(DC, X, ARect.Bottom);
+          MoveToEx(DC, X, ARect.Top + 2, nil);
+          LineTo(DC, X + Max(3, Cell.Width div 2), ARect.Top + 2);
+        end
+        else
+        begin
+          MoveToEx(DC, X, ARect.Top, nil);
+          LineTo(DC, X, ARect.Bottom);
+        end;
       finally
         SelectObject(DC, Old);
         DeleteObject(Pen);
