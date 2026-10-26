@@ -707,7 +707,7 @@ type
     StatusBarChecking, StatusBarCheckedAgo, StatusBarSeconds, StatusBarMinutes, StatusBarHours, StatusBarLines,
     StatusBarCyclomatic, StatusBarLimit, StatusBarFindingsHint, StatusBarLiveOnHint, StatusBarLiveOffHint,
     StatusBarLastCheck, StatusBarMethodJump, StatusBarNoMethod, StatusBarNoFindingOfKind, StatusBarStatusClicks,
-    StatusBarReady);
+    StatusBarReady, StatusBarRecheckClick, StatusBarRechecking);
 
   TAtlasStrings = class
   private class var
@@ -2303,7 +2303,8 @@ const
      '„Atlas-Prüfung“ für diese Unit.',
      'Prüft beim Tippen (problems.live).', 'Prüft erst nach dem Speichern (problems.live aus).',
      'Letzte Prüfung: %s in %d ms um %s', 'Klick: zum Methodenkopf', 'keine Methode',
-     'Keine Befunde dieser Art in der Unit.', 'Klick: Atlas-Status · Rechtsklick: Schnellschalter', 'bereit'),
+     'Keine Befunde dieser Art in der Unit.', 'Klick: Atlas-Status · Rechtsklick: Schnellschalter', 'bereit',
+     'Klick: alle Units neu prüfen', 'Atlas prüft alle Units neu …'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3805,7 +3806,8 @@ const
      '“Atlas check” for this unit.',
      'Checks while you type (problems.live).', 'Checks only after saving (problems.live off).',
      'Last check: %s in %d ms at %s', 'Click: go to the method header', 'no method',
-     'No findings of this kind in this unit.', 'Click: Atlas status · Right-click: quick toggles', 'ready'));
+     'No findings of this kind in this unit.', 'Click: Atlas status · Right-click: quick toggles', 'ready',
+     'Click: check all units again', 'Atlas is checking all units again …'));
 
 { TAtlasStrings }
 

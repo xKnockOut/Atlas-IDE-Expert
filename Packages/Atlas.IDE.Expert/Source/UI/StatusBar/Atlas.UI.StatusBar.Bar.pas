@@ -14,8 +14,9 @@
 //   um.
 // - Klick (beim Loslassen über dem Element; das Verlassen der Leiste zwischen
 //   Drücken und Loslassen bricht nicht ab, siehe Editorleiste #1101): Status
-//   meldet OnStatus, ein Zähler OnFinding mit seiner Art, die Methode
-//   OnMethod, das Zahnrad öffnet das Menü „Leiste anpassen“. Doppelklick auf
+//   meldet OnStatus, ein Zähler OnFinding mit seiner Art, die Live-Prüfung
+//   OnLiveCheck (alle Units neu prüfen, #1231), die Methode OnMethod, das
+//   Zahnrad öffnet das Menü „Leiste anpassen“. Doppelklick auf
 //   die Zähler meldet OnFindingsOpen. Rechtsklick auf den Status meldet
 //   OnStatusContext, sonst öffnet er das Menü. WM_CONTEXTMENU behandelt die
 //   Leiste selbst; es geht nicht an das Editorfenster der IDE weiter.
@@ -94,6 +95,7 @@ type
     FOnStatusContext: TProc<TPoint>;
     FOnFinding: TAtlasStatusBarKindEvent;
     FOnFindingsOpen: TProc;
+    FOnLiveCheck: TProc;
     FOnMethod: TProc;
     FOnToggleItem: TAtlasStatusBarItemEvent;
     FOnHide: TProc;
@@ -158,6 +160,8 @@ type
     property OnStatusContext: TProc<TPoint> read FOnStatusContext write FOnStatusContext;
     property OnFinding: TAtlasStatusBarKindEvent read FOnFinding write FOnFinding;
     property OnFindingsOpen: TProc read FOnFindingsOpen write FOnFindingsOpen;
+    /// <summary>Klick auf die Live-Prüfung: alle Units neu prüfen (#1231).</summary>
+    property OnLiveCheck: TProc read FOnLiveCheck write FOnLiveCheck;
     property OnMethod: TProc read FOnMethod write FOnMethod;
     property OnToggleItem: TAtlasStatusBarItemEvent read FOnToggleItem write FOnToggleItem;
     property OnHide: TProc read FOnHide write FOnHide;
@@ -665,7 +669,8 @@ begin
       Canvas.LineTo(Middle, ClientHeight - Scale(4));
     end;
     Started := True;
-    if (FHot = FParts[Index]) and (FParts[Index] in [TAtlasStatusBarPart.Status, TAtlasStatusBarPart.Method]) then
+    if (FHot = FParts[Index]) and (FParts[Index] in [TAtlasStatusBarPart.Status, TAtlasStatusBarPart.LiveCheck,
+      TAtlasStatusBarPart.Method]) then
       DrawHot(Area);
     case FParts[Index] of
       TAtlasStatusBarPart.Status:
@@ -693,8 +698,7 @@ begin
     Exit;
   FHot := Hot;
   FHotKind := HotKind;
-  if (Hot = TAtlasStatusBarPart.None) or (Hot = TAtlasStatusBarPart.LiveCheck) or
-    ((Hot = TAtlasStatusBarPart.Method) and not FView.MethodFound) then
+  if (Hot = TAtlasStatusBarPart.None) or ((Hot = TAtlasStatusBarPart.Method) and not FView.MethodFound) then
     Cursor := crDefault
   else
     Cursor := crHandPoint;
@@ -806,6 +810,9 @@ begin
         if (Kind >= 0) and Assigned(FOnFinding) then
           FOnFinding(Kinds[Kind]);
       end;
+    TAtlasStatusBarPart.LiveCheck:
+      if Assigned(FOnLiveCheck) then
+        FOnLiveCheck();
     TAtlasStatusBarPart.Method:
       if FView.MethodFound and Assigned(FOnMethod) then
         FOnMethod();

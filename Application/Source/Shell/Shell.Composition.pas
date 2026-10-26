@@ -1649,6 +1649,15 @@ begin
         Workspace.Rebuild;
       Result := TIndexCommands.Answer(Removed, Freed);
     end);
+  FCommands.Register(TLspPullDiagnostics.RecheckCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      // Neue Generation (#1231): Alle Ergebnis-Ids veralten, auch die übersprungener Dateien (#1094); geöffnete
+      // Dateien holt der Client nach dem refresh, die übrigen liefert workspace/diagnostic nach.
+      FPullDiagnostics.Changed;
+      FLogger.Info('Alle Dateien werden neu geprüft');
+      Result := TJSONNull.Create;
+    end);
   FCommands.Register(SelectBuildCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var
@@ -4857,6 +4866,7 @@ begin
   Commands.Add(SelectProjectCommand);
   Commands.Add(RebuildIndexCommand);
   Commands.Add(ClearIndexCommand);
+  Commands.Add(TLspPullDiagnostics.RecheckCommand);
   Commands.Add(TBugReport.Command);
   Commands.Add(TQualifiedNames.Command);
   Commands.Add(TEnumValueCommands.Command);
