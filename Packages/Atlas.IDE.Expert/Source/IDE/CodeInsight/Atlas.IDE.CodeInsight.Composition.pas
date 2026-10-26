@@ -2324,6 +2324,13 @@ begin
     begin
       MessageLine(AText);
     end;
+  Hooks.Recheck :=
+    procedure
+    begin
+      // Klick auf die Live-Prüfung (#1231); startet keinen Server.
+      if Manager <> nil then
+        Manager.RunServerCommandAsync('atlas.server.recheck', '[]', 10000, nil);
+    end;
   TAtlasIdeStatusBar.Install(Hooks);
   if StatusField <> nil then
     StatusField.RequestRefresh;
