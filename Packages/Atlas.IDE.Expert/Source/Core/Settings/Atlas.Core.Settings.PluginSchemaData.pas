@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4163] of string = (
+  Lines: array[0..4187] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -3304,6 +3304,31 @@ const
     '      "x-page": "Editor",',
     '      "x-parent": "editor.stickyScroll",',
     '      "x-issue": "#506"',
+    '    },',
+    '    "StickyScrollBlocks": {',
+    '      "description": "Große if/else-Blöcke (ab editor.stickyScrollBlockMinLines Zeilen) erscheinen als eigene Zeile im mitlaufenden Kopf, eingereiht zwischen Klasse und Routinen nach ihrer Lage: Zeile' +
+      ' des if bzw. else ohne Einrückung, Klick springt dorthin. Blöcke ohne begin … end zählen nicht.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "editor.stickyScrollBlocks",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-parent": "editor.stickyScroll",',
+    '      "x-caption": "Große if/else-Blöcke im Kopf",',
+    '      "x-captionEn": "Large if/else blocks in the header",',
+    '      "x-issue": "#1230"',
+    '    },',
+    '    "StickyScrollBlockMinLines": {',
+    '      "description": "Mindestlänge eines if/else-Blocks in Zeilen, ab der er im mitlaufenden Kopf erscheint (5 bis 1000).",',
+    '      "type": "integer",',
+    '      "default": 25,',
+    '      "minimum": 5,',
+    '      "maximum": 1000,',
+    '      "x-key": "editor.stickyScrollBlockMinLines",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-parent": "editor.stickyScrollBlocks",',
+    '      "x-issue": "#1230"',
     '    },',
     '    "Minimap": {',
     '      "description": "Minimap neben der Scrollleiste: verkleinerte Ansicht der ganzen Datei mit dem sichtbaren Bereich als Schieber; Ziehen scrollt den Editor, Klick springt bzw. scrollt. Gefaltete Be' +

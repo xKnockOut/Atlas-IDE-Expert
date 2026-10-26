@@ -8,7 +8,8 @@
 // - Live-Prüfung: „prüft …“ während einer Prüfung, sonst „live“ bzw. „beim
 //   Speichern“ (problems.live aus), bei live mit dem Alter der letzten
 //   Prüfung dieser Datei („live · geprüft vor 2 s“). Die Texte kommen von der
-//   Oberfläche (TAtlasStatusLiveTexts).
+//   Oberfläche (TAtlasStatusLiveTexts). Solange die Projektprüfung nicht alle
+//   Units hat, folgt „ · Projekt 45 %“ (#1232).
 // - Aktuelle Methode: innerste Methode bzw. Routine der Gliederung, die die
 //   Cursorzeile umfasst, mit qualifiziertem Namen und Sprungziel (Name im
 //   Kopf). Zeilen und zyklomatische Komplexität (CC) samt Grenzen kommen aus
@@ -43,6 +44,8 @@ type
     Hours: string;
     /// <summary>Trenner zwischen den Teilen („ · “).</summary>
     Separator: string;
+    /// <summary>„Projekt %d %%“ (#1232).</summary>
+    ProjectProgress: string;
   end;
 
   TAtlasStatusMethod = record
@@ -80,6 +83,9 @@ type
     /// <summary>Text der Live-Prüfung. ACheckedAt = 0: Datei noch nicht geprüft.</summary>
     class function LiveText(ALive, AChecking: Boolean; ACheckedAt, ANow: TDateTime;
       const ATexts: TAtlasStatusLiveTexts): string; static;
+    /// <summary>Anhang „ · Projekt 45 %“, solange die Projektprüfung nicht alle ATotal Units hat (#1232); sonst ''.
+    /// Abgerundet: 100 % erst, wenn alle geprüft sind.</summary>
+    class function ProgressText(AChecked, ATotal: Integer; const ATexts: TAtlasStatusLiveTexts): string; static;
     /// <summary>Methode am Cursor (ALine) aus der Gliederung, Kennzahlen aus AMetrics, sofern AMetricsKnown.
     /// </summary>
     class function MethodAt(const ANodes: TAtlasOutlineNodes; ALine: Integer; const AMetrics: TAtlasFileMetrics;
@@ -203,6 +209,16 @@ begin
   if ANow > ACheckedAt then
     Age := SecondsBetween(ANow, ACheckedAt);
   Result := Result + ATexts.Separator + Format(ATexts.CheckedAgo, [AgeText(Age, ATexts)]);
+end;
+
+class function TAtlasStatusBarContent.ProgressText(AChecked, ATotal: Integer;
+  const ATexts: TAtlasStatusLiveTexts): string;
+begin
+  if (ATotal <= 0) or (AChecked >= ATotal) then
+    Exit('');
+  if AChecked < 0 then
+    AChecked := 0;
+  Result := ATexts.Separator + Format(ATexts.ProjectProgress, [Int64(AChecked) * 100 div ATotal]);
 end;
 
 /// <summary>Innerste Methode bzw. Routine, die ALine umfasst; -1 ohne.</summary>

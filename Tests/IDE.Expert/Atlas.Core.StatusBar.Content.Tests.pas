@@ -32,6 +32,9 @@ type
     procedure MethodOverLimit;
     [Test]
     procedure NoMethodOutsideRoutines;
+    /// <summary>#1232: „ · Projekt 45 %“ nur, solange Units fehlen; abgerundet.</summary>
+    [Test]
+    procedure ProjectProgressUntilComplete;
   end;
 
 implementation
@@ -80,6 +83,7 @@ begin
   Result.Minutes := '%d min';
   Result.Hours := '%d h';
   Result.Separator := ' · ';
+  Result.ProjectProgress := 'Projekt %d %%';
 end;
 
 function Node(const AName: string; ACategory: TAtlasOutlineCategory; AStart, AEnd, AParent: Integer): TAtlasOutlineNode;
@@ -255,6 +259,15 @@ begin
   Assert.IsFalse(Method.Over);
   Assert.AreEqual('', TAtlasStatusBarContent.MethodDetail(Method, '%d Zeilen', 'CC %d', ' · '));
   Assert.IsFalse(TAtlasStatusBarContent.MethodAt(nil, 0, Metrics, True).Found);
+end;
+
+procedure TAtlasStatusBarContentTests.ProjectProgressUntilComplete;
+begin
+  Assert.AreEqual(' · Projekt 7 %', TAtlasStatusBarContent.ProgressText(2, 27, Texts));
+  Assert.AreEqual(' · Projekt 99 %', TAtlasStatusBarContent.ProgressText(899, 900, Texts), 'abgerundet');
+  Assert.AreEqual(' · Projekt 0 %', TAtlasStatusBarContent.ProgressText(0, 27, Texts));
+  Assert.AreEqual('', TAtlasStatusBarContent.ProgressText(27, 27, Texts), 'fertig');
+  Assert.AreEqual('', TAtlasStatusBarContent.ProgressText(0, 0, Texts), 'ohne Projekt');
 end;
 
 initialization

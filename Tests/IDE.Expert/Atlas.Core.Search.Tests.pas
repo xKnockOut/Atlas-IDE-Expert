@@ -48,12 +48,17 @@ type
     procedure KeysComeFromSettingsAndFollowTheSwitch;
     [Test]
     procedure SettingsDefaultsAndRoundTrip;
+    /// <summary>#1227: Ein Buchstabe in einer großen Unit (80 000 Treffer) blockiert die Suchleiste nicht.</summary>
+    [Test]
+    [Category('Benchmark')]
+    procedure ManyHitsStayFast;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Diagnostics,
   Atlas.Core.Search.Matching,
   Atlas.Core.Search.Scopes,
   Atlas.Core.Search.Results,
@@ -431,6 +436,25 @@ begin
   Settings.Normalize;
   Assert.AreEqual(0, Settings.SearchKey);
   Assert.AreEqual($FFFF, Settings.SearchMethodKey);
+end;
+
+procedure TAtlasSearchTests.ManyHitsStayFast;
+var
+  Lines: TArray<string>;
+  Index: Integer;
+  Watch: TStopwatch;
+  Hits: TArray<TAtlasSearchHit>;
+begin
+  SetLength(Lines, 20000);
+  for Index := 0 to High(Lines) do
+    Lines[Index] := '  Ergebnis := Wert + Eintrag;';
+  Watch := TStopwatch.StartNew;
+  Hits := TAtlasTextSearch.FindAll(Lines, 'e', TAtlasSearchOptions.Create(False, False, False),
+    TAtlasSearchArea.Whole(Lines));
+  Watch.Stop;
+  // „Ergebnis“ (2), „Wert“, „Eintrag“: vier e je Zeile, Groß-/Kleinschreibung egal.
+  Assert.AreEqual(80000, Integer(Length(Hits)));
+  Assert.IsTrue(Watch.ElapsedMilliseconds < 500, 'Dauer ' + IntToStr(Watch.ElapsedMilliseconds) + ' ms');
 end;
 
 initialization
