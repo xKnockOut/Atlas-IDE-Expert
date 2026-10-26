@@ -4,7 +4,8 @@
 // Statuszeile der IDE. Die Höhe hängt nur von der DPI ab, nie vom Inhalt.
 // - SetView setzt den Inhalt (TAtlasStatusBarView); gleicher Inhalt zeichnet
 //   nicht neu. Elemente in der Reihenfolge von View.Items:
-//   status: Punkt in Zustandsfarbe und Text („Atlas · bereit“);
+//   status: Punkt in Zustandsfarbe und Text („Atlas · bereit“), dahinter mit
+//   ungelesenen Benachrichtigungen deren Plakette (#1234, Klick: OnBadge);
 //   findings: Zähler je Art mit den Symbolen aus „Atlas-Prüfung“;
 //   liveCheck: „live · geprüft vor 2 s“, „prüft …“, „beim Speichern“;
 //   method: „ƒ TFoo.Bar · 4 Zeilen · CC 2“, über der Grenze in Warnfarbe.
@@ -43,7 +44,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasStatusBarPart = (None, Status, Findings, LiveCheck, Method, Gear);
+  TAtlasStatusBarPart = (None, Status, Badge, Findings, LiveCheck, Method, Gear);
 {$SCOPEDENUMS OFF}
 
   TAtlasStatusBarView = record
@@ -52,6 +53,10 @@ type
     StatusText: string;
     StatusHint: string;
     StatusColor: TAtlasColor;
+    /// <summary>Ungelesene Benachrichtigungen (#1234); 0 = keine Plakette. Farbe des schwersten Eintrags.</summary>
+    BadgeCount: Integer;
+    BadgeColor: TAtlasColor;
+    BadgeHint: string;
     /// <summary>Probleme an: Zähler zeigen; sonst fällt das Element weg.</summary>
     FindingsShown: Boolean;
     Counts: TAtlasStatusCounts;
@@ -93,6 +98,7 @@ type
     FHideCaption: string;
     FOnStatus: TProc<TPoint>;
     FOnStatusContext: TProc<TPoint>;
+    FOnBadge: TProc<TPoint>;
     FOnFinding: TAtlasStatusBarKindEvent;
     FOnFindingsOpen: TProc;
     FOnLiveCheck: TProc;
@@ -112,6 +118,8 @@ type
     function KindAt(X, Y: Integer): Integer;
     function PartHint(APart: TAtlasStatusBarPart): string;
     procedure DrawStatus(const ARect: TRect);
+    procedure DrawBadge(const ARect: TRect);
+    function BadgeText: string;
     procedure DrawFindings(const ARect: TRect);
     procedure DrawCycle(const ARect: TRect; AColor: TColor);
     procedure DrawLive(const ARect: TRect);
@@ -158,6 +166,8 @@ type
     property HideCaption: string read FHideCaption write FHideCaption;
     property OnStatus: TProc<TPoint> read FOnStatus write FOnStatus;
     property OnStatusContext: TProc<TPoint> read FOnStatusContext write FOnStatusContext;
+    /// <summary>Klick auf die Plakette (#1234): linke Oberkante der Plakette (Bildschirm).</summary>
+    property OnBadge: TProc<TPoint> read FOnBadge write FOnBadge;
     property OnFinding: TAtlasStatusBarKindEvent read FOnFinding write FOnFinding;
     property OnFindingsOpen: TProc read FOnFindingsOpen write FOnFindingsOpen;
     /// <summary>Klick auf die Live-Prüfung: alle Units neu prüfen (#1231).</summary>
@@ -211,6 +221,7 @@ var
 begin
   Result := (string.Join(',', Items) = string.Join(',', AOther.Items)) and (StatusText = AOther.StatusText) and
     (StatusHint = AOther.StatusHint) and (StatusColor = AOther.StatusColor) and
+    (BadgeCount = AOther.BadgeCount) and (BadgeColor = AOther.BadgeColor) and (BadgeHint = AOther.BadgeHint) and
     (FindingsShown = AOther.FindingsShown) and (FindingsHint = AOther.FindingsHint) and
     (LiveText = AOther.LiveText) and (LiveHint = AOther.LiveHint) and (LiveBusy = AOther.LiveBusy) and
     (MethodFound = AOther.MethodFound) and (MethodName = AOther.MethodName) and
@@ -338,6 +349,11 @@ begin
         Minimum := Scale(SlotPadding) + DotSize + Scale(5) + TextWidthOf(Ellipsis, False) + Scale(SlotPadding);
         Result := TAtlasStatusSlot.Create(Width_, Minimum, ShrinkStatus);
       end;
+    TAtlasStatusBarPart.Badge:
+      begin
+        Width_ := 2 * Scale(SlotPadding) + Max(Scale(18), TextWidthOf(BadgeText, True) + Scale(10));
+        Result := TAtlasStatusSlot.Create(Width_, Width_, ShrinkFindings);
+      end;
     TAtlasStatusBarPart.Findings:
       begin
         Width_ := Scale(SlotPadding);
@@ -375,7 +391,12 @@ begin
   Result := nil;
   for Id in FView.Items do
     if SameText(Id, TAtlasStatusBarItems.Status) then
-      Result := Result + [TAtlasStatusBarPart.Status]
+    begin
+      Result := Result + [TAtlasStatusBarPart.Status];
+      // Plakette der Benachrichtigungen (#1234) direkt hinter dem Status; das Atlas-Feld ist dann 0 breit.
+      if FView.BadgeCount > 0 then
+        Result := Result + [TAtlasStatusBarPart.Badge];
+    end
     else if SameText(Id, TAtlasStatusBarItems.Findings) then
     begin
       if FView.FindingsShown then
@@ -467,6 +488,8 @@ begin
   case APart of
     TAtlasStatusBarPart.Status:
       Result := FView.StatusHint;
+    TAtlasStatusBarPart.Badge:
+      Result := FView.BadgeHint;
     TAtlasStatusBarPart.Findings:
       Result := FView.FindingsHint;
     TAtlasStatusBarPart.LiveCheck:
@@ -564,6 +587,36 @@ begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := AColor;
   Canvas.Polygon(Points);
+end;
+
+function TAtlasEditorStatusBar.BadgeText: string;
+begin
+  if FView.BadgeCount > 99 then
+    Result := '99+'
+  else
+    Result := IntToStr(FView.BadgeCount);
+end;
+
+procedure TAtlasEditorStatusBar.DrawBadge(const ARect: TRect);
+var
+  Pill: TRect;
+  Width_, Height_: Integer;
+begin
+  // Runde Plakette in der Farbe des schwersten ungelesenen Eintrags, Zahl hell darauf.
+  Height_ := Scale(16);
+  Width_ := Max(Height_, TextWidthOf(BadgeText, True) + Scale(10));
+  Pill := Rect(ARect.Left + Scale(SlotPadding), ARect.Top + (ARect.Height - Height_) div 2,
+    ARect.Left + Scale(SlotPadding) + Width_, ARect.Top + (ARect.Height - Height_) div 2 + Height_);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(FView.BadgeColor);
+  Canvas.Pen.Color := ToColor(FView.BadgeColor);
+  Canvas.RoundRect(Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, Height_, Height_);
+  Canvas.Font := Font;
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Color := clWhite;
+  Canvas.Brush.Style := bsClear;
+  DrawText(Canvas.Handle, PChar(BadgeText), -1, Pill, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  Canvas.Font := Font;
 end;
 
 procedure TAtlasEditorStatusBar.DrawLive(const ARect: TRect);
@@ -669,12 +722,14 @@ begin
       Canvas.LineTo(Middle, ClientHeight - Scale(4));
     end;
     Started := True;
-    if (FHot = FParts[Index]) and (FParts[Index] in [TAtlasStatusBarPart.Status, TAtlasStatusBarPart.LiveCheck,
-      TAtlasStatusBarPart.Method]) then
+    if (FHot = FParts[Index]) and (FParts[Index] in [TAtlasStatusBarPart.Status, TAtlasStatusBarPart.Badge,
+      TAtlasStatusBarPart.LiveCheck, TAtlasStatusBarPart.Method]) then
       DrawHot(Area);
     case FParts[Index] of
       TAtlasStatusBarPart.Status:
         DrawStatus(Area);
+      TAtlasStatusBarPart.Badge:
+        DrawBadge(Area);
       TAtlasStatusBarPart.Findings:
         DrawFindings(Area);
       TAtlasStatusBarPart.LiveCheck:
@@ -809,6 +864,12 @@ begin
         Kind := KindAt(X, Y);
         if (Kind >= 0) and Assigned(FOnFinding) then
           FOnFinding(Kinds[Kind]);
+      end;
+    TAtlasStatusBarPart.Badge:
+      if Assigned(FOnBadge) then
+      begin
+        Area := PartRect(TAtlasStatusBarPart.Badge);
+        FOnBadge(ClientToScreen(Point(Area.Left, Area.Top)));
       end;
     TAtlasStatusBarPart.LiveCheck:
       if Assigned(FOnLiveCheck) then
