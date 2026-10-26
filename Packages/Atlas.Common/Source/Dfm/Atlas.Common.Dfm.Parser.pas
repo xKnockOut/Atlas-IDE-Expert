@@ -3,7 +3,8 @@
 // Parser für Text-DFMs und -FMXs (#44): object/inherited/inline mit Namen,
 // Klasse und optionalem Index ([2]), Properties mit Punkten im Namen,
 // Werte aller Arten: Zahlen, Bezeichner, Strings mit #-Zeichen und "+" über
-// Zeilen, Mengen [..], Listen (..), Binärdaten {..} und Collections <item .. end>.
+// Zeilen (auch erst ab der Zeile nach "=", #1235), Mengen [..], Listen (..),
+// Binärdaten {..} und Collections <item .. end>.
 // Fehlertolerant: Unerwartetes wird gemeldet und bis zum Zeilenende übersprungen.
 // Binäre Formulare (TPF0) werden vorher im Speicher in Text umgewandelt (#122);
 // die Bereiche beziehen sich dann auf den umgewandelten Text.
@@ -335,6 +336,9 @@ begin
       Advance;
       while CharInSet(Current, [' ', #9]) do
         Advance;
+      // Lange Strings schreibt Delphi in die nächste Zeile ("Hint = " und darunter "'Bla'#123 +", #1235).
+      if CharInSet(Current, [#13, #10]) then
+        SkipBlanks;
       Item.ValueRange.StartPos := Position;
       Start := FIndex;
       ReadValue(AObject);
