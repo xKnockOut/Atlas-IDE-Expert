@@ -13,6 +13,10 @@
 //   bleiben die inneren Ebenen einzeln sichtbar, die äußeren werden zu einer
 //   Zeile „A › B › C“ zusammengefasst. Mehrzeilige Köpfe kürzt Header auf eine
 //   Zeile (Parameterliste „(…)“).
+// - Zusätzliche Blöcke (#1230): große if/else-Blöcke (aus der Paaranalyse,
+//   ausgewählt vom Aufrufer) zählen wie Routinen; ihr Kopf ist die Zeile des
+//   if bzw. else ohne Einrückung. Alle Ebenen sind nach ihrer Kopfzeile
+//   geordnet, die äußeren zuerst.
 
 interface
 
@@ -33,6 +37,15 @@ type
   end;
 
   TAtlasStickyRows = TArray<TAtlasStickyRow>;
+
+  /// <summary>Zusätzlicher Block (#1230): Kopf in Zeile Line (Sprungziel Character), endet in EndLine; 0-basiert.
+  /// </summary>
+  TAtlasStickyBlock = record
+    Line: Integer;
+    Character: Integer;
+    EndLine: Integer;
+    class function Create(ALine, ACharacter, AEndLine: Integer): TAtlasStickyBlock; static;
+  end;
 
   TAtlasStickyScroll = class
   public const
@@ -56,6 +69,10 @@ type
     /// <summary>Zeilen des Kopfs, höchstens AMaxLines (mindestens eine).</summary>
     class function Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine, AMaxLines,
       ATabWidth: Integer): TAtlasStickyRows; overload; static;
+    /// <summary>Wie oben, dazu die Blöcke ABlocks (#1230) als weitere Ebenen.</summary>
+    class function Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+      const ABlocks: TArray<TAtlasStickyBlock>; ATopLine, AMaxLines, ATabWidth: Integer): TAtlasStickyRows; overload;
+      static;
     /// <summary>Wie oben mit Tabulatorbreite 8.</summary>
     class function Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine,
       AMaxLines: Integer): TAtlasStickyRows; overload; static;
@@ -68,6 +85,8 @@ implementation
 uses
   System.SysUtils,
   System.Math,
+  System.Generics.Collections,
+  System.Generics.Defaults,
   Atlas.Text.Lines;
 
 const
@@ -221,20 +240,131 @@ begin
   Result.Summary := False;
 end;
 
-class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine,
-  AMaxLines, ATabWidth: Integer): TAtlasStickyRows;
+{ TAtlasStickyBlock }
+
+class function TAtlasStickyBlock.Create(ALine, ACharacter, AEndLine: Integer): TAtlasStickyBlock;
+begin
+  Result.Line := ALine;
+  Result.Character := ACharacter;
+  Result.EndLine := AEndLine;
+end;
+
+type
+  /// <summary>Ebene des Kopfs: Block der Gliederung (Node >= 0) oder zusätzlicher Block (Node = -1).</summary>
+  TEntry = record
+    Line: Integer;
+    Character: Integer;
+    EndLine: Integer;
+    Node: Integer;
+  end;
+
+/// <summary>Alle Ebenen nach Kopfzeile, bei gleicher Zeile die längere (äußere) zuerst.</summary>
+function EntriesOf(const ANodes: TAtlasOutlineNodes; const ABlocks: TArray<TAtlasStickyBlock>): TArray<TEntry>;
 var
+  Index: Integer;
+  Entry: TEntry;
+begin
+  Result := nil;
+  for Index := 0 to High(ANodes) do
+    if TAtlasStickyScroll.IsBlock(ANodes[Index]) then
+    begin
+      Entry.Line := ANodes[Index].NameLine;
+      Entry.Character := ANodes[Index].NameCharacter;
+      Entry.EndLine := ANodes[Index].EndLine;
+      Entry.Node := Index;
+      Result := Result + [Entry];
+    end;
+  for Index := 0 to High(ABlocks) do
+  begin
+    Entry.Line := ABlocks[Index].Line;
+    Entry.Character := ABlocks[Index].Character;
+    Entry.EndLine := ABlocks[Index].EndLine;
+    Entry.Node := -1;
+    Result := Result + [Entry];
+  end;
+  TArray.Sort<TEntry>(Result, TComparer<TEntry>.Construct(
+    function(const A, B: TEntry): Integer
+    begin
+      Result := CompareValue(A.Line, B.Line);
+      if Result = 0 then
+        Result := CompareValue(B.EndLine, A.EndLine);
+      // Eindeutig (TArray.Sort ist nicht stabil): Gliederung vor zusätzlichen Blöcken.
+      if Result = 0 then
+        Result := CompareValue(B.Node, A.Node);
+      if Result = 0 then
+        Result := CompareValue(A.Character, B.Character);
+    end));
+end;
+
+/// <summary>Ebenen, die ALine umschließen und deren Kopf darüber steht; die äußeren zuerst.</summary>
+function EntryChain(const AEntries: TArray<TEntry>; ALine: Integer): TArray<Integer>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index := 0 to High(AEntries) do
+    if (AEntries[Index].Line < ALine) and (ALine <= AEntries[Index].EndLine) then
+      Result := Result + [Index];
+end;
+
+/// <summary>Kopfzeile eines zusätzlichen Blocks: seine Zeile ohne Einrückung.</summary>
+function BlockText(const ALines: TArray<string>; ALine: Integer): string;
+begin
+  Result := '';
+  if (ALine >= 0) and (ALine <= High(ALines)) then
+    Result := Trim(ALines[ALine]);
+end;
+
+/// <summary>Name in der Zusammenfassung „A › B“: Name der Gliederung bzw. gekürzte Kopfzeile.</summary>
+function EntryName(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; const AEntry: TEntry): string;
+const
+  MaxName = 30;
+begin
+  if AEntry.Node >= 0 then
+    Exit(ANodes[AEntry.Node].Name);
+  Result := BlockText(ALines, AEntry.Line);
+  if Length(Result) > MaxName then
+    Result := Copy(Result, 1, MaxName) + '…';
+end;
+
+function EntryRow(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; const AEntry: TEntry;
+  ATabWidth: Integer): TAtlasStickyRow;
+begin
+  if AEntry.Node >= 0 then
+    Exit(HeaderRow(ANodes, ALines, AEntry.Node, ATabWidth));
+  Result.Text := BlockText(ALines, AEntry.Line);
+  Result.Line := AEntry.Line;
+  Result.Character := AEntry.Character;
+  Result.Indent := 0;
+  if (AEntry.Line >= 0) and (AEntry.Line <= High(ALines)) then
+    Result.Indent := TAtlasStickyScroll.IndentColumns(ALines[AEntry.Line], ATabWidth);
+  Result.Summary := False;
+end;
+
+class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  const ABlocks: TArray<TAtlasStickyBlock>; ATopLine, AMaxLines, ATabWidth: Integer): TAtlasStickyRows;
+var
+  Entries: TArray<TEntry>;
   Items: TArray<Integer>;
-  MaxLines, Grouped, Index: Integer;
+  MaxLines, Grouped, Index, Shown: Integer;
   Row: TAtlasStickyRow;
 begin
   Result := nil;
   MaxLines := ClampLines(AMaxLines);
-  Items := Scopes(ANodes, ATopLine, MaxLines);
+  Entries := EntriesOf(ANodes, ABlocks);
+  ATopLine := Max(0, ATopLine);
+  // Wie Scopes: Mit Shown Kopfzeilen ist ATopLine + Shown die erste lesbare Zeile; die kleinste Zahl, die reicht.
+  Items := nil;
+  for Shown := 0 to MaxLines do
+  begin
+    Items := EntryChain(Entries, ATopLine + Shown);
+    if Min(Length(Items), MaxLines) <= Shown then
+      Break;
+  end;
   if Length(Items) <= MaxLines then
   begin
     for Index := 0 to High(Items) do
-      Result := Result + [HeaderRow(ANodes, ALines, Items[Index], ATabWidth)];
+      Result := Result + [EntryRow(ANodes, ALines, Entries[Items[Index]], ATabWidth)];
     Exit;
   end;
   // Die inneren MaxLines - 1 Ebenen einzeln, die äußeren in einer Zeile (bei einer Zeile alle).
@@ -245,13 +375,19 @@ begin
   begin
     if Index > 0 then
       Row.Text := Row.Text + Separator;
-    Row.Text := Row.Text + ANodes[Items[Index]].Name;
+    Row.Text := Row.Text + EntryName(ANodes, ALines, Entries[Items[Index]]);
   end;
-  Row.Line := ANodes[Items[Grouped - 1]].NameLine;
-  Row.Character := ANodes[Items[Grouped - 1]].NameCharacter;
+  Row.Line := Entries[Items[Grouped - 1]].Line;
+  Row.Character := Entries[Items[Grouped - 1]].Character;
   Result := [Row];
   for Index := Grouped to High(Items) do
-    Result := Result + [HeaderRow(ANodes, ALines, Items[Index], ATabWidth)];
+    Result := Result + [EntryRow(ANodes, ALines, Entries[Items[Index]], ATabWidth)];
+end;
+
+class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine,
+  AMaxLines, ATabWidth: Integer): TAtlasStickyRows;
+begin
+  Result := Rows(ANodes, ALines, nil, ATopLine, AMaxLines, ATabWidth);
 end;
 
 class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine,

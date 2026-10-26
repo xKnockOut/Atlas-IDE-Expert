@@ -594,7 +594,8 @@ type
     SettingsMultiCursorCtrl, SettingsMultiCursorNext, SettingsMultiCursorSkip, SettingsMultiCursorLineEnds,
     SettingsMultiCursorAbove, SettingsMultiCursorBelow, SettingsLinkedEditing, LinkedEditingCount,
     LinkedEditingReserved, LinkedEditingVisible, LinkedEditingRestoreHint, SettingsStickyScroll,
-    SettingsStickyScrollMaxLines, MoveClassTitle, MoveClassPrompt, MoveClassFailed, MoveClassNothing,
+    SettingsStickyScrollMaxLines, SettingsStickyScrollBlocks, SettingsStickyScrollBlockMinLines,
+    MoveClassTitle, MoveClassPrompt, MoveClassFailed, MoveClassNothing,
     MoveClassPreviewHint, MoveClassApply, MoveClassDone, MoveClassWarning, UnitRenameTitle, UnitRenameNotice,
     UnitRenameNoticeOne, UnitRenameGroupCount, UnitRenameProject, UnitRenameGroup, UnitRenamePreviewHint,
     UnitRenameApply, UnitRenameDone, UnitRenameFailed, UnitRenameNothing, UnitRenameReport, SmartPasteName,
@@ -707,7 +708,7 @@ type
     StatusBarChecking, StatusBarCheckedAgo, StatusBarSeconds, StatusBarMinutes, StatusBarHours, StatusBarLines,
     StatusBarCyclomatic, StatusBarLimit, StatusBarFindingsHint, StatusBarLiveOnHint, StatusBarLiveOffHint,
     StatusBarLastCheck, StatusBarMethodJump, StatusBarNoMethod, StatusBarNoFindingOfKind, StatusBarStatusClicks,
-    StatusBarReady, StatusBarRecheckClick, StatusBarRechecking);
+    StatusBarReady, StatusBarRecheckClick, StatusBarRechecking, StatusBarProjectProgress);
 
   TAtlasStrings = class
   private class var
@@ -1848,6 +1849,8 @@ const
      '„%s“ ist ein reserviertes Wort', 'Konflikt mit %s', 'Esc stellt den alten Namen wieder her',
      'Mitlaufender Kopf: Kopfzeilen der umgebenden Klasse und Routinen oben im Editor',
      'Höchstzahl der Kopfzeilen (1 bis 10):',
+     'Große if/else-Blöcke als eigene Zeile im Kopf',
+     'Ab wie vielen Zeilen ein if/else-Block erscheint (5 bis 1000):',
      'Klasse in eigene Unit verschieben', 'Name der neuen Unit:', 'Klasse verschieben fehlgeschlagen: %s',
      'Klasse verschieben: nichts zu ändern.', 'Neue Unit %s: %d Änderungen in %d Dateien', 'Verschieben',
      'Klasse nach %s verschoben: %d Änderungen in %d Dateien übernommen.', 'Hinweis: %s',
@@ -2304,7 +2307,7 @@ const
      'Prüft beim Tippen (problems.live).', 'Prüft erst nach dem Speichern (problems.live aus).',
      'Letzte Prüfung: %s in %d ms um %s', 'Klick: zum Methodenkopf', 'keine Methode',
      'Keine Befunde dieser Art in der Unit.', 'Klick: Atlas-Status · Rechtsklick: Schnellschalter', 'bereit',
-     'Klick: alle Units neu prüfen', 'Atlas prüft alle Units neu …'),
+     'Klick: alle Units neu prüfen', 'Atlas prüft alle Units neu …', 'Projekt %d %%'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3353,6 +3356,8 @@ const
      '“%s” is a reserved word', 'Conflicts with %s', 'Esc restores the old name',
      'Sticky scroll: headers of the enclosing class and routines on top of the editor',
      'Maximum header lines (1 to 10):',
+     'Large if/else blocks as their own header line',
+     'Minimum lines of an if/else block shown (5 to 1000):',
      'Move class to its own unit', 'Name of the new unit:', 'Moving the class failed: %s',
      'Move class: nothing to change.', 'New unit %s: %d changes in %d files', 'Move',
      'Class moved to %s: %d changes in %d files applied.', 'Note: %s',
@@ -3807,7 +3812,7 @@ const
      'Checks while you type (problems.live).', 'Checks only after saving (problems.live off).',
      'Last check: %s in %d ms at %s', 'Click: go to the method header', 'no method',
      'No findings of this kind in this unit.', 'Click: Atlas status · Right-click: quick toggles', 'ready',
-     'Click: check all units again', 'Atlas is checking all units again …'));
+     'Click: check all units again', 'Atlas is checking all units again …', 'project %d %%'));
 
 { TAtlasStrings }
 

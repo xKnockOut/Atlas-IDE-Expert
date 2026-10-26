@@ -16,6 +16,8 @@
 // - Zeigt die Leiste das Element status, ist das Atlas-Feld der Statuszeile
 //   0 breit (TAtlasStatusField.Relocated); Klick und Rechtsklick öffnen dort
 //   wie bisher Statusfenster und Schnellschalter, nur über der Leiste.
+// - Ungelesene Benachrichtigungen (#1234) stehen als Plakette hinter dem
+//   Status (aus dem Atlas-Feld, das dann 0 breit ist); Klick öffnet die Liste.
 // - Klick auf einen Zähler springt zum nächsten Befund dieser Art in der
 //   Unit (Umlauf), Doppelklick öffnet „Atlas-Prüfung“ für die Unit, Klick auf
 //   die Live-Prüfung prüft alle Units neu (Hook Recheck, atlas.server.recheck,
@@ -186,6 +188,7 @@ begin
   Result.Minutes := TAtlasStrings.Text(TAtlasTextId.StatusBarMinutes);
   Result.Hours := TAtlasStrings.Text(TAtlasTextId.StatusBarHours);
   Result.Separator := TAtlasStatusSummary.Separator;
+  Result.ProjectProgress := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectProgress);
 end;
 
 function ItemCaptions: TArray<string>;
@@ -431,6 +434,25 @@ begin
             Field.ContextAt(Corner);
         end);
     end;
+  Bar.OnBadge :=
+    procedure(APoint: TPoint)
+    var
+      Corner: TPoint;
+    begin
+      Corner := APoint;
+      TAtlasGuard.Log(LogPrefix + 'Klick auf Benachrichtigungen');
+      Later(
+        procedure
+        var
+          Field: TAtlasStatusField;
+        begin
+          Field := nil;
+          if Assigned(TAtlasIdeStatusBar.FHooks.Field) then
+            Field := TAtlasIdeStatusBar.FHooks.Field();
+          if Field <> nil then
+            Field.ClickBadge(Corner);
+        end);
+    end;
   Bar.OnFinding :=
     procedure(AKind: TAtlasFindingKind)
     var
@@ -569,6 +591,10 @@ begin
   AView.StatusText := Text;
   AView.StatusHint := Field.Tooltip + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarStatusClicks);
   AView.StatusColor := TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, Field.State);
+  // Plakette der Benachrichtigungen (#1234): Das umgezogene Feld ist 0 breit, die Leiste zeigt sie.
+  AView.BadgeCount := Field.BadgeCount;
+  AView.BadgeColor := TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, Field.BadgeState);
+  AView.BadgeHint := Field.BadgeHint;
 end;
 
 function TStatusBarState.ViewFor(const AView: IOTAEditView; const AItems: TArray<string>): TAtlasStatusBarView;
@@ -583,8 +609,11 @@ var
   Metrics: TAtlasFileMetrics;
   Known: Boolean;
   Method: TAtlasStatusMethod;
+  Checked, Total: Integer;
 begin
   Result := Default(TAtlasStatusBarView);
+  Checked := 0;
+  Total := 0;
   Result.Items := AItems;
   Settings := TAtlasIdeSettings.Current;
   StatusInto(Result);
@@ -616,6 +645,9 @@ begin
     Result.LiveBusy := ProblemsOn(Settings) and TAtlasProblemsController.Checking;
     Result.LiveText := TAtlasStatusBarContent.LiveText(Settings.ProblemsLive, Result.LiveBusy, CheckedAt, Now,
       LiveTexts);
+    // Fortschritt der Projektprüfung (#1232), solange Units fehlen.
+    if ProblemsOn(Settings) and TAtlasIdeProblems.ProjectProgress(Checked, Total) then
+      Result.LiveText := Result.LiveText + TAtlasStatusBarContent.ProgressText(Checked, Total, LiveTexts);
     if Settings.ProblemsLive then
       Result.LiveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOnHint)
     else
@@ -625,6 +657,9 @@ begin
     if Check.FileName <> '' then
       Result.LiveHint := Result.LiveHint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.StatusBarLastCheck,
         [ExtractFileName(Check.FileName), Check.DurationMs, FormatDateTime('hh:nn:ss', Check.At)]);
+    if Total > 0 then
+      Result.LiveHint := Result.LiveHint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.ProblemsStatusProject,
+        [Checked, Total]);
   end;
   FMethodFile := '';
   FMethod := Default(TAtlasStatusMethod);
