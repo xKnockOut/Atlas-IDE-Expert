@@ -38,6 +38,20 @@ type
 
   TAtlasStickyRows = TArray<TAtlasStickyRow>;
 
+  {$SCOPEDENUMS ON}
+  /// <summary>Art eines Stücks der Kopfzeile für die Hervorhebung wie im Editor (Elemente des Farbschemas).
+  /// </summary>
+  TAtlasStickySyntax = (Plain, Reserved, Identifier, Number, StringLiteral, Character, Comment, Symbol,
+    Preprocessor);
+  {$SCOPEDENUMS OFF}
+
+  /// <summary>Stück der Kopfzeile; Start 1-basiert.</summary>
+  TAtlasStickyToken = record
+    Start: Integer;
+    Length: Integer;
+    Kind: TAtlasStickySyntax;
+  end;
+
   /// <summary>Zusätzlicher Block (#1230): Kopf in Zeile Line (Sprungziel Character), endet in EndLine; 0-basiert.
   /// </summary>
   TAtlasStickyBlock = record
@@ -78,6 +92,13 @@ type
       AMaxLines: Integer): TAtlasStickyRows; overload; static;
     /// <summary>Zeilen auf AMaxLines begrenzt (mindestens 1, höchstens MaxMaxLines).</summary>
     class function ClampLines(AMaxLines: Integer): Integer; static;
+    /// <summary>Kopfzeile in Stücke wie die Hervorhebung des Editors: reservierte Wörter und Direktiven einer
+    /// Deklaration, Bezeichner, Zahlen, Strings, Zeichen (#13), Kommentare, Compilerdirektiven, Symbole. Lücken
+    /// (Leerzeichen) bleiben Plain. Lückenlos, in Textreihenfolge.</summary>
+    class function Syntax(const AText: string): TArray<TAtlasStickyToken>; static;
+    /// <summary>Reserviertes Wort oder Direktive, die der Editor fett zeigt (procedure, const, string, override …).
+    /// </summary>
+    class function IsReserved(const AWord: string): Boolean; static;
   end;
 
 implementation
@@ -87,6 +108,7 @@ uses
   System.Math,
   System.Generics.Collections,
   System.Generics.Defaults,
+  Atlas.Text.Chars,
   Atlas.Text.Lines;
 
 const
@@ -238,6 +260,163 @@ begin
   if (Result.Line >= 0) and (Result.Line <= High(ALines)) then
     Result.Indent := TAtlasStickyScroll.IndentColumns(ALines[Result.Line], ATabWidth);
   Result.Summary := False;
+end;
+
+class function TAtlasStickyScroll.IsReserved(const AWord: string): Boolean;
+const
+  // Reservierte Wörter von Delphi und die Direktiven in Köpfen. Mehrdeutige Direktiven (index, name, read, write,
+  // default, message …) fehlen: Als Bezeichner zeigt sie der Editor nicht fett.
+  Words: array[0..98] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const', 'constructor',
+    'destructor', 'dispinterface', 'div', 'do', 'downto', 'else', 'end', 'except', 'exports', 'file',
+    'finalization', 'finally', 'for', 'function', 'goto', 'if', 'implementation', 'in', 'inherited',
+    'initialization', 'inline', 'interface', 'is', 'label', 'library', 'mod', 'nil', 'not', 'object', 'of', 'or',
+    'packed', 'procedure', 'program', 'property', 'raise', 'record', 'repeat', 'resourcestring', 'set', 'shl', 'shr',
+    'string', 'then', 'threadvar', 'to', 'try', 'type', 'unit', 'until', 'uses', 'var', 'while', 'with', 'xor',
+    'operator', 'out', 'absolute', 'abstract', 'assembler', 'automated', 'cdecl', 'deprecated', 'dynamic',
+    'experimental', 'external', 'final', 'forward', 'overload', 'override', 'pascal', 'platform', 'private',
+    'protected', 'public', 'published', 'register', 'reintroduce', 'safecall', 'sealed', 'static', 'stdcall',
+    'strict', 'unsafe', 'varargs', 'virtual', 'winapi', 'delayed', 'reference', 'helper');
+var
+  Lower, Word: string;
+begin
+  Lower := LowerCase(AWord);
+  for Word in Words do
+    if Word = Lower then
+      Exit(True);
+  Result := False;
+end;
+
+class function TAtlasStickyScroll.Syntax(const AText: string): TArray<TAtlasStickyToken>;
+var
+  Index, Start, Count: Integer;
+  Kind: TAtlasStickySyntax;
+
+  procedure Add(AStart, AStop: Integer; AKind: TAtlasStickySyntax);
+  var
+    Token: TAtlasStickyToken;
+  begin
+    if AStop <= AStart then
+      Exit;
+    Token.Start := AStart;
+    Token.Length := AStop - AStart;
+    Token.Kind := AKind;
+    Result := Result + [Token];
+  end;
+
+  function At(APos: Integer): Char;
+  begin
+    if APos <= Count then
+      Result := AText[APos]
+    else
+      Result := #0;
+  end;
+
+  /// <summary>Bis hinter ACloser (oder Zeilenende).</summary>
+  function SkipTo(AFrom: Integer; const ACloser: string): Integer;
+  begin
+    Result := Pos(ACloser, AText, AFrom);
+    if Result = 0 then
+      Result := Count + 1
+    else
+      Inc(Result, Length(ACloser));
+  end;
+
+begin
+  Result := nil;
+  Count := Length(AText);
+  Index := 1;
+  while Index <= Count do
+  begin
+    Start := Index;
+    if (AText[Index] = '{') and (At(Index + 1) = '$') then
+    begin
+      Index := SkipTo(Index + 1, '}');
+      Kind := TAtlasStickySyntax.Preprocessor;
+    end
+    else if AText[Index] = '{' then
+    begin
+      Index := SkipTo(Index + 1, '}');
+      Kind := TAtlasStickySyntax.Comment;
+    end
+    else if (AText[Index] = '(') and (At(Index + 1) = '*') then
+    begin
+      Index := SkipTo(Index + 2, '*)');
+      if At(Start + 2) = '$' then
+        Kind := TAtlasStickySyntax.Preprocessor
+      else
+        Kind := TAtlasStickySyntax.Comment;
+    end
+    else if (AText[Index] = '/') and (At(Index + 1) = '/') then
+    begin
+      Index := Count + 1;
+      Kind := TAtlasStickySyntax.Comment;
+    end
+    else if AText[Index] = '''' then
+    begin
+      Inc(Index);
+      while Index <= Count do
+      begin
+        if AText[Index] = '''' then
+        begin
+          // '' im String ist ein Hochkomma.
+          if At(Index + 1) <> '''' then
+            Break;
+          Inc(Index);
+        end;
+        Inc(Index);
+      end;
+      if Index <= Count then
+        Inc(Index);
+      Kind := TAtlasStickySyntax.StringLiteral;
+    end
+    else if AText[Index] = '#' then
+    begin
+      Inc(Index);
+      while (Index <= Count) and CharInSet(AText[Index], ['0'..'9', 'a'..'f', 'A'..'F', '$']) do
+        Inc(Index);
+      Kind := TAtlasStickySyntax.Character;
+    end
+    else if CharInSet(AText[Index], ['0'..'9']) or
+      ((AText[Index] = '$') and CharInSet(At(Index + 1), ['0'..'9', 'a'..'f', 'A'..'F'])) or
+      ((AText[Index] = '%') and CharInSet(At(Index + 1), ['0', '1'])) then
+    begin
+      Inc(Index);
+      while (Index <= Count) and (CharInSet(AText[Index], ['0'..'9', 'a'..'f', 'A'..'F', '_', '.']) or
+        (CharInSet(AText[Index], ['+', '-']) and CharInSet(AText[Index - 1], ['e', 'E']))) do
+        Inc(Index);
+      Kind := TAtlasStickySyntax.Number;
+    end
+    else if (AText[Index] = '&') and TTextChars.IsIdentChar(At(Index + 1)) then
+    begin
+      // &begin: escapter Bezeichner, nicht reserviert.
+      Inc(Index);
+      while (Index <= Count) and TTextChars.IsIdentChar(AText[Index]) do
+        Inc(Index);
+      Kind := TAtlasStickySyntax.Identifier;
+    end
+    else if TTextChars.IsIdentChar(AText[Index]) then
+    begin
+      while (Index <= Count) and TTextChars.IsIdentChar(AText[Index]) do
+        Inc(Index);
+      // Hinter "." ein Mitglied (TFoo.Free, Self.Create), nie ein Schlüsselwort.
+      if ((Start = 1) or (AText[Start - 1] <> '.')) and IsReserved(Copy(AText, Start, Index - Start)) then
+        Kind := TAtlasStickySyntax.Reserved
+      else
+        Kind := TAtlasStickySyntax.Identifier;
+    end
+    else if CharInSet(AText[Index], [' ', #9]) then
+    begin
+      while (Index <= Count) and CharInSet(AText[Index], [' ', #9]) do
+        Inc(Index);
+      Kind := TAtlasStickySyntax.Plain;
+    end
+    else
+    begin
+      Inc(Index);
+      Kind := TAtlasStickySyntax.Symbol;
+    end;
+    Add(Start, Index, Kind);
+  end;
 end;
 
 { TAtlasStickyBlock }

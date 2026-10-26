@@ -40,6 +40,10 @@ type
     /// <summary>#1230: Große if/else-Blöcke stehen als eigene Zeile im Kopf, nach ihrer Lage eingereiht.</summary>
     [Test]
     procedure BranchBlocksJoinTheHeader;
+    /// <summary>Kopfzeile wie im Editor hervorgehoben: reservierte Wörter, Bezeichner, Strings, Zahlen, Kommentare.
+    /// </summary>
+    [Test]
+    procedure SyntaxLikeTheEditor;
   end;
 
 implementation
@@ -326,6 +330,33 @@ begin
   for Token in ATokens do
     if Token.Line = ALine then
       Result := Result + [Token];
+end;
+
+/// <summary>„Art:Text“ je Stück ohne Lücken, durch | getrennt.</summary>
+function Described(const AText: string): string;
+const
+  Names: array[TAtlasStickySyntax] of string = ('_', 'R', 'I', 'N', 'S', 'C', 'K', 'Y', 'P');
+var
+  Token: TAtlasStickyToken;
+begin
+  Result := '';
+  for Token in TAtlasStickyScroll.Syntax(AText) do
+    if Token.Kind <> TAtlasStickySyntax.Plain then
+      Result := Result + Names[Token.Kind] + ':' + Copy(AText, Token.Start, Token.Length) + '|';
+end;
+
+procedure TAtlasStickyScrollTests.SyntaxLikeTheEditor;
+begin
+  Assert.AreEqual('R:class|R:function|I:TCompilerEditions|Y:.|I:Detect|Y:(|I:AExists|Y::|I:Boolean|Y:;|R:const|' +
+    'I:AOutput|Y::|I:TArray|Y:<|R:string|Y:>|Y:)|Y::|I:TCompilerEdition|Y:;|',
+    Described('class function TCompilerEditions.Detect(AExists: Boolean; const AOutput: TArray<string>): ' +
+    'TCompilerEdition;'));
+  Assert.AreEqual('R:if|I:A|Y:=|S:''It''''s''|R:then|K:{ Kommentar }|', Described('if A = ''It''''s'' then { Kommentar }'));
+  Assert.AreEqual('I:X|Y::|Y:=|N:$FF|Y:+|N:1.5E-3|Y:+|C:#13|Y:;|K:// Rest|',
+    Described('X := $FF + 1.5E-3 + #13; // Rest'));
+  // Mitglied hinter "." und escapte Namen sind keine Schlüsselwörter; Direktiven schon.
+  Assert.AreEqual('I:Self|Y:.|I:Free|Y:;|I:&begin|Y:;|R:override|Y:;|P:{$IFDEF X}|',
+    Described('Self.Free; &begin; override; {$IFDEF X}'));
 end;
 
 procedure TAtlasStickyScrollTests.BranchBlocksJoinTheHeader;
