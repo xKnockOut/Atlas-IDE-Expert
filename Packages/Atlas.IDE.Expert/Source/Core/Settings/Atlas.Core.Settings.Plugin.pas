@@ -52,6 +52,9 @@ type
     /// <summary>Grenzen für editor.stickyScrollMaxLines (#506).</summary>
     MinStickyLines = 1;
     MaxStickyLines = 10;
+    /// <summary>Grenzen für editor.stickyScrollBlockMinLines (#1230).</summary>
+    MinStickyBlockLines = 5;
+    MaxStickyBlockLines = 1000;
     /// <summary>Grenzen für highlight.selectionMatches.minLength und .maxMatches (#709).</summary>
     MinSelectionMatchLength = 1;
     MaxSelectionMatchLength = 100;
@@ -707,6 +710,11 @@ type
     /// <summary>Höchstzahl seiner Zeilen, MinStickyLines bis MaxStickyLines (#506,
     /// editor.stickyScrollMaxLines).</summary>
     StickyScrollMaxLines: Integer;
+    /// <summary>Große if/else-Blöcke im Kopf (#1230, editor.stickyScrollBlocks).</summary>
+    StickyScrollBlocks: Boolean;
+    /// <summary>Mindestlänge solcher Blöcke in Zeilen, MinStickyBlockLines bis MaxStickyBlockLines (#1230,
+    /// editor.stickyScrollBlockMinLines).</summary>
+    StickyScrollBlockMinLines: Integer;
     /// <summary>Minimap neben der Scrollleiste (#873, editor.minimap, experimentell).</summary>
     Minimap: Boolean;
     /// <summary>Darstellung: blocks oder characters (#873, editor.minimap.render).</summary>
@@ -1489,6 +1497,8 @@ begin
   Result.PreviousBookmarkKey := 0;
   Result.StickyScroll := False;
   Result.StickyScrollMaxLines := 3;
+  Result.StickyScrollBlocks := True;
+  Result.StickyScrollBlockMinLines := 25;
   Result.Minimap := False;
   Result.MinimapRender := 'blocks';
   Result.MinimapWidth := 120;
@@ -1746,6 +1756,7 @@ begin
   LastEditKey := EnsureRange(LastEditKey, 0, $FFFF);
   PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
   StickyScrollMaxLines := EnsureRange(StickyScrollMaxLines, MinStickyLines, MaxStickyLines);
+  StickyScrollBlockMinLines := EnsureRange(StickyScrollBlockMinLines, MinStickyBlockLines, MaxStickyBlockLines);
   SelectionMatchesMinLength := EnsureRange(SelectionMatchesMinLength, MinSelectionMatchLength,
     MaxSelectionMatchLength);
   SelectionMatchesMaxMatches := EnsureRange(SelectionMatchesMaxMatches, MinSelectionMatches, MaxSelectionMatches);
@@ -2111,6 +2122,8 @@ begin
   PreviousBookmarkKey := AStore.ReadInteger('PreviousBookmarkKey', Default.PreviousBookmarkKey);
   StickyScroll := AStore.ReadInteger('StickyScroll', BoolValue(Default.StickyScroll)) <> 0;
   StickyScrollMaxLines := AStore.ReadInteger('StickyScrollMaxLines', Default.StickyScrollMaxLines);
+  StickyScrollBlocks := AStore.ReadInteger('StickyScrollBlocks', BoolValue(Default.StickyScrollBlocks)) <> 0;
+  StickyScrollBlockMinLines := AStore.ReadInteger('StickyScrollBlockMinLines', Default.StickyScrollBlockMinLines);
   Minimap := AStore.ReadInteger('Minimap', BoolValue(Default.Minimap)) <> 0;
   MinimapRender := AStore.ReadString('MinimapRender', Default.MinimapRender);
   MinimapWidth := AStore.ReadInteger('MinimapWidth', Default.MinimapWidth);
@@ -2530,6 +2543,8 @@ begin
   AStore.WriteInteger('PreviousBookmarkKey', PreviousBookmarkKey);
   AStore.WriteInteger('StickyScroll', BoolValue(StickyScroll));
   AStore.WriteInteger('StickyScrollMaxLines', StickyScrollMaxLines);
+  AStore.WriteInteger('StickyScrollBlocks', BoolValue(StickyScrollBlocks));
+  AStore.WriteInteger('StickyScrollBlockMinLines', StickyScrollBlockMinLines);
   AStore.WriteInteger('Minimap', BoolValue(Minimap));
   AStore.WriteString('MinimapRender', MinimapRender);
   AStore.WriteInteger('MinimapWidth', MinimapWidth);

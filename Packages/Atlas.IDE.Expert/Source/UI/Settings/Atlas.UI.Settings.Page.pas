@@ -318,6 +318,9 @@ type
     // Mitlaufender Kopf (#506).
     FStickyScroll: TCheckBox;
     FStickyScrollMaxLines: TEdit;
+    // Große if/else-Blöcke im Kopf (#1230).
+    FStickyScrollBlocks: TCheckBox;
+    FStickyScrollBlockMinLines: TEdit;
     FMinimap: TCheckBox;
     FMinimapRender: TAtlasChoiceBox;
     FMinimapWidth: TEdit;
@@ -923,6 +926,8 @@ type
     property MultiCursor: TCheckBox read FMultiCursor;
     property StickyScroll: TCheckBox read FStickyScroll;
     property StickyScrollMaxLines: TEdit read FStickyScrollMaxLines;
+    property StickyScrollBlocks: TCheckBox read FStickyScrollBlocks;
+    property StickyScrollBlockMinLines: TEdit read FStickyScrollBlockMinLines;
     property Minimap: TCheckBox read FMinimap;
     property MinimapRender: TAtlasChoiceBox read FMinimapRender;
     property MinimapWidth: TEdit read FMinimapWidth;
@@ -1592,6 +1597,8 @@ begin
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
   FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
+  FStickyScrollBlocks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollBlocks));
+  FStickyScrollBlockMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollBlockMinLines));
   // Minimap neben der Scrollleiste (#873, experimentell).
   FMinimap := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimap));
   FMinimapRender := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapRender),
@@ -2724,6 +2731,8 @@ begin
   FMarks.Bind(FEditorStatusBarItems, ['EditorStatusBarItems']);
   FMarks.Bind(FStickyScroll, ['StickyScroll']);
   FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
+  FMarks.Bind(FStickyScrollBlocks, ['StickyScrollBlocks']);
+  FMarks.Bind(FStickyScrollBlockMinLines, ['StickyScrollBlockMinLines']);
   FMarks.Bind(FMinimap, ['Minimap']);
   FMarks.Bind(FMinimapRender, ['MinimapRender']);
   FMarks.Bind(FMinimapWidth, ['MinimapWidth']);
@@ -4832,6 +4841,8 @@ begin
   FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
   FStickyScroll.Checked := ASettings.StickyScroll;
   FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
+  FStickyScrollBlocks.Checked := ASettings.StickyScrollBlocks;
+  FStickyScrollBlockMinLines.Text := IntToStr(ASettings.StickyScrollBlockMinLines);
   FMinimap.Checked := ASettings.Minimap;
   FMinimapRender.Choice := Max(0, IndexText(ASettings.MinimapRender, ['blocks', 'characters']));
   FMinimapWidth.Text := IntToStr(ASettings.MinimapWidth);
@@ -5247,6 +5258,9 @@ begin
   ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
   ASettings.StickyScroll := FStickyScroll.Checked;
   ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);
+  ASettings.StickyScrollBlocks := FStickyScrollBlocks.Checked;
+  ASettings.StickyScrollBlockMinLines := StrToIntDef(FStickyScrollBlockMinLines.Text,
+    ASettings.StickyScrollBlockMinLines);
   ASettings.Minimap := FMinimap.Checked;
   ASettings.MinimapRender := 'blocks';
   if FMinimapRender.Choice = 1 then

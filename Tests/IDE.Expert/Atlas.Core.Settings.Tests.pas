@@ -1435,6 +1435,19 @@ begin
   Loaded.StickyScrollMaxLines := 99;
   Loaded.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MaxStickyLines, Loaded.StickyScrollMaxLines);
+  // #1230: if/else-Blöcke an, ab 25 Zeilen; Grenzen 5 bis 1000.
+  Assert.IsTrue(Settings.StickyScrollBlocks);
+  Assert.AreEqual(25, Settings.StickyScrollBlockMinLines);
+  Settings.StickyScrollBlocks := False;
+  Settings.StickyScrollBlockMinLines := 40;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.StickyScrollBlocks);
+  Assert.AreEqual(40, Loaded.StickyScrollBlockMinLines);
+  Loaded.StickyScrollBlockMinLines := 1;
+  Loaded.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinStickyBlockLines, Loaded.StickyScrollBlockMinLines);
 end;
 
 procedure TAtlasPluginSettingsTests.MinimapOptions;
