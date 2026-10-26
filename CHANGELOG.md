@@ -12,7 +12,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ### Geändert
 - Mitlaufender Kopf zeigt große if/else-Blöcke (#1230, `editor.stickyScrollBlocks`, an): Ein if- oder else-Block mit begin … end ab `editor.stickyScrollBlockMinLines` Zeilen (Vorgabe 25) erscheint als eigene Kopfzeile, eingereiht nach seiner Lage zwischen Klasse und Routinen; Klick springt zum if bzw. else.
-- Mitlaufender Kopf in den Farben des Editors (#1229): Klammern und Blockwörter, mit „Anweisungen mitfärben“ (`PairOwners`) auch `procedure`, `function`, `class` usw., erscheinen in der Farbe ihrer Tiefe wie im Editor, mit den eigenen Paarfarben für Hell und Dunkel. Ohne Klammerfarben oder in Dateien, die sie ausblenden, bleibt der Kopf einfarbig.
+- Mitlaufender Kopf in den Farben des Editors (#1229): Die Kopfzeilen sind hervorgehoben wie im Editor, nach dessen Farbschema (reservierte Wörter und Direktiven fett, Strings, Zahlen, Kommentare, Compilerdirektiven in ihren Farben). Klammern und Blockwörter, mit „Anweisungen mitfärben“ (`PairOwners`) auch `procedure`, `function`, `class` usw., erscheinen in der Farbe ihrer Tiefe wie im Editor, mit den eigenen Paarfarben für Hell und Dunkel. Ohne Klammerfarben oder in Dateien, die sie ausblenden, bleibt der Kopf einfarbig.
 
 ### Behoben
 - Benachrichtigungen ohne Plakette (#1234): Zeigt die Atlas-Statusleiste den Status, ist das Atlas-Feld der Statuszeile 0 breit, und mit ihm verschwand die Plakette der ungelesenen Benachrichtigungen. Die Leiste zeigt sie jetzt selbst direkt hinter dem Status, in der Farbe des schwersten Eintrags; Klick öffnet die Liste.
