@@ -3,7 +3,7 @@
 // Atlas-Statusleiste (#1155), Darstellung: feste Höhe einer Zeile, Elemente in
 // der Reihenfolge der Einstellung, Zahnrad rechts, schmale Leiste kürzt erst
 // die Methode und lässt Elemente weg statt umzubrechen, Klicks auf Status,
-// Zähler, Methode, Doppelklick auf die Zähler, Tooltips und das Menü
+// Zähler, Live-Prüfung, Methode, Doppelklick auf die Zähler, Tooltips und das Menü
 // „Leiste anpassen“ mit Häkchen.
 
 interface
@@ -140,7 +140,7 @@ procedure TAtlasEditorStatusBarTests.ClicksReachTheirEvents;
 var
   StatusAt: TPoint;
   Kind: TAtlasFindingKind;
-  KindHit, Opened, MethodHit: Integer;
+  KindHit, Opened, MethodHit, Rechecked: Integer;
   View: TAtlasStatusBarView;
   P: TPoint;
 begin
@@ -149,6 +149,12 @@ begin
   KindHit := 0;
   Opened := 0;
   MethodHit := 0;
+  Rechecked := 0;
+  FBar.OnLiveCheck :=
+    procedure
+    begin
+      Inc(Rechecked);
+    end;
   FBar.OnStatus :=
     procedure(APoint: TPoint)
     begin
@@ -196,6 +202,9 @@ begin
   P := Middle(FBar.PartRect(TAtlasStatusBarPart.LiveCheck));
   FBar.DoubleClickAt(P.X, P.Y);
   Assert.AreEqual(1, Opened, 'nur auf den Zählern');
+  // Klick auf die Live-Prüfung prüft alle Units neu (#1231).
+  FBar.ClickAt(P.X, P.Y);
+  Assert.AreEqual(1, Rechecked, 'Live-Prüfung');
 end;
 
 procedure TAtlasEditorStatusBarTests.HintsAndMenu;
