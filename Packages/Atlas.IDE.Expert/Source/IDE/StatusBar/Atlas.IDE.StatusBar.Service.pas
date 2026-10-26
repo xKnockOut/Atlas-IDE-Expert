@@ -18,7 +18,9 @@
 //   wie bisher Statusfenster und Schnellschalter, nur über der Leiste.
 // - Klick auf einen Zähler springt zum nächsten Befund dieser Art in der
 //   Unit (Umlauf), Doppelklick öffnet „Atlas-Prüfung“ für die Unit, Klick auf
-//   die Methode springt zum Methodenkopf. Aktionen laufen erst nach dem Klick
+//   die Live-Prüfung prüft alle Units neu (Hook Recheck, atlas.server.recheck,
+//   #1231), Klick auf die Methode springt zum Methodenkopf. Aktionen laufen
+//   erst nach dem Klick
 //   (die IDE holt den Fokus in den Editor), wie bei der Editorleiste.
 // - Menü „Leiste anpassen“: Elemente ein- und ausblenden
 //   (editor.statusBar.items), „Statusleiste ausblenden“ (editor.statusBar).
@@ -52,6 +54,8 @@ type
       WantMetrics: TProc<Boolean>;
       /// <summary>Zeile in der Meldungsansicht.</summary>
       Message: TProc<string>;
+      /// <summary>Alle Units neu prüfen lassen (atlas.server.recheck, #1231); im Hintergrund.</summary>
+      Recheck: TProc;
     end;
   private class var
     FState: TObject;
@@ -153,6 +157,7 @@ type
     function TopBar: TAtlasEditorStatusBar;
     procedure JumpToFinding(AKind: TAtlasFindingKind);
     procedure JumpToMethod;
+    procedure Recheck;
     procedure ToggleItem(const AId: string);
     procedure HideBar;
   end;
@@ -448,6 +453,16 @@ begin
           TAtlasIdeProblems.ShowCurrentFile;
         end);
     end;
+  Bar.OnLiveCheck :=
+    procedure
+    begin
+      TAtlasGuard.Log(LogPrefix + 'Klick auf Live-Prüfung');
+      Later(
+        procedure
+        begin
+          Recheck;
+        end);
+    end;
   Bar.OnMethod :=
     procedure
     begin
@@ -605,6 +620,8 @@ begin
       Result.LiveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOnHint)
     else
       Result.LiveHint := TAtlasStrings.Text(TAtlasTextId.StatusBarLiveOffHint);
+    if ProblemsOn(Settings) then
+      Result.LiveHint := Result.LiveHint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarRecheckClick);
     if Check.FileName <> '' then
       Result.LiveHint := Result.LiveHint + sLineBreak + TAtlasStrings.Fmt(TAtlasTextId.StatusBarLastCheck,
         [ExtractFileName(Check.FileName), Check.DurationMs, FormatDateTime('hh:nn:ss', Check.At)]);
@@ -752,6 +769,16 @@ begin
   if (FMethodFile = '') or not FMethod.Found then
     Exit;
   TAtlasIdeNavigation.GoToLocation(FMethodFile, FMethod.Line, FMethod.Character);
+end;
+
+procedure TStatusBarState.Recheck;
+begin
+  // Der Server verwirft alle Ergebnis-Ids; geöffnete Units holt der Controller nach dem refresh neu, die übrigen
+  // liefert workspace/diagnostic nach und nach.
+  if not ProblemsOn(TAtlasIdeSettings.Current) or not Assigned(TAtlasIdeStatusBar.FHooks.Recheck) then
+    Exit;
+  TAtlasIdeStatusBar.Say(TAtlasStrings.Text(TAtlasTextId.StatusBarRechecking));
+  TAtlasIdeStatusBar.FHooks.Recheck();
 end;
 
 procedure TStatusBarState.ToggleItem(const AId: string);

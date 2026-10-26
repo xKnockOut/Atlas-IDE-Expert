@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Neu
+- Prüfung von Hand anstoßen (#1231): Klick auf die Live-Prüfung der Atlas-Statusleiste („live · geprüft vor …“) prüft alle Units neu, auch solche, die eine Prüfung zuvor übersprungen hat. Neuer Server-Befehl `atlas.server.recheck`.
+
 ### Behoben
 - Kompilieren in einer normalen Delphi-IDE (#1238): Atlas.Common lief beim Bau beider Plattformen in einer Sitzung an F2046 „Zu wenig Arbeitsspeicher“. Ursache war der Regelkatalog, den der Generator als einen einzigen Ausdruck aus über 5000 verketteten Literalen erzeugte; jetzt ist er ein konstantes Zeilen-Array. Win64 und Win32 bauen in einer IDE durch (Spitze 1,7 GB statt am 32-Bit-Limit).
 - `uses-unit-not-found`: `contains` und `requires` gelten nur in Package-Quellen; Felder dieses Namens in Records meldeten fälschlich fehlende Units.

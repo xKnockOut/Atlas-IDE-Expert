@@ -71,6 +71,9 @@ type
     DocumentMethod = 'textDocument/diagnostic';
     WorkspaceMethod = 'workspace/diagnostic';
     RefreshMethod = 'workspace/diagnostic/refresh';
+    /// <summary>Alle Dateien neu prüfen (#1231, Klick auf die Live-Prüfung der Atlas-Statusleiste): ruft Changed.
+    /// </summary>
+    RecheckCommand = 'atlas.server.recheck';
     Identifier = 'atlas';
     DefaultBudgetMs = 3000;
     DefaultWaitMs = 10000;
