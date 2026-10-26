@@ -10,8 +10,12 @@
 // - Zeichnen per PaintLine (plsEndPaint): Die ersten Bildschirmzeilen des
 //   Codebereichs werden mit der Hintergrundfarbe des Editors übermalt, darauf
 //   die Köpfe in seiner Schrift mit ihrer Einrückung; unter der letzten Zeile
-//   eine Trennlinie. Ändert sich die oberste Zeile (Bildlauf), zeichnet der
-//   Editor ganz neu, weil er beim Bildlauf nur die neuen Zeilen malt.
+//   eine Trennlinie.
+// - Bildlauf (#1228): Der Editor verschiebt beim Bildlauf die schon gemalten
+//   Pixel (ScrollDC) und malt nur die neuen Zeilen; der alte Kopf wanderte so
+//   als Rest mit. Solange der Kopf an ist, schaltet UIOptions das Verschieben
+//   ab (ceoDisableScrollDC), und EditorScrolled zeichnet sofort ganz neu.
+//   Zeitgeber und PaintLine fangen Bildläufe ohne Ereignis weiter ab.
 // - Klick (links, ohne Umschalttasten) auf eine Kopfzeile springt nach dem
 //   Mausereignis zum Namen im Kopf.
 // - Die oberste Zeile ist View.TopRow; zugeklappte Bereiche darunter zählt
@@ -66,12 +70,18 @@ const
 var
   /// <summary>Neuzeichnen eingereiht; außerhalb des Zustands, weil der Eintrag ihn nicht kennen soll.</summary>
   InvalidatePending: Boolean;
+  /// <summary>Kopf an: Der Editor soll beim Bildlauf nicht verschieben (UIOptions, #1228).</summary>
+  StickyShown: Boolean;
 
 type
   TEvents = class(TNTACodeEditorNotifier)
   protected
     function AllowedEvents: TCodeEditorEvents; override;
     function AllowedLineStages: TPaintLineStages; override;
+    // ceoDisableScrollDC ist für Delphi 13 belegt; unter Delphi 12 bleiben EditorScrolled und Zeitgeber.
+    {$IF CompilerVersion >= 37.0}
+    function UIOptions: TCodeEditorUIOptions; override;
+    {$IFEND}
   end;
 
   TStickyState = class
@@ -107,6 +117,7 @@ type
     procedure PaintRow(const ARect: TRect; const ARow: TAtlasStickyRow; ALast: Boolean;
       const Context: INTACodeEditorPaintContext);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure EditorScrolled(const Editor: TWinControl; const Direction: TCodeEditorScrollDirection);
   public
     constructor Create;
     destructor Destroy; override;
@@ -125,13 +136,24 @@ end;
 
 function TEvents.AllowedEvents: TCodeEditorEvents;
 begin
-  Result := [cevPaintLineEvents, cevMouseEvents];
+  Result := [cevPaintLineEvents, cevMouseEvents, cevWindowEvents];
 end;
 
 function TEvents.AllowedLineStages: TPaintLineStages;
 begin
   Result := [plsEndPaint];
 end;
+
+{$IF CompilerVersion >= 37.0}
+function TEvents.UIOptions: TCodeEditorUIOptions;
+begin
+  // Ohne Kopf verschiebt der Editor wie gewohnt (schneller).
+  if StickyShown then
+    Result := [ceoDisableScrollDC]
+  else
+    Result := [];
+end;
+{$IFEND}
 
 { TStickyState }
 
@@ -147,6 +169,7 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   FEvents.OnEditorMouseDown := EditorMouseDown;
+  FEvents.OnEditorScrolled := EditorScrolled;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
     FIndex := Services.AddEditorEventsNotifier(FEventsRef);
   ApplySettings;
@@ -168,7 +191,9 @@ begin
     Services.RemoveEditorEventsNotifier(FIndex);
   FEvents.OnEditorPaintLine := nil;
   FEvents.OnEditorMouseDown := nil;
+  FEvents.OnEditorScrolled := nil;
   FEventsRef := nil;
+  StickyShown := False;
   if Shown then
     InvalidateEditor;
   inherited Destroy;
@@ -183,6 +208,7 @@ begin
   Was := FOn;
   FOn := Settings.Enabled and Settings.StickyScroll and not TAtlasGuard.Disabled(TAtlasFeature.StickyScroll);
   FMaxLines := TAtlasStickyScroll.ClampLines(Settings.StickyScrollMaxLines);
+  StickyShown := FOn;
   FRowsTop := -1;
   if not FOn then
     Clear;
@@ -392,6 +418,22 @@ begin
     OldPen.Free;
     OldBrush.Free;
     OldFont.Free;
+  end;
+end;
+
+procedure TStickyState.EditorScrolled(const Editor: TWinControl; const Direction: TCodeEditorScrollDirection);
+begin
+  try
+    // Senkrecht verschiebt sich der Kopf; waagerecht seine Einrückung. Beides sofort ganz neu, nicht erst im Takt.
+    if not FOn or ((FPaintedRows = 0) and (Length(FNodes) = 0)) then
+      Exit;
+    if Editor <> nil then
+      Editor.Invalidate
+    else
+      InvalidateEditor;
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);
   end;
 end;
 
