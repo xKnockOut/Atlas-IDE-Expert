@@ -11,6 +11,8 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ### Behoben
 - Kompilieren in einer normalen Delphi-IDE (#1238): Atlas.Common lief beim Bau beider Plattformen in einer Sitzung an F2046 „Zu wenig Arbeitsspeicher“. Ursache war der Regelkatalog, den der Generator als einen einzigen Ausdruck aus über 5000 verketteten Literalen erzeugte; jetzt ist er ein konstantes Zeilen-Array. Win64 und Win32 bauen in einer IDE durch (Spitze 1,7 GB statt am 32-Bit-Limit).
+- DFM-Parser (#1235): Lange Strings, die Delphi ab der Zeile nach `=` schreibt (`Hint =` und darunter `'Bla'#123 +`), meldeten „Property oder "end" erwartet“.
+- Mitlaufender Kopf (#1228): Beim Bildlauf blieben Reste alter Kopfzeilen stehen, weil der Editor die gemalten Pixel verschiebt. Solange der Kopf an ist, verschiebt der Editor nicht mehr (Delphi 13), und jeder Bildlauf zeichnet sofort neu.
 - `uses-unit-not-found`: `contains` und `requires` gelten nur in Package-Quellen; Felder dieses Namens in Records meldeten fälschlich fehlende Units.
 
 ## [1.1.0] - 2026-10-24
