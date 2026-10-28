@@ -391,6 +391,11 @@ begin
   Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10 +
     '    procedure SetName(const AName: string);'#10'    function GetName: string;'#10 +
     '    property Name: string read GetName write SetName;'#10'  end;'#10)))));
+  // Geerbter Accessor in einem generischen Interface übersetzt dcc (DUnitX IList<T>, ID2; #1328).
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IListe<T> = interface'#10 +
+    '    function GetAnzahl: Integer;'#10'    property Anzahl: Integer read GetAnzahl;'#10'  end;'#10 +
+    '  IVoll<T> = interface(IListe<T>)'#10'    procedure SetAnzahl(AWert: Integer);'#10 +
+    '    property Anzahl: Integer read GetAnzahl write SetAnzahl;'#10'  end;'#10)))));
   // Ohne Typ über zwei Stufen in derselben Unit.
   Found := InterfaceFindings(Kunden('  IMitte = interface(IBasis)'#10'  end;'#10 +
     '  IKunde = interface(IMitte)'#10'    property Name;'#10'  end;'#10));

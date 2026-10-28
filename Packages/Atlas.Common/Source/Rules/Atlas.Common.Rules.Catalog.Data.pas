@@ -3678,19 +3678,18 @@ begin
     '      "severity": "error",' + #10 +
     '      "group": "compiler",' + #10 +
     '      "description": "A class operator in a record or class is declared in a way Delphi rejects: unknown operator name (like E2393), wrong number of parameters (E2517), own type missing from the param' +
-    'eters (E2518) or from parameters and result for Implicit/Explicit (E2521), Inc/Dec with a result type other than the first parameter (E2519), comparison operator without a Boolean result (E2520), conv' +
-    'ersion to or from an ancestor (E2522, chain within the file) or Assign without var before the first parameter (E2464). Types count as equal when their names match without unit prefix and type argument' +
-    's; aliases of the own type declared in the file keep the rule silent, and True, False and OnesComplement are accepted. Quick fixes: nearest operator name, Boolean as result, result like the first para' +
-    'meter, var before the first parameter, parameter list from the template; each in the declaration and the implementation.",' + #10 +
-    '      "bad": "TGeld = record\n  class operator Equal(const A, B: TGeld): Integer;\nend;",' + #10 +
-    '      "good": "TGeld = record\n  class operator Equal(const A, B: TGeld): Boolean;\nend;",' + #10 +
+    'eters (E2518) or from parameters and result for Implicit/Explicit (E2521), Inc/Dec with a result type other than the first parameter (E2519), conversion to or from an ancestor (E2522, chain within the' +
+    ' file) or Assign without var before the first parameter (E2464). Types count as equal when their names match without unit prefix and type arguments; aliases of the own type declared in the file keep t' +
+    'he rule silent, and True, False and OnesComplement are accepted. Comparison operators with a result other than Boolean compile (Spring4D criteria) and stay silent. Quick fixes: nearest operator name, ' +
+    'result like the first parameter, var before the first parameter, parameter list from the template; each in the declaration and the implementation.",' + #10 +
+    '      "bad": "TGeld = record\n  class operator Inc(const A: TGeld): Integer;\nend;",' + #10 +
+    '      "good": "TGeld = record\n  class operator Inc(const A: TGeld): TGeld;\nend;",' + #10 +
     '      "compilerCodes": [' + #10 +
     '        "E2393",' + #10 +
     '        "E2464",' + #10 +
     '        "E2517",' + #10 +
     '        "E2518",' + #10 +
     '        "E2519",' + #10 +
-    '        "E2520",' + #10 +
     '        "E2521",' + #10 +
     '        "E2522"' + #10 +
     '      ],' + #10 +
@@ -3741,13 +3740,14 @@ begin
     '      "group": "compiler",' + #10 +
     '      "description": "Fixed language rules that only the compiler reports: virtual methods (like E2379) or other virtual directives (override, abstract, reintroduce, message, final; E2463) in records,' +
     ' parameterless constructors (E2394), constructors whose parameters all have defaults (E2471) and destructors (E2465) in records, class methods in records without static (E2398); in record helpers virt' +
-    'ual methods (E2598) and the other virtual directives (E2475); fields in helpers (class var is allowed, E2599), a destructor (E2295) or class constructor (E2358) in a class helper, a helper constructor' +
-    ' whose first statement is not a call without arguments (E2296), a class helper descending from a helper whose type the new target does not descend from (E2294, only with a known ancestor chain), a hel' +
-    'per used as type of a declaration (E2527) or declared inside a generic type (E2589); several class constructors (E2359, exclusive conditional branches count once), class constructors with parameters (' +
-    'E2360) or virtual, dynamic or message (E2534); methods, properties, class members, types and constants in local or anonymous records (E2433 to E2437); inline on virtual or dynamic methods (E2425), on ' +
-    'constructors and destructors (E2442), with open array parameters (E2439), with an asm body (E2426), declared in the interface section and using a symbol of the implementation section (E2441), as local' +
-    ' routine reading variables of the enclosing routine (E2449) or calling its own local routines (E2501); local, absolute or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported' +
-    ' Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes: remove the directive, add static.",' + #10 +
+    'ual methods (E2598) and the other virtual directives (E2475); fields in helpers (class var is allowed, E2599), a destructor in a class helper (E2295; class constructors and helper constructors without' +
+    ' a constructor call compile, Skia4Delphi), a class helper descending from a helper whose type the new target does not descend from (E2294, only with a known ancestor chain), a helper used as type of a' +
+    ' declaration (E2527) or declared inside a generic type (E2589); several class constructors (E2359, exclusive conditional branches count once), class constructors with parameters (E2360) or virtual, dy' +
+    'namic or message (E2534); methods, properties, class members, types and constants in local or anonymous records (E2433 to E2437); inline on virtual or dynamic methods (E2425), on constructors and dest' +
+    'ructors (E2442), with open array parameters (E2439), with an asm body (E2426), declared in the interface section and using a variable, typed constant or type of the implementation section (E2441; true' +
+    ' constants, enumeration values and routines compile, mORMot2, Clipper2), as local routine reading variables of the enclosing routine (E2449) or calling its own local routines (E2501); local, absolute ' +
+    'or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes: remove the directive, ' +
+    'add static.",' + #10 +
     '      "bad": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double; virtual;\nend;",' + #10 +
     '      "good": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double;\nend;",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -3756,8 +3756,6 @@ begin
     '        "E2194",' + #10 +
     '        "E2294",' + #10 +
     '        "E2295",' + #10 +
-    '        "E2296",' + #10 +
-    '        "E2358",' + #10 +
     '        "E2359",' + #10 +
     '        "E2360",' + #10 +
     '        "E2379",' + #10 +
@@ -4045,7 +4043,8 @@ begin
     't and its descendants (like E2362, E2389). Inside a class method or static method, an instance field, method or property of the class is not reachable (like E2124). A property that refers to a private' +
     ' member of an ancestor in the same unit is reported as a warning (like W1045). The rule only reports when name resolution knows the receiver and its type for sure and finds the member only without reg' +
     'ard to visibility; protected members stay visible through a class declared in the same unit (TAccess(Control).Click). A private class constructor does not hide an inherited Create, and a class overloa' +
-    'd of a method stays reachable from a class method. Declarations in conditional branches, methods of helpers and nested types stay silent.",' + #10 +
+    'd of a method stays reachable from a class method. Protected members reached through a generic receiver (TNode<T>) compile from other units as well (Spring4D). Declarations in conditional branches, me' +
+    'thods of helpers and nested types stay silent.",' + #10 +
     '      "bad": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := FBasisPfad;\nend;",' + #10 +
     '      "good": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := Result.FBasisPfad;\nend;",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -4242,9 +4241,9 @@ begin
     '      "group": "compiler",' + #10 +
     '      "description": "An interface type declares something interfaces cannot have: fields (like E2209), visibility sections or method directives such as virtual, dynamic, abstract, override, message o' +
     'r reintroduce (like E2210), the property clauses stored, nodefault or default with a value (like E2207; default; after an array property is fine), a property an ancestor interface already declares, li' +
-    'sted again without a type (like E2206; a redeclaration with a type compiles) or a property accessor that only the ancestor interface declares (like E2370). A class, record or enumeration as the ancest' +
-    'or of an interface or in the interface list of a class is reported as well (like E2205), and so is the same interface twice in that list (like E2208). Types are resolved through the uses clauses; alia' +
-    'ses, unknown types, dispinterfaces and declarations inside conditional branches stay silent.",' + #10 +
+    'sted again without a type (like E2206; a redeclaration with a type compiles) or a property accessor that only the ancestor interface declares (like E2370; not for generic interfaces, DUnitX). A class,' +
+    ' record or enumeration as the ancestor of an interface or in the interface list of a class is reported as well (like E2205), and so is the same interface twice in that list (like E2208). Types are res' +
+    'olved through the uses clauses; aliases, unknown types, dispinterfaces and declarations inside conditional branches stay silent.",' + #10 +
     '      "bad": "IKunde = interface\n  FName: string;\n  function GetName: string;\nend;",' + #10 +
     '      "good": "IKunde = interface\n  function GetName: string;\n  property Name: string read GetName;\nend;",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -5046,9 +5045,9 @@ begin
     '      "severity": "error",' + #10 +
     '      "group": "compiler",' + #10 +
     '      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function' +
-    ' result (like E2197), a constant for an open array (like E2192), Slice (like E2454) or an expression (like E2036). Reported only for routines without overloads whose header is known from the file or t' +
-    'he index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the ' +
-    'parameter type, and write it back for string elements and properties with write.",' + #10 +
+    ' result (like E2197), a constant for an open array (like E2192), Slice for an out parameter (like E2454; Slice for a var open array compiles, Spring4D) or an expression (like E2036). Reported only for' +
+    ' routines without overloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as con' +
+    'stants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and write it back for string elements and properties with write.",' + #10 +
     '      "bad": "procedure Erhoehen(var Zeichen: Char);\n…\nErhoehen(Zeile[1]);",' + #10 +
     '      "good": "Zeichen := Zeile[1];\nErhoehen(Zeichen);\nZeile[1] := Zeichen;",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -7435,10 +7434,10 @@ begin
     '      "id": "operator-declaration-invalid",' + #10 +
     '      "name": "Operator falsch deklariert",' + #10 +
     '      "description": "Ein class operator in einem Record oder einer Klasse ist so deklariert, wie Delphi es ablehnt: unbekannter Operatorname (wie E2393), falsche Parameterzahl (E2517), eigener Typ fe' +
-    'hlt in den Parametern (E2518) bzw. bei Implicit/Explicit in Parametern und Ergebnis (E2521), Inc/Dec mit anderem Ergebnistyp als dem ersten Parameter (E2519), Vergleichsoperator ohne Boolean-Ergebnis ' +
-    '(E2520), Umwandlung in oder aus einem Vorfahren (E2522, Kette innerhalb der Datei) oder Assign ohne var vor dem ersten Parameter (E2464). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und ' +
-    'Typargumente übereinstimmen; Aliase des eigenen Typs in der Datei halten die Regel still, True, False und OnesComplement gelten als bekannt. Korrekturen: nächstliegender Operatorname, Boolean als Erge' +
-    'bnis, Ergebnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf."' + #10 +
+    'hlt in den Parametern (E2518) bzw. bei Implicit/Explicit in Parametern und Ergebnis (E2521), Inc/Dec mit anderem Ergebnistyp als dem ersten Parameter (E2519), Umwandlung in oder aus einem Vorfahren (E' +
+    '2522, Kette innerhalb der Datei) oder Assign ohne var vor dem ersten Parameter (E2464). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und Typargumente übereinstimmen; Aliase des eigenen Ty' +
+    'ps in der Datei halten die Regel still, True, False und OnesComplement gelten als bekannt. Vergleichsoperatoren mit anderem Ergebnis als Boolean übersetzt dcc (Spring4D-Kriterien); sie bleiben still. ' +
+    'Korrekturen: nächstliegender Operatorname, Ergebnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "generic-declaration-invalid",' + #10 +
@@ -7457,14 +7456,14 @@ begin
     '      "name": "Sprachregel für Records, Inline und Helfer verletzt",' + #10 +
     '      "description": "Feste Sprachregeln, die erst der Compiler meldet: virtuelle Methoden (wie E2379) oder andere virtuelle Direktiven (override, abstract, reintroduce, message, final; E2463) in Reco' +
     'rds, parameterlose Konstruktoren (E2394), Konstruktoren, deren Parameter alle Vorgabewerte haben (E2471), und Destruktoren (E2465) in Records, Klassenmethoden in Records ohne static (E2398); in Record' +
-    '-Helfern virtuelle Methoden (E2598) und die übrigen virtuellen Direktiven (E2475); Felder in Helfern (class var ist erlaubt, E2599), Destruktor (E2295) oder Klassenkonstruktor (E2358) in einem Class-H' +
-    'elfer, ein Helfer-Konstruktor, dessen erster Befehl kein Aufruf ohne Argumente ist (E2296), ein Class-Helfer mit Vorfahr-Helfer für einen Typ, der nicht vom Typ des Vorfahren abstammt (E2294, nur bei ' +
-    'bekannter Vorfahrenkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), ' +
-    'Klassenkonstruktoren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437)' +
-    '; inline an virtuellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Symbo' +
-    'len des implementation-Teils (E2441), als lokale Routine mit Zugriff auf Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte' +
-    ' threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, st' +
-    'atic ergänzen.",' + #10 +
+    '-Helfern virtuelle Methoden (E2598) und die übrigen virtuellen Direktiven (E2475); Felder in Helfern (class var ist erlaubt, E2599), ein Destruktor in einem Class-Helfer (E2295; Klassenkonstruktoren u' +
+    'nd Helfer-Konstruktoren ohne Konstruktoraufruf übersetzt dcc, Skia4Delphi), ein Class-Helfer mit Vorfahr-Helfer für einen Typ, der nicht vom Typ des Vorfahren abstammt (E2294, nur bei bekannter Vorfah' +
+    'renkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), Klassenkonstrukt' +
+    'oren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437); inline an virt' +
+    'uellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Variablen, typisierte' +
+    'n Konstanten oder Typen des implementation-Teils (E2441; echte Konstanten, Aufzählungswerte und Routinen übersetzt dcc, mORMot2, Clipper2), als lokale Routine mit Zugriff auf Variablen der umgebenden ' +
+    'Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Versionen (10' +
+    ' Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.",' + #10 +
     '      "options": [' + #10 +
     '        {' + #10 +
     '          "name": "disabledChecks",' + #10 +
@@ -7589,8 +7588,8 @@ begin
     'alb der deklarierenden Unit und ihrer Nachfahren (wie E2362, E2389). In einer Klassenmethode oder statischen Methode sind Instanzfelder, -methoden und -Properties der Klasse nicht erreichbar (wie E212' +
     '4). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen ' +
     'Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Ein privater Klasse' +
-    'nkonstruktor verdeckt kein geerbtes Create, und eine class-Überladung einer Methode bleibt aus einer Klassenmethode erreichbar. Deklarationen in bedingten Zweigen, Methoden von Helfern und verschachte' +
-    'lten Typen bleiben still."' + #10 +
+    'nkonstruktor verdeckt kein geerbtes Create, und eine class-Überladung einer Methode bleibt aus einer Klassenmethode erreichbar. protected-Mitglieder über einen generischen Empfänger (TKnoten<T>) übers' +
+    'etzt dcc auch aus anderen Units (Spring4D). Deklarationen in bedingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-private-member",' + #10 +
@@ -7701,9 +7700,9 @@ begin
     '      "name": "Unzulässige Deklaration in einem Interface",' + #10 +
     '      "description": "Ein Interface deklariert etwas, das Interfaces nicht haben dürfen: Felder (wie E2209), Sichtbarkeitsabschnitte oder Methodendirektiven wie virtual, dynamic, abstract, override, m' +
     'essage oder reintroduce (wie E2210), die Property-Klauseln stored, nodefault oder default mit Wert (wie E2207; default; hinter einer Array-Property ist erlaubt), eine Property, die ein Vorfahr-Interfa' +
-    'ce schon deklariert, ohne Typ erneut aufgeführt (wie E2206; eine Neudeklaration mit Typ übersetzt dcc), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370). Ebenso gemel' +
-    'det werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr eines Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interface zweimal in dieser Liste (wie E2208). Ty' +
-    'pen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, dispinterface und Deklarationen in bedingten Zweigen bleiben still."' + #10 +
+    'ce schon deklariert, ohne Typ erneut aufgeführt (wie E2206; eine Neudeklaration mit Typ übersetzt dcc), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370; nicht bei gen' +
+    'erischen Interfaces, DUnitX). Ebenso gemeldet werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr eines Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interfa' +
+    'ce zweimal in dieser Liste (wie E2208). Typen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, dispinterface und Deklarationen in bedingten Zweigen bleiben still."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "implements-clause-invalid",' + #10 +
@@ -8115,9 +8114,10 @@ begin
     '      "id": "invalid-var-argument",' + #10 +
     '      "name": "Ungültiges Argument für einen var- oder out-Parameter",' + #10 +
     '      "description": "Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Propert' +
-    'y oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192), Slice (wie E2454) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf a' +
-    'us der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {' +
-    '$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben."' + #10 +
+    'y oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192), Slice für einen out-Parameter (wie E2454; Slice für ein var-Open-Array übersetzt dcc, Spring4D) oder einen A' +
+    'usdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr ' +
+    'an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit ' +
+    'Rückschreiben."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "condition-not-boolean",' + #10 +
