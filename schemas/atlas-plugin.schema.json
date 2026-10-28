@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Plugin-Einstellungen",
   "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
@@ -1417,6 +1417,16 @@
       "x-control": "Kontrollkästchen",
       "description": "Atlas-Suche ersetzt die IDE-Suche: Strg+F öffnet die Suchleiste unter dem Editor (Bereich Methode, Unit, Auswahl; Groß-/Kleinschreibung, ganzes Wort, Bezeichner statt Text), F3/Umschalt+F3 springen zum nächsten/vorigen Treffer der letzten Atlas-Suche; aus = Suchen der IDE wie bisher",
       "x-issue": "#878"
+    },
+    "SearchFromFirstHit": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "search.fromFirstHit",
+      "x-area": "editor",
+      "x-page": "Units suchen",
+      "x-control": "Kontrollkästchen",
+      "description": "Beim Tippen in der Suchleiste zum ersten Treffer der Unit bzw. des Bereichs springen; aus = zum nächsten Treffer ab der Cursorposition beim Öffnen der Leiste",
+      "x-issue": "#1242"
     },
     "SearchResultsInMessages": {
       "type": "boolean",

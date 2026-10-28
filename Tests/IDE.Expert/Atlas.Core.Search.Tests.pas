@@ -427,6 +427,7 @@ begin
   // Entscheidung #878: Atlas ersetzt die IDE-Suche standardmäßig.
   Assert.IsTrue(Settings.SearchReplaceIde);
   Assert.IsTrue(Settings.SearchResultsInMessages, 'Liste in den Meldungen standardmäßig an');
+  Assert.IsFalse(Settings.SearchFromFirstHit, '#1242: Vorgabe ab Cursor');
   Assert.AreEqual($4046, Settings.SearchKey);
   Assert.AreEqual($72, Settings.SearchNextKey);
   Assert.AreEqual($2072, Settings.SearchPreviousKey);
