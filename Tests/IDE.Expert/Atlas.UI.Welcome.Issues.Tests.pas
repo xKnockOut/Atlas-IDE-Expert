@@ -42,6 +42,10 @@ type
     /// issues.queryPicker aus fehlt sie.</summary>
     [Test]
     procedure QueryPickerAndSourceLine;
+    /// <summary>#1277: Filter der Sprint-Kachel als Zeile „Gefiltert: … · alle zeigen“; der Klick hebt ihn auf.
+    /// </summary>
+    [Test]
+    procedure SprintFilterLine;
   end;
 
 implementation
@@ -79,6 +83,7 @@ type
     procedure AssignProject;
     procedure SelectQuery(const AName: string);
     procedure EditQueries;
+    procedure ClearFilter;
   end;
 
 function NowUtc0: TDateTime;
@@ -184,6 +189,11 @@ end;
 procedure TFakeIssues.EditQueries;
 begin
   Calls := Calls + ['edit queries'];
+end;
+
+procedure TFakeIssues.ClearFilter;
+begin
+  Calls := Calls + ['clearFilter'];
 end;
 
 { TAtlasWelcomeIssuesFrameTests }
@@ -543,6 +553,51 @@ begin
     mHost.Free;
     mFake.Calls := nil;
     mFake.FView := Default(TAtlasIssuesView);
+  end;
+end;
+
+procedure TAtlasWelcomeIssuesFrameTests.SprintFilterLine;
+var
+  mSaved: TAtlasLanguage;
+  mHost: TForm;
+  mFake: TFakeIssues;
+  mSource: IAtlasIssuesSource;
+  mFrame: TAtlasWelcomeIssuesFrame;
+  mView: TAtlasIssuesView;
+  mTop: Integer;
+begin
+  mSaved := TAtlasStrings.Language;
+  mFake := TFakeIssues.Create;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    mView := SampleView;
+    Assert.AreEqual('', TAtlasWelcomeIssuesFrame.FilterText(mView), 'ohne Filter keine Zeile');
+    mFake.FView := mView;
+    mFrame := TAtlasWelcomeIssuesFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Width := 600;
+    mFrame.Source := mSource;
+    mTop := mFrame.ListTop;
+    // Mit Filter: Zeile über der Liste, die Liste rückt nach unten.
+    mView.Filter := '„Sprint 12“, meine offen';
+    Assert.AreEqual('Gefiltert: „Sprint 12“, meine offen · alle zeigen', TAtlasWelcomeIssuesFrame.FilterText(mView));
+    mFake.FView := mView;
+    mFrame.UpdateContent;
+    Assert.IsTrue(mFrame.ListTop > mTop, 'Liste unter der Filterzeile');
+    mFake.Calls := nil;
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Filter, -1));
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'nicht im Mausereignis');
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('clearFilter', mFake.Calls[0]);
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('Filtered: „Sprint 12“, meine offen · show all', TAtlasWelcomeIssuesFrame.FilterText(mView));
+  finally
+    TAtlasStrings.Language := mSaved;
+    mHost.Free;
+    mFake.Calls := nil;
   end;
 end;
 

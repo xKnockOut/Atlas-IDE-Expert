@@ -1280,6 +1280,9 @@ type
     /// <summary>Bereich „Meine Issues“ (#765, welcomePage.issues): offene Issues aus dem Tracker der .atlas
     /// (Abschnitt tracker) mit „Beginnen“; aus = kein Bereich, keine Abfrage, kein Netzzugriff.</summary>
     WelcomePageIssues: Boolean;
+    /// <summary>Bereich „Sprint“ (#1277, welcomePage.sprint): aktueller Sprint des Boards (#1272) mit Resttagen,
+    /// eigenen Zahlen und Burndown; aus = kein Bereich, keine Abfrage.</summary>
+    WelcomePageSprint: Boolean;
     /// <summary>Tracker (#765, issues.tracker): '' = aus der .atlas, "github" oder "youtrack".</summary>
     IssuesTracker: string;
     /// <summary>„Beginnen“ (#765, issues.start): "branch" legt einen Branch an und checkt ihn aus,
@@ -1432,6 +1435,20 @@ type
     /// <summary>Warnung beim Beginnen (#1279, issues.warnBlocked), wenn ein „hängt ab von“-Issue noch offen ist.
     /// </summary>
     IssuesWarnBlocked: Boolean;
+    /// <summary>Dockfenster „Atlas-Board“ mit Spalten und Karten (#1272, issues.board): Menü Ansicht › Atlas ›
+    /// Board und Befehl Atlas.Board; aus = kein Menüeintrag, kein Befehl, keine Abfrage.</summary>
+    IssuesBoard: Boolean;
+    /// <summary>Beim Ziehen einer Karte nachfragen (#1272, issues.board.confirmMove); aus = sofort verschieben.
+    /// „Nicht mehr fragen“ im Dialog schaltet es ab.</summary>
+    IssuesBoardConfirmMove: Boolean;
+    /// <summary>Board öffnet mit dem Filter „Nur meine“ (#1272, issues.board.onlyMine); aus = alle Karten.</summary>
+    IssuesBoardOnlyMine: Boolean;
+    /// <summary>Burndown-Linie in der Sprint-Kachel (#1277, issues.sprint.burndown); aus = nur Kopf und Zahlen.
+    /// </summary>
+    IssuesSprintBurndown: Boolean;
+    /// <summary>Vergleich mit dem vorherigen Sprint und Velocity der letzten drei (#1277, issues.sprint.compare);
+    /// aus = kein früherer Sprint wird gefragt.</summary>
+    IssuesSprintCompare: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2155,6 +2172,7 @@ begin
   Result.WelcomePageQuickActionsBuildKey := $4042; // Strg+B
   Result.WelcomePageQuickActionsTestKey := $4054; // Strg+T
   Result.WelcomePageIssues := False;
+  Result.WelcomePageSprint := True;
   Result.IssuesTracker := '';
   Result.IssuesStart := IssuesStartBranch;
   Result.IssuesBranchPattern := '';
@@ -2208,6 +2226,11 @@ begin
   Result.IssuesChecklistStatus := True;
   Result.IssuesPreviewLinks := True;
   Result.IssuesWarnBlocked := True;
+  Result.IssuesBoard := True;
+  Result.IssuesBoardConfirmMove := True;
+  Result.IssuesBoardOnlyMine := True;
+  Result.IssuesSprintBurndown := True;
+  Result.IssuesSprintCompare := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -3038,6 +3061,7 @@ begin
   WelcomePageQuickActionsTestKey := AStore.ReadInteger('WelcomePageQuickActionsTestKey',
     Default.WelcomePageQuickActionsTestKey);
   WelcomePageIssues := AStore.ReadInteger('WelcomePageIssues', BoolValue(Default.WelcomePageIssues)) <> 0;
+  WelcomePageSprint := AStore.ReadInteger('WelcomePageSprint', BoolValue(Default.WelcomePageSprint)) <> 0;
   IssuesTracker := AStore.ReadString('IssuesTracker', Default.IssuesTracker);
   IssuesStart := AStore.ReadString('IssuesStart', Default.IssuesStart);
   IssuesBranchPattern := AStore.ReadString('IssuesBranchPattern',
@@ -3096,6 +3120,12 @@ begin
   IssuesChecklistStatus := AStore.ReadInteger('IssuesChecklistStatus', BoolValue(Default.IssuesChecklistStatus)) <> 0;
   IssuesPreviewLinks := AStore.ReadInteger('IssuesPreviewLinks', BoolValue(Default.IssuesPreviewLinks)) <> 0;
   IssuesWarnBlocked := AStore.ReadInteger('IssuesWarnBlocked', BoolValue(Default.IssuesWarnBlocked)) <> 0;
+  IssuesBoard := AStore.ReadInteger('IssuesBoard', BoolValue(Default.IssuesBoard)) <> 0;
+  IssuesBoardConfirmMove := AStore.ReadInteger('IssuesBoardConfirmMove',
+    BoolValue(Default.IssuesBoardConfirmMove)) <> 0;
+  IssuesBoardOnlyMine := AStore.ReadInteger('IssuesBoardOnlyMine', BoolValue(Default.IssuesBoardOnlyMine)) <> 0;
+  IssuesSprintBurndown := AStore.ReadInteger('IssuesSprintBurndown', BoolValue(Default.IssuesSprintBurndown)) <> 0;
+  IssuesSprintCompare := AStore.ReadInteger('IssuesSprintCompare', BoolValue(Default.IssuesSprintCompare)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3554,6 +3584,7 @@ begin
   AStore.WriteInteger('WelcomePageQuickActionsBuildKey', WelcomePageQuickActionsBuildKey);
   AStore.WriteInteger('WelcomePageQuickActionsTestKey', WelcomePageQuickActionsTestKey);
   AStore.WriteInteger('WelcomePageIssues', BoolValue(WelcomePageIssues));
+  AStore.WriteInteger('WelcomePageSprint', BoolValue(WelcomePageSprint));
   AStore.WriteString('IssuesTracker', IssuesTracker);
   AStore.WriteString('IssuesStart', IssuesStart);
   AStore.WriteString('IssuesBranchPattern', IssuesBranchPattern);
@@ -3607,6 +3638,11 @@ begin
   AStore.WriteInteger('IssuesChecklistStatus', BoolValue(IssuesChecklistStatus));
   AStore.WriteInteger('IssuesPreviewLinks', BoolValue(IssuesPreviewLinks));
   AStore.WriteInteger('IssuesWarnBlocked', BoolValue(IssuesWarnBlocked));
+  AStore.WriteInteger('IssuesBoard', BoolValue(IssuesBoard));
+  AStore.WriteInteger('IssuesBoardConfirmMove', BoolValue(IssuesBoardConfirmMove));
+  AStore.WriteInteger('IssuesBoardOnlyMine', BoolValue(IssuesBoardOnlyMine));
+  AStore.WriteInteger('IssuesSprintBurndown', BoolValue(IssuesSprintBurndown));
+  AStore.WriteInteger('IssuesSprintCompare', BoolValue(IssuesSprintCompare));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

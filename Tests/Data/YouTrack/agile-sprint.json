@@ -1,0 +1,51 @@
+{
+  "id": "109-42",
+  "name": "Sprint 42",
+  "start": 1761523200000,
+  "finish": 1762732800000,
+  "archived": false,
+  "issues": [
+    {
+      "idReadable": "ATL-123",
+      "numberInProject": 123,
+      "summary": "Tracker im Plugin anbinden",
+      "description": "- [x] Liste\n- [x] Vorschau\n- [ ] Board",
+      "resolved": null,
+      "customFields": [
+        {"name": "Zustand", "value": {"name": "In Arbeit", "$type": "StateBundleElement"}},
+        {"name": "Priorität", "value": {"name": "Kritisch", "color": {"background": "#e30000"}}},
+        {"name": "Zuständig", "value": {"login": "marco", "fullName": "Marco Bähring", "$type": "User"}},
+        {"name": "Story Points", "value": 3, "$type": "SimpleIssueCustomField"}
+      ],
+      "links": [
+        {"direction": "OUTWARD", "linkType": {"name": "Depend", "sourceToTarget": "depends on", "targetToSource": "is required for"},
+         "issues": [{"idReadable": "ATL-100", "summary": "Tracker-Einstellungen", "resolved": null, "customFields": [{"name": "Zustand", "value": {"name": "Offen"}}]}]}
+      ]
+    },
+    {
+      "idReadable": "ATL-124",
+      "numberInProject": 124,
+      "summary": "Board zeigen",
+      "description": null,
+      "resolved": null,
+      "customFields": [
+        {"name": "Zustand", "value": {"name": "Nachgefragt"}},
+        {"name": "Priorität", "value": {"name": "Normal", "color": {"background": "#6b8e23"}}},
+        {"name": "Zuständig", "value": {"login": "anna", "fullName": "Anna Schmidt"}},
+        {"name": "Story Points", "value": {"minutes": 90, "presentation": "1h 30m", "$type": "PeriodValue"}}
+      ],
+      "links": []
+    },
+    {
+      "idReadable": "ATL-125",
+      "numberInProject": 125,
+      "summary": "Ohne Spalte",
+      "resolved": 1761600000000,
+      "customFields": [
+        {"name": "Zustand", "value": {"name": "Verworfen"}},
+        {"name": "Zuständig", "value": null}
+      ]
+    }
+  ],
+  "$type": "Sprint"
+}

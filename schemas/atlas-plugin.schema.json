@@ -290,6 +290,10 @@
       "caption": "Meine Issues",
       "captionEn": "My issues"
     },
+    "welcome.sprint": {
+      "caption": "Sprint",
+      "captionEn": "Sprint"
+    },
     "welcome.quickActions": {
       "caption": "Schnellaktionen",
       "captionEn": "Quick actions"
@@ -5016,6 +5020,21 @@
       "x-captionEn": "My issues from the tracker",
       "x-issue": "#765"
     },
+    "WelcomePageSprint": {
+      "type": "boolean",
+      "default": true,
+      "description": "Bereich „Sprint“ auf der Atlas-Startseite: aktueller Sprint des Boards (YouTrack-Agile-Board bzw. GitHub-Projekt mit Iterationen) mit Zeitraum, Resttagen, „meine offen“, „meine erledigt“, „Team übrig“ und Burndown; Klick auf die Zahlen filtert „Meine Issues“ bzw. öffnet das Board, Klick auf den Titel öffnet das Board im Browser. Lädt mit „Meine Issues“ (höchstens alle 10 Minuten), zwischengespeichert. Aus: kein Bereich, keine Abfrage.",
+      "x-key": "welcomePage.sprint",
+      "x-area": "welcome",
+      "x-feature": "WelcomePage",
+      "x-page": "Willkommensseite",
+      "x-node": "welcome.sprint",
+      "x-control": "Kontrollkästchen",
+      "x-quickToggle": true,
+      "x-caption": "Sprint mit Burndown",
+      "x-captionEn": "Sprint with burndown",
+      "x-issue": "#1277"
+    },
     "WelcomePageCustomLayout": {
       "type": "boolean",
       "default": true,
@@ -5775,6 +5794,56 @@
       "x-page": "Issue-Tracker",
       "x-control": "Kontrollkästchen",
       "x-issue": "#1279"
+    },
+    "IssuesBoard": {
+      "type": "boolean",
+      "default": true,
+      "description": "Dockfenster „Atlas-Board“ (Ansicht › Atlas › Board, Befehl Atlas.Board): Spalten des Agile-Boards (YouTrack) bzw. des Projekts (GitHub Projects, sonst Offen/Geschlossen) mit Karten aus Kennung, Titel, Zuständigem, Priorität, Checklisten-Fortschritt und Schloss; Karten ziehen ändert den Zustand im Tracker, Doppelklick öffnet die Vorschau, Kontextmenü Beginnen, Im Browser öffnen, Mir zuweisen. Aus: kein Menüeintrag, kein Befehl, keine Abfrage.",
+      "x-key": "issues.board",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1272"
+    },
+    "IssuesBoardConfirmMove": {
+      "type": "boolean",
+      "default": true,
+      "description": "Beim Ziehen einer Karte in eine andere Spalte fragt Atlas nach („ATL-123 → Zur Prüfung?“) und bietet einen optionalen Kommentar an; „Nicht mehr fragen“ schaltet die Rückfrage ab. Aus: Die Karte wird sofort verschoben.",
+      "x-key": "issues.board.confirmMove",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1272"
+    },
+    "IssuesBoardOnlyMine": {
+      "type": "boolean",
+      "default": true,
+      "description": "Das Board öffnet mit dem Filter „Nur meine“ (mir zugewiesene Karten); der Knopf im Kopf schaltet bis zum Neustart um. Aus: Das Board zeigt beim Öffnen alle Karten.",
+      "x-key": "issues.board.onlyMine",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1272"
+    },
+    "IssuesSprintBurndown": {
+      "type": "boolean",
+      "default": true,
+      "description": "Sprint-Kachel mit Burndown: Ist-Linie, gestrichelte Ideallinie (Arbeitstage laut Board, sonst Montag bis Freitag) und Marke „heute“, Tooltip mit den Werten des Tages. Aus: nur Kopf und Zahlen.",
+      "x-key": "issues.sprint.burndown",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1277"
+    },
+    "IssuesSprintCompare": {
+      "type": "boolean",
+      "default": true,
+      "description": "Sprint-Kachel mit Vergleich: Linie des vorherigen Sprints blass im Diagramm (auf Sprinttage normiert), „erledigt 5 · Vorsprint 4 am selben Tag ▲1“ und Velocity der letzten drei Sprints als Balken; abgeschlossene Sprints werden einmal gefragt und zwischengespeichert. Aus: kein früherer Sprint wird gefragt.",
+      "x-key": "issues.sprint.compare",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1277"
     }
   },
   "additionalProperties": false

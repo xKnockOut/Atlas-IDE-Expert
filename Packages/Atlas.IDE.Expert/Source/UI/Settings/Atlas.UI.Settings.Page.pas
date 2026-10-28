@@ -715,6 +715,12 @@ type
     FIssuesChecklistStatus: TCheckBox;
     FIssuesPreviewLinks: TCheckBox;
     FIssuesWarnBlocked: TCheckBox;
+    FIssuesBoard: TCheckBox;
+    FIssuesBoardConfirmMove: TCheckBox;
+    FIssuesBoardOnlyMine: TCheckBox;
+    FIssuesSprintBurndown: TCheckBox;
+    FIssuesSprintCompare: TCheckBox;
+    FWelcomeSprint: TCheckBox;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1464,6 +1470,12 @@ type
     property IssuesChecklistStatus: TCheckBox read FIssuesChecklistStatus;
     property IssuesPreviewLinks: TCheckBox read FIssuesPreviewLinks;
     property IssuesWarnBlocked: TCheckBox read FIssuesWarnBlocked;
+    property IssuesBoard: TCheckBox read FIssuesBoard;
+    property IssuesBoardConfirmMove: TCheckBox read FIssuesBoardConfirmMove;
+    property IssuesBoardOnlyMine: TCheckBox read FIssuesBoardOnlyMine;
+    property IssuesSprintBurndown: TCheckBox read FIssuesSprintBurndown;
+    property IssuesSprintCompare: TCheckBox read FIssuesSprintCompare;
+    property WelcomeSprint: TCheckBox read FWelcomeSprint;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -2870,6 +2882,7 @@ begin
   Bind('WelcomePageHelp', FWelcomeHelp);
   Bind('WelcomePageProjectSetup', FWelcomeProjectSetup);
   Bind('WelcomePageIssues', FWelcomeIssues);
+  Bind('WelcomePageSprint', FWelcomeSprint);
   Bind('WelcomePageCustomLayout', FWelcomeCustomLayout);
   Bind('WelcomePageColumns', FWelcomeColumns);
   Bind('WelcomePageActiveLayout', FWelcomeActiveLayout);
@@ -3088,6 +3101,8 @@ begin
   FWelcomeIssuesLink.Width := 200;
   FWelcomeIssuesLink.OnClick := WelcomeIssuesLinkClick;
   Attach(Panel, FWelcomeIssues);
+  // Sprint-Kachel (#1277): nur der Bereich; Burndown und Vergleich auf der Seite Issue-Tracker.
+  FWelcomeSprint := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSprint));
   // Schnellaktionen je Projekt (#764): Schalter, je Knopf ein Häkchen, Programm für „Konsole“, zwei Tasten.
   FWelcomeQuickActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActions));
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
@@ -3176,6 +3191,13 @@ begin
   // Abhängigkeiten und Unteraufgaben (#1279): Baum in der Vorschau, Warnung beim Beginnen.
   FIssuesPreviewLinks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewLinks));
   FIssuesWarnBlocked := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesWarnBlocked));
+  // Board (#1272): Hauptschalter, Rückfrage beim Ziehen, Filter beim Öffnen.
+  FIssuesBoard := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBoard));
+  FIssuesBoardConfirmMove := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBoardConfirmMove));
+  FIssuesBoardOnlyMine := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBoardOnlyMine));
+  // Sprint-Kachel (#1277): Burndown-Linie, Vergleich mit dem Vorsprint und Velocity.
+  FIssuesSprintBurndown := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSprintBurndown));
+  FIssuesSprintCompare := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSprintCompare));
 end;
 
 procedure TAtlasSettingsPage.AddIssuesTimeSection;
@@ -5554,6 +5576,8 @@ begin
     Check := FWelcomeProjectSetup
   else if AId = TAtlasWelcomeIds.Issues then
     Check := FWelcomeIssues
+  else if AId = TAtlasWelcomeIds.Sprint then
+    Check := FWelcomeSprint
   else if AId = TAtlasWelcomeIds.Help then
     Check := FWelcomeHelp;
   Result := Check <> nil;
@@ -5592,6 +5616,8 @@ begin
     FWelcomeProjectSetup.Checked := AShown
   else if AId = TAtlasWelcomeIds.Issues then
     FWelcomeIssues.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Sprint then
+    FWelcomeSprint.Checked := AShown
   else if AId = TAtlasWelcomeIds.Help then
     FWelcomeHelp.Checked := AShown;
 end;
@@ -6373,6 +6399,7 @@ begin
   FMarks.Bind(FWelcomeProjectSetup, ['WelcomePageProjectSetup']);
   FMarks.Bind(FWelcomeNewFromTemplate, ['WelcomePageNewFromTemplate']);
   FMarks.Bind(FWelcomeIssues, ['WelcomePageIssues']);
+  FMarks.Bind(FWelcomeSprint, ['WelcomePageSprint']);
   FMarks.Bind(FIssuesTracker, ['IssuesTracker']);
   FMarks.Bind(FIssuesStart, ['IssuesStart']);
   FMarks.Bind(FIssuesBranchPattern, ['IssuesBranchPattern']);
@@ -6388,6 +6415,11 @@ begin
   FMarks.Bind(FIssuesChecklistStatus, ['IssuesChecklistStatus']);
   FMarks.Bind(FIssuesPreviewLinks, ['IssuesPreviewLinks']);
   FMarks.Bind(FIssuesWarnBlocked, ['IssuesWarnBlocked']);
+  FMarks.Bind(FIssuesBoard, ['IssuesBoard']);
+  FMarks.Bind(FIssuesBoardConfirmMove, ['IssuesBoardConfirmMove']);
+  FMarks.Bind(FIssuesBoardOnlyMine, ['IssuesBoardOnlyMine']);
+  FMarks.Bind(FIssuesSprintBurndown, ['IssuesSprintBurndown']);
+  FMarks.Bind(FIssuesSprintCompare, ['IssuesSprintCompare']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FIssuesProjects, ['IssuesProjects']);
   FMarks.Bind(FIssuesQueries, ['IssuesQueries']);
@@ -8673,6 +8705,7 @@ begin
   FWelcomeTestsCiNotify.Checked := ASettings.WelcomePageTestsCiNotify;
   FCiLogin.Checked := ASettings.CiLogin;
   FWelcomeIssues.Checked := ASettings.WelcomePageIssues;
+  FWelcomeSprint.Checked := ASettings.WelcomePageSprint;
   if SameText(ASettings.IssuesTracker, 'github') then
     FIssuesTracker.Choice := 1
   else if SameText(ASettings.IssuesTracker, 'youtrack') then
@@ -8707,6 +8740,11 @@ begin
   FIssuesChecklistStatus.Checked := ASettings.IssuesChecklistStatus;
   FIssuesPreviewLinks.Checked := ASettings.IssuesPreviewLinks;
   FIssuesWarnBlocked.Checked := ASettings.IssuesWarnBlocked;
+  FIssuesBoard.Checked := ASettings.IssuesBoard;
+  FIssuesBoardConfirmMove.Checked := ASettings.IssuesBoardConfirmMove;
+  FIssuesBoardOnlyMine.Checked := ASettings.IssuesBoardOnlyMine;
+  FIssuesSprintBurndown.Checked := ASettings.IssuesSprintBurndown;
+  FIssuesSprintCompare.Checked := ASettings.IssuesSprintCompare;
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -9292,6 +9330,7 @@ begin
   ASettings.WelcomePageTestsCiNotify := FWelcomeTestsCiNotify.Checked;
   ASettings.CiLogin := FCiLogin.Checked;
   ASettings.WelcomePageIssues := FWelcomeIssues.Checked;
+  ASettings.WelcomePageSprint := FWelcomeSprint.Checked;
   case FIssuesTracker.Choice of
     1:
       ASettings.IssuesTracker := 'github';
@@ -9329,6 +9368,11 @@ begin
   ASettings.IssuesChecklistStatus := FIssuesChecklistStatus.Checked;
   ASettings.IssuesPreviewLinks := FIssuesPreviewLinks.Checked;
   ASettings.IssuesWarnBlocked := FIssuesWarnBlocked.Checked;
+  ASettings.IssuesBoard := FIssuesBoard.Checked;
+  ASettings.IssuesBoardConfirmMove := FIssuesBoardConfirmMove.Checked;
+  ASettings.IssuesBoardOnlyMine := FIssuesBoardOnlyMine.Checked;
+  ASettings.IssuesSprintBurndown := FIssuesSprintBurndown.Checked;
+  ASettings.IssuesSprintCompare := FIssuesSprintCompare.Checked;
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.IssuesProjects := TrackerProjectsJson;
   ASettings.IssuesQueries := TrackerQueriesJson;

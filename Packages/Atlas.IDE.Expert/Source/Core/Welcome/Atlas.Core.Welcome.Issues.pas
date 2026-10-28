@@ -238,6 +238,9 @@ type
     Starting: Boolean;
     Options: TAtlasIssuesOptions;
     VcsKind: TAtlasVcsKind;
+    /// <summary>Filter aus der Sprint-Kachel (#1277), z. B. „„Sprint 12“, meine offen“: Items sind dann die Issues
+    /// des Filters; '' ohne.</summary>
+    Filter: string;
     /// <summary>Offene Issues der Liste, z. B. für „ATL-123 · 3 offen“.</summary>
     function OpenCount: Integer;
   end;
