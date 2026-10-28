@@ -80,7 +80,8 @@
 //   readonly-property-assigned
 //                     Zuweisung an eine Property ohne write (#1006, wie E2129) und
 //                     Lesen einer Property ohne read (wie E2130), nur bei sicher
-//                     aufgelöster Property. Vorab gefiltert über die Namen solcher
+//                     aufgelöster Property; eine ohne Typ neu deklarierte, deren
+//                     Vorfahr nicht im Index steht, gilt nicht als sicher (#1326). Vorab gefiltert über die Namen solcher
 //                     Properties in Datei und Index. Korrekturen: Count := 0 wird
 //                     Clear, wenn der Typ Clear hat; in einer Methode der eigenen
 //                     Klasse direkt das Feld hinter read; für eine Property dieser
@@ -3114,8 +3115,8 @@ var
       (ATarget.ChildCount = 0) or (SuspectFlags(ATarget[0].Name) and 1 = 0)) then
       Exit;
     if not Resolver.NodeType(AContext.Tree, FileName, ATarget, Symbol, TypeInfo, TypeFound) or
-      (Symbol.SymbolKind <> TIndexSymbolKind.Property_) or not Accessors(Symbol.Signature, HasRead, HasWrite) or
-      HasWrite then
+      (Symbol.SymbolKind <> TIndexSymbolKind.Property_) or (Symbol.TypeName = '') or
+      not Accessors(Symbol.Signature, HasRead, HasWrite) or HasWrite then
       Exit;
     Message := Format('%s.%s hat kein write (wie E2129).', [Symbol.Container, Symbol.Name]);
     Fixes := nil;
@@ -3159,8 +3160,8 @@ var
     if SuspectFlags(ANode.Name) and 2 = 0 then
       Exit;
     if Resolver.NodeType(AContext.Tree, FileName, ANode, Symbol, TypeInfo, TypeFound) and
-      (Symbol.SymbolKind = TIndexSymbolKind.Property_) and Accessors(Symbol.Signature, HasRead, HasWrite) and
-      not HasRead then
+      (Symbol.SymbolKind = TIndexSymbolKind.Property_) and (Symbol.TypeName <> '') and
+      Accessors(Symbol.Signature, HasRead, HasWrite) and not HasRead then
       AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s.%s hat kein read (wie E2130).',
         [Symbol.Container, Symbol.Name]), TRuleConfidence.High);
   end;

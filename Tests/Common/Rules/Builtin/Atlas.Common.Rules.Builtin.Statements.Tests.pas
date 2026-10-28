@@ -1397,6 +1397,13 @@ begin
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.AreEqual('TDatenAuswahl.Nur hat kein write (wie E2129).', mFindings[0].Message);
   Assert.AreEqual(34, mFindings[0].Range.StartPos.Line);
+  // JVCL: property Capacity write SetCapacity; in einem TObjectList-Nachfahren, der Vorfahr steht nicht im Index.
+  mFindings := ReadonlyFindings('unit Stapel;'#10'interface'#10'uses'#10'  System.Contnrs;'#10'type'#10 +
+    '  TStapel = class(TObjectList)'#10'  private'#10'    procedure SetCapacity(AValue: Integer);'#10 +
+    '  public'#10'    property Capacity write SetCapacity;'#10'    procedure Nutzen;'#10'  end;'#10 +
+    'implementation'#10'procedure TStapel.SetCapacity(AValue: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TStapel.Nutzen;'#10'begin'#10'  if Capacity = 0 then'#10'    Capacity := 8;'#10'end;'#10'end.');
+  Assert.AreEqual(0, Integer(Length(mFindings)));
 end;
 
 procedure TReadonlyPropertyAssignedTests.IssueExampleWithClear;
