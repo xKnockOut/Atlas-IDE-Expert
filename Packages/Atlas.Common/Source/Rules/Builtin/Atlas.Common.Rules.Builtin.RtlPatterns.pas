@@ -269,7 +269,7 @@ begin
       begin
         if Resolver = nil then
         begin
-          Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+          Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
           Resolver.Namespaces := AContext.Namespaces;
         end;
         Local := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, [Name], Tokens[Start].Offset, False);

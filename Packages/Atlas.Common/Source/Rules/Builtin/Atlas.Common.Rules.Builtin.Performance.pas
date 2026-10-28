@@ -1194,7 +1194,7 @@ var
   begin
     if (Resolver = nil) and (AContext.Index <> nil) then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
       Resolver.Namespaces := AContext.Namespaces;
     end;
     Result := TResolvedSignatures.Mode(Resolver, AContext.Tree, AContext.RelativePath, ACall, AArgument);

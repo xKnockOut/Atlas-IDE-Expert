@@ -229,7 +229,7 @@ begin
     FileName := AContext.RelativePath;
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
-  FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   FResolver.Namespaces := AContext.Namespaces;
   FResolver.PinTree(AContext.Tree, FileName);
   FOwnUnit := FResolver.ExtractedUnit(AContext.Tree, FileName);
@@ -617,7 +617,7 @@ var
   begin
     SetLength(Keys, Methods.Count);
     SetLength(Known, Methods.Count);
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
     try
       Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);

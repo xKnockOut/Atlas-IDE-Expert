@@ -1252,14 +1252,19 @@ var
   function AnswersItself(ABlock: TSyntaxNode): Boolean;
   var
     Code: TArray<TPascalToken>;
-    Token: TPascalToken;
     Index: Integer;
+    mTokens: TArray<TPascalToken>;
   begin
     Code := nil;
-    for Token in AContext.Tree.Tokens do
-      if (Token.Offset >= ABlock.StartOffset) and (Token.Offset < ABlock.EndOffset) and
-        not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-        Code := Code + [Token];
+    // Nur die Token des Blocks, binär angesprungen statt die ganze Datei je Handler (#1323).
+    mTokens := AContext.Tree.Tokens;
+    Index := AContext.Tree.FirstTokenFrom(ABlock.StartOffset);
+    while (Index <= High(mTokens)) and (mTokens[Index].Offset < ABlock.EndOffset) do
+    begin
+      if not (mTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+        Code := Code + [mTokens[Index]];
+      Inc(Index);
+    end;
     for Index := 1 to High(Code) - 1 do
       if Code[Index - 1].IsSymbol('.') and SameText(Code[Index].Text, 'Result') and Code[Index + 1].IsSymbol(':=') then
         Exit(True);

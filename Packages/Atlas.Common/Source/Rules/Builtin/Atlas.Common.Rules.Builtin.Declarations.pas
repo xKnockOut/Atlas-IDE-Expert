@@ -498,7 +498,7 @@ begin
   Index := AContext.Index;
   if Index = nil then
     Index := TSymbolIndex.Create;
-  Resolver := TNameResolver.Create(Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(Index, AContext.EnsureUnit, AContext.TreeUnits);
   Names := TList<string>.Create;
   try
     Resolver.Namespaces := AContext.Namespaces;
@@ -626,7 +626,7 @@ begin
   // Erst beim ersten abweichenden Typ: Die meisten Paare unterscheiden sich nicht im Typtext.
   if FResolver = nil then
   begin
-    FResolver := TNameResolver.Create(FContext.Index, FContext.EnsureUnit);
+    FResolver := TNameResolver.Create(FContext.Index, FContext.EnsureUnit, FContext.TreeUnits);
     FResolver.Namespaces := FContext.Namespaces;
     FResolver.PinTree(FContext.Tree, FContext.RelativePath);
     FPinned := True;

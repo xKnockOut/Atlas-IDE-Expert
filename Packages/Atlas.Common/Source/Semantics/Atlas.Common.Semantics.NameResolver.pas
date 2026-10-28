@@ -50,7 +50,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Semantics.Contract;
 
 type
   TResolvedKind = (None, UnitName, Symbol, Local);
@@ -158,6 +159,8 @@ type
   private
     FIndex: ISymbolIndex;
     FEnsureUnit: TEnsureUnitFunc;
+    // Auswertung des geprüften Baums, geteilt mit den anderen Resolvern des Laufs (#1322); nil = selbst auswerten.
+    FTreeUnits: ITreeUnits;
     FNamespaces: TArray<string>;
     FNameFilter: TCandidateNameFilter;
     // Gestaffelte Kandidaten (#616): Stand nach OwnScopeCandidates für UsedScopeCandidates.
@@ -255,8 +258,6 @@ type
     function FindReceiver(AEndOffset: Integer): TSyntaxNode;
     function FindCall(ACalleeEnd: Integer): TSyntaxNode;
     function IsForVar(ANode: TSyntaxNode): Boolean;
-    /// <summary>Index des ersten Tokens von FTree mit Offset &gt;= AOffset (binäre Suche).</summary>
-    function FirstTokenAt(AOffset: Integer): Integer;
     function ResolveFirstAll(const ANames: TArray<string>; out AConsumed: Integer;
       out AResults: TArray<TResolvedSymbol>): Boolean;
     function ResolveNames(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -279,7 +280,6 @@ type
     /// <summary>Unit aus dem Baum samt der Symbole ihrer $I-Dateien aus dem Index (#500).</summary>
     function TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
     function ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer; out AResult: TResolvedSymbol): Boolean;
-    function TokenIndexAt(const APosition: TTextPosition): Integer;
     procedure Prepare(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer);
     procedure AddCandidate(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>;
       const ASymbol: TResolvedSymbol);
@@ -293,7 +293,11 @@ type
     procedure CollectInlineVars(ANode: TSyntaxNode; AList: TList<TResolvedSymbol>;
       ASeen: TDictionary<string, Boolean>);
   public
-    constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc = nil);
+    constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc = nil); overload;
+    /// <summary>Wie Create, aber Bäume, die ATreeUnits hält, wertet der Resolver nicht selbst aus, sondern nimmt
+    /// deren geteilten Stand (#1322). So extrahiert ein Prüflauf die Unit einmal statt je Typabfrage.</summary>
+    constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
+      const ATreeUnits: ITreeUnits); overload;
     destructor Destroy; override;
     /// <summary>Typ eines aufgelösten Namens, Aliase verfolgt (Typen sind ihr eigener Typ, TFoo.Create ein TFoo);
     /// im Rahmen der zuletzt vorbereiteten Stelle (#689 nutzt es für den Grundtyp eines Alias).</summary>
@@ -502,7 +506,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Semantics.Attributes,
-  Atlas.Common.Semantics.SystemIntrinsics;
+  Atlas.Common.Semantics.SystemIntrinsics,
+  Atlas.Common.Semantics.TreeUnits;
 
 const
   TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
@@ -575,14 +580,6 @@ begin
     if (Child.StartOffset < AOffset) and (AOffset <= Child.EndOffset) then
       APending.Push(Child);
   end;
-end;
-
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-    Result := A.Line - B.Line
-  else
-    Result := A.Character - B.Character;
 end;
 
 /// <summary>Kommagetrennte Liste auf oberster Ebene: 'string, TList&lt;A, B&gt;' → ['string', 'TList&lt;A, B&gt;'].</summary>
@@ -829,6 +826,13 @@ begin
   FPins := TList<TPin>.Create;
   FPinCalls := TList<TPinCall>.Create;
   FUnitHelpers := TDictionary<string, TUnitHelpers>.Create;
+end;
+
+constructor TNameResolver.Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
+  const ATreeUnits: ITreeUnits);
+begin
+  Create(AIndex, AEnsureUnit);
+  FTreeUnits := ATreeUnits;
 end;
 
 destructor TNameResolver.Destroy;
@@ -1085,7 +1089,6 @@ function TNameResolver.FromNode(ANode: TSyntaxNode; const AName: string; AKind: 
   AIsParameter: Boolean): TResolvedSymbol;
 var
   Index: Integer;
-  Token: TPascalToken;
 begin
   Result := NoResult;
   Result.Kind := TResolvedKind.Local;
@@ -1096,15 +1099,14 @@ begin
   Result.SelectionRange := Result.Range;
   // Auswahl auf den Namen selbst legen; ab dem ersten Token des Knotens, nicht ab Dateianfang: Das
   // kostete je lokalem Namen einen Lauf über alle Tokens davor (Diagnoselog 15.10.2026, große Units).
-  for Index := FirstTokenAt(ANode.StartOffset) to High(FTree.Tokens) do
+  for Index := FTree.FirstTokenFrom(ANode.StartOffset) to High(FTree.Tokens) do
   begin
-    Token := FTree.Tokens[Index];
-    if Token.Offset >= ANode.EndOffset then
+    if FTree.Tokens[Index].Offset >= ANode.EndOffset then
       Break;
-    if (Token.Kind = TPascalTokenKind.Identifier) and
-      (SameText(Token.Text, AName) or SameText(Token.Text, '&' + AName)) then
+    if (FTree.Tokens[Index].Kind = TPascalTokenKind.Identifier) and
+      (SameText(FTree.Tokens[Index].Text, AName) or SameText(FTree.Tokens[Index].Text, '&' + AName)) then
     begin
-      Result.SelectionRange := TTextRange.Create(Token.StartPos, Token.EndPos);
+      Result.SelectionRange := TTextRange.Create(FTree.Tokens[Index].StartPos, FTree.Tokens[Index].EndPos);
       Break;
     end;
   end;
@@ -2001,27 +2003,9 @@ var
   Index: Integer;
 begin
   // for var I := ...: das Wort nach "for" ist "var".
-  Index := FirstTokenAt(ANode.StartOffset);
+  Index := FTree.FirstTokenFrom(ANode.StartOffset);
   Result := (Index < High(FTree.Tokens)) and FTree.Tokens[Index].IsKeyword('for') and
     FTree.Tokens[Index + 1].IsKeyword('var');
-end;
-
-function TNameResolver.FirstTokenAt(AOffset: Integer): Integer;
-var
-  Low, High_, Middle: Integer;
-begin
-  // Binäre Suche: erstes Token mit Offset >= AOffset; Length(Tokens), wenn es keines gibt.
-  Low := 0;
-  High_ := Length(FTree.Tokens);
-  while Low < High_ do
-  begin
-    Middle := (Low + High_) div 2;
-    if FTree.Tokens[Middle].Offset < AOffset then
-      Low := Middle + 1
-    else
-      High_ := Middle;
-  end;
-  Result := Low;
 end;
 
 function TNameResolver.LookupInlineVars(ANode: TSyntaxNode; const AName: string;
@@ -2630,22 +2614,21 @@ end;
 /// </summary>
 function NodeSource(ATree: TSyntaxTree; ANode: TSyntaxNode): string;
 var
-  Token: TPascalToken;
-  LastEnd: Integer;
+  mIndex, mLastEnd: Integer;
 begin
   Result := '';
-  LastEnd := -1;
-  for Token in ATree.Tokens do
+  mLastEnd := -1;
+  // Ab dem ersten Token des Knotens statt ab Dateianfang und ohne Kopie je Token (#1323).
+  for mIndex := ATree.FirstTokenFrom(ANode.StartOffset) to High(ATree.Tokens) do
   begin
-    if Token.Offset >= ANode.EndOffset then
+    if ATree.Tokens[mIndex].Offset >= ANode.EndOffset then
       Break;
-    if (Token.Offset < ANode.StartOffset) or (Token.Kind in [TPascalTokenKind.Comment,
-      TPascalTokenKind.Directive]) then
+    if ATree.Tokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
       Continue;
-    if (LastEnd >= 0) and (Token.Offset > LastEnd) then
+    if (mLastEnd >= 0) and (ATree.Tokens[mIndex].Offset > mLastEnd) then
       Result := Result + ' ';
-    Result := Result + Token.Text;
-    LastEnd := Token.Offset + Length(Token.Text);
+    Result := Result + ATree.Tokens[mIndex].Text;
+    mLastEnd := ATree.Tokens[mIndex].Offset + Length(ATree.Tokens[mIndex].Text);
   end;
 end;
 
@@ -3286,33 +3269,15 @@ end;
 
 function TNameResolver.TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
 begin
-  Result := MergedUnit(TIndexExtractor.Extract(ATree, AFileName), AFileName);
+  if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+    Result := FTreeUnits.Merged(FIndex, AFileName)
+  else
+    Result := MergedUnit(TIndexExtractor.Extract(ATree, AFileName), AFileName);
 end;
 
 function TNameResolver.MergedUnit(const AExtracted: TUnitIndex; const AFileName: string): TUnitIndex;
-var
-  Indexed: TUnitIndex;
-  Count, Position: Integer;
 begin
-  Result := AExtracted;
-  // Der Baum kennt nur die Datei selbst; Deklarationen aus Include-Dateien stehen im Index.
-  if (FIndex <> nil) and (AFileName <> '') and FIndex.FindFile(AFileName, Indexed) then
-  begin
-    // Eigenes Array (Copy): Result.Symbols teilt es sonst mit AExtracted. Einmal vergrößern statt je
-    // Symbol anhängen (Code-Review P-08).
-    Count := Length(AExtracted.Symbols);
-    Result.Symbols := Copy(AExtracted.Symbols);
-    SetLength(Result.Symbols, Count + Length(Indexed.Symbols));
-    for Position := 0 to High(Indexed.Symbols) do
-      if Indexed.Symbols[Position].FileName <> '' then
-      begin
-        Result.Symbols[Count] := Indexed.Symbols[Position];
-        Inc(Count);
-      end;
-    SetLength(Result.Symbols, Count);
-    Result.Includes := Indexed.Includes;
-  end;
-  Result.PrepareNames;
+  Result := TTreeUnits.Merge(FIndex, AExtracted, AFileName);
 end;
 
 function TNameResolver.PinnedIndex(ATree: TSyntaxTree; const AFileName: string): Integer;
@@ -3332,6 +3297,8 @@ begin
   PinIndex := PinnedIndex(ATree, AFileName);
   if PinIndex >= 0 then
     Result := FPins[PinIndex].Extracted
+  else if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+    Result := FTreeUnits.Extracted(AFileName)
   else
     Result := TIndexExtractor.Extract(ATree, AFileName);
 end;
@@ -3495,8 +3462,16 @@ begin
   Pin := Default(TPin);
   Pin.Tree := ATree;
   Pin.FileName := AFileName;
-  Pin.Extracted := TIndexExtractor.Extract(ATree, AFileName);
-  Pin.Merged := MergedUnit(Pin.Extracted, AFileName);
+  if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+  begin
+    Pin.Extracted := FTreeUnits.Extracted(AFileName);
+    Pin.Merged := FTreeUnits.Merged(FIndex, AFileName);
+  end
+  else
+  begin
+    Pin.Extracted := TIndexExtractor.Extract(ATree, AFileName);
+    Pin.Merged := MergedUnit(Pin.Extracted, AFileName);
+  end;
   Pin.Depth := 1;
   FPins.Add(Pin);
 end;
@@ -4056,27 +4031,6 @@ begin
     Result := NoResult;
 end;
 
-function TNameResolver.TokenIndexAt(const APosition: TTextPosition): Integer;
-var
-  Index: Integer;
-  Token: TPascalToken;
-begin
-  for Index := 0 to High(FTree.Tokens) do
-  begin
-    Token := FTree.Tokens[Index];
-    if ComparePositions(Token.StartPos, APosition) > 0 then
-      Break;
-    // Cursor auf oder direkt hinter dem Bezeichner; C in ^C ist ein Zeichen (#862).
-    if (Token.Kind = TPascalTokenKind.Identifier) and (ComparePositions(APosition, Token.EndPos) <= 0) then
-    begin
-      if FTree.IsControlCharPart(Index) then
-        Exit(-1);
-      Exit(Index);
-    end;
-  end;
-  Result := -1;
-end;
-
 /// <summary>Typ, dessen Methodenzuordnung (procedure IFoo.Bar = MyBar) an AOffset ihr Ziel nennt (#849);
 /// '' an anderen Stellen.</summary>
 function ResolutionOwner(ANode: TSyntaxNode; AOffset: Integer): string;
@@ -4125,7 +4079,7 @@ begin
     Exit;
   FTree := ATree;
   Tokens := ATree.Tokens;
-  Index := TokenIndexAt(APosition);
+  Index := ATree.IdentifierAt(APosition);
   if Index < 0 then
     Exit;
   Names := TList<string>.Create;

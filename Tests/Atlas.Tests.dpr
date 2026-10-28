@@ -100,6 +100,7 @@ uses
   Atlas.Common.Semantics.NameResolver.Tests in 'Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas',
   Atlas.Common.Semantics.Attributes.Tests in 'Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas',
   Atlas.Common.Semantics.NameResolverStage2.Tests in 'Common\Semantics\Atlas.Common.Semantics.NameResolverStage2.Tests.pas',
+  Atlas.Common.Semantics.TreeUnits.Tests in 'Common\Semantics\Atlas.Common.Semantics.TreeUnits.Tests.pas',
   Atlas.Common.Lsp.Definition.Tests in 'Common\Lsp\Atlas.Common.Lsp.Definition.Tests.pas',
   Atlas.Common.Lsp.Attributes.Tests in 'Common\Lsp\Atlas.Common.Lsp.Attributes.Tests.pas',
   Atlas.Common.Lsp.PublishedMembers.Tests in 'Common\Lsp\Atlas.Common.Lsp.PublishedMembers.Tests.pas',
