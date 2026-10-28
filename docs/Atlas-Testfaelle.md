@@ -7860,8 +7860,8 @@ Vorbereitung: Verbindungen zu YouTrack und GitHub mit Token (#1260), Projekt mit
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| ZS1 | `issues.syncState` aus (Vorgabe), in „Meine Issues“ „Beginnen“ und später „Beenden“ | Verhalten wie bisher: Branch, Rückfrage beim Beenden, nichts im Tracker geändert, kein Kommentarfeld in der Vorschau |
-| ZS2 | Optionen › Issue-Tracker: „Zustand und Kommentar …“ an, Verbindung YouTrack wählen, „Werte vom Tracker laden“ | Hinweis „N Zustände und M Felder vom Tracker geladen.“; Klapplisten für Zustandsfeld, Startzustand enthalten die Werte des Trackers; eigene Eingabe bleibt möglich |
+| ZS1 | `issues.syncState` aus, in „Meine Issues“ „Beginnen“ und später „Beenden“ | Verhalten wie bisher: Branch, Rückfrage beim Beenden, nichts im Tracker geändert, kein Kommentarfeld in der Vorschau |
+| ZS2 | Optionen › Issue-Tracker: „Zustand und Kommentar …“ an (Vorgabe), Verbindung YouTrack wählen, „Werte vom Tracker laden“ | Hinweis „N Zustände und M Felder vom Tracker geladen.“; Klapplisten für Zustandsfeld, Startzustand enthalten die Werte des Trackers; eigene Eingabe bleibt möglich |
 | ZS3 | Startzustand „In Arbeit“, „Mir zuweisen“ an, Startkommentar `Beginne in {branch}`; YouTrack-Issue „Beginnen“ | Branch wird angelegt; Issue steht auf „In Arbeit“, ist mir zugewiesen, Kommentar mit dem Branch-Namen; eine Zeile „Atlas: ATL-… im Tracker nachgeführt (…)“ in der Meldungsansicht (**Abnahme**) |
 | ZS4 | Token mit Leserechten, „Beginnen“ | Branch bleibt; Meldungszeile „… nicht nachgeführt, der Branch bleibt. Keine Schreibrechte für ATL-… (403).“ |
 | ZS5 | „Beenden“ über die Statuszeile `atlas.issue`, das Kontextmenü der Zeile und den Knopf „Beenden …“ in der Vorschau | Jeweils Dialog „ATL-… beenden“ mit Zielzustand (Zielzustände plus „Zustand nicht ändern“), Kommentar mit {branch}, {commits}, {pr} gefüllt, Übergabe (**Abnahme**) |
