@@ -360,6 +360,7 @@ contains
   Atlas.IDE.Settings.Transfer in 'Source\IDE\Settings\Atlas.IDE.Settings.Transfer.pas',
   Atlas.IDE.Settings.Experimental in 'Source\IDE\Settings\Atlas.IDE.Settings.Experimental.pas',
   Atlas.Core.Settings.History in 'Source\Core\Settings\Atlas.Core.Settings.History.pas',
+  Atlas.Core.Settings.Renames in 'Source\Core\Settings\Atlas.Core.Settings.Renames.pas',
   Atlas.Core.Settings.TeamFile in 'Source\Core\Settings\Atlas.Core.Settings.TeamFile.pas',
   Atlas.Core.Ci.Contract in 'Source\Core\Ci\Atlas.Core.Ci.Contract.pas',
   Atlas.Core.Ci.Internals.Addresses in 'Source\Core\Ci\Atlas.Core.Ci.Internals.Addresses.pas',

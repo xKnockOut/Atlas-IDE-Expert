@@ -7,8 +7,8 @@
 // Statusfeld (#591) und das Commit-Präfix.
 // - Projekt: das in „Projekte“ gewählte, sonst das aktive der IDE, sonst das
 //   oberste der Liste. Tracker (Anbieter, Adresse, Projekt) aus dessen .atlas
-//   (#486, Abschnitt tracker); welcomePage.issues.tracker ersetzt den
-//   Anbieter, welcomePage.issues.query die Abfrage.
+//   (#486, Abschnitt tracker); issues.tracker ersetzt den
+//   Anbieter, issues.query die Abfrage.
 // - Abfrage nur mit welcomePage.issues (Vorgabe aus; sonst kein Netz), beim
 //   Anzeigen, höchstens alle 10 Minuten (gemerkt im Abschnitt "issues" der
 //   Projekt-Zusammenfassung), im Hintergrund mit 5 s. Ohne Token im
@@ -19,7 +19,7 @@
 //   wechselt mit svn switch; ein vorhandener Branch wird nur ausgecheckt. Bei
 //   lokalen Änderungen fragt Atlas vorher. start=remember merkt nur die
 //   Kennung. Danach öffnet Atlas das Projekt.
-// - Commit-Präfix (welcomePage.issues.commitPattern), solange ein Issue
+// - Commit-Präfix (issues.commitPattern), solange ein Issue
 //   aktuell ist: im Commit-Dialog der IDE (das Nachrichtenfeld wird einmal je
 //   Dialog vorne ergänzt) und, nach einmaliger Zustimmung je Projekt, über den
 //   Git-Hook prepare-commit-msg (Atlas.Core.Tracker.CommitHook).
@@ -454,7 +454,7 @@ begin
     Team := TAtlasIdeTeamFile.ForProject(AProject);
     Settings := TAtlasIdeSettings.Current;
     Result := TAtlasWelcomeIssues.TargetFor(Team.Tracker.Provider, Team.Tracker.Url, Team.Tracker.Project,
-      Settings.WelcomePageIssuesTracker, Settings.WelcomePageIssuesQuery);
+      Settings.IssuesTracker, Settings.IssuesQuery);
   except
     // .atlas nicht lesbar: ohne Tracker.
     on E: Exception do
@@ -515,9 +515,9 @@ var
   Settings: TAtlasPluginSettings;
 begin
   Settings := TAtlasIdeSettings.Current;
-  Result := TAtlasIssuesOptions.Create(TAtlasWelcomeIssues.StartOf(Settings.WelcomePageIssuesStart),
-    Settings.WelcomePageIssuesBranchPattern, Settings.WelcomePageIssuesBranchBase,
-    Settings.WelcomePageIssuesCommitPattern);
+  Result := TAtlasIssuesOptions.Create(TAtlasWelcomeIssues.StartOf(Settings.IssuesStart),
+    Settings.IssuesBranchPattern, Settings.IssuesBranchBase,
+    Settings.IssuesCommitPattern);
 end;
 
 function TAtlasIdeIssues.ViewOf(const AProject: string): TAtlasIssuesView;
@@ -1137,7 +1137,7 @@ begin
         Team := TAtlasIdeTeamFile.ForProject(Project);
         Settings := TAtlasIdeSettings.Current;
         Target := TAtlasWelcomeIssues.TargetFor(Team.Tracker.Provider, Team.Tracker.Url, Team.Tracker.Project,
-          Settings.WelcomePageIssuesTracker, Settings.WelcomePageIssuesQuery);
+          Settings.IssuesTracker, Settings.IssuesQuery);
       end;
       Provider := ProviderOf(Target.Provider);
       if (Provider = nil) or (Target.Server = '') then

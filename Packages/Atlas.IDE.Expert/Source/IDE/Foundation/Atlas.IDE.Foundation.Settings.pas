@@ -19,6 +19,10 @@
 // Experimentelle Funktionen (#834): Ohne Hauptschalter experimental.enabled
 // liefert Current für jede Einstellung mit x-experimental die Vorgabe; Stored
 // behält den gespeicherten Wert.
+// Umbenannte Einstellungen (#1280, x-renamedFrom): Vor dem ersten Lesen
+// übernimmt TAtlasSettingsRenames frühere Registry-Namen (z. B.
+// WelcomePageIssuesQuery → IssuesQuery) und entfernt sie; jede Übernahme
+// steht einmal im Protokoll.
 
 interface
 
@@ -50,6 +54,9 @@ type
     FExperimental: TArray<TAtlasCatalogEntry>;
     FExperimentalRead: Boolean;
     class procedure EnsureLoaded; static;
+    /// <summary>Umbenannte Einstellungen (x-renamedFrom, #1280) in der Registry übernehmen; jede Übernahme steht
+    /// einmal im Protokoll.</summary>
+    class procedure ApplyRenames; static;
     /// <summary>Gespeichert, darüber Sitzungswerte, ohne Hauptschalter experimentelle Werte auf Vorgabe.</summary>
     class function Effective: TAtlasPluginSettings; static;
     class procedure Changed; static;
@@ -154,6 +161,7 @@ uses
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Scopes,
+  Atlas.Core.Settings.Renames,
   Atlas.Core.Settings.Experimental,
   Atlas.Core.Settings.StatusBarItems,
   Atlas.Core.Diagnostics.Guard,
@@ -161,7 +169,7 @@ uses
   Atlas.UI.Strings;
 
 type
-  TRegistryStore = class(TInterfacedObject, IAtlasSettingsStore)
+  TRegistryStore = class(TInterfacedObject, IAtlasSettingsStore, IAtlasSettingsNames)
   private
     FRegistry: TRegistry;
     FWritable: Boolean;
@@ -172,6 +180,8 @@ type
     procedure WriteInteger(const AName: string; AValue: Integer);
     function ReadString(const AName, ADefault: string): string;
     procedure WriteString(const AName, AValue: string);
+    function Contains(const AName: string): Boolean;
+    procedure Remove(const AName: string);
   end;
 
 { TRegistryStore }
@@ -248,6 +258,30 @@ begin
   end;
 end;
 
+function TRegistryStore.Contains(const AName: string): Boolean;
+begin
+  try
+    Result := (FRegistry.CurrentKey <> 0) and FRegistry.ValueExists(AName);
+  except
+    on ERegistryException do
+      Result := False;
+  end;
+end;
+
+procedure TRegistryStore.Remove(const AName: string);
+begin
+  if not FWritable then
+    Exit;
+  try
+    if FRegistry.ValueExists(AName) then
+      FRegistry.DeleteValue(AName);
+  except
+    // Ohne Schreibrecht bleibt der alte Wert; die Übernahme versucht es beim nächsten Start erneut.
+    on ERegistryException do
+      ;
+  end;
+end;
+
 { TAtlasIdeSettings }
 
 class function TAtlasIdeSettings.GlobalFile: string;
@@ -304,6 +338,7 @@ begin
   if FLoaded then
     Exit;
   FStored := TAtlasPluginSettings.Defaults;
+  ApplyRenames;
   Readable := LoadGlobal(Content);
   Routed := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(False), Content.Text);
   Store := Routed;
@@ -313,6 +348,24 @@ begin
   FStored.Load(Store);
   FLoaded := True;
   FEffective := Effective;
+end;
+
+class procedure TAtlasIdeSettings.ApplyRenames;
+var
+  Registry: TRegistryStore;
+  Store: IAtlasSettingsStore;
+  Catalog: TAtlasSettingsCatalog;
+  Rename: TAtlasSettingsRename;
+begin
+  Registry := TRegistryStore.Create(True);
+  Store := Registry;
+  Catalog := TAtlasSettingsCatalog.CreateDefault;
+  try
+    for Rename in TAtlasSettingsRenames.Apply(Store, Registry, Catalog) do
+      TAtlasGuard.Log(Rename.LogLine);
+  finally
+    Catalog.Free;
+  end;
 end;
 
 class function TAtlasIdeSettings.ExperimentalEntries: TArray<TAtlasCatalogEntry>;

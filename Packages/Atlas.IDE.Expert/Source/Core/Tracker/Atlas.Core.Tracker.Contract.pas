@@ -104,7 +104,7 @@ type
     function Name: string;
     /// <summary>Anzeigename, z. B. "GitHub".</summary>
     function Caption: string;
-    /// <summary>Abfrage, wenn welcomePage.issues.query leer ist.</summary>
+    /// <summary>Abfrage, wenn issues.query leer ist.</summary>
     function DefaultQuery: string;
     /// <summary>Server der Schnittstelle (Origin), an den das Token gehen darf; '' ohne.</summary>
     function ApiServer(const ATarget: TAtlasTrackerTarget): string;

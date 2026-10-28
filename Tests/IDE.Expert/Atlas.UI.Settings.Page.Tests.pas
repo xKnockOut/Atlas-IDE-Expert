@@ -116,6 +116,10 @@ type
     procedure CallHierarchyDiagramRoundTrip;
     [Test]
     procedure WelcomeSettingsRoundTrip;
+    /// <summary>#1280: Tracker-Einstellungen auf der eigenen Seite Issue-Tracker; die Willkommensseite behält den
+    /// Schalter „Meine Issues“ und springt mit „Tracker-Einstellungen …“ dorthin.</summary>
+    [Test]
+    procedure IssuesTrackerOwnPage;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
     [Test]
@@ -316,7 +320,7 @@ begin
     Page.Parent := Host;
     Page.HandleNeeded;
     Areas := TopLevelNodes(Page);
-    Assert.AreEqual(17, Integer(Length(Areas)));
+    Assert.AreEqual(18, Integer(Length(Areas)));
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Areas[0].Text);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCompiler), Areas[6].Text);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRules), Areas[7].Text);
@@ -325,8 +329,9 @@ begin
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUndo), Areas[13].Text);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Areas[14].Text);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Areas[15].Text);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Areas[16].Text);
-    Assert.IsTrue(Page.Pages.PageCount > 16, 'Unterpunkte haben eigene Seiten');
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabIssues), Areas[16].Text, 'eigener Bereich (#1280)');
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Areas[17].Text);
+    Assert.IsTrue(Page.Pages.PageCount > 17, 'Unterpunkte haben eigene Seiten');
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
       Assert.IsTrue(Page.Pages.Pages[Index].ControlCount > 0, Page.Pages.Pages[Index].Caption);
@@ -1899,6 +1904,46 @@ begin
   end;
 end;
 
+procedure TAtlasSettingsPageTests.IssuesTrackerOwnPage;
+var
+  Host: TForm;
+  Page: TAtlasSettingsPage;
+  Areas: TArray<TTreeNode>;
+  Issues: TTreeNode;
+  Tracker: TTabSheet;
+begin
+  TAtlasSettingsPage.ForgetTreeState;
+  Host := TForm.CreateNew(nil);
+  try
+    Page := TAtlasSettingsPage.Create(Host);
+    Page.Parent := Host;
+    Page.HandleNeeded;
+    Areas := TopLevelNodes(Page);
+    Issues := Areas[16];
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabIssues), Issues.Text);
+    // Alle Tracker-Einstellungen auf dem Hauptknoten der Seite Issue-Tracker.
+    Tracker := SheetOf(Page.IssuesTracker);
+    Assert.IsNotNull(Tracker);
+    Assert.AreEqual('', Page.NodeOfSheet(Tracker));
+    Assert.IsTrue(TreeNodeOf(Page, Tracker) = Issues, 'Hauptknoten Issue-Tracker');
+    Assert.IsTrue(SheetOf(Page.IssuesQuery) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesStart) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesBranchPattern) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesBranchBase) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesCommitPattern) = Tracker);
+    Assert.IsTrue(SheetOf(Page.TrackerLogin) = Tracker);
+    // Die Willkommensseite behält nur den Schalter, daneben der Weg zur Seite.
+    Assert.IsFalse(SheetOf(Page.WelcomeIssues) = Tracker);
+    Assert.IsTrue(SheetOf(Page.WelcomeIssuesLink) = SheetOf(Page.WelcomeIssues));
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesLink), Page.WelcomeIssuesLink.Caption);
+    Page.Pages.ActivePage := SheetOf(Page.WelcomeIssues);
+    Page.WelcomeIssuesLink.Click;
+    Assert.IsTrue(Page.Pages.ActivePage = Tracker, 'Link zeigt die Seite Issue-Tracker');
+  finally
+    Host.Free;
+  end;
+end;
+
 procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;
 var
   Page: TAtlasSettingsPage;
@@ -1945,12 +1990,12 @@ begin
     Assert.IsTrue(Page.CiLogin.Checked);
     // #765: Meine Issues aus, Tracker aus der .atlas, Branch anlegen, Präfix „{kennung} “, Befehl Atlas.TrackerLogin an.
     Assert.IsFalse(Page.WelcomeIssues.Checked);
-    Assert.AreEqual(0, Page.WelcomeIssuesTracker.Choice);
-    Assert.AreEqual('', Page.WelcomeIssuesQuery.Text);
-    Assert.AreEqual(0, Page.WelcomeIssuesStart.Choice);
-    Assert.AreEqual('', Page.WelcomeIssuesBranchPattern.Text);
-    Assert.AreEqual('', Page.WelcomeIssuesBranchBase.Text);
-    Assert.AreEqual('{kennung} ', Page.WelcomeIssuesCommitPattern.Text);
+    Assert.AreEqual(0, Page.IssuesTracker.Choice);
+    Assert.AreEqual('', Page.IssuesQuery.Text);
+    Assert.AreEqual(0, Page.IssuesStart.Choice);
+    Assert.AreEqual('', Page.IssuesBranchPattern.Text);
+    Assert.AreEqual('', Page.IssuesBranchBase.Text);
+    Assert.AreEqual('{kennung} ', Page.IssuesCommitPattern.Text);
     Assert.IsTrue(Page.TrackerLogin.Checked);
     // #764: Schnellaktionen an, alle sechs Knöpfe, wt.exe, Strg+B und Strg+T.
     Assert.IsTrue(Page.WelcomeQuickActions.Checked);
@@ -2001,12 +2046,12 @@ begin
     Page.WelcomeTestsCiNotify.Checked := False;
     Page.CiLogin.Checked := False;
     Page.WelcomeIssues.Checked := True;
-    Page.WelcomeIssuesTracker.Choice := 2;
-    Page.WelcomeIssuesQuery.Text := '  for: me State: {In Progress} ';
-    Page.WelcomeIssuesStart.Choice := 1;
-    Page.WelcomeIssuesBranchPattern.Text := ' {kennung}/{kurztitel} ';
-    Page.WelcomeIssuesBranchBase.Text := ' develop ';
-    Page.WelcomeIssuesCommitPattern.Text := '[{kennung}] ';
+    Page.IssuesTracker.Choice := 2;
+    Page.IssuesQuery.Text := '  for: me State: {In Progress} ';
+    Page.IssuesStart.Choice := 1;
+    Page.IssuesBranchPattern.Text := ' {kennung}/{kurztitel} ';
+    Page.IssuesBranchBase.Text := ' develop ';
+    Page.IssuesCommitPattern.Text := '[{kennung}] ';
     Page.TrackerLogin.Checked := False;
     Page.WelcomeQuickActions.Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked := False;
@@ -2065,12 +2110,12 @@ begin
     Assert.IsFalse(Saved.WelcomePageTestsCiNotify);
     Assert.IsFalse(Saved.CiLogin);
     Assert.IsTrue(Saved.WelcomePageIssues);
-    Assert.AreEqual('youtrack', Saved.WelcomePageIssuesTracker);
-    Assert.AreEqual('for: me State: {In Progress}', Saved.WelcomePageIssuesQuery);
-    Assert.AreEqual('remember', Saved.WelcomePageIssuesStart);
-    Assert.AreEqual('{kennung}/{kurztitel}', Saved.WelcomePageIssuesBranchPattern);
-    Assert.AreEqual('develop', Saved.WelcomePageIssuesBranchBase);
-    Assert.AreEqual('[{kennung}] ', Saved.WelcomePageIssuesCommitPattern, 'Leerzeichen am Ende bleibt');
+    Assert.AreEqual('youtrack', Saved.IssuesTracker);
+    Assert.AreEqual('for: me State: {In Progress}', Saved.IssuesQuery);
+    Assert.AreEqual('remember', Saved.IssuesStart);
+    Assert.AreEqual('{kennung}/{kurztitel}', Saved.IssuesBranchPattern);
+    Assert.AreEqual('develop', Saved.IssuesBranchBase);
+    Assert.AreEqual('[{kennung}] ', Saved.IssuesCommitPattern, 'Leerzeichen am Ende bleibt');
     Assert.IsFalse(Saved.TrackerLogin);
     Assert.IsFalse(Saved.WelcomePageQuickActions);
     Assert.AreEqual('build,tests,pull,folder,tasks', Saved.WelcomePageQuickActionsItems, 'ohne run und console');
@@ -2098,10 +2143,10 @@ begin
     Assert.IsFalse(Page.WelcomeTestsCiNotify.Checked);
     Assert.IsFalse(Page.CiLogin.Checked);
     Assert.IsTrue(Page.WelcomeIssues.Checked);
-    Assert.AreEqual(2, Page.WelcomeIssuesTracker.Choice);
-    Assert.AreEqual(1, Page.WelcomeIssuesStart.Choice);
-    Assert.AreEqual('develop', Page.WelcomeIssuesBranchBase.Text);
-    Assert.AreEqual('[{kennung}] ', Page.WelcomeIssuesCommitPattern.Text);
+    Assert.AreEqual(2, Page.IssuesTracker.Choice);
+    Assert.AreEqual(1, Page.IssuesStart.Choice);
+    Assert.AreEqual('develop', Page.IssuesBranchBase.Text);
+    Assert.AreEqual('[{kennung}] ', Page.IssuesCommitPattern.Text);
     Assert.IsFalse(Page.TrackerLogin.Checked);
     Assert.IsFalse(Page.WelcomeQuickActions.Checked);
     Assert.IsFalse(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);

@@ -24,6 +24,8 @@
 // Projekts, settings.json über „Weitere globale Einstellungen“) mit einem Knoten je Gruppe; im Hauptknoten der
 // Weg dorthin (OnRulesProject, OnRulesGlobal). Unterknoten „Prüffenster“ (problems.window*, problems.live),
 // „Compiler vorab“ (problems.compilerMerge, problems.showCompilerCode) und „Profile und Baseline“.
+// Bereich Issue-Tracker (#1280): Tracker, Abfrage, Start-Optionen, Muster und Zugang (issues.*); auf der
+// Willkommensseite bleibt nur die Sektion an/aus mit dem Sprung „Tracker-Einstellungen …“.
 
 interface
 
@@ -623,13 +625,14 @@ type
     FWelcomeTestsCiNotify: TCheckBox;
     FCiLogin: TCheckBox;
     FWelcomeIssues: TCheckBox;
-    FWelcomeIssuesTracker: TAtlasChoiceBox;
-    FWelcomeIssuesQuery: TEdit;
-    FWelcomeIssuesStart: TAtlasChoiceBox;
-    FWelcomeIssuesBranchPattern: TEdit;
-    FWelcomeIssuesBranchBase: TEdit;
-    FWelcomeIssuesCommitPattern: TEdit;
+    FIssuesTracker: TAtlasChoiceBox;
+    FIssuesQuery: TEdit;
+    FIssuesStart: TAtlasChoiceBox;
+    FIssuesBranchPattern: TEdit;
+    FIssuesBranchBase: TEdit;
+    FIssuesCommitPattern: TEdit;
     FTrackerLogin: TCheckBox;
+    FWelcomeIssuesLink: TButton;
     FWelcomeQuickActions: TCheckBox;
     FWelcomeQuickActionsItems: array[TAtlasQuickAction] of TCheckBox;
     FWelcomeQuickActionsConsole: TEdit;
@@ -793,6 +796,8 @@ type
     procedure AddWelcomeLayoutButtons;
     procedure WelcomeLayoutChange(Sender: TObject);
     procedure WelcomeLayoutNewClick(Sender: TObject);
+    /// <summary>„Tracker-Einstellungen …“ (#1280): zeigt die Seite Issue-Tracker.</summary>
+    procedure WelcomeIssuesLinkClick(Sender: TObject);
     procedure WelcomeLayoutRenameClick(Sender: TObject);
     procedure WelcomeLayoutDeleteClick(Sender: TObject);
     /// <summary>Ob das Häkchen bzw. die Auswahl des Bereichs AId ihn zeigt („Neu in Atlas“: nicht „Aus“).
@@ -838,6 +843,8 @@ type
     procedure AddUndoSection;
     procedure AddUnitSearchSection;
     procedure AddWelcomeSection;
+    /// <summary>Seite Issue-Tracker (#1280): Anbieter, Abfrage, „Beginnen“, Muster und Zugang (issues.*).</summary>
+    procedure AddIssuesSection;
     procedure AddUpdatesSection;
     procedure AddBugReportSection;
     procedure IndexRefreshClick(Sender: TObject);
@@ -1082,13 +1089,14 @@ type
     property WelcomeTestsCiNotify: TCheckBox read FWelcomeTestsCiNotify;
     property CiLogin: TCheckBox read FCiLogin;
     property WelcomeIssues: TCheckBox read FWelcomeIssues;
-    property WelcomeIssuesTracker: TAtlasChoiceBox read FWelcomeIssuesTracker;
-    property WelcomeIssuesQuery: TEdit read FWelcomeIssuesQuery;
-    property WelcomeIssuesStart: TAtlasChoiceBox read FWelcomeIssuesStart;
-    property WelcomeIssuesBranchPattern: TEdit read FWelcomeIssuesBranchPattern;
-    property WelcomeIssuesBranchBase: TEdit read FWelcomeIssuesBranchBase;
-    property WelcomeIssuesCommitPattern: TEdit read FWelcomeIssuesCommitPattern;
+    property IssuesTracker: TAtlasChoiceBox read FIssuesTracker;
+    property IssuesQuery: TEdit read FIssuesQuery;
+    property IssuesStart: TAtlasChoiceBox read FIssuesStart;
+    property IssuesBranchPattern: TEdit read FIssuesBranchPattern;
+    property IssuesBranchBase: TEdit read FIssuesBranchBase;
+    property IssuesCommitPattern: TEdit read FIssuesCommitPattern;
     property TrackerLogin: TCheckBox read FTrackerLogin;
+    property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Schnellaktionen je Projekt (#764).</summary>
     property WelcomeQuickActions: TCheckBox read FWelcomeQuickActions;
     function WelcomeQuickActionsItem(AAction: TAtlasQuickAction): TCheckBox;
@@ -2245,6 +2253,10 @@ begin
   AddSheet(TAtlasTextId.SettingsTabWelcome);
   AddWelcomeSection;
 
+  // Issue-Tracker (#1280): eigener Bereich; die Willkommensseite schaltet nur, ob „Meine Issues“ erscheint.
+  AddSheet(TAtlasTextId.SettingsTabIssues);
+  AddIssuesSection;
+
   AddSheet(TAtlasTextId.SettingsTabTeamFile);
   AddTeamFileSection;
 
@@ -2507,18 +2519,17 @@ begin
   FWelcomeTestsCiInterval := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiInterval));
   FWelcomeTestsCiNotify := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiNotify));
   FCiLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCiLogin));
-  // Meine Issues (#765): Tracker aus .atlas, Abfrage, „Beginnen“ und Muster.
+  // Meine Issues (#765): nur der Bereich; Tracker, Abfrage und Muster stehen auf der Seite Issue-Tracker (#1280).
   FWelcomeIssues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssues));
-  FWelcomeIssuesTracker := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesTracker),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesTrackerTeam), 'GitHub', 'YouTrack']);
-  FWelcomeIssuesQuery := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesQuery));
-  FWelcomeIssuesStart := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesStart),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesStartBranch),
-    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesStartRemember)]);
-  FWelcomeIssuesBranchPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesBranchPattern));
-  FWelcomeIssuesBranchBase := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesBranchBase));
-  FWelcomeIssuesCommitPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesCommitPattern));
-  FTrackerLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackerLogin));
+  Panel := AddPanel(32);
+  FWelcomeIssuesLink := TButton.Create(Self);
+  FWelcomeIssuesLink.Parent := Panel;
+  FWelcomeIssuesLink.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesLink);
+  FWelcomeIssuesLink.Left := 0;
+  FWelcomeIssuesLink.Top := 3;
+  FWelcomeIssuesLink.Width := 200;
+  FWelcomeIssuesLink.OnClick := WelcomeIssuesLinkClick;
+  Attach(Panel, FWelcomeIssues);
   // Schnellaktionen je Projekt (#764): Schalter, je Knopf ein Häkchen, Programm für „Konsole“, zwei Tasten.
   FWelcomeQuickActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActions));
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
@@ -2572,6 +2583,27 @@ begin
   // Karte „Projekt für Atlas einrichten“ und Knöpfe „Neu mit Atlas“ (#759).
   FWelcomeProjectSetup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjectSetup));
   FWelcomeNewFromTemplate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeNewFromTemplate));
+end;
+
+procedure TAtlasSettingsPage.AddIssuesSection;
+begin
+  // Anbieter (Vorgabe aus der .atlas), Abfrage, „Beginnen“, Muster für Branch und Commit, Zugang (#765).
+  FIssuesTracker := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesTracker),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsIssuesTrackerTeam), 'GitHub', 'YouTrack']);
+  FIssuesQuery := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQuery));
+  FIssuesStart := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesStart),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsIssuesStartBranch),
+    TAtlasStrings.Text(TAtlasTextId.SettingsIssuesStartRemember)]);
+  FIssuesBranchPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBranchPattern));
+  FIssuesBranchBase := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBranchBase));
+  FIssuesCommitPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCommitPattern));
+  FTrackerLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackerLogin));
+end;
+
+procedure TAtlasSettingsPage.WelcomeIssuesLinkClick(Sender: TObject);
+begin
+  // Hauptknoten der Seite Issue-Tracker: dort steht der Anbieter.
+  SelectPage(PageOf(FIssuesTracker));
 end;
 
 procedure TAtlasSettingsPage.AddWelcomeLayoutButtons;
@@ -3446,12 +3478,12 @@ begin
   FMarks.Bind(FWelcomeProjectSetup, ['WelcomePageProjectSetup']);
   FMarks.Bind(FWelcomeNewFromTemplate, ['WelcomePageNewFromTemplate']);
   FMarks.Bind(FWelcomeIssues, ['WelcomePageIssues']);
-  FMarks.Bind(FWelcomeIssuesTracker, ['WelcomePageIssuesTracker']);
-  FMarks.Bind(FWelcomeIssuesQuery, ['WelcomePageIssuesQuery']);
-  FMarks.Bind(FWelcomeIssuesStart, ['WelcomePageIssuesStart']);
-  FMarks.Bind(FWelcomeIssuesBranchPattern, ['WelcomePageIssuesBranchPattern']);
-  FMarks.Bind(FWelcomeIssuesBranchBase, ['WelcomePageIssuesBranchBase']);
-  FMarks.Bind(FWelcomeIssuesCommitPattern, ['WelcomePageIssuesCommitPattern']);
+  FMarks.Bind(FIssuesTracker, ['IssuesTracker']);
+  FMarks.Bind(FIssuesQuery, ['IssuesQuery']);
+  FMarks.Bind(FIssuesStart, ['IssuesStart']);
+  FMarks.Bind(FIssuesBranchPattern, ['IssuesBranchPattern']);
+  FMarks.Bind(FIssuesBranchBase, ['IssuesBranchBase']);
+  FMarks.Bind(FIssuesCommitPattern, ['IssuesCommitPattern']);
   FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
@@ -5695,20 +5727,20 @@ begin
   FWelcomeTestsCiNotify.Checked := ASettings.WelcomePageTestsCiNotify;
   FCiLogin.Checked := ASettings.CiLogin;
   FWelcomeIssues.Checked := ASettings.WelcomePageIssues;
-  if SameText(ASettings.WelcomePageIssuesTracker, 'github') then
-    FWelcomeIssuesTracker.Choice := 1
-  else if SameText(ASettings.WelcomePageIssuesTracker, 'youtrack') then
-    FWelcomeIssuesTracker.Choice := 2
+  if SameText(ASettings.IssuesTracker, 'github') then
+    FIssuesTracker.Choice := 1
+  else if SameText(ASettings.IssuesTracker, 'youtrack') then
+    FIssuesTracker.Choice := 2
   else
-    FWelcomeIssuesTracker.Choice := 0;
-  FWelcomeIssuesQuery.Text := ASettings.WelcomePageIssuesQuery;
-  if SameText(ASettings.WelcomePageIssuesStart, TAtlasPluginSettings.IssuesStartRemember) then
-    FWelcomeIssuesStart.Choice := 1
+    FIssuesTracker.Choice := 0;
+  FIssuesQuery.Text := ASettings.IssuesQuery;
+  if SameText(ASettings.IssuesStart, TAtlasPluginSettings.IssuesStartRemember) then
+    FIssuesStart.Choice := 1
   else
-    FWelcomeIssuesStart.Choice := 0;
-  FWelcomeIssuesBranchPattern.Text := ASettings.WelcomePageIssuesBranchPattern;
-  FWelcomeIssuesBranchBase.Text := ASettings.WelcomePageIssuesBranchBase;
-  FWelcomeIssuesCommitPattern.Text := ASettings.WelcomePageIssuesCommitPattern;
+    FIssuesStart.Choice := 0;
+  FIssuesBranchPattern.Text := ASettings.IssuesBranchPattern;
+  FIssuesBranchBase.Text := ASettings.IssuesBranchBase;
+  FIssuesCommitPattern.Text := ASettings.IssuesCommitPattern;
   FTrackerLogin.Checked := ASettings.TrackerLogin;
   FWelcomeQuickActions.Checked := ASettings.WelcomePageQuickActions;
   Items := TAtlasWelcomeQuickActions.ParseItems(ASettings.WelcomePageQuickActionsItems);
@@ -6246,23 +6278,23 @@ begin
   ASettings.WelcomePageTestsCiNotify := FWelcomeTestsCiNotify.Checked;
   ASettings.CiLogin := FCiLogin.Checked;
   ASettings.WelcomePageIssues := FWelcomeIssues.Checked;
-  case FWelcomeIssuesTracker.Choice of
+  case FIssuesTracker.Choice of
     1:
-      ASettings.WelcomePageIssuesTracker := 'github';
+      ASettings.IssuesTracker := 'github';
     2:
-      ASettings.WelcomePageIssuesTracker := 'youtrack';
+      ASettings.IssuesTracker := 'youtrack';
   else
-    ASettings.WelcomePageIssuesTracker := '';
+    ASettings.IssuesTracker := '';
   end;
-  ASettings.WelcomePageIssuesQuery := Trim(FWelcomeIssuesQuery.Text);
-  if FWelcomeIssuesStart.Choice = 1 then
-    ASettings.WelcomePageIssuesStart := TAtlasPluginSettings.IssuesStartRemember
+  ASettings.IssuesQuery := Trim(FIssuesQuery.Text);
+  if FIssuesStart.Choice = 1 then
+    ASettings.IssuesStart := TAtlasPluginSettings.IssuesStartRemember
   else
-    ASettings.WelcomePageIssuesStart := TAtlasPluginSettings.IssuesStartBranch;
-  ASettings.WelcomePageIssuesBranchPattern := Trim(FWelcomeIssuesBranchPattern.Text);
-  ASettings.WelcomePageIssuesBranchBase := Trim(FWelcomeIssuesBranchBase.Text);
+    ASettings.IssuesStart := TAtlasPluginSettings.IssuesStartBranch;
+  ASettings.IssuesBranchPattern := Trim(FIssuesBranchPattern.Text);
+  ASettings.IssuesBranchBase := Trim(FIssuesBranchBase.Text);
   // Nicht gekürzt: Das Leerzeichen am Ende von "{kennung} " trennt Kennung und Nachricht.
-  ASettings.WelcomePageIssuesCommitPattern := FWelcomeIssuesCommitPattern.Text;
+  ASettings.IssuesCommitPattern := FIssuesCommitPattern.Text;
   ASettings.TrackerLogin := FTrackerLogin.Checked;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
