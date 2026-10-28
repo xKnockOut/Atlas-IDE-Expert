@@ -364,7 +364,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
-| `issues.connections` | global (settings.json) | array<object> | `[]` |  | Persönliche Tracker-Verbindungen (#1260), z. B. das Firmen-YouTrack und GitHub nebeneinander. Das Token steht nie hier, sondern im Anmeldespeicher von Windows (Atlas:tracker:<Server>, „Token hinterlegen …“). |
+| `issues.connections` | global (settings.json) | array<object> | `` |  | Persönliche Tracker-Verbindungen (#1260), z. B. das Firmen-YouTrack und GitHub nebeneinander. Das Token steht nie hier, sondern im Anmeldespeicher von Windows (Atlas:tracker:<Server>, „Token hinterlegen …“). |
 
 ## Beispiel
 
