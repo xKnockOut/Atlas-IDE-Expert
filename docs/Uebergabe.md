@@ -1440,3 +1440,7 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Bewusst so:** Debug-Notiz ohne lokale Variablen und Überwachte Ausdrücke (das Auslesen über den Evaluator gehört zu #582 selbst); der Exception-Verlauf nimmt höchstens 20 Einträge.
 - **Beim Delphi-Build prüfen:** `IOTAProcess.ProcessId`, `TCustomForm.GetFormImage` im Designer, Combo- und ListView-Einträge erst in `CreateWnd` des Dialogs, `TAtlasWindowPicker` (Takt bleibt bis zum Freigeben, `Finish` läuft in seinem OnTimer), anonyme Methode `KeyOf` im Eingabe-Record, `TProc<TAtlasTrackerTarget, string>` als Hook.
 - **Handtests:** IA1–IA20 in `docs/Atlas-Testfaelle.md`.
+
+## CompilerVersion ohne installiertes Delphi (#1321, 28.10.2026, Branch `claude/project-thread-wztmf0` auf Prep-v1.2.0, Entwurfs-PR #1334, ungebaut)
+- `TDelphiVersions.Choose` liefert ohne jede Installation die erwartete Version (delphiVersion, sonst zur ProjectVersion, sonst `LatestKnown` 37.0); `Shell.Workspace` legt die Installation nur bei `IsInstalled` an, die Version bleibt für Symbole und Cache.
+- Geprüft unter FPC trunk: DelphiVersions-Tests 10/10, F14 ohne Befund (Gegenprobe vorher 2 × syntax), Skia4Delphi 0 syntax. pwsh fehlte in der Sitzung (Download abgelehnt): Prüfskripte nur in der CI. Testfälle VO1–VO4.

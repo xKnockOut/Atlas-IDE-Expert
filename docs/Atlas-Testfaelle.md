@@ -8426,3 +8426,14 @@ Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (je einmal YouTrac
 | IA18 | Ungültige Kennung („kaputt“) eintragen | „Senden“ gesperrt |
 | IA19 | `issues.attach` aus (Schnellschalter) | Menüeintrag, Palettenbefehl, Knopf und Kontextmenü im Vorschaufenster und Statuszeile fehlen (**Abnahme**) |
 | IA20 | IDE beenden, während gesendet wird | Plugin entlädt ohne Zugriffsverletzung; nächster Start räumt alte Ordner unter `%TEMP%\Atlas\attach` weg |
+
+## CompilerVersion ohne installiertes Delphi (#1321)
+
+Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DCCReference` auf `T1.pas`) und `T1.pas` aus dem Minimalfall F14 (`F: {$IF CompilerVersion >= 36}Int64{$ELSE}Integer{$ENDIF};` und ein mehrzeiliges `{$IF CompilerVersion >= 36}`/`{$ELSE}`/`{$IFEND}`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VO1 | Unter Linux (Cloud): `AtlasServer --check T.dproj --format json --no-index` | Kein Treffer `syntax` (**Abnahme**) |
+| VO2 | Wie VO1 mit `--check T1.pas` (ohne .dproj) | Kein Treffer `syntax`; es gilt Delphi 13 |
+| VO3 | Unter Linux `--check` über Skia4Delphi (`Skia4Delphi.dproj` o. ä.) | Keine Syntaxfehler aus `{$IF CompilerVersion}`-Zeilen (vorher 127) (**Abnahme**) |
+| VO4 | Unter Windows mit Delphi 13: VO1 | Unverändert kein Treffer; Serverprotokoll nennt die Installation wie bisher |

@@ -28,7 +28,8 @@ const
     '      "pattern": "^[0-9]+(\\.[0-9]+)?$",',
     '      "description": "Delphi-Version als Produktnummer (\"13\", \"12\", \"10.4\") oder wie in der Registry (\"37.0\" für Delphi 13, \"23.0\" für Delphi 12). Leer: passend zur ProjectVersion der .dproj' +
       ', sonst die nächsthöhere, sonst die neueste installierte Version. Ist die eingestellte Version nicht installiert, warnt das Serverprotokoll mit der Stelle in settings.json, und die automatische Wahl g' +
-      'reift. In der IDE gilt immer die laufende IDE.",',
+      'reift. Ohne jede Installation (Linux, CI) gilt die eingestellte bzw. zur ProjectVersion passende, sonst die neueste bekannte Version, nur für CompilerVersion und VERxxx. In der IDE gilt immer die lauf' +
+      'ende IDE.",',
     '      "examples": [',
     '        "37.0",',
     '        "23.0"',

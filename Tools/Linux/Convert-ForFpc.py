@@ -290,7 +290,8 @@ def wrap_generic_calls(txt):
             else:
                 break
         before = masked[max(0, i - 40):i].rstrip().lower()
-        if re.search(r"\b(function|procedure|constructor|destructor|class|of|type|=)$", before):
+        # Hinter ":" steht ein Typ (Feld, Parameter, Variable), kein Aufruf: DelphiCompat.TFunc<Boolean>.
+        if re.search(r"(\b(function|procedure|constructor|destructor|class|of|type)|(?<![:<>])=|:)$", before):
             continue
         line_start = masked.rfind('\n', 0, i) + 1
         if re.match(r"\s*(function|procedure|constructor|destructor|class)\b", masked[line_start:i], re.I):
