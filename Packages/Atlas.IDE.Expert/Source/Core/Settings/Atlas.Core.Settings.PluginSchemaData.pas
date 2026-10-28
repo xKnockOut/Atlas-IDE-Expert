@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5241] of string = (
+  Lines: array[0..5250] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5341,6 +5341,16 @@ const
     '      "x-area": "issues",',
     '      "x-page": "Issue-Tracker",',
     '      "x-issue": "#1264"',
+    '    },',
+    '    "IssuesPreviewDevelopment": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Reiter „Entwicklung“ in der Issue-Vorschau: Branches und Commits mit der Kennung, Pull Requests mit CI-Ampel bzw. verknüpfte Änderungen und geänderte Units; aus: Reiter fehlt, ke' +
+      'in Log wird abgefragt.",',
+    '      "x-key": "issues.preview.development",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-issue": "#1269"',
     '    }',
     '  },',
     '  "additionalProperties": false',

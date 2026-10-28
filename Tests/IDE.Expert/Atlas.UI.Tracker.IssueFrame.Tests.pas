@@ -4,7 +4,8 @@
 // Kennung, Titel und Abzeichen, Beschreibung als Doku mit Bild aus den
 // Anhängen, eingeklappte ältere Kommentare, Listen der Anhänge und
 // Verknüpfungen, Laden mit „Abbrechen“, Fehler mit Knopf zum Beheben,
-// Verlauf und abgeschaltete Kommentare.
+// Verlauf und abgeschaltete Kommentare; Reiter „Details“ und „Entwicklung“
+// mit Schalter (#1269).
 
 interface
 
@@ -35,6 +36,9 @@ type
     procedure LoadingErrorAndHistory;
     [Test]
     procedure CommentsSwitchedOff;
+    /// <summary>Abnahme: Reiter „Entwicklung“ neben „Details“; aus = Reiter fehlt, keine Suche.</summary>
+    [Test]
+    procedure DevelopmentTabAndSwitch;
   end;
 
 implementation
@@ -274,6 +278,50 @@ begin
     mFrame.ShowDetails(Sample(5), cNow, '', True);
     Assert.IsNull(mFrame.OlderLabel);
     Assert.AreEqual(2, mFrame.DocCount, 'nur die Beschreibung');
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.DevelopmentTabAndSwitch;
+var
+  mHost: TForm;
+  mFrame: TAtlasIssueFrame;
+  mShown: Integer;
+begin
+  mShown := 0;
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasIssueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.OnDevelopmentShown :=
+      procedure
+      begin
+        Inc(mShown);
+      end;
+    mFrame.ShowDetails(Sample(1), cNow, '', False);
+    Assert.AreEqual(2, mFrame.Pages.PageCount);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewTabDetails), mFrame.Pages.Pages[0].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewTabDevelopment), mFrame.Pages.Pages[1].Caption);
+    Assert.IsTrue(mFrame.DevelopmentVisible, 'Vorgabe an');
+    Assert.IsFalse(mFrame.DevelopmentActive, 'Details zuerst');
+    Assert.AreEqual(0, mShown, 'gesucht wird erst beim Zeigen');
+    mFrame.SelectDevelopment;
+    Assert.IsTrue(mFrame.DevelopmentActive);
+    Assert.AreEqual(1, mShown);
+    mFrame.SelectDevelopment;
+    Assert.AreEqual(1, mShown, 'schon sichtbar');
+    // Aus: zurück auf Details, der Reiter fehlt und lässt sich nicht wählen.
+    mFrame.DevelopmentVisible := False;
+    Assert.IsFalse(mFrame.DevelopmentVisible);
+    Assert.IsFalse(mFrame.DevelopmentActive);
+    Assert.IsFalse(mFrame.Pages.Pages[1].TabVisible);
+    mFrame.SelectDevelopment;
+    Assert.IsFalse(mFrame.DevelopmentActive);
+    Assert.AreEqual(1, mShown);
+    mFrame.DevelopmentVisible := True;
+    Assert.IsTrue(mFrame.Pages.Pages[0].TabVisible);
+    Assert.IsTrue(mFrame.Pages.Pages[1].TabVisible);
   finally
     mHost.Free;
   end;

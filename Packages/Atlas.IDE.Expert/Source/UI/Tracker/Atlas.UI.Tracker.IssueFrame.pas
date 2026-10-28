@@ -15,6 +15,10 @@
 //   KOMMENTARE (n): neueste unten, ältere hinter „12 ältere Kommentare“.
 //   ANHÄNGE (n): Name und Größe; Doppelklick öffnet.
 //   VERKNÜPFTE ISSUES (n): Kennung, Titel, Art; Klick öffnet im Fenster.
+// Inhalt auf zwei Reitern: „Details“ (oben beschrieben) und „Entwicklung“
+// (#1269, TAtlasIssueDevelopmentView: Branches, Commits, Pull Requests,
+// geänderte Units); der zweite fehlt bei issues.preview.development aus.
+// Gesucht wird erst, wenn der Reiter sichtbar wird (OnDevelopmentShown).
 // Ein Fenster, der Inhalt wechselt; Verlauf über Zurück/Vor (Alt+Links,
 // Alt+Rechts). Schließen des Fensters (OnHidden) bricht das Laden ab. Laden, Netz, Verlauf und Zwischenspeicher liegen in der
 // IDE-Schicht; der Frame meldet nur Wünsche (On…). Text in der Beschreibung
@@ -43,7 +47,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Documentation.View;
+  Atlas.UI.Documentation.View,
+  Atlas.UI.Tracker.DevelopmentView;
 
 const
   /// <summary>Nachricht an den Frame: Inhalt neu bzw. verknüpftes Issue öffnen, nach dem auslösenden Klick (das
@@ -137,6 +142,10 @@ type
     FStatus: TPanel;
     FStatusText: TLabel;
     FFix: TButton;
+    FPages: TPageControl;
+    FDetailsSheet: TTabSheet;
+    FDevelopmentSheet: TTabSheet;
+    FDevelopment: TAtlasIssueDevelopmentView;
     FScroll: TScrollBox;
     FEmpty: TLabel;
     FKey: TLabel;
@@ -178,6 +187,7 @@ type
     FOnOpenUrl: TProc<string>;
     FOnImages: TProc<TArray<string>>;
     FOnHidden: TProc;
+    FOnDevelopmentShown: TProc;
     function AddButton(const ACaption: string; AClick: TNotifyEvent): TButton;
     function AddLabel(const ACaption: string; ABold: Boolean): TLabel;
     function AddDoc(const ADoc: TAtlasDoc): TAtlasIssueDocBox;
@@ -209,6 +219,9 @@ type
     procedure Defer;
     procedure WMDeferred(var AMessage: TMessage); message WM_ATLAS_ISSUE_DEFERRED;
     procedure CMShowingChanged(var AMessage: TMessage); message CM_SHOWINGCHANGED;
+    procedure PagesChange(Sender: TObject);
+    function GetDevelopmentVisible: Boolean;
+    procedure SetDevelopmentVisible(AValue: Boolean);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -230,6 +243,11 @@ type
     function StatusText: string;
     function ImageUrls: TArray<string>;
     function DocCount: Integer;
+    /// <summary>Reiter „Entwicklung“ ist ausgewählt (und sichtbar).</summary>
+    function DevelopmentActive: Boolean;
+    /// <summary>Reiter wählen (Tests, Tastatur).</summary>
+    procedure SelectDevelopment;
+    procedure SelectDetails;
     property Details: TAtlasTrackerDetails read FDetails;
     property HasDetails: Boolean read FHasDetails;
     property Loading: Boolean read FLoading;
@@ -252,6 +270,11 @@ type
     property Links: TListView read FLinks;
     property OlderLabel: TLabel read FOlder;
     property Progress: TProgressBar read FProgress;
+    property Pages: TPageControl read FPages;
+    /// <summary>Inhalt des Reiters „Entwicklung“ (#1269).</summary>
+    property Development: TAtlasIssueDevelopmentView read FDevelopment;
+    /// <summary>issues.preview.development: Reiter „Entwicklung“ zeigen.</summary>
+    property DevelopmentVisible: Boolean read GetDevelopmentVisible write SetDevelopmentVisible;
     /// <summary>Editorschrift für Code (Vorgabe Consolas).</summary>
     property MonoFont: TFont read FMono write SetMonoFont;
     property OnBack: TProc read FOnBack write FOnBack;
@@ -270,6 +293,8 @@ type
     property OnImages: TProc<TArray<string>> read FOnImages write FOnImages;
     /// <summary>Fenster geschlossen bzw. Frame freigegeben: laufendes Laden abbrechen.</summary>
     property OnHidden: TProc read FOnHidden write FOnHidden;
+    /// <summary>Reiter „Entwicklung“ wurde gewählt: suchen, wenn noch nicht geschehen.</summary>
+    property OnDevelopmentShown: TProc read FOnDevelopmentShown write FOnDevelopmentShown;
   end;
 
 implementation
@@ -692,8 +717,23 @@ begin
   FStatusText.ShowAccelChar := False;
   FStatusText.EllipsisPosition := epEndEllipsis;
 
+  FPages := TPageControl.Create(Self);
+  FPages.Parent := Self;
+  FPages.Align := alClient;
+  FDetailsSheet := TTabSheet.Create(Self);
+  FDetailsSheet.PageControl := FPages;
+  FDetailsSheet.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewTabDetails);
+  FDevelopmentSheet := TTabSheet.Create(Self);
+  FDevelopmentSheet.PageControl := FPages;
+  FDevelopmentSheet.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewTabDevelopment);
+  FPages.ActivePage := FDetailsSheet;
+  FPages.OnChange := PagesChange;
+  FDevelopment := TAtlasIssueDevelopmentView.Create(Self);
+  FDevelopment.Parent := FDevelopmentSheet;
+  FDevelopment.Align := alClient;
+
   FScroll := TScrollBox.Create(Self);
-  FScroll.Parent := Self;
+  FScroll.Parent := FDetailsSheet;
   FScroll.Align := alClient;
   FScroll.BorderStyle := bsNone;
   FScroll.VertScrollBar.Tracking := True;
@@ -1188,6 +1228,7 @@ begin
   FColors := AColors;
   FScroll.Color := ToColor(AColors.Surface);
   FScroll.ParentBackground := False;
+  FDevelopment.ApplyColors(AColors);
   FEmpty.Font.Color := ToColor(AColors.Muted);
   if FHasDetails then
     Rebuild;
@@ -1219,6 +1260,47 @@ end;
 function TAtlasIssueFrame.DocCount: Integer;
 begin
   Result := FDocs.Count;
+end;
+
+function TAtlasIssueFrame.GetDevelopmentVisible: Boolean;
+begin
+  Result := FDevelopmentSheet.TabVisible;
+end;
+
+procedure TAtlasIssueFrame.SetDevelopmentVisible(AValue: Boolean);
+begin
+  if FDevelopmentSheet.TabVisible = AValue then
+    Exit;
+  if not AValue and (FPages.ActivePage = FDevelopmentSheet) then
+    FPages.ActivePage := FDetailsSheet;
+  FDevelopmentSheet.TabVisible := AValue;
+  // Mit nur einem Reiter keine Reiterleiste.
+  FDetailsSheet.TabVisible := AValue;
+  FPages.ActivePage := FDetailsSheet;
+end;
+
+function TAtlasIssueFrame.DevelopmentActive: Boolean;
+begin
+  Result := FDevelopmentSheet.TabVisible and (FPages.ActivePage = FDevelopmentSheet);
+end;
+
+procedure TAtlasIssueFrame.SelectDevelopment;
+begin
+  if not FDevelopmentSheet.TabVisible or (FPages.ActivePage = FDevelopmentSheet) then
+    Exit;
+  FPages.ActivePage := FDevelopmentSheet;
+  PagesChange(FPages);
+end;
+
+procedure TAtlasIssueFrame.SelectDetails;
+begin
+  FPages.ActivePage := FDetailsSheet;
+end;
+
+procedure TAtlasIssueFrame.PagesChange(Sender: TObject);
+begin
+  if DevelopmentActive and Assigned(FOnDevelopmentShown) then
+    FOnDevelopmentShown();
 end;
 
 procedure TAtlasIssueFrame.BackClick(Sender: TObject);

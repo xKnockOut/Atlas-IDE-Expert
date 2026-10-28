@@ -23,6 +23,12 @@
 //   Issues; IAtlasTrackerProvider.Details liest es. Kein Feld enthält ein
 //   Token; Adressen kommen aus der Antwort des Trackers und werden vor dem
 //   Öffnen geprüft (nur https bzw. derselbe Server).
+// - TAtlasTrackerDevelopment (#1269): was der Tracker zur Entwicklung eines
+//   Issues weiß, für den Reiter „Entwicklung“ der Vorschau: Pull Requests mit
+//   Zustand und CI-Ampel (GitHub) bzw. verknüpfte VCS-Änderungen (YouTrack);
+//   IAtlasTrackerProvider.Development liest es. Branches und Commits kommen
+//   nicht vom Tracker, sondern aus der Versionsverwaltung
+//   (Atlas.Core.Tracker.Development).
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -35,6 +41,8 @@ type
 {$SCOPEDENUMS ON}
   /// <summary>Zustand der Prüfungen (CI) eines Pull Requests: Ampel im Bereich.</summary>
   TAtlasTrackerChecks = (Unknown, Pending, Success, Failure);
+  /// <summary>Zustand eines Pull Requests im Reiter „Entwicklung“ (#1269).</summary>
+  TAtlasTrackerPullState = (Open, Draft, Merged, Closed);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Offener Pull Request zu einem Issue (GitHub).</summary>
@@ -154,6 +162,47 @@ type
     function AttachmentIndex(const AName: string): Integer;
   end;
 
+  /// <summary>Pull Request zu einem Issue im Reiter „Entwicklung“ (#1269), offen oder geschlossen.</summary>
+  TAtlasTrackerPull = record
+    Number: Integer;
+    Title: string;
+    /// <summary>Branch des Pull Requests (head.ref).</summary>
+    Branch: string;
+    State: TAtlasTrackerPullState;
+    /// <summary>CI-Ampel des letzten Commits; Unknown, wenn nicht abgefragt.</summary>
+    Checks: TAtlasTrackerChecks;
+    /// <summary>Zuletzt geändert (UTC); 0 = unbekannt.</summary>
+    Updated: TDateTime;
+    /// <summary>Seite im Browser, aus der eingetragenen Adresse gebildet (nie aus der Antwort).</summary>
+    Page: string;
+  end;
+
+  /// <summary>Änderung in der Versionsverwaltung, die der Tracker dem Issue zugeordnet hat (YouTrack, #1269).
+  /// </summary>
+  TAtlasTrackerVcsChange = record
+    /// <summary>Commit bzw. Revision wie in der Versionsverwaltung.</summary>
+    Version: string;
+    /// <summary>Erste Zeile der Nachricht.</summary>
+    Text: string;
+    Author: string;
+    /// <summary>UTC; 0 = unbekannt.</summary>
+    Date: TDateTime;
+  end;
+
+  /// <summary>Was der Tracker zur Entwicklung eines Issues liefert (#1269).</summary>
+  TAtlasTrackerDevelopment = record
+  public const
+    /// <summary>Höchstens so viele Pull Requests bzw. Änderungen.</summary>
+    MaxPulls = 20;
+    MaxChanges = 100;
+  public
+    /// <summary>Neueste zuerst.</summary>
+    Pulls: TArray<TAtlasTrackerPull>;
+    /// <summary>Neueste zuerst.</summary>
+    Changes: TArray<TAtlasTrackerVcsChange>;
+    class function Empty: TAtlasTrackerDevelopment; static;
+  end;
+
   /// <summary>Was abgefragt wird; ohne Zugangsdaten.</summary>
   TAtlasTrackerTarget = record
   public const
@@ -213,6 +262,11 @@ type
     function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
       out AError: TAtlasCiFetchError): Boolean;
+    /// <summary>Pull Requests (GitHub, mit CI-Ampel) bzw. verknüpfte VCS-Änderungen (YouTrack) zu Issue AKey,
+    /// insgesamt höchstens ATimeoutMs; im Hintergrund (#1269). Ein Tracker ohne solche Angaben liefert True mit
+    /// leerem Ergebnis. False mit AError, wenn die Abfrage scheiterte.</summary>
+    function Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -294,6 +348,15 @@ begin
     if SameText(Attachments[mIndex].Name, AName) then
       Exit(mIndex);
   Result := -1;
+end;
+
+{ TAtlasTrackerDevelopment }
+
+class function TAtlasTrackerDevelopment.Empty: TAtlasTrackerDevelopment;
+begin
+  Result := Default(TAtlasTrackerDevelopment);
+  Result.Pulls := nil;
+  Result.Changes := nil;
 end;
 
 { TAtlasTrackerTarget }

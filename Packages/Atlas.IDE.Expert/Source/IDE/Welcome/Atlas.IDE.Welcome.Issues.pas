@@ -334,6 +334,14 @@ begin
       if (mKeep <> nil) and Assigned(mOwner.FOnSettings) then
         mOwner.FOnSettings();
     end;
+  // Reiter „Entwicklung“ (#1269): Branches und Commits aus der Arbeitskopie des aktuellen Projekts.
+  mHooks.Project :=
+    function: string
+    begin
+      Result := '';
+      if mKeep <> nil then
+        Result := mOwner.CurrentProject;
+    end;
   FPreview := TAtlasIdeIssuePreview.Create(mHooks,
     TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'issues'));
   FPreviewRef := FPreview;

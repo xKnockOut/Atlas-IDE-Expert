@@ -5,8 +5,9 @@
 // mit einem Prozessläufer-Ersatz, Erkennen der Arbeitskopie, Auswahl nach
 // vcs.provider, einmalige Meldung bei fehlendem Programm und Wechsel-
 // erkennung; eingehende Commits mit Autor und Dateien und die Aufrufe
-// dafür (#755). Die Tests mit echtem git bzw. svn stehen in
-// Atlas.Core.Vcs.Integration.Tests.
+// dafür (#755); Suche nach Commits mit einer Kennung, Branches samt
+// entfernten, Abstand zur Basis und Dateiinhalt eines Commits (#1269). Die
+// Tests mit echtem git bzw. svn stehen in Atlas.Core.Vcs.Integration.Tests.
 
 interface
 
@@ -83,6 +84,14 @@ type
     procedure ProvidersCreateIssueBranches;
     [Test]
     procedure SafeBranchNames;
+    [Test]
+    procedure GitParsesHistoryRefsAndDistance;
+    [Test]
+    procedure GitHistoryRejectsBrokenOutput;
+    [Test]
+    procedure SvnParsesLogListAndLocalPaths;
+    [Test]
+    procedure ProvidersRunHistoryCommands;
   end;
 
 implementation
@@ -1542,6 +1551,301 @@ begin
   Assert.IsFalse(VcsSafeBranchName('a/'));
   Assert.IsFalse(VcsSafeBranchName('a.'));
   Assert.IsFalse(VcsSafeBranchName('a//b'));
+end;
+
+const
+  // Aufgezeichnet mit git 2.43: log --all --fixed-strings --regexp-ignore-case --grep=atl-12
+  // --format=%x1e%H%x00%ct%x00%an%x00%B --name-status -z --no-renames (neuester zuerst).
+  GitHistorySample =
+    #$1E'28358feaf94440dbfe2fcc3aa2cb742e2d972f37'#0'1761603600'#0'Marco B'#0'ATL-12: weiter'#10#0#10 +
+    'M'#0'A.pas'#0'A'#0'Neu.pas'#0'D'#0'src/B.pas'#0 +
+    #$1E'7637c6cf53522335c876c98aef9a32861d4dc147'#0'1761600000'#0'Marco B'#0'ATL-12 Erster Stand'#10#10 +
+    'Zweite Zeile'#10#0#10'A'#0'A.pas'#0'A'#0'src/B.pas'#0;
+
+  SvnLogSample =
+    '<?xml version="1.0" encoding="UTF-8"?>'#10 +
+    '<log>'#10 +
+    '<logentry'#10 +
+    '   revision="57">'#10 +
+    '<author>marco</author>'#10 +
+    '<date>2026-10-27T21:20:00.000000Z</date>'#10 +
+    '<paths>'#10 +
+    '<path'#10 +
+    '   action="M"'#10 +
+    '   kind="file"'#10 +
+    '   prop-mods="false"'#10 +
+    '   text-mods="true">/projekt/branches/ATL-12-tracker/src/Main.pas</path>'#10 +
+    '<path'#10 +
+    '   action="A"'#10 +
+    '   kind="dir">/projekt/branches/ATL-12-tracker/neu</path>'#10 +
+    '<path'#10 +
+    '   action="D"'#10 +
+    '   kind="file">/anderes/trunk/X.pas</path>'#10 +
+    '</paths>'#10 +
+    '<msg>ATL-12 Tracker &amp; Plugin'#10'Zweite Zeile</msg>'#10 +
+    '</logentry>'#10 +
+    '<logentry'#10 +
+    '   revision="50">'#10 +
+    '<author>anna</author>'#10 +
+    '<date>2026-10-20T08:00:00.000000Z</date>'#10 +
+    '<paths>'#10 +
+    '<path'#10 +
+    '   action="A"'#10 +
+    '   kind="file">/projekt/trunk/src/Neu.pas</path>'#10 +
+    '</paths>'#10 +
+    '<msg>ATL-12 Anfang</msg>'#10 +
+    '</logentry>'#10 +
+    '</log>'#10;
+
+  SvnListSample =
+    '<?xml version="1.0" encoding="UTF-8"?>'#10 +
+    '<lists>'#10 +
+    '<list'#10 +
+    '   path="https://svn.example.org/repo/branches">'#10 +
+    '<entry'#10 +
+    '   kind="dir">'#10 +
+    '<name>ATL-12-tracker</name>'#10 +
+    '<commit'#10 +
+    '   revision="57">'#10 +
+    '<author>marco</author>'#10 +
+    '<date>2026-10-27T21:20:00.000000Z</date>'#10 +
+    '</commit>'#10 +
+    '</entry>'#10 +
+    '<entry'#10 +
+    '   kind="file">'#10 +
+    '<name>liesmich.txt</name>'#10 +
+    '<size>4</size>'#10 +
+    '<commit'#10 +
+    '   revision="3">'#10 +
+    '<author>marco</author>'#10 +
+    '<date>2026-01-01T00:00:00.000000Z</date>'#10 +
+    '</commit>'#10 +
+    '</entry>'#10 +
+    '<entry'#10 +
+    '   kind="dir">'#10 +
+    '<name>release-2</name>'#10 +
+    '<commit'#10 +
+    '   revision="40">'#10 +
+    '<author>marco</author>'#10 +
+    '<date>2026-10-01T08:00:00.000000Z</date>'#10 +
+    '</commit>'#10 +
+    '</entry>'#10 +
+    '</list>'#10 +
+    '</lists>'#10;
+
+procedure TAtlasVcsTests.GitParsesHistoryRefsAndDistance;
+var
+  Entries: TArray<TAtlasVcsLogEntry>;
+  Refs: TArray<TAtlasVcsRef>;
+  Ahead, Behind: Integer;
+begin
+  Entries := TAtlasGitParser.ParseHistory(GitHistorySample, Root);
+  Assert.AreEqual(2, Integer(Length(Entries)));
+  Assert.AreEqual('28358feaf94440dbfe2fcc3aa2cb742e2d972f37', Entries[0].Revision);
+  Assert.AreEqual('28358fe', Entries[0].ShortRevision(TAtlasVcsKind.Git));
+  Assert.AreEqual('Marco B', Entries[0].Author);
+  Assert.AreEqual('ATL-12: weiter', Entries[0].Summary);
+  Assert.AreEqual(Double(VcsUnixToDate(1761603600)), Double(Entries[0].Date), 1 / 86400);
+  Assert.AreEqual(3, Integer(Length(Entries[0].Files)), 'Zeilenende vor der ersten Art zählt nicht');
+  Assert.IsTrue(Entries[0].Files[0].Kind = TAtlasVcsChangeKind.Modified);
+  Assert.AreEqual('A.pas', Entries[0].Files[0].RepositoryPath);
+  Assert.AreEqual(Under('A.pas'), Entries[0].Files[0].Path);
+  Assert.IsTrue(Entries[0].Files[1].Kind = TAtlasVcsChangeKind.Added);
+  Assert.IsTrue(Entries[0].Files[2].Kind = TAtlasVcsChangeKind.Deleted);
+  Assert.AreEqual(Under('src/B.pas'), Entries[0].Files[2].Path);
+  // Mehrzeilige Nachricht: ganz in Message, erste Zeile als Betreff.
+  Assert.AreEqual('ATL-12 Erster Stand', Entries[1].Summary);
+  Assert.AreEqual('ATL-12 Erster Stand'#10#10'Zweite Zeile', Entries[1].Message);
+  Assert.AreEqual(2, Integer(Length(Entries[1].Files)));
+  Assert.AreEqual(0, Integer(Length(TAtlasGitParser.ParseHistory('', Root))), 'nichts gefunden');
+
+  Refs := TAtlasGitParser.ParseRefs(
+    'refs/heads/main'#0'1761600000'#0' '#10 +
+    'refs/heads/feature/ATL-12-tracker'#0'1761603600'#0'*'#10 +
+    'refs/remotes/origin/HEAD'#0'1761600000'#0' '#10 +
+    'refs/remotes/origin/feature/ATL-12-tracker'#0'1761603000'#0' '#10 +
+    'refs/tags/v1'#0'1761600000'#0' '#10);
+  Assert.AreEqual(3, Integer(Length(Refs)), 'origin/HEAD und Tags entfallen');
+  Assert.AreEqual('main', Refs[0].Name);
+  Assert.IsFalse(Refs[0].Current);
+  Assert.IsFalse(Refs[0].Remote);
+  Assert.AreEqual('feature/ATL-12-tracker', Refs[1].LocalName);
+  Assert.IsTrue(Refs[1].Current, 'HEAD zeigt dorthin');
+  Assert.IsTrue(Refs[2].Remote);
+  Assert.AreEqual('origin/feature/ATL-12-tracker', Refs[2].Name);
+  Assert.AreEqual('feature/ATL-12-tracker', Refs[2].LocalName, 'ohne Remote zum Wechseln');
+  Assert.AreEqual(Double(VcsUnixToDate(1761603000)), Double(Refs[2].TipDate), 1 / 86400);
+
+  // Links der Rückstand, rechts der Vorsprung.
+  TAtlasGitParser.ParseDistance('3'#9'5'#10, Ahead, Behind);
+  Assert.AreEqual(5, Ahead);
+  Assert.AreEqual(3, Behind);
+end;
+
+procedure TAtlasVcsTests.GitHistoryRejectsBrokenOutput;
+var
+  Ahead, Behind: Integer;
+begin
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseHistory(#$1E'abc'#0'1'#0'x'#0'm', Root);
+    end, EAtlasVcsParse, 'Hash zu kurz');
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseHistory(#$1E + Hash1 + #0'1'#0'x'#0'm'#10#0#10'M'#0, Root);
+    end, EAtlasVcsParse, 'Pfad fehlt');
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseHistory(#$1E + Hash1 + #0'1'#0'x'#0'm'#10#0#10'X'#0'A.pas'#0, Root);
+    end, EAtlasVcsParse, 'Art unbekannt');
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseRefs('refs/heads/main'#10);
+    end, EAtlasVcsParse, 'Felder fehlen');
+  Assert.WillRaise(
+    procedure
+    begin
+      TAtlasGitParser.ParseDistance('fatal', Ahead, Behind);
+    end, EAtlasVcsParse);
+end;
+
+procedure TAtlasVcsTests.SvnParsesLogListAndLocalPaths;
+var
+  Entries: TArray<TAtlasVcsLogEntry>;
+  Refs: TArray<TAtlasVcsRef>;
+begin
+  // Arbeitskopie von ^/projekt/trunk: Dateien anderer Branches desselben Projekts zählen mit ihrem Pfad darunter.
+  Assert.AreEqual(Under('src/Main.pas'), TAtlasSvnParser.LocalPath(Root, 'projekt/trunk',
+    '/projekt/branches/ATL-12-tracker/src/Main.pas'));
+  Assert.AreEqual('', TAtlasSvnParser.LocalPath(Root, 'projekt/trunk', '/anderes/trunk/X.pas'), 'anderes Projekt');
+  Assert.AreEqual('', TAtlasSvnParser.LocalPath(Root, 'projekt/trunk', '/projekt/liesmich.txt'), 'ohne Ablage');
+  // Arbeitskopie eines Unterordners: nur darunter, relativ dazu.
+  Assert.AreEqual(Under('Main.pas'), TAtlasSvnParser.LocalPath(Root, 'projekt/trunk/src',
+    '/projekt/branches/x/src/Main.pas'));
+  Assert.AreEqual('', TAtlasSvnParser.LocalPath(Root, 'projekt/trunk/src', '/projekt/trunk/doc/A.md'));
+
+  Entries := TAtlasSvnParser.ParseLog(SvnLogSample, Root, 'projekt/trunk');
+  Assert.AreEqual(2, Integer(Length(Entries)));
+  Assert.AreEqual('57', Entries[0].Revision);
+  Assert.AreEqual('r57', Entries[0].ShortRevision(TAtlasVcsKind.Svn));
+  Assert.AreEqual('marco', Entries[0].Author);
+  Assert.AreEqual('ATL-12 Tracker & Plugin', Entries[0].Summary);
+  Assert.AreEqual('ATL-12 Tracker & Plugin'#10'Zweite Zeile', Entries[0].Message);
+  Assert.AreEqual(Double(EncodeDate(2026, 10, 27) + EncodeTime(21, 20, 0, 0)), Double(Entries[0].Date), 1 / 86400);
+  Assert.AreEqual(2, Integer(Length(Entries[0].Files)), 'Ordner zählen nicht');
+  Assert.AreEqual('/projekt/branches/ATL-12-tracker/src/Main.pas', Entries[0].Files[0].RepositoryPath);
+  Assert.AreEqual(Under('src/Main.pas'), Entries[0].Files[0].Path);
+  Assert.IsTrue(Entries[0].Files[1].Kind = TAtlasVcsChangeKind.Deleted);
+  Assert.AreEqual('', Entries[0].Files[1].Path, 'außerhalb der Arbeitskopie');
+  Assert.IsTrue(Entries[1].Files[0].Kind = TAtlasVcsChangeKind.Added);
+
+  Refs := TAtlasSvnParser.ParseList(SvnListSample, 'branches/release-2');
+  Assert.AreEqual(2, Integer(Length(Refs)), 'nur Ordner');
+  Assert.AreEqual('ATL-12-tracker', Refs[0].Name);
+  Assert.AreEqual('ATL-12-tracker', Refs[0].LocalName);
+  Assert.IsTrue(Refs[0].Remote, 'liegt auf dem Server');
+  Assert.IsFalse(Refs[0].Current);
+  Assert.IsTrue(Refs[1].Current, 'Arbeitskopie zeigt auf release-2');
+  Assert.AreEqual(Double(EncodeDate(2026, 10, 1) + EncodeTime(8, 0, 0, 0)), Double(Refs[1].TipDate), 1 / 86400);
+end;
+
+procedure TAtlasVcsTests.ProvidersRunHistoryCommands;
+const
+  Prefix = '--no-optional-locks -c core.quotepath=off -c color.ui=false ';
+var
+  Runner: TFakeRunner;
+  RunnerRef: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  History: IAtlasVcsHistory;
+  Entries: TArray<TAtlasVcsLogEntry>;
+  Refs: TArray<TAtlasVcsRef>;
+  Content: TBytes;
+  FileOf: TAtlasVcsLogFile;
+  Ahead, Behind: Integer;
+begin
+  Runner := TFakeRunner.Create;
+  RunnerRef := Runner;
+  Runner.Answer('log', GitHistorySample);
+  Runner.Answer('for-each-ref', 'refs/heads/main'#0'1761600000'#0'*'#10);
+  Runner.Answer('rev-list', '0'#9'2'#10);
+  Runner.Answer('show', 'Inhalt');
+  Vcs := TAtlasGitVersionControl.Create(Root, RunnerRef, 'git.exe', 5000);
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsHistory, History), 'Git bietet IAtlasVcsHistory');
+  Assert.IsTrue(History.SearchLog('ATL-12', 200, Entries) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(2, Integer(Length(Entries)));
+  Assert.AreEqual(Prefix + 'log --all --fixed-strings --regexp-ignore-case --grep=ATL-12 ' +
+    '--format=%x1e%H%x00%ct%x00%an%x00%B --name-status -z --no-renames --max-count=200', Runner.Calls[0]);
+  Assert.IsTrue(History.AllBranches(Refs) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + 'for-each-ref --format=%(refname)%00%(committerdate:unix)%00%(HEAD) refs/heads refs/remotes',
+    Runner.Calls[1]);
+  Assert.AreEqual(1, Integer(Length(Refs)));
+  Assert.IsTrue(History.Distance('feature/ATL-12-x', 'origin/main', Ahead, Behind) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + 'rev-list --left-right --count origin/main...feature/ATL-12-x --', Runner.Calls[2]);
+  Assert.AreEqual(2, Ahead);
+  Assert.AreEqual(0, Behind);
+  FileOf := Entries[0].Files[0];
+  Assert.IsTrue(History.ContentOf(Entries[0].Revision, FileOf, True, Content) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + 'show 28358feaf94440dbfe2fcc3aa2cb742e2d972f37^1:A.pas', Runner.Calls[3]);
+  Assert.AreEqual('Inhalt', TEncoding.UTF8.GetString(Content));
+  Assert.IsTrue(History.ContentOf(Entries[0].Revision, FileOf, False, Content) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(Prefix + 'show 28358feaf94440dbfe2fcc3aa2cb742e2d972f37:A.pas', Runner.Calls[4]);
+  // Neue Datei davor, gelöschte danach: leer ohne Prozess.
+  Assert.IsTrue(History.ContentOf(Entries[0].Revision, Entries[0].Files[1], True, Content) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(0, Integer(Length(Content)));
+  Assert.IsTrue(History.ContentOf(Entries[0].Revision, Entries[0].Files[2], False, Content) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(5, Integer(Length(Runner.Calls)));
+  // Unsichere Eingaben starten keinen Prozess.
+  Assert.IsTrue(History.SearchLog('', 10, Entries) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(History.SearchLog('a'#10'b', 10, Entries) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(History.Distance('--all', 'main', Ahead, Behind) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(-1, Ahead);
+  Assert.IsTrue(History.ContentOf('-x', FileOf, False, Content) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(5, Integer(Length(Runner.Calls)));
+  // Unlesbare Ausgabe: Failed statt Ausnahme.
+  Runner.Answers[0] := #$1E'kurz'#0;
+  Assert.IsTrue(History.SearchLog('ATL-12', 10, Entries) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(0, Integer(Length(Entries)));
+
+  // SVN: erst info (Pfad der Arbeitskopie), dann das ganze Repository.
+  Runner.Calls := nil;
+  Runner.Commands := nil;
+  Runner.Answers := nil;
+  Runner.Answer('info', StringReplace(SvnInfoSample, 'projekt/branches/release-2', 'projekt/trunk',
+    [rfReplaceAll]));
+  Runner.Answer('log', SvnLogSample);
+  Runner.Answer('list', SvnListSample);
+  Runner.Answer('cat', 'alt');
+  Vcs := TAtlasSvnVersionControl.Create(Root, RunnerRef, 'svn.exe');
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsHistory, History), 'SVN bietet IAtlasVcsHistory');
+  Assert.IsTrue(History.SearchLog('ATL-12', 50, Entries) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('info --xml . --non-interactive', Runner.Calls[0]);
+  Assert.AreEqual('log --xml -v --search ATL-12 -l 50 ^/ --non-interactive', Runner.Calls[1]);
+  Assert.AreEqual(Under('src/Main.pas'), Entries[0].Files[0].Path);
+  Assert.IsTrue(History.AllBranches(Refs) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('list --xml ^/branches --non-interactive', Runner.Calls[3]);
+  Assert.AreEqual(2, Integer(Length(Refs)));
+  Assert.IsTrue(History.Distance('ATL-12-tracker', 'trunk', Ahead, Behind) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(-1, Ahead, 'SVN kennt keinen Vorsprung');
+  Assert.AreEqual(4, Integer(Length(Runner.Calls)), 'ohne Prozess');
+  Assert.IsTrue(History.ContentOf('57', Entries[0].Files[0], True, Content) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('cat ^/projekt/branches/ATL-12-tracker/src/Main.pas@56 --non-interactive', Runner.Calls[4]);
+  Assert.AreEqual('alt', TEncoding.UTF8.GetString(Content));
+  Assert.IsTrue(History.ContentOf('57', Entries[0].Files[1], False, Content) = TAtlasVcsOutcome.Ok,
+    'gelöscht: danach leer');
+  Assert.AreEqual(5, Integer(Length(Runner.Calls)));
+  Assert.IsTrue(History.SearchLog('ATL-*', 50, Entries) = TAtlasVcsOutcome.Failed, 'Glob-Zeichen');
+  Assert.IsTrue(History.ContentOf('x', Entries[0].Files[0], True, Content) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(5, Integer(Length(Runner.Calls)));
+
+  Vcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsHistory, History));
+  Assert.IsTrue(History.SearchLog('ATL-12', 50, Entries) = TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(History.AllBranches(Refs) = TAtlasVcsOutcome.Disabled);
+  Assert.AreEqual(5, Integer(Length(Runner.Calls)), 'die leere Umsetzung startet keinen Prozess');
 end;
 
 initialization

@@ -4,7 +4,9 @@
 // und Branch-Namen (Umlaute, Akzente, Sonderzeichen), Commit-Muster,
 // Branch → Ticket, GitHub- und YouTrack-Antworten aus Beispieldateien
 // (Tests\Data\GitHub, Tests\Data\YouTrack), Ablauf einer Abfrage über einen
-// Transport mit festen Antworten und der Git-Hook prepare-commit-msg.
+// Transport mit festen Antworten und der Git-Hook prepare-commit-msg; Pull
+// Requests mit Zustand und CI-Ampel bzw. VCS-Änderungen für den Reiter
+// „Entwicklung“ (#1269).
 
 interface
 
@@ -109,6 +111,19 @@ type
     procedure GitHubDetailsOverTransport;
     [Test]
     procedure DetailsErrors;
+  end;
+
+  /// <summary>Reiter „Entwicklung“ (#1269): was der Tracker zur Entwicklung eines Issues liefert.</summary>
+  [TestFixture]
+  TAtlasTrackerDevelopmentTests = class
+  public
+    /// <summary>Abnahme: PR ↔ Kennung über Branch, „Closes #N“ und „#N“ im Titel, mit Zustand und Ampel.</summary>
+    [Test]
+    procedure GitHubPullsOfIssue;
+    [Test]
+    procedure GitHubDevelopmentErrors;
+    [Test]
+    procedure YouTrackVcsChanges;
   end;
 
   [TestFixture]
@@ -874,12 +889,139 @@ begin
   Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
 end;
 
+{ TAtlasTrackerDevelopmentTests }
+
+procedure TAtlasTrackerDevelopmentTests.GitHubPullsOfIssue;
+var
+  mPulls: TArray<TAtlasGitHubPull>;
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mDevelopment: TAtlasTrackerDevelopment;
+  mError: TAtlasCiFetchError;
+  mUrl: string;
+begin
+  Assert.IsTrue(TAtlasGitHubTracker.ParsePulls(Fixture('GitHub', 'pulls-all.json'), mPulls));
+  Assert.AreEqual(5, Integer(Length(mPulls)));
+  Assert.IsTrue(TAtlasGitHubTracker.PullRefersTo(mPulls[0], 1269), 'Branch feature/1269-…');
+  Assert.IsTrue(TAtlasGitHubTracker.PullRefersTo(mPulls[1], 1269), 'Closes #1269');
+  Assert.IsTrue(TAtlasGitHubTracker.PullRefersTo(mPulls[2], 1269), '„#1269“ im Titel');
+  Assert.IsFalse(TAtlasGitHubTracker.PullMentions(mPulls[2], 1269), 'für „Meine Issues“ zählt der Titel allein nicht');
+  Assert.IsFalse(TAtlasGitHubTracker.PullRefersTo(mPulls[3], 1269), '#12690 und Erwähnung im Text zählen nicht');
+  Assert.IsTrue(TAtlasGitHubTracker.PullState(mPulls[0]) = TAtlasTrackerPullState.Open);
+  Assert.IsTrue(TAtlasGitHubTracker.PullState(mPulls[1]) = TAtlasTrackerPullState.Merged);
+  Assert.IsTrue(TAtlasGitHubTracker.PullState(mPulls[2]) = TAtlasTrackerPullState.Closed);
+  Assert.IsTrue(TAtlasGitHubTracker.PullState(mPulls[4]) = TAtlasTrackerPullState.Draft);
+  Assert.IsTrue(Abs(mPulls[0].Updated - EncodeDateTime(2026, 10, 28, 12, 0, 0, 0)) < 1 / SecsPerDay);
+
+  mUrl := TAtlasGitHubTracker.AllPullsUrl(GitHubTarget);
+  Assert.AreEqual('https://api.github.com/repos/beispiel/atlas/pulls?state=all&per_page=100&sort=updated' +
+    '&direction=desc', mUrl);
+  mProvider := TAtlasGitHubTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(mUrl, 200, Fixture('GitHub', 'pulls-all.json'));
+  mTransport.Answer(TAtlasGitHubTracker.CheckRunsUrl(GitHubTarget, StringOfChar('a', 40)), 200,
+    Fixture('GitHub', 'check-runs.json'));
+  mTransport.Answer(TAtlasGitHubTracker.CheckRunsUrl(GitHubTarget, StringOfChar('b', 40)), 200,
+    Fixture('GitHub', 'check-runs-empty.json'));
+  mTransport.Answer(TAtlasGitHubTracker.StatusUrl(GitHubTarget, StringOfChar('b', 40)), 200,
+    Fixture('GitHub', 'status.json'));
+  Assert.IsTrue(mProvider.Development(GitHubTarget, mTransportRef, '#1269', 5000, mDevelopment, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.None);
+  Assert.AreEqual(4, Integer(Length(mDevelopment.Pulls)));
+  Assert.AreEqual(1300, mDevelopment.Pulls[0].Number);
+  Assert.AreEqual('feature/1269-reiter-entwicklung', mDevelopment.Pulls[0].Branch);
+  Assert.AreEqual('https://github.com/beispiel/atlas/pull/1300', mDevelopment.Pulls[0].Page);
+  Assert.IsTrue(mDevelopment.Pulls[0].Checks = TAtlasTrackerChecks.Failure, 'Check Runs');
+  Assert.IsTrue(mDevelopment.Pulls[1].State = TAtlasTrackerPullState.Merged);
+  Assert.IsTrue(mDevelopment.Pulls[1].Checks = TAtlasTrackerChecks.Success, 'ohne Check Runs der Status');
+  Assert.IsTrue(mDevelopment.Pulls[2].Checks = TAtlasTrackerChecks.Unknown, 'ohne Ampel');
+  Assert.AreEqual(1287, mDevelopment.Pulls[3].Number);
+  Assert.IsTrue(mDevelopment.Pulls[3].State = TAtlasTrackerPullState.Draft);
+  Assert.AreEqual(0, Integer(Length(mDevelopment.Changes)), 'GitHub liefert keine VCS-Änderungen');
+  // Eine Liste, dann je PR Check Runs und ohne Ergebnis der Status (bei 1295, 1290 und 1287).
+  Assert.AreEqual(mUrl, mTransport.Calls[0]);
+  Assert.AreEqual(1 + 4 + 3, Integer(Length(mTransport.Calls)));
+end;
+
+procedure TAtlasTrackerDevelopmentTests.GitHubDevelopmentErrors;
+var
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mDevelopment: TAtlasTrackerDevelopment;
+  mError: TAtlasCiFetchError;
+begin
+  mProvider := TAtlasGitHubTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  Assert.IsFalse(mProvider.Development(GitHubTarget, mTransportRef, 'abc', 5000, mDevelopment, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured, 'ungültige Kennung');
+  Assert.IsFalse(mProvider.Development(GitHubTarget, nil, '#1', 5000, mDevelopment, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured, 'ohne Token');
+  Assert.AreEqual(0, Integer(Length(mTransport.Calls)));
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/pulls', 401, '{}');
+  Assert.IsFalse(mProvider.Development(GitHubTarget, mTransportRef, '#1', 5000, mDevelopment, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/pulls', 200, '{"kein": "Array"}');
+  Assert.IsFalse(mProvider.Development(GitHubTarget, mTransportRef, '#1', 5000, mDevelopment, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid);
+  mTransport.FailWith(TAtlasCiFetchError.Timeout);
+  Assert.IsFalse(mProvider.Development(GitHubTarget, mTransportRef, '#1', 5000, mDevelopment, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
+end;
+
+procedure TAtlasTrackerDevelopmentTests.YouTrackVcsChanges;
+var
+  mChanges: TArray<TAtlasTrackerVcsChange>;
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mDevelopment: TAtlasTrackerDevelopment;
+  mError: TAtlasCiFetchError;
+  mUrl: string;
+begin
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseVcsChanges(Fixture('YouTrack', 'vcs-changes.json'), mChanges));
+  Assert.AreEqual(2, Integer(Length(mChanges)), 'leere Einträge entfallen');
+  Assert.AreEqual('1a2b3c4d', mChanges[0].Version, 'neueste zuerst');
+  Assert.AreEqual('anna', mChanges[0].Author, 'ohne vollen Namen die Anmeldung');
+  Assert.AreEqual('ATL-123 Tracker angebunden', mChanges[1].Text, 'erste Zeile');
+  Assert.AreEqual('Marco B.', mChanges[1].Author);
+  Assert.IsTrue(Abs(mChanges[1].Date - UnixToDateTime(1761600000, True)) < 1 / SecsPerDay);
+  Assert.IsFalse(TAtlasYouTrackTracker.ParseVcsChanges('{}', mChanges));
+
+  mUrl := TAtlasYouTrackTracker.VcsChangesUrl(YouTrackTarget, 'ATL-123');
+  Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues/ATL-123/vcsChanges?fields='), mUrl);
+  Assert.IsTrue(mUrl.EndsWith('&$top=100'), mUrl);
+  Assert.AreEqual('', TAtlasYouTrackTracker.VcsChangesUrl(YouTrackTarget, 'ATL 1/../x'));
+  mProvider := TAtlasYouTrackTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(mUrl, 200, Fixture('YouTrack', 'vcs-changes.json'));
+  Assert.IsTrue(mProvider.Development(YouTrackTarget, mTransportRef, 'ATL-123', 5000, mDevelopment, mError));
+  Assert.AreEqual(2, Integer(Length(mDevelopment.Changes)));
+  Assert.AreEqual(0, Integer(Length(mDevelopment.Pulls)));
+  // Ohne VCS-Anbindung (404): leer, kein Fehler.
+  Assert.IsTrue(mProvider.Development(YouTrackTarget, mTransportRef, 'ATL-9', 5000, mDevelopment, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.None);
+  Assert.AreEqual(0, Integer(Length(mDevelopment.Changes)));
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://beispiel.youtrack.cloud/api/issues/', 401, '{}');
+  Assert.IsFalse(mProvider.Development(YouTrackTarget, mTransportRef, 'ATL-123', 5000, mDevelopment, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasTrackerTargetTests);
   TDUnitX.RegisterTestFixture(TAtlasTrackerNamingTests);
   TDUnitX.RegisterTestFixture(TAtlasGitHubTrackerTests);
   TDUnitX.RegisterTestFixture(TAtlasYouTrackTrackerTests);
   TDUnitX.RegisterTestFixture(TAtlasTrackerDetailsTests);
+  TDUnitX.RegisterTestFixture(TAtlasTrackerDevelopmentTests);
   TDUnitX.RegisterTestFixture(TAtlasCommitHookTests);
 
 end.
