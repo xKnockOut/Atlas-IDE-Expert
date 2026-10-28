@@ -61,6 +61,10 @@ type
     /// Benutzer, eindeutige Namen.</summary>
     [Test]
     procedure ChecksIssueConnections;
+    /// <summary>#1261: issues.projects (Zuordnung Delphi-Projekt → Tracker-Projekt) wird geprüft: match und
+    /// connection nötig, ein Pfad nur einmal (ohne Groß-/Kleinschreibung, „/“ wie „\“).</summary>
+    [Test]
+    procedure ChecksIssueProjects;
     [Test]
     procedure ReadsStringLiteral;
     [Test]
@@ -1187,6 +1191,28 @@ begin
   Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"connections": [{"name": "B", "provider": "github",' +
     ' "url": "https://github.com"}]}}', Issues);
   Assert.IsTrue(Settings.IssueConnections.Contains('"B"'), 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksIssueProjects;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"issues": {"projects": [{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", ' +
+    '"connection": "Firma", "project": "KASSE"}, {"match": "C:\\Projekte\\Atlas", "connection": "GitHub"}]}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'Beispiel aus dem Issue ohne Meldung; project darf fehlen');
+  Assert.IsTrue(Settings.IssueProjects.StartsWith('['), Settings.IssueProjects);
+  Assert.IsTrue(Settings.IssueProjects.Contains('"KASSE"'), Settings.IssueProjects);
+  Settings := Parse('{"issues": {"projects": [{"match": "C:\\A", "connection": "Firma"}, ' +
+    '{"match": "c:/a/", "connection": "GitHub"}, {"connection": 3, "project": 4, "x": 1}, 3]}}', Issues);
+  // Pfad doppelt; connection kein String, project kein String, x unbekannt, ohne match, ohne connection; 3.
+  Assert.AreEqual(7, Integer(Length(Issues)));
+  Parse('{"issues": {"projects": {"match": "C:\\A"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"projects": [{"match": "C:\\B", ' +
+    '"connection": "Firma"}]}}', Issues);
+  Assert.IsTrue(Settings.IssueProjects.Contains('Firma'), 'Datei vor Editor');
 end;
 
 procedure TConfigurationParserTests.ReadsMcpDisabledTools;
