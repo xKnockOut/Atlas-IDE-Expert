@@ -1448,6 +1448,22 @@ begin
   Loaded.StickyScrollBlockMinLines := 1;
   Loaded.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MinStickyBlockLines, Loaded.StickyScrollBlockMinLines);
+  // Was der Kopf zeigt: Typen und Routinen an, weitere Anweisungsblöcke aus; jede Art einzeln gespeichert.
+  Assert.IsTrue(Settings.StickyScrollTypes and Settings.StickyScrollRoutines);
+  Assert.IsFalse(Settings.StickyScrollLoops or Settings.StickyScrollTry or Settings.StickyScrollCase or
+    Settings.StickyScrollWith);
+  Settings.StickyScrollTypes := False;
+  Settings.StickyScrollLoops := True;
+  Settings.StickyScrollCase := True;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.StickyScrollTypes);
+  Assert.IsTrue(Loaded.StickyScrollRoutines);
+  Assert.IsTrue(Loaded.StickyScrollLoops);
+  Assert.IsFalse(Loaded.StickyScrollTry);
+  Assert.IsTrue(Loaded.StickyScrollCase);
+  Assert.IsFalse(Loaded.StickyScrollWith);
 end;
 
 procedure TAtlasPluginSettingsTests.MinimapOptions;

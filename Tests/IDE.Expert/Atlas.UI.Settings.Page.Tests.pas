@@ -2097,6 +2097,20 @@ begin
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.StickyScroll);
     Assert.AreEqual(2, Saved.StickyScrollMaxLines);
+    // Was der Kopf zeigt: je Art ein Schalter.
+    Assert.IsTrue(Page.StickyScrollTypes.Checked and Page.StickyScrollRoutines.Checked);
+    Assert.IsFalse(Page.StickyScrollTry.Checked);
+    Page.StickyScrollRoutines.Checked := False;
+    Page.StickyScrollTry.Checked := True;
+    Page.StickyScrollWith.Checked := True;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsTrue(Saved.StickyScrollTypes);
+    Assert.IsFalse(Saved.StickyScrollRoutines);
+    Assert.IsFalse(Saved.StickyScrollLoops);
+    Assert.IsTrue(Saved.StickyScrollTry);
+    Assert.IsFalse(Saved.StickyScrollCase);
+    Assert.IsTrue(Saved.StickyScrollWith);
   finally
     Page.Free;
   end;
