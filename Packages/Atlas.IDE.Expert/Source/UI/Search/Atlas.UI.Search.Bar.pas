@@ -8,7 +8,8 @@
 // „In Meldungen“; rechts Schließen.
 // Tasten in allen Feldern der Leiste: Enter nächster Treffer und Liste in den
 // Meldungen (OnNext, dann OnList), Umschalt+Enter voriger Treffer, F3 bzw.
-// Umschalt+F3 wie im Editor, Esc schließt (OnClose). Jede Änderung an Text,
+// Umschalt+F3 wie im Editor, Esc schließt (OnClose). Bearbeitungstasten wie Strg+V
+// behält das Suchfeld (TAtlasSearchEdit, #1243). Jede Änderung an Text,
 // Optionen oder Bereich meldet OnQueryChanged. Bekommt ein Feld der Leiste den
 // Fokus, meldet OnControlEnter es (der Aufrufer prüft, ob die IDE ihn gleich
 // wieder in den Editor holt). Reine VCL; gesucht, markiert
@@ -22,6 +23,7 @@ uses
   System.SysUtils,
   System.Classes,
   Winapi.Windows,
+  Winapi.Messages,
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.ExtCtrls,
@@ -30,10 +32,21 @@ uses
 type
   TAtlasSearchBarStep = reference to procedure(ABackward: Boolean);
 
+  /// <summary>Suchfeld, das Bearbeitungstasten (Strg+V/C/X/A/Z/Y, Entf, Umschalt+Einfg …) selbst behält (#1243).
+  /// Sonst prüft das Editorfenster der IDE sie zuerst als eigene Tastenkürzel und fügt etwa in den Editor ein.
+  /// </summary>
+  TAtlasSearchEdit = class(TEdit)
+  private
+    procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
+  public
+    /// <summary>Bleibt die Taste im Feld, statt als Tastenkürzel der IDE zu gelten?</summary>
+    class function KeepsKey(AKey: Word; AShift: TShiftState): Boolean; static;
+  end;
+
   TAtlasSearchBar = class(TCustomPanel)
   private
     FTextLabel: TLabel;
-    FText: TEdit;
+    FText: TAtlasSearchEdit;
     FCase: TCheckBox;
     FWhole: TCheckBox;
     FIdentifier: TCheckBox;
@@ -97,7 +110,7 @@ type
     /// <summary>Ein Feld der Leiste hat den Fokus bekommen.</summary>
     property OnControlEnter: TProc<TWinControl> read FOnControlEnter write FOnControlEnter;
     // Für Tests.
-    property TextEdit: TEdit read FText;
+    property TextEdit: TAtlasSearchEdit read FText;
     property ScopeBox: TComboBox read FScope;
     property LevelBox: TComboBox read FLevel;
     property CaseBox: TCheckBox read FCase;
@@ -108,6 +121,7 @@ type
 implementation
 
 uses
+  Vcl.Forms,
   Atlas.UI.Strings;
 
 const
@@ -117,6 +131,35 @@ const
   ScopeWidth = 100;
   LevelWidth = 240;
   ButtonWidth = 28;
+
+{ TAtlasSearchEdit }
+
+class function TAtlasSearchEdit.KeepsKey(AKey: Word; AShift: TShiftState): Boolean;
+begin
+  if AShift = [ssCtrl] then
+    Result := CharInSet(Char(AKey), ['A', 'C', 'V', 'X', 'Y', 'Z']) or (AKey = VK_INSERT) or (AKey = VK_BACK) or
+      (AKey = VK_DELETE) or (AKey = VK_LEFT) or (AKey = VK_RIGHT)
+  else if AShift = [ssShift] then
+    Result := (AKey = VK_INSERT) or (AKey = VK_DELETE) or (AKey = VK_HOME) or (AKey = VK_END) or (AKey = VK_LEFT) or
+      (AKey = VK_RIGHT)
+  else if AShift = [ssCtrl, ssShift] then
+    Result := (AKey = Ord('Z')) or (AKey = VK_LEFT) or (AKey = VK_RIGHT)
+  else if AShift = [] then
+    Result := (AKey = VK_DELETE) or (AKey = VK_HOME) or (AKey = VK_END) or (AKey = VK_BACK)
+  else
+    Result := False;
+end;
+
+procedure TAtlasSearchEdit.CNKeyDown(var Message: TWMKeyDown);
+begin
+  // Vor der Prüfung der Tastenkürzel des Formulars (IsMenuKey): Result 0 lässt die Taste als WM_KEYDOWN ins Feld.
+  if KeepsKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
+  begin
+    Message.Result := 0;
+    Exit;
+  end;
+  inherited;
+end;
 
 { TAtlasSearchBar }
 
@@ -144,7 +187,7 @@ begin
   FClose.OnEnter := ControlEnter;
 
   FTextLabel := AddLabel(TAtlasStrings.Text(TAtlasTextId.SearchTextLabel));
-  FText := TEdit.Create(Self);
+  FText := TAtlasSearchEdit.Create(Self);
   FText.Parent := Self;
   Place(FText, TextBoxWidth);
   FText.OnChange := Changed;

@@ -1760,8 +1760,9 @@ begin
       end
       else if (Child.Kind <> TSyntaxKind.RoutineDecl) and Contains(Child, FOffset) then
       begin
-        // for var I := ...: gilt nur in der Schleife.
-        if (Child.Kind = TSyntaxKind.ForStatement) and SameText(Child.Name, AName) and IsForVar(Child) then
+        // for var I := ... und for var X in ... (#1239): gilt nur in der Schleife.
+        if (Child.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and SameText(Child.Name, AName) and
+          IsForVar(Child) then
         begin
           AResult := FromNode(Child, Child.Name, TIndexSymbolKind.Variable, False);
           Exit(True);
