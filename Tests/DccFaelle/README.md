@@ -30,6 +30,7 @@ schreibt alle dcc-Meldungen nach `Output/DccFaelle-Ergebnis.txt`.
 | `DccVorwaerts` | `type-used-before-declaration` | TU1/TU2 `class of` vor der Klasse im selben type-Block |
 | `DccVorwaertsGegen` | `type-used-before-declaration` | UG1 Klasse erst im nächsten type-Block |
 | `DccInterfaces` | `interface-declaration-invalid` | ID1 Property im abgeleiteten Interface mit write neu, ID2 dasselbe generisch |
+| `DccInterfacesGegen` | `interface-declaration-invalid` | IG1 Neudeklaration ohne Typ (E2206), IG2 neue Property mit geerbtem Getter (E2370?) |
 | `DccOperatoren` | `operator-declaration-invalid` | OP1–OP4 Vergleichsoperatoren ohne Boolean-Ergebnis, OP5 Benutzung |
 | `DccOperatorenGegen` | `operator-declaration-invalid` | OG1/OG2 falsche Parameterzahl |
 | `DccKonstanten` | `typed-constant-modified` | TC1 `{$J+}`, TC2 `{$WRITEABLECONST ON}`, TC3 `{$J+}` aus einer Include-Datei |
