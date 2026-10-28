@@ -3624,23 +3624,33 @@ end;
 
 function TNameResolver.TokenIndexAt(const APosition: TTextPosition): Integer;
 var
-  Index: Integer;
-  Token: TPascalToken;
+  mLow, mHigh, mMiddle, Index: Integer;
 begin
-  for Index := 0 to High(FTree.Tokens) do
+  // Binäre Suche (#1220): Der Durchlauf von vorn machte jede Auflösung linear in der Zahl der Token, Regeln wie
+  // inline-not-expanded, die viele Bezeichner einer großen Unit auflösen, also quadratisch. Die Token stehen in
+  // Quelltextreihenfolge und überlappen nicht. mLow wird das erste Token, das hinter APosition beginnt.
+  mLow := 0;
+  mHigh := Length(FTree.Tokens);
+  while mLow < mHigh do
   begin
-    Token := FTree.Tokens[Index];
-    if ComparePositions(Token.StartPos, APosition) > 0 then
-      Break;
-    // Cursor auf oder direkt hinter dem Bezeichner; C in ^C ist ein Zeichen (#862).
-    if (Token.Kind = TPascalTokenKind.Identifier) and (ComparePositions(APosition, Token.EndPos) <= 0) then
-    begin
-      if FTree.IsControlCharPart(Index) then
-        Exit(-1);
-      Exit(Index);
-    end;
+    mMiddle := (mLow + mHigh) div 2;
+    if ComparePositions(FTree.Tokens[mMiddle].StartPos, APosition) > 0 then
+      mHigh := mMiddle
+    else
+      mLow := mMiddle + 1;
   end;
+  // Cursor auf oder direkt hinter dem Bezeichner. Reichen zwei Token bis APosition, gilt wie bisher das vordere.
   Result := -1;
+  Index := mLow - 1;
+  while (Index >= 0) and (ComparePositions(APosition, FTree.Tokens[Index].EndPos) <= 0) do
+  begin
+    if FTree.Tokens[Index].Kind = TPascalTokenKind.Identifier then
+      Result := Index;
+    Dec(Index);
+  end;
+  // C in ^C ist ein Zeichen (#862).
+  if (Result >= 0) and FTree.IsControlCharPart(Result) then
+    Result := -1;
 end;
 
 /// <summary>Typ, dessen Methodenzuordnung (procedure IFoo.Bar = MyBar) an AOffset ihr Ziel nennt (#849);

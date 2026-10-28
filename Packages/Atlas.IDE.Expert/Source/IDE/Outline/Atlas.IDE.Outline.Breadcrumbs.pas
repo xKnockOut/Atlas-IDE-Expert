@@ -34,6 +34,10 @@
 //   IDE-Option „Navigationssymbolleiste anzeigen“ (TAtlasIdeNavigationOption,
 //   Bericht M3). Nur wenn die IDE keine solche Option hat, hängt
 //   TAtlasNavigationToolbar die Leiste um (Netz).
+// - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die
+//   IDE, Protokoll des Sperrenden und Abbau übernimmt TAtlasEditorBarHost
+//   (#1248). Bei ausgelöster Sicherung bleiben die Leisten stehen und sagen
+//   „abgeschaltet“ (ShowDisabled), statt zu verschwinden.
 // Abgrenzung zum mitlaufenden Kopf (#506) und zum Gliederungsfenster (#537):
 // docs/Architektur.md. Nur im Hauptthread.
 
@@ -80,6 +84,7 @@ uses
   Atlas.UI.Outline.Breadcrumbs,
   Atlas.UI.Outline.NavigationToolbar,
   Atlas.IDE.Outline.NavigationOption,
+  Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
@@ -88,26 +93,13 @@ uses
 
 const
   TickMs = 150;
-  /// <summary>Höchstens so oft den Stack beim Sperren der Leiste protokollieren.</summary>
-  MaxDisabledTraces = 3;
   MenuWidth = 380;
 
 type
-  TBreadcrumbsState = class;
-
-  /// <summary>Erfährt, wenn die IDE eine Leiste mit ihrem Fenster freigibt.</summary>
-  TBarWatcher = class(TComponent)
-  private
-    FState: TBreadcrumbsState;
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  end;
-
   TBreadcrumbsState = class
   private
     FTimer: TTimer;
-    FWatcher: TBarWatcher;
-    FBars: TList<TAtlasBreadcrumbBar>;
+    FHost: TAtlasEditorBarHost;
     FFileName: string;
     FStamp: Cardinal;
     FStatus: TAtlasOutlineStatus;
@@ -127,16 +119,12 @@ type
     FDisabled: Boolean;
     /// <summary>Zuletzt protokollierte Ursache am Fenster der Leiste ('' = keine).</summary>
     FProblem: string;
-    /// <summary>So oft wurde der Aufrufer beim Sperren schon protokolliert.</summary>
-    FDisabledTraces: Integer;
     procedure Tick(Sender: TObject);
     procedure Probe;
     procedure ShowDisabled;
-    procedure Disabled(ABar: TAtlasBreadcrumbBar);
-    function BarOf(AParent: TWinControl): TAtlasBreadcrumbBar;
-    function EditorOf(const AWindow: INTAEditWindow): TWinControl;
     procedure EnsureBars;
-    procedure CreateBar(AParent: TWinControl);
+    function CreateBar(AParent: TWinControl): TAtlasBreadcrumbBar;
+    procedure Place(ABar: TAtlasBreadcrumbBar; AParent: TWinControl);
     procedure OpenMenu(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure OpenChildren(ABar: TAtlasBreadcrumbBar; AIndex: Integer; const APoint: TPoint);
     procedure OpenList(ABar: TAtlasBreadcrumbBar; const APrompt: string; const AItems: TArray<Integer>;
@@ -150,7 +138,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Removed(ABar: TAtlasBreadcrumbBar);
+    procedure Removed(ABar: TControl);
     procedure Reset;
     procedure Update;
     procedure ApplyTheme;
@@ -162,23 +150,21 @@ begin
   Result := TAtlasIdeSettings.Current.Breadcrumbs and not TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs);
 end;
 
-{ TBarWatcher }
-
-procedure TBarWatcher.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent is TAtlasBreadcrumbBar) and (FState <> nil) then
-    FState.Removed(TAtlasBreadcrumbBar(AComponent));
-end;
-
 { TBreadcrumbsState }
 
 constructor TBreadcrumbsState.Create;
 begin
   inherited Create;
-  FBars := TList<TAtlasBreadcrumbBar>.Create;
-  FWatcher := TBarWatcher.Create(nil);
-  FWatcher.FState := Self;
+  FHost := TAtlasEditorBarHost.Create('Brotkrumen', TAtlasFeature.Breadcrumbs,
+    function(AEditorParent: TWinControl): TControl
+    begin
+      Result := CreateBar(AEditorParent);
+    end,
+    procedure(ABar: TControl; AEditorParent: TWinControl)
+    begin
+      Place(TAtlasBreadcrumbBar(ABar), AEditorParent);
+    end);
+  FHost.OnRemoved := Removed;
   FToolbars := TAtlasNavigationToolbar.Create(nil);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
@@ -188,28 +174,17 @@ begin
 end;
 
 destructor TBreadcrumbsState.Destroy;
-var
-  Bar: TAtlasBreadcrumbBar;
 begin
   FTimer.Free;
   // Navigationsleisten der IDE wieder zeigen: Option zurück, wenn Atlas sie ausgeschaltet hatte, bzw. zurückhängen.
   TAtlasIdeNavigationOption.Apply(False);
   FToolbars.Free;
-  // Leisten selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
-  FWatcher.FState := nil;
-  for Bar in FBars.ToArray do
-  begin
-    Bar.RemoveFreeNotification(FWatcher);
-    Bar.Free;
-  end;
-  FBars.Free;
-  FWatcher.Free;
+  FHost.Free;
   inherited Destroy;
 end;
 
-procedure TBreadcrumbsState.Removed(ABar: TAtlasBreadcrumbBar);
+procedure TBreadcrumbsState.Removed(ABar: TControl);
 begin
-  FBars.Remove(ABar);
   if FActiveBar = ABar then
   begin
     FActiveBar := nil;
@@ -245,12 +220,14 @@ end;
 
 procedure TBreadcrumbsState.ApplyTheme;
 var
-  Bar: TAtlasBreadcrumbBar;
   Colors: TAtlasColors;
 begin
   Colors := BarColors;
-  for Bar in FBars do
-    Bar.SetColors(Colors);
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasBreadcrumbBar(ABar).SetColors(Colors);
+    end);
 end;
 
 /// <summary>Netz, nur ohne Option der IDE (siehe Reset): Navigationsleiste in ein eigenes Panel umhängen.</summary>
@@ -262,55 +239,28 @@ begin
     FToolbars.Apply(AParent, True);
 end;
 
-function TBreadcrumbsState.BarOf(AParent: TWinControl): TAtlasBreadcrumbBar;
-var
-  Bar: TAtlasBreadcrumbBar;
-begin
-  for Bar in FBars do
-    if Bar.Parent = AParent then
-      Exit(Bar);
-  Result := nil;
-end;
-
-function TBreadcrumbsState.EditorOf(const AWindow: INTAEditWindow): TWinControl;
-var
-  Editor: TComponent;
-begin
-  Result := nil;
-  if (AWindow = nil) or (AWindow.Form = nil) then
-    Exit;
-  Editor := AWindow.Form.FindComponent('Editor');
-  if (Editor is TWinControl) and (TWinControl(Editor).Parent <> nil) then
-    Result := TWinControl(Editor);
-end;
-
 procedure TBreadcrumbsState.EnsureBars;
 var
   Services: INTAEditorServices;
   Index: Integer;
-  Editor: TWinControl;
 begin
+  FHost.Ensure;
   if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
     Exit;
+  // Die IDE legt die Navigationsleiste je Fenster an; neue Fenster beim nächsten Takt.
   for Index := 0 to Services.EditWindowCount - 1 do
-  begin
-    Editor := EditorOf(Services.EditWindow[Index]);
-    if (Editor <> nil) and (BarOf(Editor.Parent) = nil) then
-      CreateBar(Editor.Parent);
-    // Die IDE legt die Navigationsleiste je Fenster an; neue Fenster beim nächsten Takt.
-    if Editor <> nil then
+    if TAtlasEditorBarHost.EditorOf(Services.EditWindow[Index]) <> nil then
       ApplyToolbar(Services.EditWindow[Index].Form);
-  end;
 end;
 
-/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable.</summary>
-procedure TBreadcrumbsState.CreateBar(AParent: TWinControl);
+/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
+function TBreadcrumbsState.CreateBar(AParent: TWinControl): TAtlasBreadcrumbBar;
 var
   Bar: TAtlasBreadcrumbBar;
+  Host: TAtlasEditorBarHost;
 begin
   Bar := TAtlasBreadcrumbBar.Create(nil);
-  Bar.FreeNotification(FWatcher);
-  FBars.Add(Bar);
+  Host := FHost;
   Bar.SetColors(BarColors);
   Bar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
   Bar.CrumbHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCrumbHint);
@@ -354,27 +304,26 @@ begin
       Leave(Bar);
     end;
   Bar.OnDisabled :=
-    procedure
+    procedure(ASender: TObject)
     begin
-      Disabled(Bar);
+      Host.Disabled(ASender);
     end;
+  Result := Bar;
+end;
+
+procedure TBreadcrumbsState.Place(ABar: TAtlasBreadcrumbBar; AParent: TWinControl);
+begin
+  if ABar.Parent = AParent then
+    Exit;
   // Über dem Editor: zuerst ganz oben einhängen, dann oben ausrichten.
-  Bar.Top := 0;
-  Bar.Align := alTop;
-  Bar.Parent := AParent;
+  ABar.Top := 0;
+  ABar.Align := alTop;
+  ABar.Parent := AParent;
 end;
 
 function TBreadcrumbsState.ActiveBar: TAtlasBreadcrumbBar;
-var
-  Services: INTAEditorServices;
-  Editor: TWinControl;
 begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
-    Exit;
-  Editor := EditorOf(Services.TopEditWindow);
-  if Editor <> nil then
-    Result := BarOf(Editor.Parent);
+  Result := TAtlasBreadcrumbBar(FHost.ActiveBar);
 end;
 
 procedure TBreadcrumbsState.Update;
@@ -564,23 +513,15 @@ begin
   TAtlasMainThread.ForceQueue(TAtlasFeature.Breadcrumbs,
     procedure
     begin
-      if (TAtlasIdeBreadcrumbs.FState <> State) or not State.FBars.Contains(Bar) then
+      if (TAtlasIdeBreadcrumbs.FState <> State) or not State.FHost.Contains(Bar) then
         Exit;
       Action();
     end);
 end;
 
 procedure TBreadcrumbsState.Leave(ABar: TAtlasBreadcrumbBar);
-var
-  Form: TCustomForm;
-  Editor: TComponent;
 begin
-  Form := GetParentForm(ABar);
-  if Form = nil then
-    Exit;
-  Editor := Form.FindComponent('Editor');
-  if (Editor is TWinControl) and TWinControl(Editor).CanFocus then
-    TWinControl(Editor).SetFocus;
+  TAtlasEditorBarHost.FocusEditor(ABar);
 end;
 
 procedure TBreadcrumbsState.Tick(Sender: TObject);
@@ -612,24 +553,18 @@ end;
 /// <summary>Nach ausgelöster Sicherung einmal den Hinweis in alle Leisten schreiben; vorher blieb die Leiste mit dem
 /// letzten Pfad stehen und reagierte auf keinen Klick mehr.</summary>
 procedure TBreadcrumbsState.ShowDisabled;
-var
-  Bar: TAtlasBreadcrumbBar;
 begin
   if FDisabled then
     Exit;
   FDisabled := True;
   TAtlasGuard.Log('Brotkrumen: durch die Sicherung abgeschaltet');
-  try
-    for Bar in FBars do
+  // Je Leiste abgesichert (Host): Läuft außerhalb von TAtlasGuard.Run, nichts darf in die IDE durchschlagen.
+  FHost.ForEach(
+    procedure(ABar: TControl)
     begin
-      Bar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsDisabled);
-      Bar.SetCrumbs(nil);
-    end;
-  except
-    // Läuft außerhalb von TAtlasGuard.Run (Feature abgeschaltet); nichts darf in die IDE durchschlagen.
-    on E: Exception do
-      TAtlasGuard.Log('Brotkrumen: Hinweis nicht gesetzt: ' + TAtlasGuard.SafeMessage(E.Message));
-  end;
+      TAtlasBreadcrumbBar(ABar).EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsDisabled);
+      TAtlasBreadcrumbBar(ABar).SetCrumbs(nil);
+    end);
 end;
 
 /// <summary>Steuerelement mit seinen Eltern bis zum Formular, für das Protokoll.</summary>
@@ -646,22 +581,6 @@ begin
     Result := Result + AControl.ClassName + ' ' + AControl.Name;
     AControl := AControl.Parent;
     Inc(Depth);
-  end;
-end;
-
-/// <summary>Gesperrt wird das Fenster der Leiste nur von außen (IDE oder anderer Experte). Den Aufrufer einmal je
-/// Leiste mit Stack protokollieren, damit die Ursache feststeht.</summary>
-procedure TBreadcrumbsState.Disabled(ABar: TAtlasBreadcrumbBar);
-begin
-  if FDisabledTraces >= MaxDisabledTraces then
-    Exit;
-  Inc(FDisabledTraces);
-  try
-    raise Exception.Create('Fenster der Leiste wird gesperrt');
-  except
-    on E: Exception do
-      TAtlasGuard.Log(Format('Brotkrumen: Fenster der Leiste wird gesperrt (in %s); Aufrufer:%s%s',
-        [ControlChain(ABar.Parent), sLineBreak, E.StackTrace]));
   end;
 end;
 

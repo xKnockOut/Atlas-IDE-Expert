@@ -58,8 +58,6 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     constructor CreateStatus(AOwner: TComponent; const AColors: TAtlasColors);
-    /// <summary>Farbe des Punkts für AState.</summary>
-    class function StateColor(const AColors: TAtlasColors; AState: TAtlasStatusState): TAtlasColor; static;
     /// <summary>Zeilen neu setzen (auch bei offenem Fenster); Größe und Lage folgen.</summary>
     procedure SetItems(const AItems: TArray<IAtlasStatusItem>);
     /// <summary>Zeigt das Fenster mit der linken unteren Ecke an AAnchor (Bildschirm, Oberkante des Felds).</summary>
@@ -115,20 +113,6 @@ procedure TAtlasStatusWindow.CreateParams(var Params: TCreateParams);
 begin
   inherited;
   Params.WindowClass.Style := Params.WindowClass.Style or CS_DROPSHADOW;
-end;
-
-class function TAtlasStatusWindow.StateColor(const AColors: TAtlasColors; AState: TAtlasStatusState): TAtlasColor;
-begin
-  case AState of
-    TAtlasStatusState.Green:
-      Result := AColors.Add;
-    TAtlasStatusState.Yellow:
-      Result := AColors.Warn;
-    TAtlasStatusState.Red:
-      Result := AColors.Error;
-  else
-    Result := AColors.Muted;
-  end;
 end;
 
 function TAtlasStatusWindow.RowHeight: Integer;
@@ -314,8 +298,9 @@ var
   Radius: Integer;
 begin
   Radius := ScaleValue(4);
-  Canvas.Pen.Color := ToColor(StateColor(FColors, AState));
-  Canvas.Brush.Color := ToColor(StateColor(FColors, AState));
+  // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
+  Canvas.Pen.Color := ToColor(FColors.Signals.ForStatus(AState).Ring);
+  Canvas.Brush.Color := ToColor(FColors.Signals.ForStatus(AState).Fill);
   Canvas.Brush.Style := bsSolid;
   Canvas.Ellipse(ACenter.X - Radius, ACenter.Y - Radius, ACenter.X + Radius + 1, ACenter.Y + Radius + 1);
 end;

@@ -227,6 +227,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.Core.Style.Symbol,
+  Atlas.Core.Style.Signal,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol;
 
@@ -807,7 +808,7 @@ var
   Radius, Center, Left_, Pixels: Integer;
   Symbol: TWICImage;
   Target: TRect;
-  Dot: TColor;
+  Signals: TAtlasSignals;
   Part, Badge: TRect;
   Text: string;
   Inset: Integer;
@@ -837,9 +838,10 @@ begin
         Canvas.StretchDraw(Target, Symbol);
       Inc(Left_, SymbolWidth(StatusBar.CurrentPPI));
     end;
-    Dot := TColor(TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, FState));
-    Canvas.Pen.Color := Dot;
-    Canvas.Brush.Color := Dot;
+    // Signalfarben der Statusleiste der IDE (Fläche clBtnFace), nicht der Editorfläche (#1255).
+    Signals := TAtlasIdeStyle.ChromeColors.Signals;
+    Canvas.Pen.Color := TColor(Signals.ForStatus(FState).Ring);
+    Canvas.Brush.Color := TColor(Signals.ForStatus(FState).Fill);
     Canvas.Brush.Style := bsSolid;
     Canvas.Ellipse(Left_ + 2 * Radius - Radius, Center - Radius, Left_ + 2 * Radius + Radius + 1,
       Center + Radius + 1);
@@ -855,17 +857,12 @@ begin
       Badge.Top := Rect.Top + Inset;
       Badge.Right := Rect.Right - Inset;
       Badge.Bottom := Rect.Bottom - Inset;
-      Dot := TColor(TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, FBadgeState));
-      Canvas.Pen.Color := Dot;
-      Canvas.Brush.Color := Dot;
+      Canvas.Pen.Color := TColor(Signals.ForStatus(FBadgeState).Solid);
+      Canvas.Brush.Color := TColor(Signals.ForStatus(FBadgeState).Solid);
       Canvas.Brush.Style := bsSolid;
       Canvas.RoundRect(Badge.Left, Badge.Top, Badge.Right, Badge.Bottom, Badge.Height, Badge.Height);
       Canvas.Brush.Style := bsClear;
-      // Auf Gelb dunkle Schrift, sonst weiße.
-      if FBadgeState = TAtlasStatusState.Yellow then
-        Canvas.Font.Color := clBlack
-      else
-        Canvas.Font.Color := clWhite;
+      Canvas.Font.Color := TColor(Signals.ForStatus(FBadgeState).OnSolid);
       Text := BadgeText;
       DrawText(Canvas.Handle, PChar(Text), -1, Badge, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
       Canvas.Font.Color := StyleServices.GetSystemColor(clBtnText);

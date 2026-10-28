@@ -28,6 +28,10 @@
 // dem Speichern). Die letzte Prüfung einer Datei (Datei, Dauer, Zeitpunkt)
 // steht in LastCheck für die Statuszeile des Fensters „Atlas-Prüfung“;
 // Checking meldet eine laufende Anfrage für die Atlas-Statusleiste (#1155).
+// Projektprüfung (#1247): Der Server prüft als begrenzten Lauf; seinen Stand
+// (erledigt/gesamt, Pause, Ende) liefert jede Antwort auf workspace/diagnostic,
+// ProjectRun gibt ihn an die Statusleiste. Beginn und Ende des Debuggens gehen
+// als atlas/workspaceCheck/pause an den Server, damit sein Lauf ruht.
 // Fallen Projekte weg (Projektgruppe geschlossen oder gewechselt,
 // TLspSession.ProjectsRemoved), verwirft der Controller alle Befunde und holt
 // neu: Pull-Diagnosen melden Dateien, die nicht mehr dazugehören, nie wieder.
@@ -77,7 +81,8 @@ type
       DurationMs: Cardinal;
     end;
     TDocumentProc = reference to procedure(const APull: TPull; const AReport: TLspDiagnosticReport);
-    TWorkspaceProc = reference to procedure(const AReports: TArray<TLspDiagnosticReport>);
+    TWorkspaceProc = reference to procedure(const AReports: TArray<TLspDiagnosticReport>;
+      const ARun: TLspWorkspaceRun);
 
     TDocumentWorker = class(TThread)
     private
@@ -107,7 +112,7 @@ type
       FStop: TEvent;
       FDeliver: TWorkspaceProc;
       FLog: TAtlasProblemsLogProc;
-      procedure Deliver(const AReports: TArray<TLspDiagnosticReport>);
+      procedure Deliver(const AReports: TArray<TLspDiagnosticReport>; const ARun: TLspWorkspaceRun);
       procedure LogLater(const AMessage: string);
     protected
       procedure Execute; override;
@@ -157,7 +162,12 @@ type
     FCountsVersion: Integer;
     // Zuletzt gesehener Zähler weggefallener Projekte der Sitzung.
     FProjectsRemoved: Integer;
+    // Zuletzt dem Server gemeldete Debug-Pause (#1247).
+    FDebugPauseSent: Boolean;
     class var FOnCounts: TAtlasProblemCountsProc;
+    // Stand der Projektprüfung des Servers (#1247) und wann der letzte Lauf endete (GetTickCount64, 0 = nie).
+    class var FRun: TLspWorkspaceRun;
+    class var FRunFinishedAt: UInt64;
     class var FLastCheck: TAtlasProblemsCheck;
     procedure PublishCounts;
     procedure Tick(Sender: TObject);
@@ -165,7 +175,9 @@ type
     procedure StopWorkers(AWait: Boolean);
     procedure FreeFinished;
     procedure DeliverDocument(const APull: TPull; const AReport: TLspDiagnosticReport);
-    procedure DeliverWorkspace(const AReports: TArray<TLspDiagnosticReport>);
+    procedure DeliverWorkspace(const AReports: TArray<TLspDiagnosticReport>; const ARun: TLspWorkspaceRun);
+    /// <summary>Meldet dem Server Beginn und Ende des Debuggens (#1247): Die Projektprüfung ruht solange.</summary>
+    procedure ReportDebugPause(APaused: Boolean);
     procedure CloseUnopened(ASession: TLspSession);
     procedure Publish;
     /// <summary>Diagnosen holen: für Probleme oder für das Abblenden inaktiver Zweige.</summary>
@@ -200,11 +212,15 @@ type
     class function Checking: Boolean; static;
     /// <summary>Läuft ein Programm im Debugger? Dann ruht die Prüfung (#1241).</summary>
     class function Paused: Boolean; static;
+    /// <summary>Stand der Projektprüfung des Servers (#1247); AFinishedAgoMs = Zeit seit dem Ende des letzten Laufs
+    /// (High(UInt64) ohne). False, solange der Server keinen Stand gemeldet hat. Im Hauptthread.</summary>
+    class function ProjectRun(out ARun: TLspWorkspaceRun; out AFinishedAgoMs: UInt64): Boolean; static;
   end;
 
 implementation
 
 uses
+  System.JSON,
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   Vcl.Forms,
@@ -357,14 +373,15 @@ begin
   FStop.SetEvent;
 end;
 
-procedure TAtlasProblemsController.TWorkspaceWorker.Deliver(const AReports: TArray<TLspDiagnosticReport>);
+procedure TAtlasProblemsController.TWorkspaceWorker.Deliver(const AReports: TArray<TLspDiagnosticReport>;
+  const ARun: TLspWorkspaceRun);
 var
   Work: TThreadProcedure;
 begin
   Work :=
     procedure
     begin
-      FDeliver(AReports);
+      FDeliver(AReports, ARun);
     end;
   Queue(Work);
 end;
@@ -386,12 +403,13 @@ var
   Reports, Changed: TArray<TLspDiagnosticReport>;
   Report, Known: TLspDiagnosticReport;
   Started: Cardinal;
+  Run: TLspWorkspaceRun;
 begin
   while not Terminated do
   begin
     Started := GetTickCount;
     try
-      Reports := FSession.WorkspaceDiagnostics(FKnown.Values.ToArray, WorkspaceTimeoutMs);
+      Reports := FSession.WorkspaceDiagnostics(FKnown.Values.ToArray, WorkspaceTimeoutMs, Run);
       Changed := nil;
       for Report in Reports do
       begin
@@ -402,8 +420,9 @@ begin
         if not Report.Unchanged then
           Changed := Changed + [Report];
       end;
-      if Length(Changed) > 0 then
-        Deliver(Changed);
+      // Auch ohne neue Befunde: Fortschritt, Pause und Ende des Laufs für die Statusleiste (#1247).
+      if (Length(Changed) > 0) or Run.Known then
+        Deliver(Changed, Run);
       // Antwortet der Server sofort ohne Neues, nicht im Kreis fragen.
       if (Length(Changed) = 0) and (GetTickCount - Started < 1000) then
         FStop.WaitFor(1000);
@@ -462,6 +481,29 @@ class function TAtlasProblemsController.Checking: Boolean;
 begin
   Result := (CurrentController <> nil) and (CurrentController.FDocuments <> nil) and
     not CurrentController.FDocuments.Idle;
+end;
+
+class function TAtlasProblemsController.ProjectRun(out ARun: TLspWorkspaceRun; out AFinishedAgoMs: UInt64): Boolean;
+begin
+  ARun := FRun;
+  AFinishedAgoMs := High(UInt64);
+  if FRunFinishedAt > 0 then
+    AFinishedAgoMs := TThread.GetTickCount64 - FRunFinishedAt;
+  Result := (CurrentController <> nil) and FRun.Known;
+end;
+
+procedure TAtlasProblemsController.ReportDebugPause(APaused: Boolean);
+var
+  Session: TLspSession;
+begin
+  if FDebugPauseSent = APaused then
+    Exit;
+  Session := FSession(False);
+  if Session = nil then
+    Exit;
+  Session.Notify('atlas/workspaceCheck/pause', TJSONObject.Create.AddPair('reason', 'debug')
+    .AddPair('paused', TJSONBool.Create(APaused)));
+  FDebugPauseSent := APaused;
 end;
 
 class function TAtlasProblemsController.Paused: Boolean;
@@ -636,6 +678,8 @@ begin
     // Bestätigte Compilermeldungen zusammenführen (problems.compilerMerge, #1024); ändert nur bei Wechsel.
     FStore.CompilerMerge := not SameText(TAtlasIdeSettings.Current.ProblemsCompilerMerge, 'both');
     // Während des Debuggens ruht die Prüfung (#1241): keine Anfragen, keine Hintergrundprüfung; danach geht es weiter.
+    // Die Projektprüfung des Servers erfährt es eigens (#1247), sonst liefe ihr Lauf weiter.
+    ReportDebugPause(Paused);
     if Paused then
     begin
       if (FDocuments <> nil) or (FWorkspace <> nil) then
@@ -830,12 +874,20 @@ begin
     FStore.Edit(APull.FileName, Current);
 end;
 
-procedure TAtlasProblemsController.DeliverWorkspace(const AReports: TArray<TLspDiagnosticReport>);
+procedure TAtlasProblemsController.DeliverWorkspace(const AReports: TArray<TLspDiagnosticReport>;
+  const ARun: TLspWorkspaceRun);
 var
   Report: TLspDiagnosticReport;
 begin
   if not ShowProblems then
     Exit;
+  if ARun.Known then
+  begin
+    // Ende des Laufs merken: Die Statusleiste meldet eine Weile „fertig“.
+    if FRun.Active and not ARun.Active then
+      FRunFinishedAt := TThread.GetTickCount64;
+    FRun := ARun;
+  end;
   for Report in AReports do
     // Abgeglichene Dateien kommen über textDocument/diagnostic.
     if not FTexts.ContainsKey(TAtlasProblemStore.Key(Report.FileName)) then

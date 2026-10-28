@@ -83,7 +83,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Gehe zu** Definition (Strg+Klick), Implementierung und Typdefinition; Wechsel zwischen Deklaration und Implementierung (Strg+Umschalt+↑/↓); **Sprung zum Gegenstück** (begin ⇄ end, try → finally → end, `{$IFDEF}` → `{$ENDIF}`)
 - **Brotkrumenleiste** über dem Editor mit Sprungmenüs zu Unit, Klasse, Methode und deren Kindern
 - **Editorleiste** mit Symbolen: Sprung zum interface- bzw. implementation-Teil (und zurück mit „↩ 214“), Methode suchen, Navigationsverlauf und beliebige Palettenbefehle; Überlaufmenü, frei belegbar, auch rechts in der Brotkrumenzeile
-- **Atlas-Statusleiste** unten in jedem Editorfenster: Server-Status, Meldungen dieser Unit je Art (Klick springt zum nächsten Befund, Doppelklick öffnet „Atlas-Prüfung“ für die Unit), Live-Prüfung („live · geprüft vor 2 s“) und die Methode am Cursor mit Zeilen und CC (über der Grenze der Metrikregeln in Warnfarbe); jedes Element abschaltbar, das Atlas-Feld verlässt die Statuszeile der IDE, solange die Leiste den Status zeigt
+- **Atlas-Statusleiste** unten in jedem Editorfenster (Zustandsfarben für helles und dunkles Design eigens abgestimmt): Server-Status, Meldungen dieser Unit je Art (Klick springt zum nächsten Befund, Doppelklick öffnet „Atlas-Prüfung“ für die Unit), Live-Prüfung („live · geprüft vor 2 s“, während der Projektprüfung „· Projekt 45 %“, danach kurz „Projekt fertig“) und die Methode am Cursor mit Zeilen und CC (über der Grenze der Metrikregeln in Warnfarbe); jedes Element abschaltbar, das Atlas-Feld verlässt die Statuszeile der IDE, solange die Leiste den Status zeigt
 - **Gliederung** als andockbares Fenster mit Filter
 - **Definition einblenden** (Alt+F12) unter der Zeile, ohne die Datei zu wechseln
 - **Datei und Symbol schnell öffnen** (Strg+P) über Projekt, Projektgruppe und Suchpfad; projektweite **Symbolsuche**
@@ -285,6 +285,7 @@ Prüfskripte (laufen auch als GitHub Action):
 pwsh Tools/Check-PackageDependencies.ps1   # Packages halten ihre Abhängigkeiten ein
 pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 pwsh Tools/Check-TestCoverage.ps1          # jede Unit mit Logik hat Tests, jede Testunit läuft
+pwsh Tools/Check-WindowHosts.ps1           # Fenster und Editorleisten über die gemeinsamen Hüllen
 ```
 
 ## CI
@@ -293,7 +294,7 @@ pwsh Tools/Check-TestCoverage.ps1          # jede Unit mit Logik hat Tests, jede
   - Der Job braucht einen selbst gehosteten Windows-Runner (Labels `self-hosted`, `windows`, `delphi`) auf dem Arbeitsrechner des Entwicklers. Er läuft im angemeldeten Benutzerkontext und nicht als Dienst, weil `cc.ps1` eine IDE startet, und nur, solange dieser Rechner eingeschaltet ist. Jeder Job startet eine eigene Scratch-IDE.
   - Er läuft nur mit der Repository-Variablen `DELPHI_RUNNER=true`; sonst meldet der Job „uebersprungen“ das in der Zusammenfassung des Laufs. `CC_SCRIPT` überschreibt den Pfad zu `cc.ps1`.
   - Ein neuer Push auf denselben Branch bricht den laufenden Build ab (`concurrency`).
-- `package-dependencies.yml`: Package-Abhängigkeiten, stdout-Regel, Delphi-12-Verträglichkeit, Regelkatalog, Konfigurationsdoku und keine Embarcadero-Quellen in `Tests/`.
+- `package-dependencies.yml`: Package-Abhängigkeiten, stdout-Regel, Delphi-12-Verträglichkeit, Regelkatalog, Konfigurationsdoku, keine Embarcadero-Quellen in `Tests/` und Atlas-Fenster und Editorleisten nur über ihre gemeinsamen Hüllen.
 
 ## Kommandozeile
 
