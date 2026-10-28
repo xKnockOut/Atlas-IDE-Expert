@@ -285,6 +285,7 @@ Check scripts (also run as GitHub Actions):
 pwsh Tools/Check-PackageDependencies.ps1   # packages keep their dependencies
 pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, every test unit runs
+pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use their shared hosts
 ```
 
 ## CI
@@ -293,7 +294,7 @@ pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, ev
   - The job needs a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`) on the developer's workstation. It runs in the signed-in user context, not as a service, because `cc.ps1` starts an IDE, and only while that machine is switched on. Every job starts its own scratch IDE.
   - It runs only with the repository variable `DELPHI_RUNNER=true`; otherwise the job "uebersprungen" says so in the run summary. `CC_SCRIPT` overrides the path to `cc.ps1`.
   - A new push to the same branch cancels the running build (`concurrency`).
-- `package-dependencies.yml`: package dependencies, the stdout rule, Delphi 12 compatibility, rule catalog, configuration docs and no Embarcadero sources in `Tests/`.
+- `package-dependencies.yml`: package dependencies, the stdout rule, Delphi 12 compatibility, rule catalog, configuration docs, no Embarcadero sources in `Tests/`, and Atlas windows and editor bars only through their shared hosts.
 
 ## Command line
 

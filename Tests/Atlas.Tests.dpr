@@ -805,6 +805,8 @@ uses
   Atlas.UI.Editor.OverviewRuler.Tests in 'IDE.Expert\Atlas.UI.Editor.OverviewRuler.Tests.pas',
   Atlas.Core.Editor.Minimap in '..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Minimap.pas',
   Atlas.Core.Editor.Minimap.Tests in 'IDE.Expert\Atlas.Core.Editor.Minimap.Tests.pas',
+  Atlas.UI.Editor.Bar in '..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.Bar.pas',
+  Atlas.UI.Editor.Bar.Tests in 'IDE.Expert\Atlas.UI.Editor.Bar.Tests.pas',
   Atlas.UI.Editor.Minimap in '..\Packages\Atlas.IDE.Expert\Source\UI\Editor\Atlas.UI.Editor.Minimap.pas',
   Atlas.UI.Editor.Minimap.Tests in 'IDE.Expert\Atlas.UI.Editor.Minimap.Tests.pas',
   Atlas.Core.Search.Matching in '..\Packages\Atlas.IDE.Expert\Source\Core\Search\Atlas.Core.Search.Matching.pas',
