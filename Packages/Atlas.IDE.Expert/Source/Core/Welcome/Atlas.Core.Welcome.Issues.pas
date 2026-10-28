@@ -117,6 +117,9 @@ type
     BranchBase: string;
     /// <summary>'' = aus; nicht gekürzt.</summary>
     CommitPattern: string;
+    /// <summary>Hauptbranch des Projekts (#1286, vcs.projects bzw. .atlas); '' = raten. BranchBase hat Vorrang.
+    /// Setzt der Aufrufer je Projekt.</summary>
+    MainBranch: string;
     class function Create(AStart: TAtlasIssueStart; const ABranchPattern, ABranchBase,
       ACommitPattern: string): TAtlasIssuesOptions; static;
   end;
@@ -328,6 +331,7 @@ begin
   Result.BranchPattern := Trim(ABranchPattern);
   Result.BranchBase := Trim(ABranchBase);
   Result.CommitPattern := ACommitPattern;
+  Result.MainBranch := '';
 end;
 
 { TAtlasWelcomeIssues }
@@ -506,12 +510,7 @@ begin
   end;
   Result.Branch := TAtlasTrackerNaming.BranchName(Pattern, AIssue);
   Result.Valid := Result.Branch <> '';
-  if AOptions.BranchBase <> '' then
-    Result.Bases := [AOptions.BranchBase]
-  else if AKind = TAtlasVcsKind.Svn then
-    Result.Bases := [TAtlasTrackerNaming.SvnBase]
-  else
-    Result.Bases := [TAtlasTrackerNaming.GitBase, TAtlasTrackerNaming.GitBaseFallback];
+  Result.Bases := TAtlasTrackerNaming.Bases(AKind = TAtlasVcsKind.Svn, AOptions.BranchBase, AOptions.MainBranch);
   Result.Message := Trim(AIssue.Key + ' ' + AIssue.Title);
 end;
 

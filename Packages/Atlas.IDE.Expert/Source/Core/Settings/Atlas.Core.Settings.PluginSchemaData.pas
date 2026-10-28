@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5286] of string = (
+  Lines: array[0..5299] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5387,6 +5387,20 @@ const
     '      "x-page": "Versionsverwaltung",',
     '      "x-control": "Zahl (1–300)",',
     '      "x-issue": "#1285"',
+    '    },',
+    '    "VcsProjects": {',
+    '      "type": "array",',
+    '      "default": [],',
+    '      "items": {',
+    '        "type": "object"',
+    '      },',
+    '      "description": "Persönliche Art und Hauptbranch je Delphi-Projekt mit match, provider und mainBranch (#1286); liegt in settings.json unter vcs.projects. Im Plugin als JSON-Text gelesen und gesch' +
+      'rieben.",',
+    '      "x-key": "vcs.projects",',
+    '      "x-area": "vcs",',
+    '      "x-page": "Versionsverwaltung",',
+    '      "x-control": "Tabelle Projekte",',
+    '      "x-issue": "#1286"',
     '    }',
     '  },',
     '  "additionalProperties": false',

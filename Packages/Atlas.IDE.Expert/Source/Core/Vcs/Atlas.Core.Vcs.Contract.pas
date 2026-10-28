@@ -99,6 +99,8 @@ type
     Source: TAtlasVcsProviderSource;
     /// <summary>Bei Source Project: „Gilt für“ der Zeile; sonst ''.</summary>
     SourceMatch: string;
+    /// <summary>Hauptbranch aus .atlas bzw. vcs.projects (#1286); '' = raten.</summary>
+    MainBranch: string;
     WorkingCopy: TAtlasVcsWorkingCopy;
     /// <summary>Ergebnis der Abfrage von Head; NoWorkingCopy, Disabled oder ToolMissing ohne Abfrage.</summary>
     Outcome: TAtlasVcsOutcome;
@@ -396,6 +398,7 @@ begin
   Result.Provider := TAtlasVcsProvider.Auto;
   Result.Source := TAtlasVcsProviderSource.Setting;
   Result.SourceMatch := '';
+  Result.MainBranch := '';
   Result.WorkingCopy := TAtlasVcsWorkingCopy.Empty;
   Result.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
   Result.Head := TAtlasVcsHead.Empty;

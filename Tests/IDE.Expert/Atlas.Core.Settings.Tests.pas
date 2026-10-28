@@ -720,6 +720,17 @@ begin
   Assert.AreEqual('auto', mLoaded.VcsProvider, 'unbekannte Art: Vorgabe');
   Assert.AreEqual('s.exe', mLoaded.VcsSvnPath, 'ohne Leerzeichen');
   Assert.AreEqual(15, mLoaded.VcsTimeoutSeconds, 'außerhalb 1 bis 300: Vorgabe');
+  // #1286: vcs.projects als JSON-Liste wie issues.projects.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('[]', mSettings.VcsProjects);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '');
+  mStore := mRouted;
+  mSettings.VcsProjects := '[{"match": "C:\\Kasse", "provider": "svn", "mainBranch": "trunk"}]';
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"projects": [{"match": ');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.VcsProjects.Contains('"trunk"'), mLoaded.VcsProjects);
 end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;

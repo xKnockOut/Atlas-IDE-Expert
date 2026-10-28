@@ -1291,6 +1291,9 @@ type
     VcsSvnPath: string;
     /// <summary>Zeitlimit je Aufruf von git bzw. svn in Sekunden (#1285, vcs.timeoutSeconds, 1–300).</summary>
     VcsTimeoutSeconds: Integer;
+    /// <summary>Persönliche Art und Hauptbranch je Delphi-Projekt (#1286, vcs.projects) als JSON-Liste mit match,
+    /// provider und mainBranch; liegt in settings.json, gelesen mit TAtlasVcsProjects. '[]' = keine.</summary>
+    VcsProjects: string;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2011,6 +2014,7 @@ begin
   Result.VcsGitPath := '';
   Result.VcsSvnPath := '';
   Result.VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
+  Result.VcsProjects := '[]';
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2098,6 +2102,9 @@ begin
   // Außerhalb der Grenzen gilt die Vorgabe wie im Server (vcs.timeoutSeconds).
   if (VcsTimeoutSeconds < MinVcsTimeoutSeconds) or (VcsTimeoutSeconds > MaxVcsTimeoutSeconds) then
     VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
+  VcsProjects := Trim(VcsProjects);
+  if VcsProjects = '' then
+    VcsProjects := '[]';
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2811,6 +2818,7 @@ begin
   VcsGitPath := AStore.ReadString('VcsGitPath', Default.VcsGitPath);
   VcsSvnPath := AStore.ReadString('VcsSvnPath', Default.VcsSvnPath);
   VcsTimeoutSeconds := AStore.ReadInteger('VcsTimeoutSeconds', Default.VcsTimeoutSeconds);
+  VcsProjects := AStore.ReadString('VcsProjects', Default.VcsProjects);
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3281,6 +3289,7 @@ begin
   AStore.WriteString('VcsGitPath', VcsGitPath);
   AStore.WriteString('VcsSvnPath', VcsSvnPath);
   AStore.WriteInteger('VcsTimeoutSeconds', VcsTimeoutSeconds);
+  AStore.WriteString('VcsProjects', VcsProjects);
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);
