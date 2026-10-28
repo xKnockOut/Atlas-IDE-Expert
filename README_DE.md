@@ -92,7 +92,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Navigationsverlauf** über Dateien hinweg
 - **Benannte Lesezeichen** (Strg+Alt+K) und persönliche **Notizen** an Codezeilen, die nicht im Quelltext landen
 - **Schnelle Lesezeichen** in einer Spalte links der Zeilennummern: Klick setzt und entfernt, Strg+Umschalt+1…9 nummeriert, Strg+1…9 springt projektweit, Strg+Umschalt+K unnummeriert (die Faltungsakkorde der IDE bleiben), wandern mit dem Code mit und übernehmen die IDE-Lesezeichen
-- **Übersichtsleiste** an der Scrollleiste mit Fehlern, Treffern und Änderungen; **Minimap** *(experimentell)*; **mitlaufender Kopf** der umgebenden Klasse und Routine *(experimentell)*
+- **Übersichtsleiste** an der Scrollleiste mit Fehlern, Treffern und Änderungen; **Minimap** *(experimentell)*; **mitlaufender Kopf** der umgebenden Klasse, Routine und großen Blöcke, je Art abschaltbar *(experimentell)*
 - **TODO-Übersicht** des Projekts aus `// TODO`, `// FIXME` und dem To-do-Format der IDE
 
 ### Code-Analyse

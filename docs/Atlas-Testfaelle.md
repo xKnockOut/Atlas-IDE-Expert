@@ -1310,6 +1310,11 @@ Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktione
 | SS8 | Methode bearbeiten, kurz warten | Nach der Tipppause stimmen die Köpfe mit dem neuen Text |
 | SS9 | Helles und dunkles Editor-Farbschema | Hintergrund und Schrift passen zum Schema |
 | SS10 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Kein Kopf, Klicks in die oberen Zeilen setzen wie sonst den Cursor |
+| SS11 | Blocklinien an, in einer Methode mit `if` (lang), darin `for` und `try` (je über 25 Zeilen) und innerem `if` scrollen; nur Routinen und if/else im Kopf | Methode, äußeres und inneres `if` stehen im Kopf, ihre Linien beginnen dort mit Haken. Die Linien von `for` und `try` blenden in der letzten Kopfzeile von oben weich ein und laufen darunter ohne Sprung weiter, nichts bricht an der Trennlinie ab (hell und dunkel) |
+| SS12 | Unter *Editor* „Große Schleifen im Kopf“ und „Große try-Blöcke im Kopf“ an, Höchstzahl 5 | `for …` und `try` stehen als eigene Zeilen im Kopf, ihre Linien beginnen dort mit Haken; Klick springt zu `for` bzw. `try` |
+| SS13 | „Große case-Blöcke im Kopf“ bzw. „Große with-Blöcke im Kopf“ an, in einen langen `case` bzw. `with … do begin` scrollen | Kopfzeile `case … of` bzw. `with … do`; aus: keine Zeile, die Linie blendet ein |
+| SS14 | „Klassen und Records im Kopf“ aus und in der Klassendeklaration scrollen; „Routinen im Kopf“ aus und in einer Methode scrollen | Keine Kopfzeile für die Klasse bzw. die Methode; andere eingeschaltete Blöcke stehen weiter im Kopf |
+| SS15 | Höchstzahl 2 mit vier Ebenen | Äußere Ebenen zusammengefasst; Linien zusammengefasster Blöcke blenden in der letzten Kopfzeile ein |
 
 ## Variable und Methode einbetten (#103, experimentell)
 

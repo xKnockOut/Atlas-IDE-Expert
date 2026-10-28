@@ -92,7 +92,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Navigation history** across files
 - **Named bookmarks** (Ctrl+Alt+K) and personal **notes** on code lines that never go into the source
 - **Quick bookmarks** in a column left of the line numbers: click to set and remove, Ctrl+Shift+1…9 numbers them, Ctrl+1…9 jumps project-wide, Ctrl+Shift+K unnumbered (the IDE's folding chords keep working); they follow code changes and take over the IDE bookmarks
-- **Overview ruler** at the scroll bar with errors, matches and changes; **minimap** *(experimental)*; **sticky scroll** of the enclosing class and routine *(experimental)*
+- **Overview ruler** at the scroll bar with errors, matches and changes; **minimap** *(experimental)*; **sticky scroll** of the enclosing class, routine and large blocks, each kind switchable *(experimental)*
 - **TODO overview** of the project from `// TODO`, `// FIXME` and the IDE's to-do format
 
 ### Code analysis
