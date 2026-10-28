@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5371] of string = (
+  Lines: array[0..5401] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5481,6 +5481,39 @@ const
     '      "x-area": "issues",',
     '      "x-page": "Issue-Tracker",',
     '      "x-issue": "#1273"',
+    '    },',
+    '    "IssuesBoard": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Dockfenster „Atlas-Board“ (Ansicht › Atlas › Board, Befehl Atlas.Board): Spalten des Agile-Boards (YouTrack) bzw. des Projekts (GitHub Projects, sonst Offen/Geschlossen) mit Kart' +
+      'en aus Kennung, Titel, Zuständigem, Priorität, Checklisten-Fortschritt und Schloss; Karten ziehen ändert den Zustand im Tracker, Doppelklick öffnet die Vorschau, Kontextmenü Beginnen, Im Browser öffne' +
+      'n, Mir zuweisen. Aus: kein Menüeintrag, kein Befehl, keine Abfrage.",',
+    '      "x-key": "issues.board",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#1272"',
+    '    },',
+    '    "IssuesBoardConfirmMove": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Beim Ziehen einer Karte in eine andere Spalte fragt Atlas nach („ATL-123 → Zur Prüfung?“) und bietet einen optionalen Kommentar an; „Nicht mehr fragen“ schaltet die Rückfrage ab.' +
+      ' Aus: Die Karte wird sofort verschoben.",',
+    '      "x-key": "issues.board.confirmMove",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#1272"',
+    '    },',
+    '    "IssuesBoardOnlyMine": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Das Board öffnet mit dem Filter „Nur meine“ (mir zugewiesene Karten); der Knopf im Kopf schaltet bis zum Neustart um. Aus: Das Board zeigt beim Öffnen alle Karten.",',
+    '      "x-key": "issues.board.onlyMine",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#1272"',
     '    }',
     '  },',
     '  "additionalProperties": false',

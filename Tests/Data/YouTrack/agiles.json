@@ -1,0 +1,25 @@
+[
+  {
+    "id": "108-1",
+    "name": "Anderes Team",
+    "projects": [{"shortName": "WEB", "$type": "Project"}],
+    "columnSettings": {"field": {"name": "State"}, "columns": [
+      {"presentation": "Open", "isResolved": false, "fieldValues": [{"name": "Open"}]}
+    ]},
+    "currentSprint": {"id": "109-9"},
+    "$type": "Agile"
+  },
+  {
+    "id": "108-2",
+    "name": "Atlas-Board",
+    "projects": [{"shortName": "ATL", "$type": "Project"}],
+    "columnSettings": {"field": {"name": "Zustand", "$type": "CustomField"}, "columns": [
+      {"presentation": "Offen, Nachgefragt", "isResolved": false, "fieldValues": [{"name": "Offen"}, {"name": "Nachgefragt"}]},
+      {"presentation": "In Arbeit", "isResolved": false, "fieldValues": [{"name": "In Arbeit"}]},
+      {"presentation": "Zur Prüfung", "isResolved": false, "fieldValues": [{"name": "Zur Prüfung"}]},
+      {"presentation": "Erledigt", "isResolved": true, "fieldValues": [{"name": "Erledigt"}]}
+    ]},
+    "currentSprint": {"id": "109-42", "$type": "Sprint"},
+    "$type": "Agile"
+  }
+]

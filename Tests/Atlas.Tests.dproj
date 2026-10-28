@@ -724,6 +724,13 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.ValueBox.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.EndDialog.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.EndDialog.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Board.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrackBoard.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHubBoard.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Board.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.MoveDialog.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.BoardFrame.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Projects.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Summary.Tests.pas"/>

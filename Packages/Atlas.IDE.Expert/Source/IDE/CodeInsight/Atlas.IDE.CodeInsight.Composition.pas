@@ -1953,6 +1953,17 @@ begin
     begin
       Result := TAtlasIdeSettings.Current.IssuesPreview and (Welcome <> nil) and (Welcome.Issues <> nil);
     end);
+  // Atlas-Board (#1272): Sprint als Spalten nach Zustand; sichtbar mit issues.board.
+  Add('Atlas.Board', TAtlasTextId.BoardCommand,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) and (Welcome.Issues.Board <> nil) then
+        Welcome.Issues.Board.Show;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesBoard and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
     procedure
@@ -4563,6 +4574,13 @@ begin
     begin
       if Welcome <> nil then
         Welcome.ShowStart;
+    end;
+  // Ansicht › Atlas › Board (#1272).
+  MainMenu.OnBoard :=
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) and (Welcome.Issues.Board <> nil) then
+        Welcome.Issues.Board.Show;
     end;
 end;
 

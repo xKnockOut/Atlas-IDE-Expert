@@ -7941,3 +7941,34 @@ Vorbereitung: wie Issue-Vorschau; ein YouTrack- und ein GitHub-Issue mit Beschre
 | CL13 | `issues.preview.checklists` aus | Vorschau zeigt Listen wie geschrieben (`• [ ] eins`), keine Kopfzeilen-Zahl, kein „Punkt hinzufügen …“ |
 | CL14 | Netz trennen, Kästchen klicken | Meldung „Checkliste nicht gespeichert: Tracker nicht erreichbar.“, Kästchen unverändert |
 | CL15 | Helles und dunkles IDE-Design | Kästchen in Akzentfarbe, Hand über klickbaren Kästchen |
+
+## Board „Atlas-Board“ (#1272)
+
+Vorbereitung: YouTrack mit Agile Board (deutsche Oberfläche, Spalten Offen, In Arbeit, Zur Prüfung, Erledigt; aktueller Sprint mit Issues, davon einige mir zugewiesen, eines mit Checkliste, eines mit offenem „hängt ab von“) und ein GitHub-Repository mit Projekt (v2, Feld „Status“, Iterationen); Token mit Schreibrecht, für GitHub mit `project`. Projekt in der IDE geöffnet, Tracker über `.atlas` bzw. Zuordnung (#1261).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BO1 | Ansicht › Atlas › Board | Andockbares Fenster „Atlas-Board“, kurz „Wird geladen …“, dann Spalten und Karten des aktuellen Sprints wie im Browser (**Abnahme**) |
+| BO2 | Befehlspalette „Board“ | Öffnet bzw. zeigt dasselbe Fenster |
+| BO3 | Karten ansehen | Kennung, Titel in zwei Zeilen, Kürzel des Zuständigen, Farbbalken der Priorität, „3/5“ bei Checkliste, Schloss bei offener Abhängigkeit; das begonnene Issue mit Rahmen in Akzentfarbe |
+| BO4 | „Alle“, dann „Nur meine“ | Alle Karten bzw. nur mir zugewiesene; Anzahl im Spaltenkopf passt |
+| BO5 | Suchfeld „login“ bzw. Kennung | Nur passende Karten, ohne Abfrage beim Server |
+| BO6 | Klappliste Sprint: anderer Sprint; Klappliste Board (bei mehreren Boards) | Lädt dessen Karten; Board-Auswahl nur bei mehr als einem Board sichtbar |
+| BO7 | Karte von „In Arbeit“ nach „Zur Prüfung“ ziehen | Rückfrage „ATL-123 → Zur Prüfung?“ mit Kommentarfeld und „Nicht mehr fragen“ (**Abnahme**) |
+| BO8 | BO7, Kommentar eingeben, „Verschieben“ (bzw. Strg+Enter) | Karte steht sofort in „Zur Prüfung“, Statuszeile „ATL-123 → Zur Prüfung“; im Browser Zustand geändert und Kommentar vorhanden (**Abnahme**) |
+| BO9 | BO7, „Abbrechen“ bzw. Esc | Karte bleibt, nichts geschrieben |
+| BO10 | Token ohne Schreibrecht, Karte ziehen | Karte springt zurück, Statuszeile „ATL-123 nicht verschoben: …“ mit dem Grund des Trackers (**Abnahme**) |
+| BO11 | Klick auf eine Karte | Vorschau „Atlas-Issue“ zeigt das Issue (**Abnahme**) |
+| BO12 | Doppelklick auf eine Karte | Issue wird begonnen wie in „Meine Issues“ (Branch, Rahmen wandert zu dieser Karte) (**Abnahme**) |
+| BO13 | Rechtsklick: Beginnen, Vorschau, Im Browser öffnen, Kennung kopieren, Mir zuweisen | Jeweils wie benannt; „Mir zuweisen“ meldet „ATL-123 ist dir zugewiesen.“ und lädt neu |
+| BO14 | GitHub-Projekt mit Feld „Status“ | Spalten nach den Optionen von „Status“, Iteration als Sprint; Ziehen ändert „Status“ im Projekt (**Abnahme**) |
+| BO15 | GitHub-Repository ohne Projekt | Spalten „Offen“ und „Geschlossen“; Ziehen nach „Geschlossen“ schließt das Issue |
+| BO16 | GitHub-Token ohne `project` | Offen/Geschlossen mit Hinweis „Der Token darf Projekte nicht lesen …“ |
+| BO17 | Netz trennen, Fenster schließen und neu öffnen bzw. „Aktualisieren“ | Letzter Stand mit „Stand vom … · Grund · Ziehen ist gesperrt“; Ziehen geht nicht (**Abnahme**) |
+| BO18 | Fenster schmal andocken (unter 360 px) | Spalten untereinander; Klick auf einen Spaltenkopf klappt die Gruppe ein und aus |
+| BO19 | „Nicht mehr fragen“ in BO7 setzen, erneut ziehen | Keine Rückfrage mehr; auf der Optionsseite ist `issues.board.confirmMove` aus |
+| BO20 | `issues.board.confirmMove` aus | Ziehen verschiebt ohne Rückfrage (**Abnahme**) |
+| BO21 | `issues.board` aus | Menüeintrag und Befehl fehlen, keine Abfrage (**Abnahme**) |
+| BO22 | `issues.board.onlyMine` aus, IDE neu starten, Board öffnen | Board zeigt zuerst alle Karten |
+| BO23 | Helles und dunkles IDE-Design, 150 % Skalierung | Lesbare Karten, Ziehen mit halbdurchsichtiger Karte und markierter Zielspalte |
+| BO24 | Plugin entladen, während das Board lädt bzw. verschiebt | Keine Zugriffsverletzung |
