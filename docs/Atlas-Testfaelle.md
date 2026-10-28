@@ -7911,3 +7911,116 @@ Vorbereitung: YouTrack-Verbindung „Firma“ mit Token, das Projekt der IDE ist
 | NI14 | Während „Wird angelegt …“ das Fenster schließen wollen | Schließen gesperrt, bis die Antwort da ist (höchstens 10 s) |
 | NI15 | Projekt ohne Zuordnung und ohne Verbindungen, „Issue anlegen …“ | Hinweis „Für dieses Projekt ist kein Issue-Tracker eingerichtet …“; „Anlegen“ gesperrt |
 | NI16 | Protokoll ansehen | Nur „Issue anlegen: youtrack, created“ o. ä.; nie Adresse, Projekt, Titel, Text oder Token |
+
+## Versionsverwaltung je Projekt (#1286)
+
+Vorbereitung: SVN-Arbeitskopie mit `Kasse.groupproj` (Exe-Projekt `Kasse.dproj` und Pakete), ein Paket per SVN-Externals unter `Pakete\Basis`, ein Unterordner `Fremd\Lib` als Git-Klon; ein weiteres Projekt mit `.atlas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VZ1 | Ohne Zeilen: Seite „Versionsverwaltung“ öffnen | Tabelle „Projekte“ leer; „Aktuelles Projekt“ wie vor #1286 (Art aus der Einstellung, kein Hauptbranch) |
+| VZ2 | „Aktuelles Projekt hinzufügen“ | Neue Zeile mit der geöffneten `.groupproj`, Art „SVN“ (aus der Abfrage), Hauptbranch „raten“; Fokus im Feld Hauptbranch |
+| VZ3 | Hauptbranch `release 1` eintippen, dann `branches/develop` | Erst Hinweis „Der Hauptbranch darf keinen Leerraum enthalten.“, Wert nicht übernommen; dann Spalte „branches/develop“ |
+| VZ4 | „Hinzufügen …“ › „Ordner …“: `Fremd\Lib`, Art „Git“; OK, eine Unit unter `Fremd\Lib` und eine unter `Kasse` ändern | Git-Rand unter `Lib` aus Git, unter `Kasse` aus SVN (**Abnahme**) |
+| VZ5 | „Meine Issues“ › „Beginnen“ ohne `issues.branchBase` | SVN-Branch aus `^/branches/develop` statt `^/trunk` (**Abnahme**) |
+| VZ6 | Zeile „Aus“ für einen Ordner auf einem Netzlaufwerk (UNC), Unit dort öffnen | Kein svn/git-Prozess für diesen Ordner, keine Änderungsmarken |
+| VZ7 | Projekt mit `.atlas` `"vcs": {"provider": "svn", "mainBranch": "develop"}` aktivieren, Seite ansehen | Zeile „aus .atlas“ schreibgeschützt; passende persönliche Zeilen grau mit „persönlich · von .atlas überdeckt“; „Aktuelles Projekt“ nennt „Hauptbranch develop“ (**Abnahme**) |
+| VZ8 | Git-Projekt ohne verfolgten Branch, Hauptbranch `develop`; auf Feature-Branch „Weiterarbeiten“ ansehen | Eingehende Commits gegen `origin/develop` |
+| VZ9 | settings.json von Hand mit doppeltem Pfad, Art `cvs` oder Hauptbranch mit Leerzeichen speichern | Server meldet die Zeile in der Problemliste |
+| VZ10 | Einstellungen exportieren und importieren | `vcs.projects` als JSON-Liste, nach dem Import gleiche Zeilen |
+
+## Serverzugang der Versionsverwaltung (#1287)
+
+Vorbereitung: Git-Projekt mit HTTPS-Remote (Anmeldung in Git Credential Manager gespeichert), SVN-Projekt, ein zweites Git-Projekt ohne gespeicherte Anmeldung, ein Remote auf einen nicht erreichbaren Rechner.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SZ1 | Seite „Versionsverwaltung“ öffnen | Tabelle „Server“ mit dem aktuellen Projekt und den Zeilen aus „Projekte“; Zustand „nicht geprüft“, kein git- oder svn-Prozess startet |
+| SZ2 | Git-Projekt mit Anmeldung: „Prüfen“ | „origin · github.com“, „erreichbar · geprüft <Zeit>“ (**Abnahme**) |
+| SZ3 | SVN-Projekt: „Prüfen“ | Repository-Wurzel, „erreichbar · geprüft <Zeit>“ (**Abnahme**) |
+| SZ4 | Git-Projekt ohne Anmeldung: „Prüfen“ | „Anmeldung nötig“; kein Anmeldefenster von Git Credential Manager oder SVN (**Abnahme**) |
+| SZ5 | „Anmelden …“, in der Konsole anmelden, Fenster schließen | Zeile zeigt „wird geprüft …“, danach „erreichbar“ (**Abnahme**) |
+| SZ6 | Remote auf nicht erreichbaren Rechner: „Prüfen“, währenddessen in der IDE arbeiten | Nach höchstens 10 s „nicht erreichbar“; IDE bleibt bedienbar (**Abnahme**) |
+| SZ7 | „Alle prüfen“ | Jede Zeile „wird geprüft …“, dann ihr Zustand |
+| SZ8 | Protokoll und settings.json nach SZ2–SZ6 durchsuchen | Keine Zugangsdaten, kein Text aus stderr (**Abnahme**) |
+| SZ9 | Willkommensseite mit `welcomePage.continue.fetch` für das Projekt aus SZ4 | „Neu seit …“ zeigt „Anmeldung am Server nötig – prüfen …“; Klick öffnet die Seite und prüft die Zeile (**Abnahme**) |
+| SZ10 | Schnellaktion „Pull“ für das Projekt aus SZ4 | Zustand „Anmeldung am Server nötig“, Meldung mit Weg zur Seite |
+| SZ11 | `WelcomePageContinueIncoming` aus | Kein Abschnitt und kein Hinweis |
+
+## Branch anlegen (#1288)
+
+Vorbereitung: Git-Projekt mit `main` lokal und auf origin, auf einem Feature-Branch; SVN-Projekt (Arbeitskopie auf `trunk`, mit `svn:externals`, Anmeldung gespeichert); „Meine Issues“ mit einem zugewiesenen Issue; `vcs.branch.confirm` an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BA1 | Git: „Meine Issues“ › „Beginnen“ | Dialog „Branch anlegen“ mit Name aus `issues.branchPattern`, Basis „main (lokal)“ vorgewählt, „Was passiert“: `1. git checkout --quiet --no-track -b <Name> refs/heads/main --`; kein Hinweis auf Serverschritte (**Abnahme**) |
+| BA2 | Im Dialog aus BA1 Basis „origin/main (Stand des letzten Abrufs)“ wählen | Schritt zeigt sofort `refs/remotes/origin/main` (**Abnahme**) |
+| BA3 | Name auf `feature/a b` bzw. `-x` ändern | Hinweis unter dem Feld, „Was passiert“ leer, „Anlegen“ gesperrt; gültiger Name: wieder frei (**Abnahme**) |
+| BA4 | BA1 „Anlegen“ | Branch angelegt und ausgecheckt; Meldung „Branch <Name> von main angelegt …“; „Meine Issues“ zeigt das Issue als aktiv |
+| BA5 | SVN: „Beginnen“ | Dialog zeigt kurz „HEAD-Revision wird ermittelt …“ (Anlegen gesperrt), dann Basis „trunk @ HEAD (r<Rev>)“, Nachricht, Gruppe „Externals“, Schritte `svn copy ^/trunk@<Rev> ^/branches/<Name>@ --parents -m "…"   ← auf dem Server` und `svn switch …`; IDE bleibt bedienbar (**Abnahme**) |
+| BA6 | SVN: Basis „Kasse/trunk @ r<Rev> (Revision der Arbeitskopie)“ wählen, Nachricht ändern, „Anlegen“ | Kopie genau dieser Revision mit der Nachricht (`svn log` auf dem Branch), Arbeitskopie umgeschaltet; Fortschritt „Branch anlegen 1/2 …“, „2/2 …“ in der Meldungsansicht |
+| BA7 | SVN ohne Anmeldung (oder Server nicht erreichbar): „Beginnen“ | „HEAD-Revision nicht ermittelt (LoginNeeded) …“; Anlegen bleibt möglich, kein Anmeldefenster |
+| BA8 | SVN: Schreibrecht auf `^/branches` fehlt bzw. `switch` scheitert | Meldung nennt den gescheiterten Schritt mit Ursache; scheitert erst `switch`, steht „Bereits auf dem Server ausgeführt (nicht zurückgenommen): svn copy …“ dabei (**Abnahme**) |
+| BA9 | „Nicht mehr fragen, Vorgaben verwenden“ ankreuzen, „Anlegen“; danach anderes Issue „Beginnen“ | Kein Dialog mehr, Branch von der Vorgabe-Basis; Einstellung „Dialog „Branch anlegen“ … zeigen“ ist aus |
+| BA10 | Befehlspalette „Branch anlegen …“ mit leerem Namen; Kontextmenü einer Zeile in „Projekte“ › „Branch anlegen …“ | Dialog immer (auch mit `vcs.branch.confirm` aus) ohne „Nicht mehr fragen“; Projekt ohne Git/SVN: Meldung statt Dialog; „Projekte“ zeigt danach den neuen Branch |
+| BA11 | Dialog bei „Beginnen“ abbrechen | Nichts angelegt, Issue nicht aktiv |
+| BA12 | Name eines vorhandenen Branchs eingeben, „Anlegen“ | Meldung „… gibt es schon; nichts angelegt.“ |
+
+## SVN-Branch-Optionen (#1290)
+
+Vorbereitung: Repository mit mehreren Projekten (`^/Kasse/trunk` mit Gruppe `Kasse.groupproj`, `^/Packages/Drucken/trunk`), Arbeitskopie von `^/Kasse/trunk`, Anmeldung gespeichert; „Meine Issues“ mit einem zugewiesenen Issue; `vcs.branch.confirm` an; Einstellungen der Gruppe „SVN“ auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BS1 | *Versionsverwaltung* öffnen | Gruppe „SVN“ unter „Branch anlegen“ mit Ablageort `{projektwurzel}/branches/{name}`, Quelle „Hauptbranch @ HEAD“, Danach „Arbeitskopie umschalten (switch)“, Ordner `..\{projekt}-{kennung}`, Nachricht `{kennung} Branch für {titel}` (**Abnahme**) |
+| BS2 | „Meine Issues“ › „Beginnen“ | Dialog: Feld „Ablageort“ `^/Kasse/branches/<Name>`, Basis „Kasse/trunk @ HEAD“, Nachricht „<Kennung> Branch für <Titel>“, Schritte `svn copy ^/Kasse/trunk@<Rev> ^/Kasse/branches/<Name>@ …` und `svn switch ^/Kasse/branches/<Name>@ .` (**Abnahme**) |
+| BS3 | Im Dialog aus BS2 den Namen ändern; danach den Ort von Hand ändern und wieder den Namen | Ablageort folgt dem Namen, bis er von Hand geändert wurde; danach bleibt er; Ort ohne `^/`: Hinweis, „Anlegen“ gesperrt |
+| BS4 | BS2 „Anlegen“ | Branch unter `^/Kasse/branches/<Name>` (Repo-Browser), Arbeitskopie umgeschaltet; nichts unter `^/branches` (**Abnahme**) |
+| BS5 | Dasselbe Issue erneut „Beginnen“ (Dialog aus) | „gibt es schon“ erkannt, Arbeitskopie wird auf `^/Kasse/branches/<Name>` umgeschaltet statt neu angelegt (**Abnahme**) |
+| BS6 | Danach „Frisch auschecken in eigenen Ordner“ wählen, „Anlegen“ | Feld „Ordner“ erscheint (`…\Kasse-<Kennung>`), Schritt `svn checkout …`; nach dem Auschecken Frage „… dort öffnen?“, Ja öffnet `Kasse.groupproj` aus dem neuen Ordner (**Abnahme**) |
+| BS7 | Danach „Nur anlegen“ | Nur `svn copy`; Arbeitskopie bleibt auf trunk |
+| BS8 | Teile der Arbeitskopie auf ältere Revision bringen (`svn update -r <alt> Unterordner`), Quelle „Revision der Arbeitskopie“ einstellen, „Beginnen“ | Basis der Arbeitskopie vorgewählt mit der höchsten Revision, rote Warnung „Die Arbeitskopie hat mehrere Revisionen …“; bei Basis HEAD keine Warnung |
+| BS9 | Arbeitskopie ohne trunk/branches/tags im Pfad (z. B. `^/Kasse`) | Ablageort leer mit Hinweis „Kein erkennbares Layout …“; „Beginnen“ mit `vcs.branch.confirm` aus zeigt trotzdem den Dialog und fragt nach dem Ort, statt unter `^/branches` anzulegen (**Abnahme**) |
+| BS10 | Ablageort `^/branches/{kennung}` einstellen | Branch fest unter `^/branches/<Kennung>`, wie vor #1290 |
+| BS11 | Großes Projekt: „Umschalten“ bzw. „Frisch auschecken“ dauert über 15 Sekunden | Läuft bis zu 10 Minuten durch, kein Abbruch nach `vcs.timeoutSeconds` |
+
+## SVN-Externals beim Branch (#1291)
+
+Vorbereitung: wie bei #1290; die Arbeitskopie `^/Kasse/trunk` hat `svn:externals` mit `^/Packages/Basis/trunk Packages/Basis`, `^/Packages/Drucken/trunk Packages/Drucken`, `-r 4711 ^/Packages/Kunden/trunk Packages/Kunden` und einem External aus einem anderen Repository; in `Packages\Drucken` eine lokale Änderung; Einstellungen unter *Externals* auf Vorgabe; svn 1.9 oder neuer.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BX1 | *Versionsverwaltung* › *Externals* öffnen | Auswahl „Externals ohne Revision beim Branch“ = „festschreiben (Revision der Arbeitskopie)“, „Mitverzweigen vorschlagen“ = „bei lokalen Änderungen“, Regeln leer (**Abnahme**) |
+| BX2 | „Meine Issues“ › „Beginnen“ | Gruppe „Externals (4)“ mit Ordner, Quelle, Auswahl: Basis „festschreiben (r<Rev>)“, Drucken „mitverzweigen“, Kunden „bleibt r4711“ ohne Auswahl, fremdes Repository ohne „mitverzweigen“ (**Abnahme**) |
+| BX3 | Dialog aus BX2: „Was passiert“ lesen | Zuerst `svn copy ^/Packages/Drucken/trunk@<Rev> ^/Packages/Drucken/branches/<Name>@ …`, dann die Kopie des Projekts, dann `svn checkout … --depth empty`, `svn propset svn:externals -F …` (mit Hinweis „svn:externals: Packages/Basis -r …, Packages/Drucken → ^/Packages/Drucken/branches/…“) und `svn commit`, zuletzt `svn switch` (**Abnahme**) |
+| BX4 | BX2 „Anlegen“ | Repo-Browser: `^/Packages/Drucken/branches/<Name>` angelegt; `svn:externals` im neuen Branch: Basis mit `-r <Rev>`, Drucken auf den neuen Ort, Kunden und das fremde External unverändert, Kommentare und Format der übrigen Zeilen erhalten; Arbeitskopie umgeschaltet, `Packages\Drucken` zeigt auf den Branch; Meldung „… baut den Index neu auf“ (**Abnahme**) |
+| BX5 | Im Branch aus BX4 eine Datei in `Packages\Drucken` ändern und committen | Commit landet in `^/Packages/Drucken/branches/<Name>`, der Trunk des Packages bleibt unverändert (**Abnahme**) |
+| BX6 | Drucken auf „unverändert“ stellen, sonst alles festschreiben (fremdes External ebenfalls) | Ein Schritt `svn copy … --pin-externals` nur, wenn alle Externals ohne Revision festgeschrieben werden; sonst Umschreiben über propset wie in BX3 |
+| BX7 | Alles festschreiben (auch Drucken), „Anlegen“ | Nur `svn copy ^/Kasse/trunk@… ^/Kasse/branches/<Name>@ … --pin-externals` und `svn switch`; im Branch stehen alle Externals ohne Revision mit festgeschriebener Revision |
+| BX8 | `vcs.externals.onBranch` = „jedes Mal fragen“, `suggestBranch` = „nie“, „Beginnen“ | Keine Vorauswahl, roter Hinweis „Bitte für jedes External wählen …“, „Anlegen“ gesperrt, bis jede Zeile gewählt ist; mit `vcs.branch.confirm` aus erscheint der Dialog trotzdem |
+| BX9 | Regel `^/Packages/Basis = keep` eintragen, speichern, „Beginnen“ | Basis „unverändert“ vorgewählt trotz `onBranch` = festschreiben (**Abnahme**) |
+| BX10 | Regel `^/Packages = fragen` eintragen | Roter Hinweis „Ungültige Zeile …“; nach „OK“ und erneutem Öffnen stehen die bisherigen Regeln da |
+| BX11 | `onBranch` = „unverändert lassen“, `suggestBranch` = „nie“ | Alle Externals „unverändert“, Schritte wie vor #1291 (nur Kopie und Umschalten), kein neuer Index |
+| BX12 | svn 1.8 (oder älter) einstellen, alles festschreiben | Kein `--pin-externals`; Atlas schreibt `-r <Rev>` selbst über propset |
+| BX13 | Commit beim Umschreiben scheitern lassen (z. B. Schreibrecht auf `^/Kasse/branches` entziehen nach dem Kopieren) | Meldung nennt den Schritt und die schon angelegten Kopien (Package und Projekt); Temp-Ordner `Atlas-Branch-<Name>` ist danach entfernt |
+
+## Arbeitskopien mit Externals (#1292)
+
+Vorbereitung: wie bei #1291 (`^/Kasse/trunk` mit Externals Basis, Drucken, Kunden `-r 4711` und einem fremden Repository); in `Packages\Drucken` zwei geänderte Dateien, im Projektordner eine; ein Git-Projekt mit Submodul; Einstellungen unter *Externals* auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WK1 | *Versionsverwaltung* › *Externals* öffnen | „Arbeitskopien der Gruppe zeigen“ an, „Aktualisieren“ = „mit Externals“ (**Abnahme**) |
+| WK2 | Willkommensseite › Projekt › „Arbeitskopien …“ | Tabelle mit Kasse und eingerückten Externals; Spalten Arbeitskopie, Pfad im Repository, Revision, Geändert, Neu auf dem Server; Zeilen füllen sich nacheinander, IDE bleibt bedienbar (**Abnahme**) |
+| WK3 | Tabelle aus WK2 ansehen | Kunden „r4711 · fest“, fremdes External „anderes Repository: …“, Drucken Geändert = 2, Kasse = 1; „Neu auf dem Server“ zeigt „auf Klick“ (**Abnahme**) |
+| WK4 | Von einer zweiten Arbeitskopie in Drucken committen, dann „Server prüfen“ | Zeilen zeigen nacheinander „prüft …“, Drucken danach 1, die anderen 0 (**Abnahme**) |
+| WK5 | Doppelklick auf Drucken | Explorer öffnet `Packages\Drucken` |
+| WK6 | Kontextmenü auf Drucken › „Nur diese aktualisieren“ | Nur Drucken wird aktualisiert (Meldungsansicht), danach Tabelle neu, „Neu auf dem Server“ wieder leer; Index kennt die neue Datei (Dateiüberwachung #395) (**Abnahme**) |
+| WK7 | Kontextmenü auf Basis › „Revision festschreiben …“ › „Ja“ | Rückfrage nennt Ordner und Revision; danach `svn:externals` der Wurzel mit `-r <Rev>` für Basis (TortoiseSVN zeigt die Eigenschaft geändert, kein Commit), Zeile „r<Rev> · fest“ (**Abnahme**) |
+| WK8 | WK7 mit „Nein“ | Nichts ändert sich |
+| WK9 | Willkommensseite › „Nicht gesichert“ | Projekt zeigt 3 Änderungen und „(Kasse 1 · Packages\Drucken 2)“ (**Abnahme**) |
+| WK10 | `vcs.externals.update` = „ohne Externals“, Schnellaktion Pull | `svn update . --ignore-externals`; Externals bleiben auf ihrer Revision |
+| WK11 | `vcs.externals.update` = „fragen“, Schnellaktion Pull | Schaltfläche zeigt „▾“; Klick fragt „mit Externals“/„ohne Externals“, Rechtsklick bietet beides als Untermenü (**Abnahme**) |
+| WK12 | Git-Projekt › „Arbeitskopien …“ | Wurzel und Submodul mit Commit und Änderungen; kein „Server prüfen“, kein „Nur diese“, Schaltfläche „Pull“ |
+| WK13 | `vcs.externals.show` aus | Menüpunkt „Arbeitskopien …“ fehlt im Projektmenü und im Atlas-Menü; „Nicht gesichert“ ohne Aufteilung (**Abnahme**) |
+| WK14 | Server nicht erreichbar (Netz trennen), „Server prüfen“ | Zeilen zeigen den Fehler (z. B. „Failed“ oder „TimedOut“) statt einer Zahl, kein Hängen |

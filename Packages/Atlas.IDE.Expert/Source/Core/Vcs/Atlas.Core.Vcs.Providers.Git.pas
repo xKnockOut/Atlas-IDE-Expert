@@ -10,6 +10,7 @@
 //   Head      status --porcelain=v2 --branch -z --untracked-files=no
 //   Changes   status --porcelain=v2 --branch -z --untracked-files=all
 //   FileAt    show <Revision>:<Pfad>        (Revision '' = HEAD)
+//   SubmoduleStatus submodule status --recursive (#1292, ohne Server)
 //   Blame     blame --porcelain -- <Pfad>
 // Nicht gesicherte Arbeit (IAtlasVcsLocalWork, #762), ohne fetch:
 //   Branches  for-each-ref --format=… refs/heads
@@ -18,20 +19,26 @@
 //   Outgoing  log --format=… --max-count=N refs/heads/<Branch> --not <Upstream>|--remotes
 //   ChangesIn diff --name-status -z --no-renames <Revision>^1 <Revision>
 //   Push      push --porcelain [--set-upstream] <Remote> refs/heads/<Branch>:<Ref>
+//             (wie Fetch und Pull ohne Rückfrage; fehlt die Anmeldung,
+//             LoginNeeded, #1287)
 // Eingehende Commits (IAtlasVcsIncoming, #755):
 //   Resolve   rev-parse --verify --quiet <Ref>^{commit}
 //   Incoming  log --format=… --name-only -z --no-renames --max-count=N <Upstream> --not <Stände>
 //   Fetch     -c credential.interactive=never -c core.askPass= fetch --quiet --no-tags [<Remote>]
 //             (Git Credential Manager fragt nicht, git selbst ruft kein
-//             Kennwortfenster; ohne Konsole und mit stdin NUL fragt git auch
-//             im Terminal nicht nach. Das Zeitlimit setzt der Aufrufer.)
+//             Kennwortfenster; dazu setzt der Prozessläufer
+//             GIT_TERMINAL_PROMPT=0 und GCM_INTERACTIVE=never. Fehlt die
+//             Anmeldung, LoginNeeded statt Failed (#1287). Das Zeitlimit setzt
+//             der Aufrufer.)
 // Holen (IAtlasVcsUpdate, #764):
 //   Pull      -c credential.interactive=never -c core.askPass= pull --ff-only --no-rebase --quiet
 // Branch für ein Issue (IAtlasVcsBranching, #765), ohne Netz:
-//   BranchExists for-each-ref --format=%(refname) refs/heads/<Name>
-//   CreateBranch checkout --quiet --no-track -b <Name> <Basis> --
-//                (Basis: refs/heads/<Basis>, sonst refs/remotes/origin/<Basis>, '' = HEAD)
-//   SwitchBranch checkout --quiet <Name> --
+//   BranchExists       for-each-ref --format=%(refname) refs/heads/<Name>
+//   RemoteBranchExists for-each-ref --format=%(refname) refs/remotes/origin/<Name>
+//   RunStep            Schritte aus Atlas.Core.Vcs.BranchPlan (#1288), z. B.
+//                      checkout --quiet --no-track -b <Name> <Basis> --;
+//                      mit Remote wie Fetch ohne Rückfrage
+//   SwitchBranch       checkout --quiet <Name> --
 //   HookFolders  rev-parse --git-path hooks --git-dir
 // ChangeMarker liest nur Dateien: .git/HEAD (Inhalt und Zeitstempel), die
 // Datei des Branchs unter refs/heads und packed-refs. In Worktrees und
@@ -46,11 +53,12 @@ uses
 
 type
   TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate, IAtlasVcsBranching)
+    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSubmodules)
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
     function Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+    function GitRemote(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
     function Status(AUntracked: Boolean; out AHead: TAtlasVcsHead;
       out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
     function RefExists(const ARef: string; out AExists: Boolean): TAtlasVcsOutcome;
@@ -83,10 +91,21 @@ type
     { IAtlasVcsUpdate }
     function Pull: TAtlasVcsOutcome;
     { IAtlasVcsBranching }
-    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
-    function CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
-    function SwitchBranch(const AName: string): TAtlasVcsOutcome;
+    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome; overload;
+    /// <summary>SVN-Optionen (#1290) gelten hier nicht: wie oben.</summary>
+    function BranchExists(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
+      out AExists: Boolean): TAtlasVcsOutcome; overload;
+    function RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    function ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
+    function HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
+    function RepositoryPath(out APath: string): TAtlasVcsOutcome;
+    function RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
+    function SwitchBranch(const AName: string): TAtlasVcsOutcome; overload;
+    function SwitchBranch(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
+      overload;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
+    { IAtlasVcsSubmodules }
+    function SubmoduleStatus(out AText: string): TAtlasVcsOutcome;
     /// <summary>Ordner mit den Verwaltungsdaten: ARoot\.git oder das Ziel von "gitdir:"; '' ohne.</summary>
     class function GitDir(const ARoot: string): string; static;
   end;
@@ -174,6 +193,14 @@ function TAtlasGitVersionControl.Git(const AArguments: TArray<string>; out AOutp
 begin
   Result := FCommand.Run(['--no-optional-locks', '-c', 'core.quotepath=off', '-c', 'color.ui=false'] + AArguments,
     AOutput);
+end;
+
+function TAtlasGitVersionControl.GitRemote(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+begin
+  // Mit dem Server (#1287): fehlt die Anmeldung, LoginNeeded statt Failed. Nie nachfragen: kein Fenster des
+  // Credential Managers, kein Kennwortprogramm (dazu die Umgebung des Prozessläufers).
+  Result := FCommand.RunRemote(TAtlasVcsKind.Git, ['--no-optional-locks', '-c', 'core.quotepath=off', '-c',
+    'color.ui=false', '-c', 'credential.interactive=never', '-c', 'core.askPass='] + AArguments, AOutput);
 end;
 
 function TAtlasGitVersionControl.Status(AUntracked: Boolean; out AHead: TAtlasVcsHead;
@@ -385,7 +412,7 @@ begin
   if ASetUpstream then
     Arguments := Arguments + ['--set-upstream'];
   Arguments := Arguments + [ARemote, 'refs/heads/' + ABranch + ':' + ARemoteRef];
-  Result := Git(Arguments, Output);
+  Result := GitRemote(Arguments, Output);
 end;
 
 function TAtlasGitVersionControl.Resolve(const ARef: string; out ARevision: string): TAtlasVcsOutcome;
@@ -453,11 +480,10 @@ var
 begin
   if (ARemote <> '') and not SafeName(ARemote) then
     Exit(TAtlasVcsOutcome.Failed);
-  // Nie nach Zugangsdaten fragen: kein Fenster des Credential Managers, kein Kennwortprogramm.
-  Arguments := ['-c', 'credential.interactive=never', '-c', 'core.askPass=', 'fetch', '--quiet', '--no-tags'];
+  Arguments := ['fetch', '--quiet', '--no-tags'];
   if ARemote <> '' then
     Arguments := Arguments + [ARemote];
-  Result := Git(Arguments, Output);
+  Result := GitRemote(Arguments, Output);
 end;
 
 function TAtlasGitVersionControl.Pull: TAtlasVcsOutcome;
@@ -465,8 +491,7 @@ var
   Output: TBytes;
 begin
   // Nur vorwärts: kein Merge-Commit, kein Rebase; weicht der Branch ab, endet git mit Fehler.
-  Result := Git(['-c', 'credential.interactive=never', '-c', 'core.askPass=', 'pull', '--ff-only', '--no-rebase',
-    '--quiet'], Output);
+  Result := GitRemote(['pull', '--ff-only', '--no-rebase', '--quiet'], Output);
 end;
 
 { IAtlasVcsBranching (#765) }
@@ -494,38 +519,49 @@ begin
   Result := RefExists('refs/heads/' + AName, AExists);
 end;
 
-function TAtlasGitVersionControl.CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
-var
-  Output: TBytes;
-  StartPoint: string;
-  Exists: Boolean;
+function TAtlasGitVersionControl.BranchExists(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
+  out AExists: Boolean): TAtlasVcsOutcome;
 begin
-  // AMessage braucht nur SVN; ein Git-Branch hat keine Nachricht.
+  Result := BranchExists(AName, AExists);
+end;
+
+function TAtlasGitVersionControl.RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+begin
+  AExists := False;
   if not VcsSafeBranchName(AName) then
     Exit(TAtlasVcsOutcome.Failed);
-  StartPoint := 'HEAD';
-  if ABase <> '' then
-  begin
-    if not VcsSafeBranchName(ABase) then
-      Exit(TAtlasVcsOutcome.Failed);
-    Result := RefExists('refs/heads/' + ABase, Exists);
-    if Result <> TAtlasVcsOutcome.Ok then
-      Exit;
-    if Exists then
-      StartPoint := 'refs/heads/' + ABase
-    else
-    begin
-      Result := RefExists('refs/remotes/origin/' + ABase, Exists);
-      if Result <> TAtlasVcsOutcome.Ok then
-        Exit;
-      if not Exists then
-        Exit(TAtlasVcsOutcome.Failed);
-      StartPoint := 'refs/remotes/origin/' + ABase;
-    end;
-  end;
-  // --no-track: der neue Branch verfolgt nicht die Basis; den Upstream setzt erst der erste Push.
-  // "--" am Ende: StartPoint ist eine Revision, nie ein Dateiname.
-  Result := Git(['checkout', '--quiet', '--no-track', '-b', AName, StartPoint, '--'], Output);
+  Result := RefExists('refs/remotes/origin/' + AName, AExists);
+end;
+
+function TAtlasGitVersionControl.ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
+begin
+  // Git braucht für die Basis keinen Server: Der Stand von origin/<Branch> ist der des letzten Abrufs.
+  ARevision := '';
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasGitVersionControl.HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
+begin
+  AHas := False;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasGitVersionControl.RepositoryPath(out APath: string): TAtlasVcsOutcome;
+begin
+  APath := '';
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasGitVersionControl.RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  if Length(AStep.Arguments) = 0 then
+    Exit(TAtlasVcsOutcome.Failed);
+  if AStep.Remote then
+    Result := GitRemote(AStep.Arguments, Output)
+  else
+    Result := Git(AStep.Arguments, Output);
 end;
 
 function TAtlasGitVersionControl.SwitchBranch(const AName: string): TAtlasVcsOutcome;
@@ -544,6 +580,22 @@ begin
     Result := VcsNormalizeDir(APath)
   else
     Result := VcsFullPath(ARoot, APath);
+end;
+
+function TAtlasGitVersionControl.SwitchBranch(const AName: string;
+  const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
+begin
+  Result := SwitchBranch(AName);
+end;
+
+function TAtlasGitVersionControl.SubmoduleStatus(out AText: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  AText := '';
+  Result := Git(['submodule', 'status', '--recursive'], Output);
+  if Result = TAtlasVcsOutcome.Ok then
+    AText := VcsUtf8(Output);
 end;
 
 function TAtlasGitVersionControl.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;

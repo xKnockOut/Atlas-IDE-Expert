@@ -51,6 +51,9 @@ type
     procedure IncomingWithoutVersionControlHasNoSection;
     [Test]
     procedure IncomingWithoutUpstreamHasNoSection;
+    /// <summary>#1286: Ohne verfolgten Branch vergleicht „Eingehend“ gegen den Hauptbranch des Projekts.</summary>
+    [Test]
+    procedure IncomingWithoutUpstreamUsesMainBranch;
     [Test]
     procedure ProbeHeadStoresHeadAndUpstream;
   end;
@@ -619,6 +622,12 @@ begin
   Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, Vcs, Path('Atlas.dproj'), State, Stamp(9, 0), Found));
   Assert.IsTrue(Found.Available);
   Assert.IsTrue(Found.FetchFailed);
+  Assert.IsFalse(Found.LoginNeeded);
+  // Anmeldung fehlt (#1287): Ursache statt stillem Scheitern.
+  Fake.FFetchOutcome := TAtlasVcsOutcome.LoginNeeded;
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, Vcs, Path('Atlas.dproj'), State, Stamp(9, 0), Found));
+  Assert.IsTrue(Found.FetchFailed);
+  Assert.IsTrue(Found.LoginNeeded);
 end;
 
 procedure TAtlasWelcomeContinueTests.IncomingWithoutVersionControlHasNoSection;
@@ -667,6 +676,41 @@ begin
   Fake.FHead.Revision := '42';
   Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), StateOf(['A.pas']), Stamp(9, 0),
     Found));
+  Assert.IsFalse(Found.Available);
+end;
+
+procedure TAtlasWelcomeContinueTests.IncomingWithoutUpstreamUsesMainBranch;
+var
+  Fake: TFakeVcs;
+  Vcs: IAtlasVersionControl;
+  Found: TAtlasContinueIncoming;
+begin
+  Fake := TFakeVcs.Create;
+  Vcs := Fake;
+  Fake.FHead.Branch := 'feature/42-kasse';
+  Fake.FHead.Upstream := '';
+  Fake.FKnown := ['origin/develop'];
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), 'develop', StateOf(['A.pas']),
+    Stamp(9, 0), Found));
+  Assert.IsTrue(Found.Available);
+  Assert.AreEqual('origin/develop', Found.Upstream);
+  Assert.IsTrue(Fake.Called('incoming origin/develop'));
+  // Nur lokal vorhanden: der lokale Hauptbranch.
+  Fake.FKnown := ['develop'];
+  Fake.Calls := nil;
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), 'develop', StateOf(['A.pas']),
+    Stamp(9, 0), Found));
+  Assert.AreEqual('develop', Found.Upstream);
+  // Auf dem Hauptbranch selbst und ohne Hauptbranch: kein Abschnitt wie bisher.
+  Fake.FHead.Branch := 'develop';
+  Fake.Calls := nil;
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), 'develop', StateOf(['A.pas']),
+    Stamp(9, 0), Found));
+  Assert.IsFalse(Found.Available);
+  Assert.IsFalse(Fake.CalledStarting('incoming'));
+  Fake.FHead.Branch := 'feature/42-kasse';
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), '', StateOf(['A.pas']),
+    Stamp(9, 0), Found));
   Assert.IsFalse(Found.Available);
 end;
 

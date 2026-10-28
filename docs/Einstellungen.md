@@ -20,7 +20,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Prüfregeln | `excludeTests` | `false` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Kontrollkästchen | #146 |
 | Prüfregeln | `testProfile` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #146 |
 | Compiler | `compiler`: `onSave`, `backend`, `ideCommand` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Auswahl, Datei wählen | #40, #261 |
-| Allgemein | `vcs`: `provider` | – | settings.json (Tools › Optionen › Atlas) | nein | Auswahl | #571 |
+| Versionsverwaltung | `vcs`: `provider`, `git`, `svn`, `projects`, `timeoutSeconds` | – | settings.json (Tools › Optionen › Atlas) | nein | Auswahl, Datei wählen mit „Prüfen“, Zahl, Tabelle Projekte | #571, #1285, #1286 |
 | Vervollständigung | `completion`: `matching`, `interfaceSection`, `senderCast`, `offerTryFinally`, `freeStyle`, `keywords`, `postfixTemplates`, `genericConstraints`, `createAccessors`, `accessorSection`, `resourceStrings`, `resourceStringUnit`, `typeConversion` (experimentell), `assignAllFields` (experimentell), `usesDetails`, `inheritedCall`, `attributes`, `anonymousMethods`, `withOrigin`, `exceptionClasses`, `syntaxNotice`, `sameNameVariants`, `sameNameInsert`, `showFmxUnits`, `nameSuggestions` | – | settings.json (Tools › Optionen › Atlas); `interfaceSection`, `senderCast`, `freeStyle`, `createAccessors`, `accessorSection`, `resourceStringUnit` in atlas.json | nein | Auswahl | #31, #188, #229, #450, #452, #466, #467, #469, #473, #475, #480, #482, #489, #490 |
 | Vervollständigung | `refactoring`: `inlineVar`, `changeSignature`, `newParameter`, `virtualOverload`, `syncSignatures`, `forwardDeclaration`, `propertyFromAccessors`, `propertyFromAccessorsPrefixes`, `propertyFromAccessorsReplaceCalls`, `propertyFromAccessorsSection`, `propertyFromAccessorsHideAccessors`, `freeFields`, `freeFieldsStyle`, `suggestConst`, `invertBoolean`, `invertBooleanAntonyms`, `invertBooleanFallbackPrefix`, `invertBooleanIncludeDfm`, `ifCase`, `conditions`, `conditionalExpression`, `nestedRoutine`, `promoteVariable`, `anonymousMethod`, `anonymousMethodDeferredCapture`, `methodKind`, `methodKindMarker`, `methodKindStatic`, `typeAlias`, `typeAliasScope`, `enumTables`, `enumTablesResourceStrings`, `varBlock`, `varBlockMerge`, `varBlockSort`, `extractInterface`, `extractSuperclass`, `extractSuperclassTarget`, `extractSuperclassNameSuffix`, `extractSuperclassMethodMode`, `extractSuperclassRaiseVisibility`, `moveMember`, `inlineAccessor`, `inlineAccessorEqualityCheck`, `inlineAccessorBulk`, `inlineAccessorDiagnostic`, `safeDelete`, `safeDeletePreviewWhenUnused`, `safeDeleteCascade`, `safeDeleteIncludeOverrides`, `tryFinally`, `classActions`, `explicitType`, `compilerFixes`, `missingUnit`, `disableWarning`, `disableWarningReason`, `extract`, `completeCase`, `resolveWith`, `inline` (experimentell), `moveClass` (experimentell), `unitRenameFollowUp` (experimentell), `createMethod`, `createMethodSection`, `createMethodCaret`, `constParameters` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Kontrollkästchen | #42, #50, #100, #188, #453, #472, #646, #656, #666, #682, #684, #685, #715 |
 | Eingabehilfen | `usesCommand` | `true` | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #254 |
@@ -177,7 +177,8 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Lesezeichen (`bookmarks`) | `bookmarks.named`, `bookmarks.shared`, `bookmarks.quick`, `bookmarks.quick.gutter`, `bookmarks.quick.gutterClick`, `bookmarks.quick.numberedKeys`, `bookmarks.quick.key`, `bookmarks.quick.chordWait`, `bookmarks.quick.scope`, `bookmarks.quick.importIde` |
 | Willkommensseite (`welcome`) | `welcomePage.enabled`, `welcomePage.projectSetup`, `welcomePage.tests.ci.login`, `welcomePage.quickActions`, `welcomePage.openOnStart`, `welcomePage.openWhenNoProject`, `welcomePage.header`, `welcomePage.greeting`, `welcomePage.search`, `welcomePage.search.symbols`, `welcomePage.whatsNew`, `welcomePage.projectStatus`, `welcomePage.maxProjects`, `welcomePage.refreshVcs`, `welcomePage.unsaved`, `welcomePage.unsaved.minAgeHours`, `welcomePage.unsaved.warnHours`, `welcomePage.unsaved.alertHours`, `welcomePage.unsaved.hideWhenClean`, `welcomePage.statusTile`, `welcomePage.statusTile.onlyProblems`, `welcomePage.discover`, `tips.usageTracking`, `welcomePage.help`, `welcomePage.help.reportUrl`, `welcomePage.help.reportFolder`, `welcomePage.newFromTemplate`, `welcomePage.continue`, `welcomePage.continue.count`, `welcomePage.continue.incoming`, `welcomePage.continue.fetch`, `welcomePage.saved`, `welcomePage.trends`, `welcomePage.trends.points`, `welcomePage.trends.series`, `welcomePage.tests`, `welcomePage.tests.maxFailures`, `welcomePage.tests.ci`, `welcomePage.tests.ci.provider`, `welcomePage.tests.ci.intervalMinutes`, `welcomePage.tests.ci.notify`, `welcomePage.quickActions.items`, `welcomePage.quickActions.console`, `welcomePage.issues`, `welcomePage.customLayout`, `welcomePage.columns`, `welcomePage.layouts`, `welcomePage.activeLayout` |
 | Issue-Tracker (`issues`) | `issues.tracker`, `issues.start`, `issues.branchPattern`, `issues.branchBase`, `issues.commitPattern`, `issues.login`, `issues.connections`, `issues.projects`, `issues.queries`, `issues.queryPicker`, `issues.create`, `issues.create.includeCode` |
-| Allgemein (`general`) | `diagnosticMode.enabled`, `diagnostics.processes`, `architecture.enabled`, `architecture.scope`, `architecture.includeLibraryUnits`, `architecture.centralUnits`, `experimental.enabled`, `teamFile.enabled`, `settings.exportImport`, `shortcutTips.enabled`, `notifications.enabled`, `statusField.showSummary`, `robustness.hangThresholdMs`, `robustness.providerTimeLimitMs`, `robustness.hangHint`, `index.projectGroup`, `index.searchPaths`, `index.libraryPaths`, `index.usages`, `memoryBudgetMb`, `statusField.enabled`, `statusField.hidden`, `statusField.openToggles`, `statusField.indexProgress`, `ui.setupChecklist`, `shortcutTips.scope`, `safeMode.askAfterCrash`, `safeMode.autoAfterRepeatedCrash`, `safeMode.startupKey`, `safeMode.startupTimeoutMs`, `safeMode.keepSettingsHistory`, `updates.check`, `diagnostics.bugReport.anonymize`, `notifications.sources`, `notifications.maxEntries`, `settings.markModified`, `settings.backupBeforeImport`, `settings.exportSecrets`, `language`, `vcs.provider`, `index.removeOrphans`, `index.cacheMaxAgeDays`, `index.cacheMaxMb`, `requestTimeoutMs`, `diagnostics.log`, `diagnostics.logDays`, `diagnostics.logMapFile`, `logLevel`, `logFile`, `traceFile` |
+| Versionsverwaltung (`vcs`) | `vcs.provider`, `vcs.git.path`, `vcs.svn.path`, `vcs.timeoutSeconds`, `vcs.projects`, `vcs.branch.confirm`, `vcs.branch.svn.location`, `vcs.branch.svn.source`, `vcs.branch.svn.after`, `vcs.branch.svn.checkoutFolder`, `vcs.branch.svn.message`, `vcs.externals.onBranch`, `vcs.externals.suggestBranch`, `vcs.externals.rules`, `vcs.externals.show`, `vcs.externals.update`, `vcs.git`, `vcs.svn` |
+| Allgemein (`general`) | `diagnosticMode.enabled`, `diagnostics.processes`, `architecture.enabled`, `architecture.scope`, `architecture.includeLibraryUnits`, `architecture.centralUnits`, `experimental.enabled`, `teamFile.enabled`, `settings.exportImport`, `shortcutTips.enabled`, `notifications.enabled`, `statusField.showSummary`, `robustness.hangThresholdMs`, `robustness.providerTimeLimitMs`, `robustness.hangHint`, `index.projectGroup`, `index.searchPaths`, `index.libraryPaths`, `index.usages`, `memoryBudgetMb`, `statusField.enabled`, `statusField.hidden`, `statusField.openToggles`, `statusField.indexProgress`, `ui.setupChecklist`, `shortcutTips.scope`, `safeMode.askAfterCrash`, `safeMode.autoAfterRepeatedCrash`, `safeMode.startupKey`, `safeMode.startupTimeoutMs`, `safeMode.keepSettingsHistory`, `updates.check`, `diagnostics.bugReport.anonymize`, `notifications.sources`, `notifications.maxEntries`, `settings.markModified`, `settings.backupBeforeImport`, `settings.exportSecrets`, `language`, `index.removeOrphans`, `index.cacheMaxAgeDays`, `index.cacheMaxMb`, `requestTimeoutMs`, `diagnostics.log`, `diagnostics.logDays`, `diagnostics.logMapFile`, `logLevel`, `logFile`, `traceFile` |
 | nicht exportiert (Zustand, nur dieser Rechner) | `ui.architectureWindowPlaced`, `ui.unitRelationsWindowPlaced`, `completion.listWidth`, `completion.panelWidth`, `server.path`, `ui.setupChecklistSeen`, `editor.minimap.noticeShown`, `welcomePage.whatsNewSeen`, `delphiVersion` |
 
 ## Experimentelle Funktionen
@@ -857,3 +858,27 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `issues.queryPicker`
   - `issues.create`
     - `issues.create.includeCode`
+
+### Versionsverwaltung
+
+- **Hauptknoten**
+  - `vcs.provider`
+  - `vcs.git.path`
+  - `vcs.svn.path`
+  - `vcs.timeoutSeconds`
+  - `vcs.projects`
+
+- **Branches** (`vcs.branches`)
+  - `vcs.branch.confirm`
+  - `vcs.branch.svn.location`
+  - `vcs.branch.svn.source`
+  - `vcs.branch.svn.after`
+  - `vcs.branch.svn.checkoutFolder`
+  - `vcs.branch.svn.message`
+
+- **Externals** (`vcs.externals`)
+  - `vcs.externals.onBranch`
+  - `vcs.externals.suggestBranch`
+  - `vcs.externals.rules`
+  - `vcs.externals.show`
+  - `vcs.externals.update`

@@ -62,6 +62,9 @@ type
     procedure ShowCommit(const AProject: string; const ACommit: TAtlasContinueCommit);
     /// <summary>Projekt öffnen und zum gemerkten Eintrag springen.</summary>
     procedure OpenSaved(const AItem: TAtlasSavedItem);
+    /// <summary>„Anmeldung am Server nötig – prüfen …“ (#1287): Seite Versionsverwaltung für AProject öffnen.
+    /// </summary>
+    procedure ShowServerAccess(const AProject: string);
     /// <summary>Der Bereich wird gezeigt: eingehende Commits bei Bedarf im Hintergrund abfragen.</summary>
     procedure Shown;
   end;
@@ -73,6 +76,8 @@ type
     Button: Boolean;
     /// <summary>Eingehender Commit; -1 = keiner.</summary>
     Commit: Integer;
+    /// <summary>Auf „Anmeldung am Server nötig – prüfen …“ (#1287).</summary>
+    Login: Boolean;
   end;
 
   TAtlasWelcomeContinueFrame = class(TAtlasWelcomeSectionFrame)
@@ -137,6 +142,8 @@ type
     /// <summary>Zeilen des Abschnitts „Neu seit …“ samt Überschrift; 0 ohne Abschnitt.</summary>
     function IncomingLines: Integer;
     function ShowsIncoming: Boolean;
+    /// <summary>Zeile des Hinweises „Anmeldung nötig“ unter der Überschrift (0 = erste Zeile darunter).</summary>
+    function LoginLine: Integer;
     function TabsShown: Boolean;
   protected
     function BodyHeight: Integer; override;
@@ -946,7 +953,16 @@ begin
         TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingMore));
       Inc(Line);
     end;
-    if FIncoming.FetchFailed then
+    // Fehlt die Anmeldung, die Ursache als Link statt nur „ohne Abruf“ (#1287).
+    if FIncoming.LoginNeeded then
+    begin
+      Canvas.Font.Color := LinkColor;
+      Canvas.TextOut(mLeft + ScaleValue(Indent), mTop + Line * ScaleValue(LineHeight),
+        TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingLogin));
+      Canvas.Font.Color := MutedColor;
+      Inc(Line);
+    end
+    else if FIncoming.FetchFailed then
     begin
       Canvas.TextOut(mLeft + ScaleValue(Indent), mTop + Line * ScaleValue(LineHeight),
         TAtlasStrings.Text(TAtlasTextId.WelcomeContinueIncomingFetchFailed));
@@ -970,6 +986,7 @@ begin
   Result.Row := -1;
   Result.Button := False;
   Result.Commit := -1;
+  Result.Login := False;
   if Length(FEntries) = 0 then
     Exit;
   if (Y >= RowTop(0)) and (Y < RowTop(Length(FEntries))) then
@@ -985,6 +1002,18 @@ begin
   Line := (Y - IncomingTop) div ScaleValue(LineHeight) - 1;
   if (Line >= 0) and (Line <= High(FIncoming.Commits)) then
     Result.Commit := Line;
+  // Hinweis „Anmeldung nötig“: nach den Commits (bzw. „Keine …“) und „… weitere“.
+  if FIncoming.LoginNeeded and (Line = LoginLine) then
+    Result.Login := True;
+end;
+
+function TAtlasWelcomeContinueFrame.LoginLine: Integer;
+begin
+  Result := Length(FIncoming.Commits);
+  if Result = 0 then
+    Result := 1;
+  if FIncoming.More then
+    Inc(Result);
 end;
 
 procedure TAtlasWelcomeContinueFrame.ClickAt(const AHit: TAtlasContinueHit);
@@ -1004,6 +1033,16 @@ begin
       procedure
       begin
         mSource.Resume(Project);
+      end);
+    Exit;
+  end;
+  if AHit.Login then
+  begin
+    Project := FIncoming.Project;
+    TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+      procedure
+      begin
+        mSource.ShowServerAccess(Project);
       end);
     Exit;
   end;
@@ -1030,7 +1069,7 @@ begin
   FQuick.MouseMove(Hit.Row, X, Y);
   if not FQuick.HitTest(X, Y, QuickRow, QuickButton, OnMenu) then
     QuickButton := -1;
-  if Hit.Button or (Hit.Commit >= 0) or (QuickButton >= 0) then
+  if Hit.Button or (Hit.Commit >= 0) or Hit.Login or (QuickButton >= 0) then
     FBox.Cursor := crHandPoint
   else
     FBox.Cursor := crDefault;

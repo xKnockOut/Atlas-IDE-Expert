@@ -76,6 +76,10 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `vcs.provider` | global (settings.json) | string | `"auto"` | `"auto"`, `"git"`, `"svn"`, `"off"` | auto: nach gefundener Arbeitskopie (.git oder .svn, die nächstliegende gilt, bei Gleichstand Git). git bzw. svn: nur diese Art. off: ohne Versionsverwaltung. Git und SVN über die Kommandozeile (git bzw. svn, TortoiseSVN mit Kommandozeilenwerkzeugen genügt); fehlt das Programm, meldet Atlas das einmal und arbeitet ohne Versionsangaben weiter. |
+| `vcs.git` | global (settings.json) | object | – |  | Programm git (#1285): path = Pfad zu git.exe, leer = automatisch suchen. |
+| `vcs.svn` | global (settings.json) | object | – |  | Programm svn (#1285): path = Pfad zu svn.exe, leer = automatisch suchen. |
+| `vcs.projects` | global (settings.json) | array<object> | `` |  | Persönliche Art und Hauptbranch je Delphi-Projekt (#1286). Es gilt der Abschnitt vcs der .atlas (je Feld), sonst die Zeile für genau diese .dproj, dann die der geöffneten .groupproj, dann der längste passende Ordner, sonst vcs.provider. Für einen Ordner (Änderungsmarken) gelten .dproj- und .groupproj-Zeilen für ihren Ordner, der längste passende gewinnt. |
+| `vcs.timeoutSeconds` | global (settings.json) | integer | `15` | 1…300 | Zeitlimit je Aufruf von git bzw. svn in Sekunden (#1285); danach beendet Atlas den Prozess. Aufrufe mit eigenem, kürzerem Limit (Willkommensseite 1 s) behalten ihres; Branch anlegen und Pull nehmen das größere aus diesem Wert und 30 s. |
 
 ## completion
 

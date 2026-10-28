@@ -42,7 +42,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Queries,
-  Atlas.Core.Vcs.Contract;
+  Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.BranchPlan;
 
 type
 {$SCOPEDENUMS ON}
@@ -134,6 +135,12 @@ type
     BranchBase: string;
     /// <summary>'' = aus; nicht gekürzt.</summary>
     CommitPattern: string;
+    /// <summary>Hauptbranch des Projekts (#1286, vcs.projects bzw. .atlas); '' = raten. BranchBase hat Vorrang.
+    /// Setzt der Aufrufer je Projekt.</summary>
+    MainBranch: string;
+    /// <summary>SVN-Optionen (#1290, vcs.branch.svn.*): Ort, Quelle, Danach und Nachricht; Create setzt die
+    /// Vorgaben, der Aufrufer die Einstellungen und den Projektnamen.</summary>
+    Svn: TAtlasVcsSvnBranchOptions;
     class function Create(AStart: TAtlasIssueStart; const ABranchPattern, ABranchBase,
       ACommitPattern: string): TAtlasIssuesOptions; static;
   end;
@@ -148,8 +155,11 @@ type
     Bases: TArray<string>;
     /// <summary>Commit-Präfix; '' = aus.</summary>
     Prefix: string;
-    /// <summary>Nachricht für svn copy.</summary>
+    /// <summary>Nachricht für svn copy (#1290: aus vcs.branch.svn.message).</summary>
     Message: string;
+    /// <summary>SVN-Optionen mit Kennung und Titel des Issues (#1290); BranchExists, SwitchBranch und das Anlegen
+    /// ohne Dialog nutzen denselben Ort.</summary>
+    Svn: TAtlasVcsSvnBranchOptions;
     /// <summary>False: kein gültiger Branch-Name aus dem Muster.</summary>
     Valid: Boolean;
   end;
@@ -165,6 +175,17 @@ type
     /// <summary>Git: Hook-Ordner und Verwaltungsordner (für Hook und Präfix-Datei); sonst ''.</summary>
     Hooks: string;
     GitDir: string;
+    /// <summary>Beim Anlegen (#1288): die Schritte aus TAtlasVcsBranchPlan und wie weit sie kamen; sonst leer.
+    /// </summary>
+    Steps: TArray<TAtlasVcsBranchStep>;
+    Run: TAtlasVcsBranchRun;
+    /// <summary>SVN „frisch auschecken“ (#1290): neuer Ordner und Wurzel der bisherigen Arbeitskopie (für das
+    /// Angebot, die Gruppe dort zu öffnen); sonst ''.</summary>
+    CheckoutFolder: string;
+    WorkingRoot: string;
+    /// <summary>SVN-Externals (#1291): Der Branch hat Externals festgeschrieben bzw. mitverzweigt und die
+    /// Arbeitskopie wurde umgeschaltet; danach den Index neu aufbauen.</summary>
+    IndexRebuild: Boolean;
     function Succeeded: Boolean;
   end;
 
@@ -209,6 +230,11 @@ type
   end;
 
   TAtlasWelcomeIssues = class
+  private
+    /// <summary>Gemeinsamer Teil von Execute; AUseRequest False: Vorgabe aus TAtlasVcsBranchPlan.</summary>
+    class function Start(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan; AUseRequest: Boolean;
+      const ARequest: TAtlasVcsBranchRequest; const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
+      static;
   public const
     SectionName = 'issues';
     /// <summary>Höchstens so oft wird abgefragt.</summary>
@@ -257,11 +283,20 @@ type
     /// <summary>Plan für „Beginnen“ auf AIssue. Ohne Git oder SVN wird nur gemerkt.</summary>
     class function PlanStart(AKind: TAtlasVcsKind; const AOptions: TAtlasIssuesOptions;
       const AIssue: TAtlasTrackerIssue): TAtlasIssueStartPlan; static;
-    /// <summary>„Beginnen“ ausführen (aus einem Hintergrund-Thread): vorhandenen Branch auschecken, sonst von der
-    /// ersten passenden Basis anlegen und auschecken; Remember ändert nichts. Git liefert zusätzlich die Ordner
-    /// für Hook und Präfix-Datei. AVcs nil = nur merken.</summary>
+    /// <summary>„Beginnen“ ausführen (aus einem Hintergrund-Thread): vorhandenen Branch auschecken, sonst mit
+    /// der Vorgabe aus TAtlasVcsBranchPlan anlegen (erster vorhandener Kandidat aus APlan.Bases) und auschecken;
+    /// Remember ändert nichts. Git liefert zusätzlich die Ordner für Hook und Präfix-Datei. AVcs nil = nur
+    /// merken.</summary>
     class function Execute(const AVcs: IAtlasVersionControl;
-      const APlan: TAtlasIssueStartPlan): TAtlasIssueStartResult; static;
+      const APlan: TAtlasIssueStartPlan): TAtlasIssueStartResult; overload; static;
+    /// <summary>Wie oben mit der Anfrage aus dem Dialog „Branch anlegen“ (#1288): Name und Basis aus ARequest.
+    /// </summary>
+    class function Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+      const ARequest: TAtlasVcsBranchRequest): TAtlasIssueStartResult; overload; static;
+    /// <summary>Wie oben; AProgress vor jedem Schritt (im Hintergrund-Thread).</summary>
+    class function Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+      const ARequest: TAtlasVcsBranchRequest; const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
+      overload; static;
     /// <summary>Anzahl lokaler Änderungen, die ein Wechsel des Branchs betrifft (ohne unversionierte Dateien).
     /// </summary>
     class function LocalChanges(const AChanges: TArray<TAtlasVcsChange>): Integer; static;
@@ -389,6 +424,8 @@ begin
   Result.BranchPattern := Trim(ABranchPattern);
   Result.BranchBase := Trim(ABranchBase);
   Result.CommitPattern := ACommitPattern;
+  Result.MainBranch := '';
+  Result.Svn := TAtlasVcsSvnBranchOptions.Default;
 end;
 
 { TAtlasWelcomeIssues }
@@ -577,74 +614,125 @@ begin
   end;
   Result.Branch := TAtlasTrackerNaming.BranchName(Pattern, AIssue);
   Result.Valid := Result.Branch <> '';
-  if AOptions.BranchBase <> '' then
-    Result.Bases := [AOptions.BranchBase]
-  else if AKind = TAtlasVcsKind.Svn then
-    Result.Bases := [TAtlasTrackerNaming.SvnBase]
-  else
-    Result.Bases := [TAtlasTrackerNaming.GitBase, TAtlasTrackerNaming.GitBaseFallback];
-  Result.Message := Trim(AIssue.Key + ' ' + AIssue.Title);
+  Result.Bases := TAtlasTrackerNaming.Bases(AKind = TAtlasVcsKind.Svn, AOptions.BranchBase, AOptions.MainBranch);
+  Result.Svn := AOptions.Svn;
+  Result.Svn.Key := Trim(AIssue.Key);
+  Result.Svn.Title := Trim(AIssue.Title);
+  Result.Message := TAtlasVcsBranchPlan.SvnMessage(Result.Svn, Result.Branch);
 end;
 
 class function TAtlasWelcomeIssues.Execute(const AVcs: IAtlasVersionControl;
   const APlan: TAtlasIssueStartPlan): TAtlasIssueStartResult;
+begin
+  Result := Start(AVcs, APlan, False, Default(TAtlasVcsBranchRequest), nil);
+end;
+
+class function TAtlasWelcomeIssues.Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+  const ARequest: TAtlasVcsBranchRequest): TAtlasIssueStartResult;
+begin
+  Result := Start(AVcs, APlan, True, ARequest, nil);
+end;
+
+class function TAtlasWelcomeIssues.Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+  const ARequest: TAtlasVcsBranchRequest; const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
+begin
+  Result := Start(AVcs, APlan, True, ARequest, AProgress);
+end;
+
+class function TAtlasWelcomeIssues.Start(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+  AUseRequest: Boolean; const ARequest: TAtlasVcsBranchRequest;
+  const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
 var
-  Branching: IAtlasVcsBranching;
-  Exists: Boolean;
-  Base, Hooks, GitDir: string;
+  mBranching: IAtlasVcsBranching;
+  mExists: Boolean;
+  mHooks, mGitDir: string;
+  mFacts: TAtlasVcsBranchFacts;
+  mRequest: TAtlasVcsBranchRequest;
+  mSvn: TAtlasVcsSvnBranchOptions;
 begin
   Result := Default(TAtlasIssueStartResult);
   Result.Reason := TAtlasVcsOutcome.Ok;
-  Branching := nil;
+  Result.Steps := nil;
+  Result.Run.Outcome := TAtlasVcsOutcome.Ok;
+  Result.Run.Done := 0;
+  Result.Run.Failed := -1;
+  mBranching := nil;
   if AVcs <> nil then
-    Supports(AVcs, IAtlasVcsBranching, Branching);
+    Supports(AVcs, IAtlasVcsBranching, mBranching);
   // Git: Ordner für Hook und Präfix-Datei, auch beim bloßen Merken (das Präfix gilt dann ebenso).
-  if (Branching <> nil) and (AVcs.Kind = TAtlasVcsKind.Git) and
-    (Branching.HookFolders(Hooks, GitDir) = TAtlasVcsOutcome.Ok) then
+  if (mBranching <> nil) and (AVcs.Kind = TAtlasVcsKind.Git) and
+    (mBranching.HookFolders(mHooks, mGitDir) = TAtlasVcsOutcome.Ok) then
   begin
-    Result.Hooks := Hooks;
-    Result.GitDir := GitDir;
+    Result.Hooks := mHooks;
+    Result.GitDir := mGitDir;
   end;
   if APlan.Mode = TAtlasIssueStart.Remember then
   begin
     Result.Outcome := TAtlasIssueStartOutcome.Remembered;
     Exit;
   end;
-  if not APlan.Valid or (APlan.Branch = '') then
+  mRequest := ARequest;
+  if not AUseRequest then
+    mRequest.Name := APlan.Branch;
+  if not APlan.Valid or not TAtlasVcsBranchPlan.SafeName(mRequest.Name) then
   begin
     Result.Outcome := TAtlasIssueStartOutcome.InvalidName;
     Exit;
   end;
-  Result.Branch := APlan.Branch;
+  Result.Branch := mRequest.Name;
   Result.Outcome := TAtlasIssueStartOutcome.Failed;
-  if Branching = nil then
+  if mBranching = nil then
   begin
     Result.Reason := TAtlasVcsOutcome.NoWorkingCopy;
     Exit;
   end;
-  Result.Reason := Branching.BranchExists(APlan.Branch, Exists);
+  // SVN sucht und schaltet am Ort aus den Optionen (#1290), an dem auch angelegt wird; mit Dialog am Ort der
+  // Anfrage.
+  mSvn := APlan.Svn;
+  if AUseRequest and (mRequest.Kind = TAtlasVcsKind.Svn) and (mRequest.Location <> '') then
+    mSvn.Location := '^/' + mRequest.Location;
+  Result.Reason := mBranching.BranchExists(mRequest.Name, mSvn, mExists);
   if Result.Reason <> TAtlasVcsOutcome.Ok then
     Exit;
-  if Exists then
+  if mExists then
   begin
-    Result.Reason := Branching.SwitchBranch(APlan.Branch);
+    Result.Reason := mBranching.SwitchBranch(mRequest.Name, mSvn);
     if Result.Reason = TAtlasVcsOutcome.Ok then
       Result.Outcome := TAtlasIssueStartOutcome.Switched;
     Exit;
   end;
-  Result.Reason := TAtlasVcsOutcome.Failed;
-  for Base in APlan.Bases do
+  // Ohne Dialog die Vorgabe aus dem Plan (#1288): erster Kandidat, den es gibt; sonst Fehler.
+  if not AUseRequest then
   begin
-    Result.Reason := Branching.CreateBranch(APlan.Branch, Base, APlan.Message);
-    if Result.Reason = TAtlasVcsOutcome.Ok then
+    mFacts := TAtlasVcsBranchPlan.Inspect(AVcs, APlan.Bases);
+    Result.Reason := mFacts.Outcome;
+    if Result.Reason <> TAtlasVcsOutcome.Ok then
+      Exit;
+    if not TAtlasVcsBranchPlan.DefaultRequest(mFacts, APlan.Branch, APlan.Message, APlan.Svn, mRequest) then
     begin
-      Result.Base := Base;
-      Result.Outcome := TAtlasIssueStartOutcome.Started;
+      Result.Reason := TAtlasVcsOutcome.Failed;
       Exit;
     end;
-    // Nur ein Fehler von git/svn selbst (z. B. Basis fehlt) führt zur nächsten Basis.
-    if Result.Reason <> TAtlasVcsOutcome.Failed then
-      Exit;
+  end;
+  Result.Steps := TAtlasVcsBranchPlan.Steps(mRequest);
+  if Length(Result.Steps) = 0 then
+  begin
+    Result.Reason := TAtlasVcsOutcome.Failed;
+    Exit;
+  end;
+  // Mit der Anfrage: Der Arbeitsordner für das Umschreiben der Externals (#1291) wird davor und danach gelöscht.
+  Result.Run := TAtlasVcsBranchPlan.Execute(mBranching, mRequest, Result.Steps, AProgress);
+  Result.Reason := Result.Run.Outcome;
+  if Result.Run.Succeeded then
+  begin
+    Result.Base := TAtlasVcsBranchPlan.BaseName(mRequest.Kind, mRequest.Base);
+    Result.Outcome := TAtlasIssueStartOutcome.Started;
+    Result.IndexRebuild := TAtlasVcsBranchPlan.ChangesExternals(mRequest);
+    if (mRequest.Kind = TAtlasVcsKind.Svn) and (mRequest.After = TAtlasVcsSvnAfter.Checkout) then
+    begin
+      Result.CheckoutFolder := mRequest.CheckoutFolder;
+      Result.WorkingRoot := AVcs.WorkingCopy.Root;
+    end;
   end;
 end;
 
