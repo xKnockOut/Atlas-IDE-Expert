@@ -3381,6 +3381,8 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Bef
 | AP22 | Haken einer Regel in der Tabelle entfernen | Schweregrad „Aus“, Befunde weg |
 | AP23 | *Atlas › Projekt-Einstellungen*, Seite Prüfregeln und Knoten je Gruppe | Derselbe Aufbau; Werte aus settings.json als „(global: …)“; Änderung landet in atlas.json |
 | AP24 | Server beenden, „Weitere globale Einstellungen…“ öffnen | Seite Prüfregeln zeigt „Ohne laufenden Server fehlt der Regelkatalog; hier stehen nur die eingestellten Regeln.“ und nur diese Regeln |
+| AP27 | *Atlas › Projekt-Einstellungen*, Seite Prüfregeln (alle Regeln), Regel mit Optionen und Beispielen wählen (z. B. `field-free-without-nil`), dann eine ohne (#1296) | Titel, Marke, Beschreibung, Schweregrad, Ausnahmen, Optionen, Falsch/Richtig untereinander ohne Überlappung; Zustand „aus dem Projekt“/„Standard“, „Auf Standard zurücksetzen“ und `overrides` stehen unter dem Editor und rücken beim Wechsel mit |
+| AP28 | Wie AP27, in einer Option einen ungültigen Wert tippen und wieder korrigieren (#1296) | Rote Meldung direkt unter den Optionen, verschwindet wieder; nichts überlappt |
 | AP25 | *Tools › Optionen › Atlas › Prüfregeln* | Keine Regeltabelle; Hinweis auf atlas.json und settings.json, „Projekt-Prüfregeln bearbeiten …“ und „Globale Prüfregeln bearbeiten …“ öffnen die Dialoge; Knoten „Profile und Baseline“: Baseline-Stand, „Aktualisieren“ und „Löschen“ arbeiten |
 | AP26 | Oberfläche auf Englisch | Fenster, Tooltip und Seite englisch, Katalogtexte englisch |
 
