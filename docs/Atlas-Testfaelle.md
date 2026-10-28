@@ -7853,3 +7853,24 @@ Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (YouTrack und GitH
 | IV17 | `issues.preview` aus (Schnellschalter) | Klick in „Meine Issues“ öffnet wieder den Browser; Befehl *Issue anzeigen …* nicht sichtbar |
 | IV18 | IDE beenden mit offenem Fenster, neu starten | Fenster steht wieder an seinem Platz (Desktop); Plugin entladen ohne Zugriffsverletzung |
 | IV19 | Helles und dunkles IDE-Design | Farben und Abzeichen passen jeweils |
+
+## Zustand und Kommentar beim Beginnen und Beenden (#1266)
+
+Vorbereitung: Verbindungen zu YouTrack und GitHub mit Token (#1260), Projekt mit Abschnitt `tracker` in der `.atlas`, Git-Arbeitskopie; ein YouTrack-Issue im Zustand „Offen“ und ein GitHub-Issue mit Label `todo`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZS1 | `issues.syncState` aus (Vorgabe), in „Meine Issues“ „Beginnen“ und später „Beenden“ | Verhalten wie bisher: Branch, Rückfrage beim Beenden, nichts im Tracker geändert, kein Kommentarfeld in der Vorschau |
+| ZS2 | Optionen › Issue-Tracker: „Zustand und Kommentar …“ an, Verbindung YouTrack wählen, „Werte vom Tracker laden“ | Hinweis „N Zustände und M Felder vom Tracker geladen.“; Klapplisten für Zustandsfeld, Startzustand enthalten die Werte des Trackers; eigene Eingabe bleibt möglich |
+| ZS3 | Startzustand „In Arbeit“, „Mir zuweisen“ an, Startkommentar `Beginne in {branch}`; YouTrack-Issue „Beginnen“ | Branch wird angelegt; Issue steht auf „In Arbeit“, ist mir zugewiesen, Kommentar mit dem Branch-Namen; eine Zeile „Atlas: ATL-… im Tracker nachgeführt (…)“ in der Meldungsansicht (**Abnahme**) |
+| ZS4 | Token mit Leserechten, „Beginnen“ | Branch bleibt; Meldungszeile „… nicht nachgeführt, der Branch bleibt. Keine Schreibrechte für ATL-… (403).“ |
+| ZS5 | „Beenden“ über die Statuszeile `atlas.issue`, das Kontextmenü der Zeile und den Knopf „Beenden …“ in der Vorschau | Jeweils Dialog „ATL-… beenden“ mit Zielzustand (Zielzustände plus „Zustand nicht ändern“), Kommentar mit {branch}, {commits}, {pr} gefüllt, Übergabe (**Abnahme**) |
+| ZS6 | Im Dialog Zielzustand „Erledigt“, Übergabe an einen Kollegen aus der Liste, Senden | Issue erledigt und übergeben, Kommentar mit den Commits des Branches; Meldungszeile „Atlas: ATL-… beendet (…)“ |
+| ZS7 | Senden ohne Schreibrechte | Roter Hinweis im Dialog „Keine Schreibrechte für ATL-… (403).“, Dialog bleibt offen, nichts wird wiederholt; Abbrechen schließt ohne Änderung |
+| ZS8 | „Zustand nicht ändern“, Kommentar leeren, Übergabe aus, Senden | Dialog schließt ohne Abfrage an den Tracker (Proxy-Protokoll) |
+| ZS9 | Strg+Enter im Dialog | Wie Senden |
+| ZS10 | Vorschau des aktuellen Issues: Text ins Kommentarfeld, Strg+Enter | Kommentar steht im Tracker, Feld wird geleert, Vorschau lädt neu |
+| ZS11 | Dasselbe mit GitHub: Startzustand `in-progress`, Zielzustand „Erledigt“ | Label `todo`→`in-progress` beim Beginnen; beim Beenden geschlossen; Zuweisung über `assignees` |
+| ZS12 | Felder „Zustandsfeld“, „Startzustand“ und „Zielzustände“ der Verbindung setzen, globale Werte anders | Die Werte der Verbindung gelten; Adresse der Verbindung ändern verliert die Felder nicht |
+| ZS13 | Netz während des Sendens trennen, Dialog schließen versuchen | Schließen wartet bis zur Antwort; danach „Tracker nicht erreichbar.“ |
+| ZS14 | Plugin entladen, während eine Änderung gesendet wird | Keine Zugriffsverletzung, keine späte Meldung |

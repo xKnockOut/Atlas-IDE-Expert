@@ -147,6 +147,9 @@ type
     /// Speichern und Laden.</summary>
     [Test]
     procedure WelcomeIssuesOptions;
+    /// <summary>Tracker nachführen (#1266): Vorgaben, Normalisieren und Speichern.</summary>
+    [Test]
+    procedure IssuesSyncOptions;
     /// <summary>Release-Build-Wächter (#533): build.releaseGuard, build.gate, build.releaseConfigs und
     /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
@@ -915,6 +918,52 @@ begin
   Assert.IsFalse(Loaded.TrackerLogin);
   Assert.IsFalse(Loaded.IssuesPreview);
   Assert.IsFalse(Loaded.IssuesPreviewComments);
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesSyncOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.IssuesSyncState, 'an: geschrieben wird trotzdem nur nach Senden bzw. Beginnen');
+  Assert.AreEqual('State', mSettings.IssuesStateField);
+  Assert.AreEqual('Assignee', mSettings.IssuesAssigneeField);
+  Assert.AreEqual('', mSettings.IssuesStartState, 'Zustand beim Beginnen nicht ändern');
+  Assert.IsFalse(mSettings.IssuesAssignOnStart);
+  Assert.AreEqual('', mSettings.IssuesStartComment);
+  Assert.AreEqual('', mSettings.IssuesEndStates);
+  Assert.AreEqual('Erledigt in {branch}.\n{commits}', mSettings.IssuesEndComment);
+  // Normalisieren: Felder ohne Leerraum außen, leer = Vorgabe; Vorlagen einzeilig mit \n.
+  mSettings.IssuesStateField := '  Status ';
+  mSettings.IssuesAssigneeField := '';
+  mSettings.IssuesStartState := ' In Arbeit ';
+  mSettings.IssuesStartComment := 'Beginne {kennung}'#13#10'in {branch}';
+  mSettings.IssuesEndStates := ' Zur Prüfung, Erledigt ';
+  mSettings.IssuesEndComment := StringOfChar('x', TAtlasPluginSettings.MaxIssuesTemplate + 10);
+  mSettings.Normalize;
+  Assert.AreEqual('Status', mSettings.IssuesStateField);
+  Assert.AreEqual('Assignee', mSettings.IssuesAssigneeField, 'leer = Vorgabe');
+  Assert.AreEqual('In Arbeit', mSettings.IssuesStartState);
+  Assert.AreEqual('Beginne {kennung}\nin {branch}', mSettings.IssuesStartComment);
+  Assert.AreEqual('Zur Prüfung, Erledigt', mSettings.IssuesEndStates);
+  Assert.AreEqual(TAtlasPluginSettings.MaxIssuesTemplate, Integer(Length(mSettings.IssuesEndComment)));
+  // Speichern und Laden.
+  mSettings.IssuesSyncState := False;
+  mSettings.IssuesAssignOnStart := True;
+  mSettings.IssuesEndComment := 'Fertig: {pr}';
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.IssuesSyncState);
+  Assert.AreEqual('Status', mLoaded.IssuesStateField);
+  Assert.AreEqual('Assignee', mLoaded.IssuesAssigneeField);
+  Assert.AreEqual('In Arbeit', mLoaded.IssuesStartState);
+  Assert.IsTrue(mLoaded.IssuesAssignOnStart);
+  Assert.AreEqual('Beginne {kennung}\nin {branch}', mLoaded.IssuesStartComment);
+  Assert.AreEqual('Zur Prüfung, Erledigt', mLoaded.IssuesEndStates);
+  Assert.AreEqual('Fertig: {pr}', mLoaded.IssuesEndComment);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;
