@@ -349,7 +349,7 @@ Vorbereitung: RAD Studio mit Atlas-Plugin, Projekt offen; Claude Code mit dem At
 | KP12 | Erster Start mit Blocklinien | Meldung im Meldungsfenster; ab dem nächsten Start keine Linien der IDE mehr |
 | KP13 | Optionen › Atlas › „Blocklinien in den Paarfarben“ aus, Delphi neu starten | Keine Atlas-Linien; Strukturhervorhebung der IDE wieder an |
 
-Help Insight der IDE (#442): Solange der Atlas-Tooltip an ist, schaltet Atlas Help Insight in der Registry ab (`Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal`, `Help Insight`), ab dem nächsten Start zeigt die IDE keinen zweiten Tooltip; mit Atlas-Tooltip aus wieder an (nur wenn Atlas abgeschaltet hatte).
+Help Insight der IDE (#442, #1246): Solange der Atlas-Tooltip an ist, schaltet Atlas Help Insight in der Registry ab (Wert `Help Insight` unter `Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal` für Delphi 13, `Code Insight\Borland.EditOptions.Pascal` für Delphi 12 und älter, dazu jeder Unterschlüssel von `Code Insight`, der den Wert schon trägt), ab dem nächsten Start zeigt die IDE keinen zweiten Tooltip; mit Atlas-Tooltip aus wieder an (nur wenn Atlas abgeschaltet hatte). Die Merker unter `HKCU\Software\Atlas\IdePlugin` heißen je Version und Ort, z. B. `IdeHelpInsightDisabled 23.0 Borland.EditOptions.Pascal`.
 
 | Nr. | Schritt | Erwartet |
 |---|---|---|
@@ -359,6 +359,8 @@ Help Insight der IDE (#442): Solange der Atlas-Tooltip an ist, schaltet Atlas He
 | HI4 | Atlas › Hauptschalter aus, Maus auf einem Typ | Nur der Tooltip der IDE, kein Atlas-Tooltip |
 | HI5 | Atlas-Tooltip aus | Symbolhinweis der IDE mit dem Text von Atlas; Help Insight nach dem nächsten Start wieder wie vorher |
 | HI6 | Maus auf `TDataSource` in `Data.DB.pas` (vorwärts deklariert in Zeile 29, voll in Zeile 1988) | Fundort `Data.DB.pas : 1988`, Vererbung `TDataSource › TComponent › TPersistent › TObject` (erster Start baut den Index neu, Cache-Format 12) |
+| HI7 | **Delphi 12** (#1246): Atlas-Tooltip an, Delphi zweimal starten, Maus auf einem Typ | Nur der Atlas-Tooltip. In der Registry unter `HKCU\Software\Embarcadero\BDS\23.0\Code Insight\Borland.EditOptions.Pascal` steht `Help Insight = False`, Merker `IdeHelpInsightDisabled 23.0 Borland.EditOptions.Pascal = 1`. Erscheint Help Insight trotzdem: in *Tools › Optionen › Code Insight* Help Insight aus- und wieder einschalten, OK, und melden, welcher Schlüssel unter `23.0\Code Insight` sich geändert hat |
+| HI8 | Delphi 12 und 13 nebeneinander installiert, Atlas-Tooltip in beiden an, abwechselnd starten | In beiden bleibt Help Insight aus; keine IDE schaltet es wieder ein |
 
 Blocklinien zeichnet Atlas selbst (Einstellung „Blocklinien in den Paarfarben“). Solange sie an sind, ist die Strukturhervorhebung der IDE in der Registry abgeschaltet (`Editor\Highlight\Structural Highlighting`, `Enabled`). Die IDE liest das nur beim Start. Hat der User sie selbst abgeschaltet, ändert Atlas nichts.
 
@@ -1861,7 +1863,7 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert. Für den „erste
 | EP3 | Während der Server startet bzw. indiziert, Fenster offen lassen | Punkte gelb mit „Server wird gestartet…“ bzw. „wird indiziert: n von m Projekten fertig“; aktualisiert sich alle 2 s ohne Klick; Projektzeilen wechseln von „wird aufgebaut“ auf „fertig“ |
 | EP4 | Serverpfad in *Tools › Optionen › Atlas* auf eine nicht vorhandene Datei, IDE neu starten | Prüfliste öffnet von selbst; Server rot „AtlasServer.exe nicht gefunden“, Knopf „Server-Pfad wählen…“; Datei wählen → Pfad steht danach auf der Optionsseite, der Server startet, Punkt wird grün |
 | EP5 | Server einer anderen Version eintragen | Gelb „Server x passt nicht zum Plugin y“ mit „Server-Pfad wählen…“ |
-| EP6 | **Error-Insight-Ort bestätigen**: *Tools › Optionen › Editor › Sprache › Code Insight* Error Insight an; IDE neu starten | Zeile „Error Insight der IDE ist noch an (doppelte Meldungen)“, Knopf „Error Insight abschalten“. Klick: Zeile „Error Insight umgeschaltet, wirkt nach dem Neustart der IDE“; in der Registry unter `<BDS-Schlüssel>\Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal` steht `Error Insight = False`. Nach Neustart ist Error Insight in den IDE-Optionen aus und die Zeile grün. Stimmt der Ort nicht (Optionen zeigen weiter an), bitte den richtigen Schlüssel melden |
+| EP6 | **Error-Insight-Ort bestätigen**: *Tools › Optionen › Editor › Sprache › Code Insight* Error Insight an; IDE neu starten | Zeile „Error Insight der IDE ist noch an (doppelte Meldungen)“, Knopf „Error Insight abschalten“. Klick: Zeile „Error Insight umgeschaltet, wirkt nach dem Neustart der IDE“; in der Registry unter `<BDS-Schlüssel>\Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal` (Delphi 13) bzw. `…\Borland.EditOptions.Pascal` (Delphi 12, #1246) steht `Error Insight = False`. Nach Neustart ist Error Insight in den IDE-Optionen aus und die Zeile grün. Stimmt der Ort nicht (Optionen zeigen weiter an), bitte den richtigen Schlüssel melden |
 | EP7 | Atlas-Probleme aus (*Atlas*-Seite), Error Insight aus | Gelb „Weder Error Insight noch Atlas zeigen Fehler im Editor“ mit „Error Insight einschalten“ |
 | EP8 | Taste von Atlas mit einer fremden Erweiterung belegen (z. B. CnPack auf Strg+Leer) | Gelb „1 Tastenkürzel anders belegt, z. B. …“; „Tastenkonflikte öffnen“ öffnet *Tools › Optionen › Drittanbieter › Atlas › Tastenkonflikte* (**Seite prüfen**); nach Ändern und „Erneut prüfen“ grün |
 | EP9 | Bibliotheks-Cache löschen (`%LOCALAPPDATA%\Atlas\Index\<Version>\…\Bibliothek` bzw. „Index löschen“), Server neu starten | Gelb „Bibliotheks-Cache fehlt, erster Start dauert länger“ bzw. „entsteht beim ersten Indexlauf“, Knopf „Jetzt aufbauen“ baut den Index neu |
@@ -2587,6 +2589,19 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | ASL16 | 150 % und 200 % Skalierung | Leiste eine Zeile, Symbole und Zahnrad scharf |
 | ASL17 | Leiste durch einen Fehler abgeschaltet (atlas.log „Atlas-Statusleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leisten verschwinden und das Atlas-Feld kehrt in die Statuszeile zurück; nach dem Einschalten ohne Neustart wieder da |
 | ASL18 | Optionen › Editor | „Atlas-Statusleiste …“ und das Feld „Elemente“; unbekannte oder doppelte Einträge verschwinden beim Speichern |
+
+## Projektprüfung als begrenzter Lauf (#1247)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PL1 | Projekt mit 900+ Units öffnen, Indexaufbau abwarten | Live-Prüfung zeigt „· Projekt 0 %“ und zählt hoch; am Ende einige Sekunden „· Projekt fertig“, danach nur noch „live · geprüft vor …“. atlas.log: „Projektprüfung fertig: … Units in … ms“. Danach Prozessor des Servers im Taskmanager nahe 0 % |
+| PL2 | Während des Laufs zügig tippen | Editor bleibt flüssig; „prüft …“ der aktiven Datei kommt sofort, der Projektfortschritt steht, solange getippt wird, und läuft gut eine Sekunde nach der letzten Taste weiter |
+| PL3 | Nach dem Ende eine Unit ändern und speichern, die von drei anderen in uses steht | Kurz „· Projekt …“ über 4 Units (Tooltip „Projekt: 2 von 4 Units geprüft“), dann „Projekt fertig“; Befunde der drei abhängigen Units in „Atlas-Prüfung“ (Bereich Projekt) aktualisiert |
+| PL4 | Projekt bauen (Umschalt+F9) während des Laufs | Während des Compiles „· Projekt … % pausiert (Kompilieren)“, der Fortschritt steht; danach läuft er weiter. Hat der Build neue Meldungen, werden nur deren Units neu geprüft |
+| PL5 | Während des Laufs F9 (Debuggen) | „angehalten (Debugger)“; atlas.log zeigt keine weiteren geprüften Units, Server-CPU bei 0 %; nach dem Ende des Programms läuft der Lauf weiter |
+| PL6 | Klick auf die Live-Prüfung (#1231) | Neuer Lauf über alle Units von 0 % an, am Ende „Projekt fertig“ |
+| PL8 | Index-Cache löschen (Atlas › Index neu aufbauen), dabei Taskmanager › Details › AtlasServer.exe beobachten (#1236) | Während des Aufbaus höchstens etwa ein Kern (bei 8 Kernen gut 12 %), Priorität des Aufbau-Threads „Niedriger als normal“ (Process Explorer › Threads); die IDE bleibt flüssig. Danach Projektprüfung wie PL1 |
+| PL7 | Probleme aus (`problems`) bzw. Fenster „Atlas-Prüfung“ nie geöffnet und Probleme aus | Kein Lauf, keine Projektanzeige in der Statusleiste |
 
 ## Extrahieren, case und with (#50)
 

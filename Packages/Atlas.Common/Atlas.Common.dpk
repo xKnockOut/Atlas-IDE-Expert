@@ -395,6 +395,7 @@ contains
   Atlas.Common.Lsp.SelectionRanges in 'Source\Lsp\Atlas.Common.Lsp.SelectionRanges.pas',
   Atlas.Common.Lsp.SyntaxDiagnostics in 'Source\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.pas',
   Atlas.Common.Lsp.PullDiagnostics in 'Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.pas',
+  Atlas.Common.Lsp.WorkspaceCheck in 'Source\Lsp\Atlas.Common.Lsp.WorkspaceCheck.pas',
   Atlas.Common.Lsp.TextDocumentSync in 'Source\Lsp\Atlas.Common.Lsp.TextDocumentSync.pas',
   Atlas.Common.Pascal.Contract in 'Source\Pascal\Atlas.Common.Pascal.Contract.pas',
   Atlas.Common.Pascal.Lexer in 'Source\Pascal\Atlas.Common.Pascal.Lexer.pas',

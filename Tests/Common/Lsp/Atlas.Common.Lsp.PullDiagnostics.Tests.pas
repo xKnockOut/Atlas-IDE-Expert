@@ -33,7 +33,7 @@ type
     procedure ReusesReportForSameState;
     /// <summary>Eine zweite gleichzeitige workspace/diagnostic-Anfrage prüft nicht noch einmal.</summary>
     [Test]
-    procedure SecondWorkspaceRequestDoesNotCollect;
+    procedure WorkspaceRequestDoesNotCompute;
     /// <summary>Ein Abbruch wirkt vor der nächsten Prüfregel, nicht erst am Ende (Diagnoselog 15.10.2026).</summary>
     [Test]
     procedure CancelStopsRuleChecks;
@@ -58,7 +58,13 @@ type
     /// <summary>#1220: Eine Datei über der Frist blockiert nichts; der Hintergrund prüft sie zu Ende, die nächste
     /// Antwort bringt sie aus dem Cache.</summary>
     [Test]
-    procedure SlowFileFinishesInBackground;
+    procedure SlowFileFinishesAtEndOfRun;
+    [Test]
+    procedure CompilerMessagesRecheckOnlyTheirFiles;
+    [Test]
+    procedure ClientPausesRun;
+    [Test]
+    procedure WorkspaceReportCarriesRun;
   end;
 
 implementation
@@ -75,6 +81,7 @@ uses
   Atlas.Tests.RuleAssert,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.PendingRequests,
+  Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.Providers.DocumentStore,
@@ -248,6 +255,8 @@ var
 begin
   Fixture.Init;
   try
+    // Die Projektprüfung rechnet im eigenen Thread; das Long-Polling wartet auf ihr Ergebnis.
+    Fixture.Pull.WaitMs := 5000;
     Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
     try
       Items := (Result_ as TJSONObject).GetValue<TJSONArray>('items');
@@ -263,19 +272,36 @@ begin
   end;
 end;
 
+/// <summary>previousResultIds mit AUri und AId.</summary>
+function PreviousParams(const AUri, AId: string): TJSONObject;
+var
+  Entry: TJSONObject;
+begin
+  Entry := TJSONObject.Create;
+  Entry.AddPair('uri', AUri);
+  Entry.AddPair('value', AId);
+  Result := TJSONObject.Create;
+  Result.AddPair('previousResultIds', TJSONArray.Create(Entry));
+end;
+
 procedure TLspPullDiagnosticsTests.WorkspaceSkipsKnownAndOpenFiles;
 var
   Fixture: TFixture;
-  Params, Entry: TJSONObject;
+  Params: TJSONObject;
   Result_: TJSONValue;
+  Id: string;
 begin
   Fixture.Init;
   try
-    Entry := TJSONObject.Create;
-    Entry.AddPair('uri', TDocumentUris.FromPath(ClosedFile));
-    Entry.AddPair('value', Format('%d:t42', [Fixture.Pull.Generation]));
-    Params := TJSONObject.Create;
-    Params.AddPair('previousResultIds', TJSONArray.Create(Entry));
+    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
+    Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
+    try
+      Id := (Result_ as TJSONObject).GetValue<TJSONArray>('items').Items[0].GetValue<string>('resultId');
+    finally
+      Result_.Free;
+    end;
+    Params := PreviousParams(TDocumentUris.FromPath(ClosedFile), Id);
     try
       Result_ := Fixture.Pull.WorkspaceReport(Params, Token);
       try
@@ -304,12 +330,16 @@ begin
       begin
         Result := True;
       end;
+    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    Sleep(300);
     Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
     try
       Assert.AreEqual(0, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
+      Assert.AreEqual('index', (Result_ as TJSONObject).GetValue<string>('atlas.run.paused'));
     finally
       Result_.Free;
     end;
+    Assert.AreEqual(0, Fixture.Pull.Computed);
   finally
     Fixture.Done;
   end;
@@ -319,9 +349,9 @@ procedure TLspPullDiagnosticsTests.WorkspaceStartsWhenIndexFinishes;
 var
   Fixture: TFixture;
   Result_: TJSONValue;
-  Calls: Integer;
+  Calls, Attempts: Integer;
 begin
-  // Wird der Index während des Wartens fertig, kommen die Befunde noch in derselben Antwort.
+  // Wird der Index während des Wartens fertig, kommen die Befunde, sobald die Prüfung sie hat.
   Fixture.Init;
   try
     Calls := 0;
@@ -332,8 +362,17 @@ begin
         Inc(Calls);
         Result := Calls < 3;
       end;
+    // Antworten ohne Befunde melden Beginn und Ende der Pause; der Client fragt gleich wieder.
     Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
     try
+      Attempts := 1;
+      while ((Result_ as TJSONObject).GetValue<TJSONArray>('items').Count = 0) and (Attempts < 5) do
+      begin
+        Result_.Free;
+        Result_ := nil;
+        Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
+        Inc(Attempts);
+      end;
       Assert.AreEqual(1, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
     finally
       Result_.Free;
@@ -370,42 +409,25 @@ begin
   end;
 end;
 
-procedure TLspPullDiagnosticsTests.SecondWorkspaceRequestDoesNotCollect;
+procedure TLspPullDiagnosticsTests.WorkspaceRequestDoesNotCompute;
 var
   Fixture: TFixture;
-  Outer, Inner: TJSONValue;
-  InnerCount, Calls: Integer;
-  Pull: TLspPullDiagnostics;
+  Result_: TJSONValue;
 begin
+  // Anfragen liefern nur gespeicherte Befunde (#1247): auch gleichzeitige oder wiederholte rechnen nicht.
   Fixture.Init;
   try
-    Calls := 0;
-    InnerCount := -1;
-    Pull := Fixture.Pull;
-    // Die erste Anfrage fragt Busy, während sie den Platz hält: Darin kommt die zweite.
-    Pull.Busy :=
-      function: Boolean
-      begin
-        Inc(Calls);
-        if Calls = 1 then
-        begin
-          Inner := Pull.WorkspaceReport(nil, Token);
-          try
-            InnerCount := (Inner as TJSONObject).GetValue<TJSONArray>('items').Count;
-          finally
-            Inner.Free;
-          end;
-        end;
-        Result := False;
-      end;
-    Outer := Pull.WorkspaceReport(nil, Token);
+    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
+    Assert.AreEqual(1, Fixture.Pull.Computed);
+    Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
     try
-      Assert.AreEqual(0, InnerCount, 'zweite Anfrage leer');
-      Assert.AreEqual(1, Calls, 'zweite Anfrage fragt den Index nicht');
-      Assert.AreEqual(1, (Outer as TJSONObject).GetValue<TJSONArray>('items').Count, 'erste prüft');
+      Assert.AreEqual(1, (Result_ as TJSONObject).GetValue<TJSONArray>('items').Count);
     finally
-      Outer.Free;
+      Result_.Free;
     end;
+    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.AreEqual(1, Fixture.Pull.Computed, 'nicht neu geprüft');
   finally
     Fixture.Done;
   end;
@@ -536,6 +558,9 @@ begin
       begin
         Result := 1000;
       end;
+    // Die erste Anfrage meldet den Beginn des Laufs; die zweite hat nichts Neues und wartet.
+    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    Sleep(300);
     Clock := TStopwatch.StartNew;
     Result_ := Fixture.Pull.WorkspaceReport(nil, Token);
     try
@@ -640,13 +665,15 @@ var
   Pull: TLspPullDiagnostics;
   Result_: TJSONValue;
   Items: TJSONArray;
-  Notes: TRequestNotes;
-  Joined: string;
+  Item: TJSONValue;
+  Logged: TStringList;
+  Empty, Found: Integer;
 begin
   Store := TDocumentStore.Create;
   Providers := Default(TSyntaxDiagnosticsProviders);
   Providers.Rules := FailingRules();
   Diagnostics := TLspSyntaxDiagnostics.Create(Store, nil, Providers, 0);
+  Logged := TStringList.Create;
   Pull := nil;
   try
     Diagnostics.PullMode := True;
@@ -668,32 +695,44 @@ begin
       end);
     Pull.WaitMs := 0;
     Pull.FileLabel := LabelOfFile;
-    TRequestDiagnostics.Open;
-    try
-      Result_ := Pull.WorkspaceReport(nil, Token);
-    finally
-      Notes := TRequestDiagnostics.Close;
-    end;
+    Pull.Check.OnLog :=
+      procedure(const AMessage: string)
+      begin
+        TMonitor.Enter(Logged);
+        try
+          Logged.Add(AMessage);
+        finally
+          TMonitor.Exit(Logged);
+        end;
+      end;
+    Pull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(Pull.Check.WaitIdle(5000));
+    Result_ := Pull.WorkspaceReport(nil, Token);
     try
       Items := (Result_ as TJSONObject).GetValue<TJSONArray>('items');
       Assert.AreEqual(2, Integer(Items.Count));
-      Assert.AreEqual(TDocumentUris.FromPath(FailingFile), Items.Items[0].GetValue<string>('uri'));
-      Assert.AreEqual(0, Integer(Items.Items[0].GetValue<TJSONArray>('items').Count), 'übersprungen');
-      Assert.AreEqual(TDocumentUris.FromPath(ClosedFile), Items.Items[1].GetValue<string>('uri'));
-      Assert.IsTrue(Items.Items[1].GetValue<TJSONArray>('items').Count > 0, 'die nächste Datei läuft weiter');
+      Empty := 0;
+      Found := 0;
+      for Item in Items do
+        if Item.GetValue<TJSONArray>('items').Count = 0 then
+        begin
+          Inc(Empty);
+          Assert.AreEqual(TDocumentUris.FromPath(FailingFile), Item.GetValue<string>('uri'), 'übersprungen');
+        end
+        else
+          Inc(Found);
+      Assert.AreEqual(1, Empty);
+      Assert.AreEqual(1, Found, 'die nächste Datei läuft weiter');
     finally
       Result_.Free;
     end;
     Assert.AreEqual(1, Pull.Skipped);
-    Joined := ' ' + string.Join(' ', Notes.Notes) + ' ';
-    Assert.Contains(Joined, ' failedUnits=1 ');
-    Assert.Contains(Joined, ' failUnit=unit#1 ');
-    Assert.Contains(Joined, ' failUnitClass=EArgumentException ');
-    Assert.DoesNotContain(Joined, 'Kaputt.pas');
-    Assert.AreEqual('', Notes.Subject, 'nach dem Lauf keine Unit mehr offen');
+    Assert.Contains(Logged.Text, 'unit#1 übersprungen (EArgumentException)');
+    Assert.DoesNotContain(Logged.Text, 'Kaputt.pas');
   finally
     Pull.Free;
     Diagnostics.Free;
+    Logged.Free;
   end;
 end;
 
@@ -728,13 +767,11 @@ begin
   end;
 end;
 
-procedure TLspPullDiagnosticsTests.SlowFileFinishesInBackground;
+procedure TLspPullDiagnosticsTests.SlowFileFinishesAtEndOfRun;
 var
   Fixture: TFixture;
   Rules: TRuleContextProvider;
   Answer: TJSONValue;
-  Params: TJSONObject;
-  Waited: Integer;
 begin
   Rules :=
     function(const AUri: string; out AContext: TRuleCheckContext): Boolean
@@ -754,32 +791,107 @@ begin
       Result := True;
     end;
   Fixture.Init(Rules);
-  Params := TJSONObject.Create;
   try
+    // Über der Frist (#1220): Die Datei kommt ans Ende des Laufs und wird ohne Frist zu Ende geprüft.
     Fixture.Pull.FileLimitMs := 50;
-    // Erste Antwort: Die Datei ist über der Frist, nichts wird verworfen oder blockiert.
-    Answer := Fixture.Pull.WorkspaceReport(Params, Token);
-    try
-      Assert.AreEqual(0, TJSONObject(Answer).GetValue<TJSONArray>('items').Count);
-    finally
-      Answer.Free;
-    end;
-    Waited := 0;
-    while (Fixture.Pull.Background > 0) and (Waited < 5000) do
-    begin
-      Sleep(20);
-      Inc(Waited, 20);
-    end;
-    Assert.AreEqual(0, Fixture.Pull.Background, 'Hintergrund fertig');
-    // Zweite Antwort: aus dem Cache, ohne erneute Frist.
-    Answer := Fixture.Pull.WorkspaceReport(Params, Token);
+    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
+    Answer := Fixture.Pull.WorkspaceReport(nil, Token);
     try
       Assert.AreEqual(1, TJSONObject(Answer).GetValue<TJSONArray>('items').Count);
     finally
       Answer.Free;
     end;
   finally
-    Params.Free;
+    Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.CompilerMessagesRecheckOnlyTheirFiles;
+var
+  Fixture: TFixture;
+  Pull: TLspPullDiagnostics;
+  Generation: Integer;
+begin
+  Fixture.Init;
+  try
+    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
+    Assert.AreEqual(1, Fixture.Pull.Computed);
+    Generation := Fixture.Pull.Generation;
+    // Verdrahtung wie in der Composition.
+    Pull := Fixture.Pull;
+    Fixture.Diagnostics.OnPullFilesChanged :=
+      procedure(AFiles: TArray<string>)
+      begin
+        Pull.FilesChanged(AFiles);
+      end;
+    // Neue Compilermeldungen nur für die geschlossene Datei: Nur sie wird neu geprüft (#1247).
+    Fixture.Diagnostics.RefreshFiles(TArray<string>.Create(ClosedFile));
+    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
+    Assert.AreEqual(2, Fixture.Pull.Computed);
+    Assert.AreEqual(1, Fixture.Pull.Check.Run.Total);
+    Assert.AreEqual(Generation + 1, Fixture.Pull.Generation, 'geöffnete Dateien holt der Client neu');
+  finally
+    Fixture.Done;
+  end;
+end;
+
+procedure Notify(ADispatcher: TJsonRpcDispatcher; const AMethod, AParams: string);
+var
+  Message: TJSONObject;
+begin
+  Message := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + AMethod + '","params":' + AParams + '}')
+    as TJSONObject;
+  try
+    ADispatcher.DispatchMessage(Message).Free;
+  finally
+    Message.Free;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.ClientPausesRun;
+var
+  Fixture: TFixture;
+  Dispatcher: TJsonRpcDispatcher;
+begin
+  // Beim Debuggen ruht die Projektprüfung (#1241); das Plugin meldet es mit atlas/workspaceCheck/pause.
+  Fixture.Init;
+  Dispatcher := TJsonRpcDispatcher.Create;
+  try
+    Fixture.Pull.Attach(Dispatcher);
+    Notify(Dispatcher, TLspPullDiagnostics.PauseMethod, '{"reason":"debug","paused":true}');
+    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    Sleep(300);
+    Assert.AreEqual(0, Fixture.Pull.Computed);
+    Assert.AreEqual('debug', Fixture.Pull.Check.Run.Paused);
+    Notify(Dispatcher, TLspPullDiagnostics.PauseMethod, '{"reason":"debug","paused":false}');
+    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
+    Assert.AreEqual(1, Fixture.Pull.Computed);
+  finally
+    Dispatcher.Free;
+    Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.WorkspaceReportCarriesRun;
+var
+  Fixture: TFixture;
+  Answer: TJSONValue;
+begin
+  Fixture.Init;
+  try
+    Fixture.Pull.WorkspaceReport(nil, Token).Free;
+    Assert.IsTrue(Fixture.Pull.Check.WaitIdle(5000));
+    Answer := Fixture.Pull.WorkspaceReport(nil, Token);
+    try
+      Assert.IsFalse(TJSONObject(Answer).GetValue<Boolean>('atlas.run.active'));
+      Assert.AreEqual(2, TJSONObject(Answer).GetValue<Integer>('atlas.run.done'));
+      Assert.AreEqual(2, TJSONObject(Answer).GetValue<Integer>('atlas.run.total'));
+    finally
+      Answer.Free;
+    end;
+  finally
     Fixture.Done;
   end;
 end;
