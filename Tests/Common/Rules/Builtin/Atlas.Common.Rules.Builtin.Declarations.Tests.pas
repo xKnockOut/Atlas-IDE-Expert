@@ -879,6 +879,14 @@ begin
     'constructor TProperty.Create(const AName: string); begin end;'#10 +
     'constructor TProperty<T>.Create(const AName, APath: string); begin end;'#10 +
     'function TProperty<T>.Wert: T; begin Result := nil; end;'#10'end.');
+  // Nicht generischer Typ in einem generischen: Die Rümpfe nennen den äußeren mit Typparametern.
+  AssertMatchingSilent('unit U;'#10'interface'#10'type'#10'  TDict<TKey, TValue> = class'#10'  public type'#10 +
+    '    TEnumerator = class'#10'      function MoveNext: Boolean;'#10'    end;'#10'  end;'#10'implementation'#10 +
+    'function TDict<TKey, TValue>.TEnumerator.MoveNext: Boolean; begin Result := False; end;'#10'end.');
+  // Gegenprobe: Fehlt der Rumpf, wird er gemeldet.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDeclaredNotImplementedRule.Create, 'unit U;'#10 +
+    'interface'#10'type'#10'  TDict<TKey, TValue> = class'#10'  public type'#10'    TEnumerator = class'#10 +
+    '      function MoveNext: Boolean;'#10'    end;'#10'  end;'#10'implementation'#10'end.'))));
 end;
 
 procedure TDeclarationRulesTests.SpecialFormCounterChecks;

@@ -38,10 +38,12 @@ type
     class function ParameterKey(const AHead: string): string; static;
     /// <summary>Ergebnistyp hinter der Parameterliste als Schlüsselteil ("|integer"); '' ohne.</summary>
     class function ResultKey(const AHead: string): string; static;
-    /// <summary>Steht vor dem Methodennamen AName im Kopf AHead ein generischer Typ (TProperty<T>.Create)? Delphi
-    /// erlaubt neben TProperty einen generischen TProperty<T>; dessen Rümpfe gehören nicht zum nicht generischen.
-    /// </summary>
-    class function HasGenericQualifier(const AHead, AName: string): Boolean; static;
+    /// <summary>Generische Teile des Qualifizierers vor dem Methodennamen AName im Kopf AHead, je Teil '1'
+    /// (generisch) oder '0': "TDict<K, V>.TEnumerator.MoveNext" ergibt '10', "TProperty.Create" '0'; '' ohne
+    /// Qualifizierer; '?' bei bedingten Direktiven im Qualifizierer (TList{$IFDEF X}<T>{$ENDIF}.Add), deren
+    /// aktiver Zweig im Text nicht zu sehen ist. Delphi erlaubt neben TProperty einen generischen TProperty<T>;
+    /// Rümpfe gehören nur zum Typ mit gleicher Maske.</summary>
+    class function QualifierMask(const AHead, AName: string): string; static;
     /// <summary>Text AText ohne Leerraum in Kleinbuchstaben, z. B. für Typen ("arrayofptypeinfo").</summary>
     class function TypeKey(const AText: string): string; static;
     /// <summary>Kurzform eines Routinenkopfs ohne Parameterliste und ohne Ergebnistyp (function Foo;).</summary>
@@ -203,23 +205,80 @@ begin
   Result := '';
 end;
 
-class function TRoutineSignatures.HasGenericQualifier(const AHead, AName: string): Boolean;
+/// <summary>Kopf ohne Kommentare, ohne "&" vor Namen und ohne Leerraum um ".": "TA.{%H-}&Type",
+/// "TA.<Zeilenumbruch>  Run" ergeben "TA.Type" bzw. "TA.Run".</summary>
+function QualifierText(const AHead: string): string;
 var
-  mLower, mNeedle: string;
-  mIndex, mAfter: Integer;
+  mPos: Integer;
+  mComment: Boolean;
 begin
-  Result := False;
-  mLower := LowerCase(AHead);
-  mNeedle := '.' + LowerCase(AName);
+  Result := '';
+  mComment := False;
+  for mPos := 1 to Length(AHead) do
+    if mComment then
+      mComment := AHead[mPos] <> '}'
+    else if AHead[mPos] = '{' then
+      mComment := True
+    else if AHead[mPos] <> '&' then
+      Result := Result + AHead[mPos];
+  while Pos(' .', Result) > 0 do
+    Result := StringReplace(Result, ' .', '.', [rfReplaceAll]);
+  while Pos('. ', Result) > 0 do
+    Result := StringReplace(Result, '. ', '.', [rfReplaceAll]);
+end;
+
+class function TRoutineSignatures.QualifierMask(const AHead, AName: string): string;
+var
+  mText, mLower, mNeedle: string;
+  mIndex, mDepth, mPos: Integer;
+  mGeneric: Boolean;
+begin
+  Result := '';
+  // Bedingte Direktiven: Welcher Zweig aktiv ist, steht nicht im Text.
+  if (Pos('{$', AHead) > 0) or (Pos('(*$', AHead) > 0) then
+    Exit('?');
+  mText := QualifierText(AHead);
+  mLower := LowerCase(mText);
+  mNeedle := '.' + LowerCase(StringReplace(AName, '&', '', [rfReplaceAll]));
   mIndex := Pos(mNeedle, mLower);
-  while mIndex > 0 do
-  begin
-    mAfter := mIndex + Length(mNeedle);
-    // Der Name endet vor "(", "<", ":", Leerraum oder am Ende des Kopfs.
-    if (mAfter > Length(mLower)) or not CharInSet(mLower[mAfter], ['a'..'z', '0'..'9', '_']) then
-      Exit(Pos('<', Copy(AHead, 1, mIndex - 1)) > 0);
+  // Der Name endet vor "(", "<", ":", Leerraum oder am Ende des Kopfs.
+  while (mIndex > 0) and (mIndex + Length(mNeedle) <= Length(mLower)) and
+    CharInSet(mLower[mIndex + Length(mNeedle)], ['a'..'z', '0'..'9', '_']) do
     mIndex := PosEx(mNeedle, mLower, mIndex + 1);
-  end;
+  if mIndex = 0 then
+    Exit;
+  // Teile des Qualifizierers: "." trennt, Leerraum außerhalb von <> beginnt neu (Schlüsselwörter davor).
+  mDepth := 0;
+  mGeneric := False;
+  for mPos := 1 to mIndex - 1 do
+    case mText[mPos] of
+      '<':
+        begin
+          Inc(mDepth);
+          mGeneric := True;
+        end;
+      '>':
+        Dec(mDepth);
+      '.':
+        if mDepth = 0 then
+        begin
+          if mGeneric then
+            Result := Result + '1'
+          else
+            Result := Result + '0';
+          mGeneric := False;
+        end;
+      ' ', #9:
+        if mDepth = 0 then
+        begin
+          Result := '';
+          mGeneric := False;
+        end;
+    end;
+  if mGeneric then
+    Result := Result + '1'
+  else
+    Result := Result + '0';
 end;
 
 class function TRoutineSignatures.TypeKey(const AText: string): string;

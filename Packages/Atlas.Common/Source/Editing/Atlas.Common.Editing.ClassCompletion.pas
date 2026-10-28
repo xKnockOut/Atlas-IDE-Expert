@@ -767,6 +767,50 @@ var
   Rest, Header, Key: string;
   Declaration, Body: Integer;
   mTypeRanges: TArray<TTextRange>;
+  mMask: string;
+
+  // Generisch ist ein Typ mit Typparametern; die kennt der Index nicht immer, dann steht "<" hinter dem Namen.
+  function IsGeneric(const AType: TIndexSymbol): Boolean;
+  var
+    mRest: string;
+  begin
+    mRest := Copy(Lines[AType.SelectionRange.EndPos.Line], AType.SelectionRange.EndPos.Character + 1, MaxInt);
+    Result := (AType.TypeParams <> '') or TrimLeft(mRest).StartsWith('<');
+  end;
+
+  // Maske wie TRoutineSignatures.QualifierMask für den Typ AType: je umschließendem Typ '1' oder '0', zuletzt
+  // AType selbst ('0', generische Typen werden übergangen).
+  function TypeMask(const AType: TIndexSymbol): string;
+  var
+    mOuter: TIndexSymbol;
+    mParts: TArray<string>;
+    mPrefix: string;
+    mPart: Integer;
+    mFound: Boolean;
+  begin
+    Result := '';
+    mParts := TypeNameOf(AType).Split(['.']);
+    mPrefix := '';
+    for mPart := 0 to High(mParts) - 1 do
+    begin
+      if mPrefix <> '' then
+        mPrefix := mPrefix + '.';
+      mPrefix := mPrefix + mParts[mPart];
+      mFound := False;
+      for mOuter in UnitIndex.Symbols do
+        if (mOuter.Kind in TypeKinds) and SameText(TypeNameOf(mOuter), mPrefix) and
+          ContainsLine(mOuter.Range, AType.Range.StartPos.Line) then
+        begin
+          mFound := IsGeneric(mOuter);
+          Break;
+        end;
+      if mFound then
+        Result := Result + '1'
+      else
+        Result := Result + '0';
+    end;
+    Result := Result + '0';
+  end;
 
   // Steht ALine in irgendeinem Typ der Datei? Dann ist es eine Deklaration, kein Rumpf, auch wenn der Typ ein
   // gleichnamiger generischer ist (THashTable neben THashTable<T>, #1325).
@@ -803,10 +847,9 @@ begin
     if not (TypeSymbol.Kind in TypeKinds) then
       Continue;
     // Generische Typen brauchen die Typparameter im Kopf; die kennt der Index nicht.
-    Rest := Copy(Lines[TypeSymbol.SelectionRange.EndPos.Line], TypeSymbol.SelectionRange.EndPos.Character + 1,
-      MaxInt);
-    if (TypeSymbol.TypeParams <> '') or TrimLeft(Rest).StartsWith('<') then
+    if IsGeneric(TypeSymbol) then
       Continue;
+    mMask := TypeMask(TypeSymbol);
     Match := Default(TTypeMatch);
     Match.TypeName := TypeNameOf(TypeSymbol);
     BodyKeys := nil;
@@ -821,9 +864,10 @@ begin
         Match.Declarations := Match.Declarations + [Symbol];
         Match.DeclarationHeaders := Match.DeclarationHeaders + [Header];
       end
-      // Deklarationen und Rümpfe eines gleichnamigen generischen Typs (TProperty<T>.Create) gehören nicht dazu.
+      // Deklarationen und Rümpfe eines gleichnamigen generischen Typs (TProperty<T>.Create) gehören nicht dazu;
+      // mit bedingten Direktiven im Qualifizierer ('?') zählt der Rumpf wie bisher.
       else if not InAnyType(Symbol.Range.StartPos.Line) and
-        not TRoutineSignatures.HasGenericQualifier(Header, Symbol.Name) then
+        MatchStr(TRoutineSignatures.QualifierMask(Header, Symbol.Name), [mMask, '?']) then
       begin
         Match.Bodies := Match.Bodies + [Symbol];
         Match.BodyHeaders := Match.BodyHeaders + [Header];
