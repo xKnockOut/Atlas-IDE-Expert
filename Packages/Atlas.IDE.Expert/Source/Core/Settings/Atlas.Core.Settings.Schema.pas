@@ -57,7 +57,8 @@ type
   public
     /// <summary>Felder in der Reihenfolge des Schemas; leer bei ungültigem Schema.</summary>
     class function Fields(const ASchemaJson: string): TArray<TAtlasSettingField>; static;
-    /// <summary>Felder eines Orts: AGlobal = settings.json, sonst atlas.json; ohne die Pfade in AExclude.</summary>
+    /// <summary>Felder eines Orts: AGlobal = settings.json, sonst atlas.json; ohne die Pfade in AExclude und ohne
+    /// zusammengesetzte Felder, die einen davon enthalten (z. B. "vcs" mit "vcs.provider").</summary>
     class function ForScope(const AFields: TArray<TAtlasSettingField>; AGlobal: Boolean;
       const AExclude: TArray<string>): TArray<TAtlasSettingField>; static;
     /// <summary>Seiten in der Reihenfolge ihres ersten Felds.</summary>
@@ -274,7 +275,9 @@ begin
       Continue;
     Excluded := False;
     for Path in AExclude do
-      if SameText(Path, Field.Path) then
+      // Ein zusammengesetztes Feld (ganzes Objekt als JSON, z. B. "vcs" seit #1285) mit einem ausgeschlossenen
+      // Glied fällt mit weg: Es im Dialog als Ganzes zu bearbeiten, überschriebe die Werte der eigenen Seite.
+      if SameText(Path, Field.Path) or SameText(Copy(Path, 1, Length(Field.Path) + 1), Field.Path + '.') then
         Excluded := True;
     if not Excluded then
       Result := Result + [Field];
