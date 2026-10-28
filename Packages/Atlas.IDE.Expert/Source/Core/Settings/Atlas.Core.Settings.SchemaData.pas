@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2714] of string = (
+  Lines: array[0..2733] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2859,6 +2859,25 @@ const
     '                "pattern": "^https://[^@/\\s]+(/.*)?$",',
     '                "examples": ["https://youtrack.firma.de", "https://github.com"],',
     '                "description": "Adresse des Trackers, nur https und ohne Benutzer oder Token in der Adresse."',
+    '              },',
+    '              "stateField": {',
+    '                "type": "string",',
+    '                "description": "Name des Zustandsfeldes im YouTrack-Projekt (#1266, deutsch oft \"Status\"); fehlt er, gilt issues.stateField."',
+    '              },',
+    '              "assigneeField": {',
+    '                "type": "string",',
+    '                "description": "Name des Benutzerfeldes für die Zuständigkeit im YouTrack-Projekt (#1266); fehlt er, gilt issues.assigneeField."',
+    '              },',
+    '              "startState": {',
+    '                "type": "string",',
+    '                "description": "Zustand beim Beginnen für diesen Tracker (#1266, GitHub: Label); fehlt er, gilt issues.startState."',
+    '              },',
+    '              "endStates": {',
+    '                "type": "array",',
+    '                "items": {',
+    '                  "type": "string"',
+    '                },',
+    '                "description": "Angebotene Zielzustände beim Beenden für diesen Tracker (#1266); fehlen sie, gilt issues.endStates."',
     '              }',
     '            }',
     '          }',

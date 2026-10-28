@@ -5236,6 +5236,85 @@
       "x-area": "issues",
       "x-page": "Issue-Tracker",
       "x-issue": "#1264"
+    },
+    "IssuesSyncState": {
+      "type": "boolean",
+      "default": true,
+      "description": "Tracker beim Beginnen und Beenden nachführen: „Beginnen“ setzt den Zustand issues.startState, weist mit issues.assignOnStart mir zu und schreibt den Kommentar issues.startComment; „Beenden“ (Statusfeld, Kontextmenü, Knopf der Vorschau) zeigt den Dialog mit Zielzustand, vorgefülltem Kommentar und Übergabe; die Vorschau bekommt das Feld „Kommentar schreiben …“. Ohne Klick auf „Senden“ wird nichts geschrieben. Aus: „Beginnen“ und „Beenden“ ändern im Tracker nichts.",
+      "x-key": "issues.syncState",
+      "x-area": "issues",
+      "x-feature": "WelcomePage",
+      "x-page": "Issue-Tracker",
+      "x-quickToggle": true,
+      "x-caption": "Tracker-Zustand nachführen",
+      "x-captionEn": "Sync tracker state",
+      "x-issue": "#1266"
+    },
+    "IssuesStateField": {
+      "type": "string",
+      "default": "State",
+      "description": "Name des Zustandsfeldes im YouTrack-Projekt (deutsch oft „Status“); Klappliste mit den Feldern vom Tracker, Eingabe von Hand möglich. Je Verbindung überschreibbar (stateField).",
+      "x-key": "issues.stateField",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Klappliste mit Werten vom Tracker",
+      "x-issue": "#1266"
+    },
+    "IssuesAssigneeField": {
+      "type": "string",
+      "default": "Assignee",
+      "description": "Name des Benutzerfeldes für die Zuständigkeit im YouTrack-Projekt (deutsch oft „Zuständig“); Klappliste mit den Feldern vom Tracker. Je Verbindung überschreibbar (assigneeField).",
+      "x-key": "issues.assigneeField",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Klappliste mit Werten vom Tracker",
+      "x-issue": "#1266"
+    },
+    "IssuesStartState": {
+      "type": "string",
+      "default": "",
+      "description": "Zustand beim Beginnen, z. B. „In Arbeit“ (GitHub: Name eines Labels); leer = Zustand nicht ändern. Je Verbindung überschreibbar (startState).",
+      "x-key": "issues.startState",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Klappliste mit Werten vom Tracker",
+      "x-issue": "#1266"
+    },
+    "IssuesAssignOnStart": {
+      "type": "boolean",
+      "default": false,
+      "description": "Beim Beginnen das Issue mir zuweisen.",
+      "x-key": "issues.assignOnStart",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-issue": "#1266"
+    },
+    "IssuesStartComment": {
+      "type": "string",
+      "default": "",
+      "description": "Kommentarvorlage beim Beginnen mit {branch} und {kennung}; leer = kein Kommentar.",
+      "x-key": "issues.startComment",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-issue": "#1266"
+    },
+    "IssuesEndStates": {
+      "type": "string",
+      "default": "",
+      "description": "Angebotene Zielzustände im Beenden-Dialog, mit Komma getrennt (z. B. „Zur Prüfung, Erledigt“); dazu immer „Zustand nicht ändern“. GitHub: Labels, „Erledigt“ schließt das Issue. Je Verbindung überschreibbar (endStates).",
+      "x-key": "issues.endStates",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-issue": "#1266"
+    },
+    "IssuesEndComment": {
+      "type": "string",
+      "default": "Erledigt in {branch}.\\n{commits}",
+      "description": "Kommentarvorlage beim Beenden mit {branch}, {commits} (Kurz-Hash und Betreff der Commits mit der Kennung), {pr} (Pull Request), {time} (erfasste Zeit, #1267) und {kennung}; \\n = neue Zeile.",
+      "x-key": "issues.endComment",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-issue": "#1266"
     }
   },
   "additionalProperties": false

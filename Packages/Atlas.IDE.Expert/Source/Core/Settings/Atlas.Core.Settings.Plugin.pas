@@ -146,6 +146,12 @@ type
     DefaultIssuesCommitPattern = '{kennung} ';
     /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
     MaxIssuesText = 200;
+    /// <summary>Vorgaben für Zustand und Kommentar (#1266); wie TAtlasTrackerWorkflow.</summary>
+    DefaultIssuesStateField = 'State';
+    DefaultIssuesAssigneeField = 'Assignee';
+    DefaultIssuesEndComment = 'Erledigt in {branch}.\n{commits}';
+    /// <summary>Höchstlänge der Kommentarvorlagen und der Liste der Zielzustände (#1266).</summary>
+    MaxIssuesTemplate = 2000;
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
     BeginEndAlways = 'always';
     BeginEndMultiLine = 'multiLine';
@@ -1279,6 +1285,27 @@ type
     /// <summary>Kommentare in der Vorschau laden und zeigen (#1264, issues.preview.comments); aus = nicht abgefragt.
     /// </summary>
     IssuesPreviewComments: Boolean;
+    /// <summary>Tracker beim Beginnen und Beenden nachführen (#1266, issues.syncState): Zustand, Zuweisung und
+    /// Kommentar beim Beginnen, Dialog „… beenden“ mit Zielzustand und Kommentar, Kommentarfeld in der Vorschau;
+    /// aus = „Beginnen“ und „Beenden“ ändern im Tracker nichts.</summary>
+    IssuesSyncState: Boolean;
+    /// <summary>Name des Zustandsfeldes im YouTrack-Projekt (#1266, issues.stateField); '' = "State".</summary>
+    IssuesStateField: string;
+    /// <summary>Name des Benutzerfeldes für die Zuständigkeit (#1266, issues.assigneeField); '' = "Assignee".
+    /// </summary>
+    IssuesAssigneeField: string;
+    /// <summary>Zustand beim Beginnen (#1266, issues.startState); '' = nicht ändern. GitHub: Label.</summary>
+    IssuesStartState: string;
+    /// <summary>Beim Beginnen mir zuweisen (#1266, issues.assignOnStart).</summary>
+    IssuesAssignOnStart: Boolean;
+    /// <summary>Kommentarvorlage beim Beginnen (#1266, issues.startComment); '' = kein Kommentar.</summary>
+    IssuesStartComment: string;
+    /// <summary>Zielzustände im Beenden-Dialog (#1266, issues.endStates), mit Komma getrennt; '' = nur „Zustand
+    /// nicht ändern“.</summary>
+    IssuesEndStates: string;
+    /// <summary>Kommentarvorlage beim Beenden (#1266, issues.endComment) mit {branch}, {commits}, {pr}, {time};
+    /// "\n" = neue Zeile.</summary>
+    IssuesEndComment: string;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -1471,6 +1498,21 @@ begin
     Result := Trim(Result);
   if Length(Result) > TAtlasPluginSettings.MaxIssuesText then
     Result := Copy(Result, 1, TAtlasPluginSettings.MaxIssuesText);
+end;
+
+/// <summary>Kommentarvorlage bzw. Liste (#1266): einzeilig (Zeilenumbruch als "\n"), außen ohne Leerraum,
+/// höchstens MaxIssuesTemplate Zeichen.</summary>
+function NormalizedIssuesTemplate(const AText: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := StringReplace(StringReplace(AText, #13#10, '\n', [rfReplaceAll]), #10, '\n', [rfReplaceAll]);
+  for mIndex := 1 to Length(Result) do
+    if Ord(Result[mIndex]) < 32 then
+      Result[mIndex] := ' ';
+  Result := Trim(Result);
+  if Length(Result) > TAtlasPluginSettings.MaxIssuesTemplate then
+    Result := Copy(Result, 1, TAtlasPluginSettings.MaxIssuesTemplate);
 end;
 
 function NormalizedTrendSeries(const AText: string): string;
@@ -1996,6 +2038,14 @@ begin
   Result.IssuesConnections := '[]';
   Result.IssuesPreview := True;
   Result.IssuesPreviewComments := True;
+  Result.IssuesSyncState := True;
+  Result.IssuesStateField := DefaultIssuesStateField;
+  Result.IssuesAssigneeField := DefaultIssuesAssigneeField;
+  Result.IssuesStartState := '';
+  Result.IssuesAssignOnStart := False;
+  Result.IssuesStartComment := '';
+  Result.IssuesEndStates := '';
+  Result.IssuesEndComment := DefaultIssuesEndComment;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2074,6 +2124,16 @@ begin
   IssuesConnections := Trim(IssuesConnections);
   if IssuesConnections = '' then
     IssuesConnections := '[]';
+  IssuesStateField := NormalizedIssuesText(IssuesStateField, True);
+  if IssuesStateField = '' then
+    IssuesStateField := DefaultIssuesStateField;
+  IssuesAssigneeField := NormalizedIssuesText(IssuesAssigneeField, True);
+  if IssuesAssigneeField = '' then
+    IssuesAssigneeField := DefaultIssuesAssigneeField;
+  IssuesStartState := NormalizedIssuesText(IssuesStartState, True);
+  IssuesStartComment := NormalizedIssuesTemplate(IssuesStartComment);
+  IssuesEndStates := NormalizedIssuesTemplate(IssuesEndStates);
+  IssuesEndComment := NormalizedIssuesTemplate(IssuesEndComment);
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2784,6 +2844,14 @@ begin
   IssuesConnections := AStore.ReadString('IssuesConnections', Default.IssuesConnections);
   IssuesPreview := AStore.ReadInteger('IssuesPreview', BoolValue(Default.IssuesPreview)) <> 0;
   IssuesPreviewComments := AStore.ReadInteger('IssuesPreviewComments', BoolValue(Default.IssuesPreviewComments)) <> 0;
+  IssuesSyncState := AStore.ReadInteger('IssuesSyncState', BoolValue(Default.IssuesSyncState)) <> 0;
+  IssuesStateField := AStore.ReadString('IssuesStateField', Default.IssuesStateField);
+  IssuesAssigneeField := AStore.ReadString('IssuesAssigneeField', Default.IssuesAssigneeField);
+  IssuesStartState := AStore.ReadString('IssuesStartState', Default.IssuesStartState);
+  IssuesAssignOnStart := AStore.ReadInteger('IssuesAssignOnStart', BoolValue(Default.IssuesAssignOnStart)) <> 0;
+  IssuesStartComment := AStore.ReadString('IssuesStartComment', Default.IssuesStartComment);
+  IssuesEndStates := AStore.ReadString('IssuesEndStates', Default.IssuesEndStates);
+  IssuesEndComment := AStore.ReadString('IssuesEndComment', Default.IssuesEndComment);
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3251,6 +3319,14 @@ begin
   AStore.WriteString('IssuesConnections', IssuesConnections);
   AStore.WriteInteger('IssuesPreview', BoolValue(IssuesPreview));
   AStore.WriteInteger('IssuesPreviewComments', BoolValue(IssuesPreviewComments));
+  AStore.WriteInteger('IssuesSyncState', BoolValue(IssuesSyncState));
+  AStore.WriteString('IssuesStateField', IssuesStateField);
+  AStore.WriteString('IssuesAssigneeField', IssuesAssigneeField);
+  AStore.WriteString('IssuesStartState', IssuesStartState);
+  AStore.WriteInteger('IssuesAssignOnStart', BoolValue(IssuesAssignOnStart));
+  AStore.WriteString('IssuesStartComment', IssuesStartComment);
+  AStore.WriteString('IssuesEndStates', IssuesEndStates);
+  AStore.WriteString('IssuesEndComment', IssuesEndComment);
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

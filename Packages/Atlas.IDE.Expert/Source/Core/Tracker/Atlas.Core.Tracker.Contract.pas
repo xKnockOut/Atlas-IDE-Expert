@@ -23,6 +23,12 @@
 //   Issues; IAtlasTrackerProvider.Details liest es. Kein Feld enthält ein
 //   Token; Adressen kommen aus der Antwort des Trackers und werden vor dem
 //   Öffnen geprüft (nur https bzw. derselbe Server).
+// - IAtlasTrackerWriter (#1266): Zustand, Zuständigkeit und Kommentar eines
+//   Issues ändern (TAtlasTrackerChange) und Werte für Klapplisten lesen
+//   (Zustände, Felder, Benutzer); Anbieter, die schreiben können, setzen sie
+//   zusätzlich um. Geschrieben wird über IAtlasCiSend, nur nach einem Klick
+//   des Benutzers und nie wiederholt; Fehler kommen mit dem Text des Trackers
+//   zurück (TAtlasTrackerWriteResult).
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -35,6 +41,12 @@ type
 {$SCOPEDENUMS ON}
   /// <summary>Zustand der Prüfungen (CI) eines Pull Requests: Ampel im Bereich.</summary>
   TAtlasTrackerChecks = (Unknown, Pending, Success, Failure);
+  /// <summary>Zuständigkeit bei einer Änderung (#1266): lassen, mir zuweisen oder an einen Benutzer übergeben.
+  /// </summary>
+  TAtlasTrackerAssign = (Keep, Me, User);
+  /// <summary>Werte für die Klapplisten (#1266): Zustände des Zustandsfeldes (GitHub: Labels), Namen der
+  /// Zustandsfelder, Namen der Benutzerfelder (YouTrack) und Benutzer, an die übergeben werden kann.</summary>
+  TAtlasTrackerValueKind = (States, StateFields, UserFields, Users);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Offener Pull Request zu einem Issue (GitHub).</summary>
@@ -215,6 +227,59 @@ type
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
+  /// <summary>Eine Änderung an einem Issue (#1266): Zustand, Zuständigkeit und Kommentar in einem Schritt.</summary>
+  TAtlasTrackerChange = record
+    /// <summary>Name des Zustandsfeldes (YouTrack, z. B. "State" oder "Status"); GitHub ohne Bedeutung.</summary>
+    StateField: string;
+    /// <summary>Neuer Zustand; '' = nicht ändern. GitHub: Name des Labels; ein Erledigt-Zustand schließt das
+    /// Issue.</summary>
+    State: string;
+    /// <summary>Bisheriger Zustand aus „Beginnen“ (GitHub: dieses Label entfällt beim neuen Zustand); '' ohne.
+    /// </summary>
+    PreviousState: string;
+    /// <summary>Name des Benutzerfeldes für die Zuständigkeit (YouTrack, z. B. "Assignee").</summary>
+    AssigneeField: string;
+    Assign: TAtlasTrackerAssign;
+    /// <summary>Anmeldename bei Assign = User.</summary>
+    Assignee: string;
+    /// <summary>Kommentar (Markdown); '' = keiner.</summary>
+    Comment: string;
+    class function Empty: TAtlasTrackerChange; static;
+    /// <summary>Nur ein Kommentar.</summary>
+    class function CommentOnly(const AText: string): TAtlasTrackerChange; static;
+    /// <summary>Es gibt etwas zu schreiben.</summary>
+    function HasWork: Boolean;
+  end;
+
+  /// <summary>Ergebnis eines Schreibzugriffs (#1266).</summary>
+  TAtlasTrackerWriteResult = record
+    /// <summary>None = geschrieben.</summary>
+    Error: TAtlasCiFetchError;
+    /// <summary>HTTP-Status der fehlgeschlagenen Anfrage; 0 ohne Antwort.</summary>
+    Status: Integer;
+    /// <summary>Fehlertext des Trackers ("error_description", "message"), gekürzt; '' ohne.</summary>
+    Message: string;
+    class function Ok: TAtlasTrackerWriteResult; static;
+    class function Failed(AError: TAtlasCiFetchError; AStatus: Integer;
+      const AMessage: string): TAtlasTrackerWriteResult; static;
+    function Succeeded: Boolean;
+  end;
+
+  /// <summary>Issues ändern und Werte für Klapplisten lesen (#1266). Im Hintergrund; ATransport muss zum Schreiben
+  /// IAtlasCiSend unterstützen. Nichts wird wiederholt.</summary>
+  IAtlasTrackerWriter = interface
+    ['{C3E81F57-4A2D-4B96-8E0F-7D5A1B9C2E63}']
+    /// <summary>AChange auf AKey anwenden, insgesamt höchstens ATimeoutMs (YouTrack: ein Befehl bzw. Kommentar;
+    /// GitHub: Kommentar, dann Labels, Zuständigkeit und Zustand mit einem PATCH).</summary>
+    function Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      const AChange: TAtlasTrackerChange; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+    /// <summary>Werte der Art AKind; AField = Zustandsfeld bei States (YouTrack). Ohne Leserecht auf die Felder
+    /// des Projekts kommt ein Fehler zurück, die Klappliste bleibt dann frei beschreibbar.</summary>
+    function Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      AKind: TAtlasTrackerValueKind; const AField: string; ATimeoutMs: Integer;
+      out AValues: TArray<string>): TAtlasTrackerWriteResult;
+  end;
+
 implementation
 
 const
@@ -294,6 +359,47 @@ begin
     if SameText(Attachments[mIndex].Name, AName) then
       Exit(mIndex);
   Result := -1;
+end;
+
+{ TAtlasTrackerChange }
+
+class function TAtlasTrackerChange.Empty: TAtlasTrackerChange;
+begin
+  Result := Default(TAtlasTrackerChange);
+  Result.Assign := TAtlasTrackerAssign.Keep;
+end;
+
+class function TAtlasTrackerChange.CommentOnly(const AText: string): TAtlasTrackerChange;
+begin
+  Result := Empty;
+  Result.Comment := AText;
+end;
+
+function TAtlasTrackerChange.HasWork: Boolean;
+begin
+  Result := (Trim(State) <> '') or (Assign <> TAtlasTrackerAssign.Keep) or (Trim(Comment) <> '');
+end;
+
+{ TAtlasTrackerWriteResult }
+
+class function TAtlasTrackerWriteResult.Ok: TAtlasTrackerWriteResult;
+begin
+  Result.Error := TAtlasCiFetchError.None;
+  Result.Status := 0;
+  Result.Message := '';
+end;
+
+class function TAtlasTrackerWriteResult.Failed(AError: TAtlasCiFetchError; AStatus: Integer;
+  const AMessage: string): TAtlasTrackerWriteResult;
+begin
+  Result.Error := AError;
+  Result.Status := AStatus;
+  Result.Message := AMessage;
+end;
+
+function TAtlasTrackerWriteResult.Succeeded: Boolean;
+begin
+  Result := Error = TAtlasCiFetchError.None;
 end;
 
 { TAtlasTrackerTarget }

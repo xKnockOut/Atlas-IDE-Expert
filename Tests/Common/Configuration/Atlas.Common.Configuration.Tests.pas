@@ -61,6 +61,10 @@ type
     /// Benutzer, eindeutige Namen.</summary>
     [Test]
     procedure ChecksIssueConnections;
+    /// <summary>#1266: Zustand je Verbindung (stateField, assigneeField, startState, endStates) ohne Meldung;
+    /// falsche Typen werden gemeldet.</summary>
+    [Test]
+    procedure ChecksIssueConnectionStates;
     [Test]
     procedure ReadsStringLiteral;
     [Test]
@@ -1187,6 +1191,23 @@ begin
   Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"connections": [{"name": "B", "provider": "github",' +
     ' "url": "https://github.com"}]}}', Issues);
   Assert.IsTrue(Settings.IssueConnections.Contains('"B"'), 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksIssueConnectionStates;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{"issues": {"connections": [{"name": "Firma", "provider": "youtrack",' +
+    ' "url": "https://youtrack.firma.local", "stateField": "Status", "assigneeField": "Zuständig",' +
+    ' "startState": "In Arbeit", "endStates": ["Zur Prüfung", "Erledigt"]}]}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)), 'Felder aus #1266 ohne Meldung');
+  Assert.IsTrue(mSettings.IssueConnections.Contains('"endStates"'), mSettings.IssueConnections);
+  Parse('{"issues": {"connections": [{"name": "Firma", "provider": "youtrack", "url": "https://yt.local",' +
+    ' "stateField": 3, "endStates": "Erledigt"}, {"name": "B", "provider": "github", "url": "https://github.com",' +
+    ' "endStates": ["Erledigt", 4]}]}}', mIssues);
+  // stateField keine Zeichenkette, endStates keine Liste, 4 kein Text.
+  Assert.AreEqual(3, Integer(Length(mIssues)));
 end;
 
 procedure TConfigurationParserTests.ReadsMcpDisabledTools;
