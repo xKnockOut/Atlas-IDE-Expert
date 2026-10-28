@@ -102,7 +102,7 @@
       "category": "bug",
       "severity": "error",
       "group": "security",
-      "description": "NUL or control characters or invalid UTF-8 bytes in the source code and the form file; invalid bytes with exact line and column.",
+      "description": "NUL or control characters or invalid UTF-8 bytes in the source code and the form file; invalid bytes with exact line and column. Like dcc, a file without a BOM counts as UTF-8 only if the whole file is valid UTF-8; an ANSI file is checked for invalid bytes only if its valid UTF-8 sequences outweigh them. U+FFFD is an error in code, a hint in strings and ignored in comments.",
       "bad": "S := 'abc{U+0000}';",
       "good": "S := 'abc' + #0;"
     },

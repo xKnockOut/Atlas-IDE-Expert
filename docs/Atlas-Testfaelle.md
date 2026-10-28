@@ -6942,6 +6942,20 @@ Voraussetzung: Server läuft in der IDE; Regel `file-encoding-unsupported` ist s
 | KO7 | `"file-encoding-unsupported": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | KO8 | Abgleich mit Delphi: KO1, KO4 und KO6 übersetzen | dcc meldet E2038 („Illegal character in input file“) bzw. F2438 an denselben Stellen, KO5 übersetzt ohne E2038; jedes von Atlas gemeldete Zeichen ist auch für dcc ein Fehler |
 
+## ANSI-Dateien und Ersatzzeichen in `control-char` (#1327)
+
+Voraussetzung: Server läuft in der IDE; Regel `control-char` an (Vorgabe). Minimalfälle F15 und F16 aus dem FP-Bericht vom 28.10.2026 (`berichte/fp-korpus-2026-10-28/faelle/`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AN1 | `F15_AnsiDatei.pas` (Windows-1252 mit Umlauten und einem `°` als UTF-8-Paar) öffnen | Umlaute richtig angezeigt, keine Meldung von `control-char` (**Abnahme**) |
+| AN2 | `F16_Ersatzzeichen.pas` (UTF-8 ohne BOM, U+FFFD im Kommentar) öffnen | Keine Meldung von `control-char` (**Abnahme**) |
+| AN3 | `const S = 'a�b';` (U+FFFD im String) | Nur ein Hinweis von `control-char`, kein Fehler |
+| AN4 | U+FFFD im Code, z. B. `var X�: Integer;` | Fehler von `control-char` wie bisher |
+| AN5 | UTF-8-Datei ohne BOM mit vielen Umlauten, ein einzelnes `ß` als Windows-1252-Byte ($DF) hineinkopieren (Hex-Editor) | Ein Fehler „Ungültiges UTF-8-Byte $DF“ an genau dieser Stelle |
+| AN6 | Abgleich mit Delphi: F15 und F16 übersetzen | dcc übersetzt beide ohne Fehler; die Umlaute in `S` von F15 sind im Programm `äöü` |
+| AN7 | `AtlasServer --check` über SynEdit (`SynRegExpr.pas`) und DUnitX (`DUnitX.Attributes.pas`) | Keine Meldung von `control-char` mehr in diesen Dateien |
+
 ## Destruktor greift auf Felder zu, die nil sein können (#1087)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Klasse `TImport` mit `constructor Create(const Datei: string)` (`inherited Create; FStrom := TFileStream.Create(Datei, fmOpenRead); FZeilen := TStringList.Create;`) und `destructor Destroy; override;` (`FZeilen.Clear; FZeilen.Free; FStrom.Free; inherited;`), je Anweisung eine Zeile.

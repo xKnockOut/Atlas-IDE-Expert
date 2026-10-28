@@ -138,7 +138,8 @@ begin
     '      "category": "bug",' + #10 +
     '      "severity": "error",' + #10 +
     '      "group": "security",' + #10 +
-    '      "description": "NUL or control characters or invalid UTF-8 bytes in the source code and the form file; invalid bytes with exact line and column.",' + #10 +
+    '      "description": "NUL or control characters or invalid UTF-8 bytes in the source code and the form file; invalid bytes with exact line and column. Like dcc, a file without a BOM counts as UTF-8 on' +
+    'ly if the whole file is valid UTF-8; an ANSI file is checked for invalid bytes only if its valid UTF-8 sequences outweigh them. U+FFFD is an error in code, a hint in strings and ignored in comments.",' + #10 +
     '      "bad": "S := ''abc{U+0000}'';",' + #10 +
     '      "good": "S := ''abc'' + #0;"' + #10 +
     '    },' + #10 +
@@ -5391,7 +5392,9 @@ begin
     '    {' + #10 +
     '      "id": "control-char",' + #10 +
     '      "name": "Steuerzeichen",' + #10 +
-    '      "description": "NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei; ungültige Bytes mit genauer Zeile und Spalte."' + #10 +
+    '      "description": "NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei; ungültige Bytes mit genauer Zeile und Spalte. Wie dcc gilt eine Datei ohne BOM nur als UT' +
+    'F-8, wenn sie ganz gültiges UTF-8 ist; eine ANSI-Datei wird nur dann auf ungültige Bytes geprüft, wenn ihre gültigen UTF-8-Folgen überwiegen. U+FFFD ist im Code ein Fehler, im String ein Hinweis, im K' +
+    'ommentar kein Befund."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "confusable-identifier",' + #10 +

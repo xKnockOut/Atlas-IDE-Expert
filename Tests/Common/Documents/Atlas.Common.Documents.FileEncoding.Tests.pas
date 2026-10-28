@@ -42,6 +42,12 @@ type
     procedure InvalidUtf8GivesLineAndColumn;
     [Test]
     procedure InvalidUtf8InPlainAnsiIsEmpty;
+    /// <summary>Minimalfall F15 (#1327): ANSI mit einem zufällig gültigen UTF-8-Paar bleibt ANSI, auch in
+    /// InvalidUtf8; als ganz gültiges UTF-8 ohne BOM ist dieselbe Datei UTF-8, mit BOM gilt die BOM.</summary>
+    [Test]
+    procedure AnsiWithStrayUtf8PairStaysAnsi;
+    [Test]
+    procedure MostlyUtf8WithStrayByteIsDamagedUtf8;
   end;
 
   /// <summary>Vorgabe-Kodierung je Ordner und Schutz binärer Formulare (#121).</summary>
@@ -557,10 +563,13 @@ begin
   Assert.AreEqual(9, Invalid[0].ByteOffset);
   Assert.AreEqual($E2, Integer(Invalid[0].Value));
   Assert.AreEqual(4, Invalid[1].Position.Character);
-  // Gelesen als ANSI: ein Zeichen je Byte.
+  // Gelesen als ANSI: ein Zeichen je Byte. "ä" und "ö" dazu, damit die gültigen Folgen überwiegen (#1327).
+  Data := Bytes([Ord('a'), 10, $F0, $9F, $98, $80, $C3, $A4, $C3, $B6, $E2, $82, Ord('b'), $FF]);
   Format := TFileFormat.Create(TFileEncodingKind.Ansi1252, TLineBreakStyle.LF);
-  Invalid := TFileEncoding.InvalidUtf8(Copy(Data, 3, MaxInt), Format);
-  Assert.AreEqual(4, Invalid[0].Position.Character);
+  Invalid := TFileEncoding.InvalidUtf8(Data, Format);
+  Assert.AreEqual(2, Integer(Length(Invalid)));
+  Assert.AreEqual(8, Invalid[0].Position.Character);
+  Assert.AreEqual(11, Invalid[1].Position.Character);
 end;
 
 procedure TFileEncodingTests.InvalidUtf8InPlainAnsiIsEmpty;
@@ -609,6 +618,45 @@ begin
   finally
     Writer.Free;
   end;
+end;
+
+procedure TFileEncodingTests.AnsiWithStrayUtf8PairStaysAnsi;
+var
+  mAnsi, mUtf8, mWithBom: TBytes;
+  mFormat: TFileFormat;
+  mText: string;
+begin
+  // "// Grüße aus Köln, Zeichen °" mit Umlauten in Windows-1252 und "°" als UTF-8 (C2 B0), wie F15.
+  mAnsi := TEncoding.ASCII.GetBytes('// Gr') + Bytes([$FC, $DF]) + TEncoding.ASCII.GetBytes('e aus K') + Bytes([$F6]) +
+    TEncoding.ASCII.GetBytes('ln, Zeichen ') + Bytes([$C2, $B0, 13, 10, Ord('S'), Ord('='), $E4, $F6, $FC]);
+  Assert.IsTrue(TFileEncoding.DetectEncoding(mAnsi) = TFileEncodingKind.Ansi1252, 'ANSI');
+  mText := TFileEncoding.Decode(mAnsi, mFormat);
+  Assert.AreEqual('// Grüße aus Köln, Zeichen Â°'#13#10'S=äöü', mText);
+  Assert.AreEqual(0, Integer(Length(TFileEncoding.InvalidUtf8(mAnsi, mFormat))), 'Fehlstellen');
+  // Derselbe Text ganz in UTF-8 ohne BOM: UTF-8.
+  mUtf8 := TEncoding.UTF8.GetBytes('// Grüße aus Köln, Zeichen °'#13#10'S=äöü');
+  Assert.IsTrue(TFileEncoding.DetectEncoding(mUtf8, TFileEncodingKind.Ansi1252) = TFileEncodingKind.Utf8, 'UTF-8');
+  // Mit BOM entscheidet die BOM, auch wenn danach ANSI-Bytes stehen.
+  mWithBom := Bytes([$EF, $BB, $BF]) + mAnsi;
+  Assert.IsTrue(TFileEncoding.DetectEncoding(mWithBom) = TFileEncodingKind.Utf8Bom, 'BOM');
+  TFileEncoding.Decode(mWithBom, mFormat);
+  Assert.AreEqual(6, Integer(Length(TFileEncoding.InvalidUtf8(mWithBom, mFormat))), 'Fehlstellen nach BOM');
+end;
+
+procedure TFileEncodingTests.MostlyUtf8WithStrayByteIsDamagedUtf8;
+var
+  mData: TBytes;
+  mFormat: TFileFormat;
+  mInvalid: TArray<TInvalidUtf8>;
+begin
+  // "äöü" als UTF-8 und ein eingestreutes "ß" in Windows-1252 ($DF): Die Datei ist UTF-8 mit einer Fehlstelle.
+  mData := Bytes([$C3, $A4, $C3, $B6, $C3, $BC, Ord(' '), $DF, Ord('!')]);
+  TFileEncoding.Decode(mData, mFormat);
+  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Ansi1252, 'dcc liest sie als ANSI');
+  mInvalid := TFileEncoding.InvalidUtf8(mData, mFormat);
+  Assert.AreEqual(1, Integer(Length(mInvalid)));
+  Assert.AreEqual(7, mInvalid[0].ByteOffset);
+  Assert.AreEqual($DF, Integer(mInvalid[0].Value));
 end;
 
 initialization
