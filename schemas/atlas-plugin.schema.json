@@ -5309,6 +5309,75 @@
       "x-node": "vcs.branches",
       "x-control": "Kontrollkästchen",
       "x-issue": "#1288"
+    },
+    "VcsBranchGitBase": {
+      "type": "string",
+      "enum": [
+        "remote",
+        "local",
+        "current"
+      ],
+      "default": "remote",
+      "description": "Git: Wovon ein neuer Branch abzweigt. remote = vorher git fetch <Remote> <Hauptbranch> ohne Anmeldedialog, dann vom Stand auf dem Server (scheitert der Abruf, fragt der Dialog nach dem lokalen Stand, ohne Dialog bricht Atlas ab); local = lokaler Hauptbranch, sonst origin/<Hauptbranch> (Verhalten vor #1289); current = aktueller Branch.",
+      "x-key": "vcs.branch.git.base",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-node": "vcs.branches",
+      "x-control": "Auswahl",
+      "x-issue": "#1289"
+    },
+    "VcsBranchGitPush": {
+      "type": "string",
+      "enum": [
+        "later",
+        "now"
+      ],
+      "default": "later",
+      "description": "Git: later = nur lokal, den Upstream setzt der erste Push; now = nach dem Anlegen git push --set-upstream ohne Anmeldedialog (scheitert der Push, bleibt der lokale Branch und die Meldung nennt den Grund).",
+      "x-key": "vcs.branch.git.push",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-node": "vcs.branches",
+      "x-control": "Auswahl",
+      "x-issue": "#1289"
+    },
+    "VcsBranchGitUncommitted": {
+      "type": "string",
+      "enum": [
+        "carry",
+        "stash",
+        "ask"
+      ],
+      "default": "carry",
+      "description": "Git: Offene Änderungen beim Anlegen. carry = wandern mit; stash = vorher git stash push --include-untracked mit der Nachricht „Atlas: vor <Name>“ (bleibt liegen, „Nicht gesichert“ zeigt ihn); ask = Dialog bzw. Rückfrage: mitnehmen, beiseitelegen oder abbrechen.",
+      "x-key": "vcs.branch.git.uncommitted",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-node": "vcs.branches",
+      "x-control": "Auswahl",
+      "x-issue": "#1289"
+    },
+    "VcsBranchGitWorktree": {
+      "type": "boolean",
+      "default": false,
+      "description": "Git: Branch in eigenem Ordner anlegen (git worktree add); die bisherige Arbeitskopie bleibt unverändert, danach fragt Atlas, ob dieselbe .groupproj bzw. .dproj aus dem neuen Ordner geöffnet werden soll.",
+      "x-key": "vcs.branch.git.worktree",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-node": "vcs.branches",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1289"
+    },
+    "VcsBranchGitWorktreeFolder": {
+      "type": "string",
+      "default": "..\\{repo}-{kennung}",
+      "description": "Git: Ordner für den worktree, relativ zur Wurzel der Arbeitskopie, mit {repo} (Ordnername des Repositorys), {name} (Branch) und {kennung} (Issue, ohne Issue der Branch). Existiert der Ordner, bricht Atlas mit Hinweis ab.",
+      "x-key": "vcs.branch.git.worktreeFolder",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-node": "vcs.branches",
+      "x-control": "Textfeld",
+      "x-issue": "#1289"
     }
   },
   "additionalProperties": false

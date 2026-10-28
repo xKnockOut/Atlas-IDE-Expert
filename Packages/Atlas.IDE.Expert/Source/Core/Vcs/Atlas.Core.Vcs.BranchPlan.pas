@@ -19,8 +19,19 @@
 //   geholt hat; ohne sie zum Zeitpunkt des Kopierens) oder der Pfad der
 //   Arbeitskopie @ ihrer Revision. Die Kopie ändert den Server und wird bei
 //   einem späteren Fehler nicht zurückgenommen.
-// Die Optionen aus #1289 (Git), #1290 (SVN) und #1291 (Externals) kommen als
-// weitere Felder der Anfrage und weitere Schritte hinzu.
+// Git-Optionen (#1289, vcs.branch.git.*) als Felder der Anfrage und weitere
+// Schritte, in dieser Reihenfolge:
+//   fetch --quiet --no-tags <Remote> <Hauptbranch>      (Basis vom Server)
+//   stash push --include-untracked --quiet -m "Atlas: vor <Name>"
+//   checkout … bzw. worktree add --quiet --no-track -b <Name> <Ordner> <Basis>
+//   push --set-upstream <Remote> refs/heads/<Name>:refs/heads/<Name>
+//   Remote = verfolgter Remote des lokalen Hauptbranchs, sonst origin. Mit
+//   worktree bleibt die Arbeitskopie unberührt: kein stash. Scheitert der
+//   Abruf, ist noch nichts geändert (LocalFallback baut die Anfrage für den
+//   lokalen Stand); scheitert nur der Push, bleibt der lokale Branch
+//   (OnlyPushFailed).
+// Die Optionen aus #1290 (SVN) und #1291 (Externals) kommen als weitere
+// Felder der Anfrage und weitere Schritte hinzu.
 // Inspect und InspectServer starten Prozesse: nur aus einem Hintergrund-Thread.
 
 interface
@@ -43,7 +54,49 @@ type
     Head,
     /// <summary>SVN: Pfad der Arbeitskopie @ ihrer Revision.</summary>
     WorkingCopy);
+
+  /// <summary>vcs.branch.git.base (#1289): Vorgabe der Basis unter Git.</summary>
+  TAtlasVcsGitBaseOption = (
+    /// <summary>Stand auf dem Server: vorher fetch, dann &lt;Remote&gt;/&lt;Hauptbranch&gt;.</summary>
+    Remote,
+    /// <summary>Lokaler Hauptbranch, sonst origin/&lt;Hauptbranch&gt; (Verhalten vor #1289).</summary>
+    Local,
+    /// <summary>Aktueller Branch (losgelöst: HEAD).</summary>
+    Current);
+
+  /// <summary>vcs.branch.git.uncommitted (#1289): offene Änderungen beim Umschalten.</summary>
+  TAtlasVcsGitUncommitted = (
+    /// <summary>Wandern mit (checkout -b, Verhalten vor #1289).</summary>
+    Carry,
+    /// <summary>Vorher beiseitelegen (stash push --include-untracked); der Stash bleibt liegen.</summary>
+    Stash,
+    /// <summary>Nachfragen: mitnehmen, beiseitelegen oder abbrechen.</summary>
+    Ask);
 {$SCOPEDENUMS OFF}
+
+  /// <summary>Git-Vorgaben für „Branch anlegen“ (#1289) aus vcs.branch.git.*; der Dialog zeigt sie vorbelegt.
+  /// </summary>
+  TAtlasVcsGitBranchOptions = record
+  public const
+    DefaultWorktreeFolder = '..\{repo}-{kennung}';
+  public
+    Base: TAtlasVcsGitBaseOption;
+    /// <summary>vcs.branch.git.push = now: nach dem Anlegen pushen und verfolgen.</summary>
+    PushNow: Boolean;
+    Uncommitted: TAtlasVcsGitUncommitted;
+    /// <summary>vcs.branch.git.worktree: Branch in eigenem Ordner (git worktree add).</summary>
+    Worktree: Boolean;
+    /// <summary>vcs.branch.git.worktreeFolder mit {repo}, {name}, {kennung}; relativ zur Wurzel der
+    /// Arbeitskopie.</summary>
+    WorktreeFolder: string;
+    /// <summary>Verhalten vor #1289: lokaler Hauptbranch, beim ersten Push, mitnehmen, kein worktree.</summary>
+    class function Classic: TAtlasVcsGitBranchOptions; static;
+    /// <summary>Aus den Werten der Einstellungen ("remote"/"local"/"current", "later"/"now",
+    /// "carry"/"stash"/"ask"); Unbekanntes gilt als Vorgabe des Schemas (remote, later, carry), ein leerer
+    /// Ordner als DefaultWorktreeFolder.</summary>
+    class function FromSettings(const ABase, APush, AUncommitted: string; AWorktree: Boolean;
+      const AWorktreeFolder: string): TAtlasVcsGitBranchOptions; static;
+  end;
 
   TAtlasVcsBranchBase = record
     Kind: TAtlasVcsBranchBaseKind;
@@ -52,8 +105,14 @@ type
     Name: string;
     /// <summary>SVN: Revision der Quelle; '' = HEAD beim Kopieren. Git ''.</summary>
     Revision: string;
+    /// <summary>Git (#1289): Remote für Basis, Abruf und Push; '' = origin.</summary>
+    Remote: string;
     class function Make(AKind: TAtlasVcsBranchBaseKind; const AName, ARevision: string): TAtlasVcsBranchBase;
-      static;
+      overload; static;
+    class function Make(AKind: TAtlasVcsBranchBaseKind; const AName, ARevision,
+      ARemote: string): TAtlasVcsBranchBase; overload; static;
+    /// <summary>Remote oder origin.</summary>
+    function RemoteName: string;
   end;
 
   /// <summary>Was Atlas vor dem Anlegen über die Arbeitskopie weiß.</summary>
@@ -78,6 +137,13 @@ type
     ServerOutcome: TAtlasVcsOutcome;
     /// <summary>SVN: die Arbeitskopie hat svn:externals.</summary>
     Externals: Boolean;
+    /// <summary>Git (#1289): Remote des lokalen Hauptbranchs (verfolgter Branch), sonst origin.</summary>
+    Remote: string;
+    /// <summary>Geänderte Dateien der Arbeitskopie (ohne unversionierte); setzt der Aufrufer, Inspect nicht.
+    /// </summary>
+    LocalChanges: Integer;
+    /// <summary>Wurzel der Arbeitskopie (WorkingCopy.Root); Git: Bezug für den worktree-Ordner.</summary>
+    Root: string;
     class function Empty: TAtlasVcsBranchFacts; static;
     /// <summary>Werte vom Server noch nötig: SVN, bevor InspectServer gelaufen ist.</summary>
     function NeedsServer: Boolean;
@@ -90,6 +156,14 @@ type
     Base: TAtlasVcsBranchBase;
     /// <summary>SVN: Nachricht für svn copy; '' = "Branch &lt;Name&gt;".</summary>
     Message: string;
+    /// <summary>Git (#1289): vorher fetch &lt;Remote&gt; &lt;Hauptbranch&gt;; nur mit Basis RemoteMain.</summary>
+    Fetch: Boolean;
+    /// <summary>Git: danach push --set-upstream.</summary>
+    PushNow: Boolean;
+    /// <summary>Git: vorher stash push --include-untracked (nicht mit worktree).</summary>
+    Stash: Boolean;
+    /// <summary>Git: vollständiger Ordner für git worktree add; '' = in dieser Arbeitskopie umschalten.</summary>
+    WorktreeFolder: string;
     class function Make(AKind: TAtlasVcsKind; const AName: string; const ABase: TAtlasVcsBranchBase;
       const AMessage: string): TAtlasVcsBranchRequest; static;
   end;
@@ -108,6 +182,13 @@ type
   TAtlasVcsBranchProgress = reference to procedure(AIndex, ACount: Integer; const AStep: TAtlasVcsBranchStep);
 
   TAtlasVcsBranchPlan = class
+  private
+    /// <summary>Git: Remote des lokalen Hauptbranchs; liegt der Hauptbranch dort, RemoteMain.</summary>
+    class procedure InspectRemote(const AVcs: IAtlasVersionControl; var AFacts: TAtlasVcsBranchFacts); static;
+    class function GitSteps(const ARequest: TAtlasVcsBranchRequest): TArray<TAtlasVcsBranchStep>; static;
+    /// <summary>Platzhalterwert für einen Ordnernamen: Trenner und unter Windows verbotene Zeichen werden „-“.
+    /// </summary>
+    class function FolderPart(const AText: string): string; static;
   public
     /// <summary>Lokaler Stand für den Plan (ohne Server): aktueller Branch bzw. Pfad und Revision, Hauptbranch
     /// aus ACandidates (Git: der erste, den es lokal oder auf origin gibt), SVN svn:externals. Ohne Git oder
@@ -123,9 +204,37 @@ type
     /// Hauptbranch (nie stillschweigend der aktuelle Branch).</summary>
     class function DefaultBase(const AFacts: TAtlasVcsBranchFacts; out ABase: TAtlasVcsBranchBase): Boolean;
       static;
+    /// <summary>Vorgabe nach den Git-Optionen (#1289): remote origin vor lokal, local wie oben, current der
+    /// aktuelle Branch (sonst der lokale Hauptbranch). SVN wie oben.</summary>
+    class function DefaultBase(const AFacts: TAtlasVcsBranchFacts; const AOptions: TAtlasVcsGitBranchOptions;
+      out ABase: TAtlasVcsBranchBase): Boolean; overload; static;
     /// <summary>Anfrage mit der Vorgabe-Basis (für „Beginnen“ ohne Dialog); False ohne Basis.</summary>
     class function DefaultRequest(const AFacts: TAtlasVcsBranchFacts; const AName, AMessage: string;
-      out ARequest: TAtlasVcsBranchRequest): Boolean; static;
+      out ARequest: TAtlasVcsBranchRequest): Boolean; overload; static;
+    /// <summary>Wie oben nach den Git-Optionen (#1289): Basis, Abruf (nur Basis vom Server), Push, stash (nur
+    /// Stash; Ask entscheidet der Aufrufer) und worktree-Ordner (WorktreePath mit AKey).</summary>
+    class function DefaultRequest(const AFacts: TAtlasVcsBranchFacts; const AName, AMessage, AKey: string;
+      const AOptions: TAtlasVcsGitBranchOptions; out ARequest: TAtlasVcsBranchRequest): Boolean; overload; static;
+    /// <summary>Ordner für git worktree (#1289): APattern ('' = Vorgabe) mit {repo} (Ordnername von ARoot),
+    /// {name} (AName) und {kennung} (AKey, ohne Issue AName); relativ zu ARoot, vollständig. '' ohne ARoot.
+    /// </summary>
+    class function WorktreePath(const ARoot, APattern, AName, AKey: string): string; static;
+    /// <summary>Ordner taugt für git worktree add: vollständig, keine Steuerzeichen, nicht mit „-“.</summary>
+    class function SafeFolder(const AFolder: string): Boolean; static;
+    /// <summary>AProject (unter ARoot) im worktree AFolder; '' wenn AProject nicht unter ARoot liegt.</summary>
+    class function ProjectInFolder(const AProject, ARoot, AFolder: string): string; static;
+    /// <summary>Nachricht des Stashs vor dem Anlegen: "Atlas: vor &lt;Name&gt;".</summary>
+    class function StashMessage(const AName: string): string; static;
+    /// <summary>Der gescheiterte Schritt ist der Abruf vor dem Anlegen (noch nichts geändert).</summary>
+    class function FetchFailed(const ASteps: TArray<TAtlasVcsBranchStep>; const ARun: TAtlasVcsBranchRun): Boolean;
+      static;
+    /// <summary>Nur der Push danach ist gescheitert: Der lokale Branch ist angelegt.</summary>
+    class function OnlyPushFailed(const ASteps: TArray<TAtlasVcsBranchStep>;
+      const ARun: TAtlasVcsBranchRun): Boolean; static;
+    /// <summary>Nach gescheitertem Abruf: dieselbe Anfrage ohne Abruf mit der Basis wie bei base = local
+    /// (lokaler Hauptbranch, sonst der zuletzt abgerufene Stand).</summary>
+    class function LocalFallback(const AFacts: TAtlasVcsBranchFacts;
+      const ARequest: TAtlasVcsBranchRequest): TAtlasVcsBranchRequest; static;
     /// <summary>Name taugt für git und svn (nicht leer, keine Option, kein „..“, keine Leer- und Steuerzeichen).
     /// Die strengere Prüfung nach Git-Regeln macht der Dialog (TAtlasTrackerNaming.ValidBranchName).</summary>
     class function SafeName(const AName: string): Boolean; static;
@@ -155,14 +264,62 @@ implementation
 uses
   Atlas.Core.Vcs.Internals.Text;
 
+const
+  cDefaultRemote = 'origin';
+
+{ TAtlasVcsGitBranchOptions }
+
+class function TAtlasVcsGitBranchOptions.Classic: TAtlasVcsGitBranchOptions;
+begin
+  Result.Base := TAtlasVcsGitBaseOption.Local;
+  Result.PushNow := False;
+  Result.Uncommitted := TAtlasVcsGitUncommitted.Carry;
+  Result.Worktree := False;
+  Result.WorktreeFolder := DefaultWorktreeFolder;
+end;
+
+class function TAtlasVcsGitBranchOptions.FromSettings(const ABase, APush, AUncommitted: string; AWorktree: Boolean;
+  const AWorktreeFolder: string): TAtlasVcsGitBranchOptions;
+begin
+  Result.Base := TAtlasVcsGitBaseOption.Remote;
+  if SameText(Trim(ABase), 'local') then
+    Result.Base := TAtlasVcsGitBaseOption.Local
+  else if SameText(Trim(ABase), 'current') then
+    Result.Base := TAtlasVcsGitBaseOption.Current;
+  Result.PushNow := SameText(Trim(APush), 'now');
+  Result.Uncommitted := TAtlasVcsGitUncommitted.Carry;
+  if SameText(Trim(AUncommitted), 'stash') then
+    Result.Uncommitted := TAtlasVcsGitUncommitted.Stash
+  else if SameText(Trim(AUncommitted), 'ask') then
+    Result.Uncommitted := TAtlasVcsGitUncommitted.Ask;
+  Result.Worktree := AWorktree;
+  Result.WorktreeFolder := Trim(AWorktreeFolder);
+  if Result.WorktreeFolder = '' then
+    Result.WorktreeFolder := DefaultWorktreeFolder;
+end;
+
 { TAtlasVcsBranchBase }
 
 class function TAtlasVcsBranchBase.Make(AKind: TAtlasVcsBranchBaseKind; const AName,
   ARevision: string): TAtlasVcsBranchBase;
 begin
+  Result := Make(AKind, AName, ARevision, '');
+end;
+
+class function TAtlasVcsBranchBase.Make(AKind: TAtlasVcsBranchBaseKind; const AName, ARevision,
+  ARemote: string): TAtlasVcsBranchBase;
+begin
   Result.Kind := AKind;
   Result.Name := AName;
   Result.Revision := ARevision;
+  Result.Remote := ARemote;
+end;
+
+function TAtlasVcsBranchBase.RemoteName: string;
+begin
+  Result := Remote;
+  if Result = '' then
+    Result := cDefaultRemote;
 end;
 
 { TAtlasVcsBranchFacts }
@@ -180,6 +337,9 @@ begin
   Result.ServerChecked := False;
   Result.ServerOutcome := TAtlasVcsOutcome.Ok;
   Result.Externals := False;
+  Result.Remote := '';
+  Result.LocalChanges := 0;
+  Result.Root := '';
 end;
 
 function TAtlasVcsBranchFacts.NeedsServer: Boolean;
@@ -196,6 +356,10 @@ begin
   Result.Name := AName;
   Result.Base := ABase;
   Result.Message := AMessage;
+  Result.Fetch := False;
+  Result.PushNow := False;
+  Result.Stash := False;
+  Result.WorktreeFolder := '';
 end;
 
 { TAtlasVcsBranchRun }
@@ -221,6 +385,7 @@ begin
   Result.Kind := AVcs.Kind;
   if (Result.Kind <> TAtlasVcsKind.Git) and (Result.Kind <> TAtlasVcsKind.Svn) then
     Exit;
+  Result.Root := AVcs.WorkingCopy.Root;
   Result.Outcome := AVcs.Head(mHead);
   if Result.Outcome <> TAtlasVcsOutcome.Ok then
     Exit;
@@ -257,9 +422,33 @@ begin
       Result.MainBranch := mCandidate;
       Result.LocalMain := mLocal;
       Result.RemoteMain := mRemote;
-      Exit;
+      Break;
     end;
   end;
+  InspectRemote(AVcs, Result);
+end;
+
+class procedure TAtlasVcsBranchPlan.InspectRemote(const AVcs: IAtlasVersionControl;
+  var AFacts: TAtlasVcsBranchFacts);
+var
+  mLocalWork: IAtlasVcsLocalWork;
+  mIncoming: IAtlasVcsIncoming;
+  mBranches: TArray<TAtlasVcsBranch>;
+  mBranch: TAtlasVcsBranch;
+  mRevision: string;
+begin
+  AFacts.Remote := cDefaultRemote;
+  // Nur ein Hinweis für Abruf und Push: Fehler hier lassen origin stehen.
+  if not AFacts.LocalMain or not Supports(AVcs, IAtlasVcsLocalWork, mLocalWork) or
+    (mLocalWork.Branches(mBranches) <> TAtlasVcsOutcome.Ok) then
+    Exit;
+  for mBranch in mBranches do
+    if (mBranch.Name = AFacts.MainBranch) and SafeName(mBranch.Remote) then
+      AFacts.Remote := mBranch.Remote;
+  // RemoteBranchExists kennt nur origin: bei einem anderen Remote dessen Stand des letzten Abrufs.
+  if (AFacts.Remote <> cDefaultRemote) and Supports(AVcs, IAtlasVcsIncoming, mIncoming) then
+    AFacts.RemoteMain := mIncoming.Resolve('refs/remotes/' + AFacts.Remote + '/' + AFacts.MainBranch,
+      mRevision) = TAtlasVcsOutcome.Ok;
 end;
 
 class procedure TAtlasVcsBranchPlan.InspectServer(const AVcs: IAtlasVersionControl;
@@ -289,13 +478,17 @@ begin
     Exit;
   if AFacts.Kind = TAtlasVcsKind.Git then
   begin
+    // Remote an jeder Basis: Abruf und Push gehen an den Remote des Hauptbranchs.
     if AFacts.RemoteMain then
-      Result := Result + [TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.RemoteMain, AFacts.MainBranch, '')];
+      Result := Result + [TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.RemoteMain, AFacts.MainBranch, '',
+        AFacts.Remote)];
     if AFacts.LocalMain then
-      Result := Result + [TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.LocalMain, AFacts.MainBranch, '')];
+      Result := Result + [TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.LocalMain, AFacts.MainBranch, '',
+        AFacts.Remote)];
     // Der aktuelle Branch nur, wenn er nicht schon als lokaler Hauptbranch dasteht.
     if not AFacts.LocalMain or (AFacts.Current <> AFacts.MainBranch) then
-      Result := Result + [TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Current, AFacts.Current, '')];
+      Result := Result + [TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Current, AFacts.Current, '',
+        AFacts.Remote)];
   end
   else if AFacts.Kind = TAtlasVcsKind.Svn then
   begin
@@ -310,6 +503,13 @@ end;
 
 class function TAtlasVcsBranchPlan.DefaultBase(const AFacts: TAtlasVcsBranchFacts;
   out ABase: TAtlasVcsBranchBase): Boolean;
+begin
+  // Wie „Beginnen“ bisher (#765): lokal vor origin; SVN der Hauptbranch.
+  Result := DefaultBase(AFacts, TAtlasVcsGitBranchOptions.Classic, ABase);
+end;
+
+class function TAtlasVcsBranchPlan.DefaultBase(const AFacts: TAtlasVcsBranchFacts;
+  const AOptions: TAtlasVcsGitBranchOptions; out ABase: TAtlasVcsBranchBase): Boolean;
 var
   mBase: TAtlasVcsBranchBase;
   mBases: TArray<TAtlasVcsBranchBase>;
@@ -318,9 +518,18 @@ var
 begin
   ABase := TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Current, '', '');
   mBases := Bases(AFacts);
-  // Wie „Beginnen“ bisher (#765): lokal vor origin; SVN der Hauptbranch.
-  mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.LocalMain,
-    TAtlasVcsBranchBaseKind.RemoteMain, TAtlasVcsBranchBaseKind.Head);
+  case AOptions.Base of
+    TAtlasVcsGitBaseOption.Remote:
+      mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.RemoteMain,
+        TAtlasVcsBranchBaseKind.LocalMain, TAtlasVcsBranchBaseKind.Head);
+    // Der aktuelle Branch ausdrücklich gewählt; steht er schon als lokaler Hauptbranch da, dieser.
+    TAtlasVcsGitBaseOption.Current:
+      mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.Current,
+        TAtlasVcsBranchBaseKind.LocalMain, TAtlasVcsBranchBaseKind.Head);
+  else
+    mPreferred := TArray<TAtlasVcsBranchBaseKind>.Create(TAtlasVcsBranchBaseKind.LocalMain,
+      TAtlasVcsBranchBaseKind.RemoteMain, TAtlasVcsBranchBaseKind.Head);
+  end;
   for mKind in mPreferred do
     for mBase in mBases do
       if mBase.Kind = mKind then
@@ -342,6 +551,113 @@ begin
   ARequest := TAtlasVcsBranchRequest.Make(AFacts.Kind, AName, mBase, AMessage);
 end;
 
+class function TAtlasVcsBranchPlan.DefaultRequest(const AFacts: TAtlasVcsBranchFacts; const AName, AMessage,
+  AKey: string; const AOptions: TAtlasVcsGitBranchOptions; out ARequest: TAtlasVcsBranchRequest): Boolean;
+var
+  mBase: TAtlasVcsBranchBase;
+begin
+  Result := DefaultBase(AFacts, AOptions, mBase);
+  ARequest := TAtlasVcsBranchRequest.Make(AFacts.Kind, AName, mBase, AMessage);
+  if AFacts.Kind <> TAtlasVcsKind.Git then
+    Exit;
+  ARequest.Fetch := (AOptions.Base = TAtlasVcsGitBaseOption.Remote) and
+    (mBase.Kind = TAtlasVcsBranchBaseKind.RemoteMain);
+  ARequest.PushNow := AOptions.PushNow;
+  if AOptions.Worktree then
+    ARequest.WorktreeFolder := WorktreePath(AFacts.Root, AOptions.WorktreeFolder, AName, AKey)
+  else
+    ARequest.Stash := AOptions.Uncommitted = TAtlasVcsGitUncommitted.Stash;
+end;
+
+class function TAtlasVcsBranchPlan.FolderPart(const AText: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := Trim(AText);
+  for mIndex := 1 to Length(Result) do
+    if (Ord(Result[mIndex]) < 32) or CharInSet(Result[mIndex], ['/', '\', ':', '*', '?', '"', '<', '>', '|']) then
+      Result[mIndex] := '-';
+end;
+
+class function TAtlasVcsBranchPlan.WorktreePath(const ARoot, APattern, AName, AKey: string): string;
+var
+  mRoot, mKey: string;
+begin
+  mRoot := ExcludeTrailingPathDelimiter(Trim(ARoot));
+  if mRoot = '' then
+    Exit('');
+  Result := Trim(APattern);
+  if Result = '' then
+    Result := TAtlasVcsGitBranchOptions.DefaultWorktreeFolder;
+  mKey := FolderPart(AKey);
+  // Ohne Issue (Befehl „Branch anlegen …“) steht der Name an Stelle der Kennung.
+  if mKey = '' then
+    mKey := FolderPart(AName);
+  Result := StringReplace(Result, '{repo}', FolderPart(ExtractFileName(mRoot)), [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{name}', FolderPart(AName), [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{kennung}', mKey, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(StringReplace(Result, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]);
+  // Vollständig: Laufwerk, UNC bzw. Wurzel; sonst relativ zur Wurzel der Arbeitskopie.
+  if not ((Length(Result) > 1) and (Result[2] = ':')) and not ((Result <> '') and (Result[1] = PathDelim)) then
+    Result := mRoot + PathDelim + Result;
+  Result := ExcludeTrailingPathDelimiter(ExpandFileName(Result));
+end;
+
+class function TAtlasVcsBranchPlan.SafeFolder(const AFolder: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (AFolder <> '') and (AFolder[1] <> '-') and (AFolder = Trim(AFolder)) and
+    (((Length(AFolder) > 1) and (AFolder[2] = ':')) or (AFolder[1] = PathDelim));
+  if not Result then
+    Exit;
+  for mIndex := 1 to Length(AFolder) do
+    if Ord(AFolder[mIndex]) < 32 then
+      Exit(False);
+end;
+
+class function TAtlasVcsBranchPlan.ProjectInFolder(const AProject, ARoot, AFolder: string): string;
+var
+  mRoot: string;
+begin
+  Result := '';
+  mRoot := IncludeTrailingPathDelimiter(ExcludeTrailingPathDelimiter(Trim(ARoot)));
+  if (Trim(ARoot) = '') or (AFolder = '') or not SameText(Copy(AProject, 1, Length(mRoot)), mRoot) then
+    Exit;
+  Result := IncludeTrailingPathDelimiter(AFolder) + Copy(AProject, Length(mRoot) + 1, MaxInt);
+end;
+
+class function TAtlasVcsBranchPlan.StashMessage(const AName: string): string;
+begin
+  Result := 'Atlas: vor ' + AName;
+end;
+
+class function TAtlasVcsBranchPlan.FetchFailed(const ASteps: TArray<TAtlasVcsBranchStep>;
+  const ARun: TAtlasVcsBranchRun): Boolean;
+begin
+  Result := (ARun.Failed >= 0) and (ARun.Failed <= High(ASteps)) and (Length(ASteps[ARun.Failed].Arguments) > 0) and
+    (ASteps[ARun.Failed].Arguments[0] = 'fetch');
+end;
+
+class function TAtlasVcsBranchPlan.OnlyPushFailed(const ASteps: TArray<TAtlasVcsBranchStep>;
+  const ARun: TAtlasVcsBranchRun): Boolean;
+begin
+  Result := (ARun.Failed >= 0) and (ARun.Failed = High(ASteps)) and (ARun.Done = ARun.Failed) and
+    (Length(ASteps[ARun.Failed].Arguments) > 0) and (ASteps[ARun.Failed].Arguments[0] = 'push');
+end;
+
+class function TAtlasVcsBranchPlan.LocalFallback(const AFacts: TAtlasVcsBranchFacts;
+  const ARequest: TAtlasVcsBranchRequest): TAtlasVcsBranchRequest;
+var
+  mBase: TAtlasVcsBranchBase;
+begin
+  Result := ARequest;
+  Result.Fetch := False;
+  if (ARequest.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain) and
+    DefaultBase(AFacts, TAtlasVcsGitBranchOptions.Classic, mBase) then
+    Result.Base := mBase;
+end;
+
 class function TAtlasVcsBranchPlan.SafeName(const AName: string): Boolean;
 begin
   Result := VcsSafeBranchName(AName);
@@ -353,7 +669,7 @@ begin
     Exit('^/' + ABase.Name + '@' + ABase.Revision);
   case ABase.Kind of
     TAtlasVcsBranchBaseKind.RemoteMain:
-      Result := 'refs/remotes/origin/' + ABase.Name;
+      Result := 'refs/remotes/' + ABase.RemoteName + '/' + ABase.Name;
     TAtlasVcsBranchBaseKind.LocalMain:
       Result := 'refs/heads/' + ABase.Name;
   else
@@ -374,7 +690,7 @@ begin
     Exit;
   end;
   if ABase.Kind = TAtlasVcsBranchBaseKind.RemoteMain then
-    Result := 'origin/' + Result
+    Result := ABase.RemoteName + '/' + Result
   else if Result = '' then
     Result := 'HEAD';
 end;
@@ -388,15 +704,7 @@ begin
     Exit;
   case ARequest.Kind of
     TAtlasVcsKind.Git:
-      begin
-        // Basis ist ein Branch-Name aus Inspect; losgelöster HEAD hat keinen.
-        if (ARequest.Base.Name <> '') and not SafeName(ARequest.Base.Name) then
-          Exit;
-        // --no-track: der neue Branch verfolgt nicht die Basis; den Upstream setzt erst der erste Push.
-        // "--" am Ende: der Startpunkt ist eine Revision, nie ein Dateiname.
-        Result := [TAtlasVcsBranchStep.Make(TArray<string>.Create('checkout', '--quiet', '--no-track', '-b',
-          ARequest.Name, BaseRef(TAtlasVcsKind.Git, ARequest.Base), '--'), False, False)];
-      end;
+      Result := GitSteps(ARequest);
     TAtlasVcsKind.Svn:
       begin
         if not SafeName(ARequest.Base.Name) or
@@ -414,6 +722,40 @@ begin
   else
     // Ohne Git oder SVN gibt es nichts anzulegen.
   end;
+end;
+
+class function TAtlasVcsBranchPlan.GitSteps(const ARequest: TAtlasVcsBranchRequest): TArray<TAtlasVcsBranchStep>;
+var
+  mRemote: string;
+begin
+  Result := nil;
+  mRemote := ARequest.Base.RemoteName;
+  // Basis ist ein Branch-Name aus Inspect; losgelöster HEAD hat keinen.
+  if ((ARequest.Base.Name <> '') and not SafeName(ARequest.Base.Name)) or not SafeName(mRemote) then
+    Exit;
+  if (ARequest.WorktreeFolder <> '') and not SafeFolder(ARequest.WorktreeFolder) then
+    Exit;
+  // Basis vom Server (#1289): vorher genau den Hauptbranch abrufen; ohne Rückfrage nach Zugangsdaten.
+  if ARequest.Fetch and (ARequest.Base.Kind = TAtlasVcsBranchBaseKind.RemoteMain) then
+    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('fetch', '--quiet', '--no-tags', mRemote,
+      ARequest.Base.Name), True, False)];
+  // --no-track: der neue Branch verfolgt nicht die Basis; den Upstream setzt erst der (erste) Push.
+  if ARequest.WorktreeFolder <> '' then
+    // Eigener Ordner: die Arbeitskopie bleibt, wie sie ist; offene Änderungen bleiben dort.
+    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('worktree', 'add', '--quiet', '--no-track',
+      '-b', ARequest.Name, ARequest.WorktreeFolder, BaseRef(TAtlasVcsKind.Git, ARequest.Base)), False, False)]
+  else
+  begin
+    if ARequest.Stash then
+      Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('stash', 'push', '--include-untracked',
+        '--quiet', '-m', StashMessage(ARequest.Name)), False, False)];
+    // "--" am Ende: der Startpunkt ist eine Revision, nie ein Dateiname.
+    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('checkout', '--quiet', '--no-track', '-b',
+      ARequest.Name, BaseRef(TAtlasVcsKind.Git, ARequest.Base), '--'), False, False)];
+  end;
+  if ARequest.PushNow then
+    Result := Result + [TAtlasVcsBranchStep.Make(TArray<string>.Create('push', '--set-upstream', mRemote,
+      'refs/heads/' + ARequest.Name + ':refs/heads/' + ARequest.Name), True, True)];
 end;
 
 class function TAtlasVcsBranchPlan.StepText(AKind: TAtlasVcsKind; const AStep: TAtlasVcsBranchStep): string;

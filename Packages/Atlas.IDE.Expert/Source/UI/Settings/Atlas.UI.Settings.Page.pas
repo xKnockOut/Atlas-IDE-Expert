@@ -729,6 +729,11 @@ type
     FVcsStates: array[TAtlasVcsKind] of TLabel;
     FVcsTimeout: TEdit;
     FVcsBranchConfirm: TCheckBox;
+    FVcsBranchGitBase: TAtlasChoiceBox;
+    FVcsBranchGitPush: TAtlasChoiceBox;
+    FVcsBranchGitUncommitted: TAtlasChoiceBox;
+    FVcsBranchGitWorktree: TCheckBox;
+    FVcsBranchGitWorktreeFolder: TEdit;
     FVcsProjectInfo: TLabel;
     FVcsLinkEditor: TButton;
     FVcsLinkWelcome: TButton;
@@ -1661,6 +1666,12 @@ type
     property VcsTimeout: TEdit read FVcsTimeout;
     /// <summary>Zum Testen: vcs.branch.confirm (#1288).</summary>
     property VcsBranchConfirm: TCheckBox read FVcsBranchConfirm;
+    /// <summary>Zum Testen: vcs.branch.git.* (#1289); Auswahl in der Reihenfolge der Werte im Schema.</summary>
+    property VcsBranchGitBase: TAtlasChoiceBox read FVcsBranchGitBase;
+    property VcsBranchGitPush: TAtlasChoiceBox read FVcsBranchGitPush;
+    property VcsBranchGitUncommitted: TAtlasChoiceBox read FVcsBranchGitUncommitted;
+    property VcsBranchGitWorktree: TCheckBox read FVcsBranchGitWorktree;
+    property VcsBranchGitWorktreeFolder: TEdit read FVcsBranchGitWorktreeFolder;
     property VcsProjectInfo: TLabel read FVcsProjectInfo;
     property VcsLinkEditor: TButton read FVcsLinkEditor;
     property VcsLinkWelcome: TButton read FVcsLinkWelcome;
@@ -1745,6 +1756,13 @@ uses
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.Settings.StatusBarItems,
   Atlas.UI.Notifications.Window;
+
+const
+  /// <summary>Werte von vcs.branch.git.base, .push und .uncommitted (#1289) in der Reihenfolge der Auswahl.
+  /// </summary>
+  cVcsGitBases: array[0..2] of string = ('remote', 'local', 'current');
+  cVcsGitPushes: array[0..1] of string = ('later', 'now');
+  cVcsGitUncommitted: array[0..2] of string = ('carry', 'stash', 'ask');
 
 /// <summary>Bezeichnung einer Reihe des Projektverlaufs (#758) wie auf ihrer Kachel.</summary>
 function QuickActionTitle(AAction: TAtlasQuickAction): string;
@@ -3000,6 +3018,25 @@ begin
   AddTitle(TAtlasTextId.SettingsVcsBranchTitle);
   FVcsBranchConfirm := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchConfirm));
   AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchHint)).Font.Color := clGrayText;
+  // Gruppe „Git“ (#1289): Vorgaben im Dialog und für „Beginnen“ ohne Dialog; Reihenfolge wie die Werte.
+  AddTitle(TAtlasTextId.SettingsVcsBranchGitTitle);
+  FVcsBranchGitBase := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitBase),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitBaseRemote),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitBaseLocal),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitBaseCurrent)]);
+  FVcsBranchGitBase.Width := 320;
+  FVcsBranchGitPush := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitPush),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitPushLater),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitPushNow)]);
+  FVcsBranchGitPush.Width := 320;
+  FVcsBranchGitUncommitted := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitUncommitted),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitCarry),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitStash),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitAsk)]);
+  FVcsBranchGitUncommitted.Width := 320;
+  FVcsBranchGitWorktree := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitWorktree));
+  FVcsBranchGitWorktreeFolder := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitWorktreeFolder));
+  AddWrappedLabel(52, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitHint)).Font.Color := clGrayText;
 end;
 
 procedure TAtlasSettingsPage.AddVcsTool(AKind: TAtlasVcsKind; ACaption: TAtlasTextId);
@@ -5589,6 +5626,11 @@ begin
   FMarks.Bind(FVcsPaths[TAtlasVcsKind.Svn], ['VcsSvnPath']);
   FMarks.Bind(FVcsTimeout, ['VcsTimeoutSeconds']);
   FMarks.Bind(FVcsBranchConfirm, ['VcsBranchConfirm']);
+  FMarks.Bind(FVcsBranchGitBase, ['VcsBranchGitBase']);
+  FMarks.Bind(FVcsBranchGitPush, ['VcsBranchGitPush']);
+  FMarks.Bind(FVcsBranchGitUncommitted, ['VcsBranchGitUncommitted']);
+  FMarks.Bind(FVcsBranchGitWorktree, ['VcsBranchGitWorktree']);
+  FMarks.Bind(FVcsBranchGitWorktreeFolder, ['VcsBranchGitWorktreeFolder']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -7865,6 +7907,11 @@ begin
   FVcsPaths[TAtlasVcsKind.Svn].Text := ASettings.VcsSvnPath;
   FVcsTimeout.Text := IntToStr(ASettings.VcsTimeoutSeconds);
   FVcsBranchConfirm.Checked := ASettings.VcsBranchConfirm;
+  FVcsBranchGitBase.Choice := Max(0, IndexText(ASettings.VcsBranchGitBase, cVcsGitBases));
+  FVcsBranchGitPush.Choice := Max(0, IndexText(ASettings.VcsBranchGitPush, cVcsGitPushes));
+  FVcsBranchGitUncommitted.Choice := Max(0, IndexText(ASettings.VcsBranchGitUncommitted, cVcsGitUncommitted));
+  FVcsBranchGitWorktree.Checked := ASettings.VcsBranchGitWorktree;
+  FVcsBranchGitWorktreeFolder.Text := ASettings.VcsBranchGitWorktreeFolder;
   RefreshVcsTool(TAtlasVcsKind.Git);
   RefreshVcsTool(TAtlasVcsKind.Svn);
   FVcsProjects := TAtlasVcsProjects.Read(ASettings.VcsProjects);
@@ -8442,6 +8489,12 @@ begin
   ASettings.VcsSvnPath := Trim(FVcsPaths[TAtlasVcsKind.Svn].Text);
   ASettings.VcsTimeoutSeconds := StrToIntDef(FVcsTimeout.Text, ASettings.VcsTimeoutSeconds);
   ASettings.VcsBranchConfirm := FVcsBranchConfirm.Checked;
+  ASettings.VcsBranchGitBase := cVcsGitBases[EnsureRange(FVcsBranchGitBase.Choice, 0, High(cVcsGitBases))];
+  ASettings.VcsBranchGitPush := cVcsGitPushes[EnsureRange(FVcsBranchGitPush.Choice, 0, High(cVcsGitPushes))];
+  ASettings.VcsBranchGitUncommitted := cVcsGitUncommitted[EnsureRange(FVcsBranchGitUncommitted.Choice, 0,
+    High(cVcsGitUncommitted))];
+  ASettings.VcsBranchGitWorktree := FVcsBranchGitWorktree.Checked;
+  ASettings.VcsBranchGitWorktreeFolder := Trim(FVcsBranchGitWorktreeFolder.Text);
   ASettings.VcsProjects := VcsProjectsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];

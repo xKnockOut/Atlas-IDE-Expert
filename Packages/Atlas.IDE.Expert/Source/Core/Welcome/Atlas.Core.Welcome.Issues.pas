@@ -156,6 +156,15 @@ type
     /// </summary>
     Steps: TArray<TAtlasVcsBranchStep>;
     Run: TAtlasVcsBranchRun;
+    /// <summary>Git (#1289): angelegt, aber der Push danach scheiterte (Reason nennt den Grund); der lokale
+    /// Branch bleibt, Outcome ist Started.</summary>
+    PushFailed: Boolean;
+    /// <summary>Git: Ordner des worktree, in dem der Branch angelegt wurde ('' = in dieser Arbeitskopie; bei
+    /// FolderTaken der belegte Ordner), und die Wurzel der bisherigen Arbeitskopie.</summary>
+    Folder: string;
+    Root: string;
+    /// <summary>Den Ordner für den worktree gab es schon: nichts angelegt (Outcome Failed).</summary>
+    FolderTaken: Boolean;
     function Succeeded: Boolean;
   end;
 
@@ -620,6 +629,14 @@ begin
       Exit;
     end;
   end;
+  // Eigener Ordner (#1289): gibt es ihn schon, nichts anlegen.
+  if (mRequest.WorktreeFolder <> '') and DirectoryExists(mRequest.WorktreeFolder) then
+  begin
+    Result.FolderTaken := True;
+    Result.Folder := mRequest.WorktreeFolder;
+    Result.Reason := TAtlasVcsOutcome.Failed;
+    Exit;
+  end;
   Result.Steps := TAtlasVcsBranchPlan.Steps(mRequest);
   if Length(Result.Steps) = 0 then
   begin
@@ -628,10 +645,14 @@ begin
   end;
   Result.Run := TAtlasVcsBranchPlan.Execute(mBranching, Result.Steps, AProgress);
   Result.Reason := Result.Run.Outcome;
-  if Result.Run.Succeeded then
+  // Scheitert nur der Push danach, ist der Branch trotzdem angelegt und ausgecheckt.
+  if Result.Run.Succeeded or TAtlasVcsBranchPlan.OnlyPushFailed(Result.Steps, Result.Run) then
   begin
     Result.Base := TAtlasVcsBranchPlan.BaseName(mRequest.Kind, mRequest.Base);
     Result.Outcome := TAtlasIssueStartOutcome.Started;
+    Result.PushFailed := not Result.Run.Succeeded;
+    Result.Folder := mRequest.WorktreeFolder;
+    Result.Root := AVcs.WorkingCopy.Root;
   end;
 end;
 
