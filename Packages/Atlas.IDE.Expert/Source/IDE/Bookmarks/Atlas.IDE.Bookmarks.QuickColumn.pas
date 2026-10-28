@@ -139,7 +139,8 @@ type
     procedure ClickRow(const ARow: TRow);
     procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure PaintMarks(ACanvas: TCanvas; const ARow: TRow; const AColors: TAtlasColors; ABack: TAtlasColor);
-    procedure PaintFree(ACanvas: TCanvas; const ARect: TRect; const AColors: TAtlasColors);
+    procedure PaintFree(ACanvas: TCanvas; const ARect: TRect; const AColors: TAtlasColors; ABack: TAtlasColor;
+      ANumber: Integer);
     procedure PaintLineNumber(ACanvas: TCanvas; const ARect: TRect; ALine: Integer; const AColors: TAtlasColors);
     procedure PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
@@ -311,8 +312,9 @@ begin
     Exit;
   end;
   DropColumn;
-  // Vor den Zeilennummern: Die Spalte steht direkt links der Zahlen (beim ersten Bau prüfen).
-  FColumn := Editors.RequestGutterColumn(FIndex, FWantedWidth, gclBeforeLineNumbers);
+  // Hinter den Haltepunkten, also weiterhin links der Zahlen. gclBeforeLineNumbers überzeichnete die IDE in
+  // Delphi 13 mit den Zeilennummern; sichtbar war die Spalte nur in frisch eingefügten Zeilen (#1281).
+  FColumn := Editors.RequestGutterColumn(FIndex, FWantedWidth, gclAfterBreakPoint);
   FWidth := FWantedWidth;
   FRequestedAt := TThread.GetTickCount64;
   FLoggedNotPainted := False;
@@ -457,6 +459,17 @@ begin
   end;
 end;
 
+/// <summary>Ziffer auf dem Marker: Schwarz oder Weiß, je nachdem, was sich stärker von AFill abhebt.</summary>
+function DigitColor(AFill: TAtlasColor): TAtlasColor;
+const
+  Black = TAtlasColor($000000);
+  White = TAtlasColor($FFFFFF);
+begin
+  Result := Black;
+  if TAtlasColorMath.Contrast(White, AFill) > TAtlasColorMath.Contrast(Black, AFill) then
+    Result := White;
+end;
+
 procedure TAtlasIdeQuickColumn.PaintMarks(ACanvas: TCanvas; const ARow: TRow; const AColors: TAtlasColors;
   ABack: TAtlasColor);
 var
@@ -493,7 +506,7 @@ begin
     OldFont.Assign(ACanvas.Font);
     ACanvas.Font.Style := [fsBold];
     ACanvas.Font.Height := -Max(7, (Band.Height - Notch) * 4 div 5);
-    ACanvas.Font.Color := TColor(TAtlasColorMath.Mix(AColors.Text, AColors.Warn, 0.85));
+    ACanvas.Font.Color := TColor(DigitColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.85)));
     ACanvas.Brush.Style := bsClear;
     Size := ACanvas.TextExtent(Digit);
     ACanvas.TextOut(Band.Left + (Band.Width - Size.cx) div 2, Band.Top + Max(0, (Band.Height - Notch - Size.cy) div 2),
@@ -504,19 +517,46 @@ begin
   end;
 end;
 
-procedure TAtlasIdeQuickColumn.PaintFree(ACanvas: TCanvas; const ARect: TRect; const AColors: TAtlasColors);
+procedure TAtlasIdeQuickColumn.PaintFree(ACanvas: TCanvas; const ARect: TRect; const AColors: TAtlasColors;
+  ABack: TAtlasColor; ANumber: Integer);
 var
-  Outline: TRect;
+  Fill: TAtlasColor;
+  Band: TRect;
+  Notch: Integer;
+  Digit: string;
+  Size: TSize;
+  OldFont: TFont;
 begin
-  // Gestrichelter Umriss: Hier setzt ein Klick ein Lesezeichen.
-  Outline := ARect;
-  InflateRect(Outline, -1, -1);
-  ACanvas.Brush.Style := bsClear;
-  ACanvas.Pen.Color := TColor(AColors.Muted);
-  ACanvas.Pen.Width := 1;
-  ACanvas.Pen.Style := psDot;
-  ACanvas.Rectangle(Outline);
+  // Vorschau (Marco 28.10.2026): blasser Marker wie PaintMarks, mit der Nummer, die ein Klick hier vergäbe; sind
+  // alle neun belegt, ohne Nummer.
+  Band := ARect;
+  InflateRect(Band, -1, -1);
+  Notch := Max(2, Band.Height div 5);
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.15));
+  ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(AColors.Warn, ABack, 0.45));
   ACanvas.Pen.Style := psSolid;
+  ACanvas.Pen.Width := 1;
+  ACanvas.Polygon([Point(Band.Left, Band.Top), Point(Band.Right - 1, Band.Top), Point(Band.Right - 1, Band.Bottom - 1),
+    Point((Band.Left + Band.Right) div 2, Band.Bottom - 1 - Notch), Point(Band.Left, Band.Bottom - 1)]);
+  if ANumber <= 0 then
+    Exit;
+  Digit := IntToStr(ANumber);
+  OldFont := TFont.Create;
+  try
+    OldFont.Assign(ACanvas.Font);
+    ACanvas.Font.Style := [fsBold];
+    ACanvas.Font.Height := -Max(7, (Band.Height - Notch) * 4 div 5);
+    Fill := TAtlasColorMath.Mix(AColors.Warn, ABack, 0.15);
+    ACanvas.Font.Color := TColor(TAtlasColorMath.Mix(DigitColor(Fill), Fill, 0.7));
+    ACanvas.Brush.Style := bsClear;
+    Size := ACanvas.TextExtent(Digit);
+    ACanvas.TextOut(Band.Left + (Band.Width - Size.cx) div 2, Band.Top + Max(0, (Band.Height - Notch - Size.cy) div 2),
+      Digit);
+  finally
+    ACanvas.Font.Assign(OldFont);
+    OldFont.Free;
+  end;
 end;
 
 procedure TAtlasIdeQuickColumn.PaintLineNumber(ACanvas: TCanvas; const ARect: TRect; ALine: Integer;
@@ -603,7 +643,8 @@ begin
           OldBrush.Free;
         end;
       end;
-      Exit;
+      // Nicht aussteigen: Delphi 13 übermalt die Spalte in späteren Stufen; nur die zuletzt gezeichnete bleibt
+      // stehen (#1281: sichtbar und anklickbar war sie nur in einzeln neu gezeichneten Zeilen).
     end;
     Row := Default(TRow);
     Row.Wnd := Context.EditControl.Handle;
@@ -626,7 +667,7 @@ begin
       if Length(Marks) > 0 then
         PaintMarks(Canvas, Row, Colors, Back)
       else
-        PaintFree(Canvas, Row.Rect, Colors);
+        PaintFree(Canvas, Row.Rect, Colors, Back, TAtlasIdeBookmarks.NextNumber(Context.FileName));
     finally
       Canvas.Brush.Assign(OldBrush);
       Canvas.Pen.Assign(OldPen);

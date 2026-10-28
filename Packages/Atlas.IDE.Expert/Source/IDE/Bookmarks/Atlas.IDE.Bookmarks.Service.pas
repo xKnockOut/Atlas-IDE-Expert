@@ -134,6 +134,8 @@ type
     class function ColumnMarksAt(const AFileName: string; ALine: Integer): TArray<TAtlasBookmark>; static;
     /// <summary>Datei hat Marker für die Spalte (aus dem Speicher; erst nach Track bekannt).</summary>
     class function HasColumnMarks(const AFileName: string): Boolean; static;
+    /// <summary>Nummer, die ein Klick in die Spalte jetzt vergäbe (1–9, 0 = alle belegt).</summary>
+    class function NextNumber(const AFileName: string): Integer; static;
     /// <summary>Gefundene Lesezeichen von AFileName für die Übersichtsleiste (#519); False, wenn die schnellen
     /// Lesezeichen aus sind (dann zeigt sie die IDE-Lesezeichen).</summary>
     class function OverviewMarks(const AFileName: string; out AMarks: TArray<TAtlasBookmark>): Boolean; static;
@@ -471,6 +473,17 @@ begin
   if (FProjectOf <> nil) and FProjectOf.TryGetValue(Key(AFileName), Project) and
     FLists.TryGetValue(Key(Project), Current) then
     Result := TAtlasQuickBookmarks.ColumnMarks(Current, AFileName, ALine);
+end;
+
+class function TAtlasIdeBookmarks.NextNumber(const AFileName: string): Integer;
+var
+  Project: string;
+  Current: TAtlasBookmarkList;
+begin
+  Result := 1;
+  if (FProjectOf <> nil) and FProjectOf.TryGetValue(Key(AFileName), Project) and
+    FLists.TryGetValue(Key(Project), Current) then
+    Result := TAtlasQuickBookmarks.FreeNumber(Current);
 end;
 
 class function TAtlasIdeBookmarks.HasColumnMarks(const AFileName: string): Boolean;
