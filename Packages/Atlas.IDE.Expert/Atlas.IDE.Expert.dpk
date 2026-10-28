@@ -390,6 +390,8 @@ contains
   Atlas.Core.Tracker.Workflow in 'Source\Core\Tracker\Atlas.Core.Tracker.Workflow.pas',
   Atlas.Core.Tracker.TimeLog in 'Source\Core\Tracker\Atlas.Core.Tracker.TimeLog.pas',
   Atlas.Core.Tracker.TimeClock in 'Source\Core\Tracker\Atlas.Core.Tracker.TimeClock.pas',
+  Atlas.Core.Tracker.Links in 'Source\Core\Tracker\Atlas.Core.Tracker.Links.pas',
+  Atlas.UI.Tracker.LinkDialogs in 'Source\UI\Tracker\Atlas.UI.Tracker.LinkDialogs.pas',
   Atlas.UI.Tracker.IssueFrame in 'Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas' {AtlasIssueFrame: TFrame},
   Atlas.UI.Tracker.IssueTip in 'Source\UI\Tracker\Atlas.UI.Tracker.IssueTip.pas',
   Atlas.UI.Tracker.ValueBox in 'Source\UI\Tracker\Atlas.UI.Tracker.ValueBox.pas',

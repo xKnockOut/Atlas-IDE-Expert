@@ -1085,6 +1085,8 @@ begin
   Assert.AreEqual(200, Settings.IssuesBlameMaxRevisions);
   Assert.IsTrue(Settings.IssuesPreviewChecklists);
   Assert.IsTrue(Settings.IssuesChecklistStatus);
+  Assert.IsTrue(Settings.IssuesPreviewLinks, 'Verknüpfungen als Baum (#1279) an');
+  Assert.IsTrue(Settings.IssuesWarnBlocked, 'Warnung beim Beginnen (#1279) an');
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -1136,6 +1138,8 @@ begin
   Settings.IssuesBlameMaxRevisions := 75;
   Settings.IssuesPreviewChecklists := False;
   Settings.IssuesChecklistStatus := False;
+  Settings.IssuesPreviewLinks := False;
+  Settings.IssuesWarnBlocked := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -1231,6 +1235,8 @@ begin
   Assert.AreEqual(15, mLoaded.IssuesTimeRounding);
   Assert.IsFalse(Loaded.IssuesPreviewChecklists);
   Assert.IsFalse(Loaded.IssuesChecklistStatus);
+  Assert.IsFalse(Loaded.IssuesPreviewLinks);
+  Assert.IsFalse(Loaded.IssuesWarnBlocked);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

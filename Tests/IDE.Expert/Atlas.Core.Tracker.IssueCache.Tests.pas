@@ -90,6 +90,9 @@ begin
   mLink.Title := 'Einstellungen';
   mLink.Relation := 'depends on';
   mLink.Local := True;
+  mLink.Kind := TAtlasTrackerLinkKind.DependsOn;
+  mLink.StateKnown := True;
+  mLink.State := 'In Progress';
   Result.Links := [mLink];
   Result.Fetched := AFetched;
 end;
@@ -128,6 +131,12 @@ begin
   Assert.AreEqual<Int64>(2048, mDetails.Attachments[0].Size);
   Assert.AreEqual('depends on', mDetails.Links[0].Relation);
   Assert.IsTrue(mDetails.Links[0].Local);
+  // Art und Zustand der Verknüpfung (#1279).
+  Assert.IsTrue(mDetails.Links[0].Kind = TAtlasTrackerLinkKind.DependsOn);
+  Assert.IsTrue(mDetails.Links[0].StateKnown);
+  Assert.AreEqual('In Progress', mDetails.Links[0].State);
+  Assert.IsFalse(mDetails.Links[0].Resolved);
+  Assert.IsTrue(mDetails.Links[0].Blocking);
   Assert.IsTrue(SecondsBetween(cNow, mDetails.Fetched) < 1);
   Assert.IsTrue(SecondsBetween(cNow - 2, mDetails.Created) < 1);
 end;
@@ -139,8 +148,10 @@ begin
   Assert.IsFalse(TAtlasTrackerIssueCache.FromJson('{kaputt', mDetails));
   Assert.IsFalse(TAtlasTrackerIssueCache.FromJson('[]', mDetails));
   Assert.IsFalse(TAtlasTrackerIssueCache.FromJson('{"version": 99, "key": "ATL-1"}', mDetails));
-  Assert.IsFalse(TAtlasTrackerIssueCache.FromJson('{"version": 1, "key": ""}', mDetails));
-  Assert.IsTrue(TAtlasTrackerIssueCache.FromJson('{"version": 1, "key": "ATL-1"}', mDetails));
+  Assert.IsFalse(TAtlasTrackerIssueCache.FromJson('{"version": 2, "key": ""}', mDetails));
+  Assert.IsTrue(TAtlasTrackerIssueCache.FromJson('{"version": 2, "key": "ATL-1"}', mDetails));
+  // Version 1 kennt die Art der Verknüpfungen nicht (#1279): gilt als fehlend und wird neu geladen.
+  Assert.IsFalse(TAtlasTrackerIssueCache.FromJson('{"version": 1, "key": "ATL-1"}', mDetails));
 end;
 
 procedure TAtlasTrackerIssueCacheTests.FileNamesPerTrackerAndKey;

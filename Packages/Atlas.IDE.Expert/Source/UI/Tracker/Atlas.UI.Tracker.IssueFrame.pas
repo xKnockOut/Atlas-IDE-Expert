@@ -23,6 +23,12 @@
 //   Kommentar schreiben … (Markdown, Strg+Enter sendet)          [Senden]
 // „Beenden …“ (#1266) gibt es nur für das aktuelle Issue (CanEnd), Feld und
 // Knopf nur, wenn der Tracker schreiben kann (CanWrite).
+//   Mit LinksAsTree (#1279, issues.preview.links) stattdessen
+//   VERKNÜPFUNGEN (n) als Baum: Hängt ab von, Blockiert, Unteraufgaben 2/3,
+//   Übergeordnet; Duplikate, „Bezieht sich auf“ und Erwähnungen eingeklappt;
+//   je Zeile Symbol (✓ erledigt, ○ offen, ⛔ blockiert dieses Issue, ? Zustand
+//   unbekannt), Kennung, Titel und Zustand; Klick öffnet im Fenster. Mit
+//   CanWriteLinks darüber [Unteraufgabe anlegen …] [Verknüpfen …].
 // Ein Fenster, der Inhalt wechselt; Verlauf über Zurück/Vor (Alt+Links,
 // Alt+Rechts). Schließen des Fensters (OnHidden) bricht das Laden ab. Laden, Netz, Verlauf und Zwischenspeicher liegen in der
 // IDE-Schicht; der Frame meldet nur Wünsche (On…). Text in der Beschreibung
@@ -49,6 +55,7 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Documentation.View;
@@ -217,6 +224,15 @@ type
     FOnOpenUrl: TProc<string>;
     FOnImages: TProc<TArray<string>>;
     FOnHidden: TProc;
+    FOnCreateSubtask: TProc;
+    FOnAddLink: TProc;
+    // Verknüpfungen als Baum (#1279): Node.Data = Index + 1 in FTreeLinks, Gruppen nil.
+    FLinksAsTree: Boolean;
+    FCanWriteLinks: Boolean;
+    FLinkTree: TTreeView;
+    FTreeLinks: TArray<TAtlasTrackerLink>;
+    FCreateSubtask: TButton;
+    FAddLink: TButton;
     function AddButton(const ACaption: string; AClick: TNotifyEvent): TButton;
     function AddLabel(const ACaption: string; ABold: Boolean): TLabel;
     function AddDoc(const ADoc: TAtlasDoc): TAtlasIssueDocBox;
@@ -249,6 +265,14 @@ type
     procedure AttachmentsDblClick(Sender: TObject);
     procedure AttachmentsKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure LinksClick(Sender: TObject);
+    procedure AddLinkList;
+    procedure AddLinkTree;
+    procedure FitLinkTree;
+    procedure LinkTreeClick(Sender: TObject);
+    procedure LinkTreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure LinkTreeExpanded(Sender: TObject; Node: TTreeNode);
+    procedure CreateSubtaskClick(Sender: TObject);
+    procedure AddLinkClick(Sender: TObject);
     procedure LinkOpened(const AUrl: string);
     procedure ScrollWheel(Sender: TObject; Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
       var Handled: Boolean);
@@ -301,6 +325,10 @@ type
     /// <summary>Keine Schreibrechte: Kästchen nur lesend mit Tooltip, kein „Punkt hinzufügen …“.</summary>
     property ChecklistReadOnly: Boolean read FChecklistReadOnly write SetChecklistReadOnly;
     property ChecklistBusy: Boolean read FChecklistBusy;
+    /// <summary>Zeile des Baums (#1279): Symbol, Kennung, Titel, Zustand.</summary>
+    class function LinkRowText(const ALink: TAtlasTrackerLink): string; static;
+    /// <summary>Überschrift einer Gruppe des Baums (#1279), bei Unteraufgaben mit Fortschritt „2/3“.</summary>
+    class function LinkGroupText(const AGroup: TAtlasTrackerLinkGroup): string; static;
     property Details: TAtlasTrackerDetails read FDetails;
     property HasDetails: Boolean read FHasDetails;
     property Loading: Boolean read FLoading;
@@ -331,6 +359,14 @@ type
     property Badges: TAtlasIssueBadgeBar read FBadges;
     property Attachments: TListView read FAttachments;
     property Links: TListView read FLinks;
+    /// <summary>Verknüpfungen als Baum statt Liste (issues.preview.links, #1279); gilt ab dem nächsten
+    /// ShowDetails.</summary>
+    property LinksAsTree: Boolean read FLinksAsTree write FLinksAsTree;
+    /// <summary>Der Tracker kann Unteraufgaben anlegen und verknüpfen: Knöpfe über dem Baum.</summary>
+    property CanWriteLinks: Boolean read FCanWriteLinks write FCanWriteLinks;
+    property LinkTree: TTreeView read FLinkTree;
+    property CreateSubtaskButton: TButton read FCreateSubtask;
+    property AddLinkButton: TButton read FAddLink;
     property OlderLabel: TLabel read FOlder;
     property Progress: TProgressBar read FProgress;
     /// <summary>Editorschrift für Code (Vorgabe Consolas).</summary>
@@ -360,6 +396,10 @@ type
     property OnToggleTask: TProc<Integer> read FOnToggleTask write FOnToggleTask;
     /// <summary>„Punkt hinzufügen …“ angeklickt (#1273); nach dem Klick gemeldet.</summary>
     property OnAddTask: TProc read FOnAddTask write FOnAddTask;
+    /// <summary>„Unteraufgabe anlegen …“ bzw. „Verknüpfen …“ (#1279); Dialog und Senden in der IDE-Schicht.
+    /// </summary>
+    property OnCreateSubtask: TProc read FOnCreateSubtask write FOnCreateSubtask;
+    property OnAddLink: TProc read FOnAddLink write FOnAddLink;
   end;
 
 implementation
@@ -1084,6 +1124,10 @@ begin
     FBadges := nil;
     FAttachments := nil;
     FLinks := nil;
+    FLinkTree := nil;
+    FTreeLinks := nil;
+    FCreateSubtask := nil;
+    FAddLink := nil;
     FOlder := nil;
     FTaskBox := nil;
     FAddTask := nil;
@@ -1114,7 +1158,6 @@ var
   mIndex, mCollapsed: Integer;
   mItem: TListItem;
   mAttachment: TAtlasTrackerAttachment;
-  mLink: TAtlasTrackerLink;
   mHead: TLabel;
   mUrls: TArray<string>;
   mImage: TAtlasIssueImageBox;
@@ -1259,29 +1302,11 @@ begin
       FAttachments.OnDblClick := AttachmentsDblClick;
       FAttachments.OnKeyDown := AttachmentsKeyDown;
     end;
-    // Verknüpfte Issues: Klick öffnet sie im selben Fenster (bzw. im Browser).
-    if Length(FDetails.Links) > 0 then
-    begin
-      AddLabel(AnsiUpperCase(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewLinks, [Length(FDetails.Links)])),
-        True).Font.Color := ToColor(FColors.Muted);
-      FLinks := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnKey),
-        TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnTitle),
-        TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnRelation)));
-      for mLink in FDetails.Links do
-      begin
-        mItem := FLinks.Items.Add;
-        mItem.Caption := mLink.Key;
-        mItem.SubItems.Add(mLink.Title);
-        if mLink.Relation = 'cross-referenced' then
-          mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRelationMentioned))
-        else if mLink.Relation = 'pull request' then
-          mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRelationPull))
-        else
-          mItem.SubItems.Add(mLink.Relation);
-      end;
-      FLinks.Height := (Length(FDetails.Links) + 2) * MulDiv(20, CurrentPPI, 96);
-      FLinks.OnClick := LinksClick;
-    end;
+    // Verknüpfte Issues: Klick öffnet sie im selben Fenster (bzw. im Browser); als Baum mit #1279.
+    if FLinksAsTree then
+      AddLinkTree
+    else
+      AddLinkList;
   finally
     FScroll.EnableAlign;
   end;
@@ -1292,6 +1317,230 @@ begin
       mUrls := mUrls + [mImage.Url];
   if (Length(mUrls) > 0) and Assigned(FOnImages) then
     FOnImages(mUrls);
+end;
+
+procedure TAtlasIssueFrame.AddLinkList;
+var
+  mLink: TAtlasTrackerLink;
+  mItem: TListItem;
+begin
+  if Length(FDetails.Links) = 0 then
+    Exit;
+  AddLabel(AnsiUpperCase(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewLinks, [Length(FDetails.Links)])),
+    True).Font.Color := ToColor(FColors.Muted);
+  FLinks := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnKey),
+    TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnTitle),
+    TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnRelation)));
+  for mLink in FDetails.Links do
+  begin
+    mItem := FLinks.Items.Add;
+    mItem.Caption := mLink.Key;
+    mItem.SubItems.Add(mLink.Title);
+    if mLink.Relation = 'cross-referenced' then
+      mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRelationMentioned))
+    else if mLink.Relation = 'pull request' then
+      mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRelationPull))
+    else
+      mItem.SubItems.Add(mLink.Relation);
+  end;
+  FLinks.Height := (Length(FDetails.Links) + 2) * MulDiv(20, CurrentPPI, 96);
+  FLinks.OnClick := LinksClick;
+end;
+
+class function TAtlasIssueFrame.LinkRowText(const ALink: TAtlasTrackerLink): string;
+var
+  mSymbol, mState: string;
+begin
+  case TAtlasTrackerLinks.Mark(ALink) of
+    TAtlasTrackerLinkMark.Done:
+      mSymbol := '✓';
+    TAtlasTrackerLinkMark.Open:
+      mSymbol := '○';
+    TAtlasTrackerLinkMark.Blocking:
+      mSymbol := '⛔';
+  else
+    mSymbol := '?';
+  end;
+  // Zustand wie im Tracker, sonst offen bzw. erledigt; dazu, ob es dieses Issue blockiert.
+  if not ALink.StateKnown then
+    mState := TAtlasStrings.Text(TAtlasTextId.IssueLinksUnknown)
+  else if ALink.State <> '' then
+    mState := ALink.State
+  else if ALink.Resolved then
+    mState := TAtlasStrings.Text(TAtlasTextId.IssueLinksDone)
+  else
+    mState := TAtlasStrings.Text(TAtlasTextId.IssueLinksOpen);
+  if ALink.Blocking then
+    mState := mState + ' · ' + TAtlasStrings.Text(TAtlasTextId.IssueLinksBlocking);
+  Result := mSymbol + '  ' + ALink.Key;
+  if ALink.Title <> '' then
+    Result := Result + '  ' + ALink.Title;
+  Result := Result + '  — ' + mState;
+end;
+
+class function TAtlasIssueFrame.LinkGroupText(const AGroup: TAtlasTrackerLinkGroup): string;
+var
+  mId: TAtlasTextId;
+begin
+  if AGroup.Kind = TAtlasTrackerLinkKind.Subtask then
+    Exit(TAtlasStrings.Fmt(TAtlasTextId.IssueLinksSubtasks, [TAtlasTrackerLinks.ProgressText(AGroup.Done,
+      AGroup.Total)]));
+  case AGroup.Kind of
+    TAtlasTrackerLinkKind.DependsOn:
+      mId := TAtlasTextId.IssueLinksDependsOn;
+    TAtlasTrackerLinkKind.Blocks:
+      mId := TAtlasTextId.IssueLinksBlocks;
+    TAtlasTrackerLinkKind.Parent:
+      mId := TAtlasTextId.IssueLinksParent;
+    TAtlasTrackerLinkKind.Duplicates:
+      mId := TAtlasTextId.IssueLinksDuplicates;
+    TAtlasTrackerLinkKind.DuplicatedBy:
+      mId := TAtlasTextId.IssueLinksDuplicatedBy;
+    TAtlasTrackerLinkKind.Relates:
+      mId := TAtlasTextId.IssueLinksRelates;
+    TAtlasTrackerLinkKind.Mentioned:
+      mId := TAtlasTextId.IssueLinksMentioned;
+    TAtlasTrackerLinkKind.PullRequest:
+      mId := TAtlasTextId.IssueLinksPulls;
+  else
+    mId := TAtlasTextId.IssueLinksOther;
+  end;
+  Result := TAtlasStrings.Text(mId) + ' (' + IntToStr(AGroup.Total) + ')';
+end;
+
+procedure TAtlasIssueFrame.AddLinkTree;
+var
+  mGroups: TArray<TAtlasTrackerLinkGroup>;
+  mGroup: TAtlasTrackerLinkGroup;
+  mLink: TAtlasTrackerLink;
+  mNode, mChild: TTreeNode;
+  mTools: TPanel;
+begin
+  mGroups := TAtlasTrackerLinks.Groups(FDetails.Links);
+  if (Length(mGroups) = 0) and not FCanWriteLinks then
+    Exit;
+  AddLabel(AnsiUpperCase(TAtlasStrings.Fmt(TAtlasTextId.IssueLinksCaption, [Length(FDetails.Links)])),
+    True).Font.Color := ToColor(FColors.Muted);
+  if FCanWriteLinks then
+  begin
+    mTools := TPanel.Create(Self);
+    Place(mTools);
+    mTools.BevelOuter := bvNone;
+    mTools.ShowCaption := False;
+    mTools.Height := MulDiv(30, CurrentPPI, 96);
+    FParts.Add(mTools);
+    FCreateSubtask := TButton.Create(Self);
+    FCreateSubtask.Parent := mTools;
+    FCreateSubtask.Align := alLeft;
+    FCreateSubtask.AlignWithMargins := True;
+    FCreateSubtask.Caption := TAtlasStrings.Text(TAtlasTextId.IssueLinksCreateSubtask);
+    FCreateSubtask.Width := Max(120, Length(FCreateSubtask.Caption) * 8);
+    FCreateSubtask.OnClick := CreateSubtaskClick;
+    FAddLink := TButton.Create(Self);
+    FAddLink.Parent := mTools;
+    FAddLink.Align := alLeft;
+    FAddLink.AlignWithMargins := True;
+    FAddLink.Left := FCreateSubtask.Left + FCreateSubtask.Width + 1;
+    FAddLink.Caption := TAtlasStrings.Text(TAtlasTextId.IssueLinksAddLink);
+    FAddLink.Width := Max(100, Length(FAddLink.Caption) * 8);
+    FAddLink.OnClick := AddLinkClick;
+  end;
+  if Length(mGroups) = 0 then
+    Exit;
+  FLinkTree := TTreeView.Create(Self);
+  Place(FLinkTree);
+  FParts.Add(FLinkTree);
+  FLinkTree.ReadOnly := True;
+  FLinkTree.RowSelect := True;
+  FLinkTree.HideSelection := False;
+  FLinkTree.ShowHint := True;
+  FLinkTree.Color := ToColor(FColors.Surface);
+  FLinkTree.Font.Color := ToColor(FColors.Text);
+  FTreeLinks := nil;
+  FLinkTree.Items.BeginUpdate;
+  try
+    for mGroup in mGroups do
+    begin
+      mNode := FLinkTree.Items.AddChild(nil, LinkGroupText(mGroup));
+      mNode.Data := nil;
+      for mLink in mGroup.Links do
+      begin
+        FTreeLinks := FTreeLinks + [mLink];
+        mChild := FLinkTree.Items.AddChild(mNode, LinkRowText(mLink));
+        mChild.Data := Pointer(NativeInt(Length(FTreeLinks)));
+      end;
+      // Duplikate, „bezieht sich auf“ und Erwähnungen bleiben eingeklappt.
+      mNode.Expanded := not mGroup.Collapsed;
+    end;
+  finally
+    FLinkTree.Items.EndUpdate;
+  end;
+  FLinkTree.OnClick := LinkTreeClick;
+  FLinkTree.OnKeyDown := LinkTreeKeyDown;
+  FLinkTree.OnExpanded := LinkTreeExpanded;
+  FLinkTree.OnCollapsed := LinkTreeExpanded;
+  FitLinkTree;
+end;
+
+procedure TAtlasIssueFrame.FitLinkTree;
+var
+  mNode: TTreeNode;
+  mRows: Integer;
+begin
+  if FLinkTree = nil then
+    Exit;
+  // Ganze Höhe statt eigener Bildlaufleiste: die Vorschau rollt als Ganzes.
+  mRows := 0;
+  mNode := FLinkTree.Items.GetFirstNode;
+  while mNode <> nil do
+  begin
+    Inc(mRows);
+    if mNode.Expanded then
+      Inc(mRows, mNode.Count);
+    mNode := mNode.getNextSibling;
+  end;
+  FLinkTree.Height := (mRows + 1) * MulDiv(20, CurrentPPI, 96);
+end;
+
+procedure TAtlasIssueFrame.LinkTreeExpanded(Sender: TObject; Node: TTreeNode);
+begin
+  FitLinkTree;
+end;
+
+procedure TAtlasIssueFrame.LinkTreeClick(Sender: TObject);
+var
+  mIndex: NativeInt;
+begin
+  if (FLinkTree = nil) or (FLinkTree.Selected = nil) or (FLinkTree.Selected.Data = nil) then
+    Exit;
+  mIndex := NativeInt(FLinkTree.Selected.Data) - 1;
+  if (mIndex < 0) or (mIndex > High(FTreeLinks)) then
+    Exit;
+  // Öffnen ersetzt den Inhalt samt Baum: nicht im Klick des Baums.
+  FPendingLink := FTreeLinks[mIndex];
+  FHasPendingLink := True;
+  Defer;
+end;
+
+procedure TAtlasIssueFrame.LinkTreeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  if Key = VK_RETURN then
+  begin
+    LinkTreeClick(Sender);
+    Key := 0;
+  end;
+end;
+
+procedure TAtlasIssueFrame.CreateSubtaskClick(Sender: TObject);
+begin
+  if Assigned(FOnCreateSubtask) then
+    FOnCreateSubtask();
+end;
+
+procedure TAtlasIssueFrame.AddLinkClick(Sender: TObject);
+begin
+  if Assigned(FOnAddLink) then
+    FOnAddLink();
 end;
 
 procedure TAtlasIssueFrame.UpdateButtons;
