@@ -2600,6 +2600,7 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | PL4 | Projekt bauen (Umschalt+F9) während des Laufs | Während des Compiles „· Projekt … % pausiert (Kompilieren)“, der Fortschritt steht; danach läuft er weiter. Hat der Build neue Meldungen, werden nur deren Units neu geprüft |
 | PL5 | Während des Laufs F9 (Debuggen) | „angehalten (Debugger)“; atlas.log zeigt keine weiteren geprüften Units, Server-CPU bei 0 %; nach dem Ende des Programms läuft der Lauf weiter |
 | PL6 | Klick auf die Live-Prüfung (#1231) | Neuer Lauf über alle Units von 0 % an, am Ende „Projekt fertig“ |
+| PL8 | Index-Cache löschen (Atlas › Index neu aufbauen), dabei Taskmanager › Details › AtlasServer.exe beobachten (#1236) | Während des Aufbaus höchstens etwa ein Kern (bei 8 Kernen gut 12 %), Priorität des Aufbau-Threads „Niedriger als normal“ (Process Explorer › Threads); die IDE bleibt flüssig. Danach Projektprüfung wie PL1 |
 | PL7 | Probleme aus (`problems`) bzw. Fenster „Atlas-Prüfung“ nie geöffnet und Probleme aus | Kein Lauf, keine Projektanzeige in der Statusleiste |
 
 ## Extrahieren, case und with (#50)
