@@ -1341,3 +1341,7 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Prüfskripte beim Auflösen** (Cloud, nicht im Repo): doppelte uses-Einträge, doppelte Methoden und Mitglieder, Enum-Tabellen mit falscher Länge, JSON-Doppelschlüssel, Zeilenenden, BOM, Felder nach Methoden, Menü-Tags.
 - **Offen:** Delphi-Build beider Gruppen (Plugin-Code ist in der Cloud nicht übersetzbar), Handtests der einzelnen Issues. Danach mergen und die PRs mit Verweis auf den Mega-Branch schließen.
 - **Folgearbeit:** Zwei getrennte Uses-Graphen mit Bibliotheks-Units (FUnitRelationsGraph, TLspSymbolPath intern, MCP PathGraphs) zusammenführen; zwei öffentliche Typen `TUsesSection` in Atlas.Common (UsesGraph und CompletionUses) umbenennen.
+
+## CompilerVersion ohne installiertes Delphi (#1321, 28.10.2026, Branch `claude/project-thread-wztmf0` auf Prep-v1.2.0, Entwurfs-PR #1334, ungebaut)
+- `TDelphiVersions.Choose` liefert ohne jede Installation die erwartete Version (delphiVersion, sonst zur ProjectVersion, sonst `LatestKnown` 37.0); `Shell.Workspace` legt die Installation nur bei `IsInstalled` an, die Version bleibt für Symbole und Cache.
+- Geprüft unter FPC trunk: DelphiVersions-Tests 10/10, F14 ohne Befund (Gegenprobe vorher 2 × syntax), Skia4Delphi 0 syntax. pwsh fehlte in der Sitzung (Download abgelehnt): Prüfskripte nur in der CI. Testfälle VO1–VO4.
