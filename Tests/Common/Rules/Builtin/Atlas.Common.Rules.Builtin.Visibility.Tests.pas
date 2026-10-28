@@ -40,6 +40,8 @@ type
     [Test]
     procedure ClassOverloadInClassMethodIsReachable;
     [Test]
+    procedure ProtectedThroughGenericReceiverIsVisible;
+    [Test]
     procedure OffAndExclude;
   end;
 
@@ -290,6 +292,39 @@ begin
     '    class function Waehle(AKlasse: TClass; const AText: string): Integer; overload;'#10, '').Replace(
     'class function TAktiv.Waehle(AKlasse: TClass; const AText: string): Integer;'#10'begin'#10 +
     '  Result := 1;'#10'end;'#10, '').Replace('Waehle(TAktiv, AName)', 'Waehle(AName)')))));
+end;
+
+/// <summary>Index mit der Unit Knoten: TKnoten&lt;T&gt; und TEinfach mit protected-Feldern.</summary>
+function KnotenIndex: ISymbolIndex;
+begin
+  Result := BasisIndex;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Knoten;'#10'interface'#10'type'#10'  TKnoten<T> = class'#10 +
+    '  protected'#10'    FNaechster: TKnoten<T>;'#10'  strict protected'#10'    FGeheim: Integer;'#10'  end;'#10 +
+    '  TEinfach = class'#10'  protected'#10'    FWert: Integer;'#10'  end;'#10'implementation'#10'end.',
+    'C:\Projekt\Knoten.pas', nil));
+end;
+
+procedure TInaccessibleMemberTests.ProtectedThroughGenericReceiverIsVisible;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Minimalfälle IM1/IM3 (Spring4D TLinkedListNode<T>): protected über einen generischen Empfänger.
+  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Knoten;'#10'type'#10'  TListe<T> = class'#10 +
+    '    FKopf: TKnoten<T>;'#10'    function Zweiter: TKnoten<T>;'#10'  end;'#10'implementation'#10 +
+    'function TListe<T>.Zweiter: TKnoten<T>;'#10'begin'#10'  Result := FKopf.FNaechster;'#10'end;'#10 +
+    'function Folge(AKnoten: TKnoten<Integer>): TKnoten<Integer>;'#10'begin'#10 +
+    '  Result := AKnoten.FNaechster;'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource,
+    KnotenIndex, '', 'Kunden.pas'))));
+  // Gegentests: strict protected am generischen Typ und protected an einem nicht generischen Typ.
+  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Knoten;'#10'implementation'#10 +
+    'function Geheim(AKnoten: TKnoten<Integer>; AEinfach: TEinfach): Integer;'#10'begin'#10 +
+    '  Result := AKnoten.FGeheim + AEinfach.FWert;'#10'end;'#10'end.';
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource, KnotenIndex, '', 'Kunden.pas');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('TKnoten.FGeheim ist strict protected und hier nicht sichtbar (wie E2362).', mFound[0].Message);
+  Assert.AreEqual('TEinfach.FWert ist protected und hier nicht sichtbar (wie E2362).', mFound[1].Message);
 end;
 
 procedure TInaccessibleMemberTests.OffAndExclude;

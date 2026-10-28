@@ -39,6 +39,8 @@
 // constructor bzw. class destructor ist nie Ziel eines Aufrufs; TX.Create
 // meint dann den geerbten Konstruktor (IM4). In einer Klassenmethode gilt ein
 // Aufruf als erreichbar, sobald eine Überladung eine Klassenmethode ist (IM5).
+// protected-Mitglieder eines generischen Empfängers (TKnoten<T>) übersetzt
+// dcc auch aus fremden Units (Spring4D, IM1-IM3); strict protected bleibt.
 
 interface
 
@@ -236,6 +238,11 @@ var
     if (Member.SymbolKind = TIndexSymbolKind.Constructor_) and HasDirective(Member.Directives, 'class') then
       Exit;
     if (Member.Visibility <> TIndexVisibility.Private) and WiderScope(EnclosingMethod(ANode)) then
+      Exit;
+    // protected über einen generischen Empfänger (TKnoten<T>, TBaum<T>) übersetzt dcc auch aus einer anderen
+    // Unit (Spring4D TLinkedListNode<T>, TRedBlackTree<T>; IM1-IM3, #1328). Abgeleitet aus dem Korpus, dcc-Lauf
+    // der Minimalfälle steht aus.
+    if (Member.Visibility = TIndexVisibility.Protected) and (ReceiverType.TypeParams <> '') then
       Exit;
     Code := 'E2361';
     if Member.Visibility in [TIndexVisibility.Protected, TIndexVisibility.StrictProtected] then
