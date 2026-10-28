@@ -1,6 +1,7 @@
 ﻿unit Shell.Workspace.Tests;
 
-// Reload nur im Thread der Nachrichtenschleife (Code-Review A-03).
+// Reload nur im Thread der Nachrichtenschleife (Code-Review A-03); Bereitschaft für
+// Prüfungen ohne Projekt (#1220).
 
 interface
 
@@ -20,6 +21,10 @@ type
     /// Projekte ohne die Datei zählen nicht.</summary>
     [Test]
     procedure MergeRuleProjectsKeepsOnlyUnambiguousKind;
+    /// <summary>Ordner ohne Projekt (#1220): Nach dem Aufbau wartet keine Prüfung mehr auf ein Projekt, vorher
+    /// schon.</summary>
+    [Test]
+    procedure WorkspaceWithoutProjectIsRuleReady;
   end;
 
 implementation
@@ -129,6 +134,24 @@ begin
     Member('Plugin', TRuleApplicationKind.Package), Member('Noch', TRuleApplicationKind.Console)], 'U.pas');
   Assert.IsTrue(Merged.Application = TRuleApplicationKind.Unknown, 'Verschiedene Arten ergeben Unknown');
   Assert.AreEqual('Tests', Merged.Name);
+end;
+
+procedure TShellWorkspaceTests.WorkspaceWithoutProjectIsRuleReady;
+var
+  mWorkspace: TShellWorkspace;
+  mReason: string;
+begin
+  mWorkspace := NewWorkspace('Ohne');
+  try
+    mWorkspace.LoopThreadId := TThread.Current.ThreadID;
+    Assert.IsFalse(mWorkspace.RuleReady(mReason), 'Vor dem ersten Aufbau ist offen, ob ein Projekt kommt');
+    Assert.AreEqual('Projekte werden geladen', mReason);
+    mWorkspace.Reload;
+    Assert.IsTrue(mWorkspace.RuleReady(mReason), mReason);
+    Assert.AreEqual('', mReason);
+  finally
+    mWorkspace.Free;
+  end;
 end;
 
 initialization

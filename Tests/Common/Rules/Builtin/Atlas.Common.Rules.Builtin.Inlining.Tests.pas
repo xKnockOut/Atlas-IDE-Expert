@@ -4,7 +4,8 @@
 // Aufruf, Property-Getter und for-in, die korrigierte Form und eine nicht
 // eingebettete Routine schweigen; strict private (H2444), inline-Aufrufer mit
 // Unit nur im implementation-uses (H2445), direkter und indirekter Zyklus
-// (H2456, H2457); Schnellkorrektur; abschaltbar; die Verweise im Index.
+// (H2456, H2457); Schnellkorrektur; abschaltbar; die Verweise im Index;
+// Laufzeit bei vielen Aufrufen und langer uses-Kette (#1220).
 
 interface
 
@@ -39,6 +40,11 @@ type
     procedure IndexKeepsBodyReferences;
     [Test]
     procedure RuleIsRegistered;
+    /// <summary>#1220: Tausende Aufrufe einer inline-Routine, deren Unit über eine lange uses-Kette läuft, bleiben
+    /// deutlich unter einer Sekunde; die Zyklussuche läuft je Unit nur einmal.</summary>
+    [Test]
+    [Category('Benchmark')]
+    procedure ManyCallsWithLongUsesChainStayFast;
   end;
 
 implementation
@@ -46,6 +52,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Diagnostics,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
@@ -386,6 +393,62 @@ begin
     if Rule.Descriptor.Id = InlineNotExpandedRuleId then
       Found := True;
   Assert.IsTrue(Found);
+end;
+
+procedure TInliningRulesTests.ManyCallsWithLongUsesChainStayFast;
+const
+  cChainLength = 350;
+  cRoutines = 300;
+  cCallsPerRoutine = 10;
+var
+  mIndex: ISymbolIndex;
+  mStep, mCall: Integer;
+  mNext, mBody: string;
+  mBuilder: TStringBuilder;
+  mWatch: TStopwatch;
+  mFound: TArray<TRuleFinding>;
+begin
+  // cRoutines Routinen mit je cCallsPerRoutine Aufrufen. Werk.Basis.Wert ist inline und braucht Werk.Typen; Werk.Basis verwendet Kette1, die Kette läuft über
+  // cChainLength Units und kommt nie bei Haupt an. Haupt hat alles in uses: Jeder Aufruf durchläuft also alle
+  // Prüfungen ohne Meldung, früher jedes Mal mit der vollen Breitensuche über die Kette.
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Werk.Typen;'#10'interface'#10'type'#10 +
+    '  TZahl = Integer;'#10'implementation'#10'end.', 'C:\P\Werk.Typen.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Werk.Basis;'#10'interface'#10'uses Werk.Typen;'#10 +
+    'function Wert(A: Integer): Integer; inline;'#10'implementation'#10'uses Kette1;'#10 +
+    'function Wert(A: Integer): Integer;'#10'var'#10'  Z: TZahl;'#10'begin'#10'  Z := A;'#10'  Result := Z;'#10 +
+    'end;'#10'end.', 'C:\P\Werk.Basis.pas', nil));
+  for mStep := 1 to cChainLength do
+  begin
+    if mStep < cChainLength then
+      mNext := Format('uses Kette%d, Werk.Typen;'#10, [mStep + 1])
+    else
+      mNext := 'uses Werk.Typen;'#10;
+    mIndex.AddUnit(TIndexExtractor.ExtractText(Format('unit Kette%d;'#10'interface'#10'%s' +
+      'implementation'#10'end.', [mStep, mNext]), Format('C:\P\Kette%d.pas', [mStep]), nil));
+  end;
+  mBuilder := TStringBuilder.Create;
+  try
+    for mStep := 1 to cRoutines do
+    begin
+      mBuilder.Append(Format('procedure Lauf%d;'#10'var'#10'  X: Integer;'#10'begin'#10'  X := 0;'#10, [mStep]));
+      for mCall := 1 to cCallsPerRoutine do
+        mBuilder.Append('  X := Wert(X);'#10);
+      mBuilder.Append('end;'#10);
+    end;
+    mBody := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+  mWatch := TStopwatch.StartNew;
+  mFound := TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create,
+    'unit Haupt;'#10'interface'#10'uses Werk.Basis, Werk.Typen;'#10'implementation'#10 + mBody + 'end.',
+    mIndex, '', 'Haupt.pas');
+  mWatch.Stop;
+  System.Writeln(Format('inline-not-expanded: %d Aufrufe, uses-Kette %d Units: %d ms',
+    [cRoutines * cCallsPerRoutine, cChainLength, mWatch.ElapsedMilliseconds]));
+  Assert.AreEqual('', Messages(mFound));
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < 1000, Format('zu langsam: %d ms', [mWatch.ElapsedMilliseconds]));
 end;
 
 initialization
