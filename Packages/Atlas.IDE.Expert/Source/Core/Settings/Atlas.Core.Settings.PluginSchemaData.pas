@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5353] of string = (
+  Lines: array[0..5371] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5461,6 +5461,26 @@ const
     '      "x-page": "Issue-Tracker",',
     '      "x-control": "Kontrollkästchen",',
     '      "x-issue": "#1279"',
+    '    },',
+    '    "IssuesPreviewChecklists": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Aufgabenlisten (- [ ], * [x], 1. [ ]) in der Beschreibung erscheinen in der Issue-Vorschau als Häkchen mit Fortschritt „3/5“ im Kopf; Abhaken lädt die aktuelle Beschreibung, ände' +
+      'rt nur diese Zeile und schreibt sie zurück (YouTrack POST, GitHub PATCH), „Punkt hinzufügen …“ hängt einen Punkt an. Aus: Die Liste erscheint als Text wie geschrieben, nichts wird geschrieben.",',
+    '      "x-key": "issues.preview.checklists",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-issue": "#1273"',
+    '    },',
+    '    "IssuesChecklistStatus": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Fortschritt der Checkliste des aktuellen Issues als Zeile im Atlas-Statusfeld („ATL-131 · 3/5“, Klick öffnet die Vorschau an der Liste); ohne Checkliste keine Zeile. Aus: keine Z' +
+      'eile, keine Abfrage dafür.",',
+    '      "x-key": "issues.checklistStatus",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-issue": "#1273"',
     '    }',
     '  },',
     '  "additionalProperties": false',

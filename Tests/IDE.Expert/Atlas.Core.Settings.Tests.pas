@@ -901,6 +901,8 @@ begin
   Assert.IsTrue(Settings.IssuesPreviewComments);
   Assert.IsTrue(Settings.IssuesPreviewLinks, 'Verknüpfungen als Baum (#1279) an');
   Assert.IsTrue(Settings.IssuesWarnBlocked, 'Warnung beim Beginnen (#1279) an');
+  Assert.IsTrue(Settings.IssuesPreviewChecklists);
+  Assert.IsTrue(Settings.IssuesChecklistStatus);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -940,6 +942,8 @@ begin
   Settings.IssuesPreviewComments := False;
   Settings.IssuesPreviewLinks := False;
   Settings.IssuesWarnBlocked := False;
+  Settings.IssuesPreviewChecklists := False;
+  Settings.IssuesChecklistStatus := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -1002,6 +1006,8 @@ begin
   Assert.AreEqual('Beginne {kennung}\nin {branch}', mLoaded.IssuesStartComment);
   Assert.AreEqual('Zur Prüfung, Erledigt', mLoaded.IssuesEndStates);
   Assert.AreEqual('Fertig: {pr}', mLoaded.IssuesEndComment);
+  Assert.IsFalse(Loaded.IssuesPreviewChecklists);
+  Assert.IsFalse(Loaded.IssuesChecklistStatus);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

@@ -706,6 +706,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Connections.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Markdown.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Markdown.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Checklist.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Checklist.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.IssueCache.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.IssueCache.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Preview.pas"/>

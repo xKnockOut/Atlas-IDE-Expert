@@ -17,6 +17,12 @@
 //   die Sprache (TAtlasDocRun.Target); Delphi und ohne Angabe werden
 //   eingefärbt.
 // - Links liefert alle Link-Ziele (für Dateien in GitHub-Issues als Anhänge).
+// - Aufgabenlisten (#1273): "- [ ]", "* [x]", "+ [ ]" und nummeriert "1. [ ]",
+//   auch eingerückt; nie in Codeblöcken oder Zitaten. Jeder Punkt trägt seine
+//   Zeile im Text (Line, LastLine), darauf baut Atlas.Core.Tracker.Checklist
+//   auf. TAtlasMarkdownTasks wählt die Darstellung: Kästchen (Kommentare),
+//   als Text wie geschrieben (issues.preview.checklists aus) oder anklickbar
+//   mit dem Ziel "atlas-task:<n>" an der Marke (Beschreibung).
 // Kein vollständiges CommonMark: Es geht um eine lesbare Vorschau. Adressen aus
 // dem Text werden hier nicht geprüft; das tut, wer sie öffnet.
 
@@ -29,6 +35,11 @@ uses
 type
 {$SCOPEDENUMS ON}
   TAtlasMarkdownBlockKind = (Paragraph, Heading, Bullet, Quote, Code, Table, Rule, Image);
+  /// <summary>Aufgabenkästchen eines Listenpunkts (#1273).</summary>
+  TAtlasMarkdownTask = (None, Open, Done);
+  /// <summary>Darstellung der Aufgabenlisten (#1273): Kästchen ☐/☑, Text wie geschrieben ("[ ] …") bzw. Kästchen
+  /// mit Ziel TAtlasTrackerMarkdown.TaskTarget an der Marke.</summary>
+  TAtlasMarkdownTasks = (Boxes, Plain, Clickable);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Link oder Bild im Markdown.</summary>
@@ -48,6 +59,13 @@ type
     Text: string;
     /// <summary>Bullet: "•", "1.", "☐" bzw. "☑".</summary>
     Marker: string;
+    /// <summary>Bullet: Marke der Liste ohne Kästchen ("•" bzw. "1.").</summary>
+    ListMarker: string;
+    /// <summary>Bullet: Aufgabenkästchen (#1273).</summary>
+    Task: TAtlasMarkdownTask;
+    /// <summary>Bullet: erste und letzte Zeile im Text (ab 0, samt Fortsetzungszeilen); sonst -1.</summary>
+    Line: Integer;
+    LastLine: Integer;
     /// <summary>Code: Sprache des Zauns ('' ohne); Image: Adresse.</summary>
     Info: string;
     /// <summary>Table: Zeilen mit Zellen (Markdown), die erste ist die Kopfzeile.</summary>
@@ -69,6 +87,9 @@ type
   public const
     /// <summary>Tiefer eingerückte Listen bleiben auf dieser Ebene.</summary>
     MaxListLevel = 4;
+    /// <summary>Ziel an der Marke eines anklickbaren Aufgabenpunkts (#1273), gefolgt von seiner Nummer ab 0.
+    /// </summary>
+    TaskPrefix = 'atlas-task:';
   public
     class function Blocks(const AText: string): TArray<TAtlasMarkdownBlock>; static;
     /// <summary>Läufe eines Absatzes (Markdown im Fließtext); ABold: alles fett (Überschrift, Kopfzeile),
@@ -76,9 +97,17 @@ type
     class function InlineRuns(const AText: string; ABold, AItalic: Boolean): TAtlasDocRuns; overload; static;
     class function InlineRuns(const AText: string): TAtlasDocRuns; overload; static;
     /// <summary>Alles als eine Doku (Abschnitt Summary); alleinstehende Bilder als Link.</summary>
-    class function ToDoc(const AText: string): TAtlasDoc; static;
-    /// <summary>Doku-Stücke, getrennt durch alleinstehende Bilder.</summary>
-    class function Segments(const AText: string): TArray<TAtlasMarkdownSegment>; static;
+    class function ToDoc(const AText: string): TAtlasDoc; overload; static;
+    class function ToDoc(const AText: string; ATasks: TAtlasMarkdownTasks): TAtlasDoc; overload; static;
+    /// <summary>Doku-Stücke, getrennt durch alleinstehende Bilder; Aufgaben als Kästchen.</summary>
+    class function Segments(const AText: string): TArray<TAtlasMarkdownSegment>; overload; static;
+    /// <summary>Wie oben, Aufgaben nach ATasks; Clickable zählt die Punkte über alle Stücke hinweg.</summary>
+    class function Segments(const AText: string; ATasks: TAtlasMarkdownTasks): TArray<TAtlasMarkdownSegment>;
+      overload; static;
+    /// <summary>Ziel der Marke des Aufgabenpunkts AIndex (ab 0): "atlas-task:3".</summary>
+    class function TaskTarget(AIndex: Integer): string; static;
+    /// <summary>Nummer aus einem Ziel von TaskTarget; False bei anderen Zielen.</summary>
+    class function TaskIndexOf(const ATarget: string; out AIndex: Integer): Boolean; static;
     /// <summary>Alle Links und Bilder in Reihenfolge (ohne Codeblöcke und Code im Fließtext).</summary>
     class function Links(const AText: string): TArray<TAtlasMarkdownLink>; static;
     /// <summary>HTML-Entitäten ersetzen: wie TTextEntities.Decode, dazu &amp;nbsp; als Leerzeichen.</summary>
@@ -230,7 +259,9 @@ begin
     Delete(AText, 1, 1);
 end;
 
-function ListItemOf(const ALine: string; out AIndent: Integer; out AMarker, AText: string): Boolean;
+/// <summary>Listenpunkt: AMarker "•" bzw. "1.", ATask das Aufgabenkästchen davor (Text ohne Kästchen).</summary>
+function ListItemOf(const ALine: string; out AIndent: Integer; out AMarker, AText: string;
+  out ATask: TAtlasMarkdownTask): Boolean; overload;
 var
   mText: string;
   mDigits: Integer;
@@ -238,6 +269,7 @@ begin
   Result := False;
   AMarker := '';
   AText := '';
+  ATask := TAtlasMarkdownTask.None;
   AIndent := Indent(ALine);
   mText := TrimLeft(ALine);
   if mText = '' then
@@ -261,18 +293,25 @@ begin
     AMarker := Copy(mText, 1, mDigits) + '.';
     AText := Trim(Copy(mText, mDigits + 2, MaxInt));
   end;
-  // Aufgabenliste: "- [ ] offen", "- [x] erledigt".
-  if StartsText('[ ] ', AText + ' ') and (AMarker = cBullet) then
+  // Aufgabenliste: "- [ ] offen", "- [x] erledigt", auch nummeriert (#1273).
+  if StartsText('[ ] ', AText + ' ') then
   begin
-    AMarker := cTaskOpen;
+    ATask := TAtlasMarkdownTask.Open;
     AText := Trim(Copy(AText, 4, MaxInt));
   end
-  else if (StartsText('[x] ', AText + ' ')) and (AMarker = cBullet) then
+  else if StartsText('[x] ', AText + ' ') then
   begin
-    AMarker := cTaskDone;
+    ATask := TAtlasMarkdownTask.Done;
     AText := Trim(Copy(AText, 4, MaxInt));
   end;
   Result := True;
+end;
+
+function ListItemOf(const ALine: string; out AIndent: Integer; out AMarker, AText: string): Boolean; overload;
+var
+  mTask: TAtlasMarkdownTask;
+begin
+  Result := ListItemOf(ALine, AIndent, AMarker, AText, mTask);
 end;
 
 function SplitRow(const ALine: string): TArray<string>;
@@ -428,6 +467,8 @@ begin
   Result.Kind := AKind;
   Result.Text := AText;
   Result.Rows := nil;
+  Result.Line := -1;
+  Result.LastLine := -1;
 end;
 
 function StartsBlock(const ALines: TArray<string>; AIndex: Integer): Boolean;
@@ -449,6 +490,7 @@ var
   mLine, mFence, mLanguage, mText, mMarker, mCode, mUrl: string;
   mBlock: TAtlasMarkdownBlock;
   mIndents: TArray<Integer>;
+  mTask: TAtlasMarkdownTask;
 
   procedure Add(const ABlock: TAtlasMarkdownBlock);
   begin
@@ -539,11 +581,21 @@ begin
       Add(NewBlock(TAtlasMarkdownBlockKind.Quote, Trim(mCode)));
       Continue;
     end;
-    if ListItemOf(mLine, mIndent, mMarker, mText) then
+    if ListItemOf(mLine, mIndent, mMarker, mText, mTask) then
     begin
       mBlock := NewBlock(TAtlasMarkdownBlockKind.Bullet, mText);
-      mBlock.Marker := mMarker;
+      mBlock.ListMarker := mMarker;
+      mBlock.Task := mTask;
+      case mTask of
+        TAtlasMarkdownTask.Open:
+          mBlock.Marker := cTaskOpen;
+        TAtlasMarkdownTask.Done:
+          mBlock.Marker := cTaskDone;
+      else
+        mBlock.Marker := mMarker;
+      end;
       mBlock.Level := LevelOf(mIndent);
+      mBlock.Line := mIndex;
       Inc(mIndex);
       // Fortsetzungszeilen: eingerückt, kein neuer Punkt, kein anderer Block.
       while (mIndex <= High(mLines)) and not IsBlank(mLines[mIndex]) and (Indent(mLines[mIndex]) > mIndent) and
@@ -552,6 +604,7 @@ begin
         mBlock.Text := mBlock.Text + #10 + Trim(mLines[mIndex]);
         Inc(mIndex);
       end;
+      mBlock.LastLine := mIndex - 1;
       Add(mBlock);
       Continue;
     end;
@@ -951,12 +1004,15 @@ begin
   Result := InlineRuns(AText, False, False);
 end;
 
-/// <summary>Läufe eines Blocks (ohne Bild) samt Absatz am Ende.</summary>
-function BlockRuns(const ABlock: TAtlasMarkdownBlock; ANextIsBullet: Boolean): TAtlasDocRuns;
+/// <summary>Läufe eines Blocks (ohne Bild) samt Absatz am Ende. ATaskIndex: Nummer des nächsten Aufgabenpunkts;
+/// ein Aufgabenpunkt zählt sie weiter.</summary>
+function BlockRuns(const ABlock: TAtlasMarkdownBlock; ANextIsBullet: Boolean; ATasks: TAtlasMarkdownTasks;
+  var ATaskIndex: Integer): TAtlasDocRuns;
 var
   mRun: TAtlasDocRun;
   mRow: TArray<string>;
   mRowIndex, mCell: Integer;
+  mText: string;
 begin
   Result := nil;
   case ABlock.Kind of
@@ -970,7 +1026,25 @@ begin
       begin
         mRun := TAtlasDocRun.Create(TAtlasDocRunKind.Bullet, ABlock.Marker);
         mRun.Level := ABlock.Level;
-        Result := TAtlasDocRuns.Create(mRun) + TAtlasTrackerMarkdown.InlineRuns(ABlock.Text);
+        mText := ABlock.Text;
+        if ABlock.Task <> TAtlasMarkdownTask.None then
+        begin
+          case ATasks of
+            // Wie geschrieben: Listenmarke und "[ ]" bzw. "[x]" als Text.
+            TAtlasMarkdownTasks.Plain:
+              begin
+                mRun.Text := ABlock.ListMarker;
+                if ABlock.Task = TAtlasMarkdownTask.Done then
+                  mText := '[x] ' + mText
+                else
+                  mText := '[ ] ' + mText;
+              end;
+            TAtlasMarkdownTasks.Clickable:
+              mRun.Target := TAtlasTrackerMarkdown.TaskTarget(ATaskIndex);
+          end;
+          Inc(ATaskIndex);
+        end;
+        Result := TAtlasDocRuns.Create(mRun) + TAtlasTrackerMarkdown.InlineRuns(mText);
         // Nach dem letzten Punkt einer Liste ein Absatz (Abstand und Ende des hängenden Einzugs).
         if not ANextIsBullet then
           Result := Result + [TAtlasDocRun.Create(TAtlasDocRunKind.Paragraph, '')];
@@ -1040,23 +1114,49 @@ begin
 end;
 
 class function TAtlasTrackerMarkdown.ToDoc(const AText: string): TAtlasDoc;
+begin
+  Result := ToDoc(AText, TAtlasMarkdownTasks.Boxes);
+end;
+
+class function TAtlasTrackerMarkdown.ToDoc(const AText: string; ATasks: TAtlasMarkdownTasks): TAtlasDoc;
 var
   mBlocks: TArray<TAtlasMarkdownBlock>;
   mRuns: TAtlasDocRuns;
-  mIndex: Integer;
+  mIndex, mTask: Integer;
 begin
   mBlocks := Blocks(AText);
   mRuns := nil;
+  mTask := 0;
   for mIndex := 0 to High(mBlocks) do
-    mRuns := mRuns + BlockRuns(mBlocks[mIndex], NextIsBullet(mBlocks, mIndex));
+    mRuns := mRuns + BlockRuns(mBlocks[mIndex], NextIsBullet(mBlocks, mIndex), ATasks, mTask);
   Result := DocOf(mRuns);
 end;
 
+class function TAtlasTrackerMarkdown.TaskTarget(AIndex: Integer): string;
+begin
+  Result := TaskPrefix + IntToStr(AIndex);
+end;
+
+class function TAtlasTrackerMarkdown.TaskIndexOf(const ATarget: string; out AIndex: Integer): Boolean;
+begin
+  AIndex := -1;
+  Result := StartsStr(TaskPrefix, ATarget) and TryStrToInt(Copy(ATarget, Length(TaskPrefix) + 1, MaxInt), AIndex)
+    and (AIndex >= 0);
+  if not Result then
+    AIndex := -1;
+end;
+
 class function TAtlasTrackerMarkdown.Segments(const AText: string): TArray<TAtlasMarkdownSegment>;
+begin
+  Result := Segments(AText, TAtlasMarkdownTasks.Boxes);
+end;
+
+class function TAtlasTrackerMarkdown.Segments(const AText: string;
+  ATasks: TAtlasMarkdownTasks): TArray<TAtlasMarkdownSegment>;
 var
   mBlocks: TArray<TAtlasMarkdownBlock>;
   mRuns: TAtlasDocRuns;
-  mIndex: Integer;
+  mIndex, mTask: Integer;
   mSegment: TAtlasMarkdownSegment;
 
   procedure FlushDoc;
@@ -1076,12 +1176,13 @@ var
 begin
   Result := nil;
   mRuns := nil;
+  mTask := 0;
   mBlocks := Blocks(AText);
   for mIndex := 0 to High(mBlocks) do
   begin
     if mBlocks[mIndex].Kind <> TAtlasMarkdownBlockKind.Image then
     begin
-      mRuns := mRuns + BlockRuns(mBlocks[mIndex], NextIsBullet(mBlocks, mIndex));
+      mRuns := mRuns + BlockRuns(mBlocks[mIndex], NextIsBullet(mBlocks, mIndex), ATasks, mTask);
       Continue;
     end;
     FlushDoc;
