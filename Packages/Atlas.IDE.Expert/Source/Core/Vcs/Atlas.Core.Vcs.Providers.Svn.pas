@@ -30,8 +30,12 @@
 // {projektwurzel}/branches/<Name>); die Projektwurzel kommt aus
 // info --show-item relative-url (ohne Server). Schritte mit Long (switch,
 // checkout) laufen mit dem langen Zeitlimit.
-// IAtlasVcsSvnWorkingCopy: WorkingRevisions = svnversion . (Programm neben
-// svn, ohne Server).
+// IAtlasVcsSvnWorkingCopy: WorkingRevisions = svnversion . bzw. svnversion
+// <Ordner> (Programm neben svn, ohne Server); seit #1291 ExternalsXml =
+// propget svn:externals --xml -R ., RepositoryRoot = info --show-item
+// repos-root-url ., ToolVersion = --version --quiet. RunStep schreibt vor
+// einem Schritt mit InputFile dessen Inhalt (UTF-8 ohne BOM, LF), etwa für
+// propset svn:externals -F.
 // Ohne Server: HasExternals propget svn:externals -R . (nicht leer = ja),
 // RepositoryPath info --show-item relative-url . (ohne "^/"),
 // RemoteBranchExists und HookFolders ohne Prozess (Ok mit False bzw. '').
@@ -98,12 +102,17 @@ type
       overload;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
     { IAtlasVcsSvnWorkingCopy }
-    function WorkingRevisions(out AText: string): TAtlasVcsOutcome;
+    function WorkingRevisions(out AText: string): TAtlasVcsOutcome; overload;
+    function WorkingRevisions(const AFolder: string; out AText: string): TAtlasVcsOutcome; overload;
+    function ExternalsXml(out AText: string): TAtlasVcsOutcome;
+    function RepositoryRoot(out AUrl: string): TAtlasVcsOutcome;
+    function ToolVersion(out AVersion: string): TAtlasVcsOutcome;
   end;
 
 implementation
 
 uses
+  System.IOUtils,
   Atlas.Core.Vcs.Internals.Text,
   Atlas.Core.Vcs.Internals.SvnLayout,
   Atlas.Core.Vcs.Internals.SvnParser;
@@ -420,6 +429,18 @@ var
 begin
   if Length(AStep.Arguments) = 0 then
     Exit(TAtlasVcsOutcome.Failed);
+  // Eingabe für den Schritt (#1291, propset -F): svn:*-Eigenschaften sind UTF-8 mit LF.
+  if AStep.InputFile <> '' then
+    try
+      ForceDirectories(ExtractFileDir(AStep.InputFile));
+      TFile.WriteAllBytes(AStep.InputFile, TEncoding.UTF8.GetBytes(StringReplace(AStep.InputText, #13#10, #10,
+        [rfReplaceAll])));
+    except
+      on EInOutError do
+        Exit(TAtlasVcsOutcome.Failed);
+      on EOSError do
+        Exit(TAtlasVcsOutcome.Failed);
+    end;
   mCommand := FCommand;
   // switch und checkout holen die ganze Arbeitskopie samt Externals: eigenes, langes Zeitlimit (#1290).
   if AStep.Long and (FCommand.TimeoutMs < TAtlasVcsBranchStep.LongTimeoutMs) then
@@ -455,6 +476,11 @@ begin
 end;
 
 function TAtlasSvnVersionControl.WorkingRevisions(out AText: string): TAtlasVcsOutcome;
+begin
+  Result := WorkingRevisions('.', AText);
+end;
+
+function TAtlasSvnVersionControl.WorkingRevisions(const AFolder: string; out AText: string): TAtlasVcsOutcome;
 var
   Output: TBytes;
   mCommand: TAtlasVcsCommand;
@@ -468,12 +494,44 @@ begin
   mExecutable := ExtractFilePath(FCommand.Executable) + 'svnversion' + ExtractFileExt(FCommand.Executable);
   mCommand := TAtlasVcsCommand.Create(FRunner, mExecutable, FRoot, FCommand.TimeoutMs);
   try
-    Result := mCommand.Run(['.'], Output);
+    Result := mCommand.Run([AFolder], Output);
   finally
     mCommand.Free;
   end;
   if Result = TAtlasVcsOutcome.Ok then
     AText := Trim(VcsUtf8(Output));
+end;
+
+function TAtlasSvnVersionControl.ExternalsXml(out AText: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  AText := '';
+  Result := Svn(['propget', 'svn:externals', '--xml', '-R', '.'], Output);
+  if Result = TAtlasVcsOutcome.Ok then
+    AText := VcsUtf8(Output);
+end;
+
+function TAtlasSvnVersionControl.RepositoryRoot(out AUrl: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  AUrl := '';
+  Result := Svn(['info', '--show-item', 'repos-root-url', '.'], Output);
+  if Result = TAtlasVcsOutcome.Ok then
+    AUrl := Trim(VcsUtf8(Output));
+  if (Result = TAtlasVcsOutcome.Ok) and (AUrl = '') then
+    Result := TAtlasVcsOutcome.Failed;
+end;
+
+function TAtlasSvnVersionControl.ToolVersion(out AVersion: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  AVersion := '';
+  Result := FCommand.Run(['--version', '--quiet'], Output);
+  if Result = TAtlasVcsOutcome.Ok then
+    AVersion := Trim(VcsUtf8(Output));
 end;
 
 function TAtlasSvnVersionControl.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;

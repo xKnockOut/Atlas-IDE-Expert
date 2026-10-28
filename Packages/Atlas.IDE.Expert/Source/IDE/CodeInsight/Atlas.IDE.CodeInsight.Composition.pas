@@ -2580,6 +2580,8 @@ begin
       if Result then
         Manager.ExecuteServerCommandAsync(ACommand, 30000, nil);
     end;
+  // Derselbe Weg nach einem Branch mit geänderten Externals (#1291).
+  TAtlasIdeBranching.ServerCommand := Hooks.ServerCommand;
   Hooks.ServerPath :=
     function: string
     var
@@ -5564,6 +5566,7 @@ begin
     Teardown.Step('Vcs',
       procedure
       begin
+        TAtlasIdeBranching.ServerCommand := nil;
         TAtlasIdeVcs.Stop;
       end);
     Teardown.Step('Experimental',

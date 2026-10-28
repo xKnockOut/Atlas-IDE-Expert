@@ -7918,3 +7918,23 @@ Vorbereitung: Repository mit mehreren Projekten (`^/Kasse/trunk` mit Gruppe `Kas
 | BS9 | Arbeitskopie ohne trunk/branches/tags im Pfad (z. B. `^/Kasse`) | Ablageort leer mit Hinweis „Kein erkennbares Layout …“; „Beginnen“ mit `vcs.branch.confirm` aus zeigt trotzdem den Dialog und fragt nach dem Ort, statt unter `^/branches` anzulegen (**Abnahme**) |
 | BS10 | Ablageort `^/branches/{kennung}` einstellen | Branch fest unter `^/branches/<Kennung>`, wie vor #1290 |
 | BS11 | Großes Projekt: „Umschalten“ bzw. „Frisch auschecken“ dauert über 15 Sekunden | Läuft bis zu 10 Minuten durch, kein Abbruch nach `vcs.timeoutSeconds` |
+
+## SVN-Externals beim Branch (#1291)
+
+Vorbereitung: wie bei #1290; die Arbeitskopie `^/Kasse/trunk` hat `svn:externals` mit `^/Packages/Basis/trunk Packages/Basis`, `^/Packages/Drucken/trunk Packages/Drucken`, `-r 4711 ^/Packages/Kunden/trunk Packages/Kunden` und einem External aus einem anderen Repository; in `Packages\Drucken` eine lokale Änderung; Einstellungen unter *Externals* auf Vorgabe; svn 1.9 oder neuer.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BX1 | *Versionsverwaltung* › *Externals* öffnen | Auswahl „Externals ohne Revision beim Branch“ = „festschreiben (Revision der Arbeitskopie)“, „Mitverzweigen vorschlagen“ = „bei lokalen Änderungen“, Regeln leer (**Abnahme**) |
+| BX2 | „Meine Issues“ › „Beginnen“ | Gruppe „Externals (4)“ mit Ordner, Quelle, Auswahl: Basis „festschreiben (r<Rev>)“, Drucken „mitverzweigen“, Kunden „bleibt r4711“ ohne Auswahl, fremdes Repository ohne „mitverzweigen“ (**Abnahme**) |
+| BX3 | Dialog aus BX2: „Was passiert“ lesen | Zuerst `svn copy ^/Packages/Drucken/trunk@<Rev> ^/Packages/Drucken/branches/<Name>@ …`, dann die Kopie des Projekts, dann `svn checkout … --depth empty`, `svn propset svn:externals -F …` (mit Hinweis „svn:externals: Packages/Basis -r …, Packages/Drucken → ^/Packages/Drucken/branches/…“) und `svn commit`, zuletzt `svn switch` (**Abnahme**) |
+| BX4 | BX2 „Anlegen“ | Repo-Browser: `^/Packages/Drucken/branches/<Name>` angelegt; `svn:externals` im neuen Branch: Basis mit `-r <Rev>`, Drucken auf den neuen Ort, Kunden und das fremde External unverändert, Kommentare und Format der übrigen Zeilen erhalten; Arbeitskopie umgeschaltet, `Packages\Drucken` zeigt auf den Branch; Meldung „… baut den Index neu auf“ (**Abnahme**) |
+| BX5 | Im Branch aus BX4 eine Datei in `Packages\Drucken` ändern und committen | Commit landet in `^/Packages/Drucken/branches/<Name>`, der Trunk des Packages bleibt unverändert (**Abnahme**) |
+| BX6 | Drucken auf „unverändert“ stellen, sonst alles festschreiben (fremdes External ebenfalls) | Ein Schritt `svn copy … --pin-externals` nur, wenn alle Externals ohne Revision festgeschrieben werden; sonst Umschreiben über propset wie in BX3 |
+| BX7 | Alles festschreiben (auch Drucken), „Anlegen“ | Nur `svn copy ^/Kasse/trunk@… ^/Kasse/branches/<Name>@ … --pin-externals` und `svn switch`; im Branch stehen alle Externals ohne Revision mit festgeschriebener Revision |
+| BX8 | `vcs.externals.onBranch` = „jedes Mal fragen“, `suggestBranch` = „nie“, „Beginnen“ | Keine Vorauswahl, roter Hinweis „Bitte für jedes External wählen …“, „Anlegen“ gesperrt, bis jede Zeile gewählt ist; mit `vcs.branch.confirm` aus erscheint der Dialog trotzdem |
+| BX9 | Regel `^/Packages/Basis = keep` eintragen, speichern, „Beginnen“ | Basis „unverändert“ vorgewählt trotz `onBranch` = festschreiben (**Abnahme**) |
+| BX10 | Regel `^/Packages = fragen` eintragen | Roter Hinweis „Ungültige Zeile …“; nach „OK“ und erneutem Öffnen stehen die bisherigen Regeln da |
+| BX11 | `onBranch` = „unverändert lassen“, `suggestBranch` = „nie“ | Alle Externals „unverändert“, Schritte wie vor #1291 (nur Kopie und Umschalten), kein neuer Index |
+| BX12 | svn 1.8 (oder älter) einstellen, alles festschreiben | Kein `--pin-externals`; Atlas schreibt `-r <Rev>` selbst über propset |
+| BX13 | Commit beim Umschreiben scheitern lassen (z. B. Schreibrecht auf `^/Kasse/branches` entziehen nach dem Kopieren) | Meldung nennt den Schritt und die schon angelegten Kopien (Package und Projekt); Temp-Ordner `Atlas-Branch-<Name>` ist danach entfernt |

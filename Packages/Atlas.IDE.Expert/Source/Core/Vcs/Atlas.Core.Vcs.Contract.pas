@@ -32,7 +32,12 @@
 // (vcs.branch.svn.location, Vorgabe {projektwurzel}/branches/{name}); Anlegen,
 // BranchExists und SwitchBranch nutzen denselben Ort.
 // IAtlasVcsSvnWorkingCopy bündelt, was nur SVN kennt (Revisionen der
-// Arbeitskopie über svnversion); nur die SVN-Umsetzung bietet sie an.
+// Arbeitskopie über svnversion, seit #1291 svn:externals, Wurzel des
+// Repositorys und Version von svn); nur die SVN-Umsetzung bietet sie an.
+// Externals beim Branch (#1291): TAtlasVcsSvnExternal beschreibt eine Zeile
+// aus svn:externals samt Zustand der Arbeitskopie; TAtlasVcsExternalAction
+// sagt, was mit ihr im neuen Branch geschieht (festschreiben, lassen,
+// mitverzweigen); Regeln und Vorgaben stehen in TAtlasVcsSvnBranchOptions.
 
 interface
 
@@ -76,7 +81,67 @@ type
   /// <summary>Was nach dem Anlegen eines SVN-Branchs passiert (#1290, vcs.branch.svn.after): Switch = Arbeitskopie
   /// umschalten, Checkout = frisch in einen eigenen Ordner auschecken, None = nur anlegen.</summary>
   TAtlasVcsSvnAfter = (Switch, Checkout, None);
+
+  /// <summary>Was mit einem External im neuen Branch geschieht (#1291): Ask = noch nicht gewählt (vcs.externals.
+  /// onBranch = ask), Pin = auf die Revision der Arbeitskopie festschreiben, Keep = unverändert lassen, Branch =
+  /// das Package mitverzweigen und die Zeile auf den neuen Ort umschreiben.</summary>
+  TAtlasVcsExternalAction = (Ask, Pin, Keep, Branch);
+
+  /// <summary>Wann „mitverzweigen“ vorgeschlagen wird (#1291, vcs.externals.suggestBranch).</summary>
+  TAtlasVcsExternalSuggest = (Modified, Never, Always);
 {$SCOPEDENUMS OFF}
+
+  /// <summary>Feste Behandlung je Quelle (#1291, vcs.externals.rules): Source ist ein Präfix einer Repository-URL
+  /// bzw. ein Pfad mit "^/"; die längste passende Regel gewinnt vor den Vorgaben.</summary>
+  TAtlasVcsExternalRule = record
+    Source: string;
+    Action: TAtlasVcsExternalAction;
+    class function Make(const ASource: string; AAction: TAtlasVcsExternalAction): TAtlasVcsExternalRule; static;
+  end;
+
+  /// <summary>Inhalt von svn:externals an einem Ordner (#1291).</summary>
+  TAtlasVcsSvnExternalDefinition = record
+    /// <summary>Ordner relativ zur Wurzel der Arbeitskopie, mit "/" ('' = Wurzel).</summary>
+    Owner: string;
+    /// <summary>Wert der Eigenschaft, Zeilen mit LF getrennt.</summary>
+    Text: string;
+    class function Make(const AOwner, AText: string): TAtlasVcsSvnExternalDefinition; static;
+  end;
+
+  /// <summary>Eine Zeile aus svn:externals (#1291) mit dem Zustand der Arbeitskopie.</summary>
+  TAtlasVcsSvnExternal = record
+    /// <summary>Ordner mit der Eigenschaft relativ zur Wurzel der Arbeitskopie, mit "/" ('' = Wurzel).</summary>
+    Owner: string;
+    /// <summary>Index der Zeile in der Eigenschaft von Owner (ab 0, Kommentare und Leerzeilen mitgezählt).</summary>
+    Line: Integer;
+    /// <summary>Zielordner relativ zu Owner, mit "/", ohne Anführungszeichen.</summary>
+    Folder: string;
+    /// <summary>URL, wie sie dasteht, ohne -r und Peg (relativ wie "^/…", "../…" oder vollständig).</summary>
+    Url: string;
+    /// <summary>Vollständige URL nach dem Auflösen der relativen Angaben.</summary>
+    FullUrl: string;
+    /// <summary>Pfad im Repository ohne "^/" (dekodiert); '' bei fremdem Repository.</summary>
+    Source: string;
+    /// <summary>Operative Revision (-r N) bzw. Peg (@N); '' ohne.</summary>
+    Revision: string;
+    Peg: string;
+    /// <summary>Altes Format "Ordner [-r N] URL" (vor svn 1.5).</summary>
+    OldFormat: Boolean;
+    /// <summary>Quelle liegt in einem anderen Repository: nie mitverzweigen.</summary>
+    Foreign: Boolean;
+    /// <summary>Datei-External: nur festschreiben oder lassen.</summary>
+    IsFile: Boolean;
+    /// <summary>Höchste Revision der External-Arbeitskopie (svnversion); '' unbekannt.</summary>
+    WorkingRevision: string;
+    /// <summary>Lokale Änderungen in der External-Arbeitskopie (svnversion „M“).</summary>
+    Modified: Boolean;
+    /// <summary>Mit -r bzw. Peg: behält die Revision immer.</summary>
+    function Fixed: Boolean;
+    /// <summary>Ordner relativ zur Wurzel der Arbeitskopie ("Packages/Drucken").</summary>
+    function Path: string;
+    /// <summary>Darf mitverzweigt werden (gleiches Repository, Ordner, ohne feste Revision).</summary>
+    function CanBranch: Boolean;
+  end;
 
   /// <summary>Optionen für SVN-Branches (#1290) mit den Werten für die Platzhalter. Location und Message sind
   /// Muster; Location beginnt mit {projektwurzel} oder ^/ und kennt {name} und {kennung}; Message kennt
@@ -93,9 +158,16 @@ type
     Key: string;
     Title: string;
     Project: string;
-    /// <summary>Vorgaben der Einstellungen (vcs.branch.svn.*).</summary>
+    /// <summary>Externals (#1291): Vorgabe für Externals ohne Revision (vcs.externals.onBranch), wann
+    /// „mitverzweigen“ vorgeschlagen wird (vcs.externals.suggestBranch) und Regeln je Quelle
+    /// (vcs.externals.rules).</summary>
+    ExternalsOnBranch: TAtlasVcsExternalAction;
+    ExternalsSuggest: TAtlasVcsExternalSuggest;
+    ExternalsRules: TArray<TAtlasVcsExternalRule>;
+    /// <summary>Vorgaben der Einstellungen (vcs.branch.svn.*, vcs.externals.*).</summary>
     class function Default: TAtlasVcsSvnBranchOptions; static;
-    /// <summary>Verhalten vor #1290: ^/branches/{name}, HEAD, umschalten, Nachricht „Branch &lt;Name&gt;“.</summary>
+    /// <summary>Verhalten vor #1290: ^/branches/{name}, HEAD, umschalten, Nachricht „Branch &lt;Name&gt;“; Externals
+    /// unverändert, nie mitverzweigen (vor #1291).</summary>
     class function Legacy: TAtlasVcsSvnBranchOptions; static;
   end;
 
@@ -262,6 +334,13 @@ type
     /// <summary>Kann lange dauern (svn switch und checkout holen die ganze Arbeitskopie samt Externals): läuft mit
     /// LongTimeoutMs statt dem Zeitlimit eines Aufrufs (#1290).</summary>
     Long: Boolean;
+    /// <summary>Datei, die RunStep vor dem Aufruf mit InputText (UTF-8 ohne BOM, Zeilenende LF) schreibt, z. B.
+    /// für svn propset -F (#1291); '' ohne.</summary>
+    InputFile: string;
+    InputText: string;
+    /// <summary>Zusatz für die Anzeige („Was passiert“), z. B. welche Externals umgeschrieben werden; '' ohne.
+    /// </summary>
+    Note: string;
     class function Make(const AArguments: TArray<string>; ARemote, AChangesServer: Boolean): TAtlasVcsBranchStep;
       overload; static;
     class function Make(const AArguments: TArray<string>; ARemote, AChangesServer,
@@ -405,7 +484,15 @@ type
     ['{C4E7A1D9-3B62-4F85-9A0E-6D21F8B57C34}']
     /// <summary>Ausgabe von svnversion für die Wurzel (z. B. "48213", "48190:48213M"); ohne Server. Liegt
     /// svnversion nicht neben svn, ToolMissing.</summary>
-    function WorkingRevisions(out AText: string): TAtlasVcsOutcome;
+    function WorkingRevisions(out AText: string): TAtlasVcsOutcome; overload;
+    /// <summary>Wie oben für AFolder relativ zur Wurzel (z. B. ein External, #1291).</summary>
+    function WorkingRevisions(const AFolder: string; out AText: string): TAtlasVcsOutcome; overload;
+    /// <summary>Ausgabe von svn propget svn:externals --xml -R . (#1291, ohne Server).</summary>
+    function ExternalsXml(out AText: string): TAtlasVcsOutcome;
+    /// <summary>URL der Wurzel des Repositorys (info --show-item repos-root-url ., ohne Server).</summary>
+    function RepositoryRoot(out AUrl: string): TAtlasVcsOutcome;
+    /// <summary>Version von svn ("1.14.3", svn --version --quiet).</summary>
+    function ToolVersion(out AVersion: string): TAtlasVcsOutcome;
   end;
 
   /// <summary>Fehler beim Lesen einer Ausgabe; die Umsetzungen machen daraus Outcome Failed.</summary>
@@ -423,6 +510,12 @@ function AtlasVcsProviderText(AProvider: TAtlasVcsProvider): string;
 function AtlasVcsSvnSourceOf(const AText: string): TAtlasVcsSvnSource;
 /// <summary>vcs.branch.svn.after (#1290): "checkout", "none", sonst Switch.</summary>
 function AtlasVcsSvnAfterOf(const AText: string): TAtlasVcsSvnAfter;
+/// <summary>vcs.externals.onBranch bzw. onBranch einer Regel (#1291): "keep", "ask", "branch", sonst Pin.</summary>
+function AtlasVcsExternalActionOf(const AText: string): TAtlasVcsExternalAction;
+/// <summary>Text der Einstellung: "ask", "pin", "keep" bzw. "branch".</summary>
+function AtlasVcsExternalActionText(AAction: TAtlasVcsExternalAction): string;
+/// <summary>vcs.externals.suggestBranch (#1291): "never", "always", sonst Modified.</summary>
+function AtlasVcsExternalSuggestOf(const AText: string): TAtlasVcsExternalSuggest;
 
 implementation
 
@@ -492,6 +585,79 @@ begin
     Result := TAtlasVcsSvnAfter.None
   else
     Result := TAtlasVcsSvnAfter.Switch;
+end;
+
+function AtlasVcsExternalActionOf(const AText: string): TAtlasVcsExternalAction;
+begin
+  if SameText(Trim(AText), 'keep') then
+    Result := TAtlasVcsExternalAction.Keep
+  else if SameText(Trim(AText), 'ask') then
+    Result := TAtlasVcsExternalAction.Ask
+  else if SameText(Trim(AText), 'branch') then
+    Result := TAtlasVcsExternalAction.Branch
+  else
+    Result := TAtlasVcsExternalAction.Pin;
+end;
+
+function AtlasVcsExternalActionText(AAction: TAtlasVcsExternalAction): string;
+begin
+  case AAction of
+    TAtlasVcsExternalAction.Ask:
+      Result := 'ask';
+    TAtlasVcsExternalAction.Keep:
+      Result := 'keep';
+    TAtlasVcsExternalAction.Branch:
+      Result := 'branch';
+  else
+    Result := 'pin';
+  end;
+end;
+
+function AtlasVcsExternalSuggestOf(const AText: string): TAtlasVcsExternalSuggest;
+begin
+  if SameText(Trim(AText), 'never') then
+    Result := TAtlasVcsExternalSuggest.Never
+  else if SameText(Trim(AText), 'always') then
+    Result := TAtlasVcsExternalSuggest.Always
+  else
+    Result := TAtlasVcsExternalSuggest.Modified;
+end;
+
+{ TAtlasVcsExternalRule }
+
+class function TAtlasVcsExternalRule.Make(const ASource: string;
+  AAction: TAtlasVcsExternalAction): TAtlasVcsExternalRule;
+begin
+  Result.Source := ASource;
+  Result.Action := AAction;
+end;
+
+{ TAtlasVcsSvnExternalDefinition }
+
+class function TAtlasVcsSvnExternalDefinition.Make(const AOwner, AText: string): TAtlasVcsSvnExternalDefinition;
+begin
+  Result.Owner := AOwner;
+  Result.Text := AText;
+end;
+
+{ TAtlasVcsSvnExternal }
+
+function TAtlasVcsSvnExternal.Fixed: Boolean;
+begin
+  Result := (Revision <> '') or (Peg <> '');
+end;
+
+function TAtlasVcsSvnExternal.Path: string;
+begin
+  if Owner = '' then
+    Result := Folder
+  else
+    Result := Owner + '/' + Folder;
+end;
+
+function TAtlasVcsSvnExternal.CanBranch: Boolean;
+begin
+  Result := not Foreign and not IsFile and not Fixed and (Source <> '');
 end;
 
 { TAtlasVcsWorkingCopy }
@@ -592,6 +758,9 @@ begin
   Result.Remote := ARemote;
   Result.ChangesServer := AChangesServer;
   Result.Long := ALong;
+  Result.InputFile := '';
+  Result.InputText := '';
+  Result.Note := '';
 end;
 
 { TAtlasVcsSvnBranchOptions }
@@ -606,6 +775,9 @@ begin
   Result.Key := '';
   Result.Title := '';
   Result.Project := '';
+  Result.ExternalsOnBranch := TAtlasVcsExternalAction.Pin;
+  Result.ExternalsSuggest := TAtlasVcsExternalSuggest.Modified;
+  Result.ExternalsRules := nil;
 end;
 
 class function TAtlasVcsSvnBranchOptions.Legacy: TAtlasVcsSvnBranchOptions;
@@ -613,6 +785,8 @@ begin
   Result := Default;
   Result.Location := '^/branches/{name}';
   Result.Message := 'Branch {name}';
+  Result.ExternalsOnBranch := TAtlasVcsExternalAction.Keep;
+  Result.ExternalsSuggest := TAtlasVcsExternalSuggest.Never;
 end;
 
 end.

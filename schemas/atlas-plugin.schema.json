@@ -86,6 +86,10 @@
       "caption": "Branches",
       "captionEn": "Branches"
     },
+    "vcs.externals": {
+      "caption": "Externals",
+      "captionEn": "Externals"
+    },
     "editor.pairs": {
       "caption": "Paarfärbung",
       "captionEn": "Pair colouring"
@@ -5373,6 +5377,52 @@
       "x-node": "vcs.branches",
       "x-control": "Textfeld Commit-Nachricht",
       "x-issue": "#1290"
+    },
+    "VcsExternalsOnBranch": {
+      "type": "string",
+      "enum": [
+        "pin",
+        "keep",
+        "ask"
+      ],
+      "default": "pin",
+      "description": "SVN-Externals ohne Revision beim Anlegen eines Branchs: pin = auf die Revision der Arbeitskopie festschreiben, keep = lassen (der Branch folgt dem Trunk des Externals), ask = im Dialog ohne Vorauswahl. Externals mit fester Revision bleiben immer.",
+      "x-key": "vcs.externals.onBranch",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-node": "vcs.externals",
+      "x-control": "Auswahl Externals ohne Revision",
+      "x-issue": "#1291"
+    },
+    "VcsExternalsSuggestBranch": {
+      "type": "string",
+      "enum": [
+        "modified",
+        "never",
+        "always"
+      ],
+      "default": "modified",
+      "description": "Wann im Dialog „Branch anlegen“ für ein External „mitverzweigen“ vorgeschlagen wird: modified = mit lokalen Änderungen, never = nie, always = immer (nur Externals aus demselben Repository ohne feste Revision).",
+      "x-key": "vcs.externals.suggestBranch",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-node": "vcs.externals",
+      "x-control": "Auswahl Mitverzweigen vorschlagen",
+      "x-issue": "#1291"
+    },
+    "VcsExternalsRules": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object"
+      },
+      "description": "Feste Behandlung je Quelle: Liste mit source (Präfix einer Repository-URL bzw. ^/…) und onBranch (pin, keep, branch); die längste passende Regel gewinnt und hat Vorrang vor vcs.externals.onBranch und suggestBranch. Im Plugin als JSON-Text gelesen und geschrieben, auf der Seite eine Regel je Zeile „Quelle = Behandlung“.",
+      "x-key": "vcs.externals.rules",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-node": "vcs.externals",
+      "x-control": "Textfeld Regeln",
+      "x-issue": "#1291"
     }
   },
   "additionalProperties": false

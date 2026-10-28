@@ -4,7 +4,9 @@
 // über eine Versionsverwaltung im Speicher, Basen und Vorgabe unter Git und
 // SVN, die Schritte (genau die Befehlszeilen aus dem Dialog), Anzeige mit
 // Anführungszeichen, Ausführung bis zum ersten Fehler mit Fortschritt und die
-// Serverschritte, die danach stehen bleiben.
+// Serverschritte, die danach stehen bleiben. Externals (#1291): Inspect liest
+// sie samt Zustand, Schritte in der Reihenfolge Packages, Projekt,
+// Umschreiben, Umschalten; --pin-externals ab svn 1.9; Arbeitsordner.
 
 interface
 
@@ -57,13 +59,30 @@ type
     /// <summary>#1290: Gruppe an derselben Stelle im neuen Ordner; außerhalb der Arbeitskopie ''.</summary>
     [Test]
     procedure CheckoutTargetMapsGroup;
+    /// <summary>#1291: Externals mit Quelle, Revision und lokalen Änderungen der External-Arbeitskopie,
+    /// Version von svn, Wurzel des Repositorys.</summary>
+    [Test]
+    procedure InspectReadsExternals;
+    /// <summary>#1291: alle festschreiben mit --pin-externals (ab 1.9), sonst Umschreiben im Branch; mitverzweigen
+    /// zuerst, Reihenfolge Packages, Projekt, Umschreiben, Umschalten; ungültige Wahl ohne Schritte.</summary>
+    [Test]
+    procedure StepsSvnWithExternals;
+    /// <summary>#1291: Vorgaben je External, Ask ohne Dialog keine Anfrage, Orte der Packages, Index neu nach
+    /// dem Umschalten, Arbeitsordner vor und nach dem Ausführen gelöscht.</summary>
+    [Test]
+    procedure ExternalsDefaultsAndExecute;
+    /// <summary>#1291: vcs.externals.rules zwischen JSON, Text der Einstellungsseite und Regeln.</summary>
+    [Test]
+    procedure ExternalRulesRoundTrip;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.IOUtils,
   Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.Internals.SvnExternals,
   Atlas.Core.Vcs.BranchPlan;
 
 var
@@ -98,6 +117,13 @@ type
     /// <summary>Schritt mit diesem Befehl scheitert.</summary>
     FailOn: string;
     Calls: TArray<string>;
+    /// <summary>#1291: Ausgabe von propget --xml (ExternalsOutcome ungleich Ok = keine), Wurzel des Repositorys,
+    /// Version von svn und svnversion je Ordner ("Packages/Basis=48190M").</summary>
+    ExternalsText: string;
+    ExternalsOutcome: TAtlasVcsOutcome;
+    RepositoryUrl: string;
+    Version: string;
+    FolderVersions: TArray<string>;
     constructor Create(AKind: TAtlasVcsKind);
     class function Has(const AList: TArray<string>; const AName: string): Boolean; static;
     { IAtlasVersionControl }
@@ -122,7 +148,11 @@ type
       overload;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
     { IAtlasVcsSvnWorkingCopy }
-    function WorkingRevisions(out AText: string): TAtlasVcsOutcome;
+    function WorkingRevisions(out AText: string): TAtlasVcsOutcome; overload;
+    function WorkingRevisions(const AFolder: string; out AText: string): TAtlasVcsOutcome; overload;
+    function ExternalsXml(out AText: string): TAtlasVcsOutcome;
+    function RepositoryRoot(out AUrl: string): TAtlasVcsOutcome;
+    function ToolVersion(out AVersion: string): TAtlasVcsOutcome;
   end;
 
   /// <summary>Kennt nur IAtlasVersionControl, nicht IAtlasVcsBranching.</summary>
@@ -145,6 +175,7 @@ begin
   VcsKind := AKind;
   ServerOutcome := TAtlasVcsOutcome.Ok;
   SvnVersionOutcome := TAtlasVcsOutcome.ToolMissing;
+  ExternalsOutcome := TAtlasVcsOutcome.Failed;
 end;
 
 class function TPlanVcs.Has(const AList: TArray<string>; const AName: string): Boolean;
@@ -223,6 +254,39 @@ begin
   Calls := Calls + ['svnversion'];
   AText := SvnVersion;
   Result := SvnVersionOutcome;
+end;
+
+function TPlanVcs.WorkingRevisions(const AFolder: string; out AText: string): TAtlasVcsOutcome;
+var
+  mEntry: string;
+begin
+  Calls := Calls + ['svnversion ' + AFolder];
+  AText := '';
+  Result := TAtlasVcsOutcome.Failed;
+  for mEntry in FolderVersions do
+    if mEntry.StartsWith(AFolder + '=') then
+    begin
+      AText := Copy(mEntry, Length(AFolder) + 2, MaxInt);
+      Result := TAtlasVcsOutcome.Ok;
+    end;
+end;
+
+function TPlanVcs.ExternalsXml(out AText: string): TAtlasVcsOutcome;
+begin
+  AText := ExternalsText;
+  Result := ExternalsOutcome;
+end;
+
+function TPlanVcs.RepositoryRoot(out AUrl: string): TAtlasVcsOutcome;
+begin
+  AUrl := RepositoryUrl;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TPlanVcs.ToolVersion(out AVersion: string): TAtlasVcsOutcome;
+begin
+  AVersion := Version;
+  Result := TAtlasVcsOutcome.Ok;
 end;
 
 function TPlanVcs.RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
@@ -342,6 +406,50 @@ end;
 function Base(AKind: TAtlasVcsBranchBaseKind; const AName, ARevision: string): TAtlasVcsBranchBase;
 begin
   Result := TAtlasVcsBranchBase.Make(AKind, AName, ARevision);
+end;
+
+const
+  cRepository = 'https://svn.firma.local/repo';
+  /// <summary>Drei Externals: ohne Revision, mit Revision, aus fremdem Repository.</summary>
+  cExternals = '# Packages'#10'^/Packages/Basis/trunk Packages/Basis'#10 +
+    '-r 4711 ^/Packages/Kunden/trunk Packages/Kunden'#10'https://svn.lieferant.de/k/trunk Lieferant'#10;
+
+/// <summary>SVN-Fakten mit Layout ^/Kasse und den Externals aus cExternals samt Revisionen der Arbeitskopie.
+/// </summary>
+function ExternalFacts: TAtlasVcsBranchFacts;
+begin
+  Result := SvnFacts('48230');
+  Result.LayoutKnown := True;
+  Result.ProjectRoot := 'Kasse';
+  Result.MainBranch := 'Kasse/trunk';
+  Result.Root := 'C:\Projekte\Kasse';
+  Result.RepositoryRoot := cRepository;
+  Result.SvnVersion := '1.14.3';
+  Result.SvnDefinitions := [TAtlasVcsSvnExternalDefinition.Make('', cExternals)];
+  Result.SvnExternals := TAtlasSvnExternals.ParseAll(Result.SvnDefinitions, cRepository + '/Kasse/trunk',
+    cRepository);
+  Result.SvnExternals[0].WorkingRevision := '48190';
+  Result.SvnExternals[1].WorkingRevision := '4711';
+  Result.SvnExternals[2].WorkingRevision := '17';
+  Result.Externals := True;
+end;
+
+function ExternalRequest(const AFacts: TAtlasVcsBranchFacts;
+  const AActions: TArray<TAtlasVcsExternalAction>): TAtlasVcsBranchRequest;
+var
+  mOptions: TAtlasVcsSvnBranchOptions;
+begin
+  mOptions := TAtlasVcsSvnBranchOptions.Default;
+  mOptions.Key := 'KASSE-42';
+  Result := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Svn, 'KASSE-42-bon',
+    Base(TAtlasVcsBranchBaseKind.Head, 'Kasse/trunk', '48230'), 'KASSE-42 Branch');
+  TAtlasVcsBranchPlan.ApplySvn(Result, AFacts, mOptions);
+  TAtlasVcsBranchPlan.ApplyExternals(Result, AFacts, mOptions, AActions);
+end;
+
+function Line(const ASteps: TArray<TAtlasVcsBranchStep>; AIndex: Integer): string;
+begin
+  Result := string.Join(' ', ASteps[AIndex].Arguments);
 end;
 
 { TAtlasVcsBranchPlanTests }
@@ -794,6 +902,228 @@ begin
   Assert.AreEqual('', TAtlasVcsBranchPlan.CheckoutTarget(mRoot, ExtractFilePath(mRoot) + 'x',
     ExtractFilePath(mRoot) + 'Anderes' + PathDelim + 'a.groupproj'), 'außerhalb der Arbeitskopie');
   Assert.AreEqual('', TAtlasVcsBranchPlan.CheckoutTarget(mRoot, '', mRoot + PathDelim + 'a.groupproj'));
+end;
+
+procedure TAtlasVcsBranchPlanTests.InspectReadsExternals;
+var
+  mFake: TPlanVcs;
+  mVcs: IAtlasVersionControl;
+  mFacts: TAtlasVcsBranchFacts;
+begin
+  mFake := TPlanVcs.Create(TAtlasVcsKind.Svn);
+  mVcs := mFake;
+  mFake.HeadBranch := 'trunk';
+  mFake.HeadRevision := '48213';
+  mFake.RepoPath := 'Kasse/trunk';
+  mFake.RepositoryUrl := cRepository;
+  mFake.Version := '1.14.3';
+  mFake.ExternalsOutcome := TAtlasVcsOutcome.Ok;
+  mFake.ExternalsText := '<?xml version="1.0"?><properties><target path="."><property name="svn:externals">' +
+    StringReplace(cExternals, '&', '&amp;', [rfReplaceAll]) + '</property></target></properties>';
+  mFake.FolderVersions := TArray<string>.Create('Packages/Basis=48190M', 'Packages/Kunden=4711');
+  mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('trunk'));
+  Assert.IsTrue(mFacts.Externals);
+  Assert.AreEqual(cRepository, mFacts.RepositoryRoot);
+  Assert.AreEqual('1.14.3', mFacts.SvnVersion);
+  Assert.AreEqual(1, Integer(Length(mFacts.SvnDefinitions)));
+  Assert.AreEqual(3, Integer(Length(mFacts.SvnExternals)));
+  Assert.AreEqual('Packages/Basis/trunk', mFacts.SvnExternals[0].Source);
+  Assert.AreEqual('48190', mFacts.SvnExternals[0].WorkingRevision);
+  Assert.IsTrue(mFacts.SvnExternals[0].Modified, 'svnversion „M“');
+  Assert.IsFalse(mFacts.SvnExternals[1].Modified);
+  Assert.AreEqual('', mFacts.SvnExternals[2].WorkingRevision, 'svnversion scheitert: unbekannt');
+  Assert.IsTrue(mFacts.SvnExternals[2].Foreign);
+  Assert.IsFalse(mFacts.SvnExternals[0].IsFile, 'Ordner gibt es hier nicht: kein Datei-External');
+  Assert.IsTrue(TPlanVcs.Has(mFake.Calls, 'svnversion Packages/Basis'));
+  // Ohne lesbare Externals: wie vor #1291 der Hinweis aus HasExternals.
+  mFake.ExternalsOutcome := TAtlasVcsOutcome.Failed;
+  mFake.Externals := True;
+  mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('trunk'));
+  Assert.IsTrue(mFacts.Externals);
+  Assert.AreEqual(0, Integer(Length(mFacts.SvnExternals)));
+  mFake.ExternalsOutcome := TAtlasVcsOutcome.Ok;
+  mFake.ExternalsText := '<properties><target';
+  mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('trunk'));
+  Assert.IsTrue(mFacts.Outcome = TAtlasVcsOutcome.Ok, 'kaputtes XML hält das Anlegen nicht auf');
+  mFake.Calls := nil;
+  mFake.FolderVersions := nil;
+  mFacts := TAtlasVcsBranchFacts.Empty;
+end;
+
+procedure TAtlasVcsBranchPlanTests.StepsSvnWithExternals;
+var
+  mFacts: TAtlasVcsBranchFacts;
+  mRequest: TAtlasVcsBranchRequest;
+  mSteps: TArray<TAtlasVcsBranchStep>;
+  mDir: string;
+begin
+  mFacts := ExternalFacts;
+  // Alle ohne Revision festschreiben, svn 1.14: --pin-externals, kein Umschreiben.
+  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Pin, TAtlasVcsExternalAction.Keep,
+    TAtlasVcsExternalAction.Pin]);
+  Assert.IsTrue(TAtlasVcsBranchPlan.UsesPinExternals(mRequest));
+  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
+  Assert.AreEqual(2, Integer(Length(mSteps)));
+  Assert.AreEqual('copy ^/Kasse/trunk@48230 ^/Kasse/branches/KASSE-42-bon@ --parents -m KASSE-42 Branch ' +
+    '--pin-externals', Line(mSteps, 0));
+  Assert.AreEqual('switch', mSteps[1].Arguments[0]);
+  // svn 1.8: Atlas schreibt im Branch selbst fest, mit der Revision der External-Arbeitskopie.
+  mFacts.SvnVersion := '1.8.19';
+  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Pin, TAtlasVcsExternalAction.Keep,
+    TAtlasVcsExternalAction.Pin]);
+  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
+  Assert.AreEqual(5, Integer(Length(mSteps)));
+  Assert.AreEqual('copy ^/Kasse/trunk@48230 ^/Kasse/branches/KASSE-42-bon@ --parents -m KASSE-42 Branch',
+    Line(mSteps, 0));
+  mDir := TPath.Combine(mRequest.WorkFolder, 'p0');
+  Assert.AreEqual('checkout ^/Kasse/branches/KASSE-42-bon@ ' + mDir + ' --depth empty', Line(mSteps, 1));
+  Assert.IsTrue(mSteps[1].Remote);
+  Assert.IsFalse(mSteps[1].ChangesServer);
+  Assert.AreEqual('propset svn:externals -F ' + mDir + '.txt ' + mDir, Line(mSteps, 2));
+  Assert.AreEqual(mDir + '.txt', mSteps[2].InputFile);
+  Assert.AreEqual('# Packages'#10'-r 48190 ^/Packages/Basis/trunk Packages/Basis'#10 +
+    '-r 4711 ^/Packages/Kunden/trunk Packages/Kunden'#10'-r 17 https://svn.lieferant.de/k/trunk Lieferant'#10,
+    mSteps[2].InputText, 'nur die festzuschreibenden Zeilen geändert');
+  Assert.AreEqual('svn:externals: Packages/Basis -r 48190, Lieferant -r 17', mSteps[2].Note);
+  Assert.IsFalse(mSteps[2].Remote);
+  Assert.AreEqual('commit ' + mDir + ' -m KASSE-42 Branch', Line(mSteps, 3));
+  Assert.IsTrue(mSteps[3].ChangesServer);
+  Assert.AreEqual('switch', mSteps[4].Arguments[0]);
+  Assert.Contains(TAtlasVcsBranchPlan.StepText(TAtlasVcsKind.Svn, mSteps[2]), '(svn:externals: Packages/Basis');
+  // Mitverzweigen: Package zuerst, dann Projekt, dann Umschreiben, dann umschalten.
+  mFacts.SvnVersion := '1.14.3';
+  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Branch, TAtlasVcsExternalAction.Keep,
+    TAtlasVcsExternalAction.Pin]);
+  Assert.IsFalse(TAtlasVcsBranchPlan.UsesPinExternals(mRequest), 'Umschreiben nötig: selbst festschreiben');
+  Assert.AreEqual('Packages/Basis/branches/KASSE-42-bon', mRequest.ExternalLocations[0]);
+  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
+  Assert.AreEqual(6, Integer(Length(mSteps)));
+  Assert.AreEqual('copy ^/Packages/Basis/trunk@48190 ^/Packages/Basis/branches/KASSE-42-bon@ --parents -m ' +
+    'KASSE-42 Branch', Line(mSteps, 0));
+  Assert.IsTrue(mSteps[0].ChangesServer);
+  Assert.AreEqual('^/Kasse/trunk@48230', mSteps[1].Arguments[1]);
+  Assert.AreEqual('checkout', mSteps[2].Arguments[0]);
+  Assert.AreEqual('# Packages'#10'^/Packages/Basis/branches/KASSE-42-bon Packages/Basis'#10 +
+    '-r 4711 ^/Packages/Kunden/trunk Packages/Kunden'#10'-r 17 https://svn.lieferant.de/k/trunk Lieferant'#10,
+    mSteps[3].InputText);
+  Assert.AreEqual('svn:externals: Packages/Basis → ^/Packages/Basis/branches/KASSE-42-bon, Lieferant -r 17',
+    mSteps[3].Note);
+  Assert.AreEqual('commit', mSteps[4].Arguments[0]);
+  Assert.AreEqual('switch', mSteps[5].Arguments[0]);
+  Assert.AreEqual(3, Integer(Length(TAtlasVcsBranchPlan.ServerStepsDone(mSteps, 6))),
+    'zwei Kopien und der Commit bleiben nach einem Fehler');
+  // Nur lassen: wie vor #1291.
+  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Keep, TAtlasVcsExternalAction.Keep,
+    TAtlasVcsExternalAction.Keep]);
+  Assert.AreEqual(2, Integer(Length(TAtlasVcsBranchPlan.Steps(mRequest))));
+  Assert.AreEqual(6, Integer(Length(TAtlasVcsBranchPlan.Steps(mRequest)[0].Arguments)), 'ohne --pin-externals');
+  // Ungültige Wahl: keine Schritte.
+  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Ask, TAtlasVcsExternalAction.Keep,
+    TAtlasVcsExternalAction.Keep]);
+  Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.Steps(mRequest))), 'noch nicht gewählt');
+  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Keep, TAtlasVcsExternalAction.Keep,
+    TAtlasVcsExternalAction.Branch]);
+  Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.Steps(mRequest))), 'fremdes Repository mitverzweigen');
+  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Keep, TAtlasVcsExternalAction.Pin,
+    TAtlasVcsExternalAction.Keep]);
+  Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.Steps(mRequest))), 'feste Revision festschreiben');
+  mFacts.SvnVersion := '1.8.0';
+  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Pin, TAtlasVcsExternalAction.Keep,
+    TAtlasVcsExternalAction.Keep]);
+  mRequest.WorkFolder := '';
+  Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.Steps(mRequest))), 'Umschreiben ohne Arbeitsordner');
+  mRequest := Default(TAtlasVcsBranchRequest);
+  mSteps := nil;
+  mFacts := TAtlasVcsBranchFacts.Empty;
+end;
+
+procedure TAtlasVcsBranchPlanTests.ExternalsDefaultsAndExecute;
+var
+  mFacts: TAtlasVcsBranchFacts;
+  mOptions: TAtlasVcsSvnBranchOptions;
+  mRequest: TAtlasVcsBranchRequest;
+  mActions: TArray<TAtlasVcsExternalAction>;
+  mFake: TPlanVcs;
+  mBranching: IAtlasVcsBranching;
+  mRun: TAtlasVcsBranchRun;
+  mPath: string;
+begin
+  mFacts := ExternalFacts;
+  mOptions := TAtlasVcsSvnBranchOptions.Default;
+  mActions := TAtlasVcsBranchPlan.DefaultActions(mFacts, mOptions);
+  Assert.AreEqual(3, Integer(Length(mActions)));
+  Assert.IsTrue(mActions[0] = TAtlasVcsExternalAction.Pin);
+  Assert.IsTrue(mActions[1] = TAtlasVcsExternalAction.Keep, 'mit Revision');
+  Assert.IsTrue(mActions[2] = TAtlasVcsExternalAction.Pin);
+  Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'KASSE-42-bon', 'm', mOptions, mRequest));
+  Assert.AreEqual(3, Integer(Length(mRequest.ExternalActions)));
+  Assert.IsTrue(TAtlasVcsBranchPlan.ChangesExternals(mRequest), 'festschreiben und umschalten');
+  // ask: ohne Dialog keine Vorgabe-Anfrage.
+  mOptions.ExternalsOnBranch := TAtlasVcsExternalAction.Ask;
+  Assert.IsFalse(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'KASSE-42-bon', 'm', mOptions, mRequest));
+  // Wie vor #1291: nichts zu ändern, kein neuer Index.
+  Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'KASSE-42-bon', 'm', TAtlasVcsSvnBranchOptions.Legacy,
+    mRequest));
+  Assert.IsFalse(TAtlasVcsBranchPlan.ChangesExternals(mRequest));
+  // Ort eines Packages: unter dessen Projektwurzel, auch bei festem Ort des Projekts.
+  Assert.IsTrue(TAtlasVcsBranchPlan.ExternalLocation(mFacts.SvnExternals[0], TAtlasVcsSvnBranchOptions.Legacy,
+    'KASSE-42-bon', mPath));
+  Assert.AreEqual('Packages/Basis/branches/KASSE-42-bon', mPath);
+  Assert.IsFalse(TAtlasVcsBranchPlan.ExternalLocation(mFacts.SvnExternals[2], mOptions, 'x', mPath), 'fremd');
+  Assert.AreEqual('r4711', 'r' + TAtlasVcsBranchPlan.ExternalRevision(mFacts.SvnExternals[1]));
+  Assert.AreEqual('48190', TAtlasVcsBranchPlan.ExternalRevision(mFacts.SvnExternals[0]));
+  // Ausführen: Arbeitsordner (Rest eines abgebrochenen Laufs) vorher und nachher weg.
+  mFacts.SvnVersion := '1.8.0';
+  mRequest := ExternalRequest(mFacts, [TAtlasVcsExternalAction.Pin, TAtlasVcsExternalAction.Keep,
+    TAtlasVcsExternalAction.Keep]);
+  TDirectory.CreateDirectory(TPath.Combine(mRequest.WorkFolder, 'p0'));
+  mFake := TPlanVcs.Create(TAtlasVcsKind.Svn);
+  mBranching := mFake;
+  mRun := TAtlasVcsBranchPlan.Execute(mBranching, mRequest, TAtlasVcsBranchPlan.Steps(mRequest), nil);
+  Assert.IsTrue(mRun.Succeeded);
+  Assert.AreEqual(5, Integer(Length(mFake.Calls)));
+  Assert.IsFalse(TDirectory.Exists(mRequest.WorkFolder));
+  Assert.Contains(mRequest.WorkFolder, 'Atlas-Branch-KASSE-42-bon');
+  mFake.Calls := nil;
+  mActions := nil;
+  mRequest := Default(TAtlasVcsBranchRequest);
+  mFacts := TAtlasVcsBranchFacts.Empty;
+end;
+
+procedure TAtlasVcsBranchPlanTests.ExternalRulesRoundTrip;
+var
+  mRules: TArray<TAtlasVcsExternalRule>;
+  mInvalid: string;
+begin
+  mRules := TAtlasVcsBranchPlan.RulesOf('[{"source": "^/Packages/Basis", "onBranch": "keep"}, ' +
+    '{"source": "", "onBranch": "pin"}, {"source": "^/Libs", "onBranch": "ask"}, ' +
+    '{"source": "^/packages/basis", "onBranch": "branch"}, {"source": "https://svn.x/Libs", "onBranch": "BRANCH"}]');
+  Assert.AreEqual(2, Integer(Length(mRules)), 'ohne Quelle, ask und doppelte Quelle fallen weg');
+  Assert.AreEqual('^/Packages/Basis', mRules[0].Source);
+  Assert.IsTrue(mRules[0].Action = TAtlasVcsExternalAction.Keep);
+  Assert.IsTrue(mRules[1].Action = TAtlasVcsExternalAction.Branch);
+  Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}, ' +
+    '{"source": "https://svn.x/Libs", "onBranch": "branch"}]', TAtlasVcsBranchPlan.RulesJson(mRules));
+  Assert.AreEqual('^/Packages/Basis = keep' + sLineBreak + 'https://svn.x/Libs = branch',
+    TAtlasVcsBranchPlan.RulesText(mRules));
+  Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.RulesOf('kaputt'))));
+  Assert.AreEqual('[]', TAtlasVcsBranchPlan.RulesJson(nil));
+  Assert.IsTrue(TAtlasVcsBranchPlan.RulesOfText('# Kommentar'#13#10'^/Packages/Basis = keep'#13#10#13#10 +
+    '  ^/Libs=pin '#10'^/packages/basis = branch', mRules, mInvalid));
+  Assert.AreEqual(2, Integer(Length(mRules)));
+  Assert.IsTrue(mRules[0].Action = TAtlasVcsExternalAction.Branch, 'letzte Zeile gewinnt');
+  Assert.AreEqual('^/Libs', mRules[1].Source);
+  Assert.IsTrue(mRules[1].Action = TAtlasVcsExternalAction.Pin);
+  Assert.AreEqual('', mInvalid);
+  Assert.IsFalse(TAtlasVcsBranchPlan.RulesOfText('^/a = keep'#13#10'^/b = fragen', mRules, mInvalid));
+  Assert.AreEqual('^/b = fragen', mInvalid);
+  Assert.AreEqual(0, Integer(Length(mRules)));
+  Assert.IsFalse(TAtlasVcsBranchPlan.RulesOfText('= keep', mRules, mInvalid));
+  Assert.IsFalse(TAtlasVcsBranchPlan.RulesOfText('^/a keep', mRules, mInvalid));
+  Assert.IsTrue(TAtlasVcsBranchPlan.RulesOfText('', mRules, mInvalid));
+  Assert.AreEqual(0, Integer(Length(mRules)));
+  mRules := nil;
+  mInvalid := '';
 end;
 
 initialization

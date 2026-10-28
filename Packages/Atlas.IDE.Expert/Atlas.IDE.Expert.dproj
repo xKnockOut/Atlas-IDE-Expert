@@ -607,6 +607,7 @@
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Internals.GitParser.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnParser.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnLayout.pas"/>
+        <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnExternals.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Tools.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.ToolCheck.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.ServerCheck.pas"/>

@@ -166,6 +166,9 @@ type
     /// Angebot, die Gruppe dort zu öffnen); sonst ''.</summary>
     CheckoutFolder: string;
     WorkingRoot: string;
+    /// <summary>SVN-Externals (#1291): Der Branch hat Externals festgeschrieben bzw. mitverzweigt und die
+    /// Arbeitskopie wurde umgeschaltet; danach den Index neu aufbauen.</summary>
+    IndexRebuild: Boolean;
     function Succeeded: Boolean;
   end;
 
@@ -646,12 +649,14 @@ begin
     Result.Reason := TAtlasVcsOutcome.Failed;
     Exit;
   end;
-  Result.Run := TAtlasVcsBranchPlan.Execute(mBranching, Result.Steps, AProgress);
+  // Mit der Anfrage: Der Arbeitsordner für das Umschreiben der Externals (#1291) wird davor und danach gelöscht.
+  Result.Run := TAtlasVcsBranchPlan.Execute(mBranching, mRequest, Result.Steps, AProgress);
   Result.Reason := Result.Run.Outcome;
   if Result.Run.Succeeded then
   begin
     Result.Base := TAtlasVcsBranchPlan.BaseName(mRequest.Kind, mRequest.Base);
     Result.Outcome := TAtlasIssueStartOutcome.Started;
+    Result.IndexRebuild := TAtlasVcsBranchPlan.ChangesExternals(mRequest);
     if (mRequest.Kind = TAtlasVcsKind.Svn) and (mRequest.After = TAtlasVcsSvnAfter.Checkout) then
     begin
       Result.CheckoutFolder := mRequest.CheckoutFolder;
