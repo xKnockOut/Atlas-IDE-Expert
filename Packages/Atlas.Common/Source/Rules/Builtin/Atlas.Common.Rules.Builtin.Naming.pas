@@ -298,7 +298,7 @@ var
   Index: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(FTokens) do
+  for Index := TSyntaxTree.FirstTokenOf(FTokens, AStart) to High(FTokens) do
   begin
     if FTokens[Index].Offset >= AEnd then
       Break;
@@ -330,7 +330,7 @@ function TNamingCheck.FirstNameToken(ANode: TSyntaxNode; const AName: string; ou
 var
   Index: Integer;
 begin
-  for Index := 0 to High(FTokens) do
+  for Index := TSyntaxTree.FirstTokenOf(FTokens, ANode.StartOffset) to High(FTokens) do
   begin
     if FTokens[Index].Offset >= ANode.EndOffset then
       Break;
@@ -775,10 +775,9 @@ function TNamingCheck.IsInlineFor(AFor: TSyntaxNode): Boolean;
 var
   Index: Integer;
 begin
-  Result := False;
-  for Index := 0 to High(FTokens) - 1 do
-    if FTokens[Index].Offset >= AFor.StartOffset then
-      Exit(FTokens[Index].IsKeyword('for') and FTokens[Index + 1].IsKeyword('var'));
+  // Binär zum Anfang der Schleife statt ab Dateianfang (#1342).
+  Index := TSyntaxTree.FirstTokenOf(FTokens, AFor.StartOffset);
+  Result := (Index < High(FTokens)) and FTokens[Index].IsKeyword('for') and FTokens[Index + 1].IsKeyword('var');
 end;
 
 procedure TNamingCheck.CheckInlineFor(AFor: TSyntaxNode);
@@ -830,7 +829,7 @@ begin
       if ContainsKind(Method, TSyntaxKind.WithStatement) or RedeclaresInBody(Method, AName) then
         CanFix := False;
     // Ab dem Ende der Klasse: Methoden (unqualifiziert, Self.Name) und TTyp.Name überall.
-    for Index := 0 to High(FTokens) do
+    for Index := TSyntaxTree.FirstTokenOf(FTokens, ABody.EndOffset) to High(FTokens) do
       if (FTokens[Index].Offset >= ABody.EndOffset) and SameText(FTokens[Index].Text, AName) and
         (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
         ((FTokens[Index - 1].IsSymbol('.') and MatchText(FTokens[Index - 2].Text, ['Self', TypeName])) or

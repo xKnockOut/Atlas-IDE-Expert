@@ -281,6 +281,7 @@ function RoutineItem(ATree: TSyntaxTree; ANode: TSyntaxNode; const AFileName: st
 var
   Dot: Integer;
   Token: TPascalToken;
+  mIndex: Integer;
 begin
   Dot := LastDelimiter('.', ANode.Name);
   Result.Name := Copy(ANode.Name, Dot + 1, MaxInt);
@@ -293,8 +294,9 @@ begin
   Result.FileName := AFileName;
   Result.Range := NodeRange(ANode);
   Result.SelectionRange := Result.Range;
-  for Token in ATree.Tokens do
+  for mIndex := ATree.FirstTokenFrom(ANode.StartOffset) to High(ATree.Tokens) do
   begin
+    Token := ATree.Tokens[mIndex];
     if Token.Offset >= ANode.EndOffset then
       Break;
     // Erst ab dem Knoten: Ein Semikolon davor (unit X;) beendete die Suche sonst vor dem Kopf, und der Name
@@ -634,6 +636,7 @@ var
   Tree: TSyntaxTree;
   Body, Block: TSyntaxNode;
   Token: TPascalToken;
+  mIndex: Integer;
   Resolved: TResolvedSymbol;
   Callee: THierarchyItem;
   Calls: TList<THierarchyCall>;
@@ -653,8 +656,9 @@ begin
     if Body = nil then
       Exit;
     Block := Body.FindChild(TSyntaxKind.Block);
-    for Token in Tree.Tokens do
+    for mIndex := Tree.FirstTokenFrom(Block.StartOffset) to High(Tree.Tokens) do
     begin
+      Token := Tree.Tokens[mIndex];
       if Token.Offset >= Block.EndOffset then
         Break;
       if (Token.Offset < Block.StartOffset) or (Token.Kind <> TPascalTokenKind.Identifier) then

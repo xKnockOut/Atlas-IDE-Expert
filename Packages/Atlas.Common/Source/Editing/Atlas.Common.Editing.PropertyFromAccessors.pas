@@ -634,7 +634,7 @@ begin
   Result.Virtual_ := ARoutine.Virtual_;
   Result.NamePos := ARoutine.Node.StartPos;
   Tokens := FTree.Tokens;
-  for Token := 0 to High(Tokens) do
+  for Token := TSyntaxTree.FirstTokenOf(Tokens, ARoutine.Node.StartOffset) to High(Tokens) do
     if (Tokens[Token].Offset >= ARoutine.Node.StartOffset) and (Tokens[Token].Kind = TPascalTokenKind.Identifier) and
       SameText(Tokens[Token].Text, ARoutine.Name) then
     begin

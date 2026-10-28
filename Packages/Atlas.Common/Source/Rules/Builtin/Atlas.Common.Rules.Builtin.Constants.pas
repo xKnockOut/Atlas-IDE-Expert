@@ -315,7 +315,6 @@ end;
 function TTypedNames.Wanted(const ATypeName: string): Boolean;
 var
   Key: string;
-  Location: TSymbolLocation;
 begin
   Key := TNarrowingAssignmentRule.CanonicalTypeName(ATypeName);
   if FWanted.ContainsKey(Key) then
@@ -326,12 +325,11 @@ begin
   FTypes.Add(Key, False);
   Result := False;
   if (FIndex <> nil) and IsValidIdent(ATypeName, True) then
-    for Location in FIndex.FindSymbols(ATypeName) do
-      if (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and Wanted(TypeBodyOf(Location.Symbol.Signature)) then
+    Result := FIndex.HasSymbol(ATypeName,
+      function(const ASymbol: TIndexSymbol): Boolean
       begin
-        Result := True;
-        Break;
-      end;
+        Result := (ASymbol.Kind = TIndexSymbolKind.TypeAlias) and Wanted(TypeBodyOf(ASymbol.Signature));
+      end);
   FTypes[Key] := Result;
 end;
 
@@ -410,7 +408,6 @@ end;
 function TTypedNames.Suspect(const AName: string): Boolean;
 var
   Key: string;
-  Location: TSymbolLocation;
 begin
   Key := LowerCase(AName);
   if (Key = '') or FLocal.ContainsKey(Key) then
@@ -419,14 +416,13 @@ begin
     Exit;
   Result := False;
   if FIndex <> nil then
-    for Location in FIndex.FindSymbols(AName) do
-      if (Location.Symbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
-        TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constant]) and
-        (Location.Symbol.TypeName <> '') and Wanted(Location.Symbol.TypeName) then
+    Result := FIndex.HasSymbol(AName,
+      function(const ASymbol: TIndexSymbol): Boolean
       begin
-        Result := True;
-        Break;
-      end;
+        Result := (ASymbol.Kind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
+          TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constant]) and
+          (ASymbol.TypeName <> '') and Wanted(ASymbol.TypeName);
+      end);
   FSuspects.Add(Key, Result);
 end;
 
@@ -1940,7 +1936,6 @@ var
   function Suspect(const AName: string): Boolean;
   var
     Key: string;
-    Location: TSymbolLocation;
   begin
     Key := LowerCase(AName);
     if (Key = '') or LocalNames.ContainsKey(Key) then
@@ -1949,13 +1944,11 @@ var
       Exit;
     Result := False;
     if AContext.Index <> nil then
-      for Location in AContext.Index.FindSymbols(AName) do
-        if (Location.Symbol.Kind = TIndexSymbolKind.Constant) and
-          IsTypedConstant(Location.Symbol.TypeName, Location.Symbol.Signature) then
+      Result := AContext.Index.HasSymbol(AName,
+        function(const ASymbol: TIndexSymbol): Boolean
         begin
-          Result := True;
-          Break;
-        end;
+          Result := (ASymbol.Kind = TIndexSymbolKind.Constant) and IsTypedConstant(ASymbol.TypeName, ASymbol.Signature);
+        end);
     Suspects.Add(Key, Result);
   end;
 

@@ -555,6 +555,7 @@ var
   Name: string;
   Inner: TArray<TSyntaxNode>;
   Token: TPascalToken;
+  mIndex: Integer;
   Skip: Integer;
   Parts: TArray<string>;
 begin
@@ -590,8 +591,9 @@ begin
     end);
   Parts := nil;
   Skip := -1;
-  for Token in ATree.Tokens do
+  for mIndex := ATree.FirstTokenFrom(ANode.StartOffset) to High(ATree.Tokens) do
   begin
+    Token := ATree.Tokens[mIndex];
     if (Token.Offset < ANode.StartOffset) or (Token.Offset >= ANode.EndOffset) or (Token.Offset < Skip) or
       (Token.Kind = TPascalTokenKind.Comment) then
       Continue;
@@ -1064,7 +1066,7 @@ var
   Lines: TLineTable;
   Node, Expression: TSyntaxNode;
   Index, Offset: Integer;
-  Token: TPascalToken;
+  mIndex: Integer;
 begin
   ATarget := Default(TInlineAliasTarget);
   AReason := '';
@@ -1086,8 +1088,9 @@ begin
   if (Expression = nil) or (Node.ChildCount <> 1) then
     Exit(Fail(Format('%s ist kein Alias', [Node.Name]), AReason));
   // X = type Y: eigener Typ.
-  for Token in ATree.Tokens do
-    if (Token.Offset > Node.StartOffset) and (Token.Offset < Expression.StartOffset) and Token.IsKeyword('type') then
+  for mIndex := ATree.FirstTokenFrom(Node.StartOffset + 1) to High(ATree.Tokens) do
+    if (ATree.Tokens[mIndex].Offset > Node.StartOffset) and (ATree.Tokens[mIndex].Offset < Expression.StartOffset) and
+      ATree.Tokens[mIndex].IsKeyword('type') then
       Exit(Fail(Format('%s = type … ist ein eigener Typ; Auflösen würde die Bedeutung ändern', [Node.Name]),
         AReason));
   ATarget.Name := Node.Name;

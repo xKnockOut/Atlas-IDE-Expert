@@ -385,14 +385,16 @@ begin
     Exit;
   AFirst := AIndex;
   ALast := AIndex;
-  for Index := 0 to High(ATokens) do
-    if (ATokens[Index].Offset >= Best.StartOffset) and (ATokens[Index].Offset < Best.EndOffset) then
-    begin
-      if Index < AFirst then
-        AFirst := Index;
-      if Index > ALast then
-        ALast := Index;
-    end;
+  // Nur die Token von Best, binär angesprungen statt die ganze Datei (#1342).
+  Index := TSyntaxTree.FirstTokenOf(ATokens, Best.StartOffset);
+  while (Index <= High(ATokens)) and (ATokens[Index].Offset < Best.EndOffset) do
+  begin
+    if Index < AFirst then
+      AFirst := Index;
+    if Index > ALast then
+      ALast := Index;
+    Inc(Index);
+  end;
 end;
 
 procedure TExceptionFreedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

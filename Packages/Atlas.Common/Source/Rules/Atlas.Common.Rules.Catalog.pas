@@ -73,6 +73,8 @@ type
     FShared: TRuleCatalog;
   private
     FEntries: TList<TRuleCatalogEntry>;
+    // Kennung (klein) -> Position des ersten Eintrags in FEntries; IndexOf lief linear über alle Regeln (#1342).
+    FPositions: TDictionary<string, Integer>;
     procedure ParseBase(const AJson: string);
     procedure ApplyOverlay(const AJson: string);
     function IndexOf(const AId: string): Integer;
@@ -273,6 +275,7 @@ constructor TRuleCatalog.Create(const ABase, AOverlay: string);
 begin
   inherited Create;
   FEntries := TList<TRuleCatalogEntry>.Create;
+  FPositions := TDictionary<string, Integer>.Create;
   ParseBase(ABase);
   if AOverlay <> '' then
     ApplyOverlay(AOverlay);
@@ -280,6 +283,7 @@ end;
 
 destructor TRuleCatalog.Destroy;
 begin
+  FPositions.Free;
   FEntries.Free;
   inherited;
 end;
@@ -325,6 +329,8 @@ begin
         raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Stufe "%s"', [Entry.Id, Entry.Level]);
       Entry.OverriddenBy := OverriddenByOf(Item, Entry.Id);
       FEntries.Add(Entry);
+      if not FPositions.ContainsKey(LowerCase(Entry.Id)) then
+        FPositions.Add(LowerCase(Entry.Id), FEntries.Count - 1);
     end;
   finally
     Root.Free;
@@ -381,13 +387,9 @@ begin
 end;
 
 function TRuleCatalog.IndexOf(const AId: string): Integer;
-var
-  I: Integer;
 begin
-  for I := 0 to FEntries.Count - 1 do
-    if SameText(FEntries[I].Id, AId) then
-      Exit(I);
-  Result := -1;
+  if not FPositions.TryGetValue(LowerCase(AId), Result) then
+    Result := -1;
 end;
 
 function TRuleCatalog.TryFind(const AId: string; out AEntry: TRuleCatalogEntry): Boolean;
