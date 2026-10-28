@@ -149,6 +149,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 ### Build, test, debug
 
 - **Release build guard:** checks the project options before a release build (DEBUG symbol, debug information, …)
+- **Build once on opening**, as soon as the IDE is idle, optionally always with the same configuration and target platform (say Debug/Win64) whatever the project is set to; afterwards the project is back as it was
 - **DUnitX tests** run from the editor, and a single test starts in the debugger (code lens on `[Test]` and `[TestFixture]`)
 - **Launch profiles** for parameters, working folder, environment and host application
 - **Values in the hover while debugging** (see [Understanding](#understanding))

@@ -1792,6 +1792,24 @@
       "x-page": "Compiler",
       "x-parent": "build.onOpen"
     },
+    "BuildOnOpenConfig": {
+      "type": "string",
+      "default": "",
+      "x-key": "build.onOpenConfig",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "build.onOpen",
+      "x-issue": "#1293"
+    },
+    "BuildOnOpenPlatform": {
+      "type": "string",
+      "default": "",
+      "x-key": "build.onOpenPlatform",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "build.onOpen",
+      "x-issue": "#1293"
+    },
     "CompileOnSave": {
       "type": "boolean",
       "default": false,

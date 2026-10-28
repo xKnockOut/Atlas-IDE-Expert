@@ -1117,11 +1117,15 @@ begin
     Assert.AreEqual(0, Page.OpenBuildScopeChoice.Choice, 'alle Projekte');
     Assert.AreEqual('3000', Page.OpenBuildDelayEdit.Text);
     Assert.AreEqual('', Page.OpenBuildExcludeEdit.Text);
+    Assert.AreEqual('', Page.OpenBuildConfigEdit.Text);
+    Assert.AreEqual('', Page.OpenBuildPlatformEdit.Text);
     // Erzeugen, nur das aktive Projekt, 5 s, ein Package ausgeschlossen.
     Page.OpenBuildChoice.Choice := 3;
     Page.OpenBuildScopeChoice.Choice := 1;
     Page.OpenBuildDelayEdit.Text := '5000';
     Page.OpenBuildExcludeEdit.Text := 'Atlas.IDE.Expert.dproj';
+    Page.OpenBuildConfigEdit.Text := ' Debug ';
+    Page.OpenBuildPlatformEdit.Text := 'Win64';
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.BuildOnOpen);
@@ -1129,7 +1133,10 @@ begin
     Assert.AreEqual('active', Saved.BuildOnOpenScope);
     Assert.AreEqual(5000, Saved.BuildOnOpenDelayMs);
     Assert.AreEqual('Atlas.IDE.Expert', Saved.BuildOnOpenExclude);
+    Assert.AreEqual('Debug', Saved.BuildOnOpenConfig);
+    Assert.AreEqual('Win64', Saved.BuildOnOpenPlatform);
     Page.LoadFrom(Saved);
+    Assert.AreEqual('Debug', Page.OpenBuildConfigEdit.Text);
     Assert.AreEqual(3, Page.OpenBuildChoice.Choice);
     Assert.AreEqual(1, Page.OpenBuildScopeChoice.Choice);
     // Syntaxprüfung; „nicht bauen“ schaltet ab und behält die Art.

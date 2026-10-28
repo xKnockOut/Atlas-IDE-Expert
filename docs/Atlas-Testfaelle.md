@@ -2111,6 +2111,10 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; unter *Tools › 
 | OB16 | IDE mit „Projekt beim Start laden“ starten | Das geladene Projekt bzw. die Gruppe wird nach dem Laden einmal gebaut |
 | OB17 | Schnellschalter „Beim Öffnen einmal bauen“ aus, Projekt öffnen; Quelle „Bauen beim Öffnen“ auf „Aus“ | Kein Bau; bei aus geschalteter Quelle keine Zusammenfassung, die Einträge „Build fertig“ bleiben |
 | OB18 | Abgesicherter Start (#722) | Kein Bau beim Öffnen |
+| OB19 | Projekt steht auf Release/Win32; „Konfiguration“ `Debug`, „Zielplattform“ `Win64` (#1293), Projekt öffnen | Gebaut wird Debug/Win64 (Ausgabeordner, Meldungen); danach zeigt die Projektverwaltung wieder Release/Win32 |
+| OB20 | Wie OB19 mit Hintergrundcompilierung der IDE an (#1293) | Während des Laufs Debug/Win64, erst nach dem Ende wieder Release/Win32; die IDE bleibt bedienbar |
+| OB21 | Gruppe, ein Projekt ohne Win64 bzw. ohne Konfiguration `Debug` (#1293) | Dieses Projekt wird mit seiner eigenen Plattform bzw. Konfiguration gebaut; Zusammenfassung (Warnung) „‹Projekt› kennt Win64 nicht; gebaut wie im Projekt eingestellt“ |
+| OB22 | Beide Felder leer (#1293) | Verhalten wie bisher: gebaut wird, was im Projekt eingestellt ist |
 
 ## Ausblenden am Element (#628)
 

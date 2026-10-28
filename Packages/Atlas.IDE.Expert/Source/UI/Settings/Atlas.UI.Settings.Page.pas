@@ -262,11 +262,14 @@ type
     FCheckMax: TEdit;
     FMcpBuild: TCheckBox;
     /// <summary>Beim Öffnen bauen (build.onOpen*): eine Auswahl „nicht bauen / Syntaxprüfung / Compilieren /
-    /// Erzeugen“, Umfang in einer Gruppe, Wartezeit und ausgeschlossene Projekte.</summary>
+    /// Erzeugen“, Umfang in einer Gruppe, Wartezeit, ausgeschlossene Projekte, Konfiguration und Plattform
+    /// (#1293).</summary>
     FOpenBuild: TAtlasChoiceBox;
     FOpenBuildScope: TAtlasChoiceBox;
     FOpenBuildDelay: TEdit;
     FOpenBuildExclude: TEdit;
+    FOpenBuildConfig: TEdit;
+    FOpenBuildPlatform: TEdit;
     /// <summary>DUnitX-Tests ausführen (#69): Befehle, vorher bauen, nach dem Build; Build ohne Hinweise (#530).
     /// </summary>
     FTestRun: TCheckBox;
@@ -1063,6 +1066,8 @@ type
     property ListScopeChoice: TAtlasChoiceBox read FListScope;
     property OpenBuildDelayEdit: TEdit read FOpenBuildDelay;
     property OpenBuildExcludeEdit: TEdit read FOpenBuildExclude;
+    property OpenBuildConfigEdit: TEdit read FOpenBuildConfig;
+    property OpenBuildPlatformEdit: TEdit read FOpenBuildPlatform;
     /// <summary>Zum Testen: Tests ausführen (#69).</summary>
     property CodeLensTestsCheck: TCheckBox read FCodeLensTests;
     property TestRunCheck: TCheckBox read FTestRun;
@@ -2541,6 +2546,8 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildScopeActive)]);
   FOpenBuildDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildDelay));
   FOpenBuildExclude := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildExclude));
+  FOpenBuildConfig := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildConfig));
+  FOpenBuildPlatform := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildPlatform));
 end;
 
 procedure TAtlasSettingsPage.LoadOpenBuild(const ASettings: TAtlasPluginSettings);
@@ -2556,6 +2563,8 @@ begin
   FOpenBuildScope.Choice := Ord(TAtlasOpenBuild.ScopeOf(ASettings.BuildOnOpenScope));
   FOpenBuildDelay.Text := IntToStr(ASettings.BuildOnOpenDelayMs);
   FOpenBuildExclude.Text := TAtlasOpenBuild.NormalizedExclude(ASettings.BuildOnOpenExclude);
+  FOpenBuildConfig.Text := ASettings.BuildOnOpenConfig;
+  FOpenBuildPlatform.Text := ASettings.BuildOnOpenPlatform;
 end;
 
 procedure TAtlasSettingsPage.SaveOpenBuild(var ASettings: TAtlasPluginSettings);
@@ -2569,6 +2578,8 @@ begin
     ASettings.BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuildScope(FOpenBuildScope.Choice)];
   ASettings.BuildOnOpenDelayMs := StrToIntDef(FOpenBuildDelay.Text, ASettings.BuildOnOpenDelayMs);
   ASettings.BuildOnOpenExclude := TAtlasOpenBuild.NormalizedExclude(FOpenBuildExclude.Text);
+  ASettings.BuildOnOpenConfig := Trim(FOpenBuildConfig.Text);
+  ASettings.BuildOnOpenPlatform := Trim(FOpenBuildPlatform.Text);
 end;
 
 procedure TAtlasSettingsPage.AddReleaseSection;
@@ -3053,6 +3064,8 @@ begin
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
   FMarks.Bind(FOpenBuildExclude, ['BuildOnOpenExclude']);
+  FMarks.Bind(FOpenBuildConfig, ['BuildOnOpenConfig']);
+  FMarks.Bind(FOpenBuildPlatform, ['BuildOnOpenPlatform']);
   FMarks.Bind(FReleaseGuard, ['ReleaseGuard']);
   FMarks.Bind(FBuildGate, ['BuildGate']);
   FMarks.Bind(FReleaseConfigs, ['ReleaseConfigs']);
