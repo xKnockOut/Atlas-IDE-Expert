@@ -122,6 +122,10 @@ uses
   Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.Problems.Controller;
 
+const
+  /// <summary>Mindestkontrast einer Paarfarbe zum Hintergrund der Zeile (#1244); darunter die Farbe der IDE.</summary>
+  MinPairContrast = 3.0;
+
 { TAtlasEditorPairs.TEvents }
 
 function TAtlasEditorPairs.TEvents.AllowedEvents: TCodeEditorEvents;
@@ -469,6 +473,13 @@ begin
     end;
     if not Found then
       Exit;
+    // Zeilen mit eigenem Hintergrund (Haltepunkt, Ausführungspunkt, Fehlerzeile, #1244): Eine Paarfarbe, die dort zu
+    // wenig absticht, weicht der Schriftfarbe, die die IDE für die Zeile vorbereitet hat.
+    for Index := 0 to High(CharColors) do
+      if (CharColors[Index] <> Original) and not Dimmed[Index] and
+        (TAtlasColorMath.Contrast(TAtlasColor(ColorToRGB(CharColors[Index])),
+        TAtlasColor(ColorToRGB(Canvas.Brush.Color))) < MinPairContrast) then
+        CharColors[Index] := Original;
     // Gezeichnete Elemente der Zeile (#628).
     if Colored then
       TAtlasIdeElements.Painted(TAtlasDrawnElement.PairColors, Context.FileName, Line, '', Rect,
