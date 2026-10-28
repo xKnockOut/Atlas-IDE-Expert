@@ -77,10 +77,13 @@ type
     FGoodLabel: TLabel;
     FGood: TMemo;
     FNextTop: Integer;
+    /// <summary>Alle über Stack gestapelten Steuerelemente in Aufbaureihenfolge (#1296).</summary>
+    FStacked: TArray<TControl>;
     function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
     function AddMemo(AParent: TWinControl): TMemo;
     /// <summary>AControl oben in AParent unter die bisherigen (alTop ordnet nach Top).</summary>
     procedure Stack(AParent: TWinControl; AControl: TControl);
+    procedure Restack;
     function Group: string;
     function RowOf(const AId: string): Integer;
     function SelectedRow: Integer;
@@ -138,6 +141,8 @@ type
     property RulesJson: string read FRulesJson;
     property Rows: TArray<TAtlasRuleRow> read FRows;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    /// <summary>Höhe oder Breite geändert; die Höhe folgt dem Inhalt der markierten Regel (#1296).</summary>
+    property OnResize;
     property Search: TEdit read FSearch;
     property GroupChoice: TComboBox read FGroupChoice;
     property Master: TCheckBox read FMaster;
@@ -153,6 +158,10 @@ type
     property ExcludeEdit: TEdit read FExclude;
     property OptionControls: TArray<TControl> read FOptionControls;
     property InvalidLabel: TLabel read FInvalid;
+    property OptionsTitleLabel: TLabel read FOptionsTitle;
+    property OptionsBox: TAtlasRulesBox read FOptionsBox;
+    property BadLabel: TLabel read FBadLabel;
+    property GoodLabel: TLabel read FGoodLabel;
     property BadMemo: TMemo read FBad;
     property GoodMemo: TMemo read FGood;
   end;
@@ -345,6 +354,30 @@ begin
   AControl.Align := alTop;
   AControl.AlignWithMargins := True;
   AControl.Top := FNextTop;
+  FStacked := FStacked + [AControl];
+end;
+
+procedure TAtlasRulesEditor.Restack;
+var
+  Control: TControl;
+  Next: Integer;
+begin
+  // alTop ordnet nach Top. Ausgeblendete Steuerelemente behalten ihr Top aus dem Aufbau, das größer ist als das
+  // der inzwischen ausgerichteten Geschwister; eingeblendet rutschten sie ans Ende (#1296). Darum alle in
+  // Aufbaureihenfolge neu durchnummerieren, jedes hinter alle bisherigen.
+  Next := FNextTop;
+  DisableAlign;
+  FDetails.DisableAlign;
+  try
+    for Control in FStacked do
+    begin
+      Inc(Next, 1000);
+      Control.Top := Next;
+    end;
+  finally
+    FDetails.EnableAlign;
+    EnableAlign;
+  end;
 end;
 
 function TAtlasRulesEditor.CanAutoSize(var NewWidth, NewHeight: Integer): Boolean;
@@ -396,6 +429,7 @@ begin
   FLoaded := False;
   FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.RulesLoading);
   FStatus.Visible := True;
+  Restack;
 end;
 
 function TAtlasRulesEditor.Group: string;
@@ -668,6 +702,7 @@ begin
   finally
     FFilling := False;
   end;
+  Restack;
   UpdateEnabled;
 end;
 
@@ -921,10 +956,18 @@ begin
   if not TAtlasRuleTable.OptionJson(Option.Kind, mText, Json) then
   begin
     FInvalid.Caption := TAtlasStrings.Fmt(TAtlasTextId.RulesOptionInvalid, [Option.Name]);
-    FInvalid.Visible := True;
+    if not FInvalid.Visible then
+    begin
+      FInvalid.Visible := True;
+      Restack;
+    end;
     Exit;
   end;
-  FInvalid.Visible := False;
+  if FInvalid.Visible then
+  begin
+    FInvalid.Visible := False;
+    Restack;
+  end;
   // Gleich der Vorgabe: Option entfernen.
   if Json = Option.DefaultJson then
     Json := '';
