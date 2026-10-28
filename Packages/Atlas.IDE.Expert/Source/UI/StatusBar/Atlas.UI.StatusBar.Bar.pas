@@ -41,6 +41,8 @@ uses
   Vcl.Menus,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Style.Signal,
+  Atlas.Core.Status.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.StatusBar.Content,
   Atlas.Core.StatusBar.Layout,
@@ -56,10 +58,11 @@ type
     Items: TArray<string>;
     StatusText: string;
     StatusHint: string;
-    StatusColor: TAtlasColor;
-    /// <summary>Ungelesene Benachrichtigungen (#1234); 0 = keine Plakette. Farbe des schwersten Eintrags.</summary>
+    /// <summary>Zustand des Punkts; die Farbe wählt die Leiste aus ihrer Palette (#1255).</summary>
+    StatusState: TAtlasStatusState;
+    /// <summary>Ungelesene Benachrichtigungen (#1234); 0 = keine Plakette. Zustand des schwersten Eintrags.</summary>
     BadgeCount: Integer;
-    BadgeColor: TAtlasColor;
+    BadgeState: TAtlasStatusState;
     BadgeHint: string;
     /// <summary>Probleme an: Zähler zeigen; sonst fällt das Element weg.</summary>
     FindingsShown: Boolean;
@@ -221,8 +224,8 @@ var
   Kind: TAtlasFindingKind;
 begin
   Result := (string.Join(',', Items) = string.Join(',', AOther.Items)) and (StatusText = AOther.StatusText) and
-    (StatusHint = AOther.StatusHint) and (StatusColor = AOther.StatusColor) and
-    (BadgeCount = AOther.BadgeCount) and (BadgeColor = AOther.BadgeColor) and (BadgeHint = AOther.BadgeHint) and
+    (StatusHint = AOther.StatusHint) and (StatusState = AOther.StatusState) and
+    (BadgeCount = AOther.BadgeCount) and (BadgeState = AOther.BadgeState) and (BadgeHint = AOther.BadgeHint) and
     (FindingsShown = AOther.FindingsShown) and (FindingsHint = AOther.FindingsHint) and
     (LiveText = AOther.LiveText) and (LiveHint = AOther.LiveHint) and (LiveBusy = AOther.LiveBusy) and
     (MethodFound = AOther.MethodFound) and (MethodName = AOther.MethodName) and
@@ -534,8 +537,9 @@ begin
   Center := (ARect.Top + ARect.Bottom) div 2;
   Left_ := ARect.Left + Scale(SlotPadding);
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FView.StatusColor);
-  Canvas.Pen.Color := ToColor(FView.StatusColor);
+  // Signalfarbe der Leistenfläche mit Rand (#1255).
+  Canvas.Brush.Color := ToColor(Colors.Signals.ForStatus(FView.StatusState).Fill);
+  Canvas.Pen.Color := ToColor(Colors.Signals.ForStatus(FView.StatusState).Ring);
   Canvas.Ellipse(Left_, Center - DotSize div 2, Left_ + DotSize, Center - DotSize div 2 + DotSize);
   Canvas.Font := Font;
   Canvas.Font.Color := ToColor(Colors.Text);
@@ -560,7 +564,7 @@ begin
       DrawHot(Rect(FKindSpans[Index].Left - Scale(2), ARect.Top, FKindSpans[Index].Right - Scale(2),
         ARect.Bottom));
     Icon := Rect(FKindSpans[Index].Left, Top_, FKindSpans[Index].Left + IconSize, Top_ + IconSize);
-    TAtlasFindingIcon.Draw(Canvas, Icon, Kinds[Index], TAtlasFindingIcon.KindColor(Kinds[Index]), clWhite, clBlack);
+    TAtlasFindingIcon.Draw(Canvas, Icon, Kinds[Index], Colors.Signals.Get(TAtlasFindingIcon.SignalOf(Kinds[Index])));
     Count := FView.Counts[Kinds[Index]];
     Canvas.Font := Font;
     // Null gedämpft: Nichts zu tun.
@@ -618,12 +622,13 @@ begin
   Pill := Rect(ARect.Left + Scale(SlotPadding), ARect.Top + (ARect.Height - Height_) div 2,
     ARect.Left + Scale(SlotPadding) + Width_, ARect.Top + (ARect.Height - Height_) div 2 + Height_);
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FView.BadgeColor);
-  Canvas.Pen.Color := ToColor(FView.BadgeColor);
+  // Plakettenfarbe mit lesbarer Zahl darauf (#1255): hell dunkle Fläche mit Weiß, dunkel helle Fläche mit Dunkel.
+  Canvas.Brush.Color := ToColor(Colors.Signals.ForStatus(FView.BadgeState).Solid);
+  Canvas.Pen.Color := ToColor(Colors.Signals.ForStatus(FView.BadgeState).Solid);
   Canvas.RoundRect(Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, Height_, Height_);
   Canvas.Font := Font;
   Canvas.Font.Style := [fsBold];
-  Canvas.Font.Color := clWhite;
+  Canvas.Font.Color := ToColor(Colors.Signals.ForStatus(FView.BadgeState).OnSolid);
   Canvas.Brush.Style := bsClear;
   DrawText(Canvas.Handle, PChar(BadgeText), -1, Pill, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
   Canvas.Font := Font;
