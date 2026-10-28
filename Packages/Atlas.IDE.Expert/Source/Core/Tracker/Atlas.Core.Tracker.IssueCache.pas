@@ -10,6 +10,8 @@
 // - Ohne Netz zeigt das Fenster den letzten Stand („Stand vom …“, Fetched).
 // - Nie ein Token: TAtlasTrackerDetails hat keins. Signierte Adressen von
 //   Anhängen (YouTrack "?sign=…") kommen ohne Abfrageteil auf die Platte.
+// - Version 2 (#1279): Verknüpfungen mit Art und Zustand; Einträge der
+//   Version 1 gelten als fehlend (ihnen fehlt die Art für den Baum).
 // Nur im Hauptthread benutzen.
 
 interface
@@ -24,7 +26,7 @@ type
   public const
     MaxMemory = 50;
     MaxAgeDays = 7;
-    Version = 1;
+    Version = 2;
   private type
     TEntry = record
       Details: TAtlasTrackerDetails;
@@ -209,6 +211,10 @@ begin
       mItem.AddPair('relation', mLink.Relation);
       mItem.AddPair('page', mLink.Page);
       mItem.AddPair('local', TJSONBool.Create(mLink.Local));
+      mItem.AddPair('kind', TAtlasTrackerLink.KindKey(mLink.Kind));
+      mItem.AddPair('stateKnown', TJSONBool.Create(mLink.StateKnown));
+      mItem.AddPair('linkState', mLink.State);
+      mItem.AddPair('resolved', TJSONBool.Create(mLink.Resolved));
       mList.AddElement(mItem);
     end;
     mRoot.AddPair('links', mList);
@@ -297,6 +303,10 @@ begin
           mLink.Relation := mItem.GetValue<string>('relation', '');
           mLink.Page := mItem.GetValue<string>('page', '');
           mLink.Local := mItem.GetValue<Boolean>('local', False);
+          mLink.Kind := TAtlasTrackerLink.KindOf(mItem.GetValue<string>('kind', ''));
+          mLink.StateKnown := mItem.GetValue<Boolean>('stateKnown', False);
+          mLink.State := mItem.GetValue<string>('linkState', '');
+          mLink.Resolved := mItem.GetValue<Boolean>('resolved', False);
           ADetails.Links := ADetails.Links + [mLink];
         end;
     ADetails.Fetched := TimeOf(mRoot, 'fetched');

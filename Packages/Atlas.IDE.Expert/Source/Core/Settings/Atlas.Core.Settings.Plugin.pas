@@ -1310,6 +1310,13 @@ type
     /// match, connection und project; liegt in settings.json, gelesen mit TAtlasTrackerProjects. '[]' = keine.
     /// </summary>
     IssuesProjects: string;
+    /// <summary>Verknüpfungen der Vorschau als Baum (#1279, issues.preview.links): hängt ab von, blockiert,
+    /// Unteraufgaben mit Fortschritt, eingeklappt Duplikate und „bezieht sich auf“; dazu „Unteraufgabe anlegen …“
+    /// und „Verknüpfen …“. Aus = flache Liste wie in #1264.</summary>
+    IssuesPreviewLinks: Boolean;
+    /// <summary>Warnung beim Beginnen (#1279, issues.warnBlocked), wenn ein „hängt ab von“-Issue noch offen ist.
+    /// </summary>
+    IssuesWarnBlocked: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2051,6 +2058,8 @@ begin
   Result.IssuesEndStates := '';
   Result.IssuesEndComment := DefaultIssuesEndComment;
   Result.IssuesProjects := '[]';
+  Result.IssuesPreviewLinks := True;
+  Result.IssuesWarnBlocked := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2861,6 +2870,8 @@ begin
   IssuesEndStates := AStore.ReadString('IssuesEndStates', Default.IssuesEndStates);
   IssuesEndComment := AStore.ReadString('IssuesEndComment', Default.IssuesEndComment);
   IssuesProjects := AStore.ReadString('IssuesProjects', Default.IssuesProjects);
+  IssuesPreviewLinks := AStore.ReadInteger('IssuesPreviewLinks', BoolValue(Default.IssuesPreviewLinks)) <> 0;
+  IssuesWarnBlocked := AStore.ReadInteger('IssuesWarnBlocked', BoolValue(Default.IssuesWarnBlocked)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3337,6 +3348,8 @@ begin
   AStore.WriteString('IssuesEndStates', IssuesEndStates);
   AStore.WriteString('IssuesEndComment', IssuesEndComment);
   AStore.WriteString('IssuesProjects', IssuesProjects);
+  AStore.WriteInteger('IssuesPreviewLinks', BoolValue(IssuesPreviewLinks));
+  AStore.WriteInteger('IssuesWarnBlocked', BoolValue(IssuesWarnBlocked));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);
