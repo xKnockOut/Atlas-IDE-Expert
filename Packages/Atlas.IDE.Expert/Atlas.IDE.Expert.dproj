@@ -138,6 +138,7 @@
         <DCCReference Include="Source\UI\Completion\Atlas.UI.Completion.Popup.pas"/>
         <DCCReference Include="Source\UI\Completion\Atlas.UI.Completion.Details.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Color.pas"/>
+        <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Signal.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Palette.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Syntax.pas"/>
         <DCCReference Include="Source\Core\Style\Atlas.Core.Style.Wrap.pas"/>
