@@ -23,6 +23,8 @@
 //   Issues; IAtlasTrackerProvider.Details liest es. Kein Feld enthält ein
 //   Token; Adressen kommen aus der Antwort des Trackers und werden vor dem
 //   Öffnen geprüft (nur https bzw. derselbe Server).
+// - Search und Lookup (#1270): Suche der Befehlspalette, je eine Abfrage ohne
+//   Pull Requests und Ampeln; Lookup liest ein Issue zur Kennung.
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -70,6 +72,8 @@ type
     Sprint: string;
     /// <summary>GitHub: verknüpfter offener Pull Request.</summary>
     PullRequest: TAtlasTrackerPullRequest;
+    /// <summary>Zuständig (Anzeigename bzw. Login, mehrere mit ", "); '' ohne (#1270).</summary>
+    Assignee: string;
     class function Empty: TAtlasTrackerIssue; static;
   end;
 
@@ -213,6 +217,15 @@ type
     function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
       out AError: TAtlasCiFetchError): Boolean;
+    /// <summary>Freitextsuche der Befehlspalette (#1270): höchstens AMax Issues zu AText im Projekt des Ziels, eine
+    /// Abfrage ohne Pull Requests und Ampeln, höchstens ATimeoutMs; im Hintergrund. Die Abfrage aus den
+    /// Einstellungen (ATarget.Query) gilt hier nicht.</summary>
+    function Search(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
+      ATimeoutMs, AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
+    /// <summary>Issue AKey mit den Feldern der Liste (#1270), eine Abfrage, höchstens ATimeoutMs; im Hintergrund.
+    /// False mit AError (NotFound, wenn es die Kennung nicht gibt).</summary>
+    function Lookup(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out AIssue: TAtlasTrackerIssue; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -284,6 +297,7 @@ begin
   Result.State := State;
   Result.Priority := Priority;
   Result.Sprint := Sprint;
+  Result.Assignee := Assignee;
 end;
 
 function TAtlasTrackerDetails.AttachmentIndex(const AName: string): Integer;
