@@ -422,6 +422,7 @@ type
     procedure Open(const AProject: string);
     procedure OpenAt(const AProject: string; const ATarget: TAtlasProjectLocation);
     procedure OpenFolder(const AProject: string);
+    procedure CreateBranch(const AProject: string);
     procedure Remove(const AProject: string);
     procedure Shown;
     function Selectable: Boolean;
@@ -529,6 +530,11 @@ end;
 procedure TFakeProjects.OpenFolder(const AProject: string);
 begin
   Calls := Calls + ['folder ' + AProject];
+end;
+
+procedure TFakeProjects.CreateBranch(const AProject: string);
+begin
+  Calls := Calls + ['branch ' + AProject];
 end;
 
 procedure TFakeProjects.Remove(const AProject: string);
@@ -1846,15 +1852,18 @@ begin
     Frame.ClickAt(Hit);
     Frame.MenuRow := 1;
     Frame.OpenFolderItem.Click;
+    Frame.CreateBranchItem.Click;
     Frame.RemoveItem.Click;
     Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
     CheckSynchronize;
-    Assert.AreEqual(5, Integer(Length(Fake.Calls)));
+    Assert.AreEqual(6, Integer(Length(Fake.Calls)));
     Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[0]);
     Assert.AreEqual('openAt C:\P\Zwei.dproj C:\P\Main.pas 12', Fake.Calls[1]);
     Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[2]);
     Assert.AreEqual('folder C:\P\Zwei.dproj', Fake.Calls[3]);
-    Assert.AreEqual('remove C:\P\Zwei.dproj', Fake.Calls[4]);
+    // „Branch anlegen …“ (#1288) geht an die Quelle; dort öffnet der Dialog.
+    Assert.AreEqual('branch C:\P\Zwei.dproj', Fake.Calls[4]);
+    Assert.AreEqual('remove C:\P\Zwei.dproj', Fake.Calls[5]);
   finally
     Host.Free;
   end;

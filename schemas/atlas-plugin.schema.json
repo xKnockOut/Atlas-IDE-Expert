@@ -82,6 +82,10 @@
       "caption": "Architektur",
       "captionEn": "Architecture"
     },
+    "vcs.branches": {
+      "caption": "Branches",
+      "captionEn": "Branches"
+    },
     "editor.pairs": {
       "caption": "Paarfärbung",
       "captionEn": "Pair colouring"
@@ -5294,6 +5298,17 @@
       "x-page": "Versionsverwaltung",
       "x-control": "Tabelle Projekte",
       "x-issue": "#1286"
+    },
+    "VcsBranchConfirm": {
+      "type": "boolean",
+      "default": true,
+      "description": "Dialog „Branch anlegen“ mit Name, Basis und den Schritten vor dem Anlegen bei „Beginnen“ zeigen; aus = mit den Vorgaben ohne Dialog. Der Befehl „Branch anlegen …“ zeigt ihn immer.",
+      "x-key": "vcs.branch.confirm",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-node": "vcs.branches",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1288"
     }
   },
   "additionalProperties": false

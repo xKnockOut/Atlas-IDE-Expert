@@ -64,6 +64,9 @@ type
     class procedure Start(const AMessage: TAtlasIdeVcsMessage; const ABackend: TAtlasIdeVcsBackend); static;
     /// <summary>Beim Entladen: laufende Aufrufe abbrechen, keine Ergebnisse mehr zustellen.</summary>
     class procedure Stop; static;
+    /// <summary>Eine Zeile in der Meldungsansicht (#1288, Fortschritt beim Anlegen eines Branchs); aus jedem
+    /// Thread, gezeigt im Hauptthread, nach Stop wirkungslos.</summary>
+    class procedure Report(const AText: string); static;
     /// <summary>Wirksamer Wert von vcs.provider.</summary>
     class function Provider: TAtlasVcsProvider; static;
     /// <summary>Zeitlimit je Aufruf aus vcs.timeoutSeconds (#1285) in Millisekunden.</summary>
@@ -526,6 +529,19 @@ begin
   FreeAndNil(Worker);
   Runner := nil;
   FreeAndNil(Logins);
+end;
+
+class procedure TAtlasIdeVcs.Report(const AText: string);
+var
+  mText: string;
+begin
+  mText := AText;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Status,
+    procedure
+    begin
+      if Assigned(Message_) and not TAtlasShutdown.Signalled then
+        Message_(mText);
+    end);
 end;
 
 class function TAtlasIdeVcs.ForFolder(const AFolder: string): IAtlasVersionControl;

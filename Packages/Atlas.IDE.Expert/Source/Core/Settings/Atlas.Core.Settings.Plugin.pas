@@ -1294,6 +1294,10 @@ type
     /// <summary>Persönliche Art und Hauptbranch je Delphi-Projekt (#1286, vcs.projects) als JSON-Liste mit match,
     /// provider und mainBranch; liegt in settings.json, gelesen mit TAtlasVcsProjects. '[]' = keine.</summary>
     VcsProjects: string;
+    /// <summary>Dialog „Branch anlegen“ vor dem Anlegen bei „Beginnen“ zeigen (#1288, vcs.branch.confirm); aus =
+    /// mit den Vorgaben ohne Dialog. Der Befehl „Branch anlegen …“ zeigt ihn immer. Persönlich (Registry).
+    /// </summary>
+    VcsBranchConfirm: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2015,6 +2019,7 @@ begin
   Result.VcsSvnPath := '';
   Result.VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
   Result.VcsProjects := '[]';
+  Result.VcsBranchConfirm := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2819,6 +2824,7 @@ begin
   VcsSvnPath := AStore.ReadString('VcsSvnPath', Default.VcsSvnPath);
   VcsTimeoutSeconds := AStore.ReadInteger('VcsTimeoutSeconds', Default.VcsTimeoutSeconds);
   VcsProjects := AStore.ReadString('VcsProjects', Default.VcsProjects);
+  VcsBranchConfirm := AStore.ReadInteger('VcsBranchConfirm', BoolValue(Default.VcsBranchConfirm)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3290,6 +3296,7 @@ begin
   AStore.WriteString('VcsSvnPath', VcsSvnPath);
   AStore.WriteInteger('VcsTimeoutSeconds', VcsTimeoutSeconds);
   AStore.WriteString('VcsProjects', VcsProjects);
+  AStore.WriteInteger('VcsBranchConfirm', BoolValue(VcsBranchConfirm));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

@@ -47,7 +47,8 @@ type
     [Test]
     procedure IssuesProjectsGoToGlobalFile;
     /// <summary>#1285: vcs.provider, vcs.git.path, vcs.svn.path und vcs.timeoutSeconds in settings.json (der
-    /// Server liest dieselben Werte), nie in der Registry; ungültige Werte werden zur Vorgabe.</summary>
+    /// Server liest dieselben Werte), nie in der Registry; ungültige Werte werden zur Vorgabe. #1288:
+    /// vcs.branch.confirm nur im Plugin (Registry).</summary>
     [Test]
     procedure VcsSettingsGoToGlobalFile;
     [Test]
@@ -731,6 +732,18 @@ begin
   mLoaded := Default(TAtlasPluginSettings);
   mLoaded.Load(mStore);
   Assert.IsTrue(mLoaded.VcsProjects.Contains('"trunk"'), mLoaded.VcsProjects);
+  // #1288: vcs.branch.confirm betrifft nur das Plugin und bleibt in der Registry; Vorgabe: Dialog zeigen.
+  Assert.IsTrue(mSettings.VcsBranchConfirm);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.VcsBranchConfirm := False;
+  mSettings.Save(mStore);
+  Assert.AreEqual(0, mRegistry.ReadInteger('VcsBranchConfirm', 1));
+  Assert.IsFalse(mRouted.Text.Contains('confirm'), 'nicht in settings.json');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.VcsBranchConfirm);
 end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;

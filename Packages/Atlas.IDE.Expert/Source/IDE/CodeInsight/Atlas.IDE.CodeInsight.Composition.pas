@@ -184,6 +184,7 @@ uses
   Atlas.IDE.Welcome.Setup,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Welcome.Layouts,
+  Atlas.IDE.Vcs.Branching,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Notes.Gutter,
@@ -1941,6 +1942,25 @@ begin
     function: Boolean
     begin
       Result := TAtlasIdeSettings.Current.TrackerLogin and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
+  // Branch anlegen (#1288): Dialog für die Arbeitskopie des aktiven Projekts, ohne Issue; immer mit Dialog.
+  Add('Atlas.CreateBranch', TAtlasTextId.VcsBranchCommand,
+    procedure
+    var
+      mProject: string;
+    begin
+      mProject := TAtlasIdeProjects.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
+      if mProject = '' then
+      begin
+        TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsBranchNoVcs));
+        Exit;
+      end;
+      TAtlasIdeBranching.CreateFor(mProject,
+        procedure
+        begin
+          if (Welcome <> nil) and (Welcome.Projects <> nil) then
+            Welcome.Projects.Refresh(mProject);
+        end);
     end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,

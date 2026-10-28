@@ -46,6 +46,11 @@ type
     /// <summary>„Beginnen“: anlegen von main, sonst master; vorhandenen Branch auschecken; Fehler.</summary>
     [Test]
     procedure ExecuteGit;
+    /// <summary>Werte aus dem Dialog „Branch anlegen“ (#1288): Name und Basis genau so, Fortschritt je Schritt.
+    /// </summary>
+    [Test]
+    procedure ExecuteWithDialogRequest;
+    /// <summary>SVN: copy und switch aus dem Plan; scheitert switch, steht die Kopie als Serverschritt da.</summary>
     [Test]
     procedure ExecuteSvnAndRemember;
     /// <summary>Rückfrage nur bei Änderungen an versionierten Dateien.</summary>
@@ -62,7 +67,22 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.BranchPlan,
   Atlas.Core.Welcome.Issues;
+
+var
+  /// <summary>Aufrufe von CountingProgress.</summary>
+  ProgressCalls: Integer;
+
+/// <summary>Fortschritt, der nur zählt; in eigener Routine gebaut.</summary>
+function CountingProgress: TAtlasVcsBranchProgress;
+begin
+  Result :=
+    procedure(AIndex, ACount: Integer; const AStep: TAtlasVcsBranchStep)
+    begin
+      Inc(ProgressCalls);
+    end;
+end;
 
 type
   /// <summary>Versionsverwaltung mit Branches im Speicher.</summary>
@@ -70,10 +90,15 @@ type
   public
     VcsKind: TAtlasVcsKind;
     Branches: TArray<string>;
+    /// <summary>Lokale Branches, die als Basis taugen (main, master, trunk).</summary>
     Bases: TArray<string>;
+    /// <summary>Git: Branches auf origin im lokalen Stand (#1288).</summary>
+    RemoteBases: TArray<string>;
     Calls: TArray<string>;
     Current: string;
     ExistsOutcome: TAtlasVcsOutcome;
+    /// <summary>Schritt mit diesem Befehl (z. B. "switch") scheitert (#1288).</summary>
+    FailOn: string;
     constructor Create(AKind: TAtlasVcsKind);
     function Has(const AList: TArray<string>; const AName: string): Boolean;
     { IAtlasVersionControl }
@@ -86,7 +111,11 @@ type
     function ChangeMarker: string;
     { IAtlasVcsBranching }
     function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
-    function CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+    function RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    function ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
+    function HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
+    function RepositoryPath(out APath: string): TAtlasVcsOutcome;
+    function RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
     function SwitchBranch(const AName: string): TAtlasVcsOutcome;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
   end;
@@ -153,17 +182,56 @@ end;
 function TFakeBranchingVcs.BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
 begin
   Calls := Calls + ['exists ' + AName];
-  AExists := Has(Branches, AName);
+  AExists := Has(Branches, AName) or Has(Bases, AName);
   Result := ExistsOutcome;
 end;
 
-function TFakeBranchingVcs.CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+function TFakeBranchingVcs.RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
 begin
-  Calls := Calls + ['create ' + AName + ' ' + ABase + ' ' + AMessage];
-  if not Has(Bases, ABase) then
+  Calls := Calls + ['remote ' + AName];
+  AExists := Has(RemoteBases, AName);
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TFakeBranchingVcs.ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
+begin
+  ARevision := '48230';
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TFakeBranchingVcs.HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
+begin
+  AHas := False;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TFakeBranchingVcs.RepositoryPath(out APath: string): TAtlasVcsOutcome;
+begin
+  APath := Current;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TFakeBranchingVcs.RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
+var
+  mArgs: TArray<string>;
+  mName: string;
+begin
+  mArgs := AStep.Arguments;
+  Calls := Calls + ['run ' + string.Join(' ', mArgs)];
+  if mArgs[0] = FailOn then
     Exit(TAtlasVcsOutcome.Failed);
-  Branches := Branches + [AName];
-  Current := AName;
+  if mArgs[0] = 'checkout' then
+  begin
+    // checkout --quiet --no-track -b <Name> <Start> --
+    mName := mArgs[4];
+    Branches := Branches + [mName];
+    Current := mName;
+  end
+  else if mArgs[0] = 'switch' then
+  begin
+    mName := Copy(mArgs[1], Length('^/branches/') + 1, Length(mArgs[1]) - Length('^/branches/') - 1);
+    Current := mName;
+  end;
   Result := TAtlasVcsOutcome.Ok;
 end;
 
@@ -481,6 +549,8 @@ begin
 end;
 
 procedure TAtlasWelcomeIssuesTests.ExecuteGit;
+const
+  cName = 'feature/753-atlas-bereiche-und';
 var
   Fake: TFakeBranchingVcs;
   Vcs: IAtlasVersionControl;
@@ -491,30 +561,44 @@ begin
   Options := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', '{kennung} ');
   Plan := TAtlasWelcomeIssues.PlanStart(TAtlasVcsKind.Git, Options,
     Issue('#753', 753, 'Atlas-Bereiche und Layout'));
-  // Ohne main: von master.
+  // Ohne main: von master (Plan aus TAtlasVcsBranchPlan, #1288).
   Fake := TFakeBranchingVcs.Create(TAtlasVcsKind.Git);
   Vcs := Fake;
   Fake.Bases := ['master'];
   Started := TAtlasWelcomeIssues.Execute(Vcs, Plan);
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
   Assert.IsTrue(Started.Succeeded);
-  Assert.AreEqual('feature/753-atlas-bereiche-und', Started.Branch);
+  Assert.AreEqual(cName, Started.Branch);
   Assert.AreEqual('master', Started.Base);
-  Assert.AreEqual('feature/753-atlas-bereiche-und', Fake.Current);
+  Assert.AreEqual(cName, Fake.Current);
   Assert.AreEqual('C:\Repo\.git', Started.GitDir);
   Assert.AreEqual('C:\Repo\.git\hooks', Started.Hooks);
-  Assert.AreEqual(3, Integer(Length(Fake.Calls)));
-  Assert.AreEqual('create feature/753-atlas-bereiche-und main #753 Atlas-Bereiche und Layout', Fake.Calls[1]);
+  Assert.AreEqual(6, Integer(Length(Fake.Calls)));
+  Assert.AreEqual('exists main', Fake.Calls[1]);
+  Assert.AreEqual('remote master', Fake.Calls[4]);
+  Assert.AreEqual('run checkout --quiet --no-track -b ' + cName + ' refs/heads/master --', Fake.Calls[5]);
+  Assert.AreEqual(1, Integer(Length(Started.Steps)));
+  Assert.AreEqual(1, Started.Run.Done);
   // Gibt es den Branch schon: nur auschecken.
   Fake.Current := 'main';
   Fake.Calls := nil;
   Started := TAtlasWelcomeIssues.Execute(Vcs, Plan);
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Switched);
   Assert.AreEqual(2, Integer(Length(Fake.Calls)));
-  Assert.AreEqual('switch feature/753-atlas-bereiche-und', Fake.Calls[1]);
-  // Keine Basis vorhanden: Fehler, nichts ausgecheckt.
+  Assert.AreEqual('switch ' + cName, Fake.Calls[1]);
+  // Nur auf origin: von origin/main.
   Fake.Branches := nil;
   Fake.Bases := nil;
+  Fake.RemoteBases := ['main'];
+  Fake.Calls := nil;
+  Started := TAtlasWelcomeIssues.Execute(Vcs, Plan);
+  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.AreEqual('origin/main', Started.Base);
+  Assert.AreEqual('run checkout --quiet --no-track -b ' + cName + ' refs/remotes/origin/main --',
+    Fake.Calls[High(Fake.Calls)]);
+  // Keine Basis vorhanden: Fehler, nichts ausgecheckt (nie stillschweigend vom aktuellen Branch).
+  Fake.Branches := nil;
+  Fake.RemoteBases := nil;
   Fake.Current := 'main';
   Started := TAtlasWelcomeIssues.Execute(Vcs, Plan);
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Failed);
@@ -528,6 +612,7 @@ begin
   Started := TAtlasWelcomeIssues.Execute(Vcs, Plan);
   Assert.IsTrue(Started.Reason = TAtlasVcsOutcome.TimedOut);
   Assert.AreEqual(1, Integer(Length(Fake.Calls)));
+  Fake.ExistsOutcome := TAtlasVcsOutcome.Ok;
   // Ungültiger Name aus dem Muster.
   Plan := TAtlasWelcomeIssues.PlanStart(TAtlasVcsKind.Git,
     TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '{kurztitel}', '', ''), Issue('#1', 1, '...'));
@@ -535,26 +620,91 @@ begin
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.InvalidName);
   Fake.Calls := nil;
   Fake.Branches := nil;
+  Fake.Bases := nil;
+  Fake.RemoteBases := nil;
   Fake.Current := '';
+  Started := Default(TAtlasIssueStartResult);
 end;
 
-procedure TAtlasWelcomeIssuesTests.ExecuteSvnAndRemember;
+procedure TAtlasWelcomeIssuesTests.ExecuteWithDialogRequest;
 var
   Fake: TFakeBranchingVcs;
   Vcs: IAtlasVersionControl;
   Plan: TAtlasIssueStartPlan;
   Started: TAtlasIssueStartResult;
+  mRequest: TAtlasVcsBranchRequest;
+begin
+  Fake := TFakeBranchingVcs.Create(TAtlasVcsKind.Git);
+  Vcs := Fake;
+  Fake.Bases := ['main'];
+  Fake.Current := 'feature/700-alt';
+  Plan := TAtlasWelcomeIssues.PlanStart(TAtlasVcsKind.Git,
+    TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', ''), Issue('#753', 753, 'Atlas-Bereiche'));
+  // Im Dialog umbenannt und vom aktuellen Branch: genau diese Werte, ohne eigene Prüfung der Basen.
+  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Git, 'feature/753-anders',
+    TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Current, 'feature/700-alt', ''), '');
+  ProgressCalls := 0;
+  Started := TAtlasWelcomeIssues.Execute(Vcs, Plan, mRequest, CountingProgress());
+  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.AreEqual('feature/753-anders', Started.Branch);
+  Assert.AreEqual('feature/700-alt', Started.Base);
+  Assert.AreEqual(2, Integer(Length(Fake.Calls)));
+  Assert.AreEqual('exists feature/753-anders', Fake.Calls[0]);
+  Assert.AreEqual('run checkout --quiet --no-track -b feature/753-anders refs/heads/feature/700-alt --',
+    Fake.Calls[1]);
+  Assert.AreEqual(1, ProgressCalls, 'Fortschritt je Schritt');
+  // Ungültiger Name aus dem Dialog: nichts angelegt.
+  mRequest.Name := 'mit leerzeichen';
+  Fake.Calls := nil;
+  Started := TAtlasWelcomeIssues.Execute(Vcs, Plan, mRequest);
+  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.InvalidName);
+  Assert.AreEqual(0, Integer(Length(Fake.Calls)));
+  Fake.Calls := nil;
+  Fake.Branches := nil;
+  Fake.Bases := nil;
+  Fake.Current := '';
+  Started := Default(TAtlasIssueStartResult);
+  mRequest := Default(TAtlasVcsBranchRequest);
+end;
+
+procedure TAtlasWelcomeIssuesTests.ExecuteSvnAndRemember;
+const
+  cName = 'ATL-123-tracker-im-bereich';
+var
+  Fake: TFakeBranchingVcs;
+  Vcs: IAtlasVersionControl;
+  Plan: TAtlasIssueStartPlan;
+  Started: TAtlasIssueStartResult;
+  mDone: TArray<TAtlasVcsBranchStep>;
 begin
   Fake := TFakeBranchingVcs.Create(TAtlasVcsKind.Svn);
   Vcs := Fake;
-  Fake.Bases := ['trunk'];
   Plan := TAtlasWelcomeIssues.PlanStart(TAtlasVcsKind.Svn,
     TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', ''), Issue('ATL-123', 123, 'Tracker im Bereich'));
   Started := TAtlasWelcomeIssues.Execute(Vcs, Plan);
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
-  Assert.AreEqual('ATL-123-tracker-im-bereich', Started.Branch);
+  Assert.AreEqual(cName, Started.Branch);
   Assert.AreEqual('trunk', Started.Base);
   Assert.AreEqual('', Started.GitDir);
+  Assert.AreEqual(3, Integer(Length(Fake.Calls)));
+  Assert.AreEqual('run copy ^/trunk@ ^/branches/' + cName + '@ --parents -m ATL-123 Tracker im Bereich',
+    Fake.Calls[1]);
+  Assert.AreEqual('run switch ^/branches/' + cName + '@ .', Fake.Calls[2]);
+  Assert.AreEqual(cName, Fake.Current);
+  // Scheitert switch nach der Kopie: Fehler mit dem schon ausgeführten Serverschritt.
+  Fake.Branches := nil;
+  Fake.Calls := nil;
+  Fake.Current := 'trunk';
+  Fake.FailOn := 'switch';
+  Started := TAtlasWelcomeIssues.Execute(Vcs, Plan);
+  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Failed);
+  Assert.AreEqual(1, Started.Run.Failed);
+  Assert.AreEqual(1, Started.Run.Done);
+  mDone := TAtlasVcsBranchPlan.ServerStepsDone(Started.Steps, Started.Run.Done);
+  Assert.AreEqual(1, Integer(Length(mDone)));
+  Assert.AreEqual('copy', mDone[0].Arguments[0]);
+  Assert.AreEqual('trunk', Fake.Current, 'Arbeitskopie unverändert');
+  Fake.FailOn := '';
   // Nur merken: keine Änderung an der Arbeitskopie.
   Fake.Calls := nil;
   Plan := TAtlasWelcomeIssues.PlanStart(TAtlasVcsKind.Svn,
@@ -570,6 +720,8 @@ begin
   Fake.Branches := nil;
   Fake.Calls := nil;
   Fake.Current := '';
+  Started := Default(TAtlasIssueStartResult);
+  mDone := nil;
 end;
 
 procedure TAtlasWelcomeIssuesTests.LocalChangesIgnoreUntracked;

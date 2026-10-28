@@ -25,7 +25,10 @@
 // IAtlasVcsBranching (#765) legt für ein Issue einen Branch an und wechselt
 // dorthin: Git lokal von einer Basis (checkout -b), SVN als Kopie im
 // Repository (svn copy ^/trunk ^/branches/…) mit svn switch; dazu die Ordner
-// für den Commit-Hook (Git prepare-commit-msg).
+// für den Commit-Hook (Git prepare-commit-msg). Seit #1288 baut
+// Atlas.Core.Vcs.BranchPlan die Schritte (TAtlasVcsBranchStep), zeigt sie im
+// Dialog „Branch anlegen“ und IAtlasVcsBranching.RunStep führt genau diese
+// aus.
 
 interface
 
@@ -212,6 +215,20 @@ type
       static;
   end;
 
+  /// <summary>Ein Schritt beim Anlegen eines Branchs (#1288), gebaut von TAtlasVcsBranchPlan: Argumente für git
+  /// bzw. svn ohne die festen Optionen der Umsetzung (Git: --no-optional-locks, -c core.quotepath=off …).</summary>
+  TAtlasVcsBranchStep = record
+    Arguments: TArray<string>;
+    /// <summary>Spricht mit dem Server: läuft ohne Rückfrage nach Zugangsdaten, fehlende Anmeldung ergibt
+    /// LoginNeeded (#1287).</summary>
+    Remote: Boolean;
+    /// <summary>Ändert das Repository auf dem Server (svn copy, git push); im Dialog markiert, wird bei einem
+    /// späteren Fehler nicht zurückgenommen.</summary>
+    ChangesServer: Boolean;
+    class function Make(const AArguments: TArray<string>; ARemote, AChangesServer: Boolean): TAtlasVcsBranchStep;
+      static;
+  end;
+
   /// <summary>Startet git bzw. svn unsichtbar (ohne Konsolenfenster) und wartet höchstens ATimeoutMs.</summary>
   IAtlasVcsRunner = interface
     ['{6B3C8E1D-2F47-4A9B-B0C5-8D1E7A2F9C34}']
@@ -297,21 +314,32 @@ type
     function Pull: TAtlasVcsOutcome;
   end;
 
-  /// <summary>Branch für ein Issue anlegen und dorthin wechseln (#765). Git: lokaler Branch von einer Basis
-  /// (checkout -b, ohne verfolgten Branch); SVN: Kopie im Repository (svn copy ^/&lt;Basis&gt; ^/branches/&lt;Name&gt;
-  /// --parents) und Umstellen der Arbeitskopie (svn switch). Die leere Umsetzung liefert ihr Outcome. Ob lokale
-  /// Änderungen vorher eine Rückfrage brauchen, entscheidet der Aufrufer. Jede Methode der Git- und SVN-Umsetzung
-  /// startet einen Prozess (SVN spricht dabei mit dem Server): nur aus einem Hintergrund-Thread aufrufen, mit
-  /// Zeitlimit. Namen mit Leer- oder Steuerzeichen, „..“ oder „-“ am Anfang lehnen alle mit Failed ab.</summary>
+  /// <summary>Branch für ein Issue anlegen und dorthin wechseln (#765, #1288). Git: lokaler Branch von einer
+  /// Basis (checkout -b, ohne verfolgten Branch); SVN: Kopie im Repository (svn copy ^/&lt;Basis&gt;
+  /// ^/branches/&lt;Name&gt; --parents) und Umstellen der Arbeitskopie (svn switch). Die Schritte baut
+  /// TAtlasVcsBranchPlan, RunStep führt sie aus. Die leere Umsetzung liefert ihr Outcome. Ob lokale Änderungen
+  /// vorher eine Rückfrage brauchen, entscheidet der Aufrufer. Jede Methode der Git- und SVN-Umsetzung startet
+  /// einen Prozess (SVN spricht dabei mit dem Server): nur aus einem Hintergrund-Thread aufrufen, mit Zeitlimit.
+  /// Namen mit Leer- oder Steuerzeichen, „..“ oder „-“ am Anfang lehnen alle mit Failed ab.</summary>
   IAtlasVcsBranching = interface
-    ['{2C7E9A41-6B5D-4F38-9E12-A8D4C3B7F605}']
+    ['{7E31B5C2-94D8-4A6F-8C27-D15E9F0A3B46}']
     /// <summary>Git: lokaler Branch refs/heads/&lt;AName&gt; existiert. SVN: ^/branches/&lt;AName&gt; existiert
     /// (fehlt er oder antwortet der Server mit einem Fehler, gilt er als nicht vorhanden).</summary>
     function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
-    /// <summary>Git: neuen Branch AName von ABase anlegen und auschecken; ABase ist ein lokaler Branch, sonst
-    /// origin/&lt;ABase&gt;, '' = HEAD; gibt es beides nicht, Failed. SVN: ^/&lt;ABase&gt; ('' = trunk) nach
-    /// ^/branches/&lt;AName&gt; kopieren (Nachricht AMessage) und die Arbeitskopie dorthin umstellen.</summary>
-    function CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+    /// <summary>Git: Remote-Branch refs/remotes/origin/&lt;AName&gt; existiert im lokalen Stand (ohne fetch).
+    /// SVN kennt keine Remote-Branches: Ok mit False.</summary>
+    function RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    /// <summary>SVN: aktuelle Revision des Repositorys für ^/&lt;APath&gt; (svn info --show-item revision, mit dem
+    /// Server). Git: Ok mit ''.</summary>
+    function ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
+    /// <summary>SVN: die Arbeitskopie hat svn:externals (propget -R, ohne Server). Git: Ok mit False.</summary>
+    function HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
+    /// <summary>SVN: voller Pfad der Arbeitskopie im Repository ohne "^/", z. B. "Kasse/trunk" (info --show-item
+    /// relative-url, ohne Server; Head.Branch kürzt auf "trunk"). Git: Ok mit ''.</summary>
+    function RepositoryPath(out APath: string): TAtlasVcsOutcome;
+    /// <summary>Einen Schritt aus TAtlasVcsBranchPlan ausführen (#1288); Remote: ohne Rückfrage, LoginNeeded bei
+    /// fehlender Anmeldung. Ohne Argumente Failed.</summary>
+    function RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
     /// <summary>Zu einem vorhandenen Branch wechseln (Git checkout, SVN switch ^/branches/&lt;AName&gt;).</summary>
     function SwitchBranch(const AName: string): TAtlasVcsOutcome;
     /// <summary>Git: Ordner der Hooks (beachtet core.hooksPath) und Verwaltungsordner dieser Arbeitskopie
@@ -465,6 +493,16 @@ begin
   Result.ExitCode := AExitCode;
   Result.Output := AOutput;
   Result.ErrorText := '';
+end;
+
+{ TAtlasVcsBranchStep }
+
+class function TAtlasVcsBranchStep.Make(const AArguments: TArray<string>; ARemote,
+  AChangesServer: Boolean): TAtlasVcsBranchStep;
+begin
+  Result.Arguments := AArguments;
+  Result.Remote := ARemote;
+  Result.ChangesServer := AChangesServer;
 end;
 
 end.

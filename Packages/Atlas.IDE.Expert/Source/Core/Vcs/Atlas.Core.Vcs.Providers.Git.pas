@@ -32,10 +32,12 @@
 // Holen (IAtlasVcsUpdate, #764):
 //   Pull      -c credential.interactive=never -c core.askPass= pull --ff-only --no-rebase --quiet
 // Branch für ein Issue (IAtlasVcsBranching, #765), ohne Netz:
-//   BranchExists for-each-ref --format=%(refname) refs/heads/<Name>
-//   CreateBranch checkout --quiet --no-track -b <Name> <Basis> --
-//                (Basis: refs/heads/<Basis>, sonst refs/remotes/origin/<Basis>, '' = HEAD)
-//   SwitchBranch checkout --quiet <Name> --
+//   BranchExists       for-each-ref --format=%(refname) refs/heads/<Name>
+//   RemoteBranchExists for-each-ref --format=%(refname) refs/remotes/origin/<Name>
+//   RunStep            Schritte aus Atlas.Core.Vcs.BranchPlan (#1288), z. B.
+//                      checkout --quiet --no-track -b <Name> <Basis> --;
+//                      mit Remote wie Fetch ohne Rückfrage
+//   SwitchBranch       checkout --quiet <Name> --
 //   HookFolders  rev-parse --git-path hooks --git-dir
 // ChangeMarker liest nur Dateien: .git/HEAD (Inhalt und Zeitstempel), die
 // Datei des Branchs unter refs/heads und packed-refs. In Worktrees und
@@ -89,7 +91,11 @@ type
     function Pull: TAtlasVcsOutcome;
     { IAtlasVcsBranching }
     function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
-    function CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+    function RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    function ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
+    function HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
+    function RepositoryPath(out APath: string): TAtlasVcsOutcome;
+    function RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
     function SwitchBranch(const AName: string): TAtlasVcsOutcome;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
     /// <summary>Ordner mit den Verwaltungsdaten: ARoot\.git oder das Ziel von "gitdir:"; '' ohne.</summary>
@@ -505,38 +511,43 @@ begin
   Result := RefExists('refs/heads/' + AName, AExists);
 end;
 
-function TAtlasGitVersionControl.CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
-var
-  Output: TBytes;
-  StartPoint: string;
-  Exists: Boolean;
+function TAtlasGitVersionControl.RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
 begin
-  // AMessage braucht nur SVN; ein Git-Branch hat keine Nachricht.
+  AExists := False;
   if not VcsSafeBranchName(AName) then
     Exit(TAtlasVcsOutcome.Failed);
-  StartPoint := 'HEAD';
-  if ABase <> '' then
-  begin
-    if not VcsSafeBranchName(ABase) then
-      Exit(TAtlasVcsOutcome.Failed);
-    Result := RefExists('refs/heads/' + ABase, Exists);
-    if Result <> TAtlasVcsOutcome.Ok then
-      Exit;
-    if Exists then
-      StartPoint := 'refs/heads/' + ABase
-    else
-    begin
-      Result := RefExists('refs/remotes/origin/' + ABase, Exists);
-      if Result <> TAtlasVcsOutcome.Ok then
-        Exit;
-      if not Exists then
-        Exit(TAtlasVcsOutcome.Failed);
-      StartPoint := 'refs/remotes/origin/' + ABase;
-    end;
-  end;
-  // --no-track: der neue Branch verfolgt nicht die Basis; den Upstream setzt erst der erste Push.
-  // "--" am Ende: StartPoint ist eine Revision, nie ein Dateiname.
-  Result := Git(['checkout', '--quiet', '--no-track', '-b', AName, StartPoint, '--'], Output);
+  Result := RefExists('refs/remotes/origin/' + AName, AExists);
+end;
+
+function TAtlasGitVersionControl.ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
+begin
+  // Git braucht für die Basis keinen Server: Der Stand von origin/<Branch> ist der des letzten Abrufs.
+  ARevision := '';
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasGitVersionControl.HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
+begin
+  AHas := False;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasGitVersionControl.RepositoryPath(out APath: string): TAtlasVcsOutcome;
+begin
+  APath := '';
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasGitVersionControl.RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  if Length(AStep.Arguments) = 0 then
+    Exit(TAtlasVcsOutcome.Failed);
+  if AStep.Remote then
+    Result := GitRemote(AStep.Arguments, Output)
+  else
+    Result := Git(AStep.Arguments, Output);
 end;
 
 function TAtlasGitVersionControl.SwitchBranch(const AName: string): TAtlasVcsOutcome;
