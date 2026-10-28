@@ -65,6 +65,9 @@ type
     /// <summary>Aufrufkonvention in Kleinbuchstaben (stdcall, cdecl …); '' ohne Angabe.</summary>
     Convention: string;
     ConventionRange: TTextRange;
+    /// <summary>Im Kopf steht bedingte Übersetzung ({$IFDEF} …); welche Parameter gelten, ist offen (#1324).
+    /// </summary>
+    Conditional: Boolean;
   end;
 
   /// <summary>Deklaration und Rumpf gleichen Namens, deren Köpfe voneinander abweichen (#996).</summary>
@@ -130,9 +133,13 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Text.Lines;
 
 const
+  // Bedingte Übersetzung im Kopf einer Methode (#1324).
+  cConditionalDirectives: array[0..7] of string = ('IF', 'IFDEF', 'IFNDEF', 'IFOPT', 'ELSE', 'ELSEIF', 'ENDIF',
+    'IFEND');
   TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.HelperType];
   MethodKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_];
@@ -358,12 +365,14 @@ end;
 /// <summary>Bereich und Text hinter dem Methodennamen bis vor das erste ";" außerhalb von Klammern,
 /// z. B. "(const A: Integer): Boolean".</summary>
 function SignatureTail(ATree: TSyntaxTree; const AText: string; const ASymbol: TIndexSymbol;
-  out ARange: TTextRange; out ATail: string): Boolean;
+  out ARange: TTextRange; out ATail: string; out AName, ALast: Integer): Boolean; overload;
 var
   Tokens: TArray<TPascalToken>;
   Index, Name, Last, Depth, StartOffset: Integer;
 begin
   Result := False;
+  AName := -1;
+  ALast := -1;
   Tokens := ATree.Tokens;
   Name := -1;
   for Index := 0 to High(Tokens) do
@@ -393,7 +402,71 @@ begin
   StartOffset := Tokens[Name].Offset + Length(Tokens[Name].Text);
   ARange := TTextRange.Create(Tokens[Name].EndPos, Tokens[Last].EndPos);
   ATail := Copy(AText, StartOffset + 1, Tokens[Last].Offset + Length(Tokens[Last].Text) - StartOffset);
+  AName := Name;
+  ALast := Last;
   Result := True;
+end;
+
+function SignatureTail(ATree: TSyntaxTree; const AText: string; const ASymbol: TIndexSymbol;
+  out ARange: TTextRange; out ATail: string): Boolean; overload;
+var
+  mName, mLast: Integer;
+begin
+  Result := SignatureTail(ATree, AText, ASymbol, ARange, ATail, mName, mLast);
+end;
+
+/// <summary>Text der Token AFirst..ALast ohne Kommentare und Direktiven (#1324): {Do not Localize}, {%H-} oder
+/// //FI W521 gehören nicht zum Kopf. Leerraum oder ein weggelassenes Token zwischen zwei Token wird ein Leerzeichen.
+/// AConditional: Darunter steht {$IF…}, {$ELSE…} oder {$ENDIF}; welche Teile gelten, hängt dann von der
+/// Übersetzung ab.</summary>
+function CleanTail(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer; out AConditional: Boolean): string;
+var
+  mIndex, mEnd: Integer;
+  mGap: Boolean;
+begin
+  Result := '';
+  AConditional := False;
+  mGap := False;
+  mEnd := -1;
+  for mIndex := AFirst to ALast do
+  begin
+    if ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
+      if (ATokens[mIndex].Kind = TPascalTokenKind.Directive) and
+        MatchText(TPascalLexer.DirectiveName(ATokens[mIndex].Text), cConditionalDirectives) then
+        AConditional := True;
+      mGap := True;
+      Continue;
+    end;
+    if (Result <> '') and (mGap or (ATokens[mIndex].Offset > mEnd)) then
+      Result := Result + ' ';
+    Result := Result + ATokens[mIndex].Text;
+    mEnd := ATokens[mIndex].Offset + Length(ATokens[mIndex].Text);
+    mGap := False;
+  end;
+end;
+
+/// <summary>AText ohne Attribute in eckigen Klammern: "const [ref] A" → "const A" (#1324).</summary>
+function WithoutAttributes(const AText: string): string;
+var
+  mIndex, mDepth: Integer;
+begin
+  Result := '';
+  mDepth := 0;
+  for mIndex := 1 to Length(AText) do
+    if AText[mIndex] = '[' then
+      Inc(mDepth)
+    else if AText[mIndex] = ']' then
+    begin
+      if mDepth > 0 then
+        Dec(mDepth);
+      Result := Result + ' ';
+    end
+    else if mDepth = 0 then
+      Result := Result + AText[mIndex];
+  Result := Trim(Result);
+  while Pos('  ', Result) > 0 do
+    Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
 end;
 
 /// <summary>Zerlegt "(A: Integer = 1; const B: string): Boolean" in Parametergruppen und den Rest.</summary>
@@ -484,9 +557,8 @@ begin
   else
     Names := Copy(AGroup, 1, Colon - 1);
   Names := LowerCase(Trim(Names));
-  // Attribute wie [ref] stehen vor den Namen.
-  if Pos(']', Names) > 0 then
-    Names := Trim(Copy(Names, LastDelimiter(']', Names) + 1, MaxInt));
+  // Attribute wie [ref] stehen vor den Namen, auch hinter dem Modifizierer: const [ref] A (#1324).
+  Names := WithoutAttributes(Names);
   for Index := 0 to High(Modifiers) do
     if Pos(Modifiers[Index] + ' ', Names) = 1 then
     begin
@@ -581,9 +653,8 @@ begin
     Names := Trim(Group);
     TypeName := '';
   end;
-  // Attribute wie [ref] stehen vor den Namen.
-  if Pos(']', Names) > 0 then
-    Names := Trim(Copy(Names, LastDelimiter(']', Names) + 1, MaxInt));
+  // Attribute wie [ref] stehen vor den Namen, auch hinter dem Modifizierer: const [ref] A (#1324).
+  Names := WithoutAttributes(Names);
   Modifier := '';
   Space := Pos(' ', Names);
   if (Space > 0) and MatchText(Copy(Names, 1, Space - 1), Modifiers) then
@@ -671,11 +742,14 @@ var
   Tail, After, Group, Header, Rest, Word: string;
   Groups: TArray<string>;
   Index, Depth: Integer;
+  mName, mLast: Integer;
 begin
   AShape := Default(TSignatureShape);
-  Result := SignatureTail(ATree, AText, ASymbol, Range, Tail);
+  Result := SignatureTail(ATree, AText, ASymbol, Range, Tail, mName, mLast);
   if not Result then
     Exit;
+  // Verglichen wird der Kopf ohne Kommentare und Direktiven (#1324).
+  Tail := CleanTail(ATree.Tokens, mName + 1, mLast, AShape.Conditional);
   Header := Signature(RangeText(TTextLines.SplitLines(AText), ASymbol.Range), Rest);
   for Word in Kinds do
     if HasWord(Header, Word) then

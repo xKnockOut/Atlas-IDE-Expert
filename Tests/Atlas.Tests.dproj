@@ -1138,6 +1138,7 @@
         <DCCReference Include="Application\Shell\Shell.Linter.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.NestedOverloads.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.SystemIntrinsics.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TypeIdentity.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.StepCalls.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Dock\Atlas.Core.Dock.Plan.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Dock.Plan.Tests.pas"/>
