@@ -52,6 +52,9 @@ type
     procedure LoadBoardAsksAgilesSprintsSprintAndMe;
     [Test]
     procedure LoadBoardWithoutBoardIsNotFound;
+    /// <summary>Der Anbieter selbst bietet das Board an (die IDE fragt nur per Supports, Rollenmatrix).</summary>
+    [Test]
+    procedure TrackerOffersBoards;
     /// <summary>Verschieben ist ein Befehl mit Spaltenfeld, erstem Wert der Zielspalte und Kommentar.</summary>
     [Test]
     procedure MoveSendsCommand;
@@ -83,6 +86,9 @@ type
     /// <summary>Ohne Projekt: Spalten Offen/Geschlossen aus /issues, ohne Pull Requests.</summary>
     [Test]
     procedure LoadBoardWithoutProjectUsesIssues;
+    /// <summary>Der Anbieter selbst bietet das Board an (die IDE fragt nur per Supports, Rollenmatrix).</summary>
+    [Test]
+    procedure TrackerOffersBoards;
     /// <summary>Token ohne „read:project“: Offen/Geschlossen mit ProjectsDenied statt Fehler.</summary>
     [Test]
     procedure LoadBoardWithoutProjectScopeFallsBack;
@@ -109,8 +115,8 @@ uses
   Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
-  Atlas.Core.Tracker.Providers.YouTrackBoard,
-  Atlas.Core.Tracker.Providers.GitHubBoard;
+  Atlas.Core.Tracker.Providers.YouTrack,
+  Atlas.Core.Tracker.Providers.GitHub;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang (GET) bzw. Adressanfang und Textstück im Inhalt
@@ -534,6 +540,24 @@ begin
   Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
 end;
 
+procedure TAtlasYouTrackBoardTests.TrackerOffersBoards;
+var
+  mTransport: TFakeBoardTransport;
+  mKeep: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mBoards: IAtlasTrackerBoards;
+  mSnapshot: TAtlasBoardSnapshot;
+  mError: TAtlasCiFetchError;
+begin
+  mProvider := TAtlasYouTrackTracker.Create;
+  Assert.IsTrue(Supports(mProvider, IAtlasTrackerBoards, mBoards));
+  mTransport := TFakeBoardTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://firma.youtrack.cloud/api/agiles?', '', 200, '[]');
+  Assert.IsFalse(mBoards.LoadBoard(YouTrackTarget, mKeep, '', '', 10000, mSnapshot, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotFound, 'weitergeleitet an TAtlasYouTrackBoards');
+end;
+
 function YouTrackSnapshot: TAtlasBoardSnapshot;
 var
   mCurrent: string;
@@ -707,6 +731,29 @@ begin
   Assert.IsFalse(mSnapshot.ProjectsDenied, 'Projekte gelesen, nur keines da');
 end;
 
+procedure TAtlasGitHubBoardTests.TrackerOffersBoards;
+var
+  mTransport: TFakeBoardTransport;
+  mKeep: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mBoards: IAtlasTrackerBoards;
+  mSnapshot: TAtlasBoardSnapshot;
+  mError: TAtlasCiFetchError;
+begin
+  mProvider := TAtlasGitHubTracker.Create;
+  Assert.IsTrue(Supports(mProvider, IAtlasTrackerBoards, mBoards));
+  Assert.IsFalse(Supports(mProvider, IAtlasTrackerWorkDays), 'Arbeitstage nur bei YouTrack');
+  mTransport := TFakeBoardTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://api.github.com/graphql', '', 200, Fixture('GitHub', 'projects-v2-empty.json'));
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=open', '', 200,
+    Fixture('GitHub', 'repo-issues-open.json'));
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues?state=closed', '', 200,
+    Fixture('GitHub', 'repo-issues-closed.json'));
+  Assert.IsTrue(mBoards.LoadBoard(GitHubTarget, mKeep, '', '', 10000, mSnapshot, mError));
+  Assert.IsTrue(mSnapshot.Kind = TAtlasBoardKind.Repository, 'weitergeleitet an TAtlasGitHubBoards');
+end;
+
 procedure TAtlasGitHubBoardTests.LoadBoardWithoutProjectScopeFallsBack;
 var
   mTransport: TFakeBoardTransport;
@@ -839,7 +886,8 @@ begin
   mKeep := mTransport;
   mTransport.Answer('https://firma.youtrack.cloud' + TAtlasYouTrackBoards.WorkDaysPath, '', 200,
     Fixture('YouTrack', 'workdays.json'));
-  mWork := TAtlasYouTrackBoards.Create;
+  // Über den Anbieter, wie die Sprint-Kachel fragt (weitergeleitet an TAtlasYouTrackBoards).
+  mWork := TAtlasYouTrackTracker.Create;
   Assert.IsTrue(mWork.WorkDays(YouTrackTarget, mKeep, 5000, mDays));
   Assert.AreEqual(Integer(6), Integer(Length(mDays)));
   // Ohne Administratorrecht (403): keine Arbeitstage, der Aufrufer bleibt bei Montag bis Freitag.

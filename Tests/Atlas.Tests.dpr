@@ -618,8 +618,6 @@ uses
   Atlas.UI.Tracker.EndDialog.Tests in 'IDE.Expert\Atlas.UI.Tracker.EndDialog.Tests.pas',
   Atlas.Core.Tracker.Board in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Board.pas',
   Atlas.Core.Tracker.Sprint in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Sprint.pas',
-  Atlas.Core.Tracker.Providers.YouTrackBoard in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrackBoard.pas',
-  Atlas.Core.Tracker.Providers.GitHubBoard in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHubBoard.pas',
   Atlas.Core.Tracker.Board.Tests in 'IDE.Expert\Atlas.Core.Tracker.Board.Tests.pas',
   Atlas.Core.Tracker.Sprint.Tests in 'IDE.Expert\Atlas.Core.Tracker.Sprint.Tests.pas',
   Atlas.UI.Tracker.BoardFrame in '..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas',

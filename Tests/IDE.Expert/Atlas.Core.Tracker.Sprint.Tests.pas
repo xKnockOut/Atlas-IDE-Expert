@@ -64,8 +64,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
-  Atlas.Core.Tracker.Providers.YouTrackBoard,
-  Atlas.Core.Tracker.Providers.GitHubBoard;
+  Atlas.Core.Tracker.Providers.YouTrack,
+  Atlas.Core.Tracker.Providers.GitHub;
 
 const
   cDelta = 0.001;

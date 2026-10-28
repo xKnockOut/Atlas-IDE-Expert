@@ -382,8 +382,6 @@ contains
   Atlas.Core.Tracker.Links in 'Source\Core\Tracker\Atlas.Core.Tracker.Links.pas',
   Atlas.Core.Tracker.Board in 'Source\Core\Tracker\Atlas.Core.Tracker.Board.pas',
   Atlas.Core.Tracker.Sprint in 'Source\Core\Tracker\Atlas.Core.Tracker.Sprint.pas',
-  Atlas.Core.Tracker.Providers.YouTrackBoard in 'Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrackBoard.pas',
-  Atlas.Core.Tracker.Providers.GitHubBoard in 'Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHubBoard.pas',
   Atlas.UI.Tracker.LinkDialogs in 'Source\UI\Tracker\Atlas.UI.Tracker.LinkDialogs.pas',
   Atlas.UI.Tracker.IssueFrame in 'Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas' {AtlasIssueFrame: TFrame},
   Atlas.UI.Tracker.ValueBox in 'Source\UI\Tracker\Atlas.UI.Tracker.ValueBox.pas',
