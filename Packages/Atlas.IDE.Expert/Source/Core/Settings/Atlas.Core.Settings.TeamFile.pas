@@ -5,8 +5,12 @@
 // getrennt; die Einstellungen des Servers stehen in atlas.json (#403). Teil
 // ohne VCL und Open Tools API: Datei finden, lesen, prüfen und den Vorrang vor
 // den persönlichen Einstellungen bestimmen.
-// - Ort: Ordner der .dproj, sonst der nächsthöhere Ordner mit .git (Wurzel des
-//   Repositorys). Relative Pfade gelten ab dem Ordner der Datei.
+// - Ort: der nächste Ordner mit .atlas ab dem Ordner der .dproj aufwärts bis
+//   zur Wurzel des Repositorys (nächster Ordner mit .git oder .svn); ohne
+//   Repository bis zum Ordner der geöffneten .groupproj, wenn sie darüber
+//   liegt, sonst nur der Ordner der .dproj. Danach der Ordner der .groupproj
+//   (etwa eine Gruppe außerhalb des Repositorys). Relative Pfade gelten ab
+//   dem Ordner der Datei.
 // - Format: JSON mit Kommentaren (// und /* */) und Schema-Version:
 //     {"version": 1,
 //      "naming": {"field": "F", "parameter": "A", "local": "L",         #452
@@ -165,10 +169,15 @@ type
     FileName = '.atlas';
     CurrentVersion = 1;
   public
-    /// <summary>Projektdatei zum Ordner einer .dproj: dort, sonst im nächsthöheren Ordner mit .git; '' ohne.
+    /// <summary>Projektdatei zum Ordner einer .dproj ohne Projektgruppe (siehe Kopf); '' ohne.</summary>
+    class function Locate(const AProjectFolder: string; const AExists: TAtlasTeamFileExists): string; overload;
+      static;
+    /// <summary>Projektdatei zum Ordner einer .dproj und dem Ordner der geöffneten .groupproj ('' ohne Gruppe):
+    /// nächster Ordner mit .atlas aufwärts bis zur Wurzel, dann der Ordner der Gruppe (siehe Kopf); '' ohne.
     /// </summary>
-    class function Locate(const AProjectFolder: string; const AExists: TAtlasTeamFileExists): string; static;
-    /// <summary>Nächster Ordner mit .git ab AFolder aufwärts, sonst AFolder.</summary>
+    class function Locate(const AProjectFolder, AGroupFolder: string; const AExists: TAtlasTeamFileExists): string;
+      overload; static;
+    /// <summary>Nächster Ordner mit .git oder .svn ab AFolder aufwärts, sonst AFolder.</summary>
     class function RootOf(const AFolder: string; const AExists: TAtlasTeamFileExists): string; static;
     /// <summary>Liest den Text der Datei AFileName; ARoot begrenzt die Pfade ('' = Ordner der Datei).</summary>
     class function Parse(const AText, AFileName, ARoot: string): TAtlasTeamSettings; static;
@@ -239,6 +248,33 @@ begin
     end;
   if (Result <> '') and IsSeparator(Result[Length(Result)]) then
     Result := '';
+end;
+
+/// <summary>Nächster Ordner mit .git (Ordner oder Datei bei Worktrees) oder .svn ab AFolder aufwärts; '' ohne.
+/// </summary>
+function RepositoryRoot(const AFolder: string; const AExists: TAtlasTeamFileExists): string;
+var
+  Folder: string;
+begin
+  Folder := WithoutTrailing(AFolder);
+  while Folder <> '' do
+  begin
+    if AExists(JoinPath(Folder, '.git')) or AExists(JoinPath(Folder, '.svn')) then
+      Exit(Folder);
+    Folder := ParentOf(Folder);
+  end;
+  Result := '';
+end;
+
+/// <summary>Ist AFolder derselbe Ordner wie AChild oder liegt AChild darunter?</summary>
+function FolderContains(const AFolder, AChild: string): Boolean;
+var
+  Folder, Child: string;
+begin
+  Folder := WithoutTrailing(AFolder);
+  Child := WithoutTrailing(AChild);
+  Result := (Folder <> '') and (SameText(Folder, Child) or
+    SameText(Folder + '\', Copy(Child, 1, Length(Folder) + 1)));
 end;
 
 function FolderOf(const AFileName: string): string;
@@ -922,31 +958,44 @@ begin
 end;
 
 class function TAtlasTeamFile.RootOf(const AFolder: string; const AExists: TAtlasTeamFileExists): string;
-var
-  Folder: string;
 begin
-  Folder := WithoutTrailing(AFolder);
-  while Folder <> '' do
-  begin
-    if AExists(JoinPath(Folder, '.git')) then
-      Exit(Folder);
-    Folder := ParentOf(Folder);
-  end;
-  Result := WithoutTrailing(AFolder);
+  Result := RepositoryRoot(AFolder, AExists);
+  if Result = '' then
+    Result := WithoutTrailing(AFolder);
 end;
 
 class function TAtlasTeamFile.Locate(const AProjectFolder: string; const AExists: TAtlasTeamFileExists): string;
+begin
+  Result := Locate(AProjectFolder, '', AExists);
+end;
+
+class function TAtlasTeamFile.Locate(const AProjectFolder, AGroupFolder: string;
+  const AExists: TAtlasTeamFileExists): string;
 var
-  Root: string;
+  Folder, Limit, Group: string;
 begin
   Result := '';
-  if AProjectFolder = '' then
+  Folder := WithoutTrailing(AProjectFolder);
+  Group := WithoutTrailing(AGroupFolder);
+  if Folder = '' then
     Exit;
-  if AExists(JoinPath(AProjectFolder, FileName)) then
-    Exit(JoinPath(AProjectFolder, FileName));
-  Root := RootOf(AProjectFolder, AExists);
-  if not SameText(Root, WithoutTrailing(AProjectFolder)) and AExists(JoinPath(Root, FileName)) then
-    Result := JoinPath(Root, FileName);
+  // Grenze der Suche aufwärts: Wurzel des Repositorys, ohne Repository die Gruppe darüber, sonst nur der Ordner.
+  Limit := RepositoryRoot(Folder, AExists);
+  if (Limit = '') and FolderContains(Group, Folder) then
+    Limit := Group;
+  if Limit = '' then
+    Limit := Folder;
+  while Folder <> '' do
+  begin
+    if AExists(JoinPath(Folder, FileName)) then
+      Exit(JoinPath(Folder, FileName));
+    if SameText(Folder, Limit) then
+      Break;
+    Folder := ParentOf(Folder);
+  end;
+  // Die Gruppe kann außerhalb des Repositorys liegen (darüber oder daneben).
+  if (Group <> '') and AExists(JoinPath(Group, FileName)) then
+    Result := JoinPath(Group, FileName);
 end;
 
 class function TAtlasTeamFile.Parse(const AText, AFileName, ARoot: string): TAtlasTeamSettings;

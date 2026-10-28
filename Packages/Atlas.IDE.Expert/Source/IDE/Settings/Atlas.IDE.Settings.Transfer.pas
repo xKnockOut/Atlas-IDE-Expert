@@ -68,17 +68,11 @@ uses
   Vcl.Dialogs,
   Vcl.Forms,
   Atlas.Core.Settings.ProfileData,
-  Atlas.Core.Settings.TeamFile,
   Atlas.Core.Projects.Setup,
   Atlas.UI.Strings,
   Atlas.UI.Settings.Transfer,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile;
-
-function PathExists(const APath: string): Boolean;
-begin
-  Result := FileExists(APath) or DirectoryExists(APath);
-end;
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
@@ -162,7 +156,7 @@ begin
     end);
   if FileName <> '' then
     ReadText(FileName, AProject);
-  FileName := TAtlasTeamFile.Locate(ExtractFileDir(Project), PathExists);
+  FileName := TAtlasIdeTeamFile.LocateFor(Project);
   if FileName <> '' then
     ReadText(FileName, ATeam);
 end;

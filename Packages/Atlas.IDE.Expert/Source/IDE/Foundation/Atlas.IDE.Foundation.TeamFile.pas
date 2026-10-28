@@ -7,6 +7,8 @@
 //   mit ausgeschalteter Einstellung TeamFile oder vor Start leer (Empty). Eine
 //   fehlerhafte Datei ergibt Valid = False: Es gelten die persönlichen
 //   Einstellungen.
+// - Ort: TAtlasTeamFile.Locate mit dem Ordner der .dproj und dem der
+//   geöffneten .groupproj (LocateFor).
 // - Ein Zeitgeber prüft alle 2 s im Hauptthread, ob sich aktives Projekt,
 //   Ort oder Zeitstempel der Datei geändert haben; nur dann wird neu gelesen
 //   und OnChanged gerufen. Ist die Datei gerade gesperrt, folgt der nächste
@@ -65,6 +67,10 @@ type
     class function Read(const AProject: string): TAtlasTeamSettings; static;
     /// <summary>.dproj des aktiven Projekts; '' ohne.</summary>
     class function ActiveProject: string; static;
+    /// <summary>Ordner der geöffneten .groupproj; '' ohne Projektgruppe.</summary>
+    class function ActiveGroupFolder: string; static;
+    /// <summary>Projektdatei für AProject (.dproj) samt geöffneter Projektgruppe; '' ohne.</summary>
+    class function LocateFor(const AProject: string): string; static;
     /// <summary>Sofort neu lesen (nach Speichern der Optionen oder Anlegen der Datei).</summary>
     class procedure Refresh; static;
     /// <summary>Befehl Atlas.TeamFile: anlegen, falls nötig, und im Editor öffnen.</summary>
@@ -128,6 +134,27 @@ begin
     Result := Project.FileName;
 end;
 
+class function TAtlasIdeTeamFile.ActiveGroupFolder: string;
+var
+  Services: IOTAModuleServices;
+  Group: IOTAProjectGroup;
+begin
+  Result := '';
+  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+    Exit;
+  Group := Services.MainProjectGroup;
+  // Ohne gespeicherte Gruppe ist der Name ohne Ordner (z. B. „ProjectGroup1.groupproj“).
+  if (Group <> nil) and (ExtractFileDir(Group.FileName) <> '') then
+    Result := ExtractFileDir(Group.FileName);
+end;
+
+class function TAtlasIdeTeamFile.LocateFor(const AProject: string): string;
+begin
+  Result := '';
+  if AProject <> '' then
+    Result := TAtlasTeamFile.Locate(ExtractFileDir(AProject), ActiveGroupFolder, PathExists);
+end;
+
 class function TAtlasIdeTeamFile.Load(const AFileName: string; out ATeam: TAtlasTeamSettings): Boolean;
 var
   Content: TAtlasTextFileContent;
@@ -152,7 +179,7 @@ begin
   Result := TAtlasTeamFile.Empty;
   if AProject <> '' then
   begin
-    FileName := TAtlasTeamFile.Locate(ExtractFileDir(AProject), PathExists);
+    FileName := LocateFor(AProject);
     if (FileName <> '') and not Load(FileName, Result) then
     begin
       // Nicht lesbar: als fehlerhaft zeigen, es gelten die persönlichen Einstellungen.
@@ -219,9 +246,7 @@ begin
   Project := '';
   if Wanted then
     Project := ActiveProject;
-  FileName := '';
-  if Project <> '' then
-    FileName := TAtlasTeamFile.Locate(ExtractFileDir(Project), PathExists);
+  FileName := LocateFor(Project);
   Stamp := Project + '|' + FileName;
   if (FileName <> '') and FileAge(FileName, Age) then
     Stamp := Stamp + '|' + FloatToStr(Age, TFormatSettings.Invariant);
@@ -299,7 +324,7 @@ begin
     MessageLine(TAtlasStrings.Text(TAtlasTextId.TeamFileNoProject));
     Exit;
   end;
-  FileName := TAtlasTeamFile.Locate(ExtractFileDir(Project), PathExists);
+  FileName := LocateFor(Project);
   if FileName = '' then
   begin
     FileName := TPath.Combine(ExtractFileDir(Project), TAtlasTeamFile.FileName);
