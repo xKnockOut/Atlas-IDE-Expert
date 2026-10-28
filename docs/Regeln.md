@@ -563,7 +563,7 @@ Count := 0;
 
 **Steuerzeichen** · Bug · Fehler · Gruppe Sicherheit
 
-NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei; ungültige Bytes mit genauer Zeile und Spalte.
+NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei; ungültige Bytes mit genauer Zeile und Spalte. Wie dcc gilt eine Datei ohne BOM nur als UTF-8, wenn sie ganz gültiges UTF-8 ist; eine ANSI-Datei wird nur dann auf ungültige Bytes geprüft, wenn ihre gültigen UTF-8-Folgen überwiegen. U+FFFD ist im Code ein Fehler, im String ein Hinweis, im Kommentar kein Befund.
 
 Mit Treffer:
 
