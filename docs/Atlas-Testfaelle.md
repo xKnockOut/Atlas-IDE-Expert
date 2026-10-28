@@ -7874,3 +7874,27 @@ Vorbereitung: Verbindungen zu YouTrack und GitHub mit Token (#1260), Projekt mit
 | ZS12 | Felder „Zustandsfeld“, „Startzustand“ und „Zielzustände“ der Verbindung setzen, globale Werte anders | Die Werte der Verbindung gelten; Adresse der Verbindung ändern verliert die Felder nicht |
 | ZS13 | Netz während des Sendens trennen, Dialog schließen versuchen | Schließen wartet bis zur Antwort; danach „Tracker nicht erreichbar.“ |
 | ZS14 | Plugin entladen, während eine Änderung gesendet wird | Keine Zugriffsverletzung, keine späte Meldung |
+## Issues in der Befehlspalette (#1270)
+
+Vorbereitung: wie Issue-Vorschau (IV); Projekt mit YouTrack-Tracker (Kürzel `ATL`) und eines mit GitHub-Tracker, Token hinterlegt, `issues.paletteSearch` an; Proxy (z. B. Fiddler) zum Mitzählen der Anfragen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PI1 | Palette öffnen, `ATL-` und dann zügig `Speicher` tippen | Befehle sofort; Gruppe „Issues“ mit „Suche im Tracker …“, dann Treffer mit Kennung, Titel, Zustand als Abzeichen und Zuständig gedimmt; im Proxy genau eine Anfrage `project: ATL Speicher` (**Abnahme**) |
+| PI2 | `ATL-12` eingeben | Ein Abruf `/api/issues/ATL-12`, Zeile ATL-12 als einziger Treffer |
+| PI3 | `#42` im GitHub-Projekt, `#Speicherleck` im GitHub-Projekt | `#42` liest `/repos/<owner/repo>/issues/42`; Text sucht `repo:<owner/repo> is:issue Speicherleck` |
+| PI4 | Schnell weitertippen, während „Suche im Tracker …“ steht | Die alte Anfrage endet ohne Treffer, angezeigt wird nur das Ergebnis der letzten Eingabe; nie zwei Anfragen in 300 ms |
+| PI5 | Pfeiltasten durch Befehle und Issues, auch Bild auf/ab | Überschrift „Issues“ und Statuszeile werden übersprungen |
+| PI6 | Enter auf einem Issue | Palette schließt, Fenster „Atlas-Issue“ zeigt das Issue (**Abnahme**) |
+| PI7 | Strg+Enter auf einem Issue | Issue wird begonnen wie in „Meine Issues“ (Branch bzw. Kennung merken) |
+| PI8 | Umschalt+Enter auf einem Issue | Issue öffnet im Browser |
+| PI9 | Strg+C auf einem Issue | Kennung in der Zwischenablage, Palette bleibt offen |
+| PI10 | Nur `#` eingeben, nachdem drei Issues in der Vorschau geöffnet waren | Die drei zuletzt geöffneten, neuestes zuerst; im Proxy keine Anfrage (**Abnahme**) |
+| PI11 | Netz trennen, `#Test` eingeben | Nach höchstens 5 s Meldung in der Gruppe (nicht erreichbar bzw. Zeitüberschreitung), kein Dialog |
+| PI12 | Token entfernen, `#Test` eingeben | Meldung „Kein Zugang …“ in der Gruppe |
+| PI13 | Projekt ohne Tracker in der `.atlas`, `#42` eingeben | Gruppe meldet, dass kein Tracker eingerichtet ist; keine Anfrage |
+| PI14 | Palette schließen, während eine Suche läuft | Keine Meldung, kein Fehler; Protokoll ohne Kennungen und Titel |
+| PI15 | `issues.paletteSearch` aus, `#42` eingeben | Nur Befehle, keine Gruppe, keine Anfrage |
+| PI16 | `issues.preview` aus, Enter auf einem Issue | Issue öffnet im Browser |
+| PI17 | Plugin entladen, während eine Suche läuft | Keine Zugriffsverletzung; Hintergrund-Threads beendet |
+| PI18 | Helles und dunkles IDE-Design | Überschrift, Statuszeile und Abzeichen gut lesbar |

@@ -22,6 +22,9 @@
 //   schreiben kann (Hook CanWrite), gibt es unten „Kommentar schreiben …“
 //   (Strg+Enter sendet, danach wird das Issue neu geladen) und für das
 //   aktuelle Issue (Hook IsActive) den Knopf „Beenden …“ (Hook EndIssue).
+// - Zuletzt geöffnet (#1270): jedes gezeigte Issue kommt in
+//   TAtlasRecentIssues (<Zwischenspeicher>\recent.json); die Befehlspalette
+//   zeigt sie bei leerem "#".
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse,
 //   Kennung, Titel oder Token.
 // Anbieter, Transport, Zugang, „Beginnen“ und die Einstellungsseite kommen
@@ -35,6 +38,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.IssueCache,
+  Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.UI.Tracker.EndDialog;
@@ -91,7 +95,11 @@ type
     FImageCancel: IAtlasCiCancel;
     FWorkers: TList;
     FGeneration: Integer;
+    FRecent: TAtlasRecentIssues;
+    FRecentFile: string;
     function Frame: TAtlasIssueFrame;
+    /// <summary>AIssue zuerst unter „zuletzt geöffnet“ und speichern.</summary>
+    procedure Remember(const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue);
     procedure Wire(AFrame: TAtlasIssueFrame);
     function ProviderOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
     procedure Load(const AEntry: TAtlasIssueHistoryEntry);
@@ -130,6 +138,8 @@ type
     procedure UpdateWrite;
     /// <summary>issues.preview an?</summary>
     class function Active: Boolean; static;
+    /// <summary>Zuletzt gezeigte Issues des Trackers ATarget, neueste zuerst (#1270).</summary>
+    function RecentIssues(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>;
   end;
 
 implementation
@@ -147,6 +157,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.EditorStyle,
@@ -162,12 +173,16 @@ begin
   FHistory := TAtlasIssueHistory.Create;
   FCache := TAtlasTrackerIssueCache.Create(ACacheFolder);
   FWorkers := TList.Create;
+  FRecent := TAtlasRecentIssues.Create;
+  if ACacheFolder <> '' then
+    FRecentFile := TPath.Combine(ACacheFolder, 'recent.json');
 end;
 
 destructor TAtlasIdeIssuePreview.Destroy;
 begin
   ReleaseThreads(True);
   FWorkers.Free;
+  FRecent.Free;
   FCache.Free;
   FHistory.Free;
   inherited;
@@ -202,6 +217,28 @@ begin
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
   TAtlasIdeIssueWindow.Prepare;
   FCache.Prune(NowUtc);
+  // Fehlt, unbrauchbar oder gesperrt: leer anfangen (TAtlasDataFile protokolliert).
+  if FRecentFile <> '' then
+    FRecent.LoadFromFile(FRecentFile);
+end;
+
+procedure TAtlasIdeIssuePreview.Remember(const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue);
+begin
+  FRecent.Add(ATarget, AIssue);
+  if FRecentFile = '' then
+    Exit;
+  try
+    FRecent.SaveToFile(FRecentFile);
+  except
+    // Die Liste bleibt im Speicher; der Grund steht einmal im Protokoll.
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten(FRecent.Kind, E);
+  end;
+end;
+
+function TAtlasIdeIssuePreview.RecentIssues(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>;
+begin
+  Result := FRecent.Items(ATarget);
 end;
 
 procedure TAtlasIdeIssuePreview.Stop;
@@ -600,7 +637,10 @@ begin
   if mFrame <> nil then
   begin
     if FCache.Get(AEntry.Target, AEntry.Key, NowUtc, mDetails) then
+    begin
       mFrame.ShowDetails(mDetails, NowUtc, StaleText(mDetails, ''), not mComments);
+      Remember(AEntry.Target, mDetails.Issue);
+    end;
     mFrame.SetLoading(True);
   end;
   mProvider := ProviderOf(AEntry.Target);
@@ -689,6 +729,7 @@ begin
     mDetails := ADetails;
     mDetails.Fetched := NowUtc;
     FCache.Put(AEntry.Target, mDetails);
+    Remember(AEntry.Target, mDetails.Issue);
     if mFrame <> nil then
     begin
       mFrame.SetLoading(False);

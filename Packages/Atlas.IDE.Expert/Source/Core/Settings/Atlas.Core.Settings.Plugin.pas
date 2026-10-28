@@ -1306,6 +1306,9 @@ type
     /// <summary>Kommentarvorlage beim Beenden (#1266, issues.endComment) mit {branch}, {commits}, {pr}, {time};
     /// "\n" = neue Zeile.</summary>
     IssuesEndComment: string;
+    /// <summary>Issues in der Befehlspalette suchen (#1270, issues.paletteSearch): „#“ bzw. Projektkürzel mit „-“
+    /// sucht im Tracker; aus = nur Befehle, ohne Netzzugriff.</summary>
+    IssuesPaletteSearch: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2046,6 +2049,7 @@ begin
   Result.IssuesStartComment := '';
   Result.IssuesEndStates := '';
   Result.IssuesEndComment := DefaultIssuesEndComment;
+  Result.IssuesPaletteSearch := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2852,6 +2856,7 @@ begin
   IssuesStartComment := AStore.ReadString('IssuesStartComment', Default.IssuesStartComment);
   IssuesEndStates := AStore.ReadString('IssuesEndStates', Default.IssuesEndStates);
   IssuesEndComment := AStore.ReadString('IssuesEndComment', Default.IssuesEndComment);
+  IssuesPaletteSearch := AStore.ReadInteger('IssuesPaletteSearch', BoolValue(Default.IssuesPaletteSearch)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3327,6 +3332,7 @@ begin
   AStore.WriteString('IssuesStartComment', IssuesStartComment);
   AStore.WriteString('IssuesEndStates', IssuesEndStates);
   AStore.WriteString('IssuesEndComment', IssuesEndComment);
+  AStore.WriteInteger('IssuesPaletteSearch', BoolValue(IssuesPaletteSearch));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

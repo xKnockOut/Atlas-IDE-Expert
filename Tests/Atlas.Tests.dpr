@@ -603,6 +603,8 @@ uses
   Atlas.Core.Tracker.Preview.Tests in 'IDE.Expert\Atlas.Core.Tracker.Preview.Tests.pas',
   Atlas.Core.Tracker.Workflow in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Workflow.pas',
   Atlas.Core.Tracker.Workflow.Tests in 'IDE.Expert\Atlas.Core.Tracker.Workflow.Tests.pas',
+  Atlas.Core.Tracker.PaletteSearch in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.PaletteSearch.pas',
+  Atlas.Core.Tracker.PaletteSearch.Tests in 'IDE.Expert\Atlas.Core.Tracker.PaletteSearch.Tests.pas',
   Atlas.UI.Documentation.View in '..\Packages\Atlas.IDE.Expert\Source\UI\Documentation\Atlas.UI.Documentation.View.pas',
   Atlas.UI.Tracker.IssueFrame in '..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas',
   Atlas.UI.Tracker.IssueFrame.Tests in 'IDE.Expert\Atlas.UI.Tracker.IssueFrame.Tests.pas',

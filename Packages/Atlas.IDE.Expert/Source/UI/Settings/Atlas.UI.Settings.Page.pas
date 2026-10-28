@@ -657,6 +657,7 @@ type
     FIssuesEndComment: TEdit;
     FIssuesLoadValues: TButton;
     FIssuesValuesNote: TLabel;
+    FIssuesPaletteSearch: TCheckBox;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1196,6 +1197,7 @@ type
     property IssuesConnectionAssigneeField: TAtlasValueBox read FIssuesConnectionAssigneeField;
     property IssuesConnectionStartState: TAtlasValueBox read FIssuesConnectionStartState;
     property IssuesConnectionEndStates: TEdit read FIssuesConnectionEndStates;
+    property IssuesPaletteSearch: TCheckBox read FIssuesPaletteSearch;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -2738,6 +2740,8 @@ begin
   // Issue-Vorschau (#1264): Hauptschalter, Kommentare darunter.
   FIssuesPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreview));
   FIssuesPreviewComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewComments));
+  // Issues in der Befehlspalette (#1270).
+  FIssuesPaletteSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPaletteSearch));
   AddIssuesWorkflowSection;
 end;
 
@@ -4184,6 +4188,7 @@ begin
   FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
   FMarks.Bind(FIssuesPreview, ['IssuesPreview']);
   FMarks.Bind(FIssuesPreviewComments, ['IssuesPreviewComments']);
+  FMarks.Bind(FIssuesPaletteSearch, ['IssuesPaletteSearch']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FIssuesSyncState, ['IssuesSyncState']);
   FMarks.Bind(FIssuesStateField, ['IssuesStateField']);
@@ -6461,6 +6466,7 @@ begin
   FIssuesStartComment.Text := ASettings.IssuesStartComment;
   FIssuesEndStates.Text := ASettings.IssuesEndStates;
   FIssuesEndComment.Text := ASettings.IssuesEndComment;
+  FIssuesPaletteSearch.Checked := ASettings.IssuesPaletteSearch;
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -7030,6 +7036,7 @@ begin
   ASettings.IssuesStartComment := FIssuesStartComment.Text;
   ASettings.IssuesEndStates := TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FIssuesEndStates.Text));
   ASettings.IssuesEndComment := FIssuesEndComment.Text;
+  ASettings.IssuesPaletteSearch := FIssuesPaletteSearch.Checked;
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
