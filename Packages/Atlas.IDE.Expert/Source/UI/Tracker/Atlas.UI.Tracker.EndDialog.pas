@@ -12,6 +12,10 @@
 //   „Keine Schreibrechte für ATL-123 (403).“); nichts wird wiederholt, der
 //   Benutzer kann ändern und erneut senden oder abbrechen.
 // - Strg+Enter sendet; Esc bricht ab.
+// - Das Kommentarfeld ist der Kommentar-Editor (#1278): Vorschläge, Textbausteine
+//   und Entwurf, sobald APrepare ihn bindet; die Vorlage gilt nicht als Entwurf,
+//   ein vorhandener Entwurf wird mit „Übernehmen“ angeboten. Abbrechen behält
+//   den Entwurf, erfolgreiches Senden löscht ihn.
 // SummaryText bildet die Zeile für die Meldungsansicht („Zustand „Erledigt“,
 // Kommentar“), ErrorText auch für „Beginnen“ und die Vorschau.
 
@@ -26,7 +30,8 @@ uses
   Vcl.ExtCtrls,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Workflow,
-  Atlas.UI.Tracker.ValueBox;
+  Atlas.UI.Tracker.ValueBox,
+  Atlas.UI.Tracker.CommentEditor;
 
 type
   /// <summary>Ergebnis des Schreibens, im Hauptthread.</summary>
@@ -39,10 +44,13 @@ type
   public const
     DialogWidth = 520;
     CommentHeight = 150;
+    /// <summary>Leiste des Kommentar-Editors (Vorschau, Textbaustein, Entwurf).</summary>
+    EditorBarHeight = 30;
   private
     FKey: string;
     FOptions: TAtlasTrackerSyncOptions;
     FState: TAtlasValueBox;
+    FEditor: TAtlasCommentEditor;
     FComment: TMemo;
     FHandOver: TCheckBox;
     FAssignee: TAtlasValueBox;
@@ -60,6 +68,7 @@ type
     procedure DialogCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure DialogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure SetBusy(AValue: Boolean);
+    procedure EditorCancel(Sender: TObject);
   public
     /// <summary>AComment: ausgefüllte Vorlage issues.endComment (Zeilen mit #10).</summary>
     constructor CreateDialog(AOwner: TComponent; const AKey: string; const AOptions: TAtlasTrackerSyncOptions;
@@ -92,6 +101,8 @@ type
     property SentChange: TAtlasTrackerChange read FChange;
     property StateBox: TAtlasValueBox read FState;
     property CommentMemo: TMemo read FComment;
+    /// <summary>Kommentar-Editor (#1278); CommentMemo ist sein Memo.</summary>
+    property CommentEditor: TAtlasCommentEditor read FEditor;
     property HandOverCheck: TCheckBox read FHandOver;
     property AssigneeBox: TAtlasValueBox read FAssignee;
     property Note: TLabel read FNote;
@@ -159,19 +170,21 @@ begin
   mLabel.Caption := TAtlasStrings.Text(TAtlasTextId.TrackerEndComment);
   mLabel.Left := 0;
   mLabel.Top := ScaleValue(2);
-  FComment := TMemo.Create(Self);
-  FComment.Parent := Self;
-  FComment.Align := alTop;
-  FComment.AlignWithMargins := True;
-  FComment.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
-  FComment.Top := mRow.Top + mRow.Height + 1;
-  FComment.Height := ScaleValue(CommentHeight);
-  FComment.ScrollBars := ssVertical;
-  FComment.WantReturns := True;
-  FComment.Text := AdjustLineBreaks(AComment, tlbsCRLF);
+  // Kommentar-Editor (#1278) mit seiner Leiste unter dem Feld; die Vorlage ist kein Entwurf.
+  FEditor := TAtlasCommentEditor.Create(Self);
+  FEditor.Parent := Self;
+  FEditor.Align := alTop;
+  FEditor.AlignWithMargins := True;
+  FEditor.Margins.SetBounds(Gap, Gap div 2, Gap, 0);
+  FEditor.Top := mRow.Top + mRow.Height + 1;
+  FEditor.Height := ScaleValue(CommentHeight + EditorBarHeight);
+  FEditor.OnSend := SendClick;
+  FEditor.OnCancel := EditorCancel;
+  FEditor.SetText(AComment);
+  FComment := FEditor.Memo;
 
   mRow := AddRow(26);
-  mRow.Top := FComment.Top + FComment.Height + 1;
+  mRow.Top := FEditor.Top + FEditor.Height + 1;
   FHandOver := TCheckBox.Create(Self);
   FHandOver.Parent := mRow;
   FHandOver.Caption := TAtlasStrings.Text(TAtlasTextId.TrackerEndHandOver);
@@ -311,6 +324,7 @@ begin
   if not FChange.HasWork or not Assigned(FOnSend) then
   begin
     FSent := True;
+    FEditor.Sent;
     ModalResult := mrOk;
     Exit;
   end;
@@ -331,6 +345,8 @@ begin
   if AResult.Succeeded then
   begin
     FSent := True;
+    // Geschrieben: Der Entwurf hat sich erledigt.
+    FEditor.Sent;
     FNote.Caption := '';
     ModalResult := mrOk;
     Exit;
@@ -346,8 +362,18 @@ begin
   CanClose := not FSending;
 end;
 
+procedure TAtlasTrackerEndDialog.EditorCancel(Sender: TObject);
+begin
+  // Esc im Kommentarfeld (ohne offene Vorschlagsliste); der Editor hat den Entwurf schon gesichert.
+  if not FSending then
+    ModalResult := mrCancel;
+end;
+
 procedure TAtlasTrackerEndDialog.DialogKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
+  // Im Kommentarfeld sendet der Editor selbst (und schluckt das Zeichen der Taste).
+  if ActiveControl = FComment then
+    Exit;
   if (Key = VK_RETURN) and (ssCtrl in Shift) then
   begin
     Key := 0;
@@ -417,6 +443,8 @@ begin
       APrepare(mDialog);
     Result := (mDialog.ShowModal = mrOk) and mDialog.Sent;
     AChange := mDialog.SentChange;
+    // Entwurf sichern, solange das Fenster noch lebt (nach Senden ist er schon gelöscht).
+    mDialog.CommentEditor.Unbind;
   finally
     mDialog.Free;
   end;

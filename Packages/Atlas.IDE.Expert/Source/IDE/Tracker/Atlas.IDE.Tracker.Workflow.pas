@@ -11,6 +11,9 @@
 // - Kommentar aus der Vorschau (SendComment).
 // - Zeit buchen (#1267, BookTime, TimeSettings) für die Zeiterfassung
 //   (Atlas.IDE.Tracker.TimeTracking); unabhängig von issues.syncState.
+// - Kommentarfeld des Dialogs als Kommentar-Editor (#1278, Hook
+//   CommentAssist, Feld "end"); ohne Hook bzw. mit issues.commentEditor aus
+//   ein einfaches Textfeld.
 // Nur mit issues.syncState und einem Anbieter, der IAtlasTrackerWriter
 // umsetzt (Enabled); sonst bleibt „Beenden“ die Rückfrage von „Meine Issues“.
 // Einstellungen je Verbindung (issues.connections) vor den globalen. Netz im
@@ -25,6 +28,7 @@ uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Vcs.Worker,
   Atlas.UI.Tracker.EndDialog;
@@ -35,6 +39,9 @@ type
     const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
   /// <summary>{time} für AKey (#1267); '' ohne Zeiterfassung.</summary>
   TAtlasIdeTrackerTimeText = reference to function(const AKey: string): string;
+  /// <summary>Kommentar-Editor für Feld AField zu AKey (#1278); nil mit issues.commentEditor aus.</summary>
+  TAtlasIdeTrackerAssist = reference to function(const ATarget: TAtlasTrackerTarget;
+    const AKey, AField: string): IAtlasCommentAssist;
 
   /// <summary>Was „Beenden“ über das Issue weiß.</summary>
   TAtlasIdeTrackerEnd = record
@@ -58,6 +65,7 @@ type
     FTransport: TAtlasIdeTrackerTransport;
     FReport: TProc<string>;
     FTimeText: TAtlasIdeTrackerTimeText;
+    FCommentAssist: TAtlasIdeTrackerAssist;
     FStopped: Boolean;
     procedure Report(const AText: string);
     procedure ShowEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -66,7 +74,8 @@ type
     function SendHandler(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AKey: string): TAtlasTrackerSendEvent;
     function PrepareHandler(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-      const AStateField: string; const ASession: IInterface): TProc<TAtlasTrackerEndDialog>;
+      const AKey, AStateField: string; const ASession: IInterface): TProc<TAtlasTrackerEndDialog>;
+    procedure BindComment(ADialog: TAtlasTrackerEndDialog; const ATarget: TAtlasTrackerTarget; const AKey: string);
     procedure LoadEndValues(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AStateField: string; const ASession: IInterface);
     class procedure Logged(const AProvider: IAtlasTrackerProvider; const AWhat: string;
@@ -109,6 +118,8 @@ type
       const AKey: string; const ADone: TProc<TAtlasTrackerTimeSettings, TAtlasTrackerWriteResult>);
     /// <summary>{time} für den Kommentar beim Beenden (#1267).</summary>
     property TimeText: TAtlasIdeTrackerTimeText read FTimeText write FTimeText;
+    /// <summary>Kommentar-Editor im Beenden-Dialog (#1278).</summary>
+    property CommentAssist: TAtlasIdeTrackerAssist read FCommentAssist write FCommentAssist;
   end;
 
 implementation
@@ -187,6 +198,7 @@ begin
   FTransport := nil;
   FReport := nil;
   FTimeText := nil;
+  FCommentAssist := nil;
 end;
 
 procedure TAtlasIdeTrackerSync.Report(const AText: string);
@@ -380,7 +392,7 @@ begin
   try
     mDone := TAtlasTrackerEndDialog.Execute(AInput.Key, AOptions,
       TAtlasTrackerWorkflow.Fill(AOptions.EndComment, mValues), SendHandler(AProvider, ATarget, AInput.Key),
-      PrepareHandler(AProvider, ATarget, AOptions.StateField, mSession), mChange);
+      PrepareHandler(AProvider, ATarget, AInput.Key, AOptions.StateField, mSession), mChange);
   finally
     // Nachgeladene Werte kommen danach nicht mehr an den freigegebenen Dialog.
     mSession.SetDialog(nil);
@@ -421,26 +433,42 @@ begin
 end;
 
 function TAtlasIdeTrackerSync.PrepareHandler(const AProvider: IAtlasTrackerProvider;
-  const ATarget: TAtlasTrackerTarget; const AStateField: string;
+  const ATarget: TAtlasTrackerTarget; const AKey, AStateField: string;
   const ASession: IInterface): TProc<TAtlasTrackerEndDialog>;
 var
   mOwner: TAtlasIdeTrackerSync;
   mProvider: IAtlasTrackerProvider;
   mTarget: TAtlasTrackerTarget;
+  mKey: string;
   mField: string;
   mSession: IInterface;
 begin
   mOwner := Self;
   mProvider := AProvider;
   mTarget := ATarget;
+  mKey := AKey;
   mField := AStateField;
   mSession := ASession;
   Result :=
     procedure(ADialog: TAtlasTrackerEndDialog)
     begin
       (mSession as IAtlasTrackerEndSession).SetDialog(ADialog);
+      mOwner.BindComment(ADialog, mTarget, mKey);
       mOwner.LoadEndValues(mProvider, mTarget, mField, mSession);
     end;
+end;
+
+procedure TAtlasIdeTrackerSync.BindComment(ADialog: TAtlasTrackerEndDialog; const ATarget: TAtlasTrackerTarget;
+  const AKey: string);
+var
+  mAssist: IAtlasCommentAssist;
+begin
+  // Vorlage steht schon im Feld (kein Entwurf); ein Entwurf des Felds "end" wird mit „Übernehmen“ angeboten.
+  mAssist := nil;
+  if Assigned(FCommentAssist) then
+    mAssist := FCommentAssist(ATarget, AKey, TAtlasCommentDrafts.FieldEnd);
+  ADialog.CommentEditor.Enhanced := mAssist <> nil;
+  ADialog.CommentEditor.Bind(mAssist);
 end;
 
 procedure TAtlasIdeTrackerSync.LoadEndValues(const AProvider: IAtlasTrackerProvider;

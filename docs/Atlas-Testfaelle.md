@@ -8289,3 +8289,57 @@ Vorbereitung wie BO (#1272): YouTrack-Agile-Board mit Schätzfeld (Story Points)
 | SK18 | Helles und dunkles Design | Linien und Texte lesbar (**Abnahme**) |
 | SK19 | GitHub-Projekt mit Iterationen und „Estimate“ | Zahlen in Punkten, Vorsprint = vorherige Iteration |
 | SK20 | Plugin entladen, während die Kachel lädt | Keine Zugriffsverletzung |
+## Issues in der Befehlspalette (#1270)
+
+Vorbereitung: wie Issue-Vorschau (IV); Projekt mit YouTrack-Tracker (Kürzel `ATL`) und eines mit GitHub-Tracker, Token hinterlegt, `issues.paletteSearch` an; Proxy (z. B. Fiddler) zum Mitzählen der Anfragen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PI1 | Palette öffnen, `ATL-` und dann zügig `Speicher` tippen | Befehle sofort; Gruppe „Issues“ mit „Suche im Tracker …“, dann Treffer mit Kennung, Titel, Zustand als Abzeichen und Zuständig gedimmt; im Proxy genau eine Anfrage `project: ATL Speicher` (**Abnahme**) |
+| PI2 | `ATL-12` eingeben | Ein Abruf `/api/issues/ATL-12`, Zeile ATL-12 als einziger Treffer |
+| PI3 | `#42` im GitHub-Projekt, `#Speicherleck` im GitHub-Projekt | `#42` liest `/repos/<owner/repo>/issues/42`; Text sucht `repo:<owner/repo> is:issue Speicherleck` |
+| PI4 | Schnell weitertippen, während „Suche im Tracker …“ steht | Die alte Anfrage endet ohne Treffer, angezeigt wird nur das Ergebnis der letzten Eingabe; nie zwei Anfragen in 300 ms |
+| PI5 | Pfeiltasten durch Befehle und Issues, auch Bild auf/ab | Überschrift „Issues“ und Statuszeile werden übersprungen |
+| PI6 | Enter auf einem Issue | Palette schließt, Fenster „Atlas-Issue“ zeigt das Issue (**Abnahme**) |
+| PI7 | Strg+Enter auf einem Issue | Issue wird begonnen wie in „Meine Issues“ (Branch bzw. Kennung merken) |
+| PI8 | Umschalt+Enter auf einem Issue | Issue öffnet im Browser |
+| PI9 | Strg+C auf einem Issue | Kennung in der Zwischenablage, Palette bleibt offen |
+| PI10 | Nur `#` eingeben, nachdem drei Issues in der Vorschau geöffnet waren | Die drei zuletzt geöffneten, neuestes zuerst; im Proxy keine Anfrage (**Abnahme**) |
+| PI11 | Netz trennen, `#Test` eingeben | Nach höchstens 5 s Meldung in der Gruppe (nicht erreichbar bzw. Zeitüberschreitung), kein Dialog |
+| PI12 | Token entfernen, `#Test` eingeben | Meldung „Kein Zugang …“ in der Gruppe |
+| PI13 | Projekt ohne Tracker in der `.atlas`, `#42` eingeben | Gruppe meldet, dass kein Tracker eingerichtet ist; keine Anfrage |
+| PI14 | Palette schließen, während eine Suche läuft | Keine Meldung, kein Fehler; Protokoll ohne Kennungen und Titel |
+| PI15 | `issues.paletteSearch` aus, `#42` eingeben | Nur Befehle, keine Gruppe, keine Anfrage |
+| PI16 | `issues.preview` aus, Enter auf einem Issue | Issue öffnet im Browser |
+| PI17 | Plugin entladen, während eine Suche läuft | Keine Zugriffsverletzung; Hintergrund-Threads beendet |
+| PI18 | Helles und dunkles IDE-Design | Überschrift, Statuszeile und Abzeichen gut lesbar |
+
+## Kommentar-Editor (#1278)
+
+Vorbereitung: wie Zustand und Kommentar (ZS); `issues.commentEditor` an (Vorgabe); YouTrack-Projekt `ATL` mit Benutzerin „Anna“ (`anna`) und ein GitHub-Repository mit mindestens zwei Zuständigen; Git-Arbeitskopie mit Commit; Projekt mit Versionsinformationen; Proxy zum Mitzählen der Anfragen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KE1 | Vorschau des aktuellen Issues: im Kommentarfeld `@an` tippen | Nach kurzer Pause Liste mit Benutzern, die „an“ enthalten (Login und Name), Anna oben; im Proxy eine Anfrage `/api/users?query=an…` (**Abnahme**) |
+| KE2 | Enter in der Liste, dann senden | `@anna ` steht an der Stelle des getippten Worts; der Kommentar im Tracker erwähnt Anna (**Abnahme**) |
+| KE3 | `ATL-12` tippen, dann `ATL-Speicher` | Liste mit passenden Issues (Kennung, Titel); Enter setzt die Kennung ein (**Abnahme**) |
+| KE4 | Nur `#` tippen | Die zuletzt in der Vorschau geöffneten Issues, ohne Anfrage im Proxy |
+| KE5 | `mail@example.com` und `C:\pfad#1` tippen | Keine Liste |
+| KE6 | In der Liste Pfeiltasten, Bild auf/ab, Tab; Esc | Auswahl wandert, Tab setzt ein wie Enter; Esc schließt nur die Liste, der Text bleibt |
+| KE7 | Wort markieren, Strg+B, nochmals Strg+B; Strg+I | `**Wort**`, dann wieder `Wort`; Strg+I setzt `_Wort_` |
+| KE8 | Strg+Umschalt+K ohne Auswahl und mit markierten Zeilen | Code-Block mit ```` ```pascal ```` um die Zeilen bzw. leerer Block mit Schreibmarke darin |
+| KE9 | Strg+Leer bzw. Knopf „Textbaustein ▾“, „Behoben in {commit}“ wählen | „Behoben in <Kurz-Hash>“ mit dem aktuellen Commit des Projekts (**Abnahme**) |
+| KE10 | Baustein mit `{version}` und `{issue}` anlegen und einfügen | Version des aktiven Projekts in der aktiven Konfiguration bzw. die Kennung des Issues; ohne Versionsinformationen bleibt `{version}` stehen |
+| KE11 | Knopf „Vorschau“ | Markdown wird wie in der Vorschau des Issues gezeichnet (fett, Code-Block, Listen, Bilder als „Bild: …“); „Bearbeiten“ kehrt zurück, Text unverändert (**Abnahme**) |
+| KE12 | Text tippen, anderes Issue öffnen, zurück zum ersten | Text wieder im Feld, Hinweis „Entwurf vom …“ mit „Verwerfen“ (**Abnahme**) |
+| KE13 | IDE schließen und neu starten, Issue öffnen | Entwurf noch da; `%LOCALAPPDATA%\Atlas\issues\drafts.json` enthält Server, Projekt, Kennung, Feld und Text, kein Token |
+| KE14 | Senden | Kommentar im Tracker, Feld leer, Entwurf aus `drafts.json` gelöscht; Issue erneut öffnen zeigt keinen Entwurf (**Abnahme**) |
+| KE15 | Senden und sofort ein anderes Issue öffnen, bevor die Antwort kommt | Der Entwurf des anderen Issues bleibt; das Feld des anderen Issues wird nicht geleert |
+| KE16 | Beenden-Dialog: Kommentar ändern, Esc; Dialog erneut öffnen | Vorlage aus `issues.endComment` im Feld, Hinweis „Entwurf vom … vorhanden“ mit „Übernehmen“; Übernehmen setzt den geänderten Text ein |
+| KE17 | Beenden-Dialog: `@` und `#` wie KE1/KE3, Strg+Enter | Vorschläge wie in der Vorschau; Strg+Enter sendet den Dialog |
+| KE18 | Optionen › Issue-Tracker › „Textbausteine für Kommentare“: Baustein hinzufügen (mehrzeilig), Namen ändern, entfernen, „Vorgaben“; OK | Liste zeigt Zeilenumbrüche als ⏎; nach OK erscheinen die Bausteine im Menü „Textbaustein ▾“; „Vorgaben“ stellt die zwei Vorgaben her |
+| KE19 | `issues.commentEditor` aus | Schlichtes Feld wie bisher: keine Leiste, keine Liste, kein Entwurf; Strg+Enter sendet weiterhin (**Abnahme**) |
+| KE20 | GitHub-Projekt: `@` plus Buchstaben | Zuständige des Repositorys, gefiltert nach dem getippten Text |
+| KE21 | Token ohne Rechte bzw. Netz getrennt, `@an` | Keine Liste, keine Meldung im Dialog, kein Hängen (höchstens 5 s im Hintergrund) |
+| KE22 | Plugin entladen, während eine Benutzersuche läuft | Keine Zugriffsverletzung, Entwurf gespeichert |
+| KE23 | Helles und dunkles IDE-Design | Leiste, Liste, Vorschau und Hinweis gut lesbar |

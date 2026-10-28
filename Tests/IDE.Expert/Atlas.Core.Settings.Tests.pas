@@ -165,6 +165,9 @@ type
     /// <summary>Zeiterfassung (#1267): ab Werk aus, Leerlauf 10, Rundung 5, Grenzen, Speichern und Laden.</summary>
     [Test]
     procedure IssuesTimeOptions;
+    /// <summary>Kommentar-Editor (#1278): Schalter und Textbausteine mit Vorgaben, Normalisieren und Speichern.</summary>
+    [Test]
+    procedure IssuesCommentOptions;
     /// <summary>Release-Build-Wächter (#533): build.releaseGuard, build.gate, build.releaseConfigs und
     /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
@@ -1093,6 +1096,7 @@ begin
   Assert.IsTrue(Settings.WelcomePageSprint, 'Sprint-Kachel (#1277) an');
   Assert.IsTrue(Settings.IssuesSprintBurndown, 'Burndown an');
   Assert.IsTrue(Settings.IssuesSprintCompare, 'Vergleich mit dem Vorsprint an');
+  Assert.IsTrue(Settings.IssuesPaletteSearch, 'Palettensuche (#1270) an');
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -1152,6 +1156,7 @@ begin
   Settings.WelcomePageSprint := False;
   Settings.IssuesSprintBurndown := False;
   Settings.IssuesSprintCompare := False;
+  Settings.IssuesPaletteSearch := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -1173,6 +1178,7 @@ begin
   Assert.IsFalse(Loaded.IssuesCodeLinks);
   Assert.IsFalse(Loaded.IssuesBlameLinks);
   Assert.AreEqual(75, Loaded.IssuesBlameMaxRevisions);
+  Assert.IsFalse(Loaded.IssuesPaletteSearch);
 end;
 
 procedure TAtlasPluginSettingsTests.IssuesSyncOptions;
@@ -1255,6 +1261,29 @@ begin
   Assert.IsFalse(Loaded.WelcomePageSprint);
   Assert.IsFalse(Loaded.IssuesSprintBurndown);
   Assert.IsFalse(Loaded.IssuesSprintCompare);
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesCommentOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.IssuesCommentEditor, 'Kommentar-Editor ist vorgegeben an');
+  Assert.AreEqual(DefaultIssuesCommentSnippets, mSettings.IssuesCommentSnippets, 'zwei Vorgabe-Bausteine');
+  // Normalisieren: leer = keine Bausteine, nicht die Vorgabe.
+  mSettings.IssuesCommentSnippets := '   ';
+  mSettings.Normalize;
+  Assert.AreEqual('[]', mSettings.IssuesCommentSnippets);
+  // Speichern und Laden.
+  mSettings.IssuesCommentEditor := False;
+  mSettings.IssuesCommentSnippets := '[{"name":"Danke","text":"Danke!"}]';
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.IssuesCommentEditor);
+  Assert.AreEqual('[{"name":"Danke","text":"Danke!"}]', mLoaded.IssuesCommentSnippets);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

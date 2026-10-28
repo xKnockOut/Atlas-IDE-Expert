@@ -75,6 +75,15 @@
 //   „meine erledigt“ filtern die Liste auf die Issues des Sprints („Gefiltert:
 //   … · alle zeigen“ hebt den Filter auf); ohne den Bereich öffnet der Klick
 //   das Board.
+// - Issues in der Befehlspalette (#1270, issues.paletteSearch):
+//   TAtlasIdeIssueSearch (PaletteSearch) mit dem Tracker des aktiven Projekts
+//   (ActiveTarget), demselben Transport, der Vorschau, „Beginnen“ und den
+//   zuletzt in der Vorschau geöffneten Issues.
+// - Kommentar-Editor (#1278, issues.commentEditor): TAtlasIdeCommentService
+//   (CommentAssist) mit demselben Anbieter und Transport, den zuletzt in der
+//   Vorschau geöffneten Issues und dem Ordner des Projekts; Entwürfe in
+//   %LOCALAPPDATA%\Atlas\issues\drafts.json, für die Vorschau und den
+//   Beenden-Dialog.
 // - Protokoll anonym: nur Anbieter, Anzahl, Ergebnis und Fehlerart, nie
 //   Adresse, Projekt, Kennung, Titel oder Token.
 // Anbieter, Transport (mit Token aus dem Anmeldespeicher) und Zugangsdialog
@@ -88,6 +97,7 @@ uses
   System.Generics.Collections,
   Vcl.ExtCtrls,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.Commands.Palette,
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
   Atlas.Core.Tracker.Contract,
@@ -100,6 +110,8 @@ uses
   Atlas.IDE.Tracker.TimeTracking,
   Atlas.IDE.Tracker.Board,
   Atlas.IDE.Tracker.Workflow,
+  Atlas.IDE.Tracker.PaletteSearch,
+  Atlas.IDE.Tracker.CommentAssist,
   Atlas.IDE.Welcome.Projects,
   Atlas.IDE.Welcome.Sprint;
 
@@ -174,6 +186,10 @@ type
     FTime: TAtlasIdeTrackerTime;
     FTimeRef: IInterface;
     FOnTimeStatus: TAtlasIdeTimeStatus;
+    FSearch: TAtlasIdeIssueSearch;
+    FSearchRef: IAtlasPaletteSource;
+    FComments: TAtlasIdeCommentService;
+    FCommentsRef: IInterface;
     FLine: TAtlasStatusLine;
     FLineRef: IAtlasStatusItem;
     // Checkliste des aktuellen Issues (#1273, issues.checklistStatus).
@@ -249,6 +265,7 @@ type
     function TimeIssueOf(const AProject, AKey: string): TAtlasTimeIssue;
     /// <summary>Liste auf AIssues beschränken (Sprint-Kachel); ohne den Bereich öffnet es das Board.</summary>
     procedure SetFilter(const ACaption: string; const AIssues: TArray<TAtlasTrackerIssue>);
+    procedure StartComments;
     /// <summary>Kennung des aktuellen Issues im Projekt des Bereichs; '' ohne.</summary>
     function ActiveKey: string;
     /// <summary>„Beenden“ ohne Tracker: Zustand, Statuszeile und Hinweis.</summary>
@@ -256,6 +273,7 @@ type
     /// <summary>„Beenden“ mit Dialog (#1266); beendet erst nach „Senden“.</summary>
     procedure EndWithTracker(const AProject, ABranch, AKey: string; const AProvider: IAtlasTrackerProvider;
       const ATarget: TAtlasTrackerTarget; const AState: TAtlasIssuesState);
+    procedure StartSearch;
     function ActiveTarget(out ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
     class function NowUtc: TDateTime; static;
   public
@@ -316,6 +334,8 @@ type
     procedure ShowTimeOpen;
     /// <summary>Zusatzfeld der Zeiterfassung im Statusfeld (#1267); vor Start setzen.</summary>
     property OnTimeStatus: TAtlasIdeTimeStatus read FOnTimeStatus write FOnTimeStatus;
+    /// <summary>Quelle der Befehlspalette für Issues (#1270); nil vor Start bzw. nach Stop.</summary>
+    property PaletteSearch: IAtlasPaletteSource read FSearchRef;
     property ProviderFactory: TAtlasTrackerProviderHook read FProviderFactory write FProviderFactory;
     property TransportFactory: TAtlasTrackerTransportHook read FTransportFactory write FTransportFactory;
     property OnCredentials: TAtlasTrackerCredentialsHook read FOnCredentials write FOnCredentials;
@@ -364,6 +384,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Tracker.Checklist,
+  Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Links,
@@ -444,12 +465,65 @@ begin
   FWatch.OnTimer := WatchTick;
   FTitle := '';
   RegisterIssueLinks;
+  StartComments;
   StartSync;
   StartTime;
   StartPreview;
   StartBoard;
   StartSprint;
+  StartSearch;
   Refresh;
+end;
+
+function CacheFolder: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'issues');
+end;
+
+procedure TAtlasIdeIssues.StartComments;
+var
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
+  mHooks: TAtlasCommentAssistHooks;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  mHooks := Default(TAtlasCommentAssistHooks);
+  mHooks.Provider :=
+    function(const AName: string): IAtlasTrackerProvider
+    begin
+      Result := nil;
+      if mKeep <> nil then
+        Result := mOwner.ProviderOf(AName);
+    end;
+  mHooks.Transport :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    var
+      mFactory: TAtlasTrackerTransportHook;
+    begin
+      Result := nil;
+      mFactory := mOwner.FTransportFactory;
+      if (mKeep <> nil) and Assigned(mFactory) then
+        Result := mFactory(AProvider, ATarget);
+    end;
+  mHooks.Recent :=
+    function(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>
+    begin
+      Result := nil;
+      if (mKeep <> nil) and (mOwner.FPreview <> nil) then
+        Result := mOwner.FPreview.RecentIssues(ATarget);
+    end;
+  mHooks.Folder :=
+    function: string
+    begin
+      Result := '';
+      if mKeep <> nil then
+        Result := ExtractFileDir(mOwner.CurrentProject);
+    end;
+  mHooks.SummaryFolder := TAtlasIdeProjects.Folder;
+  // Stop löst den Ring (die Hooks halten diese Quelle).
+  FComments := TAtlasIdeCommentService.Create(mHooks, CacheFolder);
+  FCommentsRef := FComments;
 end;
 
 procedure TAtlasIdeIssues.StartSync;
@@ -475,6 +549,13 @@ begin
       if mKeep <> nil then
         mOwner.Report(AText);
     end);
+  FSync.CommentAssist :=
+    function(const ATarget: TAtlasTrackerTarget; const AKey, AField: string): IAtlasCommentAssist
+    begin
+      Result := nil;
+      if (mKeep <> nil) and (mOwner.FComments <> nil) then
+        Result := mOwner.FComments.Assist(ATarget, AKey, AField);
+    end;
 end;
 
 procedure TAtlasIdeIssues.StartTime;
@@ -612,8 +693,20 @@ begin
       else
         mOwner.FSync.SendComment(mOwner.ProviderOf(ATarget.Provider), ATarget, AKey, AText, ADone);
     end;
-  FPreview := TAtlasIdeIssuePreview.Create(mHooks,
-    TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'issues'));
+  mHooks.CommentAssist :=
+    function(const ATarget: TAtlasTrackerTarget; const AKey: string): IAtlasCommentAssist
+    begin
+      Result := nil;
+      if (mKeep <> nil) and (mOwner.FComments <> nil) then
+        Result := mOwner.FComments.Assist(ATarget, AKey, TAtlasCommentDrafts.FieldPreview);
+    end;
+  mHooks.CommentSent :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (mKeep <> nil) and (mOwner.FComments <> nil) then
+        mOwner.FComments.DeleteDraft(ATarget, AKey, TAtlasCommentDrafts.FieldPreview);
+    end;
+  FPreview := TAtlasIdeIssuePreview.Create(mHooks, CacheFolder);
   FPreviewRef := FPreview;
   FPreview.Start;
 end;
@@ -799,6 +892,73 @@ begin
   Changed;
 end;
 
+procedure TAtlasIdeIssues.StartSearch;
+var
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
+  mHooks: TAtlasIssueSearchHooks;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  mHooks := Default(TAtlasIssueSearchHooks);
+  mHooks.Target :=
+    function(out ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider
+    begin
+      ATarget := TAtlasTrackerTarget.Create('', '', '', '');
+      Result := nil;
+      if (mKeep <> nil) and mOwner.FStarted then
+        Result := mOwner.ActiveTarget(ATarget);
+    end;
+  mHooks.Transport :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    var
+      mFactory: TAtlasTrackerTransportHook;
+    begin
+      Result := nil;
+      mFactory := mOwner.FTransportFactory;
+      if (mKeep <> nil) and Assigned(mFactory) then
+        Result := mFactory(AProvider, ATarget);
+    end;
+  mHooks.Show :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (mKeep <> nil) and (mOwner.FPreview <> nil) then
+        mOwner.FPreview.Show(ATarget, AKey);
+    end;
+  mHooks.PreviewActive :=
+    function: Boolean
+    begin
+      Result := (mKeep <> nil) and (mOwner.FPreview <> nil) and TAtlasIdeIssuePreview.Active;
+    end;
+  mHooks.Recent :=
+    function(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>
+    begin
+      Result := nil;
+      if (mKeep <> nil) and (mOwner.FPreview <> nil) then
+        Result := mOwner.FPreview.RecentIssues(ATarget);
+    end;
+  mHooks.Start :=
+    procedure(AIssue: TAtlasTrackerIssue)
+    begin
+      if mKeep <> nil then
+        mOwner.Start(AIssue, mOwner.Options.Start);
+    end;
+  mHooks.CanStart :=
+    function: Boolean
+    begin
+      Result := (mKeep <> nil) and mOwner.FStarted and Active and (mOwner.FStartProject = '') and
+        (mOwner.CurrentProject <> '');
+    end;
+  mHooks.Report :=
+    procedure(AText: string)
+    begin
+      if mKeep <> nil then
+        mOwner.Report(AText);
+    end;
+  FSearch := TAtlasIdeIssueSearch.Create(mHooks);
+  FSearchRef := FSearch;
+end;
+
 procedure TAtlasIdeIssues.RegisterIssueLinks;
 begin
   // Eigene Routine: Die anonyme Methode hält nur Self, keinen Rahmen von Start.
@@ -882,6 +1042,16 @@ begin
   FSprintRef := nil;
   FFilterIssues := nil;
   FreeAndNil(FSync);
+  // Ebenso die Palettensuche (ihre Hooks halten diese Quelle).
+  if FSearch <> nil then
+    FSearch.Stop;
+  FSearch := nil;
+  FSearchRef := nil;
+  // Nach der Vorschau: deren Kommentarfeld hat seinen Entwurf beim Schließen noch gesichert.
+  if FComments <> nil then
+    FComments.Stop;
+  FComments := nil;
+  FCommentsRef := nil;
   FreeAndNil(FWatch);
   RemoveStatus;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Issues);
