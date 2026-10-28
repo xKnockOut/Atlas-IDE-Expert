@@ -786,7 +786,7 @@ begin
             Field.Name := Trim(Name);
             Field.TypeName := TypeName;
             Field.Range := TTextRange.Create(Child.StartPos, Child.StartPos);
-            for Token := 0 to High(Tokens) do
+            for Token := TSyntaxTree.FirstTokenOf(Tokens, Child.StartOffset) to High(Tokens) do
               if (Tokens[Token].Offset >= Child.StartOffset) and (Tokens[Token].Offset < TypeRef.StartOffset) and
                 (Tokens[Token].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Token].Text, Field.Name) then
               begin

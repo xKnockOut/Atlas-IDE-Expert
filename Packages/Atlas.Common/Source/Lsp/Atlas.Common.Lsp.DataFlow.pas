@@ -331,7 +331,7 @@ begin
   if ANode.Kind <> TSyntaxKind.MemberAccess then
     Exit;
   // Das Mitglied steht als letzter gleichnamiger Bezeichner im Knoten.
-  for Index := 0 to High(ATree.Tokens) do
+  for Index := ATree.FirstTokenFrom(ANode.StartOffset) to High(ATree.Tokens) do
   begin
     Token := ATree.Tokens[Index];
     if Token.Offset >= ANode.EndOffset then
@@ -348,7 +348,7 @@ var
   Index: Integer;
   Token: TPascalToken;
 begin
-  for Index := 0 to High(ATree.Tokens) do
+  for Index := ATree.FirstTokenFrom(ANode.StartOffset) to High(ATree.Tokens) do
   begin
     Token := ATree.Tokens[Index];
     if Token.Offset >= ANode.EndOffset then
@@ -582,7 +582,7 @@ begin
   Position := Header.StartPos;
   // Bei TFoo.Bar das letzte Vorkommen vor der Parameterliste.
   Found := False;
-  for Index := 0 to High(ATree.Tokens) do
+  for Index := ATree.FirstTokenFrom(Header.StartOffset) to High(ATree.Tokens) do
   begin
     Token := ATree.Tokens[Index];
     if Token.Offset >= Header.EndOffset then
@@ -949,7 +949,7 @@ var
   Armed: Boolean;
 begin
   Armed := False;
-  for Index := 0 to High(ATree.Tokens) do
+  for Index := ATree.FirstTokenFrom(AProperty.StartOffset) to High(ATree.Tokens) do
   begin
     Token := ATree.Tokens[Index];
     if Token.Offset >= AProperty.EndOffset then

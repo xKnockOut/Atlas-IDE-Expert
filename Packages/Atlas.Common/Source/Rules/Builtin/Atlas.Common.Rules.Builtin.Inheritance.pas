@@ -1222,7 +1222,7 @@ var
     Index, Previous: Integer;
   begin
     Result := nil;
-    for Index := 0 to High(Tokens) do
+    for Index := TSyntaxTree.FirstTokenOf(Tokens, ANode.StartOffset) to High(Tokens) do
     begin
       if Tokens[Index].Offset >= ANode.EndOffset then
         Break;
@@ -1738,13 +1738,11 @@ var
 
   /// <summary>Index des Tokens, das bei AOffset beginnt; -1 ohne.</summary>
   function TokenIndex(AOffset: Integer): Integer;
-  var
-    Index: Integer;
   begin
-    for Index := 0 to High(Tokens) do
-      if Tokens[Index].Offset = AOffset then
-        Exit(Index);
-    Result := -1;
+    // Binär statt ab Dateianfang (#1342).
+    Result := TSyntaxTree.FirstTokenOf(Tokens, AOffset);
+    if (Result > High(Tokens)) or (Tokens[Result].Offset <> AOffset) then
+      Result := -1;
   end;
 
   /// <summary>Erstes ";" auf Klammertiefe 0 ab dem Token AFrom; -1 ohne.</summary>
@@ -3234,10 +3232,12 @@ end;
 function MethodNameRange(const AContext: TRuleContext; AHeader: TSyntaxNode; const AName: string): TTextRange;
 var
   mToken: TPascalToken;
+  mIndex: Integer;
 begin
   Result := TTextRange.Create(AHeader.StartPos, AHeader.EndPos);
-  for mToken in AContext.Tree.Tokens do
+  for mIndex := AContext.Tree.FirstTokenFrom(AHeader.StartOffset) to High(AContext.Tree.Tokens) do
   begin
+    mToken := AContext.Tree.Tokens[mIndex];
     if mToken.Offset < AHeader.StartOffset then
       Continue;
     if (mToken.Offset >= AHeader.EndOffset) or mToken.IsSymbol('(') or mToken.IsSymbol(';') or
@@ -3252,9 +3252,11 @@ end;
 function HasCommentBetween(const AContext: TRuleContext; AStart, AEnd: Integer): Boolean;
 var
   mToken: TPascalToken;
+  mIndex: Integer;
 begin
-  for mToken in AContext.Tree.Tokens do
+  for mIndex := AContext.Tree.FirstTokenFrom(AStart) to High(AContext.Tree.Tokens) do
   begin
+    mToken := AContext.Tree.Tokens[mIndex];
     if mToken.Offset < AStart then
       Continue;
     if mToken.Offset >= AEnd then

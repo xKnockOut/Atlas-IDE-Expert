@@ -74,6 +74,11 @@ type
     FLock: TObject;
     // Ordner (klein) -> Unit-Namen (klein) -> Schreibweise. Unter FLock.
     FListings: TObjectDictionary<string, TDictionary<string, string>>;
+    // Namen der Projekt-Units (klein); nach dem Konstruktor nur gelesen.
+    FProjectUnits: TDictionary<string, Boolean>;
+    // Unit-Name (klein) -> in einem der Projektordner gefunden. Unter FLock.
+    FFolderAnswers: TDictionary<string, Boolean>;
+    function InProjectFolders(const AUnitName: string; const ANames: TArray<string>): Boolean;
     function Listing(const AFolder: string): TDictionary<string, string>;
     function InFolder(const AFolder, AName: string): Boolean;
     function Candidates(const AUnitName: string): TArray<string>;
@@ -138,11 +143,17 @@ constructor TUnitLookup.Create(const ASetup: TUnitLookupSetup);
 var
   Folders: TList<string>;
   Folder: string;
+  mUnit: TProjectUnit;
 begin
   inherited Create;
   FSetup := ASetup;
   FLock := TObject.Create;
   FListings := TObjectDictionary<string, TDictionary<string, string>>.Create([doOwnsValues]);
+  // Einmal je Projekt statt je uses-Eintrag und Namespace über alle Units (#1342).
+  FProjectUnits := TDictionary<string, Boolean>.Create;
+  FFolderAnswers := TDictionary<string, Boolean>.Create;
+  for mUnit in ASetup.Project.Units do
+    FProjectUnits.AddOrSetValue(LowerCase(mUnit.Name), True);
   Folders := TList<string>.Create;
   try
     if ASetup.Project.FileName <> '' then
@@ -166,6 +177,8 @@ end;
 
 destructor TUnitLookup.Destroy;
 begin
+  FFolderAnswers.Free;
+  FProjectUnits.Free;
   FListings.Free;
   FLock.Free;
   inherited;
@@ -216,27 +229,57 @@ begin
     Result := Result + [Namespace + '.' + AUnitName];
 end;
 
+function TUnitLookup.InProjectFolders(const AUnitName: string; const ANames: TArray<string>): Boolean;
+var
+  mKey, mFolder, mName: string;
+begin
+  // Die Ordnerlisten ändern sich nach dem ersten Lesen nicht: die Antwort je Unit merken statt sie für jeden
+  // uses-Eintrag über alle Ordner und Namespaces neu zu suchen (#1342).
+  mKey := LowerCase(AUnitName);
+  TMonitor.Enter(FLock);
+  try
+    if FFolderAnswers.TryGetValue(mKey, Result) then
+      Exit;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Result := False;
+  for mFolder in FProjectFolders do
+  begin
+    for mName in ANames do
+      if InFolder(mFolder, mName) then
+      begin
+        Result := True;
+        Break;
+      end;
+    if Result then
+      Break;
+  end;
+  TMonitor.Enter(FLock);
+  try
+    FFolderAnswers.AddOrSetValue(mKey, Result);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
 function TUnitLookup.FindInProject(const AUnitName, AFromFile: string; out AUnsure: Boolean): Boolean;
 var
   Names: TArray<string>;
-  Name, Folder, Package: string;
-  ProjectUnit: TProjectUnit;
+  Name, Package: string;
 begin
   AUnsure := False;
   Result := True;
   Names := Candidates(AUnitName);
   for Name in Names do
-    for ProjectUnit in FSetup.Project.Units do
-      if SameText(ProjectUnit.Name, Name) then
-        Exit;
+    if FProjectUnits.ContainsKey(LowerCase(Name)) then
+      Exit;
   if AFromFile <> '' then
     for Name in Names do
       if InFolder(TProjectPaths.DirectoryOf(AFromFile), Name) then
         Exit;
-  for Folder in FProjectFolders do
-    for Name in Names do
-      if InFolder(Folder, Name) then
-        Exit;
+  if InProjectFolders(AUnitName, Names) then
+    Exit;
   // Packages: Units der requires-Packages, auch ohne .dcu im Pfad.
   if Assigned(FSetup.PackageProvides) then
     for Package in FSetup.RequiredPackages do

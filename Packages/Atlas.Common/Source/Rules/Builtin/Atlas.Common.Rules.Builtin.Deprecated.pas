@@ -526,7 +526,6 @@ var
   Resolved: TResolvedSymbol;
   OwnerUnit: TUnitIndex;
   Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
   Hinted, Qualified: Boolean;
 begin
   Tokens := FContext.Tree.Tokens;
@@ -546,9 +545,11 @@ begin
           if SameText(Symbol.Name, Token.Text) and HasHint(Symbol.Directives) then
             Hinted := True;
         if not Hinted then
-          for Location in FIndex.FindSymbols(Token.Text) do
-            if HasHint(Location.Symbol.Directives) then
-              Hinted := True;
+          Hinted := FIndex.HasSymbol(Token.Text,
+            function(const ACandidate: TIndexSymbol): Boolean
+            begin
+              Result := HasHint(ACandidate.Directives);
+            end);
         Candidates.Add(LowerCase(Token.Text), Hinted);
       end;
       if not Hinted then

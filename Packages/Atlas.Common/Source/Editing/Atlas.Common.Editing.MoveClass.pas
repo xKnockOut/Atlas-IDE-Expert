@@ -747,7 +747,7 @@ begin
   // Verwendet die Ursprungs-Unit die Klasse noch?
   InterfaceRef := False;
   ImplementationRef := False;
-  for Index := 0 to High(ATree.Tokens) do
+  for Index := ATree.FirstTokenFrom(InterfaceNode.StartOffset) to High(ATree.Tokens) do
     if (ATree.Tokens[Index].Kind = TPascalTokenKind.Identifier) and
       SameText(CleanName(ATree.Tokens[Index].Text), APlan.ClassName) and
       not InRanges(Moved, ATree.Tokens[Index].Offset) and (ATree.Tokens[Index].Offset >= InterfaceNode.StartOffset) then
