@@ -46,6 +46,10 @@ type
     /// <summary>#1261: issues.projects wie die Verbindungen als JSON-Liste in settings.json.</summary>
     [Test]
     procedure IssuesProjectsGoToGlobalFile;
+    /// <summary>#1285: vcs.provider, vcs.git.path, vcs.svn.path und vcs.timeoutSeconds in settings.json (der
+    /// Server liest dieselben Werte), nie in der Registry; ungültige Werte werden zur Vorgabe.</summary>
+    [Test]
+    procedure VcsSettingsGoToGlobalFile;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -677,6 +681,45 @@ begin
   mLoaded.Load(mStore);
   Assert.AreEqual('[]', mLoaded.IssuesProjects, 'falsche Art: Vorgabe');
   Assert.IsTrue(MatchText('issues.projects', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
+procedure TAtlasPluginSettingsTests.VcsSettingsGoToGlobalFile;
+const
+  cGit = 'D:\Portable\Git\cmd\git.exe';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('auto', mSettings.VcsProvider);
+  Assert.AreEqual('', mSettings.VcsGitPath, 'leer = automatisch suchen');
+  Assert.AreEqual('', mSettings.VcsSvnPath);
+  Assert.AreEqual(15, mSettings.VcsTimeoutSeconds);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.VcsProvider := 'svn';
+  mSettings.VcsGitPath := cGit;
+  mSettings.VcsTimeoutSeconds := 60;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"provider": "svn"');
+  Assert.Contains(mRouted.Text, '"timeoutSeconds": 60');
+  Assert.Contains(mRouted.Text, '"git": {');
+  Assert.AreEqual('', mRegistry.ReadString('VcsGitPath', ''), 'nicht in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.AreEqual('svn', mLoaded.VcsProvider);
+  Assert.AreEqual(cGit, mLoaded.VcsGitPath);
+  Assert.AreEqual('', mLoaded.VcsSvnPath);
+  Assert.AreEqual(60, mLoaded.VcsTimeoutSeconds);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create,
+    '{"vcs": {"provider": "cvs", "svn": {"path": "  s.exe "}, "timeoutSeconds": 0}}');
+  mStore := mRouted;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('auto', mLoaded.VcsProvider, 'unbekannte Art: Vorgabe');
+  Assert.AreEqual('s.exe', mLoaded.VcsSvnPath, 'ohne Leerzeichen');
+  Assert.AreEqual(15, mLoaded.VcsTimeoutSeconds, 'außerhalb 1 bis 300: Vorgabe');
 end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;

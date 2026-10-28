@@ -694,6 +694,11 @@ type
     TraceFile: string;
     /// <summary>Versionsverwaltung (vcs.provider, #571): "auto", "git", "svn" oder "off".</summary>
     VcsProvider: string;
+    /// <summary>Eigener Pfad zu git bzw. svn (vcs.git.path, vcs.svn.path, #1285); '' = automatisch suchen.</summary>
+    VcsGitPath: string;
+    VcsSvnPath: string;
+    /// <summary>Zeitlimit je Aufruf von git bzw. svn in Sekunden (vcs.timeoutSeconds, #1285, 1–300).</summary>
+    VcsTimeoutSeconds: Integer;
     /// <summary>True, wenn AFileName unter ein Muster aus IndexExclude fällt.</summary>
     function IsIndexExcluded(const AFileName: string): Boolean;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
@@ -1197,6 +1202,9 @@ begin
   Result.LogFile := '';
   Result.TraceFile := '';
   Result.VcsProvider := 'auto';
+  Result.VcsGitPath := '';
+  Result.VcsSvnPath := '';
+  Result.VcsTimeoutSeconds := 15;
 end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;
