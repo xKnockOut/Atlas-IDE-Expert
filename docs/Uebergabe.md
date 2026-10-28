@@ -1350,3 +1350,11 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Messung (FPC, Linux, `--check`):** VirtualTrees.Header 25,6 s → 7,0 s, SynEdit 353 s → 135 s, VirtualTreeView 676 s → 93 s; Befunde identisch (545, 10.220, 3.837). Golden-Korpus und alle 92 Regel-Testunits wie auf der Basis.
 - **Testlauf in der Cloud:** Testvariante von `Convert-ForFpc.py` (Wurzel = erzeugtes Testprogramm, Tests nicht ausgelassen, DUnitX-Attribute entfernt, DUnitX-Stub aus `/mnt/project-files/werkzeuge/fpc-harness/stub`).
 - **Offen:** Delphi-Build und Testfälle PZ1–PZ3.
+
+## #1323 Token an einer Position binär suchen (28.10.2026, Branch `feature/1323-tokenindexat` auf #1322, ungebaut mit Delphi)
+
+- **Ursache:** `TNameResolver.TokenIndexAt` lief für jede Position ab Dateianfang über alle Token und kopierte jedes Record; TypedExpressions (`CheckArray`) fragt für jedes Element großer Konstanten-Arrays.
+- **Lösung:** `TSyntaxTree.IdentifierAt` (binär über die Token-Enden, dann höchstens zwei Kandidaten) und `TSyntaxTree.FirstTokenFrom` (binär über Offsets) ersetzen `TokenIndexAt` und `FirstTokenAt` des Resolvers. Dasselbe Muster (Suche ab Dateianfang je Knoten) behoben in `NodeSource` und `FromNode` (NameResolver), `FindToken`/`HasConditionals` (Unused) und `Injected` (Events); die beiden letzten zeigten gdb-Stichproben über HtmlViewer. Ähnliche Schleifen stehen noch in Capture, Components, Naming, Style, RtlTypePatterns, MoveMember und VarBlock; nicht angefasst, weil sie in den Messungen nicht auffielen.
+- **Messung (FPC, Linux, `--check`, nach #1322):** HtmlViewer 708 s → 116 s (allein gemessen), SynEdit 135 s → 113 s, VirtualTreeView 93 s → 78 s; Befunde identisch mit dem Stand vor #1322. Benchmark 3 × 20.000 Elemente 33 s → 1,2 s.
+- **Tests:** SyntaxTree-Tests vergleichen `IdentifierAt` an jeder Position mit der früheren linearen Suche; Benchmark `LargeConstantArraysStayFast`. Regel-, Semantics- und Golden-Korpus-Tests wie auf #1322.
+- **Offen:** Delphi-Build und Testfälle TS1–TS4.

@@ -96,6 +96,24 @@ var
     Result := Tokens[Code[APosition]];
   end;
 
+  // Erste Position in Code, deren Token bei oder hinter AOffset beginnt; Length(Code), wenn keines (#1323).
+  function FirstCodeAt(AOffset: Integer): Integer;
+  var
+    mLow, mHigh, mMiddle: Integer;
+  begin
+    mLow := 0;
+    mHigh := Length(Code);
+    while mLow < mHigh do
+    begin
+      mMiddle := (mLow + mHigh) div 2;
+      if Tokens[Code[mMiddle]].Offset < AOffset then
+        mLow := mMiddle + 1
+      else
+        mHigh := mMiddle;
+    end;
+    Result := mLow;
+  end;
+
   function NodeText(ANode: TSyntaxNode): string;
   begin
     Result := Copy(AContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
@@ -189,11 +207,16 @@ var
           if (Block = nil) or not StartsText(AClassName + '.', Node.Name) or
             (not AAnyMethod and not StartsText('constructor', TrimLeft(NodeText(Node)))) then
             Continue;
-          for Position := 0 to High(Code) - 2 do
-            if (Token(Position).Offset >= Block.StartOffset) and (Token(Position).Offset < Block.EndOffset) and
-              (Token(Position).Kind = TPascalTokenKind.Identifier) and SameText(Token(Position).Text, AName) and
-              Token(Position + 1).IsSymbol(':=') and not Token(Position + 2).IsKeyword('nil') then
+          // Nur die Token des Rumpfs statt aller Token der Datei je Routine und Feld (#1323).
+          for Position := FirstCodeAt(Block.StartOffset) to High(Code) - 2 do
+          begin
+            if Tokens[Code[Position]].Offset >= Block.EndOffset then
+              Break;
+            if (Tokens[Code[Position]].Kind = TPascalTokenKind.Identifier) and
+              SameText(Tokens[Code[Position]].Text, AName) and Tokens[Code[Position + 1]].IsSymbol(':=') and
+              not Tokens[Code[Position + 2]].IsKeyword('nil') then
               Exit(True);
+          end;
           Continue;
         end;
         for Index := Node.ChildCount - 1 downto 0 do

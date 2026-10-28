@@ -7801,3 +7801,12 @@ Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testu
 | PZ1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TTreeUnitsTests` grün (**Abnahme**) |
 | PZ2 | Große Unit (z. B. `VirtualTrees.BaseTree.pas`) öffnen, eine Zeile ändern | Diagnosen kommen wie bisher, Atlas-Statusfeld zeigt nicht „Server langsam“; CPU-Last nach der Änderung klingt deutlich schneller ab als vorher |
 | PZ3 | `AtlasServer.exe --check` über ein großes Projekt (z. B. VirtualTreeView) vor und nach dem Branch | Dieselben Befunde, Laufzeit deutlich kürzer (Linux-Bau: 676 s → 93 s, **Abnahme**: unter 3 min) |
+
+## #1323 Token-Suche binär statt linear (Branch `feature/1323-tokenindexat`)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| TS1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `IdentifierAtCases`, `IdentifierAtMatchesLinearSearch`, `FirstTokenFromMatchesLinearSearch`, `LargeConstantArraysStayFast` grün (**Abnahme**) |
+| TS2 | Hover, Strg+Klick und Umbenennen auf Bezeichner am Wortanfang, in der Mitte und direkt hinter dem Wort, auch `&begin` und in `A.B.C` | Wie vorher; auf `C` in `^C` kein Hover |
+| TS3 | Unit mit einer Konstanten von 20.000 Elementen öffnen und eine Zeile ändern | Diagnosen kommen nach wenigen Sekunden, kein „Server langsam“ |
+| TS4 | `AtlasServer.exe --check` über HtmlViewer vor und nach dem Branch | Dieselben Befunde, unter 2 min (Linux-Bau: 116 s, **Abnahme**) |

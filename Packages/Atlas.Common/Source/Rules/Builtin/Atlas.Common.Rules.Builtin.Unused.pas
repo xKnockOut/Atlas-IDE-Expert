@@ -273,15 +273,17 @@ end;
 function FindToken(const AContext: TRuleContext; AStart, AEnd: Integer; const AName: string;
   out AToken: TPascalToken): Boolean;
 var
-  Token: TPascalToken;
+  mIndex: Integer;
 begin
-  for Token in AContext.Tree.Tokens do
+  // Ab AStart statt ab Dateianfang und ohne Kopie je Token (#1323): je Deklaration und Routine aufgerufen.
+  for mIndex := AContext.Tree.FirstTokenFrom(AStart) to High(AContext.Tree.Tokens) do
   begin
-    if Token.Offset >= AEnd then
+    if AContext.Tree.Tokens[mIndex].Offset >= AEnd then
       Break;
-    if (Token.Offset >= AStart) and (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, AName) then
+    if (AContext.Tree.Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      SameText(AContext.Tree.Tokens[mIndex].Text, AName) then
     begin
-      AToken := Token;
+      AToken := AContext.Tree.Tokens[mIndex];
       Exit(True);
     end;
   end;
@@ -301,16 +303,17 @@ end;
 /// <summary>Enthält die Routine Direktiven der bedingten Kompilierung?</summary>
 function HasConditionals(const AContext: TRuleContext; ARoutine: TSyntaxNode): Boolean;
 var
-  Token: TPascalToken;
+  mIndex: Integer;
   Text: string;
 begin
-  for Token in AContext.Tree.Tokens do
+  // Ab der Routine statt ab Dateianfang und ohne Kopie je Token (#1323).
+  for mIndex := AContext.Tree.FirstTokenFrom(ARoutine.StartOffset) to High(AContext.Tree.Tokens) do
   begin
-    if Token.Offset >= ARoutine.EndOffset then
+    if AContext.Tree.Tokens[mIndex].Offset >= ARoutine.EndOffset then
       Break;
-    if (Token.Offset < ARoutine.StartOffset) or (Token.Kind <> TPascalTokenKind.Directive) then
+    if AContext.Tree.Tokens[mIndex].Kind <> TPascalTokenKind.Directive then
       Continue;
-    Text := UpperCase(Token.Text);
+    Text := UpperCase(AContext.Tree.Tokens[mIndex].Text);
     if StartsStr('{$IF', Text) or StartsStr('(*$IF', Text) or StartsStr('{$ELSE', Text) or
       StartsStr('(*$ELSE', Text) then
       Exit(True);
