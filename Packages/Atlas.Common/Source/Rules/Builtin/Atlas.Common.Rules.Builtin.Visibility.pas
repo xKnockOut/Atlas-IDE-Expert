@@ -34,6 +34,11 @@
 // Rücksicht auf die Sichtbarkeit nicht findet und ohne sie (DeclaredMember)
 // schon. Deklarationen in bedingten Zweigen, Methoden von Helfern und
 // verschachtelten Typen (die mehr sehen dürfen) bleiben still.
+//
+// Nicht strenger als dcc (#1328, Minimalfälle in Tests/DccFaelle): Ein class
+// constructor bzw. class destructor ist nie Ziel eines Aufrufs; TX.Create
+// meint dann den geerbten Konstruktor (IM4). In einer Klassenmethode gilt ein
+// Aufruf als erreichbar, sobald eine Überladung eine Klassenmethode ist (IM5).
 
 interface
 
@@ -227,6 +232,9 @@ var
       not Resolver.DeclaredMember(ReceiverType, ANode.Name, Member) or not (Member.Visibility in Restricted) or
       (Member.Condition <> '') then
       Exit;
+    // class constructor Create verdeckt den geerbten Konstruktor nicht (Spring4D, IM4).
+    if (Member.SymbolKind = TIndexSymbolKind.Constructor_) and HasDirective(Member.Directives, 'class') then
+      Exit;
     if (Member.Visibility <> TIndexVisibility.Private) and WiderScope(EnclosingMethod(ANode)) then
       Exit;
     Code := 'E2361';
@@ -234,6 +242,17 @@ var
       Code := 'E2362';
     AReport.Add(MemberRange(ANode), Format('%s.%s ist %s und hier nicht sichtbar (wie %s).', [Member.Container,
       Member.Name, VisibilityText(Member.Visibility), Code]), TRuleConfidence.High);
+  end;
+
+  /// <summary>Hat der Aufruf ANode eine Überladung, die eine Klassenmethode ist (DMVC, JCL, IM5)?</summary>
+  function HasClassOverload(ANode: TSyntaxNode): Boolean;
+  var
+    mCandidate: TResolvedSymbol;
+  begin
+    for mCandidate in Resolver.CallCandidates(AContext.Tree, FileName, ANode) do
+      if HasDirective(mCandidate.Directives, 'class') then
+        Exit(True);
+    Result := False;
   end;
 
   procedure CheckInstanceMember(ANode: TSyntaxNode; AMethod: TSyntaxNode);
@@ -252,6 +271,8 @@ var
     // Mitglied eines with-Ausdrucks (with Result do Pfad := …) ist erreichbar.
     if Resolver.WithMember(AContext.Tree, FileName, ANode.Name, ANode.StartOffset, WithNode, Element, Unknown) or
       Unknown then
+      Exit;
+    if (Symbol.SymbolKind = TIndexSymbolKind.Method) and HasClassOverload(ANode) then
       Exit;
     case Symbol.SymbolKind of
       TIndexSymbolKind.Field:

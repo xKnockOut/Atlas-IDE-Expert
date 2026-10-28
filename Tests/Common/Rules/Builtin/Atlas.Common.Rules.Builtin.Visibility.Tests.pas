@@ -4,7 +4,9 @@
 // inaccessible-member (#1008): Beispiel aus dem Issue (E2124), private und
 // protected aus einer anderen Unit (E2361, E2362), strict private in derselben
 // Unit, stille Fälle (Nachfahren, protected über eine Klasse der eigenen Unit,
-// with, class var), W1045 und die Einstellungen.
+// with, class var), W1045 und die Einstellungen; Fälle, die dcc übersetzt
+// (#1328, Tests/DccFaelle: class constructor neben geerbtem Create,
+// Klassenmethoden-Überladung in einer Klassenmethode).
 // unused-private-member (#1020): Beispiel aus dem Issue mit Korrektur, stille
 // Fälle (Verwendung, property read, message, override, Interfaces, Attribute,
 // Formulardatei, Include), Option includeFields und die Einstellungen.
@@ -33,6 +35,10 @@ type
     procedure OverloadWithPublicVariantIsVisible;
     [Test]
     procedure PropertyReferencesAncestorPrivate;
+    [Test]
+    procedure ClassConstructorDoesNotHideInheritedCreate;
+    [Test]
+    procedure ClassOverloadInClassMethodIsReachable;
     [Test]
     procedure OffAndExclude;
   end;
@@ -85,6 +91,17 @@ begin
     'function TSperre.Betreten(Zeit: Cardinal): Boolean;'#10'begin'#10'  Result := True;'#10'end;'#10 +
     'class procedure TSperre.Betreten(const AObjekt: TObject);'#10'begin'#10'end;'#10 +
     'end.', 'C:\Projekt\Basis.pas', nil));
+end;
+
+/// <summary>BasisIndex und Unit Inspektor mit TInspektor (private class constructor Create) und TVersteckt
+/// (private constructor Create).</summary>
+function InspektorIndex: ISymbolIndex;
+begin
+  Result := BasisIndex;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Inspektor;'#10'interface'#10'type'#10'  TInspektor = class'#10 +
+    '  private'#10'    class constructor Create;'#10'  end;'#10'  TVersteckt = class'#10'  private'#10 +
+    '    constructor Create;'#10'  end;'#10'implementation'#10'class constructor TInspektor.Create;'#10'begin'#10 +
+    'end;'#10'constructor TVersteckt.Create;'#10'begin'#10'end;'#10'end.', 'C:\Projekt\Inspektor.pas', nil));
 end;
 
 function Findings(const ASource: string): TArray<TRuleFinding>; overload;
@@ -221,6 +238,44 @@ begin
   // Eigenes Feld derselben Klasse: still.
   Assert.AreEqual(0, Integer(Length(Findings(Source.Replace('  TKind = class(TBasis)'#10'  public'#10,
     '  TKind = class(TBasis)'#10'  private'#10'    FWert: Integer;'#10'  public'#10)))));
+end;
+
+procedure TInaccessibleMemberTests.ClassConstructorDoesNotHideInheritedCreate;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Minimalfall IM4 (Spring4D Spring.Container): TInspektor.Create ist TObject.Create.
+  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Inspektor;'#10'implementation'#10 +
+    'function Neu: TObject;'#10'begin'#10'  Result := TInspektor.Create;'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource,
+    InspektorIndex, '', 'Kunden.pas'))));
+  // Gegentest: ein privater Konstruktor bleibt unsichtbar.
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource.Replace('TInspektor', 'TVersteckt'),
+    InspektorIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('TVersteckt.Create ist private und hier nicht sichtbar (wie E2361).', mFound[0].Message);
+end;
+
+procedure TInaccessibleMemberTests.ClassOverloadInClassMethodIsReachable;
+var
+  mSource: string;
+begin
+  // Minimalfall IM5 (DMVC ActiveRecord, JCL): Waehle(TAktiv, …) ist die Klassenmethode.
+  mSource := 'unit Kunden;'#10'interface'#10'type'#10'  TAktiv = class'#10'  public'#10 +
+    '    function Waehle(const AText: string): Integer; overload;'#10 +
+    '    class function Waehle(AKlasse: TClass; const AText: string): Integer; overload;'#10 +
+    '    class function NachName(const AName: string): Integer;'#10'  end;'#10'implementation'#10 +
+    'function TAktiv.Waehle(const AText: string): Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10 +
+    'class function TAktiv.Waehle(AKlasse: TClass; const AText: string): Integer;'#10'begin'#10 +
+    '  Result := 1;'#10'end;'#10'class function TAktiv.NachName(const AName: string): Integer;'#10'begin'#10 +
+    '  Result := Waehle(TAktiv, AName);'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(Findings(mSource))));
+  // Gegentest: ohne die Klassenmethode bleibt nur die Instanzmethode.
+  Assert.AreEqual(1, Integer(Length(Findings(mSource.Replace(
+    '    class function Waehle(AKlasse: TClass; const AText: string): Integer; overload;'#10, '').Replace(
+    'class function TAktiv.Waehle(AKlasse: TClass; const AText: string): Integer;'#10'begin'#10 +
+    '  Result := 1;'#10'end;'#10, '').Replace('Waehle(TAktiv, AName)', 'Waehle(AName)')))));
 end;
 
 procedure TInaccessibleMemberTests.OffAndExclude;
