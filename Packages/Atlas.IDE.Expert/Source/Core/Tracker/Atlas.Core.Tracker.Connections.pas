@@ -56,6 +56,9 @@ type
     /// <summary>Verbindung aus dem Abschnitt tracker der .atlas (schreibgeschützt); Name = AName.</summary>
     class function FromTeamFile(const AName: string; const ATarget: TAtlasTrackerTarget): TAtlasTrackerConnection;
       static;
+    /// <summary>Dieselbe Verbindung mit anderer Adresse; Name, Anbieter, Herkunft und die Werte für Zustand und
+    /// Zuständigkeit bleiben.</summary>
+    function WithUrl(const AUrl: string): TAtlasTrackerConnection;
     /// <summary>Ziel ohne Projekt und Abfrage: genug für Server, Token und Prüfung.</summary>
     function Target: TAtlasTrackerTarget;
     function ReadOnly: Boolean;
@@ -130,13 +133,19 @@ uses
 
 { TAtlasTrackerConnection }
 
+/// <summary>Adresse ohne Leerraum außen und ohne „/“ am Ende.</summary>
+function NormalizedUrl(const AUrl: string): string;
+begin
+  Result := Trim(AUrl);
+  while (Result <> '') and (Result[Length(Result)] = '/') do
+    Delete(Result, Length(Result), 1);
+end;
+
 class function TAtlasTrackerConnection.Create(const AName, AProvider, AUrl: string): TAtlasTrackerConnection;
 begin
   Result.Name := Trim(AName);
   Result.Provider := LowerCase(Trim(AProvider));
-  Result.Url := Trim(AUrl);
-  while (Result.Url <> '') and (Result.Url[Length(Result.Url)] = '/') do
-    Delete(Result.Url, Length(Result.Url), 1);
+  Result.Url := NormalizedUrl(AUrl);
   Result.Source := TAtlasTrackerConnectionSource.Personal;
   Result.StateField := '';
   Result.AssigneeField := '';
@@ -149,6 +158,13 @@ class function TAtlasTrackerConnection.FromTeamFile(const AName: string;
 begin
   Result := Create(AName, ATarget.Provider, ATarget.Url);
   Result.Source := TAtlasTrackerConnectionSource.TeamFile;
+end;
+
+function TAtlasTrackerConnection.WithUrl(const AUrl: string): TAtlasTrackerConnection;
+begin
+  Result := Self;
+  Result.EndStates := Copy(EndStates);
+  Result.Url := NormalizedUrl(AUrl);
 end;
 
 function TAtlasTrackerConnection.Target: TAtlasTrackerTarget;

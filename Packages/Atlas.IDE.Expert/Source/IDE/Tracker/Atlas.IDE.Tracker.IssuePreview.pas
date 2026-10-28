@@ -18,6 +18,10 @@
 //   Explorer. Dateien anderer Server (GitHub) öffnen im Browser.
 // - Links aus dem Text öffnen nur im Browser (http/https ohne Benutzer).
 // - issues.preview.comments aus: Kommentare werden nicht abgefragt.
+// - Tracker nachführen (#1266): Mit issues.syncState und einem Tracker, der
+//   schreiben kann (Hook CanWrite), gibt es unten „Kommentar schreiben …“
+//   (Strg+Enter sendet, danach wird das Issue neu geladen) und für das
+//   aktuelle Issue (Hook IsActive) den Knopf „Beenden …“ (Hook EndIssue).
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse,
 //   Kennung, Titel oder Token.
 // Anbieter, Transport, Zugang, „Beginnen“ und die Einstellungsseite kommen
@@ -32,7 +36,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Tracker.IssueFrame;
+  Atlas.UI.Tracker.IssueFrame,
+  Atlas.UI.Tracker.EndDialog;
 
 type
   TAtlasIssuePreviewProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;
@@ -41,6 +46,10 @@ type
     const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
   TAtlasIssuePreviewCredentialsHook = reference to function(const AProvider: IAtlasTrackerProvider;
     const ATarget: TAtlasTrackerTarget): Boolean;
+
+  /// <summary>Kommentar zu AKey schreiben (#1266); ADone im Hauptthread, genau einmal.</summary>
+  TAtlasIssuePreviewCommentHook = reference to procedure(const ATarget: TAtlasTrackerTarget;
+    const AKey, AText: string; const ADone: TAtlasTrackerSendDone);
 
   TAtlasIssuePreviewHooks = record
     Provider: TAtlasIssuePreviewProviderHook;
@@ -52,6 +61,13 @@ type
     CanStart: TFunc<Boolean>;
     /// <summary>Tools › Optionen › Atlas › Issue-Tracker.</summary>
     Settings: TProc;
+    /// <summary>issues.syncState an und der Tracker kann schreiben (#1266).</summary>
+    CanWrite: TFunc<TAtlasTrackerTarget, Boolean>;
+    /// <summary>Die Kennung ist das aktuelle Issue (#1266).</summary>
+    IsActive: TFunc<string, Boolean>;
+    /// <summary>„Beenden …“ für das aktuelle Issue (#1266).</summary>
+    EndIssue: TProc<string>;
+    Comment: TAtlasIssuePreviewCommentHook;
   end;
 
   TAtlasIdeIssuePreview = class(TInterfacedObject)
@@ -94,6 +110,7 @@ type
     function ErrorText(AError: TAtlasCiFetchError; const AKey: string): string;
     function StaleText(const ADetails: TAtlasTrackerDetails; const AReason: string): string;
     procedure Fix(AFix: TAtlasIssueFix);
+    procedure SendComment(const AText: string);
     class function NowUtc: TDateTime; static;
   public
     /// <summary>ACacheFolder: Ordner des Zwischenspeichers auf der Platte ('' = nur im Speicher).</summary>
@@ -108,6 +125,9 @@ type
     procedure Refresh;
     procedure GoBack;
     procedure GoForward;
+    /// <summary>Kommentarfeld und „Beenden …“ nach issues.syncState und dem aktuellen Issue (#1266); nach
+    /// „Beginnen“, „Beenden“ und geänderten Einstellungen.</summary>
+    procedure UpdateWrite;
     /// <summary>issues.preview an?</summary>
     class function Active: Boolean; static;
   end;
@@ -360,6 +380,18 @@ begin
       if mKeep <> nil then
         mOwner.LoadImages(AUrls);
     end;
+  AFrame.OnEnd :=
+    procedure
+    begin
+      if (mKeep <> nil) and mOwner.FHasCurrent and Assigned(mOwner.FHooks.EndIssue) then
+        mOwner.FHooks.EndIssue(mOwner.FCurrent.Key);
+    end;
+  AFrame.OnComment :=
+    procedure(AText: string)
+    begin
+      if mKeep <> nil then
+        mOwner.SendComment(AText);
+    end;
   if Assigned(FHooks.CanStart) then
     AFrame.CanStart := FHooks.CanStart();
   ShowCurrent;
@@ -472,6 +504,49 @@ begin
   end;
 end;
 
+procedure TAtlasIdeIssuePreview.UpdateWrite;
+var
+  mFrame: TAtlasIssueFrame;
+  mWrite: Boolean;
+begin
+  mFrame := Frame;
+  if mFrame = nil then
+    Exit;
+  mWrite := FStarted and FHasCurrent and Assigned(FHooks.CanWrite) and FHooks.CanWrite(FCurrent.Target);
+  mFrame.CanWrite := mWrite;
+  mFrame.CanEnd := mWrite and Assigned(FHooks.IsActive) and FHooks.IsActive(FCurrent.Key);
+end;
+
+procedure TAtlasIdeIssuePreview.SendComment(const AText: string);
+var
+  mFrame: TAtlasIssueFrame;
+  mKeep: IInterface;
+  mOwner: TAtlasIdeIssuePreview;
+  mKey: string;
+begin
+  mFrame := Frame;
+  if (mFrame = nil) or not FStarted or not FHasCurrent or not Assigned(FHooks.Comment) then
+    Exit;
+  mKeep := Self;
+  mOwner := Self;
+  mKey := FCurrent.Key;
+  mFrame.SetCommentSending(True);
+  FHooks.Comment(FCurrent.Target, mKey, AText,
+    procedure(const AResult: TAtlasTrackerWriteResult)
+    var
+      mDone: TAtlasIssueFrame;
+    begin
+      if (mKeep = nil) or not mOwner.FStarted then
+        Exit;
+      mDone := mOwner.Frame;
+      if mDone <> nil then
+        mDone.CommentDone(TAtlasTrackerEndDialog.ErrorText(mKey, AResult));
+      // Den neuen Kommentar zeigen: dasselbe Issue neu laden.
+      if AResult.Succeeded and mOwner.FHasCurrent and SameText(mOwner.FCurrent.Key, mKey) then
+        mOwner.Refresh;
+    end);
+end;
+
 procedure TAtlasIdeIssuePreview.ShowCurrent;
 var
   mFrame: TAtlasIssueFrame;
@@ -481,6 +556,7 @@ begin
   if mFrame = nil then
     Exit;
   UpdateHistory;
+  UpdateWrite;
   if FHasCurrent and FCache.Get(FCurrent.Target, FCurrent.Key, NowUtc, mDetails) then
     mFrame.ShowDetails(mDetails, NowUtc, '', not TAtlasIdeSettings.Current.IssuesPreviewComments)
   else if not FHasCurrent then
@@ -514,6 +590,7 @@ begin
   CancelImages;
   FCurrent := AEntry;
   FHasCurrent := True;
+  UpdateWrite;
   Inc(FGeneration);
   mGeneration := FGeneration;
   mFrame := Frame;
@@ -618,6 +695,7 @@ begin
       if Assigned(FHooks.CanStart) then
         mFrame.CanStart := FHooks.CanStart();
       mFrame.ShowDetails(mDetails, NowUtc, '', not mComments);
+      UpdateWrite;
     end;
     Exit;
   end;

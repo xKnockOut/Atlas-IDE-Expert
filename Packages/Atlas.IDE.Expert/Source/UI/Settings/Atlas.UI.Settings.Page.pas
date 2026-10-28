@@ -63,6 +63,8 @@ uses
   Atlas.Text.StepFilter,
   Atlas.Core.Settings.Reassigned,
   Atlas.Core.Tracker.Connections,
+  Atlas.Core.Tracker.Workflow,
+  Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -113,6 +115,10 @@ type
   TAtlasTrackerStateEvent = reference to function(const AConnection: TAtlasTrackerConnection): TAtlasTrackerTokenStatus;
   /// <summary>Knopf an einer Tracker-Verbindung (#1260): Token hinterlegen, prüfen, entfernen.</summary>
   TAtlasTrackerConnectionEvent = reference to procedure(const AConnection: TAtlasTrackerConnection);
+  /// <summary>„Werte vom Tracker laden“ (#1266) für AConnection mit dem Zustandsfeld AStateField; das Ergebnis meldet
+  /// TrackerValuesDone.</summary>
+  TAtlasTrackerValuesEvent = reference to procedure(const AConnection: TAtlasTrackerConnection;
+    const AStateField: string);
 
   /// <summary>Seite eines Knotens im Baum (#890): der Bereich selbst (Node leer) oder ein Unterpunkt.</summary>
   TAtlasSettingsNodePage = record
@@ -640,6 +646,17 @@ type
     FTrackerLogin: TCheckBox;
     FIssuesPreview: TCheckBox;
     FIssuesPreviewComments: TCheckBox;
+    // Zustand im Tracker beim Beginnen und Beenden (#1266).
+    FIssuesSyncState: TCheckBox;
+    FIssuesStateField: TAtlasValueBox;
+    FIssuesAssigneeField: TAtlasValueBox;
+    FIssuesStartState: TAtlasValueBox;
+    FIssuesAssignOnStart: TCheckBox;
+    FIssuesStartComment: TEdit;
+    FIssuesEndStates: TEdit;
+    FIssuesEndComment: TEdit;
+    FIssuesLoadValues: TButton;
+    FIssuesValuesNote: TLabel;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -651,6 +668,12 @@ type
     FIssuesConnectionRemove: TButton;
     FIssuesConnectionToken: TButton;
     FIssuesConnectionCheck: TButton;
+    // Werte der gewählten Verbindung für Zustand und Zuständigkeit (#1266); leer = globale Einstellung.
+    FIssuesConnectionStateField: TAtlasValueBox;
+    FIssuesConnectionAssigneeField: TAtlasValueBox;
+    FIssuesConnectionStartState: TAtlasValueBox;
+    FIssuesConnectionEndStates: TEdit;
+    FOnTrackerValues: TAtlasTrackerValuesEvent;
     /// <summary>Persönliche Verbindungen, wie die Seite sie zeigt; gespeichert werden die mit Adresse.</summary>
     FTrackerConnections: TArray<TAtlasTrackerConnection>;
     /// <summary>Verbindung aus der .atlas des aktiven Projekts (schreibgeschützt), hinter den persönlichen.</summary>
@@ -849,6 +872,14 @@ type
     procedure TrackerRemoveClick(Sender: TObject);
     procedure TrackerTokenClick(Sender: TObject);
     procedure TrackerCheckClick(Sender: TObject);
+    /// <summary>Zustandsfeld, Benutzerfeld, Zustand beim Beginnen oder Zielzustände der gewählten Verbindung.</summary>
+    procedure TrackerWorkflowChange(Sender: TObject);
+    procedure TrackerLoadValuesClick(Sender: TObject);
+    /// <summary>Verbindung für „Werte vom Tracker laden“: die gewählte mit Adresse, sonst die erste mit Adresse.
+    /// </summary>
+    function TrackerValuesConnection(out AConnection: TAtlasTrackerConnection): Boolean;
+    /// <summary>Beschriftung links, Klappliste mit Eingabe daneben.</summary>
+    function AddValueBox(const ACaption: string): TAtlasValueBox;
     procedure WelcomeLayoutRenameClick(Sender: TObject);
     procedure WelcomeLayoutDeleteClick(Sender: TObject);
     /// <summary>Ob das Häkchen bzw. die Auswahl des Bereichs AId ihn zeigt („Neu in Atlas“: nicht „Aus“).
@@ -896,6 +927,8 @@ type
     procedure AddWelcomeSection;
     /// <summary>Seite Issue-Tracker (#1280): Anbieter, Abfrage, „Beginnen“, Muster und Zugang (issues.*).</summary>
     procedure AddIssuesSection;
+    /// <summary>Abschnitt „Zustand im Tracker“ (#1266) der Seite Issue-Tracker.</summary>
+    procedure AddIssuesWorkflowSection;
     procedure AddUpdatesSection;
     procedure AddBugReportSection;
     procedure IndexRefreshClick(Sender: TObject);
@@ -1149,6 +1182,20 @@ type
     property TrackerLogin: TCheckBox read FTrackerLogin;
     property IssuesPreview: TCheckBox read FIssuesPreview;
     property IssuesPreviewComments: TCheckBox read FIssuesPreviewComments;
+    property IssuesSyncState: TCheckBox read FIssuesSyncState;
+    property IssuesStateField: TAtlasValueBox read FIssuesStateField;
+    property IssuesAssigneeField: TAtlasValueBox read FIssuesAssigneeField;
+    property IssuesStartState: TAtlasValueBox read FIssuesStartState;
+    property IssuesAssignOnStart: TCheckBox read FIssuesAssignOnStart;
+    property IssuesStartComment: TEdit read FIssuesStartComment;
+    property IssuesEndStates: TEdit read FIssuesEndStates;
+    property IssuesEndComment: TEdit read FIssuesEndComment;
+    property IssuesLoadValues: TButton read FIssuesLoadValues;
+    property IssuesValuesNote: TLabel read FIssuesValuesNote;
+    property IssuesConnectionStateField: TAtlasValueBox read FIssuesConnectionStateField;
+    property IssuesConnectionAssigneeField: TAtlasValueBox read FIssuesConnectionAssigneeField;
+    property IssuesConnectionStartState: TAtlasValueBox read FIssuesConnectionStartState;
+    property IssuesConnectionEndStates: TEdit read FIssuesConnectionEndStates;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -1409,6 +1456,8 @@ type
     property OnTrackerRemove: TAtlasTrackerConnectionEvent read FOnTrackerRemove write FOnTrackerRemove;
     /// <summary>Verbindung aus der .atlas des aktiven Projekts; leer ohne.</summary>
     property OnTrackerTeam: TFunc<TArray<TAtlasTrackerConnection>> read FOnTrackerTeam write FOnTrackerTeam;
+    /// <summary>„Werte vom Tracker laden“ (#1266) im Hintergrund; das Ergebnis meldet TrackerValuesDone.</summary>
+    property OnTrackerValues: TAtlasTrackerValuesEvent read FOnTrackerValues write FOnTrackerValues;
     /// <summary>Anbieter der Auswahl (Name wie in issues.connections, Anzeigename); Vorgabe YouTrack und GitHub.
     /// </summary>
     procedure SetTrackerProviders(const ANames, ACaptions: TArray<string>);
@@ -1417,6 +1466,9 @@ type
     procedure RefreshTrackerConnections;
     /// <summary>Prüfung von AConnection ist fertig; der Zustand kommt über OnTrackerState.</summary>
     procedure TrackerCheckDone(const AConnection: TAtlasTrackerConnection);
+    /// <summary>Werte vom Tracker sind da (#1266): AError '' = geladen, sonst der Grund für die Zeile unter dem Knopf.
+    /// </summary>
+    procedure TrackerValuesDone(const AValues: TAtlasTrackerValueSet; const AError: string);
     /// <summary>Zum Testen: Projektdatei (#486).</summary>
     property TeamFileCheck: TCheckBox read FTeamFile;
     property TeamFileInfo: TLabel read FTeamFileInfo;
@@ -2686,6 +2738,55 @@ begin
   // Issue-Vorschau (#1264): Hauptschalter, Kommentare darunter.
   FIssuesPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreview));
   FIssuesPreviewComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewComments));
+  AddIssuesWorkflowSection;
+end;
+
+procedure TAtlasSettingsPage.AddIssuesWorkflowSection;
+var
+  mPanel: TWinControl;
+begin
+  // Zustand im Tracker (#1266): Schalter, Felder und Zustände mit Werten vom Tracker, Vorlagen der Kommentare.
+  AddTitle(TAtlasTextId.SettingsIssuesWorkflowTitle);
+  FIssuesSyncState := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSyncState));
+  FIssuesStateField := AddValueBox(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesStateField));
+  FIssuesAssigneeField := AddValueBox(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesAssigneeField));
+  FIssuesStartState := AddValueBox(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesStartState));
+  FIssuesAssignOnStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesAssignOnStart));
+  FIssuesStartComment := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesStartComment));
+  FIssuesEndStates := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesEndStates));
+  FIssuesEndComment := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesEndComment));
+  mPanel := AddPanel(30);
+  FIssuesLoadValues := TButton.Create(Self);
+  FIssuesLoadValues.Parent := mPanel;
+  FIssuesLoadValues.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesLoadValues);
+  FIssuesLoadValues.Left := 0;
+  FIssuesLoadValues.Top := 3;
+  FIssuesLoadValues.Width := 180;
+  FIssuesLoadValues.OnClick := TrackerLoadValuesClick;
+  FIssuesValuesNote := TLabel.Create(Self);
+  FIssuesValuesNote.Parent := mPanel;
+  FIssuesValuesNote.Left := 190;
+  FIssuesValuesNote.Top := 7;
+  FIssuesValuesNote.Font.Color := clGrayText;
+  FIssuesValuesNote.Caption := '';
+end;
+
+function TAtlasSettingsPage.AddValueBox(const ACaption: string): TAtlasValueBox;
+var
+  mPanel: TWinControl;
+  mCaption: TLabel;
+begin
+  mPanel := AddPanel(26);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := mPanel;
+  mCaption.Caption := ACaption;
+  mCaption.Left := 0;
+  mCaption.Top := 5;
+  Result := TAtlasValueBox.Create(Self);
+  Result.Parent := mPanel;
+  Result.Left := FieldLeft;
+  Result.Top := 1;
+  Result.Width := 180;
 end;
 
 procedure TAtlasSettingsPage.WelcomeIssuesLinkClick(Sender: TObject);
@@ -2775,6 +2876,32 @@ begin
   FIssuesConnectionNote.Left := 90;
   FIssuesConnectionNote.Top := 1;
   FIssuesConnectionNote.Font.Color := clRed;
+  Attach(mPanel, FIssuesConnections);
+  // Zustand und Zuständigkeit je Verbindung (#1266); leer gilt „Zustand im Tracker“ weiter unten.
+  FIssuesConnectionStateField := TAtlasValueBox.Create(Self);
+  FIssuesConnectionStateField.OnChange := TrackerWorkflowChange;
+  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionStateField, FIssuesConnectionStateField, 180),
+    FIssuesConnections);
+  FIssuesConnectionAssigneeField := TAtlasValueBox.Create(Self);
+  FIssuesConnectionAssigneeField.OnChange := TrackerWorkflowChange;
+  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionAssigneeField, FIssuesConnectionAssigneeField, 180),
+    FIssuesConnections);
+  FIssuesConnectionStartState := TAtlasValueBox.Create(Self);
+  FIssuesConnectionStartState.OnChange := TrackerWorkflowChange;
+  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionStartState, FIssuesConnectionStartState, 180),
+    FIssuesConnections);
+  FIssuesConnectionEndStates := TEdit.Create(Self);
+  FIssuesConnectionEndStates.OnChange := TrackerWorkflowChange;
+  mPanel := AddLabelled(TAtlasTextId.SettingsIssuesConnectionEndStates, FIssuesConnectionEndStates, 376);
+  FIssuesConnectionEndStates.Anchors := [akLeft, akTop, akRight];
+  Attach(mPanel, FIssuesConnections);
+  mPanel := AddPanel(18);
+  mHint := TLabel.Create(Self);
+  mHint.Parent := mPanel;
+  mHint.Left := 90;
+  mHint.Top := 1;
+  mHint.Font.Color := clGrayText;
+  mHint.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionStatesHint);
   Attach(mPanel, FIssuesConnections);
   mPanel := AddPanel(32);
   FIssuesConnectionAdd := AddButton(mPanel, 0, 100, TAtlasTextId.SettingsIssuesConnectionAdd, TrackerAddClick);
@@ -2916,12 +3043,20 @@ begin
       for mIndex := 0 to High(FTrackerProviderNames) do
         if SameText(FTrackerProviderNames[mIndex], mRow.Provider) then
           FIssuesConnectionProvider.Choice := mIndex;
+      FIssuesConnectionStateField.Value := mRow.StateField;
+      FIssuesConnectionAssigneeField.Value := mRow.AssigneeField;
+      FIssuesConnectionStartState.Value := mRow.StartState;
+      FIssuesConnectionEndStates.Text := TAtlasTrackerWorkflow.ListText(mRow.EndStates);
     end
     else
     begin
       FIssuesConnectionName.Text := '';
       FIssuesConnectionUrl.Text := '';
       FIssuesConnectionProvider.Choice := -1;
+      FIssuesConnectionStateField.Value := '';
+      FIssuesConnectionAssigneeField.Value := '';
+      FIssuesConnectionStartState.Value := '';
+      FIssuesConnectionEndStates.Text := '';
     end;
   finally
     FTrackerFilling := False;
@@ -2936,6 +3071,10 @@ begin
   Allow(FIssuesConnectionName, mEditable);
   Allow(FIssuesConnectionProvider, mEditable);
   Allow(FIssuesConnectionUrl, mEditable);
+  Allow(FIssuesConnectionStateField, mEditable);
+  Allow(FIssuesConnectionAssigneeField, mEditable);
+  Allow(FIssuesConnectionStartState, mEditable);
+  Allow(FIssuesConnectionEndStates, mEditable);
   Allow(FIssuesConnectionRemove, mEditable);
   // Token und Prüfung auch für die Verbindung aus der .atlas, nicht ohne gültige Adresse.
   Allow(FIssuesConnectionToken, mHasUrl and Assigned(FOnTrackerToken));
@@ -2999,8 +3138,8 @@ begin
   else
     begin
       FIssuesConnectionNote.Caption := '';
-      mConnection := FTrackerConnections[FTrackerSelected];
-      mConnection := TAtlasTrackerConnection.Create(mConnection.Name, mConnection.Provider, FIssuesConnectionUrl.Text);
+      // WithUrl behält Zustandsfeld, Zielzustände usw. (#1266).
+      mConnection := FTrackerConnections[FTrackerSelected].WithUrl(FIssuesConnectionUrl.Text);
       FTrackerConnections[FTrackerSelected] := mConnection;
       if FIssuesConnections.HandleAllocated and (FTrackerSelected < FIssuesConnections.Items.Count) then
       begin
@@ -3076,6 +3215,78 @@ begin
     if SameText(FTrackerChecking[mIndex], AConnection.Target.CredentialTarget) then
       Delete(FTrackerChecking, mIndex, 1);
   RefreshTrackerConnections;
+end;
+
+procedure TAtlasSettingsPage.TrackerWorkflowChange(Sender: TObject);
+begin
+  if FTrackerFilling or not TrackerEditable then
+    Exit;
+  FTrackerConnections[FTrackerSelected].StateField := FIssuesConnectionStateField.Value;
+  FTrackerConnections[FTrackerSelected].AssigneeField := FIssuesConnectionAssigneeField.Value;
+  FTrackerConnections[FTrackerSelected].StartState := FIssuesConnectionStartState.Value;
+  FTrackerConnections[FTrackerSelected].EndStates := TAtlasTrackerWorkflow.ParseList(FIssuesConnectionEndStates.Text);
+end;
+
+function TAtlasSettingsPage.TrackerValuesConnection(out AConnection: TAtlasTrackerConnection): Boolean;
+var
+  mRows: TArray<TAtlasTrackerConnection>;
+  mRow: TAtlasTrackerConnection;
+begin
+  mRows := TrackerRows;
+  if (FTrackerSelected >= 0) and (FTrackerSelected <= High(mRows)) and
+    (mRows[FTrackerSelected].Target.Server <> '') then
+  begin
+    AConnection := mRows[FTrackerSelected];
+    Exit(True);
+  end;
+  for mRow in mRows do
+    if mRow.Target.Server <> '' then
+    begin
+      AConnection := mRow;
+      Exit(True);
+    end;
+  AConnection := TAtlasTrackerConnection.Create('', '', '');
+  Result := False;
+end;
+
+procedure TAtlasSettingsPage.TrackerLoadValuesClick(Sender: TObject);
+var
+  mConnection: TAtlasTrackerConnection;
+  mField: string;
+begin
+  if not Assigned(FOnTrackerValues) then
+    Exit;
+  if not TrackerValuesConnection(mConnection) then
+  begin
+    FIssuesValuesNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesValuesNoConnection);
+    Exit;
+  end;
+  // Zustände zum Feld der Verbindung, sonst zum globalen Feld.
+  mField := mConnection.StateField;
+  if mField = '' then
+    mField := FIssuesStateField.Value;
+  FIssuesValuesNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesValuesLoading);
+  FIssuesLoadValues.Enabled := False;
+  FOnTrackerValues(mConnection, mField);
+end;
+
+procedure TAtlasSettingsPage.TrackerValuesDone(const AValues: TAtlasTrackerValueSet; const AError: string);
+begin
+  FIssuesLoadValues.Enabled := True;
+  if AError <> '' then
+  begin
+    FIssuesValuesNote.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsIssuesValuesFailed, [AError]);
+    Exit;
+  end;
+  // Vorschläge für die globalen Felder und die der Verbindung; eingegebene Texte bleiben.
+  FIssuesStateField.SetValues(AValues.StateFields);
+  FIssuesAssigneeField.SetValues(AValues.UserFields);
+  FIssuesStartState.SetValues(AValues.States);
+  FIssuesConnectionStateField.SetValues(AValues.StateFields);
+  FIssuesConnectionAssigneeField.SetValues(AValues.UserFields);
+  FIssuesConnectionStartState.SetValues(AValues.States);
+  FIssuesValuesNote.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsIssuesValuesLoaded,
+    [Length(AValues.States), Length(AValues.StateFields) + Length(AValues.UserFields)]);
 end;
 
 function TAtlasSettingsPage.TrackerConnectionsJson: string;
@@ -3974,6 +4185,14 @@ begin
   FMarks.Bind(FIssuesPreview, ['IssuesPreview']);
   FMarks.Bind(FIssuesPreviewComments, ['IssuesPreviewComments']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
+  FMarks.Bind(FIssuesSyncState, ['IssuesSyncState']);
+  FMarks.Bind(FIssuesStateField, ['IssuesStateField']);
+  FMarks.Bind(FIssuesAssigneeField, ['IssuesAssigneeField']);
+  FMarks.Bind(FIssuesStartState, ['IssuesStartState']);
+  FMarks.Bind(FIssuesAssignOnStart, ['IssuesAssignOnStart']);
+  FMarks.Bind(FIssuesStartComment, ['IssuesStartComment']);
+  FMarks.Bind(FIssuesEndStates, ['IssuesEndStates']);
+  FMarks.Bind(FIssuesEndComment, ['IssuesEndComment']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -6234,6 +6453,14 @@ begin
   FTrackerLogin.Checked := ASettings.TrackerLogin;
   FIssuesPreview.Checked := ASettings.IssuesPreview;
   FIssuesPreviewComments.Checked := ASettings.IssuesPreviewComments;
+  FIssuesSyncState.Checked := ASettings.IssuesSyncState;
+  FIssuesStateField.Value := ASettings.IssuesStateField;
+  FIssuesAssigneeField.Value := ASettings.IssuesAssigneeField;
+  FIssuesStartState.Value := ASettings.IssuesStartState;
+  FIssuesAssignOnStart.Checked := ASettings.IssuesAssignOnStart;
+  FIssuesStartComment.Text := ASettings.IssuesStartComment;
+  FIssuesEndStates.Text := ASettings.IssuesEndStates;
+  FIssuesEndComment.Text := ASettings.IssuesEndComment;
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -6795,6 +7022,14 @@ begin
   ASettings.TrackerLogin := FTrackerLogin.Checked;
   ASettings.IssuesPreview := FIssuesPreview.Checked;
   ASettings.IssuesPreviewComments := FIssuesPreviewComments.Checked;
+  ASettings.IssuesSyncState := FIssuesSyncState.Checked;
+  ASettings.IssuesStateField := FIssuesStateField.Value;
+  ASettings.IssuesAssigneeField := FIssuesAssigneeField.Value;
+  ASettings.IssuesStartState := FIssuesStartState.Value;
+  ASettings.IssuesAssignOnStart := FIssuesAssignOnStart.Checked;
+  ASettings.IssuesStartComment := FIssuesStartComment.Text;
+  ASettings.IssuesEndStates := TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FIssuesEndStates.Text));
+  ASettings.IssuesEndComment := FIssuesEndComment.Text;
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
