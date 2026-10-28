@@ -347,6 +347,7 @@ type
     procedure Resume(const AProject: string);
     procedure ShowCommit(const AProject: string; const ACommit: TAtlasContinueCommit);
     procedure OpenSaved(const AItem: TAtlasSavedItem);
+    procedure ShowServerAccess(const AProject: string);
     procedure Shown;
   end;
 
@@ -3513,6 +3514,11 @@ begin
   Calls := Calls + ['open ' + AItem.Id];
 end;
 
+procedure TFakeContinue.ShowServerAccess(const AProject: string);
+begin
+  Calls := Calls + ['login ' + AProject];
+end;
+
 procedure TFakeContinue.Shown;
 begin
   Calls := Calls + ['shown'];
@@ -3640,6 +3646,7 @@ begin
     Assert.AreEqual(2, Integer(Length(Frame.Entries)));
     Fake.Calls := nil;
     // Klick auf die Zeile außerhalb von „Fortsetzen“: nichts.
+    Hit := Default(TAtlasContinueHit);
     Hit.Row := 0;
     Hit.Button := False;
     Hit.Commit := -1;
@@ -3660,6 +3667,20 @@ begin
     Assert.AreEqual('commit C:\Repo\Atlas.dproj abc1234', Fake.Calls[1]);
     Assert.AreEqual(-1, Frame.HitTest(20, -5).Row, 'über der ersten Zeile');
     Assert.AreEqual(1, Frame.HitTest(20, Frame.RowTop(1) + 4).Row);
+    // Anmeldung am Server nötig (#1287): Hinweis als Link unter dem Commit, Klick öffnet die Seite.
+    Assert.IsFalse(Frame.HitTest(20, Frame.IncomingTop + 2 * Frame.ScaleValue(TAtlasWelcomeContinueFrame.LineHeight) +
+      4).Login, 'ohne fehlende Anmeldung kein Link');
+    Fake.FIncoming.FetchFailed := True;
+    Fake.FIncoming.LoginNeeded := True;
+    Frame.UpdateContent;
+    Hit := Frame.HitTest(20, Frame.IncomingTop + 2 * Frame.ScaleValue(TAtlasWelcomeContinueFrame.LineHeight) + 4);
+    Assert.IsTrue(Hit.Login, 'Zeile unter dem einen Commit');
+    Assert.AreEqual(-1, Hit.Commit);
+    Fake.Calls := nil;
+    Frame.ClickAt(Hit);
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(Fake.Calls)));
+    Assert.AreEqual('login C:\Repo\Atlas.dproj', Fake.Calls[0]);
   finally
     Host.Free;
   end;

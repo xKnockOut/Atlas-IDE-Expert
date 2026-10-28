@@ -94,12 +94,18 @@ type
       ATimeoutMs: Cardinal);
     /// <summary>Startet das Programm; Outcome Failed bei Exit-Code ungleich 0, ToolMissing ohne Programm.</summary>
     function Run(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+    /// <summary>Wie Run für einen Aufruf, der mit dem Server spricht (fetch, pull, push, svn update): LoginNeeded,
+    /// wenn die Anmeldung fehlt (#1287; AKind wählt die Fehlerkennungen von git bzw. svn).</summary>
+    function RunRemote(AKind: TAtlasVcsKind; const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
     property Executable: string read FExecutable;
     property WorkingDir: string read FWorkingDir;
     property TimeoutMs: Cardinal read FTimeoutMs write FTimeoutMs;
   end;
 
 implementation
+
+uses
+  Atlas.Core.Vcs.ServerAccess;
 
 { TAtlasVcsToolLocation }
 
@@ -341,6 +347,20 @@ begin
   Result := Answer.Outcome;
   if (Result = TAtlasVcsOutcome.Ok) and (Answer.ExitCode <> 0) then
     Result := TAtlasVcsOutcome.Failed;
+  if Result = TAtlasVcsOutcome.Ok then
+    AOutput := Answer.Output;
+end;
+
+function TAtlasVcsCommand.RunRemote(AKind: TAtlasVcsKind; const AArguments: TArray<string>;
+  out AOutput: TBytes): TAtlasVcsOutcome;
+var
+  Answer: TAtlasVcsRunResult;
+begin
+  AOutput := nil;
+  if (FExecutable = '') or (FRunner = nil) then
+    Exit(TAtlasVcsOutcome.ToolMissing);
+  Answer := FRunner.Run(FExecutable, AArguments, FWorkingDir, FTimeoutMs);
+  Result := TAtlasVcsServerAccess.OutcomeOf(AKind, Answer);
   if Result = TAtlasVcsOutcome.Ok then
     AOutput := Answer.Output;
 end;

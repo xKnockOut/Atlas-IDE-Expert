@@ -44,8 +44,10 @@ type
   /// <summary>Ergebnis eines Aufrufs. Ok: Werte gültig. NoWorkingCopy: Ordner liegt in keiner Arbeitskopie.
   /// Disabled: vcs.provider = off. ToolMissing: git bzw. svn nicht installiert. Failed: Programm meldete einen
   /// Fehler (Exit-Code ungleich 0 oder unlesbare Ausgabe). TimedOut: Zeitlimit überschritten, Prozess
-  /// beendet. Cancelled: Abbruch (Entladen der IDE). MainThread: im Hauptthread abgelehnt.</summary>
-  TAtlasVcsOutcome = (Ok, NoWorkingCopy, Disabled, ToolMissing, Failed, TimedOut, Cancelled, MainThread);
+  /// beendet. Cancelled: Abbruch (Entladen der IDE). MainThread: im Hauptthread abgelehnt. LoginNeeded: der
+  /// Server verlangt Zugangsdaten, die fehlen (#1287; nur Aufrufe, die mit dem Server sprechen).</summary>
+  TAtlasVcsOutcome = (Ok, NoWorkingCopy, Disabled, ToolMissing, Failed, TimedOut, Cancelled, MainThread,
+    LoginNeeded);
 
   /// <summary>Art einer Änderung gegenüber dem Stand im Repository.</summary>
   TAtlasVcsChangeKind = (Modified, Added, Deleted, Renamed, Copied, TypeChanged, Replaced, Untracked,
@@ -347,7 +349,7 @@ end;
 function AtlasVcsOutcomeName(AOutcome: TAtlasVcsOutcome): string;
 const
   Names: array[TAtlasVcsOutcome] of string = ('Ok', 'NoWorkingCopy', 'Disabled', 'ToolMissing', 'Failed',
-    'TimedOut', 'Cancelled', 'MainThread');
+    'TimedOut', 'Cancelled', 'MainThread', 'LoginNeeded');
 begin
   Result := Names[AOutcome];
 end;

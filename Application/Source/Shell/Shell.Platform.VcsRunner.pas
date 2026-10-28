@@ -4,7 +4,8 @@
 // Atlas.Core.Vcs.Adapters.ProcessRunner, das Windows-Pipes nutzt und im
 // Windows-Bau bleibt. Gleiches Verhalten: stdout und stderr getrennt, im Takt
 // von SliceMs gelesen, damit keine volle Pipe den Prozess anhält; Zeitlimit und
-// Abbruch beenden den Prozess; stdin ist leer, git und svn fragen nie nach.
+// Abbruch beenden den Prozess; stdin ist leer, git und svn fragen nie nach
+// (dazu GIT_TERMINAL_PROMPT=0 und GCM_INTERACTIVE=never in der Umgebung, #1287).
 // Nur im Linux-Bau (Shell.Platform), deshalb nicht in AtlasServer.dproj.
 
 interface
@@ -35,7 +36,8 @@ implementation
 uses
   System.Classes,
   Pipes,
-  Process;
+  Process,
+  Atlas.Core.Vcs.ServerAccess;
 
 const
   SliceMs = 10;
@@ -92,6 +94,8 @@ var
   OutputCount, ErrorCount: Integer;
   Deadline: UInt64;
   Outcome: TAtlasVcsOutcome;
+  Variables: TArray<string>;
+  Index: Integer;
 begin
   if not FAllowMainThread and (TThread.CurrentThread.ThreadID = MainThreadID) then
     Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.MainThread, -1, nil));
@@ -106,6 +110,12 @@ begin
       Child.Parameters.Add(Argument);
     if AWorkingDir <> '' then
       Child.CurrentDirectory := AWorkingDir;
+    // Eigene Umgebung ohne Rückfrage nach Zugangsdaten.
+    Variables := nil;
+    for Index := 1 to GetEnvironmentVariableCount do
+      Variables := Variables + [GetEnvironmentString(Index)];
+    for Argument in TAtlasVcsServerAccess.NoPromptEnvironment(Variables) do
+      Child.Environment.Add(Argument);
     Child.Options := [poUsePipes, poNoConsole];
     try
       Child.Execute;

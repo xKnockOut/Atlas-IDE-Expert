@@ -117,6 +117,8 @@ type
     Answers: TArray<string>;
     ExitCode: Integer;
     Outcome: TAtlasVcsOutcome;
+    /// <summary>stderr jeder Antwort (#1287).</summary>
+    ErrorText: string;
     procedure Answer(const ACommand, AText: string);
     function Run(const AExecutable: string; const AArguments: TArray<string>; const AWorkingDir: string;
       ATimeoutMs: Cardinal): TAtlasVcsRunResult;
@@ -187,6 +189,7 @@ begin
     end;
   end;
   Result := TAtlasVcsRunResult.Make(Outcome, ExitCode, nil);
+  Result.ErrorText := ErrorText;
   for Index := 0 to High(Commands) do
     if Commands[Index] = Command then
       Result.Output := Utf8Bytes(Answers[Index]);
@@ -387,6 +390,7 @@ begin
   Assert.AreEqual('', AtlasVcsKindName(TAtlasVcsKind.None));
   Assert.AreEqual('TimedOut', AtlasVcsOutcomeName(TAtlasVcsOutcome.TimedOut));
   Assert.AreEqual('MainThread', AtlasVcsOutcomeName(TAtlasVcsOutcome.MainThread));
+  Assert.AreEqual('LoginNeeded', AtlasVcsOutcomeName(TAtlasVcsOutcome.LoginNeeded));
 end;
 
 procedure TAtlasVcsTests.RelativeAndFullPaths;
@@ -1284,9 +1288,11 @@ begin
   Assert.AreEqual(Prefix + 'diff --name-status -z --no-renames ' + Hash1 + '^1 ' + Hash1, Runner.Calls[5]);
   Assert.AreEqual(Under('A.pas'), Changes[0].Path);
   Assert.IsTrue(Local.Push('main', 'origin', 'refs/heads/main', False) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(Prefix + 'push --porcelain origin refs/heads/main:refs/heads/main', Runner.Calls[6]);
+  Assert.AreEqual(Prefix + '-c credential.interactive=never -c core.askPass= push --porcelain origin ' +
+    'refs/heads/main:refs/heads/main', Runner.Calls[6], 'ohne Rückfrage nach Zugangsdaten (#1287)');
   Assert.IsTrue(Local.Push('neu', 'origin', 'refs/heads/neu', True) = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual(Prefix + 'push --porcelain --set-upstream origin refs/heads/neu:refs/heads/neu', Runner.Calls[7]);
+  Assert.AreEqual(Prefix + '-c credential.interactive=never -c core.askPass= push --porcelain --set-upstream ' +
+    'origin refs/heads/neu:refs/heads/neu', Runner.Calls[7]);
   // Namen, die als Option gelesen würden, starten keinen Prozess.
   Assert.IsTrue(Local.Outgoing('-x', '', 5, Commits) = TAtlasVcsOutcome.Failed);
   Assert.IsTrue(Local.Outgoing('main', '--all', 5, Commits) = TAtlasVcsOutcome.Failed);
@@ -1431,15 +1437,24 @@ begin
   // Abweichender Branch: git endet mit Fehler, nichts wird zusammengeführt.
   Runner.ExitCode := 128;
   Assert.IsTrue(Update.Pull = TAtlasVcsOutcome.Failed);
+  // Fehlende Anmeldung (#1287): eigenes Ergebnis statt still „Failed“.
+  Runner.ErrorText := 'fatal: Authentication failed for ''https://example.com/kasse.git/''';
+  Assert.IsTrue(Update.Pull = TAtlasVcsOutcome.LoginNeeded);
+  Runner.ErrorText := '';
   Runner.ExitCode := 0;
   Vcs := TAtlasSvnVersionControl.Create(Root, RunnerRef, 'svn.exe');
   Assert.IsTrue(Supports(Vcs, IAtlasVcsUpdate, Update), 'SVN bietet IAtlasVcsUpdate');
   Assert.IsTrue(Update.Pull = TAtlasVcsOutcome.Ok);
-  Assert.AreEqual('update . --non-interactive', Runner.Calls[2]);
+  Assert.AreEqual('update . --non-interactive', Runner.Calls[3]);
+  Runner.ExitCode := 1;
+  Runner.ErrorText := 'svn: E170001: Authorization failed';
+  Assert.IsTrue(Update.Pull = TAtlasVcsOutcome.LoginNeeded);
+  Runner.ErrorText := '';
+  Runner.ExitCode := 0;
   Vcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.ToolMissing);
   Assert.IsTrue(Supports(Vcs, IAtlasVcsUpdate, Update));
   Assert.IsTrue(Update.Pull = TAtlasVcsOutcome.ToolMissing);
-  Assert.AreEqual(3, Integer(Length(Runner.Calls)), 'die leere Umsetzung startet keinen Prozess');
+  Assert.AreEqual(5, Integer(Length(Runner.Calls)), 'die leere Umsetzung startet keinen Prozess');
 end;
 
 procedure TAtlasVcsTests.ProvidersCreateIssueBranches;
