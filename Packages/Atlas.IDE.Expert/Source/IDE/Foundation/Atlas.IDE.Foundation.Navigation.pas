@@ -9,7 +9,8 @@ interface
 type
   TAtlasIdeNavigation = class
   public
-    /// <summary>Öffnet AFileName und setzt den Cursor auf ALine/ACharacter (0-basiert).</summary>
+    /// <summary>Zeigt AFileName (öffnet sie nur, wenn sie noch nicht offen ist) und setzt den Cursor auf
+    /// ALine/ACharacter (0-basiert).</summary>
     class procedure GoToLocation(const AFileName: string; ALine, ACharacter: Integer); static;
     /// <summary>Setzt den Cursor im oberen Editor auf ALine/ACharacter (0-basiert), z. B. für den Sprung
     /// einer Code-Aktion zur Freigabe (#915).</summary>
@@ -32,12 +33,19 @@ var
   View: IOTAEditView;
   Cursor: TOTAEditPos;
 begin
-  if not Supports(BorlandIDEServices, IOTAActionServices, Actions) or not Actions.OpenFile(AFileName) or
-    not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
     Exit;
+  // Schon offen: nur den Reiter zeigen und springen. OpenFile öffnete die Datei sonst jedes Mal neu (Doppelklick in
+  // „Atlas-Prüfung“), bei Formular-Units samt Designer.
   Module := Modules.FindModule(AFileName);
   if Module = nil then
-    Exit;
+  begin
+    if not Supports(BorlandIDEServices, IOTAActionServices, Actions) or not Actions.OpenFile(AFileName) then
+      Exit;
+    Module := Modules.FindModule(AFileName);
+    if Module = nil then
+      Exit;
+  end;
   for Index := 0 to Module.ModuleFileCount - 1 do
     if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Editor) then
     begin
