@@ -28,6 +28,14 @@
 //   <url>/api/issues/<Kennung>/comments. Werte für die Klapplisten aus
 //   /api/admin/projects (Felder des Projekts mit ihren Werten, ohne Projekt
 //   aus /api/admin/customFieldSettings/customFields) und /api/users.
+// - Verknüpfungen (#1279): Linktyp mit Namen und Beschriftungen (auch
+//   lokalisiert) und „aggregation“, je Issue resolved und Zustand; die Art
+//   bestimmt TAtlasTrackerLinks.YouTrackKind.
+// - Unteraufgabe anlegen (#1279): GET /api/issues/<Eltern>?fields=project(id),
+//   POST /api/issues mit Projekt, summary und description, dann
+//   POST /api/issues/<Eltern>/links/<Linktyp><s|t>/issues mit {"idReadable"}.
+//   Den Linktyp (Subtask bzw. Depend) liefert /api/issueLinkTypes; s = das
+//   Issue im Pfad ist die Quelle, t = das Ziel.
 
 interface
 
@@ -37,7 +45,8 @@ uses
   Atlas.Core.Tracker.Contract;
 
 type
-  TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter)
+  TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
+    IAtlasTrackerLinkWriter)
   public const
     ProviderName = 'youtrack';
     Query = 'for: me #Unresolved';
@@ -46,12 +55,16 @@ type
     DetailFields = 'idReadable,numberInProject,summary,description,created,updated,' +
       'customFields(name,value(name,presentation,login,fullName)),tags(name),' +
       'attachments(name,size,url,mimeType,removed),' +
-      'links(direction,linkType(name,sourceToTarget,targetToSource),issues(idReadable,summary))';
+      'links(direction,linkType(name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
+      'localizedTargetToSource,aggregation),issues(idReadable,summary,resolved,customFields(name,value(name))))';
     CommentFields = 'comments(text,created,deleted,author(login,fullName))';
     /// <summary>Felder der Projekte für die Klapplisten (#1266).</summary>
     ProjectFields = 'shortName,customFields(field(name,fieldType(id)),bundle(values(name,archived)))';
     /// <summary>Höchstens so viele Werte je Klappliste.</summary>
     MaxValues = 200;
+    /// <summary>Felder der Linktypen (#1279).</summary>
+    LinkTypeFields = 'id,name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
+      'localizedTargetToSource,aggregation';
   public
     class function IssuesUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string; static;
     /// <summary>Abfrage, wie sie an YouTrack geht (mit "project: …").</summary>
@@ -83,6 +96,20 @@ type
       out AValues: TArray<string>): Boolean; static;
     /// <summary>Anmeldenamen aus /api/users; False bei ungültigem JSON.</summary>
     class function ParseUsers(const AJson: string; out AValues: TArray<string>): Boolean; static;
+    /// <summary>Adresse der Linktypen; '' ohne Server.</summary>
+    class function LinkTypesUrl(const ATarget: TAtlasTrackerTarget): string; static;
+    /// <summary>Linktyp aus /api/issueLinkTypes, mit dem ein Link am Issue im Pfad die Art AKind ergibt: AId
+    /// samt Richtung ("80-1s", "81-2t"). Typen mit bekanntem Namen gehen vor. False ohne passenden Typ.</summary>
+    class function ParseLinkType(const AJson: string; AKind: TAtlasTrackerLinkKind; out AId: string): Boolean;
+      static;
+    /// <summary>Projekt-ID aus /api/issues/<Kennung>?fields=project(id); False ohne.</summary>
+    class function ParseProjectId(const AJson: string; out AId: string): Boolean; static;
+    /// <summary>Inhalt für POST /api/issues.</summary>
+    class function NewIssueBody(const AProjectId, ATitle, ADescription: string): string; static;
+    /// <summary>Inhalt für POST …/links/<Typ>/issues.</summary>
+    class function LinkBody(const AKey: string): string; static;
+    /// <summary>Kennung des angelegten Issues aus der Antwort von POST /api/issues; '' ohne.</summary>
+    class function ParseCreatedKey(const AJson: string): string; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -102,6 +129,13 @@ type
     function Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       AKind: TAtlasTrackerValueKind; const AField: string; ATimeoutMs: Integer;
       out AValues: TArray<string>): TAtlasTrackerWriteResult;
+    { IAtlasTrackerLinkWriter }
+    function CreateSubtask(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      const AParentKey, ATitle, ADescription: string; ATimeoutMs: Integer; out AKey: string;
+      out AError: TAtlasCiFetchError): Boolean;
+    function AddLink(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      AKind: TAtlasTrackerLinkKind; const AOtherKey: string; ATimeoutMs: Integer;
+      out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -112,7 +146,9 @@ uses
   System.Generics.Collections,
   System.JSON,
   System.StrUtils,
-  Atlas.Text.Uris;
+  System.Diagnostics,
+  Atlas.Text.Uris,
+  Atlas.Core.Tracker.Links;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
 var
@@ -312,6 +348,44 @@ begin
   Result := Copy(AText, 1, TAtlasTrackerDetails.MaxText);
 end;
 
+function FirstText(AObject: TJSONObject; const AName, AFallback: string): string;
+begin
+  Result := TextOf(AObject, AName);
+  if Result = '' then
+    Result := TextOf(AObject, AFallback);
+end;
+
+/// <summary>Art eines Links (#1279) aus dem Linktyp: englische und lokalisierte Namen und Beschriftungen.</summary>
+function TypeKind(AType: TJSONObject; const ADirection: string): TAtlasTrackerLinkKind;
+var
+  mAggregation: Boolean;
+begin
+  mAggregation := BoolOf(AType, 'aggregation');
+  Result := TAtlasTrackerLinks.YouTrackKind(TextOf(AType, 'name'), TextOf(AType, 'sourceToTarget'),
+    TextOf(AType, 'targetToSource'), ADirection, mAggregation);
+  if Result = TAtlasTrackerLinkKind.Other then
+    Result := TAtlasTrackerLinks.YouTrackKind(TextOf(AType, 'localizedName'),
+      TextOf(AType, 'localizedSourceToTarget'), TextOf(AType, 'localizedTargetToSource'), ADirection, mAggregation);
+end;
+
+/// <summary>Zustand eines verknüpften Issues aus customFields (State, Status, Zustand); '' ohne.</summary>
+function StateOf(AIssue: TJSONObject): string;
+var
+  mFields, mField: TJSONValue;
+begin
+  Result := '';
+  mFields := AIssue.Values['customFields'];
+  if not (mFields is TJSONArray) then
+    Exit;
+  for mField in TJSONArray(mFields) do
+    if (mField is TJSONObject) and IsOneOf(TextOf(TJSONObject(mField), 'name'), ['State', 'Status', 'Zustand']) then
+    begin
+      Result := ValueText(TJSONObject(mField).Values['value']);
+      if Result <> '' then
+        Exit;
+    end;
+end;
+
 class function TAtlasYouTrackTracker.DetailsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string;
   AComments: Boolean): string;
 var
@@ -336,6 +410,7 @@ var
   mComment: TAtlasTrackerComment;
   mAttachment: TAtlasTrackerAttachment;
   mLink: TAtlasTrackerLink;
+  mKind: TAtlasTrackerLinkKind;
 begin
   ADetails := TAtlasTrackerDetails.Empty;
   Result := False;
@@ -422,15 +497,18 @@ begin
         mObject := TJSONObject(mField);
         mDirection := UpperCase(TextOf(mObject, 'direction'));
         mRelation := '';
+        mKind := TAtlasTrackerLinkKind.Other;
         if mObject.Values['linkType'] is TJSONObject then
         begin
           mType := TJSONObject(mObject.Values['linkType']);
+          // Beschriftung in der Sprache der Oberfläche, sonst die englische.
           if mDirection = 'INWARD' then
-            mRelation := TextOf(mType, 'targetToSource')
+            mRelation := FirstText(mType, 'localizedTargetToSource', 'targetToSource')
           else
-            mRelation := TextOf(mType, 'sourceToTarget');
+            mRelation := FirstText(mType, 'localizedSourceToTarget', 'sourceToTarget');
           if mRelation = '' then
-            mRelation := TextOf(mType, 'name');
+            mRelation := FirstText(mType, 'localizedName', 'name');
+          mKind := TypeKind(mType, mDirection);
         end;
         if not (mObject.Values['issues'] is TJSONArray) then
           Continue;
@@ -442,6 +520,11 @@ begin
           mLink.Key := Trim(TextOf(TJSONObject(mIssue), 'idReadable'));
           mLink.Title := Shorten(TextOf(TJSONObject(mIssue), 'summary'), 200);
           mLink.Relation := Shorten(mRelation, 60);
+          mLink.Kind := mKind;
+          // Zustand (#1279): resolved ist null, solange das Issue offen ist; fehlt das Feld, bleibt er unbekannt.
+          mLink.StateKnown := TJSONObject(mIssue).Values['resolved'] <> nil;
+          mLink.Resolved := TJSONObject(mIssue).Values['resolved'] is TJSONNumber;
+          mLink.State := StateOf(TJSONObject(mIssue));
           // Gleicher Tracker: öffnet im Fenster.
           mLink.Local := ValidKey(mLink.Key);
           if mLink.Key <> '' then
@@ -858,6 +941,254 @@ begin
     mOk := ParseFieldValues(mText, ATarget.Project, AKind, Trim(AField), AValues);
   if not mOk then
     Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, '');
+end;
+
+{ Verknüpfungen (#1279) }
+
+class function TAtlasYouTrackTracker.LinkTypesUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := '';
+  if ATarget.Server <> '' then
+    Result := ATarget.Url + '/api/issueLinkTypes?fields=' + TTextUris.PercentEncode(LinkTypeFields);
+end;
+
+class function TAtlasYouTrackTracker.ParseLinkType(const AJson: string; AKind: TAtlasTrackerLinkKind;
+  out AId: string): Boolean;
+const
+  KnownLinkTypes: array[0..3] of string = ('Depend', 'Subtask', 'Abhängigkeit', 'Unteraufgabe');
+  Directions: array[0..1] of string = ('OUTWARD', 'INWARD');
+  Suffixes: array[0..1] of string = ('s', 't');
+var
+  mValue, mItem: TJSONValue;
+  mType: TJSONObject;
+  mPass, mSide: Integer;
+  mId: string;
+begin
+  AId := '';
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    // Erst die Typen mit bekanntem Namen (Depend, Subtask), dann alle, deren Beschriftungen passen.
+    for mPass := 0 to 1 do
+      for mItem in TJSONArray(mValue) do
+      begin
+        if not (mItem is TJSONObject) then
+          Continue;
+        mType := TJSONObject(mItem);
+        mId := TextOf(mType, 'id');
+        if mId = '' then
+          Continue;
+        if (mPass = 0) and not IsOneOf(TextOf(mType, 'name'), KnownLinkTypes) then
+          Continue;
+        for mSide := 0 to 1 do
+          if TypeKind(mType, Directions[mSide]) = AKind then
+          begin
+            AId := mId + Suffixes[mSide];
+            Exit(True);
+          end;
+      end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasYouTrackTracker.ParseProjectId(const AJson: string; out AId: string): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  AId := '';
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if (mValue is TJSONObject) and (TJSONObject(mValue).Values['project'] is TJSONObject) then
+      AId := TextOf(TJSONObject(TJSONObject(mValue).Values['project']), 'id');
+  finally
+    mValue.Free;
+  end;
+  Result := AId <> '';
+end;
+
+class function TAtlasYouTrackTracker.NewIssueBody(const AProjectId, ATitle, ADescription: string): string;
+var
+  mRoot, mProject: TJSONObject;
+begin
+  mRoot := TJSONObject.Create;
+  try
+    mProject := TJSONObject.Create;
+    mProject.AddPair('id', AProjectId);
+    mRoot.AddPair('project', mProject);
+    mRoot.AddPair('summary', Trim(ATitle));
+    if Trim(ADescription) <> '' then
+      mRoot.AddPair('description', ADescription);
+    Result := mRoot.ToJSON;
+  finally
+    mRoot.Free;
+  end;
+end;
+
+class function TAtlasYouTrackTracker.LinkBody(const AKey: string): string;
+var
+  mRoot: TJSONObject;
+begin
+  mRoot := TJSONObject.Create;
+  try
+    mRoot.AddPair('idReadable', Trim(AKey));
+    Result := mRoot.ToJSON;
+  finally
+    mRoot.Free;
+  end;
+end;
+
+class function TAtlasYouTrackTracker.ParseCreatedKey(const AJson: string): string;
+var
+  mValue: TJSONValue;
+begin
+  Result := '';
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if mValue is TJSONObject then
+      Result := Trim(TextOf(TJSONObject(mValue), 'idReadable'));
+  finally
+    mValue.Free;
+  end;
+  if not ValidKey(Result) then
+    Result := '';
+end;
+
+function Rest(const AWatch: TStopwatch; ATimeoutMs: Integer): Integer;
+var
+  mRest: Int64;
+begin
+  mRest := ATimeoutMs - AWatch.ElapsedMilliseconds;
+  Result := 0;
+  if mRest > 0 then
+    Result := Integer(mRest);
+end;
+
+/// <summary>Link des Issues AKey (Linktyp mit Richtung AType) auf AOtherKey anlegen.</summary>
+function PostLink(const ATarget: TAtlasTrackerTarget; const APost: IAtlasCiSend; const AKey, AType, AOtherKey: string;
+  ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+var
+  mStatus: Integer;
+  mText: string;
+begin
+  Result := False;
+  if not APost.Send('POST', ATarget.Url + '/api/issues/' + Trim(AKey) + '/links/' + AType + '/issues?fields=id',
+    TAtlasYouTrackTracker.LinkBody(AOtherKey), ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  if (mStatus <> 200) and (mStatus <> 201) then
+  begin
+    AError := TAtlasYouTrackTracker.ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  AError := TAtlasCiFetchError.None;
+  Result := True;
+end;
+
+/// <summary>Linktyp mit Richtung für AKind ("80-1s"); False mit AError ohne passenden Typ.</summary>
+function FindLinkType(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  AKind: TAtlasTrackerLinkKind; ATimeoutMs: Integer; out AType: string; out AError: TAtlasCiFetchError): Boolean;
+var
+  mStatus: Integer;
+  mText: string;
+begin
+  AType := '';
+  Result := False;
+  if not ATransport.Get(TAtlasYouTrackTracker.LinkTypesUrl(ATarget), ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := TAtlasYouTrackTracker.ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not TAtlasYouTrackTracker.ParseLinkType(mText, AKind, AType) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  AError := TAtlasCiFetchError.None;
+  Result := True;
+end;
+
+function TAtlasYouTrackTracker.CreateSubtask(const ATarget: TAtlasTrackerTarget;
+  const ATransport: IAtlasCiTransport; const AParentKey, ATitle, ADescription: string; ATimeoutMs: Integer;
+  out AKey: string; out AError: TAtlasCiFetchError): Boolean;
+var
+  mPost: IAtlasCiSend;
+  mWatch: TStopwatch;
+  mStatus: Integer;
+  mText, mProject, mType: string;
+begin
+  AKey := '';
+  AError := TAtlasCiFetchError.NotConfigured;
+  Result := False;
+  if (ATarget.Server = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiSend, mPost) or
+    not ValidKey(Trim(AParentKey)) then
+    Exit;
+  if Trim(ATitle) = '' then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  mWatch := TStopwatch.StartNew;
+  // Projekt des übergeordneten Issues: die Unteraufgabe liegt im selben.
+  if not ATransport.Get(ATarget.Url + '/api/issues/' + Trim(AParentKey) + '?fields=' +
+    TTextUris.PercentEncode('id,project(id)'), ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParseProjectId(mText, mProject) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  // Linktyp vor dem Anlegen: ohne Subtask-Typ entsteht kein loses Issue.
+  if not FindLinkType(ATarget, ATransport, TAtlasTrackerLinkKind.Subtask, Rest(mWatch, ATimeoutMs), mType,
+    AError) then
+    Exit;
+  if not mPost.Send('POST', ATarget.Url + '/api/issues?fields=idReadable', NewIssueBody(mProject, ATitle,
+    ADescription), Rest(mWatch, ATimeoutMs), mStatus, mText, AError) then
+    Exit;
+  if (mStatus <> 200) and (mStatus <> 201) then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  AKey := ParseCreatedKey(mText);
+  if AKey = '' then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  Result := PostLink(ATarget, mPost, AParentKey, mType, AKey, Rest(mWatch, ATimeoutMs), AError);
+end;
+
+function TAtlasYouTrackTracker.AddLink(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; AKind: TAtlasTrackerLinkKind; const AOtherKey: string; ATimeoutMs: Integer;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mPost: IAtlasCiSend;
+  mWatch: TStopwatch;
+  mType: string;
+begin
+  AError := TAtlasCiFetchError.NotConfigured;
+  Result := False;
+  if (ATarget.Server = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiSend, mPost) then
+    Exit;
+  if not (AKind in [TAtlasTrackerLinkKind.DependsOn, TAtlasTrackerLinkKind.Blocks]) or
+    not ValidKey(Trim(AKey)) or not ValidKey(Trim(AOtherKey)) or SameText(Trim(AKey), Trim(AOtherKey)) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  mWatch := TStopwatch.StartNew;
+  if not FindLinkType(ATarget, ATransport, AKind, ATimeoutMs, mType, AError) then
+    Exit;
+  Result := PostLink(ATarget, mPost, AKey, mType, AOtherKey, Rest(mWatch, ATimeoutMs), AError);
 end;
 
 end.

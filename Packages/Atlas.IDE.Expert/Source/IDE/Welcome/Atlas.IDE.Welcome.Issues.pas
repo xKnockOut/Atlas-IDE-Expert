@@ -41,6 +41,11 @@
 //   das Issue im Fenster „Atlas-Issue“ (TAtlasIdeIssuePreview, Zwischenspeicher
 //   %LOCALAPPDATA%\Atlas\issues), Strg+Klick öffnet den Browser; Befehl
 //   Atlas.IssueShow fragt nach einer Kennung (ShowPreviewPrompt).
+// - Warnung beim Beginnen (#1279, issues.warnBlocked): vorher liest die
+//   Vorschau die Verknüpfungen des Issues (CheckBlocked); ist ein „hängt ab
+//   von“-Issue offen, fragt Atlas „ATL-129 blockiert dieses Issue und ist noch
+//   offen“ mit „Trotzdem beginnen“ und „ATL-129 ansehen“. Ohne Antwort und ohne
+//   Zwischenspeicher beginnt es ohne Rückfrage (kein Netz hält die Arbeit auf).
 // - Protokoll anonym: nur Anbieter, Anzahl, Ergebnis und Fehlerart, nie
 //   Adresse, Projekt, Kennung, Titel oder Token.
 // Anbieter, Transport (mit Token aus dem Anmeldespeicher) und Zugangsdialog
@@ -150,6 +155,10 @@ type
     class procedure Deliver(const AKeep: IAtlasIssuesSource; AOwner: TAtlasIdeIssues; const AProject: string;
       const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean; const AIssues: TArray<TAtlasTrackerIssue>;
       AError: TAtlasCiFetchError); static;
+    procedure StartChecked(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
+    procedure CheckBlocked(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
+    procedure Blocked(const AProject: string; const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue;
+      AMode: TAtlasIssueStart; AKnown: Boolean; const ADetails: TAtlasTrackerDetails);
     procedure Prepared(const AProject: string; const AIssue: TAtlasTrackerIssue; const APlan: TAtlasIssueStartPlan;
       AChanges: Integer);
     procedure Finished(const AProject: string; const AIssue: TAtlasTrackerIssue; const APlan: TAtlasIssueStartPlan;
@@ -245,6 +254,7 @@ uses
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Connections,
+  Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Tracker.Preview,
   Atlas.Core.Tracker.Projects,
@@ -252,6 +262,7 @@ uses
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.EndDialog,
+  Atlas.UI.Tracker.LinkDialogs,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -881,6 +892,73 @@ begin
 end;
 
 procedure TAtlasIdeIssues.Start(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
+begin
+  if not FStarted or not Active or (FStartProject <> '') or (AIssue.Key = '') or (CurrentProject = '') then
+    Exit;
+  // Erst prüfen, ob ein „hängt ab von“-Issue noch offen ist (#1279).
+  if TAtlasIdeSettings.Current.IssuesWarnBlocked and (FPreview <> nil) then
+    CheckBlocked(AIssue, AMode)
+  else
+    StartChecked(AIssue, AMode);
+end;
+
+procedure TAtlasIdeIssues.CheckBlocked(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
+var
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
+  mProject: string;
+  mTarget: TAtlasTrackerTarget;
+  mIssue: TAtlasTrackerIssue;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  mIssue := AIssue;
+  mProject := CurrentProject;
+  mTarget := TargetOf(mProject);
+  // Sperrt ein zweites „Beginnen“, solange die Prüfung läuft.
+  FStartProject := mProject;
+  SetNotice(mProject, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStarting, [mIssue.Key]), False);
+  Changed;
+  FPreview.CheckBlocked(mTarget, mIssue.Key,
+    procedure(AKnown: Boolean; const ADetails: TAtlasTrackerDetails)
+    begin
+      if (mKeep <> nil) and mOwner.FStarted then
+        mOwner.Blocked(mProject, mTarget, mIssue, AMode, AKnown, ADetails);
+    end);
+end;
+
+procedure TAtlasIdeIssues.Blocked(const AProject: string; const ATarget: TAtlasTrackerTarget;
+  const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart; AKnown: Boolean; const ADetails: TAtlasTrackerDetails);
+var
+  mBlockers: TArray<TAtlasTrackerLink>;
+begin
+  FStartProject := '';
+  mBlockers := nil;
+  if AKnown then
+    mBlockers := TAtlasTrackerLinks.WarnOnStart(TAtlasIdeSettings.Current.IssuesWarnBlocked, ADetails);
+  if Length(mBlockers) = 0 then
+  begin
+    StartChecked(AIssue, AMode);
+    Exit;
+  end;
+  TAtlasGuard.Log(Format('Meine Issues: Beginnen mit %d offenen Abhängigkeiten', [Length(mBlockers)]));
+  case TAtlasBlockedPrompt.Ask(mBlockers) of
+    TAtlasBlockedChoice.StartAnyway:
+      StartChecked(AIssue, AMode);
+    TAtlasBlockedChoice.ShowBlocker:
+      begin
+        SetNotice(AProject, '', False);
+        Changed;
+        if FPreview <> nil then
+          FPreview.ShowLink(ATarget, mBlockers[0]);
+      end;
+  else
+    SetNotice(AProject, '', False);
+    Changed;
+  end;
+end;
+
+procedure TAtlasIdeIssues.StartChecked(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
 var
   Keep: IAtlasIssuesSource;
   Project, Dir: string;

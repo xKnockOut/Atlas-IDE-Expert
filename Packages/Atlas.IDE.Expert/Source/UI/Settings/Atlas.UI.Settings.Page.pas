@@ -661,6 +661,8 @@ type
     FIssuesEndComment: TEdit;
     FIssuesLoadValues: TButton;
     FIssuesValuesNote: TLabel;
+    FIssuesPreviewLinks: TCheckBox;
+    FIssuesWarnBlocked: TCheckBox;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1251,6 +1253,8 @@ type
     property IssuesConnectionAssigneeField: TAtlasValueBox read FIssuesConnectionAssigneeField;
     property IssuesConnectionStartState: TAtlasValueBox read FIssuesConnectionStartState;
     property IssuesConnectionEndStates: TEdit read FIssuesConnectionEndStates;
+    property IssuesPreviewLinks: TCheckBox read FIssuesPreviewLinks;
+    property IssuesWarnBlocked: TCheckBox read FIssuesWarnBlocked;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -2816,6 +2820,9 @@ begin
   // Issue-Vorschau (#1264): Hauptschalter, Kommentare darunter.
   FIssuesPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreview));
   FIssuesPreviewComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewComments));
+  // Abhängigkeiten und Unteraufgaben (#1279): Baum in der Vorschau, Warnung beim Beginnen.
+  FIssuesPreviewLinks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewLinks));
+  FIssuesWarnBlocked := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesWarnBlocked));
   AddIssuesWorkflowSection;
 end;
 
@@ -4666,6 +4673,8 @@ begin
   FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
   FMarks.Bind(FIssuesPreview, ['IssuesPreview']);
   FMarks.Bind(FIssuesPreviewComments, ['IssuesPreviewComments']);
+  FMarks.Bind(FIssuesPreviewLinks, ['IssuesPreviewLinks']);
+  FMarks.Bind(FIssuesWarnBlocked, ['IssuesWarnBlocked']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FIssuesSyncState, ['IssuesSyncState']);
   FMarks.Bind(FIssuesStateField, ['IssuesStateField']);
@@ -6944,6 +6953,8 @@ begin
   FIssuesStartComment.Text := ASettings.IssuesStartComment;
   FIssuesEndStates.Text := ASettings.IssuesEndStates;
   FIssuesEndComment.Text := ASettings.IssuesEndComment;
+  FIssuesPreviewLinks.Checked := ASettings.IssuesPreviewLinks;
+  FIssuesWarnBlocked.Checked := ASettings.IssuesWarnBlocked;
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -7518,6 +7529,8 @@ begin
   ASettings.IssuesStartComment := FIssuesStartComment.Text;
   ASettings.IssuesEndStates := TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FIssuesEndStates.Text));
   ASettings.IssuesEndComment := FIssuesEndComment.Text;
+  ASettings.IssuesPreviewLinks := FIssuesPreviewLinks.Checked;
+  ASettings.IssuesWarnBlocked := FIssuesWarnBlocked.Checked;
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.IssuesProjects := TrackerProjectsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;

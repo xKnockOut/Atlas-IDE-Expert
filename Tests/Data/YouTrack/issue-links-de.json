@@ -1,0 +1,54 @@
+{
+  "idReadable": "ATL-130",
+  "numberInProject": 130,
+  "summary": "Issue-Vorschau mit Verknüpfungen",
+  "customFields": [],
+  "links": [
+    {
+      "direction": "INWARD",
+      "linkType": {"name": "Depend", "localizedName": "Abhängigkeit",
+        "sourceToTarget": "is required for", "localizedSourceToTarget": "ist erforderlich für",
+        "targetToSource": "depends on", "localizedTargetToSource": "hängt ab von", "aggregation": false},
+      "issues": [
+        {"idReadable": "ATL-129", "summary": "Tracker-Anbindung", "resolved": null,
+         "customFields": [{"name": "Zustand", "value": {"name": "In Bearbeitung"}}]}
+      ]
+    },
+    {
+      "direction": "OUTWARD",
+      "linkType": {"name": "Voraussetzung", "sourceToTarget": "ist erforderlich für", "targetToSource": "hängt ab von"},
+      "issues": [
+        {"idReadable": "ATL-140", "summary": "Board", "resolved": null, "customFields": []}
+      ]
+    },
+    {
+      "direction": "OUTWARD",
+      "linkType": {"name": "Unteraufgabe", "sourceToTarget": "übergeordnet zu", "targetToSource": "Unteraufgabe von"},
+      "issues": [
+        {"idReadable": "ATL-131", "summary": "Baum", "resolved": 1761645649000, "customFields": []},
+        {"idReadable": "ATL-133", "summary": "Anlegen", "resolved": null, "customFields": []}
+      ]
+    },
+    {
+      "direction": "OUTWARD",
+      "linkType": {"name": "Eigene Abhängigkeit", "sourceToTarget": "hängt ab von", "targetToSource": "ist erforderlich für"},
+      "issues": [
+        {"idReadable": "ATL-150", "summary": "Vertauschte Beschriftungen", "resolved": null, "customFields": []}
+      ]
+    },
+    {
+      "direction": "INWARD",
+      "linkType": {"name": "Duplikat", "sourceToTarget": "wird dupliziert durch", "targetToSource": "dupliziert"},
+      "issues": [
+        {"idReadable": "ATL-90", "summary": "Alte Vorschau", "resolved": null, "customFields": []}
+      ]
+    },
+    {
+      "direction": "BOTH",
+      "linkType": {"name": "Bezieht sich auf", "sourceToTarget": "bezieht sich auf", "targetToSource": "bezieht sich auf"},
+      "issues": [
+        {"idReadable": "ATL-77", "summary": "Commit-Präfix", "resolved": null, "customFields": []}
+      ]
+    }
+  ]
+}
