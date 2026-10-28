@@ -2588,16 +2588,14 @@ begin
     Paths := Paths + Field.Path + '|';
   Assert.Contains(Paths, '|language|');
   Assert.Contains(Paths, '|completion.matching|');
-  // Versionsverwaltung (#571): im Dialog der globalen Einstellungen, Seite Allgemein, als Auswahl.
-  Assert.Contains(Paths, '|vcs.provider|');
-  for Field in Global do
-    if Field.Path = 'vcs.provider' then
-    begin
-      Assert.AreEqual('Allgemein', Field.Page);
-      Assert.AreEqual('"auto"', Field.DefaultJson);
-      Assert.AreEqual(4, Integer(Length(Field.Choices)));
-      Assert.AreEqual('"off"', Field.Choices[3]);
-    end;
+  // Versionsverwaltung (#571) hat seit #1285 eine eigene Seite, Issue-Tracker seit #1260: Das ganze Objekt
+  // ("vcs", "issues") enthält Glieder dieser Seiten und steht deshalb nicht im Dialog.
+  Assert.DoesNotContain(Paths, '|vcs|');
+  Assert.DoesNotContain(Paths, '|vcs.provider|');
+  Assert.DoesNotContain(Paths, '|issues|');
+  for Field in Fields do
+    if Field.Path = 'vcs' then
+      Assert.IsTrue(Field.Global, 'vcs bleibt global');
   // Auf den Reitern der Optionsseite bzw. von der IDE gesetzt: nicht noch einmal im Dialog.
   Assert.DoesNotContain(Paths, '|index.projectGroup|');
   Assert.DoesNotContain(Paths, '|hints.xmlDocFull|');
