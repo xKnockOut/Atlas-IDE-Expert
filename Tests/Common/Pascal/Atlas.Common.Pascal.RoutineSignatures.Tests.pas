@@ -83,10 +83,22 @@ begin
   Assert.AreEqual('', TRoutineSignatures.ResultKey('procedure Foo(A: Integer)'));
   Assert.AreEqual('arrayofptypeinfo', TRoutineSignatures.TypeKey('array of  PTypeInfo'));
   // Rumpf eines generischen Typs neben einem gleichnamigen nicht generischen.
-  Assert.IsTrue(TRoutineSignatures.HasGenericQualifier('constructor TProperty<T>.Create(const A: string)', 'Create'));
-  Assert.IsFalse(TRoutineSignatures.HasGenericQualifier('constructor TProperty.Create(const A: string)', 'Create'));
-  Assert.IsFalse(TRoutineSignatures.HasGenericQualifier('procedure TA.Reg<TI, TC>(const N: string)', 'Reg'));
-  Assert.IsTrue(TRoutineSignatures.HasGenericQualifier('function TA<T>.TInner.CreateX: T', 'CreateX'));
+  Assert.AreEqual('1', TRoutineSignatures.QualifierMask('constructor TProperty<T>.Create(const A: string)', 'Create'));
+  Assert.AreEqual('0', TRoutineSignatures.QualifierMask('constructor TProperty.Create(const A: string)', 'Create'));
+  Assert.AreEqual('0', TRoutineSignatures.QualifierMask('procedure TA.Reg<TI, TC>(const N: string)', 'Reg'));
+  Assert.AreEqual('10', TRoutineSignatures.QualifierMask('function TDict<TKey, TValue>.TEnumerator.MoveNext: Boolean',
+    'MoveNext'));
+  Assert.AreEqual('', TRoutineSignatures.QualifierMask('procedure Frei', 'Frei'));
+  // Bedingte Direktiven im Qualifizierer: der aktive Zweig ist im Text nicht zu sehen (Indy); Kommentare zählen nicht.
+  Assert.AreEqual('?', TRoutineSignatures.QualifierMask('procedure TList{$IFDEF G}<T>{$ENDIF}.Add', 'Add'));
+  Assert.AreEqual('0', TRoutineSignatures.QualifierMask('procedure TList{ <T> }.Add', 'Add'));
+  // Escapte Namen, Kommentar und Zeilenumbruch hinter dem Punkt (Horse, mORMot2).
+  Assert.AreEqual('0', TRoutineSignatures.QualifierMask('function EHorseException.&Type: TMessageType', 'Type'));
+  Assert.AreEqual('0', TRoutineSignatures.QualifierMask('function TRttiCustom.{%H-}ValueCompare(Data: Pointer)',
+    'ValueCompare'));
+  Assert.AreEqual('0', TRoutineSignatures.QualifierMask('function TSynThread. AcquireThread: TStep', 'AcquireThread'));
+  Assert.AreEqual('1', TRoutineSignatures.QualifierMask('class function TValueHelper<T>.&&op_Equality(A: T)',
+    '&op_Equality'));
 end;
 
 procedure TRoutineSignaturesTests.TreeForms;
