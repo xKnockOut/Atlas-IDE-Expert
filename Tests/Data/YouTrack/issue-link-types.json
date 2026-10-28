@@ -1,0 +1,7 @@
+[
+  {"id": "80-0", "name": "Relates", "sourceToTarget": "relates to", "targetToSource": "relates to", "aggregation": false},
+  {"id": "80-9", "name": "Requirement", "sourceToTarget": "is required for", "targetToSource": "depends on", "aggregation": false},
+  {"id": "80-1", "name": "Depend", "localizedName": "Abhängigkeit", "sourceToTarget": "is required for", "targetToSource": "depends on", "aggregation": false},
+  {"id": "80-2", "name": "Duplicate", "sourceToTarget": "is duplicated by", "targetToSource": "duplicates", "aggregation": false},
+  {"id": "80-3", "name": "Subtask", "localizedName": "Unteraufgabe", "sourceToTarget": "parent for", "targetToSource": "subtask of", "aggregation": true}
+]

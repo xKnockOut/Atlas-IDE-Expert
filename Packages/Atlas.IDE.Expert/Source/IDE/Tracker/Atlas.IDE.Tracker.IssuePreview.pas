@@ -32,6 +32,13 @@
 // - Statusfeld (#1273, issues.checklistStatus): ChecklistProgress liest den
 //   Fortschritt aus dem Zwischenspeicher, Prefetch frischt ihn höchstens alle
 //   PrefetchMinutes im Hintergrund auf, ShowChecklist öffnet an der Liste.
+// - Verknüpfungen (#1279, issues.preview.links): Baum statt Liste; kann der
+//   Anbieter schreiben (IAtlasTrackerLinkWriter), legen „Unteraufgabe
+//   anlegen …“ und „Verknüpfen …“ nach dem Dialog im Hintergrund an
+//   (Zeitgrenze 15 s), danach lädt das Fenster neu und meldet das Ergebnis
+//   über dem Inhalt. CheckBlocked liest für „Beginnen“ (issues.warnBlocked) die
+//   Verknüpfungen frisch (5 s, ohne Kommentare), ohne Netz aus dem
+//   Zwischenspeicher.
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse,
 //   Kennung, Titel oder Token.
 // - Kurzabfrage für den Hover über Kennungen im Editor (#1265): Peek liest nur
@@ -91,6 +98,17 @@ type
   TAtlasIssueLookupDone = reference to procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails;
     AError: TAtlasCiFetchError);
 
+  /// <summary>Schreibender Auftrag im Hintergrund (#1279); AKey: Kennung des angelegten bzw. verknüpften Issues.
+  /// </summary>
+  TAtlasIssueWriteWork = reference to function(const AWriter: IAtlasTrackerLinkWriter;
+    const ATransport: IAtlasCiTransport; out AKey: string; out AError: TAtlasCiFetchError): Boolean;
+  /// <summary>Ende eines schreibenden Auftrags, im Hauptthread.</summary>
+  TAtlasIssueWriteDone = reference to procedure(ASucceeded: Boolean; const AKey: string;
+    AError: TAtlasCiFetchError);
+  /// <summary>Ergebnis von CheckBlocked im Hauptthread: AKnown = frisch geladen oder aus dem Zwischenspeicher.
+  /// </summary>
+  TAtlasIssueBlockedDone = reference to procedure(AKnown: Boolean; const ADetails: TAtlasTrackerDetails);
+
   TAtlasIdeIssuePreview = class(TInterfacedObject)
   public const
     MaxImages = 10;
@@ -100,6 +118,10 @@ type
     MissingMs = 10 * 60 * 1000;
     /// <summary>So lange gilt der Fortschritt einer Checkliste im Zwischenspeicher fürs Statusfeld (#1273).</summary>
     PrefetchMinutes = 10;
+    /// <summary>Zeitgrenze für Anlegen und Verknüpfen (#1279).</summary>
+    WriteTimeoutMs = 15000;
+    /// <summary>Zeitgrenze der Prüfung vor „Beginnen“ (#1279).</summary>
+    BlockedTimeoutMs = 5000;
     /// <summary>Endungen, die Atlas nicht startet, sondern im Explorer zeigt.</summary>
     RiskyExtensions = '.exe.com.bat.cmd.scr.pif.msi.msp.ps1.psm1.vbs.vbe.js.jse.wsf.wsh.hta.lnk.reg.cpl.jar.dll.' +
       'appref-ms.application.';
@@ -131,6 +153,8 @@ type
     FPrefetchKey: string;
     FPrefetchAt: TDateTime;
     FPrefetching: Boolean;
+    // Meldung nach Anlegen bzw. Verknüpfen, gezeigt mit dem frisch geladenen Stand (#1279).
+    FNotice: string;
     function Frame: TAtlasIssueFrame;
     procedure PrepareFrame(AFrame: TAtlasIssueFrame; const AEntry: TAtlasIssueHistoryEntry);
     function ReadOnlyKey(const AEntry: TAtlasIssueHistoryEntry): string;
@@ -164,6 +188,13 @@ type
     class procedure Deliver(const ADone: TAtlasIssueLookupDone; ASucceeded: Boolean;
       const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError); static;
     procedure SendComment(const AText: string);
+    procedure ShowOn(AFrame: TAtlasIssueFrame; const ADetails: TAtlasTrackerDetails; const AStatus: string);
+    procedure CreateSubtask;
+    procedure AddLink;
+    procedure RunWrite(const ATarget: TAtlasTrackerTarget; const AWork: TAtlasIssueWriteWork;
+      const ADone: TAtlasIssueWriteDone);
+    procedure Written(const AText: string);
+    procedure WriteFailed(const AText: string; AError: TAtlasCiFetchError);
     class function NowUtc: TDateTime; static;
   public
     /// <summary>ACacheFolder: Ordner des Zwischenspeichers auf der Platte ('' = nur im Speicher).</summary>
@@ -197,6 +228,13 @@ type
     /// <summary>Stand von AKey im Hintergrund auffrischen, wenn er fehlt oder älter als PrefetchMinutes ist; je
     /// Kennung höchstens einmal in PrefetchMinutes (auch nach einem Fehler). Ohne Fenster.</summary>
     procedure Prefetch(const ATarget: TAtlasTrackerTarget; const AKey: string);
+    /// <summary>Verknüpfungen von AKey für die Warnung beim Beginnen (#1279): frisch im Hintergrund, ohne Antwort
+    /// der letzte Stand; ADone im Hauptthread (sofort, wenn kein Transport da ist).</summary>
+    procedure CheckBlocked(const ATarget: TAtlasTrackerTarget; const AKey: string;
+      const ADone: TAtlasIssueBlockedDone);
+    /// <summary>Verknüpftes Issue zeigen: im Fenster, wenn es im selben Tracker liegt und die Vorschau an ist,
+    /// sonst im Browser.</summary>
+    procedure ShowLink(const ATarget: TAtlasTrackerTarget; const ALink: TAtlasTrackerLink);
     /// <summary>issues.preview an?</summary>
     class function Active: Boolean; static;
   end;
@@ -222,6 +260,7 @@ uses
   Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
+  Atlas.UI.Tracker.LinkDialogs,
   Atlas.IDE.Tracker.IssueWindow;
 
 { TAtlasIdeIssuePreview }
@@ -485,6 +524,18 @@ begin
       if mKeep <> nil then
         mOwner.AddTask;
     end;
+  AFrame.OnCreateSubtask :=
+    procedure
+    begin
+      if mKeep <> nil then
+        mOwner.CreateSubtask;
+    end;
+  AFrame.OnAddLink :=
+    procedure
+    begin
+      if mKeep <> nil then
+        mOwner.AddLink;
+    end;
   if Assigned(FHooks.CanStart) then
     AFrame.CanStart := FHooks.CanStart();
   ShowCurrent;
@@ -635,7 +686,7 @@ begin
   if FHasCurrent then
     PrepareFrame(mFrame, FCurrent);
   if FHasCurrent and FCache.Get(FCurrent.Target, FCurrent.Key, NowUtc, mDetails) then
-    mFrame.ShowDetails(mDetails, NowUtc, '', not TAtlasIdeSettings.Current.IssuesPreviewComments)
+    ShowOn(mFrame, mDetails, '')
   else if not FHasCurrent then
     mFrame.ShowEmpty;
 end;
@@ -678,7 +729,7 @@ begin
   begin
     PrepareFrame(mFrame, AEntry);
     if FCache.Get(AEntry.Target, AEntry.Key, NowUtc, mDetails) then
-      mFrame.ShowDetails(mDetails, NowUtc, StaleText(mDetails, ''), not mComments);
+      ShowOn(mFrame, mDetails, StaleText(mDetails, ''));
     mFrame.SetLoading(True);
   end;
   mProvider := ProviderOf(AEntry.Target);
@@ -741,7 +792,6 @@ var
   mFrame: TAtlasIssueFrame;
   mDetails, mCached: TAtlasTrackerDetails;
   mProvider: IAtlasTrackerProvider;
-  mComments: Boolean;
 begin
   FCancel := nil;
   ReleaseThreads(False);
@@ -761,7 +811,6 @@ begin
   if AGeneration <> FGeneration then
     Exit;
   mFrame := Frame;
-  mComments := TAtlasIdeSettings.Current.IssuesPreviewComments;
   if ASucceeded then
   begin
     mDetails := ADetails;
@@ -773,13 +822,15 @@ begin
       if Assigned(FHooks.CanStart) then
         mFrame.CanStart := FHooks.CanStart();
       PrepareFrame(mFrame, AEntry);
-      mFrame.ShowDetails(mDetails, NowUtc, '', not mComments);
+      // Meldung nach dem Anlegen bzw. Verknüpfen (#1279) über dem frischen Stand.
+      ShowOn(mFrame, mDetails, FNotice);
       UpdateWrite;
       // Nach einem abgewiesenen Abhaken (Beschreibung geändert): Hinweis über dem neuen Stand.
       if FPendingNotice <> '' then
         mFrame.ShowNotice(FPendingNotice);
     end;
     FPendingNotice := '';
+    FNotice := '';
     Exit;
   end;
   FPendingNotice := '';
@@ -791,8 +842,7 @@ begin
     Exit;
   // Ohne Netz der letzte Stand mit Grund, kein Dialog.
   if FCache.Get(AEntry.Target, AEntry.Key, NowUtc, mCached) then
-    mFrame.ShowDetails(mCached, NowUtc, StaleText(mCached, TAtlasIssueTip.ErrorText(AError, AEntry.Key)),
-      not mComments)
+    ShowOn(mFrame, mCached, StaleText(mCached, TAtlasIssueTip.ErrorText(AError, AEntry.Key)))
   else
     mFrame.ShowError(TAtlasIssueTip.ErrorText(AError, AEntry.Key), TAtlasIssuePreview.FixOf(AError));
 end;
@@ -988,7 +1038,7 @@ begin
     mFrame.ShowNotice(TAtlasStrings.Text(TAtlasTextId.IssueChecklistDenied));
   end
   else if AError <> TAtlasCiFetchError.Cancelled then
-    mFrame.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistFailed, [ErrorText(AError, AEntry.Key)]));
+    mFrame.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistFailed, [TAtlasIssueTip.ErrorText(AError, AEntry.Key)]));
 end;
 
 procedure TAtlasIdeIssuePreview.ShowChecklist(const ATarget: TAtlasTrackerTarget; const AKey: string);
@@ -1090,6 +1140,278 @@ begin
   mDetails := ADetails;
   mDetails.Fetched := NowUtc;
   FCache.Put(AEntry.Target, mDetails);
+end;
+
+procedure TAtlasIdeIssuePreview.ShowOn(AFrame: TAtlasIssueFrame; const ADetails: TAtlasTrackerDetails;
+  const AStatus: string);
+var
+  mProvider: IAtlasTrackerProvider;
+begin
+  // Baum oder Liste (#1279); die Knöpfe nur, wenn der Anbieter schreiben kann.
+  mProvider := nil;
+  if FHasCurrent then
+    mProvider := ProviderOf(FCurrent.Target);
+  AFrame.LinksAsTree := TAtlasIdeSettings.Current.IssuesPreviewLinks;
+  AFrame.CanWriteLinks := AFrame.LinksAsTree and Supports(mProvider, IAtlasTrackerLinkWriter);
+  AFrame.ShowDetails(ADetails, NowUtc, AStatus, not TAtlasIdeSettings.Current.IssuesPreviewComments);
+end;
+
+/// <summary>Projekt einer YouTrack-Kennung ("ATL-12" → "ATL"); '' ohne Bindestrich.</summary>
+function ProjectOfKey(const AKey: string): string;
+var
+  mAt: Integer;
+begin
+  Result := '';
+  mAt := LastDelimiter('-', AKey);
+  if mAt > 1 then
+    Result := Copy(AKey, 1, mAt - 1);
+end;
+
+procedure TAtlasIdeIssuePreview.CreateSubtask;
+var
+  mFrame: TAtlasIssueFrame;
+  mTarget: TAtlasTrackerTarget;
+  mParent, mProject, mTitle, mDescription: string;
+  mKeep: IInterface;
+  mOwner: TAtlasIdeIssuePreview;
+begin
+  mFrame := Frame;
+  if not FStarted or not FHasCurrent or (mFrame = nil) or not mFrame.HasDetails then
+    Exit;
+  mTarget := FCurrent.Target;
+  mParent := mFrame.Details.Key;
+  // Vorbelegt: das Projekt des übergeordneten Issues (GitHub owner/repo, YouTrack Kürzel).
+  mProject := mTarget.Project;
+  if mProject = '' then
+    mProject := ProjectOfKey(mParent);
+  if not TAtlasSubtaskDialog.Execute(mParent, mProject, mTitle, mDescription) then
+    Exit;
+  mKeep := Self;
+  mOwner := Self;
+  RunWrite(mTarget,
+    function(const AWriter: IAtlasTrackerLinkWriter; const ATransport: IAtlasCiTransport; out AKey: string;
+      out AError: TAtlasCiFetchError): Boolean
+    begin
+      Result := AWriter.CreateSubtask(mTarget, ATransport, mParent, mTitle, mDescription, WriteTimeoutMs, AKey,
+        AError);
+    end,
+    procedure(ASucceeded: Boolean; const AKey: string; AError: TAtlasCiFetchError)
+    begin
+      if mKeep = nil then
+        Exit;
+      if ASucceeded then
+        mOwner.Written(TAtlasStrings.Fmt(TAtlasTextId.IssueSubtaskCreated, [AKey]))
+      else if AKey <> '' then
+        mOwner.WriteFailed(TAtlasStrings.Fmt(TAtlasTextId.IssueSubtaskNotLinked, [AKey,
+          TAtlasIssueTip.ErrorText(AError, mParent)]), AError)
+      else
+        mOwner.WriteFailed(TAtlasStrings.Fmt(TAtlasTextId.IssueSubtaskFailed, [TAtlasIssueTip.ErrorText(AError, mParent)]),
+          AError);
+    end);
+end;
+
+procedure TAtlasIdeIssuePreview.AddLink;
+var
+  mFrame: TAtlasIssueFrame;
+  mTarget: TAtlasTrackerTarget;
+  mKey, mOther: string;
+  mKind: TAtlasTrackerLinkKind;
+  mKeep: IInterface;
+  mOwner: TAtlasIdeIssuePreview;
+begin
+  mFrame := Frame;
+  if not FStarted or not FHasCurrent or (mFrame = nil) or not mFrame.HasDetails then
+    Exit;
+  mTarget := FCurrent.Target;
+  mKey := mFrame.Details.Key;
+  if not TAtlasIssueLinkDialog.Execute(mKey, mTarget.Provider, mKind, mOther) then
+    Exit;
+  mKeep := Self;
+  mOwner := Self;
+  RunWrite(mTarget,
+    function(const AWriter: IAtlasTrackerLinkWriter; const ATransport: IAtlasCiTransport; out AKey: string;
+      out AError: TAtlasCiFetchError): Boolean
+    begin
+      AKey := mOther;
+      Result := AWriter.AddLink(mTarget, ATransport, mKey, mKind, mOther, WriteTimeoutMs, AError);
+    end,
+    procedure(ASucceeded: Boolean; const AKey: string; AError: TAtlasCiFetchError)
+    begin
+      if mKeep = nil then
+        Exit;
+      if ASucceeded then
+        mOwner.Written(TAtlasStrings.Fmt(TAtlasTextId.IssueLinkAdded, [mKey, mOther]))
+      else
+        mOwner.WriteFailed(TAtlasStrings.Fmt(TAtlasTextId.IssueLinkFailed, [TAtlasIssueTip.ErrorText(AError, mOther)]),
+          AError);
+    end);
+end;
+
+procedure TAtlasIdeIssuePreview.RunWrite(const ATarget: TAtlasTrackerTarget; const AWork: TAtlasIssueWriteWork;
+  const ADone: TAtlasIssueWriteDone);
+var
+  mProvider: IAtlasTrackerProvider;
+  mWriter: IAtlasTrackerLinkWriter;
+  mTransport: IAtlasCiTransport;
+  mThread: TThread;
+  mFrame: TAtlasIssueFrame;
+begin
+  mProvider := ProviderOf(ATarget);
+  if not Supports(mProvider, IAtlasTrackerLinkWriter, mWriter) or not Assigned(FHooks.Transport) then
+  begin
+    ADone(False, '', TAtlasCiFetchError.NotConfigured);
+    Exit;
+  end;
+  // Liest das Token ohne Dialog; ohne Token wie eine abgelehnte Anmeldung (Knopf „Token hinterlegen …“).
+  mTransport := FHooks.Transport(mProvider, ATarget);
+  if mTransport = nil then
+  begin
+    ADone(False, '', TAtlasCiFetchError.Unauthorized);
+    Exit;
+  end;
+  mFrame := Frame;
+  if mFrame <> nil then
+    mFrame.ShowError(TAtlasStrings.Text(TAtlasTextId.IssueLinkWorking), TAtlasIssueFix.None);
+  ReleaseThreads(False);
+  mThread := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mKey: string;
+      mError: TAtlasCiFetchError;
+      mOk: Boolean;
+    begin
+      mKey := '';
+      mError := TAtlasCiFetchError.Network;
+      mOk := False;
+      try
+        mOk := AWork(mWriter, mTransport, mKey, mError);
+      except
+        // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
+        on E: Exception do
+        begin
+          mOk := False;
+          mError := TAtlasCiFetchError.Network;
+          TAtlasGuard.Log('Issue-Vorschau: Schreiben mit ' + E.ClassName + ' abgebrochen');
+        end;
+      end;
+      mTransport := nil;
+      mWriter := nil;
+      if TAtlasShutdown.Signalled then
+        Exit;
+      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+        procedure
+        begin
+          ADone(mOk, mKey, mError);
+        end);
+    end);
+  mThread.FreeOnTerminate := False;
+  FWorkers.Add(mThread);
+  mThread.Start;
+end;
+
+procedure TAtlasIdeIssuePreview.Written(const AText: string);
+begin
+  if not FStarted then
+    Exit;
+  TAtlasGuard.Log('Issue-Vorschau: Verknüpfung geschrieben');
+  // Neu laden: Der Baum zeigt die neue Unteraufgabe bzw. Verknüpfung, die Meldung steht darüber.
+  FNotice := AText;
+  Refresh;
+end;
+
+procedure TAtlasIdeIssuePreview.WriteFailed(const AText: string; AError: TAtlasCiFetchError);
+var
+  mFrame: TAtlasIssueFrame;
+begin
+  if not FStarted then
+    Exit;
+  TAtlasGuard.Log('Issue-Vorschau: Schreiben nicht möglich (' + TAtlasCiBuild.ErrorKey(AError) + ')');
+  mFrame := Frame;
+  if mFrame <> nil then
+    mFrame.ShowError(AText, TAtlasIssuePreview.FixOf(AError));
+end;
+
+procedure TAtlasIdeIssuePreview.CheckBlocked(const ATarget: TAtlasTrackerTarget; const AKey: string;
+  const ADone: TAtlasIssueBlockedDone);
+var
+  mProvider: IAtlasTrackerProvider;
+  mTransport: IAtlasCiTransport;
+  mCached: TAtlasTrackerDetails;
+  mKnown: Boolean;
+  mTarget: TAtlasTrackerTarget;
+  mKey: string;
+  mThread: TThread;
+begin
+  mCached := TAtlasTrackerDetails.Empty;
+  mKnown := FStarted and FCache.Get(ATarget, AKey, NowUtc, mCached);
+  mProvider := nil;
+  mTransport := nil;
+  if FStarted then
+    mProvider := ProviderOf(ATarget);
+  if (mProvider <> nil) and Assigned(FHooks.Transport) then
+    mTransport := FHooks.Transport(mProvider, ATarget);
+  if mTransport = nil then
+  begin
+    ADone(mKnown, mCached);
+    Exit;
+  end;
+  mTarget := ATarget;
+  mKey := AKey;
+  ReleaseThreads(False);
+  mThread := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mDetails: TAtlasTrackerDetails;
+      mError: TAtlasCiFetchError;
+      mOk: Boolean;
+    begin
+      mDetails := TAtlasTrackerDetails.Empty;
+      mOk := False;
+      try
+        mOk := mProvider.Details(mTarget, mTransport, mKey, False, BlockedTimeoutMs, mDetails, mError);
+      except
+        on E: Exception do
+        begin
+          mOk := False;
+          TAtlasGuard.Log('Issue-Vorschau: Prüfung vor „Beginnen“ mit ' + E.ClassName + ' abgebrochen');
+        end;
+      end;
+      mTransport := nil;
+      if TAtlasShutdown.Signalled then
+        Exit;
+      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+        procedure
+        begin
+          // Ohne Antwort der letzte Stand aus dem Zwischenspeicher.
+          if mOk then
+            ADone(True, mDetails)
+          else
+            ADone(mKnown, mCached);
+        end);
+    end);
+  mThread.FreeOnTerminate := False;
+  FWorkers.Add(mThread);
+  mThread.Start;
+end;
+
+procedure TAtlasIdeIssuePreview.ShowLink(const ATarget: TAtlasTrackerTarget; const ALink: TAtlasTrackerLink);
+var
+  mProvider: IAtlasTrackerProvider;
+begin
+  if ALink.Local and FStarted and Active then
+  begin
+    Show(ATarget, ALink.Key);
+    Exit;
+  end;
+  if ALink.Page <> '' then
+  begin
+    Browse(ALink.Page);
+    Exit;
+  end;
+  // Nur die Seite aus der eingetragenen Adresse.
+  mProvider := ProviderOf(ATarget);
+  if mProvider <> nil then
+    Browse(mProvider.IssuePage(ATarget, ALink.Key));
 end;
 
 procedure TAtlasIdeIssuePreview.Fix(AFix: TAtlasIssueFix);

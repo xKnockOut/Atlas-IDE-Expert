@@ -1,0 +1,60 @@
+{
+  "idReadable": "ATL-130",
+  "numberInProject": 130,
+  "summary": "Issue-Vorschau mit Verknüpfungen",
+  "description": "Siehe Baum.",
+  "created": 1761645649000,
+  "updated": 1761649249000,
+  "customFields": [],
+  "tags": [],
+  "attachments": [],
+  "links": [
+    {
+      "direction": "INWARD",
+      "linkType": {"name": "Depend", "sourceToTarget": "is required for", "targetToSource": "depends on", "aggregation": false},
+      "issues": [
+        {"idReadable": "ATL-129", "summary": "Tracker-Anbindung", "resolved": null,
+         "customFields": [{"name": "Priority", "value": {"name": "Major"}}, {"name": "State", "value": {"name": "In Progress"}}]},
+        {"idReadable": "ATL-128", "summary": "Einstellungen", "resolved": 1761645649000,
+         "customFields": [{"name": "State", "value": {"name": "Fixed"}}]}
+      ]
+    },
+    {
+      "direction": "OUTWARD",
+      "linkType": {"name": "Depend", "sourceToTarget": "is required for", "targetToSource": "depends on", "aggregation": false},
+      "issues": [
+        {"idReadable": "ATL-140", "summary": "Board", "resolved": null, "customFields": []}
+      ]
+    },
+    {
+      "direction": "OUTWARD",
+      "linkType": {"name": "Subtask", "sourceToTarget": "parent for", "targetToSource": "subtask of", "aggregation": true},
+      "issues": [
+        {"idReadable": "ATL-131", "summary": "Baum", "resolved": 1761645649000, "customFields": []},
+        {"idReadable": "ATL-132", "summary": "Warnung", "resolved": 1761645649000, "customFields": []},
+        {"idReadable": "ATL-133", "summary": "Anlegen", "resolved": null, "customFields": []}
+      ]
+    },
+    {
+      "direction": "INWARD",
+      "linkType": {"name": "Subtask", "sourceToTarget": "parent for", "targetToSource": "subtask of", "aggregation": true},
+      "issues": [
+        {"idReadable": "ATL-100", "summary": "Tracker-Epic", "resolved": null, "customFields": []}
+      ]
+    },
+    {
+      "direction": "INWARD",
+      "linkType": {"name": "Duplicate", "sourceToTarget": "is duplicated by", "targetToSource": "duplicates", "aggregation": false},
+      "issues": [
+        {"idReadable": "ATL-90", "summary": "Alte Vorschau", "resolved": null, "customFields": []}
+      ]
+    },
+    {
+      "direction": "BOTH",
+      "linkType": {"name": "Relates", "sourceToTarget": "relates to", "targetToSource": "relates to", "aggregation": false},
+      "issues": [
+        {"idReadable": "ATL-77", "summary": "Commit-Präfix", "resolved": null, "customFields": []}
+      ]
+    }
+  ]
+}

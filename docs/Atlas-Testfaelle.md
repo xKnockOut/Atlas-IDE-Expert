@@ -8205,3 +8205,29 @@ Vorbereitung: wie Issue-Vorschau; ein YouTrack- und ein GitHub-Issue mit Beschre
 | CL13 | `issues.preview.checklists` aus | Vorschau zeigt Listen wie geschrieben (`• [ ] eins`), keine Kopfzeilen-Zahl, kein „Punkt hinzufügen …“ |
 | CL14 | Netz trennen, Kästchen klicken | Meldung „Checkliste nicht gespeichert: Tracker nicht erreichbar.“, Kästchen unverändert |
 | CL15 | Helles und dunkles IDE-Design | Kästchen in Akzentfarbe, Hand über klickbaren Kästchen |
+
+## Abhängigkeiten und Unteraufgaben in der Issue-Vorschau (#1279)
+
+Vorbereitung wie bei der Issue-Vorschau (#1264); in YouTrack ATL-130 mit „depends on“ ATL-129 (offen) und ATL-128 (erledigt), „is required for“ ATL-140, drei Unteraufgaben (zwei erledigt), übergeordnet ATL-100, „duplicates“ ATL-90 und „relates to“ ATL-77; dasselbe einmal mit deutscher Oberfläche von YouTrack. Auf GitHub ein Issue mit Sub-Issues, „blocked by“ und eines nur mit „Benötigt: #12“ im Text.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IU1 | ATL-130 in der Vorschau öffnen | „Verknüpfungen (9)“ als Baum: Hängt ab von (2), Blockiert (1), Unteraufgaben 2/3, Übergeordnet (1) aufgeklappt; Duplikat von und Bezieht sich auf eingeklappt (**Abnahme**) |
+| IU2 | Zeilen ansehen | ATL-129 mit ⛔ und „· blockiert dieses Issue“, ATL-128 mit ✓, offene Unteraufgabe mit ○; jeweils Kennung, Titel, Zustand wie im Tracker |
+| IU3 | Klick auf ATL-129 bzw. Pfeiltasten und Eingabe | Öffnet im selben Fenster; Alt+Links zurück zu ATL-130 |
+| IU4 | Dasselbe mit deutscher YouTrack-Oberfläche | Gleiche Gruppen; Art steht als „hängt ab von“, Zustand deutsch |
+| IU5 | GitHub-Issue mit Sub-Issues und „blocked by“ | Unteraufgaben mit Fortschritt, „Hängt ab von“ mit dem blockierenden Issue; Erwähnung desselben Issues erscheint nicht doppelt |
+| IU6 | GitHub-Issue nur mit „Benötigt: #12“ im Text | „Hängt ab von (1)“ mit #12 und dessen Zustand; „Wird benötigt von: #227“ erscheint nicht |
+| IU7 | „Unteraufgabe anlegen …“, Titel und Beschreibung eingeben, „Anlegen“ | Status „Wird an den Tracker gesendet …“, danach lädt die Vorschau neu: „Unteraufgabe ATL-134 angelegt.“, ATL-134 unter Unteraufgaben (**Abnahme**) |
+| IU8 | Wie IU7 auf GitHub | Neues Issue und als Sub-Issue verknüpft |
+| IU9 | Dialog „Unteraufgabe anlegen“ ohne Titel | „Anlegen“ gesperrt; Esc schließt ohne Anfrage |
+| IU10 | „Verknüpfen …“, „hängt ab von“, `ATL-127` bzw. Adresse eines Issues, „Verknüpfen“ | „ATL-130 mit ATL-127 verknüpft.“, ATL-127 unter „Hängt ab von“; mit „blockiert“ unter „Blockiert“ |
+| IU11 | „Verknüpfen …“ mit der eigenen Kennung oder Unsinn | „Verknüpfen“ bleibt gesperrt |
+| IU12 | Token ohne Schreibrecht, Unteraufgabe anlegen | Fehlermeldung mit Knopf zum Beheben, kein loses Issue im Tracker |
+| IU13 | In „Meine Issues“ ATL-130 „Beginnen“ | Rückfrage „ATL-129 blockiert dieses Issue und ist noch offen.“ mit „Trotzdem beginnen“, „ATL-129 ansehen“, Abbrechen (**Abnahme**) |
+| IU14 | IU13, „Trotzdem beginnen“ bzw. „ATL-129 ansehen“ bzw. Abbrechen | Branch wie ohne Warnung bzw. Vorschau zeigt ATL-129 bzw. nichts passiert |
+| IU15 | Issue ohne offene Abhängigkeit „Beginnen“ | Keine Rückfrage |
+| IU16 | `issues.warnBlocked` aus, IU13 | Keine Rückfrage |
+| IU17 | `issues.preview.links` aus | Flache Liste „Verknüpfte Issues“ wie vor #1279, keine Knöpfe |
+| IU18 | Netz trennen, IU13 | Warnung aus dem Zwischenspeicher, sonst keine; „Beginnen“ hängt nicht länger als 5 s |
+| IU19 | Plugin entladen, während eine Unteraufgabe gesendet wird | Kein Fehler, keine Zugriffsverletzung |

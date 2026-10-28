@@ -1425,6 +1425,13 @@ type
     /// <summary>Fortschritt der Checkliste des aktuellen Issues im Statusfeld (#1273, issues.checklistStatus); aus =
     /// keine Zeile.</summary>
     IssuesChecklistStatus: Boolean;
+    /// <summary>Verknüpfungen der Vorschau als Baum (#1279, issues.preview.links): hängt ab von, blockiert,
+    /// Unteraufgaben mit Fortschritt, eingeklappt Duplikate und „bezieht sich auf“; dazu „Unteraufgabe anlegen …“
+    /// und „Verknüpfen …“. Aus = flache Liste wie in #1264.</summary>
+    IssuesPreviewLinks: Boolean;
+    /// <summary>Warnung beim Beginnen (#1279, issues.warnBlocked), wenn ein „hängt ab von“-Issue noch offen ist.
+    /// </summary>
+    IssuesWarnBlocked: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2199,6 +2206,8 @@ begin
   Result.IssuesTimeRounding := DefaultIssuesTimeRounding;
   Result.IssuesPreviewChecklists := True;
   Result.IssuesChecklistStatus := True;
+  Result.IssuesPreviewLinks := True;
+  Result.IssuesWarnBlocked := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -3085,6 +3094,8 @@ begin
   IssuesPreviewChecklists := AStore.ReadInteger('IssuesPreviewChecklists',
     BoolValue(Default.IssuesPreviewChecklists)) <> 0;
   IssuesChecklistStatus := AStore.ReadInteger('IssuesChecklistStatus', BoolValue(Default.IssuesChecklistStatus)) <> 0;
+  IssuesPreviewLinks := AStore.ReadInteger('IssuesPreviewLinks', BoolValue(Default.IssuesPreviewLinks)) <> 0;
+  IssuesWarnBlocked := AStore.ReadInteger('IssuesWarnBlocked', BoolValue(Default.IssuesWarnBlocked)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3594,6 +3605,8 @@ begin
   AStore.WriteInteger('IssuesTimeRounding', IssuesTimeRounding);
   AStore.WriteInteger('IssuesPreviewChecklists', BoolValue(IssuesPreviewChecklists));
   AStore.WriteInteger('IssuesChecklistStatus', BoolValue(IssuesChecklistStatus));
+  AStore.WriteInteger('IssuesPreviewLinks', BoolValue(IssuesPreviewLinks));
+  AStore.WriteInteger('IssuesWarnBlocked', BoolValue(IssuesWarnBlocked));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

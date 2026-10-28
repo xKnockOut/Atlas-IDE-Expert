@@ -4,8 +4,9 @@
 // Kennung, Titel und Abzeichen, Beschreibung als Doku mit Bild aus den
 // Anhängen, eingeklappte ältere Kommentare, Listen der Anhänge und
 // Verknüpfungen, Laden mit „Abbrechen“, Fehler mit Knopf zum Beheben,
-// Verlauf und abgeschaltete Kommentare. Checklisten (#1273): Fortschritt in
+// Verlauf und abgeschaltete Kommentare; Verknüpfungen als Baum mit Gruppen, Checklisten (#1273): Fortschritt in
 // der Kopfzeile, Kästchen, „Punkt hinzufügen …“, nur lesbar, abgeschaltet.
+// Fortschritt, Zustand und Knöpfen zum Anlegen und Verknüpfen (#1279).
 
 interface
 
@@ -40,6 +41,10 @@ type
     procedure ChecklistProgressAndBoxes;
     [Test]
     procedure ChecklistReadOnlyAndSwitchedOff;
+    [Test]
+    procedure LinksAsTree;
+    [Test]
+    procedure LinkRowAndGroupTexts;
   end;
 
 implementation
@@ -47,7 +52,9 @@ implementation
 uses
   System.SysUtils,
   Vcl.Forms,
+  Vcl.ComCtrls,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame;
 
@@ -356,6 +363,121 @@ begin
   finally
     mHost.Free;
   end;
+end;
+
+function TreeSample: TAtlasTrackerDetails;
+
+  function Linked(const AKey, ATitle, AState: string; AKind: TAtlasTrackerLinkKind;
+    AResolved: Boolean): TAtlasTrackerLink;
+  begin
+    Result := Default(TAtlasTrackerLink);
+    Result.Key := AKey;
+    Result.Title := ATitle;
+    Result.Kind := AKind;
+    Result.State := AState;
+    Result.StateKnown := True;
+    Result.Resolved := AResolved;
+    Result.Local := True;
+  end;
+
+begin
+  Result := Sample(0);
+  Result.Links := TArray<TAtlasTrackerLink>.Create(
+    Linked('ATL-90', 'Alte Vorschau', '', TAtlasTrackerLinkKind.Duplicates, False),
+    Linked('ATL-131', 'Baum', 'Fixed', TAtlasTrackerLinkKind.Subtask, True),
+    Linked('ATL-129', 'Tracker-Anbindung', 'In Progress', TAtlasTrackerLinkKind.DependsOn, False),
+    Linked('ATL-132', 'Warnung', '', TAtlasTrackerLinkKind.Subtask, True),
+    Linked('ATL-133', 'Anlegen', 'Open', TAtlasTrackerLinkKind.Subtask, False));
+end;
+
+procedure TAtlasIssueFrameTests.LinksAsTree;
+var
+  mHost: TForm;
+  mFrame: TAtlasIssueFrame;
+  mNode: TTreeNode;
+  mSubtask, mLink: Integer;
+begin
+  mSubtask := 0;
+  mLink := 0;
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.Width := 700;
+    mHost.Height := 600;
+    mFrame := TAtlasIssueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.OnCreateSubtask :=
+      procedure
+      begin
+        Inc(mSubtask);
+      end;
+    mFrame.OnAddLink :=
+      procedure
+      begin
+        Inc(mLink);
+      end;
+    mFrame.LinksAsTree := True;
+    mFrame.CanWriteLinks := True;
+    mFrame.ShowDetails(TreeSample, cNow, '', False);
+    Assert.IsNull(mFrame.Links, 'Baum statt Liste');
+    Assert.IsNotNull(mFrame.LinkTree);
+    // Drei Gruppen in fester Reihenfolge: Hängt ab von, Unteraufgaben, Duplikat von.
+    mNode := mFrame.LinkTree.Items.GetFirstNode;
+    Assert.AreEqual('Hängt ab von (1)', mNode.Text);
+    Assert.IsTrue(mNode.Expanded);
+    Assert.AreEqual(1, mNode.Count);
+    Assert.AreEqual(TAtlasIssueFrame.LinkRowText(TreeSample.Links[2]), mNode.Item[0].Text);
+    mNode := mNode.getNextSibling;
+    Assert.AreEqual('Unteraufgaben 2/3', mNode.Text);
+    Assert.IsTrue(mNode.Expanded);
+    Assert.AreEqual(3, mNode.Count);
+    Assert.IsTrue(mNode.Item[0].Text.Contains('ATL-131'), 'Reihenfolge des Trackers');
+    mNode := mNode.getNextSibling;
+    Assert.AreEqual('Duplikat von (1)', mNode.Text);
+    Assert.IsFalse(mNode.Expanded, 'eingeklappt');
+    Assert.IsNull(mNode.getNextSibling);
+    // Knöpfe über dem Baum.
+    mFrame.CreateSubtaskButton.Click;
+    mFrame.AddLinkButton.Click;
+    Assert.AreEqual(1, mSubtask);
+    Assert.AreEqual(1, mLink);
+    // Ohne Schreibrecht keine Knöpfe; ohne Baum die Liste wie bisher.
+    mFrame.CanWriteLinks := False;
+    mFrame.ShowDetails(TreeSample, cNow, '', False);
+    Assert.IsNull(mFrame.CreateSubtaskButton);
+    Assert.IsNull(mFrame.AddLinkButton);
+    mFrame.LinksAsTree := False;
+    mFrame.ShowDetails(TreeSample, cNow, '', False);
+    Assert.IsNull(mFrame.LinkTree);
+    Assert.AreEqual(5, mFrame.Links.Items.Count);
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.LinkRowAndGroupTexts;
+var
+  mLink: TAtlasTrackerLink;
+  mGroup: TAtlasTrackerLinkGroup;
+begin
+  mLink := TreeSample.Links[2];
+  Assert.AreEqual('⛔  ATL-129  Tracker-Anbindung  — In Progress · blockiert dieses Issue',
+    TAtlasIssueFrame.LinkRowText(mLink));
+  mLink.Resolved := True;
+  mLink.State := '';
+  Assert.AreEqual('✓  ATL-129  Tracker-Anbindung  — erledigt', TAtlasIssueFrame.LinkRowText(mLink));
+  mLink.Kind := TAtlasTrackerLinkKind.Subtask;
+  mLink.Resolved := False;
+  mLink.Title := '';
+  Assert.AreEqual('○  ATL-129  — offen', TAtlasIssueFrame.LinkRowText(mLink));
+  mLink.StateKnown := False;
+  Assert.AreEqual('?  ATL-129  — Zustand unbekannt', TAtlasIssueFrame.LinkRowText(mLink));
+  mGroup := Default(TAtlasTrackerLinkGroup);
+  mGroup.Kind := TAtlasTrackerLinkKind.Mentioned;
+  mGroup.Total := 4;
+  Assert.AreEqual('Erwähnt in (4)', TAtlasIssueFrame.LinkGroupText(mGroup));
+  mGroup.Kind := TAtlasTrackerLinkKind.Subtask;
+  mGroup.Done := 0;
+  Assert.AreEqual('Unteraufgaben 0/4', TAtlasIssueFrame.LinkGroupText(mGroup));
 end;
 
 initialization
