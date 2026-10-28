@@ -575,7 +575,8 @@ begin
         Exit;
       end;
       try
-        Answer := Live.RunCommand(UnitsCommand, '[]', UnitsTimeoutMs);
+        Answer := Live.RunCommand(UnitsCommand, TAtlasUnitSearch.UnitsArguments(Settings.UnitSearchFormCaptions),
+          UnitsTimeoutMs);
       except
         on E: ELspClientError do
         begin

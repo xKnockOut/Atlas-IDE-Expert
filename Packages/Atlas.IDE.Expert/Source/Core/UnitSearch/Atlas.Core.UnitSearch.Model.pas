@@ -7,7 +7,9 @@
 //     ausschließend (-t:test); der Rest ist der Suchtext.
 //   - Rangfolge wie die Befehlspalette (#502, #229): unscharf, CamelCase,
 //     zuletzt Teilfolge; bei Gleichstand offene Units, dann Units des aktiven
-//     Projekts, dann der Name.
+//     Projekts, dann der Name. Ein Suchwort passt auch als Teiltext der
+//     Caption eines Formulars (#1310), gewertet zwischen Teiltext und
+//     Teilfolge im Namen.
 //   - Gruppen nach Projekt oder Ordner mit Trefferzahl, einklappbar; bei
 //     aktiver Suche nur Gruppen mit Treffern, die beste oben.
 //   - Pfadanzeige relativ zur Projektgruppe, in der Mitte gekürzt oder absolut.
@@ -42,6 +44,10 @@ type
     IsOpen: Boolean;
     /// <summary>Name in Großschrift für die Suche (setzt SortByName; sonst bestimmt Order ihn je Aufruf).</summary>
     UpperName: string;
+    /// <summary>Caption des Formulars (#1310); '' ohne oder wenn die Suche sie nicht abfragt.</summary>
+    Caption: string;
+    /// <summary>Caption in Großschrift (setzt SortByName wie UpperName).</summary>
+    UpperCaption: string;
   end;
   TAtlasUnitEntries = TArray<TAtlasUnitEntry>;
 
@@ -117,11 +123,15 @@ type
   TAtlasUnitSearch = class
   public const
     ScoreSubsequence = 100;
+    /// <summary>Suchwort als Teiltext der Caption (#1310): unter Teiltext im Namen, über jeder Teilfolge.</summary>
+    ScoreCaption = 300;
   public
     /// <summary>Einträge aus der Antwort von atlas.server.units; AActiveProject ist der Name des aktiven
     /// Projekts ('' = keins).</summary>
     class function FromJson(const AValue: TJSONValue; const AActiveProject: string;
       const AUriToPath: TFunc<string, string>): TAtlasUnitEntries; static;
+    /// <summary>Argumente für atlas.server.units: mit ACaptions die Captions der Formulare (#1310).</summary>
+    class function UnitsArguments(ACaptions: Boolean): string; static;
     /// <summary>Namen der Projekte aus der Antwort.</summary>
     class function ProjectsFromJson(const AValue: TJSONValue): TArray<string>; static;
     class function KindFromText(const AText: string; out AKind: TAtlasUnitKind): Boolean; static;
@@ -484,6 +494,7 @@ begin
         Entry.FileName := AUriToPath(Text);
       if TJSONObject(Item).TryGetValue<string>('kind', Text) then
         KindFromText(Text, Entry.Kind);
+      TJSONObject(Item).TryGetValue<string>('caption', Entry.Caption);
       if TJSONObject(Item).TryGetValue<TJSONArray>('projects', Projects) then
         for ProjectValue in Projects do
           Entry.Projects := Entry.Projects + [ProjectValue.Value];
@@ -511,6 +522,13 @@ begin
   finally
     List.Free;
   end;
+end;
+
+class function TAtlasUnitSearch.UnitsArguments(ACaptions: Boolean): string;
+begin
+  Result := '[]';
+  if ACaptions then
+    Result := '[{"captions":true}]';
 end;
 
 class function TAtlasUnitSearch.ProjectsFromJson(const AValue: TJSONValue): TArray<string>;
@@ -657,7 +675,7 @@ var
   Scores: TArray<Integer>;
   List: TList<Integer>;
   Index, Total, Points, WordIndex: Integer;
-  Upper: string;
+  Upper, UpperCaption: string;
   Uppers: TArray<string>;
   Entries: TAtlasUnitEntries;
 begin
@@ -682,9 +700,14 @@ begin
       Upper := AEntries[Index].UpperName;
       if (Upper = '') and (Length(AQuery.Words) > 0) then
         Upper := AEntries[Index].Name.ToUpper;
+      UpperCaption := AEntries[Index].UpperCaption;
+      if (UpperCaption = '') and (Length(AQuery.Words) > 0) then
+        UpperCaption := AEntries[Index].Caption.ToUpper;
       for WordIndex := 0 to High(AQuery.Words) do
       begin
         Points := FastScore(AQuery.Words[WordIndex], Uppers[WordIndex], AEntries[Index].Name, Upper);
+        if (Points < ScoreCaption) and (UpperCaption <> '') and (Pos(Uppers[WordIndex], UpperCaption) > 0) then
+          Points := ScoreCaption;
         if Points < 0 then
         begin
           Total := -1;
@@ -906,7 +929,10 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AEntries) do
+  begin
     AEntries[Index].UpperName := AEntries[Index].Name.ToUpper;
+    AEntries[Index].UpperCaption := AEntries[Index].Caption.ToUpper;
+  end;
   TArray.Sort<TAtlasUnitEntry>(AEntries, TComparer<TAtlasUnitEntry>.Construct(
     function(const A, B: TAtlasUnitEntry): Integer
     begin
