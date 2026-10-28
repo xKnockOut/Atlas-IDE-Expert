@@ -168,6 +168,11 @@ type
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
     FCommands: TLspCommands;
+    // Methodenreferenzen für die Befehle, vorab gebildet (Free Pascal). Je Empfänger der eigene Typ: Delphi 12 nimmt
+    // TCompletionReadText nicht als TResourceStringRead an, obwohl die Signatur gleich ist.
+    FEnsureUnitRef: TEnsureUnitFunc;
+    FReadSourceTextRef: TCompletionReadText;
+    FReadResourceRef: TResourceStringRead;
     /// <summary>Schreibt einen resourcestring in eine andere Unit (#473); über den Host der Schnellbefehle.</summary>
     FResourceStringWrite: TResourceStringWrite;
     FStatistics: IJsonRpcStatistics;
@@ -1362,14 +1367,12 @@ begin
 end;
 
 procedure TServerComposition.WireCommands;
-var
-  ReadSourceTextRef: TCompletionReadText;
-  EnsureUnitRef: TEnsureUnitFunc;
 begin
   // Methodenreferenz vorab: Free Pascal (Linux-Bau) bricht ab, wenn eine anonyme Methode die Methode selbst
   // als Referenz weitergibt.
-  EnsureUnitRef := EnsureUnit;
-  ReadSourceTextRef := ReadSourceText;
+  FEnsureUnitRef := EnsureUnit;
+  FReadSourceTextRef := ReadSourceText;
+  FReadResourceRef := ReadSourceText;
   FCommands := TLspCommands.Create;
   FCommands.Register(TLspFormFiles.ConvertCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1450,7 +1453,7 @@ begin
   FCommands.Register(TLspOverrideMarks.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TLspOverrideMarks.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, AArguments);
+      Result := TLspOverrideMarks.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
     end);
   FCommands.Register(TLspBaseline.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1507,18 +1510,18 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := TQualifiedNames.Execute(FDocuments, FIndex,
-        EnsureUnitRef, FDefinition.Namespaces, AArguments);
+        FEnsureUnitRef, FDefinition.Namespaces, AArguments);
     end);
   FCommands.Register(TEnumValueCommands.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TEnumValueCommands.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, ReadSourceTextRef,
-        AArguments);
+      Result := TEnumValueCommands.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces,
+        FReadSourceTextRef, AArguments);
     end);
   FCommands.Register(TResourceStringCommands.AddCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TResourceStringCommands.ExecuteAdd(ReadSourceTextRef, FResourceStringWrite, AArguments);
+      Result := TResourceStringCommands.ExecuteAdd(FReadResourceRef, FResourceStringWrite, AArguments);
     end);
   FCommands.Register(TStringLiteralCommands.PlainTextCommand,
     function(const AArguments: TJSONArray): TJSONValue
