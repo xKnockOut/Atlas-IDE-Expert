@@ -864,6 +864,9 @@ begin
   Assert.IsTrue(Settings.TrackerLogin);
   Assert.IsTrue(Settings.IssuesPreview, 'Vorschau (#1264) an');
   Assert.IsTrue(Settings.IssuesPreviewComments);
+  Assert.IsTrue(Settings.IssuesAttach, 'Anhängen (#1276) an');
+  Assert.AreEqual('', Settings.IssuesAttachLogFiles);
+  Assert.AreEqual(1920, Settings.IssuesAttachMaxImageWidth);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -901,6 +904,9 @@ begin
   Settings.TrackerLogin := False;
   Settings.IssuesPreview := False;
   Settings.IssuesPreviewComments := False;
+  Settings.IssuesAttach := False;
+  Settings.IssuesAttachLogFiles := '$(ProjectDir)\logs\*.log;C:\Temp\app.log';
+  Settings.IssuesAttachMaxImageWidth := 1280;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -915,6 +921,16 @@ begin
   Assert.IsFalse(Loaded.TrackerLogin);
   Assert.IsFalse(Loaded.IssuesPreview);
   Assert.IsFalse(Loaded.IssuesPreviewComments);
+  Assert.IsFalse(Loaded.IssuesAttach);
+  Assert.AreEqual('$(ProjectDir)\logs\*.log;C:\Temp\app.log', Loaded.IssuesAttachLogFiles);
+  Assert.AreEqual(1280, Loaded.IssuesAttachMaxImageWidth);
+  // Bildbreite außerhalb 320–7680 wird begrenzt.
+  Settings.IssuesAttachMaxImageWidth := 50;
+  Settings.Normalize;
+  Assert.AreEqual(320, Settings.IssuesAttachMaxImageWidth);
+  Settings.IssuesAttachMaxImageWidth := 100000;
+  Settings.Normalize;
+  Assert.AreEqual(7680, Settings.IssuesAttachMaxImageWidth);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

@@ -1940,6 +1940,9 @@ begin
     Assert.IsTrue(SheetOf(Page.TrackerLogin) = Tracker);
     Assert.IsTrue(SheetOf(Page.IssuesPreview) = Tracker, 'Vorschau (#1264)');
     Assert.IsTrue(SheetOf(Page.IssuesPreviewComments) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesAttach) = Tracker, 'Anhängen (#1276)');
+    Assert.IsTrue(SheetOf(Page.IssuesAttachLogFiles) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesAttachMaxImageWidth) = Tracker);
     // Die Willkommensseite behält nur den Schalter, daneben der Weg zur Seite.
     Assert.IsFalse(SheetOf(Page.WelcomeIssues) = Tracker);
     Assert.IsTrue(SheetOf(Page.WelcomeIssuesLink) = SheetOf(Page.WelcomeIssues));
@@ -2126,6 +2129,9 @@ begin
     Assert.IsTrue(Page.TrackerLogin.Checked);
     Assert.IsTrue(Page.IssuesPreview.Checked);
     Assert.IsTrue(Page.IssuesPreviewComments.Checked);
+    Assert.IsTrue(Page.IssuesAttach.Checked);
+    Assert.AreEqual('', Page.IssuesAttachLogFiles.Text);
+    Assert.AreEqual('1920', Page.IssuesAttachMaxImageWidth.Text);
     // #764: Schnellaktionen an, alle sechs Knöpfe, wt.exe, Strg+B und Strg+T.
     Assert.IsTrue(Page.WelcomeQuickActions.Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Build).Checked);

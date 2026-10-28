@@ -18,6 +18,8 @@
 //   Explorer. Dateien anderer Server (GitHub) öffnen im Browser.
 // - Links aus dem Text öffnen nur im Browser (http/https ohne Benutzer).
 // - issues.preview.comments aus: Kommentare werden nicht abgefragt.
+// - „Anhängen …“ (#1276, issues.attach) im Fenster ruft den Hook Attach mit
+//   Tracker und Kennung des gezeigten Issues.
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse,
 //   Kennung, Titel oder Token.
 // Anbieter, Transport, Zugang, „Beginnen“ und die Einstellungsseite kommen
@@ -52,6 +54,10 @@ type
     CanStart: TFunc<Boolean>;
     /// <summary>Tools › Optionen › Atlas › Issue-Tracker.</summary>
     Settings: TProc;
+    /// <summary>„Anhängen …“ für das gezeigte Issue (#1276).</summary>
+    Attach: TProc<TAtlasTrackerTarget, string>;
+    /// <summary>„Anhängen …“ zeigen (issues.attach).</summary>
+    CanAttach: TFunc<Boolean>;
   end;
 
   TAtlasIdeIssuePreview = class(TInterfacedObject)
@@ -91,7 +97,6 @@ type
     procedure CancelLoad;
     procedure CancelImages;
     procedure ReleaseThreads(AWait: Boolean);
-    function ErrorText(AError: TAtlasCiFetchError; const AKey: string): string;
     function StaleText(const ADetails: TAtlasTrackerDetails; const AReason: string): string;
     procedure Fix(AFix: TAtlasIssueFix);
     class function NowUtc: TDateTime; static;
@@ -110,6 +115,8 @@ type
     procedure GoForward;
     /// <summary>issues.preview an?</summary>
     class function Active: Boolean; static;
+    /// <summary>Meldung zur Fehlerart (auch für „An Issue anhängen“, #1276).</summary>
+    class function ErrorText(AError: TAtlasCiFetchError; const AKey: string): string; static;
   end;
 
 implementation
@@ -360,8 +367,15 @@ begin
       if mKeep <> nil then
         mOwner.LoadImages(AUrls);
     end;
+  AFrame.OnAttach :=
+    procedure
+    begin
+      if (mKeep <> nil) and mOwner.FHasCurrent and Assigned(mOwner.FHooks.Attach) then
+        mOwner.FHooks.Attach(mOwner.FCurrent.Target, mOwner.FCurrent.Key);
+    end;
   if Assigned(FHooks.CanStart) then
     AFrame.CanStart := FHooks.CanStart();
+  AFrame.CanAttach := Assigned(FHooks.CanAttach) and FHooks.CanAttach();
   ShowCurrent;
 end;
 
@@ -454,7 +468,7 @@ begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewStaleOffline, [mWhen, AReason]);
 end;
 
-function TAtlasIdeIssuePreview.ErrorText(AError: TAtlasCiFetchError; const AKey: string): string;
+class function TAtlasIdeIssuePreview.ErrorText(AError: TAtlasCiFetchError; const AKey: string): string;
 begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
@@ -617,6 +631,7 @@ begin
       mFrame.SetLoading(False);
       if Assigned(FHooks.CanStart) then
         mFrame.CanStart := FHooks.CanStart();
+      mFrame.CanAttach := Assigned(FHooks.CanAttach) and FHooks.CanAttach();
       mFrame.ShowDetails(mDetails, NowUtc, '', not mComments);
     end;
     Exit;

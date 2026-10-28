@@ -25,6 +25,11 @@
 //   Anhangsliste: Dateien (/user-attachments/files/…) aus Beschreibung und
 //   Kommentaren gelten als Anhänge und öffnen im Browser, weil das Token nur
 //   an die API geht.
+// - Anhängen (#1276, IAtlasTrackerAttach): GitHub nimmt über die API keine
+//   Dateien an (CanUpload = False). Texte (Protokoll, Debug-Notiz,
+//   Exception-Verlauf) gehen als Kommentar POST /repos/<owner/repo>/issues/
+//   <n>/comments mit {"body": …}, Protokolle als Codeblock; Bilder legt die
+//   IDE-Schicht in die Zwischenablage und öffnet das Issue im Browser.
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -33,7 +38,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.Tracker.Contract;
+  Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Attach;
 
 type
   /// <summary>Offener Pull Request, wie ihn /pulls liefert.</summary>
@@ -46,7 +52,7 @@ type
     Sha: string;
   end;
 
-  TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider)
+  TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerAttach)
   public const
     ProviderName = 'github';
     Query = 'assignee:@me state:open';
@@ -93,6 +99,8 @@ type
       static;
     /// <summary>Dateien in Beschreibung und Kommentaren als Anhänge (im Browser).</summary>
     class function FileAttachments(const ADetails: TAtlasTrackerDetails): TArray<TAtlasTrackerAttachment>; static;
+    /// <summary>Adresse für einen neuen Kommentar (#1276); '' bei ungültiger Kennung.</summary>
+    class function CommentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -106,6 +114,13 @@ type
     function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
       out AError: TAtlasCiFetchError): Boolean;
+    { IAtlasTrackerAttach }
+    function CanUpload: Boolean;
+    function Upload(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiSend; const AKey: string;
+      const AFiles: TAtlasAttachFiles; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+    function Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiSend; const AKey, AMarkdown: string;
+      ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+    function CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
   end;
 
 implementation
@@ -868,6 +883,42 @@ begin
     ParseTimeline(mText, ATarget.Project, mLinks) then
     ADetails.Links := mLinks;
   ADetails.Attachments := FileAttachments(ADetails);
+end;
+
+class function TAtlasGitHubTracker.CommentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
+begin
+  Result := IssueApiUrl(ATarget, AKey);
+  if Result <> '' then
+    Result := Result + '/comments';
+end;
+
+function TAtlasGitHubTracker.CanUpload: Boolean;
+begin
+  Result := False;
+end;
+
+function TAtlasGitHubTracker.Upload(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiSend;
+  const AKey: string; const AFiles: TAtlasAttachFiles; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+begin
+  // Die API von GitHub nimmt keine Dateien an; TAtlasAttachSender nimmt dann den Rückfall.
+  AError := TAtlasCiFetchError.NotConfigured;
+  Result := False;
+end;
+
+function TAtlasGitHubTracker.Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiSend; const AKey,
+  AMarkdown: string; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+var
+  mStatus: Integer;
+begin
+  Result := TAtlasAttachSender.Post(ASend, CommentsUrl(ATarget, AKey), 'application/json',
+    TAtlasAttachComment.JsonBody('body', AMarkdown), ATimeoutMs, mStatus, AError);
+  if not Result and (mStatus <> 0) then
+    AError := ErrorOfStatus(mStatus);
+end;
+
+function TAtlasGitHubTracker.CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
+begin
+  Result := TAtlasAttachComment.WithTexts(AComment, AFiles, TAtlasAttachComment.MaxTextsLength);
 end;
 
 end.

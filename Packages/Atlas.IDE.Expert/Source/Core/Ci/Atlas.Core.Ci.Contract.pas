@@ -122,6 +122,16 @@ type
     procedure Cancel;
   end;
 
+  /// <summary>Senden an den Tracker (Anhänge und Kommentare, #1276) über denselben Transport, unter denselben
+  /// Regeln für Anmeldung und Server. Weiterleitungen folgt ein POST nie; sie gelten als abgelehnt.</summary>
+  IAtlasCiSend = interface
+    ['{2D7A5E19-8C43-4B6F-A1E0-7F3B9C25D814}']
+    /// <summary>POST von ABody (AContentType) an AUrl mit höchstens ATimeoutMs. True, wenn eine Antwort kam (auch
+    /// 4xx); AStatus ist der HTTP-Status, AText der Inhalt der Antwort. False ohne Antwort mit AError.</summary>
+    function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer; out AStatus: Integer;
+      out AText: string; out AError: TAtlasCiFetchError): Boolean;
+  end;
+
   IAtlasCiProvider = interface
     ['{9A4D7E12-5B3C-4E81-8F6A-1D2C7B9E4F30}']
     /// <summary>Kennung wie in .atlas, z. B. "jenkins".</summary>
