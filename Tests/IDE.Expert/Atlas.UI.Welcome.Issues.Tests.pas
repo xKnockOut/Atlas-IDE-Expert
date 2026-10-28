@@ -5,7 +5,10 @@
 // Netz), Fußzeile vor und nach „Beginnen“, Kurztext „ATL-123 · 3 offen“;
 // Klicks auf Kennung, Pull Request und „Beginnen“ erreichen die Quelle über
 // die Nachrichtenschleife; Kontextmenü mit „Nur merken“, „Zugang …“ nur mit
-// Schalter TrackerLogin und „Beenden“ nur mit aktuellem Issue.
+// Schalter TrackerLogin und „Beenden“ nur mit aktuellem Issue. Ohne Tracker
+// (weder .atlas noch Zuordnung, #1261) ist die Fußzeile der Link „zuordnen …“.
+// Abfragen (#1262): Klappliste mit Trefferzahl, Wahl und „Abfragen
+// bearbeiten …“ über die Quelle, Zeile mit Verbindung, Projekt und Abfrage.
 
 interface
 
@@ -27,6 +30,14 @@ type
     procedure EnglishTexts;
     [Test]
     procedure ClicksReachSource;
+    /// <summary>Abnahme #1261: ohne Zuordnung zeigt der Bereich „zuordnen …“; der Klick erreicht die Quelle.
+    /// </summary>
+    [Test]
+    procedure AssignLinkWithoutTracker;
+    /// <summary>Abnahme #1262: Klappliste zeigt die Abfragen mit Trefferzahl, die Wahl erreicht die Quelle; mit
+    /// issues.queryPicker aus fehlt sie.</summary>
+    [Test]
+    procedure QueryPickerAndSourceLine;
   end;
 
 implementation
@@ -38,6 +49,7 @@ uses
   Vcl.Forms,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Queries,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.Issues,
   Atlas.UI.Strings,
@@ -59,6 +71,9 @@ type
     procedure Credentials;
     function CanEnterCredentials: Boolean;
     procedure EndActive;
+    procedure AssignProject;
+    procedure SelectQuery(const AName: string);
+    procedure EditQueries;
   end;
 
 function NowUtc0: TDateTime;
@@ -144,6 +159,21 @@ end;
 procedure TFakeIssues.EndActive;
 begin
   Calls := Calls + ['end'];
+end;
+
+procedure TFakeIssues.AssignProject;
+begin
+  Calls := Calls + ['assign'];
+end;
+
+procedure TFakeIssues.SelectQuery(const AName: string);
+begin
+  Calls := Calls + ['select ' + AName];
+end;
+
+procedure TFakeIssues.EditQueries;
+begin
+  Calls := Calls + ['edit queries'];
 end;
 
 { TAtlasWelcomeIssuesFrameTests }
@@ -319,6 +349,132 @@ begin
   finally
     Host.Free;
     Fake.Calls := nil;
+  end;
+end;
+
+procedure TAtlasWelcomeIssuesFrameTests.AssignLinkWithoutTracker;
+var
+  mSaved: TAtlasLanguage;
+  mHost: TForm;
+  mFake: TFakeIssues;
+  mSource: IAtlasIssuesSource;
+  mFrame: TAtlasWelcomeIssuesFrame;
+  mView: TAtlasIssuesView;
+begin
+  mSaved := TAtlasStrings.Language;
+  mFake := TFakeIssues.Create;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    mView := Default(TAtlasIssuesView);
+    mView.Status := TAtlasIssuesStatus.NotConfigured;
+    mView.Project := 'C:\Projekte\Kasse\Kasse.dproj';
+    // Ohne Haken (Zuordnen nicht möglich) bleibt der bisherige Hinweis.
+    Assert.IsFalse(TAtlasWelcomeIssuesFrame.FooterIsAssign(mView));
+    Assert.Contains(TAtlasWelcomeIssuesFrame.FooterText(mView), 'tracker');
+    mView.CanAssign := True;
+    Assert.IsTrue(TAtlasWelcomeIssuesFrame.FooterIsAssign(mView));
+    Assert.AreEqual('Kein Tracker für dieses Projekt – zuordnen …', TAtlasWelcomeIssuesFrame.FooterText(mView));
+    // Ein Hinweis der Quelle geht vor; ohne Projekt gibt es nichts zuzuordnen.
+    mView.Notice := 'x';
+    Assert.IsFalse(TAtlasWelcomeIssuesFrame.FooterIsAssign(mView));
+    mView.Notice := '';
+    mView.Project := '';
+    Assert.IsFalse(TAtlasWelcomeIssuesFrame.FooterIsAssign(mView));
+    mView.Project := 'C:\Projekte\Kasse\Kasse.dproj';
+    // Klick auf den Link über die Nachrichtenschleife.
+    mFake.FView := mView;
+    mFrame := TAtlasWelcomeIssuesFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Width := 600;
+    mFrame.Source := mSource;
+    mFake.Calls := nil;
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Assign, -1));
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)));
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('assign', mFake.Calls[0]);
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('No tracker for this project – assign …', TAtlasWelcomeIssuesFrame.FooterText(mView));
+  finally
+    TAtlasStrings.Language := mSaved;
+    mHost.Free;
+    mFake.Calls := nil;
+  end;
+end;
+
+procedure TAtlasWelcomeIssuesFrameTests.QueryPickerAndSourceLine;
+var
+  mSaved: TAtlasLanguage;
+  mHost: TForm;
+  mFake: TFakeIssues;
+  mSource: IAtlasIssuesSource;
+  mFrame: TAtlasWelcomeIssuesFrame;
+  mView: TAtlasIssuesView;
+begin
+  mSaved := TAtlasStrings.Language;
+  mFake := TFakeIssues.Create;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    mView := SampleView;
+    mView.Connection := 'GitHub';
+    mView.TrackerProject := 'beispiel/atlas';
+    mView.Queries := TAtlasTrackerQueries.Read('[{"name": "Standard", "query": "assignee:@me state:open"}, ' +
+      '{"name": "Bugs", "query": "label:bug"}, {"name": "Alle", "query": "is:open"}]');
+    mView.QueryCounts := TArray<Integer>.Create(2, -1, 10);
+    mView.QueryIndex := 0;
+    mView.QueryText := 'assignee:@me state:open';
+    mView.Picker := True;
+    Assert.AreEqual('GitHub · beispiel/atlas · Abfrage: assignee:@me state:open',
+      TAtlasWelcomeIssuesFrame.SourceText(mView));
+    Assert.AreEqual('Standard (2)', TAtlasWelcomeIssuesFrame.QueryCaption('Standard', 2));
+    Assert.AreEqual('Bugs', TAtlasWelcomeIssuesFrame.QueryCaption('Bugs', -1), 'noch nicht abgefragt');
+    Assert.AreEqual('Alle (10+)', TAtlasWelcomeIssuesFrame.QueryCaption('Alle', 10), 'höchstens MaxItems geholt');
+    Assert.IsTrue(TAtlasWelcomeIssuesFrame.ShowsQueryPicker(mView));
+    mFake.FView := mView;
+    mFrame := TAtlasWelcomeIssuesFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Width := 600;
+    mFrame.Source := mSource;
+    Assert.IsTrue(mFrame.QueryLabel.Visible);
+    Assert.AreEqual('Standard (2) ' + #$25BE, mFrame.QueryLabel.Caption);
+    // Klappliste: drei Abfragen, die gewählte mit Haken, dann „Abfragen bearbeiten …“.
+    mFrame.FillQueryMenu;
+    Assert.AreEqual(5, mFrame.QueryMenu.Items.Count);
+    Assert.AreEqual('Standard (2)', mFrame.QueryMenu.Items[0].Caption);
+    Assert.IsTrue(mFrame.QueryMenu.Items[0].Checked);
+    Assert.IsFalse(mFrame.QueryMenu.Items[1].Checked);
+    Assert.AreEqual('Alle (10+)', mFrame.QueryMenu.Items[2].Caption);
+    Assert.AreEqual('Abfragen bearbeiten …', mFrame.QueryMenu.Items[4].Caption);
+    // Wahl und Bearbeiten über die Nachrichtenschleife.
+    mFake.Calls := nil;
+    mFrame.QueryMenu.Items[1].Click;
+    mFrame.QueryMenu.Items[4].Click;
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)));
+    CheckSynchronize;
+    Assert.AreEqual(2, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('select Bugs', mFake.Calls[0]);
+    Assert.AreEqual('edit queries', mFake.Calls[1]);
+    // issues.queryPicker aus: keine Klappliste; ohne Tracker auch nicht und keine Quellzeile.
+    mView.Picker := False;
+    mFake.FView := mView;
+    mFrame.UpdateContent;
+    Assert.IsFalse(mFrame.QueryLabel.Visible);
+    mView.Picker := True;
+    mView.Status := TAtlasIssuesStatus.NotConfigured;
+    Assert.IsFalse(TAtlasWelcomeIssuesFrame.ShowsQueryPicker(mView));
+    Assert.AreEqual('', TAtlasWelcomeIssuesFrame.SourceText(mView));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    mFrame.FillQueryMenu;
+    Assert.AreEqual('Edit queries …', mFrame.QueryMenu.Items[4].Caption);
+  finally
+    TAtlasStrings.Language := mSaved;
+    mHost.Free;
+    mFake.Calls := nil;
+    mFake.FView := Default(TAtlasIssuesView);
   end;
 end;
 

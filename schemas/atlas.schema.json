@@ -2625,6 +2625,124 @@
       "x-control": "JSON in atlas.json bzw. settings.json (Liste der Aufgaben)",
       "x-issue": "#900"
     },
+    "issues": {
+      "type": "object",
+      "description": "Issue-Tracker im Plugin (Tools › Optionen › Atlas › Issue-Tracker, Bereich „Meine Issues“). Persönlich, daher nur in settings.json; der Abschnitt tracker der Projektdatei .atlas gilt daneben für das Team.",
+      "additionalProperties": false,
+      "properties": {
+        "connections": {
+          "type": "array",
+          "default": [],
+          "description": "Persönliche Tracker-Verbindungen (#1260), z. B. das Firmen-YouTrack und GitHub nebeneinander. Das Token steht nie hier, sondern im Anmeldespeicher von Windows (Atlas:tracker:<Server>, „Token hinterlegen …“).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "provider", "url"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Eindeutiger, frei wählbarer Name, z. B. \"Firma\"."
+              },
+              "provider": {
+                "type": "string",
+                "minLength": 1,
+                "examples": ["youtrack", "github"],
+                "description": "Anbieter; das Plugin kennt youtrack und github."
+              },
+              "url": {
+                "type": "string",
+                "pattern": "^https://[^@/\\s]+(/.*)?$",
+                "examples": ["https://youtrack.firma.de", "https://github.com"],
+                "description": "Adresse des Trackers, nur https und ohne Benutzer oder Token in der Adresse."
+              },
+              "language": {
+                "type": "string",
+                "enum": ["de", "en"],
+                "description": "Sprache der Oberfläche des Trackers (#1263), erkannt bei „Prüfen“. YouTrack übersetzt die Suchbegriffe; die Vorgabe „Mir zugewiesen“ ist dann assignee: meine #Ungelöst bzw. assignee: me #Unresolved. Fehlt sie, gilt die Vorgabe des Anbieters."
+              }
+            }
+          }
+        },
+        "projects": {
+          "type": "array",
+          "default": [],
+          "description": "Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261) für Projekte ohne tracker in der .atlas. Es gilt die Zeile für genau diese .dproj, sonst die für die geöffnete .groupproj, sonst der längste passende Ordner; eine .atlas mit tracker hat Vorrang.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["match", "connection"],
+            "properties": {
+              "match": {
+                "type": "string",
+                "minLength": 1,
+                "examples": ["C:\\Projekte\\Kasse\\Kasse.groupproj", "C:\\Projekte\\Kasse"],
+                "description": "Gilt für: Pfad einer .dproj, einer .groupproj oder eines Ordners (ohne Groß-/Kleinschreibung, auch UNC)."
+              },
+              "connection": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Name einer Verbindung aus issues.connections."
+              },
+              "project": {
+                "type": "string",
+                "default": "",
+                "examples": ["KASSE", "owner/repo"],
+                "description": "Tracker-Projekt: YouTrack-Projekt-ID, bei GitHub owner/repo."
+              }
+            }
+          }
+        },
+        "queries": {
+          "type": "array",
+          "default": [],
+          "description": "Benannte Abfragen für „Meine Issues“ (#1262), wählbar in der Klappliste neben dem Titel. Ohne eigene Abfragen gilt je Anbieter „Mir zugewiesen“ (GitHub assignee:@me state:open, YouTrack for: me #Unresolved). Ein früheres issues.query wird einmal zur Abfrage „Standard“.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "query"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "examples": [
+                  "Mir zugewiesen",
+                  "Aktueller Sprint"
+                ],
+                "description": "Name in der Klappliste; eindeutig (ohne Groß-/Kleinschreibung)."
+              },
+              "query": {
+                "type": "string",
+                "minLength": 1,
+                "examples": [
+                  "assignee: meine #Ungelöst",
+                  "assignee:@me state:open"
+                ],
+                "description": "Abfrage in der Syntax des Trackers, ohne project: …; das Tracker-Projekt setzt Atlas davor."
+              },
+              "connection": {
+                "type": "string",
+                "default": "",
+                "description": "Name einer Verbindung aus issues.connections; leer = gilt für jeden Tracker."
+              },
+              "project": {
+                "type": "string",
+                "default": "",
+                "description": "Tracker-Projekt; leer = gilt für jedes Projekt."
+              }
+            }
+          }
+        }
+      },
+      "x-scope": "global",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Tabellen Verbindungen, Projekte und Abfragen",
+      "x-issue": "#1260, #1261, #1262"
+    },
     "logLevel": {
       "type": "string",
       "enum": [

@@ -16,6 +16,7 @@
 // - CI-Ampel: GET /repos/<owner/repo>/commits/<sha>/check-runs; ohne Check
 //   Runs der kombinierte Status /commits/<sha>/status. Höchstens MaxChecks
 //   Pull Requests je Abfrage.
+// - Verbindung prüfen (#1260): GET /user (angemeldeter Benutzer).
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -24,7 +25,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.Tracker.Contract;
+  Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Internals.GitHubApi;
 
 type
   /// <summary>Offener Pull Request, wie ihn /pulls liefert.</summary>
@@ -41,7 +43,7 @@ type
   public const
     ProviderName = 'github';
     Query = 'assignee:@me state:open';
-    ApiHost = 'https://api.github.com';
+    ApiHost = TAtlasGitHubApi.ApiHost;
     /// <summary>Höchstens so viele Pull Requests bekommen eine Ampel.</summary>
     MaxChecks = 8;
     /// <summary>Höchstens so viele offene Pull Requests werden gelesen.</summary>
@@ -50,6 +52,8 @@ type
     /// <summary>Basis der REST-API ohne „/“ am Ende; '' ohne Server.</summary>
     class function ApiBase(const ATarget: TAtlasTrackerTarget): string; static;
     class function SearchUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string; static;
+    /// <summary>Suchtext, wie er an /search/issues geht (mit repo: und is:issue).</summary>
+    class function SearchText(const ATarget: TAtlasTrackerTarget): string; static;
     class function PullsUrl(const ATarget: TAtlasTrackerTarget): string; static;
     class function CheckRunsUrl(const ATarget: TAtlasTrackerTarget; const ASha: string): string; static;
     class function StatusUrl(const ATarget: TAtlasTrackerTarget; const ASha: string): string; static;
@@ -78,6 +82,11 @@ type
       out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
     function IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
     function PullRequestPage(const ATarget: TAtlasTrackerTarget; ANumber: Integer): string;
+    function ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
+    function ListUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
+    function SentQuery(const ATarget: TAtlasTrackerTarget): string;
+    function ParseList(const AText: string; AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
+    function LocaleUrl(const ATarget: TAtlasTrackerTarget): string;
   end;
 
 implementation
@@ -130,16 +139,16 @@ end;
 { TAtlasGitHubTracker }
 
 class function TAtlasGitHubTracker.ApiBase(const ATarget: TAtlasTrackerTarget): string;
-var
-  Server: string;
 begin
-  Server := ATarget.Server;
-  if Server = '' then
-    Exit('');
-  if (Server = 'https://github.com') or (Server = 'https://www.github.com') then
-    Result := ApiHost
-  else
-    Result := Server + '/api/v3';
+  Result := TAtlasGitHubApi.Base(ATarget);
+end;
+
+class function TAtlasGitHubTracker.SearchText(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := ATarget.Query;
+  if Result = '' then
+    Result := Query;
+  Result := Result + ' repo:' + ATarget.Project + ' is:issue';
 end;
 
 class function TAtlasGitHubTracker.SearchUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
@@ -150,10 +159,7 @@ begin
   Result := ApiBase(ATarget);
   if (Result = '') or (ATarget.Project = '') then
     Exit('');
-  Text := ATarget.Query;
-  if Text = '' then
-    Text := Query;
-  Text := Text + ' repo:' + ATarget.Project + ' is:issue';
+  Text := SearchText(ATarget);
   Limit := AMax;
   if Limit < 1 then
     Limit := 1;
@@ -535,6 +541,35 @@ begin
   if (ATarget.Server = '') or (ATarget.Project = '') or (ANumber <= 0) then
     Exit;
   Result := ATarget.Server + '/' + TTextUris.PercentEncode(ATarget.Project) + '/pull/' + IntToStr(ANumber);
+end;
+
+function TAtlasGitHubTracker.ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := ApiBase(ATarget);
+  if Result <> '' then
+    Result := Result + '/user';
+end;
+
+function TAtlasGitHubTracker.ListUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
+begin
+  Result := SearchUrl(ATarget, AMax);
+end;
+
+function TAtlasGitHubTracker.SentQuery(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := SearchText(ATarget);
+end;
+
+function TAtlasGitHubTracker.ParseList(const AText: string; AMax: Integer;
+  out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
+begin
+  Result := ParseIssues(AText, AMax, AIssues);
+end;
+
+function TAtlasGitHubTracker.LocaleUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  // Die Suchbegriffe von GitHub sind in jeder Sprache englisch.
+  Result := '';
 end;
 
 end.

@@ -4,11 +4,11 @@
 // - Kurztitel: die ersten drei Wörter des Titels, klein, Umlaute ersetzt
 //   (ä → ae, ß → ss), Akzente entfernt, mit Bindestrichen. Eine Vorsilbe aus
 //   einem Wort mit Doppelpunkt („Plugin: …“) entfällt, wie im Mockup.
-// - Branch-Name aus welcomePage.issues.branchPattern mit den Platzhaltern
+// - Branch-Name aus issues.branchPattern mit den Platzhaltern
 //   {kennung} (753 bzw. ATL-123; das „#“ von GitHub entfällt), {nummer} und
 //   {kurztitel}; danach nach den Regeln von git check-ref-format bereinigt,
 //   damit der Name für Git und SVN gültig ist.
-// - Commit-Präfix aus welcomePage.issues.commitPattern ({kennung} mit „#“).
+// - Commit-Präfix aus issues.commitPattern ({kennung} mit „#“).
 // - Kennung aus einem Branch-Namen (Branch → Ticket): GitHub die Nummer als
 //   eigenes Stück („feature/753-x“ → #753), YouTrack „ATL-123“.
 
@@ -21,11 +21,11 @@ uses
 type
   TAtlasTrackerNaming = class
   public const
-    /// <summary>Vorgabe für welcomePage.issues.branchPattern unter Git.</summary>
+    /// <summary>Vorgabe für issues.branchPattern unter Git.</summary>
     GitBranchPattern = 'feature/{kennung}-{kurztitel}';
     /// <summary>Vorgabe unter SVN: der Name unter ^/branches/.</summary>
     SvnBranchPattern = '{kennung}-{kurztitel}';
-    /// <summary>Vorgabe für welcomePage.issues.commitPattern.</summary>
+    /// <summary>Vorgabe für issues.commitPattern.</summary>
     CommitPattern = '{kennung} ';
     GitBase = 'main';
     /// <summary>Zweiter Versuch unter Git, wenn es main nicht gibt.</summary>

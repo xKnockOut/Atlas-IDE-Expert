@@ -57,6 +57,17 @@ type
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
+    /// <summary>#1260: issues.connections (Tracker-Verbindungen des Plugins) wird geprüft: nur https, ohne
+    /// Benutzer, eindeutige Namen.</summary>
+    [Test]
+    procedure ChecksIssueConnections;
+    /// <summary>#1261: issues.projects (Zuordnung Delphi-Projekt → Tracker-Projekt) wird geprüft: match und
+    /// connection nötig, ein Pfad nur einmal (ohne Groß-/Kleinschreibung, „/“ wie „\“).</summary>
+    [Test]
+    procedure ChecksIssueProjects;
+    /// <summary>#1262: issues.queries mit Name und Abfrage, doppelte Namen und fehlende Angaben gemeldet.</summary>
+    [Test]
+    procedure ChecksIssueQueries;
     [Test]
     procedure ReadsStringLiteral;
     [Test]
@@ -1157,6 +1168,80 @@ begin
   Settings := TConfigurationParser.ParseLayered('{"tasks": []}', '{"tasks": [{"name": "B", "command": "b"}]}',
     Issues);
   Assert.IsTrue(Settings.Tasks.Contains('"B"'), 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksIssueConnections;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"issues": {"connections": [{"name": "Firma", "provider": "youtrack",' +
+    ' "url": "https://youtrack.firma.local"}, {"name": "GitHub", "provider": "github", "url": "https://github.com"}]}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'Beispiel aus dem Issue ohne Meldung');
+  Assert.IsTrue(Settings.IssueConnections.StartsWith('['), Settings.IssueConnections);
+  Assert.IsTrue(Settings.IssueConnections.Contains('"Firma"'), Settings.IssueConnections);
+  Settings := Parse('{"issues": {"connections": [{"name": "A", "provider": "youtrack", "url": "http://yt.local"},' +
+    ' {"name": "a", "provider": "github", "url": "https://user@github.com"}, {"provider": "", "url": 3, "token": "x"},' +
+    ' 3], "queries": []}}', Issues);
+  // http; Doppelname a und Benutzer in der Adresse; url kein String, token unbekannt, ohne name, ohne provider (leer)
+  // und ohne url; 3. queries ist seit #1262 bekannt.
+  Assert.AreEqual(9, Integer(Length(Issues)));
+  // Sprache der Oberfläche (#1263): de oder en.
+  Parse('{"issues": {"connections": [{"name": "A", "provider": "youtrack", "url": "https://yt.local",' +
+    ' "language": "de"}, {"name": "B", "provider": "youtrack", "url": "https://yt2.local", "language": "fr"}]}}',
+    Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'nur "fr"');
+  Parse('{"issues": {"connections": {"name": "A"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  Parse('{"issues": []}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'kein Objekt');
+  Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"connections": [{"name": "B", "provider": "github",' +
+    ' "url": "https://github.com"}]}}', Issues);
+  Assert.IsTrue(Settings.IssueConnections.Contains('"B"'), 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksIssueProjects;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"issues": {"projects": [{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", ' +
+    '"connection": "Firma", "project": "KASSE"}, {"match": "C:\\Projekte\\Atlas", "connection": "GitHub"}]}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'Beispiel aus dem Issue ohne Meldung; project darf fehlen');
+  Assert.IsTrue(Settings.IssueProjects.StartsWith('['), Settings.IssueProjects);
+  Assert.IsTrue(Settings.IssueProjects.Contains('"KASSE"'), Settings.IssueProjects);
+  Settings := Parse('{"issues": {"projects": [{"match": "C:\\A", "connection": "Firma"}, ' +
+    '{"match": "c:/a/", "connection": "GitHub"}, {"connection": 3, "project": 4, "x": 1}, 3]}}', Issues);
+  // Pfad doppelt; connection kein String, project kein String, x unbekannt, ohne match, ohne connection; 3.
+  Assert.AreEqual(7, Integer(Length(Issues)));
+  Parse('{"issues": {"projects": {"match": "C:\\A"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"projects": [{"match": "C:\\B", ' +
+    '"connection": "Firma"}]}}', Issues);
+  Assert.IsTrue(Settings.IssueProjects.Contains('Firma'), 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksIssueQueries;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"issues": {"queries": [{"name": "Mir zugewiesen", "query": "assignee: meine #Ungelöst"}, ' +
+    '{"name": "Sprint", "query": "#{Aktueller Sprint}", "connection": "Firma", "project": "KASSE"}]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'connection und project dürfen fehlen');
+  Assert.IsTrue(Settings.IssueQueries.StartsWith('['), Settings.IssueQueries);
+  Assert.IsTrue(Settings.IssueQueries.Contains('"Sprint"'), Settings.IssueQueries);
+  Settings := Parse('{"issues": {"queries": [{"name": "A", "query": "x"}, {"name": "a", "query": ""}, ' +
+    '{"connection": 3, "x": 1}, 3]}}', Issues);
+  // Name doppelt, query leer; connection kein String, x unbekannt, ohne name, ohne query; 3.
+  Assert.AreEqual(7, Integer(Length(Issues)));
+  Parse('{"issues": {"queries": {"name": "A"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"queries": [{"name": "B", "query": "y"}]}}',
+    Issues);
+  Assert.IsTrue(Settings.IssueQueries.Contains('"B"'), 'Datei vor Editor');
 end;
 
 procedure TConfigurationParserTests.ReadsMcpDisabledTools;
