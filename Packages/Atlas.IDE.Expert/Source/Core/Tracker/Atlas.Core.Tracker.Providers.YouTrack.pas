@@ -55,6 +55,11 @@
 // - Benutzer für @-Erwähnungen (#1278, IAtlasTrackerPeople): GET
 //   <url>/api/users?query=<Text>&fields=login,fullName,banned&$top=<Max>;
 //   gesperrte Benutzer entfallen, passende Anmeldenamen kommen zuerst.
+// - Entwicklung (#1269): GET <url>/api/issues/<Kennung>/vcsChanges?fields=
+//   version,text,date,user(login,fullName)&$top=100, die Änderungen, die die
+//   VCS-Anbindung von YouTrack dem Issue zugeordnet hat. Ohne Anbindung
+//   (404) ist die Liste leer, kein Fehler. Pull Requests kennt YouTrack hier
+//   nicht.
 
 interface
 
@@ -90,6 +95,8 @@ type
     /// <summary>Felder der Linktypen (#1279).</summary>
     LinkTypeFields = 'id,name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
       'localizedTargetToSource,aggregation';
+    /// <summary>Felder der VCS-Änderungen (#1269).</summary>
+    VcsChangeFields = 'version,text,date,user(login,fullName)';
   public
     class function IssuesUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string; static;
     /// <summary>Abfrage, wie sie an YouTrack geht (mit "project: …").</summary>
@@ -164,6 +171,12 @@ type
     /// <summary>Antwort von /api/users mit login und fullName, ohne gesperrte (#1278); False bei ungültigem JSON.
     /// </summary>
     class function ParseUserList(const AJson: string; out AUsers: TArray<TAtlasTrackerUser>): Boolean; static;
+    /// <summary>Adresse der VCS-Änderungen eines Issues (#1269); '' bei ungültiger Kennung oder ohne Server.
+    /// </summary>
+    class function VcsChangesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
+    /// <summary>Antwort von …/vcsChanges, neueste zuerst; False bei ungültigem JSON.</summary>
+    class function ParseVcsChanges(const AJson: string; out AChanges: TArray<TAtlasTrackerVcsChange>): Boolean;
+      static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -284,6 +297,8 @@ type
     { IAtlasTrackerPeople }
     function Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
       ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
+    function Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -292,6 +307,7 @@ uses
   System.Classes,
   System.DateUtils,
   System.Generics.Collections,
+  System.Generics.Defaults,
   System.JSON,
   System.Math,
   System.StrUtils,
@@ -2236,6 +2252,115 @@ begin
   end;
   // YouTrack sucht auch in der E-Mail-Adresse: Treffer ohne Text im Namen bleiben, nur weiter hinten.
   AUsers := TAtlasTrackerUser.Ranked(mUsers, AText, AMax);
+  Result := True;
+end;
+
+class function TAtlasYouTrackTracker.VcsChangesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
+begin
+  Result := '';
+  if (ATarget.Server = '') or not ValidKey(Trim(AKey)) then
+    Exit;
+  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/vcsChanges?fields=' +
+    TTextUris.PercentEncode(VcsChangeFields) + '&$top=' + IntToStr(TAtlasTrackerDevelopment.MaxChanges);
+end;
+
+class function TAtlasYouTrackTracker.ParseVcsChanges(const AJson: string;
+  out AChanges: TArray<TAtlasTrackerVcsChange>): Boolean;
+var
+  mValue, mItem, mUser: TJSONValue;
+  mChange: TAtlasTrackerVcsChange;
+  mText: string;
+  mBreak: Integer;
+  mList: TList<TAtlasTrackerVcsChange>;
+begin
+  AChanges := nil;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  mList := TList<TAtlasTrackerVcsChange>.Create;
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    Result := True;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONObject) then
+        Continue;
+      mChange := Default(TAtlasTrackerVcsChange);
+      mChange.Version := Trim(TextOf(TJSONObject(mItem), 'version'));
+      mText := StringReplace(TextOf(TJSONObject(mItem), 'text'), #13, '', [rfReplaceAll]);
+      mBreak := Pos(#10, mText);
+      if mBreak > 0 then
+        mText := Copy(mText, 1, mBreak - 1);
+      mChange.Text := Shorten(mText, TAtlasTrackerIssue.MaxTitle);
+      mChange.Date := TimeOf(TJSONObject(mItem), 'date');
+      mUser := TJSONObject(mItem).Values['user'];
+      if mUser is TJSONObject then
+      begin
+        mChange.Author := TextOf(TJSONObject(mUser), 'fullName');
+        if mChange.Author = '' then
+          mChange.Author := TextOf(TJSONObject(mUser), 'login');
+      end;
+      if (mChange.Version = '') and (mChange.Text = '') then
+        Continue;
+      mList.Add(mChange);
+    end;
+    // Neueste zuerst; bei gleicher Zeit nach Version, damit die Reihenfolge feststeht.
+    mList.Sort(TComparer<TAtlasTrackerVcsChange>.Construct(
+      function(const ALeft, ARight: TAtlasTrackerVcsChange): Integer
+      begin
+        if ALeft.Date > ARight.Date then
+          Result := -1
+        else if ALeft.Date < ARight.Date then
+          Result := 1
+        else
+          Result := CompareStr(ALeft.Version, ARight.Version);
+      end));
+    if mList.Count > TAtlasTrackerDevelopment.MaxChanges then
+      mList.Count := TAtlasTrackerDevelopment.MaxChanges;
+    AChanges := mList.ToArray;
+  finally
+    mList.Free;
+    mValue.Free;
+  end;
+end;
+
+function TAtlasYouTrackTracker.Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mStatus: Integer;
+  mText, mUrl: string;
+  mChanges: TArray<TAtlasTrackerVcsChange>;
+begin
+  ADevelopment := TAtlasTrackerDevelopment.Empty;
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mUrl := VcsChangesUrl(ATarget, AKey);
+  if (mUrl = '') or (ATransport = nil) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  // Ohne VCS-Anbindung gibt es die Liste nicht: leer, kein Fehler.
+  if mStatus = 404 then
+  begin
+    AError := TAtlasCiFetchError.None;
+    Exit(True);
+  end;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParseVcsChanges(mText, mChanges) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  ADevelopment.Changes := mChanges;
+  AError := TAtlasCiFetchError.None;
   Result := True;
 end;
 

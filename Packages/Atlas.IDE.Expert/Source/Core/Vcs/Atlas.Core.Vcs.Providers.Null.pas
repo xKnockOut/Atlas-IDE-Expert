@@ -4,8 +4,8 @@
 // git bzw. svn fehlt. Alle Aufrufe kehren sofort ohne Prozess zurück und
 // liefern keine Versionsangaben, nie einen Fehler; Outcome sagt, warum. Das
 // gilt auch für IAtlasVcsLocalWork (#762), IAtlasVcsIncoming (#755) und
-// IAtlasVcsUpdate (#764), IAtlasVcsBranching (#765) und IAtlasVcsLineHistory
-// (#1275).
+// IAtlasVcsUpdate (#764), IAtlasVcsBranching (#765), IAtlasVcsLineHistory (#1275) und
+// IAtlasVcsHistory (#1269).
 
 interface
 
@@ -15,7 +15,7 @@ uses
 
 type
   TAtlasNullVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsLineHistory)
+    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsLineHistory, IAtlasVcsHistory)
   private
     FOutcome: TAtlasVcsOutcome;
   public
@@ -63,6 +63,12 @@ type
       out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
     function LineHistory(const AFileName: string; AFirstLine, ALastLine, AMaxRevisions: Integer;
       out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
+    { IAtlasVcsHistory }
+    function SearchLog(const AText: string; AMax: Integer; out AEntries: TArray<TAtlasVcsLogEntry>): TAtlasVcsOutcome;
+    function AllBranches(out ABranches: TArray<TAtlasVcsRef>): TAtlasVcsOutcome;
+    function Distance(const ABranch, ABase: string; out AAhead, ABehind: Integer): TAtlasVcsOutcome;
+    function ContentOf(const ARevision: string; const AFile: TAtlasVcsLogFile; ABefore: Boolean;
+      out AContent: TBytes): TAtlasVcsOutcome;
     property Outcome: TAtlasVcsOutcome read FOutcome;
   end;
 
@@ -258,6 +264,36 @@ function TAtlasNullVersionControl.LineHistory(const AFileName: string; AFirstLin
   AMaxRevisions: Integer; out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
 begin
   ACommits := nil;
+  Result := FOutcome;
+end;
+
+{ IAtlasVcsHistory (#1269) }
+
+function TAtlasNullVersionControl.SearchLog(const AText: string; AMax: Integer;
+  out AEntries: TArray<TAtlasVcsLogEntry>): TAtlasVcsOutcome;
+begin
+  AEntries := nil;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.AllBranches(out ABranches: TArray<TAtlasVcsRef>): TAtlasVcsOutcome;
+begin
+  ABranches := nil;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.Distance(const ABranch, ABase: string; out AAhead,
+  ABehind: Integer): TAtlasVcsOutcome;
+begin
+  AAhead := -1;
+  ABehind := -1;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.ContentOf(const ARevision: string; const AFile: TAtlasVcsLogFile;
+  ABefore: Boolean; out AContent: TBytes): TAtlasVcsOutcome;
+begin
+  AContent := nil;
   Result := FOutcome;
 end;
 

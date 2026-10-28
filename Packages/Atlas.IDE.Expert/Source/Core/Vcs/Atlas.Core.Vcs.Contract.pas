@@ -46,6 +46,11 @@
 // (für Issue-Kennungen in der Zeilenhistorie) und die Commits, die einen
 // Zeilenbereich einer Datei geändert haben (Befehl „Issues zu dieser
 // Methode“): Git über log -L, SVN über log --diff, rückwärts verfolgt.
+// IAtlasVcsHistory (#1269) sucht für den Reiter „Entwicklung“ der
+// Issue-Vorschau: Commits mit einem Text in der Nachricht über alle Branches
+// (Git log --all --grep, SVN log --search), Branches samt entfernten bzw. unter
+// ^/branches, Vorsprung und Rückstand gegenüber einer Basis und den Inhalt einer
+// Datei in einem Commit bzw. davor (für den Diff).
 
 interface
 
@@ -342,6 +347,48 @@ type
     Patch: TArray<string>;
   end;
 
+  /// <summary>Datei eines Commits aus der Suche (#1269).</summary>
+  TAtlasVcsLogFile = record
+    /// <summary>Vollständiger Pfad in der Arbeitskopie; '' bei SVN, wenn der Commit außerhalb der
+    /// Arbeitskopie liegt (anderes Projekt im Repository).</summary>
+    Path: string;
+    /// <summary>Git: Pfad relativ zur Wurzel mit "/". SVN: Pfad im Repository wie "/branches/x/src/A.pas".
+    /// </summary>
+    RepositoryPath: string;
+    Kind: TAtlasVcsChangeKind;
+  end;
+
+  /// <summary>Commit aus der Suche nach einem Text in der Nachricht (#1269).</summary>
+  TAtlasVcsLogEntry = record
+    /// <summary>Git: vollständiger Hash. SVN: Revisionsnummer.</summary>
+    Revision: string;
+    /// <summary>Zeitpunkt (Git Committer, SVN Commit) in UTC.</summary>
+    Date: TDateTime;
+    Author: string;
+    /// <summary>Erste Zeile der Nachricht.</summary>
+    Summary: string;
+    /// <summary>Ganze Nachricht (Zeilenenden LF).</summary>
+    Message: string;
+    /// <summary>Geänderte Dateien; leer bei Merges.</summary>
+    Files: TArray<TAtlasVcsLogFile>;
+    /// <summary>Git: die ersten 7 Zeichen, SVN "r42".</summary>
+    function ShortRevision(AKind: TAtlasVcsKind): string;
+  end;
+
+  /// <summary>Branch aus IAtlasVcsHistory.AllBranches (#1269).</summary>
+  TAtlasVcsRef = record
+    /// <summary>Git: Kurzname wie "feature/x" bzw. "origin/feature/x". SVN: Name unter ^/branches.</summary>
+    Name: string;
+    /// <summary>Git: Name ohne Remote ("feature/x"), zum Wechseln. SVN: wie Name.</summary>
+    LocalName: string;
+    /// <summary>Git: Remote-Branch (refs/remotes). SVN: immer True (liegt auf dem Server).</summary>
+    Remote: Boolean;
+    /// <summary>Git: HEAD zeigt auf diesen Branch. SVN: die Arbeitskopie zeigt dorthin.</summary>
+    Current: Boolean;
+    /// <summary>Zeitpunkt des letzten Commits (UTC); 0 unbekannt.</summary>
+    TipDate: TDateTime;
+  end;
+
   /// <summary>Ergebnis eines Prozessaufrufs.</summary>
   TAtlasVcsRunResult = record
     Outcome: TAtlasVcsOutcome;
@@ -566,6 +613,28 @@ type
     /// die durchsuchten Revisionen der Datei.</summary>
     function LineHistory(const AFileName: string; AFirstLine, ALastLine, AMaxRevisions: Integer;
       out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
+  end;
+
+  /// <summary>Entwicklung zu einem Issue (#1269): Commits mit der Kennung, Branches, Abstand zur Basis und Inhalt
+  /// einer Datei in einem Commit. Git, SVN und die leere Umsetzung bieten diese Schnittstelle zusätzlich zu
+  /// IAtlasVersionControl (Supports). Git liest nur das lokale Repository (auch die Remote-Branches seit dem letzten
+  /// Abruf); SVN spricht für Log, Liste und Inhalt mit dem Server. Jede Methode der Git- und SVN-Umsetzung startet
+  /// einen Prozess: nur aus einem Hintergrund-Thread aufrufen, mit Zeitlimit.</summary>
+  IAtlasVcsHistory = interface
+    ['{4E7B1D93-2A6C-4F85-9C30-B8D2E5A7F146}']
+    /// <summary>Commits, deren Nachricht AText enthält (ohne Groß-/Kleinschreibung, kein Muster), über alle Branches,
+    /// neueste zuerst, höchstens AMax, mit Autor, ganzer Nachricht und Dateien. Die Suche ist grob: ob die Kennung
+    /// als ganzes Wort vorkommt, prüft der Aufrufer.</summary>
+    function SearchLog(const AText: string; AMax: Integer; out AEntries: TArray<TAtlasVcsLogEntry>): TAtlasVcsOutcome;
+    /// <summary>Git: lokale und entfernte Branches (ohne "origin/HEAD"). SVN: Einträge unter ^/branches.</summary>
+    function AllBranches(out ABranches: TArray<TAtlasVcsRef>): TAtlasVcsOutcome;
+    /// <summary>Git: Commits von ABranch, die nicht in ABase liegen (AAhead), und umgekehrt (ABehind); Namen wie in
+    /// TAtlasVcsRef.Name. SVN kennt das nicht: Ok mit -1 ohne Prozess.</summary>
+    function Distance(const ABranch, ABase: string; out AAhead, ABehind: Integer): TAtlasVcsOutcome;
+    /// <summary>Inhalt von AFile in ARevision (ABefore = False) bzw. im Stand davor (Git erster Vorgänger, SVN
+    /// Revision − 1). Neue Dateien sind davor, gelöschte danach leer (Ok mit leerem Inhalt).</summary>
+    function ContentOf(const ARevision: string; const AFile: TAtlasVcsLogFile; ABefore: Boolean;
+      out AContent: TBytes): TAtlasVcsOutcome;
   end;
 
   /// <summary>Fehler beim Lesen einer Ausgabe; die Umsetzungen machen daraus Outcome Failed.</summary>
@@ -816,6 +885,18 @@ end;
 function TAtlasVcsIncomingCommit.ShortHash: string;
 begin
   Result := Copy(Hash, 1, 7);
+end;
+
+{ TAtlasVcsLogEntry }
+
+function TAtlasVcsLogEntry.ShortRevision(AKind: TAtlasVcsKind): string;
+begin
+  if Revision = '' then
+    Result := ''
+  else if AKind = TAtlasVcsKind.Svn then
+    Result := 'r' + Revision
+  else
+    Result := Copy(Revision, 1, 7);
 end;
 
 { TAtlasVcsRunResult }

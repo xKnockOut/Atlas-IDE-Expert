@@ -50,6 +50,13 @@
 //                rückwärts verfolgt (Atlas.Core.Vcs.Internals.LineTrace). Statt
 //                je Revision „svn blame -r“ reichen so zwei Aufrufe für N
 //                Revisionen; 200 Revisionen bleiben weit unter 5 s.
+// Entwicklung zu einem Issue (IAtlasVcsHistory, #1269), alle mit dem Server:
+//   SearchLog    info --xml . (Pfad der Arbeitskopie), dann
+//                log --xml -v --search <Text> -l N ^/ (ganzes Repository,
+//                damit auch Commits in Branches gefunden werden)
+//   AllBranches  info --xml . (aktueller Branch), list --xml ^/branches
+//   Distance     ohne Prozess Ok mit -1 (SVN kennt keinen Vorsprung)
+//   ContentOf    cat ^/<Pfad>@<Revision> bzw. @<Revision − 1>
 // ChangeMarker: Zeitstempel und Größe von .svn/wc.db; svn update und
 // svn switch schreiben die Datenbank.
 
@@ -63,7 +70,8 @@ uses
 type
   TAtlasSvnVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
     IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSvnWorkingCopy, IAtlasVcsSvnExternals,
-    IAtlasVcsLineHistory)
+    IAtlasVcsLineHistory,
+    IAtlasVcsHistory)
   public const
     /// <summary>Höchstens so viele Revisionen je Aufruf von Messages.</summary>
     MessageBatch = 100;
@@ -75,6 +83,7 @@ type
     /// <summary>Ort für AName nach AOptions (#1290); Failed ohne auflösbaren Ort.</summary>
     function BranchLocation(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
       out APath: string): TAtlasVcsOutcome;
+    function Info(out ARelativeUrl: string): TAtlasVcsOutcome;
   public
     /// <summary>ARoot: Ordner mit .svn. AExecutable: vollständiger Pfad von svn ('' = nicht installiert).</summary>
     constructor Create(const ARoot: string; const ARunner: IAtlasVcsRunner; const AExecutable: string;
@@ -132,6 +141,12 @@ type
       out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
     function LineHistory(const AFileName: string; AFirstLine, ALastLine, AMaxRevisions: Integer;
       out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
+    { IAtlasVcsHistory }
+    function SearchLog(const AText: string; AMax: Integer; out AEntries: TArray<TAtlasVcsLogEntry>): TAtlasVcsOutcome;
+    function AllBranches(out ABranches: TArray<TAtlasVcsRef>): TAtlasVcsOutcome;
+    function Distance(const ABranch, ABase: string; out AAhead, ABehind: Integer): TAtlasVcsOutcome;
+    function ContentOf(const ARevision: string; const AFile: TAtlasVcsLogFile; ABefore: Boolean;
+      out AContent: TBytes): TAtlasVcsOutcome;
   end;
 
 implementation
@@ -757,6 +772,108 @@ begin
         ACommits := ACommits + [mLog[mLogIndex]];
         Break;
       end;
+end;
+
+{ IAtlasVcsHistory (#1269) }
+
+function TAtlasSvnVersionControl.Info(out ARelativeUrl: string): TAtlasVcsOutcome;
+var
+  mOutput: TBytes;
+begin
+  ARelativeUrl := '';
+  Result := Svn(['info', '--xml', '.'], mOutput);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    ARelativeUrl := TAtlasSvnParser.ParseInfo(VcsUtf8(mOutput)).RelativeUrl;
+  except
+    on EAtlasVcsParse do
+      Result := TAtlasVcsOutcome.Failed;
+  end;
+end;
+
+function TAtlasSvnVersionControl.SearchLog(const AText: string; AMax: Integer;
+  out AEntries: TArray<TAtlasVcsLogEntry>): TAtlasVcsOutcome;
+var
+  mOutput: TBytes;
+  mRelativeUrl: string;
+  mLimit, mIndex: Integer;
+begin
+  AEntries := nil;
+  if Trim(AText) = '' then
+    Exit(TAtlasVcsOutcome.Failed);
+  // Glob-Zeichen hätten in --search eine Bedeutung; Kennungen haben keine.
+  for mIndex := 1 to Length(AText) do
+    if (Ord(AText[mIndex]) < 32) or CharInSet(AText[mIndex], ['*', '?', '[', ']', '\']) then
+      Exit(TAtlasVcsOutcome.Failed);
+  Result := Info(mRelativeUrl);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  mLimit := AMax;
+  if mLimit < 1 then
+    mLimit := 1;
+  Result := Svn(['log', '--xml', '-v', '--search', AText, '-l', IntToStr(mLimit), '^/'], mOutput);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    AEntries := TAtlasSvnParser.ParseLog(VcsUtf8(mOutput), FRoot, mRelativeUrl);
+  except
+    on EAtlasVcsParse do
+    begin
+      AEntries := nil;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+function TAtlasSvnVersionControl.AllBranches(out ABranches: TArray<TAtlasVcsRef>): TAtlasVcsOutcome;
+var
+  mOutput: TBytes;
+  mRelativeUrl: string;
+begin
+  ABranches := nil;
+  Result := Info(mRelativeUrl);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  // Dieselbe Ablage wie beim Beginnen (#765): ^/branches/<Name>.
+  Result := Svn(['list', '--xml', '^/branches'], mOutput);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    ABranches := TAtlasSvnParser.ParseList(VcsUtf8(mOutput), TAtlasSvnParser.BranchOf(mRelativeUrl));
+  except
+    on EAtlasVcsParse do
+    begin
+      ABranches := nil;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+function TAtlasSvnVersionControl.Distance(const ABranch, ABase: string; out AAhead, ABehind: Integer): TAtlasVcsOutcome;
+begin
+  AAhead := -1;
+  ABehind := -1;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TAtlasSvnVersionControl.ContentOf(const ARevision: string; const AFile: TAtlasVcsLogFile;
+  ABefore: Boolean; out AContent: TBytes): TAtlasVcsOutcome;
+var
+  mRevision: Integer;
+begin
+  AContent := nil;
+  if not TryStrToInt(ARevision, mRevision) or (mRevision <= 0) or (Copy(AFile.RepositoryPath, 1, 1) <> '/') then
+    Exit(TAtlasVcsOutcome.Failed);
+  if (ABefore and (AFile.Kind = TAtlasVcsChangeKind.Added)) or
+    (not ABefore and (AFile.Kind = TAtlasVcsChangeKind.Deleted)) then
+    Exit(TAtlasVcsOutcome.Ok);
+  if ABefore then
+    Dec(mRevision);
+  if mRevision <= 0 then
+    Exit(TAtlasVcsOutcome.Ok);
+  // Peg-Revision: der Pfad, wie er in dieser Revision hieß.
+  Result := Svn(['cat', '^' + AFile.RepositoryPath + '@' + IntToStr(mRevision)], AContent);
 end;
 
 end.

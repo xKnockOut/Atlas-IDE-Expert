@@ -1097,6 +1097,7 @@ begin
   Assert.IsTrue(Settings.IssuesSprintBurndown, 'Burndown an');
   Assert.IsTrue(Settings.IssuesSprintCompare, 'Vergleich mit dem Vorsprint an');
   Assert.IsTrue(Settings.IssuesPaletteSearch, 'Palettensuche (#1270) an');
+  Assert.IsTrue(Settings.IssuesPreviewDevelopment, 'Reiter „Entwicklung“ (#1269)');
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -1157,6 +1158,7 @@ begin
   Settings.IssuesSprintBurndown := False;
   Settings.IssuesSprintCompare := False;
   Settings.IssuesPaletteSearch := False;
+  Settings.IssuesPreviewDevelopment := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -1284,6 +1286,7 @@ begin
   mLoaded.Load(mStore);
   Assert.IsFalse(mLoaded.IssuesCommentEditor);
   Assert.AreEqual('[{"name":"Danke","text":"Danke!"}]', mLoaded.IssuesCommentSnippets);
+  Assert.IsFalse(Loaded.IssuesPreviewDevelopment);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;
