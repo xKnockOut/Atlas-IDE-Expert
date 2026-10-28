@@ -44,7 +44,8 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.Renames;
+  Atlas.Core.Settings.Renames,
+  Atlas.Core.Settings.QueryMigration;
 
 /// <summary>Katalog mit Text-, Wahrheits- und Zahleinstellung unter neuem Namen, je mit früherem Namen.</summary>
 function TestCatalog: TAtlasSettingsCatalog;
@@ -210,6 +211,7 @@ var
   Store: IAtlasMemorySettingsStore;
   Renames: TArray<TAtlasSettingsRename>;
   Settings: TAtlasPluginSettings;
+  mMigration: TAtlasSettingsQueryMigration;
 begin
   Catalog := TAtlasSettingsCatalog.CreateDefault;
   try
@@ -223,20 +225,28 @@ begin
     Store.WriteString('WelcomePageIssuesCommitPattern', '[{kennung}] ');
     Store.WriteInteger('TrackerLogin', 0);
     Renames := Apply(Store, Catalog);
-    Assert.AreEqual(6, Integer(Length(Renames)), 'je früherem Namen eine Übernahme');
+    // Die Abfrage übernimmt seit #1262 TAtlasSettingsQueryMigrations (als „Standard“ in issues.queries).
+    Assert.AreEqual(5, Integer(Length(Renames)), 'je früherem Namen eine Übernahme');
+    Assert.IsTrue((Store as IAtlasSettingsNames).Contains('WelcomePageIssuesQuery'));
+    mMigration := TAtlasSettingsQueryMigrations.Migrate(Store, Store as IAtlasSettingsNames, Store);
+    Assert.IsTrue(mMigration.Found);
+    Assert.IsTrue(mMigration.Moved);
+    TAtlasSettingsQueryMigrations.RemoveLegacy(Store as IAtlasSettingsNames);
     Settings := TAtlasPluginSettings.Defaults;
     Settings.Load(Store);
     Assert.IsTrue(Settings.WelcomePageIssues, 'Schalter des Bereichs bleibt');
     Assert.AreEqual('youtrack', Settings.IssuesTracker);
-    Assert.AreEqual('assignee: meine #Ungelöst', Settings.IssuesQuery);
+    Assert.AreEqual('[{"name": "Standard", "query": "assignee: meine #Ungelöst"}]', Settings.IssuesQueries);
     Assert.AreEqual('remember', Settings.IssuesStart);
     Assert.AreEqual('bugfix/{kennung}', Settings.IssuesBranchPattern);
     Assert.AreEqual('develop', Settings.IssuesBranchBase);
     Assert.AreEqual('[{kennung}] ', Settings.IssuesCommitPattern);
     Assert.IsFalse(Settings.TrackerLogin, 'Registry-Name unverändert');
     Assert.IsFalse((Store as IAtlasSettingsNames).Contains('WelcomePageIssuesQuery'));
-    Assert.AreEqual('Einstellung welcomePage.issues.query heißt jetzt issues.query; Wert übernommen',
-      Renames[1].LogLine);
+    Assert.AreEqual('Einstellung welcomePage.issues.tracker heißt jetzt issues.tracker; Wert übernommen',
+      Renames[0].LogLine);
+    Assert.AreEqual('Einstellung welcomePage.issues.query ist jetzt die Abfrage „Standard“ in issues.queries',
+      mMigration.LogLine);
   finally
     Catalog.Free;
   end;
@@ -280,8 +290,12 @@ var
 begin
   Catalog := TAtlasSettingsCatalog.CreateDefault;
   try
-    Expected := Catalog.IndexOfKey('issues.query');
+    // issues.query (#1280) geht seit #1262 in issues.queries auf.
+    Expected := Catalog.IndexOfKey('issues.queries');
     Assert.IsTrue(Expected >= 0);
+    Assert.IsTrue(Catalog.IndexOfKey('issues.query') < 0);
+    Assert.AreEqual(Expected, Catalog.Resolve('issues.query', Migrated));
+    Assert.IsTrue(Migrated);
     // Exportdatei vor #1280 (früherer Schlüssel) und ältere flache Datei (früherer Registry-Name).
     Assert.AreEqual(Expected, Catalog.Resolve('welcomePage.issues.query', Migrated));
     Assert.IsTrue(Migrated);
@@ -303,7 +317,7 @@ begin
     Assert.IsTrue(History.LoadJson('[{"changedAt":"2026-10-27T10:00:00.000Z","settings":' +
       '{"WelcomePageIssuesQuery":"label:bug","WelcomePageIssuesTracker":"github"}}]'));
     Assert.AreEqual(1, History.Count);
-    Assert.AreEqual('label:bug', History[0].Settings.IssuesQuery);
+    Assert.AreEqual('[{"name": "Standard", "query": "label:bug"}]', History[0].Settings.IssuesQueries);
     Assert.AreEqual('github', History[0].Settings.IssuesTracker);
   finally
     History.Free;

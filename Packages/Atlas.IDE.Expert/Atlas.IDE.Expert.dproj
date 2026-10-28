@@ -423,6 +423,7 @@
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Experimental.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.History.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Renames.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.QueryMigration.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.TeamFile.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Contract.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Internals.Addresses.pas"/>
@@ -432,6 +433,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Contract.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Connections.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Projects.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Queries.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Naming.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>

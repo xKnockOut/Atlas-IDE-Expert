@@ -4259,6 +4259,12 @@ begin
     begin
       TAtlasOptionsRegistration.ShowTrackerProject(AMatch);
     end;
+  // „Abfragen bearbeiten …“ (#1262): Seite Issue-Tracker bei der Tabelle Abfragen.
+  Result.OnEditQueries :=
+    procedure
+    begin
+      TAtlasOptionsRegistration.ShowSetting('IssuesQueries');
+    end;
 end;
 
 procedure StartWelcome;

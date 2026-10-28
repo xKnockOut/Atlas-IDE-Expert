@@ -1251,9 +1251,6 @@ type
     WelcomePageIssues: Boolean;
     /// <summary>Tracker (#765, issues.tracker): '' = aus der .atlas, "github" oder "youtrack".</summary>
     IssuesTracker: string;
-    /// <summary>Abfrage in der Sprache des Trackers (#765, issues.query); '' = Vorgabe des Trackers
-    /// (GitHub "assignee:@me state:open", YouTrack "for: me #Unresolved").</summary>
-    IssuesQuery: string;
     /// <summary>„Beginnen“ (#765, issues.start): "branch" legt einen Branch an und checkt ihn aus,
     /// "remember" merkt nur das Issue.</summary>
     IssuesStart: string;
@@ -1277,6 +1274,14 @@ type
     /// match, connection und project; liegt in settings.json, gelesen mit TAtlasTrackerProjects. '[]' = keine.
     /// </summary>
     IssuesProjects: string;
+    /// <summary>Benannte Abfragen für „Meine Issues“ (#1262, issues.queries) als JSON-Liste mit name, query und
+    /// optional connection und project; liegt in settings.json, gelesen mit TAtlasTrackerQueries. '[]' = keine,
+    /// dann gilt je Anbieter „Mir zugewiesen“. Ersetzt issues.query (wird einmal zur Abfrage „Standard“).
+    /// </summary>
+    IssuesQueries: string;
+    /// <summary>Klappliste der Abfragen im Bereich „Meine Issues“ (#1262, issues.queryPicker); aus = keine
+    /// Klappliste, es gilt die erste passende Abfrage.</summary>
+    IssuesQueryPicker: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -1985,7 +1990,6 @@ begin
   Result.WelcomePageQuickActionsTestKey := $4054; // Strg+T
   Result.WelcomePageIssues := False;
   Result.IssuesTracker := '';
-  Result.IssuesQuery := '';
   Result.IssuesStart := IssuesStartBranch;
   Result.IssuesBranchPattern := '';
   Result.IssuesBranchBase := '';
@@ -1993,6 +1997,8 @@ begin
   Result.TrackerLogin := True;
   Result.IssuesConnections := '[]';
   Result.IssuesProjects := '[]';
+  Result.IssuesQueries := '[]';
+  Result.IssuesQueryPicker := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2062,7 +2068,6 @@ begin
   WelcomePageQuickActionsBuildKey := EnsureRange(WelcomePageQuickActionsBuildKey, 0, $FFFF);
   WelcomePageQuickActionsTestKey := EnsureRange(WelcomePageQuickActionsTestKey, 0, $FFFF);
   IssuesTracker := NormalizedIssuesTracker(IssuesTracker);
-  IssuesQuery := NormalizedIssuesText(IssuesQuery, True);
   IssuesStart := NormalizedIssuesStart(IssuesStart);
   IssuesBranchPattern := NormalizedIssuesText(IssuesBranchPattern, True);
   IssuesBranchBase := NormalizedIssuesText(IssuesBranchBase, True);
@@ -2074,6 +2079,9 @@ begin
   IssuesProjects := Trim(IssuesProjects);
   if IssuesProjects = '' then
     IssuesProjects := '[]';
+  IssuesQueries := Trim(IssuesQueries);
+  if IssuesQueries = '' then
+    IssuesQueries := '[]';
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2772,7 +2780,6 @@ begin
     Default.WelcomePageQuickActionsTestKey);
   WelcomePageIssues := AStore.ReadInteger('WelcomePageIssues', BoolValue(Default.WelcomePageIssues)) <> 0;
   IssuesTracker := AStore.ReadString('IssuesTracker', Default.IssuesTracker);
-  IssuesQuery := AStore.ReadString('IssuesQuery', Default.IssuesQuery);
   IssuesStart := AStore.ReadString('IssuesStart', Default.IssuesStart);
   IssuesBranchPattern := AStore.ReadString('IssuesBranchPattern',
     Default.IssuesBranchPattern);
@@ -2783,6 +2790,8 @@ begin
   TrackerLogin := AStore.ReadInteger('TrackerLogin', BoolValue(Default.TrackerLogin)) <> 0;
   IssuesConnections := AStore.ReadString('IssuesConnections', Default.IssuesConnections);
   IssuesProjects := AStore.ReadString('IssuesProjects', Default.IssuesProjects);
+  IssuesQueries := AStore.ReadString('IssuesQueries', Default.IssuesQueries);
+  IssuesQueryPicker := AStore.ReadInteger('IssuesQueryPicker', BoolValue(Default.IssuesQueryPicker)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3241,7 +3250,6 @@ begin
   AStore.WriteInteger('WelcomePageQuickActionsTestKey', WelcomePageQuickActionsTestKey);
   AStore.WriteInteger('WelcomePageIssues', BoolValue(WelcomePageIssues));
   AStore.WriteString('IssuesTracker', IssuesTracker);
-  AStore.WriteString('IssuesQuery', IssuesQuery);
   AStore.WriteString('IssuesStart', IssuesStart);
   AStore.WriteString('IssuesBranchPattern', IssuesBranchPattern);
   AStore.WriteString('IssuesBranchBase', IssuesBranchBase);
@@ -3249,6 +3257,8 @@ begin
   AStore.WriteInteger('TrackerLogin', BoolValue(TrackerLogin));
   AStore.WriteString('IssuesConnections', IssuesConnections);
   AStore.WriteString('IssuesProjects', IssuesProjects);
+  AStore.WriteString('IssuesQueries', IssuesQueries);
+  AStore.WriteInteger('IssuesQueryPicker', BoolValue(IssuesQueryPicker));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

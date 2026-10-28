@@ -122,6 +122,7 @@ type
     procedure ReadIssues(ANode: TJsonNode);
     procedure ReadIssueConnections(ANode: TJsonNode);
     procedure ReadIssueProjects(ANode: TJsonNode);
+    procedure ReadIssueQueries(ANode: TJsonNode);
     procedure ReadTaskMatcher(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -2344,6 +2345,8 @@ begin
       ReadIssueConnections(ANode[Index])
     else if Key = 'projects' then
       ReadIssueProjects(ANode[Index])
+    else if Key = 'queries' then
+      ReadIssueQueries(ANode[Index])
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "issues.%s"', [Key]), False);
@@ -2497,6 +2500,66 @@ begin
     end;
   finally
     Matches.Free;
+  end;
+end;
+
+procedure TValidator.ReadIssueQueries(ANode: TJsonNode);
+var
+  Index, Inner: Integer;
+  Query, Value: TJsonNode;
+  Key, Text: string;
+  Names: TList<string>;
+  HasName, HasQuery: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"queries" muss eine Liste von Abfragen sein');
+    Exit;
+  end;
+  FSettings.IssueQueries := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+  Names := TList<string>.Create;
+  try
+    for Index := 0 to ANode.Count - 1 do
+    begin
+      Query := ANode[Index];
+      if Query.Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(Query, 'Eine Abfrage ist ein Objekt mit "name" und "query"');
+        Continue;
+      end;
+      HasName := False;
+      HasQuery := False;
+      for Inner := 0 to Query.Count - 1 do
+      begin
+        Key := Query.Keys[Inner];
+        Value := Query[Inner];
+        if Key = 'name' then
+        begin
+          if ExpectString(Value, 'name', Text) and (Trim(Text) <> '') then
+          begin
+            HasName := True;
+            // Die Klappliste unterscheidet Namen ohne Groß-/Kleinschreibung.
+            if Names.IndexOf(AnsiLowerCase(Trim(Text))) >= 0 then
+              ReportNode(Value, Format('Die Abfrage "%s" gibt es schon', [Trim(Text)]))
+            else
+              Names.Add(AnsiLowerCase(Trim(Text)));
+          end;
+        end
+        else if Key = 'query' then
+          HasQuery := ExpectString(Value, 'query', Text) and (Trim(Text) <> '')
+        else if (Key = 'connection') or (Key = 'project') then
+          ExpectString(Value, Key, Text)
+        else
+          Report(Query.KeyStarts[Inner], Query.KeyStarts[Inner] + Length(Key) + 2,
+            Format('Unbekannte Angabe "%s" in einer Abfrage', [Key]), False);
+      end;
+      if not HasName then
+        ReportNode(Query, 'Abfrage ohne "name"');
+      if not HasQuery then
+        ReportNode(Query, 'Abfrage ohne "query"');
+    end;
+  finally
+    Names.Free;
   end;
 end;
 
@@ -2990,6 +3053,7 @@ begin
     begin
       Result.IssueConnections := FileSettings.IssueConnections;
       Result.IssueProjects := FileSettings.IssueProjects;
+      Result.IssueQueries := FileSettings.IssueQueries;
     end
     else if Key = 'format' then
     begin

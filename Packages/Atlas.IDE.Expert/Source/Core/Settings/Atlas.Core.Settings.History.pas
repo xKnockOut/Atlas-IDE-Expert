@@ -98,7 +98,8 @@ implementation
 uses
   System.DateUtils,
   Atlas.Core.Settings.Catalog,
-  Atlas.Core.Settings.Renames;
+  Atlas.Core.Settings.Renames,
+  Atlas.Core.Settings.QueryMigration;
 
 { TAtlasMemorySettingsStore }
 
@@ -345,6 +346,9 @@ begin
       if Catalog = nil then
         Catalog := TAtlasSettingsCatalog.CreateDefault;
       TAtlasSettingsRenames.Apply(Store, Store as IAtlasSettingsNames, Catalog);
+      // Einzelne Abfrage von vor #1262: als „Standard“ in die Liste der Abfragen.
+      TAtlasSettingsQueryMigrations.Migrate(Store, Store as IAtlasSettingsNames, Store);
+      TAtlasSettingsQueryMigrations.RemoveLegacy(Store as IAtlasSettingsNames);
       Snapshot.Settings := TAtlasPluginSettings.Defaults;
       Snapshot.Settings.Load(Store);
       try

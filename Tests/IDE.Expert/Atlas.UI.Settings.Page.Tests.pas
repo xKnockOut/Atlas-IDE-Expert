@@ -129,6 +129,10 @@ type
     /// zieht mit, Entfernen.</summary>
     [Test]
     procedure TrackerProjectsTable;
+    /// <summary>#1262: Tabelle der Abfragen: Zeilen mit Verbindung, doppelter Name abgewiesen, neue Zeile erst mit
+    /// Abfrage gespeichert, Umbenennen der Verbindung zieht mit, Klappliste an/aus.</summary>
+    [Test]
+    procedure TrackerQueriesTable;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
     [Test]
@@ -230,6 +234,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
+  Atlas.Core.Tracker.Queries,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Vcl.Graphics,
@@ -1938,7 +1943,7 @@ begin
     Assert.IsNotNull(Tracker);
     Assert.AreEqual('', Page.NodeOfSheet(Tracker));
     Assert.IsTrue(TreeNodeOf(Page, Tracker) = Issues, 'Hauptknoten Issue-Tracker');
-    Assert.IsTrue(SheetOf(Page.IssuesQuery) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesQueries) = Tracker);
     Assert.IsTrue(SheetOf(Page.IssuesStart) = Tracker);
     Assert.IsTrue(SheetOf(Page.IssuesBranchPattern) = Tracker);
     Assert.IsTrue(SheetOf(Page.IssuesBranchBase) = Tracker);
@@ -2176,6 +2181,81 @@ begin
   mMappings := nil;
 end;
 
+procedure TAtlasSettingsPageTests.TrackerQueriesTable;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mList: TListView;
+  mQueries: TArray<TAtlasTrackerQuery>;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.IssuesConnections := '[{"name": "Firma", "provider": "youtrack", "url": "https://youtrack.firma.local"}]';
+    mPage.LoadFrom(mSettings);
+    // Ohne eigene Abfragen: Hinweis auf die Vorgabe je Anbieter.
+    Assert.AreEqual(0, mPage.IssuesQueries.Items.Count);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueriesNone), mPage.IssuesQueryNote.Caption);
+    Assert.IsFalse(mPage.IssuesQueryName.Enabled);
+    mSettings.IssuesQueries := '[{"name": "Standard", "query": "assignee: meine #Ungelöst"},' +
+      ' {"name": "Sprint", "query": "#{Aktueller Sprint}", "connection": "Firma", "project": "KASSE"}]';
+    mPage.LoadFrom(mSettings);
+    mList := mPage.IssuesQueries;
+    Assert.AreEqual(2, mList.Items.Count);
+    Assert.AreEqual('Standard', mList.Items[0].Caption);
+    Assert.AreEqual('assignee: meine #Ungelöst', mList.Items[0].SubItems[0]);
+    Assert.AreEqual('', mList.Items[0].SubItems[1], 'ohne Verbindung: überall');
+    Assert.AreEqual('Firma', mList.Items[1].SubItems[1]);
+    Assert.AreEqual('KASSE', mList.Items[1].SubItems[2]);
+    // Erste Zeile gewählt; „(alle)“ als Verbindung.
+    Assert.AreEqual('Standard', mPage.IssuesQueryName.Text);
+    Assert.AreEqual(0, mPage.IssuesQueryConnection.Choice);
+    mList.Items[1].Selected := True;
+    Assert.AreEqual('#{Aktueller Sprint}', mPage.IssuesQueryText.Text);
+    Assert.AreEqual(1, mPage.IssuesQueryConnection.Choice);
+    // Doppelter Name wird nicht übernommen.
+    mPage.IssuesQueryName.Text := 'standard';
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueryNameTaken), mPage.IssuesQueryNote.Caption);
+    Assert.AreEqual('Sprint', mPage.TrackerQueries[1].Name);
+    mPage.IssuesQueryName.Text := 'Aktueller Sprint';
+    Assert.AreEqual('Aktueller Sprint', mList.Items[1].Caption);
+    // Neue Zeile: ohne Abfrage nicht gespeichert; Leerraum außen fällt weg.
+    mPage.IssuesQueryAdd.Click;
+    Assert.AreEqual(3, mList.Items.Count);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueryNew), mPage.IssuesQueryName.Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueryEmpty), mPage.IssuesQueryNote.Caption);
+    mSaved := mSettings;
+    mPage.SaveTo(mSaved);
+    Assert.AreEqual(2, Integer(Length(TAtlasTrackerQueries.Read(mSaved.IssuesQueries))), 'ohne Abfrage');
+    mPage.IssuesQueryText.Text := '  created by: me #Unresolved ';
+    Assert.AreEqual('created by: me #Unresolved', mPage.TrackerQueries[2].Query);
+    Assert.AreEqual('', mPage.IssuesQueryNote.Caption);
+    // Verbindung umbenennen: die Abfrage zieht mit.
+    mPage.IssuesConnections.Items[0].Selected := True;
+    mPage.IssuesConnectionName.Text := 'Werk';
+    Assert.AreEqual('Werk', mPage.TrackerQueries[1].Connection);
+    // Entfernen, Klappliste aus, speichern.
+    mList.Items[0].Selected := True;
+    mPage.IssuesQueryRemove.Click;
+    mPage.IssuesQueryPicker.Checked := False;
+    mPage.SaveTo(mSaved);
+    mQueries := TAtlasTrackerQueries.Read(mSaved.IssuesQueries);
+    Assert.AreEqual(2, Integer(Length(mQueries)), mSaved.IssuesQueries);
+    Assert.AreEqual('Aktueller Sprint', mQueries[0].Name);
+    Assert.AreEqual('Werk', mQueries[0].Connection);
+    Assert.AreEqual('KASSE', mQueries[0].Project);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueryNew), mQueries[1].Name);
+    Assert.IsFalse(mSaved.IssuesQueryPicker);
+  finally
+    mHost.Free;
+  end;
+  mQueries := nil;
+end;
+
 procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;
 var
   Page: TAtlasSettingsPage;
@@ -2223,7 +2303,7 @@ begin
     // #765: Meine Issues aus, Tracker aus der .atlas, Branch anlegen, Präfix „{kennung} “, Befehl Atlas.TrackerLogin an.
     Assert.IsFalse(Page.WelcomeIssues.Checked);
     Assert.AreEqual(0, Page.IssuesTracker.Choice);
-    Assert.AreEqual('', Page.IssuesQuery.Text);
+    Assert.IsTrue(Page.IssuesQueryPicker.Checked, 'Klappliste an (#1262)');
     Assert.AreEqual(0, Page.IssuesStart.Choice);
     Assert.AreEqual('', Page.IssuesBranchPattern.Text);
     Assert.AreEqual('', Page.IssuesBranchBase.Text);
@@ -2279,7 +2359,7 @@ begin
     Page.CiLogin.Checked := False;
     Page.WelcomeIssues.Checked := True;
     Page.IssuesTracker.Choice := 2;
-    Page.IssuesQuery.Text := '  for: me State: {In Progress} ';
+    Page.IssuesQueryPicker.Checked := False;
     Page.IssuesStart.Choice := 1;
     Page.IssuesBranchPattern.Text := ' {kennung}/{kurztitel} ';
     Page.IssuesBranchBase.Text := ' develop ';
@@ -2343,7 +2423,7 @@ begin
     Assert.IsFalse(Saved.CiLogin);
     Assert.IsTrue(Saved.WelcomePageIssues);
     Assert.AreEqual('youtrack', Saved.IssuesTracker);
-    Assert.AreEqual('for: me State: {In Progress}', Saved.IssuesQuery);
+    Assert.IsFalse(Saved.IssuesQueryPicker);
     Assert.AreEqual('remember', Saved.IssuesStart);
     Assert.AreEqual('{kennung}/{kurztitel}', Saved.IssuesBranchPattern);
     Assert.AreEqual('develop', Saved.IssuesBranchBase);
