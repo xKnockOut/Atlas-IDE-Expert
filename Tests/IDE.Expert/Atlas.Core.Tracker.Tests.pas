@@ -544,6 +544,8 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues[0].Labels)));
   Assert.AreEqual('plugin', Issues[0].Labels[0]);
   Assert.AreEqual('willkommensseite', Issues[0].Labels[1]);
+  Assert.AreEqual('beispiel', Issues[0].Assignee, 'Zuständig für die Palette (#1270)');
+  Assert.AreEqual('', Issues[1].Assignee);
   Assert.AreEqual('#612', Issues[1].Key);
   Assert.AreEqual('bug', Issues[1].Labels[0]);
   Assert.AreEqual(0, Integer(Length(Issues[2].Labels)));
@@ -682,8 +684,8 @@ begin
   Target := TAtlasTrackerTarget.Create('youtrack', 'https://yt.firma.de', 'Atlas IDE', '');
   Assert.AreEqual('project: {Atlas IDE} for: me #Unresolved', TAtlasYouTrackTracker.FullQuery(Target));
   Assert.AreEqual('https://beispiel.youtrack.cloud/api/issues?query=project%3A%20ATL%20for%3A%20me%20%23Unresolved' +
-    '&fields=idReadable%2CnumberInProject%2Csummary%2CcustomFields%28name%2Cvalue%28name%2Cpresentation%29%29' +
-    '&$top=20', TAtlasYouTrackTracker.IssuesUrl(YouTrackTarget, 20));
+    '&fields=idReadable%2CnumberInProject%2Csummary%2CcustomFields%28name%2Cvalue%28name%2Cpresentation%2Clogin' +
+    '%2CfullName%29%29&$top=20', TAtlasYouTrackTracker.IssuesUrl(YouTrackTarget, 20));
 end;
 
 procedure TAtlasYouTrackTrackerTests.ParsesIssuesFromFixture;
@@ -698,7 +700,9 @@ begin
   Assert.AreEqual('In Progress', Issues[0].State);
   Assert.AreEqual('Major', Issues[0].Priority);
   Assert.AreEqual('Sprint 42', Issues[0].Sprint);
+  Assert.AreEqual('Beispiel', Issues[0].Assignee, 'Zuständig für die Palette (#1270)');
   Assert.AreEqual('ATL-7', Issues[1].Key);
+  Assert.AreEqual('', Issues[1].Assignee);
   Assert.AreEqual('Offen', Issues[1].State, 'deutscher Feldname, Wert als presentation');
   Assert.AreEqual('', Issues[1].Priority);
   Assert.IsFalse(TAtlasYouTrackTracker.ParseIssues('{"error":"x"}', 20, Issues));

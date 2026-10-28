@@ -39,6 +39,14 @@
 //   über dem Inhalt. CheckBlocked liest für „Beginnen“ (issues.warnBlocked) die
 //   Verknüpfungen frisch (5 s, ohne Kommentare), ohne Netz aus dem
 //   Zwischenspeicher.
+// - Kommentar-Editor (#1278): Das Kommentarfeld wird je gezeigtem Issue an
+//   Hook CommentAssist gebunden (Vorschläge, Textbausteine, Entwurf des Felds
+//   "preview"); beim Wechsel des Issues bleibt der Entwurf gespeichert und das
+//   Feld wird leer. Kommt das Senden zurück, wenn schon ein anderes Issue
+//   gezeigt wird, löscht Hook CommentSent den Entwurf des gesendeten.
+// - Zuletzt geöffnet (#1270): jedes gezeigte Issue kommt in
+//   TAtlasRecentIssues (<Zwischenspeicher>\recent.json); die Befehlspalette
+//   zeigt sie bei leerem "#".
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse,
 //   Kennung, Titel oder Token.
 // - Kurzabfrage für den Hover über Kennungen im Editor (#1265): Peek liest nur
@@ -58,7 +66,9 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Checklist,
+  Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.IssueCache,
+  Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.UI.Tracker.EndDialog;
@@ -74,6 +84,10 @@ type
   /// <summary>Kommentar zu AKey schreiben (#1266); ADone im Hauptthread, genau einmal.</summary>
   TAtlasIssuePreviewCommentHook = reference to procedure(const ATarget: TAtlasTrackerTarget;
     const AKey, AText: string; const ADone: TAtlasTrackerSendDone);
+  /// <summary>Kommentar-Editor für das Kommentarfeld zu AKey (#1278); nil mit issues.commentEditor aus.</summary>
+  TAtlasIssuePreviewAssistHook = reference to function(const ATarget: TAtlasTrackerTarget;
+    const AKey: string): IAtlasCommentAssist;
+  TAtlasIssuePreviewSentHook = reference to procedure(const ATarget: TAtlasTrackerTarget; const AKey: string);
 
   TAtlasIssuePreviewHooks = record
     Provider: TAtlasIssuePreviewProviderHook;
@@ -92,6 +106,10 @@ type
     /// <summary>„Beenden …“ für das aktuelle Issue (#1266).</summary>
     EndIssue: TProc<string>;
     Comment: TAtlasIssuePreviewCommentHook;
+    CommentAssist: TAtlasIssuePreviewAssistHook;
+    /// <summary>Kommentar zu AKey gesendet, das Feld zeigt schon ein anderes Issue: dessen Entwurf löschen.
+    /// </summary>
+    CommentSent: TAtlasIssuePreviewSentHook;
   end;
 
   /// <summary>Ende einer Kurzabfrage (#1265); im Hauptthread.</summary>
@@ -155,6 +173,11 @@ type
     FPrefetching: Boolean;
     // Meldung nach Anlegen bzw. Verknüpfen, gezeigt mit dem frisch geladenen Stand (#1279).
     FNotice: string;
+    FRecent: TAtlasRecentIssues;
+    FRecentFile: string;
+    /// <summary>Tracker und Kennung, an die das Kommentarfeld gebunden ist; '' = ungebunden.</summary>
+    FBoundKey: string;
+    FBoundActive: Boolean;
     function Frame: TAtlasIssueFrame;
     procedure PrepareFrame(AFrame: TAtlasIssueFrame; const AEntry: TAtlasIssueHistoryEntry);
     function ReadOnlyKey(const AEntry: TAtlasIssueHistoryEntry): string;
@@ -165,6 +188,10 @@ type
       AError: TAtlasCiFetchError; const AText: string);
     procedure Prefetched(const AEntry: TAtlasIssueHistoryEntry; ASucceeded: Boolean;
       const ADetails: TAtlasTrackerDetails);
+    /// <summary>Kommentarfeld an das gezeigte Issue binden (#1278).</summary>
+    procedure BindComment(AFrame: TAtlasIssueFrame; AWrite: Boolean);
+    /// <summary>AIssue zuerst unter „zuletzt geöffnet“ und speichern.</summary>
+    procedure Remember(const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue);
     procedure Wire(AFrame: TAtlasIssueFrame);
     function ProviderOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
     procedure Load(const AEntry: TAtlasIssueHistoryEntry);
@@ -237,6 +264,8 @@ type
     procedure ShowLink(const ATarget: TAtlasTrackerTarget; const ALink: TAtlasTrackerLink);
     /// <summary>issues.preview an?</summary>
     class function Active: Boolean; static;
+    /// <summary>Zuletzt gezeigte Issues des Trackers ATarget, neueste zuerst (#1270).</summary>
+    function RecentIssues(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>;
   end;
 
 implementation
@@ -255,9 +284,11 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Diagnostics.Shutdown,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.IssueTip,
+  Atlas.UI.Tracker.CommentEditor,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.UI.Tracker.LinkDialogs,
@@ -277,6 +308,9 @@ begin
   FReadOnly := TStringList.Create;
   FReadOnly.Sorted := True;
   FReadOnly.Duplicates := dupIgnore;
+  FRecent := TAtlasRecentIssues.Create;
+  if ACacheFolder <> '' then
+    FRecentFile := TPath.Combine(ACacheFolder, 'recent.json');
 end;
 
 destructor TAtlasIdeIssuePreview.Destroy;
@@ -286,6 +320,7 @@ begin
   FWorkers.Free;
   FLookups.Free;
   FMissing.Free;
+  FRecent.Free;
   FCache.Free;
   FHistory.Free;
   inherited;
@@ -320,6 +355,28 @@ begin
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
   TAtlasIdeIssueWindow.Prepare;
   FCache.Prune(NowUtc);
+  // Fehlt, unbrauchbar oder gesperrt: leer anfangen (TAtlasDataFile protokolliert).
+  if FRecentFile <> '' then
+    FRecent.LoadFromFile(FRecentFile);
+end;
+
+procedure TAtlasIdeIssuePreview.Remember(const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue);
+begin
+  FRecent.Add(ATarget, AIssue);
+  if FRecentFile = '' then
+    Exit;
+  try
+    FRecent.SaveToFile(FRecentFile);
+  except
+    // Die Liste bleibt im Speicher; der Grund steht einmal im Protokoll.
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten(FRecent.Kind, E);
+  end;
+end;
+
+function TAtlasIdeIssuePreview.RecentIssues(const ATarget: TAtlasTrackerTarget): TArray<TAtlasTrackerIssue>;
+begin
+  Result := FRecent.Items(ATarget);
 end;
 
 procedure TAtlasIdeIssuePreview.Stop;
@@ -388,6 +445,9 @@ var
 begin
   mKeep := Self;
   mOwner := Self;
+  // Neues Fenster: das Kommentarfeld ist noch nicht gebunden.
+  FBoundKey := '';
+  FBoundActive := False;
   AFrame.ApplyColors(TAtlasIdeStyle.Colors);
   mMono := TFont.Create;
   try
@@ -641,6 +701,38 @@ begin
   mWrite := FStarted and FHasCurrent and Assigned(FHooks.CanWrite) and FHooks.CanWrite(FCurrent.Target);
   mFrame.CanWrite := mWrite;
   mFrame.CanEnd := mWrite and Assigned(FHooks.IsActive) and FHooks.IsActive(FCurrent.Key);
+  BindComment(mFrame, mWrite);
+end;
+
+procedure TAtlasIdeIssuePreview.BindComment(AFrame: TAtlasIssueFrame; AWrite: Boolean);
+var
+  mKey: string;
+  mActive: Boolean;
+  mAssist: IAtlasCommentAssist;
+  mEditor: TAtlasCommentEditor;
+begin
+  mKey := '';
+  if AWrite then
+    mKey := TAtlasCommentDrafts.TrackerKey(FCurrent.Target) + '|' + FCurrent.Key;
+  mActive := TAtlasIdeSettings.Current.IssuesCommentEditor;
+  // Dasselbe Issue mit derselben Einstellung: die Bindung (und der getippte Text) bleibt.
+  if SameText(mKey, FBoundKey) and (mActive = FBoundActive) then
+    Exit;
+  mEditor := AFrame.CommentEditor;
+  // Der Entwurf des bisherigen Issues bleibt gespeichert; das Feld beginnt leer. Ohne Bindung (Editor aus)
+  // bleibt der Text wie bisher stehen.
+  if mEditor.Assist <> nil then
+  begin
+    mEditor.Unbind;
+    mEditor.SetText('');
+  end;
+  FBoundKey := mKey;
+  FBoundActive := mActive;
+  mAssist := nil;
+  if (mKey <> '') and mActive and Assigned(FHooks.CommentAssist) then
+    mAssist := FHooks.CommentAssist(FCurrent.Target, FCurrent.Key);
+  mEditor.Enhanced := mAssist <> nil;
+  mEditor.Bind(mAssist);
 end;
 
 procedure TAtlasIdeIssuePreview.SendComment(const AText: string);
@@ -649,6 +741,7 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssuePreview;
   mKey: string;
+  mTarget: TAtlasTrackerTarget;
 begin
   mFrame := Frame;
   if (mFrame = nil) or not FStarted or not FHasCurrent or not Assigned(FHooks.Comment) then
@@ -656,6 +749,7 @@ begin
   mKeep := Self;
   mOwner := Self;
   mKey := FCurrent.Key;
+  mTarget := FCurrent.Target;
   mFrame.SetCommentSending(True);
   FHooks.Comment(FCurrent.Target, mKey, AText,
     procedure(const AResult: TAtlasTrackerWriteResult)
@@ -665,8 +759,19 @@ begin
       if (mKeep = nil) or not mOwner.FStarted then
         Exit;
       mDone := mOwner.Frame;
-      if mDone <> nil then
-        mDone.CommentDone(TAtlasTrackerEndDialog.ErrorText(mKey, AResult));
+      // Zeigt das Feld inzwischen ein anderes Issue, gehört sein Text nicht zum gesendeten Kommentar.
+      if mOwner.FHasCurrent and SameText(mOwner.FCurrent.Key, mKey) then
+      begin
+        if mDone <> nil then
+          mDone.CommentDone(TAtlasTrackerEndDialog.ErrorText(mKey, AResult));
+      end
+      else
+      begin
+        if mDone <> nil then
+          mDone.SetCommentSending(False);
+        if AResult.Succeeded and Assigned(mOwner.FHooks.CommentSent) then
+          mOwner.FHooks.CommentSent(mTarget, mKey);
+      end;
       // Den neuen Kommentar zeigen: dasselbe Issue neu laden.
       if AResult.Succeeded and mOwner.FHasCurrent and SameText(mOwner.FCurrent.Key, mKey) then
         mOwner.Refresh;
@@ -729,7 +834,10 @@ begin
   begin
     PrepareFrame(mFrame, AEntry);
     if FCache.Get(AEntry.Target, AEntry.Key, NowUtc, mDetails) then
+    begin
       ShowOn(mFrame, mDetails, StaleText(mDetails, ''));
+      Remember(AEntry.Target, mDetails.Issue);
+    end;
     mFrame.SetLoading(True);
   end;
   mProvider := ProviderOf(AEntry.Target);
@@ -816,6 +924,7 @@ begin
     mDetails := ADetails;
     mDetails.Fetched := NowUtc;
     FCache.Put(AEntry.Target, mDetails);
+    Remember(AEntry.Target, mDetails.Issue);
     if mFrame <> nil then
     begin
       mFrame.SetLoading(False);

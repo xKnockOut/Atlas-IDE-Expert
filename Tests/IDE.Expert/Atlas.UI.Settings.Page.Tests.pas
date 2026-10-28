@@ -158,6 +158,10 @@ type
     /// Vorschläge; eine andere Adresse behält die Werte der Verbindung.</summary>
     [Test]
     procedure TrackerWorkflowSettings;
+    /// <summary>#1278: Kommentar-Editor und Tabelle der Textbausteine auf der Seite Issue-Tracker; Hinzufügen,
+    /// Bearbeiten, Entfernen, Vorgaben, Laden und Speichern.</summary>
+    [Test]
+    procedure CommentEditorSettings;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
     [Test]
@@ -265,6 +269,7 @@ uses
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.ToolCheck,
   Atlas.Core.Tracker.Workflow,
+  Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Vcl.Graphics,
@@ -1996,6 +2001,7 @@ begin
     Assert.IsTrue(SheetOf(Page.IssuesSprintCompare) = Tracker);
     // Sprint-Kachel (#1277): der Bereich auf der Willkommensseite, neben „Meine Issues“.
     Assert.IsTrue(SheetOf(Page.WelcomeSprint) = SheetOf(Page.WelcomeIssues));
+    Assert.IsTrue(SheetOf(Page.IssuesPaletteSearch) = Tracker, 'Palettensuche (#1270)');
     // Die Willkommensseite behält nur den Schalter, daneben der Weg zur Seite.
     Assert.IsFalse(SheetOf(Page.WelcomeIssues) = Tracker);
     Assert.IsTrue(SheetOf(Page.WelcomeIssuesLink) = SheetOf(Page.WelcomeIssues));
@@ -2930,6 +2936,65 @@ begin
   mField := '';
 end;
 
+procedure TAtlasSettingsPageTests.CommentEditorSettings;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mRead: TArray<TAtlasCommentSnippet>;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    Assert.IsTrue(SheetOf(mPage.IssuesCommentEditor) = SheetOf(mPage.IssuesTracker));
+    Assert.IsTrue(SheetOf(mPage.IssuesSnippets) = SheetOf(mPage.IssuesTracker));
+    mSettings := TAtlasPluginSettings.Defaults;
+    mPage.LoadFrom(mSettings);
+    Assert.IsTrue(mPage.IssuesCommentEditor.Checked);
+    Assert.AreEqual(2, mPage.IssuesSnippets.Items.Count, 'zwei Vorgaben');
+    Assert.AreEqual('Bitte mit aktuellem Build prüfen', mPage.IssuesSnippets.Items[0].Caption);
+    Assert.AreEqual('Bitte mit aktuellem Build prüfen', mPage.IssuesSnippetName.Text, 'erste Zeile gewählt');
+    // Hinzufügen, Name und mehrzeiligen Text eingeben.
+    mPage.IssuesSnippetAdd.Click;
+    Assert.AreEqual(3, mPage.IssuesSnippets.Items.Count);
+    Assert.AreEqual('Neuer Textbaustein', mPage.IssuesSnippetName.Text);
+    mPage.IssuesSnippetName.Text := 'Version';
+    mPage.IssuesSnippetText.Text := 'In {version}'#13#10'bitte prüfen';
+    Assert.AreEqual('Version', mPage.IssuesSnippets.Items[2].Caption);
+    Assert.AreEqual('In {version} ⏎ bitte prüfen', mPage.IssuesSnippets.Items[2].SubItems[0]);
+    // Den ersten entfernen.
+    mPage.IssuesSnippets.Items[0].Selected := True;
+    mPage.IssuesSnippetRemove.Click;
+    Assert.AreEqual(2, mPage.IssuesSnippets.Items.Count);
+    mPage.IssuesCommentEditor.Checked := False;
+    mSaved := mSettings;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.IssuesCommentEditor);
+    Assert.IsTrue(TAtlasCommentSnippets.Parse(mSaved.IssuesCommentSnippets, mRead));
+    Assert.AreEqual(2, Integer(Length(mRead)));
+    Assert.AreEqual('Behoben in {commit}', mRead[0].Name);
+    Assert.AreEqual('In {version}'#10'bitte prüfen', mRead[1].Text, 'Zeilen mit #10');
+    // Vorgaben stellen die Liste wieder her; geladen wird, was gespeichert war.
+    mPage.IssuesSnippetDefaults.Click;
+    Assert.AreEqual(2, mPage.IssuesSnippets.Items.Count);
+    Assert.AreEqual('Bitte mit aktuellem Build prüfen', mPage.IssuesSnippets.Items[0].Caption);
+    mPage.LoadFrom(mSaved);
+    Assert.IsFalse(mPage.IssuesCommentEditor.Checked);
+    Assert.AreEqual('Version', mPage.IssuesSnippets.Items[1].Caption);
+    // Leere Liste bleibt leer: Felder gesperrt.
+    mSaved.IssuesCommentSnippets := '[]';
+    mPage.LoadFrom(mSaved);
+    Assert.AreEqual(0, mPage.IssuesSnippets.Items.Count);
+    Assert.IsFalse(mPage.IssuesSnippetName.Enabled);
+    Assert.IsFalse(mPage.IssuesSnippetRemove.Enabled);
+  finally
+    mHost.Free;
+  end;
+  mRead := nil;
+end;
+
 procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;
 var
   Page: TAtlasSettingsPage;
@@ -3001,6 +3066,7 @@ begin
     Assert.IsTrue(Page.IssuesSprintBurndown.Checked);
     Assert.IsTrue(Page.IssuesSprintCompare.Checked);
     Assert.IsTrue(Page.WelcomeSprint.Checked);
+    Assert.IsTrue(Page.IssuesPaletteSearch.Checked);
     // #764: Schnellaktionen an, alle sechs Knöpfe, wt.exe, Strg+B und Strg+T.
     Assert.IsTrue(Page.WelcomeQuickActions.Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Build).Checked);
@@ -3074,6 +3140,7 @@ begin
     Page.IssuesSprintBurndown.Checked := False;
     Page.IssuesSprintCompare.Checked := False;
     Page.WelcomeSprint.Checked := False;
+    Page.IssuesPaletteSearch.Checked := False;
     Page.WelcomeQuickActions.Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Run).Checked := False;
@@ -3156,6 +3223,7 @@ begin
     Assert.IsFalse(Saved.IssuesSprintBurndown);
     Assert.IsFalse(Saved.IssuesSprintCompare);
     Assert.IsFalse(Saved.WelcomePageSprint);
+    Assert.IsFalse(Saved.IssuesPaletteSearch);
     Assert.IsFalse(Saved.WelcomePageQuickActions);
     Assert.AreEqual('build,tests,pull,folder,tasks', Saved.WelcomePageQuickActionsItems, 'ohne run und console');
     Assert.AreEqual('pwsh.exe', Saved.WelcomePageQuickActionsConsole);
@@ -3201,6 +3269,7 @@ begin
     Assert.IsFalse(Page.IssuesSprintBurndown.Checked);
     Assert.IsFalse(Page.IssuesSprintCompare.Checked);
     Assert.IsFalse(Page.WelcomeSprint.Checked);
+    Assert.IsFalse(Page.IssuesPaletteSearch.Checked);
     Assert.IsFalse(Page.WelcomeQuickActions.Checked);
     Assert.IsFalse(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Pull).Checked);

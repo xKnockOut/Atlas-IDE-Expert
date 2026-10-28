@@ -3796,6 +3796,15 @@ begin
     Setup.RegisterCommands(Palette);
   if KeyMap <> nil then
     KeyMap.RegisterCommands(Palette);
+  // Issues in der Palette (#1270): die Quelle aus „Meine Issues“, erst beim Öffnen gefragt (Willkommensseite
+  // entsteht ggf. später, Stop löst sie).
+  Palette.SourceOf :=
+    function: IAtlasPaletteSource
+    begin
+      Result := nil;
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Result := Welcome.Issues.PaletteSearch;
+    end;
 end;
 
 procedure StartNotes;

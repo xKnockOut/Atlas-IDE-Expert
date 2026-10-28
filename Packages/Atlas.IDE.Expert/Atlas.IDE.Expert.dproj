@@ -457,6 +457,8 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Board.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Sprint.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.LinkDialogs.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.PaletteSearch.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CommentEditor.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas">
             <Form>AtlasIssueFrame</Form>
             <FormType>dfm</FormType>
@@ -472,6 +474,7 @@
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.MoveDialog.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.CommentEditor.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWindow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuePreview.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.CodeLinks.pas"/>
@@ -480,6 +483,8 @@
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.TimeTracking.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.BoardWindow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Board.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.PaletteSearch.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.CommentAssist.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.TeamFile.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas"/>
