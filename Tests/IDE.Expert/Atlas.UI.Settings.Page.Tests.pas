@@ -128,6 +128,10 @@ type
     /// Vorschläge; eine andere Adresse behält die Werte der Verbindung.</summary>
     [Test]
     procedure TrackerWorkflowSettings;
+    /// <summary>#1278: Kommentar-Editor und Tabelle der Textbausteine auf der Seite Issue-Tracker; Hinzufügen,
+    /// Bearbeiten, Entfernen, Vorgaben, Laden und Speichern.</summary>
+    [Test]
+    procedure CommentEditorSettings;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
     [Test]
@@ -229,6 +233,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Workflow,
+  Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Vcl.Graphics,
@@ -2170,6 +2175,65 @@ begin
   end;
   mAsked := '';
   mField := '';
+end;
+
+procedure TAtlasSettingsPageTests.CommentEditorSettings;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mRead: TArray<TAtlasCommentSnippet>;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    Assert.IsTrue(SheetOf(mPage.IssuesCommentEditor) = SheetOf(mPage.IssuesTracker));
+    Assert.IsTrue(SheetOf(mPage.IssuesSnippets) = SheetOf(mPage.IssuesTracker));
+    mSettings := TAtlasPluginSettings.Defaults;
+    mPage.LoadFrom(mSettings);
+    Assert.IsTrue(mPage.IssuesCommentEditor.Checked);
+    Assert.AreEqual(2, mPage.IssuesSnippets.Items.Count, 'zwei Vorgaben');
+    Assert.AreEqual('Bitte mit aktuellem Build prüfen', mPage.IssuesSnippets.Items[0].Caption);
+    Assert.AreEqual('Bitte mit aktuellem Build prüfen', mPage.IssuesSnippetName.Text, 'erste Zeile gewählt');
+    // Hinzufügen, Name und mehrzeiligen Text eingeben.
+    mPage.IssuesSnippetAdd.Click;
+    Assert.AreEqual(3, mPage.IssuesSnippets.Items.Count);
+    Assert.AreEqual('Neuer Textbaustein', mPage.IssuesSnippetName.Text);
+    mPage.IssuesSnippetName.Text := 'Version';
+    mPage.IssuesSnippetText.Text := 'In {version}'#13#10'bitte prüfen';
+    Assert.AreEqual('Version', mPage.IssuesSnippets.Items[2].Caption);
+    Assert.AreEqual('In {version} ⏎ bitte prüfen', mPage.IssuesSnippets.Items[2].SubItems[0]);
+    // Den ersten entfernen.
+    mPage.IssuesSnippets.Items[0].Selected := True;
+    mPage.IssuesSnippetRemove.Click;
+    Assert.AreEqual(2, mPage.IssuesSnippets.Items.Count);
+    mPage.IssuesCommentEditor.Checked := False;
+    mSaved := mSettings;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.IssuesCommentEditor);
+    Assert.IsTrue(TAtlasCommentSnippets.Parse(mSaved.IssuesCommentSnippets, mRead));
+    Assert.AreEqual(2, Integer(Length(mRead)));
+    Assert.AreEqual('Behoben in {commit}', mRead[0].Name);
+    Assert.AreEqual('In {version}'#10'bitte prüfen', mRead[1].Text, 'Zeilen mit #10');
+    // Vorgaben stellen die Liste wieder her; geladen wird, was gespeichert war.
+    mPage.IssuesSnippetDefaults.Click;
+    Assert.AreEqual(2, mPage.IssuesSnippets.Items.Count);
+    Assert.AreEqual('Bitte mit aktuellem Build prüfen', mPage.IssuesSnippets.Items[0].Caption);
+    mPage.LoadFrom(mSaved);
+    Assert.IsFalse(mPage.IssuesCommentEditor.Checked);
+    Assert.AreEqual('Version', mPage.IssuesSnippets.Items[1].Caption);
+    // Leere Liste bleibt leer: Felder gesperrt.
+    mSaved.IssuesCommentSnippets := '[]';
+    mPage.LoadFrom(mSaved);
+    Assert.AreEqual(0, mPage.IssuesSnippets.Items.Count);
+    Assert.IsFalse(mPage.IssuesSnippetName.Enabled);
+    Assert.IsFalse(mPage.IssuesSnippetRemove.Enabled);
+  finally
+    mHost.Free;
+  end;
+  mRead := nil;
 end;
 
 procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;

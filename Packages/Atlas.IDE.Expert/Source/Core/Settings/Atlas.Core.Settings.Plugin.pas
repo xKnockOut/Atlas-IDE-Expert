@@ -150,6 +150,9 @@ type
     DefaultIssuesStateField = 'State';
     DefaultIssuesAssigneeField = 'Assignee';
     DefaultIssuesEndComment = 'Erledigt in {branch}.\n{commits}';
+    /// <summary>Vorgabe von issues.commentSnippets (#1278), wie TAtlasCommentSnippets.Defaults.</summary>
+    DefaultIssuesCommentSnippets = '[{"name":"Bitte mit aktuellem Build prüfen","text":"Bitte mit dem aktuellen Build ' +
+      'prüfen."},{"name":"Behoben in {commit}","text":"Behoben in {commit}."}]';
     /// <summary>Höchstlänge der Kommentarvorlagen und der Liste der Zielzustände (#1266).</summary>
     MaxIssuesTemplate = 2000;
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
@@ -1309,6 +1312,11 @@ type
     /// <summary>Issues in der Befehlspalette suchen (#1270, issues.paletteSearch): „#“ bzw. Projektkürzel mit „-“
     /// sucht im Tracker; aus = nur Befehle, ohne Netzzugriff.</summary>
     IssuesPaletteSearch: Boolean;
+    /// <summary>Kommentar-Editor (#1278, issues.commentEditor): Vorschläge für @ und #, Textbausteine, Vorschau und
+    /// Entwürfe; aus = einfaches Textfeld, Strg+Enter sendet.</summary>
+    IssuesCommentEditor: Boolean;
+    /// <summary>Textbausteine für Kommentare (#1278, issues.commentSnippets) als JSON-Liste [{"name", "text"}].</summary>
+    IssuesCommentSnippets: string;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2050,6 +2058,8 @@ begin
   Result.IssuesEndStates := '';
   Result.IssuesEndComment := DefaultIssuesEndComment;
   Result.IssuesPaletteSearch := True;
+  Result.IssuesCommentEditor := True;
+  Result.IssuesCommentSnippets := DefaultIssuesCommentSnippets;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2138,6 +2148,10 @@ begin
   IssuesStartComment := NormalizedIssuesTemplate(IssuesStartComment);
   IssuesEndStates := NormalizedIssuesTemplate(IssuesEndStates);
   IssuesEndComment := NormalizedIssuesTemplate(IssuesEndComment);
+  // Leer heißt: keine Textbausteine (die Vorgaben kommen nur, wenn der Wert fehlt).
+  IssuesCommentSnippets := Trim(IssuesCommentSnippets);
+  if IssuesCommentSnippets = '' then
+    IssuesCommentSnippets := '[]';
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2857,6 +2871,8 @@ begin
   IssuesEndStates := AStore.ReadString('IssuesEndStates', Default.IssuesEndStates);
   IssuesEndComment := AStore.ReadString('IssuesEndComment', Default.IssuesEndComment);
   IssuesPaletteSearch := AStore.ReadInteger('IssuesPaletteSearch', BoolValue(Default.IssuesPaletteSearch)) <> 0;
+  IssuesCommentEditor := AStore.ReadInteger('IssuesCommentEditor', BoolValue(Default.IssuesCommentEditor)) <> 0;
+  IssuesCommentSnippets := AStore.ReadString('IssuesCommentSnippets', Default.IssuesCommentSnippets);
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3333,6 +3349,8 @@ begin
   AStore.WriteString('IssuesEndStates', IssuesEndStates);
   AStore.WriteString('IssuesEndComment', IssuesEndComment);
   AStore.WriteInteger('IssuesPaletteSearch', BoolValue(IssuesPaletteSearch));
+  AStore.WriteInteger('IssuesCommentEditor', BoolValue(IssuesCommentEditor));
+  AStore.WriteString('IssuesCommentSnippets', IssuesCommentSnippets);
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

@@ -31,6 +31,9 @@
 // - Palettensuche (#1270): GET <url>/api/issues?query=project: <Kürzel>
 //   <Text>&fields=…&$top=<Max> (Felder wie die Liste, dazu Zuständig); eine
 //   Kennung liest Lookup direkt über /api/issues/<Kennung>?fields=….
+// - Benutzer für @-Erwähnungen (#1278, IAtlasTrackerPeople): GET
+//   <url>/api/users?query=<Text>&fields=login,fullName,banned&$top=<Max>;
+//   gesperrte Benutzer entfallen, passende Anmeldenamen kommen zuerst.
 
 interface
 
@@ -40,7 +43,7 @@ uses
   Atlas.Core.Tracker.Contract;
 
 type
-  TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter)
+  TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter, IAtlasTrackerPeople)
   public const
     ProviderName = 'youtrack';
     Query = 'for: me #Unresolved';
@@ -92,6 +95,11 @@ type
       out AValues: TArray<string>): Boolean; static;
     /// <summary>Anmeldenamen aus /api/users; False bei ungültigem JSON.</summary>
     class function ParseUsers(const AJson: string; out AValues: TArray<string>): Boolean; static;
+    /// <summary>Suche nach Benutzern für Erwähnungen (#1278); '' ohne Server.</summary>
+    class function UsersUrl(const ATarget: TAtlasTrackerTarget; const AText: string; AMax: Integer): string; static;
+    /// <summary>Antwort von /api/users mit login und fullName, ohne gesperrte (#1278); False bei ungültigem JSON.
+    /// </summary>
+    class function ParseUserList(const AJson: string; out AUsers: TArray<TAtlasTrackerUser>): Boolean; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -115,6 +123,9 @@ type
       ATimeoutMs, AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
     function Lookup(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       ATimeoutMs: Integer; out AIssue: TAtlasTrackerIssue; out AError: TAtlasCiFetchError): Boolean;
+    { IAtlasTrackerPeople }
+    function Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
+      ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -124,6 +135,7 @@ uses
   System.DateUtils,
   System.Generics.Collections,
   System.JSON,
+  System.Math,
   System.StrUtils,
   Atlas.Text.Uris;
 
@@ -842,6 +854,46 @@ begin
   end;
 end;
 
+class function TAtlasYouTrackTracker.UsersUrl(const ATarget: TAtlasTrackerTarget; const AText: string;
+  AMax: Integer): string;
+var
+  mLimit: Integer;
+begin
+  Result := '';
+  if ATarget.Server = '' then
+    Exit;
+  // Etwas mehr als gezeigt: Gesperrte fallen heraus.
+  mLimit := EnsureRange(AMax * 2, 1, MaxValues);
+  Result := ATarget.Url + '/api/users?query=' + TTextUris.PercentEncode(Trim(AText)) + '&fields=' +
+    TTextUris.PercentEncode('login,fullName,banned') + '&$top=' + IntToStr(mLimit);
+end;
+
+class function TAtlasYouTrackTracker.ParseUserList(const AJson: string;
+  out AUsers: TArray<TAtlasTrackerUser>): Boolean;
+var
+  mValue, mItem: TJSONValue;
+  mLogin: string;
+begin
+  AUsers := nil;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    Result := True;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONObject) or BoolOf(TJSONObject(mItem), 'banned') then
+        Continue;
+      mLogin := Trim(TextOf(TJSONObject(mItem), 'login'));
+      if mLogin <> '' then
+        AUsers := AUsers + [TAtlasTrackerUser.Create(mLogin, Shorten(TextOf(TJSONObject(mItem), 'fullName'), 80))];
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
 function TAtlasYouTrackTracker.Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
   const AKey: string; const AChange: TAtlasTrackerChange; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
 var
@@ -967,6 +1019,40 @@ begin
   end;
   if not Result then
     AError := TAtlasCiFetchError.Invalid;
+end;
+
+function TAtlasYouTrackTracker.Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AText: string; ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mUrl, mText: string;
+  mStatus: Integer;
+  mUsers: TArray<TAtlasTrackerUser>;
+begin
+  AUsers := nil;
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mUrl := UsersUrl(ATarget, AText, AMax);
+  if (mUrl = '') or (ATransport = nil) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParseUserList(mText, mUsers) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  // YouTrack sucht auch in der E-Mail-Adresse: Treffer ohne Text im Namen bleiben, nur weiter hinten.
+  AUsers := TAtlasTrackerUser.Ranked(mUsers, AText, AMax);
+  Result := True;
 end;
 
 end.

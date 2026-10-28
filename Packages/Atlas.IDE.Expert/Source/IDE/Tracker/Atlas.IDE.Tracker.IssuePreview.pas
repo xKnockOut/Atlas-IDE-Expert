@@ -22,6 +22,11 @@
 //   schreiben kann (Hook CanWrite), gibt es unten „Kommentar schreiben …“
 //   (Strg+Enter sendet, danach wird das Issue neu geladen) und für das
 //   aktuelle Issue (Hook IsActive) den Knopf „Beenden …“ (Hook EndIssue).
+// - Kommentar-Editor (#1278): Das Kommentarfeld wird je gezeigtem Issue an
+//   Hook CommentAssist gebunden (Vorschläge, Textbausteine, Entwurf des Felds
+//   "preview"); beim Wechsel des Issues bleibt der Entwurf gespeichert und das
+//   Feld wird leer. Kommt das Senden zurück, wenn schon ein anderes Issue
+//   gezeigt wird, löscht Hook CommentSent den Entwurf des gesendeten.
 // - Zuletzt geöffnet (#1270): jedes gezeigte Issue kommt in
 //   TAtlasRecentIssues (<Zwischenspeicher>\recent.json); die Befehlspalette
 //   zeigt sie bei leerem "#".
@@ -37,6 +42,7 @@ uses
   System.Classes,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Preview,
@@ -54,6 +60,10 @@ type
   /// <summary>Kommentar zu AKey schreiben (#1266); ADone im Hauptthread, genau einmal.</summary>
   TAtlasIssuePreviewCommentHook = reference to procedure(const ATarget: TAtlasTrackerTarget;
     const AKey, AText: string; const ADone: TAtlasTrackerSendDone);
+  /// <summary>Kommentar-Editor für das Kommentarfeld zu AKey (#1278); nil mit issues.commentEditor aus.</summary>
+  TAtlasIssuePreviewAssistHook = reference to function(const ATarget: TAtlasTrackerTarget;
+    const AKey: string): IAtlasCommentAssist;
+  TAtlasIssuePreviewSentHook = reference to procedure(const ATarget: TAtlasTrackerTarget; const AKey: string);
 
   TAtlasIssuePreviewHooks = record
     Provider: TAtlasIssuePreviewProviderHook;
@@ -72,6 +82,10 @@ type
     /// <summary>„Beenden …“ für das aktuelle Issue (#1266).</summary>
     EndIssue: TProc<string>;
     Comment: TAtlasIssuePreviewCommentHook;
+    CommentAssist: TAtlasIssuePreviewAssistHook;
+    /// <summary>Kommentar zu AKey gesendet, das Feld zeigt schon ein anderes Issue: dessen Entwurf löschen.
+    /// </summary>
+    CommentSent: TAtlasIssuePreviewSentHook;
   end;
 
   TAtlasIdeIssuePreview = class(TInterfacedObject)
@@ -97,7 +111,12 @@ type
     FGeneration: Integer;
     FRecent: TAtlasRecentIssues;
     FRecentFile: string;
+    /// <summary>Tracker und Kennung, an die das Kommentarfeld gebunden ist; '' = ungebunden.</summary>
+    FBoundKey: string;
+    FBoundActive: Boolean;
     function Frame: TAtlasIssueFrame;
+    /// <summary>Kommentarfeld an das gezeigte Issue binden (#1278).</summary>
+    procedure BindComment(AFrame: TAtlasIssueFrame; AWrite: Boolean);
     /// <summary>AIssue zuerst unter „zuletzt geöffnet“ und speichern.</summary>
     procedure Remember(const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue);
     procedure Wire(AFrame: TAtlasIssueFrame);
@@ -160,6 +179,7 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
+  Atlas.UI.Tracker.CommentEditor,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueWindow;
@@ -305,6 +325,9 @@ var
 begin
   mKeep := Self;
   mOwner := Self;
+  // Neues Fenster: das Kommentarfeld ist noch nicht gebunden.
+  FBoundKey := '';
+  FBoundActive := False;
   AFrame.ApplyColors(TAtlasIdeStyle.Colors);
   mMono := TFont.Create;
   try
@@ -552,6 +575,38 @@ begin
   mWrite := FStarted and FHasCurrent and Assigned(FHooks.CanWrite) and FHooks.CanWrite(FCurrent.Target);
   mFrame.CanWrite := mWrite;
   mFrame.CanEnd := mWrite and Assigned(FHooks.IsActive) and FHooks.IsActive(FCurrent.Key);
+  BindComment(mFrame, mWrite);
+end;
+
+procedure TAtlasIdeIssuePreview.BindComment(AFrame: TAtlasIssueFrame; AWrite: Boolean);
+var
+  mKey: string;
+  mActive: Boolean;
+  mAssist: IAtlasCommentAssist;
+  mEditor: TAtlasCommentEditor;
+begin
+  mKey := '';
+  if AWrite then
+    mKey := TAtlasCommentDrafts.TrackerKey(FCurrent.Target) + '|' + FCurrent.Key;
+  mActive := TAtlasIdeSettings.Current.IssuesCommentEditor;
+  // Dasselbe Issue mit derselben Einstellung: die Bindung (und der getippte Text) bleibt.
+  if SameText(mKey, FBoundKey) and (mActive = FBoundActive) then
+    Exit;
+  mEditor := AFrame.CommentEditor;
+  // Der Entwurf des bisherigen Issues bleibt gespeichert; das Feld beginnt leer. Ohne Bindung (Editor aus)
+  // bleibt der Text wie bisher stehen.
+  if mEditor.Assist <> nil then
+  begin
+    mEditor.Unbind;
+    mEditor.SetText('');
+  end;
+  FBoundKey := mKey;
+  FBoundActive := mActive;
+  mAssist := nil;
+  if (mKey <> '') and mActive and Assigned(FHooks.CommentAssist) then
+    mAssist := FHooks.CommentAssist(FCurrent.Target, FCurrent.Key);
+  mEditor.Enhanced := mAssist <> nil;
+  mEditor.Bind(mAssist);
 end;
 
 procedure TAtlasIdeIssuePreview.SendComment(const AText: string);
@@ -560,6 +615,7 @@ var
   mKeep: IInterface;
   mOwner: TAtlasIdeIssuePreview;
   mKey: string;
+  mTarget: TAtlasTrackerTarget;
 begin
   mFrame := Frame;
   if (mFrame = nil) or not FStarted or not FHasCurrent or not Assigned(FHooks.Comment) then
@@ -567,6 +623,7 @@ begin
   mKeep := Self;
   mOwner := Self;
   mKey := FCurrent.Key;
+  mTarget := FCurrent.Target;
   mFrame.SetCommentSending(True);
   FHooks.Comment(FCurrent.Target, mKey, AText,
     procedure(const AResult: TAtlasTrackerWriteResult)
@@ -576,8 +633,19 @@ begin
       if (mKeep = nil) or not mOwner.FStarted then
         Exit;
       mDone := mOwner.Frame;
-      if mDone <> nil then
-        mDone.CommentDone(TAtlasTrackerEndDialog.ErrorText(mKey, AResult));
+      // Zeigt das Feld inzwischen ein anderes Issue, gehört sein Text nicht zum gesendeten Kommentar.
+      if mOwner.FHasCurrent and SameText(mOwner.FCurrent.Key, mKey) then
+      begin
+        if mDone <> nil then
+          mDone.CommentDone(TAtlasTrackerEndDialog.ErrorText(mKey, AResult));
+      end
+      else
+      begin
+        if mDone <> nil then
+          mDone.SetCommentSending(False);
+        if AResult.Succeeded and Assigned(mOwner.FHooks.CommentSent) then
+          mOwner.FHooks.CommentSent(mTarget, mKey);
+      end;
       // Den neuen Kommentar zeigen: dasselbe Issue neu laden.
       if AResult.Succeeded and mOwner.FHasCurrent and SameText(mOwner.FCurrent.Key, mKey) then
         mOwner.Refresh;

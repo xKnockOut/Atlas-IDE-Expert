@@ -150,6 +150,9 @@ type
     /// <summary>Tracker nachführen (#1266): Vorgaben, Normalisieren und Speichern.</summary>
     [Test]
     procedure IssuesSyncOptions;
+    /// <summary>Kommentar-Editor (#1278): Schalter und Textbausteine mit Vorgaben, Normalisieren und Speichern.</summary>
+    [Test]
+    procedure IssuesCommentOptions;
     /// <summary>Release-Build-Wächter (#533): build.releaseGuard, build.gate, build.releaseConfigs und
     /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
@@ -967,6 +970,29 @@ begin
   Assert.AreEqual('Beginne {kennung}\nin {branch}', mLoaded.IssuesStartComment);
   Assert.AreEqual('Zur Prüfung, Erledigt', mLoaded.IssuesEndStates);
   Assert.AreEqual('Fertig: {pr}', mLoaded.IssuesEndComment);
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesCommentOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.IssuesCommentEditor, 'Kommentar-Editor ist vorgegeben an');
+  Assert.AreEqual(DefaultIssuesCommentSnippets, mSettings.IssuesCommentSnippets, 'zwei Vorgabe-Bausteine');
+  // Normalisieren: leer = keine Bausteine, nicht die Vorgabe.
+  mSettings.IssuesCommentSnippets := '   ';
+  mSettings.Normalize;
+  Assert.AreEqual('[]', mSettings.IssuesCommentSnippets);
+  // Speichern und Laden.
+  mSettings.IssuesCommentEditor := False;
+  mSettings.IssuesCommentSnippets := '[{"name":"Danke","text":"Danke!"}]';
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.IssuesCommentEditor);
+  Assert.AreEqual('[{"name":"Danke","text":"Danke!"}]', mLoaded.IssuesCommentSnippets);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

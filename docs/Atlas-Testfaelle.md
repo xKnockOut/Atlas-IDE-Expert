@@ -7898,3 +7898,33 @@ Vorbereitung: wie Issue-Vorschau (IV); Projekt mit YouTrack-Tracker (Kürzel `AT
 | PI16 | `issues.preview` aus, Enter auf einem Issue | Issue öffnet im Browser |
 | PI17 | Plugin entladen, während eine Suche läuft | Keine Zugriffsverletzung; Hintergrund-Threads beendet |
 | PI18 | Helles und dunkles IDE-Design | Überschrift, Statuszeile und Abzeichen gut lesbar |
+
+## Kommentar-Editor (#1278)
+
+Vorbereitung: wie Zustand und Kommentar (ZS); `issues.commentEditor` an (Vorgabe); YouTrack-Projekt `ATL` mit Benutzerin „Anna“ (`anna`) und ein GitHub-Repository mit mindestens zwei Zuständigen; Git-Arbeitskopie mit Commit; Projekt mit Versionsinformationen; Proxy zum Mitzählen der Anfragen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KE1 | Vorschau des aktuellen Issues: im Kommentarfeld `@an` tippen | Nach kurzer Pause Liste mit Benutzern, die „an“ enthalten (Login und Name), Anna oben; im Proxy eine Anfrage `/api/users?query=an…` (**Abnahme**) |
+| KE2 | Enter in der Liste, dann senden | `@anna ` steht an der Stelle des getippten Worts; der Kommentar im Tracker erwähnt Anna (**Abnahme**) |
+| KE3 | `ATL-12` tippen, dann `ATL-Speicher` | Liste mit passenden Issues (Kennung, Titel); Enter setzt die Kennung ein (**Abnahme**) |
+| KE4 | Nur `#` tippen | Die zuletzt in der Vorschau geöffneten Issues, ohne Anfrage im Proxy |
+| KE5 | `mail@example.com` und `C:\pfad#1` tippen | Keine Liste |
+| KE6 | In der Liste Pfeiltasten, Bild auf/ab, Tab; Esc | Auswahl wandert, Tab setzt ein wie Enter; Esc schließt nur die Liste, der Text bleibt |
+| KE7 | Wort markieren, Strg+B, nochmals Strg+B; Strg+I | `**Wort**`, dann wieder `Wort`; Strg+I setzt `_Wort_` |
+| KE8 | Strg+Umschalt+K ohne Auswahl und mit markierten Zeilen | Code-Block mit ```` ```pascal ```` um die Zeilen bzw. leerer Block mit Schreibmarke darin |
+| KE9 | Strg+Leer bzw. Knopf „Textbaustein ▾“, „Behoben in {commit}“ wählen | „Behoben in <Kurz-Hash>“ mit dem aktuellen Commit des Projekts (**Abnahme**) |
+| KE10 | Baustein mit `{version}` und `{issue}` anlegen und einfügen | Version des aktiven Projekts in der aktiven Konfiguration bzw. die Kennung des Issues; ohne Versionsinformationen bleibt `{version}` stehen |
+| KE11 | Knopf „Vorschau“ | Markdown wird wie in der Vorschau des Issues gezeichnet (fett, Code-Block, Listen, Bilder als „Bild: …“); „Bearbeiten“ kehrt zurück, Text unverändert (**Abnahme**) |
+| KE12 | Text tippen, anderes Issue öffnen, zurück zum ersten | Text wieder im Feld, Hinweis „Entwurf vom …“ mit „Verwerfen“ (**Abnahme**) |
+| KE13 | IDE schließen und neu starten, Issue öffnen | Entwurf noch da; `%LOCALAPPDATA%\Atlas\issues\drafts.json` enthält Server, Projekt, Kennung, Feld und Text, kein Token |
+| KE14 | Senden | Kommentar im Tracker, Feld leer, Entwurf aus `drafts.json` gelöscht; Issue erneut öffnen zeigt keinen Entwurf (**Abnahme**) |
+| KE15 | Senden und sofort ein anderes Issue öffnen, bevor die Antwort kommt | Der Entwurf des anderen Issues bleibt; das Feld des anderen Issues wird nicht geleert |
+| KE16 | Beenden-Dialog: Kommentar ändern, Esc; Dialog erneut öffnen | Vorlage aus `issues.endComment` im Feld, Hinweis „Entwurf vom … vorhanden“ mit „Übernehmen“; Übernehmen setzt den geänderten Text ein |
+| KE17 | Beenden-Dialog: `@` und `#` wie KE1/KE3, Strg+Enter | Vorschläge wie in der Vorschau; Strg+Enter sendet den Dialog |
+| KE18 | Optionen › Issue-Tracker › „Textbausteine für Kommentare“: Baustein hinzufügen (mehrzeilig), Namen ändern, entfernen, „Vorgaben“; OK | Liste zeigt Zeilenumbrüche als ⏎; nach OK erscheinen die Bausteine im Menü „Textbaustein ▾“; „Vorgaben“ stellt die zwei Vorgaben her |
+| KE19 | `issues.commentEditor` aus | Schlichtes Feld wie bisher: keine Leiste, keine Liste, kein Entwurf; Strg+Enter sendet weiterhin (**Abnahme**) |
+| KE20 | GitHub-Projekt: `@` plus Buchstaben | Zuständige des Repositorys, gefiltert nach dem getippten Text |
+| KE21 | Token ohne Rechte bzw. Netz getrennt, `@an` | Keine Liste, keine Meldung im Dialog, kein Hängen (höchstens 5 s im Hintergrund) |
+| KE22 | Plugin entladen, während eine Benutzersuche läuft | Keine Zugriffsverletzung, Entwurf gespeichert |
+| KE23 | Helles und dunkles IDE-Design | Leiste, Liste, Vorschau und Hinweis gut lesbar |

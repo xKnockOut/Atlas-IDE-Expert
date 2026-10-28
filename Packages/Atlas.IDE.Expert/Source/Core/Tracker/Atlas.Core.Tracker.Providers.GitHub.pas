@@ -35,6 +35,9 @@
 //   <Text>&per_page=<Max> ohne Sortierung (beste Treffer zuerst), ohne Pull
 //   Requests und Ampeln; eine Kennung ("#42") liest Lookup direkt über
 //   /repos/<owner/repo>/issues/42.
+// - Benutzer für @-Erwähnungen (#1278, IAtlasTrackerPeople): die möglichen
+//   Zuständigen des Repositorys (…/assignees, eine Seite), gefiltert nach
+//   dem getippten Text; GitHub liefert dort keine Anzeigenamen.
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -56,7 +59,7 @@ type
     Sha: string;
   end;
 
-  TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter)
+  TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter, IAtlasTrackerPeople)
   public const
     ProviderName = 'github';
     Query = 'assignee:@me state:open';
@@ -119,6 +122,11 @@ type
       const AMe: string): string; static;
     /// <summary>Werte "name" (Labels) bzw. "login" (Zuständige) einer Liste; False bei ungültigem JSON.</summary>
     class function ParseNames(const AJson, AField: string; out AValues: TArray<string>): Boolean; static;
+    /// <summary>Mögliche Zuständige (…/assignees) als Benutzer ohne Anzeigenamen (#1278); False bei ungültigem
+    /// JSON.</summary>
+    class function ParseUsers(const AJson: string; out AUsers: TArray<TAtlasTrackerUser>): Boolean; static;
+    /// <summary>…/repos/&lt;owner/repo&gt;/assignees (#1266, #1278); '' ohne Server oder Projekt.</summary>
+    class function AssigneesUrl(const ATarget: TAtlasTrackerTarget): string; static;
     /// <summary>Fehlertext ("message") einer Antwort; '' ohne.</summary>
     class function ErrorMessage(const AJson: string): string; static;
     { IAtlasTrackerProvider }
@@ -144,6 +152,9 @@ type
       ATimeoutMs, AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
     function Lookup(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       ATimeoutMs: Integer; out AIssue: TAtlasTrackerIssue; out AError: TAtlasCiFetchError): Boolean;
+    { IAtlasTrackerPeople }
+    function Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
+      ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -1105,6 +1116,27 @@ begin
   end;
 end;
 
+class function TAtlasGitHubTracker.ParseUsers(const AJson: string;
+  out AUsers: TArray<TAtlasTrackerUser>): Boolean;
+var
+  mLogins: TArray<string>;
+  mLogin: string;
+begin
+  AUsers := nil;
+  Result := ParseNames(AJson, 'login', mLogins);
+  for mLogin in mLogins do
+    AUsers := AUsers + [TAtlasTrackerUser.Create(mLogin, '')];
+end;
+
+class function TAtlasGitHubTracker.AssigneesUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := ApiBase(ATarget);
+  if (Result = '') or (ATarget.Project = '') then
+    Exit('');
+  Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/assignees?per_page=' +
+    IntToStr(MaxPageSize);
+end;
+
 class function TAtlasGitHubTracker.ErrorMessage(const AJson: string): string;
 var
   mValue: TJSONValue;
@@ -1202,15 +1234,14 @@ begin
   mUrl := ApiBase(ATarget);
   if (mUrl = '') or (ATarget.Project = '') or (ATransport = nil) then
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
-  mUrl := mUrl + '/repos/' + TTextUris.PercentEncode(ATarget.Project);
   if AKind = TAtlasTrackerValueKind.Users then
   begin
-    mUrl := mUrl + '/assignees?per_page=' + IntToStr(MaxPageSize);
+    mUrl := AssigneesUrl(ATarget);
     mField := 'login';
   end
   else
   begin
-    mUrl := mUrl + '/labels?per_page=' + IntToStr(MaxPageSize);
+    mUrl := mUrl + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/labels?per_page=' + IntToStr(MaxPageSize);
     mField := 'name';
   end;
   if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) then
@@ -1281,6 +1312,40 @@ begin
     Exit;
   end;
   AIssue := mDetails.Issue;
+  Result := True;
+end;
+
+function TAtlasGitHubTracker.Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AText: string; ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mUrl, mText: string;
+  mStatus: Integer;
+  mUsers: TArray<TAtlasTrackerUser>;
+begin
+  AUsers := nil;
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mUrl := AssigneesUrl(ATarget);
+  if (mUrl = '') or (ATransport = nil) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParseUsers(mText, mUsers) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  // GitHub filtert …/assignees nicht: der getippte Text entscheidet hier.
+  AUsers := TAtlasTrackerUser.Filter(mUsers, AText, AMax);
   Result := True;
 end;
 

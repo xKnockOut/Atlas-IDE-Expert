@@ -64,6 +64,7 @@ uses
   Atlas.Core.Settings.Reassigned,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Workflow,
+  Atlas.Core.Tracker.CommentEditor,
   Atlas.UI.Tracker.ValueBox,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
@@ -658,6 +659,19 @@ type
     FIssuesLoadValues: TButton;
     FIssuesValuesNote: TLabel;
     FIssuesPaletteSearch: TCheckBox;
+    FIssuesCommentEditor: TCheckBox;
+    /// <summary>Textbausteine für Kommentare (#1278): Tabelle Name/Text, darunter die gewählte Zeile.</summary>
+    FIssuesSnippets: TListView;
+    FIssuesSnippetName: TEdit;
+    FIssuesSnippetText: TMemo;
+    FIssuesSnippetAdd: TButton;
+    FIssuesSnippetRemove: TButton;
+    FIssuesSnippetDefaults: TButton;
+    FCommentSnippets: TArray<TAtlasCommentSnippet>;
+    /// <summary>Gewählter Textbaustein; -1 = keiner.</summary>
+    FSnippetSelected: Integer;
+    /// <summary>Die Seite füllt die Felder selbst: OnChange übernimmt nichts.</summary>
+    FSnippetFilling: Boolean;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -930,6 +944,15 @@ type
     procedure AddIssuesSection;
     /// <summary>Abschnitt „Zustand im Tracker“ (#1266) der Seite Issue-Tracker.</summary>
     procedure AddIssuesWorkflowSection;
+    procedure AddIssuesSnippetsSection;
+    procedure RefreshSnippets;
+    procedure SnippetFillFields;
+    procedure SnippetSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+    procedure SnippetNameChange(Sender: TObject);
+    procedure SnippetTextChange(Sender: TObject);
+    procedure SnippetAddClick(Sender: TObject);
+    procedure SnippetRemoveClick(Sender: TObject);
+    procedure SnippetDefaultsClick(Sender: TObject);
     procedure AddUpdatesSection;
     procedure AddBugReportSection;
     procedure IndexRefreshClick(Sender: TObject);
@@ -1201,6 +1224,14 @@ type
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
+    /// <summary>Zum Testen: Kommentar-Editor und Textbausteine (#1278).</summary>
+    property IssuesCommentEditor: TCheckBox read FIssuesCommentEditor;
+    property IssuesSnippets: TListView read FIssuesSnippets;
+    property IssuesSnippetName: TEdit read FIssuesSnippetName;
+    property IssuesSnippetText: TMemo read FIssuesSnippetText;
+    property IssuesSnippetAdd: TButton read FIssuesSnippetAdd;
+    property IssuesSnippetRemove: TButton read FIssuesSnippetRemove;
+    property IssuesSnippetDefaults: TButton read FIssuesSnippetDefaults;
     property IssuesConnectionName: TEdit read FIssuesConnectionName;
     property IssuesConnectionProvider: TAtlasChoiceBox read FIssuesConnectionProvider;
     property IssuesConnectionUrl: TEdit read FIssuesConnectionUrl;
@@ -2742,7 +2773,211 @@ begin
   FIssuesPreviewComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewComments));
   // Issues in der Befehlspalette (#1270).
   FIssuesPaletteSearch := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPaletteSearch));
+  // Kommentar-Editor (#1278); die Textbausteine stehen unter den Vorlagen.
+  FIssuesCommentEditor := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCommentEditor));
   AddIssuesWorkflowSection;
+  AddIssuesSnippetsSection;
+end;
+
+procedure TAtlasSettingsPage.AddIssuesSnippetsSection;
+
+  function AddLabelled(AId: TAtlasTextId; AControl: TWinControl; AHeight: Integer): TWinControl;
+  var
+    mCaption: TLabel;
+  begin
+    Result := AddPanel(AHeight);
+    mCaption := TLabel.Create(Self);
+    mCaption.Parent := Result;
+    mCaption.Caption := TAtlasStrings.Text(AId) + ':';
+    mCaption.Left := 0;
+    mCaption.Top := 5;
+    AControl.Parent := Result;
+    AControl.Left := 90;
+    AControl.Top := 1;
+    AControl.Width := 376;
+    AControl.Height := AHeight - 2;
+    AControl.Anchors := [akLeft, akTop, akRight];
+  end;
+
+  function AddButton(AParent: TWinControl; ALeft: Integer; AId: TAtlasTextId; AClick: TNotifyEvent): TButton;
+  begin
+    Result := TButton.Create(Self);
+    Result.Parent := AParent;
+    Result.Caption := TAtlasStrings.Text(AId);
+    Result.Left := ALeft;
+    Result.Top := 3;
+    Result.Width := 100;
+    Result.OnClick := AClick;
+  end;
+
+  procedure AddColumn(AId: TAtlasTextId; AWidth: Integer);
+  var
+    mColumn: TListColumn;
+  begin
+    mColumn := FIssuesSnippets.Columns.Add;
+    mColumn.Caption := TAtlasStrings.Text(AId);
+    mColumn.Width := AWidth;
+  end;
+
+var
+  mPanel: TWinControl;
+  mHint: TLabel;
+begin
+  FSnippetSelected := -1;
+  AddTitle(TAtlasTextId.SettingsIssuesSnippetsTitle);
+  mPanel := AddPanel(100);
+  // Die Zeilen brauchen ein Fenster: RefreshSnippets füllt sie (auch aus CreateWnd).
+  FIssuesSnippets := TListView.Create(Self);
+  FIssuesSnippets.Parent := mPanel;
+  FIssuesSnippets.Align := alClient;
+  FIssuesSnippets.ViewStyle := vsReport;
+  FIssuesSnippets.ReadOnly := True;
+  FIssuesSnippets.RowSelect := True;
+  FIssuesSnippets.HideSelection := False;
+  FIssuesSnippets.OnSelectItem := SnippetSelectItem;
+  AddColumn(TAtlasTextId.SettingsIssuesSnippetName, 200);
+  AddColumn(TAtlasTextId.SettingsIssuesSnippetText, 330);
+  FIssuesSnippetName := TEdit.Create(Self);
+  FIssuesSnippetName.MaxLength := TAtlasCommentSnippets.MaxName;
+  FIssuesSnippetName.OnChange := SnippetNameChange;
+  Attach(AddLabelled(TAtlasTextId.SettingsIssuesSnippetName, FIssuesSnippetName, 26), FIssuesSnippets);
+  FIssuesSnippetText := TMemo.Create(Self);
+  FIssuesSnippetText.MaxLength := TAtlasCommentSnippets.MaxText;
+  FIssuesSnippetText.ScrollBars := ssVertical;
+  FIssuesSnippetText.WantReturns := True;
+  FIssuesSnippetText.OnChange := SnippetTextChange;
+  Attach(AddLabelled(TAtlasTextId.SettingsIssuesSnippetText, FIssuesSnippetText, 64), FIssuesSnippets);
+  mPanel := AddPanel(32);
+  FIssuesSnippetAdd := AddButton(mPanel, 0, TAtlasTextId.SettingsIssuesSnippetAdd, SnippetAddClick);
+  FIssuesSnippetRemove := AddButton(mPanel, 106, TAtlasTextId.SettingsIssuesSnippetRemove, SnippetRemoveClick);
+  FIssuesSnippetDefaults := AddButton(mPanel, 212, TAtlasTextId.SettingsIssuesSnippetDefaults, SnippetDefaultsClick);
+  Attach(mPanel, FIssuesSnippets);
+  mPanel := AddPanel(34);
+  mHint := TLabel.Create(Self);
+  mHint.Parent := mPanel;
+  mHint.Align := alClient;
+  mHint.WordWrap := True;
+  mHint.Font.Color := clGrayText;
+  mHint.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSnippetsHint);
+  Attach(mPanel, FIssuesSnippets);
+end;
+
+function SnippetLine(const AText: string): string;
+begin
+  // Eine Zeile in der Tabelle; Umbrüche als „⏎“.
+  Result := StringReplace(StringReplace(AText, #13#10, #10, [rfReplaceAll]), #10, ' ⏎ ', [rfReplaceAll]);
+end;
+
+procedure TAtlasSettingsPage.RefreshSnippets;
+var
+  mSnippet: TAtlasCommentSnippet;
+  mItem: TListItem;
+begin
+  if FIssuesSnippets = nil then
+    Exit;
+  if FSnippetSelected > High(FCommentSnippets) then
+    FSnippetSelected := High(FCommentSnippets);
+  if FIssuesSnippets.HandleAllocated then
+  begin
+    FSnippetFilling := True;
+    FIssuesSnippets.Items.BeginUpdate;
+    try
+      FIssuesSnippets.Items.Clear;
+      for mSnippet in FCommentSnippets do
+      begin
+        mItem := FIssuesSnippets.Items.Add;
+        mItem.Caption := mSnippet.Name;
+        mItem.SubItems.Add(SnippetLine(mSnippet.Text));
+      end;
+      if FSnippetSelected >= 0 then
+        FIssuesSnippets.Items[FSnippetSelected].Selected := True;
+    finally
+      FIssuesSnippets.Items.EndUpdate;
+      FSnippetFilling := False;
+    end;
+  end;
+  SnippetFillFields;
+end;
+
+procedure TAtlasSettingsPage.SnippetFillFields;
+var
+  mEditable: Boolean;
+begin
+  mEditable := (FSnippetSelected >= 0) and (FSnippetSelected <= High(FCommentSnippets));
+  FSnippetFilling := True;
+  try
+    if mEditable then
+    begin
+      FIssuesSnippetName.Text := FCommentSnippets[FSnippetSelected].Name;
+      FIssuesSnippetText.Text := AdjustLineBreaks(FCommentSnippets[FSnippetSelected].Text, tlbsCRLF);
+    end
+    else
+    begin
+      FIssuesSnippetName.Text := '';
+      FIssuesSnippetText.Text := '';
+    end;
+  finally
+    FSnippetFilling := False;
+  end;
+  FIssuesSnippetName.Enabled := mEditable;
+  FIssuesSnippetText.Enabled := mEditable;
+  FIssuesSnippetRemove.Enabled := mEditable;
+  FIssuesSnippetAdd.Enabled := Length(FCommentSnippets) < TAtlasCommentSnippets.MaxSnippets;
+end;
+
+procedure TAtlasSettingsPage.SnippetSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  if FSnippetFilling or not Selected or (Item = nil) then
+    Exit;
+  FSnippetSelected := Item.Index;
+  SnippetFillFields;
+end;
+
+procedure TAtlasSettingsPage.SnippetNameChange(Sender: TObject);
+begin
+  if FSnippetFilling or (FSnippetSelected < 0) or (FSnippetSelected > High(FCommentSnippets)) then
+    Exit;
+  FCommentSnippets[FSnippetSelected].Name := FIssuesSnippetName.Text;
+  if FIssuesSnippets.HandleAllocated and (FSnippetSelected < FIssuesSnippets.Items.Count) then
+    FIssuesSnippets.Items[FSnippetSelected].Caption := FIssuesSnippetName.Text;
+end;
+
+procedure TAtlasSettingsPage.SnippetTextChange(Sender: TObject);
+begin
+  if FSnippetFilling or (FSnippetSelected < 0) or (FSnippetSelected > High(FCommentSnippets)) then
+    Exit;
+  // Wie im Kommentar: Zeilen mit #10.
+  FCommentSnippets[FSnippetSelected].Text := StringReplace(FIssuesSnippetText.Text, #13#10, #10, [rfReplaceAll]);
+  if FIssuesSnippets.HandleAllocated and (FSnippetSelected < FIssuesSnippets.Items.Count) and
+    (FIssuesSnippets.Items[FSnippetSelected].SubItems.Count > 0) then
+    FIssuesSnippets.Items[FSnippetSelected].SubItems[0] := SnippetLine(FCommentSnippets[FSnippetSelected].Text);
+end;
+
+procedure TAtlasSettingsPage.SnippetAddClick(Sender: TObject);
+begin
+  if Length(FCommentSnippets) >= TAtlasCommentSnippets.MaxSnippets then
+    Exit;
+  // Ohne Text wird der Baustein nicht gespeichert (TAtlasCommentSnippets.Parse lässt ihn fallen).
+  FCommentSnippets := FCommentSnippets + [TAtlasCommentSnippet.Create(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSnippetNew), '')];
+  FSnippetSelected := High(FCommentSnippets);
+  RefreshSnippets;
+  if FIssuesSnippetName.CanFocus then
+    FIssuesSnippetName.SetFocus;
+end;
+
+procedure TAtlasSettingsPage.SnippetRemoveClick(Sender: TObject);
+begin
+  if (FSnippetSelected < 0) or (FSnippetSelected > High(FCommentSnippets)) then
+    Exit;
+  Delete(FCommentSnippets, FSnippetSelected, 1);
+  RefreshSnippets;
+end;
+
+procedure TAtlasSettingsPage.SnippetDefaultsClick(Sender: TObject);
+begin
+  FCommentSnippets := TAtlasCommentSnippets.Defaults;
+  FSnippetSelected := 0;
+  RefreshSnippets;
 end;
 
 procedure TAtlasSettingsPage.AddIssuesWorkflowSection;
@@ -4189,6 +4424,8 @@ begin
   FMarks.Bind(FIssuesPreview, ['IssuesPreview']);
   FMarks.Bind(FIssuesPreviewComments, ['IssuesPreviewComments']);
   FMarks.Bind(FIssuesPaletteSearch, ['IssuesPaletteSearch']);
+  FMarks.Bind(FIssuesCommentEditor, ['IssuesCommentEditor']);
+  FMarks.Bind(FIssuesSnippets, ['IssuesCommentSnippets']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FIssuesSyncState, ['IssuesSyncState']);
   FMarks.Bind(FIssuesStateField, ['IssuesStateField']);
@@ -4373,6 +4610,7 @@ begin
   RefreshFuse;
   RefreshFavorites;
   RefreshTrackerConnections;
+  RefreshSnippets;
   // Gewünschte Einstellung (#628) erst mit Fenster zeigen.
   if FPendingReveal <> '' then
     ApplyReveal(FPendingReveal);
@@ -6467,6 +6705,12 @@ begin
   FIssuesEndStates.Text := ASettings.IssuesEndStates;
   FIssuesEndComment.Text := ASettings.IssuesEndComment;
   FIssuesPaletteSearch.Checked := ASettings.IssuesPaletteSearch;
+  FIssuesCommentEditor.Checked := ASettings.IssuesCommentEditor;
+  FCommentSnippets := TAtlasCommentSnippets.Read(ASettings.IssuesCommentSnippets);
+  FSnippetSelected := -1;
+  if Length(FCommentSnippets) > 0 then
+    FSnippetSelected := 0;
+  RefreshSnippets;
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -7037,6 +7281,8 @@ begin
   ASettings.IssuesEndStates := TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FIssuesEndStates.Text));
   ASettings.IssuesEndComment := FIssuesEndComment.Text;
   ASettings.IssuesPaletteSearch := FIssuesPaletteSearch.Checked;
+  ASettings.IssuesCommentEditor := FIssuesCommentEditor.Checked;
+  ASettings.IssuesCommentSnippets := TAtlasCommentSnippets.ToJson(FCommentSnippets);
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
