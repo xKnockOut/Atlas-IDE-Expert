@@ -2601,6 +2601,7 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | PL5 | Während des Laufs F9 (Debuggen) | „angehalten (Debugger)“; atlas.log zeigt keine weiteren geprüften Units, Server-CPU bei 0 %; nach dem Ende des Programms läuft der Lauf weiter |
 | PL6 | Klick auf die Live-Prüfung (#1231) | Neuer Lauf über alle Units von 0 % an, am Ende „Projekt fertig“ |
 | PL8 | Index-Cache löschen (Atlas › Index neu aufbauen), dabei Taskmanager › Details › AtlasServer.exe beobachten (#1236) | Während des Aufbaus höchstens etwa ein Kern (bei 8 Kernen gut 12 %), Priorität des Aufbau-Threads „Niedriger als normal“ (Process Explorer › Threads); die IDE bleibt flüssig. Danach Projektprüfung wie PL1 |
+| PL9 | Großes Projekt (900+ Units) öffnen, Projektprüfung bis „Projekt fertig“ laufen lassen, dabei Taskmanager › Details › AtlasServer.exe und bds.exe beobachten (#1237) | AtlasServer.exe bleibt deutlich unter 1 GB (Arbeitssatz), auch nach mehreren Läufen („neu prüfen“) kein stetiger Zuwachs; Problemfenster zeigt alle Befunde wie vorher |
 | PL7 | Probleme aus (`problems`) bzw. Fenster „Atlas-Prüfung“ nie geöffnet und Probleme aus | Kein Lauf, keine Projektanzeige in der Statusleiste |
 
 ## Extrahieren, case und with (#50)

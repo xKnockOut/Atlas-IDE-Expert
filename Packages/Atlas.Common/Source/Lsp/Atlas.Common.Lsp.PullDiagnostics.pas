@@ -99,8 +99,8 @@ type
     FRefreshCounter: Integer;
     FWaitMs: Cardinal;
     FBusy: TPullBusy;
-    // Befunde je Datei: Uri -> (Ergebnis-Id, Befunde). Unter FCacheLock.
-    FCache: TObjectDictionary<string, TJSONArray>;
+    // Befunde je Datei: Uri -> (Ergebnis-Id, Befunde kompakt als JSON-Text, #1237). Unter FCacheLock.
+    FCache: TDictionary<string, TBytes>;
     FCacheIds: TDictionary<string, string>;
     FCacheLock: TObject;
     // Laufende Berechnungen: Uri + #0 + Ergebnis-Id. Unter FCacheLock.
@@ -186,7 +186,8 @@ uses
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Documents.TextDocument;
+  Atlas.Common.Documents.TextDocument,
+  Atlas.Common.Lsp.CompactJson;
 
 function Diagnose(ADiagnostics: TLspSyntaxDiagnostics; const ADocument: ITextDocument;
   const ACancellation: IJsonRpcCancellationToken): TJSONArray;
@@ -233,7 +234,7 @@ begin
   FReadText := AReadText;
   FGeneration := 1;
   FWaitMs := DefaultWaitMs;
-  FCache := TObjectDictionary<string, TJSONArray>.Create([doOwnsValues]);
+  FCache := TDictionary<string, TBytes>.Create;
   FCacheIds := TDictionary<string, string>.Create;
   FCacheLock := TObject.Create;
   FRunning := TDictionary<string, Boolean>.Create;
@@ -420,6 +421,7 @@ function TLspPullDiagnostics.CachedDiagnose(const AUri, AResultId: string; const
 var
   Key: string;
   Cached: TJSONArray;
+  Compact: TBytes;
 begin
   if AResultId = '' then
   begin
@@ -440,6 +442,7 @@ begin
   try
     Result := Diagnose(FDiagnostics, ADocument, ACancellation);
     TInterlocked.Increment(FComputed);
+    Compact := TCompactJson.Pack(Result);
     TMonitor.Enter(FCacheLock);
     try
       if FCache.Count >= MaxCachedReports then
@@ -447,7 +450,7 @@ begin
         FCache.Clear;
         FCacheIds.Clear;
       end;
-      FCache.AddOrSetValue(AUri, Result.Clone as TJSONArray);
+      FCache.AddOrSetValue(AUri, Compact);
       FCacheIds.AddOrSetValue(AUri, AResultId);
     finally
       TMonitor.Exit(FCacheLock);
@@ -465,14 +468,14 @@ end;
 function TLspPullDiagnostics.Claim(const AUri, AResultId, AKey: string; out ACached: TJSONArray): Boolean;
 var
   Known: string;
-  Items: TJSONArray;
+  Items: TBytes;
 begin
   ACached := nil;
   TMonitor.Enter(FCacheLock);
   try
     if FCacheIds.TryGetValue(AUri, Known) and (Known = AResultId) and FCache.TryGetValue(AUri, Items) then
     begin
-      ACached := Items.Clone as TJSONArray;
+      ACached := TCompactJson.UnpackArray(Items);
       Exit(False);
     end;
     Result := not FRunning.ContainsKey(AKey);
