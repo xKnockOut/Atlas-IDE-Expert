@@ -42,6 +42,10 @@
 // Externals, aktualisiert mit oder ohne Externals (vcs.externals.update),
 // zählt neue Commits auf dem Server und setzt svn:externals eines Ordners
 // lokal (ohne Commit); IAtlasVcsSubmodules liefert git submodule status.
+// IAtlasVcsLineHistory (#1275) liefert ganze Commit-Nachrichten zu Revisionen
+// (für Issue-Kennungen in der Zeilenhistorie) und die Commits, die einen
+// Zeilenbereich einer Datei geändert haben (Befehl „Issues zu dieser
+// Methode“): Git über log -L, SVN über log --diff, rückwärts verfolgt.
 
 interface
 
@@ -316,6 +320,28 @@ type
     function ShortHash: string;
   end;
 
+  /// <summary>Ganze Commit-Nachricht einer Revision (#1275).</summary>
+  TAtlasVcsRevisionMessage = record
+    /// <summary>Git: Commit; SVN: Revisionsnummer.</summary>
+    Revision: string;
+    /// <summary>Ganze Nachricht ohne Leerraum am Ende.</summary>
+    Message: string;
+  end;
+
+  /// <summary>Commit, der einen Zeilenbereich einer Datei geändert hat (#1275).</summary>
+  TAtlasVcsLineCommit = record
+    /// <summary>Git: Commit; SVN: Revisionsnummer.</summary>
+    Revision: string;
+    Author: string;
+    /// <summary>Zeitpunkt in UTC (Git: Committer).</summary>
+    Date: TDateTime;
+    /// <summary>Ganze Nachricht ohne Leerraum am Ende.</summary>
+    Message: string;
+    /// <summary>Unterschied dieses Commits an der Datei als Zeilen eines Unified-Diffs (Git: nur der verfolgte
+    /// Bereich, SVN: die ganze Datei).</summary>
+    Patch: TArray<string>;
+  end;
+
   /// <summary>Ergebnis eines Prozessaufrufs.</summary>
   TAtlasVcsRunResult = record
     Outcome: TAtlasVcsOutcome;
@@ -522,6 +548,24 @@ type
   IAtlasVcsSubmodules = interface
     ['{2D6A9C47-E1B8-4F35-8C0D-7A4E5B3F9162}']
     function SubmoduleStatus(out AText: string): TAtlasVcsOutcome;
+  end;
+
+  /// <summary>Herkunft von Zeilen über Commits (#1275). Git, SVN und die leere Umsetzung bieten diese Schnittstelle
+  /// zusätzlich zu IAtlasVersionControl (Supports). Jede Methode der Git- und SVN-Umsetzung startet einen Prozess
+  /// (SVN spricht dabei mit dem Server): nur aus einem Hintergrund-Thread aufrufen. Die leere Umsetzung liefert
+  /// ihr Outcome mit leerer Liste.</summary>
+  IAtlasVcsLineHistory = interface
+    ['{4E7A2C95-3B18-4D6F-A0E2-91C5B8D47F36}']
+    /// <summary>Ganze Nachrichten zu ARevisions (Git: Commits aus blame, SVN: Revisionsnummern) der Datei AFileName,
+    /// in der Reihenfolge von git bzw. svn; unbekannte fehlen. Revisionen, die als Option gelesen würden, lehnen
+    /// beide mit Failed ab. Leere Liste: Ok ohne Prozess.</summary>
+    function Messages(const AFileName: string; const ARevisions: TArray<string>;
+      out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
+    /// <summary>Commits, die die Zeilen AFirstLine bis ALastLine (1-basiert, im Stand Git HEAD bzw. SVN BASE) von
+    /// AFileName geändert haben, neueste zuerst. AMaxRevisions begrenzt bei Git die Commits des Bereichs, bei SVN
+    /// die durchsuchten Revisionen der Datei.</summary>
+    function LineHistory(const AFileName: string; AFirstLine, ALastLine, AMaxRevisions: Integer;
+      out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
   end;
 
   /// <summary>Fehler beim Lesen einer Ausgabe; die Umsetzungen machen daraus Outcome Failed.</summary>

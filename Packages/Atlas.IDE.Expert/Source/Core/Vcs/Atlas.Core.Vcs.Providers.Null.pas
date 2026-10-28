@@ -4,7 +4,8 @@
 // git bzw. svn fehlt. Alle Aufrufe kehren sofort ohne Prozess zurück und
 // liefern keine Versionsangaben, nie einen Fehler; Outcome sagt, warum. Das
 // gilt auch für IAtlasVcsLocalWork (#762), IAtlasVcsIncoming (#755) und
-// IAtlasVcsUpdate (#764) und IAtlasVcsBranching (#765).
+// IAtlasVcsUpdate (#764), IAtlasVcsBranching (#765) und IAtlasVcsLineHistory
+// (#1275).
 
 interface
 
@@ -14,7 +15,7 @@ uses
 
 type
   TAtlasNullVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate, IAtlasVcsBranching)
+    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsLineHistory)
   private
     FOutcome: TAtlasVcsOutcome;
   public
@@ -57,6 +58,11 @@ type
     function SwitchBranch(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
       overload;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
+    { IAtlasVcsLineHistory }
+    function Messages(const AFileName: string; const ARevisions: TArray<string>;
+      out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
+    function LineHistory(const AFileName: string; AFirstLine, ALastLine, AMaxRevisions: Integer;
+      out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
     property Outcome: TAtlasVcsOutcome read FOutcome;
   end;
 
@@ -238,6 +244,20 @@ function TAtlasNullVersionControl.HookFolders(out AHooks, AGitDir: string): TAtl
 begin
   AHooks := '';
   AGitDir := '';
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.Messages(const AFileName: string; const ARevisions: TArray<string>;
+  out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
+begin
+  AMessages := nil;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.LineHistory(const AFileName: string; AFirstLine, ALastLine,
+  AMaxRevisions: Integer; out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
+begin
+  ACommits := nil;
   Result := FOutcome;
 end;
 

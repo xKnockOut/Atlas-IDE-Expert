@@ -40,6 +40,9 @@
 //                      mit Remote wie Fetch ohne Rückfrage
 //   SwitchBranch       checkout --quiet <Name> --
 //   HookFolders  rev-parse --git-path hooks --git-dir
+// Issues der Zeilenhistorie (IAtlasVcsLineHistory, #1275), ohne Netz:
+//   Messages     log --no-walk=unsorted --format=… <Commits> --   (je 100 Commits ein Aufruf)
+//   LineHistory  log --format=… --max-count=N --no-ext-diff -L<a>,<b>:<Pfad>
 // ChangeMarker liest nur Dateien: .git/HEAD (Inhalt und Zeitstempel), die
 // Datei des Branchs unter refs/heads und packed-refs. In Worktrees und
 // Submodulen ist .git eine Datei mit "gitdir: …".
@@ -53,7 +56,11 @@ uses
 
 type
   TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSubmodules)
+    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSubmodules,
+    IAtlasVcsLineHistory)
+  public const
+    /// <summary>Höchstens so viele Commits je Aufruf von Messages (Länge der Befehlszeile).</summary>
+    MessageBatch = 100;
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -106,6 +113,11 @@ type
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
     { IAtlasVcsSubmodules }
     function SubmoduleStatus(out AText: string): TAtlasVcsOutcome;
+    { IAtlasVcsLineHistory }
+    function Messages(const AFileName: string; const ARevisions: TArray<string>;
+      out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
+    function LineHistory(const AFileName: string; AFirstLine, ALastLine, AMaxRevisions: Integer;
+      out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
     /// <summary>Ordner mit den Verwaltungsdaten: ARoot\.git oder das Ziel von "gitdir:"; '' ohne.</summary>
     class function GitDir(const ARoot: string): string; static;
   end;
@@ -114,6 +126,7 @@ implementation
 
 uses
   System.Classes,
+  System.Math,
   Atlas.Core.Vcs.Internals.Text,
   Atlas.Core.Vcs.Internals.GitParser;
 
@@ -278,6 +291,79 @@ begin
     on EAtlasVcsParse do
     begin
       ALines := nil;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+/// <summary>Hash aus blame: 7 bis 64 Hexziffern.</summary>
+function IsHash(const AText: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (Length(AText) >= 7) and (Length(AText) <= 64);
+  if Result then
+    for mIndex := 1 to Length(AText) do
+      if not CharInSet(AText[mIndex], ['0'..'9', 'a'..'f', 'A'..'F']) then
+        Exit(False);
+end;
+
+function TAtlasGitVersionControl.Messages(const AFileName: string; const ARevisions: TArray<string>;
+  out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
+var
+  mRevision: string;
+  mArguments: TArray<string>;
+  mOutput: TBytes;
+  mStart, mIndex: Integer;
+begin
+  AMessages := nil;
+  for mRevision in ARevisions do
+    if not IsHash(mRevision) then
+      Exit(TAtlasVcsOutcome.Failed);
+  Result := TAtlasVcsOutcome.Ok;
+  mStart := 0;
+  while mStart < Length(ARevisions) do
+  begin
+    mArguments := ['log', '--no-walk=unsorted', '--format=' + TAtlasGitParser.MessageFormat];
+    for mIndex := mStart to Min(mStart + MessageBatch, Length(ARevisions)) - 1 do
+      mArguments := mArguments + [ARevisions[mIndex]];
+    Inc(mStart, MessageBatch);
+    Result := Git(mArguments + ['--'], mOutput);
+    if Result <> TAtlasVcsOutcome.Ok then
+      Break;
+    try
+      AMessages := AMessages + TAtlasGitParser.ParseMessages(VcsUtf8(mOutput));
+    except
+      on EAtlasVcsParse do
+      begin
+        Result := TAtlasVcsOutcome.Failed;
+        Break;
+      end;
+    end;
+  end;
+  if Result <> TAtlasVcsOutcome.Ok then
+    AMessages := nil;
+end;
+
+function TAtlasGitVersionControl.LineHistory(const AFileName: string; AFirstLine, ALastLine,
+  AMaxRevisions: Integer; out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
+var
+  mRelative: string;
+  mOutput: TBytes;
+begin
+  ACommits := nil;
+  if not VcsRelativePath(FRoot, AFileName, mRelative) or (AFirstLine < 1) or (ALastLine < AFirstLine) then
+    Exit(TAtlasVcsOutcome.Failed);
+  Result := Git(['log', '--format=' + TAtlasGitParser.LineLogFormat, '--max-count=' + IntToStr(Max(1, AMaxRevisions)),
+    '--no-ext-diff', '-L' + IntToStr(AFirstLine) + ',' + IntToStr(ALastLine) + ':' + mRelative], mOutput);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    ACommits := TAtlasGitParser.ParseLineLog(VcsUtf8(mOutput));
+  except
+    on EAtlasVcsParse do
+    begin
+      ACommits := nil;
       Result := TAtlasVcsOutcome.Failed;
     end;
   end;
