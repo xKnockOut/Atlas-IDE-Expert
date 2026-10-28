@@ -117,12 +117,14 @@ type
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
-  /// <summary>Schreiben über denselben Transport (#1273): Checklisten der Issue-Vorschau.</summary>
+  /// <summary>Schreiben über denselben Transport, für alle schreibenden Anfragen an den Tracker (#1273 Checklisten,
+  /// #1279 Unteraufgaben und Verknüpfungen).</summary>
   IAtlasCiSend = interface
     ['{2D7A4E19-8B3C-4F61-A5D0-71E9C3B84F26}']
     /// <summary>AMethod ("POST", "PATCH") auf AUrl mit dem JSON ABody, höchstens ATimeoutMs. Nur mit Anmeldung beim
-    /// eingetragenen Server über https (sonst False mit Unauthorized, ohne Netz); Weiterleitungen werden nicht
-    /// verfolgt. True, wenn eine Antwort kam; AStatus und AText wie bei IAtlasCiTransport.Get.</summary>
+    /// eingetragenen Server über https (sonst False mit Unauthorized, ohne Netz); eine Weiterleitung ist ein Fehler
+    /// (False mit Server), damit der Inhalt nie an ein anderes Ziel geht. True, wenn eine Antwort kam (auch 4xx);
+    /// AStatus und AText wie bei IAtlasCiTransport.Get.</summary>
     function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
   end;
