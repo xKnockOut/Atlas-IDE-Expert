@@ -14,6 +14,12 @@
 //   Editor abgefangen (TApplicationEvents.OnMessage), die IDE bekommt den
 //   Klick also nicht und setzt keinen Haltepunkt; freier Platz setzt ein
 //   unnummeriertes Lesezeichen, ein Marker entfernt die Marker der Zeile.
+//   Getroffen wird über den Bildschirmpunkt der Nachricht im Fenster der
+//   Zeile, nicht über hwnd und lParam (#1281: die Nachricht kann an ein
+//   anderes Fenster gehen als das, in dem die IDE die Rinne zeichnet).
+//   Erreicht die Nachricht Atlas nicht (ein anderer Experte setzt
+//   Application.OnMessage selbst), nimmt das Mausereignis des Editors den
+//   Klick (wie die Atlas-Spalte #768); das Protokoll meldet das einmal.
 // - Überfahren: gestrichelter Umriss auf freiem Platz, nach HoverMs ein
 //   Tooltip mit Nummer, Name bzw. Methode und Sprungtaste aller Marker.
 // - Rechtsklick: Menü „Nummer vergeben ›“ (belegte Nummern mit Ziel),
@@ -114,6 +120,9 @@ type
     FRequestedAt: UInt64;
     FLoggedNoServices: Boolean;
     FLoggedNotPainted: Boolean;
+    /// <summary>Zeitpunkt des letzten über OnMessage genommenen Linksklicks (#1281).</summary>
+    FClickedAt: UInt64;
+    FLoggedEditorClick: Boolean;
     function Active: Boolean;
     function Shown: Boolean;
     function TopView: IOTAEditView;
@@ -123,7 +132,12 @@ type
     procedure Tick(Sender: TObject);
     procedure Track;
     procedure CheckPainted;
-    function RowAt(AWnd: HWND; X, Y: Integer; out ARow: TRow): Boolean;
+    function RowAt(AWnd: HWND; X, Y: Integer; out ARow: TRow): Boolean; overload;
+    /// <summary>Zeile unter dem Bildschirmpunkt APoint einer Nachricht an AWnd: im Fenster der Zeile, wenn AWnd
+    /// dieses Fenster, ein Kind oder ein Vorfahr davon ist.</summary>
+    function RowAt(AWnd: HWND; const APoint: TPoint; out ARow: TRow): Boolean; overload;
+    procedure ClickRow(const ARow: TRow);
+    procedure EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure PaintMarks(ACanvas: TCanvas; const ARow: TRow; const AColors: TAtlasColors; ABack: TAtlasColor);
     procedure PaintFree(ACanvas: TCanvas; const ARect: TRect; const AColors: TAtlasColors);
     procedure PaintLineNumber(ACanvas: TCanvas; const ARect: TRect; ALine: Integer; const AColors: TAtlasColors);
@@ -211,6 +225,7 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintGutter := PaintGutter;
   FEvents.OnEditorMouseMove := EditorMouseMove;
+  FEvents.OnEditorMouseDown := EditorMouseDown;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
     FIndex := Editors.AddEditorEventsNotifier(FEventsRef);
   if FIndex < 0 then
@@ -241,6 +256,7 @@ begin
   begin
     FEvents.OnEditorPaintGutter := nil;
     FEvents.OnEditorMouseMove := nil;
+    FEvents.OnEditorMouseDown := nil;
   end;
   FEventsRef := nil;
   FMenu.Free;
@@ -648,6 +664,65 @@ begin
     end;
 end;
 
+function TAtlasIdeQuickColumn.RowAt(AWnd: HWND; const APoint: TPoint; out ARow: TRow): Boolean;
+var
+  Row: TRow;
+  Local: TPoint;
+begin
+  ARow := Default(TRow);
+  Result := False;
+  for Row in FRows.Values do
+  begin
+    if (Row.Wnd = 0) or not ((AWnd = Row.Wnd) or IsChild(Row.Wnd, AWnd) or IsChild(AWnd, Row.Wnd)) then
+      Continue;
+    Local := APoint;
+    if not Winapi.Windows.ScreenToClient(Row.Wnd, Local) then
+      Continue;
+    Exit(RowAt(Row.Wnd, Local.X, Local.Y, ARow));
+  end;
+end;
+
+procedure TAtlasIdeQuickColumn.ClickRow(const ARow: TRow);
+var
+  FileName: string;
+  Line: Integer;
+begin
+  HideTip;
+  FileName := ARow.FileName;
+  Line := ARow.Line;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.QuickBookmarks,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
+        procedure
+        begin
+          TAtlasIdeBookmarks.ColumnClick(FileName, Line);
+        end);
+    end);
+end;
+
+procedure TAtlasIdeQuickColumn.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+var
+  Row: TRow;
+begin
+  try
+    // Nur, wenn OnMessage den Klick nicht schon genommen hat (dann käme er hier gar nicht an).
+    if (Button <> mbLeft) or not Shown or not TAtlasIdeSettings.Current.QuickBookmarksGutterClick or
+      (Editor = nil) or not Editor.HandleAllocated or (TThread.GetTickCount64 - FClickedAt < 500) or
+      not RowAt(Editor.Handle, X, Y, Row) then
+      Exit;
+    if not FLoggedEditorClick then
+      TAtlasGuard.Log('Schnelle Lesezeichen: Klick in die Spalte kam nicht über Application.OnMessage, ' +
+        'sondern über das Mausereignis des Editors');
+    FLoggedEditorClick := True;
+    ClickRow(Row);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(TAtlasFeature.QuickBookmarks, E);
+  end;
+end;
+
 procedure TAtlasIdeQuickColumn.SetHover(const ARow: TRow; AOn: Boolean);
 var
   Changed: Boolean;
@@ -726,8 +801,6 @@ procedure TAtlasIdeQuickColumn.AppMessage(var Msg: TMsg; var Handled: Boolean);
 var
   Row: TRow;
   Where: TPoint;
-  FileName: string;
-  Line: Integer;
 begin
   try
     if (Msg.message = FSwallowUp) and (FSwallowUp <> 0) then
@@ -758,7 +831,8 @@ begin
       Exit;
     if not Shown or (FRows.Count = 0) then
       Exit;
-    if not RowAt(Msg.hwnd, SmallInt(LoWord(Msg.lParam)), SmallInt(HiWord(Msg.lParam)), Row) then
+    // Bildschirmpunkt der Nachricht, nicht lParam: Die Rinne kann in einem anderen Fenster liegen (#1281).
+    if not RowAt(Msg.hwnd, Msg.pt, Row) then
       Exit;
     if Msg.message = WM_RBUTTONDOWN then
     begin
@@ -774,18 +848,8 @@ begin
       Exit;
     Handled := True;
     FSwallowUp := WM_LBUTTONUP;
-    HideTip;
-    FileName := Row.FileName;
-    Line := Row.Line;
-    TAtlasMainThread.ForceQueue(TAtlasFeature.QuickBookmarks,
-      procedure
-      begin
-        TAtlasGuard.Run(TAtlasFeature.QuickBookmarks,
-          procedure
-          begin
-            TAtlasIdeBookmarks.ColumnClick(FileName, Line);
-          end);
-      end);
+    FClickedAt := TThread.GetTickCount64;
+    ClickRow(Row);
   except
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.QuickBookmarks, E);
