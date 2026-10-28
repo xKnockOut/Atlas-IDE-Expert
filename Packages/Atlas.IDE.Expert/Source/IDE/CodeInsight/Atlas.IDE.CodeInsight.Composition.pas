@@ -24,6 +24,7 @@ uses
   Winapi.Windows,
   Winapi.ShellAPI,
   System.SysUtils,
+  System.StrUtils,
   System.Classes,
   System.Types,
   System.Win.Registry,
@@ -4339,12 +4340,48 @@ begin
     Found.Remove(AComponent);
 end;
 
+/// <summary>Modul einer Klasse ('' = unbekannt), für das Protokoll.</summary>
+function ModuleOf(AClass: TClass): string;
+var
+  Buffer: array[0..MAX_PATH] of Char;
+begin
+  Result := '';
+  if GetModuleFileName(FindClassHInstance(AClass), Buffer, MAX_PATH) > 0 then
+    Result := ExtractFileName(Buffer);
+end;
+
+/// <summary>Komponenten der Editorfenster mit Modul ihrer Klasse ins Protokoll (#1233): Beim Beenden ruft die IDE
+/// Notification einer Komponente eines Editorfensters auf, deren Code schon entladen ist.</summary>
+procedure LogEditorComponents;
+var
+  FormIndex, Index: Integer;
+  Form: TCustomForm;
+  Module: string;
+begin
+  for FormIndex := 0 to Screen.FormCount - 1 do
+  begin
+    Form := Screen.Forms[FormIndex];
+    if not SameText(Form.ClassName, 'TEditWindow') then
+      Continue;
+    for Index := 0 to Form.ComponentCount - 1 do
+    begin
+      Module := ModuleOf(Form.Components[Index].ClassType);
+      // Nur, was nicht aus der IDE selbst stammt.
+      if not (StartsText('coreide', Module) or StartsText('vcl', Module) or StartsText('rtl', Module) or
+        SameText(Module, 'bds.exe')) then
+        TAtlasGuard.Log(Format('Beim Entladen in %s: %s "%s" aus %s', [Form.Name,
+          Form.Components[Index].ClassName, Form.Components[Index].Name, Module]));
+    end;
+  end;
+end;
+
 procedure FreeLeftovers;
 var
   Tracker: TLeftoverTracker;
   Item: TComponent;
   Index: Integer;
 begin
+  LogEditorComponents;
   Tracker := TLeftoverTracker.Create(nil);
   try
     Tracker.Found := TList<TComponent>.Create;

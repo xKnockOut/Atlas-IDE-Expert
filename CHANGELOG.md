@@ -11,10 +11,14 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Fortschritt der Projektprüfung (#1232): Solange nicht alle Units des Projekts geprüft sind, zeigt die Live-Prüfung der Atlas-Statusleiste den Stand in Prozent („live · geprüft vor 2 s · Projekt 45 %“); der Tooltip nennt „Projekt: 12 von 27 Units geprüft“.
 
 ### Geändert
+- Suchleiste: Startpunkt einstellbar (#1242, `search.fromFirstHit`): beim Tippen zum ersten Treffer der Unit bzw. des Bereichs springen statt zum nächsten ab dem Cursor (Vorgabe).
 - Mitlaufender Kopf zeigt große if/else-Blöcke (#1230, `editor.stickyScrollBlocks`, an): Ein if- oder else-Block mit begin … end ab `editor.stickyScrollBlockMinLines` Zeilen (Vorgabe 25) erscheint als eigene Kopfzeile, eingereiht nach seiner Lage zwischen Klasse und Routinen; Klick springt zum if bzw. else.
 - Mitlaufender Kopf in den Farben des Editors (#1229): Die Kopfzeilen sind hervorgehoben wie im Editor, nach dessen Farbschema (reservierte Wörter und Direktiven fett, Strings, Zahlen, Kommentare, Compilerdirektiven in ihren Farben). Klammern und Blockwörter, mit „Anweisungen mitfärben“ (`PairOwners`) auch `procedure`, `function`, `class` usw., erscheinen in der Farbe ihrer Tiefe wie im Editor, mit den eigenen Paarfarben für Hell und Dunkel. Ohne Klammerfarben oder in Dateien, die sie ausblenden, bleibt der Kopf einfarbig.
 
 ### Behoben
+- Suchleiste nach einem Projektwechsel wieder bedienbar: Die IDE sperrt beim Schließen aller Editoren jedes Steuerelement im Editorbereich und gibt nur ihre eigenen wieder frei; die Leiste flackerte beim Klick nur kurz. Atlas gibt sie beim Öffnen und im Takt der Leiste wieder frei.
+- Projektprüfung blieb an einer langsamen Unit hängen (#1220): Jede Datei hat in der Hintergrundprüfung eine eigene Frist (3 s); ist sie überschritten, prüft der Server die Datei im Hintergrund zu Ende und meldet die übrigen weiter, statt alle bis dahin geprüften Ergebnisse zu verwerfen und bei jeder Anfrage an derselben Unit neu zu beginnen. Zugriffsverletzung im PackageLocator beim Projektwechsel: Der Locator lebt jetzt, solange eine Prüfung ihn noch benutzt.
+- Haltepunktzeilen lesbar (#1244): Auf Zeilen mit eigenem Hintergrund (Haltepunkt, Ausführungspunkt, Fehlerzeile) weicht eine Paarfarbe mit weniger als 3 : 1 Kontrast der Schriftfarbe der IDE.
 - Prüfung ruht während des Debuggens (#1241): Läuft ein Programm im Debugger, stellt Atlas Live- und Hintergrundprüfung ein; die Statusleiste zeigt „angehalten (Debugger)“. Danach geht es weiter.
 - Suchleiste: Strg+V fügte in den Editor statt ins Suchfeld ein (#1243); ebenso Strg+C/X/A/Z/Y, Entf und Umschalt+Einfg. Das Suchfeld behält die Bearbeitungstasten, bevor die IDE sie als eigene Kürzel nimmt.
 - Mitlaufender Kopf mit Markierung im Editor (#1245): Den Hintergrund nimmt der Kopf jetzt aus dem Farbschema (Plain text) statt von einer sichtbaren Zeile, die markiert oder hervorgehoben sein konnte.
