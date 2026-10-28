@@ -21,6 +21,14 @@
 // - Ergebnis je Projekt meldet die Benachrichtigungszentrale wie jeden Build
 //   (#535, #601); bei mehr als einem Projekt oder einem Abbruch kommt eine
 //   Zusammenfassung dazu (Quelle openBuild).
+// - Konfiguration und Zielplattform (#1293, build.onOpenConfig,
+//   build.onOpenPlatform): Vor dem Lauf schaltet Atlas jedes Projekt auf die
+//   Vorgabe um, egal was im Projekt eingestellt ist, und stellt am Ende des
+//   Laufs (auch im Hintergrund erst dann) die Auswahl des Benutzers wieder
+//   her, wie der Läufer für Claude Code. Kennt ein Projekt die
+//   Konfiguration nicht oder ist die Plattform dort nicht aktiviert, gilt
+//   für diesen Teil die Einstellung des Projekts; die Zusammenfassung nennt
+//   das.
 // - Beim ersten Start in der IDE-Sitzung gilt eine schon geladene
 //   Projektgruppe als eben geöffnet (die IDE lädt das letzte Projekt oft vor
 //   dem Plugin); späteres Einschalten baut erst beim nächsten Öffnen.
@@ -44,6 +52,13 @@ type
       procedure FileNotification(NotifyCode: TOTAFileNotification; const FileName: string; var Cancel: Boolean);
       procedure BeforeCompile(const Project: IOTAProject; var Cancel: Boolean); overload;
       procedure AfterCompile(Succeeded: Boolean); overload;
+    end;
+
+    /// <summary>Auswahl eines Projekts vor dem Umschalten auf die Vorgaben (#1293).</summary>
+    TSwitch = record
+      Project: IOTAProject;
+      Configuration: string;
+      Platform: string;
     end;
 
     TWatcher = class(TAtlasCompileParticipant)
@@ -76,7 +91,13 @@ type
     FUserGroup: Boolean;
     FKind: TAtlasCompileKind;
     FStartedAt: Int64;
+    /// <summary>Umgeschaltete Projekte des Laufs; Finish stellt sie zurück (#1293).</summary>
+    FSwitched: TArray<TSwitch>;
+    /// <summary>Projekte, die eine Vorgabe nicht kennen, für die Zusammenfassung.</summary>
+    FTargetNotes: TArray<string>;
     procedure Tick(Sender: TObject);
+    procedure ApplyTargets(const AProjects: TArray<IOTAProject>);
+    procedure RestoreTargets;
     procedure Run;
     procedure Compile(const AProjects: TArray<IOTAProject>; const AFiles: TArray<string>);
     procedure Finish;
@@ -257,6 +278,7 @@ begin
     Services.RemoveNotifier(FNotifierIndex);
   FNotifierRef := nil;
   FWatcher.FOwner := nil;
+  RestoreTargets;
   if FCore.Running and SameText(FEvents.RequestedBy, TAtlasOpenBuild.RequestedBy) then
     FEvents.RequestedBy := '';
   FCore.Free;
@@ -450,6 +472,80 @@ begin
   Compile(Projects, Built);
 end;
 
+procedure TAtlasIdeOpenBuild.ApplyTargets(const AProjects: TArray<IOTAProject>);
+var
+  Settings: TAtlasPluginSettings;
+  Project: IOTAProject;
+  Configurations: IOTAProjectOptionsConfigurations;
+  Platforms: IOTAProjectPlatforms;
+  Names: TArray<string>;
+  Index: Integer;
+  Configuration, Platform: string;
+  Switch: TSwitch;
+begin
+  FSwitched := nil;
+  FTargetNotes := nil;
+  Settings := TAtlasIdeSettings.Current;
+  if (Settings.BuildOnOpenConfig = '') and (Settings.BuildOnOpenPlatform = '') then
+    Exit;
+  for Project in AProjects do
+  begin
+    Switch.Project := Project;
+    Switch.Configuration := Project.CurrentConfiguration;
+    Switch.Platform := Project.CurrentPlatform;
+    Configuration := '';
+    if Settings.BuildOnOpenConfig <> '' then
+    begin
+      Names := nil;
+      if Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, Configurations) then
+        for Index := 0 to Configurations.ConfigurationCount - 1 do
+          Names := Names + [Configurations.Configurations[Index].Name];
+      Configuration := TAtlasOpenBuild.PickTarget(Settings.BuildOnOpenConfig, Names);
+      if Configuration = '' then
+        FTargetNotes := FTargetNotes + [TAtlasStrings.Fmt(TAtlasTextId.OpenBuildTargetMissing,
+          [TAtlasOpenBuild.NameOf(Project.FileName), Settings.BuildOnOpenConfig])];
+    end;
+    Platform := '';
+    if Settings.BuildOnOpenPlatform <> '' then
+    begin
+      // Nur aktivierte Plattformen; Enabled kennt auch die übrigen Namen der IDE.
+      if Supports(Project, IOTAProjectPlatforms, Platforms) and Platforms.Enabled[Settings.BuildOnOpenPlatform] then
+        Platform := Settings.BuildOnOpenPlatform
+      else
+        FTargetNotes := FTargetNotes + [TAtlasStrings.Fmt(TAtlasTextId.OpenBuildTargetMissing,
+          [TAtlasOpenBuild.NameOf(Project.FileName), Settings.BuildOnOpenPlatform])];
+    end;
+    // Nur für diesen Lauf; über IOTAProject, denn die Hilfsschnittstellen lesen nur (wie der Läufer).
+    if ((Configuration <> '') and not SameText(Configuration, Switch.Configuration)) or
+      ((Platform <> '') and not SameText(Platform, Switch.Platform)) then
+    begin
+      FSwitched := FSwitched + [Switch];
+      if (Configuration <> '') and not SameText(Configuration, Switch.Configuration) then
+        Project.CurrentConfiguration := Configuration;
+      if (Platform <> '') and not SameText(Platform, Switch.Platform) then
+        Project.CurrentPlatform := Platform;
+    end;
+  end;
+end;
+
+procedure TAtlasIdeOpenBuild.RestoreTargets;
+var
+  Switch: TSwitch;
+begin
+  for Switch in FSwitched do
+    try
+      if not SameText(Switch.Project.CurrentConfiguration, Switch.Configuration) then
+        Switch.Project.CurrentConfiguration := Switch.Configuration;
+      if not SameText(Switch.Project.CurrentPlatform, Switch.Platform) then
+        Switch.Project.CurrentPlatform := Switch.Platform;
+    except
+      // Ein inzwischen geschlossenes Projekt hält die anderen nicht auf (#493).
+      on E: Exception do
+        TAtlasGuard.Report(TAtlasFeature.Build, E);
+    end;
+  FSwitched := nil;
+end;
+
 procedure TAtlasIdeOpenBuild.Compile(const AProjects: TArray<IOTAProject>; const AFiles: TArray<string>);
 const
   Modes: array[TAtlasCompileKind] of TOTACompileMode = (cmOTAMake, cmOTABuild, cmOTACheck, cmOTAMakeUnit,
@@ -470,6 +566,7 @@ begin
   FCompiling := True;
   try
     try
+      ApplyTargets(AProjects);
       Outcome := CompileServices.CompileProjects(AProjects, Modes[FKind], False, True);
     finally
       FCompiling := False;
@@ -498,6 +595,8 @@ begin
   if not FCore.Running then
     Exit;
   FWaiting := False;
+  // Erst nach dem ganzen Lauf, auch im Hintergrund: Die Auswahl des Benutzers kommt zurück (#1293).
+  RestoreTargets;
   if SameText(FEvents.RequestedBy, TAtlasOpenBuild.RequestedBy) then
     FEvents.RequestedBy := '';
   Outcome := FCore.RunFinished;
@@ -506,10 +605,10 @@ begin
     FReport(TAtlasStrings.Fmt(TAtlasTextId.OpenBuildReport, [Kind, Outcome.Total, Outcome.Succeeded,
       Outcome.Failed, Outcome.NotBuilt, NowMs - FStartedAt]));
   // Ein einzelnes gebautes Projekt meldet schon „Build fertig“ (#535); die Zusammenfassung lohnt nur sonst.
-  if (Outcome.Total <= 1) and (Outcome.NotBuilt = 0) then
+  if (Outcome.Total <= 1) and (Outcome.NotBuilt = 0) and (Length(FTargetNotes) = 0) then
     Exit;
   Severity := TAtlasNotificationSeverity.Info;
-  if Outcome.NotBuilt > 0 then
+  if (Outcome.NotBuilt > 0) or (Length(FTargetNotes) > 0) then
     Severity := TAtlasNotificationSeverity.Warning;
   if Outcome.Failed > 0 then
     Severity := TAtlasNotificationSeverity.Error;
@@ -522,6 +621,8 @@ begin
     Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.OpenBuildReason, [Outcome.CancelReason])];
   if Length(Lines) = 0 then
     Lines := Lines + [TAtlasStrings.Fmt(TAtlasTextId.OpenBuildSucceeded, [Kind])];
+  // Vorgaben, die ein Projekt nicht kennt (#1293): gebaut wie im Projekt eingestellt.
+  Lines := Lines + FTargetNotes;
   Text := string.Join(sLineBreak, Lines);
   TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.OpenBuild, Severity,
     TAtlasStrings.Fmt(TAtlasTextId.OpenBuildTitle, [Outcome.Succeeded, Outcome.Total]), Text);

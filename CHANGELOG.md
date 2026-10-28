@@ -7,6 +7,7 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 ## [Unveröffentlicht]
 
 ### Neu
+- Bauen beim Öffnen mit fester Konfiguration und Zielplattform (#1293, `build.onOpenConfig`, `build.onOpenPlatform`, leer = wie im Projekt): Atlas baut jedes Projekt nach der Ruhepause mit dieser Vorgabe, egal was im Projekt eingestellt ist, und stellt danach (bei Hintergrundcompilierung am Ende des Laufs) die Auswahl des Projekts wieder her. Kennt ein Projekt die Konfiguration nicht oder ist die Plattform dort nicht aktiviert, gilt dafür die Einstellung des Projekts; die Zusammenfassung nennt das. Reiter Compiler unter „Beim Öffnen eines Projekts …“.
 - Prüfung von Hand anstoßen (#1231): Klick auf die Live-Prüfung der Atlas-Statusleiste („live · geprüft vor …“) prüft alle Units neu, auch solche, die eine Prüfung zuvor übersprungen hat. Neuer Server-Befehl `atlas.server.recheck`.
 - Fortschritt der Projektprüfung (#1232): Solange nicht alle Units des Projekts geprüft sind, zeigt die Live-Prüfung der Atlas-Statusleiste den Stand in Prozent („live · geprüft vor 2 s · Projekt 45 %“); der Tooltip nennt „Projekt: 12 von 27 Units geprüft“.
 

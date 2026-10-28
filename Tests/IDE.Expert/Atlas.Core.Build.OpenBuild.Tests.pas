@@ -29,6 +29,10 @@ type
     /// <summary>Namen, Schlüssel, Art, Umfang und Ausschlussliste.</summary>
     [Test]
     procedure NamesAndSettingsValues;
+    /// <summary>#1293: Vorgabe für Konfiguration und Plattform nur, wenn das Projekt sie kennt, in dessen
+    /// Schreibweise; ohne Vorgabe oder unbekannt gilt die Einstellung des Projekts.</summary>
+    [Test]
+    procedure PicksTargetKnownToProject;
   end;
 
 implementation
@@ -206,6 +210,20 @@ begin
   Assert.AreEqual('Atlas.IDE.Expert', Exclude[0]);
   Assert.AreEqual('Demo', Exclude[1]);
   Assert.AreEqual('Atlas.IDE.Expert, Demo', TAtlasOpenBuild.NormalizedExclude('Atlas.IDE.Expert.dpk;Demo;demo'));
+end;
+
+procedure TAtlasOpenBuildTests.PicksTargetKnownToProject;
+var
+  Configurations, Platforms: TArray<string>;
+begin
+  Configurations := TArray<string>.Create('Debug', 'Release', 'CI');
+  Platforms := TArray<string>.Create('Win32', 'Win64');
+  Assert.AreEqual('Debug', TAtlasOpenBuild.PickTarget(' debug ', Configurations), 'Schreibweise des Projekts');
+  Assert.AreEqual('Win64', TAtlasOpenBuild.PickTarget('WIN64', Platforms));
+  Assert.AreEqual('', TAtlasOpenBuild.PickTarget('Profil', Configurations), 'unbekannt: wie im Projekt');
+  Assert.AreEqual('', TAtlasOpenBuild.PickTarget('Linux64', Platforms), 'nicht aktiviert: wie im Projekt');
+  Assert.AreEqual('', TAtlasOpenBuild.PickTarget('', Configurations), 'ohne Vorgabe: wie im Projekt');
+  Assert.AreEqual('', TAtlasOpenBuild.PickTarget('Debug', nil), 'Projekt ohne Liste');
 end;
 
 initialization
