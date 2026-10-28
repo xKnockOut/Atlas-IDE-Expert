@@ -233,6 +233,13 @@ begin
   Assert.IsFalse(Team.Valid);
   Assert.IsTrue(Team.Exists);
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Syntax, ''));
+  Assert.AreEqual<Integer>(1, Team.Issues[0].Line, 'Zeile der fehlerhaften Stelle');
+  Assert.AreEqual<Integer>(39, Team.Issues[0].Column, 'Spalte: Ende des Texts');
+  Team := Parsed('{'#13#10'  "version": 1'#13#10'  "tracker": {}'#13#10'}');
+  Assert.IsFalse(Team.Valid, 'fehlendes Komma');
+  Assert.AreEqual<Integer>(3, Team.Issues[0].Line);
+  Assert.AreEqual<Integer>(3, Team.Issues[0].Column);
+  Assert.AreEqual<Integer>(0, Parsed('[1, 2]').Issues[0].Line, 'gültiges JSON, aber kein Objekt: ohne Stelle');
   Assert.AreEqual('f_', TAtlasTeamFile.Prefix(Team, TAtlasNamingKind.Field, 'f_'));
   Assert.AreEqual(0, Integer(Length(TAtlasTeamFile.Values(Team))));
   Assert.IsFalse(Parsed('[1, 2]').Valid, 'kein Objekt');

@@ -219,7 +219,11 @@ begin
   for Issue in ATeam.Issues do
     case Issue.Kind of
       TAtlasTeamIssueKind.Syntax:
-        MessageLine(TAtlasStrings.Text(TAtlasTextId.TeamFileIssueSyntax));
+        if Issue.Line > 0 then
+          MessageLine(TAtlasStrings.Fmt(TAtlasTextId.TeamFileIssueSyntaxAt, [ATeam.FileName, Issue.Line,
+            Issue.Column]))
+        else
+          MessageLine(TAtlasStrings.Text(TAtlasTextId.TeamFileIssueSyntax));
       TAtlasTeamIssueKind.Version:
         MessageLine(TAtlasStrings.Text(TAtlasTextId.TeamFileIssueVersion));
       TAtlasTeamIssueKind.UnknownKey:
