@@ -198,7 +198,8 @@ begin
   Assert.AreEqual('Z', mRuns[4].Text);
   Assert.AreEqual('https://z.de', mRuns[4].Target);
   Assert.AreEqual('https://w.de', mRuns[6].Target);
-  Assert.AreEqual('<b> & "x"', TAtlasTrackerMarkdown.DecodeEntities('&lt;b&gt; &amp; &quot;x&quot;'));
+  Assert.AreEqual('<b> & "x"', TAtlasTrackerMarkdown.DecodeHtml('&lt;b&gt; &amp; &quot;x&quot;'));
+  Assert.AreEqual('a b ''c'' &nbsp;', TAtlasTrackerMarkdown.DecodeHtml('a&nbsp;b &#39;c&#39; &amp;nbsp;'));
 end;
 
 procedure TAtlasTrackerMarkdownTests.DocRunsAndCodeLanguage;

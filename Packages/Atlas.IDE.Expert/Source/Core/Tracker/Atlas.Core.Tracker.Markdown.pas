@@ -81,15 +81,16 @@ type
     class function Segments(const AText: string): TArray<TAtlasMarkdownSegment>; static;
     /// <summary>Alle Links und Bilder in Reihenfolge (ohne Codeblöcke und Code im Fließtext).</summary>
     class function Links(const AText: string): TArray<TAtlasMarkdownLink>; static;
-    /// <summary>HTML-Entitäten (&amp;, &lt;, &gt;, &quot;, &#39;, &nbsp;, &#NN;) ersetzen.</summary>
-    class function DecodeEntities(const AText: string): string; static;
+    /// <summary>HTML-Entitäten ersetzen: wie TTextEntities.Decode, dazu &amp;nbsp; als Leerzeichen.</summary>
+    class function DecodeHtml(const AText: string): string; static;
   end;
 
 implementation
 
 uses
-  System.Character,
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Text.Chars,
+  Atlas.Text.Entities;
 
 const
   cBullet = '•';
@@ -388,8 +389,8 @@ begin
   mText := Trim(ALine);
   if StartsText('<img', mText) and (mText[Length(mText)] = '>') and (Pos('>', mText) = Length(mText)) then
   begin
-    AUrl := TAtlasTrackerMarkdown.DecodeEntities(AttributeOf(mText, 'src'));
-    AAlt := TAtlasTrackerMarkdown.DecodeEntities(AttributeOf(mText, 'alt'));
+    AUrl := TAtlasTrackerMarkdown.DecodeHtml(AttributeOf(mText, 'src'));
+    AAlt := TAtlasTrackerMarkdown.DecodeHtml(AttributeOf(mText, 'alt'));
     Exit(AUrl <> '');
   end;
   if not StartsStr('![', mText) then
@@ -602,55 +603,10 @@ begin
   end;
 end;
 
-class function TAtlasTrackerMarkdown.DecodeEntities(const AText: string): string;
-var
-  mIndex, mStop, mCode: Integer;
-  mName: string;
+class function TAtlasTrackerMarkdown.DecodeHtml(const AText: string): string;
 begin
-  Result := '';
-  mIndex := 1;
-  while mIndex <= Length(AText) do
-  begin
-    if AText[mIndex] = '&' then
-    begin
-      mStop := PosEx(';', AText, mIndex + 1);
-      if (mStop > 0) and (mStop - mIndex <= 8) then
-      begin
-        mName := Copy(AText, mIndex + 1, mStop - mIndex - 1);
-        mCode := -1;
-        if mName = 'amp' then
-          mCode := Ord('&')
-        else if mName = 'lt' then
-          mCode := Ord('<')
-        else if mName = 'gt' then
-          mCode := Ord('>')
-        else if mName = 'quot' then
-          mCode := Ord('"')
-        else if (mName = 'apos') or (mName = '#39') then
-          mCode := Ord('''')
-        else if mName = 'nbsp' then
-          mCode := Ord(' ')
-        else if StartsStr('#x', mName) or StartsStr('#X', mName) then
-        begin
-          if not TryStrToInt('$' + Copy(mName, 3, MaxInt), mCode) then
-            mCode := -1;
-        end
-        else if StartsStr('#', mName) then
-        begin
-          if not TryStrToInt(Copy(mName, 2, MaxInt), mCode) then
-            mCode := -1;
-        end;
-        if (mCode > 0) and (mCode < $FFFF) then
-        begin
-          Result := Result + Char(mCode);
-          mIndex := mStop + 1;
-          Continue;
-        end;
-      end;
-    end;
-    Result := Result + AText[mIndex];
-    Inc(mIndex);
-  end;
+  // &nbsp; kennt nur HTML; alles Übrige wie in XML über Atlas.Text (ADR 0012).
+  Result := TTextEntities.Decode(StringReplace(AText, '&nbsp;', ' ', [rfReplaceAll]));
 end;
 
 { Fließtext }
@@ -711,11 +667,6 @@ end;
 procedure TInlineBuilder.AddBreak;
 begin
   Add(TAtlasDocRun.Create(TAtlasDocRunKind.LineBreak, ''));
-end;
-
-function IsWordChar(AChar: Char): Boolean;
-begin
-  Result := AChar.IsLetterOrDigit;
 end;
 
 /// <summary>Ende eines [Text](Adresse) ab der öffnenden Klammer AIndex; 0 ohne.</summary>
@@ -867,7 +818,7 @@ begin
       begin
         // Hervorhebungen im Linktext entfallen.
         mLabel := StringReplace(StringReplace(mLabel, '**', '', [rfReplaceAll]), '`', '', [rfReplaceAll]);
-        mBuilder.AddLink(DecodeEntities(mLabel), mUrl);
+        mBuilder.AddLink(DecodeHtml(mLabel), mUrl);
         mIndex := mStop + 1;
         Continue;
       end;
@@ -890,15 +841,15 @@ begin
           if SameText(mTag.TrimRight(['/', ' ']), 'br') then
             mBuilder.AddBreak
           else if StartsText('img', mTag) and (AttributeOf(mTag, 'src') <> '') then
-            mBuilder.AddLink(DecodeEntities(AttributeOf(mTag, 'alt')), DecodeEntities(AttributeOf(mTag, 'src')))
+            mBuilder.AddLink(DecodeHtml(AttributeOf(mTag, 'alt')), DecodeHtml(AttributeOf(mTag, 'src')))
           else if StartsText('a ', mTag) and (AttributeOf(mTag, 'href') <> '') then
           begin
             // <a href="…">Text</a>: Text als Link.
             mClose := PosEx('</a>', LowerCase(mText), mStop + 1);
             if mClose > 0 then
             begin
-              mBuilder.AddLink(DecodeEntities(Copy(mText, mStop + 1, mClose - mStop - 1)),
-                DecodeEntities(AttributeOf(mTag, 'href')));
+              mBuilder.AddLink(DecodeHtml(Copy(mText, mStop + 1, mClose - mStop - 1)),
+                DecodeHtml(AttributeOf(mTag, 'href')));
               mIndex := mClose + 4;
               Continue;
             end;
@@ -909,7 +860,7 @@ begin
       end;
     end;
     // Nackte Adresse (GitHub verlinkt sie).
-    if ((mChar = 'h') or (mChar = 'H')) and not IsWordChar(mPrev) and (StartsText('https://', Copy(mText, mIndex, 8))
+    if ((mChar = 'h') or (mChar = 'H')) and not TTextChars.IsIdentChar(mPrev) and (StartsText('https://', Copy(mText, mIndex, 8))
       or StartsText('http://', Copy(mText, mIndex, 7))) then
     begin
       mStop := BareUrlEnd(mText, mIndex);
@@ -931,8 +882,8 @@ begin
         mDelimiter := mChar + mChar
       else
         mDelimiter := mChar;
-      if (mChar = '_') and IsWordChar(mPrev) and (mIndex + Length(mDelimiter) <= Length(mText)) and
-        IsWordChar(mText[mIndex + Length(mDelimiter)]) then
+      if (mChar = '_') and TTextChars.IsIdentChar(mPrev) and (mIndex + Length(mDelimiter) <= Length(mText)) and
+        TTextChars.IsIdentChar(mText[mIndex + Length(mDelimiter)]) then
       begin
         mBuilder.Text := mBuilder.Text + mDelimiter;
         Inc(mIndex, Length(mDelimiter));
@@ -983,7 +934,7 @@ begin
       mStop := PosEx(';', mText, mIndex + 1);
       if (mStop > 0) and (mStop - mIndex <= 8) then
       begin
-        mBuilder.Text := mBuilder.Text + DecodeEntities(Copy(mText, mIndex, mStop - mIndex + 1));
+        mBuilder.Text := mBuilder.Text + DecodeHtml(Copy(mText, mIndex, mStop - mIndex + 1));
         mIndex := mStop + 1;
         Continue;
       end;
