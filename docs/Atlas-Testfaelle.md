@@ -518,6 +518,11 @@ Gleiche Ablage wie die benannten Lesezeichen, `format` 2 mit `kind` (`named`, `q
 | QL24 | Seite „Tastenkonflikte“, Zeile „Lesezeichen 1–9 setzen“ › IDE überlassen | Strg+Umschalt+1…9 setzen sofort wieder IDE-Lesezeichen |
 | QL25 | Strg+. auf einer Zeile mit Marker › Ausblenden „überall“ | Spalte zeigt keine Marker mehr (#628) |
 | QL26 | Zeilennummern einer Zeile mit Marker, hell und dunkel, 100/150/200 % | Zahl heller als die übrigen, gleiche Schrift und Lage (Stufe der Zeilennummern beim ersten Bau prüfen) |
+| QL27 | IDE starten, Datei öffnen, `atlas.log` lesen (#1281) | Zeile „Schnelle Lesezeichen: Spalte angefordert (Spalte N, Breite B)“; fehlt die Spalte im Editor, nach 5 s zusätzlich „… die IDE hat sie aber noch nie gezeichnet“ bzw. „… bietet keine eigenen Spalten …“ |
+| QL28 | Spalte fehlt (oder `bookmarks.quick.gutter` aus), Datei mit IDE-Lesezeichen 1–3 öffnen (#1281) | Die IDE-Lesezeichen bleiben mit ihren Symbolen in der IDE, Atlas übernimmt nichts |
+| QL29 | Spalte fehlt, benanntes Lesezeichen mit Nummer (#1281) | Die Rinne zeigt das Band der benannten Lesezeichen an der Zeile |
+| QL30 | Linksklick in die Spalte links der Zahlen auf einer Zeile ohne Marker, dann auf den Marker (#1281) | Erst erscheint ein Marker, dann ist er wieder weg; kein Haltepunkt, keine Markierung im Editor. In `atlas.log` höchstens einmal „Klick … kam nicht über Application.OnMessage“ (dann hat ein anderer Experte die Nachrichten übernommen) |
+| QL31 | Tooltip über der Spalte und über einer Notiz, 100/150/200 % (#1281) | Text vollständig, auch Unterlängen (g, p, y) der letzten Zeile |
 
 ## Tippfehler (#485)
 
@@ -1312,6 +1317,11 @@ Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktione
 | SS8 | Methode bearbeiten, kurz warten | Nach der Tipppause stimmen die Köpfe mit dem neuen Text |
 | SS9 | Helles und dunkles Editor-Farbschema | Hintergrund und Schrift passen zum Schema |
 | SS10 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Kein Kopf, Klicks in die oberen Zeilen setzen wie sonst den Cursor |
+| SS11 | Blocklinien an, in einer Methode mit `if` (lang), darin `for` und `try` (je über 25 Zeilen) und innerem `if` scrollen; nur Routinen und if/else im Kopf | Methode, äußeres und inneres `if` stehen im Kopf, ihre Linien beginnen dort mit Haken. Die Linien von `for` und `try` blenden in der letzten Kopfzeile von oben weich ein und laufen darunter ohne Sprung weiter, nichts bricht an der Trennlinie ab (hell und dunkel) |
+| SS12 | Unter *Editor* „Große Schleifen im Kopf“ und „Große try-Blöcke im Kopf“ an, Höchstzahl 5 | `for …` und `try` stehen als eigene Zeilen im Kopf, ihre Linien beginnen dort mit Haken; Klick springt zu `for` bzw. `try` |
+| SS13 | „Große case-Blöcke im Kopf“ bzw. „Große with-Blöcke im Kopf“ an, in einen langen `case` bzw. `with … do begin` scrollen | Kopfzeile `case … of` bzw. `with … do`; aus: keine Zeile, die Linie blendet ein |
+| SS14 | „Klassen und Records im Kopf“ aus und in der Klassendeklaration scrollen; „Routinen im Kopf“ aus und in einer Methode scrollen | Keine Kopfzeile für die Klasse bzw. die Methode; andere eingeschaltete Blöcke stehen weiter im Kopf |
+| SS15 | Höchstzahl 2 mit vier Ebenen | Äußere Ebenen zusammengefasst; Linien zusammengefasster Blöcke blenden in der letzten Kopfzeile ein |
 
 ## Variable und Methode einbetten (#103, experimentell)
 

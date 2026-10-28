@@ -56,6 +56,9 @@ type
     FShared: Boolean;
     /// <summary>Projekt, dessen Lesezeichen das Seitenfenster zeigt.</summary>
     FWindowProject: string;
+    /// <summary>Die Spalte der schnellen Lesezeichen hat die IDE wirklich gezeichnet (#1281); meldet
+    /// TAtlasIdeQuickColumn.</summary>
+    FColumnPainted: Boolean;
   private
     class function Key(const APath: string): string; static;
     class procedure Say(const AText: string); static;
@@ -67,7 +70,8 @@ type
     class function QuickOn(AReport: Boolean): Boolean; static;
     /// <summary>Eine der beiden Arten an: Fenster, Wiederfinden, Sprung.</summary>
     class function Available(AReport: Boolean): Boolean; static;
-    /// <summary>Spalte der schnellen Lesezeichen sichtbar (bookmarks.quick und bookmarks.quick.gutter).</summary>
+    /// <summary>Spalte der schnellen Lesezeichen sichtbar: eingeschaltet (bookmarks.quick und
+    /// bookmarks.quick.gutter) und von der IDE gezeichnet (#1281).</summary>
     class function ColumnShown: Boolean; static;
     /// <summary>Projekt, Text und wiedergefundene Liste zu AFileName; False mit Meldung ohne Projekt.</summary>
     class function PrepareFile(const AFileName: string; out AProject, AText: string;
@@ -158,6 +162,9 @@ type
     /// <summary>IDE-Lesezeichen 1–9 von AFileName einmal je Sitzung übernehmen und dort entfernen
     /// (bookmarks.quick.importIde); AFileName muss die Datei im oberen Editor sein.</summary>
     class procedure ImportIde(const AFileName: string); static;
+    /// <summary>Spalte der schnellen Lesezeichen gezeichnet bzw. entfernt (#1281): Erst dann zeigt die Rinne
+    /// nummerierte benannte Lesezeichen nicht mehr selbst, und erst dann übernimmt ImportIde.</summary>
+    class procedure ColumnPainted(APainted: Boolean); static;
   end;
 
 implementation
@@ -228,6 +235,7 @@ begin
   FreeAndNil(FProjectOf);
   FreeAndNil(FImported);
   FWindowProject := '';
+  FColumnPainted := False;
 end;
 
 class function TAtlasIdeBookmarks.Key(const APath: string): string;
@@ -290,7 +298,18 @@ end;
 
 class function TAtlasIdeBookmarks.ColumnShown: Boolean;
 begin
-  Result := TAtlasIdeSettings.Current.QuickBookmarks and TAtlasIdeSettings.Current.QuickBookmarksGutter;
+  // Nicht allein die Einstellung: Fehlt die Spalte, blieben Marker sonst ganz unsichtbar (#1281).
+  Result := FColumnPainted and TAtlasIdeSettings.Current.QuickBookmarks and
+    TAtlasIdeSettings.Current.QuickBookmarksGutter;
+end;
+
+class procedure TAtlasIdeBookmarks.ColumnPainted(APainted: Boolean);
+begin
+  if FColumnPainted = APainted then
+    Exit;
+  FColumnPainted := APainted;
+  // Die Schicht der benannten Lesezeichen zeigt nummerierte nun selbst bzw. überlässt sie der Spalte.
+  Invalidate;
 end;
 
 class function TAtlasIdeBookmarks.ActiveProject: string;
@@ -1103,8 +1122,10 @@ var
   Project, Text: string;
   Current: TAtlasBookmarkList;
 begin
+  // Nur, wenn die Spalte wirklich zeichnet: Die IDE-Lesezeichen werden dort entfernt, ohne Spalte wären die
+  // übernommenen nirgends mehr zu sehen (#1281).
   if (FImported = nil) or not QuickOn(False) or not TAtlasIdeSettings.Current.QuickBookmarksImportIde or
-    (AFileName = '') or FImported.ContainsKey(Key(AFileName)) then
+    not ColumnShown or (AFileName = '') or FImported.ContainsKey(Key(AFileName)) then
     Exit;
   View := TAtlasEditorBuffer.ActiveView;
   if (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, AFileName) then
