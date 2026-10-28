@@ -95,6 +95,10 @@ type
     /// danach wieder weg ist; git submodule status --recursive.</summary>
     [Test]
     procedure WorkingCopyStateCommands;
+    /// <summary>#1289: Git-Optionen über den Prozessläufer: fetch und push ohne Rückfrage, stash und checkout
+    /// bzw. worktree add lokal, in dieser Reihenfolge; ohne Anmeldung endet es beim Abruf.</summary>
+    [Test]
+    procedure ProvidersRunGitBranchOptions;
     [Test]
     procedure SafeBranchNames;
   end;
@@ -1789,6 +1793,71 @@ begin
   Runner.WorkingDirs := nil;
   Runner.Commands := nil;
   Runner.Answers := nil;
+end;
+
+procedure TAtlasVcsTests.ProvidersRunGitBranchOptions;
+const
+  Prefix = '--no-optional-locks -c core.quotepath=off -c color.ui=false ';
+  RemotePrefix = Prefix + '-c credential.interactive=never -c core.askPass= ';
+var
+  Runner: TFakeRunner;
+  RunnerRef: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  mBranching: IAtlasVcsBranching;
+  mRequest: TAtlasVcsBranchRequest;
+  mSteps: TArray<TAtlasVcsBranchStep>;
+  mRun: TAtlasVcsBranchRun;
+  mFolder: string;
+begin
+  Runner := TFakeRunner.Create;
+  RunnerRef := Runner;
+  Vcs := TAtlasGitVersionControl.Create(Root, RunnerRef, 'git.exe', 5000);
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsBranching, mBranching));
+  // Basis vom Server, vorher beiseitelegen, sofort pushen.
+  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Git, 'feature/9-neu',
+    TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.RemoteMain, 'main', '', 'origin'), '');
+  mRequest.Fetch := True;
+  mRequest.Stash := True;
+  mRequest.PushNow := True;
+  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
+  mRun := TAtlasVcsBranchPlan.Execute(mBranching, mSteps);
+  Assert.IsTrue(mRun.Succeeded);
+  Assert.AreEqual(4, Integer(Length(Runner.Calls)));
+  Assert.AreEqual(RemotePrefix + 'fetch --quiet --no-tags origin main', Runner.Calls[0]);
+  Assert.AreEqual(Prefix + 'stash push --include-untracked --quiet -m Atlas: vor feature/9-neu', Runner.Calls[1]);
+  Assert.AreEqual(Prefix + 'checkout --quiet --no-track -b feature/9-neu refs/remotes/origin/main --',
+    Runner.Calls[2]);
+  Assert.AreEqual(RemotePrefix + 'push --set-upstream origin refs/heads/feature/9-neu:refs/heads/feature/9-neu',
+    Runner.Calls[3]);
+  Assert.AreEqual(Root, Runner.WorkingDirs[3], 'alles in der Wurzel der Arbeitskopie');
+  // Ohne Anmeldung: LoginNeeded beim Abruf, danach nichts.
+  Runner.Calls := nil;
+  Runner.ExitCode := 128;
+  Runner.ErrorText := 'fatal: Authentication failed for ''https://example.com/kasse.git/''';
+  mRun := TAtlasVcsBranchPlan.Execute(mBranching, mSteps);
+  Assert.IsTrue(mRun.Outcome = TAtlasVcsOutcome.LoginNeeded);
+  Assert.IsTrue(TAtlasVcsBranchPlan.FetchFailed(mSteps, mRun));
+  Assert.AreEqual(1, Integer(Length(Runner.Calls)));
+  Runner.ErrorText := '';
+  Runner.ExitCode := 0;
+  // worktree: eigener Ordner statt stash und checkout; Push an den Remote des Hauptbranchs.
+  Runner.Calls := nil;
+  mFolder := ExtractFileDir(Root) + PathDelim + 'kasse-ATL-9';
+  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Git, 'ATL-9-neu',
+    TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.LocalMain, 'main', '', 'upstream'), '');
+  mRequest.Stash := True;
+  mRequest.PushNow := True;
+  mRequest.WorktreeFolder := mFolder;
+  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
+  mRun := TAtlasVcsBranchPlan.Execute(mBranching, mSteps);
+  Assert.IsTrue(mRun.Succeeded);
+  Assert.AreEqual(2, Integer(Length(Runner.Calls)));
+  Assert.AreEqual(Prefix + 'worktree add --quiet --no-track -b ATL-9-neu ' + mFolder + ' refs/heads/main',
+    Runner.Calls[0]);
+  Assert.AreEqual(RemotePrefix + 'push --set-upstream upstream refs/heads/ATL-9-neu:refs/heads/ATL-9-neu',
+    Runner.Calls[1]);
+  mSteps := nil;
+  mRequest := Default(TAtlasVcsBranchRequest);
 end;
 
 procedure TAtlasVcsTests.SafeBranchNames;

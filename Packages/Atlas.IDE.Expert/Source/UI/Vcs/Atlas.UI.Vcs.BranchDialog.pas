@@ -13,7 +13,14 @@
 // Namen, bis man ihn selbst ändert; ohne erkennbares Layout leer mit
 // Hinweis), Danach (umschalten, frisch auschecken mit Ordner, nur anlegen)
 // und eine Warnung bei gemischter Arbeitskopie, wenn von ihrer Revision
-// kopiert wird. Die Optionen aus #1289 kommen als weitere Zeilen dazu.
+// kopiert wird.
+// Gruppe „Git“ (#1289) direkt unter der Basis, vorbelegt aus vcs.branch.git.*:
+// vorher abrufen (nur mit Basis <Remote>/<Hauptbranch>), auf den Server
+// (später/sofort), offene Änderungen (nur mit geänderten Dateien und ohne
+// worktree; „nachfragen“ lässt die Auswahl leer und sperrt „Anlegen“, bis
+// gewählt ist) und Ablage (umschalten/eigener Ordner). Der worktree-Ordner
+// folgt dem Namen, bis er von Hand geändert wird; gibt es ihn schon, sperrt
+// ein Hinweis „Anlegen“.
 // Externals (#1291): Gruppe „Externals (n)“ mit Ordner, Quelle und Auswahl je
 // Zeile (festschreiben auf die Revision der External-Arbeitskopie,
 // unverändert, mitverzweigen). Vorauswahl aus TAtlasVcsBranchPlan.DefaultActions
@@ -40,6 +47,19 @@ type
   TAtlasBranchDialog = class(TForm)
   private
     FFacts: TAtlasVcsBranchFacts;
+    FKey: string;
+    FGitOptions: TAtlasVcsGitBranchOptions;
+    FGitBox: TGroupBox;
+    FFetchCheck: TCheckBox;
+    FPushBox: TComboBox;
+    FUncommittedPanel: TPanel;
+    FUncommittedBox: TComboBox;
+    FUncommittedCount: TLabel;
+    FPlaceBox: TComboBox;
+    FWorktreePanel: TPanel;
+    FWorktreeEdit: TEdit;
+    FGitError: TLabel;
+    FWorktreeEdited: Boolean;
     FBases: TArray<TAtlasVcsBranchBase>;
     FSteps: TArray<TAtlasVcsBranchStep>;
     FNameEdit: TEdit;
@@ -70,7 +90,19 @@ type
     FNeverAsk: TCheckBox;
     FCreateButton: TButton;
     FFilling: Boolean;
-    function Row(const ACaption: string; AHeight: Integer): TPanel;
+    /// <summary>Alle Steuerelemente angelegt: CreateWnd darf die Auswahllisten füllen.</summary>
+    FControlsReady: Boolean;
+    function Row(const ACaption: string; AHeight: Integer): TPanel; overload;
+    function Row(AParent: TWinControl; const ACaption: string; AHeight: Integer): TPanel; overload;
+    procedure AddGitGroup;
+    procedure UpdateGit;
+    /// <summary>Zeile einblenden bzw. ausblenden; eingeblendet direkt unter AAfter (alTop ordnet nach Top).
+    /// </summary>
+    procedure ShowRow(ARow, AAfter: TControl; AVisible: Boolean);
+    procedure WorktreeChanged(Sender: TObject);
+    function GitState(out AText: string): Boolean;
+    /// <summary>Einträge der Auswahllisten (brauchen ein Fenster); nur leere Listen.</summary>
+    procedure FillChoices;
     procedure Stack(AControl: TControl);
     procedure FillBases(APreferred: TAtlasVcsBranchBaseKind);
     procedure Changed(Sender: TObject);
@@ -96,6 +128,14 @@ type
     /// <summary>Wie oben mit den SVN-Optionen als Vorgaben (#1290): Ort, Quelle, Danach, Ordner.</summary>
     constructor CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage: string;
       const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean); overload;
+    /// <summary>Wie oben mit den Git-Vorgaben (#1289) und der Kennung des Issues für {kennung} im
+    /// worktree-Ordner ('' ohne Issue).</summary>
+    constructor CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage,
+      AKey: string; const AGitOptions: TAtlasVcsGitBranchOptions; AOfferNeverAsk: Boolean); overload;
+    /// <summary>Mit Git- (#1289) und SVN-Vorgaben (#1290); je nach Art der Arbeitskopie zählt eine davon.</summary>
+    constructor CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage,
+      AKey: string; const AGitOptions: TAtlasVcsGitBranchOptions; const ASvn: TAtlasVcsSvnBranchOptions;
+      AOfferNeverAsk: Boolean); overload;
     /// <summary>Ort aus dem Feld ("^/Kasse/branches/x" → "Kasse/branches/x"); '' wenn es nicht mit ^/ beginnt.
     /// </summary>
     class function LocationOf(const AText: string): string; static;
@@ -117,6 +157,21 @@ type
     property BaseBox: TComboBox read FBaseBox;
     property MessageEdit: TEdit read FMessageEdit;
     property MessagePanel: TPanel read FMessagePanel;
+    /// <summary>Gruppe „Git“ (#1289), nur unter Git sichtbar.</summary>
+    property GitBox: TGroupBox read FGitBox;
+    property FetchCheck: TCheckBox read FFetchCheck;
+    /// <summary>0 beim ersten Push, 1 sofort.</summary>
+    property PushBox: TComboBox read FPushBox;
+    property UncommittedPanel: TPanel read FUncommittedPanel;
+    /// <summary>0 mitnehmen, 1 beiseitelegen, -1 noch nicht gewählt.</summary>
+    property UncommittedBox: TComboBox read FUncommittedBox;
+    property UncommittedCount: TLabel read FUncommittedCount;
+    /// <summary>0 umschalten, 1 eigener Ordner.</summary>
+    property PlaceBox: TComboBox read FPlaceBox;
+    /// <summary>Ordner des worktree (Git); FolderPanel ist der Ordner fürs Auschecken (SVN).</summary>
+    property WorktreePanel: TPanel read FWorktreePanel;
+    property WorktreeEdit: TEdit read FWorktreeEdit;
+    property GitError: TLabel read FGitError;
     property LocationPanel: TPanel read FLocationPanel;
     property LocationEdit: TEdit read FLocationEdit;
     property LocationError: TLabel read FLocationError;
@@ -159,11 +214,26 @@ const
 constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
   const AName, AMessage: string; AOfferNeverAsk: Boolean);
 begin
-  CreateDialog(AOwner, AFacts, AName, AMessage, TAtlasVcsSvnBranchOptions.Legacy, AOfferNeverAsk);
+  CreateDialog(AOwner, AFacts, AName, AMessage, '', TAtlasVcsGitBranchOptions.Classic,
+    TAtlasVcsSvnBranchOptions.Legacy, AOfferNeverAsk);
 end;
 
 constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
   const AName, AMessage: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean);
+begin
+  CreateDialog(AOwner, AFacts, AName, AMessage, '', TAtlasVcsGitBranchOptions.Classic, ASvn, AOfferNeverAsk);
+end;
+
+constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
+  const AName, AMessage, AKey: string; const AGitOptions: TAtlasVcsGitBranchOptions; AOfferNeverAsk: Boolean);
+begin
+  CreateDialog(AOwner, AFacts, AName, AMessage, AKey, AGitOptions, TAtlasVcsSvnBranchOptions.Legacy,
+    AOfferNeverAsk);
+end;
+
+constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
+  const AName, AMessage, AKey: string; const AGitOptions: TAtlasVcsGitBranchOptions;
+  const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean);
 var
   mPanel, mBottom: TPanel;
   mSteps: TGroupBox;
@@ -173,6 +243,8 @@ var
 begin
   inherited CreateNew(AOwner);
   FFacts := AFacts;
+  FKey := AKey;
+  FGitOptions := AGitOptions;
   FSvn := ASvn;
   FFilling := True;
   Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchTitle);
@@ -232,6 +304,14 @@ begin
   FBaseBox.SetBounds(cCaptionWidth + cGap, 2, mPanel.Width - cCaptionWidth - 2 * cGap, 23);
   FBaseBox.Anchors := [akLeft, akTop, akRight];
   FBaseBox.OnChange := Changed;
+
+  // Git-Optionen (#1289) gehören zur Basis: direkt darunter.
+  AddGitGroup;
+  if FGitBox.Visible then
+  begin
+    Height := Height + 176;
+    Constraints.MinHeight := Constraints.MinHeight + 176;
+  end;
 
   FMessagePanel := Row(TAtlasStrings.Text(TAtlasTextId.VcsBranchMessage), 28);
   FMessageEdit := TEdit.Create(Self);
@@ -316,8 +396,18 @@ begin
   FStepsMemo.Font.Size := 9;
 
   mPreferred := TAtlasVcsBranchBaseKind.Current;
-  if TAtlasVcsBranchPlan.DefaultBase(AFacts, ASvn.Source, mBase) then
+  if AFacts.Kind = TAtlasVcsKind.Git then
+  begin
+    if TAtlasVcsBranchPlan.DefaultBase(AFacts, AGitOptions, mBase) then
+      mPreferred := mBase.Kind;
+  end
+  else if TAtlasVcsBranchPlan.DefaultBase(AFacts, ASvn.Source, mBase) then
     mPreferred := mBase.Kind;
+  // Hat schon ein Steuerelement das Fenster erzwungen, kam CreateWnd zu früh: jetzt füllen. Sonst füllt CreateWnd,
+  // sobald FillBases das Fenster braucht.
+  FControlsReady := True;
+  if HandleAllocated then
+    FillChoices;
   FFilling := False;
   FillBases(mPreferred);
 end;
@@ -329,21 +419,195 @@ begin
   inherited;
   // Combobox-Einträge brauchen ein Fenster: erst hier füllen (#1290). Das Fenster entsteht schon im
   // Konstruktor, sobald FillBases die Basen einträgt; FFilling bleibt dann gesetzt, Changed folgt dort.
-  if not Assigned(FAfterBox) or (FAfterBox.Items.Count > 0) then
+  if not FControlsReady then
     Exit;
   mFilling := FFilling;
   FFilling := True;
   try
-    FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterSwitch));
-    FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterCheckout));
-    FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterNone));
-    FAfterBox.ItemIndex := Ord(FSvn.After);
-    FillExternals;
+    FillChoices;
   finally
     FFilling := mFilling;
   end;
   if not mFilling then
     Changed(nil);
+end;
+
+procedure TAtlasBranchDialog.FillChoices;
+var
+  mFilling: Boolean;
+begin
+  mFilling := FFilling;
+  FFilling := True;
+  try
+    if FAfterBox.Items.Count = 0 then
+    begin
+      FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterSwitch));
+      FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterCheckout));
+      FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterNone));
+      FAfterBox.ItemIndex := Ord(FSvn.After);
+    end;
+    // Git (#1289): Vorbelegung aus vcs.branch.git.*; „nachfragen“ lässt die Auswahl leer.
+    if FPushBox.Items.Count = 0 then
+    begin
+      FPushBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchPushLater));
+      FPushBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchPushNow));
+      if FGitOptions.PushNow then
+        FPushBox.ItemIndex := 1
+      else
+        FPushBox.ItemIndex := 0;
+    end;
+    if FUncommittedBox.Items.Count = 0 then
+    begin
+      FUncommittedBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchCarry));
+      FUncommittedBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchStash));
+      case FGitOptions.Uncommitted of
+        TAtlasVcsGitUncommitted.Carry:
+          FUncommittedBox.ItemIndex := 0;
+        TAtlasVcsGitUncommitted.Stash:
+          FUncommittedBox.ItemIndex := 1;
+      else
+        FUncommittedBox.ItemIndex := -1;
+      end;
+    end;
+    if FPlaceBox.Items.Count = 0 then
+    begin
+      FPlaceBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchPlaceSwitch));
+      FPlaceBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchPlaceWorktree));
+      if FGitOptions.Worktree then
+        FPlaceBox.ItemIndex := 1
+      else
+        FPlaceBox.ItemIndex := 0;
+    end;
+    FillExternals;
+  finally
+    FFilling := mFilling;
+  end;
+end;
+
+procedure TAtlasBranchDialog.AddGitGroup;
+var
+  mPanel: TPanel;
+  mWidth: Integer;
+begin
+  FGitBox := TGroupBox.Create(Self);
+  FGitBox.Parent := Self;
+  Stack(FGitBox);
+  FGitBox.AlignWithMargins := True;
+  FGitBox.Margins.SetBounds(cGap, 4, cGap, 4);
+  FGitBox.Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchGit);
+  FGitBox.Height := 120;
+  FGitBox.Visible := FFacts.Kind = TAtlasVcsKind.Git;
+
+  mPanel := Row(FGitBox, '', 24);
+  FFetchCheck := TCheckBox.Create(Self);
+  FFetchCheck.Parent := mPanel;
+  FFetchCheck.SetBounds(cCaptionWidth + cGap, 3, mPanel.Width - cCaptionWidth - 2 * cGap, 20);
+  FFetchCheck.Anchors := [akLeft, akTop, akRight];
+  FFetchCheck.Checked := FGitOptions.Base = TAtlasVcsGitBaseOption.Remote;
+  FFetchCheck.OnClick := Changed;
+
+  // Einträge der Auswahllisten erst mit Fenster (FillChoices).
+  mPanel := Row(FGitBox, TAtlasStrings.Text(TAtlasTextId.VcsBranchPush), 28);
+  FPushBox := TComboBox.Create(Self);
+  FPushBox.Parent := mPanel;
+  FPushBox.Style := csDropDownList;
+  FPushBox.SetBounds(cCaptionWidth + cGap, 2, mPanel.Width - cCaptionWidth - 2 * cGap, 23);
+  FPushBox.Anchors := [akLeft, akTop, akRight];
+  FPushBox.OnChange := Changed;
+
+  // Offene Änderungen: nur mit geänderten Dateien; „nachfragen“ lässt die Auswahl leer.
+  FUncommittedPanel := Row(FGitBox, TAtlasStrings.Text(TAtlasTextId.VcsBranchUncommitted), 28);
+  mWidth := 240;
+  FUncommittedBox := TComboBox.Create(Self);
+  FUncommittedBox.Parent := FUncommittedPanel;
+  FUncommittedBox.Style := csDropDownList;
+  FUncommittedBox.SetBounds(cCaptionWidth + cGap, 2, mWidth, 23);
+  FUncommittedBox.OnChange := Changed;
+  FUncommittedCount := TLabel.Create(Self);
+  FUncommittedCount.Parent := FUncommittedPanel;
+  FUncommittedCount.SetBounds(cCaptionWidth + 2 * cGap + mWidth, 5, 260, 17);
+  FUncommittedCount.Caption := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchUncommittedCount, [FFacts.LocalChanges]);
+
+  mPanel := Row(FGitBox, TAtlasStrings.Text(TAtlasTextId.VcsBranchPlace), 28);
+  FPlaceBox := TComboBox.Create(Self);
+  FPlaceBox.Parent := mPanel;
+  FPlaceBox.Style := csDropDownList;
+  FPlaceBox.SetBounds(cCaptionWidth + cGap, 2, mPanel.Width - cCaptionWidth - 2 * cGap, 23);
+  FPlaceBox.Anchors := [akLeft, akTop, akRight];
+  FPlaceBox.OnChange := Changed;
+
+  FWorktreePanel := Row(FGitBox, TAtlasStrings.Text(TAtlasTextId.VcsBranchFolder), 28);
+  FWorktreeEdit := TEdit.Create(Self);
+  FWorktreeEdit.Parent := FWorktreePanel;
+  FWorktreeEdit.SetBounds(cCaptionWidth + cGap, 2, FWorktreePanel.Width - cCaptionWidth - 2 * cGap, 23);
+  FWorktreeEdit.Anchors := [akLeft, akTop, akRight];
+  FWorktreeEdit.OnChange := WorktreeChanged;
+
+  FGitError := TLabel.Create(Self);
+  FGitError.Parent := FGitBox;
+  Stack(FGitError);
+  FGitError.AlignWithMargins := True;
+  FGitError.Margins.SetBounds(cCaptionWidth + 2 * cGap, 0, cGap, 2);
+  FGitError.Font.Color := clRed;
+  FGitError.WordWrap := True;
+end;
+
+procedure TAtlasBranchDialog.WorktreeChanged(Sender: TObject);
+begin
+  // Von Hand geändert: folgt dem Namen nicht mehr.
+  if not FFilling then
+    FWorktreeEdited := True;
+  Changed(Sender);
+end;
+
+procedure TAtlasBranchDialog.UpdateGit;
+var
+  mBase: TAtlasVcsBranchBase;
+  mWasFilling: Boolean;
+begin
+  if FFacts.Kind <> TAtlasVcsKind.Git then
+    Exit;
+  SelectedBase(mBase);
+  FFetchCheck.Enabled := mBase.Kind = TAtlasVcsBranchBaseKind.RemoteMain;
+  FFetchCheck.Caption := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFetch, [mBase.RemoteName, FFacts.MainBranch]);
+  ShowRow(FUncommittedPanel, FPushBox.Parent, (FFacts.LocalChanges > 0) and (FPlaceBox.ItemIndex <> 1));
+  ShowRow(FWorktreePanel, FPlaceBox.Parent, FPlaceBox.ItemIndex = 1);
+  if FWorktreePanel.Visible and not FWorktreeEdited then
+  begin
+    mWasFilling := FFilling;
+    FFilling := True;
+    try
+      FWorktreeEdit.Text := TAtlasVcsBranchPlan.WorktreePath(FFacts.Root, FGitOptions.WorktreeFolder,
+        Trim(FNameEdit.Text), FKey);
+    finally
+      FFilling := mWasFilling;
+    end;
+  end;
+end;
+
+procedure TAtlasBranchDialog.ShowRow(ARow, AAfter: TControl; AVisible: Boolean);
+begin
+  if AVisible and not ARow.Visible then
+    ARow.Top := AAfter.Top + AAfter.Height + 1;
+  ARow.Visible := AVisible;
+end;
+
+function TAtlasBranchDialog.GitState(out AText: string): Boolean;
+var
+  mFolder: string;
+begin
+  AText := '';
+  if FFacts.Kind = TAtlasVcsKind.Git then
+  begin
+    mFolder := Trim(FWorktreeEdit.Text);
+    if FUncommittedPanel.Visible and (FUncommittedBox.ItemIndex < 0) then
+      AText := TAtlasStrings.Text(TAtlasTextId.VcsBranchUncommittedChoose)
+    else if FWorktreePanel.Visible and not TAtlasVcsBranchPlan.SafeFolder(mFolder) then
+      AText := TAtlasStrings.Text(TAtlasTextId.VcsBranchFolderInvalid)
+    else if FWorktreePanel.Visible and DirectoryExists(mFolder) then
+      AText := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderExists, [mFolder]);
+  end;
+  Result := AText = '';
 end;
 
 procedure TAtlasBranchDialog.AddExternals;
@@ -589,11 +853,16 @@ begin
 end;
 
 function TAtlasBranchDialog.Row(const ACaption: string; AHeight: Integer): TPanel;
+begin
+  Result := Row(Self, ACaption, AHeight);
+end;
+
+function TAtlasBranchDialog.Row(AParent: TWinControl; const ACaption: string; AHeight: Integer): TPanel;
 var
   mCaption: TLabel;
 begin
   Result := TPanel.Create(Self);
-  Result.Parent := Self;
+  Result.Parent := AParent;
   Result.Height := AHeight;
   Result.BevelOuter := bvNone;
   Stack(Result);
@@ -712,6 +981,17 @@ var
 begin
   SelectedBase(mBase);
   Result := TAtlasVcsBranchRequest.Make(FFacts.Kind, FNameEdit.Text, mBase, FMessageEdit.Text);
+  if FFacts.Kind = TAtlasVcsKind.Git then
+  begin
+    // Git (#1289): Abruf nur mit Basis vom Server; worktree oder offene Änderungen beiseitelegen.
+    Result.Fetch := FFetchCheck.Checked and (mBase.Kind = TAtlasVcsBranchBaseKind.RemoteMain);
+    Result.PushNow := FPushBox.ItemIndex = 1;
+    if FPlaceBox.ItemIndex = 1 then
+      Result.WorktreeFolder := Trim(FWorktreeEdit.Text)
+    else
+      Result.Stash := FUncommittedPanel.Visible and (FUncommittedBox.ItemIndex = 1);
+    Exit;
+  end;
   if FFacts.Kind <> TAtlasVcsKind.Svn then
     Exit;
   // SVN (#1290): Ort und Ordner wie im Dialog angezeigt.
@@ -731,15 +1011,16 @@ function TAtlasBranchDialog.CanCreate: Boolean;
 var
   mText: string;
 begin
-  Result := NameState(mText) and not FFacts.NeedsServer and (FBaseBox.ItemIndex >= 0) and (Length(FSteps) > 0) and
-    ExternalsChosen;
+  Result := NameState(mText) and GitState(mText) and not FFacts.NeedsServer and (FBaseBox.ItemIndex >= 0) and
+    (Length(FSteps) > 0) and ExternalsChosen;
 end;
 
 procedure TAtlasBranchDialog.Changed(Sender: TObject);
 var
-  mText: string;
+  mText, mGitText: string;
   mBase: TAtlasVcsBranchBase;
   mRequest: TAtlasVcsBranchRequest;
+  mHeight: Integer;
 begin
   if FFilling then
     Exit;
@@ -747,6 +1028,24 @@ begin
   FNameError.Caption := mText;
   FNameError.Visible := mText <> '';
   FollowName;
+  UpdateGit;
+  GitState(mGitText);
+  FGitError.Caption := mGitText;
+  if (mGitText <> '') and not FGitError.Visible then
+    FGitError.Top := cBelowAll;
+  FGitError.Visible := mGitText <> '';
+  if FGitBox.Visible then
+  begin
+    // Höhe nach den sichtbaren Zeilen: Überschrift, Abrufen, Server, Ablage, ggf. Änderungen, Ordner, Hinweis.
+    mHeight := 24 + 28 + 2 * 32;
+    if FUncommittedPanel.Visible then
+      Inc(mHeight, 32);
+    if FWorktreePanel.Visible then
+      Inc(mHeight, 32);
+    if FGitError.Visible then
+      Inc(mHeight, 36);
+    FGitBox.Height := mHeight;
+  end;
   mRequest := Request;
   if FFacts.Kind = TAtlasVcsKind.Svn then
   begin
