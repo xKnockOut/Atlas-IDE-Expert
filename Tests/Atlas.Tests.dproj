@@ -848,6 +848,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.SnapshotPolicy.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.CloseRules.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Guides.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.CodeInsightKeys.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.Colors.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Problems\Atlas.Core.Problems.Store.pas"/>
@@ -873,6 +874,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Unwrap.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Unwrap.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Pairs.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Editor.CodeInsightKeys.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.Match.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Match.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Editor\Atlas.Core.Editor.LineChanges.pas"/>
