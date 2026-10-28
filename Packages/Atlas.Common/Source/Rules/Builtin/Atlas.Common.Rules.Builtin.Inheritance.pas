@@ -78,6 +78,12 @@ type
     FIndex: ISymbolIndex;
     FLocal: TUnitIndex;
     function FindType(const AName: string; out AType: TSymbolLocation): Boolean;
+    /// <summary>Klasse AName mit AArity Typparametern (#1326: THorseChannel und THorseChannel&lt;T&gt; sind zwei
+    /// Typen); AArity &lt; 0 = Zahl unbekannt, jede passt.</summary>
+    function FindTypeOf(const AName: string; AArity: Integer; out AType: TSymbolLocation): Boolean;
+    /// <summary>Direkter Vorfahr von AType, mit der Zahl seiner Typargumente aufgelöst; TObject ohne Angabe.
+    /// AName: sein Name ohne Unit und Typargumente.</summary>
+    function ParentLocation(const AType: TSymbolLocation; out AName: string; out AParent: TSymbolLocation): Boolean;
     /// <summary>Ist der Treffer aus dem Index von dieser Datei aus sichtbar? Typen aus dem implementation-Teil
     /// anderer Units nicht (sonst wurde TFrame einer fremden Unit zum Vorfahren von VCL-Frames).</summary>
     function Reachable(const ALocation: TSymbolLocation): Boolean;
@@ -99,6 +105,13 @@ type
     /// <summary>Vorfahren von ATypeName vom direkten an aufwärts (#997). AComplete: die Kette reicht bis TObject;
     /// AObjectMissing: TObject selbst steht weder in der Datei noch im Index.</summary>
     function Ancestors(const ATypeName: string; out AComplete, AObjectMissing: Boolean): TArray<TSymbolLocation>;
+      overload;
+    /// <summary>Wie oben ab dem schon gefundenen Typ AType (#1326): Bei gleichnamigen Typen mit und ohne
+    /// Typparameter gilt so der richtige.</summary>
+    function Ancestors(const AType: TSymbolLocation; out AComplete, AObjectMissing: Boolean): TArray<TSymbolLocation>;
+      overload;
+    /// <summary>Klasse dieser Datei, in deren Rumpf das Mitglied AMember steht (#1326); False ohne.</summary>
+    function OwnerOf(const AMember: TIndexSymbol; out AType: TSymbolLocation): Boolean;
     /// <summary>Klasse AName aus der Datei oder eindeutig aus dem Index (#999).</summary>
     function FindClass(const AName: string; out AType: TSymbolLocation): Boolean;
     /// <summary>Methoden, Konstruktoren und Destruktoren der Klasse AType (#997).</summary>
@@ -300,14 +313,60 @@ begin
   Result := ALocation.Symbol.InInterface or (ALocation.FileName = '') or SameText(ALocation.FileName, FLocal.FileName);
 end;
 
+/// <summary>Zahl der Einträge in einer Liste von Typparametern bzw. -argumenten ("K, V", "string, TList&lt;T&gt;");
+/// 0 bei ''.</summary>
+function GenericArity(const AList: string): Integer;
+var
+  mIndex, mDepth: Integer;
+begin
+  Result := 0;
+  if Trim(AList) = '' then
+    Exit;
+  Result := 1;
+  mDepth := 0;
+  for mIndex := 1 to Length(AList) do
+    case AList[mIndex] of
+      '<', '(', '[':
+        Inc(mDepth);
+      '>', ')', ']':
+        Dec(mDepth);
+      ',':
+        if mDepth = 0 then
+          Inc(Result);
+    end;
+end;
+
+/// <summary>Zahl der Typargumente in einem Namen wie "TFoo&lt;T, U&gt;"; -1 ohne spitze Klammern (unbekannt: Die
+/// Regeln geben Klassen generischer Typen oft ohne Parameter weiter).</summary>
+function NameArity(const AName: string): Integer;
+var
+  mOpen: Integer;
+begin
+  mOpen := Pos('<', AName);
+  if mOpen = 0 then
+    Exit(-1);
+  Result := GenericArity(Copy(AName, mOpen + 1, LastDelimiter('>', AName) - mOpen - 1));
+end;
+
 function TAncestry.FindType(const AName: string; out AType: TSymbolLocation): Boolean;
+var
+  mName: string;
+begin
+  mName := AName;
+  if Pos('<', mName) > 0 then
+    mName := Copy(mName, 1, Pos('<', mName) - 1);
+  Result := FindTypeOf(mName, NameArity(AName), AType);
+end;
+
+function TAncestry.FindTypeOf(const AName: string; AArity: Integer; out AType: TSymbolLocation): Boolean;
 var
   Symbol: TIndexSymbol;
   Location: TSymbolLocation;
   Found: Boolean;
 begin
   for Symbol in FLocal.Symbols do
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and SameText(Symbol.Name, AName) then
+    if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and SameText(Symbol.Name, AName) and
+      ((AArity < 0) or (GenericArity(Symbol.TypeParams) = AArity)) then
     begin
       AType := Default(TSymbolLocation);
       AType.Symbol := Symbol;
@@ -320,7 +379,7 @@ begin
   for Location in FIndex.FindSymbols(AName) do
   begin
     if (Location.Symbol.Kind <> TIndexSymbolKind.ClassType) or (Location.Symbol.Container <> '') or
-      not Reachable(Location) then
+      not Reachable(Location) or ((AArity >= 0) and (GenericArity(Location.Symbol.TypeParams) <> AArity)) then
       Continue;
     if not Found then
     begin
@@ -415,20 +474,50 @@ begin
       Result := Result + [Symbol];
 end;
 
+function TAncestry.ParentLocation(const AType: TSymbolLocation; out AName: string;
+  out AParent: TSymbolLocation): Boolean;
+var
+  mArity: Integer;
+begin
+  if Length(AType.Symbol.Ancestors) = 0 then
+  begin
+    AName := 'TObject';
+    mArity := 0;
+  end
+  else
+  begin
+    AName := BareName(AType.Symbol.Ancestors[0]);
+    // Ohne Typargumente ist der Vorfahr nicht generisch: class(THorseChannel) neben THorseChannel<T>.
+    mArity := GenericArity(AType.Symbol.AncestorArgs);
+  end;
+  Result := FindTypeOf(AName, mArity, AParent);
+end;
+
 function TAncestry.Ancestors(const ATypeName: string; out AComplete, AObjectMissing: Boolean): TArray<TSymbolLocation>;
 var
+  mOwn: TSymbolLocation;
+begin
+  Result := nil;
+  AComplete := False;
+  AObjectMissing := False;
+  if FindType(ATypeName, mOwn) then
+    Result := Ancestors(mOwn, AComplete, AObjectMissing);
+end;
+
+function TAncestry.Ancestors(const AType: TSymbolLocation; out AComplete,
+  AObjectMissing: Boolean): TArray<TSymbolLocation>;
+var
   Name: string;
-  Location: TSymbolLocation;
+  Current, Location: TSymbolLocation;
   Depth: Integer;
 begin
   Result := nil;
   AComplete := False;
   AObjectMissing := False;
-  Name := ParentOf(ATypeName);
-  Depth := 0;
-  while (Name <> '') and (Depth < 64) do
+  Current := AType;
+  for Depth := 0 to 63 do
   begin
-    if not FindType(Name, Location) then
+    if not ParentLocation(Current, Name, Location) then
     begin
       AObjectMissing := SameText(Name, 'TObject');
       AComplete := AObjectMissing;
@@ -440,12 +529,23 @@ begin
       AComplete := True;
       Exit;
     end;
-    if Length(Location.Symbol.Ancestors) = 0 then
-      Name := 'TObject'
-    else
-      Name := BareName(Location.Symbol.Ancestors[0]);
-    Inc(Depth);
+    Current := Location;
   end;
+end;
+
+function TAncestry.OwnerOf(const AMember: TIndexSymbol; out AType: TSymbolLocation): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in FLocal.Symbols do
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and SameText(mSymbol.QualifiedName, AMember.Container) and
+      ContainsLine(mSymbol.Range, AMember.Range.StartPos.Line) then
+    begin
+      AType := Default(TSymbolLocation);
+      AType.Symbol := mSymbol;
+      Exit(True);
+    end;
+  Result := False;
 end;
 
 function TAncestry.FindClass(const AName: string; out AType: TSymbolLocation): Boolean;
@@ -543,16 +643,15 @@ end;
 
 function TAncestry.InheritedVirtual(const AMethod: TMethodDecl): TInherited;
 var
-  Name: string;
-  Location: TSymbolLocation;
+  Own, Location: TSymbolLocation;
   Candidate: TIndexSymbol;
-  Depth: Integer;
-  Any: Boolean;
+  Any, mComplete, mObjectMissing: Boolean;
 begin
   Result := Default(TInherited);
-  Name := ParentOf(AMethod.ClassName);
-  Depth := 0;
-  while (Name <> '') and (Depth < 64) and FindType(Name, Location) do
+  // Die Klasse, in deren Rumpf die Methode steht, nicht nur ihr Name (#1326).
+  if not OwnerOf(AMethod.Symbol, Own) and not FindType(AMethod.ClassName, Own) then
+    Exit;
+  for Location in Ancestors(Own, mComplete, mObjectMissing) do
   begin
     Any := False;
     for Candidate in MethodsOf(Location, AMethod.Symbol.Name) do
@@ -573,10 +672,8 @@ begin
       end;
     end;
     // Die nächste Stufe mit gleichnamiger Methode entscheidet.
-    if Any or SameText(Name, 'TObject') then
+    if Any then
       Exit;
-    Name := ParentOf(Name);
-    Inc(Depth);
   end;
 end;
 
@@ -1731,6 +1828,7 @@ var
 
   procedure CheckMethod(const AMethod: TMethodDecl);
   var
+    Own: TSymbolLocation;
     Chain: TArray<TSymbolLocation>;
     Complete, ObjectMissing, Generic: Boolean;
     Found, Virtuals: TArray<TOverrideCandidate>;
@@ -1744,7 +1842,11 @@ var
     Fixes: TArray<TRuleFix>;
     Any: Boolean;
   begin
-    Chain := Ancestry.Ancestors(AMethod.ClassName, Complete, ObjectMissing);
+    // Ab der Klasse, in deren Rumpf die Methode steht (#1326): THorseChannel<T> neben THorseChannel.
+    if Ancestry.OwnerOf(AMethod.Symbol, Own) then
+      Chain := Ancestry.Ancestors(Own, Complete, ObjectMissing)
+    else
+      Chain := Ancestry.Ancestors(AMethod.ClassName, Complete, ObjectMissing);
     Names := Wildcards(AMethod.ClassName, Chain);
     Found := Candidates(Chain, AMethod.Symbol.Name);
     // Die nächste virtuelle Methode mit gleichem Kopf ist das Ziel.

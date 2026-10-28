@@ -287,11 +287,12 @@ var
             Result := TPublishKind.ArrayKind
           else if StartsText('set ', Target) and StartsText('of ', Trim(Copy(Target, 5, MaxInt))) then
             Result := SetKind(Trim(Copy(Trim(Copy(Target, 5, MaxInt)), 4, MaxInt)), ADepth + 1)
-          else if StartsText('reference ', Target) then
+          else if StartsText('reference ', Target) or Location.Symbol.HasDirective('reference to') then
             Result := TPublishKind.ProcedureKind
           else if StartsText('procedure', Target) or StartsText('function', Target) then
           begin
-            if ContainsText(Target, ' of object') then
+            // Das Merkmal aus dem Index gilt auch, wenn die Signatur vor "of object" abgeschnitten ist (#1326).
+            if Location.Symbol.HasDirective('of object') or ContainsText(Target, ' of object') then
               Result := TPublishKind.Simple
             else
               Result := TPublishKind.ProcedureKind;

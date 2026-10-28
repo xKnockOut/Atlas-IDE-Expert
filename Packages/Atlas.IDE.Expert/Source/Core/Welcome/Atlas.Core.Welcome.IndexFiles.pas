@@ -46,8 +46,9 @@ type
     // FormatVersionMatchesServer). 20: Verweise der inline-Rümpfe (#1017), 21: Hinweise im Unit-Kopf (#1018),
     // 22: Typparameter ohne Einschränkungstypen (#1029), 23: Unit-Name kein Hinweis (#1018), 24: Parser-Lücken
     // #848, #849, #861, #862, 25: Methodenzuordnungen je Klasse, 26: Namen ohne Escape-& (#1137), 27: Codepage-
-    // Strings (#1140). 19 (#1001) fehlte hier, die Willkommensseite fand deshalb keinen Cache.
-    FormatVersion = 27;
+    // Strings (#1140), 28: Begründungen (#1123), 29: Prozedurtypen vollständig (#1326). 19 (#1001) fehlte hier,
+    // die Willkommensseite fand deshalb keinen Cache.
+    FormatVersion = 29;
     CacheFileName = 'index.atlasidx';
     IndexFolder = 'Index';
     LibraryFolder = 'Bibliothek';
@@ -282,6 +283,7 @@ begin
           Reader.ReadVar; // Präfix-Zählung (#452): je Art Anzahl und mit Präfix
         Reader.SkipList; // Hinweise im Unit-Kopf (#1018)
         Reader.ReadVar; // Grund hinter deprecated
+        Reader.SkipList; // Begründungen der Unit (#1123)
         Reader.ReadVar; // Symbolzahl
         Reader.ReadVar; // nicht verfügbar
         Reader.Skip(Reader.ReadCount); // Symbolblock
