@@ -1164,8 +1164,8 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | MI8 | „Beginnen“ an #753, wenn `feature/753-atlas-bereiche-und` schon existiert | Branch wird nur ausgecheckt, Meldung „Branch … ausgecheckt …“ |
 | MI9 | YouTrack: `.atlas` mit `"tracker": {"provider": "youtrack", "url": "https://firma.youtrack.cloud", "project": "ATL"}`, Token hinterlegt, Seite anzeigen | Kennung `ATL-123`, Chips mit Zustand, Priorität und Sprint; Klick auf `ATL-123` öffnet `…/issue/ATL-123` (**Abnahme**) |
 | MI10 | SVN-Projekt mit YouTrack (MI9): „Beginnen“ an ATL-123 „Speichern im Kassenmodul hängt“ | `svn copy ^/trunk ^/branches/ATL-123-speichern-im-kassenmodul` und `svn switch`; danach zeigt `svn info` den Branch, das Projekt öffnet sich (**Abnahme**) |
-| MI11 | `welcomePage.issues.start` = „nur Kennung merken“, „Beginnen“ an ATL-123, dann in der IDE committen | Kein Branch, Meldung „ATL-123 ist das aktuelle Issue; Commit-Nachrichten beginnen mit „ATL-123 ““; Nachricht im Commit-Dialog beginnt mit `ATL-123 `; Fußzeile „„Beginnen“ merkt das Issue …“ (**Abnahme**) |
-| MI12 | `welcomePage.issues.commitPattern` leeren, committen | Nachricht bleibt unverändert, keine Datei `atlas-commit-prefix`, keine Rückfrage zum Hook (**Abnahme**) |
+| MI11 | `issues.start` = „nur Kennung merken“, „Beginnen“ an ATL-123, dann in der IDE committen | Kein Branch, Meldung „ATL-123 ist das aktuelle Issue; Commit-Nachrichten beginnen mit „ATL-123 ““; Nachricht im Commit-Dialog beginnt mit `ATL-123 `; Fußzeile „„Beginnen“ merkt das Issue …“ (**Abnahme**) |
+| MI12 | `issues.commitPattern` leeren, committen | Nachricht bleibt unverändert, keine Datei `atlas-commit-prefix`, keine Rückfrage zum Hook (**Abnahme**) |
 | MI13 | Klick auf „Issue: …“ im Statusfeld; „Ja“ | Rückfrage „Aktuelles Issue … beenden?“, danach verschwindet die Zeile, der Chip „aktuell“ ist weg, `atlas-commit-prefix` gelöscht; der Branch bleibt, aktiviert das Issue aber nicht gleich wieder |
 | MI14 | Befehlspalette „Zugang zum Issue-Tracker hinterlegen …“ (aktives Projekt mit `.atlas`); Token eingeben; dann leer lassen | Dialog „Issue-Tracker https://… (GitHub)“ mit verdecktem Feld; Meldung „Zugang … gespeichert“, der Bereich fragt sofort neu; in der Windows-Anmeldeinformationsverwaltung steht `Atlas:tracker:<Server>`; leer entfernt den Eintrag (**Abnahme**) |
 | MI15 | Kein Token hinterlegt bzw. `url` über http | Bereich zeigt „Anmeldung abgelehnt oder kein Token (Zugang zum Issue-Tracker hinterlegen)“, ohne Netzzugriff (Proxy- bzw. Firewall-Protokoll); der Befehl meldet bei http „… sendet das Token nur über https“ |
@@ -6942,6 +6942,20 @@ Voraussetzung: Server läuft in der IDE; Regel `file-encoding-unsupported` ist s
 | KO7 | `"file-encoding-unsupported": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | KO8 | Abgleich mit Delphi: KO1, KO4 und KO6 übersetzen | dcc meldet E2038 („Illegal character in input file“) bzw. F2438 an denselben Stellen, KO5 übersetzt ohne E2038; jedes von Atlas gemeldete Zeichen ist auch für dcc ein Fehler |
 
+## ANSI-Dateien und Ersatzzeichen in `control-char` (#1327)
+
+Voraussetzung: Server läuft in der IDE; Regel `control-char` an (Vorgabe). Minimalfälle F15 und F16 aus dem FP-Bericht vom 28.10.2026 (`berichte/fp-korpus-2026-10-28/faelle/`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AN1 | `F15_AnsiDatei.pas` (Windows-1252 mit Umlauten und einem `°` als UTF-8-Paar) öffnen | Umlaute richtig angezeigt, keine Meldung von `control-char` (**Abnahme**) |
+| AN2 | `F16_Ersatzzeichen.pas` (UTF-8 ohne BOM, U+FFFD im Kommentar) öffnen | Keine Meldung von `control-char` (**Abnahme**) |
+| AN3 | `const S = 'a�b';` (U+FFFD im String) | Nur ein Hinweis von `control-char`, kein Fehler |
+| AN4 | U+FFFD im Code, z. B. `var X�: Integer;` | Fehler von `control-char` wie bisher |
+| AN5 | UTF-8-Datei ohne BOM mit vielen Umlauten, ein einzelnes `ß` als Windows-1252-Byte ($DF) hineinkopieren (Hex-Editor) | Ein Fehler „Ungültiges UTF-8-Byte $DF“ an genau dieser Stelle |
+| AN6 | Abgleich mit Delphi: F15 und F16 übersetzen | dcc übersetzt beide ohne Fehler; die Umlaute in `S` von F15 sind im Programm `äöü` |
+| AN7 | `AtlasServer --check` über SynEdit (`SynRegExpr.pas`) und DUnitX (`DUnitX.Attributes.pas`) | Keine Meldung von `control-char` mehr in diesen Dateien |
+
 ## Destruktor greift auf Felder zu, die nil sein können (#1087)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Klasse `TImport` mit `constructor Create(const Datei: string)` (`inherited Create; FStrom := TFileStream.Create(Datei, fmOpenRead); FZeilen := TStringList.Create;`) und `destructor Destroy; override;` (`FZeilen.Clear; FZeilen.Free; FStrom.Free; inherited;`), je Anweisung eine Zeile.
@@ -7793,3 +7807,664 @@ Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testu
 | IV12 | Win64 (LLDB): IV1, IV2 und F8 direkt nach dem Halt | Werte kommen (verzögert); kein F8 geht verloren, die Debug-Sitzung meldet jeden Halt |
 | IV13 | Schnellschalter „Werte im Editor beim Debuggen“ aus, dann F8 | Keine Werte, keine Anfrage an den Server (Diagnoseprotokoll), Verhalten wie ohne Atlas (**Abnahme**) |
 | IV14 | Server beendet, Halt | Keine Werte, keine Fehlermeldung |
+
+## Tracker-Einstellungen unter „Issue-Tracker“ (#1280)
+
+Vorbereitung: Mit einer älteren Atlas-Version Tracker (z. B. YouTrack), Abfrage und Branch-Muster gesetzt; die Registry enthält `WelcomePageIssuesTracker`, `WelcomePageIssuesQuery` usw. unter `HKCU\Software\Atlas\IdePlugin`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IT1 | Neue Version laden, Tools › Optionen › Atlas | Baum hat den Bereich „Issue-Tracker“ mit Tracker, Abfrage, Start-Optionen, Mustern und „Zugangsdaten am Tracker“; Werte wie vorher (**Abnahme**) |
+| IT2 | Registry nach IT1 ansehen | Werte stehen unter `IssuesTracker`, `IssuesQuery` …, die alten Namen `WelcomePageIssues*` sind weg; Meldungsfenster Atlas: „Einstellung welcomePage.issues.tracker heißt jetzt issues.tracker; Wert übernommen“ je Wert |
+| IT3 | IDE neu starten | Keine weitere Übernahmemeldung, Werte unverändert |
+| IT4 | Bereich „Willkommensseite“ öffnen | Nur noch „Issues“ an/aus und Knopf „Tracker-Einstellungen …“; Klick wählt den Bereich „Issue-Tracker“ (**Abnahme**) |
+| IT5 | Registry: alten und neuen Namen mit verschiedenen Werten anlegen, IDE starten | Neuer Wert gilt, alter Name entfernt, Warnung im Meldungsfenster |
+| IT6 | Einstellungen exportieren, Datei enthält `issues.tracker`; alte Exportdatei mit `welcomePage.issues.tracker` importieren | Beide Importe setzen den Tracker |
+
+## Mehrere Tracker-Verbindungen (#1260)
+
+Vorbereitung: Zugang zu einem YouTrack (https) und einem GitHub-Konto mit persönlichem Token; ein Projekt mit Abschnitt `tracker` in der `.atlas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TV1 | Tools › Optionen › Atlas › Issue-Tracker | Tabelle „Verbindungen“ oben mit Name, Anbieter, Adresse, Token; die Verbindung aus der `.atlas` steht als „… (aus .atlas)“ grau und lässt sich nicht bearbeiten oder entfernen (**Abnahme**) |
+| TV2 | „Hinzufügen“, Name „Firma“, Anbieter YouTrack, Adresse `https://youtrack.firma.de`, OK, IDE neu starten | Verbindung bleibt, steht in `%APPDATA%\Atlas\settings.json` unter `issues.connections`, nicht in der Registry |
+| TV3 | Zweite Verbindung „GitHub“ mit `https://github.com` anlegen | Beide Zeilen nebeneinander (**Abnahme**) |
+| TV4 | Adresse `http://youtrack.firma.de` bzw. `https://ich@youtrack.firma.de` eingeben | Hinweis „Nur https …“, Speichern der Zeile nicht möglich |
+| TV5 | Zweite Verbindung mit gleichem Namen anlegen | Name wird abgelehnt bzw. eindeutig gemacht |
+| TV6 | „Token hinterlegen …“ auf „Firma“, gültiges Token | Zustand „gespeichert“; Ziel `Atlas:tracker:youtrack.firma.de` in der Anmeldeverwaltung von Windows; Token nirgends in settings.json oder Protokoll |
+| TV7 | „Prüfen“ | Zustand kurz „wird geprüft …“, dann „gespeichert · geprüft <Uhrzeit>“; Dialog bleibt bedienbar (**Abnahme**) |
+| TV8 | Ungültiges Token hinterlegen, „Prüfen“ | „abgelehnt (401/403)“ |
+| TV9 | Netz trennen, „Prüfen“ | Nach höchstens 5 s „nicht erreichbar“ |
+| TV10 | Hinter einem Proxy mit Anmeldeseite prüfen | „unerwartete Antwort“, nicht „geprüft“ |
+| TV11 | „Token entfernen“, Rückfrage bestätigen | Zustand „fehlt“, Eintrag in der Anmeldeverwaltung weg |
+| TV12 | Dialog während einer laufenden Prüfung schließen, Plugin entladen | Kein Fehler, keine Zugriffsverletzung |
+| TV13 | Einstellungen exportieren und in leerer Installation importieren | `issues.connections` als JSON-Liste in der Datei, nach dem Import gleiche Zeilen; Tokens nicht enthalten |
+| TV14 | settings.json von Hand mit unbekanntem Anbieter oder doppeltem Namen speichern, Projekt prüfen | Server meldet den Eintrag in der Problemliste |
+
+## Issue-Vorschau (#1264)
+
+Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (YouTrack und GitHub), Token hinterlegt, `welcomePage.issues` an; ein YouTrack-Issue mit Bild in der Beschreibung, Anhängen (darunter eine .exe), Verknüpfungen und mehr als drei Kommentaren.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IV1 | In „Meine Issues“ auf eine Zeile klicken | Fenster „Atlas-Issue“ öffnet sich angedockt, zeigt Kennung, Titel, Abzeichen, Beschreibung (**Abnahme**) |
+| IV2 | Strg+Klick auf Zeile bzw. Kennung | Issue öffnet im Browser, nicht in der Vorschau |
+| IV3 | Kontextmenü einer Zeile | „Vorschau“ fett oben, darunter „Im Browser öffnen“ |
+| IV4 | Beschreibung mit Überschrift, Liste mit Aufgaben, ```` ```pascal ```` und ```` ```json ````, Tabelle, Zitat | Wie im Hover gesetzt; nur der Pascal-Block ist eingefärbt (**Abnahme**) |
+| IV5 | Bild in der Beschreibung (`![](skizze.png)` als Anhang) | Bild erscheint nach kurzer Zeit, Klick vergrößert es in eigenem Fenster |
+| IV6 | Beschreibung mit Bild von einem fremden Rechner | Kein Abruf (Proxy-Protokoll), nur Link mit „Bild: …“ |
+| IV7 | Mehr als drei Kommentare | Die drei neuesten offen, darüber „N ältere Kommentare“; Klick klappt alle auf |
+| IV8 | Doppelklick auf einen Anhang (PDF bzw. Bild) | Datei landet in `%TEMP%\Atlas\issues\<Kennung>\` und öffnet mit dem zugeordneten Programm |
+| IV9 | Doppelklick auf einen .exe-Anhang | Datei wird nur im Explorer markiert, nicht gestartet |
+| IV10 | Klick auf ein verknüpftes Issue, dann Alt+Links, Alt+Rechts | Öffnet im selben Fenster; Zurück und Vor wechseln (**Abnahme**) |
+| IV11 | Netz trennen, ein früher geöffnetes Issue erneut öffnen | Inhalt erscheint mit „Stand vom …“, kein Dialog |
+| IV12 | Netz getrennt, neues Issue öffnen | Meldung „Tracker nicht erreichbar.“ mit „Erneut versuchen“ |
+| IV13 | Token entfernen, Issue öffnen | „Kein Zugang …“ mit „Token hinterlegen …“; nach dem Hinterlegen lädt es |
+| IV14 | Während des Ladens „Abbrechen“ bzw. Fenster schließen | Laden endet sofort, keine Meldung, kein Fehler |
+| IV15 | Befehlspalette: *Issue anzeigen …*, `ATL-12` bzw. Adresse eines GitHub-Issues eingeben | Issue öffnet; ungültige Eingabe meldet „… ist keine gültige Kennung“ |
+| IV16 | `issues.preview.comments` aus | Statt Kommentaren der Hinweis; Proxy zeigt keine Abfrage der Kommentare |
+| IV17 | `issues.preview` aus (Schnellschalter) | Klick in „Meine Issues“ öffnet wieder den Browser; Befehl *Issue anzeigen …* nicht sichtbar |
+| IV18 | IDE beenden mit offenem Fenster, neu starten | Fenster steht wieder an seinem Platz (Desktop); Plugin entladen ohne Zugriffsverletzung |
+| IV19 | Helles und dunkles IDE-Design | Farben und Abzeichen passen jeweils |
+
+## Projekte einem Tracker zuordnen (#1261)
+
+Vorbereitung: zwei Verbindungen aus TV2/TV3; Projektgruppe `Kasse.groupproj` mit zwei Projekten, ein weiteres Projekt mit Abschnitt `tracker` in der `.atlas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TP1 | Projekt ohne `.atlas`-Tracker und ohne Zuordnung öffnen, „Meine Issues“ ansehen | Fußzeile „Kein Tracker für dieses Projekt – zuordnen …“ als Link (**Abnahme**) |
+| TP2 | Link klicken | Optionen öffnen auf „Issue-Tracker“, in „Projekte“ steht eine neue Zeile mit der geöffneten `.groupproj` (bzw. ohne Gruppe der `.dproj`) und der ersten Verbindung, Feld „Tracker-Projekt“ hat den Fokus |
+| TP3 | Tracker-Projekt `KASSE` eintragen, OK | „Meine Issues“ lädt die Issues aus `KASSE`; Zeile steht in `settings.json` unter `issues.projects` (**Abnahme**) |
+| TP4 | Anderes Projekt der Gruppe aktivieren | Dieselben Issues (die Zeile der Gruppe gilt für jedes Projekt darin) |
+| TP5 | Zeile für die `.dproj` eines Gruppenprojekts mit anderem Tracker-Projekt anlegen | Für dieses Projekt gilt die `.dproj`-Zeile, für die anderen die Gruppe |
+| TP6 | „Hinzufügen …“ › „Ordner …“, Oberordner wählen; Projekt außerhalb der Gruppe in diesem Ordner öffnen | Ordnerzeile gilt; ein Ordner `C:\Projekte\Ka` passt nicht auf `C:\Projekte\Kasse\…` |
+| TP7 | Projekt mit `.atlas`-Tracker öffnen, Seite „Issue-Tracker“ ansehen | Zeile „aus .atlas“ schreibgeschützt; passende persönliche Zeilen grau mit „persönlich · von .atlas überdeckt“ (**Abnahme**) |
+| TP8 | Verbindung „Firma“ in „Werk“ umbenennen, OK | Alle Zuordnungen zeigen „Werk“, Issues laden weiter |
+| TP9 | Verbindung einer Zuordnung entfernen | Zeile bleibt mit Hinweis „Die Verbindung … gibt es nicht (mehr).“; „Meine Issues“ zeigt wieder den Link aus TP1 |
+| TP10 | Gleichen Pfad ein zweites Mal eintragen | Hinweis „Für diesen Pfad gibt es schon eine Zeile“, Wert nicht übernommen |
+| TP11 | Einstellungen exportieren und importieren | `issues.projects` als JSON-Liste, nach dem Import gleiche Zeilen |
+| TP12 | settings.json von Hand mit doppeltem Pfad oder ohne `connection` speichern | Server meldet die Zeile in der Problemliste |
+
+## Mehrere Abfragen für „Meine Issues“ (#1262)
+
+Vorbereitung: Verbindungen „Firma“ (YouTrack) und „GitHub“ aus TV2/TV3; ein YouTrack-Projekt und ein GitHub-Projekt zugeordnet (TP3); vorher in einer älteren Fassung `issues.query` bzw. `welcomePage.issues.query` = `assignee: meine #Ungelöst` gesetzt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TQ1 | Neue Fassung starten, Protokoll und Seite „Issue-Tracker“ ansehen | Tabelle „Abfragen“ hat vorn „Standard“ mit `assignee: meine #Ungelöst`; Protokoll „Einstellung issues.query ist jetzt die Abfrage „Standard“ in issues.queries“; der Registry-Wert `IssuesQuery` ist weg (**Abnahme**) |
+| TQ2 | „Meine Issues“ im YouTrack-Projekt ansehen | Rechts neben dem Titel „Standard (n) ▾“; unter der Liste „Firma · ATL · Abfrage: assignee: meine #Ungelöst“ |
+| TQ3 | „Neue Abfrage“: Name „Sprint“, Abfrage `Sprint: {Aktueller Sprint}`, Verbindung „Firma“; zweite „PRs“ mit Verbindung „GitHub“; OK | Im YouTrack-Projekt bietet die Klappliste „Standard“ und „Sprint“, nicht „PRs“ (**Abnahme**) |
+| TQ4 | „Sprint“ wählen | Liste lädt sofort neu, Kopf „Sprint (3)“, Fußzeile mit der Sprint-Abfrage; Klappliste zeigt Trefferzahlen der zuletzt geladenen Abfragen, ab 10 „10+“ |
+| TQ5 | IDE neu starten, dasselbe Projekt öffnen | „Sprint“ ist weiter gewählt, Trefferzahl aus dem letzten Stand (**Abnahme**) |
+| TQ6 | Anderes Projekt öffnen | Dort gilt die eigene Wahl bzw. die erste passende Abfrage |
+| TQ7 | Alle eigenen Abfragen entfernen, OK | Hinweis „Keine eigenen Abfragen: je Anbieter gilt „Mir zugewiesen““; Klappliste zeigt nur „Mir zugewiesen“, Fußzeile die Vorgabe des Anbieters |
+| TQ8 | „Klappliste der Abfragen“ ausschalten | Keine Klappliste, es gilt die erste passende Abfrage (**Abnahme**) |
+| TQ9 | In der Klappliste „Abfragen bearbeiten …“ | Optionen öffnen auf „Issue-Tracker“ bei der Tabelle „Abfragen“; nach OK lädt „Meine Issues“ neu |
+| TQ10 | Verbindung „Firma“ in „Werk“ umbenennen | Die Abfrage „Sprint“ zeigt „Werk“ und gilt weiter |
+| TQ11 | Zweite Abfrage mit gleichem Namen anlegen; Abfrage leer lassen | Hinweise „Den Namen gibt es schon.“ bzw. „Die Abfrage fehlt.“; die Zeile wird nicht gespeichert |
+| TQ12 | Einstellungen einer älteren Fassung (mit `issues.query`) importieren | Nach dem Import steht „Standard“ in der Tabelle |
+| TQ13 | Älteren Stand in der Einstellungshistorie wiederherstellen | Die frühere einzelne Abfrage erscheint als „Standard“ |
+| TQ14 | settings.json von Hand mit doppeltem Namen oder ohne `query` speichern | Server meldet die Zeile in der Problemliste |
+
+## Abfrage bearbeiten und testen (#1263)
+
+Vorbereitung: selbst gehostetes YouTrack mit deutscher Oberfläche als Verbindung „Firma“ mit Token, Projekt `ATL` mit mir zugewiesenen offenen Issues; GitHub-Verbindung ohne Token.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TT1 | Verbindung „Firma“ wählen, „Prüfen“, OK; settings.json ansehen | Zustand „geprüft“; an der Verbindung steht `"language": "de"`; „Meine Issues“ zeigt ohne eigene Abfrage „Abfrage: assignee: meine #Ungelöst“ (**Abnahme**) |
+| TT2 | In „Abfragen“ eine Zeile wählen, „Bearbeiten …“ (bzw. Doppelklick) | Dialog „Abfrage bearbeiten“ mit Name, Verbindung, Tracker-Projekt, Vorlage, Abfrage, „Testen“ |
+| TT3 | Verbindung „Firma“, Projekt `ATL`, Vorlage „YouTrack · Mir zugewiesen (Englisch)“ ist bei erkannter deutscher Sprache nicht in der Liste; Abfrage `assignee: me #Unresolved` von Hand, „Testen“ | „Leere Liste … Anmeldung und Verbindung stehen, nur passt kein Issue.“, Tipp „… Versuche „assignee: meine #Ungelöst““ und „Gesendet an Firma: project: ATL assignee: me #Unresolved“ (**Abnahme**) |
+| TT4 | Vorlage „YouTrack · Mir zugewiesen (Deutsch)“, „Testen“ | „N Issues gefunden (… ms): ATL-…, …“ mit höchstens drei Kennungen (**Abnahme**) |
+| TT5 | Projekt `GIBTSNICHT`, „Testen“ | „Projekt unbekannt (HTTP 404) …“ (**Abnahme**) |
+| TT6 | Abfrage `assignee: mee`, „Testen“ | „Abfrage abgelehnt (HTTP 400): …“ mit der Meldung von YouTrack (**Abnahme**) |
+| TT7 | Verbindung „GitHub“ ohne Token, Projekt `owner/repo`, „Testen“ | „Kein Token für diesen Server …“; kein Netzzugriff (**Abnahme**) |
+| TT8 | Adresse der Verbindung auf eine Anmeldeseite (Portal) ändern, „Testen“ | „Antwort nicht lesbar (HTTP 200) … vielleicht eine Anmeldeseite“ |
+| TT9 | Netzwerk trennen, „Testen“ | Nach höchstens 5 s „Nicht erreichbar …“, kein Dialog, IDE bleibt bedienbar |
+| TT10 | Gesendete Abfrage mit dem Protokoll vergleichen | Die angezeigte Abfrage entspricht genau der gesendeten; das Protokoll nennt nur Anbieter und Ergebnis, nie Adresse, Abfrage oder Token (**Abnahme**) |
+| TT11 | „Testen“ und den Dialog sofort mit „Abbrechen“ schließen | Kein Fehler, das spätere Ergebnis verfällt |
+| TT12 | Verbindung „(alle)“, Vorlagenliste ansehen | Vorlagen aller Anbieter der Verbindungen; GitHub ohne „Aktueller Sprint“ und ohne Sprachangabe |
+| TT13 | Benutzer ohne Leserecht auf die globalen Einstellungen: neue YouTrack-Verbindung, „Prüfen“ | Sprache trotzdem „de“ (Probe mit beiden Vorlagen findet nur mit der deutschen Issues) |
+| TT14 | Englisches YouTrack: „Prüfen“ | `"language": "en"`, Vorgabe `assignee: me #Unresolved` |
+
+## Issue anlegen aus dem Editor und aus Befunden (#1268)
+
+Vorbereitung: YouTrack-Verbindung „Firma“ mit Token, das Projekt der IDE ist `ATL` zugeordnet; Git-Arbeitskopie; GitHub-Verbindung mit Token und Repository `owner/repo`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NI1 | In einer Unit die Zeile `// TODO Speicherleck beim Schließen` anlegen, Cursor darauf, Rechtsklick › Atlas › „Issue anlegen …“ | Dialog mit Tracker „Firma“, Projekt `ATL`, Titel „Speicherleck beim Schließen“, Beschreibung mit Unit, Zeile, Methode, Branch und Commit; „Codeausschnitt mitsenden“ angehakt, darunter ±5 Zeilen (**Abnahme**) |
+| NI2 | Typ „Bug“, „mir zuweisen“, „Anlegen“ | Issue ATL-… in YouTrack mit Titel, Fundstelle, Code-Block `pascal`, Typ und mir als Zuständigem; die Zeile lautet danach `// TODO ATL-…: Speicherleck beim Schließen`; Kennung in der Zwischenablage; Benachrichtigung „Issue angelegt“ mit „Im Browser öffnen“ (**Abnahme**) |
+| NI3 | Dasselbe mit `{ TODO Fokus setzen }` und `(* TODO Fokus setzen *)` | `{ TODO ATL-…: Fokus setzen }` bzw. `(* TODO ATL-…: Fokus setzen *)` |
+| NI4 | Zeile ohne TODO, drei Zeilen markieren, „Issue anlegen …“ | Titel = erste markierte Zeile, Codeausschnitt = Auswahl; nach „Anlegen“ Frage „Kommentar „// ATL-…“ in die Cursorzeile einfügen?“; Ja hängt ihn an, Nein ändert nichts |
+| NI5 | „Issue anlegen …“, dann „Abbrechen“ | Nichts gesendet (Protokoll ohne Eintrag „Issue anlegen“), Code unverändert (**Abnahme**) |
+| NI6 | Token in YouTrack auf nur Lesen setzen, „Anlegen“ | Dialog bleibt offen: „Der Tracker hat das Anlegen abgelehnt (HTTP 403); der Code bleibt unverändert.“; das TODO bleibt wie es war (**Abnahme**) |
+| NI7 | Fenster „Atlas-Prüfung“, Rechtsklick auf einen Befund, „Für diesen Befund ein Issue anlegen …“ | Titel „Regel: Meldung“, Beschreibung mit Branch und „Befunde:“-Liste (Regelkennung, Meldung, Fundstelle), Codeausschnitt mit der Zeile (**Abnahme**) |
+| NI8 | Drei Befunde markieren, Rechtsklick | Eintrag „Für diese 3 Befunde ein Issue anlegen …“; Titel „3 Befunde in Unit.pas“, Liste mit allen dreien |
+| NI9 | *Optionen › Atlas › Issue-Tracker*: „„Issue anlegen …“ im Editor und bei Befunden“ aus | Eintrag fehlt im Editor-Kontextmenü, im Fenster „Atlas-Prüfung“ und in der Befehlspalette (**Abnahme**) |
+| NI10 | „Codeausschnitt in der Beschreibung vorschlagen“ aus, „Issue anlegen …“ | Häkchen „Codeausschnitt mitsenden“ nicht gesetzt, Ausschnitt ausgegraut (**Abnahme**) |
+| NI11 | Reiter *Befehle*: Taste für „Issue anlegen …“ auf Strg+Alt+I setzen, im Editor drücken | Dialog öffnet sich; ohne Taste (Vorgabe) keine Bindung |
+| NI12 | Tracker-Klappliste auf die GitHub-Verbindung, Projekt `owner/repo`, Typ aus der Liste (Labels), „Anlegen“ | Issue #… auf GitHub mit Label und Text; das TODO bekommt `#…` |
+| NI13 | „gleich beginnen“ anhaken (mit „Meine Issues“ an), „Anlegen“ | Nach dem Anlegen läuft „Beginnen“ wie in „Meine Issues“ (Branch, aktuelles Issue im Statusfeld) |
+| NI14 | Während „Wird angelegt …“ das Fenster schließen wollen | Schließen gesperrt, bis die Antwort da ist (höchstens 10 s) |
+| NI15 | Projekt ohne Zuordnung und ohne Verbindungen, „Issue anlegen …“ | Hinweis „Für dieses Projekt ist kein Issue-Tracker eingerichtet …“; „Anlegen“ gesperrt |
+| NI16 | Protokoll ansehen | Nur „Issue anlegen: youtrack, created“ o. ä.; nie Adresse, Projekt, Titel, Text oder Token |
+
+## Versionsverwaltung je Projekt (#1286)
+
+Vorbereitung: SVN-Arbeitskopie mit `Kasse.groupproj` (Exe-Projekt `Kasse.dproj` und Pakete), ein Paket per SVN-Externals unter `Pakete\Basis`, ein Unterordner `Fremd\Lib` als Git-Klon; ein weiteres Projekt mit `.atlas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VZ1 | Ohne Zeilen: Seite „Versionsverwaltung“ öffnen | Tabelle „Projekte“ leer; „Aktuelles Projekt“ wie vor #1286 (Art aus der Einstellung, kein Hauptbranch) |
+| VZ2 | „Aktuelles Projekt hinzufügen“ | Neue Zeile mit der geöffneten `.groupproj`, Art „SVN“ (aus der Abfrage), Hauptbranch „raten“; Fokus im Feld Hauptbranch |
+| VZ3 | Hauptbranch `release 1` eintippen, dann `branches/develop` | Erst Hinweis „Der Hauptbranch darf keinen Leerraum enthalten.“, Wert nicht übernommen; dann Spalte „branches/develop“ |
+| VZ4 | „Hinzufügen …“ › „Ordner …“: `Fremd\Lib`, Art „Git“; OK, eine Unit unter `Fremd\Lib` und eine unter `Kasse` ändern | Git-Rand unter `Lib` aus Git, unter `Kasse` aus SVN (**Abnahme**) |
+| VZ5 | „Meine Issues“ › „Beginnen“ ohne `issues.branchBase` | SVN-Branch aus `^/branches/develop` statt `^/trunk` (**Abnahme**) |
+| VZ6 | Zeile „Aus“ für einen Ordner auf einem Netzlaufwerk (UNC), Unit dort öffnen | Kein svn/git-Prozess für diesen Ordner, keine Änderungsmarken |
+| VZ7 | Projekt mit `.atlas` `"vcs": {"provider": "svn", "mainBranch": "develop"}` aktivieren, Seite ansehen | Zeile „aus .atlas“ schreibgeschützt; passende persönliche Zeilen grau mit „persönlich · von .atlas überdeckt“; „Aktuelles Projekt“ nennt „Hauptbranch develop“ (**Abnahme**) |
+| VZ8 | Git-Projekt ohne verfolgten Branch, Hauptbranch `develop`; auf Feature-Branch „Weiterarbeiten“ ansehen | Eingehende Commits gegen `origin/develop` |
+| VZ9 | settings.json von Hand mit doppeltem Pfad, Art `cvs` oder Hauptbranch mit Leerzeichen speichern | Server meldet die Zeile in der Problemliste |
+| VZ10 | Einstellungen exportieren und importieren | `vcs.projects` als JSON-Liste, nach dem Import gleiche Zeilen |
+
+## Serverzugang der Versionsverwaltung (#1287)
+
+Vorbereitung: Git-Projekt mit HTTPS-Remote (Anmeldung in Git Credential Manager gespeichert), SVN-Projekt, ein zweites Git-Projekt ohne gespeicherte Anmeldung, ein Remote auf einen nicht erreichbaren Rechner.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SZ1 | Seite „Versionsverwaltung“ öffnen | Tabelle „Server“ mit dem aktuellen Projekt und den Zeilen aus „Projekte“; Zustand „nicht geprüft“, kein git- oder svn-Prozess startet |
+| SZ2 | Git-Projekt mit Anmeldung: „Prüfen“ | „origin · github.com“, „erreichbar · geprüft <Zeit>“ (**Abnahme**) |
+| SZ3 | SVN-Projekt: „Prüfen“ | Repository-Wurzel, „erreichbar · geprüft <Zeit>“ (**Abnahme**) |
+| SZ4 | Git-Projekt ohne Anmeldung: „Prüfen“ | „Anmeldung nötig“; kein Anmeldefenster von Git Credential Manager oder SVN (**Abnahme**) |
+| SZ5 | „Anmelden …“, in der Konsole anmelden, Fenster schließen | Zeile zeigt „wird geprüft …“, danach „erreichbar“ (**Abnahme**) |
+| SZ6 | Remote auf nicht erreichbaren Rechner: „Prüfen“, währenddessen in der IDE arbeiten | Nach höchstens 10 s „nicht erreichbar“; IDE bleibt bedienbar (**Abnahme**) |
+| SZ7 | „Alle prüfen“ | Jede Zeile „wird geprüft …“, dann ihr Zustand |
+| SZ8 | Protokoll und settings.json nach SZ2–SZ6 durchsuchen | Keine Zugangsdaten, kein Text aus stderr (**Abnahme**) |
+| SZ9 | Willkommensseite mit `welcomePage.continue.fetch` für das Projekt aus SZ4 | „Neu seit …“ zeigt „Anmeldung am Server nötig – prüfen …“; Klick öffnet die Seite und prüft die Zeile (**Abnahme**) |
+| SZ10 | Schnellaktion „Pull“ für das Projekt aus SZ4 | Zustand „Anmeldung am Server nötig“, Meldung mit Weg zur Seite |
+| SZ11 | `WelcomePageContinueIncoming` aus | Kein Abschnitt und kein Hinweis |
+
+## Branch anlegen (#1288)
+
+Vorbereitung: Git-Projekt mit `main` lokal und auf origin, auf einem Feature-Branch; SVN-Projekt (Arbeitskopie auf `trunk`, mit `svn:externals`, Anmeldung gespeichert); „Meine Issues“ mit einem zugewiesenen Issue; `vcs.branch.confirm` an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BA1 | Git: „Meine Issues“ › „Beginnen“ | Dialog „Branch anlegen“ mit Name aus `issues.branchPattern`, Basis „main (lokal)“ vorgewählt, „Was passiert“: `1. git checkout --quiet --no-track -b <Name> refs/heads/main --`; kein Hinweis auf Serverschritte (**Abnahme**) |
+| BA2 | Im Dialog aus BA1 Basis „origin/main (Stand des letzten Abrufs)“ wählen | Schritt zeigt sofort `refs/remotes/origin/main` (**Abnahme**) |
+| BA3 | Name auf `feature/a b` bzw. `-x` ändern | Hinweis unter dem Feld, „Was passiert“ leer, „Anlegen“ gesperrt; gültiger Name: wieder frei (**Abnahme**) |
+| BA4 | BA1 „Anlegen“ | Branch angelegt und ausgecheckt; Meldung „Branch <Name> von main angelegt …“; „Meine Issues“ zeigt das Issue als aktiv |
+| BA5 | SVN: „Beginnen“ | Dialog zeigt kurz „HEAD-Revision wird ermittelt …“ (Anlegen gesperrt), dann Basis „trunk @ HEAD (r<Rev>)“, Nachricht, Gruppe „Externals“, Schritte `svn copy ^/trunk@<Rev> ^/branches/<Name>@ --parents -m "…"   ← auf dem Server` und `svn switch …`; IDE bleibt bedienbar (**Abnahme**) |
+| BA6 | SVN: Basis „Kasse/trunk @ r<Rev> (Revision der Arbeitskopie)“ wählen, Nachricht ändern, „Anlegen“ | Kopie genau dieser Revision mit der Nachricht (`svn log` auf dem Branch), Arbeitskopie umgeschaltet; Fortschritt „Branch anlegen 1/2 …“, „2/2 …“ in der Meldungsansicht |
+| BA7 | SVN ohne Anmeldung (oder Server nicht erreichbar): „Beginnen“ | „HEAD-Revision nicht ermittelt (LoginNeeded) …“; Anlegen bleibt möglich, kein Anmeldefenster |
+| BA8 | SVN: Schreibrecht auf `^/branches` fehlt bzw. `switch` scheitert | Meldung nennt den gescheiterten Schritt mit Ursache; scheitert erst `switch`, steht „Bereits auf dem Server ausgeführt (nicht zurückgenommen): svn copy …“ dabei (**Abnahme**) |
+| BA9 | „Nicht mehr fragen, Vorgaben verwenden“ ankreuzen, „Anlegen“; danach anderes Issue „Beginnen“ | Kein Dialog mehr, Branch von der Vorgabe-Basis; Einstellung „Dialog „Branch anlegen“ … zeigen“ ist aus |
+| BA10 | Befehlspalette „Branch anlegen …“ mit leerem Namen; Kontextmenü einer Zeile in „Projekte“ › „Branch anlegen …“ | Dialog immer (auch mit `vcs.branch.confirm` aus) ohne „Nicht mehr fragen“; Projekt ohne Git/SVN: Meldung statt Dialog; „Projekte“ zeigt danach den neuen Branch |
+| BA11 | Dialog bei „Beginnen“ abbrechen | Nichts angelegt, Issue nicht aktiv |
+| BA12 | Name eines vorhandenen Branchs eingeben, „Anlegen“ | Meldung „… gibt es schon; nichts angelegt.“ |
+
+## SVN-Branch-Optionen (#1290)
+
+Vorbereitung: Repository mit mehreren Projekten (`^/Kasse/trunk` mit Gruppe `Kasse.groupproj`, `^/Packages/Drucken/trunk`), Arbeitskopie von `^/Kasse/trunk`, Anmeldung gespeichert; „Meine Issues“ mit einem zugewiesenen Issue; `vcs.branch.confirm` an; Einstellungen der Gruppe „SVN“ auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BS1 | *Versionsverwaltung* öffnen | Gruppe „SVN“ unter „Branch anlegen“ mit Ablageort `{projektwurzel}/branches/{name}`, Quelle „Hauptbranch @ HEAD“, Danach „Arbeitskopie umschalten (switch)“, Ordner `..\{projekt}-{kennung}`, Nachricht `{kennung} Branch für {titel}` (**Abnahme**) |
+| BS2 | „Meine Issues“ › „Beginnen“ | Dialog: Feld „Ablageort“ `^/Kasse/branches/<Name>`, Basis „Kasse/trunk @ HEAD“, Nachricht „<Kennung> Branch für <Titel>“, Schritte `svn copy ^/Kasse/trunk@<Rev> ^/Kasse/branches/<Name>@ …` und `svn switch ^/Kasse/branches/<Name>@ .` (**Abnahme**) |
+| BS3 | Im Dialog aus BS2 den Namen ändern; danach den Ort von Hand ändern und wieder den Namen | Ablageort folgt dem Namen, bis er von Hand geändert wurde; danach bleibt er; Ort ohne `^/`: Hinweis, „Anlegen“ gesperrt |
+| BS4 | BS2 „Anlegen“ | Branch unter `^/Kasse/branches/<Name>` (Repo-Browser), Arbeitskopie umgeschaltet; nichts unter `^/branches` (**Abnahme**) |
+| BS5 | Dasselbe Issue erneut „Beginnen“ (Dialog aus) | „gibt es schon“ erkannt, Arbeitskopie wird auf `^/Kasse/branches/<Name>` umgeschaltet statt neu angelegt (**Abnahme**) |
+| BS6 | Danach „Frisch auschecken in eigenen Ordner“ wählen, „Anlegen“ | Feld „Ordner“ erscheint (`…\Kasse-<Kennung>`), Schritt `svn checkout …`; nach dem Auschecken Frage „… dort öffnen?“, Ja öffnet `Kasse.groupproj` aus dem neuen Ordner (**Abnahme**) |
+| BS7 | Danach „Nur anlegen“ | Nur `svn copy`; Arbeitskopie bleibt auf trunk |
+| BS8 | Teile der Arbeitskopie auf ältere Revision bringen (`svn update -r <alt> Unterordner`), Quelle „Revision der Arbeitskopie“ einstellen, „Beginnen“ | Basis der Arbeitskopie vorgewählt mit der höchsten Revision, rote Warnung „Die Arbeitskopie hat mehrere Revisionen …“; bei Basis HEAD keine Warnung |
+| BS9 | Arbeitskopie ohne trunk/branches/tags im Pfad (z. B. `^/Kasse`) | Ablageort leer mit Hinweis „Kein erkennbares Layout …“; „Beginnen“ mit `vcs.branch.confirm` aus zeigt trotzdem den Dialog und fragt nach dem Ort, statt unter `^/branches` anzulegen (**Abnahme**) |
+| BS10 | Ablageort `^/branches/{kennung}` einstellen | Branch fest unter `^/branches/<Kennung>`, wie vor #1290 |
+| BS11 | Großes Projekt: „Umschalten“ bzw. „Frisch auschecken“ dauert über 15 Sekunden | Läuft bis zu 10 Minuten durch, kein Abbruch nach `vcs.timeoutSeconds` |
+
+## SVN-Externals beim Branch (#1291)
+
+Vorbereitung: wie bei #1290; die Arbeitskopie `^/Kasse/trunk` hat `svn:externals` mit `^/Packages/Basis/trunk Packages/Basis`, `^/Packages/Drucken/trunk Packages/Drucken`, `-r 4711 ^/Packages/Kunden/trunk Packages/Kunden` und einem External aus einem anderen Repository; in `Packages\Drucken` eine lokale Änderung; Einstellungen unter *Externals* auf Vorgabe; svn 1.9 oder neuer.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BX1 | *Versionsverwaltung* › *Externals* öffnen | Auswahl „Externals ohne Revision beim Branch“ = „festschreiben (Revision der Arbeitskopie)“, „Mitverzweigen vorschlagen“ = „bei lokalen Änderungen“, Regeln leer (**Abnahme**) |
+| BX2 | „Meine Issues“ › „Beginnen“ | Gruppe „Externals (4)“ mit Ordner, Quelle, Auswahl: Basis „festschreiben (r<Rev>)“, Drucken „mitverzweigen“, Kunden „bleibt r4711“ ohne Auswahl, fremdes Repository ohne „mitverzweigen“ (**Abnahme**) |
+| BX3 | Dialog aus BX2: „Was passiert“ lesen | Zuerst `svn copy ^/Packages/Drucken/trunk@<Rev> ^/Packages/Drucken/branches/<Name>@ …`, dann die Kopie des Projekts, dann `svn checkout … --depth empty`, `svn propset svn:externals -F …` (mit Hinweis „svn:externals: Packages/Basis -r …, Packages/Drucken → ^/Packages/Drucken/branches/…“) und `svn commit`, zuletzt `svn switch` (**Abnahme**) |
+| BX4 | BX2 „Anlegen“ | Repo-Browser: `^/Packages/Drucken/branches/<Name>` angelegt; `svn:externals` im neuen Branch: Basis mit `-r <Rev>`, Drucken auf den neuen Ort, Kunden und das fremde External unverändert, Kommentare und Format der übrigen Zeilen erhalten; Arbeitskopie umgeschaltet, `Packages\Drucken` zeigt auf den Branch; Meldung „… baut den Index neu auf“ (**Abnahme**) |
+| BX5 | Im Branch aus BX4 eine Datei in `Packages\Drucken` ändern und committen | Commit landet in `^/Packages/Drucken/branches/<Name>`, der Trunk des Packages bleibt unverändert (**Abnahme**) |
+| BX6 | Drucken auf „unverändert“ stellen, sonst alles festschreiben (fremdes External ebenfalls) | Ein Schritt `svn copy … --pin-externals` nur, wenn alle Externals ohne Revision festgeschrieben werden; sonst Umschreiben über propset wie in BX3 |
+| BX7 | Alles festschreiben (auch Drucken), „Anlegen“ | Nur `svn copy ^/Kasse/trunk@… ^/Kasse/branches/<Name>@ … --pin-externals` und `svn switch`; im Branch stehen alle Externals ohne Revision mit festgeschriebener Revision |
+| BX8 | `vcs.externals.onBranch` = „jedes Mal fragen“, `suggestBranch` = „nie“, „Beginnen“ | Keine Vorauswahl, roter Hinweis „Bitte für jedes External wählen …“, „Anlegen“ gesperrt, bis jede Zeile gewählt ist; mit `vcs.branch.confirm` aus erscheint der Dialog trotzdem |
+| BX9 | Regel `^/Packages/Basis = keep` eintragen, speichern, „Beginnen“ | Basis „unverändert“ vorgewählt trotz `onBranch` = festschreiben (**Abnahme**) |
+| BX10 | Regel `^/Packages = fragen` eintragen | Roter Hinweis „Ungültige Zeile …“; nach „OK“ und erneutem Öffnen stehen die bisherigen Regeln da |
+| BX11 | `onBranch` = „unverändert lassen“, `suggestBranch` = „nie“ | Alle Externals „unverändert“, Schritte wie vor #1291 (nur Kopie und Umschalten), kein neuer Index |
+| BX12 | svn 1.8 (oder älter) einstellen, alles festschreiben | Kein `--pin-externals`; Atlas schreibt `-r <Rev>` selbst über propset |
+| BX13 | Commit beim Umschreiben scheitern lassen (z. B. Schreibrecht auf `^/Kasse/branches` entziehen nach dem Kopieren) | Meldung nennt den Schritt und die schon angelegten Kopien (Package und Projekt); Temp-Ordner `Atlas-Branch-<Name>` ist danach entfernt |
+
+## Arbeitskopien mit Externals (#1292)
+
+Vorbereitung: wie bei #1291 (`^/Kasse/trunk` mit Externals Basis, Drucken, Kunden `-r 4711` und einem fremden Repository); in `Packages\Drucken` zwei geänderte Dateien, im Projektordner eine; ein Git-Projekt mit Submodul; Einstellungen unter *Externals* auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WK1 | *Versionsverwaltung* › *Externals* öffnen | „Arbeitskopien der Gruppe zeigen“ an, „Aktualisieren“ = „mit Externals“ (**Abnahme**) |
+| WK2 | Willkommensseite › Projekt › „Arbeitskopien …“ | Tabelle mit Kasse und eingerückten Externals; Spalten Arbeitskopie, Pfad im Repository, Revision, Geändert, Neu auf dem Server; Zeilen füllen sich nacheinander, IDE bleibt bedienbar (**Abnahme**) |
+| WK3 | Tabelle aus WK2 ansehen | Kunden „r4711 · fest“, fremdes External „anderes Repository: …“, Drucken Geändert = 2, Kasse = 1; „Neu auf dem Server“ zeigt „auf Klick“ (**Abnahme**) |
+| WK4 | Von einer zweiten Arbeitskopie in Drucken committen, dann „Server prüfen“ | Zeilen zeigen nacheinander „prüft …“, Drucken danach 1, die anderen 0 (**Abnahme**) |
+| WK5 | Doppelklick auf Drucken | Explorer öffnet `Packages\Drucken` |
+| WK6 | Kontextmenü auf Drucken › „Nur diese aktualisieren“ | Nur Drucken wird aktualisiert (Meldungsansicht), danach Tabelle neu, „Neu auf dem Server“ wieder leer; Index kennt die neue Datei (Dateiüberwachung #395) (**Abnahme**) |
+| WK7 | Kontextmenü auf Basis › „Revision festschreiben …“ › „Ja“ | Rückfrage nennt Ordner und Revision; danach `svn:externals` der Wurzel mit `-r <Rev>` für Basis (TortoiseSVN zeigt die Eigenschaft geändert, kein Commit), Zeile „r<Rev> · fest“ (**Abnahme**) |
+| WK8 | WK7 mit „Nein“ | Nichts ändert sich |
+| WK9 | Willkommensseite › „Nicht gesichert“ | Projekt zeigt 3 Änderungen und „(Kasse 1 · Packages\Drucken 2)“ (**Abnahme**) |
+| WK10 | `vcs.externals.update` = „ohne Externals“, Schnellaktion Pull | `svn update . --ignore-externals`; Externals bleiben auf ihrer Revision |
+| WK11 | `vcs.externals.update` = „fragen“, Schnellaktion Pull | Schaltfläche zeigt „▾“; Klick fragt „mit Externals“/„ohne Externals“, Rechtsklick bietet beides als Untermenü (**Abnahme**) |
+| WK12 | Git-Projekt › „Arbeitskopien …“ | Wurzel und Submodul mit Commit und Änderungen; kein „Server prüfen“, kein „Nur diese“, Schaltfläche „Pull“ |
+| WK13 | `vcs.externals.show` aus | Menüpunkt „Arbeitskopien …“ fehlt im Projektmenü und im Atlas-Menü; „Nicht gesichert“ ohne Aufteilung (**Abnahme**) |
+| WK14 | Server nicht erreichbar (Netz trennen), „Server prüfen“ | Zeilen zeigen den Fehler (z. B. „Failed“ oder „TimedOut“) statt einer Zahl, kein Hängen |
+
+## Git-Optionen fürs Branch-Anlegen (#1289)
+
+Vorbereitung: Git-Projekt `Kasse` mit `main` lokal und auf origin (lokales `main` verfolgt `origin/main`), auf einem Feature-Branch, zwei geänderte Dateien; „Meine Issues“ mit einem zugewiesenen Issue (Kennung z. B. `ATL-13`); `vcs.branch.confirm` an. Seite *Versionsverwaltung*, Gruppe „Git“.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GO1 | Seite öffnen | Gruppe „Git“ mit Basis „Stand auf dem Server“, Push „Beim ersten Push (wie bisher)“, Offene Änderungen „mitnehmen“, „Eigener Ordner (worktree)“ aus, Ordner `..\{repo}-{kennung}` (**Abnahme**) |
+| GO2 | „Beginnen“ mit den Vorgaben | Dialog: Basis „origin/main“, Gruppe „Git“ mit „Vorher vom Server abrufen (git fetch origin main)“ angehakt, „Offene Änderungen: 2 geänderte Dateien“; „Was passiert“: `1. git fetch --quiet --no-tags origin main ← auf dem Server`, `2. git checkout --quiet --no-track -b <Name> refs/remotes/origin/main --` (**Abnahme**) |
+| GO3 | GO2 „Anlegen“ | Erst Abruf, dann Branch vom frischen Stand; Änderungen mitgenommen |
+| GO4 | Netz trennen (bzw. Remote-URL ungültig), GO2 „Anlegen“ | Frage „Abruf von origin gescheitert: nicht erreichbar. Vom lokalen Stand abzweigen (main)?“; „Ja“ legt ohne Abruf vom lokalen `main` an, „Nein“ meldet den gescheiterten Schritt, nichts angelegt (**Abnahme**) |
+| GO5 | `vcs.branch.confirm` aus, Netz getrennt, „Beginnen“ | Kein Dialog, keine Frage; Meldung nennt den gescheiterten Abruf, nichts angelegt (**Abnahme**) |
+| GO6 | Push „sofort“, „Anlegen“ | Schritt `git push --set-upstream origin refs/heads/<Name>:refs/heads/<Name> ← auf dem Server`; Branch auf dem Server und verfolgt (`git status -sb`) (**Abnahme**) |
+| GO7 | GO6 ohne Schreibrecht bzw. ohne Anmeldung | Branch lokal angelegt und ausgecheckt, Meldung „Branch <Name> angelegt, aber nicht auf den Server gepusht (Anmeldung nötig); der lokale Branch bleibt.“; kein Anmeldefenster (**Abnahme**) |
+| GO8 | Offene Änderungen „beiseitelegen“, „Anlegen“ | `git stash list` zeigt „Atlas: vor <Name>“ (mit unversionierten Dateien), neuer Branch sauber (**Abnahme**) |
+| GO9 | Einstellung „nachfragen“, „Beginnen“ mit Dialog | Feld „Offene Änderungen“ leer, „Anlegen“ gesperrt bis zur Wahl |
+| GO10 | Einstellung „nachfragen“, `vcs.branch.confirm` aus, „Beginnen“ | Frage mit „Mitnehmen“, „Beiseitelegen“, „Abbrechen“; „Abbrechen“ ändert nichts, Issue nicht aktiv; ohne geänderte Dateien keine Frage (**Abnahme**) |
+| GO11 | „Eigener Ordner (worktree)“ an, „Beginnen“ | Dialog: Ort „eigener Ordner“, Ordner `<Eltern>\Kasse-ATL-13`, keine Zeile „Offene Änderungen“; Schritt `git worktree add --quiet --no-track -b <Name> <Ordner> refs/remotes/origin/main` (**Abnahme**) |
+| GO12 | GO11 „Anlegen“ | Ordner angelegt, bisherige Arbeitskopie unverändert (Branch und Änderungen); Frage „Branch <Name> liegt im neuen Ordner …; die bisherige Arbeitskopie bleibt unverändert. Kasse.groupproj von dort öffnen?“; „Ja“ öffnet die `.groupproj` (bzw. `.dproj`) aus dem neuen Ordner, das Issue ist dort aktiv (**Abnahme**) |
+| GO13 | GO11 mit vorhandenem Ordner | „Anlegen“ im Dialog gesperrt mit Hinweis „Den Ordner … gibt es schon; bitte einen anderen wählen.“; ohne Dialog Meldung „Branch anlegen: Den Ordner … gibt es schon; nichts angelegt.“ (**Abnahme**) |
+| GO14 | Ordner im Dialog auf `relativ` bzw. eigenes Muster `D:\WT\{name}` setzen | Relativ: Hinweis, „Anlegen“ gesperrt; eigenes Muster: `D:\WT\feature-13-…` („/“ wird „-“); Name ändern ändert einen von Hand geänderten Ordner nicht |
+| GO15 | Basis „Aktueller Branch“ in den Einstellungen | Dialog wählt den aktuellen Branch vor, kein Abruf |
+| GO16 | Basis „Lokaler Hauptbranch“, Push „beim ersten Push“, „mitnehmen“, kein worktree | Genau wie vor #1289: ein Schritt `git checkout … refs/heads/main --` (**Abnahme**) |
+| GO17 | Hauptbranch verfolgt einen anderen Remote (`upstream/main`) | Abruf und Push gehen an `upstream`, Basis „upstream/main“ |
+| GO18 | Befehlspalette „Branch anlegen …“ mit worktree | Ordner `<Eltern>\Kasse-<Name>` (ohne Issue steht der Name für `{kennung}`) |
+| GO19 | SVN-Projekt | Keine Gruppe „Git“ im Dialog |
+
+## Issue-Kennungen im Code (#1265)
+
+Vorbereitung: Projekt A mit YouTrack-Projekt `ATL` (Abschnitt `tracker` der `.atlas` oder Zuordnung #1261), Projekt B mit GitHub `owner/repo`, Projekt C ohne Tracker; Token hinterlegt; `issues.commitPattern` = `{kennung} `; Proxy-Protokoll (z. B. Fiddler) offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IK1 | In A `// TODO ATL-123: prüfen` schreiben | `ATL-123` ist gepunktet unterstrichen in der Akzentfarbe des Themas (**Abnahme**) |
+| IK2 | Maus auf `ATL-123` halten | Nach etwa 500 ms Tooltip „ATL-123“ mit Titel, Zustand, Zuständig, „aktualisiert vor …“ und der Fußzeile „Strg+Klick: Vorschau · Strg+Umschalt+Klick: Browser“; beim ersten Mal kurz „Wird geladen …“ (**Abnahme**) |
+| IK3 | Strg+Klick auf `ATL-123` | Fenster „Atlas-Issue“ zeigt das Issue; die IDE springt nicht und setzt den Cursor nicht um (**Abnahme**) |
+| IK4 | Strg+Umschalt+Klick auf `ATL-123` | Issue öffnet im Browser |
+| IK5 | Rechtsklick auf `ATL-123` | Eigenes Menü „Issue anzeigen“ (fett), „Im Browser öffnen“, „Kennung kopieren“, „Beginnen“; „Kennung kopieren“ legt `ATL-123` in die Zwischenablage; das Kontextmenü der IDE erscheint nicht |
+| IK6 | Umschalt+Rechtsklick auf `ATL-123` | Kontextmenü der IDE wie gewohnt |
+| IK7 | „Beginnen“ im Menü | Wie „Beginnen“ in „Meine Issues“: Branch aus Kennung und Titel |
+| IK8 | `atl-7`, `{ ATL-8 }`, `(* ATL-9 *)` und ein `{ … }`-Kommentar über drei Zeilen mit `ATL-10` in der Mitte | Alle unterstrichen, Kennung im Tooltip groß geschrieben |
+| IK9 | `X := ATL - 123;`, `{$IFDEF ATL-1}`, `XATL-1`, `ATL-1a` und `ATL_1` | Nichts unterstrichen (**Abnahme**) |
+| IK10 | `S := 'ATL-12 Sperre';` und `S := 'Siehe ATL-12';` | Nur das erste Literal (beginnt mit dem Commit-Präfix) ist unterstrichen |
+| IK11 | In B `// #42` und `// siehe octo/lib#9` | Beide unterstrichen; Hover von `octo/lib#9` zeigt das Issue aus `octo/lib` (**Abnahme**) |
+| IK12 | In B `S := #13#10;` und `// Zeilenende #13#10, C#7` | Nichts unterstrichen |
+| IK13 | `// #42` in C (ohne Tracker) | Nicht unterstrichen, kein Hover (**Abnahme**) |
+| IK14 | Kennung, die es nicht gibt (`ATL-999999`), überfahren | „Issue ATL-999999 nicht gefunden.“; Unterstreichung bleibt; erneutes Überfahren innerhalb von 10 Minuten fragt nicht erneut (Proxy) |
+| IK15 | Durch eine Unit mit 200 Kennungen scrollen, ohne zu verweilen | Keine Abfrage beim Tracker (Proxy); erst der Hover fragt (**Abnahme**) |
+| IK16 | Netz trennen, eine früher überfahrene Kennung überfahren | Letzter Stand aus dem Zwischenspeicher; eine neue Kennung zeigt „Tracker nicht erreichbar.“ |
+| IK17 | `issues.codeLinks` aus (Schnellschalter) | Keine Unterstreichung, kein Hover, Strg+Klick wieder wie in der IDE, keine Abfrage (**Abnahme**) |
+| IK18 | `issues.preview` aus | Fußzeile „Strg+Klick: im Browser öffnen“; Strg+Klick öffnet den Browser |
+| IK19 | Hover auf einer Kennung mit eingeschaltetem Atlas-Tooltip | Nur ein Tooltip; kein leerer zweiter Tooltip des Atlas-Hovers |
+| IK20 | Tippen in der Zeile, Zoom (Strg+Mausrad), 150 % DPI, helles und dunkles Design | Unterstreichung folgt dem Text und sitzt unter der Kennung |
+| IK21 | Projekt wechseln (A → B), dann Datei aus A wieder vorn | Muster folgt dem aktiven Projekt (`ATL-…` nur, solange A aktiv ist) |
+| IK22 | IDE mit offenem Tooltip beenden | Entladen ohne Zugriffsverletzung |
+
+## Issues in der Zeilenhistorie (#1275)
+
+Vorbereitung: Projekt A (Git) und Projekt S (SVN), beide mit YouTrack-Projekt `ATL` und hinterlegtem Token; `editor.gitBlame` und `issues.blameLinks` an. In beiden eine Methode `TKunde.Laden`, die drei Commits mit `ATL-1`, `ATL-2` und `ATL-3` (einer davon „ATL-1 und ATL-3“) und ein Commit ohne Kennung geändert haben; in S zusätzlich ein Repository mit 5000 Revisionen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IX1 | In A den Cursor auf eine Zeile aus dem Commit „ATL-2 Rundung“ setzen | Am Zeilenende „Autor, vor … · ATL-2 · ATL-2 Rundung“ (**Abnahme**) |
+| IX2 | Dasselbe in S | „Autor, vor … · ATL-2“ (SVN-blame liefert keinen Betreff; die Kennung kommt aus der ganzen Nachricht) (**Abnahme**) |
+| IX3 | Maus auf die Randanzeige halten | Hover mit Commit, darunter die Link-Zeile „ATL-2 · Titel · Zustand“ (erst „Wird geladen …“, dann der Stand), die Fußzeile „Strg+Klick auf die Kennung: Vorschau“ und der Link „Issues zu dieser Methode (3)“ (die Zahl erscheint nach kurzer Suche) (**Abnahme**) |
+| IX4 | Commit-Nachricht mit zwei Kennungen („ATL-1 und ATL-3“) überfahren | Je Kennung eine Zeile mit Titel und Zustand |
+| IX5 | Im Hover auf die Zeile „ATL-2 …“ klicken | Fenster „Atlas-Issue“ zeigt ATL-2 |
+| IX6 | Strg+Klick auf die Randanzeige | Fenster „Atlas-Issue“ zeigt die erste Kennung; die IDE springt nicht und setzt den Cursor nicht um (Git und SVN) (**Abnahme**) |
+| IX7 | Strg+Umschalt+Klick auf die Randanzeige | Issue im Browser |
+| IX8 | Rechtsklick auf die Randanzeige | Menü „Issue anzeigen“ (fett), „Im Browser öffnen“, „Kennung kopieren“, Trenner, „Issues zu dieser Methode“; bei zwei Kennungen je Kennung ein Untermenü; Umschalt+Rechtsklick öffnet das Menü der IDE |
+| IX9 | Palette: „Issues zu dieser Methode“ mit dem Cursor in `TKunde.Laden` | Ergebnisfenster „Issues zu TKunde.Laden · 3 Issues aus 4 Commits · 1 ohne Kennung“ mit genau ATL-1, ATL-2, ATL-3, je Titel, Zustand, Zeit des letzten Commits und Anzahl der Commits (ATL-1: 2, ATL-3: 2, ATL-2: 1) (**Abnahme**) |
+| IX10 | Dasselbe in S | Dieselbe Liste aus der SVN-Historie (**Abnahme**) |
+| IX11 | In der Liste auf ein Issue klicken, dann einen Commit darunter doppelklicken | Klick öffnet die Vorschau; Doppelklick zeigt Nachricht und Unterschied des Commits |
+| IX12 | Befehl mit dem Cursor außerhalb jeder Methode (uses-Klausel) | „Issues zu Unit Kunde.pas …“ über die ganze Unit |
+| IX13 | Über `TKunde.Laden` drei ungespeicherte Zeilen einfügen, Befehl erneut | Gleiche Liste (der Bereich wird dem Stand im Repository zugeordnet) |
+| IX14 | Neue, nicht übernommene Unit; Befehl | „Kunde2.pas ist noch nicht übernommen; es gibt keine Historie.“ |
+| IX15 | Datei außerhalb einer Arbeitskopie; Befehl | „Die Datei liegt in keiner Arbeitskopie (Git oder SVN).“ |
+| IX16 | In S mit 5000 Revisionen, `issues.blameLinks.maxRevisions` = 200, Befehl auf eine Methode | Liste in unter 5 s (**Abnahme**) |
+| IX17 | `issues.blameLinks.maxRevisions` = 2, Befehl | Nur Issues aus den zwei neuesten Commits der Methode |
+| IX18 | Durch eine Unit scrollen und den Cursor über viele Zeilen bewegen, ohne zu verweilen | Keine Abfrage beim Tracker (Proxy); erst Hover oder Befehl fragen (**Abnahme**) |
+| IX19 | `issues.blameLinks` aus (Schnellschalter) | Zeilenhistorie wie vorher ohne Kennung, Hover ohne Issues, Strg+Klick wie in der IDE, „Issues zu dieser Methode“ fehlt in der Palette (**Abnahme**) |
+| IX20 | Projekt ohne Tracker | Zeilenhistorie ohne Kennung; der Befehl meldet „Für dieses Projekt ist kein Issue-Tracker eingerichtet.“ |
+| IX21 | `issues.preview` aus | Fußzeile „Strg+Klick auf die Kennung: im Browser öffnen“; Klick im Hover öffnet den Browser |
+| IX22 | Commit machen, dann dieselbe Zeile überfahren | Randanzeige und Zahl im Hover folgen dem neuen Stand |
+| IX23 | IDE mit offenem Hover bzw. laufender Suche beenden | Entladen ohne Zugriffsverletzung |
+
+## Zustand und Kommentar beim Beginnen und Beenden (#1266)
+
+Vorbereitung: Verbindungen zu YouTrack und GitHub mit Token (#1260), Projekt mit Abschnitt `tracker` in der `.atlas`, Git-Arbeitskopie; ein YouTrack-Issue im Zustand „Offen“ und ein GitHub-Issue mit Label `todo`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZS1 | `issues.syncState` aus, in „Meine Issues“ „Beginnen“ und später „Beenden“ | Verhalten wie bisher: Branch, Rückfrage beim Beenden, nichts im Tracker geändert, kein Kommentarfeld in der Vorschau |
+| ZS2 | Optionen › Issue-Tracker: „Zustand und Kommentar …“ an (Vorgabe), Verbindung YouTrack wählen, „Werte vom Tracker laden“ | Hinweis „N Zustände und M Felder vom Tracker geladen.“; Klapplisten für Zustandsfeld, Startzustand enthalten die Werte des Trackers; eigene Eingabe bleibt möglich |
+| ZS3 | Startzustand „In Arbeit“, „Mir zuweisen“ an, Startkommentar `Beginne in {branch}`; YouTrack-Issue „Beginnen“ | Branch wird angelegt; Issue steht auf „In Arbeit“, ist mir zugewiesen, Kommentar mit dem Branch-Namen; eine Zeile „Atlas: ATL-… im Tracker nachgeführt (…)“ in der Meldungsansicht (**Abnahme**) |
+| ZS4 | Token mit Leserechten, „Beginnen“ | Branch bleibt; Meldungszeile „… nicht nachgeführt, der Branch bleibt. Keine Schreibrechte für ATL-… (403).“ |
+| ZS5 | „Beenden“ über die Statuszeile `atlas.issue`, das Kontextmenü der Zeile und den Knopf „Beenden …“ in der Vorschau | Jeweils Dialog „ATL-… beenden“ mit Zielzustand (Zielzustände plus „Zustand nicht ändern“), Kommentar mit {branch}, {commits}, {pr} gefüllt, Übergabe (**Abnahme**) |
+| ZS6 | Im Dialog Zielzustand „Erledigt“, Übergabe an einen Kollegen aus der Liste, Senden | Issue erledigt und übergeben, Kommentar mit den Commits des Branches; Meldungszeile „Atlas: ATL-… beendet (…)“ |
+| ZS7 | Senden ohne Schreibrechte | Roter Hinweis im Dialog „Keine Schreibrechte für ATL-… (403).“, Dialog bleibt offen, nichts wird wiederholt; Abbrechen schließt ohne Änderung |
+| ZS8 | „Zustand nicht ändern“, Kommentar leeren, Übergabe aus, Senden | Dialog schließt ohne Abfrage an den Tracker (Proxy-Protokoll) |
+| ZS9 | Strg+Enter im Dialog | Wie Senden |
+| ZS10 | Vorschau des aktuellen Issues: Text ins Kommentarfeld, Strg+Enter | Kommentar steht im Tracker, Feld wird geleert, Vorschau lädt neu |
+| ZS11 | Dasselbe mit GitHub: Startzustand `in-progress`, Zielzustand „Erledigt“ | Label `todo`→`in-progress` beim Beginnen; beim Beenden geschlossen; Zuweisung über `assignees` |
+| ZS12 | Felder „Zustandsfeld“, „Startzustand“ und „Zielzustände“ der Verbindung setzen, globale Werte anders | Die Werte der Verbindung gelten; Adresse der Verbindung ändern verliert die Felder nicht |
+| ZS13 | Netz während des Sendens trennen, Dialog schließen versuchen | Schließen wartet bis zur Antwort; danach „Tracker nicht erreichbar.“ |
+| ZS14 | Plugin entladen, während eine Änderung gesendet wird | Keine Zugriffsverletzung, keine späte Meldung |
+
+## Zeit je Issue erfassen und buchen (#1267)
+
+Vorbereitung wie #1266: Verbindungen zu YouTrack (Projekt mit Zeiterfassung und Arbeitstypen) und GitHub, Git-Arbeitskopie; ein zweites YouTrack-Projekt mit ausgeschalteter Zeiterfassung.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZT1 | `issues.timeTracking` aus (Vorgabe), Issue beginnen und beenden | Kein Zeitfeld im Statusfeld, keine Datei `%LOCALAPPDATA%\Atlas\time.json`, kein Buchungsdialog |
+| ZT2 | Optionen › Issue-Tracker: „Zeit für das aktuelle Issue erfassen …“ an, Issue beginnen, einige Minuten tippen | Statusfeld zeigt „ATL-… · 0:03“ und zählt mit; Tooltip nennt Kennung und Zeit (**Abnahme**) |
+| ZT3 | Leerlauf 2 Minuten einstellen, 5 Minuten nichts tun, dann weitertippen | Die Uhr bleibt nach 2 Minuten stehen; die Pause zählt nicht |
+| ZT4 | Anderes Programm vorn, dort tippen | Zählt nicht |
+| ZT5 | Programm im Debugger laufen lassen, ohne Eingabe in der IDE | Zählt weiter, solange der Prozess läuft |
+| ZT6 | Klick auf das Zeitfeld › Pause, dann Weiter | „(Pause)“ im Feld, keine Zeit dazu; danach zählt sie weiter |
+| ZT7 | Klick › Zeit korrigieren …, `1:25`; danach `85 min`, `1h 25m`, `abc` | Feld zeigt 1:25; ungültige Eingabe meldet den Fehler, nichts geändert |
+| ZT8 | Issue beenden (Statuszeile oder Kontextmenü) | Nach dem Beenden-Dialog Dialog „1 h 25 min auf ATL-… buchen?“ mit gerundeter Dauer (`issues.timeRounding`), Arbeitstypen des Projekts, Text aus den Commit-Betreffen (**Abnahme**) |
+| ZT9 | „Buchen“ | Work Item mit Dauer, Datum, Typ und Text in YouTrack; Meldungszeile „Atlas: … auf ATL-… gebucht.“; Zeit in `time.json` abgezogen |
+| ZT10 | Buchen ohne Schreibrechte bzw. ohne Netz | Fehler im Dialog, Dialog bleibt offen; „Später“ behält die Zeit |
+| ZT11 | Issue im Projekt ohne Zeiterfassung beenden | Hinweis „Zeiterfassung im YouTrack-Projekt aus; die Zeit bleibt lokal.“, Buchen gesperrt, Verwerfen und Später möglich |
+| ZT12 | Ein Issue beginnen, dann ein anderes beginnen | Im nächsten Takt Buchungsdialog für das erste Issue; das zweite zählt ab Null bzw. ab seiner gespeicherten Zeit |
+| ZT13 | Atlas-Befehl *Offene Zeitbuchungen …* (bzw. Klick › Offene Zeitbuchungen …) | Liste „ATL-… · 1 h 25 min · Tag(e)“, zuletzt bearbeitete oben; Buchen öffnet den Dialog, Verwerfen fragt nach; leere Liste zeigt „Keine offene Zeit.“ |
+| ZT14 | Klick › Zurücksetzen | Rückfrage; danach 0:00 und Eintrag weg |
+| ZT15 | GitHub-Issue beenden | Dialog mit „Als Kommentar schreiben“ statt Arbeitstyp; mit Häkchen Kommentar „Aufwand: …“ im Issue, ohne nur lokal als gebucht |
+| ZT16 | Zwei IDE-Instanzen mit demselben Issue gleichzeitig benutzen | Die Zeit in `time.json` wächst nicht doppelt |
+| ZT17 | IDE mit laufender Uhr schließen und neu starten, Issue fortsetzen | Zeit von vorher steht wieder im Feld; über Mitternacht gearbeitet: zwei Tage in der Liste |
+| ZT18 | `time.json` von Hand unlesbar machen bzw. von einem anderen Programm sperren lassen | Einmal „Atlas: Zeiterfassung nicht gespeichert (…)“, Datei bleibt unverändert; nach Freigabe wird die Zeit nachgetragen |
+| ZT19 | Platzhalter `{time}` im Endkommentar (#1266) | Beenden-Dialog setzt die erfasste Zeit ein |
+| ZT20 | Schnellschalter Zeiterfassung aus während die Uhr läuft; Plugin entladen | Zeitfeld verschwindet, Zeit gespeichert; Entladen ohne Zugriffsverletzung |
+
+## Checklisten (#1273)
+
+Vorbereitung: wie Issue-Vorschau; ein YouTrack- und ein GitHub-Issue mit Beschreibung `- [ ] eins`, `- [x] zwei`, `1. [ ] drei`, eingerückt `  - [ ] vier`, dazu ein Codeblock mit `- [ ] im Code` und ein Kommentar mit `- [ ] im Kommentar`; Token mit Schreibrecht. Proxy-Protokoll (z. B. Fiddler) an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CL1 | Issue in „Atlas-Issue“ öffnen | Vier Kästchen (Codeblock ohne), Kopfzeile „<Kennung> · 1/4“, Tooltip „Checkliste: 1 von 4 erledigt“ (**Abnahme**) |
+| CL2 | Auf das Kästchen „eins“ klicken | Kurz „Wird gespeichert …“, dann abgehakt, Kopfzeile 2/4; im Tracker (Browser) ist nur `[ ]` → `[x]` geändert, Zeilenenden unverändert (**Abnahme**) |
+| CL3 | Proxy: Abfragen bei CL2 | YouTrack `GET …?fields=idReadable,description`, dann `POST /api/issues/<Kennung>`; GitHub `GET`, dann `PATCH /repos/…/issues/<n>` |
+| CL4 | Im Browser eine Zeile über der Liste einfügen, dann in Atlas (ohne Aktualisieren) ein Kästchen klicken | Nichts geschrieben, Atlas lädt neu, Meldung „Beschreibung wurde geändert, bitte erneut.“ (**Abnahme**) |
+| CL5 | Danach dasselbe Kästchen erneut klicken | Wird geschrieben |
+| CL6 | „Punkt hinzufügen …“, Text eingeben | Neuer Punkt `- [ ] …` unter „vier“ mit dessen Einzug; bei nummerierter Liste die nächste Zahl |
+| CL7 | Token ohne Schreibrecht (GitHub: nur lesend) hinterlegen, Kästchen klicken | Meldung „Keine Schreibrechte …“; Kästchen danach nur lesbar (Pfeil, Tooltip „Keine Schreibrechte“), „Punkt hinzufügen …“ fehlt |
+| CL8 | Kästchen im Kommentar klicken | Nichts geschieht, kein Schreiben |
+| CL9 | Issue beginnen (aktuelles Issue), einige Sekunden warten | Statusfeld zeigt „<Kennung> · 2/4“ hinter dem aktuellen Issue (**Abnahme**) |
+| CL10 | Klick auf das Statusfeld | „Atlas-Issue“ öffnet und blättert zur Checkliste |
+| CL11 | Aktuelles Issue ohne Checkliste | Kein Statusfeld für die Checkliste |
+| CL12 | `issues.checklistStatus` aus | Statusfeld der Checkliste verschwindet; Vorschau unverändert |
+| CL13 | `issues.preview.checklists` aus | Vorschau zeigt Listen wie geschrieben (`• [ ] eins`), keine Kopfzeilen-Zahl, kein „Punkt hinzufügen …“ |
+| CL14 | Netz trennen, Kästchen klicken | Meldung „Checkliste nicht gespeichert: Tracker nicht erreichbar.“, Kästchen unverändert |
+| CL15 | Helles und dunkles IDE-Design | Kästchen in Akzentfarbe, Hand über klickbaren Kästchen |
+
+## Abhängigkeiten und Unteraufgaben in der Issue-Vorschau (#1279)
+
+Vorbereitung wie bei der Issue-Vorschau (#1264); in YouTrack ATL-130 mit „depends on“ ATL-129 (offen) und ATL-128 (erledigt), „is required for“ ATL-140, drei Unteraufgaben (zwei erledigt), übergeordnet ATL-100, „duplicates“ ATL-90 und „relates to“ ATL-77; dasselbe einmal mit deutscher Oberfläche von YouTrack. Auf GitHub ein Issue mit Sub-Issues, „blocked by“ und eines nur mit „Benötigt: #12“ im Text.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IU1 | ATL-130 in der Vorschau öffnen | „Verknüpfungen (9)“ als Baum: Hängt ab von (2), Blockiert (1), Unteraufgaben 2/3, Übergeordnet (1) aufgeklappt; Duplikat von und Bezieht sich auf eingeklappt (**Abnahme**) |
+| IU2 | Zeilen ansehen | ATL-129 mit ⛔ und „· blockiert dieses Issue“, ATL-128 mit ✓, offene Unteraufgabe mit ○; jeweils Kennung, Titel, Zustand wie im Tracker |
+| IU3 | Klick auf ATL-129 bzw. Pfeiltasten und Eingabe | Öffnet im selben Fenster; Alt+Links zurück zu ATL-130 |
+| IU4 | Dasselbe mit deutscher YouTrack-Oberfläche | Gleiche Gruppen; Art steht als „hängt ab von“, Zustand deutsch |
+| IU5 | GitHub-Issue mit Sub-Issues und „blocked by“ | Unteraufgaben mit Fortschritt, „Hängt ab von“ mit dem blockierenden Issue; Erwähnung desselben Issues erscheint nicht doppelt |
+| IU6 | GitHub-Issue nur mit „Benötigt: #12“ im Text | „Hängt ab von (1)“ mit #12 und dessen Zustand; „Wird benötigt von: #227“ erscheint nicht |
+| IU7 | „Unteraufgabe anlegen …“, Titel und Beschreibung eingeben, „Anlegen“ | Status „Wird an den Tracker gesendet …“, danach lädt die Vorschau neu: „Unteraufgabe ATL-134 angelegt.“, ATL-134 unter Unteraufgaben (**Abnahme**) |
+| IU8 | Wie IU7 auf GitHub | Neues Issue und als Sub-Issue verknüpft |
+| IU9 | Dialog „Unteraufgabe anlegen“ ohne Titel | „Anlegen“ gesperrt; Esc schließt ohne Anfrage |
+| IU10 | „Verknüpfen …“, „hängt ab von“, `ATL-127` bzw. Adresse eines Issues, „Verknüpfen“ | „ATL-130 mit ATL-127 verknüpft.“, ATL-127 unter „Hängt ab von“; mit „blockiert“ unter „Blockiert“ |
+| IU11 | „Verknüpfen …“ mit der eigenen Kennung oder Unsinn | „Verknüpfen“ bleibt gesperrt |
+| IU12 | Token ohne Schreibrecht, Unteraufgabe anlegen | Fehlermeldung mit Knopf zum Beheben, kein loses Issue im Tracker |
+| IU13 | In „Meine Issues“ ATL-130 „Beginnen“ | Rückfrage „ATL-129 blockiert dieses Issue und ist noch offen.“ mit „Trotzdem beginnen“, „ATL-129 ansehen“, Abbrechen (**Abnahme**) |
+| IU14 | IU13, „Trotzdem beginnen“ bzw. „ATL-129 ansehen“ bzw. Abbrechen | Branch wie ohne Warnung bzw. Vorschau zeigt ATL-129 bzw. nichts passiert |
+| IU15 | Issue ohne offene Abhängigkeit „Beginnen“ | Keine Rückfrage |
+| IU16 | `issues.warnBlocked` aus, IU13 | Keine Rückfrage |
+| IU17 | `issues.preview.links` aus | Flache Liste „Verknüpfte Issues“ wie vor #1279, keine Knöpfe |
+| IU18 | Netz trennen, IU13 | Warnung aus dem Zwischenspeicher, sonst keine; „Beginnen“ hängt nicht länger als 5 s |
+| IU19 | Plugin entladen, während eine Unteraufgabe gesendet wird | Kein Fehler, keine Zugriffsverletzung |
+
+## Board „Atlas-Board“ (#1272)
+
+Vorbereitung: YouTrack mit Agile Board (deutsche Oberfläche, Spalten Offen, In Arbeit, Zur Prüfung, Erledigt; aktueller Sprint mit Issues, davon einige mir zugewiesen, eines mit Checkliste, eines mit offenem „hängt ab von“) und ein GitHub-Repository mit Projekt (v2, Feld „Status“, Iterationen); Token mit Schreibrecht, für GitHub mit `project`. Projekt in der IDE geöffnet, Tracker über `.atlas` bzw. Zuordnung (#1261).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BO1 | Ansicht › Atlas › Board | Andockbares Fenster „Atlas-Board“, kurz „Wird geladen …“, dann Spalten und Karten des aktuellen Sprints wie im Browser (**Abnahme**) |
+| BO2 | Befehlspalette „Board“ | Öffnet bzw. zeigt dasselbe Fenster |
+| BO3 | Karten ansehen | Kennung, Titel in zwei Zeilen, Kürzel des Zuständigen, Farbbalken der Priorität, „3/5“ bei Checkliste, Schloss bei offener Abhängigkeit; das begonnene Issue mit Rahmen in Akzentfarbe |
+| BO4 | „Alle“, dann „Nur meine“ | Alle Karten bzw. nur mir zugewiesene; Anzahl im Spaltenkopf passt |
+| BO5 | Suchfeld „login“ bzw. Kennung | Nur passende Karten, ohne Abfrage beim Server |
+| BO6 | Klappliste Sprint: anderer Sprint; Klappliste Board (bei mehreren Boards) | Lädt dessen Karten; Board-Auswahl nur bei mehr als einem Board sichtbar |
+| BO7 | Karte von „In Arbeit“ nach „Zur Prüfung“ ziehen | Rückfrage „ATL-123 → Zur Prüfung?“ mit Kommentarfeld und „Nicht mehr fragen“ (**Abnahme**) |
+| BO8 | BO7, Kommentar eingeben, „Verschieben“ (bzw. Strg+Enter) | Karte steht sofort in „Zur Prüfung“, Statuszeile „ATL-123 → Zur Prüfung“; im Browser Zustand geändert und Kommentar vorhanden (**Abnahme**) |
+| BO9 | BO7, „Abbrechen“ bzw. Esc | Karte bleibt, nichts geschrieben |
+| BO10 | Token ohne Schreibrecht, Karte ziehen | Karte springt zurück, Statuszeile „ATL-123 nicht verschoben: …“ mit dem Grund des Trackers (**Abnahme**) |
+| BO11 | Klick auf eine Karte | Vorschau „Atlas-Issue“ zeigt das Issue (**Abnahme**) |
+| BO12 | Doppelklick auf eine Karte | Issue wird begonnen wie in „Meine Issues“ (Branch, Rahmen wandert zu dieser Karte) (**Abnahme**) |
+| BO13 | Rechtsklick: Beginnen, Vorschau, Im Browser öffnen, Kennung kopieren, Mir zuweisen | Jeweils wie benannt; „Mir zuweisen“ meldet „ATL-123 ist dir zugewiesen.“ und lädt neu |
+| BO14 | GitHub-Projekt mit Feld „Status“ | Spalten nach den Optionen von „Status“, Iteration als Sprint; Ziehen ändert „Status“ im Projekt (**Abnahme**) |
+| BO15 | GitHub-Repository ohne Projekt | Spalten „Offen“ und „Geschlossen“; Ziehen nach „Geschlossen“ schließt das Issue |
+| BO16 | GitHub-Token ohne `project` | Offen/Geschlossen mit Hinweis „Der Token darf Projekte nicht lesen …“ |
+| BO17 | Netz trennen, Fenster schließen und neu öffnen bzw. „Aktualisieren“ | Letzter Stand mit „Stand vom … · Grund · Ziehen ist gesperrt“; Ziehen geht nicht (**Abnahme**) |
+| BO18 | Fenster schmal andocken (unter 360 px) | Spalten untereinander; Klick auf einen Spaltenkopf klappt die Gruppe ein und aus |
+| BO19 | „Nicht mehr fragen“ in BO7 setzen, erneut ziehen | Keine Rückfrage mehr; auf der Optionsseite ist `issues.board.confirmMove` aus |
+| BO20 | `issues.board.confirmMove` aus | Ziehen verschiebt ohne Rückfrage (**Abnahme**) |
+| BO21 | `issues.board` aus | Menüeintrag und Befehl fehlen, keine Abfrage (**Abnahme**) |
+| BO22 | `issues.board.onlyMine` aus, IDE neu starten, Board öffnen | Board zeigt zuerst alle Karten |
+| BO23 | Helles und dunkles IDE-Design, 150 % Skalierung | Lesbare Karten, Ziehen mit halbdurchsichtiger Karte und markierter Zielspalte |
+| BO24 | Plugin entladen, während das Board lädt bzw. verschiebt | Keine Zugriffsverletzung |
+
+## Sprint-Kachel (#1277)
+
+Vorbereitung wie BO (#1272): YouTrack-Agile-Board mit Schätzfeld (Story Points) und mindestens drei abgeschlossenen Sprints, aktueller Sprint mit erledigten und offenen Issues (einige mir zugewiesen); GitHub-Projekt mit Iterationen und Zahlenfeld „Estimate“. Atlas-Start geöffnet, „Meine Issues“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Atlas-Start öffnen | Bereich „Sprint“ rechts nach „Meine Issues“: „Sprint 42 · 27.10.–07.11. · noch n Tage“, drei Zahlen, Burndown (**Abnahme**) |
+| SK2 | Werte mit dem Board im Browser vergleichen | Sprintname, Zeitraum, Resttage (ohne Wochenenden), meine offen/erledigt und Team übrig stimmen überein (**Abnahme**) |
+| SK3 | Board ohne Schätzfeld | „Team übrig“ als Anzahl Issues, Burndown in Issues |
+| SK4 | Maus über das Diagramm | Tooltip „Tag 3 (29.10.): Rest 12 · ideal 9,6 · Vorsprint 11“; Ist-Linie durchgezogen, Ideallinie gestrichelt, Marke „heute“ |
+| SK5 | Vergleich ansehen | Blasse Linie des Vorsprints, Zeile „erledigt 5 · Vorsprint 4 am selben Tag ▲1“, drei Velocity-Balken (**Abnahme**) |
+| SK6 | Vorsprint mit anderer Länge (eine statt zwei Wochen) | Linie über die ganze Breite auf Sprinttage normiert, Abweichung am selben Anteil (**Abnahme**) |
+| SK7 | Erster Sprint eines Boards (kein Vorsprint) | Keine Vergleichszeile, keine blasse Linie |
+| SK8 | `issues.sprint.compare` aus, Netzwerkmitschnitt (Fiddler) | Kein Vergleich, keine Velocity, kein Abruf früherer Sprints (**Abnahme**) |
+| SK9 | `issues.sprint.burndown` aus | Nur Kopf, Zahlen und Vergleichszeile |
+| SK10 | Klick auf „meine offen“ | „Meine Issues“ zeigt nur meine offenen Issues des Sprints mit „Gefiltert: „Sprint 42“, meine offen · alle zeigen“ (**Abnahme**) |
+| SK11 | SK10, Klick auf „alle zeigen“ | Wieder alle meine Issues |
+| SK12 | Klick auf „Team übrig“ bzw. das Diagramm | Fenster „Atlas-Board“ öffnet (**Abnahme**) |
+| SK13 | Klick auf den Titel | Board im Browser (YouTrack `…/agiles/<Board>/current`, GitHub Projektseite) |
+| SK14 | Projekt ohne Tracker | „Kein Board für dieses Projekt – zuordnen …“; Klick öffnet die Seite Issue-Tracker mit vorbefüllter Zeile (**Abnahme**) |
+| SK15 | Netzwerk trennen, Atlas-Start neu öffnen | Letzter Stand mit „Stand vom … · nicht erreichbar“, kein Dialog |
+| SK16 | `welcomePage.sprint` aus | Bereich fehlt, keine Abfrage (**Abnahme**) |
+| SK17 | Gespeichertes eigenes Layout aus einer älteren Version | „Sprint“ erscheint einmal neu in der rechten Spalte |
+| SK18 | Helles und dunkles Design | Linien und Texte lesbar (**Abnahme**) |
+| SK19 | GitHub-Projekt mit Iterationen und „Estimate“ | Zahlen in Punkten, Vorsprint = vorherige Iteration |
+| SK20 | Plugin entladen, während die Kachel lädt | Keine Zugriffsverletzung |
+## Issues in der Befehlspalette (#1270)
+
+Vorbereitung: wie Issue-Vorschau (IV); Projekt mit YouTrack-Tracker (Kürzel `ATL`) und eines mit GitHub-Tracker, Token hinterlegt, `issues.paletteSearch` an; Proxy (z. B. Fiddler) zum Mitzählen der Anfragen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PI1 | Palette öffnen, `ATL-` und dann zügig `Speicher` tippen | Befehle sofort; Gruppe „Issues“ mit „Suche im Tracker …“, dann Treffer mit Kennung, Titel, Zustand als Abzeichen und Zuständig gedimmt; im Proxy genau eine Anfrage `project: ATL Speicher` (**Abnahme**) |
+| PI2 | `ATL-12` eingeben | Ein Abruf `/api/issues/ATL-12`, Zeile ATL-12 als einziger Treffer |
+| PI3 | `#42` im GitHub-Projekt, `#Speicherleck` im GitHub-Projekt | `#42` liest `/repos/<owner/repo>/issues/42`; Text sucht `repo:<owner/repo> is:issue Speicherleck` |
+| PI4 | Schnell weitertippen, während „Suche im Tracker …“ steht | Die alte Anfrage endet ohne Treffer, angezeigt wird nur das Ergebnis der letzten Eingabe; nie zwei Anfragen in 300 ms |
+| PI5 | Pfeiltasten durch Befehle und Issues, auch Bild auf/ab | Überschrift „Issues“ und Statuszeile werden übersprungen |
+| PI6 | Enter auf einem Issue | Palette schließt, Fenster „Atlas-Issue“ zeigt das Issue (**Abnahme**) |
+| PI7 | Strg+Enter auf einem Issue | Issue wird begonnen wie in „Meine Issues“ (Branch bzw. Kennung merken) |
+| PI8 | Umschalt+Enter auf einem Issue | Issue öffnet im Browser |
+| PI9 | Strg+C auf einem Issue | Kennung in der Zwischenablage, Palette bleibt offen |
+| PI10 | Nur `#` eingeben, nachdem drei Issues in der Vorschau geöffnet waren | Die drei zuletzt geöffneten, neuestes zuerst; im Proxy keine Anfrage (**Abnahme**) |
+| PI11 | Netz trennen, `#Test` eingeben | Nach höchstens 5 s Meldung in der Gruppe (nicht erreichbar bzw. Zeitüberschreitung), kein Dialog |
+| PI12 | Token entfernen, `#Test` eingeben | Meldung „Kein Zugang …“ in der Gruppe |
+| PI13 | Projekt ohne Tracker in der `.atlas`, `#42` eingeben | Gruppe meldet, dass kein Tracker eingerichtet ist; keine Anfrage |
+| PI14 | Palette schließen, während eine Suche läuft | Keine Meldung, kein Fehler; Protokoll ohne Kennungen und Titel |
+| PI15 | `issues.paletteSearch` aus, `#42` eingeben | Nur Befehle, keine Gruppe, keine Anfrage |
+| PI16 | `issues.preview` aus, Enter auf einem Issue | Issue öffnet im Browser |
+| PI17 | Plugin entladen, während eine Suche läuft | Keine Zugriffsverletzung; Hintergrund-Threads beendet |
+| PI18 | Helles und dunkles IDE-Design | Überschrift, Statuszeile und Abzeichen gut lesbar |
+
+## Kommentar-Editor (#1278)
+
+Vorbereitung: wie Zustand und Kommentar (ZS); `issues.commentEditor` an (Vorgabe); YouTrack-Projekt `ATL` mit Benutzerin „Anna“ (`anna`) und ein GitHub-Repository mit mindestens zwei Zuständigen; Git-Arbeitskopie mit Commit; Projekt mit Versionsinformationen; Proxy zum Mitzählen der Anfragen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KE1 | Vorschau des aktuellen Issues: im Kommentarfeld `@an` tippen | Nach kurzer Pause Liste mit Benutzern, die „an“ enthalten (Login und Name), Anna oben; im Proxy eine Anfrage `/api/users?query=an…` (**Abnahme**) |
+| KE2 | Enter in der Liste, dann senden | `@anna ` steht an der Stelle des getippten Worts; der Kommentar im Tracker erwähnt Anna (**Abnahme**) |
+| KE3 | `ATL-12` tippen, dann `ATL-Speicher` | Liste mit passenden Issues (Kennung, Titel); Enter setzt die Kennung ein (**Abnahme**) |
+| KE4 | Nur `#` tippen | Die zuletzt in der Vorschau geöffneten Issues, ohne Anfrage im Proxy |
+| KE5 | `mail@example.com` und `C:\pfad#1` tippen | Keine Liste |
+| KE6 | In der Liste Pfeiltasten, Bild auf/ab, Tab; Esc | Auswahl wandert, Tab setzt ein wie Enter; Esc schließt nur die Liste, der Text bleibt |
+| KE7 | Wort markieren, Strg+B, nochmals Strg+B; Strg+I | `**Wort**`, dann wieder `Wort`; Strg+I setzt `_Wort_` |
+| KE8 | Strg+Umschalt+K ohne Auswahl und mit markierten Zeilen | Code-Block mit ```` ```pascal ```` um die Zeilen bzw. leerer Block mit Schreibmarke darin |
+| KE9 | Strg+Leer bzw. Knopf „Textbaustein ▾“, „Behoben in {commit}“ wählen | „Behoben in <Kurz-Hash>“ mit dem aktuellen Commit des Projekts (**Abnahme**) |
+| KE10 | Baustein mit `{version}` und `{issue}` anlegen und einfügen | Version des aktiven Projekts in der aktiven Konfiguration bzw. die Kennung des Issues; ohne Versionsinformationen bleibt `{version}` stehen |
+| KE11 | Knopf „Vorschau“ | Markdown wird wie in der Vorschau des Issues gezeichnet (fett, Code-Block, Listen, Bilder als „Bild: …“); „Bearbeiten“ kehrt zurück, Text unverändert (**Abnahme**) |
+| KE12 | Text tippen, anderes Issue öffnen, zurück zum ersten | Text wieder im Feld, Hinweis „Entwurf vom …“ mit „Verwerfen“ (**Abnahme**) |
+| KE13 | IDE schließen und neu starten, Issue öffnen | Entwurf noch da; `%LOCALAPPDATA%\Atlas\issues\drafts.json` enthält Server, Projekt, Kennung, Feld und Text, kein Token |
+| KE14 | Senden | Kommentar im Tracker, Feld leer, Entwurf aus `drafts.json` gelöscht; Issue erneut öffnen zeigt keinen Entwurf (**Abnahme**) |
+| KE15 | Senden und sofort ein anderes Issue öffnen, bevor die Antwort kommt | Der Entwurf des anderen Issues bleibt; das Feld des anderen Issues wird nicht geleert |
+| KE16 | Beenden-Dialog: Kommentar ändern, Esc; Dialog erneut öffnen | Vorlage aus `issues.endComment` im Feld, Hinweis „Entwurf vom … vorhanden“ mit „Übernehmen“; Übernehmen setzt den geänderten Text ein |
+| KE17 | Beenden-Dialog: `@` und `#` wie KE1/KE3, Strg+Enter | Vorschläge wie in der Vorschau; Strg+Enter sendet den Dialog |
+| KE18 | Optionen › Issue-Tracker › „Textbausteine für Kommentare“: Baustein hinzufügen (mehrzeilig), Namen ändern, entfernen, „Vorgaben“; OK | Liste zeigt Zeilenumbrüche als ⏎; nach OK erscheinen die Bausteine im Menü „Textbaustein ▾“; „Vorgaben“ stellt die zwei Vorgaben her |
+| KE19 | `issues.commentEditor` aus | Schlichtes Feld wie bisher: keine Leiste, keine Liste, kein Entwurf; Strg+Enter sendet weiterhin (**Abnahme**) |
+| KE20 | GitHub-Projekt: `@` plus Buchstaben | Zuständige des Repositorys, gefiltert nach dem getippten Text |
+| KE21 | Token ohne Rechte bzw. Netz getrennt, `@an` | Keine Liste, keine Meldung im Dialog, kein Hängen (höchstens 5 s im Hintergrund) |
+| KE22 | Plugin entladen, während eine Benutzersuche läuft | Keine Zugriffsverletzung, Entwurf gespeichert |
+| KE23 | Helles und dunkles IDE-Design | Leiste, Liste, Vorschau und Hinweis gut lesbar |
+
+## Reiter „Entwicklung“ (#1269)
+
+Vorbereitung: wie bei der Issue-Vorschau (#1264); Projekt in einer Git-Arbeitskopie mit Branch `feature/ATL-12-…` (lokal und auf origin), drei Commits mit `ATL-12` in der Nachricht, einer davon mit `ATL-120` als Gegenprobe; ein GitHub-Repo mit einem Pull Request „Fixes #12“; zweites Projekt in einer SVN-Arbeitskopie mit `^/branches/ATL-12-…`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EW1 | Issue `ATL-12` öffnen, Reiter „Entwicklung“ wählen | Kurz „Lade …“, dann Branches, Commits, VCS-Änderungen (YouTrack) und geänderte Units (**Abnahme**) |
+| EW2 | Branches ansehen | `feature/ATL-12-…` einmal (lokal und entfernt), Vorsprung/Rückstand gegen main stimmen mit `git rev-list --left-right --count` überein |
+| EW3 | Commits ansehen | Nur Commits mit `ATL-12`, nicht der mit `ATL-120`; Hash, Betreff, Autor, Zeit |
+| EW4 | Einfacher Klick auf einen Commit | Nach der Doppelklickzeit öffnet das Diff-Fenster mit den geänderten Dateien (**Abnahme**) |
+| EW5 | Doppelklick auf einen Commit | Kein Diff-Fenster; die erste geänderte Unit öffnet im Editor an der ersten geänderten Zeile (**Abnahme**) |
+| EW6 | Commit markieren, Eingabe bzw. Leertaste | Eingabe öffnet die Unit, Leertaste zeigt den Diff |
+| EW7 | Geänderte Units ansehen | Dateien aller Commits einmal, nach Projekt gruppiert; Dateien außerhalb der Projektgruppe in „Ohne Projekt“; gelöschte mit „(gelöscht)“ |
+| EW8 | Doppelklick auf eine Unit | Datei öffnet im Editor; bei einer gelöschten passiert nichts |
+| EW9 | Branch wählen, der nicht der aktuelle ist, „Wechseln“ | Ohne geänderte Dateien wechselt Atlas sofort, Liste lädt neu, der Branch ist als aktuell markiert |
+| EW10 | Wie EW9 mit geänderten Dateien | Rückfrage mit Anzahl; „Nein“ wechselt nicht |
+| EW11 | Aktueller Branch markiert | „Wechseln“ bleibt ausgegraut |
+| EW12 | GitHub-Issue #12 öffnen | Pull Request mit Zustand (offen/Entwurf/gemergt/geschlossen) und CI-Ampel; Doppelklick öffnet ihn im Browser |
+| EW13 | SVN-Projekt aktiv, Issue öffnen | Branches unter `^/branches` mit der Kennung, ohne Vorsprung/Rückstand; Commits aus `svn log --search` |
+| EW14 | Reiter wechseln, Issue erneut öffnen | Inhalt sofort aus dem Zwischenspeicher, keine neue Abfrage (Protokoll) |
+| EW15 | „Aktualisieren“ | Branches, Commits und Tracker-Teil werden neu abgefragt |
+| EW16 | Kein Projekt geöffnet | Hinweis „Kein Projekt geöffnet …“ statt Versionsverwaltung; Tracker-Teil erscheint trotzdem |
+| EW17 | Projekt ohne Arbeitskopie bzw. ohne git | Hinweis zur Versionsverwaltung, kein Fehlerdialog |
+| EW18 | Netz getrennt | Versionsverwaltung erscheint, Tracker-Teil zeigt „nicht erreichbar“ |
+| EW19 | `issues.preview.development` aus | Kein Reiter „Entwicklung“, nur der Inhalt von „Details“; Protokoll zeigt kein `git log` (**Abnahme**) |
+| EW20 | Während des Ladens anderes Issue öffnen bzw. Fenster schließen | Altes Ergebnis erscheint nicht; IDE beenden ohne Hänger oder Zugriffsverletzung |
+| EW21 | Helles und dunkles IDE-Design | Listen und Baum passen jeweils |
+
+## Meldungen zu meinen Issues (#1271)
+
+Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (YouTrack), eine persönliche GitHub-Verbindung in `issues.connections`, Tokens hinterlegt, `issues.notify` an (Abstand 2 Minuten), Benachrichtigungszentrale an; ein zweites Konto, das Kommentare schreibt und zuweist.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IM1 | Zweites Konto kommentiert ein mir zugewiesenes YouTrack-Issue, warten | Nach höchstens 2 Minuten Meldung „ATL-123: neuer Kommentar von …“ mit Issue-Titel und „Öffnen“, eingeblendet unten rechts (**Abnahme**) |
+| IM2 | In der Meldung „Öffnen“ | „Atlas-Issue“ öffnet das Issue am neuen Kommentar, sein Kopf ist hervorgehoben; eingeklappte Kommentare klappen dafür auf (**Abnahme**) |
+| IM3 | Zweites Konto weist mir ein Issue zu und setzt den Zustand | Eine Meldung „ATL-124 dir zugewiesen · Zustand → …“, nicht zwei |
+| IM4 | Selbst einen Kommentar schreiben | Keine Meldung |
+| IM5 | GitHub: zweites Konto kommentiert und schließt ein mir zugewiesenes Issue in einem anderen Repository | Meldung „#12: neuer Kommentar von … · Zustand → geschlossen“; „Öffnen“ zeigt das Issue aus dem richtigen Repository |
+| IM6 | Nach IM1 „Meine Issues“ ansehen, ohne zu öffnen | Punkt vor der Kennung, Punkt im Titel des Bereichs; Tooltip der Zeile „Neu seit dem letzten Öffnen“ |
+| IM7 | Das Issue in „Meine Issues“ anklicken | Vorschau am neuen Kommentar, Punkt verschwindet (auch im Titel) |
+| IM8 | `issues.notify.scope` = `assigned`, Kommentar an einem selbst erstellten, nicht zugewiesenen Issue | Keine Meldung; mit `assignedOrCreated` erscheint sie |
+| IM9 | `watched`, Kommentar an einem abonnierten (YouTrack Stern, GitHub „subscribed“) Issue | Meldung erscheint |
+| IM10 | Mehr als 10 Issues auf einmal ändern | 10 Meldungen und „N weitere Issues geändert“ |
+| IM11 | Token der GitHub-Verbindung entfernen | Keine Meldung, kein Netzzugriff auf GitHub (Proxy-Protokoll) |
+| IM12 | Netz trennen, warten | Eine Warnung „Issue-Meldungen: … nicht erreichbar“ mit „Tracker-Einstellungen …“, danach keine weitere; Abfragen werden seltener (Proxy-Protokoll, bis 60 Minuten) |
+| IM13 | Netz wieder verbinden | Nächste Abfrage gelingt; ein neuer Fehler würde wieder gemeldet |
+| IM14 | IDE minimieren bzw. 30 Minuten ohne Eingabe | Keine Abfragen (Proxy-Protokoll); nach Rückkehr wieder |
+| IM15 | „Meine Issues“ öffnen | Sofortige Abfrage, höchstens einmal je Minute |
+| IM16 | Benachrichtigungszentrale: Quelle „Issues“ auf „Sammeln“ | Keine Einblendung, Einträge nur in der Liste |
+| IM17 | `issues.notify` aus, Kommentare schreiben, wieder ein | Keine Meldungen für die Zeit dazwischen, Punkte weg; danach Neues wieder gemeldet |
+| IM18 | IDE neu starten | Bereits gemeldete Änderungen kommen nicht noch einmal (`%LOCALAPPDATA%\Atlas\issues\notify.json`) |
+| IM19 | GitHub ohne Änderung abfragen (Proxy-Protokoll) | Anfrage mit `If-Modified-Since`, Antwort 304; Abstand mindestens `X-Poll-Interval` |
+| IM20 | Plugin während einer laufenden Abfrage entladen | Kein Fehler, keine Zugriffsverletzung |
+| IM21 | Protokoll ansehen | Nur Anbieter, Anzahl und Fehlerart; keine Adresse, Kennung, Titel, Benutzer oder Token |
+
+## An Issue anhängen (#1276)
+
+Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (je einmal YouTrack und GitHub), Token hinterlegt, ein aktuelles Issue in „Meine Issues“; `issues.attach.logFiles` z. B. `$(ProjectDir)\logs\*.log`; ein VCL-Testprogramm mit Formular und Logdatei, im Debugger gestartet. Proxy (Fiddler) zum Mitlesen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IA1 | Atlas-Menü bzw. Befehlspalette *An Issue anhängen …* | Dialog mit dem aktuellen Issue vorgewählt, Vorschläge aus „Meine Issues“ in der Auswahl |
+| IA2 | Statusfeld: Zeile „An ATL-123 anhängen …“ unter dem aktuellen Issue anklicken | Derselbe Dialog für dieses Issue |
+| IA3 | Fenster „Atlas-Issue“: Knopf „Anhängen …“ bzw. Rechtsklick › *An Issue anhängen …* | Dialog für das gezeigte Issue |
+| IA4 | Programm läuft im Debugger, Dialog öffnen | „Bildschirmfoto“ angehakt, Hauptfenster in der Liste, Größe in Pixeln darunter; die Dateiliste zeigt `bildschirmfoto.png` mit Größe |
+| IA5 | Programm am Haltepunkt angehalten, Dialog öffnen | Kein Hängen der IDE; Bild vom Bildschirm; „Debug-Notiz“ wählbar |
+| IA6 | „Per Klick wählen“, dann auf ein anderes Fenster klicken; erneut, dann Esc bzw. rechte Maustaste | Bild des geklickten Fensters; Esc/Rechtsklick lässt das bisherige Bild; der Klick erreicht das Fenster nicht |
+| IA7 | „Markieren …“: Rahmen, Pfeil, Schwärzen über einen Bereich, Strg+Z, „Übernehmen“ | Formen rot bzw. schwarz; Strg+Z nimmt die letzte zurück; das gesendete PNG ist an der Stelle schwarz (**Abnahme**) |
+| IA8 | Bildschirm 2560 px breit, `issues.attach.maxImageWidth` 1920 | Gesendetes Bild 1920 px breit, Seitenverhältnis gleich |
+| IA9 | Formular im Designer offen, „Formular im Designer“ anhaken, markieren | `formular-Form1.png` in der Liste |
+| IA10 | Logdatei aus der Liste, „nur die letzten Zeilen: 200“; dann Haken aus | Eintrag „app.log (letzte 200 Zeilen)“; ohne Haken die ganze Datei; Datei, in die gerade geschrieben wird, lässt sich lesen |
+| IA11 | Formular, Log (200 Zeilen) und Debug-Notiz zusammen anhaken, „Senden“ (YouTrack) | Ein Schritt: alle Dateien als Anhänge am Issue (**Abnahme**) |
+| IA12 | Wie IA11 mit „Kommentar mit Verweis auf die Anhänge“ und Text | Kommentar mit dem Text, darunter Bilder eingebettet und Links auf die Dateien (**Abnahme**) |
+| IA13 | Debug-Notiz öffnen (Doppelklick in der Liste) | Markdown mit Projekt, Konfiguration, Plattform, Thread, Ort mit ±5 Zeilen und Marke, Aufrufstapel (eigener Code fett), letzter Exception; `Password := ***` |
+| IA14 | GitHub-Issue: Bildschirmfoto und Log anhaken, „Senden“ | Log als Codeblock im Kommentar; Hinweis „In GitHub mit Strg+V einfügen“; danach öffnet der Browser das Issue; Strg+V fügt das Bild ein (**Abnahme**) |
+| IA15 | „Abbrechen“ im Dialog bzw. nach dem Senden `%TEMP%\Atlas\attach` ansehen | Ordner des Laufs gelöscht (**Abnahme**) |
+| IA16 | Vor „Senden“ den Proxy beobachten | Keine Anfrage, solange nicht „Senden“ geklickt ist |
+| IA17 | Token entfernen, senden | Meldung „Anhängen an ATL-123 fehlgeschlagen: Kein Zugang …“ in der Meldungsansicht, kein Dialog |
+| IA18 | Ungültige Kennung („kaputt“) eintragen | „Senden“ gesperrt |
+| IA19 | `issues.attach` aus (Schnellschalter) | Menüeintrag, Palettenbefehl, Knopf und Kontextmenü im Vorschaufenster und Statuszeile fehlen (**Abnahme**) |
+| IA20 | IDE beenden, während gesendet wird | Plugin entlädt ohne Zugriffsverletzung; nächster Start räumt alte Ordner unter `%TEMP%\Atlas\attach` weg |
+
+## CompilerVersion ohne installiertes Delphi (#1321)
+
+Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DCCReference` auf `T1.pas`) und `T1.pas` aus dem Minimalfall F14 (`F: {$IF CompilerVersion >= 36}Int64{$ELSE}Integer{$ENDIF};` und ein mehrzeiliges `{$IF CompilerVersion >= 36}`/`{$ELSE}`/`{$IFEND}`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VO1 | Unter Linux (Cloud): `AtlasServer --check T.dproj --format json --no-index` | Kein Treffer `syntax` (**Abnahme**) |
+| VO2 | Wie VO1 mit `--check T1.pas` (ohne .dproj) | Kein Treffer `syntax`; es gilt Delphi 13 |
+| VO3 | Unter Linux `--check` über Skia4Delphi (`Skia4Delphi.dproj` o. ä.) | Keine Syntaxfehler aus `{$IF CompilerVersion}`-Zeilen (vorher 127) (**Abnahme**) |
+| VO4 | Unter Windows mit Delphi 13: VO1 | Unverändert kein Treffer; Serverprotokoll nennt die Installation wie bisher |
+
+## #1322 Prüfung wertet die Unit einmal je Lauf aus (Branch `claude/project-thread-zmblrn`)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| PZ1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TTreeUnitsTests` grün (**Abnahme**) |
+| PZ2 | Große Unit (z. B. `VirtualTrees.BaseTree.pas`) öffnen, eine Zeile ändern | Diagnosen kommen wie bisher, Atlas-Statusfeld zeigt nicht „Server langsam“; CPU-Last nach der Änderung klingt deutlich schneller ab als vorher |
+| PZ3 | `AtlasServer.exe --check` über ein großes Projekt (z. B. VirtualTreeView) vor und nach dem Branch | Dieselben Befunde, Laufzeit deutlich kürzer (Linux-Bau: 676 s → 93 s, **Abnahme**: unter 3 min) |
+
+## #1323 Token-Suche binär statt linear (Branch `feature/1323-tokenindexat`)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| TS1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `IdentifierAtCases`, `IdentifierAtMatchesLinearSearch`, `FirstTokenFromMatchesLinearSearch`, `LargeConstantArraysStayFast` grün (**Abnahme**) |
+| TS2 | Hover, Strg+Klick und Umbenennen auf Bezeichner am Wortanfang, in der Mitte und direkt hinter dem Wort, auch `&begin` und in `A.B.C` | Wie vorher; auf `C` in `^C` kein Hover |
+| TS3 | Unit mit einer Konstanten von 20.000 Elementen öffnen und eine Zeile ändern | Diagnosen kommen nach wenigen Sekunden, kein „Server langsam“ |
+| TS4 | `AtlasServer.exe --check` über HtmlViewer vor und nach dem Branch | Dieselben Befunde, unter 2 min (Linux-Bau: 116 s, **Abnahme**) |

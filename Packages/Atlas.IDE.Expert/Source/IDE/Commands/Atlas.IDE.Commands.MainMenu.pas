@@ -41,6 +41,8 @@
 // Atlas › Prüfung; sichtbar nur bei problems.window.
 // „Architekturübersicht“ (#1118) öffnet das Fenster „Atlas-Architektur“, auch
 // unter Ansicht › Atlas › Architektur; sichtbar nur bei architecture.enabled.
+// „Board“ (#1272) unter Ansicht › Atlas ruft OnBoard; sichtbar nur bei
+// issues.board.
 // Unter Navigation die Abschnittssprünge, der Rücksprung und „Methode suchen“
 // der Editorleiste (#1101); sie arbeiten auch ohne die Leiste.
 // Untermenü „Aufgaben“ (#900): Beim Öffnen des Atlas-Menüs füllt
@@ -107,6 +109,9 @@ type
     /// <summary>„Atlas: Exception-Verlauf“ (#517), sichtbar nach debug.exceptionHistory.</summary>
     FDebugExceptionsItem: TMenuItem;
     FDebugEvaluateItem: TMenuItem;
+    /// <summary>„An Issue anhängen …“ (#1276), sichtbar nach issues.attach.</summary>
+    FIssueAttachItem: TMenuItem;
+    FOnIssueAttach: TProc;
     /// <summary>„Woher/Wohin kommt der Wert?“ (#690), sichtbar nach navigation.dataFlow.</summary>
     FDataFlowItems: TArray<TMenuItem>;
     /// <summary>„Atlas: Compiler-Schalter“ (#558), sichtbar nach build.compilerSwitches.</summary>
@@ -119,6 +124,9 @@ type
     /// <summary>Fenster „Unit-Beziehungen“ (#593) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FUnitRelationsItem: TMenuItem;
     FViewUnitRelations: TMenuItem;
+    /// <summary>Fenster „Atlas-Board“ (#1272) unter Ansicht › Atlas.</summary>
+    FViewBoard: TMenuItem;
+    FOnBoard: TProc;
     FSymbolPathItem: TMenuItem;
     /// <summary>„Auswirkungen anzeigen“ (#1120), sichtbar nach navigation.impact.</summary>
     FImpactItem: TMenuItem;
@@ -137,9 +145,11 @@ type
     procedure ProblemsClick(Sender: TObject);
     procedure ArchitectureClick(Sender: TObject);
     procedure UnitRelationsClick(Sender: TObject);
+    procedure BoardClick(Sender: TObject);
     procedure SymbolPathClick(Sender: TObject);
     procedure DebugExceptionsClick(Sender: TObject);
     procedure DebugEvaluateClick(Sender: TObject);
+    procedure IssueAttachClick(Sender: TObject);
     procedure CompilerSwitchesClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
@@ -176,8 +186,12 @@ type
     property OnTasksMenu: TProc<TMenuItem> read FOnTasksMenu write FOnTasksMenu;
     /// <summary>Eintrag „Tastenkürzel-Übersicht…“ nach keys.overview ein- oder ausblenden.</summary>
     procedure UpdateKeyMap;
+    /// <summary>„An Issue anhängen …“ (#1276).</summary>
+    property OnIssueAttach: TProc read FOnIssueAttach write FOnIssueAttach;
     /// <summary>„Atlas-Start“ öffnen (#753, #1114).</summary>
     property OnWelcome: TProc read FOnWelcome write FOnWelcome;
+    /// <summary>Fenster „Atlas-Board“ öffnen (#1272).</summary>
+    property OnBoard: TProc read FOnBoard write FOnBoard;
     /// <summary>Einträge der Willkommensseite nach den Einstellungen ein- oder ausblenden.</summary>
     procedure UpdateWelcome;
     /// <summary>Name der Einstellung eines Schalters (Schlüssel im Katalog der Schnellschalter, #604).</summary>
@@ -312,6 +326,7 @@ begin
   // Exception-Verlauf beim Debuggen (#517).
   FDebugExceptionsItem := AddItem(TAtlasTextId.DebugExceptionsCommand, 0, DebugExceptionsClick);
   FDebugEvaluateItem := AddItem(TAtlasTextId.DebugEvaluateCommand, 0, DebugEvaluateClick);
+  FIssueAttachItem := AddItem(TAtlasTextId.AttachCommand, 0, IssueAttachClick);
   // Wirksame Compiler-Schalter an der Cursorposition (#558).
   FCompilerSwitchesItem := AddItem(TAtlasTextId.CompilerSwitchesCommand, 0, CompilerSwitchesClick);
   FRoot.Add(NewLine);
@@ -432,6 +447,10 @@ begin
       FViewUnitRelations.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsViewMenu);
       FViewUnitRelations.OnClick := UnitRelationsClick;
       FViewAtlas.Add(FViewUnitRelations);
+      FViewBoard := TMenuItem.Create(FViewAtlas);
+      FViewBoard.Caption := TAtlasStrings.Text(TAtlasTextId.BoardViewMenu);
+      FViewBoard.OnClick := BoardClick;
+      FViewAtlas.Add(FViewBoard);
       Services.MainMenu.Items[Index].Add(FViewAtlas);
       Break;
     end;
@@ -493,6 +512,9 @@ begin
   Settings := TAtlasIdeSettings.Current;
   FWelcomeLine.Visible := Settings.WelcomePage;
   FWelcomeStart.Visible := Settings.WelcomePage;
+  // An Issue anhängen (#1276) nach issues.attach.
+  if FIssueAttachItem <> nil then
+    FIssueAttachItem.Visible := Settings.IssuesAttach;
   if FViewStart <> nil then
     FViewStart.Visible := Settings.WelcomePage;
 end;
@@ -741,8 +763,12 @@ begin
     FUnitRelationsItem.Visible := TAtlasIdeUnitRelations.Enabled;
   if FViewUnitRelations <> nil then
     FViewUnitRelations.Visible := TAtlasIdeUnitRelations.Enabled;
+  // Atlas-Board (#1272) nach issues.board.
+  if FViewBoard <> nil then
+    FViewBoard.Visible := TAtlasIdeSettings.Current.IssuesBoard;
   if FViewAtlas <> nil then
-    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled;
+    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled or
+      TAtlasIdeUnitRelations.Enabled or TAtlasIdeSettings.Current.IssuesBoard;
   // Weg zwischen Symbolen (#1117) nach navigation.symbolPath.
   if FSymbolPathItem <> nil then
     FSymbolPathItem.Visible := TAtlasIdeSymbolPath.Enabled;
@@ -972,6 +998,18 @@ begin
     end);
 end;
 
+procedure TAtlasMainMenu.BoardClick(Sender: TObject);
+begin
+  if not Assigned(FOnBoard) then
+    Exit;
+  TAtlasIdeShortcutTips.Invoked('Atlas.Board');
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      FOnBoard();
+    end);
+end;
+
 procedure TAtlasMainMenu.UnitRelationsClick(Sender: TObject);
 begin
   TAtlasIdeShortcutTips.Invoked('Atlas.UnitRelations');
@@ -999,6 +1037,18 @@ begin
     procedure
     begin
       TAtlasIdeDebugExceptions.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.IssueAttachClick(Sender: TObject);
+begin
+  if not Assigned(FOnIssueAttach) then
+    Exit;
+  TAtlasIdeShortcutTips.Invoked('Atlas.IssueAttach');
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      FOnIssueAttach();
     end);
 end;
 

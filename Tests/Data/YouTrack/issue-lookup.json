@@ -1,0 +1,10 @@
+{
+  "idReadable": "ATL-12",
+  "numberInProject": 12,
+  "summary": "Speicherleck beim Schließen",
+  "customFields": [
+    {"name": "Zustand", "value": {"name": "Offen", "$type": "StateBundleElement"}, "$type": "StateIssueCustomField"},
+    {"name": "Zuständig", "value": {"login": "mbeispiel", "fullName": "Marie Beispiel", "$type": "User"}, "$type": "SingleUserIssueCustomField"}
+  ],
+  "$type": "Issue"
+}

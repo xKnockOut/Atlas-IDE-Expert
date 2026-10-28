@@ -1,0 +1,11 @@
+[
+  {"event": "labeled", "label": {"name": "plugin"}},
+  {"event": "cross-referenced", "source": {"type": "issue", "issue": {"number": 760, "title": "Layout umsetzen",
+    "html_url": "https://github.com/beispiel/atlas/pull/760", "pull_request": {"url": "x"},
+    "repository": {"full_name": "beispiel/atlas"}}}},
+  {"event": "cross-referenced", "source": {"type": "issue", "issue": {"number": 12, "title": "Fremd",
+    "html_url": "https://github.com/andere/repo/issues/12", "repository": {"full_name": "andere/repo"}}}},
+  {"event": "cross-referenced", "source": {"type": "issue", "issue": {"number": 760, "title": "doppelt",
+    "repository": {"full_name": "beispiel/atlas"}}}},
+  {"event": "cross-referenced", "source": {"type": "issue", "issue": {"number": 0}}}
+]

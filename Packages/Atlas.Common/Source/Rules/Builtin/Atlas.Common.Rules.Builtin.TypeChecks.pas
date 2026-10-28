@@ -601,7 +601,7 @@ begin
     not ContainsText(AContext.Text, 'SetLength') then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -856,7 +856,7 @@ begin
     Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
     if LineBreak = '' then
       LineBreak := sLineBreak;
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
     try
       Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);
@@ -1073,7 +1073,7 @@ begin
     not ContainsText(AContext.Text, 'Integer') and not ContainsText(AContext.Text, 'LongInt')) then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -1357,7 +1357,7 @@ begin
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   if LineBreak = '' then
     LineBreak := sLineBreak;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -1455,7 +1455,7 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -1593,7 +1593,7 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, ' in') then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);

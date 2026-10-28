@@ -161,9 +161,9 @@ begin
   FIndex := AContext.Index;
   if FIndex = nil then
     FIndex := TSymbolIndex.Create;
-  FResolver := TNameResolver.Create(FIndex, AContext.EnsureUnit);
+  FResolver := TNameResolver.Create(FIndex, AContext.EnsureUnit, AContext.TreeUnits);
   FResolver.Namespaces := AContext.Namespaces;
-  FCallee := TNameResolver.Create(FIndex, AContext.EnsureUnit);
+  FCallee := TNameResolver.Create(FIndex, AContext.EnsureUnit, AContext.TreeUnits);
   FCallee.Namespaces := AContext.Namespaces;
   FNeeds := TDictionary<string, TInlineNeeds>.Create;
   FCandidates := TDictionary<string, Boolean>.Create;

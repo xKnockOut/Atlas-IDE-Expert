@@ -2646,7 +2646,7 @@ begin
   Collect(AContext.Tree.Root);
   if Releases = nil then
     Exit;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
   try
     Resolver.Namespaces := AContext.Namespaces;

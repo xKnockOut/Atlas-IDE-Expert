@@ -1,8 +1,8 @@
 ﻿unit Atlas.Common.Pascal.SyntaxTree.Tests;
 
 // Tests für den Besucher TSyntaxNode.Walk (Review P-03), die Suche
-// TSyntaxNode.Search und die Baumtiefe TSyntaxTree.Depth/Deepest (#1094,
-// Bericht M1).
+// TSyntaxNode.Search, die Baumtiefe TSyntaxTree.Depth/Deepest (#1094,
+// Bericht M1) und die Token-Suche FirstTokenFrom/IdentifierAt (#1323).
 
 interface
 
@@ -31,6 +31,15 @@ type
     procedure WalkAndSearchOfDeepTreeNeedLittleStack;
     [Test]
     procedure DeepestIsFirstNodeAtGreatestDepth;
+    /// <summary>#1323: Anfang, Mitte und Ende eines Bezeichners, Leerraum dazwischen, hinter dem letzten Token.
+    /// </summary>
+    [Test]
+    procedure IdentifierAtCases;
+    /// <summary>#1323: Die binäre Suche liefert an jeder Position dasselbe wie die frühere lineare.</summary>
+    [Test]
+    procedure IdentifierAtMatchesLinearSearch;
+    [Test]
+    procedure FirstTokenFromMatchesLinearSearch;
   end;
 
 implementation
@@ -38,6 +47,8 @@ implementation
 uses
   System.SysUtils,
   System.Generics.Collections,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Tests.SmallStack;
@@ -338,6 +349,152 @@ begin
     Assert.AreEqual(LevelOf(Tree.Deepest), Tree.Depth);
   finally
     Tree.Free;
+  end;
+end;
+
+const
+  cTokenSource =
+    'unit Probe;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    '{ Kommentar'#10 +
+    '  über zwei Zeilen }'#10 +
+    'procedure Lauf(AWert: Integer);'#10 +
+    'const'#10 +
+    '  cTab = ^C;'#10 +
+    'var'#10 +
+    '  mZeiger: ^Integer;'#10 +
+    'begin'#10 +
+    '  {$IFDEF DEBUG} Writeln(''Text mit Lauf''); {$ENDIF}'#10 +
+    '  mZeiger^:=AWert+Ord(cTab);   // Ende'#10 +
+    '  &begin.Foo(1).Bar[2] := Self.X;'#10 +
+    'end;'#10 +
+    'end.'#10;
+
+/// <summary>Die frühere Suche von TNameResolver.TokenIndexAt: linear ab Dateianfang.</summary>
+function LinearIdentifierAt(ATree: TSyntaxTree; const APosition: TTextPosition): Integer;
+var
+  mIndex: Integer;
+  mToken: TPascalToken;
+  function Compare(const A, B: TTextPosition): Integer;
+  begin
+    if A.Line <> B.Line then
+      Result := A.Line - B.Line
+    else
+      Result := A.Character - B.Character;
+  end;
+
+begin
+  for mIndex := 0 to High(ATree.Tokens) do
+  begin
+    mToken := ATree.Tokens[mIndex];
+    if Compare(mToken.StartPos, APosition) > 0 then
+      Break;
+    if (mToken.Kind = TPascalTokenKind.Identifier) and (Compare(APosition, mToken.EndPos) <= 0) then
+    begin
+      if ATree.IsControlCharPart(mIndex) then
+        Exit(-1);
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Index des Tokens mit dem Text AText, das als AOccurrence-tes vorkommt (ab 1).</summary>
+function TokenNamed(ATree: TSyntaxTree; const AText: string; AOccurrence: Integer): Integer;
+var
+  mCount, mIndex: Integer;
+begin
+  mCount := 0;
+  for mIndex := 0 to High(ATree.Tokens) do
+    if ATree.Tokens[mIndex].Text = AText then
+    begin
+      Inc(mCount);
+      if mCount = AOccurrence then
+        Exit(mIndex);
+    end;
+  Result := -1;
+end;
+
+procedure TSyntaxTreeTests.IdentifierAtCases;
+var
+  mTree: TSyntaxTree;
+  mLauf, mWert: Integer;
+  mStart, mEnd: TTextPosition;
+begin
+  mTree := TPascalParser.Parse(cTokenSource);
+  try
+    mLauf := TokenNamed(mTree, 'Lauf', 1);
+    mStart := mTree.Tokens[mLauf].StartPos;
+    mEnd := mTree.Tokens[mLauf].EndPos;
+    Assert.AreEqual(mLauf, mTree.IdentifierAt(mStart), 'Anfang');
+    Assert.AreEqual(mLauf, mTree.IdentifierAt(TTextPosition.Create(mStart.Line, mStart.Character + 2)), 'Mitte');
+    Assert.AreEqual(mLauf, mTree.IdentifierAt(mEnd), 'direkt hinter dem Bezeichner');
+    // "Lauf(AWert": Hinter Lauf steht die Klammer, AWert folgt danach.
+    mWert := TokenNamed(mTree, 'AWert', 1);
+    Assert.AreEqual(mWert, mTree.IdentifierAt(mTree.Tokens[mWert].StartPos));
+    // "procedure Lauf": im Leerraum vor dem Bezeichner, direkt hinter einem Schlüsselwort.
+    Assert.AreEqual(-1, mTree.IdentifierAt(TTextPosition.Create(mStart.Line, mStart.Character - 1)), 'Leerraum');
+    // "AWert+Ord": Am Operator zwischen zwei Bezeichnern gewinnt der vordere.
+    mWert := TokenNamed(mTree, 'AWert', 2);
+    Assert.AreEqual(mWert, mTree.IdentifierAt(mTree.Tokens[mWert].EndPos));
+    // C in ^C ist ein Zeichen, kein Name (#862).
+    Assert.AreEqual(-1, mTree.IdentifierAt(mTree.Tokens[TokenNamed(mTree, 'C', 1)].StartPos), '^C');
+    Assert.AreEqual(-1, mTree.IdentifierAt(TTextPosition.Create(40, 0)), 'hinter dem letzten Token');
+  finally
+    mTree.Free;
+  end;
+  mTree := TPascalParser.Parse('');
+  try
+    Assert.AreEqual(-1, mTree.IdentifierAt(TTextPosition.Create(0, 0)), 'leere Datei');
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TSyntaxTreeTests.IdentifierAtMatchesLinearSearch;
+var
+  mTree: TSyntaxTree;
+  mLines: TArray<string>;
+  mLine, mCharacter, mChecked: Integer;
+  mPosition: TTextPosition;
+begin
+  mTree := TPascalParser.Parse(cTokenSource);
+  try
+    mLines := cTokenSource.Split([#10]);
+    mChecked := 0;
+    // Jede Position jeder Zeile, zwei Zeichen über das Zeilenende hinaus, und zwei Zeilen hinter dem Ende.
+    for mLine := 0 to Length(mLines) + 1 do
+      for mCharacter := 0 to 42 do
+      begin
+        mPosition := TTextPosition.Create(mLine, mCharacter);
+        Assert.AreEqual(LinearIdentifierAt(mTree, mPosition), mTree.IdentifierAt(mPosition),
+          Format('Zeile %d, Zeichen %d', [mLine, mCharacter]));
+        Inc(mChecked);
+      end;
+    Assert.IsTrue(mChecked > 500);
+  finally
+    mTree.Free;
+  end;
+  mLines := nil;
+end;
+
+procedure TSyntaxTreeTests.FirstTokenFromMatchesLinearSearch;
+var
+  mTree: TSyntaxTree;
+  mOffset, mExpected: Integer;
+begin
+  mTree := TPascalParser.Parse(cTokenSource);
+  try
+    for mOffset := -1 to Length(cTokenSource) + 1 do
+    begin
+      mExpected := 0;
+      while (mExpected <= High(mTree.Tokens)) and (mTree.Tokens[mExpected].Offset < mOffset) do
+        Inc(mExpected);
+      Assert.AreEqual(mExpected, mTree.FirstTokenFrom(mOffset), Format('Offset %d', [mOffset]));
+    end;
+  finally
+    mTree.Free;
   end;
 end;
 

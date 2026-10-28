@@ -59,6 +59,10 @@ type
     procedure OverrideTargetSilentCases;
     [Test]
     procedure OverrideTargetFromIndex;
+    /// <summary>Gleichnamige Typen mit und ohne Typparameter (#1326): THorseChannel&lt;T&gt; = class(THorseChannel)
+    /// in einer Unit, TProxy und TProxy&lt;T&gt; in zwei Units des Index.</summary>
+    [Test]
+    procedure OverrideTargetGenericAndPlainNamesakes;
     [Test]
     procedure OverrideTargetOptions;
     [Test]
@@ -663,6 +667,36 @@ begin
     '  TMeinFrame = class(TFrame)'#10'  protected'#10'    procedure CreateWnd; override;'#10'  end;'#10 +
     'implementation'#10'end.', Index);
   Assert.AreEqual(0, Integer(Length(Findings)));
+end;
+
+procedure TInheritanceRulesTests.OverrideTargetGenericAndPlainNamesakes;
+var
+  mIndex: ISymbolIndex;
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Horse: Der generische Kanal überschreibt die Methoden des nicht generischen gleichen Namens.
+  TRuleAssert.Silent(TOverrideTargetMissingRule.Create, 'unit Kanal;'#10'interface'#10'type'#10 +
+    '  TKanal = class'#10'  public'#10'    procedure Schliessen; virtual; abstract;'#10'  end;'#10 +
+    '  TKanal<T: class> = class(TKanal)'#10'  public'#10'    procedure Schliessen; override;'#10'  end;'#10 +
+    'implementation'#10'procedure TKanal<T>.Schliessen;'#10'begin'#10'end;'#10'end.');
+  // Gegenprobe: Was der nicht generische Vorfahr nicht hat, fehlt weiterhin.
+  mFindings := TRuleAssert.Findings(TOverrideTargetMissingRule.Create, 'unit Kanal;'#10'interface'#10'type'#10 +
+    '  TKanal = class'#10'  public'#10'    procedure Schliessen; virtual; abstract;'#10'  end;'#10 +
+    '  TKanal<T: class> = class(TKanal)'#10'  public'#10'    procedure Oeffnen; override;'#10'  end;'#10 +
+    'implementation'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Kein Vorfahr von TKanal hat ein virtuelles Oeffnen (wie E2137).', mFindings[0].Message);
+  // Delphi-Mocks: TObjectProxy<T> = class(TProxy<T>), daneben ein nicht generisches TProxy in einer anderen Unit.
+  mIndex := IndexWith(['unit Proxy.Plain;'#10'interface'#10'type'#10'  TProxy = class'#10'  public'#10 +
+    '    procedure Pruefen; virtual;'#10'  end;'#10'implementation'#10'end.', 'unit Proxy;'#10'interface'#10 +
+    'type'#10'  TProxy<T> = class'#10'  protected'#10'    function Proxy: T; virtual;'#10'  end;'#10 +
+    'implementation'#10'end.']);
+  mFindings := Run(TOverrideTargetMissingRule.Create, 'unit ObjectProxy;'#10'interface'#10'uses Proxy.Plain, Proxy;'#10 +
+    'type'#10'  TObjectProxy<T> = class(TProxy<T>)'#10'  protected'#10'    function Proxy: T; override;'#10 +
+    '    procedure Pruefen; override;'#10'  end;'#10'implementation'#10'end.', mIndex);
+  // Pruefen gehört dem nicht generischen TProxy, nicht dem Vorfahren.
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('Kein Vorfahr von TObjectProxy hat ein virtuelles Pruefen (wie E2137).', mFindings[0].Message);
 end;
 
 procedure TInheritanceRulesTests.OverrideTargetOptions;

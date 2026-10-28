@@ -37,6 +37,9 @@
 // Stellen mit ihren Fundorten darunter, dann die Quellen bzw. Ziele (← bzw. →), die beim Aufklappen über
 // OnFlowExpand die nächste Ebene holen, bis zur Tiefengrenze. Konstanten, Stellen außerhalb des Projekts und
 // Zyklen bleiben Blätter. Oben die Filter „Nur Projektcode“ und „Tests ausblenden“ (OnFlowFilter).
+// Issues zu einer Methode (#1275): je Issue eine Zeile, die Commits zugeklappt darunter; Klick (oder Enter) auf ein
+// Issue meldet OnIssueOpen, Doppelklick (oder Enter) auf einen Commit OnIssueCommit. SetIssueText ersetzt den Text
+// eines Issues, sobald Titel und Zustand geladen sind.
 
 interface
 
@@ -85,11 +88,15 @@ type
     const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>): TAtlasDataFlowResult;
   /// <summary>Filter des Datenflusses geändert: die erste Ebene neu holen.</summary>
   TAtlasDataFlowFilter = reference to procedure(AOnlyProject, AExcludeTests: Boolean);
+  /// <summary>Issue bzw. Commit (#1275) der Liste AList gewählt; AId wie in TAtlasResultIssue bzw.
+  /// TAtlasResultCommit.</summary>
+  TAtlasResultsIssueAction = reference to procedure(AList, AId: Integer);
 
   TAtlasResultsFrame = class(TFrame)
   private type
 {$SCOPEDENUMS ON}
-    TNodeKind = (Group, Entry, Hierarchy, Placeholder, ChangeSet, ChangeFile, Note, Flow, FlowPlace, FlowSource);
+    TNodeKind = (Group, Entry, Hierarchy, Placeholder, ChangeSet, ChangeFile, Note, Flow, FlowPlace, FlowSource,
+      Issue, Commit);
 {$SCOPEDENUMS OFF}
     TNodeData = record
       Kind: TNodeKind;
@@ -98,7 +105,7 @@ type
       Character: Integer;
       Item: TAtlasHierarchyItem;
       Loaded: Boolean;
-      /// <summary>Kennung des Satzes (#721) und sein Zustand.</summary>
+      /// <summary>Kennung des Satzes (#721) und sein Zustand; bei Issue und Commit (#1275) deren Id.</summary>
       SetId: Integer;
       State: TAtlasChangeSetState;
       /// <summary>Kennung der Notiz (#545).</summary>
@@ -174,7 +181,12 @@ type
     FSettingFilter: Boolean;
     FOnFlowExpand: TAtlasDataFlowExpand;
     FOnFlowFilter: TAtlasDataFlowFilter;
+    FShowsIssues: Boolean;
+    FIssueList: Integer;
+    FOnIssueOpen: TAtlasResultsIssueAction;
+    FOnIssueCommit: TAtlasResultsIssueAction;
     procedure ShowPathPanel(AVisible: Boolean);
+    procedure TreeClick(Sender: TObject);
     procedure PathMapClick(Sender: TObject);
     procedure PathBoxResize(Sender: TObject);
     function AddImpactPlace(AParent: TTreeNode; APlace: Integer): TTreeNode;
@@ -345,6 +357,18 @@ type
     property ExcludeTestsCheck: TCheckBox read FExcludeTests;
     property OnFlowExpand: TAtlasDataFlowExpand read FOnFlowExpand write FOnFlowExpand;
     property OnFlowFilter: TAtlasDataFlowFilter read FOnFlowFilter write FOnFlowFilter;
+    /// <summary>Issues zu einer Methode bzw. Unit (#1275): je Issue eine Zeile, die Commits zugeklappt darunter.
+    /// AList kennzeichnet die Liste für OnIssueOpen, OnIssueCommit und SetIssueText.</summary>
+    procedure ShowIssues(const ATitle: string; AList: Integer; const AIssues: TArray<TAtlasResultIssue>);
+    /// <summary>Text des Issues AId ersetzen, solange die Liste AList gezeigt wird; False sonst.</summary>
+    function SetIssueText(AList, AId: Integer; const AText: string): Boolean;
+    /// <summary>Gewähltes Issue öffnen bzw. Commit zeigen (Klick, Doppelklick, Enter).</summary>
+    procedure OpenSelectedIssue;
+    /// <summary>Zeigt gerade Issues zu einer Methode (#1275).</summary>
+    property ShowsIssues: Boolean read FShowsIssues;
+    property IssueList: Integer read FIssueList;
+    property OnIssueOpen: TAtlasResultsIssueAction read FOnIssueOpen write FOnIssueOpen;
+    property OnIssueCommit: TAtlasResultsIssueAction read FOnIssueCommit write FOnIssueCommit;
   end;
 
 implementation
@@ -515,6 +539,7 @@ begin
   FTree.ShowLines := False;
   FTree.BorderStyle := bsNone;
   FTree.OnDblClick := TreeDblClick;
+  FTree.OnClick := TreeClick;
   FTree.OnKeyDown := TreeKeyDown;
   FTree.OnExpanding := TreeExpanding;
   FTree.OnMouseMove := TreeMouseMove;
@@ -879,6 +904,7 @@ begin
   FTree.Hint := '';
   FShowsFlow := False;
   FFlowBar.Visible := False;
+  FShowsIssues := False;
   FTitle.Caption := ATitle;
   FTree.Items.BeginUpdate;
   try
@@ -1641,11 +1667,100 @@ begin
   FOnFlowFilter(FOnlyProject.Checked, FExcludeTests.Checked);
 end;
 
+procedure TAtlasResultsFrame.ShowIssues(const ATitle: string; AList: Integer; const AIssues: TArray<TAtlasResultIssue>);
+var
+  mIssue: TAtlasResultIssue;
+  mCommit: TAtlasResultCommit;
+  mData: TNodeData;
+  mNode: TTreeNode;
+begin
+  Clear(ATitle);
+  FShowsIssues := True;
+  FIssueList := AList;
+  FTree.Items.BeginUpdate;
+  try
+    for mIssue in AIssues do
+    begin
+      mData := Default(TNodeData);
+      mData.Kind := TNodeKind.Issue;
+      mData.SetId := mIssue.Id;
+      mNode := AddNode(nil, mIssue.Text, mData);
+      for mCommit in mIssue.Commits do
+      begin
+        mData := Default(TNodeData);
+        mData.Kind := TNodeKind.Commit;
+        mData.SetId := mCommit.Id;
+        AddNode(mNode, mCommit.Text, mData);
+      end;
+    end;
+  finally
+    FTree.Items.EndUpdate;
+  end;
+  if FTree.Items.Count > 0 then
+    FTree.Selected := FTree.Items[0];
+end;
+
+function TAtlasResultsFrame.SetIssueText(AList, AId: Integer; const AText: string): Boolean;
+var
+  mNode: TTreeNode;
+  mData: TNodeData;
+begin
+  Result := False;
+  if not FShowsIssues or (AList <> FIssueList) then
+    Exit;
+  mNode := FTree.Items.GetFirstNode;
+  while mNode <> nil do
+  begin
+    mData := DataOf(mNode);
+    if (mData.Kind = TNodeKind.Issue) and (mData.SetId = AId) then
+    begin
+      mNode.Text := AText;
+      Exit(True);
+    end;
+    mNode := mNode.getNextSibling;
+  end;
+end;
+
+procedure TAtlasResultsFrame.OpenSelectedIssue;
+var
+  mData: TNodeData;
+begin
+  if not FShowsIssues then
+    Exit;
+  mData := DataOf(FTree.Selected);
+  if (mData.Kind = TNodeKind.Issue) and Assigned(FOnIssueOpen) then
+    FOnIssueOpen(FIssueList, mData.SetId)
+  else if (mData.Kind = TNodeKind.Commit) and Assigned(FOnIssueCommit) then
+    FOnIssueCommit(FIssueList, mData.SetId);
+end;
+
+procedure TAtlasResultsFrame.TreeClick(Sender: TObject);
+var
+  mWhere: TPoint;
+  mNode: TTreeNode;
+begin
+  // Klick auf die Zeile eines Issues (nicht auf das Aufklappzeichen) öffnet es (#1275).
+  if not FShowsIssues or not FTree.HandleAllocated then
+    Exit;
+  mWhere := FTree.ScreenToClient(Mouse.CursorPos);
+  if not (htOnItem in FTree.GetHitTestInfoAt(mWhere.X, mWhere.Y)) then
+    Exit;
+  mNode := FTree.GetNodeAt(mWhere.X, mWhere.Y);
+  if (mNode <> nil) and (mNode = FTree.Selected) and (DataOf(mNode).Kind = TNodeKind.Issue) then
+    OpenSelectedIssue;
+end;
+
 procedure TAtlasResultsFrame.OpenSelected;
 var
   Data: TNodeData;
 begin
   Data := DataOf(FTree.Selected);
+  // Issues zu einer Methode (#1275): Issue öffnen, Commit zeigen.
+  if Data.Kind in [TNodeKind.Issue, TNodeKind.Commit] then
+  begin
+    OpenSelectedIssue;
+    Exit;
+  end;
   // Atlas-Änderungen (#721): Doppelklick zeigt den Unterschied.
   if Data.Kind in [TNodeKind.ChangeSet, TNodeKind.ChangeFile] then
   begin
@@ -1661,6 +1776,9 @@ end;
 
 procedure TAtlasResultsFrame.TreeDblClick(Sender: TObject);
 begin
+  // Ein Issue hat schon der Klick geöffnet; der Doppelklick klappt es nur auf.
+  if DataOf(FTree.Selected).Kind = TNodeKind.Issue then
+    Exit;
   OpenSelected;
 end;
 

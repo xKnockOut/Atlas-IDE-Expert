@@ -1,0 +1,22 @@
+[
+  {
+    "version": "4c1d2e3f4a5b6c7d8e9f00112233445566778899",
+    "text": "ATL-123 Tracker angebunden\n\nDetails",
+    "date": 1761600000000,
+    "user": {"login": "marco", "fullName": "Marco B.", "$type": "User"},
+    "$type": "VcsChange"
+  },
+  {
+    "version": "1a2b3c4d",
+    "text": "ATL-123 Neuer Stand",
+    "date": 1761690000000,
+    "user": {"login": "anna", "fullName": "", "$type": "User"},
+    "$type": "VcsChange"
+  },
+  {
+    "version": "",
+    "text": "",
+    "date": 1761690000000,
+    "$type": "VcsChange"
+  }
+]

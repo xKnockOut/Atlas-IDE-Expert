@@ -4,7 +4,9 @@
 //   - Ein Typ wird in einer Typdeklaration benutzt (Feld, Parameter, Ergebnis,
 //     Property, generisches Argument, class of), ist aber erst weiter unten im
 //     selben Gültigkeitsbereich deklariert (Compiler: E2003). Vorfahren, Aliase
-//     (TA = TB) und Zeiger (^T, im selben Block erlaubt) zählen nicht.
+//     (TA = TB) und Zeiger (^T, im selben Block erlaubt) zählen nicht, ebenso
+//     Klassenreferenzen (TXClass = class of TX) auf eine Klasse im selben
+//     type-Block: Die löst dcc wie Zeiger erst am Blockende auf (#1328).
 //   - Korrektur je nach Lage:
 //       Klasse/Interface im selben type-Block   Forward-Deklaration am Blockanfang
 //       Forward-Deklaration steht weiter unten   sie nach oben verschieben
@@ -196,6 +198,12 @@ begin
   finally
     Names.Free;
   end;
+end;
+
+/// <summary>True, wenn ARef das Ziel einer Klassenreferenz ist (class of ARef).</summary>
+function IsClassReference(ARef: TSyntaxNode): Boolean;
+begin
+  Result := (ARef.Parent <> nil) and (ARef.Parent.Kind = TSyntaxKind.ClassOfType);
 end;
 
 function FirstPart(const AName: string): string;
@@ -643,7 +651,8 @@ begin
   for Index := 0 to Full - 1 do
     if (Index <> AIndex) and (ADecls[Index].Section = Forward_.Section) then
       for Ref in RefsOf(ADecls[Index].Node) do
-        if SameText(Ref.Name, Forward_.Node.Name) then
+        // Eine Klassenreferenz im selben Block braucht die Forward-Deklaration nicht.
+        if SameText(Ref.Name, Forward_.Node.Name) and not IsClassReference(Ref) then
           Exit;
   Finding := Default(TForwardFinding);
   Finding.Issue := TForwardIssue.UnneededForward;
@@ -714,7 +723,8 @@ begin
           Target := Child;
           Break;
         end;
-      if Target >= 0 then
+      // class of auf eine Klasse weiter unten im selben type-Block übersetzt dcc (#1328).
+      if (Target >= 0) and not (IsClassReference(Ref) and (Decls[Target].Section = Decls[Index].Section)) then
         UsedBefore(Decls[Index], Decls[Target], Ref);
     end;
   end;

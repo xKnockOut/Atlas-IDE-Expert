@@ -12,7 +12,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
-| `delphiVersion` | global (settings.json) | string | – | z. B. `"37.0"`, `"23.0"` | Delphi-Version als Produktnummer ("13", "12", "10.4") oder wie in der Registry ("37.0" für Delphi 13, "23.0" für Delphi 12). Leer: passend zur ProjectVersion der .dproj, sonst die nächsthöhere, sonst die neueste installierte Version. Ist die eingestellte Version nicht installiert, warnt das Serverprotokoll mit der Stelle in settings.json, und die automatische Wahl greift. In der IDE gilt immer die laufende IDE. |
+| `delphiVersion` | global (settings.json) | string | – | z. B. `"37.0"`, `"23.0"` | Delphi-Version als Produktnummer ("13", "12", "10.4") oder wie in der Registry ("37.0" für Delphi 13, "23.0" für Delphi 12). Leer: passend zur ProjectVersion der .dproj, sonst die nächsthöhere, sonst die neueste installierte Version. Ist die eingestellte Version nicht installiert, warnt das Serverprotokoll mit der Stelle in settings.json, und die automatische Wahl greift. Ohne jede Installation (Linux, CI) gilt die eingestellte bzw. zur ProjectVersion passende, sonst die neueste bekannte Version, nur für CompilerVersion und VERxxx. In der IDE gilt immer die laufende IDE. |
 | `minDelphiVersion` | Projekt (atlas.json) | string | – | z. B. `"23.0"`, `"22.0"` | Älteste Delphi-Version, mit der das Projekt übersetzen muss, als Produktnummer ("12", "11") oder wie in der Registry ("23.0"). Atlas meldet Sprachmerkmale neuerer Versionen (Regel language-feature, z. B. "is not" oder If-Ausdruck bei "12"), und Code-Aktionen, Schnellbefehle und Formatieren erzeugen sie nicht. Gilt die ältere aus dieser und der gewählten Version (delphiVersion bzw. laufende IDE). Leer: nur die gewählte Version. |
 | `language` | global (settings.json) | string | `"de"` | `"de"`, `"en"` | Sprache der Meldungen. |
 | `encoding` | Projekt (atlas.json) | string | `"utf-8"` | z. B. `"utf-8"`, `"windows-1252"`, `"windows-1250"` | Vorgabe-Kodierung für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (reines ASCII, ungültiges UTF-8): "utf-8" oder eine ANSI-Codepage wie "windows-1250". Binäre Formulare werden nie geändert. |
@@ -58,6 +58,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `mcp` | gemischt, siehe unten | object | – | z. B. `{"disabledTools":["rename_symbol","apply_code_action"]}`, `{"globalSettings":false}` | MCP-Modus (--mcp) für KI-Assistenten. |
 | `format` | Projekt (atlas.json) | object | – |  | Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. |
 | `tasks` | global und Projekt | array<object> | – |  | Projektaufgaben (#900): Befehle des Projekts, die das Plugin per Befehlspalette, Menü Atlas › Aufgaben, Taste, Statusfeld oder Schnellaktion startet; die Ausgabe steht im Register „Atlas-Aufgaben“, erkannte Fundstellen als Befunde in Problemliste und Editor. Projekt vor global bei gleichem Namen. Variablen in command, args, cwd und env: ${projectDir}, ${groupDir}, ${file}, ${fileDir}, ${config}, ${platform}, ${BDS}. |
+| `issues` | global (settings.json) | object | – |  | Issue-Tracker im Plugin (Tools › Optionen › Atlas › Issue-Tracker, Bereich „Meine Issues“). Persönlich, daher nur in settings.json; der Abschnitt tracker der Projektdatei .atlas gilt daneben für das Team. |
 | `logLevel` | global (settings.json) | string | `"info"` | `"debug"`, `"info"`, `"warning"`, `"error"` | Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei. Gilt ab dem nächsten Start; die Kommandozeilenoption --log-level hat Vorrang. |
 | `logFile` | global (settings.json) | string | `""` |  | Optionale Logdatei des Servers (Rotation bei 10 MB). Gilt ab dem nächsten Start; --log hat Vorrang. |
 | `traceFile` | global (settings.json) | string | `""` |  | Optionaler Mitschnitt aller JSON-Nachrichten zur Fehlersuche. Gilt ab dem nächsten Start; --trace hat Vorrang. |
@@ -75,6 +76,10 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `vcs.provider` | global (settings.json) | string | `"auto"` | `"auto"`, `"git"`, `"svn"`, `"off"` | auto: nach gefundener Arbeitskopie (.git oder .svn, die nächstliegende gilt, bei Gleichstand Git). git bzw. svn: nur diese Art. off: ohne Versionsverwaltung. Git und SVN über die Kommandozeile (git bzw. svn, TortoiseSVN mit Kommandozeilenwerkzeugen genügt); fehlt das Programm, meldet Atlas das einmal und arbeitet ohne Versionsangaben weiter. |
+| `vcs.git` | global (settings.json) | object | – |  | Programm git (#1285): path = Pfad zu git.exe, leer = automatisch suchen. |
+| `vcs.svn` | global (settings.json) | object | – |  | Programm svn (#1285): path = Pfad zu svn.exe, leer = automatisch suchen. |
+| `vcs.projects` | global (settings.json) | array<object> | `` |  | Persönliche Art und Hauptbranch je Delphi-Projekt (#1286). Es gilt der Abschnitt vcs der .atlas (je Feld), sonst die Zeile für genau diese .dproj, dann die der geöffneten .groupproj, dann der längste passende Ordner, sonst vcs.provider. Für einen Ordner (Änderungsmarken) gelten .dproj- und .groupproj-Zeilen für ihren Ordner, der längste passende gewinnt. |
+| `vcs.timeoutSeconds` | global (settings.json) | integer | `15` | 1…300 | Zeitlimit je Aufruf von git bzw. svn in Sekunden (#1285); danach beendet Atlas den Prozess. Aufrufe mit eigenem, kürzerem Limit (Willkommensseite 1 s) behalten ihres; Branch anlegen und Pull nehmen das größere aus diesem Wert und 30 s. |
 
 ## completion
 
@@ -358,6 +363,14 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `format.alignAssignments` | Projekt (atlas.json) | boolean | `false` |  | := untereinander stehender Zuweisungen ausrichten. |
 | `format.alignDeclarations` | Projekt (atlas.json) | boolean | `false` |  | Doppelpunkte bzw. = untereinander stehender Deklarationen (var, const, Felder, Parameter) ausrichten. |
 | `format.alignComments` | Projekt (atlas.json) | boolean | `false` |  | Kommentare am Zeilenende untereinander stehender Zeilen ausrichten. |
+
+## issues
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `issues.connections` | global (settings.json) | array<object> | `` |  | Persönliche Tracker-Verbindungen (#1260), z. B. das Firmen-YouTrack und GitHub nebeneinander. Das Token steht nie hier, sondern im Anmeldespeicher von Windows (Atlas:tracker:<Server>, „Token hinterlegen …“). |
+| `issues.projects` | global (settings.json) | array<object> | `` |  | Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261) für Projekte ohne tracker in der .atlas. Es gilt die Zeile für genau diese .dproj, sonst die für die geöffnete .groupproj, sonst der längste passende Ordner; eine .atlas mit tracker hat Vorrang. |
+| `issues.queries` | global (settings.json) | array<object> | `` |  | Benannte Abfragen für „Meine Issues“ (#1262), wählbar in der Klappliste neben dem Titel. Ohne eigene Abfragen gilt je Anbieter „Mir zugewiesen“ (GitHub assignee:@me state:open, YouTrack for: me #Unresolved). Ein früheres issues.query wird einmal zur Abfrage „Standard“. |
 
 ## Beispiel
 

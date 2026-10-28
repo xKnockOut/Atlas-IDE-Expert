@@ -32,6 +32,8 @@ type
     [Test]
     procedure AccessorAncestorsFromIndex;
     [Test]
+    procedure AccessorFormsDccAccepts;
+    [Test]
     procedure AccessorOptions;
     [Test]
     procedure WriteOnlyReported;
@@ -218,12 +220,10 @@ begin
   Assert.AreEqual('Die Array-Property Items braucht hinter read eine Methode; FItems ist ein Feld (wie E2174).',
     OnlyMessage(Kunden('  private'#10'    FItems: string;'#10'  public'#10 +
     '    property Items[Index: Integer]: string read FItems;'#10, '')));
-  Assert.AreEqual('Die Property Rot hat eine index-Angabe und braucht hinter read eine Methode; FRot ist ein Feld ' +
-    '(wie E2174).', OnlyMessage(Kunden('  private'#10'    FRot: Integer;'#10'  public'#10 +
-    '    property Rot: Integer index 1 read FRot;'#10, '')));
-  Assert.AreEqual('GetName ist überladen; Getter und Setter einer Property dürfen nicht überladen sein (wie E2271).',
-    OnlyMessage(Kunden('  private'#10'    function GetName: string; overload;'#10 +
-    '    function GetName(A: Integer): string; overload;'#10'  public'#10'    property Name: string read GetName;'#10,
+  // Gegentest PG3 aus Tests/DccFaelle (#1328): keine Überladung passt.
+  Assert.AreEqual('GetName ist überladen, und keine Überladung passt als Getter von Name (wie E2271).',
+    OnlyMessage(Kunden('  private'#10'    function GetName(A: Integer): string; overload;'#10 +
+    '    function GetName(A, B: Integer): string; overload;'#10'  public'#10'    property Name: string read GetName;'#10,
     '')));
   Assert.AreEqual('Der Setter SetName nimmt den Wert als var-Parameter; ein Setter braucht einen Wert- oder ' +
     'const-Parameter (wie E2282).', OnlyMessage(Kunden('  private'#10'    FName: string;'#10 +
@@ -272,9 +272,26 @@ begin
   Assert.AreEqual('FAnzahl ist eine class var; die Property Anzahl braucht ein Instanzfeld oder eine Instanzmethode ' +
     '(wie E2356).', OnlyMessage(Kunden('  private'#10'    class var FAnzahl: Integer;'#10'  public'#10 +
     '    property Anzahl: Integer read FAnzahl;'#10, '')));
-  Assert.AreEqual('GetAnzahl ist eine Klassenmethode; die Property Anzahl braucht ein Instanzfeld oder eine ' +
-    'Instanzmethode (wie E2356).', OnlyMessage(Kunden('  private'#10'    class function GetAnzahl: Integer; static;'#10 +
+  Assert.AreEqual('GetAnzahl ist eine statische Klassenmethode; die Property Anzahl braucht ein Instanzfeld oder ' +
+    'eine Instanzmethode (wie E2356).', OnlyMessage(Kunden('  private'#10'    class function GetAnzahl: Integer; static;'#10 +
     '  public'#10'    property Anzahl: Integer read GetAnzahl;'#10, '')));
+end;
+
+procedure TPropertyRulesTests.AccessorFormsDccAccepts;
+begin
+  // Minimalfälle PA1–PA6 aus Tests/DccFaelle (#1328): Das übersetzt Delphi (mORMot2, SynEdit, HtmlViewer,
+  // Graphics32).
+  Silent(Kunden('  private'#10'    FX, FName: string;'#10'    FWerte: array[TArt] of Integer;'#10 +
+    '    procedure SetX(AIndex: Integer; const AWert: string);'#10'    procedure SetWert(AIndex, AWert: Integer);'#10 +
+    '    function GetFlag(AArt: TArt): Boolean;'#10'    procedure SetFlag(AArt: TArt; const AWert: Boolean);'#10 +
+    '    function GetText: string; overload;'#10'    function GetText(AArt: TArt): string; overload;'#10 +
+    '  public'#10'    class function GetVersion: string; virtual;'#10 +
+    '    property X: string index 0 read FX write SetX;'#10 +
+    '    property Eins: Integer index Ord(aEins) read FWerte[aEins] write SetWert;'#10 +
+    '    property Name: string index 50 read FName write FName;'#10 +
+    '    property Flag: Boolean index aZwei read GetFlag write SetFlag;'#10 +
+    '    property Version: string read GetVersion;'#10'    property Text: string read GetText;'#10, '')
+    .Replace('  TKunde = class', '  TArt = (aEins, aZwei);'#10'  TKunde = class'));
 end;
 
 procedure TPropertyRulesTests.AccessorFieldSelectors;

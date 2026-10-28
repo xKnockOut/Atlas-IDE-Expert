@@ -45,6 +45,9 @@ type
   public const
     /// <summary>So lange bleibt der Tooltip, nachdem die Maus Bezeichner und Tooltip verlassen hat.</summary>
     TooltipHideDelayMs = 300;
+    /// <summary>So lange verweilt die Maus, bevor ein Tooltip erscheint (Atlas-Tooltip, Issue-Kennungen #1265).
+    /// </summary>
+    TooltipShowDelayMs = 500;
   private
     class function Window(const AOpened, ANow: TAtlasEditorWindowState): TAtlasCloseReason; static;
   public

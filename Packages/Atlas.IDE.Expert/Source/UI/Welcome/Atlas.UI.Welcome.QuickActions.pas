@@ -13,7 +13,9 @@
 //   Plattform; der Teil ▾ öffnet die Auswahl. „Startprofil ▾“ öffnet die
 //   Profile. „Tests“ fragt bei mehreren Testprojekten nach dem Testprojekt.
 // - Gesperrter Pull zeigt im Tooltip den Grund („Erst lokale Änderungen
-//   sichern“). Während eine Aktion läuft, zeigt ihr Knopf „baut … 12 s“,
+//   sichern“). Mit vcs.externals.update = ask (#1292) heißt er
+//   „Aktualisieren ▾“ und fragt „mit Externals“/„ohne Externals“, im
+//   Kontextmenü als Untermenü. Während eine Aktion läuft, zeigt ihr Knopf „baut … 12 s“,
 //   außerhalb der Leiste steht der Stand als Marke (Text, Farbe: StateText,
 //   StateColor).
 // - Tastatur über ein unsichtbares Steuerelement (TAtlasQuickKeySink), das
@@ -72,6 +74,8 @@ type
     function TaskNames(const AProject: string): TArray<string>;
     /// <summary>Projektaufgabe AName von AProject im Hintergrund starten.</summary>
     procedure RunTask(const AProject, AName: string);
+    /// <summary>Aktualisieren mit bzw. ohne Externals (#1292, Auswahl bei vcs.externals.update = ask).</summary>
+    procedure Pull(const AProject: string; AIgnoreExternals: Boolean);
     /// <summary>Strg+B bzw. Strg+T als TShortCut; 0 = keine Taste.</summary>
     function BuildKey: Integer;
     function TestKey: Integer;
@@ -117,7 +121,7 @@ type
     MenuPart = 16;
     TickMs = 1000;
   private type
-    TChoiceKind = (Target, Profile, TestProject, Task);
+    TChoiceKind = (Target, Profile, TestProject, Task, Update);
     TChoice = record
       Kind: TChoiceKind;
       Project: string;
@@ -169,6 +173,7 @@ type
     procedure FillProfiles(AParent: TMenuItem; const AProject: string);
     procedure FillTestProjects(AParent: TMenuItem; const AProject: string; const ACandidates: TArray<string>);
     procedure FillTasks(AParent: TMenuItem; const AProject: string);
+    procedure FillUpdate(AParent: TMenuItem; const AProject: string);
     procedure PopupAt(ARow, AIndex: Integer);
     procedure UpdateTimer;
   public
@@ -806,6 +811,13 @@ begin
           Exit;
         end;
       end;
+    TAtlasQuickAction.Pull:
+      // vcs.externals.update = ask (#1292): erst „mit Externals“ oder „ohne Externals“ wählen.
+      if Button.AskExternals then
+      begin
+        PopupAt(ARow, AIndex);
+        Exit;
+      end;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -937,6 +949,19 @@ begin
   end;
 end;
 
+procedure TAtlasQuickActionsBar.FillUpdate(AParent: TMenuItem; const AProject: string);
+var
+  Choice: TChoice;
+begin
+  Choice := Default(TChoice);
+  Choice.Kind := TChoiceKind.Update;
+  Choice.Project := AProject;
+  Choice.A := 'with';
+  AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdateWithExternals), Choice, True);
+  Choice.A := 'without';
+  AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdateWithoutExternals), Choice, False);
+end;
+
 procedure TAtlasQuickActionsBar.AddTitle(AParent: TMenuItem; ATextId: TAtlasTextId);
 var
   Item: TMenuItem;
@@ -993,6 +1018,13 @@ begin
         AddTitle(AParent, TAtlasTextId.WelcomeQuickTasksTitle);
         FillTasks(AParent, mName);
       end;
+    TAtlasQuickAction.Pull:
+      begin
+        if not Buttons[AIndex].AskExternals then
+          Exit;
+        AddTitle(AParent, TAtlasTextId.WelcomeQuickUpdate);
+        FillUpdate(AParent, mName);
+      end;
   else
     Exit;
   end;
@@ -1020,6 +1052,8 @@ begin
           mSource.Run(Choice.Project, Choice.A);
         TChoiceKind.Task:
           mSource.RunTask(Choice.Project, Choice.A);
+        TChoiceKind.Update:
+          mSource.Pull(Choice.Project, Choice.A = 'without');
       else
         mSource.RunTests(Choice.Project, Choice.A);
       end;
@@ -1076,10 +1110,17 @@ begin
     Item.Visible := Found >= 0;
     Item.Enabled := (Found >= 0) and Buttons[Found].Enabled;
     if (Found >= 0) and (FContextActions[Index] = TAtlasQuickAction.Pull) then
+    begin
       if Buttons[Found].Update then
         Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdate)
       else
         Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
+      // Untermenü „mit Externals“/„ohne Externals“ (#1292); ohne Auswahl ein einfacher Eintrag.
+      if not (Buttons[Found].Enabled and Buttons[Found].AskExternals and FillChoices(Item, ARow, Found)) then
+        Item.Clear;
+    end
+    else if FContextActions[Index] = TAtlasQuickAction.Pull then
+      Item.Clear;
     Any := Any or Item.Visible;
   end;
   // Untermenüs „Bauen mit“ und „Starten mit“ mit der Auswahl der Zeile.
@@ -1260,10 +1301,14 @@ begin
     TAtlasQuickAction.Run:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickRun);
     TAtlasQuickAction.Pull:
-      if AButton.Update then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdate)
-      else
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
+      begin
+        if AButton.Update then
+          Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdate)
+        else
+          Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
+        if AButton.AskExternals then
+          Result := Result + ' ' + MenuArrow;
+      end;
     TAtlasQuickAction.Folder:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickFolder);
     TAtlasQuickAction.Tasks:

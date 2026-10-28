@@ -4,6 +4,7 @@
 // signature-mismatch (#996) mit dem Angleichen abweichender Köpfe (#100):
 // Beispiel aus dem Issue, Anzahl, Ergebnistyp, Namen, Modifizierer,
 // Aufrufkonvention, nächstliegende Überladung, Abschalten und Ausnahmen;
+// Typaliase, Qualifizierer, Kommentare, Attribute und {$IFDEF} im Kopf (#1324);
 // interface-not-implemented (#1000): fehlende Interface-Methoden (E2291),
 // abweichender Kopf (E2211), Zuordnung ohne Interface (E2265), geerbte
 // Methoden, Zuordnungen, implements und unbekannte Vorfahren.
@@ -19,6 +20,10 @@
 // duplicate-declaration (#988): Beispiel mit Korrekturen, Bereiche (Routine,
 // Typ, Record mit variantem Teil, Unit), uses mit checkUses, stille Fälle und
 // Optionen.
+// Sonderformen der Deklaration (#1325): die Minimalfälle F02, F03, F06, F07,
+// F13 und F18 der FP-Prüfung sowie asm- und external-Rümpfe, override und ein
+// gleichnamiger generischer Typ neben dem nicht generischen sind still; echte Überladungen ohne overload und fehlende Rümpfe werden weiter
+// gemeldet.
 
 interface
 
@@ -66,6 +71,14 @@ type
     [Test]
     procedure SignatureMismatchOffAndExclude;
     [Test]
+    procedure SignatureMismatchBuiltinAliases;
+    [Test]
+    procedure SignatureMismatchCommentsAndAttributes;
+    [Test]
+    procedure SignatureMismatchConditionalHeader;
+    [Test]
+    procedure SignatureMismatchAliasesFromIndex;
+    [Test]
     procedure InterfaceIssueExample;
     [Test]
     procedure InterfaceImplementationsThatCount;
@@ -95,6 +108,24 @@ type
     procedure OverloadSilentCases;
     [Test]
     procedure OverloadOffAndExclude;
+    [Test]
+    procedure SpecialFormClassConstructor;
+    [Test]
+    procedure SpecialFormMethodResolution;
+    [Test]
+    procedure SpecialFormGenericConstraints;
+    [Test]
+    procedure SpecialFormEmptyParentheses;
+    [Test]
+    procedure SpecialFormShortImplementation;
+    [Test]
+    procedure SpecialFormOpenArrayElementType;
+    [Test]
+    procedure SpecialFormAsmExternalAndOverride;
+    [Test]
+    procedure SpecialFormGenericNamesake;
+    [Test]
+    procedure SpecialFormCounterChecks;
     [Test]
     procedure DuplicateDeclarationIssueExample;
     [Test]
@@ -447,6 +478,81 @@ begin
   TRuleAssert.Reports(TImplementedNotDeclaredRule.Create, Source);
 end;
 
+procedure TDeclarationRulesTests.SignatureMismatchBuiltinAliases;
+const
+  // Minimalfall F05 aus #1324.
+  cF05 = 'unit F05_AliasSignature;'#10'interface'#10'type'#10'  TA = class'#10 +
+    '    procedure P(const X: IInterface; var Y: Longint);'#10'  end;'#10'implementation'#10 +
+    'procedure TA.P(const X: IUnknown; var Y: Integer); begin end;'#10'end.';
+begin
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, cF05);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TSignatureMismatchRule.Create, cF05,
+    TSymbolIndex.Create, '', ''))));
+  // Qualifizierer: Unit vor Typargumenten, System.string, umgebender Typ.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    function Liste: IList<ITestResult>;',
+    'function TFoo.Liste: IList<DUnitX.TestFramework.ITestResult>;'#10'begin'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Rollen(A: TList<string>);',
+    'procedure TFoo.Rollen(A: TList<System.string>);'#10'begin'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    type'#10'      TArt = (Eins, Zwei);'#10 +
+    '    procedure Setze(A: TArt);', 'procedure TFoo.Setze(A: TFoo.TArt);'#10'begin'#10'end;'));
+  // Gegentest: echte Abweichung.
+  Assert.AreEqual('P weicht von der Deklaration ab: Y Int64 statt Longint (wie E2037).',
+    TRuleAssert.Findings(TSignatureMismatchRule.Create, StringReplace(cF05, 'var Y: Integer', 'var Y: Int64',
+    []))[0].Message);
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchCommentsAndAttributes;
+begin
+  // Kommentare im Kopf (Indy, Spring4D, mORMot): {Do not Localize}, //FI W521, {%H-}.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit(
+    '    procedure Lies(const AName: string = ''x'' {Do not Localize};'#10 +
+    '      //FI W521'#10'      const AFlags: {Pointer}Integer);',
+    'procedure TFoo.Lies(const AName: string; const {%H-}AFlags: Integer);'#10'begin'#10'end;'));
+  // Attribut hinter dem Modifizierer (DMVCFramework): const [MVCFromBody] Obj.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit(
+    '    function Echo(const [MVCFromBody] Obj: TObject): TObject;',
+    'function TFoo.Echo(const Obj: TObject): TObject;'#10'begin'#10'end;'));
+  // Gegentest: Ohne const bleibt es eine Abweichung, auch mit Attribut.
+  Assert.AreEqual('Echo weicht von der Deklaration ab: Obj ohne const (wie E2037).',
+    TRuleAssert.Findings(TSignatureMismatchRule.Create, ClassUnit(
+    '    function Echo(const [MVCFromBody] Obj: TObject): TObject;',
+    'function TFoo.Echo(Obj: TObject): TObject;'#10'begin'#10'end;'))[0].Message);
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchConditionalHeader;
+begin
+  // {$IFDEF} in der Parameterliste (SynEdit, mORMot): Welche Parameter gelten, hängt von der Übersetzung ab.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit(
+    '    procedure Lade(A: Integer {$IFDEF UNICODE}; B: Boolean{$ENDIF});',
+    'procedure TFoo.Lade(A: Integer);'#10'begin'#10'end;'));
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchAliasesFromIndex;
+const
+  cFremd = 'unit Fremd;'#10'interface'#10'type'#10'  TPort = UInt16;'#10'  TGanz = Integer;'#10 +
+    '  TEigen = type Integer;'#10'implementation'#10'end.';
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cFremd, 'C:\P\Fremd.pas', nil));
+  mSource := 'unit U;'#10'interface'#10'uses'#10'  Fremd;'#10'type'#10'  TFoo = class'#10 +
+    '    procedure A(P: TPort);'#10'    function B: TGanz;'#10'    procedure C(E: TEigen);'#10 +
+    '    procedure D(X: TUnbekannt);'#10'    procedure E(X: Integer);'#10'  end;'#10'implementation'#10 +
+    'procedure TFoo.A(P: Word);'#10'begin'#10'end;'#10'function TFoo.B: Longint;'#10'begin'#10'end;'#10 +
+    'procedure TFoo.C(E: Integer);'#10'begin'#10'end;'#10'procedure TFoo.D(X: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TFoo.E(X: Int64);'#10'begin'#10'end;'#10'end.';
+  mFindings := TRuleAssert.IndexFindings(TSignatureMismatchRule.Create, mSource, mIndex, '', '');
+  // A und B: Aliase bis zum Ziel verfolgt. C: type TEigen = type Integer ist ein eigener Typ. D: TUnbekannt kann
+  // ein Alias aus einer Unit außerhalb des Index sein. E: echte Abweichung.
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('C weicht von der Deklaration ab: E Integer statt TEigen (wie E2037).', mFindings[0].Message);
+  Assert.AreEqual('E weicht von der Deklaration ab: X Int64 statt Integer (wie E2037).', mFindings[1].Message);
+  mIndex := nil;
+end;
+
 procedure TDeclarationRulesTests.AmbiguousOverloadOffersNoAlignment;
 var
   Findings: TArray<TRuleFinding>;
@@ -760,6 +866,139 @@ begin
     '{"rules": {"group:compiler": "off"}}', 'Kunden.pas'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(Members),
     '{"rules": {"overload-directive-missing": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Kunden.pas'))));
+end;
+
+/// <summary>Meldet keine der Regeln, die Deklaration und Rumpf zuordnen, etwas zu ASource?</summary>
+procedure AssertMatchingSilent(const ASource: string);
+begin
+  TRuleAssert.Silent(TDeclaredNotImplementedRule.Create, ASource);
+  TRuleAssert.Silent(TImplementedNotDeclaredRule.Create, ASource);
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ASource);
+  TRuleAssert.Silent(TOverloadDirectiveMissingRule.Create, ASource);
+end;
+
+procedure TDeclarationRulesTests.SpecialFormClassConstructor;
+begin
+  // F02: class constructor ist keine Überladung des Instanz-Konstruktors.
+  AssertMatchingSilent('unit F02_ClassCtorOverload;'#10'interface'#10'type'#10'  TA = class'#10'  public'#10 +
+    '    class constructor Create;'#10'    class destructor Destroy;'#10'    constructor Create; overload;'#10 +
+    '    constructor Create(X: Integer); overload;'#10'    destructor Destroy; override;'#10'  end;'#10 +
+    'implementation'#10'class constructor TA.Create; begin end;'#10'class destructor TA.Destroy; begin end;'#10 +
+    'constructor TA.Create; begin end;'#10'constructor TA.Create(X: Integer); begin end;'#10 +
+    'destructor TA.Destroy; begin end;'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.SpecialFormMethodResolution;
+begin
+  // F03: Methodenzuordnung braucht keinen Rumpf und ist keine Überladung.
+  AssertMatchingSilent('unit F03_MethodResolution;'#10'interface'#10'type'#10'  IFoo = interface'#10 +
+    '    function GetX: Integer;'#10'  end;'#10'  TA = class(TInterfacedObject, IFoo)'#10 +
+    '    function IFoo.GetX = MyGetX;'#10'    function MyGetX: Integer;'#10'  end;'#10'implementation'#10 +
+    'function TA.MyGetX: Integer; begin Result := 1; end;'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.SpecialFormGenericConstraints;
+begin
+  // F06: Constraints stehen nur in der Deklaration; das ";" darin beendet den Kopf nicht.
+  AssertMatchingSilent('unit F06_GenericConstraints;'#10'interface'#10'type'#10'  TA = class'#10 +
+    '    procedure Reg<TI: IInterface; TC: class>(const N: string); overload;'#10 +
+    '    procedure Reg<TI: IInterface; TC: class>(const S: Boolean; const N: string); overload;'#10'  end;'#10 +
+    'implementation'#10'procedure TA.Reg<TI, TC>(const N: string); begin end;'#10 +
+    'procedure TA.Reg<TI, TC>(const S: Boolean; const N: string); begin end;'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.SpecialFormEmptyParentheses;
+begin
+  // F07: "()" in der Implementierung heißt keine Parameter.
+  AssertMatchingSilent('unit F07_EmptyParens;'#10'interface'#10'uses Classes;'#10'type'#10'  TW = class(TThread)'#10 +
+    '  protected'#10'    procedure Execute; override;'#10'    function Wert(): Integer;'#10'  end;'#10 +
+    'implementation'#10'procedure TW.Execute(); begin end;'#10'function TW.Wert: Integer; begin Result := 0; end;'#10 +
+    'end.');
+end;
+
+procedure TDeclarationRulesTests.SpecialFormShortImplementation;
+begin
+  // F13: Die Kurzform der Implementierung gehört zur einzigen Deklaration gleichen Namens, auch mit Kommentaren
+  // im mehrzeiligen Kopf; ebenso bei Methoden.
+  AssertMatchingSilent('unit F13_ShortFormImpl;'#10'interface'#10'function Foo('#10'    A: Integer;   // erster'#10 +
+    '    B: Integer    // zweiter'#10' ): Integer; stdcall;'#10'type'#10'  TA = class'#10 +
+    '    function Bar(A: Integer): Integer;'#10'  end;'#10'implementation'#10'function Foo;'#10'begin'#10 +
+    '  Result := A + B;'#10'end;'#10'function TA.Bar;'#10'begin'#10'  Result := A;'#10'end;'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.SpecialFormOpenArrayElementType;
+begin
+  // F18: Bei offenen Arrays zählt der Elementtyp.
+  AssertMatchingSilent('unit F18_OpenArrayOverload;'#10'interface'#10'uses System.Rtti, System.TypInfo;'#10'type'#10 +
+    '  TA = class'#10'    function Inject(const T: array of PTypeInfo): Integer; overload;'#10 +
+    '    function Inject(const V: array of TValue): Integer; overload;'#10'  end;'#10 +
+    'procedure Fill(const A: array of Integer); overload;'#10'procedure Fill(const A: array of string); overload;'#10 +
+    'implementation'#10'function TA.Inject(const T: array of PTypeInfo): Integer; begin Result := 0; end;'#10 +
+    'function TA.Inject(const V: array of TValue): Integer; begin Result := 1; end;'#10 +
+    'procedure Fill(const A: array of Integer); begin end;'#10'procedure Fill(const A: array of string); begin end;'#10 +
+    'end.');
+end;
+
+procedure TDeclarationRulesTests.SpecialFormAsmExternalAndOverride;
+begin
+  // Rumpf aus asm, external im implementation-Teil (auch in Kurzform), forward mit asm-Rumpf; override ohne
+  // overload übernimmt es von der überschriebenen Methode.
+  AssertMatchingSilent('unit U;'#10'interface'#10'function BitsHighest(X: Cardinal): Integer;'#10 +
+    'function Lese(P: Pointer): Integer; stdcall;'#10'function Schreibe(P: Pointer): Integer; stdcall;'#10'type'#10 +
+    '  TB = class(TBasis)'#10'    procedure Add(P: PChar); override;'#10 +
+    '    procedure Add(P: PChar; Len: Integer); override;'#10'  end;'#10'implementation'#10 +
+    'procedure Move4(const ASource; var ADest); forward;'#10'function BitsHighest(X: Cardinal): Integer;'#10'asm'#10 +
+    '  MOV EAX, -1'#10'end;'#10'function Lese(P: Pointer): Integer; stdcall; external ''a.dll'';'#10 +
+    'function Schreibe; external ''a.dll'';'#10'procedure Move4(const ASource; var ADest);'#10'asm'#10'end;'#10 +
+    'procedure TB.Add(P: PChar); begin end;'#10'procedure TB.Add(P: PChar; Len: Integer); begin end;'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.SpecialFormGenericNamesake;
+begin
+  // Neben TProperty steht ein generischer TProperty<T> gleichen Namens (Spring4D): Dessen Deklarationen und Rümpfe
+  // gehören nicht zum nicht generischen Typ.
+  AssertMatchingSilent('unit U;'#10'interface'#10'type'#10'  TProperty = class'#10 +
+    '    constructor Create(const AName: string);'#10'  end;'#10'  TProperty<T: class> = class(TProperty)'#10 +
+    '    constructor Create(const AName, APath: string);'#10'    function Wert: T;'#10'  end;'#10'implementation'#10 +
+    'constructor TProperty.Create(const AName: string); begin end;'#10 +
+    'constructor TProperty<T>.Create(const AName, APath: string); begin end;'#10 +
+    'function TProperty<T>.Wert: T; begin Result := nil; end;'#10'end.');
+  // Nicht generischer Typ in einem generischen: Die Rümpfe nennen den äußeren mit Typparametern.
+  AssertMatchingSilent('unit U;'#10'interface'#10'type'#10'  TDict<TKey, TValue> = class'#10'  public type'#10 +
+    '    TEnumerator = class'#10'      function MoveNext: Boolean;'#10'    end;'#10'  end;'#10'implementation'#10 +
+    'function TDict<TKey, TValue>.TEnumerator.MoveNext: Boolean; begin Result := False; end;'#10'end.');
+  // Gegenprobe: Fehlt der Rumpf, wird er gemeldet.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TDeclaredNotImplementedRule.Create, 'unit U;'#10 +
+    'interface'#10'type'#10'  TDict<TKey, TValue> = class'#10'  public type'#10'    TEnumerator = class'#10 +
+    '      function MoveNext: Boolean;'#10'    end;'#10'  end;'#10'implementation'#10'end.'))));
+end;
+
+procedure TDeclarationRulesTests.SpecialFormCounterChecks;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Zwei echte Überladungen ohne overload, auch neben einem class constructor.
+  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde('    class constructor Create;'#10 +
+    '    constructor Create;'#10'    constructor Create(X: Integer);'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Create ist überladen, aber nicht mit overload markiert (wie E2254).', Findings[0].Message);
+  // Offene Arrays mit gleichem Elementtyp sind gleiche Parameter (E2252).
+  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, Kunde(
+    '    procedure Fill(const A: array of Integer); overload;'#10 +
+    '    procedure Fill(const B: array of Integer); overload;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Fill mit denselben Parametern gibt es schon in Zeile 5 (wie E2252).', Findings[0].Message);
+  // Die Kurzform passt nicht, wenn es zwei Deklarationen gleichen Namens gibt.
+  Findings := TRuleAssert.Findings(TOverloadDirectiveMissingRule.Create, 'unit U;'#10'interface'#10 +
+    'procedure P(A: Integer); overload;'#10'procedure P(S: string); overload;'#10'implementation'#10 +
+    'procedure P;'#10'begin'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  // Ein wirklich fehlender Rumpf, auch neben "()" und Kurzform.
+  Findings := TRuleAssert.Findings(TDeclaredNotImplementedRule.Create, Kunde('    procedure Lauf;'#10 +
+    '    procedure Halt(A: Integer);'#10'    procedure Fehlt;'#10).Replace('implementation'#10,
+    'implementation'#10'procedure TKunde.Lauf(); begin end;'#10'procedure TKunde.Halt; begin end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('"TKunde.Fehlt" ist deklariert, aber nicht implementiert', Findings[0].Message);
 end;
 
 function Rechnung(const ADeclarations: string): string;

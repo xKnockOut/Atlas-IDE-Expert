@@ -23,7 +23,8 @@
 //     AccentSoft), Verweise in Akzentfarbe, unterstrichen und anklickbar, wenn der
 //     Server den Fundort kennt; Links öffnen den Browser; Codeblöcke eingefärbt
 //     auf schattierter, gerahmter Fläche; Listen mit hängendem Einzug je Ebene;
-//     Tabellen zweispaltig.
+//     Tabellen zweispaltig. Eine Listenmarke mit Ziel (Kästchen einer
+//     Checkliste in der Issue-Vorschau, #1273) ist ein Link in Akzentfarbe.
 //   - Begründungen (#1123) unter BEGRÜNDUNG nach allen XMLDoc-Abschnitten: je
 //     Eintrag Marke (Editorschrift, halbfett, Akzent) und Text. Zugeklappt die
 //     ersten MaxRationale, der Rest hinter „Mehr anzeigen“ („2 weitere
@@ -272,7 +273,7 @@ type
     function HeightOf(const AFace: TAtlasDocFace): Integer;
     procedure OpenLine;
     procedure AddPill(const AText: string; const AFace: TAtlasDocFace);
-    procedure FlowCode(const AText: string);
+    procedure FlowCode(const AText: string; AHighlight: Boolean);
     procedure LayoutTable(const ARuns: TAtlasDocRuns; var AIndex: Integer; ABaseColor: TAtlasDocColor);
     function IsTableRow(const ARuns: TAtlasDocRuns; AIndex: Integer): Boolean;
     function RowEnd(const ARuns: TAtlasDocRuns; AIndex: Integer): Integer;
@@ -613,11 +614,12 @@ begin
   AddSpan(AText, AFace, AColor, False, ALink);
 end;
 
-procedure TLayoutBuilder.FlowCode(const AText: string);
+procedure TLayoutBuilder.FlowCode(const AText: string; AHighlight: Boolean);
 var
   CodeLine: string;
   Tokens: TAtlasTokens;
   Token: TAtlasToken;
+  mKind: TAtlasTokenKind;
   Color: TAtlasDocColor;
   Piece: string;
   Face: TAtlasDocFace;
@@ -645,7 +647,11 @@ begin
     Tokens := TAtlasSyntax.Tokens(CodeLine);
     for Token in Tokens do
     begin
-      case Token.Kind of
+      // Andere Sprachen (Markdown der Issue-Vorschau, #1264) ohne Delphi-Farben.
+      mKind := Token.Kind;
+      if not AHighlight then
+        mKind := TAtlasTokenKind.Plain;
+      case mKind of
         TAtlasTokenKind.Keyword:
           Color := TAtlasDocColor.Keyword;
         TAtlasTokenKind.StringLiteral:
@@ -658,7 +664,7 @@ begin
         Color := TAtlasDocColor.Text;
       end;
       // Schlüsselwörter halbfett wie in der Deklaration (TAtlasStyledText).
-      Face := TAtlasDocFace.Create(TAtlasDocFont.Mono, Token.Kind = TAtlasTokenKind.Keyword);
+      Face := TAtlasDocFace.Create(TAtlasDocFont.Mono, mKind = TAtlasTokenKind.Keyword);
       Piece := Copy(CodeLine, Token.Start + 1, Token.Stop - Token.Start);
       // Einrückung bleibt; zu lange Zeilen brechen an Zeichen um (kein waagrechtes Scrollen), die
       // Fortsetzung eingerückt.
@@ -895,7 +901,7 @@ begin
         begin
           FLeft := FBase;
           FHang := FBase;
-          FlowCode(Run.Text);
+          FlowCode(Run.Text, Run.IsDelphiCode);
         end;
       TAtlasDocRunKind.Bullet:
         if IsTableRow(ARuns, Index) then
@@ -912,7 +918,17 @@ begin
           OpenLine;
           if Run.Text <> '' then
           begin
-            AddSpan(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold), TAtlasDocColor.Muted, False, -1);
+            // Marke mit Ziel (Kästchen einer Checkliste, #1273): anklickbar in Akzentfarbe, ohne Unterstrich.
+            if Run.Target <> '' then
+            begin
+              Link := Default(TAtlasDocLink);
+              Link.Kind := TAtlasDocLinkKind.Url;
+              Link.Url := Run.Target;
+              AddSpan(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold), TAtlasDocColor.Accent, False,
+                AddLink(Link));
+            end
+            else
+              AddSpan(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold), TAtlasDocColor.Muted, False, -1);
             // Fester Platz für die Marke, damit die Texte der Punkte bündig stehen.
             Bullet := Max(FMeasure(Run.Text + ' ', TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold)),
               FMeasure('00. ', TAtlasDocFace.Create(TAtlasDocFont.UI)));

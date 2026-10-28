@@ -181,15 +181,18 @@ end;
 /// <summary>Bedingte Übersetzung ({$IFDEF …}, {$ELSE}, {$ENDIF} …) im Bereich [AFrom, ATo).</summary>
 function HasConditional(const ATokens: TArray<TPascalToken>; AFrom, ATo: Integer): Boolean;
 var
-  Token: TPascalToken;
   Text: string;
   Stop: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  for Token in ATokens do
-    if (Token.Kind = TPascalTokenKind.Directive) and (Token.Offset >= AFrom) and (Token.Offset < ATo) then
+  // Binär zum ersten Token des Bereichs statt ab Dateianfang (#1323).
+  mIndex := TRoutineBody.TokenAt(ATokens, AFrom);
+  while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ATo) do
+  begin
+    if ATokens[mIndex].Kind = TPascalTokenKind.Directive then
     begin
-      Text := Token.Text;
+      Text := ATokens[mIndex].Text;
       if StartsStr('{$', Text) then
         Text := Copy(Text, 3, MaxInt)
       else
@@ -200,6 +203,8 @@ begin
       if MatchText(Copy(Text, 1, Stop - 1), ConditionalWords) then
         Exit(True);
     end;
+    Inc(mIndex);
+  end;
 end;
 
 /// <summary>Index des ersten Tokens in [AFrom, ATo) mit dem Text AWord (Bezeichner, Schlüsselwort oder Symbol,

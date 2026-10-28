@@ -1,0 +1,13 @@
+[
+  {"reason": "assign", "updated_at": "2026-01-01T00:00:00Z",
+   "subject": {"type": "Issue", "title": "Absturz beim Speichern",
+     "url": "https://api.github.com/repos/beispiel/atlas/issues/12"}},
+  {"reason": "author", "updated_at": "2026-01-01T00:01:00Z",
+   "subject": {"type": "PullRequest", "title": "Korrektur",
+     "url": "https://api.github.com/repos/beispiel/atlas/pulls/13"}},
+  {"reason": "subscribed", "updated_at": "2026-01-01T00:02:00Z",
+   "subject": {"type": "Issue", "title": "Beobachtet",
+     "url": "https://api.github.com/repos/beispiel/andere/issues/7"}},
+  {"reason": "assign", "updated_at": "2025-12-30T00:00:00Z",
+   "subject": {"type": "Issue", "title": "Alt", "url": "https://api.github.com/repos/beispiel/atlas/issues/1"}}
+]

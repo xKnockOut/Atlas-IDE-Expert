@@ -240,7 +240,8 @@ begin
           Result := TFile.Exists(APath) or TDirectory.Exists(APath);
         end;
       Project := TDprojReader.Load(TPath.GetFullPath(ATarget), Options);
-      // Symbole wie im Editor: .dproj, Plattform, Compilerversion und Schalter (#860).
+      // Symbole wie im Editor: .dproj, Plattform, Compilerversion und Schalter (#860); ohne installiertes
+      // Delphi die Version, die das Projekt erwartet (#1321).
       Version := TDelphiVersions.Choose(ASettings.DelphiVersion,
         TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(TPath.GetFullPath(ATarget))), TDelphiInstallation.Versions);
       ASources := CheckSourcesOf(TIndexProjectFiles.Defines(Project, Version), Project.SearchPaths);
@@ -774,8 +775,9 @@ begin
       begin
         // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
         Process := TProcessRunner.Create;
-        // vcs.provider (#571): auto, git, svn oder off.
-        Git := TVcsChanges.Detect(Process, ConfigRoot, Settings.VcsProvider);
+        // vcs.provider (#571): auto, git, svn oder off; eigene Programmpfade und Zeitlimit wie im Plugin (#1285).
+        Git := TVcsChanges.Detect(Process, ConfigRoot, Settings.VcsProvider, Settings.VcsGitPath, Settings.VcsSvnPath,
+          Settings.VcsTimeoutSeconds);
         Candidates := SelectChanged(AOptions, Candidates, Git);
       end;
       for FileName in Candidates do

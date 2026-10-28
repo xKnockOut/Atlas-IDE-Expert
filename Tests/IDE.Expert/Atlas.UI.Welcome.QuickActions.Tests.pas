@@ -28,6 +28,8 @@ type
     Items: TAtlasQuickActions;
     Vcs: TAtlasProjectVcs;
     Busy: Boolean;
+    /// <summary>vcs.externals.update = ask (#1292).</summary>
+    AskExternals: Boolean;
     FState: TAtlasQuickActionState;
     FNowMs: UInt64;
     FTests: TArray<string>;
@@ -47,6 +49,7 @@ type
     procedure Run(const AProject, AProfile: string);
     function TaskNames(const AProject: string): TArray<string>;
     procedure RunTask(const AProject, AName: string);
+    procedure Pull(const AProject: string; AIgnoreExternals: Boolean);
     function BuildKey: Integer;
     function TestKey: Integer;
     function ConsoleProgram: string;
@@ -87,6 +90,10 @@ type
     procedure ContextMenuFollowsRow;
     [Test]
     procedure TasksChooseAndShowResult;
+    /// <summary>#1292: „Aktualisieren ▾“ mit „mit Externals“/„ohne Externals“, im Kontextmenü als Untermenü;
+    /// ohne ask wie bisher.</summary>
+    [Test]
+    procedure UpdateAsksForExternals;
   end;
 
 implementation
@@ -129,6 +136,8 @@ end;
 function TAtlasFakeQuickActions.Buttons(const AProject: string): TAtlasQuickActionButtons;
 begin
   Result := TAtlasWelcomeQuickActions.Buttons(Items, Vcs, Busy);
+  if AskExternals then
+    TAtlasWelcomeQuickActions.AskExternals(Result);
 end;
 
 function TAtlasFakeQuickActions.State(const AProject: string): TAtlasQuickActionState;
@@ -189,6 +198,11 @@ end;
 procedure TAtlasFakeQuickActions.RunTask(const AProject, AName: string);
 begin
   Calls := Calls + ['task ' + AProject + ' ' + AName];
+end;
+
+procedure TAtlasFakeQuickActions.Pull(const AProject: string; AIgnoreExternals: Boolean);
+begin
+  Calls := Calls + ['update ' + AProject + ' ' + BoolToStr(AIgnoreExternals, True)];
 end;
 
 function TAtlasFakeQuickActions.BuildKey: Integer;
@@ -684,6 +698,64 @@ begin
   finally
     Host.Free;
   end;
+end;
+
+procedure TAtlasQuickActionsBarTests.UpdateAsksForExternals;
+var
+  mFake: TAtlasFakeQuickActions;
+  mSource: IAtlasQuickActionsSource;
+  mHost: TBarHost;
+  mMenu: TPopupMenu;
+  mItems, mUpdate: TMenuItem;
+  mIndex, mPull: Integer;
+begin
+  mFake := TAtlasFakeQuickActions.Create;
+  mSource := mFake;
+  mFake.Items := TAtlasWelcomeQuickActions.ParseItems('pull,folder');
+  mFake.Vcs.Kind := 'svn';
+  mFake.AskExternals := True;
+  mHost := TBarHost.Create(mSource);
+  try
+    mPull := TAtlasWelcomeQuickActions.IndexOf(mHost.Bar.ButtonsOf(0), TAtlasQuickAction.Pull);
+    Assert.AreEqual('Aktualisieren ' + #$25BE, TAtlasQuickActionsBar.Caption(mHost.Bar.ButtonsOf(0)[mPull],
+      TAtlasQuickActionState.Idle, 0));
+    mItems := mHost.Bar.Menu.Items;
+    Assert.IsTrue(mHost.Bar.FillChoices(mItems, 0, mPull));
+    Assert.AreEqual(4, Integer(mItems.Count));
+    Assert.AreEqual('Aktualisieren', StripHotkey(mItems[0].Caption));
+    Assert.AreEqual('mit Externals', StripHotkey(mItems[2].Caption));
+    Assert.IsTrue(mItems[2].Default);
+    Assert.AreEqual('ohne Externals', StripHotkey(mItems[3].Caption));
+    mItems[3].Click;
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('update ' + ProjectOne + ' True', mFake.Calls[0]);
+    // Kontextmenü: „Aktualisieren“ als Untermenü.
+    mMenu := TPopupMenu.Create(mHost.Host);
+    mHost.Bar.AttachMenu(mMenu);
+    mHost.Bar.PrepareMenu(1);
+    mUpdate := nil;
+    for mIndex := 0 to mMenu.Items.Count - 1 do
+      if mMenu.Items[mIndex].Visible and (StripHotkey(mMenu.Items[mIndex].Caption) = 'Aktualisieren') then
+        mUpdate := mMenu.Items[mIndex];
+    Assert.IsNotNull(mUpdate);
+    Assert.AreEqual(2, Integer(mUpdate.Count));
+    mUpdate[0].Click;
+    CheckSynchronize;
+    Assert.AreEqual('update ' + ProjectTwo + ' False', mFake.Calls[1]);
+    // Ohne ask: einfacher Eintrag, Knopf holt sofort.
+    mFake.AskExternals := False;
+    mHost.Bar.SetRows([ProjectOne, ProjectTwo]);
+    mHost.Bar.PrepareMenu(1);
+    Assert.AreEqual(0, Integer(mUpdate.Count));
+    Assert.IsFalse(mHost.Bar.FillChoices(mItems, 0, mPull));
+    mHost.Bar.Activate(0, mPull, False);
+    CheckSynchronize;
+    Assert.AreEqual('pull ' + ProjectOne, mFake.Calls[2]);
+  finally
+    mHost.Free;
+  end;
+  mFake.Calls := nil;
 end;
 
 procedure TAtlasQuickActionsBarTests.TasksChooseAndShowResult;

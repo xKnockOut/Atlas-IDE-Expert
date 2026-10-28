@@ -57,6 +57,21 @@ type
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
+    /// <summary>#1260: issues.connections (Tracker-Verbindungen des Plugins) wird geprüft: nur https, ohne
+    /// Benutzer, eindeutige Namen.</summary>
+    [Test]
+    procedure ChecksIssueConnections;
+    /// <summary>#1261: issues.projects (Zuordnung Delphi-Projekt → Tracker-Projekt) wird geprüft: match und
+    /// connection nötig, ein Pfad nur einmal (ohne Groß-/Kleinschreibung, „/“ wie „\“).</summary>
+    [Test]
+    procedure ChecksIssueProjects;
+    /// <summary>#1262: issues.queries mit Name und Abfrage, doppelte Namen und fehlende Angaben gemeldet.</summary>
+    [Test]
+    procedure ChecksIssueQueries;
+    /// <summary>#1266: Zustand je Verbindung (stateField, assigneeField, startState, endStates) ohne Meldung;
+    /// falsche Typen werden gemeldet.</summary>
+    [Test]
+    procedure ChecksIssueConnectionStates;
     [Test]
     procedure ReadsStringLiteral;
     [Test]
@@ -71,6 +86,9 @@ type
     procedure ReadsCompilerSettings;
     [Test]
     procedure ReadsVcsProvider;
+    /// <summary>#1285: vcs.git.path, vcs.svn.path und vcs.timeoutSeconds (1 bis 300).</summary>
+    [Test]
+    procedure ReadsVcsToolPathsAndTimeout;
     [Test]
     procedure ReadsFormatSettings;
     [Test]
@@ -449,6 +467,50 @@ begin
   Assert.AreEqual('off', Settings.VcsProvider, 'Datei vor Editor');
   Settings := TConfigurationParser.ParseLayered('', '{"vcs": {"provider": "git"}}', Issues);
   Assert.AreEqual('git', Settings.VcsProvider);
+end;
+
+procedure TConfigurationParserTests.ReadsVcsToolPathsAndTimeout;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual('', Settings.VcsGitPath, 'leer = automatisch suchen');
+  Assert.AreEqual('', Settings.VcsSvnPath);
+  Assert.AreEqual(15, Settings.VcsTimeoutSeconds);
+  Settings := Parse('{"vcs": {"git": {"path": "D:\\Portable\\Git\\cmd\\git.exe"}, ' +
+    '"svn": {"path": "C:\\Programme\\TortoiseSVN\\bin\\svn.exe"}, "timeoutSeconds": 60}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('D:\Portable\Git\cmd\git.exe', Settings.VcsGitPath);
+  Assert.AreEqual('C:\Programme\TortoiseSVN\bin\svn.exe', Settings.VcsSvnPath);
+  Assert.AreEqual(60, Settings.VcsTimeoutSeconds);
+  Settings := Parse('{"vcs": {"timeoutSeconds": 0}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'unter 1');
+  Assert.AreEqual(15, Settings.VcsTimeoutSeconds, 'ungültig: Vorgabe');
+  Settings := Parse('{"vcs": {"timeoutSeconds": 301}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'über 300');
+  Settings := Parse('{"vcs": {"timeoutSeconds": "30"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'Text statt Zahl');
+  Settings := Parse('{"vcs": {"git": "git.exe", "svn": {"pfad": "svn.exe"}}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)), 'git muss ein Objekt sein, svn.pfad unbekannt');
+  Assert.AreEqual('', Settings.VcsGitPath);
+  Assert.AreEqual('', Settings.VcsSvnPath);
+  Settings := TConfigurationParser.ParseLayered('{"vcs": {"timeoutSeconds": 30}}',
+    '{"vcs": {"provider": "svn", "svn": {"path": "s.exe"}}}', Issues);
+  Assert.AreEqual('svn', Settings.VcsProvider, 'Datei vor Editor');
+  Assert.AreEqual('s.exe', Settings.VcsSvnPath);
+  Assert.AreEqual(15, Settings.VcsTimeoutSeconds, 'die Datei bestimmt den ganzen Abschnitt vcs');
+  // #1286: vcs.projects wird geprüft und als Text weitergegeben.
+  Settings := Parse('{"vcs": {"projects": [{"match": "C:\\Kasse", "provider": "svn"}, ' +
+    '{"match": "C:\\Kasse\\Lib", "provider": "git", "mainBranch": "develop"}]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.Contains(Settings.VcsProjects, '"develop"');
+  Parse('{"vcs": {"projects": [{"match": "c:/kasse/"}, {"match": "C:\\Kasse"}, {"provider": "cvs"}, 3, ' +
+    '{"match": "C:\\X", "mainBranch": "mein branch", "y": 1}]}}', Issues);
+  Assert.AreEqual(6, Integer(Length(Issues)),
+    'doppelter Pfad, unbekannte Art, ohne match, kein Objekt, Leerzeichen im Branch, unbekannte Angabe');
+  Parse('{"vcs": {"projects": {}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
 end;
 
 procedure TConfigurationParserTests.ReadsCompilerSettings;
@@ -1157,6 +1219,97 @@ begin
   Settings := TConfigurationParser.ParseLayered('{"tasks": []}', '{"tasks": [{"name": "B", "command": "b"}]}',
     Issues);
   Assert.IsTrue(Settings.Tasks.Contains('"B"'), 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksIssueConnections;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"issues": {"connections": [{"name": "Firma", "provider": "youtrack",' +
+    ' "url": "https://youtrack.firma.local"}, {"name": "GitHub", "provider": "github", "url": "https://github.com"}]}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'Beispiel aus dem Issue ohne Meldung');
+  Assert.IsTrue(Settings.IssueConnections.StartsWith('['), Settings.IssueConnections);
+  Assert.IsTrue(Settings.IssueConnections.Contains('"Firma"'), Settings.IssueConnections);
+  Settings := Parse('{"issues": {"connections": [{"name": "A", "provider": "youtrack", "url": "http://yt.local"},' +
+    ' {"name": "a", "provider": "github", "url": "https://user@github.com"}, {"provider": "", "url": 3, "token": "x"},' +
+    ' 3], "queries": []}}', Issues);
+  // http; Doppelname a und Benutzer in der Adresse; url kein String, token unbekannt, ohne name, ohne provider (leer)
+  // und ohne url; 3. queries ist seit #1262 bekannt.
+  Assert.AreEqual(9, Integer(Length(Issues)));
+  // Sprache der Oberfläche (#1263): de oder en.
+  Parse('{"issues": {"connections": [{"name": "A", "provider": "youtrack", "url": "https://yt.local",' +
+    ' "language": "de"}, {"name": "B", "provider": "youtrack", "url": "https://yt2.local", "language": "fr"}]}}',
+    Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'nur "fr"');
+  Parse('{"issues": {"connections": {"name": "A"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  Parse('{"issues": []}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'kein Objekt');
+  Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"connections": [{"name": "B", "provider": "github",' +
+    ' "url": "https://github.com"}]}}', Issues);
+  Assert.IsTrue(Settings.IssueConnections.Contains('"B"'), 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksIssueProjects;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"issues": {"projects": [{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", ' +
+    '"connection": "Firma", "project": "KASSE"}, {"match": "C:\\Projekte\\Atlas", "connection": "GitHub"}]}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'Beispiel aus dem Issue ohne Meldung; project darf fehlen');
+  Assert.IsTrue(Settings.IssueProjects.StartsWith('['), Settings.IssueProjects);
+  Assert.IsTrue(Settings.IssueProjects.Contains('"KASSE"'), Settings.IssueProjects);
+  Settings := Parse('{"issues": {"projects": [{"match": "C:\\A", "connection": "Firma"}, ' +
+    '{"match": "c:/a/", "connection": "GitHub"}, {"connection": 3, "project": 4, "x": 1}, 3]}}', Issues);
+  // Pfad doppelt; connection kein String, project kein String, x unbekannt, ohne match, ohne connection; 3.
+  Assert.AreEqual(7, Integer(Length(Issues)));
+  Parse('{"issues": {"projects": {"match": "C:\\A"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"projects": [{"match": "C:\\B", ' +
+    '"connection": "Firma"}]}}', Issues);
+  Assert.IsTrue(Settings.IssueProjects.Contains('Firma'), 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksIssueQueries;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"issues": {"queries": [{"name": "Mir zugewiesen", "query": "assignee: meine #Ungelöst"}, ' +
+    '{"name": "Sprint", "query": "#{Aktueller Sprint}", "connection": "Firma", "project": "KASSE"}]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'connection und project dürfen fehlen');
+  Assert.IsTrue(Settings.IssueQueries.StartsWith('['), Settings.IssueQueries);
+  Assert.IsTrue(Settings.IssueQueries.Contains('"Sprint"'), Settings.IssueQueries);
+  Settings := Parse('{"issues": {"queries": [{"name": "A", "query": "x"}, {"name": "a", "query": ""}, ' +
+    '{"connection": 3, "x": 1}, 3]}}', Issues);
+  // Name doppelt, query leer; connection kein String, x unbekannt, ohne name, ohne query; 3.
+  Assert.AreEqual(7, Integer(Length(Issues)));
+  Parse('{"issues": {"queries": {"name": "A"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"queries": [{"name": "B", "query": "y"}]}}',
+    Issues);
+  Assert.IsTrue(Settings.IssueQueries.Contains('"B"'), 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksIssueConnectionStates;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{"issues": {"connections": [{"name": "Firma", "provider": "youtrack",' +
+    ' "url": "https://youtrack.firma.local", "stateField": "Status", "assigneeField": "Zuständig",' +
+    ' "startState": "In Arbeit", "endStates": ["Zur Prüfung", "Erledigt"]}]}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)), 'Felder aus #1266 ohne Meldung');
+  Assert.IsTrue(mSettings.IssueConnections.Contains('"endStates"'), mSettings.IssueConnections);
+  Parse('{"issues": {"connections": [{"name": "Firma", "provider": "youtrack", "url": "https://yt.local",' +
+    ' "stateField": 3, "endStates": "Erledigt"}, {"name": "B", "provider": "github", "url": "https://github.com",' +
+    ' "endStates": ["Erledigt", 4]}]}}', mIssues);
+  // stateField keine Zeichenkette, endStates keine Liste, 4 kein Text.
+  Assert.AreEqual(3, Integer(Length(mIssues)));
 end;
 
 procedure TConfigurationParserTests.ReadsMcpDisabledTools;

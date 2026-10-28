@@ -673,7 +673,7 @@ begin
       FileName := AContext.RelativePath;
     if FileName = '' then
       FileName := AContext.UnitName + '.pas';
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
     try
       Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);

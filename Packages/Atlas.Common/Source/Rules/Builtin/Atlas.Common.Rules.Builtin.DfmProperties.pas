@@ -63,6 +63,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.FormModel,
+  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Rules.Derived,
   Atlas.Text.Lines;
 
@@ -155,6 +156,7 @@ function TPropertyChecker.FileLines(const AFileName: string): TArray<string>;
 var
   Data: TBytes;
   Text: string;
+  mFormat: TFileFormat;
 begin
   if FLines.TryGetValue(UpperCase(AFileName), Result) then
     Exit;
@@ -164,12 +166,8 @@ begin
     Result := FContext.Text.Replace(#13#10, #10).Split([#10])
   else if Assigned(FContext.ReadFile) and FContext.ReadFile(AFileName, Data) then
   begin
-    try
-      Text := TEncoding.UTF8.GetString(Data);
-    except
-      on EEncodingError do
-        Text := TEncoding.ANSI.GetString(Data);
-    end;
+    // Dieselbe Erkennung wie überall (#1327): BOM, sonst nur ganz gültiges UTF-8 als UTF-8, sonst ANSI.
+    Text := TFileEncoding.Decode(Data, mFormat);
     Result := Text.Replace(#13#10, #10).Split([#10]);
   end;
   FLines.Add(UpperCase(AFileName), Result);
