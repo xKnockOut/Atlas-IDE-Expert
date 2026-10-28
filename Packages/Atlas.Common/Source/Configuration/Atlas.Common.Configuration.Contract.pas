@@ -571,6 +571,15 @@ type
     /// <summary>Projektaufgaben (#900) als JSON-Liste (Text), sonst ''. Ausführen tut sie das Plugin; der Server
     /// prüft nur die Datei.</summary>
     Tasks: string;
+    /// <summary>Persönliche Tracker-Verbindungen (issues.connections, #1260) als JSON-Liste (Text), sonst ''.
+    /// Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    IssueConnections: string;
+    /// <summary>Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (issues.projects, #1261) als JSON-Liste
+    /// (Text), sonst ''. Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    IssueProjects: string;
+    /// <summary>Benannte Abfragen für „Meine Issues“ (issues.queries, #1262) als JSON-Liste (Text), sonst ''.
+    /// Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    IssueQueries: string;
     /// <summary>Ausgewerteter Block "format" (#43).</summary>
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;

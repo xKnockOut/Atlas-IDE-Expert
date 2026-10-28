@@ -58,6 +58,9 @@ type
     Format: string;
     /// <summary>Frühere Schlüssel, die der Import auf Key umrechnet.</summary>
     FormerKeys: TArray<string>;
+    /// <summary>Frühere Registry-Namen derselben Einstellung mit unverändertem Wert (x-renamedFrom, #1280): die
+    /// Übernahme beim Start (TAtlasSettingsRenames) und der Import älterer Dateien rechnen sie um.</summary>
+    RenamedFrom: TArray<string>;
     /// <summary>Pfad in atlas.json, dessen Wert die Einstellung im Projekt überdeckt; '' = keiner.</summary>
     ProjectPath: string;
     /// <summary>Pfad in der Projektdatei .atlas (#486), deren Wert die Einstellung überdeckt; '' = keiner.</summary>
@@ -109,7 +112,7 @@ type
     function IndexOfKey(const AKey: string): Integer;
     /// <summary>Plugin-Eintrag mit Registry-Name AName; -1 ohne.</summary>
     function IndexOfName(const AName: string): Integer;
-    /// <summary>Wie IndexOfKey, dazu Registry-Namen und x-formerKeys (AMigrated True); -1 ohne.</summary>
+    /// <summary>Wie IndexOfKey, dazu Registry-Namen, x-formerKeys und x-renamedFrom (AMigrated True); -1 ohne.</summary>
     function Resolve(const AKey: string; out AMigrated: Boolean): Integer;
     /// <summary>Gibt es den Bereich?</summary>
     function HasArea(const AArea: string): Boolean;
@@ -374,6 +377,7 @@ begin
       Entry.Secret := Flag(Schema, 'x-secret');
       Entry.Format := TextOf(Schema, 'x-format');
       Entry.FormerKeys := StringsOf(Schema, 'x-formerKeys');
+      Entry.RenamedFrom := StringsOf(Schema, 'x-renamedFrom');
       Entry.ProjectPath := TextOf(Schema, 'x-project');
       Entry.TeamPath := TextOf(Schema, 'x-team');
       Entry.SchemaJson := Schema.ToJSON;
@@ -556,15 +560,20 @@ begin
   Result := IndexOfKey(AKey);
   if Result >= 0 then
     Exit;
-  // Ältere Dateien: Registry-Namen (flache Liste ohne Schlüssel) und frühere Schlüssel.
+  // Ältere Dateien: Registry-Namen (flache Liste ohne Schlüssel), frühere Schlüssel und frühere Registry-Namen.
   AMigrated := True;
   Result := IndexOfName(AKey);
   if Result >= 0 then
     Exit;
   for Index := 0 to FEntries.Count - 1 do
+  begin
     for Former in FEntries[Index].FormerKeys do
       if SameText(Former, AKey) then
         Exit(Index);
+    for Former in FEntries[Index].RenamedFrom do
+      if SameText(Former, AKey) then
+        Exit(Index);
+  end;
   AMigrated := False;
 end;
 

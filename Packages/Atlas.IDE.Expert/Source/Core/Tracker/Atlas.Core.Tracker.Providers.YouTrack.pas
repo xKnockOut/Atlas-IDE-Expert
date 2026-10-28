@@ -7,13 +7,18 @@
 // - Issues: GET <url>/api/issues?query=<Abfrage>&fields=idReadable,
 //   numberInProject,summary,customFields(name,value(name,presentation))
 //   &$top=<Max>. Die Abfrage ist die Suchsprache der YouTrack-Oberfläche
-//   (Vorgabe "for: me #Unresolved"); mit Projektkürzel aus .atlas steht
+//   (Vorgabe "for: me #Unresolved", bei erkannter Sprache „Mir zugewiesen“
+//   aus Atlas.Core.Tracker.Templates, #1263); mit Projektkürzel aus .atlas steht
 //   "project: <Kürzel>" davor, damit die Liste dieselben Issues zeigt wie die
 //   Suche dort im Projekt.
 // - Felder: Zustand (State, Status, Zustand), Priorität (Priority,
 //   Priorität) und Sprint bzw. Board (Sprint, Sprints, Board); Werte als
 //   Objekt oder Liste mit "name" (bzw. "presentation").
 // - Browser: <url>/issue/<Kennung>.
+// - Verbindung prüfen (#1260): GET <url>/api/users/me?fields=login.
+// - Sprache der Oberfläche (#1263): GET
+//   <url>/api/admin/globalSettings/localeSettings?fields=locale(id,language,locale)
+//   (braucht Leserecht auf die globalen Einstellungen).
 
 interface
 
@@ -28,6 +33,7 @@ type
     ProviderName = 'youtrack';
     Query = 'for: me #Unresolved';
     Fields = 'idReadable,numberInProject,summary,customFields(name,value(name,presentation))';
+    LocalePath = '/api/admin/globalSettings/localeSettings?fields=locale(id,language,locale)';
   public
     class function IssuesUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string; static;
     /// <summary>Abfrage, wie sie an YouTrack geht (mit "project: …").</summary>
@@ -46,6 +52,11 @@ type
       out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
     function IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
     function PullRequestPage(const ATarget: TAtlasTrackerTarget; ANumber: Integer): string;
+    function ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
+    function ListUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
+    function SentQuery(const ATarget: TAtlasTrackerTarget): string;
+    function ParseList(const AText: string; AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
+    function LocaleUrl(const ATarget: TAtlasTrackerTarget): string;
   end;
 
 implementation
@@ -54,7 +65,8 @@ uses
   System.Classes,
   System.Generics.Collections,
   System.JSON,
-  Atlas.Text.Uris;
+  Atlas.Text.Uris,
+  Atlas.Core.Tracker.Templates;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
 var
@@ -118,6 +130,8 @@ var
   Project: string;
 begin
   Result := ATarget.Query;
+  if Result = '' then
+    Result := TAtlasTrackerTemplates.DefaultQuery(ProviderName, ATarget.Language);
   if Result = '' then
     Result := Query;
   Project := ATarget.Project;
@@ -281,6 +295,36 @@ end;
 function TAtlasYouTrackTracker.PullRequestPage(const ATarget: TAtlasTrackerTarget; ANumber: Integer): string;
 begin
   Result := '';
+end;
+
+function TAtlasYouTrackTracker.ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := '';
+  if ATarget.Server <> '' then
+    Result := ATarget.Url + '/api/users/me?fields=login';
+end;
+
+function TAtlasYouTrackTracker.ListUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
+begin
+  Result := IssuesUrl(ATarget, AMax);
+end;
+
+function TAtlasYouTrackTracker.SentQuery(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := FullQuery(ATarget);
+end;
+
+function TAtlasYouTrackTracker.ParseList(const AText: string; AMax: Integer;
+  out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
+begin
+  Result := ParseIssues(AText, AMax, AIssues);
+end;
+
+function TAtlasYouTrackTracker.LocaleUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := '';
+  if ATarget.Server <> '' then
+    Result := ATarget.Url + LocalePath;
 end;
 
 end.

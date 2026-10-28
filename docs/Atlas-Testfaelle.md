@@ -1164,8 +1164,8 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | MI8 | „Beginnen“ an #753, wenn `feature/753-atlas-bereiche-und` schon existiert | Branch wird nur ausgecheckt, Meldung „Branch … ausgecheckt …“ |
 | MI9 | YouTrack: `.atlas` mit `"tracker": {"provider": "youtrack", "url": "https://firma.youtrack.cloud", "project": "ATL"}`, Token hinterlegt, Seite anzeigen | Kennung `ATL-123`, Chips mit Zustand, Priorität und Sprint; Klick auf `ATL-123` öffnet `…/issue/ATL-123` (**Abnahme**) |
 | MI10 | SVN-Projekt mit YouTrack (MI9): „Beginnen“ an ATL-123 „Speichern im Kassenmodul hängt“ | `svn copy ^/trunk ^/branches/ATL-123-speichern-im-kassenmodul` und `svn switch`; danach zeigt `svn info` den Branch, das Projekt öffnet sich (**Abnahme**) |
-| MI11 | `welcomePage.issues.start` = „nur Kennung merken“, „Beginnen“ an ATL-123, dann in der IDE committen | Kein Branch, Meldung „ATL-123 ist das aktuelle Issue; Commit-Nachrichten beginnen mit „ATL-123 ““; Nachricht im Commit-Dialog beginnt mit `ATL-123 `; Fußzeile „„Beginnen“ merkt das Issue …“ (**Abnahme**) |
-| MI12 | `welcomePage.issues.commitPattern` leeren, committen | Nachricht bleibt unverändert, keine Datei `atlas-commit-prefix`, keine Rückfrage zum Hook (**Abnahme**) |
+| MI11 | `issues.start` = „nur Kennung merken“, „Beginnen“ an ATL-123, dann in der IDE committen | Kein Branch, Meldung „ATL-123 ist das aktuelle Issue; Commit-Nachrichten beginnen mit „ATL-123 ““; Nachricht im Commit-Dialog beginnt mit `ATL-123 `; Fußzeile „„Beginnen“ merkt das Issue …“ (**Abnahme**) |
+| MI12 | `issues.commitPattern` leeren, committen | Nachricht bleibt unverändert, keine Datei `atlas-commit-prefix`, keine Rückfrage zum Hook (**Abnahme**) |
 | MI13 | Klick auf „Issue: …“ im Statusfeld; „Ja“ | Rückfrage „Aktuelles Issue … beenden?“, danach verschwindet die Zeile, der Chip „aktuell“ ist weg, `atlas-commit-prefix` gelöscht; der Branch bleibt, aktiviert das Issue aber nicht gleich wieder |
 | MI14 | Befehlspalette „Zugang zum Issue-Tracker hinterlegen …“ (aktives Projekt mit `.atlas`); Token eingeben; dann leer lassen | Dialog „Issue-Tracker https://… (GitHub)“ mit verdecktem Feld; Meldung „Zugang … gespeichert“, der Bereich fragt sofort neu; in der Windows-Anmeldeinformationsverwaltung steht `Atlas:tracker:<Server>`; leer entfernt den Eintrag (**Abnahme**) |
 | MI15 | Kein Token hinterlegt bzw. `url` über http | Bereich zeigt „Anmeldung abgelehnt oder kein Token (Zugang zum Issue-Tracker hinterlegen)“, ohne Netzzugriff (Proxy- bzw. Firewall-Protokoll); der Befehl meldet bei http „… sendet das Token nur über https“ |
@@ -7793,3 +7793,121 @@ Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testu
 | IV12 | Win64 (LLDB): IV1, IV2 und F8 direkt nach dem Halt | Werte kommen (verzögert); kein F8 geht verloren, die Debug-Sitzung meldet jeden Halt |
 | IV13 | Schnellschalter „Werte im Editor beim Debuggen“ aus, dann F8 | Keine Werte, keine Anfrage an den Server (Diagnoseprotokoll), Verhalten wie ohne Atlas (**Abnahme**) |
 | IV14 | Server beendet, Halt | Keine Werte, keine Fehlermeldung |
+
+## Tracker-Einstellungen unter „Issue-Tracker“ (#1280)
+
+Vorbereitung: Mit einer älteren Atlas-Version Tracker (z. B. YouTrack), Abfrage und Branch-Muster gesetzt; die Registry enthält `WelcomePageIssuesTracker`, `WelcomePageIssuesQuery` usw. unter `HKCU\Software\Atlas\IdePlugin`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IT1 | Neue Version laden, Tools › Optionen › Atlas | Baum hat den Bereich „Issue-Tracker“ mit Tracker, Abfrage, Start-Optionen, Mustern und „Zugangsdaten am Tracker“; Werte wie vorher (**Abnahme**) |
+| IT2 | Registry nach IT1 ansehen | Werte stehen unter `IssuesTracker`, `IssuesQuery` …, die alten Namen `WelcomePageIssues*` sind weg; Meldungsfenster Atlas: „Einstellung welcomePage.issues.tracker heißt jetzt issues.tracker; Wert übernommen“ je Wert |
+| IT3 | IDE neu starten | Keine weitere Übernahmemeldung, Werte unverändert |
+| IT4 | Bereich „Willkommensseite“ öffnen | Nur noch „Issues“ an/aus und Knopf „Tracker-Einstellungen …“; Klick wählt den Bereich „Issue-Tracker“ (**Abnahme**) |
+| IT5 | Registry: alten und neuen Namen mit verschiedenen Werten anlegen, IDE starten | Neuer Wert gilt, alter Name entfernt, Warnung im Meldungsfenster |
+| IT6 | Einstellungen exportieren, Datei enthält `issues.tracker`; alte Exportdatei mit `welcomePage.issues.tracker` importieren | Beide Importe setzen den Tracker |
+
+## Mehrere Tracker-Verbindungen (#1260)
+
+Vorbereitung: Zugang zu einem YouTrack (https) und einem GitHub-Konto mit persönlichem Token; ein Projekt mit Abschnitt `tracker` in der `.atlas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TV1 | Tools › Optionen › Atlas › Issue-Tracker | Tabelle „Verbindungen“ oben mit Name, Anbieter, Adresse, Token; die Verbindung aus der `.atlas` steht als „… (aus .atlas)“ grau und lässt sich nicht bearbeiten oder entfernen (**Abnahme**) |
+| TV2 | „Hinzufügen“, Name „Firma“, Anbieter YouTrack, Adresse `https://youtrack.firma.de`, OK, IDE neu starten | Verbindung bleibt, steht in `%APPDATA%\Atlas\settings.json` unter `issues.connections`, nicht in der Registry |
+| TV3 | Zweite Verbindung „GitHub“ mit `https://github.com` anlegen | Beide Zeilen nebeneinander (**Abnahme**) |
+| TV4 | Adresse `http://youtrack.firma.de` bzw. `https://ich@youtrack.firma.de` eingeben | Hinweis „Nur https …“, Speichern der Zeile nicht möglich |
+| TV5 | Zweite Verbindung mit gleichem Namen anlegen | Name wird abgelehnt bzw. eindeutig gemacht |
+| TV6 | „Token hinterlegen …“ auf „Firma“, gültiges Token | Zustand „gespeichert“; Ziel `Atlas:tracker:youtrack.firma.de` in der Anmeldeverwaltung von Windows; Token nirgends in settings.json oder Protokoll |
+| TV7 | „Prüfen“ | Zustand kurz „wird geprüft …“, dann „gespeichert · geprüft <Uhrzeit>“; Dialog bleibt bedienbar (**Abnahme**) |
+| TV8 | Ungültiges Token hinterlegen, „Prüfen“ | „abgelehnt (401/403)“ |
+| TV9 | Netz trennen, „Prüfen“ | Nach höchstens 5 s „nicht erreichbar“ |
+| TV10 | Hinter einem Proxy mit Anmeldeseite prüfen | „unerwartete Antwort“, nicht „geprüft“ |
+| TV11 | „Token entfernen“, Rückfrage bestätigen | Zustand „fehlt“, Eintrag in der Anmeldeverwaltung weg |
+| TV12 | Dialog während einer laufenden Prüfung schließen, Plugin entladen | Kein Fehler, keine Zugriffsverletzung |
+| TV13 | Einstellungen exportieren und in leerer Installation importieren | `issues.connections` als JSON-Liste in der Datei, nach dem Import gleiche Zeilen; Tokens nicht enthalten |
+| TV14 | settings.json von Hand mit unbekanntem Anbieter oder doppeltem Namen speichern, Projekt prüfen | Server meldet den Eintrag in der Problemliste |
+
+## Projekte einem Tracker zuordnen (#1261)
+
+Vorbereitung: zwei Verbindungen aus TV2/TV3; Projektgruppe `Kasse.groupproj` mit zwei Projekten, ein weiteres Projekt mit Abschnitt `tracker` in der `.atlas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TP1 | Projekt ohne `.atlas`-Tracker und ohne Zuordnung öffnen, „Meine Issues“ ansehen | Fußzeile „Kein Tracker für dieses Projekt – zuordnen …“ als Link (**Abnahme**) |
+| TP2 | Link klicken | Optionen öffnen auf „Issue-Tracker“, in „Projekte“ steht eine neue Zeile mit der geöffneten `.groupproj` (bzw. ohne Gruppe der `.dproj`) und der ersten Verbindung, Feld „Tracker-Projekt“ hat den Fokus |
+| TP3 | Tracker-Projekt `KASSE` eintragen, OK | „Meine Issues“ lädt die Issues aus `KASSE`; Zeile steht in `settings.json` unter `issues.projects` (**Abnahme**) |
+| TP4 | Anderes Projekt der Gruppe aktivieren | Dieselben Issues (die Zeile der Gruppe gilt für jedes Projekt darin) |
+| TP5 | Zeile für die `.dproj` eines Gruppenprojekts mit anderem Tracker-Projekt anlegen | Für dieses Projekt gilt die `.dproj`-Zeile, für die anderen die Gruppe |
+| TP6 | „Hinzufügen …“ › „Ordner …“, Oberordner wählen; Projekt außerhalb der Gruppe in diesem Ordner öffnen | Ordnerzeile gilt; ein Ordner `C:\Projekte\Ka` passt nicht auf `C:\Projekte\Kasse\…` |
+| TP7 | Projekt mit `.atlas`-Tracker öffnen, Seite „Issue-Tracker“ ansehen | Zeile „aus .atlas“ schreibgeschützt; passende persönliche Zeilen grau mit „persönlich · von .atlas überdeckt“ (**Abnahme**) |
+| TP8 | Verbindung „Firma“ in „Werk“ umbenennen, OK | Alle Zuordnungen zeigen „Werk“, Issues laden weiter |
+| TP9 | Verbindung einer Zuordnung entfernen | Zeile bleibt mit Hinweis „Die Verbindung … gibt es nicht (mehr).“; „Meine Issues“ zeigt wieder den Link aus TP1 |
+| TP10 | Gleichen Pfad ein zweites Mal eintragen | Hinweis „Für diesen Pfad gibt es schon eine Zeile“, Wert nicht übernommen |
+| TP11 | Einstellungen exportieren und importieren | `issues.projects` als JSON-Liste, nach dem Import gleiche Zeilen |
+| TP12 | settings.json von Hand mit doppeltem Pfad oder ohne `connection` speichern | Server meldet die Zeile in der Problemliste |
+
+## Mehrere Abfragen für „Meine Issues“ (#1262)
+
+Vorbereitung: Verbindungen „Firma“ (YouTrack) und „GitHub“ aus TV2/TV3; ein YouTrack-Projekt und ein GitHub-Projekt zugeordnet (TP3); vorher in einer älteren Fassung `issues.query` bzw. `welcomePage.issues.query` = `assignee: meine #Ungelöst` gesetzt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TQ1 | Neue Fassung starten, Protokoll und Seite „Issue-Tracker“ ansehen | Tabelle „Abfragen“ hat vorn „Standard“ mit `assignee: meine #Ungelöst`; Protokoll „Einstellung issues.query ist jetzt die Abfrage „Standard“ in issues.queries“; der Registry-Wert `IssuesQuery` ist weg (**Abnahme**) |
+| TQ2 | „Meine Issues“ im YouTrack-Projekt ansehen | Rechts neben dem Titel „Standard (n) ▾“; unter der Liste „Firma · ATL · Abfrage: assignee: meine #Ungelöst“ |
+| TQ3 | „Neue Abfrage“: Name „Sprint“, Abfrage `Sprint: {Aktueller Sprint}`, Verbindung „Firma“; zweite „PRs“ mit Verbindung „GitHub“; OK | Im YouTrack-Projekt bietet die Klappliste „Standard“ und „Sprint“, nicht „PRs“ (**Abnahme**) |
+| TQ4 | „Sprint“ wählen | Liste lädt sofort neu, Kopf „Sprint (3)“, Fußzeile mit der Sprint-Abfrage; Klappliste zeigt Trefferzahlen der zuletzt geladenen Abfragen, ab 10 „10+“ |
+| TQ5 | IDE neu starten, dasselbe Projekt öffnen | „Sprint“ ist weiter gewählt, Trefferzahl aus dem letzten Stand (**Abnahme**) |
+| TQ6 | Anderes Projekt öffnen | Dort gilt die eigene Wahl bzw. die erste passende Abfrage |
+| TQ7 | Alle eigenen Abfragen entfernen, OK | Hinweis „Keine eigenen Abfragen: je Anbieter gilt „Mir zugewiesen““; Klappliste zeigt nur „Mir zugewiesen“, Fußzeile die Vorgabe des Anbieters |
+| TQ8 | „Klappliste der Abfragen“ ausschalten | Keine Klappliste, es gilt die erste passende Abfrage (**Abnahme**) |
+| TQ9 | In der Klappliste „Abfragen bearbeiten …“ | Optionen öffnen auf „Issue-Tracker“ bei der Tabelle „Abfragen“; nach OK lädt „Meine Issues“ neu |
+| TQ10 | Verbindung „Firma“ in „Werk“ umbenennen | Die Abfrage „Sprint“ zeigt „Werk“ und gilt weiter |
+| TQ11 | Zweite Abfrage mit gleichem Namen anlegen; Abfrage leer lassen | Hinweise „Den Namen gibt es schon.“ bzw. „Die Abfrage fehlt.“; die Zeile wird nicht gespeichert |
+| TQ12 | Einstellungen einer älteren Fassung (mit `issues.query`) importieren | Nach dem Import steht „Standard“ in der Tabelle |
+| TQ13 | Älteren Stand in der Einstellungshistorie wiederherstellen | Die frühere einzelne Abfrage erscheint als „Standard“ |
+| TQ14 | settings.json von Hand mit doppeltem Namen oder ohne `query` speichern | Server meldet die Zeile in der Problemliste |
+
+## Abfrage bearbeiten und testen (#1263)
+
+Vorbereitung: selbst gehostetes YouTrack mit deutscher Oberfläche als Verbindung „Firma“ mit Token, Projekt `ATL` mit mir zugewiesenen offenen Issues; GitHub-Verbindung ohne Token.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TT1 | Verbindung „Firma“ wählen, „Prüfen“, OK; settings.json ansehen | Zustand „geprüft“; an der Verbindung steht `"language": "de"`; „Meine Issues“ zeigt ohne eigene Abfrage „Abfrage: assignee: meine #Ungelöst“ (**Abnahme**) |
+| TT2 | In „Abfragen“ eine Zeile wählen, „Bearbeiten …“ (bzw. Doppelklick) | Dialog „Abfrage bearbeiten“ mit Name, Verbindung, Tracker-Projekt, Vorlage, Abfrage, „Testen“ |
+| TT3 | Verbindung „Firma“, Projekt `ATL`, Vorlage „YouTrack · Mir zugewiesen (Englisch)“ ist bei erkannter deutscher Sprache nicht in der Liste; Abfrage `assignee: me #Unresolved` von Hand, „Testen“ | „Leere Liste … Anmeldung und Verbindung stehen, nur passt kein Issue.“, Tipp „… Versuche „assignee: meine #Ungelöst““ und „Gesendet an Firma: project: ATL assignee: me #Unresolved“ (**Abnahme**) |
+| TT4 | Vorlage „YouTrack · Mir zugewiesen (Deutsch)“, „Testen“ | „N Issues gefunden (… ms): ATL-…, …“ mit höchstens drei Kennungen (**Abnahme**) |
+| TT5 | Projekt `GIBTSNICHT`, „Testen“ | „Projekt unbekannt (HTTP 404) …“ (**Abnahme**) |
+| TT6 | Abfrage `assignee: mee`, „Testen“ | „Abfrage abgelehnt (HTTP 400): …“ mit der Meldung von YouTrack (**Abnahme**) |
+| TT7 | Verbindung „GitHub“ ohne Token, Projekt `owner/repo`, „Testen“ | „Kein Token für diesen Server …“; kein Netzzugriff (**Abnahme**) |
+| TT8 | Adresse der Verbindung auf eine Anmeldeseite (Portal) ändern, „Testen“ | „Antwort nicht lesbar (HTTP 200) … vielleicht eine Anmeldeseite“ |
+| TT9 | Netzwerk trennen, „Testen“ | Nach höchstens 5 s „Nicht erreichbar …“, kein Dialog, IDE bleibt bedienbar |
+| TT10 | Gesendete Abfrage mit dem Protokoll vergleichen | Die angezeigte Abfrage entspricht genau der gesendeten; das Protokoll nennt nur Anbieter und Ergebnis, nie Adresse, Abfrage oder Token (**Abnahme**) |
+| TT11 | „Testen“ und den Dialog sofort mit „Abbrechen“ schließen | Kein Fehler, das spätere Ergebnis verfällt |
+| TT12 | Verbindung „(alle)“, Vorlagenliste ansehen | Vorlagen aller Anbieter der Verbindungen; GitHub ohne „Aktueller Sprint“ und ohne Sprachangabe |
+| TT13 | Benutzer ohne Leserecht auf die globalen Einstellungen: neue YouTrack-Verbindung, „Prüfen“ | Sprache trotzdem „de“ (Probe mit beiden Vorlagen findet nur mit der deutschen Issues) |
+| TT14 | Englisches YouTrack: „Prüfen“ | `"language": "en"`, Vorgabe `assignee: me #Unresolved` |
+
+## Issue anlegen aus dem Editor und aus Befunden (#1268)
+
+Vorbereitung: YouTrack-Verbindung „Firma“ mit Token, das Projekt der IDE ist `ATL` zugeordnet; Git-Arbeitskopie; GitHub-Verbindung mit Token und Repository `owner/repo`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NI1 | In einer Unit die Zeile `// TODO Speicherleck beim Schließen` anlegen, Cursor darauf, Rechtsklick › Atlas › „Issue anlegen …“ | Dialog mit Tracker „Firma“, Projekt `ATL`, Titel „Speicherleck beim Schließen“, Beschreibung mit Unit, Zeile, Methode, Branch und Commit; „Codeausschnitt mitsenden“ angehakt, darunter ±5 Zeilen (**Abnahme**) |
+| NI2 | Typ „Bug“, „mir zuweisen“, „Anlegen“ | Issue ATL-… in YouTrack mit Titel, Fundstelle, Code-Block `pascal`, Typ und mir als Zuständigem; die Zeile lautet danach `// TODO ATL-…: Speicherleck beim Schließen`; Kennung in der Zwischenablage; Benachrichtigung „Issue angelegt“ mit „Im Browser öffnen“ (**Abnahme**) |
+| NI3 | Dasselbe mit `{ TODO Fokus setzen }` und `(* TODO Fokus setzen *)` | `{ TODO ATL-…: Fokus setzen }` bzw. `(* TODO ATL-…: Fokus setzen *)` |
+| NI4 | Zeile ohne TODO, drei Zeilen markieren, „Issue anlegen …“ | Titel = erste markierte Zeile, Codeausschnitt = Auswahl; nach „Anlegen“ Frage „Kommentar „// ATL-…“ in die Cursorzeile einfügen?“; Ja hängt ihn an, Nein ändert nichts |
+| NI5 | „Issue anlegen …“, dann „Abbrechen“ | Nichts gesendet (Protokoll ohne Eintrag „Issue anlegen“), Code unverändert (**Abnahme**) |
+| NI6 | Token in YouTrack auf nur Lesen setzen, „Anlegen“ | Dialog bleibt offen: „Der Tracker hat das Anlegen abgelehnt (HTTP 403); der Code bleibt unverändert.“; das TODO bleibt wie es war (**Abnahme**) |
+| NI7 | Fenster „Atlas-Prüfung“, Rechtsklick auf einen Befund, „Für diesen Befund ein Issue anlegen …“ | Titel „Regel: Meldung“, Beschreibung mit Branch und „Befunde:“-Liste (Regelkennung, Meldung, Fundstelle), Codeausschnitt mit der Zeile (**Abnahme**) |
+| NI8 | Drei Befunde markieren, Rechtsklick | Eintrag „Für diese 3 Befunde ein Issue anlegen …“; Titel „3 Befunde in Unit.pas“, Liste mit allen dreien |
+| NI9 | *Optionen › Atlas › Issue-Tracker*: „„Issue anlegen …“ im Editor und bei Befunden“ aus | Eintrag fehlt im Editor-Kontextmenü, im Fenster „Atlas-Prüfung“ und in der Befehlspalette (**Abnahme**) |
+| NI10 | „Codeausschnitt in der Beschreibung vorschlagen“ aus, „Issue anlegen …“ | Häkchen „Codeausschnitt mitsenden“ nicht gesetzt, Ausschnitt ausgegraut (**Abnahme**) |
+| NI11 | Reiter *Befehle*: Taste für „Issue anlegen …“ auf Strg+Alt+I setzen, im Editor drücken | Dialog öffnet sich; ohne Taste (Vorgabe) keine Bindung |
+| NI12 | Tracker-Klappliste auf die GitHub-Verbindung, Projekt `owner/repo`, Typ aus der Liste (Labels), „Anlegen“ | Issue #… auf GitHub mit Label und Text; das TODO bekommt `#…` |
+| NI13 | „gleich beginnen“ anhaken (mit „Meine Issues“ an), „Anlegen“ | Nach dem Anlegen läuft „Beginnen“ wie in „Meine Issues“ (Branch, aktuelles Issue im Statusfeld) |
+| NI14 | Während „Wird angelegt …“ das Fenster schließen wollen | Schließen gesperrt, bis die Antwort da ist (höchstens 10 s) |
+| NI15 | Projekt ohne Zuordnung und ohne Verbindungen, „Issue anlegen …“ | Hinweis „Für dieses Projekt ist kein Issue-Tracker eingerichtet …“; „Anlegen“ gesperrt |
+| NI16 | Protokoll ansehen | Nur „Issue anlegen: youtrack, created“ o. ä.; nie Adresse, Projekt, Titel, Text oder Token |

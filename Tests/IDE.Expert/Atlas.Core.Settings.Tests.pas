@@ -39,6 +39,17 @@ type
     procedure IndexOptionsGoToGlobalFile;
     [Test]
     procedure XmlDocOptionsGoToGlobalFile;
+    /// <summary>#1260: issues.connections als JSON-Liste in settings.json, nie in der Registry; leere Liste
+    /// ohne Eintrag, kaputter Text nie in die Datei.</summary>
+    [Test]
+    procedure IssuesConnectionsGoToGlobalFile;
+    /// <summary>#1261: issues.projects wie die Verbindungen als JSON-Liste in settings.json.</summary>
+    [Test]
+    procedure IssuesProjectsGoToGlobalFile;
+    /// <summary>#1262: issues.queries wie die Verbindungen als JSON-Liste in settings.json; issues.queryPicker
+    /// bleibt in der Registry.</summary>
+    [Test]
+    procedure IssuesQueriesGoToGlobalFile;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -186,6 +197,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Generics.Collections,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Completion.Ranking,
@@ -609,6 +621,95 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.MaxMemoryBudgetMb, Loaded.MemoryBudgetMb);
 end;
 
+procedure TAtlasPluginSettingsTests.IssuesConnectionsGoToGlobalFile;
+const
+  cList = '[{"name": "Firma", "provider": "youtrack", "url": "https://youtrack.firma.local"}]';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('[]', mSettings.IssuesConnections);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.Save(mStore);
+  Assert.IsFalse(mRouted.Text.Contains('issues'), 'leere Liste ohne Eintrag: ' + mRouted.Text);
+  mSettings.IssuesConnections := cList;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"connections": [{"name": "Firma"');
+  Assert.AreEqual('', mRegistry.ReadString('IssuesConnections', ''), 'nicht in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesConnections.Contains('"Firma"'), mLoaded.IssuesConnections);
+  // Kaputter Text kommt nie in die Datei; der gespeicherte Stand bleibt.
+  mStore.WriteString('IssuesConnections', '[{"name": ');
+  Assert.Contains(mRouted.Text, '"Firma"');
+  // Falsche Art in der Datei (der Server meldet sie): Vorgabe.
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '{"issues": {"connections": "Firma"}}');
+  mStore := mRouted;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('[]', mLoaded.IssuesConnections);
+  Assert.IsTrue(MatchText('issues.connections', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesProjectsGoToGlobalFile;
+const
+  cList = '[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "connection": "Firma", "project": "KASSE"}]';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('[]', mSettings.IssuesProjects);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.Save(mStore);
+  Assert.IsFalse(mRouted.Text.Contains('projects'), 'leere Liste ohne Eintrag: ' + mRouted.Text);
+  mSettings.IssuesProjects := cList;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"projects": [{"match": ');
+  Assert.AreEqual('', mRegistry.ReadString('IssuesProjects', ''), 'nicht in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesProjects.Contains('"KASSE"'), mLoaded.IssuesProjects);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '{"issues": {"projects": 3}}');
+  mStore := mRouted;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('[]', mLoaded.IssuesProjects, 'falsche Art: Vorgabe');
+  Assert.IsTrue(MatchText('issues.projects', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesQueriesGoToGlobalFile;
+const
+  cList = '[{"name": "Sprint", "query": "#{Aktueller Sprint}", "connection": "Firma"}]';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.Save(mStore);
+  Assert.IsFalse(mRouted.Text.Contains('queries'), 'leere Liste ohne Eintrag: ' + mRouted.Text);
+  mSettings.IssuesQueries := cList;
+  mSettings.IssuesQueryPicker := False;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"queries": [{"name": ');
+  Assert.AreEqual('', mRegistry.ReadString('IssuesQueries', ''), 'nicht in der Registry');
+  Assert.AreEqual(0, mRegistry.ReadInteger('IssuesQueryPicker', 1), 'Klappliste in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesQueries.Contains('"Sprint"'), mLoaded.IssuesQueries);
+  Assert.IsFalse(mLoaded.IssuesQueryPicker);
+  Assert.IsTrue(MatchText('issues.queries', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;
 var
   Store, Inner: IAtlasSettingsStore;
@@ -817,59 +918,71 @@ var
 begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsFalse(Settings.WelcomePageIssues, 'standardmäßig aus: kein Netzzugriff');
-  Assert.AreEqual('', Settings.WelcomePageIssuesTracker, 'aus der .atlas');
-  Assert.AreEqual('', Settings.WelcomePageIssuesQuery);
-  Assert.AreEqual('branch', Settings.WelcomePageIssuesStart);
-  Assert.AreEqual('', Settings.WelcomePageIssuesBranchPattern, 'je Versionsverwaltung');
-  Assert.AreEqual('', Settings.WelcomePageIssuesBranchBase);
-  Assert.AreEqual('{kennung} ', Settings.WelcomePageIssuesCommitPattern);
+  Assert.AreEqual('', Settings.IssuesTracker, 'aus der .atlas');
+  Assert.AreEqual('[]', Settings.IssuesQueries, 'je Anbieter „Mir zugewiesen“ (#1262)');
+  Assert.IsTrue(Settings.IssuesQueryPicker);
+  Assert.IsTrue(Settings.IssuesCreate, '„Issue anlegen …“ an (#1268)');
+  Assert.IsTrue(Settings.IssuesCreateIncludeCode, 'Codeausschnitt vorgeschlagen (#1268)');
+  Assert.AreEqual(0, Settings.CreateIssueKey, 'frei belegbar, ohne Vorgabe');
+  Assert.AreEqual('branch', Settings.IssuesStart);
+  Assert.AreEqual('', Settings.IssuesBranchPattern, 'je Versionsverwaltung');
+  Assert.AreEqual('', Settings.IssuesBranchBase);
+  Assert.AreEqual('{kennung} ', Settings.IssuesCommitPattern);
   Assert.IsTrue(Settings.TrackerLogin);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
-  Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.WelcomePageIssuesCommitPattern);
+  Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Remember),
     TAtlasPluginSettings.IssuesStartRemember);
   // Normalisieren.
-  Settings.WelcomePageIssuesTracker := ' YouTrack ';
-  Settings.WelcomePageIssuesQuery := '  for: me'#13#10'#Unresolved  ';
-  Settings.WelcomePageIssuesStart := 'REMEMBER';
-  Settings.WelcomePageIssuesBranchPattern := ' bugfix/{kennung} ';
-  Settings.WelcomePageIssuesBranchBase := ' develop ';
-  Settings.WelcomePageIssuesCommitPattern := '[{kennung}] ';
+  Settings.IssuesTracker := ' YouTrack ';
+  Settings.IssuesQueries := '  ';
+  Settings.IssuesStart := 'REMEMBER';
+  Settings.IssuesBranchPattern := ' bugfix/{kennung} ';
+  Settings.IssuesBranchBase := ' develop ';
+  Settings.IssuesCommitPattern := '[{kennung}] ';
   Settings.Normalize;
-  Assert.AreEqual('youtrack', Settings.WelcomePageIssuesTracker);
-  Assert.AreEqual('for: me  #Unresolved', Settings.WelcomePageIssuesQuery, 'einzeilig');
-  Assert.AreEqual('remember', Settings.WelcomePageIssuesStart);
-  Assert.AreEqual('bugfix/{kennung}', Settings.WelcomePageIssuesBranchPattern);
-  Assert.AreEqual('develop', Settings.WelcomePageIssuesBranchBase);
-  Assert.AreEqual('[{kennung}] ', Settings.WelcomePageIssuesCommitPattern, 'Leerzeichen am Ende bleibt');
-  Settings.WelcomePageIssuesTracker := 'jira';
-  Settings.WelcomePageIssuesStart := 'egal';
-  Settings.WelcomePageIssuesCommitPattern := '';
+  Assert.AreEqual('youtrack', Settings.IssuesTracker);
+  Assert.AreEqual('[]', Settings.IssuesQueries, 'leer = keine');
+  Assert.AreEqual('remember', Settings.IssuesStart);
+  Assert.AreEqual('bugfix/{kennung}', Settings.IssuesBranchPattern);
+  Assert.AreEqual('develop', Settings.IssuesBranchBase);
+  Assert.AreEqual('[{kennung}] ', Settings.IssuesCommitPattern, 'Leerzeichen am Ende bleibt');
+  Settings.IssuesTracker := 'jira';
+  Settings.IssuesStart := 'egal';
+  Settings.IssuesCommitPattern := '';
   Settings.Normalize;
-  Assert.AreEqual('', Settings.WelcomePageIssuesTracker);
-  Assert.AreEqual('branch', Settings.WelcomePageIssuesStart);
-  Assert.AreEqual('', Settings.WelcomePageIssuesCommitPattern, 'leer = aus');
+  Assert.AreEqual('', Settings.IssuesTracker);
+  Assert.AreEqual('branch', Settings.IssuesStart);
+  Assert.AreEqual('', Settings.IssuesCommitPattern, 'leer = aus');
   // Speichern und Laden.
   Settings.WelcomePageIssues := True;
-  Settings.WelcomePageIssuesTracker := 'github';
-  Settings.WelcomePageIssuesQuery := 'label:bug';
-  Settings.WelcomePageIssuesStart := 'remember';
-  Settings.WelcomePageIssuesBranchPattern := 'issue/{nummer}';
-  Settings.WelcomePageIssuesBranchBase := 'trunk';
-  Settings.WelcomePageIssuesCommitPattern := '{kennung}: ';
+  Settings.IssuesTracker := 'github';
+  Settings.IssuesQueries := '[{"name": "Bugs", "query": "label:bug"}]';
+  Settings.IssuesQueryPicker := False;
+  Settings.IssuesCreate := False;
+  Settings.IssuesCreateIncludeCode := False;
+  Settings.CreateIssueKey := $4049;
+  Settings.IssuesStart := 'remember';
+  Settings.IssuesBranchPattern := 'issue/{nummer}';
+  Settings.IssuesBranchBase := 'trunk';
+  Settings.IssuesCommitPattern := '{kennung}: ';
   Settings.TrackerLogin := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.IsTrue(Loaded.WelcomePageIssues);
-  Assert.AreEqual('github', Loaded.WelcomePageIssuesTracker);
-  Assert.AreEqual('label:bug', Loaded.WelcomePageIssuesQuery);
-  Assert.AreEqual('remember', Loaded.WelcomePageIssuesStart);
-  Assert.AreEqual('issue/{nummer}', Loaded.WelcomePageIssuesBranchPattern);
-  Assert.AreEqual('trunk', Loaded.WelcomePageIssuesBranchBase);
-  Assert.AreEqual('{kennung}: ', Loaded.WelcomePageIssuesCommitPattern);
+  Assert.AreEqual('github', Loaded.IssuesTracker);
+  Assert.AreEqual('[{"name": "Bugs", "query": "label:bug"}]', Loaded.IssuesQueries);
+  Assert.IsFalse(Loaded.IssuesQueryPicker);
+  Assert.IsFalse(Loaded.IssuesCreate);
+  Assert.IsFalse(Loaded.IssuesCreateIncludeCode);
+  Assert.AreEqual($4049, Loaded.CreateIssueKey, 'Strg+I');
+  Assert.AreEqual('remember', Loaded.IssuesStart);
+  Assert.AreEqual('issue/{nummer}', Loaded.IssuesBranchPattern);
+  Assert.AreEqual('trunk', Loaded.IssuesBranchBase);
+  Assert.AreEqual('{kennung}: ', Loaded.IssuesCommitPattern);
   Assert.IsFalse(Loaded.TrackerLogin);
 end;
 

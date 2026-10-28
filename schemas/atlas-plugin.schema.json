@@ -1,7 +1,7 @@
 ﻿{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Plugin-Einstellungen",
-  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
+  "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-renamedFrom (#1280): frühere Registry-Namen derselben Einstellung mit unverändertem Wert, beim ersten Start übernommen und entfernt; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
   "x-version": 1,
   "x-areas": {
     "editor": {
@@ -47,6 +47,10 @@
     "welcome": {
       "caption": "Willkommensseite",
       "captionEn": "Welcome page"
+    },
+    "issues": {
+      "caption": "Issue-Tracker",
+      "captionEn": "Issue tracker"
     },
     "general": {
       "caption": "Allgemein",
@@ -2329,6 +2333,16 @@
       "x-page": "Prüfregeln",
       "x-control": "Schalter „Compilercode zeigen“",
       "x-issue": "#1024"
+    },
+    "CreateIssueKey": {
+      "type": "integer",
+      "default": 0,
+      "description": "Tastenkürzel für „Issue anlegen …“ im Editor (#1268); 0 = keins.",
+      "x-key": "keys.createIssue",
+      "x-area": "keys",
+      "x-format": "shortcut",
+      "x-page": "Befehle",
+      "x-issue": "#1268"
     },
     "ProblemsWindowKey": {
       "type": "integer",
@@ -4990,76 +5004,6 @@
       "x-captionEn": "My issues from the tracker",
       "x-issue": "#765"
     },
-    "WelcomePageIssuesTracker": {
-      "type": "string",
-      "enum": [
-        "",
-        "github",
-        "youtrack"
-      ],
-      "default": "",
-      "x-key": "welcomePage.issues.tracker",
-      "x-area": "welcome",
-      "x-team": "tracker.provider",
-      "x-page": "Willkommensseite",
-      "x-issue": "#765"
-    },
-    "WelcomePageIssuesQuery": {
-      "type": "string",
-      "default": "",
-      "x-key": "welcomePage.issues.query",
-      "x-area": "welcome",
-      "x-page": "Willkommensseite",
-      "x-issue": "#765"
-    },
-    "WelcomePageIssuesStart": {
-      "type": "string",
-      "enum": [
-        "branch",
-        "remember"
-      ],
-      "default": "branch",
-      "x-key": "welcomePage.issues.start",
-      "x-area": "welcome",
-      "x-page": "Willkommensseite",
-      "x-issue": "#765"
-    },
-    "WelcomePageIssuesBranchPattern": {
-      "type": "string",
-      "default": "",
-      "x-key": "welcomePage.issues.branchPattern",
-      "x-area": "welcome",
-      "x-page": "Willkommensseite",
-      "x-issue": "#765"
-    },
-    "WelcomePageIssuesBranchBase": {
-      "type": "string",
-      "default": "",
-      "x-key": "welcomePage.issues.branchBase",
-      "x-area": "welcome",
-      "x-page": "Willkommensseite",
-      "x-issue": "#765"
-    },
-    "WelcomePageIssuesCommitPattern": {
-      "type": "string",
-      "default": "{kennung} ",
-      "x-key": "welcomePage.issues.commitPattern",
-      "x-area": "welcome",
-      "x-page": "Willkommensseite",
-      "x-issue": "#765"
-    },
-    "TrackerLogin": {
-      "type": "boolean",
-      "default": true,
-      "x-key": "welcomePage.issues.login",
-      "x-area": "welcome",
-      "x-feature": "WelcomePage",
-      "x-page": "Willkommensseite",
-      "x-quickToggle": true,
-      "x-caption": "Zugang zum Issue-Tracker",
-      "x-captionEn": "Issue tracker access",
-      "x-issue": "#765"
-    },
     "WelcomePageCustomLayout": {
       "type": "boolean",
       "default": true,
@@ -5158,6 +5102,173 @@
       "description": "Zugangsdaten beim Export: omit lässt sie aus, placeholder schreibt den Platzhalter \"<secret>\"",
       "x-control": "Auswahl",
       "x-issue": "#723"
+    },
+    "IssuesTracker": {
+      "type": "string",
+      "enum": [
+        "",
+        "github",
+        "youtrack"
+      ],
+      "default": "",
+      "x-key": "issues.tracker",
+      "x-area": "issues",
+      "x-team": "tracker.provider",
+      "x-page": "Issue-Tracker",
+      "x-formerKeys": [
+        "welcomePage.issues.tracker"
+      ],
+      "x-renamedFrom": [
+        "WelcomePageIssuesTracker"
+      ],
+      "x-issue": "#765, #1280"
+    },
+    "IssuesStart": {
+      "type": "string",
+      "enum": [
+        "branch",
+        "remember"
+      ],
+      "default": "branch",
+      "x-key": "issues.start",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-formerKeys": [
+        "welcomePage.issues.start"
+      ],
+      "x-renamedFrom": [
+        "WelcomePageIssuesStart"
+      ],
+      "x-issue": "#765, #1280"
+    },
+    "IssuesBranchPattern": {
+      "type": "string",
+      "default": "",
+      "x-key": "issues.branchPattern",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-formerKeys": [
+        "welcomePage.issues.branchPattern"
+      ],
+      "x-renamedFrom": [
+        "WelcomePageIssuesBranchPattern"
+      ],
+      "x-issue": "#765, #1280"
+    },
+    "IssuesBranchBase": {
+      "type": "string",
+      "default": "",
+      "x-key": "issues.branchBase",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-formerKeys": [
+        "welcomePage.issues.branchBase"
+      ],
+      "x-renamedFrom": [
+        "WelcomePageIssuesBranchBase"
+      ],
+      "x-issue": "#765, #1280"
+    },
+    "IssuesCommitPattern": {
+      "type": "string",
+      "default": "{kennung} ",
+      "x-key": "issues.commitPattern",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-formerKeys": [
+        "welcomePage.issues.commitPattern"
+      ],
+      "x-renamedFrom": [
+        "WelcomePageIssuesCommitPattern"
+      ],
+      "x-issue": "#765, #1280"
+    },
+    "TrackerLogin": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "issues.login",
+      "x-area": "issues",
+      "x-feature": "WelcomePage",
+      "x-page": "Issue-Tracker",
+      "x-quickToggle": true,
+      "x-caption": "Zugang zum Issue-Tracker",
+      "x-captionEn": "Issue tracker access",
+      "x-formerKeys": [
+        "welcomePage.issues.login"
+      ],
+      "x-issue": "#765, #1280"
+    },
+    "IssuesConnections": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object"
+      },
+      "description": "Persönliche Tracker-Verbindungen mit name, provider und url (#1260); liegen in settings.json unter issues.connections, das Token im Anmeldespeicher von Windows. Im Plugin als JSON-Text gelesen und geschrieben.",
+      "x-key": "issues.connections",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Tabelle Verbindungen",
+      "x-issue": "#1260"
+    },
+    "IssuesProjects": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object"
+      },
+      "description": "Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt mit match, connection und project (#1261); liegt in settings.json unter issues.projects. Im Plugin als JSON-Text gelesen und geschrieben.",
+      "x-key": "issues.projects",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Tabelle Projekte",
+      "x-issue": "#1261"
+    },
+    "IssuesQueries": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object"
+      },
+      "description": "Benannte Abfragen für „Meine Issues“ mit name, query und optional connection und project (#1262); liegen in settings.json unter issues.queries. Ohne eigene Abfragen gilt je Anbieter „Mir zugewiesen“. Ein früheres issues.query wird beim ersten Start zur Abfrage „Standard“. Im Plugin als JSON-Text gelesen und geschrieben.",
+      "x-key": "issues.queries",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Tabelle Abfragen",
+      "x-formerKeys": [
+        "issues.query",
+        "welcomePage.issues.query",
+        "IssuesQuery",
+        "WelcomePageIssuesQuery"
+      ],
+      "x-issue": "#765, #1262"
+    },
+    "IssuesQueryPicker": {
+      "type": "boolean",
+      "default": true,
+      "description": "Klappliste der Abfragen rechts neben dem Titel von „Meine Issues“ mit der Trefferzahl der letzten Abfrage (#1262); aus = keine Klappliste, es gilt die erste passende Abfrage.",
+      "x-key": "issues.queryPicker",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-issue": "#1262"
+    },
+    "IssuesCreate": {
+      "type": "boolean",
+      "default": true,
+      "description": "Befehl „Issue anlegen …“ im Editor-Kontextmenü (Taste keys.createIssue, Palette Atlas.CreateIssue) und „Für diesen Befund ein Issue anlegen …“ im Fenster „Atlas-Prüfung“ (#1268); aus = beide fehlen.",
+      "x-key": "issues.create",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-issue": "#1268"
+    },
+    "IssuesCreateIncludeCode": {
+      "type": "boolean",
+      "default": true,
+      "description": "Codeausschnitt (Auswahl bzw. ±5 Zeilen, bei Befunden die Zeile) in der Beschreibung eines neuen Issues vorschlagen (#1268); aus = das Häkchen „Codeausschnitt“ im Dialog ist nicht gesetzt.",
+      "x-key": "issues.create.includeCode",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-issue": "#1268"
     }
   },
   "additionalProperties": false

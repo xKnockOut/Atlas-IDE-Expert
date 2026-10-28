@@ -58,6 +58,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `mcp` | gemischt, siehe unten | object | – | z. B. `{"disabledTools":["rename_symbol","apply_code_action"]}`, `{"globalSettings":false}` | MCP-Modus (--mcp) für KI-Assistenten. |
 | `format` | Projekt (atlas.json) | object | – |  | Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. |
 | `tasks` | global und Projekt | array<object> | – |  | Projektaufgaben (#900): Befehle des Projekts, die das Plugin per Befehlspalette, Menü Atlas › Aufgaben, Taste, Statusfeld oder Schnellaktion startet; die Ausgabe steht im Register „Atlas-Aufgaben“, erkannte Fundstellen als Befunde in Problemliste und Editor. Projekt vor global bei gleichem Namen. Variablen in command, args, cwd und env: ${projectDir}, ${groupDir}, ${file}, ${fileDir}, ${config}, ${platform}, ${BDS}. |
+| `issues` | global (settings.json) | object | – |  | Issue-Tracker im Plugin (Tools › Optionen › Atlas › Issue-Tracker, Bereich „Meine Issues“). Persönlich, daher nur in settings.json; der Abschnitt tracker der Projektdatei .atlas gilt daneben für das Team. |
 | `logLevel` | global (settings.json) | string | `"info"` | `"debug"`, `"info"`, `"warning"`, `"error"` | Mindeststufe der Meldungen im Ausgabefenster und in der Logdatei. Gilt ab dem nächsten Start; die Kommandozeilenoption --log-level hat Vorrang. |
 | `logFile` | global (settings.json) | string | `""` |  | Optionale Logdatei des Servers (Rotation bei 10 MB). Gilt ab dem nächsten Start; --log hat Vorrang. |
 | `traceFile` | global (settings.json) | string | `""` |  | Optionaler Mitschnitt aller JSON-Nachrichten zur Fehlersuche. Gilt ab dem nächsten Start; --trace hat Vorrang. |
@@ -358,6 +359,14 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `format.alignAssignments` | Projekt (atlas.json) | boolean | `false` |  | := untereinander stehender Zuweisungen ausrichten. |
 | `format.alignDeclarations` | Projekt (atlas.json) | boolean | `false` |  | Doppelpunkte bzw. = untereinander stehender Deklarationen (var, const, Felder, Parameter) ausrichten. |
 | `format.alignComments` | Projekt (atlas.json) | boolean | `false` |  | Kommentare am Zeilenende untereinander stehender Zeilen ausrichten. |
+
+## issues
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `issues.connections` | global (settings.json) | array<object> | `` |  | Persönliche Tracker-Verbindungen (#1260), z. B. das Firmen-YouTrack und GitHub nebeneinander. Das Token steht nie hier, sondern im Anmeldespeicher von Windows (Atlas:tracker:<Server>, „Token hinterlegen …“). |
+| `issues.projects` | global (settings.json) | array<object> | `` |  | Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261) für Projekte ohne tracker in der .atlas. Es gilt die Zeile für genau diese .dproj, sonst die für die geöffnete .groupproj, sonst der längste passende Ordner; eine .atlas mit tracker hat Vorrang. |
+| `issues.queries` | global (settings.json) | array<object> | `` |  | Benannte Abfragen für „Meine Issues“ (#1262), wählbar in der Klappliste neben dem Titel. Ohne eigene Abfragen gilt je Anbieter „Mir zugewiesen“ (GitHub assignee:@me state:open, YouTrack for: me #Unresolved). Ein früheres issues.query wird einmal zur Abfrage „Standard“. |
 
 ## Beispiel
 

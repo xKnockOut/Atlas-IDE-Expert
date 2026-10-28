@@ -238,6 +238,8 @@ begin
   Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'WelcomePageIssues', Value));
   Assert.IsFalse(Value);
   Assert.IsTrue(TAtlasQuickToggles.Find(Toggles, 'TrackerLogin', Toggle));
+  // Seit #1280 auf der eigenen Seite Issue-Tracker (issues.login).
+  Assert.AreEqual('Issue-Tracker', Toggle.Page);
   Assert.IsTrue(TAtlasQuickToggles.GetFlag(TAtlasPluginSettings.Defaults, 'TrackerLogin', Value));
   Assert.IsTrue(Value);
   // Jeder Schalter ist eine Einstellung des Plugins.

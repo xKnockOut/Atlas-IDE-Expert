@@ -24,6 +24,8 @@
 // Projekts, settings.json über „Weitere globale Einstellungen“) mit einem Knoten je Gruppe; im Hauptknoten der
 // Weg dorthin (OnRulesProject, OnRulesGlobal). Unterknoten „Prüffenster“ (problems.window*, problems.live),
 // „Compiler vorab“ (problems.compilerMerge, problems.showCompilerCode) und „Profile und Baseline“.
+// Bereich Issue-Tracker (#1280): Tracker, Abfrage, Start-Optionen, Muster und Zugang (issues.*); auf der
+// Willkommensseite bleibt nur die Sektion an/aus mit dem Sprung „Tracker-Einstellungen …“.
 
 interface
 
@@ -60,6 +62,11 @@ uses
   Atlas.Core.Settings.EventBreakNames,
   Atlas.Text.StepFilter,
   Atlas.Core.Settings.Reassigned,
+  Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Connections,
+  Atlas.Core.Tracker.Projects,
+  Atlas.Core.Tracker.Queries,
+  Atlas.Core.Tracker.QueryTest,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -105,6 +112,23 @@ type
   TAtlasSettingsAskName = reference to function(const APrompt: string; var AName: string): Boolean;
   /// <summary>Meldung (AQuestion False) oder Rückfrage mit Ja/Nein; True = Ja bzw. gelesen.</summary>
   TAtlasSettingsConfirm = reference to function(const AText: string; AQuestion: Boolean): Boolean;
+
+  /// <summary>Zustand des Tokens einer Tracker-Verbindung (#1260), ohne Netz.</summary>
+  TAtlasTrackerStateEvent = reference to function(const AConnection: TAtlasTrackerConnection): TAtlasTrackerTokenStatus;
+  /// <summary>Knopf an einer Tracker-Verbindung (#1260): Token hinterlegen, prüfen, entfernen.</summary>
+  TAtlasTrackerConnectionEvent = reference to procedure(const AConnection: TAtlasTrackerConnection);
+  /// <summary>„Hinzufügen …“ der Tabelle Projekte (#1261): .dproj bzw. .groupproj (AFolder False) oder Ordner
+  /// wählen; False bei Abbruch.</summary>
+  TAtlasTrackerBrowseEvent = reference to function(AFolder: Boolean; out APath: string): Boolean;
+  TAtlasQueryTestDone = reference to procedure(const AResult: TAtlasTrackerQueryTestResult);
+  /// <summary>„Testen“ im Dialog „Abfrage bearbeiten“ (#1263): ATarget (Abfrage, Projekt, Sprache) über
+  /// AConnection im Hintergrund abfragen und ADone im Hauptthread aufrufen.</summary>
+  TAtlasQueryTestEvent = reference to procedure(const AConnection: TAtlasTrackerConnection;
+    const ATarget: TAtlasTrackerTarget; const ADone: TAtlasQueryTestDone);
+  /// <summary>„Bearbeiten …“ der Tabelle Abfragen (#1263): AQuery im Dialog ändern; True bei OK. ATaken: Namen der
+  /// übrigen Abfragen.</summary>
+  TAtlasTrackerQueryEditEvent = reference to function(var AQuery: TAtlasTrackerQuery;
+    const AConnections: TArray<TAtlasTrackerConnection>; const ATaken: TArray<string>): Boolean;
 
   /// <summary>Seite eines Knotens im Baum (#890): der Bereich selbst (Node leer) oder ein Unterpunkt.</summary>
   TAtlasSettingsNodePage = record
@@ -497,6 +521,7 @@ type
     FNextProblemKey: TEdit;
     FPreviousProblemKey: TEdit;
     FProblemsWindowKey: TEdit;
+    FCreateIssueKey: TEdit;
     /// <summary>Fenster „Atlas-Prüfung“, laufende Prüfung und Aktionszeile im Hover (#909).</summary>
     FProblemsWindow: TCheckBox;
     FProblemsWindowScope: TAtlasChoiceBox;
@@ -623,13 +648,80 @@ type
     FWelcomeTestsCiNotify: TCheckBox;
     FCiLogin: TCheckBox;
     FWelcomeIssues: TCheckBox;
-    FWelcomeIssuesTracker: TAtlasChoiceBox;
-    FWelcomeIssuesQuery: TEdit;
-    FWelcomeIssuesStart: TAtlasChoiceBox;
-    FWelcomeIssuesBranchPattern: TEdit;
-    FWelcomeIssuesBranchBase: TEdit;
-    FWelcomeIssuesCommitPattern: TEdit;
+    FIssuesTracker: TAtlasChoiceBox;
+    FIssuesStart: TAtlasChoiceBox;
+    FIssuesBranchPattern: TEdit;
+    FIssuesBranchBase: TEdit;
+    FIssuesCommitPattern: TEdit;
     FTrackerLogin: TCheckBox;
+    FWelcomeIssuesLink: TButton;
+    // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
+    FIssuesConnections: TListView;
+    FIssuesConnectionName: TEdit;
+    FIssuesConnectionProvider: TAtlasChoiceBox;
+    FIssuesConnectionUrl: TEdit;
+    FIssuesConnectionNote: TLabel;
+    FIssuesConnectionAdd: TButton;
+    FIssuesConnectionRemove: TButton;
+    FIssuesConnectionToken: TButton;
+    FIssuesConnectionCheck: TButton;
+    /// <summary>Persönliche Verbindungen, wie die Seite sie zeigt; gespeichert werden die mit Adresse.</summary>
+    FTrackerConnections: TArray<TAtlasTrackerConnection>;
+    /// <summary>Verbindung aus der .atlas des aktiven Projekts (schreibgeschützt), hinter den persönlichen.</summary>
+    FTrackerTeam: TArray<TAtlasTrackerConnection>;
+    FTrackerProviderNames: TArray<string>;
+    FTrackerProviderCaptions: TArray<string>;
+    /// <summary>Server (CredentialTarget), deren Prüfung läuft.</summary>
+    FTrackerChecking: TArray<string>;
+    /// <summary>Gewählte Zeile; -1 = keine.</summary>
+    FTrackerSelected: Integer;
+    /// <summary>Die Seite füllt die Felder selbst: OnChange übernimmt nichts.</summary>
+    FTrackerFilling: Boolean;
+    FOnTrackerState: TAtlasTrackerStateEvent;
+    FOnTrackerToken: TAtlasTrackerConnectionEvent;
+    FOnTrackerCheck: TAtlasTrackerConnectionEvent;
+    FOnTrackerRemove: TAtlasTrackerConnectionEvent;
+    FOnTrackerTeam: TFunc<TArray<TAtlasTrackerConnection>>;
+    // Zuordnung Delphi-Projekt → Tracker-Projekt (#1261): Tabelle, Felder der gewählten Zeile, Knöpfe.
+    FIssuesProjects: TListView;
+    FIssuesProjectMatch: TEdit;
+    FIssuesProjectConnection: TAtlasChoiceBox;
+    FIssuesProjectProject: TEdit;
+    FIssuesProjectNote: TLabel;
+    FIssuesProjectAddCurrent: TButton;
+    FIssuesProjectAdd: TButton;
+    FIssuesProjectRemove: TButton;
+    FIssuesProjectAddMenu: TPopupMenu;
+    /// <summary>Persönliche Zeilen, wie die Seite sie zeigt; gespeichert werden die mit Pfad und Verbindung.
+    /// </summary>
+    FTrackerProjects: TArray<TAtlasTrackerProjectMapping>;
+    /// <summary>Aktives Projekt, geöffnete .groupproj und Zeile aus der .atlas (beim Aufbau der Tabelle).</summary>
+    FTrackerContext: TAtlasTrackerProjectContext;
+    /// <summary>Namen der Verbindungen in der Auswahl der Zeile.</summary>
+    FTrackerProjectChoices: TArray<string>;
+    FTrackerProjectSelected: Integer;
+    FTrackerProjectFilling: Boolean;
+    FOnTrackerContext: TFunc<TAtlasTrackerProjectContext>;
+    FOnTrackerBrowse: TAtlasTrackerBrowseEvent;
+    // Benannte Abfragen (#1262).
+    FIssuesQueries: TListView;
+    FIssuesQueryName: TEdit;
+    FIssuesQueryText: TEdit;
+    FIssuesQueryConnection: TAtlasChoiceBox;
+    FIssuesQueryProject: TEdit;
+    FIssuesQueryNote: TLabel;
+    FIssuesQueryAdd: TButton;
+    FIssuesQueryRemove: TButton;
+    FIssuesQueryEdit: TButton;
+    FOnTrackerQueryTest: TAtlasQueryTestEvent;
+    FOnTrackerQueryEdit: TAtlasTrackerQueryEditEvent;
+    FIssuesQueryPicker: TCheckBox;
+    FIssuesCreate: TCheckBox;
+    FIssuesCreateIncludeCode: TCheckBox;
+    /// <summary>Zeilen, wie die Seite sie zeigt; gespeichert werden die mit Name und Abfrage.</summary>
+    FTrackerQueries: TArray<TAtlasTrackerQuery>;
+    FTrackerQuerySelected: Integer;
+    FTrackerQueryFilling: Boolean;
     FWelcomeQuickActions: TCheckBox;
     FWelcomeQuickActionsItems: array[TAtlasQuickAction] of TCheckBox;
     FWelcomeQuickActionsConsole: TEdit;
@@ -793,6 +885,70 @@ type
     procedure AddWelcomeLayoutButtons;
     procedure WelcomeLayoutChange(Sender: TObject);
     procedure WelcomeLayoutNewClick(Sender: TObject);
+    /// <summary>„Tracker-Einstellungen …“ (#1280): zeigt die Seite Issue-Tracker.</summary>
+    procedure WelcomeIssuesLinkClick(Sender: TObject);
+    procedure AddTrackerConnectionsSection;
+    /// <summary>Gespeichert werden Verbindungen mit Name und gültiger Adresse.</summary>
+    function TrackerConnectionsJson: string;
+    function TrackerRows: TArray<TAtlasTrackerConnection>;
+    function TrackerProviderCaption(const AName: string): string;
+    function TrackerStateText(const AConnection: TAtlasTrackerConnection): string;
+    function TrackerEditable: Boolean;
+    procedure TrackerFillFields;
+    procedure TrackerSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+    procedure TrackerNameChange(Sender: TObject);
+    procedure TrackerProviderChange(Sender: TObject);
+    procedure TrackerUrlChange(Sender: TObject);
+    procedure TrackerAddClick(Sender: TObject);
+    procedure TrackerRemoveClick(Sender: TObject);
+    procedure TrackerTokenClick(Sender: TObject);
+    procedure TrackerCheckClick(Sender: TObject);
+    /// <summary>Zeile mit Beschriftung links und AControl rechts daneben (Verbindungen, Projekte).</summary>
+    function AddTrackerLabelled(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
+    function AddTrackerButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
+      AClick: TNotifyEvent): TButton;
+    procedure AddTrackerColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer);
+    /// <summary>Grauer Hinweis unter einer Tabelle.</summary>
+    procedure AddTrackerHint(AId: TAtlasTextId; AAnchor: TControl);
+    procedure AddTrackerProjectsSection;
+    function TrackerProjectsJson: string;
+    function TrackerProjectRows: TArray<TAtlasTrackerProjectMapping>;
+    function TrackerProjectEditable: Boolean;
+    function TrackerProjectSourceText(const AMapping: TAtlasTrackerProjectMapping): string;
+    function TrackerProjectCovered(const AMapping: TAtlasTrackerProjectMapping): Boolean;
+    procedure TrackerProjectFillFields;
+    procedure TrackerProjectNoteFor(const AMapping: TAtlasTrackerProjectMapping);
+    procedure TrackerProjectSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+    procedure TrackerProjectDrawItem(Sender: TCustomListView; Item: TListItem; State: TCustomDrawState;
+      var DefaultDraw: Boolean);
+    procedure TrackerProjectMatchChange(Sender: TObject);
+    procedure TrackerProjectConnectionChange(Sender: TObject);
+    procedure TrackerProjectProjectChange(Sender: TObject);
+    procedure TrackerProjectAddCurrentClick(Sender: TObject);
+    procedure TrackerProjectAddClick(Sender: TObject);
+    procedure TrackerProjectAddFileClick(Sender: TObject);
+    procedure TrackerProjectAddFolderClick(Sender: TObject);
+    procedure TrackerProjectRemoveClick(Sender: TObject);
+    /// <summary>Neue Zeile für AMatch (oder die vorhandene) wählen; Verbindung = erste persönliche.</summary>
+    procedure TrackerProjectAdd(const AMatch: string);
+    /// <summary>„Hinzufügen …“ ohne OnTrackerBrowse: Datei- bzw. Ordnerauswahl von Windows.</summary>
+    function TrackerBrowse(AFolder: Boolean; out APath: string): Boolean;
+    procedure AddTrackerQueriesSection;
+    function TrackerQueriesJson: string;
+    function TrackerQueryEditable: Boolean;
+    /// <summary>Verbindung der Zeile in der Auswahl: 0 = „(alle)“, dann die Verbindungen.</summary>
+    function TrackerQueryConnectionChoice(const AConnection: string): Integer;
+    procedure TrackerQueryFillFields;
+    procedure TrackerQueryNoteFor(const AQuery: TAtlasTrackerQuery);
+    procedure TrackerQuerySelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+    procedure TrackerQueryNameChange(Sender: TObject);
+    procedure TrackerQueryTextChange(Sender: TObject);
+    procedure TrackerQueryConnectionChange(Sender: TObject);
+    procedure TrackerQueryProjectChange(Sender: TObject);
+    procedure TrackerQueryAddClick(Sender: TObject);
+    procedure TrackerQueryRemoveClick(Sender: TObject);
+    procedure TrackerQueryEditClick(Sender: TObject);
+    procedure TrackerQueryRowChanged;
     procedure WelcomeLayoutRenameClick(Sender: TObject);
     procedure WelcomeLayoutDeleteClick(Sender: TObject);
     /// <summary>Ob das Häkchen bzw. die Auswahl des Bereichs AId ihn zeigt („Neu in Atlas“: nicht „Aus“).
@@ -838,6 +994,8 @@ type
     procedure AddUndoSection;
     procedure AddUnitSearchSection;
     procedure AddWelcomeSection;
+    /// <summary>Seite Issue-Tracker (#1280): Anbieter, Abfrage, „Beginnen“, Muster und Zugang (issues.*).</summary>
+    procedure AddIssuesSection;
     procedure AddUpdatesSection;
     procedure AddBugReportSection;
     procedure IndexRefreshClick(Sender: TObject);
@@ -1082,13 +1240,51 @@ type
     property WelcomeTestsCiNotify: TCheckBox read FWelcomeTestsCiNotify;
     property CiLogin: TCheckBox read FCiLogin;
     property WelcomeIssues: TCheckBox read FWelcomeIssues;
-    property WelcomeIssuesTracker: TAtlasChoiceBox read FWelcomeIssuesTracker;
-    property WelcomeIssuesQuery: TEdit read FWelcomeIssuesQuery;
-    property WelcomeIssuesStart: TAtlasChoiceBox read FWelcomeIssuesStart;
-    property WelcomeIssuesBranchPattern: TEdit read FWelcomeIssuesBranchPattern;
-    property WelcomeIssuesBranchBase: TEdit read FWelcomeIssuesBranchBase;
-    property WelcomeIssuesCommitPattern: TEdit read FWelcomeIssuesCommitPattern;
+    property IssuesTracker: TAtlasChoiceBox read FIssuesTracker;
+    property IssuesStart: TAtlasChoiceBox read FIssuesStart;
+    property IssuesBranchPattern: TEdit read FIssuesBranchPattern;
+    property IssuesBranchBase: TEdit read FIssuesBranchBase;
+    property IssuesCommitPattern: TEdit read FIssuesCommitPattern;
     property TrackerLogin: TCheckBox read FTrackerLogin;
+    property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
+    /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
+    property IssuesConnections: TListView read FIssuesConnections;
+    property IssuesConnectionName: TEdit read FIssuesConnectionName;
+    property IssuesConnectionProvider: TAtlasChoiceBox read FIssuesConnectionProvider;
+    property IssuesConnectionUrl: TEdit read FIssuesConnectionUrl;
+    property IssuesConnectionNote: TLabel read FIssuesConnectionNote;
+    property IssuesConnectionAdd: TButton read FIssuesConnectionAdd;
+    property IssuesConnectionRemove: TButton read FIssuesConnectionRemove;
+    property IssuesConnectionToken: TButton read FIssuesConnectionToken;
+    property IssuesConnectionCheck: TButton read FIssuesConnectionCheck;
+    /// <summary>Persönliche Verbindungen, wie die Seite sie gerade zeigt.</summary>
+    property TrackerConnections: TArray<TAtlasTrackerConnection> read FTrackerConnections;
+    /// <summary>Zum Testen: Zuordnung Delphi-Projekt → Tracker-Projekt (#1261).</summary>
+    property IssuesProjects: TListView read FIssuesProjects;
+    property IssuesProjectMatch: TEdit read FIssuesProjectMatch;
+    property IssuesProjectConnection: TAtlasChoiceBox read FIssuesProjectConnection;
+    property IssuesProjectProject: TEdit read FIssuesProjectProject;
+    property IssuesProjectNote: TLabel read FIssuesProjectNote;
+    property IssuesProjectAddCurrent: TButton read FIssuesProjectAddCurrent;
+    property IssuesProjectAdd: TButton read FIssuesProjectAdd;
+    property IssuesProjectRemove: TButton read FIssuesProjectRemove;
+    property IssuesProjectAddMenu: TPopupMenu read FIssuesProjectAddMenu;
+    /// <summary>Persönliche Zeilen, wie die Seite sie gerade zeigt.</summary>
+    property TrackerProjects: TArray<TAtlasTrackerProjectMapping> read FTrackerProjects;
+    /// <summary>Zum Testen: benannte Abfragen (#1262).</summary>
+    property IssuesQueries: TListView read FIssuesQueries;
+    property IssuesQueryName: TEdit read FIssuesQueryName;
+    property IssuesQueryText: TEdit read FIssuesQueryText;
+    property IssuesQueryConnection: TAtlasChoiceBox read FIssuesQueryConnection;
+    property IssuesQueryProject: TEdit read FIssuesQueryProject;
+    property IssuesQueryNote: TLabel read FIssuesQueryNote;
+    property IssuesQueryAdd: TButton read FIssuesQueryAdd;
+    property IssuesQueryRemove: TButton read FIssuesQueryRemove;
+    property IssuesQueryEdit: TButton read FIssuesQueryEdit;
+    property IssuesQueryPicker: TCheckBox read FIssuesQueryPicker;
+    property IssuesCreate: TCheckBox read FIssuesCreate;
+    property IssuesCreateIncludeCode: TCheckBox read FIssuesCreateIncludeCode;
+    property TrackerQueries: TArray<TAtlasTrackerQuery> read FTrackerQueries;
     /// <summary>Zum Testen: Schnellaktionen je Projekt (#764).</summary>
     property WelcomeQuickActions: TCheckBox read FWelcomeQuickActions;
     function WelcomeQuickActionsItem(AAction: TAtlasQuickAction): TCheckBox;
@@ -1276,6 +1472,7 @@ type
     property NextProblemKey: TEdit read FNextProblemKey;
     property PreviousProblemKey: TEdit read FPreviousProblemKey;
     property ProblemsWindowKey: TEdit read FProblemsWindowKey;
+    property CreateIssueKey: TEdit read FCreateIssueKey;
     /// <summary>Zum Testen: Prüffenster und Seite Prüfregeln (#909).</summary>
     property ProblemsWindowCheck: TCheckBox read FProblemsWindow;
     property ArchitectureCheck: TCheckBox read FArchitecture;
@@ -1326,6 +1523,40 @@ type
     property OnOpenTeamFile: TProc read FOnOpenTeamFile write FOnOpenTeamFile;
     /// <summary>Anzeige der Projektdatei neu aufbauen (#486).</summary>
     procedure RefreshTeamFile;
+    /// <summary>Tracker-Verbindungen (#1260): Zustand je Server (ohne Netz); nil = „fehlt“.</summary>
+    property OnTrackerState: TAtlasTrackerStateEvent read FOnTrackerState write FOnTrackerState;
+    /// <summary>„Token hinterlegen …“ für die gewählte Verbindung; danach RefreshTrackerConnections.</summary>
+    property OnTrackerToken: TAtlasTrackerConnectionEvent read FOnTrackerToken write FOnTrackerToken;
+    /// <summary>„Verbindung prüfen“ im Hintergrund; das Ergebnis meldet TrackerCheckDone.</summary>
+    property OnTrackerCheck: TAtlasTrackerConnectionEvent read FOnTrackerCheck write FOnTrackerCheck;
+    /// <summary>Vor dem Entfernen einer Verbindung: fragt, ob das Token mit entfernt werden soll.</summary>
+    property OnTrackerRemove: TAtlasTrackerConnectionEvent read FOnTrackerRemove write FOnTrackerRemove;
+    /// <summary>„Testen“ im Dialog „Abfrage bearbeiten“ (#1263); nil = Knopf gesperrt.</summary>
+    property OnTrackerQueryTest: TAtlasQueryTestEvent read FOnTrackerQueryTest write FOnTrackerQueryTest;
+    /// <summary>Statt des Dialogs (Tests); nil = TAtlasTrackerQueryDialog.</summary>
+    property OnTrackerQueryEdit: TAtlasTrackerQueryEditEvent read FOnTrackerQueryEdit write FOnTrackerQueryEdit;
+    /// <summary>Verbindung aus der .atlas des aktiven Projekts; leer ohne.</summary>
+    property OnTrackerTeam: TFunc<TArray<TAtlasTrackerConnection>> read FOnTrackerTeam write FOnTrackerTeam;
+    /// <summary>Anbieter der Auswahl (Name wie in issues.connections, Anzeigename); Vorgabe YouTrack und GitHub.
+    /// </summary>
+    procedure SetTrackerProviders(const ANames, ACaptions: TArray<string>);
+    /// <summary>Tabelle der Verbindungen neu aufbauen (Zustand, .atlas); ohne Fenster folgt es in CreateWnd.
+    /// </summary>
+    procedure RefreshTrackerConnections;
+    /// <summary>Prüfung von AConnection ist fertig; der Zustand kommt über OnTrackerState.</summary>
+    procedure TrackerCheckDone(const AConnection: TAtlasTrackerConnection);
+    /// <summary>Tabelle Projekte (#1261): aktives Projekt, geöffnete .groupproj und Zeile aus der .atlas; nil =
+    /// ohne Projekt.</summary>
+    property OnTrackerContext: TFunc<TAtlasTrackerProjectContext> read FOnTrackerContext write FOnTrackerContext;
+    /// <summary>„Hinzufügen …“ (#1261); nil = Datei- bzw. Ordnerauswahl von Windows.</summary>
+    property OnTrackerBrowse: TAtlasTrackerBrowseEvent read FOnTrackerBrowse write FOnTrackerBrowse;
+    /// <summary>Tabelle Projekte neu aufbauen (Kontext, Verbindungen); ohne Fenster folgt es in CreateWnd.</summary>
+    procedure RefreshTrackerProjects;
+    /// <summary>„zuordnen …“ aus „Meine Issues“ (#1261): Zeile für AMatch anlegen bzw. wählen und zeigen.</summary>
+    procedure AssignTrackerProject(const AMatch: string);
+    /// <summary>Tabelle Abfragen neu aufbauen (Auswahl der Verbindungen); ohne Fenster folgt es in CreateWnd.
+    /// </summary>
+    procedure RefreshTrackerQueries;
     /// <summary>Zum Testen: Projektdatei (#486).</summary>
     property TeamFileCheck: TCheckBox read FTeamFile;
     property TeamFileInfo: TLabel read FTeamFileInfo;
@@ -1353,6 +1584,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
+  Atlas.UI.Settings.QueryDialog,
   Atlas.Core.Build.Gate,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Debug.OwnCode,
@@ -2196,6 +2428,8 @@ begin
   FPreviousProblemKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand));
   // Fenster „Atlas-Prüfung“ (#909).
   FProblemsWindowKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemsWindowCommand));
+  // „Issue anlegen …“ (#1268), ohne Vorgabe.
+  FCreateIssueKey := AddKey(TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand));
   FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
@@ -2244,6 +2478,10 @@ begin
 
   AddSheet(TAtlasTextId.SettingsTabWelcome);
   AddWelcomeSection;
+
+  // Issue-Tracker (#1280): eigener Bereich; die Willkommensseite schaltet nur, ob „Meine Issues“ erscheint.
+  AddSheet(TAtlasTextId.SettingsTabIssues);
+  AddIssuesSection;
 
   AddSheet(TAtlasTextId.SettingsTabTeamFile);
   AddTeamFileSection;
@@ -2507,18 +2745,17 @@ begin
   FWelcomeTestsCiInterval := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiInterval));
   FWelcomeTestsCiNotify := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeTestsCiNotify));
   FCiLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsCiLogin));
-  // Meine Issues (#765): Tracker aus .atlas, Abfrage, „Beginnen“ und Muster.
+  // Meine Issues (#765): nur der Bereich; Tracker, Abfrage und Muster stehen auf der Seite Issue-Tracker (#1280).
   FWelcomeIssues := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssues));
-  FWelcomeIssuesTracker := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesTracker),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesTrackerTeam), 'GitHub', 'YouTrack']);
-  FWelcomeIssuesQuery := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesQuery));
-  FWelcomeIssuesStart := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesStart),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesStartBranch),
-    TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesStartRemember)]);
-  FWelcomeIssuesBranchPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesBranchPattern));
-  FWelcomeIssuesBranchBase := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesBranchBase));
-  FWelcomeIssuesCommitPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesCommitPattern));
-  FTrackerLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackerLogin));
+  Panel := AddPanel(32);
+  FWelcomeIssuesLink := TButton.Create(Self);
+  FWelcomeIssuesLink.Parent := Panel;
+  FWelcomeIssuesLink.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIssuesLink);
+  FWelcomeIssuesLink.Left := 0;
+  FWelcomeIssuesLink.Top := 3;
+  FWelcomeIssuesLink.Width := 200;
+  FWelcomeIssuesLink.OnClick := WelcomeIssuesLinkClick;
+  Attach(Panel, FWelcomeIssues);
   // Schnellaktionen je Projekt (#764): Schalter, je Knopf ein Häkchen, Programm für „Konsole“, zwei Tasten.
   FWelcomeQuickActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActions));
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
@@ -2572,6 +2809,1162 @@ begin
   // Karte „Projekt für Atlas einrichten“ und Knöpfe „Neu mit Atlas“ (#759).
   FWelcomeProjectSetup := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeProjectSetup));
   FWelcomeNewFromTemplate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeNewFromTemplate));
+end;
+
+procedure TAtlasSettingsPage.AddIssuesSection;
+begin
+  // Verbindungen zuerst (#1260, Mockup IT1): Tabelle mit Token-Zustand, darunter die gewählte Zeile.
+  AddTrackerConnectionsSection;
+  // Danach die Zuordnung der Delphi-Projekte (#1261, Mockup IT2).
+  AddTrackerProjectsSection;
+  // Benannte Abfragen und Klappliste (#1262, Mockup IT3).
+  AddTrackerQueriesSection;
+  // Anbieter (Vorgabe aus der .atlas), „Beginnen“, Muster für Branch und Commit, Zugang (#765).
+  FIssuesTracker := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesTracker),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsIssuesTrackerTeam), 'GitHub', 'YouTrack']);
+  FIssuesStart := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesStart),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsIssuesStartBranch),
+    TAtlasStrings.Text(TAtlasTextId.SettingsIssuesStartRemember)]);
+  FIssuesBranchPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBranchPattern));
+  FIssuesBranchBase := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBranchBase));
+  FIssuesCommitPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCommitPattern));
+  FTrackerLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackerLogin));
+end;
+
+procedure TAtlasSettingsPage.WelcomeIssuesLinkClick(Sender: TObject);
+begin
+  // Hauptknoten der Seite Issue-Tracker: dort steht der Anbieter.
+  SelectPage(PageOf(FIssuesTracker));
+end;
+
+procedure TAtlasSettingsPage.AddTrackerConnectionsSection;
+var
+  mPanel: TWinControl;
+begin
+  FTrackerSelected := -1;
+  FTrackerProviderNames := TArray<string>.Create('youtrack', 'github');
+  FTrackerProviderCaptions := TArray<string>.Create('YouTrack', 'GitHub');
+  AddTitle(TAtlasTextId.SettingsIssuesConnections);
+  mPanel := AddPanel(110);
+  // Die Zeilen brauchen ein Fenster: RefreshTrackerConnections füllt sie (auch aus CreateWnd).
+  FIssuesConnections := TListView.Create(Self);
+  FIssuesConnections.Parent := mPanel;
+  FIssuesConnections.Align := alClient;
+  FIssuesConnections.ViewStyle := vsReport;
+  FIssuesConnections.ReadOnly := True;
+  FIssuesConnections.RowSelect := True;
+  FIssuesConnections.HideSelection := False;
+  FIssuesConnections.OnSelectItem := TrackerSelectItem;
+  AddTrackerColumn(FIssuesConnections, TAtlasTextId.SettingsIssuesConnectionName, 110);
+  AddTrackerColumn(FIssuesConnections, TAtlasTextId.SettingsIssuesConnectionProvider, 80);
+  AddTrackerColumn(FIssuesConnections, TAtlasTextId.SettingsIssuesConnectionUrl, 200);
+  AddTrackerColumn(FIssuesConnections, TAtlasTextId.SettingsIssuesConnectionToken, 170);
+  FIssuesConnectionName := TEdit.Create(Self);
+  FIssuesConnectionName.OnChange := TrackerNameChange;
+  Attach(AddTrackerLabelled(TAtlasTextId.SettingsIssuesConnectionName, FIssuesConnectionName, 180),
+    FIssuesConnections);
+  FIssuesConnectionProvider := TAtlasChoiceBox.Create(Self);
+  FIssuesConnectionProvider.SetChoices(FTrackerProviderCaptions);
+  FIssuesConnectionProvider.OnChange := TrackerProviderChange;
+  Attach(AddTrackerLabelled(TAtlasTextId.SettingsIssuesConnectionProvider, FIssuesConnectionProvider, 180),
+    FIssuesConnections);
+  FIssuesConnectionUrl := TEdit.Create(Self);
+  FIssuesConnectionUrl.OnChange := TrackerUrlChange;
+  mPanel := AddTrackerLabelled(TAtlasTextId.SettingsIssuesConnectionUrl, FIssuesConnectionUrl, 376);
+  FIssuesConnectionUrl.Anchors := [akLeft, akTop, akRight];
+  Attach(mPanel, FIssuesConnections);
+  // Grund, warum eine Eingabe nicht übernommen wird (nur https, Name vergeben …).
+  mPanel := AddPanel(18);
+  FIssuesConnectionNote := TLabel.Create(Self);
+  FIssuesConnectionNote.Parent := mPanel;
+  FIssuesConnectionNote.Left := 90;
+  FIssuesConnectionNote.Top := 1;
+  FIssuesConnectionNote.Font.Color := clRed;
+  Attach(mPanel, FIssuesConnections);
+  mPanel := AddPanel(32);
+  FIssuesConnectionAdd := AddTrackerButton(mPanel, 0, 100, TAtlasTextId.SettingsIssuesConnectionAdd,
+    TrackerAddClick);
+  FIssuesConnectionRemove := AddTrackerButton(mPanel, 106, 100, TAtlasTextId.SettingsIssuesConnectionRemove,
+    TrackerRemoveClick);
+  FIssuesConnectionToken := AddTrackerButton(mPanel, 212, 140, TAtlasTextId.SettingsIssuesConnectionEnterToken,
+    TrackerTokenClick);
+  FIssuesConnectionCheck := AddTrackerButton(mPanel, 358, 140, TAtlasTextId.SettingsIssuesConnectionCheck,
+    TrackerCheckClick);
+  Attach(mPanel, FIssuesConnections);
+  AddTrackerHint(TAtlasTextId.SettingsIssuesConnectionsHint, FIssuesConnections);
+end;
+
+function TAtlasSettingsPage.AddTrackerLabelled(AId: TAtlasTextId; AControl: TWinControl;
+  AWidth: Integer): TWinControl;
+var
+  mCaption: TLabel;
+begin
+  Result := AddPanel(26);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := Result;
+  mCaption.Caption := TAtlasStrings.Text(AId) + ':';
+  mCaption.Left := 0;
+  mCaption.Top := 5;
+  AControl.Parent := Result;
+  AControl.Left := 90;
+  AControl.Top := 1;
+  AControl.Width := AWidth;
+end;
+
+function TAtlasSettingsPage.AddTrackerButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
+  AClick: TNotifyEvent): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := TAtlasStrings.Text(AId);
+  Result.Left := ALeft;
+  Result.Top := 3;
+  Result.Width := AWidth;
+  Result.OnClick := AClick;
+end;
+
+procedure TAtlasSettingsPage.AddTrackerColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer);
+var
+  mColumn: TListColumn;
+begin
+  mColumn := AList.Columns.Add;
+  mColumn.Caption := TAtlasStrings.Text(AId);
+  mColumn.Width := AWidth;
+end;
+
+procedure TAtlasSettingsPage.AddTrackerHint(AId: TAtlasTextId; AAnchor: TControl);
+var
+  mPanel: TWinControl;
+  mHint: TLabel;
+begin
+  mPanel := AddPanel(34);
+  mHint := TLabel.Create(Self);
+  mHint.Parent := mPanel;
+  mHint.Align := alClient;
+  mHint.WordWrap := True;
+  mHint.Font.Color := clGrayText;
+  mHint.Caption := TAtlasStrings.Text(AId);
+  Attach(mPanel, AAnchor);
+end;
+
+procedure TAtlasSettingsPage.SetTrackerProviders(const ANames, ACaptions: TArray<string>);
+begin
+  if (Length(ANames) = 0) or (Length(ANames) <> Length(ACaptions)) then
+    Exit;
+  FTrackerProviderNames := ANames;
+  FTrackerProviderCaptions := ACaptions;
+  FIssuesConnectionProvider.SetChoices(ACaptions);
+  RefreshTrackerConnections;
+end;
+
+function TAtlasSettingsPage.TrackerRows: TArray<TAtlasTrackerConnection>;
+begin
+  Result := FTrackerConnections + FTrackerTeam;
+end;
+
+function TAtlasSettingsPage.TrackerProviderCaption(const AName: string): string;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to Min(High(FTrackerProviderNames), High(FTrackerProviderCaptions)) do
+    if SameText(FTrackerProviderNames[mIndex], AName) then
+      Exit(FTrackerProviderCaptions[mIndex]);
+  Result := AName;
+end;
+
+function TAtlasSettingsPage.TrackerStateText(const AConnection: TAtlasTrackerConnection): string;
+var
+  mStatus: TAtlasTrackerTokenStatus;
+begin
+  if MatchText(AConnection.Target.CredentialTarget, FTrackerChecking) then
+    Exit(TAtlasStrings.Text(TAtlasTextId.TrackerTokenChecking));
+  mStatus := TAtlasTrackerTokenStatus.Stored(False);
+  if Assigned(FOnTrackerState) and (AConnection.Target.Server <> '') then
+    mStatus := FOnTrackerState(AConnection);
+  case mStatus.State of
+    TAtlasTrackerTokenState.Saved:
+      Result := TAtlasStrings.Text(TAtlasTextId.TrackerTokenSaved);
+    TAtlasTrackerTokenState.Verified:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.TrackerTokenVerified, [FormatDateTime('hh:nn', mStatus.CheckedAt)]);
+    TAtlasTrackerTokenState.Rejected:
+      Result := TAtlasStrings.Text(TAtlasTextId.TrackerTokenRejected);
+    TAtlasTrackerTokenState.Unreachable:
+      Result := TAtlasStrings.Text(TAtlasTextId.TrackerTokenUnreachable);
+    TAtlasTrackerTokenState.Unexpected:
+      if mStatus.HttpStatus > 0 then
+        Result := TAtlasStrings.Fmt(TAtlasTextId.TrackerTokenUnexpectedStatus, [mStatus.HttpStatus])
+      else
+        Result := TAtlasStrings.Text(TAtlasTextId.TrackerTokenUnexpected);
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.TrackerTokenMissing);
+  end;
+end;
+
+function TAtlasSettingsPage.TrackerEditable: Boolean;
+begin
+  Result := (FTrackerSelected >= 0) and (FTrackerSelected < Length(FTrackerConnections));
+end;
+
+procedure TAtlasSettingsPage.RefreshTrackerConnections;
+var
+  mRows: TArray<TAtlasTrackerConnection>;
+  mRow: TAtlasTrackerConnection;
+  mItem: TListItem;
+begin
+  if FIssuesConnections = nil then
+    Exit;
+  FTrackerTeam := nil;
+  if Assigned(FOnTrackerTeam) then
+    FTrackerTeam := FOnTrackerTeam();
+  mRows := TrackerRows;
+  if FTrackerSelected > High(mRows) then
+    FTrackerSelected := High(mRows);
+  // Wie die Liste der Favoriten: ohne Fenster folgt das in CreateWnd.
+  if FIssuesConnections.HandleAllocated then
+  begin
+    FTrackerFilling := True;
+    FIssuesConnections.Items.BeginUpdate;
+    try
+      FIssuesConnections.Items.Clear;
+      for mRow in mRows do
+      begin
+        mItem := FIssuesConnections.Items.Add;
+        if mRow.ReadOnly then
+          mItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsIssuesConnectionTeam, [mRow.Name])
+        else
+          mItem.Caption := mRow.Name;
+        mItem.SubItems.Add(TrackerProviderCaption(mRow.Provider));
+        mItem.SubItems.Add(mRow.Url);
+        mItem.SubItems.Add(TrackerStateText(mRow));
+      end;
+      if FTrackerSelected >= 0 then
+        FIssuesConnections.Items[FTrackerSelected].Selected := True;
+    finally
+      FIssuesConnections.Items.EndUpdate;
+      FTrackerFilling := False;
+    end;
+  end;
+  TrackerFillFields;
+  // Die Auswahl der Verbindung in der Tabelle Projekte folgt den Verbindungen.
+  RefreshTrackerProjects;
+end;
+
+procedure TAtlasSettingsPage.TrackerFillFields;
+var
+  mRows: TArray<TAtlasTrackerConnection>;
+  mRow: TAtlasTrackerConnection;
+  mIndex: Integer;
+  mSelected, mEditable, mHasUrl: Boolean;
+begin
+  mRows := TrackerRows;
+  mSelected := (FTrackerSelected >= 0) and (FTrackerSelected <= High(mRows));
+  mEditable := TrackerEditable;
+  FTrackerFilling := True;
+  try
+    if mSelected then
+    begin
+      mRow := mRows[FTrackerSelected];
+      FIssuesConnectionName.Text := mRow.Name;
+      FIssuesConnectionUrl.Text := mRow.Url;
+      FIssuesConnectionProvider.Choice := -1;
+      for mIndex := 0 to High(FTrackerProviderNames) do
+        if SameText(FTrackerProviderNames[mIndex], mRow.Provider) then
+          FIssuesConnectionProvider.Choice := mIndex;
+    end
+    else
+    begin
+      FIssuesConnectionName.Text := '';
+      FIssuesConnectionUrl.Text := '';
+      FIssuesConnectionProvider.Choice := -1;
+    end;
+  finally
+    FTrackerFilling := False;
+  end;
+  mHasUrl := mSelected and (mRows[FTrackerSelected].Url <> '');
+  if mSelected and not mEditable then
+    FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionReadOnly)
+  else if mEditable and not mHasUrl then
+    FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlEmpty)
+  else
+    FIssuesConnectionNote.Caption := '';
+  Allow(FIssuesConnectionName, mEditable);
+  Allow(FIssuesConnectionProvider, mEditable);
+  Allow(FIssuesConnectionUrl, mEditable);
+  Allow(FIssuesConnectionRemove, mEditable);
+  // Token und Prüfung auch für die Verbindung aus der .atlas, nicht ohne gültige Adresse.
+  Allow(FIssuesConnectionToken, mHasUrl and Assigned(FOnTrackerToken));
+  Allow(FIssuesConnectionCheck, mHasUrl and Assigned(FOnTrackerCheck));
+end;
+
+procedure TAtlasSettingsPage.TrackerSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  if FTrackerFilling or not Selected or (Item = nil) then
+    Exit;
+  FTrackerSelected := Item.Index;
+  TrackerFillFields;
+end;
+
+procedure TAtlasSettingsPage.TrackerNameChange(Sender: TObject);
+var
+  mName, mOld: string;
+  mIndex: Integer;
+begin
+  if FTrackerFilling or not TrackerEditable then
+    Exit;
+  mName := Trim(FIssuesConnectionName.Text);
+  if TAtlasTrackerConnections.NameTaken(FTrackerConnections, mName, FTrackerSelected) then
+  begin
+    FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionNameTaken);
+    Exit;
+  end;
+  FIssuesConnectionNote.Caption := '';
+  // Zeilen der Tabelle Projekte verweisen per Name: umbenennen statt sie ins Leere zeigen zu lassen (#1261).
+  mOld := FTrackerConnections[FTrackerSelected].Name;
+  for mIndex := 0 to High(FTrackerProjects) do
+    if (mOld <> '') and SameText(FTrackerProjects[mIndex].Connection, mOld) then
+      FTrackerProjects[mIndex].Connection := mName;
+  // Ebenso die Abfragen mit dieser Verbindung (#1262).
+  TAtlasTrackerQueries.RenameConnection(FTrackerQueries, mOld, mName);
+  FTrackerConnections[FTrackerSelected].Name := mName;
+  if FIssuesConnections.HandleAllocated and (FTrackerSelected < FIssuesConnections.Items.Count) then
+    FIssuesConnections.Items[FTrackerSelected].Caption := mName;
+  RefreshTrackerProjects;
+end;
+
+procedure TAtlasSettingsPage.TrackerProviderChange(Sender: TObject);
+var
+  mChoice: Integer;
+begin
+  mChoice := FIssuesConnectionProvider.Choice;
+  if FTrackerFilling or not TrackerEditable or (mChoice < 0) or (mChoice > High(FTrackerProviderNames)) then
+    Exit;
+  FTrackerConnections[FTrackerSelected].Provider := FTrackerProviderNames[mChoice];
+  if FIssuesConnections.HandleAllocated and (FTrackerSelected < FIssuesConnections.Items.Count) then
+    FIssuesConnections.Items[FTrackerSelected].SubItems[0] := FTrackerProviderCaptions[mChoice];
+end;
+
+procedure TAtlasSettingsPage.TrackerUrlChange(Sender: TObject);
+var
+  mConnection: TAtlasTrackerConnection;
+begin
+  if FTrackerFilling or not TrackerEditable then
+    Exit;
+  // Nur gültige Adressen übernehmen: http oder ein Benutzer in der Adresse werden abgewiesen, mit Grund.
+  case TAtlasTrackerConnections.CheckUrl(FIssuesConnectionUrl.Text) of
+    TAtlasTrackerUrlCheck.Empty:
+      FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlEmpty);
+    TAtlasTrackerUrlCheck.NotHttps:
+      FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlHttps);
+    TAtlasTrackerUrlCheck.WithUser:
+      FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlUser);
+    TAtlasTrackerUrlCheck.Invalid:
+      FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlInvalid);
+  else
+    begin
+      FIssuesConnectionNote.Caption := '';
+      mConnection := FTrackerConnections[FTrackerSelected];
+      mConnection := TAtlasTrackerConnection.Create(mConnection.Name, mConnection.Provider, FIssuesConnectionUrl.Text);
+      FTrackerConnections[FTrackerSelected] := mConnection;
+      if FIssuesConnections.HandleAllocated and (FTrackerSelected < FIssuesConnections.Items.Count) then
+      begin
+        FIssuesConnections.Items[FTrackerSelected].SubItems[1] := mConnection.Url;
+        FIssuesConnections.Items[FTrackerSelected].SubItems[2] := TrackerStateText(mConnection);
+      end;
+      Allow(FIssuesConnectionToken, Assigned(FOnTrackerToken));
+      Allow(FIssuesConnectionCheck, Assigned(FOnTrackerCheck));
+    end;
+  end;
+end;
+
+procedure TAtlasSettingsPage.TrackerAddClick(Sender: TObject);
+begin
+  // Neue Zeile ohne Adresse: gespeichert wird sie erst mit gültiger Adresse.
+  FTrackerConnections := FTrackerConnections + [TAtlasTrackerConnection.Create(
+    TAtlasTrackerConnections.FreeName(TrackerRows, TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionNew)),
+    FTrackerProviderNames[0], '')];
+  FTrackerSelected := High(FTrackerConnections);
+  RefreshTrackerConnections;
+  if FIssuesConnectionName.CanFocus then
+    FIssuesConnectionName.SetFocus;
+end;
+
+procedure TAtlasSettingsPage.TrackerRemoveClick(Sender: TObject);
+var
+  mConnection: TAtlasTrackerConnection;
+begin
+  if not TrackerEditable then
+    Exit;
+  mConnection := FTrackerConnections[FTrackerSelected];
+  // Die Rückfrage zum Token (Anmeldespeicher) stellt die IDE; die Zeile geht in jedem Fall.
+  if Assigned(FOnTrackerRemove) and (mConnection.Target.Server <> '') then
+    FOnTrackerRemove(mConnection);
+  Delete(FTrackerConnections, FTrackerSelected, 1);
+  if FTrackerSelected > High(TrackerRows) then
+    FTrackerSelected := High(TrackerRows);
+  RefreshTrackerConnections;
+end;
+
+procedure TAtlasSettingsPage.TrackerTokenClick(Sender: TObject);
+var
+  mRows: TArray<TAtlasTrackerConnection>;
+begin
+  mRows := TrackerRows;
+  if not Assigned(FOnTrackerToken) or (FTrackerSelected < 0) or (FTrackerSelected > High(mRows)) then
+    Exit;
+  FOnTrackerToken(mRows[FTrackerSelected]);
+  RefreshTrackerConnections;
+end;
+
+procedure TAtlasSettingsPage.TrackerCheckClick(Sender: TObject);
+var
+  mRows: TArray<TAtlasTrackerConnection>;
+  mServer: string;
+begin
+  mRows := TrackerRows;
+  if not Assigned(FOnTrackerCheck) or (FTrackerSelected < 0) or (FTrackerSelected > High(mRows)) then
+    Exit;
+  mServer := mRows[FTrackerSelected].Target.CredentialTarget;
+  if (mServer = '') or MatchText(mServer, FTrackerChecking) then
+    Exit;
+  FTrackerChecking := FTrackerChecking + [mServer];
+  RefreshTrackerConnections;
+  FOnTrackerCheck(mRows[FTrackerSelected]);
+end;
+
+procedure TAtlasSettingsPage.TrackerCheckDone(const AConnection: TAtlasTrackerConnection);
+var
+  mIndex: Integer;
+  mStatus: TAtlasTrackerTokenStatus;
+begin
+  for mIndex := High(FTrackerChecking) downto 0 do
+    if SameText(FTrackerChecking[mIndex], AConnection.Target.CredentialTarget) then
+      Delete(FTrackerChecking, mIndex, 1);
+  // Erkannte Sprache der Oberfläche (#1263) an den persönlichen Verbindungen zu diesem Server merken; gespeichert
+  // mit OK.
+  if Assigned(FOnTrackerState) then
+  begin
+    mStatus := FOnTrackerState(AConnection);
+    if mStatus.Language <> '' then
+      for mIndex := 0 to High(FTrackerConnections) do
+        if SameText(FTrackerConnections[mIndex].Target.CredentialTarget, AConnection.Target.CredentialTarget) then
+          FTrackerConnections[mIndex].Language := mStatus.Language;
+  end;
+  RefreshTrackerConnections;
+end;
+
+function TAtlasSettingsPage.TrackerConnectionsJson: string;
+var
+  mKept: TArray<TAtlasTrackerConnection>;
+  mConnection: TAtlasTrackerConnection;
+begin
+  mKept := nil;
+  for mConnection in FTrackerConnections do
+    if (mConnection.Name <> '') and (mConnection.Provider <> '') and
+      (TAtlasTrackerConnections.CheckUrl(mConnection.Url) = TAtlasTrackerUrlCheck.Valid) and
+      (TAtlasTrackerConnections.IndexOfName(mKept, mConnection.Name) < 0) then
+      mKept := mKept + [mConnection];
+  Result := TAtlasTrackerConnections.ToJson(mKept);
+end;
+
+procedure TAtlasSettingsPage.AddTrackerProjectsSection;
+
+  function AddMenuItem(AId: TAtlasTextId; AClick: TNotifyEvent): TMenuItem;
+  begin
+    Result := TMenuItem.Create(Self);
+    Result.Caption := TAtlasStrings.Text(AId);
+    Result.OnClick := AClick;
+    FIssuesProjectAddMenu.Items.Add(Result);
+  end;
+
+var
+  mPanel: TWinControl;
+begin
+  FTrackerProjectSelected := -1;
+  FTrackerContext := TAtlasTrackerProjectContext.Empty;
+  AddTitle(TAtlasTextId.SettingsIssuesProjects);
+  mPanel := AddPanel(110);
+  // Wie die Verbindungen: die Zeilen erst mit Fenster (RefreshTrackerProjects, auch aus CreateWnd).
+  FIssuesProjects := TListView.Create(Self);
+  FIssuesProjects.Parent := mPanel;
+  FIssuesProjects.Align := alClient;
+  FIssuesProjects.ViewStyle := vsReport;
+  FIssuesProjects.ReadOnly := True;
+  FIssuesProjects.RowSelect := True;
+  FIssuesProjects.HideSelection := False;
+  FIssuesProjects.OnSelectItem := TrackerProjectSelectItem;
+  FIssuesProjects.OnCustomDrawItem := TrackerProjectDrawItem;
+  AddTrackerColumn(FIssuesProjects, TAtlasTextId.SettingsIssuesProjectMatch, 230);
+  AddTrackerColumn(FIssuesProjects, TAtlasTextId.SettingsIssuesProjectConnection, 100);
+  AddTrackerColumn(FIssuesProjects, TAtlasTextId.SettingsIssuesProjectProject, 100);
+  AddTrackerColumn(FIssuesProjects, TAtlasTextId.SettingsIssuesProjectSource, 150);
+  FIssuesProjectMatch := TEdit.Create(Self);
+  FIssuesProjectMatch.OnChange := TrackerProjectMatchChange;
+  mPanel := AddTrackerLabelled(TAtlasTextId.SettingsIssuesProjectMatch, FIssuesProjectMatch, 376);
+  FIssuesProjectMatch.Anchors := [akLeft, akTop, akRight];
+  Attach(mPanel, FIssuesProjects);
+  FIssuesProjectConnection := TAtlasChoiceBox.Create(Self);
+  FIssuesProjectConnection.OnChange := TrackerProjectConnectionChange;
+  Attach(AddTrackerLabelled(TAtlasTextId.SettingsIssuesProjectConnection, FIssuesProjectConnection, 180),
+    FIssuesProjects);
+  FIssuesProjectProject := TEdit.Create(Self);
+  FIssuesProjectProject.OnChange := TrackerProjectProjectChange;
+  Attach(AddTrackerLabelled(TAtlasTextId.SettingsIssuesProjectProject, FIssuesProjectProject, 180),
+    FIssuesProjects);
+  // Grund, warum eine Zeile nicht greift (Verbindung fehlt, von .atlas überdeckt …).
+  mPanel := AddPanel(18);
+  FIssuesProjectNote := TLabel.Create(Self);
+  FIssuesProjectNote.Parent := mPanel;
+  FIssuesProjectNote.Left := 90;
+  FIssuesProjectNote.Top := 1;
+  FIssuesProjectNote.Font.Color := clRed;
+  Attach(mPanel, FIssuesProjects);
+  mPanel := AddPanel(32);
+  FIssuesProjectAddCurrent := AddTrackerButton(mPanel, 0, 180, TAtlasTextId.SettingsIssuesProjectAddCurrent,
+    TrackerProjectAddCurrentClick);
+  FIssuesProjectAdd := AddTrackerButton(mPanel, 186, 110, TAtlasTextId.SettingsIssuesProjectAdd,
+    TrackerProjectAddClick);
+  FIssuesProjectRemove := AddTrackerButton(mPanel, 302, 100, TAtlasTextId.SettingsIssuesConnectionRemove,
+    TrackerProjectRemoveClick);
+  Attach(mPanel, FIssuesProjects);
+  // „Hinzufügen …“: Projektdatei oder Ordner.
+  FIssuesProjectAddMenu := TPopupMenu.Create(Self);
+  AddMenuItem(TAtlasTextId.SettingsIssuesProjectAddFile, TrackerProjectAddFileClick);
+  AddMenuItem(TAtlasTextId.SettingsIssuesProjectAddFolder, TrackerProjectAddFolderClick);
+  AddTrackerHint(TAtlasTextId.SettingsIssuesProjectsHint, FIssuesProjects);
+end;
+
+function TAtlasSettingsPage.TrackerProjectRows: TArray<TAtlasTrackerProjectMapping>;
+begin
+  Result := FTrackerProjects + FTrackerContext.Team;
+end;
+
+function TAtlasSettingsPage.TrackerProjectEditable: Boolean;
+begin
+  Result := (FTrackerProjectSelected >= 0) and (FTrackerProjectSelected < Length(FTrackerProjects));
+end;
+
+function TAtlasSettingsPage.TrackerProjectCovered(const AMapping: TAtlasTrackerProjectMapping): Boolean;
+begin
+  Result := TAtlasTrackerProjects.Covered(AMapping, FTrackerContext.HasTeam, FTrackerContext.ProjectFile,
+    FTrackerContext.GroupFile);
+end;
+
+function TAtlasSettingsPage.TrackerProjectSourceText(const AMapping: TAtlasTrackerProjectMapping): string;
+begin
+  if AMapping.ReadOnly then
+    Result := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam)
+  else if TrackerProjectCovered(AMapping) then
+    Result := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered)
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectPersonal);
+end;
+
+procedure TAtlasSettingsPage.RefreshTrackerProjects;
+var
+  mRows: TArray<TAtlasTrackerProjectMapping>;
+  mRow: TAtlasTrackerProjectMapping;
+  mItem: TListItem;
+  mConnection: TAtlasTrackerConnection;
+begin
+  if FIssuesProjects = nil then
+    Exit;
+  FTrackerContext := TAtlasTrackerProjectContext.Empty;
+  if Assigned(FOnTrackerContext) then
+    FTrackerContext := FOnTrackerContext();
+  // Auswahl der Verbindung: die persönlichen mit Namen (eine Zeile verweist per Name auf sie).
+  FTrackerProjectChoices := nil;
+  for mConnection in FTrackerConnections do
+    if (mConnection.Name <> '') and not MatchText(mConnection.Name, FTrackerProjectChoices) then
+      FTrackerProjectChoices := FTrackerProjectChoices + [mConnection.Name];
+  FTrackerProjectFilling := True;
+  try
+    FIssuesProjectConnection.SetChoices(FTrackerProjectChoices);
+  finally
+    FTrackerProjectFilling := False;
+  end;
+  mRows := TrackerProjectRows;
+  if FTrackerProjectSelected > High(mRows) then
+    FTrackerProjectSelected := High(mRows);
+  if FIssuesProjects.HandleAllocated then
+  begin
+    FTrackerProjectFilling := True;
+    FIssuesProjects.Items.BeginUpdate;
+    try
+      FIssuesProjects.Items.Clear;
+      for mRow in mRows do
+      begin
+        mItem := FIssuesProjects.Items.Add;
+        mItem.Caption := mRow.Match;
+        mItem.SubItems.Add(mRow.Connection);
+        mItem.SubItems.Add(mRow.Project);
+        mItem.SubItems.Add(TrackerProjectSourceText(mRow));
+      end;
+      if FTrackerProjectSelected >= 0 then
+        FIssuesProjects.Items[FTrackerProjectSelected].Selected := True;
+    finally
+      FIssuesProjects.Items.EndUpdate;
+      FTrackerProjectFilling := False;
+    end;
+  end;
+  TrackerProjectFillFields;
+  // Die Auswahl der Verbindung in der Tabelle Abfragen folgt ebenfalls den Verbindungen.
+  RefreshTrackerQueries;
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectNoteFor(const AMapping: TAtlasTrackerProjectMapping);
+begin
+  if AMapping.ReadOnly then
+    FIssuesProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly)
+  else if Length(FTrackerProjectChoices) = 0 then
+    FIssuesProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectNoConnection)
+  else if not MatchText(AMapping.Connection, FTrackerProjectChoices) then
+    FIssuesProjectNote.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsIssuesProjectConnectionMissing,
+      [AMapping.Connection])
+  else if TrackerProjectCovered(AMapping) then
+    FIssuesProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCoveredHint)
+  else
+    FIssuesProjectNote.Caption := '';
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectFillFields;
+var
+  mRows: TArray<TAtlasTrackerProjectMapping>;
+  mSelected, mEditable: Boolean;
+  mIndex: Integer;
+begin
+  mRows := TrackerProjectRows;
+  mSelected := (FTrackerProjectSelected >= 0) and (FTrackerProjectSelected <= High(mRows));
+  mEditable := TrackerProjectEditable;
+  FTrackerProjectFilling := True;
+  try
+    if mSelected then
+    begin
+      FIssuesProjectMatch.Text := mRows[FTrackerProjectSelected].Match;
+      FIssuesProjectProject.Text := mRows[FTrackerProjectSelected].Project;
+      FIssuesProjectConnection.Choice := -1;
+      for mIndex := 0 to High(FTrackerProjectChoices) do
+        if SameText(FTrackerProjectChoices[mIndex], mRows[FTrackerProjectSelected].Connection) then
+          FIssuesProjectConnection.Choice := mIndex;
+      TrackerProjectNoteFor(mRows[FTrackerProjectSelected]);
+    end
+    else
+    begin
+      FIssuesProjectMatch.Text := '';
+      FIssuesProjectProject.Text := '';
+      FIssuesProjectConnection.Choice := -1;
+      FIssuesProjectNote.Caption := '';
+      if Length(FTrackerProjectChoices) = 0 then
+        FIssuesProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectNoConnection);
+    end;
+  finally
+    FTrackerProjectFilling := False;
+  end;
+  Allow(FIssuesProjectMatch, mEditable);
+  Allow(FIssuesProjectConnection, mEditable and (Length(FTrackerProjectChoices) > 0));
+  Allow(FIssuesProjectProject, mEditable);
+  Allow(FIssuesProjectRemove, mEditable);
+  Allow(FIssuesProjectAddCurrent, FTrackerContext.ProjectFile <> '');
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  if FTrackerProjectFilling or not Selected or (Item = nil) then
+    Exit;
+  FTrackerProjectSelected := Item.Index;
+  TrackerProjectFillFields;
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectDrawItem(Sender: TCustomListView; Item: TListItem;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  mRows: TArray<TAtlasTrackerProjectMapping>;
+begin
+  // Von der .atlas überdeckte persönliche Zeile grau (Mockup IT2).
+  mRows := TrackerProjectRows;
+  if (Item <> nil) and (Item.Index <= High(mRows)) and TrackerProjectCovered(mRows[Item.Index]) then
+    Sender.Canvas.Font.Color := clGrayText;
+  DefaultDraw := True;
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectMatchChange(Sender: TObject);
+var
+  mMatch: string;
+  mOther: Integer;
+begin
+  if FTrackerProjectFilling or not TrackerProjectEditable then
+    Exit;
+  mMatch := Trim(FIssuesProjectMatch.Text);
+  // Ein Pfad hat höchstens eine persönliche Zeile.
+  mOther := TAtlasTrackerProjects.IndexOfMatch(FTrackerProjects, mMatch);
+  if (mMatch <> '') and (mOther >= 0) and (mOther <> FTrackerProjectSelected) then
+  begin
+    FIssuesProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectMatchTaken);
+    Exit;
+  end;
+  FTrackerProjects[FTrackerProjectSelected].Match := mMatch;
+  TrackerProjectNoteFor(FTrackerProjects[FTrackerProjectSelected]);
+  if FIssuesProjects.HandleAllocated and (FTrackerProjectSelected < FIssuesProjects.Items.Count) then
+  begin
+    FIssuesProjects.Items[FTrackerProjectSelected].Caption := mMatch;
+    FIssuesProjects.Items[FTrackerProjectSelected].SubItems[2] :=
+      TrackerProjectSourceText(FTrackerProjects[FTrackerProjectSelected]);
+  end;
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectConnectionChange(Sender: TObject);
+var
+  mChoice: Integer;
+begin
+  mChoice := FIssuesProjectConnection.Choice;
+  if FTrackerProjectFilling or not TrackerProjectEditable or (mChoice < 0) or
+    (mChoice > High(FTrackerProjectChoices)) then
+    Exit;
+  FTrackerProjects[FTrackerProjectSelected].Connection := FTrackerProjectChoices[mChoice];
+  TrackerProjectNoteFor(FTrackerProjects[FTrackerProjectSelected]);
+  if FIssuesProjects.HandleAllocated and (FTrackerProjectSelected < FIssuesProjects.Items.Count) then
+    FIssuesProjects.Items[FTrackerProjectSelected].SubItems[0] := FTrackerProjectChoices[mChoice];
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectProjectChange(Sender: TObject);
+begin
+  if FTrackerProjectFilling or not TrackerProjectEditable then
+    Exit;
+  FTrackerProjects[FTrackerProjectSelected].Project := Trim(FIssuesProjectProject.Text);
+  if FIssuesProjects.HandleAllocated and (FTrackerProjectSelected < FIssuesProjects.Items.Count) then
+    FIssuesProjects.Items[FTrackerProjectSelected].SubItems[1] := FTrackerProjects[FTrackerProjectSelected].Project;
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectAdd(const AMatch: string);
+var
+  mIndex: Integer;
+  mConnection: string;
+begin
+  if Trim(AMatch) = '' then
+    Exit;
+  mIndex := TAtlasTrackerProjects.IndexOfMatch(FTrackerProjects, AMatch);
+  if mIndex < 0 then
+  begin
+    // Vorbelegt mit der ersten Verbindung; das Tracker-Projekt trägt man selbst ein.
+    mConnection := '';
+    if Length(FTrackerProjectChoices) > 0 then
+      mConnection := FTrackerProjectChoices[0];
+    FTrackerProjects := FTrackerProjects + [TAtlasTrackerProjectMapping.Create(AMatch, mConnection, '')];
+    mIndex := High(FTrackerProjects);
+  end;
+  FTrackerProjectSelected := mIndex;
+  RefreshTrackerProjects;
+  if FIssuesProjectProject.CanFocus then
+    FIssuesProjectProject.SetFocus;
+end;
+
+procedure TAtlasSettingsPage.AssignTrackerProject(const AMatch: string);
+begin
+  TrackerProjectAdd(AMatch);
+  SelectPage(PageOf(FIssuesProjects));
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectAddCurrentClick(Sender: TObject);
+begin
+  RefreshTrackerProjects;
+  if FTrackerContext.ProjectFile = '' then
+  begin
+    FIssuesProjectNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectNoProject);
+    Exit;
+  end;
+  // Die geöffnete .groupproj, sonst die aktive .dproj.
+  TrackerProjectAdd(TAtlasTrackerProjects.CurrentMatch(FTrackerContext.ProjectFile, FTrackerContext.GroupFile));
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectAddClick(Sender: TObject);
+begin
+  // Unter dem Knopf aufklappen.
+  FIssuesProjectAddMenu.Popup(FIssuesProjectAdd.ClientOrigin.X,
+    FIssuesProjectAdd.ClientOrigin.Y + FIssuesProjectAdd.Height);
+end;
+
+function TAtlasSettingsPage.TrackerBrowse(AFolder: Boolean; out APath: string): Boolean;
+var
+  mFolder: TFileOpenDialog;
+  mFile: TOpenDialog;
+begin
+  APath := '';
+  if Assigned(FOnTrackerBrowse) then
+    Exit(FOnTrackerBrowse(AFolder, APath));
+  if AFolder then
+  begin
+    mFolder := TFileOpenDialog.Create(nil);
+    try
+      mFolder.Options := mFolder.Options + [fdoPickFolders, fdoPathMustExist];
+      Result := mFolder.Execute;
+      if Result then
+        APath := mFolder.FileName;
+    finally
+      mFolder.Free;
+    end;
+    Exit;
+  end;
+  mFile := TOpenDialog.Create(nil);
+  try
+    mFile.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectFileFilter);
+    mFile.Options := mFile.Options + [ofFileMustExist];
+    Result := mFile.Execute;
+    if Result then
+      APath := mFile.FileName;
+  finally
+    mFile.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectAddFileClick(Sender: TObject);
+var
+  mPath: string;
+begin
+  if TrackerBrowse(False, mPath) then
+    TrackerProjectAdd(mPath);
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectAddFolderClick(Sender: TObject);
+var
+  mPath: string;
+begin
+  if TrackerBrowse(True, mPath) then
+    TrackerProjectAdd(mPath);
+end;
+
+procedure TAtlasSettingsPage.TrackerProjectRemoveClick(Sender: TObject);
+begin
+  if not TrackerProjectEditable then
+    Exit;
+  Delete(FTrackerProjects, FTrackerProjectSelected, 1);
+  if FTrackerProjectSelected > High(TrackerProjectRows) then
+    FTrackerProjectSelected := High(TrackerProjectRows);
+  RefreshTrackerProjects;
+end;
+
+function TAtlasSettingsPage.TrackerProjectsJson: string;
+var
+  mKept: TArray<TAtlasTrackerProjectMapping>;
+  mMapping: TAtlasTrackerProjectMapping;
+begin
+  mKept := nil;
+  for mMapping in FTrackerProjects do
+    if (mMapping.Match <> '') and (mMapping.Connection <> '') and
+      (TAtlasTrackerProjects.IndexOfMatch(mKept, mMapping.Match) < 0) then
+      mKept := mKept + [mMapping];
+  Result := TAtlasTrackerProjects.ToJson(mKept);
+end;
+
+procedure TAtlasSettingsPage.AddTrackerQueriesSection;
+var
+  mPanel: TWinControl;
+begin
+  FTrackerQuerySelected := -1;
+  FTrackerQueries := nil;
+  AddTitle(TAtlasTextId.SettingsIssuesQueries);
+  mPanel := AddPanel(96);
+  // Wie die Verbindungen: die Zeilen erst mit Fenster (RefreshTrackerQueries, auch aus CreateWnd).
+  FIssuesQueries := TListView.Create(Self);
+  FIssuesQueries.Parent := mPanel;
+  FIssuesQueries.Align := alClient;
+  FIssuesQueries.ViewStyle := vsReport;
+  FIssuesQueries.ReadOnly := True;
+  FIssuesQueries.RowSelect := True;
+  FIssuesQueries.HideSelection := False;
+  FIssuesQueries.OnSelectItem := TrackerQuerySelectItem;
+  AddTrackerColumn(FIssuesQueries, TAtlasTextId.SettingsIssuesQueryName, 130);
+  AddTrackerColumn(FIssuesQueries, TAtlasTextId.SettingsIssuesQuery, 230);
+  AddTrackerColumn(FIssuesQueries, TAtlasTextId.SettingsIssuesProjectConnection, 100);
+  AddTrackerColumn(FIssuesQueries, TAtlasTextId.SettingsIssuesProjectProject, 100);
+  FIssuesQueryName := TEdit.Create(Self);
+  FIssuesQueryName.OnChange := TrackerQueryNameChange;
+  Attach(AddTrackerLabelled(TAtlasTextId.SettingsIssuesQueryName, FIssuesQueryName, 180), FIssuesQueries);
+  FIssuesQueryText := TEdit.Create(Self);
+  FIssuesQueryText.OnChange := TrackerQueryTextChange;
+  mPanel := AddTrackerLabelled(TAtlasTextId.SettingsIssuesQuery, FIssuesQueryText, 376);
+  FIssuesQueryText.Anchors := [akLeft, akTop, akRight];
+  Attach(mPanel, FIssuesQueries);
+  FIssuesQueryConnection := TAtlasChoiceBox.Create(Self);
+  FIssuesQueryConnection.OnChange := TrackerQueryConnectionChange;
+  Attach(AddTrackerLabelled(TAtlasTextId.SettingsIssuesProjectConnection, FIssuesQueryConnection, 180),
+    FIssuesQueries);
+  FIssuesQueryProject := TEdit.Create(Self);
+  FIssuesQueryProject.OnChange := TrackerQueryProjectChange;
+  Attach(AddTrackerLabelled(TAtlasTextId.SettingsIssuesProjectProject, FIssuesQueryProject, 180), FIssuesQueries);
+  // Grund, warum eine Zeile nicht gespeichert wird (Name doppelt, Abfrage fehlt), bzw. die Vorgabe ohne Zeilen.
+  mPanel := AddPanel(18);
+  FIssuesQueryNote := TLabel.Create(Self);
+  FIssuesQueryNote.Parent := mPanel;
+  FIssuesQueryNote.Left := 90;
+  FIssuesQueryNote.Top := 1;
+  Attach(mPanel, FIssuesQueries);
+  mPanel := AddPanel(32);
+  FIssuesQueryAdd := AddTrackerButton(mPanel, 0, 110, TAtlasTextId.SettingsIssuesProjectAdd, TrackerQueryAddClick);
+  FIssuesQueryRemove := AddTrackerButton(mPanel, 116, 100, TAtlasTextId.SettingsIssuesConnectionRemove,
+    TrackerQueryRemoveClick);
+  // Dialog mit Vorlagen und „Testen“ (#1263); auch Doppelklick auf eine Zeile.
+  FIssuesQueryEdit := AddTrackerButton(mPanel, 222, 110, TAtlasTextId.SettingsIssuesQueryEdit,
+    TrackerQueryEditClick);
+  FIssuesQueries.OnDblClick := TrackerQueryEditClick;
+  Attach(mPanel, FIssuesQueries);
+  AddTrackerHint(TAtlasTextId.SettingsIssuesQueriesHint, FIssuesQueries);
+  FIssuesQueryPicker := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueryPicker));
+  // „Issue anlegen …“ im Editor und bei Befunden (#1268).
+  FIssuesCreate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCreate));
+  FIssuesCreateIncludeCode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCreateIncludeCode));
+end;
+
+function TAtlasSettingsPage.TrackerQueryEditable: Boolean;
+begin
+  Result := (FTrackerQuerySelected >= 0) and (FTrackerQuerySelected <= High(FTrackerQueries));
+end;
+
+function TAtlasSettingsPage.TrackerQueryConnectionChoice(const AConnection: string): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := 0;
+  if AConnection = '' then
+    Exit;
+  Result := -1;
+  for mIndex := 0 to High(FTrackerProjectChoices) do
+    if SameText(FTrackerProjectChoices[mIndex], AConnection) then
+      Exit(mIndex + 1);
+end;
+
+procedure TAtlasSettingsPage.RefreshTrackerQueries;
+var
+  mQuery: TAtlasTrackerQuery;
+  mItem: TListItem;
+begin
+  if FIssuesQueries = nil then
+    Exit;
+  // Auswahl: „(alle)“, dann die Verbindungen mit Namen (wie bei den Projekten).
+  FTrackerQueryFilling := True;
+  try
+    FIssuesQueryConnection.SetChoices(TArray<string>.Create(TAtlasStrings.Text(
+      TAtlasTextId.SettingsIssuesQueryAny)) + FTrackerProjectChoices);
+  finally
+    FTrackerQueryFilling := False;
+  end;
+  if FTrackerQuerySelected > High(FTrackerQueries) then
+    FTrackerQuerySelected := High(FTrackerQueries);
+  if FIssuesQueries.HandleAllocated then
+  begin
+    FTrackerQueryFilling := True;
+    FIssuesQueries.Items.BeginUpdate;
+    try
+      FIssuesQueries.Items.Clear;
+      for mQuery in FTrackerQueries do
+      begin
+        mItem := FIssuesQueries.Items.Add;
+        mItem.Caption := mQuery.Name;
+        mItem.SubItems.Add(mQuery.Query);
+        mItem.SubItems.Add(mQuery.Connection);
+        mItem.SubItems.Add(mQuery.Project);
+      end;
+      if FTrackerQuerySelected >= 0 then
+        FIssuesQueries.Items[FTrackerQuerySelected].Selected := True;
+    finally
+      FIssuesQueries.Items.EndUpdate;
+      FTrackerQueryFilling := False;
+    end;
+  end;
+  TrackerQueryFillFields;
+end;
+
+procedure TAtlasSettingsPage.TrackerQueryNoteFor(const AQuery: TAtlasTrackerQuery);
+begin
+  if AQuery.Query = '' then
+    FIssuesQueryNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueryEmpty)
+  else if (AQuery.Connection <> '') and (TrackerQueryConnectionChoice(AQuery.Connection) < 0) then
+    FIssuesQueryNote.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsIssuesProjectConnectionMissing,
+      [AQuery.Connection])
+  else
+    FIssuesQueryNote.Caption := '';
+end;
+
+procedure TAtlasSettingsPage.TrackerQueryFillFields;
+var
+  mEditable: Boolean;
+begin
+  mEditable := TrackerQueryEditable;
+  FTrackerQueryFilling := True;
+  try
+    if mEditable then
+    begin
+      FIssuesQueryName.Text := FTrackerQueries[FTrackerQuerySelected].Name;
+      FIssuesQueryText.Text := FTrackerQueries[FTrackerQuerySelected].Query;
+      FIssuesQueryProject.Text := FTrackerQueries[FTrackerQuerySelected].Project;
+      FIssuesQueryConnection.Choice :=
+        TrackerQueryConnectionChoice(FTrackerQueries[FTrackerQuerySelected].Connection);
+      TrackerQueryNoteFor(FTrackerQueries[FTrackerQuerySelected]);
+    end
+    else
+    begin
+      FIssuesQueryName.Text := '';
+      FIssuesQueryText.Text := '';
+      FIssuesQueryProject.Text := '';
+      FIssuesQueryConnection.Choice := 0;
+      FIssuesQueryNote.Caption := '';
+      // Ohne eigene Zeilen gilt die Vorgabe je Anbieter.
+      if Length(FTrackerQueries) = 0 then
+        FIssuesQueryNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueriesNone);
+    end;
+  finally
+    FTrackerQueryFilling := False;
+  end;
+  Allow(FIssuesQueryName, mEditable);
+  Allow(FIssuesQueryText, mEditable);
+  Allow(FIssuesQueryConnection, mEditable);
+  Allow(FIssuesQueryProject, mEditable);
+  Allow(FIssuesQueryRemove, mEditable);
+  Allow(FIssuesQueryEdit, mEditable);
+end;
+
+procedure TAtlasSettingsPage.TrackerQuerySelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  if FTrackerQueryFilling or not Selected or (Item = nil) then
+    Exit;
+  FTrackerQuerySelected := Item.Index;
+  TrackerQueryFillFields;
+end;
+
+procedure TAtlasSettingsPage.TrackerQueryRowChanged;
+var
+  mQuery: TAtlasTrackerQuery;
+  mItem: TListItem;
+begin
+  mQuery := FTrackerQueries[FTrackerQuerySelected];
+  TrackerQueryNoteFor(mQuery);
+  if not FIssuesQueries.HandleAllocated or (FTrackerQuerySelected >= FIssuesQueries.Items.Count) then
+    Exit;
+  mItem := FIssuesQueries.Items[FTrackerQuerySelected];
+  mItem.Caption := mQuery.Name;
+  mItem.SubItems[0] := mQuery.Query;
+  mItem.SubItems[1] := mQuery.Connection;
+  mItem.SubItems[2] := mQuery.Project;
+end;
+
+procedure TAtlasSettingsPage.TrackerQueryNameChange(Sender: TObject);
+var
+  mName: string;
+  mOther: Integer;
+begin
+  if FTrackerQueryFilling or not TrackerQueryEditable then
+    Exit;
+  mName := Trim(FIssuesQueryName.Text);
+  // Die Klappliste unterscheidet die Abfragen am Namen.
+  mOther := TAtlasTrackerQueries.IndexOfName(FTrackerQueries, mName);
+  if (mName = '') or ((mOther >= 0) and (mOther <> FTrackerQuerySelected)) then
+  begin
+    FIssuesQueryNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueryNameTaken);
+    Exit;
+  end;
+  FTrackerQueries[FTrackerQuerySelected].Name := mName;
+  TrackerQueryRowChanged;
+end;
+
+procedure TAtlasSettingsPage.TrackerQueryTextChange(Sender: TObject);
+var
+  mQuery: TAtlasTrackerQuery;
+begin
+  if FTrackerQueryFilling or not TrackerQueryEditable then
+    Exit;
+  // Einzeilig wie beim Lesen (TAtlasTrackerQuery.Create).
+  mQuery := FTrackerQueries[FTrackerQuerySelected];
+  FTrackerQueries[FTrackerQuerySelected] := TAtlasTrackerQuery.Create(mQuery.Name, FIssuesQueryText.Text,
+    mQuery.Connection, mQuery.Project);
+  TrackerQueryRowChanged;
+end;
+
+procedure TAtlasSettingsPage.TrackerQueryConnectionChange(Sender: TObject);
+var
+  mChoice: Integer;
+begin
+  mChoice := FIssuesQueryConnection.Choice;
+  if FTrackerQueryFilling or not TrackerQueryEditable or (mChoice < 0) or
+    (mChoice > Length(FTrackerProjectChoices)) then
+    Exit;
+  if mChoice = 0 then
+    FTrackerQueries[FTrackerQuerySelected].Connection := ''
+  else
+    FTrackerQueries[FTrackerQuerySelected].Connection := FTrackerProjectChoices[mChoice - 1];
+  TrackerQueryRowChanged;
+end;
+
+procedure TAtlasSettingsPage.TrackerQueryProjectChange(Sender: TObject);
+begin
+  if FTrackerQueryFilling or not TrackerQueryEditable then
+    Exit;
+  FTrackerQueries[FTrackerQuerySelected].Project := Trim(FIssuesQueryProject.Text);
+  TrackerQueryRowChanged;
+end;
+
+procedure TAtlasSettingsPage.TrackerQueryAddClick(Sender: TObject);
+var
+  mBase, mName: string;
+  mNumber: Integer;
+begin
+  // Neue Zeile ohne Abfrage: gespeichert wird sie erst mit Abfrage.
+  mBase := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueryNew);
+  mName := mBase;
+  mNumber := 1;
+  while TAtlasTrackerQueries.IndexOfName(FTrackerQueries, mName) >= 0 do
+  begin
+    Inc(mNumber);
+    mName := mBase + ' ' + IntToStr(mNumber);
+  end;
+  FTrackerQueries := FTrackerQueries + [TAtlasTrackerQuery.Create(mName, '', '', '')];
+  FTrackerQuerySelected := High(FTrackerQueries);
+  RefreshTrackerQueries;
+  if FIssuesQueryText.CanFocus then
+    FIssuesQueryText.SetFocus;
+end;
+
+procedure TAtlasSettingsPage.TrackerQueryRemoveClick(Sender: TObject);
+begin
+  if not TrackerQueryEditable then
+    Exit;
+  Delete(FTrackerQueries, FTrackerQuerySelected, 1);
+  if FTrackerQuerySelected > High(FTrackerQueries) then
+    FTrackerQuerySelected := High(FTrackerQueries);
+  RefreshTrackerQueries;
+end;
+
+procedure TAtlasSettingsPage.TrackerQueryEditClick(Sender: TObject);
+var
+  mQuery: TAtlasTrackerQuery;
+  mTaken: TArray<string>;
+  mIndex: Integer;
+  mOk: Boolean;
+begin
+  if not TrackerQueryEditable then
+    Exit;
+  mQuery := FTrackerQueries[FTrackerQuerySelected];
+  mTaken := nil;
+  for mIndex := 0 to High(FTrackerQueries) do
+    if mIndex <> FTrackerQuerySelected then
+      mTaken := mTaken + [FTrackerQueries[mIndex].Name];
+  if Assigned(FOnTrackerQueryEdit) then
+    mOk := FOnTrackerQueryEdit(mQuery, TrackerRows, mTaken)
+  else
+    mOk := TAtlasTrackerQueryDialog.Execute(mQuery, TrackerRows, mTaken, FOnTrackerQueryTest);
+  if not mOk then
+    Exit;
+  FTrackerQueries[FTrackerQuerySelected] := mQuery;
+  RefreshTrackerQueries;
+end;
+
+function TAtlasSettingsPage.TrackerQueriesJson: string;
+var
+  mKept: TArray<TAtlasTrackerQuery>;
+  mQuery: TAtlasTrackerQuery;
+begin
+  mKept := nil;
+  for mQuery in FTrackerQueries do
+    if (mQuery.Name <> '') and (mQuery.Query <> '') and (TAtlasTrackerQueries.IndexOfName(mKept, mQuery.Name) < 0) then
+      mKept := mKept + [mQuery];
+  Result := TAtlasTrackerQueries.ToJson(mKept);
 end;
 
 procedure TAtlasSettingsPage.AddWelcomeLayoutButtons;
@@ -3193,6 +4586,7 @@ begin
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
   FMarks.Bind(FPreviousProblemKey, ['PreviousProblemKey']);
   FMarks.Bind(FProblemsWindowKey, ['ProblemsWindowKey']);
+  FMarks.Bind(FCreateIssueKey, ['CreateIssueKey']);
   FMarks.Bind(FUndoKey, ['UndoKey']);
   FMarks.Bind(FRedoKey, ['RedoKey']);
   FMarks.Bind(FUpdatesCheck, ['UpdatesCheck']);
@@ -3446,13 +4840,18 @@ begin
   FMarks.Bind(FWelcomeProjectSetup, ['WelcomePageProjectSetup']);
   FMarks.Bind(FWelcomeNewFromTemplate, ['WelcomePageNewFromTemplate']);
   FMarks.Bind(FWelcomeIssues, ['WelcomePageIssues']);
-  FMarks.Bind(FWelcomeIssuesTracker, ['WelcomePageIssuesTracker']);
-  FMarks.Bind(FWelcomeIssuesQuery, ['WelcomePageIssuesQuery']);
-  FMarks.Bind(FWelcomeIssuesStart, ['WelcomePageIssuesStart']);
-  FMarks.Bind(FWelcomeIssuesBranchPattern, ['WelcomePageIssuesBranchPattern']);
-  FMarks.Bind(FWelcomeIssuesBranchBase, ['WelcomePageIssuesBranchBase']);
-  FMarks.Bind(FWelcomeIssuesCommitPattern, ['WelcomePageIssuesCommitPattern']);
+  FMarks.Bind(FIssuesTracker, ['IssuesTracker']);
+  FMarks.Bind(FIssuesStart, ['IssuesStart']);
+  FMarks.Bind(FIssuesBranchPattern, ['IssuesBranchPattern']);
+  FMarks.Bind(FIssuesBranchBase, ['IssuesBranchBase']);
+  FMarks.Bind(FIssuesCommitPattern, ['IssuesCommitPattern']);
   FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
+  FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
+  FMarks.Bind(FIssuesProjects, ['IssuesProjects']);
+  FMarks.Bind(FIssuesQueries, ['IssuesQueries']);
+  FMarks.Bind(FIssuesQueryPicker, ['IssuesQueryPicker']);
+  FMarks.Bind(FIssuesCreate, ['IssuesCreate']);
+  FMarks.Bind(FIssuesCreateIncludeCode, ['IssuesCreateIncludeCode']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -3627,6 +5026,7 @@ begin
   // Die Liste der Sicherung braucht ein Fenster; vorher bleibt sie leer.
   RefreshFuse;
   RefreshFavorites;
+  RefreshTrackerConnections;
   // Gewünschte Einstellung (#628) erst mit Fenster zeigen.
   if FPendingReveal <> '' then
     ApplyReveal(FPendingReveal);
@@ -5418,6 +6818,7 @@ begin
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
   FPreviousProblemKey.Text := ShortCutToText(TShortCut(ASettings.PreviousProblemKey));
   FProblemsWindowKey.Text := ShortCutToText(TShortCut(ASettings.ProblemsWindowKey));
+  FCreateIssueKey.Text := ShortCutToText(TShortCut(ASettings.CreateIssueKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
   FGenerateMenu.Checked := ASettings.GenerateMenu;
@@ -5695,21 +7096,38 @@ begin
   FWelcomeTestsCiNotify.Checked := ASettings.WelcomePageTestsCiNotify;
   FCiLogin.Checked := ASettings.CiLogin;
   FWelcomeIssues.Checked := ASettings.WelcomePageIssues;
-  if SameText(ASettings.WelcomePageIssuesTracker, 'github') then
-    FWelcomeIssuesTracker.Choice := 1
-  else if SameText(ASettings.WelcomePageIssuesTracker, 'youtrack') then
-    FWelcomeIssuesTracker.Choice := 2
+  if SameText(ASettings.IssuesTracker, 'github') then
+    FIssuesTracker.Choice := 1
+  else if SameText(ASettings.IssuesTracker, 'youtrack') then
+    FIssuesTracker.Choice := 2
   else
-    FWelcomeIssuesTracker.Choice := 0;
-  FWelcomeIssuesQuery.Text := ASettings.WelcomePageIssuesQuery;
-  if SameText(ASettings.WelcomePageIssuesStart, TAtlasPluginSettings.IssuesStartRemember) then
-    FWelcomeIssuesStart.Choice := 1
+    FIssuesTracker.Choice := 0;
+  if SameText(ASettings.IssuesStart, TAtlasPluginSettings.IssuesStartRemember) then
+    FIssuesStart.Choice := 1
   else
-    FWelcomeIssuesStart.Choice := 0;
-  FWelcomeIssuesBranchPattern.Text := ASettings.WelcomePageIssuesBranchPattern;
-  FWelcomeIssuesBranchBase.Text := ASettings.WelcomePageIssuesBranchBase;
-  FWelcomeIssuesCommitPattern.Text := ASettings.WelcomePageIssuesCommitPattern;
+    FIssuesStart.Choice := 0;
+  FIssuesBranchPattern.Text := ASettings.IssuesBranchPattern;
+  FIssuesBranchBase.Text := ASettings.IssuesBranchBase;
+  FIssuesCommitPattern.Text := ASettings.IssuesCommitPattern;
   FTrackerLogin.Checked := ASettings.TrackerLogin;
+  FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
+  FTrackerSelected := -1;
+  if Length(FTrackerConnections) > 0 then
+    FTrackerSelected := 0;
+  // Zuordnung (#1261) vor dem Aufbau: RefreshTrackerConnections baut die Tabelle Projekte mit.
+  FTrackerProjects := TAtlasTrackerProjects.Read(ASettings.IssuesProjects);
+  FTrackerProjectSelected := -1;
+  if Length(FTrackerProjects) > 0 then
+    FTrackerProjectSelected := 0;
+  // Ebenso die Abfragen (#1262): RefreshTrackerProjects baut sie mit.
+  FTrackerQueries := TAtlasTrackerQueries.Read(ASettings.IssuesQueries);
+  FTrackerQuerySelected := -1;
+  if Length(FTrackerQueries) > 0 then
+    FTrackerQuerySelected := 0;
+  FIssuesQueryPicker.Checked := ASettings.IssuesQueryPicker;
+  FIssuesCreate.Checked := ASettings.IssuesCreate;
+  FIssuesCreateIncludeCode.Checked := ASettings.IssuesCreateIncludeCode;
+  RefreshTrackerConnections;
   FWelcomeQuickActions.Checked := ASettings.WelcomePageQuickActions;
   Items := TAtlasWelcomeQuickActions.ParseItems(ASettings.WelcomePageQuickActionsItems);
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
@@ -5949,6 +7367,7 @@ begin
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));
   ASettings.PreviousProblemKey := Integer(TextToShortCut(Trim(FPreviousProblemKey.Text)));
   ASettings.ProblemsWindowKey := Integer(TextToShortCut(Trim(FProblemsWindowKey.Text)));
+  ASettings.CreateIssueKey := Integer(TextToShortCut(Trim(FCreateIssueKey.Text)));
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.UpdatesCheck := FUpdatesCheck.Checked;
@@ -6246,24 +7665,29 @@ begin
   ASettings.WelcomePageTestsCiNotify := FWelcomeTestsCiNotify.Checked;
   ASettings.CiLogin := FCiLogin.Checked;
   ASettings.WelcomePageIssues := FWelcomeIssues.Checked;
-  case FWelcomeIssuesTracker.Choice of
+  case FIssuesTracker.Choice of
     1:
-      ASettings.WelcomePageIssuesTracker := 'github';
+      ASettings.IssuesTracker := 'github';
     2:
-      ASettings.WelcomePageIssuesTracker := 'youtrack';
+      ASettings.IssuesTracker := 'youtrack';
   else
-    ASettings.WelcomePageIssuesTracker := '';
+    ASettings.IssuesTracker := '';
   end;
-  ASettings.WelcomePageIssuesQuery := Trim(FWelcomeIssuesQuery.Text);
-  if FWelcomeIssuesStart.Choice = 1 then
-    ASettings.WelcomePageIssuesStart := TAtlasPluginSettings.IssuesStartRemember
+  if FIssuesStart.Choice = 1 then
+    ASettings.IssuesStart := TAtlasPluginSettings.IssuesStartRemember
   else
-    ASettings.WelcomePageIssuesStart := TAtlasPluginSettings.IssuesStartBranch;
-  ASettings.WelcomePageIssuesBranchPattern := Trim(FWelcomeIssuesBranchPattern.Text);
-  ASettings.WelcomePageIssuesBranchBase := Trim(FWelcomeIssuesBranchBase.Text);
+    ASettings.IssuesStart := TAtlasPluginSettings.IssuesStartBranch;
+  ASettings.IssuesBranchPattern := Trim(FIssuesBranchPattern.Text);
+  ASettings.IssuesBranchBase := Trim(FIssuesBranchBase.Text);
   // Nicht gekürzt: Das Leerzeichen am Ende von "{kennung} " trennt Kennung und Nachricht.
-  ASettings.WelcomePageIssuesCommitPattern := FWelcomeIssuesCommitPattern.Text;
+  ASettings.IssuesCommitPattern := FIssuesCommitPattern.Text;
   ASettings.TrackerLogin := FTrackerLogin.Checked;
+  ASettings.IssuesConnections := TrackerConnectionsJson;
+  ASettings.IssuesProjects := TrackerProjectsJson;
+  ASettings.IssuesQueries := TrackerQueriesJson;
+  ASettings.IssuesQueryPicker := FIssuesQueryPicker.Checked;
+  ASettings.IssuesCreate := FIssuesCreate.Checked;
+  ASettings.IssuesCreateIncludeCode := FIssuesCreateIncludeCode.Checked;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
