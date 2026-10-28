@@ -1003,7 +1003,14 @@ type
     // Versionsverwaltung je Projekt (#1286)
     SettingsVcsProjects, SettingsVcsProjectsKind, SettingsVcsProjectsMainBranch, SettingsVcsProjectsGuess,
     SettingsVcsProjectsCoveredHint, SettingsVcsProjectsHint, SettingsVcsProjectsBranchInvalid,
-    SettingsVcsProjectMainBranch);
+    SettingsVcsProjectMainBranch,
+    // Serverzugang der Versionsverwaltung (#1287)
+    SettingsVcsServers, SettingsVcsServersHint, SettingsVcsServerProject, SettingsVcsServerServer,
+    SettingsVcsServerState, SettingsVcsServerCheck, SettingsVcsServerCheckAll, SettingsVcsServerLogin,
+    SettingsVcsServerUnknown, SettingsVcsServerChecking, SettingsVcsServerReachable, SettingsVcsServerLoginNeeded,
+    SettingsVcsServerUnreachable, SettingsVcsServerNoServer, SettingsVcsServerToolMissing, SettingsVcsServerFailed,
+    SettingsVcsServerLoginFailed, SettingsVcsServerLoginOpen, WelcomeContinueIncomingLogin, WelcomeQuickPullLogin,
+    WelcomeQuickMsgPullLogin);
 
   TAtlasStrings = class
   private class var
@@ -3451,7 +3458,28 @@ const
      'Das Projekt hat eine .atlas mit vcs; sie gilt vor dieser Zeile.',
      'Für Projekte ohne vcs in der .atlas: Es gilt die Zeile für genau diese .dproj, sonst die für die geöffnete .groupproj, sonst der längste passende Ordner, sonst die Art oben. Für Pakete aus SVN-Externals eine Zeile je Paketordner. Hauptbranch leer: raten (Git main, sonst master; SVN trunk).',
      'Der Hauptbranch darf keinen Leerraum enthalten.',
-     ' · Hauptbranch %s'),
+     ' · Hauptbranch %s',
+     'Server',
+     'Prüft auf Klick, ob Atlas den Server ohne Rückfrage erreicht (Abruf, Pull, Push). Atlas speichert keine Zugangsdaten: „Anmelden …“ öffnet eine Konsole, in der Git Credential Manager bzw. SVN wie gewohnt fragen und die Anmeldung speichern.',
+     'Projekt',
+     'Server',
+     'Zustand',
+     'Prüfen',
+     'Alle prüfen',
+     'Anmelden …',
+     'nicht geprüft',
+     'wird geprüft …',
+     'erreichbar · geprüft %s',
+     'Anmeldung nötig',
+     'nicht erreichbar',
+     'kein Server',
+     'Programm fehlt',
+     'Prüfung fehlgeschlagen',
+     'Die Konsole zum Anmelden ließ sich nicht öffnen.',
+     'Konsole offen – nach dem Schließen prüft Atlas erneut.',
+     'Anmeldung am Server nötig – prüfen …',
+     'Anmeldung am Server nötig',
+     'Schnellaktion: Pull für %s – Anmeldung am Server nötig (Tools › Optionen › Atlas › Versionsverwaltung › Server).'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -5784,7 +5812,28 @@ const
      'The project has an .atlas with vcs; it applies before this row.',
      'For projects without vcs in the .atlas: the row for exactly this .dproj applies, otherwise the one for the open .groupproj, otherwise the longest matching folder, otherwise the kind above. For packages from SVN externals, one row per package folder. Empty main branch: guess (Git main, otherwise master; SVN trunk).',
      'The main branch must not contain whitespace.',
-     ' · main branch %s'));
+     ' · main branch %s',
+     'Servers',
+     'Checks on click whether Atlas reaches the server without prompting (fetch, pull, push). Atlas stores no credentials: “Sign in …” opens a console where Git Credential Manager or SVN ask as usual and store the sign-in.',
+     'Project',
+     'Server',
+     'State',
+     'Check',
+     'Check all',
+     'Sign in …',
+     'not checked',
+     'checking …',
+     'reachable · checked %s',
+     'sign-in needed',
+     'not reachable',
+     'no server',
+     'program missing',
+     'check failed',
+     'The console for signing in could not be opened.',
+     'Console open – Atlas checks again after it is closed.',
+     'Server sign-in needed – check …',
+     'server sign-in needed',
+     'Quick action: pull for %s – server sign-in needed (Tools › Options › Atlas › Version control › Servers).'));
 
 { TAtlasStrings }
 

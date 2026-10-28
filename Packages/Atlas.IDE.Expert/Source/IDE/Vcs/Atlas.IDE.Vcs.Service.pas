@@ -21,6 +21,11 @@
 //   - Run: Aufruf im Hintergrund, Ergebnis im Hauptthread; der Prozessläufer
 //     lehnt den Hauptthread ab, beendet git bzw. svn nach dem Zeitlimit und
 //     beim Entladen (TAtlasShutdown)
+//   - Serverzugang (#1287): CheckServer prüft auf Klick einmal im
+//     Hintergrund (Atlas.Core.Vcs.ServerCheck), das Ergebnis merkt sich die
+//     Sitzung je Ordner (nur im Speicher); OpenServerLogin öffnet eine
+//     sichtbare Konsole mit git fetch bzw. svn info ^/ und meldet ihr Ende
+//     (Zeitgeber im Hauptthread, kein wartender Thread)
 //   - fehlt git bzw. svn bei einer gefundenen Arbeitskopie, steht das einmal
 //     je Sitzung in der Meldungsansicht und im Protokoll (bei eigenem Pfad mit
 //     dem Pfad, nur in der Meldungsansicht); Atlas arbeitet ohne
@@ -35,6 +40,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.ToolCheck,
+  Atlas.Core.Vcs.ServerCheck,
   Atlas.Core.Projects.Vcs;
 
 type
@@ -104,6 +110,16 @@ type
     /// .dproj.</summary>
     class function QueryProject(const AProjectFile, AGroupFile: string;
       const ADone: TProc<TAtlasVcsProjectState>): Boolean; overload; static;
+    /// <summary>Zugang zum Server für die Arbeitskopie von AFolder prüfen (#1287): einmal im Hintergrund,
+    /// Zeitgrenze 10 s, ohne Rückfrage; ADone im Hauptthread, das Ergebnis merkt sich die Sitzung. Ohne
+    /// Arbeitskopie kommt ADone sofort. False, wenn nichts gestartet wurde.</summary>
+    class function CheckServer(const AFolder: string; const ADone: TProc<TAtlasVcsServerCheck>): Boolean; static;
+    /// <summary>Letztes Ergebnis von CheckServer für AFolder in dieser Sitzung; State Unknown ohne.</summary>
+    class function ServerState(const AFolder: string): TAtlasVcsServerCheck; static;
+    /// <summary>„Anmelden …“ (#1287): sichtbare Konsole im Wurzelordner mit git fetch &lt;Remote&gt; bzw. svn info
+    /// ^/, damit Git Credential Manager bzw. svn fragen und speichern; AClosed im Hauptthread, sobald man das
+    /// Fenster schließt. False, wenn nichts gestartet wurde.</summary>
+    class function OpenServerLogin(const ACheck: TAtlasVcsServerCheck; const AClosed: TProc): Boolean; static;
   end;
 
 implementation
@@ -122,7 +138,10 @@ uses
   Atlas.Core.Vcs.Detection,
   Atlas.Core.Vcs.Worker,
   System.Generics.Collections,
+  Winapi.Windows,
+  Vcl.ExtCtrls,
   Atlas.Core.Projects.Matching,
+  Atlas.Core.Vcs.ServerAccess,
   Atlas.Core.Settings.TeamFile,
   Atlas.IDE.Foundation.TeamFile;
 
@@ -155,9 +174,80 @@ var
   // .atlas je Datei (klein geschrieben); gilt die Datei (Einstellung TeamFile)?
   TeamCache: TDictionary<string, TTeamEntry>;
   TeamFileOn: Boolean;
+  // Serverzugang je Ordner (klein geschrieben), nur in dieser Sitzung (#1287); nur im Hauptthread.
+  ServerStates: TDictionary<string, TAtlasVcsServerCheck>;
 
 const
   cDefaultTimeoutSeconds = 15;
+
+type
+  /// <summary>Offene Konsolen von „Anmelden …“ (#1287): ein Zeitgeber im Hauptthread fragt, ob der Prozess endete.
+  /// </summary>
+  TLoginWatch = class
+  private const
+    cIntervalMs = 500;
+  private
+    FTimer: TTimer;
+    FProcesses: TList<THandle>;
+    FClosed: TList<TProc>;
+    procedure Tick(Sender: TObject);
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Add(AProcess: THandle; const AClosed: TProc);
+  end;
+
+var
+  Logins: TLoginWatch;
+
+constructor TLoginWatch.Create;
+begin
+  inherited Create;
+  FProcesses := TList<THandle>.Create;
+  FClosed := TList<TProc>.Create;
+  FTimer := TTimer.Create(nil);
+  FTimer.Enabled := False;
+  FTimer.Interval := cIntervalMs;
+  FTimer.OnTimer := Tick;
+end;
+
+destructor TLoginWatch.Destroy;
+var
+  mProcess: THandle;
+begin
+  FTimer.Free;
+  // Beim Entladen bleiben die Konsolen offen; nur die Handles schließen, ohne Rückruf.
+  for mProcess in FProcesses do
+    CloseHandle(mProcess);
+  FProcesses.Free;
+  FClosed.Free;
+  inherited Destroy;
+end;
+
+procedure TLoginWatch.Add(AProcess: THandle; const AClosed: TProc);
+begin
+  FProcesses.Add(AProcess);
+  FClosed.Add(AClosed);
+  FTimer.Enabled := True;
+end;
+
+procedure TLoginWatch.Tick(Sender: TObject);
+var
+  mIndex: Integer;
+  mClosed: TProc;
+begin
+  for mIndex := FProcesses.Count - 1 downto 0 do
+    if WaitForSingleObject(FProcesses[mIndex], 0) = WAIT_OBJECT_0 then
+    begin
+      CloseHandle(FProcesses[mIndex]);
+      mClosed := FClosed[mIndex];
+      FProcesses.Delete(mIndex);
+      FClosed.Delete(mIndex);
+      if Assigned(mClosed) then
+        TAtlasGuard.Run(TAtlasFeature.Settings, mClosed);
+    end;
+  FTimer.Enabled := FProcesses.Count > 0;
+end;
   cMinTimeoutSeconds = 1;
   cMaxTimeoutSeconds = 300;
 
@@ -435,6 +525,7 @@ begin
     Worker.Stop(TAtlasShutdown.StopMs);
   FreeAndNil(Worker);
   Runner := nil;
+  FreeAndNil(Logins);
 end;
 
 class function TAtlasIdeVcs.ForFolder(const AFolder: string): IAtlasVersionControl;
@@ -480,6 +571,83 @@ begin
     begin
       ADone(mCheck);
     end);
+end;
+
+class function TAtlasIdeVcs.CheckServer(const AFolder: string; const ADone: TProc<TAtlasVcsServerCheck>): Boolean;
+var
+  mRunner: IAtlasVcsRunner;
+  mCopy: TAtlasVcsWorkingCopy;
+  mExecutable, mKey: string;
+  mCheck: TAtlasVcsServerCheck;
+begin
+  mRunner := Runner;
+  if mRunner = nil then
+    Exit(False);
+  mKey := LowerCase(AFolder);
+  // Art und Wurzel ohne Prozess; „Aus“ und keine Arbeitskopie: sofort „kein Server“.
+  mCopy := ForFolder(AFolder).WorkingCopy;
+  mExecutable := '';
+  if mCopy.Kind <> TAtlasVcsKind.None then
+    mExecutable := TAtlasVcsTools.Find(mCopy.Kind);
+  mCheck := TAtlasVcsServerCheck.Empty;
+  if mCopy.Kind = TAtlasVcsKind.None then
+  begin
+    mCheck := TAtlasVcsServerChecks.Check(mRunner, mCopy.Kind, mExecutable, mCopy.Root,
+      TAtlasVcsServerChecks.TimeoutMs, Now);
+    ServerStates.AddOrSetValue(mKey, mCheck);
+    ADone(mCheck);
+    Exit(True);
+  end;
+  // Arbeit und Ergebnis teilen sich mCheck; das Ergebnis kommt erst nach der Arbeit.
+  Result := Run(
+    procedure
+    begin
+      mCheck := TAtlasVcsServerChecks.Check(mRunner, mCopy.Kind, mExecutable, mCopy.Root,
+        TAtlasVcsServerChecks.TimeoutMs, Now);
+    end,
+    procedure
+    begin
+      if ServerStates <> nil then
+        ServerStates.AddOrSetValue(mKey, mCheck);
+      ADone(mCheck);
+    end);
+end;
+
+class function TAtlasIdeVcs.ServerState(const AFolder: string): TAtlasVcsServerCheck;
+begin
+  if (ServerStates = nil) or not ServerStates.TryGetValue(LowerCase(AFolder), Result) then
+    Result := TAtlasVcsServerCheck.Empty;
+end;
+
+class function TAtlasIdeVcs.OpenServerLogin(const ACheck: TAtlasVcsServerCheck; const AClosed: TProc): Boolean;
+var
+  mShell, mCommandLine: string;
+  mStartup: TStartupInfo;
+  mProcess: TProcessInformation;
+begin
+  Result := False;
+  if (Runner = nil) or not ACheck.CanLogin or not DirectoryExists(ACheck.Root) then
+    Exit;
+  mShell := System.SysUtils.GetEnvironmentVariable('ComSpec');
+  if mShell = '' then
+    mShell := 'cmd.exe';
+  mCommandLine := TAtlasVcsServerChecks.LoginCommandLine(mShell, TAtlasVcsTools.Find(ACheck.Kind), ACheck.Kind,
+    ACheck.Remote);
+  if mCommandLine = '' then
+    Exit;
+  UniqueString(mCommandLine);
+  FillChar(mStartup, SizeOf(mStartup), 0);
+  mStartup.cb := SizeOf(mStartup);
+  FillChar(mProcess, SizeOf(mProcess), 0);
+  // Sichtbar und mit eigener Konsole: Hier dürfen git, Git Credential Manager und svn nachfragen.
+  if not CreateProcess(nil, PChar(mCommandLine), nil, nil, False, CREATE_NEW_CONSOLE, nil, PChar(ACheck.Root),
+    mStartup, mProcess) then
+    Exit;
+  CloseHandle(mProcess.hThread);
+  if Logins = nil then
+    Logins := TLoginWatch.Create;
+  Logins.Add(mProcess.hProcess, AClosed);
+  Result := True;
 end;
 
 class function TAtlasIdeVcs.QueryProject(const AProjectFile: string;
@@ -551,9 +719,11 @@ initialization
   Lock := TCriticalSection.Create;
   Cached := TVcsSettings.Default;
   TeamCache := TDictionary<string, TTeamEntry>.Create;
+  ServerStates := TDictionary<string, TAtlasVcsServerCheck>.Create;
 
 finalization
   TAtlasIdeVcs.Stop;
+  FreeAndNil(ServerStates);
   FreeAndNil(TeamCache);
   FreeAndNil(Lock);
 

@@ -4429,6 +4429,12 @@ begin
     begin
       GuardWarning(AText);
     end);
+  // „Anmeldung am Server nötig – prüfen …“ (#1287): Seite Versionsverwaltung, Zeile des Ordners prüfen.
+  Welcome.ContinueWork.OnServerAccess :=
+    procedure(AFolder: string)
+    begin
+      TAtlasOptionsRegistration.ShowVcsServer(AFolder);
+    end;
   // Zustandskachel „Atlas“ (#754): dieselben Zeilen wie das Statusfeld (#591).
   Welcome.State := CreateWelcomeState;
   // Karte „Atlas entdecken“ (#757): Befehle und Tasten aus der Palette, „Ausprobieren“ führt sie aus.

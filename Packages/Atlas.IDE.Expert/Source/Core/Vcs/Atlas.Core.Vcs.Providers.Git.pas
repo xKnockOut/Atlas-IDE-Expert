@@ -18,13 +18,17 @@
 //   Outgoing  log --format=… --max-count=N refs/heads/<Branch> --not <Upstream>|--remotes
 //   ChangesIn diff --name-status -z --no-renames <Revision>^1 <Revision>
 //   Push      push --porcelain [--set-upstream] <Remote> refs/heads/<Branch>:<Ref>
+//             (wie Fetch und Pull ohne Rückfrage; fehlt die Anmeldung,
+//             LoginNeeded, #1287)
 // Eingehende Commits (IAtlasVcsIncoming, #755):
 //   Resolve   rev-parse --verify --quiet <Ref>^{commit}
 //   Incoming  log --format=… --name-only -z --no-renames --max-count=N <Upstream> --not <Stände>
 //   Fetch     -c credential.interactive=never -c core.askPass= fetch --quiet --no-tags [<Remote>]
 //             (Git Credential Manager fragt nicht, git selbst ruft kein
-//             Kennwortfenster; ohne Konsole und mit stdin NUL fragt git auch
-//             im Terminal nicht nach. Das Zeitlimit setzt der Aufrufer.)
+//             Kennwortfenster; dazu setzt der Prozessläufer
+//             GIT_TERMINAL_PROMPT=0 und GCM_INTERACTIVE=never. Fehlt die
+//             Anmeldung, LoginNeeded statt Failed (#1287). Das Zeitlimit setzt
+//             der Aufrufer.)
 // Holen (IAtlasVcsUpdate, #764):
 //   Pull      -c credential.interactive=never -c core.askPass= pull --ff-only --no-rebase --quiet
 // Branch für ein Issue (IAtlasVcsBranching, #765), ohne Netz:
@@ -51,6 +55,7 @@ type
     FRoot: string;
     FCommand: TAtlasVcsCommand;
     function Git(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+    function GitRemote(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
     function Status(AUntracked: Boolean; out AHead: TAtlasVcsHead;
       out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
     function RefExists(const ARef: string; out AExists: Boolean): TAtlasVcsOutcome;
@@ -174,6 +179,14 @@ function TAtlasGitVersionControl.Git(const AArguments: TArray<string>; out AOutp
 begin
   Result := FCommand.Run(['--no-optional-locks', '-c', 'core.quotepath=off', '-c', 'color.ui=false'] + AArguments,
     AOutput);
+end;
+
+function TAtlasGitVersionControl.GitRemote(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+begin
+  // Mit dem Server (#1287): fehlt die Anmeldung, LoginNeeded statt Failed. Nie nachfragen: kein Fenster des
+  // Credential Managers, kein Kennwortprogramm (dazu die Umgebung des Prozessläufers).
+  Result := FCommand.RunRemote(TAtlasVcsKind.Git, ['--no-optional-locks', '-c', 'core.quotepath=off', '-c',
+    'color.ui=false', '-c', 'credential.interactive=never', '-c', 'core.askPass='] + AArguments, AOutput);
 end;
 
 function TAtlasGitVersionControl.Status(AUntracked: Boolean; out AHead: TAtlasVcsHead;
@@ -385,7 +398,7 @@ begin
   if ASetUpstream then
     Arguments := Arguments + ['--set-upstream'];
   Arguments := Arguments + [ARemote, 'refs/heads/' + ABranch + ':' + ARemoteRef];
-  Result := Git(Arguments, Output);
+  Result := GitRemote(Arguments, Output);
 end;
 
 function TAtlasGitVersionControl.Resolve(const ARef: string; out ARevision: string): TAtlasVcsOutcome;
@@ -453,11 +466,10 @@ var
 begin
   if (ARemote <> '') and not SafeName(ARemote) then
     Exit(TAtlasVcsOutcome.Failed);
-  // Nie nach Zugangsdaten fragen: kein Fenster des Credential Managers, kein Kennwortprogramm.
-  Arguments := ['-c', 'credential.interactive=never', '-c', 'core.askPass=', 'fetch', '--quiet', '--no-tags'];
+  Arguments := ['fetch', '--quiet', '--no-tags'];
   if ARemote <> '' then
     Arguments := Arguments + [ARemote];
-  Result := Git(Arguments, Output);
+  Result := GitRemote(Arguments, Output);
 end;
 
 function TAtlasGitVersionControl.Pull: TAtlasVcsOutcome;
@@ -465,8 +477,7 @@ var
   Output: TBytes;
 begin
   // Nur vorwärts: kein Merge-Commit, kein Rebase; weicht der Branch ab, endet git mit Fehler.
-  Result := Git(['-c', 'credential.interactive=never', '-c', 'core.askPass=', 'pull', '--ff-only', '--no-rebase',
-    '--quiet'], Output);
+  Result := GitRemote(['pull', '--ff-only', '--no-rebase', '--quiet'], Output);
 end;
 
 { IAtlasVcsBranching (#765) }

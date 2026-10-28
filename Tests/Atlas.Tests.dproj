@@ -971,10 +971,12 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Updates.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.ServerAccess.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.GitParser.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnParser.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Tools.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.ToolCheck.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.ServerCheck.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Git.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Svn.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Null.pas"/>
@@ -986,6 +988,7 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.Integration.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.ToolCheck.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Vcs.ServerCheck.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Updates\Atlas.UI.Updates.Consent.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Updates.Tests.pas"/>
         <DCCReference Include="..\Setup\Source\Core\Setup.Core.Contract.pas"/>

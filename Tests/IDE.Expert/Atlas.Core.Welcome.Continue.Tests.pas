@@ -622,6 +622,12 @@ begin
   Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, Vcs, Path('Atlas.dproj'), State, Stamp(9, 0), Found));
   Assert.IsTrue(Found.Available);
   Assert.IsTrue(Found.FetchFailed);
+  Assert.IsFalse(Found.LoginNeeded);
+  // Anmeldung fehlt (#1287): Ursache statt stillem Scheitern.
+  Fake.FFetchOutcome := TAtlasVcsOutcome.LoginNeeded;
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, Vcs, Path('Atlas.dproj'), State, Stamp(9, 0), Found));
+  Assert.IsTrue(Found.FetchFailed);
+  Assert.IsTrue(Found.LoginNeeded);
 end;
 
 procedure TAtlasWelcomeContinueTests.IncomingWithoutVersionControlHasNoSection;

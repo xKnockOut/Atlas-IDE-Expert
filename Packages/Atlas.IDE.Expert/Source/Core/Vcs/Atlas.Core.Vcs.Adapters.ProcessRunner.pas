@@ -11,7 +11,10 @@
 //     der Prozess sofort beendet (Outcome Cancelled)
 //   - im Hauptthread abgelehnt (Outcome MainThread), außer der Aufrufer erlaubt
 //     es ausdrücklich (Server auf der Kommandozeile, Tests)
-// stdin ist NUL: svn und git fragen nie nach.
+// stdin ist NUL: svn und git fragen nie nach. Dazu bekommt jeder Prozess die
+// Umgebung der IDE mit GIT_TERMINAL_PROMPT=0 und GCM_INTERACTIVE=never
+// (#1287): Auch Git Credential Manager öffnet kein Fenster; fehlt die
+// Anmeldung, erkennt Atlas das am Fehler (Atlas.Core.Vcs.ServerAccess).
 
 interface
 
@@ -44,7 +47,10 @@ implementation
 
 uses
   Winapi.Windows,
-  System.Classes;
+  System.Classes,
+  System.Generics.Collections,
+  System.Generics.Defaults,
+  Atlas.Core.Vcs.ServerAccess;
 
 const
   SliceMs = 10;
@@ -108,6 +114,49 @@ begin
   end;
 end;
 
+/// <summary>Umgebung des eigenen Prozesses als Einträge NAME=Wert.</summary>
+function CurrentEnvironment: TArray<string>;
+var
+  mBlock, mEntry: PChar;
+begin
+  Result := nil;
+  mBlock := GetEnvironmentStrings;
+  if mBlock = nil then
+    Exit;
+  try
+    mEntry := mBlock;
+    while mEntry^ <> #0 do
+    begin
+      Result := Result + [string(mEntry)];
+      Inc(mEntry, StrLen(mEntry) + 1);
+    end;
+  finally
+    FreeEnvironmentStrings(mBlock);
+  end;
+end;
+
+/// <summary>Umgebungsblock für CreateProcess (CREATE_UNICODE_ENVIRONMENT): ohne Rückfrage nach Zugangsdaten,
+/// nach Namen sortiert (ohne Rücksicht auf Groß-/Kleinschreibung), Einträge mit #0 getrennt, am Ende #0#0.</summary>
+function NoPromptBlock: string;
+var
+  mEntries: TArray<string>;
+  mEntry: string;
+begin
+  mEntries := TAtlasVcsServerAccess.NoPromptEnvironment(CurrentEnvironment);
+  // Namen sind eindeutig; bei Gleichstand (nur Einträge ohne Namen) nach dem ganzen Text.
+  TArray.Sort<string>(mEntries, TComparer<string>.Construct(
+    function(const ALeft, ARight: string): Integer
+    begin
+      Result := CompareText(TAtlasVcsServerAccess.VariableName(ALeft), TAtlasVcsServerAccess.VariableName(ARight));
+      if Result = 0 then
+        Result := CompareStr(ALeft, ARight);
+    end));
+  Result := '';
+  for mEntry in mEntries do
+    Result := Result + mEntry + #0;
+  Result := Result + #0;
+end;
+
 { TAtlasVcsProcessRunner }
 
 constructor TAtlasVcsProcessRunner.Create;
@@ -166,6 +215,7 @@ var
   Deadline: UInt64;
   ExitCode: DWORD;
   Outcome: TAtlasVcsOutcome;
+  Environment: string;
 begin
   Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Failed, -1, nil);
   if not FAllowMainThread and (GetCurrentThreadId = MainThreadID) then
@@ -208,8 +258,9 @@ begin
       WorkingDir := PChar(AWorkingDir)
     else
       WorkingDir := nil;
-    if not CreateProcess(PChar(AExecutable), PChar(CommandLine), nil, nil, True, CREATE_NO_WINDOW, nil,
-      WorkingDir, Startup, Process) then
+    Environment := NoPromptBlock;
+    if not CreateProcess(PChar(AExecutable), PChar(CommandLine), nil, nil, True,
+      CREATE_NO_WINDOW or CREATE_UNICODE_ENVIRONMENT, PChar(Environment), WorkingDir, Startup, Process) then
     begin
       // Programm verschwunden oder nicht ausführbar: wie nicht installiert.
       Result.Outcome := TAtlasVcsOutcome.ToolMissing;

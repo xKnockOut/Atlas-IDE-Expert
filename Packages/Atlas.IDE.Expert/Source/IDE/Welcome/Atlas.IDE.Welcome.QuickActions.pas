@@ -852,7 +852,13 @@ begin
         begin
           Value.Phase := TAtlasQuickActionPhase.Failed;
           Value.Detail := AtlasVcsOutcomeName(Reason);
-          if Update then
+          // Fehlende Anmeldung (#1287): Ursache und Weg zur Seite Versionsverwaltung statt eines Codes.
+          if Reason = TAtlasVcsOutcome.LoginNeeded then
+          begin
+            Value.Detail := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPullLogin);
+            Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [NameOf(Project)]));
+          end
+          else if Update then
             Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgUpdateFailed, [NameOf(Project),
               AtlasVcsOutcomeName(Reason)]))
           else

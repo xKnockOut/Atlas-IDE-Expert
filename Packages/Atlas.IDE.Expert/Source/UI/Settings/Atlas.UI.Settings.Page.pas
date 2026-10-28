@@ -72,6 +72,8 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.ToolCheck,
+  Atlas.Core.Vcs.ServerAccess,
+  Atlas.Core.Vcs.ServerCheck,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -131,6 +133,20 @@ type
   /// <summary>„Prüfen“ (#1285) für git bzw. svn unter APath im Hintergrund; das Ergebnis meldet VcsCheckDone.
   /// </summary>
   TAtlasVcsCheckEvent = reference to procedure(AKind: TAtlasVcsKind; const APath: string);
+  /// <summary>Tabelle „Server“ (#1287): AFolder prüfen; das Ergebnis meldet VcsServerDone.</summary>
+  TAtlasVcsServerCheckEvent = reference to procedure(const AFolder: string);
+  /// <summary>„Anmelden …“ für ACheck; True, wenn die Konsole offen ist (nach dem Schließen prüft der Aufrufer
+  /// erneut und meldet VcsServerDone).</summary>
+  TAtlasVcsServerLoginEvent = reference to function(const AFolder: string; const ACheck: TAtlasVcsServerCheck):
+    Boolean;
+
+  /// <summary>Zeile der Tabelle „Server“: Projekt (Anzeige), Ordner und letzter Zustand.</summary>
+  TAtlasVcsServerRow = record
+    Name: string;
+    Folder: string;
+    Check: TAtlasVcsServerCheck;
+    Checking: Boolean;
+  end;
 
   /// <summary>Seite eines Knotens im Baum (#890): der Bereich selbst (Node leer) oder ein Unterpunkt.</summary>
   TAtlasSettingsNodePage = record
@@ -742,6 +758,19 @@ type
     FVcsDetectedKind: TAtlasVcsKind;
     FVcsDetectedProject: string;
     FOnVcsContext: TFunc<TAtlasVcsProjectContext>;
+    // Serverzugang (#1287): Zeilen aus aktuellem Projekt und Tabelle Projekte, Zustand nur aus der Sitzung.
+    FVcsServerList: TListView;
+    FVcsServerCheck: TButton;
+    FVcsServerCheckAll: TButton;
+    FVcsServerLogin: TButton;
+    FVcsServerNote: TLabel;
+    FVcsServerRows: TArray<TAtlasVcsServerRow>;
+    FVcsServerSelected: Integer;
+    /// <summary>Ordner aus „prüfen …“ der Willkommensseite, der nicht in der Tabelle Projekte steht.</summary>
+    FVcsServerExtra: string;
+    FOnVcsServerState: TFunc<string, TAtlasVcsServerCheck>;
+    FOnVcsServerCheck: TAtlasVcsServerCheckEvent;
+    FOnVcsServerLogin: TAtlasVcsServerLoginEvent;
     FWelcomeQuickActions: TCheckBox;
     FWelcomeQuickActionsItems: array[TAtlasQuickAction] of TCheckBox;
     FWelcomeQuickActionsConsole: TEdit;
@@ -1031,6 +1060,15 @@ type
     /// <summary>Zeile für AMatch anlegen (Art AProvider) bzw. wählen.</summary>
     procedure VcsProjectAdd(const AMatch, AProvider: string);
     function VcsProjectsJson: string;
+    /// <summary>Tabelle „Server“ (#1287).</summary>
+    procedure AddVcsServersSection;
+    procedure VcsServerShowItem(AIndex: Integer);
+    procedure VcsServerFillButtons;
+    procedure VcsServerStart(AIndex: Integer);
+    procedure VcsServerSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+    procedure VcsServerCheckClick(Sender: TObject);
+    procedure VcsServerCheckAllClick(Sender: TObject);
+    procedure VcsServerLoginClick(Sender: TObject);
     /// <summary>Zustand ohne Prozess: welche Datei für AKind gälte (OnVcsLocate).</summary>
     procedure RefreshVcsTool(AKind: TAtlasVcsKind);
     /// <summary>Beim Zeigen eines Reiters: die Seite Versionsverwaltung fragt einmal „Aktuelles Projekt“ ab.
@@ -1589,6 +1627,19 @@ type
     /// <summary>Tabelle Projekte der Versionsverwaltung neu aufbauen; ohne Fenster folgt es in CreateWnd.
     /// </summary>
     procedure RefreshVcsProjects;
+    /// <summary>Tabelle „Server“ (#1287): Zeile je Projekt (aktuelles Projekt, Zeilen der Tabelle Projekte), je
+    /// Ordner einmal; Zustand aus OnVcsServerState. Ohne Fenster folgt es in CreateWnd.</summary>
+    procedure RefreshVcsServers;
+    /// <summary>„Anmeldung am Server nötig – prüfen …“ (#1287): Zeile für AFolder zeigen (auch ohne Zeile in der
+    /// Tabelle Projekte), wählen und prüfen.</summary>
+    procedure RevealVcsServer(const AFolder: string);
+    /// <summary>Ergebnis einer Prüfung für AFolder zeigen.</summary>
+    procedure VcsServerDone(const AFolder: string; const ACheck: TAtlasVcsServerCheck);
+    /// <summary>Letztes Ergebnis je Ordner aus dieser Sitzung; nil = „nicht geprüft“.</summary>
+    property OnVcsServerState: TFunc<string, TAtlasVcsServerCheck> read FOnVcsServerState write FOnVcsServerState;
+    /// <summary>„Prüfen“ im Hintergrund; nil = Knöpfe gesperrt.</summary>
+    property OnVcsServerCheck: TAtlasVcsServerCheckEvent read FOnVcsServerCheck write FOnVcsServerCheck;
+    property OnVcsServerLogin: TAtlasVcsServerLoginEvent read FOnVcsServerLogin write FOnVcsServerLogin;
     /// <summary>Ergebnis von „Prüfen“ zeigen.</summary>
     procedure VcsCheckDone(const ACheck: TAtlasVcsToolCheck);
     /// <summary>Ergebnis der Abfrage „Aktuelles Projekt“ zeigen.</summary>
@@ -1623,6 +1674,16 @@ type
     property VcsProjectAddMenu: TPopupMenu read FVcsProjectAddMenu;
     /// <summary>Persönliche Zeilen, wie die Seite sie gerade zeigt.</summary>
     property VcsProjects: TArray<TAtlasVcsProjectMapping> read FVcsProjects;
+    /// <summary>Zum Testen: Serverzugang (#1287).</summary>
+    property VcsServerList: TListView read FVcsServerList;
+    property VcsServerCheck: TButton read FVcsServerCheck;
+    property VcsServerCheckAll: TButton read FVcsServerCheckAll;
+    property VcsServerLogin: TButton read FVcsServerLogin;
+    property VcsServerNote: TLabel read FVcsServerNote;
+    property VcsServerRows: TArray<TAtlasVcsServerRow> read FVcsServerRows;
+    /// <summary>Spalte Zustand: „nicht geprüft“, „wird geprüft …“, „erreichbar · geprüft 14:05“, „Anmeldung nötig“ …
+    /// </summary>
+    class function VcsServerStateText(const ACheck: TAtlasVcsServerCheck; AChecking: Boolean): string; static;
     /// <summary>Art und Name der Art („Automatisch“, „Git“, „SVN“, „Aus“) zu "auto", "git", "svn", "off".
     /// </summary>
     class function VcsProviderCaption(const AProvider: string): string; static;
@@ -2923,6 +2984,7 @@ begin
   AddTitle(TAtlasTextId.SettingsVcsProjectTitle);
   FVcsProjectInfo := AddWrappedLabel(70, TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone));
   AddVcsProjectsSection;
+  AddVcsServersSection;
   // Seiten, die die Anzeige steuern: Verhalten unter vcs.*, dort nur, ob etwas erscheint (wie #1280).
   AddTitle(TAtlasTextId.SettingsVcsLinksTitle);
   AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsLinksHint)).Font.Color := clGrayText;
@@ -3360,6 +3422,7 @@ begin
     end;
   end;
   VcsProjectFillFields;
+  RefreshVcsServers;
 end;
 
 procedure TAtlasSettingsPage.VcsProjectNoteFor(const AMapping: TAtlasVcsProjectMapping);
@@ -3570,6 +3633,257 @@ begin
     if (mMapping.Match <> '') and (TAtlasVcsProjects.IndexOfMatch(mKept, mMapping.Match) < 0) then
       mKept := mKept + [mMapping];
   Result := TAtlasVcsProjects.ToJson(mKept);
+end;
+
+// Serverzugang (#1287): nur auf Klick, Zustand aus der Sitzung.
+
+procedure TAtlasSettingsPage.AddVcsServersSection;
+var
+  mPanel: TWinControl;
+  mHint: TLabel;
+begin
+  FVcsServerSelected := -1;
+  AddTitle(TAtlasTextId.SettingsVcsServers);
+  mPanel := AddPanel(96);
+  FVcsServerList := TListView.Create(Self);
+  FVcsServerList.Parent := mPanel;
+  FVcsServerList.Align := alClient;
+  FVcsServerList.ViewStyle := vsReport;
+  FVcsServerList.ReadOnly := True;
+  FVcsServerList.RowSelect := True;
+  FVcsServerList.HideSelection := False;
+  FVcsServerList.OnSelectItem := VcsServerSelectItem;
+  AddTrackerColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerProject, 170);
+  AddTrackerColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerServer, 200);
+  AddTrackerColumn(FVcsServerList, TAtlasTextId.SettingsVcsServerState, 180);
+  mPanel := AddPanel(32);
+  FVcsServerCheck := AddTrackerButton(mPanel, 0, 100, TAtlasTextId.SettingsVcsServerCheck, VcsServerCheckClick);
+  FVcsServerCheckAll := AddTrackerButton(mPanel, 106, 110, TAtlasTextId.SettingsVcsServerCheckAll,
+    VcsServerCheckAllClick);
+  FVcsServerLogin := AddTrackerButton(mPanel, 222, 110, TAtlasTextId.SettingsVcsServerLogin, VcsServerLoginClick);
+  Attach(mPanel, FVcsServerList);
+  mPanel := AddPanel(18);
+  FVcsServerNote := TLabel.Create(Self);
+  FVcsServerNote.Parent := mPanel;
+  FVcsServerNote.Left := 0;
+  FVcsServerNote.Top := 1;
+  Attach(mPanel, FVcsServerList);
+  mHint := AddWrappedLabel(52, TAtlasStrings.Text(TAtlasTextId.SettingsVcsServersHint));
+  mHint.Font.Color := clGrayText;
+  Attach(mHint.Parent, FVcsServerList);
+end;
+
+class function TAtlasSettingsPage.VcsServerStateText(const ACheck: TAtlasVcsServerCheck;
+  AChecking: Boolean): string;
+begin
+  if AChecking then
+    Exit(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking));
+  case ACheck.State of
+    TAtlasVcsServerState.Reachable:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable,
+        [FormatDateTime('hh:nn', ACheck.CheckedAt)]);
+    TAtlasVcsServerState.LoginNeeded:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded);
+    TAtlasVcsServerState.Unreachable:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnreachable);
+    TAtlasVcsServerState.NoServer:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerNoServer);
+    TAtlasVcsServerState.ToolMissing:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerToolMissing);
+    TAtlasVcsServerState.Failed:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerFailed);
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown);
+  end;
+end;
+
+procedure TAtlasSettingsPage.RefreshVcsServers;
+
+  procedure AddRow(const AName, AFolder: string);
+  var
+    mRow: TAtlasVcsServerRow;
+  begin
+    if AFolder = '' then
+      Exit;
+    for mRow in FVcsServerRows do
+      if SameText(mRow.Folder, AFolder) then
+        Exit;
+    mRow.Name := AName;
+    mRow.Folder := AFolder;
+    mRow.Check := TAtlasVcsServerCheck.Empty;
+    if Assigned(FOnVcsServerState) then
+      mRow.Check := FOnVcsServerState(AFolder);
+    mRow.Checking := False;
+    FVcsServerRows := FVcsServerRows + [mRow];
+  end;
+
+var
+  mOld: TArray<TAtlasVcsServerRow>;
+  mOldRow: TAtlasVcsServerRow;
+  mMapping: TAtlasVcsProjectMapping;
+  mIndex: Integer;
+begin
+  if FVcsServerList = nil then
+    Exit;
+  mOld := FVcsServerRows;
+  FVcsServerRows := nil;
+  // Erst das aktuelle Projekt, dann die Zeilen der Tabelle Projekte; .dproj und .groupproj gelten für ihren Ordner.
+  if FVcsContext.ProjectFile <> '' then
+    AddRow(ExtractFileName(TAtlasProjectMatching.CurrentMatch(FVcsContext.ProjectFile, FVcsContext.GroupFile)),
+      ExtractFileDir(FVcsContext.ProjectFile));
+  for mMapping in VcsProjectRows do
+    if mMapping.Kind = TAtlasProjectMatch.Folder then
+      AddRow(ExtractFileName(ExcludeTrailingPathDelimiter(mMapping.Match)),
+        ExcludeTrailingPathDelimiter(mMapping.Match))
+    else
+      AddRow(ExtractFileName(mMapping.Match), ExtractFileDir(mMapping.Match));
+  if FVcsServerExtra <> '' then
+    AddRow(ExtractFileName(FVcsServerExtra), FVcsServerExtra);
+  // Laufende Prüfungen bleiben sichtbar.
+  for mIndex := 0 to High(FVcsServerRows) do
+    for mOldRow in mOld do
+      if mOldRow.Checking and SameText(mOldRow.Folder, FVcsServerRows[mIndex].Folder) then
+        FVcsServerRows[mIndex].Checking := True;
+  if FVcsServerSelected > High(FVcsServerRows) then
+    FVcsServerSelected := High(FVcsServerRows);
+  if (FVcsServerSelected < 0) and (Length(FVcsServerRows) > 0) then
+    FVcsServerSelected := 0;
+  if FVcsServerList.HandleAllocated then
+  begin
+    FVcsServerList.Items.BeginUpdate;
+    try
+      FVcsServerList.Items.Clear;
+      for mIndex := 0 to High(FVcsServerRows) do
+      begin
+        FVcsServerList.Items.Add;
+        VcsServerShowItem(mIndex);
+      end;
+      if FVcsServerSelected >= 0 then
+        FVcsServerList.Items[FVcsServerSelected].Selected := True;
+    finally
+      FVcsServerList.Items.EndUpdate;
+    end;
+  end;
+  VcsServerFillButtons;
+end;
+
+procedure TAtlasSettingsPage.VcsServerShowItem(AIndex: Integer);
+var
+  mItem: TListItem;
+  mServer: string;
+begin
+  if (AIndex < 0) or (AIndex > High(FVcsServerRows)) or not FVcsServerList.HandleAllocated or
+    (AIndex >= FVcsServerList.Items.Count) then
+    Exit;
+  mItem := FVcsServerList.Items[AIndex];
+  mItem.Caption := FVcsServerRows[AIndex].Name;
+  mServer := FVcsServerRows[AIndex].Check.ServerText;
+  if mServer = '' then
+    mServer := '–';
+  mItem.SubItems.Clear;
+  mItem.SubItems.Add(mServer);
+  mItem.SubItems.Add(VcsServerStateText(FVcsServerRows[AIndex].Check, FVcsServerRows[AIndex].Checking));
+end;
+
+procedure TAtlasSettingsPage.VcsServerFillButtons;
+var
+  mSelected: Boolean;
+begin
+  mSelected := (FVcsServerSelected >= 0) and (FVcsServerSelected <= High(FVcsServerRows));
+  Allow(FVcsServerCheck, mSelected and Assigned(FOnVcsServerCheck) and
+    not FVcsServerRows[Max(0, FVcsServerSelected)].Checking);
+  Allow(FVcsServerCheckAll, (Length(FVcsServerRows) > 0) and Assigned(FOnVcsServerCheck));
+  Allow(FVcsServerLogin, mSelected and Assigned(FOnVcsServerLogin) and
+    FVcsServerRows[Max(0, FVcsServerSelected)].Check.CanLogin);
+end;
+
+procedure TAtlasSettingsPage.VcsServerStart(AIndex: Integer);
+begin
+  if (AIndex < 0) or (AIndex > High(FVcsServerRows)) or not Assigned(FOnVcsServerCheck) or
+    FVcsServerRows[AIndex].Checking then
+    Exit;
+  FVcsServerRows[AIndex].Checking := True;
+  VcsServerShowItem(AIndex);
+  VcsServerFillButtons;
+  FOnVcsServerCheck(FVcsServerRows[AIndex].Folder);
+end;
+
+procedure TAtlasSettingsPage.RevealVcsServer(const AFolder: string);
+var
+  mIndex: Integer;
+begin
+  if (FVcsServerList = nil) or (Trim(AFolder) = '') then
+    Exit;
+  FVcsServerExtra := ExcludeTrailingPathDelimiter(Trim(AFolder));
+  RefreshVcsServers;
+  for mIndex := 0 to High(FVcsServerRows) do
+    if SameText(FVcsServerRows[mIndex].Folder, FVcsServerExtra) then
+    begin
+      FVcsServerSelected := mIndex;
+      if FVcsServerList.HandleAllocated and (mIndex < FVcsServerList.Items.Count) then
+        FVcsServerList.Items[mIndex].Selected := True;
+      SelectPage(PageOf(FVcsServerList));
+      VcsServerStart(mIndex);
+      Break;
+    end;
+end;
+
+procedure TAtlasSettingsPage.VcsServerDone(const AFolder: string; const ACheck: TAtlasVcsServerCheck);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FVcsServerRows) do
+    if SameText(FVcsServerRows[mIndex].Folder, AFolder) then
+    begin
+      FVcsServerRows[mIndex].Check := ACheck;
+      FVcsServerRows[mIndex].Checking := False;
+      VcsServerShowItem(mIndex);
+    end;
+  if FVcsServerNote <> nil then
+    FVcsServerNote.Caption := '';
+  VcsServerFillButtons;
+end;
+
+procedure TAtlasSettingsPage.VcsServerSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  if not Selected or (Item = nil) then
+    Exit;
+  FVcsServerSelected := Item.Index;
+  VcsServerFillButtons;
+end;
+
+procedure TAtlasSettingsPage.VcsServerCheckClick(Sender: TObject);
+begin
+  VcsServerStart(FVcsServerSelected);
+end;
+
+procedure TAtlasSettingsPage.VcsServerCheckAllClick(Sender: TObject);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FVcsServerRows) do
+    VcsServerStart(mIndex);
+end;
+
+procedure TAtlasSettingsPage.VcsServerLoginClick(Sender: TObject);
+var
+  mRow: TAtlasVcsServerRow;
+begin
+  if (FVcsServerSelected < 0) or (FVcsServerSelected > High(FVcsServerRows)) or not Assigned(FOnVcsServerLogin) then
+    Exit;
+  mRow := FVcsServerRows[FVcsServerSelected];
+  if not mRow.Check.CanLogin then
+    Exit;
+  if FOnVcsServerLogin(mRow.Folder, mRow.Check) then
+  begin
+    // Nach dem Schließen der Konsole prüft der Aufrufer erneut und meldet VcsServerDone.
+    FVcsServerRows[FVcsServerSelected].Checking := True;
+    VcsServerShowItem(FVcsServerSelected);
+    FVcsServerNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginOpen);
+  end
+  else
+    FVcsServerNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginFailed);
+  VcsServerFillButtons;
 end;
 
 procedure TAtlasSettingsPage.WelcomeIssuesLinkClick(Sender: TObject);

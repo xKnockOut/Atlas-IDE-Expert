@@ -141,6 +141,11 @@ type
     /// ohne Leerraum, Entfernen, Speichern nach vcs.projects.</summary>
     [Test]
     procedure VcsProjectsTable;
+    /// <summary>#1287: Tabelle „Server“: Zeile je Ordner aus aktuellem Projekt und Tabelle Projekte, Zustand aus
+    /// der Sitzung, „Prüfen“ und „Alle prüfen“ über OnVcsServerCheck, „Anmelden …“ nur bei „Anmeldung nötig“.
+    /// </summary>
+    [Test]
+    procedure VcsServersTable;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
     [Test]
@@ -2101,6 +2106,7 @@ var
   mCheck: TAtlasVcsToolCheck;
   mState: TAtlasVcsProjectState;
   mText: string;
+  mServer: TAtlasVcsServerCheck;
 begin
   mLocation := TAtlasVcsToolLocation.Empty;
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolMissing),
@@ -2150,6 +2156,28 @@ begin
     TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, ['develop']));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), TAtlasSettingsPage.VcsProviderCaption('SVN'));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), TAtlasSettingsPage.VcsProviderCaption(''));
+  // #1287: Zustände der Tabelle „Server“.
+  mServer := TAtlasVcsServerCheck.Empty;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking),
+    TAtlasSettingsPage.VcsServerStateText(mServer, True));
+  mServer.State := TAtlasVcsServerState.Reachable;
+  mServer.CheckedAt := EncodeTime(14, 5, 0, 0);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['14:05']),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.LoginNeeded;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.Unreachable;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnreachable),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.NoServer;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerNoServer),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.ToolMissing;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerToolMissing),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
 end;
 
 procedure TAtlasSettingsPageTests.TrackerConnectionsTable;
@@ -2472,6 +2500,114 @@ begin
   end;
   mBrowsed := '';
   mMappings := nil;
+end;
+
+procedure TAtlasSettingsPageTests.VcsServersTable;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings: TAtlasPluginSettings;
+  mList: TListView;
+  mChecked, mLogins: TArray<string>;
+  mCheck: TAtlasVcsServerCheck;
+begin
+  mChecked := nil;
+  mLogins := nil;
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    mPage.OnVcsContext :=
+      function: TAtlasVcsProjectContext
+      begin
+        Result := TAtlasVcsProjectContext.Empty;
+        Result.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+        Result.GroupFile := 'C:\Projekte\Kasse\Kasse.groupproj';
+      end;
+    mPage.OnVcsServerState :=
+      function(AFolder: string): TAtlasVcsServerCheck
+      begin
+        Result := TAtlasVcsServerCheck.Empty;
+        // Aus der Sitzung: das Paket war schon erreichbar.
+        if SameText(AFolder, 'C:\Projekte\Pakete\Basis') then
+        begin
+          Result.Kind := TAtlasVcsKind.Svn;
+          Result.Url := 'https://svn.firma.local/basis';
+          Result.State := TAtlasVcsServerState.Reachable;
+          Result.CheckedAt := EncodeTime(9, 30, 0, 0);
+        end;
+      end;
+    mPage.OnVcsServerCheck :=
+      procedure(const AFolder: string)
+      begin
+        mChecked := mChecked + [AFolder];
+      end;
+    mPage.OnVcsServerLogin :=
+      function(const AFolder: string; const ACheck: TAtlasVcsServerCheck): Boolean
+      begin
+        mLogins := mLogins + [AFolder + '|' + ACheck.Remote];
+        Result := True;
+      end;
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.VcsProjects := '[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "provider": "svn"},' +
+      ' {"match": "C:\\Projekte\\Pakete\\Basis", "provider": "svn"}]';
+    mPage.LoadFrom(mSettings);
+    mList := mPage.VcsServerList;
+    // Aktuelles Projekt und Gruppe teilen den Ordner: eine Zeile; dazu der Paketordner (SVN-Externals).
+    Assert.AreEqual(2, mList.Items.Count);
+    Assert.AreEqual('Kasse.groupproj', mList.Items[0].Caption);
+    Assert.AreEqual('–', mList.Items[0].SubItems[0]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown), mList.Items[0].SubItems[1]);
+    Assert.AreEqual('Basis', mList.Items[1].Caption);
+    Assert.AreEqual('https://svn.firma.local/basis', mList.Items[1].SubItems[0]);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['09:30']), mList.Items[1].SubItems[1]);
+    Assert.AreEqual(0, Integer(Length(mChecked)), 'ohne Klick kein Netzzugriff');
+    Assert.IsFalse(mPage.VcsServerLogin.Enabled);
+    // Prüfen der gewählten Zeile.
+    mPage.VcsServerCheck.Click;
+    Assert.AreEqual(1, Integer(Length(mChecked)));
+    Assert.AreEqual('C:\Projekte\Kasse', mChecked[0]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking), mList.Items[0].SubItems[1]);
+    Assert.IsFalse(mPage.VcsServerCheck.Enabled, 'läuft schon');
+    mCheck := TAtlasVcsServerCheck.Empty;
+    mCheck.Kind := TAtlasVcsKind.Git;
+    mCheck.Root := 'C:\Projekte\Kasse';
+    mCheck.Remote := 'origin';
+    mCheck.Url := 'https://git.firma.local/kasse.git';
+    mCheck.State := TAtlasVcsServerState.LoginNeeded;
+    mPage.VcsServerDone('c:\projekte\kasse', mCheck);
+    Assert.AreEqual('origin · git.firma.local', mList.Items[0].SubItems[0]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded), mList.Items[0].SubItems[1]);
+    Assert.IsTrue(mPage.VcsServerLogin.Enabled, 'Anmelden bei „Anmeldung nötig“');
+    // „Anmelden …“: Konsole offen, die Zeile wartet auf die neue Prüfung.
+    mPage.VcsServerLogin.Click;
+    Assert.AreEqual(1, Integer(Length(mLogins)));
+    Assert.AreEqual('C:\Projekte\Kasse|origin', mLogins[0]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginOpen), mPage.VcsServerNote.Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking), mList.Items[0].SubItems[1]);
+    mCheck.State := TAtlasVcsServerState.Reachable;
+    mCheck.CheckedAt := EncodeTime(10, 0, 0, 0);
+    mPage.VcsServerDone('C:\Projekte\Kasse', mCheck);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['10:00']), mList.Items[0].SubItems[1]);
+    Assert.IsFalse(mPage.VcsServerLogin.Enabled);
+    // „Alle prüfen“.
+    mChecked := nil;
+    mPage.VcsServerCheckAll.Click;
+    Assert.AreEqual(2, Integer(Length(mChecked)));
+    Assert.AreEqual('C:\Projekte\Pakete\Basis', mChecked[1]);
+    // „prüfen …“ der Willkommensseite für einen Ordner ohne Zeile: Zeile kommt dazu und wird geprüft.
+    mChecked := nil;
+    mPage.RevealVcsServer('C:\Projekte\Lager\');
+    Assert.AreEqual(3, mList.Items.Count);
+    Assert.AreEqual('Lager', mList.Items[2].Caption);
+    Assert.AreEqual(1, Integer(Length(mChecked)));
+    Assert.AreEqual('C:\Projekte\Lager', mChecked[0]);
+  finally
+    mHost.Free;
+  end;
+  mChecked := nil;
+  mLogins := nil;
 end;
 
 procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;

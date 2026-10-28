@@ -283,7 +283,8 @@ function TAtlasSvnVersionControl.Pull: TAtlasVcsOutcome;
 var
   Output: TBytes;
 begin
-  Result := Svn(['update', '.'], Output);
+  // Mit dem Server (#1287): fehlt die Anmeldung, LoginNeeded statt Failed.
+  Result := FCommand.RunRemote(TAtlasVcsKind.Svn, ['update', '.', '--non-interactive'], Output);
 end;
 
 { IAtlasVcsBranching (#765) }

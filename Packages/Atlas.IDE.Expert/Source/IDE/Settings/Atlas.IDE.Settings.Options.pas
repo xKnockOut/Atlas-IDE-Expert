@@ -90,6 +90,9 @@ type
     /// <summary>„zuordnen …“ (#1261): Tools › Optionen auf der Seite Issue-Tracker mit einer Zeile für AMatch
     /// (.dproj, .groupproj) in der Tabelle Projekte öffnen.</summary>
     class procedure ShowTrackerProject(const AMatch: string); static;
+    /// <summary>„Anmeldung am Server nötig – prüfen …“ (#1287): Tools › Optionen auf der Seite Versionsverwaltung
+    /// öffnen und den Serverzugang für AFolder prüfen.</summary>
+    class procedure ShowVcsServer(const AFolder: string); static;
   end;
 
 implementation
@@ -137,6 +140,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.ToolCheck,
+  Atlas.Core.Vcs.ServerCheck,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Foundation.TeamFile;
 
@@ -153,6 +157,8 @@ type
     procedure ConnectTracker;
     /// <summary>Seite Versionsverwaltung (#1285).</summary>
     procedure ConnectVcs;
+    /// <summary>Zeile AFolder der Tabelle „Server“ im Hintergrund prüfen (#1287).</summary>
+    procedure CheckVcsServer(const AFolder: string);
     /// <summary>Seite Prüfregeln (#909): Katalog im Hintergrund holen und mit "rules" der globalen Datei
     /// übergeben.</summary>
   public
@@ -222,6 +228,9 @@ var
   /// <summary>„Gilt für“ einer Zeile, die die Seite Issue-Tracker beim nächsten Anlegen vorbefüllt (#1261).
   /// </summary>
   PendingTrackerProject: string;
+  /// <summary>Ordner, dessen Serverzugang die Seite Versionsverwaltung beim nächsten Anlegen prüft (#1287).
+  /// </summary>
+  PendingVcsServer: string;
 
 type
   /// <summary>Sucht im offenen Optionsdialog die Seite „Atlas“ und wählt sie (#628).</summary>
@@ -776,6 +785,9 @@ begin
   // „zuordnen …“ aus „Meine Issues“ (#1261): Zeile nach dem Laden vorbefüllen.
   if PendingTrackerProject <> '' then
     FPage.AssignTrackerProject(PendingTrackerProject);
+  // „Anmeldung am Server nötig – prüfen …“ der Willkommensseite (#1287): Zeile zeigen und prüfen.
+  if PendingVcsServer <> '' then
+    FPage.RevealVcsServer(PendingVcsServer);
 end;
 
 procedure TAtlasAddInOptions.ConnectTracker;
@@ -909,6 +921,52 @@ begin
             mOwner.FPage.VcsProjectDone(AState);
         end);
     end;
+  // Serverzugang (#1287): Zustand nur aus der Sitzung, Prüfen und Anmelden nur auf Klick.
+  FPage.OnVcsServerState :=
+    function(AFolder: string): TAtlasVcsServerCheck
+    begin
+      Result := TAtlasIdeVcs.ServerState(AFolder);
+    end;
+  FPage.OnVcsServerCheck :=
+    procedure(const AFolder: string)
+    begin
+      CheckVcsServer(AFolder);
+    end;
+  FPage.OnVcsServerLogin :=
+    function(const AFolder: string; const ACheck: TAtlasVcsServerCheck): Boolean
+    var
+      mFolder: string;
+    begin
+      mFolder := AFolder;
+      // Nach dem Schließen der Konsole dieselbe Zeile erneut prüfen.
+      Result := TAtlasIdeVcs.OpenServerLogin(ACheck,
+        procedure
+        begin
+          if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
+            mOwner.CheckVcsServer(mFolder);
+        end);
+    end;
+end;
+
+procedure TAtlasAddInOptions.CheckVcsServer(const AFolder: string);
+var
+  mKeep: INTAAddInOptions;
+  mOwner: TAtlasAddInOptions;
+  mGeneration: Integer;
+  mFolder: string;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  mGeneration := FGeneration;
+  mFolder := AFolder;
+  if not TAtlasIdeVcs.CheckServer(mFolder,
+    procedure(ACheck: TAtlasVcsServerCheck)
+    begin
+      // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
+      if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
+        mOwner.FPage.VcsServerDone(mFolder, ACheck);
+    end) then
+    FPage.VcsServerDone(mFolder, TAtlasVcsServerCheck.Empty);
 end;
 
 procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
@@ -917,6 +975,7 @@ var
 begin
   PendingReveal := '';
   PendingTrackerProject := '';
+  PendingVcsServer := '';
   try
     if Accepted and (FPage <> nil) then
     begin
@@ -1272,6 +1331,7 @@ begin
   Hooks := Default(TAtlasOptionsHooks);
   PendingReveal := '';
   PendingTrackerProject := '';
+  PendingVcsServer := '';
   FreeAndNil(Selector);
 end;
 
@@ -1354,6 +1414,16 @@ begin
     ShowSetting('IssuesProjects');
   finally
     PendingTrackerProject := '';
+  end;
+end;
+
+class procedure TAtlasOptionsRegistration.ShowVcsServer(const AFolder: string);
+begin
+  PendingVcsServer := AFolder;
+  try
+    ShowSetting('VcsProjects');
+  finally
+    PendingVcsServer := '';
   end;
 end;
 

@@ -115,6 +115,8 @@ type
     FNotice: string;
     // Quelle der Schnellaktionen (#764); nil = keine Knöpfe.
     FQuickActions: IAtlasQuickActionsSource;
+    // Seite Versionsverwaltung mit Ordner (#1287); nil = Link ohne Wirkung.
+    FOnServerAccess: TProc<string>;
     procedure Changed;
     procedure Report(const AText: string);
     function Enabled: Boolean;
@@ -168,9 +170,13 @@ type
     procedure Resume(const AProject: string);
     procedure ShowCommit(const AProject: string; const ACommit: TAtlasContinueCommit);
     procedure OpenSaved(const AItem: TAtlasSavedItem);
+    procedure ShowServerAccess(const AProject: string);
     procedure Shown;
     /// <summary>Quelle der Schnellaktionen (#764) für neue Frames; vor Start setzen.</summary>
     property QuickActions: IAtlasQuickActionsSource read FQuickActions write FQuickActions;
+    /// <summary>„Anmeldung am Server nötig – prüfen …“ (#1287): Seite Versionsverwaltung für den Ordner öffnen;
+    /// setzt die Komposition.</summary>
+    property OnServerAccess: TProc<string> read FOnServerAccess write FOnServerAccess;
   end;
 
 implementation
@@ -398,6 +404,7 @@ begin
       TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
   end;
   FStopped := True;
+  FOnServerAccess := nil;
   if FNotifier <> nil then
   begin
     FNotifier.FOwner := nil;
@@ -1297,6 +1304,22 @@ begin
   if Line < 0 then
     Line := 0;
   TAtlasIdeResults.Open(FileName, Line, 0);
+end;
+
+procedure TAtlasIdeContinue.ShowServerAccess(const AProject: string);
+var
+  mFolder: string;
+begin
+  mFolder := ExtractFileDir(AProject);
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      if FStopped or not Assigned(FOnServerAccess) or (mFolder = '') then
+        Exit;
+      FOnServerAccess(mFolder);
+      // Nach dem Dialog (vielleicht angemeldet): eingehende Commits neu abfragen.
+      RefreshIncoming(True);
+    end);
 end;
 
 procedure TAtlasIdeContinue.OpenSaved(const AItem: TAtlasSavedItem);

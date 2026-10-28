@@ -7863,3 +7863,21 @@ Vorbereitung: SVN-Arbeitskopie mit `Kasse.groupproj` (Exe-Projekt `Kasse.dproj` 
 | VZ8 | Git-Projekt ohne verfolgten Branch, Hauptbranch `develop`; auf Feature-Branch „Weiterarbeiten“ ansehen | Eingehende Commits gegen `origin/develop` |
 | VZ9 | settings.json von Hand mit doppeltem Pfad, Art `cvs` oder Hauptbranch mit Leerzeichen speichern | Server meldet die Zeile in der Problemliste |
 | VZ10 | Einstellungen exportieren und importieren | `vcs.projects` als JSON-Liste, nach dem Import gleiche Zeilen |
+
+## Serverzugang der Versionsverwaltung (#1287)
+
+Vorbereitung: Git-Projekt mit HTTPS-Remote (Anmeldung in Git Credential Manager gespeichert), SVN-Projekt, ein zweites Git-Projekt ohne gespeicherte Anmeldung, ein Remote auf einen nicht erreichbaren Rechner.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SZ1 | Seite „Versionsverwaltung“ öffnen | Tabelle „Server“ mit dem aktuellen Projekt und den Zeilen aus „Projekte“; Zustand „nicht geprüft“, kein git- oder svn-Prozess startet |
+| SZ2 | Git-Projekt mit Anmeldung: „Prüfen“ | „origin · github.com“, „erreichbar · geprüft <Zeit>“ (**Abnahme**) |
+| SZ3 | SVN-Projekt: „Prüfen“ | Repository-Wurzel, „erreichbar · geprüft <Zeit>“ (**Abnahme**) |
+| SZ4 | Git-Projekt ohne Anmeldung: „Prüfen“ | „Anmeldung nötig“; kein Anmeldefenster von Git Credential Manager oder SVN (**Abnahme**) |
+| SZ5 | „Anmelden …“, in der Konsole anmelden, Fenster schließen | Zeile zeigt „wird geprüft …“, danach „erreichbar“ (**Abnahme**) |
+| SZ6 | Remote auf nicht erreichbaren Rechner: „Prüfen“, währenddessen in der IDE arbeiten | Nach höchstens 10 s „nicht erreichbar“; IDE bleibt bedienbar (**Abnahme**) |
+| SZ7 | „Alle prüfen“ | Jede Zeile „wird geprüft …“, dann ihr Zustand |
+| SZ8 | Protokoll und settings.json nach SZ2–SZ6 durchsuchen | Keine Zugangsdaten, kein Text aus stderr (**Abnahme**) |
+| SZ9 | Willkommensseite mit `welcomePage.continue.fetch` für das Projekt aus SZ4 | „Neu seit …“ zeigt „Anmeldung am Server nötig – prüfen …“; Klick öffnet die Seite und prüft die Zeile (**Abnahme**) |
+| SZ10 | Schnellaktion „Pull“ für das Projekt aus SZ4 | Zustand „Anmeldung am Server nötig“, Meldung mit Weg zur Seite |
+| SZ11 | `WelcomePageContinueIncoming` aus | Kein Abschnitt und kein Hinweis |

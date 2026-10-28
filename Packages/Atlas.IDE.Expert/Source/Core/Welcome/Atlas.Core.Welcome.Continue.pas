@@ -138,6 +138,8 @@ type
     More: Boolean;
     /// <summary>fetch war gewünscht und ist misslungen (Stand ohne Abruf).</summary>
     FetchFailed: Boolean;
+    /// <summary>fetch ist misslungen, weil die Anmeldung am Server fehlt (#1287); dann auch FetchFailed.</summary>
+    LoginNeeded: Boolean;
     /// <summary>Zeitpunkt der Abfrage (UTC).</summary>
     At: TDateTime;
   end;
@@ -888,9 +890,13 @@ begin
   // Keine Versionsverwaltung oder keine Schnittstelle: kein Abschnitt, kein Fehler.
   if (AVcs.Kind = TAtlasVcsKind.None) or not Supports(AVcs, IAtlasVcsIncoming, Incoming) then
     Exit(True);
-  if (AFetchVcs <> nil) and Supports(AFetchVcs, IAtlasVcsIncoming, Fetcher) and
-    (Fetcher.Fetch('') <> TAtlasVcsOutcome.Ok) then
-    AResult.FetchFailed := True;
+  if (AFetchVcs <> nil) and Supports(AFetchVcs, IAtlasVcsIncoming, Fetcher) then
+  begin
+    Outcome := Fetcher.Fetch('');
+    AResult.FetchFailed := Outcome <> TAtlasVcsOutcome.Ok;
+    // Ursache sichtbar machen (#1287): fehlende Anmeldung statt nur „ohne Abruf“.
+    AResult.LoginNeeded := Outcome = TAtlasVcsOutcome.LoginNeeded;
+  end;
   Outcome := AVcs.Head(Head);
   if (Outcome = TAtlasVcsOutcome.NoWorkingCopy) or (Outcome = TAtlasVcsOutcome.Disabled) then
     Exit(True);
