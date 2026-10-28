@@ -41,6 +41,8 @@
 // Atlas › Prüfung; sichtbar nur bei problems.window.
 // „Architekturübersicht“ (#1118) öffnet das Fenster „Atlas-Architektur“, auch
 // unter Ansicht › Atlas › Architektur; sichtbar nur bei architecture.enabled.
+// „Board“ (#1272) unter Ansicht › Atlas ruft OnBoard; sichtbar nur bei
+// issues.board.
 // Unter Navigation die Abschnittssprünge, der Rücksprung und „Methode suchen“
 // der Editorleiste (#1101); sie arbeiten auch ohne die Leiste.
 // Untermenü „Aufgaben“ (#900): Beim Öffnen des Atlas-Menüs füllt
@@ -119,6 +121,9 @@ type
     /// <summary>Fenster „Unit-Beziehungen“ (#593) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FUnitRelationsItem: TMenuItem;
     FViewUnitRelations: TMenuItem;
+    /// <summary>Fenster „Atlas-Board“ (#1272) unter Ansicht › Atlas.</summary>
+    FViewBoard: TMenuItem;
+    FOnBoard: TProc;
     FSymbolPathItem: TMenuItem;
     /// <summary>„Auswirkungen anzeigen“ (#1120), sichtbar nach navigation.impact.</summary>
     FImpactItem: TMenuItem;
@@ -137,6 +142,7 @@ type
     procedure ProblemsClick(Sender: TObject);
     procedure ArchitectureClick(Sender: TObject);
     procedure UnitRelationsClick(Sender: TObject);
+    procedure BoardClick(Sender: TObject);
     procedure SymbolPathClick(Sender: TObject);
     procedure DebugExceptionsClick(Sender: TObject);
     procedure DebugEvaluateClick(Sender: TObject);
@@ -178,6 +184,8 @@ type
     procedure UpdateKeyMap;
     /// <summary>„Atlas-Start“ öffnen (#753, #1114).</summary>
     property OnWelcome: TProc read FOnWelcome write FOnWelcome;
+    /// <summary>Fenster „Atlas-Board“ öffnen (#1272).</summary>
+    property OnBoard: TProc read FOnBoard write FOnBoard;
     /// <summary>Einträge der Willkommensseite nach den Einstellungen ein- oder ausblenden.</summary>
     procedure UpdateWelcome;
     /// <summary>Name der Einstellung eines Schalters (Schlüssel im Katalog der Schnellschalter, #604).</summary>
@@ -432,6 +440,10 @@ begin
       FViewUnitRelations.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsViewMenu);
       FViewUnitRelations.OnClick := UnitRelationsClick;
       FViewAtlas.Add(FViewUnitRelations);
+      FViewBoard := TMenuItem.Create(FViewAtlas);
+      FViewBoard.Caption := TAtlasStrings.Text(TAtlasTextId.BoardViewMenu);
+      FViewBoard.OnClick := BoardClick;
+      FViewAtlas.Add(FViewBoard);
       Services.MainMenu.Items[Index].Add(FViewAtlas);
       Break;
     end;
@@ -741,8 +753,12 @@ begin
     FUnitRelationsItem.Visible := TAtlasIdeUnitRelations.Enabled;
   if FViewUnitRelations <> nil then
     FViewUnitRelations.Visible := TAtlasIdeUnitRelations.Enabled;
+  // Atlas-Board (#1272) nach issues.board.
+  if FViewBoard <> nil then
+    FViewBoard.Visible := TAtlasIdeSettings.Current.IssuesBoard;
   if FViewAtlas <> nil then
-    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled;
+    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled or
+      TAtlasIdeUnitRelations.Enabled or TAtlasIdeSettings.Current.IssuesBoard;
   // Weg zwischen Symbolen (#1117) nach navigation.symbolPath.
   if FSymbolPathItem <> nil then
     FSymbolPathItem.Visible := TAtlasIdeSymbolPath.Enabled;
@@ -969,6 +985,18 @@ begin
     procedure
     begin
       TAtlasIdeArchitecture.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.BoardClick(Sender: TObject);
+begin
+  if not Assigned(FOnBoard) then
+    Exit;
+  TAtlasIdeShortcutTips.Invoked('Atlas.Board');
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      FOnBoard();
     end);
 end;
 

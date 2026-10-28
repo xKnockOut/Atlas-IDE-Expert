@@ -8231,3 +8231,61 @@ Vorbereitung wie bei der Issue-Vorschau (#1264); in YouTrack ATL-130 mit „depe
 | IU17 | `issues.preview.links` aus | Flache Liste „Verknüpfte Issues“ wie vor #1279, keine Knöpfe |
 | IU18 | Netz trennen, IU13 | Warnung aus dem Zwischenspeicher, sonst keine; „Beginnen“ hängt nicht länger als 5 s |
 | IU19 | Plugin entladen, während eine Unteraufgabe gesendet wird | Kein Fehler, keine Zugriffsverletzung |
+
+## Board „Atlas-Board“ (#1272)
+
+Vorbereitung: YouTrack mit Agile Board (deutsche Oberfläche, Spalten Offen, In Arbeit, Zur Prüfung, Erledigt; aktueller Sprint mit Issues, davon einige mir zugewiesen, eines mit Checkliste, eines mit offenem „hängt ab von“) und ein GitHub-Repository mit Projekt (v2, Feld „Status“, Iterationen); Token mit Schreibrecht, für GitHub mit `project`. Projekt in der IDE geöffnet, Tracker über `.atlas` bzw. Zuordnung (#1261).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BO1 | Ansicht › Atlas › Board | Andockbares Fenster „Atlas-Board“, kurz „Wird geladen …“, dann Spalten und Karten des aktuellen Sprints wie im Browser (**Abnahme**) |
+| BO2 | Befehlspalette „Board“ | Öffnet bzw. zeigt dasselbe Fenster |
+| BO3 | Karten ansehen | Kennung, Titel in zwei Zeilen, Kürzel des Zuständigen, Farbbalken der Priorität, „3/5“ bei Checkliste, Schloss bei offener Abhängigkeit; das begonnene Issue mit Rahmen in Akzentfarbe |
+| BO4 | „Alle“, dann „Nur meine“ | Alle Karten bzw. nur mir zugewiesene; Anzahl im Spaltenkopf passt |
+| BO5 | Suchfeld „login“ bzw. Kennung | Nur passende Karten, ohne Abfrage beim Server |
+| BO6 | Klappliste Sprint: anderer Sprint; Klappliste Board (bei mehreren Boards) | Lädt dessen Karten; Board-Auswahl nur bei mehr als einem Board sichtbar |
+| BO7 | Karte von „In Arbeit“ nach „Zur Prüfung“ ziehen | Rückfrage „ATL-123 → Zur Prüfung?“ mit Kommentarfeld und „Nicht mehr fragen“ (**Abnahme**) |
+| BO8 | BO7, Kommentar eingeben, „Verschieben“ (bzw. Strg+Enter) | Karte steht sofort in „Zur Prüfung“, Statuszeile „ATL-123 → Zur Prüfung“; im Browser Zustand geändert und Kommentar vorhanden (**Abnahme**) |
+| BO9 | BO7, „Abbrechen“ bzw. Esc | Karte bleibt, nichts geschrieben |
+| BO10 | Token ohne Schreibrecht, Karte ziehen | Karte springt zurück, Statuszeile „ATL-123 nicht verschoben: …“ mit dem Grund des Trackers (**Abnahme**) |
+| BO11 | Klick auf eine Karte | Vorschau „Atlas-Issue“ zeigt das Issue (**Abnahme**) |
+| BO12 | Doppelklick auf eine Karte | Issue wird begonnen wie in „Meine Issues“ (Branch, Rahmen wandert zu dieser Karte) (**Abnahme**) |
+| BO13 | Rechtsklick: Beginnen, Vorschau, Im Browser öffnen, Kennung kopieren, Mir zuweisen | Jeweils wie benannt; „Mir zuweisen“ meldet „ATL-123 ist dir zugewiesen.“ und lädt neu |
+| BO14 | GitHub-Projekt mit Feld „Status“ | Spalten nach den Optionen von „Status“, Iteration als Sprint; Ziehen ändert „Status“ im Projekt (**Abnahme**) |
+| BO15 | GitHub-Repository ohne Projekt | Spalten „Offen“ und „Geschlossen“; Ziehen nach „Geschlossen“ schließt das Issue |
+| BO16 | GitHub-Token ohne `project` | Offen/Geschlossen mit Hinweis „Der Token darf Projekte nicht lesen …“ |
+| BO17 | Netz trennen, Fenster schließen und neu öffnen bzw. „Aktualisieren“ | Letzter Stand mit „Stand vom … · Grund · Ziehen ist gesperrt“; Ziehen geht nicht (**Abnahme**) |
+| BO18 | Fenster schmal andocken (unter 360 px) | Spalten untereinander; Klick auf einen Spaltenkopf klappt die Gruppe ein und aus |
+| BO19 | „Nicht mehr fragen“ in BO7 setzen, erneut ziehen | Keine Rückfrage mehr; auf der Optionsseite ist `issues.board.confirmMove` aus |
+| BO20 | `issues.board.confirmMove` aus | Ziehen verschiebt ohne Rückfrage (**Abnahme**) |
+| BO21 | `issues.board` aus | Menüeintrag und Befehl fehlen, keine Abfrage (**Abnahme**) |
+| BO22 | `issues.board.onlyMine` aus, IDE neu starten, Board öffnen | Board zeigt zuerst alle Karten |
+| BO23 | Helles und dunkles IDE-Design, 150 % Skalierung | Lesbare Karten, Ziehen mit halbdurchsichtiger Karte und markierter Zielspalte |
+| BO24 | Plugin entladen, während das Board lädt bzw. verschiebt | Keine Zugriffsverletzung |
+
+## Sprint-Kachel (#1277)
+
+Vorbereitung wie BO (#1272): YouTrack-Agile-Board mit Schätzfeld (Story Points) und mindestens drei abgeschlossenen Sprints, aktueller Sprint mit erledigten und offenen Issues (einige mir zugewiesen); GitHub-Projekt mit Iterationen und Zahlenfeld „Estimate“. Atlas-Start geöffnet, „Meine Issues“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Atlas-Start öffnen | Bereich „Sprint“ rechts nach „Meine Issues“: „Sprint 42 · 27.10.–07.11. · noch n Tage“, drei Zahlen, Burndown (**Abnahme**) |
+| SK2 | Werte mit dem Board im Browser vergleichen | Sprintname, Zeitraum, Resttage (ohne Wochenenden), meine offen/erledigt und Team übrig stimmen überein (**Abnahme**) |
+| SK3 | Board ohne Schätzfeld | „Team übrig“ als Anzahl Issues, Burndown in Issues |
+| SK4 | Maus über das Diagramm | Tooltip „Tag 3 (29.10.): Rest 12 · ideal 9,6 · Vorsprint 11“; Ist-Linie durchgezogen, Ideallinie gestrichelt, Marke „heute“ |
+| SK5 | Vergleich ansehen | Blasse Linie des Vorsprints, Zeile „erledigt 5 · Vorsprint 4 am selben Tag ▲1“, drei Velocity-Balken (**Abnahme**) |
+| SK6 | Vorsprint mit anderer Länge (eine statt zwei Wochen) | Linie über die ganze Breite auf Sprinttage normiert, Abweichung am selben Anteil (**Abnahme**) |
+| SK7 | Erster Sprint eines Boards (kein Vorsprint) | Keine Vergleichszeile, keine blasse Linie |
+| SK8 | `issues.sprint.compare` aus, Netzwerkmitschnitt (Fiddler) | Kein Vergleich, keine Velocity, kein Abruf früherer Sprints (**Abnahme**) |
+| SK9 | `issues.sprint.burndown` aus | Nur Kopf, Zahlen und Vergleichszeile |
+| SK10 | Klick auf „meine offen“ | „Meine Issues“ zeigt nur meine offenen Issues des Sprints mit „Gefiltert: „Sprint 42“, meine offen · alle zeigen“ (**Abnahme**) |
+| SK11 | SK10, Klick auf „alle zeigen“ | Wieder alle meine Issues |
+| SK12 | Klick auf „Team übrig“ bzw. das Diagramm | Fenster „Atlas-Board“ öffnet (**Abnahme**) |
+| SK13 | Klick auf den Titel | Board im Browser (YouTrack `…/agiles/<Board>/current`, GitHub Projektseite) |
+| SK14 | Projekt ohne Tracker | „Kein Board für dieses Projekt – zuordnen …“; Klick öffnet die Seite Issue-Tracker mit vorbefüllter Zeile (**Abnahme**) |
+| SK15 | Netzwerk trennen, Atlas-Start neu öffnen | Letzter Stand mit „Stand vom … · nicht erreichbar“, kein Dialog |
+| SK16 | `welcomePage.sprint` aus | Bereich fehlt, keine Abfrage (**Abnahme**) |
+| SK17 | Gespeichertes eigenes Layout aus einer älteren Version | „Sprint“ erscheint einmal neu in der rechten Spalte |
+| SK18 | Helles und dunkles Design | Linien und Texte lesbar (**Abnahme**) |
+| SK19 | GitHub-Projekt mit Iterationen und „Estimate“ | Zahlen in Punkten, Vorsprint = vorherige Iteration |
+| SK20 | Plugin entladen, während die Kachel lädt | Keine Zugriffsverletzung |

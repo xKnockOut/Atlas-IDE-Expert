@@ -56,6 +56,8 @@ type
     Unsaved = 'atlas.unsaved';
     Tests = 'atlas.tests';
     Issues = 'atlas.issues';
+    /// <summary>Sprint-Kachel mit Burndown (#1277).</summary>
+    Sprint = 'atlas.sprint';
     Help = 'atlas.help';
     /// <summary>Vorsilbe der Plugin-Kennungen in der IDE.</summary>
     PluginPrefix = 'Atlas.Welcome.';

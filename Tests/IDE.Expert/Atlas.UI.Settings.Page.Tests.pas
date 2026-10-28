@@ -1989,6 +1989,13 @@ begin
     Assert.IsTrue(SheetOf(Page.IssuesChecklistStatus) = Tracker);
     Assert.IsTrue(SheetOf(Page.IssuesPreviewLinks) = Tracker, 'Verknüpfungen (#1279)');
     Assert.IsTrue(SheetOf(Page.IssuesWarnBlocked) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesBoard) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesBoardConfirmMove) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesBoardOnlyMine) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesSprintBurndown) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesSprintCompare) = Tracker);
+    // Sprint-Kachel (#1277): der Bereich auf der Willkommensseite, neben „Meine Issues“.
+    Assert.IsTrue(SheetOf(Page.WelcomeSprint) = SheetOf(Page.WelcomeIssues));
     // Die Willkommensseite behält nur den Schalter, daneben der Weg zur Seite.
     Assert.IsFalse(SheetOf(Page.WelcomeIssues) = Tracker);
     Assert.IsTrue(SheetOf(Page.WelcomeIssuesLink) = SheetOf(Page.WelcomeIssues));
@@ -2988,6 +2995,12 @@ begin
     Assert.IsTrue(Page.IssuesChecklistStatus.Checked);
     Assert.IsTrue(Page.IssuesPreviewLinks.Checked);
     Assert.IsTrue(Page.IssuesWarnBlocked.Checked);
+    Assert.IsTrue(Page.IssuesBoard.Checked);
+    Assert.IsTrue(Page.IssuesBoardConfirmMove.Checked);
+    Assert.IsTrue(Page.IssuesBoardOnlyMine.Checked);
+    Assert.IsTrue(Page.IssuesSprintBurndown.Checked);
+    Assert.IsTrue(Page.IssuesSprintCompare.Checked);
+    Assert.IsTrue(Page.WelcomeSprint.Checked);
     // #764: Schnellaktionen an, alle sechs Knöpfe, wt.exe, Strg+B und Strg+T.
     Assert.IsTrue(Page.WelcomeQuickActions.Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Build).Checked);
@@ -3055,6 +3068,12 @@ begin
     Page.IssuesChecklistStatus.Checked := False;
     Page.IssuesPreviewLinks.Checked := False;
     Page.IssuesWarnBlocked.Checked := False;
+    Page.IssuesBoard.Checked := False;
+    Page.IssuesBoardConfirmMove.Checked := False;
+    Page.IssuesBoardOnlyMine.Checked := False;
+    Page.IssuesSprintBurndown.Checked := False;
+    Page.IssuesSprintCompare.Checked := False;
+    Page.WelcomeSprint.Checked := False;
     Page.WelcomeQuickActions.Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Run).Checked := False;
@@ -3131,6 +3150,12 @@ begin
     Assert.IsFalse(Saved.IssuesChecklistStatus);
     Assert.IsFalse(Saved.IssuesPreviewLinks);
     Assert.IsFalse(Saved.IssuesWarnBlocked);
+    Assert.IsFalse(Saved.IssuesBoard);
+    Assert.IsFalse(Saved.IssuesBoardConfirmMove);
+    Assert.IsFalse(Saved.IssuesBoardOnlyMine);
+    Assert.IsFalse(Saved.IssuesSprintBurndown);
+    Assert.IsFalse(Saved.IssuesSprintCompare);
+    Assert.IsFalse(Saved.WelcomePageSprint);
     Assert.IsFalse(Saved.WelcomePageQuickActions);
     Assert.AreEqual('build,tests,pull,folder,tasks', Saved.WelcomePageQuickActionsItems, 'ohne run und console');
     Assert.AreEqual('pwsh.exe', Saved.WelcomePageQuickActionsConsole);
@@ -3170,6 +3195,12 @@ begin
     Assert.IsFalse(Page.IssuesChecklistStatus.Checked);
     Assert.IsFalse(Page.IssuesPreviewLinks.Checked);
     Assert.IsFalse(Page.IssuesWarnBlocked.Checked);
+    Assert.IsFalse(Page.IssuesBoard.Checked);
+    Assert.IsFalse(Page.IssuesBoardConfirmMove.Checked);
+    Assert.IsFalse(Page.IssuesBoardOnlyMine.Checked);
+    Assert.IsFalse(Page.IssuesSprintBurndown.Checked);
+    Assert.IsFalse(Page.IssuesSprintCompare.Checked);
+    Assert.IsFalse(Page.WelcomeSprint.Checked);
     Assert.IsFalse(Page.WelcomeQuickActions.Checked);
     Assert.IsFalse(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Pull).Checked);

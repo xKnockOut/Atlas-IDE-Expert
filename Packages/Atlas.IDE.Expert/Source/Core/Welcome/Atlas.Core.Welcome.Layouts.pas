@@ -343,6 +343,7 @@ begin
     TAtlasWelcomeCatalogItem.Create(TAtlasWelcomeIds.Discover, 'WelcomePageDiscover'),
     TAtlasWelcomeCatalogItem.Create(TAtlasWelcomeIds.Setup, 'WelcomePageProjectSetup'),
     TAtlasWelcomeCatalogItem.Create(TAtlasWelcomeIds.Issues, 'WelcomePageIssues'),
+    TAtlasWelcomeCatalogItem.Create(TAtlasWelcomeIds.Sprint, 'WelcomePageSprint'),
     TAtlasWelcomeCatalogItem.Create(TAtlasWelcomeIds.Help, 'WelcomePageHelp')];
 end;
 

@@ -1087,6 +1087,12 @@ begin
   Assert.IsTrue(Settings.IssuesChecklistStatus);
   Assert.IsTrue(Settings.IssuesPreviewLinks, 'Verknüpfungen als Baum (#1279) an');
   Assert.IsTrue(Settings.IssuesWarnBlocked, 'Warnung beim Beginnen (#1279) an');
+  Assert.IsTrue(Settings.IssuesBoard, 'Board (#1272) an');
+  Assert.IsTrue(Settings.IssuesBoardConfirmMove, 'Rückfrage beim Ziehen an');
+  Assert.IsTrue(Settings.IssuesBoardOnlyMine, 'Board öffnet mit „Nur meine“');
+  Assert.IsTrue(Settings.WelcomePageSprint, 'Sprint-Kachel (#1277) an');
+  Assert.IsTrue(Settings.IssuesSprintBurndown, 'Burndown an');
+  Assert.IsTrue(Settings.IssuesSprintCompare, 'Vergleich mit dem Vorsprint an');
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -1140,6 +1146,12 @@ begin
   Settings.IssuesChecklistStatus := False;
   Settings.IssuesPreviewLinks := False;
   Settings.IssuesWarnBlocked := False;
+  Settings.IssuesBoard := False;
+  Settings.IssuesBoardConfirmMove := False;
+  Settings.IssuesBoardOnlyMine := False;
+  Settings.WelcomePageSprint := False;
+  Settings.IssuesSprintBurndown := False;
+  Settings.IssuesSprintCompare := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -1237,6 +1249,12 @@ begin
   Assert.IsFalse(Loaded.IssuesChecklistStatus);
   Assert.IsFalse(Loaded.IssuesPreviewLinks);
   Assert.IsFalse(Loaded.IssuesWarnBlocked);
+  Assert.IsFalse(Loaded.IssuesBoard);
+  Assert.IsFalse(Loaded.IssuesBoardConfirmMove);
+  Assert.IsFalse(Loaded.IssuesBoardOnlyMine);
+  Assert.IsFalse(Loaded.WelcomePageSprint);
+  Assert.IsFalse(Loaded.IssuesSprintBurndown);
+  Assert.IsFalse(Loaded.IssuesSprintCompare);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

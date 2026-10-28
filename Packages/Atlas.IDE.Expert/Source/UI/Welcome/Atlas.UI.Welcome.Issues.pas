@@ -72,10 +72,12 @@ type
     procedure SelectQuery(const AName: string);
     /// <summary>„Abfragen bearbeiten …“: Seite Issue-Tracker öffnen.</summary>
     procedure EditQueries;
+    /// <summary>Filter der Sprint-Kachel aufheben (#1277): wieder alle meine Issues.</summary>
+    procedure ClearFilter;
   end;
 
 {$SCOPEDENUMS ON}
-  TAtlasIssuesHitKind = (None, Row, Key, PullRequest, Start, Assign);
+  TAtlasIssuesHitKind = (None, Row, Key, PullRequest, Start, Assign, Filter);
 {$SCOPEDENUMS OFF}
 
   TAtlasIssuesHit = record
@@ -110,6 +112,8 @@ type
     FStartRects: TArray<TRect>;
     /// <summary>Link „zuordnen …“ in der Fußzeile; leer ohne.</summary>
     FAssignRect: TRect;
+    /// <summary>Zeile „Gefiltert: … · alle zeigen“ (#1277); leer ohne Filter.</summary>
+    FFilterRect: TRect;
     FMenu: TPopupMenu;
     FPreviewItem: TMenuItem;
     FBrowseItem: TMenuItem;
@@ -143,7 +147,6 @@ type
     procedure UpdateQueryPicker;
     function MenuIssue(out AIssue: TAtlasTrackerIssue): Boolean;
     procedure Post(const AAction: TThreadProcedure);
-    function ListTop: Integer;
     function RowTop(AIndex: Integer): Integer;
     function RowHeight(AIndex: Integer): Integer;
     function FooterTop: Integer;
@@ -168,6 +171,11 @@ type
     function CanStart: Boolean;
     /// <summary>Zeile über der Liste: Stand, Fehler, „Stand vom …“; '' bei frischem Stand.</summary>
     class function StatusText(const AView: TAtlasIssuesView): string; static;
+    /// <summary>„Gefiltert: „Sprint 12“, meine offen · alle zeigen“; '' ohne Filter (#1277).</summary>
+    class function FilterText(const AView: TAtlasIssuesView): string; static;
+    /// <summary>Oberkante der Filterzeile bzw. der Liste (unter Stand- und Filterzeile).</summary>
+    function FilterTop: Integer;
+    function ListTop: Integer;
     /// <summary>Fußzeile: Hinweis, sonst aktuelles Issue außerhalb der Liste, sonst was „Beginnen“ tut.</summary>
     class function FooterText(const AView: TAtlasIssuesView): string; static;
     /// <summary>Die Fußzeile ist der Link „zuordnen …“ (#1261): Projekt ohne Tracker, Zuordnen möglich.</summary>
@@ -329,6 +337,7 @@ begin
   FPullRects := nil;
   FStartRects := nil;
   FAssignRect := TRect.Empty;
+  FFilterRect := TRect.Empty;
   SetLength(FKeyRects, Length(FView.Items));
   SetLength(FPullRects, Length(FView.Items));
   SetLength(FStartRects, Length(FView.Items));
@@ -618,11 +627,25 @@ begin
   Result := (FSource <> nil) and not FView.Starting;
 end;
 
-function TAtlasWelcomeIssuesFrame.ListTop: Integer;
+function TAtlasWelcomeIssuesFrame.FilterTop: Integer;
 begin
   Result := ScaleValue(Indent) div 2;
   if StatusText(FView) <> '' then
     Inc(Result, ScaleValue(StatusHeight));
+end;
+
+function TAtlasWelcomeIssuesFrame.ListTop: Integer;
+begin
+  Result := FilterTop;
+  if FilterText(FView) <> '' then
+    Inc(Result, ScaleValue(StatusHeight));
+end;
+
+class function TAtlasWelcomeIssuesFrame.FilterText(const AView: TAtlasIssuesView): string;
+begin
+  Result := '';
+  if AView.Filter <> '' then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesFilter, [AView.Filter]);
 end;
 
 function TAtlasWelcomeIssuesFrame.RowHeight(AIndex: Integer): Integer;
@@ -803,6 +826,20 @@ begin
       ScaleValue(2), mText);
     Canvas.Font.Assign(Font);
   end;
+  // Filter der Sprint-Kachel (#1277): Link, der ihn aufhebt.
+  FFilterRect := TRect.Empty;
+  mText := FilterText(FView);
+  if mText <> '' then
+  begin
+    mTop := FilterTop + ScaleValue(2);
+    Canvas.Font.Size := Font.Size - 1;
+    Canvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
+    FFilterRect := Rect(ScaleValue(Indent), mTop, Min(ScaleValue(Indent) + Canvas.TextWidth(mText),
+      FBox.Width - ScaleValue(Indent)), mTop + Canvas.TextHeight(mText));
+    Canvas.TextRect(Rect(ScaleValue(Indent), mTop, FBox.Width - ScaleValue(Indent), mTop + ScaleValue(StatusHeight)),
+      ScaleValue(Indent), mTop, mText);
+    Canvas.Font.Assign(Font);
+  end;
   if Length(FStartRects) <> Length(FView.Items) then
     Exit;
   for Index := 0 to High(FView.Items) do
@@ -849,6 +886,8 @@ begin
   Point_ := Point(X, Y);
   if not FAssignRect.IsEmpty and FAssignRect.Contains(Point_) then
     Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Assign, -1));
+  if not FFilterRect.IsEmpty and FFilterRect.Contains(Point_) then
+    Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Filter, -1));
   for Index := 0 to High(FView.Items) do
   begin
     if (Y < RowTop(Index)) or (Y >= RowTop(Index) + RowHeight(Index)) then
@@ -890,6 +929,16 @@ begin
       end);
     Exit;
   end;
+  if (FSource <> nil) and (AHit.Kind = TAtlasIssuesHitKind.Filter) then
+  begin
+    mSource := FSource;
+    Post(
+      procedure
+      begin
+        mSource.ClearFilter;
+      end);
+    Exit;
+  end;
   if (FSource = nil) or (AHit.Index < 0) or (AHit.Index > High(FView.Items)) then
     Exit;
   mSource := FSource;
@@ -906,7 +955,7 @@ begin
   end;
   case AHit.Kind of
     // Leerraum und Zeilentext lösen ohne Vorschau nichts aus; sie zeigen nur den Hinweis (BoxMouseMove).
-    TAtlasIssuesHitKind.None, TAtlasIssuesHitKind.Assign: ;
+    TAtlasIssuesHitKind.None, TAtlasIssuesHitKind.Assign, TAtlasIssuesHitKind.Filter: ;
     TAtlasIssuesHitKind.Row:
       if ABrowse and FView.Options.Preview then
         Post(
@@ -946,7 +995,8 @@ var
 begin
   Hit := HitTest(X, Y);
   if (Hit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start,
-    TAtlasIssuesHitKind.Assign]) or ((Hit.Kind = TAtlasIssuesHitKind.Row) and FView.Options.Preview) then
+    TAtlasIssuesHitKind.Assign, TAtlasIssuesHitKind.Filter]) or
+    ((Hit.Kind = TAtlasIssuesHitKind.Row) and FView.Options.Preview) then
     FBox.Cursor := crHandPoint
   else
     FBox.Cursor := crDefault;
@@ -968,6 +1018,8 @@ begin
       FBox.Hint := FView.Items[Hit.Index].Key + ' ' + FView.Items[Hit.Index].Title;
     TAtlasIssuesHitKind.Assign:
       FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintAssign);
+    TAtlasIssuesHitKind.Filter:
+      FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintFilter);
   else
     FBox.Hint := '';
   end;
