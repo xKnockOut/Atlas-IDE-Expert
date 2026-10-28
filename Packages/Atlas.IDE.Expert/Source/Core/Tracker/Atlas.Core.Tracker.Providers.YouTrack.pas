@@ -28,6 +28,12 @@
 //   <url>/api/issues/<Kennung>/comments. Werte für die Klapplisten aus
 //   /api/admin/projects (Felder des Projekts mit ihren Werten, ohne Projekt
 //   aus /api/admin/customFieldSettings/customFields) und /api/users.
+// - Zeit buchen (#1267, IAtlasTrackerTimeWriter): POST
+//   <url>/api/issues/<Kennung>/timeTracking/workItems mit
+//   {"duration": {"presentation": "1h 25m"}, "date": <ms>, "type": {"name":
+//   …}, "text": …}; Zeiterfassung und Arbeitstypen aus
+//   /api/admin/projects/<Kürzel>/timeTrackingSettings, ohne Leserecht die
+//   allgemeinen Arbeitstypen (/api/admin/timeTrackingSettings/workItemTypes).
 
 interface
 
@@ -37,7 +43,8 @@ uses
   Atlas.Core.Tracker.Contract;
 
 type
-  TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter)
+  TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
+    IAtlasTrackerTimeWriter)
   public const
     ProviderName = 'youtrack';
     Query = 'for: me #Unresolved';
@@ -52,6 +59,8 @@ type
     ProjectFields = 'shortName,customFields(field(name,fieldType(id)),bundle(values(name,archived)))';
     /// <summary>Höchstens so viele Werte je Klappliste.</summary>
     MaxValues = 200;
+    /// <summary>Felder der Zeiterfassung eines Projekts (#1267).</summary>
+    TimeSettingsFields = 'enabled,workItemTypes(name)';
   public
     class function IssuesUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string; static;
     /// <summary>Abfrage, wie sie an YouTrack geht (mit "project: …").</summary>
@@ -83,6 +92,17 @@ type
       out AValues: TArray<string>): Boolean; static;
     /// <summary>Anmeldenamen aus /api/users; False bei ungültigem JSON.</summary>
     class function ParseUsers(const AJson: string; out AValues: TArray<string>): Boolean; static;
+    /// <summary>Projektkürzel aus der Kennung ("ATL-123" → "ATL"); '' ohne Bindestrich.</summary>
+    class function ProjectOfKey(const AKey: string): string; static;
+    /// <summary>Körper für timeTracking/workItems (#1267); "date" = Mittag des Tages in UTC (Millisekunden), damit
+    /// der Tag in jeder Zeitzone stimmt.</summary>
+    class function WorkItemJson(const AItem: TAtlasTrackerWorkItem): string; static;
+    /// <summary>{"enabled": …, "workItemTypes": [{"name": …}]} bzw. eine Liste [{"name": …}] (AList).</summary>
+    class function ParseTimeSettings(const AJson: string; AList: Boolean;
+      out ASettings: TAtlasTrackerTimeSettings): Boolean; static;
+    /// <summary>Die Buchung scheiterte, weil die Zeiterfassung im Projekt aus ist (400 mit Hinweis darauf).
+    /// </summary>
+    class function TimeTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -102,6 +122,12 @@ type
     function Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       AKind: TAtlasTrackerValueKind; const AField: string; ATimeoutMs: Integer;
       out AValues: TArray<string>): TAtlasTrackerWriteResult;
+    { IAtlasTrackerTimeWriter }
+    function TimeSettings(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out ASettings: TAtlasTrackerTimeSettings): TAtlasTrackerWriteResult;
+    function BookTime(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      const AItem: TAtlasTrackerWorkItem; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+    function IsTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean;
   end;
 
 implementation
@@ -112,6 +138,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   System.StrUtils,
+  Atlas.Core.Tracker.TimeLog,
   Atlas.Text.Uris;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
@@ -858,6 +885,140 @@ begin
     mOk := ParseFieldValues(mText, ATarget.Project, AKind, Trim(AField), AValues);
   if not mOk then
     Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, '');
+end;
+
+{ IAtlasTrackerTimeWriter (#1267) }
+
+class function TAtlasYouTrackTracker.ProjectOfKey(const AKey: string): string;
+var
+  mDash: Integer;
+begin
+  Result := '';
+  mDash := LastDelimiter('-', Trim(AKey));
+  if mDash > 1 then
+    Result := Copy(Trim(AKey), 1, mDash - 1);
+end;
+
+class function TAtlasYouTrackTracker.WorkItemJson(const AItem: TAtlasTrackerWorkItem): string;
+var
+  mObject, mDuration, mType: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  try
+    mDuration := TJSONObject.Create;
+    mDuration.AddPair('presentation', TAtlasTimeRounding.Presentation(AItem.Minutes));
+    mObject.AddPair('duration', mDuration);
+    mObject.AddPair('date', TJSONNumber.Create(DateTimeToUnix(Trunc(AItem.Date) + 0.5, True) * 1000));
+    if AItem.WorkType <> '' then
+    begin
+      mType := TJSONObject.Create;
+      mType.AddPair('name', AItem.WorkType);
+      mObject.AddPair('type', mType);
+    end;
+    if Trim(AItem.Text) <> '' then
+      mObject.AddPair('text', AItem.Text);
+    Result := mObject.ToJSON;
+  finally
+    mObject.Free;
+  end;
+end;
+
+class function TAtlasYouTrackTracker.ParseTimeSettings(const AJson: string; AList: Boolean;
+  out ASettings: TAtlasTrackerTimeSettings): Boolean;
+var
+  mValue, mTypes, mItem: TJSONValue;
+begin
+  ASettings.Enabled := True;
+  ASettings.WorkTypes := nil;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if AList then
+    begin
+      if not (mValue is TJSONArray) then
+        Exit;
+      mTypes := mValue;
+    end
+    else
+    begin
+      if not (mValue is TJSONObject) then
+        Exit;
+      ASettings.Enabled := BoolOf(TJSONObject(mValue), 'enabled');
+      mTypes := TJSONObject(mValue).Values['workItemTypes'];
+    end;
+    if (mTypes <> nil) and not (mTypes is TJSONArray) then
+      Exit;
+    Result := True;
+    if mTypes <> nil then
+      for mItem in TJSONArray(mTypes) do
+        if mItem is TJSONObject then
+          AddValue(ASettings.WorkTypes, TextOf(TJSONObject(mItem), 'name'));
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasYouTrackTracker.TimeTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean;
+begin
+  Result := (AResult.Status = 400) and (ContainsText(AResult.Message, 'time tracking') or
+    ContainsText(AResult.Message, 'timetracking') or ContainsText(AResult.Message, 'Zeiterfassung'));
+end;
+
+function TAtlasYouTrackTracker.IsTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean;
+begin
+  Result := TimeTrackingOff(AResult);
+end;
+
+function TAtlasYouTrackTracker.TimeSettings(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; ATimeoutMs: Integer; out ASettings: TAtlasTrackerTimeSettings): TAtlasTrackerWriteResult;
+var
+  mProject, mUrl, mText: string;
+  mStatus: Integer;
+  mError: TAtlasCiFetchError;
+begin
+  ASettings.Enabled := True;
+  ASettings.WorkTypes := nil;
+  Result := TAtlasTrackerWriteResult.Ok;
+  mProject := ProjectOfKey(AKey);
+  if (ATarget.Server = '') or (ATransport = nil) or (mProject = '') then
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  mUrl := ATarget.Url + '/api/admin/projects/' + TTextUris.PercentEncode(mProject) + '/timeTrackingSettings?fields=' +
+    TTextUris.PercentEncode(TimeSettingsFields);
+  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) then
+    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  if mStatus = 200 then
+  begin
+    if not ParseTimeSettings(mText, False, ASettings) then
+      Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, '');
+    Exit;
+  end;
+  if (mStatus <> 403) and (mStatus <> 404) then
+    Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+  // Ohne Leserecht auf das Projekt: Zeiterfassung gilt als an, Arbeitstypen allgemein (sonst frei).
+  mUrl := ATarget.Url + '/api/admin/timeTrackingSettings/workItemTypes?fields=name&$top=' + IntToStr(MaxValues);
+  if ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) and (mStatus = 200) and
+    not ParseTimeSettings(mText, True, ASettings) then
+    ASettings.WorkTypes := nil;
+end;
+
+function TAtlasYouTrackTracker.BookTime(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; const AItem: TAtlasTrackerWorkItem; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+var
+  mSend: IAtlasCiSend;
+  mAnswer: string;
+  mStatus: Integer;
+  mError: TAtlasCiFetchError;
+begin
+  if AItem.Minutes <= 0 then
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
+  if (ATarget.Server = '') or not ValidKey(Trim(AKey)) or not Supports(ATransport, IAtlasCiSend, mSend) then
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  Result := TAtlasTrackerWriteResult.Ok;
+  if not mSend.Send('POST', ATarget.Url + '/api/issues/' + Trim(AKey) + '/timeTracking/workItems?fields=id',
+    WorkItemJson(AItem), ATimeoutMs, mStatus, mAnswer, mError) then
+    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  if (mStatus < 200) or (mStatus > 299) then
+    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mAnswer));
 end;
 
 end.

@@ -120,6 +120,9 @@ type
     /// Zuständigkeit.</summary>
     class function EndChange(const AOptions: TAtlasTrackerSyncOptions; const AState, AComment: string;
       AHandOver: Boolean; const AAssignee: string): TAtlasTrackerChange; static;
+    /// <summary>Betreffe aus {commits} ohne Kurz-Hash, eine Zeile je Commit (Vorlage der Beschreibung einer
+    /// Zeitbuchung, #1267).</summary>
+    class function CommitSubjects(const ACommits: string): string; static;
     /// <summary>Dauer für {time}: „1 h 25 min“, „25 min“; '' für 0.</summary>
     class function DurationText(AMinutes: Integer): string; static;
     /// <summary>Zustände von AStateField, Zustands- und Benutzerfelder; bricht beim ersten Fehler ab. Im
@@ -284,6 +287,24 @@ begin
     Inc(mCount);
     if mCount >= MaxCommits then
       Break;
+  end;
+  Result := string.Join(#10, mLines);
+end;
+
+class function TAtlasTrackerWorkflow.CommitSubjects(const ACommits: string): string;
+var
+  mLine: string;
+  mLines: TArray<string>;
+  mSpace: Integer;
+begin
+  mLines := nil;
+  for mLine in ACommits.Split([#10]) do
+  begin
+    mSpace := Pos(' ', Trim(mLine));
+    if mSpace > 0 then
+      mLines := mLines + [Trim(Copy(Trim(mLine), mSpace + 1, MaxInt))]
+    else if Trim(mLine) <> '' then
+      mLines := mLines + [Trim(mLine)];
   end;
   Result := string.Join(#10, mLines);
 end;

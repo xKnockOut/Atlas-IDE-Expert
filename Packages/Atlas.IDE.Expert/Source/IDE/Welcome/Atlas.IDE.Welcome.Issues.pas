@@ -29,6 +29,11 @@
 //   „Beginnen“ Zustand, Zuweisung und Kommentar; „Beenden“ (Statusfeld,
 //   Kontextmenü, Knopf der Vorschau) zeigt statt der Rückfrage den Dialog
 //   „ATL-123 beenden“, beendet wird nach „Senden“; Kommentare aus der Vorschau.
+// - Zeiterfassung (#1267, issues.timeTracking, TAtlasIdeTrackerTime): die Uhr
+//   folgt dem aktuellen Issue (UpdateStatus); nach „Beenden“ und beim Wechsel
+//   auf ein anderes Issue der Dialog „… buchen?“; {time} im Beenden-Dialog;
+//   Befehl Atlas.IssueTimeOpen (ShowTimeOpen). Das Zusatzfeld im Statusfeld
+//   setzt die Komposition (OnTimeStatus).
 // - Issue-Links "#312" in Begründungen (#1123): Adresse aus dem Tracker des
 //   aktuellen Projekts (IssueUrl), angemeldet bei TAtlasDocIssueLinks von Start
 //   bis Stop; ohne Tracker sind die Links nicht anklickbar.
@@ -52,10 +57,12 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.TimeLog,
   Atlas.Core.Welcome.Issues,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Issues,
   Atlas.IDE.Tracker.IssuePreview,
+  Atlas.IDE.Tracker.TimeTracking,
   Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Welcome.Projects;
 
@@ -111,6 +118,9 @@ type
     FPreview: TAtlasIdeIssuePreview;
     FPreviewRef: IInterface;
     FSync: TAtlasIdeTrackerSync;
+    FTime: TAtlasIdeTrackerTime;
+    FTimeRef: IInterface;
+    FOnTimeStatus: TAtlasIdeTimeStatus;
     FLine: TAtlasStatusLine;
     FLineRef: IAtlasStatusItem;
     FWatch: TTimer;
@@ -154,6 +164,10 @@ type
     procedure RegisterIssueLinks;
     procedure StartPreview;
     procedure StartSync;
+    procedure StartTime;
+    /// <summary>Die Uhr der Zeiterfassung auf das aktuelle Issue von AProject stellen ('' = keins).</summary>
+    procedure SyncTime(const AProject, AKey: string);
+    function TimeIssueOf(const AProject, AKey: string): TAtlasTimeIssue;
     /// <summary>Kennung des aktuellen Issues im Projekt des Bereichs; '' ohne.</summary>
     function ActiveKey: string;
     /// <summary>„Beenden“ ohne Tracker: Zustand, Statuszeile und Hinweis.</summary>
@@ -189,6 +203,12 @@ type
     property IssuePreview: TAtlasIdeIssuePreview read FPreview;
     /// <summary>Tracker nachführen (#1266; nil vor Start bzw. nach Stop).</summary>
     property TrackerSync: TAtlasIdeTrackerSync read FSync;
+    /// <summary>Zeiterfassung (#1267; nil vor Start bzw. nach Stop).</summary>
+    property TimeTracking: TAtlasIdeTrackerTime read FTime;
+    /// <summary>Befehl Atlas.IssueTimeOpen (#1267): offene Zeitbuchungen zeigen.</summary>
+    procedure ShowTimeOpen;
+    /// <summary>Zusatzfeld der Zeiterfassung im Statusfeld (#1267); vor Start setzen.</summary>
+    property OnTimeStatus: TAtlasIdeTimeStatus read FOnTimeStatus write FOnTimeStatus;
     property ProviderFactory: TAtlasTrackerProviderHook read FProviderFactory write FProviderFactory;
     property TransportFactory: TAtlasTrackerTransportHook read FTransportFactory write FTransportFactory;
     property OnCredentials: TAtlasTrackerCredentialsHook read FOnCredentials write FOnCredentials;
@@ -299,6 +319,7 @@ begin
   FTitle := '';
   RegisterIssueLinks;
   StartSync;
+  StartTime;
   StartPreview;
   Refresh;
 end;
@@ -325,6 +346,68 @@ begin
     begin
       if mKeep <> nil then
         mOwner.Report(AText);
+    end);
+end;
+
+procedure TAtlasIdeIssues.StartTime;
+var
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
+  mStatus: TAtlasIdeTimeStatus;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  // Stop löst den Ring (die Zeiterfassung hält über die Hooks diese Quelle).
+  FTime := TAtlasIdeTrackerTime.Create(FSync,
+    function(const AName: string): IAtlasTrackerProvider
+    begin
+      Result := nil;
+      if mKeep <> nil then
+        Result := mOwner.ProviderOf(AName);
+    end,
+    procedure(AText: string)
+    begin
+      if mKeep <> nil then
+        mOwner.Report(AText);
+    end,
+    TAtlasTimeFile.DefaultPath);
+  FTimeRef := FTime;
+  mStatus := FOnTimeStatus;
+  FTime.OnStatus := mStatus;
+  FSync.TimeText :=
+    function(const AKey: string): string
+    begin
+      Result := '';
+      if (mKeep <> nil) and (mOwner.FTime <> nil) then
+        Result := mOwner.FTime.TimeText(AKey);
+    end;
+  FTime.Start;
+end;
+
+function TAtlasIdeIssues.TimeIssueOf(const AProject, AKey: string): TAtlasTimeIssue;
+var
+  mTarget: TAtlasTrackerTarget;
+begin
+  Result := TAtlasTimeIssue.None;
+  if (AProject = '') or (AKey = '') then
+    Exit;
+  mTarget := TargetOf(AProject);
+  Result := TAtlasTimeIssue.Create(mTarget.Provider, mTarget.Url, mTarget.Project, AKey);
+end;
+
+procedure TAtlasIdeIssues.SyncTime(const AProject, AKey: string);
+begin
+  if FTime <> nil then
+    FTime.SetIssue(TimeIssueOf(AProject, AKey));
+end;
+
+procedure TAtlasIdeIssues.ShowTimeOpen;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      if FStarted and (FTime <> nil) and TAtlasIdeTrackerTime.Active then
+        FTime.ShowOpen;
     end);
 end;
 
@@ -438,6 +521,12 @@ begin
     Exit;
   FStarted := False;
   TAtlasDocIssueLinks.Clear;
+  // Zuerst die Zeiterfassung: Sie schreibt die letzte Zeit und bucht über FSync.
+  if FTime <> nil then
+    FTime.Stop;
+  FTime := nil;
+  FTimeRef := nil;
+  FOnTimeStatus := nil;
   if FSync <> nil then
     FSync.Stop;
   // Die Hooks der Vorschau halten diese Quelle: Stop löst den Ring.
@@ -1075,6 +1164,7 @@ begin
   if not FStarted or not Active then
   begin
     RemoveStatus;
+    SyncTime('', '');
     FPrefix := '';
     // Beim Entladen (Stop) bleibt das Präfix, damit der Hook außerhalb der IDE weiter gilt.
     if FStarted then
@@ -1097,8 +1187,10 @@ begin
   if not Data.Active.Active then
   begin
     RemoveStatus;
+    SyncTime('', '');
     Exit;
   end;
+  SyncTime(Project, Data.Active.Key);
   if FLine = nil then
   begin
     Keep := Self;
@@ -1411,6 +1503,10 @@ begin
   mState := StateOf(AProject);
   TAtlasWelcomeIssues.Ended(mState, ABranch);
   SaveState(AProject, mState);
+  // Zeiterfassung (#1267): Zeit schreiben und das Buchen anbieten (Beschreibung aus den Commits).
+  if FTime <> nil then
+    FTime.Ended(TimeIssueOf(AProject, AKey), ExtractFileDir(AProject), ABranch,
+      TAtlasIdeSettings.Current.IssuesBranchBase);
   SetNotice(AProject, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesEnded, [AKey]), False);
   TAtlasGuard.Log('Meine Issues: aktuelles Issue beendet');
   UpdateStatus;

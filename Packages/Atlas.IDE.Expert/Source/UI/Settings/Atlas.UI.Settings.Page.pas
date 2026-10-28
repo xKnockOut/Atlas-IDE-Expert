@@ -657,6 +657,10 @@ type
     FIssuesEndComment: TEdit;
     FIssuesLoadValues: TButton;
     FIssuesValuesNote: TLabel;
+    // Zeiterfassung (#1267).
+    FIssuesTimeTracking: TCheckBox;
+    FIssuesIdleMinutes: TEdit;
+    FIssuesTimeRounding: TEdit;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -929,6 +933,7 @@ type
     procedure AddIssuesSection;
     /// <summary>Abschnitt „Zustand im Tracker“ (#1266) der Seite Issue-Tracker.</summary>
     procedure AddIssuesWorkflowSection;
+    procedure AddIssuesTimeSection;
     procedure AddUpdatesSection;
     procedure AddBugReportSection;
     procedure IndexRefreshClick(Sender: TObject);
@@ -1192,6 +1197,9 @@ type
     property IssuesEndComment: TEdit read FIssuesEndComment;
     property IssuesLoadValues: TButton read FIssuesLoadValues;
     property IssuesValuesNote: TLabel read FIssuesValuesNote;
+    property IssuesTimeTracking: TCheckBox read FIssuesTimeTracking;
+    property IssuesIdleMinutes: TEdit read FIssuesIdleMinutes;
+    property IssuesTimeRounding: TEdit read FIssuesTimeRounding;
     property IssuesConnectionStateField: TAtlasValueBox read FIssuesConnectionStateField;
     property IssuesConnectionAssigneeField: TAtlasValueBox read FIssuesConnectionAssigneeField;
     property IssuesConnectionStartState: TAtlasValueBox read FIssuesConnectionStartState;
@@ -2739,6 +2747,16 @@ begin
   FIssuesPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreview));
   FIssuesPreviewComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewComments));
   AddIssuesWorkflowSection;
+  AddIssuesTimeSection;
+end;
+
+procedure TAtlasSettingsPage.AddIssuesTimeSection;
+begin
+  // Zeiterfassung (#1267): Hauptschalter, Leerlauf und Rundung (x-parent issues.timeTracking).
+  AddTitle(TAtlasTextId.SettingsIssuesTimeTitle);
+  FIssuesTimeTracking := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesTimeTracking));
+  FIssuesIdleMinutes := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesIdleMinutes));
+  FIssuesTimeRounding := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesTimeRounding));
 end;
 
 procedure TAtlasSettingsPage.AddIssuesWorkflowSection;
@@ -4193,6 +4211,9 @@ begin
   FMarks.Bind(FIssuesStartComment, ['IssuesStartComment']);
   FMarks.Bind(FIssuesEndStates, ['IssuesEndStates']);
   FMarks.Bind(FIssuesEndComment, ['IssuesEndComment']);
+  FMarks.Bind(FIssuesTimeTracking, ['IssuesTimeTracking']);
+  FMarks.Bind(FIssuesIdleMinutes, ['IssuesIdleMinutes']);
+  FMarks.Bind(FIssuesTimeRounding, ['IssuesTimeRounding']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -6461,6 +6482,9 @@ begin
   FIssuesStartComment.Text := ASettings.IssuesStartComment;
   FIssuesEndStates.Text := ASettings.IssuesEndStates;
   FIssuesEndComment.Text := ASettings.IssuesEndComment;
+  FIssuesTimeTracking.Checked := ASettings.IssuesTimeTracking;
+  FIssuesIdleMinutes.Text := IntToStr(ASettings.IssuesIdleMinutes);
+  FIssuesTimeRounding.Text := IntToStr(ASettings.IssuesTimeRounding);
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -7030,6 +7054,9 @@ begin
   ASettings.IssuesStartComment := FIssuesStartComment.Text;
   ASettings.IssuesEndStates := TAtlasTrackerWorkflow.ListText(TAtlasTrackerWorkflow.ParseList(FIssuesEndStates.Text));
   ASettings.IssuesEndComment := FIssuesEndComment.Text;
+  ASettings.IssuesTimeTracking := FIssuesTimeTracking.Checked;
+  ASettings.IssuesIdleMinutes := StrToIntDef(Trim(FIssuesIdleMinutes.Text), ASettings.IssuesIdleMinutes);
+  ASettings.IssuesTimeRounding := StrToIntDef(Trim(FIssuesTimeRounding.Text), ASettings.IssuesTimeRounding);
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];

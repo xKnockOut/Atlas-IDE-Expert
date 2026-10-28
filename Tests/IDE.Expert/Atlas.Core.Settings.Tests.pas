@@ -150,6 +150,9 @@ type
     /// <summary>Tracker nachführen (#1266): Vorgaben, Normalisieren und Speichern.</summary>
     [Test]
     procedure IssuesSyncOptions;
+    /// <summary>Zeiterfassung (#1267): ab Werk aus, Leerlauf 10, Rundung 5, Grenzen, Speichern und Laden.</summary>
+    [Test]
+    procedure IssuesTimeOptions;
     /// <summary>Release-Build-Wächter (#533): build.releaseGuard, build.gate, build.releaseConfigs und
     /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
@@ -964,6 +967,32 @@ begin
   Assert.AreEqual('Beginne {kennung}\nin {branch}', mLoaded.IssuesStartComment);
   Assert.AreEqual('Zur Prüfung, Erledigt', mLoaded.IssuesEndStates);
   Assert.AreEqual('Fertig: {pr}', mLoaded.IssuesEndComment);
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesTimeOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(mSettings.IssuesTimeTracking, 'ab Werk aus');
+  Assert.AreEqual(10, mSettings.IssuesIdleMinutes);
+  Assert.AreEqual(5, mSettings.IssuesTimeRounding);
+  mSettings.IssuesIdleMinutes := 0;
+  mSettings.IssuesTimeRounding := 500;
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinIssuesIdleMinutes, mSettings.IssuesIdleMinutes);
+  Assert.AreEqual(TAtlasPluginSettings.MaxIssuesTimeRounding, mSettings.IssuesTimeRounding);
+  mSettings.IssuesTimeTracking := True;
+  mSettings.IssuesIdleMinutes := 15;
+  mSettings.IssuesTimeRounding := 15;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesTimeTracking);
+  Assert.AreEqual(15, mLoaded.IssuesIdleMinutes);
+  Assert.AreEqual(15, mLoaded.IssuesTimeRounding);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;
