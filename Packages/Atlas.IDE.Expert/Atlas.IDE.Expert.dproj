@@ -442,6 +442,9 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Preview.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Workflow.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Links.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Board.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrackBoard.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHubBoard.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.LinkDialogs.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas">
             <Form>AtlasIssueFrame</Form>
@@ -450,9 +453,17 @@
         </DCCReference>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.ValueBox.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.EndDialog.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas">
+            <Form>AtlasBoardFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.MoveDialog.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWindow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuePreview.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Workflow.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.BoardWindow.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Board.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.TeamFile.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas"/>

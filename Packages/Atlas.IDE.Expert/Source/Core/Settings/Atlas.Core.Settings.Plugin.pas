@@ -1323,6 +1323,14 @@ type
     /// <summary>Fortschritt der Checkliste des aktuellen Issues im Statusfeld (#1273, issues.checklistStatus); aus =
     /// keine Zeile.</summary>
     IssuesChecklistStatus: Boolean;
+    /// <summary>Dockfenster „Atlas-Board“ mit Spalten und Karten (#1272, issues.board): Menü Ansicht › Atlas ›
+    /// Board und Befehl Atlas.Board; aus = kein Menüeintrag, kein Befehl, keine Abfrage.</summary>
+    IssuesBoard: Boolean;
+    /// <summary>Beim Ziehen einer Karte nachfragen (#1272, issues.board.confirmMove); aus = sofort verschieben.
+    /// „Nicht mehr fragen“ im Dialog schaltet es ab.</summary>
+    IssuesBoardConfirmMove: Boolean;
+    /// <summary>Board öffnet mit dem Filter „Nur meine“ (#1272, issues.board.onlyMine); aus = alle Karten.</summary>
+    IssuesBoardOnlyMine: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2068,6 +2076,9 @@ begin
   Result.IssuesWarnBlocked := True;
   Result.IssuesPreviewChecklists := True;
   Result.IssuesChecklistStatus := True;
+  Result.IssuesBoard := True;
+  Result.IssuesBoardConfirmMove := True;
+  Result.IssuesBoardOnlyMine := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2883,6 +2894,10 @@ begin
   IssuesPreviewChecklists := AStore.ReadInteger('IssuesPreviewChecklists',
     BoolValue(Default.IssuesPreviewChecklists)) <> 0;
   IssuesChecklistStatus := AStore.ReadInteger('IssuesChecklistStatus', BoolValue(Default.IssuesChecklistStatus)) <> 0;
+  IssuesBoard := AStore.ReadInteger('IssuesBoard', BoolValue(Default.IssuesBoard)) <> 0;
+  IssuesBoardConfirmMove := AStore.ReadInteger('IssuesBoardConfirmMove',
+    BoolValue(Default.IssuesBoardConfirmMove)) <> 0;
+  IssuesBoardOnlyMine := AStore.ReadInteger('IssuesBoardOnlyMine', BoolValue(Default.IssuesBoardOnlyMine)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3363,6 +3378,9 @@ begin
   AStore.WriteInteger('IssuesWarnBlocked', BoolValue(IssuesWarnBlocked));
   AStore.WriteInteger('IssuesPreviewChecklists', BoolValue(IssuesPreviewChecklists));
   AStore.WriteInteger('IssuesChecklistStatus', BoolValue(IssuesChecklistStatus));
+  AStore.WriteInteger('IssuesBoard', BoolValue(IssuesBoard));
+  AStore.WriteInteger('IssuesBoardConfirmMove', BoolValue(IssuesBoardConfirmMove));
+  AStore.WriteInteger('IssuesBoardOnlyMine', BoolValue(IssuesBoardOnlyMine));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

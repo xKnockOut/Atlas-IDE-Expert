@@ -1,0 +1,11 @@
+{
+  "data": {
+    "viewer": {"login": "xKnockOut"},
+    "repository": {
+      "projectsV2": {"nodes": [
+        {"id": "PVT_alt", "title": "Altes Board", "closed": true},
+        {"id": "PVT_atlas", "title": "Atlas Roadmap", "closed": false}
+      ]}
+    }
+  }
+}

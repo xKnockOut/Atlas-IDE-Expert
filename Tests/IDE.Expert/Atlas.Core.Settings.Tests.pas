@@ -903,6 +903,9 @@ begin
   Assert.IsTrue(Settings.IssuesWarnBlocked, 'Warnung beim Beginnen (#1279) an');
   Assert.IsTrue(Settings.IssuesPreviewChecklists);
   Assert.IsTrue(Settings.IssuesChecklistStatus);
+  Assert.IsTrue(Settings.IssuesBoard, 'Board (#1272) an');
+  Assert.IsTrue(Settings.IssuesBoardConfirmMove, 'Rückfrage beim Ziehen an');
+  Assert.IsTrue(Settings.IssuesBoardOnlyMine, 'Board öffnet mit „Nur meine“');
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -944,6 +947,9 @@ begin
   Settings.IssuesWarnBlocked := False;
   Settings.IssuesPreviewChecklists := False;
   Settings.IssuesChecklistStatus := False;
+  Settings.IssuesBoard := False;
+  Settings.IssuesBoardConfirmMove := False;
+  Settings.IssuesBoardOnlyMine := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -1008,6 +1014,9 @@ begin
   Assert.AreEqual('Fertig: {pr}', mLoaded.IssuesEndComment);
   Assert.IsFalse(Loaded.IssuesPreviewChecklists);
   Assert.IsFalse(Loaded.IssuesChecklistStatus);
+  Assert.IsFalse(Loaded.IssuesBoard);
+  Assert.IsFalse(Loaded.IssuesBoardConfirmMove);
+  Assert.IsFalse(Loaded.IssuesBoardOnlyMine);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;
