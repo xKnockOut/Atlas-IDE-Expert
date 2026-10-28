@@ -5,7 +5,8 @@
 // aktueller Sprint, Zwischenspeicher; Abbildung der Board- und
 // Sprint-Antworten von YouTrack und GitHub (GraphQL, REST) aus Beispieldateien
 // (Tests\Data\YouTrack, Tests\Data\GitHub) und das Verschieben gegen einen
-// Transport mit festen Antworten.
+// Transport mit festen Antworten. Für die Sprint-Kachel (#1277) Schätzung,
+// Zeitpunkt der Erledigung, Seite des Boards und Arbeitstage.
 
 interface
 
@@ -56,6 +57,13 @@ type
     procedure MoveSendsCommand;
     [Test]
     procedure MoveWithoutRightsFailsWithReason;
+    /// <summary>#1277: Schätzfeld des Boards (Zahl bzw. Zeitraum in Stunden), resolved, Seite des Boards.
+    /// </summary>
+    [Test]
+    procedure SprintPointsResolvedAndPage;
+    /// <summary>#1277: Arbeitstage aus workTimeSettings; ohne Recht bzw. ungültig keine.</summary>
+    [Test]
+    procedure WorkDaysFromSettings;
   end;
 
   [TestFixture]
@@ -83,6 +91,10 @@ type
     /// <summary>Ohne Projekt: Kommentar zuerst, dann PATCH state.</summary>
     [Test]
     procedure MoveWithoutProjectClosesIssue;
+    /// <summary>#1277: Zahlenfeld „Estimate“ als Schätzung, closedAt bzw. closed_at, Adresse des Projekts.
+    /// </summary>
+    [Test]
+    procedure ProjectPointsAndClosedAt;
   end;
 
 implementation
@@ -96,6 +108,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.Board,
+  Atlas.Core.Tracker.Sprint,
   Atlas.Core.Tracker.Providers.YouTrackBoard,
   Atlas.Core.Tracker.Providers.GitHubBoard;
 
@@ -778,6 +791,82 @@ begin
   Assert.IsTrue(mResult.Succeeded);
   Assert.AreEqual('PATCH', mTransport.Methods[1]);
   Assert.AreEqual('{"state":"closed"}', mTransport.Bodies[1]);
+end;
+
+
+procedure TAtlasYouTrackBoardTests.SprintPointsResolvedAndPage;
+var
+  mSnapshot: TAtlasBoardSnapshot;
+begin
+  mSnapshot := YouTrackSnapshot;
+  Assert.AreEqual('Story Points', mSnapshot.PointsField);
+  Assert.IsTrue(mSnapshot.Cards[0].HasPoints);
+  Assert.AreEqual(Double(3), mSnapshot.Cards[0].Points, 0.001);
+  // Zeitraum: 90 Minuten sind 1,5 Stunden.
+  Assert.IsTrue(mSnapshot.Cards[1].HasPoints);
+  Assert.AreEqual(Double(1.5), mSnapshot.Cards[1].Points, 0.001);
+  Assert.IsFalse(mSnapshot.Cards[2].HasPoints, 'ohne Schätzung');
+  Assert.AreEqual(Double(0), Double(mSnapshot.Cards[0].ResolvedAt), 1E-6, 'offen');
+  Assert.AreEqual(Double(UnixToDateTime(1761600000, True)), Double(mSnapshot.Cards[2].ResolvedAt), 1 / SecsPerDay);
+  Assert.AreEqual('https://firma.youtrack.cloud/agiles/108-2/109-42',
+    TAtlasYouTrackBoards.BoardPage(YouTrackTarget, '108-2', '109-42'));
+  Assert.AreEqual('https://firma.youtrack.cloud/agiles/108-2/current',
+    TAtlasYouTrackBoards.BoardPage(YouTrackTarget, '108-2', ''));
+  Assert.AreEqual('', TAtlasYouTrackBoards.BoardPage(YouTrackTarget, '../x', ''), 'nur gültige Kennungen');
+  // Zwischenspeicher behält Schätzung, Zeitpunkt und Seite.
+  mSnapshot.Page := 'https://firma.youtrack.cloud/agiles/108-2/current';
+  Assert.IsTrue(TAtlasTrackerBoard.FromJson(TAtlasTrackerBoard.ToJson(mSnapshot), mSnapshot));
+  Assert.AreEqual('Story Points', mSnapshot.PointsField);
+  Assert.AreEqual('https://firma.youtrack.cloud/agiles/108-2/current', mSnapshot.Page);
+  Assert.AreEqual(Double(1.5), mSnapshot.Cards[1].Points, 0.001);
+  Assert.IsFalse(mSnapshot.Cards[2].HasPoints);
+  Assert.AreEqual(Double(UnixToDateTime(1761600000, True)), Double(mSnapshot.Cards[2].ResolvedAt), 1 / SecsPerDay);
+end;
+
+procedure TAtlasYouTrackBoardTests.WorkDaysFromSettings;
+var
+  mTransport: TFakeBoardTransport;
+  mKeep: IAtlasCiTransport;
+  mDays: TArray<Integer>;
+  mWork: IAtlasTrackerWorkDays;
+begin
+  Assert.IsTrue(TAtlasYouTrackBoards.ParseWorkDays(Fixture('YouTrack', 'workdays.json'), mDays));
+  Assert.AreEqual(Integer(6), Integer(Length(mDays)));
+  Assert.AreEqual(6, mDays[5]);
+  Assert.IsFalse(TAtlasYouTrackBoards.ParseWorkDays('{"workDays": [0, 9]}', mDays), 'nur 1 bis 7');
+  Assert.IsFalse(TAtlasYouTrackBoards.ParseWorkDays('kaputt', mDays));
+  mTransport := TFakeBoardTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://firma.youtrack.cloud' + TAtlasYouTrackBoards.WorkDaysPath, '', 200,
+    Fixture('YouTrack', 'workdays.json'));
+  mWork := TAtlasYouTrackBoards.Create;
+  Assert.IsTrue(mWork.WorkDays(YouTrackTarget, mKeep, 5000, mDays));
+  Assert.AreEqual(Integer(6), Integer(Length(mDays)));
+  // Ohne Administratorrecht (403): keine Arbeitstage, der Aufrufer bleibt bei Montag bis Freitag.
+  mTransport := TFakeBoardTransport.Create;
+  mKeep := mTransport;
+  mTransport.Answer('https://firma.youtrack.cloud/api/admin', '', 403, '');
+  Assert.IsFalse(mWork.WorkDays(YouTrackTarget, mKeep, 5000, mDays));
+  mDays := nil;
+end;
+
+procedure TAtlasGitHubBoardTests.ProjectPointsAndClosedAt;
+var
+  mSnapshot: TAtlasBoardSnapshot;
+begin
+  mSnapshot := TAtlasBoardSnapshot.Empty;
+  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(Fixture('GitHub', 'project-v2.json'), GitHubTarget, '',
+    EncodeDate(2026, 10, 28), mSnapshot));
+  Assert.AreEqual('Estimate', mSnapshot.PointsField, 'Zahlenfeld mit Schätzungsnamen');
+  Assert.AreEqual('https://github.com/users/beispiel/projects/3', mSnapshot.Page);
+  Assert.IsTrue(mSnapshot.Cards[0].HasPoints);
+  Assert.AreEqual(Double(3), mSnapshot.Cards[0].Points, 0.001);
+  Assert.IsFalse(mSnapshot.Cards[1].HasPoints);
+  Assert.AreEqual(Double(0), Double(mSnapshot.Cards[0].ResolvedAt), 1E-6);
+  Assert.IsTrue(TAtlasGitHubBoards.ParseProject(Fixture('GitHub', 'project-v2.json'), GitHubTarget, 'it1',
+    EncodeDate(2026, 10, 28), mSnapshot));
+  Assert.AreEqual(Double(EncodeDateTime(2026, 10, 20, 10, 0, 0, 0)), Double(mSnapshot.Cards[0].ResolvedAt),
+    1 / SecsPerDay);
 end;
 
 initialization

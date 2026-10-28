@@ -15,6 +15,10 @@
 // - Verschieben: ein Befehl über TAtlasYouTrackTracker.Apply (#1266) mit dem
 //   Spaltenfeld und dem ersten Wert der Zielspalte, Kommentar im selben
 //   Befehl.
+// - Sprint-Kachel (#1277): Schätzfeld des Boards (estimationField, Zahl bzw.
+//   Zeitraum in Stunden), Zeitpunkt der Erledigung (resolved) und die
+//   Arbeitstage aus GET /api/admin/timeTrackingSettings/workTimeSettings
+//   (workDays, 1 = Montag … 7 = Sonntag; ohne Recht bleibt Mo–Fr).
 
 interface
 
@@ -22,17 +26,20 @@ uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Board;
+  Atlas.Core.Tracker.Board,
+  Atlas.Core.Tracker.Sprint;
 
 type
-  TAtlasYouTrackBoards = class(TInterfacedObject, IAtlasTrackerBoards)
+  TAtlasYouTrackBoards = class(TInterfacedObject, IAtlasTrackerBoards, IAtlasTrackerWorkDays)
   public const
     AgileFields = 'id,name,projects(shortName),columnSettings(field(name),columns(presentation,isResolved,' +
-      'fieldValues(name))),currentSprint(id)';
+      'fieldValues(name))),currentSprint(id),estimationField(name)';
     SprintFields = 'id,name,start,finish,archived';
-    /// <summary>Felder einer Karte: wie die Vorschau (#1264) ohne Anhänge und Tags, dazu login und Farbe.</summary>
+    WorkDaysPath = '/api/admin/timeTrackingSettings/workTimeSettings?fields=workDays';
+    /// <summary>Felder einer Karte: wie die Vorschau (#1264) ohne Anhänge und Tags, dazu login, Farbe und minutes
+    /// (Schätzung als Zeitraum, #1277).</summary>
     CardFields = 'idReadable,numberInProject,summary,description,resolved,' +
-      'customFields(name,value(name,presentation,login,fullName,color(background))),' +
+      'customFields(name,value(name,presentation,login,fullName,minutes,color(background))),' +
       'links(direction,linkType(name,localizedName,sourceToTarget,localizedSourceToTarget,targetToSource,' +
       'localizedTargetToSource,aggregation),issues(idReadable,summary,resolved,customFields(name,value(name))))';
   public
@@ -50,6 +57,10 @@ type
     /// False bei ungültigem JSON.</summary>
     class function ParseSprint(const AJson: string; const ATarget: TAtlasTrackerTarget;
       var ASnapshot: TAtlasBoardSnapshot): Boolean; static;
+    /// <summary>Antwort von workTimeSettings: Arbeitstage (1 = Montag … 7 = Sonntag); False ohne gültige.</summary>
+    class function ParseWorkDays(const AJson: string; out ADays: TArray<Integer>): Boolean; static;
+    /// <summary>Board im Browser: …/agiles/&lt;Board&gt;/&lt;Sprint|current&gt;.</summary>
+    class function BoardPage(const ATarget: TAtlasTrackerTarget; const ABoardId, ASprintId: string): string; static;
     { IAtlasTrackerBoards }
     function LoadBoard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       const ABoardId, ASprintId: string; ATimeoutMs: Integer; out ASnapshot: TAtlasBoardSnapshot;
@@ -57,6 +68,9 @@ type
     function MoveCard(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       const ASnapshot: TAtlasBoardSnapshot; const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string;
       ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+    { IAtlasTrackerWorkDays }
+    function WorkDays(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
+      out ADays: TArray<Integer>): Boolean;
   end;
 
 implementation
@@ -255,6 +269,9 @@ begin
     ASnapshot.Kind := TAtlasBoardKind.Agile;
     ASnapshot.Board := TAtlasBoardRef.Create(TextOf(mChosen, 'id'), TextOf(mChosen, 'name'));
     ReadColumns(mChosen, ASnapshot);
+    ASnapshot.PointsField := '';
+    if mChosen.Values['estimationField'] is TJSONObject then
+      ASnapshot.PointsField := TextOf(TJSONObject(mChosen.Values['estimationField']), 'name');
     if mChosen.Values['currentSprint'] is TJSONObject then
       ACurrentSprint := TextOf(TJSONObject(mChosen.Values['currentSprint']), 'id');
     Result := True;
@@ -298,8 +315,30 @@ begin
   end;
 end;
 
-/// <summary>Spaltenwert, Zuständige (Anmeldename) und Prioritätsfarbe aus customFields.</summary>
-procedure ReadFields(AIssue: TJSONObject; const AField: string; var ACard: TAtlasBoardCard);
+/// <summary>Schätzung: Zahl (Story Points) bzw. Zeitraum ({"minutes": …}) in Stunden.</summary>
+procedure ReadPoints(AValue: TJSONValue; var ACard: TAtlasBoardCard);
+var
+  mMinutes: TJSONValue;
+begin
+  if AValue is TJSONNumber then
+  begin
+    ACard.Points := TJSONNumber(AValue).AsDouble;
+    ACard.HasPoints := True;
+  end
+  else if AValue is TJSONObject then
+  begin
+    mMinutes := TJSONObject(AValue).Values['minutes'];
+    if mMinutes is TJSONNumber then
+    begin
+      ACard.Points := TJSONNumber(mMinutes).AsDouble / 60;
+      ACard.HasPoints := True;
+    end;
+  end;
+end;
+
+/// <summary>Spaltenwert, Zuständige (Anmeldename), Prioritätsfarbe und Schätzung (APoints) aus customFields.
+/// </summary>
+procedure ReadFields(AIssue: TJSONObject; const AField, APoints: string; var ACard: TAtlasBoardCard);
 var
   mItem, mValue, mColor: TJSONValue;
   mField: TJSONObject;
@@ -316,6 +355,8 @@ begin
     mValue := mField.Values['value'];
     if (AField <> '') and SameText(mName, AField) and (mValue is TJSONObject) then
       ACard.State := TextOf(TJSONObject(mValue), 'name')
+    else if (APoints <> '') and SameText(mName, APoints) then
+      ReadPoints(mValue, ACard)
     else if IsOneOf(mName, ['Assignee', 'Zuständig', 'Bearbeiter', 'Verantwortlich']) and
       (mValue is TJSONObject) then
     begin
@@ -368,13 +409,45 @@ begin
         mCard.Checklist := TAtlasTrackerChecklist.Progress(mDetails.Description);
         mCard.Locked := TAtlasTrackerLinks.Locked(mDetails);
         mCard.Page := mProvider.IssuePage(ATarget, mDetails.Key);
-        ReadFields(mIssue, ASnapshot.Field, mCard);
+        mCard.ResolvedAt := TimeOf(mIssue, 'resolved');
+        ReadFields(mIssue, ASnapshot.Field, ASnapshot.PointsField, mCard);
         ASnapshot.Cards := ASnapshot.Cards + [mCard];
       end;
     Result := True;
   finally
     mValue.Free;
   end;
+end;
+
+class function TAtlasYouTrackBoards.ParseWorkDays(const AJson: string; out ADays: TArray<Integer>): Boolean;
+var
+  mValue, mItem: TJSONValue;
+  mDay: Integer;
+begin
+  ADays := nil;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if (mValue is TJSONObject) and (TJSONObject(mValue).Values['workDays'] is TJSONArray) then
+      for mItem in TJSONArray(TJSONObject(mValue).Values['workDays']) do
+        if (mItem is TJSONNumber) and TryStrToInt(TJSONNumber(mItem).Value, mDay) and (mDay >= 1) and (mDay <= 7) then
+          ADays := ADays + [mDay];
+  finally
+    mValue.Free;
+  end;
+  Result := Length(ADays) > 0;
+end;
+
+class function TAtlasYouTrackBoards.BoardPage(const ATarget: TAtlasTrackerTarget;
+  const ABoardId, ASprintId: string): string;
+var
+  mSprint: string;
+begin
+  Result := '';
+  mSprint := Trim(ASprintId);
+  if mSprint = '' then
+    mSprint := 'current';
+  if (ATarget.Server <> '') and ValidId(ABoardId) and ValidId(mSprint) then
+    Result := ATarget.Url + '/agiles/' + ABoardId + '/' + mSprint;
 end;
 
 /// <summary>GET mit Fehler aus dem Status; True nur mit 200.</summary>
@@ -444,6 +517,7 @@ begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
   end;
+  ASnapshot.Page := BoardPage(ATarget, ASnapshot.Board.Id, ASnapshot.Sprint.Id);
   // Eigener Anmeldename für „Nur meine“; ohne ihn filtert das Board nicht.
   if GetText(ATransport, ATarget.Url + '/api/users/me?fields=login', Rest(mWatch, ATimeoutMs), mText, mError) then
   begin
@@ -474,6 +548,18 @@ begin
   mChange.Comment := AComment;
   mWriter := TAtlasYouTrackTracker.Create;
   Result := mWriter.Apply(ATarget, ATransport, ACard.Key, mChange, ATimeoutMs);
+end;
+
+function TAtlasYouTrackBoards.WorkDays(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  ATimeoutMs: Integer; out ADays: TArray<Integer>): Boolean;
+var
+  mText: string;
+  mError: TAtlasCiFetchError;
+begin
+  ADays := nil;
+  // Braucht oft Administratorrechte; ohne Antwort bleibt die Vorgabe Mo–Fr beim Aufrufer.
+  Result := (ATarget.Server <> '') and (ATransport <> nil) and
+    GetText(ATransport, ATarget.Url + WorkDaysPath, ATimeoutMs, mText, mError) and ParseWorkDays(mText, ADays);
 end;
 
 end.

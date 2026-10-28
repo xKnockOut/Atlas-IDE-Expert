@@ -10,7 +10,10 @@
 // - Kürzel der Zuständigen ("Marco Bähring" → "MB"), Stufe der Priorität für
 //   den Farbbalken, wenn der Tracker keine Farbe liefert.
 // - Zwischenspeicher als JSON („Stand vom …“ ohne Netz): eine Datei je Tracker
-//   im Ordner der Issue-Vorschau.
+//   im Ordner der Issue-Vorschau; die Sprint-Kachel (#1277) legt mit eigenem
+//   Namen daneben ab.
+// - Für den Burndown (#1277) trägt jede Karte den Zeitpunkt der Erledigung und
+//   die Schätzung aus dem Schätzfeld des Boards (PointsField).
 // Netz und Schreiben liegen beim Anbieter (IAtlasTrackerBoards); der Wechsel
 // des Zustands nutzt dessen Schreibweg (#1266).
 
@@ -87,6 +90,11 @@ type
     ItemId: string;
     /// <summary>Seite im Browser.</summary>
     Page: string;
+    /// <summary>Erledigt seit (UTC, #1277); 0 = offen bzw. unbekannt.</summary>
+    ResolvedAt: TDateTime;
+    /// <summary>Schätzung aus dem Schätzfeld des Boards (#1277); nur mit HasPoints.</summary>
+    Points: Double;
+    HasPoints: Boolean;
     /// <summary>Für „Beginnen“ und die Vorschau.</summary>
     function Issue: TAtlasTrackerIssue;
   end;
@@ -119,6 +127,10 @@ type
     Cards: TArray<TAtlasBoardCard>;
     /// <summary>Anmeldename beim Tracker; '' unbekannt (dann filtert „Nur meine“ nicht).</summary>
     Me: string;
+    /// <summary>Schätzfeld des Boards ("Story points", "Estimate"); '' ohne Schätzung (#1277).</summary>
+    PointsField: string;
+    /// <summary>Board im Browser (#1277); '' unbekannt.</summary>
+    Page: string;
     /// <summary>GitHub: Projekte durften nicht gelesen werden (Token ohne „read:project“); das Board zeigt
     /// Offen/Geschlossen. Nicht im Zwischenspeicher.</summary>
     ProjectsDenied: Boolean;
@@ -189,13 +201,28 @@ type
     class function FromJson(const AJson: string; out ASnapshot: TAtlasBoardSnapshot): Boolean; static;
     /// <summary>Datei des Zwischenspeichers für ATarget in AFolder: "&lt;TrackerId&gt;-board.json"; '' ohne Ordner.
     /// </summary>
-    class function CacheFile(const AFolder: string; const ATarget: TAtlasTrackerTarget): string; static;
+    class function CacheFile(const AFolder: string; const ATarget: TAtlasTrackerTarget): string; overload; static;
+    /// <summary>Wie oben mit eigenem Namen: "&lt;TrackerId&gt;-&lt;AName&gt;.json" (AName nur Buchstaben, Ziffern,
+    /// '-' und '_'); '' ohne Ordner oder bei anderem Namen.</summary>
+    class function CacheFile(const AFolder: string; const ATarget: TAtlasTrackerTarget;
+      const AName: string): string; overload; static;
     /// <summary>ASnapshot als letzten Stand von ATarget merken; Fehler beim Schreiben werden übergangen.</summary>
     class procedure Save(const AFolder: string; const ATarget: TAtlasTrackerTarget;
-      const ASnapshot: TAtlasBoardSnapshot); static;
+      const ASnapshot: TAtlasBoardSnapshot); overload; static;
+    class procedure Save(const AFolder: string; const ATarget: TAtlasTrackerTarget; const AName: string;
+      const ASnapshot: TAtlasBoardSnapshot); overload; static;
     /// <summary>Letzter Stand von ATarget; False ohne (lesbare) Datei.</summary>
     class function Load(const AFolder: string; const ATarget: TAtlasTrackerTarget;
-      out ASnapshot: TAtlasBoardSnapshot): Boolean; static;
+      out ASnapshot: TAtlasBoardSnapshot): Boolean; overload; static;
+    class function Load(const AFolder: string; const ATarget: TAtlasTrackerTarget; const AName: string;
+      out ASnapshot: TAtlasBoardSnapshot): Boolean; overload; static;
+    /// <summary>Text in AFile schreiben bzw. lesen, Fehler übergangen ('' bzw. False); für die Sprint-Kachel.
+    /// </summary>
+    class procedure WriteText(const AFile, AText: string); static;
+    class function ReadText(const AFile: string; out AText: string): Boolean; static;
+    /// <summary>Zeit als ISO 8601 (UTC) bzw. zurück; '' bzw. 0 ohne.</summary>
+    class function TimeText(AValue: TDateTime): string; static;
+    class function TimeValue(const AText: string): TDateTime; static;
   end;
 
 implementation
@@ -453,14 +480,14 @@ begin
     Result := TAtlasBoardKind.Agile;
 end;
 
-function TimeText(AValue: TDateTime): string;
+class function TAtlasTrackerBoard.TimeText(AValue: TDateTime): string;
 begin
   Result := '';
   if AValue > 0 then
     Result := DateToISO8601(AValue, True);
 end;
 
-function TimeValue(const AText: string): TDateTime;
+class function TAtlasTrackerBoard.TimeValue(const AText: string): TDateTime;
 begin
   Result := 0;
   if (AText = '') or not TryISO8601ToDate(AText, Result, True) then
@@ -481,8 +508,8 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('id', ASprint.Id);
   Result.AddPair('name', ASprint.Name);
-  Result.AddPair('start', TimeText(ASprint.Start));
-  Result.AddPair('finish', TimeText(ASprint.Finish));
+  Result.AddPair('start', TAtlasTrackerBoard.TimeText(ASprint.Start));
+  Result.AddPair('finish', TAtlasTrackerBoard.TimeText(ASprint.Finish));
   Result.AddPair('archived', TJSONBool.Create(ASprint.Archived));
 end;
 
@@ -501,6 +528,8 @@ begin
     mRoot.AddPair('kind', KindKey(ASnapshot.Kind));
     mRoot.AddPair('fetched', TimeText(ASnapshot.Fetched));
     mRoot.AddPair('me', ASnapshot.Me);
+    mRoot.AddPair('pointsField', ASnapshot.PointsField);
+    mRoot.AddPair('page', ASnapshot.Page);
     mRoot.AddPair('boardId', ASnapshot.Board.Id);
     mRoot.AddPair('boardName', ASnapshot.Board.Name);
     mRoot.AddPair('field', ASnapshot.Field);
@@ -548,6 +577,9 @@ begin
       mItem.AddPair('locked', TJSONBool.Create(mCard.Locked));
       mItem.AddPair('itemId', mCard.ItemId);
       mItem.AddPair('page', mCard.Page);
+      mItem.AddPair('resolvedAt', TimeText(mCard.ResolvedAt));
+      if mCard.HasPoints then
+        mItem.AddPair('points', TJSONNumber.Create(mCard.Points));
       mList.AddElement(mItem);
     end;
     mRoot.AddPair('cards', mList);
@@ -607,8 +639,8 @@ begin
   mObject := TJSONObject(AValue);
   Result.Id := TextOf(mObject, 'id');
   Result.Name := TextOf(mObject, 'name');
-  Result.Start := TimeValue(TextOf(mObject, 'start'));
-  Result.Finish := TimeValue(TextOf(mObject, 'finish'));
+  Result.Start := TAtlasTrackerBoard.TimeValue(TextOf(mObject, 'start'));
+  Result.Finish := TAtlasTrackerBoard.TimeValue(TextOf(mObject, 'finish'));
   Result.Archived := FlagOf(mObject, 'archived');
 end;
 
@@ -631,6 +663,8 @@ begin
     ASnapshot.Kind := KindOf(TextOf(mRoot, 'kind'));
     ASnapshot.Fetched := TimeValue(TextOf(mRoot, 'fetched'));
     ASnapshot.Me := TextOf(mRoot, 'me');
+    ASnapshot.PointsField := TextOf(mRoot, 'pointsField');
+    ASnapshot.Page := TextOf(mRoot, 'page');
     ASnapshot.Board := TAtlasBoardRef.Create(TextOf(mRoot, 'boardId'), TextOf(mRoot, 'boardName'));
     ASnapshot.Field := TextOf(mRoot, 'field');
     ASnapshot.ProjectId := TextOf(mRoot, 'projectId');
@@ -672,6 +706,10 @@ begin
         mCard.Locked := FlagOf(mObject, 'locked');
         mCard.ItemId := TextOf(mObject, 'itemId');
         mCard.Page := TextOf(mObject, 'page');
+        mCard.ResolvedAt := TimeValue(TextOf(mObject, 'resolvedAt'));
+        mCard.HasPoints := mObject.Values['points'] is TJSONNumber;
+        if mCard.HasPoints then
+          mCard.Points := TJSONNumber(mObject.Values['points']).AsDouble;
         if (mCard.Key <> '') and (Length(ASnapshot.Cards) < TAtlasBoardSnapshot.MaxCards) then
           ASnapshot.Cards := ASnapshot.Cards + [mCard];
       end;
@@ -685,47 +723,79 @@ end;
 
 class function TAtlasTrackerBoard.CacheFile(const AFolder: string; const ATarget: TAtlasTrackerTarget): string;
 begin
+  Result := CacheFile(AFolder, ATarget, 'board');
+end;
+
+class function TAtlasTrackerBoard.CacheFile(const AFolder: string; const ATarget: TAtlasTrackerTarget;
+  const AName: string): string;
+var
+  mIndex: Integer;
+begin
   Result := '';
-  if (AFolder <> '') and (ATarget.Server <> '') then
-    Result := TPath.Combine(AFolder, TAtlasTrackerIssueCache.TrackerId(ATarget) + '-board.json');
+  if (AFolder = '') or (ATarget.Server = '') or (AName = '') then
+    Exit;
+  // Der Name kommt auch aus IDs des Trackers (Sprints): nur harmlose Zeichen in den Dateinamen.
+  for mIndex := 1 to Length(AName) do
+    if not CharInSet(AName[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_']) then
+      Exit;
+  Result := TPath.Combine(AFolder, TAtlasTrackerIssueCache.TrackerId(ATarget) + '-' + AName + '.json');
+end;
+
+class procedure TAtlasTrackerBoard.WriteText(const AFile, AText: string);
+begin
+  if AFile = '' then
+    Exit;
+  try
+    TDirectory.CreateDirectory(ExtractFileDir(AFile));
+    TFile.WriteAllText(AFile, AText, TEncoding.UTF8);
+  except
+    // Kein Platz, keine Rechte: Ohne Netz fehlt dann eben der letzte Stand.
+    on Exception do
+      Exit;
+  end;
+end;
+
+class function TAtlasTrackerBoard.ReadText(const AFile: string; out AText: string): Boolean;
+begin
+  AText := '';
+  Result := False;
+  if (AFile = '') or not TFile.Exists(AFile) then
+    Exit;
+  try
+    AText := TFile.ReadAllText(AFile, TEncoding.UTF8);
+    Result := True;
+  except
+    // Gesperrte oder kaputte Datei: als fehlend werten.
+    on Exception do
+      AText := '';
+  end;
 end;
 
 class procedure TAtlasTrackerBoard.Save(const AFolder: string; const ATarget: TAtlasTrackerTarget;
   const ASnapshot: TAtlasBoardSnapshot);
-var
-  mFile: string;
 begin
-  mFile := CacheFile(AFolder, ATarget);
-  if mFile = '' then
-    Exit;
-  try
-    TDirectory.CreateDirectory(AFolder);
-    TFile.WriteAllText(mFile, ToJson(ASnapshot), TEncoding.UTF8);
-  except
-    // Kein Platz, keine Rechte: Das Board zeigt ohne Netz dann eben nichts.
-    on Exception do
-      Exit;
-  end;
+  Save(AFolder, ATarget, 'board', ASnapshot);
+end;
+
+class procedure TAtlasTrackerBoard.Save(const AFolder: string; const ATarget: TAtlasTrackerTarget;
+  const AName: string; const ASnapshot: TAtlasBoardSnapshot);
+begin
+  WriteText(CacheFile(AFolder, ATarget, AName), ToJson(ASnapshot));
 end;
 
 class function TAtlasTrackerBoard.Load(const AFolder: string; const ATarget: TAtlasTrackerTarget;
   out ASnapshot: TAtlasBoardSnapshot): Boolean;
+begin
+  Result := Load(AFolder, ATarget, 'board', ASnapshot);
+end;
+
+class function TAtlasTrackerBoard.Load(const AFolder: string; const ATarget: TAtlasTrackerTarget;
+  const AName: string; out ASnapshot: TAtlasBoardSnapshot): Boolean;
 var
-  mFile, mText: string;
+  mText: string;
 begin
   ASnapshot := TAtlasBoardSnapshot.Empty;
-  Result := False;
-  mFile := CacheFile(AFolder, ATarget);
-  if (mFile = '') or not TFile.Exists(mFile) then
-    Exit;
-  try
-    mText := TFile.ReadAllText(mFile, TEncoding.UTF8);
-  except
-    // Gesperrte oder kaputte Datei: als fehlend werten.
-    on Exception do
-      Exit;
-  end;
-  Result := FromJson(mText, ASnapshot);
+  Result := ReadText(CacheFile(AFolder, ATarget, AName), mText) and FromJson(mText, ASnapshot);
 end;
 
 end.
