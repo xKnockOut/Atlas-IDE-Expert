@@ -250,8 +250,6 @@ type
     function FindReceiver(AEndOffset: Integer): TSyntaxNode;
     function FindCall(ACalleeEnd: Integer): TSyntaxNode;
     function IsForVar(ANode: TSyntaxNode): Boolean;
-    /// <summary>Index des ersten Tokens von FTree mit Offset &gt;= AOffset (binäre Suche).</summary>
-    function FirstTokenAt(AOffset: Integer): Integer;
     function ResolveFirstAll(const ANames: TArray<string>; out AConsumed: Integer;
       out AResults: TArray<TResolvedSymbol>): Boolean;
     function ResolveNames(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -274,7 +272,6 @@ type
     /// <summary>Unit aus dem Baum samt der Symbole ihrer $I-Dateien aus dem Index (#500).</summary>
     function TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
     function ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer; out AResult: TResolvedSymbol): Boolean;
-    function TokenIndexAt(const APosition: TTextPosition): Integer;
     procedure Prepare(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer);
     procedure AddCandidate(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>;
       const ASymbol: TResolvedSymbol);
@@ -567,14 +564,6 @@ begin
     if (Child.StartOffset < AOffset) and (AOffset <= Child.EndOffset) then
       APending.Push(Child);
   end;
-end;
-
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-    Result := A.Line - B.Line
-  else
-    Result := A.Character - B.Character;
 end;
 
 /// <summary>Kommagetrennte Liste auf oberster Ebene: 'string, TList&lt;A, B&gt;' → ['string', 'TList&lt;A, B&gt;'].</summary>
@@ -1071,7 +1060,6 @@ function TNameResolver.FromNode(ANode: TSyntaxNode; const AName: string; AKind: 
   AIsParameter: Boolean): TResolvedSymbol;
 var
   Index: Integer;
-  Token: TPascalToken;
 begin
   Result := NoResult;
   Result.Kind := TResolvedKind.Local;
@@ -1082,15 +1070,14 @@ begin
   Result.SelectionRange := Result.Range;
   // Auswahl auf den Namen selbst legen; ab dem ersten Token des Knotens, nicht ab Dateianfang: Das
   // kostete je lokalem Namen einen Lauf über alle Tokens davor (Diagnoselog 15.10.2026, große Units).
-  for Index := FirstTokenAt(ANode.StartOffset) to High(FTree.Tokens) do
+  for Index := FTree.FirstTokenFrom(ANode.StartOffset) to High(FTree.Tokens) do
   begin
-    Token := FTree.Tokens[Index];
-    if Token.Offset >= ANode.EndOffset then
+    if FTree.Tokens[Index].Offset >= ANode.EndOffset then
       Break;
-    if (Token.Kind = TPascalTokenKind.Identifier) and
-      (SameText(Token.Text, AName) or SameText(Token.Text, '&' + AName)) then
+    if (FTree.Tokens[Index].Kind = TPascalTokenKind.Identifier) and
+      (SameText(FTree.Tokens[Index].Text, AName) or SameText(FTree.Tokens[Index].Text, '&' + AName)) then
     begin
-      Result.SelectionRange := TTextRange.Create(Token.StartPos, Token.EndPos);
+      Result.SelectionRange := TTextRange.Create(FTree.Tokens[Index].StartPos, FTree.Tokens[Index].EndPos);
       Break;
     end;
   end;
@@ -1865,27 +1852,9 @@ var
   Index: Integer;
 begin
   // for var I := ...: das Wort nach "for" ist "var".
-  Index := FirstTokenAt(ANode.StartOffset);
+  Index := FTree.FirstTokenFrom(ANode.StartOffset);
   Result := (Index < High(FTree.Tokens)) and FTree.Tokens[Index].IsKeyword('for') and
     FTree.Tokens[Index + 1].IsKeyword('var');
-end;
-
-function TNameResolver.FirstTokenAt(AOffset: Integer): Integer;
-var
-  Low, High_, Middle: Integer;
-begin
-  // Binäre Suche: erstes Token mit Offset >= AOffset; Length(Tokens), wenn es keines gibt.
-  Low := 0;
-  High_ := Length(FTree.Tokens);
-  while Low < High_ do
-  begin
-    Middle := (Low + High_) div 2;
-    if FTree.Tokens[Middle].Offset < AOffset then
-      Low := Middle + 1
-    else
-      High_ := Middle;
-  end;
-  Result := Low;
 end;
 
 function TNameResolver.LookupInlineVars(ANode: TSyntaxNode; const AName: string;
@@ -2494,22 +2463,21 @@ end;
 /// </summary>
 function NodeSource(ATree: TSyntaxTree; ANode: TSyntaxNode): string;
 var
-  Token: TPascalToken;
-  LastEnd: Integer;
+  mIndex, mLastEnd: Integer;
 begin
   Result := '';
-  LastEnd := -1;
-  for Token in ATree.Tokens do
+  mLastEnd := -1;
+  // Ab dem ersten Token des Knotens statt ab Dateianfang und ohne Kopie je Token (#1323).
+  for mIndex := ATree.FirstTokenFrom(ANode.StartOffset) to High(ATree.Tokens) do
   begin
-    if Token.Offset >= ANode.EndOffset then
+    if ATree.Tokens[mIndex].Offset >= ANode.EndOffset then
       Break;
-    if (Token.Offset < ANode.StartOffset) or (Token.Kind in [TPascalTokenKind.Comment,
-      TPascalTokenKind.Directive]) then
+    if ATree.Tokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
       Continue;
-    if (LastEnd >= 0) and (Token.Offset > LastEnd) then
+    if (mLastEnd >= 0) and (ATree.Tokens[mIndex].Offset > mLastEnd) then
       Result := Result + ' ';
-    Result := Result + Token.Text;
-    LastEnd := Token.Offset + Length(Token.Text);
+    Result := Result + ATree.Tokens[mIndex].Text;
+    mLastEnd := ATree.Tokens[mIndex].Offset + Length(ATree.Tokens[mIndex].Text);
   end;
 end;
 
@@ -3883,27 +3851,6 @@ begin
     Result := NoResult;
 end;
 
-function TNameResolver.TokenIndexAt(const APosition: TTextPosition): Integer;
-var
-  Index: Integer;
-  Token: TPascalToken;
-begin
-  for Index := 0 to High(FTree.Tokens) do
-  begin
-    Token := FTree.Tokens[Index];
-    if ComparePositions(Token.StartPos, APosition) > 0 then
-      Break;
-    // Cursor auf oder direkt hinter dem Bezeichner; C in ^C ist ein Zeichen (#862).
-    if (Token.Kind = TPascalTokenKind.Identifier) and (ComparePositions(APosition, Token.EndPos) <= 0) then
-    begin
-      if FTree.IsControlCharPart(Index) then
-        Exit(-1);
-      Exit(Index);
-    end;
-  end;
-  Result := -1;
-end;
-
 /// <summary>Typ, dessen Methodenzuordnung (procedure IFoo.Bar = MyBar) an AOffset ihr Ziel nennt (#849);
 /// '' an anderen Stellen.</summary>
 function ResolutionOwner(ANode: TSyntaxNode; AOffset: Integer): string;
@@ -3952,7 +3899,7 @@ begin
     Exit;
   FTree := ATree;
   Tokens := ATree.Tokens;
-  Index := TokenIndexAt(APosition);
+  Index := ATree.IdentifierAt(APosition);
   if Index < 0 then
     Exit;
   Names := TList<string>.Create;

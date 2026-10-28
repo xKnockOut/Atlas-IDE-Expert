@@ -68,6 +68,11 @@ type
     /// <summary>#1138: () setzt alle Felder bzw. Elemente auf null und ist kein Befund.</summary>
     [Test]
     procedure EmptyInitializerIsSilent;
+    /// <summary>#1323: Zwei Konstanten mit je 20.000 Elementen. Jedes Element fragt nach dem Typ, dessen Name
+    /// hinter allen Elementen der ersten Konstante steht; die Suche nach dem Token darf nicht linear sein.</summary>
+    [Test]
+    [Category('Benchmark')]
+    procedure LargeConstantArraysStayFast;
   end;
 
   [TestFixture]
@@ -119,7 +124,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  System.Diagnostics;
 
 /// <summary>Routine Pruefen mit den Deklarationen ADecls (var-Abschnitt) und den Anweisungen ABody.</summary>
 function Routine(const ADecls, ABody: string): string;
@@ -524,6 +530,55 @@ begin
     'Source/Status.pas'))));
   Assert.AreEqual(0, Integer(Length(InitFindings(Source,
     '{"rules": {"constant-initializer-mismatch": {"exclude": ["Source/*.pas"]}}}', 'Source/Status.pas'))));
+end;
+
+/// <summary>Konstante AName: array[0..ACount - 1] of AType mit den Werten 0 … AValues - 1, 20 je Zeile.</summary>
+function LargeConstant(const AName, AType: string; ACount, AValues: Integer): string;
+var
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    mBuilder.Append('  ').Append(AName).Append(': array[0..').Append(ACount - 1).Append('] of ').Append(AType);
+    mBuilder.Append(' = (');
+    for mIndex := 0 to AValues - 1 do
+    begin
+      if mIndex > 0 then
+        mBuilder.Append(', ');
+      if mIndex mod 20 = 0 then
+        mBuilder.Append(#10'    ');
+      mBuilder.Append(mIndex);
+    end;
+    mBuilder.Append(');'#10);
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+procedure TConstantInitializerMismatchTests.LargeConstantArraysStayFast;
+const
+  cCount = 20000;
+  cLimitMs = 20000;
+var
+  mSource: string;
+  mWatch: TStopwatch;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := 'unit Tabellen;'#10'interface'#10'type'#10'  TZahl = Integer;'#10'const'#10 +
+    LargeConstant('cErste', 'Integer', cCount, cCount) +
+    LargeConstant('cZweite', 'TZahl', cCount, cCount) + LargeConstant('cDritte', 'TZahl', cCount, cCount - 1) + 'implementation'#10'end.';
+  mWatch := TStopwatch.StartNew;
+  mFound := InitFindings(mSource);
+  mWatch.Stop;
+  System.Writeln(Format('constant-initializer-mismatch: 3 x %d Elemente, %d ms', [cCount,
+    mWatch.ElapsedMilliseconds]));
+  // Nur die dritte Konstante ist um eins zu kurz.
+  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < cLimitMs, Format('%d ms', [mWatch.ElapsedMilliseconds]));
+  mSource := '';
+  mFound := nil;
 end;
 
 { TCaseSelectorNotOrdinalTests }
