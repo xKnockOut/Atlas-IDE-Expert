@@ -240,7 +240,8 @@ begin
           Result := TFile.Exists(APath) or TDirectory.Exists(APath);
         end;
       Project := TDprojReader.Load(TPath.GetFullPath(ATarget), Options);
-      // Symbole wie im Editor: .dproj, Plattform, Compilerversion und Schalter (#860).
+      // Symbole wie im Editor: .dproj, Plattform, Compilerversion und Schalter (#860); ohne installiertes
+      // Delphi die Version, die das Projekt erwartet (#1321).
       Version := TDelphiVersions.Choose(ASettings.DelphiVersion,
         TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(TPath.GetFullPath(ATarget))), TDelphiInstallation.Versions);
       ASources := CheckSourcesOf(TIndexProjectFiles.Defines(Project, Version), Project.SearchPaths);

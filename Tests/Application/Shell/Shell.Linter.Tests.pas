@@ -71,6 +71,10 @@ type
     /// </summary>
     [Test]
     procedure IndexKnowsTypesOfOtherUnits;
+    /// <summary>#1321 (Minimalfall F14): {$IF CompilerVersion} in einer Zeile ergibt keinen Syntaxfehler, auch
+    /// ohne installiertes Delphi (Version aus ProjectVersion) und ohne .dproj.</summary>
+    [Test]
+    procedure InlineCompilerVersionWithoutInstallation;
   end;
 
 implementation
@@ -358,6 +362,29 @@ begin
   Assert.AreEqual(0, Run(['--check', Path('Idx/Lauf.dproj'), '--format', 'json', '--fail-on', 'never',
     '--units', 'Suche', '--no-index']));
   Assert.IsFalse(Pos('"legacy-stack-queue"', OutputText) > 0, OutputText);
+end;
+
+procedure TShellLinterTests.InlineCompilerVersionWithoutInstallation;
+const
+  Dproj = '<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">'#13#10 +
+    '  <PropertyGroup><ProjectVersion>20.3</ProjectVersion>' +
+    '<Config Condition="''$(Config)''==''''">Release</Config>' +
+    '<Platform Condition="''$(Platform)''==''''">Win32</Platform></PropertyGroup>'#13#10 +
+    '  <ItemGroup><DCCReference Include="T1.pas"/></ItemGroup>'#13#10'</Project>'#13#10;
+  Inline = 'unit T1;'#13#10'interface'#13#10'type'#13#10'  TA = class'#13#10 +
+    '    F: {$IF CompilerVersion >= 36}Int64{$ELSE}Integer{$ENDIF};'#13#10'  end;'#13#10'implementation'#13#10 +
+    '{$IF CompilerVersion >= 36}'#13#10'const A = 1;'#13#10'{$ELSE}'#13#10'const A = 2;'#13#10'{$IFEND}'#13#10 +
+    'end.'#13#10;
+begin
+  ForceDirectories(Path('Cv'));
+  TFile.WriteAllText(Path('Cv/T.dproj'), Dproj);
+  TFile.WriteAllText(Path('Cv/T1.pas'), Inline);
+  Assert.AreEqual(0, Run(['--check', Path('Cv/T.dproj'), '--format', 'json', '--fail-on', 'never', '--no-index']));
+  Assert.Contains(OutputText, 'T1.pas');
+  Assert.IsFalse(Pos('"syntax"', OutputText) > 0, OutputText);
+  // Ohne .dproj gilt die neueste bekannte Version.
+  Assert.AreEqual(0, Run(['--check', Path('Cv/T1.pas'), '--format', 'json', '--fail-on', 'never', '--no-index']));
+  Assert.IsFalse(Pos('"syntax"', OutputText) > 0, OutputText);
 end;
 
 initialization

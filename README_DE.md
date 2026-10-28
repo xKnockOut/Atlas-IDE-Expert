@@ -308,6 +308,8 @@ Tools/Linux/Build-AtlasServer.sh --install /usr/local/bin
 
 Das Skript nimmt zuerst das fertige Programm aus dem Vorab-Release `cloud-linux` (Workflow `linux-server.yml`, Stand von main), wenn es zum Quelltext passt. Sonst holt es Free Pascal trunk in einem festen Stand aus demselben Release oder baut ihn einmalig selbst (etwa 10 Minuten, unter `~/.cache/atlas-fpc`), bereitet den Quelltext mit `Tools/Linux/Convert-ForFpc.py` auf und übersetzt nach `Output/Linux64/Bin/AtlasServer`. Hat sich der Quelltext nicht geändert, baut es nicht neu. Plattform-Adapter liegen in `Packages/Atlas.Linux`, die Auswahl trifft `Shell.Platform`. Der Linux-Bau ersetzt den Delphi-Bau vor dem Merge nicht.
 
+Ohne jede Delphi-Installation nehmen `AtlasServer --check X.dproj` und der Editor die Delphi-Version, die das Projekt erwartet: `delphiVersion`, sonst die zur `<ProjectVersion>` der .dproj, sonst die neueste bekannte. Sie setzt nur `CompilerVersion`, `RTLVersion` und `VERxxx` (keine Bibliothekspfade), damit von `{$IF CompilerVersion >= 36}…{$ELSE}…{$ENDIF}` wie in der IDE nur ein Zweig bleibt (#1321).
+
 ## Testen
 
 Die DUnitX-Tests laufen ohne geöffnete IDE, nach dem Bau von `Atlas.Tests` (Win64):
