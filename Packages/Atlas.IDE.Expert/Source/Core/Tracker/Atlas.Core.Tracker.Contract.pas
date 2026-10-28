@@ -27,7 +27,7 @@
 //   Unteraufgabe, übergeordnet, Duplikat, bezieht sich auf, Erwähnung) mit
 //   Zustand des verknüpften Issues; Baum, Fortschritt und „blockiert“ in
 //   Atlas.Core.Tracker.Links. IAtlasTrackerLinkWriter (optional, über
-//   Supports) legt Unteraufgaben an und verknüpft Issues über IAtlasCiPost.
+//   Supports) legt Unteraufgaben an und verknüpft Issues über IAtlasCiSend.
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -214,7 +214,7 @@ type
   end;
 
   /// <summary>Unteraufgaben anlegen und Issues verknüpfen (#1279); optional, die Vorschau fragt mit Supports. Der
-  /// Transport muss IAtlasCiPost können, sonst NotConfigured. Läuft im Hintergrund.</summary>
+  /// Transport muss IAtlasCiSend können, sonst NotConfigured. Läuft im Hintergrund.</summary>
   IAtlasTrackerLinkWriter = interface
     ['{8B3E5D21-4A7C-4F96-B2E8-1C6D9A4F7E53}']
     /// <summary>Neues Issue ATitle (ADescription als Markdown) im Projekt des Issues AParentKey anlegen und als

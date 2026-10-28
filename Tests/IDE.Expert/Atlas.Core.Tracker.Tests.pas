@@ -225,18 +225,19 @@ begin
 end;
 
 type
-  /// <summary>Transport, der auch schreibt (#1279): merkt sich Adressen und Inhalte der POSTs, Antworten je
+  /// <summary>Transport, der auch schreibt (#1279): merkt sich Methoden, Adressen und Inhalte, Antworten je
   /// Adressanfang.</summary>
-  TFakePostTransport = class(TFakeTransport, IAtlasCiPost)
+  TFakePostTransport = class(TFakeTransport, IAtlasCiSend)
   private
     FPostPrefixes: TArray<string>;
     FPostStatus: TArray<Integer>;
     FPostTexts: TArray<string>;
   public
+    Methods: TArray<string>;
     Posts: TArray<string>;
     Bodies: TArray<string>;
     procedure AnswerPost(const APrefix: string; AStatus: Integer; const AText: string);
-    function Post(const AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
@@ -247,11 +248,12 @@ begin
   FPostTexts := FPostTexts + [AText];
 end;
 
-function TFakePostTransport.Post(const AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
+function TFakePostTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
   out AText: string; out AError: TAtlasCiFetchError): Boolean;
 var
   mIndex: Integer;
 begin
+  Methods := Methods + [AMethod];
   Posts := Posts + [AUrl];
   Bodies := Bodies + [ABody];
   AStatus := 404;
@@ -1066,6 +1068,8 @@ begin
   Assert.AreEqual('ATL-134', mKey);
   Assert.IsTrue(mError = TAtlasCiFetchError.None);
   Assert.AreEqual(2, Integer(Length(mTransport.Posts)));
+  Assert.AreEqual('POST', mTransport.Methods[0]);
+  Assert.AreEqual('POST', mTransport.Methods[0]);
   Assert.AreEqual(cYouTrackApi + 'issues?fields=idReadable', mTransport.Posts[0]);
   Assert.AreEqual('{"project":{"id":"0-1"},"summary":"Baum","description":"Text"}', mTransport.Bodies[0]);
   Assert.AreEqual(cYouTrackApi + 'issues/ATL-130/links/80-3s/issues?fields=id', mTransport.Posts[1]);
@@ -1233,6 +1237,8 @@ begin
   Assert.IsTrue(mWriter.CreateSubtask(GitHubTarget, mTransportRef, '#753', 'Baum', 'Text', 5000, mKey, mError));
   Assert.AreEqual('#770', mKey);
   Assert.AreEqual(2, Integer(Length(mTransport.Posts)));
+  Assert.AreEqual('POST', mTransport.Methods[0]);
+  Assert.AreEqual('POST', mTransport.Methods[0]);
   Assert.AreEqual(cGitHubIssues, mTransport.Posts[0]);
   Assert.AreEqual('{"title":"Baum","body":"Text"}', mTransport.Bodies[0]);
   Assert.AreEqual(cGitHubIssues + '/753/sub_issues', mTransport.Posts[1]);

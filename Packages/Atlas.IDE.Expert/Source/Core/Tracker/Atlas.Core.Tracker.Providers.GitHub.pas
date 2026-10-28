@@ -1191,13 +1191,13 @@ begin
 end;
 
 /// <summary>POST mit AStatus 200/201 als Erfolg.</summary>
-function Posted(const APost: IAtlasCiPost; const AUrl, ABody: string; ATimeoutMs: Integer; out AText: string;
+function Posted(const APost: IAtlasCiSend; const AUrl, ABody: string; ATimeoutMs: Integer; out AText: string;
   out AError: TAtlasCiFetchError): Boolean;
 var
   mStatus: Integer;
 begin
   Result := False;
-  if not APost.Post(AUrl, ABody, ATimeoutMs, mStatus, AText, AError) then
+  if not APost.Send('POST', AUrl, ABody, ATimeoutMs, mStatus, AText, AError) then
     Exit;
   if (mStatus <> 200) and (mStatus <> 201) then
   begin
@@ -1212,7 +1212,7 @@ function TAtlasGitHubTracker.CreateSubtask(const ATarget: TAtlasTrackerTarget; c
   const AParentKey, ATitle, ADescription: string; ATimeoutMs: Integer; out AKey: string;
   out AError: TAtlasCiFetchError): Boolean;
 var
-  mPost: IAtlasCiPost;
+  mPost: IAtlasCiSend;
   mWatch: TStopwatch;
   mParent, mText: string;
   mId: Int64;
@@ -1223,7 +1223,7 @@ begin
   AError := TAtlasCiFetchError.NotConfigured;
   Result := False;
   mParent := IssueApiUrl(ATarget, AParentKey);
-  if (mParent = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiPost, mPost) then
+  if (mParent = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiSend, mPost) then
     Exit;
   if Trim(ATitle) = '' then
   begin
@@ -1257,14 +1257,14 @@ function TAtlasGitHubTracker.AddLink(const ATarget: TAtlasTrackerTarget; const A
   const AKey: string; AKind: TAtlasTrackerLinkKind; const AOtherKey: string; ATimeoutMs: Integer;
   out AError: TAtlasCiFetchError): Boolean;
 var
-  mPost: IAtlasCiPost;
+  mPost: IAtlasCiSend;
   mWatch: TStopwatch;
   mBlocked, mBlocker, mText: string;
   mId: Int64;
 begin
   AError := TAtlasCiFetchError.NotConfigured;
   Result := False;
-  if (ATransport = nil) or not Supports(ATransport, IAtlasCiPost, mPost) then
+  if (ATransport = nil) or not Supports(ATransport, IAtlasCiSend, mPost) then
     Exit;
   // „hängt ab von“: AKey wird von AOtherKey blockiert; „blockiert“: umgekehrt.
   if AKind = TAtlasTrackerLinkKind.DependsOn then
