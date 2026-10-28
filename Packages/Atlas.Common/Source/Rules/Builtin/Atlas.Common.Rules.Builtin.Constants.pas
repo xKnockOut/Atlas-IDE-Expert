@@ -45,7 +45,10 @@
 //                              und Übergabe als var- oder out-Argument samt
 //                              Inc, Dec, Include, Exclude … (W1016); steht
 //                              vor der Deklaration in derselben Datei {$J-},
-//                              ist es ein Fehler (E2064 bzw. E2197). Dazu 0
+//                              ist es ein Fehler (E2064 bzw. E2197); {$J±}
+//                              aus einer mit {$I} eingebundenen Datei zählt
+//                              mit (#1328), eine unlesbare macht den Stand
+//                              unbekannt. Dazu 0
 //                              als Wert einer Zeigerkonstante (W1013).
 //                              Korrekturen: globale Konstante in eine
 //                              Variable mit Initialwert umwandeln; nil
@@ -142,6 +145,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.DirectiveNames,
+  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.OrdinalConstants,
@@ -1837,40 +1843,74 @@ var
     Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character < B.Character));
   end;
 
-  /// <summary>Letzte Einstellung von {$J±} bzw. {$WRITEABLECONST} vor APosition in dieser Datei.</summary>
+  /// <summary>Text der Include-Datei AName neben der Unit; False, wenn sie sich nicht lesen lässt.</summary>
+  function ReadInclude(const AName: string; out AText: string): Boolean;
+  var
+    mBytes: TBytes;
+    mFormat: TFileFormat;
+  begin
+    AText := '';
+    Result := (AName <> '') and Assigned(AContext.ReadFile) and AContext.ReadFile(AName, mBytes);
+    if Result then
+      AText := TFileEncoding.Decode(mBytes, mFormat);
+  end;
+
+  /// <summary>Wendet die Direktive ADirective auf AState an. {$I Datei} bzw. {$INCLUDE Datei} spielt die
+  /// Direktiven der Include-Datei nach (HtmlViewer setzt {$J+} in htmlcons.inc, #1328); lässt sie sich nicht
+  /// lesen, ist der Stand danach unbekannt.</summary>
+  procedure ApplyDirective(const ADirective: string; ADepth: Integer; var AState: TWriteable);
+  var
+    mBody, mName, mRest, mText, mItem, mInclude: string;
+    mToken: TPascalToken;
+  begin
+    if not (ADirective.StartsWith('{$') or ADirective.StartsWith('(*$')) then
+      Exit;
+    mBody := TDirectiveNames.Body(ADirective);
+    mName := UpperCase(TDirectiveNames.LeadingName(mBody));
+    mRest := Trim(Copy(mBody, Length(mName) + 1, MaxInt));
+    if ((mName = 'I') or (mName = 'INCLUDE')) and (mRest <> '') and not CharInSet(mRest[1], ['+', '-']) then
+    begin
+      if (Length(mRest) >= 2) and (mRest[1] = '''') and (mRest[Length(mRest)] = '''') then
+        mRest := Copy(mRest, 2, Length(mRest) - 2);
+      if (ADepth >= 8) or not ReadInclude(mRest, mInclude) then
+      begin
+        AState := TWriteable.Unknown;
+        Exit;
+      end;
+      for mToken in TPascalLexer.Tokenize(mInclude) do
+        if mToken.Kind = TPascalTokenKind.Directive then
+          ApplyDirective(mToken.Text, ADepth + 1, AState);
+      Exit;
+    end;
+    mText := UpperCase(StringReplace(mBody, ' ', '', [rfReplaceAll]));
+    if mText.StartsWith('WRITEABLECONST') then
+    begin
+      if (mText = 'WRITEABLECONSTON') or (mText = 'WRITEABLECONST+') then
+        AState := TWriteable.On_
+      else if (mText = 'WRITEABLECONSTOFF') or (mText = 'WRITEABLECONST-') then
+        AState := TWriteable.Off;
+      Exit;
+    end;
+    for mItem in mText.Split([',']) do
+      if mItem = 'J+' then
+        AState := TWriteable.On_
+      else if mItem = 'J-' then
+        AState := TWriteable.Off;
+  end;
+
+  /// <summary>Letzte Einstellung von {$J±} bzw. {$WRITEABLECONST} vor APosition in dieser Datei, samt
+  /// eingebundener Include-Dateien.</summary>
   function WriteableAt(const APosition: TTextPosition): TWriteable;
   var
     Token: TPascalToken;
-    Text, Item: string;
   begin
     Result := TWriteable.Unknown;
     for Token in AContext.Tree.Tokens do
     begin
       if not Before(Token.StartPos, APosition) then
         Break;
-      if Token.Kind <> TPascalTokenKind.Directive then
-        Continue;
-      Text := UpperCase(StringReplace(Token.Text, ' ', '', [rfReplaceAll]));
-      if Text.StartsWith('{$') then
-        Text := Copy(Text, 3, MaxInt)
-      else if Text.StartsWith('(*$') then
-        Text := Copy(Text, 4, MaxInt)
-      else
-        Continue;
-      Text := Text.TrimRight(['}', ')', '*']);
-      if Text.StartsWith('WRITEABLECONST') then
-      begin
-        if (Text = 'WRITEABLECONSTON') or (Text = 'WRITEABLECONST+') then
-          Result := TWriteable.On_
-        else if (Text = 'WRITEABLECONSTOFF') or (Text = 'WRITEABLECONST-') then
-          Result := TWriteable.Off;
-        Continue;
-      end;
-      for Item in Text.Split([',']) do
-        if Item = 'J+' then
-          Result := TWriteable.On_
-        else if Item = 'J-' then
-          Result := TWriteable.Off;
+      if Token.Kind = TPascalTokenKind.Directive then
+        ApplyDirective(Token.Text, 0, Result);
     end;
   end;
 

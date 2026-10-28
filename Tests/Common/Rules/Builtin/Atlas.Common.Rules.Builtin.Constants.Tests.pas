@@ -18,7 +18,7 @@
 // W1072/W1066), stille Fälle, standardmäßig aus, Abschalten.
 // typed-constant-modified (#1014): Beispiel mit Korrektur, Zuweisung an
 // Konstante, Element und Feld, var-Parameter eigener Routinen, {$J-} und
-// {$J+}, Abschnitte aufteilen, Konstanten aus anderen Units, 0 statt nil,
+// {$J+}, {$J+} aus einer Include-Datei (#1328), Abschnitte aufteilen, Konstanten aus anderen Units, 0 statt nil,
 // stille Fälle, Abschalten.
 // string-length-limit (#1036): Beispiel mit Korrektur, typisierte Konstante,
 // Alias und Feld aus dem Index, Verkettung, lange Literale nach
@@ -116,6 +116,8 @@ type
     procedure VarParametersOfOwnRoutines;
     [Test]
     procedure WriteableConstDirective;
+    [Test]
+    procedure WriteableConstFromIncludeFile;
     [Test]
     procedure FixSplitsSection;
     [Test]
@@ -849,6 +851,50 @@ begin
   Found := TypedFindings(Zaehlen('{$WRITEABLECONST OFF}'#10'{$J+,H+}'#10'const'#10'  Zaehler: Integer = 0;'#10,
     '  Zaehler := 1;'#10));
   Assert.AreEqual('Zaehler ist eine typisierte Konstante und wird verändert (wie W1017).'#10, Messages(Found));
+end;
+
+/// <summary>Kontext für ASource, in dem ReadFile nur die Include-Datei AName mit AText kennt.</summary>
+function IncludeContext(const ASource, AName, AText: string): TRuleContext;
+begin
+  Result := Default(TRuleContext);
+  Result.RelativePath := 'Zaehlen.pas';
+  Result.UnitName := 'Zaehlen';
+  Result.Text := ASource;
+  Result.ReadFile :=
+    function(const AFileName: string; out AData: TBytes): Boolean
+    begin
+      Result := SameText(AFileName, AName);
+      if Result then
+        AData := TEncoding.UTF8.GetBytes(AText);
+    end;
+end;
+
+procedure TTypedConstantModifiedTests.WriteableConstFromIncludeFile;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Minimalfall TC3 aus Tests/DccFaelle (HtmlViewer htmlcons.inc): {$J+} kommt aus der Include-Datei.
+  mSource := Zaehlen('{$J-}'#10'{$I Schalter.inc}'#10'const'#10'  Zaehler: Integer = 0;'#10, '  Zaehler := 1;'#10);
+  mFound := TRuleAssert.ContextFindings(TTypedConstantModifiedRule.Create,
+    IncludeContext(mSource, 'Schalter.inc', '{$J+}  // veränderbar'#10), '');
+  Assert.AreEqual('Zaehler ist eine typisierte Konstante und wird verändert (wie W1017).'#10, Messages(mFound));
+  // In Anführungszeichen und als {$INCLUDE}; {$I-} ist der I/O-Schalter und lässt {$J-} stehen.
+  mFound := TRuleAssert.ContextFindings(TTypedConstantModifiedRule.Create, IncludeContext(
+    mSource.Replace('{$I Schalter.inc}', '{$INCLUDE ''Schalter.inc''}'), 'Schalter.inc', '{$J+}'), '');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
+  mFound := TRuleAssert.ContextFindings(TTypedConstantModifiedRule.Create, IncludeContext(
+    mSource.Replace('{$I Schalter.inc}', '{$I-}'), 'Schalter.inc', '{$J+}'), '');
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
+  // Unlesbare Include-Datei: Der Stand ist unbekannt, also kein Fehler.
+  mFound := TRuleAssert.ContextFindings(TTypedConstantModifiedRule.Create,
+    IncludeContext(mSource, 'Andere.inc', '{$J+}'), '');
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
+  // Gegentest: {$J-} aus der Include-Datei bleibt ein Fehler (wie E2064).
+  mFound := TRuleAssert.ContextFindings(TTypedConstantModifiedRule.Create,
+    IncludeContext(mSource.Replace('{$J-}'#10, ''), 'Schalter.inc', '{$J-}'), '');
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
 end;
 
 procedure TTypedConstantModifiedTests.FixSplitsSection;
