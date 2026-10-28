@@ -52,6 +52,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | MCP | `mcp`: `disabledTools`, `globalSettings` | – | settings.json (Tools › Optionen › Atlas); `globalSettings` in atlas.json | nein | Liste mit Hinzufügen/Entfernen; globalSettings: Kontrollkästchen | #99 |
 | Formatierung | `format`: `indentSize`, `useTabs`, `keywordCase`, `trimTrailingWhitespace`, `insertFinalNewline`, `spaceAroundAssignment`, `spaceAfterComma`, `endOfLine`, `reindent`, `beginPlacement`, `elsePlacement`, `maxLineLength`, `alignAssignments`, `alignDeclarations`, `alignComments` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Zahlenfeld, Kontrollkästchen, Auswahl | #43 |
 | Projekt | `tasks` | – | settings.json (Tools › Optionen › Atlas) und atlas.json (Atlas › Projekt-Einstellungen) | nein | JSON in atlas.json bzw. settings.json (Liste der Aufgaben) | #900 |
+| Issue-Tracker | `issues`: `connections` | – | settings.json (Tools › Optionen › Atlas) | nein | Tabelle Verbindungen | #1260 |
 | Protokoll | `logLevel` | `"info"` | settings.json (Tools › Optionen › Atlas), ``--log-level`` | ja | Auswahl | #76, #96 |
 | Protokoll | `logFile` | `""` | settings.json (Tools › Optionen › Atlas), ``--log`` | ja | Datei wählen | #76, #96 |
 | Protokoll | `traceFile` | `""` | settings.json (Tools › Optionen › Atlas), ``--trace`` | ja | Datei wählen | #76, #96 |
