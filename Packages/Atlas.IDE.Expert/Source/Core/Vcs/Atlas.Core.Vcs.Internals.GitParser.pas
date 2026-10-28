@@ -14,6 +14,13 @@
 //   git log --format=<IncomingFormat> --name-only -z …     Commits mit Dateien
 //   Jeder Commit beginnt mit RS (#$1E), danach Hash, Zeit, Autor und Betreff
 //   je mit NUL abgeschlossen, dann LF und die Dateien je mit NUL.
+// Für die Issues der Zeilenhistorie (#1275), Felder durch US (#$1F), weil
+// Nachrichten Zeilenenden enthalten:
+//   git log --format=<LineLogFormat> -L<a>,<b>:<Pfad>   Commits eines Bereichs
+//   Jeder Commit beginnt mit RS, danach Hash, Autor, Zeit und ganze Nachricht
+//   je mit US abgeschlossen, dann der Unterschied des Bereichs.
+//   git log --no-walk=unsorted --format=<MessageFormat> <Commits>
+//   Jeder Commit beginnt mit RS, danach Hash, US und die ganze Nachricht.
 // Mit -z trennt git die Einträge durch NUL und schreibt Pfade unverändert
 // (UTF-8, ohne Anführungszeichen); bei Umbenennungen folgt der alte Pfad als
 // eigener Eintrag. Pfade sind relativ zur Wurzel, weil git dort läuft.
@@ -46,6 +53,11 @@ type
     LogFormat = '%H%x00%ct%x00%s';
     /// <summary>Format für git log --name-only -z (#755): RS, Hash, Zeit (Unix), Autor, Betreff.</summary>
     IncomingFormat = '%x1e%H%x00%ct%x00%an%x00%s';
+    /// <summary>Format für git log -L (#1275): RS, Hash, Autor, Zeit (Unix), ganze Nachricht, je mit US
+    /// abgeschlossen; danach folgt der Unterschied.</summary>
+    LineLogFormat = '%x1e%H%x1f%an%x1f%ct%x1f%B%x1f';
+    /// <summary>Format für die Nachrichten zu Commits (#1275): RS, Hash, US, ganze Nachricht.</summary>
+    MessageFormat = '%x1e%H%x1f%B';
   public
     /// <summary>Ausgabe von git for-each-ref mit BranchFormat.</summary>
     class function ParseBranches(const AText: string): TArray<TAtlasVcsBranch>; static;
@@ -59,6 +71,11 @@ type
     class function ParseIncoming(const AText, ARoot: string): TArray<TAtlasVcsIncomingCommit>; static;
     /// <summary>Ausgabe von git remote: ein Name je Zeile.</summary>
     class function ParseLines(const AText: string): TArray<string>; static;
+    /// <summary>Ausgabe von git log -L mit LineLogFormat (#1275): Commits mit ganzer Nachricht und dem Unterschied
+    /// des Bereichs.</summary>
+    class function ParseLineLog(const AText: string): TArray<TAtlasVcsLineCommit>; static;
+    /// <summary>Ausgabe von git log --no-walk mit MessageFormat (#1275).</summary>
+    class function ParseMessages(const AText: string): TArray<TAtlasVcsRevisionMessage>; static;
   end;
 
 implementation
@@ -471,6 +488,84 @@ begin
   Result := nil;
   for Line in NonEmptyLines(AText) do
     Result := Result + [Trim(Line)];
+end;
+
+/// <summary>Zeilen von AText ohne CR; leere Zeilen am Anfang und am Ende entfallen.</summary>
+function TrimmedLines(const AText: string): TArray<string>;
+var
+  mFirst, mLast, mIndex: Integer;
+  mLines: TArray<string>;
+begin
+  mLines := AText.Split([#10]);
+  for mIndex := 0 to High(mLines) do
+    mLines[mIndex] := mLines[mIndex].TrimRight([#13]);
+  mFirst := 0;
+  while (mFirst <= High(mLines)) and (mLines[mFirst] = '') do
+    Inc(mFirst);
+  mLast := High(mLines);
+  while (mLast >= mFirst) and (mLines[mLast] = '') do
+    Dec(mLast);
+  Result := Copy(mLines, mFirst, mLast - mFirst + 1);
+end;
+
+class function TAtlasGitParser.ParseLineLog(const AText: string): TArray<TAtlasVcsLineCommit>;
+var
+  mItem: string;
+  mFields: TArray<string>;
+  mCommit: TAtlasVcsLineCommit;
+  mCount, mStart, mStop: Integer;
+begin
+  Result := nil;
+  for mItem in AText.Split([#$1E]) do
+  begin
+    if mItem.Trim([#10, #13]) = '' then
+      Continue;
+    // Hash, Autor, Zeit, Nachricht und der Rest (Unterschied); nur vier Trenner zählen.
+    SetLength(mFields, 5);
+    mStart := 1;
+    mCount := 0;
+    while mCount < 4 do
+    begin
+      mStop := Pos(#$1F, mItem, mStart);
+      if mStop = 0 then
+        Break;
+      mFields[mCount] := Copy(mItem, mStart, mStop - mStart);
+      Inc(mCount);
+      mStart := mStop + 1;
+    end;
+    mFields[4] := Copy(mItem, mStart, MaxInt);
+    if (mCount < 4) or (Length(mFields[0]) < 7) then
+      raise EAtlasVcsParse.Create('git log -L: Hash, Autor, Zeit und Nachricht erwartet');
+    mCommit := Default(TAtlasVcsLineCommit);
+    mCommit.Revision := mFields[0];
+    mCommit.Author := mFields[1];
+    mCommit.Date := UnixField(mFields[2]);
+    mCommit.Message := TrimRight(mFields[3]);
+    mCommit.Patch := TrimmedLines(mFields[4]);
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := mCommit;
+  end;
+end;
+
+class function TAtlasGitParser.ParseMessages(const AText: string): TArray<TAtlasVcsRevisionMessage>;
+var
+  mItem: string;
+  mSplit: Integer;
+  mMessage: TAtlasVcsRevisionMessage;
+begin
+  Result := nil;
+  for mItem in AText.Split([#$1E]) do
+  begin
+    if mItem.Trim([#10, #13]) = '' then
+      Continue;
+    mSplit := Pos(#$1F, mItem);
+    if mSplit < 8 then
+      raise EAtlasVcsParse.Create('git log: Hash und Nachricht erwartet');
+    mMessage.Revision := Copy(mItem, 1, mSplit - 1);
+    mMessage.Message := TrimRight(Copy(mItem, mSplit + 1, MaxInt));
+    SetLength(Result, Length(Result) + 1);
+    Result[High(Result)] := mMessage;
+  end;
 end;
 
 type

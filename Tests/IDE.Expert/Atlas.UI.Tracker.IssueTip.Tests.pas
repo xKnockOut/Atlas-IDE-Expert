@@ -2,7 +2,9 @@
 
 // Hover über einer Issue-Kennung im Editor (#1265): Titel, Zustand,
 // Zuständig und Alter, „Wird geladen …“, nicht gefunden, Fehlergrund und die
-// Fußzeile je nach issues.preview.
+// Fußzeile je nach issues.preview. Für die Zeilenhistorie (#1275): Zeile je
+// Kennung, Link „Issues zu dieser Methode (n)“, Zeilen und Titel des
+// Ergebnisfensters.
 
 interface
 
@@ -36,6 +38,13 @@ type
     procedure FooterFollowsPreviewSetting;
     [Test]
     procedure AgeTextUnits;
+    /// <summary>Abnahme #1275: Hover der Zeilenhistorie zeigt Titel und Zustand je Kennung.</summary>
+    [Test]
+    procedure KeyLineForBlameHover;
+    [Test]
+    procedure ScopeLinkAndFooter;
+    [Test]
+    procedure IssueAndCommitRows;
   end;
 
 implementation
@@ -145,6 +154,45 @@ begin
   Assert.AreEqual('gerade eben', TAtlasIssueTip.AgeText(cNow, cNow));
   Assert.AreEqual('vor 5 Min.', TAtlasIssueTip.AgeText(cNow - 5.5 / 1440, cNow));
   Assert.AreEqual('vor 2 Tg.', TAtlasIssueTip.AgeText(cNow - 2.2, cNow));
+end;
+
+procedure TAtlasIssueTipTests.KeyLineForBlameHover;
+begin
+  Assert.AreEqual('ATL-123 · Sperre prüfen · Open', TAtlasIssueTip.KeyLine('ATL-123', TAtlasIssueTipState.Found,
+    Sample, TAtlasCiFetchError.None));
+  Assert.AreEqual('ATL-1 · Wird geladen …', TAtlasIssueTip.KeyLine('ATL-1', TAtlasIssueTipState.Loading,
+    TAtlasTrackerDetails.Empty, TAtlasCiFetchError.None));
+  Assert.AreEqual('ATL-9 · Issue ATL-9 nicht gefunden.', TAtlasIssueTip.KeyLine('ATL-9',
+    TAtlasIssueTipState.NotFound, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.NotFound));
+  Assert.AreEqual('ATL-9 · ' + TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork),
+    TAtlasIssueTip.KeyLine('ATL-9', TAtlasIssueTipState.Failed, TAtlasTrackerDetails.Empty,
+    TAtlasCiFetchError.Network));
+end;
+
+procedure TAtlasIssueTipTests.ScopeLinkAndFooter;
+begin
+  Assert.AreEqual('Issues zu dieser Methode (3)', TAtlasIssueTip.ScopeLink(True, 3));
+  Assert.AreEqual('Issues zu dieser Methode', TAtlasIssueTip.ScopeLink(True, -1), 'wird noch gesucht');
+  Assert.AreEqual('Issues zu dieser Unit (0)', TAtlasIssueTip.ScopeLink(False, 0));
+  Assert.AreEqual('Strg+Klick auf die Kennung: Vorschau', TAtlasIssueTip.BlameFooter(True));
+  Assert.AreEqual('Strg+Klick auf die Kennung: im Browser öffnen', TAtlasIssueTip.BlameFooter(False));
+  TAtlasStrings.Language := TAtlasLanguage.English;
+  Assert.AreEqual('Issues for this method (3)', TAtlasIssueTip.ScopeLink(True, 3));
+end;
+
+procedure TAtlasIssueTipTests.IssueAndCommitRows;
+begin
+  Assert.AreEqual('ATL-123 · Sperre prüfen · Open · vor 2 Tg. · 4 Commits', TAtlasIssueTip.IssueRow('ATL-123', True,
+    Sample, cNow - 2.2, cNow, 4));
+  Assert.AreEqual('ATL-7 · vor 2 Tg. · 1 Commit', TAtlasIssueTip.IssueRow('ATL-7', False,
+    TAtlasTrackerDetails.Empty, cNow - 2.2, cNow, 1), 'Titel und Zustand erst nach der Abfrage');
+  Assert.AreEqual('2e17e3b · anna · 12.10.2026 · ATL-7 Rundung', TAtlasIssueTip.CommitRow('2e17e3b', 'anna',
+    EncodeDate(2026, 10, 12) + 0.5, 'ATL-7 Rundung'));
+  Assert.AreEqual('r42', TAtlasIssueTip.CommitRow('r42', '', 0, ''));
+  Assert.AreEqual('Issues zu TKunde.Laden · 3 Issues aus 7 Commits · 2 ohne Kennung',
+    TAtlasIssueTip.ScopeTitle('TKunde.Laden', 3, 7, 2));
+  Assert.AreEqual('Issues zu Unit Kunde.pas · 0 Issues aus 0 Commits', TAtlasIssueTip.ScopeTitle('Unit Kunde.pas', 0,
+    0, 0));
 end;
 
 initialization
