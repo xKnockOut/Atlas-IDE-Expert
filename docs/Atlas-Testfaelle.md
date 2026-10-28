@@ -7900,3 +7900,29 @@ Vorbereitung: Git-Projekt mit `main` lokal und auf origin, auf einem Feature-Bra
 | BA10 | Befehlspalette „Branch anlegen …“ mit leerem Namen; Kontextmenü einer Zeile in „Projekte“ › „Branch anlegen …“ | Dialog immer (auch mit `vcs.branch.confirm` aus) ohne „Nicht mehr fragen“; Projekt ohne Git/SVN: Meldung statt Dialog; „Projekte“ zeigt danach den neuen Branch |
 | BA11 | Dialog bei „Beginnen“ abbrechen | Nichts angelegt, Issue nicht aktiv |
 | BA12 | Name eines vorhandenen Branchs eingeben, „Anlegen“ | Meldung „… gibt es schon; nichts angelegt.“ |
+
+## Git-Optionen fürs Branch-Anlegen (#1289)
+
+Vorbereitung: Git-Projekt `Kasse` mit `main` lokal und auf origin (lokales `main` verfolgt `origin/main`), auf einem Feature-Branch, zwei geänderte Dateien; „Meine Issues“ mit einem zugewiesenen Issue (Kennung z. B. `ATL-13`); `vcs.branch.confirm` an. Seite *Versionsverwaltung*, Gruppe „Git“.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GO1 | Seite öffnen | Gruppe „Git“ mit Basis „Stand auf dem Server“, Push „Beim ersten Push (wie bisher)“, Offene Änderungen „mitnehmen“, „Eigener Ordner (worktree)“ aus, Ordner `..\{repo}-{kennung}` (**Abnahme**) |
+| GO2 | „Beginnen“ mit den Vorgaben | Dialog: Basis „origin/main“, Gruppe „Git“ mit „Vorher vom Server abrufen (git fetch origin main)“ angehakt, „Offene Änderungen: 2 geänderte Dateien“; „Was passiert“: `1. git fetch --quiet --no-tags origin main ← auf dem Server`, `2. git checkout --quiet --no-track -b <Name> refs/remotes/origin/main --` (**Abnahme**) |
+| GO3 | GO2 „Anlegen“ | Erst Abruf, dann Branch vom frischen Stand; Änderungen mitgenommen |
+| GO4 | Netz trennen (bzw. Remote-URL ungültig), GO2 „Anlegen“ | Frage „Abruf von origin gescheitert: nicht erreichbar. Vom lokalen Stand abzweigen (main)?“; „Ja“ legt ohne Abruf vom lokalen `main` an, „Nein“ meldet den gescheiterten Schritt, nichts angelegt (**Abnahme**) |
+| GO5 | `vcs.branch.confirm` aus, Netz getrennt, „Beginnen“ | Kein Dialog, keine Frage; Meldung nennt den gescheiterten Abruf, nichts angelegt (**Abnahme**) |
+| GO6 | Push „sofort“, „Anlegen“ | Schritt `git push --set-upstream origin refs/heads/<Name>:refs/heads/<Name> ← auf dem Server`; Branch auf dem Server und verfolgt (`git status -sb`) (**Abnahme**) |
+| GO7 | GO6 ohne Schreibrecht bzw. ohne Anmeldung | Branch lokal angelegt und ausgecheckt, Meldung „Branch <Name> angelegt, aber nicht auf den Server gepusht (Anmeldung nötig); der lokale Branch bleibt.“; kein Anmeldefenster (**Abnahme**) |
+| GO8 | Offene Änderungen „beiseitelegen“, „Anlegen“ | `git stash list` zeigt „Atlas: vor <Name>“ (mit unversionierten Dateien), neuer Branch sauber (**Abnahme**) |
+| GO9 | Einstellung „nachfragen“, „Beginnen“ mit Dialog | Feld „Offene Änderungen“ leer, „Anlegen“ gesperrt bis zur Wahl |
+| GO10 | Einstellung „nachfragen“, `vcs.branch.confirm` aus, „Beginnen“ | Frage mit „Mitnehmen“, „Beiseitelegen“, „Abbrechen“; „Abbrechen“ ändert nichts, Issue nicht aktiv; ohne geänderte Dateien keine Frage (**Abnahme**) |
+| GO11 | „Eigener Ordner (worktree)“ an, „Beginnen“ | Dialog: Ort „eigener Ordner“, Ordner `<Eltern>\Kasse-ATL-13`, keine Zeile „Offene Änderungen“; Schritt `git worktree add --quiet --no-track -b <Name> <Ordner> refs/remotes/origin/main` (**Abnahme**) |
+| GO12 | GO11 „Anlegen“ | Ordner angelegt, bisherige Arbeitskopie unverändert (Branch und Änderungen); Frage „Branch <Name> liegt im neuen Ordner …; die bisherige Arbeitskopie bleibt unverändert. Kasse.groupproj von dort öffnen?“; „Ja“ öffnet die `.groupproj` (bzw. `.dproj`) aus dem neuen Ordner, das Issue ist dort aktiv (**Abnahme**) |
+| GO13 | GO11 mit vorhandenem Ordner | „Anlegen“ im Dialog gesperrt mit Hinweis „Den Ordner … gibt es schon; bitte einen anderen wählen.“; ohne Dialog Meldung „Branch anlegen: Den Ordner … gibt es schon; nichts angelegt.“ (**Abnahme**) |
+| GO14 | Ordner im Dialog auf `relativ` bzw. eigenes Muster `D:\WT\{name}` setzen | Relativ: Hinweis, „Anlegen“ gesperrt; eigenes Muster: `D:\WT\feature-13-…` („/“ wird „-“); Name ändern ändert einen von Hand geänderten Ordner nicht |
+| GO15 | Basis „Aktueller Branch“ in den Einstellungen | Dialog wählt den aktuellen Branch vor, kein Abruf |
+| GO16 | Basis „Lokaler Hauptbranch“, Push „beim ersten Push“, „mitnehmen“, kein worktree | Genau wie vor #1289: ein Schritt `git checkout … refs/heads/main --` (**Abnahme**) |
+| GO17 | Hauptbranch verfolgt einen anderen Remote (`upstream/main`) | Abruf und Push gehen an `upstream`, Basis „upstream/main“ |
+| GO18 | Befehlspalette „Branch anlegen …“ mit worktree | Ordner `<Eltern>\Kasse-<Name>` (ohne Issue steht der Name für `{kennung}`) |
+| GO19 | SVN-Projekt | Keine Gruppe „Git“ im Dialog |

@@ -148,6 +148,9 @@ type
     MinVcsTimeoutSeconds = 1;
     MaxVcsTimeoutSeconds = 300;
     DefaultVcsTimeoutSeconds = 15;
+    /// <summary>Vorgabe für vcs.branch.git.worktreeFolder (#1289); wie
+    /// TAtlasVcsGitBranchOptions.DefaultWorktreeFolder.</summary>
+    DefaultVcsWorktreeFolder = '..\{repo}-{kennung}';
     /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
     MaxIssuesText = 200;
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
@@ -1298,6 +1301,21 @@ type
     /// mit den Vorgaben ohne Dialog. Der Befehl „Branch anlegen …“ zeigt ihn immer. Persönlich (Registry).
     /// </summary>
     VcsBranchConfirm: Boolean;
+    /// <summary>Git: wovon der Branch abzweigt (#1289, vcs.branch.git.base): remote (vorher fetch, dann
+    /// &lt;Remote&gt;/&lt;Hauptbranch&gt;), local (lokaler Hauptbranch, sonst origin; Verhalten vor #1289) oder
+    /// current (aktueller Branch). Persönlich (Registry).</summary>
+    VcsBranchGitBase: string;
+    /// <summary>Git: later (Upstream setzt der erste Push) oder now (gleich push --set-upstream) (#1289,
+    /// vcs.branch.git.push).</summary>
+    VcsBranchGitPush: string;
+    /// <summary>Git: offene Änderungen carry (mitnehmen), stash (vorher beiseitelegen) oder ask (nachfragen)
+    /// (#1289, vcs.branch.git.uncommitted).</summary>
+    VcsBranchGitUncommitted: string;
+    /// <summary>Git: Branch in eigenem Ordner über git worktree (#1289, vcs.branch.git.worktree).</summary>
+    VcsBranchGitWorktree: Boolean;
+    /// <summary>Ordner für den worktree mit {repo}, {name}, {kennung}, relativ zur Wurzel der Arbeitskopie
+    /// (#1289, vcs.branch.git.worktreeFolder).</summary>
+    VcsBranchGitWorktreeFolder: string;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2020,6 +2038,11 @@ begin
   Result.VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
   Result.VcsProjects := '[]';
   Result.VcsBranchConfirm := True;
+  Result.VcsBranchGitBase := 'remote';
+  Result.VcsBranchGitPush := 'later';
+  Result.VcsBranchGitUncommitted := 'carry';
+  Result.VcsBranchGitWorktree := False;
+  Result.VcsBranchGitWorktreeFolder := DefaultVcsWorktreeFolder;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2110,6 +2133,12 @@ begin
   VcsProjects := Trim(VcsProjects);
   if VcsProjects = '' then
     VcsProjects := '[]';
+  VcsBranchGitBase := Choice(LowerCase(Trim(VcsBranchGitBase)), ['remote', 'local', 'current']);
+  VcsBranchGitPush := Choice(LowerCase(Trim(VcsBranchGitPush)), ['later', 'now']);
+  VcsBranchGitUncommitted := Choice(LowerCase(Trim(VcsBranchGitUncommitted)), ['carry', 'stash', 'ask']);
+  VcsBranchGitWorktreeFolder := Trim(VcsBranchGitWorktreeFolder);
+  if VcsBranchGitWorktreeFolder = '' then
+    VcsBranchGitWorktreeFolder := DefaultVcsWorktreeFolder;
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2825,6 +2854,11 @@ begin
   VcsTimeoutSeconds := AStore.ReadInteger('VcsTimeoutSeconds', Default.VcsTimeoutSeconds);
   VcsProjects := AStore.ReadString('VcsProjects', Default.VcsProjects);
   VcsBranchConfirm := AStore.ReadInteger('VcsBranchConfirm', BoolValue(Default.VcsBranchConfirm)) <> 0;
+  VcsBranchGitBase := AStore.ReadString('VcsBranchGitBase', Default.VcsBranchGitBase);
+  VcsBranchGitPush := AStore.ReadString('VcsBranchGitPush', Default.VcsBranchGitPush);
+  VcsBranchGitUncommitted := AStore.ReadString('VcsBranchGitUncommitted', Default.VcsBranchGitUncommitted);
+  VcsBranchGitWorktree := AStore.ReadInteger('VcsBranchGitWorktree', BoolValue(Default.VcsBranchGitWorktree)) <> 0;
+  VcsBranchGitWorktreeFolder := AStore.ReadString('VcsBranchGitWorktreeFolder', Default.VcsBranchGitWorktreeFolder);
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3297,6 +3331,11 @@ begin
   AStore.WriteInteger('VcsTimeoutSeconds', VcsTimeoutSeconds);
   AStore.WriteString('VcsProjects', VcsProjects);
   AStore.WriteInteger('VcsBranchConfirm', BoolValue(VcsBranchConfirm));
+  AStore.WriteString('VcsBranchGitBase', VcsBranchGitBase);
+  AStore.WriteString('VcsBranchGitPush', VcsBranchGitPush);
+  AStore.WriteString('VcsBranchGitUncommitted', VcsBranchGitUncommitted);
+  AStore.WriteInteger('VcsBranchGitWorktree', BoolValue(VcsBranchGitWorktree));
+  AStore.WriteString('VcsBranchGitWorktreeFolder', VcsBranchGitWorktreeFolder);
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);
