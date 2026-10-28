@@ -169,6 +169,7 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
@@ -1034,7 +1035,7 @@ var
     Modifiers: array[TParameterModifier] of string = ('', 'const ', 'var ', 'out ', 'constref ');
   var
     Index, Inner, Count: Integer;
-    Child, Parameter: TSyntaxNode;
+    Child, Parameter, TypeNode: TSyntaxNode;
     TypeText: string;
   begin
     Result := Default(TOverloadEntry);
@@ -1046,7 +1047,9 @@ var
       Child := AHeader[Index];
       case Child.Kind of
         TSyntaxKind.Directive:
-          if SameText(Child.Name, 'overload') then
+          // override braucht kein overload: Delphi übernimmt es von der überschriebenen Methode (mORMot2,
+          // Graphics32, #1325).
+          if SameText(Child.Name, 'overload') or SameText(Child.Name, 'override') then
             Result.HasOverload := True;
         TSyntaxKind.GenericParams:
           Result.Parameters := Result.Parameters + '<' + IntToStr(Child.ChildCount) + '>';
@@ -1056,9 +1059,11 @@ var
             Parameter := Child[Inner];
             if Parameter.Kind <> TSyntaxKind.Parameter then
               Continue;
+            // Auch offene Arrays: array of PTypeInfo ist nicht array of TValue (#1325).
+            TypeNode := TRoutineSignatures.ParameterType(Parameter);
             TypeText := '?';
-            if (Parameter.ChildCount > 0) and (Parameter[0].Kind = TSyntaxKind.TypeReference) then
-              TypeText := NodeKey(Parameter[0]);
+            if TypeNode <> nil then
+              TypeText := NodeKey(TypeNode);
             // A, B: Integer zählt als zwei Parameter.
             for Count := 1 to Length(Parameter.Name.Split([','])) do
               Result.Parameters := Result.Parameters + Modifiers[Parameter.Modifier] + TypeText + ';';
@@ -1164,8 +1169,33 @@ var
       end;
   end;
 
-  // Deklarationen eines Bereichs nach Namen; ein Rumpf zu einer früheren Deklaration (interface, forward)
-  // mit gleichen Parametern zählt nicht.
+  // Ist AEntry eine Deklaration ohne eigene Implementierung (interface-Teil, forward)?
+  function Open(const AEntry: TOverloadEntry): Boolean;
+  begin
+    Result := not TRoutineSignatures.HasImplementation(AEntry.Header.Parent);
+  end;
+
+  // Gehört die Implementierung AEntry zu einer früheren Deklaration ohne Implementierung? Mit gleichen Parametern
+  // oder in Kurzform (function Foo;) zur einzigen gleichen Namens (#1325).
+  function ImplementsEarlier(const AEntries: TArray<TOverloadEntry>; const AEntry: TOverloadEntry): Boolean;
+  var
+    mOther: TOverloadEntry;
+    mCount: Integer;
+  begin
+    mCount := 0;
+    for mOther in AEntries do
+      if SameText(mOther.Name, AEntry.Name) and Open(mOther) then
+      begin
+        if mOther.Parameters = AEntry.Parameters then
+          Exit(True);
+        Inc(mCount);
+      end;
+    Result := (mCount = 1) and TRoutineSignatures.IsShortForm(AEntry.Header);
+  end;
+
+  // Deklarationen eines Bereichs nach Namen; eine Implementierung (begin, asm oder external) zu einer früheren
+  // Deklaration (interface, forward) zählt nicht. class constructor und class destructor sind keine Überladungen
+  // der Instanzmethoden (#1325).
   procedure CheckScope(const AHeaders: TArray<TSyntaxNode>; ABodiesFollow: Boolean);
   var
     Entries, Group: TArray<TOverloadEntry>;
@@ -1177,16 +1207,12 @@ var
     Entries := nil;
     for Index := 0 to High(AHeaders) do
     begin
-      if (Pos('.', AHeaders[Index].Name) > 0) or (AHeaders[Index].Name = '') or IsOperator(AHeaders[Index]) then
+      if (Pos('.', AHeaders[Index].Name) > 0) or (AHeaders[Index].Name = '') or IsOperator(AHeaders[Index]) or
+        TRoutineSignatures.IsClassConstructor(Tokens, AHeaders[Index]) then
         Continue;
       Entry := EntryOf(AHeaders[Index]);
-      IsBody := False;
-      if ABodiesFollow and (AHeaders[Index].Parent <> nil) and (AHeaders[Index].Parent.Kind = TSyntaxKind.RoutineDecl) and
-        (AHeaders[Index].Parent.FindChild(TSyntaxKind.Block) <> nil) then
-        for Other in Entries do
-          if SameText(Other.Name, Entry.Name) and (Other.Parameters = Entry.Parameters) and
-            ((Other.Header.Parent = nil) or (Other.Header.Parent.FindChild(TSyntaxKind.Block) = nil)) then
-            IsBody := True;
+      IsBody := ABodiesFollow and (AHeaders[Index].Parent <> nil) and
+        TRoutineSignatures.HasImplementation(AHeaders[Index].Parent) and ImplementsEarlier(Entries, Entry);
       if not IsBody then
         Entries := Entries + [Entry];
     end;
