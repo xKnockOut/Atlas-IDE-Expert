@@ -172,8 +172,12 @@ type
     Starting: Boolean;
     Options: TAtlasIssuesOptions;
     VcsKind: TAtlasVcsKind;
+    /// <summary>Kennungen mit neuen Änderungen seit dem letzten Öffnen (#1271, Punkt an der Zeile).</summary>
+    Unseen: TArray<string>;
     /// <summary>Offene Issues der Liste, z. B. für „ATL-123 · 3 offen“.</summary>
     function OpenCount: Integer;
+    /// <summary>AKey trägt einen Punkt (ohne Groß-/Kleinschreibung).</summary>
+    function IsUnseen(const AKey: string): Boolean;
   end;
 
   TAtlasWelcomeIssues = class
@@ -301,6 +305,18 @@ end;
 function TAtlasIssuesView.OpenCount: Integer;
 begin
   Result := Length(Items);
+end;
+
+function TAtlasIssuesView.IsUnseen(const AKey: string): Boolean;
+var
+  mKey: string;
+begin
+  Result := False;
+  if AKey = '' then
+    Exit;
+  for mKey in Unseen do
+    if SameText(mKey, AKey) then
+      Exit(True);
 end;
 
 { TAtlasIssueStartResult }
@@ -436,6 +452,7 @@ class function TAtlasWelcomeIssues.View(const AState: TAtlasIssuesState; const A
 begin
   Result := Default(TAtlasIssuesView);
   Result.Items := nil;
+  Result.Unseen := nil;
   Result.Active := Effective(AState, ATarget.Provider, ATarget.Project, ABranch);
   if not ATarget.Configured then
   begin

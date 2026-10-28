@@ -25,6 +25,13 @@
 //   Anhangsliste: Dateien (/user-attachments/files/…) aus Beschreibung und
 //   Kommentaren gelten als Anhänge und öffnen im Browser, weil das Token nur
 //   an die API geht.
+// - Änderungen (#1271): GET /notifications?since=<Stand> über alle
+//   Repositories, bedingt mit If-Modified-Since (IAtlasCiConditional; 304 =
+//   nichts Neues), X-Poll-Interval wird zum kleinsten Abstand. Nur Issues;
+//   der Grund ("assign", "author", sonst beobachtet) entscheidet über den
+//   Umfang. Je Issue …/comments?since=<Stand> (neue Kommentare) und …/events
+//   (assigned, closed, reopened); ohne erkennbare Einzelheit bleibt eine
+//   allgemeine Änderung. Eigene Aktionen meldet GitHub ohnehin nicht.
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -46,6 +53,18 @@ type
     Sha: string;
   end;
 
+  /// <summary>Eine Benachrichtigung von /notifications (#1271).</summary>
+  TAtlasGitHubThread = record
+    /// <summary>"owner/repo".</summary>
+    Repository: string;
+    Number: Integer;
+    Title: string;
+    /// <summary>Grund wie bei GitHub: "assign", "author", "comment", "mention", "subscribed" …</summary>
+    Reason: string;
+    /// <summary>UTC.</summary>
+    Updated: TDateTime;
+  end;
+
   TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider)
   public const
     ProviderName = 'github';
@@ -57,6 +76,8 @@ type
     MaxPulls = 50;
     /// <summary>Einträge je Seite für Kommentare und Zeitleiste (#1264).</summary>
     MaxPageSize = 100;
+    /// <summary>Höchstens so viele Issues je Abfrage bekommen Kommentare und Ereignisse (#1271).</summary>
+    MaxChangedIssues = 20;
   public
     /// <summary>Basis der REST-API ohne „/“ am Ende; '' ohne Server.</summary>
     class function ApiBase(const ATarget: TAtlasTrackerTarget): string; static;
@@ -93,6 +114,24 @@ type
       static;
     /// <summary>Dateien in Beschreibung und Kommentaren als Anhänge (im Browser).</summary>
     class function FileAttachments(const ADetails: TAtlasTrackerDetails): TArray<TAtlasTrackerAttachment>; static;
+    /// <summary>ISO 8601 in UTC ("2026-10-28T10:40:49Z").</summary>
+    class function IsoTime(ATime: TDateTime): string; static;
+    /// <summary>Adresse der Benachrichtigungen ab ASince (#1271); '' ohne Server.</summary>
+    class function NotificationsUrl(const ATarget: TAtlasTrackerTarget; ASince: TDateTime): string; static;
+    /// <summary>Antwort von /notifications: nur Issues, nach ASince. False bei ungültigem JSON.</summary>
+    class function ParseNotifications(const AJson: string; ASince: TDateTime;
+      out AThreads: TArray<TAtlasGitHubThread>): Boolean; static;
+    /// <summary>Der Grund einer Benachrichtigung gehört zum Umfang: Assigned nur "assign", AssignedOrCreated dazu
+    /// "author", Watched alle.</summary>
+    class function InScope(const AReason: string; AScope: TAtlasTrackerNotifyScope): Boolean; static;
+    /// <summary>Neue Kommentare (angelegt nach ASince) aus …/comments als Änderungen an AThread. False bei
+    /// ungültigem JSON.</summary>
+    class function ParseCommentChanges(const AJson: string; const AThread: TAtlasGitHubThread; ASince: TDateTime;
+      out AChanges: TArray<TAtlasTrackerChange>): Boolean; static;
+    /// <summary>Ereignisse nach ASince aus …/events: assigned (AMe: an mich?), closed und reopened. False bei
+    /// ungültigem JSON.</summary>
+    class function ParseEventChanges(const AJson: string; const AThread: TAtlasGitHubThread; const AMe: string;
+      ASince: TDateTime; out AChanges: TArray<TAtlasTrackerChange>): Boolean; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -106,6 +145,8 @@ type
     function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
       out AError: TAtlasCiFetchError): Boolean;
+    function Changes(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
+      var APoll: TAtlasTrackerPoll; out AChanges: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -868,6 +909,255 @@ begin
     ParseTimeline(mText, ATarget.Project, mLinks) then
     ADetails.Links := mLinks;
   ADetails.Attachments := FileAttachments(ADetails);
+end;
+
+class function TAtlasGitHubTracker.IsoTime(ATime: TDateTime): string;
+begin
+  Result := FormatDateTime('yyyy"-"mm"-"dd"T"hh":"nn":"ss"Z"', ATime);
+end;
+
+class function TAtlasGitHubTracker.NotificationsUrl(const ATarget: TAtlasTrackerTarget; ASince: TDateTime): string;
+begin
+  Result := ApiBase(ATarget);
+  if Result <> '' then
+    Result := Result + '/notifications?since=' + TTextUris.PercentEncode(IsoTime(ASince)) + '&per_page=50';
+end;
+
+/// <summary>"owner/repo" und Nummer aus ".../repos/owner/repo/issues/12"; False bei anderer Adresse.</summary>
+function IssueOfApiUrl(const AUrl: string; out ARepository: string; out ANumber: Integer): Boolean;
+var
+  mParts: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := False;
+  ARepository := '';
+  ANumber := 0;
+  mParts := AUrl.Split(['/']);
+  for mIndex := 0 to High(mParts) - 4 do
+    if (mParts[mIndex] = 'repos') and (mParts[mIndex + 3] = 'issues') and
+      TryStrToInt(mParts[mIndex + 4], ANumber) and (ANumber > 0) then
+    begin
+      ARepository := mParts[mIndex + 1] + '/' + mParts[mIndex + 2];
+      Exit(True);
+    end;
+end;
+
+class function TAtlasGitHubTracker.ParseNotifications(const AJson: string; ASince: TDateTime;
+  out AThreads: TArray<TAtlasGitHubThread>): Boolean;
+var
+  mValue, mItem: TJSONValue;
+  mObject, mSubject: TJSONObject;
+  mThread: TAtlasGitHubThread;
+begin
+  AThreads := nil;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    Result := True;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONObject) then
+        Continue;
+      mObject := TJSONObject(mItem);
+      if not (mObject.Values['subject'] is TJSONObject) then
+        Continue;
+      mSubject := TJSONObject(mObject.Values['subject']);
+      // Nur Issues; Pull Requests, Releases und Diskussionen nicht.
+      if not SameText(TextOf(mSubject, 'type'), 'Issue') then
+        Continue;
+      mThread := Default(TAtlasGitHubThread);
+      if not IssueOfApiUrl(TextOf(mSubject, 'url'), mThread.Repository, mThread.Number) then
+        Continue;
+      mThread.Title := Shorten(TextOf(mSubject, 'title'), TAtlasTrackerIssue.MaxTitle);
+      mThread.Reason := LowerCase(TextOf(mObject, 'reason'));
+      mThread.Updated := TimeOf(mObject, 'updated_at');
+      if mThread.Updated > ASince then
+        AThreads := AThreads + [mThread];
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasGitHubTracker.InScope(const AReason: string; AScope: TAtlasTrackerNotifyScope): Boolean;
+begin
+  case AScope of
+    TAtlasTrackerNotifyScope.Assigned:
+      Result := SameText(AReason, 'assign');
+    TAtlasTrackerNotifyScope.AssignedOrCreated:
+      Result := SameText(AReason, 'assign') or SameText(AReason, 'author');
+  else
+    Result := True;
+  end;
+end;
+
+function ChangeOf(const AThread: TAtlasGitHubThread; AKind: TAtlasTrackerChangeKind; const AAuthor: string;
+  ATime: TDateTime): TAtlasTrackerChange;
+begin
+  Result := TAtlasTrackerChange.Create('#' + IntToStr(AThread.Number), AKind, AAuthor, ATime);
+  Result.Project := AThread.Repository;
+  Result.Title := AThread.Title;
+end;
+
+class function TAtlasGitHubTracker.ParseCommentChanges(const AJson: string; const AThread: TAtlasGitHubThread;
+  ASince: TDateTime; out AChanges: TArray<TAtlasTrackerChange>): Boolean;
+var
+  mValue, mItem: TJSONValue;
+  mTime: TDateTime;
+begin
+  AChanges := nil;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    Result := True;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONObject) then
+        Continue;
+      // since= filtert nach der letzten Bearbeitung; neu ist nur, was danach angelegt wurde.
+      mTime := TimeOf(TJSONObject(mItem), 'created_at');
+      if mTime > ASince then
+        AChanges := AChanges + [ChangeOf(AThread, TAtlasTrackerChangeKind.Comment,
+          LoginOf(TJSONObject(mItem).Values['user']), mTime)];
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasGitHubTracker.ParseEventChanges(const AJson: string; const AThread: TAtlasGitHubThread;
+  const AMe: string; ASince: TDateTime; out AChanges: TArray<TAtlasTrackerChange>): Boolean;
+var
+  mValue, mItem: TJSONValue;
+  mObject: TJSONObject;
+  mEvent: string;
+  mChange: TAtlasTrackerChange;
+  mTime: TDateTime;
+begin
+  AChanges := nil;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    Result := True;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONObject) then
+        Continue;
+      mObject := TJSONObject(mItem);
+      mTime := TimeOf(mObject, 'created_at');
+      if mTime <= ASince then
+        Continue;
+      mEvent := LowerCase(TextOf(mObject, 'event'));
+      if mEvent = 'assigned' then
+      begin
+        mChange := ChangeOf(AThread, TAtlasTrackerChangeKind.Assigned, LoginOf(mObject.Values['actor']), mTime);
+        mChange.Value := LoginOf(mObject.Values['assignee']);
+        mChange.ToMe := (AMe <> '') and SameText(mChange.Value, AMe);
+      end
+      else if (mEvent = 'closed') or (mEvent = 'reopened') then
+      begin
+        mChange := ChangeOf(AThread, TAtlasTrackerChangeKind.State, LoginOf(mObject.Values['actor']), mTime);
+        // Zustand wie bei GitHub; die Oberfläche übersetzt "closed" und "open".
+        if mEvent = 'closed' then
+          mChange.Value := 'closed'
+        else
+          mChange.Value := 'open';
+      end
+      else
+        Continue;
+      AChanges := AChanges + [mChange];
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+function TAtlasGitHubTracker.Changes(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  ATimeoutMs: Integer; var APoll: TAtlasTrackerPoll; out AChanges: TArray<TAtlasTrackerChange>;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mWatch: TStopwatch;
+  mConditional: IAtlasCiConditional;
+  mStatus, mPoll, mCount, mIndex: Integer;
+  mText, mLastModified, mBase, mIssueUrl: string;
+  mThreads: TArray<TAtlasGitHubThread>;
+  mThread: TAtlasGitHubThread;
+  mFound, mMore: TArray<TAtlasTrackerChange>;
+  mIgnored: TAtlasCiFetchError;
+  mAnswered: Boolean;
+begin
+  AChanges := nil;
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mBase := ApiBase(ATarget);
+  if (mBase = '') or (ATransport = nil) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  mWatch := TStopwatch.StartNew;
+  mPoll := 0;
+  mLastModified := '';
+  if Supports(ATransport, IAtlasCiConditional, mConditional) then
+    mAnswered := mConditional.GetConditional(NotificationsUrl(ATarget, APoll.Since), APoll.LastModified, ATimeoutMs,
+      mStatus, mText, mLastModified, mPoll, AError)
+  else
+    mAnswered := ATransport.Get(NotificationsUrl(ATarget, APoll.Since), ATimeoutMs, mStatus, mText, AError);
+  if not mAnswered then
+    Exit;
+  if mPoll > 0 then
+    APoll.PollSeconds := mPoll;
+  // Unverändert seit der letzten Antwort.
+  if mStatus = 304 then
+    Exit(True);
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParseNotifications(mText, APoll.Since, mThreads) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  if mLastModified <> '' then
+    APoll.LastModified := mLastModified;
+  Result := True;
+  mCount := 0;
+  for mThread in mThreads do
+  begin
+    if mThread.Updated > APoll.Latest then
+      APoll.Latest := mThread.Updated;
+    if not InScope(mThread.Reason, APoll.Scope) or (mCount >= MaxChangedIssues) then
+      Continue;
+    Inc(mCount);
+    mFound := nil;
+    mIssueUrl := mBase + '/repos/' + TTextUris.PercentEncode(mThread.Repository) + '/issues/' +
+      IntToStr(mThread.Number);
+    if (Remaining(mWatch, ATimeoutMs) > 0) and ATransport.Get(mIssueUrl + '/comments?since=' +
+      TTextUris.PercentEncode(IsoTime(APoll.Since)) + '&per_page=' + IntToStr(MaxPageSize),
+      Remaining(mWatch, ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and
+      ParseCommentChanges(mText, mThread, APoll.Since, mMore) then
+      mFound := mFound + mMore;
+    if (Remaining(mWatch, ATimeoutMs) > 0) and ATransport.Get(mIssueUrl + '/events?per_page=' +
+      IntToStr(MaxPageSize), Remaining(mWatch, ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and
+      ParseEventChanges(mText, mThread, APoll.Me, APoll.Since, mMore) then
+      mFound := mFound + mMore;
+    // Nichts Erkennbares (z. B. Erwähnung, ältere Ereignisse auf späteren Seiten): allgemeine Änderung.
+    if Length(mFound) = 0 then
+      mFound := [ChangeOf(mThread, TAtlasTrackerChangeKind.Other, '', mThread.Updated)];
+    AChanges := AChanges + mFound;
+  end;
+  // Auch ein Kommentar, den GitHub später stempelt als die Benachrichtigung, kommt nicht noch einmal.
+  for mIndex := 0 to High(AChanges) do
+    if AChanges[mIndex].Time > APoll.Latest then
+      APoll.Latest := AChanges[mIndex].Time;
 end;
 
 end.

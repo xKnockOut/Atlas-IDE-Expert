@@ -32,6 +32,10 @@
 //   das Issue im Fenster „Atlas-Issue“ (TAtlasIdeIssuePreview, Zwischenspeicher
 //   %LOCALAPPDATA%\Atlas\issues), Strg+Klick öffnet den Browser; Befehl
 //   Atlas.IssueShow fragt nach einer Kennung (ShowPreviewPrompt).
+// - Meldungen zu meinen Issues (#1271, issues.notify): TAtlasIdeIssueNotify
+//   fragt den Tracker des aktuellen Projekts und die persönlichen
+//   Verbindungen ab; Issues mit neuen Änderungen tragen bis zum Öffnen einen
+//   Punkt (Zeile und Titel des Bereichs). Öffnen des Bereichs fragt sofort.
 // - Protokoll anonym: nur Anbieter, Anzahl, Ergebnis und Fehlerart, nie
 //   Adresse, Projekt, Kennung, Titel oder Token.
 // Anbieter, Transport (mit Token aus dem Anmeldespeicher) und Zugangsdialog
@@ -52,6 +56,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Issues,
   Atlas.IDE.Tracker.IssuePreview,
+  Atlas.IDE.Tracker.Notify,
   Atlas.IDE.Welcome.Projects;
 
 type
@@ -105,6 +110,8 @@ type
     FOnSettings: TProc;
     FPreview: TAtlasIdeIssuePreview;
     FPreviewRef: IInterface;
+    FNotify: TAtlasIdeIssueNotify;
+    FNotifyRef: IInterface;
     FLine: TAtlasStatusLine;
     FLineRef: IAtlasStatusItem;
     FWatch: TTimer;
@@ -147,8 +154,14 @@ type
     procedure RegisterSection;
     procedure RegisterIssueLinks;
     procedure StartPreview;
+    procedure StartNotify;
+    function NotifyTargets: TArray<TAtlasTrackerTarget>;
+    procedure OpenNotified(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime);
+    function UnseenOf(const ATarget: TAtlasTrackerTarget): TArray<string>;
     function ActiveTarget(out ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
     class function NowUtc: TDateTime; static;
+    /// <summary>%LOCALAPPDATA%\Atlas\issues: Zwischenspeicher der Vorschau und notify.json.</summary>
+    class function IssuesFolder: string; static;
   public
     /// <summary>AProjects: Bereich „Projekte“ (Liste, Auswahl, Öffnen, Stand der Versionsverwaltung). AMessage:
     /// Zeile in die Meldungsansicht.</summary>
@@ -173,6 +186,8 @@ type
     procedure ShowPreviewPrompt;
     /// <summary>Vorschau-Steuerung (nil vor Start bzw. nach Stop).</summary>
     property IssuePreview: TAtlasIdeIssuePreview read FPreview;
+    /// <summary>Meldungen zu meinen Issues (#1271; nil vor Start bzw. nach Stop).</summary>
+    property IssueNotify: TAtlasIdeIssueNotify read FNotify;
     property ProviderFactory: TAtlasTrackerProviderHook read FProviderFactory write FProviderFactory;
     property TransportFactory: TAtlasTrackerTransportHook read FTransportFactory write FTransportFactory;
     property OnCredentials: TAtlasTrackerCredentialsHook read FOnCredentials write FOnCredentials;
@@ -212,6 +227,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Tracker.CommitHook,
+  Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Tracker.Preview,
   Atlas.Core.Vcs.Contract,
@@ -261,6 +277,11 @@ begin
   Result := TTimeZone.Local.ToUniversalTime(Now);
 end;
 
+class function TAtlasIdeIssues.IssuesFolder: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'issues');
+end;
+
 procedure TAtlasIdeIssues.Start;
 var
   Keep: IAtlasIssuesSource;
@@ -282,6 +303,7 @@ begin
   FTitle := '';
   RegisterIssueLinks;
   StartPreview;
+  StartNotify;
   Refresh;
 end;
 
@@ -334,10 +356,116 @@ begin
       if (mKeep <> nil) and Assigned(mOwner.FOnSettings) then
         mOwner.FOnSettings();
     end;
-  FPreview := TAtlasIdeIssuePreview.Create(mHooks,
-    TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'issues'));
+  FPreview := TAtlasIdeIssuePreview.Create(mHooks, IssuesFolder);
   FPreviewRef := FPreview;
   FPreview.Start;
+end;
+
+procedure TAtlasIdeIssues.StartNotify;
+var
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
+  mHooks: TAtlasIssueNotifyHooks;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  mHooks := Default(TAtlasIssueNotifyHooks);
+  mHooks.Provider :=
+    function(const AName: string): IAtlasTrackerProvider
+    begin
+      Result := nil;
+      if mKeep <> nil then
+        Result := mOwner.ProviderOf(AName);
+    end;
+  mHooks.Transport :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    var
+      mFactory: TAtlasTrackerTransportHook;
+    begin
+      Result := nil;
+      mFactory := mOwner.FTransportFactory;
+      if (mKeep <> nil) and Assigned(mFactory) then
+        Result := mFactory(AProvider, ATarget);
+    end;
+  mHooks.Targets :=
+    function: TArray<TAtlasTrackerTarget>
+    begin
+      Result := nil;
+      if mKeep <> nil then
+        Result := mOwner.NotifyTargets;
+    end;
+  mHooks.Open :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime)
+    begin
+      if mKeep <> nil then
+        mOwner.OpenNotified(ATarget, AKey, AAnchor);
+    end;
+  mHooks.Settings :=
+    procedure
+    begin
+      if (mKeep <> nil) and Assigned(mOwner.FOnSettings) then
+        mOwner.FOnSettings();
+    end;
+  mHooks.Changed :=
+    procedure
+    begin
+      if mKeep <> nil then
+      begin
+        mOwner.RegisterSection;
+        mOwner.Changed;
+      end;
+    end;
+  FNotify := TAtlasIdeIssueNotify.Create(mHooks, IssuesFolder);
+  FNotifyRef := FNotify;
+  FNotify.Start;
+end;
+
+function TAtlasIdeIssues.NotifyTargets: TArray<TAtlasTrackerTarget>;
+var
+  mConnection: TAtlasTrackerConnection;
+  mTarget: TAtlasTrackerTarget;
+begin
+  Result := nil;
+  if not FStarted then
+    Exit;
+  // Der Tracker des aktuellen Projekts, dann die persönlichen Verbindungen (je Server zählt die erste).
+  mTarget := TargetOf(CurrentProject);
+  if mTarget.Server <> '' then
+    Result := Result + [mTarget];
+  for mConnection in TAtlasTrackerConnections.Read(TAtlasIdeSettings.Current.IssuesConnections) do
+  begin
+    mTarget := mConnection.Target;
+    if mTarget.Server <> '' then
+      Result := Result + [mTarget];
+  end;
+end;
+
+procedure TAtlasIdeIssues.OpenNotified(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime);
+var
+  mProvider: IAtlasTrackerProvider;
+  mUrl: string;
+begin
+  if not FStarted then
+    Exit;
+  // Mit issues.preview in „Atlas-Issue“ am ersten neuen Kommentar, sonst im Browser.
+  if (FPreview <> nil) and TAtlasIdeIssuePreview.Active then
+  begin
+    FPreview.Show(ATarget, AKey, AAnchor);
+    Exit;
+  end;
+  mProvider := ProviderOf(ATarget.Provider);
+  if mProvider = nil then
+    Exit;
+  mUrl := mProvider.IssuePage(ATarget, AKey);
+  if mUrl.StartsWith('https://', True) or mUrl.StartsWith('http://', True) then
+    ShellExecute(0, 'open', PChar(mUrl), nil, nil, SW_SHOWNORMAL);
+end;
+
+function TAtlasIdeIssues.UnseenOf(const ATarget: TAtlasTrackerTarget): TArray<string>;
+begin
+  Result := nil;
+  if FNotify <> nil then
+    Result := FNotify.Unseen(ATarget);
 end;
 
 procedure TAtlasIdeIssues.RegisterIssueLinks;
@@ -375,6 +503,10 @@ begin
     FPreview.Stop;
   FPreview := nil;
   FPreviewRef := nil;
+  if FNotify <> nil then
+    FNotify.Stop;
+  FNotify := nil;
+  FNotifyRef := nil;
   FreeAndNil(FWatch);
   RemoveStatus;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Issues);
@@ -412,7 +544,8 @@ begin
   if FStarted and Active then
     Project := CurrentProject;
   Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.Issues,
-    TAtlasWelcomeIssuesFrame.TitleText(ProjectName(Project)), Order, TAtlasWelcomeColumn.Right,
+    TAtlasWelcomeIssuesFrame.TitleText(ProjectName(Project), (Project <> '') and
+    (Length(UnseenOf(TargetOf(Project))) > 0)), Order, TAtlasWelcomeColumn.Right,
     function: Boolean
     begin
       Result := Active;
@@ -443,6 +576,9 @@ begin
     Exit;
   // Einstellungen geändert (Anbieter, Abfrage): .atlas und Ziel neu.
   FTargets.Clear;
+  // issues.notify umgeschaltet, Abstand oder Umfang geändert.
+  if FNotify <> nil then
+    FNotify.Refresh;
   Title := FTitle;
   RegisterSection;
   if Title <> FTitle then
@@ -632,6 +768,7 @@ begin
   Result.Options := Options;
   if FProjects <> nil then
     Result.VcsKind := TAtlasWelcomeIssues.VcsKindOf(FProjects.VcsOf(AProject).Kind);
+  Result.Unseen := UnseenOf(Target);
 end;
 
 function TAtlasIdeIssues.View: TAtlasIssuesView;
@@ -644,8 +781,8 @@ begin
     Exit;
   Project := CurrentProject;
   Result := ViewOf(Project);
-  // Anderes Projekt: Titel „Meine Issues · <Projekt>“ nachziehen, nicht mitten im Zeichnen.
-  if TAtlasWelcomeIssuesFrame.TitleText(Result.ProjectName) <> FTitle then
+  // Anderes Projekt oder Punkt (#1271): Titel „Meine Issues · <Projekt>“ nachziehen, nicht mitten im Zeichnen.
+  if TAtlasWelcomeIssuesFrame.TitleText(Result.ProjectName, Length(Result.Unseen) > 0) <> FTitle then
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
@@ -656,6 +793,9 @@ end;
 procedure TAtlasIdeIssues.Shown;
 begin
   Fetch(False);
+  // Meldungen zu meinen Issues: beim Öffnen des Bereichs gleich nachsehen (höchstens einmal je Minute).
+  if FNotify <> nil then
+    FNotify.PollNow;
 end;
 
 class procedure TAtlasIdeIssues.Deliver(const AKeep: IAtlasIssuesSource; AOwner: TAtlasIdeIssues;
@@ -1131,6 +1271,8 @@ begin
       if Provider = nil then
         Exit;
       Url := Provider.IssuePage(Target, Issue.Key);
+      if FNotify <> nil then
+        FNotify.Seen(Target, Issue.Key);
       // Nur Web-Adressen aus der eingetragenen Adresse, nie etwas aus der Antwort des Trackers.
       if Url.StartsWith('https://', True) or Url.StartsWith('http://', True) then
         ShellExecute(0, 'open', PChar(Url), nil, nil, SW_SHOWNORMAL);
@@ -1144,10 +1286,21 @@ begin
   mIssue := AIssue;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
+    var
+      mTarget: TAtlasTrackerTarget;
+      mAnchor: TDateTime;
     begin
       if not FStarted or (FPreview = nil) or not TAtlasIdeIssuePreview.Active then
         Exit;
-      FPreview.Show(TargetOf(CurrentProject), mIssue.Key);
+      mTarget := TargetOf(CurrentProject);
+      // Mit Punkt (#1271): am ersten neuen Kommentar öffnen, der Punkt verschwindet.
+      mAnchor := 0;
+      if FNotify <> nil then
+      begin
+        mAnchor := FNotify.AnchorOf(mTarget, mIssue.Key);
+        FNotify.Seen(mTarget, mIssue.Key);
+      end;
+      FPreview.Show(mTarget, mIssue.Key, mAnchor);
     end);
 end;
 

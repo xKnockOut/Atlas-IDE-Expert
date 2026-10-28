@@ -146,6 +146,15 @@ type
     DefaultIssuesCommitPattern = '{kennung} ';
     /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
     MaxIssuesText = 200;
+    /// <summary>Grenzen und Vorgabe von issues.notify.intervalMinutes (#1271); wie TAtlasTrackerNotify.MinInterval
+    /// und DefaultInterval (Test prüft Gleichheit).</summary>
+    MinIssuesNotifyMinutes = 2;
+    MaxIssuesNotifyMinutes = 1440;
+    DefaultIssuesNotifyMinutes = 10;
+    /// <summary>Werte von issues.notify.scope (#1271); wie TAtlasTrackerNotify.ScopeName.</summary>
+    IssuesNotifyAssigned = 'assigned';
+    IssuesNotifyAssignedOrCreated = 'assignedOrCreated';
+    IssuesNotifyWatched = 'watched';
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
     BeginEndAlways = 'always';
     BeginEndMultiLine = 'multiLine';
@@ -1279,6 +1288,16 @@ type
     /// <summary>Kommentare in der Vorschau laden und zeigen (#1264, issues.preview.comments); aus = nicht abgefragt.
     /// </summary>
     IssuesPreviewComments: Boolean;
+    /// <summary>Änderungen an meinen Issues melden (#1271, issues.notify): Atlas fragt jede Tracker-Verbindung alle
+    /// IssuesNotifyIntervalMinutes und meldet neue Kommentare, Zuweisungen und Zustandswechsel in der
+    /// Benachrichtigungszentrale; aus (Vorgabe) = keine Abfrage.</summary>
+    IssuesNotify: Boolean;
+    /// <summary>Abstand der Abfrage in Minuten (#1271, issues.notify.intervalMinutes), MinIssuesNotifyMinutes bis
+    /// MaxIssuesNotifyMinutes.</summary>
+    IssuesNotifyIntervalMinutes: Integer;
+    /// <summary>Beobachtete Issues (#1271, issues.notify.scope): IssuesNotifyAssigned, IssuesNotifyAssignedOrCreated
+    /// (Vorgabe) oder IssuesNotifyWatched.</summary>
+    IssuesNotifyScope: string;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -1432,6 +1451,16 @@ begin
   Result := LowerCase(Trim(AText));
   if (Result <> 'github') and (Result <> 'youtrack') then
     Result := '';
+end;
+
+function NormalizedIssuesNotifyScope(const AText: string): string;
+begin
+  if SameText(Trim(AText), TAtlasPluginSettings.IssuesNotifyAssigned) then
+    Result := TAtlasPluginSettings.IssuesNotifyAssigned
+  else if SameText(Trim(AText), TAtlasPluginSettings.IssuesNotifyWatched) then
+    Result := TAtlasPluginSettings.IssuesNotifyWatched
+  else
+    Result := TAtlasPluginSettings.IssuesNotifyAssignedOrCreated;
 end;
 
 function NormalizedIssuesStart(const AText: string): string;
@@ -1996,6 +2025,9 @@ begin
   Result.IssuesConnections := '[]';
   Result.IssuesPreview := True;
   Result.IssuesPreviewComments := True;
+  Result.IssuesNotify := False;
+  Result.IssuesNotifyIntervalMinutes := DefaultIssuesNotifyMinutes;
+  Result.IssuesNotifyScope := IssuesNotifyAssignedOrCreated;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2074,6 +2106,9 @@ begin
   IssuesConnections := Trim(IssuesConnections);
   if IssuesConnections = '' then
     IssuesConnections := '[]';
+  IssuesNotifyIntervalMinutes := EnsureRange(IssuesNotifyIntervalMinutes, MinIssuesNotifyMinutes,
+    MaxIssuesNotifyMinutes);
+  IssuesNotifyScope := NormalizedIssuesNotifyScope(IssuesNotifyScope);
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2784,6 +2819,10 @@ begin
   IssuesConnections := AStore.ReadString('IssuesConnections', Default.IssuesConnections);
   IssuesPreview := AStore.ReadInteger('IssuesPreview', BoolValue(Default.IssuesPreview)) <> 0;
   IssuesPreviewComments := AStore.ReadInteger('IssuesPreviewComments', BoolValue(Default.IssuesPreviewComments)) <> 0;
+  IssuesNotify := AStore.ReadInteger('IssuesNotify', BoolValue(Default.IssuesNotify)) <> 0;
+  IssuesNotifyIntervalMinutes := AStore.ReadInteger('IssuesNotifyIntervalMinutes',
+    Default.IssuesNotifyIntervalMinutes);
+  IssuesNotifyScope := AStore.ReadString('IssuesNotifyScope', Default.IssuesNotifyScope);
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3251,6 +3290,9 @@ begin
   AStore.WriteString('IssuesConnections', IssuesConnections);
   AStore.WriteInteger('IssuesPreview', BoolValue(IssuesPreview));
   AStore.WriteInteger('IssuesPreviewComments', BoolValue(IssuesPreviewComments));
+  AStore.WriteInteger('IssuesNotify', BoolValue(IssuesNotify));
+  AStore.WriteInteger('IssuesNotifyIntervalMinutes', IssuesNotifyIntervalMinutes);
+  AStore.WriteString('IssuesNotifyScope', IssuesNotifyScope);
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

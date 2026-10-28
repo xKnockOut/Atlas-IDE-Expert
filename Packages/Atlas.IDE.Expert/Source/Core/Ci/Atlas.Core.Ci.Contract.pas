@@ -122,6 +122,16 @@ type
     procedure Cancel;
   end;
 
+  /// <summary>Bedingte Abfrage (#1271, GitHub /notifications): sendet If-Modified-Since und liest Last-Modified und
+  /// X-Poll-Interval aus der Antwort, unter denselben Regeln wie IAtlasCiTransport.Get.</summary>
+  IAtlasCiConditional = interface
+    ['{E2A7C953-4B18-4D6F-9C31-7F5A0B2D8E46}']
+    /// <summary>GET auf AUrl; AIfModifiedSince '' = ohne Bedingung. 304 heißt „unverändert“ (AText leer).
+    /// ALastModified ist der Kopf Last-Modified ('' ohne), APollSeconds X-Poll-Interval (0 ohne).</summary>
+    function GetConditional(const AUrl, AIfModifiedSince: string; ATimeoutMs: Integer; out AStatus: Integer;
+      out AText, ALastModified: string; out APollSeconds: Integer; out AError: TAtlasCiFetchError): Boolean;
+  end;
+
   IAtlasCiProvider = interface
     ['{9A4D7E12-5B3C-4E81-8F6A-1D2C7B9E4F30}']
     /// <summary>Kennung wie in .atlas, z. B. "jenkins".</summary>
