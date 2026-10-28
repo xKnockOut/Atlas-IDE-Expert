@@ -726,8 +726,6 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.EndDialog.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Board.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Sprint.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrackBoard.pas"/>
-        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHubBoard.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Board.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Sprint.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.BoardFrame.pas"/>

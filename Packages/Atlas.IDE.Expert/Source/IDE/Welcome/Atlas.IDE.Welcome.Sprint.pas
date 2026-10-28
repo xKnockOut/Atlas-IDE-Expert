@@ -383,7 +383,7 @@ begin
   mProvider := nil;
   if Assigned(FHooks.Provider) then
     mProvider := FHooks.Provider(mTarget.Provider);
-  mBoards := TAtlasIdeBoard.BoardsOf(mTarget);
+  mBoards := TAtlasIdeBoard.BoardsOf(mProvider);
   if (mProvider = nil) or (mBoards = nil) then
     Exit;
   mTransport := nil;
@@ -541,8 +541,8 @@ begin
     Result.Status := TAtlasSprintTileStatus.NoProject;
     Exit;
   end;
-  if (mTarget.Server = '') or not Assigned(FHooks.Provider) or (FHooks.Provider(mTarget.Provider) = nil) or
-    (TAtlasIdeBoard.BoardsOf(mTarget) = nil) then
+  if (mTarget.Server = '') or not Assigned(FHooks.Provider) or
+    (TAtlasIdeBoard.BoardsOf(FHooks.Provider(mTarget.Provider)) = nil) then
   begin
     Result.Status := TAtlasSprintTileStatus.NoTracker;
     Exit;

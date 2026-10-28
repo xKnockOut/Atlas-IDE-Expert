@@ -444,8 +444,6 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Links.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Board.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Sprint.pas"/>
-        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrackBoard.pas"/>
-        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHubBoard.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.LinkDialogs.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas">
             <Form>AtlasIssueFrame</Form>
