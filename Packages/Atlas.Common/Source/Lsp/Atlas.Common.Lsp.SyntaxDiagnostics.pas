@@ -137,6 +137,7 @@ type
     FProviders: TSyntaxDiagnosticsProviders;
     FPullMode: Boolean;
     FOnPullChanged: TProc;
+    FOnPullFilesChanged: TProc<TArray<string>>;
     procedure HandleDocumentEvent(AKind: TDocumentEventKind; const ADocument: ITextDocument);
     procedure ScheduleParse(const ADocument: ITextDocument);
     procedure Publish(const ADocument: ITextDocument);
@@ -219,6 +220,9 @@ type
     /// stattdessen OnPullChanged aufrufen.</summary>
     property PullMode: Boolean read FPullMode write FPullMode;
     property OnPullChanged: TProc read FOnPullChanged write FOnPullChanged;
+    /// <summary>Im Pull-Modus statt OnPullChanged bei RefreshFiles: nur diese Dateien sind betroffen (#1247).
+    /// </summary>
+    property OnPullFilesChanged: TProc<TArray<string>> read FOnPullFilesChanged write FOnPullFilesChanged;
   end;
 
 implementation
@@ -485,7 +489,9 @@ var
 begin
   if FPullMode then
   begin
-    if Assigned(FOnPullChanged) then
+    if Assigned(FOnPullFilesChanged) then
+      FOnPullFilesChanged(AFileNames)
+    else if Assigned(FOnPullChanged) then
       FOnPullChanged();
     Exit;
   end;
