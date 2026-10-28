@@ -23,7 +23,8 @@
 //     AccentSoft), Verweise in Akzentfarbe, unterstrichen und anklickbar, wenn der
 //     Server den Fundort kennt; Links öffnen den Browser; Codeblöcke eingefärbt
 //     auf schattierter, gerahmter Fläche; Listen mit hängendem Einzug je Ebene;
-//     Tabellen zweispaltig.
+//     Tabellen zweispaltig. Eine Listenmarke mit Ziel (Kästchen einer
+//     Checkliste in der Issue-Vorschau, #1273) ist ein Link in Akzentfarbe.
 //   - Begründungen (#1123) unter BEGRÜNDUNG nach allen XMLDoc-Abschnitten: je
 //     Eintrag Marke (Editorschrift, halbfett, Akzent) und Text. Zugeklappt die
 //     ersten MaxRationale, der Rest hinter „Mehr anzeigen“ („2 weitere
@@ -917,7 +918,17 @@ begin
           OpenLine;
           if Run.Text <> '' then
           begin
-            AddSpan(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold), TAtlasDocColor.Muted, False, -1);
+            // Marke mit Ziel (Kästchen einer Checkliste, #1273): anklickbar in Akzentfarbe, ohne Unterstrich.
+            if Run.Target <> '' then
+            begin
+              Link := Default(TAtlasDocLink);
+              Link.Kind := TAtlasDocLinkKind.Url;
+              Link.Url := Run.Target;
+              AddSpan(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold), TAtlasDocColor.Accent, False,
+                AddLink(Link));
+            end
+            else
+              AddSpan(Run.Text, TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold), TAtlasDocColor.Muted, False, -1);
             // Fester Platz für die Marke, damit die Texte der Punkte bündig stehen.
             Bullet := Max(FMeasure(Run.Text + ' ', TAtlasDocFace.Create(TAtlasDocFont.UI, Run.Bold)),
               FMeasure('00. ', TAtlasDocFace.Create(TAtlasDocFont.UI)));

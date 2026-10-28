@@ -111,6 +111,24 @@ type
     procedure DetailsErrors;
   end;
 
+  /// <summary>Checklisten (#1273): Beschreibung ungekürzt lesen und zurückschreiben (GitHub PATCH, YouTrack POST).
+  /// </summary>
+  [TestFixture]
+  TAtlasTrackerDescriptionsTests = class
+  public
+    [Test]
+    procedure GitHubParseAndJson;
+    [Test]
+    procedure GitHubReadAndWrite;
+    [Test]
+    procedure YouTrackParseUrlAndJson;
+    [Test]
+    procedure YouTrackReadAndWrite;
+    /// <summary>Ohne Schreibrecht (403) bzw. ohne schreibenden Transport.</summary>
+    [Test]
+    procedure WriteErrors;
+  end;
+
   [TestFixture]
   TAtlasCommitHookTests = class
   private
@@ -874,12 +892,156 @@ begin
   Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
 end;
 
+type
+  /// <summary>Wie TFakeTransport, schreibt aber auch (IAtlasCiSend) und merkt sich Methode, Adresse und Inhalt.
+  /// </summary>
+  TFakeSendTransport = class(TFakeTransport, IAtlasCiSend)
+  public
+    SendStatus: Integer;
+    SendFail: TAtlasCiFetchError;
+    Method: string;
+    Url: string;
+    Body: string;
+    constructor Create;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
+      out AError: TAtlasCiFetchError): Boolean;
+  end;
+
+constructor TFakeSendTransport.Create;
+begin
+  inherited Create;
+  SendStatus := 200;
+end;
+
+function TFakeSendTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
+  out AText: string; out AError: TAtlasCiFetchError): Boolean;
+begin
+  Method := AMethod;
+  Url := AUrl;
+  Body := ABody;
+  AText := '{}';
+  AStatus := SendStatus;
+  AError := SendFail;
+  Result := SendFail = TAtlasCiFetchError.None;
+end;
+
+{ TAtlasTrackerDescriptionsTests }
+
+procedure TAtlasTrackerDescriptionsTests.GitHubParseAndJson;
+var
+  mText: string;
+begin
+  Assert.IsTrue(TAtlasGitHubTracker.ParseBody('{"number":7,"body":"- [ ] a\r\n- [x] b"}', mText));
+  Assert.AreEqual('- [ ] a'#13#10'- [x] b', mText, 'Zeilenenden bleiben');
+  Assert.IsTrue(TAtlasGitHubTracker.ParseBody('{"number":7,"body":null}', mText), 'ohne Beschreibung');
+  Assert.AreEqual('', mText);
+  Assert.IsFalse(TAtlasGitHubTracker.ParseBody('{"body":"x"}', mText), 'kein Issue');
+  Assert.IsFalse(TAtlasGitHubTracker.ParseBody('kein JSON', mText));
+  Assert.AreEqual('{"body":"- [x] a\r\n\"b\""}', TAtlasGitHubTracker.BodyJson('- [x] a'#13#10'"b"'));
+end;
+
+procedure TAtlasTrackerDescriptionsTests.GitHubReadAndWrite;
+var
+  mTransport: TFakeSendTransport;
+  mTransportRef: IAtlasCiTransport;
+  mEditor: IAtlasTrackerDescriptions;
+  mText: string;
+  mError: TAtlasCiFetchError;
+begin
+  mEditor := TAtlasGitHubTracker.Create;
+  mTransport := TFakeSendTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/753', 200,
+    '{"number":753,"body":"- [ ] a"}');
+  Assert.IsTrue(mEditor.Description(GitHubTarget, mTransportRef, '#753', 5000, mText, mError));
+  Assert.AreEqual('- [ ] a', mText);
+  Assert.IsTrue(mEditor.UpdateDescription(GitHubTarget, mTransportRef, '#753', '- [x] a', 5000, mError));
+  Assert.AreEqual('PATCH', mTransport.Method);
+  Assert.AreEqual('https://api.github.com/repos/beispiel/atlas/issues/753', mTransport.Url);
+  Assert.AreEqual('{"body":"- [x] a"}', mTransport.Body);
+end;
+
+procedure TAtlasTrackerDescriptionsTests.YouTrackParseUrlAndJson;
+var
+  mText: string;
+begin
+  Assert.AreEqual('https://beispiel.youtrack.cloud/api/issues/ATL-131?fields=idReadable%2Cdescription',
+    TAtlasYouTrackTracker.IssueUrl(YouTrackTarget, 'ATL-131', 'idReadable,description'));
+  Assert.AreEqual('', TAtlasYouTrackTracker.IssueUrl(YouTrackTarget, 'ATL 131', 'idReadable'), 'ungültige Kennung');
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseDescription('{"idReadable":"ATL-131","description":"* [x] a\nb"}',
+    mText));
+  Assert.AreEqual('* [x] a'#10'b', mText);
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseDescription('{"idReadable":"ATL-131","description":null}', mText));
+  Assert.AreEqual('', mText);
+  Assert.IsFalse(TAtlasYouTrackTracker.ParseDescription('{"description":"x"}', mText), 'kein Issue');
+  Assert.AreEqual('{"description":"1. [ ] a"}', TAtlasYouTrackTracker.DescriptionJson('1. [ ] a'));
+end;
+
+procedure TAtlasTrackerDescriptionsTests.YouTrackReadAndWrite;
+var
+  mTransport: TFakeSendTransport;
+  mTransportRef: IAtlasCiTransport;
+  mEditor: IAtlasTrackerDescriptions;
+  mText: string;
+  mError: TAtlasCiFetchError;
+begin
+  mEditor := TAtlasYouTrackTracker.Create;
+  mTransport := TFakeSendTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://beispiel.youtrack.cloud/api/issues/ATL-131?fields=idReadable%2Cdescription', 200,
+    '{"idReadable":"ATL-131","description":"- [ ] a"}');
+  Assert.IsTrue(mEditor.Description(YouTrackTarget, mTransportRef, 'ATL-131', 5000, mText, mError));
+  Assert.AreEqual('- [ ] a', mText);
+  Assert.IsTrue(mEditor.UpdateDescription(YouTrackTarget, mTransportRef, 'ATL-131', '- [x] a', 5000, mError));
+  Assert.AreEqual('POST', mTransport.Method);
+  Assert.AreEqual('https://beispiel.youtrack.cloud/api/issues/ATL-131?fields=idReadable', mTransport.Url);
+  Assert.AreEqual('{"description":"- [x] a"}', mTransport.Body);
+end;
+
+procedure TAtlasTrackerDescriptionsTests.WriteErrors;
+var
+  mTransport: TFakeSendTransport;
+  mTransportRef: IAtlasCiTransport;
+  mReadOnly: TFakeTransport;
+  mReadOnlyRef: IAtlasCiTransport;
+  mEditor: IAtlasTrackerDescriptions;
+  mText: string;
+  mError: TAtlasCiFetchError;
+begin
+  mEditor := TAtlasGitHubTracker.Create;
+  mTransport := TFakeSendTransport.Create;
+  mTransportRef := mTransport;
+  // Kein Schreibrecht: 403 heißt Unauthorized.
+  mTransport.SendStatus := 403;
+  Assert.IsFalse(mEditor.UpdateDescription(GitHubTarget, mTransportRef, '#753', 'x', 5000, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
+  // Transport lehnt ab (ohne Token, anderer Server).
+  mTransport.SendStatus := 200;
+  mTransport.SendFail := TAtlasCiFetchError.Unauthorized;
+  Assert.IsFalse(mEditor.UpdateDescription(GitHubTarget, mTransportRef, '#753', 'x', 5000, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
+  // Transport ohne IAtlasCiSend: nicht einstellbar.
+  mReadOnly := TFakeTransport.Create;
+  mReadOnlyRef := mReadOnly;
+  Assert.IsFalse(mEditor.UpdateDescription(GitHubTarget, mReadOnlyRef, '#753', 'x', 5000, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
+  // Lesen: unbekanntes Issue, zu lange Beschreibung.
+  Assert.IsFalse(mEditor.Description(GitHubTarget, mReadOnlyRef, '#9', 5000, mText, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotFound);
+  mReadOnly.Answer('https://api.github.com/repos/beispiel/atlas/issues/8', 200,
+    '{"number":8,"body":"' + StringOfChar('a', TAtlasTrackerDetails.MaxDescription + 1) + '"}');
+  Assert.IsFalse(mEditor.Description(GitHubTarget, mReadOnlyRef, '#8', 5000, mText, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid);
+  Assert.AreEqual('', mText);
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasTrackerTargetTests);
   TDUnitX.RegisterTestFixture(TAtlasTrackerNamingTests);
   TDUnitX.RegisterTestFixture(TAtlasGitHubTrackerTests);
   TDUnitX.RegisterTestFixture(TAtlasYouTrackTrackerTests);
   TDUnitX.RegisterTestFixture(TAtlasTrackerDetailsTests);
+  TDUnitX.RegisterTestFixture(TAtlasTrackerDescriptionsTests);
   TDUnitX.RegisterTestFixture(TAtlasCommitHookTests);
 
 end.

@@ -4,7 +4,8 @@
 // Kennung, Titel und Abzeichen, Beschreibung als Doku mit Bild aus den
 // Anhängen, eingeklappte ältere Kommentare, Listen der Anhänge und
 // Verknüpfungen, Laden mit „Abbrechen“, Fehler mit Knopf zum Beheben,
-// Verlauf und abgeschaltete Kommentare.
+// Verlauf und abgeschaltete Kommentare. Checklisten (#1273): Fortschritt in
+// der Kopfzeile, Kästchen, „Punkt hinzufügen …“, nur lesbar, abgeschaltet.
 
 interface
 
@@ -35,6 +36,10 @@ type
     procedure LoadingErrorAndHistory;
     [Test]
     procedure CommentsSwitchedOff;
+    [Test]
+    procedure ChecklistProgressAndBoxes;
+    [Test]
+    procedure ChecklistReadOnlyAndSwitchedOff;
   end;
 
 implementation
@@ -274,6 +279,80 @@ begin
     mFrame.ShowDetails(Sample(5), cNow, '', True);
     Assert.IsNull(mFrame.OlderLabel);
     Assert.AreEqual(2, mFrame.DocCount, 'nur die Beschreibung');
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.ChecklistProgressAndBoxes;
+var
+  mHost: TForm;
+  mFrame: TAtlasIssueFrame;
+  mDetails: TAtlasTrackerDetails;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.Width := 700;
+    mHost.Height := 600;
+    mFrame := TAtlasIssueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    // Ohne Checkliste: Kopfzeile wie bisher, kein „Punkt hinzufügen …“.
+    mFrame.ShowDetails(Sample(0), cNow, '', False);
+    Assert.AreEqual('', mFrame.ProgressText);
+    Assert.AreEqual('ATL-123', mFrame.KeyLabel.Caption);
+    Assert.IsNull(mFrame.TaskBox);
+    Assert.IsNull(mFrame.AddTaskLabel);
+    mDetails := Sample(0);
+    mDetails.Description := 'Vorher' + #10#10 + '- [x] a' + #10 + '- [ ] b' + #10 + '1. [x] c';
+    mFrame.ShowDetails(mDetails, cNow, '', False);
+    Assert.AreEqual('2/3', mFrame.ProgressText);
+    Assert.AreEqual('ATL-123 · 2/3', mFrame.KeyLabel.Caption);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistProgress, [2, 3]), mFrame.KeyLabel.Hint);
+    Assert.IsNotNull(mFrame.TaskBox);
+    Assert.IsTrue(mFrame.TaskBox.HasTasks);
+    Assert.IsFalse(mFrame.TaskBox.TasksLocked);
+    Assert.IsNotNull(mFrame.AddTaskLabel);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssueChecklistAdd), mFrame.AddTaskLabel.Caption);
+    // Geschrieben: neuer Text ohne Neuladen.
+    mFrame.ReplaceDescription('- [x] a' + #10 + '- [x] b' + #10 + '1. [x] c');
+    Assert.AreEqual('3/3', mFrame.ProgressText);
+    Assert.AreEqual('- [x] a' + #10 + '- [x] b' + #10 + '1. [x] c', mFrame.Details.Description);
+    // Während des Schreibens die Meldung „Wird gespeichert …“.
+    mFrame.SetChecklistBusy(True);
+    Assert.IsTrue(mFrame.ChecklistBusy);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssueChecklistSaving), mFrame.StatusText);
+    mFrame.SetChecklistBusy(False);
+    Assert.IsFalse(mFrame.ChecklistBusy);
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.ChecklistReadOnlyAndSwitchedOff;
+var
+  mHost: TForm;
+  mFrame: TAtlasIssueFrame;
+  mDetails: TAtlasTrackerDetails;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasIssueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mDetails := Sample(0);
+    mDetails.Description := '- [x] a' + #10 + '- [ ] b';
+    mFrame.ChecklistReadOnly := True;
+    mFrame.ShowDetails(mDetails, cNow, '', False);
+    Assert.AreEqual('1/2', mFrame.ProgressText, 'Fortschritt auch ohne Schreibrecht');
+    Assert.IsTrue(mFrame.TaskBox.TasksLocked);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssueChecklistReadOnly), mFrame.TaskBox.TaskHint);
+    Assert.IsNull(mFrame.AddTaskLabel, 'ohne Schreibrecht nichts hinzufügen');
+    // issues.preview.checklists aus: Listen wie geschrieben, kein Fortschritt.
+    mFrame.ChecklistReadOnly := False;
+    mFrame.Checklists := False;
+    Assert.AreEqual('', mFrame.ProgressText);
+    Assert.AreEqual('ATL-123', mFrame.KeyLabel.Caption);
+    Assert.IsNull(mFrame.TaskBox);
+    Assert.IsNull(mFrame.AddTaskLabel);
   finally
     mHost.Free;
   end;

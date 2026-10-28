@@ -20,6 +20,9 @@
 //   mit AComments (Feld comments, sonst nicht abgefragt). Anhänge mit
 //   relativer Adresse liegen beim selben Server (signierte Adresse); Links
 //   zeigen auf Issues desselben Trackers und öffnen im Fenster.
+// - Checklisten (#1273, IAtlasTrackerDescriptions): Beschreibung ungekürzt aus
+//   GET <url>/api/issues/<Kennung>?fields=idReadable,description, zurück mit
+//   POST <url>/api/issues/<Kennung>?fields=idReadable und {"description": …}.
 
 interface
 
@@ -29,7 +32,7 @@ uses
   Atlas.Core.Tracker.Contract;
 
 type
-  TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider)
+  TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerDescriptions)
   public const
     ProviderName = 'youtrack';
     Query = 'for: me #Unresolved';
@@ -55,6 +58,13 @@ type
     /// <summary>Antwort von /api/issues/<Kennung>; False bei ungültigem JSON bzw. ohne Kennung.</summary>
     class function ParseDetails(const AJson: string; const ATarget: TAtlasTrackerTarget; AComments: Boolean;
       out ADetails: TAtlasTrackerDetails): Boolean; static;
+    /// <summary>Adresse zum Lesen (AFields "idReadable,description") bzw. Schreiben ("idReadable") der
+    /// Beschreibung (#1273); '' bei ungültiger Kennung oder ohne Server.</summary>
+    class function IssueUrl(const ATarget: TAtlasTrackerTarget; const AKey, AFields: string): string; static;
+    /// <summary>"description" ungekürzt ('' bei null); False bei ungültigem JSON bzw. ohne "idReadable".</summary>
+    class function ParseDescription(const AJson: string; out AText: string): Boolean; static;
+    /// <summary>Inhalt des POST: {"description": AText}.</summary>
+    class function DescriptionJson(const AText: string): string; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -68,6 +78,11 @@ type
     function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
       out AError: TAtlasCiFetchError): Boolean;
+    { IAtlasTrackerDescriptions }
+    function Description(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
+    function UpdateDescription(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      const AKey, AText: string; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -544,6 +559,105 @@ begin
     Exit;
   end;
   ADetails.Page := IssuePage(ATarget, ADetails.Key);
+  Result := True;
+end;
+
+class function TAtlasYouTrackTracker.IssueUrl(const ATarget: TAtlasTrackerTarget; const AKey,
+  AFields: string): string;
+begin
+  Result := '';
+  if (ATarget.Server = '') or not ValidKey(Trim(AKey)) then
+    Exit;
+  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '?fields=' + TTextUris.PercentEncode(AFields);
+end;
+
+class function TAtlasYouTrackTracker.ParseDescription(const AJson: string; out AText: string): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  AText := '';
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    Result := (mValue is TJSONObject) and (TextOf(TJSONObject(mValue), 'idReadable') <> '');
+    if Result then
+      AText := TextOf(TJSONObject(mValue), 'description');
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasYouTrackTracker.DescriptionJson(const AText: string): string;
+var
+  mObject: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  try
+    mObject.AddPair('description', AText);
+    Result := mObject.ToJSON;
+  finally
+    mObject.Free;
+  end;
+end;
+
+function TAtlasYouTrackTracker.Description(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; ATimeoutMs: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
+var
+  mUrl, mJson: string;
+  mStatus: Integer;
+begin
+  AText := '';
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mUrl := IssueUrl(ATarget, AKey, 'idReadable,description');
+  if (mUrl = '') or (ATransport = nil) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mJson, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParseDescription(mJson, AText) or (Length(AText) > TAtlasTrackerDetails.MaxDescription) then
+  begin
+    AText := '';
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  Result := True;
+end;
+
+function TAtlasYouTrackTracker.UpdateDescription(const ATarget: TAtlasTrackerTarget;
+  const ATransport: IAtlasCiTransport; const AKey, AText: string; ATimeoutMs: Integer;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mUrl, mAnswer: string;
+  mStatus: Integer;
+  mSend: IAtlasCiSend;
+begin
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mUrl := IssueUrl(ATarget, AKey, 'idReadable');
+  if (mUrl = '') or not Supports(ATransport, IAtlasCiSend, mSend) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  if Length(AText) > TAtlasTrackerDetails.MaxDescription then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  if not mSend.Send('POST', mUrl, DescriptionJson(AText), ATimeoutMs, mStatus, mAnswer, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
   Result := True;
 end;
 
