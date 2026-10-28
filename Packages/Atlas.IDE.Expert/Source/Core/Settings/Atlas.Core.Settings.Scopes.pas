@@ -143,7 +143,13 @@ begin
     // Tracker-Verbindungen (#1260): persönlich, der Server prüft sie nur.
     JsonSetting('IssuesConnections', 'issues.connections'),
     // Zuordnung Delphi-Projekt → Tracker-Projekt (#1261): persönlich wie die Verbindungen.
-    JsonSetting('IssuesProjects', 'issues.projects')];
+    JsonSetting('IssuesProjects', 'issues.projects'),
+    // Versionsverwaltung (#571, #1285): Plugin und Server (--changed) verwenden dieselbe Art, dieselben Programme
+    // und dasselbe Zeitlimit.
+    TextSetting('VcsProvider', 'vcs.provider'),
+    TextSetting('VcsGitPath', 'vcs.git.path'),
+    TextSetting('VcsSvnPath', 'vcs.svn.path'),
+    Setting('VcsTimeoutSeconds', 'vcs.timeoutSeconds', False)];
 end;
 
 class function TAtlasSettingsScopes.TryRouted(const AName: string; out ASetting: TAtlasRoutedSetting): Boolean;

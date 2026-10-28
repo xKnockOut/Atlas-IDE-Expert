@@ -1741,9 +1741,33 @@ begin
 end;
 
 procedure TValidator.ReadVcs(ANode: TJsonNode);
+
+  // vcs.git bzw. vcs.svn (#1285): nur "path", leer = automatisch suchen.
+  procedure ReadTool(AToolNode: TJsonNode; const AName: string; var APath: string);
+  var
+    mIndex: Integer;
+    mKey: string;
+  begin
+    if AToolNode.Kind <> TJsonKind.Object_ then
+    begin
+      ReportNode(AToolNode, Format('"vcs.%s" muss ein Objekt sein', [AName]));
+      Exit;
+    end;
+    for mIndex := 0 to AToolNode.Count - 1 do
+    begin
+      mKey := AToolNode.Keys[mIndex];
+      if mKey = 'path' then
+        ExpectString(AToolNode[mIndex], mKey, APath)
+      else
+        Report(AToolNode.KeyStarts[mIndex], AToolNode.KeyStarts[mIndex] + Length(mKey) + 2,
+          Format('Unbekannte Einstellung "vcs.%s.%s"', [AName, mKey]), False);
+    end;
+  end;
+
 var
   Index: Integer;
   Key, Text: string;
+  mSeconds: Integer;
 begin
   if ANode.Kind <> TJsonKind.Object_ then
   begin
@@ -1760,6 +1784,18 @@ begin
           FSettings.VcsProvider := Text
         else
           ReportNode(ANode[Index], 'Erlaubt sind "auto", "git", "svn" und "off"');
+    end
+    else if Key = 'git' then
+      ReadTool(ANode[Index], Key, FSettings.VcsGitPath)
+    else if Key = 'svn' then
+      ReadTool(ANode[Index], Key, FSettings.VcsSvnPath)
+    else if Key = 'timeoutSeconds' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.Number) and TryStrToInt(ANode[Index].Value, mSeconds) and (mSeconds >= 1) and
+        (mSeconds <= 300) then
+        FSettings.VcsTimeoutSeconds := mSeconds
+      else
+        ReportNode(ANode[Index], '"vcs.timeoutSeconds" muss eine ganze Zahl von 1 bis 300 sein');
     end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
@@ -3021,7 +3057,12 @@ begin
     else if Key = 'compiler' then
       Result.Compiler := FileSettings.Compiler
     else if Key = 'vcs' then
-      Result.VcsProvider := FileSettings.VcsProvider
+    begin
+      Result.VcsProvider := FileSettings.VcsProvider;
+      Result.VcsGitPath := FileSettings.VcsGitPath;
+      Result.VcsSvnPath := FileSettings.VcsSvnPath;
+      Result.VcsTimeoutSeconds := FileSettings.VcsTimeoutSeconds;
+    end
     else if Key = 'completion' then
       Result.Completion := FileSettings.Completion
     else if Key = 'refactoring' then

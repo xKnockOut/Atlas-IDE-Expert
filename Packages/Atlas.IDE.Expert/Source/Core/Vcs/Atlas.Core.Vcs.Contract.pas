@@ -54,6 +54,11 @@ type
   /// <summary>Erkannter Wechsel zwischen zwei Ständen. Branch: anderer Branch bzw. SVN-Pfad (git checkout,
   /// git switch, svn switch). Revision: gleicher Branch, andere Revision (Commit, Pull, svn update).</summary>
   TAtlasVcsSwitch = (None, Branch, Revision);
+
+  /// <summary>Woher die Art der Versionsverwaltung für ein Projekt kommt (#1285): Setting = globales
+  /// vcs.provider, Project = persönliche Zeile in vcs.projects (#1286), TeamFile = Abschnitt vcs der .atlas.
+  /// </summary>
+  TAtlasVcsProviderSource = (Setting, Project, TeamFile);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Gefundene Arbeitskopie.</summary>
@@ -83,6 +88,22 @@ type
     class function Empty: TAtlasVcsHead; static;
     /// <summary>Kurzform der Revision: Git die ersten 7 Zeichen, SVN "r42".</summary>
     function ShortRevision(AKind: TAtlasVcsKind): string;
+  end;
+
+  /// <summary>Stand der Versionsverwaltung für das geöffnete Projekt (#1285, Gruppe „Aktuelles Projekt“ der
+  /// Optionsseite).</summary>
+  TAtlasVcsProjectState = record
+    /// <summary>Geöffnete .groupproj bzw. aktive .dproj; '' ohne Projekt.</summary>
+    ProjectFile: string;
+    Provider: TAtlasVcsProvider;
+    Source: TAtlasVcsProviderSource;
+    /// <summary>Bei Source Project: „Gilt für“ der Zeile; sonst ''.</summary>
+    SourceMatch: string;
+    WorkingCopy: TAtlasVcsWorkingCopy;
+    /// <summary>Ergebnis der Abfrage von Head; NoWorkingCopy, Disabled oder ToolMissing ohne Abfrage.</summary>
+    Outcome: TAtlasVcsOutcome;
+    Head: TAtlasVcsHead;
+    class function Empty: TAtlasVcsProjectState; static;
   end;
 
   /// <summary>Geänderte oder neue Datei gegenüber dem Stand im Repository.</summary>
@@ -365,6 +386,19 @@ class function TAtlasVcsWorkingCopy.Empty: TAtlasVcsWorkingCopy;
 begin
   Result.Kind := TAtlasVcsKind.None;
   Result.Root := '';
+end;
+
+{ TAtlasVcsProjectState }
+
+class function TAtlasVcsProjectState.Empty: TAtlasVcsProjectState;
+begin
+  Result.ProjectFile := '';
+  Result.Provider := TAtlasVcsProvider.Auto;
+  Result.Source := TAtlasVcsProviderSource.Setting;
+  Result.SourceMatch := '';
+  Result.WorkingCopy := TAtlasVcsWorkingCopy.Empty;
+  Result.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
+  Result.Head := TAtlasVcsHead.Empty;
 end;
 
 { TAtlasVcsHead }

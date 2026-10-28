@@ -970,13 +970,46 @@
           ],
           "default": "auto",
           "description": "auto: nach gefundener Arbeitskopie (.git oder .svn, die nächstliegende gilt, bei Gleichstand Git). git bzw. svn: nur diese Art. off: ohne Versionsverwaltung. Git und SVN über die Kommandozeile (git bzw. svn, TortoiseSVN mit Kommandozeilenwerkzeugen genügt); fehlt das Programm, meldet Atlas das einmal und arbeitet ohne Versionsangaben weiter."
+        },
+        "git": {
+          "type": "object",
+          "description": "Programm git (#1285): path = Pfad zu git.exe, leer = automatisch suchen.",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string",
+              "default": "",
+              "examples": ["C:\\Tools\\PortableGit\\cmd\\git.exe"],
+              "description": "Pfad zu git.exe; leer = in PATH und den üblichen Installationsordnern suchen. Ein gesetzter Pfad gilt allein: Fehlt die Datei, meldet Atlas das einmal je Sitzung und sucht nicht woanders."
+            }
+          }
+        },
+        "svn": {
+          "type": "object",
+          "description": "Programm svn (#1285): path = Pfad zu svn.exe, leer = automatisch suchen.",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string",
+              "default": "",
+              "examples": ["C:\\Program Files\\SlikSvn\\bin\\svn.exe"],
+              "description": "Pfad zu svn.exe (TortoiseSVN mit Kommandozeilenwerkzeugen, SlikSVN …); leer = in PATH und den üblichen Installationsordnern suchen. Ein gesetzter Pfad gilt allein: Fehlt die Datei, meldet Atlas das einmal je Sitzung und sucht nicht woanders."
+            }
+          }
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
+          "default": 15,
+          "description": "Zeitlimit je Aufruf von git bzw. svn in Sekunden (#1285); danach beendet Atlas den Prozess. Aufrufe mit eigenem, kürzerem Limit (Willkommensseite 1 s) behalten ihres; Branch anlegen und Pull nehmen das größere aus diesem Wert und 30 s."
         }
       },
       "x-scope": "global",
-      "x-area": "general",
-      "x-page": "Allgemein",
-      "x-control": "Auswahl",
-      "x-issue": "#571"
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-control": "Auswahl, Datei wählen mit „Prüfen“, Zahl",
+      "x-issue": "#571, #1285"
     },
     "completion": {
       "type": "object",

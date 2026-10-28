@@ -79,6 +79,9 @@ type
     procedure ReadsCompilerSettings;
     [Test]
     procedure ReadsVcsProvider;
+    /// <summary>#1285: vcs.git.path, vcs.svn.path und vcs.timeoutSeconds (1 bis 300).</summary>
+    [Test]
+    procedure ReadsVcsToolPathsAndTimeout;
     [Test]
     procedure ReadsFormatSettings;
     [Test]
@@ -457,6 +460,39 @@ begin
   Assert.AreEqual('off', Settings.VcsProvider, 'Datei vor Editor');
   Settings := TConfigurationParser.ParseLayered('', '{"vcs": {"provider": "git"}}', Issues);
   Assert.AreEqual('git', Settings.VcsProvider);
+end;
+
+procedure TConfigurationParserTests.ReadsVcsToolPathsAndTimeout;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual('', Settings.VcsGitPath, 'leer = automatisch suchen');
+  Assert.AreEqual('', Settings.VcsSvnPath);
+  Assert.AreEqual(15, Settings.VcsTimeoutSeconds);
+  Settings := Parse('{"vcs": {"git": {"path": "D:\\Portable\\Git\\cmd\\git.exe"}, ' +
+    '"svn": {"path": "C:\\Programme\\TortoiseSVN\\bin\\svn.exe"}, "timeoutSeconds": 60}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('D:\Portable\Git\cmd\git.exe', Settings.VcsGitPath);
+  Assert.AreEqual('C:\Programme\TortoiseSVN\bin\svn.exe', Settings.VcsSvnPath);
+  Assert.AreEqual(60, Settings.VcsTimeoutSeconds);
+  Settings := Parse('{"vcs": {"timeoutSeconds": 0}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'unter 1');
+  Assert.AreEqual(15, Settings.VcsTimeoutSeconds, 'ungültig: Vorgabe');
+  Settings := Parse('{"vcs": {"timeoutSeconds": 301}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'über 300');
+  Settings := Parse('{"vcs": {"timeoutSeconds": "30"}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'Text statt Zahl');
+  Settings := Parse('{"vcs": {"git": "git.exe", "svn": {"pfad": "svn.exe"}}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)), 'git muss ein Objekt sein, svn.pfad unbekannt');
+  Assert.AreEqual('', Settings.VcsGitPath);
+  Assert.AreEqual('', Settings.VcsSvnPath);
+  Settings := TConfigurationParser.ParseLayered('{"vcs": {"timeoutSeconds": 30}}',
+    '{"vcs": {"provider": "svn", "svn": {"path": "s.exe"}}}', Issues);
+  Assert.AreEqual('svn', Settings.VcsProvider, 'Datei vor Editor');
+  Assert.AreEqual('s.exe', Settings.VcsSvnPath);
+  Assert.AreEqual(15, Settings.VcsTimeoutSeconds, 'die Datei bestimmt den ganzen Abschnitt vcs');
 end;
 
 procedure TConfigurationParserTests.ReadsCompilerSettings;

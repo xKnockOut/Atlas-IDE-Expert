@@ -24,6 +24,10 @@
 // Projekts, settings.json über „Weitere globale Einstellungen“) mit einem Knoten je Gruppe; im Hauptknoten der
 // Weg dorthin (OnRulesProject, OnRulesGlobal). Unterknoten „Prüffenster“ (problems.window*, problems.live),
 // „Compiler vorab“ (problems.compilerMerge, problems.showCompilerCode) und „Profile und Baseline“.
+// Bereich Versionsverwaltung (#1285): Art (vcs.provider), Programme git und svn mit eigenem Pfad, „…“ und
+// „Prüfen“ (Version und Fundort, im Hintergrund über OnVcsCheck), Zeitlimit je Aufruf und „Aktuelles Projekt“
+// (beim ersten Zeigen der Seite einmal im Hintergrund abgefragt, OnVcsProject); Links auf die Seiten, die die
+// Anzeige steuern. Ohne Klick startet kein Prozess: Beim Öffnen zeigt OnVcsLocate nur, welche Datei gälte.
 // Bereich Issue-Tracker (#1280): Tracker, Abfrage, Start-Optionen, Muster und Zugang (issues.*); auf der
 // Willkommensseite bleibt nur die Sektion an/aus mit dem Sprung „Tracker-Einstellungen …“.
 
@@ -64,6 +68,9 @@ uses
   Atlas.Core.Settings.Reassigned,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
+  Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.Tools,
+  Atlas.Core.Vcs.ToolCheck,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -117,6 +124,12 @@ type
   /// <summary>„Hinzufügen …“ der Tabelle Projekte (#1261): .dproj bzw. .groupproj (AFolder False) oder Ordner
   /// wählen; False bei Abbruch.</summary>
   TAtlasTrackerBrowseEvent = reference to function(AFolder: Boolean; out APath: string): Boolean;
+  /// <summary>Fundort von git bzw. svn für den eingetragenen Pfad APath (#1285), nur Dateiprüfung, kein Prozess.
+  /// </summary>
+  TAtlasVcsLocateEvent = reference to function(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation;
+  /// <summary>„Prüfen“ (#1285) für git bzw. svn unter APath im Hintergrund; das Ergebnis meldet VcsCheckDone.
+  /// </summary>
+  TAtlasVcsCheckEvent = reference to procedure(AKind: TAtlasVcsKind; const APath: string);
 
   /// <summary>Seite eines Knotens im Baum (#890): der Bereich selbst (Node leer) oder ein Unterpunkt.</summary>
   TAtlasSettingsNodePage = record
@@ -691,6 +704,22 @@ type
     FTrackerProjectFilling: Boolean;
     FOnTrackerContext: TFunc<TAtlasTrackerProjectContext>;
     FOnTrackerBrowse: TAtlasTrackerBrowseEvent;
+    // Versionsverwaltung (#1285): Art, je Programm Pfad, „…“, „Prüfen“ und Zustand, Zeitlimit, aktuelles Projekt.
+    FVcsProvider: TAtlasChoiceBox;
+    FVcsPaths: array[TAtlasVcsKind] of TEdit;
+    FVcsBrowse: array[TAtlasVcsKind] of TButton;
+    FVcsCheck: array[TAtlasVcsKind] of TButton;
+    FVcsStates: array[TAtlasVcsKind] of TLabel;
+    FVcsTimeout: TEdit;
+    FVcsProjectInfo: TLabel;
+    FVcsLinkEditor: TButton;
+    FVcsLinkWelcome: TButton;
+    FVcsLinkIssues: TButton;
+    /// <summary>„Aktuelles Projekt“ wurde schon abgefragt (einmal je Öffnen der Seite).</summary>
+    FVcsProjectAsked: Boolean;
+    FOnVcsLocate: TAtlasVcsLocateEvent;
+    FOnVcsCheck: TAtlasVcsCheckEvent;
+    FOnVcsProject: TProc;
     FWelcomeQuickActions: TCheckBox;
     FWelcomeQuickActionsItems: array[TAtlasQuickAction] of TCheckBox;
     FWelcomeQuickActionsConsole: TEdit;
@@ -949,6 +978,19 @@ type
     procedure AddWelcomeSection;
     /// <summary>Seite Issue-Tracker (#1280): Anbieter, Abfrage, „Beginnen“, Muster und Zugang (issues.*).</summary>
     procedure AddIssuesSection;
+    /// <summary>Seite Versionsverwaltung (#1285).</summary>
+    procedure AddVcsSection;
+    procedure AddVcsTool(AKind: TAtlasVcsKind; ACaption: TAtlasTextId);
+    function AddVcsLink(AParent: TWinControl; ALeft: Integer; ACaption: TAtlasTextId): TButton;
+    procedure VcsPathChange(Sender: TObject);
+    procedure VcsBrowseClick(Sender: TObject);
+    procedure VcsCheckClick(Sender: TObject);
+    procedure VcsLinkClick(Sender: TObject);
+    /// <summary>Zustand ohne Prozess: welche Datei für AKind gälte (OnVcsLocate).</summary>
+    procedure RefreshVcsTool(AKind: TAtlasVcsKind);
+    /// <summary>Beim Zeigen eines Reiters: die Seite Versionsverwaltung fragt einmal „Aktuelles Projekt“ ab.
+    /// </summary>
+    procedure SheetShown(ASheet: TTabSheet);
     procedure AddUpdatesSection;
     procedure AddBugReportSection;
     procedure IndexRefreshClick(Sender: TObject);
@@ -1489,6 +1531,38 @@ type
     procedure RefreshTrackerProjects;
     /// <summary>„zuordnen …“ aus „Meine Issues“ (#1261): Zeile für AMatch anlegen bzw. wählen und zeigen.</summary>
     procedure AssignTrackerProject(const AMatch: string);
+    /// <summary>Versionsverwaltung (#1285): Fundort ohne Prozess für den eingetragenen Pfad; nil = keine Anzeige.
+    /// </summary>
+    property OnVcsLocate: TAtlasVcsLocateEvent read FOnVcsLocate write FOnVcsLocate;
+    /// <summary>„Prüfen“ im Hintergrund; das Ergebnis meldet VcsCheckDone.</summary>
+    property OnVcsCheck: TAtlasVcsCheckEvent read FOnVcsCheck write FOnVcsCheck;
+    /// <summary>„Aktuelles Projekt“ im Hintergrund abfragen; das Ergebnis meldet VcsProjectDone.</summary>
+    property OnVcsProject: TProc read FOnVcsProject write FOnVcsProject;
+    /// <summary>Ergebnis von „Prüfen“ zeigen.</summary>
+    procedure VcsCheckDone(const ACheck: TAtlasVcsToolCheck);
+    /// <summary>Ergebnis der Abfrage „Aktuelles Projekt“ zeigen.</summary>
+    procedure VcsProjectDone(const AState: TAtlasVcsProjectState);
+    /// <summary>„Aktuelles Projekt“ jetzt abfragen (sonst beim ersten Zeigen der Seite).</summary>
+    procedure RefreshVcsProject;
+    /// <summary>Fundort als Text: „PATH“, „bekannter Ordner“, „eigener Pfad“.</summary>
+    class function VcsSourceText(ASource: TAtlasVcsToolSource): string; static;
+    /// <summary>Zustand ohne Prozess: „verwendet: <Pfad> (PATH)“, „fehlt“, „fehlt: <Pfad> …“.</summary>
+    class function VcsLocationText(const ALocation: TAtlasVcsToolLocation): string; static;
+    /// <summary>Ergebnis von „Prüfen“: „gefunden · git version 2.47.1 · <Pfad> (PATH)“ usw.</summary>
+    class function VcsCheckText(const ACheck: TAtlasVcsToolCheck): string; static;
+    /// <summary>Gruppe „Aktuelles Projekt“: Projekt, Art, Wurzel, Branch bzw. SVN-Pfad, Revision, verfolgter
+    /// Branch und woher die Art kommt; mehrere Zeilen.</summary>
+    class function VcsProjectText(const AState: TAtlasVcsProjectState): string; static;
+    /// <summary>Zum Testen: Versionsverwaltung (#1285).</summary>
+    property VcsProviderChoice: TAtlasChoiceBox read FVcsProvider;
+    property VcsTimeout: TEdit read FVcsTimeout;
+    property VcsProjectInfo: TLabel read FVcsProjectInfo;
+    property VcsLinkEditor: TButton read FVcsLinkEditor;
+    property VcsLinkWelcome: TButton read FVcsLinkWelcome;
+    property VcsLinkIssues: TButton read FVcsLinkIssues;
+    function VcsPath(AKind: TAtlasVcsKind): TEdit;
+    function VcsCheckButton(AKind: TAtlasVcsKind): TButton;
+    function VcsState(AKind: TAtlasVcsKind): TLabel;
     /// <summary>Zum Testen: Projektdatei (#486).</summary>
     property TeamFileCheck: TCheckBox read FTeamFile;
     property TeamFileInfo: TLabel read FTeamFileInfo;
@@ -2412,6 +2486,10 @@ begin
   AddSheet(TAtlasTextId.SettingsTabIssues);
   AddIssuesSection;
 
+  // Versionsverwaltung (#1285): neben dem Issue-Tracker; Verhalten unter vcs.*.
+  AddSheet(TAtlasTextId.SettingsTabVcs);
+  AddVcsSection;
+
   AddSheet(TAtlasTextId.SettingsTabTeamFile);
   AddTeamFileSection;
 
@@ -2757,6 +2835,287 @@ begin
   FIssuesBranchBase := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBranchBase));
   FIssuesCommitPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCommitPattern));
   FTrackerLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackerLogin));
+end;
+
+procedure TAtlasSettingsPage.AddVcsSection;
+var
+  mPanel: TWinControl;
+begin
+  // Art (#571): Reihenfolge wie die Werte von vcs.provider (auto, git, svn, off).
+  AddTitle(TAtlasTextId.SettingsVcsKindTitle);
+  FVcsProvider := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProvider),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderGit),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderOff)]);
+  FVcsProvider.Width := 220;
+  // Programme: eigener Pfad mit „…“ und „Prüfen“, darunter der Zustand.
+  AddTitle(TAtlasTextId.SettingsVcsToolsTitle);
+  AddVcsTool(TAtlasVcsKind.Git, TAtlasTextId.SettingsVcsGitPath);
+  AddVcsTool(TAtlasVcsKind.Svn, TAtlasTextId.SettingsVcsSvnPath);
+  FVcsTimeout := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsVcsTimeout));
+  // Aktuelles Projekt: nur Anzeige, beim ersten Zeigen der Seite einmal im Hintergrund abgefragt.
+  AddTitle(TAtlasTextId.SettingsVcsProjectTitle);
+  FVcsProjectInfo := AddWrappedLabel(70, TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone));
+  // Seiten, die die Anzeige steuern: Verhalten unter vcs.*, dort nur, ob etwas erscheint (wie #1280).
+  AddTitle(TAtlasTextId.SettingsVcsLinksTitle);
+  AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsLinksHint)).Font.Color := clGrayText;
+  mPanel := AddPanel(32);
+  FVcsLinkEditor := AddVcsLink(mPanel, 0, TAtlasTextId.SettingsVcsLinkEditor);
+  FVcsLinkWelcome := AddVcsLink(mPanel, 156, TAtlasTextId.SettingsVcsLinkWelcome);
+  FVcsLinkIssues := AddVcsLink(mPanel, 312, TAtlasTextId.SettingsVcsLinkIssues);
+end;
+
+procedure TAtlasSettingsPage.AddVcsTool(AKind: TAtlasVcsKind; ACaption: TAtlasTextId);
+var
+  mPanel: TWinControl;
+  mEdit: TEdit;
+  mButton: TButton;
+  mState: TLabel;
+begin
+  mEdit := AddTextLine(TAtlasStrings.Text(ACaption));
+  mEdit.Width := 466 - 2 * 36 - 60;
+  mEdit.Tag := Ord(AKind);
+  mEdit.OnChange := VcsPathChange;
+  mPanel := mEdit.Parent;
+  mButton := TButton.Create(Self);
+  mButton.Parent := mPanel;
+  mButton.Caption := '…';
+  mButton.Left := mEdit.Left + mEdit.Width + 6;
+  mButton.Top := 0;
+  mButton.Width := 30;
+  mButton.Anchors := [akTop, akRight];
+  mButton.Tag := Ord(AKind);
+  mButton.OnClick := VcsBrowseClick;
+  FVcsBrowse[AKind] := mButton;
+  mButton := TButton.Create(Self);
+  mButton.Parent := mPanel;
+  mButton.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsCheck);
+  mButton.Left := FVcsBrowse[AKind].Left + 36;
+  mButton.Top := 0;
+  mButton.Width := 90;
+  mButton.Anchors := [akTop, akRight];
+  mButton.Tag := Ord(AKind);
+  mButton.OnClick := VcsCheckClick;
+  FVcsCheck[AKind] := mButton;
+  FVcsPaths[AKind] := mEdit;
+  mPanel := AddPanel(18);
+  mState := TLabel.Create(Self);
+  mState.Parent := mPanel;
+  mState.Left := 0;
+  mState.Top := 0;
+  mState.ShowAccelChar := False;
+  mState.Font.Color := clGrayText;
+  FVcsStates[AKind] := mState;
+  Attach(mPanel, mEdit);
+end;
+
+function TAtlasSettingsPage.AddVcsLink(AParent: TWinControl; ALeft: Integer; ACaption: TAtlasTextId): TButton;
+begin
+  Result := TButton.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := TAtlasStrings.Text(ACaption);
+  Result.Left := ALeft;
+  Result.Top := 3;
+  Result.Width := 150;
+  Result.OnClick := VcsLinkClick;
+end;
+
+function TAtlasSettingsPage.VcsPath(AKind: TAtlasVcsKind): TEdit;
+begin
+  Result := FVcsPaths[AKind];
+end;
+
+function TAtlasSettingsPage.VcsCheckButton(AKind: TAtlasVcsKind): TButton;
+begin
+  Result := FVcsCheck[AKind];
+end;
+
+function TAtlasSettingsPage.VcsState(AKind: TAtlasVcsKind): TLabel;
+begin
+  Result := FVcsStates[AKind];
+end;
+
+class function TAtlasSettingsPage.VcsSourceText(ASource: TAtlasVcsToolSource): string;
+begin
+  case ASource of
+    TAtlasVcsToolSource.Path:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourcePath);
+    TAtlasVcsToolSource.KnownDir:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceKnownDir);
+    TAtlasVcsToolSource.Configured:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceConfigured);
+  else
+    Result := '';
+  end;
+end;
+
+class function TAtlasSettingsPage.VcsLocationText(const ALocation: TAtlasVcsToolLocation): string;
+begin
+  if ALocation.Source = TAtlasVcsToolSource.ConfiguredMissing then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolConfiguredMissing, [ALocation.Configured])
+  else if ALocation.Executable = '' then
+    Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolMissing)
+  else
+    Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolWouldUse,
+      [ALocation.Executable, VcsSourceText(ALocation.Source)]);
+end;
+
+class function TAtlasSettingsPage.VcsCheckText(const ACheck: TAtlasVcsToolCheck): string;
+begin
+  case ACheck.State of
+    TAtlasVcsToolState.Found:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolFound,
+        [ACheck.Version, ACheck.Location.Executable, VcsSourceText(ACheck.Location.Source)]);
+    TAtlasVcsToolState.StartFailed:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolStartFailed, [ACheck.ExitCode]);
+    TAtlasVcsToolState.NoAnswer:
+      Result := TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolNoAnswer);
+    TAtlasVcsToolState.NotRecognized:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsToolNotRecognized,
+        [TAtlasVcsTools.ProgramName(ACheck.Kind)]);
+  else
+    Result := VcsLocationText(ACheck.Location);
+  end;
+end;
+
+class function TAtlasSettingsPage.VcsProjectText(const AState: TAtlasVcsProjectState): string;
+var
+  mName, mKind, mHead, mSource: string;
+begin
+  if AState.ProjectFile = '' then
+    Exit(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone));
+  mName := ExtractFileName(AState.ProjectFile);
+  case AState.Source of
+    TAtlasVcsProviderSource.Project:
+      mSource := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsSourceProject, [AState.SourceMatch]);
+    TAtlasVcsProviderSource.TeamFile:
+      mSource := TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceTeamFile);
+  else
+    mSource := TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceSetting);
+  end;
+  mKind := AtlasVcsKindName(AState.WorkingCopy.Kind);
+  case AState.Outcome of
+    TAtlasVcsOutcome.Disabled:
+      Exit(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectDisabled, [mName]) + sLineBreak + mSource);
+    TAtlasVcsOutcome.NoWorkingCopy:
+      Exit(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectNoWorkingCopy, [mName]) + sLineBreak + mSource);
+    TAtlasVcsOutcome.ToolMissing:
+      Exit(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectToolMissing,
+        [mName, mKind, TAtlasVcsTools.ProgramName(AState.WorkingCopy.Kind)]) + sLineBreak + mSource);
+    TAtlasVcsOutcome.Ok:
+      ;
+  else
+    Exit(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectFailed, [mName, mKind, AtlasVcsOutcomeName(AState.Outcome)]) +
+      sLineBreak + mSource);
+  end;
+  if AState.WorkingCopy.Kind = TAtlasVcsKind.Svn then
+    mHead := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectSvnPath,
+      [AState.Head.Branch, AState.Head.ShortRevision(AState.WorkingCopy.Kind)])
+  else if AState.Head.Detached then
+    mHead := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectDetached,
+      [AState.Head.ShortRevision(AState.WorkingCopy.Kind)])
+  else
+    mHead := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectBranch,
+      [AState.Head.Branch, AState.Head.ShortRevision(AState.WorkingCopy.Kind)]);
+  if AState.Head.Upstream <> '' then
+    mHead := mHead + TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectUpstream, [AState.Head.Upstream]);
+  Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectLine, [mName, mKind, AState.WorkingCopy.Root]) +
+    sLineBreak + mHead + sLineBreak + mSource;
+end;
+
+procedure TAtlasSettingsPage.RefreshVcsTool(AKind: TAtlasVcsKind);
+begin
+  if FVcsStates[AKind] = nil then
+    Exit;
+  if not Assigned(FOnVcsLocate) then
+  begin
+    FVcsStates[AKind].Caption := '';
+    Exit;
+  end;
+  FVcsStates[AKind].Caption := VcsLocationText(FOnVcsLocate(AKind, Trim(FVcsPaths[AKind].Text)));
+end;
+
+procedure TAtlasSettingsPage.VcsPathChange(Sender: TObject);
+begin
+  // Nur Dateiprüfung; „Prüfen“ startet erst auf Klick einen Prozess.
+  RefreshVcsTool(TAtlasVcsKind((Sender as TComponent).Tag));
+end;
+
+procedure TAtlasSettingsPage.VcsBrowseClick(Sender: TObject);
+var
+  mKind: TAtlasVcsKind;
+  mDialog: TOpenDialog;
+begin
+  mKind := TAtlasVcsKind((Sender as TComponent).Tag);
+  mDialog := TOpenDialog.Create(nil);
+  try
+    mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsVcsFilter);
+    mDialog.Options := mDialog.Options + [ofFileMustExist];
+    mDialog.FileName := Trim(FVcsPaths[mKind].Text);
+    if mDialog.FileName = '' then
+      mDialog.FileName := TAtlasVcsTools.ProgramName(mKind) + '.exe';
+    if mDialog.Execute then
+      FVcsPaths[mKind].Text := mDialog.FileName;
+  finally
+    mDialog.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPage.VcsCheckClick(Sender: TObject);
+var
+  mKind: TAtlasVcsKind;
+begin
+  mKind := TAtlasVcsKind((Sender as TComponent).Tag);
+  if not Assigned(FOnVcsCheck) then
+    Exit;
+  FVcsStates[mKind].Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolChecking);
+  Allow(FVcsCheck[mKind], False);
+  FOnVcsCheck(mKind, Trim(FVcsPaths[mKind].Text));
+end;
+
+procedure TAtlasSettingsPage.VcsCheckDone(const ACheck: TAtlasVcsToolCheck);
+begin
+  if (ACheck.Kind = TAtlasVcsKind.None) or (FVcsStates[ACheck.Kind] = nil) then
+    Exit;
+  FVcsStates[ACheck.Kind].Caption := VcsCheckText(ACheck);
+  Allow(FVcsCheck[ACheck.Kind], True);
+end;
+
+procedure TAtlasSettingsPage.RefreshVcsProject;
+begin
+  FVcsProjectAsked := True;
+  if not Assigned(FOnVcsProject) then
+    Exit;
+  FVcsProjectInfo.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectQuerying);
+  FOnVcsProject();
+end;
+
+procedure TAtlasSettingsPage.VcsProjectDone(const AState: TAtlasVcsProjectState);
+begin
+  if FVcsProjectInfo <> nil then
+    FVcsProjectInfo.Caption := VcsProjectText(AState);
+end;
+
+procedure TAtlasSettingsPage.SheetShown(ASheet: TTabSheet);
+var
+  mParent: TControl;
+begin
+  if (ASheet = nil) or FVcsProjectAsked or (FVcsProvider = nil) then
+    Exit;
+  mParent := FVcsProvider;
+  while (mParent <> nil) and (mParent <> ASheet) do
+    mParent := mParent.Parent;
+  if mParent <> nil then
+    RefreshVcsProject;
+end;
+
+procedure TAtlasSettingsPage.VcsLinkClick(Sender: TObject);
+begin
+  if Sender = FVcsLinkEditor then
+    SelectPage(PageOf(FGitGutter))
+  else if Sender = FVcsLinkWelcome then
+    SelectPage(PageOf(FWelcomeRefreshVcs))
+  else if Sender = FVcsLinkIssues then
+    SelectPage(PageOf(FIssuesBranchPattern));
 end;
 
 procedure TAtlasSettingsPage.WelcomeIssuesLinkClick(Sender: TObject);
@@ -4448,6 +4807,10 @@ begin
   FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FIssuesProjects, ['IssuesProjects']);
+  FMarks.Bind(FVcsProvider, ['VcsProvider']);
+  FMarks.Bind(FVcsPaths[TAtlasVcsKind.Git], ['VcsGitPath']);
+  FMarks.Bind(FVcsPaths[TAtlasVcsKind.Svn], ['VcsSvnPath']);
+  FMarks.Bind(FVcsTimeout, ['VcsTimeoutSeconds']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -5190,6 +5553,7 @@ begin
   if (AIndex < 0) or (AIndex > High(FNodePages)) then
     Exit;
   FPages.ActivePage := FNodePages[AIndex].Sheet;
+  SheetShown(FNodePages[AIndex].Sheet);
   if not FTree.HandleAllocated then
     Exit;
   for Index := 0 to FTree.Items.Count - 1 do
@@ -5305,6 +5669,7 @@ begin
   if (Index < 0) or (Index > High(FNodePages)) or (csDestroying in ComponentState) then
     Exit;
   FPages.ActivePage := FNodePages[Index].Sheet;
+  SheetShown(FNodePages[Index].Sheet);
   // Beim Neuaufbau des Baums wählt er selbst; gemerkt wird nur die Wahl des Nutzers.
   if FFillingTree then
     Exit;
@@ -6716,6 +7081,12 @@ begin
   if Length(FTrackerProjects) > 0 then
     FTrackerProjectSelected := 0;
   RefreshTrackerConnections;
+  FVcsProvider.Choice := Max(0, IndexText(ASettings.VcsProvider, ['auto', 'git', 'svn', 'off']));
+  FVcsPaths[TAtlasVcsKind.Git].Text := ASettings.VcsGitPath;
+  FVcsPaths[TAtlasVcsKind.Svn].Text := ASettings.VcsSvnPath;
+  FVcsTimeout.Text := IntToStr(ASettings.VcsTimeoutSeconds);
+  RefreshVcsTool(TAtlasVcsKind.Git);
+  RefreshVcsTool(TAtlasVcsKind.Svn);
   FWelcomeQuickActions.Checked := ASettings.WelcomePageQuickActions;
   Items := TAtlasWelcomeQuickActions.ParseItems(ASettings.WelcomePageQuickActionsItems);
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
@@ -7272,6 +7643,19 @@ begin
   ASettings.TrackerLogin := FTrackerLogin.Checked;
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.IssuesProjects := TrackerProjectsJson;
+  case FVcsProvider.Choice of
+    1:
+      ASettings.VcsProvider := 'git';
+    2:
+      ASettings.VcsProvider := 'svn';
+    3:
+      ASettings.VcsProvider := 'off';
+  else
+    ASettings.VcsProvider := 'auto';
+  end;
+  ASettings.VcsGitPath := Trim(FVcsPaths[TAtlasVcsKind.Git].Text);
+  ASettings.VcsSvnPath := Trim(FVcsPaths[TAtlasVcsKind.Svn].Text);
+  ASettings.VcsTimeoutSeconds := StrToIntDef(FVcsTimeout.Text, ASettings.VcsTimeoutSeconds);
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do

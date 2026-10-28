@@ -755,7 +755,7 @@ begin
       Kind: TAtlasVcsKind;
       Items: TArray<TAtlasVcsChange>;
     begin
-      Vcs := TAtlasIdeVcs.ForFolder(Dir, VcsTimeoutMs);
+      Vcs := TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs));
       Kind := TAtlasVcsKind.None;
       if Vcs <> nil then
         Kind := Vcs.Kind;
@@ -805,7 +805,7 @@ begin
   if not TAtlasIdeVcs.Run(
     procedure
     begin
-      Outcome := TAtlasWelcomeIssues.Execute(TAtlasIdeVcs.ForFolder(Dir, VcsTimeoutMs), Plan);
+      Outcome := TAtlasWelcomeIssues.Execute(TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs)), Plan);
     end,
     procedure
     begin
