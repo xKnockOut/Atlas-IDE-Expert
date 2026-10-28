@@ -766,6 +766,19 @@ var
   BodyKeys, BodyConventions: TArray<string>;
   Rest, Header, Key: string;
   Declaration, Body: Integer;
+  mTypeRanges: TArray<TTextRange>;
+
+  // Steht ALine in irgendeinem Typ der Datei? Dann ist es eine Deklaration, kein Rumpf, auch wenn der Typ ein
+  // gleichnamiger generischer ist (THashTable neben THashTable<T>, #1325).
+  function InAnyType(ALine: Integer): Boolean;
+  var
+    mRange: TTextRange;
+  begin
+    for mRange in mTypeRanges do
+      if ContainsLine(mRange, ALine) then
+        Exit(True);
+    Result := False;
+  end;
 
   function FreeBody(const AKey: string): Integer;
   var
@@ -781,6 +794,10 @@ begin
   Result := nil;
   Lines := TTextLines.SplitLines(AText);
   UnitIndex := TIndexExtractor.Extract(ATree, '');
+  mTypeRanges := nil;
+  for TypeSymbol in UnitIndex.Symbols do
+    if TypeSymbol.Kind in TypeKinds then
+      mTypeRanges := mTypeRanges + [TypeSymbol.Range];
   for TypeSymbol in UnitIndex.Symbols do
   begin
     if not (TypeSymbol.Kind in TypeKinds) then
@@ -804,7 +821,9 @@ begin
         Match.Declarations := Match.Declarations + [Symbol];
         Match.DeclarationHeaders := Match.DeclarationHeaders + [Header];
       end
-      else
+      // Deklarationen und Rümpfe eines gleichnamigen generischen Typs (TProperty<T>.Create) gehören nicht dazu.
+      else if not InAnyType(Symbol.Range.StartPos.Line) and
+        not TRoutineSignatures.HasGenericQualifier(Header, Symbol.Name) then
       begin
         Match.Bodies := Match.Bodies + [Symbol];
         Match.BodyHeaders := Match.BodyHeaders + [Header];

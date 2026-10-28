@@ -2,7 +2,7 @@
 
 // Tests der gemeinsamen Normalisierung von Routinenköpfen (#1325): Kopf mit
 // Constraints, "()" ohne Parameter, Standardwerte und Gruppen, Ergebnistyp,
-// Kurzform, class constructor, Implementierung aus begin, asm und external,
+// Kurzform, generischer Qualifizierer, class constructor, Implementierung aus begin, asm und external,
 // Typknoten offener Arrays.
 
 interface
@@ -82,13 +82,18 @@ begin
   Assert.AreEqual('|t', TRoutineSignatures.ResultKey('function Foo<T: class>: T'));
   Assert.AreEqual('', TRoutineSignatures.ResultKey('procedure Foo(A: Integer)'));
   Assert.AreEqual('arrayofptypeinfo', TRoutineSignatures.TypeKey('array of  PTypeInfo'));
+  // Rumpf eines generischen Typs neben einem gleichnamigen nicht generischen.
+  Assert.IsTrue(TRoutineSignatures.HasGenericQualifier('constructor TProperty<T>.Create(const A: string)', 'Create'));
+  Assert.IsFalse(TRoutineSignatures.HasGenericQualifier('constructor TProperty.Create(const A: string)', 'Create'));
+  Assert.IsFalse(TRoutineSignatures.HasGenericQualifier('procedure TA.Reg<TI, TC>(const N: string)', 'Reg'));
+  Assert.IsTrue(TRoutineSignatures.HasGenericQualifier('function TA<T>.TInner.CreateX: T', 'CreateX'));
 end;
 
 procedure TRoutineSignaturesTests.TreeForms;
 var
   mTree: TSyntaxTree;
   mHeaders: TArray<TSyntaxNode>;
-  mParameter: TSyntaxNode;
+  mParameters, mParameter: TSyntaxNode;
 begin
   mTree := TPascalParser.Parse('unit U;'#10'interface'#10'type'#10'  TA = class'#10'    class constructor Create;'#10 +
     '    constructor Create;'#10'    class procedure Neu;'#10'  end;'#10'function Foo(A: Integer): Integer;'#10 +
@@ -112,7 +117,8 @@ begin
     Assert.IsFalse(TRoutineSignatures.HasImplementation(mHeaders[8].Parent));
     Assert.IsFalse(TRoutineSignatures.HasImplementation(mHeaders[0].Parent));
     // Typknoten eines offenen Arrays.
-    mParameter := mHeaders[4].FindChild(TSyntaxKind.Parameters)[0];
+    mParameters := mHeaders[4].FindChild(TSyntaxKind.Parameters);
+    mParameter := mParameters[0];
     Assert.AreEqual(Ord(TSyntaxKind.ArrayType), Ord(TRoutineSignatures.ParameterType(mParameter).Kind));
   finally
     mTree.Free;
