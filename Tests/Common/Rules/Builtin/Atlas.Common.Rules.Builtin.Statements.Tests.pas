@@ -100,6 +100,10 @@ type
     procedure DatasetEditVariants;
     [Test]
     procedure DatasetEditSilentCases;
+    /// <summary>Insert und Edit an Klassen, die sicher nicht von TDataSet abstammen (#1326, ActiveRecord in DMVC),
+    /// an Records und Listen; gemeldet bleibt die Datenmenge und der unbekannte Typ.</summary>
+    [Test]
+    procedure DatasetEditOnlyOnDataSets;
     [Test]
     procedure DatasetEditOffAndExclude;
     [Test]
@@ -158,6 +162,10 @@ type
     procedure ReadWithoutRead;
     [Test]
     procedure WritablePropertiesAreSilent;
+    /// <summary>Neu deklarierte Property ohne Typ (#1326, JVCL property Items write SetItems;): read und Typ kommen
+    /// vom Vorfahren.</summary>
+    [Test]
+    procedure RedeclaredPropertyInheritsAccessors;
     [Test]
     procedure OffAndExclude;
   end;
@@ -832,6 +840,26 @@ begin
     'procedure TForm1.SpeichernClick(Sender: TObject);'#10'begin'#10'  tblKunde.Post;'#10'end;'#10'end.');
 end;
 
+procedure TStatementRulesTests.DatasetEditOnlyOnDataSets;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TDatasetEditWithoutPostRule.Create, 'unit Personen;'#10'interface'#10 +
+    'type'#10'  TDataSet = class'#10'  public'#10'    procedure Edit;'#10'    procedure Insert;'#10 +
+    '    procedure Post;'#10'  end;'#10'  TAbfrage = class(TDataSet)'#10'  end;'#10'  TActiveRecord = class'#10 +
+    '  public'#10'    procedure Insert;'#10'    procedure Edit;'#10'  end;'#10'  TPerson = class(TActiveRecord)'#10 +
+    '  end;'#10'  TEintrag = record'#10'    procedure Edit;'#10'  end;'#10'implementation'#10 +
+    'procedure Test(APerson: TPerson; AEintrag: TEintrag; AAbfrage: TAbfrage; AFremd: TFremd);'#10'begin'#10 +
+    '  APerson.Insert;'#10'  APerson.Edit;'#10'  AEintrag.Edit;'#10'  AAbfrage.Edit;'#10'  AFremd.Insert;'#10 +
+    'end;'#10'end.');
+  // TAbfrage stammt von TDataSet ab, TFremd ist unbekannt: beide wie bisher.
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual(27, mFindings[0].Range.StartPos.Line);
+  Assert.AreEqual('Nach Edit fehlt Post oder Cancel; die Änderung bleibt offen.', mFindings[0].Message);
+  Assert.AreEqual(28, mFindings[1].Range.StartPos.Line);
+  Assert.AreEqual('Nach Insert fehlt Post oder Cancel; die Änderung bleibt offen.', mFindings[1].Message);
+end;
+
 procedure TStatementRulesTests.DatasetEditOffAndExclude;
 var
   Source: string;
@@ -1348,6 +1376,27 @@ begin
     '  end;'#10'implementation'#10'function TKunde.GetKennung: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10 +
     'procedure TKunde.SetPasswort(const Value: string);'#10'begin'#10'end;'#10 +
     'procedure TKunde.Umbenennen;'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TReadonlyPropertyAssignedTests.RedeclaredPropertyInheritsAccessors;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := ReadonlyFindings('unit Kunden;'#10'interface'#10'uses'#10'  System.Classes;'#10'type'#10 +
+    '  TAuswahl = class'#10'  private'#10'    function GetPosten: TStrings;'#10 +
+    '    procedure SetPosten(AValue: TStrings);'#10'  public'#10 +
+    '    property Posten: TStrings read GetPosten write SetPosten;'#10'    property Nur: TStrings read GetPosten;'#10 +
+    '  end;'#10'  TDatenAuswahl = class(TAuswahl)'#10'  published'#10'    property Posten write SetPosten;'#10 +
+    '    property Nur;'#10'    procedure Nutzen;'#10'  end;'#10'implementation'#10 +
+    'function TAuswahl.GetPosten: TStrings;'#10'begin'#10'  Result := nil;'#10'end;'#10 +
+    'procedure TAuswahl.SetPosten(AValue: TStrings);'#10'begin'#10'end;'#10 +
+    'procedure TDatenAuswahl.Nutzen;'#10'var'#10'  mPosition: Integer;'#10'begin'#10 +
+    '  mPosition := Posten.Count;'#10'  Posten := nil;'#10'  if Nur.Count = mPosition then'#10'    Nur := nil;'#10 +
+    'end;'#10'end.');
+  // Nur Nur := nil: Auch die neu deklarierte Property hat kein write.
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TDatenAuswahl.Nur hat kein write (wie E2129).', mFindings[0].Message);
+  Assert.AreEqual(34, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TReadonlyPropertyAssignedTests.IssueExampleWithClear;
