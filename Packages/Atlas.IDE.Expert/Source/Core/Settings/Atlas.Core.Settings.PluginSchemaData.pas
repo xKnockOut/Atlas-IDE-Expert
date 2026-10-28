@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5299] of string = (
+  Lines: array[0..5314] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -104,6 +104,10 @@ const
     '    "general.architecture": {',
     '      "caption": "Architektur",',
     '      "captionEn": "Architecture"',
+    '    },',
+    '    "vcs.branches": {',
+    '      "caption": "Branches",',
+    '      "captionEn": "Branches"',
     '    },',
     '    "editor.pairs": {',
     '      "caption": "Paarfärbung",',
@@ -5401,6 +5405,18 @@ const
     '      "x-page": "Versionsverwaltung",',
     '      "x-control": "Tabelle Projekte",',
     '      "x-issue": "#1286"',
+    '    },',
+    '    "VcsBranchConfirm": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Dialog „Branch anlegen“ mit Name, Basis und den Schritten vor dem Anlegen bei „Beginnen“ zeigen; aus = mit den Vorgaben ohne Dialog. Der Befehl „Branch anlegen …“ zeigt ihn immer' +
+      '.",',
+    '      "x-key": "vcs.branch.confirm",',
+    '      "x-area": "vcs",',
+    '      "x-page": "Versionsverwaltung",',
+    '      "x-node": "vcs.branches",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#1288"',
     '    }',
     '  },',
     '  "additionalProperties": false',

@@ -7881,3 +7881,22 @@ Vorbereitung: Git-Projekt mit HTTPS-Remote (Anmeldung in Git Credential Manager 
 | SZ9 | Willkommensseite mit `welcomePage.continue.fetch` für das Projekt aus SZ4 | „Neu seit …“ zeigt „Anmeldung am Server nötig – prüfen …“; Klick öffnet die Seite und prüft die Zeile (**Abnahme**) |
 | SZ10 | Schnellaktion „Pull“ für das Projekt aus SZ4 | Zustand „Anmeldung am Server nötig“, Meldung mit Weg zur Seite |
 | SZ11 | `WelcomePageContinueIncoming` aus | Kein Abschnitt und kein Hinweis |
+
+## Branch anlegen (#1288)
+
+Vorbereitung: Git-Projekt mit `main` lokal und auf origin, auf einem Feature-Branch; SVN-Projekt (Arbeitskopie auf `trunk`, mit `svn:externals`, Anmeldung gespeichert); „Meine Issues“ mit einem zugewiesenen Issue; `vcs.branch.confirm` an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BA1 | Git: „Meine Issues“ › „Beginnen“ | Dialog „Branch anlegen“ mit Name aus `issues.branchPattern`, Basis „main (lokal)“ vorgewählt, „Was passiert“: `1. git checkout --quiet --no-track -b <Name> refs/heads/main --`; kein Hinweis auf Serverschritte (**Abnahme**) |
+| BA2 | Im Dialog aus BA1 Basis „origin/main (Stand des letzten Abrufs)“ wählen | Schritt zeigt sofort `refs/remotes/origin/main` (**Abnahme**) |
+| BA3 | Name auf `feature/a b` bzw. `-x` ändern | Hinweis unter dem Feld, „Was passiert“ leer, „Anlegen“ gesperrt; gültiger Name: wieder frei (**Abnahme**) |
+| BA4 | BA1 „Anlegen“ | Branch angelegt und ausgecheckt; Meldung „Branch <Name> von main angelegt …“; „Meine Issues“ zeigt das Issue als aktiv |
+| BA5 | SVN: „Beginnen“ | Dialog zeigt kurz „HEAD-Revision wird ermittelt …“ (Anlegen gesperrt), dann Basis „trunk @ HEAD (r<Rev>)“, Nachricht, Gruppe „Externals“, Schritte `svn copy ^/trunk@<Rev> ^/branches/<Name>@ --parents -m "…"   ← auf dem Server` und `svn switch …`; IDE bleibt bedienbar (**Abnahme**) |
+| BA6 | SVN: Basis „Kasse/trunk @ r<Rev> (Revision der Arbeitskopie)“ wählen, Nachricht ändern, „Anlegen“ | Kopie genau dieser Revision mit der Nachricht (`svn log` auf dem Branch), Arbeitskopie umgeschaltet; Fortschritt „Branch anlegen 1/2 …“, „2/2 …“ in der Meldungsansicht |
+| BA7 | SVN ohne Anmeldung (oder Server nicht erreichbar): „Beginnen“ | „HEAD-Revision nicht ermittelt (LoginNeeded) …“; Anlegen bleibt möglich, kein Anmeldefenster |
+| BA8 | SVN: Schreibrecht auf `^/branches` fehlt bzw. `switch` scheitert | Meldung nennt den gescheiterten Schritt mit Ursache; scheitert erst `switch`, steht „Bereits auf dem Server ausgeführt (nicht zurückgenommen): svn copy …“ dabei (**Abnahme**) |
+| BA9 | „Nicht mehr fragen, Vorgaben verwenden“ ankreuzen, „Anlegen“; danach anderes Issue „Beginnen“ | Kein Dialog mehr, Branch von der Vorgabe-Basis; Einstellung „Dialog „Branch anlegen“ … zeigen“ ist aus |
+| BA10 | Befehlspalette „Branch anlegen …“ mit leerem Namen; Kontextmenü einer Zeile in „Projekte“ › „Branch anlegen …“ | Dialog immer (auch mit `vcs.branch.confirm` aus) ohne „Nicht mehr fragen“; Projekt ohne Git/SVN: Meldung statt Dialog; „Projekte“ zeigt danach den neuen Branch |
+| BA11 | Dialog bei „Beginnen“ abbrechen | Nichts angelegt, Issue nicht aktiv |
+| BA12 | Name eines vorhandenen Branchs eingeben, „Anlegen“ | Meldung „… gibt es schon; nichts angelegt.“ |

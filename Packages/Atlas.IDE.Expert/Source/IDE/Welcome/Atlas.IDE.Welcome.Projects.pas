@@ -169,6 +169,7 @@ type
     procedure Open(const AProject: string);
     procedure OpenAt(const AProject: string; const ATarget: TAtlasProjectLocation);
     procedure OpenFolder(const AProject: string);
+    procedure CreateBranch(const AProject: string);
     procedure Remove(const AProject: string);
     procedure Shown;
     function Selectable: Boolean;
@@ -195,6 +196,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Problems.Controller,
+  Atlas.IDE.Vcs.Branching,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Welcome.Search;
 
@@ -878,6 +880,27 @@ begin
         ShellExecute(0, 'open', PChar(ExtractFileDir(AProject)), nil, nil, SW_SHOWNORMAL)
       else
         Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeProjectsMissing, [AProject]));
+    end);
+end;
+
+procedure TAtlasIdeProjects.CreateBranch(const AProject: string);
+var
+  mKeep: IAtlasProjectsSource;
+  mProject: string;
+begin
+  // Dialog „Branch anlegen“ (#1288); danach Branch und Änderungen der Zeile neu abfragen.
+  mKeep := Self;
+  mProject := AProject;
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      TAtlasIdeBranching.CreateFor(mProject,
+        procedure
+        begin
+          // mKeep hält den Bereich bis hierher; nach dem Beenden nichts mehr abfragen.
+          if (mKeep <> nil) and not FStopped then
+            Refresh(mProject);
+        end);
     end);
 end;
 

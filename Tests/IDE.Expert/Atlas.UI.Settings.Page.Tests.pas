@@ -2042,6 +2042,9 @@ begin
     Assert.AreEqual(2, mPage.VcsProviderChoice.Choice, 'svn');
     Assert.AreEqual('D:\Tools\svn.exe', mPage.VcsPath(TAtlasVcsKind.Svn).Text);
     Assert.AreEqual('45', mPage.VcsTimeout.Text);
+    // #1288: Dialog „Branch anlegen“ bei „Beginnen“, auf derselben Seite.
+    Assert.IsTrue(SheetOf(mPage.VcsBranchConfirm) = mVcs);
+    Assert.IsTrue(mPage.VcsBranchConfirm.Checked);
     Assert.AreEqual(0, mProjectCalls, 'kein Prozess, solange die Seite nicht gezeigt wurde');
     // Pfad ändern: nur Dateiprüfung, kein Prozess.
     mPage.VcsPath(TAtlasVcsKind.Git).Text := 'X:\fehlt\git.exe';
@@ -2089,8 +2092,10 @@ begin
     mPage.VcsProviderChoice.Choice := 1;
     mPage.VcsPath(TAtlasVcsKind.Git).Text := '  D:\Git\git.exe ';
     mPage.VcsTimeout.Text := '120';
+    mPage.VcsBranchConfirm.Checked := False;
     mSaved := mSettings;
     mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.VcsBranchConfirm);
     Assert.AreEqual('git', mSaved.VcsProvider);
     Assert.AreEqual('D:\Git\git.exe', mSaved.VcsGitPath);
     Assert.AreEqual('D:\Tools\svn.exe', mSaved.VcsSvnPath);

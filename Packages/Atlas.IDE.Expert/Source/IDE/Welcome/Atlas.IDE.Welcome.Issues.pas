@@ -23,7 +23,11 @@
 //   master) und checkt ihn aus, SVN kopiert ^/trunk nach ^/branches/<Name> und
 //   wechselt mit svn switch; ein vorhandener Branch wird nur ausgecheckt. Bei
 //   lokalen Änderungen fragt Atlas vorher. start=remember merkt nur die
-//   Kennung. Danach öffnet Atlas das Projekt.
+//   Kennung. Danach öffnet Atlas das Projekt. Fehlt der Branch noch, zeigt
+//   Atlas mit vcs.branch.confirm vorher den Dialog „Branch anlegen“ (#1288,
+//   TAtlasIdeBranching) mit Name, Basis und den Schritten; die Schritte kommen
+//   in jedem Fall aus TAtlasVcsBranchPlan, je Schritt eine Zeile in der
+//   Meldungsansicht.
 // - Commit-Präfix (issues.commitPattern), solange ein Issue
 //   aktuell ist: im Commit-Dialog der IDE (das Nachrichtenfeld wird einmal je
 //   Dialog vorne ergänzt) und, nach einmaliger Zustimmung je Projekt, über den
@@ -137,7 +141,7 @@ type
       const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean; const AIssues: TArray<TAtlasTrackerIssue>;
       AError: TAtlasCiFetchError); static;
     procedure Prepared(const AProject: string; const AIssue: TAtlasTrackerIssue; const APlan: TAtlasIssueStartPlan;
-      AChanges: Integer);
+      AChanges: Integer; const AFacts: TAtlasVcsBranchFacts);
     procedure Finished(const AProject: string; const AIssue: TAtlasTrackerIssue; const APlan: TAtlasIssueStartPlan;
       const AResult: TAtlasIssueStartResult);
     procedure SetNotice(const AProject, AText: string; AFailed: Boolean);
@@ -213,12 +217,14 @@ uses
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.BranchPlan,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Vcs.Branching,
   Atlas.IDE.Vcs.Service;
 
 type
@@ -732,6 +738,7 @@ var
   Settings: TAtlasIssuesOptions;
   Plan: TAtlasIssueStartPlan;
   Changes: Integer;
+  mFacts: TAtlasVcsBranchFacts;
 begin
   if not FStarted or not Active or (FStartProject <> '') or (AIssue.Key = '') then
     Exit;
@@ -747,31 +754,40 @@ begin
   Dir := ExtractFileDir(Project);
   Plan := Default(TAtlasIssueStartPlan);
   Changes := 0;
+  mFacts := TAtlasVcsBranchFacts.Empty;
   FStartProject := Project;
   SetNotice(Project, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStarting, [Issue.Key]), False);
   Changed;
-  // Art der Versionsverwaltung und lokale Änderungen im Hintergrund; die Rückfrage danach im Hauptthread.
+  // Art der Versionsverwaltung, lokale Änderungen und (fehlt der Branch noch) der Stand für den Plan (#1288) im
+  // Hintergrund; Dialog und Rückfrage danach im Hauptthread.
   if not TAtlasIdeVcs.Run(
     procedure
     var
       Vcs: IAtlasVersionControl;
       Kind: TAtlasVcsKind;
       Items: TArray<TAtlasVcsChange>;
+      mBranching: IAtlasVcsBranching;
+      mExists: Boolean;
     begin
       Vcs := TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs));
       Kind := TAtlasVcsKind.None;
       if Vcs <> nil then
         Kind := Vcs.Kind;
       Plan := TAtlasWelcomeIssues.PlanStart(Kind, Settings, Issue);
-      if (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid and (Vcs <> nil) and
-        (Vcs.Changes(Items) = TAtlasVcsOutcome.Ok) then
+      if (Plan.Mode <> TAtlasIssueStart.Branch) or not Plan.Valid or (Vcs = nil) then
+        Exit;
+      if Vcs.Changes(Items) = TAtlasVcsOutcome.Ok then
         Changes := TAtlasWelcomeIssues.LocalChanges(Items);
+      // Vorhandener Branch: nur umschalten, ohne Dialog (wie bisher).
+      if Supports(Vcs, IAtlasVcsBranching, mBranching) and
+        (mBranching.BranchExists(Plan.Branch, mExists) = TAtlasVcsOutcome.Ok) and not mExists then
+        mFacts := TAtlasVcsBranchPlan.Inspect(Vcs, Plan.Bases);
     end,
     procedure
     begin
       if (Keep = nil) or not FStarted then
         Exit;
-      Prepared(Project, Issue, Plan, Changes);
+      Prepared(Project, Issue, Plan, Changes, mFacts);
     end) then
   begin
     FStartProject := '';
@@ -781,18 +797,43 @@ begin
 end;
 
 procedure TAtlasIdeIssues.Prepared(const AProject: string; const AIssue: TAtlasTrackerIssue;
-  const APlan: TAtlasIssueStartPlan; AChanges: Integer);
+  const APlan: TAtlasIssueStartPlan; AChanges: Integer; const AFacts: TAtlasVcsBranchFacts);
 var
   Keep: IAtlasIssuesSource;
   Project, Dir: string;
   Issue: TAtlasTrackerIssue;
   Plan: TAtlasIssueStartPlan;
   Outcome: TAtlasIssueStartResult;
+  mRequest: TAtlasVcsBranchRequest;
+  mUseRequest, mNeverAsk: Boolean;
 begin
   Project := AProject;
   Issue := AIssue;
   Plan := APlan;
   Outcome := Default(TAtlasIssueStartResult);
+  mUseRequest := False;
+  // Neuer Branch (#1288): mit vcs.branch.confirm erst der Dialog „Branch anlegen“; „Abbrechen“ ändert nichts.
+  // Ohne Dialog die Vorgaben aus dem Plan.
+  if (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid and (AFacts.Outcome = TAtlasVcsOutcome.Ok) then
+  begin
+    if TAtlasIdeSettings.Current.VcsBranchConfirm then
+    begin
+      if not TAtlasIdeBranching.Ask(ExtractFileDir(Project), AFacts, Plan.Branch, Plan.Message, True, mRequest,
+        mNeverAsk) then
+      begin
+        FStartProject := '';
+        SetNotice(Project, '', False);
+        Changed;
+        Exit;
+      end;
+      if mNeverAsk then
+        TAtlasIdeBranching.StopAsking;
+      mUseRequest := True;
+      Plan.Branch := mRequest.Name;
+    end
+    else
+      mUseRequest := TAtlasVcsBranchPlan.DefaultRequest(AFacts, Plan.Branch, Plan.Message, mRequest);
+  end;
   // Lokale Änderungen: vorher fragen (Git nimmt sie mit, wenn sie nicht kollidieren).
   if (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid and (AChanges > 0) and
     (MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesLocalChanges, [AChanges, Plan.Branch,
@@ -808,7 +849,11 @@ begin
   if not TAtlasIdeVcs.Run(
     procedure
     begin
-      Outcome := TAtlasWelcomeIssues.Execute(TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs)), Plan);
+      if mUseRequest then
+        Outcome := TAtlasWelcomeIssues.Execute(TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs)), Plan,
+          mRequest, TAtlasIdeBranching.Progress(mRequest.Kind))
+      else
+        Outcome := TAtlasWelcomeIssues.Execute(TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs)), Plan);
     end,
     procedure
     begin
@@ -876,7 +921,11 @@ begin
       begin
         SetNotice(AProject, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStartFailed, [AResult.Branch,
           AtlasVcsOutcomeName(AResult.Reason)]), True);
-        Report(FNotice);
+        // Mit Plan (#1288): Schritt, Grund und was schon auf dem Server liegt.
+        if Length(AResult.Steps) > 0 then
+          Report(TAtlasIdeBranching.FailureText(APlan.Kind, AResult.Steps, AResult.Run))
+        else
+          Report(FNotice);
         Changed;
         Exit;
       end;

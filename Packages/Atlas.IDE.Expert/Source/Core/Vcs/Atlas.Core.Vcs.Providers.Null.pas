@@ -45,7 +45,11 @@ type
     function Pull: TAtlasVcsOutcome;
     { IAtlasVcsBranching }
     function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
-    function CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+    function RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    function ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
+    function HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
+    function RepositoryPath(out APath: string): TAtlasVcsOutcome;
+    function RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
     function SwitchBranch(const AName: string): TAtlasVcsOutcome;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
     property Outcome: TAtlasVcsOutcome read FOutcome;
@@ -179,7 +183,31 @@ begin
   Result := FOutcome;
 end;
 
-function TAtlasNullVersionControl.CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
+function TAtlasNullVersionControl.RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+begin
+  AExists := False;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
+begin
+  ARevision := '';
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
+begin
+  AHas := False;
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.RepositoryPath(out APath: string): TAtlasVcsOutcome;
+begin
+  APath := '';
+  Result := FOutcome;
+end;
+
+function TAtlasNullVersionControl.RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
 begin
   Result := FOutcome;
 end;

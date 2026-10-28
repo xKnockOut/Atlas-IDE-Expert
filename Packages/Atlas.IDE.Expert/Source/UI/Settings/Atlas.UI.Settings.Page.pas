@@ -728,6 +728,7 @@ type
     FVcsCheck: array[TAtlasVcsKind] of TButton;
     FVcsStates: array[TAtlasVcsKind] of TLabel;
     FVcsTimeout: TEdit;
+    FVcsBranchConfirm: TCheckBox;
     FVcsProjectInfo: TLabel;
     FVcsLinkEditor: TButton;
     FVcsLinkWelcome: TButton;
@@ -1658,6 +1659,8 @@ type
     /// <summary>Zum Testen: Versionsverwaltung (#1285).</summary>
     property VcsProviderChoice: TAtlasChoiceBox read FVcsProvider;
     property VcsTimeout: TEdit read FVcsTimeout;
+    /// <summary>Zum Testen: vcs.branch.confirm (#1288).</summary>
+    property VcsBranchConfirm: TCheckBox read FVcsBranchConfirm;
     property VcsProjectInfo: TLabel read FVcsProjectInfo;
     property VcsLinkEditor: TButton read FVcsLinkEditor;
     property VcsLinkWelcome: TButton read FVcsLinkWelcome;
@@ -2992,6 +2995,11 @@ begin
   FVcsLinkEditor := AddVcsLink(mPanel, 0, TAtlasTextId.SettingsVcsLinkEditor);
   FVcsLinkWelcome := AddVcsLink(mPanel, 156, TAtlasTextId.SettingsVcsLinkWelcome);
   FVcsLinkIssues := AddVcsLink(mPanel, 312, TAtlasTextId.SettingsVcsLinkIssues);
+  // Unterpunkt „Branches“ (#1288, x-node vcs.branches): Dialog „Branch anlegen“ vor „Beginnen“; die Optionen aus
+  // #1289 und #1290 kommen hier dazu.
+  AddTitle(TAtlasTextId.SettingsVcsBranchTitle);
+  FVcsBranchConfirm := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchConfirm));
+  AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchHint)).Font.Color := clGrayText;
 end;
 
 procedure TAtlasSettingsPage.AddVcsTool(AKind: TAtlasVcsKind; ACaption: TAtlasTextId);
@@ -5580,6 +5588,7 @@ begin
   FMarks.Bind(FVcsPaths[TAtlasVcsKind.Git], ['VcsGitPath']);
   FMarks.Bind(FVcsPaths[TAtlasVcsKind.Svn], ['VcsSvnPath']);
   FMarks.Bind(FVcsTimeout, ['VcsTimeoutSeconds']);
+  FMarks.Bind(FVcsBranchConfirm, ['VcsBranchConfirm']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -7855,6 +7864,7 @@ begin
   FVcsPaths[TAtlasVcsKind.Git].Text := ASettings.VcsGitPath;
   FVcsPaths[TAtlasVcsKind.Svn].Text := ASettings.VcsSvnPath;
   FVcsTimeout.Text := IntToStr(ASettings.VcsTimeoutSeconds);
+  FVcsBranchConfirm.Checked := ASettings.VcsBranchConfirm;
   RefreshVcsTool(TAtlasVcsKind.Git);
   RefreshVcsTool(TAtlasVcsKind.Svn);
   FVcsProjects := TAtlasVcsProjects.Read(ASettings.VcsProjects);
@@ -8431,6 +8441,7 @@ begin
   ASettings.VcsGitPath := Trim(FVcsPaths[TAtlasVcsKind.Git].Text);
   ASettings.VcsSvnPath := Trim(FVcsPaths[TAtlasVcsKind.Svn].Text);
   ASettings.VcsTimeoutSeconds := StrToIntDef(FVcsTimeout.Text, ASettings.VcsTimeoutSeconds);
+  ASettings.VcsBranchConfirm := FVcsBranchConfirm.Checked;
   ASettings.VcsProjects := VcsProjectsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
