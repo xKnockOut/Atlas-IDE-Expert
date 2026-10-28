@@ -6,10 +6,12 @@
 // Formatierung), liest sie mit Decode und schreibt sie mit Encode und dem
 // erkannten TFileFormat zurück; so bleiben Umlaute und CRLF erhalten.
 //
-// Erkennung: BOM (UTF-8, UTF-16 LE/BE) hat Vorrang. Ohne BOM gilt gültiges
-// UTF-8 mit mindestens einem Nicht-ASCII-Zeichen als UTF-8, ungültiges als
-// Windows-1252. Reines ASCII ist in beiden gleich; dann gilt die Vorgabe
-// (z. B. aus der Projekteinstellung).
+// Erkennung: BOM (UTF-8, UTF-16 LE/BE) hat Vorrang. Ohne BOM gilt eine Datei
+// nur als UTF-8, wenn sie ganz gültiges UTF-8 mit mindestens einem
+// Nicht-ASCII-Zeichen ist; sonst als Windows-1252, wie dcc sie liest. Reines
+// ASCII ist in beiden gleich; dann gilt die Vorgabe (z. B. aus der
+// Projekteinstellung). Server und Plugin entscheiden das über
+// TTextEncodingProbe.IsValidUtf8 gleich (#1327).
 //
 // Windows-1252 wird über eine eigene Tabelle umgesetzt, damit das Ergebnis
 // nicht von der Codepage des Systems abhängt.
@@ -129,8 +131,9 @@ type
     class function HasUtf32Bom(const ABytes: TBytes): Boolean; static;
     /// <summary>
     /// Fehlstellen in UTF-8 (#150), je eine für eine zu kurze oder ungültige Folge, mit Stelle im Text, den
-    /// Decode mit AFormat liefert: bei UTF-8 dort ein U+FFFD, bei ANSI ein Zeichen je Byte. ANSI-Dateien
-    /// ohne gültige Mehrbytefolge sind echtes ANSI und liefern nichts; UTF-16 ebenso.
+    /// Decode mit AFormat liefert: bei UTF-8 dort ein U+FFFD, bei ANSI ein Zeichen je Byte. Eine ANSI-Datei
+    /// gilt nur dann als beschädigtes UTF-8, wenn ihre gültigen Mehrbytefolgen die Fehlstellen überwiegen
+    /// (#1327); sonst ist sie echtes ANSI, wie dcc sie liest, und liefert nichts. UTF-16 ebenso.
     /// </summary>
     class function InvalidUtf8(const ABytes: TBytes; const AFormat: TFileFormat): TArray<TInvalidUtf8>; static;
     /// <summary>Vorhandene Datei, die ein binäres Formular ist; False, wenn sie fehlt oder nicht lesbar ist.</summary>
@@ -575,7 +578,7 @@ var
   Lead: Byte;
   CodePoint: Cardinal;
   Item: TInvalidUtf8;
-  Multibyte: Boolean;
+  mMultibyteCount: Integer;
 begin
   Result := nil;
   if AFormat.Encoding in [TFileEncodingKind.Utf16LE, TFileEncodingKind.Utf16BE] then
@@ -585,7 +588,7 @@ begin
     Index := 3;
   Line := 0;
   Column := 0;
-  Multibyte := False;
+  mMultibyteCount := 0;
   while Index < Length(ABytes) do
   begin
     Lead := ABytes[Index];
@@ -630,7 +633,7 @@ begin
       ((Count = 3) and (CodePoint < $10000)) or (CodePoint > $10FFFF) or
       ((CodePoint >= $D800) and (CodePoint <= $DFFF))) then
     begin
-      Multibyte := True;
+      Inc(mMultibyteCount);
       // Im ANSI-Text ein Zeichen je Byte, im UTF-8-Text eines bzw. ein Surrogatpaar.
       if AFormat.Encoding = TFileEncodingKind.Ansi1252 then
         Inc(Column, Count + 1)
@@ -651,8 +654,10 @@ begin
       Inc(Column);
     Inc(Index, Valid + 1);
   end;
-  // ANSI ohne eine einzige gültige UTF-8-Folge: kein beschädigtes UTF-8, sondern ANSI.
-  if (AFormat.Encoding = TFileEncodingKind.Ansi1252) and not Multibyte then
+  // Ohne BOM liest dcc jede Datei, die nicht ganz gültiges UTF-8 ist, als ANSI. Beschädigtes UTF-8 ist sie nur,
+  // wenn die gültigen Folgen überwiegen (ein eingestreutes ANSI-Byte in einer UTF-8-Datei). Ein zufällig
+  // gültiges Paar wie "Â°" in einer ANSI-Datei mit Umlauten macht deren Umlaute nicht zu Fehlstellen (#1327).
+  if (AFormat.Encoding = TFileEncodingKind.Ansi1252) and (mMultibyteCount <= Length(Result)) then
     Result := nil;
 end;
 
