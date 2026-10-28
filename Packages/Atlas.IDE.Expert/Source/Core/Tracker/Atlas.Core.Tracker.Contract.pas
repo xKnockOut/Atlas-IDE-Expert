@@ -29,6 +29,9 @@
 //   zusätzlich um. Geschrieben wird über IAtlasCiSend, nur nach einem Klick
 //   des Benutzers und nie wiederholt; Fehler kommen mit dem Text des Trackers
 //   zurück (TAtlasTrackerWriteResult).
+// - IAtlasTrackerTimeWriter (#1267): Zeit als Work Item buchen
+//   (TAtlasTrackerWorkItem) und Zeiterfassung des Projekts mit Arbeitstypen
+//   lesen; nur Anbieter mit Zeiterfassung (YouTrack) setzen sie um.
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -280,6 +283,43 @@ type
       out AValues: TArray<string>): TAtlasTrackerWriteResult;
   end;
 
+  /// <summary>Eine Zeitbuchung (#1267).</summary>
+  TAtlasTrackerWorkItem = record
+    /// <summary>Dauer in Minuten (> 0).</summary>
+    Minutes: Integer;
+    /// <summary>Tag der Arbeit (lokal).</summary>
+    Date: TDateTime;
+    /// <summary>Arbeitstyp des Trackers; '' = ohne.</summary>
+    WorkType: string;
+    /// <summary>Beschreibung; '' = ohne.</summary>
+    Text: string;
+    class function Create(AMinutes: Integer; ADate: TDateTime; const AWorkType, AText: string): TAtlasTrackerWorkItem;
+      static;
+  end;
+
+  /// <summary>Zeiterfassung im Projekt des Trackers (#1267).</summary>
+  TAtlasTrackerTimeSettings = record
+    /// <summary>Zeiterfassung im Projekt eingeschaltet.</summary>
+    Enabled: Boolean;
+    /// <summary>Arbeitstypen für die Klappliste; leer = frei.</summary>
+    WorkTypes: TArray<string>;
+  end;
+
+  /// <summary>Zeit im Tracker buchen (#1267). Im Hintergrund; ATransport muss zum Buchen IAtlasCiSend unterstützen.
+  /// Nichts wird wiederholt.</summary>
+  IAtlasTrackerTimeWriter = interface
+    ['{5B7D0E92-6C1A-4F38-9A24-E8C3F1D07B65}']
+    /// <summary>Zeiterfassung und Arbeitstypen des Projekts von AKey. Ohne Leserecht auf die Einstellungen des
+    /// Projekts gilt die Zeiterfassung als an (Enabled) mit den allgemeinen Arbeitstypen.</summary>
+    function TimeSettings(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out ASettings: TAtlasTrackerTimeSettings): TAtlasTrackerWriteResult;
+    /// <summary>AItem auf AKey buchen.</summary>
+    function BookTime(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      const AItem: TAtlasTrackerWorkItem; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+    /// <summary>AResult von BookTime heißt „Zeiterfassung im Projekt aus“ (die Zeit bleibt dann lokal).</summary>
+    function IsTrackingOff(const AResult: TAtlasTrackerWriteResult): Boolean;
+  end;
+
 implementation
 
 const
@@ -378,6 +418,17 @@ end;
 function TAtlasTrackerChange.HasWork: Boolean;
 begin
   Result := (Trim(State) <> '') or (Assign <> TAtlasTrackerAssign.Keep) or (Trim(Comment) <> '');
+end;
+
+{ TAtlasTrackerWorkItem }
+
+class function TAtlasTrackerWorkItem.Create(AMinutes: Integer; ADate: TDateTime; const AWorkType,
+  AText: string): TAtlasTrackerWorkItem;
+begin
+  Result.Minutes := AMinutes;
+  Result.Date := ADate;
+  Result.WorkType := Trim(AWorkType);
+  Result.Text := AText;
 end;
 
 { TAtlasTrackerWriteResult }

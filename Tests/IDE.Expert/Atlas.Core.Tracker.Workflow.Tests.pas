@@ -34,6 +34,9 @@ type
     procedure EndChangeStateCommentAndHandOver;
     [Test]
     procedure DurationText;
+    /// <summary>Betreffzeilen der Commits ohne Kurz-Hash für den Buchungstext (#1267).</summary>
+    [Test]
+    procedure CommitSubjects;
     [Test]
     procedure ConnectionKeepsWorkflowFields;
   end;
@@ -419,6 +422,13 @@ begin
   Assert.AreEqual('25 min', TAtlasTrackerWorkflow.DurationText(25));
   Assert.AreEqual('2 h', TAtlasTrackerWorkflow.DurationText(120));
   Assert.AreEqual('1 h 25 min', TAtlasTrackerWorkflow.DurationText(85));
+end;
+
+procedure TAtlasTrackerWorkflowTests.CommitSubjects;
+begin
+  Assert.AreEqual('', TAtlasTrackerWorkflow.CommitSubjects(''));
+  Assert.AreEqual('Statusfeld zeigt Zeit'#10'Leerlauf erkennen',
+    TAtlasTrackerWorkflow.CommitSubjects('a1b2c3d Statusfeld zeigt Zeit'#13#10#13#10'  9f8e7d6  Leerlauf erkennen  '#10));
 end;
 
 procedure TAtlasTrackerWorkflowTests.ConnectionKeepsWorkflowFields;

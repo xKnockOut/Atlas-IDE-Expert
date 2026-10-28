@@ -152,6 +152,14 @@ type
     DefaultIssuesEndComment = 'Erledigt in {branch}.\n{commits}';
     /// <summary>Höchstlänge der Kommentarvorlagen und der Liste der Zielzustände (#1266).</summary>
     MaxIssuesTemplate = 2000;
+    /// <summary>Grenzen und Vorgaben der Zeiterfassung (#1267, issues.idleMinutes, issues.timeRounding); wie
+    /// TAtlasTimeClock bzw. TAtlasTimeRounding.</summary>
+    MinIssuesIdleMinutes = 1;
+    MaxIssuesIdleMinutes = 120;
+    DefaultIssuesIdleMinutes = 10;
+    MinIssuesTimeRounding = 1;
+    MaxIssuesTimeRounding = 60;
+    DefaultIssuesTimeRounding = 5;
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
     BeginEndAlways = 'always';
     BeginEndMultiLine = 'multiLine';
@@ -1306,6 +1314,13 @@ type
     /// <summary>Kommentarvorlage beim Beenden (#1266, issues.endComment) mit {branch}, {commits}, {pr}, {time};
     /// "\n" = neue Zeile.</summary>
     IssuesEndComment: string;
+    /// <summary>Zeit für das aktuelle Issue erfassen und Buchen anbieten (#1267, issues.timeTracking); aus = weder
+    /// Anzeige noch Datei noch Dialog.</summary>
+    IssuesTimeTracking: Boolean;
+    /// <summary>Minuten ohne Eingabe, nach denen die Uhr anhält (#1267, issues.idleMinutes, 1–120).</summary>
+    IssuesIdleMinutes: Integer;
+    /// <summary>Rundung der vorgeschlagenen Dauer in Minuten (#1267, issues.timeRounding, 1–60).</summary>
+    IssuesTimeRounding: Integer;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2046,6 +2061,9 @@ begin
   Result.IssuesStartComment := '';
   Result.IssuesEndStates := '';
   Result.IssuesEndComment := DefaultIssuesEndComment;
+  Result.IssuesTimeTracking := False;
+  Result.IssuesIdleMinutes := DefaultIssuesIdleMinutes;
+  Result.IssuesTimeRounding := DefaultIssuesTimeRounding;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2134,6 +2152,8 @@ begin
   IssuesStartComment := NormalizedIssuesTemplate(IssuesStartComment);
   IssuesEndStates := NormalizedIssuesTemplate(IssuesEndStates);
   IssuesEndComment := NormalizedIssuesTemplate(IssuesEndComment);
+  IssuesIdleMinutes := EnsureRange(IssuesIdleMinutes, MinIssuesIdleMinutes, MaxIssuesIdleMinutes);
+  IssuesTimeRounding := EnsureRange(IssuesTimeRounding, MinIssuesTimeRounding, MaxIssuesTimeRounding);
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2852,6 +2872,9 @@ begin
   IssuesStartComment := AStore.ReadString('IssuesStartComment', Default.IssuesStartComment);
   IssuesEndStates := AStore.ReadString('IssuesEndStates', Default.IssuesEndStates);
   IssuesEndComment := AStore.ReadString('IssuesEndComment', Default.IssuesEndComment);
+  IssuesTimeTracking := AStore.ReadInteger('IssuesTimeTracking', BoolValue(Default.IssuesTimeTracking)) <> 0;
+  IssuesIdleMinutes := AStore.ReadInteger('IssuesIdleMinutes', Default.IssuesIdleMinutes);
+  IssuesTimeRounding := AStore.ReadInteger('IssuesTimeRounding', Default.IssuesTimeRounding);
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3327,6 +3350,9 @@ begin
   AStore.WriteString('IssuesStartComment', IssuesStartComment);
   AStore.WriteString('IssuesEndStates', IssuesEndStates);
   AStore.WriteString('IssuesEndComment', IssuesEndComment);
+  AStore.WriteInteger('IssuesTimeTracking', BoolValue(IssuesTimeTracking));
+  AStore.WriteInteger('IssuesIdleMinutes', IssuesIdleMinutes);
+  AStore.WriteInteger('IssuesTimeRounding', IssuesTimeRounding);
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

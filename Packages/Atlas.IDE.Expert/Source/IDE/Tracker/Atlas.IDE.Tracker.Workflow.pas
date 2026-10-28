@@ -9,6 +9,8 @@
 //   dann der Dialog „ATL-123 beenden“ (TAtlasTrackerEndDialog) mit Benutzern
 //   und Zuständen vom Tracker; geschrieben wird nur mit „Senden“.
 // - Kommentar aus der Vorschau (SendComment).
+// - Zeit buchen (#1267, BookTime, TimeSettings) für die Zeiterfassung
+//   (Atlas.IDE.Tracker.TimeTracking); unabhängig von issues.syncState.
 // Nur mit issues.syncState und einem Anbieter, der IAtlasTrackerWriter
 // umsetzt (Enabled); sonst bleibt „Beenden“ die Rückfrage von „Meine Issues“.
 // Einstellungen je Verbindung (issues.connections) vor den globalen. Netz im
@@ -96,6 +98,15 @@ type
     /// <summary>Kommentar aus der Vorschau; ADone wie bei Apply.</summary>
     procedure SendComment(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AKey, AText: string; const ADone: TAtlasTrackerSendDone);
+    /// <summary>Zeit-Schreibzugriff des Anbieters (#1267); nil ohne Zeiterfassung (GitHub).</summary>
+    class function TimeWriterOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerTimeWriter; static;
+    /// <summary>AItem auf AKey buchen (#1267, Work Item); ADone wie bei Apply.</summary>
+    procedure BookTime(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget; const AKey: string;
+      const AItem: TAtlasTrackerWorkItem; const ADone: TAtlasTrackerSendDone);
+    /// <summary>Zeiterfassung und Arbeitstypen des Projekts von AKey (#1267) im Hintergrund; ADone im Hauptthread
+    /// (nach Stop nie).</summary>
+    procedure TimeSettings(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+      const AKey: string; const ADone: TProc<TAtlasTrackerTimeSettings, TAtlasTrackerWriteResult>);
     /// <summary>{time} für den Kommentar beim Beenden (#1267).</summary>
     property TimeText: TAtlasIdeTrackerTimeText read FTimeText write FTimeText;
   end;
@@ -478,6 +489,113 @@ begin
         Exit;
       mSession.Dialog.SetUsers(mUsers);
       mSession.Dialog.SetStates(mStates);
+    end);
+end;
+
+class function TAtlasIdeTrackerSync.TimeWriterOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerTimeWriter;
+begin
+  if (AProvider = nil) or not Supports(AProvider, IAtlasTrackerTimeWriter, Result) then
+    Result := nil;
+end;
+
+procedure TAtlasIdeTrackerSync.BookTime(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
+  const AKey: string; const AItem: TAtlasTrackerWorkItem; const ADone: TAtlasTrackerSendDone);
+var
+  mWriter: IAtlasTrackerTimeWriter;
+  mProvider: IAtlasTrackerProvider;
+  mTransports: TAtlasIdeTrackerTransport;
+  mTarget: TAtlasTrackerTarget;
+  mKey: string;
+  mItem: TAtlasTrackerWorkItem;
+  mDone: TAtlasTrackerSendDone;
+  mResult: TAtlasTrackerWriteResult;
+begin
+  mWriter := TimeWriterOf(AProvider);
+  mTransports := FTransport;
+  if FStopped or (mWriter = nil) or not Assigned(mTransports) then
+  begin
+    ADone(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.UnknownProvider, 0, ''));
+    Exit;
+  end;
+  mProvider := AProvider;
+  mTarget := ATarget;
+  mKey := AKey;
+  mItem := AItem;
+  mDone := ADone;
+  mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
+  if not FWorker.Run(
+    procedure
+    var
+      mTransport: IAtlasCiTransport;
+    begin
+      try
+        mTransport := mTransports(mProvider, mTarget);
+        if mTransport = nil then
+          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '')
+        else
+          mResult := mWriter.BookTime(mTarget, mTransport, mKey, mItem, TAtlasTrackerWorkflow.WriteTimeoutMs);
+      except
+        on E: Exception do
+        begin
+          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
+          TAtlasGuard.Log('Zeiterfassung: Buchen mit ' + E.ClassName + ' abgebrochen');
+        end;
+      end;
+    end,
+    procedure
+    begin
+      Logged(mProvider, 'Zeitbuchung', mResult);
+      mDone(mResult);
+    end) then
+    ADone(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Cancelled, 0, ''));
+end;
+
+procedure TAtlasIdeTrackerSync.TimeSettings(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget; const AKey: string;
+  const ADone: TProc<TAtlasTrackerTimeSettings, TAtlasTrackerWriteResult>);
+var
+  mWriter: IAtlasTrackerTimeWriter;
+  mProvider: IAtlasTrackerProvider;
+  mTransports: TAtlasIdeTrackerTransport;
+  mTarget: TAtlasTrackerTarget;
+  mKey: string;
+  mDone: TProc<TAtlasTrackerTimeSettings, TAtlasTrackerWriteResult>;
+  mSettings: TAtlasTrackerTimeSettings;
+  mResult: TAtlasTrackerWriteResult;
+begin
+  mWriter := TimeWriterOf(AProvider);
+  mTransports := FTransport;
+  if FStopped or (mWriter = nil) or not Assigned(mTransports) then
+    Exit;
+  mProvider := AProvider;
+  mTarget := ATarget;
+  mKey := AKey;
+  mDone := ADone;
+  mSettings.Enabled := True;
+  mSettings.WorkTypes := nil;
+  mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
+  FWorker.Run(
+    procedure
+    var
+      mTransport: IAtlasCiTransport;
+    begin
+      try
+        mTransport := mTransports(mProvider, mTarget);
+        if mTransport = nil then
+          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '')
+        else
+          mResult := mWriter.TimeSettings(mTarget, mTransport, mKey, TAtlasTrackerWorkflow.WriteTimeoutMs, mSettings);
+      except
+        on E: Exception do
+        begin
+          mResult := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
+          TAtlasGuard.Log('Zeiterfassung: Einstellungen mit ' + E.ClassName + ' abgebrochen');
+        end;
+      end;
+    end,
+    procedure
+    begin
+      mDone(mSettings, mResult);
     end);
 end;
 
