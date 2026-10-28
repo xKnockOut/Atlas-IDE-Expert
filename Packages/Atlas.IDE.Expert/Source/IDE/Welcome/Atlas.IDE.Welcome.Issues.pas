@@ -8,7 +8,12 @@
 // - Projekt: das in „Projekte“ gewählte, sonst das aktive der IDE, sonst das
 //   oberste der Liste. Tracker (Anbieter, Adresse, Projekt) aus dessen .atlas
 //   (#486, Abschnitt tracker); issues.tracker ersetzt den
-//   Anbieter, issues.query die Abfrage.
+//   Anbieter, issues.query die Abfrage. Ohne tracker in der .atlas gilt die
+//   persönliche Zuordnung (#1261, TAtlasTrackerProjects.Resolve: .dproj, dann
+//   die geöffnete .groupproj, dann der längste Ordner) mit der Verbindung aus
+//   issues.connections; ohne beides bietet der Bereich „zuordnen …“ an
+//   (OnAssignProject öffnet die Seite Issue-Tracker mit vorbefüllter Zeile).
+//   „Zugang zum Issue-Tracker hinterlegen …“ nutzt dieselbe Auflösung.
 // - Abfrage nur mit welcomePage.issues (Vorgabe aus; sonst kein Netz), beim
 //   Anzeigen, höchstens alle 10 Minuten (gemerkt im Abschnitt "issues" der
 //   Projekt-Zusammenfassung), im Hintergrund mit 5 s. Ohne Token im
@@ -81,6 +86,8 @@ type
   private type
     TCachedTarget = record
       Target: TAtlasTrackerTarget;
+      /// <summary>Name der Verbindung (#1261); '' ohne Tracker.</summary>
+      Connection: string;
       Tick: UInt64;
     end;
   private
@@ -105,6 +112,7 @@ type
     FOnSettings: TProc;
     FPreview: TAtlasIdeIssuePreview;
     FPreviewRef: IInterface;
+    FOnAssignProject: TProc<string>;
     FLine: TAtlasStatusLine;
     FLineRef: IAtlasStatusItem;
     FWatch: TTimer;
@@ -120,6 +128,10 @@ type
     function CurrentProject: string;
     function ProjectName(const AProject: string): string;
     function TargetOf(const AProject: string): TAtlasTrackerTarget;
+    /// <summary>Ziel und Verbindung für AProject (#1261), 5 s zwischengespeichert.</summary>
+    function CachedTargetOf(const AProject: string): TCachedTarget;
+    /// <summary>Tracker für AProject: .atlas, sonst persönliche Zuordnung; ohne Zwischenspeicher.</summary>
+    class function ResolveTarget(const AProject: string): TCachedTarget; static;
     function ProviderOf(const AName: string): IAtlasTrackerProvider;
     function StateOf(const AProject: string): TAtlasIssuesState;
     procedure SaveState(const AProject: string; const AState: TAtlasIssuesState);
@@ -178,6 +190,8 @@ type
     property OnCredentials: TAtlasTrackerCredentialsHook read FOnCredentials write FOnCredentials;
     /// <summary>Tools › Optionen › Atlas › Issue-Tracker (Knopf „Tracker-Einstellungen“ der Vorschau).</summary>
     property OnSettings: TProc read FOnSettings write FOnSettings;
+    /// <summary>„zuordnen …“ (#1261): Seite Issue-Tracker mit einer Zeile für „Gilt für“ = Argument öffnen.</summary>
+    property OnAssignProject: TProc<string> read FOnAssignProject write FOnAssignProject;
     { IAtlasIssuesSource }
     function View: TAtlasIssuesView;
     procedure Shown;
@@ -189,6 +203,8 @@ type
     procedure Credentials;
     function CanEnterCredentials: Boolean;
     procedure EndActive;
+    procedure AssignProject;
+    function CanAssign: Boolean;
   end;
 
 implementation
@@ -212,12 +228,15 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Tracker.CommitHook,
+  Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Tracker.Preview,
+  Atlas.Core.Tracker.Projects,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Strings,
   Atlas.UI.Welcome.Frame,
+  Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Vcs.Service;
@@ -387,6 +406,7 @@ begin
   FTransportFactory := nil;
   FOnCredentials := nil;
   FOnSettings := nil;
+  FOnAssignProject := nil;
 end;
 
 procedure TAtlasIdeIssues.ReleaseThread(AWait: Boolean);
@@ -519,32 +539,52 @@ begin
 end;
 
 function TAtlasIdeIssues.TargetOf(const AProject: string): TAtlasTrackerTarget;
-var
-  Key: string;
-  Cached: TCachedTarget;
-  Team: TAtlasTeamSettings;
-  Settings: TAtlasPluginSettings;
 begin
-  Result := TAtlasTrackerTarget.Create('', '', '', '');
+  Result := CachedTargetOf(AProject).Target;
+end;
+
+function TAtlasIdeIssues.CachedTargetOf(const AProject: string): TCachedTarget;
+var
+  mKey: string;
+begin
+  Result := Default(TCachedTarget);
+  Result.Target := TAtlasTrackerTarget.Create('', '', '', '');
   if AProject = '' then
     Exit;
   // .atlas nicht bei jedem Zeichnen lesen.
-  Key := TAtlasProjectSummaries.NormalizedPath(AProject);
-  if FTargets.TryGetValue(Key, Cached) and (GetTickCount64 - Cached.Tick < TargetCacheMs) then
-    Exit(Cached.Target);
+  mKey := TAtlasProjectSummaries.NormalizedPath(AProject);
+  if FTargets.TryGetValue(mKey, Result) and (GetTickCount64 - Result.Tick < TargetCacheMs) then
+    Exit;
+  Result := ResolveTarget(AProject);
+  Result.Tick := GetTickCount64;
+  FTargets.AddOrSetValue(mKey, Result);
+end;
+
+class function TAtlasIdeIssues.ResolveTarget(const AProject: string): TCachedTarget;
+var
+  mTeam: TAtlasTeamSettings;
+  mSettings: TAtlasPluginSettings;
+  mResolution: TAtlasTrackerResolution;
+begin
+  Result := Default(TCachedTarget);
+  Result.Target := TAtlasTrackerTarget.Create('', '', '', '');
+  if AProject = '' then
+    Exit;
   try
-    Team := TAtlasIdeTeamFile.ForProject(AProject);
-    Settings := TAtlasIdeSettings.Current;
-    Result := TAtlasWelcomeIssues.TargetFor(Team.Tracker.Provider, Team.Tracker.Url, Team.Tracker.Project,
-      Settings.IssuesTracker, Settings.IssuesQuery);
+    mTeam := TAtlasIdeTeamFile.ForProject(AProject);
+    mSettings := TAtlasIdeSettings.Current;
+    // .atlas vor der persönlichen Zuordnung (.dproj, geöffnete .groupproj, längster Ordner).
+    mResolution := TAtlasTrackerProjects.Resolve(TAtlasTrackerTarget.Create(mTeam.Tracker.Provider,
+      mTeam.Tracker.Url, mTeam.Tracker.Project, ''), TAtlasTrackerProjects.Read(mSettings.IssuesProjects),
+      TAtlasTrackerConnections.Read(mSettings.IssuesConnections), AProject, TAtlasIdeFiles.GroupOfProject(AProject));
+    Result.Target := TAtlasWelcomeIssues.TargetFor(mResolution, mSettings.IssuesTracker, mSettings.IssuesQuery);
+    if mResolution.Found then
+      Result.Connection := mResolution.Connection.Name;
   except
     // .atlas nicht lesbar: ohne Tracker.
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
   end;
-  Cached.Target := Result;
-  Cached.Tick := GetTickCount64;
-  FTargets.AddOrSetValue(Key, Cached);
 end;
 
 function TAtlasIdeIssues.ProviderOf(const AName: string): IAtlasTrackerProvider;
@@ -605,6 +645,7 @@ end;
 
 function TAtlasIdeIssues.ViewOf(const AProject: string): TAtlasIssuesView;
 var
+  Cached: TCachedTarget;
   Target: TAtlasTrackerTarget;
   Provider: IAtlasTrackerProvider;
 begin
@@ -615,10 +656,13 @@ begin
     Result.Status := TAtlasIssuesStatus.NotConfigured;
     Exit;
   end;
-  Target := TargetOf(AProject);
+  Cached := CachedTargetOf(AProject);
+  Target := Cached.Target;
   Result := TAtlasWelcomeIssues.View(StateOf(AProject), Target, BranchOf(AProject));
   Result.Project := AProject;
   Result.ProjectName := ProjectName(AProject);
+  Result.Connection := Cached.Connection;
+  Result.CanAssign := CanAssign;
   Provider := ProviderOf(Target.Provider);
   if Provider <> nil then
     Result.Tracker := Provider.Caption;
@@ -630,6 +674,7 @@ begin
     Result.NoticeFailed := FNoticeFailed;
   end;
   Result.Options := Options;
+  Result.Options.MainBranch := TAtlasIdeVcs.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject));
   if FProjects <> nil then
     Result.VcsKind := TAtlasWelcomeIssues.VcsKindOf(FProjects.VcsOf(AProject).Kind);
 end;
@@ -780,6 +825,8 @@ begin
   Issue := AIssue;
   Settings := Options;
   Settings.Start := AMode;
+  // Hauptbranch des Projekts (#1286) als Basis, wenn issues.branchBase leer ist.
+  Settings.MainBranch := TAtlasIdeVcs.MainBranchOf(Project, TAtlasIdeFiles.GroupOfProject(Project));
   Dir := ExtractFileDir(Project);
   Plan := Default(TAtlasIssueStartPlan);
   Changes := 0;
@@ -794,7 +841,7 @@ begin
       Kind: TAtlasVcsKind;
       Items: TArray<TAtlasVcsChange>;
     begin
-      Vcs := TAtlasIdeVcs.ForFolder(Dir, VcsTimeoutMs);
+      Vcs := TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs));
       Kind := TAtlasVcsKind.None;
       if Vcs <> nil then
         Kind := Vcs.Kind;
@@ -844,7 +891,7 @@ begin
   if not TAtlasIdeVcs.Run(
     procedure
     begin
-      Outcome := TAtlasWelcomeIssues.Execute(TAtlasIdeVcs.ForFolder(Dir, VcsTimeoutMs), Plan);
+      Outcome := TAtlasWelcomeIssues.Execute(TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs)), Plan);
     end,
     procedure
     begin
@@ -1154,21 +1201,12 @@ end;
 function TAtlasIdeIssues.ActiveTarget(out ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
 var
   mProject: string;
-  mTeam: TAtlasTeamSettings;
-  mSettings: TAtlasPluginSettings;
 begin
-  // Das aktive Projekt der IDE, sonst das des Bereichs.
+  // Das aktive Projekt der IDE, sonst das des Bereichs; Tracker wie im Bereich (.atlas, sonst Zuordnung #1261).
   mProject := TAtlasIdeTeamFile.ActiveProject;
   if mProject = '' then
     mProject := CurrentProject;
-  ATarget := TAtlasTrackerTarget.Create('', '', '', '');
-  if mProject <> '' then
-  begin
-    mTeam := TAtlasIdeTeamFile.ForProject(mProject);
-    mSettings := TAtlasIdeSettings.Current;
-    ATarget := TAtlasWelcomeIssues.TargetFor(mTeam.Tracker.Provider, mTeam.Tracker.Url, mTeam.Tracker.Project,
-      mSettings.IssuesTracker, mSettings.IssuesQuery);
-  end;
+  ATarget := ResolveTarget(mProject).Target;
   Result := ProviderOf(ATarget.Provider);
   if ATarget.Server = '' then
     Result := nil;
@@ -1284,6 +1322,30 @@ begin
       end;
       if FOnCredentials(Provider, Target) then
         Fetch(True);
+    end);
+end;
+
+function TAtlasIdeIssues.CanAssign: Boolean;
+begin
+  Result := FStarted and Assigned(FOnAssignProject);
+end;
+
+procedure TAtlasIdeIssues.AssignProject;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    var
+      mProject: string;
+    begin
+      mProject := CurrentProject;
+      if not CanAssign or (mProject = '') then
+        Exit;
+      // Die geöffnete .groupproj, wenn das Projekt darin ist, sonst die .dproj (wie „Aktuelles Projekt hinzufügen“).
+      FOnAssignProject(TAtlasTrackerProjects.CurrentMatch(mProject, TAtlasIdeFiles.GroupOfProject(mProject)));
+      // Nach dem Dialog gilt die neue Zuordnung sofort.
+      FTargets.Clear;
+      Changed;
+      Fetch(False);
     end);
 end;
 

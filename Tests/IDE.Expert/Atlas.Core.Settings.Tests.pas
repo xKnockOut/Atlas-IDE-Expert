@@ -43,6 +43,13 @@ type
     /// ohne Eintrag, kaputter Text nie in die Datei.</summary>
     [Test]
     procedure IssuesConnectionsGoToGlobalFile;
+    /// <summary>#1261: issues.projects wie die Verbindungen als JSON-Liste in settings.json.</summary>
+    [Test]
+    procedure IssuesProjectsGoToGlobalFile;
+    /// <summary>#1285: vcs.provider, vcs.git.path, vcs.svn.path und vcs.timeoutSeconds in settings.json (der
+    /// Server liest dieselben Werte), nie in der Registry; ungültige Werte werden zur Vorgabe.</summary>
+    [Test]
+    procedure VcsSettingsGoToGlobalFile;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -645,6 +652,85 @@ begin
   mLoaded.Load(mStore);
   Assert.AreEqual('[]', mLoaded.IssuesConnections);
   Assert.IsTrue(MatchText('issues.connections', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesProjectsGoToGlobalFile;
+const
+  cList = '[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "connection": "Firma", "project": "KASSE"}]';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('[]', mSettings.IssuesProjects);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.Save(mStore);
+  Assert.IsFalse(mRouted.Text.Contains('projects'), 'leere Liste ohne Eintrag: ' + mRouted.Text);
+  mSettings.IssuesProjects := cList;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"projects": [{"match": ');
+  Assert.AreEqual('', mRegistry.ReadString('IssuesProjects', ''), 'nicht in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesProjects.Contains('"KASSE"'), mLoaded.IssuesProjects);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '{"issues": {"projects": 3}}');
+  mStore := mRouted;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('[]', mLoaded.IssuesProjects, 'falsche Art: Vorgabe');
+  Assert.IsTrue(MatchText('issues.projects', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
+procedure TAtlasPluginSettingsTests.VcsSettingsGoToGlobalFile;
+const
+  cGit = 'D:\Portable\Git\cmd\git.exe';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('auto', mSettings.VcsProvider);
+  Assert.AreEqual('', mSettings.VcsGitPath, 'leer = automatisch suchen');
+  Assert.AreEqual('', mSettings.VcsSvnPath);
+  Assert.AreEqual(15, mSettings.VcsTimeoutSeconds);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.VcsProvider := 'svn';
+  mSettings.VcsGitPath := cGit;
+  mSettings.VcsTimeoutSeconds := 60;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"provider": "svn"');
+  Assert.Contains(mRouted.Text, '"timeoutSeconds": 60');
+  Assert.Contains(mRouted.Text, '"git": {');
+  Assert.AreEqual('', mRegistry.ReadString('VcsGitPath', ''), 'nicht in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.AreEqual('svn', mLoaded.VcsProvider);
+  Assert.AreEqual(cGit, mLoaded.VcsGitPath);
+  Assert.AreEqual('', mLoaded.VcsSvnPath);
+  Assert.AreEqual(60, mLoaded.VcsTimeoutSeconds);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create,
+    '{"vcs": {"provider": "cvs", "svn": {"path": "  s.exe "}, "timeoutSeconds": 0}}');
+  mStore := mRouted;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('auto', mLoaded.VcsProvider, 'unbekannte Art: Vorgabe');
+  Assert.AreEqual('s.exe', mLoaded.VcsSvnPath, 'ohne Leerzeichen');
+  Assert.AreEqual(15, mLoaded.VcsTimeoutSeconds, 'außerhalb 1 bis 300: Vorgabe');
+  // #1286: vcs.projects als JSON-Liste wie issues.projects.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('[]', mSettings.VcsProjects);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '');
+  mStore := mRouted;
+  mSettings.VcsProjects := '[{"match": "C:\\Kasse", "provider": "svn", "mainBranch": "trunk"}]';
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"projects": [{"match": ');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.VcsProjects.Contains('"trunk"'), mLoaded.VcsProjects);
 end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;

@@ -822,7 +822,7 @@ begin
     procedure
     begin
       Outcome := TAtlasWelcomeQuickActions.Pull(TAtlasIdeVcs.ForFolder(Dir,
-        TAtlasWelcomeQuickActions.PullTimeoutMs), Reason);
+        TAtlasIdeVcs.AtLeast(TAtlasWelcomeQuickActions.PullTimeoutMs)), Reason);
     end,
     procedure
     var

@@ -42,7 +42,6 @@ type
     FStamp: string;
     procedure Tick(Sender: TObject);
     procedure Check;
-    class function Wanted: Boolean; static;
     class function PathExists(const APath: string): Boolean; static;
     /// <summary>Liest AFileName; False, wenn die Datei nicht lesbar ist (gesperrt, gelöscht).</summary>
     class function Load(const AFileName: string; out ATeam: TAtlasTeamSettings): Boolean; static;
@@ -51,6 +50,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    /// <summary>Gilt die .atlas (Hauptschalter und Einstellung TeamFile)? Nur im Hauptthread.</summary>
+    class function Wanted: Boolean; static;
     /// <summary>Zeitgeber anlegen und gleich prüfen (Feature TeamFile).</summary>
     class procedure Start; static;
     class procedure Stop; static;

@@ -196,6 +196,7 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Foundation.Files,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Welcome.Search,
@@ -887,7 +888,7 @@ procedure TAtlasIdeContinue.RefreshIncoming(AForce: Boolean);
 var
   Keep: IAtlasContinueSource;
   Entry: TAtlasContinueEntry;
-  EntryKey, Dir, Project: string;
+  EntryKey, Dir, Project, MainBranch: string;
   State: TAtlasWorkState;
   Fetch, Ok: Boolean;
   Stamp: TDateTime;
@@ -907,6 +908,11 @@ begin
   Project := Entry.Project;
   State := Entry.State;
   Dir := ExtractFileDir(Entry.Project);
+  // Hauptbranch des Projekts (#1286) für Branches ohne verfolgten Branch; .atlas und Gruppe im Hauptthread.
+  if SameText(ExtractFileExt(Project), '.groupproj') then
+    MainBranch := TAtlasIdeVcs.MainBranchOf(Project, Project)
+  else
+    MainBranch := TAtlasIdeVcs.MainBranchOf(Project, TAtlasIdeFiles.GroupOfProject(Project));
   Fetch := TAtlasIdeSettings.Current.WelcomePageContinueFetch;
   Stamp := NowUtc;
   Ok := False;
@@ -927,7 +933,7 @@ begin
       if Fetch then
         FetchVcs := TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeContinue.FetchTimeoutMs);
       Ok := TAtlasWelcomeContinue.ProbeIncoming(TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeContinue.CallTimeoutMs),
-        FetchVcs, Project, State, Stamp, Found);
+        FetchVcs, Project, MainBranch, State, Stamp, Found);
     end,
     procedure
     begin

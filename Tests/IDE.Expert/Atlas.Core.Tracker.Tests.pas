@@ -51,6 +51,9 @@ type
     procedure KeyOfGitHubBranch;
     [Test]
     procedure KeyOfYouTrackBranch;
+    /// <summary>#1286: issues.branchBase, sonst Hauptbranch des Projekts, sonst geraten.</summary>
+    [Test]
+    procedure BasesPreferBranchBaseThenMainBranch;
   end;
 
   [TestFixture]
@@ -294,6 +297,21 @@ begin
 end;
 
 { TAtlasTrackerNamingTests }
+
+procedure TAtlasTrackerNamingTests.BasesPreferBranchBaseThenMainBranch;
+var
+  mBases: TArray<string>;
+begin
+  mBases := TAtlasTrackerNaming.Bases(False, '', '');
+  Assert.AreEqual(2, Integer(Length(mBases)));
+  Assert.AreEqual('main', mBases[0]);
+  Assert.AreEqual('master', mBases[1]);
+  mBases := TAtlasTrackerNaming.Bases(True, '', '');
+  Assert.AreEqual('trunk', string.Join(',', mBases));
+  Assert.AreEqual('develop', string.Join(',', TAtlasTrackerNaming.Bases(False, '', ' develop ')));
+  Assert.AreEqual('develop', string.Join(',', TAtlasTrackerNaming.Bases(True, '', 'develop')));
+  Assert.AreEqual('release', string.Join(',', TAtlasTrackerNaming.Bases(False, 'release', 'develop')));
+end;
 
 procedure TAtlasTrackerNamingTests.BranchNameOfMockupIssue;
 begin
