@@ -156,6 +156,15 @@ type
       Positions: TArray<Integer>;
     end;
   private
+    class var FScopeThread: TThreadID;
+    class var FScopeTree: TSyntaxTree;
+    class var FScopeFile: string;
+    class var FScopeExtracted: TUnitIndex;
+    class var FScopeHasExtracted: Boolean;
+    class var FScopeIndex: Pointer;
+    class var FScopeMerged: TUnitIndex;
+    class var FScopeHasMerged: Boolean;
+  private
     FIndex: ISymbolIndex;
     FEnsureUnit: TEnsureUnitFunc;
     FNamespaces: TArray<string>;
@@ -380,6 +389,10 @@ type
     /// auch mit anderen Bäumen; jedes PinTree braucht genau ein UnpinTree (LIFO, try/finally). Ist der
     /// Baum schon gepinnt, zählt PinTree nur hoch und wertet nicht erneut aus.</summary>
     procedure PinTree(ATree: TSyntaxTree; const AFileName: string);
+    /// <summary>EXPERIMENT Laufzeit: Zwischenspeicher der Auswertung eines Baums für alle Resolver dieses
+    /// Threads, bis EndFileScope. Der Aufrufer gibt ATree erst nach EndFileScope frei.</summary>
+    class procedure BeginFileScope(ATree: TSyntaxTree); static;
+    class procedure EndFileScope; static;
     /// <summary>Löst das zuletzt gesetzte PinTree; ohne gepinnten Baum wirkungslos.</summary>
     procedure UnpinTree;
     /// <summary>Unit-Index nur aus ATree (ohne Include-Symbole), wie TIndexExtractor.Extract; bei gepinntem
@@ -480,6 +493,7 @@ type
 implementation
 
 uses
+  System.Classes,
   System.StrUtils,
   System.Math,
   System.Diagnostics,
@@ -3133,9 +3147,42 @@ begin
   end;
 end;
 
+class procedure TNameResolver.BeginFileScope(ATree: TSyntaxTree);
+begin
+  FScopeThread := TThread.CurrentThread.ThreadID;
+  FScopeTree := ATree;
+  FScopeFile := '';
+  FScopeHasExtracted := False;
+  FScopeHasMerged := False;
+end;
+
+class procedure TNameResolver.EndFileScope;
+begin
+  FScopeTree := nil;
+  FScopeFile := '';
+  FScopeExtracted := Default(TUnitIndex);
+  FScopeMerged := Default(TUnitIndex);
+  FScopeHasExtracted := False;
+  FScopeHasMerged := False;
+end;
+
+function ScopeApplies(ATree: TSyntaxTree): Boolean;
+begin
+  Result := (ATree <> nil) and (TNameResolver.FScopeTree = ATree) and
+    (TNameResolver.FScopeThread = TThread.CurrentThread.ThreadID);
+end;
+
 function TNameResolver.TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
 begin
-  Result := MergedUnit(TIndexExtractor.Extract(ATree, AFileName), AFileName);
+  if ScopeApplies(ATree) and FScopeHasMerged and (FScopeIndex = Pointer(FIndex)) and SameText(FScopeFile, AFileName) then
+    Exit(FScopeMerged);
+  Result := MergedUnit(ExtractedUnit(ATree, AFileName), AFileName);
+  if ScopeApplies(ATree) and SameText(FScopeFile, AFileName) then
+  begin
+    FScopeMerged := Result;
+    FScopeIndex := Pointer(FIndex);
+    FScopeHasMerged := True;
+  end;
 end;
 
 function TNameResolver.MergedUnit(const AExtracted: TUnitIndex; const AFileName: string): TUnitIndex;
@@ -3181,8 +3228,19 @@ begin
   PinIndex := PinnedIndex(ATree, AFileName);
   if PinIndex >= 0 then
     Result := FPins[PinIndex].Extracted
+  else if ScopeApplies(ATree) and FScopeHasExtracted and SameText(FScopeFile, AFileName) then
+    Result := FScopeExtracted
   else
+  begin
     Result := TIndexExtractor.Extract(ATree, AFileName);
+    if ScopeApplies(ATree) then
+    begin
+      FScopeFile := AFileName;
+      FScopeExtracted := Result;
+      FScopeHasExtracted := True;
+      FScopeHasMerged := False;
+    end;
+  end;
 end;
 
 function TNameResolver.ReceiverTypes(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
@@ -3315,8 +3373,8 @@ begin
   Pin := Default(TPin);
   Pin.Tree := ATree;
   Pin.FileName := AFileName;
-  Pin.Extracted := TIndexExtractor.Extract(ATree, AFileName);
-  Pin.Merged := MergedUnit(Pin.Extracted, AFileName);
+  Pin.Extracted := ExtractedUnit(ATree, AFileName);
+  Pin.Merged := TreeUnit(ATree, AFileName);
   Pin.Depth := 1;
   FPins.Add(Pin);
 end;

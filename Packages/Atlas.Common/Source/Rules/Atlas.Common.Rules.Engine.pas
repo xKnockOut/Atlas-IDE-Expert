@@ -124,7 +124,8 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Profiles,
-  Atlas.Common.Rules.Suppressions;
+  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Semantics.NameResolver;
 
 type
   TRuleReport = class(TInterfacedObject, IRuleReport, IRuleRelatedReport)
@@ -556,6 +557,7 @@ begin
   AfterIds := TList<string>.Create;
   AfterSeverities := TList<TRuleSeverity>.Create;
   AfterContexts := TList<TRuleContext>.Create;
+  TNameResolver.BeginFileScope(AContext.Tree);
   try
     for Rule in ARules do
     begin
@@ -725,6 +727,7 @@ begin
 
     Result := SortedFindings(Kept.ToArray);
   finally
+    TNameResolver.EndFileScope;
     // Gibt Graphen und Modelle frei, bevor der Aufrufer den Baum freigibt, und bricht
     // Referenzzyklen über Kontextkopien in abgelegten Objekten.
     if OwnCache <> nil then

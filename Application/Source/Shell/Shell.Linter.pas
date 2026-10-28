@@ -243,6 +243,10 @@ begin
       // Symbole wie im Editor: .dproj, Plattform, Compilerversion und Schalter (#860).
       Version := TDelphiVersions.Choose(ASettings.DelphiVersion,
         TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(TPath.GetFullPath(ATarget))), TDelphiInstallation.Versions);
+      // EXPERIMENT: Ohne installiertes Delphi (Linux, CI) fehlte CompilerVersion; dann die Version zur ProjectVersion.
+      if Version = '' then
+        Version := TDelphiVersions.BdsForProjectVersion(
+          TDelphiVersions.ProjectVersionOf(TFileEncoding.LoadText(TPath.GetFullPath(ATarget))));
       ASources := CheckSourcesOf(TIndexProjectFiles.Defines(Project, Version), Project.SearchPaths);
       if (Project.MainSource <> '') and TFile.Exists(Project.MainSource) then
         Files.Add(Project.MainSource);
