@@ -114,6 +114,9 @@ type
     BranchBase: string;
     /// <summary>'' = aus; nicht gekürzt.</summary>
     CommitPattern: string;
+    /// <summary>issues.preview (#1264): Klick auf Zeile bzw. Kennung zeigt das Issue in „Atlas-Issue“,
+    /// Strg+Klick öffnet den Browser. Create setzt False.</summary>
+    Preview: Boolean;
     class function Create(AStart: TAtlasIssueStart; const ABranchPattern, ABranchBase,
       ACommitPattern: string): TAtlasIssuesOptions; static;
   end;
@@ -317,6 +320,7 @@ begin
   Result.BranchPattern := Trim(ABranchPattern);
   Result.BranchBase := Trim(ABranchBase);
   Result.CommitPattern := ACommitPattern;
+  Result.Preview := False;
 end;
 
 { TAtlasWelcomeIssues }

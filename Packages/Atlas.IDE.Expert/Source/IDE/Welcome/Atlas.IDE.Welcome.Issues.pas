@@ -28,6 +28,10 @@
 // - Issue-Links "#312" in Begründungen (#1123): Adresse aus dem Tracker des
 //   aktuellen Projekts (IssueUrl), angemeldet bei TAtlasDocIssueLinks von Start
 //   bis Stop; ohne Tracker sind die Links nicht anklickbar.
+// - Issue-Vorschau (#1264, issues.preview): Klick auf Zeile oder Kennung zeigt
+//   das Issue im Fenster „Atlas-Issue“ (TAtlasIdeIssuePreview, Zwischenspeicher
+//   %LOCALAPPDATA%\Atlas\issues), Strg+Klick öffnet den Browser; Befehl
+//   Atlas.IssueShow fragt nach einer Kennung (ShowPreviewPrompt).
 // - Protokoll anonym: nur Anbieter, Anzahl, Ergebnis und Fehlerart, nie
 //   Adresse, Projekt, Kennung, Titel oder Token.
 // Anbieter, Transport (mit Token aus dem Anmeldespeicher) und Zugangsdialog
@@ -47,6 +51,7 @@ uses
   Atlas.Core.Welcome.Issues,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Issues,
+  Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Welcome.Projects;
 
 type
@@ -97,6 +102,9 @@ type
     FProviderFactory: TAtlasTrackerProviderHook;
     FTransportFactory: TAtlasTrackerTransportHook;
     FOnCredentials: TAtlasTrackerCredentialsHook;
+    FOnSettings: TProc;
+    FPreview: TAtlasIdeIssuePreview;
+    FPreviewRef: IInterface;
     FLine: TAtlasStatusLine;
     FLineRef: IAtlasStatusItem;
     FWatch: TTimer;
@@ -138,6 +146,8 @@ type
     procedure FillCommitDialog;
     procedure RegisterSection;
     procedure RegisterIssueLinks;
+    procedure StartPreview;
+    function ActiveTarget(out ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
     class function NowUtc: TDateTime; static;
   public
     /// <summary>AProjects: Bereich „Projekte“ (Liste, Auswahl, Öffnen, Stand der Versionsverwaltung). AMessage:
@@ -158,14 +168,22 @@ type
     /// <summary>Adresse des Issues AKey im Tracker des aktuellen Projekts (#1123); '' ohne Tracker. Ohne Netz.
     /// </summary>
     function IssueUrl(const AKey: string): string;
+    /// <summary>Befehl Atlas.IssueShow (#1264): Kennung abfragen und das Issue aus dem Tracker des aktiven
+    /// Projekts in „Atlas-Issue“ zeigen.</summary>
+    procedure ShowPreviewPrompt;
+    /// <summary>Vorschau-Steuerung (nil vor Start bzw. nach Stop).</summary>
+    property IssuePreview: TAtlasIdeIssuePreview read FPreview;
     property ProviderFactory: TAtlasTrackerProviderHook read FProviderFactory write FProviderFactory;
     property TransportFactory: TAtlasTrackerTransportHook read FTransportFactory write FTransportFactory;
     property OnCredentials: TAtlasTrackerCredentialsHook read FOnCredentials write FOnCredentials;
+    /// <summary>Tools › Optionen › Atlas › Issue-Tracker (Knopf „Tracker-Einstellungen“ der Vorschau).</summary>
+    property OnSettings: TProc read FOnSettings write FOnSettings;
     { IAtlasIssuesSource }
     function View: TAtlasIssuesView;
     procedure Shown;
     procedure Start(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart); overload;
     procedure Browse(const AIssue: TAtlasTrackerIssue);
+    procedure Preview(const AIssue: TAtlasTrackerIssue);
     procedure BrowsePullRequest(const AIssue: TAtlasTrackerIssue);
     procedure QueryNow;
     procedure Credentials;
@@ -181,6 +199,7 @@ uses
   System.UITypes,
   System.StrUtils,
   System.DateUtils,
+  System.IOUtils,
   Vcl.Controls,
   Vcl.StdCtrls,
   Vcl.Forms,
@@ -194,6 +213,7 @@ uses
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Naming,
+  Atlas.Core.Tracker.Preview,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Strings,
@@ -261,7 +281,63 @@ begin
   FWatch.OnTimer := WatchTick;
   FTitle := '';
   RegisterIssueLinks;
+  StartPreview;
   Refresh;
+end;
+
+procedure TAtlasIdeIssues.StartPreview;
+var
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
+  mHooks: TAtlasIssuePreviewHooks;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  mHooks := Default(TAtlasIssuePreviewHooks);
+  mHooks.Provider :=
+    function(const AName: string): IAtlasTrackerProvider
+    begin
+      Result := nil;
+      if mKeep <> nil then
+        Result := mOwner.ProviderOf(AName);
+    end;
+  mHooks.Transport :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    var
+      mFactory: TAtlasTrackerTransportHook;
+    begin
+      Result := nil;
+      mFactory := mOwner.FTransportFactory;
+      if (mKeep <> nil) and Assigned(mFactory) then
+        Result := mFactory(AProvider, ATarget);
+    end;
+  mHooks.Credentials :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean
+    begin
+      Result := (mKeep <> nil) and mOwner.CanEnterCredentials and mOwner.FOnCredentials(AProvider, ATarget);
+    end;
+  mHooks.Start :=
+    procedure(AIssue: TAtlasTrackerIssue)
+    begin
+      if mKeep <> nil then
+        mOwner.Start(AIssue, mOwner.Options.Start);
+    end;
+  mHooks.CanStart :=
+    function: Boolean
+    begin
+      Result := (mKeep <> nil) and mOwner.FStarted and Active and (mOwner.FStartProject = '') and
+        (mOwner.CurrentProject <> '');
+    end;
+  mHooks.Settings :=
+    procedure
+    begin
+      if (mKeep <> nil) and Assigned(mOwner.FOnSettings) then
+        mOwner.FOnSettings();
+    end;
+  FPreview := TAtlasIdeIssuePreview.Create(mHooks,
+    TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'issues'));
+  FPreviewRef := FPreview;
+  FPreview.Start;
 end;
 
 procedure TAtlasIdeIssues.RegisterIssueLinks;
@@ -294,6 +370,11 @@ begin
     Exit;
   FStarted := False;
   TAtlasDocIssueLinks.Clear;
+  // Die Hooks der Vorschau halten diese Quelle: Stop löst den Ring.
+  if FPreview <> nil then
+    FPreview.Stop;
+  FPreview := nil;
+  FPreviewRef := nil;
   FreeAndNil(FWatch);
   RemoveStatus;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Issues);
@@ -305,6 +386,7 @@ begin
   FProviderFactory := nil;
   FTransportFactory := nil;
   FOnCredentials := nil;
+  FOnSettings := nil;
 end;
 
 procedure TAtlasIdeIssues.ReleaseThread(AWait: Boolean);
@@ -518,6 +600,7 @@ begin
   Result := TAtlasIssuesOptions.Create(TAtlasWelcomeIssues.StartOf(Settings.IssuesStart),
     Settings.IssuesBranchPattern, Settings.IssuesBranchBase,
     Settings.IssuesCommitPattern);
+  Result.Preview := Settings.IssuesPreview and (FPreview <> nil);
 end;
 
 function TAtlasIdeIssues.ViewOf(const AProject: string): TAtlasIssuesView;
@@ -1054,6 +1137,75 @@ begin
     end);
 end;
 
+procedure TAtlasIdeIssues.Preview(const AIssue: TAtlasTrackerIssue);
+var
+  mIssue: TAtlasTrackerIssue;
+begin
+  mIssue := AIssue;
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      if not FStarted or (FPreview = nil) or not TAtlasIdeIssuePreview.Active then
+        Exit;
+      FPreview.Show(TargetOf(CurrentProject), mIssue.Key);
+    end);
+end;
+
+function TAtlasIdeIssues.ActiveTarget(out ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
+var
+  mProject: string;
+  mTeam: TAtlasTeamSettings;
+  mSettings: TAtlasPluginSettings;
+begin
+  // Das aktive Projekt der IDE, sonst das des Bereichs.
+  mProject := TAtlasIdeTeamFile.ActiveProject;
+  if mProject = '' then
+    mProject := CurrentProject;
+  ATarget := TAtlasTrackerTarget.Create('', '', '', '');
+  if mProject <> '' then
+  begin
+    mTeam := TAtlasIdeTeamFile.ForProject(mProject);
+    mSettings := TAtlasIdeSettings.Current;
+    ATarget := TAtlasWelcomeIssues.TargetFor(mTeam.Tracker.Provider, mTeam.Tracker.Url, mTeam.Tracker.Project,
+      mSettings.IssuesTracker, mSettings.IssuesQuery);
+  end;
+  Result := ProviderOf(ATarget.Provider);
+  if ATarget.Server = '' then
+    Result := nil;
+end;
+
+procedure TAtlasIdeIssues.ShowPreviewPrompt;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    var
+      mTarget: TAtlasTrackerTarget;
+      mProvider: IAtlasTrackerProvider;
+      mInput, mKey: string;
+    begin
+      if not FStarted or (FPreview = nil) or not TAtlasIdeIssuePreview.Active then
+        Exit;
+      mProvider := ActiveTarget(mTarget);
+      if mProvider = nil then
+      begin
+        Report(TAtlasStrings.Text(TAtlasTextId.IssuePreviewNoTracker));
+        Exit;
+      end;
+      mInput := '';
+      if not InputQuery(TAtlasStrings.Text(TAtlasTextId.IssuePreviewCaption),
+        TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewPrompt, [TAtlasIssuePreview.KeyExample(mTarget.Provider)]),
+        mInput) then
+        Exit;
+      mKey := TAtlasIssuePreview.KeyOf(mTarget.Provider, mInput);
+      if mKey = '' then
+      begin
+        Report(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewInvalidKey, [Trim(mInput)]));
+        Exit;
+      end;
+      FPreview.Show(mTarget, mKey);
+    end);
+end;
+
 procedure TAtlasIdeIssues.BrowsePullRequest(const AIssue: TAtlasTrackerIssue);
 var
   Issue: TAtlasTrackerIssue;
@@ -1119,28 +1271,13 @@ begin
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
-      Project: string;
-      Team: TAtlasTeamSettings;
       Target: TAtlasTrackerTarget;
       Provider: IAtlasTrackerProvider;
-      Settings: TAtlasPluginSettings;
     begin
       if not FStarted or not TAtlasIdeSettings.Current.TrackerLogin or not Assigned(FOnCredentials) then
         Exit;
-      // Das aktive Projekt der IDE, sonst das des Bereichs.
-      Project := TAtlasIdeTeamFile.ActiveProject;
-      if Project = '' then
-        Project := CurrentProject;
-      Target := TAtlasTrackerTarget.Create('', '', '', '');
-      if Project <> '' then
-      begin
-        Team := TAtlasIdeTeamFile.ForProject(Project);
-        Settings := TAtlasIdeSettings.Current;
-        Target := TAtlasWelcomeIssues.TargetFor(Team.Tracker.Provider, Team.Tracker.Url, Team.Tracker.Project,
-          Settings.IssuesTracker, Settings.IssuesQuery);
-      end;
-      Provider := ProviderOf(Target.Provider);
-      if (Provider = nil) or (Target.Server = '') then
+      Provider := ActiveTarget(Target);
+      if Provider = nil then
       begin
         Report(TAtlasStrings.Text(TAtlasTextId.TrackerLoginNoTracker));
         Exit;

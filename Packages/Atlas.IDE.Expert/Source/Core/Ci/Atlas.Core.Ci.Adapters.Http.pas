@@ -13,6 +13,9 @@
 // Der Issue-Tracker (#765) nutzt denselben Transport mit
 // „Authorization: Bearer <Token>“ (CreateBearer; GitHub und YouTrack), unter
 // denselben Regeln für https, Server und Weiterleitungen.
+// Die Issue-Vorschau (#1264) lädt darüber auch Bilder und Anhänge
+// (IAtlasCiDownload) und bricht beim Schließen des Fensters ab
+// (IAtlasCiCancel).
 
 interface
 
@@ -21,12 +24,16 @@ uses
   Atlas.Core.Ci.Contract;
 
 type
-  TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport)
+  TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiCancel)
   private
     FServer: string;
     FUser: string;
     FToken: string;
     FBearer: Boolean;
+    FCancelled: Integer;
+    function Request(const AUrl, AAccept: string; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer;
+      out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
+    function Cancelled: Boolean;
   public
     /// <summary>AServer wie TAtlasCiJob.Server; AUser/AToken leer = ohne Anmeldung.</summary>
     constructor Create(const AServer, AUser, AToken: string);
@@ -35,6 +42,9 @@ type
     destructor Destroy; override;
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
+    function GetBytes(const AUrl: string; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes;
+      out AError: TAtlasCiFetchError): Boolean;
+    procedure Cancel;
   end;
 
 implementation
@@ -90,6 +100,33 @@ end;
 function TAtlasCiHttpTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer;
   out AText: string; out AError: TAtlasCiFetchError): Boolean;
 var
+  mBytes: TBytes;
+begin
+  AText := '';
+  Result := Request(AUrl, 'application/json', ATimeoutMs, MaxBytes, AStatus, mBytes, AError);
+  if Result then
+    AText := TEncoding.UTF8.GetString(mBytes);
+end;
+
+function TAtlasCiHttpTransport.GetBytes(const AUrl: string; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer;
+  out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
+begin
+  Result := Request(AUrl, '*/*', ATimeoutMs, AMaxBytes, AStatus, ABytes, AError);
+end;
+
+procedure TAtlasCiHttpTransport.Cancel;
+begin
+  AtomicExchange(FCancelled, 1);
+end;
+
+function TAtlasCiHttpTransport.Cancelled: Boolean;
+begin
+  Result := AtomicCmpExchange(FCancelled, 0, 0) <> 0;
+end;
+
+function TAtlasCiHttpTransport.Request(const AUrl, AAccept: string; ATimeoutMs, AMaxBytes: Integer;
+  out AStatus: Integer; out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
+var
   Client: THTTPClient;
   Content: TBytesStream;
   Async: IAsyncResult;
@@ -102,8 +139,13 @@ var
 begin
   Result := False;
   AStatus := 0;
-  AText := '';
+  ABytes := nil;
   AError := TAtlasCiFetchError.Network;
+  if Cancelled then
+  begin
+    AError := TAtlasCiFetchError.Cancelled;
+    Exit;
+  end;
   Client := THTTPClient.Create;
   Content := TBytesStream.Create;
   try
@@ -112,7 +154,7 @@ begin
     Client.HandleRedirects := False;
     Client.AllowCookies := False;
     Client.UserAgent := 'Atlas';
-    Client.Accept := 'application/json';
+    Client.Accept := AAccept;
     Url := AUrl;
     Redirects := 0;
     Watch := TStopwatch.StartNew;
@@ -136,7 +178,7 @@ begin
         Content.Clear;
         Async := Client.BeginGet(Url, Content, Headers);
         while not Async.IsCompleted do
-          if TAtlasShutdown.Wait(SliceMs) or (Watch.ElapsedMilliseconds > ATimeoutMs) then
+          if TAtlasShutdown.Wait(SliceMs) or Cancelled or (Watch.ElapsedMilliseconds > ATimeoutMs) then
           begin
             if Watch.ElapsedMilliseconds > ATimeoutMs then
               AError := TAtlasCiFetchError.Timeout
@@ -164,12 +206,12 @@ begin
         Url := Next;
       end;
       AStatus := Response.StatusCode;
-      if Content.Size > MaxBytes then
+      if Content.Size > AMaxBytes then
       begin
         AError := TAtlasCiFetchError.Invalid;
         Exit;
       end;
-      AText := TEncoding.UTF8.GetString(Content.Bytes, 0, Content.Size);
+      ABytes := Copy(Content.Bytes, 0, Content.Size);
       AError := TAtlasCiFetchError.None;
       Result := True;
     except

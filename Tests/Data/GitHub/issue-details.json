@@ -1,0 +1,15 @@
+{
+  "number": 753,
+  "title": "Atlas-Bereiche und Layout der Willkommensseite",
+  "body": "Beschreibung mit [Datei](https://github.com/beispiel/atlas/files/1/log.txt) und\n[Protokoll.zip](https://github.com/user-attachments/files/123/Protokoll.zip).",
+  "state": "closed",
+  "state_reason": "not_planned",
+  "created_at": "2026-10-20T08:00:00Z",
+  "updated_at": "2026-10-28T10:40:49Z",
+  "comments": 2,
+  "labels": [{"name": "plugin"}, {"name": "welcome"}, "rohtext"],
+  "assignee": {"login": "fallback"},
+  "assignees": [{"login": "xKnockOut"}, {"login": "kollege"}],
+  "milestone": {"title": "v1.2.0"},
+  "type": {"name": "Feature"}
+}

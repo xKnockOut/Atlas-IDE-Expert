@@ -272,7 +272,7 @@ type
     function HeightOf(const AFace: TAtlasDocFace): Integer;
     procedure OpenLine;
     procedure AddPill(const AText: string; const AFace: TAtlasDocFace);
-    procedure FlowCode(const AText: string);
+    procedure FlowCode(const AText: string; AHighlight: Boolean);
     procedure LayoutTable(const ARuns: TAtlasDocRuns; var AIndex: Integer; ABaseColor: TAtlasDocColor);
     function IsTableRow(const ARuns: TAtlasDocRuns; AIndex: Integer): Boolean;
     function RowEnd(const ARuns: TAtlasDocRuns; AIndex: Integer): Integer;
@@ -613,11 +613,12 @@ begin
   AddSpan(AText, AFace, AColor, False, ALink);
 end;
 
-procedure TLayoutBuilder.FlowCode(const AText: string);
+procedure TLayoutBuilder.FlowCode(const AText: string; AHighlight: Boolean);
 var
   CodeLine: string;
   Tokens: TAtlasTokens;
   Token: TAtlasToken;
+  mKind: TAtlasTokenKind;
   Color: TAtlasDocColor;
   Piece: string;
   Face: TAtlasDocFace;
@@ -645,7 +646,11 @@ begin
     Tokens := TAtlasSyntax.Tokens(CodeLine);
     for Token in Tokens do
     begin
-      case Token.Kind of
+      // Andere Sprachen (Markdown der Issue-Vorschau, #1264) ohne Delphi-Farben.
+      mKind := Token.Kind;
+      if not AHighlight then
+        mKind := TAtlasTokenKind.Plain;
+      case mKind of
         TAtlasTokenKind.Keyword:
           Color := TAtlasDocColor.Keyword;
         TAtlasTokenKind.StringLiteral:
@@ -658,7 +663,7 @@ begin
         Color := TAtlasDocColor.Text;
       end;
       // Schlüsselwörter halbfett wie in der Deklaration (TAtlasStyledText).
-      Face := TAtlasDocFace.Create(TAtlasDocFont.Mono, Token.Kind = TAtlasTokenKind.Keyword);
+      Face := TAtlasDocFace.Create(TAtlasDocFont.Mono, mKind = TAtlasTokenKind.Keyword);
       Piece := Copy(CodeLine, Token.Start + 1, Token.Stop - Token.Start);
       // Einrückung bleibt; zu lange Zeilen brechen an Zeichen um (kein waagrechtes Scrollen), die
       // Fortsetzung eingerückt.
@@ -895,7 +900,7 @@ begin
         begin
           FLeft := FBase;
           FHang := FBase;
-          FlowCode(Run.Text);
+          FlowCode(Run.Text, Run.IsDelphiCode);
         end;
       TAtlasDocRunKind.Bullet:
         if IsTableRow(ARuns, Index) then

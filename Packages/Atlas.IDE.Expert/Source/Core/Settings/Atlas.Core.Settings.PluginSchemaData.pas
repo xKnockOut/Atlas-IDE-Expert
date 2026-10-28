@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5219] of string = (
+  Lines: array[0..5241] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5318,6 +5318,29 @@ const
     '      "x-page": "Issue-Tracker",',
     '      "x-control": "Tabelle Verbindungen",',
     '      "x-issue": "#1260"',
+    '    },',
+    '    "IssuesPreview": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Klick auf ein Issue in „Meine Issues“ öffnet das andockbare Fenster „Atlas-Issue“ mit Feldern, Beschreibung, Kommentaren, Anhängen und Verknüpfungen statt des Browsers; Strg+Klic' +
+      'k öffnet immer den Browser. Aus: Klick öffnet den Browser wie bisher, kein Befehl „Issue anzeigen …“.",',
+    '      "x-key": "issues.preview",',
+    '      "x-area": "issues",',
+    '      "x-feature": "WelcomePage",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Issue-Vorschau",',
+    '      "x-captionEn": "Issue preview",',
+    '      "x-issue": "#1264"',
+    '    },',
+    '    "IssuesPreviewComments": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Kommentare in der Issue-Vorschau laden und zeigen; aus: Kommentare werden beim Tracker nicht abgefragt.",',
+    '      "x-key": "issues.preview.comments",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-issue": "#1264"',
     '    }',
     '  },',
     '  "additionalProperties": false',

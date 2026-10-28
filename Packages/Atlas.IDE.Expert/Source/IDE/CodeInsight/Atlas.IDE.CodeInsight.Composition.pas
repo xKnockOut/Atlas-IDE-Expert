@@ -1942,6 +1942,17 @@ begin
     begin
       Result := TAtlasIdeSettings.Current.TrackerLogin and (Welcome <> nil) and (Welcome.Issues <> nil);
     end);
+  // Issue-Vorschau (#1264): Kennung abfragen und das Issue in „Atlas-Issue“ zeigen; sichtbar mit issues.preview.
+  Add('Atlas.IssueShow', TAtlasTextId.IssuePreviewCommand,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.ShowPreviewPrompt;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesPreview and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
     procedure
@@ -4252,6 +4263,16 @@ begin
     function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean
     begin
       Result := TrackerAccess.EnterToken(AProvider, ATarget);
+    end;
+  // Knopf „Tracker-Einstellungen …“ der Issue-Vorschau (#1264).
+  Result.OnSettings :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasOptionsRegistration.ShowSetting('IssuesConnections');
+        end);
     end;
 end;
 

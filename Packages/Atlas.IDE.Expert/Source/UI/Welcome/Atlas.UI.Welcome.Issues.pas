@@ -8,7 +8,9 @@
 //   ATL-123  Tracker im Bereich                           [Beginnen]
 //            (In Arbeit) (Hoch) (Sprint 12) (aktuell)
 //   „Beginnen“ legt den Branch an und öffnet das Projekt.
-// Kennung grau in Festbreitenschrift (Klick öffnet das Issue im Browser),
+// Kennung grau in Festbreitenschrift (Klick öffnet das Issue im Browser; mit
+// issues.preview zeigt ein Klick auf Zeile oder Kennung das Issue im Fenster
+// „Atlas-Issue“ und Strg+Klick öffnet den Browser, #1264),
 // Titel abgeschnitten, darunter Felder als Chips mit Rahmen (GitHub: Labels
 // und der Pull Request mit CI-Ampel, Klick öffnet ihn; YouTrack: Zustand,
 // Priorität, Sprint). Rechts „Beginnen“ über beide Zeilen. Über der Liste nur
@@ -45,6 +47,8 @@ type
     /// <summary>„Beginnen“ mit AMode (Branch anlegen oder nur merken).</summary>
     procedure Start(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
     procedure Browse(const AIssue: TAtlasTrackerIssue);
+    /// <summary>Issue im Fenster „Atlas-Issue“ zeigen (#1264).</summary>
+    procedure Preview(const AIssue: TAtlasTrackerIssue);
     procedure BrowsePullRequest(const AIssue: TAtlasTrackerIssue);
     /// <summary>Tracker jetzt abfragen (ohne auf den Abstand zu warten).</summary>
     procedure QueryNow;
@@ -91,6 +95,7 @@ type
     FPullRects: TArray<TRect>;
     FStartRects: TArray<TRect>;
     FMenu: TPopupMenu;
+    FPreviewItem: TMenuItem;
     FBrowseItem: TMenuItem;
     FBrowsePullItem: TMenuItem;
     FStartBranchItem: TMenuItem;
@@ -105,6 +110,7 @@ type
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure MenuPopup(Sender: TObject);
+    procedure PreviewClick(Sender: TObject);
     procedure BrowseClick(Sender: TObject);
     procedure BrowsePullClick(Sender: TObject);
     procedure StartBranchClick(Sender: TObject);
@@ -131,7 +137,9 @@ type
     function HitTest(X, Y: Integer): TAtlasIssuesHit;
     /// <summary>Klick wie mit der Maus (auch für Tests): Kennung und Pull Request öffnen den Browser, „Beginnen“
     /// beginnt mit der Einstellung issues.start.</summary>
-    procedure ClickAt(const AHit: TAtlasIssuesHit);
+    procedure ClickAt(const AHit: TAtlasIssuesHit); overload;
+    /// <summary>ABrowse: Strg+Klick, öffnet den Browser auch mit issues.preview.</summary>
+    procedure ClickAt(const AHit: TAtlasIssuesHit; ABrowse: Boolean); overload;
     /// <summary>„Beginnen“ nutzbar: Quelle da, keine laufende Aktion.</summary>
     function CanStart: Boolean;
     /// <summary>Zeile über der Liste: Stand, Fehler, „Stand vom …“; '' bei frischem Stand.</summary>
@@ -154,6 +162,7 @@ type
     property View: TAtlasIssuesView read FView;
     property PaintBox: TAtlasWelcomeCanvas read FBox;
     property Menu: TPopupMenu read FMenu;
+    property PreviewItem: TMenuItem read FPreviewItem;
     property BrowseItem: TMenuItem read FBrowseItem;
     property BrowsePullItem: TMenuItem read FBrowsePullItem;
     property StartBranchItem: TMenuItem read FStartBranchItem;
@@ -235,6 +244,7 @@ begin
   FBox.OnMouseUp := BoxMouseUp;
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
+  FPreviewItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesPreview), PreviewClick);
   FBrowseItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesBrowse), BrowseClick);
   FBrowsePullItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesBrowsePullRequest), BrowsePullClick);
   FStartBranchItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStartBranch), StartBranchClick);
@@ -663,6 +673,11 @@ begin
 end;
 
 procedure TAtlasWelcomeIssuesFrame.ClickAt(const AHit: TAtlasIssuesHit);
+begin
+  ClickAt(AHit, False);
+end;
+
+procedure TAtlasWelcomeIssuesFrame.ClickAt(const AHit: TAtlasIssuesHit; ABrowse: Boolean);
 var
   mSource: IAtlasIssuesSource;
   Item: TAtlasTrackerIssue;
@@ -672,9 +687,26 @@ begin
     Exit;
   mSource := FSource;
   Item := FView.Items[AHit.Index];
+  if (AHit.Kind in [TAtlasIssuesHitKind.Row, TAtlasIssuesHitKind.Key]) and FView.Options.Preview and
+    not ABrowse then
+  begin
+    Post(
+      procedure
+      begin
+        mSource.Preview(Item);
+      end);
+    Exit;
+  end;
   case AHit.Kind of
-    // Leerraum und Zeilentext lösen nichts aus; sie zeigen nur den Hinweis (BoxMouseMove).
-    TAtlasIssuesHitKind.None, TAtlasIssuesHitKind.Row: ;
+    // Leerraum und Zeilentext lösen ohne Vorschau nichts aus; sie zeigen nur den Hinweis (BoxMouseMove).
+    TAtlasIssuesHitKind.None: ;
+    TAtlasIssuesHitKind.Row:
+      if ABrowse and FView.Options.Preview then
+        Post(
+          procedure
+          begin
+            mSource.Browse(Item);
+          end);
     TAtlasIssuesHitKind.Key:
       Post(
         procedure
@@ -706,7 +738,8 @@ var
   Key: string;
 begin
   Hit := HitTest(X, Y);
-  if Hit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start] then
+  if (Hit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start]) or
+    ((Hit.Kind = TAtlasIssuesHitKind.Row) and FView.Options.Preview) then
     FBox.Cursor := crHandPoint
   else
     FBox.Cursor := crDefault;
@@ -716,7 +749,10 @@ begin
   FHintKey := Key;
   case Hit.Kind of
     TAtlasIssuesHitKind.Key:
-      FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintKey);
+      if FView.Options.Preview then
+        FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintKeyPreview)
+      else
+        FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintKey);
     TAtlasIssuesHitKind.PullRequest:
       FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintPullRequest);
     TAtlasIssuesHitKind.Start:
@@ -733,7 +769,7 @@ procedure TAtlasWelcomeIssuesFrame.BoxMouseUp(Sender: TObject; Button: TMouseBut
   Y: Integer);
 begin
   if Button = mbLeft then
-    ClickAt(HitTest(X, Y));
+    ClickAt(HitTest(X, Y), ssCtrl in Shift);
 end;
 
 procedure TAtlasWelcomeIssuesFrame.MenuPopup(Sender: TObject);
@@ -748,6 +784,8 @@ begin
   FMenuRow := Hit.Index;
   HasItem := MenuIssue(Item);
   Branching := (FView.VcsKind = TAtlasVcsKind.Git) or (FView.VcsKind = TAtlasVcsKind.Svn);
+  FPreviewItem.Visible := HasItem and FView.Options.Preview;
+  FPreviewItem.Default := FPreviewItem.Visible;
   FBrowseItem.Visible := HasItem;
   FBrowsePullItem.Visible := HasItem and (Item.PullRequest.Number > 0);
   FStartBranchItem.Visible := HasItem and Branching;
@@ -769,9 +807,14 @@ begin
     AIssue := FView.Items[FMenuRow];
 end;
 
+procedure TAtlasWelcomeIssuesFrame.PreviewClick(Sender: TObject);
+begin
+  ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Row, FMenuRow), False);
+end;
+
 procedure TAtlasWelcomeIssuesFrame.BrowseClick(Sender: TObject);
 begin
-  ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Key, FMenuRow));
+  ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Key, FMenuRow), True);
 end;
 
 procedure TAtlasWelcomeIssuesFrame.BrowsePullClick(Sender: TObject);

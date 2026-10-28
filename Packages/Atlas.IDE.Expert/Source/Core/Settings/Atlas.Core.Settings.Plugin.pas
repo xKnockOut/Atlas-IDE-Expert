@@ -1273,6 +1273,12 @@ type
     /// url; liegt in settings.json (TAtlasRoutedSettingsStore), gelesen mit TAtlasTrackerConnections. '[]' = keine.
     /// Nie ein Token.</summary>
     IssuesConnections: string;
+    /// <summary>Issue-Vorschau (#1264, issues.preview): Klick auf ein Issue öffnet das Fenster „Atlas-Issue“ statt
+    /// des Browsers, dazu der Befehl „Issue anzeigen …“; aus = Browser wie bisher.</summary>
+    IssuesPreview: Boolean;
+    /// <summary>Kommentare in der Vorschau laden und zeigen (#1264, issues.preview.comments); aus = nicht abgefragt.
+    /// </summary>
+    IssuesPreviewComments: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -1988,6 +1994,8 @@ begin
   Result.IssuesCommitPattern := DefaultIssuesCommitPattern;
   Result.TrackerLogin := True;
   Result.IssuesConnections := '[]';
+  Result.IssuesPreview := True;
+  Result.IssuesPreviewComments := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2774,6 +2782,8 @@ begin
     Default.IssuesCommitPattern);
   TrackerLogin := AStore.ReadInteger('TrackerLogin', BoolValue(Default.TrackerLogin)) <> 0;
   IssuesConnections := AStore.ReadString('IssuesConnections', Default.IssuesConnections);
+  IssuesPreview := AStore.ReadInteger('IssuesPreview', BoolValue(Default.IssuesPreview)) <> 0;
+  IssuesPreviewComments := AStore.ReadInteger('IssuesPreviewComments', BoolValue(Default.IssuesPreviewComments)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3239,6 +3249,8 @@ begin
   AStore.WriteString('IssuesCommitPattern', IssuesCommitPattern);
   AStore.WriteInteger('TrackerLogin', BoolValue(TrackerLogin));
   AStore.WriteString('IssuesConnections', IssuesConnections);
+  AStore.WriteInteger('IssuesPreview', BoolValue(IssuesPreview));
+  AStore.WriteInteger('IssuesPreviewComments', BoolValue(IssuesPreviewComments));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);
