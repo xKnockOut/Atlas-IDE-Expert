@@ -1,0 +1,89 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{9A81DE57-5E03-5D40-9AF8-7A14560AB289}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="DccEigenschaften.dproj"/>
+        <Projects Include="DccEigenschaftenGegen.dproj"/>
+        <Projects Include="DccVarParameter.dproj"/>
+        <Projects Include="DccVarParameterGegen.dproj"/>
+        <Projects Include="DccSichtbarkeit.dproj"/>
+        <Projects Include="DccSichtbarkeitGegen.dproj"/>
+        <Projects Include="DccInline.dproj"/>
+        <Projects Include="DccInlineGegen.dproj"/>
+        <Projects Include="DccVorwaerts.dproj"/>
+        <Projects Include="DccVorwaertsGegen.dproj"/>
+        <Projects Include="DccInterfaces.dproj"/>
+        <Projects Include="DccInterfacesGegen.dproj"/>
+        <Projects Include="DccOperatoren.dproj"/>
+        <Projects Include="DccOperatorenGegen.dproj"/>
+        <Projects Include="DccKonstanten.dproj"/>
+        <Projects Include="DccKonstantenGegen.dproj"/>
+        <Projects Include="DccPublished.dproj"/>
+        <Projects Include="DccPublishedGegen.dproj"/>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="DccEigenschaften">
+        <MSBuild Projects="DccEigenschaften.dproj"/>
+    </Target>
+    <Target Name="DccEigenschaftenGegen">
+        <MSBuild Projects="DccEigenschaftenGegen.dproj"/>
+    </Target>
+    <Target Name="DccVarParameter">
+        <MSBuild Projects="DccVarParameter.dproj"/>
+    </Target>
+    <Target Name="DccVarParameterGegen">
+        <MSBuild Projects="DccVarParameterGegen.dproj"/>
+    </Target>
+    <Target Name="DccSichtbarkeit">
+        <MSBuild Projects="DccSichtbarkeit.dproj"/>
+    </Target>
+    <Target Name="DccSichtbarkeitGegen">
+        <MSBuild Projects="DccSichtbarkeitGegen.dproj"/>
+    </Target>
+    <Target Name="DccInline">
+        <MSBuild Projects="DccInline.dproj"/>
+    </Target>
+    <Target Name="DccInlineGegen">
+        <MSBuild Projects="DccInlineGegen.dproj"/>
+    </Target>
+    <Target Name="DccVorwaerts">
+        <MSBuild Projects="DccVorwaerts.dproj"/>
+    </Target>
+    <Target Name="DccVorwaertsGegen">
+        <MSBuild Projects="DccVorwaertsGegen.dproj"/>
+    </Target>
+    <Target Name="DccInterfaces">
+        <MSBuild Projects="DccInterfaces.dproj"/>
+    </Target>
+    <Target Name="DccInterfacesGegen">
+        <MSBuild Projects="DccInterfacesGegen.dproj"/>
+    </Target>
+    <Target Name="DccOperatoren">
+        <MSBuild Projects="DccOperatoren.dproj"/>
+    </Target>
+    <Target Name="DccOperatorenGegen">
+        <MSBuild Projects="DccOperatorenGegen.dproj"/>
+    </Target>
+    <Target Name="DccKonstanten">
+        <MSBuild Projects="DccKonstanten.dproj"/>
+    </Target>
+    <Target Name="DccKonstantenGegen">
+        <MSBuild Projects="DccKonstantenGegen.dproj"/>
+    </Target>
+    <Target Name="DccPublished">
+        <MSBuild Projects="DccPublished.dproj"/>
+    </Target>
+    <Target Name="DccPublishedGegen">
+        <MSBuild Projects="DccPublishedGegen.dproj"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="DccEigenschaften;DccEigenschaftenGegen;DccVarParameter;DccVarParameterGegen;DccSichtbarkeit;DccSichtbarkeitGegen;DccInline;DccInlineGegen;DccVorwaerts;DccVorwaertsGegen;DccInterfaces;DccInterfacesGegen;DccOperatoren;DccOperatorenGegen;DccKonstanten;DccKonstantenGegen;DccPublished;DccPublishedGegen"/>
+    </Target>
+</Project>

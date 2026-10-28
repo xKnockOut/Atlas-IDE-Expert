@@ -1706,6 +1706,20 @@ begin
     Result.Signature := Result.Signature + ' write ' + mWrite;
 end;
 
+/// <summary>Steht AMember (aus AOwnerUnit) als Rumpf hinter der Deklaration des Typs AType? In einer anderen
+/// Datei als der Typ (Include) entscheidet, ob AMember außerhalb des interface-Teils steht.</summary>
+function IsBodyOf(const AOwnerUnit: TUnitIndex; const AMember: TIndexSymbol; const AType: TResolvedSymbol): Boolean;
+var
+  mEnd, mStart: TTextPosition;
+begin
+  if not SameText(AOwnerUnit.SymbolFile(AMember), AType.FileName) or
+    ((AType.Range.EndPos.Line = 0) and (AType.Range.EndPos.Character = 0)) then
+    Exit(not AMember.InInterface);
+  mEnd := AType.Range.EndPos;
+  mStart := AMember.Range.StartPos;
+  Result := (mStart.Line > mEnd.Line) or ((mStart.Line = mEnd.Line) and (mStart.Character >= mEnd.Character));
+end;
+
 function TNameResolver.FindMembers(const AType: TResolvedSymbol; const AName: string): TArray<TResolvedSymbol>;
 var
   Current, Ancestor, Helper, Parent, Found: TResolvedSymbol;
@@ -1756,9 +1770,11 @@ begin
       if SameText(Symbol.Container, TypeName) and (not mOverloads or (Symbol.Kind in RoutineKinds)) then
       begin
         // Ist die Deklaration unsichtbar, gilt das auch für ihren Rumpf (implementation, dort public). Weitere
-        // Deklarationen im interface prüft IsVisible einzeln: Überladungen dürfen anders sichtbar sein
-        // (System.TMonitor.Enter: strict private als Instanzmethode, public als Klassenmethode).
-        if Hidden and not Symbol.InInterface then
+        // Deklarationen im Typ prüft IsVisible einzeln: Überladungen dürfen anders sichtbar sein
+        // (System.TMonitor.Enter: strict private als Instanzmethode, public als Klassenmethode). Rumpf heißt
+        // hinter dem Typ; InInterface allein trennt das nicht bei Typen im implementation-Teil (Skia4Delphi,
+        // #1328).
+        if Hidden and IsBodyOf(OwnerUnit, Symbol, Current) then
           Continue;
         if not IsVisible(Symbol, OwnerUnit, Current, LocalChain) then
         begin
