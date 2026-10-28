@@ -119,6 +119,8 @@ type
     procedure ReadArchitecture(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
     procedure ReadTasks(ANode: TJsonNode);
+    procedure ReadIssues(ANode: TJsonNode);
+    procedure ReadIssueConnections(ANode: TJsonNode);
     procedure ReadTaskMatcher(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -2324,6 +2326,114 @@ begin
   end;
 end;
 
+procedure TValidator.ReadIssues(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"issues" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'connections' then
+      ReadIssueConnections(ANode[Index])
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "issues.%s"', [Key]), False);
+  end;
+end;
+
+/// <summary>Adresse eines Trackers: nur https, mit Rechner, ohne Benutzer und Leerzeichen (wie
+/// TAtlasTrackerTarget im Plugin).</summary>
+function IsTrackerUrl(const AUrl: string): Boolean;
+var
+  Host: string;
+  Slash: Integer;
+begin
+  Result := False;
+  if not SameText(Copy(AUrl, 1, 8), 'https://') then
+    Exit;
+  Host := Copy(AUrl, 9, MaxInt);
+  Slash := Pos('/', Host);
+  if Slash > 0 then
+    Host := Copy(Host, 1, Slash - 1);
+  Result := (Host <> '') and (Pos('@', Host) = 0) and (Pos(' ', AUrl) = 0);
+end;
+
+procedure TValidator.ReadIssueConnections(ANode: TJsonNode);
+var
+  Index, Inner: Integer;
+  Connection, Value: TJsonNode;
+  Key, Text: string;
+  Names: TList<string>;
+  HasName, HasProvider, HasUrl: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"connections" muss eine Liste von Verbindungen sein');
+    Exit;
+  end;
+  FSettings.IssueConnections := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+  Names := TList<string>.Create;
+  try
+    for Index := 0 to ANode.Count - 1 do
+    begin
+      Connection := ANode[Index];
+      if Connection.Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(Connection, 'Eine Verbindung ist ein Objekt mit "name", "provider" und "url"');
+        Continue;
+      end;
+      HasName := False;
+      HasProvider := False;
+      HasUrl := False;
+      for Inner := 0 to Connection.Count - 1 do
+      begin
+        Key := Connection.Keys[Inner];
+        Value := Connection[Inner];
+        if Key = 'name' then
+        begin
+          if ExpectString(Value, 'name', Text) and (Trim(Text) <> '') then
+          begin
+            HasName := True;
+            if Names.IndexOf(AnsiLowerCase(Trim(Text))) >= 0 then
+              ReportNode(Value, Format('Die Verbindung "%s" gibt es schon', [Trim(Text)]))
+            else
+              Names.Add(AnsiLowerCase(Trim(Text)));
+          end;
+        end
+        else if Key = 'provider' then
+          HasProvider := ExpectString(Value, 'provider', Text) and (Trim(Text) <> '')
+        else if Key = 'url' then
+        begin
+          if ExpectString(Value, 'url', Text) then
+          begin
+            HasUrl := True;
+            // Das Token geht nur über https und nie mit Benutzer in der Adresse an den Tracker.
+            if not IsTrackerUrl(Trim(Text)) then
+              ReportNode(Value, 'Nur https-Adressen ohne Benutzer, z. B. "https://youtrack.firma.de"');
+          end;
+        end
+        else
+          Report(Connection.KeyStarts[Inner], Connection.KeyStarts[Inner] + Length(Key) + 2,
+            Format('Unbekannte Angabe "%s" in einer Verbindung', [Key]), False);
+      end;
+      if not HasName then
+        ReportNode(Connection, 'Verbindung ohne "name"');
+      if not HasProvider then
+        ReportNode(Connection, 'Verbindung ohne "provider"');
+      if not HasUrl then
+        ReportNode(Connection, 'Verbindung ohne "url"');
+    end;
+  finally
+    Names.Free;
+  end;
+end;
+
 function TValidator.ParseRoot: TJsonNode;
 begin
   try
@@ -2537,6 +2647,8 @@ begin
       end
       else if Key = 'tasks' then
         ReadTasks(Value)
+      else if Key = 'issues' then
+        ReadIssues(Value)
       else if Key = 'format' then
       begin
         if Value.Kind = TJsonKind.Object_ then
@@ -2808,6 +2920,8 @@ begin
     end
     else if Key = 'tasks' then
       Result.Tasks := FileSettings.Tasks
+    else if Key = 'issues' then
+      Result.IssueConnections := FileSettings.IssueConnections
     else if Key = 'format' then
     begin
       Result.Format := FileSettings.Format;

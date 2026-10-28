@@ -14,6 +14,7 @@
 //   Priorität) und Sprint bzw. Board (Sprint, Sprints, Board); Werte als
 //   Objekt oder Liste mit "name" (bzw. "presentation").
 // - Browser: <url>/issue/<Kennung>.
+// - Verbindung prüfen (#1260): GET <url>/api/users/me?fields=login.
 
 interface
 
@@ -46,6 +47,7 @@ type
       out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
     function IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
     function PullRequestPage(const ATarget: TAtlasTrackerTarget; ANumber: Integer): string;
+    function ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
   end;
 
 implementation
@@ -281,6 +283,13 @@ end;
 function TAtlasYouTrackTracker.PullRequestPage(const ATarget: TAtlasTrackerTarget; ANumber: Integer): string;
 begin
   Result := '';
+end;
+
+function TAtlasYouTrackTracker.ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := '';
+  if ATarget.Server <> '' then
+    Result := ATarget.Url + '/api/users/me?fields=login';
 end;
 
 end.

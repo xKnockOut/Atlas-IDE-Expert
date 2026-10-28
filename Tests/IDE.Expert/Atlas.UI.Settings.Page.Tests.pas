@@ -120,6 +120,10 @@ type
     /// Schalter „Meine Issues“ und springt mit „Tracker-Einstellungen …“ dorthin.</summary>
     [Test]
     procedure IssuesTrackerOwnPage;
+    /// <summary>#1260: Tabelle der Tracker-Verbindungen mit Token-Zustand, Verbindung aus der .atlas
+    /// schreibgeschützt, http abgewiesen, Prüfen und Entfernen über die Haken.</summary>
+    [Test]
+    procedure TrackerConnectionsTable;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
     [Test]
@@ -218,6 +222,8 @@ uses
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Validation,
   Atlas.Core.Settings.TeamFile,
+  Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Connections,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Vcl.Graphics,
@@ -1942,6 +1948,125 @@ begin
   finally
     Host.Free;
   end;
+end;
+
+procedure TAtlasSettingsPageTests.TrackerConnectionsTable;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mChecked, mRemoved, mToken: string;
+  mList: TListView;
+begin
+  mChecked := '';
+  mRemoved := '';
+  mToken := '';
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    mPage.OnTrackerState :=
+      function(const AConnection: TAtlasTrackerConnection): TAtlasTrackerTokenStatus
+      begin
+        if AConnection.Provider = 'youtrack' then
+          Result := TAtlasTrackerTokenStatus.Create(TAtlasTrackerTokenState.Verified,
+            EncodeDate(2026, 10, 28) + EncodeTime(10, 18, 0, 0), 200)
+        else
+          Result := TAtlasTrackerTokenStatus.Stored(False);
+      end;
+    mPage.OnTrackerTeam :=
+      function: TArray<TAtlasTrackerConnection>
+      begin
+        Result := [TAtlasTrackerConnection.FromTeamFile('Atlas', TAtlasTrackerTarget.Create('github',
+          'https://github.com', 'xKnockOut/Atlas-IDE-Expert', ''))];
+      end;
+    mPage.OnTrackerToken :=
+      procedure(const AConnection: TAtlasTrackerConnection)
+      begin
+        mToken := AConnection.Name;
+      end;
+    mPage.OnTrackerCheck :=
+      procedure(const AConnection: TAtlasTrackerConnection)
+      begin
+        mChecked := AConnection.Name;
+      end;
+    mPage.OnTrackerRemove :=
+      procedure(const AConnection: TAtlasTrackerConnection)
+      begin
+        mRemoved := AConnection.Name;
+      end;
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.IssuesConnections := '[{"name": "Firma", "provider": "youtrack", "url": "https://youtrack.firma.local"},' +
+      ' {"name": "GitHub", "provider": "github", "url": "https://github.com"}]';
+    mPage.LoadFrom(mSettings);
+    mList := mPage.IssuesConnections;
+    // Abnahme: zwei Verbindungen mit Zustand, dahinter die aus der .atlas.
+    Assert.AreEqual(3, mList.Items.Count);
+    Assert.AreEqual('Firma', mList.Items[0].Caption);
+    Assert.AreEqual('YouTrack', mList.Items[0].SubItems[0]);
+    Assert.AreEqual('https://youtrack.firma.local', mList.Items[0].SubItems[1]);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.TrackerTokenVerified, ['10:18']), mList.Items[0].SubItems[2]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.TrackerTokenMissing), mList.Items[1].SubItems[2]);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsIssuesConnectionTeam, ['Atlas']), mList.Items[2].Caption);
+    // Erste Zeile gewählt und bearbeitbar.
+    Assert.AreEqual('Firma', mPage.IssuesConnectionName.Text);
+    Assert.IsTrue(mPage.IssuesConnectionName.Enabled);
+    // Zeile aus der .atlas: nur ansehen, Token und Prüfung gehen.
+    mList.Items[2].Selected := True;
+    Assert.IsFalse(mPage.IssuesConnectionName.Enabled);
+    Assert.IsFalse(mPage.IssuesConnectionUrl.Enabled);
+    Assert.IsFalse(mPage.IssuesConnectionRemove.Enabled);
+    Assert.IsTrue(mPage.IssuesConnectionToken.Enabled);
+    mPage.IssuesConnectionToken.Click;
+    Assert.AreEqual('Atlas', mToken);
+    // Prüfen: „wird geprüft …“ bis zur Antwort.
+    mList.Items[0].Selected := True;
+    mPage.IssuesConnectionCheck.Click;
+    Assert.AreEqual('Firma', mChecked);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.TrackerTokenChecking), mList.Items[0].SubItems[2]);
+    mPage.TrackerCheckDone(mPage.TrackerConnections[0]);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.TrackerTokenVerified, ['10:18']), mList.Items[0].SubItems[2]);
+    // Neue Verbindung: erst mit gültiger Adresse gespeichert; http wird abgewiesen.
+    mPage.IssuesConnectionAdd.Click;
+    Assert.AreEqual(4, mList.Items.Count);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionNew), mPage.IssuesConnectionName.Text);
+    mSaved := mSettings;
+    mPage.SaveTo(mSaved);
+    Assert.AreEqual(2, Integer(Length(TAtlasTrackerConnections.Read(mSaved.IssuesConnections))), 'ohne Adresse');
+    mPage.IssuesConnectionUrl.Text := 'http://yt2.firma.local';
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlHttps),
+      mPage.IssuesConnectionNote.Caption);
+    Assert.AreEqual('', mPage.TrackerConnections[2].Url);
+    mPage.IssuesConnectionUrl.Text := 'https://marco@yt2.firma.local';
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlUser),
+      mPage.IssuesConnectionNote.Caption);
+    mPage.IssuesConnectionUrl.Text := 'https://yt2.firma.local/';
+    Assert.AreEqual('', mPage.IssuesConnectionNote.Caption);
+    Assert.AreEqual('https://yt2.firma.local', mPage.TrackerConnections[2].Url);
+    // Vergebener Name wird nicht übernommen.
+    mPage.IssuesConnectionName.Text := 'firma';
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionNameTaken),
+      mPage.IssuesConnectionNote.Caption);
+    mPage.IssuesConnectionName.Text := 'Lager';
+    Assert.AreEqual('Lager', mPage.TrackerConnections[2].Name);
+    mPage.SaveTo(mSaved);
+    Assert.AreEqual(3, Integer(Length(TAtlasTrackerConnections.Read(mSaved.IssuesConnections))));
+    Assert.IsTrue(mSaved.IssuesConnections.Contains('"Lager"'), mSaved.IssuesConnections);
+    Assert.IsFalse(mSaved.IssuesConnections.Contains('Atlas'), 'Verbindung aus der .atlas bleibt dort');
+    // Entfernen fragt über den Haken (Token) und nimmt die Zeile heraus.
+    mList.Items[1].Selected := True;
+    mPage.IssuesConnectionRemove.Click;
+    Assert.AreEqual('GitHub', mRemoved);
+    mPage.SaveTo(mSaved);
+    Assert.AreEqual(2, Integer(Length(TAtlasTrackerConnections.Read(mSaved.IssuesConnections))));
+    Assert.IsFalse(mSaved.IssuesConnections.Contains('"GitHub"'), mSaved.IssuesConnections);
+  finally
+    mHost.Free;
+  end;
+  mChecked := '';
+  mRemoved := '';
+  mToken := '';
 end;
 
 procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;

@@ -165,6 +165,7 @@ uses
   Atlas.Core.Ci.Adapters.Http,
   Atlas.Core.Ci.Adapters.Credentials,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.IDE.Welcome.Issues,
@@ -2569,6 +2570,128 @@ begin
   Setup := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, Hooks);
 end;
 
+type
+  /// <summary>Anbieter, Token und Transport des Issue-Trackers (#765, #1260) für „Meine Issues“ und die Seite
+  /// Issue-Tracker: Token im Anmeldespeicher von Windows (Ziel "Atlas:tracker:&lt;Server&gt;", Benutzer =
+  /// Anbieter), verdeckter Dialog, „Authorization: Bearer“ nur über https an die API des Trackers. Meldungen
+  /// anonym, ohne Server und Token.</summary>
+  TAtlasComposedTrackerAccess = class(TInterfacedObject, IAtlasTrackerAccess)
+  public
+    function Providers: TArray<IAtlasTrackerProvider>;
+    function Provider(const AName: string): IAtlasTrackerProvider;
+    function HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
+    function EnterToken(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
+    function RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
+    function Transport(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
+  end;
+
+var
+  TrackerAccessInstance: IAtlasTrackerAccess;
+
+function TrackerAccess: IAtlasTrackerAccess;
+begin
+  if TrackerAccessInstance = nil then
+    TrackerAccessInstance := TAtlasComposedTrackerAccess.Create;
+  Result := TrackerAccessInstance;
+end;
+
+function TAtlasComposedTrackerAccess.Providers: TArray<IAtlasTrackerProvider>;
+begin
+  // Tracker-Anbieter: YouTrack und GitHub; weitere kommen ohne Änderung an Bereich und Optionsseite dazu.
+  Result := [TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, TAtlasGitHubTracker.Create as IAtlasTrackerProvider];
+end;
+
+function TAtlasComposedTrackerAccess.Provider(const AName: string): IAtlasTrackerProvider;
+var
+  mProvider: IAtlasTrackerProvider;
+begin
+  for mProvider in Providers do
+    if SameText(mProvider.Name, Trim(AName)) then
+      Exit(mProvider);
+  Result := nil;
+end;
+
+function TAtlasComposedTrackerAccess.HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
+var
+  mUser, mToken: string;
+begin
+  Result := False;
+  if ATarget.CredentialTarget = '' then
+    Exit;
+  mUser := '';
+  mToken := '';
+  Result := TAtlasCiCredentials.Read(ATarget.CredentialTarget, mUser, mToken) and (mToken <> '');
+  UniqueString(mToken);
+  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
+end;
+
+function TAtlasComposedTrackerAccess.EnterToken(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget): Boolean;
+var
+  mToken: string;
+  mOk: Boolean;
+begin
+  Result := False;
+  // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
+  if not ATarget.Secure then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
+    Exit;
+  end;
+  mToken := '';
+  if not TAtlasCiLoginPrompt.AskToken(TAtlasStrings.Fmt(TAtlasTextId.TrackerLoginTitle, [AProvider.Caption,
+    ATarget.Server]), TAtlasStrings.Text(TAtlasTextId.TrackerLoginToken), mToken) then
+    Exit;
+  if mToken = '' then
+  begin
+    mOk := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
+    if mOk then
+      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
+    else
+      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+    Exit(mOk);
+  end;
+  mOk := TAtlasCiCredentials.Write(ATarget.CredentialTarget, AProvider.Name, mToken, 'Atlas: Issue-Tracker');
+  UniqueString(mToken);
+  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
+  // Anonym: weder Server noch Projekt.
+  if mOk then
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved))
+  else
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+  Result := mOk;
+end;
+
+function TAtlasComposedTrackerAccess.RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
+begin
+  Result := True;
+  if ATarget.CredentialTarget = '' then
+    Exit;
+  Result := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
+  if Result then
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
+  else
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+end;
+
+function TAtlasComposedTrackerAccess.Transport(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
+var
+  mUser, mToken: string;
+begin
+  Result := nil;
+  if (AProvider = nil) or not ATarget.Secure then
+    Exit;
+  mUser := '';
+  mToken := '';
+  if not TAtlasCiCredentials.Read(ATarget.CredentialTarget, mUser, mToken) or (mToken = '') then
+    Exit;
+  // „Authorization: Bearer“ nur über https an die Programmierschnittstelle des Trackers.
+  Result := TAtlasCiHttpTransport.CreateBearer(AProvider.ApiServer(ATarget), mToken);
+  UniqueString(mToken);
+  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
+end;
+
 /// <summary>Optionsseiten (#227) mit ihren Haken (A-09): Die Seiten importieren die Features nicht, die sie
 /// bedienen.</summary>
 procedure RegisterOptions;
@@ -2627,6 +2750,8 @@ begin
     begin
       Result := TAtlasEditorCompletion.SnippetFolder;
     end;
+  // Seite Issue-Tracker (#1260): Anbieter, Token und „Verbindung prüfen“.
+  Hooks.Tracker := TrackerAccess;
   TAtlasOptionsRegistration.Register(Hooks);
 end;
 
@@ -4103,44 +4228,6 @@ begin
   Result.OnCredentials := EnterCiCredentials;
 end;
 
-/// <summary>Token für den Issue-Tracker ATarget abfragen und im Anmeldespeicher von Windows ablegen (#765); leer
-/// entfernt es. Ziel "Atlas:tracker:&lt;Server&gt;", Benutzer = Anbieter. True, wenn sich etwas geändert hat.</summary>
-function EnterTrackerCredentials(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
-var
-  Token: string;
-  Ok: Boolean;
-begin
-  Result := False;
-  // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
-  if not ATarget.Secure then
-  begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
-    Exit;
-  end;
-  Token := '';
-  if not TAtlasCiLoginPrompt.AskToken(TAtlasStrings.Fmt(TAtlasTextId.TrackerLoginTitle, [AProvider.Caption,
-    ATarget.Server]), TAtlasStrings.Text(TAtlasTextId.TrackerLoginToken), Token) then
-    Exit;
-  if Token = '' then
-  begin
-    Ok := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
-    if Ok then
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
-    else
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
-    Exit(Ok);
-  end;
-  Ok := TAtlasCiCredentials.Write(ATarget.CredentialTarget, AProvider.Name, Token, 'Atlas: Issue-Tracker');
-  UniqueString(Token);
-  FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
-  // Anonym: weder Server noch Projekt.
-  if Ok then
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved))
-  else
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
-  Result := Ok;
-end;
-
 function CreateWelcomeIssues(AProjects: TAtlasIdeProjects): TAtlasIdeIssues;
 begin
   Result := TAtlasIdeIssues.Create(AProjects,
@@ -4149,33 +4236,23 @@ begin
       // Nur Meldungsansicht: Die Zeilen können Branch-Namen enthalten.
       MessageLine(AText);
     end);
-  // Tracker-Anbieter: GitHub und YouTrack; weitere kommen ohne Änderung am Bereich dazu.
+  // Anbieter, Transport und Zugang wie auf der Optionsseite (#1260): dieselbe Umsetzung (TrackerAccess).
   Result.ProviderFactory :=
     function(const AName: string): IAtlasTrackerProvider
     begin
-      Result := nil;
-      if SameText(AName, TAtlasGitHubTracker.ProviderName) then
-        Result := TAtlasGitHubTracker.Create
-      else if SameText(AName, TAtlasYouTrackTracker.ProviderName) then
-        Result := TAtlasYouTrackTracker.Create;
+      Result := TrackerAccess.Provider(AName);
     end;
   // Im Hintergrund-Thread: Token aus dem Anmeldespeicher, ohne Dialog; ohne Token kein Transport (kein Netz).
   Result.TransportFactory :=
     function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
-    var
-      User, Token: string;
     begin
-      Result := nil;
-      User := '';
-      Token := '';
-      if not TAtlasCiCredentials.Read(ATarget.CredentialTarget, User, Token) or (Token = '') then
-        Exit;
-      // „Authorization: Bearer“ nur über https an die Programmierschnittstelle des Trackers.
-      Result := TAtlasCiHttpTransport.CreateBearer(AProvider.ApiServer(ATarget), Token);
-      UniqueString(Token);
-      FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
+      Result := TrackerAccess.Transport(AProvider, ATarget);
     end;
-  Result.OnCredentials := EnterTrackerCredentials;
+  Result.OnCredentials :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean
+    begin
+      Result := TrackerAccess.EnterToken(AProvider, ATarget);
+    end;
 end;
 
 procedure StartWelcome;

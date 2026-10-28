@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5206] of string = (
+  Lines: array[0..5219] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5304,6 +5304,20 @@ const
     '        "welcomePage.issues.login"',
     '      ],',
     '      "x-issue": "#765, #1280"',
+    '    },',
+    '    "IssuesConnections": {',
+    '      "type": "array",',
+    '      "default": [],',
+    '      "items": {',
+    '        "type": "object"',
+    '      },',
+    '      "description": "Persönliche Tracker-Verbindungen mit name, provider und url (#1260); liegen in settings.json unter issues.connections, das Token im Anmeldespeicher von Windows. Im Plugin als JSO' +
+      'N-Text gelesen und geschrieben.",',
+    '      "x-key": "issues.connections",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-control": "Tabelle Verbindungen",',
+    '      "x-issue": "#1260"',
     '    }',
     '  },',
     '  "additionalProperties": false',

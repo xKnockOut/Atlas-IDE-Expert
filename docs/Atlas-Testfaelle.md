@@ -7806,3 +7806,24 @@ Vorbereitung: Mit einer älteren Atlas-Version Tracker (z. B. YouTrack), Abfrage
 | IT4 | Bereich „Willkommensseite“ öffnen | Nur noch „Issues“ an/aus und Knopf „Tracker-Einstellungen …“; Klick wählt den Bereich „Issue-Tracker“ (**Abnahme**) |
 | IT5 | Registry: alten und neuen Namen mit verschiedenen Werten anlegen, IDE starten | Neuer Wert gilt, alter Name entfernt, Warnung im Meldungsfenster |
 | IT6 | Einstellungen exportieren, Datei enthält `issues.tracker`; alte Exportdatei mit `welcomePage.issues.tracker` importieren | Beide Importe setzen den Tracker |
+
+## Mehrere Tracker-Verbindungen (#1260)
+
+Vorbereitung: Zugang zu einem YouTrack (https) und einem GitHub-Konto mit persönlichem Token; ein Projekt mit Abschnitt `tracker` in der `.atlas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TV1 | Tools › Optionen › Atlas › Issue-Tracker | Tabelle „Verbindungen“ oben mit Name, Anbieter, Adresse, Token; die Verbindung aus der `.atlas` steht als „… (aus .atlas)“ grau und lässt sich nicht bearbeiten oder entfernen (**Abnahme**) |
+| TV2 | „Hinzufügen“, Name „Firma“, Anbieter YouTrack, Adresse `https://youtrack.firma.de`, OK, IDE neu starten | Verbindung bleibt, steht in `%APPDATA%\Atlas\settings.json` unter `issues.connections`, nicht in der Registry |
+| TV3 | Zweite Verbindung „GitHub“ mit `https://github.com` anlegen | Beide Zeilen nebeneinander (**Abnahme**) |
+| TV4 | Adresse `http://youtrack.firma.de` bzw. `https://ich@youtrack.firma.de` eingeben | Hinweis „Nur https …“, Speichern der Zeile nicht möglich |
+| TV5 | Zweite Verbindung mit gleichem Namen anlegen | Name wird abgelehnt bzw. eindeutig gemacht |
+| TV6 | „Token hinterlegen …“ auf „Firma“, gültiges Token | Zustand „gespeichert“; Ziel `Atlas:tracker:youtrack.firma.de` in der Anmeldeverwaltung von Windows; Token nirgends in settings.json oder Protokoll |
+| TV7 | „Prüfen“ | Zustand kurz „wird geprüft …“, dann „gespeichert · geprüft <Uhrzeit>“; Dialog bleibt bedienbar (**Abnahme**) |
+| TV8 | Ungültiges Token hinterlegen, „Prüfen“ | „abgelehnt (401/403)“ |
+| TV9 | Netz trennen, „Prüfen“ | Nach höchstens 5 s „nicht erreichbar“ |
+| TV10 | Hinter einem Proxy mit Anmeldeseite prüfen | „unerwartete Antwort“, nicht „geprüft“ |
+| TV11 | „Token entfernen“, Rückfrage bestätigen | Zustand „fehlt“, Eintrag in der Anmeldeverwaltung weg |
+| TV12 | Dialog während einer laufenden Prüfung schließen, Plugin entladen | Kein Fehler, keine Zugriffsverletzung |
+| TV13 | Einstellungen exportieren und in leerer Installation importieren | `issues.connections` als JSON-Liste in der Datei, nach dem Import gleiche Zeilen; Tokens nicht enthalten |
+| TV14 | settings.json von Hand mit unbekanntem Anbieter oder doppeltem Namen speichern, Projekt prüfen | Server meldet den Eintrag in der Problemliste |

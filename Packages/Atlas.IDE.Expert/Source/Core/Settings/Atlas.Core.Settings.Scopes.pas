@@ -12,6 +12,9 @@
 // „Weitere globale Einstellungen“ blendet sie aus (IdeManagedPaths).
 // Werte aus der Registry (bis zu dieser Änderung lagen sie dort) übernimmt
 // Migrate einmal; danach gilt nur noch settings.json.
+// Listen wie issues.connections (#1260) stehen als JSON in settings.json; das
+// Plugin liest und schreibt sie als JSON-Text (ReadString/WriteString). Eine
+// leere Liste wird nicht eigens eingetragen.
 // delphiVersion bestimmt in der IDE die laufende IDE selbst (Projektkontext,
 // #396); der Dialog zeigt den Schlüssel deshalb nicht.
 
@@ -31,6 +34,9 @@ type
     Flag: Boolean;
     /// <summary>Zeichenkette (ReadString/WriteString), z. B. "XmlDocExpand".</summary>
     Text: Boolean;
+    /// <summary>Liste oder Objekt als JSON-Text (ReadString/WriteString), z. B. "IssuesConnections" (#1260).
+    /// </summary>
+    Json: Boolean;
     /// <summary>Früherer Schlüssel: nur noch gelesen (Übernahme in den neuen), nie geschrieben oder migriert.
     /// </summary>
     Legacy: Boolean;
@@ -56,6 +62,7 @@ type
     FText: string;
     function JsonValue(const APath: string): string;
     function Writable: Boolean;
+    procedure WriteJson(const APath, AValue: string);
   public
     constructor Create(const AInner: IAtlasSettingsStore; const AGlobalText: string);
     function ReadInteger(const AName: string; ADefault: Integer): Integer;
@@ -85,6 +92,12 @@ function TextSetting(const AName, APath: string): TAtlasRoutedSetting;
 begin
   Result := Setting(AName, APath, False);
   Result.Text := True;
+end;
+
+function JsonSetting(const AName, APath: string): TAtlasRoutedSetting;
+begin
+  Result := Setting(AName, APath, False);
+  Result.Json := True;
 end;
 
 function LegacySetting(const AName, APath: string; AFlag: Boolean): TAtlasRoutedSetting;
@@ -126,7 +139,9 @@ begin
     Setting('SymbolPath', 'navigation.symbolPath', True),
     // Auswirkungsanalyse (#1120).
     Setting('Impact', 'navigation.impact', True),
-    Setting('ImpactDepth', 'navigation.impactDepth', False)];
+    Setting('ImpactDepth', 'navigation.impactDepth', False),
+    // Tracker-Verbindungen (#1260): persönlich, der Server prüft sie nur.
+    JsonSetting('IssuesConnections', 'issues.connections')];
 end;
 
 class function TAtlasSettingsScopes.TryRouted(const AName: string; out ASetting: TAtlasRoutedSetting): Boolean;
@@ -187,6 +202,28 @@ begin
   Root.Free;
 end;
 
+procedure TAtlasRoutedSettingsStore.WriteJson(const APath, AValue: string);
+var
+  Value: TJSONValue;
+  Json: string;
+begin
+  Value := TJSONObject.ParseJSONValue(Trim(AValue));
+  try
+    // Nur Liste oder Objekt; kaputter Text wird nie in die Datei geschrieben.
+    if not ((Value is TJSONArray) or (Value is TJSONObject)) then
+      Exit;
+    Json := Value.ToJSON;
+    if JsonValue(APath) = Json then
+      Exit;
+    // Eine leere Liste ist der Standard und steht nur in der Datei, wenn dort schon eine Liste stand.
+    if (Json = '[]') and (JsonValue(APath) = '') then
+      Exit;
+    FText := TAtlasJsonText.SetValue(FText, APath, Trim(AValue));
+  finally
+    Value.Free;
+  end;
+end;
+
 function TAtlasRoutedSettingsStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
 var
   Routed: TAtlasRoutedSetting;
@@ -234,9 +271,18 @@ var
   Value: TJSONValue;
   Json: string;
 begin
-  if not TAtlasSettingsScopes.TryRouted(AName, Routed) or not Routed.Text then
+  if not TAtlasSettingsScopes.TryRouted(AName, Routed) or not (Routed.Text or Routed.Json) then
     Exit(FInner.ReadString(AName, ADefault));
   Json := JsonValue(Routed.Path);
+  if Routed.Json then
+  begin
+    if Json = '' then
+      Exit(FInner.ReadString(AName, ADefault));
+    // Nur Liste oder Objekt; ein Wert der falschen Art gilt als Standard (der Server meldet ihn).
+    if CharInSet(Json[1], ['[', '{']) then
+      Exit(Json);
+    Exit(ADefault);
+  end;
   if Json = '' then
     // Noch nicht in settings.json: alter Wert aus der Registry, sonst die Vorgabe.
     Exit(FInner.ReadString(AName, ADefault));
@@ -255,13 +301,18 @@ var
   Routed: TAtlasRoutedSetting;
   Json: string;
 begin
-  if not TAtlasSettingsScopes.TryRouted(AName, Routed) or not Routed.Text or not Writable then
+  if not TAtlasSettingsScopes.TryRouted(AName, Routed) or not (Routed.Text or Routed.Json) or not Writable then
   begin
     FInner.WriteString(AName, AValue);
     Exit;
   end;
   if Routed.Legacy then
     Exit;
+  if Routed.Json then
+  begin
+    WriteJson(Routed.Path, AValue);
+    Exit;
+  end;
   Json := TAtlasJsonText.Quote(AValue);
   if JsonValue(Routed.Path) <> Json then
     FText := TAtlasJsonText.SetValue(FText, Routed.Path, Json);
@@ -279,7 +330,8 @@ begin
   Before := FText;
   if Writable then
     for Routed in TAtlasSettingsScopes.Routed do
-      if not Routed.Legacy and (JsonValue(Routed.Path) = '') then
+      // JSON-Listen lagen nie in der Registry.
+      if not Routed.Legacy and not Routed.Json and (JsonValue(Routed.Path) = '') then
         if Routed.Text then
         begin
           mText := FInner.ReadString(Routed.Name, '');

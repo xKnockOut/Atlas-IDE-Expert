@@ -89,6 +89,9 @@ type
     procedure ProfilesSwitchFeatures;
     [Test]
     procedure WelcomeLayoutsTravel;
+    /// <summary>#1260: issues.connections geht als JSON-Liste (nicht als Text) in die Datei und zurück.</summary>
+    [Test]
+    procedure TrackerConnectionsTravel;
   end;
 
 implementation
@@ -759,6 +762,31 @@ begin
   Assert.AreEqual('D:\Atlas\AtlasServer.exe', After.Plugin.ServerPath);
   Assert.Contains(After.GlobalText, 'delphiVersion');
   Assert.DoesNotContain(After.GlobalText, 'logLevel');
+end;
+
+procedure TAtlasSettingsTransferTests.TrackerConnectionsTravel;
+const
+  cList = '[{"name":"Firma","provider":"youtrack","url":"https://youtrack.firma.local"}]';
+var
+  mSettings: TAtlasPluginSettings;
+  mExported: TAtlasExportResult;
+  mPreview: TAtlasImportPreview;
+  mAfter: TAtlasSettingsState;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.IssuesConnections := cList;
+  mExported := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(mSettings, ''),
+    TAtlasExportOptions.Create(['issues'], smOmit), Macros());
+  Assert.AreEqual(1, Integer(mExported.Count), mExported.Text);
+  Assert.Contains(mExported.Text, '"issues.connections": [');
+  mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
+    TAtlasSettingsTransfer.ParseFile(mExported.Text), imMerge, nil, Macros(), '', '');
+  Assert.AreEqual(1, mPreview.SelectedCount);
+  mAfter := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mPreview);
+  Assert.AreEqual(cList, mAfter.Plugin.IssuesConnections);
+  // Zurücksetzen: leere Liste.
+  mAfter := TAtlasSettingsTransfer.ResetAreas(FCatalog, State(mSettings, ''), ['issues']);
+  Assert.AreEqual('[]', mAfter.Plugin.IssuesConnections);
 end;
 
 procedure TAtlasSettingsTransferTests.WelcomeLayoutsTravel;
