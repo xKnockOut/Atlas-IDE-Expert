@@ -489,7 +489,7 @@ begin
   Index := AContext.Index;
   if Index = nil then
     Index := TSymbolIndex.Create;
-  Resolver := TNameResolver.Create(Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(Index, AContext.EnsureUnit, AContext.TreeUnits);
   Names := TList<string>.Create;
   try
     Resolver.Namespaces := AContext.Namespaces;

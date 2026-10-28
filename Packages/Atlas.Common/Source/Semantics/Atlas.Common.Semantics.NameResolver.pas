@@ -50,7 +50,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Semantics.Contract;
 
 type
   TResolvedKind = (None, UnitName, Symbol, Local);
@@ -158,6 +159,8 @@ type
   private
     FIndex: ISymbolIndex;
     FEnsureUnit: TEnsureUnitFunc;
+    // Auswertung des geprüften Baums, geteilt mit den anderen Resolvern des Laufs (#1322); nil = selbst auswerten.
+    FTreeUnits: ITreeUnits;
     FNamespaces: TArray<string>;
     FNameFilter: TCandidateNameFilter;
     // Gestaffelte Kandidaten (#616): Stand nach OwnScopeCandidates für UsedScopeCandidates.
@@ -285,7 +288,11 @@ type
     procedure CollectInlineVars(ANode: TSyntaxNode; AList: TList<TResolvedSymbol>;
       ASeen: TDictionary<string, Boolean>);
   public
-    constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc = nil);
+    constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc = nil); overload;
+    /// <summary>Wie Create, aber Bäume, die ATreeUnits hält, wertet der Resolver nicht selbst aus, sondern nimmt
+    /// deren geteilten Stand (#1322). So extrahiert ein Prüflauf die Unit einmal statt je Typabfrage.</summary>
+    constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
+      const ATreeUnits: ITreeUnits); overload;
     destructor Destroy; override;
     /// <summary>Typ eines aufgelösten Namens, Aliase verfolgt (Typen sind ihr eigener Typ, TFoo.Create ein TFoo);
     /// im Rahmen der zuletzt vorbereiteten Stelle (#689 nutzt es für den Grundtyp eines Alias).</summary>
@@ -486,7 +493,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Semantics.Attributes,
-  Atlas.Common.Semantics.SystemIntrinsics;
+  Atlas.Common.Semantics.SystemIntrinsics,
+  Atlas.Common.Semantics.TreeUnits;
 
 const
   TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
@@ -813,6 +821,13 @@ begin
   FPins := TList<TPin>.Create;
   FPinCalls := TList<TPinCall>.Create;
   FUnitHelpers := TDictionary<string, TUnitHelpers>.Create;
+end;
+
+constructor TNameResolver.Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
+  const ATreeUnits: ITreeUnits);
+begin
+  Create(AIndex, AEnsureUnit);
+  FTreeUnits := ATreeUnits;
 end;
 
 destructor TNameResolver.Destroy;
@@ -3135,33 +3150,15 @@ end;
 
 function TNameResolver.TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
 begin
-  Result := MergedUnit(TIndexExtractor.Extract(ATree, AFileName), AFileName);
+  if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+    Result := FTreeUnits.Merged(FIndex, AFileName)
+  else
+    Result := MergedUnit(TIndexExtractor.Extract(ATree, AFileName), AFileName);
 end;
 
 function TNameResolver.MergedUnit(const AExtracted: TUnitIndex; const AFileName: string): TUnitIndex;
-var
-  Indexed: TUnitIndex;
-  Count, Position: Integer;
 begin
-  Result := AExtracted;
-  // Der Baum kennt nur die Datei selbst; Deklarationen aus Include-Dateien stehen im Index.
-  if (FIndex <> nil) and (AFileName <> '') and FIndex.FindFile(AFileName, Indexed) then
-  begin
-    // Eigenes Array (Copy): Result.Symbols teilt es sonst mit AExtracted. Einmal vergrößern statt je
-    // Symbol anhängen (Code-Review P-08).
-    Count := Length(AExtracted.Symbols);
-    Result.Symbols := Copy(AExtracted.Symbols);
-    SetLength(Result.Symbols, Count + Length(Indexed.Symbols));
-    for Position := 0 to High(Indexed.Symbols) do
-      if Indexed.Symbols[Position].FileName <> '' then
-      begin
-        Result.Symbols[Count] := Indexed.Symbols[Position];
-        Inc(Count);
-      end;
-    SetLength(Result.Symbols, Count);
-    Result.Includes := Indexed.Includes;
-  end;
-  Result.PrepareNames;
+  Result := TTreeUnits.Merge(FIndex, AExtracted, AFileName);
 end;
 
 function TNameResolver.PinnedIndex(ATree: TSyntaxTree; const AFileName: string): Integer;
@@ -3181,6 +3178,8 @@ begin
   PinIndex := PinnedIndex(ATree, AFileName);
   if PinIndex >= 0 then
     Result := FPins[PinIndex].Extracted
+  else if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+    Result := FTreeUnits.Extracted(AFileName)
   else
     Result := TIndexExtractor.Extract(ATree, AFileName);
 end;
@@ -3315,8 +3314,16 @@ begin
   Pin := Default(TPin);
   Pin.Tree := ATree;
   Pin.FileName := AFileName;
-  Pin.Extracted := TIndexExtractor.Extract(ATree, AFileName);
-  Pin.Merged := MergedUnit(Pin.Extracted, AFileName);
+  if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+  begin
+    Pin.Extracted := FTreeUnits.Extracted(AFileName);
+    Pin.Merged := FTreeUnits.Merged(FIndex, AFileName);
+  end
+  else
+  begin
+    Pin.Extracted := TIndexExtractor.Extract(ATree, AFileName);
+    Pin.Merged := MergedUnit(Pin.Extracted, AFileName);
+  end;
   Pin.Depth := 1;
   FPins.Add(Pin);
 end;

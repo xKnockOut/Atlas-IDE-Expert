@@ -134,6 +134,7 @@
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolver.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.NameResolverStage2.Tests.pas"/>
+        <DCCReference Include="Common\Semantics\Atlas.Common.Semantics.TreeUnits.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Definition.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Attributes.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.PublishedMembers.Tests.pas"/>

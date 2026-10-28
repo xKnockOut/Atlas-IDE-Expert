@@ -201,9 +201,9 @@ begin
   FIndex := AContext.Index;
   if FIndex = nil then
     FIndex := TSymbolIndex.Create;
-  FResolver := TNameResolver.Create(FIndex, AContext.EnsureUnit);
+  FResolver := TNameResolver.Create(FIndex, AContext.EnsureUnit, AContext.TreeUnits);
   FResolver.Namespaces := AContext.Namespaces;
-  FScope := TNameResolver.Create(FIndex, AContext.EnsureUnit);
+  FScope := TNameResolver.Create(FIndex, AContext.EnsureUnit, AContext.TreeUnits);
   FScope.Namespaces := AContext.Namespaces;
   FTokenIndex := TDictionary<Integer, Integer>.Create;
   // Standard wie meist in Projekten: platform und library aus.

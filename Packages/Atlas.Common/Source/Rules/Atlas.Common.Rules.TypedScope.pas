@@ -73,7 +73,7 @@ begin
     FFileName := AContext.UnitName + '.pas';
   FTokens := AContext.Tree.Tokens;
   FPaths := TConditionalBranches.Paths(FTokens);
-  FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   FResolver.Namespaces := AContext.Namespaces;
   FResolver.PinTree(AContext.Tree, FFileName);
   FValues := TConstantValues.Create(AContext.Tree, FFileName, AContext.Index, FResolver);

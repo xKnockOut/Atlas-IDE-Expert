@@ -1038,7 +1038,7 @@ begin
     FileName := AContext.UnitName + '.pas';
   Tokens := AContext.Tree.Tokens;
   Layout := TStatementLayout.Create('', '  ', TTextLines.LineBreakOf(AContext.Text));
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
