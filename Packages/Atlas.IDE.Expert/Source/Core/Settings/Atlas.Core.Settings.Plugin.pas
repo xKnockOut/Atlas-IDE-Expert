@@ -713,8 +713,18 @@ type
     /// <summary>Höchstzahl seiner Zeilen, MinStickyLines bis MaxStickyLines (#506,
     /// editor.stickyScrollMaxLines).</summary>
     StickyScrollMaxLines: Integer;
+    /// <summary>Was der Kopf zeigt (editor.stickyScrollTypes, …Routines): Klassen/Records und Routinen der
+    /// Gliederung.</summary>
+    StickyScrollTypes: Boolean;
+    StickyScrollRoutines: Boolean;
     /// <summary>Große if/else-Blöcke im Kopf (#1230, editor.stickyScrollBlocks).</summary>
     StickyScrollBlocks: Boolean;
+    /// <summary>Weitere große Anweisungsblöcke im Kopf: for/while/repeat, try, case, with
+    /// (editor.stickyScrollLoops, …Try, …Case, …With).</summary>
+    StickyScrollLoops: Boolean;
+    StickyScrollTry: Boolean;
+    StickyScrollCase: Boolean;
+    StickyScrollWith: Boolean;
     /// <summary>Mindestlänge solcher Blöcke in Zeilen, MinStickyBlockLines bis MaxStickyBlockLines (#1230,
     /// editor.stickyScrollBlockMinLines).</summary>
     StickyScrollBlockMinLines: Integer;
@@ -1501,7 +1511,13 @@ begin
   Result.PreviousBookmarkKey := 0;
   Result.StickyScroll := False;
   Result.StickyScrollMaxLines := 3;
+  Result.StickyScrollTypes := True;
+  Result.StickyScrollRoutines := True;
   Result.StickyScrollBlocks := True;
+  Result.StickyScrollLoops := False;
+  Result.StickyScrollTry := False;
+  Result.StickyScrollCase := False;
+  Result.StickyScrollWith := False;
   Result.StickyScrollBlockMinLines := 25;
   Result.Minimap := False;
   Result.MinimapRender := 'blocks';
@@ -2127,7 +2143,13 @@ begin
   PreviousBookmarkKey := AStore.ReadInteger('PreviousBookmarkKey', Default.PreviousBookmarkKey);
   StickyScroll := AStore.ReadInteger('StickyScroll', BoolValue(Default.StickyScroll)) <> 0;
   StickyScrollMaxLines := AStore.ReadInteger('StickyScrollMaxLines', Default.StickyScrollMaxLines);
+  StickyScrollTypes := AStore.ReadInteger('StickyScrollTypes', BoolValue(Default.StickyScrollTypes)) <> 0;
+  StickyScrollRoutines := AStore.ReadInteger('StickyScrollRoutines', BoolValue(Default.StickyScrollRoutines)) <> 0;
   StickyScrollBlocks := AStore.ReadInteger('StickyScrollBlocks', BoolValue(Default.StickyScrollBlocks)) <> 0;
+  StickyScrollLoops := AStore.ReadInteger('StickyScrollLoops', BoolValue(Default.StickyScrollLoops)) <> 0;
+  StickyScrollTry := AStore.ReadInteger('StickyScrollTry', BoolValue(Default.StickyScrollTry)) <> 0;
+  StickyScrollCase := AStore.ReadInteger('StickyScrollCase', BoolValue(Default.StickyScrollCase)) <> 0;
+  StickyScrollWith := AStore.ReadInteger('StickyScrollWith', BoolValue(Default.StickyScrollWith)) <> 0;
   StickyScrollBlockMinLines := AStore.ReadInteger('StickyScrollBlockMinLines', Default.StickyScrollBlockMinLines);
   Minimap := AStore.ReadInteger('Minimap', BoolValue(Default.Minimap)) <> 0;
   MinimapRender := AStore.ReadString('MinimapRender', Default.MinimapRender);
@@ -2549,7 +2571,13 @@ begin
   AStore.WriteInteger('PreviousBookmarkKey', PreviousBookmarkKey);
   AStore.WriteInteger('StickyScroll', BoolValue(StickyScroll));
   AStore.WriteInteger('StickyScrollMaxLines', StickyScrollMaxLines);
+  AStore.WriteInteger('StickyScrollTypes', BoolValue(StickyScrollTypes));
+  AStore.WriteInteger('StickyScrollRoutines', BoolValue(StickyScrollRoutines));
   AStore.WriteInteger('StickyScrollBlocks', BoolValue(StickyScrollBlocks));
+  AStore.WriteInteger('StickyScrollLoops', BoolValue(StickyScrollLoops));
+  AStore.WriteInteger('StickyScrollTry', BoolValue(StickyScrollTry));
+  AStore.WriteInteger('StickyScrollCase', BoolValue(StickyScrollCase));
+  AStore.WriteInteger('StickyScrollWith', BoolValue(StickyScrollWith));
   AStore.WriteInteger('StickyScrollBlockMinLines', StickyScrollBlockMinLines);
   AStore.WriteInteger('Minimap', BoolValue(Minimap));
   AStore.WriteString('MinimapRender', MinimapRender);

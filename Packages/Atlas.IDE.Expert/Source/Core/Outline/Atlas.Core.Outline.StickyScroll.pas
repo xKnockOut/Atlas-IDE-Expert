@@ -13,10 +13,17 @@
 //   bleiben die inneren Ebenen einzeln sichtbar, die äußeren werden zu einer
 //   Zeile „A › B › C“ zusammengefasst. Mehrzeilige Köpfe kürzt Header auf eine
 //   Zeile (Parameterliste „(…)“).
-// - Zusätzliche Blöcke (#1230): große if/else-Blöcke (aus der Paaranalyse,
+// - Zusätzliche Blöcke (#1230): große Anweisungsblöcke (aus der Paaranalyse,
 //   ausgewählt vom Aufrufer) zählen wie Routinen; ihr Kopf ist die Zeile des
-//   if bzw. else ohne Einrückung. Alle Ebenen sind nach ihrer Kopfzeile
-//   geordnet, die äußeren zuerst.
+//   Besitzerworts (if, else, for …) ohne Einrückung. Alle Ebenen sind nach
+//   ihrer Kopfzeile geordnet, die äußeren zuerst.
+// - Arten (TAtlasStickyKind): Welche Blöcke eine Kopfzeile bekommen, wählt der
+//   Aufrufer; Typen und Routinen filtert Rows, die Anweisungsblöcke ordnet
+//   OwnerKind ihrem Besitzerwort zu.
+// - Blocklinien im Kopf (GuideStart): Eine Linie beginnt mit ihrem Haken in
+//   der Kopfzeile ihres Elements. Hat das Element keine Kopfzeile (Art aus,
+//   zu kurz oder zusammengefasst), blendet sie in der letzten Kopfzeile von
+//   oben ein (FadeWeight), statt ohne Anfang unter der Trennlinie aufzutauchen.
 
 interface
 
@@ -43,7 +50,12 @@ type
   /// </summary>
   TAtlasStickySyntax = (Plain, Reserved, Identifier, Number, StringLiteral, Character, Comment, Symbol,
     Preprocessor);
+  /// <summary>Art eines Blocks mit eigener Kopfzeile: Klasse, Record, Interface, Objekt; Routine; if/else;
+  /// for/while/repeat; try; case; with.</summary>
+  TAtlasStickyKind = (Types, Routines, Branches, Loops, TryBlocks, CaseBlocks, WithBlocks);
   {$SCOPEDENUMS OFF}
+
+  TAtlasStickyKinds = set of TAtlasStickyKind;
 
   /// <summary>Stück der Kopfzeile; Start 1-basiert.</summary>
   TAtlasStickyToken = record
@@ -61,6 +73,13 @@ type
     class function Create(ALine, ACharacter, AEndLine: Integer): TAtlasStickyBlock; static;
   end;
 
+  /// <summary>Wo eine Blocklinie im Kopf beginnt: in Kopfzeile Row (0-basiert) mit Haken; bei FadeIn hat ihr
+  /// Element keine Kopfzeile, und sie blendet in Row (der letzten) ein. Row = -1 ohne Kopf.</summary>
+  TAtlasStickyGuideStart = record
+    Row: Integer;
+    FadeIn: Boolean;
+  end;
+
   TAtlasStickyScroll = class
   public const
     DefaultMaxLines = 3;
@@ -68,9 +87,16 @@ type
     Separator = ' › ';
     /// <summary>So viele Zeilen sucht Header nach der schließenden Klammer.</summary>
     HeaderSearchLines = 30;
+    /// <summary>Arten ohne Auswahl: Typen und Routinen der Gliederung.</summary>
+    OutlineKinds = [TAtlasStickyKind.Types, TAtlasStickyKind.Routines];
   public
     /// <summary>Klasse, Record, Interface oder Objekt; Routine mit Rumpf.</summary>
-    class function IsBlock(const ANode: TAtlasOutlineNode): Boolean; static;
+    class function IsBlock(const ANode: TAtlasOutlineNode): Boolean; overload; static;
+    /// <summary>Wie oben, nur Arten aus AKinds (Types, Routines).</summary>
+    class function IsBlock(const ANode: TAtlasOutlineNode; AKinds: TAtlasStickyKinds): Boolean; overload; static;
+    /// <summary>Art eines Anweisungsblocks nach seinem ersten Besitzerwort (klein): if/else, for/while/repeat, try,
+    /// case, with; False für andere (begin, asm, on …).</summary>
+    class function OwnerKind(const AOwner: string; out AKind: TAtlasStickyKind): Boolean; static;
     /// <summary>Blöcke, die ALine (0-basiert) umschließen und deren Kopf darüber steht; die äußeren zuerst.</summary>
     class function Chain(const ANodes: TAtlasOutlineNodes; ALine: Integer): TArray<Integer>; static;
     /// <summary>Blöcke für den Kopf, wenn ATopLine (0-basiert) die oberste sichtbare Zeile ist: die Blöcke der
@@ -87,6 +113,10 @@ type
     class function Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
       const ABlocks: TArray<TAtlasStickyBlock>; ATopLine, AMaxLines, ATabWidth: Integer): TAtlasStickyRows; overload;
       static;
+    /// <summary>Wie oben; von der Gliederung nur Blöcke der Arten AKinds (Types, Routines).</summary>
+    class function Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+      const ABlocks: TArray<TAtlasStickyBlock>; AKinds: TAtlasStickyKinds; ATopLine, AMaxLines,
+      ATabWidth: Integer): TAtlasStickyRows; overload; static;
     /// <summary>Wie oben mit Tabulatorbreite 8.</summary>
     class function Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>; ATopLine,
       AMaxLines: Integer): TAtlasStickyRows; overload; static;
@@ -99,6 +129,12 @@ type
     /// <summary>Reserviertes Wort oder Direktive, die der Editor fett zeigt (procedure, const, string, override …).
     /// </summary>
     class function IsReserved(const AWord: string): Boolean; static;
+    /// <summary>Beginn der Blocklinie, deren Element in AFirstLine (0-basiert) steht: die Kopfzeile des Elements
+    /// (keine Zusammenfassung), sonst eingeblendet in der letzten Kopfzeile.</summary>
+    class function GuideStart(const ARows: TAtlasStickyRows; AFirstLine: Integer): TAtlasStickyGuideStart; static;
+    /// <summary>Deckkraft (0 bis 1) einer eingeblendeten Linie in Pixelzeile AOffset (0 = oben) einer Kopfzeile der
+    /// Höhe AHeight: von fast 0 oben bis 1 in der untersten Pixelzeile, dazwischen weich (quadratisch).</summary>
+    class function FadeWeight(AOffset, AHeight: Integer): Double; static;
   end;
 
 implementation
@@ -136,6 +172,35 @@ begin
   else
     Result := False;
   end;
+end;
+
+class function TAtlasStickyScroll.IsBlock(const ANode: TAtlasOutlineNode; AKinds: TAtlasStickyKinds): Boolean;
+begin
+  Result := IsBlock(ANode);
+  if not Result then
+    Exit;
+  if ANode.Category = TAtlasOutlineCategory.TypeDecl then
+    Result := TAtlasStickyKind.Types in AKinds
+  else
+    Result := TAtlasStickyKind.Routines in AKinds;
+end;
+
+class function TAtlasStickyScroll.OwnerKind(const AOwner: string; out AKind: TAtlasStickyKind): Boolean;
+begin
+  Result := True;
+  AKind := TAtlasStickyKind.Branches;
+  if (AOwner = 'if') or (AOwner = 'else') then
+    AKind := TAtlasStickyKind.Branches
+  else if (AOwner = 'for') or (AOwner = 'while') or (AOwner = 'repeat') then
+    AKind := TAtlasStickyKind.Loops
+  else if AOwner = 'try' then
+    AKind := TAtlasStickyKind.TryBlocks
+  else if AOwner = 'case' then
+    AKind := TAtlasStickyKind.CaseBlocks
+  else if AOwner = 'with' then
+    AKind := TAtlasStickyKind.WithBlocks
+  else
+    Result := False;
 end;
 
 class function TAtlasStickyScroll.Chain(const ANodes: TAtlasOutlineNodes; ALine: Integer): TArray<Integer>;
@@ -428,6 +493,28 @@ begin
   Result.EndLine := AEndLine;
 end;
 
+class function TAtlasStickyScroll.GuideStart(const ARows: TAtlasStickyRows;
+  AFirstLine: Integer): TAtlasStickyGuideStart;
+var
+  Index: Integer;
+begin
+  Result.Row := High(ARows);
+  Result.FadeIn := Length(ARows) > 0;
+  for Index := 0 to High(ARows) do
+    if not ARows[Index].Summary and (ARows[Index].Line = AFirstLine) then
+    begin
+      Result.Row := Index;
+      Result.FadeIn := False;
+    end;
+end;
+
+class function TAtlasStickyScroll.FadeWeight(AOffset, AHeight: Integer): Double;
+begin
+  if AHeight <= 1 then
+    Exit(1);
+  Result := Sqr(EnsureRange(AOffset + 1, 1, AHeight) / AHeight);
+end;
+
 type
   /// <summary>Ebene des Kopfs: Block der Gliederung (Node >= 0) oder zusätzlicher Block (Node = -1).</summary>
   TEntry = record
@@ -438,14 +525,15 @@ type
   end;
 
 /// <summary>Alle Ebenen nach Kopfzeile, bei gleicher Zeile die längere (äußere) zuerst.</summary>
-function EntriesOf(const ANodes: TAtlasOutlineNodes; const ABlocks: TArray<TAtlasStickyBlock>): TArray<TEntry>;
+function EntriesOf(const ANodes: TAtlasOutlineNodes; const ABlocks: TArray<TAtlasStickyBlock>;
+  AKinds: TAtlasStickyKinds): TArray<TEntry>;
 var
   Index: Integer;
   Entry: TEntry;
 begin
   Result := nil;
   for Index := 0 to High(ANodes) do
-    if TAtlasStickyScroll.IsBlock(ANodes[Index]) then
+    if TAtlasStickyScroll.IsBlock(ANodes[Index], AKinds) then
     begin
       Entry.Line := ANodes[Index].NameLine;
       Entry.Character := ANodes[Index].NameCharacter;
@@ -522,6 +610,13 @@ end;
 
 class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
   const ABlocks: TArray<TAtlasStickyBlock>; ATopLine, AMaxLines, ATabWidth: Integer): TAtlasStickyRows;
+begin
+  Result := Rows(ANodes, ALines, ABlocks, OutlineKinds, ATopLine, AMaxLines, ATabWidth);
+end;
+
+class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
+  const ABlocks: TArray<TAtlasStickyBlock>; AKinds: TAtlasStickyKinds; ATopLine, AMaxLines,
+  ATabWidth: Integer): TAtlasStickyRows;
 var
   Entries: TArray<TEntry>;
   Items: TArray<Integer>;
@@ -530,7 +625,7 @@ var
 begin
   Result := nil;
   MaxLines := ClampLines(AMaxLines);
-  Entries := EntriesOf(ANodes, ABlocks);
+  Entries := EntriesOf(ANodes, ABlocks, AKinds);
   ATopLine := Max(0, ATopLine);
   // Wie Scopes: Mit Shown Kopfzeilen ist ATopLine + Shown die erste lesbare Zeile; die kleinste Zahl, die reicht.
   Items := nil;

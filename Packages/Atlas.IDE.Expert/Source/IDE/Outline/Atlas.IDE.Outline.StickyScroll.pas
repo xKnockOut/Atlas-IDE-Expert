@@ -15,10 +15,18 @@
 //   Farbe ihrer Tiefe (PairColors, eigene Paarfarben je Hell/Dunkel), Besitzer
 //   wie procedure/function nur mit PairOwners; unpaarige in der Fehlerfarbe.
 //   Die Paaranalyse läuft je neuem Stand der Gliederung einmal.
-// - if/else-Blöcke (#1230, editor.stickyScrollBlocks): Blöcke der Paaranalyse,
-//   deren erstes Besitzerwort if oder else ist und die mindestens
-//   editor.stickyScrollBlockMinLines Zeilen lang sind, stehen als eigene Zeile
-//   im Kopf.
+// - Blocklinien: Jede beginnt mit ihrem Haken in der Kopfzeile ihres
+//   Elements. Hat das Element keine Kopfzeile (Art aus, zu kurz,
+//   zusammengefasst), blendet die Linie in der letzten Kopfzeile von oben ein
+//   (TAtlasStickyScroll.GuideStart, FadeWeight), statt ohne Anfang unter der
+//   Trennlinie aufzutauchen.
+// - Was der Kopf zeigt, ist je Art einstellbar: Klassen/Records
+//   (editor.stickyScrollTypes) und Routinen (editor.stickyScrollRoutines) aus
+//   der Gliederung; Anweisungsblöcke der Paaranalyse ab
+//   editor.stickyScrollBlockMinLines Zeilen nach ihrem ersten Besitzerwort:
+//   if/else (#1230, editor.stickyScrollBlocks), for/while/repeat
+//   (editor.stickyScrollLoops), try, case, with (editor.stickyScrollTry,
+//   …Case, …With). Jeder steht als eigene Zeile im Kopf.
 // - Bildlauf (#1228): Der Editor verschiebt beim Bildlauf die schon gemalten
 //   Pixel (ScrollDC) und malt nur die neuen Zeilen; der alte Kopf wanderte so
 //   als Rest mit. Solange der Kopf an ist, schaltet UIOptions das Verschieben
@@ -123,7 +131,8 @@ type
     FLines: TArray<string>;
     /// <summary>Paar-Token je Zeile von FLines (#1229).</summary>
     FPairs: TArray<TArray<TAtlasPairToken>>;
-    /// <summary>if/else-Blöcke mit begin … end (#1230), alle Längen; gefiltert wird beim Zeichnen.</summary>
+    /// <summary>Anweisungsblöcke der eingestellten Arten (#1230), alle Längen; nach Länge gefiltert wird beim
+    /// Zeichnen.</summary>
     FBranches: TArray<TAtlasStickyBlock>;
     /// <summary>Blöcke der Paaranalyse und daraus die Blocklinien (je Tabulatorbreite und Besitzer-Schalter).</summary>
     FBlocks: TArray<TAtlasPairBlock>;
@@ -156,7 +165,8 @@ type
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
     procedure PaintRow(const ARect: TRect; ARowIndex: Integer; const Context: INTACodeEditorPaintContext);
-    /// <summary>Blocklinien im Kopf: Jede beginnt unter der Kopfzeile ihres Elements.</summary>
+    /// <summary>Blocklinien im Kopf: Jede beginnt mit Haken in der Kopfzeile ihres Elements; ohne Kopfzeile blendet
+    /// sie in der letzten Kopfzeile ein.</summary>
     procedure DrawGuides(const ARect: TRect; ARowIndex: Integer; const Context: INTACodeEditorPaintContext;
       ABack: TAtlasColor);
     /// <summary>Kopftext ab ALeft; Klammern und Blockwörter in der Farbe ihrer Tiefe (#1229).</summary>
@@ -357,6 +367,32 @@ begin
   Result := LowerCase(Copy(ALine, AIndex + 1, Stop - AIndex - 1));
 end;
 
+/// <summary>Hintergrund des Kopfs: der des Editors, eine Spur zur Schrift hin (leichte Abgrenzung).</summary>
+function HeaderBack(const AColors: TAtlasColors; ABack: TAtlasColor): TAtlasColor;
+begin
+  Result := TAtlasColorMath.Mix(AColors.Text, ABack, 0.04);
+end;
+
+/// <summary>Arten mit eigener Kopfzeile nach den Einstellungen.</summary>
+function StickyKinds(const ASettings: TAtlasPluginSettings): TAtlasStickyKinds;
+begin
+  Result := [];
+  if ASettings.StickyScrollTypes then
+    Include(Result, TAtlasStickyKind.Types);
+  if ASettings.StickyScrollRoutines then
+    Include(Result, TAtlasStickyKind.Routines);
+  if ASettings.StickyScrollBlocks then
+    Include(Result, TAtlasStickyKind.Branches);
+  if ASettings.StickyScrollLoops then
+    Include(Result, TAtlasStickyKind.Loops);
+  if ASettings.StickyScrollTry then
+    Include(Result, TAtlasStickyKind.TryBlocks);
+  if ASettings.StickyScrollCase then
+    Include(Result, TAtlasStickyKind.CaseBlocks);
+  if ASettings.StickyScrollWith then
+    Include(Result, TAtlasStickyKind.WithBlocks);
+end;
+
 procedure TStickyState.AnalyzePairs(const AText: string);
 var
   Settings: TAtlasPluginSettings;
@@ -364,14 +400,16 @@ var
   Tokens: TArray<TAtlasPairToken>;
   Blocks: TArray<TAtlasPairBlock>;
   Block: TAtlasPairBlock;
-  Owner: string;
+  Kinds: TAtlasStickyKinds;
+  Kind: TAtlasStickyKind;
 begin
   FPairs := nil;
   FBranches := nil;
   FBlocks := nil;
   FGuidesKey := '';
   Settings := TAtlasIdeSettings.Current;
-  if not (Settings.PairColors or Settings.StickyScrollBlocks) then
+  Kinds := StickyKinds(Settings) - TAtlasStickyScroll.OutlineKinds;
+  if not Settings.PairColors and (Kinds = []) then
     Exit;
   Tokens := TAtlasPairs.Analyze(AText, Blocks);
   FBlocks := Blocks;
@@ -382,20 +420,21 @@ begin
       if (Token.Line >= 0) and (Token.Line <= High(FPairs)) then
         FPairs[Token.Line] := FPairs[Token.Line] + [Token];
   end;
-  if not Settings.StickyScrollBlocks then
+  if Kinds = [] then
     Exit;
-  // Blöcke, deren erstes Besitzerwort if oder else ist (#1230); Routinen und Klassen liefert die Gliederung.
+  // Blöcke, deren erstes Besitzerwort zu einer eingestellten Art gehört (#1230); Routinen und Klassen liefert die
+  // Gliederung.
   for Block in Blocks do
   begin
     if (Block.OwnerLine < 0) or (Block.OwnerLine > High(FLines)) then
       Continue;
-    Owner := WordAt(FLines[Block.OwnerLine], Block.OwnerCharacter);
-    if (Owner = 'if') or (Owner = 'else') then
+    if TAtlasStickyScroll.OwnerKind(WordAt(FLines[Block.OwnerLine], Block.OwnerCharacter), Kind) and
+      (Kind in Kinds) then
       FBranches := FBranches + [TAtlasStickyBlock.Create(Block.OwnerLine, Block.OwnerCharacter, Block.CloseLine)];
   end;
 end;
 
-/// <summary>if/else-Blöcke ab AMinLines Zeilen (vom Kopf bis zum end).</summary>
+/// <summary>Anweisungsblöcke ab AMinLines Zeilen (vom Kopf bis zum end bzw. until).</summary>
 function LongBranches(const ABranches: TArray<TAtlasStickyBlock>; AMinLines: Integer): TArray<TAtlasStickyBlock>;
 var
   Block: TAtlasStickyBlock;
@@ -413,6 +452,7 @@ var
   Top, Row, Height: Integer;
   Sample: COLORREF;
   Branches: TArray<TAtlasStickyBlock>;
+  Settings: TAtlasPluginSettings;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or not FOn or (FFileName = '') then
     Exit;
@@ -426,11 +466,10 @@ begin
     Top := View.TopRow - 1;
     if (Top <> FRowsTop) or (FMaxLines <> FRowsMax) then
     begin
-      Branches := nil;
-      if TAtlasIdeSettings.Current.StickyScrollBlocks then
-        Branches := LongBranches(FBranches, TAtlasIdeSettings.Current.StickyScrollBlockMinLines);
-      FRows := TAtlasStickyScroll.Rows(FNodes, FLines, Branches, Top, FMaxLines,
-        TAtlasEditorBuffer.TabWidth(View.Buffer));
+      Settings := TAtlasIdeSettings.Current;
+      Branches := LongBranches(FBranches, Settings.StickyScrollBlockMinLines);
+      FRows := TAtlasStickyScroll.Rows(FNodes, FLines, Branches, StickyKinds(Settings) *
+        TAtlasStickyScroll.OutlineKinds, Top, FMaxLines, TAtlasEditorBuffer.TabWidth(View.Buffer));
       FRowsTop := Top;
       FRowsMax := FMaxLines;
     end;
@@ -469,11 +508,13 @@ var
   Settings: TAtlasPluginSettings;
   Owners: Boolean;
   Key: string;
-  TabWidth, Below, Start, Index, Width, X: Integer;
+  TabWidth, Below, Width, X, Offset: Integer;
   Guide: TAtlasGuide;
+  Start: TAtlasStickyGuideStart;
   Colors: TAtlasColors;
-  LineColor: TAtlasColor;
-  Cell, Code: TRect;
+  LineColor, HeadBack: TAtlasColor;
+  Cell, Code, Step: TRect;
+  Brush: HBRUSH;
   DC: HDC;
   Saved: Integer;
   Pen, Old: HGDIOBJ;
@@ -494,6 +535,8 @@ begin
   // Erste Zeile unter dem Kopf: Nur Linien, die dort weiterlaufen, reichen in den Kopf.
   Below := FRowsTop + Length(FRows);
   Colors := TAtlasColors.ForBackground(ABack);
+  // Eingeblendete Linien beginnen in der Farbe des Kopfs.
+  HeadBack := HeaderBack(Colors, ABack);
   if Colors.IsDark then
     Colors := Colors.WithPairs(Settings.PairColorsDark)
   else
@@ -509,13 +552,10 @@ begin
     begin
       if (Guide.FirstLine >= Below) or (Guide.LastLine < Below) then
         Continue;
-      // Das Element der Linie: die Kopfzeile, deren Zeile die erste der Linie ist (Anweisung bzw. Öffner).
-      Start := -1;
-      for Index := 0 to High(FRows) do
-        if not FRows[Index].Summary and (FRows[Index].Line = Guide.FirstLine) then
-          Start := Index;
-      // Ab seiner Kopfzeile (dort mit Haken wie im Editor); ohne Kopfzeile beginnt die Linie unter dem Kopf.
-      if (Start < 0) or (ARowIndex < Start) then
+      // Das Element der Linie: die Kopfzeile, deren Zeile die erste der Linie ist (Anweisung bzw. Öffner). Ohne
+      // Kopfzeile blendet die Linie in der letzten Kopfzeile ein, sonst käme sie ohne Anfang darunter hervor.
+      Start := TAtlasStickyScroll.GuideStart(FRows, Guide.FirstLine);
+      if (Start.Row < 0) or (ARowIndex < Start.Row) then
         Continue;
       Cell := Context.EditorState.GetCharacterPosPx(Guide.Column, Context.EditorLineNum);
       X := Cell.Left - Max(2, Cell.Width div 3) - (Width - 1) div 2;
@@ -524,10 +564,26 @@ begin
       LineColor := Colors.Pairs[Guide.Depth mod Length(Colors.Pairs)];
       if Settings.PairGuideOpacity < 100 then
         LineColor := TAtlasColorMath.Mix(LineColor, ABack, Settings.PairGuideOpacity / 100);
+      if Start.FadeIn then
+      begin
+        // Je Pixelzeile ein Streifen in der Breite des Stifts, von der Kopffarbe zur Linienfarbe.
+        for Offset := 0 to ARect.Height - 1 do
+        begin
+          Step := TRect.Create(X - Width div 2, ARect.Top + Offset, X - Width div 2 + Width, ARect.Top + Offset + 1);
+          Brush := CreateSolidBrush(ColorToRGB(TColor(TAtlasColorMath.Mix(LineColor, HeadBack,
+            TAtlasStickyScroll.FadeWeight(Offset, ARect.Height)))));
+          try
+            FillRect(DC, Step, Brush);
+          finally
+            DeleteObject(Brush);
+          end;
+        end;
+        Continue;
+      end;
       Pen := CreatePen(PS_SOLID, Width, ColorToRGB(TColor(LineColor)));
       Old := SelectObject(DC, Pen);
       try
-        if ARowIndex = Start then
+        if ARowIndex = Start.Row then
         begin
           MoveToEx(DC, X, ARect.Top + 2, nil);
           LineTo(DC, X, ARect.Bottom);
@@ -741,8 +797,7 @@ begin
   try
     IntersectClipRect(Canvas.Handle, Area.Left, Area.Top, Area.Right, Area.Bottom);
     Canvas.Brush.Style := bsSolid;
-    // Leichte Abgrenzung: Hintergrund des Editors, eine Spur zur Schrift hin.
-    Canvas.Brush.Color := TColor(TAtlasColorMath.Mix(Colors.Text, Back, 0.04));
+    Canvas.Brush.Color := TColor(HeaderBack(Colors, Back));
     Canvas.FillRect(Area);
     Canvas.Brush.Style := bsClear;
     Canvas.Font.Style := [];
