@@ -30,6 +30,7 @@ uses
   System.Classes,
   Vcl.Forms,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Style.Signal,
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
   Atlas.UI.Strings,
@@ -80,11 +81,17 @@ procedure TAtlasStatusWindowTests.DotColorsFollowState;
 var
   Colors: TAtlasColors;
 begin
+  // Signalfarben (#1255) statt der Textfarben Add/Warn/Error/Muted.
   Colors := TAtlasColors.Dark;
-  Assert.AreEqual(Int64(Colors.Add), Int64(TAtlasStatusWindow.StateColor(Colors, TAtlasStatusState.Green)));
-  Assert.AreEqual(Int64(Colors.Warn), Int64(TAtlasStatusWindow.StateColor(Colors, TAtlasStatusState.Yellow)));
-  Assert.AreEqual(Int64(Colors.Error), Int64(TAtlasStatusWindow.StateColor(Colors, TAtlasStatusState.Red)));
-  Assert.AreEqual(Int64(Colors.Muted), Int64(TAtlasStatusWindow.StateColor(Colors, TAtlasStatusState.Neutral)));
+  Assert.AreEqual(Int64(Colors.Signals.Get(TAtlasSignalKind.Ok).Fill),
+    Int64(Colors.Signals.ForStatus(TAtlasStatusState.Green).Fill));
+  Assert.AreEqual(Int64(Colors.Signals.Get(TAtlasSignalKind.Warn).Fill),
+    Int64(Colors.Signals.ForStatus(TAtlasStatusState.Yellow).Fill));
+  Assert.AreEqual(Int64(Colors.Signals.Get(TAtlasSignalKind.Error).Fill),
+    Int64(Colors.Signals.ForStatus(TAtlasStatusState.Red).Fill));
+  Assert.AreEqual(Int64(Colors.Signals.Get(TAtlasSignalKind.Idle).Fill),
+    Int64(Colors.Signals.ForStatus(TAtlasStatusState.Neutral).Fill));
+  Assert.IsTrue(Colors.Signals.ForStatus(TAtlasStatusState.Green).Fill <> Colors.Add);
 end;
 
 procedure TAtlasStatusWindowTests.ButtonsRunAfterClosing;

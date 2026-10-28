@@ -262,11 +262,14 @@ type
     FCheckMax: TEdit;
     FMcpBuild: TCheckBox;
     /// <summary>Beim Öffnen bauen (build.onOpen*): eine Auswahl „nicht bauen / Syntaxprüfung / Compilieren /
-    /// Erzeugen“, Umfang in einer Gruppe, Wartezeit und ausgeschlossene Projekte.</summary>
+    /// Erzeugen“, Umfang in einer Gruppe, Wartezeit, ausgeschlossene Projekte, Konfiguration und Plattform
+    /// (#1293).</summary>
     FOpenBuild: TAtlasChoiceBox;
     FOpenBuildScope: TAtlasChoiceBox;
     FOpenBuildDelay: TEdit;
     FOpenBuildExclude: TEdit;
+    FOpenBuildConfig: TEdit;
+    FOpenBuildPlatform: TAtlasChoiceBox;
     /// <summary>DUnitX-Tests ausführen (#69): Befehle, vorher bauen, nach dem Build; Build ohne Hinweise (#530).
     /// </summary>
     FTestRun: TCheckBox;
@@ -318,8 +321,14 @@ type
     // Mitlaufender Kopf (#506).
     FStickyScroll: TCheckBox;
     FStickyScrollMaxLines: TEdit;
-    // Große if/else-Blöcke im Kopf (#1230).
+    // Was der Kopf zeigt: Typen, Routinen, große Anweisungsblöcke (#1230).
+    FStickyScrollTypes: TCheckBox;
+    FStickyScrollRoutines: TCheckBox;
     FStickyScrollBlocks: TCheckBox;
+    FStickyScrollLoops: TCheckBox;
+    FStickyScrollTry: TCheckBox;
+    FStickyScrollCase: TCheckBox;
+    FStickyScrollWith: TCheckBox;
     FStickyScrollBlockMinLines: TEdit;
     FMinimap: TCheckBox;
     FMinimapRender: TAtlasChoiceBox;
@@ -480,6 +489,7 @@ type
     FUnitSearchFilters: TCheckBox;
     FUnitSearchDefaultScope: TAtlasChoiceBox;
     FUnitSearchFilterSyntax: TCheckBox;
+    FUnitSearchFormCaptions: TCheckBox;
     FUnitSearchPreview: TCheckBox;
     FUnitSearchPreviewForm: TCheckBox;
     FUnitSearchPreviewUsedBy: TCheckBox;
@@ -927,7 +937,13 @@ type
     property MultiCursor: TCheckBox read FMultiCursor;
     property StickyScroll: TCheckBox read FStickyScroll;
     property StickyScrollMaxLines: TEdit read FStickyScrollMaxLines;
+    property StickyScrollTypes: TCheckBox read FStickyScrollTypes;
+    property StickyScrollRoutines: TCheckBox read FStickyScrollRoutines;
     property StickyScrollBlocks: TCheckBox read FStickyScrollBlocks;
+    property StickyScrollLoops: TCheckBox read FStickyScrollLoops;
+    property StickyScrollTry: TCheckBox read FStickyScrollTry;
+    property StickyScrollCase: TCheckBox read FStickyScrollCase;
+    property StickyScrollWith: TCheckBox read FStickyScrollWith;
     property StickyScrollBlockMinLines: TEdit read FStickyScrollBlockMinLines;
     property Minimap: TCheckBox read FMinimap;
     property MinimapRender: TAtlasChoiceBox read FMinimapRender;
@@ -1051,6 +1067,8 @@ type
     property ListScopeChoice: TAtlasChoiceBox read FListScope;
     property OpenBuildDelayEdit: TEdit read FOpenBuildDelay;
     property OpenBuildExcludeEdit: TEdit read FOpenBuildExclude;
+    property OpenBuildConfigEdit: TEdit read FOpenBuildConfig;
+    property OpenBuildPlatformChoice: TAtlasChoiceBox read FOpenBuildPlatform;
     /// <summary>Zum Testen: Tests ausführen (#69).</summary>
     property CodeLensTestsCheck: TCheckBox read FCodeLensTests;
     property TestRunCheck: TCheckBox read FTestRun;
@@ -1598,7 +1616,13 @@ begin
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
   FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
+  FStickyScrollTypes := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollTypes));
+  FStickyScrollRoutines := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollRoutines));
   FStickyScrollBlocks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollBlocks));
+  FStickyScrollLoops := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollLoops));
+  FStickyScrollTry := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollTry));
+  FStickyScrollCase := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollCase));
+  FStickyScrollWith := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollWith));
   FStickyScrollBlockMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollBlockMinLines));
   // Minimap neben der Scrollleiste (#873, experimentell).
   FMinimap := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimap));
@@ -2510,6 +2534,12 @@ begin
   end;
 end;
 
+const
+  /// <summary>Zielplattformen für Bauen beim Öffnen (#1293), Namen wie in der IDE; Eintrag 0 = wie im Projekt.
+  /// </summary>
+  OpenBuildPlatforms: array[0..7] of string = ('', 'Win32', 'Win64', 'Win64x', 'Linux64', 'OSXARM64', 'Android64',
+    'iOSDevice64');
+
 procedure TAtlasSettingsPage.AddOpenBuildSection;
 begin
   AddTitle(TAtlasTextId.SettingsOpenBuildTitle);
@@ -2523,6 +2553,9 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildScopeActive)]);
   FOpenBuildDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildDelay));
   FOpenBuildExclude := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildExclude));
+  FOpenBuildConfig := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildConfig));
+  // Auswahl statt Freitext (#1293): Tippfehler griffen still nicht; der leere Eintrag heißt wie im Projekt.
+  FOpenBuildPlatform := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildPlatform), OpenBuildPlatforms);
 end;
 
 procedure TAtlasSettingsPage.LoadOpenBuild(const ASettings: TAtlasPluginSettings);
@@ -2538,6 +2571,11 @@ begin
   FOpenBuildScope.Choice := Ord(TAtlasOpenBuild.ScopeOf(ASettings.BuildOnOpenScope));
   FOpenBuildDelay.Text := IntToStr(ASettings.BuildOnOpenDelayMs);
   FOpenBuildExclude.Text := TAtlasOpenBuild.NormalizedExclude(ASettings.BuildOnOpenExclude);
+  FOpenBuildConfig.Text := ASettings.BuildOnOpenConfig;
+  FOpenBuildPlatform.Choice := 0;
+  for Index := 1 to High(OpenBuildPlatforms) do
+    if TAtlasOpenBuild.PickTarget(ASettings.BuildOnOpenPlatform, [OpenBuildPlatforms[Index]]) <> '' then
+      FOpenBuildPlatform.Choice := Index;
 end;
 
 procedure TAtlasSettingsPage.SaveOpenBuild(var ASettings: TAtlasPluginSettings);
@@ -2551,6 +2589,10 @@ begin
     ASettings.BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuildScope(FOpenBuildScope.Choice)];
   ASettings.BuildOnOpenDelayMs := StrToIntDef(FOpenBuildDelay.Text, ASettings.BuildOnOpenDelayMs);
   ASettings.BuildOnOpenExclude := TAtlasOpenBuild.NormalizedExclude(FOpenBuildExclude.Text);
+  ASettings.BuildOnOpenConfig := Trim(FOpenBuildConfig.Text);
+  ASettings.BuildOnOpenPlatform := '';
+  if (FOpenBuildPlatform.Choice > 0) and (FOpenBuildPlatform.Choice <= High(OpenBuildPlatforms)) then
+    ASettings.BuildOnOpenPlatform := OpenBuildPlatforms[FOpenBuildPlatform.Choice];
 end;
 
 procedure TAtlasSettingsPage.AddReleaseSection;
@@ -2732,7 +2774,13 @@ begin
   FMarks.Bind(FEditorStatusBarItems, ['EditorStatusBarItems']);
   FMarks.Bind(FStickyScroll, ['StickyScroll']);
   FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
+  FMarks.Bind(FStickyScrollTypes, ['StickyScrollTypes']);
+  FMarks.Bind(FStickyScrollRoutines, ['StickyScrollRoutines']);
   FMarks.Bind(FStickyScrollBlocks, ['StickyScrollBlocks']);
+  FMarks.Bind(FStickyScrollLoops, ['StickyScrollLoops']);
+  FMarks.Bind(FStickyScrollTry, ['StickyScrollTry']);
+  FMarks.Bind(FStickyScrollCase, ['StickyScrollCase']);
+  FMarks.Bind(FStickyScrollWith, ['StickyScrollWith']);
   FMarks.Bind(FStickyScrollBlockMinLines, ['StickyScrollBlockMinLines']);
   FMarks.Bind(FMinimap, ['Minimap']);
   FMarks.Bind(FMinimapRender, ['MinimapRender']);
@@ -2958,6 +3006,7 @@ begin
   FMarks.Bind(FUnitSearchFilters, ['UnitSearchFilters']);
   FMarks.Bind(FUnitSearchDefaultScope, ['UnitSearchDefaultScope']);
   FMarks.Bind(FUnitSearchFilterSyntax, ['UnitSearchFilterSyntax']);
+  FMarks.Bind(FUnitSearchFormCaptions, ['UnitSearchFormCaptions']);
   FMarks.Bind(FUnitSearchPreview, ['UnitSearchPreview']);
   FMarks.Bind(FUnitSearchPreviewForm, ['UnitSearchPreviewForm']);
   FMarks.Bind(FUnitSearchPreviewUsedBy, ['UnitSearchPreviewUsedBy']);
@@ -3029,6 +3078,8 @@ begin
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
   FMarks.Bind(FOpenBuildExclude, ['BuildOnOpenExclude']);
+  FMarks.Bind(FOpenBuildConfig, ['BuildOnOpenConfig']);
+  FMarks.Bind(FOpenBuildPlatform, ['BuildOnOpenPlatform']);
   FMarks.Bind(FReleaseGuard, ['ReleaseGuard']);
   FMarks.Bind(FBuildGate, ['BuildGate']);
   FMarks.Bind(FReleaseConfigs, ['ReleaseConfigs']);
@@ -4503,6 +4554,7 @@ begin
     TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginSearchPath),
     TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginLibrary)]);
   FUnitSearchFilterSyntax := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFilterSyntax));
+  FUnitSearchFormCaptions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFormCaptions));
   FUnitSearchPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreview));
   FUnitSearchPreviewForm := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewForm));
   FUnitSearchPreviewUsedBy := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewUsedBy));
@@ -4844,7 +4896,13 @@ begin
   FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
   FStickyScroll.Checked := ASettings.StickyScroll;
   FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
+  FStickyScrollTypes.Checked := ASettings.StickyScrollTypes;
+  FStickyScrollRoutines.Checked := ASettings.StickyScrollRoutines;
   FStickyScrollBlocks.Checked := ASettings.StickyScrollBlocks;
+  FStickyScrollLoops.Checked := ASettings.StickyScrollLoops;
+  FStickyScrollTry.Checked := ASettings.StickyScrollTry;
+  FStickyScrollCase.Checked := ASettings.StickyScrollCase;
+  FStickyScrollWith.Checked := ASettings.StickyScrollWith;
   FStickyScrollBlockMinLines.Text := IntToStr(ASettings.StickyScrollBlockMinLines);
   FMinimap.Checked := ASettings.Minimap;
   FMinimapRender.Choice := Max(0, IndexText(ASettings.MinimapRender, ['blocks', 'characters']));
@@ -5115,6 +5173,7 @@ begin
   FUnitSearchFilters.Checked := ASettings.UnitSearchFilters;
   FUnitSearchDefaultScope.Choice := ChoiceOf(ASettings.UnitSearchDefaultScope, UnitSearchScopes);
   FUnitSearchFilterSyntax.Checked := ASettings.UnitSearchFilterSyntax;
+  FUnitSearchFormCaptions.Checked := ASettings.UnitSearchFormCaptions;
   FUnitSearchPreview.Checked := ASettings.UnitSearchPreview;
   FUnitSearchPreviewForm.Checked := ASettings.UnitSearchPreviewForm;
   FUnitSearchPreviewUsedBy.Checked := ASettings.UnitSearchPreviewUsedBy;
@@ -5262,7 +5321,13 @@ begin
   ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
   ASettings.StickyScroll := FStickyScroll.Checked;
   ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);
+  ASettings.StickyScrollTypes := FStickyScrollTypes.Checked;
+  ASettings.StickyScrollRoutines := FStickyScrollRoutines.Checked;
   ASettings.StickyScrollBlocks := FStickyScrollBlocks.Checked;
+  ASettings.StickyScrollLoops := FStickyScrollLoops.Checked;
+  ASettings.StickyScrollTry := FStickyScrollTry.Checked;
+  ASettings.StickyScrollCase := FStickyScrollCase.Checked;
+  ASettings.StickyScrollWith := FStickyScrollWith.Checked;
   ASettings.StickyScrollBlockMinLines := StrToIntDef(FStickyScrollBlockMinLines.Text,
     ASettings.StickyScrollBlockMinLines);
   ASettings.Minimap := FMinimap.Checked;
@@ -5566,6 +5631,7 @@ begin
   ASettings.UnitSearchFilters := FUnitSearchFilters.Checked;
   ASettings.UnitSearchDefaultScope := UnitSearchScopes[EnsureRange(FUnitSearchDefaultScope.Choice, 0, 3)];
   ASettings.UnitSearchFilterSyntax := FUnitSearchFilterSyntax.Checked;
+  ASettings.UnitSearchFormCaptions := FUnitSearchFormCaptions.Checked;
   ASettings.UnitSearchPreview := FUnitSearchPreview.Checked;
   ASettings.UnitSearchPreviewForm := FUnitSearchPreviewForm.Checked;
   ASettings.UnitSearchPreviewUsedBy := FUnitSearchPreviewUsedBy.Checked;

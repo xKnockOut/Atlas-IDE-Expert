@@ -83,16 +83,16 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Go to** definition (Ctrl+click), implementation and type definition; switch between declaration and implementation (Ctrl+Shift+↑/↓); **jump to the counterpart** (begin ⇄ end, try → finally → end, `{$IFDEF}` → `{$ENDIF}`)
 - **Breadcrumb bar** above the editor with jump menus for unit, class, method and their children
 - **Editor toolbar** with icons: jump to the interface or implementation section (and back with "↩ 214"), find method, navigation history and any palette command; overflow menu, customizable, can also sit inside the breadcrumb row
-- **Atlas status bar** at the bottom of each editor window: server status, findings of this unit per kind (click jumps to the next one, double-click opens "Atlas-Prüfung" for the unit), live check ("live · checked 2 s ago") and the method at the cursor with lines and CC (warning colour above the metric limit); each element can be switched off, the Atlas field leaves the IDE status line while the bar shows the status
+- **Atlas status bar** at the bottom of each editor window (state colours tuned separately for light and dark themes): server status, findings of this unit per kind (click jumps to the next one, double-click opens "Atlas-Prüfung" for the unit), live check ("live · checked 2 s ago", during the project check "· project 45 %", then briefly "project done") and the method at the cursor with lines and CC (warning colour above the metric limit); each element can be switched off, the Atlas field leaves the IDE status line while the bar shows the status
 - **Outline** as a dockable window with filter
 - **Peek definition** (Alt+F12) below the line without switching files
 - **Quick open** of files and symbols (Ctrl+P) across project, project group and search path; project-wide **symbol search**
-- **Unit search** (Ctrl+F12) in its own window with preview, groups, filters and "add to uses"
+- **Unit search** (Ctrl+F12) in its own window with preview, groups, filters and "add to uses"; forms can also be found by their caption
 - **Results window** "Atlas Results" for references (including forms), implementations, callers, calls and inheritance
 - **Navigation history** across files
 - **Named bookmarks** (Ctrl+Alt+K) and personal **notes** on code lines that never go into the source
-- **Quick bookmarks** in a column left of the line numbers: click to set and remove, Ctrl+Shift+1…9 numbers them, Ctrl+1…9 jumps project-wide, Ctrl+Shift+K unnumbered (the IDE's folding chords keep working); they follow code changes and take over the IDE bookmarks
-- **Overview ruler** at the scroll bar with errors, matches and changes; **minimap** *(experimental)*; **sticky scroll** of the enclosing class and routine *(experimental)*
+- **Quick bookmarks** in a column left of the line numbers: click to set and remove, Ctrl+Shift+1…9 numbers them, Ctrl+1…9 jumps project-wide, Ctrl+Shift+K unnumbered (the IDE's folding chords keep working); they follow code changes and take over the IDE bookmarks as soon as the column is drawn
+- **Overview ruler** at the scroll bar with errors, matches and changes; **minimap** *(experimental)*; **sticky scroll** of the enclosing class, routine and large blocks, each kind switchable *(experimental)*
 - **TODO overview** of the project from `// TODO`, `// FIXME` and the IDE's to-do format
 
 ### Code analysis
@@ -149,6 +149,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 ### Build, test, debug
 
 - **Release build guard:** checks the project options before a release build (DEBUG symbol, debug information, …)
+- **Build once on opening**, as soon as the IDE is idle, optionally always with the same configuration and target platform (say Debug/Win64) whatever the project is set to; afterwards the project is back as it was
 - **DUnitX tests** run from the editor, and a single test starts in the debugger (code lens on `[Test]` and `[TestFixture]`)
 - **Launch profiles** for parameters, working folder, environment and host application
 - **Values in the hover while debugging** (see [Understanding](#understanding))
@@ -285,6 +286,7 @@ Check scripts (also run as GitHub Actions):
 pwsh Tools/Check-PackageDependencies.ps1   # packages keep their dependencies
 pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, every test unit runs
+pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use their shared hosts
 ```
 
 ## CI
@@ -293,7 +295,7 @@ pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, ev
   - The job needs a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`) on the developer's workstation. It runs in the signed-in user context, not as a service, because `cc.ps1` starts an IDE, and only while that machine is switched on. Every job starts its own scratch IDE.
   - It runs only with the repository variable `DELPHI_RUNNER=true`; otherwise the job "uebersprungen" says so in the run summary. `CC_SCRIPT` overrides the path to `cc.ps1`.
   - A new push to the same branch cancels the running build (`concurrency`).
-- `package-dependencies.yml`: package dependencies, the stdout rule, Delphi 12 compatibility, rule catalog, configuration docs and no Embarcadero sources in `Tests/`.
+- `package-dependencies.yml`: package dependencies, the stdout rule, Delphi 12 compatibility, rule catalog, configuration docs, no Embarcadero sources in `Tests/`, and Atlas windows and editor bars only through their shared hosts.
 
 ## Command line
 

@@ -349,7 +349,7 @@ Vorbereitung: RAD Studio mit Atlas-Plugin, Projekt offen; Claude Code mit dem At
 | KP12 | Erster Start mit Blocklinien | Meldung im Meldungsfenster; ab dem nächsten Start keine Linien der IDE mehr |
 | KP13 | Optionen › Atlas › „Blocklinien in den Paarfarben“ aus, Delphi neu starten | Keine Atlas-Linien; Strukturhervorhebung der IDE wieder an |
 
-Help Insight der IDE (#442): Solange der Atlas-Tooltip an ist, schaltet Atlas Help Insight in der Registry ab (`Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal`, `Help Insight`), ab dem nächsten Start zeigt die IDE keinen zweiten Tooltip; mit Atlas-Tooltip aus wieder an (nur wenn Atlas abgeschaltet hatte).
+Help Insight der IDE (#442, #1246): Solange der Atlas-Tooltip an ist, schaltet Atlas Help Insight in der Registry ab (Wert `Help Insight` unter `Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal` für Delphi 13, `Code Insight\Borland.EditOptions.Pascal` für Delphi 12 und älter, dazu jeder Unterschlüssel von `Code Insight`, der den Wert schon trägt), ab dem nächsten Start zeigt die IDE keinen zweiten Tooltip; mit Atlas-Tooltip aus wieder an (nur wenn Atlas abgeschaltet hatte). Die Merker unter `HKCU\Software\Atlas\IdePlugin` heißen je Version und Ort, z. B. `IdeHelpInsightDisabled 23.0 Borland.EditOptions.Pascal`.
 
 | Nr. | Schritt | Erwartet |
 |---|---|---|
@@ -359,6 +359,8 @@ Help Insight der IDE (#442): Solange der Atlas-Tooltip an ist, schaltet Atlas He
 | HI4 | Atlas › Hauptschalter aus, Maus auf einem Typ | Nur der Tooltip der IDE, kein Atlas-Tooltip |
 | HI5 | Atlas-Tooltip aus | Symbolhinweis der IDE mit dem Text von Atlas; Help Insight nach dem nächsten Start wieder wie vorher |
 | HI6 | Maus auf `TDataSource` in `Data.DB.pas` (vorwärts deklariert in Zeile 29, voll in Zeile 1988) | Fundort `Data.DB.pas : 1988`, Vererbung `TDataSource › TComponent › TPersistent › TObject` (erster Start baut den Index neu, Cache-Format 12) |
+| HI7 | **Delphi 12** (#1246): Atlas-Tooltip an, Delphi zweimal starten, Maus auf einem Typ | Nur der Atlas-Tooltip. In der Registry unter `HKCU\Software\Embarcadero\BDS\23.0\Code Insight\Borland.EditOptions.Pascal` steht `Help Insight = False`, Merker `IdeHelpInsightDisabled 23.0 Borland.EditOptions.Pascal = 1`. Erscheint Help Insight trotzdem: in *Tools › Optionen › Code Insight* Help Insight aus- und wieder einschalten, OK, und melden, welcher Schlüssel unter `23.0\Code Insight` sich geändert hat |
+| HI8 | Delphi 12 und 13 nebeneinander installiert, Atlas-Tooltip in beiden an, abwechselnd starten | In beiden bleibt Help Insight aus; keine IDE schaltet es wieder ein |
 
 Blocklinien zeichnet Atlas selbst (Einstellung „Blocklinien in den Paarfarben“). Solange sie an sind, ist die Strukturhervorhebung der IDE in der Registry abgeschaltet (`Editor\Highlight\Structural Highlighting`, `Enabled`). Die IDE liest das nur beim Start. Hat der User sie selbst abgeschaltet, ändert Atlas nichts.
 
@@ -516,6 +518,11 @@ Gleiche Ablage wie die benannten Lesezeichen, `format` 2 mit `kind` (`named`, `q
 | QL24 | Seite „Tastenkonflikte“, Zeile „Lesezeichen 1–9 setzen“ › IDE überlassen | Strg+Umschalt+1…9 setzen sofort wieder IDE-Lesezeichen |
 | QL25 | Strg+. auf einer Zeile mit Marker › Ausblenden „überall“ | Spalte zeigt keine Marker mehr (#628) |
 | QL26 | Zeilennummern einer Zeile mit Marker, hell und dunkel, 100/150/200 % | Zahl heller als die übrigen, gleiche Schrift und Lage (Stufe der Zeilennummern beim ersten Bau prüfen) |
+| QL27 | IDE starten, Datei öffnen, `atlas.log` lesen (#1281) | Zeile „Schnelle Lesezeichen: Spalte angefordert (Spalte N, Breite B)“; fehlt die Spalte im Editor, nach 5 s zusätzlich „… die IDE hat sie aber noch nie gezeichnet“ bzw. „… bietet keine eigenen Spalten …“ |
+| QL28 | Spalte fehlt (oder `bookmarks.quick.gutter` aus), Datei mit IDE-Lesezeichen 1–3 öffnen (#1281) | Die IDE-Lesezeichen bleiben mit ihren Symbolen in der IDE, Atlas übernimmt nichts |
+| QL29 | Spalte fehlt, benanntes Lesezeichen mit Nummer (#1281) | Die Rinne zeigt das Band der benannten Lesezeichen an der Zeile |
+| QL30 | Linksklick in die Spalte links der Zahlen auf einer Zeile ohne Marker, dann auf den Marker (#1281) | Erst erscheint ein Marker, dann ist er wieder weg; kein Haltepunkt, keine Markierung im Editor. In `atlas.log` höchstens einmal „Klick … kam nicht über Application.OnMessage“ (dann hat ein anderer Experte die Nachrichten übernommen) |
+| QL31 | Tooltip über der Spalte und über einer Notiz, 100/150/200 % (#1281) | Text vollständig, auch Unterlängen (g, p, y) der letzten Zeile |
 
 ## Tippfehler (#485)
 
@@ -1310,6 +1317,11 @@ Vorher: *Tools › Optionen › Atlas › Allgemein* „Experimentelle Funktione
 | SS8 | Methode bearbeiten, kurz warten | Nach der Tipppause stimmen die Köpfe mit dem neuen Text |
 | SS9 | Helles und dunkles Editor-Farbschema | Hintergrund und Schrift passen zum Schema |
 | SS10 | Einstellung bzw. Hauptschalter „Experimentelle Funktionen“ aus | Kein Kopf, Klicks in die oberen Zeilen setzen wie sonst den Cursor |
+| SS11 | Blocklinien an, in einer Methode mit `if` (lang), darin `for` und `try` (je über 25 Zeilen) und innerem `if` scrollen; nur Routinen und if/else im Kopf | Methode, äußeres und inneres `if` stehen im Kopf, ihre Linien beginnen dort mit Haken. Die Linien von `for` und `try` blenden in der letzten Kopfzeile von oben weich ein und laufen darunter ohne Sprung weiter, nichts bricht an der Trennlinie ab (hell und dunkel) |
+| SS12 | Unter *Editor* „Große Schleifen im Kopf“ und „Große try-Blöcke im Kopf“ an, Höchstzahl 5 | `for …` und `try` stehen als eigene Zeilen im Kopf, ihre Linien beginnen dort mit Haken; Klick springt zu `for` bzw. `try` |
+| SS13 | „Große case-Blöcke im Kopf“ bzw. „Große with-Blöcke im Kopf“ an, in einen langen `case` bzw. `with … do begin` scrollen | Kopfzeile `case … of` bzw. `with … do`; aus: keine Zeile, die Linie blendet ein |
+| SS14 | „Klassen und Records im Kopf“ aus und in der Klassendeklaration scrollen; „Routinen im Kopf“ aus und in einer Methode scrollen | Keine Kopfzeile für die Klasse bzw. die Methode; andere eingeschaltete Blöcke stehen weiter im Kopf |
+| SS15 | Höchstzahl 2 mit vier Ebenen | Äußere Ebenen zusammengefasst; Linien zusammengefasster Blöcke blenden in der letzten Kopfzeile ein |
 
 ## Variable und Methode einbetten (#103, experimentell)
 
@@ -1804,6 +1816,9 @@ Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testpro
 | US18 | Auf ▾ EXPORTIERTE TYPEN klicken bei großem Fenster | Abschnitt bleibt zu, auch wenn Platz ist; erneuter Klick öffnet ihn |
 | US19 | Optionen › Units suchen: „Abschnitte der Vorschau einklappen, wenn sie nicht passen“ aus, Fenster niedrig | Nichts klappt von selbst ein, der Inhalt wird unten abgeschnitten; Klick auf Überschriften klappt weiter |
 | US20 | Mauszeiger über ▾ PFAD | Handzeiger, Tooltip mit vollem Dateinamen |
+| US21 | Strg+F12, Teil der Caption eines Formulars tippen, z. B. „bearbeiten“ (#1310) | Die Unit des Formulars erscheint, die Caption steht grau hinter dem Namen, das Wort ist darin hervorgehoben; Units mit dem Wort im Namen stehen davor |
+| US22 | Caption im Formulardesigner ändern, speichern, Strg+F12 erneut (#1310) | Die neue Caption wird gefunden, die alte nicht mehr |
+| US23 | Optionen › Units suchen: „Auch nach der Caption von Formularen suchen“ aus, Strg+F12, „bearbeiten“ (#1310) | Keine Caption hinter den Namen, das Formular wird nur noch über seinen Namen gefunden |
 ## Erzeugen-Menü (#719)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TKunde = class` (Felder `FName: string; FListe: TStrings;`), einer Klasse `TStaffelpreise = class(TStandardpreise)` mit virtueller Methode im Vorfahren und einer Klasse `TDienst = class(TInterfacedObject, IDienst)`, der Methoden von `IDienst` fehlen.
@@ -1861,7 +1876,7 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert. Für den „erste
 | EP3 | Während der Server startet bzw. indiziert, Fenster offen lassen | Punkte gelb mit „Server wird gestartet…“ bzw. „wird indiziert: n von m Projekten fertig“; aktualisiert sich alle 2 s ohne Klick; Projektzeilen wechseln von „wird aufgebaut“ auf „fertig“ |
 | EP4 | Serverpfad in *Tools › Optionen › Atlas* auf eine nicht vorhandene Datei, IDE neu starten | Prüfliste öffnet von selbst; Server rot „AtlasServer.exe nicht gefunden“, Knopf „Server-Pfad wählen…“; Datei wählen → Pfad steht danach auf der Optionsseite, der Server startet, Punkt wird grün |
 | EP5 | Server einer anderen Version eintragen | Gelb „Server x passt nicht zum Plugin y“ mit „Server-Pfad wählen…“ |
-| EP6 | **Error-Insight-Ort bestätigen**: *Tools › Optionen › Editor › Sprache › Code Insight* Error Insight an; IDE neu starten | Zeile „Error Insight der IDE ist noch an (doppelte Meldungen)“, Knopf „Error Insight abschalten“. Klick: Zeile „Error Insight umgeschaltet, wirkt nach dem Neustart der IDE“; in der Registry unter `<BDS-Schlüssel>\Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal` steht `Error Insight = False`. Nach Neustart ist Error Insight in den IDE-Optionen aus und die Zeile grün. Stimmt der Ort nicht (Optionen zeigen weiter an), bitte den richtigen Schlüssel melden |
+| EP6 | **Error-Insight-Ort bestätigen**: *Tools › Optionen › Editor › Sprache › Code Insight* Error Insight an; IDE neu starten | Zeile „Error Insight der IDE ist noch an (doppelte Meldungen)“, Knopf „Error Insight abschalten“. Klick: Zeile „Error Insight umgeschaltet, wirkt nach dem Neustart der IDE“; in der Registry unter `<BDS-Schlüssel>\Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal` (Delphi 13) bzw. `…\Borland.EditOptions.Pascal` (Delphi 12, #1246) steht `Error Insight = False`. Nach Neustart ist Error Insight in den IDE-Optionen aus und die Zeile grün. Stimmt der Ort nicht (Optionen zeigen weiter an), bitte den richtigen Schlüssel melden |
 | EP7 | Atlas-Probleme aus (*Atlas*-Seite), Error Insight aus | Gelb „Weder Error Insight noch Atlas zeigen Fehler im Editor“ mit „Error Insight einschalten“ |
 | EP8 | Taste von Atlas mit einer fremden Erweiterung belegen (z. B. CnPack auf Strg+Leer) | Gelb „1 Tastenkürzel anders belegt, z. B. …“; „Tastenkonflikte öffnen“ öffnet *Tools › Optionen › Drittanbieter › Atlas › Tastenkonflikte* (**Seite prüfen**); nach Ändern und „Erneut prüfen“ grün |
 | EP9 | Bibliotheks-Cache löschen (`%LOCALAPPDATA%\Atlas\Index\<Version>\…\Bibliothek` bzw. „Index löschen“), Server neu starten | Gelb „Bibliotheks-Cache fehlt, erster Start dauert länger“ bzw. „entsteht beim ersten Indexlauf“, Knopf „Jetzt aufbauen“ baut den Index neu |
@@ -2099,6 +2114,10 @@ Vorbereitung: Plugin (Win32 und Win64) gebaut und installiert; unter *Tools › 
 | OB16 | IDE mit „Projekt beim Start laden“ starten | Das geladene Projekt bzw. die Gruppe wird nach dem Laden einmal gebaut |
 | OB17 | Schnellschalter „Beim Öffnen einmal bauen“ aus, Projekt öffnen; Quelle „Bauen beim Öffnen“ auf „Aus“ | Kein Bau; bei aus geschalteter Quelle keine Zusammenfassung, die Einträge „Build fertig“ bleiben |
 | OB18 | Abgesicherter Start (#722) | Kein Bau beim Öffnen |
+| OB19 | Projekt steht auf Release/Win32; „Konfiguration“ `Debug`, „Zielplattform“ `Win64` (#1293), Projekt öffnen | Gebaut wird Debug/Win64 (Ausgabeordner, Meldungen); danach zeigt die Projektverwaltung wieder Release/Win32 |
+| OB20 | Wie OB19 mit Hintergrundcompilierung der IDE an (#1293) | Während des Laufs Debug/Win64, erst nach dem Ende wieder Release/Win32; die IDE bleibt bedienbar |
+| OB21 | Gruppe, ein Projekt ohne Win64 bzw. ohne Konfiguration `Debug` (#1293) | Dieses Projekt wird mit seiner eigenen Plattform bzw. Konfiguration gebaut; Zusammenfassung (Warnung) „‹Projekt› kennt Win64 nicht; gebaut wie im Projekt eingestellt“ |
+| OB22 | Beide Felder leer (#1293) | Verhalten wie bisher: gebaut wird, was im Projekt eingestellt ist |
 
 ## Ausblenden am Element (#628)
 
@@ -2562,6 +2581,22 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | EL20 | Leiste durch einen Fehler abgeschaltet (atlas.log „Editorleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leiste verschwindet und kommt ohne Neustart zurück |
 | BK29 | Gegenprobe zur Zugriffsverletzung beim Beenden (`rtl370`, `TEditWindow.Notification`): Brotkrumen an, atlas.log nennt „über die Option … der IDE“, IDE dreimal beenden | Tritt die Zugriffsverletzung nicht mehr auf, war das Umhängen die Ursache; tritt sie weiter auf, liegt sie nicht am Umhängen (Bericht M3) |
 
+## Gemeinsamer Leisten-Host (#1248)
+
+Gilt für Editorleiste, Statusleiste, Brotkrumen, Übersichtsleiste, Minimap (experimentell an) und Suchleiste; das Verhalten jeder Leiste bleibt wie in ihrem eigenen Abschnitt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LH1 | IDE starten, Projekt öffnen, zweites Editorfenster (Ansicht › Neues Editorfenster) | In beiden Fenstern alle eingeschalteten Leisten an ihrem Platz (Brotkrumen und Editorleiste oben, Statusleiste und Suchleiste unten, Übersichtsleiste und Minimap neben der Scrollleiste) |
+| LH2 | Anderes Projekt öffnen (alle Editoren schließen sich), danach in jede Leiste klicken, Strg+F | Jede Leiste reagiert sofort, keine bleibt taub; `atlas.log` zeigt „wieder freigegeben, ein Editor ist aktiv“ und höchstens dreimal je Leiste „wird gesperrt …; Aufrufer:“ mit Stapel |
+| LH3 | Zweites Editorfenster schließen, danach Leisten im ersten benutzen | Keine Fehlermeldung, keine Zugriffsverletzung; die Leisten im ersten Fenster arbeiten |
+| LH4 | Thema der IDE hell ↔ dunkel umschalten | Alle Leisten übernehmen die neuen Farben ohne Neustart |
+| LH5 | Rechtsklick auf Editorleiste, Statusleiste, Brotkrumen; Umschalt+F10 bzw. Kontextmenütaste mit Fokus in der Leiste | Das Menü der Leiste erscheint, nie das Kontextmenü des Editors |
+| LH6 | Auf einen Knopf der Editorleiste drücken, Maus auf dem Knopf loslassen; einmal drücken, auf einen anderen Knopf ziehen, loslassen | Erster Fall löst aus (auch wenn der Editor den Fokus holt), zweiter nicht |
+| LH7 | Monitor mit 150 % bzw. Fenster zwischen Monitoren verschieben | Leisten eine Zeile hoch nach DPI, nie höher |
+| LH8 | Gliederung öffnen (Ansicht › Atlas › Gliederung), andocken, X des Gastgebers, wieder öffnen | Fenster erscheint samt Gastgeber und Reiter; Thema stimmt |
+| LH9 | Atlas entladen (Komponenten › Packages installieren, Haken weg) bei offenen Leisten und Gliederung | Alle Leisten verschwinden, die IDE läuft weiter, keine Zugriffsverletzung |
+
 ## Atlas-Statusleiste (#1155)
 
 Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `problems.live` an, Regel `metric-method-length` mit `max` 40.
@@ -2579,6 +2614,10 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | ASL8 | Caret in `btnSpeichernClick` (48 Zeilen, CC 9) | `TfrmKunde.btnSpeichernClick · 48 Zeilen · CC 9`, Zeilen in Warnfarbe, Tooltip nennt „(Grenze 40)“; Klick springt zum Methodenkopf. Außerhalb einer Methode gedämpft „keine Methode“, Klick tut nichts |
 | ASL9 | Editorfenster schmal ziehen | Erst kürzt sich der Methodenname („…“), dann die Live-Prüfung, dann der Status; reicht es nicht, fallen Elemente ganz weg (Methode zuerst, die Zähler zuletzt). Nie zwei Zeilen |
 | ASL10 | Zahnrad bzw. Rechtsklick neben dem Status › „Leiste anpassen …“ | Menü mit Häkchen für Server-Status, Meldungen dieser Unit, Live-Prüfung, Aktuelle Methode und „Statusleiste ausblenden“; jede Änderung wirkt sofort und steht danach in `editor.statusBar.items` |
+| ASL-F1 | IDE-Thema hell (Light), Statusleiste und Statusfeld ansehen: Server bereit, dann Index aufbauen, Server beenden, Statusleiste ganz aus (#1255) | Punkt grün, bernstein, rot, grau mit dunklem Rand, auf einen Blick unterscheidbar; Fehlerkreuz, Warndreieck und „i“ der Zähler kräftig mit Rand, das Dreieck klar sichtbar |
+| ASL-F2 | Wie ASL-F1 im dunklen Thema | Helle, gesättigte Punkte und Symbole ohne Rand, Zeichen darauf dunkel |
+| ASL-F3 | Ungelesene Benachrichtigung (Warnung, Fehler) in hell und dunkel | Plakette in der Zustandsfarbe, Zahl gut lesbar (hell weiß auf dunkler Fläche, dunkel dunkel auf heller Fläche) |
+| ASL-F4 | Fenster „Atlas-Prüfung“ in hell und dunkel; Statusfenster (Klick auf den Status) | Symbole wie in der Statusleiste; ausgegraute Zeilen (nicht geöffnete Units) weiter unterscheidbar; Punkte im Statusfenster mit Rand |
 | ASL11 | Server-Status abwählen | Das Atlas-Feld kehrt in die Statuszeile der IDE zurück und öffnet seine Fenster wieder dort |
 | ASL12 | „Statusleiste ausblenden“ bzw. `editor.statusBar` aus (Optionen › Editor, Schnellschalter) | Leisten verschwinden ohne Neustart, das Atlas-Feld steht wieder in der Statuszeile; wieder an: Leisten und Umzug kommen zurück |
 | ASL13 | Zweites Editorfenster (Ansicht › Neues Editierfenster) | Auch dort eine Leiste; die Zähler und die Methode zeigt nur die des obersten Fensters, die anderen nur den Status |
@@ -2587,6 +2626,20 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | ASL16 | 150 % und 200 % Skalierung | Leiste eine Zeile, Symbole und Zahnrad scharf |
 | ASL17 | Leiste durch einen Fehler abgeschaltet (atlas.log „Atlas-Statusleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leisten verschwinden und das Atlas-Feld kehrt in die Statuszeile zurück; nach dem Einschalten ohne Neustart wieder da |
 | ASL18 | Optionen › Editor | „Atlas-Statusleiste …“ und das Feld „Elemente“; unbekannte oder doppelte Einträge verschwinden beim Speichern |
+
+## Projektprüfung als begrenzter Lauf (#1247)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PL1 | Projekt mit 900+ Units öffnen, Indexaufbau abwarten | Live-Prüfung zeigt „· Projekt 0 %“ und zählt hoch; am Ende einige Sekunden „· Projekt fertig“, danach nur noch „live · geprüft vor …“. atlas.log: „Projektprüfung fertig: … Units in … ms“. Danach Prozessor des Servers im Taskmanager nahe 0 % |
+| PL2 | Während des Laufs zügig tippen | Editor bleibt flüssig; „prüft …“ der aktiven Datei kommt sofort, der Projektfortschritt steht, solange getippt wird, und läuft gut eine Sekunde nach der letzten Taste weiter |
+| PL3 | Nach dem Ende eine Unit ändern und speichern, die von drei anderen in uses steht | Kurz „· Projekt …“ über 4 Units (Tooltip „Projekt: 2 von 4 Units geprüft“), dann „Projekt fertig“; Befunde der drei abhängigen Units in „Atlas-Prüfung“ (Bereich Projekt) aktualisiert |
+| PL4 | Projekt bauen (Umschalt+F9) während des Laufs | Während des Compiles „· Projekt … % pausiert (Kompilieren)“, der Fortschritt steht; danach läuft er weiter. Hat der Build neue Meldungen, werden nur deren Units neu geprüft |
+| PL5 | Während des Laufs F9 (Debuggen) | „angehalten (Debugger)“; atlas.log zeigt keine weiteren geprüften Units, Server-CPU bei 0 %; nach dem Ende des Programms läuft der Lauf weiter |
+| PL6 | Klick auf die Live-Prüfung (#1231) | Neuer Lauf über alle Units von 0 % an, am Ende „Projekt fertig“ |
+| PL8 | Index-Cache löschen (Atlas › Index neu aufbauen), dabei Taskmanager › Details › AtlasServer.exe beobachten (#1236) | Während des Aufbaus höchstens etwa ein Kern (bei 8 Kernen gut 12 %), Priorität des Aufbau-Threads „Niedriger als normal“ (Process Explorer › Threads); die IDE bleibt flüssig. Danach Projektprüfung wie PL1 |
+| PL9 | Großes Projekt (900+ Units) öffnen, Projektprüfung bis „Projekt fertig“ laufen lassen, dabei Taskmanager › Details › AtlasServer.exe und bds.exe beobachten (#1237) | AtlasServer.exe bleibt deutlich unter 1 GB (Arbeitssatz), auch nach mehreren Läufen („neu prüfen“) kein stetiger Zuwachs; Problemfenster zeigt alle Befunde wie vorher |
+| PL7 | Probleme aus (`problems`) bzw. Fenster „Atlas-Prüfung“ nie geöffnet und Probleme aus | Kein Lauf, keine Projektanzeige in der Statusleiste |
 
 ## Extrahieren, case und with (#50)
 
@@ -3331,6 +3384,8 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Bef
 | AP22 | Haken einer Regel in der Tabelle entfernen | Schweregrad „Aus“, Befunde weg |
 | AP23 | *Atlas › Projekt-Einstellungen*, Seite Prüfregeln und Knoten je Gruppe | Derselbe Aufbau; Werte aus settings.json als „(global: …)“; Änderung landet in atlas.json |
 | AP24 | Server beenden, „Weitere globale Einstellungen…“ öffnen | Seite Prüfregeln zeigt „Ohne laufenden Server fehlt der Regelkatalog; hier stehen nur die eingestellten Regeln.“ und nur diese Regeln |
+| AP27 | *Atlas › Projekt-Einstellungen*, Seite Prüfregeln (alle Regeln), Regel mit Optionen und Beispielen wählen (z. B. `field-free-without-nil`), dann eine ohne (#1296) | Titel, Marke, Beschreibung, Schweregrad, Ausnahmen, Optionen, Falsch/Richtig untereinander ohne Überlappung; Zustand „aus dem Projekt“/„Standard“, „Auf Standard zurücksetzen“ und `overrides` stehen unter dem Editor und rücken beim Wechsel mit |
+| AP28 | Wie AP27, in einer Option einen ungültigen Wert tippen und wieder korrigieren (#1296) | Rote Meldung direkt unter den Optionen, verschwindet wieder; nichts überlappt |
 | AP25 | *Tools › Optionen › Atlas › Prüfregeln* | Keine Regeltabelle; Hinweis auf atlas.json und settings.json, „Projekt-Prüfregeln bearbeiten …“ und „Globale Prüfregeln bearbeiten …“ öffnen die Dialoge; Knoten „Profile und Baseline“: Baseline-Stand, „Aktualisieren“ und „Löschen“ arbeiten |
 | AP26 | Oberfläche auf Englisch | Fenster, Tooltip und Seite englisch, Katalogtexte englisch |
 

@@ -139,6 +139,9 @@ type
     FOnNames: TProc<TArray<string>>;
     /// <summary>Ein Aufbau läuft und hat die Projektstufe noch nicht hinter sich.</summary>
     FProjectPending: Boolean;
+    /// <summary>Der letzte Aufbau hat entschieden, ohne Projekt zu indizieren (keine oder fehlende Projektdatei,
+    /// index.projectGroup aus und noch nicht aktiviert); dann wartet keine Prüfung auf ein Projekt (#1220).</summary>
+    FWithoutProject: Boolean;
     FOnSettingsChanged: TProc<TServerSettings>;
     FBaseline: IRuleBaseline;
     FLastIndexMs: Int64;
@@ -315,9 +318,13 @@ type
     /// Dateien, deshalb außerhalb von Sperren aufrufen.</summary>
     class procedure CompleteRuleProject(var AProject: TRuleProject; const AMainSource: string;
       const AReadText: TRuleProjectReadText); static;
-    /// <summary>Projekt geladen und Index fertig (#1102, #1112)? Sonst der Grund in AReason. Ein Arbeitsbereich
-    /// ohne geladenes Projekt kann Verwendungen enthalten, die keiner kennt. Threadsicher.</summary>
+    /// <summary>Projekt geladen und Index fertig (#1102, #1112)? Sonst der Grund in AReason. Ein Arbeitsbereich,
+    /// dessen Projekt noch lädt, kann Verwendungen enthalten, die keiner kennt. Ein Arbeitsbereich ohne Projekt ist
+    /// bereit, sobald der Aufbau das festgestellt hat (#1220). Threadsicher.</summary>
     function RuleReady(out AReason: string): Boolean;
+    /// <summary>Leert die prozessweiten Ordnerlisten der .pas-/.dcu-Dateien. Für Tests: Je Testordner bliebe sonst
+    /// ein Eintrag bis Programmende.</summary>
+    class procedure ClearSharedListings; static;
     /// <summary>Vor Load setzen (#46): selectBuild merkt die Wahl dort, der erste Indexaufbau übernimmt sie.</summary>
     property Selection: TProjectSelection read FSelection write FSelection;
     /// <summary>Feste Projektdatei oder die des geladenen Projekts; '' ohne Projekt. Threadsicher.</summary>
@@ -384,6 +391,7 @@ type
     /// <summary>.pas- und .dcu-Dateien des Ordners.</summary>
     class function ListUnitFiles(AFolder: string): TArray<string>; static;
     class function Listed(const AFolder, APattern: string): TArray<string>; static;
+    class procedure Clear; static;
   end;
 
 class constructor TSharedUnitListings.Create;
@@ -396,6 +404,21 @@ class destructor TSharedUnitListings.Destroy;
 begin
   FListings.Free;
   FLock.Free;
+end;
+
+class procedure TSharedUnitListings.Clear;
+begin
+  TMonitor.Enter(FLock);
+  try
+    FListings.Clear;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+class procedure TShellWorkspace.ClearSharedListings;
+begin
+  TSharedUnitListings.Clear;
 end;
 
 class function TSharedUnitListings.List(AFolder: string): TArray<string>;
@@ -1426,7 +1449,7 @@ var
   Info: TProjectInfo;
 begin
   AReason := '';
-  if ProjectPending or not Project(Info) then
+  if ProjectPending or not (Project(Info) or FWithoutProject) then
   begin
     AReason := 'Projekte werden geladen';
     Exit(False);
@@ -1647,10 +1670,14 @@ begin
   begin
     FLogger.Info(Format('%s: index.projectGroup ist aus; indiziert wird, sobald eine Datei des Projekts offen ist',
       [FName]));
+    FWithoutProject := True;
     Exit;
   end;
   mProjectFile := FindProjectFile(ASettings);
-  if mProjectFile = '' then
+  // Ohne Projekt indiziert dieser Arbeitsbereich nichts; Prüfungen sollen dann nicht auf ihn warten. Sonst liefen
+  // die indexabhängigen Regeln in einem Ordner ohne Projekt nie (#1220).
+  FWithoutProject := mProjectFile = '';
+  if FWithoutProject then
     Exit;
   // In der IDE bestimmt die IDE Konfiguration, Plattform, Optionen und Delphi-Version (#396).
   Context := Default(TIdeProjectContext);

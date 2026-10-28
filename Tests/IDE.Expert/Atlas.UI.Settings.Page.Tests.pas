@@ -118,6 +118,10 @@ type
     /// </summary>
     [Test]
     procedure DialogRulesByGroupNodes;
+    /// <summary>#1296: Wächst der Regel-Editor mit der markierten Regel, rücken die Felder darunter nach statt
+    /// überdeckt zu werden.</summary>
+    [Test]
+    procedure DialogRuleEditorPushesFieldsDown;
     [Test]
     procedure DialogValidatesBeforeSaving;
     [Test]
@@ -199,6 +203,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   System.StrUtils,
+  System.Math,
   Vcl.Controls,
   Vcl.Menus,
   Vcl.Forms,
@@ -1117,11 +1122,15 @@ begin
     Assert.AreEqual(0, Page.OpenBuildScopeChoice.Choice, 'alle Projekte');
     Assert.AreEqual('3000', Page.OpenBuildDelayEdit.Text);
     Assert.AreEqual('', Page.OpenBuildExcludeEdit.Text);
+    Assert.AreEqual('', Page.OpenBuildConfigEdit.Text);
+    Assert.AreEqual(0, Page.OpenBuildPlatformChoice.Choice, 'wie im Projekt');
     // Erzeugen, nur das aktive Projekt, 5 s, ein Package ausgeschlossen.
     Page.OpenBuildChoice.Choice := 3;
     Page.OpenBuildScopeChoice.Choice := 1;
     Page.OpenBuildDelayEdit.Text := '5000';
     Page.OpenBuildExcludeEdit.Text := 'Atlas.IDE.Expert.dproj';
+    Page.OpenBuildConfigEdit.Text := ' Debug ';
+    Page.OpenBuildPlatformChoice.Choice := 2;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.BuildOnOpen);
@@ -1129,7 +1138,10 @@ begin
     Assert.AreEqual('active', Saved.BuildOnOpenScope);
     Assert.AreEqual(5000, Saved.BuildOnOpenDelayMs);
     Assert.AreEqual('Atlas.IDE.Expert', Saved.BuildOnOpenExclude);
+    Assert.AreEqual('Debug', Saved.BuildOnOpenConfig);
+    Assert.AreEqual('Win64', Saved.BuildOnOpenPlatform);
     Page.LoadFrom(Saved);
+    Assert.AreEqual('Debug', Page.OpenBuildConfigEdit.Text);
     Assert.AreEqual(3, Page.OpenBuildChoice.Choice);
     Assert.AreEqual(1, Page.OpenBuildScopeChoice.Choice);
     // Syntaxprüfung; „nicht bauen“ schaltet ab und behält die Art.
@@ -2097,6 +2109,20 @@ begin
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.StickyScroll);
     Assert.AreEqual(2, Saved.StickyScrollMaxLines);
+    // Was der Kopf zeigt: je Art ein Schalter.
+    Assert.IsTrue(Page.StickyScrollTypes.Checked and Page.StickyScrollRoutines.Checked);
+    Assert.IsFalse(Page.StickyScrollTry.Checked);
+    Page.StickyScrollRoutines.Checked := False;
+    Page.StickyScrollTry.Checked := True;
+    Page.StickyScrollWith.Checked := True;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsTrue(Saved.StickyScrollTypes);
+    Assert.IsFalse(Saved.StickyScrollRoutines);
+    Assert.IsFalse(Saved.StickyScrollLoops);
+    Assert.IsTrue(Saved.StickyScrollTry);
+    Assert.IsFalse(Saved.StickyScrollCase);
+    Assert.IsTrue(Saved.StickyScrollWith);
   finally
     Page.Free;
   end;
@@ -2463,6 +2489,72 @@ begin
       Assert.IsNotNull(Dialog.RuleList.Selected);
       Assert.AreEqual('magic-number', Dialog.RuleList.Selected.Caption);
       Assert.IsFalse(Dialog.SelectRule('unbekannt'));
+    finally
+      Dialog.Free;
+    end;
+  finally
+    Model.Free;
+    Catalog.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DialogRuleEditorPushesFieldsDown;
+const
+  CatalogText = '{"rules": [{"id": "magic-number", "name": "Magische Zahl", "category": "code-smell",' +
+    ' "severity": "hint", "group": "style", "description": "Zahl ohne Namen", "bad": "X := 42;",' +
+    ' "good": "X := Answer;", "options": [{"name": "ignore", "type": "string-list", "default": ["0"]},' +
+    ' {"name": "maxDigits", "type": "integer", "default": 3}], "experimental": true},' +
+    ' {"id": "no-with", "name": "Kein with", "category": "code-smell", "severity": "warning"}]}';
+var
+  Model: TAtlasSettingsModel;
+  Dialog: TAtlasProjectSettingsDialog;
+  Catalog: TJSONValue;
+  Editor: TAtlasRulesEditor;
+  Box: TWinControl;
+  Index, Before, Spacing, Below: Integer;
+  Control: TControl;
+begin
+  Catalog := TJSONObject.ParseJSONValue(CatalogText);
+  Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), '{}', '', False);
+  try
+    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\Ptlas.json');
+    try
+      Dialog.Catalog := Catalog;
+      Dialog.HandleNeeded;
+      Assert.IsTrue(Dialog.SelectPage(Model.Fields[Model.IndexOf('rules')].Page));
+      Editor := Dialog.RuleEditor;
+      Box := Editor.Parent;
+      // Abstand des ersten Steuerelements unter dem Editor zu seiner Unterkante beim Aufbau.
+      Spacing := MaxInt;
+      for Index := 0 to Box.ControlCount - 1 do
+      begin
+        Control := Box.Controls[Index];
+        if (Control <> Editor) and (Control.Top > Editor.Top) then
+          Spacing := Min(Spacing, Control.Top - (Editor.Top + Editor.Height));
+      end;
+      Assert.IsTrue(Spacing < MaxInt, 'Zustand und Zurücksetzen von "rules" stehen unter dem Editor');
+      Assert.IsTrue(Spacing >= 0);
+      Before := Editor.Height;
+      Assert.IsTrue(Editor.SelectRule('magic-number'));
+      Assert.IsTrue(Editor.Height > Before, 'Optionen und Beispiele lassen den Editor wachsen');
+      Below := MaxInt;
+      for Index := 0 to Box.ControlCount - 1 do
+      begin
+        Control := Box.Controls[Index];
+        if (Control <> Editor) and (Control.Top > Editor.Top) then
+          Below := Min(Below, Control.Top - (Editor.Top + Editor.Height));
+      end;
+      Assert.AreEqual(Spacing, Below, 'Felder darunter rücken mit dem Editor nach unten');
+      // Zurück zu einer Regel ohne Optionen: Die Felder rücken wieder hoch.
+      Assert.IsTrue(Editor.SelectRule('no-with'));
+      Below := MaxInt;
+      for Index := 0 to Box.ControlCount - 1 do
+      begin
+        Control := Box.Controls[Index];
+        if (Control <> Editor) and (Control.Top > Editor.Top) then
+          Below := Min(Below, Control.Top - (Editor.Top + Editor.Height));
+      end;
+      Assert.AreEqual(Spacing, Below, 'Felder darunter rücken mit dem Editor wieder hoch');
     finally
       Dialog.Free;
     end;
