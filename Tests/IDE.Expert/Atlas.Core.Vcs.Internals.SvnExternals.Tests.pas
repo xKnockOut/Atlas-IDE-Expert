@@ -98,6 +98,12 @@ begin
     '<target path="' + mRoot + '"><property name="svn:ignore">*.dcu</property></target></properties>', mRoot);
   Assert.AreEqual(1, Integer(Length(mDefinitions)), 'nur svn:externals');
   Assert.AreEqual('Packages', mDefinitions[0].Owner);
+  // Die Wurzel vollständig angegeben gehört ebenfalls dazu (#1292).
+  mDefinitions := TAtlasSvnExternals.Definitions('<?xml version="1.0"?><properties><target path="' +
+    IncludeTrailingPathDelimiter(mRoot) + '"><property name="svn:externals">^/x Lib</property></target></properties>',
+    mRoot);
+  Assert.AreEqual(1, Integer(Length(mDefinitions)), 'Wurzel vollständig');
+  Assert.AreEqual('', mDefinitions[0].Owner);
   Assert.AreEqual(0, Integer(Length(TAtlasSvnExternals.Definitions('<?xml version="1.0"?><properties/>', mRoot))));
 end;
 

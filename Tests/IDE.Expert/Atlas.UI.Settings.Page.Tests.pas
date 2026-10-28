@@ -2063,6 +2063,10 @@ begin
     mPage.VcsExternalsRules.Text := '^/Packages/Basis = keep';
     mPage.VcsExternalsRules.OnChange(mPage.VcsExternalsRules);
     Assert.AreEqual('', mPage.VcsExternalsRulesError.Caption);
+    // #1292: Arbeitskopien und Aktualisieren auf derselben Seite.
+    Assert.IsTrue(SheetOf(mPage.VcsExternalsShow) = mVcs);
+    Assert.IsTrue(mPage.VcsExternalsShow.Checked);
+    Assert.AreEqual(0, mPage.VcsExternalsUpdate.Choice, 'with');
     Assert.AreEqual(0, mProjectCalls, 'kein Prozess, solange die Seite nicht gezeigt wurde');
     // Pfad ändern: nur Dateiprüfung, kein Prozess.
     mPage.VcsPath(TAtlasVcsKind.Git).Text := 'X:\fehlt\git.exe';
@@ -2118,8 +2122,12 @@ begin
     mPage.VcsBranchSvnMessage.Text := 'Neu: {kennung}';
     mPage.VcsExternalsOnBranch.Choice := 2;
     mPage.VcsExternalsSuggest.Choice := 2;
+    mPage.VcsExternalsShow.Checked := False;
+    mPage.VcsExternalsUpdate.Choice := 1;
     mSaved := mSettings;
     mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.VcsExternalsShow);
+    Assert.AreEqual('without', mSaved.VcsExternalsUpdate);
     Assert.AreEqual('ask', mSaved.VcsExternalsOnBranch);
     Assert.AreEqual('always', mSaved.VcsExternalsSuggestBranch);
     Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', mSaved.VcsExternalsRules);

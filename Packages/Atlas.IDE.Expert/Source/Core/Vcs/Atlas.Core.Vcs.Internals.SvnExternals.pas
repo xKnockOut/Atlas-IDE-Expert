@@ -281,7 +281,8 @@ begin
             mRelative := StringReplace(Trim(mPath), '\', '/', [rfReplaceAll]);
             if (ExtractFileDrive(mPath) <> '') or (Copy(mRelative, 1, 1) = '/') then
             begin
-              if not VcsRelativePath(ARoot, mPath, mRelative) then
+              // Die Wurzel selbst gehört dazu (Owner '').
+              if not VcsRelativeOrRoot(ARoot, mPath, mRelative) then
                 Continue;
             end
             else if Copy(mRelative, 1, 2) = './' then

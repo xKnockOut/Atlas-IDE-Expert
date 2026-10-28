@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5428] of string = (
+  Lines: array[0..5455] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5536,6 +5536,35 @@ const
     '      "x-node": "vcs.externals",',
     '      "x-control": "Textfeld Regeln",',
     '      "x-issue": "#1291"',
+    '    },',
+    '    "VcsExternalsShow": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Arbeitskopien einer Gruppe zeigen: Tabelle „Arbeitskopien“ (Wurzel, svn:externals, Git-Submodule) mit Pfad im Repository, Revision, Änderungen und auf Klick „Neu auf dem Server“;' +
+      ' „Nicht gesicherte Arbeit“ nennt die Änderungen je Arbeitskopie. Aus = Projektstand wie bisher.",',
+    '      "x-key": "vcs.externals.show",',
+    '      "x-area": "vcs",',
+    '      "x-page": "Versionsverwaltung",',
+    '      "x-node": "vcs.externals",',
+    '      "x-control": "Kontrollkästchen Arbeitskopien zeigen",',
+    '      "x-issue": "#1292"',
+    '    },',
+    '    "VcsExternalsUpdate": {',
+    '      "type": "string",',
+    '      "enum": [',
+    '        "with",',
+    '        "without",',
+    '        "ask"',
+    '      ],',
+    '      "default": "with",',
+    '      "description": "Aktualisieren unter SVN: with = svn update samt Externals, without = mit --ignore-externals nur die Wurzel, ask = fragen (Untermenü „mit Externals“/„ohne Externals“ an der Schnel' +
+      'laktion Pull).",',
+    '      "x-key": "vcs.externals.update",',
+    '      "x-area": "vcs",',
+    '      "x-page": "Versionsverwaltung",',
+    '      "x-node": "vcs.externals",',
+    '      "x-control": "Auswahl Aktualisieren",',
+    '      "x-issue": "#1292"',
     '    }',
     '  },',
     '  "additionalProperties": false',

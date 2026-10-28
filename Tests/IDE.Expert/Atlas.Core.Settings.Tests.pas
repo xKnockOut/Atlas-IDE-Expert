@@ -803,6 +803,23 @@ begin
   Assert.AreEqual('pin', mLoaded.VcsExternalsOnBranch, 'branch ist keine Vorgabe für alle');
   Assert.AreEqual('modified', mLoaded.VcsExternalsSuggestBranch);
   Assert.AreEqual('[]', mLoaded.VcsExternalsRules);
+  // #1292: vcs.externals.show und .update ebenfalls persönlich.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.VcsExternalsShow);
+  Assert.AreEqual('with', mSettings.VcsExternalsUpdate);
+  mSettings.VcsExternalsShow := False;
+  mSettings.VcsExternalsUpdate := 'ask';
+  mSettings.Save(mStore);
+  Assert.AreEqual(0, mRegistry.ReadInteger('VcsExternalsShow', 1));
+  Assert.AreEqual('ask', mRegistry.ReadString('VcsExternalsUpdate', ''));
+  Assert.IsFalse(mRouted.Text.Contains('externals'), 'nicht in settings.json');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.VcsExternalsShow);
+  Assert.AreEqual('ask', mLoaded.VcsExternalsUpdate);
+  mRegistry.WriteString('VcsExternalsUpdate', 'immer');
+  mLoaded.Load(mStore);
+  Assert.AreEqual('with', mLoaded.VcsExternalsUpdate);
 end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;

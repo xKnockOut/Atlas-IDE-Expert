@@ -90,6 +90,11 @@ type
     /// schreibt die Eingabedatei (UTF-8 ohne BOM, LF) vor dem Aufruf.</summary>
     [Test]
     procedure SvnExternalsCommands;
+    /// <summary>#1292: status --xml samt Externals, update mit und ohne Externals, log -q
+    /// zählt nur Einträge nach der Revision und prüft Revision und Pfad vor dem Aufruf, propset aus Temp-Datei, die
+    /// danach wieder weg ist; git submodule status --recursive.</summary>
+    [Test]
+    procedure WorkingCopyStateCommands;
     [Test]
     procedure SafeBranchNames;
   end;
@@ -419,6 +424,13 @@ begin
   Assert.AreEqual('A.pas', Relative);
   Assert.IsFalse(VcsRelativePath(Root, Root + 'X' + PathDelim + 'A.pas', Relative), 'Nachbarordner mit gleichem Anfang');
   Assert.IsFalse(VcsRelativePath(Root, Root, Relative), 'die Wurzel selbst ist keine Datei');
+  // #1292: Ordner der Wurzel selbst ("." im Status, Ziel von svn:externals).
+  Assert.IsTrue(VcsRelativeOrRoot(Root, Root + PathDelim, Relative));
+  Assert.AreEqual('', Relative);
+  Assert.IsTrue(VcsRelativeOrRoot(Root, Under('src/Main.pas'), Relative));
+  Assert.AreEqual('src/Main.pas', Relative);
+  Assert.IsFalse(VcsRelativeOrRoot(Root, Root + 'X', Relative));
+  Assert.IsFalse(VcsRelativeOrRoot('', '', Relative));
   // Weiterleitung für den Host (Code-Review A-12)
   Assert.IsTrue(TAtlasVcsDetection.RelativePath(Root, Under('src/Main.pas'), Relative));
   Assert.AreEqual('src/Main.pas', Relative);
@@ -1707,6 +1719,70 @@ begin
   TDirectory.Delete(ExtractFileDir(mFile), True);
   mStep := TAtlasVcsBranchStep.Make(nil, False, False);
   mBytes := nil;
+  Runner.Calls := nil;
+  Runner.Executables := nil;
+  Runner.Timeouts := nil;
+  Runner.WorkingDirs := nil;
+  Runner.Commands := nil;
+  Runner.Answers := nil;
+end;
+
+procedure TAtlasVcsTests.WorkingCopyStateCommands;
+var
+  Runner: TFakeRunner;
+  RunnerRef: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  mExternals: IAtlasVcsSvnExternals;
+  mSubmodules: IAtlasVcsSubmodules;
+  mText, mFile: string;
+  mCount: Integer;
+begin
+  Runner := TFakeRunner.Create;
+  RunnerRef := Runner;
+  Vcs := TAtlasSvnVersionControl.Create(Root, RunnerRef, Under('bin/svn.exe'));
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsSvnExternals, mExternals));
+  Assert.IsFalse(Supports(Vcs, IAtlasVcsSubmodules), 'SVN kennt keine Submodule');
+  Runner.Answer('status', '<status/>');
+  Assert.IsTrue(mExternals.StatusXml(mText) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('<status/>', mText);
+  Assert.AreEqual('status --xml . --non-interactive', Runner.Calls[0]);
+  Assert.IsTrue(mExternals.Update(False) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('update . --non-interactive', Runner.Calls[1]);
+  Assert.IsTrue(mExternals.Update(True) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('update . --ignore-externals --non-interactive', Runner.Calls[2]);
+  // HEAD:4711 enthält 4711 selbst, wenn sie den Pfad geändert hat.
+  Runner.Answer('log', '<?xml version="1.0"?><log><logentry revision="4790"></logentry>' +
+    '<logentry revision="4750"></logentry><logentry revision="4711"></logentry></log>');
+  Assert.IsTrue(mExternals.CommitsSince('Packages/Kunden/trunk', '4711', mCount) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(2, mCount);
+  Assert.AreEqual('log -q --xml -r HEAD:4711 ^/Packages/Kunden/trunk@HEAD --non-interactive', Runner.Calls[3]);
+  Assert.IsTrue(mExternals.CommitsSince('Packages/Kunden/trunk', 'HEAD', mCount) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(mExternals.CommitsSince('-r1', '4711', mCount) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(4, Integer(Length(Runner.Calls)), 'ungültig ohne Aufruf');
+  Runner.Answer('log', '<log><logentry');
+  Assert.IsTrue(mExternals.CommitsSince('Packages/Kunden/trunk', '4711', mCount) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(0, mCount);
+  Assert.IsTrue(mExternals.SetExternals('', '-r 4711 ^/Packages/Kunden/trunk Packages/Kunden'#10) =
+    TAtlasVcsOutcome.Ok);
+  mText := Runner.Calls[High(Runner.Calls)];
+  Assert.IsTrue(mText.StartsWith('propset svn:externals -F '), mText);
+  Assert.IsTrue(mText.EndsWith(' . --non-interactive'), mText);
+  mFile := Copy(mText, Length('propset svn:externals -F ') + 1, Length(mText));
+  mFile := Copy(mFile, 1, Length(mFile) - Length(' . --non-interactive'));
+  Assert.IsFalse(TFile.Exists(mFile), 'Temp-Datei wieder entfernt');
+  Assert.IsTrue(mExternals.SetExternals('Packages', '^/x Lib') = TAtlasVcsOutcome.Ok);
+  Assert.IsTrue(Runner.Calls[High(Runner.Calls)].EndsWith(' Packages --non-interactive'));
+  mExternals := nil;
+  Vcs := TAtlasGitVersionControl.Create(Root + PathDelim, RunnerRef, 'git.exe', 5000);
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsSubmodules, mSubmodules));
+  Assert.IsFalse(Supports(Vcs, IAtlasVcsSvnExternals), 'Git kennt keine Externals');
+  Runner.Answer('submodule', ' 3f2a… Packages/Basis (heads/main)'#10);
+  Assert.IsTrue(mSubmodules.SubmoduleStatus(mText) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(' 3f2a… Packages/Basis (heads/main)'#10, mText);
+  Assert.IsTrue(Runner.Calls[High(Runner.Calls)].EndsWith('submodule status --recursive'),
+    Runner.Calls[High(Runner.Calls)]);
+  mText := '';
+  mFile := '';
   Runner.Calls := nil;
   Runner.Executables := nil;
   Runner.Timeouts := nil;

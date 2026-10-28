@@ -7938,3 +7938,24 @@ Vorbereitung: wie bei #1290; die Arbeitskopie `^/Kasse/trunk` hat `svn:externals
 | BX11 | `onBranch` = „unverändert lassen“, `suggestBranch` = „nie“ | Alle Externals „unverändert“, Schritte wie vor #1291 (nur Kopie und Umschalten), kein neuer Index |
 | BX12 | svn 1.8 (oder älter) einstellen, alles festschreiben | Kein `--pin-externals`; Atlas schreibt `-r <Rev>` selbst über propset |
 | BX13 | Commit beim Umschreiben scheitern lassen (z. B. Schreibrecht auf `^/Kasse/branches` entziehen nach dem Kopieren) | Meldung nennt den Schritt und die schon angelegten Kopien (Package und Projekt); Temp-Ordner `Atlas-Branch-<Name>` ist danach entfernt |
+
+## Arbeitskopien mit Externals (#1292)
+
+Vorbereitung: wie bei #1291 (`^/Kasse/trunk` mit Externals Basis, Drucken, Kunden `-r 4711` und einem fremden Repository); in `Packages\Drucken` zwei geänderte Dateien, im Projektordner eine; ein Git-Projekt mit Submodul; Einstellungen unter *Externals* auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WK1 | *Versionsverwaltung* › *Externals* öffnen | „Arbeitskopien der Gruppe zeigen“ an, „Aktualisieren“ = „mit Externals“ (**Abnahme**) |
+| WK2 | Willkommensseite › Projekt › „Arbeitskopien …“ | Tabelle mit Kasse und eingerückten Externals; Spalten Arbeitskopie, Pfad im Repository, Revision, Geändert, Neu auf dem Server; Zeilen füllen sich nacheinander, IDE bleibt bedienbar (**Abnahme**) |
+| WK3 | Tabelle aus WK2 ansehen | Kunden „r4711 · fest“, fremdes External „anderes Repository: …“, Drucken Geändert = 2, Kasse = 1; „Neu auf dem Server“ zeigt „auf Klick“ (**Abnahme**) |
+| WK4 | Von einer zweiten Arbeitskopie in Drucken committen, dann „Server prüfen“ | Zeilen zeigen nacheinander „prüft …“, Drucken danach 1, die anderen 0 (**Abnahme**) |
+| WK5 | Doppelklick auf Drucken | Explorer öffnet `Packages\Drucken` |
+| WK6 | Kontextmenü auf Drucken › „Nur diese aktualisieren“ | Nur Drucken wird aktualisiert (Meldungsansicht), danach Tabelle neu, „Neu auf dem Server“ wieder leer; Index kennt die neue Datei (Dateiüberwachung #395) (**Abnahme**) |
+| WK7 | Kontextmenü auf Basis › „Revision festschreiben …“ › „Ja“ | Rückfrage nennt Ordner und Revision; danach `svn:externals` der Wurzel mit `-r <Rev>` für Basis (TortoiseSVN zeigt die Eigenschaft geändert, kein Commit), Zeile „r<Rev> · fest“ (**Abnahme**) |
+| WK8 | WK7 mit „Nein“ | Nichts ändert sich |
+| WK9 | Willkommensseite › „Nicht gesichert“ | Projekt zeigt 3 Änderungen und „(Kasse 1 · Packages\Drucken 2)“ (**Abnahme**) |
+| WK10 | `vcs.externals.update` = „ohne Externals“, Schnellaktion Pull | `svn update . --ignore-externals`; Externals bleiben auf ihrer Revision |
+| WK11 | `vcs.externals.update` = „fragen“, Schnellaktion Pull | Schaltfläche zeigt „▾“; Klick fragt „mit Externals“/„ohne Externals“, Rechtsklick bietet beides als Untermenü (**Abnahme**) |
+| WK12 | Git-Projekt › „Arbeitskopien …“ | Wurzel und Submodul mit Commit und Änderungen; kein „Server prüfen“, kein „Nur diese“, Schaltfläche „Pull“ |
+| WK13 | `vcs.externals.show` aus | Menüpunkt „Arbeitskopien …“ fehlt im Projektmenü und im Atlas-Menü; „Nicht gesichert“ ohne Aufteilung (**Abnahme**) |
+| WK14 | Server nicht erreichbar (Netz trennen), „Server prüfen“ | Zeilen zeigen den Fehler (z. B. „Failed“ oder „TimedOut“) statt einer Zahl, kein Hängen |

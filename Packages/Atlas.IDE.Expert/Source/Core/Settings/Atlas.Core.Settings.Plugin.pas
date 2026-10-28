@@ -1315,6 +1315,14 @@ type
     VcsExternalsOnBranch: string;
     VcsExternalsSuggestBranch: string;
     VcsExternalsRules: string;
+    /// <summary>Arbeitskopien einer Gruppe (#1292, vcs.externals.show): Tabelle „Arbeitskopien“ mit Wurzel,
+    /// svn:externals und Git-Submodulen samt Aufschlüsselung in „Nicht gesicherte Arbeit“; aus = Projektstand wie
+    /// vor #1292. Persönlich (Registry).</summary>
+    VcsExternalsShow: Boolean;
+    /// <summary>Aktualisieren unter SVN (#1292, vcs.externals.update): "with" svn update samt Externals,
+    /// "without" mit --ignore-externals, "ask" fragt (Untermenü „mit Externals“/„ohne Externals“). Persönlich
+    /// (Registry).</summary>
+    VcsExternalsUpdate: string;
     /// <summary>Dialog „Branch anlegen“ vor dem Anlegen bei „Beginnen“ zeigen (#1288, vcs.branch.confirm); aus =
     /// mit den Vorgaben ohne Dialog. Der Befehl „Branch anlegen …“ zeigt ihn immer. Persönlich (Registry).
     /// </summary>
@@ -2048,6 +2056,8 @@ begin
   Result.VcsExternalsOnBranch := 'pin';
   Result.VcsExternalsSuggestBranch := 'modified';
   Result.VcsExternalsRules := '[]';
+  Result.VcsExternalsShow := True;
+  Result.VcsExternalsUpdate := 'with';
   Result.VcsBranchConfirm := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
@@ -2157,6 +2167,7 @@ begin
   VcsExternalsRules := Trim(VcsExternalsRules);
   if VcsExternalsRules = '' then
     VcsExternalsRules := '[]';
+  VcsExternalsUpdate := Choice(VcsExternalsUpdate, ['with', 'without', 'ask']);
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2879,6 +2890,8 @@ begin
   VcsExternalsOnBranch := AStore.ReadString('VcsExternalsOnBranch', Default.VcsExternalsOnBranch);
   VcsExternalsSuggestBranch := AStore.ReadString('VcsExternalsSuggestBranch', Default.VcsExternalsSuggestBranch);
   VcsExternalsRules := AStore.ReadString('VcsExternalsRules', Default.VcsExternalsRules);
+  VcsExternalsShow := AStore.ReadInteger('VcsExternalsShow', BoolValue(Default.VcsExternalsShow)) <> 0;
+  VcsExternalsUpdate := AStore.ReadString('VcsExternalsUpdate', Default.VcsExternalsUpdate);
   VcsBranchConfirm := AStore.ReadInteger('VcsBranchConfirm', BoolValue(Default.VcsBranchConfirm)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
@@ -3359,6 +3372,8 @@ begin
   AStore.WriteString('VcsExternalsOnBranch', VcsExternalsOnBranch);
   AStore.WriteString('VcsExternalsSuggestBranch', VcsExternalsSuggestBranch);
   AStore.WriteString('VcsExternalsRules', VcsExternalsRules);
+  AStore.WriteInteger('VcsExternalsShow', BoolValue(VcsExternalsShow));
+  AStore.WriteString('VcsExternalsUpdate', VcsExternalsUpdate);
   AStore.WriteInteger('VcsBranchConfirm', BoolValue(VcsBranchConfirm));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);

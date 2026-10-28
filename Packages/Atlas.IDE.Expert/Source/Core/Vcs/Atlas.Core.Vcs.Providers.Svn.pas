@@ -36,6 +36,11 @@
 // repos-root-url ., ToolVersion = --version --quiet. RunStep schreibt vor
 // einem Schritt mit InputFile dessen Inhalt (UTF-8 ohne BOM, LF), etwa für
 // propset svn:externals -F.
+// IAtlasVcsSvnExternals (#1292): StatusXml = status --xml . (samt Externals),
+// Update = update . [--ignore-externals] (Pull = Update(False)),
+// CommitsSince = log -q --xml -r HEAD:<Rev> ^/<Pfad>@HEAD (Server; gezählt
+// werden Einträge nach <Rev>), SetExternals = propset svn:externals -F
+// <Temp-Datei> <Ordner> (nur Arbeitskopie).
 // Ohne Server: HasExternals propget svn:externals -R . (nicht leer = ja),
 // RepositoryPath info --show-item relative-url . (ohne "^/"),
 // RemoteBranchExists und HookFolders ohne Prozess (Ok mit False bzw. '').
@@ -51,7 +56,7 @@ uses
 
 type
   TAtlasSvnVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSvnWorkingCopy)
+    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSvnWorkingCopy, IAtlasVcsSvnExternals)
   private
     FRoot: string;
     FRunner: IAtlasVcsRunner;
@@ -107,6 +112,11 @@ type
     function ExternalsXml(out AText: string): TAtlasVcsOutcome;
     function RepositoryRoot(out AUrl: string): TAtlasVcsOutcome;
     function ToolVersion(out AVersion: string): TAtlasVcsOutcome;
+    { IAtlasVcsSvnExternals }
+    function StatusXml(out AText: string): TAtlasVcsOutcome;
+    function Update(AIgnoreExternals: Boolean): TAtlasVcsOutcome;
+    function CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
+    function SetExternals(const AOwner, AText: string): TAtlasVcsOutcome;
   end;
 
 implementation
@@ -317,11 +327,9 @@ end;
 { IAtlasVcsUpdate (#764) }
 
 function TAtlasSvnVersionControl.Pull: TAtlasVcsOutcome;
-var
-  Output: TBytes;
 begin
-  // Mit dem Server (#1287): fehlt die Anmeldung, LoginNeeded statt Failed.
-  Result := FCommand.RunRemote(TAtlasVcsKind.Svn, ['update', '.', '--non-interactive'], Output);
+  // svn update holt die Externals mit (#1292: Update(True) ohne).
+  Result := Update(False);
 end;
 
 { IAtlasVcsBranching (#765) }
@@ -532,6 +540,90 @@ begin
   Result := FCommand.Run(['--version', '--quiet'], Output);
   if Result = TAtlasVcsOutcome.Ok then
     AVersion := Trim(VcsUtf8(Output));
+end;
+
+{ IAtlasVcsSvnExternals (#1292) }
+
+function TAtlasSvnVersionControl.StatusXml(out AText: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  AText := '';
+  Result := Svn(['status', '--xml', '.'], Output);
+  if Result = TAtlasVcsOutcome.Ok then
+    AText := VcsUtf8(Output);
+end;
+
+function TAtlasSvnVersionControl.Update(AIgnoreExternals: Boolean): TAtlasVcsOutcome;
+var
+  mArguments: TArray<string>;
+  Output: TBytes;
+begin
+  mArguments := TArray<string>.Create('update', '.');
+  if AIgnoreExternals then
+    mArguments := mArguments + ['--ignore-externals'];
+  // Mit dem Server (#1287): fehlt die Anmeldung, LoginNeeded statt Failed. Das Zeitlimit legt der Aufrufer
+  // fest (Pull der Schnellaktionen: PullTimeoutMs).
+  Result := FCommand.RunRemote(TAtlasVcsKind.Svn, mArguments + ['--non-interactive'], Output);
+end;
+
+function TAtlasSvnVersionControl.CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+  mReader: TAtlasVcsXmlReader;
+  mBase: Integer;
+begin
+  ACount := 0;
+  mBase := StrToIntDef(ARevision, -1);
+  if (mBase < 0) or not VcsSafeBranchName(APath) then
+    Exit(TAtlasVcsOutcome.Failed);
+  Result := FCommand.RunRemote(TAtlasVcsKind.Svn, ['log', '-q', '--xml', '-r', 'HEAD:' + ARevision,
+    '^/' + APath + '@HEAD', '--non-interactive'], Output);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  // Die Revision selbst steht mit drin, wenn sie den Pfad geändert hat; gezählt wird nur, was danach kam.
+  mReader := TAtlasVcsXmlReader.Create(VcsUtf8(Output));
+  try
+    try
+      while mReader.Next do
+        if (mReader.Node = TAtlasVcsXmlNode.StartTag) and (mReader.Name = 'logentry') and
+          (StrToIntDef(mReader.Attr('revision'), -1) > mBase) then
+          Inc(ACount);
+    except
+      on EAtlasVcsParse do
+      begin
+        ACount := 0;
+        Result := TAtlasVcsOutcome.Failed;
+      end;
+    end;
+  finally
+    mReader.Free;
+  end;
+end;
+
+function TAtlasSvnVersionControl.SetExternals(const AOwner, AText: string): TAtlasVcsOutcome;
+var
+  mStep: TAtlasVcsBranchStep;
+  mTarget: string;
+begin
+  mTarget := Trim(AOwner);
+  if mTarget = '' then
+    mTarget := '.';
+  mStep := TAtlasVcsBranchStep.Make(nil, False, False);
+  mStep.InputFile := TPath.Combine(TPath.GetTempPath, 'Atlas-Externals-' + TGUID.NewGuid.ToString + '.txt');
+  mStep.InputText := AText;
+  mStep.Arguments := TArray<string>.Create('propset', 'svn:externals', '-F', mStep.InputFile, mTarget);
+  Result := RunStep(mStep);
+  try
+    if TFile.Exists(mStep.InputFile) then
+      TFile.Delete(mStep.InputFile);
+  except
+    // Ein Rest im Temp-Ordner stört nicht.
+    on EInOutError do
+      ;
+    on EOSError do
+      ;
+  end;
 end;
 
 function TAtlasSvnVersionControl.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;

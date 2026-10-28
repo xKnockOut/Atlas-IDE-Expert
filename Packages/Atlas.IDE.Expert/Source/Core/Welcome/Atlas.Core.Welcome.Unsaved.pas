@@ -39,13 +39,18 @@
 //   Datei bleibt unverändert (Format 1).
 // - Arten, die das ganze Repository betreffen (Commits, Branches, Stashes),
 //   erscheinen nur einmal je Arbeitskopie, beim zuletzt geöffneten Projekt.
+// - Externals und Submodule (#1292, vcs.externals.show): svn status der
+//   Wurzel enthält die Änderungen der Externals schon (die Summe bleibt);
+//   verteilen sie sich auf mehrere Arbeitskopien, nennt "places" die Anteile
+//   ([{"path": "Packages/Drucken", "count": 5}, …], Wurzel mit "path": "").
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Vcs.Contract;
+  Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.WorkingCopies;
 
 type
 {$SCOPEDENUMS ON}
@@ -55,6 +60,14 @@ type
   TAtlasUnsavedAgeUnit = (Minutes, Hours, Days);
 {$SCOPEDENUMS OFF}
   TAtlasUnsavedKinds = set of TAtlasUnsavedKind;
+
+  /// <summary>Anteil einer Arbeitskopie (#1292): Wurzel, External oder Submodul.</summary>
+  TAtlasUnsavedPlace = record
+    /// <summary>Ordner relativ zur Wurzel mit "/" ('' = Wurzel).</summary>
+    Path: string;
+    Count: Integer;
+    class function Create(const APath: string; ACount: Integer): TAtlasUnsavedPlace; static;
+  end;
 
   TAtlasUnsavedItem = record
     Kind: TAtlasUnsavedKind;
@@ -73,6 +86,9 @@ type
     /// <summary>Nur Stashes: Name bzw. Nachricht und Commit des ältesten.</summary>
     Name: string;
     Ref: string;
+    /// <summary>Nur Changes und Conflicts mit vcs.externals.show (#1292): Anteile, wenn sich die Dateien auf
+    /// mehr als eine Arbeitskopie verteilen (Wurzel und Externals bzw. Submodule); sonst leer.</summary>
+    Places: TArray<TAtlasUnsavedPlace>;
     class function Create(AKind: TAtlasUnsavedKind; ACount: Integer): TAtlasUnsavedItem; static;
     /// <summary>„Push …“ statt „Ansehen“.</summary>
     function CanPush: Boolean;
@@ -210,7 +226,18 @@ type
     /// AFileTime liefert Änderungszeiten, AExpired das Zeitlimit (beide dürfen nil sein).</summary>
     class function Probe(const AVcs: IAtlasVersionControl; const AFolder: string; ANowUtc: TDateTime;
       const AFileTime: TAtlasUnsavedFileTime; const AExpired: TAtlasUnsavedExpired;
-      out AState: TAtlasUnsavedState): Boolean; static;
+      out AState: TAtlasUnsavedState): Boolean; overload; static;
+    /// <summary>Wie oben; AWorkingCopies (vcs.externals.show, #1292): Änderungen und Konflikte je Arbeitskopie
+    /// aufteilen (Places), mit einer weiteren lokalen Abfrage (svn status bzw. git submodule status).</summary>
+    class function Probe(const AVcs: IAtlasVersionControl; const AFolder: string; ANowUtc: TDateTime;
+      const AFileTime: TAtlasUnsavedFileTime; const AExpired: TAtlasUnsavedExpired; AWorkingCopies: Boolean;
+      out AState: TAtlasUnsavedState): Boolean; overload; static;
+    /// <summary>Anteile je Arbeitskopie aus den Änderungen AChanges (eine Art) und den Ordnern ARows; leer, wenn
+    /// höchstens eine Arbeitskopie betroffen ist.</summary>
+    class function PlacesOf(const AChanges: TArray<TAtlasVcsChange>;
+      const ARows: TArray<TAtlasVcsWorkingCopyRow>): TArray<TAtlasUnsavedPlace>; static;
+    /// <summary>"Kasse 2 · Packages\Drucken 5" (Wurzel = AName); '' ohne Anteile.</summary>
+    class function PlacesText(const AItem: TAtlasUnsavedItem; const AName: string): string; static;
     /// <summary>Neues Ergebnis mit dem gespeicherten Stand zusammenführen: nicht abgefragte Arten und
     /// unbekanntes Alter aus AOld (sonst ANowUtc), Ignorieren aus AOld ohne abgelaufene.</summary>
     class function Merge(const AOld, ANew: TAtlasUnsavedState; ANowUtc: TDateTime): TAtlasUnsavedState; static;
@@ -264,6 +291,14 @@ begin
   Result.Kind := AKind;
   Result.Count := ACount;
   Result.Commits := -1;
+end;
+
+{ TAtlasUnsavedPlace }
+
+class function TAtlasUnsavedPlace.Create(const APath: string; ACount: Integer): TAtlasUnsavedPlace;
+begin
+  Result.Path := APath;
+  Result.Count := ACount;
 end;
 
 function TAtlasUnsavedItem.CanPush: Boolean;
@@ -440,9 +475,78 @@ begin
       Result := Result + [Change];
 end;
 
+class function TAtlasWelcomeUnsaved.PlacesOf(const AChanges: TArray<TAtlasVcsChange>;
+  const ARows: TArray<TAtlasVcsWorkingCopyRow>): TArray<TAtlasUnsavedPlace>;
+var
+  mCounts: TArray<Integer>;
+  mIndex: Integer;
+begin
+  Result := nil;
+  if Length(ARows) < 2 then
+    Exit;
+  mCounts := TAtlasVcsWorkingCopies.Split(AChanges, ARows);
+  for mIndex := 0 to High(ARows) do
+    if mCounts[mIndex] > 0 then
+      Result := Result + [TAtlasUnsavedPlace.Create(ARows[mIndex].Path, mCounts[mIndex])];
+  if Length(Result) < 2 then
+    Result := nil;
+end;
+
+class function TAtlasWelcomeUnsaved.PlacesText(const AItem: TAtlasUnsavedItem; const AName: string): string;
+var
+  mPlace: TAtlasUnsavedPlace;
+  mText: string;
+begin
+  Result := '';
+  for mPlace in AItem.Places do
+  begin
+    mText := StringReplace(mPlace.Path, '/', '\', [rfReplaceAll]);
+    if mText = '' then
+      mText := AName;
+    if Result <> '' then
+      Result := Result + ' · ';
+    Result := Result + mText + ' ' + IntToStr(mPlace.Count);
+  end;
+end;
+
 class function TAtlasWelcomeUnsaved.Probe(const AVcs: IAtlasVersionControl; const AFolder: string;
   ANowUtc: TDateTime; const AFileTime: TAtlasUnsavedFileTime; const AExpired: TAtlasUnsavedExpired;
   out AState: TAtlasUnsavedState): Boolean;
+begin
+  Result := Probe(AVcs, AFolder, ANowUtc, AFileTime, AExpired, False, AState);
+end;
+
+procedure AddPlaces(var AState: TAtlasUnsavedState; const AVcs: IAtlasVersionControl;
+  const AChanges: TArray<TAtlasVcsChange>);
+var
+  mRows: TArray<TAtlasVcsWorkingCopyRow>;
+  mConflicts, mOthers: TArray<TAtlasVcsChange>;
+  mChange: TAtlasVcsChange;
+  mIndex: Integer;
+begin
+  if Length(AState.Items) = 0 then
+    Exit;
+  mRows := TAtlasVcsWorkingCopies.Folders(AVcs);
+  if Length(mRows) < 2 then
+    Exit;
+  // Getrennt wie AddChanges: Konflikte für sich, alle übrigen (auch unversionierte) als Änderungen.
+  mConflicts := nil;
+  mOthers := nil;
+  for mChange in AChanges do
+    if mChange.Kind = TAtlasVcsChangeKind.Conflicted then
+      mConflicts := mConflicts + [mChange]
+    else
+      mOthers := mOthers + [mChange];
+  for mIndex := 0 to High(AState.Items) do
+    if AState.Items[mIndex].Kind = TAtlasUnsavedKind.Changes then
+      AState.Items[mIndex].Places := TAtlasWelcomeUnsaved.PlacesOf(mOthers, mRows)
+    else if AState.Items[mIndex].Kind = TAtlasUnsavedKind.Conflicts then
+      AState.Items[mIndex].Places := TAtlasWelcomeUnsaved.PlacesOf(mConflicts, mRows);
+end;
+
+class function TAtlasWelcomeUnsaved.Probe(const AVcs: IAtlasVersionControl; const AFolder: string;
+  ANowUtc: TDateTime; const AFileTime: TAtlasUnsavedFileTime; const AExpired: TAtlasUnsavedExpired;
+  AWorkingCopies: Boolean; out AState: TAtlasUnsavedState): Boolean;
 var
   Outcome: TAtlasVcsOutcome;
   Changes: TArray<TAtlasVcsChange>;
@@ -479,6 +583,9 @@ begin
   AState.Root := AVcs.WorkingCopy.Root;
   // Eine Arbeitskopie kann mehrere Projekte enthalten: Änderungen nur im Projektordner.
   AddChanges(AState, ChangesBelow(Changes, AFolder), AFileTime);
+  // Externals bzw. Submodule (#1292): Die Summe bleibt, die Anteile nennen die Arbeitskopien.
+  if AWorkingCopies and not TimeUp(AExpired) then
+    AddPlaces(AState, AVcs, ChangesBelow(Changes, AFolder));
   AState.Queried := [TAtlasUnsavedKind.Changes, TAtlasUnsavedKind.Conflicts];
   Result := True;
   if Supports(AVcs, IAtlasVcsLocalWork, Local) and not TimeUp(AExpired) and
@@ -796,8 +903,9 @@ end;
 
 function SectionJson(const AState: TAtlasUnsavedState): TJSONObject;
 var
-  Items, Names: TJSONArray;
-  Entry, Ignore: TJSONObject;
+  Items, Names, Places: TJSONArray;
+  Entry, Ignore, PlaceEntry: TJSONObject;
+  Place: TAtlasUnsavedPlace;
   Item: TAtlasUnsavedItem;
   Name: string;
   Ignored: TAtlasUnsavedIgnore;
@@ -839,6 +947,18 @@ begin
       Entry.AddPair('name', Item.Name);
     if Item.Ref <> '' then
       Entry.AddPair('ref', Item.Ref);
+    if Length(Item.Places) > 0 then
+    begin
+      Places := TJSONArray.Create;
+      Entry.AddPair('places', Places);
+      for Place in Item.Places do
+      begin
+        PlaceEntry := TJSONObject.Create;
+        Places.AddElement(PlaceEntry);
+        PlaceEntry.AddPair('path', Place.Path);
+        PlaceEntry.AddPair('count', TJSONNumber.Create(Place.Count));
+      end;
+    end;
   end;
   if Length(AState.Ignored) > 0 then
   begin
@@ -894,6 +1014,15 @@ begin
           Name := TJSONArray(Names).Items[Position];
           if Name is TJSONString then
             Item.Branches := Item.Branches + [TJSONString(Name).Value];
+        end;
+      Names := Entry.GetValue('places');
+      if Names is TJSONArray then
+        for Position := 0 to TJSONArray(Names).Count - 1 do
+        begin
+          Name := TJSONArray(Names).Items[Position];
+          if Name is TJSONObject then
+            Item.Places := Item.Places + [TAtlasUnsavedPlace.Create(TextIn(TJSONObject(Name), 'path'),
+              NumberIn(TJSONObject(Name), 'count', 0))];
         end;
       AState.Items := AState.Items + [Item];
     end;

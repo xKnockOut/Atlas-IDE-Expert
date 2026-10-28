@@ -739,6 +739,8 @@ type
     FVcsExternalsSuggest: TAtlasChoiceBox;
     FVcsExternalsRules: TMemo;
     FVcsExternalsRulesError: TLabel;
+    FVcsExternalsShow: TCheckBox;
+    FVcsExternalsUpdate: TAtlasChoiceBox;
     FVcsProjectInfo: TLabel;
     FVcsLinkEditor: TButton;
     FVcsLinkWelcome: TButton;
@@ -1684,6 +1686,8 @@ type
     property VcsExternalsSuggest: TAtlasChoiceBox read FVcsExternalsSuggest;
     property VcsExternalsRules: TMemo read FVcsExternalsRules;
     property VcsExternalsRulesError: TLabel read FVcsExternalsRulesError;
+    property VcsExternalsShow: TCheckBox read FVcsExternalsShow;
+    property VcsExternalsUpdate: TAtlasChoiceBox read FVcsExternalsUpdate;
     property VcsProjectInfo: TLabel read FVcsProjectInfo;
     property VcsLinkEditor: TButton read FVcsLinkEditor;
     property VcsLinkWelcome: TButton read FVcsLinkWelcome;
@@ -3077,6 +3081,13 @@ begin
   FVcsExternalsRulesError := AddWrappedLabel(20, '');
   FVcsExternalsRulesError.Font.Color := clRed;
   AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsRulesHint)).Font.Color := clGrayText;
+  // Arbeitskopien der Gruppe und Aktualisieren (#1292); Reihenfolge wie vcs.externals.update.
+  FVcsExternalsShow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsShow));
+  FVcsExternalsUpdate := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsUpdate),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsUpdateWith),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsUpdateWithout),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsUpdateAsk)]);
+  FVcsExternalsUpdate.Width := 260;
 end;
 
 procedure TAtlasSettingsPage.VcsExternalsRulesChange(Sender: TObject);
@@ -5687,6 +5698,8 @@ begin
   FMarks.Bind(FVcsExternalsOnBranch, ['VcsExternalsOnBranch']);
   FMarks.Bind(FVcsExternalsSuggest, ['VcsExternalsSuggestBranch']);
   FMarks.Bind(FVcsExternalsRules, ['VcsExternalsRules']);
+  FMarks.Bind(FVcsExternalsShow, ['VcsExternalsShow']);
+  FMarks.Bind(FVcsExternalsUpdate, ['VcsExternalsUpdate']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -7972,6 +7985,8 @@ begin
   FVcsExternalsSuggest.Choice := Max(0, IndexText(ASettings.VcsExternalsSuggestBranch,
     ['modified', 'never', 'always']));
   FVcsExternalsRules.Text := TAtlasVcsBranchPlan.RulesText(TAtlasVcsBranchPlan.RulesOf(ASettings.VcsExternalsRules));
+  FVcsExternalsShow.Checked := ASettings.VcsExternalsShow;
+  FVcsExternalsUpdate.Choice := Ord(AtlasVcsExternalsUpdateOf(ASettings.VcsExternalsUpdate));
   RefreshVcsTool(TAtlasVcsKind.Git);
   RefreshVcsTool(TAtlasVcsKind.Svn);
   FVcsProjects := TAtlasVcsProjects.Read(ASettings.VcsProjects);
@@ -8585,6 +8600,15 @@ begin
   // Mit ungültiger Zeile bleiben die bisherigen Regeln (Hinweis unter dem Feld).
   if TAtlasVcsBranchPlan.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
     ASettings.VcsExternalsRules := TAtlasVcsBranchPlan.RulesJson(mRules);
+  ASettings.VcsExternalsShow := FVcsExternalsShow.Checked;
+  case FVcsExternalsUpdate.Choice of
+    1:
+      ASettings.VcsExternalsUpdate := 'without';
+    2:
+      ASettings.VcsExternalsUpdate := 'ask';
+  else
+    ASettings.VcsExternalsUpdate := 'with';
+  end;
   ASettings.VcsProjects := VcsProjectsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
