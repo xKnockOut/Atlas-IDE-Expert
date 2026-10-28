@@ -8183,3 +8183,25 @@ Vorbereitung wie #1266: Verbindungen zu YouTrack (Projekt mit Zeiterfassung und 
 | ZT18 | `time.json` von Hand unlesbar machen bzw. von einem anderen Programm sperren lassen | Einmal „Atlas: Zeiterfassung nicht gespeichert (…)“, Datei bleibt unverändert; nach Freigabe wird die Zeit nachgetragen |
 | ZT19 | Platzhalter `{time}` im Endkommentar (#1266) | Beenden-Dialog setzt die erfasste Zeit ein |
 | ZT20 | Schnellschalter Zeiterfassung aus während die Uhr läuft; Plugin entladen | Zeitfeld verschwindet, Zeit gespeichert; Entladen ohne Zugriffsverletzung |
+
+## Checklisten (#1273)
+
+Vorbereitung: wie Issue-Vorschau; ein YouTrack- und ein GitHub-Issue mit Beschreibung `- [ ] eins`, `- [x] zwei`, `1. [ ] drei`, eingerückt `  - [ ] vier`, dazu ein Codeblock mit `- [ ] im Code` und ein Kommentar mit `- [ ] im Kommentar`; Token mit Schreibrecht. Proxy-Protokoll (z. B. Fiddler) an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CL1 | Issue in „Atlas-Issue“ öffnen | Vier Kästchen (Codeblock ohne), Kopfzeile „<Kennung> · 1/4“, Tooltip „Checkliste: 1 von 4 erledigt“ (**Abnahme**) |
+| CL2 | Auf das Kästchen „eins“ klicken | Kurz „Wird gespeichert …“, dann abgehakt, Kopfzeile 2/4; im Tracker (Browser) ist nur `[ ]` → `[x]` geändert, Zeilenenden unverändert (**Abnahme**) |
+| CL3 | Proxy: Abfragen bei CL2 | YouTrack `GET …?fields=idReadable,description`, dann `POST /api/issues/<Kennung>`; GitHub `GET`, dann `PATCH /repos/…/issues/<n>` |
+| CL4 | Im Browser eine Zeile über der Liste einfügen, dann in Atlas (ohne Aktualisieren) ein Kästchen klicken | Nichts geschrieben, Atlas lädt neu, Meldung „Beschreibung wurde geändert, bitte erneut.“ (**Abnahme**) |
+| CL5 | Danach dasselbe Kästchen erneut klicken | Wird geschrieben |
+| CL6 | „Punkt hinzufügen …“, Text eingeben | Neuer Punkt `- [ ] …` unter „vier“ mit dessen Einzug; bei nummerierter Liste die nächste Zahl |
+| CL7 | Token ohne Schreibrecht (GitHub: nur lesend) hinterlegen, Kästchen klicken | Meldung „Keine Schreibrechte …“; Kästchen danach nur lesbar (Pfeil, Tooltip „Keine Schreibrechte“), „Punkt hinzufügen …“ fehlt |
+| CL8 | Kästchen im Kommentar klicken | Nichts geschieht, kein Schreiben |
+| CL9 | Issue beginnen (aktuelles Issue), einige Sekunden warten | Statusfeld zeigt „<Kennung> · 2/4“ hinter dem aktuellen Issue (**Abnahme**) |
+| CL10 | Klick auf das Statusfeld | „Atlas-Issue“ öffnet und blättert zur Checkliste |
+| CL11 | Aktuelles Issue ohne Checkliste | Kein Statusfeld für die Checkliste |
+| CL12 | `issues.checklistStatus` aus | Statusfeld der Checkliste verschwindet; Vorschau unverändert |
+| CL13 | `issues.preview.checklists` aus | Vorschau zeigt Listen wie geschrieben (`• [ ] eins`), keine Kopfzeilen-Zahl, kein „Punkt hinzufügen …“ |
+| CL14 | Netz trennen, Kästchen klicken | Meldung „Checkliste nicht gespeichert: Tracker nicht erreichbar.“, Kästchen unverändert |
+| CL15 | Helles und dunkles IDE-Design | Kästchen in Akzentfarbe, Hand über klickbaren Kästchen |

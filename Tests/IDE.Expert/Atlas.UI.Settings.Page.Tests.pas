@@ -1985,6 +1985,8 @@ begin
     Assert.IsTrue(SheetOf(Page.IssuesCodeLinks) = Tracker);
     Assert.IsTrue(SheetOf(Page.IssuesBlameLinks) = Tracker);
     Assert.IsTrue(SheetOf(Page.IssuesBlameMaxRevisions) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesPreviewChecklists) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesChecklistStatus) = Tracker);
     // Die Willkommensseite behält nur den Schalter, daneben der Weg zur Seite.
     Assert.IsFalse(SheetOf(Page.WelcomeIssues) = Tracker);
     Assert.IsTrue(SheetOf(Page.WelcomeIssuesLink) = SheetOf(Page.WelcomeIssues));
@@ -2980,6 +2982,8 @@ begin
     Assert.IsTrue(Page.IssuesCodeLinks.Checked);
     Assert.IsTrue(Page.IssuesBlameLinks.Checked);
     Assert.AreEqual('200', Page.IssuesBlameMaxRevisions.Text);
+    Assert.IsTrue(Page.IssuesPreviewChecklists.Checked);
+    Assert.IsTrue(Page.IssuesChecklistStatus.Checked);
     // #764: Schnellaktionen an, alle sechs Knöpfe, wt.exe, Strg+B und Strg+T.
     Assert.IsTrue(Page.WelcomeQuickActions.Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Build).Checked);
@@ -3043,6 +3047,8 @@ begin
     Page.IssuesCodeLinks.Checked := False;
     Page.IssuesBlameLinks.Checked := False;
     Page.IssuesBlameMaxRevisions.Text := '50';
+    Page.IssuesPreviewChecklists.Checked := False;
+    Page.IssuesChecklistStatus.Checked := False;
     Page.WelcomeQuickActions.Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Run).Checked := False;
@@ -3115,6 +3121,8 @@ begin
     Assert.IsFalse(Saved.IssuesCodeLinks);
     Assert.IsFalse(Saved.IssuesBlameLinks);
     Assert.AreEqual(50, Saved.IssuesBlameMaxRevisions);
+    Assert.IsFalse(Saved.IssuesPreviewChecklists);
+    Assert.IsFalse(Saved.IssuesChecklistStatus);
     Assert.IsFalse(Saved.WelcomePageQuickActions);
     Assert.AreEqual('build,tests,pull,folder,tasks', Saved.WelcomePageQuickActionsItems, 'ohne run und console');
     Assert.AreEqual('pwsh.exe', Saved.WelcomePageQuickActionsConsole);
@@ -3150,6 +3158,8 @@ begin
     Assert.IsFalse(Page.IssuesCodeLinks.Checked);
     Assert.IsFalse(Page.IssuesBlameLinks.Checked);
     Assert.AreEqual('50', Page.IssuesBlameMaxRevisions.Text);
+    Assert.IsFalse(Page.IssuesPreviewChecklists.Checked);
+    Assert.IsFalse(Page.IssuesChecklistStatus.Checked);
     Assert.IsFalse(Page.WelcomeQuickActions.Checked);
     Assert.IsFalse(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Pull).Checked);

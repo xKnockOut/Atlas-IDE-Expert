@@ -1083,6 +1083,8 @@ begin
   Assert.IsTrue(Settings.IssuesCodeLinks);
   Assert.IsTrue(Settings.IssuesBlameLinks);
   Assert.AreEqual(200, Settings.IssuesBlameMaxRevisions);
+  Assert.IsTrue(Settings.IssuesPreviewChecklists);
+  Assert.IsTrue(Settings.IssuesChecklistStatus);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -1132,6 +1134,8 @@ begin
   Settings.IssuesCodeLinks := False;
   Settings.IssuesBlameLinks := False;
   Settings.IssuesBlameMaxRevisions := 75;
+  Settings.IssuesPreviewChecklists := False;
+  Settings.IssuesChecklistStatus := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -1225,6 +1229,8 @@ begin
   Assert.IsTrue(mLoaded.IssuesTimeTracking);
   Assert.AreEqual(15, mLoaded.IssuesIdleMinutes);
   Assert.AreEqual(15, mLoaded.IssuesTimeRounding);
+  Assert.IsFalse(Loaded.IssuesPreviewChecklists);
+  Assert.IsFalse(Loaded.IssuesChecklistStatus);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

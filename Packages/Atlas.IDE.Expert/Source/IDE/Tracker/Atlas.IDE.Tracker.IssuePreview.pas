@@ -22,6 +22,16 @@
 //   schreiben kann (Hook CanWrite), gibt es unten „Kommentar schreiben …“
 //   (Strg+Enter sendet, danach wird das Issue neu geladen) und für das
 //   aktuelle Issue (Hook IsActive) den Knopf „Beenden …“ (Hook EndIssue).
+// - Checklisten (#1273, issues.preview.checklists): Klick auf ein Kästchen
+//   bzw. „Punkt hinzufügen …“ lädt im Hintergrund die aktuelle Beschreibung
+//   (IAtlasTrackerDescriptions), prüft die Zeile (TAtlasTrackerChecklist),
+//   schreibt zurück und zeigt den neuen Text; ein Schreiben zur Zeit. Wurde
+//   die Beschreibung inzwischen geändert, schreibt Atlas nichts, lädt neu und
+//   meldet es. Lehnt der Tracker ab (401/403) oder kann der Anbieter nicht
+//   schreiben, bleibt die Liste für dieses Issue in der Sitzung nur lesbar.
+// - Statusfeld (#1273, issues.checklistStatus): ChecklistProgress liest den
+//   Fortschritt aus dem Zwischenspeicher, Prefetch frischt ihn höchstens alle
+//   PrefetchMinutes im Hintergrund auf, ShowChecklist öffnet an der Liste.
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse,
 //   Kennung, Titel oder Token.
 // - Kurzabfrage für den Hover über Kennungen im Editor (#1265): Peek liest nur
@@ -40,6 +50,7 @@ uses
   System.Generics.Collections,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
@@ -87,9 +98,13 @@ type
     FreshMs = 10 * 60 * 1000;
     /// <summary>So lange fragt der Hover eine nicht gefundene Kennung nicht erneut.</summary>
     MissingMs = 10 * 60 * 1000;
+    /// <summary>So lange gilt der Fortschritt einer Checkliste im Zwischenspeicher fürs Statusfeld (#1273).</summary>
+    PrefetchMinutes = 10;
     /// <summary>Endungen, die Atlas nicht startet, sondern im Explorer zeigt.</summary>
     RiskyExtensions = '.exe.com.bat.cmd.scr.pif.msi.msp.ps1.psm1.vbs.vbe.js.jse.wsf.wsh.hta.lnk.reg.cpl.jar.dll.' +
       'appref-ms.application.';
+  private type
+    TChecklistChange = (Toggle, Append);
   private
     FHooks: TAtlasIssuePreviewHooks;
     FHistory: TAtlasIssueHistory;
@@ -108,7 +123,24 @@ type
     // Laufende Kurzabfragen (Tracker|Kennung → Rückrufe) und nicht gefundene Kennungen (→ Zeitpunkt).
     FLookups: TDictionary<string, TArray<TAtlasIssueLookupDone>>;
     FMissing: TDictionary<string, UInt64>;
+    // Checklisten (#1273): ein Schreiben zur Zeit, Hinweis nach dem Neuladen, nur lesbare Issues der Sitzung.
+    FWriting: Boolean;
+    FPendingNotice: string;
+    FReadOnly: TStringList;
+    // Statusfeld: zuletzt angestoßene Auffrischung (Kennung und Zeit, UTC).
+    FPrefetchKey: string;
+    FPrefetchAt: TDateTime;
+    FPrefetching: Boolean;
     function Frame: TAtlasIssueFrame;
+    procedure PrepareFrame(AFrame: TAtlasIssueFrame; const AEntry: TAtlasIssueHistoryEntry);
+    function ReadOnlyKey(const AEntry: TAtlasIssueHistoryEntry): string;
+    procedure ToggleTask(AIndex: Integer);
+    procedure AddTask;
+    procedure ChangeChecklist(AChange: TChecklistChange; const AItem: TAtlasChecklistItem; const AText: string);
+    procedure ChecklistWritten(const AEntry: TAtlasIssueHistoryEntry; AApplied, AChanged, ADenied: Boolean;
+      AError: TAtlasCiFetchError; const AText: string);
+    procedure Prefetched(const AEntry: TAtlasIssueHistoryEntry; ASucceeded: Boolean;
+      const ADetails: TAtlasTrackerDetails);
     procedure Wire(AFrame: TAtlasIssueFrame);
     function ProviderOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
     procedure Load(const AEntry: TAtlasIssueHistoryEntry);
@@ -157,6 +189,14 @@ type
     /// <summary>Kommentarfeld und „Beenden …“ nach issues.syncState und dem aktuellen Issue (#1266); nach
     /// „Beginnen“, „Beenden“ und geänderten Einstellungen.</summary>
     procedure UpdateWrite;
+    /// <summary>Wie Show und dann zur Checkliste blättern (Klick im Statusfeld, #1273).</summary>
+    procedure ShowChecklist(const ATarget: TAtlasTrackerTarget; const AKey: string);
+    /// <summary>Fortschritt der Checkliste von AKey aus dem Zwischenspeicher (ohne Netz); False ohne Stand.</summary>
+    function ChecklistProgress(const ATarget: TAtlasTrackerTarget; const AKey: string;
+      out AProgress: TAtlasChecklistProgress): Boolean;
+    /// <summary>Stand von AKey im Hintergrund auffrischen, wenn er fehlt oder älter als PrefetchMinutes ist; je
+    /// Kennung höchstens einmal in PrefetchMinutes (auch nach einem Fehler). Ohne Fenster.</summary>
+    procedure Prefetch(const ATarget: TAtlasTrackerTarget; const AKey: string);
     /// <summary>issues.preview an?</summary>
     class function Active: Boolean; static;
   end;
@@ -172,6 +212,7 @@ uses
   System.DateUtils,
   Vcl.Graphics,
   Vcl.Clipbrd,
+  Vcl.Dialogs,
   Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
@@ -194,11 +235,15 @@ begin
   FWorkers := TList.Create;
   FLookups := TDictionary<string, TArray<TAtlasIssueLookupDone>>.Create;
   FMissing := TDictionary<string, UInt64>.Create;
+  FReadOnly := TStringList.Create;
+  FReadOnly.Sorted := True;
+  FReadOnly.Duplicates := dupIgnore;
 end;
 
 destructor TAtlasIdeIssuePreview.Destroy;
 begin
   ReleaseThreads(True);
+  FReadOnly.Free;
   FWorkers.Free;
   FLookups.Free;
   FMissing.Free;
@@ -428,6 +473,18 @@ begin
       if mKeep <> nil then
         mOwner.SendComment(AText);
     end;
+  AFrame.OnToggleTask :=
+    procedure(AIndex: Integer)
+    begin
+      if mKeep <> nil then
+        mOwner.ToggleTask(AIndex);
+    end;
+  AFrame.OnAddTask :=
+    procedure
+    begin
+      if mKeep <> nil then
+        mOwner.AddTask;
+    end;
   if Assigned(FHooks.CanStart) then
     AFrame.CanStart := FHooks.CanStart();
   ShowCurrent;
@@ -575,6 +632,8 @@ begin
     Exit;
   UpdateHistory;
   UpdateWrite;
+  if FHasCurrent then
+    PrepareFrame(mFrame, FCurrent);
   if FHasCurrent and FCache.Get(FCurrent.Target, FCurrent.Key, NowUtc, mDetails) then
     mFrame.ShowDetails(mDetails, NowUtc, '', not TAtlasIdeSettings.Current.IssuesPreviewComments)
   else if not FHasCurrent then
@@ -617,6 +676,7 @@ begin
   // Sofort der letzte Stand; frisch geladen ersetzt ihn.
   if mFrame <> nil then
   begin
+    PrepareFrame(mFrame, AEntry);
     if FCache.Get(AEntry.Target, AEntry.Key, NowUtc, mDetails) then
       mFrame.ShowDetails(mDetails, NowUtc, StaleText(mDetails, ''), not mComments);
     mFrame.SetLoading(True);
@@ -712,11 +772,17 @@ begin
       mFrame.SetLoading(False);
       if Assigned(FHooks.CanStart) then
         mFrame.CanStart := FHooks.CanStart();
+      PrepareFrame(mFrame, AEntry);
       mFrame.ShowDetails(mDetails, NowUtc, '', not mComments);
       UpdateWrite;
+      // Nach einem abgewiesenen Abhaken (Beschreibung geändert): Hinweis über dem neuen Stand.
+      if FPendingNotice <> '' then
+        mFrame.ShowNotice(FPendingNotice);
     end;
+    FPendingNotice := '';
     Exit;
   end;
+  FPendingNotice := '';
   if mFrame = nil then
     Exit;
   mFrame.SetLoading(False);
@@ -729,6 +795,301 @@ begin
       not mComments)
   else
     mFrame.ShowError(TAtlasIssueTip.ErrorText(AError, AEntry.Key), TAtlasIssuePreview.FixOf(AError));
+end;
+
+function TAtlasIdeIssuePreview.ReadOnlyKey(const AEntry: TAtlasIssueHistoryEntry): string;
+begin
+  Result := TAtlasTrackerIssueCache.TrackerId(AEntry.Target) + '#' + LowerCase(AEntry.Key);
+end;
+
+procedure TAtlasIdeIssuePreview.PrepareFrame(AFrame: TAtlasIssueFrame; const AEntry: TAtlasIssueHistoryEntry);
+var
+  mProvider: IAtlasTrackerProvider;
+begin
+  AFrame.Checklists := TAtlasIdeSettings.Current.IssuesPreviewChecklists;
+  // Nur lesbar: Anbieter kann nicht schreiben, oder der Tracker hat in dieser Sitzung abgelehnt.
+  mProvider := ProviderOf(AEntry.Target);
+  AFrame.ChecklistReadOnly := (mProvider = nil) or not Supports(mProvider, IAtlasTrackerDescriptions) or
+    (FReadOnly.IndexOf(ReadOnlyKey(AEntry)) >= 0);
+end;
+
+procedure TAtlasIdeIssuePreview.ToggleTask(AIndex: Integer);
+var
+  mFrame: TAtlasIssueFrame;
+  mItem: TAtlasChecklistItem;
+begin
+  mFrame := Frame;
+  if not FStarted or not FHasCurrent or FWriting or (mFrame = nil) or not mFrame.HasDetails or
+    mFrame.ChecklistReadOnly then
+    Exit;
+  // Der Punkt, wie er angezeigt wurde; ChangeChecklist vergleicht ihn mit dem aktuellen Text.
+  if TAtlasTrackerChecklist.Find(mFrame.Details.Description, AIndex, mItem) then
+    ChangeChecklist(TChecklistChange.Toggle, mItem, '');
+end;
+
+procedure TAtlasIdeIssuePreview.AddTask;
+var
+  mFrame: TAtlasIssueFrame;
+  mText: string;
+begin
+  mFrame := Frame;
+  if not FStarted or not FHasCurrent or FWriting or (mFrame = nil) or not mFrame.HasDetails or
+    mFrame.ChecklistReadOnly then
+    Exit;
+  mText := '';
+  if not InputQuery(TAtlasStrings.Text(TAtlasTextId.IssueChecklistAdd),
+    TAtlasStrings.Text(TAtlasTextId.IssueChecklistAddPrompt), mText) or (Trim(mText) = '') then
+    Exit;
+  // Während des Dialogs kann das Fenster gewechselt haben.
+  if FStarted and FHasCurrent and not FWriting then
+    ChangeChecklist(TChecklistChange.Append, Default(TAtlasChecklistItem), mText);
+end;
+
+procedure TAtlasIdeIssuePreview.ChangeChecklist(AChange: TChecklistChange; const AItem: TAtlasChecklistItem;
+  const AText: string);
+var
+  mEntry: TAtlasIssueHistoryEntry;
+  mProvider: IAtlasTrackerProvider;
+  mEditor: IAtlasTrackerDescriptions;
+  mTransport: IAtlasCiTransport;
+  mFrame: TAtlasIssueFrame;
+  mKeep: IInterface;
+  mOwner: TAtlasIdeIssuePreview;
+  mWorker: TThread;
+begin
+  mEntry := FCurrent;
+  mProvider := ProviderOf(mEntry.Target);
+  if (mProvider = nil) or not Supports(mProvider, IAtlasTrackerDescriptions, mEditor) then
+  begin
+    ChecklistWritten(mEntry, False, False, True, TAtlasCiFetchError.Unauthorized, '');
+    Exit;
+  end;
+  mTransport := nil;
+  if Assigned(FHooks.Transport) then
+    mTransport := FHooks.Transport(mProvider, mEntry.Target);
+  // Ohne Token darf Atlas nicht schreiben: wie eine Ablehnung des Trackers.
+  if mTransport = nil then
+  begin
+    ChecklistWritten(mEntry, False, False, True, TAtlasCiFetchError.Unauthorized, '');
+    Exit;
+  end;
+  FWriting := True;
+  mFrame := Frame;
+  if mFrame <> nil then
+    mFrame.SetChecklistBusy(True);
+  ReleaseThreads(False);
+  mKeep := Self;
+  mOwner := Self;
+  mWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mCurrent, mNew: string;
+      mError: TAtlasCiFetchError;
+      mApplied, mChanged, mDenied, mOk: Boolean;
+    begin
+      mApplied := False;
+      mChanged := False;
+      mDenied := False;
+      mNew := '';
+      mError := TAtlasCiFetchError.Network;
+      try
+        // Erst den aktuellen Stand lesen: Nur wenn der Punkt dort unverändert steht, wird geschrieben.
+        if mEditor.Description(mEntry.Target, mTransport, mEntry.Key, TAtlasIssuePreview.TimeoutMs, mCurrent,
+          mError) then
+        begin
+          if AChange = TChecklistChange.Toggle then
+            mOk := TAtlasTrackerChecklist.Toggle(mCurrent, AItem, mNew)
+          else
+            mOk := TAtlasTrackerChecklist.Append(mCurrent, AText, mNew);
+          if not mOk then
+          begin
+            mChanged := True;
+            mError := TAtlasCiFetchError.None;
+          end
+          else if mEditor.UpdateDescription(mEntry.Target, mTransport, mEntry.Key, mNew,
+            TAtlasIssuePreview.TimeoutMs, mError) then
+            mApplied := True
+          else
+            // Nur eine Ablehnung beim Schreiben heißt „keine Schreibrechte“; Lesefehler nicht.
+            mDenied := mError = TAtlasCiFetchError.Unauthorized;
+        end;
+      except
+        on E: Exception do
+        begin
+          mApplied := False;
+          mError := TAtlasCiFetchError.Network;
+          TAtlasGuard.Log('Issue-Vorschau: Checkliste mit ' + E.ClassName + ' abgebrochen');
+        end;
+      end;
+      mTransport := nil;
+      mEditor := nil;
+      if TAtlasShutdown.Signalled then
+        Exit;
+      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+        procedure
+        begin
+          if mKeep <> nil then
+            mOwner.ChecklistWritten(mEntry, mApplied, mChanged, mDenied, mError, mNew);
+        end);
+    end);
+  mWorker.FreeOnTerminate := False;
+  FWorkers.Add(mWorker);
+  mWorker.Start;
+end;
+
+procedure TAtlasIdeIssuePreview.ChecklistWritten(const AEntry: TAtlasIssueHistoryEntry;
+  AApplied, AChanged, ADenied: Boolean; AError: TAtlasCiFetchError; const AText: string);
+var
+  mFrame: TAtlasIssueFrame;
+  mDetails: TAtlasTrackerDetails;
+  mProvider: IAtlasTrackerProvider;
+  mCurrent: Boolean;
+  mResult: string;
+begin
+  FWriting := False;
+  ReleaseThreads(False);
+  if not FStarted then
+    Exit;
+  mProvider := ProviderOf(AEntry.Target);
+  if AApplied then
+    mResult := 'geschrieben'
+  else if AChanged then
+    mResult := 'Beschreibung geändert'
+  else
+    mResult := 'nicht geschrieben (' + TAtlasCiBuild.ErrorKey(AError) + ')';
+  if mProvider <> nil then
+    TAtlasGuard.Log(Format('Issue-Vorschau: Checkliste bei %s %s', [mProvider.Name, mResult]));
+  if AApplied and FCache.Get(AEntry.Target, AEntry.Key, NowUtc, mDetails) then
+  begin
+    // Der geschriebene Text ist der neue Stand, auch fürs Statusfeld.
+    mDetails.Description := AText;
+    mDetails.Fetched := NowUtc;
+    FCache.Put(AEntry.Target, mDetails);
+  end;
+  if ADenied then
+    FReadOnly.Add(ReadOnlyKey(AEntry));
+  mFrame := Frame;
+  mCurrent := FHasCurrent and FCurrent.SameAs(AEntry);
+  if mFrame <> nil then
+    mFrame.SetChecklistBusy(False);
+  if (mFrame = nil) or not mCurrent then
+    Exit;
+  if AApplied then
+    mFrame.ReplaceDescription(AText)
+  else if AChanged then
+  begin
+    // Nichts angewendet: neu laden, danach der Hinweis.
+    FPendingNotice := TAtlasStrings.Text(TAtlasTextId.IssueChecklistChanged);
+    Load(AEntry);
+  end
+  else if ADenied then
+  begin
+    mFrame.ChecklistReadOnly := True;
+    mFrame.ShowNotice(TAtlasStrings.Text(TAtlasTextId.IssueChecklistDenied));
+  end
+  else if AError <> TAtlasCiFetchError.Cancelled then
+    mFrame.ShowNotice(TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistFailed, [ErrorText(AError, AEntry.Key)]));
+end;
+
+procedure TAtlasIdeIssuePreview.ShowChecklist(const ATarget: TAtlasTrackerTarget; const AKey: string);
+var
+  mFrame: TAtlasIssueFrame;
+begin
+  Show(ATarget, AKey);
+  mFrame := Frame;
+  if mFrame <> nil then
+    mFrame.RevealChecklist;
+end;
+
+function TAtlasIdeIssuePreview.ChecklistProgress(const ATarget: TAtlasTrackerTarget; const AKey: string;
+  out AProgress: TAtlasChecklistProgress): Boolean;
+var
+  mDetails: TAtlasTrackerDetails;
+begin
+  AProgress := TAtlasChecklistProgress.Create(0, 0);
+  Result := (Trim(AKey) <> '') and FCache.Get(ATarget, AKey, NowUtc, mDetails);
+  if Result then
+    AProgress := TAtlasTrackerChecklist.Progress(mDetails.Description);
+end;
+
+procedure TAtlasIdeIssuePreview.Prefetch(const ATarget: TAtlasTrackerTarget; const AKey: string);
+var
+  mDetails: TAtlasTrackerDetails;
+  mProvider: IAtlasTrackerProvider;
+  mTransport: IAtlasCiTransport;
+  mEntry: TAtlasIssueHistoryEntry;
+  mComments: Boolean;
+  mKey: string;
+  mKeep: IInterface;
+  mOwner: TAtlasIdeIssuePreview;
+  mWorker: TThread;
+begin
+  if not FStarted or FPrefetching or (Trim(AKey) = '') or not Assigned(FHooks.Transport) then
+    Exit;
+  mEntry := TAtlasIssueHistoryEntry.Create(ATarget, AKey);
+  mKey := ReadOnlyKey(mEntry);
+  // Frischer Stand im Zwischenspeicher, oder diese Kennung wurde eben erst versucht.
+  if FCache.Get(ATarget, mEntry.Key, NowUtc, mDetails) and
+    (NowUtc - mDetails.Fetched < PrefetchMinutes / MinsPerDay) then
+    Exit;
+  if SameText(FPrefetchKey, mKey) and (NowUtc - FPrefetchAt < PrefetchMinutes / MinsPerDay) then
+    Exit;
+  FPrefetchKey := mKey;
+  FPrefetchAt := NowUtc;
+  mProvider := ProviderOf(ATarget);
+  if mProvider = nil then
+    Exit;
+  mTransport := FHooks.Transport(mProvider, ATarget);
+  if mTransport = nil then
+    Exit;
+  mComments := TAtlasIdeSettings.Current.IssuesPreviewComments;
+  FPrefetching := True;
+  ReleaseThreads(False);
+  mKeep := Self;
+  mOwner := Self;
+  mWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mResult: TAtlasTrackerDetails;
+      mError: TAtlasCiFetchError;
+      mOk: Boolean;
+    begin
+      mResult := TAtlasTrackerDetails.Empty;
+      mOk := False;
+      try
+        mOk := mProvider.Details(mEntry.Target, mTransport, mEntry.Key, mComments, TAtlasIssuePreview.TimeoutMs,
+          mResult, mError);
+      except
+        on Exception do
+          mOk := False;
+      end;
+      mTransport := nil;
+      if TAtlasShutdown.Signalled then
+        Exit;
+      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+        procedure
+        begin
+          if mKeep <> nil then
+            mOwner.Prefetched(mEntry, mOk, mResult);
+        end);
+    end);
+  mWorker.FreeOnTerminate := False;
+  FWorkers.Add(mWorker);
+  mWorker.Start;
+end;
+
+procedure TAtlasIdeIssuePreview.Prefetched(const AEntry: TAtlasIssueHistoryEntry; ASucceeded: Boolean;
+  const ADetails: TAtlasTrackerDetails);
+var
+  mDetails: TAtlasTrackerDetails;
+begin
+  FPrefetching := False;
+  ReleaseThreads(False);
+  if not FStarted or not ASucceeded then
+    Exit;
+  mDetails := ADetails;
+  mDetails.Fetched := NowUtc;
+  FCache.Put(AEntry.Target, mDetails);
 end;
 
 procedure TAtlasIdeIssuePreview.Fix(AFix: TAtlasIssueFix);

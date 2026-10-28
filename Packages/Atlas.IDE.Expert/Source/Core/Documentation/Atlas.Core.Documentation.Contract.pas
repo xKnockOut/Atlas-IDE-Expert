@@ -53,7 +53,7 @@ type
     Kind: TAtlasDocRunKind;
     Text: string;
     /// <summary>Ref: cref (ohne Präfix); Link: URL; CodeBlock: Sprache ('' = Delphi; Markdown der Issue-Vorschau,
-    /// #1264).</summary>
+    /// #1264); Bullet: Ziel der anklickbaren Marke ('' = nur Marke; Kästchen einer Checkliste, #1273).</summary>
     Target: string;
     Bold: Boolean;
     Italic: Boolean;
