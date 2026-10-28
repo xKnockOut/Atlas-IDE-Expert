@@ -106,6 +106,22 @@ type
       out AError: TAtlasCiFetchError): Boolean;
   end;
 
+  /// <summary>Binäre Inhalte (Bilder und Anhänge der Issue-Vorschau, #1264) über denselben Transport, unter
+  /// denselben Regeln für Anmeldung, Server und Weiterleitungen.</summary>
+  IAtlasCiDownload = interface
+    ['{5B1E8D43-2C7A-4F09-9E36-A84D1C7F2B65}']
+    /// <summary>GET auf AUrl, höchstens AMaxBytes und ATimeoutMs; sonst wie IAtlasCiTransport.Get.</summary>
+    function GetBytes(const AUrl: string; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes;
+      out AError: TAtlasCiFetchError): Boolean;
+  end;
+
+  /// <summary>Laufende und künftige Anfragen eines Transports abbrechen (Fenster geschlossen, #1264); sie enden
+  /// mit TAtlasCiFetchError.Cancelled.</summary>
+  IAtlasCiCancel = interface
+    ['{9C4F2A71-6D3B-4E58-B1A7-3E0D5C8F9A24}']
+    procedure Cancel;
+  end;
+
   IAtlasCiProvider = interface
     ['{9A4D7E12-5B3C-4E81-8F6A-1D2C7B9E4F30}']
     /// <summary>Kennung wie in .atlas, z. B. "jenkins".</summary>

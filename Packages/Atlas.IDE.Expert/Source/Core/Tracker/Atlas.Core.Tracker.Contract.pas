@@ -18,6 +18,11 @@
 // - TAtlasTrackerIssue: ein Issue der Liste mit den Feldern, die der Bereich
 //   zeigt (GitHub: Labels und verknüpfter Pull Request mit CI-Ampel;
 //   YouTrack: Zustand, Priorität, Sprint).
+// - TAtlasTrackerDetails (#1264): ein Issue für das Fenster „Atlas-Issue“ mit
+//   Feldern, Beschreibung (Markdown), Kommentaren, Anhängen und verknüpften
+//   Issues; IAtlasTrackerProvider.Details liest es. Kein Feld enthält ein
+//   Token; Adressen kommen aus der Antwort des Trackers und werden vor dem
+//   Öffnen geprüft (nur https bzw. derselbe Server).
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -66,6 +71,87 @@ type
     /// <summary>GitHub: verknüpfter offener Pull Request.</summary>
     PullRequest: TAtlasTrackerPullRequest;
     class function Empty: TAtlasTrackerIssue; static;
+  end;
+
+  /// <summary>Kommentar eines Issues (#1264).</summary>
+  TAtlasTrackerComment = record
+    Author: string;
+    /// <summary>UTC; 0 = unbekannt.</summary>
+    Created: TDateTime;
+    /// <summary>Markdown wie im Tracker.</summary>
+    Text: string;
+  end;
+
+  /// <summary>Anhang eines Issues (#1264).</summary>
+  TAtlasTrackerAttachment = record
+    Name: string;
+    /// <summary>Bytes; -1 = unbekannt.</summary>
+    Size: Int64;
+    /// <summary>Absolute Adresse zum Laden.</summary>
+    Url: string;
+    MimeType: string;
+    /// <summary>Liegt nicht beim Server des Tokens (GitHub-Dateien): öffnet im Browser statt zu laden.</summary>
+    External: Boolean;
+    function IsImage: Boolean;
+  end;
+
+  /// <summary>Verknüpftes Issue (#1264): YouTrack-Link bzw. GitHub-Verweis.</summary>
+  TAtlasTrackerLink = record
+    /// <summary>Kennung im selben Tracker ("ATL-12", "#753"); bei GitHub aus einem anderen Repository
+    /// "owner/repo#12".</summary>
+    Key: string;
+    Title: string;
+    /// <summary>Art der Verknüpfung wie im Tracker ("relates to", "is required for", "mentioned").</summary>
+    Relation: string;
+    /// <summary>Seite im Browser, wenn das Issue nicht im selben Fenster geöffnet werden kann; '' sonst.</summary>
+    Page: string;
+    /// <summary>Im selben Tracker und Projekt: Klick öffnet es in „Atlas-Issue“.</summary>
+    Local: Boolean;
+  end;
+
+  /// <summary>Ein Issue mit allem, was das Fenster „Atlas-Issue“ zeigt (#1264).</summary>
+  TAtlasTrackerDetails = record
+  public const
+    /// <summary>Höchstens so viele Kommentare werden gelesen.</summary>
+    MaxComments = 100;
+    /// <summary>Höchstens so viele Anhänge bzw. Verknüpfungen.</summary>
+    MaxAttachments = 50;
+    MaxLinks = 50;
+    /// <summary>Höchstens so viele Zeichen je Beschreibung bzw. Kommentar.</summary>
+    MaxText = 100000;
+  public
+    Key: string;
+    Number: Integer;
+    Title: string;
+    /// <summary>Seite des Issues im Browser.</summary>
+    Page: string;
+    State: string;
+    Priority: string;
+    /// <summary>Typ (Bug, Feature …).</summary>
+    Kind: string;
+    Assignee: string;
+    /// <summary>Sprint bzw. Meilenstein.</summary>
+    Sprint: string;
+    /// <summary>Labels (GitHub) bzw. Tags (YouTrack).</summary>
+    Labels: TArray<string>;
+    /// <summary>UTC; 0 = unbekannt.</summary>
+    Created: TDateTime;
+    Updated: TDateTime;
+    /// <summary>Markdown.</summary>
+    Description: string;
+    /// <summary>Kommentare wurden abgefragt (issues.preview.comments).</summary>
+    CommentsLoaded: Boolean;
+    /// <summary>Älteste zuerst.</summary>
+    Comments: TArray<TAtlasTrackerComment>;
+    Attachments: TArray<TAtlasTrackerAttachment>;
+    Links: TArray<TAtlasTrackerLink>;
+    /// <summary>Zeitpunkt der Abfrage (UTC); für „Stand vom …“.</summary>
+    Fetched: TDateTime;
+    class function Empty: TAtlasTrackerDetails; static;
+    /// <summary>Für die Liste „Meine Issues“: Kennung, Titel und Felder.</summary>
+    function Issue: TAtlasTrackerIssue;
+    /// <summary>Anhang mit dem Namen AName (ohne Groß-/Kleinschreibung); -1 ohne.</summary>
+    function AttachmentIndex(const AName: string): Integer;
   end;
 
   /// <summary>Was abgefragt wird; ohne Zugangsdaten.</summary>
@@ -121,6 +207,12 @@ type
     /// <summary>Adresse für „Verbindung prüfen“ (#1260): der angemeldete Benutzer mit "login" in der Antwort
     /// (YouTrack /api/users/me?fields=login, GitHub /user); '' ohne gültigen Server.</summary>
     function ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
+    /// <summary>Issue AKey mit Feldern, Beschreibung, Anhängen und Verknüpfungen, mit AComments auch die
+    /// Kommentare (sonst nicht abgefragt), insgesamt höchstens ATimeoutMs; im Hintergrund (#1264). False mit
+    /// AError, wenn das Issue nicht gelesen werden konnte.</summary>
+    function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
+      out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -151,6 +243,57 @@ class function TAtlasTrackerIssue.Empty: TAtlasTrackerIssue;
 begin
   Result := Default(TAtlasTrackerIssue);
   Result.Labels := nil;
+end;
+
+{ TAtlasTrackerAttachment }
+
+function TAtlasTrackerAttachment.IsImage: Boolean;
+var
+  mExt: string;
+begin
+  Result := MimeType.StartsWith('image/', True);
+  if Result or (MimeType <> '') then
+    Exit;
+  mExt := LowerCase(ExtractFileExt(Name));
+  Result := (mExt = '.png') or (mExt = '.jpg') or (mExt = '.jpeg') or (mExt = '.gif') or (mExt = '.bmp');
+end;
+
+{ TAtlasTrackerDetails }
+
+class function TAtlasTrackerDetails.Empty: TAtlasTrackerDetails;
+begin
+  Result := Default(TAtlasTrackerDetails);
+  Result.Labels := nil;
+  Result.Comments := nil;
+  Result.Attachments := nil;
+  Result.Links := nil;
+end;
+
+function TAtlasTrackerDetails.Issue: TAtlasTrackerIssue;
+var
+  mCount: Integer;
+begin
+  Result := TAtlasTrackerIssue.Empty;
+  Result.Key := Key;
+  Result.Number := Number;
+  Result.Title := Copy(Title, 1, TAtlasTrackerIssue.MaxTitle);
+  mCount := Length(Labels);
+  if mCount > TAtlasTrackerIssue.MaxLabels then
+    mCount := TAtlasTrackerIssue.MaxLabels;
+  Result.Labels := Copy(Labels, 0, mCount);
+  Result.State := State;
+  Result.Priority := Priority;
+  Result.Sprint := Sprint;
+end;
+
+function TAtlasTrackerDetails.AttachmentIndex(const AName: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(Attachments) do
+    if SameText(Attachments[mIndex].Name, AName) then
+      Exit(mIndex);
+  Result := -1;
 end;
 
 { TAtlasTrackerTarget }

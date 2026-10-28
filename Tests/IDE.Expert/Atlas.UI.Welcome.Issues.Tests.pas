@@ -27,6 +27,10 @@ type
     procedure EnglishTexts;
     [Test]
     procedure ClicksReachSource;
+    /// <summary>issues.preview (#1264): Klick auf Zeile oder Kennung zeigt die Vorschau, Strg+Klick und „Im
+    /// Browser öffnen“ den Browser.</summary>
+    [Test]
+    procedure ClicksOpenPreview;
   end;
 
 implementation
@@ -54,6 +58,7 @@ type
     procedure Shown;
     procedure Start(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
     procedure Browse(const AIssue: TAtlasTrackerIssue);
+    procedure Preview(const AIssue: TAtlasTrackerIssue);
     procedure BrowsePullRequest(const AIssue: TAtlasTrackerIssue);
     procedure QueryNow;
     procedure Credentials;
@@ -119,6 +124,11 @@ end;
 procedure TFakeIssues.Browse(const AIssue: TAtlasTrackerIssue);
 begin
   Calls := Calls + ['browse ' + AIssue.Key];
+end;
+
+procedure TFakeIssues.Preview(const AIssue: TAtlasTrackerIssue);
+begin
+  Calls := Calls + ['preview ' + AIssue.Key];
 end;
 
 procedure TFakeIssues.BrowsePullRequest(const AIssue: TAtlasTrackerIssue);
@@ -319,6 +329,64 @@ begin
   finally
     Host.Free;
     Fake.Calls := nil;
+  end;
+end;
+
+procedure TAtlasWelcomeIssuesFrameTests.ClicksOpenPreview;
+var
+  mHost: TForm;
+  mFake: TFakeIssues;
+  mSource: IAtlasIssuesSource;
+  mFrame: TAtlasWelcomeIssuesFrame;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasStrings.Language;
+  TAtlasStrings.Language := TAtlasLanguage.German;
+  mFake := TFakeIssues.Create;
+  mSource := mFake;
+  mFake.FView := SampleView;
+  mFake.FView.Options.Preview := True;
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasWelcomeIssuesFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Width := 600;
+    mFrame.Source := mSource;
+    CheckSynchronize;
+    mFake.Calls := nil;
+    Assert.AreEqual('Vorschau', mFrame.PreviewItem.Caption);
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Row, 1));
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Key, 0));
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Key, 0), True);
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Row, 1), True);
+    // Pull Request und „Beginnen“ bleiben, wie sie sind.
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.PullRequest, 0));
+    mFrame.MenuRow := 1;
+    mFrame.PreviewItem.Click;
+    mFrame.BrowseItem.Click;
+    CheckSynchronize;
+    Assert.AreEqual(7, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('preview #612', mFake.Calls[0]);
+    Assert.AreEqual('preview #753', mFake.Calls[1]);
+    Assert.AreEqual('browse #753', mFake.Calls[2], 'Strg+Klick');
+    Assert.AreEqual('browse #612', mFake.Calls[3], 'Strg+Klick auf die Zeile');
+    Assert.AreEqual('pr 760', mFake.Calls[4]);
+    Assert.AreEqual('preview #612', mFake.Calls[5]);
+    Assert.AreEqual('browse #612', mFake.Calls[6]);
+    // Ohne Vorschau: Zeile tut nichts, Kennung öffnet den Browser.
+    mFake.Calls := nil;
+    mFake.FView.Options.Preview := False;
+    mFrame.UpdateContent;
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Row, 0));
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Row, 0), True);
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Key, 0));
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('browse #753', mFake.Calls[0]);
+  finally
+    mHost.Free;
+    mFake.Calls := nil;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 

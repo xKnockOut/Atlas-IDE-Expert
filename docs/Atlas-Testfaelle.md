@@ -7827,3 +7827,29 @@ Vorbereitung: Zugang zu einem YouTrack (https) und einem GitHub-Konto mit persö
 | TV12 | Dialog während einer laufenden Prüfung schließen, Plugin entladen | Kein Fehler, keine Zugriffsverletzung |
 | TV13 | Einstellungen exportieren und in leerer Installation importieren | `issues.connections` als JSON-Liste in der Datei, nach dem Import gleiche Zeilen; Tokens nicht enthalten |
 | TV14 | settings.json von Hand mit unbekanntem Anbieter oder doppeltem Namen speichern, Projekt prüfen | Server meldet den Eintrag in der Problemliste |
+
+## Issue-Vorschau (#1264)
+
+Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (YouTrack und GitHub), Token hinterlegt, `welcomePage.issues` an; ein YouTrack-Issue mit Bild in der Beschreibung, Anhängen (darunter eine .exe), Verknüpfungen und mehr als drei Kommentaren.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IV1 | In „Meine Issues“ auf eine Zeile klicken | Fenster „Atlas-Issue“ öffnet sich angedockt, zeigt Kennung, Titel, Abzeichen, Beschreibung (**Abnahme**) |
+| IV2 | Strg+Klick auf Zeile bzw. Kennung | Issue öffnet im Browser, nicht in der Vorschau |
+| IV3 | Kontextmenü einer Zeile | „Vorschau“ fett oben, darunter „Im Browser öffnen“ |
+| IV4 | Beschreibung mit Überschrift, Liste mit Aufgaben, ```` ```pascal ```` und ```` ```json ````, Tabelle, Zitat | Wie im Hover gesetzt; nur der Pascal-Block ist eingefärbt (**Abnahme**) |
+| IV5 | Bild in der Beschreibung (`![](skizze.png)` als Anhang) | Bild erscheint nach kurzer Zeit, Klick vergrößert es in eigenem Fenster |
+| IV6 | Beschreibung mit Bild von einem fremden Rechner | Kein Abruf (Proxy-Protokoll), nur Link mit „Bild: …“ |
+| IV7 | Mehr als drei Kommentare | Die drei neuesten offen, darüber „N ältere Kommentare“; Klick klappt alle auf |
+| IV8 | Doppelklick auf einen Anhang (PDF bzw. Bild) | Datei landet in `%TEMP%\Atlas\issues\<Kennung>\` und öffnet mit dem zugeordneten Programm |
+| IV9 | Doppelklick auf einen .exe-Anhang | Datei wird nur im Explorer markiert, nicht gestartet |
+| IV10 | Klick auf ein verknüpftes Issue, dann Alt+Links, Alt+Rechts | Öffnet im selben Fenster; Zurück und Vor wechseln (**Abnahme**) |
+| IV11 | Netz trennen, ein früher geöffnetes Issue erneut öffnen | Inhalt erscheint mit „Stand vom …“, kein Dialog |
+| IV12 | Netz getrennt, neues Issue öffnen | Meldung „Tracker nicht erreichbar.“ mit „Erneut versuchen“ |
+| IV13 | Token entfernen, Issue öffnen | „Kein Zugang …“ mit „Token hinterlegen …“; nach dem Hinterlegen lädt es |
+| IV14 | Während des Ladens „Abbrechen“ bzw. Fenster schließen | Laden endet sofort, keine Meldung, kein Fehler |
+| IV15 | Befehlspalette: *Issue anzeigen …*, `ATL-12` bzw. Adresse eines GitHub-Issues eingeben | Issue öffnet; ungültige Eingabe meldet „… ist keine gültige Kennung“ |
+| IV16 | `issues.preview.comments` aus | Statt Kommentaren der Hinweis; Proxy zeigt keine Abfrage der Kommentare |
+| IV17 | `issues.preview` aus (Schnellschalter) | Klick in „Meine Issues“ öffnet wieder den Browser; Befehl *Issue anzeigen …* nicht sichtbar |
+| IV18 | IDE beenden mit offenem Fenster, neu starten | Fenster steht wieder an seinem Platz (Desktop); Plugin entladen ohne Zugriffsverletzung |
+| IV19 | Helles und dunkles IDE-Design | Farben und Abzeichen passen jeweils |

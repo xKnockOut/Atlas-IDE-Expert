@@ -862,6 +862,8 @@ begin
   Assert.AreEqual('', Settings.IssuesBranchBase);
   Assert.AreEqual('{kennung} ', Settings.IssuesCommitPattern);
   Assert.IsTrue(Settings.TrackerLogin);
+  Assert.IsTrue(Settings.IssuesPreview, 'Vorschau (#1264) an');
+  Assert.IsTrue(Settings.IssuesPreviewComments);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -897,6 +899,8 @@ begin
   Settings.IssuesBranchBase := 'trunk';
   Settings.IssuesCommitPattern := '{kennung}: ';
   Settings.TrackerLogin := False;
+  Settings.IssuesPreview := False;
+  Settings.IssuesPreviewComments := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -909,6 +913,8 @@ begin
   Assert.AreEqual('trunk', Loaded.IssuesBranchBase);
   Assert.AreEqual('{kennung}: ', Loaded.IssuesCommitPattern);
   Assert.IsFalse(Loaded.TrackerLogin);
+  Assert.IsFalse(Loaded.IssuesPreview);
+  Assert.IsFalse(Loaded.IssuesPreviewComments);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

@@ -638,6 +638,8 @@ type
     FIssuesBranchBase: TEdit;
     FIssuesCommitPattern: TEdit;
     FTrackerLogin: TCheckBox;
+    FIssuesPreview: TCheckBox;
+    FIssuesPreviewComments: TCheckBox;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1145,6 +1147,8 @@ type
     property IssuesBranchBase: TEdit read FIssuesBranchBase;
     property IssuesCommitPattern: TEdit read FIssuesCommitPattern;
     property TrackerLogin: TCheckBox read FTrackerLogin;
+    property IssuesPreview: TCheckBox read FIssuesPreview;
+    property IssuesPreviewComments: TCheckBox read FIssuesPreviewComments;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -2679,6 +2683,9 @@ begin
   FIssuesBranchBase := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBranchBase));
   FIssuesCommitPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCommitPattern));
   FTrackerLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackerLogin));
+  // Issue-Vorschau (#1264): Hauptschalter, Kommentare darunter.
+  FIssuesPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreview));
+  FIssuesPreviewComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewComments));
 end;
 
 procedure TAtlasSettingsPage.WelcomeIssuesLinkClick(Sender: TObject);
@@ -3964,6 +3971,8 @@ begin
   FMarks.Bind(FIssuesBranchBase, ['IssuesBranchBase']);
   FMarks.Bind(FIssuesCommitPattern, ['IssuesCommitPattern']);
   FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
+  FMarks.Bind(FIssuesPreview, ['IssuesPreview']);
+  FMarks.Bind(FIssuesPreviewComments, ['IssuesPreviewComments']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
@@ -6223,6 +6232,8 @@ begin
   FIssuesBranchBase.Text := ASettings.IssuesBranchBase;
   FIssuesCommitPattern.Text := ASettings.IssuesCommitPattern;
   FTrackerLogin.Checked := ASettings.TrackerLogin;
+  FIssuesPreview.Checked := ASettings.IssuesPreview;
+  FIssuesPreviewComments.Checked := ASettings.IssuesPreviewComments;
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -6782,6 +6793,8 @@ begin
   // Nicht gekürzt: Das Leerzeichen am Ende von "{kennung} " trennt Kennung und Nachricht.
   ASettings.IssuesCommitPattern := FIssuesCommitPattern.Text;
   ASettings.TrackerLogin := FTrackerLogin.Checked;
+  ASettings.IssuesPreview := FIssuesPreview.Checked;
+  ASettings.IssuesPreviewComments := FIssuesPreviewComments.Checked;
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];

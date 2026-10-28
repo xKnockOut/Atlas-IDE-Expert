@@ -17,6 +17,14 @@
 //   Runs der kombinierte Status /commits/<sha>/status. Höchstens MaxChecks
 //   Pull Requests je Abfrage.
 // - Verbindung prüfen (#1260): GET /user (angemeldeter Benutzer).
+// - Vorschau (#1264): GET /repos/<owner/repo>/issues/<n> (Felder, Beschreibung,
+//   Labels, Zuständige, Meilenstein, Typ), mit AComments …/comments (die
+//   neuesten MaxComments; sonst nicht abgefragt) und …/timeline für Verweise
+//   aus anderen Issues und Pull Requests ("cross-referenced"; im selben
+//   Repository öffnen sie im Fenster, sonst im Browser). GitHub kennt keine
+//   Anhangsliste: Dateien (/user-attachments/files/…) aus Beschreibung und
+//   Kommentaren gelten als Anhänge und öffnen im Browser, weil das Token nur
+//   an die API geht.
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -47,6 +55,8 @@ type
     MaxChecks = 8;
     /// <summary>Höchstens so viele offene Pull Requests werden gelesen.</summary>
     MaxPulls = 50;
+    /// <summary>Einträge je Seite für Kommentare und Zeitleiste (#1264).</summary>
+    MaxPageSize = 100;
   public
     /// <summary>Basis der REST-API ohne „/“ am Ende; '' ohne Server.</summary>
     class function ApiBase(const ATarget: TAtlasTrackerTarget): string; static;
@@ -70,6 +80,19 @@ type
     class function ParseStatus(const AJson: string; out AChecks: TAtlasTrackerChecks): Boolean; static;
     /// <summary>Fehler zu einem HTTP-Status außer 200.</summary>
     class function ErrorOfStatus(AStatus: Integer): TAtlasCiFetchError; static;
+    /// <summary>Adresse eines Issues in der API (ohne Anhang wie /comments); '' bei ungültiger Kennung.</summary>
+    class function IssueApiUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
+    /// <summary>Antwort von /issues/<n>; False bei ungültigem JSON bzw. ohne Nummer.</summary>
+    class function ParseDetails(const AJson: string; out ADetails: TAtlasTrackerDetails;
+      out ACommentCount: Integer): Boolean; static;
+    /// <summary>Antwort von /issues/<n>/comments (älteste zuerst); False bei ungültigem JSON.</summary>
+    class function ParseComments(const AJson: string; out AComments: TArray<TAtlasTrackerComment>): Boolean; static;
+    /// <summary>Antwort von /issues/<n>/timeline: Verweise ("cross-referenced"); AProject entscheidet, was im
+    /// Fenster öffnet. False bei ungültigem JSON.</summary>
+    class function ParseTimeline(const AJson, AProject: string; out ALinks: TArray<TAtlasTrackerLink>): Boolean;
+      static;
+    /// <summary>Dateien in Beschreibung und Kommentaren als Anhänge (im Browser).</summary>
+    class function FileAttachments(const ADetails: TAtlasTrackerDetails): TArray<TAtlasTrackerAttachment>; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -80,16 +103,22 @@ type
     function IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
     function PullRequestPage(const ATarget: TAtlasTrackerTarget; ANumber: Integer): string;
     function ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
+    function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
+      out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
 
 uses
   System.Classes,
+  System.DateUtils,
   System.Diagnostics,
   System.Generics.Collections,
   System.JSON,
+  System.StrUtils,
   Atlas.Text.Uris,
+  Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Naming;
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
@@ -417,9 +446,241 @@ begin
       Result := TAtlasCiFetchError.NotFound;
     400, 422:
       Result := TAtlasCiFetchError.Invalid;
+    // Gelöschtes Issue (Vorschau, #1264).
+    410:
+      Result := TAtlasCiFetchError.NotFound;
   else
     Result := TAtlasCiFetchError.Server;
   end;
+end;
+
+function NumberOfKey(const AKey: string): Integer;
+begin
+  if not TryStrToInt(TAtlasTrackerNaming.BranchKey(AKey), Result) or (Result <= 0) then
+    Result := 0;
+end;
+
+/// <summary>ISO 8601 ("2026-10-28T10:40:49Z") als UTC; 0 ohne.</summary>
+function TimeOf(AObject: TJSONObject; const AName: string): TDateTime;
+var
+  mText: string;
+begin
+  Result := 0;
+  mText := TextOf(AObject, AName);
+  if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
+    Result := 0;
+end;
+
+function LoginOf(AValue: TJSONValue): string;
+begin
+  Result := '';
+  if AValue is TJSONObject then
+    Result := Shorten(TextOf(TJSONObject(AValue), 'login'), 60);
+end;
+
+function Limited(const AText: string): string;
+begin
+  Result := Copy(AText, 1, TAtlasTrackerDetails.MaxText);
+end;
+
+class function TAtlasGitHubTracker.IssueApiUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
+var
+  mNumber: Integer;
+begin
+  Result := ApiBase(ATarget);
+  mNumber := NumberOfKey(AKey);
+  if (Result = '') or (ATarget.Project = '') or (mNumber = 0) then
+    Exit('');
+  Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/issues/' + IntToStr(mNumber);
+end;
+
+class function TAtlasGitHubTracker.ParseDetails(const AJson: string; out ADetails: TAtlasTrackerDetails;
+  out ACommentCount: Integer): Boolean;
+var
+  mValue, mItem, mEntry: TJSONValue;
+  mRoot: TJSONObject;
+  mText, mReason: string;
+begin
+  ADetails := TAtlasTrackerDetails.Empty;
+  ACommentCount := 0;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONObject) then
+      Exit;
+    mRoot := TJSONObject(mValue);
+    ADetails.Number := IntOf(mRoot, 'number');
+    if ADetails.Number <= 0 then
+      Exit;
+    ADetails.Key := '#' + IntToStr(ADetails.Number);
+    ADetails.Title := Shorten(TextOf(mRoot, 'title'), 500);
+    ADetails.Description := Limited(TextOf(mRoot, 'body'));
+    // "closed" mit Grund ("completed", "not_planned") wie in der Oberfläche.
+    ADetails.State := TextOf(mRoot, 'state');
+    mReason := TextOf(mRoot, 'state_reason');
+    if (ADetails.State = 'closed') and (mReason <> '') and (mReason <> 'completed') then
+      ADetails.State := ADetails.State + ' (' + StringReplace(mReason, '_', ' ', [rfReplaceAll]) + ')';
+    ADetails.Created := TimeOf(mRoot, 'created_at');
+    ADetails.Updated := TimeOf(mRoot, 'updated_at');
+    ACommentCount := IntOf(mRoot, 'comments');
+    mItem := mRoot.Values['labels'];
+    if mItem is TJSONArray then
+      for mEntry in TJSONArray(mItem) do
+      begin
+        mText := '';
+        if mEntry is TJSONObject then
+          mText := Trim(TextOf(TJSONObject(mEntry), 'name'))
+        else if mEntry is TJSONString then
+          mText := Trim(TJSONString(mEntry).Value);
+        if mText <> '' then
+          ADetails.Labels := ADetails.Labels + [Shorten(mText, 40)];
+      end;
+    mItem := mRoot.Values['assignees'];
+    if mItem is TJSONArray then
+      for mEntry in TJSONArray(mItem) do
+      begin
+        mText := LoginOf(mEntry);
+        if mText = '' then
+          Continue;
+        if ADetails.Assignee <> '' then
+          ADetails.Assignee := ADetails.Assignee + ', ';
+        ADetails.Assignee := ADetails.Assignee + mText;
+      end;
+    if ADetails.Assignee = '' then
+      ADetails.Assignee := LoginOf(mRoot.Values['assignee']);
+    if mRoot.Values['milestone'] is TJSONObject then
+      ADetails.Sprint := Shorten(TextOf(TJSONObject(mRoot.Values['milestone']), 'title'), 60);
+    // Issue-Typen (Bug, Feature …) der Organisation.
+    if mRoot.Values['type'] is TJSONObject then
+      ADetails.Kind := Shorten(TextOf(TJSONObject(mRoot.Values['type']), 'name'), 40);
+    Result := True;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasGitHubTracker.ParseComments(const AJson: string;
+  out AComments: TArray<TAtlasTrackerComment>): Boolean;
+var
+  mValue, mItem: TJSONValue;
+  mComment: TAtlasTrackerComment;
+begin
+  AComments := nil;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    Result := True;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONObject) then
+        Continue;
+      mComment := Default(TAtlasTrackerComment);
+      mComment.Author := LoginOf(TJSONObject(mItem).Values['user']);
+      mComment.Created := TimeOf(TJSONObject(mItem), 'created_at');
+      mComment.Text := Limited(TextOf(TJSONObject(mItem), 'body'));
+      AComments := AComments + [mComment];
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasGitHubTracker.ParseTimeline(const AJson, AProject: string;
+  out ALinks: TArray<TAtlasTrackerLink>): Boolean;
+var
+  mValue, mItem, mSource, mIssue: TJSONValue;
+  mLink: TAtlasTrackerLink;
+  mRepository, mPage: string;
+  mNumber, mIndex: Integer;
+  mKnown: Boolean;
+begin
+  ALinks := nil;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    Result := True;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONObject) or (TextOf(TJSONObject(mItem), 'event') <> 'cross-referenced') then
+        Continue;
+      mSource := TJSONObject(mItem).Values['source'];
+      if not (mSource is TJSONObject) then
+        Continue;
+      mIssue := TJSONObject(mSource).Values['issue'];
+      if not (mIssue is TJSONObject) then
+        Continue;
+      mNumber := IntOf(TJSONObject(mIssue), 'number');
+      if mNumber <= 0 then
+        Continue;
+      mRepository := '';
+      if TJSONObject(mIssue).Values['repository'] is TJSONObject then
+        mRepository := TextOf(TJSONObject(TJSONObject(mIssue).Values['repository']), 'full_name');
+      mLink := Default(TAtlasTrackerLink);
+      mLink.Local := (mRepository = '') or SameText(mRepository, AProject);
+      if mLink.Local then
+        mLink.Key := '#' + IntToStr(mNumber)
+      else
+        mLink.Key := mRepository + '#' + IntToStr(mNumber);
+      mLink.Title := Shorten(TextOf(TJSONObject(mIssue), 'title'), 200);
+      if TJSONObject(mIssue).Values['pull_request'] <> nil then
+        mLink.Relation := 'pull request'
+      else
+        mLink.Relation := 'cross-referenced';
+      // Nur Web-Seiten über https; was nicht im Fenster öffnet, geht in den Browser.
+      mPage := TextOf(TJSONObject(mIssue), 'html_url');
+      if StartsText('https://', mPage) then
+        mLink.Page := mPage;
+      mKnown := False;
+      for mIndex := 0 to High(ALinks) do
+        if SameText(ALinks[mIndex].Key, mLink.Key) then
+          mKnown := True;
+      if not mKnown and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks) then
+        ALinks := ALinks + [mLink];
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasGitHubTracker.FileAttachments(
+  const ADetails: TAtlasTrackerDetails): TArray<TAtlasTrackerAttachment>;
+var
+  mTexts: TArray<string>;
+  mText: string;
+  mComment: TAtlasTrackerComment;
+  mLink: TAtlasMarkdownLink;
+  mAttachment: TAtlasTrackerAttachment;
+  mIndex: Integer;
+  mKnown: Boolean;
+begin
+  Result := nil;
+  mTexts := TArray<string>.Create(ADetails.Description);
+  for mComment in ADetails.Comments do
+    mTexts := mTexts + [mComment.Text];
+  for mText in mTexts do
+    for mLink in TAtlasTrackerMarkdown.Links(mText) do
+    begin
+      if not StartsText('https://', mLink.Url) or (Pos('/user-attachments/files/', mLink.Url) = 0) then
+        Continue;
+      mKnown := False;
+      for mIndex := 0 to High(Result) do
+        if Result[mIndex].Url = mLink.Url then
+          mKnown := True;
+      if mKnown or (Length(Result) >= TAtlasTrackerDetails.MaxAttachments) then
+        Continue;
+      mAttachment := Default(TAtlasTrackerAttachment);
+      mAttachment.Name := Shorten(mLink.Text, 200);
+      if mAttachment.Name = '' then
+        mAttachment.Name := Copy(mLink.Url, LastDelimiter('/', mLink.Url) + 1, 200);
+      mAttachment.Size := -1;
+      mAttachment.Url := mLink.Url;
+      mAttachment.External := True;
+      Result := Result + [mAttachment];
+    end;
 end;
 
 function TAtlasGitHubTracker.Name: string;
@@ -544,6 +805,69 @@ begin
   Result := ApiBase(ATarget);
   if Result <> '' then
     Result := Result + '/user';
+end;
+
+function TAtlasGitHubTracker.Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mWatch: TStopwatch;
+  mUrl, mText: string;
+  mStatus, mCount, mPage: Integer;
+  mIgnored: TAtlasCiFetchError;
+  mComments, mOlder: TArray<TAtlasTrackerComment>;
+  mLinks: TArray<TAtlasTrackerLink>;
+begin
+  ADetails := TAtlasTrackerDetails.Empty;
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mUrl := IssueApiUrl(ATarget, AKey);
+  if (mUrl = '') or (ATransport = nil) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  mWatch := TStopwatch.StartNew;
+  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParseDetails(mText, ADetails, mCount) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  ADetails.Page := IssuePage(ATarget, ADetails.Key);
+  Result := True;
+  // Kommentare und Verweise in der restlichen Zeit; was fehlt, bleibt leer.
+  ADetails.CommentsLoaded := AComments;
+  if AComments and (mCount > 0) and (Remaining(mWatch, ATimeoutMs) > 0) then
+  begin
+    // Die neuesten: letzte Seite, bei Bedarf die davor.
+    mPage := (mCount + MaxPageSize - 1) div MaxPageSize;
+    if ATransport.Get(mUrl + '/comments?per_page=' + IntToStr(MaxPageSize) + '&page=' + IntToStr(mPage),
+      Remaining(mWatch, ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and
+      ParseComments(mText, mComments) then
+    begin
+      if (mPage > 1) and (Length(mComments) < TAtlasTrackerDetails.MaxComments) and
+        (Remaining(mWatch, ATimeoutMs) > 0) and ATransport.Get(mUrl + '/comments?per_page=' +
+        IntToStr(MaxPageSize) + '&page=' + IntToStr(mPage - 1), Remaining(mWatch, ATimeoutMs), mStatus, mText,
+        mIgnored) and (mStatus = 200) and ParseComments(mText, mOlder) then
+        mComments := mOlder + mComments;
+      if Length(mComments) > TAtlasTrackerDetails.MaxComments then
+        mComments := Copy(mComments, Length(mComments) - TAtlasTrackerDetails.MaxComments,
+          TAtlasTrackerDetails.MaxComments);
+      ADetails.Comments := mComments;
+    end;
+  end;
+  if (Remaining(mWatch, ATimeoutMs) > 0) and ATransport.Get(mUrl + '/timeline?per_page=' + IntToStr(MaxPageSize),
+    Remaining(mWatch, ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and
+    ParseTimeline(mText, ATarget.Project, mLinks) then
+    ADetails.Links := mLinks;
+  ADetails.Attachments := FileAttachments(ADetails);
 end;
 
 end.
