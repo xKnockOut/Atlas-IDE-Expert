@@ -132,8 +132,8 @@ type
     FQueued: TDictionary<string, Boolean>;
     // Projektdateien des letzten Start; Affected stellt nur diese ein.
     FProject: TDictionary<string, Boolean>;
-    // Gespeicherte Befunde je Uri.
-    FReports: TObjectDictionary<string, TJSONArray>;
+    // Gespeicherte Befunde je Uri, kompakt als JSON-Text (#1237).
+    FReports: TDictionary<string, TBytes>;
     FIds: TDictionary<string, string>;
     FStamps: TDictionary<string, Int64>;
     FSession: Integer;
@@ -221,9 +221,17 @@ implementation
 uses
   Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Documents.TextDocument;
+  Atlas.Common.Documents.TextDocument,
+  Atlas.Common.Lsp.CompactJson;
 
 type
+  /// <summary>Gespeicherter Befund, den Collect ausliefern will.</summary>
+  TCollected = record
+    Uri: string;
+    Id: string;
+    Items: TBytes;
+  end;
+
   /// <summary>Frist der Datei abgelaufen (#1220): Die Datei kommt ans Ende der Schlange.</summary>
   EWorkspaceCheckDeadline = class(Exception);
   /// <summary>Der Benutzer tippt, eine Pause beginnt oder der Server endet: Die Datei kommt wieder vorn hin.
@@ -336,7 +344,7 @@ begin
   FQueue := TList<TEntry>.Create;
   FQueued := TDictionary<string, Boolean>.Create;
   FProject := TDictionary<string, Boolean>.Create;
-  FReports := TObjectDictionary<string, TJSONArray>.Create([doOwnsValues]);
+  FReports := TDictionary<string, TBytes>.Create;
   FIds := TDictionary<string, string>.Create;
   FStamps := TDictionary<string, Int64>.Create;
   FPauses := TDictionary<string, Int64>.Create;
@@ -761,17 +769,22 @@ begin
 end;
 
 procedure TLspWorkspaceCheck.Store(const AUri: string; AStamp: Int64; AItems: TJSONArray; AFailed: Boolean);
+var
+  mPacked: TBytes;
 begin
+  // Außerhalb der Sperre packen; der Baum wird danach nicht mehr gebraucht.
+  try
+    mPacked := TCompactJson.Pack(AItems);
+  finally
+    AItems.Free;
+  end;
   TMonitor.Enter(FLock);
   try
     FCurrent := '';
     if FStopping then
-    begin
-      AItems.Free;
       Exit;
-    end;
     Inc(FSerial);
-    FReports.AddOrSetValue(AUri, AItems);
+    FReports.AddOrSetValue(AUri, mPacked);
     FIds.AddOrSetValue(AUri, Format('w%d.%d:t%d', [FSession, FSerial, AStamp]));
     FStamps.AddOrSetValue(AUri, AStamp);
     Inc(FComputed);
@@ -869,41 +882,43 @@ function TLspWorkspaceCheck.Collect(const APrevious: TDictionary<string, string>
 var
   mPair: TPair<string, string>;
   mKnown: string;
-  mItems: TJSONArray;
+  mCandidate: TCollected;
+  mCandidates: TList<TCollected>;
   mReport: TJSONObject;
-  mCandidates: TList<TJSONObject>;
-  mUri: string;
 begin
   Result := TJSONArray.Create;
-  mCandidates := TList<TJSONObject>.Create;
+  mCandidates := TList<TCollected>.Create;
   try
+    // Unter der Sperre nur die gepackten Befunde einsammeln (Referenzen, keine Kopien).
     TMonitor.Enter(FLock);
     try
       for mPair in FIds do
       begin
         if APrevious.TryGetValue(mPair.Key, mKnown) and (mKnown = mPair.Value) then
           Continue;
-        if not FReports.TryGetValue(mPair.Key, mItems) then
+        if not FReports.TryGetValue(mPair.Key, mCandidate.Items) then
           Continue;
-        mReport := TJSONObject.Create;
-        mReport.AddPair('uri', mPair.Key);
-        mReport.AddPair('version', TJSONNull.Create);
-        mReport.AddPair('kind', 'full');
-        mReport.AddPair('resultId', mPair.Value);
-        mReport.AddPair('items', mItems.Clone as TJSONArray);
-        mCandidates.Add(mReport);
+        mCandidate.Uri := mPair.Key;
+        mCandidate.Id := mPair.Value;
+        mCandidates.Add(mCandidate);
       end;
     finally
       TMonitor.Exit(FLock);
     end;
-    // Außerhalb der Sperre: Der Dokumentspeicher sperrt selbst.
-    for mReport in mCandidates do
+    // Außerhalb der Sperre: Der Dokumentspeicher sperrt selbst. Entpackt wird nur, was die Antwort enthält.
+    for mCandidate in mCandidates do
     begin
-      mUri := mReport.GetValue<string>('uri');
-      if (Result.Count < AMax) and not (Assigned(FIsOpen) and FIsOpen(mUri)) then
-        Result.AddElement(mReport)
-      else
-        mReport.Free;
+      if Result.Count >= AMax then
+        Break;
+      if Assigned(FIsOpen) and FIsOpen(mCandidate.Uri) then
+        Continue;
+      mReport := TJSONObject.Create;
+      mReport.AddPair('uri', mCandidate.Uri);
+      mReport.AddPair('version', TJSONNull.Create);
+      mReport.AddPair('kind', 'full');
+      mReport.AddPair('resultId', mCandidate.Id);
+      mReport.AddPair('items', TCompactJson.UnpackArray(mCandidate.Items));
+      Result.AddElement(mReport);
     end;
   finally
     mCandidates.Free;
