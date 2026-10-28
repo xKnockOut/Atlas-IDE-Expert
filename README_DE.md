@@ -149,6 +149,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 ### Bauen, Testen, Debuggen
 
 - **Release-Build-Wächter:** prüft vor einem Release-Build die Projektoptionen (DEBUG-Symbol, Debug-Informationen, …)
+- **Beim Öffnen einmal bauen**, sobald die IDE ruhig ist, auf Wunsch immer mit derselben Konfiguration und Zielplattform (etwa Debug/Win64), egal was im Projekt eingestellt ist; danach steht das Projekt wieder wie vorher
 - **DUnitX-Tests** aus dem Editor ausführen und einen einzelnen Test im Debugger starten (Code Lens an `[Test]` und `[TestFixture]`)
 - **Startprofile** für Parameter, Arbeitsordner, Umgebung und Host-Anwendung
 - **Werte im Hover beim Debuggen** (siehe [Verstehen](#verstehen))

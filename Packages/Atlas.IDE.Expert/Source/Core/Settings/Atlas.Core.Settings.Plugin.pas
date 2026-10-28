@@ -372,6 +372,12 @@ type
     /// <summary>Projekte, die beim Öffnen nicht gebaut werden (build.onOpenExclude), Namen ohne Endung, durch
     /// Komma getrennt, z. B. ein in der IDE installiertes Package.</summary>
     BuildOnOpenExclude: string;
+    /// <summary>Konfiguration für den Lauf beim Öffnen (build.onOpenConfig, #1293), z. B. Debug; '' = wie im
+    /// Projekt. Kennt ein Projekt sie nicht, gilt dort die Einstellung des Projekts.</summary>
+    BuildOnOpenConfig: string;
+    /// <summary>Zielplattform für den Lauf beim Öffnen (build.onOpenPlatform, #1293), z. B. Win64; '' = wie im
+    /// Projekt. Ist sie in einem Projekt nicht aktiviert, gilt dort die Einstellung des Projekts.</summary>
+    BuildOnOpenPlatform: string;
     /// <summary>Tastenkürzel im Editor (#399, TShortCut, 0 = keins): Code-Aktionen, Auswahl erweitern und
     /// verkleinern, Gehe zu Implementierung und zu Typdefinition.</summary>
     ActionsKey: Integer;
@@ -1368,6 +1374,8 @@ begin
   Result.BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuildScope.All];
   Result.BuildOnOpenDelayMs := TAtlasOpenBuild.DefaultDelayMs;
   Result.BuildOnOpenExclude := '';
+  Result.BuildOnOpenConfig := '';
+  Result.BuildOnOpenPlatform := '';
   Result.ActionsKey := $800D; // Alt+Enter
   Result.ExpandKey := $4057; // Strg+W
   Result.ShrinkKey := $6057; // Strg+Umschalt+W
@@ -1679,6 +1687,8 @@ begin
   BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuild.ScopeOf(BuildOnOpenScope)];
   BuildOnOpenDelayMs := EnsureRange(BuildOnOpenDelayMs, TAtlasOpenBuild.MinDelayMs, TAtlasOpenBuild.MaxDelayMs);
   BuildOnOpenExclude := TAtlasOpenBuild.NormalizedExclude(BuildOnOpenExclude);
+  BuildOnOpenConfig := Trim(BuildOnOpenConfig);
+  BuildOnOpenPlatform := Trim(BuildOnOpenPlatform);
   // Nach dem Speichern genau eins von beiden: Die Syntaxprüfung der IDE gewinnt.
   if CheckOnSave then
     CompileOnSave := False;
@@ -1974,6 +1984,8 @@ begin
   BuildOnOpenScope := AStore.ReadString('BuildOnOpenScope', Default.BuildOnOpenScope);
   BuildOnOpenDelayMs := AStore.ReadInteger('BuildOnOpenDelayMs', Default.BuildOnOpenDelayMs);
   BuildOnOpenExclude := AStore.ReadString('BuildOnOpenExclude', Default.BuildOnOpenExclude);
+  BuildOnOpenConfig := AStore.ReadString('BuildOnOpenConfig', Default.BuildOnOpenConfig);
+  BuildOnOpenPlatform := AStore.ReadString('BuildOnOpenPlatform', Default.BuildOnOpenPlatform);
   CompileOnSave := AStore.ReadInteger('CompileOnSave', BoolValue(Default.CompileOnSave)) <> 0;
   ActionsKey := AStore.ReadInteger('ActionsKey', Default.ActionsKey);
   ExpandKey := AStore.ReadInteger('ExpandKey', Default.ExpandKey);
@@ -2429,6 +2441,8 @@ begin
   AStore.WriteString('BuildOnOpenScope', BuildOnOpenScope);
   AStore.WriteInteger('BuildOnOpenDelayMs', BuildOnOpenDelayMs);
   AStore.WriteString('BuildOnOpenExclude', BuildOnOpenExclude);
+  AStore.WriteString('BuildOnOpenConfig', BuildOnOpenConfig);
+  AStore.WriteString('BuildOnOpenPlatform', BuildOnOpenPlatform);
   AStore.WriteInteger('CompileOnSave', BoolValue(CompileOnSave));
   AStore.WriteInteger('ActionsKey', ActionsKey);
   AStore.WriteInteger('ExpandKey', ExpandKey);

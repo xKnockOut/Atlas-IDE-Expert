@@ -18,6 +18,11 @@
 //   frei: einmal je Öffnen.
 // - RunStarted/ProjectFinished/ProjectCancelled/RunFinished zählen das
 //   Ergebnis des eigenen Laufs für die Benachrichtigung.
+// - Vorgaben für Konfiguration und Plattform (#1293, build.onOpenConfig,
+//   build.onOpenPlatform): PickTarget wählt je Projekt die Konfiguration in
+//   der Schreibweise des Projekts; fehlt sie dort, bleibt es bei der
+//   Einstellung des Projekts. Die Plattform prüft die IDE-Schicht über die
+//   im Projekt aktivierten Plattformen.
 
 interface
 
@@ -119,6 +124,9 @@ type
     /// </summary>
     class function ParseExclude(const AText: string): TArray<string>; static;
     class function NormalizedExclude(const AText: string): string; static;
+    /// <summary>Vorgabe AWanted (Konfiguration oder Plattform, #1293) in der Schreibweise aus AAvailable; '' ohne
+    /// Vorgabe oder wenn das Projekt sie nicht kennt (dann gilt die Einstellung des Projekts).</summary>
+    class function PickTarget(const AWanted: string; const AAvailable: TArray<string>): string; static;
     property Running: Boolean read FRunning;
     property BuildRunning: Boolean read FBuildRunning;
     property LastOpened: Int64 read FLastOpened;
@@ -255,6 +263,19 @@ end;
 class function TAtlasOpenBuild.NormalizedExclude(const AText: string): string;
 begin
   Result := string.Join(', ', ParseExclude(AText));
+end;
+
+class function TAtlasOpenBuild.PickTarget(const AWanted: string; const AAvailable: TArray<string>): string;
+var
+  Wanted, Name: string;
+begin
+  Result := '';
+  Wanted := Trim(AWanted);
+  if Wanted = '' then
+    Exit;
+  for Name in AAvailable do
+    if SameText(Trim(Name), Wanted) then
+      Exit(Name);
 end;
 
 function TAtlasOpenBuild.PendingIndex(const AFileName: string): Integer;
