@@ -170,6 +170,9 @@ type
     procedure OpenAt(const AProject: string; const ATarget: TAtlasProjectLocation);
     procedure OpenFolder(const AProject: string);
     procedure CreateBranch(const AProject: string);
+    /// <summary>„Arbeitskopien …“ (#1292): Tabelle; danach die Zeile neu abfragen.</summary>
+    procedure ShowWorkingCopies(const AProject: string);
+    function WorkingCopies: Boolean;
     procedure Remove(const AProject: string);
     procedure Shown;
     function Selectable: Boolean;
@@ -197,6 +200,7 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Vcs.Branching,
+  Atlas.IDE.Vcs.WorkingCopies,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Welcome.Search;
 
@@ -902,6 +906,31 @@ begin
             Refresh(mProject);
         end);
     end);
+end;
+
+procedure TAtlasIdeProjects.ShowWorkingCopies(const AProject: string);
+var
+  mKeep: IAtlasProjectsSource;
+  mProject: string;
+begin
+  mKeep := Self;
+  mProject := AProject;
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      TAtlasIdeWorkingCopies.ShowFor(mProject,
+        procedure
+        begin
+          // mKeep hält den Bereich bis hierher; nach dem Beenden nichts mehr abfragen.
+          if (mKeep <> nil) and not FStopped then
+            Refresh(mProject);
+        end);
+    end);
+end;
+
+function TAtlasIdeProjects.WorkingCopies: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.VcsExternalsShow;
 end;
 
 procedure TAtlasIdeProjects.Remove(const AProject: string);

@@ -608,12 +608,15 @@
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnParser.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnLayout.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnExternals.pas"/>
+        <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.WorkingCopies.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Tools.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.ToolCheck.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.ServerCheck.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.BranchPlan.pas"/>
         <DCCReference Include="Source\UI\Vcs\Atlas.UI.Vcs.BranchDialog.pas"/>
+        <DCCReference Include="Source\UI\Vcs\Atlas.UI.Vcs.WorkingCopies.pas"/>
         <DCCReference Include="Source\IDE\Vcs\Atlas.IDE.Vcs.Branching.pas"/>
+        <DCCReference Include="Source\IDE\Vcs\Atlas.IDE.Vcs.WorkingCopies.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Providers.Git.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Providers.Svn.pas"/>
         <DCCReference Include="Source\Core\Vcs\Atlas.Core.Vcs.Providers.Null.pas"/>

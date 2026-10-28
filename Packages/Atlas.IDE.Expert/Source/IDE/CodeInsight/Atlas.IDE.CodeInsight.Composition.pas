@@ -185,6 +185,7 @@ uses
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Welcome.Layouts,
   Atlas.IDE.Vcs.Branching,
+  Atlas.IDE.Vcs.WorkingCopies,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Notes.Gutter,
@@ -1961,6 +1962,29 @@ begin
           if (Welcome <> nil) and (Welcome.Projects <> nil) then
             Welcome.Projects.Refresh(mProject);
         end);
+    end);
+  // Arbeitskopien (#1292): Wurzel, Externals bzw. Submodule des aktiven Projekts; sichtbar mit vcs.externals.show.
+  Add('Atlas.WorkingCopies', TAtlasTextId.VcsWorkingCopiesCommand,
+    procedure
+    var
+      mProject: string;
+    begin
+      mProject := TAtlasIdeProjects.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
+      if mProject = '' then
+      begin
+        TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
+        Exit;
+      end;
+      TAtlasIdeWorkingCopies.ShowFor(mProject,
+        procedure
+        begin
+          if (Welcome <> nil) and (Welcome.Projects <> nil) then
+            Welcome.Projects.Refresh(mProject);
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.VcsExternalsShow;
     end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,

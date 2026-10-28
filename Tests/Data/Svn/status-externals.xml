@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<status>
+<target
+   path=".">
+<entry
+   path="Kasse.dpr">
+<wc-status
+   item="modified"
+   revision="48231"
+   props="none">
+<commit
+   revision="48230">
+<author>eva</author>
+<date>2026-10-27T10:00:00.000000Z</date>
+</commit>
+</wc-status>
+</entry>
+<entry
+   path="Neu.txt">
+<wc-status
+   props="none"
+   item="unversioned">
+</wc-status>
+</entry>
+<entry
+   path="Packages\Basis">
+<wc-status
+   props="none"
+   item="external">
+</wc-status>
+</entry>
+<entry
+   path="Packages\Drucken">
+<wc-status
+   props="none"
+   item="external">
+</wc-status>
+</entry>
+<entry
+   path="Packages\Kunden">
+<wc-status
+   props="none"
+   item="external">
+</wc-status>
+</entry>
+<entry
+   path=".">
+<wc-status
+   item="normal"
+   revision="48231"
+   props="modified">
+</wc-status>
+</entry>
+</target>
+<target
+   path="Packages\Basis">
+</target>
+<target
+   path="Packages\Drucken">
+<entry
+   path="Packages\Drucken\Drucken.pas">
+<wc-status
+   item="modified"
+   revision="48231"
+   props="none">
+</wc-status>
+</entry>
+<entry
+   path="Packages\Drucken\Bon.pas">
+<wc-status
+   item="added"
+   revision="-1"
+   props="none">
+</wc-status>
+</entry>
+<entry
+   path="Packages\Drucken\Lib">
+<wc-status
+   props="none"
+   item="external">
+</wc-status>
+</entry>
+</target>
+<target
+   path="Packages\Kunden">
+</target>
+<target
+   path="Packages\Drucken\Lib">
+<entry
+   path="Packages\Drucken\Lib\Json.pas">
+<wc-status
+   item="conflicted"
+   revision="17"
+   props="none">
+</wc-status>
+</entry>
+</target>
+</status>

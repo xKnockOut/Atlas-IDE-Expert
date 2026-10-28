@@ -10,6 +10,7 @@
 //   Head      status --porcelain=v2 --branch -z --untracked-files=no
 //   Changes   status --porcelain=v2 --branch -z --untracked-files=all
 //   FileAt    show <Revision>:<Pfad>        (Revision '' = HEAD)
+//   SubmoduleStatus submodule status --recursive (#1292, ohne Server)
 //   Blame     blame --porcelain -- <Pfad>
 // Nicht gesicherte Arbeit (IAtlasVcsLocalWork, #762), ohne fetch:
 //   Branches  for-each-ref --format=… refs/heads
@@ -52,7 +53,7 @@ uses
 
 type
   TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate, IAtlasVcsBranching)
+    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSubmodules)
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -103,6 +104,8 @@ type
     function SwitchBranch(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
       overload;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
+    { IAtlasVcsSubmodules }
+    function SubmoduleStatus(out AText: string): TAtlasVcsOutcome;
     /// <summary>Ordner mit den Verwaltungsdaten: ARoot\.git oder das Ziel von "gitdir:"; '' ohne.</summary>
     class function GitDir(const ARoot: string): string; static;
   end;
@@ -583,6 +586,16 @@ function TAtlasGitVersionControl.SwitchBranch(const AName: string;
   const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
 begin
   Result := SwitchBranch(AName);
+end;
+
+function TAtlasGitVersionControl.SubmoduleStatus(out AText: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+begin
+  AText := '';
+  Result := Git(['submodule', 'status', '--recursive'], Output);
+  if Result = TAtlasVcsOutcome.Ok then
+    AText := VcsUtf8(Output);
 end;
 
 function TAtlasGitVersionControl.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;

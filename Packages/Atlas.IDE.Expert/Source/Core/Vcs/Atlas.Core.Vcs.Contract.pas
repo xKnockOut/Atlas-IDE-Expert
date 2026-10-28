@@ -38,6 +38,10 @@
 // aus svn:externals samt Zustand der Arbeitskopie; TAtlasVcsExternalAction
 // sagt, was mit ihr im neuen Branch geschieht (festschreiben, lassen,
 // mitverzweigen); Regeln und Vorgaben stehen in TAtlasVcsSvnBranchOptions.
+// Externals im Alltag (#1292): IAtlasVcsSvnExternals liest den Status samt
+// Externals, aktualisiert mit oder ohne Externals (vcs.externals.update),
+// zählt neue Commits auf dem Server und setzt svn:externals eines Ordners
+// lokal (ohne Commit); IAtlasVcsSubmodules liefert git submodule status.
 
 interface
 
@@ -89,6 +93,9 @@ type
 
   /// <summary>Wann „mitverzweigen“ vorgeschlagen wird (#1291, vcs.externals.suggestBranch).</summary>
   TAtlasVcsExternalSuggest = (Modified, Never, Always);
+
+  /// <summary>Update mit oder ohne Externals (#1292, vcs.externals.update); Ask fragt beim Pull.</summary>
+  TAtlasVcsExternalsUpdate = (WithExternals, WithoutExternals, Ask);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Feste Behandlung je Quelle (#1291, vcs.externals.rules): Source ist ein Präfix einer Repository-URL
@@ -495,6 +502,28 @@ type
     function ToolVersion(out AVersion: string): TAtlasVcsOutcome;
   end;
 
+  /// <summary>Externals im Alltag (#1292), nur SVN. StatusXml und SetExternals ohne Server; Update und
+  /// CommitsSince sprechen mit dem Server: nur aus einem Hintergrund-Thread, mit Zeitlimit.</summary>
+  IAtlasVcsSvnExternals = interface
+    ['{5B8E2F14-7C3A-4D96-A1E0-9F6B2C8D4E71}']
+    /// <summary>Ausgabe von svn status --xml . samt Externals (je External ein eigener target-Abschnitt).
+    /// </summary>
+    function StatusXml(out AText: string): TAtlasVcsOutcome;
+    /// <summary>svn update der Wurzel; AIgnoreExternals mit --ignore-externals (nur diese Arbeitskopie).</summary>
+    function Update(AIgnoreExternals: Boolean): TAtlasVcsOutcome;
+    /// <summary>Commits auf ^/APath nach ARevision bis HEAD (svn log -q --xml -r HEAD:ARevision).</summary>
+    function CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
+    /// <summary>svn:externals des Ordners AOwner (relativ zur Wurzel, '' = Wurzel) auf AText setzen: nur in
+    /// der Arbeitskopie (propset -F), der Commit bleibt beim Nutzer.</summary>
+    function SetExternals(const AOwner, AText: string): TAtlasVcsOutcome;
+  end;
+
+  /// <summary>Git-Submodule (#1292): Ausgabe von git submodule status --recursive (ohne Server).</summary>
+  IAtlasVcsSubmodules = interface
+    ['{2D6A9C47-E1B8-4F35-8C0D-7A4E5B3F9162}']
+    function SubmoduleStatus(out AText: string): TAtlasVcsOutcome;
+  end;
+
   /// <summary>Fehler beim Lesen einer Ausgabe; die Umsetzungen machen daraus Outcome Failed.</summary>
   EAtlasVcsParse = class(Exception);
 
@@ -516,6 +545,9 @@ function AtlasVcsExternalActionOf(const AText: string): TAtlasVcsExternalAction;
 function AtlasVcsExternalActionText(AAction: TAtlasVcsExternalAction): string;
 /// <summary>vcs.externals.suggestBranch (#1291): "never", "always", sonst Modified.</summary>
 function AtlasVcsExternalSuggestOf(const AText: string): TAtlasVcsExternalSuggest;
+
+/// <summary>vcs.externals.update: "without", "ask", sonst WithExternals.</summary>
+function AtlasVcsExternalsUpdateOf(const AText: string): TAtlasVcsExternalsUpdate;
 
 implementation
 
@@ -621,6 +653,16 @@ begin
     Result := TAtlasVcsExternalSuggest.Always
   else
     Result := TAtlasVcsExternalSuggest.Modified;
+end;
+
+function AtlasVcsExternalsUpdateOf(const AText: string): TAtlasVcsExternalsUpdate;
+begin
+  if SameText(Trim(AText), 'without') then
+    Result := TAtlasVcsExternalsUpdate.WithoutExternals
+  else if SameText(Trim(AText), 'ask') then
+    Result := TAtlasVcsExternalsUpdate.Ask
+  else
+    Result := TAtlasVcsExternalsUpdate.WithExternals;
 end;
 
 { TAtlasVcsExternalRule }

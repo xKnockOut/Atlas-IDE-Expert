@@ -423,6 +423,8 @@ type
     procedure OpenAt(const AProject: string; const ATarget: TAtlasProjectLocation);
     procedure OpenFolder(const AProject: string);
     procedure CreateBranch(const AProject: string);
+    procedure ShowWorkingCopies(const AProject: string);
+    function WorkingCopies: Boolean;
     procedure Remove(const AProject: string);
     procedure Shown;
     function Selectable: Boolean;
@@ -431,6 +433,8 @@ type
   public
     /// <summary>Projektverlauf an (#758): Klick wählt.</summary>
     FSelectable: Boolean;
+    /// <summary>vcs.externals.show (#1292).</summary>
+    FWorkingCopies: Boolean;
     FSelected: string;
   end;
 
@@ -535,6 +539,16 @@ end;
 procedure TFakeProjects.CreateBranch(const AProject: string);
 begin
   Calls := Calls + ['branch ' + AProject];
+end;
+
+procedure TFakeProjects.ShowWorkingCopies(const AProject: string);
+begin
+  Calls := Calls + ['copies ' + AProject];
+end;
+
+function TFakeProjects.WorkingCopies: Boolean;
+begin
+  Result := FWorkingCopies;
 end;
 
 procedure TFakeProjects.Remove(const AProject: string);
@@ -1854,9 +1868,10 @@ begin
     Frame.OpenFolderItem.Click;
     Frame.CreateBranchItem.Click;
     Frame.RemoveItem.Click;
+    Frame.WorkingCopiesItem.Click;
     Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
     CheckSynchronize;
-    Assert.AreEqual(6, Integer(Length(Fake.Calls)));
+    Assert.AreEqual(7, Integer(Length(Fake.Calls)));
     Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[0]);
     Assert.AreEqual('openAt C:\P\Zwei.dproj C:\P\Main.pas 12', Fake.Calls[1]);
     Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[2]);
@@ -1864,6 +1879,13 @@ begin
     // „Branch anlegen …“ (#1288) geht an die Quelle; dort öffnet der Dialog.
     Assert.AreEqual('branch C:\P\Zwei.dproj', Fake.Calls[4]);
     Assert.AreEqual('remove C:\P\Zwei.dproj', Fake.Calls[5]);
+    // „Arbeitskopien …“ (#1292) ebenso; sichtbar nur mit vcs.externals.show.
+    Assert.AreEqual('copies C:\P\Zwei.dproj', Fake.Calls[6]);
+    Frame.Menu.OnPopup(Frame.Menu);
+    Assert.IsFalse(Frame.WorkingCopiesItem.Visible);
+    Fake.FWorkingCopies := True;
+    Frame.Menu.OnPopup(Frame.Menu);
+    Assert.IsTrue(Frame.WorkingCopiesItem.Visible);
   finally
     Host.Free;
   end;
@@ -2286,6 +2308,11 @@ begin
     Assert.AreEqual('2 Dateien geändert · seit 3 Std.', TAtlasWelcomeUnsavedFrame.DetailText(Row, NowUtc));
     Assert.AreEqual('Ansehen', TAtlasWelcomeUnsavedFrame.ButtonText(Row.Item));
     Assert.AreEqual('Svn · main', TAtlasWelcomeUnsavedFrame.TitleText(Row));
+    // #1292: Anteile je Arbeitskopie hinter der Summe.
+    Row.Item.Places := [TAtlasUnsavedPlace.Create('', 1), TAtlasUnsavedPlace.Create('Packages/Drucken', 1)];
+    Assert.AreEqual('2 Dateien geändert (Svn 1 · Packages\Drucken 1) · seit 3 Std.',
+      TAtlasWelcomeUnsavedFrame.DetailText(Row, NowUtc));
+    Row.Item.Places := nil;
     Row.Item.Count := 1;
     Row.Item.Modified := 1;
     Assert.AreEqual('1 Datei geändert', TAtlasWelcomeUnsavedFrame.WhatText(Row.Item));
