@@ -54,6 +54,8 @@ type
     [Test]
     procedure UsesNamespacesForShortUnitNames;
     [Test]
+    procedure NamespacesChangeRememberedUnits;
+    [Test]
     procedure LoadsOnlyUnitsMissingFromIndex;
     [Test]
     procedure GivesUpOnExpressions;
@@ -651,6 +653,25 @@ begin
   R := ResolveAt('unit Haupt; interface uses Werkzeuge; implementation procedure P; begin TWerkzeug.Create; end; end.',
     'TWerkzeug');
   Assert.AreEqual('Firma.Werkzeuge', R.UnitName);
+end;
+
+procedure TNameResolverTests.NamespacesChangeRememberedUnits;
+const
+  cSource = 'unit Haupt; interface uses Werkzeuge; implementation procedure P; begin TWerkzeug.Create; end; end.';
+var
+  R: TResolvedSymbol;
+begin
+  // Der Resolver merkt sich die Antwort je Unit-Name (#1342); neue Namespaces gelten trotzdem sofort.
+  R := ResolveAt(cSource, 'TWerkzeug');
+  Assert.IsFalse(R.Found, 'ohne Namespace gibt es keine Unit Werkzeuge');
+  R := ResolveAt(cSource, 'TWerkzeug');
+  Assert.IsFalse(R.Found, 'gemerkt');
+  FResolver.Namespaces := ['Firma'];
+  R := ResolveAt(cSource, 'TWerkzeug');
+  Assert.AreEqual('Firma.Werkzeuge', R.UnitName);
+  FResolver.Namespaces := nil;
+  R := ResolveAt(cSource, 'TWerkzeug');
+  Assert.IsFalse(R.Found, 'Namespace wieder entfernt');
 end;
 
 procedure TNameResolverTests.LoadsOnlyUnitsMissingFromIndex;

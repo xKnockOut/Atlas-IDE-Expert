@@ -8469,6 +8469,15 @@ Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DC
 | TS3 | Unit mit einer Konstanten von 20.000 Elementen öffnen und eine Zeile ändern | Diagnosen kommen nach wenigen Sekunden, kein „Server langsam“ |
 | TS4 | `AtlasServer.exe --check` über HtmlViewer vor und nach dem Branch | Dieselben Befunde, unter 2 min (Linux-Bau: 116 s, **Abnahme**) |
 
+## #1342 Wiederholte Suchen im Prüflauf (Branch `claude/project-thread-zmblrn`)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| WL1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `HasSymbolStopsAtFirstMatch`, `RepeatedQuestionsGiveSameAnswers`, `NamespacesChangeRememberedUnits`, `FirstTokenOfMatchesLinearSearchOnCodeTokens` grün (**Abnahme**) |
+| WL2 | `AtlasServer.exe --check Atlas.groupproj` (oder ein großes eigenes Projekt) vor und nach dem Branch, Befunde als JSON | Dieselben Befunde; Laufzeit deutlich kürzer (Linux-Bau über 1.917 Units: 912 s → 594 s, **Abnahme**: unter 700 s); im Task-Manager weiter ein Kern, Speicherspitze nicht höher |
+| WL3 | In der IDE eine große Unit mit vielen uses-Einträgen öffnen, eine Zeile ändern; danach `uses` um eine fehlende Unit ergänzen und wieder entfernen | Diagnosen kommen schneller als vorher; `uses-unit-not-found` erscheint für die fehlende Unit und verschwindet wieder |
+| WL4 | Code-Aktionen, die Token eines Bereichs suchen: Typalias auflösen, Klasse verschieben, Property aus Accessoren, Datenfluss, Schlüsselwort-Hervorhebung | Verhalten wie vorher |
+
 ## #1328 Compilerregeln nicht strenger als dcc (Branch `claude/project-thread-tr2ksw`)
 
 | Nr. | Schritt | Erwartung |

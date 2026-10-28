@@ -40,6 +40,8 @@ type
     procedure IdentifierAtMatchesLinearSearch;
     [Test]
     procedure FirstTokenFromMatchesLinearSearch;
+    [Test]
+    procedure FirstTokenOfMatchesLinearSearchOnCodeTokens;
   end;
 
 implementation
@@ -496,6 +498,34 @@ begin
   finally
     mTree.Free;
   end;
+end;
+
+procedure TSyntaxTreeTests.FirstTokenOfMatchesLinearSearchOnCodeTokens;
+var
+  mTree: TSyntaxTree;
+  mCode: TArray<TPascalToken>;
+  mOffset, mExpected, mIndex: Integer;
+begin
+  // Auch auf einer Auswahl der Token (nur Code, ohne Kommentare und Direktiven) wie die lineare Suche (#1342).
+  mTree := TPascalParser.Parse(cTokenSource);
+  try
+    mCode := nil;
+    for mIndex := 0 to High(mTree.Tokens) do
+      if not (mTree.Tokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+        mCode := mCode + [mTree.Tokens[mIndex]];
+    Assert.IsTrue(Length(mCode) < Length(mTree.Tokens), 'Quelltext mit Kommentaren');
+    Assert.AreEqual(0, TSyntaxTree.FirstTokenOf(nil, 5), 'leere Liste');
+    for mOffset := -1 to Length(cTokenSource) + 1 do
+    begin
+      mExpected := 0;
+      while (mExpected <= High(mCode)) and (mCode[mExpected].Offset < mOffset) do
+        Inc(mExpected);
+      Assert.AreEqual(mExpected, TSyntaxTree.FirstTokenOf(mCode, mOffset), Format('Offset %d', [mOffset]));
+    end;
+  finally
+    mTree.Free;
+  end;
+  mCode := nil;
 end;
 
 initialization

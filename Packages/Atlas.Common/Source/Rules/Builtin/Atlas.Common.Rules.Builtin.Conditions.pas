@@ -1485,9 +1485,11 @@ end;
 function HasDirectiveBetween(const ATokens: TTokens; AStart, AEnd: Integer): Boolean;
 var
   mToken: TPascalToken;
+  mIndex: Integer;
 begin
-  for mToken in ATokens do
+  for mIndex := TSyntaxTree.FirstTokenOf(ATokens, AStart) to High(ATokens) do
   begin
+    mToken := ATokens[mIndex];
     if mToken.Offset < AStart then
       Continue;
     if mToken.Offset >= AEnd then
@@ -1770,10 +1772,12 @@ var
   function HasConditional(ANode: TSyntaxNode): Boolean;
   var
     mToken: TPascalToken;
+    mIndex: Integer;
     mText: string;
   begin
-    for mToken in AContext.Tree.Tokens do
+    for mIndex := AContext.Tree.FirstTokenFrom(ANode.StartOffset) to High(AContext.Tree.Tokens) do
     begin
+      mToken := AContext.Tree.Tokens[mIndex];
       if mToken.Offset >= ANode.EndOffset then
         Break;
       if (mToken.Offset < ANode.StartOffset) or (mToken.Kind <> TPascalTokenKind.Directive) then

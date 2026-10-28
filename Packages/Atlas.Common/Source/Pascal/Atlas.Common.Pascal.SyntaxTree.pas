@@ -170,6 +170,9 @@ type
     function IsControlCharPart(ATokenIndex: Integer): Boolean;
     /// <summary>Erstes Token mit Offset >= AOffset, binär gesucht; Length(Tokens), wenn es keines gibt.</summary>
     function FirstTokenFrom(AOffset: Integer): Integer;
+    /// <summary>Erstes Token in ATokens (nach Offset sortiert, z. B. Tokens oder nur die Code-Token) mit
+    /// Offset >= AOffset, binär gesucht; Length(ATokens), wenn es keines gibt (#1342).</summary>
+    class function FirstTokenOf(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer; static;
     /// <summary>Bezeichner, auf dem APosition steht oder direkt hinter dem sie steht (Cursor am Wortende); -1 ohne
     /// Bezeichner und für C in ^C (#862). Binär gesucht (#1323).</summary>
     function IdentifierAt(const APosition: TTextPosition): Integer;
@@ -408,15 +411,20 @@ begin
 end;
 
 function TSyntaxTree.FirstTokenFrom(AOffset: Integer): Integer;
+begin
+  Result := FirstTokenOf(FTokens, AOffset);
+end;
+
+class function TSyntaxTree.FirstTokenOf(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
   mLow, mHigh, mMiddle: Integer;
 begin
   mLow := 0;
-  mHigh := Length(FTokens);
+  mHigh := Length(ATokens);
   while mLow < mHigh do
   begin
     mMiddle := (mLow + mHigh) div 2;
-    if FTokens[mMiddle].Offset < AOffset then
+    if ATokens[mMiddle].Offset < AOffset then
       mLow := mMiddle + 1
     else
       mHigh := mMiddle;

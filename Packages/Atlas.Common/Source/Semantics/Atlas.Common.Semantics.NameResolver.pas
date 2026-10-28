@@ -156,6 +156,11 @@ type
       Symbols: TArray<TIndexSymbol>;
       Positions: TArray<Integer>;
     end;
+    /// <summary>Gemerkte Antwort von FindUnit bzw. FindQualifierUnit (#1342).</summary>
+    TUnitAnswer = record
+      Found: Boolean;
+      UnitIndex: TUnitIndex;
+    end;
   private
     FIndex: ISymbolIndex;
     FEnsureUnit: TEnsureUnitFunc;
@@ -195,12 +200,21 @@ type
     FAncestors: TDictionary<string, TResolvedSymbol>;
     // Units, die in diesem Resolver schon nicht gefunden wurden: nicht erneut suchen.
     FMissingUnits: TDictionary<string, Boolean>;
+    // Antworten von FindUnit (Schlüssel Name groß) und FindQualifierUnit (Name, aktuelle Unit, Abschnitt): Jede
+    // Typabfrage schlug sonst alle uses-Units samt Namespace-Varianten neu im Index nach (#1342).
+    FUnitAnswers: TDictionary<string, TUnitAnswer>;
+    FQualifierAnswers: TDictionary<string, TUnitAnswer>;
     // Zeit im Nachladen (EnsureUnit) für das Diagnoselog (#647).
     FEnsureMs: Int64;
     FClassState: Integer;
     FClass: TResolvedSymbol;
     FInferDepth: Integer;
     function FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+    procedure SetNamespaces(const AValue: TArray<string>);
+    /// <summary>FindUnit ohne gemerkte Antworten (außer der eigenen Unit).</summary>
+    function SearchUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+    /// <summary>FindQualifierUnit ohne gemerkte Antworten.</summary>
+    function SearchQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
     /// <summary>Unit als Qualifizierer in einem Ausdruck (A.B.C): nachgeladen nur, wenn sie in uses steht.</summary>
     function FindQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
     function UnitOf(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
@@ -483,7 +497,7 @@ type
     /// </summary>
     class function LooksLikeException(const AName: string): Boolean; static;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
-    property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    property Namespaces: TArray<string> read FNamespaces write SetNamespaces;
     /// <summary>Ist AName der Anfang eines Unit-Namens im Bereich (Atlas in Atlas.Core.Foo.Bar, Winapi in
     /// Winapi.Windows.TextOut)? Nach PinTree bzw. Resolve gültig.</summary>
     function IsUnitPrefix(const AName: string): Boolean;
@@ -838,6 +852,8 @@ end;
 destructor TNameResolver.Destroy;
 begin
   FScopeSeen.Free;
+  FQualifierAnswers.Free;
+  FUnitAnswers.Free;
   FMissingUnits.Free;
   FUnitHelpers.Free;
   FPinCalls.Free;
@@ -847,11 +863,22 @@ begin
   inherited;
 end;
 
+procedure TNameResolver.SetNamespaces(const AValue: TArray<string>);
+begin
+  FNamespaces := AValue;
+  // Die gemerkten Antworten hängen an den Namespaces.
+  if FUnitAnswers <> nil then
+    FUnitAnswers.Clear;
+  if FQualifierAnswers <> nil then
+    FQualifierAnswers.Clear;
+end;
+
 function TNameResolver.FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
 var
-  Namespace, Key: string;
-  Watch: TStopwatch;
+  mKey: string;
+  mAnswer: TUnitAnswer;
 begin
+  // Die eigene Unit zuerst und nie gemerkt: FCurrent wechselt mit PinTree.
   if SameText(AName, FCurrent.UnitName) then
   begin
     AUnit := FCurrent;
@@ -860,6 +887,26 @@ begin
   // Ohne Index (Schnellbefehle in Tests) nur die eigene Unit.
   if FIndex = nil then
     Exit(False);
+  mKey := UpperCase(AName);
+  if FUnitAnswers = nil then
+    FUnitAnswers := TDictionary<string, TUnitAnswer>.Create
+  else if FUnitAnswers.TryGetValue(mKey, mAnswer) then
+  begin
+    AUnit := mAnswer.UnitIndex;
+    Exit(mAnswer.Found);
+  end;
+  mAnswer.Found := SearchUnit(AName, mAnswer.UnitIndex);
+  FUnitAnswers.Add(mKey, mAnswer);
+  AUnit := mAnswer.UnitIndex;
+  Result := mAnswer.Found;
+end;
+
+function TNameResolver.SearchUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+var
+  Namespace, Key: string;
+  Watch: TStopwatch;
+begin
+  AUnit := Default(TUnitIndex);
   if FIndex.FindUnit(AName, AUnit) then
     Exit(True);
   // Erst alle Schreibweisen im Index (uses SysUtils mit Namespace System → System.SysUtils), dann
@@ -900,8 +947,35 @@ end;
 
 function TNameResolver.FindQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
 var
+  mKey: string;
+  mAnswer: TUnitAnswer;
+begin
+  // Die eigene Unit nie gemerkt (wie in FindUnit); sonst hängt die Antwort an der aktuellen Unit und am Abschnitt
+  // (uses von interface bzw. implementation).
+  if SameText(AName, FCurrent.UnitName) then
+  begin
+    AUnit := FCurrent;
+    Exit(True);
+  end;
+  mKey := UpperCase(AName) + '|' + FCurrent.FileName + '|' + FCurrent.UnitName + '|' + BoolToStr(FInImplementation);
+  if FQualifierAnswers = nil then
+    FQualifierAnswers := TDictionary<string, TUnitAnswer>.Create
+  else if FQualifierAnswers.TryGetValue(mKey, mAnswer) then
+  begin
+    AUnit := mAnswer.UnitIndex;
+    Exit(mAnswer.Found);
+  end;
+  mAnswer.Found := SearchQualifierUnit(AName, mAnswer.UnitIndex);
+  FQualifierAnswers.Add(mKey, mAnswer);
+  AUnit := mAnswer.UnitIndex;
+  Result := mAnswer.Found;
+end;
+
+function TNameResolver.SearchQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+var
   Used, Namespace: string;
 begin
+  AUnit := Default(TUnitIndex);
   // Jeder Ausdruck wie Form1.Edit1.Text prüft, ob ein Präfix eine Unit ist. Nachladen durchsucht die
   // Suchpfade aller Projekte; das lohnt nur für Units aus uses, alle anderen nur aus dem Index (#647).
   for Used in ScopeUnits(FCurrent, FInImplementation) do

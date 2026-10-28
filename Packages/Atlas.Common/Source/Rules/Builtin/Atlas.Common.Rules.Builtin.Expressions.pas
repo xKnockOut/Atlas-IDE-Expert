@@ -1431,7 +1431,7 @@ var
   var
     Index: Integer;
   begin
-    for Index := 0 to High(Tokens) do
+    for Index := TSyntaxTree.FirstTokenOf(Tokens, ADivision[0].EndOffset) to High(Tokens) do
       if (Tokens[Index].Offset >= ADivision[0].EndOffset) and (Tokens[Index].Offset < ADivision[1].StartOffset) and
         Tokens[Index].IsKeyword('div') then
       begin

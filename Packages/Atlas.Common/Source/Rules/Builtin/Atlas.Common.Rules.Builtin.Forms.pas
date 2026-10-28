@@ -380,11 +380,20 @@ var
   end;
 
   function CodeAt(AOffset: Integer): Integer;
+  var
+    mHigh, mMiddle: Integer;
   begin
-    for Result := 0 to High(Code) do
-      if Token(Result).Offset >= AOffset then
-        Exit;
-    Result := Length(Code);
+    // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
+    Result := 0;
+    mHigh := Length(Code);
+    while Result < mHigh do
+    begin
+      mMiddle := (Result + mHigh) div 2;
+      if Tokens[Code[mMiddle]].Offset < AOffset then
+        Result := mMiddle + 1
+      else
+        mHigh := mMiddle;
+    end;
   end;
 
   function FindCall(const AVariable: string; out ACall: TCreateFormCall): Boolean;
@@ -679,6 +688,7 @@ var
   Parent, ClassName, LineBreak: string;
   Event, Ancestor: TFormEvent;
   Token, NameToken, BeginToken: TPascalToken;
+  mIndex: Integer;
   HasInherited, HasName, HasBegin: Boolean;
   Fixes: TArray<TRuleFix>;
 begin
@@ -721,8 +731,9 @@ begin
     HasBegin := False;
     NameToken := Default(TPascalToken);
     BeginToken := Default(TPascalToken);
-    for Token in AContext.Tree.Tokens do
+    for mIndex := AContext.Tree.FirstTokenFrom(Routine.StartOffset) to High(AContext.Tree.Tokens) do
     begin
+      Token := AContext.Tree.Tokens[mIndex];
       if (Token.Offset < Routine.StartOffset) or (Token.Offset >= Routine.EndOffset) or
         (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
         Continue;

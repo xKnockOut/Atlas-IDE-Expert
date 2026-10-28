@@ -886,7 +886,7 @@ begin
     raise Fail(Format('Zum Parameter %s fehlt die Routine.', [ASymbol.Name]));
   // Name der Routine: letzter Bezeichner vor "(".
   NameToken := -1;
-  for Index := 0 to High(Tokens) do
+  for Index := TSyntaxTree.FirstTokenOf(Tokens, Header.StartOffset) to High(Tokens) do
   begin
     if Tokens[Index].Offset < Header.StartOffset then
       Continue;
