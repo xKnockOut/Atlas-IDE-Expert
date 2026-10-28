@@ -2921,6 +2921,21 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | NTB9 | Zwei weitere Units mit Tabellen über TOrderState und eine `case` ohne else, dritte Unit mit eigenem gleichnamigem Typ; auf dem Typ „Tabellen von TOrderState nachziehen“ | Vorschau listet jede Tabelle und die case-Anweisung „Datei, Zeile n: …“, geschätzte Stellen als Warnung; nach Übernahme übersetzt das Projekt, die dritte Unit bleibt unverändert |
 | NTB10 | `refactoring.enumTables` aus | Keine der Aktionen auf Typ und Tabelle; die Regel `constant-initializer-mismatch` meldet weiter |
 
+## Überladung anlegen (#674)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OVL1 | `procedure Write(const AText: string; ALevel: TLogLevel);` in einer Klasse, Cursor auf `Write` in der Deklaration, Strg+. | „Überladung anlegen (als Weiterleitung)“ und „Überladung anlegen (Kopie)“; dasselbe auf dem Kopf der Implementierung |
+| OVL2 | „Überladung anlegen (Kopie)“ | Hinter der Deklaration die Kopie mit `overload`, das Original bekommt `overload`; hinter der Implementierung die Kopie des Rumpfs samt `var`-Abschnitt; die Parameterliste der Kopie ist markiert |
+| OVL3 | In OVL2 `; ALevel: TLogLevel` löschen, Tab, Tab | Die Parameterliste der Implementierung ändert sich mit; Tab markiert den Rumpf, der zweite Tab beendet hinter dem `end;` der Kopie; Strg+Z nimmt alles in einem Schritt zurück; übersetzt nach dem Anpassen |
+| OVL4 | „Überladung anlegen (als Weiterleitung)“ auf OVL1, `TLogLevel = (llInfo, llWarning)` | `procedure Write(const AText: string); overload;` und `begin Write(AText, llInfo); end;`; Tab springt auf `llInfo`; übersetzt |
+| OVL5 | Weiterleitung auf `function Make(A: Integer; ASink: TSink): TLog;` | Rumpf `Result := Make(A, nil);`; übersetzt |
+| OVL6 | Original ist `override` | Kopie und Weiterleitung ohne `override`; Meldungsansicht: „Hinweis: Die neue Überladung von … ist nicht virtuell …“ |
+| OVL7 | Original mit `///`-Kommentar und zwei `<param>` | Kopie mit dem ganzen Kommentar; Weiterleitung ohne den `<param>` des weggelassenen Parameters |
+| OVL8 | Freie Routine nur im implementation-Teil mit `inline;`, Kopie | `function Sum(A, B: Integer): Integer; overload; inline;` zweimal hintereinander mit Rumpf; mit Deklaration im interface beide Köpfe dort; übersetzt |
+| OVL9 | Destruktor, Routine ohne Parameter (Weiterleitung), letzter Parameter `var`, kürzere Überladung gibt es schon | Aktionen abgeschaltet mit Grund in der Glühbirne |
+| OVL10 | `refactoring.overloads` aus | Keine der beiden Aktionen; über atlas.server.createOverload ein Fehler mit Grund |
+
 ## Typ-Alias einführen und auflösen (#681)
 
 | Nr. | Schritte | Erwartet |
