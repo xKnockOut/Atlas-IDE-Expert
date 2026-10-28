@@ -6,7 +6,8 @@
 //   Atlas.Core.Ci.Providers.Jenkins). Weitere Anbieter (GitHub Actions,
 //   GitLab CI, TeamCity) kommen als eigene Umsetzung dazu, ohne dass sich der
 //   Bereich ändert; die Komposition wählt sie über TAtlasCiJob.Provider.
-// - IAtlasCiTransport: ein GET mit Zeitlimit. Die echte Umsetzung
+// - IAtlasCiTransport: ein GET mit Zeitlimit (schreibend: IAtlasCiPost,
+//   #1279). Die echte Umsetzung
 //   (Atlas.Core.Ci.Adapters.Http) sendet Benutzer und Token aus dem
 //   Anmeldespeicher von Windows (Atlas.Core.Ci.Adapters.Credentials); Tests
 //   setzen eine Fassung mit festen Antworten ein.
@@ -120,6 +121,18 @@ type
   IAtlasCiCancel = interface
     ['{9C4F2A71-6D3B-4E58-B1A7-3E0D5C8F9A24}']
     procedure Cancel;
+  end;
+
+  /// <summary>Schreibende Anfrage (#1279: Unteraufgabe anlegen, Issues verknüpfen) über denselben Transport. Nur
+  /// mit Anmeldung, also nur über https beim eingetragenen Server; eine Weiterleitung gilt als Fehler, damit der
+  /// Inhalt nie an ein anderes Ziel geht.</summary>
+  IAtlasCiPost = interface
+    ['{2D7A4C19-8E35-4B6F-A1D0-5C9E3F7B8A42}']
+    /// <summary>POST von ABody (JSON) an AUrl mit höchstens ATimeoutMs. True, wenn eine Antwort kam (auch 4xx);
+    /// AStatus ist der HTTP-Status, AText der Inhalt. False ohne Antwort mit AError (Unauthorized ohne Token bzw.
+    /// ohne https beim eingetragenen Server).</summary>
+    function Post(const AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
+      out AError: TAtlasCiFetchError): Boolean;
   end;
 
   IAtlasCiProvider = interface

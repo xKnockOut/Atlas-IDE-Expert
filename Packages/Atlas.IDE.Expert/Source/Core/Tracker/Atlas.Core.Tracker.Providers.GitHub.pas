@@ -25,6 +25,18 @@
 //   Anhangsliste: Dateien (/user-attachments/files/…) aus Beschreibung und
 //   Kommentaren gelten als Anhänge und öffnen im Browser, weil das Token nur
 //   an die API geht.
+// - Verknüpfungen (#1279): …/sub_issues (Unteraufgaben),
+//   …/dependencies/blocked_by (hängt ab von) und …/dependencies/blocking
+//   (blockiert); abgefragt nur, wenn sub_issues_summary bzw.
+//   issue_dependencies_summary des Issues Einträge melden (fehlen die
+//   Zusammenfassungen, wird gefragt; 404 heißt: kennt der Server nicht). Ohne
+//   „blocked by“ gelten Erwähnungen wie „depends on #12“ oder „Benötigt: #12“
+//   im Text (TAtlasTrackerLinks.TextDependencies); deren Zustand liest
+//   …/issues/<n>, höchstens TAtlasTrackerLinks.MaxTextDependencies.
+// - Unteraufgabe anlegen (#1279): POST /repos/<owner/repo>/issues, dann
+//   POST …/issues/<Eltern>/sub_issues mit {"sub_issue_id": <id>};
+//   Verknüpfen: POST …/issues/<n>/dependencies/blocked_by mit
+//   {"issue_id": <id>} (die interne ID aus …/issues/<m>).
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -32,6 +44,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Diagnostics,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract;
 
@@ -46,7 +59,14 @@ type
     Sha: string;
   end;
 
-  TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider)
+  /// <summary>Zusammenfassungen der Verknüpfungen eines Issues (#1279); -1 = unbekannt (ältere Server).</summary>
+  TAtlasGitHubLinkSummary = record
+    SubIssues: Integer;
+    BlockedBy: Integer;
+    Blocking: Integer;
+  end;
+
+  TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerLinkWriter)
   public const
     ProviderName = 'github';
     Query = 'assignee:@me state:open';
@@ -57,6 +77,12 @@ type
     MaxPulls = 50;
     /// <summary>Einträge je Seite für Kommentare und Zeitleiste (#1264).</summary>
     MaxPageSize = 100;
+  private
+    /// <summary>Verknüpfungen (#1279) in der restlichen Zeit: Unteraufgaben, „blocked by“, „blocking“, sonst
+    /// Abhängigkeiten aus dem Text.</summary>
+    procedure LoadRelations(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      const AUrl: string; const ASummary: TAtlasGitHubLinkSummary; const AWatch: TStopwatch; ATimeoutMs: Integer;
+      var ADetails: TAtlasTrackerDetails);
   public
     /// <summary>Basis der REST-API ohne „/“ am Ende; '' ohne Server.</summary>
     class function ApiBase(const ATarget: TAtlasTrackerTarget): string; static;
@@ -93,6 +119,21 @@ type
       static;
     /// <summary>Dateien in Beschreibung und Kommentaren als Anhänge (im Browser).</summary>
     class function FileAttachments(const ADetails: TAtlasTrackerDetails): TArray<TAtlasTrackerAttachment>; static;
+    /// <summary>sub_issues_summary und issue_dependencies_summary aus /issues/<n> (#1279).</summary>
+    class function ParseLinkSummary(const AJson: string): TAtlasGitHubLinkSummary; static;
+    /// <summary>Liste von Issues (…/sub_issues, …/dependencies/…) als Verknüpfungen der Art AKind; AProject
+    /// entscheidet, was im Fenster öffnet. False bei ungültigem JSON.</summary>
+    class function ParseRelated(const AJson, AProject: string; AKind: TAtlasTrackerLinkKind;
+      out ALinks: TArray<TAtlasTrackerLink>): Boolean; static;
+    /// <summary>ANew in ALinks übernehmen: eine Erwähnung desselben Issues wird durch die genauere Art ersetzt,
+    /// dieselbe Art nicht doppelt; höchstens TAtlasTrackerDetails.MaxLinks.</summary>
+    class procedure MergeLinks(var ALinks: TArray<TAtlasTrackerLink>; const ANew: TArray<TAtlasTrackerLink>); static;
+    /// <summary>Interne ID ("id") aus /issues/<n> bzw. der Antwort beim Anlegen; 0 ohne.</summary>
+    class function ParseIssueId(const AJson: string): Int64; static;
+    /// <summary>Inhalt für POST /issues.</summary>
+    class function NewIssueBody(const ATitle, ADescription: string): string; static;
+    /// <summary>Inhalt {"<AName>": AId} für sub_issues bzw. blocked_by.</summary>
+    class function IdBody(const AName: string; AId: Int64): string; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -106,6 +147,13 @@ type
     function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
       out AError: TAtlasCiFetchError): Boolean;
+    { IAtlasTrackerLinkWriter }
+    function CreateSubtask(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      const AParentKey, ATitle, ADescription: string; ATimeoutMs: Integer; out AKey: string;
+      out AError: TAtlasCiFetchError): Boolean;
+    function AddLink(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      AKind: TAtlasTrackerLinkKind; const AOtherKey: string; ATimeoutMs: Integer;
+      out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -113,11 +161,11 @@ implementation
 uses
   System.Classes,
   System.DateUtils,
-  System.Diagnostics,
   System.Generics.Collections,
   System.JSON,
   System.StrUtils,
   Atlas.Text.Uris,
+  Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Naming;
 
@@ -627,9 +675,19 @@ begin
         mLink.Key := mRepository + '#' + IntToStr(mNumber);
       mLink.Title := Shorten(TextOf(TJSONObject(mIssue), 'title'), 200);
       if TJSONObject(mIssue).Values['pull_request'] <> nil then
-        mLink.Relation := 'pull request'
+      begin
+        mLink.Relation := 'pull request';
+        mLink.Kind := TAtlasTrackerLinkKind.PullRequest;
+      end
       else
+      begin
         mLink.Relation := 'cross-referenced';
+        mLink.Kind := TAtlasTrackerLinkKind.Mentioned;
+      end;
+      // Zustand (#1279) steht im Eintrag.
+      mLink.State := TextOf(TJSONObject(mIssue), 'state');
+      mLink.StateKnown := mLink.State <> '';
+      mLink.Resolved := SameText(mLink.State, 'closed');
       // Nur Web-Seiten über https; was nicht im Fenster öffnet, geht in den Browser.
       mPage := TextOf(TJSONObject(mIssue), 'html_url');
       if StartsText('https://', mPage) then
@@ -817,6 +875,7 @@ var
   mIgnored: TAtlasCiFetchError;
   mComments, mOlder: TArray<TAtlasTrackerComment>;
   mLinks: TArray<TAtlasTrackerLink>;
+  mSummary: TAtlasGitHubLinkSummary;
 begin
   ADetails := TAtlasTrackerDetails.Empty;
   AError := TAtlasCiFetchError.None;
@@ -840,6 +899,7 @@ begin
     AError := TAtlasCiFetchError.Invalid;
     Exit;
   end;
+  mSummary := ParseLinkSummary(mText);
   ADetails.Page := IssuePage(ATarget, ADetails.Key);
   Result := True;
   // Kommentare und Verweise in der restlichen Zeit; was fehlt, bleibt leer.
@@ -867,7 +927,373 @@ begin
     Remaining(mWatch, ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and
     ParseTimeline(mText, ATarget.Project, mLinks) then
     ADetails.Links := mLinks;
+  LoadRelations(ATarget, ATransport, mUrl, mSummary, mWatch, ATimeoutMs, ADetails);
   ADetails.Attachments := FileAttachments(ADetails);
+end;
+
+{ Verknüpfungen (#1279) }
+
+function SummaryCount(ARoot: TJSONObject; const AObject, AName: string): Integer;
+var
+  mValue: TJSONValue;
+  mNumber: Int64;
+begin
+  Result := -1;
+  mValue := ARoot.Values[AObject];
+  if not (mValue is TJSONObject) then
+    Exit;
+  mValue := TJSONObject(mValue).Values[AName];
+  if (mValue is TJSONNumber) and TryStrToInt64(TJSONNumber(mValue).Value, mNumber) and (mNumber >= 0) and
+    (mNumber <= MaxInt) then
+    Result := Integer(mNumber);
+end;
+
+class function TAtlasGitHubTracker.ParseLinkSummary(const AJson: string): TAtlasGitHubLinkSummary;
+var
+  mValue: TJSONValue;
+begin
+  Result.SubIssues := -1;
+  Result.BlockedBy := -1;
+  Result.Blocking := -1;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONObject) then
+      Exit;
+    Result.SubIssues := SummaryCount(TJSONObject(mValue), 'sub_issues_summary', 'total');
+    Result.BlockedBy := SummaryCount(TJSONObject(mValue), 'issue_dependencies_summary', 'total_blocked_by');
+    Result.Blocking := SummaryCount(TJSONObject(mValue), 'issue_dependencies_summary', 'total_blocking');
+  finally
+    mValue.Free;
+  end;
+end;
+
+/// <summary>"owner/repo" eines Issues aus repository_url (…/repos/owner/repo); '' ohne.</summary>
+function RepositoryOf(AIssue: TJSONObject): string;
+var
+  mUrl: string;
+  mAt: Integer;
+begin
+  Result := '';
+  mUrl := TextOf(AIssue, 'repository_url');
+  mAt := Pos('/repos/', mUrl);
+  if mAt > 0 then
+    Result := Copy(mUrl, mAt + Length('/repos/'), MaxInt);
+end;
+
+class function TAtlasGitHubTracker.ParseRelated(const AJson, AProject: string; AKind: TAtlasTrackerLinkKind;
+  out ALinks: TArray<TAtlasTrackerLink>): Boolean;
+const
+  Relations: array[TAtlasTrackerLinkKind] of string = ('', 'blocked by', 'blocking', 'sub-issue', 'parent', '', '',
+    '', 'cross-referenced', 'pull request');
+var
+  mValue, mItem: TJSONValue;
+  mIssue: TJSONObject;
+  mLink: TAtlasTrackerLink;
+  mNumber: Integer;
+  mRepository, mPage: string;
+begin
+  ALinks := nil;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    Result := True;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONObject) or (Length(ALinks) >= TAtlasTrackerDetails.MaxLinks) then
+        Continue;
+      mIssue := TJSONObject(mItem);
+      mNumber := IntOf(mIssue, 'number');
+      if mNumber <= 0 then
+        Continue;
+      mRepository := RepositoryOf(mIssue);
+      mLink := Default(TAtlasTrackerLink);
+      mLink.Local := (mRepository = '') or SameText(mRepository, AProject);
+      if mLink.Local then
+        mLink.Key := '#' + IntToStr(mNumber)
+      else
+        mLink.Key := mRepository + '#' + IntToStr(mNumber);
+      mLink.Title := Shorten(TextOf(mIssue, 'title'), 200);
+      mLink.Kind := AKind;
+      mLink.Relation := Relations[AKind];
+      mLink.State := TextOf(mIssue, 'state');
+      mLink.StateKnown := mLink.State <> '';
+      mLink.Resolved := SameText(mLink.State, 'closed');
+      mPage := TextOf(mIssue, 'html_url');
+      if StartsText('https://', mPage) then
+        mLink.Page := mPage;
+      ALinks := ALinks + [mLink];
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class procedure TAtlasGitHubTracker.MergeLinks(var ALinks: TArray<TAtlasTrackerLink>;
+  const ANew: TArray<TAtlasTrackerLink>);
+var
+  mLink: TAtlasTrackerLink;
+  mIndex: Integer;
+  mDone: Boolean;
+begin
+  for mLink in ANew do
+  begin
+    mDone := False;
+    for mIndex := 0 to High(ALinks) do
+      if SameText(ALinks[mIndex].Key, mLink.Key) then
+      begin
+        if ALinks[mIndex].Kind = mLink.Kind then
+          mDone := True
+        // Die Erwähnung desselben Issues weicht der genaueren Art.
+        else if ALinks[mIndex].Kind in [TAtlasTrackerLinkKind.Mentioned, TAtlasTrackerLinkKind.Other] then
+        begin
+          ALinks[mIndex] := mLink;
+          mDone := True;
+        end;
+        if mDone then
+          Break;
+      end;
+    if not mDone and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks) then
+      ALinks := ALinks + [mLink];
+  end;
+end;
+
+class function TAtlasGitHubTracker.ParseIssueId(const AJson: string): Int64;
+var
+  mValue, mId: TJSONValue;
+begin
+  Result := 0;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONObject) then
+      Exit;
+    mId := TJSONObject(mValue).Values['id'];
+    if not (mId is TJSONNumber) or not TryStrToInt64(TJSONNumber(mId).Value, Result) or (Result < 0) then
+      Result := 0;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasGitHubTracker.NewIssueBody(const ATitle, ADescription: string): string;
+var
+  mRoot: TJSONObject;
+begin
+  mRoot := TJSONObject.Create;
+  try
+    mRoot.AddPair('title', Trim(ATitle));
+    if Trim(ADescription) <> '' then
+      mRoot.AddPair('body', ADescription);
+    Result := mRoot.ToJSON;
+  finally
+    mRoot.Free;
+  end;
+end;
+
+class function TAtlasGitHubTracker.IdBody(const AName: string; AId: Int64): string;
+var
+  mRoot: TJSONObject;
+begin
+  mRoot := TJSONObject.Create;
+  try
+    mRoot.AddPair(AName, TJSONNumber.Create(AId));
+    Result := mRoot.ToJSON;
+  finally
+    mRoot.Free;
+  end;
+end;
+
+procedure TAtlasGitHubTracker.LoadRelations(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AUrl: string; const ASummary: TAtlasGitHubLinkSummary; const AWatch: TStopwatch; ATimeoutMs: Integer;
+  var ADetails: TAtlasTrackerDetails);
+var
+  mStatus, mNumber, mCount: Integer;
+  mText: string;
+  mIgnored: TAtlasCiFetchError;
+  mLinks: TArray<TAtlasTrackerLink>;
+  mLink: TAtlasTrackerLink;
+  mOther: TAtlasTrackerDetails;
+  mBlockers, mKnown: Boolean;
+  mIndex: Integer;
+begin
+  // Nur fragen, was die Zusammenfassung meldet; ohne Zusammenfassung (-1) trotzdem.
+  if (ASummary.SubIssues <> 0) and (Remaining(AWatch, ATimeoutMs) > 0) and
+    ATransport.Get(AUrl + '/sub_issues?per_page=' + IntToStr(MaxPageSize), Remaining(AWatch, ATimeoutMs), mStatus,
+    mText, mIgnored) and (mStatus = 200) and ParseRelated(mText, ATarget.Project, TAtlasTrackerLinkKind.Subtask,
+    mLinks) then
+    MergeLinks(ADetails.Links, mLinks);
+  mBlockers := False;
+  if (ASummary.BlockedBy <> 0) and (Remaining(AWatch, ATimeoutMs) > 0) and
+    ATransport.Get(AUrl + '/dependencies/blocked_by?per_page=' + IntToStr(MaxPageSize), Remaining(AWatch,
+    ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and ParseRelated(mText, ATarget.Project,
+    TAtlasTrackerLinkKind.DependsOn, mLinks) then
+  begin
+    MergeLinks(ADetails.Links, mLinks);
+    mBlockers := Length(mLinks) > 0;
+  end;
+  if (ASummary.Blocking <> 0) and (Remaining(AWatch, ATimeoutMs) > 0) and
+    ATransport.Get(AUrl + '/dependencies/blocking?per_page=' + IntToStr(MaxPageSize), Remaining(AWatch,
+    ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and ParseRelated(mText, ATarget.Project,
+    TAtlasTrackerLinkKind.Blocks, mLinks) then
+    MergeLinks(ADetails.Links, mLinks);
+  if mBlockers then
+    Exit;
+  // Ohne „blocked by“: Abhängigkeiten aus dem Text, Zustand je Issue nachgefragt.
+  for mNumber in TAtlasTrackerLinks.TextDependencies(ADetails.Description) do
+  begin
+    if mNumber = ADetails.Number then
+      Continue;
+    mLink := Default(TAtlasTrackerLink);
+    mLink.Key := '#' + IntToStr(mNumber);
+    mKnown := False;
+    for mIndex := 0 to High(ADetails.Links) do
+      if SameText(ADetails.Links[mIndex].Key, mLink.Key) and
+        (ADetails.Links[mIndex].Kind = TAtlasTrackerLinkKind.DependsOn) then
+        mKnown := True;
+    if mKnown then
+      Continue;
+    mLink.Local := True;
+    mLink.Kind := TAtlasTrackerLinkKind.DependsOn;
+    mLink.Relation := 'depends on';
+    mLink.Page := IssuePage(ATarget, mLink.Key);
+    if (Remaining(AWatch, ATimeoutMs) > 0) and ATransport.Get(IssueApiUrl(ATarget, mLink.Key),
+      Remaining(AWatch, ATimeoutMs), mStatus, mText, mIgnored) and (mStatus = 200) and
+      ParseDetails(mText, mOther, mCount) then
+    begin
+      mLink.Title := Shorten(mOther.Title, 200);
+      mLink.State := mOther.State;
+      mLink.StateKnown := True;
+      mLink.Resolved := StartsText('closed', mOther.State);
+    end;
+    MergeLinks(ADetails.Links, TArray<TAtlasTrackerLink>.Create(mLink));
+  end;
+end;
+
+/// <summary>Interne ID des Issues AKey über GET; 0 mit AError.</summary>
+function IssueId(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+  ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Int64;
+var
+  mStatus: Integer;
+  mText: string;
+begin
+  Result := 0;
+  if not ATransport.Get(TAtlasGitHubTracker.IssueApiUrl(ATarget, AKey), ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := TAtlasGitHubTracker.ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  Result := TAtlasGitHubTracker.ParseIssueId(mText);
+  if Result = 0 then
+    AError := TAtlasCiFetchError.Invalid;
+end;
+
+/// <summary>POST mit AStatus 200/201 als Erfolg.</summary>
+function Posted(const APost: IAtlasCiPost; const AUrl, ABody: string; ATimeoutMs: Integer; out AText: string;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mStatus: Integer;
+begin
+  Result := False;
+  if not APost.Post(AUrl, ABody, ATimeoutMs, mStatus, AText, AError) then
+    Exit;
+  if (mStatus <> 200) and (mStatus <> 201) then
+  begin
+    AError := TAtlasGitHubTracker.ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  AError := TAtlasCiFetchError.None;
+  Result := True;
+end;
+
+function TAtlasGitHubTracker.CreateSubtask(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AParentKey, ATitle, ADescription: string; ATimeoutMs: Integer; out AKey: string;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mPost: IAtlasCiPost;
+  mWatch: TStopwatch;
+  mParent, mText: string;
+  mId: Int64;
+  mNumber: Integer;
+  mValue: TJSONValue;
+begin
+  AKey := '';
+  AError := TAtlasCiFetchError.NotConfigured;
+  Result := False;
+  mParent := IssueApiUrl(ATarget, AParentKey);
+  if (mParent = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiPost, mPost) then
+    Exit;
+  if Trim(ATitle) = '' then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  mWatch := TStopwatch.StartNew;
+  if not Posted(mPost, ApiBase(ATarget) + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/issues',
+    NewIssueBody(ATitle, ADescription), ATimeoutMs, mText, AError) then
+    Exit;
+  mId := ParseIssueId(mText);
+  mNumber := 0;
+  mValue := TJSONObject.ParseJSONValue(mText);
+  try
+    if mValue is TJSONObject then
+      mNumber := IntOf(TJSONObject(mValue), 'number');
+  finally
+    mValue.Free;
+  end;
+  if (mId = 0) or (mNumber = 0) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  AKey := '#' + IntToStr(mNumber);
+  Result := Posted(mPost, mParent + '/sub_issues', IdBody('sub_issue_id', mId), Remaining(mWatch, ATimeoutMs),
+    mText, AError);
+end;
+
+function TAtlasGitHubTracker.AddLink(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; AKind: TAtlasTrackerLinkKind; const AOtherKey: string; ATimeoutMs: Integer;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mPost: IAtlasCiPost;
+  mWatch: TStopwatch;
+  mBlocked, mBlocker, mText: string;
+  mId: Int64;
+begin
+  AError := TAtlasCiFetchError.NotConfigured;
+  Result := False;
+  if (ATransport = nil) or not Supports(ATransport, IAtlasCiPost, mPost) then
+    Exit;
+  // „hängt ab von“: AKey wird von AOtherKey blockiert; „blockiert“: umgekehrt.
+  if AKind = TAtlasTrackerLinkKind.DependsOn then
+  begin
+    mBlocked := AKey;
+    mBlocker := AOtherKey;
+  end
+  else if AKind = TAtlasTrackerLinkKind.Blocks then
+  begin
+    mBlocked := AOtherKey;
+    mBlocker := AKey;
+  end
+  else
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  if (IssueApiUrl(ATarget, mBlocked) = '') or (IssueApiUrl(ATarget, mBlocker) = '') or
+    (NumberOfKey(mBlocked) = NumberOfKey(mBlocker)) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  mWatch := TStopwatch.StartNew;
+  mId := IssueId(ATarget, ATransport, mBlocker, ATimeoutMs, AError);
+  if mId = 0 then
+    Exit;
+  Result := Posted(mPost, IssueApiUrl(ATarget, mBlocked) + '/dependencies/blocked_by', IdBody('issue_id', mId),
+    Remaining(mWatch, ATimeoutMs), mText, AError);
 end;
 
 end.
