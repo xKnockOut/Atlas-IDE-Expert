@@ -47,7 +47,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Documentation.View;
+  Atlas.UI.Documentation.View,
+  Atlas.UI.Tracker.CommentEditor;
 
 const
   /// <summary>Nachricht an den Frame: Inhalt neu bzw. verknüpftes Issue öffnen, nach dem auslösenden Klick (das
@@ -140,6 +141,7 @@ type
     FEnd: TButton;
     FCommentPanel: TPanel;
     FCommentHint: TLabel;
+    FComment: TAtlasCommentEditor;
     FCommentEdit: TMemo;
     FCommentSend: TButton;
     FCommentNote: TLabel;
@@ -208,7 +210,6 @@ type
     procedure StartClick(Sender: TObject);
     procedure EndClick(Sender: TObject);
     procedure CommentSendClick(Sender: TObject);
-    procedure CommentKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure SetCanWrite(AValue: Boolean);
     procedure SetCanEnd(AValue: Boolean);
     procedure BrowseClick(Sender: TObject);
@@ -265,6 +266,8 @@ type
     property CanEnd: Boolean read FCanEnd write SetCanEnd;
     property EndButton: TButton read FEnd;
     property CommentPanel: TPanel read FCommentPanel;
+    /// <summary>Kommentar-Editor (#1278); CommentEdit ist sein Memo.</summary>
+    property CommentEditor: TAtlasCommentEditor read FComment;
     property CommentEdit: TMemo read FCommentEdit;
     property CommentSendButton: TButton read FCommentSend;
     property CommentNote: TLabel read FCommentNote;
@@ -738,7 +741,7 @@ begin
   FCommentPanel.Parent := Self;
   FCommentPanel.Align := alBottom;
   FCommentPanel.BevelOuter := bvNone;
-  FCommentPanel.Height := 96;
+  FCommentPanel.Height := 150;
   FCommentPanel.ShowCaption := False;
   FCommentPanel.Visible := False;
   FCommentHint := TLabel.Create(Self);
@@ -760,13 +763,13 @@ begin
   FCommentSend.Width := 90;
   FCommentSend.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewCommentSend);
   FCommentSend.OnClick := CommentSendClick;
-  FCommentEdit := TMemo.Create(Self);
-  FCommentEdit.Parent := FCommentPanel;
-  FCommentEdit.Align := alClient;
-  FCommentEdit.AlignWithMargins := True;
-  FCommentEdit.ScrollBars := ssVertical;
-  FCommentEdit.WantReturns := True;
-  FCommentEdit.OnKeyDown := CommentKeyDown;
+  // Kommentar-Editor (#1278): Strg+Enter sendet; Vorschläge, Textbausteine und Entwurf, sobald die IDE ihn bindet.
+  FComment := TAtlasCommentEditor.Create(Self);
+  FComment.Parent := FCommentPanel;
+  FComment.Align := alClient;
+  FComment.AlignWithMargins := True;
+  FComment.OnSend := CommentSendClick;
+  FCommentEdit := FComment.Memo;
 
   FScroll := TScrollBox.Create(Self);
   FScroll.Parent := Self;
@@ -799,6 +802,8 @@ end;
 
 destructor TAtlasIssueFrame.Destroy;
 begin
+  // Entwurf sichern, solange das Memo sein Fenster hat.
+  FComment.Unbind;
   if Assigned(FOnHidden) then
     FOnHidden();
   FOnHidden := nil;
@@ -1274,6 +1279,7 @@ begin
   FEmpty.Font.Color := ToColor(AColors.Muted);
   FCommentHint.Font.Color := ToColor(AColors.Muted);
   FCommentNote.Font.Color := ToColor(AColors.Muted);
+  FComment.ApplyColors(AColors);
   if FHasDetails then
     Rebuild;
 end;
@@ -1281,6 +1287,7 @@ end;
 procedure TAtlasIssueFrame.SetMonoFont(AValue: TFont);
 begin
   FMono.Assign(AValue);
+  FComment.MonoFont := AValue;
   if FHasDetails then
     Rebuild;
 end;
@@ -1340,16 +1347,6 @@ begin
   FOnComment(StringReplace(mText, #13#10, #10, [rfReplaceAll]));
 end;
 
-procedure TAtlasIssueFrame.CommentKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-begin
-  // Strg+Enter sendet, Enter allein bricht die Zeile um.
-  if (Key = VK_RETURN) and (ssCtrl in Shift) then
-  begin
-    Key := 0;
-    CommentSendClick(Sender);
-  end;
-end;
-
 procedure TAtlasIssueFrame.SetCanWrite(AValue: Boolean);
 begin
   FCanWrite := AValue;
@@ -1375,8 +1372,9 @@ procedure TAtlasIssueFrame.CommentDone(const AError: string);
 begin
   SetCommentSending(False);
   FCommentNote.Caption := AError;
+  // Gesendet: Feld leeren und den Entwurf löschen; bei einem Fehler bleibt beides.
   if AError = '' then
-    FCommentEdit.Clear;
+    FComment.Sent;
 end;
 
 procedure TAtlasIssueFrame.BrowseClick(Sender: TObject);

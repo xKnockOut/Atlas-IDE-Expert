@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5329] of string = (
+  Lines: array[0..5360] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5436,6 +5436,41 @@ const
     '      "x-area": "issues",',
     '      "x-page": "Issue-Tracker",',
     '      "x-issue": "#1270"',
+    '    },',
+    '    "IssuesCommentEditor": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Kommentar-Editor in der Issue-Vorschau und im Beenden-Dialog: „@“ mit Buchstaben schlägt Benutzer des Trackers vor (YouTrack: Login und Name, GitHub: zuweisbare Benutzer), „#“ bz' +
+      'w. das Projektkürzel mit „-“ Issues wie die Befehlspalette (300 ms nach der letzten Eingabe, Pfeile wählen, Enter oder Tab fügen ein, Esc schließt); Strg+Leer bzw. „Textbaustein ▾“ fügt einen Textbaus' +
+      'tein ein, Strg+B fett, Strg+I kursiv, Strg+Umschalt+K Code-Block (pascal); „Vorschau“ setzt den Markdown wie die Issue-Vorschau. Entwürfe je Tracker, Issue und Feld in %LOCALAPPDATA%\\Atlas\\issues\\d' +
+      'rafts.json, 2 s nach der letzten Änderung und beim Schließen gespeichert, beim nächsten Öffnen angeboten, nach dem Senden gelöscht. Aus: einfaches Textfeld, Strg+Enter sendet.",',
+    '      "x-key": "issues.commentEditor",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-issue": "#1278"',
+    '    },',
+    '    "IssuesCommentSnippets": {',
+    '      "type": "array",',
+    '      "default": [',
+    '        {',
+    '          "name": "Bitte mit aktuellem Build prüfen",',
+    '          "text": "Bitte mit dem aktuellen Build prüfen."',
+    '        },',
+    '        {',
+    '          "name": "Behoben in {commit}",',
+    '          "text": "Behoben in {commit}."',
+    '        }',
+    '      ],',
+    '      "items": {',
+    '        "type": "object"',
+    '      },',
+    '      "description": "Textbausteine für Kommentare mit name und text (höchstens 50, Name bis 80 und Text bis 4000 Zeichen); Platzhalter {issue}, {branch}, {commit} (Kurz-Hash bzw. SVN-Revision) und {v' +
+      'ersion} (Version des aktiven Projekts), ein unbekannter Wert bleibt als Platzhalter stehen. Im Plugin als JSON-Text gelesen und geschrieben.",',
+    '      "x-key": "issues.commentSnippets",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-control": "Tabelle Textbausteine",',
+    '      "x-issue": "#1278"',
     '    }',
     '  },',
     '  "additionalProperties": false',

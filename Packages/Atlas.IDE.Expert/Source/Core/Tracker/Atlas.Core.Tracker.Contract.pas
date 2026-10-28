@@ -31,6 +31,9 @@
 //   zurück (TAtlasTrackerWriteResult).
 // - Search und Lookup (#1270): Suche der Befehlspalette, je eine Abfrage ohne
 //   Pull Requests und Ampeln; Lookup liest ein Issue zur Kennung.
+// - IAtlasTrackerPeople (#1278): Benutzer für @-Erwähnungen im
+//   Kommentar-Editor (TAtlasTrackerUser mit Anmelde- und Anzeigename);
+//   Filter und Ranked ordnen die Treffer zum getippten Text.
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -123,6 +126,29 @@ type
     Page: string;
     /// <summary>Im selben Tracker und Projekt: Klick öffnet es in „Atlas-Issue“.</summary>
     Local: Boolean;
+  end;
+
+  /// <summary>Benutzer des Trackers für @-Erwähnungen (#1278).</summary>
+  TAtlasTrackerUser = record
+    /// <summary>Anmeldename, wie ihn eine Erwähnung braucht ("anna").</summary>
+    Login: string;
+    /// <summary>Anzeigename ("Anna Berger"); '' ohne (GitHub).</summary>
+    Name: string;
+    class function Create(const ALogin, AName: string): TAtlasTrackerUser; static;
+    /// <summary>Anmelde- oder Anzeigename enthält AText (ohne Groß-/Kleinschreibung); leerer Text passt immer.
+    /// </summary>
+    function Matches(const AText: string): Boolean;
+    /// <summary>Rang zu AText: 0 Anmeldename beginnt damit, 1 ein Wort des Anzeigenamens, 2 enthalten, 3 sonst.
+    /// </summary>
+    function Rank(const AText: string): Integer;
+    /// <summary>Nur passende Benutzer (Matches), nach Rang, sonst in der Reihenfolge der Liste; höchstens AMax,
+    /// ohne leere und doppelte Anmeldenamen.</summary>
+    class function Filter(const AUsers: TArray<TAtlasTrackerUser>; const AText: string;
+      AMax: Integer): TArray<TAtlasTrackerUser>; static;
+    /// <summary>Wie Filter, behält aber Benutzer ohne Treffer im Text (der Tracker hat sie gefunden, etwa über die
+    /// E-Mail-Adresse) hinter den passenden.</summary>
+    class function Ranked(const AUsers: TArray<TAtlasTrackerUser>; const AText: string;
+      AMax: Integer): TArray<TAtlasTrackerUser>; static;
   end;
 
   /// <summary>Ein Issue mit allem, was das Fenster „Atlas-Issue“ zeigt (#1264).</summary>
@@ -293,6 +319,16 @@ type
       out AValues: TArray<string>): TAtlasTrackerWriteResult;
   end;
 
+  /// <summary>Benutzer für @-Erwähnungen suchen (#1278); Anbieter, die das können, setzen es zusätzlich um.
+  /// </summary>
+  IAtlasTrackerPeople = interface
+    ['{CBC85BCF-7164-48F0-84AE-466842C69E1C}']
+    /// <summary>Höchstens AMax Benutzer zu AText (YouTrack: Suche des Trackers, GitHub: mögliche Zuständige des
+    /// Repositorys, hier gefiltert), eine Abfrage, höchstens ATimeoutMs; im Hintergrund.</summary>
+    function Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
+      ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
+  end;
+
 implementation
 
 const
@@ -321,6 +357,74 @@ class function TAtlasTrackerIssue.Empty: TAtlasTrackerIssue;
 begin
   Result := Default(TAtlasTrackerIssue);
   Result.Labels := nil;
+end;
+
+{ TAtlasTrackerUser }
+
+class function TAtlasTrackerUser.Create(const ALogin, AName: string): TAtlasTrackerUser;
+begin
+  Result.Login := Trim(ALogin);
+  Result.Name := Trim(AName);
+end;
+
+function TAtlasTrackerUser.Matches(const AText: string): Boolean;
+begin
+  Result := Rank(AText) < 3;
+end;
+
+function TAtlasTrackerUser.Rank(const AText: string): Integer;
+var
+  mText, mName: string;
+begin
+  mText := LowerCase(Trim(AText));
+  if (mText = '') or LowerCase(Login).StartsWith(mText) then
+    Exit(0);
+  mName := ' ' + LowerCase(Name);
+  if Pos(' ' + mText, mName) > 0 then
+    Exit(1);
+  if (Pos(mText, LowerCase(Login)) > 0) or (Pos(mText, mName) > 0) then
+    Exit(2);
+  Result := 3;
+end;
+
+function RankedUsers(const AUsers: TArray<TAtlasTrackerUser>; const AText: string; AMax: Integer;
+  AKeepOthers: Boolean): TArray<TAtlasTrackerUser>;
+var
+  mRank, mIndex: Integer;
+  mUser: TAtlasTrackerUser;
+  mSeen: string;
+begin
+  Result := nil;
+  mSeen := '|';
+  // Stabil: je Rang in der Reihenfolge der Liste (TArray.Sort ist nicht stabil).
+  for mRank := 0 to 3 do
+  begin
+    if (mRank = 3) and not AKeepOthers then
+      Break;
+    for mIndex := 0 to High(AUsers) do
+    begin
+      if Length(Result) >= AMax then
+        Exit;
+      mUser := AUsers[mIndex];
+      if (Trim(mUser.Login) = '') or (mUser.Rank(AText) <> mRank) or
+        (Pos('|' + LowerCase(mUser.Login) + '|', mSeen) > 0) then
+        Continue;
+      mSeen := mSeen + LowerCase(mUser.Login) + '|';
+      Result := Result + [mUser];
+    end;
+  end;
+end;
+
+class function TAtlasTrackerUser.Filter(const AUsers: TArray<TAtlasTrackerUser>; const AText: string;
+  AMax: Integer): TArray<TAtlasTrackerUser>;
+begin
+  Result := RankedUsers(AUsers, AText, AMax, False);
+end;
+
+class function TAtlasTrackerUser.Ranked(const AUsers: TArray<TAtlasTrackerUser>; const AText: string;
+  AMax: Integer): TArray<TAtlasTrackerUser>;
+begin
+  Result := RankedUsers(AUsers, AText, AMax, True);
 end;
 
 { TAtlasTrackerAttachment }
