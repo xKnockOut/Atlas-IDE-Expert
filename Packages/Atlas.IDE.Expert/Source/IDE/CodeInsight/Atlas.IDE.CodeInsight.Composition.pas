@@ -406,6 +406,28 @@ begin
   Messages.AddTitleMessage(AText, Group);
 end;
 
+/// <summary>Meldungsansicht mit der Gruppe Atlas nach vorn holen: für Ergebnisse eines Befehls, den der Benutzer
+/// gerade ausgelöst hat (sonst sieht es aus, als passiere nichts).</summary>
+procedure ShowAtlasMessages;
+var
+  Messages: IOTAMessageServices;
+  Group: IOTAMessageGroup;
+begin
+  if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
+    Exit;
+  Group := Messages.GetGroup('Atlas');
+  if Group <> nil then
+    Messages.ShowMessageView(Group);
+end;
+
+/// <summary>Ergebnis eines Zugangs-Befehls (#763, #765): wie GuardWarning und sichtbar in der Meldungsansicht.
+/// </summary>
+procedure LoginNotice(const AText: string);
+begin
+  GuardWarning(AText);
+  ShowAtlasMessages;
+end;
+
 /// <summary>„Fehlerbericht erstellen…“ (#108) aus Menü, Palette und dem Fenster des abgesicherten Starts.</summary>
 // Serverprozess, Ordnerbeobachter und Quellen von Vervollständigung und
 // Parameter-Hint aus dem Kern (A-09).
@@ -3113,14 +3135,14 @@ begin
   begin
     Ok := TAtlasCiCredentials.Delete(AJob.CredentialTarget);
     if Ok then
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.CiLoginRemoved))
+      LoginNotice(TAtlasStrings.Text(TAtlasTextId.CiLoginRemoved))
     else
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.CiLoginFailed));
+      LoginNotice(TAtlasStrings.Text(TAtlasTextId.CiLoginFailed));
     Exit(Ok);
   end;
   if (User = '') or (Token = '') then
   begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CiLoginIncomplete));
+    LoginNotice(TAtlasStrings.Text(TAtlasTextId.CiLoginIncomplete));
     Exit;
   end;
   Ok := TAtlasCiCredentials.Write(AJob.CredentialTarget, User, Token);
@@ -3128,9 +3150,9 @@ begin
   FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
   // Anonym: weder Server noch Benutzer.
   if Ok then
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CiLoginSaved))
+    LoginNotice(TAtlasStrings.Text(TAtlasTextId.CiLoginSaved))
   else
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CiLoginFailed));
+    LoginNotice(TAtlasStrings.Text(TAtlasTextId.CiLoginFailed));
   Result := Ok;
 end;
 
@@ -3200,7 +3222,7 @@ begin
   // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
   if not ATarget.Secure then
   begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
+    LoginNotice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
     Exit;
   end;
   Token := '';
@@ -3211,9 +3233,9 @@ begin
   begin
     Ok := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
     if Ok then
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
+      LoginNotice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
     else
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+      LoginNotice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
     Exit(Ok);
   end;
   Ok := TAtlasCiCredentials.Write(ATarget.CredentialTarget, AProvider.Name, Token, 'Atlas: Issue-Tracker');
@@ -3221,9 +3243,9 @@ begin
   FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
   // Anonym: weder Server noch Projekt.
   if Ok then
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved))
+    LoginNotice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved))
   else
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+    LoginNotice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
   Result := Ok;
 end;
 
@@ -3232,8 +3254,10 @@ begin
   Result := TAtlasIdeIssues.Create(AProjects,
     procedure(AText: string)
     begin
-      // Nur Meldungsansicht: Die Zeilen können Branch-Namen enthalten.
+      // Nur Meldungsansicht: Die Zeilen können Branch-Namen enthalten. Jede Meldung folgt auf eine Aktion des
+      // Benutzers (Zugang, Beginnen, Git-Hook), deshalb sichtbar machen.
       MessageLine(AText);
+      ShowAtlasMessages;
     end);
   // Tracker-Anbieter: GitHub und YouTrack; weitere kommen ohne Änderung am Bereich dazu.
   Result.ProviderFactory :=
