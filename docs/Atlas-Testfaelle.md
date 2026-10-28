@@ -7793,3 +7793,11 @@ Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testu
 | IV12 | Win64 (LLDB): IV1, IV2 und F8 direkt nach dem Halt | Werte kommen (verzögert); kein F8 geht verloren, die Debug-Sitzung meldet jeden Halt |
 | IV13 | Schnellschalter „Werte im Editor beim Debuggen“ aus, dann F8 | Keine Werte, keine Anfrage an den Server (Diagnoseprotokoll), Verhalten wie ohne Atlas (**Abnahme**) |
 | IV14 | Server beendet, Halt | Keine Werte, keine Fehlermeldung |
+
+## #1322 Prüfung wertet die Unit einmal je Lauf aus (Branch `claude/project-thread-zmblrn`)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| PZ1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TTreeUnitsTests` grün (**Abnahme**) |
+| PZ2 | Große Unit (z. B. `VirtualTrees.BaseTree.pas`) öffnen, eine Zeile ändern | Diagnosen kommen wie bisher, Atlas-Statusfeld zeigt nicht „Server langsam“; CPU-Last nach der Änderung klingt deutlich schneller ab als vorher |
+| PZ3 | `AtlasServer.exe --check` über ein großes Projekt (z. B. VirtualTreeView) vor und nach dem Branch | Dieselben Befunde, Laufzeit deutlich kürzer (Linux-Bau: 676 s → 93 s, **Abnahme**: unter 3 min) |

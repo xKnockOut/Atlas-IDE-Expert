@@ -804,7 +804,7 @@ begin
   Considered := TConsideredUsed.Create(AContext.Index, Local, Tokens,
     TRuleOptions.Strings(AContext.Options, 'keepAttributes', []) + AContext.KeepAttributes,
     TRuleOptions.Strings(AContext.Options, 'keepPatterns', []) + AContext.KeepPatterns);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     CollectFiles;

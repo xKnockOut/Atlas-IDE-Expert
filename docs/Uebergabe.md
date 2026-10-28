@@ -1341,3 +1341,12 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Prüfskripte beim Auflösen** (Cloud, nicht im Repo): doppelte uses-Einträge, doppelte Methoden und Mitglieder, Enum-Tabellen mit falscher Länge, JSON-Doppelschlüssel, Zeilenenden, BOM, Felder nach Methoden, Menü-Tags.
 - **Offen:** Delphi-Build beider Gruppen (Plugin-Code ist in der Cloud nicht übersetzbar), Handtests der einzelnen Issues. Danach mergen und die PRs mit Verweis auf den Mega-Branch schließen.
 - **Folgearbeit:** Zwei getrennte Uses-Graphen mit Bibliotheks-Units (FUnitRelationsGraph, TLspSymbolPath intern, MCP PathGraphs) zusammenführen; zwei öffentliche Typen `TUsesSection` in Atlas.Common (UsesGraph und CompletionUses) umbenennen.
+
+## #1322 Unit einmal je Prüflauf auswerten (28.10.2026, Branch `claude/project-thread-zmblrn`, ungebaut mit Delphi)
+
+- **Ursache:** Resolver ohne `PinTree` (Ownership, Casts, TypedExpressions u. a.) riefen in `Prepare` bei jeder Typabfrage `TIndexExtractor.Extract` für die ganze Unit auf; die Prüfung wurde quadratisch in der Unitgröße.
+- **Lösung:** Kontextobjekt statt Klassenvariablen (der Versuch d20673c hatte Klassenvariablen mit Thread-Bindung): `ITreeUnits` in der neuen Unit `Atlas.Common.Semantics.Contract`, umgesetzt von `TTreeUnits` (`Atlas.Common.Semantics.TreeUnits`, je Dateiname eine Extraktion, Zusammenführung mit dem Index je Index). `TRuleEngine.Run` legt sie je Lauf für `Tree` an, setzt `TRuleContext.TreeUnits` und ruft am Ende `Clear`; eine vom Aufrufer gesetzte bleibt ihm. Alle Regeln geben sie über die neue Überladung `TNameResolver.Create(Index, EnsureUnit, TreeUnits)` weiter; `Prepare`, `ExtractedUnit` und `PinTree` nehmen den geteilten Stand, wenn er zum Baum gehört. Editor (Pull-Diagnose), `--check` und MCP laufen alle über `TRuleEngine.Run`.
+- **Genehmigte Ausnahme** `Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree` in `atlas.json` und `Architektur.md`.
+- **Messung (FPC, Linux, `--check`):** VirtualTrees.Header 25,6 s → 7,0 s, SynEdit 353 s → 135 s, VirtualTreeView 676 s → 93 s; Befunde identisch (545, 10.220, 3.837). Golden-Korpus und alle 92 Regel-Testunits wie auf der Basis.
+- **Testlauf in der Cloud:** Testvariante von `Convert-ForFpc.py` (Wurzel = erzeugtes Testprogramm, Tests nicht ausgelassen, DUnitX-Attribute entfernt, DUnitX-Stub aus `/mnt/project-files/werkzeuge/fpc-harness/stub`).
+- **Offen:** Delphi-Build und Testfälle PZ1–PZ3.

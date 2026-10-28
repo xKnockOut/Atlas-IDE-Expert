@@ -25,6 +25,7 @@
       "prefixes": ["Atlas.Text", "Atlas.Common", "Atlas.Windows", "Atlas.Core", "Atlas.UI", "Atlas.IDE"],
       "allow": [
         "Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
+        "Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Documents.Contract -> Atlas.Text.Lines",
         "Atlas.IDE.CodeInsight.Composition -> Atlas.Core.*"
       ]

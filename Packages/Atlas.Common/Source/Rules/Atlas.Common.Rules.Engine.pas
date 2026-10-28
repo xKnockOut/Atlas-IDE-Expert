@@ -124,7 +124,9 @@ uses
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Profiles,
-  Atlas.Common.Rules.Suppressions;
+  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Semantics.Contract,
+  Atlas.Common.Semantics.TreeUnits;
 
 type
   TRuleReport = class(TInterfacedObject, IRuleReport, IRuleRelatedReport)
@@ -509,6 +511,7 @@ var
   Elapsed: Int64;
   Shared: TRuleContext;
   OwnCache: IRuleDerivedCache;
+  mOwnUnits: ITreeUnits;
   Known: TArray<string>;
   Index: Integer;
   Suggestion: string;
@@ -547,6 +550,14 @@ begin
   begin
     OwnCache := TRuleDerivedCache.Create;
     Shared.Derived := OwnCache;
+  end;
+  // Eine Auswertung des Baums für alle Namensauflöser des Laufs (#1322): Sonst extrahierte jede Typabfrage
+  // eines nicht gepinnten Resolvers die ganze Unit neu, und Regeln mit vielen Abfragen wurden quadratisch.
+  mOwnUnits := nil;
+  if (Shared.TreeUnits = nil) and (Shared.Tree <> nil) then
+  begin
+    mOwnUnits := TTreeUnits.Create(Shared.Tree);
+    Shared.TreeUnits := mOwnUnits;
   end;
   Findings := TList<TRuleFinding>.Create;
   Kept := TList<TRuleFinding>.Create;
@@ -729,6 +740,9 @@ begin
     // Referenzzyklen über Kontextkopien in abgelegten Objekten.
     if OwnCache <> nil then
       OwnCache.Clear;
+    // Kontextkopien in abgelegten Objekten können die Auswertung überleben: ohne Baum bedient sie keinen mehr.
+    if mOwnUnits <> nil then
+      mOwnUnits.Clear;
     AfterContexts.Free;
     AfterSeverities.Free;
     AfterIds.Free;
