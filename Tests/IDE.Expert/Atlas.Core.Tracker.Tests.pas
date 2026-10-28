@@ -884,9 +884,13 @@ begin
   Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured, 'ungültige Kennung');
   Assert.IsFalse(mProvider.Details(GitHubTarget, nil, '#1', True, 5000, mDetails, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured, 'ohne Token');
+  // Fehler des Transports kommen bei beiden Anbietern unverändert an.
   mTransport.FailWith(TAtlasCiFetchError.Timeout);
+  Assert.IsFalse(mProvider.Details(GitHubTarget, mTransportRef, '#1', True, 5000, mDetails, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout, 'GitHub: Zeitüberschreitung');
+  mProvider := TAtlasYouTrackTracker.Create;
   Assert.IsFalse(mProvider.Details(YouTrackTarget, mTransportRef, 'ATL-1', True, 5000, mDetails, mError));
-  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
+  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout, 'YouTrack: Zeitüberschreitung');
 end;
 
 { TAtlasTrackerDevelopmentTests }
