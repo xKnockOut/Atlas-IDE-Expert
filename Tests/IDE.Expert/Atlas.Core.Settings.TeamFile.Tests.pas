@@ -29,6 +29,9 @@ type
     procedure ReadsAllSections;
     [Test]
     procedure TeamPrefixBeatsPersonalSetting;
+    /// <summary>#1286: Abschnitt vcs mit provider und mainBranch; falsche Werte gemeldet und übergangen.</summary>
+    [Test]
+    procedure ReadsVcsSection;
     [Test]
     procedure BrokenFileIsInvalidWithIssue;
     [Test]
@@ -175,6 +178,29 @@ begin
   Assert.IsTrue(Team.Tracker.Configured);
   Assert.AreEqual('youtrack', Team.Tracker.Provider);
   Assert.AreEqual('ATL', Team.Tracker.Project);
+end;
+
+procedure TAtlasTeamFileTests.ReadsVcsSection;
+var
+  Team: TAtlasTeamSettings;
+begin
+  Team := Parsed('{"version": 1, "vcs": {"provider": "SVN", "mainBranch": " develop "}}');
+  Assert.AreEqual(0, Integer(Length(Team.Issues)));
+  Assert.IsTrue(Team.Vcs.Configured);
+  Assert.AreEqual('svn', Team.Vcs.Provider);
+  Assert.AreEqual('develop', Team.Vcs.MainBranch);
+  Assert.AreEqual('vcs', TAtlasTeamFile.Values(Team)[0].Key);
+  Assert.AreEqual('svn, develop', TAtlasTeamFile.Values(Team)[0].Value);
+  Team := Parsed('{"version": 1, "vcs": {"mainBranch": "develop"}}');
+  Assert.AreEqual('', Team.Vcs.Provider, 'nicht gesetzt');
+  Assert.IsTrue(Team.Vcs.Configured);
+  Team := Parsed('{"version": 1, "vcs": {"provider": "cvs", "mainBranch": "mein branch", "x": 1}}');
+  Assert.IsFalse(Team.Vcs.Configured);
+  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'vcs.provider'));
+  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.InvalidValue, 'vcs.mainBranch'));
+  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.UnknownKey, 'vcs.x'));
+  Team := Parsed('{"version": 1, "vcs": "git"}');
+  Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.WrongType, 'vcs'));
 end;
 
 procedure TAtlasTeamFileTests.TeamPrefixBeatsPersonalSetting;

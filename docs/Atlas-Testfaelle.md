@@ -7853,3 +7853,39 @@ Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (YouTrack und GitH
 | IV17 | `issues.preview` aus (Schnellschalter) | Klick in „Meine Issues“ öffnet wieder den Browser; Befehl *Issue anzeigen …* nicht sichtbar |
 | IV18 | IDE beenden mit offenem Fenster, neu starten | Fenster steht wieder an seinem Platz (Desktop); Plugin entladen ohne Zugriffsverletzung |
 | IV19 | Helles und dunkles IDE-Design | Farben und Abzeichen passen jeweils |
+
+## Projekte einem Tracker zuordnen (#1261)
+
+Vorbereitung: zwei Verbindungen aus TV2/TV3; Projektgruppe `Kasse.groupproj` mit zwei Projekten, ein weiteres Projekt mit Abschnitt `tracker` in der `.atlas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TP1 | Projekt ohne `.atlas`-Tracker und ohne Zuordnung öffnen, „Meine Issues“ ansehen | Fußzeile „Kein Tracker für dieses Projekt – zuordnen …“ als Link (**Abnahme**) |
+| TP2 | Link klicken | Optionen öffnen auf „Issue-Tracker“, in „Projekte“ steht eine neue Zeile mit der geöffneten `.groupproj` (bzw. ohne Gruppe der `.dproj`) und der ersten Verbindung, Feld „Tracker-Projekt“ hat den Fokus |
+| TP3 | Tracker-Projekt `KASSE` eintragen, OK | „Meine Issues“ lädt die Issues aus `KASSE`; Zeile steht in `settings.json` unter `issues.projects` (**Abnahme**) |
+| TP4 | Anderes Projekt der Gruppe aktivieren | Dieselben Issues (die Zeile der Gruppe gilt für jedes Projekt darin) |
+| TP5 | Zeile für die `.dproj` eines Gruppenprojekts mit anderem Tracker-Projekt anlegen | Für dieses Projekt gilt die `.dproj`-Zeile, für die anderen die Gruppe |
+| TP6 | „Hinzufügen …“ › „Ordner …“, Oberordner wählen; Projekt außerhalb der Gruppe in diesem Ordner öffnen | Ordnerzeile gilt; ein Ordner `C:\Projekte\Ka` passt nicht auf `C:\Projekte\Kasse\…` |
+| TP7 | Projekt mit `.atlas`-Tracker öffnen, Seite „Issue-Tracker“ ansehen | Zeile „aus .atlas“ schreibgeschützt; passende persönliche Zeilen grau mit „persönlich · von .atlas überdeckt“ (**Abnahme**) |
+| TP8 | Verbindung „Firma“ in „Werk“ umbenennen, OK | Alle Zuordnungen zeigen „Werk“, Issues laden weiter |
+| TP9 | Verbindung einer Zuordnung entfernen | Zeile bleibt mit Hinweis „Die Verbindung … gibt es nicht (mehr).“; „Meine Issues“ zeigt wieder den Link aus TP1 |
+| TP10 | Gleichen Pfad ein zweites Mal eintragen | Hinweis „Für diesen Pfad gibt es schon eine Zeile“, Wert nicht übernommen |
+| TP11 | Einstellungen exportieren und importieren | `issues.projects` als JSON-Liste, nach dem Import gleiche Zeilen |
+| TP12 | settings.json von Hand mit doppeltem Pfad oder ohne `connection` speichern | Server meldet die Zeile in der Problemliste |
+
+## Versionsverwaltung je Projekt (#1286)
+
+Vorbereitung: SVN-Arbeitskopie mit `Kasse.groupproj` (Exe-Projekt `Kasse.dproj` und Pakete), ein Paket per SVN-Externals unter `Pakete\Basis`, ein Unterordner `Fremd\Lib` als Git-Klon; ein weiteres Projekt mit `.atlas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VZ1 | Ohne Zeilen: Seite „Versionsverwaltung“ öffnen | Tabelle „Projekte“ leer; „Aktuelles Projekt“ wie vor #1286 (Art aus der Einstellung, kein Hauptbranch) |
+| VZ2 | „Aktuelles Projekt hinzufügen“ | Neue Zeile mit der geöffneten `.groupproj`, Art „SVN“ (aus der Abfrage), Hauptbranch „raten“; Fokus im Feld Hauptbranch |
+| VZ3 | Hauptbranch `release 1` eintippen, dann `branches/develop` | Erst Hinweis „Der Hauptbranch darf keinen Leerraum enthalten.“, Wert nicht übernommen; dann Spalte „branches/develop“ |
+| VZ4 | „Hinzufügen …“ › „Ordner …“: `Fremd\Lib`, Art „Git“; OK, eine Unit unter `Fremd\Lib` und eine unter `Kasse` ändern | Git-Rand unter `Lib` aus Git, unter `Kasse` aus SVN (**Abnahme**) |
+| VZ5 | „Meine Issues“ › „Beginnen“ ohne `issues.branchBase` | SVN-Branch aus `^/branches/develop` statt `^/trunk` (**Abnahme**) |
+| VZ6 | Zeile „Aus“ für einen Ordner auf einem Netzlaufwerk (UNC), Unit dort öffnen | Kein svn/git-Prozess für diesen Ordner, keine Änderungsmarken |
+| VZ7 | Projekt mit `.atlas` `"vcs": {"provider": "svn", "mainBranch": "develop"}` aktivieren, Seite ansehen | Zeile „aus .atlas“ schreibgeschützt; passende persönliche Zeilen grau mit „persönlich · von .atlas überdeckt“; „Aktuelles Projekt“ nennt „Hauptbranch develop“ (**Abnahme**) |
+| VZ8 | Git-Projekt ohne verfolgten Branch, Hauptbranch `develop`; auf Feature-Branch „Weiterarbeiten“ ansehen | Eingehende Commits gegen `origin/develop` |
+| VZ9 | settings.json von Hand mit doppeltem Pfad, Art `cvs` oder Hauptbranch mit Leerzeichen speichern | Server meldet die Zeile in der Problemliste |
+| VZ10 | Einstellungen exportieren und importieren | `vcs.projects` als JSON-Liste, nach dem Import gleiche Zeilen |

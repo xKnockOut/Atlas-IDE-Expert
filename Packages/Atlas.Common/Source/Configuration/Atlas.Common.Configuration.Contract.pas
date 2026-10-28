@@ -574,6 +574,9 @@ type
     /// <summary>Persönliche Tracker-Verbindungen (issues.connections, #1260) als JSON-Liste (Text), sonst ''.
     /// Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
     IssueConnections: string;
+    /// <summary>Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (issues.projects, #1261) als JSON-Liste
+    /// (Text), sonst ''. Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    IssueProjects: string;
     /// <summary>Ausgewerteter Block "format" (#43).</summary>
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
@@ -691,6 +694,14 @@ type
     TraceFile: string;
     /// <summary>Versionsverwaltung (vcs.provider, #571): "auto", "git", "svn" oder "off".</summary>
     VcsProvider: string;
+    /// <summary>Eigener Pfad zu git bzw. svn (vcs.git.path, vcs.svn.path, #1285); '' = automatisch suchen.</summary>
+    VcsGitPath: string;
+    VcsSvnPath: string;
+    /// <summary>Zeitlimit je Aufruf von git bzw. svn in Sekunden (vcs.timeoutSeconds, #1285, 1–300).</summary>
+    VcsTimeoutSeconds: Integer;
+    /// <summary>Persönliche Art und Hauptbranch je Delphi-Projekt (vcs.projects, #1286) als JSON-Liste (Text),
+    /// sonst ''. Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    VcsProjects: string;
     /// <summary>True, wenn AFileName unter ein Muster aus IndexExclude fällt.</summary>
     function IsIndexExcluded(const AFileName: string): Boolean;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
@@ -1194,6 +1205,10 @@ begin
   Result.LogFile := '';
   Result.TraceFile := '';
   Result.VcsProvider := 'auto';
+  Result.VcsGitPath := '';
+  Result.VcsSvnPath := '';
+  Result.VcsTimeoutSeconds := 15;
+  Result.VcsProjects := '';
 end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;

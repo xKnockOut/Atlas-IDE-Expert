@@ -121,6 +121,8 @@ type
     procedure ReadTasks(ANode: TJsonNode);
     procedure ReadIssues(ANode: TJsonNode);
     procedure ReadIssueConnections(ANode: TJsonNode);
+    procedure ReadIssueProjects(ANode: TJsonNode);
+    procedure ReadVcsProjects(ANode: TJsonNode);
     procedure ReadTaskMatcher(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -1740,9 +1742,33 @@ begin
 end;
 
 procedure TValidator.ReadVcs(ANode: TJsonNode);
+
+  // vcs.git bzw. vcs.svn (#1285): nur "path", leer = automatisch suchen.
+  procedure ReadTool(AToolNode: TJsonNode; const AName: string; var APath: string);
+  var
+    mIndex: Integer;
+    mKey: string;
+  begin
+    if AToolNode.Kind <> TJsonKind.Object_ then
+    begin
+      ReportNode(AToolNode, Format('"vcs.%s" muss ein Objekt sein', [AName]));
+      Exit;
+    end;
+    for mIndex := 0 to AToolNode.Count - 1 do
+    begin
+      mKey := AToolNode.Keys[mIndex];
+      if mKey = 'path' then
+        ExpectString(AToolNode[mIndex], mKey, APath)
+      else
+        Report(AToolNode.KeyStarts[mIndex], AToolNode.KeyStarts[mIndex] + Length(mKey) + 2,
+          Format('Unbekannte Einstellung "vcs.%s.%s"', [AName, mKey]), False);
+    end;
+  end;
+
 var
   Index: Integer;
   Key, Text: string;
+  mSeconds: Integer;
 begin
   if ANode.Kind <> TJsonKind.Object_ then
   begin
@@ -1759,6 +1785,20 @@ begin
           FSettings.VcsProvider := Text
         else
           ReportNode(ANode[Index], 'Erlaubt sind "auto", "git", "svn" und "off"');
+    end
+    else if Key = 'git' then
+      ReadTool(ANode[Index], Key, FSettings.VcsGitPath)
+    else if Key = 'svn' then
+      ReadTool(ANode[Index], Key, FSettings.VcsSvnPath)
+    else if Key = 'projects' then
+      ReadVcsProjects(ANode[Index])
+    else if Key = 'timeoutSeconds' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.Number) and TryStrToInt(ANode[Index].Value, mSeconds) and (mSeconds >= 1) and
+        (mSeconds <= 300) then
+        FSettings.VcsTimeoutSeconds := mSeconds
+      else
+        ReportNode(ANode[Index], '"vcs.timeoutSeconds" muss eine ganze Zahl von 1 bis 300 sein');
     end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
@@ -2341,6 +2381,8 @@ begin
     Key := ANode.Keys[Index];
     if Key = 'connections' then
       ReadIssueConnections(ANode[Index])
+    else if Key = 'projects' then
+      ReadIssueProjects(ANode[Index])
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "issues.%s"', [Key]), False);
@@ -2431,6 +2473,135 @@ begin
     end;
   finally
     Names.Free;
+  end;
+end;
+
+procedure TValidator.ReadVcsProjects(ANode: TJsonNode);
+var
+  mIndex, mInner: Integer;
+  mMapping, mValue: TJsonNode;
+  mKey, mText: string;
+  mMatches: TList<string>;
+  mHasMatch: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"vcs.projects" muss eine Liste von Zuordnungen sein');
+    Exit;
+  end;
+  FSettings.VcsProjects := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+  mMatches := TList<string>.Create;
+  try
+    for mIndex := 0 to ANode.Count - 1 do
+    begin
+      mMapping := ANode[mIndex];
+      if mMapping.Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(mMapping, 'Eine Zuordnung ist ein Objekt mit "match", "provider" und "mainBranch"');
+        Continue;
+      end;
+      mHasMatch := False;
+      for mInner := 0 to mMapping.Count - 1 do
+      begin
+        mKey := mMapping.Keys[mInner];
+        mValue := mMapping[mInner];
+        if mKey = 'match' then
+        begin
+          if ExpectString(mValue, 'match', mText) and (Trim(mText) <> '') then
+          begin
+            mHasMatch := True;
+            // Wie im Plugin (Atlas.Core.Projects.Matching): ohne Groß-/Kleinschreibung, „/“ wie „\“.
+            mText := AnsiLowerCase(Trim(mText)).Replace('/', '\');
+            while mText.EndsWith('\') and (Length(mText) > 2) do
+              Delete(mText, Length(mText), 1);
+            if mMatches.IndexOf(mText) >= 0 then
+              ReportNode(mValue, 'Für diesen Pfad gibt es schon eine Zuordnung')
+            else
+              mMatches.Add(mText);
+          end;
+        end
+        else if mKey = 'provider' then
+        begin
+          if ExpectString(mValue, 'provider', mText) and not MatchStr(mText, ['auto', 'git', 'svn', 'off']) then
+            ReportNode(mValue, 'Erlaubt sind "auto", "git", "svn" und "off"');
+        end
+        else if mKey = 'mainBranch' then
+        begin
+          if ExpectString(mValue, 'mainBranch', mText) and (Trim(mText).IndexOfAny([' ', #9]) >= 0) then
+            ReportNode(mValue, 'Ein Branch-Name enthält keine Leerzeichen');
+        end
+        else
+          Report(mMapping.KeyStarts[mInner], mMapping.KeyStarts[mInner] + Length(mKey) + 2,
+            Format('Unbekannte Angabe "%s" in einer Zuordnung', [mKey]), False);
+      end;
+      if not mHasMatch then
+        ReportNode(mMapping, 'Zuordnung ohne "match" (Pfad einer .dproj, .groupproj oder eines Ordners)');
+    end;
+  finally
+    mMatches.Free;
+  end;
+end;
+
+procedure TValidator.ReadIssueProjects(ANode: TJsonNode);
+var
+  Index, Inner: Integer;
+  Mapping, Value: TJsonNode;
+  Key, Text: string;
+  Matches: TList<string>;
+  HasMatch, HasConnection: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"projects" muss eine Liste von Zuordnungen sein');
+    Exit;
+  end;
+  FSettings.IssueProjects := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+  Matches := TList<string>.Create;
+  try
+    for Index := 0 to ANode.Count - 1 do
+    begin
+      Mapping := ANode[Index];
+      if Mapping.Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(Mapping, 'Eine Zuordnung ist ein Objekt mit "match", "connection" und "project"');
+        Continue;
+      end;
+      HasMatch := False;
+      HasConnection := False;
+      for Inner := 0 to Mapping.Count - 1 do
+      begin
+        Key := Mapping.Keys[Inner];
+        Value := Mapping[Inner];
+        if Key = 'match' then
+        begin
+          if ExpectString(Value, 'match', Text) and (Trim(Text) <> '') then
+          begin
+            HasMatch := True;
+            // Wie im Plugin: ohne Groß-/Kleinschreibung, „/“ wie „\“, ohne „\“ am Ende.
+            Text := AnsiLowerCase(Trim(Text)).Replace('/', '\');
+            while Text.EndsWith('\') and (Length(Text) > 2) do
+              Delete(Text, Length(Text), 1);
+            if Matches.IndexOf(Text) >= 0 then
+              ReportNode(Value, 'Für diesen Pfad gibt es schon eine Zuordnung')
+            else
+              Matches.Add(Text);
+          end;
+        end
+        else if Key = 'connection' then
+          HasConnection := ExpectString(Value, 'connection', Text) and (Trim(Text) <> '')
+        else if Key = 'project' then
+          ExpectString(Value, 'project', Text)
+        else
+          Report(Mapping.KeyStarts[Inner], Mapping.KeyStarts[Inner] + Length(Key) + 2,
+            Format('Unbekannte Angabe "%s" in einer Zuordnung', [Key]), False);
+      end;
+      if not HasMatch then
+        ReportNode(Mapping, 'Zuordnung ohne "match" (Pfad einer .dproj, .groupproj oder eines Ordners)');
+      if not HasConnection then
+        ReportNode(Mapping, 'Zuordnung ohne "connection"');
+    end;
+  finally
+    Matches.Free;
   end;
 end;
 
@@ -2921,7 +3092,10 @@ begin
     else if Key = 'tasks' then
       Result.Tasks := FileSettings.Tasks
     else if Key = 'issues' then
-      Result.IssueConnections := FileSettings.IssueConnections
+    begin
+      Result.IssueConnections := FileSettings.IssueConnections;
+      Result.IssueProjects := FileSettings.IssueProjects;
+    end
     else if Key = 'format' then
     begin
       Result.Format := FileSettings.Format;
@@ -2952,7 +3126,13 @@ begin
     else if Key = 'compiler' then
       Result.Compiler := FileSettings.Compiler
     else if Key = 'vcs' then
-      Result.VcsProvider := FileSettings.VcsProvider
+    begin
+      Result.VcsProvider := FileSettings.VcsProvider;
+      Result.VcsGitPath := FileSettings.VcsGitPath;
+      Result.VcsSvnPath := FileSettings.VcsSvnPath;
+      Result.VcsTimeoutSeconds := FileSettings.VcsTimeoutSeconds;
+      Result.VcsProjects := FileSettings.VcsProjects;
+    end
     else if Key = 'completion' then
       Result.Completion := FileSettings.Completion
     else if Key = 'refactoring' then

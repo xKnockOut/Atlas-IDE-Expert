@@ -144,6 +144,10 @@ type
     /// <summary>Vorgabe für issues.commitPattern (#765); wie TAtlasTrackerNaming.CommitPattern.
     /// </summary>
     DefaultIssuesCommitPattern = '{kennung} ';
+    /// <summary>Grenzen und Vorgabe von vcs.timeoutSeconds (#1285).</summary>
+    MinVcsTimeoutSeconds = 1;
+    MaxVcsTimeoutSeconds = 300;
+    DefaultVcsTimeoutSeconds = 15;
     /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
     MaxIssuesText = 200;
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
@@ -1279,6 +1283,23 @@ type
     /// <summary>Kommentare in der Vorschau laden und zeigen (#1264, issues.preview.comments); aus = nicht abgefragt.
     /// </summary>
     IssuesPreviewComments: Boolean;
+    /// <summary>Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261, issues.projects) als JSON-Liste mit
+    /// match, connection und project; liegt in settings.json, gelesen mit TAtlasTrackerProjects. '[]' = keine.
+    /// </summary>
+    IssuesProjects: string;
+    /// <summary>Art der Versionsverwaltung (#571, vcs.provider, seit #1285 auf der Seite Versionsverwaltung):
+    /// auto, git, svn oder off; liegt in settings.json, damit Plugin und Server denselben Wert lesen.</summary>
+    VcsProvider: string;
+    /// <summary>Eigener Pfad zu git.exe bzw. svn.exe (#1285, vcs.git.path, vcs.svn.path); '' = in PATH und den
+    /// üblichen Ordnern suchen. Liegen in settings.json, damit auch atlas --changed dasselbe Programm verwendet.
+    /// </summary>
+    VcsGitPath: string;
+    VcsSvnPath: string;
+    /// <summary>Zeitlimit je Aufruf von git bzw. svn in Sekunden (#1285, vcs.timeoutSeconds, 1–300).</summary>
+    VcsTimeoutSeconds: Integer;
+    /// <summary>Persönliche Art und Hauptbranch je Delphi-Projekt (#1286, vcs.projects) als JSON-Liste mit match,
+    /// provider und mainBranch; liegt in settings.json, gelesen mit TAtlasVcsProjects. '[]' = keine.</summary>
+    VcsProjects: string;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -1996,6 +2017,12 @@ begin
   Result.IssuesConnections := '[]';
   Result.IssuesPreview := True;
   Result.IssuesPreviewComments := True;
+  Result.IssuesProjects := '[]';
+  Result.VcsProvider := 'auto';
+  Result.VcsGitPath := '';
+  Result.VcsSvnPath := '';
+  Result.VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
+  Result.VcsProjects := '[]';
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2074,6 +2101,18 @@ begin
   IssuesConnections := Trim(IssuesConnections);
   if IssuesConnections = '' then
     IssuesConnections := '[]';
+  IssuesProjects := Trim(IssuesProjects);
+  if IssuesProjects = '' then
+    IssuesProjects := '[]';
+  VcsProvider := Choice(LowerCase(Trim(VcsProvider)), ['auto', 'git', 'svn', 'off']);
+  VcsGitPath := Trim(VcsGitPath);
+  VcsSvnPath := Trim(VcsSvnPath);
+  // Außerhalb der Grenzen gilt die Vorgabe wie im Server (vcs.timeoutSeconds).
+  if (VcsTimeoutSeconds < MinVcsTimeoutSeconds) or (VcsTimeoutSeconds > MaxVcsTimeoutSeconds) then
+    VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
+  VcsProjects := Trim(VcsProjects);
+  if VcsProjects = '' then
+    VcsProjects := '[]';
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2784,6 +2823,12 @@ begin
   IssuesConnections := AStore.ReadString('IssuesConnections', Default.IssuesConnections);
   IssuesPreview := AStore.ReadInteger('IssuesPreview', BoolValue(Default.IssuesPreview)) <> 0;
   IssuesPreviewComments := AStore.ReadInteger('IssuesPreviewComments', BoolValue(Default.IssuesPreviewComments)) <> 0;
+  IssuesProjects := AStore.ReadString('IssuesProjects', Default.IssuesProjects);
+  VcsProvider := AStore.ReadString('VcsProvider', Default.VcsProvider);
+  VcsGitPath := AStore.ReadString('VcsGitPath', Default.VcsGitPath);
+  VcsSvnPath := AStore.ReadString('VcsSvnPath', Default.VcsSvnPath);
+  VcsTimeoutSeconds := AStore.ReadInteger('VcsTimeoutSeconds', Default.VcsTimeoutSeconds);
+  VcsProjects := AStore.ReadString('VcsProjects', Default.VcsProjects);
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3251,6 +3296,12 @@ begin
   AStore.WriteString('IssuesConnections', IssuesConnections);
   AStore.WriteInteger('IssuesPreview', BoolValue(IssuesPreview));
   AStore.WriteInteger('IssuesPreviewComments', BoolValue(IssuesPreviewComments));
+  AStore.WriteString('IssuesProjects', IssuesProjects);
+  AStore.WriteString('VcsProvider', VcsProvider);
+  AStore.WriteString('VcsGitPath', VcsGitPath);
+  AStore.WriteString('VcsSvnPath', VcsSvnPath);
+  AStore.WriteInteger('VcsTimeoutSeconds', VcsTimeoutSeconds);
+  AStore.WriteString('VcsProjects', VcsProjects);
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

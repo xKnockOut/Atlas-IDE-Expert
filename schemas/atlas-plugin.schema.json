@@ -52,6 +52,10 @@
       "caption": "Issue-Tracker",
       "captionEn": "Issue tracker"
     },
+    "vcs": {
+      "caption": "Versionsverwaltung",
+      "captionEn": "Version control"
+    },
     "general": {
       "caption": "Allgemein",
       "captionEn": "General"
@@ -5215,6 +5219,19 @@
       "x-control": "Tabelle Verbindungen",
       "x-issue": "#1260"
     },
+    "IssuesProjects": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object"
+      },
+      "description": "Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt mit match, connection und project (#1261); liegt in settings.json unter issues.projects. Im Plugin als JSON-Text gelesen und geschrieben.",
+      "x-key": "issues.projects",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Tabelle Projekte",
+      "x-issue": "#1261"
+    },
     "IssuesPreview": {
       "type": "boolean",
       "default": true,
@@ -5236,6 +5253,69 @@
       "x-area": "issues",
       "x-page": "Issue-Tracker",
       "x-issue": "#1264"
+    },
+    "VcsProvider": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "git",
+        "svn",
+        "off"
+      ],
+      "default": "auto",
+      "description": "Art der Versionsverwaltung: auto nach gefundener Arbeitskopie, git bzw. svn nur diese Art, off aus. Liegt in settings.json unter vcs.provider (Server und Plugin lesen denselben Wert).",
+      "x-key": "vcs.provider",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-control": "Auswahl",
+      "x-issue": "#571, #1285"
+    },
+    "VcsGitPath": {
+      "type": "string",
+      "default": "",
+      "description": "Pfad zu git.exe; leer = automatisch suchen. Liegt in settings.json unter vcs.git.path.",
+      "x-key": "vcs.git.path",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-path": true,
+      "x-control": "Datei wählen mit „Prüfen“",
+      "x-issue": "#1285"
+    },
+    "VcsSvnPath": {
+      "type": "string",
+      "default": "",
+      "description": "Pfad zu svn.exe; leer = automatisch suchen. Liegt in settings.json unter vcs.svn.path.",
+      "x-key": "vcs.svn.path",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-path": true,
+      "x-control": "Datei wählen mit „Prüfen“",
+      "x-issue": "#1285"
+    },
+    "VcsTimeoutSeconds": {
+      "type": "integer",
+      "default": 15,
+      "minimum": 1,
+      "maximum": 300,
+      "description": "Zeitlimit je Aufruf von git bzw. svn in Sekunden. Liegt in settings.json unter vcs.timeoutSeconds.",
+      "x-key": "vcs.timeoutSeconds",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-control": "Zahl (1–300)",
+      "x-issue": "#1285"
+    },
+    "VcsProjects": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object"
+      },
+      "description": "Persönliche Art und Hauptbranch je Delphi-Projekt mit match, provider und mainBranch (#1286); liegt in settings.json unter vcs.projects. Im Plugin als JSON-Text gelesen und geschrieben.",
+      "x-key": "vcs.projects",
+      "x-area": "vcs",
+      "x-page": "Versionsverwaltung",
+      "x-control": "Tabelle Projekte",
+      "x-issue": "#1286"
     }
   },
   "additionalProperties": false

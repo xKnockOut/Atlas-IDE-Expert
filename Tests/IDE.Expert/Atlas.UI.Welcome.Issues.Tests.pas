@@ -5,7 +5,8 @@
 // Netz), Fußzeile vor und nach „Beginnen“, Kurztext „ATL-123 · 3 offen“;
 // Klicks auf Kennung, Pull Request und „Beginnen“ erreichen die Quelle über
 // die Nachrichtenschleife; Kontextmenü mit „Nur merken“, „Zugang …“ nur mit
-// Schalter TrackerLogin und „Beenden“ nur mit aktuellem Issue.
+// Schalter TrackerLogin und „Beenden“ nur mit aktuellem Issue. Ohne Tracker
+// (weder .atlas noch Zuordnung, #1261) ist die Fußzeile der Link „zuordnen …“.
 
 interface
 
@@ -31,6 +32,10 @@ type
     /// Browser öffnen“ den Browser.</summary>
     [Test]
     procedure ClicksOpenPreview;
+    /// <summary>Abnahme #1261: ohne Zuordnung zeigt der Bereich „zuordnen …“; der Klick erreicht die Quelle.
+    /// </summary>
+    [Test]
+    procedure AssignLinkWithoutTracker;
   end;
 
 implementation
@@ -64,6 +69,7 @@ type
     procedure Credentials;
     function CanEnterCredentials: Boolean;
     procedure EndActive;
+    procedure AssignProject;
   end;
 
 function NowUtc0: TDateTime;
@@ -154,6 +160,11 @@ end;
 procedure TFakeIssues.EndActive;
 begin
   Calls := Calls + ['end'];
+end;
+
+procedure TFakeIssues.AssignProject;
+begin
+  Calls := Calls + ['assign'];
 end;
 
 { TAtlasWelcomeIssuesFrameTests }
@@ -387,6 +398,58 @@ begin
     mHost.Free;
     mFake.Calls := nil;
     TAtlasStrings.Language := mSaved;
+  end;
+end;
+
+procedure TAtlasWelcomeIssuesFrameTests.AssignLinkWithoutTracker;
+var
+  mSaved: TAtlasLanguage;
+  mHost: TForm;
+  mFake: TFakeIssues;
+  mSource: IAtlasIssuesSource;
+  mFrame: TAtlasWelcomeIssuesFrame;
+  mView: TAtlasIssuesView;
+begin
+  mSaved := TAtlasStrings.Language;
+  mFake := TFakeIssues.Create;
+  mSource := mFake;
+  mHost := TForm.CreateNew(nil);
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    mView := Default(TAtlasIssuesView);
+    mView.Status := TAtlasIssuesStatus.NotConfigured;
+    mView.Project := 'C:\Projekte\Kasse\Kasse.dproj';
+    // Ohne Haken (Zuordnen nicht möglich) bleibt der bisherige Hinweis.
+    Assert.IsFalse(TAtlasWelcomeIssuesFrame.FooterIsAssign(mView));
+    Assert.Contains(TAtlasWelcomeIssuesFrame.FooterText(mView), 'tracker');
+    mView.CanAssign := True;
+    Assert.IsTrue(TAtlasWelcomeIssuesFrame.FooterIsAssign(mView));
+    Assert.AreEqual('Kein Tracker für dieses Projekt – zuordnen …', TAtlasWelcomeIssuesFrame.FooterText(mView));
+    // Ein Hinweis der Quelle geht vor; ohne Projekt gibt es nichts zuzuordnen.
+    mView.Notice := 'x';
+    Assert.IsFalse(TAtlasWelcomeIssuesFrame.FooterIsAssign(mView));
+    mView.Notice := '';
+    mView.Project := '';
+    Assert.IsFalse(TAtlasWelcomeIssuesFrame.FooterIsAssign(mView));
+    mView.Project := 'C:\Projekte\Kasse\Kasse.dproj';
+    // Klick auf den Link über die Nachrichtenschleife.
+    mFake.FView := mView;
+    mFrame := TAtlasWelcomeIssuesFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Width := 600;
+    mFrame.Source := mSource;
+    mFake.Calls := nil;
+    mFrame.ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Assign, -1));
+    Assert.AreEqual(0, Integer(Length(mFake.Calls)));
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('assign', mFake.Calls[0]);
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('No tracker for this project – assign …', TAtlasWelcomeIssuesFrame.FooterText(mView));
+  finally
+    TAtlasStrings.Language := mSaved;
+    mHost.Free;
+    mFake.Calls := nil;
   end;
 end;
 

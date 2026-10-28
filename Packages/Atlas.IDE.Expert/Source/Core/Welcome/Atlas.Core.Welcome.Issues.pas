@@ -4,7 +4,9 @@
 // Tools API: was abgefragt wird, wann, was der Bereich zeigt, welches Issue
 // aktiv ist und was „Beginnen“ tut.
 // - Ziel: Anbieter, Adresse und Projekt aus .atlas (Abschnitt "tracker");
-//   issues.tracker ersetzt den Anbieter, .query die Abfrage.
+//   issues.tracker ersetzt den Anbieter, .query die Abfrage. Ohne tracker in
+//   der .atlas gilt die persönliche Zuordnung (#1261, issues.projects):
+//   Verbindung und Tracker-Projekt der passenden Zeile.
 // - Abfrage beim Anzeigen, höchstens alle DueMinutes Minuten, Zeitlimit
 //   FetchTimeoutMs; ohne Netz bleibt der letzte Stand („Stand vom …“).
 // - Aktives Issue: mit „Beginnen“ gemerkt (Branch oder nur gemerkt); sonst
@@ -34,6 +36,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Projects,
   Atlas.Core.Vcs.Contract;
 
 type
@@ -117,6 +120,9 @@ type
     /// <summary>issues.preview (#1264): Klick auf Zeile bzw. Kennung zeigt das Issue in „Atlas-Issue“,
     /// Strg+Klick öffnet den Browser. Create setzt False.</summary>
     Preview: Boolean;
+    /// <summary>Hauptbranch des Projekts (#1286, vcs.projects bzw. .atlas); '' = raten. BranchBase hat Vorrang.
+    /// Setzt der Aufrufer je Projekt.</summary>
+    MainBranch: string;
     class function Create(AStart: TAtlasIssueStart; const ABranchPattern, ABranchBase,
       ACommitPattern: string): TAtlasIssuesOptions; static;
   end;
@@ -164,6 +170,10 @@ type
     Project: string;
     ProjectName: string;
     Tracker: string;
+    /// <summary>Name der Verbindung (#1261): aus der Zuordnung bzw. der Projektname bei .atlas; '' ohne.</summary>
+    Connection: string;
+    /// <summary>Ohne Tracker: „zuordnen …“ anbieten (#1261).</summary>
+    CanAssign: Boolean;
     Querying: Boolean;
     Notice: string;
     /// <summary>Hinweis ist ein Fehler (rot).</summary>
@@ -199,7 +209,11 @@ type
     class function StartOf(const AText: string): TAtlasIssueStart; static;
     /// <summary>Ziel aus .atlas und den Einstellungen; ASettingTracker '' = Anbieter aus .atlas.</summary>
     class function TargetFor(const ATeamProvider, ATeamUrl, ATeamProject, ASettingTracker,
-      ASettingQuery: string): TAtlasTrackerTarget; static;
+      ASettingQuery: string): TAtlasTrackerTarget; overload; static;
+    /// <summary>Ziel aus der Auflösung (#1261): .atlas wie oben (ASettingTracker ersetzt den Anbieter), sonst
+    /// Anbieter und Adresse der Verbindung mit dem Tracker-Projekt der Zuordnung; ohne Treffer leer.</summary>
+    class function TargetFor(const AResolution: TAtlasTrackerResolution; const ASettingTracker,
+      ASettingQuery: string): TAtlasTrackerTarget; overload; static;
     /// <summary>Abfrage fällig: anderes Ziel, noch keine oder letzte vor mindestens DueMinutes; AForce immer.
     /// </summary>
     class function Due(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget; ANowUtc: TDateTime;
@@ -321,6 +335,7 @@ begin
   Result.BranchBase := Trim(ABranchBase);
   Result.CommitPattern := ACommitPattern;
   Result.Preview := False;
+  Result.MainBranch := '';
 end;
 
 { TAtlasWelcomeIssues }
@@ -359,6 +374,22 @@ begin
   if (Provider <> TAtlasTrackerTarget.GitHub) and (Provider <> TAtlasTrackerTarget.YouTrack) then
     Provider := '';
   Result := TAtlasTrackerTarget.Create(Provider, ATeamUrl, ATeamProject, ASettingQuery);
+end;
+
+class function TAtlasWelcomeIssues.TargetFor(const AResolution: TAtlasTrackerResolution; const ASettingTracker,
+  ASettingQuery: string): TAtlasTrackerTarget;
+begin
+  case AResolution.Match of
+    TAtlasTrackerMatch.None:
+      Result := TAtlasTrackerTarget.Create('', '', '', '');
+    TAtlasTrackerMatch.TeamFile:
+      Result := TargetFor(AResolution.Connection.Provider, AResolution.Connection.Url, AResolution.Project,
+        ASettingTracker, ASettingQuery);
+  else
+    // Persönliche Zuordnung: Die Verbindung nennt ihren Anbieter selbst.
+    Result := TargetFor(AResolution.Connection.Provider, AResolution.Connection.Url, AResolution.Project, '',
+      ASettingQuery);
+  end;
 end;
 
 class function TAtlasWelcomeIssues.Due(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
@@ -483,12 +514,7 @@ begin
   end;
   Result.Branch := TAtlasTrackerNaming.BranchName(Pattern, AIssue);
   Result.Valid := Result.Branch <> '';
-  if AOptions.BranchBase <> '' then
-    Result.Bases := [AOptions.BranchBase]
-  else if AKind = TAtlasVcsKind.Svn then
-    Result.Bases := [TAtlasTrackerNaming.SvnBase]
-  else
-    Result.Bases := [TAtlasTrackerNaming.GitBase, TAtlasTrackerNaming.GitBaseFallback];
+  Result.Bases := TAtlasTrackerNaming.Bases(AKind = TAtlasVcsKind.Svn, AOptions.BranchBase, AOptions.MainBranch);
   Result.Message := Trim(AIssue.Key + ' ' + AIssue.Title);
 end;
 
