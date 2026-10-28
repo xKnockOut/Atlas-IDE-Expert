@@ -50,6 +50,10 @@ type
     /// </summary>
     [Test]
     procedure ExecuteWithDialogRequest;
+    /// <summary>Git-Optionen (#1289): scheitert nur der Push, gilt der Branch als angelegt; belegter
+    /// worktree-Ordner legt nichts an; im worktree Ordner und Wurzel im Ergebnis.</summary>
+    [Test]
+    procedure ExecuteWithGitOptions;
     /// <summary>SVN: copy und switch aus dem Plan; scheitert switch, steht die Kopie als Serverschritt da.</summary>
     [Test]
     procedure ExecuteSvnAndRemember;
@@ -719,6 +723,68 @@ begin
   Fake.Branches := nil;
   Fake.Bases := nil;
   Fake.Current := '';
+  Started := Default(TAtlasIssueStartResult);
+  mRequest := Default(TAtlasVcsBranchRequest);
+end;
+
+procedure TAtlasWelcomeIssuesTests.ExecuteWithGitOptions;
+var
+  Fake: TFakeBranchingVcs;
+  Vcs: IAtlasVersionControl;
+  Plan: TAtlasIssueStartPlan;
+  Started: TAtlasIssueStartResult;
+  mRequest: TAtlasVcsBranchRequest;
+  mFolder: string;
+begin
+  Fake := TFakeBranchingVcs.Create(TAtlasVcsKind.Git);
+  Vcs := Fake;
+  Fake.Bases := ['main'];
+  Plan := TAtlasWelcomeIssues.PlanStart(TAtlasVcsKind.Git,
+    TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', ''), Issue('#753', 753, 'Atlas-Bereiche'));
+  // Push ohne Anmeldung: der lokale Branch bleibt, „Beginnen“ gilt als gelungen.
+  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Git, 'feature/753-x',
+    TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.LocalMain, 'main', '', 'origin'), '');
+  mRequest.PushNow := True;
+  Fake.FailOn := 'push';
+  Started := TAtlasWelcomeIssues.Execute(Vcs, Plan, mRequest);
+  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.IsTrue(Started.PushFailed);
+  Assert.IsTrue(Started.Reason = TAtlasVcsOutcome.Failed, 'Grund des Push');
+  Assert.AreEqual('feature/753-x', Fake.Current);
+  Assert.AreEqual(2, Integer(Length(Started.Steps)));
+  Assert.AreEqual('', Started.Folder);
+  // Mit Push: nicht gescheitert.
+  Fake.FailOn := '';
+  Fake.Branches := nil;
+  Started := TAtlasWelcomeIssues.Execute(Vcs, Plan, mRequest);
+  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.IsFalse(Started.PushFailed);
+  // Den worktree-Ordner gibt es schon: nichts angelegt.
+  Fake.Branches := nil;
+  Fake.Calls := nil;
+  mRequest.PushNow := False;
+  mRequest.WorktreeFolder := ExcludeTrailingPathDelimiter(GetCurrentDir);
+  Started := TAtlasWelcomeIssues.Execute(Vcs, Plan, mRequest);
+  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Failed);
+  Assert.IsTrue(Started.FolderTaken);
+  Assert.AreEqual(mRequest.WorktreeFolder, Started.Folder);
+  Assert.AreEqual(1, Integer(Length(Fake.Calls)), 'nur die Abfrage, ob es den Branch gibt');
+  // Neuer Ordner: worktree add, Ordner und Wurzel im Ergebnis.
+  mFolder := IncludeTrailingPathDelimiter(GetCurrentDir) + 'gibt-es-nicht-1289';
+  mRequest.WorktreeFolder := mFolder;
+  Fake.Calls := nil;
+  Started := TAtlasWelcomeIssues.Execute(Vcs, Plan, mRequest);
+  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.IsFalse(Started.FolderTaken);
+  Assert.AreEqual(mFolder, Started.Folder);
+  Assert.AreEqual('C:\Repo', Started.WorkingRoot);
+  Assert.AreEqual('run worktree add --quiet --no-track -b feature/753-x ' + mFolder + ' refs/heads/main',
+    Fake.Calls[High(Fake.Calls)]);
+  Fake.Calls := nil;
+  Fake.Branches := nil;
+  Fake.Bases := nil;
+  Fake.Current := '';
+  Fake.FailOn := '';
   Started := Default(TAtlasIssueStartResult);
   mRequest := Default(TAtlasVcsBranchRequest);
 end;

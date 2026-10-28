@@ -179,13 +179,23 @@ type
     /// </summary>
     Steps: TArray<TAtlasVcsBranchStep>;
     Run: TAtlasVcsBranchRun;
-    /// <summary>SVN „frisch auschecken“ (#1290): neuer Ordner und Wurzel der bisherigen Arbeitskopie (für das
-    /// Angebot, die Gruppe dort zu öffnen); sonst ''.</summary>
+    /// <summary>SVN „frisch auschecken“ (#1290): neuer Ordner (für das Angebot, die Gruppe dort zu öffnen);
+    /// sonst ''.</summary>
     CheckoutFolder: string;
+    /// <summary>Angelegt: Wurzel der bisherigen Arbeitskopie (SVN „frisch auschecken“ #1290, Git worktree #1289).
+    /// </summary>
     WorkingRoot: string;
     /// <summary>SVN-Externals (#1291): Der Branch hat Externals festgeschrieben bzw. mitverzweigt und die
     /// Arbeitskopie wurde umgeschaltet; danach den Index neu aufbauen.</summary>
     IndexRebuild: Boolean;
+    /// <summary>Git (#1289): angelegt, aber der Push danach scheiterte (Reason nennt den Grund); der lokale
+    /// Branch bleibt, Outcome ist Started.</summary>
+    PushFailed: Boolean;
+    /// <summary>Git: Ordner des worktree, in dem der Branch angelegt wurde ('' = in dieser Arbeitskopie; bei
+    /// FolderTaken der belegte Ordner).</summary>
+    Folder: string;
+    /// <summary>Den Ordner für den worktree gab es schon: nichts angelegt (Outcome Failed).</summary>
+    FolderTaken: Boolean;
     function Succeeded: Boolean;
   end;
 
@@ -714,6 +724,14 @@ begin
       Exit;
     end;
   end;
+  // Eigener Ordner (#1289): gibt es ihn schon, nichts anlegen.
+  if (mRequest.WorktreeFolder <> '') and DirectoryExists(mRequest.WorktreeFolder) then
+  begin
+    Result.FolderTaken := True;
+    Result.Folder := mRequest.WorktreeFolder;
+    Result.Reason := TAtlasVcsOutcome.Failed;
+    Exit;
+  end;
   Result.Steps := TAtlasVcsBranchPlan.Steps(mRequest);
   if Length(Result.Steps) = 0 then
   begin
@@ -723,16 +741,17 @@ begin
   // Mit der Anfrage: Der Arbeitsordner für das Umschreiben der Externals (#1291) wird davor und danach gelöscht.
   Result.Run := TAtlasVcsBranchPlan.Execute(mBranching, mRequest, Result.Steps, AProgress);
   Result.Reason := Result.Run.Outcome;
-  if Result.Run.Succeeded then
+  // Scheitert nur der Push danach, ist der Branch trotzdem angelegt und ausgecheckt.
+  if Result.Run.Succeeded or TAtlasVcsBranchPlan.OnlyPushFailed(Result.Steps, Result.Run) then
   begin
     Result.Base := TAtlasVcsBranchPlan.BaseName(mRequest.Kind, mRequest.Base);
     Result.Outcome := TAtlasIssueStartOutcome.Started;
     Result.IndexRebuild := TAtlasVcsBranchPlan.ChangesExternals(mRequest);
     if (mRequest.Kind = TAtlasVcsKind.Svn) and (mRequest.After = TAtlasVcsSvnAfter.Checkout) then
-    begin
       Result.CheckoutFolder := mRequest.CheckoutFolder;
-      Result.WorkingRoot := AVcs.WorkingCopy.Root;
-    end;
+    Result.WorkingRoot := AVcs.WorkingCopy.Root;
+    Result.PushFailed := not Result.Run.Succeeded;
+    Result.Folder := mRequest.WorktreeFolder;
   end;
 end;
 

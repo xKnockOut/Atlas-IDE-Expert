@@ -33,7 +33,12 @@
 //   Atlas mit vcs.branch.confirm vorher den Dialog „Branch anlegen“ (#1288,
 //   TAtlasIdeBranching) mit Name, Basis und den Schritten; die Schritte kommen
 //   in jedem Fall aus TAtlasVcsBranchPlan, je Schritt eine Zeile in der
-//   Meldungsansicht.
+//   Meldungsansicht. Git-Optionen (#1289): Ohne Dialog gelten die Vorgaben
+//   aus vcs.branch.git.* (bei uncommitted = ask fragt Atlas „Mitnehmen“,
+//   „Beiseitelegen“ oder „Abbrechen“); mit Dialog stehen sie dort. Scheitert
+//   der Abruf, fragt Atlas nur nach dem Dialog nach dem lokalen Stand, sonst
+//   bricht es ab. Mit worktree gilt das Issue für das Projekt im neuen Ordner,
+//   und Atlas bietet an, es dort zu öffnen.
 // - Commit-Präfix (issues.commitPattern), solange ein Issue
 //   aktuell ist: im Commit-Dialog der IDE (das Nachrichtenfeld wird einmal je
 //   Dialog vorne ergänzt) und, nach einmaliger Zustimmung je Projekt, über den
@@ -158,6 +163,11 @@ type
       const AIssues: TArray<TAtlasTrackerIssue>; AError: TAtlasCiFetchError); static;
     procedure Prepared(const AProject: string; const AIssue: TAtlasTrackerIssue; const APlan: TAtlasIssueStartPlan;
       AChanges: Integer; const AFacts: TAtlasVcsBranchFacts);
+    /// <summary>„Beginnen“ im Hintergrund ausführen (#1288); AOfferLocal: nach gescheitertem Abruf „Vom lokalen
+    /// Stand abzweigen?“ (#1289, nur nach dem Dialog).</summary>
+    procedure RunStart(const AProject: string; const AIssue: TAtlasTrackerIssue; const APlan: TAtlasIssueStartPlan;
+      AUseRequest: Boolean; const ARequest: TAtlasVcsBranchRequest; const AFacts: TAtlasVcsBranchFacts;
+      AOfferLocal: Boolean);
     procedure Finished(const AProject: string; const AIssue: TAtlasTrackerIssue; const APlan: TAtlasIssueStartPlan;
       const AResult: TAtlasIssueStartResult);
     procedure SetNotice(const AProject, AText: string; AFailed: Boolean);
@@ -907,7 +917,10 @@ begin
       // Vorhandener Branch: nur umschalten, ohne Dialog (wie bisher).
       if Supports(Vcs, IAtlasVcsBranching, mBranching) and
         (mBranching.BranchExists(Plan.Branch, Plan.Svn, mExists) = TAtlasVcsOutcome.Ok) and not mExists then
+      begin
         mFacts := TAtlasVcsBranchPlan.Inspect(Vcs, Plan.Bases);
+        mFacts.LocalChanges := Changes;
+      end;
     end,
     procedure
     begin
@@ -925,30 +938,46 @@ end;
 procedure TAtlasIdeIssues.Prepared(const AProject: string; const AIssue: TAtlasTrackerIssue;
   const APlan: TAtlasIssueStartPlan; AChanges: Integer; const AFacts: TAtlasVcsBranchFacts);
 var
-  Keep: IAtlasIssuesSource;
-  Project, Dir: string;
-  Issue: TAtlasTrackerIssue;
+  Project: string;
   Plan: TAtlasIssueStartPlan;
-  Outcome: TAtlasIssueStartResult;
   mRequest: TAtlasVcsBranchRequest;
-  mUseRequest, mNeverAsk: Boolean;
+  mUseRequest, mNeverAsk, mDialog, mAsked: Boolean;
+  mOptions: TAtlasVcsGitBranchOptions;
 begin
   Project := AProject;
-  Issue := AIssue;
   Plan := APlan;
-  Outcome := Default(TAtlasIssueStartResult);
   mUseRequest := False;
+  mDialog := False;
+  mAsked := False;
+  mRequest := Default(TAtlasVcsBranchRequest);
   // Neuer Branch (#1288): mit vcs.branch.confirm erst der Dialog „Branch anlegen“; „Abbrechen“ ändert nichts.
-  // Ohne Dialog die Vorgaben aus dem Plan. Findet SVN ohne erkennbares Layout keinen Ort (#1290), fragt der
-  // Dialog trotzdem danach, statt an einem geratenen Ort anzulegen.
+  // Ohne Dialog die Vorgaben aus dem Plan und den Git-Optionen (#1289). Findet SVN ohne erkennbares Layout
+  // keinen Ort (#1290), fragt der Dialog trotzdem danach, statt an einem geratenen Ort anzulegen.
   if (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid and (AFacts.Outcome = TAtlasVcsOutcome.Ok) then
   begin
     if not TAtlasIdeSettings.Current.VcsBranchConfirm then
-      mUseRequest := TAtlasVcsBranchPlan.DefaultRequest(AFacts, Plan.Branch, Plan.Message, Plan.Svn, mRequest);
+    begin
+      mOptions := TAtlasIdeBranching.GitOptions;
+      mUseRequest := TAtlasVcsBranchPlan.DefaultRequest(AFacts, Plan.Branch, Plan.Message, AIssue.Key, mOptions,
+        Plan.Svn, mRequest);
+      // uncommitted = ask ohne Dialog: mitnehmen, beiseitelegen oder abbrechen.
+      if mUseRequest and (mRequest.Kind = TAtlasVcsKind.Git) and (mRequest.WorktreeFolder = '') and
+        (AChanges > 0) and (mOptions.Uncommitted = TAtlasVcsGitUncommitted.Ask) then
+      begin
+        if not TAtlasIdeBranching.AskUncommitted(AChanges, Plan.Branch, mRequest.Stash) then
+        begin
+          FStartProject := '';
+          SetNotice(Project, '', False);
+          Changed;
+          Exit;
+        end;
+        mAsked := True;
+      end;
+    end;
     if TAtlasIdeSettings.Current.VcsBranchConfirm or (not mUseRequest and (AFacts.Kind = TAtlasVcsKind.Svn)) then
     begin
-      if not TAtlasIdeBranching.Ask(ExtractFileDir(Project), AFacts, Plan.Branch, Plan.Message, Plan.Svn, True,
-        mRequest, mNeverAsk) then
+      if not TAtlasIdeBranching.Ask(ExtractFileDir(Project), AFacts, Plan.Branch, Plan.Message, AIssue.Key, Plan.Svn,
+        True, mRequest, mNeverAsk) then
       begin
         FStartProject := '';
         SetNotice(Project, '', False);
@@ -958,11 +987,15 @@ begin
       if mNeverAsk then
         TAtlasIdeBranching.StopAsking;
       mUseRequest := True;
+      mDialog := True;
       Plan.Branch := mRequest.Name;
     end;
   end;
-  // Lokale Änderungen: vorher fragen (Git nimmt sie mit, wenn sie nicht kollidieren).
-  if (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid and (AChanges > 0) and
+  // Lokale Änderungen: vorher fragen (Git nimmt sie mit, wenn sie nicht kollidieren). Nicht, wenn sie schon
+  // entschieden sind: im Dialog (Git), bei stash oder worktree (#1289).
+  if (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid and (AChanges > 0) and not mAsked and
+    not (mDialog and (mRequest.Kind = TAtlasVcsKind.Git)) and
+    not (mUseRequest and (mRequest.Stash or (mRequest.WorktreeFolder <> ''))) and
     (MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesLocalChanges, [AChanges, Plan.Branch,
     sLineBreak + sLineBreak]), mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
   begin
@@ -971,21 +1004,71 @@ begin
     Changed;
     Exit;
   end;
+  RunStart(Project, AIssue, Plan, mUseRequest, mRequest, AFacts, mDialog);
+end;
+
+procedure TAtlasIdeIssues.RunStart(const AProject: string; const AIssue: TAtlasTrackerIssue;
+  const APlan: TAtlasIssueStartPlan; AUseRequest: Boolean; const ARequest: TAtlasVcsBranchRequest;
+  const AFacts: TAtlasVcsBranchFacts; AOfferLocal: Boolean);
+var
+  Keep: IAtlasIssuesSource;
+  Project, Dir: string;
+  Issue: TAtlasTrackerIssue;
+  Plan: TAtlasIssueStartPlan;
+  Outcome: TAtlasIssueStartResult;
+  mRequest: TAtlasVcsBranchRequest;
+  mFacts: TAtlasVcsBranchFacts;
+  mUseRequest, mOfferLocal: Boolean;
+begin
+  Project := AProject;
+  Issue := AIssue;
+  Plan := APlan;
+  mRequest := ARequest;
+  mFacts := AFacts;
+  mUseRequest := AUseRequest;
+  mOfferLocal := AOfferLocal;
+  Outcome := Default(TAtlasIssueStartResult);
   Keep := Self;
   Dir := ExtractFileDir(Project);
   if not TAtlasIdeVcs.Run(
     procedure
+    var
+      mVcs: IAtlasVersionControl;
+      mBranching: IAtlasVcsBranching;
+      mHooks, mGitDir: string;
     begin
       if mUseRequest then
         Outcome := TAtlasWelcomeIssues.Execute(TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs)), Plan,
           mRequest, TAtlasIdeBranching.Progress(mRequest.Kind))
       else
         Outcome := TAtlasWelcomeIssues.Execute(TAtlasIdeVcs.ForFolder(Dir, TAtlasIdeVcs.AtLeast(VcsTimeoutMs)), Plan);
+      // worktree (#1289): Hook und Präfix-Datei gehören zum neuen Ordner (eigener Verwaltungsordner).
+      if (Outcome.Outcome = TAtlasIssueStartOutcome.Started) and (Outcome.Folder <> '') then
+      begin
+        Outcome.Hooks := '';
+        Outcome.GitDir := '';
+        mVcs := TAtlasIdeVcs.ForFolder(Outcome.Folder, TAtlasIdeVcs.AtLeast(VcsTimeoutMs));
+        if Supports(mVcs, IAtlasVcsBranching, mBranching) and
+          (mBranching.HookFolders(mHooks, mGitDir) = TAtlasVcsOutcome.Ok) then
+        begin
+          Outcome.Hooks := mHooks;
+          Outcome.GitDir := mGitDir;
+        end;
+      end;
     end,
     procedure
+    var
+      mFallback: TAtlasVcsBranchRequest;
     begin
       if (Keep = nil) or not FStarted then
         Exit;
+      // Abruf gescheitert (#1289), noch nichts geändert: nach dem Dialog vom lokalen Stand, ohne erneute Frage.
+      if mOfferLocal and (Outcome.Outcome = TAtlasIssueStartOutcome.Failed) and
+        TAtlasIdeBranching.AskLocal(mFacts, mRequest, Outcome.Steps, Outcome.Run, mFallback) then
+      begin
+        RunStart(Project, Issue, Plan, True, mFallback, mFacts, False);
+        Exit;
+      end;
       Finished(Project, Issue, Plan, Outcome);
     end) then
   begin
@@ -1032,6 +1115,7 @@ var
   State: TAtlasIssuesState;
   Mode: TAtlasIssueStart;
   Notice: string;
+  mProject, mOpen: string;
 begin
   FStartProject := '';
   // Anonym: Art, Ergebnis; nie Kennung, Branch oder Pfad.
@@ -1048,8 +1132,10 @@ begin
       begin
         SetNotice(AProject, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStartFailed, [AResult.Branch,
           AtlasVcsOutcomeName(AResult.Reason)]), True);
-        // Mit Plan (#1288): Schritt, Grund und was schon auf dem Server liegt.
-        if Length(AResult.Steps) > 0 then
+        // Mit Plan (#1288): Schritt, Grund und was schon auf dem Server liegt; worktree-Ordner belegt (#1289).
+        if AResult.FolderTaken then
+          Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchFolderTaken, [AResult.Folder]))
+        else if Length(AResult.Steps) > 0 then
           Report(TAtlasIdeBranching.FailureText(APlan.Kind, AResult.Steps, AResult.Run))
         else
           Report(FNotice);
@@ -1062,17 +1148,31 @@ begin
   Mode := TAtlasIssueStart.Branch;
   if AResult.Outcome = TAtlasIssueStartOutcome.Remembered then
     Mode := TAtlasIssueStart.Remember;
-  State := StateOf(AProject);
+  // worktree (#1289): Das Issue gilt für das Projekt im neuen Ordner; die bisherige Arbeitskopie bleibt.
+  mProject := AProject;
+  mOpen := AProject;
+  if AResult.Folder <> '' then
+  begin
+    mProject := TAtlasVcsBranchPlan.ProjectInFolder(AProject, AResult.WorkingRoot, AResult.Folder);
+    if mProject = '' then
+      mProject := AProject;
+    mOpen := TAtlasIdeBranching.WorktreeProject(AProject, AResult.WorkingRoot, AResult.Folder);
+  end;
+  State := StateOf(mProject);
   TAtlasWelcomeIssues.Started(State, AIssue, Mode, AResult.Branch, NowUtc);
   if AResult.GitDir <> '' then
     State.GitDir := AResult.GitDir;
   // Git-Hook für das Präfix: nur mit Muster und nach Zustimmung.
   if (APlan.Prefix <> '') and (AResult.Hooks <> '') then
-    AskHook(AProject, State, AResult.Hooks);
-  SaveState(AProject, State);
+    AskHook(mProject, State, AResult.Hooks);
+  SaveState(mProject, State);
   case AResult.Outcome of
     TAtlasIssueStartOutcome.Started:
-      Notice := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesCreated, [AResult.Branch, AResult.Base]);
+      if AResult.Folder <> '' then
+        Notice := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchWorktreeCreated, [AResult.Branch, AResult.Base,
+          AResult.Folder])
+      else
+        Notice := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesCreated, [AResult.Branch, AResult.Base]);
     TAtlasIssueStartOutcome.Switched:
       Notice := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesSwitched, [AResult.Branch]);
   else
@@ -1087,9 +1187,18 @@ begin
   if (FProjects <> nil) and (AResult.Outcome <> TAtlasIssueStartOutcome.Remembered) then
     FProjects.Refresh(AProject);
   Changed;
-  // Danach das Projekt öffnen (ein offenes bleibt offen).
+  // Nur der Push danach scheiterte (#1289): der lokale Branch bleibt, die Meldung nennt den Grund.
+  if AResult.PushFailed then
+    Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchPushFailed, [AResult.Branch,
+      TAtlasIdeBranching.ServerState(AResult.Reason)]));
+  // Danach das Projekt öffnen (ein offenes bleibt offen); im worktree nur nach Rückfrage das dortige.
   if FProjects <> nil then
-    FProjects.Open(AProject);
+  begin
+    if AResult.Folder = '' then
+      FProjects.Open(AProject)
+    else if TAtlasIdeBranching.OfferWorktree(AResult.Branch, AResult.Folder, mOpen) then
+      FProjects.Open(mOpen);
+  end;
   // SVN „frisch auschecken“ (#1290): die alte Arbeitskopie bleibt; dieselbe Gruppe im neuen Ordner anbieten.
   if AResult.CheckoutFolder <> '' then
     TAtlasIdeBranching.OfferOpen(AProject, AResult.WorkingRoot, AResult.CheckoutFolder);
