@@ -6769,7 +6769,7 @@ Voraussetzung: Server läuft in der IDE mit Projekt; Unit mit `TGeld = record Be
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| OD1 | Das Beispiel aus #1030: `class operator Equal(const A, B: TGeld): Integer;` mit Rumpf | Fehler `operator-declaration-invalid` am Namen `Equal`: „Equal muss Boolean liefern (wie E2520).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| OD1 | Das Beispiel aus #1030: `class operator Equal(const A, B: TGeld): Integer;` mit Rumpf | Seit #1328 keine Meldung: dcc übersetzt Vergleiche mit anderem Ergebnis als Boolean (Spring4D-Kriterien) |
 | OD2 | Schnellkorrektur „Boolean als Ergebnis“, danach Strg+Z | `Boolean` in Deklaration und Rumpf `TGeld.Equal`; keine Meldung mehr; ein Undo-Schritt |
 | OD3 | `class operator Substract(const A, B: TGeld): TGeld;` | „Unbekannter Operator Substract; gemeint ist wohl Subtract (wie E2393).“, Korrektur „In Subtract umbenennen“ ändert Deklaration und Rumpf |
 | OD4 | `class operator Negative(const A, B: TGeld): TGeld;` und `class operator Add(const A: TGeld): TGeld;` | „Der Operator Negative muss 1 Parameter haben (wie E2517).“ mit Korrektur „Parameter nach Vorlage: (const A: TGeld)“; für Add 2 Parameter |
@@ -6778,7 +6778,7 @@ Voraussetzung: Server läuft in der IDE mit Projekt; Unit mit `TGeld = record Be
 | OD7 | `class operator Assign(const Dest: TGeld; const [ref] Src: TGeld);` | „Der erste Parameter von Assign muss ein var-Parameter sein (wie E2464).“, Korrektur „var vor den ersten Parameter setzen“ |
 | OD8 | Richtige Operatoren (Add, Equal mit Boolean, Implicit nach Integer, Initialize/Finalize, True/False), Parametertyp aus fremder Unit, Alias `TMoney = TGeld` | Keine Meldung |
 | OD9 | `"operator-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| OD10 | Abgleich mit Delphi: OD1 bis OD7 übersetzen | dcc meldet E2520, E2393, E2517, E2518, E2521, E2519, E2522, E2464 an denselben Stellen, für OD8 nichts |
+| OD10 | Abgleich mit Delphi: OD1 bis OD7 übersetzen | dcc meldet für OD1 nichts, sonst E2393, E2517, E2518, E2521, E2519, E2522, E2464 an denselben Stellen, für OD8 nichts |
 
 ## Generische Deklaration unzulässig (#1029)
 
@@ -6809,7 +6809,7 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | TB2 | Schnellkorrektur „virtual entfernen“, danach Strg+Z | `function Laenge: Double;`; keine Meldung mehr; ein Undo-Schritt |
 | TB3 | Im Record `procedure A; override;`, `constructor Create;`, `constructor Neu(X: Integer = 0);`, `destructor Destroy;`, `class procedure C;` | Meldungen wie E2463, E2394, E2471, E2465, E2398; Korrektur „static ergänzen“ ergibt `class procedure C; static;` |
 | TB4 | Lokaler Record in einer Prozedur bzw. `var R: record … end;` mit Methode, Property, `class var`, `type` und `const` | Meldungen wie E2433, E2434, E2435, E2436, E2437; nur Felder: keine Meldung |
-| TB5 | `class helper for TList` mit Feld, `var`-Feld, `destructor Destroy; override;`, `class constructor Init;`, Konstruktor, dessen Rumpf mit einer Zuweisung beginnt; `record helper for Integer` mit `virtual` bzw. `message`; `var Falsch: TListHelfer;` | Meldungen wie E2599 (zweimal), E2295, E2358, E2296, E2598, E2475, E2527; `class var` im Helfer und Konstruktor, der mit `Create;` beginnt: keine Meldung |
+| TB5 | `class helper for TList` mit Feld, `var`-Feld, `destructor Destroy; override;`, `class constructor Init;`, Konstruktor, dessen Rumpf mit einer Zuweisung beginnt; `record helper for Integer` mit `virtual` bzw. `message`; `var Falsch: TListHelfer;` | Meldungen wie E2599 (zweimal), E2295, E2598, E2475, E2527; `class var` im Helfer, `class constructor Init;` und Konstruktoren mit beliebigem ersten Befehl: keine Meldung (#1328, Skia4Delphi) |
 | TB6 | `TBH = class helper for TListe`, `class helper (TBH) for TAnders` (TAnders erbt nicht von TListe); Helfer als verschachtelter Typ in `TG<T> = class` | Meldungen wie E2294 und E2589; `class helper (TBH) for TKind` mit `TKind = class(TListe)` bleibt still |
 | TB7 | `class constructor Init(A: Integer);`, zweiter `class constructor Zwei; virtual;` | Meldungen wie E2360, E2359, E2534; zwei Klassenkonstruktoren in `{$IFDEF}`/`{$ELSE}`: keine Meldung |
 | TB8 | `procedure V; virtual; inline;`, `constructor Create; inline;`, `function Summe(const A: array of Integer): Integer; inline;`, inline-Methode mit asm-Rumpf, inline-Methode aus dem interface-Teil mit einer Konstanten des implementation-Teils | Meldungen wie E2425, E2442, E2439, E2426, E2441; Korrektur „inline entfernen“ |
@@ -8468,3 +8468,12 @@ Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DC
 | TS2 | Hover, Strg+Klick und Umbenennen auf Bezeichner am Wortanfang, in der Mitte und direkt hinter dem Wort, auch `&begin` und in `A.B.C` | Wie vorher; auf `C` in `^C` kein Hover |
 | TS3 | Unit mit einer Konstanten von 20.000 Elementen öffnen und eine Zeile ändern | Diagnosen kommen nach wenigen Sekunden, kein „Server langsam“ |
 | TS4 | `AtlasServer.exe --check` über HtmlViewer vor und nach dem Branch | Dieselben Befunde, unter 2 min (Linux-Bau: 116 s, **Abnahme**) |
+
+## #1328 Compilerregeln nicht strenger als dcc (Branch `claude/project-thread-tr2ksw`)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| DY1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; Tests der Regeln Properties, Visibility, TypeChecks, TypeRestrictions, TypeDeclarations, Constants, ForwardDeclarations grün (**Abnahme**) |
+| DY2 | `pwsh Tools/Build-DccFaelle.ps1` | `Output/DccFaelle-Ergebnis.txt` entsteht; Projekte ohne „Gegen“ übersetzen ohne Fehler, die Gegen-Projekte melden die genannten Codes. Weicht ein Fall ab, Regel nachziehen |
+| DY3 | `Tests/DccFaelle/DccFaelle.groupproj` in der IDE öffnen, jede Unit ansehen | Atlas meldet in Projekten ohne „Gegen“ nichts von den acht Regeln, in den Gegen-Projekten je markierter Zeile einen Befund |
+| DY4 | `AtlasServer.exe --check` über Spring4D, DUnitX, Skia4Delphi, mORMot2 | Keine Befunde mehr zu Slice an var-Open-Arrays, protected über generische Typen, Vergleichsoperatoren ohne Boolean, Klassenkonstruktor im Class-Helfer, geerbten Accessoren generischer Interfaces (**Abnahme**: mindestens 80 % weniger Befunde der acht Regeln als im Bericht vom 28.10.2026) |
