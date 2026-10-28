@@ -1816,6 +1816,9 @@ Voraussetzung: Projektgruppe mit mehreren Projekten, darunter ein DUnitX-Testpro
 | US18 | Auf ▾ EXPORTIERTE TYPEN klicken bei großem Fenster | Abschnitt bleibt zu, auch wenn Platz ist; erneuter Klick öffnet ihn |
 | US19 | Optionen › Units suchen: „Abschnitte der Vorschau einklappen, wenn sie nicht passen“ aus, Fenster niedrig | Nichts klappt von selbst ein, der Inhalt wird unten abgeschnitten; Klick auf Überschriften klappt weiter |
 | US20 | Mauszeiger über ▾ PFAD | Handzeiger, Tooltip mit vollem Dateinamen |
+| US21 | Strg+F12, Teil der Caption eines Formulars tippen, z. B. „bearbeiten“ (#1310) | Die Unit des Formulars erscheint, die Caption steht grau hinter dem Namen, das Wort ist darin hervorgehoben; Units mit dem Wort im Namen stehen davor |
+| US22 | Caption im Formulardesigner ändern, speichern, Strg+F12 erneut (#1310) | Die neue Caption wird gefunden, die alte nicht mehr |
+| US23 | Optionen › Units suchen: „Auch nach der Caption von Formularen suchen“ aus, Strg+F12, „bearbeiten“ (#1310) | Keine Caption hinter den Namen, das Formular wird nur noch über seinen Namen gefunden |
 ## Erzeugen-Menü (#719)
 
 Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TKunde = class` (Felder `FName: string; FListe: TStrings;`), einer Klasse `TStaffelpreise = class(TStandardpreise)` mit virtueller Methode im Vorfahren und einer Klasse `TDienst = class(TInterfacedObject, IDienst)`, der Methoden von `IDienst` fehlen.

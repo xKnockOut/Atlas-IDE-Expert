@@ -595,6 +595,8 @@ type
     UnitSearchFilters: Boolean;
     /// <summary>Tippsyntax p:/t: im Suchfeld (#777, unitSearch.filterSyntax); Vorgabe an.</summary>
     UnitSearchFilterSyntax: Boolean;
+    /// <summary>Formulare auch über ihre Caption finden (#1310, unitSearch.formCaptions); Vorgabe an.</summary>
+    UnitSearchFormCaptions: Boolean;
     /// <summary>Vorschaubereich (#777, unitSearch.preview); Vorgabe an.</summary>
     UnitSearchPreview: Boolean;
     /// <summary>Formularskizze in der Vorschau (#777, unitSearch.preview.form); Vorgabe an.</summary>
@@ -1464,6 +1466,7 @@ begin
   Result.UnitSearchRememberCollapsed := True;
   Result.UnitSearchFilters := True;
   Result.UnitSearchFilterSyntax := True;
+  Result.UnitSearchFormCaptions := True;
   Result.UnitSearchPreview := True;
   Result.UnitSearchPreviewForm := True;
   Result.UnitSearchPreviewUsedBy := True;
@@ -2090,6 +2093,7 @@ begin
   UnitSearchRememberCollapsed := AStore.ReadInteger('UnitSearchRememberCollapsed', BoolValue(Default.UnitSearchRememberCollapsed)) <> 0;
   UnitSearchFilters := AStore.ReadInteger('UnitSearchFilters', BoolValue(Default.UnitSearchFilters)) <> 0;
   UnitSearchFilterSyntax := AStore.ReadInteger('UnitSearchFilterSyntax', BoolValue(Default.UnitSearchFilterSyntax)) <> 0;
+  UnitSearchFormCaptions := AStore.ReadInteger('UnitSearchFormCaptions', BoolValue(Default.UnitSearchFormCaptions)) <> 0;
   UnitSearchPreview := AStore.ReadInteger('UnitSearchPreview', BoolValue(Default.UnitSearchPreview)) <> 0;
   UnitSearchPreviewForm := AStore.ReadInteger('UnitSearchPreviewForm', BoolValue(Default.UnitSearchPreviewForm)) <> 0;
   UnitSearchPreviewUsedBy := AStore.ReadInteger('UnitSearchPreviewUsedBy', BoolValue(Default.UnitSearchPreviewUsedBy)) <> 0;
@@ -2530,6 +2534,7 @@ begin
   AStore.WriteInteger('UnitSearchRememberCollapsed', BoolValue(UnitSearchRememberCollapsed));
   AStore.WriteInteger('UnitSearchFilters', BoolValue(UnitSearchFilters));
   AStore.WriteInteger('UnitSearchFilterSyntax', BoolValue(UnitSearchFilterSyntax));
+  AStore.WriteInteger('UnitSearchFormCaptions', BoolValue(UnitSearchFormCaptions));
   AStore.WriteInteger('UnitSearchPreview', BoolValue(UnitSearchPreview));
   AStore.WriteInteger('UnitSearchPreviewForm', BoolValue(UnitSearchPreviewForm));
   AStore.WriteInteger('UnitSearchPreviewUsedBy', BoolValue(UnitSearchPreviewUsedBy));

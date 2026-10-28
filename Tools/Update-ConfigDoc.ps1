@@ -273,6 +273,7 @@ foreach ($Name in $Schema['properties'].Keys) {
 [void]$Table.AppendLine('| Units suchen | Chipzeile Herkunft und Art (`unitSearch.filters`) | an | Plugin (Registry `UnitSearchFilters`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | Vorgewählte Herkunft ohne gemerkte Wahl: Projektgruppe, aktives Projekt, Suchpfad, Bibliothek (`unitSearch.defaultScope`) | group | Plugin (Registry `UnitSearchDefaultScope`) | nein | Auswahlliste | #777 |')
 [void]$Table.AppendLine('| Units suchen | Tippsyntax `p:` und `t:` im Suchfeld (`unitSearch.filterSyntax`) | an | Plugin (Registry `UnitSearchFilterSyntax`) | nein | Kontrollkästchen | #777 |')
+[void]$Table.AppendLine('| Units suchen | Auch nach der Caption von Formularen suchen (`unitSearch.formCaptions`) | an | Plugin (Registry `UnitSearchFormCaptions`) | nein | Kontrollkästchen | #1310 |')
 [void]$Table.AppendLine('| Units suchen | Vorschau rechts, F4 schaltet um (`unitSearch.preview`) | an | Plugin (Registry `UnitSearchPreview`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | Formularskizze in der Vorschau (`unitSearch.preview.form`) | an | Plugin (Registry `UnitSearchPreviewForm`) | nein | Kontrollkästchen | #777 |')
 [void]$Table.AppendLine('| Units suchen | „Verwendet von“ in der Vorschau (`unitSearch.preview.usedBy`) | an | Plugin (Registry `UnitSearchPreviewUsedBy`) | nein | Kontrollkästchen | #777 |')

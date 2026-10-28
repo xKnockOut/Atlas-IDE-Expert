@@ -2841,6 +2841,14 @@
       "x-area": "editor",
       "x-page": "Units suchen"
     },
+    "UnitSearchFormCaptions": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.formCaptions",
+      "x-area": "editor",
+      "x-page": "Units suchen",
+      "x-issue": "#1310"
+    },
     "UnitSearchPreview": {
       "type": "boolean",
       "default": true,

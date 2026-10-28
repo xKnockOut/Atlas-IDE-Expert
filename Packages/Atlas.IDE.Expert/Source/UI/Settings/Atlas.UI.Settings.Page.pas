@@ -489,6 +489,7 @@ type
     FUnitSearchFilters: TCheckBox;
     FUnitSearchDefaultScope: TAtlasChoiceBox;
     FUnitSearchFilterSyntax: TCheckBox;
+    FUnitSearchFormCaptions: TCheckBox;
     FUnitSearchPreview: TCheckBox;
     FUnitSearchPreviewForm: TCheckBox;
     FUnitSearchPreviewUsedBy: TCheckBox;
@@ -2993,6 +2994,7 @@ begin
   FMarks.Bind(FUnitSearchFilters, ['UnitSearchFilters']);
   FMarks.Bind(FUnitSearchDefaultScope, ['UnitSearchDefaultScope']);
   FMarks.Bind(FUnitSearchFilterSyntax, ['UnitSearchFilterSyntax']);
+  FMarks.Bind(FUnitSearchFormCaptions, ['UnitSearchFormCaptions']);
   FMarks.Bind(FUnitSearchPreview, ['UnitSearchPreview']);
   FMarks.Bind(FUnitSearchPreviewForm, ['UnitSearchPreviewForm']);
   FMarks.Bind(FUnitSearchPreviewUsedBy, ['UnitSearchPreviewUsedBy']);
@@ -4540,6 +4542,7 @@ begin
     TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginSearchPath),
     TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginLibrary)]);
   FUnitSearchFilterSyntax := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFilterSyntax));
+  FUnitSearchFormCaptions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFormCaptions));
   FUnitSearchPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreview));
   FUnitSearchPreviewForm := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewForm));
   FUnitSearchPreviewUsedBy := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewUsedBy));
@@ -5158,6 +5161,7 @@ begin
   FUnitSearchFilters.Checked := ASettings.UnitSearchFilters;
   FUnitSearchDefaultScope.Choice := ChoiceOf(ASettings.UnitSearchDefaultScope, UnitSearchScopes);
   FUnitSearchFilterSyntax.Checked := ASettings.UnitSearchFilterSyntax;
+  FUnitSearchFormCaptions.Checked := ASettings.UnitSearchFormCaptions;
   FUnitSearchPreview.Checked := ASettings.UnitSearchPreview;
   FUnitSearchPreviewForm.Checked := ASettings.UnitSearchPreviewForm;
   FUnitSearchPreviewUsedBy.Checked := ASettings.UnitSearchPreviewUsedBy;
@@ -5615,6 +5619,7 @@ begin
   ASettings.UnitSearchFilters := FUnitSearchFilters.Checked;
   ASettings.UnitSearchDefaultScope := UnitSearchScopes[EnsureRange(FUnitSearchDefaultScope.Choice, 0, 3)];
   ASettings.UnitSearchFilterSyntax := FUnitSearchFilterSyntax.Checked;
+  ASettings.UnitSearchFormCaptions := FUnitSearchFormCaptions.Checked;
   ASettings.UnitSearchPreview := FUnitSearchPreview.Checked;
   ASettings.UnitSearchPreviewForm := FUnitSearchPreviewForm.Checked;
   ASettings.UnitSearchPreviewUsedBy := FUnitSearchPreviewUsedBy.Checked;

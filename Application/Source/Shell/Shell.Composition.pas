@@ -1516,7 +1516,7 @@ begin
   FCommands.Register(TUnitSearch.UnitsCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := FUnitSearch.ExecuteUnits;
+      Result := FUnitSearch.ExecuteUnits(AArguments);
     end);
   FCommands.Register(TUnitSearch.PreviewCommand,
     function(const AArguments: TJSONArray): TJSONValue

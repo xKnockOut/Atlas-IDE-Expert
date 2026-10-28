@@ -1,10 +1,12 @@
 ﻿unit Atlas.Common.Lsp.UnitSearch;
 
 // Daten für das Fenster „Units suchen“ des Plugins (#777):
-//   - Befehl atlas.server.units []: alle Units aus Index und Projektmodell mit
-//     Datei, Projekten, Herkunft (project, searchPath, library) und Art (form,
-//     frame, dm, unit, test, inc). Kein Dateizugriff außer der Frage, ob eine
-//     Formulardatei neben der Unit liegt.
+//   - Befehl atlas.server.units [{captions}]: alle Units aus Index und
+//     Projektmodell mit Datei, Projekten, Herkunft (project, searchPath,
+//     library) und Art (form, frame, dm, unit, test, inc). Kein Dateizugriff
+//     außer der Frage, ob eine Formulardatei neben der Unit liegt; mit
+//     captions: true zusätzlich die Caption der Formulare (#1310) aus dem Kopf
+//     der Formulardatei, je Datei bis zur nächsten Änderung zwischengespeichert.
 //   - Befehl atlas.server.unitPreview [uri, {form, usedBy}]: Vorschau ohne die
 //     Unit im Editor zu öffnen: Kopfkommentar, Typen im interface (mit
 //     Gesamtzahl typeCount), uses beider Abschnitte, Zeilenzahl, letzte
@@ -84,10 +86,20 @@ type
     MaxHeaderLines = 12;
     MaxTypes = 40;
     MaxUsedBy = 12;
+  private type
+    TCaptionEntry = record
+      Modified: TDateTime;
+      Caption: string;
+    end;
   private
     FContextFor: TUnitSearchContextProvider;
+    /// <summary>Caption je Formulardatei (Großschrift) mit dem Änderungszeitpunkt beim Lesen.</summary>
+    FCaptions: TDictionary<string, TCaptionEntry>;
+    function CachedCaption(const AContext: TUnitSearchContext; const AFormFile: string): string;
+    function CaptionsFor(const AContext: TUnitSearchContext): TFunc<string, string>;
   public
     constructor Create(const AContextFor: TUnitSearchContextProvider);
+    destructor Destroy; override;
     /// <summary>Art der Unit: form, frame, dm, test oder unit.</summary>
     class function KindOf(const AUnit: TUnitIndex; const AAncestorsOf: TFunc<string, TArray<string>>;
       AHasForm, AOnlyTestProjects: Boolean): string; static;
@@ -100,12 +112,19 @@ type
     /// <summary>Zustand aus „git status --porcelain“: clean, modified, added, deleted, renamed, untracked,
     /// conflict; '' ohne Repository (ALines = nil und AInRepo = False).</summary>
     class function GitState(const ALines: TArray<string>; AInRepo: Boolean): string; static;
+    /// <summary>Caption des Wurzelobjekts einer Text-DFM/-FMX (#1310); liest nur die Eigenschaften vor dem
+    /// ersten Kindobjekt. '' ohne Caption und bei binären Dateien.</summary>
+    class function FormCaption(const AFormText: string): string; static;
     /// <summary>Skizze aus der Formulardatei: absolute Lage aus Left/Top samt einfachem Align.</summary>
     class function Sketch(const AFormText: string): TUnitSketch; static;
     /// <summary>Namen der Units, die AUnitName in uses haben (ohne Bibliothek), sortiert.</summary>
     class function UsedBy(const AUnits: TArray<TUnitIndex>; const AUnitName: string): TArray<string>; static;
-    /// <summary>Antwort auf atlas.server.units.</summary>
-    class function UnitsJson(const AContext: TUnitSearchContext): TJSONObject; static;
+    /// <summary>Antwort auf atlas.server.units ohne Captions.</summary>
+    class function UnitsJson(const AContext: TUnitSearchContext): TJSONObject; overload; static;
+    /// <summary>Antwort auf atlas.server.units; ACaptionOf liefert zur Formulardatei die Caption (#1310), nil =
+    /// keine.</summary>
+    class function UnitsJson(const AContext: TUnitSearchContext; const ACaptionOf: TFunc<string, string>)
+      : TJSONObject; overload; static;
     /// <summary>Antwort auf atlas.server.unitPreview; AWithForm/AWithUsedBy schalten die Teile.</summary>
     class function PreviewJson(const AContext: TUnitSearchContext; const AFileName: string;
       AWithForm, AWithUsedBy: Boolean): TJSONObject; static;
@@ -114,7 +133,8 @@ type
     /// sonst ins implementation-uses; vorhandene Units entfallen.</summary>
     class function AddUsesJson(const AUri, AText: string; const AUnits: TArray<string>;
       const AUses: TUsesContext): TJSONObject; static;
-    function ExecuteUnits: TJSONValue;
+    /// <summary>Argumente: [{captions: Boolean}] (optional, Standard ohne Captions).</summary>
+    function ExecuteUnits(const AArguments: TJSONArray): TJSONValue;
     function ExecutePreview(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Argumente: [uri der Zieldatei, [Unit-Namen]].</summary>
     function ExecuteAddUses(const AArguments: TJSONArray): TJSONValue;
@@ -132,6 +152,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Lsp.Positions,
+  Atlas.Common.Editing.StringLiterals,
   Atlas.Text.Lines;
 
 const
@@ -172,6 +193,103 @@ constructor TUnitSearch.Create(const AContextFor: TUnitSearchContextProvider);
 begin
   inherited Create;
   FContextFor := AContextFor;
+  FCaptions := TDictionary<string, TCaptionEntry>.Create;
+end;
+
+destructor TUnitSearch.Destroy;
+begin
+  FCaptions.Free;
+  inherited;
+end;
+
+function IsObjectLine(const ATrimmed: string): Boolean;
+begin
+  Result := StartsText('object ', ATrimmed) or StartsText('inherited ', ATrimmed) or
+    StartsText('inline ', ATrimmed);
+end;
+
+class function TUnitSearch.FormCaption(const AFormText: string): string;
+var
+  Lines: TArray<string>;
+  Index, Indent, RootIndent: Integer;
+  Line, Trimmed, Rest, Value: string;
+begin
+  Result := '';
+  if (AFormText = '') or TFormModel.IsBinary(AFormText) then
+    Exit;
+  Lines := TTextLines.SplitLines(AFormText);
+  Index := 0;
+  while (Index <= High(Lines)) and (Trim(Lines[Index]) = '') do
+    Inc(Index);
+  if (Index > High(Lines)) or not IsObjectLine(Trim(Lines[Index])) then
+    Exit;
+  // Eigenschaften des Wurzelobjekts stehen vor seinen Kindobjekten und gleich weit eingerückt; tiefer
+  // eingerückte Zeilen gehören zu Listen oder Collections.
+  RootIndent := -1;
+  Inc(Index);
+  while Index <= High(Lines) do
+  begin
+    Line := Lines[Index];
+    Trimmed := TrimLeft(Line);
+    Indent := Length(Line) - Length(Trimmed);
+    Trimmed := TrimRight(Trimmed);
+    Inc(Index);
+    if Trimmed = '' then
+      Continue;
+    if RootIndent < 0 then
+      RootIndent := Indent;
+    if (Indent < RootIndent) or ((Indent = RootIndent) and (IsObjectLine(Trimmed) or SameText(Trimmed, 'end'))) then
+      Exit;
+    if (Indent > RootIndent) or not StartsText('Caption', Trimmed) then
+      Continue;
+    Rest := TrimLeft(Copy(Trimmed, Length('Caption') + 1, MaxInt));
+    if not StartsStr('=', Rest) then
+      Continue;
+    // Lange Werte setzt Delphi in Folgezeilen fort: "Caption =" allein oder Teile mit "+" am Ende.
+    Value := Trim(Copy(Rest, 2, MaxInt));
+    while ((Value = '') or EndsStr('+', Value)) and (Index <= High(Lines)) do
+    begin
+      Value := Value + ' ' + Trim(Lines[Index]);
+      Inc(Index);
+    end;
+    if not TStringLiterals.PlainText(Value, Result) then
+      Result := '';
+    Exit;
+  end;
+end;
+
+function TUnitSearch.CachedCaption(const AContext: TUnitSearchContext; const AFormFile: string): string;
+var
+  Key: string;
+  Modified: TDateTime;
+  Entry: TCaptionEntry;
+begin
+  Result := '';
+  if (AFormFile = '') or not Assigned(AContext.ReadText) then
+    Exit;
+  Key := UpperCase(AFormFile);
+  Modified := 0;
+  if Assigned(AContext.Modified) then
+    Modified := AContext.Modified(AFormFile);
+  System.TMonitor.Enter(FCaptions);
+  try
+    if (Modified <> 0) and FCaptions.TryGetValue(Key, Entry) and (Entry.Modified = Modified) then
+      Exit(Entry.Caption);
+  finally
+    System.TMonitor.Exit(FCaptions);
+  end;
+  Result := FormCaption(AContext.ReadText(AFormFile));
+  // Ohne bekannten Zeitpunkt nicht merken: Die Datei könnte sich unbemerkt ändern.
+  if Modified = 0 then
+    Exit;
+  Entry.Modified := Modified;
+  Entry.Caption := Result;
+  System.TMonitor.Enter(FCaptions);
+  try
+    FCaptions.AddOrSetValue(Key, Entry);
+  finally
+    System.TMonitor.Exit(FCaptions);
+  end;
 end;
 
 class function TUnitSearch.KindOf(const AUnit: TUnitIndex; const AAncestorsOf: TFunc<string, TArray<string>>;
@@ -529,7 +647,25 @@ begin
   end;
 end;
 
+function TUnitSearch.CaptionsFor(const AContext: TUnitSearchContext): TFunc<string, string>;
+var
+  Context: TUnitSearchContext;
+begin
+  Context := AContext;
+  Result :=
+    function(AFormFile: string): string
+    begin
+      Result := CachedCaption(Context, AFormFile);
+    end;
+end;
+
 class function TUnitSearch.UnitsJson(const AContext: TUnitSearchContext): TJSONObject;
+begin
+  Result := UnitsJson(AContext, nil);
+end;
+
+class function TUnitSearch.UnitsJson(const AContext: TUnitSearchContext; const ACaptionOf: TFunc<string, string>)
+  : TJSONObject;
 var
   Owners: TObjectDictionary<string, TList<Integer>>;
   Seen: TDictionary<string, Boolean>;
@@ -537,7 +673,7 @@ var
   ProjectList: TJSONArray;
   Project: TUnitSearchProject;
   ProjectIndex: Integer;
-  FileName, Key, Origin, Kind, Include: string;
+  FileName, Key, Origin, Kind, Include, FormFile, Caption: string;
   Item: TUnitIndex;
   Entry: TJSONObject;
   Indices: TList<Integer>;
@@ -570,6 +706,16 @@ var
     Entry.AddPair('kind', AKind);
     Entry.AddPair('projects', AProjects);
     Items.Add(Entry);
+  end;
+
+  procedure AddCaption(const AKind, AOrigin, AFormFile: string);
+  begin
+    // Nur Formulare außerhalb der Bibliothek (#1310): Frames und Datenmodule haben keine sichtbare Caption.
+    if not Assigned(ACaptionOf) or (AKind <> 'form') or (AOrigin = 'library') or (AFormFile = '') then
+      Exit;
+    Caption := ACaptionOf(AFormFile);
+    if Caption <> '' then
+      Entry.AddPair('caption', Caption);
   end;
 
 begin
@@ -621,9 +767,10 @@ begin
       else
         Origin := 'searchPath';
       ProjectList := Projects(Key, OnlyTests);
-      AddEntry(Item.UnitName, Item.FileName, Origin,
-        KindOf(Item, AContext.AncestorsOf, FormFileOf(Item.FileName, AContext.Exists) <> '', InProject and OnlyTests),
-        ProjectList);
+      FormFile := FormFileOf(Item.FileName, AContext.Exists);
+      Kind := KindOf(Item, AContext.AncestorsOf, FormFile <> '', InProject and OnlyTests);
+      AddEntry(Item.UnitName, Item.FileName, Origin, Kind, ProjectList);
+      AddCaption(Kind, Origin, FormFile);
       // Include-Dateien der Projekt-Units (#264) als eigene Einträge.
       if not Item.Library_ then
         for Include in Item.Includes do
@@ -643,13 +790,15 @@ begin
           Continue;
         Seen.Add(Key, True);
         ProjectList := Projects(Key, OnlyTests);
+        FormFile := FormFileOf(FileName, AContext.Exists);
         if OnlyTests then
           Kind := 'test'
-        else if FormFileOf(FileName, AContext.Exists) <> '' then
+        else if FormFile <> '' then
           Kind := 'form'
         else
           Kind := 'unit';
         AddEntry(ChangeFileExt(ExtractFileName(FileName), ''), FileName, 'project', Kind, ProjectList);
+        AddCaption(Kind, 'project', FormFile);
       end;
   finally
     Seen.Free;
@@ -763,13 +912,19 @@ begin
   end;
 end;
 
-function TUnitSearch.ExecuteUnits: TJSONValue;
+function TUnitSearch.ExecuteUnits(const AArguments: TJSONArray): TJSONValue;
 var
   Context: TUnitSearchContext;
+  WithCaptions: Boolean;
 begin
+  WithCaptions := False;
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
+    TJSONObject(AArguments.Items[0]).TryGetValue<Boolean>('captions', WithCaptions);
   if not FContextFor(Context) then
     Exit(TJSONNull.Create);
-  Result := UnitsJson(Context);
+  if not WithCaptions then
+    Exit(UnitsJson(Context));
+  Result := UnitsJson(Context, CaptionsFor(Context));
 end;
 
 function TUnitSearch.ExecutePreview(const AArguments: TJSONArray): TJSONValue;

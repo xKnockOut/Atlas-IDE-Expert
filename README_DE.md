@@ -87,7 +87,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Gliederung** als andockbares Fenster mit Filter
 - **Definition einblenden** (Alt+F12) unter der Zeile, ohne die Datei zu wechseln
 - **Datei und Symbol schnell öffnen** (Strg+P) über Projekt, Projektgruppe und Suchpfad; projektweite **Symbolsuche**
-- **Units suchen** (Strg+F12) im eigenen Fenster mit Vorschau, Gruppen, Filtern und „In uses aufnehmen“
+- **Units suchen** (Strg+F12) im eigenen Fenster mit Vorschau, Gruppen, Filtern und „In uses aufnehmen“; Formulare findet die Suche auch über ihre Caption
 - **Ergebnisfenster** „Atlas-Ergebnisse“ für Referenzen (auch in Formularen), Implementierungen, Aufrufer, Aufrufe und Vererbung
 - **Navigationsverlauf** über Dateien hinweg
 - **Benannte Lesezeichen** (Strg+Alt+K) und persönliche **Notizen** an Codezeilen, die nicht im Quelltext landen
