@@ -36,6 +36,10 @@ type
     procedure NewestCacheWinsPerProject;
     [Test]
     procedure FormatVersionMatchesServer;
+    /// <summary>Den Cache, den der Server schreibt, liest das Plugin (#1326): Die Konstanten allein sichern das
+    /// Format nicht, #1123 hatte den Unit-Kopf erweitert.</summary>
+    [Test]
+    procedure ReadsCacheOfServer;
   end;
 
   [TestFixture]
@@ -73,6 +77,7 @@ uses
   System.Classes,
   System.DateUtils,
   System.IOUtils,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Index.Cache;
 
 type
@@ -155,6 +160,8 @@ begin
       PutVar(Body, 1); // Hinweise im Unit-Kopf (#1018)
       PutVar(Body, IndexOf('deprecated'));
       PutVar(Body, IndexOf('Nutze Neu')); // Grund
+      PutVar(Body, 1); // Begründungen der Unit (#1123)
+      PutVar(Body, IndexOf('W|3|Weil'));
       PutVar(Body, 2); // Symbolzahl
       PutVar(Body, 1); // nicht verfügbar
       PutVar(Body, 200); // Blocklänge über ein Byte hinaus
@@ -266,6 +273,24 @@ begin
   // Code-Review K-05: Plugin und Server lesen dasselbe Cache-Format.
   Assert.AreEqual(TIndexCache.FormatVersion, TAtlasWelcomeIndexFiles.FormatVersion,
     'Plugin und Server lesen dasselbe Cache-Format; beide Konstanten zusammen erhöhen.');
+end;
+
+procedure TAtlasWelcomeIndexFilesTests.ReadsCacheOfServer;
+var
+  mUnit: TUnitIndex;
+  mFiles: TArray<TAtlasIndexFile>;
+  mReason: string;
+begin
+  mUnit := Default(TUnitIndex);
+  mUnit.UnitName := 'Haupt';
+  mUnit.FileName := 'C:\Projekte\Atlas\Haupt.pas';
+  mUnit.Directives := ['deprecated'];
+  mUnit.DeprecatedText := 'Nutze Neu';
+  mUnit.Rationale := ['W|3|Weil'];
+  mFiles := TAtlasWelcomeIndexFiles.Read(TIndexCache.Serialize([mUnit]), mReason);
+  Assert.AreEqual('', mReason);
+  Assert.AreEqual(1, Integer(Length(mFiles)));
+  Assert.AreEqual('C:\Projekte\Atlas\Haupt.pas', mFiles[0].FileName);
 end;
 
 procedure TAtlasWelcomeIndexFilesTests.RejectsBadChecksum;

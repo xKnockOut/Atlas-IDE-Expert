@@ -23,6 +23,10 @@ type
     procedure ExtractsSignatureDirectivesAndSummary;
     [Test]
     procedure MarksClassMembers;
+    /// <summary>Prozedurtypen über mehrere Zeilen (#1326): ganze Signatur und Merkmal "of object" bzw.
+    /// "reference to".</summary>
+    [Test]
+    procedure ProcedureTypesOverSeveralLines;
     [Test]
     procedure CollectsUsagesWithoutDeclarations;
     [Test]
@@ -192,6 +196,26 @@ begin
   Assert.AreEqual('property Name: string read GetName', Find(U, 'TKunde.Name').Signature);
   Assert.IsTrue(Find(U, 'Grenze').HasDirective('platform'));
   Assert.AreEqual('Zaehler: Integer', Find(U, 'Zaehler').Signature);
+end;
+
+procedure TIndexContentTests.ProcedureTypesOverSeveralLines;
+var
+  mUnit: TUnitIndex;
+begin
+  mUnit := TIndexExtractor.ExtractText('unit Ereignisse;'#10'interface'#10'type'#10 +
+    '  TEv1 = procedure(Sender: TObject;'#10'    X: Integer) of object;'#10 +
+    '  TEv2 = procedure(Sender: TObject;'#10'    X: Integer)'#10'    of { Methode } object;'#10 +
+    '  TRoh = procedure(Sender: TObject;'#10'    X: Integer);'#10 +
+    '  TRef = reference to procedure(Sender: TObject;'#10'    X: Integer);'#10 +
+    '  TFeld = array[0..1] of Byte;'#10'implementation'#10'end.', 'C:\Projekt\Ereignisse.pas', nil);
+  Assert.AreEqual('TEv1 = procedure(Sender: TObject; X: Integer) of object', Find(mUnit, 'TEv1').Signature);
+  Assert.IsTrue(Find(mUnit, 'TEv1').HasDirective('of object'));
+  Assert.IsTrue(Find(mUnit, 'TEv2').HasDirective('of object'));
+  Assert.AreEqual('TRoh = procedure(Sender: TObject; X: Integer)', Find(mUnit, 'TRoh').Signature);
+  Assert.IsFalse(Find(mUnit, 'TRoh').HasDirective('of object'));
+  Assert.IsTrue(Find(mUnit, 'TRef').HasDirective('reference to'));
+  Assert.IsFalse(Find(mUnit, 'TRef').HasDirective('of object'));
+  Assert.AreEqual(0, Integer(Length(Find(mUnit, 'TFeld').Directives)));
 end;
 
 procedure TIndexContentTests.MarksClassMembers;
