@@ -441,7 +441,7 @@ begin
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
   Paths := TConditionalBranches.Paths(AContext.Tree.Tokens);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);

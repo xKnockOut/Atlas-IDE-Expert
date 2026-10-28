@@ -1250,12 +1250,16 @@ var
 
     function Used(const AName: string): Boolean;
     var
-      Token: TPascalToken;
+      mIndex: Integer;
     begin
-      for Token in Tokens do
-        if (Token.Offset >= ARoutine.StartOffset) and (Token.Offset < ARoutine.EndOffset) and
-          (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, AName) then
+      // Binär zum ersten Token der Routine statt ab Dateianfang (#1323).
+      mIndex := TRoutineBody.TokenAt(Tokens, ARoutine.StartOffset);
+      while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < ARoutine.EndOffset) do
+      begin
+        if (Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[mIndex].Text, AName) then
           Exit(True);
+        Inc(mIndex);
+      end;
       Result := False;
     end;
 
@@ -2059,11 +2063,16 @@ var
   // Breitenangaben wie X:5:2 lassen sich nicht in einen String übertragen.
   function HasWidth(ACall: TSyntaxNode): Boolean;
   var
-    Token: TPascalToken;
+    mIndex: Integer;
   begin
-    for Token in Tokens do
-      if (Token.Offset >= ACall.StartOffset) and (Token.Offset < ACall.EndOffset) and Token.IsSymbol(':') then
+    // Binär zum ersten Token des Aufrufs statt ab Dateianfang (#1323).
+    mIndex := TRoutineBody.TokenAt(Tokens, ACall.StartOffset);
+    while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < ACall.EndOffset) do
+    begin
+      if Tokens[mIndex].IsSymbol(':') then
         Exit(True);
+      Inc(mIndex);
+    end;
     Result := False;
   end;
 
@@ -3885,7 +3894,7 @@ begin
   Lines := TTextLines.SplitLines(AContext.Text);
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
   Found := nil;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Visit(AContext.Tree.Root);

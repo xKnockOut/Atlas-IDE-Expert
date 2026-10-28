@@ -360,6 +360,8 @@ Values also work with `=` (`--log=server.log`). `--stdio` and `--clientProcessId
 
 The linter loads the same symbol index as the editor (#1112): the target's project and, with `index.projectGroup`, the other projects of the group, from the index cache if it is current. Rules that need types from other units (for example ownership of fields whose type is declared elsewhere, or `case` over an enumeration from another unit) therefore report the same findings as in the IDE. Without a project file the check runs without the index (stderr says so). The MCP server checks with the same index (`get_diagnostics`, `check_code`, `explain_finding`); while it is still loading, `get_diagnostics` says that findings needing the index may be missing.
 
+A check run evaluates each unit once and shares the result with all rules (#1322). Before, rules that ask for the type of many expressions (ownership, casts, typed expressions) extracted the whole unit again for every question, so large units took quadratic time; in the IDE this cost CPU on every change as well. The token at a position is found by binary search instead of a scan from the start of the file (#1323), which large constant arrays made quadratic as well. Measured with the Linux build (before → #1322 → #1323): SynEdit 353 s → 135 s → 113 s, VirtualTreeView 676 s → 93 s → 78 s, HtmlViewer 987 s → 708 s → 116 s, findings unchanged.
+
 | Parameter | Meaning |
 |---|---|
 | `--no-index` | check without the symbol index (faster, but rules that need other units stay silent) |
