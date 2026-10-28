@@ -326,6 +326,8 @@ pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 pwsh Tools/Check-TestCoverage.ps1          # jede Unit mit Logik hat Tests, jede Testunit läuft
 ```
 
+`Tests/DccFaelle` enthält Minimalfälle für die Compilerregeln, je Fall mit der Angabe, ob dcc meldet oder übersetzt. `pwsh Tools/Build-DccFaelle.ps1` baut sie in einer Zweit-IDE über `cc.ps1` (Win32 und Win64) und schreibt die dcc-Meldungen je Fall nach `Output/DccFaelle-Ergebnis.txt`; die Regeln dürfen nicht strenger sein als dieses Ergebnis (#1328).
+
 ## CI
 
 - `server.yml`: Build der Projektgruppe über das IDE-Plugin `cc.ps1` (RAD Studio Starter hat kein msbuild, ADR 0007) für Win64 und Win32, samt Plugin-BPLs `Atlas.IDE.Expert370.bpl` für die klassische und die 64-Bit-IDE (Win32 und Win64, als Artefakte abgelegt), und DUnitX-Tests (nur Win64, ADR 0008). Ergebnisse als Check „DUnitX-Ergebnisse“ im Pull Request.

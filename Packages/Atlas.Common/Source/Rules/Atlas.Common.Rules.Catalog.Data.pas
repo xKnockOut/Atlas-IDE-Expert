@@ -1571,8 +1571,9 @@ begin
     '      "severity": "error",' + #10 +
     '      "group": "find-bugs",' + #10 +
     '      "description": "A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same' +
-    ' scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported. Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and labe' +
-    'l sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.",' + #10 +
+    ' scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that). Quick fixes: add ' +
+    'a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; with' +
+    'out a safe fix the message gives the reason.",' + #10 +
     '      "bad": "type\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;",' + #10 +
     '      "good": "type\n  TNode = class;\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;"' + #10 +
     '    },' + #10 +
@@ -3260,11 +3261,12 @@ begin
     '      "severity": "error",' + #10 +
     '      "group": "compiler",' + #10 +
     '      "description": "The name after read or write of a property does not fit: it is declared neither in the class nor in its ancestors, or it is a property (like E2168); the getter or setter has the ' +
-    'wrong kind, parameters or types (like E2234); the setter takes a var or out parameter (like E2282); the accessor is overloaded (like E2271); a class property uses an instance member or a class method ' +
-    'without static (like E2355), or an instance property uses a class member (like E2356); an array property or a property with index uses a field (like E2174); a field selector goes through a field that ' +
-    'is no record (like E2459), names a member that is no field (like E2461) or a field the record lacks (like E2562). Names are looked up in the file and, for ancestors, in the symbol index; the rule stay' +
-    's silent when the ancestor chain breaks, the name only exists in an inactive branch, the class cannot see it or the class includes files. Types are compared only when both are built in or declared as ' +
-    'types of their own. Quick fix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/write, completion.accessorSection).",' + #10 +
+    'wrong kind, parameters or types (like E2234); the setter takes a var or out parameter (like E2282); the accessor is overloaded and no overload fits (like E2271); a class property uses an instance memb' +
+    'er or a class method without static (like E2355), or an instance property uses a class var or a static class method (like E2356); an array property uses a field (like E2174, index with a field compile' +
+    's); a field selector goes through a field that is no record (like E2459), names a member that is no field (like E2461) or a field the record lacks (like E2562). Names are looked up in the file and, fo' +
+    'r ancestors, in the symbol index; the rule stays silent when the ancestor chain breaks, the name only exists in an inactive branch, the class cannot see it or the class includes files. Types are compa' +
+    'red only when both are built in or declared as types of their own. Quick fix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/write, completion.accessorSection)' +
+    '.",' + #10 +
     '      "bad": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write SetName;\nend;",' + #10 +
     '      "good": "TKunde = class\nprivate\n  FName: string;\n  procedure SetName(const Value: string);\npublic\n  property Name: string read FName write SetName;\nend;",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -4041,8 +4043,8 @@ begin
     '      "description": "Access A.B to a member that is not visible at that point: private or strict private of another unit or class (like E2361), protected or strict protected outside the declaring uni' +
     't and its descendants (like E2362, E2389). Inside a class method or static method, an instance field, method or property of the class is not reachable (like E2124). A property that refers to a private' +
     ' member of an ancestor in the same unit is reported as a warning (like W1045). The rule only reports when name resolution knows the receiver and its type for sure and finds the member only without reg' +
-    'ard to visibility; protected members stay visible through a class declared in the same unit (TAccess(Control).Click). Declarations in conditional branches, methods of helpers and nested types stay sil' +
-    'ent.",' + #10 +
+    'ard to visibility; protected members stay visible through a class declared in the same unit (TAccess(Control).Click). A private class constructor does not hide an inherited Create, and a class overloa' +
+    'd of a method stays reachable from a class method. Declarations in conditional branches, methods of helpers and nested types stay silent.",' + #10 +
     '      "bad": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := FBasisPfad;\nend;",' + #10 +
     '      "good": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := Result.FBasisPfad;\nend;",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -4947,8 +4949,9 @@ begin
     '      "group": "compiler",' + #10 +
     '      "description": "A typed constant (const Counter: Integer = 0) is assigned (like W1017, also an element or a record field of it) or passed as a var or out argument, including Inc, Dec, Include, E' +
     'xclude, Delete, SetLength and the like (like W1016). Usually a variable was meant; this only compiles with {$J+}. When {$J-} or {$WRITEABLECONST OFF} is in effect before the declaration in the same fi' +
-    'le, it is reported as an error (like E2064 or E2197). Also reports 0 as the value of a pointer constant or an initialised pointer variable (like W1013). Quick fixes: turn a unit-level constant into a ' +
-    'variable with an initial value (the const section is split if needed; local typed constants keep their value between calls and get no fix); write nil instead of 0.",' + #10 +
+    'le or in a file it includes before that point, it is reported as an error (like E2064 or E2197). Also reports 0 as the value of a pointer constant or an initialised pointer variable (like W1013). Quic' +
+    'k fixes: turn a unit-level constant into a variable with an initial value (the const section is split if needed; local typed constants keep their value between calls and get no fix); write nil instead' +
+    ' of 0.",' + #10 +
     '      "bad": "const\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",' + #10 +
     '      "good": "var\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -6191,9 +6194,9 @@ begin
     '      "id": "type-used-before-declaration",' + #10 +
     '      "name": "Typ vor seiner Deklaration benutzt",' + #10 +
     '      "description": "Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber e' +
-    'rst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet. Schnellkorrekturen: Forward-Deklaration am Anfang des type' +
-    '-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektu' +
-    'r nennt die Meldung den Grund."' + #10 +
+    'rst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet, ebenso wenig class of auf eine Klasse weiter unten im selb' +
+    'en type-Block (das übersetzt dcc). Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den e' +
+    'rsten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unneeded-forward-declaration",' + #10 +
@@ -7190,12 +7193,12 @@ begin
     '      "id": "property-accessor-invalid",' + #10 +
     '      "name": "Getter oder Setter einer Property ungültig",' + #10 +
     '      "description": "Der Name hinter read oder write einer Property passt nicht: Er ist weder in der Klasse noch in ihren Vorfahren deklariert oder ist eine Property (wie E2168); Getter oder Setter h' +
-    'aben die falsche Art, Parameter oder Typen (wie E2234); der Setter nimmt einen var- oder out-Parameter (wie E2282); die Zugriffsmethode ist überladen (wie E2271); eine Klassen-Property nutzt ein Insta' +
-    'nzmitglied oder eine Klassenmethode ohne static (wie E2355), eine Instanz-Property ein Klassenmitglied (wie E2356); eine Array-Property oder eine Property mit index nutzt ein Feld (wie E2174); ein Fel' +
-    'dselektor geht über ein Feld, das kein Record ist (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Record fehlt (wie E2562). Namen sucht die Regel in der Datei un' +
-    'd für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Klasse ihn nicht sieht oder Include-Dateien einbindet. Typen v' +
-    'ergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: anlegen (wie die Vervollständigung hinter read/write, compl' +
-    'etion.accessorSection)."' + #10 +
+    'aben die falsche Art, Parameter oder Typen (wie E2234); der Setter nimmt einen var- oder out-Parameter (wie E2282); die Zugriffsmethode ist überladen, und keine Überladung passt (wie E2271); eine Klas' +
+    'sen-Property nutzt ein Instanzmitglied oder eine Klassenmethode ohne static (wie E2355), eine Instanz-Property eine class var oder eine statische Klassenmethode (wie E2356); eine Array-Property nutzt ' +
+    'ein Feld (wie E2174, index mit Feld übersetzt dcc); ein Feldselektor geht über ein Feld, das kein Record ist (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Reco' +
+    'rd fehlt (wie E2562). Namen sucht die Regel in der Datei und für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Kla' +
+    'sse ihn nicht sieht oder Include-Dateien einbindet. Typen vergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: ' +
+    'anlegen (wie die Vervollständigung hinter read/write, completion.accessorSection)."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "assign-to-property-member",' + #10 +
@@ -7582,8 +7585,9 @@ begin
     '      "description": "Zugriff A.B auf ein Mitglied, das an der Stelle nicht sichtbar ist: private bzw. strict private einer anderen Unit oder Klasse (wie E2361), protected bzw. strict protected außerh' +
     'alb der deklarierenden Unit und ihrer Nachfahren (wie E2362, E2389). In einer Klassenmethode oder statischen Methode sind Instanzfelder, -methoden und -Properties der Klasse nicht erreichbar (wie E212' +
     '4). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen ' +
-    'Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Deklarationen in be' +
-    'dingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still."' + #10 +
+    'Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Ein privater Klasse' +
+    'nkonstruktor verdeckt kein geerbtes Create, und eine class-Überladung einer Methode bleibt aus einer Klassenmethode erreichbar. Deklarationen in bedingten Zweigen, Methoden von Helfern und verschachte' +
+    'lten Typen bleiben still."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "unused-private-member",' + #10 +
@@ -8068,9 +8072,9 @@ begin
     '      "name": "Typisierte Konstante verändert",' + #10 +
     '      "description": "Einer typisierten Konstante (const Zaehler: Integer = 0) wird etwas zugewiesen (wie W1017, auch einem Element oder Record-Feld davon), oder sie wird als var- oder out-Argument üb' +
     'ergeben, auch an Inc, Dec, Include, Exclude, Delete, SetLength und ähnliche (wie W1016). Gemeint war meist eine Variable; übersetzbar ist das nur mit {$J+}. Gilt vor der Deklaration in derselben Datei' +
-    ' {$J-} bzw. {$WRITEABLECONST OFF}, meldet Atlas einen Fehler (wie E2064 bzw. E2197). Dazu 0 als Wert einer Zeigerkonstante oder einer initialisierten Zeigervariable (wie W1013). Korrekturen: eine Kons' +
-    'tante auf Unit-Ebene in eine Variable mit Initialwert umwandeln (der const-Abschnitt wird bei Bedarf geteilt; lokale typisierte Konstanten behalten ihren Wert zwischen Aufrufen und bekommen keine Korr' +
-    'ektur); nil statt 0 schreiben."' + #10 +
+    ' oder in einer davor eingebundenen Include-Datei {$J-} bzw. {$WRITEABLECONST OFF}, meldet Atlas einen Fehler (wie E2064 bzw. E2197). Dazu 0 als Wert einer Zeigerkonstante oder einer initialisierten Ze' +
+    'igervariable (wie W1013). Korrekturen: eine Konstante auf Unit-Ebene in eine Variable mit Initialwert umwandeln (der const-Abschnitt wird bei Bedarf geteilt; lokale typisierte Konstanten behalten ihre' +
+    'n Wert zwischen Aufrufen und bekommen keine Korrektur); nil statt 0 schreiben."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "string-length-limit",' + #10 +
