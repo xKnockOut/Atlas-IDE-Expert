@@ -4240,10 +4240,10 @@ begin
     '      "severity": "error",' + #10 +
     '      "group": "compiler",' + #10 +
     '      "description": "An interface type declares something interfaces cannot have: fields (like E2209), visibility sections or method directives such as virtual, dynamic, abstract, override, message o' +
-    'r reintroduce (like E2210), the property clauses stored, nodefault or default with a value (like E2207; default; after an array property is fine), a property an ancestor interface already declares (li' +
-    'ke E2206) or a property accessor that only the ancestor interface declares (like E2370). A class, record or enumeration as the ancestor of an interface or in the interface list of a class is reported ' +
-    'as well (like E2205), and so is the same interface twice in that list (like E2208). Types are resolved through the uses clauses; aliases, unknown types, dispinterfaces and declarations inside conditio' +
-    'nal branches stay silent.",' + #10 +
+    'r reintroduce (like E2210), the property clauses stored, nodefault or default with a value (like E2207; default; after an array property is fine), a property an ancestor interface already declares, li' +
+    'sted again without a type (like E2206; a redeclaration with a type compiles) or a property accessor that only the ancestor interface declares (like E2370). A class, record or enumeration as the ancest' +
+    'or of an interface or in the interface list of a class is reported as well (like E2205), and so is the same interface twice in that list (like E2208). Types are resolved through the uses clauses; alia' +
+    'ses, unknown types, dispinterfaces and declarations inside conditional branches stay silent.",' + #10 +
     '      "bad": "IKunde = interface\n  FName: string;\n  function GetName: string;\nend;",' + #10 +
     '      "good": "IKunde = interface\n  function GetName: string;\n  property Name: string read GetName;\nend;",' + #10 +
     '      "compilerCodes": [' + #10 +
@@ -7698,9 +7698,9 @@ begin
     '      "name": "Unzulässige Deklaration in einem Interface",' + #10 +
     '      "description": "Ein Interface deklariert etwas, das Interfaces nicht haben dürfen: Felder (wie E2209), Sichtbarkeitsabschnitte oder Methodendirektiven wie virtual, dynamic, abstract, override, m' +
     'essage oder reintroduce (wie E2210), die Property-Klauseln stored, nodefault oder default mit Wert (wie E2207; default; hinter einer Array-Property ist erlaubt), eine Property, die ein Vorfahr-Interfa' +
-    'ce schon deklariert (wie E2206), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370). Ebenso gemeldet werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr ein' +
-    'es Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interface zweimal in dieser Liste (wie E2208). Typen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, ' +
-    'dispinterface und Deklarationen in bedingten Zweigen bleiben still."' + #10 +
+    'ce schon deklariert, ohne Typ erneut aufgeführt (wie E2206; eine Neudeklaration mit Typ übersetzt dcc), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370). Ebenso gemel' +
+    'det werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr eines Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interface zweimal in dieser Liste (wie E2208). Ty' +
+    'pen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, dispinterface und Deklarationen in bedingten Zweigen bleiben still."' + #10 +
     '    },' + #10 +
     '    {' + #10 +
     '      "id": "implements-clause-invalid",' + #10 +
