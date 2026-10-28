@@ -169,6 +169,8 @@ uses
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.IDE.Welcome.Issues,
+  Atlas.IDE.Tracker.IssuePreview,
+  Atlas.IDE.Tracker.CodeLinks,
   Atlas.UI.Welcome.TestResults,
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
@@ -286,6 +288,8 @@ var
   QuickColumn: TAtlasIdeQuickColumn;
   // Gleichen Text wie die Markierung hervorheben (#709).
   SelectionMatches: TAtlasIdeSelectionMatches;
+  // Issue-Kennungen im Code (#1265), über „Meine Issues“.
+  IssueLinks: TAtlasIdeCodeLinks;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
@@ -4523,6 +4527,56 @@ begin
     end;
 end;
 
+procedure StartIssueLinks;
+var
+  mHooks: TAtlasCodeLinksHooks;
+begin
+  // Alles über „Meine Issues“ (Tracker wie dort, Zwischenspeicher der Vorschau); ohne den Bereich wirkungslos.
+  mHooks := Default(TAtlasCodeLinksHooks);
+  mHooks.Target :=
+    function(out ATarget: TAtlasTrackerTarget): Boolean
+    begin
+      ATarget := TAtlasTrackerTarget.Create('', '', '', '');
+      Result := (Welcome <> nil) and (Welcome.Issues <> nil) and Welcome.Issues.CodeTarget(ATarget);
+    end;
+  mHooks.CommitPattern :=
+    function: string
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesCommitPattern;
+    end;
+  mHooks.Preview :=
+    function: TAtlasIdeIssuePreview
+    begin
+      Result := nil;
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Result := Welcome.Issues.IssuePreview;
+    end;
+  mHooks.Show :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.ShowIssue(ATarget, AKey);
+    end;
+  mHooks.Browse :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.BrowseIssue(ATarget, AKey);
+    end;
+  mHooks.Start :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.StartIssue(ATarget, AKey);
+    end;
+  mHooks.CanStart :=
+    function: Boolean
+    begin
+      Result := (Welcome <> nil) and (Welcome.Issues <> nil) and Welcome.Issues.CanStartIssue;
+    end;
+  IssueLinks := TAtlasIdeCodeLinks.Create(mHooks);
+end;
+
 procedure StopWelcome;
 begin
   FreeAndNil(Welcome);
@@ -5180,6 +5234,22 @@ begin
       Result := Welcome <> nil;
     end,
     StartWelcome, StopWelcome);
+  // Issue-Kennungen im Code (#1265): nach „Meine Issues“ (Tracker und Vorschau), Abbau davor. issues.codeLinks
+  // prüft der Zeitgeber selbst (Schnellschalter ohne Neustart).
+  Features.AddWanted('IssueLinks',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := IssueLinks <> nil;
+    end,
+    StartIssueLinks,
+    procedure
+    begin
+      FreeAndNil(IssueLinks);
+    end);
   Features.Add('MainMenu', TAtlasSafeLevel.Safe,
     function: Boolean
     begin

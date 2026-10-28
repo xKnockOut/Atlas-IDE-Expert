@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5321] of string = (
+  Lines: array[0..5334] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5359,6 +5359,20 @@ const
     '      "x-area": "issues",',
     '      "x-page": "Issue-Tracker",',
     '      "x-issue": "#1264"',
+    '    },',
+    '    "IssuesCodeLinks": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Issue-Kennungen wie ATL-123 oder #42 in Kommentaren erkennen: gepunktet unterstrichen, Hover mit Kurzvorschau aus dem Zwischenspeicher der Issue-Vorschau, Strg+Klick öffnet die V' +
+      'orschau, Strg+Umschalt+Klick den Browser, Rechtsklick ein Menü. Aus: keine Erkennung und keine Abfrage beim Tracker.",',
+    '      "x-key": "issues.codeLinks",',
+    '      "x-area": "issues",',
+    '      "x-feature": "IssueLinks",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Issue-Kennungen im Code",',
+    '      "x-captionEn": "Issue keys in code",',
+    '      "x-issue": "#1265"',
     '    },',
     '    "VcsProvider": {',
     '      "type": "string",',
