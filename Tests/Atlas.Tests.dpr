@@ -602,6 +602,8 @@ uses
   Atlas.Core.Tracker.IssueCache.Tests in 'IDE.Expert\Atlas.Core.Tracker.IssueCache.Tests.pas',
   Atlas.Core.Tracker.Preview in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Preview.pas',
   Atlas.Core.Tracker.Preview.Tests in 'IDE.Expert\Atlas.Core.Tracker.Preview.Tests.pas',
+  Atlas.Core.Tracker.CodeLinks in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.CodeLinks.pas',
+  Atlas.Core.Tracker.CodeLinks.Tests in 'IDE.Expert\Atlas.Core.Tracker.CodeLinks.Tests.pas',
   Atlas.UI.Documentation.View in '..\Packages\Atlas.IDE.Expert\Source\UI\Documentation\Atlas.UI.Documentation.View.pas',
   Atlas.UI.Tracker.IssueFrame in '..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas',
   Atlas.UI.Tracker.IssueFrame.Tests in 'IDE.Expert\Atlas.UI.Tracker.IssueFrame.Tests.pas',
