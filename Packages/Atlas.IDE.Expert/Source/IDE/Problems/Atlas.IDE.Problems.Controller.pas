@@ -198,6 +198,8 @@ type
     class property LastCheck: TAtlasProblemsCheck read FLastCheck;
     /// <summary>Läuft gerade eine Prüfung (textDocument/diagnostic) des laufenden Controllers? (#1155)</summary>
     class function Checking: Boolean; static;
+    /// <summary>Läuft ein Programm im Debugger? Dann ruht die Prüfung (#1241).</summary>
+    class function Paused: Boolean; static;
   end;
 
 implementation
@@ -462,6 +464,13 @@ begin
     not CurrentController.FDocuments.Idle;
 end;
 
+class function TAtlasProblemsController.Paused: Boolean;
+var
+  Debugger: IOTADebuggerServices;
+begin
+  Result := Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) and (Debugger.ProcessCount > 0);
+end;
+
 destructor TAtlasProblemsController.Destroy;
 begin
   if CurrentStore = FStore then
@@ -626,6 +635,13 @@ begin
     end;
     // Bestätigte Compilermeldungen zusammenführen (problems.compilerMerge, #1024); ändert nur bei Wechsel.
     FStore.CompilerMerge := not SameText(TAtlasIdeSettings.Current.ProblemsCompilerMerge, 'both');
+    // Während des Debuggens ruht die Prüfung (#1241): keine Anfragen, keine Hintergrundprüfung; danach geht es weiter.
+    if Paused then
+    begin
+      if (FDocuments <> nil) or (FWorkspace <> nil) then
+        StopWorkers(False);
+      Exit;
+    end;
     // Projektgruppe geschlossen oder gewechselt: Pull-Diagnosen melden weggefallene Dateien nie mehr, ihre
     // Befunde blieben sonst im Speicher und im Fenster „Atlas-Prüfung“. Alles verwerfen und neu holen.
     Session := FSession(False);
