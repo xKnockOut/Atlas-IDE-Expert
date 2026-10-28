@@ -595,6 +595,7 @@ begin
   Assert.AreEqual('Neu zugewiesene Variablen', TAtlasGuard.FeatureName(TAtlasFeature.Reassigned));
   Assert.AreEqual('Typ des Ausdrucks', TAtlasGuard.FeatureName(TAtlasFeature.ExpressionType));
   Assert.AreEqual('Methodenreihenfolge', TAtlasGuard.FeatureName(TAtlasFeature.MethodPlacement));
+  Assert.AreEqual('Issue-Kennungen', TAtlasGuard.FeatureName(TAtlasFeature.IssueLinks));
 end;
 
 procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;

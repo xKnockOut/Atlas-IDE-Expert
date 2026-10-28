@@ -37,6 +37,10 @@
 //   das Issue im Fenster „Atlas-Issue“ (TAtlasIdeIssuePreview, Zwischenspeicher
 //   %LOCALAPPDATA%\Atlas\issues), Strg+Klick öffnet den Browser; Befehl
 //   Atlas.IssueShow fragt nach einer Kennung (ShowPreviewPrompt).
+// - Issue-Kennungen im Editor (#1265, Atlas.IDE.Tracker.CodeLinks): CodeTarget
+//   (Tracker des aktiven Projekts, wie „Issue anzeigen …“), ShowIssue
+//   (Vorschau bzw. Browser), BrowseIssue und StartIssue („Beginnen“ mit dem
+//   Titel aus dem Zwischenspeicher bzw. einer Kurzabfrage).
 // - Protokoll anonym: nur Anbieter, Anzahl, Ergebnis und Fehlerart, nie
 //   Adresse, Projekt, Kennung, Titel oder Token.
 // Anbieter, Transport (mit Token aus dem Anmeldespeicher) und Zugangsdialog
@@ -183,6 +187,17 @@ type
     /// <summary>Befehl Atlas.IssueShow (#1264): Kennung abfragen und das Issue aus dem Tracker des aktiven
     /// Projekts in „Atlas-Issue“ zeigen.</summary>
     procedure ShowPreviewPrompt;
+    /// <summary>Tracker für Issue-Kennungen im Editor (#1265): das aktive Projekt der IDE, sonst das des Bereichs;
+    /// TargetCacheMs zwischengespeichert, ohne Netz. False vor Start und ohne Tracker.</summary>
+    function CodeTarget(out ATarget: TAtlasTrackerTarget): Boolean;
+    /// <summary>Issue AKey zeigen: Vorschau „Atlas-Issue“ mit issues.preview, sonst im Browser.</summary>
+    procedure ShowIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+    /// <summary>Seite des Issues AKey im Browser (nur aus der eingetragenen Adresse).</summary>
+    procedure BrowseIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+    /// <summary>„Beginnen“ für AKey wie in „Meine Issues“.</summary>
+    procedure StartIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+    /// <summary>„Beginnen“ gerade möglich (Bereich an, kein Beginnen läuft, Projekt vorhanden)?</summary>
+    function CanStartIssue: Boolean;
     /// <summary>Vorschau-Steuerung (nil vor Start bzw. nach Stop).</summary>
     property IssuePreview: TAtlasIdeIssuePreview read FPreview;
     property ProviderFactory: TAtlasTrackerProviderHook read FProviderFactory write FProviderFactory;
@@ -235,6 +250,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Strings,
+  Atlas.UI.Tracker.IssueTip,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -344,8 +360,7 @@ begin
   mHooks.CanStart :=
     function: Boolean
     begin
-      Result := (mKeep <> nil) and mOwner.FStarted and Active and (mOwner.FStartProject = '') and
-        (mOwner.CurrentProject <> '');
+      Result := (mKeep <> nil) and mOwner.CanStartIssue;
     end;
   mHooks.Settings :=
     procedure
@@ -1241,6 +1256,85 @@ begin
         Exit;
       end;
       FPreview.Show(mTarget, mKey);
+    end);
+end;
+
+function TAtlasIdeIssues.CodeTarget(out ATarget: TAtlasTrackerTarget): Boolean;
+var
+  mProject: string;
+begin
+  ATarget := TAtlasTrackerTarget.Create('', '', '', '');
+  Result := False;
+  if not FStarted then
+    Exit;
+  // Wie „Issue anzeigen …“: das aktive Projekt der IDE, sonst das des Bereichs.
+  mProject := TAtlasIdeTeamFile.ActiveProject;
+  if mProject = '' then
+    mProject := CurrentProject;
+  ATarget := CachedTargetOf(mProject).Target;
+  Result := ProviderOf(ATarget.Provider) <> nil;
+end;
+
+procedure TAtlasIdeIssues.ShowIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+begin
+  if not FStarted or (AKey = '') then
+    Exit;
+  if Options.Preview then
+    FPreview.Show(ATarget, AKey)
+  else
+    BrowseIssue(ATarget, AKey);
+end;
+
+procedure TAtlasIdeIssues.BrowseIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+var
+  mProvider: IAtlasTrackerProvider;
+  mUrl: string;
+begin
+  if not FStarted or (AKey = '') then
+    Exit;
+  mProvider := ProviderOf(ATarget.Provider);
+  if mProvider = nil then
+    Exit;
+  // Nur die Seite aus der eingetragenen Adresse, nie etwas aus der Antwort des Trackers.
+  mUrl := mProvider.IssuePage(ATarget, AKey);
+  if TAtlasIssuePreview.MayBrowse(mUrl) then
+    ShellExecute(0, 'open', PChar(mUrl), nil, nil, SW_SHOWNORMAL);
+end;
+
+function TAtlasIdeIssues.CanStartIssue: Boolean;
+begin
+  Result := FStarted and Active and (FStartProject = '') and (CurrentProject <> '');
+end;
+
+procedure TAtlasIdeIssues.StartIssue(const ATarget: TAtlasTrackerTarget; const AKey: string);
+var
+  mDetails: TAtlasTrackerDetails;
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
+  mKey: string;
+begin
+  if not CanStartIssue or (AKey = '') then
+    Exit;
+  // Der Titel gehört in Branch-Namen und Präfix: aus dem Zwischenspeicher, sonst erst fragen.
+  if (FPreview <> nil) and FPreview.Peek(ATarget, AKey, mDetails) then
+  begin
+    Start(mDetails.Issue, Options.Start);
+    Exit;
+  end;
+  if FPreview = nil then
+    Exit;
+  mKeep := Self;
+  mOwner := Self;
+  mKey := AKey;
+  FPreview.Lookup(ATarget, AKey,
+    procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError)
+    begin
+      if (mKeep = nil) or not mOwner.CanStartIssue then
+        Exit;
+      if ASucceeded then
+        mOwner.Start(ADetails.Issue, mOwner.Options.Start)
+      else
+        mOwner.Report(TAtlasIssueTip.ErrorText(AError, mKey));
     end);
 end;
 

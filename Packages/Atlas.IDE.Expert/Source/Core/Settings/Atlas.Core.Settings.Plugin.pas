@@ -1283,6 +1283,10 @@ type
     /// <summary>Kommentare in der Vorschau laden und zeigen (#1264, issues.preview.comments); aus = nicht abgefragt.
     /// </summary>
     IssuesPreviewComments: Boolean;
+    /// <summary>Issue-Kennungen im Code (#1265, issues.codeLinks): Kennungen wie ATL-123 oder #42 in Kommentaren
+    /// unterstreichen, Hover mit Kurzvorschau, Strg+Klick und Kontextmenü; aus = keine Erkennung, keine Abfrage.
+    /// </summary>
+    IssuesCodeLinks: Boolean;
     /// <summary>Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261, issues.projects) als JSON-Liste mit
     /// match, connection und project; liegt in settings.json, gelesen mit TAtlasTrackerProjects. '[]' = keine.
     /// </summary>
@@ -2017,6 +2021,7 @@ begin
   Result.IssuesConnections := '[]';
   Result.IssuesPreview := True;
   Result.IssuesPreviewComments := True;
+  Result.IssuesCodeLinks := True;
   Result.IssuesProjects := '[]';
   Result.VcsProvider := 'auto';
   Result.VcsGitPath := '';
@@ -2823,6 +2828,7 @@ begin
   IssuesConnections := AStore.ReadString('IssuesConnections', Default.IssuesConnections);
   IssuesPreview := AStore.ReadInteger('IssuesPreview', BoolValue(Default.IssuesPreview)) <> 0;
   IssuesPreviewComments := AStore.ReadInteger('IssuesPreviewComments', BoolValue(Default.IssuesPreviewComments)) <> 0;
+  IssuesCodeLinks := AStore.ReadInteger('IssuesCodeLinks', BoolValue(Default.IssuesCodeLinks)) <> 0;
   IssuesProjects := AStore.ReadString('IssuesProjects', Default.IssuesProjects);
   VcsProvider := AStore.ReadString('VcsProvider', Default.VcsProvider);
   VcsGitPath := AStore.ReadString('VcsGitPath', Default.VcsGitPath);
@@ -3296,6 +3302,7 @@ begin
   AStore.WriteString('IssuesConnections', IssuesConnections);
   AStore.WriteInteger('IssuesPreview', BoolValue(IssuesPreview));
   AStore.WriteInteger('IssuesPreviewComments', BoolValue(IssuesPreviewComments));
+  AStore.WriteInteger('IssuesCodeLinks', BoolValue(IssuesCodeLinks));
   AStore.WriteString('IssuesProjects', IssuesProjects);
   AStore.WriteString('VcsProvider', VcsProvider);
   AStore.WriteString('VcsGitPath', VcsGitPath);

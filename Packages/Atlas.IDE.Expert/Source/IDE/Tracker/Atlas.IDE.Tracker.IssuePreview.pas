@@ -20,6 +20,11 @@
 // - issues.preview.comments aus: Kommentare werden nicht abgefragt.
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse,
 //   Kennung, Titel oder Token.
+// - Kurzabfrage für den Hover über Kennungen im Editor (#1265): Peek liest nur
+//   den Zwischenspeicher (kein Netz), Lookup fragt im Hintergrund ohne
+//   Kommentare; gleiche Wünsche laufen einmal, nicht gefundene Kennungen
+//   fragt Atlas MissingMs lang nicht erneut. Vorhandene Kommentare im
+//   Zwischenspeicher bleiben erhalten.
 // Anbieter, Transport, Zugang, „Beginnen“ und die Einstellungsseite kommen
 // über Hooks (Komposition bzw. „Meine Issues“).
 
@@ -28,6 +33,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.Generics.Collections,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.IssueCache,
@@ -54,9 +60,17 @@ type
     Settings: TProc;
   end;
 
+  /// <summary>Ende einer Kurzabfrage (#1265); im Hauptthread.</summary>
+  TAtlasIssueLookupDone = reference to procedure(ASucceeded: Boolean; const ADetails: TAtlasTrackerDetails;
+    AError: TAtlasCiFetchError);
+
   TAtlasIdeIssuePreview = class(TInterfacedObject)
   public const
     MaxImages = 10;
+    /// <summary>So lange gilt ein Stand im Zwischenspeicher für den Hover als frisch (keine neue Abfrage).</summary>
+    FreshMs = 10 * 60 * 1000;
+    /// <summary>So lange fragt der Hover eine nicht gefundene Kennung nicht erneut.</summary>
+    MissingMs = 10 * 60 * 1000;
     /// <summary>Endungen, die Atlas nicht startet, sondern im Explorer zeigt.</summary>
     RiskyExtensions = '.exe.com.bat.cmd.scr.pif.msi.msp.ps1.psm1.vbs.vbe.js.jse.wsf.wsh.hta.lnk.reg.cpl.jar.dll.' +
       'appref-ms.application.';
@@ -75,6 +89,9 @@ type
     FImageCancel: IAtlasCiCancel;
     FWorkers: TList;
     FGeneration: Integer;
+    // Laufende Kurzabfragen (Tracker|Kennung → Rückrufe) und nicht gefundene Kennungen (→ Zeitpunkt).
+    FLookups: TDictionary<string, TArray<TAtlasIssueLookupDone>>;
+    FMissing: TDictionary<string, UInt64>;
     function Frame: TAtlasIssueFrame;
     procedure Wire(AFrame: TAtlasIssueFrame);
     function ProviderOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
@@ -91,9 +108,13 @@ type
     procedure CancelLoad;
     procedure CancelImages;
     procedure ReleaseThreads(AWait: Boolean);
-    function ErrorText(AError: TAtlasCiFetchError; const AKey: string): string;
     function StaleText(const ADetails: TAtlasTrackerDetails; const AReason: string): string;
     procedure Fix(AFix: TAtlasIssueFix);
+    procedure LookedUp(const AId: string; const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean;
+      const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
+    class function LookupId(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
+    class procedure Deliver(const ADone: TAtlasIssueLookupDone; ASucceeded: Boolean;
+      const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError); static;
     class function NowUtc: TDateTime; static;
   public
     /// <summary>ACacheFolder: Ordner des Zwischenspeichers auf der Platte ('' = nur im Speicher).</summary>
@@ -108,6 +129,14 @@ type
     procedure Refresh;
     procedure GoBack;
     procedure GoForward;
+    /// <summary>Letzter Stand von AKey aus dem Zwischenspeicher (#1265); ohne Netz.</summary>
+    function Peek(const ATarget: TAtlasTrackerTarget; const AKey: string; out ADetails: TAtlasTrackerDetails): Boolean;
+    /// <summary>Stand jünger als FreshMs?</summary>
+    class function Fresh(const ADetails: TAtlasTrackerDetails): Boolean; static;
+    /// <summary>AKey im Hintergrund ohne Kommentare abfragen und in den Zwischenspeicher legen (#1265); ADone im
+    /// Hauptthread, auch sofort (kein Anbieter, kein Token, kürzlich nicht gefunden). Nach Stop wirkungslos.
+    /// </summary>
+    procedure Lookup(const ATarget: TAtlasTrackerTarget; const AKey: string; const ADone: TAtlasIssueLookupDone);
     /// <summary>issues.preview an?</summary>
     class function Active: Boolean; static;
   end;
@@ -129,6 +158,7 @@ uses
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
+  Atlas.UI.Tracker.IssueTip,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Tracker.IssueWindow;
@@ -142,12 +172,16 @@ begin
   FHistory := TAtlasIssueHistory.Create;
   FCache := TAtlasTrackerIssueCache.Create(ACacheFolder);
   FWorkers := TList.Create;
+  FLookups := TDictionary<string, TArray<TAtlasIssueLookupDone>>.Create;
+  FMissing := TDictionary<string, UInt64>.Create;
 end;
 
 destructor TAtlasIdeIssuePreview.Destroy;
 begin
   ReleaseThreads(True);
   FWorkers.Free;
+  FLookups.Free;
+  FMissing.Free;
   FCache.Free;
   FHistory.Free;
   inherited;
@@ -193,6 +227,8 @@ begin
   CancelLoad;
   CancelImages;
   ReleaseThreads(True);
+  // Rückrufe des Editors nicht mehr aufrufen.
+  FLookups.Clear;
   TAtlasIdeIssueWindow.Release;
   FHooks := Default(TAtlasIssuePreviewHooks);
 end;
@@ -454,24 +490,6 @@ begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewStaleOffline, [mWhen, AReason]);
 end;
 
-function TAtlasIdeIssuePreview.ErrorText(AError: TAtlasCiFetchError; const AKey: string): string;
-begin
-  case AError of
-    TAtlasCiFetchError.Unauthorized:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken);
-    TAtlasCiFetchError.NotFound:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewErrorNotFound, [AKey]);
-    TAtlasCiFetchError.Timeout:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorTimeout);
-    TAtlasCiFetchError.NotConfigured, TAtlasCiFetchError.UnknownProvider:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorConfig);
-    TAtlasCiFetchError.Invalid, TAtlasCiFetchError.Server:
-      Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorInvalid);
-  else
-    Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork);
-  end;
-end;
-
 procedure TAtlasIdeIssuePreview.ShowCurrent;
 var
   mFrame: TAtlasIssueFrame;
@@ -629,9 +647,10 @@ begin
     Exit;
   // Ohne Netz der letzte Stand mit Grund, kein Dialog.
   if FCache.Get(AEntry.Target, AEntry.Key, NowUtc, mCached) then
-    mFrame.ShowDetails(mCached, NowUtc, StaleText(mCached, ErrorText(AError, AEntry.Key)), not mComments)
+    mFrame.ShowDetails(mCached, NowUtc, StaleText(mCached, TAtlasIssueTip.ErrorText(AError, AEntry.Key)),
+      not mComments)
   else
-    mFrame.ShowError(ErrorText(AError, AEntry.Key), TAtlasIssuePreview.FixOf(AError));
+    mFrame.ShowError(TAtlasIssueTip.ErrorText(AError, AEntry.Key), TAtlasIssuePreview.FixOf(AError));
 end;
 
 procedure TAtlasIdeIssuePreview.Fix(AFix: TAtlasIssueFix);
@@ -659,6 +678,151 @@ begin
     TAtlasIssueFix.Retry:
       Refresh;
   end;
+end;
+
+class function TAtlasIdeIssuePreview.LookupId(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
+begin
+  Result := TAtlasTrackerIssueCache.TrackerId(ATarget) + '|' + UpperCase(Trim(AKey));
+end;
+
+function TAtlasIdeIssuePreview.Peek(const ATarget: TAtlasTrackerTarget; const AKey: string;
+  out ADetails: TAtlasTrackerDetails): Boolean;
+begin
+  ADetails := TAtlasTrackerDetails.Empty;
+  Result := (Trim(AKey) <> '') and FCache.Get(ATarget, AKey, NowUtc, ADetails);
+end;
+
+class function TAtlasIdeIssuePreview.Fresh(const ADetails: TAtlasTrackerDetails): Boolean;
+begin
+  Result := (ADetails.Fetched > 0) and (MilliSecondsBetween(NowUtc, ADetails.Fetched) < FreshMs);
+end;
+
+procedure TAtlasIdeIssuePreview.Lookup(const ATarget: TAtlasTrackerTarget; const AKey: string;
+  const ADone: TAtlasIssueLookupDone);
+var
+  mId: string;
+  mWaiting: TArray<TAtlasIssueLookupDone>;
+  mAt: UInt64;
+  mProvider: IAtlasTrackerProvider;
+  mTransport: IAtlasCiTransport;
+  mKeep: IInterface;
+  mOwner: TAtlasIdeIssuePreview;
+  mWorker: TThread;
+begin
+  if not FStarted or (Trim(AKey) = '') or not Assigned(ADone) then
+    Exit;
+  mId := LookupId(ATarget, AKey);
+  // Kürzlich nicht gefunden: nicht erneut fragen.
+  if FMissing.TryGetValue(mId, mAt) then
+  begin
+    if TThread.GetTickCount64 - mAt < MissingMs then
+    begin
+      ADone(False, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.NotFound);
+      Exit;
+    end;
+    FMissing.Remove(mId);
+  end;
+  // Läuft schon: nur anhängen.
+  if FLookups.TryGetValue(mId, mWaiting) then
+  begin
+    FLookups[mId] := mWaiting + [ADone];
+    Exit;
+  end;
+  mProvider := ProviderOf(ATarget);
+  if (mProvider = nil) or not Assigned(FHooks.Transport) then
+  begin
+    ADone(False, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.NotConfigured);
+    Exit;
+  end;
+  // Ohne Token kein Netz (wie die Vorschau, ohne Dialog).
+  mTransport := FHooks.Transport(mProvider, ATarget);
+  if mTransport = nil then
+  begin
+    ADone(False, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.Unauthorized);
+    Exit;
+  end;
+  FLookups.Add(mId, TArray<TAtlasIssueLookupDone>.Create(ADone));
+  ReleaseThreads(False);
+  mKeep := Self;
+  mOwner := Self;
+  mWorker := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mResult: TAtlasTrackerDetails;
+      mError: TAtlasCiFetchError;
+      mOk: Boolean;
+    begin
+      mResult := TAtlasTrackerDetails.Empty;
+      mOk := False;
+      mError := TAtlasCiFetchError.Network;
+      try
+        mOk := mProvider.Details(ATarget, mTransport, AKey, False, TAtlasIssuePreview.TimeoutMs, mResult, mError);
+      except
+        // Kein Dialog, kein Fehler an die IDE: als Netzfehler werten.
+        on E: Exception do
+        begin
+          mOk := False;
+          mError := TAtlasCiFetchError.Network;
+          TAtlasGuard.Log('Issue-Kennung: Abfrage mit ' + E.ClassName + ' abgebrochen');
+        end;
+      end;
+      mTransport := nil;
+      if TAtlasShutdown.Signalled then
+        Exit;
+      TAtlasMainThread.Queue(TAtlasFeature.IssueLinks,
+        procedure
+        begin
+          if mKeep <> nil then
+            mOwner.LookedUp(mId, ATarget, mOk, mResult, mError);
+        end);
+    end);
+  mWorker.FreeOnTerminate := False;
+  FWorkers.Add(mWorker);
+  mWorker.Start;
+end;
+
+procedure TAtlasIdeIssuePreview.LookedUp(const AId: string; const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean;
+  const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
+var
+  mWaiting: TArray<TAtlasIssueLookupDone>;
+  mDone: TAtlasIssueLookupDone;
+  mDetails, mCached: TAtlasTrackerDetails;
+begin
+  ReleaseThreads(False);
+  if not FStarted or not FLookups.TryGetValue(AId, mWaiting) then
+    Exit;
+  FLookups.Remove(AId);
+  mDetails := ADetails;
+  if ASucceeded then
+  begin
+    mDetails.Fetched := NowUtc;
+    // Ohne Kommentare gefragt: die der Vorschau nicht verlieren.
+    if not mDetails.CommentsLoaded and FCache.Get(ATarget, mDetails.Key, NowUtc, mCached) and
+      mCached.CommentsLoaded then
+    begin
+      mDetails.CommentsLoaded := True;
+      mDetails.Comments := mCached.Comments;
+    end;
+    FCache.Put(ATarget, mDetails);
+  end
+  else if AError = TAtlasCiFetchError.NotFound then
+    FMissing.AddOrSetValue(AId, TThread.GetTickCount64);
+  // Anonym: nie Kennung oder Titel.
+  TAtlasGuard.Log('Issue-Kennung: ' + IfThen(ASucceeded, 'geladen',
+    'nicht geladen (' + TAtlasCiBuild.ErrorKey(AError) + ')'));
+  for mDone in mWaiting do
+    Deliver(mDone, ASucceeded, mDetails, AError);
+end;
+
+class procedure TAtlasIdeIssuePreview.Deliver(const ADone: TAtlasIssueLookupDone; ASucceeded: Boolean;
+  const ADetails: TAtlasTrackerDetails; AError: TAtlasCiFetchError);
+begin
+  // Eigene Routine: Die anonyme Methode fängt nur ihre Argumente, nicht die Schleife von LookedUp.
+  TAtlasGuard.Run(TAtlasFeature.IssueLinks,
+    procedure
+    begin
+      ADone(ASucceeded, ADetails, AError);
+    end);
 end;
 
 procedure TAtlasIdeIssuePreview.LoadImages(const AUrls: TArray<string>);

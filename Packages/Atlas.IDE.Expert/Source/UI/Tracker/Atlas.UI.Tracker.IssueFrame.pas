@@ -282,7 +282,8 @@ uses
   Vcl.Clipbrd,
   Atlas.Core.Style.Color,
   Atlas.Core.Documentation.Layout,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Tracker.IssueTip;
 
 {$R *.dfm}
 
@@ -892,24 +893,8 @@ begin
 end;
 
 function TAtlasIssueFrame.AgeText(ATime: TDateTime): string;
-var
-  mAge: TAtlasIssueAge;
 begin
-  mAge := TAtlasIssuePreview.Age(ATime, FNow);
-  case mAge.UnitKind of
-    TAtlasIssueAgeUnit.Minutes:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewMinutes, [mAge.Count]);
-    TAtlasIssueAgeUnit.Hours:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewHours, [mAge.Count]);
-    TAtlasIssueAgeUnit.Days:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewDays, [mAge.Count]);
-    TAtlasIssueAgeUnit.Months:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewMonths, [mAge.Count]);
-    TAtlasIssueAgeUnit.Years:
-      Result := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewYears, [mAge.Count]);
-  else
-    Result := TAtlasStrings.Text(TAtlasTextId.IssuePreviewJustNow);
-  end;
+  Result := TAtlasIssueTip.AgeText(ATime, FNow);
 end;
 
 procedure TAtlasIssueFrame.Rebuild;

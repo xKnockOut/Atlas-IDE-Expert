@@ -607,6 +607,8 @@ uses
   Atlas.UI.Documentation.View in '..\Packages\Atlas.IDE.Expert\Source\UI\Documentation\Atlas.UI.Documentation.View.pas',
   Atlas.UI.Tracker.IssueFrame in '..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas',
   Atlas.UI.Tracker.IssueFrame.Tests in 'IDE.Expert\Atlas.UI.Tracker.IssueFrame.Tests.pas',
+  Atlas.UI.Tracker.IssueTip in '..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.IssueTip.pas',
+  Atlas.UI.Tracker.IssueTip.Tests in 'IDE.Expert\Atlas.UI.Tracker.IssueTip.Tests.pas',
   Atlas.Core.Tracker.Projects.Tests in 'IDE.Expert\Atlas.Core.Tracker.Projects.Tests.pas',
   Atlas.Core.Projects.Summary in '..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Summary.pas',
   Atlas.Core.Projects.Summary.Tests in 'IDE.Expert\Atlas.Core.Projects.Summary.Tests.pas',

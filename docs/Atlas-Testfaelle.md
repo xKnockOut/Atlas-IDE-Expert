@@ -7889,3 +7889,32 @@ Vorbereitung: SVN-Arbeitskopie mit `Kasse.groupproj` (Exe-Projekt `Kasse.dproj` 
 | VZ8 | Git-Projekt ohne verfolgten Branch, Hauptbranch `develop`; auf Feature-Branch „Weiterarbeiten“ ansehen | Eingehende Commits gegen `origin/develop` |
 | VZ9 | settings.json von Hand mit doppeltem Pfad, Art `cvs` oder Hauptbranch mit Leerzeichen speichern | Server meldet die Zeile in der Problemliste |
 | VZ10 | Einstellungen exportieren und importieren | `vcs.projects` als JSON-Liste, nach dem Import gleiche Zeilen |
+
+## Issue-Kennungen im Code (#1265)
+
+Vorbereitung: Projekt A mit YouTrack-Projekt `ATL` (Abschnitt `tracker` der `.atlas` oder Zuordnung #1261), Projekt B mit GitHub `owner/repo`, Projekt C ohne Tracker; Token hinterlegt; `issues.commitPattern` = `{kennung} `; Proxy-Protokoll (z. B. Fiddler) offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IK1 | In A `// TODO ATL-123: prüfen` schreiben | `ATL-123` ist gepunktet unterstrichen in der Akzentfarbe des Themas (**Abnahme**) |
+| IK2 | Maus auf `ATL-123` halten | Nach etwa 500 ms Tooltip „ATL-123“ mit Titel, Zustand, Zuständig, „aktualisiert vor …“ und der Fußzeile „Strg+Klick: Vorschau · Strg+Umschalt+Klick: Browser“; beim ersten Mal kurz „Wird geladen …“ (**Abnahme**) |
+| IK3 | Strg+Klick auf `ATL-123` | Fenster „Atlas-Issue“ zeigt das Issue; die IDE springt nicht und setzt den Cursor nicht um (**Abnahme**) |
+| IK4 | Strg+Umschalt+Klick auf `ATL-123` | Issue öffnet im Browser |
+| IK5 | Rechtsklick auf `ATL-123` | Eigenes Menü „Issue anzeigen“ (fett), „Im Browser öffnen“, „Kennung kopieren“, „Beginnen“; „Kennung kopieren“ legt `ATL-123` in die Zwischenablage; das Kontextmenü der IDE erscheint nicht |
+| IK6 | Umschalt+Rechtsklick auf `ATL-123` | Kontextmenü der IDE wie gewohnt |
+| IK7 | „Beginnen“ im Menü | Wie „Beginnen“ in „Meine Issues“: Branch aus Kennung und Titel |
+| IK8 | `atl-7`, `{ ATL-8 }`, `(* ATL-9 *)` und ein `{ … }`-Kommentar über drei Zeilen mit `ATL-10` in der Mitte | Alle unterstrichen, Kennung im Tooltip groß geschrieben |
+| IK9 | `X := ATL - 123;`, `{$IFDEF ATL-1}`, `XATL-1`, `ATL-1a` und `ATL_1` | Nichts unterstrichen (**Abnahme**) |
+| IK10 | `S := 'ATL-12 Sperre';` und `S := 'Siehe ATL-12';` | Nur das erste Literal (beginnt mit dem Commit-Präfix) ist unterstrichen |
+| IK11 | In B `// #42` und `// siehe octo/lib#9` | Beide unterstrichen; Hover von `octo/lib#9` zeigt das Issue aus `octo/lib` (**Abnahme**) |
+| IK12 | In B `S := #13#10;` und `// Zeilenende #13#10, C#7` | Nichts unterstrichen |
+| IK13 | `// #42` in C (ohne Tracker) | Nicht unterstrichen, kein Hover (**Abnahme**) |
+| IK14 | Kennung, die es nicht gibt (`ATL-999999`), überfahren | „Issue ATL-999999 nicht gefunden.“; Unterstreichung bleibt; erneutes Überfahren innerhalb von 10 Minuten fragt nicht erneut (Proxy) |
+| IK15 | Durch eine Unit mit 200 Kennungen scrollen, ohne zu verweilen | Keine Abfrage beim Tracker (Proxy); erst der Hover fragt (**Abnahme**) |
+| IK16 | Netz trennen, eine früher überfahrene Kennung überfahren | Letzter Stand aus dem Zwischenspeicher; eine neue Kennung zeigt „Tracker nicht erreichbar.“ |
+| IK17 | `issues.codeLinks` aus (Schnellschalter) | Keine Unterstreichung, kein Hover, Strg+Klick wieder wie in der IDE, keine Abfrage (**Abnahme**) |
+| IK18 | `issues.preview` aus | Fußzeile „Strg+Klick: im Browser öffnen“; Strg+Klick öffnet den Browser |
+| IK19 | Hover auf einer Kennung mit eingeschaltetem Atlas-Tooltip | Nur ein Tooltip; kein leerer zweiter Tooltip des Atlas-Hovers |
+| IK20 | Tippen in der Zeile, Zoom (Strg+Mausrad), 150 % DPI, helles und dunkles Design | Unterstreichung folgt dem Text und sitzt unter der Kennung |
+| IK21 | Projekt wechseln (A → B), dann Datei aus A wieder vorn | Muster folgt dem aktiven Projekt (`ATL-…` nur, solange A aktiv ist) |
+| IK22 | IDE mit offenem Tooltip beenden | Entladen ohne Zugriffsverletzung |
