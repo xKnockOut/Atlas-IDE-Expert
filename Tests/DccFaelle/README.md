@@ -20,7 +20,7 @@ schreibt alle dcc-Meldungen nach `Output/DccFaelle-Ergebnis.txt`.
 | Projekt | Regel | Fälle |
 |---|---|---|
 | `DccEigenschaften` | `property-accessor-invalid` | PA1 index mit Feld hinter read, PA2 index mit Array-Element, PA3 index mit Feld hinter write, PA4 index mit Aufzählungskonstante, PA5 Klassenmethode als Getter, PA6 überladener Getter |
-| `DccEigenschaftenGegen` | `property-accessor-invalid` | PG1 Klassen-Property mit Instanz-Getter, PG2 index ohne Indexparameter, PG3 keine Überladung passt, PG4 unbekanntes Feld |
+| `DccEigenschaftenGegen` | `property-accessor-invalid` | PG1 Klassen-Property mit Instanz-Getter, PG2 index ohne Indexparameter, PG3 keine Überladung passt, PG4 unbekanntes Feld, PG5 class var und PG6 statische Klassenmethode an einer Instanz-Property |
 | `DccVarParameter` | `invalid-var-argument` | IV1 Slice eines Open Arrays an var, IV2 Slice über Typumwandlung, IV3 Slice eines statischen Arrays |
 | `DccVarParameterGegen` | `invalid-var-argument` | VG1 Slice an out, VG2 Konstante an var, VG3 Ausdruck an var |
 | `DccSichtbarkeit` | `inaccessible-member` | IM1/IM2 protected-Mitglieder generischer Klassen aus generischem Code einer anderen Unit, IM3 dasselbe aus nicht generischem Code, IM4 private class constructor neben TObject.Create, IM5 Klassenmethoden-Überladung in einer Klassenmethode |
