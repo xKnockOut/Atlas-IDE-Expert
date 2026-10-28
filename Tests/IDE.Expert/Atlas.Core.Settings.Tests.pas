@@ -43,6 +43,9 @@ type
     /// ohne Eintrag, kaputter Text nie in die Datei.</summary>
     [Test]
     procedure IssuesConnectionsGoToGlobalFile;
+    /// <summary>#1261: issues.projects wie die Verbindungen als JSON-Liste in settings.json.</summary>
+    [Test]
+    procedure IssuesProjectsGoToGlobalFile;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -645,6 +648,35 @@ begin
   mLoaded.Load(mStore);
   Assert.AreEqual('[]', mLoaded.IssuesConnections);
   Assert.IsTrue(MatchText('issues.connections', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesProjectsGoToGlobalFile;
+const
+  cList = '[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "connection": "Firma", "project": "KASSE"}]';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('[]', mSettings.IssuesProjects);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.Save(mStore);
+  Assert.IsFalse(mRouted.Text.Contains('projects'), 'leere Liste ohne Eintrag: ' + mRouted.Text);
+  mSettings.IssuesProjects := cList;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"projects": [{"match": ');
+  Assert.AreEqual('', mRegistry.ReadString('IssuesProjects', ''), 'nicht in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesProjects.Contains('"KASSE"'), mLoaded.IssuesProjects);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '{"issues": {"projects": 3}}');
+  mStore := mRouted;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('[]', mLoaded.IssuesProjects, 'falsche Art: Vorgabe');
+  Assert.IsTrue(MatchText('issues.projects', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
 end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;

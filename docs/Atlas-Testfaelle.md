@@ -7827,3 +7827,22 @@ Vorbereitung: Zugang zu einem YouTrack (https) und einem GitHub-Konto mit persö
 | TV12 | Dialog während einer laufenden Prüfung schließen, Plugin entladen | Kein Fehler, keine Zugriffsverletzung |
 | TV13 | Einstellungen exportieren und in leerer Installation importieren | `issues.connections` als JSON-Liste in der Datei, nach dem Import gleiche Zeilen; Tokens nicht enthalten |
 | TV14 | settings.json von Hand mit unbekanntem Anbieter oder doppeltem Namen speichern, Projekt prüfen | Server meldet den Eintrag in der Problemliste |
+
+## Projekte einem Tracker zuordnen (#1261)
+
+Vorbereitung: zwei Verbindungen aus TV2/TV3; Projektgruppe `Kasse.groupproj` mit zwei Projekten, ein weiteres Projekt mit Abschnitt `tracker` in der `.atlas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TP1 | Projekt ohne `.atlas`-Tracker und ohne Zuordnung öffnen, „Meine Issues“ ansehen | Fußzeile „Kein Tracker für dieses Projekt – zuordnen …“ als Link (**Abnahme**) |
+| TP2 | Link klicken | Optionen öffnen auf „Issue-Tracker“, in „Projekte“ steht eine neue Zeile mit der geöffneten `.groupproj` (bzw. ohne Gruppe der `.dproj`) und der ersten Verbindung, Feld „Tracker-Projekt“ hat den Fokus |
+| TP3 | Tracker-Projekt `KASSE` eintragen, OK | „Meine Issues“ lädt die Issues aus `KASSE`; Zeile steht in `settings.json` unter `issues.projects` (**Abnahme**) |
+| TP4 | Anderes Projekt der Gruppe aktivieren | Dieselben Issues (die Zeile der Gruppe gilt für jedes Projekt darin) |
+| TP5 | Zeile für die `.dproj` eines Gruppenprojekts mit anderem Tracker-Projekt anlegen | Für dieses Projekt gilt die `.dproj`-Zeile, für die anderen die Gruppe |
+| TP6 | „Hinzufügen …“ › „Ordner …“, Oberordner wählen; Projekt außerhalb der Gruppe in diesem Ordner öffnen | Ordnerzeile gilt; ein Ordner `C:\Projekte\Ka` passt nicht auf `C:\Projekte\Kasse\…` |
+| TP7 | Projekt mit `.atlas`-Tracker öffnen, Seite „Issue-Tracker“ ansehen | Zeile „aus .atlas“ schreibgeschützt; passende persönliche Zeilen grau mit „persönlich · von .atlas überdeckt“ (**Abnahme**) |
+| TP8 | Verbindung „Firma“ in „Werk“ umbenennen, OK | Alle Zuordnungen zeigen „Werk“, Issues laden weiter |
+| TP9 | Verbindung einer Zuordnung entfernen | Zeile bleibt mit Hinweis „Die Verbindung … gibt es nicht (mehr).“; „Meine Issues“ zeigt wieder den Link aus TP1 |
+| TP10 | Gleichen Pfad ein zweites Mal eintragen | Hinweis „Für diesen Pfad gibt es schon eine Zeile“, Wert nicht übernommen |
+| TP11 | Einstellungen exportieren und importieren | `issues.projects` als JSON-Liste, nach dem Import gleiche Zeilen |
+| TP12 | settings.json von Hand mit doppeltem Pfad oder ohne `connection` speichern | Server meldet die Zeile in der Problemliste |

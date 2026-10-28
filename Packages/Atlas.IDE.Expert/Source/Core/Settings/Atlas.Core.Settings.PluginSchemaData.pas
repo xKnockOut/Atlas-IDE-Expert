@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5219] of string = (
+  Lines: array[0..5232] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5318,6 +5318,20 @@ const
     '      "x-page": "Issue-Tracker",',
     '      "x-control": "Tabelle Verbindungen",',
     '      "x-issue": "#1260"',
+    '    },',
+    '    "IssuesProjects": {',
+    '      "type": "array",',
+    '      "default": [],',
+    '      "items": {',
+    '        "type": "object"',
+    '      },',
+    '      "description": "Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt mit match, connection und project (#1261); liegt in settings.json unter issues.projects. Im Plugin als JSON-Text gelesen un' +
+      'd geschrieben.",',
+    '      "x-key": "issues.projects",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-control": "Tabelle Projekte",',
+    '      "x-issue": "#1261"',
     '    }',
     '  },',
     '  "additionalProperties": false',

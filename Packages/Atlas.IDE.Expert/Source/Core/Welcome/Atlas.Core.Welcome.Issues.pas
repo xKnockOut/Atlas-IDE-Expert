@@ -4,7 +4,9 @@
 // Tools API: was abgefragt wird, wann, was der Bereich zeigt, welches Issue
 // aktiv ist und was „Beginnen“ tut.
 // - Ziel: Anbieter, Adresse und Projekt aus .atlas (Abschnitt "tracker");
-//   issues.tracker ersetzt den Anbieter, .query die Abfrage.
+//   issues.tracker ersetzt den Anbieter, .query die Abfrage. Ohne tracker in
+//   der .atlas gilt die persönliche Zuordnung (#1261, issues.projects):
+//   Verbindung und Tracker-Projekt der passenden Zeile.
 // - Abfrage beim Anzeigen, höchstens alle DueMinutes Minuten, Zeitlimit
 //   FetchTimeoutMs; ohne Netz bleibt der letzte Stand („Stand vom …“).
 // - Aktives Issue: mit „Beginnen“ gemerkt (Branch oder nur gemerkt); sonst
@@ -34,6 +36,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Projects,
   Atlas.Core.Vcs.Contract;
 
 type
@@ -161,6 +164,10 @@ type
     Project: string;
     ProjectName: string;
     Tracker: string;
+    /// <summary>Name der Verbindung (#1261): aus der Zuordnung bzw. der Projektname bei .atlas; '' ohne.</summary>
+    Connection: string;
+    /// <summary>Ohne Tracker: „zuordnen …“ anbieten (#1261).</summary>
+    CanAssign: Boolean;
     Querying: Boolean;
     Notice: string;
     /// <summary>Hinweis ist ein Fehler (rot).</summary>
@@ -196,7 +203,11 @@ type
     class function StartOf(const AText: string): TAtlasIssueStart; static;
     /// <summary>Ziel aus .atlas und den Einstellungen; ASettingTracker '' = Anbieter aus .atlas.</summary>
     class function TargetFor(const ATeamProvider, ATeamUrl, ATeamProject, ASettingTracker,
-      ASettingQuery: string): TAtlasTrackerTarget; static;
+      ASettingQuery: string): TAtlasTrackerTarget; overload; static;
+    /// <summary>Ziel aus der Auflösung (#1261): .atlas wie oben (ASettingTracker ersetzt den Anbieter), sonst
+    /// Anbieter und Adresse der Verbindung mit dem Tracker-Projekt der Zuordnung; ohne Treffer leer.</summary>
+    class function TargetFor(const AResolution: TAtlasTrackerResolution; const ASettingTracker,
+      ASettingQuery: string): TAtlasTrackerTarget; overload; static;
     /// <summary>Abfrage fällig: anderes Ziel, noch keine oder letzte vor mindestens DueMinutes; AForce immer.
     /// </summary>
     class function Due(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget; ANowUtc: TDateTime;
@@ -355,6 +366,22 @@ begin
   if (Provider <> TAtlasTrackerTarget.GitHub) and (Provider <> TAtlasTrackerTarget.YouTrack) then
     Provider := '';
   Result := TAtlasTrackerTarget.Create(Provider, ATeamUrl, ATeamProject, ASettingQuery);
+end;
+
+class function TAtlasWelcomeIssues.TargetFor(const AResolution: TAtlasTrackerResolution; const ASettingTracker,
+  ASettingQuery: string): TAtlasTrackerTarget;
+begin
+  case AResolution.Match of
+    TAtlasTrackerMatch.None:
+      Result := TAtlasTrackerTarget.Create('', '', '', '');
+    TAtlasTrackerMatch.TeamFile:
+      Result := TargetFor(AResolution.Connection.Provider, AResolution.Connection.Url, AResolution.Project,
+        ASettingTracker, ASettingQuery);
+  else
+    // Persönliche Zuordnung: Die Verbindung nennt ihren Anbieter selbst.
+    Result := TargetFor(AResolution.Connection.Provider, AResolution.Connection.Url, AResolution.Project, '',
+      ASettingQuery);
+  end;
 end;
 
 class function TAtlasWelcomeIssues.Due(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
