@@ -4,7 +4,7 @@
 // comparison-always-constant (#1011): Beispiel aus dem Issue, immer falsche
 // und gespiegelte Vergleiche, benannte Konstanten, Felder aus dem Index,
 // case-Marken außerhalb des Bereichs, bedingte Deklarationen, stille Fälle,
-// Abschalten.
+// Abschalten; Konstanten mit Typumwandlung und UInt64 (#1324).
 // constant-initializer-mismatch (#1015): Beispiel mit Korrektur, zu viele
 // Einträge, Teilbereiche, Boolean, mehrere Dimensionen, benannte Array-Typen,
 // Aufzählungen aus dem Index, Record-Felder in falscher Reihenfolge, bedingte
@@ -41,6 +41,8 @@ type
     [Test]
     procedure PossibleComparisonsAreSilent;
     [Test]
+    procedure CastConstantsAndUInt64;
+    [Test]
     procedure OutcomeTable;
     [Test]
     procedure OffAndExclude;
@@ -68,6 +70,11 @@ type
     /// <summary>#1138: () setzt alle Felder bzw. Elemente auf null und ist kein Befund.</summary>
     [Test]
     procedure EmptyInitializerIsSilent;
+    /// <summary>#1323: Zwei Konstanten mit je 20.000 Elementen. Jedes Element fragt nach dem Typ, dessen Name
+    /// hinter allen Elementen der ersten Konstante steht; die Suche nach dem Token darf nicht linear sein.</summary>
+    [Test]
+    [Category('Benchmark')]
+    procedure LargeConstantArraysStayFast;
   end;
 
   [TestFixture]
@@ -119,7 +126,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Tests.RuleAssert;
+  Atlas.Tests.RuleAssert,
+  System.Diagnostics;
 
 /// <summary>Routine Pruefen mit den Deklarationen ADecls (var-Abschnitt) und den Anweisungen ABody.</summary>
 function Routine(const ADecls, ABody: string): string;
@@ -201,6 +209,21 @@ begin
   Assert.AreEqual('Konto.Saldo ist Cardinal; Konto.Saldo < 0 ist immer falsch (wie W1021).', Found[0].Message);
   Assert.AreEqual('Konto.Stufe ist Byte; Konto.Stufe > MaxStufe ist immer falsch (wie W1021).', Found[1].Message);
   Assert.AreEqual('Konto.Saldo ist Cardinal; Konto.Saldo > Unten ist immer wahr (wie W1022).', Found[2].Message);
+end;
+
+procedure TComparisonAlwaysConstantTests.CastConstantsAndUInt64;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Minimalfall aus #1324 (PascalScript): InvalidVal = Cardinal(-1) ist 4294967295, der Vergleich also offen.
+  mFound := ComparisonFindings('unit Zaehler;'#10'interface'#10'implementation'#10'const'#10 +
+    '  InvalidVal = Cardinal(-1);'#10'procedure Pruefen;'#10'var'#10'  P: Cardinal;'#10'  U: UInt64;'#10'begin'#10 +
+    '  if P <> InvalidVal then'#10'    Exit;'#10'  if P = Cardinal(-1) then'#10'    Exit;'#10 +
+    '  if U > UInt64(High(Int64)) then'#10'    Exit;'#10'  if U <= High(Int64) then'#10'    Exit;'#10 +
+    '  if P <> -1 then'#10'    Exit;'#10'end;'#10'end.');
+  // Gegentest: -1 ohne Umwandlung liegt weiter außerhalb von Cardinal.
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('P ist Cardinal; P <> -1 ist immer wahr (wie W1022).', mFound[0].Message);
 end;
 
 procedure TComparisonAlwaysConstantTests.LengthIsNeverNegative;
@@ -291,6 +314,12 @@ begin
   Assert.AreEqual(-1, TComparisonAlwaysConstantRule.Outcome('=', 255, 0, 255));
   Assert.AreEqual(1, TComparisonAlwaysConstantRule.Outcome('<>', -1, 0, 255));
   Assert.AreEqual(-1, TComparisonAlwaysConstantRule.Outcome('<>', 0, 0, 255));
+  // Obergrenze über High(Int64) (UInt64, #1324): Kein Wert liegt auf oder über ihr.
+  Assert.AreEqual(-1, TComparisonAlwaysConstantRule.Outcome('>', High(Int64), 0, High(Int64), False));
+  Assert.AreEqual(-1, TComparisonAlwaysConstantRule.Outcome('<=', High(Int64), 0, High(Int64), False));
+  Assert.AreEqual(0, TComparisonAlwaysConstantRule.Outcome('>', High(Int64), 0, High(Int64), True));
+  Assert.AreEqual(1, TComparisonAlwaysConstantRule.Outcome('>=', 0, 0, High(Int64), False));
+  Assert.AreEqual(0, TComparisonAlwaysConstantRule.Outcome('<', 0, 0, High(Int64), False));
 end;
 
 procedure TComparisonAlwaysConstantTests.OffAndExclude;
@@ -524,6 +553,55 @@ begin
     'Source/Status.pas'))));
   Assert.AreEqual(0, Integer(Length(InitFindings(Source,
     '{"rules": {"constant-initializer-mismatch": {"exclude": ["Source/*.pas"]}}}', 'Source/Status.pas'))));
+end;
+
+/// <summary>Konstante AName: array[0..ACount - 1] of AType mit den Werten 0 … AValues - 1, 20 je Zeile.</summary>
+function LargeConstant(const AName, AType: string; ACount, AValues: Integer): string;
+var
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    mBuilder.Append('  ').Append(AName).Append(': array[0..').Append(ACount - 1).Append('] of ').Append(AType);
+    mBuilder.Append(' = (');
+    for mIndex := 0 to AValues - 1 do
+    begin
+      if mIndex > 0 then
+        mBuilder.Append(', ');
+      if mIndex mod 20 = 0 then
+        mBuilder.Append(#10'    ');
+      mBuilder.Append(mIndex);
+    end;
+    mBuilder.Append(');'#10);
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+procedure TConstantInitializerMismatchTests.LargeConstantArraysStayFast;
+const
+  cCount = 20000;
+  cLimitMs = 20000;
+var
+  mSource: string;
+  mWatch: TStopwatch;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := 'unit Tabellen;'#10'interface'#10'type'#10'  TZahl = Integer;'#10'const'#10 +
+    LargeConstant('cErste', 'Integer', cCount, cCount) +
+    LargeConstant('cZweite', 'TZahl', cCount, cCount) + LargeConstant('cDritte', 'TZahl', cCount, cCount - 1) + 'implementation'#10'end.';
+  mWatch := TStopwatch.StartNew;
+  mFound := InitFindings(mSource);
+  mWatch.Stop;
+  System.Writeln(Format('constant-initializer-mismatch: 3 x %d Elemente, %d ms', [cCount,
+    mWatch.ElapsedMilliseconds]));
+  // Nur die dritte Konstante ist um eins zu kurz.
+  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.IsTrue(mWatch.ElapsedMilliseconds < cLimitMs, Format('%d ms', [mWatch.ElapsedMilliseconds]));
+  mSource := '';
+  mFound := nil;
 end;
 
 { TCaseSelectorNotOrdinalTests }

@@ -21,7 +21,10 @@
 //   Projekt bzw. das aktive Projekt der Gruppe.
 // - „Pull“ bzw. „Aktualisieren“ (SVN): im Hintergrund über TAtlasIdeVcs.Run
 //   mit Zeitlimit, nur vorwärts, vorher frisch auf lokale Änderungen geprüft;
-//   danach fragt „Projekte“ Branch und Änderungen neu ab.
+//   danach fragt „Projekte“ Branch und Änderungen neu ab. Unter SVN nach
+//   vcs.externals.update (#1292): mit Externals, ohne (--ignore-externals)
+//   oder mit Auswahl am Knopf (AskExternals). Den Index der geholten Ordner
+//   frischt die Dateiüberwachung (#395) auf, sie umfasst die Projektordner.
 // - „Aufgaben ▾“ (#900): Namen über OnTaskNames, Start über OnRunTask (der
 //   Aufgabenläufer, im Hintergrund); das Ende meldet TaskFinished mit dem
 //   Ergebnis („Delphi-12-Prüfung: 2 Fehler 14:03“). Ohne tasks.enabled bzw.
@@ -111,7 +114,7 @@ type
     function EnsureOpen(const AProject: string; out AReason: string): Boolean;
     procedure BuildNext(const ARow: string; const AProjects: TArray<string>; AIndex: Integer;
       const AConfiguration, APlatform: string);
-    procedure Pull(const AProject: string);
+    procedure Pull(const AProject: string); overload;
     procedure OpenConsole(const AProject: string);
     procedure CountUse(const AId: string);
     procedure WatchTick(Sender: TObject);
@@ -151,6 +154,7 @@ type
     procedure Run(const AProject, AProfile: string);
     function TaskNames(const AProject: string): TArray<string>;
     procedure RunTask(const AProject, AName: string);
+    procedure Pull(const AProject: string; AIgnoreExternals: Boolean); overload;
     function BuildKey: Integer;
     function TestKey: Integer;
     function ConsoleProgram: string;
@@ -376,6 +380,9 @@ begin
     Exclude(Items, TAtlasQuickAction.Tasks);
   Vcs := FProjects.VcsOf(AProject);
   Result := TAtlasWelcomeQuickActions.Buttons(Items, Vcs, State(AProject).Running, IdeBusy(AProject));
+  // vcs.externals.update = ask (#1292): „Aktualisieren ▾“ mit Auswahl.
+  if AtlasVcsExternalsUpdateOf(Settings.VcsExternalsUpdate) = TAtlasVcsExternalsUpdate.Ask then
+    TAtlasWelcomeQuickActions.AskExternals(Result);
 end;
 
 class function TAtlasIdeQuickActions.ProjectOpen(const AFileName: string): Boolean;
@@ -793,8 +800,16 @@ begin
 end;
 
 procedure TAtlasIdeQuickActions.Pull(const AProject: string);
+begin
+  // Ohne Auswahl (Taste, Kontextmenü ohne Untermenü): „ask“ holt wie „with“ samt Externals.
+  Pull(AProject, AtlasVcsExternalsUpdateOf(Settings.VcsExternalsUpdate) =
+    TAtlasVcsExternalsUpdate.WithoutExternals);
+end;
+
+procedure TAtlasIdeQuickActions.Pull(const AProject: string; AIgnoreExternals: Boolean);
 var
   Keep: IInterface;
+  mIgnore: Boolean;
   Project, Dir: string;
   Vcs: TAtlasProjectVcs;
   Update: Boolean;
@@ -817,12 +832,13 @@ begin
   Dir := ExtractFileDir(AProject);
   Outcome := TAtlasPullOutcome.Failed;
   Reason := TAtlasVcsOutcome.Failed;
+  mIgnore := AIgnoreExternals;
   // Arbeit und Ergebnis teilen sich Outcome und Reason; das Ergebnis kommt erst nach der Arbeit.
   if not TAtlasIdeVcs.Run(
     procedure
     begin
       Outcome := TAtlasWelcomeQuickActions.Pull(TAtlasIdeVcs.ForFolder(Dir,
-        TAtlasWelcomeQuickActions.PullTimeoutMs), Reason);
+        TAtlasIdeVcs.AtLeast(TAtlasWelcomeQuickActions.PullTimeoutMs)), mIgnore, Reason);
     end,
     procedure
     var
@@ -852,7 +868,13 @@ begin
         begin
           Value.Phase := TAtlasQuickActionPhase.Failed;
           Value.Detail := AtlasVcsOutcomeName(Reason);
-          if Update then
+          // Fehlende Anmeldung (#1287): Ursache und Weg zur Seite Versionsverwaltung statt eines Codes.
+          if Reason = TAtlasVcsOutcome.LoginNeeded then
+          begin
+            Value.Detail := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPullLogin);
+            Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [NameOf(Project)]));
+          end
+          else if Update then
             Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgUpdateFailed, [NameOf(Project),
               AtlasVcsOutcomeName(Reason)]))
           else

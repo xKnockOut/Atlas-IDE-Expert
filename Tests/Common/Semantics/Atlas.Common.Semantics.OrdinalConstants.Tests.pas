@@ -3,6 +3,7 @@
 // Tests der Auswertung ordinaler Konstantenausdrücke (#983): Zahlen in allen
 // Schreibweisen, Zeichen, Operatoren mit Vorrang, Ord/Chr/Succ/Pred und
 // Umwandlungen, Namen über die Rückfrage und nicht auswertbare Ausdrücke.
+// Umwandlungen schneiden ab wie Delphi (#1324): Cardinal(-1), Integer($80000000).
 
 interface
 
@@ -29,6 +30,8 @@ type
     procedure SizeOfHighLowOfFixedTypes;
     [Test]
     procedure CheckGivesReason;
+    [Test]
+    procedure CastsTruncateLikeDelphi;
   end;
 
 implementation
@@ -182,6 +185,33 @@ begin
   // Unbekannter linker Teil: kein Grund.
   Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('Foo div 0', nil, Value)));
   Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('1.5', nil, Value)));
+end;
+
+procedure TOrdinalConstantsTests.CastsTruncateLikeDelphi;
+begin
+  // Minimalfall aus #1324: InvalidVal = Cardinal(-1) ist 4294967295, nicht -1.
+  Assert.AreEqual(Int64(4294967295), ValueOf('Cardinal(-1)'));
+  Assert.AreEqual(Int64(4294967294), ValueOf('Cardinal(-2)'));
+  Assert.AreEqual(Int64(4294967294), ValueOf('Cardinal(Cardinal(-1) - 1)'));
+  Assert.AreEqual(Int64(-2147483648), ValueOf('Integer($80000000)'));
+  Assert.AreEqual(Int64(-1), ValueOf('Integer($FFFFFFFF)'));
+  Assert.AreEqual(Int64(-2128831035), ValueOf('Integer($811C9DC5)'));
+  Assert.AreEqual(Int64(44), ValueOf('Byte(300)'));
+  Assert.AreEqual(Int64(-1), ValueOf('ShortInt(255)'));
+  Assert.AreEqual(Int64(65535), ValueOf('Word(-1)'));
+  Assert.AreEqual(Int64(65535), ValueOf('UInt16(-1)'));
+  Assert.AreEqual(Int64(4294967295), ValueOf('UInt32($FFFFFFFF)'));
+  Assert.AreEqual(Int64(-1), ValueOf('Int64(-1)'));
+  Assert.AreEqual(Int64(9223372036854775807), ValueOf('UInt64(High(Int64))'));
+  // Werte, die in jeden Zieltyp passen, bleiben.
+  Assert.AreEqual(Int64(200), ValueOf('Cardinal(200)'));
+  Assert.AreEqual(Int64(-5), ValueOf('NativeInt(-5)'));
+  Assert.AreEqual(Int64(-5), ValueOf('LongInt(-5)'));
+  // Über High(Int64) bzw. abhängig von der Plattform: unbekannt.
+  Unknown('UInt64(-1)');
+  Unknown('NativeUInt(-1)');
+  Unknown('LongWord(-1)');
+  Unknown('NativeInt($100000000)');
 end;
 
 initialization

@@ -9,8 +9,9 @@
 //                              (E2282), überladene Zugriffsmethode (E2271),
 //                              Klassen-Property mit Instanzmitglied bzw.
 //                              nicht statischer Klassenmethode (E2355) und
-//                              umgekehrt (E2356), Feld hinter einer Array-
-//                              oder index-Property (E2174), Feldselektor über
+//                              umgekehrt bei class var und statischer
+//                              Klassenmethode (E2356), Feld hinter
+//                              einer Array-Property (E2174), Feldselektor über
 //                              ein Feld, das kein Record ist (E2459), auf ein
 //                              Mitglied, das kein Feld ist (E2461), oder auf
 //                              ein fehlendes Feld (E2562).
@@ -30,6 +31,12 @@
 // Klasse ihn nicht (private einer anderen Unit), bleibt sie still; ebenso in
 // Klassen, die Include-Dateien einbinden. Typen vergleicht sie nur, wenn beide
 // sicher für sich stehen (eingebaut oder als eigener Typ deklariert).
+//
+// Nicht strenger als dcc (#1328, Minimalfälle PA1–PA6 in Tests/DccFaelle): Eine
+// index-Angabe verträgt ein Feld hinter read und write; der Indexparameter des
+// Getters bzw. Setters hat den Typ der Indexkonstante (auch eine Aufzählung);
+// eine Klassenmethode ohne static taugt als Getter einer Instanz-Property; von
+// überladenen Zugriffsmethoden genügt eine passende Überladung.
 //
 // Korrektur: Folgt der fehlende Name der Konvention F<Name>, Get<Name> oder
 // Set<Name>, legt "FName anlegen" bzw. "GetName anlegen" das Mitglied an
@@ -423,8 +430,9 @@ var
 
   begin
     Wanted := Copy(AShape.Symbol.ParamTypes);
+    // Der Indexparameter hat den Typ der Indexkonstante (index aZwei: Aufzählung, PA4); '' passt zu jedem Typ.
     if AShape.HasIndex then
-      Wanted := Wanted + ['Integer'];
+      Wanted := Wanted + [''];
     if AAccessor.IsWrite then
       Wanted := Wanted + [AShape.Symbol.TypeName];
     Keyword := LowerCase(AMethod.Signature);
@@ -505,6 +513,9 @@ var
     Symbol: TIndexSymbol;
     Clause, Modifier: string;
     Modifiers: TArray<string>;
+    mCandidate: TIndexSymbol;
+    mFitting: Boolean;
+    mRole: string;
   begin
     if not Lookup(AChain, AComplete, AAccessor.Name, Found) then
       Exit;
@@ -526,14 +537,11 @@ var
     end;
     if Symbol.Kind = TIndexSymbolKind.Field then
     begin
-      if (AShape.Symbol.MaxArgs > 0) or AShape.HasIndex then
+      // Mit index-Angabe nimmt dcc ein Feld hinter read und write an (PA1–PA3, mORMot2, SynEdit).
+      if AShape.Symbol.MaxArgs > 0 then
       begin
-        if AShape.HasIndex then
-          AReport.Add(Range(AAccessor), Format('Die Property %s hat eine index-Angabe und braucht hinter %s eine ' +
-            'Methode; %s ist ein Feld (wie E2174).', [AShape.Symbol.Name, Clause, Symbol.Name]), TRuleConfidence.High)
-        else
-          AReport.Add(Range(AAccessor), Format('Die Array-Property %s braucht hinter %s eine Methode; %s ist ein ' +
-            'Feld (wie E2174).', [AShape.Symbol.Name, Clause, Symbol.Name]), TRuleConfidence.High);
+        AReport.Add(Range(AAccessor), Format('Die Array-Property %s braucht hinter %s eine Methode; %s ist ein ' +
+          'Feld (wie E2174).', [AShape.Symbol.Name, Clause, Symbol.Name]), TRuleConfidence.High);
         Exit;
       end;
       if AShape.IsClass and not Symbol.HasDirective('class') then
@@ -555,11 +563,28 @@ var
     // Methode (ein Konstruktor ist nie ein passender Getter oder Setter).
     if AAccessor.Selectors <> nil then
       Exit;
+    // Von Überladungen nimmt dcc die passende (PA6, Graphics32); ohne Typ der Property ist das offen.
     if Length(Found) > 1 then
     begin
-      AReport.Add(Range(AAccessor), Format('%s ist überladen; Getter und Setter einer Property dürfen nicht ' +
-        'überladen sein (wie E2271).', [Symbol.Name]), TRuleConfidence.High);
-      Exit;
+      if AShape.TypeText = '' then
+        Exit;
+      mFitting := False;
+      for mCandidate in Found do
+        if Fits(AShape, AAccessor, mCandidate, AWildcards) then
+        begin
+          Symbol := mCandidate;
+          mFitting := True;
+          Break;
+        end;
+      if not mFitting then
+      begin
+        mRole := 'Getter';
+        if AAccessor.IsWrite then
+          mRole := 'Setter';
+        AReport.Add(Range(AAccessor), Format('%s ist überladen, und keine Überladung passt als %s von %s (wie ' +
+          'E2271).', [Symbol.Name, mRole, AShape.Symbol.Name]), TRuleConfidence.High);
+        Exit;
+      end;
     end;
     if AShape.IsClass and not (Symbol.HasDirective('class') and Symbol.HasDirective('static')) then
     begin
@@ -572,10 +597,12 @@ var
           Symbol.Name]), TRuleConfidence.High);
       Exit;
     end;
-    if not AShape.IsClass and Symbol.HasDirective('class') then
+    // Eine Klassenmethode ohne static taugt als Getter einer Instanz-Property (PA5, HtmlViewer, Graphics32);
+    // eine statische hat kein Self.
+    if not AShape.IsClass and Symbol.HasDirective('class') and Symbol.HasDirective('static') then
     begin
-      AReport.Add(Range(AAccessor), Format('%s ist eine Klassenmethode; die Property %s braucht ein Instanzfeld ' +
-        'oder eine Instanzmethode (wie E2356).', [Symbol.Name, AShape.Symbol.Name]), TRuleConfidence.High);
+      AReport.Add(Range(AAccessor), Format('%s ist eine statische Klassenmethode; die Property %s braucht ein ' +
+        'Instanzfeld oder eine Instanzmethode (wie E2356).', [Symbol.Name, AShape.Symbol.Name]), TRuleConfidence.High);
       Exit;
     end;
     if AAccessor.IsWrite then
@@ -826,7 +853,7 @@ begin
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
   try
     CheckDeclarations;
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
     try
       Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);

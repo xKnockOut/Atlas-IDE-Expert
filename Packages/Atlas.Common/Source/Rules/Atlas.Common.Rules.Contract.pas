@@ -15,7 +15,8 @@ uses
   // Genehmigte Ausnahme der Rollenmatrix (Architektur.md, "Genehmigte Ausnahmen"): der Syntaxbaum ist
   // Datengrundlage jeder Regel und hängt selbst nur an Contracts.
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Semantics.Contract;
 
 type
   /// <summary>Feste Angaben einer Regel.</summary>
@@ -293,6 +294,10 @@ type
     /// rechnet selbst (direkter Aufruf von Check). Zugriff nur über TRuleDerived. Die Werte zeigen in
     /// Tree: Wer einen eigenen Cache setzt, muss ihn vor dem Baum freigeben oder leeren.</summary>
     Derived: IRuleDerivedCache;
+    /// <summary>Unit-Index von Tree, einmal je Lauf ausgewertet und von allen Namensauflösern geteilt (#1322); setzt
+    /// TRuleEngine.Run. Regeln geben ihn an TNameResolver.Create weiter. nil = jeder Resolver wertet selbst aus.
+    /// Wer einen eigenen setzt, ruft Clear, bevor er den Baum freigibt.</summary>
+    TreeUnits: ITreeUnits;
     /// <summary>Absoluter Pfad der geprüften Datei; '' wenn unbekannt (#46).</summary>
     FileName: string;
     /// <summary>Inhalt der Packages aus requires (#46); nil = unbekannt, Package-Prüfungen schweigen.</summary>

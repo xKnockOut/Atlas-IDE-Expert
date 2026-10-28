@@ -373,28 +373,30 @@ procedure TInterfaceDeclarationInvalidTests.InheritedPropertiesAndAccessors;
 var
   Found: TArray<TRuleFinding>;
 begin
-  Found := InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10'    property Name: string read GetName;'#10 +
+  Found := InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10'    property Name;'#10 +
     '    property Titel: string read GetName;'#10'  end;'#10));
-  Assert.AreEqual(3, Integer(Length(Found)));
+  Assert.AreEqual(2, Integer(Length(Found)));
   Assert.AreEqual('Die Property Name ist schon in IBasis deklariert; Interfaces dürfen Properties nicht ' +
-    'überschreiben (wie E2206).', Found[0].Message);
+    'ohne Typ neu aufführen (wie E2206).', Found[0].Message);
   Assert.AreEqual(6, Found[0].Range.StartPos.Line);
   Assert.AreEqual(13, Found[0].Range.StartPos.Character);
   Assert.AreEqual('GetName stammt aus IBasis; Accessoren einer Interface-Property müssen im Interface selbst ' +
     'stehen (wie E2370).', Found[1].Message);
-  Assert.AreEqual(6, Found[1].Range.StartPos.Line);
-  Assert.AreEqual(31, Found[1].Range.StartPos.Character);
-  Assert.AreEqual(7, Found[2].Range.StartPos.Line);
+  Assert.AreEqual(7, Found[1].Range.StartPos.Line);
+  Assert.AreEqual(32, Found[1].Range.StartPos.Character);
   // Eigener Accessor und neuer Name: still.
   Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10 +
     '    function GetTitel: string;'#10'    property Titel: string read GetTitel;'#10'  end;'#10)))));
-  // Über zwei Stufen in derselben Unit.
+  // Neudeklaration mit Typ und eigenem Accessor übersetzt dcc (DUnitX, JCL, Spring4D; #1328).
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10 +
+    '    procedure SetName(const AName: string);'#10'    function GetName: string;'#10 +
+    '    property Name: string read GetName write SetName;'#10'  end;'#10)))));
+  // Ohne Typ über zwei Stufen in derselben Unit.
   Found := InterfaceFindings(Kunden('  IMitte = interface(IBasis)'#10'  end;'#10 +
-    '  IKunde = interface(IMitte)'#10'    function GetName: string;'#10'    property Name: string read GetName;'#10 +
-    '  end;'#10));
+    '  IKunde = interface(IMitte)'#10'    property Name;'#10'  end;'#10));
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('Die Property Name ist schon in IBasis deklariert; Interfaces dürfen Properties nicht ' +
-    'überschreiben (wie E2206).', Found[0].Message);
+    'ohne Typ neu aufführen (wie E2206).', Found[0].Message);
 end;
 
 procedure TInterfaceDeclarationInvalidTests.ClassesAsInterfacesAndDuplicates;

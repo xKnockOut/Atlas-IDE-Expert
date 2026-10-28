@@ -93,6 +93,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Unused;
@@ -366,16 +367,23 @@ end;
 
 function TNamingCheck.OccursIn(const AName: string; const AScopes: TArray<TPoint>): Boolean;
 var
-  Token: TPascalToken;
   Scope: TPoint;
+  mIndex: Integer;
 begin
   if AScopes = nil then
     Exit(OccursInFile(AName));
-  for Token in FTokens do
-    if (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and SameText(Token.Text, AName) then
-      for Scope in AScopes do
-        if (Token.Offset >= Scope.X) and (Token.Offset < Scope.Y) then
-          Exit(True);
+  // Je Bereich binär zum ersten Token statt jedes Mal die ganze Datei (#1323).
+  for Scope in AScopes do
+  begin
+    mIndex := TRoutineBody.TokenAt(FTokens, Scope.X);
+    while (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < Scope.Y) do
+    begin
+      if (FTokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+        SameText(FTokens[mIndex].Text, AName) then
+        Exit(True);
+      Inc(mIndex);
+    end;
+  end;
   Result := False;
 end;
 

@@ -165,9 +165,16 @@ uses
   Atlas.Core.Ci.Adapters.Http,
   Atlas.Core.Ci.Adapters.Credentials,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.IDE.Welcome.Issues,
+  Atlas.IDE.Welcome.NewIssue,
+  Atlas.Core.Tracker.NewIssue,
+  Atlas.Core.Problems.Findings,
+  Atlas.IDE.Tracker.IssuePreview,
+  Atlas.IDE.Tracker.CodeLinks,
+  Atlas.IDE.Tracker.BlameLinks,
   Atlas.UI.Welcome.TestResults,
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
@@ -183,6 +190,8 @@ uses
   Atlas.IDE.Welcome.Setup,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Welcome.Layouts,
+  Atlas.IDE.Vcs.Branching,
+  Atlas.IDE.Vcs.WorkingCopies,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Notes.Gutter,
@@ -285,6 +294,10 @@ var
   QuickColumn: TAtlasIdeQuickColumn;
   // Gleichen Text wie die Markierung hervorheben (#709).
   SelectionMatches: TAtlasIdeSelectionMatches;
+  // Issue-Kennungen im Code (#1265), über „Meine Issues“.
+  IssueLinks: TAtlasIdeCodeLinks;
+  // Issues in der Zeilenhistorie (#1275), über „Meine Issues“ und die Zeilenhistorie.
+  BlameIssues: TAtlasIdeBlameLinks;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
@@ -1941,6 +1954,114 @@ begin
     begin
       Result := TAtlasIdeSettings.Current.TrackerLogin and (Welcome <> nil) and (Welcome.Issues <> nil);
     end);
+  // Issue anlegen (#1268): aus Auswahl bzw. TODO im Editor; sichtbar mit issues.create.
+  Add('Atlas.CreateIssue', TAtlasTextId.CreateIssueCommand,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.WelcomePage, TAtlasIdeNewIssue.FromEditor);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeNewIssue.Enabled;
+    end);
+  // Branch anlegen (#1288): Dialog für die Arbeitskopie des aktiven Projekts, ohne Issue; immer mit Dialog.
+  Add('Atlas.CreateBranch', TAtlasTextId.VcsBranchCommand,
+    procedure
+    var
+      mProject: string;
+    begin
+      mProject := TAtlasIdeProjects.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
+      if mProject = '' then
+      begin
+        TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsBranchNoVcs));
+        Exit;
+      end;
+      TAtlasIdeBranching.CreateFor(mProject,
+        procedure
+        begin
+          if (Welcome <> nil) and (Welcome.Projects <> nil) then
+            Welcome.Projects.Refresh(mProject);
+        end);
+    end);
+  // Arbeitskopien (#1292): Wurzel, Externals bzw. Submodule des aktiven Projekts; sichtbar mit vcs.externals.show.
+  Add('Atlas.WorkingCopies', TAtlasTextId.VcsWorkingCopiesCommand,
+    procedure
+    var
+      mProject: string;
+    begin
+      mProject := TAtlasIdeProjects.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
+      if mProject = '' then
+      begin
+        TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
+        Exit;
+      end;
+      TAtlasIdeWorkingCopies.ShowFor(mProject,
+        procedure
+        begin
+          if (Welcome <> nil) and (Welcome.Projects <> nil) then
+            Welcome.Projects.Refresh(mProject);
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.VcsExternalsShow;
+    end);
+  // Issue-Vorschau (#1264): Kennung abfragen und das Issue in „Atlas-Issue“ zeigen; sichtbar mit issues.preview.
+  Add('Atlas.IssueShow', TAtlasTextId.IssuePreviewCommand,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.ShowPreviewPrompt;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesPreview and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
+  // Issues zu dieser Methode (#1275): Issues aus der Zeilenhistorie der Methode bzw. Unit am Cursor; sichtbar mit
+  // issues.blameLinks.
+  Add('Atlas.BlameIssues', TAtlasTextId.BlameIssuesCommand,
+    procedure
+    begin
+      if BlameIssues <> nil then
+        TAtlasGuard.Run(TAtlasFeature.BlameIssues, BlameIssues.ShowScope);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeBlameLinks.Enabled and (BlameIssues <> nil);
+    end);
+  // Offene Zeitbuchungen (#1267): sichtbar mit issues.timeTracking.
+  Add('Atlas.IssueTimeOpen', TAtlasTextId.TimeMenuOpen,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.ShowTimeOpen;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesTimeTracking and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
+  // Atlas-Board (#1272): Sprint als Spalten nach Zustand; sichtbar mit issues.board.
+  Add('Atlas.Board', TAtlasTextId.BoardCommand,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) and (Welcome.Issues.Board <> nil) then
+        Welcome.Issues.Board.Show;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesBoard and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
+  // An Issue anhängen (#1276): Bildschirmfoto, Formular, Log, Debug-Notiz; sichtbar mit issues.attach.
+  Add('Atlas.IssueAttach', TAtlasTextId.AttachCommand,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.AttachPrompt;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesAttach and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
     procedure
@@ -2559,6 +2680,8 @@ begin
       if Result then
         Manager.ExecuteServerCommandAsync(ACommand, 30000, nil);
     end;
+  // Derselbe Weg nach einem Branch mit geänderten Externals (#1291).
+  TAtlasIdeBranching.ServerCommand := Hooks.ServerCommand;
   Hooks.ServerPath :=
     function: string
     var
@@ -2567,6 +2690,128 @@ begin
       Result := TAtlasCodeInsightManager.ServerPath(Arguments);
     end;
   Setup := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, Hooks);
+end;
+
+type
+  /// <summary>Anbieter, Token und Transport des Issue-Trackers (#765, #1260) für „Meine Issues“ und die Seite
+  /// Issue-Tracker: Token im Anmeldespeicher von Windows (Ziel "Atlas:tracker:&lt;Server&gt;", Benutzer =
+  /// Anbieter), verdeckter Dialog, „Authorization: Bearer“ nur über https an die API des Trackers. Meldungen
+  /// anonym, ohne Server und Token.</summary>
+  TAtlasComposedTrackerAccess = class(TInterfacedObject, IAtlasTrackerAccess)
+  public
+    function Providers: TArray<IAtlasTrackerProvider>;
+    function Provider(const AName: string): IAtlasTrackerProvider;
+    function HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
+    function EnterToken(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
+    function RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
+    function Transport(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
+  end;
+
+var
+  TrackerAccessInstance: IAtlasTrackerAccess;
+
+function TrackerAccess: IAtlasTrackerAccess;
+begin
+  if TrackerAccessInstance = nil then
+    TrackerAccessInstance := TAtlasComposedTrackerAccess.Create;
+  Result := TrackerAccessInstance;
+end;
+
+function TAtlasComposedTrackerAccess.Providers: TArray<IAtlasTrackerProvider>;
+begin
+  // Tracker-Anbieter: YouTrack und GitHub; weitere kommen ohne Änderung an Bereich und Optionsseite dazu.
+  Result := [TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, TAtlasGitHubTracker.Create as IAtlasTrackerProvider];
+end;
+
+function TAtlasComposedTrackerAccess.Provider(const AName: string): IAtlasTrackerProvider;
+var
+  mProvider: IAtlasTrackerProvider;
+begin
+  for mProvider in Providers do
+    if SameText(mProvider.Name, Trim(AName)) then
+      Exit(mProvider);
+  Result := nil;
+end;
+
+function TAtlasComposedTrackerAccess.HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
+var
+  mUser, mToken: string;
+begin
+  Result := False;
+  if ATarget.CredentialTarget = '' then
+    Exit;
+  mUser := '';
+  mToken := '';
+  Result := TAtlasCiCredentials.Read(ATarget.CredentialTarget, mUser, mToken) and (mToken <> '');
+  UniqueString(mToken);
+  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
+end;
+
+function TAtlasComposedTrackerAccess.EnterToken(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget): Boolean;
+var
+  mToken: string;
+  mOk: Boolean;
+begin
+  Result := False;
+  // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
+  if not ATarget.Secure then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
+    Exit;
+  end;
+  mToken := '';
+  if not TAtlasCiLoginPrompt.AskToken(TAtlasStrings.Fmt(TAtlasTextId.TrackerLoginTitle, [AProvider.Caption,
+    ATarget.Server]), TAtlasStrings.Text(TAtlasTextId.TrackerLoginToken), mToken) then
+    Exit;
+  if mToken = '' then
+  begin
+    mOk := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
+    if mOk then
+      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
+    else
+      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+    Exit(mOk);
+  end;
+  mOk := TAtlasCiCredentials.Write(ATarget.CredentialTarget, AProvider.Name, mToken, 'Atlas: Issue-Tracker');
+  UniqueString(mToken);
+  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
+  // Anonym: weder Server noch Projekt.
+  if mOk then
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved))
+  else
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+  Result := mOk;
+end;
+
+function TAtlasComposedTrackerAccess.RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
+begin
+  Result := True;
+  if ATarget.CredentialTarget = '' then
+    Exit;
+  Result := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
+  if Result then
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
+  else
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+end;
+
+function TAtlasComposedTrackerAccess.Transport(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
+var
+  mUser, mToken: string;
+begin
+  Result := nil;
+  if (AProvider = nil) or not ATarget.Secure then
+    Exit;
+  mUser := '';
+  mToken := '';
+  if not TAtlasCiCredentials.Read(ATarget.CredentialTarget, mUser, mToken) or (mToken = '') then
+    Exit;
+  // „Authorization: Bearer“ nur über https an die Programmierschnittstelle des Trackers.
+  Result := TAtlasCiHttpTransport.CreateBearer(AProvider.ApiServer(ATarget), mToken);
+  UniqueString(mToken);
+  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
 end;
 
 /// <summary>Optionsseiten (#227) mit ihren Haken (A-09): Die Seiten importieren die Features nicht, die sie
@@ -2627,6 +2872,8 @@ begin
     begin
       Result := TAtlasEditorCompletion.SnippetFolder;
     end;
+  // Seite Issue-Tracker (#1260): Anbieter, Token und „Verbindung prüfen“.
+  Hooks.Tracker := TrackerAccess;
   TAtlasOptionsRegistration.Register(Hooks);
 end;
 
@@ -2889,6 +3136,17 @@ begin
     procedure
     begin
       TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
+    end;
+  // „Issue anlegen …“ im Editor-Kontextmenü und auf der Taste (#1268).
+  TAtlasIdeEditorCommands.OnCreateIssue :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.WelcomePage, TAtlasIdeNewIssue.FromEditor);
+    end;
+  TAtlasIdeEditorCommands.CreateIssueAvailable :=
+    function: Boolean
+    begin
+      Result := TAtlasIdeNewIssue.Enabled;
     end;
   TAtlasIdeEditorCommands.OnSignatureHelp :=
     procedure
@@ -3549,6 +3807,15 @@ begin
     Setup.RegisterCommands(Palette);
   if KeyMap <> nil then
     KeyMap.RegisterCommands(Palette);
+  // Issues in der Palette (#1270): die Quelle aus „Meine Issues“, erst beim Öffnen gefragt (Willkommensseite
+  // entsteht ggf. später, Stop löst sie).
+  Palette.SourceOf :=
+    function: IAtlasPaletteSource
+    begin
+      Result := nil;
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Result := Welcome.Issues.PaletteSearch;
+    end;
 end;
 
 procedure StartNotes;
@@ -3819,6 +4086,29 @@ begin
     begin
       APercent := -1;
       Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+    end;
+  // „Für diesen Befund ein Issue anlegen …“ (#1268): Regel, Meldung, Fundstelle und Zeile je Befund.
+  Hooks.CreateIssue :=
+    procedure(AFindings: TArray<TAtlasFinding>)
+    var
+      mItems: TArray<TAtlasNewIssueFinding>;
+      mFinding: TAtlasFinding;
+    begin
+      mItems := nil;
+      for mFinding in AFindings do
+        mItems := mItems + [TAtlasNewIssueFinding.Create(mFinding.Rule,
+          mFinding.MessageText(TAtlasIdeSettings.Current.ProblemsShowCompilerCode), mFinding.Location,
+          mFinding.LineText)];
+      TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+        procedure
+        begin
+          TAtlasIdeNewIssue.FromFindings(mItems);
+        end);
+    end;
+  Hooks.CanCreateIssue :=
+    function: Boolean
+    begin
+      Result := TAtlasIdeNewIssue.Enabled;
     end;
   TAtlasIdeProblems.Start(Hooks);
   TAtlasIdeEditorCommands.OnStepList :=
@@ -4103,43 +4393,8 @@ begin
   Result.OnCredentials := EnterCiCredentials;
 end;
 
-/// <summary>Token für den Issue-Tracker ATarget abfragen und im Anmeldespeicher von Windows ablegen (#765); leer
-/// entfernt es. Ziel "Atlas:tracker:&lt;Server&gt;", Benutzer = Anbieter. True, wenn sich etwas geändert hat.</summary>
-function EnterTrackerCredentials(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
-var
-  Token: string;
-  Ok: Boolean;
-begin
-  Result := False;
-  // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
-  if not ATarget.Secure then
-  begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
-    Exit;
-  end;
-  Token := '';
-  if not TAtlasCiLoginPrompt.AskToken(TAtlasStrings.Fmt(TAtlasTextId.TrackerLoginTitle, [AProvider.Caption,
-    ATarget.Server]), TAtlasStrings.Text(TAtlasTextId.TrackerLoginToken), Token) then
-    Exit;
-  if Token = '' then
-  begin
-    Ok := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
-    if Ok then
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
-    else
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
-    Exit(Ok);
-  end;
-  Ok := TAtlasCiCredentials.Write(ATarget.CredentialTarget, AProvider.Name, Token, 'Atlas: Issue-Tracker');
-  UniqueString(Token);
-  FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
-  // Anonym: weder Server noch Projekt.
-  if Ok then
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved))
-  else
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
-  Result := Ok;
-end;
+const
+  IssueTimeExtra = 'issueTime';
 
 function CreateWelcomeIssues(AProjects: TAtlasIdeProjects): TAtlasIdeIssues;
 begin
@@ -4149,33 +4404,52 @@ begin
       // Nur Meldungsansicht: Die Zeilen können Branch-Namen enthalten.
       MessageLine(AText);
     end);
-  // Tracker-Anbieter: GitHub und YouTrack; weitere kommen ohne Änderung am Bereich dazu.
+  // Anbieter, Transport und Zugang wie auf der Optionsseite (#1260): dieselbe Umsetzung (TrackerAccess).
   Result.ProviderFactory :=
     function(const AName: string): IAtlasTrackerProvider
     begin
-      Result := nil;
-      if SameText(AName, TAtlasGitHubTracker.ProviderName) then
-        Result := TAtlasGitHubTracker.Create
-      else if SameText(AName, TAtlasYouTrackTracker.ProviderName) then
-        Result := TAtlasYouTrackTracker.Create;
+      Result := TrackerAccess.Provider(AName);
     end;
   // Im Hintergrund-Thread: Token aus dem Anmeldespeicher, ohne Dialog; ohne Token kein Transport (kein Netz).
   Result.TransportFactory :=
     function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
-    var
-      User, Token: string;
     begin
-      Result := nil;
-      User := '';
-      Token := '';
-      if not TAtlasCiCredentials.Read(ATarget.CredentialTarget, User, Token) or (Token = '') then
-        Exit;
-      // „Authorization: Bearer“ nur über https an die Programmierschnittstelle des Trackers.
-      Result := TAtlasCiHttpTransport.CreateBearer(AProvider.ApiServer(ATarget), Token);
-      UniqueString(Token);
-      FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
+      Result := TrackerAccess.Transport(AProvider, ATarget);
     end;
-  Result.OnCredentials := EnterTrackerCredentials;
+  Result.OnCredentials :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean
+    begin
+      Result := TrackerAccess.EnterToken(AProvider, ATarget);
+    end;
+  // Zeiterfassung (#1267): „ATL-123 · 1:25“ als Zusatzfeld im Statusfeld, Klick öffnet das Menü der Uhr.
+  Result.OnTimeStatus :=
+    procedure(const AText, AHint: string; const AOnClick: TProc<TPoint>)
+    begin
+      if StatusField <> nil then
+        StatusField.SetExtra(IssueTimeExtra, AText, AHint, AOnClick);
+    end;
+  // Knopf „Tracker-Einstellungen …“ der Issue-Vorschau (#1264).
+  Result.OnSettings :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasOptionsRegistration.ShowSetting('IssuesConnections');
+        end);
+    end;
+  // „zuordnen …“ (#1261): Seite Issue-Tracker mit vorbefüllter Zeile der Tabelle Projekte.
+  Result.OnAssignProject :=
+    procedure(AMatch: string)
+    begin
+      TAtlasOptionsRegistration.ShowTrackerProject(AMatch);
+    end;
+  // „Abfragen bearbeiten …“ (#1262): Seite Issue-Tracker bei der Tabelle Abfragen.
+  Result.OnEditQueries :=
+    procedure
+    begin
+      TAtlasOptionsRegistration.ShowSetting('IssuesQueries');
+    end;
 end;
 
 procedure StartWelcome;
@@ -4250,6 +4524,12 @@ begin
   // Bereich „Meine Issues“ (#765): offene Issues aus GitHub bzw. YouTrack (Tracker aus .atlas), „Beginnen“ über die
   // VCS-Schnittstelle (#571), aktuelles Issue im Statusfeld (#591); Token im Anmeldespeicher wie #763.
   Welcome.Issues := CreateWelcomeIssues(Welcome.Projects);
+  // „Issue anlegen …“ (#1268): Tracker, Transport und „Beginnen“ wie „Meine Issues“.
+  TAtlasIdeNewIssue.Start(Welcome.Issues,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
   // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
   Welcome.Unsaved := TAtlasIdeUnsaved.Create(
     procedure(AText: string)
@@ -4346,6 +4626,12 @@ begin
     begin
       GuardWarning(AText);
     end);
+  // „Anmeldung am Server nötig – prüfen …“ (#1287): Seite Versionsverwaltung, Zeile des Ordners prüfen.
+  Welcome.ContinueWork.OnServerAccess :=
+    procedure(AFolder: string)
+    begin
+      TAtlasOptionsRegistration.ShowVcsServer(AFolder);
+    end;
   // Zustandskachel „Atlas“ (#754): dieselben Zeilen wie das Statusfeld (#591).
   Welcome.State := CreateWelcomeState;
   // Karte „Atlas entdecken“ (#757): Befehle und Tasten aus der Palette, „Ausprobieren“ führt sie aus.
@@ -4419,8 +4705,78 @@ begin
     end;
 end;
 
+function IssueHooks: TAtlasCodeLinksHooks;
+var
+  mHooks: TAtlasCodeLinksHooks;
+begin
+  // Alles über „Meine Issues“ (Tracker wie dort, Zwischenspeicher der Vorschau); ohne den Bereich wirkungslos.
+  mHooks := Default(TAtlasCodeLinksHooks);
+  mHooks.Target :=
+    function(out ATarget: TAtlasTrackerTarget): Boolean
+    begin
+      ATarget := TAtlasTrackerTarget.Create('', '', '', '');
+      Result := (Welcome <> nil) and (Welcome.Issues <> nil) and Welcome.Issues.CodeTarget(ATarget);
+    end;
+  mHooks.CommitPattern :=
+    function: string
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesCommitPattern;
+    end;
+  mHooks.Preview :=
+    function: TAtlasIdeIssuePreview
+    begin
+      Result := nil;
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Result := Welcome.Issues.IssuePreview;
+    end;
+  mHooks.Show :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.ShowIssue(ATarget, AKey);
+    end;
+  mHooks.Browse :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.BrowseIssue(ATarget, AKey);
+    end;
+  mHooks.Start :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.StartIssue(ATarget, AKey);
+    end;
+  mHooks.CanStart :=
+    function: Boolean
+    begin
+      Result := (Welcome <> nil) and (Welcome.Issues <> nil) and Welcome.Issues.CanStartIssue;
+    end;
+  Result := mHooks;
+end;
+
+procedure StartIssueLinks;
+begin
+  IssueLinks := TAtlasIdeCodeLinks.Create(IssueHooks);
+end;
+
+procedure StartBlameIssues;
+begin
+  // Dieselben Haken wie die Kennungen im Code; die Zeilenhistorie bekommt ihre Ergänzungen (kein Zyklus).
+  BlameIssues := TAtlasIdeBlameLinks.Create(IssueHooks);
+  TAtlasIdeLineChanges.SetBlameHooks(BlameIssues.LineHooks);
+end;
+
+procedure StopBlameIssues;
+begin
+  TAtlasIdeLineChanges.SetBlameHooks(Default(TAtlasBlameHooks));
+  FreeAndNil(BlameIssues);
+end;
+
 procedure StopWelcome;
 begin
+  // Vor dem Bereich „Meine Issues“: wartet auf laufende Anfragen.
+  TAtlasIdeNewIssue.Stop;
   FreeAndNil(Welcome);
   TAtlasWelcomeViews.Release;
   TAtlasWelcomeSections.ReleaseDefault;
@@ -4459,6 +4815,19 @@ begin
     begin
       if Welcome <> nil then
         Welcome.ShowStart;
+    end;
+  // Ansicht › Atlas › Board (#1272).
+  MainMenu.OnBoard :=
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) and (Welcome.Issues.Board <> nil) then
+        Welcome.Issues.Board.Show;
+    end;
+  MainMenu.OnIssueAttach :=
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.AttachPrompt;
     end;
 end;
 
@@ -5076,6 +5445,34 @@ begin
       Result := Welcome <> nil;
     end,
     StartWelcome, StopWelcome);
+  // Issue-Kennungen im Code (#1265): nach „Meine Issues“ (Tracker und Vorschau), Abbau davor. issues.codeLinks
+  // prüft der Zeitgeber selbst (Schnellschalter ohne Neustart).
+  Features.AddWanted('IssueLinks',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := IssueLinks <> nil;
+    end,
+    StartIssueLinks,
+    procedure
+    begin
+      FreeAndNil(IssueLinks);
+    end);
+  // Issues in der Zeilenhistorie (#1275): nach „Meine Issues“; issues.blameLinks prüfen die Haken selbst
+  // (Schnellschalter ohne Neustart).
+  Features.AddWanted('BlameIssues',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := BlameIssues <> nil;
+    end,
+    StartBlameIssues, StopBlameIssues);
   Features.Add('MainMenu', TAtlasSafeLevel.Safe,
     function: Boolean
     begin
@@ -5455,6 +5852,7 @@ begin
     Teardown.Step('Vcs',
       procedure
       begin
+        TAtlasIdeBranching.ServerCommand := nil;
         TAtlasIdeVcs.Stop;
       end);
     Teardown.Step('Experimental',

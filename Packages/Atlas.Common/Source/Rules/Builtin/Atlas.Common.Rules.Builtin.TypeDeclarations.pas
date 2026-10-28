@@ -21,7 +21,9 @@
 //                        Direktiven wie virtual (wie E2210), Klauseln stored,
 //                        default mit Wert und nodefault an Properties (wie
 //                        E2207), Properties, die ein Vorfahr-Interface schon
-//                        deklariert (wie E2206), Accessoren, die nur im
+//                        deklariert und hier ohne Typ nur neu aufführen (wie
+//                        E2206; mit Typ übersetzt dcc die Neudeklaration, so
+//                        in DUnitX, JCL und Spring4D, #1328), Accessoren, die nur im
 //                        Vorfahr-Interface stehen (wie E2370), Klassen,
 //                        Records und Aufzählungen als Vorfahr eines Interfaces
 //                        oder in der Interface-Liste einer Klasse (wie E2205)
@@ -227,7 +229,7 @@ begin
     FileName := AContext.RelativePath;
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
-  FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   FResolver.Namespaces := AContext.Namespaces;
   FResolver.PinTree(AContext.Tree, FileName);
   FOwnUnit := FResolver.ExtractedUnit(AContext.Tree, FileName);
@@ -615,7 +617,7 @@ var
   begin
     SetLength(Keys, Methods.Count);
     SetLength(Known, Methods.Count);
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
     try
       Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);
@@ -777,6 +779,23 @@ var
     end;
   end;
 
+  /// <summary>Property ohne eigenen Typ (property Name; bzw. property Name read …), die eine geerbte
+  /// Property nur neu aufführt. Interfaces erlauben das nicht (E2206); eine Neudeklaration mit Typ ist eine
+  /// neue Property und übersetzt (#1328).</summary>
+  function WithoutType(AProperty: TSyntaxNode): Boolean;
+  var
+    mIndex, mStop: Integer;
+  begin
+    mStop := Scan.StopToken(AProperty);
+    mIndex := Scan.PropertyNameToken(AProperty);
+    Result := mIndex < mStop;
+    if Result then
+    begin
+      mIndex := Scan.NextCode(mIndex + 1, mStop);
+      Result := (mIndex >= mStop) or not MatchText(Scan.Tokens[mIndex].Text, [':', '[']);
+    end;
+  end;
+
   /// <summary>read- und write-Accessor der Property.</summary>
   function Accessors(AProperty: TSyntaxNode): TArray<Integer>;
   var
@@ -812,10 +831,10 @@ var
       Child := AType[Index];
       if (Child.Kind <> TSyntaxKind.PropertyDecl) or not Scan.Unconditional(Child) then
         Continue;
-      if Scan.Resolver.DeclaredMember(Ancestor, Child.Name, Member) and
+      if WithoutType(Child) and Scan.Resolver.DeclaredMember(Ancestor, Child.Name, Member) and
         (Member.SymbolKind = TIndexSymbolKind.Property_) then
         AReport.Add(Scan.PropertyRange(Child), Format('Die Property %s ist schon in %s ' +
-          'deklariert; Interfaces dürfen Properties nicht überschreiben (wie E2206).', [Child.Name,
+          'deklariert; Interfaces dürfen Properties nicht ohne Typ neu aufführen (wie E2206).', [Child.Name,
           Member.Container]), TRuleConfidence.High);
       for Accessor in Accessors(Child) do
       begin

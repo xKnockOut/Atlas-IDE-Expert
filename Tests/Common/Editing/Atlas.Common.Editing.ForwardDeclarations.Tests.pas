@@ -41,6 +41,12 @@ type
     procedure NeededForwardIsSilent;
     [Test]
     procedure ConditionalIsSilent;
+    [Test]
+    procedure ClassReferenceInSameBlockIsSilent;
+    [Test]
+    procedure ClassReferenceInLaterBlockIsReported;
+    [Test]
+    procedure ForwardOnlyForClassReferenceIsUnneeded;
   end;
 
 implementation
@@ -295,6 +301,39 @@ procedure TForwardDeclarationsTests.ConditionalIsSilent;
 begin
   Assert.AreEqual(0, Integer(Length(Analyze(UnitText('type'#10'  TTree = class'#10'{$IFDEF X}'#10 +
     '    FRoot: TNode;'#10'{$ENDIF}'#10'  end;'#10'  TNode = class'#10'  end;'#10)))));
+end;
+
+procedure TForwardDeclarationsTests.ClassReferenceInSameBlockIsSilent;
+begin
+  // Minimalfall TU1/TU2 aus Tests/DccFaelle (#1328, Indy, DelphiAST): dcc löst class of im selben Block auf.
+  Assert.AreEqual(0, Integer(Length(Analyze(UnitText('type'#10'  TKnotenKlasse = class of TKnoten;'#10 +
+    '  TKnoten = class'#10'    class function Neu(AKlasse: TKnotenKlasse): TKnoten;'#10'  end;'#10 +
+    '  TListeKlasse = class of TListe;'#10'  TListe = class(TKnoten)'#10'  end;'#10)))));
+end;
+
+procedure TForwardDeclarationsTests.ClassReferenceInLaterBlockIsReported;
+var
+  mFindings: TArray<TForwardFinding>;
+begin
+  // Gegentest UG1: Die Klasse steht erst im nächsten type-Block.
+  mFindings := Analyze(UnitText('type'#10'  TAKlasse = class of TA;'#10'type'#10'  TA = class'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.IsTrue(mFindings[0].Issue = TForwardIssue.UsedBeforeDeclaration);
+  Assert.AreEqual('TA', mFindings[0].TypeName);
+  // Ein Feld vom Typ der Klassenreferenz braucht die Klassenreferenz vorher.
+  mFindings := Analyze(UnitText('type'#10'  THalter = class'#10'    FKlasse: TAKlasse;'#10'  end;'#10 +
+    '  TAKlasse = class of TA;'#10'  TA = class'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TAKlasse', mFindings[0].TypeName);
+end;
+
+procedure TForwardDeclarationsTests.ForwardOnlyForClassReferenceIsUnneeded;
+var
+  mFindings: TArray<TForwardFinding>;
+begin
+  mFindings := Analyze(UnitText('type'#10'  TA = class;'#10'  TAKlasse = class of TA;'#10'  TA = class'#10'  end;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.IsTrue(mFindings[0].Issue = TForwardIssue.UnneededForward);
 end;
 
 initialization

@@ -8,7 +8,9 @@
 //   ATL-123  Tracker im Bereich                           [Beginnen]
 //            (In Arbeit) (Hoch) (Sprint 12) (aktuell)
 //   „Beginnen“ legt den Branch an und öffnet das Projekt.
-// Kennung grau in Festbreitenschrift (Klick öffnet das Issue im Browser),
+// Kennung grau in Festbreitenschrift (Klick öffnet das Issue im Browser; mit
+// issues.preview zeigt ein Klick auf Zeile oder Kennung das Issue im Fenster
+// „Atlas-Issue“ und Strg+Klick öffnet den Browser, #1264),
 // Titel abgeschnitten, darunter Felder als Chips mit Rahmen (GitHub: Labels
 // und der Pull Request mit CI-Ampel, Klick öffnet ihn; YouTrack: Zustand,
 // Priorität, Sprint). Rechts „Beginnen“ über beide Zeilen. Über der Liste nur
@@ -16,6 +18,13 @@
 // darunter die Fußzeile bzw. der Hinweis nach „Beginnen“. Kontextmenü: Im
 // Browser öffnen, Pull-Request im Browser, Beginnen, Nur merken, Tracker jetzt
 // abfragen, Zugang hinterlegen, Aktuelles Issue beenden.
+// Ohne Tracker (weder .atlas noch Zuordnung, #1261) ist die Fußzeile der Link
+// „Kein Tracker für dieses Projekt – zuordnen …“ (AssignProject).
+// Abfragen (#1262): rechts in der Titelzeile die Klappliste „Mir zugewiesen
+// (3) ▾“ mit den passenden Abfragen samt Trefferzahl der letzten Abfrage und
+// „Abfragen bearbeiten …“ (issues.queryPicker aus: keine Klappliste). Unter
+// der Fußzeile eine Zeile mit Verbindung, Tracker-Projekt und der gesendeten
+// Abfrage.
 // Daten und Aktionen kommen über IAtlasIssuesSource aus der IDE-Schicht;
 // Aktionen gehen über die Nachrichtenschleife, weil die Quelle den Bereich
 // daraufhin neu füllt.
@@ -31,6 +40,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Menus,
   Vcl.Graphics,
+  Vcl.StdCtrls,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Welcome.Issues,
@@ -45,6 +55,8 @@ type
     /// <summary>„Beginnen“ mit AMode (Branch anlegen oder nur merken).</summary>
     procedure Start(const AIssue: TAtlasTrackerIssue; AMode: TAtlasIssueStart);
     procedure Browse(const AIssue: TAtlasTrackerIssue);
+    /// <summary>Issue im Fenster „Atlas-Issue“ zeigen (#1264).</summary>
+    procedure Preview(const AIssue: TAtlasTrackerIssue);
     procedure BrowsePullRequest(const AIssue: TAtlasTrackerIssue);
     /// <summary>Tracker jetzt abfragen (ohne auf den Abstand zu warten).</summary>
     procedure QueryNow;
@@ -54,10 +66,18 @@ type
     function CanEnterCredentials: Boolean;
     /// <summary>Aktuelles Issue beenden (mit Rückfrage).</summary>
     procedure EndActive;
+    /// <summary>„zuordnen …“ (#1261): Seite Issue-Tracker mit einer Zeile für das Projekt öffnen.</summary>
+    procedure AssignProject;
+    /// <summary>Abfrage AName für das Projekt wählen und gleich abfragen (#1262).</summary>
+    procedure SelectQuery(const AName: string);
+    /// <summary>„Abfragen bearbeiten …“: Seite Issue-Tracker öffnen.</summary>
+    procedure EditQueries;
+    /// <summary>Filter der Sprint-Kachel aufheben (#1277): wieder alle meine Issues.</summary>
+    procedure ClearFilter;
   end;
 
 {$SCOPEDENUMS ON}
-  TAtlasIssuesHitKind = (None, Row, Key, PullRequest, Start);
+  TAtlasIssuesHitKind = (None, Row, Key, PullRequest, Start, Assign, Filter);
 {$SCOPEDENUMS OFF}
 
   TAtlasIssuesHit = record
@@ -82,6 +102,10 @@ type
     ChipPadding = 6;
     ChipGap = 4;
     ChipRadius = 8;
+    /// <summary>Durchmesser des Punkts vor der Kennung eines Issues mit neuen Änderungen (#1271).</summary>
+    UnseenDot = 6;
+    /// <summary>Vor dem Titel des Bereichs, solange ein Issue einen Punkt trägt.</summary>
+    UnseenMark = '● ';
     MonoFont = 'Consolas';
   private
     FSource: IAtlasIssuesSource;
@@ -90,7 +114,12 @@ type
     FKeyRects: TArray<TRect>;
     FPullRects: TArray<TRect>;
     FStartRects: TArray<TRect>;
+    /// <summary>Link „zuordnen …“ in der Fußzeile; leer ohne.</summary>
+    FAssignRect: TRect;
+    /// <summary>Zeile „Gefiltert: … · alle zeigen“ (#1277); leer ohne Filter.</summary>
+    FFilterRect: TRect;
     FMenu: TPopupMenu;
+    FPreviewItem: TMenuItem;
     FBrowseItem: TMenuItem;
     FBrowsePullItem: TMenuItem;
     FStartBranchItem: TMenuItem;
@@ -98,6 +127,9 @@ type
     FQueryItem: TMenuItem;
     FCredentialsItem: TMenuItem;
     FEndItem: TMenuItem;
+    /// <summary>Klappliste der Abfragen in der Titelzeile (#1262).</summary>
+    FQueryLabel: TLabel;
+    FQueryMenu: TPopupMenu;
     FMenuRow: Integer;
     FHintKey: string;
     procedure SetSource(const AValue: IAtlasIssuesSource);
@@ -105,6 +137,7 @@ type
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure BoxMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure MenuPopup(Sender: TObject);
+    procedure PreviewClick(Sender: TObject);
     procedure BrowseClick(Sender: TObject);
     procedure BrowsePullClick(Sender: TObject);
     procedure StartBranchClick(Sender: TObject);
@@ -112,12 +145,16 @@ type
     procedure QueryClick(Sender: TObject);
     procedure CredentialsClick(Sender: TObject);
     procedure EndClick(Sender: TObject);
+    procedure QueryLabelClick(Sender: TObject);
+    procedure QueryItemClick(Sender: TObject);
+    procedure QueriesEditClick(Sender: TObject);
+    procedure UpdateQueryPicker;
     function MenuIssue(out AIssue: TAtlasTrackerIssue): Boolean;
     procedure Post(const AAction: TThreadProcedure);
-    function ListTop: Integer;
     function RowTop(AIndex: Integer): Integer;
     function RowHeight(AIndex: Integer): Integer;
     function FooterTop: Integer;
+    function SourceTop: Integer;
     function ChipWidth(ACanvas: TCanvas; const AText: string): Integer;
     procedure PaintChip(ACanvas: TCanvas; var ALeft: Integer; ATop, ALimit: Integer; const AText: string;
       AColor: TColor; AFilled: Boolean; out ARect: TRect);
@@ -130,14 +167,32 @@ type
     procedure UpdateContent; override;
     function HitTest(X, Y: Integer): TAtlasIssuesHit;
     /// <summary>Klick wie mit der Maus (auch für Tests): Kennung und Pull Request öffnen den Browser, „Beginnen“
-    /// beginnt mit der Einstellung welcomePage.issues.start.</summary>
-    procedure ClickAt(const AHit: TAtlasIssuesHit);
+    /// beginnt mit der Einstellung issues.start.</summary>
+    procedure ClickAt(const AHit: TAtlasIssuesHit); overload;
+    /// <summary>ABrowse: Strg+Klick, öffnet den Browser auch mit issues.preview.</summary>
+    procedure ClickAt(const AHit: TAtlasIssuesHit; ABrowse: Boolean); overload;
     /// <summary>„Beginnen“ nutzbar: Quelle da, keine laufende Aktion.</summary>
     function CanStart: Boolean;
     /// <summary>Zeile über der Liste: Stand, Fehler, „Stand vom …“; '' bei frischem Stand.</summary>
     class function StatusText(const AView: TAtlasIssuesView): string; static;
+    /// <summary>„Gefiltert: „Sprint 12“, meine offen · alle zeigen“; '' ohne Filter (#1277).</summary>
+    class function FilterText(const AView: TAtlasIssuesView): string; static;
+    /// <summary>Oberkante der Filterzeile bzw. der Liste (unter Stand- und Filterzeile).</summary>
+    function FilterTop: Integer;
+    function ListTop: Integer;
     /// <summary>Fußzeile: Hinweis, sonst aktuelles Issue außerhalb der Liste, sonst was „Beginnen“ tut.</summary>
     class function FooterText(const AView: TAtlasIssuesView): string; static;
+    /// <summary>Die Fußzeile ist der Link „zuordnen …“ (#1261): Projekt ohne Tracker, Zuordnen möglich.</summary>
+    class function FooterIsAssign(const AView: TAtlasIssuesView): Boolean; static;
+    /// <summary>Zeile unter der Fußzeile (#1262): „Firma · KASSE · Abfrage: …“; '' ohne Tracker.</summary>
+    class function SourceText(const AView: TAtlasIssuesView): string; static;
+    /// <summary>Eintrag der Klappliste: „Name (3)“, ab MaxItems „Name (10+)“, ohne Abfrage nur der Name.</summary>
+    class function QueryCaption(const AName: string; ACount: Integer): string; static;
+    /// <summary>Klappliste sichtbar: eingeschaltet und Tracker mit Abfragen.</summary>
+    class function ShowsQueryPicker(const AView: TAtlasIssuesView): Boolean; static;
+    /// <summary>Klappliste füllen (auch für Tests): passende Abfragen, die gewählte mit Haken, dann
+    /// „Abfragen bearbeiten …“.</summary>
+    procedure FillQueryMenu;
     class function ErrorText(AError: TAtlasCiFetchError): string; static;
     /// <summary>„PR #760 · CI grün“, „PR #760 (Entwurf)“; '' ohne Pull Request.</summary>
     class function PullRequestText(const APull: TAtlasTrackerPullRequest): string; static;
@@ -148,12 +203,15 @@ type
     /// <summary>Hinweis auf „Beginnen“: Branch nach Muster bzw. „Merkt … als aktuelles Issue“.</summary>
     class function StartHint(const AView: TAtlasIssuesView; const AIssue: TAtlasTrackerIssue): string; static;
     /// <summary>Titel des Bereichs: „Meine Issues · Projekt“; ohne Projekt „Meine Issues“.</summary>
-    class function TitleText(const AProjectName: string): string; static;
+    class function TitleText(const AProjectName: string): string; overload; static;
+    /// <summary>Wie oben, mit Punkt davor, wenn AUnseen (#1271: neue Änderungen an einem Issue).</summary>
+    class function TitleText(const AProjectName: string; AUnseen: Boolean): string; overload; static;
     class function NowUtc: TDateTime; static;
     property Source: IAtlasIssuesSource read FSource write SetSource;
     property View: TAtlasIssuesView read FView;
     property PaintBox: TAtlasWelcomeCanvas read FBox;
     property Menu: TPopupMenu read FMenu;
+    property PreviewItem: TMenuItem read FPreviewItem;
     property BrowseItem: TMenuItem read FBrowseItem;
     property BrowsePullItem: TMenuItem read FBrowsePullItem;
     property StartBranchItem: TMenuItem read FStartBranchItem;
@@ -161,6 +219,8 @@ type
     property QueryItem: TMenuItem read FQueryItem;
     property CredentialsItem: TMenuItem read FCredentialsItem;
     property EndItem: TMenuItem read FEndItem;
+    property QueryLabel: TLabel read FQueryLabel;
+    property QueryMenu: TPopupMenu read FQueryMenu;
     property MenuRow: Integer read FMenuRow write FMenuRow;
   end;
 
@@ -169,6 +229,7 @@ implementation
 uses
   System.UITypes,
   System.Math,
+  Atlas.Core.Tracker.Queries,
   System.DateUtils,
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,
@@ -235,6 +296,7 @@ begin
   FBox.OnMouseUp := BoxMouseUp;
   FMenu := TPopupMenu.Create(Self);
   FMenu.OnPopup := MenuPopup;
+  FPreviewItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesPreview), PreviewClick);
   FBrowseItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesBrowse), BrowseClick);
   FBrowsePullItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesBrowsePullRequest), BrowsePullClick);
   FStartBranchItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStartBranch), StartBranchClick);
@@ -246,6 +308,19 @@ begin
   FCredentialsItem := AddItem(TAtlasStrings.Text(TAtlasTextId.TrackerLoginCommand), CredentialsClick);
   FEndItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesEnd), EndClick);
   FBox.PopupMenu := FMenu;
+  // Klappliste der Abfragen rechts in der Titelzeile (#1262).
+  FQueryMenu := TPopupMenu.Create(Self);
+  FQueryLabel := TLabel.Create(Self);
+  FQueryLabel.Parent := TitleBar;
+  FQueryLabel.Align := alRight;
+  FQueryLabel.AlignWithMargins := True;
+  FQueryLabel.Margins.SetBounds(4, 4, 6, 0);
+  FQueryLabel.Cursor := crHandPoint;
+  FQueryLabel.ShowHint := True;
+  FQueryLabel.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueryHint);
+  FQueryLabel.Font.Color := clHotLight;
+  FQueryLabel.Visible := False;
+  FQueryLabel.OnClick := QueryLabelClick;
 end;
 
 procedure TAtlasWelcomeIssuesFrame.SetSource(const AValue: IAtlasIssuesSource);
@@ -267,10 +342,13 @@ begin
   FKeyRects := nil;
   FPullRects := nil;
   FStartRects := nil;
+  FAssignRect := TRect.Empty;
+  FFilterRect := TRect.Empty;
   SetLength(FKeyRects, Length(FView.Items));
   SetLength(FPullRects, Length(FView.Items));
   SetLength(FStartRects, Length(FView.Items));
   FHintKey := '';
+  UpdateQueryPicker;
   FBox.Invalidate;
   inherited;
   if OldHeight <> BodyHeight then
@@ -288,6 +366,13 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesTitle)
   else
     Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesTitleProject, [AProjectName]);
+end;
+
+class function TAtlasWelcomeIssuesFrame.TitleText(const AProjectName: string; AUnseen: Boolean): string;
+begin
+  Result := TitleText(AProjectName);
+  if AUnseen then
+    Result := UnseenMark + Result;
 end;
 
 class function TAtlasWelcomeIssuesFrame.ErrorText(AError: TAtlasCiFetchError): string;
@@ -353,6 +438,9 @@ begin
   begin
     if AView.Project = '' then
       Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesNoProject));
+    // Weder .atlas noch persönliche Zuordnung: gleich zuordnen lassen (#1261).
+    if FooterIsAssign(AView) then
+      Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesAssign));
     Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesNotConfigured));
   end;
   // Aktuelles Issue, das die Liste nicht zeigt (z. B. schon geschlossen oder anderer Bearbeiter).
@@ -373,6 +461,120 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesFooterRemember)
   else
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesFooter);
+end;
+
+class function TAtlasWelcomeIssuesFrame.FooterIsAssign(const AView: TAtlasIssuesView): Boolean;
+begin
+  Result := (AView.Notice = '') and (AView.Status = TAtlasIssuesStatus.NotConfigured) and (AView.Project <> '') and
+    AView.CanAssign;
+end;
+
+class function TAtlasWelcomeIssuesFrame.SourceText(const AView: TAtlasIssuesView): string;
+begin
+  Result := '';
+  if (AView.Status = TAtlasIssuesStatus.NotConfigured) or (AView.QueryText = '') then
+    Exit;
+  Result := JoinParts([AView.Connection, AView.TrackerProject,
+    TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesSource, [AView.QueryText])]);
+end;
+
+class function TAtlasWelcomeIssuesFrame.QueryCaption(const AName: string; ACount: Integer): string;
+begin
+  if ACount < 0 then
+    Result := AName
+  else if ACount >= TAtlasWelcomeIssues.MaxItems then
+    Result := Format('%s (%d+)', [AName, TAtlasWelcomeIssues.MaxItems])
+  else
+    Result := Format('%s (%d)', [AName, ACount]);
+end;
+
+class function TAtlasWelcomeIssuesFrame.ShowsQueryPicker(const AView: TAtlasIssuesView): Boolean;
+begin
+  Result := AView.Picker and (AView.Status <> TAtlasIssuesStatus.NotConfigured) and (AView.QueryIndex >= 0) and
+    (AView.QueryIndex <= High(AView.Queries));
+end;
+
+procedure TAtlasWelcomeIssuesFrame.UpdateQueryPicker;
+var
+  mCount: Integer;
+begin
+  FQueryLabel.Visible := ShowsQueryPicker(FView);
+  // Die Beschriftung misst ihren Text: erst mit Fenster (CreateWnd holt UpdateContent nach).
+  if not FQueryLabel.Visible or not HasWindow then
+    Exit;
+  mCount := -1;
+  if FView.QueryIndex <= High(FView.QueryCounts) then
+    mCount := FView.QueryCounts[FView.QueryIndex];
+  FQueryLabel.Caption := QueryCaption(FView.Queries[FView.QueryIndex].Name, mCount) + ' ' + #$25BE;
+end;
+
+procedure TAtlasWelcomeIssuesFrame.FillQueryMenu;
+var
+  mIndex, mCount: Integer;
+  mItem: TMenuItem;
+begin
+  FQueryMenu.Items.Clear;
+  for mIndex := 0 to High(FView.Queries) do
+  begin
+    mCount := -1;
+    if mIndex <= High(FView.QueryCounts) then
+      mCount := FView.QueryCounts[mIndex];
+    mItem := TMenuItem.Create(FQueryMenu);
+    mItem.Caption := QueryCaption(FView.Queries[mIndex].Name, mCount);
+    mItem.RadioItem := True;
+    mItem.Checked := mIndex = FView.QueryIndex;
+    mItem.Tag := mIndex;
+    mItem.OnClick := QueryItemClick;
+    FQueryMenu.Items.Add(mItem);
+  end;
+  mItem := TMenuItem.Create(FQueryMenu);
+  mItem.Caption := '-';
+  FQueryMenu.Items.Add(mItem);
+  mItem := TMenuItem.Create(FQueryMenu);
+  mItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueriesEdit);
+  mItem.OnClick := QueriesEditClick;
+  FQueryMenu.Items.Add(mItem);
+end;
+
+procedure TAtlasWelcomeIssuesFrame.QueryLabelClick(Sender: TObject);
+var
+  mPoint: TPoint;
+begin
+  FillQueryMenu;
+  mPoint := FQueryLabel.ClientToScreen(Point(0, FQueryLabel.Height));
+  FQueryMenu.Popup(mPoint.X, mPoint.Y);
+end;
+
+procedure TAtlasWelcomeIssuesFrame.QueryItemClick(Sender: TObject);
+var
+  mSource: IAtlasIssuesSource;
+  mName: string;
+  mIndex: Integer;
+begin
+  mIndex := TMenuItem(Sender).Tag;
+  if (FSource = nil) or (mIndex < 0) or (mIndex > High(FView.Queries)) then
+    Exit;
+  mSource := FSource;
+  mName := FView.Queries[mIndex].Name;
+  Post(
+    procedure
+    begin
+      mSource.SelectQuery(mName);
+    end);
+end;
+
+procedure TAtlasWelcomeIssuesFrame.QueriesEditClick(Sender: TObject);
+var
+  mSource: IAtlasIssuesSource;
+begin
+  if FSource = nil then
+    Exit;
+  mSource := FSource;
+  Post(
+    procedure
+    begin
+      mSource.EditQueries;
+    end);
 end;
 
 class function TAtlasWelcomeIssuesFrame.PullRequestText(const APull: TAtlasTrackerPullRequest): string;
@@ -438,11 +640,25 @@ begin
   Result := (FSource <> nil) and not FView.Starting;
 end;
 
-function TAtlasWelcomeIssuesFrame.ListTop: Integer;
+function TAtlasWelcomeIssuesFrame.FilterTop: Integer;
 begin
   Result := ScaleValue(Indent) div 2;
   if StatusText(FView) <> '' then
     Inc(Result, ScaleValue(StatusHeight));
+end;
+
+function TAtlasWelcomeIssuesFrame.ListTop: Integer;
+begin
+  Result := FilterTop;
+  if FilterText(FView) <> '' then
+    Inc(Result, ScaleValue(StatusHeight));
+end;
+
+class function TAtlasWelcomeIssuesFrame.FilterText(const AView: TAtlasIssuesView): string;
+begin
+  Result := '';
+  if AView.Filter <> '' then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesFilter, [AView.Filter]);
 end;
 
 function TAtlasWelcomeIssuesFrame.RowHeight(AIndex: Integer): Integer;
@@ -468,9 +684,16 @@ begin
   Result := RowTop(Length(FView.Items));
 end;
 
+function TAtlasWelcomeIssuesFrame.SourceTop: Integer;
+begin
+  Result := FooterTop + ScaleValue(FooterHeight);
+end;
+
 function TAtlasWelcomeIssuesFrame.BodyHeight: Integer;
 begin
-  Result := FooterTop + ScaleValue(FooterHeight) + ScaleValue(Indent) div 2;
+  Result := SourceTop + ScaleValue(Indent) div 2;
+  if SourceText(FView) <> '' then
+    Inc(Result, ScaleValue(FooterHeight));
 end;
 
 function TAtlasWelcomeIssuesFrame.ChipWidth(ACanvas: TCanvas; const AText: string): Integer;
@@ -566,6 +789,17 @@ begin
   ACanvas.Font.Color := MutedColor;
   FKeyRects[AIndex] := Rect(mLeft, mTop, Min(mLeft + ACanvas.TextWidth(Item.Key), Limit), mTop + ScaleValue(LineHeight));
   ACanvas.TextRect(FKeyRects[AIndex], mLeft, mTop + ScaleValue(1), Item.Key);
+  // Neue Änderungen seit dem letzten Öffnen (#1271): Punkt im Rand vor der Kennung.
+  if FView.IsUnseen(Item.Key) then
+  begin
+    ACanvas.Brush.Style := bsSolid;
+    ACanvas.Brush.Color := StyleServices(Self).GetSystemColor(clHighlight);
+    ACanvas.Pen.Color := ACanvas.Brush.Color;
+    ACanvas.Ellipse(Rect((mLeft - ScaleValue(UnseenDot)) div 2, mTop + (ScaleValue(LineHeight) -
+      ScaleValue(UnseenDot)) div 2, (mLeft + ScaleValue(UnseenDot)) div 2, mTop + (ScaleValue(LineHeight) +
+      ScaleValue(UnseenDot)) div 2));
+    ACanvas.Brush.Style := bsClear;
+  end;
   mLeft := mLeft + Max(ScaleValue(KeyWidth), ACanvas.TextWidth(Item.Key) + ScaleValue(8));
   // Titel, abgeschnitten.
   ACanvas.Font.Assign(Font);
@@ -616,10 +850,35 @@ begin
       ScaleValue(2), mText);
     Canvas.Font.Assign(Font);
   end;
+  // Filter der Sprint-Kachel (#1277): Link, der ihn aufhebt.
+  FFilterRect := TRect.Empty;
+  mText := FilterText(FView);
+  if mText <> '' then
+  begin
+    mTop := FilterTop + ScaleValue(2);
+    Canvas.Font.Size := Font.Size - 1;
+    Canvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
+    FFilterRect := Rect(ScaleValue(Indent), mTop, Min(ScaleValue(Indent) + Canvas.TextWidth(mText),
+      FBox.Width - ScaleValue(Indent)), mTop + Canvas.TextHeight(mText));
+    Canvas.TextRect(Rect(ScaleValue(Indent), mTop, FBox.Width - ScaleValue(Indent), mTop + ScaleValue(StatusHeight)),
+      ScaleValue(Indent), mTop, mText);
+    Canvas.Font.Assign(Font);
+  end;
   if Length(FStartRects) <> Length(FView.Items) then
     Exit;
   for Index := 0 to High(FView.Items) do
     PaintRow(Canvas, Index);
+  // Woher die Liste kommt (#1262): Verbindung, Tracker-Projekt, gesendete Abfrage.
+  mText := SourceText(FView);
+  if mText <> '' then
+  begin
+    mTop := SourceTop + ScaleValue(4);
+    Canvas.Font.Size := Font.Size - 1;
+    Canvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
+    Canvas.TextRect(Rect(ScaleValue(Indent), mTop, FBox.Width - ScaleValue(Indent), mTop + ScaleValue(FooterHeight)),
+      ScaleValue(Indent), mTop, mText);
+    Canvas.Font.Assign(Font);
+  end;
   mText := FooterText(FView);
   if mText = '' then
     Exit;
@@ -628,6 +887,13 @@ begin
   Canvas.Font.Size := Font.Size - 1;
   if FView.NoticeFailed then
     Canvas.Font.Color := RedColor
+  else if FooterIsAssign(FView) then
+  begin
+    // Link „zuordnen …“: Akzentfarbe, Klickfläche nur über dem Text.
+    Canvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
+    FAssignRect := Rect(ScaleValue(Indent), mTop, Min(ScaleValue(Indent) + Canvas.TextWidth(mText),
+      FBox.Width - ScaleValue(Indent)), mTop + Canvas.TextHeight(mText));
+  end
   else
     Canvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
   Canvas.TextRect(Rect(ScaleValue(Indent), mTop, FBox.Width - ScaleValue(Indent), mTop + ScaleValue(FooterHeight)),
@@ -642,6 +908,10 @@ var
 begin
   Result := TAtlasIssuesHit.Create(TAtlasIssuesHitKind.None, -1);
   Point_ := Point(X, Y);
+  if not FAssignRect.IsEmpty and FAssignRect.Contains(Point_) then
+    Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Assign, -1));
+  if not FFilterRect.IsEmpty and FFilterRect.Contains(Point_) then
+    Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Filter, -1));
   for Index := 0 to High(FView.Items) do
   begin
     if (Y < RowTop(Index)) or (Y >= RowTop(Index) + RowHeight(Index)) then
@@ -663,18 +933,60 @@ begin
 end;
 
 procedure TAtlasWelcomeIssuesFrame.ClickAt(const AHit: TAtlasIssuesHit);
+begin
+  ClickAt(AHit, False);
+end;
+
+procedure TAtlasWelcomeIssuesFrame.ClickAt(const AHit: TAtlasIssuesHit; ABrowse: Boolean);
 var
   mSource: IAtlasIssuesSource;
   Item: TAtlasTrackerIssue;
   Mode: TAtlasIssueStart;
 begin
+  if (FSource <> nil) and (AHit.Kind = TAtlasIssuesHitKind.Assign) then
+  begin
+    mSource := FSource;
+    Post(
+      procedure
+      begin
+        mSource.AssignProject;
+      end);
+    Exit;
+  end;
+  if (FSource <> nil) and (AHit.Kind = TAtlasIssuesHitKind.Filter) then
+  begin
+    mSource := FSource;
+    Post(
+      procedure
+      begin
+        mSource.ClearFilter;
+      end);
+    Exit;
+  end;
   if (FSource = nil) or (AHit.Index < 0) or (AHit.Index > High(FView.Items)) then
     Exit;
   mSource := FSource;
   Item := FView.Items[AHit.Index];
+  if (AHit.Kind in [TAtlasIssuesHitKind.Row, TAtlasIssuesHitKind.Key]) and FView.Options.Preview and
+    not ABrowse then
+  begin
+    Post(
+      procedure
+      begin
+        mSource.Preview(Item);
+      end);
+    Exit;
+  end;
   case AHit.Kind of
-    // Leerraum und Zeilentext lösen nichts aus; sie zeigen nur den Hinweis (BoxMouseMove).
-    TAtlasIssuesHitKind.None, TAtlasIssuesHitKind.Row: ;
+    // Leerraum und Zeilentext lösen ohne Vorschau nichts aus; sie zeigen nur den Hinweis (BoxMouseMove).
+    TAtlasIssuesHitKind.None, TAtlasIssuesHitKind.Assign, TAtlasIssuesHitKind.Filter: ;
+    TAtlasIssuesHitKind.Row:
+      if ABrowse and FView.Options.Preview then
+        Post(
+          procedure
+          begin
+            mSource.Browse(Item);
+          end);
     TAtlasIssuesHitKind.Key:
       Post(
         procedure
@@ -706,7 +1018,9 @@ var
   Key: string;
 begin
   Hit := HitTest(X, Y);
-  if Hit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start] then
+  if (Hit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start,
+    TAtlasIssuesHitKind.Assign, TAtlasIssuesHitKind.Filter]) or
+    ((Hit.Kind = TAtlasIssuesHitKind.Row) and FView.Options.Preview) then
     FBox.Cursor := crHandPoint
   else
     FBox.Cursor := crDefault;
@@ -716,13 +1030,24 @@ begin
   FHintKey := Key;
   case Hit.Kind of
     TAtlasIssuesHitKind.Key:
-      FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintKey);
+      if FView.Options.Preview then
+        FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintKeyPreview)
+      else
+        FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintKey);
     TAtlasIssuesHitKind.PullRequest:
       FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintPullRequest);
     TAtlasIssuesHitKind.Start:
       FBox.Hint := StartHint(FView, FView.Items[Hit.Index]);
     TAtlasIssuesHitKind.Row:
-      FBox.Hint := FView.Items[Hit.Index].Key + ' ' + FView.Items[Hit.Index].Title;
+      begin
+        FBox.Hint := FView.Items[Hit.Index].Key + ' ' + FView.Items[Hit.Index].Title;
+        if FView.IsUnseen(FView.Items[Hit.Index].Key) then
+          FBox.Hint := FBox.Hint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.IssueNotifyUnseenHint);
+      end;
+    TAtlasIssuesHitKind.Assign:
+      FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintAssign);
+    TAtlasIssuesHitKind.Filter:
+      FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintFilter);
   else
     FBox.Hint := '';
   end;
@@ -733,7 +1058,7 @@ procedure TAtlasWelcomeIssuesFrame.BoxMouseUp(Sender: TObject; Button: TMouseBut
   Y: Integer);
 begin
   if Button = mbLeft then
-    ClickAt(HitTest(X, Y));
+    ClickAt(HitTest(X, Y), ssCtrl in Shift);
 end;
 
 procedure TAtlasWelcomeIssuesFrame.MenuPopup(Sender: TObject);
@@ -748,6 +1073,8 @@ begin
   FMenuRow := Hit.Index;
   HasItem := MenuIssue(Item);
   Branching := (FView.VcsKind = TAtlasVcsKind.Git) or (FView.VcsKind = TAtlasVcsKind.Svn);
+  FPreviewItem.Visible := HasItem and FView.Options.Preview;
+  FPreviewItem.Default := FPreviewItem.Visible;
   FBrowseItem.Visible := HasItem;
   FBrowsePullItem.Visible := HasItem and (Item.PullRequest.Number > 0);
   FStartBranchItem.Visible := HasItem and Branching;
@@ -769,9 +1096,14 @@ begin
     AIssue := FView.Items[FMenuRow];
 end;
 
+procedure TAtlasWelcomeIssuesFrame.PreviewClick(Sender: TObject);
+begin
+  ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Row, FMenuRow), False);
+end;
+
 procedure TAtlasWelcomeIssuesFrame.BrowseClick(Sender: TObject);
 begin
-  ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Key, FMenuRow));
+  ClickAt(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Key, FMenuRow), True);
 end;
 
 procedure TAtlasWelcomeIssuesFrame.BrowsePullClick(Sender: TObject);

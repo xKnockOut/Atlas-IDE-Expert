@@ -119,6 +119,12 @@ type
     procedure ReadArchitecture(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
     procedure ReadTasks(ANode: TJsonNode);
+    procedure ReadIssues(ANode: TJsonNode);
+    procedure ReadIssueConnections(ANode: TJsonNode);
+    procedure ReadIssueProjects(ANode: TJsonNode);
+    procedure ReadIssueQueries(ANode: TJsonNode);
+    procedure ReadVcsProjects(ANode: TJsonNode);
+    procedure ReadIssueEndStates(ANode: TJsonNode);
     procedure ReadTaskMatcher(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -1738,9 +1744,33 @@ begin
 end;
 
 procedure TValidator.ReadVcs(ANode: TJsonNode);
+
+  // vcs.git bzw. vcs.svn (#1285): nur "path", leer = automatisch suchen.
+  procedure ReadTool(AToolNode: TJsonNode; const AName: string; var APath: string);
+  var
+    mIndex: Integer;
+    mKey: string;
+  begin
+    if AToolNode.Kind <> TJsonKind.Object_ then
+    begin
+      ReportNode(AToolNode, Format('"vcs.%s" muss ein Objekt sein', [AName]));
+      Exit;
+    end;
+    for mIndex := 0 to AToolNode.Count - 1 do
+    begin
+      mKey := AToolNode.Keys[mIndex];
+      if mKey = 'path' then
+        ExpectString(AToolNode[mIndex], mKey, APath)
+      else
+        Report(AToolNode.KeyStarts[mIndex], AToolNode.KeyStarts[mIndex] + Length(mKey) + 2,
+          Format('Unbekannte Einstellung "vcs.%s.%s"', [AName, mKey]), False);
+    end;
+  end;
+
 var
   Index: Integer;
   Key, Text: string;
+  mSeconds: Integer;
 begin
   if ANode.Kind <> TJsonKind.Object_ then
   begin
@@ -1757,6 +1787,20 @@ begin
           FSettings.VcsProvider := Text
         else
           ReportNode(ANode[Index], 'Erlaubt sind "auto", "git", "svn" und "off"');
+    end
+    else if Key = 'git' then
+      ReadTool(ANode[Index], Key, FSettings.VcsGitPath)
+    else if Key = 'svn' then
+      ReadTool(ANode[Index], Key, FSettings.VcsSvnPath)
+    else if Key = 'projects' then
+      ReadVcsProjects(ANode[Index])
+    else if Key = 'timeoutSeconds' then
+    begin
+      if (ANode[Index].Kind = TJsonKind.Number) and TryStrToInt(ANode[Index].Value, mSeconds) and (mSeconds >= 1) and
+        (mSeconds <= 300) then
+        FSettings.VcsTimeoutSeconds := mSeconds
+      else
+        ReportNode(ANode[Index], '"vcs.timeoutSeconds" muss eine ganze Zahl von 1 bis 300 sein');
     end
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
@@ -2324,6 +2368,332 @@ begin
   end;
 end;
 
+procedure TValidator.ReadIssues(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"issues" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'connections' then
+      ReadIssueConnections(ANode[Index])
+    else if Key = 'projects' then
+      ReadIssueProjects(ANode[Index])
+    else if Key = 'queries' then
+      ReadIssueQueries(ANode[Index])
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "issues.%s"', [Key]), False);
+  end;
+end;
+
+/// <summary>Adresse eines Trackers: nur https, mit Rechner, ohne Benutzer und Leerzeichen (wie
+/// TAtlasTrackerTarget im Plugin).</summary>
+function IsTrackerUrl(const AUrl: string): Boolean;
+var
+  Host: string;
+  Slash: Integer;
+begin
+  Result := False;
+  if not SameText(Copy(AUrl, 1, 8), 'https://') then
+    Exit;
+  Host := Copy(AUrl, 9, MaxInt);
+  Slash := Pos('/', Host);
+  if Slash > 0 then
+    Host := Copy(Host, 1, Slash - 1);
+  Result := (Host <> '') and (Pos('@', Host) = 0) and (Pos(' ', AUrl) = 0);
+end;
+
+procedure TValidator.ReadIssueEndStates(ANode: TJsonNode);
+var
+  Index: Integer;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"endStates" muss eine Liste von Zuständen sein, z. B. ["Zur Prüfung", "Erledigt"]');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+    if ANode[Index].Kind <> TJsonKind.String_ then
+      ReportNode(ANode[Index], 'Ein Zustand in "endStates" ist ein Text');
+end;
+
+procedure TValidator.ReadIssueConnections(ANode: TJsonNode);
+var
+  Index, Inner: Integer;
+  Connection, Value: TJsonNode;
+  Key, Text: string;
+  Names: TList<string>;
+  HasName, HasProvider, HasUrl: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"connections" muss eine Liste von Verbindungen sein');
+    Exit;
+  end;
+  FSettings.IssueConnections := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+  Names := TList<string>.Create;
+  try
+    for Index := 0 to ANode.Count - 1 do
+    begin
+      Connection := ANode[Index];
+      if Connection.Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(Connection, 'Eine Verbindung ist ein Objekt mit "name", "provider" und "url"');
+        Continue;
+      end;
+      HasName := False;
+      HasProvider := False;
+      HasUrl := False;
+      for Inner := 0 to Connection.Count - 1 do
+      begin
+        Key := Connection.Keys[Inner];
+        Value := Connection[Inner];
+        if Key = 'name' then
+        begin
+          if ExpectString(Value, 'name', Text) and (Trim(Text) <> '') then
+          begin
+            HasName := True;
+            if Names.IndexOf(AnsiLowerCase(Trim(Text))) >= 0 then
+              ReportNode(Value, Format('Die Verbindung "%s" gibt es schon', [Trim(Text)]))
+            else
+              Names.Add(AnsiLowerCase(Trim(Text)));
+          end;
+        end
+        else if Key = 'provider' then
+          HasProvider := ExpectString(Value, 'provider', Text) and (Trim(Text) <> '')
+        else if Key = 'url' then
+        begin
+          if ExpectString(Value, 'url', Text) then
+          begin
+            HasUrl := True;
+            // Das Token geht nur über https und nie mit Benutzer in der Adresse an den Tracker.
+            if not IsTrackerUrl(Trim(Text)) then
+              ReportNode(Value, 'Nur https-Adressen ohne Benutzer, z. B. "https://youtrack.firma.de"');
+          end;
+        end
+        else if Key = 'language' then
+        begin
+          // Sprache der Oberfläche (#1263), vom Plugin bei „Prüfen“ erkannt.
+          if ExpectString(Value, 'language', Text) and (Text <> 'de') and (Text <> 'en') then
+            ReportNode(Value, '"language" ist "de" oder "en"');
+        end
+        // Zustand beim Beginnen und Beenden je Verbindung (#1266).
+        else if (Key = 'stateField') or (Key = 'assigneeField') or (Key = 'startState') then
+          ExpectString(Value, Key, Text)
+        else if Key = 'endStates' then
+          ReadIssueEndStates(Value)
+        else
+          Report(Connection.KeyStarts[Inner], Connection.KeyStarts[Inner] + Length(Key) + 2,
+            Format('Unbekannte Angabe "%s" in einer Verbindung', [Key]), False);
+      end;
+      if not HasName then
+        ReportNode(Connection, 'Verbindung ohne "name"');
+      if not HasProvider then
+        ReportNode(Connection, 'Verbindung ohne "provider"');
+      if not HasUrl then
+        ReportNode(Connection, 'Verbindung ohne "url"');
+    end;
+  finally
+    Names.Free;
+  end;
+end;
+
+procedure TValidator.ReadVcsProjects(ANode: TJsonNode);
+var
+  mIndex, mInner: Integer;
+  mMapping, mValue: TJsonNode;
+  mKey, mText: string;
+  mMatches: TList<string>;
+  mHasMatch: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"vcs.projects" muss eine Liste von Zuordnungen sein');
+    Exit;
+  end;
+  FSettings.VcsProjects := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+  mMatches := TList<string>.Create;
+  try
+    for mIndex := 0 to ANode.Count - 1 do
+    begin
+      mMapping := ANode[mIndex];
+      if mMapping.Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(mMapping, 'Eine Zuordnung ist ein Objekt mit "match", "provider" und "mainBranch"');
+        Continue;
+      end;
+      mHasMatch := False;
+      for mInner := 0 to mMapping.Count - 1 do
+      begin
+        mKey := mMapping.Keys[mInner];
+        mValue := mMapping[mInner];
+        if mKey = 'match' then
+        begin
+          if ExpectString(mValue, 'match', mText) and (Trim(mText) <> '') then
+          begin
+            mHasMatch := True;
+            // Wie im Plugin (Atlas.Core.Projects.Matching): ohne Groß-/Kleinschreibung, „/“ wie „\“.
+            mText := AnsiLowerCase(Trim(mText)).Replace('/', '\');
+            while mText.EndsWith('\') and (Length(mText) > 2) do
+              Delete(mText, Length(mText), 1);
+            if mMatches.IndexOf(mText) >= 0 then
+              ReportNode(mValue, 'Für diesen Pfad gibt es schon eine Zuordnung')
+            else
+              mMatches.Add(mText);
+          end;
+        end
+        else if mKey = 'provider' then
+        begin
+          if ExpectString(mValue, 'provider', mText) and not MatchStr(mText, ['auto', 'git', 'svn', 'off']) then
+            ReportNode(mValue, 'Erlaubt sind "auto", "git", "svn" und "off"');
+        end
+        else if mKey = 'mainBranch' then
+        begin
+          if ExpectString(mValue, 'mainBranch', mText) and (Trim(mText).IndexOfAny([' ', #9]) >= 0) then
+            ReportNode(mValue, 'Ein Branch-Name enthält keine Leerzeichen');
+        end
+        else
+          Report(mMapping.KeyStarts[mInner], mMapping.KeyStarts[mInner] + Length(mKey) + 2,
+            Format('Unbekannte Angabe "%s" in einer Zuordnung', [mKey]), False);
+      end;
+      if not mHasMatch then
+        ReportNode(mMapping, 'Zuordnung ohne "match" (Pfad einer .dproj, .groupproj oder eines Ordners)');
+    end;
+  finally
+    mMatches.Free;
+  end;
+end;
+
+procedure TValidator.ReadIssueProjects(ANode: TJsonNode);
+var
+  Index, Inner: Integer;
+  Mapping, Value: TJsonNode;
+  Key, Text: string;
+  Matches: TList<string>;
+  HasMatch, HasConnection: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"projects" muss eine Liste von Zuordnungen sein');
+    Exit;
+  end;
+  FSettings.IssueProjects := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+  Matches := TList<string>.Create;
+  try
+    for Index := 0 to ANode.Count - 1 do
+    begin
+      Mapping := ANode[Index];
+      if Mapping.Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(Mapping, 'Eine Zuordnung ist ein Objekt mit "match", "connection" und "project"');
+        Continue;
+      end;
+      HasMatch := False;
+      HasConnection := False;
+      for Inner := 0 to Mapping.Count - 1 do
+      begin
+        Key := Mapping.Keys[Inner];
+        Value := Mapping[Inner];
+        if Key = 'match' then
+        begin
+          if ExpectString(Value, 'match', Text) and (Trim(Text) <> '') then
+          begin
+            HasMatch := True;
+            // Wie im Plugin: ohne Groß-/Kleinschreibung, „/“ wie „\“, ohne „\“ am Ende.
+            Text := AnsiLowerCase(Trim(Text)).Replace('/', '\');
+            while Text.EndsWith('\') and (Length(Text) > 2) do
+              Delete(Text, Length(Text), 1);
+            if Matches.IndexOf(Text) >= 0 then
+              ReportNode(Value, 'Für diesen Pfad gibt es schon eine Zuordnung')
+            else
+              Matches.Add(Text);
+          end;
+        end
+        else if Key = 'connection' then
+          HasConnection := ExpectString(Value, 'connection', Text) and (Trim(Text) <> '')
+        else if Key = 'project' then
+          ExpectString(Value, 'project', Text)
+        else
+          Report(Mapping.KeyStarts[Inner], Mapping.KeyStarts[Inner] + Length(Key) + 2,
+            Format('Unbekannte Angabe "%s" in einer Zuordnung', [Key]), False);
+      end;
+      if not HasMatch then
+        ReportNode(Mapping, 'Zuordnung ohne "match" (Pfad einer .dproj, .groupproj oder eines Ordners)');
+      if not HasConnection then
+        ReportNode(Mapping, 'Zuordnung ohne "connection"');
+    end;
+  finally
+    Matches.Free;
+  end;
+end;
+
+procedure TValidator.ReadIssueQueries(ANode: TJsonNode);
+var
+  Index, Inner: Integer;
+  Query, Value: TJsonNode;
+  Key, Text: string;
+  Names: TList<string>;
+  HasName, HasQuery: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"queries" muss eine Liste von Abfragen sein');
+    Exit;
+  end;
+  FSettings.IssueQueries := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+  Names := TList<string>.Create;
+  try
+    for Index := 0 to ANode.Count - 1 do
+    begin
+      Query := ANode[Index];
+      if Query.Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(Query, 'Eine Abfrage ist ein Objekt mit "name" und "query"');
+        Continue;
+      end;
+      HasName := False;
+      HasQuery := False;
+      for Inner := 0 to Query.Count - 1 do
+      begin
+        Key := Query.Keys[Inner];
+        Value := Query[Inner];
+        if Key = 'name' then
+        begin
+          if ExpectString(Value, 'name', Text) and (Trim(Text) <> '') then
+          begin
+            HasName := True;
+            // Die Klappliste unterscheidet Namen ohne Groß-/Kleinschreibung.
+            if Names.IndexOf(AnsiLowerCase(Trim(Text))) >= 0 then
+              ReportNode(Value, Format('Die Abfrage "%s" gibt es schon', [Trim(Text)]))
+            else
+              Names.Add(AnsiLowerCase(Trim(Text)));
+          end;
+        end
+        else if Key = 'query' then
+          HasQuery := ExpectString(Value, 'query', Text) and (Trim(Text) <> '')
+        else if (Key = 'connection') or (Key = 'project') then
+          ExpectString(Value, Key, Text)
+        else
+          Report(Query.KeyStarts[Inner], Query.KeyStarts[Inner] + Length(Key) + 2,
+            Format('Unbekannte Angabe "%s" in einer Abfrage', [Key]), False);
+      end;
+      if not HasName then
+        ReportNode(Query, 'Abfrage ohne "name"');
+      if not HasQuery then
+        ReportNode(Query, 'Abfrage ohne "query"');
+    end;
+  finally
+    Names.Free;
+  end;
+end;
+
 function TValidator.ParseRoot: TJsonNode;
 begin
   try
@@ -2537,6 +2907,8 @@ begin
       end
       else if Key = 'tasks' then
         ReadTasks(Value)
+      else if Key = 'issues' then
+        ReadIssues(Value)
       else if Key = 'format' then
       begin
         if Value.Kind = TJsonKind.Object_ then
@@ -2808,6 +3180,12 @@ begin
     end
     else if Key = 'tasks' then
       Result.Tasks := FileSettings.Tasks
+    else if Key = 'issues' then
+    begin
+      Result.IssueConnections := FileSettings.IssueConnections;
+      Result.IssueProjects := FileSettings.IssueProjects;
+      Result.IssueQueries := FileSettings.IssueQueries;
+    end
     else if Key = 'format' then
     begin
       Result.Format := FileSettings.Format;
@@ -2838,7 +3216,13 @@ begin
     else if Key = 'compiler' then
       Result.Compiler := FileSettings.Compiler
     else if Key = 'vcs' then
-      Result.VcsProvider := FileSettings.VcsProvider
+    begin
+      Result.VcsProvider := FileSettings.VcsProvider;
+      Result.VcsGitPath := FileSettings.VcsGitPath;
+      Result.VcsSvnPath := FileSettings.VcsSvnPath;
+      Result.VcsTimeoutSeconds := FileSettings.VcsTimeoutSeconds;
+      Result.VcsProjects := FileSettings.VcsProjects;
+    end
     else if Key = 'completion' then
       Result.Completion := FileSettings.Completion
     else if Key = 'refactoring' then

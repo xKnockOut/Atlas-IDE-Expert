@@ -784,7 +784,8 @@ begin
       // Bereich „Testergebnisse“: welcomePage.tests, .maxFailures und .ci (#763).
       if FTestResults <> nil then
         FTestResults.Refresh;
-      // Bereich „Meine Issues“: welcomePage.issues, .tracker, .query und die Muster (#765).
+      // Bereich „Meine Issues“: welcomePage.issues sowie issues.tracker, .query, die Muster und issues.notify (#765,
+      // #1280, #1271).
       if FIssues <> nil then
         FIssues.Refresh;
       // Schnellaktionen: welcomePage.quickActions, .items, .console und Tasten (#764).

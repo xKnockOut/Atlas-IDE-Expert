@@ -75,6 +75,12 @@ type
     /// AFirstLine endet der Text am Ende der ersten Zeile außerhalb von Klammern.</summary>
     function TokenText(AFrom, ATo: Integer; AFirstLine: Boolean): string;
     function SignatureOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind; const AName, ATypeText: string): string;
+    /// <summary>Prozedurtyp, den die Typdeklaration ANode deklariert (TEreignis = procedure … of object); nil bei
+    /// anderen Typen.</summary>
+    class function ProcedureTypeOf(ANode: TSyntaxNode): TSyntaxNode; static;
+    /// <summary>Art des Prozedurtyps AType (#1326): 'of object' bei Methodenzeigern, 'reference to' bei
+    /// Methodenreferenzen, sonst ''. Gelesen aus den Tokens, also unabhängig von Zeilenumbrüchen.</summary>
+    function ProcedureKindOf(AType: TSyntaxNode): string;
     /// <summary>Direktiven der Deklaration; ADeprecatedText: Grund hinter deprecated 'Grund' (#38), sonst ''.
     /// </summary>
     function DirectivesOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind; out ADeprecatedText: string): TArray<string>;
@@ -333,7 +339,7 @@ procedure TIndexExtractor.Add(ANode: TSyntaxNode; const AName, AContainer: strin
   const AAncestors: TArray<string>);
 var
   Symbol: TIndexSymbol;
-  TypeText_: string;
+  TypeText_, mProcedureKind: string;
 begin
   if AName = '' then
     Exit;
@@ -392,6 +398,14 @@ begin
   Symbol.Directives := DirectivesOf(ANode, AKind, Symbol.DeprecatedText);
   if Symbol.IsDefault and (IndexText('default', Symbol.Directives) < 0) then
     Symbol.Directives := Symbol.Directives + ['default'];
+  // Methodenzeiger und Methodenreferenzen als Merkmal (#1326): Die Signatur kann bei langen Parameterlisten
+  // vor "of object" abgeschnitten sein (TIndexSymbol.MaxSignature).
+  if AKind = TIndexSymbolKind.TypeAlias then
+  begin
+    mProcedureKind := ProcedureKindOf(ProcedureTypeOf(ANode));
+    if mProcedureKind <> '' then
+      Symbol.Directives := Symbol.Directives + [mProcedureKind];
+  end;
   // Klassenmitglieder (class var, class property, class function) tragen "class" vorn, damit Regeln wie
   // property-accessor-invalid (#1001) sie ohne die Datei erkennen.
   if (AContainer <> '') and (((AKind = TIndexSymbolKind.Field) and FClassVar) or
@@ -490,12 +504,68 @@ begin
   end;
   First := TokenIndexAt(Node.StartOffset);
   Last := TokenIndexAt(Node.EndOffset) - 1;
-  Result := TokenText(First, Last, AKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
+  // Ein Prozedurtyp über mehrere Zeilen gehört ganz in die Signatur, sonst fehlt "of object" (#1326).
+  Result := TokenText(First, Last, (AKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
     TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType,
-    TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias]);
+    TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias]) and
+    not ((AKind = TIndexSymbolKind.TypeAlias) and (ProcedureTypeOf(Node) <> nil)));
   // Ein abschließendes Semikolon gehört nicht zur Anzeige.
   while Result.EndsWith(';') do
     Result := Copy(Result, 1, Length(Result) - 1).TrimRight;
+end;
+
+class function TIndexExtractor.ProcedureTypeOf(ANode: TSyntaxNode): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  if (ANode = nil) or (ANode.Kind <> TSyntaxKind.TypeDecl) then
+    Exit;
+  // Rumpf ist das erste Kind außer Typparametern und Attributen (wie in AddType).
+  for mIndex := 0 to ANode.ChildCount - 1 do
+    if not (ANode[mIndex].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
+    begin
+      if ANode[mIndex].Kind = TSyntaxKind.ProcedureType then
+        Result := ANode[mIndex];
+      Exit;
+    end;
+end;
+
+function TIndexExtractor.ProcedureKindOf(AType: TSyntaxNode): string;
+var
+  mIndex, mLast, mDepth: Integer;
+  mToken: TPascalToken;
+begin
+  Result := '';
+  if AType = nil then
+    Exit;
+  if SameText(AType.Name, 'reference') then
+    Exit('reference to');
+  mDepth := 0;
+  mLast := TokenIndexAt(AType.EndOffset) - 1;
+  mIndex := TokenIndexAt(AType.StartOffset);
+  while mIndex < mLast do
+  begin
+    mToken := FTokens[mIndex];
+    if mToken.Kind = TPascalTokenKind.Symbol then
+    begin
+      if (mToken.Text = '(') or (mToken.Text = '[') then
+        Inc(mDepth)
+      else if ((mToken.Text = ')') or (mToken.Text = ']')) and (mDepth > 0) then
+        Dec(mDepth);
+    end
+    else if (mDepth = 0) and mToken.IsKeyword('of') then
+    begin
+      // Kommentare und Direktiven zwischen "of" und "object" überspringen.
+      Inc(mIndex);
+      while (mIndex <= mLast) and (FTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+        Inc(mIndex);
+      if (mIndex <= mLast) and SameText(FTokens[mIndex].Text, 'object') then
+        Result := 'of object';
+      Exit;
+    end;
+    Inc(mIndex);
+  end;
 end;
 
 function TIndexExtractor.DirectivesOf(ANode: TSyntaxNode; AKind: TIndexSymbolKind;

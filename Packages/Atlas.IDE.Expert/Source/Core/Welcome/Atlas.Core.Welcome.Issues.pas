@@ -4,7 +4,12 @@
 // Tools API: was abgefragt wird, wann, was der Bereich zeigt, welches Issue
 // aktiv ist und was „Beginnen“ tut.
 // - Ziel: Anbieter, Adresse und Projekt aus .atlas (Abschnitt "tracker");
-//   welcomePage.issues.tracker ersetzt den Anbieter, .query die Abfrage.
+//   issues.tracker ersetzt den Anbieter. Ohne tracker in der .atlas gilt die
+//   persönliche Zuordnung (#1261, issues.projects): Verbindung und
+//   Tracker-Projekt der passenden Zeile.
+// - Abfrage (#1262): die je Projekt gewählte aus issues.queries
+//   (TAtlasTrackerQueries); gemerkt wird ihr Name ("selected") und je Name
+//   die Trefferzahl der letzten Abfrage ("counts") für die Klappliste.
 // - Abfrage beim Anzeigen, höchstens alle DueMinutes Minuten, Zeitlimit
 //   FetchTimeoutMs; ohne Netz bleibt der letzte Stand („Stand vom …“).
 // - Aktives Issue: mit „Beginnen“ gemerkt (Branch oder nur gemerkt); sonst
@@ -15,6 +20,7 @@
 //   (#592), damit die Seite sofort den letzten Stand zeigt:
 //     "issues": {"provider": "github", "server": "https://github.com",
 //                "project": "owner/repo", "query": "",
+//                "selected": "Mir zugewiesen", "counts": {"Mir zugewiesen": 3},
 //                "attempt": "…", "error": "network", "at": "…",
 //                "items": [{"key": "#753", "number": 753, "title": "…",
 //                           "labels": ["plugin"], "state": "", "priority": "",
@@ -34,11 +40,14 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Vcs.Contract;
+  Atlas.Core.Tracker.Projects,
+  Atlas.Core.Tracker.Queries,
+  Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.BranchPlan;
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>welcomePage.issues.start: Branch anlegen oder nur merken.</summary>
+  /// <summary>issues.start: Branch anlegen oder nur merken.</summary>
   TAtlasIssueStart = (Branch, Remember);
   /// <summary>Was der Bereich zeigt.</summary>
   TAtlasIssuesStatus = (
@@ -80,6 +89,12 @@ type
     function Active: Boolean;
   end;
 
+  /// <summary>Trefferzahl der letzten Abfrage mit diesem Namen (#1262).</summary>
+  TAtlasIssuesQueryCount = record
+    Name: string;
+    Count: Integer;
+  end;
+
   /// <summary>Abschnitt "issues" der Zusammenfassung.</summary>
   TAtlasIssuesState = record
     Provider: string;
@@ -99,13 +114,19 @@ type
     Hook: string;
     /// <summary>Verwaltungsordner von Git (für die Präfix-Datei des Hooks); '' ohne Git oder unbekannt.</summary>
     GitDir: string;
+    /// <summary>Name der gewählten Abfrage (#1262); '' = erste passende.</summary>
+    Selected: string;
+    Counts: TArray<TAtlasIssuesQueryCount>;
     class function Empty: TAtlasIssuesState; static;
     /// <summary>Die Liste gehört zu ATarget (Anbieter, Server, Projekt und Abfrage gleich).</summary>
     function Matches(const ATarget: TAtlasTrackerTarget): Boolean;
     function Find(const AKey: string; out AIssue: TAtlasTrackerIssue): Boolean;
+    /// <summary>Trefferzahl der letzten Abfrage AName; -1 = noch keine.</summary>
+    function CountOf(const AName: string): Integer;
+    procedure SetCount(const AName: string; ACount: Integer);
   end;
 
-  /// <summary>Einstellungen welcomePage.issues.* für „Beginnen“.</summary>
+  /// <summary>Einstellungen issues.* für „Beginnen“.</summary>
   TAtlasIssuesOptions = record
     Start: TAtlasIssueStart;
     /// <summary>'' = je Versionsverwaltung (Git feature/{kennung}-{kurztitel}, SVN {kennung}-{kurztitel}).</summary>
@@ -114,6 +135,15 @@ type
     BranchBase: string;
     /// <summary>'' = aus; nicht gekürzt.</summary>
     CommitPattern: string;
+    /// <summary>issues.preview (#1264): Klick auf Zeile bzw. Kennung zeigt das Issue in „Atlas-Issue“,
+    /// Strg+Klick öffnet den Browser. Create setzt False.</summary>
+    Preview: Boolean;
+    /// <summary>Hauptbranch des Projekts (#1286, vcs.projects bzw. .atlas); '' = raten. BranchBase hat Vorrang.
+    /// Setzt der Aufrufer je Projekt.</summary>
+    MainBranch: string;
+    /// <summary>SVN-Optionen (#1290, vcs.branch.svn.*): Ort, Quelle, Danach und Nachricht; Create setzt die
+    /// Vorgaben, der Aufrufer die Einstellungen und den Projektnamen.</summary>
+    Svn: TAtlasVcsSvnBranchOptions;
     class function Create(AStart: TAtlasIssueStart; const ABranchPattern, ABranchBase,
       ACommitPattern: string): TAtlasIssuesOptions; static;
   end;
@@ -128,8 +158,11 @@ type
     Bases: TArray<string>;
     /// <summary>Commit-Präfix; '' = aus.</summary>
     Prefix: string;
-    /// <summary>Nachricht für svn copy.</summary>
+    /// <summary>Nachricht für svn copy (#1290: aus vcs.branch.svn.message).</summary>
     Message: string;
+    /// <summary>SVN-Optionen mit Kennung und Titel des Issues (#1290); BranchExists, SwitchBranch und das Anlegen
+    /// ohne Dialog nutzen denselben Ort.</summary>
+    Svn: TAtlasVcsSvnBranchOptions;
     /// <summary>False: kein gültiger Branch-Name aus dem Muster.</summary>
     Valid: Boolean;
   end;
@@ -145,6 +178,27 @@ type
     /// <summary>Git: Hook-Ordner und Verwaltungsordner (für Hook und Präfix-Datei); sonst ''.</summary>
     Hooks: string;
     GitDir: string;
+    /// <summary>Beim Anlegen (#1288): die Schritte aus TAtlasVcsBranchPlan und wie weit sie kamen; sonst leer.
+    /// </summary>
+    Steps: TArray<TAtlasVcsBranchStep>;
+    Run: TAtlasVcsBranchRun;
+    /// <summary>SVN „frisch auschecken“ (#1290): neuer Ordner (für das Angebot, die Gruppe dort zu öffnen);
+    /// sonst ''.</summary>
+    CheckoutFolder: string;
+    /// <summary>Angelegt: Wurzel der bisherigen Arbeitskopie (SVN „frisch auschecken“ #1290, Git worktree #1289).
+    /// </summary>
+    WorkingRoot: string;
+    /// <summary>SVN-Externals (#1291): Der Branch hat Externals festgeschrieben bzw. mitverzweigt und die
+    /// Arbeitskopie wurde umgeschaltet; danach den Index neu aufbauen.</summary>
+    IndexRebuild: Boolean;
+    /// <summary>Git (#1289): angelegt, aber der Push danach scheiterte (Reason nennt den Grund); der lokale
+    /// Branch bleibt, Outcome ist Started.</summary>
+    PushFailed: Boolean;
+    /// <summary>Git: Ordner des worktree, in dem der Branch angelegt wurde ('' = in dieser Arbeitskopie; bei
+    /// FolderTaken der belegte Ordner).</summary>
+    Folder: string;
+    /// <summary>Den Ordner für den worktree gab es schon: nichts angelegt (Outcome Failed).</summary>
+    FolderTaken: Boolean;
     function Succeeded: Boolean;
   end;
 
@@ -161,6 +215,21 @@ type
     Project: string;
     ProjectName: string;
     Tracker: string;
+    /// <summary>Name der Verbindung (#1261): aus der Zuordnung bzw. der Projektname bei .atlas; '' ohne.</summary>
+    Connection: string;
+    /// <summary>Ohne Tracker: „zuordnen …“ anbieten (#1261).</summary>
+    CanAssign: Boolean;
+    /// <summary>Tracker-Projekt (YouTrack-ID, GitHub owner/repo) für die Fußzeile (#1262).</summary>
+    TrackerProject: string;
+    /// <summary>Passende Abfragen (#1262), die gewählte (Index, -1 ohne) und je Abfrage die Trefferzahl der
+    /// letzten Abfrage (-1 = noch keine).</summary>
+    Queries: TArray<TAtlasTrackerQuery>;
+    QueryIndex: Integer;
+    QueryCounts: TArray<Integer>;
+    /// <summary>Gesendete Abfrage (bei der Vorgabe die des Anbieters) für die Fußzeile.</summary>
+    QueryText: string;
+    /// <summary>Klappliste zeigen (issues.queryPicker).</summary>
+    Picker: Boolean;
     Querying: Boolean;
     Notice: string;
     /// <summary>Hinweis ist ein Fehler (rot).</summary>
@@ -169,11 +238,23 @@ type
     Starting: Boolean;
     Options: TAtlasIssuesOptions;
     VcsKind: TAtlasVcsKind;
+    /// <summary>Filter aus der Sprint-Kachel (#1277), z. B. „„Sprint 12“, meine offen“: Items sind dann die Issues
+    /// des Filters; '' ohne.</summary>
+    Filter: string;
+    /// <summary>Kennungen mit neuen Änderungen seit dem letzten Öffnen (#1271, Punkt an der Zeile).</summary>
+    Unseen: TArray<string>;
     /// <summary>Offene Issues der Liste, z. B. für „ATL-123 · 3 offen“.</summary>
     function OpenCount: Integer;
+    /// <summary>AKey trägt einen Punkt (ohne Groß-/Kleinschreibung).</summary>
+    function IsUnseen(const AKey: string): Boolean;
   end;
 
   TAtlasWelcomeIssues = class
+  private
+    /// <summary>Gemeinsamer Teil von Execute; AUseRequest False: Vorgabe aus TAtlasVcsBranchPlan.</summary>
+    class function Start(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan; AUseRequest: Boolean;
+      const ARequest: TAtlasVcsBranchRequest; const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
+      static;
   public const
     SectionName = 'issues';
     /// <summary>Höchstens so oft wird abgefragt.</summary>
@@ -188,6 +269,13 @@ type
     StatusId = 'atlas.issue';
     /// <summary>Nach Server, Version, Index und Datei.</summary>
     StatusOrder = 30;
+    /// <summary>Fortschritt der Checkliste des aktuellen Issues im Statusfeld (#1273): „ATL-131 · 3/5“.</summary>
+    ChecklistStatusId = 'atlas.issue.checklist';
+    /// <summary>Direkt hinter dem aktuellen Issue.</summary>
+    ChecklistStatusOrder = 31;
+    /// <summary>Zeile „An ATL-123 anhängen …“ direkt unter dem aktuellen Issue (#1276).</summary>
+    AttachStatusId = 'atlas.issue.attach';
+    AttachStatusOrder = 31;
   public
     class function StartName(AStart: TAtlasIssueStart): string; static;
     /// <summary>Versionsverwaltung aus der Projekt-Zusammenfassung ("git", "svn", sonst None).</summary>
@@ -196,7 +284,11 @@ type
     class function StartOf(const AText: string): TAtlasIssueStart; static;
     /// <summary>Ziel aus .atlas und den Einstellungen; ASettingTracker '' = Anbieter aus .atlas.</summary>
     class function TargetFor(const ATeamProvider, ATeamUrl, ATeamProject, ASettingTracker,
-      ASettingQuery: string): TAtlasTrackerTarget; static;
+      ASettingQuery: string): TAtlasTrackerTarget; overload; static;
+    /// <summary>Ziel aus der Auflösung (#1261): .atlas wie oben (ASettingTracker ersetzt den Anbieter), sonst
+    /// Anbieter und Adresse der Verbindung mit dem Tracker-Projekt der Zuordnung; ohne Treffer leer.</summary>
+    class function TargetFor(const AResolution: TAtlasTrackerResolution; const ASettingTracker,
+      ASettingQuery: string): TAtlasTrackerTarget; overload; static;
     /// <summary>Abfrage fällig: anderes Ziel, noch keine oder letzte vor mindestens DueMinutes; AForce immer.
     /// </summary>
     class function Due(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget; ANowUtc: TDateTime;
@@ -211,14 +303,27 @@ type
       ABranch: string): TAtlasActiveIssue; static;
     class function View(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
       const ABranch: string): TAtlasIssuesView; static;
+    /// <summary>Je Abfrage aus AQueries die Trefferzahl der letzten Abfrage (-1 = noch keine), für die Klappliste
+    /// (#1262).</summary>
+    class function QueryCounts(const AState: TAtlasIssuesState;
+      const AQueries: TArray<TAtlasTrackerQuery>): TArray<Integer>; static;
     /// <summary>Plan für „Beginnen“ auf AIssue. Ohne Git oder SVN wird nur gemerkt.</summary>
     class function PlanStart(AKind: TAtlasVcsKind; const AOptions: TAtlasIssuesOptions;
       const AIssue: TAtlasTrackerIssue): TAtlasIssueStartPlan; static;
-    /// <summary>„Beginnen“ ausführen (aus einem Hintergrund-Thread): vorhandenen Branch auschecken, sonst von der
-    /// ersten passenden Basis anlegen und auschecken; Remember ändert nichts. Git liefert zusätzlich die Ordner
-    /// für Hook und Präfix-Datei. AVcs nil = nur merken.</summary>
+    /// <summary>„Beginnen“ ausführen (aus einem Hintergrund-Thread): vorhandenen Branch auschecken, sonst mit
+    /// der Vorgabe aus TAtlasVcsBranchPlan anlegen (erster vorhandener Kandidat aus APlan.Bases) und auschecken;
+    /// Remember ändert nichts. Git liefert zusätzlich die Ordner für Hook und Präfix-Datei. AVcs nil = nur
+    /// merken.</summary>
     class function Execute(const AVcs: IAtlasVersionControl;
-      const APlan: TAtlasIssueStartPlan): TAtlasIssueStartResult; static;
+      const APlan: TAtlasIssueStartPlan): TAtlasIssueStartResult; overload; static;
+    /// <summary>Wie oben mit der Anfrage aus dem Dialog „Branch anlegen“ (#1288): Name und Basis aus ARequest.
+    /// </summary>
+    class function Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+      const ARequest: TAtlasVcsBranchRequest): TAtlasIssueStartResult; overload; static;
+    /// <summary>Wie oben; AProgress vor jedem Schritt (im Hintergrund-Thread).</summary>
+    class function Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+      const ARequest: TAtlasVcsBranchRequest; const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
+      overload; static;
     /// <summary>Anzahl lokaler Änderungen, die ein Wechsel des Branchs betrifft (ohne unversionierte Dateien).
     /// </summary>
     class function LocalChanges(const AChanges: TArray<TAtlasVcsChange>): Integer; static;
@@ -270,7 +375,36 @@ class function TAtlasIssuesState.Empty: TAtlasIssuesState;
 begin
   Result := Default(TAtlasIssuesState);
   Result.Items := nil;
+  Result.Counts := nil;
   Result.Active := TAtlasActiveIssue.Empty;
+end;
+
+function TAtlasIssuesState.CountOf(const AName: string): Integer;
+var
+  mCount: TAtlasIssuesQueryCount;
+begin
+  Result := -1;
+  for mCount in Counts do
+    if SameText(mCount.Name, AName) then
+      Exit(mCount.Count);
+end;
+
+procedure TAtlasIssuesState.SetCount(const AName: string; ACount: Integer);
+var
+  mIndex: Integer;
+  mCount: TAtlasIssuesQueryCount;
+begin
+  if Trim(AName) = '' then
+    Exit;
+  for mIndex := 0 to High(Counts) do
+    if SameText(Counts[mIndex].Name, AName) then
+    begin
+      Counts[mIndex].Count := ACount;
+      Exit;
+    end;
+  mCount.Name := Trim(AName);
+  mCount.Count := ACount;
+  Counts := Counts + [mCount];
 end;
 
 function TAtlasIssuesState.Matches(const ATarget: TAtlasTrackerTarget): Boolean;
@@ -300,6 +434,18 @@ begin
   Result := Length(Items);
 end;
 
+function TAtlasIssuesView.IsUnseen(const AKey: string): Boolean;
+var
+  mKey: string;
+begin
+  Result := False;
+  if AKey = '' then
+    Exit;
+  for mKey in Unseen do
+    if SameText(mKey, AKey) then
+      Exit(True);
+end;
+
 { TAtlasIssueStartResult }
 
 function TAtlasIssueStartResult.Succeeded: Boolean;
@@ -317,6 +463,9 @@ begin
   Result.BranchPattern := Trim(ABranchPattern);
   Result.BranchBase := Trim(ABranchBase);
   Result.CommitPattern := ACommitPattern;
+  Result.Preview := False;
+  Result.MainBranch := '';
+  Result.Svn := TAtlasVcsSvnBranchOptions.Default;
 end;
 
 { TAtlasWelcomeIssues }
@@ -355,6 +504,22 @@ begin
   if (Provider <> TAtlasTrackerTarget.GitHub) and (Provider <> TAtlasTrackerTarget.YouTrack) then
     Provider := '';
   Result := TAtlasTrackerTarget.Create(Provider, ATeamUrl, ATeamProject, ASettingQuery);
+end;
+
+class function TAtlasWelcomeIssues.TargetFor(const AResolution: TAtlasTrackerResolution; const ASettingTracker,
+  ASettingQuery: string): TAtlasTrackerTarget;
+begin
+  case AResolution.Match of
+    TAtlasTrackerMatch.None:
+      Result := TAtlasTrackerTarget.Create('', '', '', '');
+    TAtlasTrackerMatch.TeamFile:
+      Result := TargetFor(AResolution.Connection.Provider, AResolution.Connection.Url, AResolution.Project,
+        ASettingTracker, ASettingQuery);
+  else
+    // Persönliche Zuordnung: Die Verbindung nennt ihren Anbieter selbst.
+    Result := TargetFor(AResolution.Connection.Provider, AResolution.Connection.Url, AResolution.Project, '',
+      ASettingQuery);
+  end;
 end;
 
 class function TAtlasWelcomeIssues.Due(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
@@ -432,6 +597,7 @@ class function TAtlasWelcomeIssues.View(const AState: TAtlasIssuesState; const A
 begin
   Result := Default(TAtlasIssuesView);
   Result.Items := nil;
+  Result.Unseen := nil;
   Result.Active := Effective(AState, ATarget.Provider, ATarget.Project, ABranch);
   if not ATarget.Configured then
   begin
@@ -452,6 +618,16 @@ begin
     Result.Status := TAtlasIssuesStatus.Stale
   else
     Result.Status := TAtlasIssuesStatus.Failed;
+end;
+
+class function TAtlasWelcomeIssues.QueryCounts(const AState: TAtlasIssuesState;
+  const AQueries: TArray<TAtlasTrackerQuery>): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AQueries));
+  for mIndex := 0 to High(AQueries) do
+    Result[mIndex] := AState.CountOf(AQueries[mIndex].Name);
 end;
 
 class function TAtlasWelcomeIssues.PlanStart(AKind: TAtlasVcsKind; const AOptions: TAtlasIssuesOptions;
@@ -479,74 +655,134 @@ begin
   end;
   Result.Branch := TAtlasTrackerNaming.BranchName(Pattern, AIssue);
   Result.Valid := Result.Branch <> '';
-  if AOptions.BranchBase <> '' then
-    Result.Bases := [AOptions.BranchBase]
-  else if AKind = TAtlasVcsKind.Svn then
-    Result.Bases := [TAtlasTrackerNaming.SvnBase]
-  else
-    Result.Bases := [TAtlasTrackerNaming.GitBase, TAtlasTrackerNaming.GitBaseFallback];
-  Result.Message := Trim(AIssue.Key + ' ' + AIssue.Title);
+  Result.Bases := TAtlasTrackerNaming.Bases(AKind = TAtlasVcsKind.Svn, AOptions.BranchBase, AOptions.MainBranch);
+  Result.Svn := AOptions.Svn;
+  Result.Svn.Key := Trim(AIssue.Key);
+  Result.Svn.Title := Trim(AIssue.Title);
+  Result.Message := TAtlasVcsBranchPlan.SvnMessage(Result.Svn, Result.Branch);
 end;
 
 class function TAtlasWelcomeIssues.Execute(const AVcs: IAtlasVersionControl;
   const APlan: TAtlasIssueStartPlan): TAtlasIssueStartResult;
+begin
+  Result := Start(AVcs, APlan, False, Default(TAtlasVcsBranchRequest), nil);
+end;
+
+class function TAtlasWelcomeIssues.Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+  const ARequest: TAtlasVcsBranchRequest): TAtlasIssueStartResult;
+begin
+  Result := Start(AVcs, APlan, True, ARequest, nil);
+end;
+
+class function TAtlasWelcomeIssues.Execute(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+  const ARequest: TAtlasVcsBranchRequest; const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
+begin
+  Result := Start(AVcs, APlan, True, ARequest, AProgress);
+end;
+
+class function TAtlasWelcomeIssues.Start(const AVcs: IAtlasVersionControl; const APlan: TAtlasIssueStartPlan;
+  AUseRequest: Boolean; const ARequest: TAtlasVcsBranchRequest;
+  const AProgress: TAtlasVcsBranchProgress): TAtlasIssueStartResult;
 var
-  Branching: IAtlasVcsBranching;
-  Exists: Boolean;
-  Base, Hooks, GitDir: string;
+  mBranching: IAtlasVcsBranching;
+  mExists: Boolean;
+  mHooks, mGitDir: string;
+  mFacts: TAtlasVcsBranchFacts;
+  mRequest: TAtlasVcsBranchRequest;
+  mSvn: TAtlasVcsSvnBranchOptions;
 begin
   Result := Default(TAtlasIssueStartResult);
   Result.Reason := TAtlasVcsOutcome.Ok;
-  Branching := nil;
+  Result.Steps := nil;
+  Result.Run.Outcome := TAtlasVcsOutcome.Ok;
+  Result.Run.Done := 0;
+  Result.Run.Failed := -1;
+  mBranching := nil;
   if AVcs <> nil then
-    Supports(AVcs, IAtlasVcsBranching, Branching);
+    Supports(AVcs, IAtlasVcsBranching, mBranching);
   // Git: Ordner für Hook und Präfix-Datei, auch beim bloßen Merken (das Präfix gilt dann ebenso).
-  if (Branching <> nil) and (AVcs.Kind = TAtlasVcsKind.Git) and
-    (Branching.HookFolders(Hooks, GitDir) = TAtlasVcsOutcome.Ok) then
+  if (mBranching <> nil) and (AVcs.Kind = TAtlasVcsKind.Git) and
+    (mBranching.HookFolders(mHooks, mGitDir) = TAtlasVcsOutcome.Ok) then
   begin
-    Result.Hooks := Hooks;
-    Result.GitDir := GitDir;
+    Result.Hooks := mHooks;
+    Result.GitDir := mGitDir;
   end;
   if APlan.Mode = TAtlasIssueStart.Remember then
   begin
     Result.Outcome := TAtlasIssueStartOutcome.Remembered;
     Exit;
   end;
-  if not APlan.Valid or (APlan.Branch = '') then
+  mRequest := ARequest;
+  if not AUseRequest then
+    mRequest.Name := APlan.Branch;
+  if not APlan.Valid or not TAtlasVcsBranchPlan.SafeName(mRequest.Name) then
   begin
     Result.Outcome := TAtlasIssueStartOutcome.InvalidName;
     Exit;
   end;
-  Result.Branch := APlan.Branch;
+  Result.Branch := mRequest.Name;
   Result.Outcome := TAtlasIssueStartOutcome.Failed;
-  if Branching = nil then
+  if mBranching = nil then
   begin
     Result.Reason := TAtlasVcsOutcome.NoWorkingCopy;
     Exit;
   end;
-  Result.Reason := Branching.BranchExists(APlan.Branch, Exists);
+  // SVN sucht und schaltet am Ort aus den Optionen (#1290), an dem auch angelegt wird; mit Dialog am Ort der
+  // Anfrage.
+  mSvn := APlan.Svn;
+  if AUseRequest and (mRequest.Kind = TAtlasVcsKind.Svn) and (mRequest.Location <> '') then
+    mSvn.Location := '^/' + mRequest.Location;
+  Result.Reason := mBranching.BranchExists(mRequest.Name, mSvn, mExists);
   if Result.Reason <> TAtlasVcsOutcome.Ok then
     Exit;
-  if Exists then
+  if mExists then
   begin
-    Result.Reason := Branching.SwitchBranch(APlan.Branch);
+    Result.Reason := mBranching.SwitchBranch(mRequest.Name, mSvn);
     if Result.Reason = TAtlasVcsOutcome.Ok then
       Result.Outcome := TAtlasIssueStartOutcome.Switched;
     Exit;
   end;
-  Result.Reason := TAtlasVcsOutcome.Failed;
-  for Base in APlan.Bases do
+  // Ohne Dialog die Vorgabe aus dem Plan (#1288): erster Kandidat, den es gibt; sonst Fehler.
+  if not AUseRequest then
   begin
-    Result.Reason := Branching.CreateBranch(APlan.Branch, Base, APlan.Message);
-    if Result.Reason = TAtlasVcsOutcome.Ok then
+    mFacts := TAtlasVcsBranchPlan.Inspect(AVcs, APlan.Bases);
+    Result.Reason := mFacts.Outcome;
+    if Result.Reason <> TAtlasVcsOutcome.Ok then
+      Exit;
+    if not TAtlasVcsBranchPlan.DefaultRequest(mFacts, APlan.Branch, APlan.Message, APlan.Svn, mRequest) then
     begin
-      Result.Base := Base;
-      Result.Outcome := TAtlasIssueStartOutcome.Started;
+      Result.Reason := TAtlasVcsOutcome.Failed;
       Exit;
     end;
-    // Nur ein Fehler von git/svn selbst (z. B. Basis fehlt) führt zur nächsten Basis.
-    if Result.Reason <> TAtlasVcsOutcome.Failed then
-      Exit;
+  end;
+  // Eigener Ordner (#1289): gibt es ihn schon, nichts anlegen.
+  if (mRequest.WorktreeFolder <> '') and DirectoryExists(mRequest.WorktreeFolder) then
+  begin
+    Result.FolderTaken := True;
+    Result.Folder := mRequest.WorktreeFolder;
+    Result.Reason := TAtlasVcsOutcome.Failed;
+    Exit;
+  end;
+  Result.Steps := TAtlasVcsBranchPlan.Steps(mRequest);
+  if Length(Result.Steps) = 0 then
+  begin
+    Result.Reason := TAtlasVcsOutcome.Failed;
+    Exit;
+  end;
+  // Mit der Anfrage: Der Arbeitsordner für das Umschreiben der Externals (#1291) wird davor und danach gelöscht.
+  Result.Run := TAtlasVcsBranchPlan.Execute(mBranching, mRequest, Result.Steps, AProgress);
+  Result.Reason := Result.Run.Outcome;
+  // Scheitert nur der Push danach, ist der Branch trotzdem angelegt und ausgecheckt.
+  if Result.Run.Succeeded or TAtlasVcsBranchPlan.OnlyPushFailed(Result.Steps, Result.Run) then
+  begin
+    Result.Base := TAtlasVcsBranchPlan.BaseName(mRequest.Kind, mRequest.Base);
+    Result.Outcome := TAtlasIssueStartOutcome.Started;
+    Result.IndexRebuild := TAtlasVcsBranchPlan.ChangesExternals(mRequest);
+    if (mRequest.Kind = TAtlasVcsKind.Svn) and (mRequest.After = TAtlasVcsSvnAfter.Checkout) then
+      Result.CheckoutFolder := mRequest.CheckoutFolder;
+    Result.WorkingRoot := AVcs.WorkingCopy.Root;
+    Result.PushFailed := not Result.Run.Succeeded;
+    Result.Folder := mRequest.WorktreeFolder;
   end;
 end;
 
@@ -698,7 +934,8 @@ end;
 function SectionJson(const AState: TAtlasIssuesState): TJSONObject;
 var
   Items, Labels: TJSONArray;
-  Entry, Active: TJSONObject;
+  Entry, Active, Counts: TJSONObject;
+  Count: TAtlasIssuesQueryCount;
   Item: TAtlasTrackerIssue;
   LabelName: string;
 begin
@@ -751,12 +988,21 @@ begin
   AddText(Result, 'endedBranch', AState.EndedBranch);
   AddText(Result, 'hook', AState.Hook);
   AddText(Result, 'gitDir', AState.GitDir);
+  AddText(Result, 'selected', AState.Selected);
+  if Length(AState.Counts) > 0 then
+  begin
+    Counts := TJSONObject.Create;
+    Result.AddPair('counts', Counts);
+    for Count in AState.Counts do
+      Counts.AddPair(Count.Name, TJSONNumber.Create(Count.Count));
+  end;
 end;
 
 function StateOf(ASection: TJSONObject; out AState: TAtlasIssuesState): Boolean;
 var
   Items, Labels, Value, LabelValue: TJSONValue;
-  Entry, Active: TJSONObject;
+  Entry, Active, Counts: TJSONObject;
+  Index: Integer;
   Item: TAtlasTrackerIssue;
 begin
   AState := TAtlasIssuesState.Empty;
@@ -808,6 +1054,12 @@ begin
   AState.EndedBranch := TextIn(ASection, 'endedBranch');
   AState.Hook := TextIn(ASection, 'hook');
   AState.GitDir := TextIn(ASection, 'gitDir');
+  AState.Selected := TextIn(ASection, 'selected');
+  Counts := ObjectIn(ASection, 'counts');
+  if Counts <> nil then
+    for Index := 0 to Counts.Count - 1 do
+      if Counts.Pairs[Index].JsonValue is TJSONNumber then
+        AState.SetCount(Counts.Pairs[Index].JsonString.Value, TJSONNumber(Counts.Pairs[Index].JsonValue).AsInt);
 end;
 
 class function TAtlasWelcomeIssues.ToJson(const AState: TAtlasIssuesState): string;

@@ -22,6 +22,7 @@
 //             "job": "kasse", "multibranch": true},
 //      "tracker": {"provider": "youtrack",                              #765
 //                  "url": "https://firma.youtrack.cloud", "project": "ATL"},
+//      "vcs": {"provider": "svn", "mainBranch": "trunk"},              #1286
 //      "hidden": [{"setting": "BlockEndLabels", "file": "Source/Kunde.pas", #628
 //                  "anchor": "TKunde.Speichern"}],
 //      "debugDisplayRules": {                                            #854
@@ -118,6 +119,16 @@ type
     function Configured: Boolean;
   end;
 
+  /// <summary>Versionsverwaltung des Projekts (#1286): Art und Hauptbranch für alle im Team; Vorrang vor der
+  /// persönlichen Zeile in vcs.projects.</summary>
+  TAtlasTeamVcs = record
+    /// <summary>"auto", "git", "svn" oder "off"; '' = nicht gesetzt.</summary>
+    Provider: string;
+    /// <summary>Hauptbranch, z. B. "develop" bzw. SVN "trunk"; '' = nicht gesetzt.</summary>
+    MainBranch: string;
+    function Configured: Boolean;
+  end;
+
   /// <summary>Wertdarstellung beim Debuggen für einen Typ (#854, debug.displayRules.project), etwa für fremde
   /// Klassen wie TFDConnection.</summary>
   TAtlasTeamDisplayRule = record
@@ -158,6 +169,7 @@ type
     StartProfiles: TArray<TAtlasStartProfile>;
     Ci: TAtlasTeamCi;
     Tracker: TAtlasTeamTracker;
+    Vcs: TAtlasTeamVcs;
     /// <summary>An einer Stelle oder in einer Datei ausgeblendete Elemente (#628).</summary>
     Hidden: TArray<TAtlasHiddenPlace>;
     /// <summary>Wertdarstellungen beim Debuggen (#854).</summary>
@@ -316,6 +328,13 @@ begin
   Result := (Provider <> '') and (Url <> '');
 end;
 
+{ TAtlasTeamVcs }
+
+function TAtlasTeamVcs.Configured: Boolean;
+begin
+  Result := (Provider <> '') or (MainBranch <> '');
+end;
+
 { TAtlasTeamSettings }
 
 function TAtlasTeamSettings.Exists: Boolean;
@@ -368,6 +387,7 @@ type
     procedure ReadStartProfiles(AValue: TJSONValue);
     procedure ReadCi(AValue: TJSONValue);
     procedure ReadTracker(AValue: TJSONValue);
+    procedure ReadVcs(AValue: TJSONValue);
     procedure ReadHidden(AValue: TJSONValue);
     procedure ReadDisplayRules(AValue: TJSONValue);
     procedure ReadVersion(AValue: TJSONValue);
@@ -913,6 +933,55 @@ begin
   FTeam.Tracker := Tracker;
 end;
 
+procedure TTeamReader.ReadVcs(AValue: TJSONValue);
+var
+  mIndex: Integer;
+  mKey, mPath, mText: string;
+  mValue: TJSONValue;
+  mVcs: TAtlasTeamVcs;
+begin
+  if not (AValue is TJSONObject) then
+  begin
+    Report(TAtlasTeamIssueKind.WrongType, 'vcs');
+    Exit;
+  end;
+  mVcs := Default(TAtlasTeamVcs);
+  for mIndex := 0 to TJSONObject(AValue).Count - 1 do
+  begin
+    mKey := TJSONObject(AValue).Pairs[mIndex].JsonString.Value;
+    mValue := TJSONObject(AValue).Pairs[mIndex].JsonValue;
+    mPath := 'vcs.' + mKey;
+    if IsCredential(mKey, mPath) then
+      Continue;
+    if mKey = 'provider' then
+    begin
+      if ReadString(mValue, mPath, mText) then
+      begin
+        mText := LowerCase(Trim(mText));
+        if (mText = 'auto') or (mText = 'git') or (mText = 'svn') or (mText = 'off') then
+          mVcs.Provider := mText
+        else
+          Report(TAtlasTeamIssueKind.InvalidValue, mPath);
+      end;
+    end
+    else if mKey = 'mainBranch' then
+    begin
+      // Leerzeichen und Steuerzeichen gibt es in keinem Branch-Namen; ein solcher Wert gilt nicht.
+      if ReadString(mValue, mPath, mText) then
+        if (Trim(mText) = '') or (Trim(mText).IndexOfAny([' ', #9, #10, #13]) >= 0) then
+          Report(TAtlasTeamIssueKind.InvalidValue, mPath)
+        else
+          mVcs.MainBranch := Trim(mText);
+    end
+    else
+    begin
+      Report(TAtlasTeamIssueKind.UnknownKey, mPath);
+      ScanCredentials(mValue, mPath);
+    end;
+  end;
+  FTeam.Vcs := mVcs;
+end;
+
 procedure TTeamReader.ReadVersion(AValue: TJSONValue);
 var
   Version: Integer;
@@ -971,6 +1040,8 @@ begin
       ReadCi(Value)
     else if Key = 'tracker' then
       ReadTracker(Value)
+    else if Key = 'vcs' then
+      ReadVcs(Value)
     else if Key = TAtlasHiddenPlaces.Key then
       ReadHidden(Value)
     else if Key = TAtlasTeamFile.DisplayRulesKey then
@@ -1223,6 +1294,17 @@ begin
     if ATeam.Tracker.Project <> '' then
       Text := Text + ', ' + ATeam.Tracker.Project;
     Add('tracker', Text);
+  end;
+  if ATeam.Vcs.Configured then
+  begin
+    Text := ATeam.Vcs.Provider;
+    if ATeam.Vcs.MainBranch <> '' then
+    begin
+      if Text <> '' then
+        Text := Text + ', ';
+      Text := Text + ATeam.Vcs.MainBranch;
+    end;
+    Add('vcs', Text);
   end;
   if Length(ATeam.Hidden) > 0 then
   begin

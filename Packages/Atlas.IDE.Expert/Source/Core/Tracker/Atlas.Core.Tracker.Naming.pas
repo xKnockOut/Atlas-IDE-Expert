@@ -4,11 +4,14 @@
 // - Kurztitel: die ersten drei Wörter des Titels, klein, Umlaute ersetzt
 //   (ä → ae, ß → ss), Akzente entfernt, mit Bindestrichen. Eine Vorsilbe aus
 //   einem Wort mit Doppelpunkt („Plugin: …“) entfällt, wie im Mockup.
-// - Branch-Name aus welcomePage.issues.branchPattern mit den Platzhaltern
+// - Branch-Name aus issues.branchPattern mit den Platzhaltern
 //   {kennung} (753 bzw. ATL-123; das „#“ von GitHub entfällt), {nummer} und
 //   {kurztitel}; danach nach den Regeln von git check-ref-format bereinigt,
 //   damit der Name für Git und SVN gültig ist.
-// - Commit-Präfix aus welcomePage.issues.commitPattern ({kennung} mit „#“).
+// - Commit-Präfix aus issues.commitPattern ({kennung} mit „#“).
+// - Basen für „Beginnen“ (#1286): issues.branchBase, sonst der Hauptbranch des
+//   Projekts (vcs.projects bzw. Abschnitt vcs der .atlas), sonst geraten
+//   (Git main, dann master; SVN trunk).
 // - Kennung aus einem Branch-Namen (Branch → Ticket): GitHub die Nummer als
 //   eigenes Stück („feature/753-x“ → #753), YouTrack „ATL-123“.
 
@@ -21,11 +24,11 @@ uses
 type
   TAtlasTrackerNaming = class
   public const
-    /// <summary>Vorgabe für welcomePage.issues.branchPattern unter Git.</summary>
+    /// <summary>Vorgabe für issues.branchPattern unter Git.</summary>
     GitBranchPattern = 'feature/{kennung}-{kurztitel}';
     /// <summary>Vorgabe unter SVN: der Name unter ^/branches/.</summary>
     SvnBranchPattern = '{kennung}-{kurztitel}';
-    /// <summary>Vorgabe für welcomePage.issues.commitPattern.</summary>
+    /// <summary>Vorgabe für issues.commitPattern.</summary>
     CommitPattern = '{kennung} ';
     GitBase = 'main';
     /// <summary>Zweiter Versuch unter Git, wenn es main nicht gibt.</summary>
@@ -53,6 +56,9 @@ type
     /// "@{", "//"; kein "/", "-" oder "." am Anfang, kein "/" oder "." am Ende, kein ".lock" am Ende eines Stücks.
     /// </summary>
     class function ValidBranchName(const AName: string): Boolean; static;
+    /// <summary>Basen der Reihe nach: ABranchBase (issues.branchBase, ausdrücklich), sonst AMainBranch (Hauptbranch
+    /// des Projekts, #1286), sonst geraten: ASvn trunk, Git main und master.</summary>
+    class function Bases(ASvn: Boolean; const ABranchBase, AMainBranch: string): TArray<string>; static;
     /// <summary>Kennung des Issues, an dem der Branch arbeitet; '' ohne. AProvider "github": Nummer als eigenes
     /// Stück (nach Anfang, "/", "-", "_" oder "#", vor Ende, "-" oder "_") → "#753". "youtrack": "&lt;Projekt&gt;-
     /// &lt;Nummer&gt;" (AProject leer: jedes Kürzel aus Buchstaben und Ziffern).</summary>
@@ -71,6 +77,18 @@ const
   FoldingMore: array[0..27] of string = (
     'û', 'u', 'ý', 'y', 'ÿ', 'y', 'À', 'a', 'Á', 'a', 'Â', 'a', 'Ç', 'c', 'È', 'e',
     'É', 'e', 'Ê', 'e', 'Î', 'i', 'Ñ', 'n', 'Ó', 'o', 'Ô', 'o');
+
+class function TAtlasTrackerNaming.Bases(ASvn: Boolean; const ABranchBase, AMainBranch: string): TArray<string>;
+begin
+  if Trim(ABranchBase) <> '' then
+    Result := TArray<string>.Create(Trim(ABranchBase))
+  else if Trim(AMainBranch) <> '' then
+    Result := TArray<string>.Create(Trim(AMainBranch))
+  else if ASvn then
+    Result := TArray<string>.Create(SvnBase)
+  else
+    Result := TArray<string>.Create(GitBase, GitBaseFallback);
+end;
 
 function IsAsciiAlnum(AChar: Char): Boolean;
 begin

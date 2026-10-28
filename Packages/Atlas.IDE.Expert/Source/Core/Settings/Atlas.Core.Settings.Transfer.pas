@@ -214,7 +214,8 @@ uses
   Atlas.Text.Checkin,
   Atlas.Core.Product.Version,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Core.Settings.QueryMigration;
 
 const
   /// <summary>Benutzerordner für Pfadmakros, der längste zuerst.</summary>
@@ -471,12 +472,26 @@ begin
 end;
 
 function PluginJson(const AStore: IAtlasSettingsStore; const AEntry: TAtlasCatalogEntry): string;
+var
+  Value: TJSONValue;
 begin
   case AEntry.Kind of
     akBoolean:
       Result := BoolJson(AStore.ReadInteger(AEntry.Name, 0) <> 0);
     akInteger:
       Result := IntToStr(AStore.ReadInteger(AEntry.Name, 0));
+    akJson:
+      begin
+        // Liste oder Objekt als JSON-Text (issues.connections, #1260); Ungültiges wie der Standard.
+        Result := AEntry.DefaultJson;
+        Value := TAtlasJsonValues.Parse(AStore.ReadString(AEntry.Name, ''));
+        try
+          if (Value is TJSONArray) or (Value is TJSONObject) then
+            Result := Value.ToJSON;
+        finally
+          Value.Free;
+        end;
+      end;
   else
     Result := TAtlasJsonText.Quote(AStore.ReadString(AEntry.Name, ''));
   end;
@@ -533,7 +548,7 @@ begin
   // Plugin: '' = Standard.
   if AJson = '' then
   begin
-    if Entry.Kind = akString then
+    if Entry.Kind in [akString, akJson] then
       FStore.WriteString(Entry.Name, DefaultValues.ReadString(Entry.Name, ''))
     else
       FStore.WriteInteger(Entry.Name, DefaultValues.ReadInteger(Entry.Name, 0));
@@ -549,6 +564,9 @@ begin
       akInteger:
         if Value is TJSONNumber then
           FStore.WriteInteger(Entry.Name, TJSONNumber(Value).AsInt);
+      akJson:
+        if (Value is TJSONArray) or (Value is TJSONObject) then
+          FStore.WriteString(Entry.Name, Value.ToJSON);
     else
       if IsText(Value) then
         FStore.WriteString(Entry.Name, TJSONString(Value).Value);
@@ -1031,6 +1049,13 @@ begin
         ((Value is TJSONNumber) and (TJSONNumber(Value).AsInt <> 0)) then
         Exit('"expanded"');
       Exit('"collapsed"');
+    end;
+    // issues.query (#765, #1280) war eine einzelne Abfrage; issues.queries (#1262) ist eine Liste, in die sie als
+    // „Standard“ kommt.
+    if (AEntry.Name = TAtlasSettingsQueryMigrations.SettingName) and (Value is TJSONString) then
+    begin
+      AMigrated := True;
+      Exit(TAtlasSettingsQueryMigrations.WithLegacy('[]', TJSONString(Value).Value));
     end;
     Dummy := False;
     Mapped := MapStrings(Value, AFolders, True, Dummy);

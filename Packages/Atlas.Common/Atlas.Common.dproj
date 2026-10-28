@@ -412,11 +412,14 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OrdinalConstants.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineSignatures.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.FormatStrings.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.FormatRoutines.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DirectiveNames.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.WarningCodes.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.PureRoutines.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Contract.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TreeUnits.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.NameResolver.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Definition.pas"/>
@@ -537,6 +540,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Preprocessor.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.XmlDoc.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeIdentity.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.StepCalls.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CompilerSwitches.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerSwitches.pas"/>

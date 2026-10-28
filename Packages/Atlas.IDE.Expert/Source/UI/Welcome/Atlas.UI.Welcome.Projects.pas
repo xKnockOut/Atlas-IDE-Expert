@@ -9,7 +9,9 @@
 // Tooltip nennt Build, Prüfung, Versionsverwaltung und Regeltreffer im
 // Einzelnen. Klick auf die Zeile öffnet das Projekt, Klick auf eine rote
 // Marke öffnet es und springt zur ersten Meldung; das Kontextmenü bietet
-// „Öffnen“, „Ordner öffnen“ und „Aus Liste entfernen“ (nur dieser Bereich).
+// „Öffnen“, „Ordner öffnen“ und „Aus Liste entfernen“ (nur dieser Bereich),
+// mit Arbeitskopie „Branch anlegen …“ (#1288) und mit vcs.externals.show
+// „Arbeitskopien …“ (#1292: Tabelle mit Externals bzw. Submodulen).
 // Mit Projektverlauf (#758, Selectable) wählt ein Klick die Zeile für den
 // Verlauf (hinterlegt), Doppelklick öffnet; rote Marken springen weiter.
 // Schnellaktionen (#764, Atlas.UI.Welcome.QuickActions): In der Zeile unter
@@ -49,6 +51,13 @@ type
     /// <summary>Projekt öffnen und zu ATarget springen (Fehler-Marke).</summary>
     procedure OpenAt(const AProject: string; const ATarget: TAtlasProjectLocation);
     procedure OpenFolder(const AProject: string);
+    /// <summary>„Branch anlegen …“ (#1288): Dialog für die Arbeitskopie von AProject.</summary>
+    procedure CreateBranch(const AProject: string);
+    /// <summary>„Arbeitskopien …“ (#1292): Tabelle der Arbeitskopien von AProject (Wurzel, Externals,
+    /// Submodule).</summary>
+    procedure ShowWorkingCopies(const AProject: string);
+    /// <summary>vcs.externals.show: Eintrag „Arbeitskopien …“ zeigen.</summary>
+    function WorkingCopies: Boolean;
     /// <summary>„Aus Liste entfernen“: nur in diesem Bereich, die Liste der IDE bleibt.</summary>
     procedure Remove(const AProject: string);
     /// <summary>Der Bereich wird gezeigt: Versionsverwaltung bei Bedarf im Hintergrund frisch abfragen.</summary>
@@ -86,6 +95,8 @@ type
     FMenu: TPopupMenu;
     FOpenItem: TMenuItem;
     FOpenFolderItem: TMenuItem;
+    FCreateBranchItem: TMenuItem;
+    FWorkingCopiesItem: TMenuItem;
     FRemoveItem: TMenuItem;
     FMenuRow: Integer;
     // Zeile und Knopf des gezeigten Tooltips.
@@ -104,6 +115,8 @@ type
     procedure MenuPopup(Sender: TObject);
     procedure OpenClick(Sender: TObject);
     procedure OpenFolderClick(Sender: TObject);
+    procedure CreateBranchClick(Sender: TObject);
+    procedure WorkingCopiesClick(Sender: TObject);
     procedure RemoveClick(Sender: TObject);
     procedure LayoutPills;
     function RowTop(ARow: Integer): Integer;
@@ -148,6 +161,8 @@ type
     property Menu: TPopupMenu read FMenu;
     property OpenItem: TMenuItem read FOpenItem;
     property OpenFolderItem: TMenuItem read FOpenFolderItem;
+    property CreateBranchItem: TMenuItem read FCreateBranchItem;
+    property WorkingCopiesItem: TMenuItem read FWorkingCopiesItem;
     property RemoveItem: TMenuItem read FRemoveItem;
     /// <summary>Zeile des zuletzt geöffneten Kontextmenüs; -1 = keine.</summary>
     property MenuRow: Integer read FMenuRow write FMenuRow;
@@ -191,6 +206,16 @@ begin
   FOpenFolderItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsOpenFolder);
   FOpenFolderItem.OnClick := OpenFolderClick;
   FMenu.Items.Add(FOpenFolderItem);
+  // Branch anlegen (#1288): nur für Zeilen mit Arbeitskopie.
+  FCreateBranchItem := TMenuItem.Create(Self);
+  FCreateBranchItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsCreateBranch);
+  FCreateBranchItem.OnClick := CreateBranchClick;
+  FMenu.Items.Add(FCreateBranchItem);
+  // Arbeitskopien (#1292): Wurzel, Externals und Submodule; nur mit vcs.externals.show.
+  FWorkingCopiesItem := TMenuItem.Create(Self);
+  FWorkingCopiesItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsWorkingCopies);
+  FWorkingCopiesItem.OnClick := WorkingCopiesClick;
+  FMenu.Items.Add(FWorkingCopiesItem);
   FRemoveItem := TMenuItem.Create(Self);
   FRemoveItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeProjectsRemove);
   FRemoveItem.OnClick := RemoveClick;
@@ -769,6 +794,9 @@ begin
   FMenuRow := HitTest(Position.X, Position.Y).Row;
   FOpenItem.Enabled := FMenuRow >= 0;
   FOpenFolderItem.Enabled := FMenuRow >= 0;
+  FCreateBranchItem.Enabled := (FMenuRow >= 0) and (FMenuRow <= High(FEntries)) and (FEntries[FMenuRow].Branch <> '');
+  FWorkingCopiesItem.Visible := (FSource <> nil) and FSource.WorkingCopies;
+  FWorkingCopiesItem.Enabled := FCreateBranchItem.Enabled;
   FRemoveItem.Enabled := FMenuRow >= 0;
   // Schnellaktionen der Zeile (#764): nur eingestellte Knöpfe, gesperrte grau.
   FQuick.PrepareMenu(FMenuRow);
@@ -803,6 +831,38 @@ begin
     procedure
     begin
       mSource.OpenFolder(Project);
+    end);
+end;
+
+procedure TAtlasWelcomeProjectsFrame.CreateBranchClick(Sender: TObject);
+var
+  mSource: IAtlasProjectsSource;
+  mProject: string;
+begin
+  if (FSource = nil) or (FMenuRow < 0) or (FMenuRow > High(FEntries)) then
+    Exit;
+  mSource := FSource;
+  mProject := FEntries[FMenuRow].Project;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      mSource.CreateBranch(mProject);
+    end);
+end;
+
+procedure TAtlasWelcomeProjectsFrame.WorkingCopiesClick(Sender: TObject);
+var
+  mSource: IAtlasProjectsSource;
+  mProject: string;
+begin
+  if (FSource = nil) or (FMenuRow < 0) or (FMenuRow > High(FEntries)) then
+    Exit;
+  mSource := FSource;
+  mProject := FEntries[FMenuRow].Project;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      mSource.ShowWorkingCopies(mProject);
     end);
 end;
 

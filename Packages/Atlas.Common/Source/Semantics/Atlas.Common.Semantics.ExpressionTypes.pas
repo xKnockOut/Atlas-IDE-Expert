@@ -159,7 +159,8 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Semantics.ConstantValues,
-  Atlas.Common.Semantics.OrdinalConstants;
+  Atlas.Common.Semantics.OrdinalConstants,
+  Atlas.Common.Semantics.TypeIdentity;
 
 const
   MaxDepth = 64;
@@ -264,17 +265,9 @@ begin
 end;
 
 function SameType(const A, B: string): Boolean;
-var
-  Left, Right: string;
 begin
-  Left := StringReplace(A, ' ', '', [rfReplaceAll]);
-  Right := StringReplace(B, ' ', '', [rfReplaceAll]);
-  Result := SameText(Left, Right) or (MatchText(Left, ['string', 'UnicodeString']) and
-    MatchText(Right, ['string', 'UnicodeString'])) or (MatchText(Left, ['Integer', 'LongInt']) and
-    MatchText(Right, ['Integer', 'LongInt'])) or (MatchText(Left, ['Cardinal', 'LongWord']) and
-    MatchText(Right, ['Cardinal', 'LongWord'])) or (MatchText(Left, ['Char', 'WideChar']) and
-    MatchText(Right, ['Char', 'WideChar'])) or (MatchText(Left, ['Double', 'Real']) and
-    MatchText(Right, ['Double', 'Real']));
+  // Eingebaute Aliase (LongInt = Integer, Real = Double …) und Unit-Präfixe wie überall (#1324).
+  Result := TTypeIdentity.Same(A, B);
 end;
 
 function IsNumeric(const AType: TExpressionTypes.TTyped): Boolean;

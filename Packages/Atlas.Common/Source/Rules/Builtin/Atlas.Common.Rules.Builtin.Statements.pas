@@ -35,7 +35,9 @@
 //   dataset-edit-without-post
 //                     Q.Edit, Q.Append bzw. Q.Insert ohne folgendes Post, Cancel
 //                     oder CheckBrowseMode in der Routine (#964); still, wenn
-//                     eine andere Routine der Unit Q postet oder Q weitergegeben wird.
+//                     eine andere Routine der Unit Q postet oder Q weitergegeben wird,
+//                     und wenn Q sicher nicht von TDataSet abstammt (#1326: Insert
+//                     und Edit eines ActiveRecord, eines Records oder einer Liste).
 //   transaction-without-rollback
 //                     StartTransaction (BeginTransaction, BeginTrans) ohne Rollback
 //                     im except des unmittelbar folgenden try (#965); Paare aus der
@@ -78,7 +80,8 @@
 //   readonly-property-assigned
 //                     Zuweisung an eine Property ohne write (#1006, wie E2129) und
 //                     Lesen einer Property ohne read (wie E2130), nur bei sicher
-//                     aufgelöster Property. Vorab gefiltert über die Namen solcher
+//                     aufgelöster Property; eine ohne Typ neu deklarierte, deren
+//                     Vorfahr nicht im Index steht, gilt nicht als sicher (#1326). Vorab gefiltert über die Namen solcher
 //                     Properties in Datei und Index. Korrekturen: Count := 0 wird
 //                     Clear, wenn der Typ Clear hat; in einer Methode der eigenen
 //                     Klasse direkt das Feld hinter read; für eine Property dieser
@@ -1279,7 +1282,7 @@ begin
     FileName := AContext.RelativePath;
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -1648,6 +1651,42 @@ var
   Lines: TArray<string>;
   LineBreak: string;
   Routines: TArray<TSyntaxNode>;
+  mResolver: TNameResolver;
+  mFileName: string;
+
+  /// <summary>Kann der Empfänger des Aufrufs AStatement eine Datenmenge sein (#1326)? Nein, wenn sein Typ bekannt
+  /// ist und die Vorfahrenkette ohne TDataSet vollständig endet oder er keine Klasse ist; bei unbekanntem Typ
+  /// oder abgebrochener Kette ja, wie bisher.</summary>
+  function MayBeDataSet(AStatement: TSyntaxNode): Boolean;
+  var
+    mTarget: TSyntaxNode;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound, mComplete: Boolean;
+    mNames: TArray<string>;
+  begin
+    Result := True;
+    mTarget := AStatement[0];
+    if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
+      mTarget := mTarget[0];
+    if (mTarget.Kind <> TSyntaxKind.MemberAccess) or (mTarget.ChildCount = 0) then
+      Exit;
+    if mResolver = nil then
+    begin
+      mResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+      mResolver.Namespaces := AContext.Namespaces;
+      mResolver.PinTree(AContext.Tree, mFileName);
+    end;
+    if not mResolver.NodeType(AContext.Tree, mFileName, mTarget[0], mSymbol, mTypeInfo, mTypeFound) or
+      not mTypeFound then
+      Exit;
+    if mTypeInfo.Builtin or (mTypeInfo.SymbolKind in [TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType,
+      TIndexSymbolKind.EnumType]) then
+      Exit(False);
+    if mTypeInfo.SymbolKind <> TIndexSymbolKind.ClassType then
+      Exit;
+    mNames := mResolver.AncestorNames(mTypeInfo, mComplete);
+    Result := (IndexText('TDataSet', mNames) >= 0) or not mComplete;
+  end;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -1828,7 +1867,7 @@ var
           Name := StatementCall(AContext.Text, Node, Receiver, Arguments);
           if (Receiver <> '') and (Arguments = 0) and MatchText(Name, DatasetEditMethods) and
             not Ends(Routine, Receiver, Node.EndOffset) and not Escapes(Routine, Receiver, Node.EndOffset) and
-            not EndedElsewhere(Routine, Receiver) then
+            not EndedElsewhere(Routine, Receiver) and MayBeDataSet(Node) then
             AReport.Add(TTextRange.Create(Node[0].EndPos.Line, Node[0].EndPos.Character - Length(Name),
               Node[0].EndPos.Line, Node[0].EndPos.Character), Format('Nach %s fehlt Post oder Cancel; die ' +
               'Änderung bleibt offen.', [Name]), TRuleConfidence.Medium, PostFix(Node, Receiver));
@@ -1857,7 +1896,21 @@ begin
         Routines := Routines + [ANode];
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
     end);
-  Visit(AContext.Tree.Root);
+  mFileName := AContext.FileName;
+  if mFileName = '' then
+    mFileName := AContext.RelativePath;
+  if mFileName = '' then
+    mFileName := AContext.UnitName + '.pas';
+  mResolver := nil;
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    if mResolver <> nil then
+    begin
+      mResolver.UnpinTree;
+      mResolver.Free;
+    end;
+  end;
 end;
 
 { TTransactionWithoutRollbackRule }
@@ -2514,7 +2567,7 @@ begin
     FileName := AContext.RelativePath;
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -2721,7 +2774,7 @@ begin
   Tokens := AContext.Tree.Tokens;
   Lines := TTextLines.SplitLines(AContext.Text);
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -2878,7 +2931,7 @@ begin
     FileName := AContext.RelativePath;
   if FileName = '' then
     FileName := AContext.UnitName + '.pas';
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -3062,8 +3115,8 @@ var
       (ATarget.ChildCount = 0) or (SuspectFlags(ATarget[0].Name) and 1 = 0)) then
       Exit;
     if not Resolver.NodeType(AContext.Tree, FileName, ATarget, Symbol, TypeInfo, TypeFound) or
-      (Symbol.SymbolKind <> TIndexSymbolKind.Property_) or not Accessors(Symbol.Signature, HasRead, HasWrite) or
-      HasWrite then
+      (Symbol.SymbolKind <> TIndexSymbolKind.Property_) or (Symbol.TypeName = '') or
+      not Accessors(Symbol.Signature, HasRead, HasWrite) or HasWrite then
       Exit;
     Message := Format('%s.%s hat kein write (wie E2129).', [Symbol.Container, Symbol.Name]);
     Fixes := nil;
@@ -3107,8 +3160,8 @@ var
     if SuspectFlags(ANode.Name) and 2 = 0 then
       Exit;
     if Resolver.NodeType(AContext.Tree, FileName, ANode, Symbol, TypeInfo, TypeFound) and
-      (Symbol.SymbolKind = TIndexSymbolKind.Property_) and Accessors(Symbol.Signature, HasRead, HasWrite) and
-      not HasRead then
+      (Symbol.SymbolKind = TIndexSymbolKind.Property_) and (Symbol.TypeName <> '') and
+      Accessors(Symbol.Signature, HasRead, HasWrite) and not HasRead then
       AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('%s.%s hat kein read (wie E2130).',
         [Symbol.Container, Symbol.Name]), TRuleConfidence.High);
   end;
@@ -3178,7 +3231,7 @@ begin
   Actions.DelphiVersion := AContext.DelphiVersion;
   Actions.Style := AContext.Formatting;
   Suspects := TDictionary<string, Integer>.Create;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
