@@ -29,6 +29,10 @@
 // 5 s, TAtlasTrackerChecks), ihr Ergebnis gilt je Server bis zum Entladen;
 // Unregister wartet auf laufende Prüfungen. Das Protokoll nennt nur Anbieter
 // und Zustand, nie Adresse oder Token.
+// „Werte vom Tracker laden“ (#1266): Zustände, Zustands- und Benutzerfelder
+// über IAtlasTrackerWriter.Values im Hintergrund (TAtlasTrackerChecks.Values);
+// das Projekt kommt aus der .atlas des aktiven Projekts, wenn deren Tracker
+// derselbe Server ist.
 
 interface
 
@@ -120,7 +124,10 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Workflow,
+  Atlas.Core.Ci.Contract,
   Atlas.Core.Diagnostics.Shutdown,
+  Atlas.UI.Tracker.EndDialog,
   Atlas.IDE.Foundation.TeamFile;
 
 type
@@ -231,6 +238,8 @@ type
     FThreads: TList<TThread>;
     class procedure Finished(AThread: TThread; const AKey: string; const AStatus: TAtlasTrackerTokenStatus;
       const ADone: TProc); static;
+    class procedure ValuesLoaded(AThread: TThread; const AValues: TAtlasTrackerValueSet;
+      const ADone: TProc<TAtlasTrackerValueSet, string>); static;
   public
     /// <summary>Zustand ohne Netz: ohne Token „fehlt“, sonst das Ergebnis der letzten Prüfung oder „gespeichert“.
     /// </summary>
@@ -241,6 +250,11 @@ type
     /// <summary>Prüfung im Hintergrund; ADone danach im Hauptthread.</summary>
     class procedure Start(const AAccess: IAtlasTrackerAccess; const AConnection: TAtlasTrackerConnection;
       const ADone: TProc); static;
+    /// <summary>„Werte vom Tracker laden“ (#1266) für ATarget im Hintergrund; ADone danach im Hauptthread mit den
+    /// Werten und dem Grund eines Fehlers ('' = geladen).</summary>
+    class procedure Values(const AAccess: IAtlasTrackerAccess; const AProviderName: string;
+      const ATarget: TAtlasTrackerTarget; const AStateField: string;
+      const ADone: TProc<TAtlasTrackerValueSet, string>); static;
     /// <summary>Beim Entladen: auf laufende Prüfungen warten, Ergebnisse freigeben.</summary>
     class procedure Release; static;
   end;
@@ -309,6 +323,77 @@ begin
   mThread.Start;
 end;
 
+class procedure TAtlasTrackerChecks.Values(const AAccess: IAtlasTrackerAccess; const AProviderName: string;
+  const ATarget: TAtlasTrackerTarget; const AStateField: string; const ADone: TProc<TAtlasTrackerValueSet, string>);
+var
+  mAccess: IAtlasTrackerAccess;
+  mTarget: TAtlasTrackerTarget;
+  mProvider: IAtlasTrackerProvider;
+  mField: string;
+  mDone: TProc<TAtlasTrackerValueSet, string>;
+  mThread: TThread;
+begin
+  mAccess := AAccess;
+  mTarget := ATarget;
+  mProvider := AAccess.Provider(AProviderName);
+  mField := AStateField;
+  mDone := ADone;
+  if FThreads = nil then
+    FThreads := TList<TThread>.Create;
+  mThread := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mValues: TAtlasTrackerValueSet;
+      mWriter: IAtlasTrackerWriter;
+      mTransport: IAtlasCiTransport;
+    begin
+      mValues := Default(TAtlasTrackerValueSet);
+      try
+        if (mProvider = nil) or not Supports(mProvider, IAtlasTrackerWriter, mWriter) then
+          mValues.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.UnknownProvider, 0, '')
+        else
+        begin
+          // Token aus dem Anmeldespeicher ohne Dialog; ohne Token kein Netz.
+          mTransport := mAccess.Transport(mProvider, mTarget);
+          if mTransport = nil then
+            mValues.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, '')
+          else
+            mValues := TAtlasTrackerWorkflow.LoadValues(mWriter, mTarget, mTransport, mField);
+        end;
+      except
+        on E: Exception do
+        begin
+          mValues.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Network, 0, '');
+          TAtlasGuard.Log('Issue-Tracker: Werte mit ' + E.ClassName + ' abgebrochen');
+        end;
+      end;
+      if TAtlasShutdown.Signalled then
+        Exit;
+      ValuesLoaded(mThread, mValues, mDone);
+    end);
+  mThread.FreeOnTerminate := False;
+  FThreads.Add(mThread);
+  mThread.Start;
+end;
+
+class procedure TAtlasTrackerChecks.ValuesLoaded(AThread: TThread; const AValues: TAtlasTrackerValueSet;
+  const ADone: TProc<TAtlasTrackerValueSet, string>);
+begin
+  TAtlasMainThread.Queue(TAtlasFeature.Settings,
+    procedure
+    begin
+      if (FThreads = nil) or not FThreads.Contains(AThread) then
+        Exit;
+      FThreads.Remove(AThread);
+      AThread.WaitFor;
+      AThread.Free;
+      // Anonym: Ergebnis und Anzahl, nie Adresse, Werte oder Token.
+      TAtlasGuard.Log(Format('Issue-Tracker: Werte geladen (%s, %d Zustände)',
+        [TAtlasCiBuild.ErrorKey(AValues.Outcome.Error), Length(AValues.States)]));
+      ADone(AValues, TAtlasTrackerEndDialog.ErrorText('', AValues.Outcome));
+    end);
+end;
+
 class procedure TAtlasTrackerChecks.Finished(AThread: TThread; const AKey: string;
   const AStatus: TAtlasTrackerTokenStatus; const ADone: TProc);
 begin
@@ -347,6 +432,26 @@ begin
 end;
 
 /// <summary>Verbindung aus dem Abschnitt tracker der .atlas des aktiven Projekts (#486); leer ohne.</summary>
+/// <summary>Ziel für „Werte vom Tracker laden“: mit dem Projekt aus der .atlas des aktiven Projekts, wenn deren
+/// Tracker derselbe Server ist (GitHub braucht owner/repo, YouTrack liest dann die Felder dieses Projekts).</summary>
+function TrackerValuesTarget(const AConnection: TAtlasTrackerConnection): TAtlasTrackerTarget;
+var
+  mProject: string;
+  mTeam: TAtlasTeamSettings;
+  mTeamTarget: TAtlasTrackerTarget;
+begin
+  Result := AConnection.Target;
+  mProject := TAtlasIdeTeamFile.ActiveProject;
+  if mProject = '' then
+    Exit;
+  mTeam := TAtlasIdeTeamFile.Read(mProject);
+  if not mTeam.Tracker.Configured then
+    Exit;
+  mTeamTarget := TAtlasTrackerTarget.Create(mTeam.Tracker.Provider, mTeam.Tracker.Url, mTeam.Tracker.Project, '');
+  if SameText(mTeamTarget.Provider, Result.Provider) and SameText(mTeamTarget.Server, Result.Server) then
+    Result := mTeamTarget;
+end;
+
 function TeamTrackerConnections: TArray<TAtlasTrackerConnection>;
 var
   mProject: string;
@@ -774,6 +879,17 @@ begin
           // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
           if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
             mOwner.FPage.TrackerCheckDone(mConnection);
+        end);
+    end;
+  FPage.OnTrackerValues :=
+    procedure(const AConnection: TAtlasTrackerConnection; const AStateField: string)
+    begin
+      TAtlasTrackerChecks.Values(Hooks.Tracker, AConnection.Provider, TrackerValuesTarget(AConnection), AStateField,
+        procedure(AValues: TAtlasTrackerValueSet; AError: string)
+        begin
+          // Nur an die Seite, für die geladen wurde, solange der Dialog offen ist.
+          if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
+            mOwner.FPage.TrackerValuesDone(AValues, AError);
         end);
     end;
   FPage.OnTrackerRemove :=

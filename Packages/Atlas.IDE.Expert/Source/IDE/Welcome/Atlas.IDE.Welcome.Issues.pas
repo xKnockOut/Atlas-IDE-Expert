@@ -25,6 +25,10 @@
 //   Git-Hook prepare-commit-msg (Atlas.Core.Tracker.CommitHook).
 // - Statusfeld: Zeile atlas.issue „Issue: ATL-123 Titel“; Klick beendet das
 //   Issue nach Rückfrage.
+// - Tracker nachführen (#1266, issues.syncState, TAtlasIdeTrackerSync): nach
+//   „Beginnen“ Zustand, Zuweisung und Kommentar; „Beenden“ (Statusfeld,
+//   Kontextmenü, Knopf der Vorschau) zeigt statt der Rückfrage den Dialog
+//   „ATL-123 beenden“, beendet wird nach „Senden“; Kommentare aus der Vorschau.
 // - Issue-Links "#312" in Begründungen (#1123): Adresse aus dem Tracker des
 //   aktuellen Projekts (IssueUrl), angemeldet bei TAtlasDocIssueLinks von Start
 //   bis Stop; ohne Tracker sind die Links nicht anklickbar.
@@ -52,6 +56,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Issues,
   Atlas.IDE.Tracker.IssuePreview,
+  Atlas.IDE.Tracker.Workflow,
   Atlas.IDE.Welcome.Projects;
 
 type
@@ -105,6 +110,7 @@ type
     FOnSettings: TProc;
     FPreview: TAtlasIdeIssuePreview;
     FPreviewRef: IInterface;
+    FSync: TAtlasIdeTrackerSync;
     FLine: TAtlasStatusLine;
     FLineRef: IAtlasStatusItem;
     FWatch: TTimer;
@@ -147,6 +153,14 @@ type
     procedure RegisterSection;
     procedure RegisterIssueLinks;
     procedure StartPreview;
+    procedure StartSync;
+    /// <summary>Kennung des aktuellen Issues im Projekt des Bereichs; '' ohne.</summary>
+    function ActiveKey: string;
+    /// <summary>„Beenden“ ohne Tracker: Zustand, Statuszeile und Hinweis.</summary>
+    procedure EndedLocally(const AProject, ABranch, AKey: string);
+    /// <summary>„Beenden“ mit Dialog (#1266); beendet erst nach „Senden“.</summary>
+    procedure EndWithTracker(const AProject, ABranch, AKey: string; const AProvider: IAtlasTrackerProvider;
+      const ATarget: TAtlasTrackerTarget; const AState: TAtlasIssuesState);
     function ActiveTarget(out ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
     class function NowUtc: TDateTime; static;
   public
@@ -173,6 +187,8 @@ type
     procedure ShowPreviewPrompt;
     /// <summary>Vorschau-Steuerung (nil vor Start bzw. nach Stop).</summary>
     property IssuePreview: TAtlasIdeIssuePreview read FPreview;
+    /// <summary>Tracker nachführen (#1266; nil vor Start bzw. nach Stop).</summary>
+    property TrackerSync: TAtlasIdeTrackerSync read FSync;
     property ProviderFactory: TAtlasTrackerProviderHook read FProviderFactory write FProviderFactory;
     property TransportFactory: TAtlasTrackerTransportHook read FTransportFactory write FTransportFactory;
     property OnCredentials: TAtlasTrackerCredentialsHook read FOnCredentials write FOnCredentials;
@@ -217,6 +233,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Strings,
+  Atlas.UI.Tracker.EndDialog,
   Atlas.UI.Welcome.Frame,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.TeamFile,
@@ -281,8 +298,34 @@ begin
   FWatch.OnTimer := WatchTick;
   FTitle := '';
   RegisterIssueLinks;
+  StartSync;
   StartPreview;
   Refresh;
+end;
+
+procedure TAtlasIdeIssues.StartSync;
+var
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  // Stop löst den Ring (Sync hält über die Hooks diese Quelle).
+  FSync := TAtlasIdeTrackerSync.Create(
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    var
+      mFactory: TAtlasTrackerTransportHook;
+    begin
+      Result := nil;
+      mFactory := mOwner.FTransportFactory;
+      if (mKeep <> nil) and Assigned(mFactory) then
+        Result := mFactory(AProvider, ATarget);
+    end,
+    procedure(AText: string)
+    begin
+      if mKeep <> nil then
+        mOwner.Report(AText);
+    end);
 end;
 
 procedure TAtlasIdeIssues.StartPreview;
@@ -334,6 +377,31 @@ begin
       if (mKeep <> nil) and Assigned(mOwner.FOnSettings) then
         mOwner.FOnSettings();
     end;
+  mHooks.CanWrite :=
+    function(ATarget: TAtlasTrackerTarget): Boolean
+    begin
+      Result := (mKeep <> nil) and (mOwner.FSync <> nil) and
+        mOwner.FSync.Enabled(mOwner.ProviderOf(ATarget.Provider), ATarget);
+    end;
+  mHooks.IsActive :=
+    function(AKey: string): Boolean
+    begin
+      Result := (mKeep <> nil) and (AKey <> '') and SameText(mOwner.ActiveKey, AKey);
+    end;
+  mHooks.EndIssue :=
+    procedure(AKey: string)
+    begin
+      if (mKeep <> nil) and SameText(mOwner.ActiveKey, AKey) then
+        mOwner.EndActive;
+    end;
+  mHooks.Comment :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey, AText: string; const ADone: TAtlasTrackerSendDone)
+    begin
+      if (mKeep = nil) or (mOwner.FSync = nil) then
+        ADone(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''))
+      else
+        mOwner.FSync.SendComment(mOwner.ProviderOf(ATarget.Provider), ATarget, AKey, AText, ADone);
+    end;
   FPreview := TAtlasIdeIssuePreview.Create(mHooks,
     TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'issues'));
   FPreviewRef := FPreview;
@@ -370,11 +438,14 @@ begin
     Exit;
   FStarted := False;
   TAtlasDocIssueLinks.Clear;
+  if FSync <> nil then
+    FSync.Stop;
   // Die Hooks der Vorschau halten diese Quelle: Stop löst den Ring.
   if FPreview <> nil then
     FPreview.Stop;
   FPreview := nil;
   FPreviewRef := nil;
+  FreeAndNil(FSync);
   FreeAndNil(FWatch);
   RemoveStatus;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Issues);
@@ -443,6 +514,9 @@ begin
     Exit;
   // Einstellungen geändert (Anbieter, Abfrage): .atlas und Ziel neu.
   FTargets.Clear;
+  // issues.syncState: Kommentarfeld und „Beenden …“ der Vorschau.
+  if FPreview <> nil then
+    FPreview.UpdateWrite;
   Title := FTitle;
   RegisterSection;
   if Title <> FTitle then
@@ -943,6 +1017,11 @@ begin
   end;
   SetNotice(AProject, Notice, False);
   UpdateStatus;
+  // Tracker nachführen (#1266): Ergebnis als eigene Zeile, der Branch bleibt auch bei einem Fehler.
+  if FSync <> nil then
+    FSync.Started(ProviderOf(TargetOf(AProject).Provider), TargetOf(AProject), AIssue.Key, AResult.Branch);
+  if FPreview <> nil then
+    FPreview.UpdateWrite;
   // Branch und Änderungen neu abfragen; „Projekte“ meldet sich danach selbst.
   if (FProjects <> nil) and (AResult.Outcome <> TAtlasIssueStartOutcome.Remembered) then
     FProjects.Refresh(AProject);
@@ -1296,6 +1375,7 @@ begin
       State: TAtlasIssuesState;
       Target: TAtlasTrackerTarget;
       Current: TAtlasActiveIssue;
+      Provider: IAtlasTrackerProvider;
     begin
       if not FStarted then
         Exit;
@@ -1308,16 +1388,79 @@ begin
       Current := TAtlasWelcomeIssues.Effective(State, Target.Provider, Target.Project, Branch);
       if not Current.Active then
         Exit;
+      // Tracker nachführen (#1266): Dialog statt Rückfrage; ohne issues.syncState wie bisher.
+      Provider := ProviderOf(Target.Provider);
+      if (FSync <> nil) and FSync.Enabled(Provider, Target) then
+      begin
+        EndWithTracker(Project, Branch, Current.Key, Provider, Target, State);
+        Exit;
+      end;
       if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesEndConfirm, [Current.Key]), mtConfirmation,
         [mbYes, mbNo], 0) <> mrYes then
         Exit;
-      TAtlasWelcomeIssues.Ended(State, Branch);
-      SaveState(Project, State);
-      SetNotice(Project, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesEnded, [Current.Key]), False);
-      TAtlasGuard.Log('Meine Issues: aktuelles Issue beendet');
-      UpdateStatus;
-      Changed;
+      EndedLocally(Project, Branch, Current.Key);
     end);
+end;
+
+procedure TAtlasIdeIssues.EndedLocally(const AProject, ABranch, AKey: string);
+var
+  mState: TAtlasIssuesState;
+begin
+  if not FStarted then
+    Exit;
+  mState := StateOf(AProject);
+  TAtlasWelcomeIssues.Ended(mState, ABranch);
+  SaveState(AProject, mState);
+  SetNotice(AProject, TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesEnded, [AKey]), False);
+  TAtlasGuard.Log('Meine Issues: aktuelles Issue beendet');
+  UpdateStatus;
+  if FPreview <> nil then
+    FPreview.UpdateWrite;
+  Changed;
+end;
+
+procedure TAtlasIdeIssues.EndWithTracker(const AProject, ABranch, AKey: string;
+  const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget; const AState: TAtlasIssuesState);
+var
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
+  mIssue: TAtlasTrackerIssue;
+  mPullRequest, mProject, mBranch, mKey: string;
+begin
+  // Eigene Routine: Die Methodenreferenz hält nur diese Werte.
+  mKeep := Self;
+  mOwner := Self;
+  mProject := AProject;
+  mBranch := ABranch;
+  mKey := AKey;
+  mPullRequest := '';
+  if AState.Find(AKey, mIssue) and (mIssue.PullRequest.Number > 0) then
+    mPullRequest := AProvider.PullRequestPage(ATarget, mIssue.PullRequest.Number);
+  FSync.EndIssue(AProvider, ATarget, TAtlasIdeTrackerEnd.Create(AKey, ABranch, ExtractFileDir(AProject),
+    TAtlasIdeSettings.Current.IssuesBranchBase, mPullRequest),
+    procedure(AChange: TAtlasTrackerChange)
+    begin
+      if mKeep <> nil then
+        mOwner.EndedLocally(mProject, mBranch, mKey);
+    end);
+end;
+
+function TAtlasIdeIssues.ActiveKey: string;
+var
+  mProject: string;
+  mTarget: TAtlasTrackerTarget;
+  mCurrent: TAtlasActiveIssue;
+begin
+  Result := '';
+  if not FStarted then
+    Exit;
+  mProject := CurrentProject;
+  if mProject = '' then
+    Exit;
+  mTarget := TargetOf(mProject);
+  mCurrent := TAtlasWelcomeIssues.Effective(StateOf(mProject), mTarget.Provider, mTarget.Project, BranchOf(mProject));
+  if mCurrent.Active then
+    Result := mCurrent.Key;
 end;
 
 end.

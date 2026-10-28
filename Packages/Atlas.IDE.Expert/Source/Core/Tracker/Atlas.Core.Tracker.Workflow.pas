@@ -18,6 +18,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Vcs.Contract;
@@ -61,6 +62,18 @@ type
     class function Create(const AKey, ABranch: string): TAtlasTrackerPlaceholders; static;
   end;
 
+  /// <summary>Werte vom Tracker für die Klapplisten der Seite Issue-Tracker.</summary>
+  TAtlasTrackerValueSet = record
+    /// <summary>Felder für den Zustand (YouTrack: Typ state); GitHub leer.</summary>
+    StateFields: TArray<string>;
+    /// <summary>Felder für die Zuständigkeit (YouTrack: Typ user); GitHub leer.</summary>
+    UserFields: TArray<string>;
+    /// <summary>Werte des Zustandsfeldes (GitHub: Labels).</summary>
+    States: TArray<string>;
+    /// <summary>Ergebnis der ersten fehlgeschlagenen Abfrage, sonst Ok.</summary>
+    Outcome: TAtlasTrackerWriteResult;
+  end;
+
   TAtlasTrackerWorkflow = class
   public const
     DefaultStateField = 'State';
@@ -91,6 +104,12 @@ type
     /// <summary>{commits}: Commits (neueste zuerst, wie git log) mit AKey im Betreff, älteste zuerst, höchstens
     /// MaxCommits.</summary>
     class function CommitLines(const ACommits: TArray<TAtlasVcsCommit>; const AKey: string): string; static;
+    /// <summary>Basen für {commits}: issues.branchBase, sonst main, dann master.</summary>
+    class function CommitBases(const ABranchBase: string): TArray<string>; static;
+    /// <summary>{commits} für ABranch: Commits, die nicht in der ersten vorhandenen Basis liegen, mit AKey im
+    /// Betreff; '' ohne Branch oder wenn keine Basis passt. Ruft die Versionsverwaltung (Hintergrund).</summary>
+    class function CommitsFor(const AWork: IAtlasVcsLocalWork; const ABranch, ABranchBase, AKey: string): string;
+      static;
     /// <summary>Änderung beim Beginnen; leer ohne issues.syncState.</summary>
     class function StartChange(const AOptions: TAtlasTrackerSyncOptions;
       const AValues: TAtlasTrackerPlaceholders): TAtlasTrackerChange; static;
@@ -100,12 +119,17 @@ type
       AHandOver: Boolean; const AAssignee: string): TAtlasTrackerChange; static;
     /// <summary>Dauer für {time}: „1 h 25 min“, „25 min“; '' für 0.</summary>
     class function DurationText(AMinutes: Integer): string; static;
+    /// <summary>Zustände von AStateField, Zustands- und Benutzerfelder; bricht beim ersten Fehler ab. Im
+    /// Hintergrund (Netz).</summary>
+    class function LoadValues(const AWriter: IAtlasTrackerWriter; const ATarget: TAtlasTrackerTarget;
+      const ATransport: IAtlasCiTransport; const AStateField: string): TAtlasTrackerValueSet; static;
   end;
 
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Core.Tracker.Naming;
 
 { TAtlasTrackerSyncOptions }
 
@@ -261,6 +285,30 @@ begin
   Result := string.Join(#10, mLines);
 end;
 
+class function TAtlasTrackerWorkflow.CommitBases(const ABranchBase: string): TArray<string>;
+begin
+  if Trim(ABranchBase) <> '' then
+    Result := TArray<string>.Create(Trim(ABranchBase))
+  else
+    Result := TArray<string>.Create(TAtlasTrackerNaming.GitBase, TAtlasTrackerNaming.GitBaseFallback);
+end;
+
+class function TAtlasTrackerWorkflow.CommitsFor(const AWork: IAtlasVcsLocalWork; const ABranch, ABranchBase,
+  AKey: string): string;
+var
+  mBase: string;
+  mCommits: TArray<TAtlasVcsCommit>;
+begin
+  Result := '';
+  if (AWork = nil) or (Trim(ABranch) = '') then
+    Exit;
+  for mBase in CommitBases(ABranchBase) do
+    if SameText(mBase, ABranch) then
+      Exit
+    else if AWork.Outgoing(ABranch, mBase, MaxLog, mCommits) = TAtlasVcsOutcome.Ok then
+      Exit(CommitLines(mCommits, AKey));
+end;
+
 class function TAtlasTrackerWorkflow.StartChange(const AOptions: TAtlasTrackerSyncOptions;
   const AValues: TAtlasTrackerPlaceholders): TAtlasTrackerChange;
 begin
@@ -302,6 +350,34 @@ begin
   if AMinutes mod 60 = 0 then
     Exit(Format('%d h', [AMinutes div 60]));
   Result := Format('%d h %d min', [AMinutes div 60, AMinutes mod 60]);
+end;
+
+class function TAtlasTrackerWorkflow.LoadValues(const AWriter: IAtlasTrackerWriter;
+  const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AStateField: string): TAtlasTrackerValueSet;
+var
+  mField: string;
+begin
+  Result.StateFields := nil;
+  Result.UserFields := nil;
+  Result.States := nil;
+  Result.Outcome := TAtlasTrackerWriteResult.Ok;
+  if AWriter = nil then
+  begin
+    Result.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.UnknownProvider, 0, '');
+    Exit;
+  end;
+  mField := Trim(AStateField);
+  if mField = '' then
+    mField := DefaultStateField;
+  Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.States, mField, WriteTimeoutMs,
+    Result.States);
+  if Result.Outcome.Succeeded then
+    Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.StateFields, '', WriteTimeoutMs,
+      Result.StateFields);
+  if Result.Outcome.Succeeded then
+    Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.UserFields, '', WriteTimeoutMs,
+      Result.UserFields);
 end;
 
 end.
