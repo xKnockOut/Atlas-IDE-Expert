@@ -16,6 +16,9 @@
 // - Check: „Verbindung prüfen“ fragt den Tracker einmal (ProbeUrl des
 //   Anbieters, Zeitgrenze CheckTimeoutMs) und ordnet die Antwort einem
 //   Zustand zu. Ohne Klick kein Netz; das Netz kommt über IAtlasCiTransport.
+//   Bei geprüftem Token erkennt sie auch die Sprache der Oberfläche
+//   (YouTrack, #1263); die Seite merkt sie an der Verbindung ("language"),
+//   damit die Vorgabe „Mir zugewiesen“ in dieser Sprache gilt.
 // - IAtlasTrackerAccess: Anbieter, Token und Transport für Optionsseite und
 //   „Meine Issues“; setzt die Komposition um (Anmeldespeicher, Dialog).
 
@@ -43,6 +46,8 @@ type
     Provider: string;
     /// <summary>Adresse ohne „/“ am Ende, z. B. "https://youtrack.firma.local".</summary>
     Url: string;
+    /// <summary>Sprache der Oberfläche ("de", "en"), erkannt beim Prüfen (#1263); '' = unbekannt.</summary>
+    Language: string;
     Source: TAtlasTrackerConnectionSource;
     class function Create(const AName, AProvider, AUrl: string): TAtlasTrackerConnection; static;
     /// <summary>Verbindung aus dem Abschnitt tracker der .atlas (schreibgeschützt); Name = AName.</summary>
@@ -60,6 +65,8 @@ type
     CheckedAt: TDateTime;
     /// <summary>HTTP-Status der Prüfung; 0 ohne Antwort.</summary>
     HttpStatus: Integer;
+    /// <summary>Bei der Prüfung erkannte Sprache der Oberfläche (#1263); '' unbekannt.</summary>
+    Language: string;
     class function Create(AState: TAtlasTrackerTokenState; ACheckedAt: TDateTime;
       AHttpStatus: Integer): TAtlasTrackerTokenStatus; static;
     /// <summary>Ohne Prüfung: gespeichert oder fehlt.</summary>
@@ -109,6 +116,10 @@ type
     /// 200 mit "login" = geprüft, 401/403 = abgelehnt, ohne Antwort = nicht erreichbar, sonst unerwartet.</summary>
     class function StateOf(AAnswered: Boolean; AStatus: Integer; const AText: string): TAtlasTrackerTokenState;
       static;
+    /// <summary>Erkannte Sprache (#1263) für ATarget: die erste Verbindung mit gleichem Anbieter und Server, die
+    /// eine nennt; so gilt sie auch für den Tracker aus der .atlas. '' ohne.</summary>
+    class function LanguageOf(const AItems: TArray<TAtlasTrackerConnection>;
+      const ATarget: TAtlasTrackerTarget): string; static;
     /// <summary>Verbindung prüfen: ohne Transport (kein Token) „fehlt“, sonst ein GET auf ProbeUrl. Im
     /// Hintergrund.</summary>
     class function Check(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -118,7 +129,10 @@ type
 implementation
 
 uses
-  System.JSON;
+  System.JSON,
+  System.Diagnostics,
+  Atlas.Core.Tracker.Templates,
+  Atlas.Core.Tracker.QueryTest;
 
 { TAtlasTrackerConnection }
 
@@ -129,6 +143,7 @@ begin
   Result.Url := Trim(AUrl);
   while (Result.Url <> '') and (Result.Url[Length(Result.Url)] = '/') do
     Delete(Result.Url, Length(Result.Url), 1);
+  Result.Language := '';
   Result.Source := TAtlasTrackerConnectionSource.Personal;
 end;
 
@@ -142,6 +157,7 @@ end;
 function TAtlasTrackerConnection.Target: TAtlasTrackerTarget;
 begin
   Result := TAtlasTrackerTarget.Create(Provider, Url, '', '');
+  Result.Language := Language;
 end;
 
 function TAtlasTrackerConnection.ReadOnly: Boolean;
@@ -157,6 +173,7 @@ begin
   Result.State := AState;
   Result.CheckedAt := ACheckedAt;
   Result.HttpStatus := AHttpStatus;
+  Result.Language := '';
 end;
 
 class function TAtlasTrackerTokenStatus.Stored(AHasToken: Boolean): TAtlasTrackerTokenStatus;
@@ -213,6 +230,7 @@ begin
       if (mConnection.Name = '') or (mConnection.Provider = '') or (mConnection.Url = '') or
         (IndexOfName(Result, mConnection.Name) >= 0) then
         Continue;
+      mConnection.Language := TAtlasTrackerTemplates.NormalLanguage(TextOf(TJSONObject(mItem), 'language'));
       Result := Result + [mConnection];
     end;
   finally
@@ -224,12 +242,18 @@ class function TAtlasTrackerConnections.ToJson(const AItems: TArray<TAtlasTracke
 var
   mItem: TAtlasTrackerConnection;
   mParts: TArray<string>;
+  mPart: string;
 begin
   mParts := nil;
   for mItem in AItems do
     if not mItem.ReadOnly then
-      mParts := mParts + ['{"name": ' + Quoted(mItem.Name) + ', "provider": ' +
-        Quoted(mItem.Provider) + ', "url": ' + Quoted(mItem.Url) + '}'];
+    begin
+      mPart := '{"name": ' + Quoted(mItem.Name) + ', "provider": ' + Quoted(mItem.Provider) + ', "url": ' +
+        Quoted(mItem.Url);
+      if mItem.Language <> '' then
+        mPart := mPart + ', "language": ' + Quoted(mItem.Language);
+      mParts := mParts + [mPart + '}'];
+    end;
   Result := '[' + string.Join(', ', mParts) + ']';
 end;
 
@@ -293,6 +317,20 @@ begin
   end;
 end;
 
+"class function TAtlasTrackerConnections.LanguageOf(const AItems: TArray<TAtlasTrackerConnection>;
+  const ATarget: TAtlasTrackerTarget): string;
+var
+  mItem: TAtlasTrackerConnection;
+begin
+  Result := '';
+  if ATarget.Server = '' then
+    Exit;
+  for mItem in AItems do
+    if (mItem.Language <> '') and SameText(mItem.Provider, ATarget.Provider) and
+      (mItem.Target.Server = ATarget.Server) then
+      Exit(mItem.Language);
+end;
+
 /// <summary>Antwort ist ein JSON-Objekt mit einem nicht leeren "login" (YouTrack und GitHub).</summary>
 function HasLogin(const AText: string): Boolean;
 var
@@ -334,6 +372,8 @@ var
   mStatus: Integer;
   mError: TAtlasCiFetchError;
   mAnswered: Boolean;
+  mWatch: TStopwatch;
+  mRest: Int64;
 begin
   if ATransport = nil then
     Exit(TAtlasTrackerTokenStatus.Create(TAtlasTrackerTokenState.Missing, ANow, 0));
@@ -342,10 +382,17 @@ begin
     mUrl := AProvider.ProbeUrl(ATarget);
   if mUrl = '' then
     Exit(TAtlasTrackerTokenStatus.Create(TAtlasTrackerTokenState.Unexpected, ANow, 0));
+  mWatch := TStopwatch.StartNew;
   mAnswered := ATransport.Get(mUrl, CheckTimeoutMs, mStatus, mText, mError);
   if not mAnswered then
     mStatus := 0;
   Result := TAtlasTrackerTokenStatus.Create(StateOf(mAnswered, mStatus, mText), ANow, mStatus);
+  if Result.State <> TAtlasTrackerTokenState.Verified then
+    Exit;
+  // In der restlichen Zeit: Sprache der Oberfläche für die Vorgabe der Abfrage (#1263).
+  mRest := CheckTimeoutMs - mWatch.ElapsedMilliseconds;
+  if mRest > 0 then
+    Result.Language := TAtlasTrackerQueryTest.DetectLanguage(AProvider, ATarget, ATransport, Integer(mRest));
 end;
 
 end.

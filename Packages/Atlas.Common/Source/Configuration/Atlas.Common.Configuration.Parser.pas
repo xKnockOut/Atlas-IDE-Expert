@@ -2424,6 +2424,12 @@ begin
               ReportNode(Value, 'Nur https-Adressen ohne Benutzer, z. B. "https://youtrack.firma.de"');
           end;
         end
+        else if Key = 'language' then
+        begin
+          // Sprache der Oberfläche (#1263), vom Plugin bei „Prüfen“ erkannt.
+          if ExpectString(Value, 'language', Text) and (Text <> 'de') and (Text <> 'en') then
+            ReportNode(Value, '"language" ist "de" oder "en"');
+        end
         else
           Report(Connection.KeyStarts[Inner], Connection.KeyStarts[Inner] + Length(Key) + 2,
             Format('Unbekannte Angabe "%s" in einer Verbindung', [Key]), False);

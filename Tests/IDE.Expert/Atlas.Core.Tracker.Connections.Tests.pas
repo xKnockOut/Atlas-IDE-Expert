@@ -263,9 +263,15 @@ begin
   Assert.AreEqual(Ord(TAtlasTrackerTokenState.Verified), Ord(mStatus.State));
   Assert.AreEqual(200, mStatus.HttpStatus);
   Assert.IsTrue(mStatus.CheckedAt = mNow, 'Zeit der Prüfung');
-  Assert.AreEqual(1, Integer(Length(mTransport.Calls)));
   Assert.AreEqual('https://yt.local/api/users/me?fields=login', mTransport.Calls[0]);
   Assert.AreEqual(TAtlasTrackerConnections.CheckTimeoutMs, mTransport.Timeouts[0]);
+  // Danach in der restlichen Zeit die Sprache der Oberfläche (#1263): localeSettings, ohne Antwort darauf die Probe
+  // mit beiden Vorlagen; die feste Antwort hier nennt keine Sprache.
+  Assert.AreEqual(4, Integer(Length(mTransport.Calls)));
+  Assert.IsTrue(mTransport.Calls[1].StartsWith('https://yt.local/api/admin/globalSettings/localeSettings'),
+    mTransport.Calls[1]);
+  Assert.IsTrue(mTransport.Timeouts[1] <= TAtlasTrackerConnections.CheckTimeoutMs);
+  Assert.AreEqual('', mStatus.Language);
   Assert.AreEqual(5000, TAtlasTrackerConnections.CheckTimeoutMs);
   // Nicht erreichbar (Zeitlimit, kein Netz): ohne Dialog, ohne Status.
   mTransport := TFakeTransport.Create(0, '', TAtlasCiFetchError.Timeout);

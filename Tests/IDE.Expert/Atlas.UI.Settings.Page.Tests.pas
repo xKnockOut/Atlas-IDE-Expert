@@ -133,6 +133,10 @@ type
     /// Abfrage gespeichert, Umbenennen der Verbindung zieht mit, Klappliste an/aus.</summary>
     [Test]
     procedure TrackerQueriesTable;
+    /// <summary>„Bearbeiten …“ (#1263) öffnet den Dialog mit der Zeile und übernimmt ihn bei OK; die bei
+    /// „Prüfen“ erkannte Sprache bleibt an der Verbindung.</summary>
+    [Test]
+    procedure TrackerQueryEditAndLanguage;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
     [Test]
@@ -2179,6 +2183,72 @@ begin
   end;
   mBrowsed := '';
   mMappings := nil;
+end;
+
+procedure TAtlasSettingsPageTests.TrackerQueryEditAndLanguage;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mSeenTaken: string;
+  mSeenConnections: Integer;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.IssuesConnections := '[{"name": "Firma", "provider": "youtrack", "url": "https://yt.local"}]';
+    mSettings.IssuesQueries := '[{"name": "Standard", "query": "assignee: me #Unresolved"},' +
+      ' {"name": "Sprint", "query": "s"}]';
+    mPage.LoadFrom(mSettings);
+    Assert.IsTrue(mPage.IssuesQueryEdit.Enabled, 'erste Zeile gewählt');
+    mSeenTaken := '';
+    mSeenConnections := 0;
+    mPage.OnTrackerQueryEdit :=
+      function(var AQuery: TAtlasTrackerQuery; const AConnections: TArray<TAtlasTrackerConnection>;
+        const ATaken: TArray<string>): Boolean
+      begin
+        mSeenTaken := string.Join(';', ATaken);
+        mSeenConnections := Length(AConnections);
+        AQuery := TAtlasTrackerQuery.Create(AQuery.Name, 'assignee: meine #Ungelöst', 'Firma', 'ATL');
+        Result := True;
+      end;
+    mPage.IssuesQueryEdit.Click;
+    Assert.AreEqual('Sprint', mSeenTaken, 'Namen der übrigen Zeilen');
+    Assert.AreEqual(1, mSeenConnections);
+    Assert.AreEqual('assignee: meine #Ungelöst', mPage.IssuesQueries.Items[0].SubItems[0]);
+    Assert.AreEqual('Firma', mPage.IssuesQueries.Items[0].SubItems[1]);
+    Assert.AreEqual('assignee: meine #Ungelöst', mPage.IssuesQueryText.Text);
+    // Abbrechen ändert nichts.
+    mPage.OnTrackerQueryEdit :=
+      function(var AQuery: TAtlasTrackerQuery; const AConnections: TArray<TAtlasTrackerConnection>;
+        const ATaken: TArray<string>): Boolean
+      begin
+        AQuery.Query := 'verworfen';
+        Result := False;
+      end;
+    mPage.IssuesQueryEdit.Click;
+    Assert.AreEqual('assignee: meine #Ungelöst', mPage.TrackerQueries[0].Query);
+    // „Prüfen“ hat die Sprache erkannt: Sie kommt mit OK in settings.json.
+    mPage.OnTrackerState :=
+      function(const AConnection: TAtlasTrackerConnection): TAtlasTrackerTokenStatus
+      begin
+        Result := TAtlasTrackerTokenStatus.Create(TAtlasTrackerTokenState.Verified, Now, 200);
+        Result.Language := 'de';
+      end;
+    mPage.TrackerCheckDone(mPage.TrackerConnections[0]);
+    Assert.AreEqual('de', mPage.TrackerConnections[0].Language);
+    mSaved := mSettings;
+    mPage.SaveTo(mSaved);
+    Assert.IsTrue(mSaved.IssuesConnections.Contains('"language": "de"'), mSaved.IssuesConnections);
+    mPage.OnTrackerQueryEdit := nil;
+    mPage.OnTrackerState := nil;
+  finally
+    mHost.Free;
+  end;
+  mSeenTaken := '';
 end;
 
 procedure TAtlasSettingsPageTests.TrackerQueriesTable;

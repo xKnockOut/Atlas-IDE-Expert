@@ -1187,6 +1187,11 @@ begin
   // http; Doppelname a und Benutzer in der Adresse; url kein String, token unbekannt, ohne name, ohne provider (leer)
   // und ohne url; 3. queries ist seit #1262 bekannt.
   Assert.AreEqual(9, Integer(Length(Issues)));
+  // Sprache der Oberfläche (#1263): de oder en.
+  Parse('{"issues": {"connections": [{"name": "A", "provider": "youtrack", "url": "https://yt.local",' +
+    ' "language": "de"}, {"name": "B", "provider": "youtrack", "url": "https://yt2.local", "language": "fr"}]}}',
+    Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'nur "fr"');
   Parse('{"issues": {"connections": {"name": "A"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
   Parse('{"issues": []}', Issues);

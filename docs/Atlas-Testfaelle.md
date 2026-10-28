@@ -7867,3 +7867,24 @@ Vorbereitung: Verbindungen „Firma“ (YouTrack) und „GitHub“ aus TV2/TV3; 
 | TQ12 | Einstellungen einer älteren Fassung (mit `issues.query`) importieren | Nach dem Import steht „Standard“ in der Tabelle |
 | TQ13 | Älteren Stand in der Einstellungshistorie wiederherstellen | Die frühere einzelne Abfrage erscheint als „Standard“ |
 | TQ14 | settings.json von Hand mit doppeltem Namen oder ohne `query` speichern | Server meldet die Zeile in der Problemliste |
+
+## Abfrage bearbeiten und testen (#1263)
+
+Vorbereitung: selbst gehostetes YouTrack mit deutscher Oberfläche als Verbindung „Firma“ mit Token, Projekt `ATL` mit mir zugewiesenen offenen Issues; GitHub-Verbindung ohne Token.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TT1 | Verbindung „Firma“ wählen, „Prüfen“, OK; settings.json ansehen | Zustand „geprüft“; an der Verbindung steht `"language": "de"`; „Meine Issues“ zeigt ohne eigene Abfrage „Abfrage: assignee: meine #Ungelöst“ (**Abnahme**) |
+| TT2 | In „Abfragen“ eine Zeile wählen, „Bearbeiten …“ (bzw. Doppelklick) | Dialog „Abfrage bearbeiten“ mit Name, Verbindung, Tracker-Projekt, Vorlage, Abfrage, „Testen“ |
+| TT3 | Verbindung „Firma“, Projekt `ATL`, Vorlage „YouTrack · Mir zugewiesen (Englisch)“ ist bei erkannter deutscher Sprache nicht in der Liste; Abfrage `assignee: me #Unresolved` von Hand, „Testen“ | „Leere Liste … Anmeldung und Verbindung stehen, nur passt kein Issue.“, Tipp „… Versuche „assignee: meine #Ungelöst““ und „Gesendet an Firma: project: ATL assignee: me #Unresolved“ (**Abnahme**) |
+| TT4 | Vorlage „YouTrack · Mir zugewiesen (Deutsch)“, „Testen“ | „N Issues gefunden (… ms): ATL-…, …“ mit höchstens drei Kennungen (**Abnahme**) |
+| TT5 | Projekt `GIBTSNICHT`, „Testen“ | „Projekt unbekannt (HTTP 404) …“ (**Abnahme**) |
+| TT6 | Abfrage `assignee: mee`, „Testen“ | „Abfrage abgelehnt (HTTP 400): …“ mit der Meldung von YouTrack (**Abnahme**) |
+| TT7 | Verbindung „GitHub“ ohne Token, Projekt `owner/repo`, „Testen“ | „Kein Token für diesen Server …“; kein Netzzugriff (**Abnahme**) |
+| TT8 | Adresse der Verbindung auf eine Anmeldeseite (Portal) ändern, „Testen“ | „Antwort nicht lesbar (HTTP 200) … vielleicht eine Anmeldeseite“ |
+| TT9 | Netzwerk trennen, „Testen“ | Nach höchstens 5 s „Nicht erreichbar …“, kein Dialog, IDE bleibt bedienbar |
+| TT10 | Gesendete Abfrage mit dem Protokoll vergleichen | Die angezeigte Abfrage entspricht genau der gesendeten; das Protokoll nennt nur Anbieter und Ergebnis, nie Adresse, Abfrage oder Token (**Abnahme**) |
+| TT11 | „Testen“ und den Dialog sofort mit „Abbrechen“ schließen | Kein Fehler, das spätere Ergebnis verfällt |
+| TT12 | Verbindung „(alle)“, Vorlagenliste ansehen | Vorlagen aller Anbieter der Verbindungen; GitHub ohne „Aktueller Sprint“ und ohne Sprachangabe |
+| TT13 | Benutzer ohne Leserecht auf die globalen Einstellungen: neue YouTrack-Verbindung, „Prüfen“ | Sprache trotzdem „de“ (Probe mit beiden Vorlagen findet nur mit der deutschen Issues) |
+| TT14 | Englisches YouTrack: „Prüfen“ | `"language": "en"`, Vorgabe `assignee: me #Unresolved` |

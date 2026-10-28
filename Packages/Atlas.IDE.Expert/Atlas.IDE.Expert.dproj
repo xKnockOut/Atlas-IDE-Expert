@@ -232,6 +232,7 @@
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Plugin.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Page.pas">
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Marks.pas"/>
+        <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.QueryDialog.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Rules.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Group.pas"/>
         <DCCReference Include="Source\UI\Settings\Atlas.UI.Settings.Transfer.pas"/>
@@ -434,6 +435,8 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Connections.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Projects.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Queries.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Templates.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.QueryTest.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Naming.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
