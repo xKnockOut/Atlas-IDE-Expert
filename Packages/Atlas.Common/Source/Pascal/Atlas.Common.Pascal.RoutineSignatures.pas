@@ -38,6 +38,10 @@ type
     class function ParameterKey(const AHead: string): string; static;
     /// <summary>Ergebnistyp hinter der Parameterliste als Schlüsselteil ("|integer"); '' ohne.</summary>
     class function ResultKey(const AHead: string): string; static;
+    /// <summary>Steht vor dem Methodennamen AName im Kopf AHead ein generischer Typ (TProperty<T>.Create)? Delphi
+    /// erlaubt neben TProperty einen generischen TProperty<T>; dessen Rümpfe gehören nicht zum nicht generischen.
+    /// </summary>
+    class function HasGenericQualifier(const AHead, AName: string): Boolean; static;
     /// <summary>Text AText ohne Leerraum in Kleinbuchstaben, z. B. für Typen ("arrayofptypeinfo").</summary>
     class function TypeKey(const AText: string): string; static;
     /// <summary>Kurzform eines Routinenkopfs ohne Parameterliste und ohne Ergebnistyp (function Foo;).</summary>
@@ -197,6 +201,25 @@ begin
           Exit('|' + TypeKey(Copy(AHead, mIndex + 1, MaxInt)));
     end;
   Result := '';
+end;
+
+class function TRoutineSignatures.HasGenericQualifier(const AHead, AName: string): Boolean;
+var
+  mLower, mNeedle: string;
+  mIndex, mAfter: Integer;
+begin
+  Result := False;
+  mLower := LowerCase(AHead);
+  mNeedle := '.' + LowerCase(AName);
+  mIndex := Pos(mNeedle, mLower);
+  while mIndex > 0 do
+  begin
+    mAfter := mIndex + Length(mNeedle);
+    // Der Name endet vor "(", "<", ":", Leerraum oder am Ende des Kopfs.
+    if (mAfter > Length(mLower)) or not CharInSet(mLower[mAfter], ['a'..'z', '0'..'9', '_']) then
+      Exit(Pos('<', Copy(AHead, 1, mIndex - 1)) > 0);
+    mIndex := PosEx(mNeedle, mLower, mIndex + 1);
+  end;
 end;
 
 class function TRoutineSignatures.TypeKey(const AText: string): string;

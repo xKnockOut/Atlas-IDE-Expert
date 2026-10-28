@@ -20,8 +20,8 @@
 // Typ, Record mit variantem Teil, Unit), uses mit checkUses, stille Fälle und
 // Optionen.
 // Sonderformen der Deklaration (#1325): die Minimalfälle F02, F03, F06, F07,
-// F13 und F18 der FP-Prüfung sowie asm- und external-Rümpfe und override sind
-// still; echte Überladungen ohne overload und fehlende Rümpfe werden weiter
+// F13 und F18 der FP-Prüfung sowie asm- und external-Rümpfe, override und ein
+// gleichnamiger generischer Typ neben dem nicht generischen sind still; echte Überladungen ohne overload und fehlende Rümpfe werden weiter
 // gemeldet.
 
 interface
@@ -113,6 +113,8 @@ type
     procedure SpecialFormOpenArrayElementType;
     [Test]
     procedure SpecialFormAsmExternalAndOverride;
+    [Test]
+    procedure SpecialFormGenericNamesake;
     [Test]
     procedure SpecialFormCounterChecks;
     [Test]
@@ -865,6 +867,18 @@ begin
     '  MOV EAX, -1'#10'end;'#10'function Lese(P: Pointer): Integer; stdcall; external ''a.dll'';'#10 +
     'function Schreibe; external ''a.dll'';'#10'procedure Move4(const ASource; var ADest);'#10'asm'#10'end;'#10 +
     'procedure TB.Add(P: PChar); begin end;'#10'procedure TB.Add(P: PChar; Len: Integer); begin end;'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.SpecialFormGenericNamesake;
+begin
+  // Neben TProperty steht ein generischer TProperty<T> gleichen Namens (Spring4D): Dessen Deklarationen und Rümpfe
+  // gehören nicht zum nicht generischen Typ.
+  AssertMatchingSilent('unit U;'#10'interface'#10'type'#10'  TProperty = class'#10 +
+    '    constructor Create(const AName: string);'#10'  end;'#10'  TProperty<T: class> = class(TProperty)'#10 +
+    '    constructor Create(const AName, APath: string);'#10'    function Wert: T;'#10'  end;'#10'implementation'#10 +
+    'constructor TProperty.Create(const AName: string); begin end;'#10 +
+    'constructor TProperty<T>.Create(const AName, APath: string); begin end;'#10 +
+    'function TProperty<T>.Wert: T; begin Result := nil; end;'#10'end.');
 end;
 
 procedure TDeclarationRulesTests.SpecialFormCounterChecks;
