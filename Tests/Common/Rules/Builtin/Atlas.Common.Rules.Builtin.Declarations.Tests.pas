@@ -4,6 +4,7 @@
 // signature-mismatch (#996) mit dem Angleichen abweichender Köpfe (#100):
 // Beispiel aus dem Issue, Anzahl, Ergebnistyp, Namen, Modifizierer,
 // Aufrufkonvention, nächstliegende Überladung, Abschalten und Ausnahmen;
+// Typaliase, Qualifizierer, Kommentare, Attribute und {$IFDEF} im Kopf (#1324);
 // interface-not-implemented (#1000): fehlende Interface-Methoden (E2291),
 // abweichender Kopf (E2211), Zuordnung ohne Interface (E2265), geerbte
 // Methoden, Zuordnungen, implements und unbekannte Vorfahren.
@@ -65,6 +66,14 @@ type
     procedure SignatureMismatchVariants;
     [Test]
     procedure SignatureMismatchOffAndExclude;
+    [Test]
+    procedure SignatureMismatchBuiltinAliases;
+    [Test]
+    procedure SignatureMismatchCommentsAndAttributes;
+    [Test]
+    procedure SignatureMismatchConditionalHeader;
+    [Test]
+    procedure SignatureMismatchAliasesFromIndex;
     [Test]
     procedure InterfaceIssueExample;
     [Test]
@@ -445,6 +454,81 @@ begin
   TRuleAssert.Silent(TSignatureMismatchRule.Create, Source);
   TRuleAssert.Reports(TDeclaredNotImplementedRule.Create, Source);
   TRuleAssert.Reports(TImplementedNotDeclaredRule.Create, Source);
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchBuiltinAliases;
+const
+  // Minimalfall F05 aus #1324.
+  cF05 = 'unit F05_AliasSignature;'#10'interface'#10'type'#10'  TA = class'#10 +
+    '    procedure P(const X: IInterface; var Y: Longint);'#10'  end;'#10'implementation'#10 +
+    'procedure TA.P(const X: IUnknown; var Y: Integer); begin end;'#10'end.';
+begin
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, cF05);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TSignatureMismatchRule.Create, cF05,
+    TSymbolIndex.Create, '', ''))));
+  // Qualifizierer: Unit vor Typargumenten, System.string, umgebender Typ.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    function Liste: IList<ITestResult>;',
+    'function TFoo.Liste: IList<DUnitX.TestFramework.ITestResult>;'#10'begin'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Rollen(A: TList<string>);',
+    'procedure TFoo.Rollen(A: TList<System.string>);'#10'begin'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    type'#10'      TArt = (Eins, Zwei);'#10 +
+    '    procedure Setze(A: TArt);', 'procedure TFoo.Setze(A: TFoo.TArt);'#10'begin'#10'end;'));
+  // Gegentest: echte Abweichung.
+  Assert.AreEqual('P weicht von der Deklaration ab: Y Int64 statt Longint (wie E2037).',
+    TRuleAssert.Findings(TSignatureMismatchRule.Create, StringReplace(cF05, 'var Y: Integer', 'var Y: Int64',
+    []))[0].Message);
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchCommentsAndAttributes;
+begin
+  // Kommentare im Kopf (Indy, Spring4D, mORMot): {Do not Localize}, //FI W521, {%H-}.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit(
+    '    procedure Lies(const AName: string = ''x'' {Do not Localize};'#10 +
+    '      //FI W521'#10'      const AFlags: {Pointer}Integer);',
+    'procedure TFoo.Lies(const AName: string; const {%H-}AFlags: Integer);'#10'begin'#10'end;'));
+  // Attribut hinter dem Modifizierer (DMVCFramework): const [MVCFromBody] Obj.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit(
+    '    function Echo(const [MVCFromBody] Obj: TObject): TObject;',
+    'function TFoo.Echo(const Obj: TObject): TObject;'#10'begin'#10'end;'));
+  // Gegentest: Ohne const bleibt es eine Abweichung, auch mit Attribut.
+  Assert.AreEqual('Echo weicht von der Deklaration ab: Obj ohne const (wie E2037).',
+    TRuleAssert.Findings(TSignatureMismatchRule.Create, ClassUnit(
+    '    function Echo(const [MVCFromBody] Obj: TObject): TObject;',
+    'function TFoo.Echo(Obj: TObject): TObject;'#10'begin'#10'end;'))[0].Message);
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchConditionalHeader;
+begin
+  // {$IFDEF} in der Parameterliste (SynEdit, mORMot): Welche Parameter gelten, hängt von der Übersetzung ab.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit(
+    '    procedure Lade(A: Integer {$IFDEF UNICODE}; B: Boolean{$ENDIF});',
+    'procedure TFoo.Lade(A: Integer);'#10'begin'#10'end;'));
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchAliasesFromIndex;
+const
+  cFremd = 'unit Fremd;'#10'interface'#10'type'#10'  TPort = UInt16;'#10'  TGanz = Integer;'#10 +
+    '  TEigen = type Integer;'#10'implementation'#10'end.';
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+  mFindings: TArray<TRuleFinding>;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cFremd, 'C:\P\Fremd.pas', nil));
+  mSource := 'unit U;'#10'interface'#10'uses'#10'  Fremd;'#10'type'#10'  TFoo = class'#10 +
+    '    procedure A(P: TPort);'#10'    function B: TGanz;'#10'    procedure C(E: TEigen);'#10 +
+    '    procedure D(X: TUnbekannt);'#10'    procedure E(X: Integer);'#10'  end;'#10'implementation'#10 +
+    'procedure TFoo.A(P: Word);'#10'begin'#10'end;'#10'function TFoo.B: Longint;'#10'begin'#10'end;'#10 +
+    'procedure TFoo.C(E: Integer);'#10'begin'#10'end;'#10'procedure TFoo.D(X: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TFoo.E(X: Int64);'#10'begin'#10'end;'#10'end.';
+  mFindings := TRuleAssert.IndexFindings(TSignatureMismatchRule.Create, mSource, mIndex, '', '');
+  // A und B: Aliase bis zum Ziel verfolgt. C: type TEigen = type Integer ist ein eigener Typ. D: TUnbekannt kann
+  // ein Alias aus einer Unit außerhalb des Index sein. E: echte Abweichung.
+  Assert.AreEqual(2, Integer(Length(mFindings)));
+  Assert.AreEqual('C weicht von der Deklaration ab: E Integer statt TEigen (wie E2037).', mFindings[0].Message);
+  Assert.AreEqual('E weicht von der Deklaration ab: X Int64 statt Integer (wie E2037).', mFindings[1].Message);
+  mIndex := nil;
 end;
 
 procedure TDeclarationRulesTests.AmbiguousOverloadOffersNoAlignment;

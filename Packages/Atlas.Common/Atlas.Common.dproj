@@ -537,6 +537,7 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Preprocessor.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.XmlDoc.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeIdentity.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.StepCalls.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CompilerSwitches.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerSwitches.pas"/>
