@@ -2003,6 +2003,9 @@ begin
     Assert.IsTrue(SheetOf(Page.WelcomeSprint) = SheetOf(Page.WelcomeIssues));
     Assert.IsTrue(SheetOf(Page.IssuesPaletteSearch) = Tracker, 'Palettensuche (#1270)');
     Assert.IsTrue(SheetOf(Page.IssuesPreviewDevelopment) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesNotify) = Tracker, 'Meldungen (#1271)');
+    Assert.IsTrue(SheetOf(Page.IssuesNotifyInterval) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesNotifyScope) = Tracker);
     // Die Willkommensseite behält nur den Schalter, daneben der Weg zur Seite.
     Assert.IsFalse(SheetOf(Page.WelcomeIssues) = Tracker);
     Assert.IsTrue(SheetOf(Page.WelcomeIssuesLink) = SheetOf(Page.WelcomeIssues));
@@ -3069,6 +3072,9 @@ begin
     Assert.IsTrue(Page.WelcomeSprint.Checked);
     Assert.IsTrue(Page.IssuesPaletteSearch.Checked);
     Assert.IsTrue(Page.IssuesPreviewDevelopment.Checked);
+    Assert.IsFalse(Page.IssuesNotify.Checked);
+    Assert.AreEqual('10', Page.IssuesNotifyInterval.Text);
+    Assert.AreEqual(1, Page.IssuesNotifyScope.Choice);
     // #764: Schnellaktionen an, alle sechs Knöpfe, wt.exe, Strg+B und Strg+T.
     Assert.IsTrue(Page.WelcomeQuickActions.Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Build).Checked);
@@ -3144,6 +3150,9 @@ begin
     Page.WelcomeSprint.Checked := False;
     Page.IssuesPaletteSearch.Checked := False;
     Page.IssuesPreviewDevelopment.Checked := False;
+    Page.IssuesNotify.Checked := True;
+    Page.IssuesNotifyInterval.Text := ' 15 ';
+    Page.IssuesNotifyScope.Choice := 2;
     Page.WelcomeQuickActions.Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Run).Checked := False;
@@ -3228,6 +3237,9 @@ begin
     Assert.IsFalse(Saved.WelcomePageSprint);
     Assert.IsFalse(Saved.IssuesPaletteSearch);
     Assert.IsFalse(Saved.IssuesPreviewDevelopment);
+    Assert.IsTrue(Saved.IssuesNotify);
+    Assert.AreEqual(15, Saved.IssuesNotifyIntervalMinutes);
+    Assert.AreEqual('watched', Saved.IssuesNotifyScope);
     Assert.IsFalse(Saved.WelcomePageQuickActions);
     Assert.AreEqual('build,tests,pull,folder,tasks', Saved.WelcomePageQuickActionsItems, 'ohne run und console');
     Assert.AreEqual('pwsh.exe', Saved.WelcomePageQuickActionsConsole);
@@ -3275,6 +3287,8 @@ begin
     Assert.IsFalse(Page.WelcomeSprint.Checked);
     Assert.IsFalse(Page.IssuesPaletteSearch.Checked);
     Assert.IsFalse(Page.IssuesPreviewDevelopment.Checked);
+    Assert.IsTrue(Page.IssuesNotify.Checked);
+    Assert.AreEqual(2, Page.IssuesNotifyScope.Choice);
     Assert.IsFalse(Page.WelcomeQuickActions.Checked);
     Assert.IsFalse(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Pull).Checked);

@@ -9,7 +9,9 @@
 //   aktualisiert).
 // - Age: Zeitabstand für „vor 3 Std.“ (Tooltip mit der absoluten Zeit).
 // - Kommentare: neueste unten, die ShownComments neuesten offen, ältere
-//   eingeklappt („12 ältere Kommentare“).
+//   eingeklappt („12 ältere Kommentare“). Aus einer Meldung (#1271) öffnet
+//   das Fenster am ersten neuen Kommentar (CommentAt); liegt er bei den
+//   eingeklappten, klappen sie auf.
 // - Bilder: relative Adressen (YouTrack) sind Namen von Anhängen; geladen
 //   wird nur, was beim Server des Tokens liegt (sonst ginge eine Anfrage an
 //   einen Rechner aus dem Issue-Text). Anderes bleibt ein Link.
@@ -80,12 +82,18 @@ type
     MaxImageBytes = 8 * 1024 * 1024;
     /// <summary>Größter Anhang zum Öffnen.</summary>
     MaxAttachmentBytes = 64 * 1024 * 1024;
+    /// <summary>Spielraum zwischen dem Anker einer Meldung und der Zeit des Kommentars.</summary>
+    AnchorSlackMs = 2000;
   public
     class function Badges(const ADetails: TAtlasTrackerDetails): TArray<TAtlasIssueBadge>; static;
     /// <summary>Abstand von AThen bis ANow (beide UTC).</summary>
     class function Age(AThen, ANow: TDateTime): TAtlasIssueAge; static;
     /// <summary>Anzahl eingeklappter älterer Kommentare (0, wenn AExpanded).</summary>
     class function CollapsedComments(ACount: Integer; AExpanded: Boolean): Integer; static;
+    /// <summary>Kommentar zum Anker einer Meldung (#1271, UTC): der erste, der höchstens AnchorSlackMs vor AAnchor
+    /// angelegt wurde (Aktivität und Kommentar tragen nicht immer dieselbe Millisekunde); ohne passenden der
+    /// letzte. -1 ohne Kommentare oder ohne Anker.</summary>
+    class function CommentAt(const AComments: TArray<TAtlasTrackerComment>; AAnchor: TDateTime): Integer; static;
     /// <summary>Adresse eines Bilds im Markdown: relative Namen über die Anhänge; '' ohne.</summary>
     class function ImageUrl(const ADetails: TAtlasTrackerDetails; const AUrl: string): string; static;
     /// <summary>Bild bzw. Anhang darf mit dem Transport des Trackers geladen werden: https beim Server
@@ -260,6 +268,20 @@ begin
   Result := 0;
   if not AExpanded and (ACount > ShownComments) then
     Result := ACount - ShownComments;
+end;
+
+class function TAtlasIssuePreview.CommentAt(const AComments: TArray<TAtlasTrackerComment>;
+  AAnchor: TDateTime): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  if (AAnchor <= 0) or (Length(AComments) = 0) then
+    Exit;
+  for mIndex := 0 to High(AComments) do
+    if AComments[mIndex].Created >= AAnchor - AnchorSlackMs / MSecsPerDay then
+      Exit(mIndex);
+  Result := High(AComments);
 end;
 
 class function TAtlasIssuePreview.ImageUrl(const ADetails: TAtlasTrackerDetails; const AUrl: string): string;

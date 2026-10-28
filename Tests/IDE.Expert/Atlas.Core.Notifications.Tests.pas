@@ -487,13 +487,14 @@ procedure TAtlasNotificationSourcesTests.KnownSourcesAndModeNames;
 var
   Mode: TAtlasNotificationMode;
 begin
-  Assert.AreEqual(9, Integer(Length(TAtlasNotificationSources.Known)));
+  Assert.AreEqual(10, Integer(Length(TAtlasNotificationSources.Known)));
   Assert.AreEqual('build', TAtlasNotificationSources.Known[0]);
   Assert.AreEqual('shortcutTips', TAtlasNotificationSources.Known[4]);
   Assert.AreEqual('buildServer', TAtlasNotificationSources.Known[5], 'Build-Server (#763)');
   Assert.AreEqual('openBuild', TAtlasNotificationSources.Known[6], 'Bauen beim Öffnen');
   Assert.AreEqual('hidden', TAtlasNotificationSources.Known[7], 'Ausblenden am Element (#628)');
   Assert.AreEqual('unitRename', TAtlasNotificationSources.Known[8], 'uses nachziehen (#512)');
+  Assert.AreEqual('issues', TAtlasNotificationSources.Known[9], 'Meldungen zu meinen Issues (#1271)');
   Assert.AreEqual('show', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Show));
   Assert.AreEqual('collect', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Collect));
   Assert.AreEqual('off', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Off));

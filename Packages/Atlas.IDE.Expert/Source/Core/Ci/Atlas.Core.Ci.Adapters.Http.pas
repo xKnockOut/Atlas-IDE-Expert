@@ -18,6 +18,8 @@
 // (IAtlasCiCancel). Abgehakte Checklisten (#1273) schreibt sie mit POST bzw.
 // PATCH zurück (IAtlasCiSend): nur mit Token, nur über https an den
 // eingetragenen Server, ohne Weiterleitungen.
+// Die Meldungen zu Issues (#1271) fragen GitHub bedingt
+// (IAtlasCiConditional: If-Modified-Since, Last-Modified, X-Poll-Interval).
 
 interface
 
@@ -26,7 +28,8 @@ uses
   Atlas.Core.Ci.Contract;
 
 type
-  TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiSend, IAtlasCiCancel)
+  TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiSend, IAtlasCiCancel,
+    IAtlasCiConditional)
   private
     FServer: string;
     FUser: string;
@@ -35,7 +38,12 @@ type
     FCancelled: Integer;
     /// <summary>AMethod "GET", "POST" oder "PATCH"; ABody nur beim Schreiben (JSON).</summary>
     function Request(const AMethod, AUrl, AAccept: string; const ABody: TBytes; ATimeoutMs, AMaxBytes: Integer;
-      out AStatus: Integer; out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
+      out AStatus: Integer; out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean; overload;
+    /// <summary>Wie oben, mit zusätzlichem If-Modified-Since (AIfModifiedSince '' = ohne, #1271) und den Köpfen
+    /// Last-Modified und X-Poll-Interval der Antwort.</summary>
+    function Request(const AMethod, AUrl, AAccept, AIfModifiedSince: string; const ABody: TBytes; ATimeoutMs,
+      AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes; out ALastModified, APollInterval: string;
+      out AError: TAtlasCiFetchError): Boolean; overload;
     function Cancelled: Boolean;
   public
     /// <summary>AServer wie TAtlasCiJob.Server; AUser/AToken leer = ohne Anmeldung.</summary>
@@ -50,6 +58,8 @@ type
     function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
     procedure Cancel;
+    function GetConditional(const AUrl, AIfModifiedSince: string; ATimeoutMs: Integer; out AStatus: Integer;
+      out AText, ALastModified: string; out APollSeconds: Integer; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -150,8 +160,36 @@ begin
   Result := AtomicCmpExchange(FCancelled, 0, 0) <> 0;
 end;
 
+function TAtlasCiHttpTransport.GetConditional(const AUrl, AIfModifiedSince: string; ATimeoutMs: Integer;
+  out AStatus: Integer; out AText, ALastModified: string; out APollSeconds: Integer;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mBytes: TBytes;
+  mPoll: string;
+begin
+  AText := '';
+  APollSeconds := 0;
+  Result := Request('GET', AUrl, 'application/json', AIfModifiedSince, nil, ATimeoutMs, MaxBytes, AStatus, mBytes,
+    ALastModified, mPoll, AError);
+  if not Result then
+    Exit;
+  AText := TEncoding.UTF8.GetString(mBytes);
+  if not TryStrToInt(Trim(mPoll), APollSeconds) or (APollSeconds < 0) then
+    APollSeconds := 0;
+end;
+
 function TAtlasCiHttpTransport.Request(const AMethod, AUrl, AAccept: string; const ABody: TBytes;
   ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
+var
+  mLastModified, mPoll: string;
+begin
+  Result := Request(AMethod, AUrl, AAccept, '', ABody, ATimeoutMs, AMaxBytes, AStatus, ABytes, mLastModified, mPoll,
+    AError);
+end;
+
+function TAtlasCiHttpTransport.Request(const AMethod, AUrl, AAccept, AIfModifiedSince: string;
+  const ABody: TBytes; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes; out ALastModified,
+  APollInterval: string; out AError: TAtlasCiFetchError): Boolean;
 var
   Client: THTTPClient;
   Content: TBytesStream;
@@ -167,6 +205,8 @@ begin
   Result := False;
   AStatus := 0;
   ABytes := nil;
+  ALastModified := '';
+  APollInterval := '';
   AError := TAtlasCiFetchError.Network;
   if Cancelled then
   begin
@@ -205,6 +245,8 @@ begin
             Encoding.Free;
           end;
         end;
+        if AIfModifiedSince <> '' then
+          Headers := Headers + [TNetHeader.Create('If-Modified-Since', AIfModifiedSince)];
         Content.Clear;
         if AMethod = 'GET' then
           Async := Client.BeginGet(Url, Content, Headers)
@@ -254,6 +296,8 @@ begin
         Url := Next;
       end;
       AStatus := Response.StatusCode;
+      ALastModified := Response.HeaderValue['Last-Modified'];
+      APollInterval := Response.HeaderValue['X-Poll-Interval'];
       if Content.Size > AMaxBytes then
       begin
         AError := TAtlasCiFetchError.Invalid;

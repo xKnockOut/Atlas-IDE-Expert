@@ -1,0 +1,15 @@
+[
+  {"timestamp": 1767225600000, "author": {"login": "anna", "fullName": "Anna Muster"},
+   "category": {"id": "CommentsCategory"}, "field": null, "added": [{"text": "Bitte prüfen"}]},
+  {"timestamp": 1767225660000, "author": {"login": "ben", "fullName": "Ben"},
+   "category": {"id": "CustomFieldCategory"}, "field": {"name": "Assignee"},
+   "added": [{"login": "marco", "fullName": "Marco B."}]},
+  {"timestamp": 1767225720000, "author": {"login": "ben", "fullName": "Ben"},
+   "category": {"id": "CustomFieldCategory"}, "field": {"name": "State"}, "added": [{"name": "Fertig"}]},
+  {"timestamp": 1767225780000, "author": {"login": "ben", "fullName": "Ben"},
+   "category": {"id": "CustomFieldCategory"}, "field": {"name": "Priority"}, "added": [{"name": "Hoch"}]},
+  {"timestamp": 1767100000000, "author": {"login": "anna", "fullName": "Anna Muster"},
+   "category": {"id": "CommentsCategory"}, "added": [{"text": "alt"}]},
+  {"timestamp": 1767225840000, "author": {"login": "anna", "fullName": "Anna Muster"},
+   "category": {"id": "CommentsCategory"}, "added": []}
+]

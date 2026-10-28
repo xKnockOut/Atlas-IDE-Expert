@@ -764,6 +764,10 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.CommentEditor.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.DevelopmentView.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.DevelopmentView.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Notify.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tracker.Notify.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Tracker\Atlas.UI.Tracker.Notify.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Tracker.Notify.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Summary.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Projects\Atlas.Core.Projects.Matching.pas"/>

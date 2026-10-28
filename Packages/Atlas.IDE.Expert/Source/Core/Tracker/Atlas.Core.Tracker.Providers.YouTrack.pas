@@ -60,6 +60,14 @@
 //   VCS-Anbindung von YouTrack dem Issue zugeordnet hat. Ohne Anbindung
 //   (404) ist die Liste leer, kein Fehler. Pull Requests kennt YouTrack hier
 //   nicht.
+// - Änderungen (#1271): GET <url>/api/issues?query=<Umfang> updated: <Tag>
+//   .. *&fields=idReadable,summary,updated über alle Projekte des Servers
+//   (Umfang "for: me", dazu "reporter: me", dazu "has: star"; der Tag liegt
+//   einen Tag vor dem letzten Stand, damit die Zeitzone des Servers nichts
+//   verschluckt, genau gefiltert wird mit "updated"), dann je Treffer
+//   GET <url>/api/issues/<Kennung>/activities?categories=CommentsCategory,
+//   CustomFieldCategory&start=<ms> ab dem letzten Stand: neue Kommentare,
+//   Zuständig und Zustand.
 
 interface
 
@@ -97,6 +105,13 @@ type
       'localizedTargetToSource,aggregation';
     /// <summary>Felder der VCS-Änderungen (#1269).</summary>
     VcsChangeFields = 'version,text,date,user(login,fullName)';
+    /// <summary>Felder der Änderungsabfrage (#1271).</summary>
+    ChangeIssueFields = 'idReadable,summary,updated';
+    ActivityFields = 'timestamp,author(login,fullName),category(id),field(name),' +
+      'added(id,name,login,fullName,text,presentation)';
+    ActivityCategories = 'CommentsCategory,CustomFieldCategory';
+    /// <summary>Höchstens so viele geänderte Issues je Abfrage bekommen ihre Einzelheiten.</summary>
+    MaxChangedIssues = 20;
   public
     class function IssuesUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string; static;
     /// <summary>Abfrage, wie sie an YouTrack geht (mit "project: …").</summary>
@@ -177,6 +192,22 @@ type
     /// <summary>Antwort von …/vcsChanges, neueste zuerst; False bei ungültigem JSON.</summary>
     class function ParseVcsChanges(const AJson: string; out AChanges: TArray<TAtlasTrackerVcsChange>): Boolean;
       static;
+    /// <summary>Umfang als Suchausdruck (#1271), z. B. "(for: me or reporter: me)".</summary>
+    class function ScopeQuery(AScope: TAtlasTrackerNotifyScope): string; static;
+    /// <summary>Adresse der geänderten Issues ab ASince (UTC) im Umfang AScope; '' ohne Server.</summary>
+    class function ChangedIssuesUrl(const ATarget: TAtlasTrackerTarget; ASince: TDateTime;
+      AScope: TAtlasTrackerNotifyScope): string; static;
+    /// <summary>Antwort der geänderten Issues: Kennung, Titel und Zeit, nur nach ASince. False bei ungültigem JSON.
+    /// </summary>
+    class function ParseChangedIssues(const AJson: string; ASince: TDateTime;
+      out AIssues: TArray<TAtlasTrackerChange>): Boolean; static;
+    /// <summary>Adresse der Aktivitäten von AKey nach ASince; '' bei ungültiger Kennung oder ohne Server.</summary>
+    class function ActivitiesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string; ASince: TDateTime): string;
+      static;
+    /// <summary>Antwort von /activities als Änderungen an AKey (ATitle): Kommentare, Zuständig (AMe: an mich?) und
+    /// Zustand nach ASince; andere Felder entfallen. False bei ungültigem JSON.</summary>
+    class function ParseActivities(const AJson, AKey, ATitle, AMe: string; ASince: TDateTime;
+      out AChanges: TArray<TAtlasTrackerChange>): Boolean; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -299,6 +330,8 @@ type
       ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
     function Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment; out AError: TAtlasCiFetchError): Boolean;
+    function Changes(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
+      var APoll: TAtlasTrackerPoll; out AChanges: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -306,6 +339,7 @@ implementation
 uses
   System.Classes,
   System.DateUtils,
+  System.Diagnostics,
   System.Generics.Collections,
   System.Generics.Defaults,
   System.JSON,
@@ -2362,6 +2396,196 @@ begin
   ADevelopment.Changes := mChanges;
   AError := TAtlasCiFetchError.None;
   Result := True;
+end;
+
+/// <summary>Millisekunden seit 1970 zu einer UTC-Zeit.</summary>
+function MsOf(ATime: TDateTime): Int64;
+begin
+  Result := Round((ATime - UnixDateDelta) * MSecsPerDay);
+end;
+
+class function TAtlasYouTrackTracker.ScopeQuery(AScope: TAtlasTrackerNotifyScope): string;
+begin
+  case AScope of
+    TAtlasTrackerNotifyScope.Assigned:
+      Result := 'for: me';
+    TAtlasTrackerNotifyScope.Watched:
+      Result := '(for: me or reporter: me or has: star)';
+  else
+    Result := '(for: me or reporter: me)';
+  end;
+end;
+
+class function TAtlasYouTrackTracker.ChangedIssuesUrl(const ATarget: TAtlasTrackerTarget; ASince: TDateTime;
+  AScope: TAtlasTrackerNotifyScope): string;
+var
+  mQuery: string;
+begin
+  Result := '';
+  if ATarget.Server = '' then
+    Exit;
+  // Einen Tag früher: Der Server wertet den Tag in seiner Zeitzone; genau gefiltert wird mit "updated".
+  mQuery := ScopeQuery(AScope) + ' updated: ' + FormatDateTime('yyyy"-"mm"-"dd', ASince - 1) + ' .. *';
+  Result := ATarget.Url + '/api/issues?query=' + TTextUris.PercentEncode(mQuery) + '&fields=' +
+    TTextUris.PercentEncode(ChangeIssueFields) + '&$top=' + IntToStr(MaxChangedIssues * 2);
+end;
+
+class function TAtlasYouTrackTracker.ParseChangedIssues(const AJson: string; ASince: TDateTime;
+  out AIssues: TArray<TAtlasTrackerChange>): Boolean;
+var
+  mValue, mItem: TJSONValue;
+  mIssue: TAtlasTrackerChange;
+begin
+  AIssues := nil;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    Result := True;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONObject) then
+        Continue;
+      mIssue := TAtlasTrackerChange.Create(Trim(TextOf(TJSONObject(mItem), 'idReadable')),
+        TAtlasTrackerChangeKind.Other, '', TimeOf(TJSONObject(mItem), 'updated'));
+      mIssue.Title := Shorten(TextOf(TJSONObject(mItem), 'summary'), TAtlasTrackerIssue.MaxTitle);
+      if ValidKey(mIssue.Key) and (mIssue.Time > ASince) then
+        AIssues := AIssues + [mIssue];
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasYouTrackTracker.ActivitiesUrl(const ATarget: TAtlasTrackerTarget; const AKey: string;
+  ASince: TDateTime): string;
+begin
+  Result := '';
+  if (ATarget.Server = '') or not ValidKey(Trim(AKey)) then
+    Exit;
+  Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/activities?categories=' + ActivityCategories +
+    '&start=' + IntToStr(MsOf(ASince) + 1) + '&fields=' + TTextUris.PercentEncode(ActivityFields) + '&$top=100';
+end;
+
+class function TAtlasYouTrackTracker.ParseActivities(const AJson, AKey, ATitle, AMe: string; ASince: TDateTime;
+  out AChanges: TArray<TAtlasTrackerChange>): Boolean;
+var
+  mValue, mItem, mAdded, mEntry: TJSONValue;
+  mObject, mAuthor: TJSONObject;
+  mCategory, mField, mLogin: string;
+  mChange: TAtlasTrackerChange;
+  mKind: TAtlasTrackerChangeKind;
+begin
+  AChanges := nil;
+  Result := False;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    Result := True;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONObject) then
+        Continue;
+      mObject := TJSONObject(mItem);
+      mAdded := mObject.Values['added'];
+      // Entfernte Kommentare und geleerte Felder melden nichts.
+      if not (mAdded is TJSONArray) or (TJSONArray(mAdded).Count = 0) then
+        Continue;
+      mCategory := '';
+      if mObject.Values['category'] is TJSONObject then
+        mCategory := TextOf(TJSONObject(mObject.Values['category']), 'id');
+      mField := '';
+      if mObject.Values['field'] is TJSONObject then
+        mField := Trim(TextOf(TJSONObject(mObject.Values['field']), 'name'));
+      if SameText(mCategory, 'CommentsCategory') then
+        mKind := TAtlasTrackerChangeKind.Comment
+      else if IsOneOf(mField, ['Assignee', 'Zuständig', 'Bearbeiter', 'Verantwortlich']) then
+        mKind := TAtlasTrackerChangeKind.Assigned
+      else if IsOneOf(mField, ['State', 'Status', 'Zustand']) then
+        mKind := TAtlasTrackerChangeKind.State
+      else
+        Continue;
+      mChange := TAtlasTrackerChange.Create(AKey, mKind, '', TimeOf(mObject, 'timestamp'));
+      if mChange.Time <= ASince then
+        Continue;
+      mChange.Title := ATitle;
+      if mObject.Values['author'] is TJSONObject then
+      begin
+        mAuthor := TJSONObject(mObject.Values['author']);
+        mChange.Author := Trim(TextOf(mAuthor, 'login'));
+        mChange.AuthorName := Shorten(TextOf(mAuthor, 'fullName'), 80);
+      end;
+      if mKind <> TAtlasTrackerChangeKind.Comment then
+      begin
+        mChange.Value := ValueText(mAdded);
+        if mKind = TAtlasTrackerChangeKind.Assigned then
+          for mEntry in TJSONArray(mAdded) do
+            if mEntry is TJSONObject then
+            begin
+              mLogin := TextOf(TJSONObject(mEntry), 'login');
+              if (AMe <> '') and SameText(mLogin, AMe) then
+                mChange.ToMe := True;
+            end;
+      end;
+      AChanges := AChanges + [mChange];
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+function TAtlasYouTrackTracker.Changes(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  ATimeoutMs: Integer; var APoll: TAtlasTrackerPoll; out AChanges: TArray<TAtlasTrackerChange>;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mWatch: TStopwatch;
+  mStatus, mIndex, mRest: Integer;
+  mText: string;
+  mIssues, mFound: TArray<TAtlasTrackerChange>;
+  mIgnored: TAtlasCiFetchError;
+begin
+  AChanges := nil;
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  if (ATarget.Server = '') or (ATransport = nil) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  mWatch := TStopwatch.StartNew;
+  if not ATransport.Get(ChangedIssuesUrl(ATarget, APoll.Since, APoll.Scope), ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParseChangedIssues(mText, APoll.Since, mIssues) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  Result := True;
+  for mIndex := 0 to High(mIssues) do
+  begin
+    if mIssues[mIndex].Time > APoll.Latest then
+      APoll.Latest := mIssues[mIndex].Time;
+    if mIndex >= MaxChangedIssues then
+      Continue;
+    mRest := ATimeoutMs - Integer(mWatch.ElapsedMilliseconds);
+    // Zeit aufgebraucht: Das Issue meldet sich ohne Einzelheiten (die Zeit des Issues bleibt der Stand).
+    if (mRest <= 0) or not ATransport.Get(ActivitiesUrl(ATarget, mIssues[mIndex].Key, APoll.Since), mRest, mStatus,
+      mText, mIgnored) or (mStatus <> 200) or not ParseActivities(mText, mIssues[mIndex].Key, mIssues[mIndex].Title,
+      APoll.Me, APoll.Since, mFound) then
+      mFound := [mIssues[mIndex]];
+    AChanges := AChanges + mFound;
+  end;
+  // Auch eine Aktivität, die der Server später stempelt als das Issue, kommt nicht noch einmal.
+  for mIndex := 0 to High(AChanges) do
+    if AChanges[mIndex].Time > APoll.Latest then
+      APoll.Latest := AChanges[mIndex].Time;
 end;
 
 end.

@@ -45,6 +45,8 @@ type
     /// <summary>„Issue anlegen …“ (#1268): Kennung des neuen Issues mit „Im Browser öffnen“. Wie Minimap nicht in
     /// Known (Meldung auf eine Aktion des Benutzers hin).</summary>
     NewIssue = 'newIssue';
+    /// <summary>Änderungen an meinen Issues im Issue-Tracker (#1271).</summary>
+    Issues = 'issues';
     /// <summary>Absturzsicherung (#493): eine Funktion wurde nach wiederholten Fehlern abgeschaltet. Nicht in Known:
     /// Dieser Hinweis lässt sich nicht abstellen, sonst fiele eine abgeschaltete Funktion wieder nicht auf.</summary>
     Fuse = 'fuse';
@@ -75,7 +77,7 @@ implementation
 
 class function TAtlasNotificationSources.Known: TArray<string>;
 begin
-  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer, OpenBuild, Hidden, UnitRename];
+  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer, OpenBuild, Hidden, UnitRename, Issues];
 end;
 
 class function TAtlasNotificationSources.ModeName(AMode: TAtlasNotificationMode): string;

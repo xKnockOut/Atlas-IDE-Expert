@@ -241,8 +241,12 @@ type
     /// <summary>Filter aus der Sprint-Kachel (#1277), z. B. „„Sprint 12“, meine offen“: Items sind dann die Issues
     /// des Filters; '' ohne.</summary>
     Filter: string;
+    /// <summary>Kennungen mit neuen Änderungen seit dem letzten Öffnen (#1271, Punkt an der Zeile).</summary>
+    Unseen: TArray<string>;
     /// <summary>Offene Issues der Liste, z. B. für „ATL-123 · 3 offen“.</summary>
     function OpenCount: Integer;
+    /// <summary>AKey trägt einen Punkt (ohne Groß-/Kleinschreibung).</summary>
+    function IsUnseen(const AKey: string): Boolean;
   end;
 
   TAtlasWelcomeIssues = class
@@ -427,6 +431,18 @@ begin
   Result := Length(Items);
 end;
 
+function TAtlasIssuesView.IsUnseen(const AKey: string): Boolean;
+var
+  mKey: string;
+begin
+  Result := False;
+  if AKey = '' then
+    Exit;
+  for mKey in Unseen do
+    if SameText(mKey, AKey) then
+      Exit(True);
+end;
+
 { TAtlasIssueStartResult }
 
 function TAtlasIssueStartResult.Succeeded: Boolean;
@@ -578,6 +594,7 @@ class function TAtlasWelcomeIssues.View(const AState: TAtlasIssuesState; const A
 begin
   Result := Default(TAtlasIssuesView);
   Result.Items := nil;
+  Result.Unseen := nil;
   Result.Active := Effective(AState, ATarget.Provider, ATarget.Project, ABranch);
   if not ATarget.Configured then
   begin
