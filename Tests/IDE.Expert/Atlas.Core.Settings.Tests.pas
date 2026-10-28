@@ -973,13 +973,19 @@ begin
   Assert.AreEqual('all', Settings.BuildOnOpenScope);
   Assert.AreEqual(3000, Settings.BuildOnOpenDelayMs);
   Assert.AreEqual('', Settings.BuildOnOpenExclude);
+  Assert.AreEqual('', Settings.BuildOnOpenConfig, 'wie im Projekt (#1293)');
+  Assert.AreEqual('', Settings.BuildOnOpenPlatform, 'wie im Projekt (#1293)');
   // Normalisieren: unbekannte Art = make, unbekannter Umfang = all, Wartezeit in den Grenzen, Liste ohne Endung
   // und Doppelte.
   Settings.BuildOnOpenKind := 'BUILD';
   Settings.BuildOnOpenScope := 'Active';
   Settings.BuildOnOpenDelayMs := 10;
   Settings.BuildOnOpenExclude := ' Atlas.IDE.Expert.dproj; atlas.ide.expert,, Demo ';
+  Settings.BuildOnOpenConfig := ' Debug ';
+  Settings.BuildOnOpenPlatform := ' Win64 ';
   Settings.Normalize;
+  Assert.AreEqual('Debug', Settings.BuildOnOpenConfig);
+  Assert.AreEqual('Win64', Settings.BuildOnOpenPlatform);
   Assert.AreEqual('build', Settings.BuildOnOpenKind);
   Assert.AreEqual('active', Settings.BuildOnOpenScope);
   Assert.AreEqual(500, Settings.BuildOnOpenDelayMs);
@@ -1005,6 +1011,8 @@ begin
   Assert.AreEqual('active', Loaded.BuildOnOpenScope);
   Assert.AreEqual(5000, Loaded.BuildOnOpenDelayMs);
   Assert.AreEqual('Atlas.IDE.Expert, Demo', Loaded.BuildOnOpenExclude);
+  Assert.AreEqual('Debug', Loaded.BuildOnOpenConfig);
+  Assert.AreEqual('Win64', Loaded.BuildOnOpenPlatform);
 end;
 
 procedure TAtlasPluginSettingsTests.CompletionListModeOptions;
