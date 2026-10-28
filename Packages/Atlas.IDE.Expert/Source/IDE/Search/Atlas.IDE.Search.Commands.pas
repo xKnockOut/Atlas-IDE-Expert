@@ -130,6 +130,8 @@ type
     class procedure BarList; static;
     class procedure CloseBar; static;
     class procedure Probe; static;
+    /// <summary>Von der IDE gesperrte Leisten wieder freigeben (Projektwechsel).</summary>
+    class procedure EnableBars; static;
     class procedure LogLayout(ABar: TAtlasSearchBar); static;
     class procedure StopProbe; static;
   public
@@ -712,7 +714,11 @@ begin
   Hits := TAtlasTextSearch.FindAll(Lines, Query.Text, Query.Options, Area);
   if AJump and (Length(Hits) > 0) then
   begin
-    Index := TAtlasTextSearch.Next(Hits, FOrigin, False, Wrapped);
+    // Erster Treffer oder nächster ab der Stelle beim Öffnen (#1242, search.fromFirstHit).
+    if TAtlasIdeSettings.Current.SearchFromFirstHit then
+      Index := 0
+    else
+      Index := TAtlasTextSearch.Next(Hits, FOrigin, False, Wrapped);
     SelectHit(View, Lines, Hits[Index]);
   end;
   UpdateCounter;
@@ -879,12 +885,29 @@ begin
     Parent.ClientHeight, Parts]));
 end;
 
+class procedure TAtlasIdeSearch.EnableBars;
+var
+  Bar: TAtlasSearchBar;
+begin
+  // Beim Schließen aller Editoren (Projektwechsel) sperrt die IDE jedes Steuerelement im Editor-Panel und gibt danach
+  // nur ihre eigenen wieder frei; die Suchleiste flackerte dann beim Klick nur kurz und blieb taub.
+  if FBars = nil then
+    Exit;
+  for Bar in FBars do
+    if not Bar.Enabled then
+    begin
+      Bar.Enabled := True;
+      TAtlasGuard.Log('Suchleiste: wieder freigegeben (von der IDE gesperrt)');
+    end;
+end;
+
 class procedure TAtlasIdeSearch.Probe;
 var
   Bar: TAtlasSearchBar;
   Cursor: TPoint;
   Window: HWND;
 begin
+  EnableBars;
   Bar := FBar;
   if (Bar = nil) or not Bar.HandleAllocated or not Bar.Showing then
     Exit;
@@ -916,11 +939,13 @@ end;
 
 class procedure TAtlasIdeSearch.Show;
 begin
+  EnableBars;
   Open(False);
 end;
 
 class procedure TAtlasIdeSearch.ShowInMethod;
 begin
+  EnableBars;
   Open(True);
 end;
 

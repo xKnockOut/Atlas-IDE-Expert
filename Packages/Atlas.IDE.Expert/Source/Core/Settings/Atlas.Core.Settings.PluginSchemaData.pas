@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4187] of string = (
+  Lines: array[0..4197] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -1443,6 +1443,16 @@ const
     '      "description": "Atlas-Suche ersetzt die IDE-Suche: Strg+F öffnet die Suchleiste unter dem Editor (Bereich Methode, Unit, Auswahl; Groß-/Kleinschreibung, ganzes Wort, Bezeichner statt Text), F3/U' +
       'mschalt+F3 springen zum nächsten/vorigen Treffer der letzten Atlas-Suche; aus = Suchen der IDE wie bisher",',
     '      "x-issue": "#878"',
+    '    },',
+    '    "SearchFromFirstHit": {',
+    '      "type": "boolean",',
+    '      "default": false,',
+    '      "x-key": "search.fromFirstHit",',
+    '      "x-area": "editor",',
+    '      "x-page": "Units suchen",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "description": "Beim Tippen in der Suchleiste zum ersten Treffer der Unit bzw. des Bereichs springen; aus = zum nächsten Treffer ab der Cursorposition beim Öffnen der Leiste",',
+    '      "x-issue": "#1242"',
     '    },',
     '    "SearchResultsInMessages": {',
     '      "type": "boolean",',
