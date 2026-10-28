@@ -598,6 +598,8 @@ uses
   Atlas.Core.Tracker.Connections.Tests in 'IDE.Expert\Atlas.Core.Tracker.Connections.Tests.pas',
   Atlas.Core.Tracker.Markdown in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Markdown.pas',
   Atlas.Core.Tracker.Markdown.Tests in 'IDE.Expert\Atlas.Core.Tracker.Markdown.Tests.pas',
+  Atlas.Core.Tracker.Checklist in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Checklist.pas',
+  Atlas.Core.Tracker.Checklist.Tests in 'IDE.Expert\Atlas.Core.Tracker.Checklist.Tests.pas',
   Atlas.Core.Tracker.IssueCache in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.IssueCache.pas',
   Atlas.Core.Tracker.IssueCache.Tests in 'IDE.Expert\Atlas.Core.Tracker.IssueCache.Tests.pas',
   Atlas.Core.Tracker.Preview in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.Preview.pas',

@@ -38,6 +38,10 @@ type
     procedure SegmentsSplitAtImages;
     [Test]
     procedure LinksSkipCode;
+    [Test]
+    procedure NumberedTasksAndLines;
+    [Test]
+    procedure TaskModesBoxesPlainClickable;
   end;
 
 implementation
@@ -225,6 +229,55 @@ begin
   Assert.IsTrue(mRuns[8].IsDelphiCode);
   Assert.AreEqual(Integer(9), Integer(Length(mRuns)), 'kein Absatz am Ende');
   Assert.IsTrue(TAtlasTrackerMarkdown.ToDoc('   ').IsEmpty);
+end;
+
+procedure TAtlasTrackerMarkdownTests.NumberedTasksAndLines;
+var
+  mBlocks: TArray<TAtlasMarkdownBlock>;
+begin
+  mBlocks := TAtlasTrackerMarkdown.Blocks(Lines(TArray<string>.Create('Vorher', '', '1. [ ] eins', '   weiter',
+    '2) [X] zwei', '- [x]')));
+  Assert.AreEqual(Integer(4), Integer(Length(mBlocks)));
+  Assert.IsTrue(mBlocks[1].Task = TAtlasMarkdownTask.Open);
+  Assert.AreEqual('☐', mBlocks[1].Marker);
+  Assert.AreEqual('1.', mBlocks[1].ListMarker);
+  Assert.AreEqual('eins'#10'weiter', mBlocks[1].Text);
+  Assert.AreEqual(Integer(2), mBlocks[1].Line);
+  Assert.AreEqual(Integer(3), mBlocks[1].LastLine);
+  Assert.IsTrue(mBlocks[2].Task = TAtlasMarkdownTask.Done, 'großes X');
+  Assert.AreEqual('2.', mBlocks[2].ListMarker);
+  Assert.IsTrue(mBlocks[3].Task = TAtlasMarkdownTask.Done, 'ohne Text');
+  Assert.AreEqual('', mBlocks[3].Text);
+  Assert.AreEqual(Integer(-1), mBlocks[0].Line, 'nur Listenpunkte tragen die Zeile');
+end;
+
+procedure TAtlasTrackerMarkdownTests.TaskModesBoxesPlainClickable;
+const
+  cText = '- [ ] a'#10'- b'#10'1. [x] c';
+var
+  mRuns: TAtlasDocRuns;
+  mIndex: Integer;
+begin
+  mRuns := TAtlasTrackerMarkdown.ToDoc(cText).Sections[0].Runs;
+  Assert.AreEqual('☐', mRuns[0].Text);
+  Assert.AreEqual('', mRuns[0].Target, 'Kästchen ohne Ziel');
+  // Plain (Checklisten aus): Listenmarke und das Kästchen als Text.
+  mRuns := TAtlasTrackerMarkdown.ToDoc(cText, TAtlasMarkdownTasks.Plain).Sections[0].Runs;
+  Assert.IsTrue(mRuns[0].Kind = TAtlasDocRunKind.Bullet);
+  Assert.AreEqual('•', mRuns[0].Text);
+  Assert.AreEqual('[ ] a', mRuns[1].Text);
+  Assert.AreEqual('1.', mRuns[4].Text);
+  Assert.AreEqual('[x] c', mRuns[5].Text);
+  // Clickable: Kästchen mit Ziel, gezählt nur über Aufgaben.
+  mRuns := TAtlasTrackerMarkdown.ToDoc(cText, TAtlasMarkdownTasks.Clickable).Sections[0].Runs;
+  Assert.AreEqual(TAtlasTrackerMarkdown.TaskTarget(0), mRuns[0].Target);
+  Assert.AreEqual('', mRuns[2].Target, 'Punkt ohne Kästchen');
+  Assert.AreEqual('☑', mRuns[4].Text);
+  Assert.IsTrue(TAtlasTrackerMarkdown.TaskIndexOf(mRuns[4].Target, mIndex));
+  Assert.AreEqual(Integer(1), mIndex);
+  // Über Bilder hinweg weiter gezählt.
+  Assert.AreEqual(TAtlasTrackerMarkdown.TaskTarget(1), TAtlasTrackerMarkdown.Segments('- [ ] a'#10#10'![](b.png)'#10#10 +
+    '- [ ] c', TAtlasMarkdownTasks.Clickable)[2].Doc.Sections[0].Runs[0].Target);
 end;
 
 procedure TAtlasTrackerMarkdownTests.SegmentsSplitAtImages;

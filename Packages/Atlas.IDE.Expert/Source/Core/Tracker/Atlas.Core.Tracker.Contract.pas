@@ -34,6 +34,9 @@
 //   Zustand des verknüpften Issues; Baum, Fortschritt und „blockiert“ in
 //   Atlas.Core.Tracker.Links. IAtlasTrackerLinkWriter (optional, über
 //   Supports) legt Unteraufgaben an und verknüpft Issues über IAtlasCiSend.
+// - IAtlasTrackerDescriptions (#1273): Beschreibung ungekürzt lesen und
+//   zurückschreiben (abgehakte Checklisten); Anbieter, die schreiben können,
+//   setzen sie zusätzlich um. Geschrieben wird über IAtlasCiSend.
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -158,6 +161,9 @@ type
     MaxLinks = 50;
     /// <summary>Höchstens so viele Zeichen je Beschreibung bzw. Kommentar.</summary>
     MaxText = 100000;
+    /// <summary>Längste Beschreibung, die Atlas zurückschreibt (#1273); länger: Invalid, nichts wird geschrieben.
+    /// </summary>
+    MaxDescription = 1000000;
   public
     Key: string;
     Number: Integer;
@@ -322,6 +328,20 @@ type
     function Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       AKind: TAtlasTrackerValueKind; const AField: string; ATimeoutMs: Integer;
       out AValues: TArray<string>): TAtlasTrackerWriteResult;
+  end;
+
+  /// <summary>Beschreibung eines Issues lesen und schreiben (#1273, Checklisten). Im Hintergrund; ATransport muss
+  /// zum Schreiben IAtlasCiSend unterstützen.</summary>
+  IAtlasTrackerDescriptions = interface
+    ['{8A3E6D52-1F4B-4C97-B2E0-5D7A9C1F3E84}']
+    /// <summary>Aktuelle Beschreibung von AKey (Markdown, ungekürzt, '' ohne). False mit AError, wenn sie nicht
+    /// gelesen werden konnte oder länger als TAtlasTrackerDetails.MaxDescription ist.</summary>
+    function Description(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
+    /// <summary>Beschreibung von AKey durch AText ersetzen (YouTrack POST /api/issues/&lt;Kennung&gt;, GitHub PATCH
+    /// …/issues/&lt;n&gt;). False mit AError; ohne Schreibrecht Unauthorized.</summary>
+    function UpdateDescription(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      const AKey, AText: string; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation

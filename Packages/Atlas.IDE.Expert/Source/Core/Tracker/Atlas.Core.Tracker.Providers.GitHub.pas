@@ -43,6 +43,8 @@
 //   POST …/issues/<Eltern>/sub_issues mit {"sub_issue_id": <id>};
 //   Verknüpfen: POST …/issues/<n>/dependencies/blocked_by mit
 //   {"issue_id": <id>} (die interne ID aus …/issues/<m>).
+// - Checklisten (#1273, IAtlasTrackerDescriptions): Beschreibung ungekürzt aus
+//   GET …/issues/<n> ("body"), zurück mit PATCH …/issues/<n> und {"body": …}.
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -73,7 +75,7 @@ type
   end;
 
   TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
-    IAtlasTrackerLinkWriter)
+    IAtlasTrackerLinkWriter, IAtlasTrackerDescriptions)
   public const
     ProviderName = 'github';
     Query = 'assignee:@me state:open';
@@ -156,6 +158,11 @@ type
     class function NewIssueBody(const ATitle, ADescription: string): string; static;
     /// <summary>Inhalt {"<AName>": AId} für sub_issues bzw. blocked_by.</summary>
     class function IdBody(const AName: string; AId: Int64): string; static;
+    /// <summary>"body" aus der Antwort von /issues/<n>, ungekürzt ('' bei null); False bei ungültigem JSON (#1273).
+    /// </summary>
+    class function ParseBody(const AJson: string; out AText: string): Boolean; static;
+    /// <summary>Inhalt des PATCH: {"body": AText}.</summary>
+    class function BodyJson(const AText: string): string; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -182,6 +189,11 @@ type
     function AddLink(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       AKind: TAtlasTrackerLinkKind; const AOtherKey: string; ATimeoutMs: Integer;
       out AError: TAtlasCiFetchError): Boolean;
+    { IAtlasTrackerDescriptions }
+    function Description(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
+    function UpdateDescription(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      const AKey, AText: string; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -1603,6 +1615,96 @@ begin
     Exit;
   Result := Posted(mPost, IssueApiUrl(ATarget, mBlocked) + '/dependencies/blocked_by', IdBody('issue_id', mId),
     Remaining(mWatch, ATimeoutMs), mText, AError);
+end;
+
+class function TAtlasGitHubTracker.ParseBody(const AJson: string; out AText: string): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  AText := '';
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    Result := (mValue is TJSONObject) and (IntOf(TJSONObject(mValue), 'number') > 0);
+    if Result then
+      AText := TextOf(TJSONObject(mValue), 'body');
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasGitHubTracker.BodyJson(const AText: string): string;
+var
+  mObject: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  try
+    mObject.AddPair('body', AText);
+    Result := mObject.ToJSON;
+  finally
+    mObject.Free;
+  end;
+end;
+
+function TAtlasGitHubTracker.Description(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; ATimeoutMs: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
+var
+  mUrl, mJson: string;
+  mStatus: Integer;
+begin
+  AText := '';
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mUrl := IssueApiUrl(ATarget, AKey);
+  if (mUrl = '') or (ATransport = nil) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mJson, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParseBody(mJson, AText) or (Length(AText) > TAtlasTrackerDetails.MaxDescription) then
+  begin
+    AText := '';
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  Result := True;
+end;
+
+function TAtlasGitHubTracker.UpdateDescription(const ATarget: TAtlasTrackerTarget;
+  const ATransport: IAtlasCiTransport; const AKey, AText: string; ATimeoutMs: Integer;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mUrl, mAnswer: string;
+  mStatus: Integer;
+  mSend: IAtlasCiSend;
+begin
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mUrl := IssueApiUrl(ATarget, AKey);
+  if (mUrl = '') or not Supports(ATransport, IAtlasCiSend, mSend) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  if Length(AText) > TAtlasTrackerDetails.MaxDescription then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  if not mSend.Send('PATCH', mUrl, BodyJson(AText), ATimeoutMs, mStatus, mAnswer, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  Result := True;
 end;
 
 end.
