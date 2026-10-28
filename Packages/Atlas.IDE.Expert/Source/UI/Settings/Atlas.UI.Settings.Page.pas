@@ -5842,6 +5842,8 @@ procedure TAtlasSettingsPage.RefreshTeamFile;
 var
   Team: TAtlasTeamSettings;
   Value: TAtlasTeamValue;
+  Issue: TAtlasTeamIssue;
+  InvalidText: string;
   Lines: TArray<string>;
 begin
   // Ausgeschaltet wird die Datei nicht gelesen.
@@ -5861,7 +5863,17 @@ begin
   begin
     Lines := [TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileLocation, [Team.FileName])];
     if not Team.Valid then
-      Lines := Lines + [TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileInvalid)]
+    begin
+      // Mit Zeile und Spalte, wenn bekannt: Dort steht der Fehler im JSON.
+      InvalidText := TAtlasStrings.Text(TAtlasTextId.SettingsTeamFileInvalid);
+      for Issue in Team.Issues do
+        if (Issue.Kind = TAtlasTeamIssueKind.Syntax) and (Issue.Line > 0) then
+        begin
+          InvalidText := TAtlasStrings.Fmt(TAtlasTextId.SettingsTeamFileInvalidAt, [Issue.Line, Issue.Column]);
+          Break;
+        end;
+      Lines := Lines + [InvalidText];
+    end
     else
     begin
       for Value in TAtlasTeamFile.Values(Team) do

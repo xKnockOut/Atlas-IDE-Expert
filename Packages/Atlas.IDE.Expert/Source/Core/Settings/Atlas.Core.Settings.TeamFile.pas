@@ -72,6 +72,9 @@ type
     /// <summary>Betroffene Einstellung, z. B. "naming.field" oder "startProfiles[Demo].host"; '' für die Datei.
     /// </summary>
     Path: string;
+    /// <summary>Bei Syntax: Zeile und Spalte (ab 1) der ersten fehlerhaften Stelle; 0, wenn unbekannt.</summary>
+    Line: Integer;
+    Column: Integer;
     class function Create(AKind: TAtlasTeamIssueKind; const APath: string): TAtlasTeamIssue; static;
   end;
 
@@ -311,6 +314,8 @@ class function TAtlasTeamIssue.Create(AKind: TAtlasTeamIssueKind; const APath: s
 begin
   Result.Kind := AKind;
   Result.Path := APath;
+  Result.Line := 0;
+  Result.Column := 0;
 end;
 
 { TAtlasFormatFunction }
@@ -392,7 +397,8 @@ type
   public
     constructor Create(const AFileName, ARoot: string);
     procedure Read(ARoot: TJSONObject);
-    procedure Invalid;
+    /// <summary>Datei ungültig; ALine/AColumn = erste fehlerhafte Stelle (0 = unbekannt).</summary>
+    procedure Invalid(ALine, AColumn: Integer);
     property Team: TAtlasTeamSettings read FTeam;
   end;
 
@@ -412,10 +418,15 @@ begin
   FTeam.Issues := FTeam.Issues + [TAtlasTeamIssue.Create(AKind, APath)];
 end;
 
-procedure TTeamReader.Invalid;
+procedure TTeamReader.Invalid(ALine, AColumn: Integer);
+var
+  Issue: TAtlasTeamIssue;
 begin
   FTeam.Valid := False;
-  Report(TAtlasTeamIssueKind.Syntax, '');
+  Issue := TAtlasTeamIssue.Create(TAtlasTeamIssueKind.Syntax, '');
+  Issue.Line := ALine;
+  Issue.Column := AColumn;
+  FTeam.Issues := FTeam.Issues + [Issue];
 end;
 
 function TTeamReader.IsCredential(const AKey, APath: string): Boolean;
@@ -1002,6 +1013,7 @@ class function TAtlasTeamFile.Parse(const AText, AFileName, ARoot: string): TAtl
 var
   Reader: TTeamReader;
   Value: TJSONValue;
+  Offset, Line, Column: Integer;
 begin
   Reader := TTeamReader.Create(AFileName, ARoot);
   try
@@ -1012,7 +1024,15 @@ begin
       if Value is TJSONObject then
         Reader.Read(TJSONObject(Value))
       else
-        Reader.Invalid;
+      begin
+        // Wo es hakt, sagt die Meldung mit Zeile und Spalte (sonst sucht man in der Datei nach dem Fehler).
+        Line := 0;
+        Column := 0;
+        Offset := TJsoncScanner.SyntaxError(AText);
+        if Offset > 0 then
+          TJsoncScanner.LineColumn(AText, Offset, Line, Column);
+        Reader.Invalid(Line, Column);
+      end;
     finally
       Value.Free;
     end;

@@ -220,7 +220,11 @@ begin
     Assert.StartsWith('GitHub · nicht erreichbar · Stand vom ', TAtlasWelcomeIssuesFrame.StatusText(View));
     View.Status := TAtlasIssuesStatus.Failed;
     View.Error := TAtlasCiFetchError.Unauthorized;
-    Assert.AreEqual('GitHub · Anmeldung abgelehnt oder kein Token (Zugang zum Issue-Tracker hinterlegen)',
+    Assert.AreEqual('GitHub · Anmeldung vom Tracker abgelehnt: Token ungültig, abgelaufen oder ohne Rechte ' +
+      '(Zugang zum Issue-Tracker neu hinterlegen)', TAtlasWelcomeIssuesFrame.StatusText(View));
+    // Ohne Token gibt es keine Anfrage: eigener Hinweis statt „abgelehnt“.
+    View.Error := TAtlasCiFetchError.NoCredentials;
+    Assert.AreEqual('GitHub · Noch kein Token: Rechtsklick › Zugang zum Issue-Tracker hinterlegen …',
       TAtlasWelcomeIssuesFrame.StatusText(View));
     View.Status := TAtlasIssuesStatus.Waiting;
     View.Querying := True;
