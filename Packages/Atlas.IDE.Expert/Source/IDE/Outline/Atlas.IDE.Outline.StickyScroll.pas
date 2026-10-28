@@ -143,6 +143,10 @@ type
     /// <summary>Hintergrund des Editors aus einer nicht übermalten Zeile.</summary>
     FBack: TAtlasColor;
     FBackKnown: Boolean;
+    /// <summary>Hintergrund aus dem Farbschema (Plain text); vor dem Abtasten, das bei markierten oder
+    /// hervorgehobenen Zeilen deren Farbe träfe (#1245).</summary>
+    FSchemeBack: TAtlasColor;
+    FSchemeBackKnown: Boolean;
     procedure Tick(Sender: TObject);
     procedure Clear;
     procedure Update;
@@ -441,7 +445,7 @@ begin
     begin
       // Nicht übermalte Zeile: deren Hintergrund ist der des Editors.
       Sample := GetPixel(Context.Canvas.Handle, Rect.Right - 2, Rect.Top + 1);
-      if Sample <> CLR_INVALID then
+      if not FSchemeBackKnown and (Sample <> CLR_INVALID) then
       begin
         FBack := TAtlasColor(Sample);
         FBackKnown := True;
@@ -588,6 +592,23 @@ begin
       end;
       FSyntax[Kind] := Style;
     end;
+    // Hintergrund des Editors (#1245); mit Default Background bleibt das Abtasten.
+    FSchemeBackKnown := False;
+    try
+      if Registry.OpenKeyReadOnly(Services.GetBaseRegistryKey + '\Editor\Highlight\Plain text') then
+      begin
+        if Registry.ValueExists('Background Color New') and not (Registry.ValueExists('Default Background') and
+          SameText(Registry.ReadString('Default Background'), 'True')) then
+        begin
+          FSchemeBack := TAtlasColor(ColorToRGB(StringToColor(Registry.ReadString('Background Color New'))));
+          FSchemeBackKnown := True;
+        end;
+        Registry.CloseKey;
+      end;
+    except
+      on Exception do
+        FSchemeBackKnown := False;
+    end;
   finally
     Registry.Free;
   end;
@@ -697,7 +718,9 @@ begin
   end;
   FCodeLeft := Left;
   Area := TRect.Create(Left, ARect.Top, ARect.Right, ARect.Bottom);
-  if FBackKnown then
+  if FSchemeBackKnown then
+    Back := FSchemeBack
+  else if FBackKnown then
     Back := FBack
   else
   begin
