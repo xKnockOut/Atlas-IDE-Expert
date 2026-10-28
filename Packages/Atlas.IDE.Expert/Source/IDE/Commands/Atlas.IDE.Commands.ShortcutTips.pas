@@ -172,6 +172,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Keys,
+  Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Commands.KeyMap;
 
 function Ticks: UInt64;
@@ -374,7 +375,7 @@ function TipArea: TRect;
 var
   Services: INTAEditorServices;
   Window: INTAEditWindow;
-  Editor: TComponent;
+  Editor: TWinControl;
   Control: TWinControl;
 begin
   Control := nil;
@@ -383,9 +384,9 @@ begin
     Window := Services.TopEditWindow;
     if (Window <> nil) and (Window.Form <> nil) and Window.Form.Visible then
     begin
-      Editor := Window.Form.FindComponent('Editor');
-      if (Editor is TWinControl) and TWinControl(Editor).Showing then
-        Control := TWinControl(Editor)
+      Editor := TAtlasEditorBarHost.EditorOf(Window);
+      if (Editor <> nil) and Editor.Showing then
+        Control := Editor
       else
         Control := Window.Form;
     end;

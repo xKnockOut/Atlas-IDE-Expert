@@ -371,7 +371,7 @@ var
 begin
   Calls := 0;
   FBar.OnDisabled :=
-    procedure
+    procedure(ASender: TObject)
     begin
       Inc(Calls);
     end;

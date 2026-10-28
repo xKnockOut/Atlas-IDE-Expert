@@ -28,6 +28,9 @@ jobs:
       - name: Einreihen in den Hauptthread nur über TAtlasMainThread (Code-Review A-02)
         shell: pwsh
         run: ./Tools/Check-MainThreadQueue.ps1
+      - name: Fenster und Editorleisten über die gemeinsamen Hüllen (#1248)
+        shell: pwsh
+        run: ./Tools/Check-WindowHosts.ps1
       - name: Keine doppelten XML-Doku-Kommentare (Code-Review K-04)
         shell: pwsh
         run: ./Tools/Check-DocComments.ps1

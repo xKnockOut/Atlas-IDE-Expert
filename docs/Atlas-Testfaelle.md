@@ -2564,6 +2564,22 @@ Voraussetzung für EX2 bis EX7: mindestens eine Einstellung trägt `x-experiment
 | EL20 | Leiste durch einen Fehler abgeschaltet (atlas.log „Editorleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leiste verschwindet und kommt ohne Neustart zurück |
 | BK29 | Gegenprobe zur Zugriffsverletzung beim Beenden (`rtl370`, `TEditWindow.Notification`): Brotkrumen an, atlas.log nennt „über die Option … der IDE“, IDE dreimal beenden | Tritt die Zugriffsverletzung nicht mehr auf, war das Umhängen die Ursache; tritt sie weiter auf, liegt sie nicht am Umhängen (Bericht M3) |
 
+## Gemeinsamer Leisten-Host (#1248)
+
+Gilt für Editorleiste, Statusleiste, Brotkrumen, Übersichtsleiste, Minimap (experimentell an) und Suchleiste; das Verhalten jeder Leiste bleibt wie in ihrem eigenen Abschnitt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LH1 | IDE starten, Projekt öffnen, zweites Editorfenster (Ansicht › Neues Editorfenster) | In beiden Fenstern alle eingeschalteten Leisten an ihrem Platz (Brotkrumen und Editorleiste oben, Statusleiste und Suchleiste unten, Übersichtsleiste und Minimap neben der Scrollleiste) |
+| LH2 | Anderes Projekt öffnen (alle Editoren schließen sich), danach in jede Leiste klicken, Strg+F | Jede Leiste reagiert sofort, keine bleibt taub; `atlas.log` zeigt „wieder freigegeben, ein Editor ist aktiv“ und höchstens dreimal je Leiste „wird gesperrt …; Aufrufer:“ mit Stapel |
+| LH3 | Zweites Editorfenster schließen, danach Leisten im ersten benutzen | Keine Fehlermeldung, keine Zugriffsverletzung; die Leisten im ersten Fenster arbeiten |
+| LH4 | Thema der IDE hell ↔ dunkel umschalten | Alle Leisten übernehmen die neuen Farben ohne Neustart |
+| LH5 | Rechtsklick auf Editorleiste, Statusleiste, Brotkrumen; Umschalt+F10 bzw. Kontextmenütaste mit Fokus in der Leiste | Das Menü der Leiste erscheint, nie das Kontextmenü des Editors |
+| LH6 | Auf einen Knopf der Editorleiste drücken, Maus auf dem Knopf loslassen; einmal drücken, auf einen anderen Knopf ziehen, loslassen | Erster Fall löst aus (auch wenn der Editor den Fokus holt), zweiter nicht |
+| LH7 | Monitor mit 150 % bzw. Fenster zwischen Monitoren verschieben | Leisten eine Zeile hoch nach DPI, nie höher |
+| LH8 | Gliederung öffnen (Ansicht › Atlas › Gliederung), andocken, X des Gastgebers, wieder öffnen | Fenster erscheint samt Gastgeber und Reiter; Thema stimmt |
+| LH9 | Atlas entladen (Komponenten › Packages installieren, Haken weg) bei offenen Leisten und Gliederung | Alle Leisten verschwinden, die IDE läuft weiter, keine Zugriffsverletzung |
+
 ## Atlas-Statusleiste (#1155)
 
 Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `problems.live` an, Regel `metric-method-length` mit `max` 40.
