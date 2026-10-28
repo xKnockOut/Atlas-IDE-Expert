@@ -11,6 +11,8 @@ type
     function GetZ: Integer;
     function GetQ(const AText: string): Integer; overload;
     function GetQ(AEins, AZwei: Integer): Integer; overload;
+    class var FZaehler: Integer;
+    class function GetZaehler: Integer; static;
   public
     // PG1: Klassen-Property mit Instanzmethode als Getter
     class property KlasseZ: Integer read GetZ;
@@ -20,6 +22,10 @@ type
     property Q: Integer read GetQ;
     // PG4: Feld, das es nicht gibt
     property W: Integer read FW;
+    // PG5: class var hinter read einer Instanz-Property
+    property Zaehler: Integer read FZaehler;
+    // PG6: statische Klassenmethode als Getter einer Instanz-Property
+    property ZaehlerStatisch: Integer read GetZaehler;
   end;
 
 implementation
@@ -27,6 +33,11 @@ implementation
 function TGegen.GetZ: Integer;
 begin
   Result := FZ;
+end;
+
+class function TGegen.GetZaehler: Integer;
+begin
+  Result := FZaehler;
 end;
 
 function TGegen.GetQ(const AText: string): Integer;
