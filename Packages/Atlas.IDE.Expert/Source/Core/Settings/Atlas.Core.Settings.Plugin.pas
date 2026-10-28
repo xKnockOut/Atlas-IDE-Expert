@@ -144,6 +144,14 @@ type
     /// <summary>Vorgabe für issues.commitPattern (#765); wie TAtlasTrackerNaming.CommitPattern.
     /// </summary>
     DefaultIssuesCommitPattern = '{kennung} ';
+    /// <summary>Grenzen und Vorgabe von vcs.timeoutSeconds (#1285).</summary>
+    MinVcsTimeoutSeconds = 1;
+    MaxVcsTimeoutSeconds = 300;
+    DefaultVcsTimeoutSeconds = 15;
+    /// <summary>Vorgaben von vcs.branch.svn.* (#1290); wie TAtlasVcsSvnBranchOptions.Default.</summary>
+    DefaultVcsBranchSvnLocation = '{projektwurzel}/branches/{name}';
+    DefaultVcsBranchSvnCheckoutFolder = '..\{projekt}-{kennung}';
+    DefaultVcsBranchSvnMessage = '{kennung} Branch für {titel}';
     /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
     MaxIssuesText = 200;
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
@@ -1288,6 +1296,48 @@ type
     IssuesCreate: Boolean;
     /// <summary>Codeausschnitt in der Beschreibung vorschlagen (#1268, issues.create.includeCode).</summary>
     IssuesCreateIncludeCode: Boolean;
+    /// <summary>Art der Versionsverwaltung (#571, vcs.provider, seit #1285 auf der Seite Versionsverwaltung):
+    /// auto, git, svn oder off; liegt in settings.json, damit Plugin und Server denselben Wert lesen.</summary>
+    VcsProvider: string;
+    /// <summary>Eigener Pfad zu git.exe bzw. svn.exe (#1285, vcs.git.path, vcs.svn.path); '' = in PATH und den
+    /// üblichen Ordnern suchen. Liegen in settings.json, damit auch atlas --changed dasselbe Programm verwendet.
+    /// </summary>
+    VcsGitPath: string;
+    VcsSvnPath: string;
+    /// <summary>Zeitlimit je Aufruf von git bzw. svn in Sekunden (#1285, vcs.timeoutSeconds, 1–300).</summary>
+    VcsTimeoutSeconds: Integer;
+    /// <summary>Persönliche Art und Hauptbranch je Delphi-Projekt (#1286, vcs.projects) als JSON-Liste mit match,
+    /// provider und mainBranch; liegt in settings.json, gelesen mit TAtlasVcsProjects. '[]' = keine.</summary>
+    VcsProjects: string;
+    /// <summary>SVN-Branches (#1290, vcs.branch.svn.*): Ort im Repository (Muster mit {projektwurzel} oder ^/,
+    /// {name}, {kennung}), Quelle ("head", "workingCopy"), danach ("switch", "checkout", "none"), Ordner beim
+    /// Auschecken (relativ zur Arbeitskopie, {projekt}, {name}, {kennung}) und Commit-Nachricht der Kopie
+    /// ({kennung}, {titel}, {name}). Vorgaben in den Feldern des Dialogs „Branch anlegen“. Persönlich (Registry).
+    /// </summary>
+    VcsBranchSvnLocation: string;
+    VcsBranchSvnSource: string;
+    VcsBranchSvnAfter: string;
+    VcsBranchSvnCheckoutFolder: string;
+    VcsBranchSvnMessage: string;
+    /// <summary>SVN-Externals beim Anlegen eines Branchs (#1291, vcs.externals.*): Externals ohne Revision
+    /// ("pin" festschreiben, "keep" lassen, "ask" ohne Vorauswahl), wann „mitverzweigen“ vorgeschlagen wird
+    /// ("modified", "never", "always") und feste Behandlung je Quelle als JSON-Liste mit source und onBranch
+    /// (gelesen mit TAtlasVcsBranchPlan.RulesOf; '[]' = keine). Persönlich (Registry).</summary>
+    VcsExternalsOnBranch: string;
+    VcsExternalsSuggestBranch: string;
+    VcsExternalsRules: string;
+    /// <summary>Arbeitskopien einer Gruppe (#1292, vcs.externals.show): Tabelle „Arbeitskopien“ mit Wurzel,
+    /// svn:externals und Git-Submodulen samt Aufschlüsselung in „Nicht gesicherte Arbeit“; aus = Projektstand wie
+    /// vor #1292. Persönlich (Registry).</summary>
+    VcsExternalsShow: Boolean;
+    /// <summary>Aktualisieren unter SVN (#1292, vcs.externals.update): "with" svn update samt Externals,
+    /// "without" mit --ignore-externals, "ask" fragt (Untermenü „mit Externals“/„ohne Externals“). Persönlich
+    /// (Registry).</summary>
+    VcsExternalsUpdate: string;
+    /// <summary>Dialog „Branch anlegen“ vor dem Anlegen bei „Beginnen“ zeigen (#1288, vcs.branch.confirm); aus =
+    /// mit den Vorgaben ohne Dialog. Der Befehl „Branch anlegen …“ zeigt ihn immer. Persönlich (Registry).
+    /// </summary>
+    VcsBranchConfirm: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2008,6 +2058,22 @@ begin
   Result.IssuesQueryPicker := True;
   Result.IssuesCreate := True;
   Result.IssuesCreateIncludeCode := True;
+  Result.VcsProvider := 'auto';
+  Result.VcsGitPath := '';
+  Result.VcsSvnPath := '';
+  Result.VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
+  Result.VcsProjects := '[]';
+  Result.VcsBranchSvnLocation := DefaultVcsBranchSvnLocation;
+  Result.VcsBranchSvnSource := 'head';
+  Result.VcsBranchSvnAfter := 'switch';
+  Result.VcsBranchSvnCheckoutFolder := DefaultVcsBranchSvnCheckoutFolder;
+  Result.VcsBranchSvnMessage := DefaultVcsBranchSvnMessage;
+  Result.VcsExternalsOnBranch := 'pin';
+  Result.VcsExternalsSuggestBranch := 'modified';
+  Result.VcsExternalsRules := '[]';
+  Result.VcsExternalsShow := True;
+  Result.VcsExternalsUpdate := 'with';
+  Result.VcsBranchConfirm := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2091,6 +2157,34 @@ begin
   IssuesQueries := Trim(IssuesQueries);
   if IssuesQueries = '' then
     IssuesQueries := '[]';
+  VcsProvider := Choice(LowerCase(Trim(VcsProvider)), ['auto', 'git', 'svn', 'off']);
+  VcsGitPath := Trim(VcsGitPath);
+  VcsSvnPath := Trim(VcsSvnPath);
+  // Außerhalb der Grenzen gilt die Vorgabe wie im Server (vcs.timeoutSeconds).
+  if (VcsTimeoutSeconds < MinVcsTimeoutSeconds) or (VcsTimeoutSeconds > MaxVcsTimeoutSeconds) then
+    VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
+  VcsProjects := Trim(VcsProjects);
+  if VcsProjects = '' then
+    VcsProjects := '[]';
+  // Ort beginnt mit {projektwurzel} oder ^/ (#1290); sonst die Vorgabe.
+  VcsBranchSvnLocation := Trim(VcsBranchSvnLocation);
+  if not (SameText(Copy(VcsBranchSvnLocation, 1, 15), '{projektwurzel}') or
+    (Copy(VcsBranchSvnLocation, 1, 2) = '^/')) then
+    VcsBranchSvnLocation := DefaultVcsBranchSvnLocation;
+  VcsBranchSvnSource := Choice(VcsBranchSvnSource, ['head', 'workingCopy']);
+  VcsBranchSvnAfter := Choice(VcsBranchSvnAfter, ['switch', 'checkout', 'none']);
+  VcsBranchSvnCheckoutFolder := Trim(VcsBranchSvnCheckoutFolder);
+  if VcsBranchSvnCheckoutFolder = '' then
+    VcsBranchSvnCheckoutFolder := DefaultVcsBranchSvnCheckoutFolder;
+  VcsBranchSvnMessage := NormalizedIssuesText(VcsBranchSvnMessage, True);
+  if VcsBranchSvnMessage = '' then
+    VcsBranchSvnMessage := DefaultVcsBranchSvnMessage;
+  VcsExternalsOnBranch := Choice(VcsExternalsOnBranch, ['pin', 'keep', 'ask']);
+  VcsExternalsSuggestBranch := Choice(VcsExternalsSuggestBranch, ['modified', 'never', 'always']);
+  VcsExternalsRules := Trim(VcsExternalsRules);
+  if VcsExternalsRules = '' then
+    VcsExternalsRules := '[]';
+  VcsExternalsUpdate := Choice(VcsExternalsUpdate, ['with', 'without', 'ask']);
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2806,6 +2900,22 @@ begin
   IssuesCreate := AStore.ReadInteger('IssuesCreate', BoolValue(Default.IssuesCreate)) <> 0;
   IssuesCreateIncludeCode := AStore.ReadInteger('IssuesCreateIncludeCode',
     BoolValue(Default.IssuesCreateIncludeCode)) <> 0;
+  VcsProvider := AStore.ReadString('VcsProvider', Default.VcsProvider);
+  VcsGitPath := AStore.ReadString('VcsGitPath', Default.VcsGitPath);
+  VcsSvnPath := AStore.ReadString('VcsSvnPath', Default.VcsSvnPath);
+  VcsTimeoutSeconds := AStore.ReadInteger('VcsTimeoutSeconds', Default.VcsTimeoutSeconds);
+  VcsProjects := AStore.ReadString('VcsProjects', Default.VcsProjects);
+  VcsBranchSvnLocation := AStore.ReadString('VcsBranchSvnLocation', Default.VcsBranchSvnLocation);
+  VcsBranchSvnSource := AStore.ReadString('VcsBranchSvnSource', Default.VcsBranchSvnSource);
+  VcsBranchSvnAfter := AStore.ReadString('VcsBranchSvnAfter', Default.VcsBranchSvnAfter);
+  VcsBranchSvnCheckoutFolder := AStore.ReadString('VcsBranchSvnCheckoutFolder', Default.VcsBranchSvnCheckoutFolder);
+  VcsBranchSvnMessage := AStore.ReadString('VcsBranchSvnMessage', Default.VcsBranchSvnMessage);
+  VcsExternalsOnBranch := AStore.ReadString('VcsExternalsOnBranch', Default.VcsExternalsOnBranch);
+  VcsExternalsSuggestBranch := AStore.ReadString('VcsExternalsSuggestBranch', Default.VcsExternalsSuggestBranch);
+  VcsExternalsRules := AStore.ReadString('VcsExternalsRules', Default.VcsExternalsRules);
+  VcsExternalsShow := AStore.ReadInteger('VcsExternalsShow', BoolValue(Default.VcsExternalsShow)) <> 0;
+  VcsExternalsUpdate := AStore.ReadString('VcsExternalsUpdate', Default.VcsExternalsUpdate);
+  VcsBranchConfirm := AStore.ReadInteger('VcsBranchConfirm', BoolValue(Default.VcsBranchConfirm)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3276,6 +3386,22 @@ begin
   AStore.WriteInteger('IssuesQueryPicker', BoolValue(IssuesQueryPicker));
   AStore.WriteInteger('IssuesCreate', BoolValue(IssuesCreate));
   AStore.WriteInteger('IssuesCreateIncludeCode', BoolValue(IssuesCreateIncludeCode));
+  AStore.WriteString('VcsProvider', VcsProvider);
+  AStore.WriteString('VcsGitPath', VcsGitPath);
+  AStore.WriteString('VcsSvnPath', VcsSvnPath);
+  AStore.WriteInteger('VcsTimeoutSeconds', VcsTimeoutSeconds);
+  AStore.WriteString('VcsProjects', VcsProjects);
+  AStore.WriteString('VcsBranchSvnLocation', VcsBranchSvnLocation);
+  AStore.WriteString('VcsBranchSvnSource', VcsBranchSvnSource);
+  AStore.WriteString('VcsBranchSvnAfter', VcsBranchSvnAfter);
+  AStore.WriteString('VcsBranchSvnCheckoutFolder', VcsBranchSvnCheckoutFolder);
+  AStore.WriteString('VcsBranchSvnMessage', VcsBranchSvnMessage);
+  AStore.WriteString('VcsExternalsOnBranch', VcsExternalsOnBranch);
+  AStore.WriteString('VcsExternalsSuggestBranch', VcsExternalsSuggestBranch);
+  AStore.WriteString('VcsExternalsRules', VcsExternalsRules);
+  AStore.WriteInteger('VcsExternalsShow', BoolValue(VcsExternalsShow));
+  AStore.WriteString('VcsExternalsUpdate', VcsExternalsUpdate);
+  AStore.WriteInteger('VcsBranchConfirm', BoolValue(VcsBranchConfirm));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

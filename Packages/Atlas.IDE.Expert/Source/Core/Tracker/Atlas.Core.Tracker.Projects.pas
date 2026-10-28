@@ -9,7 +9,9 @@
 //   issues.projects (TAtlasPluginSettings.IssuesProjects, JSON-Text); die
 //   Zeile aus dem Abschnitt tracker der .atlas (#486) kommt schreibgeschützt
 //   dazu.
-// - Resolve: welcher Tracker für ein Projekt gilt, in dieser Reihenfolge:
+// - Resolve: welcher Tracker für ein Projekt gilt (Auflösung gemeinsam mit
+//   der Versionsverwaltung je Projekt in Atlas.Core.Projects.Matching, #1286),
+//   in dieser Reihenfolge:
 //   1. tracker aus der .atlas (Team, Vorrang),
 //   2. Zeile für genau diese .dproj,
 //   3. Zeile für die geöffnete .groupproj (wenn das Projekt darin ist),
@@ -25,15 +27,14 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Core.Projects.Matching,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections;
 
 type
-{$SCOPEDENUMS ON}
   /// <summary>Wodurch ein Tracker für ein Projekt gilt; zugleich die Art einer Zeile (Project, Group, Folder).
-  /// </summary>
-  TAtlasTrackerMatch = (None, TeamFile, Project, Group, Folder);
-{$SCOPEDENUMS OFF}
+  /// Dieselbe Aufzählung wie bei der Versionsverwaltung je Projekt (#1286).</summary>
+  TAtlasTrackerMatch = TAtlasProjectMatch;
 
   TAtlasTrackerProjectMapping = record
     /// <summary>Pfad einer .dproj, einer .groupproj oder eines Ordners, wie eingegeben.</summary>
@@ -118,10 +119,6 @@ implementation
 uses
   System.JSON;
 
-const
-  cProjectExt = '.dproj';
-  cGroupExt = '.groupproj';
-
 { TAtlasTrackerProjectMapping }
 
 class function TAtlasTrackerProjectMapping.Create(const AMatch, AConnection,
@@ -141,18 +138,8 @@ begin
 end;
 
 function TAtlasTrackerProjectMapping.Kind: TAtlasTrackerMatch;
-var
-  mExt: string;
 begin
-  if Trim(Match) = '' then
-    Exit(TAtlasTrackerMatch.None);
-  mExt := ExtractFileExt(TAtlasTrackerProjects.NormalizedPath(Match));
-  if mExt = cProjectExt then
-    Result := TAtlasTrackerMatch.Project
-  else if mExt = cGroupExt then
-    Result := TAtlasTrackerMatch.Group
-  else
-    Result := TAtlasTrackerMatch.Folder;
+  Result := TAtlasProjectMatching.KindOf(Match);
 end;
 
 function TAtlasTrackerProjectMapping.ReadOnly: Boolean;
@@ -259,90 +246,33 @@ begin
 end;
 
 class function TAtlasTrackerProjects.NormalizedPath(const APath: string): string;
-var
-  mUnc: Boolean;
 begin
-  Result := LowerCase(Trim(APath)).Replace('/', '\');
-  if Result = '' then
-    Exit;
-  // \\server\freigabe bleibt am Anfang doppelt; sonst fallen doppelte Trenner weg (C:\\Projekte).
-  mUnc := Result.StartsWith('\\');
-  if mUnc then
-    Delete(Result, 1, 2);
-  while Result.Contains('\\') do
-    Result := Result.Replace('\\', '\');
-  if mUnc then
-    Result := '\\' + Result;
-  while Result.EndsWith('\') and (Length(Result) > 2) do
-    Delete(Result, Length(Result), 1);
+  Result := TAtlasProjectMatching.NormalizedPath(APath);
 end;
 
 class function TAtlasTrackerProjects.Matches(const AMapping: TAtlasTrackerProjectMapping; const AProjectFile,
   AGroupFile: string): TAtlasTrackerMatch;
-var
-  mMatch, mProject: string;
 begin
-  Result := TAtlasTrackerMatch.None;
-  mMatch := NormalizedPath(AMapping.Match);
-  mProject := NormalizedPath(AProjectFile);
-  if (mMatch = '') or (mProject = '') then
-    Exit;
-  case AMapping.Kind of
-    TAtlasTrackerMatch.Project:
-      if mMatch = mProject then
-        Result := TAtlasTrackerMatch.Project;
-    TAtlasTrackerMatch.Group:
-      if mMatch = NormalizedPath(AGroupFile) then
-        Result := TAtlasTrackerMatch.Group;
-    TAtlasTrackerMatch.Folder:
-      // Nur ganze Ordner: C:\Projekte\Kasse gilt nicht für C:\Projekte\Kassenbuch\X.dproj.
-      if mProject.StartsWith(mMatch + '\') then
-        Result := TAtlasTrackerMatch.Folder;
-  else
-    // Ohne Pfad gilt die Zeile nirgends.
-  end;
+  Result := TAtlasProjectMatching.Matches(AMapping.Match, AProjectFile, AGroupFile);
 end;
 
 class function TAtlasTrackerProjects.Find(const AMappings: TArray<TAtlasTrackerProjectMapping>;
   const AConnections: TArray<TAtlasTrackerConnection>; const AProjectFile, AGroupFile: string): Integer;
 var
-  mIndex, mFolderLength: Integer;
-  mProject, mGroup, mFolder: Integer;
-  mMapping: TAtlasTrackerProjectMapping;
+  mIndex: Integer;
+  mMatches: TArray<string>;
+  mUsable: TArray<Boolean>;
 begin
-  mProject := -1;
-  mGroup := -1;
-  mFolder := -1;
-  mFolderLength := -1;
+  SetLength(mMatches, Length(AMappings));
+  SetLength(mUsable, Length(AMappings));
   for mIndex := 0 to High(AMappings) do
   begin
-    mMapping := AMappings[mIndex];
+    mMatches[mIndex] := AMappings[mIndex].Match;
     // Ohne Verbindung (gelöscht, umbenannt) kann die Zeile keinen Tracker liefern.
-    if mMapping.ReadOnly or (TAtlasTrackerConnections.IndexOfName(AConnections, mMapping.Connection) < 0) then
-      Continue;
-    case Matches(mMapping, AProjectFile, AGroupFile) of
-      TAtlasTrackerMatch.Project:
-        if mProject < 0 then
-          mProject := mIndex;
-      TAtlasTrackerMatch.Group:
-        if mGroup < 0 then
-          mGroup := mIndex;
-      TAtlasTrackerMatch.Folder:
-        if Length(NormalizedPath(mMapping.Match)) > mFolderLength then
-        begin
-          mFolder := mIndex;
-          mFolderLength := Length(NormalizedPath(mMapping.Match));
-        end;
-    else
-      // Gilt nicht für dieses Projekt.
-    end;
+    mUsable[mIndex] := not AMappings[mIndex].ReadOnly and
+      (TAtlasTrackerConnections.IndexOfName(AConnections, AMappings[mIndex].Connection) >= 0);
   end;
-  if mProject >= 0 then
-    Result := mProject
-  else if mGroup >= 0 then
-    Result := mGroup
-  else
-    Result := mFolder;
+  Result := TAtlasProjectMatching.Find(mMatches, mUsable, AProjectFile, AGroupFile).Index;
 end;
 
 class function TAtlasTrackerProjects.Resolve(const ATeam: TAtlasTrackerTarget;
@@ -379,21 +309,19 @@ end;
 
 class function TAtlasTrackerProjects.CurrentMatch(const AProjectFile, AGroupFile: string): string;
 begin
-  if Trim(AGroupFile) <> '' then
-    Result := Trim(AGroupFile)
-  else
-    Result := Trim(AProjectFile);
+  Result := TAtlasProjectMatching.CurrentMatch(AProjectFile, AGroupFile);
 end;
 
 class function TAtlasTrackerProjects.IndexOfMatch(const AItems: TArray<TAtlasTrackerProjectMapping>;
   const AMatch: string): Integer;
 var
   mIndex: Integer;
+  mMatches: TArray<string>;
 begin
+  SetLength(mMatches, Length(AItems));
   for mIndex := 0 to High(AItems) do
-    if NormalizedPath(AItems[mIndex].Match) = NormalizedPath(AMatch) then
-      Exit(mIndex);
-  Result := -1;
+    mMatches[mIndex] := AItems[mIndex].Match;
+  Result := TAtlasProjectMatching.IndexOfMatch(mMatches, AMatch);
 end;
 
 end.

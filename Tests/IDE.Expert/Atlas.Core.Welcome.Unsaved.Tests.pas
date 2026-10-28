@@ -29,6 +29,10 @@ type
     procedure ProbeFailureKeepsStoredState;
     [Test]
     procedure ProbeCountsChangesBelowProjectFolderAndConflicts;
+    /// <summary>#1292: Änderungen und Konflikte je Arbeitskopie (Wurzel und Externals aus svn status), nur
+    /// eingeschaltet und bei mehr als einer Arbeitskopie; Text und Abschnitt "places".</summary>
+    [Test]
+    procedure ProbeSplitsChangesPerWorkingCopy;
     [Test]
     procedure ProbeSkipsBranchesWithoutLocalCommits;
     [Test]
@@ -68,6 +72,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.Internals.Text,
   Atlas.Core.Vcs.Providers.Null,
   Atlas.Core.Welcome.Unsaved;
 
@@ -195,6 +200,40 @@ end;
 function TFakeVcs.Push(const ABranch, ARemote, ARemoteRef: string; ASetUpstream: Boolean): TAtlasVcsOutcome;
 begin
   Calls := Calls + ['push'];
+  Result := TAtlasVcsOutcome.Failed;
+end;
+
+type
+  /// <summary>SVN mit svn status --xml der Wurzel (#1292).</summary>
+  TFakeSvnStatus = class(TFakeVcs, IAtlasVcsSvnExternals)
+  public
+    StatusText: string;
+    function StatusXml(out AText: string): TAtlasVcsOutcome;
+    function Update(AIgnoreExternals: Boolean): TAtlasVcsOutcome;
+    function CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
+    function SetExternals(const AOwner, AText: string): TAtlasVcsOutcome;
+  end;
+
+function TFakeSvnStatus.StatusXml(out AText: string): TAtlasVcsOutcome;
+begin
+  Calls := Calls + ['status'];
+  AText := StatusText;
+  Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TFakeSvnStatus.Update(AIgnoreExternals: Boolean): TAtlasVcsOutcome;
+begin
+  Result := TAtlasVcsOutcome.Failed;
+end;
+
+function TFakeSvnStatus.CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
+begin
+  ACount := 0;
+  Result := TAtlasVcsOutcome.Failed;
+end;
+
+function TFakeSvnStatus.SetExternals(const AOwner, AText: string): TAtlasVcsOutcome;
+begin
   Result := TAtlasVcsOutcome.Failed;
 end;
 
@@ -466,6 +505,56 @@ begin
   Assert.IsTrue(TAtlasUnsavedKind.Changes in State.Queried);
   Assert.IsTrue(TAtlasUnsavedKind.Stashes in State.Queried);
   Assert.IsFalse(State.Find(TAtlasUnsavedKind.Stashes, Found), 'keine leeren Arten');
+end;
+
+procedure TAtlasWelcomeUnsavedTests.ProbeSplitsChangesPerWorkingCopy;
+var
+  mFake: TFakeSvnStatus;
+  mVcs: IAtlasVersionControl;
+  mState, mRead: TAtlasUnsavedState;
+  mFound: TAtlasUnsavedItem;
+  mSummary: TAtlasProjectSummary;
+begin
+  mFake := TFakeSvnStatus.Create;
+  mVcs := mFake;
+  mFake.FKind := TAtlasVcsKind.Svn;
+  mFake.FChangesOutcome := TAtlasVcsOutcome.Ok;
+  mFake.StatusText := '<?xml version="1.0"?><status><target path="."><entry path="Packages\Drucken">' +
+    '<wc-status item="external" props="none"></wc-status></entry></target></status>';
+  // Wie svn status der Wurzel: die Dateien des Externals stehen mit drin.
+  mFake.FChanges := [Change(VcsFullPath(Root, 'Kasse.dpr'), TAtlasVcsChangeKind.Modified),
+    Change(VcsFullPath(Root, 'Packages/Drucken/A.pas'), TAtlasVcsChangeKind.Modified),
+    Change(VcsFullPath(Root, 'Packages/Drucken/B.pas'), TAtlasVcsChangeKind.Untracked),
+    Change(VcsFullPath(Root, 'Packages/Drucken/K.pas'), TAtlasVcsChangeKind.Conflicted)];
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, '', NowUtc, nil, nil, True, mState));
+  Assert.IsTrue(mState.Find(TAtlasUnsavedKind.Changes, mFound));
+  Assert.AreEqual(3, Integer(mFound.Count), 'Summe aller Arbeitskopien');
+  Assert.AreEqual(2, Integer(Length(mFound.Places)));
+  Assert.AreEqual('', mFound.Places[0].Path);
+  Assert.AreEqual(1, mFound.Places[0].Count);
+  Assert.AreEqual('Packages/Drucken', mFound.Places[1].Path);
+  Assert.AreEqual(2, mFound.Places[1].Count, 'auch unversionierte wie in der Summe');
+  Assert.AreEqual('Kasse 1 · Packages\Drucken 2', TAtlasWelcomeUnsaved.PlacesText(mFound, 'Kasse'));
+  Assert.IsTrue(mState.Find(TAtlasUnsavedKind.Conflicts, mFound));
+  Assert.AreEqual(0, Integer(Length(mFound.Places)), 'nur eine Arbeitskopie betroffen');
+  Assert.AreEqual('', TAtlasWelcomeUnsaved.PlacesText(mFound, 'Kasse'));
+  // Abschnitt "places" übersteht Schreiben und Lesen.
+  mSummary := TAtlasProjectSummary.Create('C:\Repo\Kasse.groupproj');
+  TAtlasWelcomeUnsaved.Write(mSummary, mState);
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(mSummary, mRead));
+  Assert.IsTrue(mRead.Find(TAtlasUnsavedKind.Changes, mFound));
+  Assert.AreEqual(2, Integer(Length(mFound.Places)));
+  Assert.AreEqual('Packages/Drucken', mFound.Places[1].Path);
+  Assert.AreEqual(2, mFound.Places[1].Count);
+  // Abgeschaltet (vcs.externals.show aus): keine weitere Abfrage, keine Anteile.
+  mFake.Calls := nil;
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, '', NowUtc, nil, nil, False, mState));
+  Assert.IsTrue(mState.Find(TAtlasUnsavedKind.Changes, mFound));
+  Assert.AreEqual(0, Integer(Length(mFound.Places)));
+  Assert.IsFalse(string.Join(',', mFake.Calls).Contains('status'));
+  mFake.Calls := nil;
+  mFake.FChanges := nil;
+  mFake.StatusText := '';
 end;
 
 procedure TAtlasWelcomeUnsavedTests.ProbeSkipsBranchesWithoutLocalCommits;

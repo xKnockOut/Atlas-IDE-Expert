@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<properties>
+<target
+   path=".">
+<property
+   name="svn:externals"># Packages der Gruppe
+^/Packages/Basis/trunk Packages/Basis
+-r 4711 ^/Packages/Kunden/trunk Packages/Kunden
+../../Packages/Drucken/trunk@48100 Packages/Drucken
+"^/Packages/Mein Paket/trunk" "Packages/Mein Paket"
+https://svn.lieferant.de/komponenten/trunk Lieferant
+Alt -r 4000 https://svn.firma.local/repo/Packages/Alt/trunk
+^/Shared/trunk/Version.inc Version.inc
+^/../Anderes/trunk Anderes
+//svn.firma.local/repo/Packages/Netz/trunk Netz
+/repo/Packages/Server/trunk Server
+^/Packages/Prozent%20Satz/trunk Prozent
+Alt2 https://svn.firma.local/repo/Packages/Alt2/trunk
+kaputt
+</property>
+</target>
+<target
+   path="Sub">
+<property
+   name="svn:externals">^/Packages/Sub/trunk Lib
+</property>
+</target>
+</properties>

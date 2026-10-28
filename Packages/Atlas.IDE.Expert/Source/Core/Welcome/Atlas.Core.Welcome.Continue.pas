@@ -138,6 +138,8 @@ type
     More: Boolean;
     /// <summary>fetch war gewünscht und ist misslungen (Stand ohne Abruf).</summary>
     FetchFailed: Boolean;
+    /// <summary>fetch ist misslungen, weil die Anmeldung am Server fehlt (#1287); dann auch FetchFailed.</summary>
+    LoginNeeded: Boolean;
     /// <summary>Zeitpunkt der Abfrage (UTC).</summary>
     At: TDateTime;
   end;
@@ -203,7 +205,13 @@ type
     /// ruft vorher die Remote-Branches ab. True mit AResult, wenn das Ergebnis gilt (auch „kein Abschnitt“ ohne
     /// Arbeitskopie oder verfolgten Branch); False bei Fehler oder Zeitüberschreitung.</summary>
     class function ProbeIncoming(const AVcs, AFetchVcs: IAtlasVersionControl; const AProject: string;
-      const AState: TAtlasWorkState; ANowUtc: TDateTime; out AResult: TAtlasContinueIncoming): Boolean; static;
+      const AState: TAtlasWorkState; ANowUtc: TDateTime; out AResult: TAtlasContinueIncoming): Boolean; overload;
+      static;
+    /// <summary>Wie oben; ohne verfolgten Branch vergleicht es gegen den Hauptbranch AMainBranch des Projekts
+    /// (#1286; zuerst origin/AMainBranch, sonst AMainBranch). AMainBranch '' = kein Abschnitt wie bisher.</summary>
+    class function ProbeIncoming(const AVcs, AFetchVcs: IAtlasVersionControl; const AProject, AMainBranch: string;
+      const AState: TAtlasWorkState; ANowUtc: TDateTime; out AResult: TAtlasContinueIncoming): Boolean; overload;
+      static;
     /// <summary>Gleiche Datei: Groß-/Kleinschreibung (ASCII), „/“ und „\“ sowie Leerraum am Rand egal.</summary>
     class function SameFile(const A, B: string): Boolean; static;
     /// <summary>Dateiname ohne Pfad (auch mit „/“).</summary>
@@ -857,6 +865,13 @@ end;
 class function TAtlasWelcomeContinue.ProbeIncoming(const AVcs, AFetchVcs: IAtlasVersionControl;
   const AProject: string; const AState: TAtlasWorkState; ANowUtc: TDateTime;
   out AResult: TAtlasContinueIncoming): Boolean;
+begin
+  Result := ProbeIncoming(AVcs, AFetchVcs, AProject, '', AState, ANowUtc, AResult);
+end;
+
+class function TAtlasWelcomeContinue.ProbeIncoming(const AVcs, AFetchVcs: IAtlasVersionControl;
+  const AProject, AMainBranch: string; const AState: TAtlasWorkState; ANowUtc: TDateTime;
+  out AResult: TAtlasContinueIncoming): Boolean;
 var
   Incoming, Fetcher: IAtlasVcsIncoming;
   Outcome: TAtlasVcsOutcome;
@@ -875,9 +890,13 @@ begin
   // Keine Versionsverwaltung oder keine Schnittstelle: kein Abschnitt, kein Fehler.
   if (AVcs.Kind = TAtlasVcsKind.None) or not Supports(AVcs, IAtlasVcsIncoming, Incoming) then
     Exit(True);
-  if (AFetchVcs <> nil) and Supports(AFetchVcs, IAtlasVcsIncoming, Fetcher) and
-    (Fetcher.Fetch('') <> TAtlasVcsOutcome.Ok) then
-    AResult.FetchFailed := True;
+  if (AFetchVcs <> nil) and Supports(AFetchVcs, IAtlasVcsIncoming, Fetcher) then
+  begin
+    Outcome := Fetcher.Fetch('');
+    AResult.FetchFailed := Outcome <> TAtlasVcsOutcome.Ok;
+    // Ursache sichtbar machen (#1287): fehlende Anmeldung statt nur „ohne Abruf“.
+    AResult.LoginNeeded := Outcome = TAtlasVcsOutcome.LoginNeeded;
+  end;
   Outcome := AVcs.Head(Head);
   if (Outcome = TAtlasVcsOutcome.NoWorkingCopy) or (Outcome = TAtlasVcsOutcome.Disabled) then
     Exit(True);
@@ -887,6 +906,14 @@ begin
   Upstream := AState.Upstream;
   if Upstream = '' then
     Upstream := Head.Upstream;
+  // Ohne verfolgten Branch gilt der Hauptbranch des Projekts (#1286), wenn es ihn gibt; nicht für ihn selbst.
+  if (Upstream = '') and (Trim(AMainBranch) <> '') and not SameText(Head.Branch, Trim(AMainBranch)) then
+  begin
+    if (Incoming.Resolve('origin/' + Trim(AMainBranch), Resolved) = TAtlasVcsOutcome.Ok) and (Resolved <> '') then
+      Upstream := 'origin/' + Trim(AMainBranch)
+    else if (Incoming.Resolve(Trim(AMainBranch), Resolved) = TAtlasVcsOutcome.Ok) and (Resolved <> '') then
+      Upstream := Trim(AMainBranch);
+  end;
   // Ohne verfolgten Branch (auch SVN): kein Abschnitt.
   if Upstream = '' then
     Exit(True);

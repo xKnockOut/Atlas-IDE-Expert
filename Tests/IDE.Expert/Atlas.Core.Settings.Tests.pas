@@ -50,6 +50,11 @@ type
     /// bleibt in der Registry.</summary>
     [Test]
     procedure IssuesQueriesGoToGlobalFile;
+    /// <summary>#1285: vcs.provider, vcs.git.path, vcs.svn.path und vcs.timeoutSeconds in settings.json (der
+    /// Server liest dieselben Werte), nie in der Registry; ungültige Werte werden zur Vorgabe. #1288:
+    /// vcs.branch.confirm nur im Plugin (Registry).</summary>
+    [Test]
+    procedure VcsSettingsGoToGlobalFile;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -708,6 +713,144 @@ begin
   Assert.IsTrue(mLoaded.IssuesQueries.Contains('"Sprint"'), mLoaded.IssuesQueries);
   Assert.IsFalse(mLoaded.IssuesQueryPicker);
   Assert.IsTrue(MatchText('issues.queries', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
+procedure TAtlasPluginSettingsTests.VcsSettingsGoToGlobalFile;
+const
+  cGit = 'D:\Portable\Git\cmd\git.exe';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('auto', mSettings.VcsProvider);
+  Assert.AreEqual('', mSettings.VcsGitPath, 'leer = automatisch suchen');
+  Assert.AreEqual('', mSettings.VcsSvnPath);
+  Assert.AreEqual(15, mSettings.VcsTimeoutSeconds);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.VcsProvider := 'svn';
+  mSettings.VcsGitPath := cGit;
+  mSettings.VcsTimeoutSeconds := 60;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"provider": "svn"');
+  Assert.Contains(mRouted.Text, '"timeoutSeconds": 60');
+  Assert.Contains(mRouted.Text, '"git": {');
+  Assert.AreEqual('', mRegistry.ReadString('VcsGitPath', ''), 'nicht in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.AreEqual('svn', mLoaded.VcsProvider);
+  Assert.AreEqual(cGit, mLoaded.VcsGitPath);
+  Assert.AreEqual('', mLoaded.VcsSvnPath);
+  Assert.AreEqual(60, mLoaded.VcsTimeoutSeconds);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create,
+    '{"vcs": {"provider": "cvs", "svn": {"path": "  s.exe "}, "timeoutSeconds": 0}}');
+  mStore := mRouted;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('auto', mLoaded.VcsProvider, 'unbekannte Art: Vorgabe');
+  Assert.AreEqual('s.exe', mLoaded.VcsSvnPath, 'ohne Leerzeichen');
+  Assert.AreEqual(15, mLoaded.VcsTimeoutSeconds, 'außerhalb 1 bis 300: Vorgabe');
+  // #1286: vcs.projects als JSON-Liste wie issues.projects.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('[]', mSettings.VcsProjects);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '');
+  mStore := mRouted;
+  mSettings.VcsProjects := '[{"match": "C:\\Kasse", "provider": "svn", "mainBranch": "trunk"}]';
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"projects": [{"match": ');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.VcsProjects.Contains('"trunk"'), mLoaded.VcsProjects);
+  // #1288: vcs.branch.confirm betrifft nur das Plugin und bleibt in der Registry; Vorgabe: Dialog zeigen.
+  Assert.IsTrue(mSettings.VcsBranchConfirm);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.VcsBranchConfirm := False;
+  mSettings.Save(mStore);
+  Assert.AreEqual(0, mRegistry.ReadInteger('VcsBranchConfirm', 1));
+  Assert.IsFalse(mRouted.Text.Contains('confirm'), 'nicht in settings.json');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.VcsBranchConfirm);
+  // #1290: vcs.branch.svn.* ebenfalls persönlich (Registry), mit Vorgaben und Normalisierung.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('{projektwurzel}/branches/{name}', mSettings.VcsBranchSvnLocation);
+  Assert.AreEqual('head', mSettings.VcsBranchSvnSource);
+  Assert.AreEqual('switch', mSettings.VcsBranchSvnAfter);
+  Assert.AreEqual('..\{projekt}-{kennung}', mSettings.VcsBranchSvnCheckoutFolder);
+  Assert.AreEqual('{kennung} Branch für {titel}', mSettings.VcsBranchSvnMessage);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.VcsBranchSvnLocation := '^/branches/{kennung}';
+  mSettings.VcsBranchSvnSource := 'workingCopy';
+  mSettings.VcsBranchSvnAfter := 'checkout';
+  mSettings.VcsBranchSvnCheckoutFolder := 'D:\Branches\{name}';
+  mSettings.VcsBranchSvnMessage := 'Neu: {kennung}';
+  mSettings.Save(mStore);
+  Assert.AreEqual('checkout', mRegistry.ReadString('VcsBranchSvnAfter', ''));
+  Assert.IsFalse(mRouted.Text.Contains('svn": {"location'), 'nicht in settings.json');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.AreEqual('^/branches/{kennung}', mLoaded.VcsBranchSvnLocation);
+  Assert.AreEqual('workingCopy', mLoaded.VcsBranchSvnSource);
+  Assert.AreEqual('checkout', mLoaded.VcsBranchSvnAfter);
+  Assert.AreEqual('D:\Branches\{name}', mLoaded.VcsBranchSvnCheckoutFolder);
+  Assert.AreEqual('Neu: {kennung}', mLoaded.VcsBranchSvnMessage);
+  mRegistry.WriteString('VcsBranchSvnLocation', 'branches/{name}');
+  mRegistry.WriteString('VcsBranchSvnSource', 'gestern');
+  mRegistry.WriteString('VcsBranchSvnAfter', '');
+  mRegistry.WriteString('VcsBranchSvnCheckoutFolder', '  ');
+  mRegistry.WriteString('VcsBranchSvnMessage', '');
+  mLoaded.Load(mStore);
+  Assert.AreEqual('{projektwurzel}/branches/{name}', mLoaded.VcsBranchSvnLocation, 'ohne {projektwurzel} oder ^/');
+  Assert.AreEqual('head', mLoaded.VcsBranchSvnSource);
+  Assert.AreEqual('switch', mLoaded.VcsBranchSvnAfter);
+  Assert.AreEqual('..\{projekt}-{kennung}', mLoaded.VcsBranchSvnCheckoutFolder);
+  Assert.AreEqual('{kennung} Branch für {titel}', mLoaded.VcsBranchSvnMessage);
+  // #1291: vcs.externals.* persönlich (Registry), mit Vorgaben und Normalisierung.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('pin', mSettings.VcsExternalsOnBranch);
+  Assert.AreEqual('modified', mSettings.VcsExternalsSuggestBranch);
+  Assert.AreEqual('[]', mSettings.VcsExternalsRules);
+  mSettings.VcsExternalsOnBranch := 'ask';
+  mSettings.VcsExternalsSuggestBranch := 'always';
+  mSettings.VcsExternalsRules := '[{"source": "^/Packages/Basis", "onBranch": "keep"}]';
+  mSettings.Save(mStore);
+  Assert.AreEqual('ask', mRegistry.ReadString('VcsExternalsOnBranch', ''));
+  Assert.IsFalse(mRouted.Text.Contains('externals'), 'nicht in settings.json');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.AreEqual('ask', mLoaded.VcsExternalsOnBranch);
+  Assert.AreEqual('always', mLoaded.VcsExternalsSuggestBranch);
+  Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', mLoaded.VcsExternalsRules);
+  mRegistry.WriteString('VcsExternalsOnBranch', 'branch');
+  mRegistry.WriteString('VcsExternalsSuggestBranch', 'KEEP');
+  mRegistry.WriteString('VcsExternalsRules', ' ');
+  mLoaded.Load(mStore);
+  Assert.AreEqual('pin', mLoaded.VcsExternalsOnBranch, 'branch ist keine Vorgabe für alle');
+  Assert.AreEqual('modified', mLoaded.VcsExternalsSuggestBranch);
+  Assert.AreEqual('[]', mLoaded.VcsExternalsRules);
+  // #1292: vcs.externals.show und .update ebenfalls persönlich.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.VcsExternalsShow);
+  Assert.AreEqual('with', mSettings.VcsExternalsUpdate);
+  mSettings.VcsExternalsShow := False;
+  mSettings.VcsExternalsUpdate := 'ask';
+  mSettings.Save(mStore);
+  Assert.AreEqual(0, mRegistry.ReadInteger('VcsExternalsShow', 1));
+  Assert.AreEqual('ask', mRegistry.ReadString('VcsExternalsUpdate', ''));
+  Assert.IsFalse(mRouted.Text.Contains('externals'), 'nicht in settings.json');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.VcsExternalsShow);
+  Assert.AreEqual('ask', mLoaded.VcsExternalsUpdate);
+  mRegistry.WriteString('VcsExternalsUpdate', 'immer');
+  mLoaded.Load(mStore);
+  Assert.AreEqual('with', mLoaded.VcsExternalsUpdate);
 end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;
@@ -2564,16 +2707,14 @@ begin
     Paths := Paths + Field.Path + '|';
   Assert.Contains(Paths, '|language|');
   Assert.Contains(Paths, '|completion.matching|');
-  // Versionsverwaltung (#571): im Dialog der globalen Einstellungen, Seite Allgemein, als Auswahl.
-  Assert.Contains(Paths, '|vcs.provider|');
-  for Field in Global do
-    if Field.Path = 'vcs.provider' then
-    begin
-      Assert.AreEqual('Allgemein', Field.Page);
-      Assert.AreEqual('"auto"', Field.DefaultJson);
-      Assert.AreEqual(4, Integer(Length(Field.Choices)));
-      Assert.AreEqual('"off"', Field.Choices[3]);
-    end;
+  // Versionsverwaltung (#571) hat seit #1285 eine eigene Seite, Issue-Tracker seit #1260: Das ganze Objekt
+  // ("vcs", "issues") enthält Glieder dieser Seiten und steht deshalb nicht im Dialog.
+  Assert.DoesNotContain(Paths, '|vcs|');
+  Assert.DoesNotContain(Paths, '|vcs.provider|');
+  Assert.DoesNotContain(Paths, '|issues|');
+  for Field in Fields do
+    if Field.Path = 'vcs' then
+      Assert.IsTrue(Field.Global, 'vcs bleibt global');
   // Auf den Reitern der Optionsseite bzw. von der IDE gesetzt: nicht noch einmal im Dialog.
   Assert.DoesNotContain(Paths, '|index.projectGroup|');
   Assert.DoesNotContain(Paths, '|hints.xmlDocFull|');

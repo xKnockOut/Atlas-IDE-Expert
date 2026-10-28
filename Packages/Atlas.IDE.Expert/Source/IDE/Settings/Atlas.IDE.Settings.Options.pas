@@ -35,6 +35,10 @@
 // Tabelle Projekte (#1261): aktives Projekt, geöffnete .groupproj und die
 // Zeile aus dessen .atlas; ShowTrackerProject („zuordnen …“ aus „Meine
 // Issues“) öffnet die Seite mit einer vorbefüllten Zeile.
+// Seite Versionsverwaltung (#1285): Fundort ohne Prozess, „Prüfen“ und
+// „Aktuelles Projekt“ über TAtlasIdeVcs im Hintergrund; das Ergebnis geht nur
+// an die Seite, für die es bestellt wurde (FGeneration). Nach OK liest
+// TAtlasIdeVcs settings.json sofort neu, damit ein neuer Pfad gleich gilt.
 
 interface
 
@@ -89,6 +93,9 @@ type
     /// <summary>„zuordnen …“ (#1261): Tools › Optionen auf der Seite Issue-Tracker mit einer Zeile für AMatch
     /// (.dproj, .groupproj) in der Tabelle Projekte öffnen.</summary>
     class procedure ShowTrackerProject(const AMatch: string); static;
+    /// <summary>„Anmeldung am Server nötig – prüfen …“ (#1287): Tools › Optionen auf der Seite Versionsverwaltung
+    /// öffnen und den Serverzugang für AFolder prüfen.</summary>
+    class procedure ShowVcsServer(const AFolder: string); static;
   end;
 
 implementation
@@ -133,6 +140,12 @@ uses
   Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.IDE.Foundation.Files,
+  Atlas.Core.Projects.Vcs,
+  Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.Tools,
+  Atlas.Core.Vcs.ToolCheck,
+  Atlas.Core.Vcs.ServerCheck,
+  Atlas.IDE.Vcs.Service,
   Atlas.IDE.Foundation.TeamFile;
 
 type
@@ -146,6 +159,10 @@ type
     procedure Run(const ACommand: string; const AText: TFunc<TJSONValue, string>);
     /// <summary>Seite Issue-Tracker (#1260): Verbindung aus der .atlas, Anbieter, Token und Prüfung.</summary>
     procedure ConnectTracker;
+    /// <summary>Seite Versionsverwaltung (#1285).</summary>
+    procedure ConnectVcs;
+    /// <summary>Zeile AFolder der Tabelle „Server“ im Hintergrund prüfen (#1287).</summary>
+    procedure CheckVcsServer(const AFolder: string);
     /// <summary>Seite Prüfregeln (#909): Katalog im Hintergrund holen und mit "rules" der globalen Datei
     /// übergeben.</summary>
   public
@@ -215,6 +232,9 @@ var
   /// <summary>„Gilt für“ einer Zeile, die die Seite Issue-Tracker beim nächsten Anlegen vorbefüllt (#1261).
   /// </summary>
   PendingTrackerProject: string;
+  /// <summary>Ordner, dessen Serverzugang die Seite Versionsverwaltung beim nächsten Anlegen prüft (#1287).
+  /// </summary>
+  PendingVcsServer: string;
 
 type
   /// <summary>Sucht im offenen Optionsdialog die Seite „Atlas“ und wählt sie (#628).</summary>
@@ -450,6 +470,23 @@ begin
   if mTeam.Tracker.Configured then
     Result.Team := [TAtlasTrackerProjectMapping.FromTeamFile(Result.ProjectFile,
       ChangeFileExt(ExtractFileName(Result.ProjectFile), ''), mTeam.Tracker.Project)];
+end;
+
+/// <summary>Wie TrackerProjectContext für die Seite Versionsverwaltung (#1286): Zeile aus dem Abschnitt vcs der
+/// .atlas.</summary>
+function VcsProjectContext: TAtlasVcsProjectContext;
+var
+  mTeam: TAtlasTeamSettings;
+begin
+  Result := TAtlasVcsProjectContext.Empty;
+  Result.ProjectFile := TAtlasIdeTeamFile.ActiveProject;
+  if Result.ProjectFile = '' then
+    Exit;
+  Result.GroupFile := TAtlasIdeFiles.GroupOfProject(Result.ProjectFile);
+  mTeam := TAtlasIdeTeamFile.Read(Result.ProjectFile);
+  if mTeam.Vcs.Configured then
+    Result.Team := [TAtlasVcsProjectMapping.FromTeamFile(Result.ProjectFile, mTeam.Vcs.Provider,
+      mTeam.Vcs.MainBranch)];
 end;
 
 
@@ -804,10 +841,14 @@ begin
       Result := TAtlasIdeSettingsTransfer.ResetAll(ACurrent, AResult);
     end;
   ConnectTracker;
+  ConnectVcs;
   FPage.LoadFrom(TAtlasIdeSettings.Stored);
   // „zuordnen …“ aus „Meine Issues“ (#1261): Zeile nach dem Laden vorbefüllen.
   if PendingTrackerProject <> '' then
     FPage.AssignTrackerProject(PendingTrackerProject);
+  // „Anmeldung am Server nötig – prüfen …“ der Willkommensseite (#1287): Zeile zeigen und prüfen.
+  if PendingVcsServer <> '' then
+    FPage.RevealVcsServer(PendingVcsServer);
 end;
 
 procedure TAtlasAddInOptions.ConnectTracker;
@@ -894,18 +935,123 @@ begin
     end;
 end;
 
+procedure TAtlasAddInOptions.ConnectVcs;
+var
+  mKeep: INTAAddInOptions;
+  mOwner: TAtlasAddInOptions;
+  mGeneration: Integer;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  mGeneration := FGeneration;
+  FPage.OnVcsContext :=
+    function: TAtlasVcsProjectContext
+    begin
+      Result := VcsProjectContext;
+    end;
+  FPage.OnVcsLocate :=
+    function(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation
+    begin
+      Result := TAtlasIdeVcs.Locate(AKind, APath);
+    end;
+  FPage.OnVcsCheck :=
+    procedure(AKind: TAtlasVcsKind; const APath: string)
+    var
+      mLocation: TAtlasVcsToolLocation;
+    begin
+      if not TAtlasIdeVcs.CheckTool(AKind, APath,
+        procedure(ACheck: TAtlasVcsToolCheck)
+        begin
+          // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
+          if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
+            mOwner.FPage.VcsCheckDone(ACheck);
+        end) then
+      begin
+        // Nichts gestartet (Versionsverwaltung noch nicht bereit): Zustand ohne Prozess.
+        mLocation := TAtlasIdeVcs.Locate(AKind, APath);
+        mOwner.FPage.VcsCheckDone(TAtlasVcsToolChecks.Missing(AKind, mLocation));
+      end;
+    end;
+  FPage.OnVcsProject :=
+    procedure
+    var
+      mProject, mGroup: string;
+    begin
+      // Aktive .dproj in der geöffneten .groupproj; Art und Hauptbranch nach vcs.projects und .atlas (#1286).
+      mProject := TAtlasIdeTeamFile.ActiveProject;
+      mGroup := '';
+      if mProject <> '' then
+        mGroup := TAtlasIdeFiles.GroupOfProject(mProject);
+      TAtlasIdeVcs.QueryProject(mProject, mGroup,
+        procedure(AState: TAtlasVcsProjectState)
+        begin
+          if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
+            mOwner.FPage.VcsProjectDone(AState);
+        end);
+    end;
+  // Serverzugang (#1287): Zustand nur aus der Sitzung, Prüfen und Anmelden nur auf Klick.
+  FPage.OnVcsServerState :=
+    function(AFolder: string): TAtlasVcsServerCheck
+    begin
+      Result := TAtlasIdeVcs.ServerState(AFolder);
+    end;
+  FPage.OnVcsServerCheck :=
+    procedure(const AFolder: string)
+    begin
+      CheckVcsServer(AFolder);
+    end;
+  FPage.OnVcsServerLogin :=
+    function(const AFolder: string; const ACheck: TAtlasVcsServerCheck): Boolean
+    var
+      mFolder: string;
+    begin
+      mFolder := AFolder;
+      // Nach dem Schließen der Konsole dieselbe Zeile erneut prüfen.
+      Result := TAtlasIdeVcs.OpenServerLogin(ACheck,
+        procedure
+        begin
+          if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
+            mOwner.CheckVcsServer(mFolder);
+        end);
+    end;
+end;
+
+procedure TAtlasAddInOptions.CheckVcsServer(const AFolder: string);
+var
+  mKeep: INTAAddInOptions;
+  mOwner: TAtlasAddInOptions;
+  mGeneration: Integer;
+  mFolder: string;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  mGeneration := FGeneration;
+  mFolder := AFolder;
+  if not TAtlasIdeVcs.CheckServer(mFolder,
+    procedure(ACheck: TAtlasVcsServerCheck)
+    begin
+      // Nur an die Seite, für die geprüft wurde, solange der Dialog offen ist.
+      if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
+        mOwner.FPage.VcsServerDone(mFolder, ACheck);
+    end) then
+    FPage.VcsServerDone(mFolder, TAtlasVcsServerCheck.Empty);
+end;
+
 procedure TAtlasAddInOptions.DialogClosed(Accepted: Boolean);
 var
   Settings: TAtlasPluginSettings;
 begin
   PendingReveal := '';
   PendingTrackerProject := '';
+  PendingVcsServer := '';
   try
     if Accepted and (FPage <> nil) then
     begin
       Settings := TAtlasIdeSettings.Stored;
       FPage.SaveTo(Settings);
       TAtlasIdeSettings.Update(Settings);
+      // vcs.* (#1285) liegen in settings.json: neuer Pfad und neues Zeitlimit gelten sofort.
+      TAtlasIdeVcs.Reload;
     end;
     // Strukturhervorhebung und Help Insight der IDE erst nach dem Dialog abgleichen: Mit OK
     // schreibt die IDE danach ihre Editoroptionen aus dem Speicher zurück, auch die Schalter,
@@ -1253,6 +1399,7 @@ begin
   Hooks := Default(TAtlasOptionsHooks);
   PendingReveal := '';
   PendingTrackerProject := '';
+  PendingVcsServer := '';
   FreeAndNil(Selector);
 end;
 
@@ -1335,6 +1482,16 @@ begin
     ShowSetting('IssuesProjects');
   finally
     PendingTrackerProject := '';
+  end;
+end;
+
+class procedure TAtlasOptionsRegistration.ShowVcsServer(const AFolder: string);
+begin
+  PendingVcsServer := AFolder;
+  try
+    ShowSetting('VcsProjects');
+  finally
+    PendingVcsServer := '';
   end;
 end;
 

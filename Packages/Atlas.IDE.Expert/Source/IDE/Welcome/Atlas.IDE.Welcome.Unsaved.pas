@@ -428,6 +428,7 @@ var
   Ok: Boolean;
   State: TAtlasUnsavedState;
   Started: UInt64;
+  mWorkingCopies: Boolean;
 begin
   Key := TAtlasProjectSummaries.NormalizedPath(AProject);
   if FStopped or Querying(Key) then
@@ -441,6 +442,8 @@ begin
   Stamp := NowUtc;
   Ok := False;
   State := TAtlasUnsavedState.Empty;
+  // Anteile je External bzw. Submodul (#1292); im Hauptthread gelesen.
+  mWorkingCopies := TAtlasIdeSettings.Current.VcsExternalsShow;
   // Arbeit und Ergebnis teilen sich Ok und State; das Ergebnis kommt erst nach der Arbeit.
   if not TAtlasIdeVcs.Run(
     procedure
@@ -451,7 +454,7 @@ begin
         begin
           // 2 s je Projekt: danach kein weiterer Aufruf; der Rest kommt aus dem gespeicherten Stand.
           Result := GetTickCount64 - Started >= TAtlasWelcomeUnsaved.TimeLimitMs;
-        end, State);
+        end, mWorkingCopies, State);
     end,
     procedure
     var

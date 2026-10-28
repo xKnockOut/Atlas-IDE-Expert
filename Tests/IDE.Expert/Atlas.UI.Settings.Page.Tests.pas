@@ -120,6 +120,13 @@ type
     /// Schalter „Meine Issues“ und springt mit „Tracker-Einstellungen …“ dorthin.</summary>
     [Test]
     procedure IssuesTrackerOwnPage;
+    /// <summary>#1285: Seite Versionsverwaltung als eigener Bereich: Art, Programmpfade mit Fundort ohne
+    /// Prozess, „Prüfen“ im Hintergrund, Zeitlimit, aktuelles Projekt beim ersten Zeigen und Links.</summary>
+    [Test]
+    procedure VcsPageLocatesChecksAndShowsProject;
+    /// <summary>#1285: Texte für Fundort, Prüfergebnis und aktuelles Projekt.</summary>
+    [Test]
+    procedure VcsTexts;
     /// <summary>#1260: Tabelle der Tracker-Verbindungen mit Token-Zustand, Verbindung aus der .atlas
     /// schreibgeschützt, http abgewiesen, Prüfen und Entfernen über die Haken.</summary>
     [Test]
@@ -137,6 +144,16 @@ type
     /// „Prüfen“ erkannte Sprache bleibt an der Verbindung.</summary>
     [Test]
     procedure TrackerQueryEditAndLanguage;
+    /// <summary>#1286: Tabelle Projekte der Versionsverwaltung: Zeile aus der .atlas schreibgeschützt, überdeckte
+    /// persönliche Zeile markiert, „Aktuelles Projekt“ mit erkannter Art, Ordner über OnTrackerBrowse, Hauptbranch
+    /// ohne Leerraum, Entfernen, Speichern nach vcs.projects.</summary>
+    [Test]
+    procedure VcsProjectsTable;
+    /// <summary>#1287: Tabelle „Server“: Zeile je Ordner aus aktuellem Projekt und Tabelle Projekte, Zustand aus
+    /// der Sitzung, „Prüfen“ und „Alle prüfen“ über OnVcsServerCheck, „Anmelden …“ nur bei „Anmeldung nötig“.
+    /// </summary>
+    [Test]
+    procedure VcsServersTable;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
     [Test]
@@ -219,6 +236,7 @@ uses
   Atlas.Core.Settings.Reassigned,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.Projects.Vcs,
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.Layouts,
   Atlas.Core.Completion.Contract,
@@ -239,6 +257,9 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Queries,
+  Atlas.Core.Vcs.Contract,
+  Atlas.Core.Vcs.Tools,
+  Atlas.Core.Vcs.ToolCheck,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Vcl.Graphics,
@@ -341,7 +362,7 @@ begin
     Page.Parent := Host;
     Page.HandleNeeded;
     Areas := TopLevelNodes(Page);
-    Assert.AreEqual(18, Integer(Length(Areas)));
+    Assert.AreEqual(19, Integer(Length(Areas)));
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabGeneral), Areas[0].Text);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabCompiler), Areas[6].Text);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabRules), Areas[7].Text);
@@ -351,7 +372,8 @@ begin
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabUnitSearch), Areas[14].Text);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabWelcome), Areas[15].Text);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabIssues), Areas[16].Text, 'eigener Bereich (#1280)');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Areas[17].Text);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), Areas[17].Text, 'eigener Bereich (#1285)');
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabTeamFile), Areas[18].Text);
     Assert.IsTrue(Page.Pages.PageCount > 17, 'Unterpunkte haben eigene Seiten');
     for Index := 0 to Page.Pages.PageCount - 1 do
     begin
@@ -1965,6 +1987,262 @@ begin
   end;
 end;
 
+procedure TAtlasSettingsPageTests.VcsPageLocatesChecksAndShowsProject;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mAreas: TArray<TTreeNode>;
+  mVcs: TTabSheet;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mCheckedKind: TAtlasVcsKind;
+  mCheckedPath, mLocated: string;
+  mProjectCalls: Integer;
+  mCheck: TAtlasVcsToolCheck;
+  mState: TAtlasVcsProjectState;
+begin
+  TAtlasSettingsPage.ForgetTreeState;
+  mCheckedKind := TAtlasVcsKind.None;
+  mCheckedPath := '';
+  mLocated := '';
+  mProjectCalls := 0;
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    mPage.OnVcsLocate :=
+      function(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation
+      begin
+        mLocated := APath;
+        Result := TAtlasVcsToolLocation.Empty;
+        Result.Configured := APath;
+        if APath = '' then
+        begin
+          Result.Executable := 'C:\Program Files\Git\cmd\git.exe';
+          Result.Source := TAtlasVcsToolSource.KnownDir;
+        end
+        else
+          Result.Source := TAtlasVcsToolSource.ConfiguredMissing;
+      end;
+    mPage.OnVcsCheck :=
+      procedure(AKind: TAtlasVcsKind; const APath: string)
+      begin
+        mCheckedKind := AKind;
+        mCheckedPath := APath;
+      end;
+    mPage.OnVcsProject :=
+      procedure
+      begin
+        Inc(mProjectCalls);
+      end;
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.VcsProvider := 'svn';
+    mSettings.VcsSvnPath := 'D:\Tools\svn.exe';
+    mSettings.VcsTimeoutSeconds := 45;
+    mPage.LoadFrom(mSettings);
+    mVcs := SheetOf(mPage.VcsProviderChoice);
+    Assert.IsNotNull(mVcs);
+    mAreas := TopLevelNodes(mPage);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), mAreas[17].Text, 'eigener Bereich');
+    Assert.IsTrue(SheetOf(mPage.VcsPath(TAtlasVcsKind.Git)) = mVcs);
+    Assert.IsTrue(SheetOf(mPage.VcsPath(TAtlasVcsKind.Svn)) = mVcs);
+    Assert.IsTrue(SheetOf(mPage.VcsTimeout) = mVcs);
+    Assert.IsTrue(SheetOf(mPage.VcsProjectInfo) = mVcs);
+    Assert.AreEqual(2, mPage.VcsProviderChoice.Choice, 'svn');
+    Assert.AreEqual('D:\Tools\svn.exe', mPage.VcsPath(TAtlasVcsKind.Svn).Text);
+    Assert.AreEqual('45', mPage.VcsTimeout.Text);
+    // #1288: Dialog „Branch anlegen“ bei „Beginnen“, auf derselben Seite.
+    Assert.IsTrue(SheetOf(mPage.VcsBranchConfirm) = mVcs);
+    Assert.IsTrue(mPage.VcsBranchConfirm.Checked);
+    // #1290: SVN-Gruppe auf derselben Seite, Vorgaben aus den Einstellungen.
+    Assert.IsTrue(SheetOf(mPage.VcsBranchSvnLocation) = mVcs);
+    Assert.IsTrue(SheetOf(mPage.VcsBranchSvnMessage) = mVcs);
+    Assert.AreEqual('{projektwurzel}/branches/{name}', mPage.VcsBranchSvnLocation.Text);
+    Assert.AreEqual(0, mPage.VcsBranchSvnSource.Choice, 'head');
+    Assert.AreEqual(0, mPage.VcsBranchSvnAfter.Choice, 'switch');
+    Assert.AreEqual('..\{projekt}-{kennung}', mPage.VcsBranchSvnFolder.Text);
+    // #1291: Gruppe „Externals“ auf derselben Seite, Regeln als Zeilen; ungültige Zeile mit Hinweis.
+    Assert.IsTrue(SheetOf(mPage.VcsExternalsRules) = mVcs);
+    Assert.AreEqual(0, mPage.VcsExternalsOnBranch.Choice, 'pin');
+    Assert.AreEqual(0, mPage.VcsExternalsSuggest.Choice, 'modified');
+    Assert.AreEqual('', mPage.VcsExternalsRules.Text);
+    mPage.VcsExternalsRules.Text := '^/Packages/Basis = fragen';
+    mPage.VcsExternalsRules.OnChange(mPage.VcsExternalsRules);
+    Assert.Contains(mPage.VcsExternalsRulesError.Caption, '^/Packages/Basis = fragen');
+    mPage.VcsExternalsRules.Text := '^/Packages/Basis = keep';
+    mPage.VcsExternalsRules.OnChange(mPage.VcsExternalsRules);
+    Assert.AreEqual('', mPage.VcsExternalsRulesError.Caption);
+    // #1292: Arbeitskopien und Aktualisieren auf derselben Seite.
+    Assert.IsTrue(SheetOf(mPage.VcsExternalsShow) = mVcs);
+    Assert.IsTrue(mPage.VcsExternalsShow.Checked);
+    Assert.AreEqual(0, mPage.VcsExternalsUpdate.Choice, 'with');
+    Assert.AreEqual(0, mProjectCalls, 'kein Prozess, solange die Seite nicht gezeigt wurde');
+    // Pfad ändern: nur Dateiprüfung, kein Prozess.
+    mPage.VcsPath(TAtlasVcsKind.Git).Text := 'X:\fehlt\git.exe';
+    mPage.VcsPath(TAtlasVcsKind.Git).OnChange(mPage.VcsPath(TAtlasVcsKind.Git));
+    Assert.AreEqual('X:\fehlt\git.exe', mLocated);
+    Assert.Contains(mPage.VcsState(TAtlasVcsKind.Git).Caption, 'X:\fehlt\git.exe');
+    Assert.IsTrue(mCheckedKind = TAtlasVcsKind.None, 'Prüfen erst auf Klick');
+    mPage.VcsPath(TAtlasVcsKind.Git).Text := '';
+    mPage.VcsPath(TAtlasVcsKind.Git).OnChange(mPage.VcsPath(TAtlasVcsKind.Git));
+    Assert.Contains(mPage.VcsState(TAtlasVcsKind.Git).Caption, 'C:\Program Files\Git\cmd\git.exe');
+    // „Prüfen“: Hintergrund über OnVcsCheck, Knopf gesperrt bis zum Ergebnis.
+    mPage.VcsCheckButton(TAtlasVcsKind.Svn).Click;
+    Assert.IsTrue(mCheckedKind = TAtlasVcsKind.Svn);
+    Assert.AreEqual('D:\Tools\svn.exe', mCheckedPath);
+    Assert.IsFalse(mPage.VcsCheckButton(TAtlasVcsKind.Svn).Enabled);
+    mCheck := TAtlasVcsToolChecks.Missing(TAtlasVcsKind.Svn, TAtlasVcsToolLocation.Empty);
+    mCheck.State := TAtlasVcsToolState.Found;
+    mCheck.Version := 'svn 1.14.3';
+    mCheck.Location.Executable := 'D:\Tools\svn.exe';
+    mCheck.Location.Source := TAtlasVcsToolSource.Configured;
+    mPage.VcsCheckDone(mCheck);
+    Assert.IsTrue(mPage.VcsCheckButton(TAtlasVcsKind.Svn).Enabled);
+    Assert.Contains(mPage.VcsState(TAtlasVcsKind.Svn).Caption, 'svn 1.14.3');
+    // Aktuelles Projekt: einmal beim ersten Zeigen der Seite.
+    mPage.Navigation.OnChange(mPage.Navigation, mAreas[17]);
+    Assert.IsTrue(mPage.Pages.ActivePage = mVcs);
+    Assert.AreEqual(1, mProjectCalls);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectQuerying), mPage.VcsProjectInfo.Caption);
+    mPage.Navigation.OnChange(mPage.Navigation, mAreas[0]);
+    mPage.Navigation.OnChange(mPage.Navigation, mAreas[17]);
+    Assert.AreEqual(1, mProjectCalls, 'nur einmal je Öffnen');
+    mState := TAtlasVcsProjectState.Empty;
+    mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+    mState.Outcome := TAtlasVcsOutcome.NoWorkingCopy;
+    mPage.VcsProjectDone(mState);
+    Assert.Contains(mPage.VcsProjectInfo.Caption, 'Kasse.dproj');
+    // Links auf die Seiten, die die Anzeige steuern.
+    mPage.VcsLinkWelcome.Click;
+    Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(mPage.WelcomeRefreshVcs));
+    mPage.VcsLinkIssues.Click;
+    Assert.IsTrue(mPage.Pages.ActivePage = SheetOf(mPage.IssuesBranchPattern));
+    mPage.VcsLinkEditor.Click;
+    Assert.IsFalse(mPage.Pages.ActivePage = mVcs, 'Editor-Seite mit Git-Rand');
+    // Speichern.
+    mPage.VcsProviderChoice.Choice := 1;
+    mPage.VcsPath(TAtlasVcsKind.Git).Text := '  D:\Git\git.exe ';
+    mPage.VcsTimeout.Text := '120';
+    mPage.VcsBranchConfirm.Checked := False;
+    mPage.VcsBranchSvnLocation.Text := '^/branches/{kennung}';
+    mPage.VcsBranchSvnSource.Choice := 1;
+    mPage.VcsBranchSvnAfter.Choice := 1;
+    mPage.VcsBranchSvnFolder.Text := 'D:\Branches\{name}';
+    mPage.VcsBranchSvnMessage.Text := 'Neu: {kennung}';
+    mPage.VcsExternalsOnBranch.Choice := 2;
+    mPage.VcsExternalsSuggest.Choice := 2;
+    mPage.VcsExternalsShow.Checked := False;
+    mPage.VcsExternalsUpdate.Choice := 1;
+    mSaved := mSettings;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.VcsExternalsShow);
+    Assert.AreEqual('without', mSaved.VcsExternalsUpdate);
+    Assert.AreEqual('ask', mSaved.VcsExternalsOnBranch);
+    Assert.AreEqual('always', mSaved.VcsExternalsSuggestBranch);
+    Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', mSaved.VcsExternalsRules);
+    // Ungültige Zeile: Die bisherigen Regeln bleiben.
+    mPage.VcsExternalsRules.Text := '^/Packages/Basis = keep'#13#10'kaputt';
+    mPage.SaveTo(mSaved);
+    Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', mSaved.VcsExternalsRules);
+    mPage.LoadFrom(mSaved);
+    Assert.AreEqual('^/Packages/Basis = keep', mPage.VcsExternalsRules.Text);
+    Assert.AreEqual(2, mPage.VcsExternalsOnBranch.Choice);
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.VcsBranchConfirm);
+    Assert.AreEqual('^/branches/{kennung}', mSaved.VcsBranchSvnLocation);
+    Assert.AreEqual('workingCopy', mSaved.VcsBranchSvnSource);
+    Assert.AreEqual('checkout', mSaved.VcsBranchSvnAfter);
+    Assert.AreEqual('D:\Branches\{name}', mSaved.VcsBranchSvnCheckoutFolder);
+    Assert.AreEqual('Neu: {kennung}', mSaved.VcsBranchSvnMessage);
+    Assert.AreEqual('git', mSaved.VcsProvider);
+    Assert.AreEqual('D:\Git\git.exe', mSaved.VcsGitPath);
+    Assert.AreEqual('D:\Tools\svn.exe', mSaved.VcsSvnPath);
+    Assert.AreEqual(120, mSaved.VcsTimeoutSeconds);
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.VcsTexts;
+var
+  mLocation: TAtlasVcsToolLocation;
+  mCheck: TAtlasVcsToolCheck;
+  mState: TAtlasVcsProjectState;
+  mText: string;
+  mServer: TAtlasVcsServerCheck;
+begin
+  mLocation := TAtlasVcsToolLocation.Empty;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolMissing),
+    TAtlasSettingsPage.VcsLocationText(mLocation));
+  mLocation.Source := TAtlasVcsToolSource.ConfiguredMissing;
+  mLocation.Configured := 'X:\git.exe';
+  Assert.Contains(TAtlasSettingsPage.VcsLocationText(mLocation), 'X:\git.exe');
+  mLocation.Source := TAtlasVcsToolSource.Path;
+  mLocation.Executable := 'C:\Git\cmd\git.exe';
+  mText := TAtlasSettingsPage.VcsLocationText(mLocation);
+  Assert.Contains(mText, 'C:\Git\cmd\git.exe');
+  Assert.Contains(mText, TAtlasSettingsPage.VcsSourceText(TAtlasVcsToolSource.Path));
+  mCheck := TAtlasVcsToolChecks.Missing(TAtlasVcsKind.Git, mLocation);
+  mCheck.State := TAtlasVcsToolState.StartFailed;
+  mCheck.ExitCode := 128;
+  Assert.Contains(TAtlasSettingsPage.VcsCheckText(mCheck), '128');
+  mCheck.State := TAtlasVcsToolState.NoAnswer;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsToolNoAnswer), TAtlasSettingsPage.VcsCheckText(mCheck));
+  mCheck.State := TAtlasVcsToolState.Found;
+  mCheck.Version := 'git version 2.47.1';
+  mText := TAtlasSettingsPage.VcsCheckText(mCheck);
+  Assert.Contains(mText, 'git version 2.47.1');
+  Assert.Contains(mText, 'C:\Git\cmd\git.exe');
+  mState := TAtlasVcsProjectState.Empty;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectNone), TAtlasSettingsPage.VcsProjectText(mState));
+  mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+  mState.Outcome := TAtlasVcsOutcome.Ok;
+  mState.WorkingCopy.Kind := TAtlasVcsKind.Git;
+  mState.WorkingCopy.Root := 'C:\Projekte\Kasse';
+  mState.Head.Branch := 'feature/42-kasse';
+  mState.Head.Revision := '1979e3d795214220705682d5b0b63c8f3b7e66d7';
+  mState.Head.Upstream := 'origin/feature/42-kasse';
+  mText := TAtlasSettingsPage.VcsProjectText(mState);
+  Assert.Contains(mText, 'Kasse.dproj');
+  Assert.Contains(mText, 'C:\Projekte\Kasse');
+  Assert.Contains(mText, 'feature/42-kasse');
+  Assert.Contains(mText, 'origin/feature/42-kasse');
+  Assert.Contains(mText, TAtlasStrings.Text(TAtlasTextId.SettingsVcsSourceSetting), 'Herkunft der Art');
+  mState.Source := TAtlasVcsProviderSource.Project;
+  mState.SourceMatch := 'C:\Projekte\Kasse\Kasse.groupproj';
+  Assert.Contains(TAtlasSettingsPage.VcsProjectText(mState), 'Kasse.groupproj');
+  // #1286: Hauptbranch aus Zeile oder .atlas.
+  Assert.DoesNotContain(TAtlasSettingsPage.VcsProjectText(mState),
+    TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, ['develop']));
+  mState.MainBranch := 'develop';
+  Assert.Contains(TAtlasSettingsPage.VcsProjectText(mState),
+    TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, ['develop']));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), TAtlasSettingsPage.VcsProviderCaption('SVN'));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), TAtlasSettingsPage.VcsProviderCaption(''));
+  // #1287: Zustände der Tabelle „Server“.
+  mServer := TAtlasVcsServerCheck.Empty;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking),
+    TAtlasSettingsPage.VcsServerStateText(mServer, True));
+  mServer.State := TAtlasVcsServerState.Reachable;
+  mServer.CheckedAt := EncodeTime(14, 5, 0, 0);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['14:05']),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.LoginNeeded;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.Unreachable;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnreachable),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.NoServer;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerNoServer),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+  mServer.State := TAtlasVcsServerState.ToolMissing;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerToolMissing),
+    TAtlasSettingsPage.VcsServerStateText(mServer, False));
+end;
+
 procedure TAtlasSettingsPageTests.TrackerConnectionsTable;
 var
   mHost: TForm;
@@ -2324,6 +2602,216 @@ begin
     mHost.Free;
   end;
   mQueries := nil;
+end;
+
+procedure TAtlasSettingsPageTests.VcsProjectsTable;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mList: TListView;
+  mBrowsed: string;
+  mState: TAtlasVcsProjectState;
+  mMappings: TArray<TAtlasVcsProjectMapping>;
+begin
+  mBrowsed := '';
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    mPage.OnVcsContext :=
+      function: TAtlasVcsProjectContext
+      begin
+        Result := TAtlasVcsProjectContext.Empty;
+        Result.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+        Result.GroupFile := 'C:\Projekte\Kasse\Kasse.groupproj';
+        Result.Team := [TAtlasVcsProjectMapping.FromTeamFile('C:\Projekte\Kasse\Kasse.dproj', '', 'develop')];
+      end;
+    mPage.OnTrackerBrowse :=
+      function(AFolder: Boolean; out APath: string): Boolean
+      begin
+        mBrowsed := BoolToStr(AFolder, True);
+        APath := 'C:\Projekte\Kasse\Pakete\Basis';
+        Result := True;
+      end;
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.VcsProjects := '[{"match": "C:\\Projekte", "provider": "svn", "mainBranch": "trunk"}]';
+    mPage.LoadFrom(mSettings);
+    mList := mPage.VcsProjectList;
+    // Persönliche Zeile vor der aus der .atlas; die .atlas gewinnt für Kasse.
+    Assert.AreEqual(2, mList.Items.Count);
+    Assert.AreEqual('C:\Projekte', mList.Items[0].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), mList.Items[0].SubItems[0]);
+    Assert.AreEqual('trunk', mList.Items[0].SubItems[1]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered), mList.Items[0].SubItems[2]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), mList.Items[1].SubItems[0]);
+    Assert.AreEqual('develop', mList.Items[1].SubItems[1]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam), mList.Items[1].SubItems[2]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsCoveredHint), mPage.VcsProjectNote.Caption);
+    Assert.IsTrue(mPage.VcsProjectMatch.Enabled);
+    // Zeile aus der .atlas: nur ansehen.
+    mList.Items[1].Selected := True;
+    Assert.IsFalse(mPage.VcsProjectMatch.Enabled);
+    Assert.IsFalse(mPage.VcsProjectProvider.Enabled);
+    Assert.IsFalse(mPage.VcsProjectRemove.Enabled);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly), mPage.VcsProjectNote.Caption);
+    // „Aktuelles Projekt“: die geöffnete Gruppe, Art aus der letzten Abfrage.
+    mState := TAtlasVcsProjectState.Empty;
+    mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+    mState.Outcome := TAtlasVcsOutcome.Ok;
+    mState.WorkingCopy.Kind := TAtlasVcsKind.Svn;
+    mPage.VcsProjectDone(mState);
+    mPage.VcsProjectAddCurrent.Click;
+    Assert.AreEqual(2, Integer(Length(mPage.VcsProjects)));
+    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mPage.VcsProjects[1].Match);
+    Assert.AreEqual('svn', mPage.VcsProjects[1].Provider);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsGuess), mList.Items[1].SubItems[1]);
+    // Hauptbranch: Leerraum wird abgewiesen.
+    mPage.VcsProjectMainBranch.Text := 'release 1';
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsBranchInvalid), mPage.VcsProjectNote.Caption);
+    Assert.AreEqual('', mPage.VcsProjects[1].MainBranch);
+    mPage.VcsProjectMainBranch.Text := 'branches/develop';
+    Assert.AreEqual('branches/develop', mPage.VcsProjects[1].MainBranch);
+    Assert.AreEqual('branches/develop', mList.Items[1].SubItems[1]);
+    // Derselbe Pfad zweimal wird nicht übernommen.
+    mPage.VcsProjectMatch.Text := 'c:\projekte';
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectMatchTaken), mPage.VcsProjectNote.Caption);
+    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mPage.VcsProjects[1].Match);
+    // Paketordner aus SVN-Externals über die Ordnerauswahl, dann Art Git.
+    mPage.VcsProjectAddMenu.Items[1].Click;
+    Assert.AreEqual('True', mBrowsed);
+    Assert.AreEqual(3, Integer(Length(mPage.VcsProjects)));
+    Assert.AreEqual('C:\Projekte\Kasse\Pakete\Basis', mPage.VcsProjects[2].Match);
+    Assert.AreEqual('auto', mPage.VcsProjects[2].Provider);
+    mPage.VcsProjectProvider.Choice := 1;
+    Assert.AreEqual('git', mPage.VcsProjects[2].Provider);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderGit), mList.Items[2].SubItems[0]);
+    // Entfernen, dann speichern: nur persönliche Zeilen landen in vcs.projects.
+    mList.Items[0].Selected := True;
+    mPage.VcsProjectRemove.Click;
+    Assert.AreEqual(2, Integer(Length(mPage.VcsProjects)));
+    mSaved := mSettings;
+    mPage.SaveTo(mSaved);
+    mMappings := TAtlasVcsProjects.Read(mSaved.VcsProjects);
+    Assert.AreEqual(2, Integer(Length(mMappings)), mSaved.VcsProjects);
+    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mMappings[0].Match);
+    Assert.AreEqual('branches/develop', mMappings[0].MainBranch);
+    Assert.AreEqual('git', mMappings[1].Provider);
+    Assert.IsFalse(mSaved.VcsProjects.Contains('Kasse.dproj'), 'Zeile aus der .atlas bleibt dort');
+  finally
+    mHost.Free;
+  end;
+  mBrowsed := '';
+  mMappings := nil;
+end;
+
+procedure TAtlasSettingsPageTests.VcsServersTable;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings: TAtlasPluginSettings;
+  mList: TListView;
+  mChecked, mLogins: TArray<string>;
+  mCheck: TAtlasVcsServerCheck;
+begin
+  mChecked := nil;
+  mLogins := nil;
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    mPage.OnVcsContext :=
+      function: TAtlasVcsProjectContext
+      begin
+        Result := TAtlasVcsProjectContext.Empty;
+        Result.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+        Result.GroupFile := 'C:\Projekte\Kasse\Kasse.groupproj';
+      end;
+    mPage.OnVcsServerState :=
+      function(AFolder: string): TAtlasVcsServerCheck
+      begin
+        Result := TAtlasVcsServerCheck.Empty;
+        // Aus der Sitzung: das Paket war schon erreichbar.
+        if SameText(AFolder, 'C:\Projekte\Pakete\Basis') then
+        begin
+          Result.Kind := TAtlasVcsKind.Svn;
+          Result.Url := 'https://svn.firma.local/basis';
+          Result.State := TAtlasVcsServerState.Reachable;
+          Result.CheckedAt := EncodeTime(9, 30, 0, 0);
+        end;
+      end;
+    mPage.OnVcsServerCheck :=
+      procedure(const AFolder: string)
+      begin
+        mChecked := mChecked + [AFolder];
+      end;
+    mPage.OnVcsServerLogin :=
+      function(const AFolder: string; const ACheck: TAtlasVcsServerCheck): Boolean
+      begin
+        mLogins := mLogins + [AFolder + '|' + ACheck.Remote];
+        Result := True;
+      end;
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.VcsProjects := '[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "provider": "svn"},' +
+      ' {"match": "C:\\Projekte\\Pakete\\Basis", "provider": "svn"}]';
+    mPage.LoadFrom(mSettings);
+    mList := mPage.VcsServerList;
+    // Aktuelles Projekt und Gruppe teilen den Ordner: eine Zeile; dazu der Paketordner (SVN-Externals).
+    Assert.AreEqual(2, mList.Items.Count);
+    Assert.AreEqual('Kasse.groupproj', mList.Items[0].Caption);
+    Assert.AreEqual('–', mList.Items[0].SubItems[0]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerUnknown), mList.Items[0].SubItems[1]);
+    Assert.AreEqual('Basis', mList.Items[1].Caption);
+    Assert.AreEqual('https://svn.firma.local/basis', mList.Items[1].SubItems[0]);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['09:30']), mList.Items[1].SubItems[1]);
+    Assert.AreEqual(0, Integer(Length(mChecked)), 'ohne Klick kein Netzzugriff');
+    Assert.IsFalse(mPage.VcsServerLogin.Enabled);
+    // Prüfen der gewählten Zeile.
+    mPage.VcsServerCheck.Click;
+    Assert.AreEqual(1, Integer(Length(mChecked)));
+    Assert.AreEqual('C:\Projekte\Kasse', mChecked[0]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking), mList.Items[0].SubItems[1]);
+    Assert.IsFalse(mPage.VcsServerCheck.Enabled, 'läuft schon');
+    mCheck := TAtlasVcsServerCheck.Empty;
+    mCheck.Kind := TAtlasVcsKind.Git;
+    mCheck.Root := 'C:\Projekte\Kasse';
+    mCheck.Remote := 'origin';
+    mCheck.Url := 'https://git.firma.local/kasse.git';
+    mCheck.State := TAtlasVcsServerState.LoginNeeded;
+    mPage.VcsServerDone('c:\projekte\kasse', mCheck);
+    Assert.AreEqual('origin · git.firma.local', mList.Items[0].SubItems[0]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginNeeded), mList.Items[0].SubItems[1]);
+    Assert.IsTrue(mPage.VcsServerLogin.Enabled, 'Anmelden bei „Anmeldung nötig“');
+    // „Anmelden …“: Konsole offen, die Zeile wartet auf die neue Prüfung.
+    mPage.VcsServerLogin.Click;
+    Assert.AreEqual(1, Integer(Length(mLogins)));
+    Assert.AreEqual('C:\Projekte\Kasse|origin', mLogins[0]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerLoginOpen), mPage.VcsServerNote.Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsServerChecking), mList.Items[0].SubItems[1]);
+    mCheck.State := TAtlasVcsServerState.Reachable;
+    mCheck.CheckedAt := EncodeTime(10, 0, 0, 0);
+    mPage.VcsServerDone('C:\Projekte\Kasse', mCheck);
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsServerReachable, ['10:00']), mList.Items[0].SubItems[1]);
+    Assert.IsFalse(mPage.VcsServerLogin.Enabled);
+    // „Alle prüfen“.
+    mChecked := nil;
+    mPage.VcsServerCheckAll.Click;
+    Assert.AreEqual(2, Integer(Length(mChecked)));
+    Assert.AreEqual('C:\Projekte\Pakete\Basis', mChecked[1]);
+    // „prüfen …“ der Willkommensseite für einen Ordner ohne Zeile: Zeile kommt dazu und wird geprüft.
+    mChecked := nil;
+    mPage.RevealVcsServer('C:\Projekte\Lager\');
+    Assert.AreEqual(3, mList.Items.Count);
+    Assert.AreEqual('Lager', mList.Items[2].Caption);
+    Assert.AreEqual(1, Integer(Length(mChecked)));
+    Assert.AreEqual('C:\Projekte\Lager', mChecked[0]);
+  finally
+    mHost.Free;
+  end;
+  mChecked := nil;
+  mLogins := nil;
 end;
 
 procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;

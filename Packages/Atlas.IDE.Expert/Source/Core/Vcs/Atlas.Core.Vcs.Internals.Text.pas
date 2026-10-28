@@ -48,6 +48,9 @@ function VcsUtf8(const ABytes: TBytes): string;
 /// <summary>Pfad von AFileName relativ zu ARoot mit "/" getrennt; False, wenn AFileName nicht unter ARoot liegt.
 /// Unter Windows ohne Unterscheidung von Groß- und Kleinschreibung.</summary>
 function VcsRelativePath(const ARoot, AFileName: string; out ARelative: string): Boolean;
+/// <summary>Wie VcsRelativePath, aber ARoot selbst gehört dazu (ARelative '', #1292): Ordner und Einträge "."
+/// der Wurzel.</summary>
+function VcsRelativeOrRoot(const ARoot, AFileName: string; out ARelative: string): Boolean;
 /// <summary>Vollständiger Pfad zu einem Pfad relativ zu ARoot ("/" oder "\" getrennt).</summary>
 function VcsFullPath(const ARoot, ARelative: string): string;
 /// <summary>Ordner ohne abschließenden Trenner, "/" unter Windows als "\".</summary>
@@ -110,6 +113,18 @@ begin
     Exit(False);
   ARelative := StringReplace(Copy(FileName, Length(Prefix) + 1, MaxInt), '\', '/', [rfReplaceAll]);
   Result := ARelative <> '';
+end;
+
+function VcsRelativeOrRoot(const ARoot, AFileName: string; out ARelative: string): Boolean;
+var
+  Root, FileName: string;
+begin
+  ARelative := '';
+  Root := VcsNormalizeDir(ARoot);
+  FileName := VcsNormalizeDir(AFileName);
+  if (Root <> '') and ((PathDelim = '\') and SameText(Root, FileName) or (Root = FileName)) then
+    Exit(True);
+  Result := VcsRelativePath(ARoot, AFileName, ARelative);
 end;
 
 function VcsFullPath(const ARoot, ARelative: string): string;
