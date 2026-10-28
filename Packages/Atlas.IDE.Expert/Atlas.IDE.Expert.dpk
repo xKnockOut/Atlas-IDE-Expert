@@ -96,6 +96,7 @@ contains
   Atlas.UI.Completion.Popup in 'Source\UI\Completion\Atlas.UI.Completion.Popup.pas',
   Atlas.UI.Completion.Details in 'Source\UI\Completion\Atlas.UI.Completion.Details.pas',
   Atlas.Core.Style.Color in 'Source\Core\Style\Atlas.Core.Style.Color.pas',
+  Atlas.Core.Style.Signal in 'Source\Core\Style\Atlas.Core.Style.Signal.pas',
   Atlas.Core.Style.Palette in 'Source\Core\Style\Atlas.Core.Style.Palette.pas',
   Atlas.Core.Style.Syntax in 'Source\Core\Style\Atlas.Core.Style.Syntax.pas',
   Atlas.Core.Style.Wrap in 'Source\Core\Style\Atlas.Core.Style.Wrap.pas',

@@ -91,7 +91,6 @@ type
     class function ProgressText(const AResults: TArray<TAtlasSetupResult>): string; static;
     /// <summary>Zeilen für den Bericht (#108): je Prüfung Text mit Einzelheit, darunter die Projekte.</summary>
     class function ReportLines(const AResults: TArray<TAtlasSetupResult>): TArray<TAtlasSetupReportLine>; static;
-    class function StateColor(const AColors: TAtlasColors; AState: TAtlasStatusState): TAtlasColor; static;
     /// <summary>Prüfungen setzen (auch bei offenem Fenster); Knöpfe und Höhe folgen.</summary>
     procedure SetResults(const AResults: TArray<TAtlasSetupResult>);
     procedure SetColors(const AColors: TAtlasColors);
@@ -171,20 +170,6 @@ begin
   FShowAtStart.OnClick := ShowAtStartClick;
   FTryKey := 'Strg+Leertaste';
   Layout;
-end;
-
-class function TAtlasSetupWindow.StateColor(const AColors: TAtlasColors; AState: TAtlasStatusState): TAtlasColor;
-begin
-  case AState of
-    TAtlasStatusState.Green:
-      Result := AColors.Add;
-    TAtlasStatusState.Yellow:
-      Result := AColors.Warn;
-    TAtlasStatusState.Red:
-      Result := AColors.Error;
-  else
-    Result := AColors.Muted;
-  end;
 end;
 
 class function TAtlasSetupWindow.ResultText(const AResult: TAtlasSetupResult): string;
@@ -585,8 +570,9 @@ end;
 
 procedure TAtlasSetupWindow.DrawDot(const ACenter: TPoint; ARadius: Integer; AState: TAtlasStatusState);
 begin
-  Canvas.Pen.Color := ToColor(StateColor(FColors, AState));
-  Canvas.Brush.Color := ToColor(StateColor(FColors, AState));
+  // Signalfarbe mit Rand (#1255), nicht die Textfarben Add/Warn/Error.
+  Canvas.Pen.Color := ToColor(FColors.Signals.ForStatus(AState).Ring);
+  Canvas.Brush.Color := ToColor(FColors.Signals.ForStatus(AState).Fill);
   Canvas.Brush.Style := bsSolid;
   Canvas.Ellipse(ACenter.X - ARadius, ACenter.Y - ARadius, ACenter.X + ARadius + 1, ACenter.Y + ARadius + 1);
 end;

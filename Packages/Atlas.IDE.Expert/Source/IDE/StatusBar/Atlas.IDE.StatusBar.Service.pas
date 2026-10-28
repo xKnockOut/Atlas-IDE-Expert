@@ -99,7 +99,6 @@ uses
   Atlas.Core.Problems.Store,
   Atlas.Core.StatusBar.Content,
   Atlas.UI.Strings,
-  Atlas.UI.Status.Window,
   Atlas.UI.StatusBar.Bar,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -457,7 +456,7 @@ begin
   begin
     AView.StatusText := TAtlasStatusSummary.FieldCaption;
     AView.StatusHint := '';
-    AView.StatusColor := TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, TAtlasStatusState.Neutral);
+    AView.StatusState := TAtlasStatusState.Neutral;
     Exit;
   end;
   Text := Field.Text;
@@ -468,10 +467,10 @@ begin
     Text := Text + TAtlasStatusSummary.Separator + TAtlasStrings.Text(TAtlasTextId.StatusBarReady);
   AView.StatusText := Text;
   AView.StatusHint := Field.Tooltip + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarStatusClicks);
-  AView.StatusColor := TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, Field.State);
+  AView.StatusState := Field.State;
   // Plakette der Benachrichtigungen (#1234): Das umgezogene Feld ist 0 breit, die Leiste zeigt sie.
   AView.BadgeCount := Field.BadgeCount;
-  AView.BadgeColor := TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, Field.BadgeState);
+  AView.BadgeState := Field.BadgeState;
   AView.BadgeHint := Field.BadgeHint;
 end;
 
