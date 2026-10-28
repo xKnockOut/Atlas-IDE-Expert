@@ -753,14 +753,14 @@ begin
 end;
 
 /// <summary>Link des Issues AKey (Linktyp mit Richtung AType) auf AOtherKey anlegen.</summary>
-function PostLink(const ATarget: TAtlasTrackerTarget; const APost: IAtlasCiPost; const AKey, AType, AOtherKey: string;
+function PostLink(const ATarget: TAtlasTrackerTarget; const APost: IAtlasCiSend; const AKey, AType, AOtherKey: string;
   ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
 var
   mStatus: Integer;
   mText: string;
 begin
   Result := False;
-  if not APost.Post(ATarget.Url + '/api/issues/' + Trim(AKey) + '/links/' + AType + '/issues?fields=id',
+  if not APost.Send('POST', ATarget.Url + '/api/issues/' + Trim(AKey) + '/links/' + AType + '/issues?fields=id',
     TAtlasYouTrackTracker.LinkBody(AOtherKey), ATimeoutMs, mStatus, mText, AError) then
     Exit;
   if (mStatus <> 200) and (mStatus <> 201) then
@@ -801,7 +801,7 @@ function TAtlasYouTrackTracker.CreateSubtask(const ATarget: TAtlasTrackerTarget;
   const ATransport: IAtlasCiTransport; const AParentKey, ATitle, ADescription: string; ATimeoutMs: Integer;
   out AKey: string; out AError: TAtlasCiFetchError): Boolean;
 var
-  mPost: IAtlasCiPost;
+  mPost: IAtlasCiSend;
   mWatch: TStopwatch;
   mStatus: Integer;
   mText, mProject, mType: string;
@@ -809,7 +809,7 @@ begin
   AKey := '';
   AError := TAtlasCiFetchError.NotConfigured;
   Result := False;
-  if (ATarget.Server = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiPost, mPost) or
+  if (ATarget.Server = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiSend, mPost) or
     not ValidKey(Trim(AParentKey)) then
     Exit;
   if Trim(ATitle) = '' then
@@ -836,8 +836,8 @@ begin
   if not FindLinkType(ATarget, ATransport, TAtlasTrackerLinkKind.Subtask, Rest(mWatch, ATimeoutMs), mType,
     AError) then
     Exit;
-  if not mPost.Post(ATarget.Url + '/api/issues?fields=idReadable', NewIssueBody(mProject, ATitle, ADescription),
-    Rest(mWatch, ATimeoutMs), mStatus, mText, AError) then
+  if not mPost.Send('POST', ATarget.Url + '/api/issues?fields=idReadable', NewIssueBody(mProject, ATitle,
+    ADescription), Rest(mWatch, ATimeoutMs), mStatus, mText, AError) then
     Exit;
   if (mStatus <> 200) and (mStatus <> 201) then
   begin
@@ -857,13 +857,13 @@ function TAtlasYouTrackTracker.AddLink(const ATarget: TAtlasTrackerTarget; const
   const AKey: string; AKind: TAtlasTrackerLinkKind; const AOtherKey: string; ATimeoutMs: Integer;
   out AError: TAtlasCiFetchError): Boolean;
 var
-  mPost: IAtlasCiPost;
+  mPost: IAtlasCiSend;
   mWatch: TStopwatch;
   mType: string;
 begin
   AError := TAtlasCiFetchError.NotConfigured;
   Result := False;
-  if (ATarget.Server = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiPost, mPost) then
+  if (ATarget.Server = '') or (ATransport = nil) or not Supports(ATransport, IAtlasCiSend, mPost) then
     Exit;
   if not (AKind in [TAtlasTrackerLinkKind.DependsOn, TAtlasTrackerLinkKind.Blocks]) or
     not ValidKey(Trim(AKey)) or not ValidKey(Trim(AOtherKey)) or SameText(Trim(AKey), Trim(AOtherKey)) then
