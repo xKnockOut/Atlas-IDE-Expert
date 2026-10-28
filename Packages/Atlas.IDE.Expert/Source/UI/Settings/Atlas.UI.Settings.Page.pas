@@ -62,6 +62,7 @@ uses
   Atlas.Core.Settings.EventBreakNames,
   Atlas.Text.StepFilter,
   Atlas.Core.Settings.Reassigned,
+  Atlas.Core.Tracker.Connections,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -107,6 +108,11 @@ type
   TAtlasSettingsAskName = reference to function(const APrompt: string; var AName: string): Boolean;
   /// <summary>Meldung (AQuestion False) oder Rückfrage mit Ja/Nein; True = Ja bzw. gelesen.</summary>
   TAtlasSettingsConfirm = reference to function(const AText: string; AQuestion: Boolean): Boolean;
+
+  /// <summary>Zustand des Tokens einer Tracker-Verbindung (#1260), ohne Netz.</summary>
+  TAtlasTrackerStateEvent = reference to function(const AConnection: TAtlasTrackerConnection): TAtlasTrackerTokenStatus;
+  /// <summary>Knopf an einer Tracker-Verbindung (#1260): Token hinterlegen, prüfen, entfernen.</summary>
+  TAtlasTrackerConnectionEvent = reference to procedure(const AConnection: TAtlasTrackerConnection);
 
   /// <summary>Seite eines Knotens im Baum (#890): der Bereich selbst (Node leer) oder ein Unterpunkt.</summary>
   TAtlasSettingsNodePage = record
@@ -633,6 +639,33 @@ type
     FIssuesCommitPattern: TEdit;
     FTrackerLogin: TCheckBox;
     FWelcomeIssuesLink: TButton;
+    // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
+    FIssuesConnections: TListView;
+    FIssuesConnectionName: TEdit;
+    FIssuesConnectionProvider: TAtlasChoiceBox;
+    FIssuesConnectionUrl: TEdit;
+    FIssuesConnectionNote: TLabel;
+    FIssuesConnectionAdd: TButton;
+    FIssuesConnectionRemove: TButton;
+    FIssuesConnectionToken: TButton;
+    FIssuesConnectionCheck: TButton;
+    /// <summary>Persönliche Verbindungen, wie die Seite sie zeigt; gespeichert werden die mit Adresse.</summary>
+    FTrackerConnections: TArray<TAtlasTrackerConnection>;
+    /// <summary>Verbindung aus der .atlas des aktiven Projekts (schreibgeschützt), hinter den persönlichen.</summary>
+    FTrackerTeam: TArray<TAtlasTrackerConnection>;
+    FTrackerProviderNames: TArray<string>;
+    FTrackerProviderCaptions: TArray<string>;
+    /// <summary>Server (CredentialTarget), deren Prüfung läuft.</summary>
+    FTrackerChecking: TArray<string>;
+    /// <summary>Gewählte Zeile; -1 = keine.</summary>
+    FTrackerSelected: Integer;
+    /// <summary>Die Seite füllt die Felder selbst: OnChange übernimmt nichts.</summary>
+    FTrackerFilling: Boolean;
+    FOnTrackerState: TAtlasTrackerStateEvent;
+    FOnTrackerToken: TAtlasTrackerConnectionEvent;
+    FOnTrackerCheck: TAtlasTrackerConnectionEvent;
+    FOnTrackerRemove: TAtlasTrackerConnectionEvent;
+    FOnTrackerTeam: TFunc<TArray<TAtlasTrackerConnection>>;
     FWelcomeQuickActions: TCheckBox;
     FWelcomeQuickActionsItems: array[TAtlasQuickAction] of TCheckBox;
     FWelcomeQuickActionsConsole: TEdit;
@@ -798,6 +831,22 @@ type
     procedure WelcomeLayoutNewClick(Sender: TObject);
     /// <summary>„Tracker-Einstellungen …“ (#1280): zeigt die Seite Issue-Tracker.</summary>
     procedure WelcomeIssuesLinkClick(Sender: TObject);
+    procedure AddTrackerConnectionsSection;
+    /// <summary>Gespeichert werden Verbindungen mit Name und gültiger Adresse.</summary>
+    function TrackerConnectionsJson: string;
+    function TrackerRows: TArray<TAtlasTrackerConnection>;
+    function TrackerProviderCaption(const AName: string): string;
+    function TrackerStateText(const AConnection: TAtlasTrackerConnection): string;
+    function TrackerEditable: Boolean;
+    procedure TrackerFillFields;
+    procedure TrackerSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+    procedure TrackerNameChange(Sender: TObject);
+    procedure TrackerProviderChange(Sender: TObject);
+    procedure TrackerUrlChange(Sender: TObject);
+    procedure TrackerAddClick(Sender: TObject);
+    procedure TrackerRemoveClick(Sender: TObject);
+    procedure TrackerTokenClick(Sender: TObject);
+    procedure TrackerCheckClick(Sender: TObject);
     procedure WelcomeLayoutRenameClick(Sender: TObject);
     procedure WelcomeLayoutDeleteClick(Sender: TObject);
     /// <summary>Ob das Häkchen bzw. die Auswahl des Bereichs AId ihn zeigt („Neu in Atlas“: nicht „Aus“).
@@ -1097,6 +1146,18 @@ type
     property IssuesCommitPattern: TEdit read FIssuesCommitPattern;
     property TrackerLogin: TCheckBox read FTrackerLogin;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
+    /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
+    property IssuesConnections: TListView read FIssuesConnections;
+    property IssuesConnectionName: TEdit read FIssuesConnectionName;
+    property IssuesConnectionProvider: TAtlasChoiceBox read FIssuesConnectionProvider;
+    property IssuesConnectionUrl: TEdit read FIssuesConnectionUrl;
+    property IssuesConnectionNote: TLabel read FIssuesConnectionNote;
+    property IssuesConnectionAdd: TButton read FIssuesConnectionAdd;
+    property IssuesConnectionRemove: TButton read FIssuesConnectionRemove;
+    property IssuesConnectionToken: TButton read FIssuesConnectionToken;
+    property IssuesConnectionCheck: TButton read FIssuesConnectionCheck;
+    /// <summary>Persönliche Verbindungen, wie die Seite sie gerade zeigt.</summary>
+    property TrackerConnections: TArray<TAtlasTrackerConnection> read FTrackerConnections;
     /// <summary>Zum Testen: Schnellaktionen je Projekt (#764).</summary>
     property WelcomeQuickActions: TCheckBox read FWelcomeQuickActions;
     function WelcomeQuickActionsItem(AAction: TAtlasQuickAction): TCheckBox;
@@ -1334,6 +1395,24 @@ type
     property OnOpenTeamFile: TProc read FOnOpenTeamFile write FOnOpenTeamFile;
     /// <summary>Anzeige der Projektdatei neu aufbauen (#486).</summary>
     procedure RefreshTeamFile;
+    /// <summary>Tracker-Verbindungen (#1260): Zustand je Server (ohne Netz); nil = „fehlt“.</summary>
+    property OnTrackerState: TAtlasTrackerStateEvent read FOnTrackerState write FOnTrackerState;
+    /// <summary>„Token hinterlegen …“ für die gewählte Verbindung; danach RefreshTrackerConnections.</summary>
+    property OnTrackerToken: TAtlasTrackerConnectionEvent read FOnTrackerToken write FOnTrackerToken;
+    /// <summary>„Verbindung prüfen“ im Hintergrund; das Ergebnis meldet TrackerCheckDone.</summary>
+    property OnTrackerCheck: TAtlasTrackerConnectionEvent read FOnTrackerCheck write FOnTrackerCheck;
+    /// <summary>Vor dem Entfernen einer Verbindung: fragt, ob das Token mit entfernt werden soll.</summary>
+    property OnTrackerRemove: TAtlasTrackerConnectionEvent read FOnTrackerRemove write FOnTrackerRemove;
+    /// <summary>Verbindung aus der .atlas des aktiven Projekts; leer ohne.</summary>
+    property OnTrackerTeam: TFunc<TArray<TAtlasTrackerConnection>> read FOnTrackerTeam write FOnTrackerTeam;
+    /// <summary>Anbieter der Auswahl (Name wie in issues.connections, Anzeigename); Vorgabe YouTrack und GitHub.
+    /// </summary>
+    procedure SetTrackerProviders(const ANames, ACaptions: TArray<string>);
+    /// <summary>Tabelle der Verbindungen neu aufbauen (Zustand, .atlas); ohne Fenster folgt es in CreateWnd.
+    /// </summary>
+    procedure RefreshTrackerConnections;
+    /// <summary>Prüfung von AConnection ist fertig; der Zustand kommt über OnTrackerState.</summary>
+    procedure TrackerCheckDone(const AConnection: TAtlasTrackerConnection);
     /// <summary>Zum Testen: Projektdatei (#486).</summary>
     property TeamFileCheck: TCheckBox read FTeamFile;
     property TeamFileInfo: TLabel read FTeamFileInfo;
@@ -2587,6 +2666,8 @@ end;
 
 procedure TAtlasSettingsPage.AddIssuesSection;
 begin
+  // Verbindungen zuerst (#1260, Mockup IT1): Tabelle mit Token-Zustand, darunter die gewählte Zeile.
+  AddTrackerConnectionsSection;
   // Anbieter (Vorgabe aus der .atlas), Abfrage, „Beginnen“, Muster für Branch und Commit, Zugang (#765).
   FIssuesTracker := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesTracker),
     [TAtlasStrings.Text(TAtlasTextId.SettingsIssuesTrackerTeam), 'GitHub', 'YouTrack']);
@@ -2604,6 +2685,404 @@ procedure TAtlasSettingsPage.WelcomeIssuesLinkClick(Sender: TObject);
 begin
   // Hauptknoten der Seite Issue-Tracker: dort steht der Anbieter.
   SelectPage(PageOf(FIssuesTracker));
+end;
+
+procedure TAtlasSettingsPage.AddTrackerConnectionsSection;
+
+  function AddLabelled(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
+  var
+    mCaption: TLabel;
+  begin
+    Result := AddPanel(26);
+    mCaption := TLabel.Create(Self);
+    mCaption.Parent := Result;
+    mCaption.Caption := TAtlasStrings.Text(AId) + ':';
+    mCaption.Left := 0;
+    mCaption.Top := 5;
+    AControl.Parent := Result;
+    AControl.Left := 90;
+    AControl.Top := 1;
+    AControl.Width := AWidth;
+  end;
+
+  function AddButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
+    AClick: TNotifyEvent): TButton;
+  begin
+    Result := TButton.Create(Self);
+    Result.Parent := AParent;
+    Result.Caption := TAtlasStrings.Text(AId);
+    Result.Left := ALeft;
+    Result.Top := 3;
+    Result.Width := AWidth;
+    Result.OnClick := AClick;
+  end;
+
+  procedure AddColumn(AId: TAtlasTextId; AWidth: Integer);
+  var
+    mColumn: TListColumn;
+  begin
+    mColumn := FIssuesConnections.Columns.Add;
+    mColumn.Caption := TAtlasStrings.Text(AId);
+    mColumn.Width := AWidth;
+  end;
+
+var
+  mPanel: TWinControl;
+  mHint: TLabel;
+begin
+  FTrackerSelected := -1;
+  FTrackerProviderNames := TArray<string>.Create('youtrack', 'github');
+  FTrackerProviderCaptions := TArray<string>.Create('YouTrack', 'GitHub');
+  AddTitle(TAtlasTextId.SettingsIssuesConnections);
+  mPanel := AddPanel(110);
+  // Die Zeilen brauchen ein Fenster: RefreshTrackerConnections füllt sie (auch aus CreateWnd).
+  FIssuesConnections := TListView.Create(Self);
+  FIssuesConnections.Parent := mPanel;
+  FIssuesConnections.Align := alClient;
+  FIssuesConnections.ViewStyle := vsReport;
+  FIssuesConnections.ReadOnly := True;
+  FIssuesConnections.RowSelect := True;
+  FIssuesConnections.HideSelection := False;
+  FIssuesConnections.OnSelectItem := TrackerSelectItem;
+  AddColumn(TAtlasTextId.SettingsIssuesConnectionName, 110);
+  AddColumn(TAtlasTextId.SettingsIssuesConnectionProvider, 80);
+  AddColumn(TAtlasTextId.SettingsIssuesConnectionUrl, 200);
+  AddColumn(TAtlasTextId.SettingsIssuesConnectionToken, 170);
+  FIssuesConnectionName := TEdit.Create(Self);
+  FIssuesConnectionName.OnChange := TrackerNameChange;
+  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionName, FIssuesConnectionName, 180), FIssuesConnections);
+  FIssuesConnectionProvider := TAtlasChoiceBox.Create(Self);
+  FIssuesConnectionProvider.SetChoices(FTrackerProviderCaptions);
+  FIssuesConnectionProvider.OnChange := TrackerProviderChange;
+  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionProvider, FIssuesConnectionProvider, 180),
+    FIssuesConnections);
+  FIssuesConnectionUrl := TEdit.Create(Self);
+  FIssuesConnectionUrl.OnChange := TrackerUrlChange;
+  mPanel := AddLabelled(TAtlasTextId.SettingsIssuesConnectionUrl, FIssuesConnectionUrl, 376);
+  FIssuesConnectionUrl.Anchors := [akLeft, akTop, akRight];
+  Attach(mPanel, FIssuesConnections);
+  // Grund, warum eine Eingabe nicht übernommen wird (nur https, Name vergeben …).
+  mPanel := AddPanel(18);
+  FIssuesConnectionNote := TLabel.Create(Self);
+  FIssuesConnectionNote.Parent := mPanel;
+  FIssuesConnectionNote.Left := 90;
+  FIssuesConnectionNote.Top := 1;
+  FIssuesConnectionNote.Font.Color := clRed;
+  Attach(mPanel, FIssuesConnections);
+  mPanel := AddPanel(32);
+  FIssuesConnectionAdd := AddButton(mPanel, 0, 100, TAtlasTextId.SettingsIssuesConnectionAdd, TrackerAddClick);
+  FIssuesConnectionRemove := AddButton(mPanel, 106, 100, TAtlasTextId.SettingsIssuesConnectionRemove,
+    TrackerRemoveClick);
+  FIssuesConnectionToken := AddButton(mPanel, 212, 140, TAtlasTextId.SettingsIssuesConnectionEnterToken,
+    TrackerTokenClick);
+  FIssuesConnectionCheck := AddButton(mPanel, 358, 140, TAtlasTextId.SettingsIssuesConnectionCheck,
+    TrackerCheckClick);
+  Attach(mPanel, FIssuesConnections);
+  mPanel := AddPanel(34);
+  mHint := TLabel.Create(Self);
+  mHint.Parent := mPanel;
+  mHint.Align := alClient;
+  mHint.WordWrap := True;
+  mHint.Font.Color := clGrayText;
+  mHint.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionsHint);
+  Attach(mPanel, FIssuesConnections);
+end;
+
+procedure TAtlasSettingsPage.SetTrackerProviders(const ANames, ACaptions: TArray<string>);
+begin
+  if (Length(ANames) = 0) or (Length(ANames) <> Length(ACaptions)) then
+    Exit;
+  FTrackerProviderNames := ANames;
+  FTrackerProviderCaptions := ACaptions;
+  FIssuesConnectionProvider.SetChoices(ACaptions);
+  RefreshTrackerConnections;
+end;
+
+function TAtlasSettingsPage.TrackerRows: TArray<TAtlasTrackerConnection>;
+begin
+  Result := FTrackerConnections + FTrackerTeam;
+end;
+
+function TAtlasSettingsPage.TrackerProviderCaption(const AName: string): string;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to Min(High(FTrackerProviderNames), High(FTrackerProviderCaptions)) do
+    if SameText(FTrackerProviderNames[mIndex], AName) then
+      Exit(FTrackerProviderCaptions[mIndex]);
+  Result := AName;
+end;
+
+function TAtlasSettingsPage.TrackerStateText(const AConnection: TAtlasTrackerConnection): string;
+var
+  mStatus: TAtlasTrackerTokenStatus;
+begin
+  if MatchText(AConnection.Target.CredentialTarget, FTrackerChecking) then
+    Exit(TAtlasStrings.Text(TAtlasTextId.TrackerTokenChecking));
+  mStatus := TAtlasTrackerTokenStatus.Stored(False);
+  if Assigned(FOnTrackerState) and (AConnection.Target.Server <> '') then
+    mStatus := FOnTrackerState(AConnection);
+  case mStatus.State of
+    TAtlasTrackerTokenState.Saved:
+      Result := TAtlasStrings.Text(TAtlasTextId.TrackerTokenSaved);
+    TAtlasTrackerTokenState.Verified:
+      Result := TAtlasStrings.Fmt(TAtlasTextId.TrackerTokenVerified, [FormatDateTime('hh:nn', mStatus.CheckedAt)]);
+    TAtlasTrackerTokenState.Rejected:
+      Result := TAtlasStrings.Text(TAtlasTextId.TrackerTokenRejected);
+    TAtlasTrackerTokenState.Unreachable:
+      Result := TAtlasStrings.Text(TAtlasTextId.TrackerTokenUnreachable);
+    TAtlasTrackerTokenState.Unexpected:
+      if mStatus.HttpStatus > 0 then
+        Result := TAtlasStrings.Fmt(TAtlasTextId.TrackerTokenUnexpectedStatus, [mStatus.HttpStatus])
+      else
+        Result := TAtlasStrings.Text(TAtlasTextId.TrackerTokenUnexpected);
+  else
+    Result := TAtlasStrings.Text(TAtlasTextId.TrackerTokenMissing);
+  end;
+end;
+
+function TAtlasSettingsPage.TrackerEditable: Boolean;
+begin
+  Result := (FTrackerSelected >= 0) and (FTrackerSelected < Length(FTrackerConnections));
+end;
+
+procedure TAtlasSettingsPage.RefreshTrackerConnections;
+var
+  mRows: TArray<TAtlasTrackerConnection>;
+  mRow: TAtlasTrackerConnection;
+  mItem: TListItem;
+begin
+  if FIssuesConnections = nil then
+    Exit;
+  FTrackerTeam := nil;
+  if Assigned(FOnTrackerTeam) then
+    FTrackerTeam := FOnTrackerTeam();
+  mRows := TrackerRows;
+  if FTrackerSelected > High(mRows) then
+    FTrackerSelected := High(mRows);
+  // Wie die Liste der Favoriten: ohne Fenster folgt das in CreateWnd.
+  if FIssuesConnections.HandleAllocated then
+  begin
+    FTrackerFilling := True;
+    FIssuesConnections.Items.BeginUpdate;
+    try
+      FIssuesConnections.Items.Clear;
+      for mRow in mRows do
+      begin
+        mItem := FIssuesConnections.Items.Add;
+        if mRow.ReadOnly then
+          mItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsIssuesConnectionTeam, [mRow.Name])
+        else
+          mItem.Caption := mRow.Name;
+        mItem.SubItems.Add(TrackerProviderCaption(mRow.Provider));
+        mItem.SubItems.Add(mRow.Url);
+        mItem.SubItems.Add(TrackerStateText(mRow));
+      end;
+      if FTrackerSelected >= 0 then
+        FIssuesConnections.Items[FTrackerSelected].Selected := True;
+    finally
+      FIssuesConnections.Items.EndUpdate;
+      FTrackerFilling := False;
+    end;
+  end;
+  TrackerFillFields;
+end;
+
+procedure TAtlasSettingsPage.TrackerFillFields;
+var
+  mRows: TArray<TAtlasTrackerConnection>;
+  mRow: TAtlasTrackerConnection;
+  mIndex: Integer;
+  mSelected, mEditable, mHasUrl: Boolean;
+begin
+  mRows := TrackerRows;
+  mSelected := (FTrackerSelected >= 0) and (FTrackerSelected <= High(mRows));
+  mEditable := TrackerEditable;
+  FTrackerFilling := True;
+  try
+    if mSelected then
+    begin
+      mRow := mRows[FTrackerSelected];
+      FIssuesConnectionName.Text := mRow.Name;
+      FIssuesConnectionUrl.Text := mRow.Url;
+      FIssuesConnectionProvider.Choice := -1;
+      for mIndex := 0 to High(FTrackerProviderNames) do
+        if SameText(FTrackerProviderNames[mIndex], mRow.Provider) then
+          FIssuesConnectionProvider.Choice := mIndex;
+    end
+    else
+    begin
+      FIssuesConnectionName.Text := '';
+      FIssuesConnectionUrl.Text := '';
+      FIssuesConnectionProvider.Choice := -1;
+    end;
+  finally
+    FTrackerFilling := False;
+  end;
+  mHasUrl := mSelected and (mRows[FTrackerSelected].Url <> '');
+  if mSelected and not mEditable then
+    FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionReadOnly)
+  else if mEditable and not mHasUrl then
+    FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlEmpty)
+  else
+    FIssuesConnectionNote.Caption := '';
+  Allow(FIssuesConnectionName, mEditable);
+  Allow(FIssuesConnectionProvider, mEditable);
+  Allow(FIssuesConnectionUrl, mEditable);
+  Allow(FIssuesConnectionRemove, mEditable);
+  // Token und Prüfung auch für die Verbindung aus der .atlas, nicht ohne gültige Adresse.
+  Allow(FIssuesConnectionToken, mHasUrl and Assigned(FOnTrackerToken));
+  Allow(FIssuesConnectionCheck, mHasUrl and Assigned(FOnTrackerCheck));
+end;
+
+procedure TAtlasSettingsPage.TrackerSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
+begin
+  if FTrackerFilling or not Selected or (Item = nil) then
+    Exit;
+  FTrackerSelected := Item.Index;
+  TrackerFillFields;
+end;
+
+procedure TAtlasSettingsPage.TrackerNameChange(Sender: TObject);
+var
+  mName: string;
+begin
+  if FTrackerFilling or not TrackerEditable then
+    Exit;
+  mName := Trim(FIssuesConnectionName.Text);
+  if TAtlasTrackerConnections.NameTaken(FTrackerConnections, mName, FTrackerSelected) then
+  begin
+    FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionNameTaken);
+    Exit;
+  end;
+  FIssuesConnectionNote.Caption := '';
+  FTrackerConnections[FTrackerSelected].Name := mName;
+  if FIssuesConnections.HandleAllocated and (FTrackerSelected < FIssuesConnections.Items.Count) then
+    FIssuesConnections.Items[FTrackerSelected].Caption := mName;
+end;
+
+procedure TAtlasSettingsPage.TrackerProviderChange(Sender: TObject);
+var
+  mChoice: Integer;
+begin
+  mChoice := FIssuesConnectionProvider.Choice;
+  if FTrackerFilling or not TrackerEditable or (mChoice < 0) or (mChoice > High(FTrackerProviderNames)) then
+    Exit;
+  FTrackerConnections[FTrackerSelected].Provider := FTrackerProviderNames[mChoice];
+  if FIssuesConnections.HandleAllocated and (FTrackerSelected < FIssuesConnections.Items.Count) then
+    FIssuesConnections.Items[FTrackerSelected].SubItems[0] := FTrackerProviderCaptions[mChoice];
+end;
+
+procedure TAtlasSettingsPage.TrackerUrlChange(Sender: TObject);
+var
+  mConnection: TAtlasTrackerConnection;
+begin
+  if FTrackerFilling or not TrackerEditable then
+    Exit;
+  // Nur gültige Adressen übernehmen: http oder ein Benutzer in der Adresse werden abgewiesen, mit Grund.
+  case TAtlasTrackerConnections.CheckUrl(FIssuesConnectionUrl.Text) of
+    TAtlasTrackerUrlCheck.Empty:
+      FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlEmpty);
+    TAtlasTrackerUrlCheck.NotHttps:
+      FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlHttps);
+    TAtlasTrackerUrlCheck.WithUser:
+      FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlUser);
+    TAtlasTrackerUrlCheck.Invalid:
+      FIssuesConnectionNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionUrlInvalid);
+  else
+    begin
+      FIssuesConnectionNote.Caption := '';
+      mConnection := FTrackerConnections[FTrackerSelected];
+      mConnection := TAtlasTrackerConnection.Create(mConnection.Name, mConnection.Provider, FIssuesConnectionUrl.Text);
+      FTrackerConnections[FTrackerSelected] := mConnection;
+      if FIssuesConnections.HandleAllocated and (FTrackerSelected < FIssuesConnections.Items.Count) then
+      begin
+        FIssuesConnections.Items[FTrackerSelected].SubItems[1] := mConnection.Url;
+        FIssuesConnections.Items[FTrackerSelected].SubItems[2] := TrackerStateText(mConnection);
+      end;
+      Allow(FIssuesConnectionToken, Assigned(FOnTrackerToken));
+      Allow(FIssuesConnectionCheck, Assigned(FOnTrackerCheck));
+    end;
+  end;
+end;
+
+procedure TAtlasSettingsPage.TrackerAddClick(Sender: TObject);
+begin
+  // Neue Zeile ohne Adresse: gespeichert wird sie erst mit gültiger Adresse.
+  FTrackerConnections := FTrackerConnections + [TAtlasTrackerConnection.Create(
+    TAtlasTrackerConnections.FreeName(TrackerRows, TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionNew)),
+    FTrackerProviderNames[0], '')];
+  FTrackerSelected := High(FTrackerConnections);
+  RefreshTrackerConnections;
+  if FIssuesConnectionName.CanFocus then
+    FIssuesConnectionName.SetFocus;
+end;
+
+procedure TAtlasSettingsPage.TrackerRemoveClick(Sender: TObject);
+var
+  mConnection: TAtlasTrackerConnection;
+begin
+  if not TrackerEditable then
+    Exit;
+  mConnection := FTrackerConnections[FTrackerSelected];
+  // Die Rückfrage zum Token (Anmeldespeicher) stellt die IDE; die Zeile geht in jedem Fall.
+  if Assigned(FOnTrackerRemove) and (mConnection.Target.Server <> '') then
+    FOnTrackerRemove(mConnection);
+  Delete(FTrackerConnections, FTrackerSelected, 1);
+  if FTrackerSelected > High(TrackerRows) then
+    FTrackerSelected := High(TrackerRows);
+  RefreshTrackerConnections;
+end;
+
+procedure TAtlasSettingsPage.TrackerTokenClick(Sender: TObject);
+var
+  mRows: TArray<TAtlasTrackerConnection>;
+begin
+  mRows := TrackerRows;
+  if not Assigned(FOnTrackerToken) or (FTrackerSelected < 0) or (FTrackerSelected > High(mRows)) then
+    Exit;
+  FOnTrackerToken(mRows[FTrackerSelected]);
+  RefreshTrackerConnections;
+end;
+
+procedure TAtlasSettingsPage.TrackerCheckClick(Sender: TObject);
+var
+  mRows: TArray<TAtlasTrackerConnection>;
+  mServer: string;
+begin
+  mRows := TrackerRows;
+  if not Assigned(FOnTrackerCheck) or (FTrackerSelected < 0) or (FTrackerSelected > High(mRows)) then
+    Exit;
+  mServer := mRows[FTrackerSelected].Target.CredentialTarget;
+  if (mServer = '') or MatchText(mServer, FTrackerChecking) then
+    Exit;
+  FTrackerChecking := FTrackerChecking + [mServer];
+  RefreshTrackerConnections;
+  FOnTrackerCheck(mRows[FTrackerSelected]);
+end;
+
+procedure TAtlasSettingsPage.TrackerCheckDone(const AConnection: TAtlasTrackerConnection);
+var
+  mIndex: Integer;
+begin
+  for mIndex := High(FTrackerChecking) downto 0 do
+    if SameText(FTrackerChecking[mIndex], AConnection.Target.CredentialTarget) then
+      Delete(FTrackerChecking, mIndex, 1);
+  RefreshTrackerConnections;
+end;
+
+function TAtlasSettingsPage.TrackerConnectionsJson: string;
+var
+  mKept: TArray<TAtlasTrackerConnection>;
+  mConnection: TAtlasTrackerConnection;
+begin
+  mKept := nil;
+  for mConnection in FTrackerConnections do
+    if (mConnection.Name <> '') and (mConnection.Provider <> '') and
+      (TAtlasTrackerConnections.CheckUrl(mConnection.Url) = TAtlasTrackerUrlCheck.Valid) and
+      (TAtlasTrackerConnections.IndexOfName(mKept, mConnection.Name) < 0) then
+      mKept := mKept + [mConnection];
+  Result := TAtlasTrackerConnections.ToJson(mKept);
 end;
 
 procedure TAtlasSettingsPage.AddWelcomeLayoutButtons;
@@ -3485,6 +3964,7 @@ begin
   FMarks.Bind(FIssuesBranchBase, ['IssuesBranchBase']);
   FMarks.Bind(FIssuesCommitPattern, ['IssuesCommitPattern']);
   FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
+  FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -3659,6 +4139,7 @@ begin
   // Die Liste der Sicherung braucht ein Fenster; vorher bleibt sie leer.
   RefreshFuse;
   RefreshFavorites;
+  RefreshTrackerConnections;
   // Gewünschte Einstellung (#628) erst mit Fenster zeigen.
   if FPendingReveal <> '' then
     ApplyReveal(FPendingReveal);
@@ -5742,6 +6223,11 @@ begin
   FIssuesBranchBase.Text := ASettings.IssuesBranchBase;
   FIssuesCommitPattern.Text := ASettings.IssuesCommitPattern;
   FTrackerLogin.Checked := ASettings.TrackerLogin;
+  FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
+  FTrackerSelected := -1;
+  if Length(FTrackerConnections) > 0 then
+    FTrackerSelected := 0;
+  RefreshTrackerConnections;
   FWelcomeQuickActions.Checked := ASettings.WelcomePageQuickActions;
   Items := TAtlasWelcomeQuickActions.ParseItems(ASettings.WelcomePageQuickActionsItems);
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
@@ -6296,6 +6782,7 @@ begin
   // Nicht gekürzt: Das Leerzeichen am Ende von "{kennung} " trennt Kennung und Nachricht.
   ASettings.IssuesCommitPattern := FIssuesCommitPattern.Text;
   ASettings.TrackerLogin := FTrackerLogin.Checked;
+  ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do

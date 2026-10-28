@@ -39,6 +39,10 @@ type
     procedure IndexOptionsGoToGlobalFile;
     [Test]
     procedure XmlDocOptionsGoToGlobalFile;
+    /// <summary>#1260: issues.connections als JSON-Liste in settings.json, nie in der Registry; leere Liste
+    /// ohne Eintrag, kaputter Text nie in die Datei.</summary>
+    [Test]
+    procedure IssuesConnectionsGoToGlobalFile;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -186,6 +190,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Generics.Collections,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Completion.Ranking,
@@ -607,6 +612,39 @@ begin
   Store.WriteInteger('MemoryBudgetMb', 999999);
   Loaded.Load(Store);
   Assert.AreEqual(TAtlasPluginSettings.MaxMemoryBudgetMb, Loaded.MemoryBudgetMb);
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesConnectionsGoToGlobalFile;
+const
+  cList = '[{"name": "Firma", "provider": "youtrack", "url": "https://youtrack.firma.local"}]';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('[]', mSettings.IssuesConnections);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.Save(mStore);
+  Assert.IsFalse(mRouted.Text.Contains('issues'), 'leere Liste ohne Eintrag: ' + mRouted.Text);
+  mSettings.IssuesConnections := cList;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"connections": [{"name": "Firma"');
+  Assert.AreEqual('', mRegistry.ReadString('IssuesConnections', ''), 'nicht in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesConnections.Contains('"Firma"'), mLoaded.IssuesConnections);
+  // Kaputter Text kommt nie in die Datei; der gespeicherte Stand bleibt.
+  mStore.WriteString('IssuesConnections', '[{"name": ');
+  Assert.Contains(mRouted.Text, '"Firma"');
+  // Falsche Art in der Datei (der Server meldet sie): Vorgabe.
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '{"issues": {"connections": "Firma"}}');
+  mStore := mRouted;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('[]', mLoaded.IssuesConnections);
+  Assert.IsTrue(MatchText('issues.connections', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
 end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;

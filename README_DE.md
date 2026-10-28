@@ -194,7 +194,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 ### IDE-Komfort
 
 - **Atlas-Willkommensseite** im andockbaren Fenster *Atlas-Start* (*Ansicht › Atlas-Start*, Befehlspalette; öffnet sich, sobald das letzte Projekt geschlossen ist, mit `welcomePage.openOnStart` auch beim Start der IDE; die Willkommensseite der IDE bleibt unberührt) mit Bereichen: Weiterarbeiten, Projekte mit Schnellaktionen, Projektverlauf, Nicht gesichert, Projekt einrichten, Testergebnisse, Meine Issues, Neu in Atlas, Atlas entdecken, Hilfe und Rückmeldung; Suchfeld und freies Layout
-- **Issue-Tracker** (GitHub, YouTrack): „Meine Issues“ auf der Willkommensseite, Issue beginnen mit Branch und Commit-Präfix; alle Tracker-Einstellungen unter `issues.*` auf der eigenen Seite *Tools › Optionen › Atlas › Issue-Tracker* (frühere `welcomePage.issues.*`-Werte übernimmt Atlas beim ersten Start)
+- **Issue-Tracker** (GitHub, YouTrack): „Meine Issues“ auf der Willkommensseite, Issue beginnen mit Branch und Commit-Präfix; alle Tracker-Einstellungen unter `issues.*` auf der eigenen Seite *Tools › Optionen › Atlas › Issue-Tracker* (frühere `welcomePage.issues.*`-Werte übernimmt Atlas beim ersten Start); mehrere Tracker-Verbindungen nebeneinander (`issues.connections`) mit Token-Zustand und „Prüfen“, das Token nur im Anmeldespeicher von Windows
 - **Befehlspalette** (Strg+Umschalt+P) für alle Atlas-Befehle
 - **Atlas-Statusfeld** mit Indexfortschritt und Schnellschaltern (Strg+Umschalt+Alt+A)
 - **Benachrichtigungszentrale** (Strg+Umschalt+Alt+N) sammelt Hinweise von Builds, Prüfungen und Server

@@ -16,6 +16,7 @@
 // - CI-Ampel: GET /repos/<owner/repo>/commits/<sha>/check-runs; ohne Check
 //   Runs der kombinierte Status /commits/<sha>/status. Höchstens MaxChecks
 //   Pull Requests je Abfrage.
+// - Verbindung prüfen (#1260): GET /user (angemeldeter Benutzer).
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -78,6 +79,7 @@ type
       out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
     function IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
     function PullRequestPage(const ATarget: TAtlasTrackerTarget; ANumber: Integer): string;
+    function ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
   end;
 
 implementation
@@ -535,6 +537,13 @@ begin
   if (ATarget.Server = '') or (ATarget.Project = '') or (ANumber <= 0) then
     Exit;
   Result := ATarget.Server + '/' + TTextUris.PercentEncode(ATarget.Project) + '/pull/' + IntToStr(ANumber);
+end;
+
+function TAtlasGitHubTracker.ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := ApiBase(ATarget);
+  if Result <> '' then
+    Result := Result + '/user';
 end;
 
 end.

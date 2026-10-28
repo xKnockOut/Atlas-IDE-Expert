@@ -57,6 +57,10 @@ type
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
+    /// <summary>#1260: issues.connections (Tracker-Verbindungen des Plugins) wird geprüft: nur https, ohne
+    /// Benutzer, eindeutige Namen.</summary>
+    [Test]
+    procedure ChecksIssueConnections;
     [Test]
     procedure ReadsStringLiteral;
     [Test]
@@ -1157,6 +1161,32 @@ begin
   Settings := TConfigurationParser.ParseLayered('{"tasks": []}', '{"tasks": [{"name": "B", "command": "b"}]}',
     Issues);
   Assert.IsTrue(Settings.Tasks.Contains('"B"'), 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksIssueConnections;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"issues": {"connections": [{"name": "Firma", "provider": "youtrack",' +
+    ' "url": "https://youtrack.firma.local"}, {"name": "GitHub", "provider": "github", "url": "https://github.com"}]}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'Beispiel aus dem Issue ohne Meldung');
+  Assert.IsTrue(Settings.IssueConnections.StartsWith('['), Settings.IssueConnections);
+  Assert.IsTrue(Settings.IssueConnections.Contains('"Firma"'), Settings.IssueConnections);
+  Settings := Parse('{"issues": {"connections": [{"name": "A", "provider": "youtrack", "url": "http://yt.local"},' +
+    ' {"name": "a", "provider": "github", "url": "https://user@github.com"}, {"provider": "", "url": 3, "token": "x"},' +
+    ' 3], "queries": []}}', Issues);
+  // http; Doppelname a und Benutzer in der Adresse; url kein String, token unbekannt, ohne name, ohne provider (leer)
+  // und ohne url; 3; queries unbekannt.
+  Assert.AreEqual(10, Integer(Length(Issues)));
+  Parse('{"issues": {"connections": {"name": "A"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  Parse('{"issues": []}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'kein Objekt');
+  Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"connections": [{"name": "B", "provider": "github",' +
+    ' "url": "https://github.com"}]}}', Issues);
+  Assert.IsTrue(Settings.IssueConnections.Contains('"B"'), 'Datei vor Editor');
 end;
 
 procedure TConfigurationParserTests.ReadsMcpDisabledTools;

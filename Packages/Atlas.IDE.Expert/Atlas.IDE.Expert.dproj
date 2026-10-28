@@ -430,6 +430,7 @@
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Adapters.Http.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Adapters.Credentials.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Contract.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Connections.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Naming.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>

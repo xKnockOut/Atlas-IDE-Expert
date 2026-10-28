@@ -13,6 +13,8 @@
 // - TAtlasTrackerTarget: Anbieter, Adresse und Projekt aus der Projektdatei
 //   .atlas (Abschnitt "tracker"), die Abfrage aus den Einstellungen; nie
 //   Zugangsdaten.
+// - ProbeUrl: Adresse, an der „Verbindung prüfen“ (#1260) das Token einmal
+//   ausprobiert; Auswertung in Atlas.Core.Tracker.Connections.
 // - TAtlasTrackerIssue: ein Issue der Liste mit den Feldern, die der Bereich
 //   zeigt (GitHub: Labels und verknüpfter Pull Request mit CI-Ampel;
 //   YouTrack: Zustand, Priorität, Sprint).
@@ -116,6 +118,9 @@ type
     function IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
     /// <summary>Seite eines Pull Requests; '' ohne (YouTrack).</summary>
     function PullRequestPage(const ATarget: TAtlasTrackerTarget; ANumber: Integer): string;
+    /// <summary>Adresse für „Verbindung prüfen“ (#1260): der angemeldete Benutzer mit "login" in der Antwort
+    /// (YouTrack /api/users/me?fields=login, GitHub /user); '' ohne gültigen Server.</summary>
+    function ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
   end;
 
 implementation

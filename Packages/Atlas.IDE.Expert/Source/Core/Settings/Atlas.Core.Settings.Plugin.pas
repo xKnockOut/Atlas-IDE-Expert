@@ -1269,6 +1269,10 @@ type
     /// <summary>Befehl „Zugang zum Issue-Tracker hinterlegen …“ (#765, issues.login, Atlas.TrackerLogin) in der
     /// Befehlspalette und im Kontextmenü des Bereichs; aus = der Befehl und sein Tipp verschwinden.</summary>
     TrackerLogin: Boolean;
+    /// <summary>Persönliche Tracker-Verbindungen (#1260, issues.connections) als JSON-Liste mit name, provider und
+    /// url; liegt in settings.json (TAtlasRoutedSettingsStore), gelesen mit TAtlasTrackerConnections. '[]' = keine.
+    /// Nie ein Token.</summary>
+    IssuesConnections: string;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -1983,6 +1987,7 @@ begin
   Result.IssuesBranchBase := '';
   Result.IssuesCommitPattern := DefaultIssuesCommitPattern;
   Result.TrackerLogin := True;
+  Result.IssuesConnections := '[]';
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2058,6 +2063,9 @@ begin
   IssuesBranchBase := NormalizedIssuesText(IssuesBranchBase, True);
   // Leerraum am Ende gehört zum Muster ("{kennung} ").
   IssuesCommitPattern := NormalizedIssuesText(IssuesCommitPattern, False);
+  IssuesConnections := Trim(IssuesConnections);
+  if IssuesConnections = '' then
+    IssuesConnections := '[]';
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2765,6 +2773,7 @@ begin
   IssuesCommitPattern := AStore.ReadString('IssuesCommitPattern',
     Default.IssuesCommitPattern);
   TrackerLogin := AStore.ReadInteger('TrackerLogin', BoolValue(Default.TrackerLogin)) <> 0;
+  IssuesConnections := AStore.ReadString('IssuesConnections', Default.IssuesConnections);
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3229,6 +3238,7 @@ begin
   AStore.WriteString('IssuesBranchBase', IssuesBranchBase);
   AStore.WriteString('IssuesCommitPattern', IssuesCommitPattern);
   AStore.WriteInteger('TrackerLogin', BoolValue(TrackerLogin));
+  AStore.WriteString('IssuesConnections', IssuesConnections);
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

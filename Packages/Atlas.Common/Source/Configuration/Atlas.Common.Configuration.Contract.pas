@@ -571,6 +571,9 @@ type
     /// <summary>Projektaufgaben (#900) als JSON-Liste (Text), sonst ''. Ausführen tut sie das Plugin; der Server
     /// prüft nur die Datei.</summary>
     Tasks: string;
+    /// <summary>Persönliche Tracker-Verbindungen (issues.connections, #1260) als JSON-Liste (Text), sonst ''.
+    /// Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    IssueConnections: string;
     /// <summary>Ausgewerteter Block "format" (#43).</summary>
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
