@@ -25,19 +25,63 @@
 //   Den Platz hinter dem Zeilenende teilt der Text mit Inlay-Hints,
 //   Blockende-Beschriftungen und Fehlertext (TAtlasLineTail).
 // - Beide Elemente lassen sich je Datei in .atlas ausblenden (#628).
+// - Issues in der Zeilenhistorie (#1275) kommen über TAtlasBlameHooks aus der
+//   Komposition (Atlas.IDE.Tracker.BlameLinks; der Editor kennt den Tracker
+//   nicht): Messages lädt im Hintergrund nach jedem blame die ganzen
+//   Nachrichten, Suffix hängt die Kennungen an die Randanzeige, Describe und
+//   Link ergänzen den Hover. BlameAt sagt, welcher Commit unter der Maus
+//   steht (Strg+Klick und Rechtsklick fängt der Tracker ab). Beim Zeichnen
+//   fragt niemand den Tracker.
 // Gesichert über TAtlasFeature.LineChanges. Nur im Hauptthread.
 
 interface
 
 uses
+  Winapi.Windows,
   System.SysUtils,
+  Atlas.Core.Vcs.Contract,
   Atlas.Core.Editor.LineChanges;
 
 type
+  /// <summary>Commit der Zeilenhistorie (#1275), wie ihn Randanzeige und Hover zeigen.</summary>
+  TAtlasBlameCommit = record
+    FileName: string;
+    Kind: TAtlasVcsKind;
+    Revision: string;
+    Author: string;
+    /// <summary>UTC.</summary>
+    Date: TDateTime;
+    /// <summary>Ganze Nachricht, sofern geladen (Haken Messages), sonst der Betreff aus blame (SVN: leer).</summary>
+    Message: string;
+    /// <summary>Zeile im Puffer, 0-basiert.</summary>
+    Line: Integer;
+  end;
+
+  /// <summary>Ganze Nachrichten zu den Revisionen aus blame; läuft im Hintergrund.</summary>
+  TAtlasBlameMessagesHook = reference to function(const AVcs: IAtlasVersionControl; const AFileName: string;
+    const ALines: TArray<TAtlasVcsBlameLine>): TArray<TAtlasVcsRevisionMessage>;
+  /// <summary>Hover ergänzen: AText erweitern, Links setzen; False = Hover wie bisher.</summary>
+  TAtlasBlameDescribeHook = reference to function(const ACommit: TAtlasBlameCommit; var AText: string;
+    out ALinks: TArray<string>): Boolean;
+  /// <summary>Klick auf den Link AIndex des Hovers.</summary>
+  TAtlasBlameLinkHook = reference to procedure(const ACommit: TAtlasBlameCommit; AIndex: Integer);
+
+  /// <summary>Ergänzungen der Zeilenhistorie (Issues, #1275); die Komposition setzt sie.</summary>
+  TAtlasBlameHooks = record
+    /// <summary>Ganze Nachrichten laden? Vor jedem blame und einmal je Sekunde gefragt (Hauptthread).</summary>
+    Wanted: TFunc<Boolean>;
+    Messages: TAtlasBlameMessagesHook;
+    /// <summary>Anhang hinter der Zeit in der Randanzeige (" · ATL-97") zur Nachricht; '' ohne.</summary>
+    Suffix: TFunc<string, string>;
+    Describe: TAtlasBlameDescribeHook;
+    Link: TAtlasBlameLinkHook;
+  end;
+
   TAtlasIdeLineChanges = class
   private class var
     FState: TObject;
     FMessage: TProc<string>;
+    FHooks: TAtlasBlameHooks;
   public
     /// <summary>AMessage zeigt eine Zeile in der Meldungsansicht (etwa, wenn Zurücksetzen scheitert).</summary>
     class procedure Install(const AMessage: TProc<string>); static;
@@ -52,12 +96,20 @@ type
     /// Arbeitskopie).</summary>
     class function Snapshot(const AFileName: string; out AChanges: TAtlasLineChangeList;
       out ALineCount: Integer): Boolean; static;
+    /// <summary>Ergänzungen der Zeilenhistorie (#1275) setzen bzw. mit Default(TAtlasBlameHooks) entfernen; lädt
+    /// blame neu.</summary>
+    class procedure SetBlameHooks(const AHooks: TAtlasBlameHooks); static;
+    /// <summary>Commit der Randanzeige unter X, Y (Fensterkoordinaten von AWnd); False ohne, bei einer nicht
+    /// gespeicherten oder nicht übernommenen Zeile und nach dem Scrollen.</summary>
+    class function BlameAt(AWnd: HWND; X, Y: Integer; out ACommit: TAtlasBlameCommit): Boolean; static;
+    /// <summary>Hover der Zeilenhistorie neu aufbauen, falls er offen ist (Daten nachgeladen).</summary>
+    class procedure RefreshBlameTip; static;
+    class procedure HideBlameTip; static;
   end;
 
 implementation
 
 uses
-  Winapi.Windows,
   System.Classes,
   System.Types,
   System.Math,
@@ -82,7 +134,6 @@ uses
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
-  Atlas.Core.Vcs.Contract,
   Atlas.UI.Strings,
   Atlas.UI.Notes.Tip,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -160,12 +211,17 @@ type
     FBlameOk: Boolean;
     FBlameWanted: Boolean;
     FBlameBusy: Boolean;
+    // Ganze Nachrichten je Revision (#1275) und ob sie zum letzten blame gewollt waren.
+    FMessages: TDictionary<string, string>;
+    FMessagesWanted: Boolean;
     // Gezeichnete Marken je Bildschirmzeile und der Text der Historie.
     FRows: TDictionary<Integer, TMarkRow>;
     FBlameRect: TRect;
     FBlameTopRow: Integer;
     FBlameEntry: Integer;
     FBlameUnsaved: Boolean;
+    FBlameWnd: HWND;
+    FBlameLine: Integer;
     // Überfahren der Historie.
     FHovering: Boolean;
     FHoverSince: UInt64;
@@ -187,6 +243,9 @@ type
     procedure RevertChange(AChange: Integer);
     function Fresh: Boolean;
     function BlameCaption(ABufferLine: Integer; out AEntry: Integer; out AUnsaved: Boolean): string;
+    function MessageOf(const AEntry: TAtlasVcsBlameLine): string;
+    function CommitOf(AEntry, ALine: Integer): TAtlasBlameCommit;
+    function MessagesWanted: Boolean;
     procedure EnsureFont(const AEditorFont: TFont);
     procedure PaintGutter(const Rect: TRect; const Stage: TPaintGutterStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
@@ -296,6 +355,7 @@ begin
   FTipChange := -1;
   FBlameEntry := -1;
   FRows := TDictionary<Integer, TMarkRow>.Create;
+  FMessages := TDictionary<string, string>.Create;
   FFont := TFont.Create;
   FTip := TAtlasNoteTip.Create(nil);
   FTip.GuardFeature := TAtlasFeature.LineChanges;
@@ -331,6 +391,7 @@ begin
   FTip.OnLink := nil;
   FTip.Free;
   FFont.Free;
+  FMessages.Free;
   FRows.Free;
   Invalidate;
   inherited Destroy;
@@ -361,6 +422,8 @@ begin
   FBlameWanted := False;
   FBlameBusy := False;
   FBlameEntry := -1;
+  FMessages.Clear;
+  FMessagesWanted := False;
   FRows.Clear;
   if FShown then
   begin
@@ -470,6 +533,17 @@ begin
     FDiskAge := Age;
     FBlameWanted := True;
   end;
+  // Issues in der Zeilenhistorie eingeschaltet oder Tracker jetzt da (#1275): Nachrichten nachladen.
+  if FBlameOk and not FMessagesWanted and MessagesWanted then
+    FBlameWanted := True;
+end;
+
+function TLineChangesState.MessagesWanted: Boolean;
+var
+  mHooks: TAtlasBlameHooks;
+begin
+  mHooks := TAtlasIdeLineChanges.FHooks;
+  Result := Assigned(mHooks.Wanted) and Assigned(mHooks.Messages) and mHooks.Wanted();
 end;
 
 procedure TLineChangesState.LoadHead;
@@ -523,6 +597,9 @@ var
   Outcome: TAtlasVcsOutcome;
   Blame: TArray<TAtlasVcsBlameLine>;
   Disk: TArray<string>;
+  mWanted: Boolean;
+  mHook: TAtlasBlameMessagesHook;
+  mMessages: TArray<TAtlasVcsRevisionMessage>;
 begin
   FBlameWanted := False;
   FBlameBusy := True;
@@ -532,16 +609,23 @@ begin
   Outcome := TAtlasVcsOutcome.Failed;
   Blame := nil;
   Disk := nil;
+  // Ganze Nachrichten (#1275) nur, wenn die Issues in der Zeilenhistorie sie brauchen.
+  mWanted := MessagesWanted;
+  mHook := TAtlasIdeLineChanges.FHooks.Messages;
+  mMessages := nil;
   if not TAtlasIdeVcs.Run(
     procedure
     begin
       Outcome := Vcs.Blame(FileName, Blame);
       if Outcome = TAtlasVcsOutcome.Ok then
         Disk := TTextLines.SplitLines(TAtlasTextFile.Load(FileName).Text);
+      if (Outcome = TAtlasVcsOutcome.Ok) and mWanted then
+        mMessages := mHook(Vcs, FileName, Blame);
     end,
     procedure
     var
       State: TLineChangesState;
+      mMessage: TAtlasVcsRevisionMessage;
     begin
       State := Current;
       if (State = nil) or (Gen <> Generation) then
@@ -550,6 +634,10 @@ begin
       State.FBlameOk := Outcome = TAtlasVcsOutcome.Ok;
       State.FBlame := Blame;
       State.FDisk := Disk;
+      State.FMessagesWanted := mWanted;
+      State.FMessages.Clear;
+      for mMessage in mMessages do
+        State.FMessages.AddOrSetValue(mMessage.Revision, mMessage.Message);
       // Zuordnung Platte → Puffer beim nächsten Vergleich neu.
       State.FDiffText := '';
       State.FDiskHunks := nil;
@@ -639,11 +727,36 @@ begin
   if Entry.Uncommitted then
     Exit(TAtlasStrings.Text(TAtlasTextId.BlameUncommitted));
   Age := AgeText(TAtlasLineChanges.Age(TTimeZone.Local.ToUniversalTime(Now), Entry.Date));
+  // Kennungen aus der Nachricht hinter der Zeit (#1275), aus dem Speicher, ohne Tracker.
+  if Assigned(TAtlasIdeLineChanges.FHooks.Suffix) then
+    Age := Age + TAtlasIdeLineChanges.FHooks.Suffix(MessageOf(Entry));
   // SVN liefert keinen Betreff.
   if Entry.Summary = '' then
     Result := Entry.Author + ', ' + Age
   else
     Result := TAtlasStrings.Fmt(TAtlasTextId.BlameLine, [Entry.Author, Age, Entry.Summary]);
+end;
+
+function TLineChangesState.MessageOf(const AEntry: TAtlasVcsBlameLine): string;
+begin
+  if not FMessages.TryGetValue(AEntry.Revision, Result) then
+    Result := AEntry.Summary;
+end;
+
+function TLineChangesState.CommitOf(AEntry, ALine: Integer): TAtlasBlameCommit;
+var
+  mEntry: TAtlasVcsBlameLine;
+begin
+  mEntry := FBlame[AEntry];
+  Result := Default(TAtlasBlameCommit);
+  Result.FileName := FFileName;
+  if FVcs <> nil then
+    Result.Kind := FVcs.Kind;
+  Result.Revision := mEntry.Revision;
+  Result.Author := mEntry.Author;
+  Result.Date := mEntry.Date;
+  Result.Message := MessageOf(mEntry);
+  Result.Line := ALine;
 end;
 
 procedure TLineChangesState.EnsureFont(const AEditorFont: TFont);
@@ -820,6 +933,10 @@ begin
     FBlameTopRow := Context.EditView.TopRow;
     FBlameEntry := Entry;
     FBlameUnsaved := Unsaved;
+    FBlameLine := Context.LogicalLineNum - 1;
+    FBlameWnd := 0;
+    if Context.EditControl <> nil then
+      FBlameWnd := Context.EditControl.Handle;
     TAtlasIdeElements.Painted(TAtlasDrawnElement.GitBlame, Context.FileName, Context.LogicalLineNum - 1, LineText,
       FBlameRect, FBlameTopRow, Rect.Height);
   except
@@ -985,6 +1102,10 @@ procedure TLineChangesState.ShowCommit;
 var
   Entry: TAtlasVcsBlameLine;
   Title, Text: string;
+  mLinks: TArray<string>;
+  mCommit: TAtlasBlameCommit;
+  mLink: TAtlasBlameLinkHook;
+  mGen: Integer;
 begin
   if FBlameUnsaved or (FBlameEntry < 0) or (FBlameEntry > High(FBlame)) then
   begin
@@ -1002,8 +1123,30 @@ begin
     [Entry.Author, FormatDateTime('dd.mm.yyyy hh":"nn', TTimeZone.Local.ToLocalTime(Entry.Date)), Entry.Summary]);
   FTipChange := -1;
   FTip.OnLink := nil;
+  mLinks := nil;
+  // Issues zur Nachricht (#1275): Zeilen mit Titel und Zustand, Links zu Vorschau und „Issues zu dieser Methode“.
+  mCommit := CommitOf(FBlameEntry, FBlameLine);
+  if Assigned(TAtlasIdeLineChanges.FHooks.Describe) and
+    TAtlasIdeLineChanges.FHooks.Describe(mCommit, Text, mLinks) and (Length(mLinks) > 0) then
+  begin
+    mLink := TAtlasIdeLineChanges.FHooks.Link;
+    mGen := Generation;
+    FTip.OnLink :=
+      procedure(AIndex: Integer)
+      var
+        State: TLineChangesState;
+      begin
+        State := Current;
+        if (State = nil) or (mGen <> Generation) then
+          Exit;
+        State.FHovering := False;
+        State.HideTip;
+        if Assigned(mLink) then
+          mLink(mCommit, AIndex);
+      end;
+  end;
   TAtlasIdeStyle.Apply(FTip, FHoverScreen);
-  FTip.ShowNote(Title, TrimRight(Text), Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
+  FTip.ShowNote(Title, TrimRight(Text), mLinks, Point(FHoverScreen.Left, FHoverScreen.Bottom + 2));
 end;
 
 procedure TLineChangesState.HideTip;
@@ -1114,6 +1257,58 @@ begin
     Exit;
   AChanges := State.FChanges;
   ALineCount := Length(State.FLines);
+end;
+
+class procedure TAtlasIdeLineChanges.SetBlameHooks(const AHooks: TAtlasBlameHooks);
+begin
+  FHooks := AHooks;
+  // Randanzeige und Nachrichten passen zu den neuen Haken erst nach einem neuen blame.
+  if FState <> nil then
+  begin
+    TLineChangesState(FState).Reset;
+    Invalidate;
+  end;
+end;
+
+class function TAtlasIdeLineChanges.BlameAt(AWnd: HWND; X, Y: Integer; out ACommit: TAtlasBlameCommit): Boolean;
+var
+  mState: TLineChangesState;
+  mView: IOTAEditView;
+begin
+  ACommit := Default(TAtlasBlameCommit);
+  mState := Current;
+  Result := (mState <> nil) and mState.FBlameOn and mState.FBlameOk and (mState.FBlameEntry >= 0) and
+    (mState.FBlameEntry <= High(mState.FBlame)) and not mState.FBlameUnsaved and (AWnd <> 0) and
+    (mState.FBlameWnd = AWnd) and not mState.FBlameRect.IsEmpty and PtInRect(mState.FBlameRect, Point(X, Y));
+  if not Result then
+    Exit;
+  // Nur, solange die Anzeige dort steht: gleiche Datei, nicht gescrollt, übernommene Zeile.
+  mView := TopView;
+  Result := (mView <> nil) and (mView.Buffer <> nil) and SameText(mView.Buffer.FileName, mState.FFileName) and
+    (mView.TopRow = mState.FBlameTopRow) and not mState.FBlame[mState.FBlameEntry].Uncommitted;
+  if Result then
+    ACommit := mState.CommitOf(mState.FBlameEntry, mState.FBlameLine);
+end;
+
+class procedure TAtlasIdeLineChanges.RefreshBlameTip;
+var
+  mState: TLineChangesState;
+begin
+  mState := Current;
+  if (mState <> nil) and mState.FHovering and mState.FTip.IsShown and (mState.FTipChange < 0) then
+    mState.ShowCommit;
+end;
+
+class procedure TAtlasIdeLineChanges.HideBlameTip;
+var
+  mState: TLineChangesState;
+begin
+  mState := Current;
+  if (mState <> nil) and (mState.FTipChange < 0) then
+  begin
+    mState.FHovering := False;
+    mState.HideTip;
+  end;
 end;
 
 class procedure TAtlasIdeLineChanges.GoToChange(AForward: Boolean);

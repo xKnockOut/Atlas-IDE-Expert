@@ -44,6 +44,12 @@
 // Ohne Server: HasExternals propget svn:externals -R . (nicht leer = ja),
 // RepositoryPath info --show-item relative-url . (ohne "^/"),
 // RemoteBranchExists und HookFolders ohne Prozess (Ok mit False bzw. '').
+// Issues der Zeilenhistorie (IAtlasVcsLineHistory, #1275), mit dem Server:
+//   Messages     log --xml -c <r1,r2,…> <Pfad>@        (je 100 Revisionen ein Aufruf)
+//   LineHistory  log --xml -l N <Pfad>@ und log --diff -l N <Pfad>@, dann
+//                rückwärts verfolgt (Atlas.Core.Vcs.Internals.LineTrace). Statt
+//                je Revision „svn blame -r“ reichen so zwei Aufrufe für N
+//                Revisionen; 200 Revisionen bleiben weit unter 5 s.
 // ChangeMarker: Zeitstempel und Größe von .svn/wc.db; svn update und
 // svn switch schreiben die Datenbank.
 
@@ -56,7 +62,11 @@ uses
 
 type
   TAtlasSvnVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSvnWorkingCopy, IAtlasVcsSvnExternals)
+    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSvnWorkingCopy, IAtlasVcsSvnExternals,
+    IAtlasVcsLineHistory)
+  public const
+    /// <summary>Höchstens so viele Revisionen je Aufruf von Messages.</summary>
+    MessageBatch = 100;
   private
     FRoot: string;
     FRunner: IAtlasVcsRunner;
@@ -117,15 +127,22 @@ type
     function Update(AIgnoreExternals: Boolean): TAtlasVcsOutcome;
     function CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
     function SetExternals(const AOwner, AText: string): TAtlasVcsOutcome;
+    { IAtlasVcsLineHistory }
+    function Messages(const AFileName: string; const ARevisions: TArray<string>;
+      out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
+    function LineHistory(const AFileName: string; AFirstLine, ALastLine, AMaxRevisions: Integer;
+      out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
   end;
 
 implementation
 
 uses
   System.IOUtils,
+  System.Math,
   Atlas.Core.Vcs.Internals.Text,
   Atlas.Core.Vcs.Internals.SvnLayout,
-  Atlas.Core.Vcs.Internals.SvnParser;
+  Atlas.Core.Vcs.Internals.SvnParser,
+  Atlas.Core.Vcs.Internals.LineTrace;
 
 { TAtlasSvnVersionControl }
 
@@ -631,6 +648,115 @@ begin
   AHooks := '';
   AGitDir := '';
   Result := TAtlasVcsOutcome.Ok;
+end;
+
+{ IAtlasVcsLineHistory (#1275) }
+
+/// <summary>Revisionsnummer: nur Ziffern, höchstens neun.</summary>
+function IsRevision(const AText: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (AText <> '') and (Length(AText) <= 9);
+  if Result then
+    for mIndex := 1 to Length(AText) do
+      if not CharInSet(AText[mIndex], ['0'..'9']) then
+        Exit(False);
+end;
+
+function TAtlasSvnVersionControl.Messages(const AFileName: string; const ARevisions: TArray<string>;
+  out AMessages: TArray<TAtlasVcsRevisionMessage>): TAtlasVcsOutcome;
+var
+  mRelative, mRevision, mList: string;
+  mOutput: TBytes;
+  mStart, mIndex: Integer;
+  mCommit: TAtlasVcsLineCommit;
+  mMessage: TAtlasVcsRevisionMessage;
+begin
+  AMessages := nil;
+  if not VcsRelativePath(FRoot, AFileName, mRelative) then
+    Exit(TAtlasVcsOutcome.Failed);
+  for mRevision in ARevisions do
+    if not IsRevision(mRevision) then
+      Exit(TAtlasVcsOutcome.Failed);
+  Result := TAtlasVcsOutcome.Ok;
+  mStart := 0;
+  while mStart < Length(ARevisions) do
+  begin
+    mList := '';
+    for mIndex := mStart to Min(mStart + MessageBatch, Length(ARevisions)) - 1 do
+    begin
+      if mList <> '' then
+        mList := mList + ',';
+      mList := mList + ARevisions[mIndex];
+    end;
+    Inc(mStart, MessageBatch);
+    Result := Svn(['log', '--xml', '-c', mList, mRelative + '@'], mOutput);
+    if Result <> TAtlasVcsOutcome.Ok then
+      Break;
+    try
+      for mCommit in TAtlasSvnParser.ParseLog(VcsUtf8(mOutput)) do
+      begin
+        mMessage.Revision := mCommit.Revision;
+        mMessage.Message := mCommit.Message;
+        AMessages := AMessages + [mMessage];
+      end;
+    except
+      on EAtlasVcsParse do
+      begin
+        Result := TAtlasVcsOutcome.Failed;
+        Break;
+      end;
+    end;
+  end;
+  if Result <> TAtlasVcsOutcome.Ok then
+    AMessages := nil;
+end;
+
+function TAtlasSvnVersionControl.LineHistory(const AFileName: string; AFirstLine, ALastLine,
+  AMaxRevisions: Integer; out ACommits: TArray<TAtlasVcsLineCommit>): TAtlasVcsOutcome;
+var
+  mRelative, mLimit: string;
+  mOutput: TBytes;
+  mLog: TArray<TAtlasVcsLineCommit>;
+  mDiffs: TArray<TAtlasSvnLogDiff>;
+  mPatches: TArray<TArray<string>>;
+  mIndex, mLogIndex: Integer;
+begin
+  ACommits := nil;
+  if not VcsRelativePath(FRoot, AFileName, mRelative) or (AFirstLine < 1) or (ALastLine < AFirstLine) then
+    Exit(TAtlasVcsOutcome.Failed);
+  mLimit := IntToStr(Max(1, AMaxRevisions));
+  Result := Svn(['log', '--xml', '-l', mLimit, mRelative + '@'], mOutput);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    mLog := TAtlasSvnParser.ParseLog(VcsUtf8(mOutput));
+  except
+    on EAtlasVcsParse do
+      Exit(TAtlasVcsOutcome.Failed);
+  end;
+  Result := Svn(['log', '--diff', '-l', mLimit, mRelative + '@'], mOutput);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    mDiffs := TAtlasSvnParser.ParseLogDiff(VcsConsoleText(mOutput));
+  except
+    on EAtlasVcsParse do
+      Exit(TAtlasVcsOutcome.Failed);
+  end;
+  SetLength(mPatches, Length(mDiffs));
+  for mIndex := 0 to High(mDiffs) do
+    mPatches[mIndex] := mDiffs[mIndex].Patch;
+  // Beide Aufrufe liefern dieselben Revisionen in derselben Reihenfolge, neueste zuerst.
+  for mIndex in TAtlasVcsLineTrace.Trace(mPatches, AFirstLine, ALastLine) do
+    for mLogIndex := 0 to High(mLog) do
+      if mLog[mLogIndex].Revision = mDiffs[mIndex].Revision then
+      begin
+        mLog[mLogIndex].Patch := mDiffs[mIndex].Patch;
+        ACommits := ACommits + [mLog[mLogIndex]];
+        Break;
+      end;
 end;
 
 end.

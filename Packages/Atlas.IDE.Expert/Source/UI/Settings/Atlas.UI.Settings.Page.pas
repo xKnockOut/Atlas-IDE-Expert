@@ -685,6 +685,11 @@ type
     FIssuesBranchBase: TEdit;
     FIssuesCommitPattern: TEdit;
     FTrackerLogin: TCheckBox;
+    FIssuesPreview: TCheckBox;
+    FIssuesPreviewComments: TCheckBox;
+    FIssuesCodeLinks: TCheckBox;
+    FIssuesBlameLinks: TCheckBox;
+    FIssuesBlameMaxRevisions: TEdit;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1391,6 +1396,11 @@ type
     property IssuesBranchBase: TEdit read FIssuesBranchBase;
     property IssuesCommitPattern: TEdit read FIssuesCommitPattern;
     property TrackerLogin: TCheckBox read FTrackerLogin;
+    property IssuesPreview: TCheckBox read FIssuesPreview;
+    property IssuesPreviewComments: TCheckBox read FIssuesPreviewComments;
+    property IssuesCodeLinks: TCheckBox read FIssuesCodeLinks;
+    property IssuesBlameLinks: TCheckBox read FIssuesBlameLinks;
+    property IssuesBlameMaxRevisions: TEdit read FIssuesBlameMaxRevisions;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -3083,6 +3093,13 @@ begin
   FIssuesBranchBase := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBranchBase));
   FIssuesCommitPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCommitPattern));
   FTrackerLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackerLogin));
+  // Issue-Vorschau (#1264): Hauptschalter, Kommentare darunter.
+  FIssuesPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreview));
+  FIssuesPreviewComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewComments));
+  FIssuesCodeLinks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCodeLinks));
+  // Issues in der Zeilenhistorie (#1275): Schalter, darunter die Grenze für „Issues zu dieser Methode“.
+  FIssuesBlameLinks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBlameLinks));
+  FIssuesBlameMaxRevisions := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBlameMaxRevisions));
 end;
 
 procedure TAtlasSettingsPage.AddVcsSection;
@@ -6119,6 +6136,11 @@ begin
   FMarks.Bind(FIssuesBranchBase, ['IssuesBranchBase']);
   FMarks.Bind(FIssuesCommitPattern, ['IssuesCommitPattern']);
   FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
+  FMarks.Bind(FIssuesPreview, ['IssuesPreview']);
+  FMarks.Bind(FIssuesPreviewComments, ['IssuesPreviewComments']);
+  FMarks.Bind(FIssuesCodeLinks, ['IssuesCodeLinks']);
+  FMarks.Bind(FIssuesBlameLinks, ['IssuesBlameLinks']);
+  FMarks.Bind(FIssuesBlameMaxRevisions, ['IssuesBlameMaxRevisions']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FIssuesProjects, ['IssuesProjects']);
   FMarks.Bind(FIssuesQueries, ['IssuesQueries']);
@@ -8407,6 +8429,11 @@ begin
   FIssuesBranchBase.Text := ASettings.IssuesBranchBase;
   FIssuesCommitPattern.Text := ASettings.IssuesCommitPattern;
   FTrackerLogin.Checked := ASettings.TrackerLogin;
+  FIssuesPreview.Checked := ASettings.IssuesPreview;
+  FIssuesPreviewComments.Checked := ASettings.IssuesPreviewComments;
+  FIssuesCodeLinks.Checked := ASettings.IssuesCodeLinks;
+  FIssuesBlameLinks.Checked := ASettings.IssuesBlameLinks;
+  FIssuesBlameMaxRevisions.Text := IntToStr(ASettings.IssuesBlameMaxRevisions);
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -9009,6 +9036,11 @@ begin
   // Nicht gekürzt: Das Leerzeichen am Ende von "{kennung} " trennt Kennung und Nachricht.
   ASettings.IssuesCommitPattern := FIssuesCommitPattern.Text;
   ASettings.TrackerLogin := FTrackerLogin.Checked;
+  ASettings.IssuesPreview := FIssuesPreview.Checked;
+  ASettings.IssuesPreviewComments := FIssuesPreviewComments.Checked;
+  ASettings.IssuesCodeLinks := FIssuesCodeLinks.Checked;
+  ASettings.IssuesBlameLinks := FIssuesBlameLinks.Checked;
+  ASettings.IssuesBlameMaxRevisions := StrToIntDef(FIssuesBlameMaxRevisions.Text, ASettings.IssuesBlameMaxRevisions);
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.IssuesProjects := TrackerProjectsJson;
   ASettings.IssuesQueries := TrackerQueriesJson;

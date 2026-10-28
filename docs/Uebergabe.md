@@ -1341,3 +1341,24 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **Prüfskripte beim Auflösen** (Cloud, nicht im Repo): doppelte uses-Einträge, doppelte Methoden und Mitglieder, Enum-Tabellen mit falscher Länge, JSON-Doppelschlüssel, Zeilenenden, BOM, Felder nach Methoden, Menü-Tags.
 - **Offen:** Delphi-Build beider Gruppen (Plugin-Code ist in der Cloud nicht übersetzbar), Handtests der einzelnen Issues. Danach mergen und die PRs mit Verweis auf den Mega-Branch schließen.
 - **Folgearbeit:** Zwei getrennte Uses-Graphen mit Bibliotheks-Units (FUnitRelationsGraph, TLspSymbolPath intern, MCP PathGraphs) zusammenführen; zwei öffentliche Typen `TUsesSection` in Atlas.Common (UsesGraph und CompletionUses) umbenennen.
+
+## #1265 Issue-Kennungen im Code (28.10.2026, Branch `claude/project-thread-3gho8m`, ungebaut mit Delphi)
+
+- **Basis:** `feature/1264-issue-vorschau` (1eb84ce) mit `feature/1286-vcs-projekte` (enthält #1261, #1285, #1286) zusammengeführt (Merge 2153781). Danach folgt #1275 (Blame mit Issues) gestapelt auf diesem Branch.
+- **Kern:** `Atlas.Core.Tracker.CodeLinks` (Muster aus dem Tracker, Zustände über Zeilen, Suche mit Wortgrenzen, Literale nur mit Commit-Präfix, `owner/repo#N` mit eigenem Ziel); 13 Tests samt Benchmark (10 000 Zeilen) unter FPC 3.2.2 grün.
+- **UI:** `Atlas.UI.Tracker.IssueTip` (Hover-Text; Zeitabstand und Fehlertext jetzt auch für Vorschau und Frame, vorher doppelt). 7 Tests unter FPC grün (mit Ersatz für `Atlas.UI.Strings`).
+- **IDE:** `Atlas.IDE.Tracker.CodeLinks` (Zeichnen, Hover, Strg+Klick und Rechtsklick über `TApplicationEvents.OnMessage`); `TAtlasIdeIssuePreview.Peek`/`Fresh`/`Lookup` (Kurzabfrage ohne Kommentare, Dedupe, „nicht gefunden“ 10 Min.); `TAtlasIdeIssues.CodeTarget`/`ShowIssue`/`BrowseIssue`/`StartIssue`/`CanStartIssue`. Die Komposition reicht sie als `TAtlasCodeLinksHooks` hinein, weil `Atlas.IDE.Welcome` schon `Atlas.IDE.Tracker` verwendet (sonst Feature-Zyklus). `TAtlasCloseRules.TooltipShowDelayMs` ersetzt die 500 im Atlas-Hover.
+- **Einstellung:** `issues.codeLinks` (Schnellschalter, Vorgabe an), `TAtlasFeature.IssueLinks`.
+- **Prüfungen:** pwsh war in dieser Sitzung nicht verfügbar. Ersatzweise in Python nachgebaut: Schema-Units (`PluginSchemaData`, Ausgabe identisch mit HEAD vor der Änderung), Feature-Zyklen (Tarjan wie Check-PackageDependencies), Suche nach Delphi-12-Verboten, `TThread.Queue(nil`, `Writeln`. Update-ConfigDoc, Check-TestCoverage und Check-Delphi12 selbst laufen lassen.
+- **Beim Delphi-Build prüfen:** verschachtelte anonyme Methoden in `AppMessage`; Record mit Methodenreferenzen `TAtlasCodeLinksHooks` in `StartIssueLinks`; `TDictionary<string, TArray<TAtlasIssueLookupDone>>`; `AddMenuItem(...).Default := True`.
+- **Handtests:** IK1–IK22 in `docs/Atlas-Testfaelle.md`.
+
+## #1275 Issues in der Zeilenhistorie (28.10.2026, Branch `claude/project-thread-3gho8m-blame` auf #1265, ungebaut mit Delphi)
+
+- **Vcs:** neue Rolle `IAtlasVcsLineHistory` (Git, SVN, leere Umsetzung): `Messages` (ganze Nachrichten zu Revisionen, je 100 je Aufruf, Revisionen geprüft, damit nichts als Option gelesen wird) und `LineHistory` (Git `log -L`, SVN `log --xml` + `log --diff`). `Internals.LineTrace` verfolgt den Bereich rückwärts durch die Unterschiede (Touches/MapBack); svn-Textausgabe über `VcsConsoleText` (UTF-8, sonst ANSI). Der Server übersetzt `LineTrace` mit.
+- **Kern:** `Atlas.Core.Tracker.BlameLinks` (Kennungen, Anhang der Randanzeige, Bereich Methode/Unit, Zuordnung Puffer → Repository, `History`, `Group`). 22 Tests (LineHistory und BlameLinks, Fixtures aus git 2.43 und svn 1.14, Benchmark 200 SVN-Revisionen) unter FPC 3.2.2 grün; `UI.Tracker.IssueTip` um Zeilen für Hover und Liste erweitert.
+- **IDE:** `TAtlasIdeLineChanges` bekommt `TAtlasBlameHooks` (Nachrichten im Hintergrund nach blame, Anhang, Hover, Links), `BlameAt`, `RefreshBlameTip`, `HideBlameTip`; `Atlas.IDE.Tracker.BlameLinks` setzt sie, fängt Strg+Klick/Rechtsklick auf die Randanzeige ab und zeigt „Issues zu dieser Methode“ (`Atlas.BlameIssues`) im Ergebnisfenster (`ShowIssues`/`SetIssueText`, neue Knotenarten Issue und Commit). Die Komposition reicht dieselben `TAtlasCodeLinksHooks` wie für #1265 hinein (`IssueHooks`).
+- **Einstellungen:** `issues.blameLinks` (Schnellschalter, an), `issues.blameLinks.maxRevisions` (200, 1–5000); `TAtlasFeature.BlameIssues`.
+- **Prüfungen:** Update-ConfigDoc und die Check-Skripte laufen in der CI („check“) des PRs; lokal nur Python-Nachbauten (Schema-Unit, Feature-Zyklen).
+- **Beim Delphi-Build prüfen:** Zuweisung der Funktion `LoadMessages` an `TAtlasBlameMessagesHook`; anonyme Methoden in `LineHooks`, `ScopeCount`, `ShowScopeAt`, `AskRow`; `TFunc<string, string>` mit `const`-Parameter; `TreeClick` im Ergebnisfenster (`GetHitTestInfoAt`).
+- **Handtests:** IX1–IX23 in `docs/Atlas-Testfaelle.md`.

@@ -319,7 +319,7 @@ begin
   FDebug := TAtlasIdeDebugValues.Create;
   FShowTimer := TTimer.Create(nil);
   FShowTimer.Enabled := False;
-  FShowTimer.Interval := 500;
+  FShowTimer.Interval := TAtlasCloseRules.TooltipShowDelayMs;
   FShowTimer.OnTimer := ShowTimerTick;
   FHideTimer := TTimer.Create(nil);
   FHideTimer.Enabled := False;

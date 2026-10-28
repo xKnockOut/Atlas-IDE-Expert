@@ -52,7 +52,8 @@ type
   TAtlasDocRun = record
     Kind: TAtlasDocRunKind;
     Text: string;
-    /// <summary>Ref: cref (ohne Präfix); Link: URL.</summary>
+    /// <summary>Ref: cref (ohne Präfix); Link: URL; CodeBlock: Sprache ('' = Delphi; Markdown der Issue-Vorschau,
+    /// #1264).</summary>
     Target: string;
     Bold: Boolean;
     Italic: Boolean;
@@ -62,6 +63,8 @@ type
     Location: TAtlasDocTarget;
     class function Create(AKind: TAtlasDocRunKind; const AText: string;
       const ATarget: string = ''): TAtlasDocRun; static;
+    /// <summary>CodeBlock in Delphi (ohne Sprache, pascal, delphi, objectpascal, pas, dpr): eingefärbt.</summary>
+    function IsDelphiCode: Boolean;
   end;
 
   TAtlasDocRuns = TArray<TAtlasDocRun>;
@@ -174,6 +177,15 @@ begin
   Result.Kind := AKind;
   Result.Text := AText;
   Result.Target := ATarget;
+end;
+
+function TAtlasDocRun.IsDelphiCode: Boolean;
+var
+  mLanguage: string;
+begin
+  mLanguage := LowerCase(Trim(Target));
+  Result := (mLanguage = '') or (mLanguage = 'pascal') or (mLanguage = 'delphi') or (mLanguage = 'objectpascal') or
+    (mLanguage = 'object-pascal') or (mLanguage = 'pas') or (mLanguage = 'dpr');
 end;
 
 { TAtlasDocSection }

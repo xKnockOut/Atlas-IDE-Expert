@@ -172,6 +172,9 @@ uses
   Atlas.IDE.Welcome.NewIssue,
   Atlas.Core.Tracker.NewIssue,
   Atlas.Core.Problems.Findings,
+  Atlas.IDE.Tracker.IssuePreview,
+  Atlas.IDE.Tracker.CodeLinks,
+  Atlas.IDE.Tracker.BlameLinks,
   Atlas.UI.Welcome.TestResults,
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
@@ -291,6 +294,10 @@ var
   QuickColumn: TAtlasIdeQuickColumn;
   // Gleichen Text wie die Markierung hervorheben (#709).
   SelectionMatches: TAtlasIdeSelectionMatches;
+  // Issue-Kennungen im Code (#1265), über „Meine Issues“.
+  IssueLinks: TAtlasIdeCodeLinks;
+  // Issues in der Zeilenhistorie (#1275), über „Meine Issues“ und die Zeilenhistorie.
+  BlameIssues: TAtlasIdeBlameLinks;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
@@ -1998,6 +2005,29 @@ begin
     function: Boolean
     begin
       Result := TAtlasIdeSettings.Current.VcsExternalsShow;
+    end);
+  // Issue-Vorschau (#1264): Kennung abfragen und das Issue in „Atlas-Issue“ zeigen; sichtbar mit issues.preview.
+  Add('Atlas.IssueShow', TAtlasTextId.IssuePreviewCommand,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.ShowPreviewPrompt;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesPreview and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
+  // Issues zu dieser Methode (#1275): Issues aus der Zeilenhistorie der Methode bzw. Unit am Cursor; sichtbar mit
+  // issues.blameLinks.
+  Add('Atlas.BlameIssues', TAtlasTextId.BlameIssuesCommand,
+    procedure
+    begin
+      if BlameIssues <> nil then
+        TAtlasGuard.Run(TAtlasFeature.BlameIssues, BlameIssues.ShowScope);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeBlameLinks.Enabled and (BlameIssues <> nil);
     end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
@@ -4346,6 +4376,16 @@ begin
     begin
       Result := TrackerAccess.EnterToken(AProvider, ATarget);
     end;
+  // Knopf „Tracker-Einstellungen …“ der Issue-Vorschau (#1264).
+  Result.OnSettings :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasOptionsRegistration.ShowSetting('IssuesConnections');
+        end);
+    end;
   // „zuordnen …“ (#1261): Seite Issue-Tracker mit vorbefüllter Zeile der Tabelle Projekte.
   Result.OnAssignProject :=
     procedure(AMatch: string)
@@ -4611,6 +4651,74 @@ begin
           TAtlasOptionsRegistration.ShowSetting(AKey);
         end);
     end;
+end;
+
+function IssueHooks: TAtlasCodeLinksHooks;
+var
+  mHooks: TAtlasCodeLinksHooks;
+begin
+  // Alles über „Meine Issues“ (Tracker wie dort, Zwischenspeicher der Vorschau); ohne den Bereich wirkungslos.
+  mHooks := Default(TAtlasCodeLinksHooks);
+  mHooks.Target :=
+    function(out ATarget: TAtlasTrackerTarget): Boolean
+    begin
+      ATarget := TAtlasTrackerTarget.Create('', '', '', '');
+      Result := (Welcome <> nil) and (Welcome.Issues <> nil) and Welcome.Issues.CodeTarget(ATarget);
+    end;
+  mHooks.CommitPattern :=
+    function: string
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesCommitPattern;
+    end;
+  mHooks.Preview :=
+    function: TAtlasIdeIssuePreview
+    begin
+      Result := nil;
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Result := Welcome.Issues.IssuePreview;
+    end;
+  mHooks.Show :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.ShowIssue(ATarget, AKey);
+    end;
+  mHooks.Browse :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.BrowseIssue(ATarget, AKey);
+    end;
+  mHooks.Start :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.StartIssue(ATarget, AKey);
+    end;
+  mHooks.CanStart :=
+    function: Boolean
+    begin
+      Result := (Welcome <> nil) and (Welcome.Issues <> nil) and Welcome.Issues.CanStartIssue;
+    end;
+  Result := mHooks;
+end;
+
+procedure StartIssueLinks;
+begin
+  IssueLinks := TAtlasIdeCodeLinks.Create(IssueHooks);
+end;
+
+procedure StartBlameIssues;
+begin
+  // Dieselben Haken wie die Kennungen im Code; die Zeilenhistorie bekommt ihre Ergänzungen (kein Zyklus).
+  BlameIssues := TAtlasIdeBlameLinks.Create(IssueHooks);
+  TAtlasIdeLineChanges.SetBlameHooks(BlameIssues.LineHooks);
+end;
+
+procedure StopBlameIssues;
+begin
+  TAtlasIdeLineChanges.SetBlameHooks(Default(TAtlasBlameHooks));
+  FreeAndNil(BlameIssues);
 end;
 
 procedure StopWelcome;
@@ -5272,6 +5380,34 @@ begin
       Result := Welcome <> nil;
     end,
     StartWelcome, StopWelcome);
+  // Issue-Kennungen im Code (#1265): nach „Meine Issues“ (Tracker und Vorschau), Abbau davor. issues.codeLinks
+  // prüft der Zeitgeber selbst (Schnellschalter ohne Neustart).
+  Features.AddWanted('IssueLinks',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := IssueLinks <> nil;
+    end,
+    StartIssueLinks,
+    procedure
+    begin
+      FreeAndNil(IssueLinks);
+    end);
+  // Issues in der Zeilenhistorie (#1275): nach „Meine Issues“; issues.blameLinks prüfen die Haken selbst
+  // (Schnellschalter ohne Neustart).
+  Features.AddWanted('BlameIssues',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := BlameIssues <> nil;
+    end,
+    StartBlameIssues, StopBlameIssues);
   Features.Add('MainMenu', TAtlasSafeLevel.Safe,
     function: Boolean
     begin

@@ -155,6 +155,10 @@ type
     /// <summary>Vorgabe für vcs.branch.git.worktreeFolder (#1289); wie
     /// TAtlasVcsGitBranchOptions.DefaultWorktreeFolder.</summary>
     DefaultVcsWorktreeFolder = '..\{repo}-{kennung}';
+    /// <summary>Grenzen und Vorgabe von issues.blameLinks.maxRevisions (#1275).</summary>
+    MinIssuesBlameMaxRevisions = 1;
+    MaxIssuesBlameMaxRevisions = 5000;
+    DefaultIssuesBlameMaxRevisions = 200;
     /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
     MaxIssuesText = 200;
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
@@ -1283,6 +1287,23 @@ type
     /// url; liegt in settings.json (TAtlasRoutedSettingsStore), gelesen mit TAtlasTrackerConnections. '[]' = keine.
     /// Nie ein Token.</summary>
     IssuesConnections: string;
+    /// <summary>Issue-Vorschau (#1264, issues.preview): Klick auf ein Issue öffnet das Fenster „Atlas-Issue“ statt
+    /// des Browsers, dazu der Befehl „Issue anzeigen …“; aus = Browser wie bisher.</summary>
+    IssuesPreview: Boolean;
+    /// <summary>Kommentare in der Vorschau laden und zeigen (#1264, issues.preview.comments); aus = nicht abgefragt.
+    /// </summary>
+    IssuesPreviewComments: Boolean;
+    /// <summary>Issue-Kennungen im Code (#1265, issues.codeLinks): Kennungen wie ATL-123 oder #42 in Kommentaren
+    /// unterstreichen, Hover mit Kurzvorschau, Strg+Klick und Kontextmenü; aus = keine Erkennung, keine Abfrage.
+    /// </summary>
+    IssuesCodeLinks: Boolean;
+    /// <summary>Issues in der Zeilenhistorie (#1275, issues.blameLinks): Kennungen aus der Commit-Nachricht am
+    /// Rand, Hover mit Titel und Zustand, Strg+Klick und Befehl „Issues zu dieser Methode“; aus = Zeilenhistorie
+    /// wie bisher, kein Befehl.</summary>
+    IssuesBlameLinks: Boolean;
+    /// <summary>Höchstzahl durchsuchter Revisionen für „Issues zu dieser Methode“ (#1275,
+    /// issues.blameLinks.maxRevisions).</summary>
+    IssuesBlameMaxRevisions: Integer;
     /// <summary>Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261, issues.projects) als JSON-Liste mit
     /// match, connection und project; liegt in settings.json, gelesen mit TAtlasTrackerProjects. '[]' = keine.
     /// </summary>
@@ -2071,6 +2092,11 @@ begin
   Result.IssuesCommitPattern := DefaultIssuesCommitPattern;
   Result.TrackerLogin := True;
   Result.IssuesConnections := '[]';
+  Result.IssuesPreview := True;
+  Result.IssuesPreviewComments := True;
+  Result.IssuesCodeLinks := True;
+  Result.IssuesBlameLinks := True;
+  Result.IssuesBlameMaxRevisions := DefaultIssuesBlameMaxRevisions;
   Result.IssuesProjects := '[]';
   Result.IssuesQueries := '[]';
   Result.IssuesQueryPicker := True;
@@ -2183,6 +2209,8 @@ begin
   VcsProvider := Choice(LowerCase(Trim(VcsProvider)), ['auto', 'git', 'svn', 'off']);
   VcsGitPath := Trim(VcsGitPath);
   VcsSvnPath := Trim(VcsSvnPath);
+  IssuesBlameMaxRevisions := EnsureRange(IssuesBlameMaxRevisions, MinIssuesBlameMaxRevisions,
+    MaxIssuesBlameMaxRevisions);
   // Außerhalb der Grenzen gilt die Vorgabe wie im Server (vcs.timeoutSeconds).
   if (VcsTimeoutSeconds < MinVcsTimeoutSeconds) or (VcsTimeoutSeconds > MaxVcsTimeoutSeconds) then
     VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
@@ -2923,6 +2951,11 @@ begin
     Default.IssuesCommitPattern);
   TrackerLogin := AStore.ReadInteger('TrackerLogin', BoolValue(Default.TrackerLogin)) <> 0;
   IssuesConnections := AStore.ReadString('IssuesConnections', Default.IssuesConnections);
+  IssuesPreview := AStore.ReadInteger('IssuesPreview', BoolValue(Default.IssuesPreview)) <> 0;
+  IssuesPreviewComments := AStore.ReadInteger('IssuesPreviewComments', BoolValue(Default.IssuesPreviewComments)) <> 0;
+  IssuesCodeLinks := AStore.ReadInteger('IssuesCodeLinks', BoolValue(Default.IssuesCodeLinks)) <> 0;
+  IssuesBlameLinks := AStore.ReadInteger('IssuesBlameLinks', BoolValue(Default.IssuesBlameLinks)) <> 0;
+  IssuesBlameMaxRevisions := AStore.ReadInteger('IssuesBlameMaxRevisions', Default.IssuesBlameMaxRevisions);
   IssuesProjects := AStore.ReadString('IssuesProjects', Default.IssuesProjects);
   IssuesQueries := AStore.ReadString('IssuesQueries', Default.IssuesQueries);
   IssuesQueryPicker := AStore.ReadInteger('IssuesQueryPicker', BoolValue(Default.IssuesQueryPicker)) <> 0;
@@ -3415,6 +3448,11 @@ begin
   AStore.WriteString('IssuesCommitPattern', IssuesCommitPattern);
   AStore.WriteInteger('TrackerLogin', BoolValue(TrackerLogin));
   AStore.WriteString('IssuesConnections', IssuesConnections);
+  AStore.WriteInteger('IssuesPreview', BoolValue(IssuesPreview));
+  AStore.WriteInteger('IssuesPreviewComments', BoolValue(IssuesPreviewComments));
+  AStore.WriteInteger('IssuesCodeLinks', BoolValue(IssuesCodeLinks));
+  AStore.WriteInteger('IssuesBlameLinks', BoolValue(IssuesBlameLinks));
+  AStore.WriteInteger('IssuesBlameMaxRevisions', IssuesBlameMaxRevisions);
   AStore.WriteString('IssuesProjects', IssuesProjects);
   AStore.WriteString('IssuesQueries', IssuesQueries);
   AStore.WriteInteger('IssuesQueryPicker', BoolValue(IssuesQueryPicker));

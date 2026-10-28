@@ -56,7 +56,8 @@ type
     RecursionMarkers, OverviewRuler, SelectionMatches, MultiCursor, LinkedEditing, CodeLens, NavHistory, Peek,
     SmartPaste, WrapSelection, Unwrap, Hide, Search, UnitSearch, Generate, ContinueLines, SlashCommands,
     GoToDefinition, EditorToolbar, QuickBookmarks, StatusBar, Architecture, UnitRelations, SymbolPath, Tasks, Debugger,
-    ExitPoints, Reassigned, ExpressionType, MethodPlacement);
+    ExitPoints, Reassigned, ExpressionType, MethodPlacement, IssueLinks,
+    BlameIssues);
 {$SCOPEDENUMS OFF}
 
   TAtlasFeatures = set of TAtlasFeature;
@@ -631,7 +632,8 @@ const
     'Erzeugen-Menü', 'Kommentar und Muster fortsetzen', 'Schnellbefehle', 'Gehe zu Definition', 'Editorleiste',
     'Schnelle Lesezeichen', 'Atlas-Statusleiste', 'Architekturübersicht', 'Unit-Beziehungen',
     'Weg zwischen Symbolen', 'Projektaufgaben', 'Debuggen',
-    'Austrittspunkte', 'Neu zugewiesene Variablen', 'Typ des Ausdrucks', 'Methodenreihenfolge');
+    'Austrittspunkte', 'Neu zugewiesene Variablen', 'Typ des Ausdrucks', 'Methodenreihenfolge',
+    'Issue-Kennungen', 'Issues in der Zeilenhistorie');
 begin
   Result := Names[AFeature];
 end;

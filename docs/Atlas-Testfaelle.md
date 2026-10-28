@@ -7828,6 +7828,32 @@ Vorbereitung: Zugang zu einem YouTrack (https) und einem GitHub-Konto mit persö
 | TV13 | Einstellungen exportieren und in leerer Installation importieren | `issues.connections` als JSON-Liste in der Datei, nach dem Import gleiche Zeilen; Tokens nicht enthalten |
 | TV14 | settings.json von Hand mit unbekanntem Anbieter oder doppeltem Namen speichern, Projekt prüfen | Server meldet den Eintrag in der Problemliste |
 
+## Issue-Vorschau (#1264)
+
+Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (YouTrack und GitHub), Token hinterlegt, `welcomePage.issues` an; ein YouTrack-Issue mit Bild in der Beschreibung, Anhängen (darunter eine .exe), Verknüpfungen und mehr als drei Kommentaren.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IV1 | In „Meine Issues“ auf eine Zeile klicken | Fenster „Atlas-Issue“ öffnet sich angedockt, zeigt Kennung, Titel, Abzeichen, Beschreibung (**Abnahme**) |
+| IV2 | Strg+Klick auf Zeile bzw. Kennung | Issue öffnet im Browser, nicht in der Vorschau |
+| IV3 | Kontextmenü einer Zeile | „Vorschau“ fett oben, darunter „Im Browser öffnen“ |
+| IV4 | Beschreibung mit Überschrift, Liste mit Aufgaben, ```` ```pascal ```` und ```` ```json ````, Tabelle, Zitat | Wie im Hover gesetzt; nur der Pascal-Block ist eingefärbt (**Abnahme**) |
+| IV5 | Bild in der Beschreibung (`![](skizze.png)` als Anhang) | Bild erscheint nach kurzer Zeit, Klick vergrößert es in eigenem Fenster |
+| IV6 | Beschreibung mit Bild von einem fremden Rechner | Kein Abruf (Proxy-Protokoll), nur Link mit „Bild: …“ |
+| IV7 | Mehr als drei Kommentare | Die drei neuesten offen, darüber „N ältere Kommentare“; Klick klappt alle auf |
+| IV8 | Doppelklick auf einen Anhang (PDF bzw. Bild) | Datei landet in `%TEMP%\Atlas\issues\<Kennung>\` und öffnet mit dem zugeordneten Programm |
+| IV9 | Doppelklick auf einen .exe-Anhang | Datei wird nur im Explorer markiert, nicht gestartet |
+| IV10 | Klick auf ein verknüpftes Issue, dann Alt+Links, Alt+Rechts | Öffnet im selben Fenster; Zurück und Vor wechseln (**Abnahme**) |
+| IV11 | Netz trennen, ein früher geöffnetes Issue erneut öffnen | Inhalt erscheint mit „Stand vom …“, kein Dialog |
+| IV12 | Netz getrennt, neues Issue öffnen | Meldung „Tracker nicht erreichbar.“ mit „Erneut versuchen“ |
+| IV13 | Token entfernen, Issue öffnen | „Kein Zugang …“ mit „Token hinterlegen …“; nach dem Hinterlegen lädt es |
+| IV14 | Während des Ladens „Abbrechen“ bzw. Fenster schließen | Laden endet sofort, keine Meldung, kein Fehler |
+| IV15 | Befehlspalette: *Issue anzeigen …*, `ATL-12` bzw. Adresse eines GitHub-Issues eingeben | Issue öffnet; ungültige Eingabe meldet „… ist keine gültige Kennung“ |
+| IV16 | `issues.preview.comments` aus | Statt Kommentaren der Hinweis; Proxy zeigt keine Abfrage der Kommentare |
+| IV17 | `issues.preview` aus (Schnellschalter) | Klick in „Meine Issues“ öffnet wieder den Browser; Befehl *Issue anzeigen …* nicht sichtbar |
+| IV18 | IDE beenden mit offenem Fenster, neu starten | Fenster steht wieder an seinem Platz (Desktop); Plugin entladen ohne Zugriffsverletzung |
+| IV19 | Helles und dunkles IDE-Design | Farben und Abzeichen passen jeweils |
+
 ## Projekte einem Tracker zuordnen (#1261)
 
 Vorbereitung: zwei Verbindungen aus TV2/TV3; Projektgruppe `Kasse.groupproj` mit zwei Projekten, ein weiteres Projekt mit Abschnitt `tracker` in der `.atlas`.
@@ -8050,3 +8076,62 @@ Vorbereitung: Git-Projekt `Kasse` mit `main` lokal und auf origin (lokales `main
 | GO17 | Hauptbranch verfolgt einen anderen Remote (`upstream/main`) | Abruf und Push gehen an `upstream`, Basis „upstream/main“ |
 | GO18 | Befehlspalette „Branch anlegen …“ mit worktree | Ordner `<Eltern>\Kasse-<Name>` (ohne Issue steht der Name für `{kennung}`) |
 | GO19 | SVN-Projekt | Keine Gruppe „Git“ im Dialog |
+
+## Issue-Kennungen im Code (#1265)
+
+Vorbereitung: Projekt A mit YouTrack-Projekt `ATL` (Abschnitt `tracker` der `.atlas` oder Zuordnung #1261), Projekt B mit GitHub `owner/repo`, Projekt C ohne Tracker; Token hinterlegt; `issues.commitPattern` = `{kennung} `; Proxy-Protokoll (z. B. Fiddler) offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IK1 | In A `// TODO ATL-123: prüfen` schreiben | `ATL-123` ist gepunktet unterstrichen in der Akzentfarbe des Themas (**Abnahme**) |
+| IK2 | Maus auf `ATL-123` halten | Nach etwa 500 ms Tooltip „ATL-123“ mit Titel, Zustand, Zuständig, „aktualisiert vor …“ und der Fußzeile „Strg+Klick: Vorschau · Strg+Umschalt+Klick: Browser“; beim ersten Mal kurz „Wird geladen …“ (**Abnahme**) |
+| IK3 | Strg+Klick auf `ATL-123` | Fenster „Atlas-Issue“ zeigt das Issue; die IDE springt nicht und setzt den Cursor nicht um (**Abnahme**) |
+| IK4 | Strg+Umschalt+Klick auf `ATL-123` | Issue öffnet im Browser |
+| IK5 | Rechtsklick auf `ATL-123` | Eigenes Menü „Issue anzeigen“ (fett), „Im Browser öffnen“, „Kennung kopieren“, „Beginnen“; „Kennung kopieren“ legt `ATL-123` in die Zwischenablage; das Kontextmenü der IDE erscheint nicht |
+| IK6 | Umschalt+Rechtsklick auf `ATL-123` | Kontextmenü der IDE wie gewohnt |
+| IK7 | „Beginnen“ im Menü | Wie „Beginnen“ in „Meine Issues“: Branch aus Kennung und Titel |
+| IK8 | `atl-7`, `{ ATL-8 }`, `(* ATL-9 *)` und ein `{ … }`-Kommentar über drei Zeilen mit `ATL-10` in der Mitte | Alle unterstrichen, Kennung im Tooltip groß geschrieben |
+| IK9 | `X := ATL - 123;`, `{$IFDEF ATL-1}`, `XATL-1`, `ATL-1a` und `ATL_1` | Nichts unterstrichen (**Abnahme**) |
+| IK10 | `S := 'ATL-12 Sperre';` und `S := 'Siehe ATL-12';` | Nur das erste Literal (beginnt mit dem Commit-Präfix) ist unterstrichen |
+| IK11 | In B `// #42` und `// siehe octo/lib#9` | Beide unterstrichen; Hover von `octo/lib#9` zeigt das Issue aus `octo/lib` (**Abnahme**) |
+| IK12 | In B `S := #13#10;` und `// Zeilenende #13#10, C#7` | Nichts unterstrichen |
+| IK13 | `// #42` in C (ohne Tracker) | Nicht unterstrichen, kein Hover (**Abnahme**) |
+| IK14 | Kennung, die es nicht gibt (`ATL-999999`), überfahren | „Issue ATL-999999 nicht gefunden.“; Unterstreichung bleibt; erneutes Überfahren innerhalb von 10 Minuten fragt nicht erneut (Proxy) |
+| IK15 | Durch eine Unit mit 200 Kennungen scrollen, ohne zu verweilen | Keine Abfrage beim Tracker (Proxy); erst der Hover fragt (**Abnahme**) |
+| IK16 | Netz trennen, eine früher überfahrene Kennung überfahren | Letzter Stand aus dem Zwischenspeicher; eine neue Kennung zeigt „Tracker nicht erreichbar.“ |
+| IK17 | `issues.codeLinks` aus (Schnellschalter) | Keine Unterstreichung, kein Hover, Strg+Klick wieder wie in der IDE, keine Abfrage (**Abnahme**) |
+| IK18 | `issues.preview` aus | Fußzeile „Strg+Klick: im Browser öffnen“; Strg+Klick öffnet den Browser |
+| IK19 | Hover auf einer Kennung mit eingeschaltetem Atlas-Tooltip | Nur ein Tooltip; kein leerer zweiter Tooltip des Atlas-Hovers |
+| IK20 | Tippen in der Zeile, Zoom (Strg+Mausrad), 150 % DPI, helles und dunkles Design | Unterstreichung folgt dem Text und sitzt unter der Kennung |
+| IK21 | Projekt wechseln (A → B), dann Datei aus A wieder vorn | Muster folgt dem aktiven Projekt (`ATL-…` nur, solange A aktiv ist) |
+| IK22 | IDE mit offenem Tooltip beenden | Entladen ohne Zugriffsverletzung |
+
+## Issues in der Zeilenhistorie (#1275)
+
+Vorbereitung: Projekt A (Git) und Projekt S (SVN), beide mit YouTrack-Projekt `ATL` und hinterlegtem Token; `editor.gitBlame` und `issues.blameLinks` an. In beiden eine Methode `TKunde.Laden`, die drei Commits mit `ATL-1`, `ATL-2` und `ATL-3` (einer davon „ATL-1 und ATL-3“) und ein Commit ohne Kennung geändert haben; in S zusätzlich ein Repository mit 5000 Revisionen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IX1 | In A den Cursor auf eine Zeile aus dem Commit „ATL-2 Rundung“ setzen | Am Zeilenende „Autor, vor … · ATL-2 · ATL-2 Rundung“ (**Abnahme**) |
+| IX2 | Dasselbe in S | „Autor, vor … · ATL-2“ (SVN-blame liefert keinen Betreff; die Kennung kommt aus der ganzen Nachricht) (**Abnahme**) |
+| IX3 | Maus auf die Randanzeige halten | Hover mit Commit, darunter die Link-Zeile „ATL-2 · Titel · Zustand“ (erst „Wird geladen …“, dann der Stand), die Fußzeile „Strg+Klick auf die Kennung: Vorschau“ und der Link „Issues zu dieser Methode (3)“ (die Zahl erscheint nach kurzer Suche) (**Abnahme**) |
+| IX4 | Commit-Nachricht mit zwei Kennungen („ATL-1 und ATL-3“) überfahren | Je Kennung eine Zeile mit Titel und Zustand |
+| IX5 | Im Hover auf die Zeile „ATL-2 …“ klicken | Fenster „Atlas-Issue“ zeigt ATL-2 |
+| IX6 | Strg+Klick auf die Randanzeige | Fenster „Atlas-Issue“ zeigt die erste Kennung; die IDE springt nicht und setzt den Cursor nicht um (Git und SVN) (**Abnahme**) |
+| IX7 | Strg+Umschalt+Klick auf die Randanzeige | Issue im Browser |
+| IX8 | Rechtsklick auf die Randanzeige | Menü „Issue anzeigen“ (fett), „Im Browser öffnen“, „Kennung kopieren“, Trenner, „Issues zu dieser Methode“; bei zwei Kennungen je Kennung ein Untermenü; Umschalt+Rechtsklick öffnet das Menü der IDE |
+| IX9 | Palette: „Issues zu dieser Methode“ mit dem Cursor in `TKunde.Laden` | Ergebnisfenster „Issues zu TKunde.Laden · 3 Issues aus 4 Commits · 1 ohne Kennung“ mit genau ATL-1, ATL-2, ATL-3, je Titel, Zustand, Zeit des letzten Commits und Anzahl der Commits (ATL-1: 2, ATL-3: 2, ATL-2: 1) (**Abnahme**) |
+| IX10 | Dasselbe in S | Dieselbe Liste aus der SVN-Historie (**Abnahme**) |
+| IX11 | In der Liste auf ein Issue klicken, dann einen Commit darunter doppelklicken | Klick öffnet die Vorschau; Doppelklick zeigt Nachricht und Unterschied des Commits |
+| IX12 | Befehl mit dem Cursor außerhalb jeder Methode (uses-Klausel) | „Issues zu Unit Kunde.pas …“ über die ganze Unit |
+| IX13 | Über `TKunde.Laden` drei ungespeicherte Zeilen einfügen, Befehl erneut | Gleiche Liste (der Bereich wird dem Stand im Repository zugeordnet) |
+| IX14 | Neue, nicht übernommene Unit; Befehl | „Kunde2.pas ist noch nicht übernommen; es gibt keine Historie.“ |
+| IX15 | Datei außerhalb einer Arbeitskopie; Befehl | „Die Datei liegt in keiner Arbeitskopie (Git oder SVN).“ |
+| IX16 | In S mit 5000 Revisionen, `issues.blameLinks.maxRevisions` = 200, Befehl auf eine Methode | Liste in unter 5 s (**Abnahme**) |
+| IX17 | `issues.blameLinks.maxRevisions` = 2, Befehl | Nur Issues aus den zwei neuesten Commits der Methode |
+| IX18 | Durch eine Unit scrollen und den Cursor über viele Zeilen bewegen, ohne zu verweilen | Keine Abfrage beim Tracker (Proxy); erst Hover oder Befehl fragen (**Abnahme**) |
+| IX19 | `issues.blameLinks` aus (Schnellschalter) | Zeilenhistorie wie vorher ohne Kennung, Hover ohne Issues, Strg+Klick wie in der IDE, „Issues zu dieser Methode“ fehlt in der Palette (**Abnahme**) |
+| IX20 | Projekt ohne Tracker | Zeilenhistorie ohne Kennung; der Befehl meldet „Für dieses Projekt ist kein Issue-Tracker eingerichtet.“ |
+| IX21 | `issues.preview` aus | Fußzeile „Strg+Klick auf die Kennung: im Browser öffnen“; Klick im Hover öffnet den Browser |
+| IX22 | Commit machen, dann dieselbe Zeile überfahren | Randanzeige und Zahl im Hover folgen dem neuen Stand |
+| IX23 | IDE mit offenem Hover bzw. laufender Suche beenden | Entladen ohne Zugriffsverletzung |

@@ -92,6 +92,28 @@ type
     procedure IssuePage;
   end;
 
+  /// <summary>Issue-Vorschau (#1264): ein Issue mit Beschreibung, Feldern, Kommentaren, Anhängen und Verweisen.
+  /// </summary>
+  [TestFixture]
+  TAtlasTrackerDetailsTests = class
+  public
+    [Test]
+    procedure YouTrackDetailsFromFixture;
+    [Test]
+    procedure YouTrackWithoutComments;
+    [Test]
+    procedure YouTrackUrlAndTransport;
+    [Test]
+    procedure GitHubDetailsFromFixture;
+    [Test]
+    procedure GitHubCommentsAndTimeline;
+    /// <summary>Abnahme: Issue, neueste Kommentare und Verweise in einem Aufruf; Dateien als Anhänge.</summary>
+    [Test]
+    procedure GitHubDetailsOverTransport;
+    [Test]
+    procedure DetailsErrors;
+  end;
+
   [TestFixture]
   TAtlasCommitHookTests = class
   private
@@ -116,6 +138,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.IOUtils,
+  System.DateUtils,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Naming,
@@ -680,11 +703,205 @@ begin
   Assert.IsFalse(TAtlasCommitHook.WritePrefix('', 'x'));
 end;
 
+{ TAtlasTrackerDetailsTests }
+
+procedure TAtlasTrackerDetailsTests.YouTrackDetailsFromFixture;
+var
+  mDetails: TAtlasTrackerDetails;
+begin
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseDetails(Fixture('YouTrack', 'issue-details.json'), YouTrackTarget, True,
+    mDetails));
+  Assert.AreEqual('ATL-123', mDetails.Key);
+  Assert.AreEqual(123, mDetails.Number);
+  Assert.AreEqual('Tracker im Plugin anbinden', mDetails.Title);
+  Assert.IsTrue(mDetails.Description.StartsWith('## Ziel'));
+  Assert.AreEqual('In Progress', mDetails.State);
+  Assert.AreEqual('Major', mDetails.Priority);
+  Assert.AreEqual('Feature', mDetails.Kind);
+  Assert.AreEqual('Marco B.', mDetails.Assignee, 'Benutzer mit vollem Namen');
+  Assert.AreEqual('Sprint 42', mDetails.Sprint);
+  Assert.AreEqual(2, Integer(Length(mDetails.Labels)));
+  Assert.AreEqual('ui', mDetails.Labels[1]);
+  Assert.IsTrue(Abs(mDetails.Created - UnixToDateTime(1761645649, True)) < 1 / SecsPerDay, 'Millisekunden seit 1970');
+  Assert.IsTrue(mDetails.Updated > mDetails.Created);
+  // Entfernte Anhänge entfallen; relative Adressen beim Server, fremde Rechner sind extern.
+  Assert.AreEqual(2, Integer(Length(mDetails.Attachments)));
+  Assert.AreEqual('skizze.png', mDetails.Attachments[0].Name);
+  Assert.AreEqual('https://beispiel.youtrack.cloud/api/files/1-2?sign=abc', mDetails.Attachments[0].Url);
+  Assert.AreEqual<Int64>(2048, mDetails.Attachments[0].Size);
+  Assert.IsFalse(mDetails.Attachments[0].External);
+  Assert.AreEqual('fremd.zip', mDetails.Attachments[1].Name);
+  Assert.AreEqual<Int64>(-1, mDetails.Attachments[1].Size, 'Größe unbekannt');
+  Assert.IsTrue(mDetails.Attachments[1].External);
+  Assert.AreEqual(0, mDetails.AttachmentIndex('Skizze.PNG'));
+  // Verknüpfungen mit Richtung.
+  Assert.AreEqual(2, Integer(Length(mDetails.Links)));
+  Assert.AreEqual('ATL-100', mDetails.Links[0].Key);
+  Assert.AreEqual('depends on', mDetails.Links[0].Relation);
+  Assert.IsTrue(mDetails.Links[0].Local);
+  Assert.AreEqual('is required for', mDetails.Links[1].Relation);
+  // Gelöschte Kommentare entfallen.
+  Assert.IsTrue(mDetails.CommentsLoaded);
+  Assert.AreEqual(2, Integer(Length(mDetails.Comments)));
+  Assert.AreEqual('Marco B.', mDetails.Comments[0].Author);
+  Assert.AreEqual('kollege', mDetails.Comments[1].Author);
+  Assert.AreEqual('Zweiter `Code`', mDetails.Comments[1].Text);
+end;
+
+procedure TAtlasTrackerDetailsTests.YouTrackWithoutComments;
+var
+  mDetails: TAtlasTrackerDetails;
+begin
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseDetails(Fixture('YouTrack', 'issue-details.json'), YouTrackTarget, False,
+    mDetails));
+  Assert.IsFalse(mDetails.CommentsLoaded);
+  Assert.AreEqual(0, Integer(Length(mDetails.Comments)));
+  Assert.IsFalse(TAtlasYouTrackTracker.ParseDetails('{"summary": "ohne Kennung"}', YouTrackTarget, True, mDetails));
+  Assert.IsFalse(TAtlasYouTrackTracker.ParseDetails('kein JSON', YouTrackTarget, True, mDetails));
+end;
+
+procedure TAtlasTrackerDetailsTests.YouTrackUrlAndTransport;
+var
+  mUrl: string;
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mDetails: TAtlasTrackerDetails;
+  mError: TAtlasCiFetchError;
+begin
+  mUrl := TAtlasYouTrackTracker.DetailsUrl(YouTrackTarget, 'ATL-123', False);
+  Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues/ATL-123?fields='));
+  Assert.IsFalse(mUrl.Contains('comments'), 'ohne Kommentare nicht abgefragt');
+  Assert.IsTrue(TAtlasYouTrackTracker.DetailsUrl(YouTrackTarget, 'ATL-123', True).Contains('comments'));
+  Assert.AreEqual('', TAtlasYouTrackTracker.DetailsUrl(YouTrackTarget, 'ATL 1/../x', True));
+  mProvider := TAtlasYouTrackTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://beispiel.youtrack.cloud/api/issues/ATL-123', 200,
+    Fixture('YouTrack', 'issue-details.json'));
+  Assert.IsTrue(mProvider.Details(YouTrackTarget, mTransportRef, 'ATL-123', True, 5000, mDetails, mError));
+  Assert.AreEqual(1, Integer(Length(mTransport.Calls)), 'eine Abfrage samt Kommentaren');
+  Assert.AreEqual(mProvider.IssuePage(YouTrackTarget, 'ATL-123'), mDetails.Page);
+  Assert.AreEqual(2, Integer(Length(mDetails.Comments)));
+end;
+
+procedure TAtlasTrackerDetailsTests.GitHubDetailsFromFixture;
+var
+  mDetails: TAtlasTrackerDetails;
+  mCount: Integer;
+begin
+  Assert.IsTrue(TAtlasGitHubTracker.ParseDetails(Fixture('GitHub', 'issue-details.json'), mDetails, mCount));
+  Assert.AreEqual('#753', mDetails.Key);
+  Assert.AreEqual(753, mDetails.Number);
+  Assert.AreEqual('closed (not planned)', mDetails.State);
+  Assert.AreEqual(3, Integer(Length(mDetails.Labels)), 'Objekte und Texte');
+  Assert.AreEqual('rohtext', mDetails.Labels[2]);
+  Assert.AreEqual('xKnockOut, kollege', mDetails.Assignee, 'alle Zuständigen');
+  Assert.AreEqual('v1.2.0', mDetails.Sprint, 'Meilenstein');
+  Assert.AreEqual('Feature', mDetails.Kind);
+  Assert.AreEqual(2, mCount);
+  Assert.IsTrue(Abs(mDetails.Updated - EncodeDateTime(2026, 10, 28, 10, 40, 49, 0)) < 1 / SecsPerDay);
+  Assert.IsFalse(TAtlasGitHubTracker.ParseDetails('{"title": "ohne Nummer"}', mDetails, mCount));
+  Assert.AreEqual('https://api.github.com/repos/beispiel/atlas/issues/753',
+    TAtlasGitHubTracker.IssueApiUrl(GitHubTarget, '#753'));
+  Assert.AreEqual('', TAtlasGitHubTracker.IssueApiUrl(GitHubTarget, 'abc'));
+end;
+
+procedure TAtlasTrackerDetailsTests.GitHubCommentsAndTimeline;
+var
+  mComments: TArray<TAtlasTrackerComment>;
+  mLinks: TArray<TAtlasTrackerLink>;
+begin
+  Assert.IsTrue(TAtlasGitHubTracker.ParseComments(Fixture('GitHub', 'issue-comments.json'), mComments));
+  Assert.AreEqual(2, Integer(Length(mComments)));
+  Assert.AreEqual('xKnockOut', mComments[0].Author);
+  Assert.AreEqual('Erster', mComments[0].Text);
+  Assert.IsTrue(TAtlasGitHubTracker.ParseTimeline(Fixture('GitHub', 'issue-timeline.json'), 'beispiel/atlas', mLinks));
+  Assert.AreEqual(2, Integer(Length(mLinks)), 'doppelte und ungültige Verweise entfallen');
+  Assert.AreEqual('#760', mLinks[0].Key);
+  Assert.AreEqual('pull request', mLinks[0].Relation);
+  Assert.IsTrue(mLinks[0].Local);
+  Assert.AreEqual('https://github.com/beispiel/atlas/pull/760', mLinks[0].Page);
+  Assert.AreEqual('andere/repo#12', mLinks[1].Key);
+  Assert.AreEqual('cross-referenced', mLinks[1].Relation);
+  Assert.IsFalse(mLinks[1].Local, 'anderes Repository im Browser');
+end;
+
+procedure TAtlasTrackerDetailsTests.GitHubDetailsOverTransport;
+var
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mDetails: TAtlasTrackerDetails;
+  mError: TAtlasCiFetchError;
+  mCall: string;
+begin
+  mProvider := TAtlasGitHubTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  // Längere Anfänge zuerst: Der Transport nimmt den ersten passenden.
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/753/comments', 200,
+    Fixture('GitHub', 'issue-comments.json'));
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/753/timeline', 200,
+    Fixture('GitHub', 'issue-timeline.json'));
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/753', 200,
+    Fixture('GitHub', 'issue-details.json'));
+  Assert.IsTrue(mProvider.Details(GitHubTarget, mTransportRef, '#753', True, 5000, mDetails, mError));
+  Assert.AreEqual(3, Integer(Length(mTransport.Calls)));
+  Assert.AreEqual('https://api.github.com/repos/beispiel/atlas/issues/753/comments?per_page=100&page=1',
+    mTransport.Calls[1]);
+  Assert.AreEqual('https://github.com/beispiel/atlas/issues/753', mDetails.Page);
+  Assert.IsTrue(mDetails.CommentsLoaded);
+  Assert.AreEqual(2, Integer(Length(mDetails.Comments)));
+  Assert.AreEqual(2, Integer(Length(mDetails.Links)));
+  // Dateien aus Beschreibung und Kommentaren; andere Links bleiben Links.
+  Assert.AreEqual(2, Integer(Length(mDetails.Attachments)));
+  Assert.AreEqual('Protokoll.zip', mDetails.Attachments[0].Name);
+  Assert.AreEqual('shot.zip', mDetails.Attachments[1].Name);
+  Assert.IsTrue(mDetails.Attachments[1].External);
+  // Ohne Kommentare: keine Abfrage dafür.
+  mTransport.Calls := nil;
+  Assert.IsTrue(mProvider.Details(GitHubTarget, mTransportRef, '#753', False, 5000, mDetails, mError));
+  Assert.IsFalse(mDetails.CommentsLoaded);
+  for mCall in mTransport.Calls do
+    Assert.IsFalse(mCall.Contains('/comments'));
+end;
+
+procedure TAtlasTrackerDetailsTests.DetailsErrors;
+var
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mDetails: TAtlasTrackerDetails;
+  mError: TAtlasCiFetchError;
+begin
+  mProvider := TAtlasGitHubTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  Assert.IsFalse(mProvider.Details(GitHubTarget, mTransportRef, '#1', True, 5000, mDetails, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotFound, '404');
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/2', 410, '{}');
+  Assert.IsFalse(mProvider.Details(GitHubTarget, mTransportRef, '#2', True, 5000, mDetails, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotFound, '410: gelöscht');
+  Assert.IsFalse(mProvider.Details(GitHubTarget, mTransportRef, 'abc', True, 5000, mDetails, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured, 'ungültige Kennung');
+  Assert.IsFalse(mProvider.Details(GitHubTarget, nil, '#1', True, 5000, mDetails, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured, 'ohne Token');
+  // Fehler des Transports kommen bei beiden Anbietern unverändert an.
+  mTransport.FailWith(TAtlasCiFetchError.Timeout);
+  Assert.IsFalse(mProvider.Details(GitHubTarget, mTransportRef, '#1', True, 5000, mDetails, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout, 'GitHub: Zeitüberschreitung');
+  mProvider := TAtlasYouTrackTracker.Create;
+  Assert.IsFalse(mProvider.Details(YouTrackTarget, mTransportRef, 'ATL-1', True, 5000, mDetails, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout, 'YouTrack: Zeitüberschreitung');
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasTrackerTargetTests);
   TDUnitX.RegisterTestFixture(TAtlasTrackerNamingTests);
   TDUnitX.RegisterTestFixture(TAtlasGitHubTrackerTests);
   TDUnitX.RegisterTestFixture(TAtlasYouTrackTrackerTests);
+  TDUnitX.RegisterTestFixture(TAtlasTrackerDetailsTests);
   TDUnitX.RegisterTestFixture(TAtlasCommitHookTests);
 
 end.

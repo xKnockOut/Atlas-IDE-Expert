@@ -135,6 +135,9 @@ type
     BranchBase: string;
     /// <summary>'' = aus; nicht gekürzt.</summary>
     CommitPattern: string;
+    /// <summary>issues.preview (#1264): Klick auf Zeile bzw. Kennung zeigt das Issue in „Atlas-Issue“,
+    /// Strg+Klick öffnet den Browser. Create setzt False.</summary>
+    Preview: Boolean;
     /// <summary>Hauptbranch des Projekts (#1286, vcs.projects bzw. .atlas); '' = raten. BranchBase hat Vorrang.
     /// Setzt der Aufrufer je Projekt.</summary>
     MainBranch: string;
@@ -434,6 +437,7 @@ begin
   Result.BranchPattern := Trim(ABranchPattern);
   Result.BranchBase := Trim(ABranchBase);
   Result.CommitPattern := ACommitPattern;
+  Result.Preview := False;
   Result.MainBranch := '';
   Result.Svn := TAtlasVcsSvnBranchOptions.Default;
 end;
