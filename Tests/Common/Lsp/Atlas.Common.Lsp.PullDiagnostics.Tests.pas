@@ -55,6 +55,10 @@ type
     /// <summary>#1094: Endet textDocument/diagnostic mit einem Fehler, bleibt die Unit für das Diagnoselog offen.</summary>
     [Test]
     procedure DocumentErrorKeepsUnitForLog;
+    /// <summary>#1220: Eine Datei über der Frist blockiert nichts; der Hintergrund prüft sie zu Ende, die nächste
+    /// Antwort bringt sie aus dem Cache.</summary>
+    [Test]
+    procedure SlowFileFinishesInBackground;
   end;
 
 implementation
@@ -720,6 +724,62 @@ begin
     end;
     Assert.AreEqual('unit#2', Notes.Subject);
   finally
+    Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.SlowFileFinishesInBackground;
+var
+  Fixture: TFixture;
+  Rules: TRuleContextProvider;
+  Answer: TJSONValue;
+  Params: TJSONObject;
+  Waited: Integer;
+begin
+  Rules :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      AContext := Default(TRuleCheckContext);
+      AContext.Settings := TServerSettings.Default;
+      AContext.Rules := [
+        TCallbackRule.Create('langsam',
+          procedure
+          begin
+            Sleep(200);
+          end),
+        TCallbackRule.Create('danach',
+          procedure
+          begin
+          end)];
+      Result := True;
+    end;
+  Fixture.Init(Rules);
+  Params := TJSONObject.Create;
+  try
+    Fixture.Pull.FileLimitMs := 50;
+    // Erste Antwort: Die Datei ist über der Frist, nichts wird verworfen oder blockiert.
+    Answer := Fixture.Pull.WorkspaceReport(Params, Token);
+    try
+      Assert.AreEqual(0, TJSONObject(Answer).GetValue<TJSONArray>('items').Count);
+    finally
+      Answer.Free;
+    end;
+    Waited := 0;
+    while (Fixture.Pull.Background > 0) and (Waited < 5000) do
+    begin
+      Sleep(20);
+      Inc(Waited, 20);
+    end;
+    Assert.AreEqual(0, Fixture.Pull.Background, 'Hintergrund fertig');
+    // Zweite Antwort: aus dem Cache, ohne erneute Frist.
+    Answer := Fixture.Pull.WorkspaceReport(Params, Token);
+    try
+      Assert.AreEqual(1, TJSONObject(Answer).GetValue<TJSONArray>('items').Count);
+    finally
+      Answer.Free;
+    end;
+  finally
+    Params.Free;
     Fixture.Done;
   end;
 end;
