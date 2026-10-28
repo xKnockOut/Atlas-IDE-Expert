@@ -4,7 +4,7 @@
 // comparison-always-constant (#1011): Beispiel aus dem Issue, immer falsche
 // und gespiegelte Vergleiche, benannte Konstanten, Felder aus dem Index,
 // case-Marken außerhalb des Bereichs, bedingte Deklarationen, stille Fälle,
-// Abschalten.
+// Abschalten; Konstanten mit Typumwandlung und UInt64 (#1324).
 // constant-initializer-mismatch (#1015): Beispiel mit Korrektur, zu viele
 // Einträge, Teilbereiche, Boolean, mehrere Dimensionen, benannte Array-Typen,
 // Aufzählungen aus dem Index, Record-Felder in falscher Reihenfolge, bedingte
@@ -40,6 +40,8 @@ type
     procedure ConditionalDeclarationIsSilent;
     [Test]
     procedure PossibleComparisonsAreSilent;
+    [Test]
+    procedure CastConstantsAndUInt64;
     [Test]
     procedure OutcomeTable;
     [Test]
@@ -203,6 +205,21 @@ begin
   Assert.AreEqual('Konto.Saldo ist Cardinal; Konto.Saldo > Unten ist immer wahr (wie W1022).', Found[2].Message);
 end;
 
+procedure TComparisonAlwaysConstantTests.CastConstantsAndUInt64;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Minimalfall aus #1324 (PascalScript): InvalidVal = Cardinal(-1) ist 4294967295, der Vergleich also offen.
+  mFound := ComparisonFindings('unit Zaehler;'#10'interface'#10'implementation'#10'const'#10 +
+    '  InvalidVal = Cardinal(-1);'#10'procedure Pruefen;'#10'var'#10'  P: Cardinal;'#10'  U: UInt64;'#10'begin'#10 +
+    '  if P <> InvalidVal then'#10'    Exit;'#10'  if P = Cardinal(-1) then'#10'    Exit;'#10 +
+    '  if U > UInt64(High(Int64)) then'#10'    Exit;'#10'  if U <= High(Int64) then'#10'    Exit;'#10 +
+    '  if P <> -1 then'#10'    Exit;'#10'end;'#10'end.');
+  // Gegentest: -1 ohne Umwandlung liegt weiter außerhalb von Cardinal.
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('P ist Cardinal; P <> -1 ist immer wahr (wie W1022).', mFound[0].Message);
+end;
+
 procedure TComparisonAlwaysConstantTests.LengthIsNeverNegative;
 var
   Found: TArray<TRuleFinding>;
@@ -291,6 +308,12 @@ begin
   Assert.AreEqual(-1, TComparisonAlwaysConstantRule.Outcome('=', 255, 0, 255));
   Assert.AreEqual(1, TComparisonAlwaysConstantRule.Outcome('<>', -1, 0, 255));
   Assert.AreEqual(-1, TComparisonAlwaysConstantRule.Outcome('<>', 0, 0, 255));
+  // Obergrenze über High(Int64) (UInt64, #1324): Kein Wert liegt auf oder über ihr.
+  Assert.AreEqual(-1, TComparisonAlwaysConstantRule.Outcome('>', High(Int64), 0, High(Int64), False));
+  Assert.AreEqual(-1, TComparisonAlwaysConstantRule.Outcome('<=', High(Int64), 0, High(Int64), False));
+  Assert.AreEqual(0, TComparisonAlwaysConstantRule.Outcome('>', High(Int64), 0, High(Int64), True));
+  Assert.AreEqual(1, TComparisonAlwaysConstantRule.Outcome('>=', 0, 0, High(Int64), False));
+  Assert.AreEqual(0, TComparisonAlwaysConstantRule.Outcome('<', 0, 0, High(Int64), False));
 end;
 
 procedure TComparisonAlwaysConstantTests.OffAndExclude;

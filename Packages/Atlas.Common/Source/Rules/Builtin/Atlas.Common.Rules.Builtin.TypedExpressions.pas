@@ -66,7 +66,11 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Ergebnis von "X AOperator AValue" für X im Bereich ALow..AHigh: 1 immer wahr, 0 immer falsch,
     /// -1 abhängig von X. AOperator ist = &lt;&gt; &lt; &lt;= &gt; &gt;=.</summary>
-    class function Outcome(const AOperator: string; AValue, ALow, AHigh: Int64): Integer; static;
+    class function Outcome(const AOperator: string; AValue, ALow, AHigh: Int64): Integer; overload; static;
+    /// <summary>Wie oben; AHighKnown False: Die Obergrenze liegt über High(Int64) (UInt64, #1324), kein Wert
+    /// erreicht sie.</summary>
+    class function Outcome(const AOperator: string; AValue, ALow, AHigh: Int64; AHighKnown: Boolean): Integer;
+      overload; static;
   end;
 
   TConstantInitializerMismatchRule = class(TInterfacedObject, IRule)
@@ -129,27 +133,38 @@ end;
 
 class function TComparisonAlwaysConstantRule.Outcome(const AOperator: string; AValue, ALow, AHigh: Int64): Integer;
 begin
+  Result := Outcome(AOperator, AValue, ALow, AHigh, True);
+end;
+
+class function TComparisonAlwaysConstantRule.Outcome(const AOperator: string; AValue, ALow, AHigh: Int64;
+  AHighKnown: Boolean): Integer;
+var
+  mAbove, mAtHigh: Boolean;
+begin
+  // Ohne bekannte Obergrenze liegt kein Int64-Wert auf oder über ihr.
+  mAbove := AHighKnown and (AValue > AHigh);
+  mAtHigh := AHighKnown and (AValue >= AHigh);
   Result := -1;
   if AOperator = '=' then
   begin
-    if (AValue < ALow) or (AValue > AHigh) then
+    if (AValue < ALow) or mAbove then
       Result := 0;
   end
   else if AOperator = '<>' then
   begin
-    if (AValue < ALow) or (AValue > AHigh) then
+    if (AValue < ALow) or mAbove then
       Result := 1;
   end
   else if AOperator = '<' then
   begin
-    if AValue > AHigh then
+    if mAbove then
       Result := 1
     else if AValue <= ALow then
       Result := 0;
   end
   else if AOperator = '<=' then
   begin
-    if AValue >= AHigh then
+    if mAtHigh then
       Result := 1
     else if AValue < ALow then
       Result := 0;
@@ -158,14 +173,14 @@ begin
   begin
     if AValue < ALow then
       Result := 1
-    else if AValue >= AHigh then
+    else if mAtHigh then
       Result := 0;
   end
   else if AOperator = '>=' then
   begin
     if AValue <= ALow then
       Result := 1
-    else if AValue > AHigh then
+    else if mAbove then
       Result := 0;
   end;
 end;
@@ -276,7 +291,9 @@ var
     end;
     if not IntegerOperand(Operand, TypeName, LowValue, HighValue) then
       Exit;
-    Verdict := Outcome(Operation, Value, LowValue, HighValue);
+    // UInt64, NativeUInt und LongWord (64 Bit je Plattform) reichen über High(Int64) hinaus (#1324).
+    Verdict := Outcome(Operation, Value, LowValue, HighValue, not MatchText(TypeName, ['UInt64', 'NativeUInt',
+      'LongWord']));
     if Verdict < 0 then
       Exit;
     Note := LoopNote(ANode, Verdict = 1);

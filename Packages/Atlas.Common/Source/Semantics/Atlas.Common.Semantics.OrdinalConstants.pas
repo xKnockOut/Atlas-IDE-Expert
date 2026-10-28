@@ -3,7 +3,10 @@
 // Werte ordinaler Konstantenausdrücke aus Token (#983): Ganzzahlen (dezimal,
 // $hex, %binär, &oktal), Zeichen ('a', #13, #$0D), True und False, Klammern,
 // die Operatoren + - * div mod and or xor not shl shr sowie Ord, Chr, Succ,
-// Pred und Umwandlungen in ganzzahlige und Zeichentypen, dazu SizeOf, High und
+// Pred und Umwandlungen in ganzzahlige und Zeichentypen (mit Abschneiden wie
+// Delphi: Cardinal(-1) = 4294967295, Integer($80000000) = -2147483648, #1324;
+// bei Typen, deren Größe von der Plattform abhängt, nur Werte, die überall
+// passen), dazu SizeOf, High und
 // Low für Typen fester Größe (#992, #1083), MaxInt und MaxLongint. Namen (Konstanten, Aufzählungswerte) löst
 // der Aufrufer über ALookup auf. Alles andere, auch Gleitkomma, Strings und
 // Überläufe, gilt als nicht auswertbar. Check sagt zusätzlich, ob der Ausdruck
@@ -60,8 +63,9 @@ uses
   Atlas.Common.Pascal.Lexer;
 
 const
-  OrdinalCasts: array[0..15] of string = ('Byte', 'Word', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'ShortInt',
-    'SmallInt', 'LongInt', 'LongWord', 'NativeInt', 'NativeUInt', 'Char', 'AnsiChar', 'WideChar', 'Ord');
+  OrdinalCasts: array[0..23] of string = ('Byte', 'Word', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'ShortInt',
+    'SmallInt', 'LongInt', 'LongWord', 'NativeInt', 'NativeUInt', 'Char', 'AnsiChar', 'WideChar', 'Ord', 'Int8',
+    'UInt8', 'Int16', 'UInt16', 'Int32', 'UInt32', 'FixedInt', 'FixedUInt');
   // Tiefe der Klammern und Aufrufe, damit ein Ausdruck aus fremdem Quelltext den Stapel nicht sprengt.
   MaxDepth = 64;
   // Grenzen für den sicheren Überlauf als Gleitkommaschätzung: unter Low(Int64) bzw. deutlich über
@@ -96,6 +100,7 @@ type
     function CharValue(const AText: string; out AValue: Int64): Boolean;
     function StringValue(const AText: string; out AValue: Int64): Boolean;
     function Arguments: Int64;
+    function Cast(const ATypeName: string; AValue: Int64): Int64;
   public
     constructor Create(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
       const ALookup: TOrdinalNameLookup);
@@ -344,6 +349,49 @@ begin
   Advance;
 end;
 
+function TEvaluator.Cast(const ATypeName: string; AValue: Int64): Int64;
+var
+  mLow, mHigh: Int64;
+  mHighKnown: Boolean;
+  mSize: Integer;
+  mBits: UInt64;
+begin
+  // Umwandlung eines konstanten Werts (#1324): Delphi schneidet auf die Größe des Zieltyps ab.
+  Result := AValue;
+  if SameText(ATypeName, 'Ord') then
+    Exit;
+  if not TOrdinalConstants.FixedType(ATypeName, mLow, mHigh, mHighKnown, mSize) then
+  begin
+    // NativeInt, LongInt, NativeUInt, LongWord: 32 oder 64 Bit je Plattform. Werte, die in 32 Bit passen,
+    // bleiben überall gleich; sonst hängt das Ergebnis von der Plattform ab.
+    if MatchText(ATypeName, ['NativeInt', 'LongInt']) then
+    begin
+      mLow := -2147483648;
+      mHigh := 2147483647;
+    end
+    else
+    begin
+      mLow := 0;
+      mHigh := 4294967295;
+    end;
+    if (AValue < mLow) or (AValue > mHigh) then
+      Fail;
+    Exit;
+  end;
+  if mSize >= 8 then
+  begin
+    // UInt64(-1) liegt über High(Int64) und lässt sich als Int64 nicht darstellen.
+    if not mHighKnown and (AValue < 0) then
+      Fail;
+    Exit;
+  end;
+  mBits := UInt64(AValue) and (UInt64(mHigh - mLow));
+  if (mLow < 0) and (mBits > UInt64(mHigh)) then
+    Result := Int64(mBits) + mLow * 2
+  else
+    Result := Int64(mBits);
+end;
+
 function TEvaluator.TypeArgument(out AName: string): Boolean;
 var
   Start: Integer;
@@ -483,8 +531,10 @@ begin
               Result := Arguments + 1
             else if SameText(Name, 'Pred') then
               Result := Arguments - 1
-            else if SameText(Name, 'Chr') or (IndexText(Name, OrdinalCasts) >= 0) then
+            else if SameText(Name, 'Chr') then
               Result := Arguments
+            else if IndexText(Name, OrdinalCasts) >= 0 then
+              Result := Cast(Name, Arguments)
             else
               Fail;
             Exit;
