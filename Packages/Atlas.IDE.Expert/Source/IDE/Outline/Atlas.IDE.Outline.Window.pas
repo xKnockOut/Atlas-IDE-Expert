@@ -4,7 +4,7 @@
 // Diagnosefenster (#479) über INTAServices.CreateDockableForm, Inhalt
 // TAtlasOutlineFrame, IDE-Thema, Atlas-Symbol (#751) im Fenstertitel.
 // Form, Frame, Wächter und Abbau verwaltet TAtlasIdeDockWindow wie bei allen
-// Atlas-Fenstern (#1248; Tools/Check-DockWindows.ps1 prüft das).
+// Atlas-Fenstern (#1248; Tools/Check-WindowHosts.ps1 prüft das).
 // OnFrame meldet einen neuen Frame, damit TAtlasIdeOutline ihn verdrahtet
 // und füllt.
 
