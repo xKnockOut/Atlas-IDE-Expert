@@ -32,14 +32,16 @@ type
     ProjectsQuery = 'query($owner:String!,$name:String!){viewer{login}repository(owner:$owner,name:$name)' +
       '{projectsV2(first:50){nodes{id title closed}}}}';
     /// <summary>Ein Projekt mit Feldern und Einträgen.</summary>
-    ProjectQuery = 'query($id:ID!){node(id:$id){... on ProjectV2{id title ' +
+    ProjectQuery = 'query($id:ID!){node(id:$id){... on ProjectV2{id title url ' +
       'fields(first:50){nodes{... on ProjectV2SingleSelectField{id name options{id name}} ' +
+      '... on ProjectV2Field{id name dataType} ' +
       '... on ProjectV2IterationField{id name configuration{iterations{id title startDate duration} ' +
       'completedIterations{id title startDate duration}}}}} ' +
       'items(first:100){nodes{id fieldValues(first:20){nodes{' +
       '... on ProjectV2ItemFieldSingleSelectValue{name optionId field{... on ProjectV2SingleSelectField{name}}} ' +
-      '... on ProjectV2ItemFieldIterationValue{iterationId field{... on ProjectV2IterationField{name}}}}} ' +
-      'content{... on Issue{number title url state body repository{nameWithOwner} ' +
+      '... on ProjectV2ItemFieldIterationValue{iterationId field{... on ProjectV2IterationField{name}}} ' +
+      '... on ProjectV2ItemFieldNumberValue{number field{... on ProjectV2Field{name}}}}} ' +
+      'content{... on Issue{number title url state closedAt body repository{nameWithOwner} ' +
       'assignees(first:5){nodes{login name}}}}}}}}}';
     MoveMutation = 'mutation($project:ID!,$item:ID!,$field:ID!,$option:String!){updateProjectV2ItemFieldValue(' +
       'input:{projectId:$project,itemId:$item,fieldId:$field,value:{singleSelectOptionId:$option}})' +
@@ -110,6 +112,14 @@ var
 begin
   mValue := AObject.Values[AName];
   Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
+end;
+
+/// <summary>ISO 8601 ("2026-10-28T09:12:00Z") als UTC; 0 ohne.</summary>
+function TimeOfText(const AText: string): TDateTime;
+begin
+  Result := 0;
+  if (AText = '') or not TryISO8601ToDate(AText, Result, True) then
+    Result := 0;
 end;
 
 /// <summary>Objekt unter einem Pfad aus Namen ("data", "node"); nil, wenn ein Teil fehlt.</summary>
@@ -286,7 +296,22 @@ begin
   end;
 end;
 
-/// <summary>Spalten, Feld und Sprints aus fields.</summary>
+/// <summary>Zahlenfeld als Schätzung (#1277): "Estimate", "Story Points", "Points", "Size", deutsch ebenso.
+/// </summary>
+function IsPointsName(const AName: string): Boolean;
+const
+  Names: array[0..7] of string = ('Estimate', 'Estimation', 'Story Points', 'Points', 'Size', 'Schätzung',
+    'Punkte', 'Aufwand');
+var
+  mName: string;
+begin
+  Result := False;
+  for mName in Names do
+    if SameText(Trim(AName), mName) then
+      Exit(True);
+end;
+
+/// <summary>Spalten, Feld, Schätzfeld und Sprints aus fields.</summary>
 procedure ReadFields(AProject: TJSONObject; var ASnapshot: TAtlasBoardSnapshot; out AIteration, APriority: string);
 var
   mNodes, mOptions: TJSONArray;
@@ -301,6 +326,7 @@ begin
   mFirst := nil;
   ASnapshot.Columns := nil;
   ASnapshot.Sprints := nil;
+  ASnapshot.PointsField := '';
   mNodes := NodesOf(AProject, 'fields');
   if mNodes = nil then
     Exit;
@@ -320,6 +346,9 @@ begin
       else if (mChosen = nil) and (mFirst = nil) then
         mFirst := mField;
     end
+    else if (ASnapshot.PointsField = '') and SameText(TextOf(mField, 'dataType'), 'NUMBER') and
+      IsPointsName(mName) then
+      ASnapshot.PointsField := mName
     else if (AIteration = '') and (mField.Values['configuration'] is TJSONObject) then
     begin
       AIteration := mName;
@@ -411,6 +440,7 @@ begin
     ASnapshot.Kind := TAtlasBoardKind.Project;
     ASnapshot.ProjectId := TextOf(mProject, 'id');
     ASnapshot.Board := TAtlasBoardRef.Create(ASnapshot.ProjectId, TextOf(mProject, 'title'));
+    ASnapshot.Page := TextOf(mProject, 'url');
     ReadFields(mProject, ASnapshot, mIteration, mPriority);
     // Sprint: gewählt, sonst der aktuelle.
     ASnapshot.Sprint := Default(TAtlasBoardSprint);
@@ -441,6 +471,7 @@ begin
         mCard.Title := Copy(TextOf(mIssue, 'title'), 1, TAtlasBoardCard.MaxTitle);
         mCard.Page := TextOf(mIssue, 'url');
         mCard.Checklist := TAtlasTrackerChecklist.Progress(TextOf(mIssue, 'body'));
+        mCard.ResolvedAt := TimeOfText(TextOf(mIssue, 'closedAt'));
         ReadAssignees(mIssue.Values['assignees'], mCard);
         mItemIteration := '';
         mValues := NodesOf(mEntry, 'fieldValues');
@@ -457,6 +488,14 @@ begin
             begin
               if SameText(mName, mIteration) then
                 mItemIteration := TextOf(TJSONObject(mField), 'iterationId');
+            end
+            else if TJSONObject(mField).Values['number'] is TJSONNumber then
+            begin
+              if (ASnapshot.PointsField <> '') and SameText(mName, ASnapshot.PointsField) then
+              begin
+                mCard.Points := TJSONNumber(TJSONObject(mField).Values['number']).AsDouble;
+                mCard.HasPoints := True;
+              end;
             end
             else if SameText(mName, ASnapshot.Field) then
               mCard.State := TextOf(TJSONObject(mField), 'name')
@@ -501,6 +540,7 @@ begin
       mCard.State := LowerCase(TextOf(mIssue, 'state'));
       mCard.Page := TextOf(mIssue, 'html_url');
       mCard.Checklist := TAtlasTrackerChecklist.Progress(TextOf(mIssue, 'body'));
+      mCard.ResolvedAt := TimeOfText(TextOf(mIssue, 'closed_at'));
       ReadAssignees(mIssue.Values['assignees'], mCard);
       if ASnapshot.CardIndex(mCard.Key) < 0 then
         ASnapshot.Cards := ASnapshot.Cards + [mCard];
@@ -561,6 +601,11 @@ begin
   ASnapshot.Columns := [TAtlasBoardColumn.Create('open', TArray<string>.Create('open'), '', False),
     TAtlasBoardColumn.Create('closed', TArray<string>.Create('closed'), '', True)];
   ASnapshot.Cards := nil;
+  ASnapshot.PointsField := '';
+  // Board im Browser: die Issues des Repositorys.
+  ASnapshot.Page := (TAtlasGitHubTracker.Create as IAtlasTrackerProvider).IssuePage(ATarget, '#1');
+  if ASnapshot.Page <> '' then
+    SetLength(ASnapshot.Page, Length(ASnapshot.Page) - Length('/1'));
   mBase := TAtlasGitHubTracker.ApiBase(ATarget) + '/repos/' + ATarget.Project + '/issues';
   if not GetText(ATransport, mBase + '?state=open&per_page=100', Rest(AWatch, ATimeoutMs), mText, AError) then
     Exit;

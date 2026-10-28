@@ -46,6 +46,11 @@
 //   von“-Issue offen, fragt Atlas „ATL-129 blockiert dieses Issue und ist noch
 //   offen“ mit „Trotzdem beginnen“ und „ATL-129 ansehen“. Ohne Antwort und ohne
 //   Zwischenspeicher beginnt es ohne Rückfrage (kein Netz hält die Arbeit auf).
+// - Sprint-Kachel (#1277, TAtlasIdeSprint): gleicher Tracker wie der Bereich,
+//   lädt nach jeder Abfrage mit (keine eigene Schleife). „meine offen“ bzw.
+//   „meine erledigt“ filtern die Liste auf die Issues des Sprints („Gefiltert:
+//   … · alle zeigen“ hebt den Filter auf); ohne den Bereich öffnet der Klick
+//   das Board.
 // - Protokoll anonym: nur Anbieter, Anzahl, Ergebnis und Fehlerart, nie
 //   Adresse, Projekt, Kennung, Titel oder Token.
 // Anbieter, Transport (mit Token aus dem Anmeldespeicher) und Zugangsdialog
@@ -68,7 +73,8 @@ uses
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.Board,
   Atlas.IDE.Tracker.Workflow,
-  Atlas.IDE.Welcome.Projects;
+  Atlas.IDE.Welcome.Projects,
+  Atlas.IDE.Welcome.Sprint;
 
 type
   /// <summary>Tracker-Anbieter zum Namen ("github", "youtrack"); nil, wenn es ihn nicht gibt.</summary>
@@ -126,6 +132,12 @@ type
     // Fenster „Atlas-Board“ (#1272).
     FBoard: TAtlasIdeBoard;
     FBoardRef: IInterface;
+    // Sprint-Kachel (#1277) und ihr Filter für die Liste (nur für FFilterProject).
+    FSprint: TAtlasIdeSprint;
+    FSprintRef: IInterface;
+    FFilter: string;
+    FFilterProject: string;
+    FFilterIssues: TArray<TAtlasTrackerIssue>;
     FSync: TAtlasIdeTrackerSync;
     FOnAssignProject: TProc<string>;
     FLine: TAtlasStatusLine;
@@ -185,7 +197,10 @@ type
     procedure RegisterIssueLinks;
     procedure StartPreview;
     procedure StartBoard;
+    procedure StartSprint;
     procedure StartSync;
+    /// <summary>Liste auf AIssues beschränken (Sprint-Kachel); ohne den Bereich öffnet es das Board.</summary>
+    procedure SetFilter(const ACaption: string; const AIssues: TArray<TAtlasTrackerIssue>);
     /// <summary>Kennung des aktuellen Issues im Projekt des Bereichs; '' ohne.</summary>
     function ActiveKey: string;
     /// <summary>„Beenden“ ohne Tracker: Zustand, Statuszeile und Hinweis.</summary>
@@ -221,6 +236,8 @@ type
     property IssuePreview: TAtlasIdeIssuePreview read FPreview;
     /// <summary>Fenster „Atlas-Board“ (#1272; nil vor Start bzw. nach Stop).</summary>
     property Board: TAtlasIdeBoard read FBoard;
+    /// <summary>Sprint-Kachel (#1277; nil vor Start bzw. nach Stop).</summary>
+    property Sprint: TAtlasIdeSprint read FSprint;
     /// <summary>Tracker nachführen (#1266; nil vor Start bzw. nach Stop).</summary>
     property TrackerSync: TAtlasIdeTrackerSync read FSync;
     property ProviderFactory: TAtlasTrackerProviderHook read FProviderFactory write FProviderFactory;
@@ -243,6 +260,7 @@ type
     procedure EndActive;
     procedure AssignProject;
     function CanAssign: Boolean;
+    procedure ClearFilter;
   end;
 
 implementation
@@ -345,6 +363,7 @@ begin
   StartSync;
   StartPreview;
   StartBoard;
+  StartSprint;
   Refresh;
 end;
 
@@ -540,6 +559,100 @@ begin
   FBoard.Start;
 end;
 
+procedure TAtlasIdeIssues.StartSprint;
+var
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
+  mHooks: TAtlasSprintHooks;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  mHooks := Default(TAtlasSprintHooks);
+  mHooks.Provider :=
+    function(const AName: string): IAtlasTrackerProvider
+    begin
+      Result := nil;
+      if mKeep <> nil then
+        Result := mOwner.ProviderOf(AName);
+    end;
+  mHooks.Transport :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    var
+      mFactory: TAtlasTrackerTransportHook;
+    begin
+      Result := nil;
+      mFactory := mOwner.FTransportFactory;
+      if (mKeep <> nil) and Assigned(mFactory) then
+        Result := mFactory(AProvider, ATarget);
+    end;
+  mHooks.Project :=
+    function: string
+    begin
+      Result := '';
+      if mKeep <> nil then
+        Result := mOwner.CurrentProject;
+    end;
+  mHooks.Target :=
+    function(AProject: string): TAtlasTrackerTarget
+    begin
+      Result := TAtlasTrackerTarget.Create('', '', '', '');
+      if mKeep <> nil then
+        Result := mOwner.TargetOf(AProject);
+    end;
+  mHooks.OpenBoard :=
+    procedure
+    begin
+      if (mKeep <> nil) and (mOwner.FBoard <> nil) then
+        mOwner.FBoard.Show;
+    end;
+  mHooks.Filter :=
+    procedure(const ACaption: string; const AIssues: TArray<TAtlasTrackerIssue>)
+    begin
+      if mKeep <> nil then
+        mOwner.SetFilter(ACaption, AIssues);
+    end;
+  mHooks.CanAssign :=
+    function: Boolean
+    begin
+      Result := (mKeep <> nil) and mOwner.CanAssign;
+    end;
+  mHooks.Assign :=
+    procedure
+    begin
+      if mKeep <> nil then
+        mOwner.AssignProject;
+    end;
+  FSprint := TAtlasIdeSprint.Create(mHooks,
+    TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'issues'));
+  FSprintRef := FSprint;
+  FSprint.Start;
+end;
+
+procedure TAtlasIdeIssues.SetFilter(const ACaption: string; const AIssues: TArray<TAtlasTrackerIssue>);
+begin
+  if not FStarted then
+    Exit;
+  // Ohne den Bereich „Meine Issues“ zeigt das Board die Karten.
+  if not Active then
+  begin
+    if FBoard <> nil then
+      FBoard.Show;
+    Exit;
+  end;
+  FFilter := ACaption;
+  FFilterIssues := AIssues;
+  FFilterProject := CurrentProject;
+  Changed;
+end;
+
+procedure TAtlasIdeIssues.ClearFilter;
+begin
+  FFilter := '';
+  FFilterIssues := nil;
+  FFilterProject := '';
+  Changed;
+end;
+
 procedure TAtlasIdeIssues.RegisterIssueLinks;
 begin
   // Eigene Routine: Die anonyme Methode hält nur Self, keinen Rahmen von Start.
@@ -581,6 +694,11 @@ begin
     FBoard.Stop;
   FBoard := nil;
   FBoardRef := nil;
+  if FSprint <> nil then
+    FSprint.Stop;
+  FSprint := nil;
+  FSprintRef := nil;
+  FFilterIssues := nil;
   FreeAndNil(FSync);
   FreeAndNil(FWatch);
   RemoveStatus;
@@ -657,6 +775,9 @@ begin
   // issues.board aus: Fenster „Atlas-Board“ zu.
   if FBoard <> nil then
     FBoard.UpdateSettings;
+  // welcomePage.sprint, issues.sprint.*, anderes Projekt.
+  if FSprint <> nil then
+    FSprint.Refresh;
   Title := FTitle;
   RegisterSection;
   if Title <> FTitle then
@@ -870,6 +991,12 @@ begin
   Result.Options := Options;
   if FProjects <> nil then
     Result.VcsKind := TAtlasWelcomeIssues.VcsKindOf(FProjects.VcsOf(AProject).Kind);
+  // Filter der Sprint-Kachel (#1277): nur für das Projekt, in dem er gesetzt wurde.
+  if (FFilter <> '') and SameText(FFilterProject, AProject) then
+  begin
+    Result.Filter := FFilter;
+    Result.Items := FFilterIssues;
+  end;
 end;
 
 function TAtlasIdeIssues.View: TAtlasIssuesView;
@@ -991,6 +1118,9 @@ begin
       TAtlasCiBuild.ErrorKey(AError)]));
   UpdateStatus;
   Changed;
+  // Sprint-Kachel lädt mit „Meine Issues“ (#1277), wenn fällig.
+  if FSprint <> nil then
+    FSprint.IssuesFetched(False);
 end;
 
 procedure TAtlasIdeIssues.SetNotice(const AProject, AText: string; AFailed: Boolean);
@@ -1616,6 +1746,8 @@ begin
     procedure
     begin
       Fetch(True);
+      if FSprint <> nil then
+        FSprint.IssuesFetched(True);
     end);
 end;
 

@@ -668,6 +668,9 @@ type
     FIssuesBoard: TCheckBox;
     FIssuesBoardConfirmMove: TCheckBox;
     FIssuesBoardOnlyMine: TCheckBox;
+    FIssuesSprintBurndown: TCheckBox;
+    FIssuesSprintCompare: TCheckBox;
+    FWelcomeSprint: TCheckBox;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1265,6 +1268,9 @@ type
     property IssuesBoard: TCheckBox read FIssuesBoard;
     property IssuesBoardConfirmMove: TCheckBox read FIssuesBoardConfirmMove;
     property IssuesBoardOnlyMine: TCheckBox read FIssuesBoardOnlyMine;
+    property IssuesSprintBurndown: TCheckBox read FIssuesSprintBurndown;
+    property IssuesSprintCompare: TCheckBox read FIssuesSprintCompare;
+    property WelcomeSprint: TCheckBox read FWelcomeSprint;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -2537,6 +2543,7 @@ begin
   Bind('WelcomePageHelp', FWelcomeHelp);
   Bind('WelcomePageProjectSetup', FWelcomeProjectSetup);
   Bind('WelcomePageIssues', FWelcomeIssues);
+  Bind('WelcomePageSprint', FWelcomeSprint);
   Bind('WelcomePageCustomLayout', FWelcomeCustomLayout);
   Bind('WelcomePageColumns', FWelcomeColumns);
   Bind('WelcomePageActiveLayout', FWelcomeActiveLayout);
@@ -2755,6 +2762,8 @@ begin
   FWelcomeIssuesLink.Width := 200;
   FWelcomeIssuesLink.OnClick := WelcomeIssuesLinkClick;
   Attach(Panel, FWelcomeIssues);
+  // Sprint-Kachel (#1277): nur der Bereich; Burndown und Vergleich auf der Seite Issue-Tracker.
+  FWelcomeSprint := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeSprint));
   // Schnellaktionen je Projekt (#764): Schalter, je Knopf ein Häkchen, Programm für „Konsole“, zwei Tasten.
   FWelcomeQuickActions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeQuickActions));
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do
@@ -2840,6 +2849,9 @@ begin
   FIssuesBoard := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBoard));
   FIssuesBoardConfirmMove := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBoardConfirmMove));
   FIssuesBoardOnlyMine := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBoardOnlyMine));
+  // Sprint-Kachel (#1277): Burndown-Linie, Vergleich mit dem Vorsprint und Velocity.
+  FIssuesSprintBurndown := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSprintBurndown));
+  FIssuesSprintCompare := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSprintCompare));
   AddIssuesWorkflowSection;
 end;
 
@@ -3863,6 +3875,8 @@ begin
     Check := FWelcomeProjectSetup
   else if AId = TAtlasWelcomeIds.Issues then
     Check := FWelcomeIssues
+  else if AId = TAtlasWelcomeIds.Sprint then
+    Check := FWelcomeSprint
   else if AId = TAtlasWelcomeIds.Help then
     Check := FWelcomeHelp;
   Result := Check <> nil;
@@ -3901,6 +3915,8 @@ begin
     FWelcomeProjectSetup.Checked := AShown
   else if AId = TAtlasWelcomeIds.Issues then
     FWelcomeIssues.Checked := AShown
+  else if AId = TAtlasWelcomeIds.Sprint then
+    FWelcomeSprint.Checked := AShown
   else if AId = TAtlasWelcomeIds.Help then
     FWelcomeHelp.Checked := AShown;
 end;
@@ -4681,6 +4697,7 @@ begin
   FMarks.Bind(FWelcomeProjectSetup, ['WelcomePageProjectSetup']);
   FMarks.Bind(FWelcomeNewFromTemplate, ['WelcomePageNewFromTemplate']);
   FMarks.Bind(FWelcomeIssues, ['WelcomePageIssues']);
+  FMarks.Bind(FWelcomeSprint, ['WelcomePageSprint']);
   FMarks.Bind(FIssuesTracker, ['IssuesTracker']);
   FMarks.Bind(FIssuesQuery, ['IssuesQuery']);
   FMarks.Bind(FIssuesStart, ['IssuesStart']);
@@ -4697,6 +4714,8 @@ begin
   FMarks.Bind(FIssuesBoard, ['IssuesBoard']);
   FMarks.Bind(FIssuesBoardConfirmMove, ['IssuesBoardConfirmMove']);
   FMarks.Bind(FIssuesBoardOnlyMine, ['IssuesBoardOnlyMine']);
+  FMarks.Bind(FIssuesSprintBurndown, ['IssuesSprintBurndown']);
+  FMarks.Bind(FIssuesSprintCompare, ['IssuesSprintCompare']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FIssuesSyncState, ['IssuesSyncState']);
   FMarks.Bind(FIssuesStateField, ['IssuesStateField']);
@@ -6950,6 +6969,7 @@ begin
   FWelcomeTestsCiNotify.Checked := ASettings.WelcomePageTestsCiNotify;
   FCiLogin.Checked := ASettings.CiLogin;
   FWelcomeIssues.Checked := ASettings.WelcomePageIssues;
+  FWelcomeSprint.Checked := ASettings.WelcomePageSprint;
   if SameText(ASettings.IssuesTracker, 'github') then
     FIssuesTracker.Choice := 1
   else if SameText(ASettings.IssuesTracker, 'youtrack') then
@@ -6982,6 +7002,8 @@ begin
   FIssuesBoard.Checked := ASettings.IssuesBoard;
   FIssuesBoardConfirmMove.Checked := ASettings.IssuesBoardConfirmMove;
   FIssuesBoardOnlyMine.Checked := ASettings.IssuesBoardOnlyMine;
+  FIssuesSprintBurndown.Checked := ASettings.IssuesSprintBurndown;
+  FIssuesSprintCompare.Checked := ASettings.IssuesSprintCompare;
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -7528,6 +7550,7 @@ begin
   ASettings.WelcomePageTestsCiNotify := FWelcomeTestsCiNotify.Checked;
   ASettings.CiLogin := FCiLogin.Checked;
   ASettings.WelcomePageIssues := FWelcomeIssues.Checked;
+  ASettings.WelcomePageSprint := FWelcomeSprint.Checked;
   case FIssuesTracker.Choice of
     1:
       ASettings.IssuesTracker := 'github';
@@ -7563,6 +7586,8 @@ begin
   ASettings.IssuesBoard := FIssuesBoard.Checked;
   ASettings.IssuesBoardConfirmMove := FIssuesBoardConfirmMove.Checked;
   ASettings.IssuesBoardOnlyMine := FIssuesBoardOnlyMine.Checked;
+  ASettings.IssuesSprintBurndown := FIssuesSprintBurndown.Checked;
+  ASettings.IssuesSprintCompare := FIssuesSprintCompare.Checked;
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.IssuesProjects := TrackerProjectsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;

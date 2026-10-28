@@ -20,6 +20,7 @@
       {"presentation": "Erledigt", "isResolved": true, "fieldValues": [{"name": "Erledigt"}]}
     ]},
     "currentSprint": {"id": "109-42", "$type": "Sprint"},
+    "estimationField": {"name": "Story Points", "$type": "CustomField"},
     "$type": "Agile"
   }
 ]

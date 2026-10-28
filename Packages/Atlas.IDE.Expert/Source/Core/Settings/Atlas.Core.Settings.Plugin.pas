@@ -1255,6 +1255,9 @@ type
     /// <summary>Bereich „Meine Issues“ (#765, welcomePage.issues): offene Issues aus dem Tracker der .atlas
     /// (Abschnitt tracker) mit „Beginnen“; aus = kein Bereich, keine Abfrage, kein Netzzugriff.</summary>
     WelcomePageIssues: Boolean;
+    /// <summary>Bereich „Sprint“ (#1277, welcomePage.sprint): aktueller Sprint des Boards (#1272) mit Resttagen,
+    /// eigenen Zahlen und Burndown; aus = kein Bereich, keine Abfrage.</summary>
+    WelcomePageSprint: Boolean;
     /// <summary>Tracker (#765, issues.tracker): '' = aus der .atlas, "github" oder "youtrack".</summary>
     IssuesTracker: string;
     /// <summary>Abfrage in der Sprache des Trackers (#765, issues.query); '' = Vorgabe des Trackers
@@ -1331,6 +1334,12 @@ type
     IssuesBoardConfirmMove: Boolean;
     /// <summary>Board öffnet mit dem Filter „Nur meine“ (#1272, issues.board.onlyMine); aus = alle Karten.</summary>
     IssuesBoardOnlyMine: Boolean;
+    /// <summary>Burndown-Linie in der Sprint-Kachel (#1277, issues.sprint.burndown); aus = nur Kopf und Zahlen.
+    /// </summary>
+    IssuesSprintBurndown: Boolean;
+    /// <summary>Vergleich mit dem vorherigen Sprint und Velocity der letzten drei (#1277, issues.sprint.compare);
+    /// aus = kein früherer Sprint wird gefragt.</summary>
+    IssuesSprintCompare: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2053,6 +2062,7 @@ begin
   Result.WelcomePageQuickActionsBuildKey := $4042; // Strg+B
   Result.WelcomePageQuickActionsTestKey := $4054; // Strg+T
   Result.WelcomePageIssues := False;
+  Result.WelcomePageSprint := True;
   Result.IssuesTracker := '';
   Result.IssuesQuery := '';
   Result.IssuesStart := IssuesStartBranch;
@@ -2079,6 +2089,8 @@ begin
   Result.IssuesBoard := True;
   Result.IssuesBoardConfirmMove := True;
   Result.IssuesBoardOnlyMine := True;
+  Result.IssuesSprintBurndown := True;
+  Result.IssuesSprintCompare := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2867,6 +2879,7 @@ begin
   WelcomePageQuickActionsTestKey := AStore.ReadInteger('WelcomePageQuickActionsTestKey',
     Default.WelcomePageQuickActionsTestKey);
   WelcomePageIssues := AStore.ReadInteger('WelcomePageIssues', BoolValue(Default.WelcomePageIssues)) <> 0;
+  WelcomePageSprint := AStore.ReadInteger('WelcomePageSprint', BoolValue(Default.WelcomePageSprint)) <> 0;
   IssuesTracker := AStore.ReadString('IssuesTracker', Default.IssuesTracker);
   IssuesQuery := AStore.ReadString('IssuesQuery', Default.IssuesQuery);
   IssuesStart := AStore.ReadString('IssuesStart', Default.IssuesStart);
@@ -2898,6 +2911,8 @@ begin
   IssuesBoardConfirmMove := AStore.ReadInteger('IssuesBoardConfirmMove',
     BoolValue(Default.IssuesBoardConfirmMove)) <> 0;
   IssuesBoardOnlyMine := AStore.ReadInteger('IssuesBoardOnlyMine', BoolValue(Default.IssuesBoardOnlyMine)) <> 0;
+  IssuesSprintBurndown := AStore.ReadInteger('IssuesSprintBurndown', BoolValue(Default.IssuesSprintBurndown)) <> 0;
+  IssuesSprintCompare := AStore.ReadInteger('IssuesSprintCompare', BoolValue(Default.IssuesSprintCompare)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3355,6 +3370,7 @@ begin
   AStore.WriteInteger('WelcomePageQuickActionsBuildKey', WelcomePageQuickActionsBuildKey);
   AStore.WriteInteger('WelcomePageQuickActionsTestKey', WelcomePageQuickActionsTestKey);
   AStore.WriteInteger('WelcomePageIssues', BoolValue(WelcomePageIssues));
+  AStore.WriteInteger('WelcomePageSprint', BoolValue(WelcomePageSprint));
   AStore.WriteString('IssuesTracker', IssuesTracker);
   AStore.WriteString('IssuesQuery', IssuesQuery);
   AStore.WriteString('IssuesStart', IssuesStart);
@@ -3381,6 +3397,8 @@ begin
   AStore.WriteInteger('IssuesBoard', BoolValue(IssuesBoard));
   AStore.WriteInteger('IssuesBoardConfirmMove', BoolValue(IssuesBoardConfirmMove));
   AStore.WriteInteger('IssuesBoardOnlyMine', BoolValue(IssuesBoardOnlyMine));
+  AStore.WriteInteger('IssuesSprintBurndown', BoolValue(IssuesSprintBurndown));
+  AStore.WriteInteger('IssuesSprintCompare', BoolValue(IssuesSprintCompare));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

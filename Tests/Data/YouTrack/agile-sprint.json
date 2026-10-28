@@ -14,7 +14,8 @@
       "customFields": [
         {"name": "Zustand", "value": {"name": "In Arbeit", "$type": "StateBundleElement"}},
         {"name": "Priorität", "value": {"name": "Kritisch", "color": {"background": "#e30000"}}},
-        {"name": "Zuständig", "value": {"login": "marco", "fullName": "Marco Bähring", "$type": "User"}}
+        {"name": "Zuständig", "value": {"login": "marco", "fullName": "Marco Bähring", "$type": "User"}},
+        {"name": "Story Points", "value": 3, "$type": "SimpleIssueCustomField"}
       ],
       "links": [
         {"direction": "OUTWARD", "linkType": {"name": "Depend", "sourceToTarget": "depends on", "targetToSource": "is required for"},
@@ -30,7 +31,8 @@
       "customFields": [
         {"name": "Zustand", "value": {"name": "Nachgefragt"}},
         {"name": "Priorität", "value": {"name": "Normal", "color": {"background": "#6b8e23"}}},
-        {"name": "Zuständig", "value": {"login": "anna", "fullName": "Anna Schmidt"}}
+        {"name": "Zuständig", "value": {"login": "anna", "fullName": "Anna Schmidt"}},
+        {"name": "Story Points", "value": {"minutes": 90, "presentation": "1h 30m", "$type": "PeriodValue"}}
       ],
       "links": []
     },

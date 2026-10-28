@@ -78,7 +78,6 @@ type
     function Frame: TAtlasBoardFrame;
     procedure Wire(AFrame: TAtlasBoardFrame);
     function ProviderOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
-    function BoardsOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerBoards;
     procedure Load(const ABoardId, ASprintId: string);
     procedure Loaded(AGeneration: Integer; const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean;
       const ASnapshot: TAtlasBoardSnapshot; AError: TAtlasCiFetchError; AWrite: Boolean);
@@ -110,6 +109,9 @@ type
     procedure UpdateSettings;
     /// <summary>issues.board an?</summary>
     class function Active: Boolean; static;
+    /// <summary>Board-Zugriff des Anbieters von ATarget (YouTrack, GitHub); nil ohne (auch für die Sprint-Kachel,
+    /// #1277).</summary>
+    class function BoardsOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerBoards; static;
   end;
 
 implementation
@@ -207,7 +209,7 @@ begin
     Result := FHooks.Provider(ATarget.Provider);
 end;
 
-function TAtlasIdeBoard.BoardsOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerBoards;
+class function TAtlasIdeBoard.BoardsOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerBoards;
 begin
   // Anbieter mit Board; ein weiterer Tracker meldet sich hier mit seiner Klasse.
   if SameText(ATarget.Provider, TAtlasYouTrackTracker.ProviderName) then

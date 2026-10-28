@@ -201,7 +201,7 @@ begin
   Result.Name := DefaultName;
   Result.Columns := 2;
   // Testergebnisse (#763) nach dem Projektverlauf (Mockup WS17), Nicht gesichert (#762) unter der Kachel,
-  // Meine Issues (#765) und Hilfe (#766) am Ende der rechten Spalte.
+  // Meine Issues (#765), Sprint (#1277) und Hilfe (#766) am Ende der rechten Spalte.
   Result.Slots := [
     TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.Continue, 0),
     TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.Projects, 0),
@@ -213,6 +213,7 @@ begin
     TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.Discover, 1),
     TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.Setup, 1),
     TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.Issues, 1),
+    TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.Sprint, 1),
     TAtlasWelcomeSlot.Create(TAtlasWelcomeIds.Help, 1)];
 end;
 

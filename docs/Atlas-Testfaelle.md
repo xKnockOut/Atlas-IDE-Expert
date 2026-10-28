@@ -7972,3 +7972,30 @@ Vorbereitung: YouTrack mit Agile Board (deutsche Oberfläche, Spalten Offen, In 
 | BO22 | `issues.board.onlyMine` aus, IDE neu starten, Board öffnen | Board zeigt zuerst alle Karten |
 | BO23 | Helles und dunkles IDE-Design, 150 % Skalierung | Lesbare Karten, Ziehen mit halbdurchsichtiger Karte und markierter Zielspalte |
 | BO24 | Plugin entladen, während das Board lädt bzw. verschiebt | Keine Zugriffsverletzung |
+
+## Sprint-Kachel (#1277)
+
+Vorbereitung wie BO (#1272): YouTrack-Agile-Board mit Schätzfeld (Story Points) und mindestens drei abgeschlossenen Sprints, aktueller Sprint mit erledigten und offenen Issues (einige mir zugewiesen); GitHub-Projekt mit Iterationen und Zahlenfeld „Estimate“. Atlas-Start geöffnet, „Meine Issues“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Atlas-Start öffnen | Bereich „Sprint“ rechts nach „Meine Issues“: „Sprint 42 · 27.10.–07.11. · noch n Tage“, drei Zahlen, Burndown (**Abnahme**) |
+| SK2 | Werte mit dem Board im Browser vergleichen | Sprintname, Zeitraum, Resttage (ohne Wochenenden), meine offen/erledigt und Team übrig stimmen überein (**Abnahme**) |
+| SK3 | Board ohne Schätzfeld | „Team übrig“ als Anzahl Issues, Burndown in Issues |
+| SK4 | Maus über das Diagramm | Tooltip „Tag 3 (29.10.): Rest 12 · ideal 9,6 · Vorsprint 11“; Ist-Linie durchgezogen, Ideallinie gestrichelt, Marke „heute“ |
+| SK5 | Vergleich ansehen | Blasse Linie des Vorsprints, Zeile „erledigt 5 · Vorsprint 4 am selben Tag ▲1“, drei Velocity-Balken (**Abnahme**) |
+| SK6 | Vorsprint mit anderer Länge (eine statt zwei Wochen) | Linie über die ganze Breite auf Sprinttage normiert, Abweichung am selben Anteil (**Abnahme**) |
+| SK7 | Erster Sprint eines Boards (kein Vorsprint) | Keine Vergleichszeile, keine blasse Linie |
+| SK8 | `issues.sprint.compare` aus, Netzwerkmitschnitt (Fiddler) | Kein Vergleich, keine Velocity, kein Abruf früherer Sprints (**Abnahme**) |
+| SK9 | `issues.sprint.burndown` aus | Nur Kopf, Zahlen und Vergleichszeile |
+| SK10 | Klick auf „meine offen“ | „Meine Issues“ zeigt nur meine offenen Issues des Sprints mit „Gefiltert: „Sprint 42“, meine offen · alle zeigen“ (**Abnahme**) |
+| SK11 | SK10, Klick auf „alle zeigen“ | Wieder alle meine Issues |
+| SK12 | Klick auf „Team übrig“ bzw. das Diagramm | Fenster „Atlas-Board“ öffnet (**Abnahme**) |
+| SK13 | Klick auf den Titel | Board im Browser (YouTrack `…/agiles/<Board>/current`, GitHub Projektseite) |
+| SK14 | Projekt ohne Tracker | „Kein Board für dieses Projekt – zuordnen …“; Klick öffnet die Seite Issue-Tracker mit vorbefüllter Zeile (**Abnahme**) |
+| SK15 | Netzwerk trennen, Atlas-Start neu öffnen | Letzter Stand mit „Stand vom … · nicht erreichbar“, kein Dialog |
+| SK16 | `welcomePage.sprint` aus | Bereich fehlt, keine Abfrage (**Abnahme**) |
+| SK17 | Gespeichertes eigenes Layout aus einer älteren Version | „Sprint“ erscheint einmal neu in der rechten Spalte |
+| SK18 | Helles und dunkles Design | Linien und Texte lesbar (**Abnahme**) |
+| SK19 | GitHub-Projekt mit Iterationen und „Estimate“ | Zahlen in Punkten, Vorsprint = vorherige Iteration |
+| SK20 | Plugin entladen, während die Kachel lädt | Keine Zugriffsverletzung |
