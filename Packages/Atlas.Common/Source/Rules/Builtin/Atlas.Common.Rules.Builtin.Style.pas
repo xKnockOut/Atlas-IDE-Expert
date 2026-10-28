@@ -753,11 +753,16 @@ var
 
   function HasComment(AStart, AEnd: Integer): Boolean;
   var
-    Token: TPascalToken;
+    mIndex: Integer;
   begin
-    for Token in Tokens do
-      if (Token.Offset >= AStart) and (Token.Offset < AEnd) and (Token.Kind = TPascalTokenKind.Comment) then
+    // Binär zum ersten Token des Bereichs statt ab Dateianfang (#1323).
+    mIndex := AContext.Tree.FirstTokenFrom(AStart);
+    while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < AEnd) do
+    begin
+      if Tokens[mIndex].Kind = TPascalTokenKind.Comment then
         Exit(True);
+      Inc(mIndex);
+    end;
     Result := False;
   end;
 
