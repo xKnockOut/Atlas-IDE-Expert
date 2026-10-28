@@ -136,7 +136,7 @@ uses
   Atlas.Core.Completion.Matching;
 
 const
-  Listed: array[0..6] of string = ('.pas', '.dpr', '.dpk', '.inc', '.dfm', '.rc', '.dproj');
+  Listed: array[0..7] of string = ('.pas', '.dpr', '.dpk', '.inc', '.dfm', '.fmx', '.rc', '.dproj');
 
 function ExtensionRank(const AFileName: string): Integer;
 var
@@ -296,16 +296,23 @@ begin
   end;
 end;
 
+function ListedFile(const APath: string; const ASearchRec: TSearchRec): Boolean;
+begin
+  Result := TAtlasQuickOpen.IsListed(ASearchRec.Name);
+end;
+
 class function TAtlasQuickOpen.ListFolder(const AFolder: string; ARecursive: Boolean): TArray<string>;
 begin
   Result := nil;
   try
     if not TDirectory.Exists(AFolder) then
       Exit;
+    // Nur Delphi-Dateien (#1240): Bibliotheksordner enthalten Tausende anderer Dateien, die sonst erst als Liste
+    // entstanden und danach verworfen wurden.
     if ARecursive then
-      Result := TDirectory.GetFiles(AFolder, '*', TSearchOption.soAllDirectories)
+      Result := TDirectory.GetFiles(AFolder, '*', TSearchOption.soAllDirectories, ListedFile)
     else
-      Result := TDirectory.GetFiles(AFolder, '*', TSearchOption.soTopDirectoryOnly);
+      Result := TDirectory.GetFiles(AFolder, '*', TSearchOption.soTopDirectoryOnly, ListedFile);
   except
     // Ordner ohne Rechte oder gerade gelöscht: zählt als leer.
     on EInOutError do
