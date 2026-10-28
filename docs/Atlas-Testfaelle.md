@@ -521,6 +521,8 @@ Gleiche Ablage wie die benannten Lesezeichen, `format` 2 mit `kind` (`named`, `q
 | QL27 | IDE starten, Datei öffnen, `atlas.log` lesen (#1281) | Zeile „Schnelle Lesezeichen: Spalte angefordert (Spalte N, Breite B)“; fehlt die Spalte im Editor, nach 5 s zusätzlich „… die IDE hat sie aber noch nie gezeichnet“ bzw. „… bietet keine eigenen Spalten …“ |
 | QL28 | Spalte fehlt (oder `bookmarks.quick.gutter` aus), Datei mit IDE-Lesezeichen 1–3 öffnen (#1281) | Die IDE-Lesezeichen bleiben mit ihren Symbolen in der IDE, Atlas übernimmt nichts |
 | QL29 | Spalte fehlt, benanntes Lesezeichen mit Nummer (#1281) | Die Rinne zeigt das Band der benannten Lesezeichen an der Zeile |
+| QL30 | Linksklick in die Spalte links der Zahlen auf einer Zeile ohne Marker, dann auf den Marker (#1281) | Erst erscheint ein Marker, dann ist er wieder weg; kein Haltepunkt, keine Markierung im Editor. In `atlas.log` höchstens einmal „Klick … kam nicht über Application.OnMessage“ (dann hat ein anderer Experte die Nachrichten übernommen) |
+| QL31 | Tooltip über der Spalte und über einer Notiz, 100/150/200 % (#1281) | Text vollständig, auch Unterlängen (g, p, y) der letzten Zeile |
 
 ## Tippfehler (#485)
 
