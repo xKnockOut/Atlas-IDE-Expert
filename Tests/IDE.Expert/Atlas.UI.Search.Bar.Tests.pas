@@ -35,6 +35,9 @@ type
     procedure ChangesAreReportedButNotWhilePreparing;
     [Test]
     procedure EnteringAFieldIsReported;
+    /// <summary>#1243: Bearbeitungstasten bleiben im Suchfeld, Enter/F3/Esc nicht.</summary>
+    [Test]
+    procedure EditingKeysStayInTheField;
   end;
 
 implementation
@@ -287,6 +290,17 @@ begin
     Host.Free;
     Entered := nil;
   end;
+end;
+
+procedure TAtlasSearchBarTests.EditingKeysStayInTheField;
+begin
+  Assert.IsTrue(TAtlasSearchEdit.KeepsKey(Ord('V'), [ssCtrl]), 'Strg+V');
+  Assert.IsTrue(TAtlasSearchEdit.KeepsKey(Ord('A'), [ssCtrl]), 'Strg+A');
+  Assert.IsTrue(TAtlasSearchEdit.KeepsKey(VK_INSERT, [ssShift]), 'Umschalt+Einfg');
+  Assert.IsTrue(TAtlasSearchEdit.KeepsKey(VK_DELETE, []), 'Entf');
+  Assert.IsFalse(TAtlasSearchEdit.KeepsKey(VK_RETURN, []), 'Enter');
+  Assert.IsFalse(TAtlasSearchEdit.KeepsKey(VK_F3, []), 'F3');
+  Assert.IsFalse(TAtlasSearchEdit.KeepsKey(Ord('F'), [ssCtrl]), 'Strg+F');
 end;
 
 initialization

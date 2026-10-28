@@ -645,6 +645,13 @@ begin
     Result.LiveBusy := ProblemsOn(Settings) and TAtlasProblemsController.Checking;
     Result.LiveText := TAtlasStatusBarContent.LiveText(Settings.ProblemsLive, Result.LiveBusy, CheckedAt, Now,
       LiveTexts);
+    // Während des Debuggens ruht die Prüfung (#1241).
+    if ProblemsOn(Settings) and TAtlasProblemsController.Paused then
+    begin
+      Result.LiveBusy := False;
+      Result.LiveText := TAtlasStrings.Text(TAtlasTextId.StatusBarPausedDebugger);
+    end
+    else
     // Fortschritt der Projektprüfung (#1232), solange Units fehlen.
     if ProblemsOn(Settings) and TAtlasIdeProblems.ProjectProgress(Checked, Total) then
       Result.LiveText := Result.LiveText + TAtlasStatusBarContent.ProgressText(Checked, Total, LiveTexts);

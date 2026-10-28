@@ -25,6 +25,9 @@ type
     procedure ReportsUnknownName;
     [Test]
     procedure KnowsLocalsUsesAndIntrinsics;
+    /// <summary>#1239: Variable aus for var … in mit begin … end.</summary>
+    [Test]
+    procedure KnowsForInVariableInBlock;
     [Test]
     procedure SkipsWithAndExceptionVariables;
     [Test]
@@ -175,6 +178,23 @@ begin
     '  Inc(B);'#10 +
     '  Melde(Length(''x'') + B);'#10 +
     '  Result := B;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsForInVariableInBlock;
+begin
+  // #1239: for var X in … do begin … end; die Variable gilt im ganzen Rumpf.
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P(const AWerte: TArray<string>);'#10 +
+    'begin'#10 +
+    '  for var mKunde in AWerte do'#10 +
+    '  begin'#10 +
+    '    Writeln(mKunde);'#10 +
+    '  end;'#10 +
     'end;'#10 +
     'end.'));
 end;
