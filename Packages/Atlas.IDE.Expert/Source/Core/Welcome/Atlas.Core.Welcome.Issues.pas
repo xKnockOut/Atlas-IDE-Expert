@@ -4,9 +4,12 @@
 // Tools API: was abgefragt wird, wann, was der Bereich zeigt, welches Issue
 // aktiv ist und was „Beginnen“ tut.
 // - Ziel: Anbieter, Adresse und Projekt aus .atlas (Abschnitt "tracker");
-//   issues.tracker ersetzt den Anbieter, .query die Abfrage. Ohne tracker in
-//   der .atlas gilt die persönliche Zuordnung (#1261, issues.projects):
-//   Verbindung und Tracker-Projekt der passenden Zeile.
+//   issues.tracker ersetzt den Anbieter. Ohne tracker in der .atlas gilt die
+//   persönliche Zuordnung (#1261, issues.projects): Verbindung und
+//   Tracker-Projekt der passenden Zeile.
+// - Abfrage (#1262): die je Projekt gewählte aus issues.queries
+//   (TAtlasTrackerQueries); gemerkt wird ihr Name ("selected") und je Name
+//   die Trefferzahl der letzten Abfrage ("counts") für die Klappliste.
 // - Abfrage beim Anzeigen, höchstens alle DueMinutes Minuten, Zeitlimit
 //   FetchTimeoutMs; ohne Netz bleibt der letzte Stand („Stand vom …“).
 // - Aktives Issue: mit „Beginnen“ gemerkt (Branch oder nur gemerkt); sonst
@@ -17,6 +20,7 @@
 //   (#592), damit die Seite sofort den letzten Stand zeigt:
 //     "issues": {"provider": "github", "server": "https://github.com",
 //                "project": "owner/repo", "query": "",
+//                "selected": "Mir zugewiesen", "counts": {"Mir zugewiesen": 3},
 //                "attempt": "…", "error": "network", "at": "…",
 //                "items": [{"key": "#753", "number": 753, "title": "…",
 //                           "labels": ["plugin"], "state": "", "priority": "",
@@ -37,6 +41,7 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Projects,
+  Atlas.Core.Tracker.Queries,
   Atlas.Core.Vcs.Contract;
 
 type
@@ -83,6 +88,12 @@ type
     function Active: Boolean;
   end;
 
+  /// <summary>Trefferzahl der letzten Abfrage mit diesem Namen (#1262).</summary>
+  TAtlasIssuesQueryCount = record
+    Name: string;
+    Count: Integer;
+  end;
+
   /// <summary>Abschnitt "issues" der Zusammenfassung.</summary>
   TAtlasIssuesState = record
     Provider: string;
@@ -102,10 +113,16 @@ type
     Hook: string;
     /// <summary>Verwaltungsordner von Git (für die Präfix-Datei des Hooks); '' ohne Git oder unbekannt.</summary>
     GitDir: string;
+    /// <summary>Name der gewählten Abfrage (#1262); '' = erste passende.</summary>
+    Selected: string;
+    Counts: TArray<TAtlasIssuesQueryCount>;
     class function Empty: TAtlasIssuesState; static;
     /// <summary>Die Liste gehört zu ATarget (Anbieter, Server, Projekt und Abfrage gleich).</summary>
     function Matches(const ATarget: TAtlasTrackerTarget): Boolean;
     function Find(const AKey: string; out AIssue: TAtlasTrackerIssue): Boolean;
+    /// <summary>Trefferzahl der letzten Abfrage AName; -1 = noch keine.</summary>
+    function CountOf(const AName: string): Integer;
+    procedure SetCount(const AName: string; ACount: Integer);
   end;
 
   /// <summary>Einstellungen issues.* für „Beginnen“.</summary>
@@ -168,6 +185,17 @@ type
     Connection: string;
     /// <summary>Ohne Tracker: „zuordnen …“ anbieten (#1261).</summary>
     CanAssign: Boolean;
+    /// <summary>Tracker-Projekt (YouTrack-ID, GitHub owner/repo) für die Fußzeile (#1262).</summary>
+    TrackerProject: string;
+    /// <summary>Passende Abfragen (#1262), die gewählte (Index, -1 ohne) und je Abfrage die Trefferzahl der
+    /// letzten Abfrage (-1 = noch keine).</summary>
+    Queries: TArray<TAtlasTrackerQuery>;
+    QueryIndex: Integer;
+    QueryCounts: TArray<Integer>;
+    /// <summary>Gesendete Abfrage (bei der Vorgabe die des Anbieters) für die Fußzeile.</summary>
+    QueryText: string;
+    /// <summary>Klappliste zeigen (issues.queryPicker).</summary>
+    Picker: Boolean;
     Querying: Boolean;
     Notice: string;
     /// <summary>Hinweis ist ein Fehler (rot).</summary>
@@ -222,6 +250,10 @@ type
       ABranch: string): TAtlasActiveIssue; static;
     class function View(const AState: TAtlasIssuesState; const ATarget: TAtlasTrackerTarget;
       const ABranch: string): TAtlasIssuesView; static;
+    /// <summary>Je Abfrage aus AQueries die Trefferzahl der letzten Abfrage (-1 = noch keine), für die Klappliste
+    /// (#1262).</summary>
+    class function QueryCounts(const AState: TAtlasIssuesState;
+      const AQueries: TArray<TAtlasTrackerQuery>): TArray<Integer>; static;
     /// <summary>Plan für „Beginnen“ auf AIssue. Ohne Git oder SVN wird nur gemerkt.</summary>
     class function PlanStart(AKind: TAtlasVcsKind; const AOptions: TAtlasIssuesOptions;
       const AIssue: TAtlasTrackerIssue): TAtlasIssueStartPlan; static;
@@ -281,7 +313,36 @@ class function TAtlasIssuesState.Empty: TAtlasIssuesState;
 begin
   Result := Default(TAtlasIssuesState);
   Result.Items := nil;
+  Result.Counts := nil;
   Result.Active := TAtlasActiveIssue.Empty;
+end;
+
+function TAtlasIssuesState.CountOf(const AName: string): Integer;
+var
+  mCount: TAtlasIssuesQueryCount;
+begin
+  Result := -1;
+  for mCount in Counts do
+    if SameText(mCount.Name, AName) then
+      Exit(mCount.Count);
+end;
+
+procedure TAtlasIssuesState.SetCount(const AName: string; ACount: Integer);
+var
+  mIndex: Integer;
+  mCount: TAtlasIssuesQueryCount;
+begin
+  if Trim(AName) = '' then
+    Exit;
+  for mIndex := 0 to High(Counts) do
+    if SameText(Counts[mIndex].Name, AName) then
+    begin
+      Counts[mIndex].Count := ACount;
+      Exit;
+    end;
+  mCount.Name := Trim(AName);
+  mCount.Count := ACount;
+  Counts := Counts + [mCount];
 end;
 
 function TAtlasIssuesState.Matches(const ATarget: TAtlasTrackerTarget): Boolean;
@@ -479,6 +540,16 @@ begin
     Result.Status := TAtlasIssuesStatus.Stale
   else
     Result.Status := TAtlasIssuesStatus.Failed;
+end;
+
+class function TAtlasWelcomeIssues.QueryCounts(const AState: TAtlasIssuesState;
+  const AQueries: TArray<TAtlasTrackerQuery>): TArray<Integer>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AQueries));
+  for mIndex := 0 to High(AQueries) do
+    Result[mIndex] := AState.CountOf(AQueries[mIndex].Name);
 end;
 
 class function TAtlasWelcomeIssues.PlanStart(AKind: TAtlasVcsKind; const AOptions: TAtlasIssuesOptions;
@@ -725,7 +796,8 @@ end;
 function SectionJson(const AState: TAtlasIssuesState): TJSONObject;
 var
   Items, Labels: TJSONArray;
-  Entry, Active: TJSONObject;
+  Entry, Active, Counts: TJSONObject;
+  Count: TAtlasIssuesQueryCount;
   Item: TAtlasTrackerIssue;
   LabelName: string;
 begin
@@ -778,12 +850,21 @@ begin
   AddText(Result, 'endedBranch', AState.EndedBranch);
   AddText(Result, 'hook', AState.Hook);
   AddText(Result, 'gitDir', AState.GitDir);
+  AddText(Result, 'selected', AState.Selected);
+  if Length(AState.Counts) > 0 then
+  begin
+    Counts := TJSONObject.Create;
+    Result.AddPair('counts', Counts);
+    for Count in AState.Counts do
+      Counts.AddPair(Count.Name, TJSONNumber.Create(Count.Count));
+  end;
 end;
 
 function StateOf(ASection: TJSONObject; out AState: TAtlasIssuesState): Boolean;
 var
   Items, Labels, Value, LabelValue: TJSONValue;
-  Entry, Active: TJSONObject;
+  Entry, Active, Counts: TJSONObject;
+  Index: Integer;
   Item: TAtlasTrackerIssue;
 begin
   AState := TAtlasIssuesState.Empty;
@@ -835,6 +916,12 @@ begin
   AState.EndedBranch := TextIn(ASection, 'endedBranch');
   AState.Hook := TextIn(ASection, 'hook');
   AState.GitDir := TextIn(ASection, 'gitDir');
+  AState.Selected := TextIn(ASection, 'selected');
+  Counts := ObjectIn(ASection, 'counts');
+  if Counts <> nil then
+    for Index := 0 to Counts.Count - 1 do
+      if Counts.Pairs[Index].JsonValue is TJSONNumber then
+        AState.SetCount(Counts.Pairs[Index].JsonString.Value, TJSONNumber(Counts.Pairs[Index].JsonValue).AsInt);
 end;
 
 class function TAtlasWelcomeIssues.ToJson(const AState: TAtlasIssuesState): string;

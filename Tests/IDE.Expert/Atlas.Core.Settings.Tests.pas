@@ -46,6 +46,10 @@ type
     /// <summary>#1261: issues.projects wie die Verbindungen als JSON-Liste in settings.json.</summary>
     [Test]
     procedure IssuesProjectsGoToGlobalFile;
+    /// <summary>#1262: issues.queries wie die Verbindungen als JSON-Liste in settings.json; issues.queryPicker
+    /// bleibt in der Registry.</summary>
+    [Test]
+    procedure IssuesQueriesGoToGlobalFile;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -679,6 +683,33 @@ begin
   Assert.IsTrue(MatchText('issues.projects', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
 end;
 
+procedure TAtlasPluginSettingsTests.IssuesQueriesGoToGlobalFile;
+const
+  cList = '[{"name": "Sprint", "query": "#{Aktueller Sprint}", "connection": "Firma"}]';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.Save(mStore);
+  Assert.IsFalse(mRouted.Text.Contains('queries'), 'leere Liste ohne Eintrag: ' + mRouted.Text);
+  mSettings.IssuesQueries := cList;
+  mSettings.IssuesQueryPicker := False;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"queries": [{"name": ');
+  Assert.AreEqual('', mRegistry.ReadString('IssuesQueries', ''), 'nicht in der Registry');
+  Assert.AreEqual(0, mRegistry.ReadInteger('IssuesQueryPicker', 1), 'Klappliste in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesQueries.Contains('"Sprint"'), mLoaded.IssuesQueries);
+  Assert.IsFalse(mLoaded.IssuesQueryPicker);
+  Assert.IsTrue(MatchText('issues.queries', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;
 var
   Store, Inner: IAtlasSettingsStore;
@@ -888,7 +919,8 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsFalse(Settings.WelcomePageIssues, 'standardmäßig aus: kein Netzzugriff');
   Assert.AreEqual('', Settings.IssuesTracker, 'aus der .atlas');
-  Assert.AreEqual('', Settings.IssuesQuery);
+  Assert.AreEqual('[]', Settings.IssuesQueries, 'je Anbieter „Mir zugewiesen“ (#1262)');
+  Assert.IsTrue(Settings.IssuesQueryPicker);
   Assert.AreEqual('branch', Settings.IssuesStart);
   Assert.AreEqual('', Settings.IssuesBranchPattern, 'je Versionsverwaltung');
   Assert.AreEqual('', Settings.IssuesBranchBase);
@@ -901,14 +933,14 @@ begin
     TAtlasPluginSettings.IssuesStartRemember);
   // Normalisieren.
   Settings.IssuesTracker := ' YouTrack ';
-  Settings.IssuesQuery := '  for: me'#13#10'#Unresolved  ';
+  Settings.IssuesQueries := '  ';
   Settings.IssuesStart := 'REMEMBER';
   Settings.IssuesBranchPattern := ' bugfix/{kennung} ';
   Settings.IssuesBranchBase := ' develop ';
   Settings.IssuesCommitPattern := '[{kennung}] ';
   Settings.Normalize;
   Assert.AreEqual('youtrack', Settings.IssuesTracker);
-  Assert.AreEqual('for: me  #Unresolved', Settings.IssuesQuery, 'einzeilig');
+  Assert.AreEqual('[]', Settings.IssuesQueries, 'leer = keine');
   Assert.AreEqual('remember', Settings.IssuesStart);
   Assert.AreEqual('bugfix/{kennung}', Settings.IssuesBranchPattern);
   Assert.AreEqual('develop', Settings.IssuesBranchBase);
@@ -923,7 +955,8 @@ begin
   // Speichern und Laden.
   Settings.WelcomePageIssues := True;
   Settings.IssuesTracker := 'github';
-  Settings.IssuesQuery := 'label:bug';
+  Settings.IssuesQueries := '[{"name": "Bugs", "query": "label:bug"}]';
+  Settings.IssuesQueryPicker := False;
   Settings.IssuesStart := 'remember';
   Settings.IssuesBranchPattern := 'issue/{nummer}';
   Settings.IssuesBranchBase := 'trunk';
@@ -935,7 +968,8 @@ begin
   Loaded.Load(Store);
   Assert.IsTrue(Loaded.WelcomePageIssues);
   Assert.AreEqual('github', Loaded.IssuesTracker);
-  Assert.AreEqual('label:bug', Loaded.IssuesQuery);
+  Assert.AreEqual('[{"name": "Bugs", "query": "label:bug"}]', Loaded.IssuesQueries);
+  Assert.IsFalse(Loaded.IssuesQueryPicker);
   Assert.AreEqual('remember', Loaded.IssuesStart);
   Assert.AreEqual('issue/{nummer}', Loaded.IssuesBranchPattern);
   Assert.AreEqual('trunk', Loaded.IssuesBranchBase);

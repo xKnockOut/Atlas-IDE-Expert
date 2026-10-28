@@ -214,7 +214,8 @@ uses
   Atlas.Text.Checkin,
   Atlas.Core.Product.Version,
   Atlas.Core.Settings.History,
-  Atlas.Core.Settings.JsonText;
+  Atlas.Core.Settings.JsonText,
+  Atlas.Core.Settings.QueryMigration;
 
 const
   /// <summary>Benutzerordner für Pfadmakros, der längste zuerst.</summary>
@@ -1048,6 +1049,13 @@ begin
         ((Value is TJSONNumber) and (TJSONNumber(Value).AsInt <> 0)) then
         Exit('"expanded"');
       Exit('"collapsed"');
+    end;
+    // issues.query (#765, #1280) war eine einzelne Abfrage; issues.queries (#1262) ist eine Liste, in die sie als
+    // „Standard“ kommt.
+    if (AEntry.Name = TAtlasSettingsQueryMigrations.SettingName) and (Value is TJSONString) then
+    begin
+      AMigrated := True;
+      Exit(TAtlasSettingsQueryMigrations.WithLegacy('[]', TJSONString(Value).Value));
     end;
     Dummy := False;
     Mapped := MapStrings(Value, AFolders, True, Dummy);

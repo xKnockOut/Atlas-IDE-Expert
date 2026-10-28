@@ -143,7 +143,9 @@ begin
     // Tracker-Verbindungen (#1260): persönlich, der Server prüft sie nur.
     JsonSetting('IssuesConnections', 'issues.connections'),
     // Zuordnung Delphi-Projekt → Tracker-Projekt (#1261): persönlich wie die Verbindungen.
-    JsonSetting('IssuesProjects', 'issues.projects')];
+    JsonSetting('IssuesProjects', 'issues.projects'),
+    // Benannte Abfragen für „Meine Issues“ (#1262).
+    JsonSetting('IssuesQueries', 'issues.queries')];
 end;
 
 class function TAtlasSettingsScopes.TryRouted(const AName: string; out ASetting: TAtlasRoutedSetting): Boolean;

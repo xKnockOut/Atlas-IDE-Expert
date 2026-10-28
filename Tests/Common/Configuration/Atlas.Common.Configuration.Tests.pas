@@ -65,6 +65,9 @@ type
     /// connection nötig, ein Pfad nur einmal (ohne Groß-/Kleinschreibung, „/“ wie „\“).</summary>
     [Test]
     procedure ChecksIssueProjects;
+    /// <summary>#1262: issues.queries mit Name und Abfrage, doppelte Namen und fehlende Angaben gemeldet.</summary>
+    [Test]
+    procedure ChecksIssueQueries;
     [Test]
     procedure ReadsStringLiteral;
     [Test]
@@ -1182,8 +1185,8 @@ begin
     ' {"name": "a", "provider": "github", "url": "https://user@github.com"}, {"provider": "", "url": 3, "token": "x"},' +
     ' 3], "queries": []}}', Issues);
   // http; Doppelname a und Benutzer in der Adresse; url kein String, token unbekannt, ohne name, ohne provider (leer)
-  // und ohne url; 3; queries unbekannt.
-  Assert.AreEqual(10, Integer(Length(Issues)));
+  // und ohne url; 3. queries ist seit #1262 bekannt.
+  Assert.AreEqual(9, Integer(Length(Issues)));
   Parse('{"issues": {"connections": {"name": "A"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
   Parse('{"issues": []}', Issues);
@@ -1213,6 +1216,27 @@ begin
   Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"projects": [{"match": "C:\\B", ' +
     '"connection": "Firma"}]}}', Issues);
   Assert.IsTrue(Settings.IssueProjects.Contains('Firma'), 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ChecksIssueQueries;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{"issues": {"queries": [{"name": "Mir zugewiesen", "query": "assignee: meine #Ungelöst"}, ' +
+    '{"name": "Sprint", "query": "#{Aktueller Sprint}", "connection": "Firma", "project": "KASSE"}]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)), 'connection und project dürfen fehlen');
+  Assert.IsTrue(Settings.IssueQueries.StartsWith('['), Settings.IssueQueries);
+  Assert.IsTrue(Settings.IssueQueries.Contains('"Sprint"'), Settings.IssueQueries);
+  Settings := Parse('{"issues": {"queries": [{"name": "A", "query": "x"}, {"name": "a", "query": ""}, ' +
+    '{"connection": 3, "x": 1}, 3]}}', Issues);
+  // Name doppelt, query leer; connection kein String, x unbekannt, ohne name, ohne query; 3.
+  Assert.AreEqual(7, Integer(Length(Issues)));
+  Parse('{"issues": {"queries": {"name": "A"}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
+  Settings := TConfigurationParser.ParseLayered('{}', '{"issues": {"queries": [{"name": "B", "query": "y"}]}}',
+    Issues);
+  Assert.IsTrue(Settings.IssueQueries.Contains('"B"'), 'Datei vor Editor');
 end;
 
 procedure TConfigurationParserTests.ReadsMcpDisabledTools;

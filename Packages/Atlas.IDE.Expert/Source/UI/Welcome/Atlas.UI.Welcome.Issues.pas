@@ -18,6 +18,11 @@
 // abfragen, Zugang hinterlegen, Aktuelles Issue beenden.
 // Ohne Tracker (weder .atlas noch Zuordnung, #1261) ist die Fußzeile der Link
 // „Kein Tracker für dieses Projekt – zuordnen …“ (AssignProject).
+// Abfragen (#1262): rechts in der Titelzeile die Klappliste „Mir zugewiesen
+// (3) ▾“ mit den passenden Abfragen samt Trefferzahl der letzten Abfrage und
+// „Abfragen bearbeiten …“ (issues.queryPicker aus: keine Klappliste). Unter
+// der Fußzeile eine Zeile mit Verbindung, Tracker-Projekt und der gesendeten
+// Abfrage.
 // Daten und Aktionen kommen über IAtlasIssuesSource aus der IDE-Schicht;
 // Aktionen gehen über die Nachrichtenschleife, weil die Quelle den Bereich
 // daraufhin neu füllt.
@@ -33,6 +38,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.Menus,
   Vcl.Graphics,
+  Vcl.StdCtrls,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Welcome.Issues,
@@ -58,6 +64,10 @@ type
     procedure EndActive;
     /// <summary>„zuordnen …“ (#1261): Seite Issue-Tracker mit einer Zeile für das Projekt öffnen.</summary>
     procedure AssignProject;
+    /// <summary>Abfrage AName für das Projekt wählen und gleich abfragen (#1262).</summary>
+    procedure SelectQuery(const AName: string);
+    /// <summary>„Abfragen bearbeiten …“: Seite Issue-Tracker öffnen.</summary>
+    procedure EditQueries;
   end;
 
 {$SCOPEDENUMS ON}
@@ -104,6 +114,9 @@ type
     FQueryItem: TMenuItem;
     FCredentialsItem: TMenuItem;
     FEndItem: TMenuItem;
+    /// <summary>Klappliste der Abfragen in der Titelzeile (#1262).</summary>
+    FQueryLabel: TLabel;
+    FQueryMenu: TPopupMenu;
     FMenuRow: Integer;
     FHintKey: string;
     procedure SetSource(const AValue: IAtlasIssuesSource);
@@ -118,12 +131,17 @@ type
     procedure QueryClick(Sender: TObject);
     procedure CredentialsClick(Sender: TObject);
     procedure EndClick(Sender: TObject);
+    procedure QueryLabelClick(Sender: TObject);
+    procedure QueryItemClick(Sender: TObject);
+    procedure QueriesEditClick(Sender: TObject);
+    procedure UpdateQueryPicker;
     function MenuIssue(out AIssue: TAtlasTrackerIssue): Boolean;
     procedure Post(const AAction: TThreadProcedure);
     function ListTop: Integer;
     function RowTop(AIndex: Integer): Integer;
     function RowHeight(AIndex: Integer): Integer;
     function FooterTop: Integer;
+    function SourceTop: Integer;
     function ChipWidth(ACanvas: TCanvas; const AText: string): Integer;
     procedure PaintChip(ACanvas: TCanvas; var ALeft: Integer; ATop, ALimit: Integer; const AText: string;
       AColor: TColor; AFilled: Boolean; out ARect: TRect);
@@ -146,6 +164,15 @@ type
     class function FooterText(const AView: TAtlasIssuesView): string; static;
     /// <summary>Die Fußzeile ist der Link „zuordnen …“ (#1261): Projekt ohne Tracker, Zuordnen möglich.</summary>
     class function FooterIsAssign(const AView: TAtlasIssuesView): Boolean; static;
+    /// <summary>Zeile unter der Fußzeile (#1262): „Firma · KASSE · Abfrage: …“; '' ohne Tracker.</summary>
+    class function SourceText(const AView: TAtlasIssuesView): string; static;
+    /// <summary>Eintrag der Klappliste: „Name (3)“, ab MaxItems „Name (10+)“, ohne Abfrage nur der Name.</summary>
+    class function QueryCaption(const AName: string; ACount: Integer): string; static;
+    /// <summary>Klappliste sichtbar: eingeschaltet und Tracker mit Abfragen.</summary>
+    class function ShowsQueryPicker(const AView: TAtlasIssuesView): Boolean; static;
+    /// <summary>Klappliste füllen (auch für Tests): passende Abfragen, die gewählte mit Haken, dann
+    /// „Abfragen bearbeiten …“.</summary>
+    procedure FillQueryMenu;
     class function ErrorText(AError: TAtlasCiFetchError): string; static;
     /// <summary>„PR #760 · CI grün“, „PR #760 (Entwurf)“; '' ohne Pull Request.</summary>
     class function PullRequestText(const APull: TAtlasTrackerPullRequest): string; static;
@@ -169,6 +196,8 @@ type
     property QueryItem: TMenuItem read FQueryItem;
     property CredentialsItem: TMenuItem read FCredentialsItem;
     property EndItem: TMenuItem read FEndItem;
+    property QueryLabel: TLabel read FQueryLabel;
+    property QueryMenu: TPopupMenu read FQueryMenu;
     property MenuRow: Integer read FMenuRow write FMenuRow;
   end;
 
@@ -177,6 +206,7 @@ implementation
 uses
   System.UITypes,
   System.Math,
+  Atlas.Core.Tracker.Queries,
   System.DateUtils,
   Vcl.Themes,
   Atlas.Core.Diagnostics.MainThread,
@@ -254,6 +284,19 @@ begin
   FCredentialsItem := AddItem(TAtlasStrings.Text(TAtlasTextId.TrackerLoginCommand), CredentialsClick);
   FEndItem := AddItem(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesEnd), EndClick);
   FBox.PopupMenu := FMenu;
+  // Klappliste der Abfragen rechts in der Titelzeile (#1262).
+  FQueryMenu := TPopupMenu.Create(Self);
+  FQueryLabel := TLabel.Create(Self);
+  FQueryLabel.Parent := TitleBar;
+  FQueryLabel.Align := alRight;
+  FQueryLabel.AlignWithMargins := True;
+  FQueryLabel.Margins.SetBounds(4, 4, 6, 0);
+  FQueryLabel.Cursor := crHandPoint;
+  FQueryLabel.ShowHint := True;
+  FQueryLabel.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueryHint);
+  FQueryLabel.Font.Color := clHotLight;
+  FQueryLabel.Visible := False;
+  FQueryLabel.OnClick := QueryLabelClick;
 end;
 
 procedure TAtlasWelcomeIssuesFrame.SetSource(const AValue: IAtlasIssuesSource);
@@ -280,6 +323,7 @@ begin
   SetLength(FPullRects, Length(FView.Items));
   SetLength(FStartRects, Length(FView.Items));
   FHintKey := '';
+  UpdateQueryPicker;
   FBox.Invalidate;
   inherited;
   if OldHeight <> BodyHeight then
@@ -393,6 +437,114 @@ begin
     AView.CanAssign;
 end;
 
+class function TAtlasWelcomeIssuesFrame.SourceText(const AView: TAtlasIssuesView): string;
+begin
+  Result := '';
+  if (AView.Status = TAtlasIssuesStatus.NotConfigured) or (AView.QueryText = '') then
+    Exit;
+  Result := JoinParts([AView.Connection, AView.TrackerProject,
+    TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesSource, [AView.QueryText])]);
+end;
+
+class function TAtlasWelcomeIssuesFrame.QueryCaption(const AName: string; ACount: Integer): string;
+begin
+  if ACount < 0 then
+    Result := AName
+  else if ACount >= TAtlasWelcomeIssues.MaxItems then
+    Result := Format('%s (%d+)', [AName, TAtlasWelcomeIssues.MaxItems])
+  else
+    Result := Format('%s (%d)', [AName, ACount]);
+end;
+
+class function TAtlasWelcomeIssuesFrame.ShowsQueryPicker(const AView: TAtlasIssuesView): Boolean;
+begin
+  Result := AView.Picker and (AView.Status <> TAtlasIssuesStatus.NotConfigured) and (AView.QueryIndex >= 0) and
+    (AView.QueryIndex <= High(AView.Queries));
+end;
+
+procedure TAtlasWelcomeIssuesFrame.UpdateQueryPicker;
+var
+  mCount: Integer;
+begin
+  FQueryLabel.Visible := ShowsQueryPicker(FView);
+  // Die Beschriftung misst ihren Text: erst mit Fenster (CreateWnd holt UpdateContent nach).
+  if not FQueryLabel.Visible or not HasWindow then
+    Exit;
+  mCount := -1;
+  if FView.QueryIndex <= High(FView.QueryCounts) then
+    mCount := FView.QueryCounts[FView.QueryIndex];
+  FQueryLabel.Caption := QueryCaption(FView.Queries[FView.QueryIndex].Name, mCount) + ' ' + #$25BE;
+end;
+
+procedure TAtlasWelcomeIssuesFrame.FillQueryMenu;
+var
+  mIndex, mCount: Integer;
+  mItem: TMenuItem;
+begin
+  FQueryMenu.Items.Clear;
+  for mIndex := 0 to High(FView.Queries) do
+  begin
+    mCount := -1;
+    if mIndex <= High(FView.QueryCounts) then
+      mCount := FView.QueryCounts[mIndex];
+    mItem := TMenuItem.Create(FQueryMenu);
+    mItem.Caption := QueryCaption(FView.Queries[mIndex].Name, mCount);
+    mItem.RadioItem := True;
+    mItem.Checked := mIndex = FView.QueryIndex;
+    mItem.Tag := mIndex;
+    mItem.OnClick := QueryItemClick;
+    FQueryMenu.Items.Add(mItem);
+  end;
+  mItem := TMenuItem.Create(FQueryMenu);
+  mItem.Caption := '-';
+  FQueryMenu.Items.Add(mItem);
+  mItem := TMenuItem.Create(FQueryMenu);
+  mItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesQueriesEdit);
+  mItem.OnClick := QueriesEditClick;
+  FQueryMenu.Items.Add(mItem);
+end;
+
+procedure TAtlasWelcomeIssuesFrame.QueryLabelClick(Sender: TObject);
+var
+  mPoint: TPoint;
+begin
+  FillQueryMenu;
+  mPoint := FQueryLabel.ClientToScreen(Point(0, FQueryLabel.Height));
+  FQueryMenu.Popup(mPoint.X, mPoint.Y);
+end;
+
+procedure TAtlasWelcomeIssuesFrame.QueryItemClick(Sender: TObject);
+var
+  mSource: IAtlasIssuesSource;
+  mName: string;
+  mIndex: Integer;
+begin
+  mIndex := TMenuItem(Sender).Tag;
+  if (FSource = nil) or (mIndex < 0) or (mIndex > High(FView.Queries)) then
+    Exit;
+  mSource := FSource;
+  mName := FView.Queries[mIndex].Name;
+  Post(
+    procedure
+    begin
+      mSource.SelectQuery(mName);
+    end);
+end;
+
+procedure TAtlasWelcomeIssuesFrame.QueriesEditClick(Sender: TObject);
+var
+  mSource: IAtlasIssuesSource;
+begin
+  if FSource = nil then
+    Exit;
+  mSource := FSource;
+  Post(
+    procedure
+    begin
+      mSource.EditQueries;
+    end);
+end;
+
 class function TAtlasWelcomeIssuesFrame.PullRequestText(const APull: TAtlasTrackerPullRequest): string;
 begin
   Result := '';
@@ -486,9 +638,16 @@ begin
   Result := RowTop(Length(FView.Items));
 end;
 
+function TAtlasWelcomeIssuesFrame.SourceTop: Integer;
+begin
+  Result := FooterTop + ScaleValue(FooterHeight);
+end;
+
 function TAtlasWelcomeIssuesFrame.BodyHeight: Integer;
 begin
-  Result := FooterTop + ScaleValue(FooterHeight) + ScaleValue(Indent) div 2;
+  Result := SourceTop + ScaleValue(Indent) div 2;
+  if SourceText(FView) <> '' then
+    Inc(Result, ScaleValue(FooterHeight));
 end;
 
 function TAtlasWelcomeIssuesFrame.ChipWidth(ACanvas: TCanvas; const AText: string): Integer;
@@ -638,6 +797,17 @@ begin
     Exit;
   for Index := 0 to High(FView.Items) do
     PaintRow(Canvas, Index);
+  // Woher die Liste kommt (#1262): Verbindung, Tracker-Projekt, gesendete Abfrage.
+  mText := SourceText(FView);
+  if mText <> '' then
+  begin
+    mTop := SourceTop + ScaleValue(4);
+    Canvas.Font.Size := Font.Size - 1;
+    Canvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
+    Canvas.TextRect(Rect(ScaleValue(Indent), mTop, FBox.Width - ScaleValue(Indent), mTop + ScaleValue(FooterHeight)),
+      ScaleValue(Indent), mTop, mText);
+    Canvas.Font.Assign(Font);
+  end;
   mText := FooterText(FView);
   if mText = '' then
     Exit;

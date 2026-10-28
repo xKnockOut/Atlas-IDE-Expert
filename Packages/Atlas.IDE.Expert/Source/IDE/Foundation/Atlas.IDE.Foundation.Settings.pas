@@ -21,8 +21,12 @@
 // behält den gespeicherten Wert.
 // Umbenannte Einstellungen (#1280, x-renamedFrom): Vor dem ersten Lesen
 // übernimmt TAtlasSettingsRenames frühere Registry-Namen (z. B.
-// WelcomePageIssuesQuery → IssuesQuery) und entfernt sie; jede Übernahme
+// WelcomePageIssuesTracker → IssuesTracker) und entfernt sie; jede Übernahme
 // steht einmal im Protokoll.
+// Abfragen (#1262): Ein früheres issues.query (Registry IssuesQuery bzw.
+// WelcomePageIssuesQuery) wird einmal zur Abfrage „Standard“ in
+// issues.queries (settings.json); der Registry-Name geht erst, wenn die Datei
+// geschrieben ist.
 
 interface
 
@@ -34,7 +38,8 @@ uses
   Atlas.Core.Editor.SelectionMatches,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.Catalog,
-  Atlas.Core.Settings.QuickToggles;
+  Atlas.Core.Settings.QuickToggles,
+  Atlas.Core.Settings.QueryMigration;
 
 type
   TAtlasIdeSettings = class
@@ -57,6 +62,11 @@ type
     /// <summary>Umbenannte Einstellungen (x-renamedFrom, #1280) in der Registry übernehmen; jede Übernahme steht
     /// einmal im Protokoll.</summary>
     class procedure ApplyRenames; static;
+    /// <summary>issues.query als Abfrage „Standard“ nach issues.queries (#1262); True, wenn ARouted geändert
+    /// wurde. Der Registry-Name geht über RemoveLegacyQuery erst nach dem Speichern der Datei.</summary>
+    class function MigrateQuery(const ARouted: IAtlasSettingsStore; out AMigration: TAtlasSettingsQueryMigration):
+      Boolean; static;
+    class procedure RemoveLegacyQuery(const AMigration: TAtlasSettingsQueryMigration); static;
     /// <summary>Gespeichert, darüber Sitzungswerte, ohne Hauptschalter experimentelle Werte auf Vorgabe.</summary>
     class function Effective: TAtlasPluginSettings; static;
     class procedure Changed; static;
@@ -334,6 +344,8 @@ var
   Readable: Boolean;
   Routed: TAtlasRoutedSettingsStore;
   Store: IAtlasSettingsStore;
+  mChanged: Boolean;
+  mMigration: TAtlasSettingsQueryMigration;
 begin
   if FLoaded then
     Exit;
@@ -343,8 +355,15 @@ begin
   Routed := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(False), Content.Text);
   Store := Routed;
   // Einmalig: Werte, die bis hierher in der Registry lagen, nach settings.json.
-  if Routed.Migrate and Readable then
+  mChanged := Routed.Migrate;
+  mMigration := Default(TAtlasSettingsQueryMigration);
+  // Eine nicht lesbare Datei wird nicht geschrieben: dann bleibt auch issues.query in der Registry.
+  if Readable and MigrateQuery(Store, mMigration) then
+    mChanged := True;
+  if mChanged and Readable then
     SaveGlobal(Content, Routed.Text);
+  if Readable then
+    RemoveLegacyQuery(mMigration);
   FStored.Load(Store);
   FLoaded := True;
   FEffective := Effective;
@@ -366,6 +385,31 @@ begin
   finally
     Catalog.Free;
   end;
+end;
+
+class function TAtlasIdeSettings.MigrateQuery(const ARouted: IAtlasSettingsStore;
+  out AMigration: TAtlasSettingsQueryMigration): Boolean;
+var
+  mRegistry: TRegistryStore;
+  mLegacy: IAtlasSettingsStore;
+begin
+  mRegistry := TRegistryStore.Create(False);
+  mLegacy := mRegistry;
+  AMigration := TAtlasSettingsQueryMigrations.Migrate(mLegacy, mRegistry, ARouted);
+  Result := AMigration.Moved;
+end;
+
+class procedure TAtlasIdeSettings.RemoveLegacyQuery(const AMigration: TAtlasSettingsQueryMigration);
+var
+  mRegistry: TRegistryStore;
+  mNames: IAtlasSettingsNames;
+begin
+  if not AMigration.Found then
+    Exit;
+  mRegistry := TRegistryStore.Create(True);
+  mNames := mRegistry;
+  TAtlasSettingsQueryMigrations.RemoveLegacy(mNames);
+  TAtlasGuard.Log(AMigration.LogLine);
 end;
 
 class function TAtlasIdeSettings.ExperimentalEntries: TArray<TAtlasCatalogEntry>;

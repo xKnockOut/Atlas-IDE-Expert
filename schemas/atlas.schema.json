@@ -2687,13 +2687,56 @@
               }
             }
           }
+        },
+        "queries": {
+          "type": "array",
+          "default": [],
+          "description": "Benannte Abfragen für „Meine Issues“ (#1262), wählbar in der Klappliste neben dem Titel. Ohne eigene Abfragen gilt je Anbieter „Mir zugewiesen“ (GitHub assignee:@me state:open, YouTrack for: me #Unresolved). Ein früheres issues.query wird einmal zur Abfrage „Standard“.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "query"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "examples": [
+                  "Mir zugewiesen",
+                  "Aktueller Sprint"
+                ],
+                "description": "Name in der Klappliste; eindeutig (ohne Groß-/Kleinschreibung)."
+              },
+              "query": {
+                "type": "string",
+                "minLength": 1,
+                "examples": [
+                  "assignee: meine #Ungelöst",
+                  "assignee:@me state:open"
+                ],
+                "description": "Abfrage in der Syntax des Trackers, ohne project: …; das Tracker-Projekt setzt Atlas davor."
+              },
+              "connection": {
+                "type": "string",
+                "default": "",
+                "description": "Name einer Verbindung aus issues.connections; leer = gilt für jeden Tracker."
+              },
+              "project": {
+                "type": "string",
+                "default": "",
+                "description": "Tracker-Projekt; leer = gilt für jedes Projekt."
+              }
+            }
+          }
         }
       },
       "x-scope": "global",
       "x-area": "issues",
       "x-page": "Issue-Tracker",
-      "x-control": "Tabellen Verbindungen und Projekte",
-      "x-issue": "#1260, #1261"
+      "x-control": "Tabellen Verbindungen, Projekte und Abfragen",
+      "x-issue": "#1260, #1261, #1262"
     },
     "logLevel": {
       "type": "string",

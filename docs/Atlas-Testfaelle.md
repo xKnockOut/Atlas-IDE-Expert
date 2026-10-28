@@ -7846,3 +7846,24 @@ Vorbereitung: zwei Verbindungen aus TV2/TV3; Projektgruppe `Kasse.groupproj` mit
 | TP10 | Gleichen Pfad ein zweites Mal eintragen | Hinweis „Für diesen Pfad gibt es schon eine Zeile“, Wert nicht übernommen |
 | TP11 | Einstellungen exportieren und importieren | `issues.projects` als JSON-Liste, nach dem Import gleiche Zeilen |
 | TP12 | settings.json von Hand mit doppeltem Pfad oder ohne `connection` speichern | Server meldet die Zeile in der Problemliste |
+
+## Mehrere Abfragen für „Meine Issues“ (#1262)
+
+Vorbereitung: Verbindungen „Firma“ (YouTrack) und „GitHub“ aus TV2/TV3; ein YouTrack-Projekt und ein GitHub-Projekt zugeordnet (TP3); vorher in einer älteren Fassung `issues.query` bzw. `welcomePage.issues.query` = `assignee: meine #Ungelöst` gesetzt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TQ1 | Neue Fassung starten, Protokoll und Seite „Issue-Tracker“ ansehen | Tabelle „Abfragen“ hat vorn „Standard“ mit `assignee: meine #Ungelöst`; Protokoll „Einstellung issues.query ist jetzt die Abfrage „Standard“ in issues.queries“; der Registry-Wert `IssuesQuery` ist weg (**Abnahme**) |
+| TQ2 | „Meine Issues“ im YouTrack-Projekt ansehen | Rechts neben dem Titel „Standard (n) ▾“; unter der Liste „Firma · ATL · Abfrage: assignee: meine #Ungelöst“ |
+| TQ3 | „Neue Abfrage“: Name „Sprint“, Abfrage `Sprint: {Aktueller Sprint}`, Verbindung „Firma“; zweite „PRs“ mit Verbindung „GitHub“; OK | Im YouTrack-Projekt bietet die Klappliste „Standard“ und „Sprint“, nicht „PRs“ (**Abnahme**) |
+| TQ4 | „Sprint“ wählen | Liste lädt sofort neu, Kopf „Sprint (3)“, Fußzeile mit der Sprint-Abfrage; Klappliste zeigt Trefferzahlen der zuletzt geladenen Abfragen, ab 10 „10+“ |
+| TQ5 | IDE neu starten, dasselbe Projekt öffnen | „Sprint“ ist weiter gewählt, Trefferzahl aus dem letzten Stand (**Abnahme**) |
+| TQ6 | Anderes Projekt öffnen | Dort gilt die eigene Wahl bzw. die erste passende Abfrage |
+| TQ7 | Alle eigenen Abfragen entfernen, OK | Hinweis „Keine eigenen Abfragen: je Anbieter gilt „Mir zugewiesen““; Klappliste zeigt nur „Mir zugewiesen“, Fußzeile die Vorgabe des Anbieters |
+| TQ8 | „Klappliste der Abfragen“ ausschalten | Keine Klappliste, es gilt die erste passende Abfrage (**Abnahme**) |
+| TQ9 | In der Klappliste „Abfragen bearbeiten …“ | Optionen öffnen auf „Issue-Tracker“ bei der Tabelle „Abfragen“; nach OK lädt „Meine Issues“ neu |
+| TQ10 | Verbindung „Firma“ in „Werk“ umbenennen | Die Abfrage „Sprint“ zeigt „Werk“ und gilt weiter |
+| TQ11 | Zweite Abfrage mit gleichem Namen anlegen; Abfrage leer lassen | Hinweise „Den Namen gibt es schon.“ bzw. „Die Abfrage fehlt.“; die Zeile wird nicht gespeichert |
+| TQ12 | Einstellungen einer älteren Fassung (mit `issues.query`) importieren | Nach dem Import steht „Standard“ in der Tabelle |
+| TQ13 | Älteren Stand in der Einstellungshistorie wiederherstellen | Die frühere einzelne Abfrage erscheint als „Standard“ |
+| TQ14 | settings.json von Hand mit doppeltem Namen oder ohne `query` speichern | Server meldet die Zeile in der Problemliste |
