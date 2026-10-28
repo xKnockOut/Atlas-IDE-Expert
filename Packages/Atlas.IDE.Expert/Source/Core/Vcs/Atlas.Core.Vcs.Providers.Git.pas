@@ -90,13 +90,18 @@ type
     { IAtlasVcsUpdate }
     function Pull: TAtlasVcsOutcome;
     { IAtlasVcsBranching }
-    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome; overload;
+    /// <summary>SVN-Optionen (#1290) gelten hier nicht: wie oben.</summary>
+    function BranchExists(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
+      out AExists: Boolean): TAtlasVcsOutcome; overload;
     function RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
     function ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
     function HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
     function RepositoryPath(out APath: string): TAtlasVcsOutcome;
     function RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
-    function SwitchBranch(const AName: string): TAtlasVcsOutcome;
+    function SwitchBranch(const AName: string): TAtlasVcsOutcome; overload;
+    function SwitchBranch(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
+      overload;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
     /// <summary>Ordner mit den Verwaltungsdaten: ARoot\.git oder das Ziel von "gitdir:"; '' ohne.</summary>
     class function GitDir(const ARoot: string): string; static;
@@ -511,6 +516,12 @@ begin
   Result := RefExists('refs/heads/' + AName, AExists);
 end;
 
+function TAtlasGitVersionControl.BranchExists(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
+  out AExists: Boolean): TAtlasVcsOutcome;
+begin
+  Result := BranchExists(AName, AExists);
+end;
+
 function TAtlasGitVersionControl.RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
 begin
   AExists := False;
@@ -566,6 +577,12 @@ begin
     Result := VcsNormalizeDir(APath)
   else
     Result := VcsFullPath(ARoot, APath);
+end;
+
+function TAtlasGitVersionControl.SwitchBranch(const AName: string;
+  const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
+begin
+  Result := SwitchBranch(AName);
 end;
 
 function TAtlasGitVersionControl.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;

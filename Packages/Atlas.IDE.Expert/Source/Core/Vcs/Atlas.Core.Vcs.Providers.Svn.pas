@@ -25,6 +25,13 @@
 //                  copy ^/<Basis>@<Revision> ^/branches/<Name>@ --parents -m <Nachricht>
 //                  und switch ^/branches/<Name>@ .
 //   SwitchBranch   switch ^/branches/<Name>@ .
+// Seit #1290 mit Optionen (vcs.branch.svn.*): BranchExists und SwitchBranch
+// suchen am selben Ort, an dem der Plan anlegt (TAtlasSvnLayout, Vorgabe
+// {projektwurzel}/branches/<Name>); die Projektwurzel kommt aus
+// info --show-item relative-url (ohne Server). Schritte mit Long (switch,
+// checkout) laufen mit dem langen Zeitlimit.
+// IAtlasVcsSvnWorkingCopy: WorkingRevisions = svnversion . (Programm neben
+// svn, ohne Server).
 // Ohne Server: HasExternals propget svn:externals -R . (nicht leer = ja),
 // RepositoryPath info --show-item relative-url . (ohne "^/"),
 // RemoteBranchExists und HookFolders ohne Prozess (Ok mit False bzw. '').
@@ -40,11 +47,15 @@ uses
 
 type
   TAtlasSvnVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate, IAtlasVcsBranching)
+    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsSvnWorkingCopy)
   private
     FRoot: string;
+    FRunner: IAtlasVcsRunner;
     FCommand: TAtlasVcsCommand;
     function Svn(const AArguments: TArray<string>; out AOutput: TBytes): TAtlasVcsOutcome;
+    /// <summary>Ort für AName nach AOptions (#1290); Failed ohne auflösbaren Ort.</summary>
+    function BranchLocation(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
+      out APath: string): TAtlasVcsOutcome;
   public
     /// <summary>ARoot: Ordner mit .svn. AExecutable: vollständiger Pfad von svn ('' = nicht installiert).</summary>
     constructor Create(const ARoot: string; const ARunner: IAtlasVcsRunner; const AExecutable: string;
@@ -74,20 +85,27 @@ type
     { IAtlasVcsUpdate }
     function Pull: TAtlasVcsOutcome;
     { IAtlasVcsBranching }
-    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome; overload;
+    function BranchExists(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
+      out AExists: Boolean): TAtlasVcsOutcome; overload;
     function RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
     function ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
     function HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
     function RepositoryPath(out APath: string): TAtlasVcsOutcome;
     function RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
-    function SwitchBranch(const AName: string): TAtlasVcsOutcome;
+    function SwitchBranch(const AName: string): TAtlasVcsOutcome; overload;
+    function SwitchBranch(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
+      overload;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
+    { IAtlasVcsSvnWorkingCopy }
+    function WorkingRevisions(out AText: string): TAtlasVcsOutcome;
   end;
 
 implementation
 
 uses
   Atlas.Core.Vcs.Internals.Text,
+  Atlas.Core.Vcs.Internals.SvnLayout,
   Atlas.Core.Vcs.Internals.SvnParser;
 
 { TAtlasSvnVersionControl }
@@ -97,6 +115,7 @@ constructor TAtlasSvnVersionControl.Create(const ARoot: string; const ARunner: I
 begin
   inherited Create;
   FRoot := VcsNormalizeDir(ARoot);
+  FRunner := ARunner;
   FCommand := TAtlasVcsCommand.Create(ARunner, AExecutable, FRoot, ATimeoutMs);
 end;
 
@@ -299,14 +318,44 @@ end;
 { IAtlasVcsBranching (#765) }
 
 function TAtlasSvnVersionControl.BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+begin
+  Result := BranchExists(AName, TAtlasVcsSvnBranchOptions.Legacy, AExists);
+end;
+
+function TAtlasSvnVersionControl.BranchLocation(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
+  out APath: string): TAtlasVcsOutcome;
+var
+  mUrl: string;
+begin
+  APath := '';
+  if not VcsSafeBranchName(AName) or not TAtlasSvnLayout.ValidPattern(AOptions.Location) then
+    Exit(TAtlasVcsOutcome.Failed);
+  mUrl := '';
+  // Die Projektwurzel nur, wenn das Muster sie braucht (ein fester Ort wie ^/branches/{name} ohne Aufruf).
+  if TAtlasSvnLayout.NeedsRoot(AOptions.Location) then
+  begin
+    Result := RepositoryPath(mUrl);
+    if Result <> TAtlasVcsOutcome.Ok then
+      Exit;
+  end;
+  if TAtlasSvnLayout.Resolve(AOptions, mUrl, AName, APath) then
+    Result := TAtlasVcsOutcome.Ok
+  else
+    Result := TAtlasVcsOutcome.Failed;
+end;
+
+function TAtlasSvnVersionControl.BranchExists(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
+  out AExists: Boolean): TAtlasVcsOutcome;
 var
   Output: TBytes;
+  mPath: string;
 begin
   AExists := False;
-  if not VcsSafeBranchName(AName) then
-    Exit(TAtlasVcsOutcome.Failed);
+  Result := BranchLocation(AName, AOptions, mPath);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
   // "@" am Ende: ein "@" im Namen ist dann keine Revision.
-  Result := Svn(['info', '^/branches/' + AName + '@'], Output);
+  Result := Svn(['info', '^/' + mPath + '@'], Output);
   AExists := Result = TAtlasVcsOutcome.Ok;
   // Fehlt der Branch, endet svn mit Fehler; das ist die Antwort, kein Fehler.
   if Result = TAtlasVcsOutcome.Failed then
@@ -367,23 +416,64 @@ end;
 function TAtlasSvnVersionControl.RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
 var
   Output: TBytes;
+  mCommand: TAtlasVcsCommand;
 begin
   if Length(AStep.Arguments) = 0 then
     Exit(TAtlasVcsOutcome.Failed);
-  // Wie Svn: nie nachfragen (--non-interactive hängt die Umsetzung an, der Plan zeigt es nicht).
-  if AStep.Remote then
-    Result := FCommand.RunRemote(TAtlasVcsKind.Svn, AStep.Arguments + ['--non-interactive'], Output)
-  else
-    Result := Svn(AStep.Arguments, Output);
+  mCommand := FCommand;
+  // switch und checkout holen die ganze Arbeitskopie samt Externals: eigenes, langes Zeitlimit (#1290).
+  if AStep.Long and (FCommand.TimeoutMs < TAtlasVcsBranchStep.LongTimeoutMs) then
+    mCommand := TAtlasVcsCommand.Create(FRunner, FCommand.Executable, FRoot, TAtlasVcsBranchStep.LongTimeoutMs);
+  try
+    // Wie Svn: nie nachfragen (--non-interactive hängt die Umsetzung an, der Plan zeigt es nicht).
+    if AStep.Remote then
+      Result := mCommand.RunRemote(TAtlasVcsKind.Svn, AStep.Arguments + ['--non-interactive'], Output)
+    else
+      Result := mCommand.Run(AStep.Arguments + ['--non-interactive'], Output);
+  finally
+    if mCommand <> FCommand then
+      mCommand.Free;
+  end;
 end;
 
 function TAtlasSvnVersionControl.SwitchBranch(const AName: string): TAtlasVcsOutcome;
+begin
+  Result := SwitchBranch(AName, TAtlasVcsSvnBranchOptions.Legacy);
+end;
+
+function TAtlasSvnVersionControl.SwitchBranch(const AName: string;
+  const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
 var
   Output: TBytes;
+  mPath: string;
 begin
-  if not VcsSafeBranchName(AName) then
-    Exit(TAtlasVcsOutcome.Failed);
-  Result := Svn(['switch', '^/branches/' + AName + '@', '.'], Output);
+  Result := BranchLocation(AName, AOptions, mPath);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  Result := RunStep(TAtlasVcsBranchStep.Make(TArray<string>.Create('switch', '^/' + mPath + '@', '.'), True, False,
+    True));
+end;
+
+function TAtlasSvnVersionControl.WorkingRevisions(out AText: string): TAtlasVcsOutcome;
+var
+  Output: TBytes;
+  mCommand: TAtlasVcsCommand;
+  mExecutable: string;
+begin
+  AText := '';
+  if FCommand.Executable = '' then
+    Exit(TAtlasVcsOutcome.ToolMissing);
+  // svnversion liegt bei allen üblichen Paketen (TortoiseSVN, SlikSVN, CollabNet) neben svn.
+  // Fehlt es, meldet der Prozessläufer ToolMissing.
+  mExecutable := ExtractFilePath(FCommand.Executable) + 'svnversion' + ExtractFileExt(FCommand.Executable);
+  mCommand := TAtlasVcsCommand.Create(FRunner, mExecutable, FRoot, FCommand.TimeoutMs);
+  try
+    Result := mCommand.Run(['.'], Output);
+  finally
+    mCommand.Free;
+  end;
+  if Result = TAtlasVcsOutcome.Ok then
+    AText := Trim(VcsUtf8(Output));
 end;
 
 function TAtlasSvnVersionControl.HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;

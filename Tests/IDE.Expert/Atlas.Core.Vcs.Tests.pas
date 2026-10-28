@@ -81,6 +81,11 @@ type
     procedure ProvidersPullOnlyForward;
     [Test]
     procedure ProvidersCreateIssueBranches;
+    /// <summary>#1290: SVN sucht und schaltet am Ort aus den Optionen ({projektwurzel} aus relative-url, fester Ort
+    /// ohne Aufruf), ohne Layout Failed ohne Serveraufruf; switch mit langem Zeitlimit; svnversion neben svn nur
+    /// unter SVN.</summary>
+    [Test]
+    procedure SvnBranchOptionsUseLocation;
     [Test]
     procedure SafeBranchNames;
   end;
@@ -114,6 +119,9 @@ type
   public
     Calls: TArray<string>;
     WorkingDirs: TArray<string>;
+    /// <summary>Programm und Zeitlimit je Aufruf (#1290).</summary>
+    Executables: TArray<string>;
+    Timeouts: TArray<Cardinal>;
     Commands: TArray<string>;
     Answers: TArray<string>;
     ExitCode: Integer;
@@ -175,6 +183,8 @@ var
 begin
   Calls := Calls + [string.Join(' ', AArguments)];
   WorkingDirs := WorkingDirs + [AWorkingDir];
+  Executables := Executables + [AExecutable];
+  Timeouts := Timeouts + [ATimeoutMs];
   Command := '';
   AfterC := False;
   for Index := 0 to High(AArguments) do
@@ -1569,6 +1579,78 @@ begin
   Assert.IsTrue(Branching.ServerRevision('trunk', mRevision) = TAtlasVcsOutcome.Disabled);
   Assert.AreEqual(8, Integer(Length(Runner.Calls)), 'die leere Umsetzung startet keinen Prozess');
   mSteps := nil;
+end;
+
+procedure TAtlasVcsTests.SvnBranchOptionsUseLocation;
+var
+  Runner: TFakeRunner;
+  RunnerRef: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  Branching: IAtlasVcsBranching;
+  mSvn: IAtlasVcsSvnWorkingCopy;
+  mOptions: TAtlasVcsSvnBranchOptions;
+  mExists: Boolean;
+  mText: string;
+begin
+  Runner := TFakeRunner.Create;
+  RunnerRef := Runner;
+  Vcs := TAtlasSvnVersionControl.Create(Root, RunnerRef, Under('bin/svn.exe'));
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsBranching, Branching));
+  // Vorgabe {projektwurzel}/branches/{name}: in ^/Kasse/trunk sucht und schaltet Atlas unter ^/Kasse/branches.
+  Runner.Answer('info', '^/Kasse/trunk' + #10);
+  mOptions := TAtlasVcsSvnBranchOptions.Default;
+  Assert.IsTrue(Branching.BranchExists('KASSE-42-bon', mOptions, mExists) = TAtlasVcsOutcome.Ok);
+  Assert.IsTrue(mExists);
+  Assert.AreEqual(2, Integer(Length(Runner.Calls)));
+  Assert.AreEqual('info --show-item relative-url . --non-interactive', Runner.Calls[0]);
+  Assert.AreEqual('info ^/Kasse/branches/KASSE-42-bon@ --non-interactive', Runner.Calls[1]);
+  Assert.IsTrue(Branching.SwitchBranch('KASSE-42-bon', mOptions) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(4, Integer(Length(Runner.Calls)));
+  Assert.AreEqual('switch ^/Kasse/branches/KASSE-42-bon@ . --non-interactive', Runner.Calls[3]);
+  Assert.AreEqual(Cardinal(TAtlasVcsBranchStep.LongTimeoutMs), Runner.Timeouts[3], 'switch mit langem Zeitlimit');
+  Assert.AreEqual(Cardinal(TAtlasVcsCommand.DefaultTimeoutMs), Runner.Timeouts[1], 'info mit dem üblichen');
+  // Ohne erkennbares Layout: kein Ort und kein Aufruf am Server.
+  Runner.Commands := nil;
+  Runner.Answers := nil;
+  Runner.Answer('info', '^/Sonstiges' + #10);
+  Runner.Calls := nil;
+  Assert.IsTrue(Branching.BranchExists('KASSE-42-bon', mOptions, mExists) = TAtlasVcsOutcome.Failed);
+  Assert.IsFalse(mExists);
+  Assert.IsTrue(Branching.SwitchBranch('KASSE-42-bon', mOptions) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(2, Integer(Length(Runner.Calls)), 'nur relative-url');
+  // Fester Ort mit ^/: ohne relative-url; {kennung} aus den Optionen.
+  mOptions.Location := '^/Kasse/branches/{kennung}';
+  mOptions.Key := 'KASSE-42';
+  Runner.Calls := nil;
+  Assert.IsTrue(Branching.BranchExists('KASSE-42-bon', mOptions, mExists) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual(1, Integer(Length(Runner.Calls)));
+  Assert.AreEqual('info ^/Kasse/branches/KASSE-42@ --non-interactive', Runner.Calls[0]);
+  // Ungültiges Muster: Failed ohne Prozess.
+  mOptions.Location := 'branches/{name}';
+  Runner.Calls := nil;
+  Assert.IsTrue(Branching.BranchExists('KASSE-42-bon', mOptions, mExists) = TAtlasVcsOutcome.Failed);
+  Assert.AreEqual(0, Integer(Length(Runner.Calls)));
+  // svnversion liegt neben svn und spricht nicht mit dem Server.
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsSvnWorkingCopy, mSvn));
+  Runner.Answer('.', '48190:48213M' + #10);
+  Assert.IsTrue(mSvn.WorkingRevisions(mText) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('48190:48213M', mText);
+  Assert.AreEqual(Under('bin/svnversion.exe'), Runner.Executables[High(Runner.Executables)]);
+  Assert.AreEqual('.', Runner.Calls[High(Runner.Calls)]);
+  // Git und die leere Umsetzung kennen keine SVN-Revisionen; die Optionen gelten dort nicht.
+  Vcs := TAtlasGitVersionControl.Create(Root, RunnerRef, 'git.exe');
+  Assert.IsFalse(Supports(Vcs, IAtlasVcsSvnWorkingCopy));
+  Vcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled);
+  Assert.IsFalse(Supports(Vcs, IAtlasVcsSvnWorkingCopy));
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsBranching, Branching));
+  Assert.IsTrue(Branching.BranchExists('x', TAtlasVcsSvnBranchOptions.Default, mExists) = TAtlasVcsOutcome.Disabled);
+  Assert.IsTrue(Branching.SwitchBranch('x', TAtlasVcsSvnBranchOptions.Default) = TAtlasVcsOutcome.Disabled);
+  Runner.Calls := nil;
+  Runner.Executables := nil;
+  Runner.Timeouts := nil;
+  Runner.WorkingDirs := nil;
+  Runner.Commands := nil;
+  Runner.Answers := nil;
 end;
 
 procedure TAtlasVcsTests.SafeBranchNames;

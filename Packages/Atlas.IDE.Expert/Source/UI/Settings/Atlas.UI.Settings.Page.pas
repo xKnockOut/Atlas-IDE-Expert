@@ -729,6 +729,11 @@ type
     FVcsStates: array[TAtlasVcsKind] of TLabel;
     FVcsTimeout: TEdit;
     FVcsBranchConfirm: TCheckBox;
+    FVcsBranchSvnLocation: TEdit;
+    FVcsBranchSvnSource: TAtlasChoiceBox;
+    FVcsBranchSvnAfter: TAtlasChoiceBox;
+    FVcsBranchSvnFolder: TEdit;
+    FVcsBranchSvnMessage: TEdit;
     FVcsProjectInfo: TLabel;
     FVcsLinkEditor: TButton;
     FVcsLinkWelcome: TButton;
@@ -1661,6 +1666,12 @@ type
     property VcsTimeout: TEdit read FVcsTimeout;
     /// <summary>Zum Testen: vcs.branch.confirm (#1288).</summary>
     property VcsBranchConfirm: TCheckBox read FVcsBranchConfirm;
+    /// <summary>Zum Testen: vcs.branch.svn.* (#1290).</summary>
+    property VcsBranchSvnLocation: TEdit read FVcsBranchSvnLocation;
+    property VcsBranchSvnSource: TAtlasChoiceBox read FVcsBranchSvnSource;
+    property VcsBranchSvnAfter: TAtlasChoiceBox read FVcsBranchSvnAfter;
+    property VcsBranchSvnFolder: TEdit read FVcsBranchSvnFolder;
+    property VcsBranchSvnMessage: TEdit read FVcsBranchSvnMessage;
     property VcsProjectInfo: TLabel read FVcsProjectInfo;
     property VcsLinkEditor: TButton read FVcsLinkEditor;
     property VcsLinkWelcome: TButton read FVcsLinkWelcome;
@@ -3000,6 +3011,22 @@ begin
   AddTitle(TAtlasTextId.SettingsVcsBranchTitle);
   FVcsBranchConfirm := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchConfirm));
   AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchHint)).Font.Color := clGrayText;
+  // Gruppe „SVN“ (#1290): Vorgaben für Ort, Quelle, Danach und Nachricht im Dialog „Branch anlegen“; Reihenfolge der
+  // Auswahl wie die Werte von vcs.branch.svn.source bzw. .after.
+  AddTitle(TAtlasTextId.SettingsVcsBranchSvnTitle);
+  FVcsBranchSvnLocation := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnLocation));
+  AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnLocationHint)).Font.Color := clGrayText;
+  FVcsBranchSvnSource := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnSource),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnSourceHead),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnSourceWorkingCopy)]);
+  FVcsBranchSvnSource.Width := 260;
+  FVcsBranchSvnAfter := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnAfter),
+    [TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterSwitch), TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterCheckout),
+    TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterNone)]);
+  FVcsBranchSvnAfter.Width := 260;
+  FVcsBranchSvnFolder := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnFolder));
+  FVcsBranchSvnMessage := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnMessage));
+  AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnMessageHint)).Font.Color := clGrayText;
 end;
 
 procedure TAtlasSettingsPage.AddVcsTool(AKind: TAtlasVcsKind; ACaption: TAtlasTextId);
@@ -5589,6 +5616,11 @@ begin
   FMarks.Bind(FVcsPaths[TAtlasVcsKind.Svn], ['VcsSvnPath']);
   FMarks.Bind(FVcsTimeout, ['VcsTimeoutSeconds']);
   FMarks.Bind(FVcsBranchConfirm, ['VcsBranchConfirm']);
+  FMarks.Bind(FVcsBranchSvnLocation, ['VcsBranchSvnLocation']);
+  FMarks.Bind(FVcsBranchSvnSource, ['VcsBranchSvnSource']);
+  FMarks.Bind(FVcsBranchSvnAfter, ['VcsBranchSvnAfter']);
+  FMarks.Bind(FVcsBranchSvnFolder, ['VcsBranchSvnCheckoutFolder']);
+  FMarks.Bind(FVcsBranchSvnMessage, ['VcsBranchSvnMessage']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -7865,6 +7897,11 @@ begin
   FVcsPaths[TAtlasVcsKind.Svn].Text := ASettings.VcsSvnPath;
   FVcsTimeout.Text := IntToStr(ASettings.VcsTimeoutSeconds);
   FVcsBranchConfirm.Checked := ASettings.VcsBranchConfirm;
+  FVcsBranchSvnLocation.Text := ASettings.VcsBranchSvnLocation;
+  FVcsBranchSvnSource.Choice := Ord(AtlasVcsSvnSourceOf(ASettings.VcsBranchSvnSource));
+  FVcsBranchSvnAfter.Choice := Ord(AtlasVcsSvnAfterOf(ASettings.VcsBranchSvnAfter));
+  FVcsBranchSvnFolder.Text := ASettings.VcsBranchSvnCheckoutFolder;
+  FVcsBranchSvnMessage.Text := ASettings.VcsBranchSvnMessage;
   RefreshVcsTool(TAtlasVcsKind.Git);
   RefreshVcsTool(TAtlasVcsKind.Svn);
   FVcsProjects := TAtlasVcsProjects.Read(ASettings.VcsProjects);
@@ -8442,6 +8479,21 @@ begin
   ASettings.VcsSvnPath := Trim(FVcsPaths[TAtlasVcsKind.Svn].Text);
   ASettings.VcsTimeoutSeconds := StrToIntDef(FVcsTimeout.Text, ASettings.VcsTimeoutSeconds);
   ASettings.VcsBranchConfirm := FVcsBranchConfirm.Checked;
+  ASettings.VcsBranchSvnLocation := Trim(FVcsBranchSvnLocation.Text);
+  if FVcsBranchSvnSource.Choice = Ord(TAtlasVcsSvnSource.WorkingCopy) then
+    ASettings.VcsBranchSvnSource := 'workingCopy'
+  else
+    ASettings.VcsBranchSvnSource := 'head';
+  case FVcsBranchSvnAfter.Choice of
+    Ord(TAtlasVcsSvnAfter.Checkout):
+      ASettings.VcsBranchSvnAfter := 'checkout';
+    Ord(TAtlasVcsSvnAfter.None):
+      ASettings.VcsBranchSvnAfter := 'none';
+  else
+    ASettings.VcsBranchSvnAfter := 'switch';
+  end;
+  ASettings.VcsBranchSvnCheckoutFolder := Trim(FVcsBranchSvnFolder.Text);
+  ASettings.VcsBranchSvnMessage := Trim(FVcsBranchSvnMessage.Text);
   ASettings.VcsProjects := VcsProjectsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];

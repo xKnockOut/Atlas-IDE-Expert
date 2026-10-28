@@ -15,6 +15,10 @@
 //   dem Server ausgeführten Schritte (nichts wird zurückgerollt).
 // - „Nicht mehr fragen, Vorgaben verwenden“ setzt vcs.branch.confirm aus
 //   (StopAsking).
+// - SVN (#1290): SvnOptions liest vcs.branch.svn.* (Ort, Quelle, Danach,
+//   Ordner, Nachricht) als Vorgaben für Dialog und „Beginnen“; nach
+//   „frisch auschecken“ bietet OfferOpen an, dieselbe Gruppe im neuen Ordner
+//   zu öffnen.
 // Protokoll anonym: nur Art und Ergebnis, nie Name, Basis oder Pfad.
 
 interface
@@ -33,7 +37,18 @@ type
     /// <summary>Dialog zeigen (Hauptthread). True mit ARequest bei „Anlegen“; ANeverAsk, wenn „Nicht mehr fragen“
     /// gesetzt war (nur mit AOfferNeverAsk).</summary>
     class function Ask(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage: string;
-      AOfferNeverAsk: Boolean; out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean; static;
+      AOfferNeverAsk: Boolean; out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean; overload;
+      static;
+    /// <summary>Wie oben mit den SVN-Optionen als Vorgaben im Dialog (#1290).</summary>
+    class function Ask(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage: string;
+      const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean; out ARequest: TAtlasVcsBranchRequest;
+      out ANeverAsk: Boolean): Boolean; overload; static;
+    /// <summary>SVN-Optionen aus den Einstellungen (vcs.branch.svn.*, #1290); Projekt = Name der Gruppe von
+    /// AProject (sonst des Projekts), Kennung und Titel leer.</summary>
+    class function SvnOptions(const AProject: string): TAtlasVcsSvnBranchOptions; static;
+    /// <summary>Nach „frisch auschecken“ (#1290, Hauptthread): fragen, ob dieselbe Gruppe (bzw. AProject) im
+    /// neuen Ordner AFolder geöffnet werden soll; ARoot ist die Wurzel der bisherigen Arbeitskopie.</summary>
+    class procedure OfferOpen(const AProject, ARoot, AFolder: string); static;
     /// <summary>vcs.branch.confirm aus: „Beginnen“ legt danach ohne Dialog mit den Vorgaben an.</summary>
     class procedure StopAsking; static;
     /// <summary>Befehl „Branch anlegen …“ für AProject (.dproj bzw. .groupproj); ADone im Hauptthread nach
@@ -58,6 +73,8 @@ implementation
 uses
   System.UITypes,
   Vcl.Controls,
+  Vcl.Dialogs,
+  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Naming,
@@ -70,6 +87,58 @@ uses
 
 class function TAtlasIdeBranching.Ask(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName,
   AMessage: string; AOfferNeverAsk: Boolean; out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
+begin
+  Result := Ask(AFolder, AFacts, AName, AMessage, TAtlasVcsSvnBranchOptions.Legacy, AOfferNeverAsk, ARequest,
+    ANeverAsk);
+end;
+
+class function TAtlasIdeBranching.SvnOptions(const AProject: string): TAtlasVcsSvnBranchOptions;
+var
+  mSettings: TAtlasPluginSettings;
+  mGroup: string;
+begin
+  mSettings := TAtlasIdeSettings.Current;
+  Result := TAtlasVcsSvnBranchOptions.Default;
+  Result.Location := mSettings.VcsBranchSvnLocation;
+  Result.Source := AtlasVcsSvnSourceOf(mSettings.VcsBranchSvnSource);
+  Result.After := AtlasVcsSvnAfterOf(mSettings.VcsBranchSvnAfter);
+  Result.CheckoutFolder := mSettings.VcsBranchSvnCheckoutFolder;
+  Result.Message := mSettings.VcsBranchSvnMessage;
+  mGroup := '';
+  if AProject <> '' then
+    mGroup := TAtlasIdeFiles.GroupOfProject(AProject);
+  if mGroup = '' then
+    mGroup := AProject;
+  Result.Project := ChangeFileExt(ExtractFileName(mGroup), '');
+end;
+
+class procedure TAtlasIdeBranching.OfferOpen(const AProject, ARoot, AFolder: string);
+var
+  mFile, mTarget: string;
+  mActions: IOTAActionServices;
+begin
+  if (AProject = '') or (AFolder = '') then
+    Exit;
+  mFile := TAtlasIdeFiles.GroupOfProject(AProject);
+  if mFile = '' then
+    mFile := AProject;
+  mTarget := TAtlasVcsBranchPlan.CheckoutTarget(ARoot, AFolder, mFile);
+  if (mTarget = '') or not FileExists(mTarget) then
+  begin
+    TAtlasIdeVcs.Report(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchCheckedOut, [AFolder]));
+    Exit;
+  end;
+  if MessageDlg(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchOpenCheckout, [ExtractFileName(mTarget), AFolder,
+    sLineBreak + sLineBreak]),
+    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+  if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+    mActions.OpenProject(mTarget, True);
+end;
+
+class function TAtlasIdeBranching.Ask(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName,
+  AMessage: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean;
+  out ARequest: TAtlasVcsBranchRequest; out ANeverAsk: Boolean): Boolean;
 var
   mDialog: TAtlasBranchDialog;
   mFacts: TAtlasVcsBranchFacts;
@@ -78,7 +147,7 @@ var
 begin
   ARequest := Default(TAtlasVcsBranchRequest);
   ANeverAsk := False;
-  mDialog := TAtlasBranchDialog.CreateDialog(nil, AFacts, AName, AMessage, AOfferNeverAsk);
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, AFacts, AName, AMessage, ASvn, AOfferNeverAsk);
   try
     TAtlasIdeDockWindow.ApplyIdeTheme(mDialog);
     mOpen := True;
@@ -183,6 +252,7 @@ var
   mFacts: TAtlasVcsBranchFacts;
   mBaseText: string;
   mDone: TProc;
+  mSvn: TAtlasVcsSvnBranchOptions;
 begin
   mProject := AProject;
   mFolder := ExtractFileDir(AProject);
@@ -191,6 +261,7 @@ begin
     Exit;
   mFacts := TAtlasVcsBranchFacts.Empty;
   mBaseText := TAtlasIdeSettings.Current.IssuesBranchBase;
+  mSvn := SvnOptions(AProject);
   // Stand der Arbeitskopie im Hintergrund, dann der Dialog im Hauptthread.
   if not TAtlasIdeVcs.Run(
     procedure
@@ -218,7 +289,7 @@ begin
         TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsBranchNoVcs));
         Exit;
       end;
-      if not Ask(mFolder, mFacts, '', '', False, mRequest, mNever) then
+      if not Ask(mFolder, mFacts, '', '', mSvn, False, mRequest, mNever) then
         Exit;
       mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
       mExists := False;
@@ -229,6 +300,7 @@ begin
         var
           mVcs: IAtlasVersionControl;
           mBranching: IAtlasVcsBranching;
+          mFound: TAtlasVcsSvnBranchOptions;
         begin
           mVcs := TAtlasIdeVcs.ForFolder(mFolder, TAtlasIdeVcs.AtLeast(TimeoutMs));
           if (mVcs = nil) or not Supports(mVcs, IAtlasVcsBranching, mBranching) then
@@ -237,7 +309,11 @@ begin
             mRun.Failed := 0;
             Exit;
           end;
-          mRun.Outcome := mBranching.BranchExists(mRequest.Name, mExists);
+          // Am Ort aus dem Dialog suchen (#1290), an dem auch angelegt wird.
+          mFound := mSvn;
+          if mRequest.Location <> '' then
+            mFound.Location := '^/' + mRequest.Location;
+          mRun.Outcome := mBranching.BranchExists(mRequest.Name, mFound, mExists);
           if (mRun.Outcome <> TAtlasVcsOutcome.Ok) or mExists then
             Exit;
           mRun := TAtlasVcsBranchPlan.Execute(mBranching, mSteps, Progress(mRequest.Kind));
@@ -254,6 +330,8 @@ begin
               TAtlasVcsBranchPlan.BaseName(mRequest.Kind, mRequest.Base)]));
             if Assigned(mDone) then
               mDone();
+            if (mRequest.Kind = TAtlasVcsKind.Svn) and (mRequest.After = TAtlasVcsSvnAfter.Checkout) then
+              OfferOpen(mProject, mFacts.Root, mRequest.CheckoutFolder);
           end
           else
             TAtlasIdeVcs.Report(FailureText(mRequest.Kind, mSteps, mRun));

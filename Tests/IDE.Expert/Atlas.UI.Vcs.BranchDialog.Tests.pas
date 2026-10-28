@@ -3,7 +3,7 @@
 // Dialog „Branch anlegen“ (#1288): Vorgaben unter Git, „Was passiert“ aus dem
 // Plan, ungültiger Name sperrt „Anlegen“, andere Basis baut die Schritte neu,
 // SVN wartet auf den Server, Externals-Hinweis, „Nicht mehr fragen“ nur bei
-// „Beginnen“.
+// „Beginnen“; SVN-Optionen (#1290): Ort, Danach, Ordner, gemischte Revision.
 
 interface
 
@@ -36,6 +36,10 @@ type
     /// Server“.</summary>
     [Test]
     procedure SvnWaitsForServer;
+    /// <summary>#1290: Ort unter der Projektwurzel folgt dem Namen, bis er von Hand geändert wird; ohne Layout
+    /// Hinweis; Ordner nur bei „frisch auschecken“; Warnung bei gemischter Arbeitskopie als Quelle.</summary>
+    [Test]
+    procedure SvnOptionsFollowName;
   end;
 
 implementation
@@ -221,6 +225,93 @@ begin
     mDialog.Free;
   end;
   mFacts := TAtlasVcsBranchFacts.Empty;
+end;
+
+procedure TAtlasBranchDialogTests.SvnOptionsFollowName;
+var
+  mDialog: TAtlasBranchDialog;
+  mFacts: TAtlasVcsBranchFacts;
+  mSvn: TAtlasVcsSvnBranchOptions;
+  mRequest: TAtlasVcsBranchRequest;
+begin
+  mFacts := SvnFacts;
+  mFacts.Root := 'C:\Projekte\Kasse';
+  mFacts.MainBranch := 'Kasse/trunk';
+  mFacts.ProjectRoot := 'Kasse';
+  mFacts.LayoutKnown := True;
+  mFacts.MixedRevision := True;
+  mFacts.ServerChecked := True;
+  mFacts.HeadRevision := '48230';
+  mSvn := TAtlasVcsSvnBranchOptions.Default;
+  mSvn.Key := 'ATL-123';
+  mSvn.Project := 'Kasse';
+  mSvn.Source := TAtlasVcsSvnSource.WorkingCopy;
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'ATL-123-kasse', 'ATL-123 Branch', mSvn, False);
+  try
+    Assert.IsTrue(mDialog.LocationPanel.Visible);
+    Assert.IsTrue(mDialog.AfterPanel.Visible);
+    Assert.IsFalse(mDialog.FolderPanel.Visible, 'nur bei „frisch auschecken“');
+    Assert.AreEqual('^/Kasse/branches/ATL-123-kasse', mDialog.LocationEdit.Text);
+    Assert.IsFalse(mDialog.LocationError.Visible);
+    // Quelle Arbeitskopie: vorausgewählt, gemischte Revision gewarnt.
+    Assert.AreEqual(1, Integer(mDialog.BaseBox.ItemIndex));
+    Assert.IsTrue(mDialog.MixedLabel.Visible);
+    mRequest := mDialog.Request;
+    Assert.AreEqual('Kasse/branches/ATL-123-kasse', mRequest.Location);
+    Assert.IsTrue(mRequest.After = TAtlasVcsSvnAfter.Switch);
+    Assert.AreEqual('', mRequest.CheckoutFolder);
+    Assert.Contains(mDialog.StepsMemo.Lines[0], '^/Kasse/branches/ATL-123-kasse@');
+    // Name ändern: Ort folgt.
+    mDialog.NameEdit.Text := 'ATL-123-bon';
+    Assert.AreEqual('^/Kasse/branches/ATL-123-bon', mDialog.LocationEdit.Text);
+    // Basis HEAD: keine Warnung.
+    mDialog.BaseBox.ItemIndex := 0;
+    mDialog.BaseBox.OnChange(mDialog.BaseBox);
+    Assert.IsFalse(mDialog.MixedLabel.Visible);
+    // Von Hand geändert: bleibt, auch wenn sich der Name ändert; ungültig gesperrt.
+    mDialog.LocationEdit.Text := '^/Kasse/branches/eigener';
+    mDialog.NameEdit.Text := 'ATL-123-kasse';
+    Assert.AreEqual('^/Kasse/branches/eigener', mDialog.LocationEdit.Text);
+    Assert.AreEqual('Kasse/branches/eigener', mDialog.Request.Location);
+    mDialog.LocationEdit.Text := 'Kasse/branches/eigener';
+    Assert.IsTrue(mDialog.LocationError.Visible, 'ohne ^/');
+    Assert.IsFalse(mDialog.CreateButton.Enabled);
+  finally
+    mDialog.Free;
+  end;
+  // Ohne erkennbares Layout: Ort leer, Hinweis, nichts anzulegen.
+  mFacts.LayoutKnown := False;
+  mFacts.ProjectRoot := '';
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'ATL-123-kasse', 'ATL-123 Branch', mSvn, False);
+  try
+    Assert.AreEqual('', mDialog.LocationEdit.Text);
+    Assert.IsTrue(mDialog.LocationError.Visible);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchLocationMissing), mDialog.LocationError.Caption);
+    Assert.IsFalse(mDialog.CreateButton.Enabled);
+    mDialog.LocationEdit.Text := '^/Kasse/branches/ATL-123-kasse';
+    Assert.IsFalse(mDialog.LocationError.Visible);
+    Assert.IsTrue(mDialog.CreateButton.Enabled);
+  finally
+    mDialog.Free;
+  end;
+  // Frisch auschecken: Ordner neben der Arbeitskopie, Schritt checkout statt switch.
+  mFacts.LayoutKnown := True;
+  mFacts.ProjectRoot := 'Kasse';
+  mSvn.After := TAtlasVcsSvnAfter.Checkout;
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'ATL-123-kasse', 'ATL-123 Branch', mSvn, False);
+  try
+    Assert.IsTrue(mDialog.FolderPanel.Visible);
+    Assert.AreEqual('C:\Projekte\Kasse-ATL-123', mDialog.FolderEdit.Text);
+    mRequest := mDialog.Request;
+    Assert.IsTrue(mRequest.After = TAtlasVcsSvnAfter.Checkout);
+    Assert.AreEqual('C:\Projekte\Kasse-ATL-123', mRequest.CheckoutFolder);
+    Assert.Contains(mDialog.StepsMemo.Lines[1], 'svn checkout ^/Kasse/branches/ATL-123-kasse@');
+  finally
+    mDialog.Free;
+  end;
+  mFacts := TAtlasVcsBranchFacts.Empty;
+  mSvn := TAtlasVcsSvnBranchOptions.Default;
+  mRequest := Default(TAtlasVcsBranchRequest);
 end;
 
 initialization

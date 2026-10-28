@@ -751,6 +751,8 @@ begin
   Settings.Start := AMode;
   // Hauptbranch des Projekts (#1286) als Basis, wenn issues.branchBase leer ist.
   Settings.MainBranch := TAtlasIdeVcs.MainBranchOf(Project, TAtlasIdeFiles.GroupOfProject(Project));
+  // SVN (#1290): Ort, Quelle, Danach und Nachricht aus vcs.branch.svn.*.
+  Settings.Svn := TAtlasIdeBranching.SvnOptions(Project);
   Dir := ExtractFileDir(Project);
   Plan := Default(TAtlasIssueStartPlan);
   Changes := 0;
@@ -780,7 +782,7 @@ begin
         Changes := TAtlasWelcomeIssues.LocalChanges(Items);
       // Vorhandener Branch: nur umschalten, ohne Dialog (wie bisher).
       if Supports(Vcs, IAtlasVcsBranching, mBranching) and
-        (mBranching.BranchExists(Plan.Branch, mExists) = TAtlasVcsOutcome.Ok) and not mExists then
+        (mBranching.BranchExists(Plan.Branch, Plan.Svn, mExists) = TAtlasVcsOutcome.Ok) and not mExists then
         mFacts := TAtlasVcsBranchPlan.Inspect(Vcs, Plan.Bases);
     end,
     procedure
@@ -813,13 +815,16 @@ begin
   Outcome := Default(TAtlasIssueStartResult);
   mUseRequest := False;
   // Neuer Branch (#1288): mit vcs.branch.confirm erst der Dialog „Branch anlegen“; „Abbrechen“ ändert nichts.
-  // Ohne Dialog die Vorgaben aus dem Plan.
+  // Ohne Dialog die Vorgaben aus dem Plan. Findet SVN ohne erkennbares Layout keinen Ort (#1290), fragt der
+  // Dialog trotzdem danach, statt an einem geratenen Ort anzulegen.
   if (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid and (AFacts.Outcome = TAtlasVcsOutcome.Ok) then
   begin
-    if TAtlasIdeSettings.Current.VcsBranchConfirm then
+    if not TAtlasIdeSettings.Current.VcsBranchConfirm then
+      mUseRequest := TAtlasVcsBranchPlan.DefaultRequest(AFacts, Plan.Branch, Plan.Message, Plan.Svn, mRequest);
+    if TAtlasIdeSettings.Current.VcsBranchConfirm or (not mUseRequest and (AFacts.Kind = TAtlasVcsKind.Svn)) then
     begin
-      if not TAtlasIdeBranching.Ask(ExtractFileDir(Project), AFacts, Plan.Branch, Plan.Message, True, mRequest,
-        mNeverAsk) then
+      if not TAtlasIdeBranching.Ask(ExtractFileDir(Project), AFacts, Plan.Branch, Plan.Message, Plan.Svn, True,
+        mRequest, mNeverAsk) then
       begin
         FStartProject := '';
         SetNotice(Project, '', False);
@@ -830,9 +835,7 @@ begin
         TAtlasIdeBranching.StopAsking;
       mUseRequest := True;
       Plan.Branch := mRequest.Name;
-    end
-    else
-      mUseRequest := TAtlasVcsBranchPlan.DefaultRequest(AFacts, Plan.Branch, Plan.Message, mRequest);
+    end;
   end;
   // Lokale Änderungen: vorher fragen (Git nimmt sie mit, wenn sie nicht kollidieren).
   if (Plan.Mode = TAtlasIssueStart.Branch) and Plan.Valid and (AChanges > 0) and
@@ -963,6 +966,9 @@ begin
   // Danach das Projekt öffnen (ein offenes bleibt offen).
   if FProjects <> nil then
     FProjects.Open(AProject);
+  // SVN „frisch auschecken“ (#1290): die alte Arbeitskopie bleibt; dieselbe Gruppe im neuen Ordner anbieten.
+  if AResult.CheckoutFolder <> '' then
+    TAtlasIdeBranching.OfferOpen(AProject, AResult.WorkingRoot, AResult.CheckoutFolder);
 end;
 
 procedure TAtlasIdeIssues.SyncPrefix(const AProject: string);

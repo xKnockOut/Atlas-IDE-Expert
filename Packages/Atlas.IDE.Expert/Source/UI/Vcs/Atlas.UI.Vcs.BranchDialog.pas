@@ -9,9 +9,13 @@
 // steht „wird ermittelt …“ und „Anlegen“ bleibt gesperrt, bis die IDE-Schicht
 // Loaded aufruft. „Nicht mehr fragen, Vorgaben verwenden“ nur bei „Beginnen“
 // (vcs.branch.confirm). Ausgeführt wird nicht hier: Der Aufrufer nimmt Request.
-// Die Optionen aus #1289, #1290 und die Gruppe Externals aus #1291 kommen als
-// weitere Zeilen dazu; bis dahin zeigt der Dialog bei svn:externals nur einen
-// Hinweis.
+// SVN (#1290): Ablageort (vorbelegt aus vcs.branch.svn.location, folgt dem
+// Namen, bis man ihn selbst ändert; ohne erkennbares Layout leer mit
+// Hinweis), Danach (umschalten, frisch auschecken mit Ordner, nur anlegen)
+// und eine Warnung bei gemischter Arbeitskopie, wenn von ihrer Revision
+// kopiert wird. Die Optionen aus #1289 und die Gruppe Externals aus #1291
+// kommen als weitere Zeilen dazu; bis dahin zeigt der Dialog bei
+// svn:externals nur einen Hinweis.
 
 interface
 
@@ -37,6 +41,17 @@ type
     FBaseBox: TComboBox;
     FMessagePanel: TPanel;
     FMessageEdit: TEdit;
+    FSvn: TAtlasVcsSvnBranchOptions;
+    FLocationPanel: TPanel;
+    FLocationEdit: TEdit;
+    FLocationError: TLabel;
+    FLocationEdited: Boolean;
+    FAfterPanel: TPanel;
+    FAfterBox: TComboBox;
+    FFolderPanel: TPanel;
+    FFolderEdit: TEdit;
+    FFolderEdited: Boolean;
+    FMixedLabel: TLabel;
     FInfoLabel: TLabel;
     FExternalsBox: TGroupBox;
     FStepsMemo: TMemo;
@@ -48,13 +63,26 @@ type
     procedure Stack(AControl: TControl);
     procedure FillBases(APreferred: TAtlasVcsBranchBaseKind);
     procedure Changed(Sender: TObject);
+    procedure LocationChanged(Sender: TObject);
+    procedure FolderChanged(Sender: TObject);
     procedure CreateClick(Sender: TObject);
     function NameState(out AText: string): Boolean;
+    /// <summary>SVN: Ort und Ordner aus den Mustern für den aktuellen Namen, solange nicht selbst geändert.</summary>
+    procedure FollowName;
+    function SelectedBase(out ABase: TAtlasVcsBranchBase): Boolean;
+  protected
+    procedure CreateWnd; override;
   public
     /// <summary>AFacts aus TAtlasVcsBranchPlan.Inspect; AName und AMessage vorbelegt ('' ohne Issue);
     /// AOfferNeverAsk zeigt „Nicht mehr fragen, Vorgaben verwenden“.</summary>
     constructor CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage: string;
-      AOfferNeverAsk: Boolean);
+      AOfferNeverAsk: Boolean); overload;
+    /// <summary>Wie oben mit den SVN-Optionen als Vorgaben (#1290): Ort, Quelle, Danach, Ordner.</summary>
+    constructor CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage: string;
+      const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean); overload;
+    /// <summary>Ort aus dem Feld ("^/Kasse/branches/x" → "Kasse/branches/x"); '' wenn es nicht mit ^/ beginnt.
+    /// </summary>
+    class function LocationOf(const AText: string): string; static;
     /// <summary>Werte vom Server sind da (InspectServer): Basen neu, „Anlegen“ frei, wenn der Rest stimmt.
     /// </summary>
     procedure Loaded(const AFacts: TAtlasVcsBranchFacts);
@@ -73,6 +101,14 @@ type
     property BaseBox: TComboBox read FBaseBox;
     property MessageEdit: TEdit read FMessageEdit;
     property MessagePanel: TPanel read FMessagePanel;
+    property LocationPanel: TPanel read FLocationPanel;
+    property LocationEdit: TEdit read FLocationEdit;
+    property LocationError: TLabel read FLocationError;
+    property AfterPanel: TPanel read FAfterPanel;
+    property AfterBox: TComboBox read FAfterBox;
+    property FolderPanel: TPanel read FFolderPanel;
+    property FolderEdit: TEdit read FFolderEdit;
+    property MixedLabel: TLabel read FMixedLabel;
     property InfoLabel: TLabel read FInfoLabel;
     property ExternalsBox: TGroupBox read FExternalsBox;
     property StepsMemo: TMemo read FStepsMemo;
@@ -95,6 +131,12 @@ const
 
 constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
   const AName, AMessage: string; AOfferNeverAsk: Boolean);
+begin
+  CreateDialog(AOwner, AFacts, AName, AMessage, TAtlasVcsSvnBranchOptions.Legacy, AOfferNeverAsk);
+end;
+
+constructor TAtlasBranchDialog.CreateDialog(AOwner: TComponent; const AFacts: TAtlasVcsBranchFacts;
+  const AName, AMessage: string; const ASvn: TAtlasVcsSvnBranchOptions; AOfferNeverAsk: Boolean);
 var
   mPanel, mBottom: TPanel;
   mSteps: TGroupBox;
@@ -105,6 +147,7 @@ var
 begin
   inherited CreateNew(AOwner);
   FFacts := AFacts;
+  FSvn := ASvn;
   FFilling := True;
   Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchTitle);
   BorderStyle := bsSizeable;
@@ -174,6 +217,47 @@ begin
   // Nur svn copy hat eine Nachricht.
   FMessagePanel.Visible := AFacts.Kind = TAtlasVcsKind.Svn;
 
+  // SVN (#1290): Ort, Danach, Ordner; nur für SVN sichtbar.
+  FLocationPanel := Row(TAtlasStrings.Text(TAtlasTextId.VcsBranchLocation), 28);
+  FLocationEdit := TEdit.Create(Self);
+  FLocationEdit.Parent := FLocationPanel;
+  FLocationEdit.SetBounds(cCaptionWidth + cGap, 2, FLocationPanel.Width - cCaptionWidth - 2 * cGap, 23);
+  FLocationEdit.Anchors := [akLeft, akTop, akRight];
+  FLocationEdit.OnChange := LocationChanged;
+  FLocationError := TLabel.Create(Self);
+  FLocationError.Parent := Self;
+  Stack(FLocationError);
+  FLocationError.AlignWithMargins := True;
+  FLocationError.Margins.SetBounds(cCaptionWidth + 2 * cGap, 0, cGap, 2);
+  FLocationError.Font.Color := clRed;
+  FLocationError.WordWrap := True;
+  FAfterPanel := Row(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfter), 28);
+  FAfterBox := TComboBox.Create(Self);
+  FAfterBox.Parent := FAfterPanel;
+  FAfterBox.Style := csDropDownList;
+  FAfterBox.SetBounds(cCaptionWidth + cGap, 2, FAfterPanel.Width - cCaptionWidth - 2 * cGap, 23);
+  FAfterBox.Anchors := [akLeft, akTop, akRight];
+  FAfterBox.OnChange := Changed;
+  FFolderPanel := Row(TAtlasStrings.Text(TAtlasTextId.VcsBranchFolder), 28);
+  FFolderEdit := TEdit.Create(Self);
+  FFolderEdit.Parent := FFolderPanel;
+  FFolderEdit.SetBounds(cCaptionWidth + cGap, 2, FFolderPanel.Width - cCaptionWidth - 2 * cGap, 23);
+  FFolderEdit.Anchors := [akLeft, akTop, akRight];
+  FFolderEdit.OnChange := FolderChanged;
+  FMixedLabel := TLabel.Create(Self);
+  FMixedLabel.Parent := Self;
+  Stack(FMixedLabel);
+  FMixedLabel.AlignWithMargins := True;
+  FMixedLabel.Margins.SetBounds(cCaptionWidth + 2 * cGap, 2, cGap, 2);
+  FMixedLabel.Font.Color := clRed;
+  FMixedLabel.WordWrap := True;
+  FMixedLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchMixed, [AFacts.Revision]);
+  FLocationPanel.Visible := AFacts.Kind = TAtlasVcsKind.Svn;
+  FAfterPanel.Visible := AFacts.Kind = TAtlasVcsKind.Svn;
+  FFolderPanel.Visible := False;
+  FLocationError.Visible := False;
+  FMixedLabel.Visible := False;
+
   FInfoLabel := TLabel.Create(Self);
   FInfoLabel.Parent := Self;
   Stack(FInfoLabel);
@@ -219,10 +303,93 @@ begin
   FStepsMemo.Font.Size := 9;
 
   mPreferred := TAtlasVcsBranchBaseKind.Current;
-  if TAtlasVcsBranchPlan.DefaultBase(AFacts, mBase) then
+  if TAtlasVcsBranchPlan.DefaultBase(AFacts, ASvn.Source, mBase) then
     mPreferred := mBase.Kind;
   FFilling := False;
   FillBases(mPreferred);
+end;
+
+procedure TAtlasBranchDialog.CreateWnd;
+var
+  mFilling: Boolean;
+begin
+  inherited;
+  // Combobox-Einträge brauchen ein Fenster: erst hier füllen (#1290). Das Fenster entsteht schon im
+  // Konstruktor, sobald FillBases die Basen einträgt; FFilling bleibt dann gesetzt, Changed folgt dort.
+  if not Assigned(FAfterBox) or (FAfterBox.Items.Count > 0) then
+    Exit;
+  mFilling := FFilling;
+  FFilling := True;
+  try
+    FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterSwitch));
+    FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterCheckout));
+    FAfterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.VcsBranchAfterNone));
+    FAfterBox.ItemIndex := Ord(FSvn.After);
+  finally
+    FFilling := mFilling;
+  end;
+  if not mFilling then
+    Changed(nil);
+end;
+
+class function TAtlasBranchDialog.LocationOf(const AText: string): string;
+begin
+  Result := Trim(AText);
+  if Copy(Result, 1, 2) <> '^/' then
+    Exit('');
+  Result := Copy(Result, 3, MaxInt);
+  while (Result <> '') and (Result[Length(Result)] = '/') do
+    Delete(Result, Length(Result), 1);
+end;
+
+procedure TAtlasBranchDialog.LocationChanged(Sender: TObject);
+begin
+  if not FFilling then
+    FLocationEdited := True;
+  Changed(Sender);
+end;
+
+procedure TAtlasBranchDialog.FolderChanged(Sender: TObject);
+begin
+  if not FFilling then
+    FFolderEdited := True;
+  Changed(Sender);
+end;
+
+procedure TAtlasBranchDialog.FollowName;
+var
+  mName, mPath: string;
+begin
+  if FFacts.Kind <> TAtlasVcsKind.Svn then
+    Exit;
+  mName := Trim(FNameEdit.Text);
+  FFilling := True;
+  try
+    if not FLocationEdited then
+    begin
+      if (mName <> '') and TAtlasVcsBranchPlan.SvnLocation(FFacts, FSvn, mName, mPath) then
+        FLocationEdit.Text := '^/' + mPath
+      else
+        FLocationEdit.Text := '';
+    end;
+    if not FFolderEdited then
+    begin
+      if mName <> '' then
+        FFolderEdit.Text := TAtlasVcsBranchPlan.SvnCheckoutFolder(FFacts, FSvn, mName)
+      else
+        FFolderEdit.Text := '';
+    end;
+  finally
+    FFilling := False;
+  end;
+end;
+
+function TAtlasBranchDialog.SelectedBase(out ABase: TAtlasVcsBranchBase): Boolean;
+begin
+  ABase := TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Current, '', '');
+  Result := (FBaseBox.ItemIndex >= 0) and (FBaseBox.ItemIndex <= High(FBases));
+  if Result then
+    ABase := FBases[FBaseBox.ItemIndex];
 end;
 
 function TAtlasBranchDialog.Row(const ACaption: string; AHeight: Integer): TPanel;
@@ -347,10 +514,18 @@ function TAtlasBranchDialog.Request: TAtlasVcsBranchRequest;
 var
   mBase: TAtlasVcsBranchBase;
 begin
-  mBase := TAtlasVcsBranchBase.Make(TAtlasVcsBranchBaseKind.Current, '', '');
-  if (FBaseBox.ItemIndex >= 0) and (FBaseBox.ItemIndex <= High(FBases)) then
-    mBase := FBases[FBaseBox.ItemIndex];
+  SelectedBase(mBase);
   Result := TAtlasVcsBranchRequest.Make(FFacts.Kind, FNameEdit.Text, mBase, FMessageEdit.Text);
+  if FFacts.Kind <> TAtlasVcsKind.Svn then
+    Exit;
+  // SVN (#1290): Ort und Ordner wie im Dialog angezeigt.
+  Result.Location := LocationOf(FLocationEdit.Text);
+  Result.After := FSvn.After;
+  if (FAfterBox.ItemIndex >= 0) and (FAfterBox.ItemIndex <= Ord(High(TAtlasVcsSvnAfter))) then
+    Result.After := TAtlasVcsSvnAfter(FAfterBox.ItemIndex);
+  Result.CheckoutFolder := '';
+  if Result.After = TAtlasVcsSvnAfter.Checkout then
+    Result.CheckoutFolder := Trim(FFolderEdit.Text);
 end;
 
 function TAtlasBranchDialog.CanCreate: Boolean;
@@ -363,12 +538,30 @@ end;
 procedure TAtlasBranchDialog.Changed(Sender: TObject);
 var
   mText: string;
+  mBase: TAtlasVcsBranchBase;
+  mRequest: TAtlasVcsBranchRequest;
 begin
   if FFilling then
     Exit;
   NameState(mText);
   FNameError.Caption := mText;
   FNameError.Visible := mText <> '';
+  FollowName;
+  mRequest := Request;
+  if FFacts.Kind = TAtlasVcsKind.Svn then
+  begin
+    // Ort: ohne erkennbares Layout bitten, ihn anzugeben; sonst muss er ein sicherer Pfad unter ^/ sein.
+    if Trim(FLocationEdit.Text) = '' then
+      FLocationError.Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchLocationMissing)
+    else if not TAtlasVcsBranchPlan.SafeName(mRequest.Location) then
+      FLocationError.Caption := TAtlasStrings.Text(TAtlasTextId.VcsBranchLocationInvalid)
+    else
+      FLocationError.Caption := '';
+    FLocationError.Visible := (FLocationError.Caption <> '') and (mText = '');
+    FFolderPanel.Visible := mRequest.After = TAtlasVcsSvnAfter.Checkout;
+    FMixedLabel.Visible := FFacts.MixedRevision and SelectedBase(mBase) and
+      (mBase.Kind = TAtlasVcsBranchBaseKind.WorkingCopy);
+  end;
   // Info: Werte vom Server werden noch ermittelt bzw. konnten nicht ermittelt werden; ohne Basis.
   if FFacts.Outcome <> TAtlasVcsOutcome.Ok then
     FInfoLabel.Caption := TAtlasStrings.Fmt(TAtlasTextId.VcsBranchNoWorkingCopy, [AtlasVcsOutcomeName(FFacts.Outcome)])
@@ -384,7 +577,7 @@ begin
   FInfoLabel.Visible := FInfoLabel.Caption <> '';
   FSteps := nil;
   if (mText = '') and (FBaseBox.ItemIndex >= 0) then
-    FSteps := TAtlasVcsBranchPlan.Steps(Request);
+    FSteps := TAtlasVcsBranchPlan.Steps(mRequest);
   FStepsMemo.Lines.Text := string.Join(sLineBreak, StepLines(FFacts.Kind, FSteps));
   FServerHint.Visible := Length(TAtlasVcsBranchPlan.ServerStepsDone(FSteps, Length(FSteps))) > 0;
   FCreateButton.Enabled := CanCreate;
