@@ -4,7 +4,8 @@
 // constant-expression-error (#992): Beispiel aus dem Issue, korrigierte Form,
 // Überlauf, Bereich mit Untergrenze über der Obergrenze, Wert außerhalb des
 // Typs (W1012 als Warnung), zu große Hex-Literale, Konstanten aus anderen
-// Units und aus {$IF}-Zweigen, stille Fälle, Abschalten.
+// Units und aus {$IF}-Zweigen, stille Fälle, Abschalten; Konstanten mit
+// Typumwandlung wie Cardinal(-1) und Integer($80000000) (#1324).
 // default-parameter-invalid (#993): Beispiel mit Korrektur samt Implementierung,
 // mehrere Namen mit einem Standardwert, var/out, Record, statisches Array und
 // Mengen über 4 Byte,
@@ -44,6 +45,8 @@ type
     procedure LowBoundAboveHighBound;
     [Test]
     procedure ValueOutsideTypeIsWarning;
+    [Test]
+    procedure CastConstantsFitTheirType;
     [Test]
     procedure TooLargeHexLiteral;
     [Test]
@@ -266,6 +269,18 @@ begin
     OnlyMessage(Werte('const'#10'  Basis = 255;'#10'var'#10'  Zaehler: Byte = Basis + 1;'#10, '')));
   Silent(Werte('const'#10'  Grenze: Byte = 255;'#10'  Wort: Word = 300;'#10, '  B := 200;'#10'  I := -1;'#10 +
     '  C := 4000000000;'#10));
+end;
+
+procedure TConstantExpressionErrorTests.CastConstantsFitTheirType;
+begin
+  // Minimalfall aus #1324 (PascalScript, mORMot, Spring4D): Die Umwandlung gilt schon beim Falten.
+  Silent(Werte('const'#10'  InvalidVal = Cardinal(-1);'#10'  Flag = Integer($80000000);'#10 +
+    '  Seed = $811C9DC5;'#10, '  C := InvalidVal;'#10'  C := Cardinal(InvalidVal - 1);'#10'  I := Flag;'#10 +
+    '  I := Integer(Seed);'#10'  I := Integer($FFFFFFFF);'#10));
+  Silent(Werte('const'#10'  Grenze: Cardinal = Cardinal(-1);'#10, ''));
+  // Gegentest: ohne Umwandlung bleibt -1 außerhalb von Cardinal.
+  Assert.AreEqual('-1 liegt außerhalb des Bereichs von Cardinal (0..4294967295, wie W1012).',
+    OnlyMessage(Werte('const'#10'  Ungueltig = -1;'#10, '  C := Ungueltig;'#10)));
 end;
 
 procedure TConstantExpressionErrorTests.TooLargeHexLiteral;

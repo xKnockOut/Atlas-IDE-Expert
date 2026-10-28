@@ -129,6 +129,7 @@ uses
   Atlas.Common.Lsp.SignatureFormat.Tests in 'Common\Lsp\Atlas.Common.Lsp.SignatureFormat.Tests.pas',
   Atlas.Common.Lsp.NestedOverloads.Tests in 'Common\Lsp\Atlas.Common.Lsp.NestedOverloads.Tests.pas',
   Atlas.Common.Semantics.SystemIntrinsics.Tests in 'Common\Semantics\Atlas.Common.Semantics.SystemIntrinsics.Tests.pas',
+  Atlas.Common.Semantics.TypeIdentity.Tests in 'Common\Semantics\Atlas.Common.Semantics.TypeIdentity.Tests.pas',
   Atlas.Common.Semantics.StepCalls.Tests in 'Common\Semantics\Atlas.Common.Semantics.StepCalls.Tests.pas',
   Atlas.Common.Lsp.Hierarchies.Tests in 'Common\Lsp\Atlas.Common.Lsp.Hierarchies.Tests.pas',
   Atlas.Common.Lsp.Impact.Tests in 'Common\Lsp\Atlas.Common.Lsp.Impact.Tests.pas',
