@@ -33,6 +33,9 @@
 // über IAtlasTrackerWriter.Values im Hintergrund (TAtlasTrackerChecks.Values);
 // das Projekt kommt aus der .atlas des aktiven Projekts, wenn deren Tracker
 // derselbe Server ist.
+// Tabelle Projekte (#1261): aktives Projekt, geöffnete .groupproj und die
+// Zeile aus dessen .atlas; ShowTrackerProject („zuordnen …“ aus „Meine
+// Issues“) öffnet die Seite mit einer vorbefüllten Zeile.
 
 interface
 
@@ -84,6 +87,9 @@ type
     /// <summary>„Regel einstellen…“ (#909): Tools › Optionen auf der Seite Prüfregeln bei der Regel ARuleId
     /// öffnen.</summary>
     class procedure ShowRule(const ARuleId: string); static;
+    /// <summary>„zuordnen …“ (#1261): Tools › Optionen auf der Seite Issue-Tracker mit einer Zeile für AMatch
+    /// (.dproj, .groupproj) in der Tabelle Projekte öffnen.</summary>
+    class procedure ShowTrackerProject(const AMatch: string); static;
   end;
 
 implementation
@@ -128,6 +134,8 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.UI.Tracker.EndDialog,
+  Atlas.Core.Tracker.Projects,
+  Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.TeamFile;
 
 type
@@ -207,6 +215,9 @@ var
   Hooks: TAtlasOptionsHooks;
   /// <summary>Einstellung, die die Seite „Atlas“ beim nächsten Anlegen zeigen soll (#628); '' ohne.</summary>
   PendingReveal: string;
+  /// <summary>„Gilt für“ einer Zeile, die die Seite Issue-Tracker beim nächsten Anlegen vorbefüllt (#1261).
+  /// </summary>
+  PendingTrackerProject: string;
 
 type
   /// <summary>Sucht im offenen Optionsdialog die Seite „Atlas“ und wählt sie (#628).</summary>
@@ -466,6 +477,23 @@ begin
     Exit;
   Result := [TAtlasTrackerConnection.FromTeamFile(ChangeFileExt(ExtractFileName(mProject), ''),
     TAtlasTrackerTarget.Create(mTeam.Tracker.Provider, mTeam.Tracker.Url, mTeam.Tracker.Project, ''))];
+end;
+
+/// <summary>Aktives Projekt, geöffnete .groupproj (wenn es darin ist) und die Zeile aus dessen .atlas (#1261).
+/// </summary>
+function TrackerProjectContext: TAtlasTrackerProjectContext;
+var
+  mTeam: TAtlasTeamSettings;
+begin
+  Result := TAtlasTrackerProjectContext.Empty;
+  Result.ProjectFile := TAtlasIdeTeamFile.ActiveProject;
+  if Result.ProjectFile = '' then
+    Exit;
+  Result.GroupFile := TAtlasIdeFiles.GroupOfProject(Result.ProjectFile);
+  mTeam := TAtlasIdeTeamFile.Read(Result.ProjectFile);
+  if mTeam.Tracker.Configured then
+    Result.Team := [TAtlasTrackerProjectMapping.FromTeamFile(Result.ProjectFile,
+      ChangeFileExt(ExtractFileName(Result.ProjectFile), ''), mTeam.Tracker.Project)];
 end;
 
 
@@ -821,6 +849,9 @@ begin
     end;
   ConnectTracker;
   FPage.LoadFrom(TAtlasIdeSettings.Stored);
+  // „zuordnen …“ aus „Meine Issues“ (#1261): Zeile nach dem Laden vorbefüllen.
+  if PendingTrackerProject <> '' then
+    FPage.AssignTrackerProject(PendingTrackerProject);
 end;
 
 procedure TAtlasAddInOptions.ConnectTracker;
@@ -836,6 +867,11 @@ begin
     function: TArray<TAtlasTrackerConnection>
     begin
       Result := TeamTrackerConnections;
+    end;
+  FPage.OnTrackerContext :=
+    function: TAtlasTrackerProjectContext
+    begin
+      Result := TrackerProjectContext;
     end;
   if Hooks.Tracker = nil then
     Exit;
@@ -911,6 +947,7 @@ var
   Settings: TAtlasPluginSettings;
 begin
   PendingReveal := '';
+  PendingTrackerProject := '';
   try
     if Accepted and (FPage <> nil) then
     begin
@@ -1263,6 +1300,7 @@ begin
   TAtlasTrackerChecks.Release;
   Hooks := Default(TAtlasOptionsHooks);
   PendingReveal := '';
+  PendingTrackerProject := '';
   FreeAndNil(Selector);
 end;
 
@@ -1335,6 +1373,16 @@ begin
     if Selector <> nil then
       Selector.Stop;
     PendingReveal := '';
+  end;
+end;
+
+class procedure TAtlasOptionsRegistration.ShowTrackerProject(const AMatch: string);
+begin
+  PendingTrackerProject := AMatch;
+  try
+    ShowSetting('IssuesProjects');
+  finally
+    PendingTrackerProject := '';
   end;
 end;
 

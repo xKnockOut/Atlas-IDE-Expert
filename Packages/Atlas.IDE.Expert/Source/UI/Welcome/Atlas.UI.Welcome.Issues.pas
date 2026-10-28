@@ -18,6 +18,8 @@
 // darunter die Fußzeile bzw. der Hinweis nach „Beginnen“. Kontextmenü: Im
 // Browser öffnen, Pull-Request im Browser, Beginnen, Nur merken, Tracker jetzt
 // abfragen, Zugang hinterlegen, Aktuelles Issue beenden.
+// Ohne Tracker (weder .atlas noch Zuordnung, #1261) ist die Fußzeile der Link
+// „Kein Tracker für dieses Projekt – zuordnen …“ (AssignProject).
 // Daten und Aktionen kommen über IAtlasIssuesSource aus der IDE-Schicht;
 // Aktionen gehen über die Nachrichtenschleife, weil die Quelle den Bereich
 // daraufhin neu füllt.
@@ -58,10 +60,12 @@ type
     function CanEnterCredentials: Boolean;
     /// <summary>Aktuelles Issue beenden (mit Rückfrage).</summary>
     procedure EndActive;
+    /// <summary>„zuordnen …“ (#1261): Seite Issue-Tracker mit einer Zeile für das Projekt öffnen.</summary>
+    procedure AssignProject;
   end;
 
 {$SCOPEDENUMS ON}
-  TAtlasIssuesHitKind = (None, Row, Key, PullRequest, Start);
+  TAtlasIssuesHitKind = (None, Row, Key, PullRequest, Start, Assign);
 {$SCOPEDENUMS OFF}
 
   TAtlasIssuesHit = record
@@ -94,6 +98,8 @@ type
     FKeyRects: TArray<TRect>;
     FPullRects: TArray<TRect>;
     FStartRects: TArray<TRect>;
+    /// <summary>Link „zuordnen …“ in der Fußzeile; leer ohne.</summary>
+    FAssignRect: TRect;
     FMenu: TPopupMenu;
     FPreviewItem: TMenuItem;
     FBrowseItem: TMenuItem;
@@ -146,6 +152,8 @@ type
     class function StatusText(const AView: TAtlasIssuesView): string; static;
     /// <summary>Fußzeile: Hinweis, sonst aktuelles Issue außerhalb der Liste, sonst was „Beginnen“ tut.</summary>
     class function FooterText(const AView: TAtlasIssuesView): string; static;
+    /// <summary>Die Fußzeile ist der Link „zuordnen …“ (#1261): Projekt ohne Tracker, Zuordnen möglich.</summary>
+    class function FooterIsAssign(const AView: TAtlasIssuesView): Boolean; static;
     class function ErrorText(AError: TAtlasCiFetchError): string; static;
     /// <summary>„PR #760 · CI grün“, „PR #760 (Entwurf)“; '' ohne Pull Request.</summary>
     class function PullRequestText(const APull: TAtlasTrackerPullRequest): string; static;
@@ -277,6 +285,7 @@ begin
   FKeyRects := nil;
   FPullRects := nil;
   FStartRects := nil;
+  FAssignRect := TRect.Empty;
   SetLength(FKeyRects, Length(FView.Items));
   SetLength(FPullRects, Length(FView.Items));
   SetLength(FStartRects, Length(FView.Items));
@@ -363,6 +372,9 @@ begin
   begin
     if AView.Project = '' then
       Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesNoProject));
+    // Weder .atlas noch persönliche Zuordnung: gleich zuordnen lassen (#1261).
+    if FooterIsAssign(AView) then
+      Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesAssign));
     Exit(TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesNotConfigured));
   end;
   // Aktuelles Issue, das die Liste nicht zeigt (z. B. schon geschlossen oder anderer Bearbeiter).
@@ -383,6 +395,12 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesFooterRemember)
   else
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesFooter);
+end;
+
+class function TAtlasWelcomeIssuesFrame.FooterIsAssign(const AView: TAtlasIssuesView): Boolean;
+begin
+  Result := (AView.Notice = '') and (AView.Status = TAtlasIssuesStatus.NotConfigured) and (AView.Project <> '') and
+    AView.CanAssign;
 end;
 
 class function TAtlasWelcomeIssuesFrame.PullRequestText(const APull: TAtlasTrackerPullRequest): string;
@@ -638,6 +656,13 @@ begin
   Canvas.Font.Size := Font.Size - 1;
   if FView.NoticeFailed then
     Canvas.Font.Color := RedColor
+  else if FooterIsAssign(FView) then
+  begin
+    // Link „zuordnen …“: Akzentfarbe, Klickfläche nur über dem Text.
+    Canvas.Font.Color := StyleServices(Self).GetSystemColor(clHotLight);
+    FAssignRect := Rect(ScaleValue(Indent), mTop, Min(ScaleValue(Indent) + Canvas.TextWidth(mText),
+      FBox.Width - ScaleValue(Indent)), mTop + Canvas.TextHeight(mText));
+  end
   else
     Canvas.Font.Color := StyleServices(Self).GetSystemColor(clGrayText);
   Canvas.TextRect(Rect(ScaleValue(Indent), mTop, FBox.Width - ScaleValue(Indent), mTop + ScaleValue(FooterHeight)),
@@ -652,6 +677,8 @@ var
 begin
   Result := TAtlasIssuesHit.Create(TAtlasIssuesHitKind.None, -1);
   Point_ := Point(X, Y);
+  if not FAssignRect.IsEmpty and FAssignRect.Contains(Point_) then
+    Exit(TAtlasIssuesHit.Create(TAtlasIssuesHitKind.Assign, -1));
   for Index := 0 to High(FView.Items) do
   begin
     if (Y < RowTop(Index)) or (Y >= RowTop(Index) + RowHeight(Index)) then
@@ -683,6 +710,16 @@ var
   Item: TAtlasTrackerIssue;
   Mode: TAtlasIssueStart;
 begin
+  if (FSource <> nil) and (AHit.Kind = TAtlasIssuesHitKind.Assign) then
+  begin
+    mSource := FSource;
+    Post(
+      procedure
+      begin
+        mSource.AssignProject;
+      end);
+    Exit;
+  end;
   if (FSource = nil) or (AHit.Index < 0) or (AHit.Index > High(FView.Items)) then
     Exit;
   mSource := FSource;
@@ -699,7 +736,7 @@ begin
   end;
   case AHit.Kind of
     // Leerraum und Zeilentext lösen ohne Vorschau nichts aus; sie zeigen nur den Hinweis (BoxMouseMove).
-    TAtlasIssuesHitKind.None: ;
+    TAtlasIssuesHitKind.None, TAtlasIssuesHitKind.Assign: ;
     TAtlasIssuesHitKind.Row:
       if ABrowse and FView.Options.Preview then
         Post(
@@ -738,8 +775,8 @@ var
   Key: string;
 begin
   Hit := HitTest(X, Y);
-  if (Hit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start]) or
-    ((Hit.Kind = TAtlasIssuesHitKind.Row) and FView.Options.Preview) then
+  if (Hit.Kind in [TAtlasIssuesHitKind.Key, TAtlasIssuesHitKind.PullRequest, TAtlasIssuesHitKind.Start,
+    TAtlasIssuesHitKind.Assign]) or ((Hit.Kind = TAtlasIssuesHitKind.Row) and FView.Options.Preview) then
     FBox.Cursor := crHandPoint
   else
     FBox.Cursor := crDefault;
@@ -759,6 +796,8 @@ begin
       FBox.Hint := StartHint(FView, FView.Items[Hit.Index]);
     TAtlasIssuesHitKind.Row:
       FBox.Hint := FView.Items[Hit.Index].Key + ' ' + FView.Items[Hit.Index].Title;
+    TAtlasIssuesHitKind.Assign:
+      FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintAssign);
   else
     FBox.Hint := '';
   end;

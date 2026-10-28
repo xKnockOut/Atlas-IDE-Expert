@@ -365,6 +365,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
 |---|---|---|---|---|---|
 | `issues.connections` | global (settings.json) | array<object> | `` |  | Persönliche Tracker-Verbindungen (#1260), z. B. das Firmen-YouTrack und GitHub nebeneinander. Das Token steht nie hier, sondern im Anmeldespeicher von Windows (Atlas:tracker:<Server>, „Token hinterlegen …“). |
+| `issues.projects` | global (settings.json) | array<object> | `` |  | Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261) für Projekte ohne tracker in der .atlas. Es gilt die Zeile für genau diese .dproj, sonst die für die geöffnete .groupproj, sonst der längste passende Ordner; eine .atlas mit tracker hat Vorrang. |
 
 ## Beispiel
 

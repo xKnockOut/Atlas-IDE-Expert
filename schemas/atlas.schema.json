@@ -2677,13 +2677,42 @@
               }
             }
           }
+        },
+        "projects": {
+          "type": "array",
+          "default": [],
+          "description": "Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261) für Projekte ohne tracker in der .atlas. Es gilt die Zeile für genau diese .dproj, sonst die für die geöffnete .groupproj, sonst der längste passende Ordner; eine .atlas mit tracker hat Vorrang.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["match", "connection"],
+            "properties": {
+              "match": {
+                "type": "string",
+                "minLength": 1,
+                "examples": ["C:\\Projekte\\Kasse\\Kasse.groupproj", "C:\\Projekte\\Kasse"],
+                "description": "Gilt für: Pfad einer .dproj, einer .groupproj oder eines Ordners (ohne Groß-/Kleinschreibung, auch UNC)."
+              },
+              "connection": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Name einer Verbindung aus issues.connections."
+              },
+              "project": {
+                "type": "string",
+                "default": "",
+                "examples": ["KASSE", "owner/repo"],
+                "description": "Tracker-Projekt: YouTrack-Projekt-ID, bei GitHub owner/repo."
+              }
+            }
+          }
         }
       },
       "x-scope": "global",
       "x-area": "issues",
       "x-page": "Issue-Tracker",
-      "x-control": "Tabelle Verbindungen",
-      "x-issue": "#1260"
+      "x-control": "Tabellen Verbindungen und Projekte",
+      "x-issue": "#1260, #1261"
     },
     "logLevel": {
       "type": "string",

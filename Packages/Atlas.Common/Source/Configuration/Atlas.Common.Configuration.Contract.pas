@@ -574,6 +574,9 @@ type
     /// <summary>Persönliche Tracker-Verbindungen (issues.connections, #1260) als JSON-Liste (Text), sonst ''.
     /// Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
     IssueConnections: string;
+    /// <summary>Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (issues.projects, #1261) als JSON-Liste
+    /// (Text), sonst ''. Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    IssueProjects: string;
     /// <summary>Ausgewerteter Block "format" (#43).</summary>
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;

@@ -92,6 +92,9 @@ type
     /// <summary>#1260: issues.connections geht als JSON-Liste (nicht als Text) in die Datei und zurück.</summary>
     [Test]
     procedure TrackerConnectionsTravel;
+    /// <summary>#1261: issues.projects geht ebenso als JSON-Liste hin und zurück.</summary>
+    [Test]
+    procedure TrackerProjectsTravel;
   end;
 
 implementation
@@ -787,6 +790,29 @@ begin
   // Zurücksetzen: leere Liste.
   mAfter := TAtlasSettingsTransfer.ResetAreas(FCatalog, State(mSettings, ''), ['issues']);
   Assert.AreEqual('[]', mAfter.Plugin.IssuesConnections);
+end;
+
+procedure TAtlasSettingsTransferTests.TrackerProjectsTravel;
+const
+  cList = '[{"match":"C:\\Projekte\\Kasse","connection":"Firma","project":"KASSE"}]';
+var
+  mSettings: TAtlasPluginSettings;
+  mExported: TAtlasExportResult;
+  mPreview: TAtlasImportPreview;
+  mAfter: TAtlasSettingsState;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.IssuesProjects := cList;
+  mExported := TAtlasSettingsTransfer.ExportSettings(FCatalog, State(mSettings, ''),
+    TAtlasExportOptions.Create(['issues'], smOmit), Macros());
+  Assert.AreEqual(1, Integer(mExported.Count), mExported.Text);
+  Assert.Contains(mExported.Text, '"issues.projects": [');
+  mPreview := TAtlasSettingsTransfer.Preview(FCatalog, State(TAtlasPluginSettings.Defaults, ''),
+    TAtlasSettingsTransfer.ParseFile(mExported.Text), imMerge, nil, Macros(), '', '');
+  mAfter := TAtlasSettingsTransfer.Apply(FCatalog, State(TAtlasPluginSettings.Defaults, ''), mPreview);
+  Assert.AreEqual(cList, mAfter.Plugin.IssuesProjects);
+  mAfter := TAtlasSettingsTransfer.ResetAreas(FCatalog, State(mSettings, ''), ['issues']);
+  Assert.AreEqual('[]', mAfter.Plugin.IssuesProjects);
 end;
 
 procedure TAtlasSettingsTransferTests.WelcomeLayoutsTravel;
