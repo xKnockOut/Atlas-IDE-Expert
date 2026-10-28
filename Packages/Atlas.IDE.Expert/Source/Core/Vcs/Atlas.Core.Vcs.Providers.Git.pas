@@ -33,6 +33,13 @@
 //                (Basis: refs/heads/<Basis>, sonst refs/remotes/origin/<Basis>, '' = HEAD)
 //   SwitchBranch checkout --quiet <Name> --
 //   HookFolders  rev-parse --git-path hooks --git-dir
+// Entwicklung zu einem Issue (IAtlasVcsHistory, #1269), ohne Netz:
+//   SearchLog    log --all --fixed-strings --regexp-ignore-case --grep=<Text>
+//                --format=… --name-status -z --no-renames --max-count=N
+//   AllBranches  for-each-ref --format=… refs/heads refs/remotes
+//   Distance     rev-list --left-right --count <Basis>...<Branch>
+//   ContentOf    show <Revision>:<Pfad> bzw. show <Revision>^1:<Pfad>
+//                (neue Datei davor bzw. gelöschte danach: leer ohne Prozess)
 // ChangeMarker liest nur Dateien: .git/HEAD (Inhalt und Zeitstempel), die
 // Datei des Branchs unter refs/heads und packed-refs. In Worktrees und
 // Submodulen ist .git eine Datei mit "gitdir: …".
@@ -46,7 +53,7 @@ uses
 
 type
   TAtlasGitVersionControl = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsLocalWork, IAtlasVcsIncoming,
-    IAtlasVcsUpdate, IAtlasVcsBranching)
+    IAtlasVcsUpdate, IAtlasVcsBranching, IAtlasVcsHistory)
   private
     FRoot: string;
     FCommand: TAtlasVcsCommand;
@@ -87,6 +94,12 @@ type
     function CreateBranch(const AName, ABase, AMessage: string): TAtlasVcsOutcome;
     function SwitchBranch(const AName: string): TAtlasVcsOutcome;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
+    { IAtlasVcsHistory }
+    function SearchLog(const AText: string; AMax: Integer; out AEntries: TArray<TAtlasVcsLogEntry>): TAtlasVcsOutcome;
+    function AllBranches(out ABranches: TArray<TAtlasVcsRef>): TAtlasVcsOutcome;
+    function Distance(const ABranch, ABase: string; out AAhead, ABehind: Integer): TAtlasVcsOutcome;
+    function ContentOf(const ARevision: string; const AFile: TAtlasVcsLogFile; ABefore: Boolean;
+      out AContent: TBytes): TAtlasVcsOutcome;
     /// <summary>Ordner mit den Verwaltungsdaten: ARoot\.git oder das Ziel von "gitdir:"; '' ohne.</summary>
     class function GitDir(const ARoot: string): string; static;
   end;
@@ -563,6 +576,102 @@ begin
     Exit(TAtlasVcsOutcome.Failed);
   AHooks := AbsoluteGitPath(FRoot, Trim(Lines[0]));
   AGitDir := AbsoluteGitPath(FRoot, Trim(Lines[1]));
+end;
+
+{ IAtlasVcsHistory (#1269) }
+
+function TAtlasGitVersionControl.SearchLog(const AText: string; AMax: Integer;
+  out AEntries: TArray<TAtlasVcsLogEntry>): TAtlasVcsOutcome;
+var
+  mOutput: TBytes;
+  mLimit: Integer;
+  mIndex: Integer;
+begin
+  AEntries := nil;
+  // Ein Zeilenende im Suchtext wäre ein zweites Muster; leer fände alles.
+  if Trim(AText) = '' then
+    Exit(TAtlasVcsOutcome.Failed);
+  for mIndex := 1 to Length(AText) do
+    if Ord(AText[mIndex]) < 32 then
+      Exit(TAtlasVcsOutcome.Failed);
+  mLimit := AMax;
+  if mLimit < 1 then
+    mLimit := 1;
+  // --grep=<Text> in einem Argument: Der Text kann nie als Option gelesen werden.
+  Result := Git(['log', '--all', '--fixed-strings', '--regexp-ignore-case', '--grep=' + AText,
+    '--format=' + TAtlasGitParser.HistoryFormat, '--name-status', '-z', '--no-renames',
+    '--max-count=' + IntToStr(mLimit)], mOutput);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    AEntries := TAtlasGitParser.ParseHistory(VcsUtf8(mOutput), FRoot);
+  except
+    on EAtlasVcsParse do
+    begin
+      AEntries := nil;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+function TAtlasGitVersionControl.AllBranches(out ABranches: TArray<TAtlasVcsRef>): TAtlasVcsOutcome;
+var
+  mOutput: TBytes;
+begin
+  ABranches := nil;
+  Result := Git(['for-each-ref', '--format=' + TAtlasGitParser.RefFormat, 'refs/heads', 'refs/remotes'], mOutput);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    ABranches := TAtlasGitParser.ParseRefs(VcsUtf8(mOutput));
+  except
+    on EAtlasVcsParse do
+    begin
+      ABranches := nil;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+function TAtlasGitVersionControl.Distance(const ABranch, ABase: string; out AAhead, ABehind: Integer): TAtlasVcsOutcome;
+var
+  mOutput: TBytes;
+begin
+  AAhead := -1;
+  ABehind := -1;
+  if not SafeName(ABranch) or not SafeName(ABase) then
+    Exit(TAtlasVcsOutcome.Failed);
+  Result := Git(['rev-list', '--left-right', '--count', ABase + '...' + ABranch, '--'], mOutput);
+  if Result <> TAtlasVcsOutcome.Ok then
+    Exit;
+  try
+    TAtlasGitParser.ParseDistance(VcsUtf8(mOutput), AAhead, ABehind);
+  except
+    on EAtlasVcsParse do
+    begin
+      AAhead := -1;
+      ABehind := -1;
+      Result := TAtlasVcsOutcome.Failed;
+    end;
+  end;
+end;
+
+function TAtlasGitVersionControl.ContentOf(const ARevision: string; const AFile: TAtlasVcsLogFile;
+  ABefore: Boolean; out AContent: TBytes): TAtlasVcsOutcome;
+var
+  mRevision: string;
+begin
+  AContent := nil;
+  if not SafeName(ARevision) or (AFile.RepositoryPath = '') then
+    Exit(TAtlasVcsOutcome.Failed);
+  // Was es auf der Seite nicht gibt, ist leer.
+  if (ABefore and (AFile.Kind = TAtlasVcsChangeKind.Added)) or
+    (not ABefore and (AFile.Kind = TAtlasVcsChangeKind.Deleted)) then
+    Exit(TAtlasVcsOutcome.Ok);
+  mRevision := ARevision;
+  if ABefore then
+    mRevision := mRevision + '^1';
+  Result := Git(['show', mRevision + ':' + AFile.RepositoryPath], AContent);
 end;
 
 class function TAtlasGitVersionControl.GitDir(const ARoot: string): string;

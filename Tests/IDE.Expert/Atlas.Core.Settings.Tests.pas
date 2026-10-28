@@ -864,6 +864,7 @@ begin
   Assert.IsTrue(Settings.TrackerLogin);
   Assert.IsTrue(Settings.IssuesPreview, 'Vorschau (#1264) an');
   Assert.IsTrue(Settings.IssuesPreviewComments);
+  Assert.IsTrue(Settings.IssuesPreviewDevelopment, 'Reiter „Entwicklung“ (#1269)');
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -901,6 +902,7 @@ begin
   Settings.TrackerLogin := False;
   Settings.IssuesPreview := False;
   Settings.IssuesPreviewComments := False;
+  Settings.IssuesPreviewDevelopment := False;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -915,6 +917,7 @@ begin
   Assert.IsFalse(Loaded.TrackerLogin);
   Assert.IsFalse(Loaded.IssuesPreview);
   Assert.IsFalse(Loaded.IssuesPreviewComments);
+  Assert.IsFalse(Loaded.IssuesPreviewDevelopment);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

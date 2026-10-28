@@ -18,6 +18,8 @@
 //   Explorer. Dateien anderer Server (GitHub) öffnen im Browser.
 // - Links aus dem Text öffnen nur im Browser (http/https ohne Benutzer).
 // - issues.preview.comments aus: Kommentare werden nicht abgefragt.
+// - Reiter „Entwicklung“ (#1269): TAtlasIdeIssueDevelopment folgt dem
+//   gezeigten Issue, „Aktualisieren“ und „Abbrechen“ gelten auch dort.
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse,
 //   Kennung, Titel oder Token.
 // Anbieter, Transport, Zugang, „Beginnen“ und die Einstellungsseite kommen
@@ -32,7 +34,8 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.IssueCache,
   Atlas.Core.Tracker.Preview,
-  Atlas.UI.Tracker.IssueFrame;
+  Atlas.UI.Tracker.IssueFrame,
+  Atlas.IDE.Tracker.Development;
 
 type
   TAtlasIssuePreviewProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;
@@ -52,6 +55,8 @@ type
     CanStart: TFunc<Boolean>;
     /// <summary>Tools › Optionen › Atlas › Issue-Tracker.</summary>
     Settings: TProc;
+    /// <summary>Projektdatei des aktuellen Projekts für den Reiter „Entwicklung“ ('' ohne).</summary>
+    Project: TFunc<string>;
   end;
 
   TAtlasIdeIssuePreview = class(TInterfacedObject)
@@ -75,7 +80,10 @@ type
     FImageCancel: IAtlasCiCancel;
     FWorkers: TList;
     FGeneration: Integer;
+    FDevelopment: TAtlasIdeIssueDevelopment;
+    FDevelopmentRef: IInterface;
     function Frame: TAtlasIssueFrame;
+    procedure CreateDevelopment;
     procedure Wire(AFrame: TAtlasIssueFrame);
     function ProviderOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
     procedure Load(const AEntry: TAtlasIssueHistoryEntry);
@@ -142,15 +150,61 @@ begin
   FHistory := TAtlasIssueHistory.Create;
   FCache := TAtlasTrackerIssueCache.Create(ACacheFolder);
   FWorkers := TList.Create;
+  CreateDevelopment;
 end;
 
 destructor TAtlasIdeIssuePreview.Destroy;
 begin
+  if FDevelopment <> nil then
+    FDevelopment.Stop;
+  FDevelopment := nil;
+  FDevelopmentRef := nil;
   ReleaseThreads(True);
   FWorkers.Free;
   FCache.Free;
   FHistory.Free;
   inherited;
+end;
+
+procedure TAtlasIdeIssuePreview.CreateDevelopment;
+var
+  mHooks: TAtlasIssueDevelopmentHooks;
+  mOwner: TAtlasIdeIssuePreview;
+begin
+  // Eigene Routine: Die anonymen Methoden halten nur Self. Stop der Entwicklung löst sie wieder.
+  mOwner := Self;
+  mHooks := Default(TAtlasIssueDevelopmentHooks);
+  mHooks.Provider :=
+    function(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider
+    begin
+      Result := mOwner.ProviderOf(ATarget);
+    end;
+  mHooks.Transport :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    begin
+      Result := nil;
+      if Assigned(mOwner.FHooks.Transport) then
+        Result := mOwner.FHooks.Transport(AProvider, ATarget);
+    end;
+  mHooks.Project :=
+    function: string
+    begin
+      Result := '';
+      if Assigned(mOwner.FHooks.Project) then
+        Result := mOwner.FHooks.Project();
+    end;
+  mHooks.Browse :=
+    procedure(AUrl: string)
+    begin
+      mOwner.Browse(AUrl);
+    end;
+  mHooks.Frame :=
+    function: TAtlasIssueFrame
+    begin
+      Result := mOwner.Frame;
+    end;
+  FDevelopment := TAtlasIdeIssueDevelopment.Create(mHooks);
+  FDevelopmentRef := FDevelopment;
 end;
 
 class function TAtlasIdeIssuePreview.NowUtc: TDateTime;
@@ -179,6 +233,7 @@ begin
       if (mKeep <> nil) and mOwner.FStarted then
         mOwner.Wire(AFrame);
     end;
+  FDevelopment.Start;
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
   TAtlasIdeIssueWindow.Prepare;
   FCache.Prune(NowUtc);
@@ -192,6 +247,7 @@ begin
   Inc(FGeneration);
   CancelLoad;
   CancelImages;
+  FDevelopment.Stop;
   ReleaseThreads(True);
   TAtlasIdeIssueWindow.Release;
   FHooks := Default(TAtlasIssuePreviewHooks);
@@ -284,7 +340,10 @@ begin
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.CancelLoad;
+        mOwner.FDevelopment.Cancel;
+      end;
     end;
   AFrame.OnHidden :=
     procedure
@@ -294,6 +353,7 @@ begin
       begin
         mOwner.CancelLoad;
         mOwner.CancelImages;
+        mOwner.FDevelopment.Cancel;
       end;
     end;
   AFrame.OnStart :=
@@ -362,6 +422,7 @@ begin
     end;
   if Assigned(FHooks.CanStart) then
     AFrame.CanStart := FHooks.CanStart();
+  FDevelopment.Wire(AFrame);
   ShowCurrent;
 end;
 
@@ -410,8 +471,10 @@ end;
 
 procedure TAtlasIdeIssuePreview.Refresh;
 begin
-  if FHasCurrent then
-    Load(FCurrent);
+  if not FHasCurrent then
+    Exit;
+  FDevelopment.Refresh;
+  Load(FCurrent);
 end;
 
 procedure TAtlasIdeIssuePreview.GoBack;
@@ -514,6 +577,7 @@ begin
   CancelImages;
   FCurrent := AEntry;
   FHasCurrent := True;
+  FDevelopment.Select(AEntry.Target, AEntry.Key);
   Inc(FGeneration);
   mGeneration := FGeneration;
   mFrame := Frame;

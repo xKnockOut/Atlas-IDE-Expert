@@ -1279,6 +1279,9 @@ type
     /// <summary>Kommentare in der Vorschau laden und zeigen (#1264, issues.preview.comments); aus = nicht abgefragt.
     /// </summary>
     IssuesPreviewComments: Boolean;
+    /// <summary>Reiter „Entwicklung“ in der Vorschau (#1269, issues.preview.development): Branches, Commits, Pull
+    /// Requests und geänderte Units zum Issue; aus = Reiter fehlt, kein Log wird abgefragt.</summary>
+    IssuesPreviewDevelopment: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -1996,6 +1999,7 @@ begin
   Result.IssuesConnections := '[]';
   Result.IssuesPreview := True;
   Result.IssuesPreviewComments := True;
+  Result.IssuesPreviewDevelopment := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2784,6 +2788,8 @@ begin
   IssuesConnections := AStore.ReadString('IssuesConnections', Default.IssuesConnections);
   IssuesPreview := AStore.ReadInteger('IssuesPreview', BoolValue(Default.IssuesPreview)) <> 0;
   IssuesPreviewComments := AStore.ReadInteger('IssuesPreviewComments', BoolValue(Default.IssuesPreviewComments)) <> 0;
+  IssuesPreviewDevelopment := AStore.ReadInteger('IssuesPreviewDevelopment',
+    BoolValue(Default.IssuesPreviewDevelopment)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3251,6 +3257,7 @@ begin
   AStore.WriteString('IssuesConnections', IssuesConnections);
   AStore.WriteInteger('IssuesPreview', BoolValue(IssuesPreview));
   AStore.WriteInteger('IssuesPreviewComments', BoolValue(IssuesPreviewComments));
+  AStore.WriteInteger('IssuesPreviewDevelopment', BoolValue(IssuesPreviewDevelopment));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);
