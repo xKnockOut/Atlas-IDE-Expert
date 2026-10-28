@@ -25,6 +25,9 @@ type
     procedure AgeUnits;
     [Test]
     procedure CollapsedComments;
+    /// <summary>#1271: Aus einer Meldung öffnet die Vorschau am ersten neuen Kommentar.</summary>
+    [Test]
+    procedure CommentAtAnchor;
     [Test]
     procedure ImageUrlFromAttachments;
     /// <summary>Abnahme: Bilder nur vom Server des Tokens, nie eine Anfrage an einen Rechner aus dem Text.</summary>
@@ -165,6 +168,27 @@ begin
   Assert.AreEqual(Integer(0), TAtlasIssuePreview.CollapsedComments(3, False));
   Assert.AreEqual(Integer(9), TAtlasIssuePreview.CollapsedComments(12, False));
   Assert.AreEqual(Integer(0), TAtlasIssuePreview.CollapsedComments(12, True));
+end;
+
+procedure TAtlasIssuePreviewTests.CommentAtAnchor;
+var
+  mComments: TArray<TAtlasTrackerComment>;
+  mIndex: Integer;
+begin
+  SetLength(mComments, 4);
+  for mIndex := 0 to High(mComments) do
+  begin
+    mComments[mIndex].Author := 'anna';
+    mComments[mIndex].Created := EncodeDateTime(2026, 1, 1, 10, mIndex * 10, 0, 0);
+  end;
+  Assert.AreEqual(Integer(2), TAtlasIssuePreview.CommentAt(mComments, EncodeDateTime(2026, 1, 1, 10, 20, 0, 0)));
+  Assert.AreEqual(Integer(2), TAtlasIssuePreview.CommentAt(mComments, EncodeDateTime(2026, 1, 1, 10, 20, 1, 0)),
+    'Millisekunden und Sekunden des Trackers weichen ab');
+  Assert.AreEqual(Integer(3), TAtlasIssuePreview.CommentAt(mComments, EncodeDateTime(2026, 1, 1, 10, 25, 0, 0)));
+  Assert.AreEqual(Integer(3), TAtlasIssuePreview.CommentAt(mComments, EncodeDateTime(2026, 1, 1, 11, 0, 0, 0)),
+    'Kommentar inzwischen gelöscht: der letzte');
+  Assert.AreEqual(Integer(-1), TAtlasIssuePreview.CommentAt(mComments, 0), 'ohne Anker oben');
+  Assert.AreEqual(Integer(-1), TAtlasIssuePreview.CommentAt(nil, EncodeDateTime(2026, 1, 1, 10, 0, 0, 0)));
 end;
 
 procedure TAtlasIssuePreviewTests.ImageUrlFromAttachments;

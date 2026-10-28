@@ -102,6 +102,10 @@ type
     ChipPadding = 6;
     ChipGap = 4;
     ChipRadius = 8;
+    /// <summary>Durchmesser des Punkts vor der Kennung eines Issues mit neuen Änderungen (#1271).</summary>
+    UnseenDot = 6;
+    /// <summary>Vor dem Titel des Bereichs, solange ein Issue einen Punkt trägt.</summary>
+    UnseenMark = '● ';
     MonoFont = 'Consolas';
   private
     FSource: IAtlasIssuesSource;
@@ -199,7 +203,9 @@ type
     /// <summary>Hinweis auf „Beginnen“: Branch nach Muster bzw. „Merkt … als aktuelles Issue“.</summary>
     class function StartHint(const AView: TAtlasIssuesView; const AIssue: TAtlasTrackerIssue): string; static;
     /// <summary>Titel des Bereichs: „Meine Issues · Projekt“; ohne Projekt „Meine Issues“.</summary>
-    class function TitleText(const AProjectName: string): string; static;
+    class function TitleText(const AProjectName: string): string; overload; static;
+    /// <summary>Wie oben, mit Punkt davor, wenn AUnseen (#1271: neue Änderungen an einem Issue).</summary>
+    class function TitleText(const AProjectName: string; AUnseen: Boolean): string; overload; static;
     class function NowUtc: TDateTime; static;
     property Source: IAtlasIssuesSource read FSource write SetSource;
     property View: TAtlasIssuesView read FView;
@@ -360,6 +366,13 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesTitle)
   else
     Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesTitleProject, [AProjectName]);
+end;
+
+class function TAtlasWelcomeIssuesFrame.TitleText(const AProjectName: string; AUnseen: Boolean): string;
+begin
+  Result := TitleText(AProjectName);
+  if AUnseen then
+    Result := UnseenMark + Result;
 end;
 
 class function TAtlasWelcomeIssuesFrame.ErrorText(AError: TAtlasCiFetchError): string;
@@ -776,6 +789,17 @@ begin
   ACanvas.Font.Color := MutedColor;
   FKeyRects[AIndex] := Rect(mLeft, mTop, Min(mLeft + ACanvas.TextWidth(Item.Key), Limit), mTop + ScaleValue(LineHeight));
   ACanvas.TextRect(FKeyRects[AIndex], mLeft, mTop + ScaleValue(1), Item.Key);
+  // Neue Änderungen seit dem letzten Öffnen (#1271): Punkt im Rand vor der Kennung.
+  if FView.IsUnseen(Item.Key) then
+  begin
+    ACanvas.Brush.Style := bsSolid;
+    ACanvas.Brush.Color := StyleServices(Self).GetSystemColor(clHighlight);
+    ACanvas.Pen.Color := ACanvas.Brush.Color;
+    ACanvas.Ellipse(Rect((mLeft - ScaleValue(UnseenDot)) div 2, mTop + (ScaleValue(LineHeight) -
+      ScaleValue(UnseenDot)) div 2, (mLeft + ScaleValue(UnseenDot)) div 2, mTop + (ScaleValue(LineHeight) +
+      ScaleValue(UnseenDot)) div 2));
+    ACanvas.Brush.Style := bsClear;
+  end;
   mLeft := mLeft + Max(ScaleValue(KeyWidth), ACanvas.TextWidth(Item.Key) + ScaleValue(8));
   // Titel, abgeschnitten.
   ACanvas.Font.Assign(Font);
@@ -1015,7 +1039,11 @@ begin
     TAtlasIssuesHitKind.Start:
       FBox.Hint := StartHint(FView, FView.Items[Hit.Index]);
     TAtlasIssuesHitKind.Row:
-      FBox.Hint := FView.Items[Hit.Index].Key + ' ' + FView.Items[Hit.Index].Title;
+      begin
+        FBox.Hint := FView.Items[Hit.Index].Key + ' ' + FView.Items[Hit.Index].Title;
+        if FView.IsUnseen(FView.Items[Hit.Index].Key) then
+          FBox.Hint := FBox.Hint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.IssueNotifyUnseenHint);
+      end;
     TAtlasIssuesHitKind.Assign:
       FBox.Hint := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesHintAssign);
     TAtlasIssuesHitKind.Filter:

@@ -1098,6 +1098,9 @@ begin
   Assert.IsTrue(Settings.IssuesSprintCompare, 'Vergleich mit dem Vorsprint an');
   Assert.IsTrue(Settings.IssuesPaletteSearch, 'Palettensuche (#1270) an');
   Assert.IsTrue(Settings.IssuesPreviewDevelopment, 'Reiter „Entwicklung“ (#1269)');
+  Assert.IsFalse(Settings.IssuesNotify, 'Meldungen (#1271) aus');
+  Assert.AreEqual(10, Settings.IssuesNotifyIntervalMinutes);
+  Assert.AreEqual('assignedOrCreated', Settings.IssuesNotifyScope);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -1129,6 +1132,17 @@ begin
   Assert.AreEqual('', Settings.IssuesTracker);
   Assert.AreEqual('branch', Settings.IssuesStart);
   Assert.AreEqual('', Settings.IssuesCommitPattern, 'leer = aus');
+  // #1271: Abstand begrenzt, unbekannter Umfang fällt auf den Standard.
+  Settings.IssuesNotifyIntervalMinutes := 1;
+  Settings.IssuesNotifyScope := ' WATCHED ';
+  Settings.Normalize;
+  Assert.AreEqual(2, Settings.IssuesNotifyIntervalMinutes, 'mindestens 2 Minuten');
+  Assert.AreEqual('watched', Settings.IssuesNotifyScope);
+  Settings.IssuesNotifyIntervalMinutes := 100000;
+  Settings.IssuesNotifyScope := 'alles';
+  Settings.Normalize;
+  Assert.AreEqual(1440, Settings.IssuesNotifyIntervalMinutes, 'höchstens ein Tag');
+  Assert.AreEqual('assignedOrCreated', Settings.IssuesNotifyScope);
   // Speichern und Laden.
   Settings.WelcomePageIssues := True;
   Settings.IssuesTracker := 'github';
@@ -1159,6 +1173,9 @@ begin
   Settings.IssuesSprintCompare := False;
   Settings.IssuesPaletteSearch := False;
   Settings.IssuesPreviewDevelopment := False;
+  Settings.IssuesNotify := True;
+  Settings.IssuesNotifyIntervalMinutes := 5;
+  Settings.IssuesNotifyScope := 'assigned';
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -1287,6 +1304,9 @@ begin
   Assert.IsFalse(mLoaded.IssuesCommentEditor);
   Assert.AreEqual('[{"name":"Danke","text":"Danke!"}]', mLoaded.IssuesCommentSnippets);
   Assert.IsFalse(Loaded.IssuesPreviewDevelopment);
+  Assert.IsTrue(Loaded.IssuesNotify);
+  Assert.AreEqual(5, Loaded.IssuesNotifyIntervalMinutes);
+  Assert.AreEqual('assigned', Loaded.IssuesNotifyScope);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

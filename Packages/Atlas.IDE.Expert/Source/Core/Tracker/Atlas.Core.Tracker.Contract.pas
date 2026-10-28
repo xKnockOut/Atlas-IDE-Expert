@@ -55,6 +55,12 @@
 //   IAtlasTrackerProvider.Development liest es. Branches und Commits kommen
 //   nicht vom Tracker, sondern aus der Versionsverwaltung
 //   (Atlas.Core.Tracker.Development).
+// - TAtlasTrackerChange (#1271): eine Änderung an einem Issue (neuer
+//   Kommentar, Zuweisung, Zustand) seit dem letzten Stand;
+//   IAtlasTrackerProvider.Changes liest sie für die Meldungen in der
+//   Benachrichtigungszentrale (Atlas.Core.Tracker.Notify). TAtlasTrackerPoll
+//   trägt den Stand von Abfrage zu Abfrage (seit wann, angemeldeter Benutzer,
+//   Umfang, bei GitHub Last-Modified und X-Poll-Interval).
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -82,6 +88,26 @@ type
     PullRequest);
   /// <summary>Zustand eines Pull Requests im Reiter „Entwicklung“ (#1269).</summary>
   TAtlasTrackerPullState = (Open, Draft, Merged, Closed);
+  /// <summary>Art einer Änderung an einem Issue (#1271).</summary>
+  TAtlasTrackerChangeKind = (
+    /// <summary>Neuer Kommentar.</summary>
+    Comment,
+    /// <summary>Zuständig geändert (Value: neuer Zuständiger, ToMe: mir zugewiesen).</summary>
+    Assigned,
+    /// <summary>Zustand geändert (Value: neuer Zustand).</summary>
+    State,
+    /// <summary>Sonstige Änderung, die der Tracker meldet (GitHub-Benachrichtigung ohne erkennbare Einzelheit).
+    /// </summary>
+    Other);
+  /// <summary>issues.notify.scope (#1271): welche Issues beobachtet werden. Jeder Umfang schließt den vorigen ein.
+  /// </summary>
+  TAtlasTrackerNotifyScope = (
+    /// <summary>Mir zugewiesen.</summary>
+    Assigned,
+    /// <summary>Mir zugewiesen oder von mir erstellt (Vorgabe).</summary>
+    AssignedOrCreated,
+    /// <summary>Dazu die beobachteten (YouTrack „Abonniert“/Stern, GitHub „subscribed“).</summary>
+    Watched);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Offener Pull Request zu einem Issue (GitHub).</summary>
@@ -283,6 +309,52 @@ type
     /// <summary>Neueste zuerst.</summary>
     Changes: TArray<TAtlasTrackerVcsChange>;
     class function Empty: TAtlasTrackerDevelopment; static;
+  end;
+
+  /// <summary>Eine Änderung an einem Issue seit dem letzten Stand (#1271).</summary>
+  TAtlasTrackerChange = record
+    /// <summary>Kennung wie im Tracker ("ATL-123", "#753").</summary>
+    Key: string;
+    /// <summary>GitHub: "owner/repo" des Issues (Benachrichtigungen kommen aus allen Repositories); sonst ''.
+    /// </summary>
+    Project: string;
+    /// <summary>Titel des Issues; '' = unbekannt.</summary>
+    Title: string;
+    Kind: TAtlasTrackerChangeKind;
+    /// <summary>Anmeldename des Urhebers (Vergleich mit dem angemeldeten Benutzer); '' = unbekannt.</summary>
+    Author: string;
+    /// <summary>Anzeigename des Urhebers; '' = wie Author.</summary>
+    AuthorName: string;
+    /// <summary>Zeitpunkt (UTC).</summary>
+    Time: TDateTime;
+    /// <summary>State: neuer Zustand; Assigned: neuer Zuständiger (Anzeigename); sonst ''.</summary>
+    Value: string;
+    /// <summary>Assigned: dem angemeldeten Benutzer zugewiesen.</summary>
+    ToMe: Boolean;
+    class function Create(const AKey: string; AKind: TAtlasTrackerChangeKind; const AAuthor: string;
+      ATime: TDateTime): TAtlasTrackerChange; static;
+    /// <summary>Anzeigename, sonst der Anmeldename.</summary>
+    function Who: string;
+  end;
+
+  /// <summary>Stand der Abfrage nach Änderungen einer Verbindung (#1271), von Abfrage zu Abfrage weitergereicht.
+  /// </summary>
+  TAtlasTrackerPoll = record
+    /// <summary>Änderungen nach diesem Zeitpunkt (UTC) sind neu.</summary>
+    Since: TDateTime;
+    /// <summary>Anmeldename des angemeldeten Benutzers (eigene Änderungen entfallen, Zuweisung an mich).</summary>
+    Me: string;
+    Scope: TAtlasTrackerNotifyScope;
+    /// <summary>GitHub: Last-Modified der letzten Antwort von /notifications (If-Modified-Since); '' ohne.
+    /// </summary>
+    LastModified: string;
+    /// <summary>GitHub: X-Poll-Interval der letzten Antwort in Sekunden; 0 ohne.</summary>
+    PollSeconds: Integer;
+    /// <summary>Neuester Zeitpunkt, den die Abfrage gesehen hat (UTC; auch eigene Änderungen); 0 ohne. Wird zum
+    /// nächsten Since, damit eine falsch gehende Uhr nichts verschluckt.</summary>
+    Latest: TDateTime;
+    class function Create(ASince: TDateTime; const AMe: string; AScope: TAtlasTrackerNotifyScope): TAtlasTrackerPoll;
+      static;
   end;
 
   /// <summary>Was abgefragt wird; ohne Zugangsdaten.</summary>
@@ -502,6 +574,13 @@ type
     /// leerem Ergebnis. False mit AError, wenn die Abfrage scheiterte.</summary>
     function Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment; out AError: TAtlasCiFetchError): Boolean;
+    /// <summary>Änderungen an den Issues im Umfang APoll.Scope nach APoll.Since, über alle Projekte des Servers
+    /// (#1271): neue Kommentare, Zuweisungen und Zustandswechsel, älteste zuerst; eigene sind noch dabei
+    /// (Atlas.Core.Tracker.Notify filtert sie). Setzt APoll.Latest (und bei GitHub LastModified und PollSeconds).
+    /// Insgesamt höchstens ATimeoutMs; im Hintergrund. False mit AError, wenn nichts gelesen werden konnte.
+    /// </summary>
+    function Changes(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
+      var APoll: TAtlasTrackerPoll; out AChanges: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -550,6 +629,36 @@ end;
 function TAtlasTrackerLink.Blocking: Boolean;
 begin
   Result := (Kind = TAtlasTrackerLinkKind.DependsOn) and StateKnown and not Resolved;
+end;
+
+{ TAtlasTrackerChange }
+
+class function TAtlasTrackerChange.Create(const AKey: string; AKind: TAtlasTrackerChangeKind; const AAuthor: string;
+  ATime: TDateTime): TAtlasTrackerChange;
+begin
+  Result := Default(TAtlasTrackerChange);
+  Result.Key := AKey;
+  Result.Kind := AKind;
+  Result.Author := AAuthor;
+  Result.Time := ATime;
+end;
+
+function TAtlasTrackerChange.Who: string;
+begin
+  Result := AuthorName;
+  if Result = '' then
+    Result := Author;
+end;
+
+{ TAtlasTrackerPoll }
+
+class function TAtlasTrackerPoll.Create(ASince: TDateTime; const AMe: string;
+  AScope: TAtlasTrackerNotifyScope): TAtlasTrackerPoll;
+begin
+  Result := Default(TAtlasTrackerPoll);
+  Result.Since := ASince;
+  Result.Me := AMe;
+  Result.Scope := AScope;
 end;
 
 { TAtlasTrackerIssue }

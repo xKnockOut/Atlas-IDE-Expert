@@ -177,6 +177,32 @@ type
     procedure YouTrackVcsChanges;
   end;
 
+  /// <summary>Meldungen zu meinen Issues (#1271): Änderungen seit der letzten Abfrage je Anbieter.</summary>
+  [TestFixture]
+  TAtlasTrackerChangesTests = class
+  public
+    [Test]
+    procedure YouTrackScopeAndUrls;
+    [Test]
+    procedure YouTrackChangedIssues;
+    /// <summary>Abnahme: Kommentar, Zuweisung an mich und Zustand; andere Felder, alte und leere Einträge nicht.
+    /// </summary>
+    [Test]
+    procedure YouTrackActivities;
+    [Test]
+    procedure YouTrackChangesOverTransport;
+    [Test]
+    procedure GitHubNotificationsOnlyIssues;
+    [Test]
+    procedure GitHubScope;
+    [Test]
+    procedure GitHubCommentsAndEvents;
+    [Test]
+    procedure GitHubChangesOverTransport;
+    [Test]
+    procedure ChangesErrors;
+  end;
+
   [TestFixture]
   TAtlasCommitHookTests = class
   private
@@ -208,7 +234,8 @@ uses
   Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.CommitHook;
+  Atlas.Core.Tracker.CommitHook,
+  Atlas.Text.Uris;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang; zählt die Aufrufe.</summary>
@@ -1646,8 +1673,232 @@ begin
   Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
 end;
 
+{ TAtlasTrackerChangesTests }
+
+/// <summary>Stand der Beispiele: 31.12.2025 12:00 UTC.</summary>
+function Since: TDateTime;
+begin
+  Result := EncodeDateTime(2025, 12, 31, 12, 0, 0, 0);
+end;
+
+function GitHubThread(const ARepository: string; ANumber: Integer): TAtlasGitHubThread;
+begin
+  Result := Default(TAtlasGitHubThread);
+  Result.Repository := ARepository;
+  Result.Number := ANumber;
+  Result.Title := 'Absturz beim Speichern';
+  Result.Reason := 'assign';
+end;
+
+procedure TAtlasTrackerChangesTests.YouTrackScopeAndUrls;
+var
+  mUrl: string;
+begin
+  Assert.AreEqual('for: me', TAtlasYouTrackTracker.ScopeQuery(TAtlasTrackerNotifyScope.Assigned));
+  Assert.AreEqual('(for: me or reporter: me)',
+    TAtlasYouTrackTracker.ScopeQuery(TAtlasTrackerNotifyScope.AssignedOrCreated));
+  Assert.AreEqual('(for: me or reporter: me or has: star)',
+    TAtlasYouTrackTracker.ScopeQuery(TAtlasTrackerNotifyScope.Watched));
+  mUrl := TAtlasYouTrackTracker.ChangedIssuesUrl(YouTrackTarget, Since, TAtlasTrackerNotifyScope.AssignedOrCreated);
+  Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues?query='), mUrl);
+  // Einen Tag früher (Zeitzone des Servers); ohne Projekt: alle Projekte der Verbindung.
+  Assert.IsTrue(Pos(TTextUris.PercentEncode('(for: me or reporter: me) updated: 2025-12-30 .. *'), mUrl) > 0, mUrl);
+  Assert.AreEqual('', TAtlasYouTrackTracker.ChangedIssuesUrl(TAtlasTrackerTarget.Create('youtrack', '', '', ''),
+    Since, TAtlasTrackerNotifyScope.Assigned));
+  mUrl := TAtlasYouTrackTracker.ActivitiesUrl(YouTrackTarget, 'ATL-1', Since);
+  Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues/ATL-1/activities?categories='), mUrl);
+  Assert.IsTrue(Pos('&start=1767182400001&', mUrl) > 0, 'Millisekunden nach dem Stand: ' + mUrl);
+  Assert.AreEqual('', TAtlasYouTrackTracker.ActivitiesUrl(YouTrackTarget, 'ATL 1/../x', Since), 'ungültige Kennung');
+end;
+
+procedure TAtlasTrackerChangesTests.YouTrackChangedIssues;
+var
+  mIssues: TArray<TAtlasTrackerChange>;
+begin
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseChangedIssues(Fixture('YouTrack', 'changed-issues.json'), Since,
+    mIssues));
+  Assert.AreEqual(Integer(1), Integer(Length(mIssues)), 'nur nach dem Stand und mit gültiger Kennung');
+  Assert.AreEqual('ATL-1', mIssues[0].Key);
+  Assert.AreEqual('Absturz beim Speichern', mIssues[0].Title);
+  Assert.IsTrue(mIssues[0].Kind = TAtlasTrackerChangeKind.Other);
+  Assert.AreEqual(EncodeDateTime(2026, 1, 1, 0, 4, 0, 0), mIssues[0].Time, 1 / MSecsPerDay);
+  Assert.IsFalse(TAtlasYouTrackTracker.ParseChangedIssues('{"error":"x"}', Since, mIssues));
+end;
+
+procedure TAtlasTrackerChangesTests.YouTrackActivities;
+var
+  mChanges: TArray<TAtlasTrackerChange>;
+begin
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseActivities(Fixture('YouTrack', 'activities.json'), 'ATL-1', 'Titel',
+    'marco', Since, mChanges));
+  Assert.AreEqual(Integer(3), Integer(Length(mChanges)));
+  Assert.IsTrue(mChanges[0].Kind = TAtlasTrackerChangeKind.Comment);
+  Assert.AreEqual('anna', mChanges[0].Author);
+  Assert.AreEqual('Anna Muster', mChanges[0].Who);
+  Assert.AreEqual('ATL-1', mChanges[0].Key);
+  Assert.AreEqual('Titel', mChanges[0].Title);
+  Assert.IsTrue(mChanges[1].Kind = TAtlasTrackerChangeKind.Assigned);
+  Assert.AreEqual('Marco B.', mChanges[1].Value);
+  Assert.IsTrue(mChanges[1].ToMe, 'an den angemeldeten Benutzer');
+  Assert.IsTrue(mChanges[2].Kind = TAtlasTrackerChangeKind.State);
+  Assert.AreEqual('Fertig', mChanges[2].Value);
+  // Ohne bekannten Benutzer: keine Zuweisung „an mich“.
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseActivities(Fixture('YouTrack', 'activities.json'), 'ATL-1', 'Titel',
+    '', Since, mChanges));
+  Assert.IsFalse(mChanges[1].ToMe);
+  Assert.IsFalse(TAtlasYouTrackTracker.ParseActivities('kein JSON', 'ATL-1', '', '', Since, mChanges));
+end;
+
+procedure TAtlasTrackerChangesTests.YouTrackChangesOverTransport;
+var
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mPoll: TAtlasTrackerPoll;
+  mChanges: TArray<TAtlasTrackerChange>;
+  mError: TAtlasCiFetchError;
+begin
+  mProvider := TAtlasYouTrackTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://beispiel.youtrack.cloud/api/issues?', 200, Fixture('YouTrack', 'changed-issues.json'));
+  mTransport.Answer('https://beispiel.youtrack.cloud/api/issues/ATL-1/activities', 200,
+    Fixture('YouTrack', 'activities.json'));
+  mPoll := TAtlasTrackerPoll.Create(Since, 'marco', TAtlasTrackerNotifyScope.Assigned);
+  Assert.IsTrue(mProvider.Changes(YouTrackTarget, mTransportRef, 5000, mPoll, mChanges, mError));
+  Assert.AreEqual(Integer(3), Integer(Length(mChanges)));
+  Assert.AreEqual('Absturz beim Speichern', mChanges[0].Title, 'Titel aus der Liste');
+  Assert.AreEqual(EncodeDateTime(2026, 1, 1, 0, 4, 0, 0), mPoll.Latest, 1 / MSecsPerDay, 'neuester Stand');
+  Assert.AreEqual(Integer(2), Integer(Length(mTransport.Calls)));
+  Assert.IsTrue(Pos(TTextUris.PercentEncode('for: me updated:'), mTransport.Calls[0]) > 0, 'Umfang Assigned');
+  // Aktivitäten nicht lesbar: das Issue meldet sich ohne Einzelheiten.
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://beispiel.youtrack.cloud/api/issues?', 200, Fixture('YouTrack', 'changed-issues.json'));
+  mPoll := TAtlasTrackerPoll.Create(Since, 'marco', TAtlasTrackerNotifyScope.Assigned);
+  Assert.IsTrue(mProvider.Changes(YouTrackTarget, mTransportRef, 5000, mPoll, mChanges, mError));
+  Assert.AreEqual(Integer(1), Integer(Length(mChanges)));
+  Assert.IsTrue(mChanges[0].Kind = TAtlasTrackerChangeKind.Other);
+end;
+
+procedure TAtlasTrackerChangesTests.GitHubNotificationsOnlyIssues;
+var
+  mThreads: TArray<TAtlasGitHubThread>;
+begin
+  Assert.AreEqual('https://api.github.com/notifications?since=' + TTextUris.PercentEncode('2025-12-31T12:00:00Z') +
+    '&per_page=50', TAtlasGitHubTracker.NotificationsUrl(GitHubTarget, Since));
+  Assert.IsTrue(TAtlasGitHubTracker.ParseNotifications(Fixture('GitHub', 'notifications.json'), Since, mThreads));
+  Assert.AreEqual(Integer(2), Integer(Length(mThreads)), 'ohne Pull Request und ohne alte');
+  Assert.AreEqual('beispiel/atlas', mThreads[0].Repository);
+  Assert.AreEqual(12, mThreads[0].Number);
+  Assert.AreEqual('assign', mThreads[0].Reason);
+  Assert.AreEqual('Absturz beim Speichern', mThreads[0].Title);
+  Assert.AreEqual('beispiel/andere', mThreads[1].Repository, 'alle Repositories des Servers');
+  Assert.AreEqual(7, mThreads[1].Number);
+  Assert.AreEqual('subscribed', mThreads[1].Reason);
+  Assert.IsFalse(TAtlasGitHubTracker.ParseNotifications('{}', Since, mThreads));
+end;
+
+procedure TAtlasTrackerChangesTests.GitHubScope;
+begin
+  Assert.IsTrue(TAtlasGitHubTracker.InScope('assign', TAtlasTrackerNotifyScope.Assigned));
+  Assert.IsFalse(TAtlasGitHubTracker.InScope('author', TAtlasTrackerNotifyScope.Assigned));
+  Assert.IsTrue(TAtlasGitHubTracker.InScope('author', TAtlasTrackerNotifyScope.AssignedOrCreated));
+  Assert.IsFalse(TAtlasGitHubTracker.InScope('subscribed', TAtlasTrackerNotifyScope.AssignedOrCreated));
+  Assert.IsTrue(TAtlasGitHubTracker.InScope('subscribed', TAtlasTrackerNotifyScope.Watched));
+  Assert.IsTrue(TAtlasGitHubTracker.InScope('mention', TAtlasTrackerNotifyScope.Watched));
+end;
+
+procedure TAtlasTrackerChangesTests.GitHubCommentsAndEvents;
+var
+  mChanges: TArray<TAtlasTrackerChange>;
+begin
+  Assert.IsTrue(TAtlasGitHubTracker.ParseCommentChanges(Fixture('GitHub', 'issue-comments-since.json'),
+    GitHubThread('beispiel/atlas', 12), Since, mChanges));
+  Assert.AreEqual(Integer(2), Integer(Length(mChanges)), 'nur nach dem Stand angelegte');
+  Assert.AreEqual('#12', mChanges[0].Key);
+  Assert.AreEqual('beispiel/atlas', mChanges[0].Project);
+  Assert.AreEqual('anna', mChanges[0].Author);
+  Assert.IsTrue(mChanges[0].Kind = TAtlasTrackerChangeKind.Comment);
+  Assert.AreEqual('marco', mChanges[1].Author);
+  Assert.IsTrue(TAtlasGitHubTracker.ParseEventChanges(Fixture('GitHub', 'issue-events.json'),
+    GitHubThread('beispiel/atlas', 12), 'Marco', Since, mChanges));
+  Assert.AreEqual(Integer(2), Integer(Length(mChanges)), 'labeled und alte Ereignisse nicht');
+  Assert.IsTrue(mChanges[0].Kind = TAtlasTrackerChangeKind.Assigned);
+  Assert.AreEqual('marco', mChanges[0].Value);
+  Assert.IsTrue(mChanges[0].ToMe, 'Anmeldename ohne Groß-/Kleinschreibung');
+  Assert.AreEqual('ben', mChanges[0].Author);
+  Assert.IsTrue(mChanges[1].Kind = TAtlasTrackerChangeKind.State);
+  Assert.AreEqual('closed', mChanges[1].Value);
+  Assert.IsFalse(TAtlasGitHubTracker.ParseEventChanges('nichts', GitHubThread('beispiel/atlas', 12), '', Since,
+    mChanges));
+end;
+
+procedure TAtlasTrackerChangesTests.GitHubChangesOverTransport;
+var
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mPoll: TAtlasTrackerPoll;
+  mChanges: TArray<TAtlasTrackerChange>;
+  mError: TAtlasCiFetchError;
+begin
+  mProvider := TAtlasGitHubTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://api.github.com/notifications', 200, Fixture('GitHub', 'notifications.json'));
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/12/comments', 200,
+    Fixture('GitHub', 'issue-comments-since.json'));
+  mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/12/events', 200,
+    Fixture('GitHub', 'issue-events.json'));
+  mPoll := TAtlasTrackerPoll.Create(Since, 'marco', TAtlasTrackerNotifyScope.Watched);
+  Assert.IsTrue(mProvider.Changes(GitHubTarget, mTransportRef, 5000, mPoll, mChanges, mError));
+  // #12: zwei Kommentare, Zuweisung, geschlossen; #7 (beobachtet, ohne Einzelheiten): allgemeine Änderung.
+  Assert.AreEqual(Integer(5), Integer(Length(mChanges)));
+  Assert.IsTrue(mChanges[4].Kind = TAtlasTrackerChangeKind.Other);
+  Assert.AreEqual('#7', mChanges[4].Key);
+  Assert.AreEqual('beispiel/andere', mChanges[4].Project);
+  Assert.AreEqual(EncodeDateTime(2026, 1, 1, 0, 2, 0, 0), mPoll.Latest, 1 / MSecsPerDay);
+  // Umfang „zugewiesen oder erstellt“: #7 entfällt, der Stand rückt trotzdem vor.
+  mPoll := TAtlasTrackerPoll.Create(Since, 'marco', TAtlasTrackerNotifyScope.AssignedOrCreated);
+  Assert.IsTrue(mProvider.Changes(GitHubTarget, mTransportRef, 5000, mPoll, mChanges, mError));
+  Assert.AreEqual(Integer(4), Integer(Length(mChanges)));
+  Assert.AreEqual(EncodeDateTime(2026, 1, 1, 0, 2, 0, 0), mPoll.Latest, 1 / MSecsPerDay);
+end;
+
+procedure TAtlasTrackerChangesTests.ChangesErrors;
+var
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mPoll: TAtlasTrackerPoll;
+  mChanges: TArray<TAtlasTrackerChange>;
+  mError: TAtlasCiFetchError;
+begin
+  mProvider := TAtlasGitHubTracker.Create;
+  mPoll := TAtlasTrackerPoll.Create(Since, '', TAtlasTrackerNotifyScope.Watched);
+  Assert.IsFalse(mProvider.Changes(GitHubTarget, nil, 5000, mPoll, mChanges, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured, 'ohne Token');
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://api.github.com/notifications', 401, '{}');
+  Assert.IsFalse(mProvider.Changes(GitHubTarget, mTransportRef, 5000, mPoll, mChanges, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
+  mTransport.FailWith(TAtlasCiFetchError.Timeout);
+  Assert.IsFalse(mProvider.Changes(GitHubTarget, mTransportRef, 5000, mPoll, mChanges, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
+  mProvider := TAtlasYouTrackTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer('https://beispiel.youtrack.cloud/api/issues?', 200, '<html>Anmeldung</html>');
+  Assert.IsFalse(mProvider.Changes(YouTrackTarget, mTransportRef, 5000, mPoll, mChanges, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid, 'Anmeldeseite statt JSON');
+  Assert.IsTrue(mPoll.Since = Since, 'Stand unverändert');
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasTrackerTargetTests);
+  TDUnitX.RegisterTestFixture(TAtlasTrackerChangesTests);
   TDUnitX.RegisterTestFixture(TAtlasTrackerNamingTests);
   TDUnitX.RegisterTestFixture(TAtlasGitHubTrackerTests);
   TDUnitX.RegisterTestFixture(TAtlasYouTrackTrackerTests);

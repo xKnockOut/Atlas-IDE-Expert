@@ -35,6 +35,10 @@ type
     procedure ShowsHeaderBadgesAndLists;
     [Test]
     procedure OlderCommentsCollapsed;
+    /// <summary>#1271: Aus einer Meldung am ersten neuen Kommentar; liegt er bei den eingeklappten, klappen sie auf.
+    /// </summary>
+    [Test]
+    procedure AnchorExpandsAndMarksComment;
     [Test]
     procedure LoadingErrorAndHistory;
     [Test]
@@ -223,6 +227,33 @@ begin
     Assert.AreEqual(2 + TAtlasIssuePreview.ShownComments, mFrame.DocCount);
     mFrame.ShowDetails(Sample(TAtlasIssuePreview.ShownComments + 1), cNow, '', False);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewOlderComment), mFrame.OlderLabel.Caption);
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.AnchorExpandsAndMarksComment;
+var
+  mHost: TForm;
+  mFrame: TAtlasIssueFrame;
+  mDetails: TAtlasTrackerDetails;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasIssueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mDetails := Sample(TAtlasIssuePreview.ShownComments + 2);
+    mFrame.ShowDetails(mDetails, cNow, '', False);
+    Assert.AreEqual(Integer(-1), mFrame.AnchorComment, 'ohne Anker');
+    // Der zweite Kommentar ist eingeklappt: Der Anker klappt auf und hebt ihn hervor.
+    mFrame.SetAnchor(mDetails.Comments[1].Created);
+    mFrame.ShowDetails(mDetails, cNow, '', False);
+    Assert.AreEqual(Integer(1), mFrame.AnchorComment);
+    Assert.IsTrue(mFrame.CommentsExpanded);
+    Assert.IsNull(mFrame.OlderLabel, 'alle Kommentare sichtbar');
+    // Gefunden: Ein erneutes Laden springt nicht noch einmal.
+    mFrame.ShowDetails(mDetails, cNow, '', False);
+    Assert.AreEqual(Integer(-1), mFrame.AnchorComment);
   finally
     mHost.Free;
   end;

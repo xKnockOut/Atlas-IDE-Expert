@@ -737,6 +737,9 @@ type
     /// <summary>Die Seite füllt die Felder selbst: OnChange übernimmt nichts.</summary>
     FSnippetFilling: Boolean;
     FIssuesPreviewDevelopment: TCheckBox;
+    FIssuesNotify: TCheckBox;
+    FIssuesNotifyInterval: TEdit;
+    FIssuesNotifyScope: TAtlasChoiceBox;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1503,6 +1506,9 @@ type
     property WelcomeSprint: TCheckBox read FWelcomeSprint;
     property IssuesPaletteSearch: TCheckBox read FIssuesPaletteSearch;
     property IssuesPreviewDevelopment: TCheckBox read FIssuesPreviewDevelopment;
+    property IssuesNotify: TCheckBox read FIssuesNotify;
+    property IssuesNotifyInterval: TEdit read FIssuesNotifyInterval;
+    property IssuesNotifyScope: TAtlasChoiceBox read FIssuesNotifyScope;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -3238,6 +3244,14 @@ begin
   FIssuesSprintBurndown := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSprintBurndown));
   FIssuesSprintCompare := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSprintCompare));
   FIssuesPreviewDevelopment := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewDevelopment));
+  // Meldungen zu meinen Issues (#1271): Hauptschalter, Abstand und Umfang darunter.
+  FIssuesNotify := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotify));
+  FIssuesNotifyInterval := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyInterval));
+  // Reihenfolge wie TAtlasTrackerNotifyScope.
+  FIssuesNotifyScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyScope),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyScopeAssigned),
+    TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyScopeCreated),
+    TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyScopeWatched)]);
 end;
 
 procedure TAtlasSettingsPage.AddIssuesTimeSection;
@@ -6666,6 +6680,9 @@ begin
   FMarks.Bind(FIssuesCommentEditor, ['IssuesCommentEditor']);
   FMarks.Bind(FIssuesSnippets, ['IssuesCommentSnippets']);
   FMarks.Bind(FIssuesPreviewDevelopment, ['IssuesPreviewDevelopment']);
+  FMarks.Bind(FIssuesNotify, ['IssuesNotify']);
+  FMarks.Bind(FIssuesNotifyInterval, ['IssuesNotifyIntervalMinutes']);
+  FMarks.Bind(FIssuesNotifyScope, ['IssuesNotifyScope']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FIssuesProjects, ['IssuesProjects']);
   FMarks.Bind(FIssuesQueries, ['IssuesQueries']);
@@ -9000,6 +9017,14 @@ begin
     FSnippetSelected := 0;
   RefreshSnippets;
   FIssuesPreviewDevelopment.Checked := ASettings.IssuesPreviewDevelopment;
+  FIssuesNotify.Checked := ASettings.IssuesNotify;
+  FIssuesNotifyInterval.Text := IntToStr(ASettings.IssuesNotifyIntervalMinutes);
+  if SameText(ASettings.IssuesNotifyScope, TAtlasPluginSettings.IssuesNotifyAssigned) then
+    FIssuesNotifyScope.Choice := 0
+  else if SameText(ASettings.IssuesNotifyScope, TAtlasPluginSettings.IssuesNotifyWatched) then
+    FIssuesNotifyScope.Choice := 2
+  else
+    FIssuesNotifyScope.Choice := 1;
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -9632,6 +9657,17 @@ begin
   ASettings.IssuesCommentEditor := FIssuesCommentEditor.Checked;
   ASettings.IssuesCommentSnippets := TAtlasCommentSnippets.ToJson(FCommentSnippets);
   ASettings.IssuesPreviewDevelopment := FIssuesPreviewDevelopment.Checked;
+  ASettings.IssuesNotify := FIssuesNotify.Checked;
+  ASettings.IssuesNotifyIntervalMinutes := StrToIntDef(Trim(FIssuesNotifyInterval.Text),
+    ASettings.IssuesNotifyIntervalMinutes);
+  case FIssuesNotifyScope.Choice of
+    0:
+      ASettings.IssuesNotifyScope := TAtlasPluginSettings.IssuesNotifyAssigned;
+    2:
+      ASettings.IssuesNotifyScope := TAtlasPluginSettings.IssuesNotifyWatched;
+  else
+    ASettings.IssuesNotifyScope := TAtlasPluginSettings.IssuesNotifyAssignedOrCreated;
+  end;
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.IssuesProjects := TrackerProjectsJson;
   ASettings.IssuesQueries := TrackerQueriesJson;

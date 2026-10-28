@@ -11,6 +11,8 @@
 //   erneut versuchen).
 // - Eine Abfrage zur Zeit: Ein neuer Wunsch bricht die laufende ab und folgt
 //   ihr.
+// - Aus einer Meldung zu meinen Issues (#1271) öffnet Show mit Anker am
+//   ersten neuen Kommentar.
 // - Bilder: nur vom Server des Tokens (TAtlasIssuePreview.MayLoad), im
 //   Hintergrund über IAtlasCiDownload, höchstens MaxImages je Issue.
 // - Anhänge: Doppelklick lädt nach %TEMP%\Atlas\issues\<Kennung>\ und öffnet
@@ -240,7 +242,10 @@ type
     /// <summary>Abbrechen, kurz auf die Abfragen warten, Fenster abmelden; danach wirkungslos.</summary>
     procedure Stop;
     /// <summary>Issue AKey des Trackers ATarget im Fenster zeigen (öffnet es).</summary>
-    procedure Show(const ATarget: TAtlasTrackerTarget; const AKey: string);
+    procedure Show(const ATarget: TAtlasTrackerTarget; const AKey: string); overload;
+    /// <summary>Wie oben, am Kommentar zu AAnchor (UTC, erster neuer Kommentar einer Meldung, #1271); 0 = oben.
+    /// </summary>
+    procedure Show(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime); overload;
     procedure Refresh;
     procedure GoBack;
     procedure GoForward;
@@ -686,6 +691,11 @@ begin
 end;
 
 procedure TAtlasIdeIssuePreview.Show(const ATarget: TAtlasTrackerTarget; const AKey: string);
+begin
+  Show(ATarget, AKey, 0);
+end;
+
+procedure TAtlasIdeIssuePreview.Show(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime);
 var
   mEntry: TAtlasIssueHistoryEntry;
 begin
@@ -700,7 +710,10 @@ begin
       FHistory.Visit(mEntry);
       mFrame := TAtlasIdeIssueWindow.Show;
       if mFrame <> nil then
+      begin
         TAtlasIdeIssueWindow.ApplyTheme;
+        mFrame.SetAnchor(AAnchor);
+      end;
       Load(mEntry);
     end);
 end;
