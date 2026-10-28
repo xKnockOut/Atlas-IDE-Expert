@@ -186,6 +186,19 @@ type
     /// <summary>Adresse des Issues AKey im Tracker des aktuellen Projekts (#1123); '' ohne Tracker. Ohne Netz.
     /// </summary>
     function IssueUrl(const AKey: string): string;
+    /// <summary>Tracker des Projekts AProject (.atlas, sonst persönliche Zuordnung, #1261) mit dem Namen der
+    /// Verbindung in AConnection ('' ohne bzw. aus der .atlas); für „Issue anlegen …“ (#1268). Ohne Netz.</summary>
+    class function TrackerOf(const AProject: string; out AConnection: string): TAtlasTrackerTarget; static;
+    /// <summary>Anbieter zum Namen über ProviderFactory; nil ohne.</summary>
+    function ProviderFor(const AName: string): IAtlasTrackerProvider;
+    /// <summary>Transport mit dem Token aus dem Anmeldespeicher (TransportFactory); nil ohne Token. Auch im
+    /// Hintergrund-Thread.</summary>
+    function TransportFor(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget):
+      IAtlasCiTransport;
+    /// <summary>„Beginnen“ ist möglich (Bereich an, kein Beginnen läuft).</summary>
+    function CanStartIssue: Boolean;
+    /// <summary>„gleich beginnen“ nach „Issue anlegen …“ (#1268): wie „Beginnen“ mit issues.start.</summary>
+    procedure StartIssue(const AIssue: TAtlasTrackerIssue);
     property ProviderFactory: TAtlasTrackerProviderHook read FProviderFactory write FProviderFactory;
     property TransportFactory: TAtlasTrackerTransportHook read FTransportFactory write FTransportFactory;
     property OnCredentials: TAtlasTrackerCredentialsHook read FOnCredentials write FOnCredentials;
@@ -326,6 +339,41 @@ begin
   Provider := ProviderOf(Target.Provider);
   if Provider <> nil then
     Result := Provider.IssuePage(Target, AKey);
+end;
+
+class function TAtlasIdeIssues.TrackerOf(const AProject: string; out AConnection: string): TAtlasTrackerTarget;
+var
+  mCached: TCachedTarget;
+begin
+  mCached := ResolveTarget(AProject);
+  AConnection := mCached.Connection;
+  Result := mCached.Target;
+  // Die Abfrage gehört zu „Meine Issues“, nicht zum Anlegen.
+  Result.Query := '';
+end;
+
+function TAtlasIdeIssues.ProviderFor(const AName: string): IAtlasTrackerProvider;
+begin
+  Result := ProviderOf(AName);
+end;
+
+function TAtlasIdeIssues.TransportFor(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
+begin
+  Result := nil;
+  if Assigned(FTransportFactory) and (AProvider <> nil) then
+    Result := FTransportFactory(AProvider, ATarget);
+end;
+
+function TAtlasIdeIssues.CanStartIssue: Boolean;
+begin
+  Result := FStarted and Active and (FStartProject = '');
+end;
+
+procedure TAtlasIdeIssues.StartIssue(const AIssue: TAtlasTrackerIssue);
+begin
+  if CanStartIssue then
+    Start(AIssue, Options.Start);
 end;
 
 procedure TAtlasIdeIssues.Stop;

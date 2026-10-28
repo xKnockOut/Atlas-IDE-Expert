@@ -921,6 +921,9 @@ begin
   Assert.AreEqual('', Settings.IssuesTracker, 'aus der .atlas');
   Assert.AreEqual('[]', Settings.IssuesQueries, 'je Anbieter „Mir zugewiesen“ (#1262)');
   Assert.IsTrue(Settings.IssuesQueryPicker);
+  Assert.IsTrue(Settings.IssuesCreate, '„Issue anlegen …“ an (#1268)');
+  Assert.IsTrue(Settings.IssuesCreateIncludeCode, 'Codeausschnitt vorgeschlagen (#1268)');
+  Assert.AreEqual(0, Settings.CreateIssueKey, 'frei belegbar, ohne Vorgabe');
   Assert.AreEqual('branch', Settings.IssuesStart);
   Assert.AreEqual('', Settings.IssuesBranchPattern, 'je Versionsverwaltung');
   Assert.AreEqual('', Settings.IssuesBranchBase);
@@ -957,6 +960,9 @@ begin
   Settings.IssuesTracker := 'github';
   Settings.IssuesQueries := '[{"name": "Bugs", "query": "label:bug"}]';
   Settings.IssuesQueryPicker := False;
+  Settings.IssuesCreate := False;
+  Settings.IssuesCreateIncludeCode := False;
+  Settings.CreateIssueKey := $4049;
   Settings.IssuesStart := 'remember';
   Settings.IssuesBranchPattern := 'issue/{nummer}';
   Settings.IssuesBranchBase := 'trunk';
@@ -970,6 +976,9 @@ begin
   Assert.AreEqual('github', Loaded.IssuesTracker);
   Assert.AreEqual('[{"name": "Bugs", "query": "label:bug"}]', Loaded.IssuesQueries);
   Assert.IsFalse(Loaded.IssuesQueryPicker);
+  Assert.IsFalse(Loaded.IssuesCreate);
+  Assert.IsFalse(Loaded.IssuesCreateIncludeCode);
+  Assert.AreEqual($4049, Loaded.CreateIssueKey, 'Strg+I');
   Assert.AreEqual('remember', Loaded.IssuesStart);
   Assert.AreEqual('issue/{nummer}', Loaded.IssuesBranchPattern);
   Assert.AreEqual('trunk', Loaded.IssuesBranchBase);
