@@ -148,6 +148,10 @@ type
     MinVcsTimeoutSeconds = 1;
     MaxVcsTimeoutSeconds = 300;
     DefaultVcsTimeoutSeconds = 15;
+    /// <summary>Grenzen und Vorgabe von issues.blameLinks.maxRevisions (#1275).</summary>
+    MinIssuesBlameMaxRevisions = 1;
+    MaxIssuesBlameMaxRevisions = 5000;
+    DefaultIssuesBlameMaxRevisions = 200;
     /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
     MaxIssuesText = 200;
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
@@ -1287,6 +1291,13 @@ type
     /// unterstreichen, Hover mit Kurzvorschau, Strg+Klick und Kontextmenü; aus = keine Erkennung, keine Abfrage.
     /// </summary>
     IssuesCodeLinks: Boolean;
+    /// <summary>Issues in der Zeilenhistorie (#1275, issues.blameLinks): Kennungen aus der Commit-Nachricht am
+    /// Rand, Hover mit Titel und Zustand, Strg+Klick und Befehl „Issues zu dieser Methode“; aus = Zeilenhistorie
+    /// wie bisher, kein Befehl.</summary>
+    IssuesBlameLinks: Boolean;
+    /// <summary>Höchstzahl durchsuchter Revisionen für „Issues zu dieser Methode“ (#1275,
+    /// issues.blameLinks.maxRevisions).</summary>
+    IssuesBlameMaxRevisions: Integer;
     /// <summary>Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261, issues.projects) als JSON-Liste mit
     /// match, connection und project; liegt in settings.json, gelesen mit TAtlasTrackerProjects. '[]' = keine.
     /// </summary>
@@ -2022,6 +2033,8 @@ begin
   Result.IssuesPreview := True;
   Result.IssuesPreviewComments := True;
   Result.IssuesCodeLinks := True;
+  Result.IssuesBlameLinks := True;
+  Result.IssuesBlameMaxRevisions := DefaultIssuesBlameMaxRevisions;
   Result.IssuesProjects := '[]';
   Result.VcsProvider := 'auto';
   Result.VcsGitPath := '';
@@ -2112,6 +2125,8 @@ begin
   VcsProvider := Choice(LowerCase(Trim(VcsProvider)), ['auto', 'git', 'svn', 'off']);
   VcsGitPath := Trim(VcsGitPath);
   VcsSvnPath := Trim(VcsSvnPath);
+  IssuesBlameMaxRevisions := EnsureRange(IssuesBlameMaxRevisions, MinIssuesBlameMaxRevisions,
+    MaxIssuesBlameMaxRevisions);
   // Außerhalb der Grenzen gilt die Vorgabe wie im Server (vcs.timeoutSeconds).
   if (VcsTimeoutSeconds < MinVcsTimeoutSeconds) or (VcsTimeoutSeconds > MaxVcsTimeoutSeconds) then
     VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
@@ -2829,6 +2844,8 @@ begin
   IssuesPreview := AStore.ReadInteger('IssuesPreview', BoolValue(Default.IssuesPreview)) <> 0;
   IssuesPreviewComments := AStore.ReadInteger('IssuesPreviewComments', BoolValue(Default.IssuesPreviewComments)) <> 0;
   IssuesCodeLinks := AStore.ReadInteger('IssuesCodeLinks', BoolValue(Default.IssuesCodeLinks)) <> 0;
+  IssuesBlameLinks := AStore.ReadInteger('IssuesBlameLinks', BoolValue(Default.IssuesBlameLinks)) <> 0;
+  IssuesBlameMaxRevisions := AStore.ReadInteger('IssuesBlameMaxRevisions', Default.IssuesBlameMaxRevisions);
   IssuesProjects := AStore.ReadString('IssuesProjects', Default.IssuesProjects);
   VcsProvider := AStore.ReadString('VcsProvider', Default.VcsProvider);
   VcsGitPath := AStore.ReadString('VcsGitPath', Default.VcsGitPath);
@@ -3303,6 +3320,8 @@ begin
   AStore.WriteInteger('IssuesPreview', BoolValue(IssuesPreview));
   AStore.WriteInteger('IssuesPreviewComments', BoolValue(IssuesPreviewComments));
   AStore.WriteInteger('IssuesCodeLinks', BoolValue(IssuesCodeLinks));
+  AStore.WriteInteger('IssuesBlameLinks', BoolValue(IssuesBlameLinks));
+  AStore.WriteInteger('IssuesBlameMaxRevisions', IssuesBlameMaxRevisions);
   AStore.WriteString('IssuesProjects', IssuesProjects);
   AStore.WriteString('VcsProvider', VcsProvider);
   AStore.WriteString('VcsGitPath', VcsGitPath);

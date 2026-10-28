@@ -171,6 +171,7 @@ uses
   Atlas.IDE.Welcome.Issues,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,
+  Atlas.IDE.Tracker.BlameLinks,
   Atlas.UI.Welcome.TestResults,
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
@@ -290,6 +291,8 @@ var
   SelectionMatches: TAtlasIdeSelectionMatches;
   // Issue-Kennungen im Code (#1265), über „Meine Issues“.
   IssueLinks: TAtlasIdeCodeLinks;
+  // Issues in der Zeilenhistorie (#1275), über „Meine Issues“ und die Zeilenhistorie.
+  BlameIssues: TAtlasIdeBlameLinks;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
@@ -1956,6 +1959,18 @@ begin
     function: Boolean
     begin
       Result := TAtlasIdeSettings.Current.IssuesPreview and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
+  // Issues zu dieser Methode (#1275): Issues aus der Zeilenhistorie der Methode bzw. Unit am Cursor; sichtbar mit
+  // issues.blameLinks.
+  Add('Atlas.BlameIssues', TAtlasTextId.BlameIssuesCommand,
+    procedure
+    begin
+      if BlameIssues <> nil then
+        TAtlasGuard.Run(TAtlasFeature.BlameIssues, BlameIssues.ShowScope);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeBlameLinks.Enabled and (BlameIssues <> nil);
     end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
@@ -4527,7 +4542,7 @@ begin
     end;
 end;
 
-procedure StartIssueLinks;
+function IssueHooks: TAtlasCodeLinksHooks;
 var
   mHooks: TAtlasCodeLinksHooks;
 begin
@@ -4574,7 +4589,25 @@ begin
     begin
       Result := (Welcome <> nil) and (Welcome.Issues <> nil) and Welcome.Issues.CanStartIssue;
     end;
-  IssueLinks := TAtlasIdeCodeLinks.Create(mHooks);
+  Result := mHooks;
+end;
+
+procedure StartIssueLinks;
+begin
+  IssueLinks := TAtlasIdeCodeLinks.Create(IssueHooks);
+end;
+
+procedure StartBlameIssues;
+begin
+  // Dieselben Haken wie die Kennungen im Code; die Zeilenhistorie bekommt ihre Ergänzungen (kein Zyklus).
+  BlameIssues := TAtlasIdeBlameLinks.Create(IssueHooks);
+  TAtlasIdeLineChanges.SetBlameHooks(BlameIssues.LineHooks);
+end;
+
+procedure StopBlameIssues;
+begin
+  TAtlasIdeLineChanges.SetBlameHooks(Default(TAtlasBlameHooks));
+  FreeAndNil(BlameIssues);
 end;
 
 procedure StopWelcome;
@@ -5250,6 +5283,18 @@ begin
     begin
       FreeAndNil(IssueLinks);
     end);
+  // Issues in der Zeilenhistorie (#1275): nach „Meine Issues“; issues.blameLinks prüfen die Haken selbst
+  // (Schnellschalter ohne Neustart).
+  Features.AddWanted('BlameIssues',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := BlameIssues <> nil;
+    end,
+    StartBlameIssues, StopBlameIssues);
   Features.Add('MainMenu', TAtlasSafeLevel.Safe,
     function: Boolean
     begin

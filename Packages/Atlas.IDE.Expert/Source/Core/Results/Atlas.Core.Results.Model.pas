@@ -6,7 +6,8 @@
 // (workspace/symbol) und Einträge der Typ- und Aufrufhierarchie. Positionen
 // sind 0-basiert in UTF-16-Einheiten wie im LSP. Fundstellen der Referenzsuche
 // tragen ihre Treffersicherheit (#1119); die Umbenennen-Vorschau nennt nicht
-// geänderte, erschlossene Stellen als erschlossene Einträge.
+// geänderte, erschlossene Stellen als erschlossene Einträge. Issues zu einer
+// Methode (#1275) stehen mit ihren Commits als fertige Texte darin.
 
 interface
 
@@ -36,6 +37,21 @@ type
     Entries: TArray<TAtlasResultEntry>;
     /// <summary>"Unit1.pas (3)".</summary>
     function Caption: string;
+  end;
+
+  /// <summary>Commit unter einem Issue (#1275).</summary>
+  TAtlasResultCommit = record
+    /// <summary>Kennung für OnIssueCommit (Index beim Aufrufer).</summary>
+    Id: Integer;
+    Text: string;
+  end;
+
+  /// <summary>Issue mit den Commits, die eine Methode bzw. Unit geändert haben (#1275).</summary>
+  TAtlasResultIssue = record
+    /// <summary>Kennung für OnIssueOpen und SetIssueText (Index beim Aufrufer).</summary>
+    Id: Integer;
+    Text: string;
+    Commits: TArray<TAtlasResultCommit>;
   end;
 
   /// <summary>Liefert den Text einer Datei (offener Puffer oder Platte); '' wenn sie fehlt.</summary>
