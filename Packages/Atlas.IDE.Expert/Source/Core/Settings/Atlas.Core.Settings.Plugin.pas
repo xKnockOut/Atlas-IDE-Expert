@@ -148,6 +148,10 @@ type
     MinVcsTimeoutSeconds = 1;
     MaxVcsTimeoutSeconds = 300;
     DefaultVcsTimeoutSeconds = 15;
+    /// <summary>Vorgaben von vcs.branch.svn.* (#1290); wie TAtlasVcsSvnBranchOptions.Default.</summary>
+    DefaultVcsBranchSvnLocation = '{projektwurzel}/branches/{name}';
+    DefaultVcsBranchSvnCheckoutFolder = '..\{projekt}-{kennung}';
+    DefaultVcsBranchSvnMessage = '{kennung} Branch für {titel}';
     /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
     MaxIssuesText = 200;
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
@@ -1294,6 +1298,16 @@ type
     /// <summary>Persönliche Art und Hauptbranch je Delphi-Projekt (#1286, vcs.projects) als JSON-Liste mit match,
     /// provider und mainBranch; liegt in settings.json, gelesen mit TAtlasVcsProjects. '[]' = keine.</summary>
     VcsProjects: string;
+    /// <summary>SVN-Branches (#1290, vcs.branch.svn.*): Ort im Repository (Muster mit {projektwurzel} oder ^/,
+    /// {name}, {kennung}), Quelle ("head", "workingCopy"), danach ("switch", "checkout", "none"), Ordner beim
+    /// Auschecken (relativ zur Arbeitskopie, {projekt}, {name}, {kennung}) und Commit-Nachricht der Kopie
+    /// ({kennung}, {titel}, {name}). Vorgaben in den Feldern des Dialogs „Branch anlegen“. Persönlich (Registry).
+    /// </summary>
+    VcsBranchSvnLocation: string;
+    VcsBranchSvnSource: string;
+    VcsBranchSvnAfter: string;
+    VcsBranchSvnCheckoutFolder: string;
+    VcsBranchSvnMessage: string;
     /// <summary>Dialog „Branch anlegen“ vor dem Anlegen bei „Beginnen“ zeigen (#1288, vcs.branch.confirm); aus =
     /// mit den Vorgaben ohne Dialog. Der Befehl „Branch anlegen …“ zeigt ihn immer. Persönlich (Registry).
     /// </summary>
@@ -2019,6 +2033,11 @@ begin
   Result.VcsSvnPath := '';
   Result.VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
   Result.VcsProjects := '[]';
+  Result.VcsBranchSvnLocation := DefaultVcsBranchSvnLocation;
+  Result.VcsBranchSvnSource := 'head';
+  Result.VcsBranchSvnAfter := 'switch';
+  Result.VcsBranchSvnCheckoutFolder := DefaultVcsBranchSvnCheckoutFolder;
+  Result.VcsBranchSvnMessage := DefaultVcsBranchSvnMessage;
   Result.VcsBranchConfirm := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
@@ -2110,6 +2129,19 @@ begin
   VcsProjects := Trim(VcsProjects);
   if VcsProjects = '' then
     VcsProjects := '[]';
+  // Ort beginnt mit {projektwurzel} oder ^/ (#1290); sonst die Vorgabe.
+  VcsBranchSvnLocation := Trim(VcsBranchSvnLocation);
+  if not (SameText(Copy(VcsBranchSvnLocation, 1, 15), '{projektwurzel}') or
+    (Copy(VcsBranchSvnLocation, 1, 2) = '^/')) then
+    VcsBranchSvnLocation := DefaultVcsBranchSvnLocation;
+  VcsBranchSvnSource := Choice(VcsBranchSvnSource, ['head', 'workingCopy']);
+  VcsBranchSvnAfter := Choice(VcsBranchSvnAfter, ['switch', 'checkout', 'none']);
+  VcsBranchSvnCheckoutFolder := Trim(VcsBranchSvnCheckoutFolder);
+  if VcsBranchSvnCheckoutFolder = '' then
+    VcsBranchSvnCheckoutFolder := DefaultVcsBranchSvnCheckoutFolder;
+  VcsBranchSvnMessage := NormalizedIssuesText(VcsBranchSvnMessage, True);
+  if VcsBranchSvnMessage = '' then
+    VcsBranchSvnMessage := DefaultVcsBranchSvnMessage;
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2824,6 +2856,11 @@ begin
   VcsSvnPath := AStore.ReadString('VcsSvnPath', Default.VcsSvnPath);
   VcsTimeoutSeconds := AStore.ReadInteger('VcsTimeoutSeconds', Default.VcsTimeoutSeconds);
   VcsProjects := AStore.ReadString('VcsProjects', Default.VcsProjects);
+  VcsBranchSvnLocation := AStore.ReadString('VcsBranchSvnLocation', Default.VcsBranchSvnLocation);
+  VcsBranchSvnSource := AStore.ReadString('VcsBranchSvnSource', Default.VcsBranchSvnSource);
+  VcsBranchSvnAfter := AStore.ReadString('VcsBranchSvnAfter', Default.VcsBranchSvnAfter);
+  VcsBranchSvnCheckoutFolder := AStore.ReadString('VcsBranchSvnCheckoutFolder', Default.VcsBranchSvnCheckoutFolder);
+  VcsBranchSvnMessage := AStore.ReadString('VcsBranchSvnMessage', Default.VcsBranchSvnMessage);
   VcsBranchConfirm := AStore.ReadInteger('VcsBranchConfirm', BoolValue(Default.VcsBranchConfirm)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
@@ -3296,6 +3333,11 @@ begin
   AStore.WriteString('VcsSvnPath', VcsSvnPath);
   AStore.WriteInteger('VcsTimeoutSeconds', VcsTimeoutSeconds);
   AStore.WriteString('VcsProjects', VcsProjects);
+  AStore.WriteString('VcsBranchSvnLocation', VcsBranchSvnLocation);
+  AStore.WriteString('VcsBranchSvnSource', VcsBranchSvnSource);
+  AStore.WriteString('VcsBranchSvnAfter', VcsBranchSvnAfter);
+  AStore.WriteString('VcsBranchSvnCheckoutFolder', VcsBranchSvnCheckoutFolder);
+  AStore.WriteString('VcsBranchSvnMessage', VcsBranchSvnMessage);
   AStore.WriteInteger('VcsBranchConfirm', BoolValue(VcsBranchConfirm));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);

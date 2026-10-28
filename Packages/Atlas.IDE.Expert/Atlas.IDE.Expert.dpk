@@ -532,6 +532,7 @@ contains
   Atlas.Core.Vcs.ServerAccess in 'Source\Core\Vcs\Atlas.Core.Vcs.ServerAccess.pas',
   Atlas.Core.Vcs.Internals.GitParser in 'Source\Core\Vcs\Atlas.Core.Vcs.Internals.GitParser.pas',
   Atlas.Core.Vcs.Internals.SvnParser in 'Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnParser.pas',
+  Atlas.Core.Vcs.Internals.SvnLayout in 'Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnLayout.pas',
   Atlas.Core.Vcs.Tools in 'Source\Core\Vcs\Atlas.Core.Vcs.Tools.pas',
   Atlas.Core.Vcs.ToolCheck in 'Source\Core\Vcs\Atlas.Core.Vcs.ToolCheck.pas',
   Atlas.Core.Vcs.ServerCheck in 'Source\Core\Vcs\Atlas.Core.Vcs.ServerCheck.pas',

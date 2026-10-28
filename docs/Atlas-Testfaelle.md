@@ -7900,3 +7900,21 @@ Vorbereitung: Git-Projekt mit `main` lokal und auf origin, auf einem Feature-Bra
 | BA10 | Befehlspalette „Branch anlegen …“ mit leerem Namen; Kontextmenü einer Zeile in „Projekte“ › „Branch anlegen …“ | Dialog immer (auch mit `vcs.branch.confirm` aus) ohne „Nicht mehr fragen“; Projekt ohne Git/SVN: Meldung statt Dialog; „Projekte“ zeigt danach den neuen Branch |
 | BA11 | Dialog bei „Beginnen“ abbrechen | Nichts angelegt, Issue nicht aktiv |
 | BA12 | Name eines vorhandenen Branchs eingeben, „Anlegen“ | Meldung „… gibt es schon; nichts angelegt.“ |
+
+## SVN-Branch-Optionen (#1290)
+
+Vorbereitung: Repository mit mehreren Projekten (`^/Kasse/trunk` mit Gruppe `Kasse.groupproj`, `^/Packages/Drucken/trunk`), Arbeitskopie von `^/Kasse/trunk`, Anmeldung gespeichert; „Meine Issues“ mit einem zugewiesenen Issue; `vcs.branch.confirm` an; Einstellungen der Gruppe „SVN“ auf Vorgabe.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BS1 | *Versionsverwaltung* öffnen | Gruppe „SVN“ unter „Branch anlegen“ mit Ablageort `{projektwurzel}/branches/{name}`, Quelle „Hauptbranch @ HEAD“, Danach „Arbeitskopie umschalten (switch)“, Ordner `..\{projekt}-{kennung}`, Nachricht `{kennung} Branch für {titel}` (**Abnahme**) |
+| BS2 | „Meine Issues“ › „Beginnen“ | Dialog: Feld „Ablageort“ `^/Kasse/branches/<Name>`, Basis „Kasse/trunk @ HEAD“, Nachricht „<Kennung> Branch für <Titel>“, Schritte `svn copy ^/Kasse/trunk@<Rev> ^/Kasse/branches/<Name>@ …` und `svn switch ^/Kasse/branches/<Name>@ .` (**Abnahme**) |
+| BS3 | Im Dialog aus BS2 den Namen ändern; danach den Ort von Hand ändern und wieder den Namen | Ablageort folgt dem Namen, bis er von Hand geändert wurde; danach bleibt er; Ort ohne `^/`: Hinweis, „Anlegen“ gesperrt |
+| BS4 | BS2 „Anlegen“ | Branch unter `^/Kasse/branches/<Name>` (Repo-Browser), Arbeitskopie umgeschaltet; nichts unter `^/branches` (**Abnahme**) |
+| BS5 | Dasselbe Issue erneut „Beginnen“ (Dialog aus) | „gibt es schon“ erkannt, Arbeitskopie wird auf `^/Kasse/branches/<Name>` umgeschaltet statt neu angelegt (**Abnahme**) |
+| BS6 | Danach „Frisch auschecken in eigenen Ordner“ wählen, „Anlegen“ | Feld „Ordner“ erscheint (`…\Kasse-<Kennung>`), Schritt `svn checkout …`; nach dem Auschecken Frage „… dort öffnen?“, Ja öffnet `Kasse.groupproj` aus dem neuen Ordner (**Abnahme**) |
+| BS7 | Danach „Nur anlegen“ | Nur `svn copy`; Arbeitskopie bleibt auf trunk |
+| BS8 | Teile der Arbeitskopie auf ältere Revision bringen (`svn update -r <alt> Unterordner`), Quelle „Revision der Arbeitskopie“ einstellen, „Beginnen“ | Basis der Arbeitskopie vorgewählt mit der höchsten Revision, rote Warnung „Die Arbeitskopie hat mehrere Revisionen …“; bei Basis HEAD keine Warnung |
+| BS9 | Arbeitskopie ohne trunk/branches/tags im Pfad (z. B. `^/Kasse`) | Ablageort leer mit Hinweis „Kein erkennbares Layout …“; „Beginnen“ mit `vcs.branch.confirm` aus zeigt trotzdem den Dialog und fragt nach dem Ort, statt unter `^/branches` anzulegen (**Abnahme**) |
+| BS10 | Ablageort `^/branches/{kennung}` einstellen | Branch fest unter `^/branches/<Kennung>`, wie vor #1290 |
+| BS11 | Großes Projekt: „Umschalten“ bzw. „Frisch auschecken“ dauert über 15 Sekunden | Läuft bis zu 10 Minuten durch, kein Abbruch nach `vcs.timeoutSeconds` |

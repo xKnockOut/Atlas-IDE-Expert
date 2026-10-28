@@ -28,7 +28,11 @@
 // für den Commit-Hook (Git prepare-commit-msg). Seit #1288 baut
 // Atlas.Core.Vcs.BranchPlan die Schritte (TAtlasVcsBranchStep), zeigt sie im
 // Dialog „Branch anlegen“ und IAtlasVcsBranching.RunStep führt genau diese
-// aus.
+// aus. Seit #1290 bestimmt TAtlasVcsSvnBranchOptions, wo SVN-Branches liegen
+// (vcs.branch.svn.location, Vorgabe {projektwurzel}/branches/{name}); Anlegen,
+// BranchExists und SwitchBranch nutzen denselben Ort.
+// IAtlasVcsSvnWorkingCopy bündelt, was nur SVN kennt (Revisionen der
+// Arbeitskopie über svnversion); nur die SVN-Umsetzung bietet sie an.
 
 interface
 
@@ -64,7 +68,37 @@ type
   /// vcs.provider, Project = persönliche Zeile in vcs.projects (#1286), TeamFile = Abschnitt vcs der .atlas.
   /// </summary>
   TAtlasVcsProviderSource = (Setting, Project, TeamFile);
+
+  /// <summary>Wovon ein SVN-Branch kopiert wird (#1290, vcs.branch.svn.source): Head = Hauptbranch @ HEAD,
+  /// WorkingCopy = Pfad der Arbeitskopie @ ihrer Revision (bei gemischter Arbeitskopie die höchste).</summary>
+  TAtlasVcsSvnSource = (Head, WorkingCopy);
+
+  /// <summary>Was nach dem Anlegen eines SVN-Branchs passiert (#1290, vcs.branch.svn.after): Switch = Arbeitskopie
+  /// umschalten, Checkout = frisch in einen eigenen Ordner auschecken, None = nur anlegen.</summary>
+  TAtlasVcsSvnAfter = (Switch, Checkout, None);
 {$SCOPEDENUMS OFF}
+
+  /// <summary>Optionen für SVN-Branches (#1290) mit den Werten für die Platzhalter. Location und Message sind
+  /// Muster; Location beginnt mit {projektwurzel} oder ^/ und kennt {name} und {kennung}; Message kennt
+  /// {kennung}, {titel} und {name}; CheckoutFolder kennt {projekt}, {name} und {kennung} und gilt relativ zur
+  /// Wurzel der Arbeitskopie. Aufgelöst wird mit TAtlasSvnLayout (Atlas.Core.Vcs.Internals.SvnLayout).</summary>
+  TAtlasVcsSvnBranchOptions = record
+    Location: string;
+    Source: TAtlasVcsSvnSource;
+    After: TAtlasVcsSvnAfter;
+    CheckoutFolder: string;
+    Message: string;
+    /// <summary>Kennung und Titel des Issues ('' ohne Issue) und Name des Projekts ('' = Ordner der Arbeitskopie)
+    /// für die Platzhalter.</summary>
+    Key: string;
+    Title: string;
+    Project: string;
+    /// <summary>Vorgaben der Einstellungen (vcs.branch.svn.*).</summary>
+    class function Default: TAtlasVcsSvnBranchOptions; static;
+    /// <summary>Verhalten vor #1290: ^/branches/{name}, HEAD, umschalten, Nachricht „Branch &lt;Name&gt;“.</summary>
+    class function Legacy: TAtlasVcsSvnBranchOptions; static;
+  end;
+
 
   /// <summary>Gefundene Arbeitskopie.</summary>
   TAtlasVcsWorkingCopy = record
@@ -225,8 +259,16 @@ type
     /// <summary>Ändert das Repository auf dem Server (svn copy, git push); im Dialog markiert, wird bei einem
     /// späteren Fehler nicht zurückgenommen.</summary>
     ChangesServer: Boolean;
+    /// <summary>Kann lange dauern (svn switch und checkout holen die ganze Arbeitskopie samt Externals): läuft mit
+    /// LongTimeoutMs statt dem Zeitlimit eines Aufrufs (#1290).</summary>
+    Long: Boolean;
     class function Make(const AArguments: TArray<string>; ARemote, AChangesServer: Boolean): TAtlasVcsBranchStep;
-      static;
+      overload; static;
+    class function Make(const AArguments: TArray<string>; ARemote, AChangesServer,
+      ALong: Boolean): TAtlasVcsBranchStep; overload; static;
+  public const
+    /// <summary>Zeitlimit für Schritte mit Long (10 Minuten).</summary>
+    LongTimeoutMs = 600000;
   end;
 
   /// <summary>Startet git bzw. svn unsichtbar (ohne Konsolenfenster) und wartet höchstens ATimeoutMs.</summary>
@@ -325,7 +367,12 @@ type
     ['{7E31B5C2-94D8-4A6F-8C27-D15E9F0A3B46}']
     /// <summary>Git: lokaler Branch refs/heads/&lt;AName&gt; existiert. SVN: ^/branches/&lt;AName&gt; existiert
     /// (fehlt er oder antwortet der Server mit einem Fehler, gilt er als nicht vorhanden).</summary>
-    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome; overload;
+    /// <summary>Wie oben; SVN sucht am Ort aus AOptions (#1290, {projektwurzel} aus dem Pfad der Arbeitskopie).
+    /// Lässt sich der Ort nicht auflösen (kein erkennbares Layout), Failed. Git und die leere Umsetzung
+    /// ignorieren AOptions.</summary>
+    function BranchExists(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
+      out AExists: Boolean): TAtlasVcsOutcome; overload;
     /// <summary>Git: Remote-Branch refs/remotes/origin/&lt;AName&gt; existiert im lokalen Stand (ohne fetch).
     /// SVN kennt keine Remote-Branches: Ok mit False.</summary>
     function RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
@@ -341,11 +388,24 @@ type
     /// fehlender Anmeldung. Ohne Argumente Failed.</summary>
     function RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
     /// <summary>Zu einem vorhandenen Branch wechseln (Git checkout, SVN switch ^/branches/&lt;AName&gt;).</summary>
-    function SwitchBranch(const AName: string): TAtlasVcsOutcome;
+    function SwitchBranch(const AName: string): TAtlasVcsOutcome; overload;
+    /// <summary>Wie oben; SVN schaltet auf den Ort aus AOptions um (#1290). Git und die leere Umsetzung
+    /// ignorieren AOptions.</summary>
+    function SwitchBranch(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
+      overload;
     /// <summary>Git: Ordner der Hooks (beachtet core.hooksPath) und Verwaltungsordner dieser Arbeitskopie
     /// (bei Worktrees der eigene), beide vollständig. SVN kennt keine Hooks auf dem Rechner: Ok mit ''. Die leere
     /// Umsetzung liefert ihr Outcome mit ''.</summary>
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
+  end;
+
+  /// <summary>Was nur SVN kennt (#1290); nur die SVN-Umsetzung bietet diese Schnittstelle (Supports). Jede
+  /// Methode startet einen Prozess: nur aus einem Hintergrund-Thread aufrufen.</summary>
+  IAtlasVcsSvnWorkingCopy = interface
+    ['{C4E7A1D9-3B62-4F85-9A0E-6D21F8B57C34}']
+    /// <summary>Ausgabe von svnversion für die Wurzel (z. B. "48213", "48190:48213M"); ohne Server. Liegt
+    /// svnversion nicht neben svn, ToolMissing.</summary>
+    function WorkingRevisions(out AText: string): TAtlasVcsOutcome;
   end;
 
   /// <summary>Fehler beim Lesen einer Ausgabe; die Umsetzungen machen daraus Outcome Failed.</summary>
@@ -359,6 +419,10 @@ function AtlasVcsOutcomeName(AOutcome: TAtlasVcsOutcome): string;
 function AtlasVcsProviderOf(const AText: string): TAtlasVcsProvider;
 /// <summary>Text der Einstellung: "auto", "git", "svn" oder "off".</summary>
 function AtlasVcsProviderText(AProvider: TAtlasVcsProvider): string;
+/// <summary>vcs.branch.svn.source (#1290): "workingCopy" = WorkingCopy, sonst Head.</summary>
+function AtlasVcsSvnSourceOf(const AText: string): TAtlasVcsSvnSource;
+/// <summary>vcs.branch.svn.after (#1290): "checkout", "none", sonst Switch.</summary>
+function AtlasVcsSvnAfterOf(const AText: string): TAtlasVcsSvnAfter;
 
 implementation
 
@@ -410,6 +474,24 @@ begin
   else
     Result := 'auto';
   end;
+end;
+
+function AtlasVcsSvnSourceOf(const AText: string): TAtlasVcsSvnSource;
+begin
+  if SameText(Trim(AText), 'workingCopy') then
+    Result := TAtlasVcsSvnSource.WorkingCopy
+  else
+    Result := TAtlasVcsSvnSource.Head;
+end;
+
+function AtlasVcsSvnAfterOf(const AText: string): TAtlasVcsSvnAfter;
+begin
+  if SameText(Trim(AText), 'checkout') then
+    Result := TAtlasVcsSvnAfter.Checkout
+  else if SameText(Trim(AText), 'none') then
+    Result := TAtlasVcsSvnAfter.None
+  else
+    Result := TAtlasVcsSvnAfter.Switch;
 end;
 
 { TAtlasVcsWorkingCopy }
@@ -500,9 +582,37 @@ end;
 class function TAtlasVcsBranchStep.Make(const AArguments: TArray<string>; ARemote,
   AChangesServer: Boolean): TAtlasVcsBranchStep;
 begin
+  Result := Make(AArguments, ARemote, AChangesServer, False);
+end;
+
+class function TAtlasVcsBranchStep.Make(const AArguments: TArray<string>; ARemote, AChangesServer,
+  ALong: Boolean): TAtlasVcsBranchStep;
+begin
   Result.Arguments := AArguments;
   Result.Remote := ARemote;
   Result.ChangesServer := AChangesServer;
+  Result.Long := ALong;
+end;
+
+{ TAtlasVcsSvnBranchOptions }
+
+class function TAtlasVcsSvnBranchOptions.Default: TAtlasVcsSvnBranchOptions;
+begin
+  Result.Location := '{projektwurzel}/branches/{name}';
+  Result.Source := TAtlasVcsSvnSource.Head;
+  Result.After := TAtlasVcsSvnAfter.Switch;
+  Result.CheckoutFolder := '..\{projekt}-{kennung}';
+  Result.Message := '{kennung} Branch für {titel}';
+  Result.Key := '';
+  Result.Title := '';
+  Result.Project := '';
+end;
+
+class function TAtlasVcsSvnBranchOptions.Legacy: TAtlasVcsSvnBranchOptions;
+begin
+  Result := Default;
+  Result.Location := '^/branches/{name}';
+  Result.Message := 'Branch {name}';
 end;
 
 end.

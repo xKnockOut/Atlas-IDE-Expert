@@ -2045,6 +2045,13 @@ begin
     // #1288: Dialog „Branch anlegen“ bei „Beginnen“, auf derselben Seite.
     Assert.IsTrue(SheetOf(mPage.VcsBranchConfirm) = mVcs);
     Assert.IsTrue(mPage.VcsBranchConfirm.Checked);
+    // #1290: SVN-Gruppe auf derselben Seite, Vorgaben aus den Einstellungen.
+    Assert.IsTrue(SheetOf(mPage.VcsBranchSvnLocation) = mVcs);
+    Assert.IsTrue(SheetOf(mPage.VcsBranchSvnMessage) = mVcs);
+    Assert.AreEqual('{projektwurzel}/branches/{name}', mPage.VcsBranchSvnLocation.Text);
+    Assert.AreEqual(0, mPage.VcsBranchSvnSource.Choice, 'head');
+    Assert.AreEqual(0, mPage.VcsBranchSvnAfter.Choice, 'switch');
+    Assert.AreEqual('..\{projekt}-{kennung}', mPage.VcsBranchSvnFolder.Text);
     Assert.AreEqual(0, mProjectCalls, 'kein Prozess, solange die Seite nicht gezeigt wurde');
     // Pfad ändern: nur Dateiprüfung, kein Prozess.
     mPage.VcsPath(TAtlasVcsKind.Git).Text := 'X:\fehlt\git.exe';
@@ -2093,9 +2100,19 @@ begin
     mPage.VcsPath(TAtlasVcsKind.Git).Text := '  D:\Git\git.exe ';
     mPage.VcsTimeout.Text := '120';
     mPage.VcsBranchConfirm.Checked := False;
+    mPage.VcsBranchSvnLocation.Text := '^/branches/{kennung}';
+    mPage.VcsBranchSvnSource.Choice := 1;
+    mPage.VcsBranchSvnAfter.Choice := 1;
+    mPage.VcsBranchSvnFolder.Text := 'D:\Branches\{name}';
+    mPage.VcsBranchSvnMessage.Text := 'Neu: {kennung}';
     mSaved := mSettings;
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.VcsBranchConfirm);
+    Assert.AreEqual('^/branches/{kennung}', mSaved.VcsBranchSvnLocation);
+    Assert.AreEqual('workingCopy', mSaved.VcsBranchSvnSource);
+    Assert.AreEqual('checkout', mSaved.VcsBranchSvnAfter);
+    Assert.AreEqual('D:\Branches\{name}', mSaved.VcsBranchSvnCheckoutFolder);
+    Assert.AreEqual('Neu: {kennung}', mSaved.VcsBranchSvnMessage);
     Assert.AreEqual('git', mSaved.VcsProvider);
     Assert.AreEqual('D:\Git\git.exe', mSaved.VcsGitPath);
     Assert.AreEqual('D:\Tools\svn.exe', mSaved.VcsSvnPath);

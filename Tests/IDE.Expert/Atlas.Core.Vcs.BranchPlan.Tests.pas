@@ -43,6 +43,20 @@ type
     /// </summary>
     [Test]
     procedure ExecuteStopsAtFirstFailure;
+    /// <summary>#1290: Projektwurzel aus dem Pfad der Arbeitskopie, Hauptbranch darunter, höchste Revision einer
+    /// gemischten Arbeitskopie aus svnversion; ohne svnversion die Revision aus Head.</summary>
+    [Test]
+    procedure InspectSvnLayoutAndMixedRevision;
+    /// <summary>#1290: Ort, Danach (switch, checkout mit Ordner, none) und langes Zeitlimit; ohne Ort bzw. Ordner
+    /// keine Schritte.</summary>
+    [Test]
+    procedure StepsSvnWithOptions;
+    /// <summary>#1290: Vorgabe-Anfrage mit Quelle, Ort und Ordner aus den Optionen; ohne Layout False.</summary>
+    [Test]
+    procedure DefaultRequestSvnWithOptions;
+    /// <summary>#1290: Gruppe an derselben Stelle im neuen Ordner; außerhalb der Arbeitskopie ''.</summary>
+    [Test]
+    procedure CheckoutTargetMapsGroup;
   end;
 
 implementation
@@ -68,8 +82,11 @@ end;
 
 type
   /// <summary>Versionsverwaltung im Speicher für Inspect und Execute.</summary>
-  TPlanVcs = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsBranching)
+  TPlanVcs = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsBranching, IAtlasVcsSvnWorkingCopy)
   public
+    /// <summary>Ausgabe von svnversion (#1290); Outcome ungleich Ok = nicht verfügbar.</summary>
+    SvnVersion: string;
+    SvnVersionOutcome: TAtlasVcsOutcome;
     VcsKind: TAtlasVcsKind;
     HeadBranch: string;
     HeadRevision: string;
@@ -92,14 +109,20 @@ type
     function Blame(const AFileName: string; out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
     function ChangeMarker: string;
     { IAtlasVcsBranching }
-    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
+    function BranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome; overload;
+    function BranchExists(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
+      out AExists: Boolean): TAtlasVcsOutcome; overload;
     function RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
     function ServerRevision(const APath: string; out ARevision: string): TAtlasVcsOutcome;
     function HasExternals(out AHas: Boolean): TAtlasVcsOutcome;
     function RepositoryPath(out APath: string): TAtlasVcsOutcome;
     function RunStep(const AStep: TAtlasVcsBranchStep): TAtlasVcsOutcome;
-    function SwitchBranch(const AName: string): TAtlasVcsOutcome;
+    function SwitchBranch(const AName: string): TAtlasVcsOutcome; overload;
+    function SwitchBranch(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
+      overload;
     function HookFolders(out AHooks, AGitDir: string): TAtlasVcsOutcome;
+    { IAtlasVcsSvnWorkingCopy }
+    function WorkingRevisions(out AText: string): TAtlasVcsOutcome;
   end;
 
   /// <summary>Kennt nur IAtlasVersionControl, nicht IAtlasVcsBranching.</summary>
@@ -121,6 +144,7 @@ begin
   inherited Create;
   VcsKind := AKind;
   ServerOutcome := TAtlasVcsOutcome.Ok;
+  SvnVersionOutcome := TAtlasVcsOutcome.ToolMissing;
 end;
 
 class function TPlanVcs.Has(const AList: TArray<string>; const AName: string): Boolean;
@@ -181,6 +205,24 @@ begin
   Calls := Calls + ['exists ' + AName];
   AExists := Has(LocalBranches, AName);
   Result := TAtlasVcsOutcome.Ok;
+end;
+
+function TPlanVcs.BranchExists(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions;
+  out AExists: Boolean): TAtlasVcsOutcome;
+begin
+  Result := BranchExists(AName, AExists);
+end;
+
+function TPlanVcs.SwitchBranch(const AName: string; const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
+begin
+  Result := SwitchBranch(AName);
+end;
+
+function TPlanVcs.WorkingRevisions(out AText: string): TAtlasVcsOutcome;
+begin
+  Calls := Calls + ['svnversion'];
+  AText := SvnVersion;
+  Result := SvnVersionOutcome;
 end;
 
 function TPlanVcs.RemoteBranchExists(const AName: string; out AExists: Boolean): TAtlasVcsOutcome;
@@ -358,22 +400,26 @@ begin
   Assert.IsTrue(mFacts.Outcome = TAtlasVcsOutcome.Ok);
   Assert.AreEqual('Kasse/trunk', mFacts.Current, 'voller Pfad, nicht der gekürzte aus Head');
   Assert.AreEqual('48100', mFacts.Revision);
-  Assert.AreEqual('trunk', mFacts.MainBranch);
+  // #1290: "trunk" liegt unter der Projektwurzel ^/Kasse.
+  Assert.AreEqual('Kasse/trunk', mFacts.MainBranch);
   Assert.IsTrue(mFacts.Externals);
   Assert.AreEqual('', mFacts.HeadRevision);
   Assert.IsTrue(mFacts.NeedsServer, 'HEAD-Revision fehlt noch');
-  Assert.AreEqual(0, Integer(Length(mFake.Calls)), 'Inspect fragt den Server nicht');
+  Assert.AreEqual(1, Integer(Length(mFake.Calls)), 'Inspect fragt den Server nicht');
+  Assert.AreEqual('svnversion', mFake.Calls[0], 'ohne Server');
   TAtlasVcsBranchPlan.InspectServer(mVcs, mFacts);
   Assert.IsFalse(mFacts.NeedsServer);
   Assert.IsTrue(mFacts.ServerChecked);
   Assert.IsTrue(mFacts.ServerOutcome = TAtlasVcsOutcome.Ok);
   Assert.AreEqual('48230', mFacts.HeadRevision);
-  Assert.AreEqual('revision trunk', mFake.Calls[0]);
+  Assert.AreEqual('revision Kasse/trunk', mFake.Calls[1]);
   // Ohne Anmeldung: Ergebnis festhalten, Revision bleibt unbekannt.
   mFake.RepoPath := '';
   mFake.ServerOutcome := TAtlasVcsOutcome.LoginNeeded;
   mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('trunk'));
   Assert.AreEqual('trunk', mFacts.Current, 'ohne Pfad der aus Head');
+  Assert.AreEqual('trunk', mFacts.MainBranch, 'ohne Pfad kein Layout');
+  Assert.IsFalse(mFacts.LayoutKnown);
   TAtlasVcsBranchPlan.InspectServer(mVcs, mFacts);
   Assert.IsTrue(mFacts.ServerChecked);
   Assert.IsTrue(mFacts.ServerOutcome = TAtlasVcsOutcome.LoginNeeded);
@@ -584,6 +630,170 @@ begin
   mSteps := nil;
   mServer := nil;
   ProgressLog := nil;
+end;
+
+procedure TAtlasVcsBranchPlanTests.InspectSvnLayoutAndMixedRevision;
+var
+  mFake: TPlanVcs;
+  mVcs: IAtlasVersionControl;
+  mFacts: TAtlasVcsBranchFacts;
+begin
+  mFake := TPlanVcs.Create(TAtlasVcsKind.Svn);
+  mVcs := mFake;
+  mFake.HeadBranch := 'trunk';
+  mFake.HeadRevision := '48190';
+  mFake.RepoPath := 'Kasse/trunk';
+  mFake.SvnVersion := '48190:48213M';
+  mFake.SvnVersionOutcome := TAtlasVcsOutcome.Ok;
+  mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('trunk'));
+  Assert.IsTrue(mFacts.LayoutKnown);
+  Assert.AreEqual('Kasse', mFacts.ProjectRoot);
+  Assert.AreEqual('Kasse/trunk', mFacts.MainBranch);
+  Assert.AreEqual('48213', mFacts.Revision, 'die höchste');
+  Assert.IsTrue(mFacts.MixedRevision);
+  Assert.AreEqual('C:\Repo', mFacts.Root);
+  // Ein Hauptbranch mit ^/ gilt wie angegeben.
+  mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('^/Basis/trunk'));
+  Assert.AreEqual('Basis/trunk', mFacts.MainBranch);
+  // Einheitliche Revision.
+  mFake.SvnVersion := '48213';
+  mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('trunk'));
+  Assert.AreEqual('48213', mFacts.Revision);
+  Assert.IsFalse(mFacts.MixedRevision);
+  // Ohne svnversion bzw. unlesbar: die Revision aus Head, keine Warnung.
+  mFake.SvnVersionOutcome := TAtlasVcsOutcome.ToolMissing;
+  mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('trunk'));
+  Assert.AreEqual('48190', mFacts.Revision);
+  Assert.IsFalse(mFacts.MixedRevision);
+  mFake.SvnVersionOutcome := TAtlasVcsOutcome.Ok;
+  mFake.SvnVersion := 'Unversioned directory';
+  mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('trunk'));
+  Assert.AreEqual('48190', mFacts.Revision);
+  // Standardlayout: Projektwurzel ist die Wurzel des Repositorys.
+  mFake.RepoPath := 'trunk';
+  mFacts := TAtlasVcsBranchPlan.Inspect(mVcs, TArray<string>.Create('trunk'));
+  Assert.IsTrue(mFacts.LayoutKnown);
+  Assert.AreEqual('', mFacts.ProjectRoot);
+  Assert.AreEqual('trunk', mFacts.MainBranch);
+  mFake.Calls := nil;
+  mFacts := TAtlasVcsBranchFacts.Empty;
+end;
+
+procedure TAtlasVcsBranchPlanTests.StepsSvnWithOptions;
+var
+  mFacts: TAtlasVcsBranchFacts;
+  mOptions: TAtlasVcsSvnBranchOptions;
+  mRequest: TAtlasVcsBranchRequest;
+  mSteps: TArray<TAtlasVcsBranchStep>;
+begin
+  mFacts := SvnFacts('48230');
+  mFacts.LayoutKnown := True;
+  mFacts.ProjectRoot := 'Kasse';
+  mFacts.MainBranch := 'Kasse/trunk';
+  mFacts.Root := 'C:\Projekte\Kasse';
+  mOptions := TAtlasVcsSvnBranchOptions.Default;
+  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Svn, 'KASSE-42-bon',
+    Base(TAtlasVcsBranchBaseKind.Head, 'Kasse/trunk', '48230'), 'KASSE-42 Branch');
+  Assert.AreEqual('branches/KASSE-42-bon', mRequest.Location, 'Make wie vor #1290');
+  Assert.IsTrue(TAtlasVcsBranchPlan.ApplySvn(mRequest, mFacts, mOptions));
+  Assert.AreEqual('Kasse/branches/KASSE-42-bon', mRequest.Location);
+  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
+  Assert.AreEqual(2, Integer(Length(mSteps)));
+  Assert.AreEqual('copy ^/Kasse/trunk@48230 ^/Kasse/branches/KASSE-42-bon@ --parents -m KASSE-42 Branch',
+    string.Join(' ', mSteps[0].Arguments));
+  Assert.IsFalse(mSteps[0].Long);
+  Assert.AreEqual('switch ^/Kasse/branches/KASSE-42-bon@ .', string.Join(' ', mSteps[1].Arguments));
+  Assert.IsTrue(mSteps[1].Long, 'switch holt die ganze Arbeitskopie');
+  // Frisch auschecken in den Ordner aus dem Muster.
+  mOptions.After := TAtlasVcsSvnAfter.Checkout;
+  mOptions.Key := 'KASSE-42';
+  Assert.IsTrue(TAtlasVcsBranchPlan.ApplySvn(mRequest, mFacts, mOptions));
+  Assert.AreEqual(ExpandFileName('C:\Projekte\Kasse\..\Kasse-KASSE-42'), mRequest.CheckoutFolder);
+  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
+  Assert.AreEqual(2, Integer(Length(mSteps)));
+  Assert.AreEqual('checkout', mSteps[1].Arguments[0]);
+  Assert.AreEqual('^/Kasse/branches/KASSE-42-bon@', mSteps[1].Arguments[1]);
+  Assert.AreEqual(mRequest.CheckoutFolder, mSteps[1].Arguments[2]);
+  Assert.IsTrue(mSteps[1].Remote);
+  Assert.IsFalse(mSteps[1].ChangesServer);
+  Assert.IsTrue(mSteps[1].Long);
+  mRequest.CheckoutFolder := '';
+  Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.Steps(mRequest))), 'auschecken ohne Ordner');
+  mRequest.CheckoutFolder := '-x';
+  Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.Steps(mRequest))), 'Ordner wie eine Option');
+  // Nur anlegen.
+  mOptions.After := TAtlasVcsSvnAfter.None;
+  TAtlasVcsBranchPlan.ApplySvn(mRequest, mFacts, mOptions);
+  mSteps := TAtlasVcsBranchPlan.Steps(mRequest);
+  Assert.AreEqual(1, Integer(Length(mSteps)));
+  Assert.AreEqual('copy', mSteps[0].Arguments[0]);
+  // Ohne Layout: kein Ort, keine Schritte.
+  mFacts.LayoutKnown := False;
+  Assert.IsFalse(TAtlasVcsBranchPlan.ApplySvn(mRequest, mFacts, mOptions));
+  Assert.AreEqual('', mRequest.Location);
+  Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.Steps(mRequest))));
+  // Ort mit „..“: keine Schritte.
+  mRequest.Location := 'Kasse/../trunk';
+  Assert.AreEqual(0, Integer(Length(TAtlasVcsBranchPlan.Steps(mRequest))));
+  // Git: ApplySvn ändert nichts.
+  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Git, 'feature/1-x',
+    Base(TAtlasVcsBranchBaseKind.LocalMain, 'main', ''), '');
+  Assert.IsTrue(TAtlasVcsBranchPlan.ApplySvn(mRequest, mFacts, mOptions));
+  Assert.IsTrue(mRequest.After = TAtlasVcsSvnAfter.Switch);
+  mSteps := nil;
+  mFacts := TAtlasVcsBranchFacts.Empty;
+end;
+
+procedure TAtlasVcsBranchPlanTests.DefaultRequestSvnWithOptions;
+var
+  mFacts: TAtlasVcsBranchFacts;
+  mOptions: TAtlasVcsSvnBranchOptions;
+  mRequest: TAtlasVcsBranchRequest;
+  mBase: TAtlasVcsBranchBase;
+begin
+  mFacts := SvnFacts('48230');
+  mFacts.LayoutKnown := True;
+  mFacts.ProjectRoot := 'Kasse';
+  mFacts.MainBranch := 'Kasse/trunk';
+  mOptions := TAtlasVcsSvnBranchOptions.Default;
+  Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'KASSE-42-bon', 'm', mOptions, mRequest));
+  Assert.IsTrue(mRequest.Base.Kind = TAtlasVcsBranchBaseKind.Head);
+  Assert.AreEqual('Kasse/branches/KASSE-42-bon', mRequest.Location);
+  Assert.IsTrue(mRequest.After = TAtlasVcsSvnAfter.Switch);
+  // Quelle Arbeitskopie: genau der Stand, den man gerade übersetzt.
+  mOptions.Source := TAtlasVcsSvnSource.WorkingCopy;
+  Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'KASSE-42-bon', 'm', mOptions, mRequest));
+  Assert.IsTrue(mRequest.Base.Kind = TAtlasVcsBranchBaseKind.WorkingCopy);
+  Assert.AreEqual('Kasse/trunk@48100', TAtlasVcsBranchPlan.BaseName(TAtlasVcsKind.Svn, mRequest.Base));
+  Assert.IsTrue(TAtlasVcsBranchPlan.DefaultBase(mFacts, TAtlasVcsSvnSource.WorkingCopy, mBase));
+  Assert.IsTrue(mBase.Kind = TAtlasVcsBranchBaseKind.WorkingCopy);
+  // Git ignoriert die SVN-Quelle.
+  Assert.IsTrue(TAtlasVcsBranchPlan.DefaultBase(GitFacts(True, True, 'x'), TAtlasVcsSvnSource.WorkingCopy, mBase));
+  Assert.IsTrue(mBase.Kind = TAtlasVcsBranchBaseKind.LocalMain);
+  // Ohne Layout: keine Vorgabe-Anfrage (Beginnen ohne Dialog scheitert, statt an der Wurzel anzulegen).
+  mFacts.LayoutKnown := False;
+  Assert.IsFalse(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'KASSE-42-bon', 'm', mOptions, mRequest));
+  // Mit festem Ort wie vor #1290 geht es auch ohne Layout.
+  Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'KASSE-42-bon', 'm', TAtlasVcsSvnBranchOptions.Legacy,
+    mRequest));
+  Assert.AreEqual('branches/KASSE-42-bon', mRequest.Location);
+  mFacts := TAtlasVcsBranchFacts.Empty;
+end;
+
+procedure TAtlasVcsBranchPlanTests.CheckoutTargetMapsGroup;
+var
+  mRoot: string;
+begin
+  if PathDelim = '\' then
+    mRoot := 'C:\Projekte\Kasse'
+  else
+    mRoot := '/projekte/kasse';
+  Assert.AreEqual(ExtractFilePath(mRoot) + 'Kasse-KASSE-42' + PathDelim + 'Gruppe' + PathDelim + 'Kasse.groupproj',
+    TAtlasVcsBranchPlan.CheckoutTarget(mRoot, ExtractFilePath(mRoot) + 'Kasse-KASSE-42',
+    mRoot + PathDelim + 'Gruppe' + PathDelim + 'Kasse.groupproj'));
+  Assert.AreEqual('', TAtlasVcsBranchPlan.CheckoutTarget(mRoot, ExtractFilePath(mRoot) + 'x',
+    ExtractFilePath(mRoot) + 'Anderes' + PathDelim + 'a.groupproj'), 'außerhalb der Arbeitskopie');
+  Assert.AreEqual('', TAtlasVcsBranchPlan.CheckoutTarget(mRoot, '', mRoot + PathDelim + 'a.groupproj'));
 end;
 
 initialization
