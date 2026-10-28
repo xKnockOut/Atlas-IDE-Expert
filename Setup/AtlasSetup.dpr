@@ -19,6 +19,8 @@ uses
   Atlas.Text.Checkin in '..\Packages\Atlas.Text\Source\Checkin\Atlas.Text.Checkin.pas',
   Atlas.Core.Style.Color in '..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Color.pas',
   Atlas.Core.Style.Palette in '..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Palette.pas',
+  Atlas.Core.Style.Signal in '..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Signal.pas',
+  Atlas.Core.Status.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Status\Atlas.Core.Status.Contract.pas',
   Atlas.Core.Generate.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Generate\Atlas.Core.Generate.Contract.pas',
   Atlas.Core.Build.Events in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Events.pas',
   Atlas.Core.Build.OpenBuild in '..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.OpenBuild.pas',
