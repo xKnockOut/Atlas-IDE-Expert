@@ -14,6 +14,9 @@
 // solange seine Einstellung an ist.
 // Tastenkürzel-Tipps (#600): Run meldet jeden Befehl als Aufruf ohne Kürzel
 // (TAtlasIdeShortcutTips.Invoked), auch Aktionen der IDE.
+// Zusatzquelle (#1270): SourceOf liefert beim Öffnen die Quelle (Issues im
+// Tracker); sie erfährt jede Eingabe und zeigt ihre Treffer als Gruppe unter
+// den Befehlen.
 
 interface
 
@@ -23,7 +26,8 @@ uses
   System.Generics.Collections,
   Vcl.Menus,
   ToolsAPI,
-  Atlas.Core.Commands.Palette;
+  Atlas.Core.Commands.Palette,
+  Atlas.UI.Commands.Palette;
 
 type
   /// <summary>Ohne Referenzzählung (TNoRefCountObject): Die Composition gibt die Palette frei.</summary>
@@ -45,6 +49,7 @@ type
     // Befehle mit Sichtbarkeit nach einer Einstellung (#520); ohne Eintrag immer sichtbar.
     FVisible: TDictionary<string, TFunc<Boolean>>;
     FShortCutOf: TFunc<string, string>;
+    FSourceOf: TFunc<IAtlasPaletteSource>;
     FBinding: TBinding;
     // Hält das Binding am Leben: Abmelden gibt die Referenz der IDE frei, Rebind meldet es neu an.
     FBindingRef: IOTAKeyboardBinding;
@@ -57,6 +62,10 @@ type
     function IsVisible(const AId: string): Boolean;
     /// <summary>Atlas-Befehl mit seiner Taste aus ShortCutOf.</summary>
     function WithShortCut(const ACommand: TAtlasCommand): TAtlasCommand;
+    /// <summary>Zusatzquelle an das Fenster hängen (#1270); eigene Routine, damit die anonymen Methoden nur
+    /// Fenster und Quelle halten.</summary>
+    class procedure Attach(AWindow: TAtlasPaletteWindow; const ASource: IAtlasPaletteSource); static;
+    class function GroupShower(AWindow: TAtlasPaletteWindow): TProc<TAtlasPaletteGroup>; static;
   public
     constructor Create;
     destructor Destroy; override;
@@ -75,6 +84,8 @@ type
     procedure Rebind;
     /// <summary>Taste eines Atlas-Befehls als Text ('' ohne), gesetzt von der Komposition (#520).</summary>
     property ShortCutOf: TFunc<string, string> read FShortCutOf write FShortCutOf;
+    /// <summary>Zusatzquelle beim Öffnen (Issues, #1270); nil bzw. Ergebnis nil = nur Befehle.</summary>
+    property SourceOf: TFunc<IAtlasPaletteSource> read FSourceOf write FSourceOf;
   end;
 
 implementation
@@ -87,7 +98,6 @@ uses
   System.Actions,
   Vcl.ActnList,
   Vcl.Forms,
-  Atlas.UI.Commands.Palette,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
@@ -363,10 +373,41 @@ begin
   end;
 end;
 
+class function TAtlasIdePalette.GroupShower(AWindow: TAtlasPaletteWindow): TProc<TAtlasPaletteGroup>;
+begin
+  // Die Quelle ruft das nur bis Closed; das Fenster meldet Closed vor dem Freigeben.
+  Result :=
+    procedure(AGroup: TAtlasPaletteGroup)
+    begin
+      AWindow.SetGroup(AGroup);
+    end;
+end;
+
+class procedure TAtlasIdePalette.Attach(AWindow: TAtlasPaletteWindow; const ASource: IAtlasPaletteSource);
+begin
+  AWindow.OnPattern :=
+    procedure(APattern: string)
+    begin
+      ASource.Changed(APattern);
+    end;
+  AWindow.OnGroupExecute :=
+    procedure(AItem: TAtlasCommand; AAction: TAtlasPaletteAction)
+    begin
+      ASource.Execute(AItem, AAction);
+    end;
+  AWindow.OnClosed :=
+    procedure
+    begin
+      ASource.Closed;
+    end;
+  ASource.Opened(GroupShower(AWindow));
+end;
+
 procedure TAtlasIdePalette.Show;
 var
   Window: TAtlasPaletteWindow;
   Area: TRect;
+  mSource: IAtlasPaletteSource;
 begin
   Window := TAtlasPaletteWindow.CreatePalette(Application, Collect, FHistory, TAtlasIdeStyle.Colors);
   Window.OnExecute :=
@@ -374,6 +415,11 @@ begin
     begin
       Run(ACommand);
     end;
+  mSource := nil;
+  if Assigned(FSourceOf) then
+    mSource := FSourceOf();
+  if mSource <> nil then
+    Attach(Window, mSource);
   if Screen.ActiveForm <> nil then
     Area := Screen.ActiveForm.BoundsRect
   else if Application.MainForm <> nil then

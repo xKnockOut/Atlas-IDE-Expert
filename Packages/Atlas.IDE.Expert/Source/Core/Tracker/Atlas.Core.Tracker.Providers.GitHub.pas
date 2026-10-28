@@ -31,6 +31,10 @@
 //   ein Erledigt-Zustand schließt das Issue mit state_reason "completed").
 //   „Mir zuweisen“ fragt vorher /user. Werte für die Klapplisten: Labels
 //   (…/labels) und mögliche Zuständige (…/assignees).
+// - Palettensuche (#1270): GET /search/issues?q=repo:<owner/repo> is:issue
+//   <Text>&per_page=<Max> ohne Sortierung (beste Treffer zuerst), ohne Pull
+//   Requests und Ampeln; eine Kennung ("#42") liest Lookup direkt über
+//   /repos/<owner/repo>/issues/42.
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -67,6 +71,9 @@ type
     /// <summary>Basis der REST-API ohne „/“ am Ende; '' ohne Server.</summary>
     class function ApiBase(const ATarget: TAtlasTrackerTarget): string; static;
     class function SearchUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string; static;
+    /// <summary>Freitextsuche der Palette (#1270); '' ohne Server, Projekt oder Text.</summary>
+    class function TextSearchUrl(const ATarget: TAtlasTrackerTarget; const AText: string; AMax: Integer): string;
+      static;
     class function PullsUrl(const ATarget: TAtlasTrackerTarget): string; static;
     class function CheckRunsUrl(const ATarget: TAtlasTrackerTarget; const ASha: string): string; static;
     class function StatusUrl(const ATarget: TAtlasTrackerTarget; const ASha: string): string; static;
@@ -133,6 +140,10 @@ type
     function Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       AKind: TAtlasTrackerValueKind; const AField: string; ATimeoutMs: Integer;
       out AValues: TArray<string>): TAtlasTrackerWriteResult;
+    function Search(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
+      ATimeoutMs, AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
+    function Lookup(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out AIssue: TAtlasTrackerIssue; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -185,6 +196,31 @@ begin
     Result := Copy(Result, 1, AMax - 1) + '…';
 end;
 
+/// <summary>Logins aus "assignees" mit ", ", ersatzweise "assignee"; '' ohne.</summary>
+function AssigneesOf(AObject: TJSONObject): string;
+var
+  mItem, mEntry: TJSONValue;
+  mText: string;
+begin
+  Result := '';
+  mItem := AObject.Values['assignees'];
+  if mItem is TJSONArray then
+    for mEntry in TJSONArray(mItem) do
+    begin
+      mText := '';
+      if mEntry is TJSONObject then
+        mText := Shorten(TextOf(TJSONObject(mEntry), 'login'), 60);
+      if mText = '' then
+        Continue;
+      if Result <> '' then
+        Result := Result + ', ';
+      Result := Result + mText;
+    end;
+  mItem := AObject.Values['assignee'];
+  if (Result = '') and (mItem is TJSONObject) then
+    Result := Shorten(TextOf(TJSONObject(mItem), 'login'), 60);
+end;
+
 { TAtlasGitHubTracker }
 
 class function TAtlasGitHubTracker.ApiBase(const ATarget: TAtlasTrackerTarget): string;
@@ -219,6 +255,24 @@ begin
     Limit := 100;
   Result := Result + '/search/issues?q=' + TTextUris.PercentEncode(Text) + '&per_page=' + IntToStr(Limit) +
     '&sort=updated&order=desc';
+end;
+
+class function TAtlasGitHubTracker.TextSearchUrl(const ATarget: TAtlasTrackerTarget; const AText: string;
+  AMax: Integer): string;
+var
+  mLimit: Integer;
+begin
+  Result := ApiBase(ATarget);
+  if (Result = '') or (ATarget.Project = '') or (Trim(AText) = '') then
+    Exit('');
+  mLimit := AMax;
+  if mLimit < 1 then
+    mLimit := 1;
+  if mLimit > 100 then
+    mLimit := 100;
+  // Ohne sort: GitHub ordnet nach Treffergüte.
+  Result := Result + '/search/issues?q=' + TTextUris.PercentEncode('repo:' + ATarget.Project + ' is:issue ' +
+    Trim(AText)) + '&per_page=' + IntToStr(mLimit);
 end;
 
 class function TAtlasGitHubTracker.PullsUrl(const ATarget: TAtlasTrackerTarget): string;
@@ -291,6 +345,7 @@ begin
       Issue.Key := '#' + IntToStr(Issue.Number);
       Issue.Title := Shorten(TextOf(TJSONObject(Item), 'title'), TAtlasTrackerIssue.MaxTitle);
       Issue.State := TextOf(TJSONObject(Item), 'state');
+      Issue.Assignee := AssigneesOf(TJSONObject(Item));
       Labels := TJSONObject(Item).Values['labels'];
       if Labels is TJSONArray then
         for LabelValue in TJSONArray(Labels) do
@@ -562,19 +617,7 @@ begin
         if mText <> '' then
           ADetails.Labels := ADetails.Labels + [Shorten(mText, 40)];
       end;
-    mItem := mRoot.Values['assignees'];
-    if mItem is TJSONArray then
-      for mEntry in TJSONArray(mItem) do
-      begin
-        mText := LoginOf(mEntry);
-        if mText = '' then
-          Continue;
-        if ADetails.Assignee <> '' then
-          ADetails.Assignee := ADetails.Assignee + ', ';
-        ADetails.Assignee := ADetails.Assignee + mText;
-      end;
-    if ADetails.Assignee = '' then
-      ADetails.Assignee := LoginOf(mRoot.Values['assignee']);
+    ADetails.Assignee := AssigneesOf(mRoot);
     if mRoot.Values['milestone'] is TJSONObject then
       ADetails.Sprint := Shorten(TextOf(TJSONObject(mRoot.Values['milestone']), 'title'), 60);
     // Issue-Typen (Bug, Feature …) der Organisation.
@@ -1176,6 +1219,69 @@ begin
     Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
   if not ParseNames(mText, mField, AValues) then
     Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, '');
+end;
+
+function TAtlasGitHubTracker.Search(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AText: string; ATimeoutMs, AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mUrl, mText: string;
+  mStatus: Integer;
+begin
+  AIssues := nil;
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mUrl := TextSearchUrl(ATarget, AText, AMax);
+  if not ATarget.Configured or (mUrl = '') or (ATransport = nil) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParseIssues(mText, AMax, AIssues) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  Result := True;
+end;
+
+function TAtlasGitHubTracker.Lookup(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; ATimeoutMs: Integer; out AIssue: TAtlasTrackerIssue; out AError: TAtlasCiFetchError): Boolean;
+var
+  mUrl, mText: string;
+  mStatus, mComments: Integer;
+  mDetails: TAtlasTrackerDetails;
+begin
+  AIssue := TAtlasTrackerIssue.Empty;
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mUrl := IssueApiUrl(ATarget, AKey);
+  if (mUrl = '') or (ATransport = nil) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParseDetails(mText, mDetails, mComments) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  AIssue := mDetails.Issue;
+  Result := True;
 end;
 
 end.

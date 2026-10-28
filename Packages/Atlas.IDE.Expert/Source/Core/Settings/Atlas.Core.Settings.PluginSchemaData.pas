@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5320] of string = (
+  Lines: array[0..5329] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5425,6 +5425,17 @@ const
     '      "x-area": "issues",',
     '      "x-page": "Issue-Tracker",',
     '      "x-issue": "#1266"',
+    '    },',
+    '    "IssuesPaletteSearch": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Issues in der Befehlspalette suchen: „#“ mit Suchtext oder Nummer, bei YouTrack auch das Projektkürzel mit „-“ („ATL-12“, „ATL-Speicher“), sucht im Tracker des aktiven Projekts (' +
+      '300 ms nach der letzten Eingabe, 5 s Zeitgrenze, höchstens 20 Treffer in der Gruppe „Issues“); ein leeres „#“ zeigt die zuletzt geöffneten Issues ohne Netzabfrage. Enter öffnet die Vorschau, Strg+Ente' +
+      'r beginnt das Issue, Umschalt+Enter öffnet den Browser, Strg+C kopiert die Kennung. Aus: die Palette sucht nur Befehle, ohne Netzzugriff.",',
+    '      "x-key": "issues.paletteSearch",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-issue": "#1270"',
     '    }',
     '  },',
     '  "additionalProperties": false',
