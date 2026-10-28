@@ -1306,6 +1306,10 @@ type
     /// <summary>Kommentarvorlage beim Beenden (#1266, issues.endComment) mit {branch}, {commits}, {pr}, {time};
     /// "\n" = neue Zeile.</summary>
     IssuesEndComment: string;
+    /// <summary>Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261, issues.projects) als JSON-Liste mit
+    /// match, connection und project; liegt in settings.json, gelesen mit TAtlasTrackerProjects. '[]' = keine.
+    /// </summary>
+    IssuesProjects: string;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2046,6 +2050,7 @@ begin
   Result.IssuesStartComment := '';
   Result.IssuesEndStates := '';
   Result.IssuesEndComment := DefaultIssuesEndComment;
+  Result.IssuesProjects := '[]';
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2134,6 +2139,9 @@ begin
   IssuesStartComment := NormalizedIssuesTemplate(IssuesStartComment);
   IssuesEndStates := NormalizedIssuesTemplate(IssuesEndStates);
   IssuesEndComment := NormalizedIssuesTemplate(IssuesEndComment);
+  IssuesProjects := Trim(IssuesProjects);
+  if IssuesProjects = '' then
+    IssuesProjects := '[]';
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2852,6 +2860,7 @@ begin
   IssuesStartComment := AStore.ReadString('IssuesStartComment', Default.IssuesStartComment);
   IssuesEndStates := AStore.ReadString('IssuesEndStates', Default.IssuesEndStates);
   IssuesEndComment := AStore.ReadString('IssuesEndComment', Default.IssuesEndComment);
+  IssuesProjects := AStore.ReadString('IssuesProjects', Default.IssuesProjects);
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3327,6 +3336,7 @@ begin
   AStore.WriteString('IssuesStartComment', IssuesStartComment);
   AStore.WriteString('IssuesEndStates', IssuesEndStates);
   AStore.WriteString('IssuesEndComment', IssuesEndComment);
+  AStore.WriteString('IssuesProjects', IssuesProjects);
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

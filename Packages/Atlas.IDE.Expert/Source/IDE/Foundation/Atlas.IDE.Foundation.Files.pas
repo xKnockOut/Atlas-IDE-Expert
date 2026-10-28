@@ -26,6 +26,9 @@ type
     class function ProjectOfFile(const AFileName: string): string; static;
     /// <summary>Projekt der Projektgruppe mit der Projektdatei AProjectFile (.dproj); nil, wenn keins.</summary>
     class function GroupProject(const AProjectFile: string): IOTAProject; static;
+    /// <summary>Gespeicherte .groupproj der geöffneten Projektgruppe, wenn sie AProjectFile (.dproj) enthält; sonst
+    /// '' (auch für die ungespeicherte Vorgabegruppe der IDE).</summary>
+    class function GroupOfProject(const AProjectFile: string): string; static;
     /// <summary>Aktives Projekt für eine neue Unit (.pas unter dessen Ordner); sonst ''.</summary>
     class function ProjectForNewFile(const AFileName: string): string; static;
     /// <summary>.dproj oder .groupproj?</summary>
@@ -137,6 +140,20 @@ begin
   for Index := 0 to Group.ProjectCount - 1 do
     if SameFileName(Group.Projects[Index].FileName, AProjectFile) then
       Exit(Group.Projects[Index]);
+end;
+
+class function TAtlasIdeFiles.GroupOfProject(const AProjectFile: string): string;
+var
+  mServices: IOTAModuleServices;
+  mGroup: IOTAProjectGroup;
+begin
+  Result := '';
+  if (GroupProject(AProjectFile) = nil) or not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
+    Exit;
+  mGroup := mServices.MainProjectGroup;
+  // Die Vorgabegruppe „ProjectGroup1“ hat keinen Pfad und keine Datei: Eine Zeile kann nicht für sie gelten.
+  if (mGroup <> nil) and SameText(ExtractFileExt(mGroup.FileName), '.groupproj') and FileExists(mGroup.FileName) then
+    Result := mGroup.FileName;
 end;
 
 class function TAtlasIdeFiles.ProjectForNewFile(const AFileName: string): string;

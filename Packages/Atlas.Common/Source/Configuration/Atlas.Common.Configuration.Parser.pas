@@ -122,6 +122,7 @@ type
     procedure ReadIssues(ANode: TJsonNode);
     procedure ReadIssueConnections(ANode: TJsonNode);
     procedure ReadIssueEndStates(ANode: TJsonNode);
+    procedure ReadIssueProjects(ANode: TJsonNode);
     procedure ReadTaskMatcher(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -2342,6 +2343,8 @@ begin
     Key := ANode.Keys[Index];
     if Key = 'connections' then
       ReadIssueConnections(ANode[Index])
+    else if Key = 'projects' then
+      ReadIssueProjects(ANode[Index])
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "issues.%s"', [Key]), False);
@@ -2451,6 +2454,69 @@ begin
     end;
   finally
     Names.Free;
+  end;
+end;
+
+procedure TValidator.ReadIssueProjects(ANode: TJsonNode);
+var
+  Index, Inner: Integer;
+  Mapping, Value: TJsonNode;
+  Key, Text: string;
+  Matches: TList<string>;
+  HasMatch, HasConnection: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"projects" muss eine Liste von Zuordnungen sein');
+    Exit;
+  end;
+  FSettings.IssueProjects := Copy(FText, ANode.Start + 1, ANode.Stop - ANode.Start);
+  Matches := TList<string>.Create;
+  try
+    for Index := 0 to ANode.Count - 1 do
+    begin
+      Mapping := ANode[Index];
+      if Mapping.Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(Mapping, 'Eine Zuordnung ist ein Objekt mit "match", "connection" und "project"');
+        Continue;
+      end;
+      HasMatch := False;
+      HasConnection := False;
+      for Inner := 0 to Mapping.Count - 1 do
+      begin
+        Key := Mapping.Keys[Inner];
+        Value := Mapping[Inner];
+        if Key = 'match' then
+        begin
+          if ExpectString(Value, 'match', Text) and (Trim(Text) <> '') then
+          begin
+            HasMatch := True;
+            // Wie im Plugin: ohne Groß-/Kleinschreibung, „/“ wie „\“, ohne „\“ am Ende.
+            Text := AnsiLowerCase(Trim(Text)).Replace('/', '\');
+            while Text.EndsWith('\') and (Length(Text) > 2) do
+              Delete(Text, Length(Text), 1);
+            if Matches.IndexOf(Text) >= 0 then
+              ReportNode(Value, 'Für diesen Pfad gibt es schon eine Zuordnung')
+            else
+              Matches.Add(Text);
+          end;
+        end
+        else if Key = 'connection' then
+          HasConnection := ExpectString(Value, 'connection', Text) and (Trim(Text) <> '')
+        else if Key = 'project' then
+          ExpectString(Value, 'project', Text)
+        else
+          Report(Mapping.KeyStarts[Inner], Mapping.KeyStarts[Inner] + Length(Key) + 2,
+            Format('Unbekannte Angabe "%s" in einer Zuordnung', [Key]), False);
+      end;
+      if not HasMatch then
+        ReportNode(Mapping, 'Zuordnung ohne "match" (Pfad einer .dproj, .groupproj oder eines Ordners)');
+      if not HasConnection then
+        ReportNode(Mapping, 'Zuordnung ohne "connection"');
+    end;
+  finally
+    Matches.Free;
   end;
 end;
 
@@ -2941,7 +3007,10 @@ begin
     else if Key = 'tasks' then
       Result.Tasks := FileSettings.Tasks
     else if Key = 'issues' then
-      Result.IssueConnections := FileSettings.IssueConnections
+    begin
+      Result.IssueConnections := FileSettings.IssueConnections;
+      Result.IssueProjects := FileSettings.IssueProjects;
+    end
     else if Key = 'format' then
     begin
       Result.Format := FileSettings.Format;

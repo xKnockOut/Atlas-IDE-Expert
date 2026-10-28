@@ -369,6 +369,7 @@ contains
   Atlas.Core.Ci.Adapters.Credentials in 'Source\Core\Ci\Atlas.Core.Ci.Adapters.Credentials.pas',
   Atlas.Core.Tracker.Contract in 'Source\Core\Tracker\Atlas.Core.Tracker.Contract.pas',
   Atlas.Core.Tracker.Connections in 'Source\Core\Tracker\Atlas.Core.Tracker.Connections.pas',
+  Atlas.Core.Tracker.Projects in 'Source\Core\Tracker\Atlas.Core.Tracker.Projects.pas',
   Atlas.Core.Tracker.Naming in 'Source\Core\Tracker\Atlas.Core.Tracker.Naming.pas',
   Atlas.Core.Tracker.Providers.GitHub in 'Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas',
   Atlas.Core.Tracker.Providers.YouTrack in 'Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas',

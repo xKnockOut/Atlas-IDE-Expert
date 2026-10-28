@@ -5315,6 +5315,19 @@
       "x-area": "issues",
       "x-page": "Issue-Tracker",
       "x-issue": "#1266"
+    },
+    "IssuesProjects": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object"
+      },
+      "description": "Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt mit match, connection und project (#1261); liegt in settings.json unter issues.projects. Im Plugin als JSON-Text gelesen und geschrieben.",
+      "x-key": "issues.projects",
+      "x-area": "issues",
+      "x-page": "Issue-Tracker",
+      "x-control": "Tabelle Projekte",
+      "x-issue": "#1261"
     }
   },
   "additionalProperties": false

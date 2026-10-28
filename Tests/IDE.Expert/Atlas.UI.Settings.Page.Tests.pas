@@ -128,6 +128,16 @@ type
     /// Vorschläge; eine andere Adresse behält die Werte der Verbindung.</summary>
     [Test]
     procedure TrackerWorkflowSettings;
+    /// <summary>#1261: Tabelle der Projektzuordnungen: Zeile aus der .atlas schreibgeschützt, überdeckte
+    /// persönliche Zeile markiert, „Aktuelles Projekt“, Datei über OnTrackerBrowse, Umbenennen der Verbindung
+    /// zieht mit, Entfernen.</summary>
+    [Test]
+    procedure TrackerProjectsTable;
+    /// <summary>#1261: Tabelle der Projektzuordnungen: Zeile aus der .atlas schreibgeschützt, überdeckte
+    /// persönliche Zeile markiert, „Aktuelles Projekt“, Datei über OnTrackerBrowse, Umbenennen der Verbindung
+    /// zieht mit, Entfernen.</summary>
+    [Test]
+    procedure TrackerProjectsTable;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
     [Test]
@@ -229,6 +239,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Workflow,
+  Atlas.Core.Tracker.Projects,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Vcl.Graphics,
@@ -2169,6 +2180,107 @@ begin
   end;
   mAsked := '';
   mField := '';
+end;
+
+procedure TAtlasSettingsPageTests.TrackerProjectsTable;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mList: TListView;
+  mBrowsed: string;
+  mMappings: TArray<TAtlasTrackerProjectMapping>;
+begin
+  mBrowsed := '';
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    mPage.OnTrackerContext :=
+      function: TAtlasTrackerProjectContext
+      begin
+        Result := TAtlasTrackerProjectContext.Empty;
+        Result.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+        Result.GroupFile := 'C:\Projekte\Kasse\Kasse.groupproj';
+        Result.Team := [TAtlasTrackerProjectMapping.FromTeamFile('C:\Projekte\Kasse\Kasse.dproj', 'Kasse',
+          'xKnockOut/Kasse')];
+      end;
+    mPage.OnTrackerBrowse :=
+      function(AFolder: Boolean; out APath: string): Boolean
+      begin
+        mBrowsed := BoolToStr(AFolder, True);
+        APath := 'C:\Projekte\Lager\Lager.dproj';
+        Result := True;
+      end;
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.IssuesConnections := '[{"name": "Firma", "provider": "youtrack", "url": "https://youtrack.firma.local"},' +
+      ' {"name": "GitHub", "provider": "github", "url": "https://github.com"}]';
+    mSettings.IssuesProjects := '[{"match": "C:\\Projekte", "connection": "Firma", "project": "KASSE"}]';
+    mPage.LoadFrom(mSettings);
+    mList := mPage.IssuesProjects;
+    // Abnahme: persönliche Zeile vor der aus der .atlas; die .atlas gewinnt für Kasse.
+    Assert.AreEqual(2, mList.Items.Count);
+    Assert.AreEqual('C:\Projekte', mList.Items[0].Caption);
+    Assert.AreEqual('Firma', mList.Items[0].SubItems[0]);
+    Assert.AreEqual('KASSE', mList.Items[0].SubItems[1]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered), mList.Items[0].SubItems[2]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam), mList.Items[1].SubItems[2]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCoveredHint),
+      mPage.IssuesProjectNote.Caption);
+    Assert.IsTrue(mPage.IssuesProjectMatch.Enabled);
+    Assert.IsTrue(mPage.IssuesProjectAddCurrent.Enabled);
+    // Zeile aus der .atlas: nur ansehen.
+    mList.Items[1].Selected := True;
+    Assert.IsFalse(mPage.IssuesProjectMatch.Enabled);
+    Assert.IsFalse(mPage.IssuesProjectRemove.Enabled);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly),
+      mPage.IssuesProjectNote.Caption);
+    // „Aktuelles Projekt“: die geöffnete Gruppe, vorbelegt mit der ersten Verbindung.
+    mPage.IssuesProjectAddCurrent.Click;
+    Assert.AreEqual(2, Integer(Length(mPage.TrackerProjects)));
+    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mPage.TrackerProjects[1].Match);
+    Assert.AreEqual('Firma', mPage.TrackerProjects[1].Connection);
+    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mPage.IssuesProjectMatch.Text);
+    mPage.IssuesProjectProject.Text := 'LAGER';
+    Assert.AreEqual('LAGER', mPage.TrackerProjects[1].Project);
+    // Derselbe Pfad zweimal wird nicht übernommen.
+    mPage.IssuesProjectMatch.Text := 'c:\projekte';
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectMatchTaken),
+      mPage.IssuesProjectNote.Caption);
+    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mPage.TrackerProjects[1].Match);
+    // Hinzufügen über die Dateiauswahl.
+    mPage.IssuesProjectAddMenu.Items[0].Click;
+    Assert.AreEqual('False', mBrowsed);
+    Assert.AreEqual(3, Integer(Length(mPage.TrackerProjects)));
+    Assert.AreEqual('C:\Projekte\Lager\Lager.dproj', mPage.TrackerProjects[2].Match);
+    // Aus „Meine Issues“: vorhandene Zeile wird gewählt, keine zweite angelegt.
+    mPage.AssignTrackerProject('C:\Projekte');
+    Assert.AreEqual(3, Integer(Length(mPage.TrackerProjects)));
+    Assert.AreEqual('C:\Projekte', mPage.IssuesProjectMatch.Text);
+    // Verbindung umbenennen: die Zuordnungen ziehen mit.
+    mPage.IssuesConnections.Items[0].Selected := True;
+    mPage.IssuesConnectionName.Text := 'Werk';
+    Assert.AreEqual('Werk', mPage.TrackerProjects[0].Connection);
+    Assert.AreEqual('Werk', mList.Items[0].SubItems[0]);
+    // Entfernen, dann speichern: nur die persönlichen Zeilen landen in issues.projects.
+    mList.Items[2].Selected := True;
+    mPage.IssuesProjectRemove.Click;
+    Assert.AreEqual(2, Integer(Length(mPage.TrackerProjects)));
+    mSaved := mSettings;
+    mPage.SaveTo(mSaved);
+    mMappings := TAtlasTrackerProjects.Read(mSaved.IssuesProjects);
+    Assert.AreEqual(2, Integer(Length(mMappings)), mSaved.IssuesProjects);
+    Assert.AreEqual('C:\Projekte', mMappings[0].Match);
+    Assert.AreEqual('Werk', mMappings[0].Connection);
+    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mMappings[1].Match);
+    Assert.AreEqual('LAGER', mMappings[1].Project);
+    Assert.IsFalse(mSaved.IssuesProjects.Contains('xKnockOut/Kasse'), 'Zeile aus der .atlas bleibt dort');
+  finally
+    mHost.Free;
+  end;
+  mBrowsed := '';
+  mMappings := nil;
 end;
 
 procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;

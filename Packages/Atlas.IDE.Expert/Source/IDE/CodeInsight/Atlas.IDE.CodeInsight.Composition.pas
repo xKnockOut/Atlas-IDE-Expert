@@ -4274,6 +4274,12 @@ begin
           TAtlasOptionsRegistration.ShowSetting('IssuesConnections');
         end);
     end;
+  // „zuordnen …“ (#1261): Seite Issue-Tracker mit vorbefüllter Zeile der Tabelle Projekte.
+  Result.OnAssignProject :=
+    procedure(AMatch: string)
+    begin
+      TAtlasOptionsRegistration.ShowTrackerProject(AMatch);
+    end;
 end;
 
 procedure StartWelcome;
