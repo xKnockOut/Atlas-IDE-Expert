@@ -210,7 +210,7 @@ begin
           Async := Client.BeginGet(Url, Content, Headers)
         else
         begin
-          Headers := Headers + [TNetHeader.Create('Content-Type', 'application/json')];
+          Headers := Headers + [TNetHeader.Create('Content-Type', 'application/json; charset=utf-8')];
           Source.Position := 0;
           if AMethod = 'PATCH' then
             Async := Client.BeginPatch(Url, Source, Content, Headers)
@@ -232,9 +232,16 @@ begin
             Exit;
           end;
         Response := THTTPClient.EndAsyncHTTP(Async);
-        // Geschrieben wird nur an die eingetragene Adresse: Eine Weiterleitung bleibt die Antwort.
-        if (AMethod <> 'GET') or not IsRedirect(Response.StatusCode) then
+        if not IsRedirect(Response.StatusCode) then
           Break;
+        // Geschrieben wird nur an die eingetragene Adresse: Eine Weiterleitung ist ein Fehler, der Inhalt ginge sonst
+        // an ein anderes Ziel.
+        if AMethod <> 'GET' then
+        begin
+          AStatus := Response.StatusCode;
+          AError := TAtlasCiFetchError.Server;
+          Exit;
+        end;
         Inc(Redirects);
         Next := TAtlasCiAddresses.Resolve(Url, Response.HeaderValue['Location']);
         if (Redirects > MaxRedirects) or not TAtlasCiAddresses.RedirectAllowed(Url, Next) then
