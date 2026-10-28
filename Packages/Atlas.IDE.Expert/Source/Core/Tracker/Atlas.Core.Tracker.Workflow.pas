@@ -13,6 +13,9 @@
 // - StartChange bzw. EndChange bauen die Änderung (TAtlasTrackerChange), die
 //   der Anbieter (IAtlasTrackerWriter) schreibt. Geschrieben wird nur nach
 //   „Beginnen“ bzw. dem Klick auf „Senden“ im Beenden-Dialog.
+// - LoadValues holt Zustände und Felder für die Klapplisten (bricht beim
+//   ersten Fehler ab); CommitsFor sucht die Commits mit der Kennung gegen
+//   issues.branchBase, sonst main bzw. master.
 
 interface
 
