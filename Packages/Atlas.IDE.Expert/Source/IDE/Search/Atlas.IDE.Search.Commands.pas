@@ -30,6 +30,9 @@
 //   einmal zurück; liegt über der Leiste ein anderes Fenster, wird sie nach
 //   vorn geholt. Beides steht mit Fensterklasse im Diagnoseprotokoll, ebenso
 //   beim ersten Öffnen je Fenster die Lage von Editor und Leiste.
+// - Anlegen je Editorfenster (auf Abruf, EnsureFor), Wächter, Freigabe nach
+//   der Sperre durch die IDE und Abbau übernimmt TAtlasEditorBarHost (#1248).
+//   Die Leisten sind verborgen, bis Show sie öffnet; deshalb kein Guard.
 // Tasten: Strg+F/F3/Umschalt+F3 nur mit search.replaceIdeSearch
 // (Atlas.IDE.Commands.Bindings), „In Methode suchen“ immer. Nur im
 // Hauptthread.
@@ -40,14 +43,14 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
-  System.Generics.Collections,
   Winapi.Windows,
   Vcl.Controls,
   Vcl.ExtCtrls,
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Search.Matching,
-  Atlas.UI.Search.Bar;
+  Atlas.UI.Search.Bar,
+  Atlas.IDE.Foundation.EditorBarHost;
 
 type
   TAtlasIdeSearch = class
@@ -78,10 +81,8 @@ type
       destructor Destroy; override;
     end;
 
-    /// <summary>Erfährt, wenn die IDE eine Leiste mit ihrem Editorfenster freigibt.</summary>
-    TBarWatcher = class(TComponent)
-    protected
-      procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    /// <summary>Besitzer des Takts bei offener Leiste.</summary>
+    TProbeOwner = class(TComponent)
     public
       procedure Tick(Sender: TObject);
     end;
@@ -90,8 +91,8 @@ type
     FVersion: Integer;
     FPainter: TPainter;
     FMessage: TProc<string>;
-    FBars: TList<TAtlasSearchBar>;
-    FWatcher: TBarWatcher;
+    FHost: TAtlasEditorBarHost;
+    FProbeOwner: TProbeOwner;
     // Leiste der laufenden Suche und Stand beim Öffnen.
     FBar: TAtlasSearchBar;
     FOrigin: TAtlasSearchPos;
@@ -118,10 +119,10 @@ type
     class procedure Repaint; static;
     class procedure Open(AInMethod: Boolean); static;
     // Leisten.
-    class function EditorOf(const AWindow: INTAEditWindow): TWinControl; static;
     class function BarFor(const AWindow: INTAEditWindow): TAtlasSearchBar; static;
-    class procedure CreateBar(AParent: TWinControl; out ABar: TAtlasSearchBar); static;
-    class procedure Removed(ABar: TAtlasSearchBar); static;
+    class function CreateBar(AParent: TWinControl): TAtlasSearchBar; static;
+    class procedure Place(ABar: TAtlasSearchBar; AParent: TWinControl); static;
+    class procedure Removed(ABar: TControl); static;
     class procedure ThemeBar(ABar: TAtlasSearchBar); static;
     /// <summary>Suche der Leiste übernehmen; AJump: zum nächsten Treffer ab dem Ursprung springen.</summary>
     class procedure Sync(AJump: Boolean); static;
@@ -319,16 +320,9 @@ begin
   end;
 end;
 
-{ TAtlasIdeSearch.TBarWatcher }
+{ TAtlasIdeSearch.TProbeOwner }
 
-procedure TAtlasIdeSearch.TBarWatcher.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent is TAtlasSearchBar) then
-    TAtlasIdeSearch.Removed(TAtlasSearchBar(AComponent));
-end;
-
-procedure TAtlasIdeSearch.TBarWatcher.Tick(Sender: TObject);
+procedure TAtlasIdeSearch.TProbeOwner.Tick(Sender: TObject);
 begin
   TAtlasGuard.Run(TAtlasFeature.Search, TAtlasIdeSearch.Probe);
 end;
@@ -340,38 +334,42 @@ begin
   FMessage := AMessage;
   if FPainter = nil then
     FPainter := TPainter.Create;
-  if FBars = nil then
-    FBars := TList<TAtlasSearchBar>.Create;
-  if FWatcher = nil then
-    FWatcher := TBarWatcher.Create(nil);
+  if FHost = nil then
+  begin
+    FHost := TAtlasEditorBarHost.Create('Suchleiste', TAtlasFeature.Search,
+      function(AEditorParent: TWinControl): TControl
+      begin
+        Result := CreateBar(AEditorParent);
+      end,
+      procedure(ABar: TControl; AEditorParent: TWinControl)
+      begin
+        Place(TAtlasSearchBar(ABar), AEditorParent);
+      end);
+    FHost.OnRemoved :=
+      procedure(ABar: TControl)
+      begin
+        Removed(ABar);
+      end;
+  end;
+  if FProbeOwner = nil then
+    FProbeOwner := TProbeOwner.Create(nil);
   if FProbe = nil then
   begin
-    FProbe := TTimer.Create(FWatcher);
+    FProbe := TTimer.Create(FProbeOwner);
     FProbe.Enabled := False;
     FProbe.Interval := ProbeMs;
-    FProbe.OnTimer := FWatcher.Tick;
+    FProbe.OnTimer := FProbeOwner.Tick;
   end;
 end;
 
 class procedure TAtlasIdeSearch.Uninstall;
-var
-  Bar: TAtlasSearchBar;
 begin
   FreeAndNil(FPainter);
-  // Leisten selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
-  if FBars <> nil then
-  begin
-    for Bar in FBars.ToArray do
-    begin
-      Bar.RemoveFreeNotification(FWatcher);
-      Bar.Free;
-    end;
-    FreeAndNil(FBars);
-  end;
-  // Der Takt gehört dem Wächter.
+  FreeAndNil(FHost);
+  // Der Takt gehört seinem Besitzer.
   FProbe := nil;
   FEntered := nil;
-  FreeAndNil(FWatcher);
+  FreeAndNil(FProbeOwner);
   FBar := nil;
   FMessage := nil;
   FHighlight := False;
@@ -381,7 +379,6 @@ end;
 
 class procedure TAtlasIdeSearch.ApplySettings;
 var
-  Bar: TAtlasSearchBar;
   Listed: Boolean;
 begin
   Listed := TAtlasIdeSettings.Current.SearchResultsInMessages;
@@ -390,18 +387,22 @@ begin
     TAtlasIdeSearchMessages.Clear;
     FListedKey := '';
   end;
-  if FBars <> nil then
-    for Bar in FBars do
-      Bar.ListVisible := Listed;
+  if FHost <> nil then
+    FHost.ForEach(
+      procedure(ABar: TControl)
+      begin
+        TAtlasSearchBar(ABar).ListVisible := Listed;
+      end);
 end;
 
 class procedure TAtlasIdeSearch.ThemeChanged;
-var
-  Bar: TAtlasSearchBar;
 begin
-  if FBars <> nil then
-    for Bar in FBars do
-      ThemeBar(Bar);
+  if FHost <> nil then
+    FHost.ForEach(
+      procedure(ABar: TControl)
+      begin
+        ThemeBar(TAtlasSearchBar(ABar));
+      end);
 end;
 
 class procedure TAtlasIdeSearch.ThemeBar(ABar: TAtlasSearchBar);
@@ -512,41 +513,20 @@ begin
     View.Paint;
 end;
 
-class function TAtlasIdeSearch.EditorOf(const AWindow: INTAEditWindow): TWinControl;
-var
-  Editor: TComponent;
-begin
-  Result := nil;
-  if (AWindow = nil) or (AWindow.Form = nil) then
-    Exit;
-  Editor := AWindow.Form.FindComponent('Editor');
-  if (Editor is TWinControl) and (TWinControl(Editor).Parent <> nil) then
-    Result := TWinControl(Editor);
-end;
-
 class function TAtlasIdeSearch.BarFor(const AWindow: INTAEditWindow): TAtlasSearchBar;
-var
-  Editor: TWinControl;
-  Bar: TAtlasSearchBar;
 begin
   Result := nil;
-  Editor := EditorOf(AWindow);
-  if (Editor = nil) or (FBars = nil) then
-    Exit;
-  for Bar in FBars do
-    if Bar.Parent = Editor.Parent then
-      Exit(Bar);
-  CreateBar(Editor.Parent, Result);
+  if FHost <> nil then
+    Result := TAtlasSearchBar(FHost.EnsureFor(AWindow));
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable.</summary>
-class procedure TAtlasIdeSearch.CreateBar(AParent: TWinControl; out ABar: TAtlasSearchBar);
+class function TAtlasIdeSearch.CreateBar(AParent: TWinControl): TAtlasSearchBar;
 var
   Bar: TAtlasSearchBar;
 begin
   Bar := TAtlasSearchBar.Create(nil);
-  Bar.FreeNotification(FWatcher);
-  FBars.Add(Bar);
+  Result := Bar;
   Bar.Visible := False;
   Bar.OnQueryChanged :=
     procedure
@@ -589,18 +569,21 @@ begin
         FEnteredAt := TThread.GetTickCount64;
       end;
     end;
-  // Unter dem Editor: zuerst ganz unten einhängen, dann unten ausrichten.
-  Bar.Top := AParent.ClientHeight;
-  Bar.Align := alBottom;
-  Bar.Parent := AParent;
-  ThemeBar(Bar);
-  ABar := Bar;
 end;
 
-class procedure TAtlasIdeSearch.Removed(ABar: TAtlasSearchBar);
+class procedure TAtlasIdeSearch.Place(ABar: TAtlasSearchBar; AParent: TWinControl);
 begin
-  if FBars <> nil then
-    FBars.Remove(ABar);
+  if ABar.Parent = AParent then
+    Exit;
+  // Unter dem Editor: zuerst ganz unten einhängen, dann unten ausrichten.
+  ABar.Top := AParent.ClientHeight;
+  ABar.Align := alBottom;
+  ABar.Parent := AParent;
+  ThemeBar(ABar);
+end;
+
+class procedure TAtlasIdeSearch.Removed(ABar: TControl);
+begin
   if FBar = ABar then
   begin
     FBar := nil;
@@ -820,21 +803,16 @@ end;
 
 class procedure TAtlasIdeSearch.CloseBar;
 var
-  Form: TCustomForm;
-  Editor: TComponent;
+  Bar: TAtlasSearchBar;
 begin
   if FBar = nil then
     Exit;
-  Form := GetParentForm(FBar);
+  Bar := FBar;
   StopProbe;
   FBar.Visible := False;
   FHighlight := False;
   Repaint;
-  if Form = nil then
-    Exit;
-  Editor := Form.FindComponent('Editor');
-  if (Editor is TWinControl) and TWinControl(Editor).CanFocus then
-    TWinControl(Editor).SetFocus;
+  TAtlasEditorBarHost.FocusEditor(Bar);
 end;
 
 class procedure TAtlasIdeSearch.StopProbe;
@@ -886,19 +864,11 @@ begin
 end;
 
 class procedure TAtlasIdeSearch.EnableBars;
-var
-  Bar: TAtlasSearchBar;
 begin
   // Beim Schließen aller Editoren (Projektwechsel) sperrt die IDE jedes Steuerelement im Editor-Panel und gibt danach
   // nur ihre eigenen wieder frei; die Suchleiste flackerte dann beim Klick nur kurz und blieb taub.
-  if FBars = nil then
-    Exit;
-  for Bar in FBars do
-    if not Bar.Enabled then
-    begin
-      Bar.Enabled := True;
-      TAtlasGuard.Log('Suchleiste: wieder freigegeben (von der IDE gesperrt)');
-    end;
+  if FHost <> nil then
+    FHost.Enable;
 end;
 
 class procedure TAtlasIdeSearch.Probe;

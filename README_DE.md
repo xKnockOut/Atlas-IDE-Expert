@@ -285,6 +285,7 @@ Prüfskripte (laufen auch als GitHub Action):
 pwsh Tools/Check-PackageDependencies.ps1   # Packages halten ihre Abhängigkeiten ein
 pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 pwsh Tools/Check-TestCoverage.ps1          # jede Unit mit Logik hat Tests, jede Testunit läuft
+pwsh Tools/Check-WindowHosts.ps1           # Fenster und Editorleisten über die gemeinsamen Hüllen
 ```
 
 ## CI
@@ -293,7 +294,7 @@ pwsh Tools/Check-TestCoverage.ps1          # jede Unit mit Logik hat Tests, jede
   - Der Job braucht einen selbst gehosteten Windows-Runner (Labels `self-hosted`, `windows`, `delphi`) auf dem Arbeitsrechner des Entwicklers. Er läuft im angemeldeten Benutzerkontext und nicht als Dienst, weil `cc.ps1` eine IDE startet, und nur, solange dieser Rechner eingeschaltet ist. Jeder Job startet eine eigene Scratch-IDE.
   - Er läuft nur mit der Repository-Variablen `DELPHI_RUNNER=true`; sonst meldet der Job „uebersprungen“ das in der Zusammenfassung des Laufs. `CC_SCRIPT` überschreibt den Pfad zu `cc.ps1`.
   - Ein neuer Push auf denselben Branch bricht den laufenden Build ab (`concurrency`).
-- `package-dependencies.yml`: Package-Abhängigkeiten, stdout-Regel, Delphi-12-Verträglichkeit, Regelkatalog, Konfigurationsdoku und keine Embarcadero-Quellen in `Tests/`.
+- `package-dependencies.yml`: Package-Abhängigkeiten, stdout-Regel, Delphi-12-Verträglichkeit, Regelkatalog, Konfigurationsdoku, keine Embarcadero-Quellen in `Tests/` und Atlas-Fenster und Editorleisten nur über ihre gemeinsamen Hüllen.
 
 ## Kommandozeile
 
