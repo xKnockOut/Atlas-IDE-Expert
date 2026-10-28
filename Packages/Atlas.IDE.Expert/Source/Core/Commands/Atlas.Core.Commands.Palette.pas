@@ -13,6 +13,11 @@
 // Der Verlauf (palette.json) wird über TAtlasDataFile gelesen und atomar
 // geschrieben (Bericht N3): Eine unbrauchbare Datei liegt danach als .defekt
 // daneben, eine gesperrte bleibt unverändert und wird nicht überschrieben.
+// Zusatzquelle (#1270, Issues in der Palette): IAtlasPaletteSource erfährt
+// jede Eingabe und zeigt ihre Treffer als eigene Gruppe unter den Befehlen
+// (TAtlasPaletteGroup), auch später, wenn die Antwort aus dem Netz kommt.
+// TAtlasPaletteRows bestimmt die Zeilen (Befehle, Überschrift, Status,
+// Einträge), welche wählbar sind und welche Aktion eine Taste auslöst.
 
 interface
 
@@ -31,6 +36,71 @@ type
     ShortCut: string;
     Description: string;
     IsAtlas: Boolean;
+    /// <summary>Abzeichen rechts in der Zeile (Zustand eines Issues, #1270); '' ohne.</summary>
+    Badge: string;
+  end;
+
+{$SCOPEDENUMS ON}
+  /// <summary>Wie ein Eintrag einer Zusatzgruppe ausgeführt wird: Enter (Open), Strg+Enter (Start),
+  /// Umschalt+Enter (Browse), Strg+C (Copy, die Palette bleibt offen).</summary>
+  TAtlasPaletteAction = (Open, Start, Browse, Copy);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Gruppe einer Zusatzquelle unter den Befehlen (#1270).</summary>
+  TAtlasPaletteGroup = record
+    /// <summary>Überschrift ("Issues"); '' = keine Gruppe.</summary>
+    Title: string;
+    /// <summary>Zeile unter der Überschrift ("Suche im Tracker …", Fehler, Tastenhinweis); '' ohne.</summary>
+    Status: string;
+    /// <summary>Text, dessen Zeichen in den Einträgen hervorgehoben werden.</summary>
+    Highlight: string;
+    Items: TArray<TAtlasCommand>;
+    class function None: TAtlasPaletteGroup; static;
+    class function Create(const ATitle, AStatus, AHighlight: string;
+      const AItems: TArray<TAtlasCommand>): TAtlasPaletteGroup; static;
+    function Visible: Boolean;
+  end;
+
+  /// <summary>Art einer Zeile: Befehl, Überschrift und Status der Zusatzgruppe, Eintrag der Gruppe.</summary>
+{$SCOPEDENUMS ON}
+  TAtlasPaletteRowKind = (Command, Header, Status, Item);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Zeilen der Palette (#1270): zuerst die Treffer der Befehle, darunter die Zusatzgruppe mit
+  /// Überschrift, optionaler Statuszeile und Einträgen. Überschrift und Status sind nicht wählbar.</summary>
+  TAtlasPaletteRows = record
+  private
+    FCommands: Integer;
+    FGroup: Boolean;
+    FStatus: Boolean;
+    FItems: Integer;
+  public
+    class function Create(ACommands: Integer; const AGroup: TAtlasPaletteGroup): TAtlasPaletteRows; static;
+    function Count: Integer;
+    /// <summary>Art der Zeile ARow; AIndex: Befehl in der Trefferliste bzw. Eintrag der Gruppe.</summary>
+    function Kind(ARow: Integer; out AIndex: Integer): TAtlasPaletteRowKind;
+    function Selectable(ARow: Integer): Boolean;
+    /// <summary>Erste wählbare Zeile; -1 ohne.</summary>
+    function First: Integer;
+    /// <summary>Von AFrom um ADelta weiter, Überschrift und Status in Schrittrichtung übersprungen (am Rand
+    /// zurück); AFrom, wenn es keine wählbare Zeile gibt.</summary>
+    function Step(AFrom, ADelta: Integer): Integer;
+    /// <summary>Enter auf einem Eintrag: Strg = Start, sonst Umschalt = Browse, sonst Open.</summary>
+    class function ActionOf(ACtrl, AShift: Boolean): TAtlasPaletteAction; static;
+  end;
+
+  /// <summary>Zusatzquelle der Palette (#1270), z. B. Issues im Tracker. Alle Aufrufe im Hauptthread.</summary>
+  IAtlasPaletteSource = interface
+    ['{D1D5D951-0AD7-4D3E-80D8-5021BD5F0C41}']
+    /// <summary>Palette geöffnet; AShow zeigt bzw. ersetzt die Gruppe, auch später (nach Closed wirkungslos).
+    /// </summary>
+    procedure Opened(const AShow: TProc<TAtlasPaletteGroup>);
+    /// <summary>Eingabe geändert (auch auf leer).</summary>
+    procedure Changed(const APattern: string);
+    /// <summary>Eintrag der Gruppe ausgeführt; außer bei Copy ist die Palette danach geschlossen.</summary>
+    procedure Execute(const AItem: TAtlasCommand; AAction: TAtlasPaletteAction);
+    /// <summary>Palette geschlossen: laufende Anfragen abbrechen, AShow nicht mehr rufen.</summary>
+    procedure Closed;
   end;
 
   /// <summary>Atlas-Befehle anmelden (Palette, #520); ohne VCL und Open Tools API. Features melden ihre Befehle
@@ -93,6 +163,123 @@ uses
   System.JSON,
   System.Generics.Defaults,
   Atlas.Core.Completion.Matching;
+
+{ TAtlasPaletteGroup }
+
+class function TAtlasPaletteGroup.None: TAtlasPaletteGroup;
+begin
+  Result.Title := '';
+  Result.Status := '';
+  Result.Highlight := '';
+  Result.Items := nil;
+end;
+
+class function TAtlasPaletteGroup.Create(const ATitle, AStatus, AHighlight: string;
+  const AItems: TArray<TAtlasCommand>): TAtlasPaletteGroup;
+begin
+  Result.Title := ATitle;
+  Result.Status := AStatus;
+  Result.Highlight := AHighlight;
+  Result.Items := AItems;
+end;
+
+function TAtlasPaletteGroup.Visible: Boolean;
+begin
+  Result := Title <> '';
+end;
+
+{ TAtlasPaletteRows }
+
+class function TAtlasPaletteRows.Create(ACommands: Integer; const AGroup: TAtlasPaletteGroup): TAtlasPaletteRows;
+begin
+  Result.FCommands := ACommands;
+  if Result.FCommands < 0 then
+    Result.FCommands := 0;
+  Result.FGroup := AGroup.Visible;
+  Result.FStatus := Result.FGroup and (AGroup.Status <> '');
+  Result.FItems := 0;
+  if Result.FGroup then
+    Result.FItems := Length(AGroup.Items);
+end;
+
+function TAtlasPaletteRows.Count: Integer;
+begin
+  Result := FCommands;
+  if not FGroup then
+    Exit;
+  Inc(Result, 1 + FItems);
+  if FStatus then
+    Inc(Result);
+end;
+
+function TAtlasPaletteRows.Kind(ARow: Integer; out AIndex: Integer): TAtlasPaletteRowKind;
+begin
+  AIndex := ARow;
+  Result := TAtlasPaletteRowKind.Command;
+  if ARow < FCommands then
+    Exit;
+  AIndex := ARow - FCommands;
+  if AIndex = 0 then
+    Exit(TAtlasPaletteRowKind.Header);
+  Dec(AIndex);
+  if FStatus then
+  begin
+    if AIndex = 0 then
+      Exit(TAtlasPaletteRowKind.Status);
+    Dec(AIndex);
+  end;
+  Result := TAtlasPaletteRowKind.Item;
+end;
+
+function TAtlasPaletteRows.Selectable(ARow: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := (ARow >= 0) and (ARow < Count) and
+    (Kind(ARow, mIndex) in [TAtlasPaletteRowKind.Command, TAtlasPaletteRowKind.Item]);
+end;
+
+function TAtlasPaletteRows.First: Integer;
+var
+  mRow: Integer;
+begin
+  for mRow := 0 to Count - 1 do
+    if Selectable(mRow) then
+      Exit(mRow);
+  Result := -1;
+end;
+
+function TAtlasPaletteRows.Step(AFrom, ADelta: Integer): Integer;
+var
+  mRow, mDirection: Integer;
+begin
+  Result := AFrom;
+  if (Count = 0) or (ADelta = 0) then
+    Exit;
+  mDirection := Sign(ADelta);
+  mRow := EnsureRange(AFrom + ADelta, 0, Count - 1);
+  while (mRow >= 0) and (mRow < Count) and not Selectable(mRow) do
+    Inc(mRow, mDirection);
+  // Am Rand nur Überschrift oder Status: zurück zur nächsten wählbaren Zeile.
+  if (mRow < 0) or (mRow >= Count) then
+  begin
+    mRow := EnsureRange(AFrom + ADelta, 0, Count - 1);
+    while (mRow >= 0) and (mRow < Count) and not Selectable(mRow) do
+      Dec(mRow, mDirection);
+  end;
+  if (mRow >= 0) and (mRow < Count) then
+    Result := mRow;
+end;
+
+class function TAtlasPaletteRows.ActionOf(ACtrl, AShift: Boolean): TAtlasPaletteAction;
+begin
+  if ACtrl then
+    Result := TAtlasPaletteAction.Start
+  else if AShift then
+    Result := TAtlasPaletteAction.Browse
+  else
+    Result := TAtlasPaletteAction.Open;
+end;
 
 { TAtlasCommandHistory }
 

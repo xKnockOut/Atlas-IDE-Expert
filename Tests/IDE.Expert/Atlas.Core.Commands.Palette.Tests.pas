@@ -1,6 +1,7 @@
 ﻿unit Atlas.Core.Commands.Palette.Tests;
 
-// Tests für die Befehlspalette (#502).
+// Tests für die Befehlspalette (#502) und ihre Zusatzgruppe (#1270): Zeilen,
+// wählbare Zeilen, Schritte über Überschrift und Status, Tasten.
 
 interface
 
@@ -32,6 +33,18 @@ type
     procedure KeepsListOrderForCodeActions;
     [Test]
     procedure RegistryInterfaceIsUsableWithoutVcl;
+    /// <summary>Ohne Gruppe nur Befehle; Gruppe ohne Titel zählt nicht (#1270).</summary>
+    [Test]
+    procedure RowsWithoutGroup;
+    /// <summary>Befehle, Überschrift, Status, Einträge in dieser Reihenfolge (#1270).</summary>
+    [Test]
+    procedure RowsOfGroup;
+    /// <summary>Pfeiltasten überspringen Überschrift und Status; am Rand zurück (#1270).</summary>
+    [Test]
+    procedure StepSkipsHeaderAndStatus;
+    /// <summary>Strg+Enter startet, Umschalt+Enter öffnet im Browser, Enter öffnet (#1270).</summary>
+    [Test]
+    procedure ActionOfModifiers;
   end;
 
 implementation
@@ -236,6 +249,89 @@ begin
   end;
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;
+end;
+
+function Group(const AStatus: string; ACount: Integer): TAtlasPaletteGroup;
+var
+  mItems: TArray<TAtlasCommand>;
+  mIndex: Integer;
+begin
+  mItems := nil;
+  SetLength(mItems, ACount);
+  for mIndex := 0 to ACount - 1 do
+    mItems[mIndex] := Command('ATL-' + IntToStr(mIndex + 1), 'Eintrag ' + IntToStr(mIndex + 1));
+  Result := TAtlasPaletteGroup.Create('Issues', AStatus, '', mItems);
+end;
+
+procedure TAtlasCommandPaletteTests.RowsWithoutGroup;
+var
+  mRows: TAtlasPaletteRows;
+  mIndex: Integer;
+begin
+  mRows := TAtlasPaletteRows.Create(3, TAtlasPaletteGroup.None);
+  Assert.AreEqual(3, mRows.Count);
+  Assert.IsTrue(mRows.Kind(2, mIndex) = TAtlasPaletteRowKind.Command);
+  Assert.AreEqual(2, mIndex);
+  Assert.AreEqual(0, mRows.First);
+  // Einträge ohne Titel: keine Gruppe.
+  mRows := TAtlasPaletteRows.Create(0, TAtlasPaletteGroup.Create('', 'Status', '', [Command('a', 'A')]));
+  Assert.AreEqual(0, mRows.Count);
+  Assert.AreEqual(-1, mRows.First);
+  Assert.IsFalse(mRows.Selectable(0));
+  Assert.AreEqual(-1, TAtlasPaletteRows.Create(-1, TAtlasPaletteGroup.None).First, 'negative Anzahl wie 0');
+end;
+
+procedure TAtlasCommandPaletteTests.RowsOfGroup;
+var
+  mRows: TAtlasPaletteRows;
+  mIndex: Integer;
+begin
+  mRows := TAtlasPaletteRows.Create(2, Group('Suche im Tracker …', 2));
+  Assert.AreEqual(6, mRows.Count, '2 Befehle, Überschrift, Status, 2 Einträge');
+  Assert.IsTrue(mRows.Kind(1, mIndex) = TAtlasPaletteRowKind.Command);
+  Assert.IsTrue(mRows.Kind(2, mIndex) = TAtlasPaletteRowKind.Header);
+  Assert.IsTrue(mRows.Kind(3, mIndex) = TAtlasPaletteRowKind.Status);
+  Assert.IsTrue(mRows.Kind(4, mIndex) = TAtlasPaletteRowKind.Item);
+  Assert.AreEqual(0, mIndex);
+  Assert.IsTrue(mRows.Kind(5, mIndex) = TAtlasPaletteRowKind.Item);
+  Assert.AreEqual(1, mIndex);
+  Assert.IsFalse(mRows.Selectable(2));
+  Assert.IsFalse(mRows.Selectable(3));
+  Assert.IsTrue(mRows.Selectable(4));
+  Assert.IsFalse(mRows.Selectable(6));
+  // Ohne Status folgen die Einträge direkt der Überschrift.
+  mRows := TAtlasPaletteRows.Create(0, Group('', 1));
+  Assert.AreEqual(2, mRows.Count);
+  Assert.IsTrue(mRows.Kind(1, mIndex) = TAtlasPaletteRowKind.Item);
+  Assert.AreEqual(1, mRows.First, 'ohne Befehle der erste Eintrag');
+  // Nur Status ("Suche im Tracker …"): nichts wählbar.
+  Assert.AreEqual(-1, TAtlasPaletteRows.Create(0, Group('Suche im Tracker …', 0)).First);
+end;
+
+procedure TAtlasCommandPaletteTests.StepSkipsHeaderAndStatus;
+var
+  mRows: TAtlasPaletteRows;
+begin
+  mRows := TAtlasPaletteRows.Create(2, Group('Status', 2));
+  Assert.AreEqual(4, mRows.Step(1, 1), 'über Überschrift und Status');
+  Assert.AreEqual(1, mRows.Step(4, -1), 'zurück zum letzten Befehl');
+  Assert.AreEqual(5, mRows.Step(5, 1), 'am Ende bleiben');
+  Assert.AreEqual(0, mRows.Step(0, -1), 'am Anfang bleiben');
+  Assert.AreEqual(5, mRows.Step(0, 10), 'Bild ab bis zum Ende');
+  // Nur Gruppe ohne Befehle: Bild auf endet beim ersten Eintrag, nicht auf der Überschrift.
+  mRows := TAtlasPaletteRows.Create(0, Group('Status', 3));
+  Assert.AreEqual(2, mRows.Step(4, -10));
+  // Nichts wählbar: Auswahl bleibt.
+  mRows := TAtlasPaletteRows.Create(0, Group('Status', 0));
+  Assert.AreEqual(-1, mRows.Step(-1, 1));
+end;
+
+procedure TAtlasCommandPaletteTests.ActionOfModifiers;
+begin
+  Assert.IsTrue(TAtlasPaletteRows.ActionOf(False, False) = TAtlasPaletteAction.Open);
+  Assert.IsTrue(TAtlasPaletteRows.ActionOf(True, False) = TAtlasPaletteAction.Start);
+  Assert.IsTrue(TAtlasPaletteRows.ActionOf(False, True) = TAtlasPaletteAction.Browse);
+  Assert.IsTrue(TAtlasPaletteRows.ActionOf(True, True) = TAtlasPaletteAction.Start, 'Strg vor Umschalt');
 end;
 
 initialization
