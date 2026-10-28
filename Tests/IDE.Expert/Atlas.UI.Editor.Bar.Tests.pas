@@ -20,6 +20,9 @@ type
     FForm: TForm;
     FBar: TAtlasEditorBar;
   public
+    /// <summary>Erste Benutzung (Formular, Leiste) ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -122,6 +125,16 @@ end;
 function Probe(ABar: TAtlasEditorBar): TProbeBar;
 begin
   Result := ABar as TProbeBar;
+end;
+
+procedure TAtlasEditorBarTests.WarmUpFirstUse;
+begin
+  SetUp;
+  try
+    HeightFollowsDpiOnly;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasEditorBarTests.SetUp;

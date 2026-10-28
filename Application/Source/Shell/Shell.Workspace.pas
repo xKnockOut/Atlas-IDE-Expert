@@ -322,6 +322,9 @@ type
     /// dessen Projekt noch lädt, kann Verwendungen enthalten, die keiner kennt. Ein Arbeitsbereich ohne Projekt ist
     /// bereit, sobald der Aufbau das festgestellt hat (#1220). Threadsicher.</summary>
     function RuleReady(out AReason: string): Boolean;
+    /// <summary>Leert die prozessweiten Ordnerlisten der .pas-/.dcu-Dateien. Für Tests: Je Testordner bliebe sonst
+    /// ein Eintrag bis Programmende.</summary>
+    class procedure ClearSharedListings; static;
     /// <summary>Vor Load setzen (#46): selectBuild merkt die Wahl dort, der erste Indexaufbau übernimmt sie.</summary>
     property Selection: TProjectSelection read FSelection write FSelection;
     /// <summary>Feste Projektdatei oder die des geladenen Projekts; '' ohne Projekt. Threadsicher.</summary>
@@ -388,6 +391,7 @@ type
     /// <summary>.pas- und .dcu-Dateien des Ordners.</summary>
     class function ListUnitFiles(AFolder: string): TArray<string>; static;
     class function Listed(const AFolder, APattern: string): TArray<string>; static;
+    class procedure Clear; static;
   end;
 
 class constructor TSharedUnitListings.Create;
@@ -400,6 +404,21 @@ class destructor TSharedUnitListings.Destroy;
 begin
   FListings.Free;
   FLock.Free;
+end;
+
+class procedure TSharedUnitListings.Clear;
+begin
+  TMonitor.Enter(FLock);
+  try
+    FListings.Clear;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+class procedure TShellWorkspace.ClearSharedListings;
+begin
+  TSharedUnitListings.Clear;
 end;
 
 class function TSharedUnitListings.List(AFolder: string): TArray<string>;

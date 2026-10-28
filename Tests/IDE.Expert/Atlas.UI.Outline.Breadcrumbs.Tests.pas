@@ -124,6 +124,14 @@ begin
   finally
     TearDown;
   end;
+  // Erstes benanntes TPanel vor einem Geschwisterfenster (VCL) ebenfalls vorweg: Es belegte einmalig bis zu 336 Byte,
+  // die bis Programmende bleiben; ein zweiter Lauf belegt nichts mehr.
+  SetUp;
+  try
+    NamesWhyTheMouseMissesTheBar;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasBreadcrumbBarTests.SetUp;
