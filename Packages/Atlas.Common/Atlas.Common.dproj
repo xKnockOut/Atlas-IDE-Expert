@@ -428,6 +428,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SelectionRanges.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SyntaxDiagnostics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PullDiagnostics.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceCheck.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TextDocumentSync.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Contract.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Lexer.pas"/>

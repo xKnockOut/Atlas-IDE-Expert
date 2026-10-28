@@ -189,6 +189,8 @@ begin
   Result.Hours := TAtlasStrings.Text(TAtlasTextId.StatusBarHours);
   Result.Separator := TAtlasStatusSummary.Separator;
   Result.ProjectProgress := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectProgress);
+  Result.ProjectDone := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectDone);
+  Result.ProjectPaused := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectPaused);
 end;
 
 function ItemCaptions: TArray<string>;
@@ -610,6 +612,8 @@ var
   Known: Boolean;
   Method: TAtlasStatusMethod;
   Checked, Total: Integer;
+  Run: TLspWorkspaceRun;
+  FinishedAgo: UInt64;
 begin
   Result := Default(TAtlasStatusBarView);
   Checked := 0;
@@ -652,7 +656,16 @@ begin
       Result.LiveText := TAtlasStrings.Text(TAtlasTextId.StatusBarPausedDebugger);
     end
     else
-    // Fortschritt der Projektprüfung (#1232), solange Units fehlen.
+    // Lauf der Projektprüfung des Servers (#1247): Fortschritt, Pause beim Kompilieren, danach „fertig“.
+    if ProblemsOn(Settings) and TAtlasProblemsController.ProjectRun(Run, FinishedAgo) then
+    begin
+      Checked := Run.Done;
+      Total := Run.Total;
+      Result.LiveText := Result.LiveText + TAtlasStatusBarContent.RunText(Run.Active, Run.Done, Run.Total,
+        Run.Paused, FinishedAgo, LiveTexts);
+    end
+    else
+    // Ältere Server ohne Laufstand: Fortschritt aus den Befunden (#1232), solange Units fehlen.
     if ProblemsOn(Settings) and TAtlasIdeProblems.ProjectProgress(Checked, Total) then
       Result.LiveText := Result.LiveText + TAtlasStatusBarContent.ProgressText(Checked, Total, LiveTexts);
     if Settings.ProblemsLive then

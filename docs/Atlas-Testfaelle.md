@@ -2590,6 +2590,18 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | ASL17 | Leiste durch einen Fehler abgeschaltet (atlas.log „Atlas-Statusleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leisten verschwinden und das Atlas-Feld kehrt in die Statuszeile zurück; nach dem Einschalten ohne Neustart wieder da |
 | ASL18 | Optionen › Editor | „Atlas-Statusleiste …“ und das Feld „Elemente“; unbekannte oder doppelte Einträge verschwinden beim Speichern |
 
+## Projektprüfung als begrenzter Lauf (#1247)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PL1 | Projekt mit 900+ Units öffnen, Indexaufbau abwarten | Live-Prüfung zeigt „· Projekt 0 %“ und zählt hoch; am Ende einige Sekunden „· Projekt fertig“, danach nur noch „live · geprüft vor …“. atlas.log: „Projektprüfung fertig: … Units in … ms“. Danach Prozessor des Servers im Taskmanager nahe 0 % |
+| PL2 | Während des Laufs zügig tippen | Editor bleibt flüssig; „prüft …“ der aktiven Datei kommt sofort, der Projektfortschritt steht, solange getippt wird, und läuft gut eine Sekunde nach der letzten Taste weiter |
+| PL3 | Nach dem Ende eine Unit ändern und speichern, die von drei anderen in uses steht | Kurz „· Projekt …“ über 4 Units (Tooltip „Projekt: 2 von 4 Units geprüft“), dann „Projekt fertig“; Befunde der drei abhängigen Units in „Atlas-Prüfung“ (Bereich Projekt) aktualisiert |
+| PL4 | Projekt bauen (Umschalt+F9) während des Laufs | Während des Compiles „· Projekt … % pausiert (Kompilieren)“, der Fortschritt steht; danach läuft er weiter. Hat der Build neue Meldungen, werden nur deren Units neu geprüft |
+| PL5 | Während des Laufs F9 (Debuggen) | „angehalten (Debugger)“; atlas.log zeigt keine weiteren geprüften Units, Server-CPU bei 0 %; nach dem Ende des Programms läuft der Lauf weiter |
+| PL6 | Klick auf die Live-Prüfung (#1231) | Neuer Lauf über alle Units von 0 % an, am Ende „Projekt fertig“ |
+| PL7 | Probleme aus (`problems`) bzw. Fenster „Atlas-Prüfung“ nie geöffnet und Probleme aus | Kein Lauf, keine Projektanzeige in der Statusleiste |
+
 ## Extrahieren, case und with (#50)
 
 | Nr. | Schritte | Erwartet |
