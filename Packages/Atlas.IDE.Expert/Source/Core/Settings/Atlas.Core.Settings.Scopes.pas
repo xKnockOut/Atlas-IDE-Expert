@@ -149,7 +149,9 @@ begin
     TextSetting('VcsProvider', 'vcs.provider'),
     TextSetting('VcsGitPath', 'vcs.git.path'),
     TextSetting('VcsSvnPath', 'vcs.svn.path'),
-    Setting('VcsTimeoutSeconds', 'vcs.timeoutSeconds', False)];
+    Setting('VcsTimeoutSeconds', 'vcs.timeoutSeconds', False),
+    // #1286: Art und Hauptbranch je Projekt, gelesen auch vom Server (Prüfung der Datei).
+    JsonSetting('VcsProjects', 'vcs.projects')];
 end;
 
 class function TAtlasSettingsScopes.TryRouted(const AName: string; out ASetting: TAtlasRoutedSetting): Boolean;

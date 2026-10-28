@@ -699,6 +699,9 @@ type
     VcsSvnPath: string;
     /// <summary>Zeitlimit je Aufruf von git bzw. svn in Sekunden (vcs.timeoutSeconds, #1285, 1–300).</summary>
     VcsTimeoutSeconds: Integer;
+    /// <summary>Persönliche Art und Hauptbranch je Delphi-Projekt (vcs.projects, #1286) als JSON-Liste (Text),
+    /// sonst ''. Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    VcsProjects: string;
     /// <summary>True, wenn AFileName unter ein Muster aus IndexExclude fällt.</summary>
     function IsIndexExcluded(const AFileName: string): Boolean;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
@@ -1205,6 +1208,7 @@ begin
   Result.VcsGitPath := '';
   Result.VcsSvnPath := '';
   Result.VcsTimeoutSeconds := 15;
+  Result.VcsProjects := '';
 end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;

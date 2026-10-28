@@ -136,6 +136,11 @@ type
     /// zieht mit, Entfernen.</summary>
     [Test]
     procedure TrackerProjectsTable;
+    /// <summary>#1286: Tabelle Projekte der Versionsverwaltung: Zeile aus der .atlas schreibgeschützt, überdeckte
+    /// persönliche Zeile markiert, „Aktuelles Projekt“ mit erkannter Art, Ordner über OnTrackerBrowse, Hauptbranch
+    /// ohne Leerraum, Entfernen, Speichern nach vcs.projects.</summary>
+    [Test]
+    procedure VcsProjectsTable;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
     [Test]
@@ -218,6 +223,7 @@ uses
   Atlas.Core.Settings.Reassigned,
   Atlas.Core.Build.ReleaseGuard,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.Projects.Vcs,
   Atlas.Core.Welcome.QuickActions,
   Atlas.Core.Welcome.Layouts,
   Atlas.Core.Completion.Contract,
@@ -2136,6 +2142,14 @@ begin
   mState.Source := TAtlasVcsProviderSource.Project;
   mState.SourceMatch := 'C:\Projekte\Kasse\Kasse.groupproj';
   Assert.Contains(TAtlasSettingsPage.VcsProjectText(mState), 'Kasse.groupproj');
+  // #1286: Hauptbranch aus Zeile oder .atlas.
+  Assert.DoesNotContain(TAtlasSettingsPage.VcsProjectText(mState),
+    TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, ['develop']));
+  mState.MainBranch := 'develop';
+  Assert.Contains(TAtlasSettingsPage.VcsProjectText(mState),
+    TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsProjectMainBranch, ['develop']));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), TAtlasSettingsPage.VcsProviderCaption('SVN'));
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), TAtlasSettingsPage.VcsProviderCaption(''));
 end;
 
 procedure TAtlasSettingsPageTests.TrackerConnectionsTable;
@@ -2351,6 +2365,108 @@ begin
     Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mMappings[1].Match);
     Assert.AreEqual('LAGER', mMappings[1].Project);
     Assert.IsFalse(mSaved.IssuesProjects.Contains('xKnockOut/Kasse'), 'Zeile aus der .atlas bleibt dort');
+  finally
+    mHost.Free;
+  end;
+  mBrowsed := '';
+  mMappings := nil;
+end;
+
+procedure TAtlasSettingsPageTests.VcsProjectsTable;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mList: TListView;
+  mBrowsed: string;
+  mState: TAtlasVcsProjectState;
+  mMappings: TArray<TAtlasVcsProjectMapping>;
+begin
+  mBrowsed := '';
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    mPage.OnVcsContext :=
+      function: TAtlasVcsProjectContext
+      begin
+        Result := TAtlasVcsProjectContext.Empty;
+        Result.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+        Result.GroupFile := 'C:\Projekte\Kasse\Kasse.groupproj';
+        Result.Team := [TAtlasVcsProjectMapping.FromTeamFile('C:\Projekte\Kasse\Kasse.dproj', '', 'develop')];
+      end;
+    mPage.OnTrackerBrowse :=
+      function(AFolder: Boolean; out APath: string): Boolean
+      begin
+        mBrowsed := BoolToStr(AFolder, True);
+        APath := 'C:\Projekte\Kasse\Pakete\Basis';
+        Result := True;
+      end;
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.VcsProjects := '[{"match": "C:\\Projekte", "provider": "svn", "mainBranch": "trunk"}]';
+    mPage.LoadFrom(mSettings);
+    mList := mPage.VcsProjectList;
+    // Persönliche Zeile vor der aus der .atlas; die .atlas gewinnt für Kasse.
+    Assert.AreEqual(2, mList.Items.Count);
+    Assert.AreEqual('C:\Projekte', mList.Items[0].Caption);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderSvn), mList.Items[0].SubItems[0]);
+    Assert.AreEqual('trunk', mList.Items[0].SubItems[1]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectCovered), mList.Items[0].SubItems[2]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderAuto), mList.Items[1].SubItems[0]);
+    Assert.AreEqual('develop', mList.Items[1].SubItems[1]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectTeam), mList.Items[1].SubItems[2]);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsCoveredHint), mPage.VcsProjectNote.Caption);
+    Assert.IsTrue(mPage.VcsProjectMatch.Enabled);
+    // Zeile aus der .atlas: nur ansehen.
+    mList.Items[1].Selected := True;
+    Assert.IsFalse(mPage.VcsProjectMatch.Enabled);
+    Assert.IsFalse(mPage.VcsProjectProvider.Enabled);
+    Assert.IsFalse(mPage.VcsProjectRemove.Enabled);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectReadOnly), mPage.VcsProjectNote.Caption);
+    // „Aktuelles Projekt“: die geöffnete Gruppe, Art aus der letzten Abfrage.
+    mState := TAtlasVcsProjectState.Empty;
+    mState.ProjectFile := 'C:\Projekte\Kasse\Kasse.dproj';
+    mState.Outcome := TAtlasVcsOutcome.Ok;
+    mState.WorkingCopy.Kind := TAtlasVcsKind.Svn;
+    mPage.VcsProjectDone(mState);
+    mPage.VcsProjectAddCurrent.Click;
+    Assert.AreEqual(2, Integer(Length(mPage.VcsProjects)));
+    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mPage.VcsProjects[1].Match);
+    Assert.AreEqual('svn', mPage.VcsProjects[1].Provider);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsGuess), mList.Items[1].SubItems[1]);
+    // Hauptbranch: Leerraum wird abgewiesen.
+    mPage.VcsProjectMainBranch.Text := 'release 1';
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProjectsBranchInvalid), mPage.VcsProjectNote.Caption);
+    Assert.AreEqual('', mPage.VcsProjects[1].MainBranch);
+    mPage.VcsProjectMainBranch.Text := 'branches/develop';
+    Assert.AreEqual('branches/develop', mPage.VcsProjects[1].MainBranch);
+    Assert.AreEqual('branches/develop', mList.Items[1].SubItems[1]);
+    // Derselbe Pfad zweimal wird nicht übernommen.
+    mPage.VcsProjectMatch.Text := 'c:\projekte';
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesProjectMatchTaken), mPage.VcsProjectNote.Caption);
+    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mPage.VcsProjects[1].Match);
+    // Paketordner aus SVN-Externals über die Ordnerauswahl, dann Art Git.
+    mPage.VcsProjectAddMenu.Items[1].Click;
+    Assert.AreEqual('True', mBrowsed);
+    Assert.AreEqual(3, Integer(Length(mPage.VcsProjects)));
+    Assert.AreEqual('C:\Projekte\Kasse\Pakete\Basis', mPage.VcsProjects[2].Match);
+    Assert.AreEqual('auto', mPage.VcsProjects[2].Provider);
+    mPage.VcsProjectProvider.Choice := 1;
+    Assert.AreEqual('git', mPage.VcsProjects[2].Provider);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderGit), mList.Items[2].SubItems[0]);
+    // Entfernen, dann speichern: nur persönliche Zeilen landen in vcs.projects.
+    mList.Items[0].Selected := True;
+    mPage.VcsProjectRemove.Click;
+    Assert.AreEqual(2, Integer(Length(mPage.VcsProjects)));
+    mSaved := mSettings;
+    mPage.SaveTo(mSaved);
+    mMappings := TAtlasVcsProjects.Read(mSaved.VcsProjects);
+    Assert.AreEqual(2, Integer(Length(mMappings)), mSaved.VcsProjects);
+    Assert.AreEqual('C:\Projekte\Kasse\Kasse.groupproj', mMappings[0].Match);
+    Assert.AreEqual('branches/develop', mMappings[0].MainBranch);
+    Assert.AreEqual('git', mMappings[1].Provider);
+    Assert.IsFalse(mSaved.VcsProjects.Contains('Kasse.dproj'), 'Zeile aus der .atlas bleibt dort');
   finally
     mHost.Free;
   end;

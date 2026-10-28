@@ -352,6 +352,17 @@ begin
   Plan := TAtlasWelcomeIssues.PlanStart(TAtlasVcsKind.Git, TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch,
     '///', '', ''), Issue('#9', 9, 'x'));
   Assert.IsFalse(Plan.Valid, 'kein gültiger Name');
+  // #1286: Hauptbranch des Projekts statt raten; issues.branchBase bleibt vorrangig.
+  Options := TAtlasIssuesOptions.Create(TAtlasIssueStart.Branch, '', '', '');
+  Options.MainBranch := 'develop';
+  Plan := TAtlasWelcomeIssues.PlanStart(TAtlasVcsKind.Git, Options, Issue('#9', 9, 'x'));
+  Assert.AreEqual(1, Integer(Length(Plan.Bases)));
+  Assert.AreEqual('develop', Plan.Bases[0]);
+  Plan := TAtlasWelcomeIssues.PlanStart(TAtlasVcsKind.Svn, Options, Issue('#9', 9, 'x'));
+  Assert.AreEqual('develop', Plan.Bases[0], 'auch unter SVN (^/develop)');
+  Options.BranchBase := 'release';
+  Plan := TAtlasWelcomeIssues.PlanStart(TAtlasVcsKind.Git, Options, Issue('#9', 9, 'x'));
+  Assert.AreEqual('release', Plan.Bases[0]);
 end;
 
 procedure TAtlasWelcomeIssuesTests.PlanStartSvnAndRemember;

@@ -999,7 +999,11 @@ type
     SettingsVcsProjectToolMissing, SettingsVcsProjectFailed, SettingsVcsProjectLine, SettingsVcsProjectBranch,
     SettingsVcsProjectSvnPath, SettingsVcsProjectDetached, SettingsVcsProjectUpstream, SettingsVcsSourceSetting,
     SettingsVcsSourceProject, SettingsVcsSourceTeamFile, SettingsVcsLinksTitle, SettingsVcsLinksHint,
-    SettingsVcsLinkEditor, SettingsVcsLinkWelcome, SettingsVcsLinkIssues, VcsToolConfiguredMissing);
+    SettingsVcsLinkEditor, SettingsVcsLinkWelcome, SettingsVcsLinkIssues, VcsToolConfiguredMissing,
+    // Versionsverwaltung je Projekt (#1286)
+    SettingsVcsProjects, SettingsVcsProjectsKind, SettingsVcsProjectsMainBranch, SettingsVcsProjectsGuess,
+    SettingsVcsProjectsCoveredHint, SettingsVcsProjectsHint, SettingsVcsProjectsBranchInvalid,
+    SettingsVcsProjectMainBranch);
 
   TAtlasStrings = class
   private class var
@@ -3439,7 +3443,15 @@ const
      'Änderungsmarken …',
      'Willkommensseite …',
      'Issue-Tracker …',
-     'Atlas: %s nicht gefunden unter dem eingestellten Pfad %s; Atlas arbeitet ohne diese Versionsangaben weiter (Tools › Optionen › Atlas › Versionsverwaltung).'),
+     'Atlas: %s nicht gefunden unter dem eingestellten Pfad %s; Atlas arbeitet ohne diese Versionsangaben weiter (Tools › Optionen › Atlas › Versionsverwaltung).',
+     'Projekte',
+     'Art',
+     'Hauptbranch',
+     'raten',
+     'Das Projekt hat eine .atlas mit vcs; sie gilt vor dieser Zeile.',
+     'Für Projekte ohne vcs in der .atlas: Es gilt die Zeile für genau diese .dproj, sonst die für die geöffnete .groupproj, sonst der längste passende Ordner, sonst die Art oben. Für Pakete aus SVN-Externals eine Zeile je Paketordner. Hauptbranch leer: raten (Git main, sonst master; SVN trunk).',
+     'Der Hauptbranch darf keinen Leerraum enthalten.',
+     ' · Hauptbranch %s'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -5764,7 +5776,15 @@ const
      'Change markers …',
      'Welcome page …',
      'Issue tracker …',
-     'Atlas: %s not found at the configured path %s; Atlas continues without this version information (Tools › Options › Atlas › Version control).'));
+     'Atlas: %s not found at the configured path %s; Atlas continues without this version information (Tools › Options › Atlas › Version control).',
+     'Projects',
+     'Kind',
+     'Main branch',
+     'guess',
+     'The project has an .atlas with vcs; it applies before this row.',
+     'For projects without vcs in the .atlas: the row for exactly this .dproj applies, otherwise the one for the open .groupproj, otherwise the longest matching folder, otherwise the kind above. For packages from SVN externals, one row per package folder. Empty main branch: guess (Git main, otherwise master; SVN trunk).',
+     'The main branch must not contain whitespace.',
+     ' · main branch %s'));
 
 { TAtlasStrings }
 

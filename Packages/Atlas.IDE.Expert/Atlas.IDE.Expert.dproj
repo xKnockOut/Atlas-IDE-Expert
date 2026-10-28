@@ -482,6 +482,8 @@
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Contract.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Summary.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Matching.pas"/>
+        <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Vcs.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas"/>

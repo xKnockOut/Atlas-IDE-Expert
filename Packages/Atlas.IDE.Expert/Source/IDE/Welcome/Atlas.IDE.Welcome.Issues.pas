@@ -591,6 +591,7 @@ begin
     Result.NoticeFailed := FNoticeFailed;
   end;
   Result.Options := Options;
+  Result.Options.MainBranch := TAtlasIdeVcs.MainBranchOf(AProject, TAtlasIdeFiles.GroupOfProject(AProject));
   if FProjects <> nil then
     Result.VcsKind := TAtlasWelcomeIssues.VcsKindOf(FProjects.VcsOf(AProject).Kind);
 end;
@@ -741,6 +742,8 @@ begin
   Issue := AIssue;
   Settings := Options;
   Settings.Start := AMode;
+  // Hauptbranch des Projekts (#1286) als Basis, wenn issues.branchBase leer ist.
+  Settings.MainBranch := TAtlasIdeVcs.MainBranchOf(Project, TAtlasIdeFiles.GroupOfProject(Project));
   Dir := ExtractFileDir(Project);
   Plan := Default(TAtlasIssueStartPlan);
   Changes := 0;

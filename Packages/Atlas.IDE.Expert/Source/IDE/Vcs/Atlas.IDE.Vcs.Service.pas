@@ -11,6 +11,13 @@
 //     derselben Datei: Die Pfade gehen an TAtlasVcsTools.Configure (ein neuer
 //     Pfad gilt ohne Neustart), das Zeitlimit gilt für jeden Aufruf ohne
 //     eigenes Limit
+//   - vcs.projects und der Abschnitt vcs der .atlas (#1286): Art und
+//     Hauptbranch je Projekt bzw. Ordner über TAtlasVcsProjects (gemeinsame
+//     Auflösung mit der Tracker-Zuordnung). ForFolder löst je Ordner auf
+//     (.atlas über dem Ordner, längste passende Zeile, sonst vcs.provider);
+//     die .atlas wird je Datei nach Zeitstempel gemerkt. Ob die .atlas gilt
+//     (Einstellung TeamFile), übernimmt der Hauptthread bei Start und Reload,
+//     weil ForFolder auch in Hintergrund-Threads läuft
 //   - Run: Aufruf im Hintergrund, Ergebnis im Hauptthread; der Prozessläufer
 //     lehnt den Hauptthread ab, beendet git bzw. svn nach dem Zeitlimit und
 //     beim Entladen (TAtlasShutdown)
@@ -27,7 +34,8 @@ uses
   System.SysUtils,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Tools,
-  Atlas.Core.Vcs.ToolCheck;
+  Atlas.Core.Vcs.ToolCheck,
+  Atlas.Core.Projects.Vcs;
 
 type
   TAtlasIdeVcsMessage = reference to procedure(const AText: string);
@@ -66,6 +74,16 @@ type
     /// <summary>Wie oben mit eigenem Zeitlimit je Aufruf (Willkommensseite: 1 s, #592); ATimeoutMs = 0: Zeitlimit
     /// aus vcs.timeoutSeconds.</summary>
     class function ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl; overload; static;
+    /// <summary>Was für den Ordner AFolder gilt (#1286): Art, Hauptbranch und woher; nur Dateiprüfung.</summary>
+    class function ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution; static;
+    /// <summary>Was für das Projekt AProjectFile (.dproj) mit geöffneter .groupproj AGroupFile ('' = keine) gilt
+    /// (#1286, Reihenfolge .atlas → .dproj → .groupproj → längster Ordner → vcs.provider).</summary>
+    class function ForProjectResolution(const AProjectFile, AGroupFile: string): TAtlasVcsProjectResolution;
+      static;
+    /// <summary>Hauptbranch für AProjectFile (.dproj) aus .atlas bzw. vcs.projects; '' = raten.</summary>
+    class function MainBranchOf(const AProjectFile, AGroupFile: string): string; static;
+    /// <summary>Persönliche Zeilen aus vcs.projects (settings.json).</summary>
+    class function Projects: TArray<TAtlasVcsProjectMapping>; static;
     /// <summary>AWork im Hintergrund, danach ADone im Hauptthread; nach Stop wirkungslos. False, wenn nichts
     /// gestartet wurde (vor Start, nach Stop): Dann kommt ADone nie.</summary>
     class function Run(const AWork, ADone: TProc): Boolean; static;
@@ -80,7 +98,12 @@ type
     /// Hintergrund, ADone im Hauptthread (#1285, „Aktuelles Projekt“). Ohne Projekt, ohne Arbeitskopie oder
     /// abgeschaltet kommt ADone sofort. False, wenn nichts gestartet wurde.</summary>
     class function QueryProject(const AProjectFile: string; const ADone: TProc<TAtlasVcsProjectState>): Boolean;
-      static;
+      overload; static;
+    /// <summary>Wie oben für das aktive Projekt AProjectFile (.dproj) in der geöffneten .groupproj AGroupFile: Art
+    /// und Hauptbranch nach vcs.projects und .atlas (#1286); ProjectFile im Ergebnis ist die Gruppe, sonst die
+    /// .dproj.</summary>
+    class function QueryProject(const AProjectFile, AGroupFile: string;
+      const ADone: TProc<TAtlasVcsProjectState>): Boolean; overload; static;
   end;
 
 implementation
@@ -97,7 +120,11 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Vcs.Detection,
-  Atlas.Core.Vcs.Worker;
+  Atlas.Core.Vcs.Worker,
+  System.Generics.Collections,
+  Atlas.Core.Projects.Matching,
+  Atlas.Core.Settings.TeamFile,
+  Atlas.IDE.Foundation.TeamFile;
 
 type
   /// <summary>Werte aus settings.json (#571, #1285).</summary>
@@ -106,7 +133,14 @@ type
     GitPath: string;
     SvnPath: string;
     TimeoutMs: Cardinal;
+    Projects: TArray<TAtlasVcsProjectMapping>;
     class function Default: TVcsSettings; static;
+  end;
+
+  /// <summary>Abschnitt vcs einer .atlas mit Zeitstempel der Datei.</summary>
+  TTeamEntry = record
+    Age: TDateTime;
+    Vcs: TAtlasTeamVcs;
   end;
 
 var
@@ -118,6 +152,9 @@ var
   // vcs.* mit Zeitstempel der Datei, aus der die Werte stammen.
   Cached: TVcsSettings;
   CachedAge: TDateTime = -1;
+  // .atlas je Datei (klein geschrieben); gilt die Datei (Einstellung TeamFile)?
+  TeamCache: TDictionary<string, TTeamEntry>;
+  TeamFileOn: Boolean;
 
 const
   cDefaultTimeoutSeconds = 15;
@@ -130,6 +167,7 @@ begin
   Result.GitPath := '';
   Result.SvnPath := '';
   Result.TimeoutMs := cDefaultTimeoutSeconds * 1000;
+  Result.Projects := nil;
 end;
 
 function SettingsFile: string;
@@ -172,6 +210,7 @@ begin
         if (mSeconds < cMinTimeoutSeconds) or (mSeconds > cMaxTimeoutSeconds) then
           mSeconds := cDefaultTimeoutSeconds;
         Result.TimeoutMs := Cardinal(mSeconds) * 1000;
+        Result.Projects := TAtlasVcsProjects.Read(TAtlasJsonText.ValueAt(mRoot, TAtlasVcsProjects.Path));
       end;
     finally
       mRoot.Free;
@@ -236,13 +275,118 @@ end;
 
 class procedure TAtlasIdeVcs.Reload;
 begin
+  // Hauptthread: ob die .atlas gilt, kann sich mit den Einstellungen geändert haben.
+  TeamFileOn := TAtlasIdeTeamFile.Wanted;
   Lock.Enter;
   try
     CachedAge := -1;
+    TeamCache.Clear;
   finally
     Lock.Leave;
   end;
   Current;
+end;
+
+function TeamPathExists(const APath: string): Boolean;
+begin
+  // .git ist ein Ordner oder bei Worktrees eine Datei.
+  Result := FileExists(APath) or DirectoryExists(APath);
+end;
+
+/// <summary>Abschnitt vcs der .atlas für AFolder (dort, sonst in der Wurzel des Repositorys); leer ohne Datei,
+/// wenn sie nicht lesbar ist oder die Einstellung TeamFile aus ist.</summary>
+function TeamVcsOf(const AFolder: string): TAtlasTeamVcs;
+var
+  mFileName, mKey: string;
+  mAge: TDateTime;
+  mEntry: TTeamEntry;
+  mTeam: TAtlasTeamSettings;
+begin
+  Result := Default(TAtlasTeamVcs);
+  if not TeamFileOn or (AFolder = '') then
+    Exit;
+  mFileName := TAtlasTeamFile.Locate(ExcludeTrailingPathDelimiter(AFolder), TeamPathExists);
+  if (mFileName = '') or not FileAge(mFileName, mAge) then
+    Exit;
+  mKey := LowerCase(mFileName);
+  Lock.Enter;
+  try
+    if TeamCache.TryGetValue(mKey, mEntry) and (mEntry.Age = mAge) then
+      Exit(mEntry.Vcs);
+  finally
+    Lock.Leave;
+  end;
+  try
+    mTeam := TAtlasTeamFile.Parse(TAtlasTextFile.Load(mFileName).Text, mFileName,
+      TAtlasTeamFile.RootOf(ExtractFileDir(mFileName), TeamPathExists));
+    if mTeam.Valid then
+      Result := mTeam.Vcs;
+  except
+    // Gesperrt (gerade gespeichert) oder gelöscht: ohne Abschnitt, beim nächsten Mal neu.
+    on Exception do
+      Exit;
+  end;
+  mEntry.Age := mAge;
+  mEntry.Vcs := Result;
+  Lock.Enter;
+  try
+    TeamCache.AddOrSetValue(mKey, mEntry);
+  finally
+    Lock.Leave;
+  end;
+end;
+
+class function TAtlasIdeVcs.Projects: TArray<TAtlasVcsProjectMapping>;
+begin
+  Result := Current.Projects;
+end;
+
+class function TAtlasIdeVcs.ForFolderResolution(const AFolder: string): TAtlasVcsProjectResolution;
+var
+  mSettings: TVcsSettings;
+  mTeam: TAtlasTeamVcs;
+begin
+  mSettings := Current;
+  mTeam := TeamVcsOf(AFolder);
+  Result := TAtlasVcsProjects.ResolveFolder(mTeam.Provider, mTeam.MainBranch, mSettings.Projects,
+    mSettings.Provider, AFolder);
+end;
+
+class function TAtlasIdeVcs.ForProjectResolution(const AProjectFile,
+  AGroupFile: string): TAtlasVcsProjectResolution;
+var
+  mSettings: TVcsSettings;
+  mTeam: TAtlasTeamVcs;
+begin
+  mSettings := Current;
+  mTeam := TeamVcsOf(ExtractFileDir(AProjectFile));
+  Result := TAtlasVcsProjects.Resolve(mTeam.Provider, mTeam.MainBranch, mSettings.Projects, mSettings.Provider,
+    AProjectFile, AGroupFile);
+end;
+
+class function TAtlasIdeVcs.MainBranchOf(const AProjectFile, AGroupFile: string): string;
+begin
+  Result := '';
+  if AProjectFile <> '' then
+    Result := ForProjectResolution(AProjectFile, AGroupFile).MainBranch;
+end;
+
+/// <summary>Umsetzung für AFolder mit der Art AProvider; nil vor dem ersten Start.</summary>
+function OpenFolder(const AFolder: string; AProvider: TAtlasVcsProvider; ATimeoutMs: Cardinal): IAtlasVersionControl;
+var
+  mRunner: IAtlasVcsRunner;
+  mTimeoutMs: Cardinal;
+begin
+  Result := nil;
+  if not Assigned(Backend.Open) then
+    Exit;
+  mRunner := Runner;
+  if mRunner = nil then
+    mRunner := Backend.NewRunner(nil);
+  mTimeoutMs := ATimeoutMs;
+  if mTimeoutMs = 0 then
+    mTimeoutMs := Current.TimeoutMs;
+  Result := Backend.Open(AFolder, AProvider, mRunner, mTimeoutMs);
 end;
 
 procedure ToolMissing(AKind: TAtlasVcsKind);
@@ -270,6 +414,7 @@ class procedure TAtlasIdeVcs.Start(const AMessage: TAtlasIdeVcsMessage; const AB
 begin
   Message_ := AMessage;
   Backend := ABackend;
+  TeamFileOn := TAtlasIdeTeamFile.Wanted;
   if Runner = nil then
     Runner := Backend.NewRunner(
       function: Boolean
@@ -298,23 +443,9 @@ begin
 end;
 
 class function TAtlasIdeVcs.ForFolder(const AFolder: string; ATimeoutMs: Cardinal): IAtlasVersionControl;
-var
-  RunnerRef: IAtlasVcsRunner;
-  mSettings: TVcsSettings;
-  mTimeoutMs: Cardinal;
 begin
-  // Vor dem ersten Start ist keine Umsetzung eingesetzt.
-  Result := nil;
-  if not Assigned(Backend.Open) then
-    Exit;
-  RunnerRef := Runner;
-  if RunnerRef = nil then
-    RunnerRef := Backend.NewRunner(nil);
-  mSettings := Current;
-  mTimeoutMs := ATimeoutMs;
-  if mTimeoutMs = 0 then
-    mTimeoutMs := mSettings.TimeoutMs;
-  Result := Backend.Open(AFolder, mSettings.Provider, RunnerRef, mTimeoutMs);
+  // Vor dem ersten Start ist keine Umsetzung eingesetzt. Art je Ordner (#1286): „Aus“ liefert die leere Umsetzung.
+  Result := OpenFolder(AFolder, ForFolderResolution(AFolder).Provider, ATimeoutMs);
 end;
 
 class function TAtlasIdeVcs.Run(const AWork, ADone: TProc): Boolean;
@@ -353,27 +484,42 @@ end;
 
 class function TAtlasIdeVcs.QueryProject(const AProjectFile: string;
   const ADone: TProc<TAtlasVcsProjectState>): Boolean;
+begin
+  Result := QueryProject(AProjectFile, '', ADone);
+end;
+
+class function TAtlasIdeVcs.QueryProject(const AProjectFile, AGroupFile: string;
+  const ADone: TProc<TAtlasVcsProjectState>): Boolean;
 var
   mState: TAtlasVcsProjectState;
+  mResolution: TAtlasVcsProjectResolution;
   mVcs: IAtlasVersionControl;
   mHead: TAtlasVcsHead;
   mOutcome: TAtlasVcsOutcome;
+  mFolder: string;
 begin
   mState := TAtlasVcsProjectState.Empty;
-  mState.ProjectFile := AProjectFile;
-  mState.Provider := Provider;
+  mState.ProjectFile := TAtlasProjectMatching.CurrentMatch(AProjectFile, AGroupFile);
   if AProjectFile = '' then
   begin
+    mState.Provider := Provider;
     ADone(mState);
     Exit(True);
   end;
-  mVcs := ForFolder(ExtractFileDir(AProjectFile));
+  // Welche Zeile gilt (#1286): .atlas, .dproj, .groupproj, längster Ordner, sonst vcs.provider.
+  mResolution := ForProjectResolution(AProjectFile, AGroupFile);
+  mState.Provider := mResolution.Provider;
+  mState.Source := mResolution.Source;
+  mState.SourceMatch := mResolution.SourceMatch;
+  mState.MainBranch := mResolution.MainBranch;
+  mFolder := ExtractFileDir(AProjectFile);
+  mVcs := OpenFolder(mFolder, mState.Provider, 0);
   // Art und Wurzel ohne Prozess; die leere Umsetzung kennt sie nicht, die Erkennung schon.
   if mState.Provider = TAtlasVcsProvider.Off then
     mState.Outcome := TAtlasVcsOutcome.Disabled
   else
   begin
-    mState.WorkingCopy := TAtlasVcsDetection.Find(ExtractFileDir(AProjectFile), mState.Provider);
+    mState.WorkingCopy := TAtlasVcsDetection.Find(mFolder, mState.Provider);
     if mState.WorkingCopy.Kind = TAtlasVcsKind.None then
       mState.Outcome := TAtlasVcsOutcome.NoWorkingCopy
     else if (mVcs = nil) or (mVcs.Kind = TAtlasVcsKind.None) then
@@ -404,9 +550,11 @@ end;
 initialization
   Lock := TCriticalSection.Create;
   Cached := TVcsSettings.Default;
+  TeamCache := TDictionary<string, TTeamEntry>.Create;
 
 finalization
   TAtlasIdeVcs.Stop;
+  FreeAndNil(TeamCache);
   FreeAndNil(Lock);
 
 end.

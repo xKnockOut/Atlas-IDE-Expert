@@ -133,6 +133,7 @@ uses
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.IDE.Foundation.Files,
+  Atlas.Core.Projects.Vcs,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.ToolCheck,
@@ -399,6 +400,23 @@ begin
   if mTeam.Tracker.Configured then
     Result.Team := [TAtlasTrackerProjectMapping.FromTeamFile(Result.ProjectFile,
       ChangeFileExt(ExtractFileName(Result.ProjectFile), ''), mTeam.Tracker.Project)];
+end;
+
+/// <summary>Wie TrackerProjectContext für die Seite Versionsverwaltung (#1286): Zeile aus dem Abschnitt vcs der
+/// .atlas.</summary>
+function VcsProjectContext: TAtlasVcsProjectContext;
+var
+  mTeam: TAtlasTeamSettings;
+begin
+  Result := TAtlasVcsProjectContext.Empty;
+  Result.ProjectFile := TAtlasIdeTeamFile.ActiveProject;
+  if Result.ProjectFile = '' then
+    Exit;
+  Result.GroupFile := TAtlasIdeFiles.GroupOfProject(Result.ProjectFile);
+  mTeam := TAtlasIdeTeamFile.Read(Result.ProjectFile);
+  if mTeam.Vcs.Configured then
+    Result.Team := [TAtlasVcsProjectMapping.FromTeamFile(Result.ProjectFile, mTeam.Vcs.Provider,
+      mTeam.Vcs.MainBranch)];
 end;
 
 
@@ -846,6 +864,11 @@ begin
   mKeep := Self;
   mOwner := Self;
   mGeneration := FGeneration;
+  FPage.OnVcsContext :=
+    function: TAtlasVcsProjectContext
+    begin
+      Result := VcsProjectContext;
+    end;
   FPage.OnVcsLocate :=
     function(AKind: TAtlasVcsKind; const APath: string): TAtlasVcsToolLocation
     begin
@@ -872,13 +895,14 @@ begin
   FPage.OnVcsProject :=
     procedure
     var
-      mProject: string;
+      mProject, mGroup: string;
     begin
-      // Die geöffnete .groupproj, sonst die aktive .dproj (wie „Aktuelles Projekt hinzufügen“, #1261).
+      // Aktive .dproj in der geöffneten .groupproj; Art und Hauptbranch nach vcs.projects und .atlas (#1286).
       mProject := TAtlasIdeTeamFile.ActiveProject;
+      mGroup := '';
       if mProject <> '' then
-        mProject := TAtlasTrackerProjects.CurrentMatch(mProject, TAtlasIdeFiles.GroupOfProject(mProject));
-      TAtlasIdeVcs.QueryProject(mProject,
+        mGroup := TAtlasIdeFiles.GroupOfProject(mProject);
+      TAtlasIdeVcs.QueryProject(mProject, mGroup,
         procedure(AState: TAtlasVcsProjectState)
         begin
           if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then

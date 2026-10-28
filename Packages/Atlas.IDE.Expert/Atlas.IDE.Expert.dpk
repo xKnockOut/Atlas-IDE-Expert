@@ -416,6 +416,8 @@ contains
   Atlas.Core.Files.EncodingDefault in 'Source\Core\Files\Atlas.Core.Files.EncodingDefault.pas',
   Atlas.Core.Projects.Contract in 'Source\Core\Projects\Atlas.Core.Projects.Contract.pas',
   Atlas.Core.Projects.Summary in 'Source\Core\Projects\Atlas.Core.Projects.Summary.pas',
+  Atlas.Core.Projects.Matching in 'Source\Core\Projects\Atlas.Core.Projects.Matching.pas',
+  Atlas.Core.Projects.Vcs in 'Source\Core\Projects\Atlas.Core.Projects.Vcs.pas',
   Atlas.Core.Tests.Run in 'Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.Tests.Debug in 'Source\Core\Tests\Atlas.Core.Tests.Debug.pas',
   Atlas.Core.Tests.ProjectChoice in 'Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas',

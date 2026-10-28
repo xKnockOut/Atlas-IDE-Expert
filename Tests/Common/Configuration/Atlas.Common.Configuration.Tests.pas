@@ -493,6 +493,17 @@ begin
   Assert.AreEqual('svn', Settings.VcsProvider, 'Datei vor Editor');
   Assert.AreEqual('s.exe', Settings.VcsSvnPath);
   Assert.AreEqual(15, Settings.VcsTimeoutSeconds, 'die Datei bestimmt den ganzen Abschnitt vcs');
+  // #1286: vcs.projects wird geprüft und als Text weitergegeben.
+  Settings := Parse('{"vcs": {"projects": [{"match": "C:\\Kasse", "provider": "svn"}, ' +
+    '{"match": "C:\\Kasse\\Lib", "provider": "git", "mainBranch": "develop"}]}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.Contains(Settings.VcsProjects, '"develop"');
+  Parse('{"vcs": {"projects": [{"match": "c:/kasse/"}, {"match": "C:\\Kasse"}, {"provider": "cvs"}, 3, ' +
+    '{"match": "C:\\X", "mainBranch": "mein branch", "y": 1}]}}', Issues);
+  Assert.AreEqual(6, Integer(Length(Issues)),
+    'doppelter Pfad, unbekannte Art, ohne match, kein Objekt, Leerzeichen im Branch, unbekannte Angabe');
+  Parse('{"vcs": {"projects": {}}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)), 'keine Liste');
 end;
 
 procedure TConfigurationParserTests.ReadsCompilerSettings;
