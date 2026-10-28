@@ -52,6 +52,11 @@
 // - Benutzer für @-Erwähnungen (#1278, IAtlasTrackerPeople): die möglichen
 //   Zuständigen des Repositorys (…/assignees, eine Seite), gefiltert nach
 //   dem getippten Text; GitHub liefert dort keine Anzeigenamen.
+// - Entwicklung (#1269): GET /repos/<owner/repo>/pulls?state=all&per_page=100
+//   &sort=updated&direction=desc; zum Issue N gehören die Pull Requests, die
+//   PullMentions erkennt oder die „#N“ im Titel tragen (PullRefersTo), mit
+//   Zustand (offen, Entwurf, gemergt, geschlossen) und CI-Ampel wie oben,
+//   höchstens MaxChecks Ampeln.
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -74,6 +79,12 @@ type
     Body: string;
     Branch: string;
     Sha: string;
+    /// <summary>"open" bzw. "closed" (#1269).</summary>
+    State: string;
+    /// <summary>merged_at ist gesetzt (#1269).</summary>
+    Merged: Boolean;
+    /// <summary>updated_at (UTC); 0 = unbekannt.</summary>
+    Updated: TDateTime;
   end;
 
   /// <summary>Zusammenfassungen der Verknüpfungen eines Issues (#1279); -1 = unbekannt (ältere Server).</summary>
@@ -121,6 +132,13 @@ type
     /// <summary>Der Pull Request gehört zu Issue ANumber (Branch, „closes #N“ in Titel oder Beschreibung).
     /// </summary>
     class function PullMentions(const APull: TAtlasGitHubPull; ANumber: Integer): Boolean; static;
+    /// <summary>Reiter „Entwicklung“ (#1269): PullMentions oder „#N“ als eigenes Stück im Titel („Vorschau (#753)“).
+    /// </summary>
+    class function PullRefersTo(const APull: TAtlasGitHubPull; ANumber: Integer): Boolean; static;
+    /// <summary>Alle Pull Requests, zuletzt geänderte zuerst (#1269).</summary>
+    class function AllPullsUrl(const ATarget: TAtlasTrackerTarget): string; static;
+    /// <summary>Zustand für den Reiter „Entwicklung“.</summary>
+    class function PullState(const APull: TAtlasGitHubPull): TAtlasTrackerPullState; static;
     /// <summary>Antwort von /check-runs zusammengefasst: rot, sobald einer fehlschlug; gelb, solange einer läuft;
     /// sonst grün; Unknown ohne Check Runs. False bei ungültigem JSON.</summary>
     class function ParseCheckRuns(const AJson: string; out AChecks: TAtlasTrackerChecks): Boolean; static;
@@ -297,6 +315,8 @@ type
     { IAtlasTrackerPeople }
     function Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
       ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
+    function Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -518,6 +538,17 @@ begin
   end;
 end;
 
+/// <summary>updated_at (ISO 8601) als UTC; 0 ohne.</summary>
+function UpdatedOf(AObject: TJSONObject): TDateTime;
+var
+  mText: string;
+begin
+  Result := 0;
+  mText := TextOf(AObject, 'updated_at');
+  if (mText = '') or not TryISO8601ToDate(mText, Result, True) then
+    Result := 0;
+end;
+
 class function TAtlasGitHubTracker.ParsePulls(const AJson: string; out APulls: TArray<TAtlasGitHubPull>): Boolean;
 var
   Value, Item, Head: TJSONValue;
@@ -539,6 +570,9 @@ begin
       if Pull.Number <= 0 then
         Continue;
       Pull.Draft := FlagOf(TJSONObject(Item), 'draft');
+      Pull.State := LowerCase(TextOf(TJSONObject(Item), 'state'));
+      Pull.Merged := TextOf(TJSONObject(Item), 'merged_at') <> '';
+      Pull.Updated := UpdatedOf(TJSONObject(Item));
       Pull.Title := TextOf(TJSONObject(Item), 'title');
       // Nur der Anfang: „closes #N“ steht fast immer oben, und lange Beschreibungen kosten nur Speicher.
       Pull.Body := Copy(TextOf(TJSONObject(Item), 'body'), 1, 4000);
@@ -597,6 +631,51 @@ begin
     Exit;
   Result := (TAtlasTrackerNaming.KeyOfBranch(ProviderName, '', APull.Branch) = '#' + IntToStr(ANumber)) or
     ClosesIssue(APull.Title, ANumber) or ClosesIssue(APull.Body, ANumber);
+end;
+
+/// <summary>„#N“ ohne Ziffer davor oder danach und ohne Buchstaben davor.</summary>
+function NamesNumber(const AText: string; ANumber: Integer): Boolean;
+var
+  mMark: string;
+  mIndex, mStop: Integer;
+begin
+  Result := False;
+  mMark := '#' + IntToStr(ANumber);
+  mIndex := Pos(mMark, AText);
+  while mIndex > 0 do
+  begin
+    mStop := mIndex + Length(mMark);
+    if ((mStop > Length(AText)) or not CharInSet(AText[mStop], ['0'..'9'])) and
+      ((mIndex = 1) or not CharInSet(AText[mIndex - 1], ['0'..'9', 'A'..'Z', 'a'..'z'])) then
+      Exit(True);
+    mIndex := Pos(mMark, AText, mIndex + 1);
+  end;
+end;
+
+class function TAtlasGitHubTracker.PullRefersTo(const APull: TAtlasGitHubPull; ANumber: Integer): Boolean;
+begin
+  Result := (ANumber > 0) and (PullMentions(APull, ANumber) or NamesNumber(APull.Title, ANumber));
+end;
+
+class function TAtlasGitHubTracker.AllPullsUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := ApiBase(ATarget);
+  if (Result = '') or (ATarget.Project = '') then
+    Exit('');
+  Result := Result + '/repos/' + TTextUris.PercentEncode(ATarget.Project) + '/pulls?state=all&per_page=' +
+    IntToStr(MaxPageSize) + '&sort=updated&direction=desc';
+end;
+
+class function TAtlasGitHubTracker.PullState(const APull: TAtlasGitHubPull): TAtlasTrackerPullState;
+begin
+  if APull.Merged then
+    Result := TAtlasTrackerPullState.Merged
+  else if APull.State = 'closed' then
+    Result := TAtlasTrackerPullState.Closed
+  else if APull.Draft then
+    Result := TAtlasTrackerPullState.Draft
+  else
+    Result := TAtlasTrackerPullState.Open;
 end;
 
 class function TAtlasGitHubTracker.ParseCheckRuns(const AJson: string; out AChecks: TAtlasTrackerChecks): Boolean;
@@ -2622,6 +2701,78 @@ begin
   // GitHub filtert …/assignees nicht: der getippte Text entscheidet hier.
   AUsers := TAtlasTrackerUser.Filter(mUsers, AText, AMax);
   Result := True;
+end;
+
+function TAtlasGitHubTracker.Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mWatch: TStopwatch;
+  mUrl, mText: string;
+  mStatus, mNumber, mChecked: Integer;
+  mPulls: TArray<TAtlasGitHubPull>;
+  mGitHubPull: TAtlasGitHubPull;
+  mPull: TAtlasTrackerPull;
+  mChecks: TAtlasTrackerChecks;
+  mIgnored: TAtlasCiFetchError;
+begin
+  ADevelopment := TAtlasTrackerDevelopment.Empty;
+  AError := TAtlasCiFetchError.None;
+  Result := False;
+  mUrl := AllPullsUrl(ATarget);
+  mNumber := NumberOfKey(AKey);
+  if (mUrl = '') or (mNumber = 0) or (ATransport = nil) then
+  begin
+    AError := TAtlasCiFetchError.NotConfigured;
+    Exit;
+  end;
+  mWatch := TStopwatch.StartNew;
+  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, AError) then
+    Exit;
+  if mStatus <> 200 then
+  begin
+    AError := ErrorOfStatus(mStatus);
+    Exit;
+  end;
+  if not ParsePulls(mText, mPulls) then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  Result := True;
+  AError := TAtlasCiFetchError.None;
+  mChecked := 0;
+  for mGitHubPull in mPulls do
+  begin
+    if not PullRefersTo(mGitHubPull, mNumber) then
+      Continue;
+    if Length(ADevelopment.Pulls) >= TAtlasTrackerDevelopment.MaxPulls then
+      Break;
+    mPull := Default(TAtlasTrackerPull);
+    mPull.Number := mGitHubPull.Number;
+    mPull.Title := Shorten(mGitHubPull.Title, TAtlasTrackerIssue.MaxTitle);
+    mPull.Branch := mGitHubPull.Branch;
+    mPull.State := PullState(mGitHubPull);
+    mPull.Updated := mGitHubPull.Updated;
+    mPull.Page := PullRequestPage(ATarget, mGitHubPull.Number);
+    mPull.Checks := TAtlasTrackerChecks.Unknown;
+    // Ampel in der restlichen Zeit, wie in der Liste: Check Runs, sonst der kombinierte Status.
+    if (mChecked < MaxChecks) and (Remaining(mWatch, ATimeoutMs) > 0) and
+      (CheckRunsUrl(ATarget, mGitHubPull.Sha) <> '') then
+    begin
+      Inc(mChecked);
+      mChecks := TAtlasTrackerChecks.Unknown;
+      if ATransport.Get(CheckRunsUrl(ATarget, mGitHubPull.Sha), Remaining(mWatch, ATimeoutMs), mStatus, mText,
+        mIgnored) and (mStatus = 200) then
+        ParseCheckRuns(mText, mChecks);
+      if (mChecks = TAtlasTrackerChecks.Unknown) and (Remaining(mWatch, ATimeoutMs) > 0) and
+        ATransport.Get(StatusUrl(ATarget, mGitHubPull.Sha), Remaining(mWatch, ATimeoutMs), mStatus, mText,
+        mIgnored) and (mStatus = 200) then
+        ParseStatus(mText, mChecks);
+      mPull.Checks := mChecks;
+    end;
+    ADevelopment.Pulls := ADevelopment.Pulls + [mPull];
+  end;
 end;
 
 end.

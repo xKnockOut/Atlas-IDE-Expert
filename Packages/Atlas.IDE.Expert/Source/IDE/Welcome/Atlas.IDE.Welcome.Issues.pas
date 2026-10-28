@@ -668,6 +668,14 @@ begin
       if (mKeep <> nil) and Assigned(mOwner.FOnSettings) then
         mOwner.FOnSettings();
     end;
+  // Reiter „Entwicklung“ (#1269): Branches und Commits aus der Arbeitskopie des aktuellen Projekts.
+  mHooks.Project :=
+    function: string
+    begin
+      Result := '';
+      if mKeep <> nil then
+        Result := mOwner.CurrentProject;
+    end;
   mHooks.CanWrite :=
     function(ATarget: TAtlasTrackerTarget): Boolean
     begin

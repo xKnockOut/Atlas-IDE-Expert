@@ -8343,3 +8343,31 @@ Vorbereitung: wie Zustand und Kommentar (ZS); `issues.commentEditor` an (Vorgabe
 | KE21 | Token ohne Rechte bzw. Netz getrennt, `@an` | Keine Liste, keine Meldung im Dialog, kein Hängen (höchstens 5 s im Hintergrund) |
 | KE22 | Plugin entladen, während eine Benutzersuche läuft | Keine Zugriffsverletzung, Entwurf gespeichert |
 | KE23 | Helles und dunkles IDE-Design | Leiste, Liste, Vorschau und Hinweis gut lesbar |
+
+## Reiter „Entwicklung“ (#1269)
+
+Vorbereitung: wie bei der Issue-Vorschau (#1264); Projekt in einer Git-Arbeitskopie mit Branch `feature/ATL-12-…` (lokal und auf origin), drei Commits mit `ATL-12` in der Nachricht, einer davon mit `ATL-120` als Gegenprobe; ein GitHub-Repo mit einem Pull Request „Fixes #12“; zweites Projekt in einer SVN-Arbeitskopie mit `^/branches/ATL-12-…`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EW1 | Issue `ATL-12` öffnen, Reiter „Entwicklung“ wählen | Kurz „Lade …“, dann Branches, Commits, VCS-Änderungen (YouTrack) und geänderte Units (**Abnahme**) |
+| EW2 | Branches ansehen | `feature/ATL-12-…` einmal (lokal und entfernt), Vorsprung/Rückstand gegen main stimmen mit `git rev-list --left-right --count` überein |
+| EW3 | Commits ansehen | Nur Commits mit `ATL-12`, nicht der mit `ATL-120`; Hash, Betreff, Autor, Zeit |
+| EW4 | Einfacher Klick auf einen Commit | Nach der Doppelklickzeit öffnet das Diff-Fenster mit den geänderten Dateien (**Abnahme**) |
+| EW5 | Doppelklick auf einen Commit | Kein Diff-Fenster; die erste geänderte Unit öffnet im Editor an der ersten geänderten Zeile (**Abnahme**) |
+| EW6 | Commit markieren, Eingabe bzw. Leertaste | Eingabe öffnet die Unit, Leertaste zeigt den Diff |
+| EW7 | Geänderte Units ansehen | Dateien aller Commits einmal, nach Projekt gruppiert; Dateien außerhalb der Projektgruppe in „Ohne Projekt“; gelöschte mit „(gelöscht)“ |
+| EW8 | Doppelklick auf eine Unit | Datei öffnet im Editor; bei einer gelöschten passiert nichts |
+| EW9 | Branch wählen, der nicht der aktuelle ist, „Wechseln“ | Ohne geänderte Dateien wechselt Atlas sofort, Liste lädt neu, der Branch ist als aktuell markiert |
+| EW10 | Wie EW9 mit geänderten Dateien | Rückfrage mit Anzahl; „Nein“ wechselt nicht |
+| EW11 | Aktueller Branch markiert | „Wechseln“ bleibt ausgegraut |
+| EW12 | GitHub-Issue #12 öffnen | Pull Request mit Zustand (offen/Entwurf/gemergt/geschlossen) und CI-Ampel; Doppelklick öffnet ihn im Browser |
+| EW13 | SVN-Projekt aktiv, Issue öffnen | Branches unter `^/branches` mit der Kennung, ohne Vorsprung/Rückstand; Commits aus `svn log --search` |
+| EW14 | Reiter wechseln, Issue erneut öffnen | Inhalt sofort aus dem Zwischenspeicher, keine neue Abfrage (Protokoll) |
+| EW15 | „Aktualisieren“ | Branches, Commits und Tracker-Teil werden neu abgefragt |
+| EW16 | Kein Projekt geöffnet | Hinweis „Kein Projekt geöffnet …“ statt Versionsverwaltung; Tracker-Teil erscheint trotzdem |
+| EW17 | Projekt ohne Arbeitskopie bzw. ohne git | Hinweis zur Versionsverwaltung, kein Fehlerdialog |
+| EW18 | Netz getrennt | Versionsverwaltung erscheint, Tracker-Teil zeigt „nicht erreichbar“ |
+| EW19 | `issues.preview.development` aus | Kein Reiter „Entwicklung“, nur der Inhalt von „Details“; Protokoll zeigt kein `git log` (**Abnahme**) |
+| EW20 | Während des Ladens anderes Issue öffnen bzw. Fenster schließen | Altes Ergebnis erscheint nicht; IDE beenden ohne Hänger oder Zugriffsverletzung |
+| EW21 | Helles und dunkles IDE-Design | Listen und Baum passen jeweils |

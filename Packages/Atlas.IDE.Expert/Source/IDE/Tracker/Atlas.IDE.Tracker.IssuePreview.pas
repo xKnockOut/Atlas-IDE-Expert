@@ -47,6 +47,8 @@
 // - Zuletzt geöffnet (#1270): jedes gezeigte Issue kommt in
 //   TAtlasRecentIssues (<Zwischenspeicher>\recent.json); die Befehlspalette
 //   zeigt sie bei leerem "#".
+// - Reiter „Entwicklung“ (#1269): TAtlasIdeIssueDevelopment folgt dem
+//   gezeigten Issue, „Aktualisieren“ und „Abbrechen“ gelten auch dort.
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse,
 //   Kennung, Titel oder Token.
 // - Kurzabfrage für den Hover über Kennungen im Editor (#1265): Peek liest nur
@@ -72,6 +74,7 @@ uses
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
   Atlas.UI.Tracker.EndDialog;
+  Atlas.IDE.Tracker.Development;
 
 type
   TAtlasIssuePreviewProviderHook = reference to function(const AName: string): IAtlasTrackerProvider;
@@ -110,6 +113,8 @@ type
     /// <summary>Kommentar zu AKey gesendet, das Feld zeigt schon ein anderes Issue: dessen Entwurf löschen.
     /// </summary>
     CommentSent: TAtlasIssuePreviewSentHook;
+    /// <summary>Projektdatei des aktuellen Projekts für den Reiter „Entwicklung“ ('' ohne).</summary>
+    Project: TFunc<string>;
   end;
 
   /// <summary>Ende einer Kurzabfrage (#1265); im Hauptthread.</summary>
@@ -178,6 +183,8 @@ type
     /// <summary>Tracker und Kennung, an die das Kommentarfeld gebunden ist; '' = ungebunden.</summary>
     FBoundKey: string;
     FBoundActive: Boolean;
+    FDevelopment: TAtlasIdeIssueDevelopment;
+    FDevelopmentRef: IInterface;
     function Frame: TAtlasIssueFrame;
     procedure PrepareFrame(AFrame: TAtlasIssueFrame; const AEntry: TAtlasIssueHistoryEntry);
     function ReadOnlyKey(const AEntry: TAtlasIssueHistoryEntry): string;
@@ -192,6 +199,7 @@ type
     procedure BindComment(AFrame: TAtlasIssueFrame; AWrite: Boolean);
     /// <summary>AIssue zuerst unter „zuletzt geöffnet“ und speichern.</summary>
     procedure Remember(const ATarget: TAtlasTrackerTarget; const AIssue: TAtlasTrackerIssue);
+    procedure CreateDevelopment;
     procedure Wire(AFrame: TAtlasIssueFrame);
     function ProviderOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
     procedure Load(const AEntry: TAtlasIssueHistoryEntry);
@@ -311,10 +319,15 @@ begin
   FRecent := TAtlasRecentIssues.Create;
   if ACacheFolder <> '' then
     FRecentFile := TPath.Combine(ACacheFolder, 'recent.json');
+  CreateDevelopment;
 end;
 
 destructor TAtlasIdeIssuePreview.Destroy;
 begin
+  if FDevelopment <> nil then
+    FDevelopment.Stop;
+  FDevelopment := nil;
+  FDevelopmentRef := nil;
   ReleaseThreads(True);
   FReadOnly.Free;
   FWorkers.Free;
@@ -324,6 +337,47 @@ begin
   FCache.Free;
   FHistory.Free;
   inherited;
+end;
+
+procedure TAtlasIdeIssuePreview.CreateDevelopment;
+var
+  mHooks: TAtlasIssueDevelopmentHooks;
+  mOwner: TAtlasIdeIssuePreview;
+begin
+  // Eigene Routine: Die anonymen Methoden halten nur Self. Stop der Entwicklung löst sie wieder.
+  mOwner := Self;
+  mHooks := Default(TAtlasIssueDevelopmentHooks);
+  mHooks.Provider :=
+    function(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider
+    begin
+      Result := mOwner.ProviderOf(ATarget);
+    end;
+  mHooks.Transport :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    begin
+      Result := nil;
+      if Assigned(mOwner.FHooks.Transport) then
+        Result := mOwner.FHooks.Transport(AProvider, ATarget);
+    end;
+  mHooks.Project :=
+    function: string
+    begin
+      Result := '';
+      if Assigned(mOwner.FHooks.Project) then
+        Result := mOwner.FHooks.Project();
+    end;
+  mHooks.Browse :=
+    procedure(AUrl: string)
+    begin
+      mOwner.Browse(AUrl);
+    end;
+  mHooks.Frame :=
+    function: TAtlasIssueFrame
+    begin
+      Result := mOwner.Frame;
+    end;
+  FDevelopment := TAtlasIdeIssueDevelopment.Create(mHooks);
+  FDevelopmentRef := FDevelopment;
 end;
 
 class function TAtlasIdeIssuePreview.NowUtc: TDateTime;
@@ -352,6 +406,7 @@ begin
       if (mKeep <> nil) and mOwner.FStarted then
         mOwner.Wire(AFrame);
     end;
+  FDevelopment.Start;
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
   TAtlasIdeIssueWindow.Prepare;
   FCache.Prune(NowUtc);
@@ -387,6 +442,7 @@ begin
   Inc(FGeneration);
   CancelLoad;
   CancelImages;
+  FDevelopment.Stop;
   ReleaseThreads(True);
   // Rückrufe des Editors nicht mehr aufrufen.
   FLookups.Clear;
@@ -484,7 +540,10 @@ begin
     procedure
     begin
       if mKeep <> nil then
+      begin
         mOwner.CancelLoad;
+        mOwner.FDevelopment.Cancel;
+      end;
     end;
   AFrame.OnHidden :=
     procedure
@@ -494,6 +553,7 @@ begin
       begin
         mOwner.CancelLoad;
         mOwner.CancelImages;
+        mOwner.FDevelopment.Cancel;
       end;
     end;
   AFrame.OnStart :=
@@ -598,6 +658,7 @@ begin
     end;
   if Assigned(FHooks.CanStart) then
     AFrame.CanStart := FHooks.CanStart();
+  FDevelopment.Wire(AFrame);
   ShowCurrent;
 end;
 
@@ -646,8 +707,10 @@ end;
 
 procedure TAtlasIdeIssuePreview.Refresh;
 begin
-  if FHasCurrent then
-    Load(FCurrent);
+  if not FHasCurrent then
+    Exit;
+  FDevelopment.Refresh;
+  Load(FCurrent);
 end;
 
 procedure TAtlasIdeIssuePreview.GoBack;
@@ -824,6 +887,7 @@ begin
   FCurrent := AEntry;
   FHasCurrent := True;
   UpdateWrite;
+  FDevelopment.Select(AEntry.Target, AEntry.Key);
   Inc(FGeneration);
   mGeneration := FGeneration;
   mFrame := Frame;

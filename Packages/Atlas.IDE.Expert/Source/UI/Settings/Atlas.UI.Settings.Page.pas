@@ -736,6 +736,7 @@ type
     FSnippetSelected: Integer;
     /// <summary>Die Seite füllt die Felder selbst: OnChange übernimmt nichts.</summary>
     FSnippetFilling: Boolean;
+    FIssuesPreviewDevelopment: TCheckBox;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1501,6 +1502,7 @@ type
     property IssuesSprintCompare: TCheckBox read FIssuesSprintCompare;
     property WelcomeSprint: TCheckBox read FWelcomeSprint;
     property IssuesPaletteSearch: TCheckBox read FIssuesPaletteSearch;
+    property IssuesPreviewDevelopment: TCheckBox read FIssuesPreviewDevelopment;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -3209,7 +3211,7 @@ begin
   FIssuesBranchBase := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesBranchBase));
   FIssuesCommitPattern := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCommitPattern));
   FTrackerLogin := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTrackerLogin));
-  // Issue-Vorschau (#1264): Hauptschalter, Kommentare darunter.
+  // Issue-Vorschau (#1264): Hauptschalter, Kommentare und Reiter „Entwicklung“ (#1269) darunter.
   FIssuesPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreview));
   FIssuesPreviewComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewComments));
   FIssuesCodeLinks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCodeLinks));
@@ -3235,6 +3237,7 @@ begin
   // Sprint-Kachel (#1277): Burndown-Linie, Vergleich mit dem Vorsprint und Velocity.
   FIssuesSprintBurndown := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSprintBurndown));
   FIssuesSprintCompare := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSprintCompare));
+  FIssuesPreviewDevelopment := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewDevelopment));
 end;
 
 procedure TAtlasSettingsPage.AddIssuesTimeSection;
@@ -6662,6 +6665,7 @@ begin
   FMarks.Bind(FIssuesPaletteSearch, ['IssuesPaletteSearch']);
   FMarks.Bind(FIssuesCommentEditor, ['IssuesCommentEditor']);
   FMarks.Bind(FIssuesSnippets, ['IssuesCommentSnippets']);
+  FMarks.Bind(FIssuesPreviewDevelopment, ['IssuesPreviewDevelopment']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FIssuesProjects, ['IssuesProjects']);
   FMarks.Bind(FIssuesQueries, ['IssuesQueries']);
@@ -8995,6 +8999,7 @@ begin
   if Length(FCommentSnippets) > 0 then
     FSnippetSelected := 0;
   RefreshSnippets;
+  FIssuesPreviewDevelopment.Checked := ASettings.IssuesPreviewDevelopment;
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -9626,6 +9631,7 @@ begin
   ASettings.IssuesPaletteSearch := FIssuesPaletteSearch.Checked;
   ASettings.IssuesCommentEditor := FIssuesCommentEditor.Checked;
   ASettings.IssuesCommentSnippets := TAtlasCommentSnippets.ToJson(FCommentSnippets);
+  ASettings.IssuesPreviewDevelopment := FIssuesPreviewDevelopment.Checked;
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.IssuesProjects := TrackerProjectsJson;
   ASettings.IssuesQueries := TrackerQueriesJson;
