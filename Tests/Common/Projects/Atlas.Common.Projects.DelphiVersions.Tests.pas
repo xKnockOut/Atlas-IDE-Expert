@@ -25,14 +25,25 @@ type
     procedure ChoosesMatchingInstallation;
     [Test]
     procedure FallsBackToNextHigherOrLatest;
+    /// <summary>#1321: Ohne Installation die Version zur ProjectVersion, ohne .dproj die neueste bekannte.
+    /// </summary>
+    [Test]
+    procedure WithoutInstallationExpectsProjectVersion;
+    /// <summary>#1321: Die erwartete Version ergibt CompilerVersion und VERxxx wie in der IDE.</summary>
+    [Test]
+    procedure WithoutInstallationDefinesCompilerVersion;
   end;
 
 implementation
 
 uses
+  System.StrUtils,
   System.SysUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
+  Atlas.Common.Index.ProjectFiles,
+  Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DelphiVersions;
 
 procedure TDelphiVersionsTests.ReadsProjectVersion;
@@ -79,7 +90,8 @@ begin
   Assert.IsTrue(Missing);
   Assert.AreEqual('37.0', TDelphiVersions.Choose('22.0', '', ['23.0', '37.0'], Missing));
   Assert.IsTrue(Missing);
-  Assert.AreEqual('', TDelphiVersions.Choose('22.0', '20.1', [], Missing));
+  // Ohne jede Installation gilt die konfigurierte Version für die Symbole (#1321).
+  Assert.AreEqual('22.0', TDelphiVersions.Choose('22.0', '20.1', [], Missing));
   Assert.IsTrue(Missing);
   Assert.AreEqual('23.0', TDelphiVersions.Choose('', '20.1', ['23.0'], Missing));
   Assert.IsFalse(Missing);
@@ -127,7 +139,42 @@ begin
   Assert.AreEqual('23.0', TDelphiVersions.Choose('', '19.5', ['21.0', '23.0', '37.0']));
   Assert.AreEqual('23.0', TDelphiVersions.Choose('', '20.3', ['22.0', '23.0']));
   Assert.AreEqual('23.0', TDelphiVersions.Choose('', '', ['22.0', '23.0']));
-  Assert.AreEqual('', TDelphiVersions.Choose('', '19.5', []));
+end;
+
+procedure TDelphiVersionsTests.WithoutInstallationExpectsProjectVersion;
+var
+  Missing: Boolean;
+begin
+  Assert.AreEqual('22.0', TDelphiVersions.Choose('', '19.5', []));
+  Assert.AreEqual('23.0', TDelphiVersions.Choose('', '20.1', []));
+  Assert.AreEqual('37.0', TDelphiVersions.Choose('', '20.3', [], Missing));
+  Assert.IsFalse(Missing);
+  // Ohne .dproj oder mit unbekannter ProjectVersion die neueste bekannte.
+  Assert.AreEqual('37.0', TDelphiVersions.LatestKnown);
+  Assert.AreEqual(TDelphiVersions.LatestKnown, TDelphiVersions.Choose('', '', []));
+  Assert.AreEqual(TDelphiVersions.LatestKnown, TDelphiVersions.Choose('', '12.0', []));
+  // Die erwartete Version ist nicht installiert.
+  Assert.IsFalse(TDelphiVersions.IsInstalled(TDelphiVersions.Choose('', '20.1', []), []));
+end;
+
+procedure TDelphiVersionsTests.WithoutInstallationDefinesCompilerVersion;
+var
+  Project: TProjectInfo;
+  Defines: TArray<string>;
+  Options: TPreprocessorOptions;
+begin
+  Project := Default(TProjectInfo);
+  Project.Platform := 'Win32';
+  Project.Defines := ['DEBUG'];
+  Defines := TIndexProjectFiles.Defines(Project, TDelphiVersions.Choose('', '20.3', []));
+  Options := TPascalPreprocessor.EditorOptions(Defines);
+  Assert.AreEqual(37.0, Options.CompilerVersion, 0.001);
+  Assert.AreEqual(37.0, Options.RTLVersion, 0.001);
+  Assert.IsTrue(IndexText('VER370', Defines) >= 0, String.Join(' ', Defines));
+  Defines := TIndexProjectFiles.Defines(Project, TDelphiVersions.Choose('', '20.1', []));
+  Options := TPascalPreprocessor.EditorOptions(Defines);
+  Assert.AreEqual(36.0, Options.CompilerVersion, 0.001);
+  Assert.IsTrue(IndexText('VER360', Defines) >= 0, String.Join(' ', Defines));
 end;
 
 initialization
