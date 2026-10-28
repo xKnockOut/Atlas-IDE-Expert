@@ -10,6 +10,7 @@
 - Jede Prüfregel und jede Kernfunktion bekommt DUnitX-Tests in `Tests/`; Zeitmessungen mit `[Category('Benchmark')]`. `pwsh Tools/Check-TestCoverage.ps1` prüft, dass jede Unit mit Logik eine Testunit hat und jede Testunit in `Atlas.Tests.dpr` steht.
 - Neue Einstellung: Schema `schemas/atlas.schema.json` (mit `x-page`, `x-control`, `x-issue`), Parser, Test; dann `pwsh Tools/Update-ConfigDoc.ps1` ausführen. Es erzeugt Konfiguration.md, Einstellungen.md und die Schema-Unit des Plugins und prüft den Parser.
 - Im IDE-Plugin nur über `TAtlasMainThread` in den Hauptthread einreihen, nie `TThread.Queue(nil, …)`/`ForceQueue(nil, …)` (sonst laufen Einträge nach dem Entladen in fremdem Speicher). `pwsh Tools/Check-MainThreadQueue.ps1` prüft das; Ausnahme je Zeile mit `// mainthread-ok`.
+- Andockbare Fenster nur über `TAtlasIdeDockWindow`, Leisten im Editorfenster nur über `TAtlasEditorBarHost` (Steuerelemente mit Vorfahr `TAtlasEditorBar`). `pwsh Tools/Check-WindowHosts.ps1` prüft das.
 
 ## Mit Delphi bauen vor dem Merge
 

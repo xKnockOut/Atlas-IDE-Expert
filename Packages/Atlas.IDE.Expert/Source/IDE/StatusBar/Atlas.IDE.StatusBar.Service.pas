@@ -31,6 +31,9 @@
 //   Sicherung), und das Atlas-Feld kehrt in die Statuszeile zurück.
 // - editor.statusBar aus: Leisten weg, das Atlas-Feld bleibt in der
 //   Statuszeile; Elemente gelten ohne Neustart.
+// - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die
+//   IDE, Protokoll des Sperrenden und Abbau übernimmt TAtlasEditorBarHost
+//   (#1248); hier stehen nur Einordnen (Place) und Inhalt.
 // Nur im Hauptthread.
 
 interface
@@ -96,8 +99,8 @@ uses
   Atlas.Core.Problems.Store,
   Atlas.Core.StatusBar.Content,
   Atlas.UI.Strings,
-  Atlas.UI.Status.Window,
   Atlas.UI.StatusBar.Bar,
+  Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
@@ -111,40 +114,17 @@ const
   LogPrefix = 'Atlas-Statusleiste: ';
 
 type
-  TStatusBarState = class;
-
-  /// <summary>Erfährt, wenn die IDE eine Leiste mit ihrem Fenster freigibt.</summary>
-  TStatusBarWatcher = class(TComponent)
-  private
-    FState: TStatusBarState;
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  end;
-
   TStatusBarState = class
   private
     FTimer: TTimer;
-    FWatcher: TStatusBarWatcher;
-    FBars: TList<TAtlasEditorStatusBar>;
-    /// <summary>Eltern-Steuerelement des Editors je Leiste (gleicher Index wie FBars).</summary>
-    FHosts: TList<TWinControl>;
-    FHidden: Boolean;
+    FHost: TAtlasEditorBarHost;
     FWanted: Boolean;
     // Methode der obersten Leiste beim letzten Takt: Ziel des Klicks.
     FMethodFile: string;
     FMethod: TAtlasStatusMethod;
     procedure Tick(Sender: TObject);
-    function EditorOf(const AWindow: INTAEditWindow): TWinControl;
-    function BarOf(AHost: TWinControl): TAtlasEditorStatusBar;
-    procedure EnsureBars;
-    procedure CreateBar(AHost: TWinControl);
+    function CreateBar(AHost: TWinControl): TAtlasEditorStatusBar;
     procedure Place(ABar: TAtlasEditorStatusBar; AHost: TWinControl);
-    procedure RemoveBars;
-    procedure ShowBars(AShown: Boolean);
-    /// <summary>Gibt gesperrte Leisten frei, sobald wieder ein Editor aktiv ist. Beim Schließen aller Editoren
-    /// (Projektwechsel) sperrt die IDE jedes Steuerelement im Editor-Panel (Aufrufer laut Protokoll coreide370) und
-    /// gibt danach nur ihre eigenen wieder frei; ohne Abgleich blieben die Leisten bis zum Neustart taub.</summary>
-    procedure EnableBars;
     procedure Want(AOn: Boolean);
     procedure StatusInto(var AView: TAtlasStatusBarView);
     function ViewFor(const AView: IOTAEditView; const AItems: TArray<string>): TAtlasStatusBarView;
@@ -153,7 +133,6 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Removed(ABar: TAtlasEditorStatusBar);
     procedure Reset;
     procedure ApplyTheme;
     function TopBar: TAtlasEditorStatusBar;
@@ -189,6 +168,8 @@ begin
   Result.Hours := TAtlasStrings.Text(TAtlasTextId.StatusBarHours);
   Result.Separator := TAtlasStatusSummary.Separator;
   Result.ProjectProgress := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectProgress);
+  Result.ProjectDone := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectDone);
+  Result.ProjectPaused := TAtlasStrings.Text(TAtlasTextId.StatusBarProjectPaused);
 end;
 
 function ItemCaptions: TArray<string>;
@@ -225,24 +206,20 @@ begin
   Result := True;
 end;
 
-{ TStatusBarWatcher }
-
-procedure TStatusBarWatcher.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent is TAtlasEditorStatusBar) and (FState <> nil) then
-    FState.Removed(TAtlasEditorStatusBar(AComponent));
-end;
-
 { TStatusBarState }
 
 constructor TStatusBarState.Create;
 begin
   inherited Create;
-  FBars := TList<TAtlasEditorStatusBar>.Create;
-  FHosts := TList<TWinControl>.Create;
-  FWatcher := TStatusBarWatcher.Create(nil);
-  FWatcher.FState := Self;
+  FHost := TAtlasEditorBarHost.Create('Atlas-Statusleiste', TAtlasFeature.StatusBar,
+    function(AEditorParent: TWinControl): TControl
+    begin
+      Result := CreateBar(AEditorParent);
+    end,
+    procedure(ABar: TControl; AEditorParent: TWinControl)
+    begin
+      Place(TAtlasEditorStatusBar(ABar), AEditorParent);
+    end);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
   FTimer.OnTimer := Tick;
@@ -253,41 +230,8 @@ destructor TStatusBarState.Destroy;
 begin
   FTimer.Free;
   Want(False);
-  RemoveBars;
-  FWatcher.Free;
-  FHosts.Free;
-  FBars.Free;
+  FHost.Free;
   inherited Destroy;
-end;
-
-procedure TStatusBarState.RemoveBars;
-var
-  Bar: TAtlasEditorStatusBar;
-begin
-  // Leisten selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
-  FWatcher.FState := nil;
-  try
-    for Bar in FBars.ToArray do
-    begin
-      Bar.RemoveFreeNotification(FWatcher);
-      Bar.Free;
-    end;
-  finally
-    FBars.Clear;
-    FHosts.Clear;
-    FWatcher.FState := Self;
-  end;
-end;
-
-procedure TStatusBarState.Removed(ABar: TAtlasEditorStatusBar);
-var
-  Index: Integer;
-begin
-  Index := FBars.IndexOf(ABar);
-  if Index < 0 then
-    Exit;
-  FBars.Delete(Index);
-  FHosts.Delete(Index);
 end;
 
 procedure TStatusBarState.Reset;
@@ -310,12 +254,14 @@ end;
 
 procedure TStatusBarState.ApplyTheme;
 var
-  Bar: TAtlasEditorStatusBar;
   Colors: TAtlasColors;
 begin
   Colors := BarColors;
-  for Bar in FBars do
-    Bar.SetColors(Colors);
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasEditorStatusBar(ABar).SetColors(Colors);
+    end);
 end;
 
 procedure TStatusBarState.Want(AOn: Boolean);
@@ -327,73 +273,25 @@ begin
     TAtlasIdeStatusBar.FHooks.WantMetrics(AOn);
 end;
 
-function TStatusBarState.EditorOf(const AWindow: INTAEditWindow): TWinControl;
-var
-  Editor: TComponent;
-begin
-  Result := nil;
-  if (AWindow = nil) or (AWindow.Form = nil) then
-    Exit;
-  Editor := AWindow.Form.FindComponent('Editor');
-  if (Editor is TWinControl) and (TWinControl(Editor).Parent <> nil) then
-    Result := TWinControl(Editor);
-end;
-
-function TStatusBarState.BarOf(AHost: TWinControl): TAtlasEditorStatusBar;
-var
-  Index: Integer;
-begin
-  for Index := 0 to FHosts.Count - 1 do
-    if FHosts[Index] = AHost then
-      Exit(FBars[Index]);
-  Result := nil;
-end;
-
 function TStatusBarState.TopBar: TAtlasEditorStatusBar;
-var
-  Services: INTAEditorServices;
-  Editor: TWinControl;
 begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
-    Exit;
-  Editor := EditorOf(Services.TopEditWindow);
-  if Editor <> nil then
-    Result := BarOf(Editor.Parent);
+  Result := TAtlasEditorStatusBar(FHost.ActiveBar);
 end;
 
-procedure TStatusBarState.EnsureBars;
-var
-  Services: INTAEditorServices;
-  Index: Integer;
-  Editor: TWinControl;
-  Bar: TAtlasEditorStatusBar;
-begin
-  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
-    Exit;
-  for Index := 0 to Services.EditWindowCount - 1 do
-  begin
-    Editor := EditorOf(Services.EditWindow[Index]);
-    if Editor = nil then
-      Continue;
-    Bar := BarOf(Editor.Parent);
-    if Bar = nil then
-      CreateBar(Editor.Parent)
-    else
-      Place(Bar, Editor.Parent);
-  end;
-end;
-
-/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable.</summary>
-procedure TStatusBarState.CreateBar(AHost: TWinControl);
+/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
+function TStatusBarState.CreateBar(AHost: TWinControl): TAtlasEditorStatusBar;
 var
   Bar: TAtlasEditorStatusBar;
+  Host: TAtlasEditorBarHost;
 begin
   Bar := TAtlasEditorStatusBar.Create(nil);
-  Bar.FreeNotification(FWatcher);
-  FBars.Add(Bar);
-  FHosts.Add(AHost);
+  Host := FHost;
   Bar.SetColors(BarColors);
+  Bar.OnDisabled :=
+    procedure(ASender: TObject)
+    begin
+      Host.Disabled(ASender);
+    end;
   Bar.ItemCaptions := ItemCaptions;
   Bar.CustomizeCaption := TAtlasStrings.Text(TAtlasTextId.StatusBarCustomize);
   Bar.HideCaption := TAtlasStrings.Text(TAtlasTextId.StatusBarHide);
@@ -516,7 +414,7 @@ begin
           HideBar;
         end);
     end;
-  Place(Bar, AHost);
+  Result := Bar;
 end;
 
 /// <summary>Ganz unten im Eltern-Steuerelement des Editors: unter einer Atlas-Suchleiste (alBottom ordnet nach
@@ -546,27 +444,6 @@ begin
   end;
 end;
 
-procedure TStatusBarState.EnableBars;
-var
-  Bar: TAtlasEditorStatusBar;
-begin
-  for Bar in FBars do
-    if not Bar.Enabled then
-    begin
-      Bar.Enabled := True;
-      TAtlasGuard.Log(LogPrefix + 'wieder freigegeben, ein Editor ist aktiv');
-    end;
-end;
-
-procedure TStatusBarState.ShowBars(AShown: Boolean);
-var
-  Bar: TAtlasEditorStatusBar;
-begin
-  for Bar in FBars do
-    if Bar.Visible <> AShown then
-      Bar.Visible := AShown;
-end;
-
 procedure TStatusBarState.StatusInto(var AView: TAtlasStatusBarView);
 var
   Field: TAtlasStatusField;
@@ -579,7 +456,7 @@ begin
   begin
     AView.StatusText := TAtlasStatusSummary.FieldCaption;
     AView.StatusHint := '';
-    AView.StatusColor := TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, TAtlasStatusState.Neutral);
+    AView.StatusState := TAtlasStatusState.Neutral;
     Exit;
   end;
   Text := Field.Text;
@@ -590,10 +467,10 @@ begin
     Text := Text + TAtlasStatusSummary.Separator + TAtlasStrings.Text(TAtlasTextId.StatusBarReady);
   AView.StatusText := Text;
   AView.StatusHint := Field.Tooltip + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarStatusClicks);
-  AView.StatusColor := TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, Field.State);
+  AView.StatusState := Field.State;
   // Plakette der Benachrichtigungen (#1234): Das umgezogene Feld ist 0 breit, die Leiste zeigt sie.
   AView.BadgeCount := Field.BadgeCount;
-  AView.BadgeColor := TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, Field.BadgeState);
+  AView.BadgeState := Field.BadgeState;
   AView.BadgeHint := Field.BadgeHint;
 end;
 
@@ -610,6 +487,8 @@ var
   Known: Boolean;
   Method: TAtlasStatusMethod;
   Checked, Total: Integer;
+  Run: TLspWorkspaceRun;
+  FinishedAgo: UInt64;
 begin
   Result := Default(TAtlasStatusBarView);
   Checked := 0;
@@ -652,7 +531,16 @@ begin
       Result.LiveText := TAtlasStrings.Text(TAtlasTextId.StatusBarPausedDebugger);
     end
     else
-    // Fortschritt der Projektprüfung (#1232), solange Units fehlen.
+    // Lauf der Projektprüfung des Servers (#1247): Fortschritt, Pause beim Kompilieren, danach „fertig“.
+    if ProblemsOn(Settings) and TAtlasProblemsController.ProjectRun(Run, FinishedAgo) then
+    begin
+      Checked := Run.Done;
+      Total := Run.Total;
+      Result.LiveText := Result.LiveText + TAtlasStatusBarContent.RunText(Run.Active, Run.Done, Run.Total,
+        Run.Paused, FinishedAgo, LiveTexts);
+    end
+    else
+    // Ältere Server ohne Laufstand: Fortschritt aus den Befunden (#1232), solange Units fehlen.
     if ProblemsOn(Settings) and TAtlasIdeProblems.ProjectProgress(Checked, Total) then
       Result.LiveText := Result.LiveText + TAtlasStatusBarContent.ProgressText(Checked, Total, LiveTexts);
     if Settings.ProblemsLive then
@@ -707,38 +595,27 @@ end;
 
 procedure TStatusBarState.Tick(Sender: TObject);
 var
-  On_: Boolean;
+  On_, WasHidden: Boolean;
 begin
   On_ := TAtlasIdeStatusBar.Enabled;
-  if TAtlasGuard.Disabled(TAtlasFeature.StatusBar) then
+  WasHidden := FHost.Hidden;
+  if not FHost.Guard then
   begin
-    // Sicherung ausgelöst: Leisten weg, das Atlas-Feld zurück in die Statuszeile.
-    if not FHidden then
+    // Sicherung ausgelöst: Leisten weg (Host), das Atlas-Feld zurück in die Statuszeile.
+    if not WasHidden then
     begin
-      FHidden := True;
-      TAtlasGuard.Log(LogPrefix + 'durch die Sicherung abgeschaltet');
       Want(False);
-      try
-        ShowBars(False);
-      except
-        on E: Exception do
-          TAtlasGuard.Log(LogPrefix + 'nicht ausgeblendet: ' + TAtlasGuard.SafeMessage(E.Message));
-      end;
       RefreshField;
     end;
     Exit;
   end;
-  if FHidden then
-  begin
-    FHidden := False;
-    ShowBars(True);
+  if WasHidden then
     RefreshField;
-  end;
   if not On_ then
   begin
     Want(False);
-    if FBars.Count > 0 then
-      RemoveBars;
+    if FHost.Count > 0 then
+      FHost.Clear;
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.StatusBar,
@@ -746,16 +623,17 @@ begin
     var
       Items: TArray<string>;
       Top, Bar: TAtlasEditorStatusBar;
+      Control: TControl;
       View: TAtlasStatusBarView;
     begin
       Items := TAtlasStatusBarItems.Parse(TAtlasIdeSettings.Current.EditorStatusBarItems);
       Want(TAtlasStatusBarItems.Contains(Items, TAtlasStatusBarItems.Method));
-      EnsureBars;
-      if TAtlasEditorBuffer.ActiveView <> nil then
-        EnableBars;
+      // Ensure gibt auch die von der IDE gesperrten Leisten frei, sobald ein Editor aktiv ist.
+      FHost.Ensure;
       Top := TopBar;
-      for Bar in FBars do
+      for Control in FHost.Bars do
       begin
+        Bar := TAtlasEditorStatusBar(Control);
         if Bar = Top then
           Continue;
         // Andere Fenster: nur Status und Belegung, der Rest bleibt vom letzten Mal, als sie oben waren.

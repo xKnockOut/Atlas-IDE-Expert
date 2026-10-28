@@ -139,6 +139,9 @@ type
     FOnNames: TProc<TArray<string>>;
     /// <summary>Ein Aufbau läuft und hat die Projektstufe noch nicht hinter sich.</summary>
     FProjectPending: Boolean;
+    /// <summary>Der letzte Aufbau hat entschieden, ohne Projekt zu indizieren (keine oder fehlende Projektdatei,
+    /// index.projectGroup aus und noch nicht aktiviert); dann wartet keine Prüfung auf ein Projekt (#1220).</summary>
+    FWithoutProject: Boolean;
     FOnSettingsChanged: TProc<TServerSettings>;
     FBaseline: IRuleBaseline;
     FLastIndexMs: Int64;
@@ -315,8 +318,9 @@ type
     /// Dateien, deshalb außerhalb von Sperren aufrufen.</summary>
     class procedure CompleteRuleProject(var AProject: TRuleProject; const AMainSource: string;
       const AReadText: TRuleProjectReadText); static;
-    /// <summary>Projekt geladen und Index fertig (#1102, #1112)? Sonst der Grund in AReason. Ein Arbeitsbereich
-    /// ohne geladenes Projekt kann Verwendungen enthalten, die keiner kennt. Threadsicher.</summary>
+    /// <summary>Projekt geladen und Index fertig (#1102, #1112)? Sonst der Grund in AReason. Ein Arbeitsbereich,
+    /// dessen Projekt noch lädt, kann Verwendungen enthalten, die keiner kennt. Ein Arbeitsbereich ohne Projekt ist
+    /// bereit, sobald der Aufbau das festgestellt hat (#1220). Threadsicher.</summary>
     function RuleReady(out AReason: string): Boolean;
     /// <summary>Vor Load setzen (#46): selectBuild merkt die Wahl dort, der erste Indexaufbau übernimmt sie.</summary>
     property Selection: TProjectSelection read FSelection write FSelection;
@@ -1426,7 +1430,7 @@ var
   Info: TProjectInfo;
 begin
   AReason := '';
-  if ProjectPending or not Project(Info) then
+  if ProjectPending or not (Project(Info) or FWithoutProject) then
   begin
     AReason := 'Projekte werden geladen';
     Exit(False);
@@ -1647,10 +1651,14 @@ begin
   begin
     FLogger.Info(Format('%s: index.projectGroup ist aus; indiziert wird, sobald eine Datei des Projekts offen ist',
       [FName]));
+    FWithoutProject := True;
     Exit;
   end;
   mProjectFile := FindProjectFile(ASettings);
-  if mProjectFile = '' then
+  // Ohne Projekt indiziert dieser Arbeitsbereich nichts; Prüfungen sollen dann nicht auf ihn warten. Sonst liefen
+  // die indexabhängigen Regeln in einem Ordner ohne Projekt nie (#1220).
+  FWithoutProject := mProjectFile = '';
+  if FWithoutProject then
     Exit;
   // In der IDE bestimmt die IDE Konfiguration, Plattform, Optionen und Delphi-Version (#396).
   Context := Default(TIdeProjectContext);

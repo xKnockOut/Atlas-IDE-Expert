@@ -442,6 +442,13 @@ begin
   FRequest := ARequest;
   FPrevious := APrevious;
   inherited Create(False);
+  // Niedrige Priorität (#1236): Der Aufbau läuft im Hintergrund; IDE, Editor und Anfragen gehen vor. Der Thread
+  // startet erst nach dem Konstruktor. Nicht jede Plattform erlaubt das.
+  try
+    Priority := tpLower;
+  except
+    // Dann eben mit normaler Priorität; der Aufbau selbst ist davon nicht betroffen.
+  end;
 end;
 
 destructor TIndexThread.Destroy;

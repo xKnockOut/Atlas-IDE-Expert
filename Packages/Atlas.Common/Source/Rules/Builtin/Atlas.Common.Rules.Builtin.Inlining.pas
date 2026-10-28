@@ -82,6 +82,9 @@ type
     FNeeds: TDictionary<string, TInlineNeeds>;
     FCandidates: TDictionary<string, Boolean>;
     FReported: TDictionary<Integer, Boolean>;
+    // Zyklus je gerufener Unit (#1220): '' ohne, CycleDirect für H2456, sonst die Unit für H2457. Die Breitensuche
+    // lief vorher bei jedem Aufruf neu und machte die Regel auf Units mit vielen inline-Aufrufen sekundenlang.
+    FCycles: TDictionary<string, string>;
     FOwn: TUnitIndex;
     FOwnName: string;
     FUsed: TArray<string>;
@@ -92,6 +95,8 @@ type
     function UsesOwnUnit(const AUnit: TUnitIndex): Boolean;
     /// <summary>Unit, über die AUnit die eigene Unit indirekt verwendet; '' ohne Zyklus.</summary>
     function IndirectVia(const AUnit: TUnitIndex): string;
+    /// <summary>Zyklus zwischen AUnit und der eigenen Unit, je Unit nur einmal gesucht.</summary>
+    function CycleOf(const AUnit: TUnitIndex): string;
     function NeedsOf(const ACallee: TInlineCallee): TInlineNeeds;
     function HasInlineAccessor(const AProperty: TIndexSymbol): Boolean;
     function IsCandidate(const AName: string): Boolean;
@@ -118,6 +123,8 @@ const
   /// <summary>Höchstzahl der Units, die die Suche nach einem indirekten Zyklus besucht.</summary>
   MaxCycleUnits = 400;
   EnumeratorMembers: array[0..1] of string = ('MoveNext', 'Current');
+  /// <summary>Ergebnis von CycleOf, wenn die Unit die eigene direkt verwendet; kein gültiger Unit-Name.</summary>
+  CycleDirect = '=';
 
 function SplitName(const AQualified: string; out AContainer: string): string;
 var
@@ -168,10 +175,12 @@ begin
   FNeeds := TDictionary<string, TInlineNeeds>.Create;
   FCandidates := TDictionary<string, Boolean>.Create;
   FReported := TDictionary<Integer, Boolean>.Create;
+  FCycles := TDictionary<string, string>.Create;
 end;
 
 destructor TInlineCheck.Destroy;
 begin
+  FCycles.Free;
   FReported.Free;
   FCandidates.Free;
   FNeeds.Free;
@@ -255,6 +264,20 @@ begin
     Vias.Free;
     Names.Free;
   end;
+end;
+
+function TInlineCheck.CycleOf(const AUnit: TUnitIndex): string;
+var
+  mKey: string;
+begin
+  mKey := UpperCase(AUnit.UnitName);
+  if FCycles.TryGetValue(mKey, Result) then
+    Exit;
+  if UsesOwnUnit(AUnit) then
+    Result := CycleDirect
+  else
+    Result := IndirectVia(AUnit);
+  FCycles.Add(mKey, Result);
 end;
 
 function TInlineCheck.NeedsOf(const ACallee: TInlineCallee): TInlineNeeds;
@@ -479,7 +502,7 @@ end;
 function TInlineCheck.Explain(const ACallee: TInlineCallee; const ARange: TTextRange; AOffset: Integer): Boolean;
 var
   Needs: TInlineNeeds;
-  Name, Via, Member, Missing: string;
+  Name, Cycle, Member, Missing: string;
   Routines: TArray<TSyntaxNode>;
   Missings: TArray<string>;
   UnitName: string;
@@ -502,20 +525,21 @@ begin
     Exit;
   end;
   // Zyklen zuerst: Dann bettet der Compiler gar nicht ein, gleich was in uses steht.
-  if UsesOwnUnit(ACallee.OwnerUnit) then
+  Cycle := CycleOf(ACallee.OwnerUnit);
+  if Cycle = CycleDirect then
   begin
     FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: %s verwendet die übersetzte Unit %s ' +
       '(wie H2456).', [Name, ACallee.OwnerUnit.UnitName, FOwnName]));
     Exit(True);
   end;
-  Via := IndirectVia(ACallee.OwnerUnit);
-  if Via <> '' then
+  if Cycle <> '' then
   begin
     FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: %s verwendet die übersetzte Unit %s ' +
-      'indirekt über %s (wie H2457).', [Name, ACallee.OwnerUnit.UnitName, FOwnName, Via]));
+      'indirekt über %s (wie H2457).', [Name, ACallee.OwnerUnit.UnitName, FOwnName, Cycle]));
     Exit(True);
   end;
-  if CallerIsInline(Routines) and OnlyInImplementationUses(ACallee.OwnerUnit.UnitName) then
+  // Die billige Frage nach dem uses zuerst: CallerIsInline durchsucht die Symbole der Datei.
+  if OnlyInImplementationUses(ACallee.OwnerUnit.UnitName) and CallerIsInline(Routines) then
   begin
     FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: %s steht nur im uses des ' +
       'implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).',

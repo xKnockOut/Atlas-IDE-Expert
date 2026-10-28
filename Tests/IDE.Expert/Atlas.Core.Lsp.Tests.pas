@@ -54,6 +54,9 @@ type
     procedure ClosesSyncedDocumentsAndListsThem;
     [Test]
     procedure InitializeAnnouncesPullDiagnosticsAndCountsRefresh;
+    /// <summary>#1247: Stand der Projektprüfung aus der Antwort auf workspace/diagnostic.</summary>
+    [Test]
+    procedure ReadsWorkspaceRun;
     [Test]
     procedure ReportsProjectGroupChanges;
     [Test]
@@ -1057,6 +1060,36 @@ begin
     Client.Free;
     Sent.Free;
   end;
+end;
+
+procedure TLspSessionTests.ReadsWorkspaceRun;
+var
+  Response: TJSONValue;
+  Run: TLspWorkspaceRun;
+begin
+  Response := TJSONObject.ParseJSONValue('{"items":[],"atlas":{"run":{"serial":3,"active":true,"done":40,' +
+    '"total":90,"skipped":1,"paused":"compile","elapsedMs":1500}}}');
+  try
+    Run := TLspWorkspaceRun.FromJson(Response);
+  finally
+    Response.Free;
+  end;
+  Assert.IsTrue(Run.Known);
+  Assert.AreEqual(3, Run.Serial);
+  Assert.IsTrue(Run.Active);
+  Assert.AreEqual(40, Run.Done);
+  Assert.AreEqual(90, Run.Total);
+  Assert.AreEqual(1, Run.Skipped);
+  Assert.AreEqual('compile', Run.Paused);
+  Assert.AreEqual(Int64(1500), Run.ElapsedMs);
+  // Ältere Server ohne Laufstand.
+  Response := TJSONObject.ParseJSONValue('{"items":[]}');
+  try
+    Assert.IsFalse(TLspWorkspaceRun.FromJson(Response).Known);
+  finally
+    Response.Free;
+  end;
+  Run := Default(TLspWorkspaceRun);
 end;
 
 procedure TLspSessionTests.InitializeAnnouncesPullDiagnosticsAndCountsRefresh;

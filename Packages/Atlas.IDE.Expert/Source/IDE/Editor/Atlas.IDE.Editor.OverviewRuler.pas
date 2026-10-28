@@ -19,6 +19,9 @@
 //   Zeit die Zeile und die Beschreibung der Marke (TAtlasNoteTip).
 // - editor.overviewRuler aus entfernt alle Streifen, editor.overviewRulerKinds
 //   wählt die Arten.
+// - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die
+//   IDE, Ausblenden bei ausgelöster Sicherung und Abbau übernimmt
+//   TAtlasEditorBarHost (#1248).
 // Minimap der IDE: Die Open Tools API bietet für sie keine Zeichen-Ereignisse,
 // deshalb ein eigener Streifen (docs/Architektur.md). Die Minimap (#873)
 // sammelt ihre Marken über CollectMarks. Nur im Hauptthread.
@@ -58,7 +61,6 @@ uses
   System.Classes,
   System.Types,
   System.Math,
-  System.Generics.Collections,
   Vcl.Controls,
   Vcl.ExtCtrls,
   Atlas.Text.Lines,
@@ -70,6 +72,7 @@ uses
   Atlas.UI.Strings,
   Atlas.UI.Notes.Tip,
   Atlas.UI.Editor.OverviewRuler,
+  Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
@@ -87,21 +90,10 @@ const
   BookmarkCount = 10;
 
 type
-  TOverviewState = class;
-
-  /// <summary>Erfährt, wenn die IDE einen Streifen mit seinem Fenster freigibt.</summary>
-  TRulerWatcher = class(TComponent)
-  private
-    FState: TOverviewState;
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  end;
-
   TOverviewState = class
   private
     FTimer: TTimer;
-    FWatcher: TRulerWatcher;
-    FRulers: TList<TAtlasOverviewRuler>;
+    FHost: TAtlasEditorBarHost;
     FTip: TAtlasNoteTip;
     FKinds: TAtlasOverviewKinds;
     // Treffer: Text des Puffers und Suchtext, zu denen sie gehören.
@@ -121,11 +113,9 @@ type
     FHoverPoint: TPoint;
     FHoverSince: UInt64;
     procedure Tick(Sender: TObject);
-    function RulerOf(AParent: TWinControl): TAtlasOverviewRuler;
-    function EditorOf(const AWindow: INTAEditWindow): TWinControl;
     function ActiveRuler: TAtlasOverviewRuler;
-    procedure EnsureRulers;
-    procedure CreateRuler(AParent: TWinControl);
+    function CreateRuler(AParent: TWinControl): TAtlasOverviewRuler;
+    procedure Place(ARuler: TAtlasOverviewRuler; AParent: TWinControl);
     procedure Update;
     function Collect(const AView: IOTAEditView; ALineCount: Integer): TAtlasOverviewMarks;
     procedure Jump(ARuler: TAtlasOverviewRuler; ALine: Integer);
@@ -135,7 +125,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Removed(ARuler: TAtlasOverviewRuler);
+    procedure Removed(ARuler: TControl);
     procedure Reset;
     procedure ApplyTheme;
   end;
@@ -151,23 +141,25 @@ begin
     Result := nil;
 end;
 
-{ TRulerWatcher }
-
-procedure TRulerWatcher.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent is TAtlasOverviewRuler) and (FState <> nil) then
-    FState.Removed(TAtlasOverviewRuler(AComponent));
-end;
-
 { TOverviewState }
 
 constructor TOverviewState.Create;
 begin
   inherited Create;
-  FRulers := TList<TAtlasOverviewRuler>.Create;
-  FWatcher := TRulerWatcher.Create(nil);
-  FWatcher.FState := Self;
+  FHost := TAtlasEditorBarHost.Create('Übersichtsleiste', TAtlasFeature.OverviewRuler,
+    function(AEditorParent: TWinControl): TControl
+    begin
+      Result := CreateRuler(AEditorParent);
+    end,
+    procedure(ABar: TControl; AEditorParent: TWinControl)
+    begin
+      Place(TAtlasOverviewRuler(ABar), AEditorParent);
+    end);
+  FHost.OnRemoved :=
+    procedure(ABar: TControl)
+    begin
+      Removed(ABar);
+    end;
   FTip := TAtlasNoteTip.Create(nil);
   FTip.GuardFeature := TAtlasFeature.OverviewRuler;
   FTimer := TTimer.Create(nil);
@@ -178,26 +170,15 @@ begin
 end;
 
 destructor TOverviewState.Destroy;
-var
-  Ruler: TAtlasOverviewRuler;
 begin
   FTimer.Free;
   FTip.Free;
-  // Streifen selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
-  FWatcher.FState := nil;
-  for Ruler in FRulers.ToArray do
-  begin
-    Ruler.RemoveFreeNotification(FWatcher);
-    Ruler.Free;
-  end;
-  FRulers.Free;
-  FWatcher.Free;
+  FHost.Free;
   inherited Destroy;
 end;
 
-procedure TOverviewState.Removed(ARuler: TAtlasOverviewRuler);
+procedure TOverviewState.Removed(ARuler: TControl);
 begin
-  FRulers.Remove(ARuler);
   if FHoverRuler = ARuler then
     HoverEnd;
 end;
@@ -215,59 +196,21 @@ begin
 end;
 
 procedure TOverviewState.ApplyTheme;
-var
-  Ruler: TAtlasOverviewRuler;
 begin
-  for Ruler in FRulers do
-    Ruler.SetColors(TAtlasIdeStyle.Colors);
-end;
-
-function TOverviewState.RulerOf(AParent: TWinControl): TAtlasOverviewRuler;
-var
-  Ruler: TAtlasOverviewRuler;
-begin
-  for Ruler in FRulers do
-    if Ruler.Parent = AParent then
-      Exit(Ruler);
-  Result := nil;
-end;
-
-function TOverviewState.EditorOf(const AWindow: INTAEditWindow): TWinControl;
-var
-  Editor: TComponent;
-begin
-  Result := nil;
-  if (AWindow = nil) or (AWindow.Form = nil) then
-    Exit;
-  Editor := AWindow.Form.FindComponent('Editor');
-  if (Editor is TWinControl) and (TWinControl(Editor).Parent <> nil) then
-    Result := TWinControl(Editor);
-end;
-
-procedure TOverviewState.EnsureRulers;
-var
-  Services: INTAEditorServices;
-  Index: Integer;
-  Editor: TWinControl;
-begin
-  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
-    Exit;
-  for Index := 0 to Services.EditWindowCount - 1 do
-  begin
-    Editor := EditorOf(Services.EditWindow[Index]);
-    if (Editor <> nil) and (RulerOf(Editor.Parent) = nil) then
-      CreateRuler(Editor.Parent);
-  end;
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasOverviewRuler(ABar).SetColors(TAtlasIdeStyle.Colors);
+    end);
 end;
 
 /// <summary>Eigene Methode: Jeder Streifen braucht seine eigene gefangene Variable.</summary>
-procedure TOverviewState.CreateRuler(AParent: TWinControl);
+function TOverviewState.CreateRuler(AParent: TWinControl): TAtlasOverviewRuler;
 var
   Ruler: TAtlasOverviewRuler;
 begin
   Ruler := TAtlasOverviewRuler.Create(nil);
-  Ruler.FreeNotification(FWatcher);
-  FRulers.Add(Ruler);
+  Result := Ruler;
   Ruler.SetColors(TAtlasIdeStyle.Colors);
   Ruler.OnJump :=
     procedure(ALine: Integer)
@@ -288,23 +231,21 @@ begin
     begin
       HoverEnd;
     end;
+end;
+
+procedure TOverviewState.Place(ARuler: TAtlasOverviewRuler; AParent: TWinControl);
+begin
+  if ARuler.Parent = AParent then
+    Exit;
   // Rechts neben dem Editor: zuerst ganz rechts einhängen, dann rechts ausrichten.
-  Ruler.Left := AParent.ClientWidth;
-  Ruler.Align := alRight;
-  Ruler.Parent := AParent;
+  ARuler.Left := AParent.ClientWidth;
+  ARuler.Align := alRight;
+  ARuler.Parent := AParent;
 end;
 
 function TOverviewState.ActiveRuler: TAtlasOverviewRuler;
-var
-  Services: INTAEditorServices;
-  Editor: TWinControl;
 begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
-    Exit;
-  Editor := EditorOf(Services.TopEditWindow);
-  if Editor <> nil then
-    Result := RulerOf(Editor.Parent);
+  Result := TAtlasOverviewRuler(FHost.ActiveBar);
 end;
 
 function TOverviewState.Collect(const AView: IOTAEditView; ALineCount: Integer): TAtlasOverviewMarks;
@@ -405,7 +346,7 @@ var
   Matching, NavigateF3: Boolean;
   Options: TAtlasSelectionMatchOptions;
 begin
-  EnsureRulers;
+  FHost.Ensure;
   Ruler := ActiveRuler;
   View := TAtlasEditorBuffer.ActiveView;
   if (Ruler = nil) or (View = nil) or (View.Buffer = nil) then
@@ -530,7 +471,8 @@ end;
 
 procedure TOverviewState.Tick(Sender: TObject);
 begin
-  if not Active then
+  // Löst die Sicherung aus, blendet Guard die Streifen aus und danach wieder ein.
+  if not TAtlasIdeSettings.Current.OverviewRuler or not FHost.Guard then
     Exit;
   TAtlasGuard.Run(TAtlasFeature.OverviewRuler,
     procedure

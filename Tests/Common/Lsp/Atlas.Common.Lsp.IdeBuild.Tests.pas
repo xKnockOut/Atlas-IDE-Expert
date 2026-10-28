@@ -15,6 +15,8 @@ type
     procedure ParsesMessagesZeroBased;
     [Test]
     procedure RemembersLastBuildAndRaisesEvent;
+    [Test]
+    procedure TracksRunningCompiles;
   end;
 
 implementation
@@ -97,6 +99,47 @@ begin
     Assert.AreEqual(Int64(1234), Build.LastBuild.DurationMs);
     Assert.IsFalse(Build.LastBuild.Success);
     Assert.AreEqual(3, Integer(Length(Build.LastBuild.Messages)));
+  finally
+    Dispatcher.Free;
+    Build.Free;
+  end;
+end;
+
+procedure TLspIdeBuildTests.TracksRunningCompiles;
+var
+  Build: TLspIdeBuild;
+  Dispatcher: TJsonRpcDispatcher;
+  Events: string;
+begin
+  // Die Projektprüfung pausiert, solange die IDE kompiliert (#1247).
+  Build := TLspIdeBuild.Create;
+  Dispatcher := TJsonRpcDispatcher.Create;
+  try
+    Events := '';
+    Build.OnCompiling :=
+      procedure(ARunning: Boolean)
+      begin
+        if ARunning then
+          Events := Events + '+'
+        else
+          Events := Events + '-';
+      end;
+    Build.Attach(Dispatcher);
+    Notify(Dispatcher, TLspIdeBuild.StartedMethod, '{"group":true,"kind":"make"}');
+    Notify(Dispatcher, TLspIdeBuild.StartedMethod, '{"project":"C:\\P\\A.dproj"}');
+    Notify(Dispatcher, TLspIdeBuild.StartedMethod, '{"project":"C:\\P\\B.dproj"}');
+    Assert.IsTrue(Build.Compiling);
+    Notify(Dispatcher, TLspIdeBuild.FinishedMethod, '{"project":"C:\\P\\A.dproj","success":true}');
+    Assert.IsTrue(Build.Compiling, 'B und die Gruppe laufen noch');
+    // Fehlt das Ende von B, beendet das Ende der Gruppe alles.
+    Notify(Dispatcher, TLspIdeBuild.FinishedMethod, '{"group":true,"success":true}');
+    Assert.IsFalse(Build.Compiling);
+    // Einzelnes Projekt im Hintergrund (#548).
+    Notify(Dispatcher, TLspIdeBuild.StartedMethod, '{"project":"C:\\P\\A.dproj","background":true}');
+    Assert.IsTrue(Build.Compiling);
+    Notify(Dispatcher, TLspIdeBuild.FinishedMethod, '{"project":"c:\\p\\a.dproj","background":true}');
+    Assert.IsFalse(Build.Compiling);
+    Assert.AreEqual('+-+-', Events);
   finally
     Dispatcher.Free;
     Build.Free;
