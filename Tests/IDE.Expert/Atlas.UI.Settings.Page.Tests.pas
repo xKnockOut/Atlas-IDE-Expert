@@ -154,6 +154,10 @@ type
     /// </summary>
     [Test]
     procedure VcsServersTable;
+    /// <summary>#1266: Zustand im Tracker (global und je Verbindung), Laden und Speichern, Werte vom Tracker als
+    /// Vorschläge; eine andere Adresse behält die Werte der Verbindung.</summary>
+    [Test]
+    procedure TrackerWorkflowSettings;
     /// <summary>Freies Layout (#767): Schalter, Spalten, Layouts anlegen, wechseln, umbenennen, löschen; je
     /// Layout eigene Sichtbarkeit; Reveal der neuen Einstellungen.</summary>
     [Test]
@@ -260,6 +264,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.ToolCheck,
+  Atlas.Core.Tracker.Workflow,
   Atlas.Core.Style.Symbol,
   Atlas.UI.Style.Symbol,
   Vcl.Graphics,
@@ -2817,6 +2822,101 @@ begin
   end;
   mChecked := nil;
   mLogins := nil;
+end;
+
+procedure TAtlasSettingsPageTests.TrackerWorkflowSettings;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings, mSaved: TAtlasPluginSettings;
+  mAsked, mField: string;
+  mValues: TAtlasTrackerValueSet;
+  mRead: TArray<TAtlasTrackerConnection>;
+begin
+  mAsked := '';
+  mField := '';
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    // Alle Steuerelemente auf der Seite Issue-Tracker.
+    Assert.IsTrue(SheetOf(mPage.IssuesSyncState) = SheetOf(mPage.IssuesTracker));
+    Assert.IsTrue(SheetOf(mPage.IssuesEndComment) = SheetOf(mPage.IssuesTracker));
+    Assert.IsTrue(SheetOf(mPage.IssuesConnectionStateField) = SheetOf(mPage.IssuesTracker));
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.IssuesStartState := 'In Arbeit';
+    mSettings.IssuesAssignOnStart := True;
+    mSettings.IssuesEndStates := 'Zur Prüfung, Erledigt';
+    mSettings.IssuesConnections := '[{"name": "Firma", "provider": "youtrack", "url": "https://youtrack.firma.local",' +
+      ' "stateField": "Status", "endStates": ["Geprüft"]}]';
+    mPage.LoadFrom(mSettings);
+    Assert.IsTrue(mPage.IssuesSyncState.Checked);
+    Assert.AreEqual('State', mPage.IssuesStateField.Value);
+    Assert.AreEqual('In Arbeit', mPage.IssuesStartState.Value);
+    Assert.IsTrue(mPage.IssuesAssignOnStart.Checked);
+    Assert.AreEqual('Zur Prüfung, Erledigt', mPage.IssuesEndStates.Text);
+    Assert.AreEqual('Erledigt in {branch}.\n{commits}', mPage.IssuesEndComment.Text);
+    // Gewählte Verbindung: ihre Werte, leer = global.
+    Assert.AreEqual('Status', mPage.IssuesConnectionStateField.Value);
+    Assert.AreEqual('', mPage.IssuesConnectionStartState.Value);
+    Assert.AreEqual('Geprüft', mPage.IssuesConnectionEndStates.Text);
+    Assert.IsTrue(mPage.IssuesConnectionStateField.Enabled);
+    mPage.IssuesConnectionEndStates.Text := 'Geprüft; Abgelehnt';
+    Assert.AreEqual(2, Integer(Length(mPage.TrackerConnections[0].EndStates)));
+    // Andere Adresse: Zustandsfeld und Zielzustände der Verbindung bleiben (WithUrl).
+    mPage.IssuesConnectionUrl.Text := 'https://yt.firma.local';
+    Assert.AreEqual('Status', mPage.TrackerConnections[0].StateField);
+    Assert.AreEqual('Abgelehnt', mPage.TrackerConnections[0].EndStates[1]);
+    // Speichern.
+    mPage.IssuesSyncState.Checked := False;
+    mPage.IssuesStateField.Value := ' Status ';
+    mPage.IssuesEndStates.Text := 'Zur Prüfung;; Erledigt';
+    mPage.IssuesEndComment.Text := 'Fertig: {pr}';
+    mSaved := mSettings;
+    mPage.SaveTo(mSaved);
+    Assert.IsFalse(mSaved.IssuesSyncState);
+    Assert.AreEqual('Status', mSaved.IssuesStateField);
+    Assert.AreEqual('Zur Prüfung, Erledigt', mSaved.IssuesEndStates);
+    Assert.AreEqual('Fertig: {pr}', mSaved.IssuesEndComment);
+    mRead := TAtlasTrackerConnections.Read(mSaved.IssuesConnections);
+    Assert.AreEqual('https://yt.firma.local', mRead[0].Url);
+    Assert.AreEqual('Status', mRead[0].StateField);
+    Assert.AreEqual(2, Integer(Length(mRead[0].EndStates)));
+    // „Werte vom Tracker laden“: gewählte Verbindung, Zustandsfeld der Verbindung; Ergebnis als Vorschläge.
+    mPage.IssuesLoadValues.Click;
+    Assert.AreEqual('', mAsked, 'ohne Haken nichts');
+    mPage.OnTrackerValues :=
+      procedure(const AConnection: TAtlasTrackerConnection; const AStateField: string)
+      begin
+        mAsked := AConnection.Name;
+        mField := AStateField;
+      end;
+    mPage.IssuesLoadValues.Click;
+    Assert.AreEqual('Firma', mAsked);
+    Assert.AreEqual('Status', mField);
+    Assert.IsFalse(mPage.IssuesLoadValues.Enabled, 'bis zur Antwort');
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesValuesLoading), mPage.IssuesValuesNote.Caption);
+    mValues := Default(TAtlasTrackerValueSet);
+    mValues.States := TArray<string>.Create('Offen', 'In Arbeit');
+    mValues.StateFields := TArray<string>.Create('Status');
+    mValues.UserFields := TArray<string>.Create('Zuständig');
+    mPage.TrackerValuesDone(mValues, '');
+    Assert.IsTrue(mPage.IssuesLoadValues.Enabled);
+    Assert.AreEqual(2, Integer(Length(mPage.IssuesStartState.Values)));
+    Assert.AreEqual('Zuständig', mPage.IssuesAssigneeField.Values[0]);
+    Assert.AreEqual('Status', mPage.IssuesConnectionStateField.Values[0]);
+    Assert.AreEqual('Status', mPage.IssuesStateField.Value, 'eingegebener Text bleibt');
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsIssuesValuesLoaded, [2, 2]), mPage.IssuesValuesNote.Caption);
+    mPage.TrackerValuesDone(Default(TAtlasTrackerValueSet), 'Keine Rechte');
+    Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SettingsIssuesValuesFailed, ['Keine Rechte']),
+      mPage.IssuesValuesNote.Caption);
+    Assert.AreEqual(2, Integer(Length(mPage.IssuesStartState.Values)), 'Fehler lässt die Vorschläge');
+  finally
+    mHost.Free;
+  end;
+  mAsked := '';
+  mField := '';
 end;
 
 procedure TAtlasSettingsPageTests.WelcomeSettingsRoundTrip;

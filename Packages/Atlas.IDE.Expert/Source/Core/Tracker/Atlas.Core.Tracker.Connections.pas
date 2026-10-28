@@ -21,6 +21,9 @@
 //   damit die Vorgabe „Mir zugewiesen“ in dieser Sprache gilt.
 // - IAtlasTrackerAccess: Anbieter, Token und Transport für Optionsseite und
 //   „Meine Issues“; setzt die Komposition um (Anmeldespeicher, Dialog).
+// - Zustand beim Beginnen und Beenden (#1266): je Verbindung optional
+//   stateField, assigneeField, startState und endStates; leer gelten die
+//   globalen Einstellungen issues.* (TAtlasTrackerWorkflow.ForConnection).
 
 interface
 
@@ -49,10 +52,18 @@ type
     /// <summary>Sprache der Oberfläche ("de", "en"), erkannt beim Prüfen (#1263); '' = unbekannt.</summary>
     Language: string;
     Source: TAtlasTrackerConnectionSource;
+    /// <summary>Zustand beim Beginnen und Beenden je Verbindung (#1266); leer = globale Einstellung.</summary>
+    StateField: string;
+    AssigneeField: string;
+    StartState: string;
+    EndStates: TArray<string>;
     class function Create(const AName, AProvider, AUrl: string): TAtlasTrackerConnection; static;
     /// <summary>Verbindung aus dem Abschnitt tracker der .atlas (schreibgeschützt); Name = AName.</summary>
     class function FromTeamFile(const AName: string; const ATarget: TAtlasTrackerTarget): TAtlasTrackerConnection;
       static;
+    /// <summary>Dieselbe Verbindung mit anderer Adresse; Name, Anbieter, Herkunft und die Werte für Zustand und
+    /// Zuständigkeit bleiben.</summary>
+    function WithUrl(const AUrl: string): TAtlasTrackerConnection;
     /// <summary>Ziel ohne Projekt und Abfrage: genug für Server, Token und Prüfung.</summary>
     function Target: TAtlasTrackerTarget;
     function ReadOnly: Boolean;
@@ -136,15 +147,25 @@ uses
 
 { TAtlasTrackerConnection }
 
+/// <summary>Adresse ohne Leerraum außen und ohne „/“ am Ende.</summary>
+function NormalizedUrl(const AUrl: string): string;
+begin
+  Result := Trim(AUrl);
+  while (Result <> '') and (Result[Length(Result)] = '/') do
+    Delete(Result, Length(Result), 1);
+end;
+
 class function TAtlasTrackerConnection.Create(const AName, AProvider, AUrl: string): TAtlasTrackerConnection;
 begin
   Result.Name := Trim(AName);
   Result.Provider := LowerCase(Trim(AProvider));
-  Result.Url := Trim(AUrl);
-  while (Result.Url <> '') and (Result.Url[Length(Result.Url)] = '/') do
-    Delete(Result.Url, Length(Result.Url), 1);
+  Result.Url := NormalizedUrl(AUrl);
   Result.Language := '';
   Result.Source := TAtlasTrackerConnectionSource.Personal;
+  Result.StateField := '';
+  Result.AssigneeField := '';
+  Result.StartState := '';
+  Result.EndStates := nil;
 end;
 
 class function TAtlasTrackerConnection.FromTeamFile(const AName: string;
@@ -152,6 +173,13 @@ class function TAtlasTrackerConnection.FromTeamFile(const AName: string;
 begin
   Result := Create(AName, ATarget.Provider, ATarget.Url);
   Result.Source := TAtlasTrackerConnectionSource.TeamFile;
+end;
+
+function TAtlasTrackerConnection.WithUrl(const AUrl: string): TAtlasTrackerConnection;
+begin
+  Result := Self;
+  Result.EndStates := Copy(EndStates);
+  Result.Url := NormalizedUrl(AUrl);
 end;
 
 function TAtlasTrackerConnection.Target: TAtlasTrackerTarget;
@@ -208,6 +236,40 @@ begin
     Result := TJSONString(mValue).Value;
 end;
 
+/// <summary>Liste von Texten (#1266, endStates); leere Einträge entfallen.</summary>
+function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
+var
+  mValue, mItem: TJSONValue;
+begin
+  Result := nil;
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONArray then
+    for mItem in TJSONArray(mValue) do
+      if (mItem is TJSONString) and (Trim(TJSONString(mItem).Value) <> '') then
+        Result := Result + [Trim(TJSONString(mItem).Value)];
+end;
+
+/// <summary>Die Felder aus #1266, nur wenn gesetzt: ', "stateField": …' usw.</summary>
+function StateJson(const AItem: TAtlasTrackerConnection): string;
+var
+  mParts: TArray<string>;
+  mState: string;
+begin
+  Result := '';
+  if AItem.StateField <> '' then
+    Result := Result + ', "stateField": ' + Quoted(AItem.StateField);
+  if AItem.AssigneeField <> '' then
+    Result := Result + ', "assigneeField": ' + Quoted(AItem.AssigneeField);
+  if AItem.StartState <> '' then
+    Result := Result + ', "startState": ' + Quoted(AItem.StartState);
+  if Length(AItem.EndStates) = 0 then
+    Exit;
+  mParts := nil;
+  for mState in AItem.EndStates do
+    mParts := mParts + [Quoted(mState)];
+  Result := Result + ', "endStates": [' + string.Join(', ', mParts) + ']';
+end;
+
 class function TAtlasTrackerConnections.Read(const AJson: string): TArray<TAtlasTrackerConnection>;
 var
   mRoot: TJSONValue;
@@ -231,6 +293,10 @@ begin
         (IndexOfName(Result, mConnection.Name) >= 0) then
         Continue;
       mConnection.Language := TAtlasTrackerTemplates.NormalLanguage(TextOf(TJSONObject(mItem), 'language'));
+      mConnection.StateField := Trim(TextOf(TJSONObject(mItem), 'stateField'));
+      mConnection.AssigneeField := Trim(TextOf(TJSONObject(mItem), 'assigneeField'));
+      mConnection.StartState := Trim(TextOf(TJSONObject(mItem), 'startState'));
+      mConnection.EndStates := TextsOf(TJSONObject(mItem), 'endStates');
       Result := Result + [mConnection];
     end;
   finally
@@ -252,7 +318,7 @@ begin
         Quoted(mItem.Url);
       if mItem.Language <> '' then
         mPart := mPart + ', "language": ' + Quoted(mItem.Language);
-      mParts := mParts + [mPart + '}'];
+      mParts := mParts + [mPart + StateJson(mItem) + '}'];
     end;
   Result := '[' + string.Join(', ', mParts) + ']';
 end;
