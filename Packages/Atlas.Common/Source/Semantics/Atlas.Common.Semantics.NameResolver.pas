@@ -373,6 +373,12 @@ type
     /// Aufrufs meinen kann, ohne Auswahl nach den Argumenten (#1007): Überladungen samt geerbter, Deklaration und
     /// Rumpf mit gleichen Parametern einmal. Leer, wenn ACallee nicht auflösbar ist.</summary>
     function CallCandidates(ATree: TSyntaxTree; const AFileName: string; ACallee: TSyntaxNode): TArray<TResolvedSymbol>;
+    /// <summary>Kann ein Mitglied außerhalb des Index den Bezeichner ACallee aus ATree verdecken, sodass
+    /// ACandidate gar nicht gemeint ist (#1326)? Ja bei einem with-Objekt, dessen Typ den Namen nicht kennt, aber
+    /// einen unbekannten Vorfahren hat, und bei einer Methode, deren Klasse einen unbekannten Vorfahren hat, wenn
+    /// ACandidate weder lokal noch ein Mitglied ist (Error aus TStrings statt einer freien Routine Error).</summary>
+    function MayBeHiddenMember(ATree: TSyntaxTree; const AFileName: string; ACallee: TSyntaxNode;
+      const ACandidate: TResolvedSymbol): Boolean;
     /// <summary>Liest die Property AProperty direkt aus einem Feld (read FFeld, read FFeld.X)? False, wenn das
     /// nicht sicher feststeht (kein read, Typ oder Mitglied unbekannt); sonst AReadsField (#1005).</summary>
     function PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;
@@ -3376,6 +3382,35 @@ begin
     Exit;
   Prepare(ATree, AFileName, ACallee.StartOffset);
   Result := ExprCandidates(ACallee);
+end;
+
+function TNameResolver.MayBeHiddenMember(ATree: TSyntaxTree; const AFileName: string; ACallee: TSyntaxNode;
+  const ACandidate: TResolvedSymbol): Boolean;
+var
+  mWith: TSyntaxNode;
+  mIndex: Integer;
+  mType: TResolvedSymbol;
+  mComplete: Boolean;
+begin
+  Result := False;
+  if (ACallee = nil) or (ACallee.Kind <> TSyntaxKind.Identifier) then
+    Exit;
+  Prepare(ATree, AFileName, ACallee.StartOffset);
+  // with-Objekte verdecken alles weiter außen, innerstes zuerst (wie LookupWithOwner).
+  for mWith in EnclosingWiths do
+    for mIndex := mWith.ChildCount - 2 downto 0 do
+    begin
+      if not WithElementType(mWith, mIndex, mType) then
+        Exit(True);
+      if Length(FindMembers(mType, ACallee.Name)) > 0 then
+        Exit;
+      AncestorNames(mType, mComplete);
+      if not mComplete then
+        Exit(True);
+    end;
+  if (ACandidate.Kind = TResolvedKind.Local) or (ACandidate.Container <> '') then
+    Exit;
+  Result := HasUnknownAncestor;
 end;
 
 function TNameResolver.PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;

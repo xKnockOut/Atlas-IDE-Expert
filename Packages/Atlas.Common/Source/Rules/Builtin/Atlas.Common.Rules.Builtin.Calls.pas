@@ -14,7 +14,9 @@
 // in bedingten Zweigen überlässt die Regel dem Compiler: aus dem Index mit
 // Bedingung, aus dieser Datei, wenn die Deklaration nicht immer mit dem
 // Aufruf übersetzt wird (Pascal.ConditionalBranches; der Baum enthält beide
-// Zweige von {$IFDEF} … {$ELSE}). Ein Rumpf ohne
+// Zweige von {$IFDEF} … {$ELSE}). Ebenso Namen, die ein Mitglied eines
+// Vorfahren außerhalb des Index verdecken kann (#1326: Read im with eines
+// TMemoryStream-Nachfahren, Error in einem TStrings-Nachfahren). Ein Rumpf ohne
 // Parameterliste neben seiner Deklaration zählt nicht als zweiter Kopf. Hat
 // eine Funktion zu viele Argumente, muss ihr Ergebnistyp sicher bekannt und
 // nicht prozedural sein (F(1) könnte sonst das Ergebnis aufrufen).
@@ -278,7 +280,7 @@ var
     Result := False;
     CallPath := PathOf(ACallee.StartPos);
     Candidates := Resolver.CallCandidates(AContext.Tree, FileName, ACallee);
-    if Length(Candidates) = 0 then
+    if (Length(Candidates) = 0) or Resolver.MayBeHiddenMember(AContext.Tree, FileName, ACallee, Candidates[0]) then
       Exit;
     Routines := nil;
     Headers := nil;
