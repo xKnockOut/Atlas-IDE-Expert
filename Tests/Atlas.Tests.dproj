@@ -444,6 +444,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Signature\Atlas.Core.Signature.Providers.Server.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Signature.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Color.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Signal.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Palette.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Syntax.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Wrap.pas"/>
@@ -454,6 +455,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Presentation.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Completion\Atlas.Core.Completion.Word.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Style.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Style.Signal.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.XmlDoc.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.OverviewKinds.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.OverviewKinds.Tests.pas"/>
