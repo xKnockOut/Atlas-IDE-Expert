@@ -1649,6 +1649,7 @@ var
   Resolver: TUnitResolver;
   FileExistsFunc: TFunc<string, Boolean>;
   ProjectVersion, Version: string;
+  mInstalled: TArray<string>;
   ConfiguredMissing: Boolean;
   ListUnits: TIndexListUnits;
   Excluded: TIndexExcluded;
@@ -1683,32 +1684,37 @@ begin
     on Exception do
       ProjectVersion := '';
   end;
+  mInstalled := TDelphiInstallation.Versions;
   try
-    if HasContext and (Context.BdsVersion <> '') and (IndexText(Context.BdsVersion, TDelphiInstallation.Versions) >= 0) then
+    if HasContext and (Context.BdsVersion <> '') and (IndexText(Context.BdsVersion, mInstalled) >= 0) then
       Version := Context.BdsVersion
     else
     begin
-      Version := TDelphiVersions.Choose(ASettings.DelphiVersion, ProjectVersion, TDelphiInstallation.Versions,
-        ConfiguredMissing);
+      // Ohne Installation die erwartete Version: Sie liefert nur die Symbole (#1321).
+      Version := TDelphiVersions.Choose(ASettings.DelphiVersion, ProjectVersion, mInstalled, ConfiguredMissing);
       // Die Warnung steht auch an "delphiVersion" in atlas.json (#47).
       if ConfiguredMissing then
         FLogger.Warning(Format('%s: delphiVersion %s ist nicht installiert; automatisch gewählt: %s',
           [FName, ASettings.DelphiVersion, Version]));
     end;
-    if Version <> '' then
+    if TDelphiVersions.IsInstalled(Version, mInstalled) then
     begin
       Installation := TDelphiInstallation.Create(Version);
       FLogger.Info(Format('%s: %s (BDS %s, ProjectVersion %s)',
         [FName, TDelphiVersions.ProductName(Version), Version, ProjectVersion]));
     end
     else
+    begin
       Installation := nil;
+      FLogger.Info(Format('%s: kein Delphi installiert; Symbole wie %s (BDS %s, ProjectVersion %s), ' +
+        'ohne Bibliothekspfade', [FName, TDelphiVersions.ProductName(Version), Version, ProjectVersion]));
+    end;
   except
+    // Version bleibt: CompilerVersion und VERxxx hängen nicht an den Pfaden der Installation (#1321).
     on E: EProjectError do
     begin
       FLogger.Warning('Delphi-Installation nicht gefunden: ' + E.Message);
       Installation := nil;
-      Version := '';
     end;
   end;
   FileExistsFunc :=
