@@ -268,6 +268,9 @@ type
     /// <summary>Treffer der Atlas-Suche im Reiter „Atlas-Suche“ des Fensters Meldungen auflisten (#878,
     /// search.resultsInMessages; Enter bzw. „In Meldungen“ in der Suchleiste). Vorgabe an.</summary>
     SearchResultsInMessages: Boolean;
+    /// <summary>Beim Tippen zum ersten Treffer der Unit bzw. des Bereichs springen statt zum nächsten ab der
+    /// Cursorposition (#1242, search.fromFirstHit). Vorgabe aus.</summary>
+    SearchFromFirstHit: Boolean;
     /// <summary>Taste für die Atlas-Suchleiste (#878, TShortCut, 0 = keine; Vorgabe Strg+F).</summary>
     SearchKey: Integer;
     /// <summary>Nächster Treffer der letzten Atlas-Suche (#878; Vorgabe F3).</summary>
@@ -1310,6 +1313,7 @@ begin
   Result.HideElementKey := $40BE; // Strg+.
   Result.SearchReplaceIde := True;
   Result.SearchResultsInMessages := True;
+  Result.SearchFromFirstHit := False;
   Result.SearchKey := $4046; // Strg+F
   Result.SearchNextKey := $72; // F3
   Result.SearchPreviousKey := $2072; // Umschalt+F3
@@ -1907,6 +1911,7 @@ begin
   SearchReplaceIde := AStore.ReadInteger('SearchReplaceIde', BoolValue(Default.SearchReplaceIde)) <> 0;
   SearchResultsInMessages := AStore.ReadInteger('SearchResultsInMessages',
     BoolValue(Default.SearchResultsInMessages)) <> 0;
+  SearchFromFirstHit := AStore.ReadInteger('SearchFromFirstHit', BoolValue(Default.SearchFromFirstHit)) <> 0;
   SearchKey := AStore.ReadInteger('SearchKey', Default.SearchKey);
   SearchNextKey := AStore.ReadInteger('SearchNextKey', Default.SearchNextKey);
   SearchPreviousKey := AStore.ReadInteger('SearchPreviousKey', Default.SearchPreviousKey);
@@ -2359,6 +2364,7 @@ begin
   AStore.WriteInteger('HideElementKey', HideElementKey);
   AStore.WriteInteger('SearchReplaceIde', BoolValue(SearchReplaceIde));
   AStore.WriteInteger('SearchResultsInMessages', BoolValue(SearchResultsInMessages));
+  AStore.WriteInteger('SearchFromFirstHit', BoolValue(SearchFromFirstHit));
   AStore.WriteInteger('SearchKey', SearchKey);
   AStore.WriteInteger('SearchNextKey', SearchNextKey);
   AStore.WriteInteger('SearchPreviousKey', SearchPreviousKey);

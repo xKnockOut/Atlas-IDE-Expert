@@ -493,6 +493,7 @@ type
     FQuickOpenKey: TEdit;
     FSearchReplace: TCheckBox;
     FSearchMessages: TCheckBox;
+    FSearchFromFirst: TCheckBox;
     FWelcomeEnabled: TCheckBox;
     FWelcomeOpenOnStart: TCheckBox;
     FWelcomeOpenWhenNoProject: TCheckBox;
@@ -2969,6 +2970,7 @@ begin
   FMarks.Bind(FQuickOpenKey, ['QuickOpenKey']);
   FMarks.Bind(FSearchReplace, ['SearchReplaceIde']);
   FMarks.Bind(FSearchMessages, ['SearchResultsInMessages']);
+  FMarks.Bind(FSearchFromFirst, ['SearchFromFirstHit']);
   FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
   FMarks.Bind(FWelcomeOpenOnStart, ['WelcomePageOpenOnStart']);
   FMarks.Bind(FWelcomeOpenWhenNoProject, ['WelcomePageOpenWhenNoProject']);
@@ -4517,6 +4519,7 @@ begin
   AddTitle(TAtlasTextId.SettingsSearchTitle);
   FSearchReplace := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchReplace));
   FSearchMessages := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMessages));
+  FSearchFromFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchFromFirst));
 end;
 
 procedure TAtlasSettingsPage.AddUndoSection;
@@ -5124,6 +5127,7 @@ begin
   FQuickOpenKey.Text := ShortCutToText(TShortCut(ASettings.QuickOpenKey));
   FSearchReplace.Checked := ASettings.SearchReplaceIde;
   FSearchMessages.Checked := ASettings.SearchResultsInMessages;
+  FSearchFromFirst.Checked := ASettings.SearchFromFirstHit;
   FWelcomeEnabled.Checked := ASettings.WelcomePage;
   FWelcomeOpenOnStart.Checked := ASettings.WelcomePageOpenOnStart;
   FWelcomeOpenWhenNoProject.Checked := ASettings.WelcomePageOpenWhenNoProject;
@@ -5574,6 +5578,7 @@ begin
   ASettings.QuickOpenKey := Integer(TextToShortCut(Trim(FQuickOpenKey.Text)));
   ASettings.SearchReplaceIde := FSearchReplace.Checked;
   ASettings.SearchResultsInMessages := FSearchMessages.Checked;
+  ASettings.SearchFromFirstHit := FSearchFromFirst.Checked;
   ASettings.WelcomePage := FWelcomeEnabled.Checked;
   ASettings.WelcomePageOpenOnStart := FWelcomeOpenOnStart.Checked;
   ASettings.WelcomePageOpenWhenNoProject := FWelcomeOpenWhenNoProject.Checked;
