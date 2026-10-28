@@ -424,12 +424,16 @@ end;
 /// <summary>Position des Namens AName im Knoten ANode.</summary>
 function NamePosition(ATree: TSyntaxTree; ANode: TSyntaxNode; const AName: string): TTextPosition;
 var
-  Token: TPascalToken;
+  mIndex: Integer;
 begin
-  for Token in ATree.Tokens do
-    if (Token.Offset >= ANode.StartOffset) and (Token.Offset < ANode.EndOffset) and
-      (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, AName) then
-      Exit(Token.StartPos);
+  // Binär zum ersten Token des Knotens statt ab Dateianfang (#1323).
+  mIndex := ATree.FirstTokenFrom(ANode.StartOffset);
+  while (mIndex <= High(ATree.Tokens)) and (ATree.Tokens[mIndex].Offset < ANode.EndOffset) do
+  begin
+    if (ATree.Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATree.Tokens[mIndex].Text, AName) then
+      Exit(ATree.Tokens[mIndex].StartPos);
+    Inc(mIndex);
+  end;
   Result := ANode.StartPos;
 end;
 
