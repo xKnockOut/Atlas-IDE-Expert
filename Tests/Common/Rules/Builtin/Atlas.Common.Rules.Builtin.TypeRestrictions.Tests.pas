@@ -2,7 +2,7 @@
 
 // Tests der Sprachregeln für Typdeklarationen: operator-declaration-invalid
 // (#1030) mit dem Beispiel samt Korrektur in Deklaration und Rumpf, allen
-// Codes (E2393, E2517, E2518, E2519, E2520, E2521, E2522, E2464), stillen
+// Codes (E2393, E2517, E2518, E2519, E2521, E2522, E2464), stillen
 // Fällen (richtige Operatoren, Aliase, unbekannte Typen) und Abschalten;
 // generic-declaration-invalid (#1029) mit dem Beispiel und je Gruppe von
 // Codes ein gemeldeter und ein stiller Fall, still bei Methodenzuordnungen
@@ -151,22 +151,14 @@ end;
 
 procedure TOperatorDeclarationInvalidTests.IssueExampleWithFix;
 var
-  Source, Fixed: string;
-  Found: TArray<TRuleFinding>;
+  Source: string;
 begin
+  // Beispiel aus #1030: Equal mit Integer-Ergebnis. dcc übersetzt Vergleiche mit anderem Ergebnis als Boolean
+  // (Spring4D Persistence.Criteria, OP1-OP5, #1328); E2520 meldet die Regel daher nicht mehr.
   Source := Geld('    class operator Equal(const A, B: TGeld): Integer;'#10,
     'class operator TGeld.Equal(const A, B: TGeld): Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10);
-  Found := OperatorFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Equal muss Boolean liefern (wie E2520).', Found[0].Message);
-  Assert.AreEqual(5, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(19, Found[0].Range.StartPos.Character);
-  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Boolean als Ergebnis', Found[0].Fixes[0].Title);
-  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
-  Assert.AreEqual(Geld('    class operator Equal(const A, B: TGeld): Boolean;'#10,
-    'class operator TGeld.Equal(const A, B: TGeld): Boolean;'#10'begin'#10'  Result := 0;'#10'end;'#10), Fixed);
-  Assert.AreEqual(0, Integer(Length(OperatorFindings(Fixed))), Fixed);
+  Assert.AreEqual(0, Integer(Length(OperatorFindings(Source))));
+  Assert.AreEqual(0, Integer(Length(OperatorFindings(Geld('    class operator LessThan(const A, B: TGeld): TGeld;'#10)))));
 end;
 
 procedure TOperatorDeclarationInvalidTests.UnknownOperatorName;
@@ -290,7 +282,7 @@ procedure TOperatorDeclarationInvalidTests.OffAndExclude;
 var
   Source: string;
 begin
-  Source := Geld('    class operator Equal(const A, B: TGeld): Integer;'#10);
+  Source := Geld('    class operator Inc(const A: TGeld): Integer;'#10);
   Assert.AreEqual(1, Integer(Length(OperatorFindings(Source, '', 'Source/Geld.pas'))));
   Assert.AreEqual(0, Integer(Length(OperatorFindings(Source, '{"rules": {"operator-declaration-invalid": "off"}}',
     'Source/Geld.pas'))));
@@ -613,12 +605,10 @@ begin
   Assert.AreEqual('5: Helfer dürfen keine Felder deklarieren (wie E2599).|' +
     '7: Helfer dürfen keine Felder deklarieren (wie E2599).|' +
     '9: Class-Helfer dürfen keinen Destruktor einführen (wie E2295).|' +
-    '10: Class-Helfer erlauben keine Klassenkonstruktoren (wie E2358).|' +
     '15: Record-Helfer erlauben keine virtuellen Methoden (wie E2598).|' +
     '16: Die Direktive message ist in Record-Helfern nicht erlaubt (wie E2475).|' +
-    '21: Der Helfer TLH kann nicht als Typ in Deklarationen stehen (wie E2527).|' +
-    '27: Ein Konstruktor im Class-Helfer muss als ersten Befehl den parameterlosen Konstruktor von TList aufrufen ' +
-    '(wie E2296).',
+    '21: Der Helfer TLH kann nicht als Typ in Deklarationen stehen (wie E2527).',
+    // Klassenkonstruktor (Zeile 10) und Konstruktor ohne Aufruf (Zeile 27) übersetzt dcc (Skia4Delphi, #1328).
     Messages(RestrictionFindings(GenericUnit(
     '  TLH = class helper for TList'#10 +
     '    FAnzahl: Integer;'#10 +
@@ -675,7 +665,7 @@ begin
     '    procedure V; virtual; inline;'#10'    constructor Create; inline;'#10 +
     '    function Summe(const A: array of Integer): Integer; inline;'#10'    function Roh: Integer; inline;'#10 +
     '    function Rechnen: Integer; inline;'#10'  end;'#10,
-    'const'#10'  Grenze = 3;'#10'function TA.Roh: Integer;'#10'asm'#10'  mov eax, 1'#10'end;'#10 +
+    'const'#10'  Grenze: Integer = 3;'#10'function TA.Roh: Integer;'#10'asm'#10'  mov eax, 1'#10'end;'#10 +
     'function TA.Rechnen: Integer;'#10'begin'#10'  Result := Grenze;'#10'end;'#10))));
   Assert.AreEqual('7: Die Inline-Routine Aussen darf die lokale Routine Hilfe nicht aufrufen (wie E2501).|' +
     '14: Die eingebettete lokale Routine Mitte darf nicht auf Wert der umgebenden Routine zugreifen (wie E2449).',
@@ -694,6 +684,22 @@ begin
     'const'#10'  Grenze = 3;'#10'function Intern: Integer; inline;'#10'begin'#10'  Result := Grenze;'#10 +
     'end;'#10'function TA.Doppelt(A: Integer): Integer;'#10'begin'#10'  Result := A * 2;'#10'end;'#10 +
     'function TA.Weit: Integer;'#10'begin'#10'  Result := Grenze;'#10'end;'#10))));
+  // Echte Konstanten, Aufzählungswerte und Routinen des implementation-Teils sowie inline nur am Rumpf
+  // übersetzt dcc (mORMot2, Clipper2, HtmlViewer; TR1-TR5, #1328).
+  Assert.AreEqual('', Messages(RestrictionFindings(GenericUnit('  TA = class'#10'  public'#10 +
+    '    function Rechnen: Integer; inline;'#10'    function Hinten: Integer;'#10'  end;'#10 +
+    'function Frei: Integer; inline;'#10,
+    'type'#10'  TFarbe = (fRot, fBlau);'#10'const'#10'  Grenze = 3;'#10 +
+    'function Quadrat(A: Integer): Integer;'#10'begin'#10'  Result := A * A;'#10'end;'#10 +
+    'function TA.Rechnen: Integer;'#10'begin'#10'  Result := Quadrat(Grenze) + Ord(fBlau);'#10'end;'#10 +
+    'function TA.Hinten: Integer;'#10'  inline;'#10'var'#10'  mFarbe: TFarbe;'#10'begin'#10 +
+    '  mFarbe := fRot;'#10'  Result := Ord(mFarbe);'#10'end;'#10 +
+    'function Frei: Integer;'#10'begin'#10'  Result := Quadrat(Grenze);'#10'end;'#10))));
+  // Gegentest: Variable und Typ des implementation-Teils bleiben E2441 (TG1, TG2).
+  Assert.AreEqual('12: Die Inline-Routine Frei aus dem interface-Teil darf Zaehler aus dem implementation-Teil ' +
+    'nicht verwenden (wie E2441).',
+    Messages(RestrictionFindings(GenericUnit('  TLeer = class'#10'  end;'#10'function Frei: Integer; inline;'#10,
+    'var'#10'  Zaehler: Integer;'#10'function Frei: Integer;'#10'begin'#10'  Result := Zaehler;'#10'end;'#10))));
 end;
 
 procedure TTypeRestrictionViolatedTests.ThreadVars;

@@ -24,7 +24,8 @@
 //                        deklariert und hier ohne Typ nur neu aufführen (wie
 //                        E2206; mit Typ übersetzt dcc die Neudeklaration, so
 //                        in DUnitX, JCL und Spring4D, #1328), Accessoren, die nur im
-//                        Vorfahr-Interface stehen (wie E2370), Klassen,
+//                        Vorfahr-Interface stehen (wie E2370, nicht bei
+//                        generischen Interfaces, DUnitX), Klassen,
 //                        Records und Aufzählungen als Vorfahr eines Interfaces
 //                        oder in der Interface-Liste einer Klasse (wie E2205)
 //                        und doppelte Einträge dieser Liste (wie E2208).
@@ -838,7 +839,10 @@ var
           Member.Container]), TRuleConfidence.High);
       for Accessor in Accessors(Child) do
       begin
-        if MatchText(Scan.Tokens[Accessor].Text, Methods) then
+        // Geerbte Accessoren in generischen Interfaces übersetzt dcc (DUnitX IList<T> mit GetCapacity aus
+        // IReadOnlyList<T>; ID2, #1328). Für nicht generische (ID1, IG2) steht der dcc-Lauf aus.
+        if MatchText(Scan.Tokens[Accessor].Text, Methods) or (Own.TypeParams <> '') or
+          (Ancestor.TypeParams <> '') then
           Continue;
         if Scan.Resolver.DeclaredMember(Ancestor, Scan.Tokens[Accessor].Text, Member) and
           (Member.SymbolKind = TIndexSymbolKind.Method) then
