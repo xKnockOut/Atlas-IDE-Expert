@@ -7918,3 +7918,33 @@ Vorbereitung: Projekt A mit YouTrack-Projekt `ATL` (Abschnitt `tracker` der `.at
 | IK20 | Tippen in der Zeile, Zoom (Strg+Mausrad), 150 % DPI, helles und dunkles Design | Unterstreichung folgt dem Text und sitzt unter der Kennung |
 | IK21 | Projekt wechseln (A → B), dann Datei aus A wieder vorn | Muster folgt dem aktiven Projekt (`ATL-…` nur, solange A aktiv ist) |
 | IK22 | IDE mit offenem Tooltip beenden | Entladen ohne Zugriffsverletzung |
+
+## Issues in der Zeilenhistorie (#1275)
+
+Vorbereitung: Projekt A (Git) und Projekt S (SVN), beide mit YouTrack-Projekt `ATL` und hinterlegtem Token; `editor.gitBlame` und `issues.blameLinks` an. In beiden eine Methode `TKunde.Laden`, die drei Commits mit `ATL-1`, `ATL-2` und `ATL-3` (einer davon „ATL-1 und ATL-3“) und ein Commit ohne Kennung geändert haben; in S zusätzlich ein Repository mit 5000 Revisionen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IX1 | In A den Cursor auf eine Zeile aus dem Commit „ATL-2 Rundung“ setzen | Am Zeilenende „Autor, vor … · ATL-2 · ATL-2 Rundung“ (**Abnahme**) |
+| IX2 | Dasselbe in S | „Autor, vor … · ATL-2“ (SVN-blame liefert keinen Betreff; die Kennung kommt aus der ganzen Nachricht) (**Abnahme**) |
+| IX3 | Maus auf die Randanzeige halten | Hover mit Commit, darunter die Link-Zeile „ATL-2 · Titel · Zustand“ (erst „Wird geladen …“, dann der Stand), die Fußzeile „Strg+Klick auf die Kennung: Vorschau“ und der Link „Issues zu dieser Methode (3)“ (die Zahl erscheint nach kurzer Suche) (**Abnahme**) |
+| IX4 | Commit-Nachricht mit zwei Kennungen („ATL-1 und ATL-3“) überfahren | Je Kennung eine Zeile mit Titel und Zustand |
+| IX5 | Im Hover auf die Zeile „ATL-2 …“ klicken | Fenster „Atlas-Issue“ zeigt ATL-2 |
+| IX6 | Strg+Klick auf die Randanzeige | Fenster „Atlas-Issue“ zeigt die erste Kennung; die IDE springt nicht und setzt den Cursor nicht um (Git und SVN) (**Abnahme**) |
+| IX7 | Strg+Umschalt+Klick auf die Randanzeige | Issue im Browser |
+| IX8 | Rechtsklick auf die Randanzeige | Menü „Issue anzeigen“ (fett), „Im Browser öffnen“, „Kennung kopieren“, Trenner, „Issues zu dieser Methode“; bei zwei Kennungen je Kennung ein Untermenü; Umschalt+Rechtsklick öffnet das Menü der IDE |
+| IX9 | Palette: „Issues zu dieser Methode“ mit dem Cursor in `TKunde.Laden` | Ergebnisfenster „Issues zu TKunde.Laden · 3 Issues aus 4 Commits · 1 ohne Kennung“ mit genau ATL-1, ATL-2, ATL-3, je Titel, Zustand, Zeit des letzten Commits und Anzahl der Commits (ATL-1: 2, ATL-3: 2, ATL-2: 1) (**Abnahme**) |
+| IX10 | Dasselbe in S | Dieselbe Liste aus der SVN-Historie (**Abnahme**) |
+| IX11 | In der Liste auf ein Issue klicken, dann einen Commit darunter doppelklicken | Klick öffnet die Vorschau; Doppelklick zeigt Nachricht und Unterschied des Commits |
+| IX12 | Befehl mit dem Cursor außerhalb jeder Methode (uses-Klausel) | „Issues zu Unit Kunde.pas …“ über die ganze Unit |
+| IX13 | Über `TKunde.Laden` drei ungespeicherte Zeilen einfügen, Befehl erneut | Gleiche Liste (der Bereich wird dem Stand im Repository zugeordnet) |
+| IX14 | Neue, nicht übernommene Unit; Befehl | „Kunde2.pas ist noch nicht übernommen; es gibt keine Historie.“ |
+| IX15 | Datei außerhalb einer Arbeitskopie; Befehl | „Die Datei liegt in keiner Arbeitskopie (Git oder SVN).“ |
+| IX16 | In S mit 5000 Revisionen, `issues.blameLinks.maxRevisions` = 200, Befehl auf eine Methode | Liste in unter 5 s (**Abnahme**) |
+| IX17 | `issues.blameLinks.maxRevisions` = 2, Befehl | Nur Issues aus den zwei neuesten Commits der Methode |
+| IX18 | Durch eine Unit scrollen und den Cursor über viele Zeilen bewegen, ohne zu verweilen | Keine Abfrage beim Tracker (Proxy); erst Hover oder Befehl fragen (**Abnahme**) |
+| IX19 | `issues.blameLinks` aus (Schnellschalter) | Zeilenhistorie wie vorher ohne Kennung, Hover ohne Issues, Strg+Klick wie in der IDE, „Issues zu dieser Methode“ fehlt in der Palette (**Abnahme**) |
+| IX20 | Projekt ohne Tracker | Zeilenhistorie ohne Kennung; der Befehl meldet „Für dieses Projekt ist kein Issue-Tracker eingerichtet.“ |
+| IX21 | `issues.preview` aus | Fußzeile „Strg+Klick auf die Kennung: im Browser öffnen“; Klick im Hover öffnet den Browser |
+| IX22 | Commit machen, dann dieselbe Zeile überfahren | Randanzeige und Zahl im Hover folgen dem neuen Stand |
+| IX23 | IDE mit offenem Hover bzw. laufender Suche beenden | Entladen ohne Zugriffsverletzung |

@@ -951,6 +951,8 @@ begin
   Assert.IsTrue(Settings.IssuesPreview, 'Vorschau (#1264) an');
   Assert.IsTrue(Settings.IssuesPreviewComments);
   Assert.IsTrue(Settings.IssuesCodeLinks);
+  Assert.IsTrue(Settings.IssuesBlameLinks);
+  Assert.AreEqual(200, Settings.IssuesBlameMaxRevisions);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -973,7 +975,12 @@ begin
   Settings.IssuesTracker := 'jira';
   Settings.IssuesStart := 'egal';
   Settings.IssuesCommitPattern := '';
+  Settings.IssuesBlameMaxRevisions := 0;
   Settings.Normalize;
+  Assert.AreEqual(1, Settings.IssuesBlameMaxRevisions, 'unter 1: 1');
+  Settings.IssuesBlameMaxRevisions := 100000;
+  Settings.Normalize;
+  Assert.AreEqual(5000, Settings.IssuesBlameMaxRevisions, 'über 5000: 5000');
   Assert.AreEqual('', Settings.IssuesTracker);
   Assert.AreEqual('branch', Settings.IssuesStart);
   Assert.AreEqual('', Settings.IssuesCommitPattern, 'leer = aus');
@@ -989,6 +996,8 @@ begin
   Settings.IssuesPreview := False;
   Settings.IssuesPreviewComments := False;
   Settings.IssuesCodeLinks := False;
+  Settings.IssuesBlameLinks := False;
+  Settings.IssuesBlameMaxRevisions := 75;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -1004,6 +1013,8 @@ begin
   Assert.IsFalse(Loaded.IssuesPreview);
   Assert.IsFalse(Loaded.IssuesPreviewComments);
   Assert.IsFalse(Loaded.IssuesCodeLinks);
+  Assert.IsFalse(Loaded.IssuesBlameLinks);
+  Assert.AreEqual(75, Loaded.IssuesBlameMaxRevisions);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

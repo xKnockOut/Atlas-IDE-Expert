@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5334] of string = (
+  Lines: array[0..5359] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5373,6 +5373,33 @@ const
     '      "x-caption": "Issue-Kennungen im Code",',
     '      "x-captionEn": "Issue keys in code",',
     '      "x-issue": "#1265"',
+    '    },',
+    '    "IssuesBlameLinks": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Issues in der Zeilenhistorie: Kennungen aus der Commit-Nachricht am Ende der Cursorzeile („anna, vor 3 Mon. · ATL-97“), Hover mit Titel und Zustand aus dem Zwischenspeicher der I' +
+      'ssue-Vorschau (sonst im Hintergrund geladen), Strg+Klick öffnet die Vorschau, Rechtsklick ein Menü; Befehl „Issues zu dieser Methode“ listet alle Issues, die die Methode (außerhalb einer Methode die U' +
+      'nit) geändert haben. Aus: Zeilenhistorie wie bisher, der Befehl fehlt.",',
+    '      "x-key": "issues.blameLinks",',
+    '      "x-area": "issues",',
+    '      "x-feature": "BlameIssues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Issues in der Zeilenhistorie",',
+    '      "x-captionEn": "Issues in line history",',
+    '      "x-issue": "#1275"',
+    '    },',
+    '    "IssuesBlameMaxRevisions": {',
+    '      "type": "integer",',
+    '      "default": 200,',
+    '      "minimum": 1,',
+    '      "maximum": 5000,',
+    '      "description": "Höchstzahl durchsuchter Revisionen für „Issues zu dieser Methode“ (git log -L bzw. svn log --diff).",',
+    '      "x-key": "issues.blameLinks.maxRevisions",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-control": "Zahl (1–5000)",',
+    '      "x-issue": "#1275"',
     '    },',
     '    "VcsProvider": {',
     '      "type": "string",',

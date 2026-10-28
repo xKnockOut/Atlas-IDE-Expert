@@ -29,6 +29,10 @@ type
     procedure ScopeIsInnermostMethodOrUnit;
     [Test]
     procedure RepositoryRangeSkipsUnsavedLines;
+    /// <summary>History liest HEAD, ordnet den Pufferbereich zu und fragt git log -L mit den Zeilen im Repository;
+    /// eine nicht übernommene Datei meldet NotCommitted.</summary>
+    [Test]
+    procedure HistoryUsesRepositoryLines;
     [Test]
     procedure BlameRevisionsAreDistinctAndCommitted;
     [Test]
@@ -47,6 +51,7 @@ uses
   System.Diagnostics,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Providers.Svn,
+  Atlas.Core.Vcs.Providers.Git,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.CodeLinks,
   Atlas.Core.Tracker.BlameLinks;
@@ -97,6 +102,38 @@ begin
     Result.Output := Diff
   else
     Result.Output := Xml;
+end;
+
+type
+  /// <summary>Git für History: show liefert den Stand im Repository (ohne: Exit-Code 128), log -L die Commits.
+  /// </summary>
+  THistoryRunner = class(TInterfacedObject, IAtlasVcsRunner)
+  public
+    Head: string;
+    Committed: Boolean;
+    Log: string;
+    Calls: TArray<string>;
+    function Run(const AExecutable: string; const AArguments: TArray<string>; const AWorkingDir: string;
+      ATimeoutMs: Cardinal): TAtlasVcsRunResult;
+  end;
+
+function THistoryRunner.Run(const AExecutable: string; const AArguments: TArray<string>; const AWorkingDir: string;
+  ATimeoutMs: Cardinal): TAtlasVcsRunResult;
+var
+  mLine: string;
+begin
+  mLine := string.Join(' ', AArguments);
+  Calls := Calls + [mLine];
+  Result := TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Ok, 0, nil);
+  if Pos(' show ', mLine) > 0 then
+  begin
+    if Committed then
+      Result.Output := TEncoding.UTF8.GetBytes(Head)
+    else
+      Result.ExitCode := 128;
+  end
+  else if Pos(' -L', mLine) > 0 then
+    Result.Output := TEncoding.UTF8.GetBytes(Log);
 end;
 
 { TAtlasBlameLinksTests }
@@ -197,6 +234,53 @@ begin
   Assert.AreEqual(4, mLast);
   Assert.IsFalse(TAtlasBlameLinks.RepositoryRange(TArray<string>.Create('unit A;'),
     TArray<string>.Create('unit A;', 'neu'), 1, 1, mFirst, mLast), 'nur neue Zeilen');
+end;
+
+procedure TAtlasBlameLinksTests.HistoryUsesRepositoryLines;
+const
+  cHash = '2e17e3b0f83577f8a4a215a8ed44a1fc66f22d59';
+var
+  mRunner: THistoryRunner;
+  mRunnerRef: IAtlasVcsRunner;
+  mVcs: IAtlasVersionControl;
+  mRoot, mFile: string;
+  mBuffer: TArray<string>;
+  mHistory: TAtlasBlameHistory;
+begin
+  if PathDelim = '\' then
+    mRoot := 'C:\Projekte\Kunde'
+  else
+    mRoot := '/projekte/kunde';
+  mFile := mRoot + PathDelim + 'a.pas';
+  mRunner := THistoryRunner.Create;
+  mRunnerRef := mRunner;
+  mRunner.Committed := True;
+  mRunner.Head := 'unit A;' + #10 + 'procedure X;' + #10 + 'begin' + #10 + 'end;' + #10;
+  mRunner.Log := #$1E + cHash + #$1F'anna'#$1F'1793203000'#$1F'ATL-7 X' + #10 + #$1F + #10 + #10 +
+    '@@ -0,0 +2,3 @@' + #10 + '+procedure X;' + #10 + '+begin' + #10 + '+end;' + #10;
+  mVcs := TAtlasGitVersionControl.Create(mRoot, mRunnerRef, 'git.exe', 5000);
+  // Eine ungespeicherte Zeile vorn verschiebt den Bereich im Puffer um eins.
+  mBuffer := TArray<string>.Create('// neu', 'unit A;', 'procedure X;', 'begin', 'end;');
+  mHistory := TAtlasBlameLinks.History(mVcs, mFile, mBuffer, 2, 4, 50);
+  Assert.IsTrue(mHistory.Outcome = TAtlasBlameHistoryOutcome.Ok);
+  Assert.AreEqual(1, Integer(Length(mHistory.Commits)));
+  Assert.AreEqual('ATL-7 X', mHistory.Commits[0].Message);
+  Assert.AreEqual(2, Integer(Length(mRunner.Calls)));
+  Assert.IsTrue(Pos('show HEAD:a.pas', mRunner.Calls[0]) > 0, mRunner.Calls[0]);
+  Assert.IsTrue(Pos('--max-count=50', mRunner.Calls[1]) > 0, mRunner.Calls[1]);
+  Assert.IsTrue(Pos('-L2,4:a.pas', mRunner.Calls[1]) > 0, mRunner.Calls[1]);
+  // Nur die neue Zeile: keine Historie, kein Aufruf von log.
+  mRunner.Calls := nil;
+  mHistory := TAtlasBlameLinks.History(mVcs, mFile, mBuffer, 0, 0, 50);
+  Assert.IsTrue(mHistory.Outcome = TAtlasBlameHistoryOutcome.Ok);
+  Assert.AreEqual(0, Integer(Length(mHistory.Commits)));
+  Assert.AreEqual(1, Integer(Length(mRunner.Calls)));
+  // Nicht übernommen: show scheitert.
+  mRunner.Committed := False;
+  mHistory := TAtlasBlameLinks.History(mVcs, mFile, mBuffer, 2, 4, 50);
+  Assert.IsTrue(mHistory.Outcome = TAtlasBlameHistoryOutcome.NotCommitted);
+  Assert.IsTrue(TAtlasBlameLinks.History(nil, mFile, mBuffer, 2, 4, 50).Outcome =
+    TAtlasBlameHistoryOutcome.Failed);
 end;
 
 procedure TAtlasBlameLinksTests.BlameRevisionsAreDistinctAndCommitted;

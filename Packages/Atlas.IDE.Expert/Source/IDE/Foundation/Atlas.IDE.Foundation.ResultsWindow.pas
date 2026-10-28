@@ -9,7 +9,8 @@
 // Aufrufdiagramm (#1122) ist nur erlaubt, solange DiagramAllowed True liefert
 // (callHierarchy.diagram); ApplySettings überträgt das nach einer Änderung.
 // ShowDataFlow zeigt den Baum des Datenflusses (#690); OnFlowExpand und OnFlowFilter holen die nächste Ebene
-// bzw. die erste neu.
+// bzw. die erste neu. ShowIssues zeigt Issues zu einer Methode (#1275); OnIssueOpen und OnIssueCommit setzt, wer
+// die Liste zeigt.
 
 interface
 
@@ -51,6 +52,9 @@ type
     /// <summary>Datenfluss (#690): nächste Ebene bzw. Filter geändert.</summary>
     OnFlowExpand: TAtlasDataFlowExpand;
     OnFlowFilter: TAtlasDataFlowFilter;
+    /// <summary>Issues zu einer Methode (#1275): Issue öffnen bzw. Commit zeigen.</summary>
+    OnIssueOpen: TAtlasResultsIssueAction;
+    OnIssueCommit: TAtlasResultsIssueAction;
   public
     /// <summary>Fenster zeigen (bei Bedarf anlegen); nil, wenn die IDE keine andockbaren Fenster anbietet.</summary>
     class function Frame: TAtlasResultsFrame; static;
@@ -79,6 +83,10 @@ type
     /// <summary>Baum des Datenflusses (#690) mit Tiefengrenze und den Filtern der Anfrage.</summary>
     class procedure ShowDataFlow(const ATitle: string; ADirection: TAtlasDataFlowDirection;
       const AResult: TAtlasDataFlowResult; AMaxDepth: Integer; AOnlyProject, AExcludeTests: Boolean); static;
+    /// <summary>Issues zu einer Methode bzw. Unit (#1275); AList kennzeichnet die Liste.</summary>
+    class procedure ShowIssues(const ATitle: string; AList: Integer; const AIssues: TArray<TAtlasResultIssue>); static;
+    /// <summary>Text eines Issues nachtragen, solange die Liste AList gezeigt wird; holt nichts nach vorn.</summary>
+    class procedure SetIssueText(AList, AId: Integer; const AText: string); static;
     /// <summary>Frame, falls das Fenster schon existiert; legt nichts an und holt nichts nach vorn.</summary>
     class function ExistingFrame: TAtlasResultsFrame; static;
     /// <summary>Fenstersymbol (#751) zum aktiven IDE-Thema.</summary>
@@ -231,6 +239,18 @@ begin
     begin
       if Assigned(TAtlasIdeResultsWindow.OnFlowFilter) then
         TAtlasIdeResultsWindow.OnFlowFilter(AOnlyProject, AExcludeTests);
+    end;
+  ResultsFrame.OnIssueOpen :=
+    procedure(AList, AId: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnIssueOpen) then
+        TAtlasIdeResultsWindow.OnIssueOpen(AList, AId);
+    end;
+  ResultsFrame.OnIssueCommit :=
+    procedure(AList, AId: Integer)
+    begin
+      if Assigned(TAtlasIdeResultsWindow.OnIssueCommit) then
+        TAtlasIdeResultsWindow.OnIssueCommit(AList, AId);
     end;
   TAtlasIdeDockWindow.ApplyIdeTheme(AFrame);
 end;
@@ -406,6 +426,25 @@ begin
     Target.ShowDataFlow(ATitle, ADirection, AResult, AMaxDepth, AOnlyProject, AExcludeTests);
 end;
 
+class procedure TAtlasIdeResultsWindow.ShowIssues(const ATitle: string; AList: Integer;
+  const AIssues: TArray<TAtlasResultIssue>);
+var
+  mTarget: TAtlasResultsFrame;
+begin
+  mTarget := Frame;
+  if mTarget <> nil then
+    mTarget.ShowIssues(ATitle, AList, AIssues);
+end;
+
+class procedure TAtlasIdeResultsWindow.SetIssueText(AList, AId: Integer; const AText: string);
+var
+  mTarget: TAtlasResultsFrame;
+begin
+  mTarget := ExistingFrame;
+  if mTarget <> nil then
+    mTarget.SetIssueText(AList, AId, AText);
+end;
+
 class function TAtlasIdeResultsWindow.ExistingFrame: TAtlasResultsFrame;
 begin
   Result := nil;
@@ -457,6 +496,8 @@ begin
   OnImpactRunTests := nil;
   OnFlowExpand := nil;
   OnFlowFilter := nil;
+  OnIssueOpen := nil;
+  OnIssueCommit := nil;
   // Meldet ab und gibt die Form nur frei, wenn die IDE sie nicht schon zerstört hat.
   FreeAndNil(Host);
 end;

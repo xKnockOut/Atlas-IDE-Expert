@@ -13,6 +13,9 @@
 //   Repositorys (Git HEAD, SVN BASE); der Puffer kann davon abweichen
 //   (ungespeichert, nicht übernommen). Die Zeilen werden über den
 //   Zeilenvergleich zugeordnet; neue Zeilen am Rand des Bereichs fallen weg.
+// - History: Stand im Repository holen (FileAt), Bereich zuordnen
+//   (RepositoryRange) und die Commits des Bereichs lesen
+//   (IAtlasVcsLineHistory.LineHistory); läuft im Hintergrund.
 // - Group: Commits (neueste zuerst) je Kennung, mit Anzahl und Zeit des
 //   neuesten; Issues mit dem neuesten Commit zuerst, bei Gleichstand nach
 //   Kennung. Commits ohne Kennung zählen nur.
@@ -43,6 +46,19 @@ type
     Unlinked: Integer;
   end;
 
+{$SCOPEDENUMS ON}
+  /// <summary>Ergebnis von History: gelesen, Datei nicht im Repository, git bzw. svn gescheitert.</summary>
+  TAtlasBlameHistoryOutcome = (Ok, NotCommitted, Failed);
+{$SCOPEDENUMS OFF}
+
+  TAtlasBlameHistory = record
+    Outcome: TAtlasBlameHistoryOutcome;
+    /// <summary>Grund bei Failed.</summary>
+    VcsOutcome: TAtlasVcsOutcome;
+    /// <summary>Commits des Bereichs, neueste zuerst; leer, wenn der Bereich noch nicht übernommen ist.</summary>
+    Commits: TArray<TAtlasVcsLineCommit>;
+  end;
+
   TAtlasBlameLinks = class
   public
     /// <summary>Kennungen in AMessage ohne Doppelte, in der Reihenfolge des Auftretens.</summary>
@@ -61,6 +77,10 @@ type
     /// keine Zeile des Bereichs im Repository steht.</summary>
     class function RepositoryRange(const ARepository, ABuffer: TArray<string>; AFirst, ALast: Integer;
       out ARepositoryFirst, ARepositoryLast: Integer): Boolean; static;
+    /// <summary>Commits, die AFirst..ALast (0-basiert in ABuffer, dem Puffer von AFileName) geändert haben, höchstens
+    /// AMaxRevisions; ruft git bzw. svn auf (nur im Hintergrund).</summary>
+    class function History(const AVcs: IAtlasVersionControl; const AFileName: string; const ABuffer: TArray<string>;
+      AFirst, ALast, AMaxRevisions: Integer): TAtlasBlameHistory; static;
     /// <summary>Revisionen aus blame ohne Doppelte und ohne nicht übernommene Zeilen, in Reihenfolge.</summary>
     class function BlameRevisions(const ALines: TArray<TAtlasVcsBlameLine>): TArray<string>; static;
     /// <summary>Kurzform: Git 7 Zeichen, SVN „r123“.</summary>
@@ -74,6 +94,8 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Text.Diff,
+  Atlas.Text.Lines,
+  Atlas.Core.Files.TextFile,
   Atlas.Core.Editor.LineChanges,
   Atlas.Core.Editor.MethodToggle,
   Atlas.Core.Bookmarks.Store;
@@ -228,6 +250,42 @@ begin
       Break;
     end;
   end;
+end;
+
+class function TAtlasBlameLinks.History(const AVcs: IAtlasVersionControl; const AFileName: string;
+  const ABuffer: TArray<string>; AFirst, ALast, AMaxRevisions: Integer): TAtlasBlameHistory;
+var
+  mHistory: IAtlasVcsLineHistory;
+  mBytes: TBytes;
+  mRepository: TArray<string>;
+  mFirst, mLast: Integer;
+begin
+  Result := Default(TAtlasBlameHistory);
+  Result.Outcome := TAtlasBlameHistoryOutcome.Failed;
+  Result.VcsOutcome := TAtlasVcsOutcome.Failed;
+  if (AVcs = nil) or not Supports(AVcs, IAtlasVcsLineHistory, mHistory) then
+    Exit;
+  // Git HEAD bzw. SVN BASE; scheitert es, ist die Datei nicht übernommen (oder git bzw. svn fehlt).
+  Result.VcsOutcome := AVcs.FileAt(AFileName, '', mBytes);
+  if Result.VcsOutcome = TAtlasVcsOutcome.Failed then
+  begin
+    Result.Outcome := TAtlasBlameHistoryOutcome.NotCommitted;
+    Exit;
+  end;
+  if Result.VcsOutcome <> TAtlasVcsOutcome.Ok then
+    Exit;
+  mRepository := TTextLines.SplitLines(TAtlasTextFile.Decode(mBytes).Text);
+  // Ganz neu geschriebener Bereich: keine Historie, aber auch kein Fehler.
+  if not RepositoryRange(mRepository, ABuffer, AFirst, ALast, mFirst, mLast) then
+  begin
+    Result.Outcome := TAtlasBlameHistoryOutcome.Ok;
+    Exit;
+  end;
+  Result.VcsOutcome := mHistory.LineHistory(AFileName, mFirst, mLast, AMaxRevisions, Result.Commits);
+  if Result.VcsOutcome = TAtlasVcsOutcome.Ok then
+    Result.Outcome := TAtlasBlameHistoryOutcome.Ok
+  else
+    Result.Commits := nil;
 end;
 
 class function TAtlasBlameLinks.BlameRevisions(const ALines: TArray<TAtlasVcsBlameLine>): TArray<string>;

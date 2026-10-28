@@ -2,7 +2,7 @@
 
 // Tests für das Ergebnisfenster mit Treffersicherheit (#1119): Abschnitte
 // „Sicher“ und „Erschlossen“, Filter „Nur sichere“, Markierung und Hinweis
-// erschlossener Zeilen und Aufrufer.
+// erschlossener Zeilen und Aufrufer. Issues zu einer Methode (#1275).
 
 interface
 
@@ -35,6 +35,14 @@ type
     procedure TextsOfPlacesFormsAndLimits;
     [Test]
     procedure OtherListsHideImpactControls;
+  end;
+
+  /// <summary>Issues zu einer Methode (#1275): Issues mit Commits, Öffnen, Text nachtragen.</summary>
+  [TestFixture]
+  TAtlasResultsFrameIssueTests = class
+  public
+    [Test]
+    procedure IssuesWithCommitsAndActions;
   end;
 
 implementation
@@ -319,8 +327,76 @@ begin
   end;
 end;
 
+{ TAtlasResultsFrameIssueTests }
+
+function Issue(AId: Integer; const AText: string; const ACommits: TArray<string>): TAtlasResultIssue;
+var
+  mIndex: Integer;
+begin
+  Result := Default(TAtlasResultIssue);
+  Result.Id := AId;
+  Result.Text := AText;
+  SetLength(Result.Commits, Length(ACommits));
+  for mIndex := 0 to High(ACommits) do
+  begin
+    Result.Commits[mIndex].Id := AId * 10 + mIndex;
+    Result.Commits[mIndex].Text := ACommits[mIndex];
+  end;
+end;
+
+procedure TAtlasResultsFrameIssueTests.IssuesWithCommitsAndActions;
+var
+  mHost: TForm;
+  mFrame: TAtlasResultsFrame;
+  mOpened, mShown: string;
+begin
+  mOpened := '';
+  mShown := '';
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasResultsFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.OnIssueOpen :=
+      procedure(AList, AId: Integer)
+      begin
+        mOpened := mOpened + Format('%d/%d ', [AList, AId]);
+      end;
+    mFrame.OnIssueCommit :=
+      procedure(AList, AId: Integer)
+      begin
+        mShown := mShown + Format('%d/%d ', [AList, AId]);
+      end;
+    mFrame.ShowIssues('Issues zu TKunde.Laden', 7, TArray<TAtlasResultIssue>.Create(
+      Issue(0, 'ATL-3 · 2 Commits', TArray<string>.Create('c1', 'c2')),
+      Issue(1, 'ATL-1 · 1 Commit', TArray<string>.Create('c3'))));
+    Assert.IsTrue(mFrame.ShowsIssues);
+    Assert.AreEqual(5, Integer(mFrame.Tree.Items.Count));
+    Assert.AreEqual('ATL-3 · 2 Commits', mFrame.Tree.Items[0].Text);
+    Assert.IsFalse(mFrame.Tree.Items[0].Expanded, 'Commits zugeklappt');
+    Assert.AreEqual('c2', mFrame.Tree.Items[2].Text);
+    // Enter auf dem Issue öffnet es, auf dem Commit zeigt es den Commit.
+    mFrame.Tree.Selected := mFrame.Tree.Items[3];
+    mFrame.OpenSelectedIssue;
+    mFrame.Tree.Selected := mFrame.Tree.Items[2];
+    mFrame.OpenSelectedIssue;
+    Assert.AreEqual('7/1 ', mOpened);
+    Assert.AreEqual('7/1 ', mShown);
+    // Titel nachtragen: nur für die gezeigte Liste.
+    Assert.IsTrue(mFrame.SetIssueText(7, 1, 'ATL-1 · Rabatt · Offen · 1 Commit'));
+    Assert.AreEqual('ATL-1 · Rabatt · Offen · 1 Commit', mFrame.Tree.Items[3].Text);
+    Assert.IsFalse(mFrame.SetIssueText(8, 1, 'alt'), 'andere Liste');
+    Assert.IsFalse(mFrame.SetIssueText(7, 5, 'fehlt'));
+    mFrame.ShowEntries('Andere Liste', nil);
+    Assert.IsFalse(mFrame.ShowsIssues);
+    Assert.IsFalse(mFrame.SetIssueText(7, 1, 'weg'));
+  finally
+    mHost.Free;
+  end;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasResultsFrameRatedTests);
   TDUnitX.RegisterTestFixture(TAtlasResultsFrameImpactTests);
+  TDUnitX.RegisterTestFixture(TAtlasResultsFrameIssueTests);
 
 end.
