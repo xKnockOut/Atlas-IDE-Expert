@@ -809,6 +809,7 @@ var
   mStamp, mKnown: Int64;
   mUnchanged: Boolean;
   mDocument: ITextDocument;
+  mToken: IJsonRpcCancellationToken;
   mItems: TJSONArray;
   mRetry: TEntry;
   mLimit: Int64;
@@ -831,13 +832,14 @@ begin
     Settle(mUri);
     Exit;
   end;
-  // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
+  // Erst in Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben (beim Token je Datei 88 Byte).
   mDocument := TTextDocument.Create(mUri, 'objectpascal', 0, mText);
   mLimit := FFileLimitMs;
   if AEntry.Unlimited then
     mLimit := 0;
+  mToken := TCheckToken.Create(Self, mLimit, not AEntry.Unlimited);
   try
-    mItems := FDiagnose(mDocument, TCheckToken.Create(Self, mLimit, not AEntry.Unlimited));
+    mItems := FDiagnose(mDocument, mToken);
   except
     on EWorkspaceCheckInterrupted do
     begin

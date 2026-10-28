@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## release/1.1: v1.1.1-Issues gemergt (28.10.2026)
+- Gemergt in `release/1.1`: #1220, #1236, #1237, #1246, #1247, #1248, #1255, #1281, #1293, #1296, #1310 und PR 1258 (#1230). `claude/project-thread-iu1p9d` gehört zu v1.2 (auf main), `fix/parser-leeres-then` war schon enthalten und ist gelöscht.
+- Nacharbeit nach Rückmeldung von Marco: Plattform beim Bauen-beim-Öffnen als Auswahlliste; Regelseite (Memos wachsen, Beschriftungen über den Memos, Editorhöhe per `AdjustSize` nach `Restack`); Blocklinien laufen im mitlaufenden Kopf und am unteren Editorrand spitz aus (`TaperBelow` in StickyScroll, `PaintTaper` in Pairs); Lesezeichen-Spalte hinter den Haltepunkten und nach jeder Stufe gezeichnet (Delphi 13), Klick vergibt die kleinste freie Nummer, Vorschau beim Überfahren; Navigation zeigt offene Units statt sie neu zu öffnen (`ShowFile`).
+- Lecks: `TCheckToken` wurde direkt an einen const-Interface-Parameter übergeben (je geprüfter Datei 88 Byte, auch im Server). Ordnerlisten-Cache `TSharedUnitListings` je Testordner (`TShellWorkspace.ClearSharedListings` im TearDown). Einmal-Belegungen in Brotkrumen- und Editorleisten-Tests per `[SetupFixture]` vorgewärmt.
+- Hinweis: Bei Testläufen immer die ganze Zusammenfassung lesen (gefunden/bestanden/Lecks), nicht nur die letzten Zeilen; Lecks zählen nicht als „Failed“.
+- Absturz beim Beenden (#1233): gelesene Adresse liegt im Speicher einer fremden Experten-DLL; Marco will die Commits ab `692f7a65^` (vor der Willkommensseite) nacheinander prüfen.
 ## RAD Studio als LSP-Client (#175)
 - **Anleitung:** `docs/RAD-Studio.md`, Kurzanleitung in `docs/Installation.md` (Abschnitt „Ohne Plugin: Code Insight-Manager“).
 - **Eintrag in RAD Studio:**
