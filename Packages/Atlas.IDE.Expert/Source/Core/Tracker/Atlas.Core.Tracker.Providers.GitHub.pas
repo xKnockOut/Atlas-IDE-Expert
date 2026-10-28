@@ -51,6 +51,8 @@ type
     /// <summary>Basis der REST-API ohne „/“ am Ende; '' ohne Server.</summary>
     class function ApiBase(const ATarget: TAtlasTrackerTarget): string; static;
     class function SearchUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string; static;
+    /// <summary>Suchtext, wie er an /search/issues geht (mit repo: und is:issue).</summary>
+    class function SearchText(const ATarget: TAtlasTrackerTarget): string; static;
     class function PullsUrl(const ATarget: TAtlasTrackerTarget): string; static;
     class function CheckRunsUrl(const ATarget: TAtlasTrackerTarget; const ASha: string): string; static;
     class function StatusUrl(const ATarget: TAtlasTrackerTarget; const ASha: string): string; static;
@@ -80,6 +82,10 @@ type
     function IssuePage(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
     function PullRequestPage(const ATarget: TAtlasTrackerTarget; ANumber: Integer): string;
     function ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
+    function ListUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
+    function SentQuery(const ATarget: TAtlasTrackerTarget): string;
+    function ParseList(const AText: string; AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
+    function LocaleUrl(const ATarget: TAtlasTrackerTarget): string;
   end;
 
 implementation
@@ -144,6 +150,14 @@ begin
     Result := Server + '/api/v3';
 end;
 
+class function TAtlasGitHubTracker.SearchText(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := ATarget.Query;
+  if Result = '' then
+    Result := Query;
+  Result := Result + ' repo:' + ATarget.Project + ' is:issue';
+end;
+
 class function TAtlasGitHubTracker.SearchUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
 var
   Text: string;
@@ -152,10 +166,7 @@ begin
   Result := ApiBase(ATarget);
   if (Result = '') or (ATarget.Project = '') then
     Exit('');
-  Text := ATarget.Query;
-  if Text = '' then
-    Text := Query;
-  Text := Text + ' repo:' + ATarget.Project + ' is:issue';
+  Text := SearchText(ATarget);
   Limit := AMax;
   if Limit < 1 then
     Limit := 1;
@@ -544,6 +555,28 @@ begin
   Result := ApiBase(ATarget);
   if Result <> '' then
     Result := Result + '/user';
+end;
+
+function TAtlasGitHubTracker.ListUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
+begin
+  Result := SearchUrl(ATarget, AMax);
+end;
+
+function TAtlasGitHubTracker.SentQuery(const ATarget: TAtlasTrackerTarget): string;
+begin
+  Result := SearchText(ATarget);
+end;
+
+function TAtlasGitHubTracker.ParseList(const AText: string; AMax: Integer;
+  out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
+begin
+  Result := ParseIssues(AText, AMax, AIssues);
+end;
+
+function TAtlasGitHubTracker.LocaleUrl(const ATarget: TAtlasTrackerTarget): string;
+begin
+  // Die Suchbegriffe von GitHub sind in jeder Sprache englisch.
+  Result := '';
 end;
 
 end.

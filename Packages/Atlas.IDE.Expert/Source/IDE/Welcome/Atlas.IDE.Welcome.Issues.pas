@@ -232,6 +232,7 @@ uses
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Tracker.Projects,
+  Atlas.Core.Tracker.Templates,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Strings,
@@ -532,6 +533,8 @@ begin
       mTeam.Tracker.Url, mTeam.Tracker.Project, ''), TAtlasTrackerProjects.Read(mSettings.IssuesProjects),
       mConnections, AProject, TAtlasIdeFiles.GroupOfProject(AProject));
     Result.Target := TAtlasWelcomeIssues.TargetFor(mResolution, mSettings.IssuesTracker, '');
+    // Sprache der Oberfläche (#1263): Vorgabe „Mir zugewiesen“ in der Sprache, die „Prüfen“ erkannt hat.
+    Result.Target.Language := TAtlasTrackerConnections.LanguageOf(mConnections, Result.Target);
     if mResolution.Found then
       Result.Connection := mResolution.Connection.Name;
     Result.Queries := TAtlasTrackerQueries.Available(TAtlasTrackerQueries.Read(mSettings.IssuesQueries),
@@ -628,6 +631,8 @@ begin
   Result.Picker := TAtlasIdeSettings.Current.IssuesQueryPicker;
   // Fußzeile: die gesendete Abfrage, bei der Vorgabe die des Anbieters.
   Result.QueryText := Target.Query;
+  if (Result.QueryText = '') and (Provider <> nil) and Target.Configured then
+    Result.QueryText := TAtlasTrackerTemplates.DefaultQuery(Provider.Name, Target.Language);
   if (Result.QueryText = '') and (Provider <> nil) and Target.Configured then
     Result.QueryText := Provider.DefaultQuery;
   Result.Querying := (FQueryProject <> '') and SameText(FQueryProject, AProject);

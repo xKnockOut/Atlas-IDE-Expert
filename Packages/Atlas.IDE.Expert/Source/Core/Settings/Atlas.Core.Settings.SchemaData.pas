@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2786] of string = (
+  Lines: array[0..2791] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2859,6 +2859,12 @@ const
     '                "pattern": "^https://[^@/\\s]+(/.*)?$",',
     '                "examples": ["https://youtrack.firma.de", "https://github.com"],',
     '                "description": "Adresse des Trackers, nur https und ohne Benutzer oder Token in der Adresse."',
+    '              },',
+    '              "language": {',
+    '                "type": "string",',
+    '                "enum": ["de", "en"],',
+    '                "description": "Sprache der Oberfläche des Trackers (#1263), erkannt bei „Prüfen“. YouTrack übersetzt die Suchbegriffe; die Vorgabe „Mir zugewiesen“ ist dann assignee: meine #Ungelöst ' +
+      'bzw. assignee: me #Unresolved. Fehlt sie, gilt die Vorgabe des Anbieters."',
     '              }',
     '            }',
     '          }',

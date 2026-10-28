@@ -15,6 +15,10 @@
 //   Zugangsdaten.
 // - ProbeUrl: Adresse, an der „Verbindung prüfen“ (#1260) das Token einmal
 //   ausprobiert; Auswertung in Atlas.Core.Tracker.Connections.
+// - ListUrl, SentQuery, ParseList, LocaleUrl: „Testen“ im Dialog „Abfrage
+//   bearbeiten“ (#1263) schickt die Abfrage einmal und zeigt die gesendete
+//   Abfrage; LocaleUrl liefert die Sprache der Oberfläche (YouTrack), von der
+//   die Vorgabe „Mir zugewiesen“ abhängt (TAtlasTrackerTarget.Language).
 // - TAtlasTrackerIssue: ein Issue der Liste mit den Feldern, die der Bereich
 //   zeigt (GitHub: Labels und verknüpfter Pull Request mit CI-Ampel;
 //   YouTrack: Zustand, Priorität, Sprint).
@@ -84,6 +88,9 @@ type
     Project: string;
     /// <summary>Abfrage in der Sprache des Trackers; '' = Vorgabe des Anbieters.</summary>
     Query: string;
+    /// <summary>Sprache der Oberfläche des Trackers ("de", "en"), erkannt beim Prüfen der Verbindung (#1263);
+    /// '' = unbekannt. Davon hängt die Vorgabe-Abfrage ab (Atlas.Core.Tracker.Templates).</summary>
+    Language: string;
     /// <summary>GitHub ohne Adresse: github.com; GitHub-Adresse mit "/owner/repo" und ohne Projekt: das Projekt
     /// kommt aus der Adresse.</summary>
     class function Create(const AProvider, AUrl, AProject, AQuery: string): TAtlasTrackerTarget; static;
@@ -121,6 +128,16 @@ type
     /// <summary>Adresse für „Verbindung prüfen“ (#1260): der angemeldete Benutzer mit "login" in der Antwort
     /// (YouTrack /api/users/me?fields=login, GitHub /user); '' ohne gültigen Server.</summary>
     function ProbeUrl(const ATarget: TAtlasTrackerTarget): string;
+    /// <summary>Adresse der Liste wie in Fetch (#1263); '' ohne gültigen Server bzw. ohne Projekt (GitHub).
+    /// </summary>
+    function ListUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string;
+    /// <summary>Abfrage, wie sie an den Tracker geht (mit Projekt bzw. Repository, ohne Token).</summary>
+    function SentQuery(const ATarget: TAtlasTrackerTarget): string;
+    /// <summary>Antwort von ListUrl lesen; False, wenn sie keine Liste ist (z. B. eine Anmeldeseite).</summary>
+    function ParseList(const AText: string; AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
+    /// <summary>Sprache der Oberfläche (YouTrack /api/admin/globalSettings/localeSettings); '' ohne (GitHub).
+    /// </summary>
+    function LocaleUrl(const ATarget: TAtlasTrackerTarget): string;
   end;
 
 implementation
@@ -175,6 +192,7 @@ begin
     Delete(Result.Url, Length(Result.Url), 1);
   Result.Project := TrimSlashes(AProject);
   Result.Query := Trim(AQuery);
+  Result.Language := '';
   if Result.Provider <> GitHub then
     Exit;
   if Result.Url = '' then

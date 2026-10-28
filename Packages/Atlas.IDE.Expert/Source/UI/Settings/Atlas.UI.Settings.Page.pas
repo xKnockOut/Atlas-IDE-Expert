@@ -62,9 +62,11 @@ uses
   Atlas.Core.Settings.EventBreakNames,
   Atlas.Text.StepFilter,
   Atlas.Core.Settings.Reassigned,
+  Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Queries,
+  Atlas.Core.Tracker.QueryTest,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -118,6 +120,15 @@ type
   /// <summary>„Hinzufügen …“ der Tabelle Projekte (#1261): .dproj bzw. .groupproj (AFolder False) oder Ordner
   /// wählen; False bei Abbruch.</summary>
   TAtlasTrackerBrowseEvent = reference to function(AFolder: Boolean; out APath: string): Boolean;
+  TAtlasQueryTestDone = reference to procedure(const AResult: TAtlasTrackerQueryTestResult);
+  /// <summary>„Testen“ im Dialog „Abfrage bearbeiten“ (#1263): ATarget (Abfrage, Projekt, Sprache) über
+  /// AConnection im Hintergrund abfragen und ADone im Hauptthread aufrufen.</summary>
+  TAtlasQueryTestEvent = reference to procedure(const AConnection: TAtlasTrackerConnection;
+    const ATarget: TAtlasTrackerTarget; const ADone: TAtlasQueryTestDone);
+  /// <summary>„Bearbeiten …“ der Tabelle Abfragen (#1263): AQuery im Dialog ändern; True bei OK. ATaken: Namen der
+  /// übrigen Abfragen.</summary>
+  TAtlasTrackerQueryEditEvent = reference to function(var AQuery: TAtlasTrackerQuery;
+    const AConnections: TArray<TAtlasTrackerConnection>; const ATaken: TArray<string>): Boolean;
 
   /// <summary>Seite eines Knotens im Baum (#890): der Bereich selbst (Node leer) oder ein Unterpunkt.</summary>
   TAtlasSettingsNodePage = record
@@ -700,6 +711,9 @@ type
     FIssuesQueryNote: TLabel;
     FIssuesQueryAdd: TButton;
     FIssuesQueryRemove: TButton;
+    FIssuesQueryEdit: TButton;
+    FOnTrackerQueryTest: TAtlasQueryTestEvent;
+    FOnTrackerQueryEdit: TAtlasTrackerQueryEditEvent;
     FIssuesQueryPicker: TCheckBox;
     /// <summary>Zeilen, wie die Seite sie zeigt; gespeichert werden die mit Name und Abfrage.</summary>
     FTrackerQueries: TArray<TAtlasTrackerQuery>;
@@ -930,6 +944,7 @@ type
     procedure TrackerQueryProjectChange(Sender: TObject);
     procedure TrackerQueryAddClick(Sender: TObject);
     procedure TrackerQueryRemoveClick(Sender: TObject);
+    procedure TrackerQueryEditClick(Sender: TObject);
     procedure TrackerQueryRowChanged;
     procedure WelcomeLayoutRenameClick(Sender: TObject);
     procedure WelcomeLayoutDeleteClick(Sender: TObject);
@@ -1262,6 +1277,7 @@ type
     property IssuesQueryNote: TLabel read FIssuesQueryNote;
     property IssuesQueryAdd: TButton read FIssuesQueryAdd;
     property IssuesQueryRemove: TButton read FIssuesQueryRemove;
+    property IssuesQueryEdit: TButton read FIssuesQueryEdit;
     property IssuesQueryPicker: TCheckBox read FIssuesQueryPicker;
     property TrackerQueries: TArray<TAtlasTrackerQuery> read FTrackerQueries;
     /// <summary>Zum Testen: Schnellaktionen je Projekt (#764).</summary>
@@ -1509,6 +1525,10 @@ type
     property OnTrackerCheck: TAtlasTrackerConnectionEvent read FOnTrackerCheck write FOnTrackerCheck;
     /// <summary>Vor dem Entfernen einer Verbindung: fragt, ob das Token mit entfernt werden soll.</summary>
     property OnTrackerRemove: TAtlasTrackerConnectionEvent read FOnTrackerRemove write FOnTrackerRemove;
+    /// <summary>„Testen“ im Dialog „Abfrage bearbeiten“ (#1263); nil = Knopf gesperrt.</summary>
+    property OnTrackerQueryTest: TAtlasQueryTestEvent read FOnTrackerQueryTest write FOnTrackerQueryTest;
+    /// <summary>Statt des Dialogs (Tests); nil = TAtlasTrackerQueryDialog.</summary>
+    property OnTrackerQueryEdit: TAtlasTrackerQueryEditEvent read FOnTrackerQueryEdit write FOnTrackerQueryEdit;
     /// <summary>Verbindung aus der .atlas des aktiven Projekts; leer ohne.</summary>
     property OnTrackerTeam: TFunc<TArray<TAtlasTrackerConnection>> read FOnTrackerTeam write FOnTrackerTeam;
     /// <summary>Anbieter der Auswahl (Name wie in issues.connections, Anzeigename); Vorgabe YouTrack und GitHub.
@@ -1558,6 +1578,7 @@ implementation
 uses
   System.Math,
   System.StrUtils,
+  Atlas.UI.Settings.QueryDialog,
   Atlas.Core.Build.Gate,
   Atlas.Core.Build.Verdict,
   Atlas.Core.Debug.OwnCode,
@@ -3205,10 +3226,21 @@ end;
 procedure TAtlasSettingsPage.TrackerCheckDone(const AConnection: TAtlasTrackerConnection);
 var
   mIndex: Integer;
+  mStatus: TAtlasTrackerTokenStatus;
 begin
   for mIndex := High(FTrackerChecking) downto 0 do
     if SameText(FTrackerChecking[mIndex], AConnection.Target.CredentialTarget) then
       Delete(FTrackerChecking, mIndex, 1);
+  // Erkannte Sprache der Oberfläche (#1263) an den persönlichen Verbindungen zu diesem Server merken; gespeichert
+  // mit OK.
+  if Assigned(FOnTrackerState) then
+  begin
+    mStatus := FOnTrackerState(AConnection);
+    if mStatus.Language <> '' then
+      for mIndex := 0 to High(FTrackerConnections) do
+        if SameText(FTrackerConnections[mIndex].Target.CredentialTarget, AConnection.Target.CredentialTarget) then
+          FTrackerConnections[mIndex].Language := mStatus.Language;
+  end;
   RefreshTrackerConnections;
 end;
 
@@ -3661,6 +3693,10 @@ begin
   FIssuesQueryAdd := AddTrackerButton(mPanel, 0, 110, TAtlasTextId.SettingsIssuesProjectAdd, TrackerQueryAddClick);
   FIssuesQueryRemove := AddTrackerButton(mPanel, 116, 100, TAtlasTextId.SettingsIssuesConnectionRemove,
     TrackerQueryRemoveClick);
+  // Dialog mit Vorlagen und „Testen“ (#1263); auch Doppelklick auf eine Zeile.
+  FIssuesQueryEdit := AddTrackerButton(mPanel, 222, 110, TAtlasTextId.SettingsIssuesQueryEdit,
+    TrackerQueryEditClick);
+  FIssuesQueries.OnDblClick := TrackerQueryEditClick;
   Attach(mPanel, FIssuesQueries);
   AddTrackerHint(TAtlasTextId.SettingsIssuesQueriesHint, FIssuesQueries);
   FIssuesQueryPicker := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueryPicker));
@@ -3771,6 +3807,7 @@ begin
   Allow(FIssuesQueryConnection, mEditable);
   Allow(FIssuesQueryProject, mEditable);
   Allow(FIssuesQueryRemove, mEditable);
+  Allow(FIssuesQueryEdit, mEditable);
 end;
 
 procedure TAtlasSettingsPage.TrackerQuerySelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -3880,6 +3917,30 @@ begin
   Delete(FTrackerQueries, FTrackerQuerySelected, 1);
   if FTrackerQuerySelected > High(FTrackerQueries) then
     FTrackerQuerySelected := High(FTrackerQueries);
+  RefreshTrackerQueries;
+end;
+
+procedure TAtlasSettingsPage.TrackerQueryEditClick(Sender: TObject);
+var
+  mQuery: TAtlasTrackerQuery;
+  mTaken: TArray<string>;
+  mIndex: Integer;
+  mOk: Boolean;
+begin
+  if not TrackerQueryEditable then
+    Exit;
+  mQuery := FTrackerQueries[FTrackerQuerySelected];
+  mTaken := nil;
+  for mIndex := 0 to High(FTrackerQueries) do
+    if mIndex <> FTrackerQuerySelected then
+      mTaken := mTaken + [FTrackerQueries[mIndex].Name];
+  if Assigned(FOnTrackerQueryEdit) then
+    mOk := FOnTrackerQueryEdit(mQuery, TrackerRows, mTaken)
+  else
+    mOk := TAtlasTrackerQueryDialog.Execute(mQuery, TrackerRows, mTaken, FOnTrackerQueryTest);
+  if not mOk then
+    Exit;
+  FTrackerQueries[FTrackerQuerySelected] := mQuery;
   RefreshTrackerQueries;
 end;
 

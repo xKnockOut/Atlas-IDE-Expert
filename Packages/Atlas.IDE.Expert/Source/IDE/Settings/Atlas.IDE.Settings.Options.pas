@@ -29,6 +29,9 @@
 // 5 s, TAtlasTrackerChecks), ihr Ergebnis gilt je Server bis zum Entladen;
 // Unregister wartet auf laufende Prüfungen. Das Protokoll nennt nur Anbieter
 // und Zustand, nie Adresse oder Token.
+// Dialog „Abfrage bearbeiten“ (#1263): „Testen“ fragt wie die Prüfung im
+// Hintergrund (höchstens 5 s, TAtlasTrackerChecks.StartQueryTest); das
+// Protokoll nennt nur Anbieter und Ergebnis, nie Adresse, Abfrage oder Token.
 // Tabelle Projekte (#1261): aktives Projekt, geöffnete .groupproj und die
 // Zeile aus dessen .atlas; ShowTrackerProject („zuordnen …“ aus „Meine
 // Issues“) öffnet die Seite mit einer vorbefüllten Zeile.
@@ -127,6 +130,7 @@ uses
   Atlas.Core.Settings.TeamFile,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Projects,
+  Atlas.Core.Tracker.QueryTest,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.TeamFile;
@@ -252,6 +256,9 @@ type
     /// <summary>Prüfung im Hintergrund; ADone danach im Hauptthread.</summary>
     class procedure Start(const AAccess: IAtlasTrackerAccess; const AConnection: TAtlasTrackerConnection;
       const ADone: TProc); static;
+    /// <summary>„Testen“ einer Abfrage (#1263) im Hintergrund; ADone danach im Hauptthread.</summary>
+    class procedure StartQueryTest(const AAccess: IAtlasTrackerAccess; const AConnection: TAtlasTrackerConnection;
+      const ATarget: TAtlasTrackerTarget; const ADone: TAtlasQueryTestDone); static;
     /// <summary>Beim Entladen: auf laufende Prüfungen warten, Ergebnisse freigeben.</summary>
     class procedure Release; static;
   end;
@@ -338,6 +345,60 @@ begin
       TAtlasGuard.Log('Issue-Tracker: Verbindung geprüft (' + TrackerStateKeys[AStatus.State] + ')');
       ADone();
     end);
+end;
+
+class procedure TAtlasTrackerChecks.StartQueryTest(const AAccess: IAtlasTrackerAccess;
+  const AConnection: TAtlasTrackerConnection; const ATarget: TAtlasTrackerTarget; const ADone: TAtlasQueryTestDone);
+const
+  OutcomeKeys: array[TAtlasTrackerQueryOutcome] of string = ('found', 'empty', 'noToken', 'notConfigured',
+    'rejected', 'projectUnknown', 'queryRejected', 'unreadable', 'serverError', 'unreachable');
+var
+  mAccess: IAtlasTrackerAccess;
+  mTarget: TAtlasTrackerTarget;
+  mProvider: IAtlasTrackerProvider;
+  mDone: TAtlasQueryTestDone;
+  mThread: TThread;
+begin
+  mAccess := AAccess;
+  mTarget := ATarget;
+  mProvider := AAccess.Provider(AConnection.Provider);
+  mDone := ADone;
+  if FThreads = nil then
+    FThreads := TList<TThread>.Create;
+  mThread := TThread.CreateAnonymousThread(
+    procedure
+    var
+      mResult: TAtlasTrackerQueryTestResult;
+    begin
+      try
+        // Token aus dem Anmeldespeicher ohne Dialog; ohne Token „kein Token“ und kein Netz.
+        mResult := TAtlasTrackerQueryTest.Run(mProvider, mTarget, mAccess.Transport(mProvider, mTarget));
+      except
+        on E: Exception do
+        begin
+          mResult := TAtlasTrackerQueryTestResult.Create(TAtlasTrackerQueryOutcome.Unreachable, '');
+          TAtlasGuard.Log('Issue-Tracker: Test der Abfrage mit ' + E.ClassName + ' abgebrochen');
+        end;
+      end;
+      if TAtlasShutdown.Signalled then
+        Exit;
+      TAtlasMainThread.Queue(TAtlasFeature.Settings,
+        procedure
+        begin
+          if (FThreads = nil) or not FThreads.Contains(mThread) then
+            Exit;
+          FThreads.Remove(mThread);
+          mThread.WaitFor;
+          mThread.Free;
+          // Anonym: Anbieter und Ergebnis, nie Adresse, Abfrage oder Token.
+          TAtlasGuard.Log('Issue-Tracker: Abfrage getestet (' + mTarget.Provider + ', ' +
+            OutcomeKeys[mResult.Outcome] + ')');
+          mDone(mResult);
+        end);
+    end);
+  mThread.FreeOnTerminate := False;
+  FThreads.Add(mThread);
+  mThread.Start;
 end;
 
 class procedure TAtlasTrackerChecks.Release;
@@ -811,6 +872,13 @@ begin
           if (mKeep <> nil) and (mOwner.FPage <> nil) and (mOwner.FGeneration = mGeneration) then
             mOwner.FPage.TrackerCheckDone(mConnection);
         end);
+    end;
+  FPage.OnTrackerQueryTest :=
+    procedure(const AConnection: TAtlasTrackerConnection; const ATarget: TAtlasTrackerTarget;
+      const ADone: TAtlasQueryTestDone)
+    begin
+      // Der Dialog prüft selbst, ob er noch offen ist.
+      TAtlasTrackerChecks.StartQueryTest(Hooks.Tracker, AConnection, ATarget, ADone);
     end;
   FPage.OnTrackerRemove :=
     procedure(const AConnection: TAtlasTrackerConnection)
