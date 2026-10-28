@@ -1123,14 +1123,14 @@ begin
     Assert.AreEqual('3000', Page.OpenBuildDelayEdit.Text);
     Assert.AreEqual('', Page.OpenBuildExcludeEdit.Text);
     Assert.AreEqual('', Page.OpenBuildConfigEdit.Text);
-    Assert.AreEqual('', Page.OpenBuildPlatformEdit.Text);
+    Assert.AreEqual(0, Page.OpenBuildPlatformChoice.Choice, 'wie im Projekt');
     // Erzeugen, nur das aktive Projekt, 5 s, ein Package ausgeschlossen.
     Page.OpenBuildChoice.Choice := 3;
     Page.OpenBuildScopeChoice.Choice := 1;
     Page.OpenBuildDelayEdit.Text := '5000';
     Page.OpenBuildExcludeEdit.Text := 'Atlas.IDE.Expert.dproj';
     Page.OpenBuildConfigEdit.Text := ' Debug ';
-    Page.OpenBuildPlatformEdit.Text := 'Win64';
+    Page.OpenBuildPlatformChoice.Choice := 2;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.BuildOnOpen);

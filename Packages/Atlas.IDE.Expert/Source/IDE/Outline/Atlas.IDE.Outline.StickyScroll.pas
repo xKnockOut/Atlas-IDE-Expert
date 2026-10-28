@@ -55,6 +55,9 @@ type
     /// <summary>Zeilen, die der Kopf oben im Editor zu AFileName verdeckt; 0 ohne Kopf. Die Blocklinien des
     /// Editors bleiben dort weg, der Kopf zeichnet sie selbst.</summary>
     class function CoveredRows(const AFileName: string): Integer; static;
+    /// <summary>True, wenn die Blocklinie in Spalte AColumn in der ersten Zeile unter dem Kopf spitz beginnen soll:
+    /// Ihr Element ist hinter dem Kopf verschwunden, und ihre Spitze läge im Text der letzten Kopfzeile.</summary>
+    class function TaperBelow(const AFileName: string; AColumn: Integer): Boolean; static;
   end;
 
 implementation
@@ -149,6 +152,9 @@ type
     FCodeLeft: Integer;
     FPaintedTop: Integer;
     FPaintedRows: Integer;
+    /// <summary>Spalten der Linien ohne Kopfzeile, deren Spitze im Text der letzten Kopfzeile läge: Die
+    /// Blocklinien des Editors zeichnen sie spitz in der ersten Zeile unter dem Kopf (TaperBelow).</summary>
+    FTaperColumns: TArray<Integer>;
     /// <summary>Hintergrund des Editors aus einer nicht übermalten Zeile.</summary>
     FBack: TAtlasColor;
     FBackKnown: Boolean;
@@ -491,12 +497,25 @@ begin
       end;
       Exit;
     end;
+    // Mit jedem neu gezeichneten Kopf neu sammeln (DrawGuides).
+    if Row = 0 then
+      FTaperColumns := nil;
     PaintRow(Rect, Row, Context);
   except
     // Zeichnen darf die IDE nie stören.
     on E: Exception do
       TAtlasGuard.Report(TAtlasFeature.StickyScroll, E);
   end;
+end;
+
+function HasColumn(const AColumns: TArray<Integer>; AColumn: Integer): Boolean;
+var
+  Column: Integer;
+begin
+  Result := False;
+  for Column in AColumns do
+    if Column = AColumn then
+      Exit(True);
 end;
 
 procedure TStickyState.DrawGuides(const ARect: TRect; ARowIndex: Integer; const Context: INTACodeEditorPaintContext;
@@ -508,7 +527,7 @@ var
   Settings: TAtlasPluginSettings;
   Owners: Boolean;
   Key: string;
-  TabWidth, Below, Width, X, Offset, FadeHeight: Integer;
+  TabWidth, Below, Width, X, FadeHeight, Offset, Thick: Integer;
   Guide: TAtlasGuide;
   Start: TAtlasStickyGuideStart;
   Colors: TAtlasColors;
@@ -535,7 +554,7 @@ begin
   // Erste Zeile unter dem Kopf: Nur Linien, die dort weiterlaufen, reichen in den Kopf.
   Below := FRowsTop + Length(FRows);
   Colors := TAtlasColors.ForBackground(ABack);
-  // Eingeblendete Linien beginnen in der Farbe des Kopfs.
+  // Die Spitze eingeblendeter Linien beginnt in der Farbe des Kopfs.
   HeadBack := HeaderBack(Colors, ABack);
   if Colors.IsDark then
     Colors := Colors.WithPairs(Settings.PairColorsDark)
@@ -566,13 +585,24 @@ begin
         LineColor := TAtlasColorMath.Mix(LineColor, ABack, Settings.PairGuideOpacity / 100);
       if Start.FadeIn then
       begin
-        // Je Pixelzeile ein Streifen in der Breite des Stifts, von der Kopffarbe zur Linienfarbe. Nur im unteren
-        // Drittel: Die Zeile gehört einem anderen Element (z. B. procedure), der Verlauf reicht nicht in dessen Text.
-        FadeHeight := Max(1, ARect.Height div 3);
+        // Oben spitz zulaufend (Marco 28.10.2026), ab der Oberkante der letzten Kopfzeile wie die Linie eines
+        // Elements mit eigener Kopfzeile. Läge die Spitze im Text dieser Zeile (z. B. procedure), zeichnen sie die
+        // Blocklinien des Editors in der Zeile darunter (TaperBelow). In Pixeln, denn der Strich wird an den Rand
+        // geschoben (siehe oben).
+        if X + Width > Context.EditorState.GetCharacterPosPx(FRows[Start.Row].Indent, Context.EditorLineNum).Left then
+        begin
+          if not HasColumn(FTaperColumns, Guide.Column) then
+            FTaperColumns := FTaperColumns + [Guide.Column];
+          Continue;
+        end;
+        FadeHeight := ARect.Height - 2;
+        // Spitz nach oben: je Pixelzeile ein Streifen, der von 1 Pixel auf die Stiftbreite wächst und von der
+        // Kopffarbe zur Linienfarbe übergeht; bei 1–2 Pixel Stiftbreite sieht man die Spitze sonst nicht.
         for Offset := 0 to FadeHeight - 1 do
         begin
-          Step := TRect.Create(X - Width div 2, ARect.Bottom - FadeHeight + Offset, X - Width div 2 + Width,
-            ARect.Bottom - FadeHeight + Offset + 1);
+          Thick := Max(1, MulDiv(Width, Offset + 1, FadeHeight));
+          Step := TRect.Create(X - (Thick - 1) div 2, ARect.Bottom - FadeHeight + Offset,
+            X - (Thick - 1) div 2 + Thick, ARect.Bottom - FadeHeight + Offset + 1);
           Brush := CreateSolidBrush(ColorToRGB(TColor(TAtlasColorMath.Mix(LineColor, HeadBack,
             TAtlasStickyScroll.FadeWeight(Offset, FadeHeight)))));
           try
@@ -914,6 +944,18 @@ begin
   State := TStickyState(FState);
   if State.FOn and SameText(State.FFileName, AFileName) then
     Result := State.FPaintedRows;
+end;
+
+class function TAtlasIdeStickyScroll.TaperBelow(const AFileName: string; AColumn: Integer): Boolean;
+var
+  State: TStickyState;
+begin
+  Result := False;
+  if FState = nil then
+    Exit;
+  State := TStickyState(FState);
+  Result := State.FOn and (State.FPaintedRows > 0) and SameText(State.FFileName, AFileName) and
+    HasColumn(State.FTaperColumns, AColumn);
 end;
 
 class function TAtlasIdeStickyScroll.Enabled: Boolean;

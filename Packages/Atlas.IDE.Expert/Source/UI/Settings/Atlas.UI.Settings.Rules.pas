@@ -22,9 +22,12 @@
 interface
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   System.JSON,
+  System.Math,
+  System.UITypes,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.StdCtrls,
@@ -81,6 +84,8 @@ type
     FStacked: TArray<TControl>;
     function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
     function AddMemo(AParent: TWinControl): TMemo;
+    /// <summary>Höhe nach Zeilenzahl, damit das Beispiel ganz zu sehen ist.</summary>
+    procedure FitMemo(AMemo: TMemo);
     /// <summary>AControl oben in AParent unter die bisherigen (alTop ordnet nach Top).</summary>
     procedure Stack(AParent: TWinControl; AControl: TControl);
     procedure Restack;
@@ -177,6 +182,8 @@ uses
 const
   Gap = 6;
   ListHeight = 230;
+  /// <summary>Höhe der Beispiel-Memos bei kurzen Beispielen.</summary>
+  MinMemoHeight = 72;
   /// <summary>Auswahl des Schweregrads; Eintrag 0 ist die Vorgabe.</summary>
   SeverityValues: array[0..5] of string = ('', 'error', 'warning', 'info', 'hint', 'off');
   GroupTexts: array[0..13] of TAtlasTextId = (TAtlasTextId.RulesGroupFindBugs, TAtlasTextId.RulesGroupExceptions,
@@ -339,18 +346,37 @@ function TAtlasRulesEditor.AddMemo(AParent: TWinControl): TMemo;
 begin
   Result := TMemo.Create(Self);
   Result.ReadOnly := True;
-  Result.ScrollBars := ssBoth;
+  Result.ScrollBars := ssHorizontal;
   Result.WordWrap := False;
   Result.Font.Name := 'Consolas';
-  Result.Height := 72;
+  Result.Height := MinMemoHeight;
   Stack(AParent, Result);
+end;
+
+procedure TAtlasRulesEditor.FitMemo(AMemo: TMemo);
+const
+  MaxLines = 20;
+var
+  Lines, LineHeight: Integer;
+  Bars: System.UITypes.TScrollStyle;
+begin
+  // Das ganze Beispiel zeigen statt vier Zeilen mit Rollbalken; sehr lange Beispiele bleiben rollbar.
+  Lines := EnsureRange(AMemo.Lines.Count, 1, MaxLines);
+  LineHeight := MulDiv(Abs(AMemo.Font.Height), 5, 4);
+  Bars := ssHorizontal;
+  if AMemo.Lines.Count > MaxLines then
+    Bars := ssBoth;
+  // Nur bei Änderung: ScrollBars legt das Fenster des Memos neu an.
+  if AMemo.ScrollBars <> Bars then
+    AMemo.ScrollBars := Bars;
+  // Nie kleiner als bisher: Kurze Beispiele behalten ihre gewohnte Höhe.
+  AMemo.Height := Max(MinMemoHeight, Lines * LineHeight + GetSystemMetrics(SM_CYHSCROLL) + 8);
 end;
 
 procedure TAtlasRulesEditor.Stack(AParent: TWinControl; AControl: TControl);
 begin
-  // Ein Zähler für alle Behälter: Nur die Reihenfolge innerhalb eines Behälters zählt. Kleine Schritte: Windows
-  // kappt Fensterkoordinaten bei 32767, Memos landeten sonst vor ihren Beschriftungen (TLabel hat kein Fenster).
-  Inc(FNextTop, 10);
+  // Ein Zähler für alle Behälter: Nur die Reihenfolge innerhalb eines Behälters zählt.
+  Inc(FNextTop, 1000);
   AControl.Parent := AParent;
   AControl.Align := alTop;
   AControl.AlignWithMargins := True;
@@ -365,15 +391,16 @@ var
 begin
   // alTop ordnet nach Top. Ausgeblendete Steuerelemente behalten ihr Top aus dem Aufbau, das größer ist als das
   // der inzwischen ausgerichteten Geschwister; eingeblendet rutschten sie ans Ende (#1296). Darum alle in
-  // Aufbaureihenfolge neu durchnummerieren. Von 0 an und in kleinen Schritten, damit kein Wert über 32767 kommt:
-  // Windows kappt dort die Koordinaten der Memos, die Beschriftungen ohne Fenster nicht.
-  Next := 0;
+  // Aufbaureihenfolge neu durchnummerieren, jedes hinter alle bisherigen. In Einerschritten: Mit 1000er-Schritten
+  // kamen die Memos über 32767, dort kappt Windows ihre Koordinaten (die Beschriftungen ohne Fenster nicht), und
+  // „Falsch“/„Richtig“ standen unter statt über ihrem Memo.
+  Next := FNextTop;
   DisableAlign;
   FDetails.DisableAlign;
   try
     for Control in FStacked do
     begin
-      Inc(Next, 10);
+      Inc(Next);
       Control.Top := Next;
     end;
   finally
@@ -695,6 +722,8 @@ begin
       BuildOptions(Row);
       FBad.Lines.Text := Row.Bad;
       FGood.Lines.Text := Row.Good;
+      FitMemo(FBad);
+      FitMemo(FGood);
     end;
     FBadLabel.Visible := Present and (Row.Bad <> '');
     FBad.Visible := FBadLabel.Visible;
