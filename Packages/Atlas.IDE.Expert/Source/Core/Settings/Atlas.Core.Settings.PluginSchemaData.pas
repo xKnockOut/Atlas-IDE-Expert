@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5246] of string = (
+  Lines: array[0..5274] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -2379,6 +2379,16 @@ const
     '      "x-page": "Prüfregeln",',
     '      "x-control": "Schalter „Compilercode zeigen“",',
     '      "x-issue": "#1024"',
+    '    },',
+    '    "CreateIssueKey": {',
+    '      "type": "integer",',
+    '      "default": 0,',
+    '      "description": "Tastenkürzel für „Issue anlegen …“ im Editor (#1268); 0 = keins.",',
+    '      "x-key": "keys.createIssue",',
+    '      "x-area": "keys",',
+    '      "x-format": "shortcut",',
+    '      "x-page": "Befehle",',
+    '      "x-issue": "#1268"',
     '    },',
     '    "ProblemsWindowKey": {',
     '      "type": "integer",',
@@ -5347,6 +5357,26 @@ const
     '      "x-area": "issues",',
     '      "x-page": "Issue-Tracker",',
     '      "x-issue": "#1262"',
+    '    },',
+    '    "IssuesCreate": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Befehl „Issue anlegen …“ im Editor-Kontextmenü (Taste keys.createIssue, Palette Atlas.CreateIssue) und „Für diesen Befund ein Issue anlegen …“ im Fenster „Atlas-Prüfung“ (#1268);' +
+      ' aus = beide fehlen.",',
+    '      "x-key": "issues.create",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-issue": "#1268"',
+    '    },',
+    '    "IssuesCreateIncludeCode": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Codeausschnitt (Auswahl bzw. ±5 Zeilen, bei Befunden die Zeile) in der Beschreibung eines neuen Issues vorschlagen (#1268); aus = das Häkchen „Codeausschnitt“ im Dialog ist nicht' +
+      ' gesetzt.",',
+    '      "x-key": "issues.create.includeCode",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-issue": "#1268"',
     '    }',
     '  },',
     '  "additionalProperties": false',

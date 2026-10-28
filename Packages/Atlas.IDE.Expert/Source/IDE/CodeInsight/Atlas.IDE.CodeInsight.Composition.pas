@@ -169,6 +169,9 @@ uses
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.IDE.Welcome.Issues,
+  Atlas.IDE.Welcome.NewIssue,
+  Atlas.Core.Tracker.NewIssue,
+  Atlas.Core.Problems.Findings,
   Atlas.UI.Welcome.TestResults,
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
@@ -1942,6 +1945,16 @@ begin
     begin
       Result := TAtlasIdeSettings.Current.TrackerLogin and (Welcome <> nil) and (Welcome.Issues <> nil);
     end);
+  // Issue anlegen (#1268): aus Auswahl bzw. TODO im Editor; sichtbar mit issues.create.
+  Add('Atlas.CreateIssue', TAtlasTextId.CreateIssueCommand,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.WelcomePage, TAtlasIdeNewIssue.FromEditor);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeNewIssue.Enabled;
+    end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
     procedure
@@ -3015,6 +3028,17 @@ begin
     begin
       TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
     end;
+  // „Issue anlegen …“ im Editor-Kontextmenü und auf der Taste (#1268).
+  TAtlasIdeEditorCommands.OnCreateIssue :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.WelcomePage, TAtlasIdeNewIssue.FromEditor);
+    end;
+  TAtlasIdeEditorCommands.CreateIssueAvailable :=
+    function: Boolean
+    begin
+      Result := TAtlasIdeNewIssue.Enabled;
+    end;
   TAtlasIdeEditorCommands.OnSignatureHelp :=
     procedure
     begin
@@ -3945,6 +3969,29 @@ begin
       APercent := -1;
       Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
     end;
+  // „Für diesen Befund ein Issue anlegen …“ (#1268): Regel, Meldung, Fundstelle und Zeile je Befund.
+  Hooks.CreateIssue :=
+    procedure(AFindings: TArray<TAtlasFinding>)
+    var
+      mItems: TArray<TAtlasNewIssueFinding>;
+      mFinding: TAtlasFinding;
+    begin
+      mItems := nil;
+      for mFinding in AFindings do
+        mItems := mItems + [TAtlasNewIssueFinding.Create(mFinding.Rule,
+          mFinding.MessageText(TAtlasIdeSettings.Current.ProblemsShowCompilerCode), mFinding.Location,
+          mFinding.LineText)];
+      TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+        procedure
+        begin
+          TAtlasIdeNewIssue.FromFindings(mItems);
+        end);
+    end;
+  Hooks.CanCreateIssue :=
+    function: Boolean
+    begin
+      Result := TAtlasIdeNewIssue.Enabled;
+    end;
   TAtlasIdeProblems.Start(Hooks);
   TAtlasIdeEditorCommands.OnStepList :=
     function(AForward: Boolean): Boolean
@@ -4339,6 +4386,12 @@ begin
   // Bereich „Meine Issues“ (#765): offene Issues aus GitHub bzw. YouTrack (Tracker aus .atlas), „Beginnen“ über die
   // VCS-Schnittstelle (#571), aktuelles Issue im Statusfeld (#591); Token im Anmeldespeicher wie #763.
   Welcome.Issues := CreateWelcomeIssues(Welcome.Projects);
+  // „Issue anlegen …“ (#1268): Tracker, Transport und „Beginnen“ wie „Meine Issues“.
+  TAtlasIdeNewIssue.Start(Welcome.Issues,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
   // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
   Welcome.Unsaved := TAtlasIdeUnsaved.Create(
     procedure(AText: string)
@@ -4510,6 +4563,8 @@ end;
 
 procedure StopWelcome;
 begin
+  // Vor dem Bereich „Meine Issues“: wartet auf laufende Anfragen.
+  TAtlasIdeNewIssue.Stop;
   FreeAndNil(Welcome);
   TAtlasWelcomeViews.Release;
   TAtlasWelcomeSections.ReleaseDefault;

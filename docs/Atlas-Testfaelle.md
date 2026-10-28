@@ -7888,3 +7888,26 @@ Vorbereitung: selbst gehostetes YouTrack mit deutscher Oberfläche als Verbindun
 | TT12 | Verbindung „(alle)“, Vorlagenliste ansehen | Vorlagen aller Anbieter der Verbindungen; GitHub ohne „Aktueller Sprint“ und ohne Sprachangabe |
 | TT13 | Benutzer ohne Leserecht auf die globalen Einstellungen: neue YouTrack-Verbindung, „Prüfen“ | Sprache trotzdem „de“ (Probe mit beiden Vorlagen findet nur mit der deutschen Issues) |
 | TT14 | Englisches YouTrack: „Prüfen“ | `"language": "en"`, Vorgabe `assignee: me #Unresolved` |
+
+## Issue anlegen aus dem Editor und aus Befunden (#1268)
+
+Vorbereitung: YouTrack-Verbindung „Firma“ mit Token, das Projekt der IDE ist `ATL` zugeordnet; Git-Arbeitskopie; GitHub-Verbindung mit Token und Repository `owner/repo`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| NI1 | In einer Unit die Zeile `// TODO Speicherleck beim Schließen` anlegen, Cursor darauf, Rechtsklick › Atlas › „Issue anlegen …“ | Dialog mit Tracker „Firma“, Projekt `ATL`, Titel „Speicherleck beim Schließen“, Beschreibung mit Unit, Zeile, Methode, Branch und Commit; „Codeausschnitt mitsenden“ angehakt, darunter ±5 Zeilen (**Abnahme**) |
+| NI2 | Typ „Bug“, „mir zuweisen“, „Anlegen“ | Issue ATL-… in YouTrack mit Titel, Fundstelle, Code-Block `pascal`, Typ und mir als Zuständigem; die Zeile lautet danach `// TODO ATL-…: Speicherleck beim Schließen`; Kennung in der Zwischenablage; Benachrichtigung „Issue angelegt“ mit „Im Browser öffnen“ (**Abnahme**) |
+| NI3 | Dasselbe mit `{ TODO Fokus setzen }` und `(* TODO Fokus setzen *)` | `{ TODO ATL-…: Fokus setzen }` bzw. `(* TODO ATL-…: Fokus setzen *)` |
+| NI4 | Zeile ohne TODO, drei Zeilen markieren, „Issue anlegen …“ | Titel = erste markierte Zeile, Codeausschnitt = Auswahl; nach „Anlegen“ Frage „Kommentar „// ATL-…“ in die Cursorzeile einfügen?“; Ja hängt ihn an, Nein ändert nichts |
+| NI5 | „Issue anlegen …“, dann „Abbrechen“ | Nichts gesendet (Protokoll ohne Eintrag „Issue anlegen“), Code unverändert (**Abnahme**) |
+| NI6 | Token in YouTrack auf nur Lesen setzen, „Anlegen“ | Dialog bleibt offen: „Der Tracker hat das Anlegen abgelehnt (HTTP 403); der Code bleibt unverändert.“; das TODO bleibt wie es war (**Abnahme**) |
+| NI7 | Fenster „Atlas-Prüfung“, Rechtsklick auf einen Befund, „Für diesen Befund ein Issue anlegen …“ | Titel „Regel: Meldung“, Beschreibung mit Branch und „Befunde:“-Liste (Regelkennung, Meldung, Fundstelle), Codeausschnitt mit der Zeile (**Abnahme**) |
+| NI8 | Drei Befunde markieren, Rechtsklick | Eintrag „Für diese 3 Befunde ein Issue anlegen …“; Titel „3 Befunde in Unit.pas“, Liste mit allen dreien |
+| NI9 | *Optionen › Atlas › Issue-Tracker*: „„Issue anlegen …“ im Editor und bei Befunden“ aus | Eintrag fehlt im Editor-Kontextmenü, im Fenster „Atlas-Prüfung“ und in der Befehlspalette (**Abnahme**) |
+| NI10 | „Codeausschnitt in der Beschreibung vorschlagen“ aus, „Issue anlegen …“ | Häkchen „Codeausschnitt mitsenden“ nicht gesetzt, Ausschnitt ausgegraut (**Abnahme**) |
+| NI11 | Reiter *Befehle*: Taste für „Issue anlegen …“ auf Strg+Alt+I setzen, im Editor drücken | Dialog öffnet sich; ohne Taste (Vorgabe) keine Bindung |
+| NI12 | Tracker-Klappliste auf die GitHub-Verbindung, Projekt `owner/repo`, Typ aus der Liste (Labels), „Anlegen“ | Issue #… auf GitHub mit Label und Text; das TODO bekommt `#…` |
+| NI13 | „gleich beginnen“ anhaken (mit „Meine Issues“ an), „Anlegen“ | Nach dem Anlegen läuft „Beginnen“ wie in „Meine Issues“ (Branch, aktuelles Issue im Statusfeld) |
+| NI14 | Während „Wird angelegt …“ das Fenster schließen wollen | Schließen gesperrt, bis die Antwort da ist (höchstens 10 s) |
+| NI15 | Projekt ohne Zuordnung und ohne Verbindungen, „Issue anlegen …“ | Hinweis „Für dieses Projekt ist kein Issue-Tracker eingerichtet …“; „Anlegen“ gesperrt |
+| NI16 | Protokoll ansehen | Nur „Issue anlegen: youtrack, created“ o. ä.; nie Adresse, Projekt, Titel, Text oder Token |

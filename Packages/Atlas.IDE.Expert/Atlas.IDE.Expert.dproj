@@ -437,7 +437,9 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Queries.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Templates.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.QueryTest.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.NewIssue.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Naming.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Internals.GitHubApi.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.GitHub.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Providers.YouTrack.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas"/>
@@ -578,6 +580,7 @@
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Trends.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.TestResults.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Issues.pas"/>
+        <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.NewIssue.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas"/>
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.QuickActions.pas"/>
@@ -595,6 +598,7 @@
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Trends.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.TestResults.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Issues.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.NewIssue.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Unsaved.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.QuickActions.pas"/>

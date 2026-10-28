@@ -521,6 +521,7 @@ type
     FNextProblemKey: TEdit;
     FPreviousProblemKey: TEdit;
     FProblemsWindowKey: TEdit;
+    FCreateIssueKey: TEdit;
     /// <summary>Fenster „Atlas-Prüfung“, laufende Prüfung und Aktionszeile im Hover (#909).</summary>
     FProblemsWindow: TCheckBox;
     FProblemsWindowScope: TAtlasChoiceBox;
@@ -715,6 +716,8 @@ type
     FOnTrackerQueryTest: TAtlasQueryTestEvent;
     FOnTrackerQueryEdit: TAtlasTrackerQueryEditEvent;
     FIssuesQueryPicker: TCheckBox;
+    FIssuesCreate: TCheckBox;
+    FIssuesCreateIncludeCode: TCheckBox;
     /// <summary>Zeilen, wie die Seite sie zeigt; gespeichert werden die mit Name und Abfrage.</summary>
     FTrackerQueries: TArray<TAtlasTrackerQuery>;
     FTrackerQuerySelected: Integer;
@@ -1279,6 +1282,8 @@ type
     property IssuesQueryRemove: TButton read FIssuesQueryRemove;
     property IssuesQueryEdit: TButton read FIssuesQueryEdit;
     property IssuesQueryPicker: TCheckBox read FIssuesQueryPicker;
+    property IssuesCreate: TCheckBox read FIssuesCreate;
+    property IssuesCreateIncludeCode: TCheckBox read FIssuesCreateIncludeCode;
     property TrackerQueries: TArray<TAtlasTrackerQuery> read FTrackerQueries;
     /// <summary>Zum Testen: Schnellaktionen je Projekt (#764).</summary>
     property WelcomeQuickActions: TCheckBox read FWelcomeQuickActions;
@@ -1467,6 +1472,7 @@ type
     property NextProblemKey: TEdit read FNextProblemKey;
     property PreviousProblemKey: TEdit read FPreviousProblemKey;
     property ProblemsWindowKey: TEdit read FProblemsWindowKey;
+    property CreateIssueKey: TEdit read FCreateIssueKey;
     /// <summary>Zum Testen: Prüffenster und Seite Prüfregeln (#909).</summary>
     property ProblemsWindowCheck: TCheckBox read FProblemsWindow;
     property ArchitectureCheck: TCheckBox read FArchitecture;
@@ -2422,6 +2428,8 @@ begin
   FPreviousProblemKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemPreviousCommand));
   // Fenster „Atlas-Prüfung“ (#909).
   FProblemsWindowKey := AddKey(TAtlasStrings.Text(TAtlasTextId.ProblemsWindowCommand));
+  // „Issue anlegen …“ (#1268), ohne Vorgabe.
+  FCreateIssueKey := AddKey(TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand));
   FUndoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.UndoMenu));
   FRedoKey := AddKey(TAtlasStrings.Text(TAtlasTextId.RedoMenu));
   FEditorKeysPriority := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorKeysPriority));
@@ -3700,6 +3708,9 @@ begin
   Attach(mPanel, FIssuesQueries);
   AddTrackerHint(TAtlasTextId.SettingsIssuesQueriesHint, FIssuesQueries);
   FIssuesQueryPicker := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueryPicker));
+  // „Issue anlegen …“ im Editor und bei Befunden (#1268).
+  FIssuesCreate := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCreate));
+  FIssuesCreateIncludeCode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesCreateIncludeCode));
 end;
 
 function TAtlasSettingsPage.TrackerQueryEditable: Boolean;
@@ -4575,6 +4586,7 @@ begin
   FMarks.Bind(FNextProblemKey, ['NextProblemKey']);
   FMarks.Bind(FPreviousProblemKey, ['PreviousProblemKey']);
   FMarks.Bind(FProblemsWindowKey, ['ProblemsWindowKey']);
+  FMarks.Bind(FCreateIssueKey, ['CreateIssueKey']);
   FMarks.Bind(FUndoKey, ['UndoKey']);
   FMarks.Bind(FRedoKey, ['RedoKey']);
   FMarks.Bind(FUpdatesCheck, ['UpdatesCheck']);
@@ -4838,6 +4850,8 @@ begin
   FMarks.Bind(FIssuesProjects, ['IssuesProjects']);
   FMarks.Bind(FIssuesQueries, ['IssuesQueries']);
   FMarks.Bind(FIssuesQueryPicker, ['IssuesQueryPicker']);
+  FMarks.Bind(FIssuesCreate, ['IssuesCreate']);
+  FMarks.Bind(FIssuesCreateIncludeCode, ['IssuesCreateIncludeCode']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -6804,6 +6818,7 @@ begin
   FNextProblemKey.Text := ShortCutToText(TShortCut(ASettings.NextProblemKey));
   FPreviousProblemKey.Text := ShortCutToText(TShortCut(ASettings.PreviousProblemKey));
   FProblemsWindowKey.Text := ShortCutToText(TShortCut(ASettings.ProblemsWindowKey));
+  FCreateIssueKey.Text := ShortCutToText(TShortCut(ASettings.CreateIssueKey));
   FEditorKeysPriority.Checked := ASettings.EditorKeysPriority;
   FSlashCommands.Checked := ASettings.SlashCommands;
   FGenerateMenu.Checked := ASettings.GenerateMenu;
@@ -7110,6 +7125,8 @@ begin
   if Length(FTrackerQueries) > 0 then
     FTrackerQuerySelected := 0;
   FIssuesQueryPicker.Checked := ASettings.IssuesQueryPicker;
+  FIssuesCreate.Checked := ASettings.IssuesCreate;
+  FIssuesCreateIncludeCode.Checked := ASettings.IssuesCreateIncludeCode;
   RefreshTrackerConnections;
   FWelcomeQuickActions.Checked := ASettings.WelcomePageQuickActions;
   Items := TAtlasWelcomeQuickActions.ParseItems(ASettings.WelcomePageQuickActionsItems);
@@ -7350,6 +7367,7 @@ begin
   ASettings.NextProblemKey := Integer(TextToShortCut(Trim(FNextProblemKey.Text)));
   ASettings.PreviousProblemKey := Integer(TextToShortCut(Trim(FPreviousProblemKey.Text)));
   ASettings.ProblemsWindowKey := Integer(TextToShortCut(Trim(FProblemsWindowKey.Text)));
+  ASettings.CreateIssueKey := Integer(TextToShortCut(Trim(FCreateIssueKey.Text)));
   ASettings.UndoKey := Integer(TextToShortCut(Trim(FUndoKey.Text)));
   ASettings.RedoKey := Integer(TextToShortCut(Trim(FRedoKey.Text)));
   ASettings.UpdatesCheck := FUpdatesCheck.Checked;
@@ -7668,6 +7686,8 @@ begin
   ASettings.IssuesProjects := TrackerProjectsJson;
   ASettings.IssuesQueries := TrackerQueriesJson;
   ASettings.IssuesQueryPicker := FIssuesQueryPicker.Checked;
+  ASettings.IssuesCreate := FIssuesCreate.Checked;
+  ASettings.IssuesCreateIncludeCode := FIssuesCreateIncludeCode.Checked;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
   for mAction := Low(TAtlasQuickAction) to High(TAtlasQuickAction) do

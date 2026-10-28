@@ -365,6 +365,8 @@ type
     ProblemsShowCompilerCode: Boolean;
     /// <summary>Fenster öffnen (TShortCut, 0 = keins; Vorgabe Strg+Alt+P).</summary>
     ProblemsWindowKey: Integer;
+    /// <summary>Taste für „Issue anlegen …“ (#1268, keys.createIssue); 0 = keine.</summary>
+    CreateIssueKey: Integer;
     /// <summary>Kürzel „Zum interface-Teil“ (#1101, keys.gotoInterface); 0 = keins.</summary>
     GotoInterfaceKey: Integer;
     /// <summary>Kürzel „Zum implementation-Teil“ (#1101, keys.gotoImplementation); 0 = keins.</summary>
@@ -1282,6 +1284,10 @@ type
     /// <summary>Klappliste der Abfragen im Bereich „Meine Issues“ (#1262, issues.queryPicker); aus = keine
     /// Klappliste, es gilt die erste passende Abfrage.</summary>
     IssuesQueryPicker: Boolean;
+    /// <summary>„Issue anlegen …“ im Editor und bei Befunden (#1268, issues.create).</summary>
+    IssuesCreate: Boolean;
+    /// <summary>Codeausschnitt in der Beschreibung vorschlagen (#1268, issues.create.includeCode).</summary>
+    IssuesCreateIncludeCode: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -1633,6 +1639,7 @@ begin
   Result.ProblemsCompilerMerge := 'merge';
   Result.ProblemsShowCompilerCode := True;
   Result.ProblemsWindowKey := $C050; // Strg+Alt+P
+  Result.CreateIssueKey := 0;
   Result.GotoInterfaceKey := 0;
   Result.GotoImplementationKey := 0;
   Result.ProblemsLive := True;
@@ -1999,6 +2006,8 @@ begin
   Result.IssuesProjects := '[]';
   Result.IssuesQueries := '[]';
   Result.IssuesQueryPicker := True;
+  Result.IssuesCreate := True;
+  Result.IssuesCreateIncludeCode := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2225,6 +2234,7 @@ begin
   ProblemsWindowClosedUnits := Choice(ProblemsWindowClosedUnits, ['dimmed', 'normal', 'hidden']);
   ProblemsCompilerMerge := Choice(ProblemsCompilerMerge, ['merge', 'both']);
   ProblemsWindowKey := EnsureRange(ProblemsWindowKey, 0, $FFFF);
+  CreateIssueKey := EnsureRange(CreateIssueKey, 0, $FFFF);
   GotoInterfaceKey := EnsureRange(GotoInterfaceKey, 0, $FFFF);
   GotoImplementationKey := EnsureRange(GotoImplementationKey, 0, $FFFF);
   NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
@@ -2355,6 +2365,7 @@ begin
   ProblemsShowCompilerCode := AStore.ReadInteger('ProblemsShowCompilerCode',
     BoolValue(Default.ProblemsShowCompilerCode)) <> 0;
   ProblemsWindowKey := AStore.ReadInteger('ProblemsWindowKey', Default.ProblemsWindowKey);
+  CreateIssueKey := AStore.ReadInteger('CreateIssueKey', Default.CreateIssueKey);
   GotoInterfaceKey := AStore.ReadInteger('GotoInterfaceKey', Default.GotoInterfaceKey);
   GotoImplementationKey := AStore.ReadInteger('GotoImplementationKey', Default.GotoImplementationKey);
   ProblemsLive := AStore.ReadInteger('ProblemsLive', BoolValue(Default.ProblemsLive)) <> 0;
@@ -2792,6 +2803,9 @@ begin
   IssuesProjects := AStore.ReadString('IssuesProjects', Default.IssuesProjects);
   IssuesQueries := AStore.ReadString('IssuesQueries', Default.IssuesQueries);
   IssuesQueryPicker := AStore.ReadInteger('IssuesQueryPicker', BoolValue(Default.IssuesQueryPicker)) <> 0;
+  IssuesCreate := AStore.ReadInteger('IssuesCreate', BoolValue(Default.IssuesCreate)) <> 0;
+  IssuesCreateIncludeCode := AStore.ReadInteger('IssuesCreateIncludeCode',
+    BoolValue(Default.IssuesCreateIncludeCode)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -2896,6 +2910,7 @@ begin
   AStore.WriteString('ProblemsCompilerMerge', ProblemsCompilerMerge);
   AStore.WriteInteger('ProblemsShowCompilerCode', BoolValue(ProblemsShowCompilerCode));
   AStore.WriteInteger('ProblemsWindowKey', ProblemsWindowKey);
+  AStore.WriteInteger('CreateIssueKey', CreateIssueKey);
   AStore.WriteInteger('GotoInterfaceKey', GotoInterfaceKey);
   AStore.WriteInteger('GotoImplementationKey', GotoImplementationKey);
   AStore.WriteInteger('ProblemsLive', BoolValue(ProblemsLive));
@@ -3259,6 +3274,8 @@ begin
   AStore.WriteString('IssuesProjects', IssuesProjects);
   AStore.WriteString('IssuesQueries', IssuesQueries);
   AStore.WriteInteger('IssuesQueryPicker', BoolValue(IssuesQueryPicker));
+  AStore.WriteInteger('IssuesCreate', BoolValue(IssuesCreate));
+  AStore.WriteInteger('IssuesCreateIncludeCode', BoolValue(IssuesCreateIncludeCode));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

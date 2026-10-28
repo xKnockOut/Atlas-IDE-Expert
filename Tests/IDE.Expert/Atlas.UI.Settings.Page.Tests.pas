@@ -2374,6 +2374,9 @@ begin
     Assert.IsFalse(Page.WelcomeIssues.Checked);
     Assert.AreEqual(0, Page.IssuesTracker.Choice);
     Assert.IsTrue(Page.IssuesQueryPicker.Checked, 'Klappliste an (#1262)');
+    Assert.IsTrue(Page.IssuesCreate.Checked, '„Issue anlegen …“ an (#1268)');
+    Assert.IsTrue(Page.IssuesCreateIncludeCode.Checked, 'Codeausschnitt vorgeschlagen (#1268)');
+    Assert.AreEqual('', Page.CreateIssueKey.Text, 'ohne Taste');
     Assert.AreEqual(0, Page.IssuesStart.Choice);
     Assert.AreEqual('', Page.IssuesBranchPattern.Text);
     Assert.AreEqual('', Page.IssuesBranchBase.Text);
@@ -2430,6 +2433,9 @@ begin
     Page.WelcomeIssues.Checked := True;
     Page.IssuesTracker.Choice := 2;
     Page.IssuesQueryPicker.Checked := False;
+    Page.IssuesCreate.Checked := False;
+    Page.IssuesCreateIncludeCode.Checked := False;
+    Page.CreateIssueKey.Text := ShortCutToText($4049);
     Page.IssuesStart.Choice := 1;
     Page.IssuesBranchPattern.Text := ' {kennung}/{kurztitel} ';
     Page.IssuesBranchBase.Text := ' develop ';
@@ -2494,6 +2500,9 @@ begin
     Assert.IsTrue(Saved.WelcomePageIssues);
     Assert.AreEqual('youtrack', Saved.IssuesTracker);
     Assert.IsFalse(Saved.IssuesQueryPicker);
+    Assert.IsFalse(Saved.IssuesCreate, 'Befehl abschaltbar (#1268)');
+    Assert.IsFalse(Saved.IssuesCreateIncludeCode);
+    Assert.AreEqual($4049, Saved.CreateIssueKey, 'Strg+I');
     Assert.AreEqual('remember', Saved.IssuesStart);
     Assert.AreEqual('{kennung}/{kurztitel}', Saved.IssuesBranchPattern);
     Assert.AreEqual('develop', Saved.IssuesBranchBase);

@@ -25,7 +25,8 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.Tracker.Contract;
+  Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Internals.GitHubApi;
 
 type
   /// <summary>Offener Pull Request, wie ihn /pulls liefert.</summary>
@@ -42,7 +43,7 @@ type
   public const
     ProviderName = 'github';
     Query = 'assignee:@me state:open';
-    ApiHost = 'https://api.github.com';
+    ApiHost = TAtlasGitHubApi.ApiHost;
     /// <summary>Höchstens so viele Pull Requests bekommen eine Ampel.</summary>
     MaxChecks = 8;
     /// <summary>Höchstens so viele offene Pull Requests werden gelesen.</summary>
@@ -138,16 +139,8 @@ end;
 { TAtlasGitHubTracker }
 
 class function TAtlasGitHubTracker.ApiBase(const ATarget: TAtlasTrackerTarget): string;
-var
-  Server: string;
 begin
-  Server := ATarget.Server;
-  if Server = '' then
-    Exit('');
-  if (Server = 'https://github.com') or (Server = 'https://www.github.com') then
-    Result := ApiHost
-  else
-    Result := Server + '/api/v3';
+  Result := TAtlasGitHubApi.Base(ATarget);
 end;
 
 class function TAtlasGitHubTracker.SearchText(const ATarget: TAtlasTrackerTarget): string;
