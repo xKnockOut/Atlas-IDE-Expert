@@ -25,6 +25,12 @@
 //   Anhangsliste: Dateien (/user-attachments/files/…) aus Beschreibung und
 //   Kommentaren gelten als Anhänge und öffnen im Browser, weil das Token nur
 //   an die API geht.
+// - Zustand und Kommentar (#1266, IAtlasTrackerWriter): Kommentar mit POST
+//   …/issues/<n>/comments, danach Labels, Zuständige und Zustand in einem
+//   PATCH …/issues/<n> (Zustand = Label; das Label aus „Beginnen“ entfällt;
+//   ein Erledigt-Zustand schließt das Issue mit state_reason "completed").
+//   „Mir zuweisen“ fragt vorher /user. Werte für die Klapplisten: Labels
+//   (…/labels) und mögliche Zuständige (…/assignees).
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -46,7 +52,7 @@ type
     Sha: string;
   end;
 
-  TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider)
+  TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter)
   public const
     ProviderName = 'github';
     Query = 'assignee:@me state:open';
@@ -93,6 +99,21 @@ type
       static;
     /// <summary>Dateien in Beschreibung und Kommentaren als Anhänge (im Browser).</summary>
     class function FileAttachments(const ADetails: TAtlasTrackerDetails): TArray<TAtlasTrackerAttachment>; static;
+    /// <summary>AState schließt das Issue statt ein Label zu setzen (Erledigt, Done, Closed, Geschlossen, Completed,
+    /// Fertig; ohne Groß-/Kleinschreibung).</summary>
+    class function ClosesIssue(const AState: string): Boolean; static;
+    /// <summary>Inhalt für …/comments: {"body": AText}.</summary>
+    class function CommentJson(const AText: string): string; static;
+    /// <summary>Labels und Zuständige aus /issues/&lt;n&gt;; False bei ungültigem JSON.</summary>
+    class function ParseAssignment(const AJson: string; out ALabels, AAssignees: TArray<string>): Boolean; static;
+    /// <summary>PATCH-Inhalt für AChange auf dem Stand ALabels/AAssignees; AMe = eigener Anmeldename. '' = nichts
+    /// zu ändern.</summary>
+    class function PatchJson(const ALabels, AAssignees: TArray<string>; const AChange: TAtlasTrackerChange;
+      const AMe: string): string; static;
+    /// <summary>Werte "name" (Labels) bzw. "login" (Zuständige) einer Liste; False bei ungültigem JSON.</summary>
+    class function ParseNames(const AJson, AField: string; out AValues: TArray<string>): Boolean; static;
+    /// <summary>Fehlertext ("message") einer Antwort; '' ohne.</summary>
+    class function ErrorMessage(const AJson: string): string; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -106,6 +127,12 @@ type
     function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
       out AError: TAtlasCiFetchError): Boolean;
+    { IAtlasTrackerWriter }
+    function Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      const AChange: TAtlasTrackerChange; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+    function Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      AKind: TAtlasTrackerValueKind; const AField: string; ATimeoutMs: Integer;
+      out AValues: TArray<string>): TAtlasTrackerWriteResult;
   end;
 
 implementation
@@ -868,6 +895,287 @@ begin
     ParseTimeline(mText, ATarget.Project, mLinks) then
     ADetails.Links := mLinks;
   ADetails.Attachments := FileAttachments(ADetails);
+end;
+
+{ IAtlasTrackerWriter (#1266) }
+
+const
+  ClosingStates: array[0..5] of string = ('Erledigt', 'Done', 'Closed', 'Geschlossen', 'Completed', 'Fertig');
+
+class function TAtlasGitHubTracker.ClosesIssue(const AState: string): Boolean;
+var
+  mState: string;
+begin
+  Result := False;
+  for mState in ClosingStates do
+    if SameText(mState, Trim(AState)) then
+      Exit(True);
+end;
+
+class function TAtlasGitHubTracker.CommentJson(const AText: string): string;
+var
+  mObject: TJSONObject;
+begin
+  mObject := TJSONObject.Create;
+  try
+    mObject.AddPair('body', AText);
+    Result := mObject.ToJSON;
+  finally
+    mObject.Free;
+  end;
+end;
+
+function NamesOf(AValue: TJSONValue; const AField: string): TArray<string>;
+var
+  mItem: TJSONValue;
+  mText: string;
+begin
+  Result := nil;
+  if AValue is TJSONArray then
+    for mItem in TJSONArray(AValue) do
+      if mItem is TJSONObject then
+      begin
+        mText := Trim(TextOf(TJSONObject(mItem), AField));
+        if mText <> '' then
+          Result := Result + [mText];
+      end;
+end;
+
+class function TAtlasGitHubTracker.ParseAssignment(const AJson: string;
+  out ALabels, AAssignees: TArray<string>): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  ALabels := nil;
+  AAssignees := nil;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    Result := mValue is TJSONObject;
+    if not Result then
+      Exit;
+    ALabels := NamesOf(TJSONObject(mValue).Values['labels'], 'name');
+    AAssignees := NamesOf(TJSONObject(mValue).Values['assignees'], 'login');
+  finally
+    mValue.Free;
+  end;
+end;
+
+function IndexOfText(const AItems: TArray<string>; const AText: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AItems) do
+    if SameText(AItems[mIndex], AText) then
+      Exit(mIndex);
+  Result := -1;
+end;
+
+function JsonList(const AItems: TArray<string>): TJSONArray;
+var
+  mItem: string;
+begin
+  Result := TJSONArray.Create;
+  for mItem in AItems do
+    Result.Add(mItem);
+end;
+
+class function TAtlasGitHubTracker.PatchJson(const ALabels, AAssignees: TArray<string>;
+  const AChange: TAtlasTrackerChange; const AMe: string): string;
+var
+  mObject: TJSONObject;
+  mLabels, mAssignees: TArray<string>;
+  mState, mPrevious: string;
+  mIndex: Integer;
+  mClose, mLabelsChanged, mAssigneesChanged: Boolean;
+begin
+  Result := '';
+  mLabels := Copy(ALabels);
+  mAssignees := Copy(AAssignees);
+  mState := Trim(AChange.State);
+  mPrevious := Trim(AChange.PreviousState);
+  mClose := (mState <> '') and ClosesIssue(mState);
+  mLabelsChanged := False;
+  if mState <> '' then
+  begin
+    // Der Zustand aus „Beginnen“ gilt nicht mehr.
+    mIndex := IndexOfText(mLabels, mPrevious);
+    if (mPrevious <> '') and not SameText(mPrevious, mState) and (mIndex >= 0) then
+    begin
+      Delete(mLabels, mIndex, 1);
+      mLabelsChanged := True;
+    end;
+    if not mClose and (IndexOfText(mLabels, mState) < 0) then
+    begin
+      mLabels := mLabels + [mState];
+      mLabelsChanged := True;
+    end;
+  end;
+  mAssigneesChanged := False;
+  case AChange.Assign of
+    TAtlasTrackerAssign.Me:
+      if (AMe <> '') and (IndexOfText(mAssignees, AMe) < 0) then
+      begin
+        mAssignees := mAssignees + [AMe];
+        mAssigneesChanged := True;
+      end;
+    TAtlasTrackerAssign.User:
+      if Trim(AChange.Assignee) <> '' then
+      begin
+        // Übergeben: der neue Zuständige statt aller bisherigen.
+        mAssigneesChanged := (Length(mAssignees) <> 1) or not SameText(mAssignees[0], Trim(AChange.Assignee));
+        mAssignees := TArray<string>.Create(Trim(AChange.Assignee));
+      end;
+  else
+    // Keep: Zuständige bleiben.
+  end;
+  if not (mLabelsChanged or mAssigneesChanged or mClose) then
+    Exit;
+  mObject := TJSONObject.Create;
+  try
+    if mLabelsChanged then
+      mObject.AddPair('labels', JsonList(mLabels));
+    if mAssigneesChanged then
+      mObject.AddPair('assignees', JsonList(mAssignees));
+    if mClose then
+    begin
+      mObject.AddPair('state', 'closed');
+      mObject.AddPair('state_reason', 'completed');
+    end;
+    Result := mObject.ToJSON;
+  finally
+    mObject.Free;
+  end;
+end;
+
+class function TAtlasGitHubTracker.ParseNames(const AJson, AField: string; out AValues: TArray<string>): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  AValues := nil;
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    Result := mValue is TJSONArray;
+    if Result then
+      AValues := NamesOf(mValue, AField);
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasGitHubTracker.ErrorMessage(const AJson: string): string;
+var
+  mValue: TJSONValue;
+begin
+  Result := '';
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  try
+    if mValue is TJSONObject then
+      Result := TextOf(TJSONObject(mValue), 'message');
+  finally
+    mValue.Free;
+  end;
+  Result := Shorten(Result, 300);
+end;
+
+function Answered(AStatus: Integer): Boolean;
+begin
+  Result := (AStatus >= 200) and (AStatus <= 299);
+end;
+
+function TAtlasGitHubTracker.Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AKey: string; const AChange: TAtlasTrackerChange; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+var
+  mWatch: TStopwatch;
+  mSend: IAtlasCiSend;
+  mUrl, mText, mMe, mBody: string;
+  mStatus: Integer;
+  mError: TAtlasCiFetchError;
+  mValue: TJSONValue;
+  mLabels, mAssignees: TArray<string>;
+begin
+  Result := TAtlasTrackerWriteResult.Ok;
+  if not AChange.HasWork then
+    Exit;
+  mUrl := IssueApiUrl(ATarget, AKey);
+  if (mUrl = '') or not Supports(ATransport, IAtlasCiSend, mSend) then
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  mWatch := TStopwatch.StartNew;
+  mMe := '';
+  if AChange.Assign = TAtlasTrackerAssign.Me then
+  begin
+    if not ATransport.Get(ApiBase(ATarget) + '/user', ATimeoutMs, mStatus, mText, mError) then
+      Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+    if mStatus <> 200 then
+      Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+    mValue := TJSONObject.ParseJSONValue(mText);
+    try
+      if mValue is TJSONObject then
+        mMe := Trim(TextOf(TJSONObject(mValue), 'login'));
+    finally
+      mValue.Free;
+    end;
+    if mMe = '' then
+      Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, ''));
+  end;
+  // Zuerst der Kommentar: Fehlen die Schreibrechte, ändert sich nichts am Issue.
+  if Trim(AChange.Comment) <> '' then
+  begin
+    if not mSend.Send('POST', mUrl + '/comments', CommentJson(AChange.Comment), Remaining(mWatch, ATimeoutMs),
+      mStatus, mText, mError) then
+      Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+    if not Answered(mStatus) then
+      Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+  end;
+  if (Trim(AChange.State) = '') and (AChange.Assign = TAtlasTrackerAssign.Keep) then
+    Exit;
+  if not ATransport.Get(mUrl, Remaining(mWatch, ATimeoutMs), mStatus, mText, mError) then
+    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  if mStatus <> 200 then
+    Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+  if not ParseAssignment(mText, mLabels, mAssignees) then
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, ''));
+  mBody := PatchJson(mLabels, mAssignees, AChange, mMe);
+  if mBody = '' then
+    Exit;
+  if not mSend.Send('PATCH', mUrl, mBody, Remaining(mWatch, ATimeoutMs), mStatus, mText, mError) then
+    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  if not Answered(mStatus) then
+    Result := TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText));
+end;
+
+function TAtlasGitHubTracker.Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  AKind: TAtlasTrackerValueKind; const AField: string; ATimeoutMs: Integer;
+  out AValues: TArray<string>): TAtlasTrackerWriteResult;
+var
+  mUrl, mText, mField: string;
+  mStatus: Integer;
+  mError: TAtlasCiFetchError;
+begin
+  AValues := nil;
+  Result := TAtlasTrackerWriteResult.Ok;
+  // GitHub kennt keine Felder: Zustände sind Labels, zuständig sind Benutzer.
+  if (AKind = TAtlasTrackerValueKind.StateFields) or (AKind = TAtlasTrackerValueKind.UserFields) then
+    Exit;
+  mUrl := ApiBase(ATarget);
+  if (mUrl = '') or (ATarget.Project = '') or (ATransport = nil) then
+    Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.NotConfigured, 0, ''));
+  mUrl := mUrl + '/repos/' + TTextUris.PercentEncode(ATarget.Project);
+  if AKind = TAtlasTrackerValueKind.Users then
+  begin
+    mUrl := mUrl + '/assignees?per_page=' + IntToStr(MaxPageSize);
+    mField := 'login';
+  end
+  else
+  begin
+    mUrl := mUrl + '/labels?per_page=' + IntToStr(MaxPageSize);
+    mField := 'name';
+  end;
+  if not ATransport.Get(mUrl, ATimeoutMs, mStatus, mText, mError) then
+    Exit(TAtlasTrackerWriteResult.Failed(mError, 0, ''));
+  if mStatus <> 200 then
+    Exit(TAtlasTrackerWriteResult.Failed(ErrorOfStatus(mStatus), mStatus, ErrorMessage(mText)));
+  if not ParseNames(mText, mField, AValues) then
+    Result := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, mStatus, '');
 end;
 
 end.

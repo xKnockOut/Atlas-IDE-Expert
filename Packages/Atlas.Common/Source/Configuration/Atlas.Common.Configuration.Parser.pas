@@ -121,6 +121,7 @@ type
     procedure ReadTasks(ANode: TJsonNode);
     procedure ReadIssues(ANode: TJsonNode);
     procedure ReadIssueConnections(ANode: TJsonNode);
+    procedure ReadIssueEndStates(ANode: TJsonNode);
     procedure ReadTaskMatcher(ANode: TJsonNode);
     function ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
     /// <summary>Wurzel oder nil nach gemeldetem Syntaxfehler.</summary>
@@ -2364,6 +2365,20 @@ begin
   Result := (Host <> '') and (Pos('@', Host) = 0) and (Pos(' ', AUrl) = 0);
 end;
 
+procedure TValidator.ReadIssueEndStates(ANode: TJsonNode);
+var
+  Index: Integer;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"endStates" muss eine Liste von Zuständen sein, z. B. ["Zur Prüfung", "Erledigt"]');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+    if ANode[Index].Kind <> TJsonKind.String_ then
+      ReportNode(ANode[Index], 'Ein Zustand in "endStates" ist ein Text');
+end;
+
 procedure TValidator.ReadIssueConnections(ANode: TJsonNode);
 var
   Index, Inner: Integer;
@@ -2418,6 +2433,11 @@ begin
               ReportNode(Value, 'Nur https-Adressen ohne Benutzer, z. B. "https://youtrack.firma.de"');
           end;
         end
+        // Zustand beim Beginnen und Beenden je Verbindung (#1266).
+        else if (Key = 'stateField') or (Key = 'assigneeField') or (Key = 'startState') then
+          ExpectString(Value, Key, Text)
+        else if Key = 'endStates' then
+          ReadIssueEndStates(Value)
         else
           Report(Connection.KeyStarts[Inner], Connection.KeyStarts[Inner] + Length(Key) + 2,
             Format('Unbekannte Angabe "%s" in einer Verbindung', [Key]), False);

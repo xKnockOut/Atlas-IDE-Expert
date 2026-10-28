@@ -18,6 +18,9 @@
 //   Zustand zu. Ohne Klick kein Netz; das Netz kommt über IAtlasCiTransport.
 // - IAtlasTrackerAccess: Anbieter, Token und Transport für Optionsseite und
 //   „Meine Issues“; setzt die Komposition um (Anmeldespeicher, Dialog).
+// - Zustand beim Beginnen und Beenden (#1266): je Verbindung optional
+//   stateField, assigneeField, startState und endStates; leer gelten die
+//   globalen Einstellungen issues.* (TAtlasTrackerWorkflow.ForConnection).
 
 interface
 
@@ -44,6 +47,11 @@ type
     /// <summary>Adresse ohne „/“ am Ende, z. B. "https://youtrack.firma.local".</summary>
     Url: string;
     Source: TAtlasTrackerConnectionSource;
+    /// <summary>Zustand beim Beginnen und Beenden je Verbindung (#1266); leer = globale Einstellung.</summary>
+    StateField: string;
+    AssigneeField: string;
+    StartState: string;
+    EndStates: TArray<string>;
     class function Create(const AName, AProvider, AUrl: string): TAtlasTrackerConnection; static;
     /// <summary>Verbindung aus dem Abschnitt tracker der .atlas (schreibgeschützt); Name = AName.</summary>
     class function FromTeamFile(const AName: string; const ATarget: TAtlasTrackerTarget): TAtlasTrackerConnection;
@@ -130,6 +138,10 @@ begin
   while (Result.Url <> '') and (Result.Url[Length(Result.Url)] = '/') do
     Delete(Result.Url, Length(Result.Url), 1);
   Result.Source := TAtlasTrackerConnectionSource.Personal;
+  Result.StateField := '';
+  Result.AssigneeField := '';
+  Result.StartState := '';
+  Result.EndStates := nil;
 end;
 
 class function TAtlasTrackerConnection.FromTeamFile(const AName: string;
@@ -191,6 +203,40 @@ begin
     Result := TJSONString(mValue).Value;
 end;
 
+/// <summary>Liste von Texten (#1266, endStates); leere Einträge entfallen.</summary>
+function TextsOf(AObject: TJSONObject; const AName: string): TArray<string>;
+var
+  mValue, mItem: TJSONValue;
+begin
+  Result := nil;
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONArray then
+    for mItem in TJSONArray(mValue) do
+      if (mItem is TJSONString) and (Trim(TJSONString(mItem).Value) <> '') then
+        Result := Result + [Trim(TJSONString(mItem).Value)];
+end;
+
+/// <summary>Die Felder aus #1266, nur wenn gesetzt: ', "stateField": …' usw.</summary>
+function StateJson(const AItem: TAtlasTrackerConnection): string;
+var
+  mParts: TArray<string>;
+  mState: string;
+begin
+  Result := '';
+  if AItem.StateField <> '' then
+    Result := Result + ', "stateField": ' + Quoted(AItem.StateField);
+  if AItem.AssigneeField <> '' then
+    Result := Result + ', "assigneeField": ' + Quoted(AItem.AssigneeField);
+  if AItem.StartState <> '' then
+    Result := Result + ', "startState": ' + Quoted(AItem.StartState);
+  if Length(AItem.EndStates) = 0 then
+    Exit;
+  mParts := nil;
+  for mState in AItem.EndStates do
+    mParts := mParts + [Quoted(mState)];
+  Result := Result + ', "endStates": [' + string.Join(', ', mParts) + ']';
+end;
+
 class function TAtlasTrackerConnections.Read(const AJson: string): TArray<TAtlasTrackerConnection>;
 var
   mRoot: TJSONValue;
@@ -213,6 +259,10 @@ begin
       if (mConnection.Name = '') or (mConnection.Provider = '') or (mConnection.Url = '') or
         (IndexOfName(Result, mConnection.Name) >= 0) then
         Continue;
+      mConnection.StateField := Trim(TextOf(TJSONObject(mItem), 'stateField'));
+      mConnection.AssigneeField := Trim(TextOf(TJSONObject(mItem), 'assigneeField'));
+      mConnection.StartState := Trim(TextOf(TJSONObject(mItem), 'startState'));
+      mConnection.EndStates := TextsOf(TJSONObject(mItem), 'endStates');
       Result := Result + [mConnection];
     end;
   finally
@@ -229,7 +279,7 @@ begin
   for mItem in AItems do
     if not mItem.ReadOnly then
       mParts := mParts + ['{"name": ' + Quoted(mItem.Name) + ', "provider": ' +
-        Quoted(mItem.Provider) + ', "url": ' + Quoted(mItem.Url) + '}'];
+        Quoted(mItem.Provider) + ', "url": ' + Quoted(mItem.Url) + StateJson(mItem) + '}'];
   Result := '[' + string.Join(', ', mParts) + ']';
 end;
 
