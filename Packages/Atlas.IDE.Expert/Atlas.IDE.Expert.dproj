@@ -449,15 +449,24 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CodeLinks.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.BlameLinks.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueTip.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Workflow.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.TimeLog.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.TimeClock.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas">
             <Form>AtlasIssueFrame</Form>
             <FormType>dfm</FormType>
             <DesignClass>TFrame</DesignClass>
         </DCCReference>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.ValueBox.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.EndDialog.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TimeDialog.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.TimeList.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWindow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuePreview.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.CodeLinks.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.BlameLinks.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Workflow.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.TimeTracking.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.TeamFile.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas"/>

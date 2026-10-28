@@ -8135,3 +8135,51 @@ Vorbereitung: Projekt A (Git) und Projekt S (SVN), beide mit YouTrack-Projekt `A
 | IX21 | `issues.preview` aus | Fußzeile „Strg+Klick auf die Kennung: im Browser öffnen“; Klick im Hover öffnet den Browser |
 | IX22 | Commit machen, dann dieselbe Zeile überfahren | Randanzeige und Zahl im Hover folgen dem neuen Stand |
 | IX23 | IDE mit offenem Hover bzw. laufender Suche beenden | Entladen ohne Zugriffsverletzung |
+
+## Zustand und Kommentar beim Beginnen und Beenden (#1266)
+
+Vorbereitung: Verbindungen zu YouTrack und GitHub mit Token (#1260), Projekt mit Abschnitt `tracker` in der `.atlas`, Git-Arbeitskopie; ein YouTrack-Issue im Zustand „Offen“ und ein GitHub-Issue mit Label `todo`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZS1 | `issues.syncState` aus, in „Meine Issues“ „Beginnen“ und später „Beenden“ | Verhalten wie bisher: Branch, Rückfrage beim Beenden, nichts im Tracker geändert, kein Kommentarfeld in der Vorschau |
+| ZS2 | Optionen › Issue-Tracker: „Zustand und Kommentar …“ an (Vorgabe), Verbindung YouTrack wählen, „Werte vom Tracker laden“ | Hinweis „N Zustände und M Felder vom Tracker geladen.“; Klapplisten für Zustandsfeld, Startzustand enthalten die Werte des Trackers; eigene Eingabe bleibt möglich |
+| ZS3 | Startzustand „In Arbeit“, „Mir zuweisen“ an, Startkommentar `Beginne in {branch}`; YouTrack-Issue „Beginnen“ | Branch wird angelegt; Issue steht auf „In Arbeit“, ist mir zugewiesen, Kommentar mit dem Branch-Namen; eine Zeile „Atlas: ATL-… im Tracker nachgeführt (…)“ in der Meldungsansicht (**Abnahme**) |
+| ZS4 | Token mit Leserechten, „Beginnen“ | Branch bleibt; Meldungszeile „… nicht nachgeführt, der Branch bleibt. Keine Schreibrechte für ATL-… (403).“ |
+| ZS5 | „Beenden“ über die Statuszeile `atlas.issue`, das Kontextmenü der Zeile und den Knopf „Beenden …“ in der Vorschau | Jeweils Dialog „ATL-… beenden“ mit Zielzustand (Zielzustände plus „Zustand nicht ändern“), Kommentar mit {branch}, {commits}, {pr} gefüllt, Übergabe (**Abnahme**) |
+| ZS6 | Im Dialog Zielzustand „Erledigt“, Übergabe an einen Kollegen aus der Liste, Senden | Issue erledigt und übergeben, Kommentar mit den Commits des Branches; Meldungszeile „Atlas: ATL-… beendet (…)“ |
+| ZS7 | Senden ohne Schreibrechte | Roter Hinweis im Dialog „Keine Schreibrechte für ATL-… (403).“, Dialog bleibt offen, nichts wird wiederholt; Abbrechen schließt ohne Änderung |
+| ZS8 | „Zustand nicht ändern“, Kommentar leeren, Übergabe aus, Senden | Dialog schließt ohne Abfrage an den Tracker (Proxy-Protokoll) |
+| ZS9 | Strg+Enter im Dialog | Wie Senden |
+| ZS10 | Vorschau des aktuellen Issues: Text ins Kommentarfeld, Strg+Enter | Kommentar steht im Tracker, Feld wird geleert, Vorschau lädt neu |
+| ZS11 | Dasselbe mit GitHub: Startzustand `in-progress`, Zielzustand „Erledigt“ | Label `todo`→`in-progress` beim Beginnen; beim Beenden geschlossen; Zuweisung über `assignees` |
+| ZS12 | Felder „Zustandsfeld“, „Startzustand“ und „Zielzustände“ der Verbindung setzen, globale Werte anders | Die Werte der Verbindung gelten; Adresse der Verbindung ändern verliert die Felder nicht |
+| ZS13 | Netz während des Sendens trennen, Dialog schließen versuchen | Schließen wartet bis zur Antwort; danach „Tracker nicht erreichbar.“ |
+| ZS14 | Plugin entladen, während eine Änderung gesendet wird | Keine Zugriffsverletzung, keine späte Meldung |
+
+## Zeit je Issue erfassen und buchen (#1267)
+
+Vorbereitung wie #1266: Verbindungen zu YouTrack (Projekt mit Zeiterfassung und Arbeitstypen) und GitHub, Git-Arbeitskopie; ein zweites YouTrack-Projekt mit ausgeschalteter Zeiterfassung.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZT1 | `issues.timeTracking` aus (Vorgabe), Issue beginnen und beenden | Kein Zeitfeld im Statusfeld, keine Datei `%LOCALAPPDATA%\Atlas\time.json`, kein Buchungsdialog |
+| ZT2 | Optionen › Issue-Tracker: „Zeit für das aktuelle Issue erfassen …“ an, Issue beginnen, einige Minuten tippen | Statusfeld zeigt „ATL-… · 0:03“ und zählt mit; Tooltip nennt Kennung und Zeit (**Abnahme**) |
+| ZT3 | Leerlauf 2 Minuten einstellen, 5 Minuten nichts tun, dann weitertippen | Die Uhr bleibt nach 2 Minuten stehen; die Pause zählt nicht |
+| ZT4 | Anderes Programm vorn, dort tippen | Zählt nicht |
+| ZT5 | Programm im Debugger laufen lassen, ohne Eingabe in der IDE | Zählt weiter, solange der Prozess läuft |
+| ZT6 | Klick auf das Zeitfeld › Pause, dann Weiter | „(Pause)“ im Feld, keine Zeit dazu; danach zählt sie weiter |
+| ZT7 | Klick › Zeit korrigieren …, `1:25`; danach `85 min`, `1h 25m`, `abc` | Feld zeigt 1:25; ungültige Eingabe meldet den Fehler, nichts geändert |
+| ZT8 | Issue beenden (Statuszeile oder Kontextmenü) | Nach dem Beenden-Dialog Dialog „1 h 25 min auf ATL-… buchen?“ mit gerundeter Dauer (`issues.timeRounding`), Arbeitstypen des Projekts, Text aus den Commit-Betreffen (**Abnahme**) |
+| ZT9 | „Buchen“ | Work Item mit Dauer, Datum, Typ und Text in YouTrack; Meldungszeile „Atlas: … auf ATL-… gebucht.“; Zeit in `time.json` abgezogen |
+| ZT10 | Buchen ohne Schreibrechte bzw. ohne Netz | Fehler im Dialog, Dialog bleibt offen; „Später“ behält die Zeit |
+| ZT11 | Issue im Projekt ohne Zeiterfassung beenden | Hinweis „Zeiterfassung im YouTrack-Projekt aus; die Zeit bleibt lokal.“, Buchen gesperrt, Verwerfen und Später möglich |
+| ZT12 | Ein Issue beginnen, dann ein anderes beginnen | Im nächsten Takt Buchungsdialog für das erste Issue; das zweite zählt ab Null bzw. ab seiner gespeicherten Zeit |
+| ZT13 | Atlas-Befehl *Offene Zeitbuchungen …* (bzw. Klick › Offene Zeitbuchungen …) | Liste „ATL-… · 1 h 25 min · Tag(e)“, zuletzt bearbeitete oben; Buchen öffnet den Dialog, Verwerfen fragt nach; leere Liste zeigt „Keine offene Zeit.“ |
+| ZT14 | Klick › Zurücksetzen | Rückfrage; danach 0:00 und Eintrag weg |
+| ZT15 | GitHub-Issue beenden | Dialog mit „Als Kommentar schreiben“ statt Arbeitstyp; mit Häkchen Kommentar „Aufwand: …“ im Issue, ohne nur lokal als gebucht |
+| ZT16 | Zwei IDE-Instanzen mit demselben Issue gleichzeitig benutzen | Die Zeit in `time.json` wächst nicht doppelt |
+| ZT17 | IDE mit laufender Uhr schließen und neu starten, Issue fortsetzen | Zeit von vorher steht wieder im Feld; über Mitternacht gearbeitet: zwei Tage in der Liste |
+| ZT18 | `time.json` von Hand unlesbar machen bzw. von einem anderen Programm sperren lassen | Einmal „Atlas: Zeiterfassung nicht gespeichert (…)“, Datei bleibt unverändert; nach Freigabe wird die Zeit nachgetragen |
+| ZT19 | Platzhalter `{time}` im Endkommentar (#1266) | Beenden-Dialog setzt die erfasste Zeit ein |
+| ZT20 | Schnellschalter Zeiterfassung aus während die Uhr läuft; Plugin entladen | Zeitfeld verschwindet, Zeit gespeichert; Entladen ohne Zugriffsverletzung |

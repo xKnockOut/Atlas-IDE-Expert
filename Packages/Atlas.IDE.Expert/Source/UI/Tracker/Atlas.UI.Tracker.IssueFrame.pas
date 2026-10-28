@@ -2,7 +2,7 @@
 
 // Inhalt des andockbaren Fensters „Atlas-Issue“ (#1264), reine VCL ohne Open
 // Tools API:
-//   [◀] [▶]  [Beginnen] [Im Browser öffnen] [Kennung kopieren] [Aktualisieren]
+//   [◀] [▶]  [Beginnen] [Beenden …] [Im Browser öffnen] [Kennung kopieren] [Aktualisieren]
 //   ───────────────── dünne Leiste beim Laden ─────────────────
 //   (Stand vom …  bzw. Fehler mit Knopf zum Beheben)
 //   ATL-123
@@ -15,6 +15,10 @@
 //   KOMMENTARE (n): neueste unten, ältere hinter „12 ältere Kommentare“.
 //   ANHÄNGE (n): Name und Größe; Doppelklick öffnet.
 //   VERKNÜPFTE ISSUES (n): Kennung, Titel, Art; Klick öffnet im Fenster.
+//   ───────────────── unten (#1266, nur mit issues.syncState) ─────────────────
+//   Kommentar schreiben … (Markdown, Strg+Enter sendet)          [Senden]
+// „Beenden …“ (#1266) gibt es nur für das aktuelle Issue (CanEnd), Feld und
+// Knopf nur, wenn der Tracker schreiben kann (CanWrite).
 // Ein Fenster, der Inhalt wechselt; Verlauf über Zurück/Vor (Alt+Links,
 // Alt+Rechts). Schließen des Fensters (OnHidden) bricht das Laden ab. Laden, Netz, Verlauf und Zwischenspeicher liegen in der
 // IDE-Schicht; der Frame meldet nur Wünsche (On…). Text in der Beschreibung
@@ -133,6 +137,17 @@ type
     FBrowse: TButton;
     FCopyKey: TButton;
     FRefresh: TButton;
+    FEnd: TButton;
+    FCommentPanel: TPanel;
+    FCommentHint: TLabel;
+    FCommentEdit: TMemo;
+    FCommentSend: TButton;
+    FCommentNote: TLabel;
+    FCanWrite: Boolean;
+    FCanEnd: Boolean;
+    FCommentSending: Boolean;
+    FOnEnd: TProc;
+    FOnComment: TProc<string>;
     FProgress: TProgressBar;
     FStatus: TPanel;
     FStatusText: TLabel;
@@ -191,6 +206,11 @@ type
     procedure BackClick(Sender: TObject);
     procedure ForwardClick(Sender: TObject);
     procedure StartClick(Sender: TObject);
+    procedure EndClick(Sender: TObject);
+    procedure CommentSendClick(Sender: TObject);
+    procedure CommentKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure SetCanWrite(AValue: Boolean);
+    procedure SetCanEnd(AValue: Boolean);
     procedure BrowseClick(Sender: TObject);
     procedure CopyKeyClick(Sender: TObject);
     procedure RefreshClick(Sender: TObject);
@@ -225,6 +245,10 @@ type
     /// <summary>Bild zu AUrl ist geladen (übernimmt AGraphic); nil = bleibt als Link.</summary>
     procedure SetImage(const AUrl: string; AGraphic: TGraphic);
     procedure SetHistory(ACanBack, ACanForward: Boolean);
+    /// <summary>Kommentar wird gesendet (#1266): Feld und Knopf gesperrt.</summary>
+    procedure SetCommentSending(AValue: Boolean);
+    /// <summary>Ergebnis des Sendens: AError '' = gesendet (Feld leer), sonst der Grund unter dem Feld.</summary>
+    procedure CommentDone(const AError: string);
     procedure ApplyColors(const AColors: TAtlasColors);
     /// <summary>Für Tests: Text der Statuszeile, Abzeichen, Bildadressen, Zahl der Doku-Flächen.</summary>
     function StatusText: string;
@@ -234,6 +258,16 @@ type
     property HasDetails: Boolean read FHasDetails;
     property Loading: Boolean read FLoading;
     property CanStart: Boolean read FCanStart write FCanStart;
+    /// <summary>Der Tracker kann schreiben und issues.syncState ist an (#1266): Kommentarfeld und „Beenden …“.
+    /// </summary>
+    property CanWrite: Boolean read FCanWrite write SetCanWrite;
+    /// <summary>Das gezeigte Issue ist das aktuelle: „Beenden …“ geht.</summary>
+    property CanEnd: Boolean read FCanEnd write SetCanEnd;
+    property EndButton: TButton read FEnd;
+    property CommentPanel: TPanel read FCommentPanel;
+    property CommentEdit: TMemo read FCommentEdit;
+    property CommentSendButton: TButton read FCommentSend;
+    property CommentNote: TLabel read FCommentNote;
     property CommentsExpanded: Boolean read FCommentsExpanded;
     property BackButton: TButton read FBack;
     property ForwardButton: TButton read FForward;
@@ -257,6 +291,10 @@ type
     property OnBack: TProc read FOnBack write FOnBack;
     property OnForward: TProc read FOnForward write FOnForward;
     property OnStart: TProc read FOnStart write FOnStart;
+    /// <summary>„Beenden …“ (#1266) für das gezeigte, aktuelle Issue.</summary>
+    property OnEnd: TProc read FOnEnd write FOnEnd;
+    /// <summary>Kommentar senden (#1266); Ergebnis über CommentDone.</summary>
+    property OnComment: TProc<string> read FOnComment write FOnComment;
     property OnBrowse: TProc read FOnBrowse write FOnBrowse;
     property OnCopyKey: TProc read FOnCopyKey write FOnCopyKey;
     property OnRefresh: TProc read FOnRefresh write FOnRefresh;
@@ -659,6 +697,9 @@ begin
   FForward.Hint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewForward);
   FForward.Width := 32;
   FStart := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewStart), StartClick);
+  FEnd := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewEnd), EndClick);
+  FEnd.Hint := TAtlasStrings.Text(TAtlasTextId.IssuePreviewEndHint);
+  FEnd.Visible := False;
   FBrowse := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewBrowse), BrowseClick);
   FCopyKey := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewCopyKey), CopyKeyClick);
   FRefresh := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRefresh), RefreshClick);
@@ -692,6 +733,41 @@ begin
   FStatusText.Layout := tlCenter;
   FStatusText.ShowAccelChar := False;
   FStatusText.EllipsisPosition := epEndEllipsis;
+
+  // Kommentar schreiben (#1266): unten, nur mit CanWrite.
+  FCommentPanel := TPanel.Create(Self);
+  FCommentPanel.Parent := Self;
+  FCommentPanel.Align := alBottom;
+  FCommentPanel.BevelOuter := bvNone;
+  FCommentPanel.Height := 96;
+  FCommentPanel.ShowCaption := False;
+  FCommentPanel.Visible := False;
+  FCommentHint := TLabel.Create(Self);
+  FCommentHint.Parent := FCommentPanel;
+  FCommentHint.Align := alTop;
+  FCommentHint.AlignWithMargins := True;
+  FCommentHint.ShowAccelChar := False;
+  FCommentHint.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewCommentHint);
+  FCommentNote := TLabel.Create(Self);
+  FCommentNote.Parent := FCommentPanel;
+  FCommentNote.Align := alBottom;
+  FCommentNote.AlignWithMargins := True;
+  FCommentNote.ShowAccelChar := False;
+  FCommentNote.Caption := '';
+  FCommentSend := TButton.Create(Self);
+  FCommentSend.Parent := FCommentPanel;
+  FCommentSend.Align := alRight;
+  FCommentSend.AlignWithMargins := True;
+  FCommentSend.Width := 90;
+  FCommentSend.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewCommentSend);
+  FCommentSend.OnClick := CommentSendClick;
+  FCommentEdit := TMemo.Create(Self);
+  FCommentEdit.Parent := FCommentPanel;
+  FCommentEdit.Align := alClient;
+  FCommentEdit.AlignWithMargins := True;
+  FCommentEdit.ScrollBars := ssVertical;
+  FCommentEdit.WantReturns := True;
+  FCommentEdit.OnKeyDown := CommentKeyDown;
 
   FScroll := TScrollBox.Create(Self);
   FScroll.Parent := Self;
@@ -1058,6 +1134,13 @@ end;
 procedure TAtlasIssueFrame.UpdateButtons;
 begin
   FStart.Enabled := FHasDetails and FCanStart;
+  // Ausgeblendete Knöpfe mit alLeft reihen sich nach Left ein: direkt hinter „Beginnen“.
+  if FCanWrite and not FEnd.Visible then
+    FEnd.Left := FStart.Left + FStart.Width + 1;
+  FEnd.Visible := FCanWrite;
+  FEnd.Enabled := FHasDetails and FCanEnd;
+  FCommentPanel.Visible := FCanWrite and FHasDetails;
+  FCommentSend.Enabled := FHasDetails and not FCommentSending;
   FBrowse.Enabled := FHasDetails;
   FCopyKey.Enabled := FHasDetails;
   FRefresh.Enabled := FHasDetails or FLoading;
@@ -1174,6 +1257,8 @@ begin
   FScroll.Color := ToColor(AColors.Surface);
   FScroll.ParentBackground := False;
   FEmpty.Font.Color := ToColor(AColors.Muted);
+  FCommentHint.Font.Color := ToColor(AColors.Muted);
+  FCommentNote.Font.Color := ToColor(AColors.Muted);
   if FHasDetails then
     Rebuild;
 end;
@@ -1222,6 +1307,61 @@ procedure TAtlasIssueFrame.StartClick(Sender: TObject);
 begin
   if Assigned(FOnStart) then
     FOnStart();
+end;
+
+procedure TAtlasIssueFrame.EndClick(Sender: TObject);
+begin
+  if FHasDetails and FCanEnd and Assigned(FOnEnd) then
+    FOnEnd();
+end;
+
+procedure TAtlasIssueFrame.CommentSendClick(Sender: TObject);
+var
+  mText: string;
+begin
+  mText := Trim(FCommentEdit.Text);
+  if (mText = '') or FCommentSending or not FHasDetails or not FCanWrite or not Assigned(FOnComment) then
+    Exit;
+  FOnComment(StringReplace(mText, #13#10, #10, [rfReplaceAll]));
+end;
+
+procedure TAtlasIssueFrame.CommentKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+begin
+  // Strg+Enter sendet, Enter allein bricht die Zeile um.
+  if (Key = VK_RETURN) and (ssCtrl in Shift) then
+  begin
+    Key := 0;
+    CommentSendClick(Sender);
+  end;
+end;
+
+procedure TAtlasIssueFrame.SetCanWrite(AValue: Boolean);
+begin
+  FCanWrite := AValue;
+  UpdateButtons;
+end;
+
+procedure TAtlasIssueFrame.SetCanEnd(AValue: Boolean);
+begin
+  FCanEnd := AValue;
+  UpdateButtons;
+end;
+
+procedure TAtlasIssueFrame.SetCommentSending(AValue: Boolean);
+begin
+  FCommentSending := AValue;
+  FCommentEdit.ReadOnly := AValue;
+  if AValue then
+    FCommentNote.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewCommentSending);
+  UpdateButtons;
+end;
+
+procedure TAtlasIssueFrame.CommentDone(const AError: string);
+begin
+  SetCommentSending(False);
+  FCommentNote.Caption := AError;
+  if AError = '' then
+    FCommentEdit.Clear;
 end;
 
 procedure TAtlasIssueFrame.BrowseClick(Sender: TObject);

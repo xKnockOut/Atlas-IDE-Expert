@@ -2029,6 +2029,17 @@ begin
     begin
       Result := TAtlasIdeBlameLinks.Enabled and (BlameIssues <> nil);
     end);
+  // Offene Zeitbuchungen (#1267): sichtbar mit issues.timeTracking.
+  Add('Atlas.IssueTimeOpen', TAtlasTextId.TimeMenuOpen,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.ShowTimeOpen;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesTimeTracking and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
     procedure
@@ -4351,6 +4362,9 @@ begin
   Result.OnCredentials := EnterCiCredentials;
 end;
 
+const
+  IssueTimeExtra = 'issueTime';
+
 function CreateWelcomeIssues(AProjects: TAtlasIdeProjects): TAtlasIdeIssues;
 begin
   Result := TAtlasIdeIssues.Create(AProjects,
@@ -4375,6 +4389,13 @@ begin
     function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean
     begin
       Result := TrackerAccess.EnterToken(AProvider, ATarget);
+    end;
+  // Zeiterfassung (#1267): „ATL-123 · 1:25“ als Zusatzfeld im Statusfeld, Klick öffnet das Menü der Uhr.
+  Result.OnTimeStatus :=
+    procedure(const AText, AHint: string; const AOnClick: TProc<TPoint>)
+    begin
+      if StatusField <> nil then
+        StatusField.SetExtra(IssueTimeExtra, AText, AHint, AOnClick);
     end;
   // Knopf „Tracker-Einstellungen …“ der Issue-Vorschau (#1264).
   Result.OnSettings :=
