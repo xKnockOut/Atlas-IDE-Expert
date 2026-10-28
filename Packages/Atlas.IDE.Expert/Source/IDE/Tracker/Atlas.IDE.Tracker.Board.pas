@@ -78,7 +78,8 @@ type
     function Frame: TAtlasBoardFrame;
     procedure Wire(AFrame: TAtlasBoardFrame);
     function ProviderOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
-    function BoardsOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerBoards;
+    /// <summary>Board-Zugriff des Anbieters (optionale Fähigkeit IAtlasTrackerBoards); nil ohne.</summary>
+    class function BoardsOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerBoards; static;
     procedure Load(const ABoardId, ASprintId: string);
     procedure Loaded(AGeneration: Integer; const ATarget: TAtlasTrackerTarget; ASucceeded: Boolean;
       const ASnapshot: TAtlasBoardSnapshot; AError: TAtlasCiFetchError; AWrite: Boolean);
@@ -121,10 +122,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Preview,
-  Atlas.Core.Tracker.Providers.GitHub,
-  Atlas.Core.Tracker.Providers.GitHubBoard,
-  Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.Providers.YouTrackBoard,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.MoveDialog,
   Atlas.IDE.Foundation.EditorStyle,
@@ -207,14 +204,10 @@ begin
     Result := FHooks.Provider(ATarget.Provider);
 end;
 
-function TAtlasIdeBoard.BoardsOf(const ATarget: TAtlasTrackerTarget): IAtlasTrackerBoards;
+class function TAtlasIdeBoard.BoardsOf(const AProvider: IAtlasTrackerProvider): IAtlasTrackerBoards;
 begin
-  // Anbieter mit Board; ein weiterer Tracker meldet sich hier mit seiner Klasse.
-  if SameText(ATarget.Provider, TAtlasYouTrackTracker.ProviderName) then
-    Result := TAtlasYouTrackBoards.Create
-  else if SameText(ATarget.Provider, TAtlasGitHubTracker.ProviderName) then
-    Result := TAtlasGitHubBoards.Create
-  else
+  // Der Anbieter kommt über die Hooks aus der Komposition; ein Board bietet er als weitere Fähigkeit an.
+  if not Supports(AProvider, IAtlasTrackerBoards, Result) then
     Result := nil;
 end;
 
@@ -403,7 +396,7 @@ begin
   mFrame.SetCanDrag(False);
   UpdateActive;
   mProvider := ProviderOf(mTarget);
-  mBoards := BoardsOf(mTarget);
+  mBoards := BoardsOf(mProvider);
   if (mTarget.Server = '') or (mProvider = nil) or (mBoards = nil) then
   begin
     mFrame.ShowNotice(TAtlasStrings.Text(TAtlasTextId.BoardNoTracker));
@@ -551,7 +544,7 @@ begin
   end;
   mTarget := FTarget;
   mProvider := ProviderOf(mTarget);
-  mBoards := BoardsOf(mTarget);
+  mBoards := BoardsOf(mProvider);
   mTransport := nil;
   if (mProvider <> nil) and Assigned(FHooks.Transport) then
     mTransport := FHooks.Transport(mProvider, mTarget);
