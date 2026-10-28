@@ -191,6 +191,9 @@ type
     StatusId = 'atlas.issue';
     /// <summary>Nach Server, Version, Index und Datei.</summary>
     StatusOrder = 30;
+    /// <summary>Zeile „An ATL-123 anhängen …“ direkt unter dem aktuellen Issue (#1276).</summary>
+    AttachStatusId = 'atlas.issue.attach';
+    AttachStatusOrder = 31;
   public
     class function StartName(AStart: TAtlasIssueStart): string; static;
     /// <summary>Versionsverwaltung aus der Projekt-Zusammenfassung ("git", "svn", sonst None).</summary>

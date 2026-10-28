@@ -16,15 +16,20 @@
 // Die Issue-Vorschau (#1264) lädt darüber auch Bilder und Anhänge
 // (IAtlasCiDownload) und bricht beim Schließen des Fensters ab
 // (IAtlasCiCancel).
+// „An Issue anhängen“ (#1276) sendet darüber Anhänge und Kommentare
+// (IAtlasCiSend, POST): gleiche Anmeldung nur über https an den eingetragenen
+// Server, aber ohne Weiterleitungen, damit kein Inhalt an ein anderes Ziel
+// geht.
 
 interface
 
 uses
   System.SysUtils,
+  System.Net.URLClient,
   Atlas.Core.Ci.Contract;
 
 type
-  TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiCancel)
+  TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiCancel, IAtlasCiSend)
   private
     FServer: string;
     FUser: string;
@@ -32,7 +37,12 @@ type
     FBearer: Boolean;
     FCancelled: Integer;
     function Request(const AUrl, AAccept: string; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer;
-      out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
+      out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean; overload;
+    /// <summary>ABody = nil: GET mit Weiterleitungen; sonst POST von ABody als AContentType ohne Weiterleitungen.
+    /// </summary>
+    function Request(const AUrl, AAccept, AContentType: string; const ABody: TBytes; ATimeoutMs, AMaxBytes: Integer;
+      out AStatus: Integer; out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean; overload;
+    function AuthHeaders(const AUrl: string): TNetHeaders;
     function Cancelled: Boolean;
   public
     /// <summary>AServer wie TAtlasCiJob.Server; AUser/AToken leer = ohne Anmeldung.</summary>
@@ -45,6 +55,8 @@ type
     function GetBytes(const AUrl: string; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes;
       out AError: TAtlasCiFetchError): Boolean;
     procedure Cancel;
+    function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer; out AStatus: Integer;
+      out AText: string; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -55,7 +67,6 @@ uses
   System.Diagnostics,
   System.NetEncoding,
   System.Net.HttpClient,
-  System.Net.URLClient,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Ci.Internals.Addresses;
 
@@ -114,6 +125,24 @@ begin
   Result := Request(AUrl, '*/*', ATimeoutMs, AMaxBytes, AStatus, ABytes, AError);
 end;
 
+function TAtlasCiHttpTransport.Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
+  out AStatus: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
+var
+  mBytes: TBytes;
+begin
+  AText := '';
+  // Leerer Inhalt wäre ein GET: ein Byte ist das Mindeste, was ein POST hier sendet.
+  if Length(ABody) = 0 then
+  begin
+    AStatus := 0;
+    AError := TAtlasCiFetchError.Invalid;
+    Exit(False);
+  end;
+  Result := Request(AUrl, 'application/json', AContentType, ABody, ATimeoutMs, MaxBytes, AStatus, mBytes, AError);
+  if Result then
+    AText := TEncoding.UTF8.GetString(mBytes);
+end;
+
 procedure TAtlasCiHttpTransport.Cancel;
 begin
   AtomicExchange(FCancelled, 1);
@@ -126,16 +155,43 @@ end;
 
 function TAtlasCiHttpTransport.Request(const AUrl, AAccept: string; ATimeoutMs, AMaxBytes: Integer;
   out AStatus: Integer; out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
+begin
+  Result := Request(AUrl, AAccept, '', nil, ATimeoutMs, AMaxBytes, AStatus, ABytes, AError);
+end;
+
+function TAtlasCiHttpTransport.AuthHeaders(const AUrl: string): TNetHeaders;
+var
+  Encoding: TBase64Encoding;
+begin
+  Result := nil;
+  // Anmeldung nur über https beim eingetragenen Server.
+  if FBearer and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(AUrl, FServer) then
+    Result := [TNetHeader.Create('Authorization', 'Bearer ' + FToken)]
+  else if (FUser <> '') and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(AUrl, FServer) then
+  begin
+    Encoding := TBase64Encoding.Create(0);
+    try
+      Result := [TNetHeader.Create('Authorization', 'Basic ' +
+        Encoding.EncodeBytesToString(TEncoding.UTF8.GetBytes(FUser + ':' + FToken)))];
+    finally
+      Encoding.Free;
+    end;
+  end;
+end;
+
+function TAtlasCiHttpTransport.Request(const AUrl, AAccept, AContentType: string; const ABody: TBytes; ATimeoutMs,
+  AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
 var
   Client: THTTPClient;
   Content: TBytesStream;
+  Source: TBytesStream;
   Async: IAsyncResult;
   Response: IHTTPResponse;
   Watch, Wait: TStopwatch;
   Url, Next: string;
   Redirects: Integer;
   Headers: TNetHeaders;
-  Encoding: TBase64Encoding;
+  mPost: Boolean;
 begin
   Result := False;
   AStatus := 0;
@@ -146,8 +202,10 @@ begin
     AError := TAtlasCiFetchError.Cancelled;
     Exit;
   end;
+  mPost := Length(ABody) > 0;
   Client := THTTPClient.Create;
   Content := TBytesStream.Create;
+  Source := nil;
   try
     Client.ConnectionTimeout := ATimeoutMs;
     Client.ResponseTimeout := ATimeoutMs;
@@ -155,28 +213,26 @@ begin
     Client.AllowCookies := False;
     Client.UserAgent := 'Atlas';
     Client.Accept := AAccept;
+    if mPost then
+    begin
+      Client.ContentType := AContentType;
+      Source := TBytesStream.Create(ABody);
+    end;
     Url := AUrl;
     Redirects := 0;
     Watch := TStopwatch.StartNew;
     try
       while True do
       begin
-        Headers := nil;
-        // Anmeldung nur über https beim eingetragenen Server.
-        if FBearer and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(Url, FServer) then
-          Headers := [TNetHeader.Create('Authorization', 'Bearer ' + FToken)]
-        else if (FUser <> '') and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(Url, FServer) then
-        begin
-          Encoding := TBase64Encoding.Create(0);
-          try
-            Headers := [TNetHeader.Create('Authorization', 'Basic ' +
-              Encoding.EncodeBytesToString(TEncoding.UTF8.GetBytes(FUser + ':' + FToken)))];
-          finally
-            Encoding.Free;
-          end;
-        end;
+        Headers := AuthHeaders(Url);
         Content.Clear;
-        Async := Client.BeginGet(Url, Content, Headers);
+        if mPost then
+        begin
+          Source.Position := 0;
+          Async := Client.BeginPost(Url, Source, Content, Headers);
+        end
+        else
+          Async := Client.BeginGet(Url, Content, Headers);
         while not Async.IsCompleted do
           if TAtlasShutdown.Wait(SliceMs) or Cancelled or (Watch.ElapsedMilliseconds > ATimeoutMs) then
           begin
@@ -196,7 +252,8 @@ begin
           Break;
         Inc(Redirects);
         Next := TAtlasCiAddresses.Resolve(Url, Response.HeaderValue['Location']);
-        if (Redirects > MaxRedirects) or not TAtlasCiAddresses.RedirectAllowed(Url, Next) then
+        // Ein POST folgt keiner Weiterleitung: Inhalt und Token gehen nur an die eingetragene Adresse.
+        if mPost or (Redirects > MaxRedirects) or not TAtlasCiAddresses.RedirectAllowed(Url, Next) then
         begin
           // Fremdes Ziel (z. B. Anmeldeseite eines anderen Rechners): wie eine abgelehnte Anmeldung.
           AStatus := Response.StatusCode;
@@ -225,6 +282,7 @@ begin
     // Erst die Schnittstellen lösen, sie verweisen auf den Client.
     Response := nil;
     Async := nil;
+    Source.Free;
     Content.Free;
     Client.Free;
   end;

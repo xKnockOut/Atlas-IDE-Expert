@@ -20,16 +20,21 @@
 //   mit AComments (Feld comments, sonst nicht abgefragt). Anhänge mit
 //   relativer Adresse liegen beim selben Server (signierte Adresse); Links
 //   zeigen auf Issues desselben Trackers und öffnen im Fenster.
+// - Anhängen (#1276, IAtlasTrackerAttach): POST <url>/api/issues/<Kennung>/
+//   attachments als multipart/form-data, danach POST …/comments mit
+//   {"text": …}; der Kommentar bettet die Bilder ein (![](Name)) und
+//   verweist auf die übrigen Dateien ([Name](Name)).
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Core.Ci.Contract,
-  Atlas.Core.Tracker.Contract;
+  Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Attach;
 
 type
-  TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider)
+  TAtlasYouTrackTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerAttach)
   public const
     ProviderName = 'youtrack';
     Query = 'for: me #Unresolved';
@@ -55,6 +60,10 @@ type
     /// <summary>Antwort von /api/issues/<Kennung>; False bei ungültigem JSON bzw. ohne Kennung.</summary>
     class function ParseDetails(const AJson: string; const ATarget: TAtlasTrackerTarget; AComments: Boolean;
       out ADetails: TAtlasTrackerDetails): Boolean; static;
+    /// <summary>Adresse zum Hochladen von Anhängen (#1276); '' bei ungültiger Kennung oder ohne Server.</summary>
+    class function AttachmentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
+    /// <summary>Adresse für einen neuen Kommentar (#1276); '' bei ungültiger Kennung oder ohne Server.</summary>
+    class function CommentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -68,6 +77,13 @@ type
     function Details(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       AComments: Boolean; ATimeoutMs: Integer; out ADetails: TAtlasTrackerDetails;
       out AError: TAtlasCiFetchError): Boolean;
+    { IAtlasTrackerAttach }
+    function CanUpload: Boolean;
+    function Upload(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiSend; const AKey: string;
+      const AFiles: TAtlasAttachFiles; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+    function Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiSend; const AKey, AMarkdown: string;
+      ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+    function CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
   end;
 
 implementation
@@ -545,6 +561,58 @@ begin
   end;
   ADetails.Page := IssuePage(ATarget, ADetails.Key);
   Result := True;
+end;
+
+class function TAtlasYouTrackTracker.AttachmentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
+begin
+  Result := '';
+  if (ATarget.Server <> '') and ValidKey(Trim(AKey)) then
+    Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/attachments?fields=id,name';
+end;
+
+class function TAtlasYouTrackTracker.CommentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
+begin
+  Result := '';
+  if (ATarget.Server <> '') and ValidKey(Trim(AKey)) then
+    Result := ATarget.Url + '/api/issues/' + Trim(AKey) + '/comments?fields=id';
+end;
+
+function TAtlasYouTrackTracker.CanUpload: Boolean;
+begin
+  Result := True;
+end;
+
+/// <summary>POST über ASend; der Status einer abgelehnten Antwort wird zum Fehler von YouTrack.</summary>
+function PostTo(const ASend: IAtlasCiSend; const AUrl, AContentType: string; const ABody: TBytes;
+  ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+var
+  mStatus: Integer;
+begin
+  Result := TAtlasAttachSender.Post(ASend, AUrl, AContentType, ABody, ATimeoutMs, mStatus, AError);
+  if not Result and (mStatus <> 0) then
+    AError := TAtlasYouTrackTracker.ErrorOfStatus(mStatus);
+end;
+
+function TAtlasYouTrackTracker.Upload(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiSend;
+  const AKey: string; const AFiles: TAtlasAttachFiles; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+var
+  mBoundary: string;
+begin
+  mBoundary := TAtlasAttachMultipart.NewBoundary;
+  Result := PostTo(ASend, AttachmentsUrl(ATarget, AKey), TAtlasAttachMultipart.ContentType(mBoundary),
+    TAtlasAttachMultipart.Build(mBoundary, AFiles), ATimeoutMs, AError);
+end;
+
+function TAtlasYouTrackTracker.Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiSend; const AKey,
+  AMarkdown: string; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+begin
+  Result := PostTo(ASend, CommentsUrl(ATarget, AKey), 'application/json',
+    TAtlasAttachComment.JsonBody('text', AMarkdown), ATimeoutMs, AError);
+end;
+
+function TAtlasYouTrackTracker.CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
+begin
+  Result := TAtlasAttachComment.Referencing(AComment, AFiles);
 end;
 
 end.

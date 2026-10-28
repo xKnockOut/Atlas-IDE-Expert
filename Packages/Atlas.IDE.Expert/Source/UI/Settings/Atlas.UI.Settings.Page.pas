@@ -640,6 +640,9 @@ type
     FTrackerLogin: TCheckBox;
     FIssuesPreview: TCheckBox;
     FIssuesPreviewComments: TCheckBox;
+    FIssuesAttach: TCheckBox;
+    FIssuesAttachLogFiles: TEdit;
+    FIssuesAttachMaxImageWidth: TEdit;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1149,6 +1152,9 @@ type
     property TrackerLogin: TCheckBox read FTrackerLogin;
     property IssuesPreview: TCheckBox read FIssuesPreview;
     property IssuesPreviewComments: TCheckBox read FIssuesPreviewComments;
+    property IssuesAttach: TCheckBox read FIssuesAttach;
+    property IssuesAttachLogFiles: TEdit read FIssuesAttachLogFiles;
+    property IssuesAttachMaxImageWidth: TEdit read FIssuesAttachMaxImageWidth;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -2686,6 +2692,10 @@ begin
   // Issue-Vorschau (#1264): Hauptschalter, Kommentare darunter.
   FIssuesPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreview));
   FIssuesPreviewComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewComments));
+  // An Issue anhängen (#1276): Hauptschalter, Logdateien und Bildbreite darunter.
+  FIssuesAttach := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesAttach));
+  FIssuesAttachLogFiles := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesAttachLogFiles));
+  FIssuesAttachMaxImageWidth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesAttachMaxImageWidth));
 end;
 
 procedure TAtlasSettingsPage.WelcomeIssuesLinkClick(Sender: TObject);
@@ -3973,6 +3983,9 @@ begin
   FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
   FMarks.Bind(FIssuesPreview, ['IssuesPreview']);
   FMarks.Bind(FIssuesPreviewComments, ['IssuesPreviewComments']);
+  FMarks.Bind(FIssuesAttach, ['IssuesAttach']);
+  FMarks.Bind(FIssuesAttachLogFiles, ['IssuesAttachLogFiles']);
+  FMarks.Bind(FIssuesAttachMaxImageWidth, ['IssuesAttachMaxImageWidth']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
@@ -6234,6 +6247,9 @@ begin
   FTrackerLogin.Checked := ASettings.TrackerLogin;
   FIssuesPreview.Checked := ASettings.IssuesPreview;
   FIssuesPreviewComments.Checked := ASettings.IssuesPreviewComments;
+  FIssuesAttach.Checked := ASettings.IssuesAttach;
+  FIssuesAttachLogFiles.Text := ASettings.IssuesAttachLogFiles;
+  FIssuesAttachMaxImageWidth.Text := IntToStr(ASettings.IssuesAttachMaxImageWidth);
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -6795,6 +6811,10 @@ begin
   ASettings.TrackerLogin := FTrackerLogin.Checked;
   ASettings.IssuesPreview := FIssuesPreview.Checked;
   ASettings.IssuesPreviewComments := FIssuesPreviewComments.Checked;
+  ASettings.IssuesAttach := FIssuesAttach.Checked;
+  ASettings.IssuesAttachLogFiles := Trim(FIssuesAttachLogFiles.Text);
+  ASettings.IssuesAttachMaxImageWidth := StrToIntDef(FIssuesAttachMaxImageWidth.Text,
+    ASettings.IssuesAttachMaxImageWidth);
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];
