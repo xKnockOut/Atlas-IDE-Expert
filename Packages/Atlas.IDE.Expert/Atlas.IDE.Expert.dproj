@@ -461,6 +461,7 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.CommentEditor.pas"/>
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Development.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.DevelopmentView.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Attach.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.IssueFrame.pas">
             <Form>AtlasIssueFrame</Form>
             <FormType>dfm</FormType>
@@ -491,6 +492,10 @@
         <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Notify.pas"/>
         <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Notify.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Notify.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Capture.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.ImageMarkup.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.AttachDialog.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Attach.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.TeamFile.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas"/>
@@ -808,6 +813,7 @@
         <DCCReference Include="Source\UI\StatusBar\Atlas.UI.StatusBar.Bar.pas"/>
         <DCCReference Include="Source\IDE\StatusBar\Atlas.IDE.StatusBar.Service.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Exceptions.pas"/>
+        <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.Note.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.CallStack.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.IgnoreList.pas"/>
         <DCCReference Include="Source\Core\Debug\Atlas.Core.Debug.ExceptionDialog.pas"/>

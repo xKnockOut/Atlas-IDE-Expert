@@ -54,6 +54,9 @@ type
     /// <summary>Abnahme: Reiter „Entwicklung“ neben „Details“; aus = Reiter fehlt, keine Suche.</summary>
     [Test]
     procedure DevelopmentTabAndSwitch;
+    /// <summary>#1276: „Anhängen …“ nur mit CanAttach, aktiv erst mit Issue, meldet OnAttach.</summary>
+    [Test]
+    procedure AttachButtonAndMenu;
   end;
 
 implementation
@@ -555,6 +558,43 @@ begin
     mFrame.DevelopmentVisible := True;
     Assert.IsTrue(mFrame.Pages.Pages[0].TabVisible);
     Assert.IsTrue(mFrame.Pages.Pages[1].TabVisible);
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasIssueFrameTests.AttachButtonAndMenu;
+var
+  mHost: TForm;
+  mFrame: TAtlasIssueFrame;
+  mCalls: Integer;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := TAtlasIssueFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mCalls := 0;
+    mFrame.OnAttach :=
+      procedure
+      begin
+        Inc(mCalls);
+      end;
+    mFrame.ShowEmpty;
+    Assert.IsFalse(mFrame.AttachButton.Visible, 'issues.attach aus');
+    Assert.IsFalse(mFrame.AttachMenuItem.Visible);
+    mFrame.CanAttach := True;
+    Assert.IsTrue(mFrame.AttachButton.Visible);
+    Assert.IsFalse(mFrame.AttachButton.Enabled, 'ohne Issue');
+    mFrame.ShowDetails(Sample(1), cNow, '', False);
+    Assert.IsTrue(mFrame.AttachButton.Enabled);
+    Assert.IsTrue(mFrame.AttachMenuItem.Visible);
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.AttachCommand), mFrame.AttachMenuItem.Caption);
+    mFrame.AttachButton.Click;
+    mFrame.AttachMenuItem.Click;
+    Assert.AreEqual(2, mCalls);
+    mFrame.CanAttach := False;
+    Assert.IsFalse(mFrame.AttachButton.Visible);
+    mFrame.OnAttach := nil;
   finally
     mHost.Free;
   end;

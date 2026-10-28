@@ -51,6 +51,8 @@
 //   zeigt sie bei leerem "#".
 // - Reiter „Entwicklung“ (#1269): TAtlasIdeIssueDevelopment folgt dem
 //   gezeigten Issue, „Aktualisieren“ und „Abbrechen“ gelten auch dort.
+// - „Anhängen …“ (#1276, issues.attach) im Fenster ruft den Hook Attach mit
+//   Tracker und Kennung des gezeigten Issues.
 // - Protokoll anonym: nur Anbieter, Ergebnis und Fehlerart, nie Adresse,
 //   Kennung, Titel oder Token.
 // - Kurzabfrage für den Hover über Kennungen im Editor (#1265): Peek liest nur
@@ -117,6 +119,10 @@ type
     CommentSent: TAtlasIssuePreviewSentHook;
     /// <summary>Projektdatei des aktuellen Projekts für den Reiter „Entwicklung“ ('' ohne).</summary>
     Project: TFunc<string>;
+    /// <summary>„Anhängen …“ für das gezeigte Issue (#1276).</summary>
+    Attach: TProc<TAtlasTrackerTarget, string>;
+    /// <summary>„Anhängen …“ zeigen (issues.attach).</summary>
+    CanAttach: TFunc<Boolean>;
   end;
 
   /// <summary>Ende einer Kurzabfrage (#1265); im Hauptthread.</summary>
@@ -661,9 +667,16 @@ begin
       if mKeep <> nil then
         mOwner.AddLink;
     end;
+  AFrame.OnAttach :=
+    procedure
+    begin
+      if (mKeep <> nil) and mOwner.FHasCurrent and Assigned(mOwner.FHooks.Attach) then
+        mOwner.FHooks.Attach(mOwner.FCurrent.Target, mOwner.FCurrent.Key);
+    end;
   if Assigned(FHooks.CanStart) then
     AFrame.CanStart := FHooks.CanStart();
   FDevelopment.Wire(AFrame);
+  AFrame.CanAttach := Assigned(FHooks.CanAttach) and FHooks.CanAttach();
   ShowCurrent;
 end;
 
@@ -1007,6 +1020,7 @@ begin
       mFrame.SetLoading(False);
       if Assigned(FHooks.CanStart) then
         mFrame.CanStart := FHooks.CanStart();
+      mFrame.CanAttach := Assigned(FHooks.CanAttach) and FHooks.CanAttach();
       PrepareFrame(mFrame, AEntry);
       // Meldung nach dem Anlegen bzw. Verknüpfen (#1279) über dem frischen Stand.
       ShowOn(mFrame, mDetails, FNotice);

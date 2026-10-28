@@ -8399,3 +8399,30 @@ Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (YouTrack), eine p
 | IM19 | GitHub ohne Änderung abfragen (Proxy-Protokoll) | Anfrage mit `If-Modified-Since`, Antwort 304; Abstand mindestens `X-Poll-Interval` |
 | IM20 | Plugin während einer laufenden Abfrage entladen | Kein Fehler, keine Zugriffsverletzung |
 | IM21 | Protokoll ansehen | Nur Anbieter, Anzahl und Fehlerart; keine Adresse, Kennung, Titel, Benutzer oder Token |
+
+## An Issue anhängen (#1276)
+
+Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (je einmal YouTrack und GitHub), Token hinterlegt, ein aktuelles Issue in „Meine Issues“; `issues.attach.logFiles` z. B. `$(ProjectDir)\logs\*.log`; ein VCL-Testprogramm mit Formular und Logdatei, im Debugger gestartet. Proxy (Fiddler) zum Mitlesen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IA1 | Atlas-Menü bzw. Befehlspalette *An Issue anhängen …* | Dialog mit dem aktuellen Issue vorgewählt, Vorschläge aus „Meine Issues“ in der Auswahl |
+| IA2 | Statusfeld: Zeile „An ATL-123 anhängen …“ unter dem aktuellen Issue anklicken | Derselbe Dialog für dieses Issue |
+| IA3 | Fenster „Atlas-Issue“: Knopf „Anhängen …“ bzw. Rechtsklick › *An Issue anhängen …* | Dialog für das gezeigte Issue |
+| IA4 | Programm läuft im Debugger, Dialog öffnen | „Bildschirmfoto“ angehakt, Hauptfenster in der Liste, Größe in Pixeln darunter; die Dateiliste zeigt `bildschirmfoto.png` mit Größe |
+| IA5 | Programm am Haltepunkt angehalten, Dialog öffnen | Kein Hängen der IDE; Bild vom Bildschirm; „Debug-Notiz“ wählbar |
+| IA6 | „Per Klick wählen“, dann auf ein anderes Fenster klicken; erneut, dann Esc bzw. rechte Maustaste | Bild des geklickten Fensters; Esc/Rechtsklick lässt das bisherige Bild; der Klick erreicht das Fenster nicht |
+| IA7 | „Markieren …“: Rahmen, Pfeil, Schwärzen über einen Bereich, Strg+Z, „Übernehmen“ | Formen rot bzw. schwarz; Strg+Z nimmt die letzte zurück; das gesendete PNG ist an der Stelle schwarz (**Abnahme**) |
+| IA8 | Bildschirm 2560 px breit, `issues.attach.maxImageWidth` 1920 | Gesendetes Bild 1920 px breit, Seitenverhältnis gleich |
+| IA9 | Formular im Designer offen, „Formular im Designer“ anhaken, markieren | `formular-Form1.png` in der Liste |
+| IA10 | Logdatei aus der Liste, „nur die letzten Zeilen: 200“; dann Haken aus | Eintrag „app.log (letzte 200 Zeilen)“; ohne Haken die ganze Datei; Datei, in die gerade geschrieben wird, lässt sich lesen |
+| IA11 | Formular, Log (200 Zeilen) und Debug-Notiz zusammen anhaken, „Senden“ (YouTrack) | Ein Schritt: alle Dateien als Anhänge am Issue (**Abnahme**) |
+| IA12 | Wie IA11 mit „Kommentar mit Verweis auf die Anhänge“ und Text | Kommentar mit dem Text, darunter Bilder eingebettet und Links auf die Dateien (**Abnahme**) |
+| IA13 | Debug-Notiz öffnen (Doppelklick in der Liste) | Markdown mit Projekt, Konfiguration, Plattform, Thread, Ort mit ±5 Zeilen und Marke, Aufrufstapel (eigener Code fett), letzter Exception; `Password := ***` |
+| IA14 | GitHub-Issue: Bildschirmfoto und Log anhaken, „Senden“ | Log als Codeblock im Kommentar; Hinweis „In GitHub mit Strg+V einfügen“; danach öffnet der Browser das Issue; Strg+V fügt das Bild ein (**Abnahme**) |
+| IA15 | „Abbrechen“ im Dialog bzw. nach dem Senden `%TEMP%\Atlas\attach` ansehen | Ordner des Laufs gelöscht (**Abnahme**) |
+| IA16 | Vor „Senden“ den Proxy beobachten | Keine Anfrage, solange nicht „Senden“ geklickt ist |
+| IA17 | Token entfernen, senden | Meldung „Anhängen an ATL-123 fehlgeschlagen: Kein Zugang …“ in der Meldungsansicht, kein Dialog |
+| IA18 | Ungültige Kennung („kaputt“) eintragen | „Senden“ gesperrt |
+| IA19 | `issues.attach` aus (Schnellschalter) | Menüeintrag, Palettenbefehl, Knopf und Kontextmenü im Vorschaufenster und Statuszeile fehlen (**Abnahme**) |
+| IA20 | IDE beenden, während gesendet wird | Plugin entlädt ohne Zugriffsverletzung; nächster Start räumt alte Ordner unter `%TEMP%\Atlas\attach` weg |

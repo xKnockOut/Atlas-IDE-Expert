@@ -64,6 +64,11 @@
 //   Umfang. Je Issue …/comments?since=<Stand> (neue Kommentare) und …/events
 //   (assigned, closed, reopened); ohne erkennbare Einzelheit bleibt eine
 //   allgemeine Änderung. Eigene Aktionen meldet GitHub ohnehin nicht.
+// - Anhängen (#1276, IAtlasTrackerAttach): GitHub nimmt über die API keine
+//   Dateien an (CanUpload = False). Texte (Protokoll, Debug-Notiz,
+//   Exception-Verlauf) gehen als Kommentar POST /repos/<owner/repo>/issues/
+//   <n>/comments mit {"body": …}, Protokolle als Codeblock; Bilder legt die
+//   IDE-Schicht in die Zwischenablage und öffnet das Issue im Browser.
 // Die Zeitgrenze gilt für die ganze Abfrage; reicht sie nach der Liste nicht
 // mehr für Pull Requests und Ampeln, bleiben diese unbekannt.
 
@@ -76,6 +81,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Internals.GitHubApi;
   Atlas.Core.Tracker.Board;
+  Atlas.Core.Tracker.Attach;
 
 type
   /// <summary>Offener Pull Request, wie ihn /pulls liefert.</summary>
@@ -114,7 +120,7 @@ type
   end;
 
   TAtlasGitHubTracker = class(TInterfacedObject, IAtlasTrackerProvider, IAtlasTrackerWriter,
-    IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards, IAtlasTrackerPeople)
+    IAtlasTrackerDescriptions, IAtlasTrackerLinkWriter, IAtlasTrackerBoards, IAtlasTrackerPeople, IAtlasTrackerAttach)
   public const
     ProviderName = 'github';
     Query = 'assignee:@me state:open';
@@ -239,6 +245,8 @@ type
     /// ungültigem JSON.</summary>
     class function ParseEventChanges(const AJson: string; const AThread: TAtlasGitHubThread; const AMe: string;
       ASince: TDateTime; out AChanges: TArray<TAtlasTrackerChange>): Boolean; static;
+    /// <summary>Adresse für einen neuen Kommentar (#1276); '' bei ungültiger Kennung.</summary>
+    class function CommentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string; static;
     { IAtlasTrackerProvider }
     function Name: string;
     function Caption: string;
@@ -358,6 +366,13 @@ type
       ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment; out AError: TAtlasCiFetchError): Boolean;
     function Changes(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
       var APoll: TAtlasTrackerPoll; out AChanges: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
+    { IAtlasTrackerAttach }
+    function CanUpload: Boolean;
+    function Upload(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost; const AKey: string;
+      const AFiles: TAtlasAttachFiles; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+    function Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost; const AKey, AMarkdown: string;
+      ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+    function CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
   end;
 
 implementation
@@ -3063,6 +3078,42 @@ begin
   for mIndex := 0 to High(AChanges) do
     if AChanges[mIndex].Time > APoll.Latest then
       APoll.Latest := AChanges[mIndex].Time;
+end;
+
+class function TAtlasGitHubTracker.CommentsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string): string;
+begin
+  Result := IssueApiUrl(ATarget, AKey);
+  if Result <> '' then
+    Result := Result + '/comments';
+end;
+
+function TAtlasGitHubTracker.CanUpload: Boolean;
+begin
+  Result := False;
+end;
+
+function TAtlasGitHubTracker.Upload(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost;
+  const AKey: string; const AFiles: TAtlasAttachFiles; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+begin
+  // Die API von GitHub nimmt keine Dateien an; TAtlasAttachSender nimmt dann den Rückfall.
+  AError := TAtlasCiFetchError.NotConfigured;
+  Result := False;
+end;
+
+function TAtlasGitHubTracker.Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost; const AKey,
+  AMarkdown: string; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+var
+  mStatus: Integer;
+begin
+  Result := TAtlasAttachSender.Post(ASend, CommentsUrl(ATarget, AKey), 'application/json',
+    TAtlasAttachComment.JsonBody('body', AMarkdown), ATimeoutMs, mStatus, AError);
+  if not Result and (mStatus <> 0) then
+    AError := ErrorOfStatus(mStatus);
+end;
+
+function TAtlasGitHubTracker.CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
+begin
+  Result := TAtlasAttachComment.WithTexts(AComment, AFiles, TAtlasAttachComment.MaxTextsLength);
 end;
 
 end.
