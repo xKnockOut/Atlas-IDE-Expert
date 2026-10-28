@@ -23,6 +23,11 @@
 //   (Wiederfinden nach einer Tipp-Pause, auch ohne benannte Lesezeichen),
 //   übernimmt beim ersten Öffnen die IDE-Lesezeichen 1–9 (ImportIde) und
 //   nimmt Hinweise im Statusfeld wieder weg.
+// - Die Spalte meldet dem Dienst, ob die IDE sie wirklich zeichnet (#1281):
+//   Erst dann übernimmt Atlas die IDE-Lesezeichen und überlässt ihr die
+//   nummerierten benannten. Anfordern, Fehlen der Schnittstelle und eine
+//   Spalte, die nach PaintWaitMs noch nie gezeichnet wurde, stehen im
+//   Protokoll.
 // Abschaltbar über bookmarks.quick und bookmarks.quick.gutter, ausblendbar am
 // Element (#628). Sicherung über TAtlasFeature.QuickBookmarks (#493). Nur im
 // Hauptthread.
@@ -71,6 +76,9 @@ type
     HoverMs = 400;
     /// <summary>Tipp-Pause, bevor die Lesezeichen der Datei wiedergefunden werden.</summary>
     QuietMs = 600;
+    /// <summary>So lange nach dem Anfordern darf die Spalte ungezeichnet bleiben, bevor das Protokoll es meldet.
+    /// </summary>
+    PaintWaitMs = 5000;
     MenuName = 20;
     MenuRemove = 21;
     MenuRemoveFile = 22;
@@ -101,6 +109,11 @@ type
     FHovering: Boolean;
     FHoverSince: UInt64;
     FHoverScreen: TRect;
+    // Spalte wirklich gezeichnet (#1281) und Protokoll dazu.
+    FPainted: Boolean;
+    FRequestedAt: UInt64;
+    FLoggedNoServices: Boolean;
+    FLoggedNotPainted: Boolean;
     function Active: Boolean;
     function Shown: Boolean;
     function TopView: IOTAEditView;
@@ -109,6 +122,7 @@ type
     procedure DropColumn;
     procedure Tick(Sender: TObject);
     procedure Track;
+    procedure CheckPainted;
     function RowAt(AWnd: HWND; X, Y: Integer; out ARow: TRow): Boolean;
     procedure PaintMarks(ACanvas: TCanvas; const ARow: TRow; const AColors: TAtlasColors; ABack: TAtlasColor);
     procedure PaintFree(ACanvas: TCanvas; const ARect: TRect; const AColors: TAtlasColors);
@@ -199,6 +213,8 @@ begin
   FEvents.OnEditorMouseMove := EditorMouseMove;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
     FIndex := Editors.AddEditorEventsNotifier(FEventsRef);
+  if FIndex < 0 then
+    TAtlasGuard.Log('Schnelle Lesezeichen: Die IDE nimmt keinen Editor-Notifier an, die Spalte bleibt aus');
   FAppEvents := TApplicationEvents.Create(nil);
   FAppEvents.OnMessage := AppMessage;
   FTimer := TTimer.Create(nil);
@@ -271,11 +287,20 @@ begin
     Exit;
   Editors := Services;
   if Editors = nil then
+  begin
+    if not FLoggedNoServices then
+      TAtlasGuard.Log('Schnelle Lesezeichen: Die IDE bietet keine eigenen Spalten der Zeilenleiste ' +
+        '(INTACodeEditorServices280), die Spalte bleibt aus');
+    FLoggedNoServices := True;
     Exit;
+  end;
   DropColumn;
   // Vor den Zeilennummern: Die Spalte steht direkt links der Zahlen (beim ersten Bau prüfen).
   FColumn := Editors.RequestGutterColumn(FIndex, FWantedWidth, gclBeforeLineNumbers);
   FWidth := FWantedWidth;
+  FRequestedAt := TThread.GetTickCount64;
+  FLoggedNotPainted := False;
+  TAtlasGuard.Log(Format('Schnelle Lesezeichen: Spalte angefordert (Spalte %d, Breite %d)', [FColumn, FWidth]));
   FRows.Clear;
   Editors.InvalidateTopEditor;
 end;
@@ -294,6 +319,28 @@ begin
   end;
   FColumn := -1;
   FRows.Clear;
+  if FPainted then
+  begin
+    FPainted := False;
+    TAtlasIdeBookmarks.ColumnPainted(False);
+  end;
+end;
+
+procedure TAtlasIdeQuickColumn.CheckPainted;
+begin
+  // Dem Dienst melden, ob die Spalte zeichnet; erst dann übernimmt er die IDE-Lesezeichen (#1281).
+  TAtlasIdeBookmarks.ColumnPainted(FPainted);
+  if FPainted then
+  begin
+    TAtlasIdeBookmarks.ImportIde(FFileName);
+    Exit;
+  end;
+  if (FColumn < 0) or FLoggedNotPainted or (FFileName = '') or
+    (TThread.GetTickCount64 - FRequestedAt < PaintWaitMs) then
+    Exit;
+  FLoggedNotPainted := True;
+  TAtlasGuard.Log(Format('Schnelle Lesezeichen: Spalte %d seit %d ms angefordert, die IDE hat sie aber noch nie ' +
+    'gezeichnet', [FColumn, PaintWaitMs]));
 end;
 
 procedure TAtlasIdeQuickColumn.Tick(Sender: TObject);
@@ -310,7 +357,10 @@ begin
     end;
     Track;
     if TAtlasIdeSettings.Current.QuickBookmarksGutter then
-      EnsureColumn
+    begin
+      EnsureColumn;
+      CheckPainted;
+    end
     else
     begin
       SetHover(Default(TRow), False);
@@ -339,7 +389,7 @@ begin
     FText := Text;
     FRows.Clear;
     TAtlasIdeBookmarks.Track(FFileName, FText);
-    TAtlasIdeBookmarks.ImportIde(FFileName);
+    // Die IDE-Lesezeichen übernimmt CheckPainted, sobald die Spalte zeichnet (#1281).
     FTracked := True;
     InvalidateTop;
     Exit;
@@ -499,6 +549,8 @@ begin
     ColumnRect := Context.EditorState.GetGutterColumnRect(Context.EditControl, Context.EditorLineNum, FColumn);
     if ColumnRect.IsEmpty or (Context.LogicalLineNum <= 0) then
       Exit;
+    // Die IDE zeichnet die Spalte; der Zeitgeber meldet es dem Dienst (#1281).
+    FPainted := True;
     LineState := Context.LineState;
     HasText := LineState <> nil;
     LineText := '';

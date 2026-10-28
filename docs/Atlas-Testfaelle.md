@@ -518,6 +518,9 @@ Gleiche Ablage wie die benannten Lesezeichen, `format` 2 mit `kind` (`named`, `q
 | QL24 | Seite „Tastenkonflikte“, Zeile „Lesezeichen 1–9 setzen“ › IDE überlassen | Strg+Umschalt+1…9 setzen sofort wieder IDE-Lesezeichen |
 | QL25 | Strg+. auf einer Zeile mit Marker › Ausblenden „überall“ | Spalte zeigt keine Marker mehr (#628) |
 | QL26 | Zeilennummern einer Zeile mit Marker, hell und dunkel, 100/150/200 % | Zahl heller als die übrigen, gleiche Schrift und Lage (Stufe der Zeilennummern beim ersten Bau prüfen) |
+| QL27 | IDE starten, Datei öffnen, `atlas.log` lesen (#1281) | Zeile „Schnelle Lesezeichen: Spalte angefordert (Spalte N, Breite B)“; fehlt die Spalte im Editor, nach 5 s zusätzlich „… die IDE hat sie aber noch nie gezeichnet“ bzw. „… bietet keine eigenen Spalten …“ |
+| QL28 | Spalte fehlt (oder `bookmarks.quick.gutter` aus), Datei mit IDE-Lesezeichen 1–3 öffnen (#1281) | Die IDE-Lesezeichen bleiben mit ihren Symbolen in der IDE, Atlas übernimmt nichts |
+| QL29 | Spalte fehlt, benanntes Lesezeichen mit Nummer (#1281) | Die Rinne zeigt das Band der benannten Lesezeichen an der Zeile |
 
 ## Tippfehler (#485)
 
