@@ -130,6 +130,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Text.Lines;
 
 const
@@ -159,30 +160,6 @@ begin
   end;
 end;
 
-/// <summary>Kopf bis zum ersten ";" außerhalb von Klammern, ohne doppelte Leerzeichen.</summary>
-function Signature(const AText: string; out ARest: string): string;
-var
-  Index, Depth: Integer;
-begin
-  Depth := 0;
-  Index := 1;
-  while Index <= Length(AText) do
-  begin
-    case AText[Index] of
-      '(', '[': Inc(Depth);
-      ')', ']': Dec(Depth);
-      ';':
-        if Depth = 0 then
-          Break;
-    end;
-    Inc(Index);
-  end;
-  Result := Trim(Copy(AText, 1, Index - 1));
-  ARest := Copy(AText, Index + 1, MaxInt);
-  while Pos('  ', Result) > 0 do
-    Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
-end;
-
 /// <summary>Teile von AText an ADelimiter außerhalb von Klammern und Zeichenketten.</summary>
 function SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>;
 var
@@ -208,83 +185,6 @@ begin
       Start := Index + 1;
     end;
   Result := Result + [Copy(AText, Start, MaxInt)];
-end;
-
-/// <summary>Ein Parameter je Eintrag, ohne Standardwert: Deklaration und Implementierung dürfen
-/// Parameter verschieden gruppieren (const A: string; const B: string = '' gegen const A, B: string)
-/// und die Implementierung lässt Standardwerte weg (#647).</summary>
-function NormalizedParameters(const AParameters: string): string;
-var
-  Group, Names, TypeName, Modifier, Name, First: string;
-  Parts, NameList: TArray<string>;
-  Space: Integer;
-begin
-  Result := '';
-  for Group in SplitTopLevel(AParameters, ';') do
-  begin
-    // Standardwert abschneiden: "AValue: Integer = 0".
-    Parts := SplitTopLevel(Group, '=');
-    Parts := SplitTopLevel(Parts[0], ':');
-    Names := Trim(Parts[0]);
-    if Length(Parts) > 1 then
-      TypeName := Trim(Parts[1])
-    else
-      TypeName := '';
-    if Names = '' then
-      Continue;
-    Modifier := '';
-    Space := Pos(' ', Names);
-    if Space > 0 then
-    begin
-      First := LowerCase(Copy(Names, 1, Space - 1));
-      if MatchText(First, ['const', 'var', 'out', 'constref']) then
-      begin
-        Modifier := First;
-        Names := Trim(Copy(Names, Space + 1, MaxInt));
-      end;
-    end;
-    NameList := SplitTopLevel(Names, ',');
-    for Name in NameList do
-    begin
-      if Result <> '' then
-        Result := Result + ';';
-      Result := Result + Modifier + ' ' + Trim(Name) + ':' + TypeName;
-    end;
-  end;
-  Result := LowerCase(StringReplace(Result, ' ', '', [rfReplaceAll]));
-end;
-
-/// <summary>Parameterliste ohne Leerzeichen und Standardwerte in Kleinbuchstaben, ein Parameter je
-/// Eintrag; '' ohne Klammern.</summary>
-function ParameterKey(const ASignature: string): string;
-var
-  Open, Close: Integer;
-begin
-  Open := Pos('(', ASignature);
-  Close := LastDelimiter(')', ASignature);
-  if (Open = 0) or (Close < Open) then
-    Exit('');
-  Result := '(' + NormalizedParameters(Copy(ASignature, Open + 1, Close - Open - 1)) + ')';
-end;
-
-/// <summary>Ergebnistyp hinter der Parameterliste als Schlüsselteil ("|integer"); '' ohne. Rümpfe dürfen ihn
-/// weglassen, dann passt der Rumpf über den Namen allein.</summary>
-function ResultKey(const ASignature: string): string;
-var
-  Index, Depth: Integer;
-begin
-  Depth := 0;
-  for Index := 1 to Length(ASignature) do
-    case ASignature[Index] of
-      '(', '[', '<':
-        Inc(Depth);
-      ')', ']', '>':
-        Dec(Depth);
-      ':':
-        if Depth = 0 then
-          Exit('|' + LowerCase(StringReplace(Trim(Copy(ASignature, Index + 1, MaxInt)), ' ', '', [rfReplaceAll])));
-    end;
-  Result := '';
 end;
 
 function HasWord(const AText, AWord: string): Boolean;
@@ -361,11 +261,12 @@ function SignatureTail(ATree: TSyntaxTree; const AText: string; const ASymbol: T
   out ARange: TTextRange; out ATail: string): Boolean;
 var
   Tokens: TArray<TPascalToken>;
-  Index, Name, Last, Depth, StartOffset: Integer;
+  Index, Name, Last, Depth, StartOffset, mAngles: Integer;
 begin
   Result := False;
   Tokens := ATree.Tokens;
   Name := -1;
+  mAngles := 0;
   for Index := 0 to High(Tokens) do
     if Tokens[Index].EndPos = ASymbol.SelectionRange.EndPos then
     begin
@@ -384,7 +285,12 @@ begin
       Inc(Depth)
     else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
       Dec(Depth)
-    else if (Depth = 0) and Tokens[Index].IsSymbol(';') then
+    // Constraints der Typparameter enthalten ";" (<TI: IInterface; TC: class>, #1325).
+    else if (Depth = 0) and Tokens[Index].IsSymbol('<') then
+      Inc(mAngles)
+    else if (Depth = 0) and (mAngles > 0) and Tokens[Index].IsSymbol('>') then
+      Dec(mAngles)
+    else if (Depth = 0) and (mAngles = 0) and Tokens[Index].IsSymbol(';') then
       Break;
     Last := Index;
   end;
@@ -676,7 +582,7 @@ begin
   Result := SignatureTail(ATree, AText, ASymbol, Range, Tail);
   if not Result then
     Exit;
-  Header := Signature(RangeText(TTextLines.SplitLines(AText), ASymbol.Range), Rest);
+  Header := TRoutineSignatures.Head(RangeText(TTextLines.SplitLines(AText), ASymbol.Range), Rest);
   for Word in Kinds do
     if HasWord(Header, Word) then
     begin
@@ -892,7 +798,7 @@ begin
     begin
       if not (Symbol.Kind in MethodKinds) or not SameText(Symbol.Container, Match.TypeName) then
         Continue;
-      Header := Signature(RangeText(Lines, Symbol.Range), Rest);
+      Header := TRoutineSignatures.Head(RangeText(Lines, Symbol.Range), Rest);
       if ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) then
       begin
         Match.Declarations := Match.Declarations + [Symbol];
@@ -903,7 +809,8 @@ begin
         Match.Bodies := Match.Bodies + [Symbol];
         Match.BodyHeaders := Match.BodyHeaders + [Header];
         Match.BodyUsed := Match.BodyUsed + [False];
-        BodyKeys := BodyKeys + [LowerCase(Symbol.Name) + ParameterKey(Header) + ResultKey(Header)];
+        BodyKeys := BodyKeys + [LowerCase(Symbol.Name) + TRoutineSignatures.ParameterKey(Header) +
+          TRoutineSignatures.ResultKey(Header)];
         BodyConventions := BodyConventions + [ConventionOfRest(Rest)];
       end;
     end;
@@ -911,14 +818,15 @@ begin
     for Declaration := 0 to High(Match.Declarations) do
     begin
       Symbol := Match.Declarations[Declaration];
-      Signature(RangeText(Lines, Symbol.Range), Rest);
+      TRoutineSignatures.Head(RangeText(Lines, Symbol.Range), Rest);
       if HasWord(Rest, 'abstract') or HasWord(Rest, 'external') or HasWord(Rest, 'forward') then
       begin
         Match.BodyOf[Declaration] := -2;
         Continue;
       end;
       Header := Match.DeclarationHeaders[Declaration];
-      Key := LowerCase(Symbol.Name) + ParameterKey(Header) + ResultKey(Header);
+      Key := LowerCase(Symbol.Name) + TRoutineSignatures.ParameterKey(Header) +
+        TRoutineSignatures.ResultKey(Header);
       Body := FreeBody(Key);
       // Ohne Parameterliste im Rumpf passt er zur ersten Deklaration gleichen Namens.
       if Body < 0 then
@@ -1146,7 +1054,8 @@ begin
         Declarations.Add(Symbol)
       else
       begin
-        Implemented.Add(LowerCase(Symbol.Name) + ParameterKey(Signature(RangeText(Lines, Symbol.Range), Rest)));
+        Implemented.Add(LowerCase(Symbol.Name) + TRoutineSignatures.ParameterKey(TRoutineSignatures.Head(
+          RangeText(Lines, Symbol.Range), Rest)));
         if Symbol.Range.EndPos.Line > LastLine then
           LastLine := Symbol.Range.EndPos.Line;
       end;
@@ -1154,10 +1063,10 @@ begin
     OnMethod := False;
     for Symbol in Declarations do
     begin
-      Header := Signature(RangeText(Lines, Symbol.Range), Rest);
+      Header := TRoutineSignatures.Head(RangeText(Lines, Symbol.Range), Rest);
       if HasWord(Rest, 'abstract') then
         Continue;
-      Key := LowerCase(Symbol.Name) + ParameterKey(Header);
+      Key := LowerCase(Symbol.Name) + TRoutineSignatures.ParameterKey(Header);
       Index := Implemented.IndexOf(Key);
       // Ohne Parameterliste in der Implementierung passt sie zur ersten Deklaration gleichen Namens.
       if Index < 0 then
@@ -1182,7 +1091,8 @@ begin
     Bodies := '';
     for Symbol in Missing do
     begin
-      Header := QualifiedHeader(Signature(RangeText(Lines, Symbol.Range), Rest), Symbol.Name, TypeName);
+      Header := QualifiedHeader(TRoutineSignatures.Head(RangeText(Lines, Symbol.Range), Rest), Symbol.Name,
+        TypeName);
       if Header = '' then
         Continue;
       Bodies := Bodies + LB + Header + LB + 'begin' + LB + LB + 'end;' + LB;

@@ -5,7 +5,8 @@
 // Codes (E2393, E2517, E2518, E2519, E2520, E2521, E2522, E2464), stillen
 // Fällen (richtige Operatoren, Aliase, unbekannte Typen) und Abschalten;
 // generic-declaration-invalid (#1029) mit dem Beispiel und je Gruppe von
-// Codes ein gemeldeter und ein stiller Fall; type-restriction-violated (#994)
+// Codes ein gemeldeter und ein stiller Fall, still bei Methodenzuordnungen
+// (#1325); type-restriction-violated (#994)
 // mit dem Beispiel samt Korrektur, Records, lokalen Records, Helfern,
 // Klassenkonstruktoren, inline, threadvar und der Option disabledChecks.
 
@@ -51,6 +52,8 @@ type
     procedure ClassReferencesAndAttributes;
     [Test]
     procedure ShadowedTypeParameter;
+    [Test]
+    procedure MethodResolutionIsNoDeclaration;
     [Test]
     procedure TypeArgumentCount;
     [Test]
@@ -446,6 +449,20 @@ begin
     'procedure TListe<T>.Hinzu<T>(A: T);'#10'begin'#10'end;'#10))));
   Assert.AreEqual('', Messages(GenericFindings(GenericUnit('  TListe<T> = class'#10'    procedure Hinzu<U>(A: U);'#10 +
     '  end;'#10'  TAndere<U> = class'#10'  end;'#10, ''))));
+end;
+
+procedure TGenericDeclarationInvalidTests.MethodResolutionIsNoDeclaration;
+begin
+  // F03 mit generischem Interface: IEnumerator<T>.GetCurrent = GetCurrentGen nennt das T des Interfaces und
+  // deklariert keinen eigenen Typparameter (#1325).
+  Assert.AreEqual('', Messages(GenericFindings(GenericUnit('  TE<T> = class(TInterfacedObject, IEnumerator<T>)'#10 +
+    '    function GetCurrentGen: T;'#10'    function IEnumerator<T>.GetCurrent = GetCurrentGen;'#10'  end;'#10,
+    'function TE<T>.GetCurrentGen: T;'#10'begin'#10'  Result := Default(T);'#10'end;'#10))));
+  // Gegenprobe: eine eigene Methode mit verdeckendem Typparameter wird weiter gemeldet.
+  Assert.AreEqual('6: Der Typparameter T verdeckt den gleichnamigen Typparameter von TE (wie H2509).',
+    Messages(GenericFindings(GenericUnit('  TE<T> = class(TInterfacedObject, IEnumerator<T>)'#10 +
+    '    function IEnumerator<T>.GetCurrent = GetCurrentGen;'#10'    procedure Hinzu<T>(A: T);'#10'  end;'#10,
+    'procedure TE<T>.Hinzu<T>(A: T);'#10'begin'#10'end;'#10))));
 end;
 
 procedure TGenericDeclarationInvalidTests.TypeArgumentCount;
