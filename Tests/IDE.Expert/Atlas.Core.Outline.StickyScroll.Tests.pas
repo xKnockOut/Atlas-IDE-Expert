@@ -428,9 +428,6 @@ begin
     Assert.AreNotEqual(1, Span.Start);
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TAtlasStickyScrollTests);
-
 function Row(ALine: Integer; ASummary: Boolean): TAtlasStickyRow;
 begin
   Result := Default(TAtlasStickyRow);
@@ -516,5 +513,8 @@ begin
   Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil, [], Source.Marks.EinsBody + 5,
     3, 8)));
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TAtlasStickyScrollTests);
 
 end.

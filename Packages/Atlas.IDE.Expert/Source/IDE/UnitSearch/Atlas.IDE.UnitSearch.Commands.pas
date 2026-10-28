@@ -332,15 +332,13 @@ end;
 
 function ShowForm(const AFileName: string): Boolean;
 var
-  Actions: IOTAActionServices;
   Modules: IOTAModuleServices;
   Module: IOTAModule;
   Index: Integer;
   FormEditor: IOTAFormEditor;
 begin
   Result := False;
-  if not Supports(BorlandIDEServices, IOTAActionServices, Actions) or not Actions.OpenFile(AFileName) or
-    not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not TAtlasIdeNavigation.ShowFile(AFileName) or not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
     Exit;
   Module := Modules.FindModule(AFileName);
   if Module = nil then

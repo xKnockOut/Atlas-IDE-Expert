@@ -134,6 +134,9 @@ type
 
 implementation
 
+uses
+  System.Character;
+
 { TAtlasOpenBuildResult }
 
 function TAtlasOpenBuildResult.AllSucceeded: Boolean;
@@ -265,16 +268,27 @@ begin
   Result := string.Join(', ', ParseExclude(AText));
 end;
 
+// Vergleichsschlüssel: nur Buchstaben und Ziffern, damit „Win 64“ oder „win-64“ die Plattform Win64 treffen.
+function TargetKey(const AName: string): string;
+var
+  C: Char;
+begin
+  Result := '';
+  for C in AName do
+    if C.IsLetterOrDigit then
+      Result := Result + C.ToLower;
+end;
+
 class function TAtlasOpenBuild.PickTarget(const AWanted: string; const AAvailable: TArray<string>): string;
 var
   Wanted, Name: string;
 begin
   Result := '';
-  Wanted := Trim(AWanted);
+  Wanted := TargetKey(AWanted);
   if Wanted = '' then
     Exit;
   for Name in AAvailable do
-    if SameText(Trim(Name), Wanted) then
+    if TargetKey(Name) = Wanted then
       Exit(Name);
 end;
 
