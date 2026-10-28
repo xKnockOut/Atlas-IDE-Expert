@@ -903,7 +903,7 @@ var
   Index, Previous, Before: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(ATokens) do
+  for Index := TSyntaxTree.FirstTokenOf(ATokens, AFirst) to High(ATokens) do
   begin
     if ATokens[Index].Offset < AFirst then
       Continue;

@@ -201,6 +201,9 @@ type
     Symbol: TIndexSymbol;
   end;
 
+  /// <summary>Prüffunktion für ISymbolIndex.HasSymbol.</summary>
+  TSymbolMatch = reference to function(const ASymbol: TIndexSymbol): Boolean;
+
   ISymbolIndex = interface
     ['{8E3A51C4-7B29-4D6E-A0F8-2C9D41E7B635}']
     /// <summary>Fügt die Unit hinzu oder ersetzt den Stand derselben Datei.</summary>
@@ -210,6 +213,9 @@ type
     function FindFile(const AFileName: string; out AUnit: TUnitIndex): Boolean;
     /// <summary>Alle Symbole mit diesem Namen (ohne Groß-/Kleinschreibung).</summary>
     function FindSymbols(const AName: string): TArray<TSymbolLocation>;
+    /// <summary>Gibt es ein Symbol mit diesem Namen, für das AMatch True liefert? Endet beim ersten Treffer und
+    /// legt keine Fundstellen an (#1342). AMatch läuft unter der Sperre des Index und darf ihn nicht ändern.</summary>
+    function HasSymbol(const AName: string; const AMatch: TSymbolMatch): Boolean;
     /// <summary>Direkte Nachfahren eines Typs (Klassen, Interfaces, Helfer).</summary>
     function Descendants(const ATypeName: string): TArray<TSymbolLocation>;
     /// <summary>Alle Units. Das Ergebnis ist ein geteilter Schnappschuss (Code-Review P-13): nur lesen, nicht

@@ -352,13 +352,11 @@ begin
 end;
 
 function IndexOfOffset(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  Index: Integer;
 begin
-  for Index := 0 to High(ATokens) do
-    if ATokens[Index].Offset = AOffset then
-      Exit(Index);
-  Result := -1;
+  // Binär statt ab Dateianfang (#1342).
+  Result := TSyntaxTree.FirstTokenOf(ATokens, AOffset);
+  if (Result > High(ATokens)) or (ATokens[Result].Offset <> AOffset) then
+    Result := -1;
 end;
 
 /// <summary>Letztes Schlüsselwort AWord vor AEndOffset ab AStartOffset; -1 wenn keins.</summary>
@@ -368,7 +366,7 @@ var
   Index: Integer;
 begin
   Result := -1;
-  for Index := 0 to High(ATokens) do
+  for Index := TSyntaxTree.FirstTokenOf(ATokens, AStartOffset) to High(ATokens) do
   begin
     if ATokens[Index].Offset >= AEndOffset then
       Break;

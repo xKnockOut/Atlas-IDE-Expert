@@ -291,7 +291,7 @@ begin
   if Header = nil then
     Header := ARoutine;
   Name := ShortName(ARoutine.Name);
-  for Index := 0 to High(AContext.Tree.Tokens) do
+  for Index := AContext.Tree.FirstTokenFrom(Header.StartOffset) to High(AContext.Tree.Tokens) do
   begin
     Token := AContext.Tree.Tokens[Index];
     if Token.Offset >= Header.EndOffset then
@@ -799,14 +799,16 @@ end;
 function FirstLineRange(const AContext: TRuleContext; ANode: TSyntaxNode): TTextRange;
 var
   Token: TPascalToken;
+  mIndex: Integer;
   Last: TTextPosition;
 begin
   Last := ANode.EndPos;
   if Last.Line <> ANode.StartPos.Line then
   begin
     Last := ANode.StartPos;
-    for Token in AContext.Tree.Tokens do
+    for mIndex := AContext.Tree.FirstTokenFrom(ANode.StartOffset) to High(AContext.Tree.Tokens) do
     begin
+      Token := AContext.Tree.Tokens[mIndex];
       if Token.Offset >= ANode.EndOffset then
         Break;
       if (Token.Offset >= ANode.StartOffset) and (Token.StartPos.Line = ANode.StartPos.Line) and
@@ -3724,15 +3726,16 @@ var
   // Das Token "out" vor dem Parameter mit den Namen ANames in AParams.
   function OutToken(AParams: TSyntaxNode; const ANames: string; out AToken: TPascalToken): Boolean;
   var
-    Inner: Integer;
+    Inner, mIndex: Integer;
     Token: TPascalToken;
   begin
     Result := False;
     for Inner := 0 to AParams.ChildCount - 1 do
       if (AParams[Inner].Kind = TSyntaxKind.Parameter) and SameText(AParams[Inner].Name, ANames) and
         (AParams[Inner].Modifier = TParameterModifier.OutParam) then
-        for Token in AContext.Tree.Tokens do
+        for mIndex := AContext.Tree.FirstTokenFrom(AParams[Inner].StartOffset) to High(AContext.Tree.Tokens) do
         begin
+          Token := AContext.Tree.Tokens[mIndex];
           if Token.Offset >= AParams[Inner].EndOffset then
             Break;
           if (Token.Offset >= AParams[Inner].StartOffset) and SameText(Token.Text, 'out') then

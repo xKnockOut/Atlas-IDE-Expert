@@ -1326,15 +1326,15 @@ var
   // Kommentare oder Direktiven zwischen Kopf und Ende der Routine?
   function HasCommentOrDirective(AHeader, ARoutine: TSyntaxNode): Boolean;
   var
-    Token: TPascalToken;
+    mIndex: Integer;
   begin
-    for Token in Tokens do
+    // Binär zum Ende des Kopfs statt ab Dateianfang (#1342).
+    mIndex := TSyntaxTree.FirstTokenOf(Tokens, AHeader.EndOffset);
+    while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < ARoutine.EndOffset) do
     begin
-      if Token.Offset >= ARoutine.EndOffset then
-        Break;
-      if (Token.Offset >= AHeader.EndOffset) and (Token.Kind in [TPascalTokenKind.Comment,
-        TPascalTokenKind.Directive]) then
+      if Tokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
         Exit(True);
+      Inc(mIndex);
     end;
     Result := False;
   end;

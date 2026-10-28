@@ -1089,7 +1089,7 @@ begin
   Tokens := FTree.Tokens;
   Header := '';
   Depth := 0;
-  for Index := 0 to High(Tokens) do
+  for Index := TSyntaxTree.FirstTokenOf(Tokens, ANode.StartOffset) to High(Tokens) do
   begin
     if Tokens[Index].Offset < ANode.StartOffset then
       Continue;

@@ -248,20 +248,8 @@ begin
 end;
 
 class function TRoutineBody.TokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
-var
-  Low_, High_, Middle: Integer;
 begin
-  Low_ := 0;
-  High_ := Length(ATokens);
-  while Low_ < High_ do
-  begin
-    Middle := (Low_ + High_) div 2;
-    if ATokens[Middle].Offset < AOffset then
-      Low_ := Middle + 1
-    else
-      High_ := Middle;
-  end;
-  Result := Low_;
+  Result := TSyntaxTree.FirstTokenOf(ATokens, AOffset);
 end;
 
 class function TRoutineBody.NextToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;

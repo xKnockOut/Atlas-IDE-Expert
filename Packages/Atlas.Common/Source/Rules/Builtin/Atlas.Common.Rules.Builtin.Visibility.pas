@@ -138,7 +138,6 @@ var
   function Suspect(const AName: string): Boolean;
   var
     Symbol: TIndexSymbol;
-    Location: TSymbolLocation;
   begin
     if Suspects.TryGetValue(LowerCase(AName), Result) then
       Exit;
@@ -147,12 +146,11 @@ var
       if (Symbol.Container <> '') and (Symbol.Visibility in Restricted) and SameText(Symbol.Name, AName) then
         Result := True;
     if not Result and (AContext.Index <> nil) then
-      for Location in AContext.Index.FindSymbols(AName) do
-        if (Location.Symbol.Container <> '') and (Location.Symbol.Visibility in Restricted) then
+      Result := AContext.Index.HasSymbol(AName,
+        function(const ASymbol: TIndexSymbol): Boolean
         begin
-          Result := True;
-          Break;
-        end;
+          Result := (ASymbol.Container <> '') and (ASymbol.Visibility in Restricted);
+        end);
     Suspects.Add(LowerCase(AName), Result);
   end;
 

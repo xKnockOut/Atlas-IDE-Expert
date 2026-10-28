@@ -91,6 +91,8 @@ type
     [Test]
     procedure FindSymbolsMatchesWholeNamesOnly;
     [Test]
+    procedure HasSymbolStopsAtFirstMatch;
+    [Test]
     procedure LookupsStayCorrectAfterManyReplacements;
     [Test]
     procedure LookupsFollowCompaction;
@@ -854,6 +856,55 @@ begin
   Assert.IsTrue(SameText('TFoo', Found[0].Symbol.Name));
   Assert.IsTrue(SameText('TFoo', Found[1].Symbol.Name));
   Assert.AreEqual<NativeInt>(0, Length(Index.FindSymbols('TFooB')));
+end;
+
+procedure TSymbolIndexTests.HasSymbolStopsAtFirstMatch;
+var
+  Index: ISymbolIndex;
+  mCalls: Integer;
+  mUnits: string;
+begin
+  // Ja/Nein-Fragen ohne Fundstellenliste (#1342): dieselben Symbole wie FindSymbols, Ende beim ersten Treffer.
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(MakeUnit('A', 'C:\A.pas', ['TFooBar', 'TFoo']));
+  Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['TBaz', 'TFOO']));
+  mCalls := 0;
+  mUnits := '';
+  Assert.IsFalse(Index.HasSymbol('tfoo',
+    function(const ASymbol: TIndexSymbol): Boolean
+    begin
+      Inc(mCalls);
+      mUnits := mUnits + ASymbol.Name + ';';
+      Result := False;
+    end));
+  Assert.AreEqual(2, mCalls, 'alle gleichnamigen Symbole');
+  Assert.AreEqual('TFOO;TFOO;', UpperCase(mUnits));
+  mCalls := 0;
+  Assert.IsTrue(Index.HasSymbol('TFoo',
+    function(const ASymbol: TIndexSymbol): Boolean
+    begin
+      Inc(mCalls);
+      Result := True;
+    end));
+  Assert.AreEqual(1, mCalls, 'Ende beim ersten Treffer');
+  mCalls := 0;
+  Assert.IsFalse(Index.HasSymbol('TFooB',
+    function(const ASymbol: TIndexSymbol): Boolean
+    begin
+      Inc(mCalls);
+      Result := True;
+    end));
+  Assert.AreEqual(0, mCalls, 'unbekannter Name');
+  Index.RemoveFile('C:\A.pas');
+  mCalls := 0;
+  Assert.IsFalse(Index.HasSymbol('TFoo',
+    function(const ASymbol: TIndexSymbol): Boolean
+    begin
+      Inc(mCalls);
+      Result := False;
+    end));
+  Assert.AreEqual(1, mCalls, 'nach dem Entfernen nur noch B');
+  mUnits := '';
 end;
 
 procedure TSymbolIndexTests.LookupsStayCorrectAfterManyReplacements;

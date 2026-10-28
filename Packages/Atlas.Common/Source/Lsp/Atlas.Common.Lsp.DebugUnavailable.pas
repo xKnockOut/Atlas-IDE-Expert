@@ -264,6 +264,7 @@ var
   Loops: TList<TSyntaxNode>;
   Loop: TSyntaxNode;
   Token: TPascalToken;
+  mIndex: Integer;
   Symbol: TResolvedSymbol;
   Resolved, Declared: Boolean;
   LineEnd: string;
@@ -300,8 +301,9 @@ begin
   if Routine.FindChild(TSyntaxKind.RoutineHeader) <> nil then
     Params := Routine.FindChild(TSyntaxKind.RoutineHeader).FindChild(TSyntaxKind.Parameters);
   Declared := SameText(AName, 'Result');
-  for Token in Tokens do
+  for mIndex := TSyntaxTree.FirstTokenOf(Tokens, Routine.StartOffset) to High(Tokens) do
   begin
+    Token := Tokens[mIndex];
     if Token.Offset >= Body.StartOffset then
       Break;
     if (Token.Offset < Routine.StartOffset) or (Token.Kind <> TPascalTokenKind.Identifier) or
@@ -329,7 +331,7 @@ begin
     if AResolver <> nil then
       AResolver.PinTree(ATree, AFileName);
     try
-      for Index := 0 to High(Tokens) do
+      for Index := TSyntaxTree.FirstTokenOf(Tokens, Body.StartOffset) to High(Tokens) do
       begin
         Token := Tokens[Index];
         if Token.Offset >= Body.EndOffset then
