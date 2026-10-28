@@ -348,8 +348,9 @@ end;
 
 procedure TAtlasRulesEditor.Stack(AParent: TWinControl; AControl: TControl);
 begin
-  // Ein Zähler für alle Behälter: Nur die Reihenfolge innerhalb eines Behälters zählt.
-  Inc(FNextTop, 1000);
+  // Ein Zähler für alle Behälter: Nur die Reihenfolge innerhalb eines Behälters zählt. Kleine Schritte: Windows
+  // kappt Fensterkoordinaten bei 32767, Memos landeten sonst vor ihren Beschriftungen (TLabel hat kein Fenster).
+  Inc(FNextTop, 10);
   AControl.Parent := AParent;
   AControl.Align := alTop;
   AControl.AlignWithMargins := True;
@@ -364,14 +365,15 @@ var
 begin
   // alTop ordnet nach Top. Ausgeblendete Steuerelemente behalten ihr Top aus dem Aufbau, das größer ist als das
   // der inzwischen ausgerichteten Geschwister; eingeblendet rutschten sie ans Ende (#1296). Darum alle in
-  // Aufbaureihenfolge neu durchnummerieren, jedes hinter alle bisherigen.
-  Next := FNextTop;
+  // Aufbaureihenfolge neu durchnummerieren. Von 0 an und in kleinen Schritten, damit kein Wert über 32767 kommt:
+  // Windows kappt dort die Koordinaten der Memos, die Beschriftungen ohne Fenster nicht.
+  Next := 0;
   DisableAlign;
   FDetails.DisableAlign;
   try
     for Control in FStacked do
     begin
-      Inc(Next, 1000);
+      Inc(Next, 10);
       Control.Top := Next;
     end;
   finally

@@ -220,6 +220,7 @@ begin
   Platforms := TArray<string>.Create('Win32', 'Win64');
   Assert.AreEqual('Debug', TAtlasOpenBuild.PickTarget(' debug ', Configurations), 'Schreibweise des Projekts');
   Assert.AreEqual('Win64', TAtlasOpenBuild.PickTarget('WIN64', Platforms));
+  Assert.AreEqual('Win64', TAtlasOpenBuild.PickTarget('Win 64', Platforms), 'Leerzeichen wie in der IDE-Anzeige');
   Assert.AreEqual('', TAtlasOpenBuild.PickTarget('Profil', Configurations), 'unbekannt: wie im Projekt');
   Assert.AreEqual('', TAtlasOpenBuild.PickTarget('Linux64', Platforms), 'nicht aktiviert: wie im Projekt');
   Assert.AreEqual('', TAtlasOpenBuild.PickTarget('', Configurations), 'ohne Vorgabe: wie im Projekt');

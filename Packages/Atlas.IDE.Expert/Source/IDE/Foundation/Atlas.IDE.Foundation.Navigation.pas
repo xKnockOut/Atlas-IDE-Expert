@@ -12,6 +12,9 @@ type
     /// <summary>Zeigt AFileName (öffnet sie nur, wenn sie noch nicht offen ist) und setzt den Cursor auf
     /// ALine/ACharacter (0-basiert).</summary>
     class procedure GoToLocation(const AFileName: string; ALine, ACharacter: Integer); static;
+    /// <summary>Zeigt AFileName ohne Sprung; öffnet sie nur, wenn sie noch nicht offen ist. False, wenn die IDE sie
+    /// nicht öffnen kann.</summary>
+    class function ShowFile(const AFileName: string): Boolean; static;
     /// <summary>Setzt den Cursor im oberen Editor auf ALine/ACharacter (0-basiert), z. B. für den Sprung
     /// einer Code-Aktion zur Freigabe (#915).</summary>
     class procedure GoToPosition(ALine, ACharacter: Integer); static;
@@ -60,6 +63,29 @@ begin
       View.Paint;
       Exit;
     end;
+end;
+
+class function TAtlasIdeNavigation.ShowFile(const AFileName: string): Boolean;
+var
+  Actions: IOTAActionServices;
+  Modules: IOTAModuleServices;
+  Module: IOTAModule;
+  Index: Integer;
+  Editor: IOTASourceEditor;
+begin
+  Result := False;
+  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+    Exit;
+  // Wie GoToLocation: OpenFile öffnete eine offene Datei erneut, bei Formular-Units samt Designer.
+  Module := Modules.FindModule(AFileName);
+  if Module <> nil then
+    for Index := 0 to Module.ModuleFileCount - 1 do
+      if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Editor) then
+      begin
+        Editor.Show;
+        Exit(True);
+      end;
+  Result := Supports(BorlandIDEServices, IOTAActionServices, Actions) and Actions.OpenFile(AFileName);
 end;
 
 class procedure TAtlasIdeNavigation.GoToPosition(ALine, ACharacter: Integer);

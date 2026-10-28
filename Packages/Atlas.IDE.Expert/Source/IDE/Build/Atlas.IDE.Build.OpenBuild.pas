@@ -38,6 +38,7 @@ interface
 uses
   System.SysUtils,
   Vcl.ExtCtrls,
+  PlatformAPI,
   ToolsAPI,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.OpenBuild;
@@ -508,10 +509,10 @@ begin
     Platform := '';
     if Settings.BuildOnOpenPlatform <> '' then
     begin
-      // Nur aktivierte Plattformen; Enabled kennt auch die übrigen Namen der IDE.
-      if Supports(Project, IOTAProjectPlatforms, Platforms) and Platforms.Enabled[Settings.BuildOnOpenPlatform] then
-        Platform := Settings.BuildOnOpenPlatform
-      else
+      // Nur aktivierte Plattformen, in der Schreibweise des Projekts (auch „Win 64“ trifft Win64).
+      if Supports(Project, IOTAProjectPlatforms, Platforms) then
+        Platform := TAtlasOpenBuild.PickTarget(Settings.BuildOnOpenPlatform, Platforms.EnabledPlatforms);
+      if Platform = '' then
         FTargetNotes := FTargetNotes + [TAtlasStrings.Fmt(TAtlasTextId.OpenBuildTargetMissing,
           [TAtlasOpenBuild.NameOf(Project.FileName), Settings.BuildOnOpenPlatform])];
     end;

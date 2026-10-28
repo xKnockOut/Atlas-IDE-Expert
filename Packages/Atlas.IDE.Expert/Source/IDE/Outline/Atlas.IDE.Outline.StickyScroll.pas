@@ -508,7 +508,7 @@ var
   Settings: TAtlasPluginSettings;
   Owners: Boolean;
   Key: string;
-  TabWidth, Below, Width, X, Offset: Integer;
+  TabWidth, Below, Width, X, Offset, FadeHeight: Integer;
   Guide: TAtlasGuide;
   Start: TAtlasStickyGuideStart;
   Colors: TAtlasColors;
@@ -566,12 +566,15 @@ begin
         LineColor := TAtlasColorMath.Mix(LineColor, ABack, Settings.PairGuideOpacity / 100);
       if Start.FadeIn then
       begin
-        // Je Pixelzeile ein Streifen in der Breite des Stifts, von der Kopffarbe zur Linienfarbe.
-        for Offset := 0 to ARect.Height - 1 do
+        // Je Pixelzeile ein Streifen in der Breite des Stifts, von der Kopffarbe zur Linienfarbe. Nur im unteren
+        // Drittel: Die Zeile gehört einem anderen Element (z. B. procedure), der Verlauf reicht nicht in dessen Text.
+        FadeHeight := Max(1, ARect.Height div 3);
+        for Offset := 0 to FadeHeight - 1 do
         begin
-          Step := TRect.Create(X - Width div 2, ARect.Top + Offset, X - Width div 2 + Width, ARect.Top + Offset + 1);
+          Step := TRect.Create(X - Width div 2, ARect.Bottom - FadeHeight + Offset, X - Width div 2 + Width,
+            ARect.Bottom - FadeHeight + Offset + 1);
           Brush := CreateSolidBrush(ColorToRGB(TColor(TAtlasColorMath.Mix(LineColor, HeadBack,
-            TAtlasStickyScroll.FadeWeight(Offset, ARect.Height)))));
+            TAtlasStickyScroll.FadeWeight(Offset, FadeHeight)))));
           try
             FillRect(DC, Step, Brush);
           finally
