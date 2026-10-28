@@ -174,7 +174,6 @@ uses
   System.Math,
   System.StrUtils,
   System.DateUtils,
-  Vcl.Forms,
   Vcl.Clipbrd,
   Atlas.Text.Lines,
   Atlas.Core.Style.Color,
@@ -183,6 +182,7 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Editor.CloseRules,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Settings.Plugin,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
@@ -287,9 +287,14 @@ begin
 end;
 
 function TAtlasIdeCodeLinks.Active: Boolean;
+var
+  mSettings: TAtlasPluginSettings;
 begin
-  Result := (FIndex >= 0) and Assigned(FHooks.Target) and TAtlasIdeSettings.Current.Enabled and
-    TAtlasIdeSettings.Current.IssuesCodeLinks and not TAtlasGuard.Disabled(TAtlasFeature.IssueLinks);
+  Result := (FIndex >= 0) and Assigned(FHooks.Target) and not TAtlasGuard.Disabled(TAtlasFeature.IssueLinks);
+  if not Result then
+    Exit;
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.IssuesCodeLinks;
 end;
 
 function TAtlasIdeCodeLinks.Shown: Boolean;

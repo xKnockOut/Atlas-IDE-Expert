@@ -702,6 +702,7 @@ procedure TAtlasIdeIssuePreview.Lookup(const ATarget: TAtlasTrackerTarget; const
 var
   mId: string;
   mWaiting: TArray<TAtlasIssueLookupDone>;
+  mCount: Integer;
   mAt: UInt64;
   mProvider: IAtlasTrackerProvider;
   mTransport: IAtlasCiTransport;
@@ -725,7 +726,10 @@ begin
   // Läuft schon: nur anhängen.
   if FLookups.TryGetValue(mId, mWaiting) then
   begin
-    FLookups[mId] := mWaiting + [ADone];
+    mCount := Length(mWaiting);
+    SetLength(mWaiting, mCount + 1);
+    mWaiting[mCount] := ADone;
+    FLookups[mId] := mWaiting;
     Exit;
   end;
   mProvider := ProviderOf(ATarget);
