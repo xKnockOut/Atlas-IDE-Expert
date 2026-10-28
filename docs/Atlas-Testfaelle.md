@@ -1164,8 +1164,8 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | MI8 | „Beginnen“ an #753, wenn `feature/753-atlas-bereiche-und` schon existiert | Branch wird nur ausgecheckt, Meldung „Branch … ausgecheckt …“ |
 | MI9 | YouTrack: `.atlas` mit `"tracker": {"provider": "youtrack", "url": "https://firma.youtrack.cloud", "project": "ATL"}`, Token hinterlegt, Seite anzeigen | Kennung `ATL-123`, Chips mit Zustand, Priorität und Sprint; Klick auf `ATL-123` öffnet `…/issue/ATL-123` (**Abnahme**) |
 | MI10 | SVN-Projekt mit YouTrack (MI9): „Beginnen“ an ATL-123 „Speichern im Kassenmodul hängt“ | `svn copy ^/trunk ^/branches/ATL-123-speichern-im-kassenmodul` und `svn switch`; danach zeigt `svn info` den Branch, das Projekt öffnet sich (**Abnahme**) |
-| MI11 | `welcomePage.issues.start` = „nur Kennung merken“, „Beginnen“ an ATL-123, dann in der IDE committen | Kein Branch, Meldung „ATL-123 ist das aktuelle Issue; Commit-Nachrichten beginnen mit „ATL-123 ““; Nachricht im Commit-Dialog beginnt mit `ATL-123 `; Fußzeile „„Beginnen“ merkt das Issue …“ (**Abnahme**) |
-| MI12 | `welcomePage.issues.commitPattern` leeren, committen | Nachricht bleibt unverändert, keine Datei `atlas-commit-prefix`, keine Rückfrage zum Hook (**Abnahme**) |
+| MI11 | `issues.start` = „nur Kennung merken“, „Beginnen“ an ATL-123, dann in der IDE committen | Kein Branch, Meldung „ATL-123 ist das aktuelle Issue; Commit-Nachrichten beginnen mit „ATL-123 ““; Nachricht im Commit-Dialog beginnt mit `ATL-123 `; Fußzeile „„Beginnen“ merkt das Issue …“ (**Abnahme**) |
+| MI12 | `issues.commitPattern` leeren, committen | Nachricht bleibt unverändert, keine Datei `atlas-commit-prefix`, keine Rückfrage zum Hook (**Abnahme**) |
 | MI13 | Klick auf „Issue: …“ im Statusfeld; „Ja“ | Rückfrage „Aktuelles Issue … beenden?“, danach verschwindet die Zeile, der Chip „aktuell“ ist weg, `atlas-commit-prefix` gelöscht; der Branch bleibt, aktiviert das Issue aber nicht gleich wieder |
 | MI14 | Befehlspalette „Zugang zum Issue-Tracker hinterlegen …“ (aktives Projekt mit `.atlas`); Token eingeben; dann leer lassen | Dialog „Issue-Tracker https://… (GitHub)“ mit verdecktem Feld; Meldung „Zugang … gespeichert“, der Bereich fragt sofort neu; in der Windows-Anmeldeinformationsverwaltung steht `Atlas:tracker:<Server>`; leer entfernt den Eintrag (**Abnahme**) |
 | MI15 | Kein Token hinterlegt bzw. `url` über http | Bereich zeigt „Anmeldung abgelehnt oder kein Token (Zugang zum Issue-Tracker hinterlegen)“, ohne Netzzugriff (Proxy- bzw. Firewall-Protokoll); der Befehl meldet bei http „… sendet das Token nur über https“ |
@@ -7793,3 +7793,16 @@ Vorbereitung: Atlas-Server läuft (Projekt geöffnet, Indexierung fertig). Testu
 | IV12 | Win64 (LLDB): IV1, IV2 und F8 direkt nach dem Halt | Werte kommen (verzögert); kein F8 geht verloren, die Debug-Sitzung meldet jeden Halt |
 | IV13 | Schnellschalter „Werte im Editor beim Debuggen“ aus, dann F8 | Keine Werte, keine Anfrage an den Server (Diagnoseprotokoll), Verhalten wie ohne Atlas (**Abnahme**) |
 | IV14 | Server beendet, Halt | Keine Werte, keine Fehlermeldung |
+
+## Tracker-Einstellungen unter „Issue-Tracker“ (#1280)
+
+Vorbereitung: Mit einer älteren Atlas-Version Tracker (z. B. YouTrack), Abfrage und Branch-Muster gesetzt; die Registry enthält `WelcomePageIssuesTracker`, `WelcomePageIssuesQuery` usw. unter `HKCU\Software\Atlas\IdePlugin`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IT1 | Neue Version laden, Tools › Optionen › Atlas | Baum hat den Bereich „Issue-Tracker“ mit Tracker, Abfrage, Start-Optionen, Mustern und „Zugangsdaten am Tracker“; Werte wie vorher (**Abnahme**) |
+| IT2 | Registry nach IT1 ansehen | Werte stehen unter `IssuesTracker`, `IssuesQuery` …, die alten Namen `WelcomePageIssues*` sind weg; Meldungsfenster Atlas: „Einstellung welcomePage.issues.tracker heißt jetzt issues.tracker; Wert übernommen“ je Wert |
+| IT3 | IDE neu starten | Keine weitere Übernahmemeldung, Werte unverändert |
+| IT4 | Bereich „Willkommensseite“ öffnen | Nur noch „Issues“ an/aus und Knopf „Tracker-Einstellungen …“; Klick wählt den Bereich „Issue-Tracker“ (**Abnahme**) |
+| IT5 | Registry: alten und neuen Namen mit verschiedenen Werten anlegen, IDE starten | Neuer Wert gilt, alter Name entfernt, Warnung im Meldungsfenster |
+| IT6 | Einstellungen exportieren, Datei enthält `issues.tracker`; alte Exportdatei mit `welcomePage.issues.tracker` importieren | Beide Importe setzen den Tracker |

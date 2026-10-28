@@ -31,6 +31,16 @@ type
     procedure WriteString(const AName, AValue: string);
   end;
 
+  /// <summary>Ablage, die gespeicherte Namen kennt und entfernen kann (#1280): Grundlage der Übernahme umbenannter
+  /// Einstellungen (x-renamedFrom im Plugin-Katalog).</summary>
+  IAtlasSettingsNames = interface
+    ['{6B2E9D41-7C3A-4F85-B1D6-0A8E5C2F9B73}']
+    /// <summary>Steht unter AName ein Wert (gleich welcher Art)?</summary>
+    function Contains(const AName: string): Boolean;
+    /// <summary>Wert unter AName entfernen; ohne Wert nichts.</summary>
+    procedure Remove(const AName: string);
+  end;
+
   TAtlasPluginSettings = record
   public const
     MinVisibleRows = 5;
@@ -128,13 +138,13 @@ type
     MaxCiIntervalMinutes = 1440;
     /// <summary>Vorgabe für welcomePage.tests.ci.provider (#763).</summary>
     DefaultCiProvider = 'jenkins';
-    /// <summary>Werte von welcomePage.issues.start (#765); wie TAtlasWelcomeIssues.StartName.</summary>
+    /// <summary>Werte von issues.start (#765); wie TAtlasWelcomeIssues.StartName.</summary>
     IssuesStartBranch = 'branch';
     IssuesStartRemember = 'remember';
-    /// <summary>Vorgabe für welcomePage.issues.commitPattern (#765); wie TAtlasTrackerNaming.CommitPattern.
+    /// <summary>Vorgabe für issues.commitPattern (#765); wie TAtlasTrackerNaming.CommitPattern.
     /// </summary>
     DefaultIssuesCommitPattern = '{kennung} ';
-    /// <summary>Höchstlänge der Texte unter welcomePage.issues.* (#765).</summary>
+    /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
     MaxIssuesText = 200;
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
     BeginEndAlways = 'always';
@@ -1239,25 +1249,25 @@ type
     /// <summary>Bereich „Meine Issues“ (#765, welcomePage.issues): offene Issues aus dem Tracker der .atlas
     /// (Abschnitt tracker) mit „Beginnen“; aus = kein Bereich, keine Abfrage, kein Netzzugriff.</summary>
     WelcomePageIssues: Boolean;
-    /// <summary>Tracker (#765, welcomePage.issues.tracker): '' = aus der .atlas, "github" oder "youtrack".</summary>
-    WelcomePageIssuesTracker: string;
-    /// <summary>Abfrage in der Sprache des Trackers (#765, welcomePage.issues.query); '' = Vorgabe des Trackers
+    /// <summary>Tracker (#765, issues.tracker): '' = aus der .atlas, "github" oder "youtrack".</summary>
+    IssuesTracker: string;
+    /// <summary>Abfrage in der Sprache des Trackers (#765, issues.query); '' = Vorgabe des Trackers
     /// (GitHub "assignee:@me state:open", YouTrack "for: me #Unresolved").</summary>
-    WelcomePageIssuesQuery: string;
-    /// <summary>„Beginnen“ (#765, welcomePage.issues.start): "branch" legt einen Branch an und checkt ihn aus,
+    IssuesQuery: string;
+    /// <summary>„Beginnen“ (#765, issues.start): "branch" legt einen Branch an und checkt ihn aus,
     /// "remember" merkt nur das Issue.</summary>
-    WelcomePageIssuesStart: string;
-    /// <summary>Muster für den Branch (#765, welcomePage.issues.branchPattern) mit {kennung}, {nummer},
+    IssuesStart: string;
+    /// <summary>Muster für den Branch (#765, issues.branchPattern) mit {kennung}, {nummer},
     /// {kurztitel}; '' = Git feature/{kennung}-{kurztitel}, SVN {kennung}-{kurztitel} unter ^/branches/.</summary>
-    WelcomePageIssuesBranchPattern: string;
-    /// <summary>Basis des Branchs (#765, welcomePage.issues.branchBase); '' = Git main (sonst master), SVN trunk.
+    IssuesBranchPattern: string;
+    /// <summary>Basis des Branchs (#765, issues.branchBase); '' = Git main (sonst master), SVN trunk.
     /// </summary>
-    WelcomePageIssuesBranchBase: string;
-    /// <summary>Anfang der Commit-Nachricht, solange ein Issue aktiv ist (#765, welcomePage.issues.commitPattern);
+    IssuesBranchBase: string;
+    /// <summary>Anfang der Commit-Nachricht, solange ein Issue aktiv ist (#765, issues.commitPattern);
     /// '' = aus. Nicht gekürzt: das Leerzeichen der Vorgabe "{kennung} " bleibt.</summary>
-    WelcomePageIssuesCommitPattern: string;
-    /// <summary>Befehl „Zugang zum Issue-Tracker hinterlegen …“ (#765, Atlas.TrackerLogin) in der Befehlspalette
-    /// und im Kontextmenü des Bereichs; aus = der Befehl und sein Tipp verschwinden.</summary>
+    IssuesCommitPattern: string;
+    /// <summary>Befehl „Zugang zum Issue-Tracker hinterlegen …“ (#765, issues.login, Atlas.TrackerLogin) in der
+    /// Befehlspalette und im Kontextmenü des Bereichs; aus = der Befehl und sein Tipp verschwinden.</summary>
     TrackerLogin: Boolean;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
@@ -1966,12 +1976,12 @@ begin
   Result.WelcomePageQuickActionsBuildKey := $4042; // Strg+B
   Result.WelcomePageQuickActionsTestKey := $4054; // Strg+T
   Result.WelcomePageIssues := False;
-  Result.WelcomePageIssuesTracker := '';
-  Result.WelcomePageIssuesQuery := '';
-  Result.WelcomePageIssuesStart := IssuesStartBranch;
-  Result.WelcomePageIssuesBranchPattern := '';
-  Result.WelcomePageIssuesBranchBase := '';
-  Result.WelcomePageIssuesCommitPattern := DefaultIssuesCommitPattern;
+  Result.IssuesTracker := '';
+  Result.IssuesQuery := '';
+  Result.IssuesStart := IssuesStartBranch;
+  Result.IssuesBranchPattern := '';
+  Result.IssuesBranchBase := '';
+  Result.IssuesCommitPattern := DefaultIssuesCommitPattern;
   Result.TrackerLogin := True;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
@@ -2041,13 +2051,13 @@ begin
   WelcomePageQuickActionsConsole := NormalizedQuickActionConsole(WelcomePageQuickActionsConsole);
   WelcomePageQuickActionsBuildKey := EnsureRange(WelcomePageQuickActionsBuildKey, 0, $FFFF);
   WelcomePageQuickActionsTestKey := EnsureRange(WelcomePageQuickActionsTestKey, 0, $FFFF);
-  WelcomePageIssuesTracker := NormalizedIssuesTracker(WelcomePageIssuesTracker);
-  WelcomePageIssuesQuery := NormalizedIssuesText(WelcomePageIssuesQuery, True);
-  WelcomePageIssuesStart := NormalizedIssuesStart(WelcomePageIssuesStart);
-  WelcomePageIssuesBranchPattern := NormalizedIssuesText(WelcomePageIssuesBranchPattern, True);
-  WelcomePageIssuesBranchBase := NormalizedIssuesText(WelcomePageIssuesBranchBase, True);
+  IssuesTracker := NormalizedIssuesTracker(IssuesTracker);
+  IssuesQuery := NormalizedIssuesText(IssuesQuery, True);
+  IssuesStart := NormalizedIssuesStart(IssuesStart);
+  IssuesBranchPattern := NormalizedIssuesText(IssuesBranchPattern, True);
+  IssuesBranchBase := NormalizedIssuesText(IssuesBranchBase, True);
   // Leerraum am Ende gehört zum Muster ("{kennung} ").
-  WelcomePageIssuesCommitPattern := NormalizedIssuesText(WelcomePageIssuesCommitPattern, False);
+  IssuesCommitPattern := NormalizedIssuesText(IssuesCommitPattern, False);
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
@@ -2745,15 +2755,15 @@ begin
   WelcomePageQuickActionsTestKey := AStore.ReadInteger('WelcomePageQuickActionsTestKey',
     Default.WelcomePageQuickActionsTestKey);
   WelcomePageIssues := AStore.ReadInteger('WelcomePageIssues', BoolValue(Default.WelcomePageIssues)) <> 0;
-  WelcomePageIssuesTracker := AStore.ReadString('WelcomePageIssuesTracker', Default.WelcomePageIssuesTracker);
-  WelcomePageIssuesQuery := AStore.ReadString('WelcomePageIssuesQuery', Default.WelcomePageIssuesQuery);
-  WelcomePageIssuesStart := AStore.ReadString('WelcomePageIssuesStart', Default.WelcomePageIssuesStart);
-  WelcomePageIssuesBranchPattern := AStore.ReadString('WelcomePageIssuesBranchPattern',
-    Default.WelcomePageIssuesBranchPattern);
-  WelcomePageIssuesBranchBase := AStore.ReadString('WelcomePageIssuesBranchBase',
-    Default.WelcomePageIssuesBranchBase);
-  WelcomePageIssuesCommitPattern := AStore.ReadString('WelcomePageIssuesCommitPattern',
-    Default.WelcomePageIssuesCommitPattern);
+  IssuesTracker := AStore.ReadString('IssuesTracker', Default.IssuesTracker);
+  IssuesQuery := AStore.ReadString('IssuesQuery', Default.IssuesQuery);
+  IssuesStart := AStore.ReadString('IssuesStart', Default.IssuesStart);
+  IssuesBranchPattern := AStore.ReadString('IssuesBranchPattern',
+    Default.IssuesBranchPattern);
+  IssuesBranchBase := AStore.ReadString('IssuesBranchBase',
+    Default.IssuesBranchBase);
+  IssuesCommitPattern := AStore.ReadString('IssuesCommitPattern',
+    Default.IssuesCommitPattern);
   TrackerLogin := AStore.ReadInteger('TrackerLogin', BoolValue(Default.TrackerLogin)) <> 0;
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
@@ -3212,12 +3222,12 @@ begin
   AStore.WriteInteger('WelcomePageQuickActionsBuildKey', WelcomePageQuickActionsBuildKey);
   AStore.WriteInteger('WelcomePageQuickActionsTestKey', WelcomePageQuickActionsTestKey);
   AStore.WriteInteger('WelcomePageIssues', BoolValue(WelcomePageIssues));
-  AStore.WriteString('WelcomePageIssuesTracker', WelcomePageIssuesTracker);
-  AStore.WriteString('WelcomePageIssuesQuery', WelcomePageIssuesQuery);
-  AStore.WriteString('WelcomePageIssuesStart', WelcomePageIssuesStart);
-  AStore.WriteString('WelcomePageIssuesBranchPattern', WelcomePageIssuesBranchPattern);
-  AStore.WriteString('WelcomePageIssuesBranchBase', WelcomePageIssuesBranchBase);
-  AStore.WriteString('WelcomePageIssuesCommitPattern', WelcomePageIssuesCommitPattern);
+  AStore.WriteString('IssuesTracker', IssuesTracker);
+  AStore.WriteString('IssuesQuery', IssuesQuery);
+  AStore.WriteString('IssuesStart', IssuesStart);
+  AStore.WriteString('IssuesBranchPattern', IssuesBranchPattern);
+  AStore.WriteString('IssuesBranchBase', IssuesBranchBase);
+  AStore.WriteString('IssuesCommitPattern', IssuesCommitPattern);
   AStore.WriteInteger('TrackerLogin', BoolValue(TrackerLogin));
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);

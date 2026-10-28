@@ -422,6 +422,7 @@
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Transfer.pas"/>
         <DCCReference Include="Source\IDE\Settings\Atlas.IDE.Settings.Experimental.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.History.pas"/>
+        <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.Renames.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.TeamFile.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Contract.pas"/>
         <DCCReference Include="Source\Core\Ci\Atlas.Core.Ci.Internals.Addresses.pas"/>

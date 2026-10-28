@@ -130,7 +130,7 @@ type
     procedure UpdateContent; override;
     function HitTest(X, Y: Integer): TAtlasIssuesHit;
     /// <summary>Klick wie mit der Maus (auch für Tests): Kennung und Pull Request öffnen den Browser, „Beginnen“
-    /// beginnt mit der Einstellung welcomePage.issues.start.</summary>
+    /// beginnt mit der Einstellung issues.start.</summary>
     procedure ClickAt(const AHit: TAtlasIssuesHit);
     /// <summary>„Beginnen“ nutzbar: Quelle da, keine laufende Aktion.</summary>
     function CanStart: Boolean;

@@ -4,7 +4,7 @@
 // Tools API: was abgefragt wird, wann, was der Bereich zeigt, welches Issue
 // aktiv ist und was „Beginnen“ tut.
 // - Ziel: Anbieter, Adresse und Projekt aus .atlas (Abschnitt "tracker");
-//   welcomePage.issues.tracker ersetzt den Anbieter, .query die Abfrage.
+//   issues.tracker ersetzt den Anbieter, .query die Abfrage.
 // - Abfrage beim Anzeigen, höchstens alle DueMinutes Minuten, Zeitlimit
 //   FetchTimeoutMs; ohne Netz bleibt der letzte Stand („Stand vom …“).
 // - Aktives Issue: mit „Beginnen“ gemerkt (Branch oder nur gemerkt); sonst
@@ -38,7 +38,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  /// <summary>welcomePage.issues.start: Branch anlegen oder nur merken.</summary>
+  /// <summary>issues.start: Branch anlegen oder nur merken.</summary>
   TAtlasIssueStart = (Branch, Remember);
   /// <summary>Was der Bereich zeigt.</summary>
   TAtlasIssuesStatus = (
@@ -105,7 +105,7 @@ type
     function Find(const AKey: string; out AIssue: TAtlasTrackerIssue): Boolean;
   end;
 
-  /// <summary>Einstellungen welcomePage.issues.* für „Beginnen“.</summary>
+  /// <summary>Einstellungen issues.* für „Beginnen“.</summary>
   TAtlasIssuesOptions = record
     Start: TAtlasIssueStart;
     /// <summary>'' = je Versionsverwaltung (Git feature/{kennung}-{kurztitel}, SVN {kennung}-{kurztitel}).</summary>

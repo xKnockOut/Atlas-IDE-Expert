@@ -873,12 +873,14 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Editor.ExpressionType.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.QuickToggles.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.QuickToggles.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Renames.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Transfer.Tests.pas"/>,
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Experimental.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.Groups.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Settings\Atlas.UI.Settings.QuickToggles.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Settings.QuickToggles.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.History.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.Renames.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.TeamFile.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.TeamFile.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Settings\Atlas.Core.Settings.HiddenPlaces.pas"/>

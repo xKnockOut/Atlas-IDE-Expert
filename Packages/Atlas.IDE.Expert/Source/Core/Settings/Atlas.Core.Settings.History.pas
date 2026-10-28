@@ -33,7 +33,8 @@ type
     procedure FromJson(AValues: TJSONObject);
   end;
 
-  TAtlasMemorySettingsStore = class(TInterfacedObject, IAtlasSettingsStore, IAtlasMemorySettingsStore)
+  TAtlasMemorySettingsStore = class(TInterfacedObject, IAtlasSettingsStore, IAtlasMemorySettingsStore,
+    IAtlasSettingsNames)
   private
     FIntegers: TDictionary<string, Integer>;
     FStrings: TDictionary<string, string>;
@@ -51,6 +52,8 @@ type
     function Text(const AName: string): string;
     function ToJson: TJSONObject;
     procedure FromJson(AValues: TJSONObject);
+    function Contains(const AName: string): Boolean;
+    procedure Remove(const AName: string);
     /// <summary>Speicher mit den Werten von ASettings.</summary>
     class function FromSettings(const ASettings: TAtlasPluginSettings): IAtlasMemorySettingsStore; static;
   end;
@@ -93,7 +96,9 @@ type
 implementation
 
 uses
-  System.DateUtils;
+  System.DateUtils,
+  Atlas.Core.Settings.Catalog,
+  Atlas.Core.Settings.Renames;
 
 { TAtlasMemorySettingsStore }
 
@@ -187,6 +192,22 @@ begin
       WriteInteger(Pair.JsonString.Value, TJSONNumber(Pair.JsonValue).AsInt)
     else if Pair.JsonValue is TJSONString then
       WriteString(Pair.JsonString.Value, TJSONString(Pair.JsonValue).Value);
+end;
+
+function TAtlasMemorySettingsStore.Contains(const AName: string): Boolean;
+begin
+  Result := FIntegers.ContainsKey(LowerCase(AName)) or FStrings.ContainsKey(LowerCase(AName));
+end;
+
+procedure TAtlasMemorySettingsStore.Remove(const AName: string);
+var
+  Index: Integer;
+begin
+  FIntegers.Remove(LowerCase(AName));
+  FStrings.Remove(LowerCase(AName));
+  for Index := FNames.Count - 1 downto 0 do
+    if SameText(FNames[Index], AName) then
+      FNames.Delete(Index);
 end;
 
 class function TAtlasMemorySettingsStore.FromSettings(
@@ -301,8 +322,10 @@ var
   Snapshot: TAtlasSettingsSnapshot;
   Store: IAtlasMemorySettingsStore;
   Stamp: string;
+  Catalog: TAtlasSettingsCatalog;
 begin
   FSnapshots.Clear;
+  Catalog := nil;
   Root := TJSONObject.ParseJSONValue(AText);
   try
     Result := Root is TJSONArray;
@@ -318,6 +341,10 @@ begin
         Continue;
       Store := TAtlasMemorySettingsStore.Create;
       Store.FromJson(TJSONObject(Values));
+      // Stände von vor einer Umbenennung (#1280): frühere Namen wie beim Start übernehmen.
+      if Catalog = nil then
+        Catalog := TAtlasSettingsCatalog.CreateDefault;
+      TAtlasSettingsRenames.Apply(Store, Store as IAtlasSettingsNames, Catalog);
       Snapshot.Settings := TAtlasPluginSettings.Defaults;
       Snapshot.Settings.Load(Store);
       try
@@ -329,6 +356,7 @@ begin
       FSnapshots.Add(Snapshot);
     end;
   finally
+    Catalog.Free;
     Root.Free;
   end;
 end;
