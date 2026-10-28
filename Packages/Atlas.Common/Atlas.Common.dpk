@@ -378,6 +378,7 @@ contains
   Atlas.Common.Semantics.OrdinalConstants in 'Source\Semantics\Atlas.Common.Semantics.OrdinalConstants.pas',
   Atlas.Common.Semantics.ConstantValues in 'Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas',
   Atlas.Common.Pascal.ConditionalBranches in 'Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas',
+  Atlas.Common.Pascal.RoutineSignatures in 'Source\Pascal\Atlas.Common.Pascal.RoutineSignatures.pas',
   Atlas.Common.Pascal.FormatStrings in 'Source\Pascal\Atlas.Common.Pascal.FormatStrings.pas',
   Atlas.Common.Pascal.FormatRoutines in 'Source\Pascal\Atlas.Common.Pascal.FormatRoutines.pas',
   Atlas.Common.Pascal.DirectiveNames in 'Source\Pascal\Atlas.Common.Pascal.DirectiveNames.pas',

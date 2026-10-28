@@ -92,6 +92,7 @@ uses
   Atlas.Common.Semantics.OrdinalConstants.Tests in 'Common\Semantics\Atlas.Common.Semantics.OrdinalConstants.Tests.pas',
   Atlas.Common.Semantics.ConstantValues.Tests in 'Common\Semantics\Atlas.Common.Semantics.ConstantValues.Tests.pas',
   Atlas.Common.Pascal.ConditionalBranches.Tests in 'Common\Pascal\Atlas.Common.Pascal.ConditionalBranches.Tests.pas',
+  Atlas.Common.Pascal.RoutineSignatures.Tests in 'Common\Pascal\Atlas.Common.Pascal.RoutineSignatures.Tests.pas',
   Atlas.Common.Pascal.FormatStrings.Tests in 'Common\Pascal\Atlas.Common.Pascal.FormatStrings.Tests.pas',
   Atlas.Common.Pascal.FormatRoutines.Tests in 'Common\Pascal\Atlas.Common.Pascal.FormatRoutines.Tests.pas',
   Atlas.Common.Pascal.DirectiveNames.Tests in 'Common\Pascal\Atlas.Common.Pascal.DirectiveNames.Tests.pas',
