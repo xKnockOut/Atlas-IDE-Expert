@@ -64,6 +64,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.GitParser.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnParser.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.LineTrace.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Tools.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Git.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Svn.pas"/>

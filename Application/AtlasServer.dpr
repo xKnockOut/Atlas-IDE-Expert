@@ -24,6 +24,7 @@ uses
   Atlas.Core.Vcs.Internals.Text in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas',
   Atlas.Core.Vcs.Internals.GitParser in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.GitParser.pas',
   Atlas.Core.Vcs.Internals.SvnParser in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.SvnParser.pas',
+  Atlas.Core.Vcs.Internals.LineTrace in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.LineTrace.pas',
   Atlas.Core.Vcs.Tools in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Tools.pas',
   Atlas.Core.Vcs.Providers.Git in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Git.pas',
   Atlas.Core.Vcs.Providers.Svn in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Providers.Svn.pas',
