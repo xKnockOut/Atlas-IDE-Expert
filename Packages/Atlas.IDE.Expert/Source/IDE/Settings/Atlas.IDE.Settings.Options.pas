@@ -442,7 +442,6 @@ begin
   FreeAndNil(FStates);
 end;
 
-/// <summary>Verbindung aus dem Abschnitt tracker der .atlas des aktiven Projekts (#486); leer ohne.</summary>
 /// <summary>Ziel für „Werte vom Tracker laden“: mit dem Projekt aus der .atlas des aktiven Projekts, wenn deren
 /// Tracker derselbe Server ist (GitHub braucht owner/repo, YouTrack liest dann die Felder dieses Projekts).</summary>
 function TrackerValuesTarget(const AConnection: TAtlasTrackerConnection): TAtlasTrackerTarget;
@@ -463,6 +462,7 @@ begin
     Result := mTeamTarget;
 end;
 
+/// <summary>Verbindung aus dem Abschnitt tracker der .atlas des aktiven Projekts (#486); leer ohne.</summary>
 function TeamTrackerConnections: TArray<TAtlasTrackerConnection>;
 var
   mProject: string;
