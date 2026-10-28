@@ -74,6 +74,7 @@ uses
   Atlas.Core.Vcs.ToolCheck,
   Atlas.Core.Vcs.ServerAccess,
   Atlas.Core.Vcs.ServerCheck,
+  Atlas.Core.Vcs.BranchPlan,
   Atlas.UI.Settings.Marks,
   Atlas.UI.Settings.Group,
   Atlas.UI.Strings,
@@ -734,6 +735,10 @@ type
     FVcsBranchSvnAfter: TAtlasChoiceBox;
     FVcsBranchSvnFolder: TEdit;
     FVcsBranchSvnMessage: TEdit;
+    FVcsExternalsOnBranch: TAtlasChoiceBox;
+    FVcsExternalsSuggest: TAtlasChoiceBox;
+    FVcsExternalsRules: TMemo;
+    FVcsExternalsRulesError: TLabel;
     FVcsProjectInfo: TLabel;
     FVcsLinkEditor: TButton;
     FVcsLinkWelcome: TButton;
@@ -1037,9 +1042,11 @@ type
     procedure AddIssuesSection;
     /// <summary>Seite Versionsverwaltung (#1285).</summary>
     procedure AddVcsSection;
+    procedure AddVcsExternalsSection;
     procedure AddVcsTool(AKind: TAtlasVcsKind; ACaption: TAtlasTextId);
     function AddVcsLink(AParent: TWinControl; ALeft: Integer; ACaption: TAtlasTextId): TButton;
     procedure VcsPathChange(Sender: TObject);
+    procedure VcsExternalsRulesChange(Sender: TObject);
     procedure VcsBrowseClick(Sender: TObject);
     procedure VcsCheckClick(Sender: TObject);
     procedure VcsLinkClick(Sender: TObject);
@@ -1672,6 +1679,11 @@ type
     property VcsBranchSvnAfter: TAtlasChoiceBox read FVcsBranchSvnAfter;
     property VcsBranchSvnFolder: TEdit read FVcsBranchSvnFolder;
     property VcsBranchSvnMessage: TEdit read FVcsBranchSvnMessage;
+    /// <summary>Zum Testen: vcs.externals.* (#1291).</summary>
+    property VcsExternalsOnBranch: TAtlasChoiceBox read FVcsExternalsOnBranch;
+    property VcsExternalsSuggest: TAtlasChoiceBox read FVcsExternalsSuggest;
+    property VcsExternalsRules: TMemo read FVcsExternalsRules;
+    property VcsExternalsRulesError: TLabel read FVcsExternalsRulesError;
     property VcsProjectInfo: TLabel read FVcsProjectInfo;
     property VcsLinkEditor: TButton read FVcsLinkEditor;
     property VcsLinkWelcome: TButton read FVcsLinkWelcome;
@@ -3027,6 +3039,57 @@ begin
   FVcsBranchSvnFolder := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnFolder));
   FVcsBranchSvnMessage := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnMessage));
   AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchSvnMessageHint)).Font.Color := clGrayText;
+  AddVcsExternalsSection;
+end;
+
+procedure TAtlasSettingsPage.AddVcsExternalsSection;
+var
+  mPanel: TWinControl;
+  mCaption: TLabel;
+begin
+  // Unterpunkt „Externals“ (#1291, x-node vcs.externals): Vorgaben je External im Dialog „Branch anlegen“;
+  // Reihenfolge der Auswahl wie die Werte von vcs.externals.onBranch bzw. .suggestBranch.
+  AddTitle(TAtlasTextId.SettingsVcsExternalsTitle);
+  FVcsExternalsOnBranch := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsOnBranch),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsOnBranchPin),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsOnBranchKeep),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsOnBranchAsk)]);
+  FVcsExternalsOnBranch.Width := 260;
+  FVcsExternalsSuggest := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsSuggest),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsSuggestModified),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsSuggestNever),
+    TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsSuggestAlways)]);
+  FVcsExternalsSuggest.Width := 260;
+  mPanel := AddPanel(20);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := mPanel;
+  mCaption.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsRules);
+  mCaption.Left := 0;
+  mCaption.Top := 3;
+  mPanel := AddPanel(84);
+  FVcsExternalsRules := TMemo.Create(Self);
+  FVcsExternalsRules.Parent := mPanel;
+  FVcsExternalsRules.SetBounds(0, 1, 466, 80);
+  FVcsExternalsRules.Anchors := [akLeft, akTop, akRight];
+  FVcsExternalsRules.ScrollBars := ssVertical;
+  FVcsExternalsRules.WordWrap := False;
+  FVcsExternalsRules.OnChange := VcsExternalsRulesChange;
+  FVcsExternalsRulesError := AddWrappedLabel(20, '');
+  FVcsExternalsRulesError.Font.Color := clRed;
+  AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsRulesHint)).Font.Color := clGrayText;
+end;
+
+procedure TAtlasSettingsPage.VcsExternalsRulesChange(Sender: TObject);
+var
+  mRules: TArray<TAtlasVcsExternalRule>;
+  mInvalid: string;
+begin
+  // Ungültige Zeile: Hinweis; gespeichert bleiben dann die bisherigen Regeln (SaveTo).
+  if TAtlasVcsBranchPlan.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
+    FVcsExternalsRulesError.Caption := ''
+  else
+    FVcsExternalsRulesError.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsExternalsRulesInvalid, [mInvalid]);
+  RefreshMarks;
 end;
 
 procedure TAtlasSettingsPage.AddVcsTool(AKind: TAtlasVcsKind; ACaption: TAtlasTextId);
@@ -5621,6 +5684,9 @@ begin
   FMarks.Bind(FVcsBranchSvnAfter, ['VcsBranchSvnAfter']);
   FMarks.Bind(FVcsBranchSvnFolder, ['VcsBranchSvnCheckoutFolder']);
   FMarks.Bind(FVcsBranchSvnMessage, ['VcsBranchSvnMessage']);
+  FMarks.Bind(FVcsExternalsOnBranch, ['VcsExternalsOnBranch']);
+  FMarks.Bind(FVcsExternalsSuggest, ['VcsExternalsSuggestBranch']);
+  FMarks.Bind(FVcsExternalsRules, ['VcsExternalsRules']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
   FMarks.Bind(FOpenBuildDelay, ['BuildOnOpenDelayMs']);
@@ -7902,6 +7968,10 @@ begin
   FVcsBranchSvnAfter.Choice := Ord(AtlasVcsSvnAfterOf(ASettings.VcsBranchSvnAfter));
   FVcsBranchSvnFolder.Text := ASettings.VcsBranchSvnCheckoutFolder;
   FVcsBranchSvnMessage.Text := ASettings.VcsBranchSvnMessage;
+  FVcsExternalsOnBranch.Choice := Max(0, IndexText(ASettings.VcsExternalsOnBranch, ['pin', 'keep', 'ask']));
+  FVcsExternalsSuggest.Choice := Max(0, IndexText(ASettings.VcsExternalsSuggestBranch,
+    ['modified', 'never', 'always']));
+  FVcsExternalsRules.Text := TAtlasVcsBranchPlan.RulesText(TAtlasVcsBranchPlan.RulesOf(ASettings.VcsExternalsRules));
   RefreshVcsTool(TAtlasVcsKind.Git);
   RefreshVcsTool(TAtlasVcsKind.Svn);
   FVcsProjects := TAtlasVcsProjects.Read(ASettings.VcsProjects);
@@ -7956,6 +8026,8 @@ var
   StepFilterKinds: TStepFilterKinds;
   Target: TAtlasReassignedTarget;
   Targets: TAtlasReassignedTargets;
+  mRules: TArray<TAtlasVcsExternalRule>;
+  mInvalid: string;
 begin
   ASettings.Enabled := FEnabled.Checked;
   ASettings.ServerPath := Trim(FServerPath.Text);
@@ -8494,6 +8566,25 @@ begin
   end;
   ASettings.VcsBranchSvnCheckoutFolder := Trim(FVcsBranchSvnFolder.Text);
   ASettings.VcsBranchSvnMessage := Trim(FVcsBranchSvnMessage.Text);
+  case FVcsExternalsOnBranch.Choice of
+    1:
+      ASettings.VcsExternalsOnBranch := 'keep';
+    2:
+      ASettings.VcsExternalsOnBranch := 'ask';
+  else
+    ASettings.VcsExternalsOnBranch := 'pin';
+  end;
+  case FVcsExternalsSuggest.Choice of
+    1:
+      ASettings.VcsExternalsSuggestBranch := 'never';
+    2:
+      ASettings.VcsExternalsSuggestBranch := 'always';
+  else
+    ASettings.VcsExternalsSuggestBranch := 'modified';
+  end;
+  // Mit ungültiger Zeile bleiben die bisherigen Regeln (Hinweis unter dem Feld).
+  if TAtlasVcsBranchPlan.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
+    ASettings.VcsExternalsRules := TAtlasVcsBranchPlan.RulesJson(mRules);
   ASettings.VcsProjects := VcsProjectsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];

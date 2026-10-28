@@ -19,6 +19,11 @@
 //   Ordner, Nachricht) als Vorgaben für Dialog und „Beginnen“; nach
 //   „frisch auschecken“ bietet OfferOpen an, dieselbe Gruppe im neuen Ordner
 //   zu öffnen.
+// - Externals (#1291): SvnOptions liest dazu vcs.externals.* (Vorgabe ohne
+//   Revision, Vorschlag „mitverzweigen“, Regeln). Hat der Branch Externals
+//   festgeschrieben bzw. mitverzweigt und wurde umgeschaltet, holt svn die
+//   Externals des Branchs; RebuildIndex schickt dann atlas.server.rebuildIndex
+//   über den Befehlsweg, den die Komposition in ServerCommand setzt.
 // Protokoll anonym: nur Art und Ergebnis, nie Name, Basis oder Pfad.
 
 interface
@@ -33,7 +38,15 @@ type
   public const
     /// <summary>Zeitlimit je Aufruf beim Anlegen (wie „Beginnen“, #765); vcs.timeoutSeconds, wenn größer.</summary>
     TimeoutMs = 30000;
+  private
+    class var FServerCommand: TFunc<string, Boolean>;
   public
+    /// <summary>Befehl an den Atlas-Server abschicken (#1291, aus der Komposition; True, wenn angenommen). Beim
+    /// Entladen nil.</summary>
+    class property ServerCommand: TFunc<string, Boolean> read FServerCommand write FServerCommand;
+    /// <summary>Nach einem Branch mit geänderten Externals (#1291, Hauptthread): Index neu aufbauen und das in
+    /// der Meldungsansicht sagen; ohne Server nichts.</summary>
+    class procedure RebuildIndex; static;
     /// <summary>Dialog zeigen (Hauptthread). True mit ARequest bei „Anlegen“; ANeverAsk, wenn „Nicht mehr fragen“
     /// gesetzt war (nur mit AOfferNeverAsk).</summary>
     class function Ask(const AFolder: string; const AFacts: TAtlasVcsBranchFacts; const AName, AMessage: string;
@@ -77,6 +90,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Settings.Plugin,
+  Atlas.Core.Setup.Checklist,
   Atlas.Core.Tracker.Naming,
   Atlas.UI.Strings,
   Atlas.UI.Vcs.BranchDialog,
@@ -104,6 +118,9 @@ begin
   Result.After := AtlasVcsSvnAfterOf(mSettings.VcsBranchSvnAfter);
   Result.CheckoutFolder := mSettings.VcsBranchSvnCheckoutFolder;
   Result.Message := mSettings.VcsBranchSvnMessage;
+  Result.ExternalsOnBranch := AtlasVcsExternalActionOf(mSettings.VcsExternalsOnBranch);
+  Result.ExternalsSuggest := AtlasVcsExternalSuggestOf(mSettings.VcsExternalsSuggestBranch);
+  Result.ExternalsRules := TAtlasVcsBranchPlan.RulesOf(mSettings.VcsExternalsRules);
   mGroup := '';
   if AProject <> '' then
     mGroup := TAtlasIdeFiles.GroupOfProject(AProject);
@@ -184,6 +201,14 @@ begin
     mOpen := False;
     mDialog.Free;
   end;
+end;
+
+class procedure TAtlasIdeBranching.RebuildIndex;
+begin
+  if not Assigned(FServerCommand) or not FServerCommand(TAtlasSetupChecklist.RebuildCommand) then
+    Exit;
+  TAtlasGuard.Log('Branch anlegen: Externals geändert, Index wird neu aufgebaut');
+  TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsBranchIndexRebuild));
 end;
 
 class procedure TAtlasIdeBranching.StopAsking;
@@ -316,7 +341,7 @@ begin
           mRun.Outcome := mBranching.BranchExists(mRequest.Name, mFound, mExists);
           if (mRun.Outcome <> TAtlasVcsOutcome.Ok) or mExists then
             Exit;
-          mRun := TAtlasVcsBranchPlan.Execute(mBranching, mSteps, Progress(mRequest.Kind));
+          mRun := TAtlasVcsBranchPlan.Execute(mBranching, mRequest, mSteps, Progress(mRequest.Kind));
         end,
         procedure
         begin
@@ -330,6 +355,8 @@ begin
               TAtlasVcsBranchPlan.BaseName(mRequest.Kind, mRequest.Base)]));
             if Assigned(mDone) then
               mDone();
+            if TAtlasVcsBranchPlan.ChangesExternals(mRequest) then
+              RebuildIndex;
             if (mRequest.Kind = TAtlasVcsKind.Svn) and (mRequest.After = TAtlasVcsSvnAfter.Checkout) then
               OfferOpen(mProject, mFacts.Root, mRequest.CheckoutFolder);
           end

@@ -780,6 +780,29 @@ begin
   Assert.AreEqual('switch', mLoaded.VcsBranchSvnAfter);
   Assert.AreEqual('..\{projekt}-{kennung}', mLoaded.VcsBranchSvnCheckoutFolder);
   Assert.AreEqual('{kennung} Branch für {titel}', mLoaded.VcsBranchSvnMessage);
+  // #1291: vcs.externals.* persönlich (Registry), mit Vorgaben und Normalisierung.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('pin', mSettings.VcsExternalsOnBranch);
+  Assert.AreEqual('modified', mSettings.VcsExternalsSuggestBranch);
+  Assert.AreEqual('[]', mSettings.VcsExternalsRules);
+  mSettings.VcsExternalsOnBranch := 'ask';
+  mSettings.VcsExternalsSuggestBranch := 'always';
+  mSettings.VcsExternalsRules := '[{"source": "^/Packages/Basis", "onBranch": "keep"}]';
+  mSettings.Save(mStore);
+  Assert.AreEqual('ask', mRegistry.ReadString('VcsExternalsOnBranch', ''));
+  Assert.IsFalse(mRouted.Text.Contains('externals'), 'nicht in settings.json');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.AreEqual('ask', mLoaded.VcsExternalsOnBranch);
+  Assert.AreEqual('always', mLoaded.VcsExternalsSuggestBranch);
+  Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', mLoaded.VcsExternalsRules);
+  mRegistry.WriteString('VcsExternalsOnBranch', 'branch');
+  mRegistry.WriteString('VcsExternalsSuggestBranch', 'KEEP');
+  mRegistry.WriteString('VcsExternalsRules', ' ');
+  mLoaded.Load(mStore);
+  Assert.AreEqual('pin', mLoaded.VcsExternalsOnBranch, 'branch ist keine Vorgabe für alle');
+  Assert.AreEqual('modified', mLoaded.VcsExternalsSuggestBranch);
+  Assert.AreEqual('[]', mLoaded.VcsExternalsRules);
 end;
 
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;

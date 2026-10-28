@@ -792,6 +792,8 @@ var
   Options: TAtlasIssuesOptions;
   Plan: TAtlasIssueStartPlan;
   Started: TAtlasIssueStartResult;
+  mFacts: TAtlasVcsBranchFacts;
+  mRequest: TAtlasVcsBranchRequest;
 begin
   Fake := TFakeBranchingVcs.Create(TAtlasVcsKind.Svn);
   Vcs := Fake;
@@ -808,6 +810,7 @@ begin
   Assert.AreEqual('run copy ^/Kasse/trunk@ ^/Kasse/branches/' + cName +
     '@ --parents -m KASSE-42 Branch für Bon drucken langsam', Fake.Calls[1]);
   Assert.AreEqual('run switch ^/Kasse/branches/' + cName + '@ .', Fake.Calls[2]);
+  Assert.IsFalse(Started.IndexRebuild, 'ohne Externals kein neuer Index');
   // Zweites „Beginnen“ auf demselben Issue: findet ihn am selben Ort und schaltet nur um.
   Fake.Calls := nil;
   Fake.Current := 'Kasse/trunk';
@@ -847,9 +850,47 @@ begin
   Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Failed);
   Assert.AreEqual(1, Integer(Length(Fake.Calls)));
   Assert.AreEqual('exists ?', Fake.Calls[0]);
+  // #1291: Anfrage mit festgeschriebenem External und Umschalten: --pin-externals, danach Index neu.
+  Fake.Branches := nil;
+  Fake.Calls := nil;
+  Fake.SvnUrl := 'Kasse/trunk';
+  Fake.Current := 'Kasse/trunk';
+  Options.Svn.After := TAtlasVcsSvnAfter.Switch;
+  Plan := TAtlasWelcomeIssues.PlanStart(TAtlasVcsKind.Svn, Options, Issue('KASSE-42', 42, 'Bon drucken langsam'));
+  mFacts := TAtlasVcsBranchFacts.Empty;
+  mFacts.Kind := TAtlasVcsKind.Svn;
+  mFacts.ProjectRoot := 'Kasse';
+  mFacts.LayoutKnown := True;
+  mFacts.RepositoryRoot := 'https://svn.firma.local/repo';
+  mFacts.SvnVersion := '1.14.3';
+  mFacts.SvnDefinitions := [TAtlasVcsSvnExternalDefinition.Make('', '^/Packages/Basis/trunk Packages/Basis'#10)];
+  SetLength(mFacts.SvnExternals, 1);
+  mFacts.SvnExternals[0] := Default(TAtlasVcsSvnExternal);
+  mFacts.SvnExternals[0].Folder := 'Packages/Basis';
+  mFacts.SvnExternals[0].Url := '^/Packages/Basis/trunk';
+  mFacts.SvnExternals[0].Source := 'Packages/Basis/trunk';
+  mFacts.SvnExternals[0].WorkingRevision := '48190';
+  mRequest := TAtlasVcsBranchRequest.Make(TAtlasVcsKind.Svn, cName, TAtlasVcsBranchBase.Make(
+    TAtlasVcsBranchBaseKind.Head, 'Kasse/trunk', '48230'), 'KASSE-42 Branch');
+  Assert.IsTrue(TAtlasVcsBranchPlan.ApplySvn(mRequest, mFacts, Options.Svn));
+  TAtlasVcsBranchPlan.ApplyExternals(mRequest, mFacts, Options.Svn,
+    TArray<TAtlasVcsExternalAction>.Create(TAtlasVcsExternalAction.Pin));
+  Started := TAtlasWelcomeIssues.Execute(Vcs, Plan, mRequest);
+  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.IsTrue(Fake.Calls[1].EndsWith('--pin-externals'), Fake.Calls[1]);
+  Assert.IsTrue(Started.IndexRebuild);
+  // Nur anlegen: Die Arbeitskopie bleibt, der Index auch.
+  Fake.Branches := nil;
+  Fake.Calls := nil;
+  mRequest.After := TAtlasVcsSvnAfter.None;
+  Started := TAtlasWelcomeIssues.Execute(Vcs, Plan, mRequest);
+  Assert.IsTrue(Started.Outcome = TAtlasIssueStartOutcome.Started);
+  Assert.IsFalse(Started.IndexRebuild);
   Fake.Branches := nil;
   Fake.Calls := nil;
   Started := Default(TAtlasIssueStartResult);
+  mRequest := Default(TAtlasVcsBranchRequest);
+  mFacts := TAtlasVcsBranchFacts.Empty;
 end;
 
 procedure TAtlasWelcomeIssuesTests.LocalChangesIgnoreUntracked;

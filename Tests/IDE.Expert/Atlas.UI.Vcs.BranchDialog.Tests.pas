@@ -3,7 +3,8 @@
 // Dialog „Branch anlegen“ (#1288): Vorgaben unter Git, „Was passiert“ aus dem
 // Plan, ungültiger Name sperrt „Anlegen“, andere Basis baut die Schritte neu,
 // SVN wartet auf den Server, Externals-Hinweis, „Nicht mehr fragen“ nur bei
-// „Beginnen“; SVN-Optionen (#1290): Ort, Danach, Ordner, gemischte Revision.
+// „Beginnen“; SVN-Optionen (#1290): Ort, Danach, Ordner, gemischte Revision;
+// Externals (#1291): Auswahl je Zeile, Vorauswahl, „Anlegen“ erst mit Wahl.
 
 interface
 
@@ -40,6 +41,11 @@ type
     /// Hinweis; Ordner nur bei „frisch auschecken“; Warnung bei gemischter Arbeitskopie als Quelle.</summary>
     [Test]
     procedure SvnOptionsFollowName;
+    /// <summary>#1291: Gruppe „Externals (3)“; festschreiben vorausgewählt, bei lokalen Änderungen mitverzweigen,
+    /// feste Revision ohne Auswahl, fremdes Repository ohne „mitverzweigen“; Wahl landet in Request und Schritten;
+    /// mit onBranch = ask „Anlegen“ gesperrt, bis alles gewählt ist.</summary>
+    [Test]
+    procedure ExternalsChoicePerRow;
   end;
 
 implementation
@@ -71,6 +77,45 @@ begin
   Result.Revision := '48100';
   Result.MainBranch := 'trunk';
   Result.Externals := True;
+end;
+
+function MakeExternal(const AFolder, ASource, ARevision, AWorking: string; AModified: Boolean): TAtlasVcsSvnExternal;
+begin
+  Result := Default(TAtlasVcsSvnExternal);
+  Result.Folder := AFolder;
+  Result.Url := '^/' + ASource;
+  Result.Source := ASource;
+  Result.FullUrl := 'https://svn.firma.local/repo/' + ASource;
+  Result.Revision := ARevision;
+  Result.WorkingRevision := AWorking;
+  Result.Modified := AModified;
+end;
+
+/// <summary>Wie im Vorschlag: Basis, Drucken (geändert), Kunden (-r 4711) und ein fremdes Repository.</summary>
+function ExternalFacts: TAtlasVcsBranchFacts;
+begin
+  Result := SvnFacts;
+  Result.Root := 'C:\Projekte\Kasse';
+  Result.MainBranch := 'Kasse/trunk';
+  Result.ProjectRoot := 'Kasse';
+  Result.LayoutKnown := True;
+  Result.ServerChecked := True;
+  Result.HeadRevision := '48230';
+  Result.RepositoryRoot := 'https://svn.firma.local/repo';
+  Result.SvnVersion := '1.14.3';
+  Result.SvnDefinitions := [TAtlasVcsSvnExternalDefinition.Make('', '^/Packages/Basis/trunk Packages/Basis'#10 +
+    '^/Packages/Drucken/trunk Packages/Drucken'#10'-r 4711 ^/Packages/Kunden/trunk Packages/Kunden'#10 +
+    'https://svn.lieferant.de/k/trunk Lieferant'#10)];
+  Result.SvnExternals := [MakeExternal('Packages/Basis', 'Packages/Basis/trunk', '', '48190', False),
+    MakeExternal('Packages/Drucken', 'Packages/Drucken/trunk', '', '48211', True),
+    MakeExternal('Packages/Kunden', 'Packages/Kunden/trunk', '4711', '4711', False),
+    MakeExternal('Lieferant', '', '', '17', False)];
+  Result.SvnExternals[1].Line := 1;
+  Result.SvnExternals[2].Line := 2;
+  Result.SvnExternals[3].Line := 3;
+  Result.SvnExternals[3].Url := 'https://svn.lieferant.de/k/trunk';
+  Result.SvnExternals[3].FullUrl := 'https://svn.lieferant.de/k/trunk';
+  Result.SvnExternals[3].Foreign := True;
 end;
 
 { TAtlasBranchDialogTests }
@@ -312,6 +357,90 @@ begin
   mFacts := TAtlasVcsBranchFacts.Empty;
   mSvn := TAtlasVcsSvnBranchOptions.Default;
   mRequest := Default(TAtlasVcsBranchRequest);
+end;
+
+procedure TAtlasBranchDialogTests.ExternalsChoicePerRow;
+var
+  mDialog: TAtlasBranchDialog;
+  mFacts: TAtlasVcsBranchFacts;
+  mSvn: TAtlasVcsSvnBranchOptions;
+  mRequest: TAtlasVcsBranchRequest;
+  mText: string;
+begin
+  mFacts := ExternalFacts;
+  mSvn := TAtlasVcsSvnBranchOptions.Default;
+  mSvn.Key := 'KASSE-42';
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'KASSE-42-bon', 'KASSE-42 Branch', mSvn, False);
+  try
+    mDialog.HandleNeeded;
+    Assert.IsTrue(mDialog.ExternalsBox.Visible);
+    Assert.AreEqual('Externals (4)', mDialog.ExternalsBox.Caption);
+    Assert.AreEqual(4, Integer(Length(mDialog.ExternalBoxes)));
+    // Basis: festschreiben auf die Revision der Arbeitskopie, drei Einträge.
+    Assert.AreEqual(3, Integer(mDialog.ExternalBoxes[0].Items.Count));
+    Assert.AreEqual('festschreiben (r48190)', mDialog.ExternalBoxes[0].Text);
+    // Drucken: lokale Änderungen, „mitverzweigen“ vorgeschlagen.
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalBranch), mDialog.ExternalBoxes[1].Text);
+    // Kunden: feste Revision, keine Auswahl.
+    Assert.IsTrue(mDialog.ExternalBoxes[2] = nil);
+    // Fremdes Repository: festschreiben oder unverändert.
+    Assert.AreEqual(2, Integer(mDialog.ExternalBoxes[3].Items.Count));
+    Assert.IsFalse(mDialog.ExternalsHint.Visible);
+    Assert.IsTrue(mDialog.CreateButton.Enabled);
+    mRequest := mDialog.Request;
+    Assert.IsTrue(mRequest.ExternalActions[0] = TAtlasVcsExternalAction.Pin);
+    Assert.IsTrue(mRequest.ExternalActions[1] = TAtlasVcsExternalAction.Branch);
+    Assert.IsTrue(mRequest.ExternalActions[2] = TAtlasVcsExternalAction.Keep);
+    Assert.AreEqual('Packages/Drucken/branches/KASSE-42-bon', mRequest.ExternalLocations[1]);
+    // Reihenfolge: Package kopieren, Projekt kopieren, umschreiben, umschalten.
+    mText := mDialog.StepsMemo.Lines.Text;
+    Assert.Contains(mDialog.StepsMemo.Lines[0], '^/Packages/Drucken/trunk@48211 ^/Packages/Drucken/branches/KASSE-42-bon');
+    Assert.Contains(mDialog.StepsMemo.Lines[1], '^/Kasse/branches/KASSE-42-bon');
+    Assert.Contains(mText, 'svn propset svn:externals');
+    // Drucken unverändert: kein Package-Schritt mehr; Basis und Lieferant schreibt Atlas selbst fest.
+    mDialog.ExternalBoxes[1].ItemIndex := 1;
+    mDialog.ExternalBoxes[1].OnChange(mDialog.ExternalBoxes[1]);
+    Assert.IsTrue(mDialog.Request.ExternalActions[1] = TAtlasVcsExternalAction.Keep);
+    Assert.IsFalse(mDialog.StepsMemo.Lines.Text.Contains('Packages/Drucken/branches'));
+  finally
+    mDialog.Free;
+  end;
+  // onBranch = ask: keine Vorauswahl, „Anlegen“ gesperrt mit Hinweis, bis alles gewählt ist.
+  mSvn.ExternalsOnBranch := TAtlasVcsExternalAction.Ask;
+  mSvn.ExternalsSuggest := TAtlasVcsExternalSuggest.Never;
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'KASSE-42-bon', 'KASSE-42 Branch', mSvn, False);
+  try
+    mDialog.HandleNeeded;
+    Assert.AreEqual(-1, Integer(mDialog.ExternalBoxes[0].ItemIndex));
+    Assert.IsTrue(mDialog.ExternalsHint.Visible);
+    Assert.IsFalse(mDialog.CreateButton.Enabled);
+    mDialog.ExternalBoxes[0].ItemIndex := 0;
+    mDialog.ExternalBoxes[0].OnChange(mDialog.ExternalBoxes[0]);
+    mDialog.ExternalBoxes[1].ItemIndex := 1;
+    mDialog.ExternalBoxes[1].OnChange(mDialog.ExternalBoxes[1]);
+    Assert.IsFalse(mDialog.CreateButton.Enabled, 'Lieferant fehlt noch');
+    mDialog.ExternalBoxes[3].ItemIndex := 1;
+    mDialog.ExternalBoxes[3].OnChange(mDialog.ExternalBoxes[3]);
+    Assert.IsFalse(mDialog.ExternalsHint.Visible);
+    Assert.IsTrue(mDialog.CreateButton.Enabled);
+  finally
+    mDialog.Free;
+  end;
+  // Externals nicht lesbar: nur der Hinweis wie vor #1291.
+  mFacts.SvnExternals := nil;
+  mDialog := TAtlasBranchDialog.CreateDialog(nil, mFacts, 'KASSE-42-bon', 'KASSE-42 Branch', mSvn, False);
+  try
+    Assert.IsTrue(mDialog.ExternalsBox.Visible);
+    Assert.AreEqual(0, Integer(Length(mDialog.ExternalBoxes)));
+    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.VcsBranchExternalsKept), mDialog.ExternalsHint.Caption);
+    Assert.IsTrue(mDialog.CreateButton.Enabled);
+  finally
+    mDialog.Free;
+  end;
+  mFacts := TAtlasVcsBranchFacts.Empty;
+  mSvn := TAtlasVcsSvnBranchOptions.Default;
+  mRequest := Default(TAtlasVcsBranchRequest);
+  mText := '';
 end;
 
 initialization

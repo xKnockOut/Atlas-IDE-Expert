@@ -2052,6 +2052,17 @@ begin
     Assert.AreEqual(0, mPage.VcsBranchSvnSource.Choice, 'head');
     Assert.AreEqual(0, mPage.VcsBranchSvnAfter.Choice, 'switch');
     Assert.AreEqual('..\{projekt}-{kennung}', mPage.VcsBranchSvnFolder.Text);
+    // #1291: Gruppe „Externals“ auf derselben Seite, Regeln als Zeilen; ungültige Zeile mit Hinweis.
+    Assert.IsTrue(SheetOf(mPage.VcsExternalsRules) = mVcs);
+    Assert.AreEqual(0, mPage.VcsExternalsOnBranch.Choice, 'pin');
+    Assert.AreEqual(0, mPage.VcsExternalsSuggest.Choice, 'modified');
+    Assert.AreEqual('', mPage.VcsExternalsRules.Text);
+    mPage.VcsExternalsRules.Text := '^/Packages/Basis = fragen';
+    mPage.VcsExternalsRules.OnChange(mPage.VcsExternalsRules);
+    Assert.Contains(mPage.VcsExternalsRulesError.Caption, '^/Packages/Basis = fragen');
+    mPage.VcsExternalsRules.Text := '^/Packages/Basis = keep';
+    mPage.VcsExternalsRules.OnChange(mPage.VcsExternalsRules);
+    Assert.AreEqual('', mPage.VcsExternalsRulesError.Caption);
     Assert.AreEqual(0, mProjectCalls, 'kein Prozess, solange die Seite nicht gezeigt wurde');
     // Pfad ändern: nur Dateiprüfung, kein Prozess.
     mPage.VcsPath(TAtlasVcsKind.Git).Text := 'X:\fehlt\git.exe';
@@ -2105,7 +2116,20 @@ begin
     mPage.VcsBranchSvnAfter.Choice := 1;
     mPage.VcsBranchSvnFolder.Text := 'D:\Branches\{name}';
     mPage.VcsBranchSvnMessage.Text := 'Neu: {kennung}';
+    mPage.VcsExternalsOnBranch.Choice := 2;
+    mPage.VcsExternalsSuggest.Choice := 2;
     mSaved := mSettings;
+    mPage.SaveTo(mSaved);
+    Assert.AreEqual('ask', mSaved.VcsExternalsOnBranch);
+    Assert.AreEqual('always', mSaved.VcsExternalsSuggestBranch);
+    Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', mSaved.VcsExternalsRules);
+    // Ungültige Zeile: Die bisherigen Regeln bleiben.
+    mPage.VcsExternalsRules.Text := '^/Packages/Basis = keep'#13#10'kaputt';
+    mPage.SaveTo(mSaved);
+    Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', mSaved.VcsExternalsRules);
+    mPage.LoadFrom(mSaved);
+    Assert.AreEqual('^/Packages/Basis = keep', mPage.VcsExternalsRules.Text);
+    Assert.AreEqual(2, mPage.VcsExternalsOnBranch.Choice);
     mPage.SaveTo(mSaved);
     Assert.IsFalse(mSaved.VcsBranchConfirm);
     Assert.AreEqual('^/branches/{kennung}', mSaved.VcsBranchSvnLocation);

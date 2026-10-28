@@ -969,6 +969,9 @@ begin
   // SVN „frisch auschecken“ (#1290): die alte Arbeitskopie bleibt; dieselbe Gruppe im neuen Ordner anbieten.
   if AResult.CheckoutFolder <> '' then
     TAtlasIdeBranching.OfferOpen(AProject, AResult.WorkingRoot, AResult.CheckoutFolder);
+  // Externals festgeschrieben bzw. mitverzweigt und umgeschaltet (#1291): Index neu.
+  if AResult.IndexRebuild then
+    TAtlasIdeBranching.RebuildIndex;
 end;
 
 procedure TAtlasIdeIssues.SyncPrefix(const AProject: string);

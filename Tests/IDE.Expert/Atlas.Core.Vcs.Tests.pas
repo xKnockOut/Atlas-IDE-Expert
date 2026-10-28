@@ -86,6 +86,10 @@ type
     /// unter SVN.</summary>
     [Test]
     procedure SvnBranchOptionsUseLocation;
+    /// <summary>#1291: propget --xml -R, repos-root-url, --version und svnversion je Ordner ohne Server; RunStep
+    /// schreibt die Eingabedatei (UTF-8 ohne BOM, LF) vor dem Aufruf.</summary>
+    [Test]
+    procedure SvnExternalsCommands;
     [Test]
     procedure SafeBranchNames;
   end;
@@ -95,6 +99,7 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.IOUtils,
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Internals.Text,
   Atlas.Core.Vcs.Internals.GitParser,
@@ -1645,6 +1650,63 @@ begin
   Assert.IsTrue(Supports(Vcs, IAtlasVcsBranching, Branching));
   Assert.IsTrue(Branching.BranchExists('x', TAtlasVcsSvnBranchOptions.Default, mExists) = TAtlasVcsOutcome.Disabled);
   Assert.IsTrue(Branching.SwitchBranch('x', TAtlasVcsSvnBranchOptions.Default) = TAtlasVcsOutcome.Disabled);
+  Runner.Calls := nil;
+  Runner.Executables := nil;
+  Runner.Timeouts := nil;
+  Runner.WorkingDirs := nil;
+  Runner.Commands := nil;
+  Runner.Answers := nil;
+end;
+
+procedure TAtlasVcsTests.SvnExternalsCommands;
+var
+  Runner: TFakeRunner;
+  RunnerRef: IAtlasVcsRunner;
+  Vcs: IAtlasVersionControl;
+  Branching: IAtlasVcsBranching;
+  mSvn: IAtlasVcsSvnWorkingCopy;
+  mText, mFile: string;
+  mStep: TAtlasVcsBranchStep;
+  mBytes: TBytes;
+begin
+  Runner := TFakeRunner.Create;
+  RunnerRef := Runner;
+  Vcs := TAtlasSvnVersionControl.Create(Root, RunnerRef, Under('bin/svn.exe'));
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsSvnWorkingCopy, mSvn));
+  Assert.IsTrue(Supports(Vcs, IAtlasVcsBranching, Branching));
+  Runner.Answer('propget', '<properties/>');
+  Assert.IsTrue(mSvn.ExternalsXml(mText) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('<properties/>', mText);
+  Assert.AreEqual('propget svn:externals --xml -R . --non-interactive', Runner.Calls[0]);
+  Runner.Answer('info', 'https://svn.firma.local/repo' + #10);
+  Assert.IsTrue(mSvn.RepositoryRoot(mText) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('https://svn.firma.local/repo', mText);
+  Assert.AreEqual('info --show-item repos-root-url . --non-interactive', Runner.Calls[1]);
+  // Nur Schalter: Der Fake erkennt keinen Befehl ('').
+  Runner.Answer('', '1.14.3' + #10);
+  Assert.IsTrue(mSvn.ToolVersion(mText) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('1.14.3', mText);
+  Assert.AreEqual('--version --quiet', Runner.Calls[2]);
+  Runner.Answer('Packages/Basis', '48190M' + #10);
+  Assert.IsTrue(mSvn.WorkingRevisions('Packages/Basis', mText) = TAtlasVcsOutcome.Ok);
+  Assert.AreEqual('48190M', mText);
+  Assert.AreEqual(Under('bin/svnversion.exe'), Runner.Executables[3]);
+  // Eingabedatei für propset -F: vor dem Aufruf geschrieben, CRLF wird LF.
+  mFile := TPath.Combine(TPath.Combine(TPath.GetTempPath, 'Atlas-Vcs-Tests'), 'p0.txt');
+  if TFile.Exists(mFile) then
+    TFile.Delete(mFile);
+  mStep := TAtlasVcsBranchStep.Make(TArray<string>.Create('propset', 'svn:externals', '-F', mFile, 'p0'), False,
+    False);
+  mStep.InputFile := mFile;
+  mStep.InputText := '-r 1 ^/a Lib'#13#10'# ä'#13#10;
+  Assert.IsTrue(Branching.RunStep(mStep) = TAtlasVcsOutcome.Ok);
+  mBytes := TFile.ReadAllBytes(mFile);
+  Assert.AreEqual('-r 1 ^/a Lib'#10'# ä'#10, TEncoding.UTF8.GetString(mBytes));
+  Assert.IsFalse((Length(mBytes) >= 3) and (mBytes[0] = $EF), 'ohne BOM');
+  Assert.AreEqual('propset svn:externals -F ' + mFile + ' p0 --non-interactive', Runner.Calls[High(Runner.Calls)]);
+  TDirectory.Delete(ExtractFileDir(mFile), True);
+  mStep := TAtlasVcsBranchStep.Make(nil, False, False);
+  mBytes := nil;
   Runner.Calls := nil;
   Runner.Executables := nil;
   Runner.Timeouts := nil;
