@@ -220,7 +220,15 @@ type
     function ResolveTypeText(const AText: string; const AFromUnit: TUnitIndex; AWithImplementation: Boolean;
       out AResult: TResolvedSymbol): Boolean;
     function QualifyType(const AText: string; const AFromUnit: TUnitIndex; AWithImplementation: Boolean): string;
+    /// <summary>Mitglieder AName von AType: die des nächsten Typs, der den Namen deklariert, bzw. seines Helfers.
+    /// Sind dort alle Methoden mit overload oder override deklariert, kommen die Überladungen der Vorfahren dazu
+    /// (#1326); eine neu deklarierte Property ohne Typ trägt Typ und Zugriffe der geerbten (MergedProperty).
+    /// </summary>
     function FindMembers(const AType: TResolvedSymbol; const AName: string): TArray<TResolvedSymbol>;
+    /// <summary>Neu deklarierte Property AOwn ohne Typ (property Items write SetItems;) mit Typ, Indexparametern
+    /// und den Zugriffen der gleichnamigen Property der Vorfahren von AOwner, die AOwn nicht selbst nennt (#1326);
+    /// AOwn unverändert, wenn die Vorfahren keine solche Property kennen.</summary>
+    function MergedProperty(const AOwner, AOwn: TResolvedSymbol): TResolvedSymbol;
     function UnitRoutines(const ASymbol: TResolvedSymbol): TArray<TResolvedSymbol>;
     function HelperFor(const AType: TResolvedSymbol; out AHelper: TResolvedSymbol): Boolean;
     /// <summary>Ist ASymbol (Mitglied von AOwner aus AOwnerUnit) an der vorbereiteten Stelle sichtbar? ALocalChain:
@@ -365,6 +373,12 @@ type
     /// Aufrufs meinen kann, ohne Auswahl nach den Argumenten (#1007): Überladungen samt geerbter, Deklaration und
     /// Rumpf mit gleichen Parametern einmal. Leer, wenn ACallee nicht auflösbar ist.</summary>
     function CallCandidates(ATree: TSyntaxTree; const AFileName: string; ACallee: TSyntaxNode): TArray<TResolvedSymbol>;
+    /// <summary>Kann ein Mitglied außerhalb des Index den Bezeichner ACallee aus ATree verdecken, sodass
+    /// ACandidate gar nicht gemeint ist (#1326)? Ja bei einem with-Objekt, dessen Typ den Namen nicht kennt, aber
+    /// einen unbekannten Vorfahren hat, und bei einer Methode, deren Klasse einen unbekannten Vorfahren hat, wenn
+    /// ACandidate weder lokal noch ein Mitglied ist (Error aus TStrings statt einer freien Routine Error).</summary>
+    function MayBeHiddenMember(ATree: TSyntaxTree; const AFileName: string; ACallee: TSyntaxNode;
+      const ACandidate: TResolvedSymbol): Boolean;
     /// <summary>Liest die Property AProperty direkt aus einem Feld (read FFeld, read FFeld.X)? False, wenn das
     /// nicht sicher feststeht (kein read, Typ oder Mitglied unbekannt); sonst AReadsField (#1005).</summary>
     function PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;
@@ -458,7 +472,9 @@ type
     function ExceptionClassOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
     /// <summary>Namen ohne Unit von AClass und seinen Vorfahren, AClass zuerst (#483); bricht die Kette ab,
     /// zuletzt der Name des unbekannten Vorfahren.</summary>
-    function AncestorNames(const AClass: TResolvedSymbol): TArray<string>;
+    function AncestorNames(const AClass: TResolvedSymbol): TArray<string>; overload;
+    /// <summary>Wie oben; AComplete: Die Kette reicht ohne unbekannten Vorfahren bis zum Ende (#1326).</summary>
+    function AncestorNames(const AClass: TResolvedSymbol; out AComplete: Boolean): TArray<string>; overload;
     /// <summary>Sieht AName (auch mit Unit) wie eine Exception-Klasse aus: Exception oder E mit Großbuchstaben?
     /// </summary>
     class function LooksLikeException(const AName: string): Boolean; static;
@@ -1052,6 +1068,19 @@ begin
   Result.VariantParams := [String.Join(';', ASymbol.ParamTypes)];
 end;
 
+/// <summary>Hat die Deklaration ANode eine Typangabe ohne Namen (array, set, record, Prozedurtyp …)?</summary>
+function HasAnonymousType(ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+    if ANode[mIndex].Kind in [TSyntaxKind.ArrayType, TSyntaxKind.PointerType, TSyntaxKind.ClassOfType,
+      TSyntaxKind.SetType, TSyntaxKind.RecordType, TSyntaxKind.ProcedureType, TSyntaxKind.FileType,
+      TSyntaxKind.EnumType, TSyntaxKind.SubrangeType] then
+      Exit(True);
+end;
+
 function TNameResolver.FromNode(ANode: TSyntaxNode; const AName: string; AKind: TIndexSymbolKind;
   AIsParameter: Boolean): TResolvedSymbol;
 var
@@ -1083,9 +1112,11 @@ begin
   Result.TypeName := TIndexExtractor.DeclaredType(ANode);
   if Result.TypeName <> '' then
     Result.TypeArgs := TIndexExtractor.GenericArgsText(TIndexExtractor.DeclaredTypeNode(ANode))
-  // var X := TFoo.Create; const C = 5; for var I := 0 ...: Typ aus dem Ausdruck.
+  // var X := TFoo.Create; const C = 5; for var I := 0 ...: Typ aus dem Ausdruck. Eine Typangabe ohne Namen
+  // (const Klassen: array[0..1] of TFooClass = (TFoo, TBar)) hat keinen Typ des Ausdrucks: Das erste Element
+  // der Liste ist nicht der Typ der Konstanten (#1326).
   else if (ANode.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.ConstDecl]) and
-    (ANode.ChildCount > 0) then
+    (ANode.ChildCount > 0) and not HasAnonymousType(ANode) then
     Result.Initializer := ANode[ANode.ChildCount - 1]
   else if (ANode.Kind = TSyntaxKind.ForStatement) and (ANode.ChildCount > 0) then
     Result.Initializer := ANode[0];
@@ -1397,10 +1428,18 @@ end;
 
 function TNameResolver.AncestorNames(const AClass: TResolvedSymbol): TArray<string>;
 var
+  mComplete: Boolean;
+begin
+  Result := AncestorNames(AClass, mComplete);
+end;
+
+function TNameResolver.AncestorNames(const AClass: TResolvedSymbol; out AComplete: Boolean): TArray<string>;
+var
   Current, Next: TResolvedSymbol;
   Depth: Integer;
 begin
   Result := nil;
+  AComplete := False;
   if not AClass.Found then
     Exit;
   Current := AClass;
@@ -1408,7 +1447,10 @@ begin
   begin
     Result := Result + [Current.Name];
     if Length(Current.Ancestors) = 0 then
+    begin
+      AComplete := True;
       Exit;
+    end;
     if not AncestorOf(Current, Next) then
     begin
       Result := Result + [Copy(Current.Ancestors[0], LastDelimiter('.', Current.Ancestors[0]) + 1, MaxInt)];
@@ -1581,22 +1623,107 @@ begin
     AParent := NoResult;
 end;
 
+/// <summary>Verdecken die Methoden AMembers ab AFrom die gleichnamigen der Vorfahren nicht? So ist es, wenn jede
+/// overload trägt oder eine Methode überschreibt (override einer überladenen Methode bleibt überladen, Indy
+/// TIdSMTP.Disconnect(Boolean) neben TIdTCPConnection.Disconnect, #1326). Felder und Properties verdecken immer.
+/// </summary>
+function KeepsAncestorOverloads(const AMembers: TArray<TResolvedSymbol>; AFrom: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := True;
+  for mIndex := AFrom to High(AMembers) do
+    if not (AMembers[mIndex].SymbolKind in RoutineKinds) or
+      ((IndexText('overload', AMembers[mIndex].Directives) < 0) and
+      (IndexText('override', AMembers[mIndex].Directives) < 0)) then
+      Exit(False);
+end;
+
+/// <summary>Wort hinter AKeyword (read, write) in der Signatur einer Property; '' ohne.</summary>
+function PropertyAccessor(const ASignature, AKeyword: string): string;
+var
+  mWords: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := '';
+  mWords := ASignature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(mWords) - 1 do
+    if SameText(mWords[mIndex], AKeyword) then
+      Exit(mWords[mIndex + 1]);
+end;
+
+/// <summary>Signatur einer Property bis vor das erste read bzw. write ("property Items: TStrings").</summary>
+function PropertyHead(const ASignature: string): string;
+var
+  mWords: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := '';
+  mWords := ASignature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(mWords) do
+  begin
+    if MatchText(mWords[mIndex], ['read', 'write']) then
+      Break;
+    if Result <> '' then
+      Result := Result + ' ';
+    Result := Result + mWords[mIndex];
+  end;
+end;
+
+function TNameResolver.MergedProperty(const AOwner, AOwn: TResolvedSymbol): TResolvedSymbol;
+var
+  mAncestor, mInherited: TResolvedSymbol;
+  mCandidates: TArray<TResolvedSymbol>;
+  mRead, mWrite: string;
+begin
+  Result := AOwn;
+  if (AOwn.SymbolKind <> TIndexSymbolKind.Property_) or (AOwn.TypeName <> '') or
+    not AncestorOf(AOwner, mAncestor) then
+    Exit;
+  // Die Vorfahren können selbst nur neu deklarieren (property Items; im published-Teil): FindMembers führt sie
+  // ebenso zusammen.
+  mCandidates := FindMembers(mAncestor, AOwn.Name);
+  if (Length(mCandidates) = 0) or (mCandidates[0].SymbolKind <> TIndexSymbolKind.Property_) or
+    (mCandidates[0].TypeName = '') then
+    Exit;
+  mInherited := mCandidates[0];
+  Result.TypeName := mInherited.TypeName;
+  Result.TypeArgs := mInherited.TypeArgs;
+  Result.MinArgs := mInherited.MinArgs;
+  Result.MaxArgs := mInherited.MaxArgs;
+  Result.ParamTypes := mInherited.ParamTypes;
+  Result.IsDefault := AOwn.IsDefault or mInherited.IsDefault;
+  mRead := PropertyAccessor(AOwn.Signature, 'read');
+  if mRead = '' then
+    mRead := PropertyAccessor(mInherited.Signature, 'read');
+  mWrite := PropertyAccessor(AOwn.Signature, 'write');
+  if mWrite = '' then
+    mWrite := PropertyAccessor(mInherited.Signature, 'write');
+  Result.Signature := PropertyHead(mInherited.Signature);
+  if mRead <> '' then
+    Result.Signature := Result.Signature + ' read ' + mRead;
+  if mWrite <> '' then
+    Result.Signature := Result.Signature + ' write ' + mWrite;
+end;
+
 function TNameResolver.FindMembers(const AType: TResolvedSymbol; const AName: string): TArray<TResolvedSymbol>;
 var
   Current, Ancestor, Helper, Parent, Found: TResolvedSymbol;
   OwnerUnit, HelperUnit: TUnitIndex;
   Symbol: TIndexSymbol;
-  Depth, Position, HelperDepth: Integer;
+  Depth, Position, HelperDepth, mLevelStart: Integer;
   TypeName: string;
-  Hidden, LocalChain: Boolean;
+  Hidden, LocalChain, mOverloads: Boolean;
 begin
   Result := nil;
   Current := AType;
   LocalChain := False;
+  // Nach einer Stufe, deren Methoden alle overload bzw. override tragen: nur noch Methoden der Vorfahren sammeln.
+  mOverloads := False;
   for Depth := 0 to MaxDepth do
   begin
     // Helfer zuerst: ihre Mitglieder verdecken gleichnamige des Typs; danach die Vorfahr-Helfer (#848).
-    if HelperFor(Current, Helper) then
+    if not mOverloads and HelperFor(Current, Helper) then
       for HelperDepth := 0 to MaxDepth do
       begin
         if UnitOf(Helper, HelperUnit) then
@@ -1621,11 +1748,12 @@ begin
     LocalChain := LocalChain or SameText(OwnerUnit.FileName, FCurrent.FileName);
     TypeName := Current.QualifiedName;
     Hidden := False;
+    mLevelStart := Length(Result);
     // Erste Fundstelle: die Deklaration im Typ steht vor dem Rumpf in implementation.
     for Position in OwnerUnit.SymbolsNamed(AName) do
     begin
       Symbol := OwnerUnit.Symbols[Position];
-      if SameText(Symbol.Container, TypeName) then
+      if SameText(Symbol.Container, TypeName) and (not mOverloads or (Symbol.Kind in RoutineKinds)) then
       begin
         // Ist die Deklaration unsichtbar, gilt das auch für ihren Rumpf (implementation, dort public). Weitere
         // Deklarationen im interface prüft IsVisible einzeln: Überladungen dürfen anders sichtbar sein
@@ -1639,11 +1767,18 @@ begin
         end;
         Found := FromSymbol(OwnerUnit, Symbol);
         Found.Bindings := Current.Bindings;
+        if Found.SymbolKind = TIndexSymbolKind.Property_ then
+          Found := MergedProperty(Current, Found);
         AddDistinct(Result, Found);
       end;
     end;
-    if Result <> nil then
-      Exit;
+    // Eine Stufe ohne neue Methode (nur Rümpfe, nur Gleiches) ändert nichts an der Überladung.
+    if Length(Result) > mLevelStart then
+    begin
+      if not KeepsAncestorOverloads(Result, mLevelStart) then
+        Exit;
+      mOverloads := True;
+    end;
     if not AncestorOf(Current, Ancestor) then
       Exit;
     Current := Ancestor;
@@ -3247,6 +3382,35 @@ begin
     Exit;
   Prepare(ATree, AFileName, ACallee.StartOffset);
   Result := ExprCandidates(ACallee);
+end;
+
+function TNameResolver.MayBeHiddenMember(ATree: TSyntaxTree; const AFileName: string; ACallee: TSyntaxNode;
+  const ACandidate: TResolvedSymbol): Boolean;
+var
+  mWith: TSyntaxNode;
+  mIndex: Integer;
+  mType: TResolvedSymbol;
+  mComplete: Boolean;
+begin
+  Result := False;
+  if (ACallee = nil) or (ACallee.Kind <> TSyntaxKind.Identifier) then
+    Exit;
+  Prepare(ATree, AFileName, ACallee.StartOffset);
+  // with-Objekte verdecken alles weiter außen, innerstes zuerst (wie LookupWithOwner).
+  for mWith in EnclosingWiths do
+    for mIndex := mWith.ChildCount - 2 downto 0 do
+    begin
+      if not WithElementType(mWith, mIndex, mType) then
+        Exit(True);
+      if Length(FindMembers(mType, ACallee.Name)) > 0 then
+        Exit;
+      AncestorNames(mType, mComplete);
+      if not mComplete then
+        Exit(True);
+    end;
+  if (ACandidate.Kind = TResolvedKind.Local) or (ACandidate.Container <> '') then
+    Exit;
+  Result := HasUnknownAncestor;
 end;
 
 function TNameResolver.PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;

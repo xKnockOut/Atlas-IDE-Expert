@@ -32,6 +32,10 @@ type
     procedure ConditionalAndGenericAreSilent;
     [Test]
     procedure TypesFromIndex;
+    /// <summary>F01 aus der FP-Prüfung (#1326): Prozedurtyp über mehrere Zeilen, "of object" in der letzten.
+    /// </summary>
+    [Test]
+    procedure MultilineProcedureTypes;
     [Test]
     procedure Options;
   end;
@@ -310,6 +314,42 @@ begin
   Assert.AreEqual('TVektor (Record) kann nicht published sein (wie E2188).', Found[0].Message);
   Assert.AreEqual('TPunkte (Array) kann nicht published sein (wie E2188).', Found[1].Message);
   Assert.AreEqual('TFlaeche (Record) kann nicht published sein (wie E2188).', Found[2].Message);
+end;
+
+procedure TPublishedRulesTests.MultilineProcedureTypes;
+var
+  mIndex: ISymbolIndex;
+  mParameters: string;
+  mNumber: Integer;
+  mFound: TArray<TRuleFinding>;
+begin
+  // F01: TEv1 ist ein Methodenzeiger, auch wenn "of object" erst in der zweiten Zeile steht.
+  Silent('unit F01_PublishedMultiline;'#10'interface'#10'uses Classes;'#10'type'#10 +
+    '  TEv1 = procedure(Sender: TObject;'#10'    X: Integer) of object;'#10 +
+    '  TEv2 = procedure(Sender: TObject; X: Integer) of object;'#10'  TC = class(TComponent)'#10'  private'#10 +
+    '    F1: TEv1; F2: TEv2;'#10'  published'#10'    property E1: TEv1 read F1 write F1;'#10 +
+    '    property E2: TEv2 read F2 write F2;'#10'  end;'#10'implementation'#10'end.');
+  // Gegenprobe: ohne "of object" bleibt es ein Prozedurtyp, auch über zwei Zeilen.
+  Assert.AreEqual('TEv1 (Prozedurtyp ohne "of object") kann nicht published sein (wie E2188).',
+    OnlyMessage('unit F01;'#10'interface'#10'uses Classes;'#10'type'#10'  TEv1 = procedure(Sender: TObject;'#10 +
+    '    X: Integer);'#10'  TC = class(TComponent)'#10'  private'#10'    F1: TEv1;'#10'  published'#10 +
+    '    property E1: TEv1 read F1 write F1;'#10'  end;'#10'implementation'#10'end.'));
+  // Aus dem Index, mit einer Parameterliste über TIndexSymbol.MaxSignature hinaus: Das Merkmal "of object" gilt.
+  mParameters := '';
+  for mNumber := 1 to 40 do
+    mParameters := mParameters + Format('    AParameter%d: Integer;'#10, [mNumber]);
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Ereignisse;'#10'interface'#10'type'#10 +
+    '  TLang = procedure(Sender: TObject;'#10 + mParameters + '    AEnde: Integer) of object;'#10 +
+    '  TLangRoh = procedure(Sender: TObject;'#10 + mParameters + '    AEnde: Integer);'#10 +
+    'implementation'#10'end.', 'C:\Projekt\Ereignisse.pas', nil));
+  mFound := TRuleAssert.IndexFindings(TPublishedTypeInvalidRule.Create, 'unit Karten;'#10'interface'#10'uses'#10 +
+    '  Classes, Ereignisse;'#10'type'#10'  TKarte = class(TComponent)'#10'  private'#10'    FLang: TLang;'#10 +
+    '    FRoh: TLangRoh;'#10'  published'#10'    property Lang: TLang read FLang write FLang;'#10 +
+    '    property Roh: TLangRoh read FRoh write FRoh;'#10'  end;'#10'implementation'#10'end.', mIndex, '', '');
+  Assert.AreEqual(1, Integer(Length(mFound)), Join(mFound));
+  Assert.AreEqual('TLangRoh (Prozedurtyp ohne "of object") kann nicht published sein (wie E2188).',
+    mFound[0].Message);
 end;
 
 procedure TPublishedRulesTests.Options;

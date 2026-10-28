@@ -24,6 +24,10 @@ type
     procedure SilentAccesses;
     [Test]
     procedure TypesFromIndex;
+    /// <summary>Lokale Konstante als Array von Klassenreferenzen (#1326, Indy HashTypes[I]): Das erste Element
+    /// der Liste ist nicht ihr Typ.</summary>
+    [Test]
+    procedure ConstArrayOfClassReferences;
     [Test]
     procedure Options;
   end;
@@ -176,6 +180,22 @@ begin
     '{"rules": {"default-property-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Listen.pas'))));
   Assert.AreEqual(1, Integer(Length(Findings(Source,
     '{"rules": {"default-property-invalid": {"exclude": ["Alt/*.pas"]}}}', 'Source/Listen.pas'))));
+end;
+
+procedure TDefaultPropertyRulesTests.ConstArrayOfClassReferences;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := Findings('unit Pruefsummen;'#10'interface'#10'type'#10'  THash = class'#10'  public'#10 +
+    '    constructor Create(AOwner: TObject); virtual;'#10'  end;'#10'  THashA = class(THash);'#10 +
+    '  THashB = class(THash);'#10'  THashClass = class of THash;'#10'implementation'#10 +
+    'constructor THash.Create(AOwner: TObject);'#10'begin'#10'end;'#10'procedure Pruefen(AIndex: Integer);'#10 +
+    'const'#10'  cArten: array[0..1] of THashClass = (THashA, THashB);'#10'var'#10'  mHash: THash;'#10 +
+    'begin'#10'  mHash := cArten[AIndex].Create(nil);'#10'  mHash.Free;'#10'  mHash := nil;'#10 +
+    '  mHash[0].Free;'#10'end;'#10'end.');
+  // Gemeldet bleibt nur der Index auf die Instanz ohne default-Property.
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('THash hat keine default-Property; mHash[…] braucht eine (wie E2149).', mFindings[0].Message);
 end;
 
 initialization
