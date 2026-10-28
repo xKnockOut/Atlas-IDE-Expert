@@ -2,7 +2,7 @@
 
 // Inhalt des andockbaren Fensters „Atlas-Issue“ (#1264), reine VCL ohne Open
 // Tools API:
-//   [◀] [▶]  [Beginnen] [Beenden …] [Im Browser öffnen] [Kennung kopieren] [Aktualisieren]
+//   [◀] [▶]  [Beginnen] [Beenden …] [Im Browser öffnen] [Kennung kopieren] [Anhängen …] [Aktualisieren]
 //   ───────────────── dünne Leiste beim Laden ─────────────────
 //   (Stand vom …  bzw. Fehler mit Knopf zum Beheben)
 //   ATL-123 · 3/5   (Fortschritt der Checkliste, #1273)
@@ -35,6 +35,8 @@
 // (#1269, TAtlasIssueDevelopmentView: Branches, Commits, Pull Requests,
 // geänderte Units); der zweite fehlt bei issues.preview.development aus.
 // Gesucht wird erst, wenn der Reiter sichtbar wird (OnDevelopmentShown).
+// „Anhängen …“ (#1276) als Knopf und im Kontextmenü nur mit CanAttach
+// (issues.attach); die IDE-Schicht öffnet den Dialog für dieses Issue.
 // Ein Fenster, der Inhalt wechselt; Verlauf über Zurück/Vor (Alt+Links,
 // Alt+Rechts). Schließen des Fensters (OnHidden) bricht das Laden ab. Laden, Netz, Verlauf und Zwischenspeicher liegen in der
 // IDE-Schicht; der Frame meldet nur Wünsche (On…). Text in der Beschreibung
@@ -164,6 +166,9 @@ type
     FStart: TButton;
     FBrowse: TButton;
     FCopyKey: TButton;
+    FAttach: TButton;
+    FMenu: TPopupMenu;
+    FAttachItem: TMenuItem;
     FRefresh: TButton;
     FEnd: TButton;
     FCommentPanel: TPanel;
@@ -209,6 +214,7 @@ type
     FColors: TAtlasColors;
     FMono: TFont;
     FCanStart: Boolean;
+    FCanAttach: Boolean;
     FNextTop: Integer;
     FPendingRebuild: Boolean;
     FPendingLink: TAtlasTrackerLink;
@@ -234,6 +240,7 @@ type
     FOnStart: TProc;
     FOnBrowse: TProc;
     FOnCopyKey: TProc;
+    FOnAttach: TProc;
     FOnRefresh: TProc;
     FOnCancel: TProc;
     FOnFix: TProc<TAtlasIssueFix>;
@@ -275,6 +282,8 @@ type
     procedure SetCanEnd(AValue: Boolean);
     procedure BrowseClick(Sender: TObject);
     procedure CopyKeyClick(Sender: TObject);
+    procedure AttachClick(Sender: TObject);
+    procedure SetCanAttach(AValue: Boolean);
     procedure RefreshClick(Sender: TObject);
     procedure FixClick(Sender: TObject);
     procedure TitleClick(Sender: TObject);
@@ -375,6 +384,8 @@ type
     property CommentEdit: TMemo read FCommentEdit;
     property CommentSendButton: TButton read FCommentSend;
     property CommentNote: TLabel read FCommentNote;
+    /// <summary>„Anhängen …“ zeigen (issues.attach, #1276).</summary>
+    property CanAttach: Boolean read FCanAttach write SetCanAttach;
     property CommentsExpanded: Boolean read FCommentsExpanded;
     /// <summary>Für Tests: hervorgehobener Kommentar (Index in Details.Comments); -1 ohne.</summary>
     property AnchorComment: Integer read FAnchorComment;
@@ -383,6 +394,8 @@ type
     property StartButton: TButton read FStart;
     property BrowseButton: TButton read FBrowse;
     property CopyKeyButton: TButton read FCopyKey;
+    property AttachButton: TButton read FAttach;
+    property AttachMenuItem: TMenuItem read FAttachItem;
     property RefreshButton: TButton read FRefresh;
     property FixButton: TButton read FFix;
     property BackAction: TAction read FBackAction;
@@ -419,6 +432,8 @@ type
     property OnComment: TProc<string> read FOnComment write FOnComment;
     property OnBrowse: TProc read FOnBrowse write FOnBrowse;
     property OnCopyKey: TProc read FOnCopyKey write FOnCopyKey;
+    /// <summary>„Anhängen …“ für das gezeigte Issue (#1276).</summary>
+    property OnAttach: TProc read FOnAttach write FOnAttach;
     property OnRefresh: TProc read FOnRefresh write FOnRefresh;
     property OnCancel: TProc read FOnCancel write FOnCancel;
     property OnFix: TProc<TAtlasIssueFix> read FOnFix write FOnFix;
@@ -889,6 +904,17 @@ begin
   FEnd.Visible := False;
   FBrowse := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewBrowse), BrowseClick);
   FCopyKey := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewCopyKey), CopyKeyClick);
+  FAttach := AddButton(TAtlasStrings.Text(TAtlasTextId.AttachPreviewButton), AttachClick);
+  FAttach.Hint := TAtlasStrings.Text(TAtlasTextId.AttachStatusHint);
+  FAttach.Visible := False;
+  // Kontextmenü des Fensters (#1276): Kinder ohne eigenes Menü übernehmen es.
+  FMenu := TPopupMenu.Create(Self);
+  FAttachItem := TMenuItem.Create(FMenu);
+  FAttachItem.Caption := TAtlasStrings.Text(TAtlasTextId.AttachCommand);
+  FAttachItem.OnClick := AttachClick;
+  FAttachItem.Visible := False;
+  FMenu.Items.Add(FAttachItem);
+  PopupMenu := FMenu;
   FRefresh := AddButton(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRefresh), RefreshClick);
 
   FProgress := TProgressBar.Create(Self);
@@ -1627,6 +1653,10 @@ begin
   FCommentSend.Enabled := FHasDetails and not FCommentSending;
   FBrowse.Enabled := FHasDetails;
   FCopyKey.Enabled := FHasDetails;
+  FAttach.Visible := FCanAttach;
+  FAttach.Enabled := FHasDetails;
+  FAttachItem.Visible := FCanAttach;
+  FAttachItem.Enabled := FHasDetails;
   FRefresh.Enabled := FHasDetails or FLoading;
   if FLoading then
     FRefresh.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewCancel)
@@ -1989,6 +2019,18 @@ procedure TAtlasIssueFrame.CopyKeyClick(Sender: TObject);
 begin
   if Assigned(FOnCopyKey) then
     FOnCopyKey();
+end;
+
+procedure TAtlasIssueFrame.AttachClick(Sender: TObject);
+begin
+  if FCanAttach and FHasDetails and Assigned(FOnAttach) then
+    FOnAttach();
+end;
+
+procedure TAtlasIssueFrame.SetCanAttach(AValue: Boolean);
+begin
+  FCanAttach := AValue;
+  UpdateButtons;
 end;
 
 procedure TAtlasIssueFrame.RefreshClick(Sender: TObject);

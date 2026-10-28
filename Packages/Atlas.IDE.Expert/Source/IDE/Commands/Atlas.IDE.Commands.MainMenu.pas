@@ -109,6 +109,9 @@ type
     /// <summary>„Atlas: Exception-Verlauf“ (#517), sichtbar nach debug.exceptionHistory.</summary>
     FDebugExceptionsItem: TMenuItem;
     FDebugEvaluateItem: TMenuItem;
+    /// <summary>„An Issue anhängen …“ (#1276), sichtbar nach issues.attach.</summary>
+    FIssueAttachItem: TMenuItem;
+    FOnIssueAttach: TProc;
     /// <summary>„Woher/Wohin kommt der Wert?“ (#690), sichtbar nach navigation.dataFlow.</summary>
     FDataFlowItems: TArray<TMenuItem>;
     /// <summary>„Atlas: Compiler-Schalter“ (#558), sichtbar nach build.compilerSwitches.</summary>
@@ -146,6 +149,7 @@ type
     procedure SymbolPathClick(Sender: TObject);
     procedure DebugExceptionsClick(Sender: TObject);
     procedure DebugEvaluateClick(Sender: TObject);
+    procedure IssueAttachClick(Sender: TObject);
     procedure CompilerSwitchesClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
@@ -182,6 +186,8 @@ type
     property OnTasksMenu: TProc<TMenuItem> read FOnTasksMenu write FOnTasksMenu;
     /// <summary>Eintrag „Tastenkürzel-Übersicht…“ nach keys.overview ein- oder ausblenden.</summary>
     procedure UpdateKeyMap;
+    /// <summary>„An Issue anhängen …“ (#1276).</summary>
+    property OnIssueAttach: TProc read FOnIssueAttach write FOnIssueAttach;
     /// <summary>„Atlas-Start“ öffnen (#753, #1114).</summary>
     property OnWelcome: TProc read FOnWelcome write FOnWelcome;
     /// <summary>Fenster „Atlas-Board“ öffnen (#1272).</summary>
@@ -320,6 +326,7 @@ begin
   // Exception-Verlauf beim Debuggen (#517).
   FDebugExceptionsItem := AddItem(TAtlasTextId.DebugExceptionsCommand, 0, DebugExceptionsClick);
   FDebugEvaluateItem := AddItem(TAtlasTextId.DebugEvaluateCommand, 0, DebugEvaluateClick);
+  FIssueAttachItem := AddItem(TAtlasTextId.AttachCommand, 0, IssueAttachClick);
   // Wirksame Compiler-Schalter an der Cursorposition (#558).
   FCompilerSwitchesItem := AddItem(TAtlasTextId.CompilerSwitchesCommand, 0, CompilerSwitchesClick);
   FRoot.Add(NewLine);
@@ -505,6 +512,9 @@ begin
   Settings := TAtlasIdeSettings.Current;
   FWelcomeLine.Visible := Settings.WelcomePage;
   FWelcomeStart.Visible := Settings.WelcomePage;
+  // An Issue anhängen (#1276) nach issues.attach.
+  if FIssueAttachItem <> nil then
+    FIssueAttachItem.Visible := Settings.IssuesAttach;
   if FViewStart <> nil then
     FViewStart.Visible := Settings.WelcomePage;
 end;
@@ -1027,6 +1037,18 @@ begin
     procedure
     begin
       TAtlasIdeDebugExceptions.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.IssueAttachClick(Sender: TObject);
+begin
+  if not Assigned(FOnIssueAttach) then
+    Exit;
+  TAtlasIdeShortcutTips.Invoked('Atlas.IssueAttach');
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      FOnIssueAttach();
     end);
 end;
 

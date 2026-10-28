@@ -88,6 +88,11 @@
 //   fragt den Tracker des aktuellen Projekts und die persönlichen
 //   Verbindungen ab; Issues mit neuen Änderungen tragen bis zum Öffnen einen
 //   Punkt (Zeile und Titel des Bereichs). Öffnen des Bereichs fragt sofort.
+// - An Issue anhängen (#1276, issues.attach): TAtlasIdeIssueAttach mit
+//   Anbieter und Transport wie die Vorschau; Befehl Atlas.IssueAttach
+//   (AttachPrompt: aktuelles Issue vorgewählt, Vorschläge aus der Liste),
+//   „Anhängen …“ im Fenster „Atlas-Issue“ und Zeile atlas.issue.attach im
+//   Statusfeld unter dem aktuellen Issue.
 // - Protokoll anonym: nur Anbieter, Anzahl, Ergebnis und Fehlerart, nie
 //   Adresse, Projekt, Kennung, Titel oder Token.
 // Anbieter, Transport (mit Token aus dem Anmeldespeicher) und Zugangsdialog
@@ -111,6 +116,7 @@ uses
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Issues,
   Atlas.IDE.Tracker.IssuePreview,
+  Atlas.IDE.Tracker.Attach,
   Atlas.IDE.Tracker.Notify,
   Atlas.IDE.Tracker.TimeTracking,
   Atlas.IDE.Tracker.Board,
@@ -197,11 +203,15 @@ type
     FCommentsRef: IInterface;
     FNotify: TAtlasIdeIssueNotify;
     FNotifyRef: IInterface;
+    FAttach: TAtlasIdeIssueAttach;
+    FAttachRef: IInterface;
     FLine: TAtlasStatusLine;
     FLineRef: IAtlasStatusItem;
     // Checkliste des aktuellen Issues (#1273, issues.checklistStatus).
     FChecklistLine: TAtlasStatusLine;
     FChecklistLineRef: IAtlasStatusItem;
+    FAttachLine: TAtlasStatusLine;
+    FAttachLineRef: IAtlasStatusItem;
     FWatch: TTimer;
     FTicks: Integer;
     FPrefix: string;
@@ -285,6 +295,10 @@ type
     function NotifyTargets: TArray<TAtlasTrackerTarget>;
     procedure OpenNotified(const ATarget: TAtlasTrackerTarget; const AKey: string; AAnchor: TDateTime);
     function UnseenOf(const ATarget: TAtlasTrackerTarget): TArray<string>;
+    procedure StartAttach;
+    procedure UpdateAttachStatus(const AKey: string);
+    procedure RemoveAttachStatus;
+    function AttachIssues: TArray<string>;
     function ActiveTarget(out ATarget: TAtlasTrackerTarget): IAtlasTrackerProvider;
     class function NowUtc: TDateTime; static;
     /// <summary>%LOCALAPPDATA%\Atlas\issues: Zwischenspeicher der Vorschau, Entwürfe der Kommentare (#1278) und
@@ -334,6 +348,9 @@ type
     procedure StartIssue(const ATarget: TAtlasTrackerTarget; const AKey: string); overload;
     /// <summary>„Beginnen“ gerade möglich (Bereich an, kein Beginnen läuft, Projekt vorhanden)?</summary>
     function CanStartIssue: Boolean;
+    /// <summary>Befehl Atlas.IssueAttach (#1276): Dialog „An Issue anhängen“ für den Tracker des aktiven Projekts,
+    /// das aktuelle Issue vorgewählt.</summary>
+    procedure AttachPrompt;
     /// <summary>Vorschau-Steuerung (nil vor Start bzw. nach Stop).</summary>
     property IssuePreview: TAtlasIdeIssuePreview read FPreview;
     /// <summary>Fenster „Atlas-Board“ (#1272; nil vor Start bzw. nach Stop).</summary>
@@ -490,6 +507,8 @@ begin
   StartComments;
   StartSync;
   StartTime;
+  // Anhängen vor der Vorschau: deren Knopf „Anhängen …“ ruft es.
+  StartAttach;
   StartPreview;
   StartBoard;
   StartSprint;
@@ -685,6 +704,17 @@ begin
     begin
       if (mKeep <> nil) and Assigned(mOwner.FOnSettings) then
         mOwner.FOnSettings();
+    end;
+  mHooks.Attach :=
+    procedure(ATarget: TAtlasTrackerTarget; AKey: string)
+    begin
+      if (mKeep <> nil) and (mOwner.FAttach <> nil) then
+        mOwner.FAttach.Execute(ATarget, AKey);
+    end;
+  mHooks.CanAttach :=
+    function: Boolean
+    begin
+      Result := (mKeep <> nil) and (mOwner.FAttach <> nil) and TAtlasIdeIssueAttach.Active;
     end;
   // Reiter „Entwicklung“ (#1269): Branches und Commits aus der Arbeitskopie des aktuellen Projekts.
   mHooks.Project :=
@@ -1103,6 +1133,136 @@ begin
     Result := FNotify.Unseen(ATarget);
 end;
 
+procedure TAtlasIdeIssues.StartAttach;
+var
+  mKeep: IAtlasIssuesSource;
+  mOwner: TAtlasIdeIssues;
+  mHooks: TAtlasIssueAttachHooks;
+begin
+  mKeep := Self;
+  mOwner := Self;
+  mHooks := Default(TAtlasIssueAttachHooks);
+  mHooks.Provider :=
+    function(const AName: string): IAtlasTrackerProvider
+    begin
+      Result := nil;
+      if mKeep <> nil then
+        Result := mOwner.ProviderOf(AName);
+    end;
+  mHooks.Transport :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
+    var
+      mFactory: TAtlasTrackerTransportHook;
+    begin
+      Result := nil;
+      mFactory := mOwner.FTransportFactory;
+      if (mKeep <> nil) and Assigned(mFactory) then
+        Result := mFactory(AProvider, ATarget);
+    end;
+  mHooks.Issues :=
+    function: TArray<string>
+    begin
+      Result := nil;
+      if mKeep <> nil then
+        Result := mOwner.AttachIssues;
+    end;
+  mHooks.Project :=
+    function: string
+    begin
+      Result := '';
+      if mKeep <> nil then
+        Result := mOwner.CurrentProject;
+    end;
+  mHooks.Report :=
+    procedure(AText: string)
+    begin
+      if mKeep <> nil then
+        mOwner.Report(AText);
+    end;
+  FAttach := TAtlasIdeIssueAttach.Create(mHooks);
+  FAttachRef := FAttach;
+  FAttach.Start;
+end;
+
+function TAtlasIdeIssues.AttachIssues: TArray<string>;
+var
+  mData: TAtlasIssuesView;
+  mIssue: TAtlasTrackerIssue;
+begin
+  // Die zuletzt abgefragte Liste aus „Meine Issues“, ohne Netz.
+  Result := nil;
+  if not FStarted then
+    Exit;
+  mData := ViewOf(CurrentProject);
+  for mIssue in mData.Items do
+    Result := Result + [Trim(mIssue.Key + ' ' + mIssue.Title)];
+end;
+
+procedure TAtlasIdeIssues.AttachPrompt;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    var
+      mTarget: TAtlasTrackerTarget;
+      mProvider: IAtlasTrackerProvider;
+      mData: TAtlasIssuesView;
+      mKey: string;
+    begin
+      if not FStarted or (FAttach = nil) or not TAtlasIdeIssueAttach.Active then
+        Exit;
+      mProvider := ActiveTarget(mTarget);
+      if mProvider = nil then
+      begin
+        Report(TAtlasStrings.Text(TAtlasTextId.IssuePreviewNoTracker));
+        Exit;
+      end;
+      // Das aktuelle Issue vorwählen, wenn es zum selben Tracker gehört.
+      mKey := '';
+      mData := ViewOf(CurrentProject);
+      if mData.Active.Active and SameText(TargetOf(CurrentProject).Provider, mTarget.Provider) then
+        mKey := mData.Active.Key;
+      FAttach.Execute(mTarget, mKey);
+    end);
+end;
+
+procedure TAtlasIdeIssues.UpdateAttachStatus(const AKey: string);
+var
+  mKeep: IAtlasIssuesSource;
+  mAction: TProc;
+begin
+  if not TAtlasIdeIssueAttach.Active or (FAttach = nil) then
+  begin
+    RemoveAttachStatus;
+    Exit;
+  end;
+  if FAttachLine = nil then
+  begin
+    mKeep := Self;
+    // Typisierte Variable: Der Konstruktor ist überladen.
+    mAction := procedure
+      begin
+        if mKeep <> nil then
+          AttachPrompt;
+      end;
+    FAttachLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, TAtlasWelcomeIssues.AttachStatusId,
+      TAtlasWelcomeIssues.AttachStatusOrder, mAction);
+    FAttachLineRef := FAttachLine;
+    TAtlasStatusRegistry.Default.Add(FAttachLineRef);
+  end;
+  FAttachLine.Update(TAtlasStrings.Fmt(TAtlasTextId.AttachStatusLine, [AKey]), TAtlasStatusState.Neutral, AKey,
+    AKey, TAtlasStrings.Text(TAtlasTextId.AttachStatusHint));
+end;
+
+procedure TAtlasIdeIssues.RemoveAttachStatus;
+begin
+  if FAttachLine = nil then
+    Exit;
+  FAttachLine.Detach;
+  TAtlasStatusRegistry.Default.Remove(TAtlasWelcomeIssues.AttachStatusId);
+  FAttachLine := nil;
+  FAttachLineRef := nil;
+end;
+
 procedure TAtlasIdeIssues.RegisterIssueLinks;
 begin
   // Eigene Routine: Die anonyme Methode hält nur Self, keinen Rahmen von Start.
@@ -1200,6 +1360,10 @@ begin
     FNotify.Stop;
   FNotify := nil;
   FNotifyRef := nil;
+  if FAttach <> nil then
+    FAttach.Stop;
+  FAttach := nil;
+  FAttachRef := nil;
   FreeAndNil(FWatch);
   RemoveStatus;
   TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.Issues);
@@ -2200,11 +2364,13 @@ begin
   FLine.Update(Text, TAtlasStatusState.Neutral, Data.Active.Key, TAtlasWelcomeIssuesFrame.TileText(Data),
     TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStatusHint));
   UpdateChecklistStatus(Project, Data.Active.Key);
+  UpdateAttachStatus(Data.Active.Key);
 end;
 
 procedure TAtlasIdeIssues.RemoveStatus;
 begin
   RemoveChecklistStatus;
+  RemoveAttachStatus;
   if FLine = nil then
     Exit;
   FLine.Detach;

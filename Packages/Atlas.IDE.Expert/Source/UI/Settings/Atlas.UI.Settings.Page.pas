@@ -740,6 +740,9 @@ type
     FIssuesNotify: TCheckBox;
     FIssuesNotifyInterval: TEdit;
     FIssuesNotifyScope: TAtlasChoiceBox;
+    FIssuesAttach: TCheckBox;
+    FIssuesAttachLogFiles: TEdit;
+    FIssuesAttachMaxImageWidth: TEdit;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1509,6 +1512,9 @@ type
     property IssuesNotify: TCheckBox read FIssuesNotify;
     property IssuesNotifyInterval: TEdit read FIssuesNotifyInterval;
     property IssuesNotifyScope: TAtlasChoiceBox read FIssuesNotifyScope;
+    property IssuesAttach: TCheckBox read FIssuesAttach;
+    property IssuesAttachLogFiles: TEdit read FIssuesAttachLogFiles;
+    property IssuesAttachMaxImageWidth: TEdit read FIssuesAttachMaxImageWidth;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -3252,6 +3258,10 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyScopeAssigned),
     TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyScopeCreated),
     TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyScopeWatched)]);
+  // An Issue anhängen (#1276): Hauptschalter, Logdateien und Bildbreite darunter.
+  FIssuesAttach := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesAttach));
+  FIssuesAttachLogFiles := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesAttachLogFiles));
+  FIssuesAttachMaxImageWidth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesAttachMaxImageWidth));
 end;
 
 procedure TAtlasSettingsPage.AddIssuesTimeSection;
@@ -6683,6 +6693,9 @@ begin
   FMarks.Bind(FIssuesNotify, ['IssuesNotify']);
   FMarks.Bind(FIssuesNotifyInterval, ['IssuesNotifyIntervalMinutes']);
   FMarks.Bind(FIssuesNotifyScope, ['IssuesNotifyScope']);
+  FMarks.Bind(FIssuesAttach, ['IssuesAttach']);
+  FMarks.Bind(FIssuesAttachLogFiles, ['IssuesAttachLogFiles']);
+  FMarks.Bind(FIssuesAttachMaxImageWidth, ['IssuesAttachMaxImageWidth']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FIssuesProjects, ['IssuesProjects']);
   FMarks.Bind(FIssuesQueries, ['IssuesQueries']);
@@ -9025,6 +9038,9 @@ begin
     FIssuesNotifyScope.Choice := 2
   else
     FIssuesNotifyScope.Choice := 1;
+  FIssuesAttach.Checked := ASettings.IssuesAttach;
+  FIssuesAttachLogFiles.Text := ASettings.IssuesAttachLogFiles;
+  FIssuesAttachMaxImageWidth.Text := IntToStr(ASettings.IssuesAttachMaxImageWidth);
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -9668,6 +9684,10 @@ begin
   else
     ASettings.IssuesNotifyScope := TAtlasPluginSettings.IssuesNotifyAssignedOrCreated;
   end;
+  ASettings.IssuesAttach := FIssuesAttach.Checked;
+  ASettings.IssuesAttachLogFiles := Trim(FIssuesAttachLogFiles.Text);
+  ASettings.IssuesAttachMaxImageWidth := StrToIntDef(FIssuesAttachMaxImageWidth.Text,
+    ASettings.IssuesAttachMaxImageWidth);
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.IssuesProjects := TrackerProjectsJson;
   ASettings.IssuesQueries := TrackerQueriesJson;

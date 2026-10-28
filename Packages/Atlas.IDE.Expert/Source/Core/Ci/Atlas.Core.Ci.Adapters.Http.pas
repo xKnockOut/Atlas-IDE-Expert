@@ -20,16 +20,20 @@
 // eingetragenen Server, ohne Weiterleitungen.
 // Die Meldungen zu Issues (#1271) fragen GitHub bedingt
 // (IAtlasCiConditional: If-Modified-Since, Last-Modified, X-Poll-Interval).
+// „An Issue anhängen“ (#1276) sendet darüber Anhänge und Kommentare
+// (IAtlasCiPost, POST beliebigen Inhalts) unter denselben Regeln wie
+// IAtlasCiSend.
 
 interface
 
 uses
   System.SysUtils,
+  System.Net.URLClient,
   Atlas.Core.Ci.Contract;
 
 type
-  TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiSend, IAtlasCiCancel,
-    IAtlasCiConditional)
+  TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiSend, IAtlasCiPost,
+    IAtlasCiCancel, IAtlasCiConditional)
   private
     FServer: string;
     FUser: string;
@@ -39,11 +43,14 @@ type
     /// <summary>AMethod "GET", "POST" oder "PATCH"; ABody nur beim Schreiben (JSON).</summary>
     function Request(const AMethod, AUrl, AAccept: string; const ABody: TBytes; ATimeoutMs, AMaxBytes: Integer;
       out AStatus: Integer; out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean; overload;
-    /// <summary>Wie oben, mit zusätzlichem If-Modified-Since (AIfModifiedSince '' = ohne, #1271) und den Köpfen
-    /// Last-Modified und X-Poll-Interval der Antwort.</summary>
-    function Request(const AMethod, AUrl, AAccept, AIfModifiedSince: string; const ABody: TBytes; ATimeoutMs,
-      AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes; out ALastModified, APollInterval: string;
-      out AError: TAtlasCiFetchError): Boolean; overload;
+    /// <summary>Wie oben, mit dem Inhaltstyp von ABody (AContentType, #1276), zusätzlichem If-Modified-Since
+    /// (AIfModifiedSince '' = ohne, #1271) und den Köpfen Last-Modified und X-Poll-Interval der Antwort.</summary>
+    function Request(const AMethod, AUrl, AAccept, AContentType, AIfModifiedSince: string; const ABody: TBytes;
+      ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes; out ALastModified,
+      APollInterval: string; out AError: TAtlasCiFetchError): Boolean; overload;
+    /// <summary>Schreiben nur angemeldet beim eingetragenen Server über https, nie ohne Token.</summary>
+    function MayWrite(const AUrl: string): Boolean;
+    function AuthHeaders(const AUrl: string): TNetHeaders;
     function Cancelled: Boolean;
   public
     /// <summary>AServer wie TAtlasCiJob.Server; AUser/AToken leer = ohne Anmeldung.</summary>
@@ -60,6 +67,8 @@ type
     procedure Cancel;
     function GetConditional(const AUrl, AIfModifiedSince: string; ATimeoutMs: Integer; out AStatus: Integer;
       out AText, ALastModified: string; out APollSeconds: Integer; out AError: TAtlasCiFetchError): Boolean;
+    function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer; out AStatus: Integer;
+      out AText: string; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -70,7 +79,6 @@ uses
   System.Diagnostics,
   System.NetEncoding,
   System.Net.HttpClient,
-  System.Net.URLClient,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Ci.Internals.Addresses;
 
@@ -137,9 +145,7 @@ begin
   AText := '';
   AStatus := 0;
   Result := False;
-  // Schreiben nur angemeldet beim eingetragenen Server über https, nie ohne Token.
-  if not (SameText(AMethod, 'POST') or SameText(AMethod, 'PATCH')) or (FToken = '') or
-    not TAtlasCiAddresses.MayAuthenticate(AUrl, FServer) then
+  if not (SameText(AMethod, 'POST') or SameText(AMethod, 'PATCH')) or not MayWrite(AUrl) then
   begin
     AError := TAtlasCiFetchError.Unauthorized;
     Exit;
@@ -148,6 +154,37 @@ begin
     MaxBytes, AStatus, mBytes, AError);
   if Result then
     AText := TEncoding.UTF8.GetString(mBytes);
+end;
+
+function TAtlasCiHttpTransport.Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
+  out AStatus: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
+var
+  mBytes: TBytes;
+  mLastModified, mPoll: string;
+begin
+  AText := '';
+  AStatus := 0;
+  Result := False;
+  if not MayWrite(AUrl) then
+  begin
+    AError := TAtlasCiFetchError.Unauthorized;
+    Exit;
+  end;
+  // Leerer Inhalt: nichts zu senden.
+  if Length(ABody) = 0 then
+  begin
+    AError := TAtlasCiFetchError.Invalid;
+    Exit;
+  end;
+  Result := Request('POST', AUrl, 'application/json', AContentType, '', ABody, ATimeoutMs, MaxBytes, AStatus, mBytes,
+    mLastModified, mPoll, AError);
+  if Result then
+    AText := TEncoding.UTF8.GetString(mBytes);
+end;
+
+function TAtlasCiHttpTransport.MayWrite(const AUrl: string): Boolean;
+begin
+  Result := (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(AUrl, FServer);
 end;
 
 procedure TAtlasCiHttpTransport.Cancel;
@@ -183,24 +220,43 @@ function TAtlasCiHttpTransport.Request(const AMethod, AUrl, AAccept: string; con
 var
   mLastModified, mPoll: string;
 begin
-  Result := Request(AMethod, AUrl, AAccept, '', ABody, ATimeoutMs, AMaxBytes, AStatus, ABytes, mLastModified, mPoll,
-    AError);
+  Result := Request(AMethod, AUrl, AAccept, 'application/json; charset=utf-8', '', ABody, ATimeoutMs, AMaxBytes,
+    AStatus, ABytes, mLastModified, mPoll, AError);
 end;
 
-function TAtlasCiHttpTransport.Request(const AMethod, AUrl, AAccept, AIfModifiedSince: string;
+function TAtlasCiHttpTransport.AuthHeaders(const AUrl: string): TNetHeaders;
+var
+  Encoding: TBase64Encoding;
+begin
+  Result := nil;
+  // Anmeldung nur über https beim eingetragenen Server.
+  if FBearer and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(AUrl, FServer) then
+    Result := [TNetHeader.Create('Authorization', 'Bearer ' + FToken)]
+  else if (FUser <> '') and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(AUrl, FServer) then
+  begin
+    Encoding := TBase64Encoding.Create(0);
+    try
+      Result := [TNetHeader.Create('Authorization', 'Basic ' +
+        Encoding.EncodeBytesToString(TEncoding.UTF8.GetBytes(FUser + ':' + FToken)))];
+    finally
+      Encoding.Free;
+    end;
+  end;
+end;
+
+function TAtlasCiHttpTransport.Request(const AMethod, AUrl, AAccept, AContentType, AIfModifiedSince: string;
   const ABody: TBytes; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes; out ALastModified,
   APollInterval: string; out AError: TAtlasCiFetchError): Boolean;
 var
   Client: THTTPClient;
   Content: TBytesStream;
-  Source: TStream;
+  Source: TBytesStream;
   Async: IAsyncResult;
   Response: IHTTPResponse;
   Watch, Wait: TStopwatch;
   Url, Next: string;
   Redirects: Integer;
   Headers: TNetHeaders;
-  Encoding: TBase64Encoding;
 begin
   Result := False;
   AStatus := 0;
@@ -231,20 +287,7 @@ begin
     try
       while True do
       begin
-        Headers := nil;
-        // Anmeldung nur über https beim eingetragenen Server.
-        if FBearer and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(Url, FServer) then
-          Headers := [TNetHeader.Create('Authorization', 'Bearer ' + FToken)]
-        else if (FUser <> '') and (FToken <> '') and TAtlasCiAddresses.MayAuthenticate(Url, FServer) then
-        begin
-          Encoding := TBase64Encoding.Create(0);
-          try
-            Headers := [TNetHeader.Create('Authorization', 'Basic ' +
-              Encoding.EncodeBytesToString(TEncoding.UTF8.GetBytes(FUser + ':' + FToken)))];
-          finally
-            Encoding.Free;
-          end;
-        end;
+        Headers := AuthHeaders(Url);
         if AIfModifiedSince <> '' then
           Headers := Headers + [TNetHeader.Create('If-Modified-Since', AIfModifiedSince)];
         Content.Clear;
@@ -252,7 +295,7 @@ begin
           Async := Client.BeginGet(Url, Content, Headers)
         else
         begin
-          Headers := Headers + [TNetHeader.Create('Content-Type', 'application/json; charset=utf-8')];
+          Headers := Headers + [TNetHeader.Create('Content-Type', AContentType)];
           Source.Position := 0;
           if AMethod = 'PATCH' then
             Async := Client.BeginPatch(Url, Source, Content, Headers)

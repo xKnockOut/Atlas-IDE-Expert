@@ -44,6 +44,10 @@ type
   TAtlasPluginSettings = record
   public const
     MinVisibleRows = 5;
+    /// <summary>Grenzen und Vorgabe von issues.attach.maxImageWidth (#1276), wie TAtlasAttachImage.</summary>
+    MinAttachImageWidth = 320;
+    MaxAttachImageWidth = 7680;
+    DefaultAttachImageWidth = 1920;
     MaxVisibleRows = 20;
     MinListWidth = 240;
     MaxListWidth = 720;
@@ -1482,6 +1486,15 @@ type
     /// <summary>Beobachtete Issues (#1271, issues.notify.scope): IssuesNotifyAssigned, IssuesNotifyAssignedOrCreated
     /// (Vorgabe) oder IssuesNotifyWatched.</summary>
     IssuesNotifyScope: string;
+    /// <summary>„An Issue anhängen …“ (#1276, issues.attach): Bildschirmfoto, Formular, Log, Debug-Notiz und
+    /// Exception-Verlauf an ein Issue hängen; aus = der Befehl fehlt überall.</summary>
+    IssuesAttach: Boolean;
+    /// <summary>Vorgeschlagene Logdateien (#1276, issues.attach.logFiles), getrennt durch „;“, mit $(ProjectDir)
+    /// und * (TAtlasAttachLog.Candidates); '' = keine.</summary>
+    IssuesAttachLogFiles: string;
+    /// <summary>Bilder höchstens so breit (#1276, issues.attach.maxImageWidth, MinAttachImageWidth bis
+    /// MaxAttachImageWidth).</summary>
+    IssuesAttachMaxImageWidth: Integer;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -2281,6 +2294,9 @@ begin
   Result.IssuesNotify := False;
   Result.IssuesNotifyIntervalMinutes := DefaultIssuesNotifyMinutes;
   Result.IssuesNotifyScope := IssuesNotifyAssignedOrCreated;
+  Result.IssuesAttach := True;
+  Result.IssuesAttachLogFiles := '';
+  Result.IssuesAttachMaxImageWidth := DefaultAttachImageWidth;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -2356,6 +2372,8 @@ begin
   // Leerraum am Ende gehört zum Muster ("{kennung} ").
   IssuesCommitPattern := NormalizedIssuesText(IssuesCommitPattern, False);
   IssuesConnections := Trim(IssuesConnections);
+  IssuesAttachLogFiles := Trim(IssuesAttachLogFiles);
+  IssuesAttachMaxImageWidth := EnsureRange(IssuesAttachMaxImageWidth, MinAttachImageWidth, MaxAttachImageWidth);
   if IssuesConnections = '' then
     IssuesConnections := '[]';
   IssuesProjects := Trim(IssuesProjects);
@@ -3192,6 +3210,9 @@ begin
   IssuesNotifyIntervalMinutes := AStore.ReadInteger('IssuesNotifyIntervalMinutes',
     Default.IssuesNotifyIntervalMinutes);
   IssuesNotifyScope := AStore.ReadString('IssuesNotifyScope', Default.IssuesNotifyScope);
+  IssuesAttach := AStore.ReadInteger('IssuesAttach', BoolValue(Default.IssuesAttach)) <> 0;
+  IssuesAttachLogFiles := AStore.ReadString('IssuesAttachLogFiles', Default.IssuesAttachLogFiles);
+  IssuesAttachMaxImageWidth := AStore.ReadInteger('IssuesAttachMaxImageWidth', Default.IssuesAttachMaxImageWidth);
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -3716,6 +3737,9 @@ begin
   AStore.WriteInteger('IssuesNotify', BoolValue(IssuesNotify));
   AStore.WriteInteger('IssuesNotifyIntervalMinutes', IssuesNotifyIntervalMinutes);
   AStore.WriteString('IssuesNotifyScope', IssuesNotifyScope);
+  AStore.WriteInteger('IssuesAttach', BoolValue(IssuesAttach));
+  AStore.WriteString('IssuesAttachLogFiles', IssuesAttachLogFiles);
+  AStore.WriteInteger('IssuesAttachMaxImageWidth', IssuesAttachMaxImageWidth);
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);
