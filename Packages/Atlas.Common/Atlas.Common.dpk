@@ -235,6 +235,8 @@ contains
   Atlas.Common.Lsp.TypeAlias in 'Source\Lsp\Atlas.Common.Lsp.TypeAlias.pas',
   Atlas.Common.Editing.EnumTables in 'Source\Editing\Atlas.Common.Editing.EnumTables.pas',
   Atlas.Common.Lsp.EnumTables in 'Source\Lsp\Atlas.Common.Lsp.EnumTables.pas',
+  Atlas.Common.Editing.Overloads in 'Source\Editing\Atlas.Common.Editing.Overloads.pas',
+  Atlas.Common.Lsp.Overloads in 'Source\Lsp\Atlas.Common.Lsp.Overloads.pas',
   Atlas.Common.Editing.PromoteVariable in 'Source\Editing\Atlas.Common.Editing.PromoteVariable.pas',
   Atlas.Common.Lsp.PromoteVariable in 'Source\Lsp\Atlas.Common.Lsp.PromoteVariable.pas',
   Atlas.Common.Editing.RoutineLocals in 'Source\Editing\Atlas.Common.Editing.RoutineLocals.pas',

@@ -483,6 +483,8 @@ type
     EnumTables: Boolean;
     /// <summary>Texte der Namenstabelle als resourcestring je Element (#667).</summary>
     EnumTablesResourceStrings: Boolean;
+    /// <summary>Code-Aktionen „Überladung anlegen“ als Kopie und als Weiterleitung (#674).</summary>
+    Overloads: Boolean;
     /// <summary>Code-Aktionen „In Inline-Variable umwandeln“, „In var-Block verschieben“ und „var-Block
     /// aufräumen“ (#644).</summary>
     VarBlock: Boolean;
@@ -1055,6 +1057,7 @@ begin
   Result.TypeAliasScope := 'unit';
   Result.EnumTables := True;
   Result.EnumTablesResourceStrings := False;
+  Result.Overloads := True;
   Result.VarBlock := True;
   Result.VarBlockMerge := True;
   Result.VarBlockSort := 'usage';

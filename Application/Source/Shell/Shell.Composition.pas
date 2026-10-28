@@ -452,6 +452,10 @@ type
     function EnumTable(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Tabellen und case-Anweisungen über einen Aufzählungstyp nachziehen (#667).</summary>
     function EnumTablesSync(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Überladung anlegen (#674): Code-Aktionen an APosition.</summary>
+    function OverloadActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Überladung anlegen (#674): das WorkspaceEdit samt Platzhaltern.</summary>
+    function CreateOverload(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Umschließung entfernen“ (#657): Konstrukte am Cursor mit Varianten und Vorschau.</summary>
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
     function StepTargets(const AArguments: TJSONArray): TJSONValue;
@@ -680,6 +684,7 @@ uses
   Atlas.Common.Lsp.TypeAlias,
   Atlas.Common.Editing.TypeAlias,
   Atlas.Common.Lsp.EnumTables,
+  Atlas.Common.Lsp.Overloads,
   Atlas.Common.Lsp.Unwrap,
   Atlas.Common.Lsp.StepTargets,
   Atlas.Common.Lsp.StepFilter,
@@ -1614,6 +1619,7 @@ begin
       Result := Result + MethodKindActions(AUri, ARange.StartPos);
       Result := Result + TypeAliasActions(AUri, ARange.StartPos);
       Result := Result + EnumTableActions(AUri, ARange.StartPos);
+      Result := Result + OverloadActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
       Result := Result + CompilerFixActions(AUri, ARange);
       Result := Result + MissingUnitActions(AUri, ARange);
@@ -1782,6 +1788,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := EnumTablesSync(AArguments);
+    end);
+  FCommands.Register(TLspOverloads.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := CreateOverload(AArguments);
     end);
   FCommands.Register(TLspUnwrap.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -4247,6 +4258,57 @@ begin
     [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
     (Answer.GetValue('warnings') as TJSONArray).Count]));
   Result := Answer;
+end;
+
+function TServerComposition.OverloadActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).Overloads or not FDocuments.TryGet(AUri, Document) or
+    not MatchText(ExtractFileExt(TDocumentUris.ToPath(AUri)), ['.pas', '.dpr']) then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspOverloads.Actions(Shared.Tree, Document.Text, AUri, APosition);
+end;
+
+function TServerComposition.CreateOverload(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri, FileName: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  // Argumente: URI, Position, Art (copy bzw. forward).
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "kind" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).Overloads then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Überladung anlegen" ist abgeschaltet (refactoring.overloads).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  FileName := TDocumentUris.ToPath(Uri);
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, FileName);
+    try
+      Result := TLspOverloads.Execute(Shared.Tree, FileName, Document.Text, Position,
+        Trim(AArguments.Items[2].Value), TLspOverloads.DefaultFunc(Resolver, FIndex, Shared.Tree, FileName,
+        Document.Text));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+  FLogger.Info('Überladung angelegt');
 end;
 
 function TServerComposition.Unwrap(const AArguments: TJSONArray): TJSONValue;
