@@ -5,13 +5,17 @@
 //   [◀] [▶]  [Beginnen] [Beenden …] [Im Browser öffnen] [Kennung kopieren] [Aktualisieren]
 //   ───────────────── dünne Leiste beim Laden ─────────────────
 //   (Stand vom …  bzw. Fehler mit Knopf zum Beheben)
-//   ATL-123
+//   ATL-123 · 3/5   (Fortschritt der Checkliste, #1273)
 //   Titel des Issues (Klick öffnet den Tracker)
 //   (In Arbeit) (Hoch) (Bug) (M. Muster) (Sprint 12) (ui) (erstellt vor 3 Tg.)
 //   Beschreibung: Markdown gesetzt wie die XMLDoc im Hover (TAtlasDocView):
 //   Überschriften, Listen, fett/kursiv, Links, Tabellen, Zitate, Codeblöcke
 //   (Delphi eingefärbt); alleinstehende Bilder als Vorschau in Fensterbreite,
-//   Klick vergrößert.
+//   Klick vergrößert. Aufgabenlisten (#1273) als Häkchen: Klick meldet
+//   OnToggleTask (die IDE-Schicht schreibt zurück), darunter „Punkt
+//   hinzufügen …“ (OnAddTask); ohne Schreibrecht nur lesend mit Tooltip;
+//   mit Checklists = False als Text wie geschrieben. In Kommentaren nur
+//   Kästchen ohne Klick.
 //   KOMMENTARE (n): neueste unten, ältere hinter „12 ältere Kommentare“.
 //   ANHÄNGE (n): Name und Größe; Doppelklick öffnet.
 //   VERKNÜPFTE ISSUES (n): Kennung, Titel, Art; Klick öffnet im Fenster.
@@ -64,7 +68,10 @@ type
     FMono: TFont;
     FBuiltWidth: Integer;
     FOnLink: TProc<string>;
+    FTaskHint: string;
+    FTasksLocked: Boolean;
     procedure Rebuild;
+    function TaskAt(X, Y: Integer): Boolean;
     procedure WMGetDlgCode(var AMessage: TWMGetDlgCode); message WM_GETDLGCODE;
   protected
     procedure Paint; override;
@@ -79,8 +86,14 @@ type
     destructor Destroy; override;
     procedure SetDoc(const ADoc: TAtlasDoc; const AColors: TAtlasColors; AMono: TFont);
     function SelectedText: string;
+    /// <summary>Enthält ein anklickbares Kästchen einer Checkliste (#1273).</summary>
+    function HasTasks: Boolean;
     property View: TAtlasDocView read FView;
     property OnLink: TProc<string> read FOnLink write FOnLink;
+    /// <summary>Tooltip über einem Kästchen; TasksLocked: Kästchen nur lesend (Pfeil statt Hand, kein Klick).
+    /// </summary>
+    property TaskHint: string read FTaskHint write FTaskHint;
+    property TasksLocked: Boolean read FTasksLocked write FTasksLocked;
   end;
 
   /// <summary>Bild in Fensterbreite (höchstens Originalgröße); Klick vergrößert.</summary>
@@ -180,6 +193,17 @@ type
     FPendingRebuild: Boolean;
     FPendingLink: TAtlasTrackerLink;
     FHasPendingLink: Boolean;
+    FChecklists: Boolean;
+    FChecklistReadOnly: Boolean;
+    FChecklistBusy: Boolean;
+    FProgressText: string;
+    FTaskBox: TAtlasIssueDocBox;
+    FAddTask: TLabel;
+    FPendingTask: Integer;
+    FPendingAdd: Boolean;
+    FRevealTasks: Boolean;
+    FOnToggleTask: TProc<Integer>;
+    FOnAddTask: TProc;
     FOnBack: TProc;
     FOnForward: TProc;
     FOnStart: TProc;
@@ -197,7 +221,11 @@ type
     function AddLabel(const ACaption: string; ABold: Boolean): TLabel;
     function AddDoc(const ADoc: TAtlasDoc): TAtlasIssueDocBox;
     function AddList(const AColumns: TArray<string>): TListView;
-    procedure AddMarkdown(const AText: string);
+    procedure AddMarkdown(const AText: string; ATasks: TAtlasMarkdownTasks);
+    procedure AddTaskClick(Sender: TObject);
+    procedure ScrollToTasks;
+    procedure SetChecklists(AValue: Boolean);
+    procedure SetChecklistReadOnly(AValue: Boolean);
     procedure ClearContent;
     procedure Rebuild;
     procedure UpdateButtons;
@@ -249,11 +277,30 @@ type
     procedure SetCommentSending(AValue: Boolean);
     /// <summary>Ergebnis des Sendens: AError '' = gesendet (Feld leer), sonst der Grund unter dem Feld.</summary>
     procedure CommentDone(const AError: string);
+    /// <summary>Beschreibung nach dem Zurückschreiben (#1273): neu setzen, Bildlauf bleibt.</summary>
+    procedure ReplaceDescription(const AText: string);
+    /// <summary>Zurückschreiben läuft (#1273): Zeile „Wird gespeichert …“, Klicks auf Kästchen ruhen.</summary>
+    procedure SetChecklistBusy(AValue: Boolean);
+    /// <summary>Zur Checkliste blättern (Klick im Statusfeld, #1273); gilt auch für den nächsten Inhalt.</summary>
+    procedure RevealChecklist;
+    /// <summary>Hinweis über dem Inhalt ohne Knopf (#1273: „Beschreibung wurde geändert …“).</summary>
+    procedure ShowNotice(const AText: string);
     procedure ApplyColors(const AColors: TAtlasColors);
     /// <summary>Für Tests: Text der Statuszeile, Abzeichen, Bildadressen, Zahl der Doku-Flächen.</summary>
     function StatusText: string;
     function ImageUrls: TArray<string>;
     function DocCount: Integer;
+    /// <summary>Fortschritt in der Kopfzeile ("3/5"; '' ohne Checkliste oder mit Checklists = False).</summary>
+    property ProgressText: string read FProgressText;
+    /// <summary>Doku-Fläche mit dem ersten Kästchen; nil ohne.</summary>
+    property TaskBox: TAtlasIssueDocBox read FTaskBox;
+    /// <summary>„Punkt hinzufügen …“; nil ohne Checkliste, ohne Schreibrecht oder mit Checklists = False.</summary>
+    property AddTaskLabel: TLabel read FAddTask;
+    /// <summary>issues.preview.checklists (#1273): Häkchen und Zurückschreiben; aus = Text wie geschrieben.</summary>
+    property Checklists: Boolean read FChecklists write SetChecklists;
+    /// <summary>Keine Schreibrechte: Kästchen nur lesend mit Tooltip, kein „Punkt hinzufügen …“.</summary>
+    property ChecklistReadOnly: Boolean read FChecklistReadOnly write SetChecklistReadOnly;
+    property ChecklistBusy: Boolean read FChecklistBusy;
     property Details: TAtlasTrackerDetails read FDetails;
     property HasDetails: Boolean read FHasDetails;
     property Loading: Boolean read FLoading;
@@ -308,6 +355,11 @@ type
     property OnImages: TProc<TArray<string>> read FOnImages write FOnImages;
     /// <summary>Fenster geschlossen bzw. Frame freigegeben: laufendes Laden abbrechen.</summary>
     property OnHidden: TProc read FOnHidden write FOnHidden;
+    /// <summary>Kästchen Nummer N (ab 0, TAtlasTrackerChecklist) der Beschreibung angeklickt (#1273); nach dem
+    /// Klick gemeldet.</summary>
+    property OnToggleTask: TProc<Integer> read FOnToggleTask write FOnToggleTask;
+    /// <summary>„Punkt hinzufügen …“ angeklickt (#1273); nach dem Klick gemeldet.</summary>
+    property OnAddTask: TProc read FOnAddTask write FOnAddTask;
   end;
 
 implementation
@@ -320,6 +372,7 @@ uses
   Vcl.Clipbrd,
   Atlas.Core.Style.Color,
   Atlas.Core.Documentation.Layout,
+  Atlas.Core.Tracker.Checklist,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.IssueTip;
 
@@ -429,6 +482,9 @@ begin
   mLink := FView.LinkAt(X, Y);
   if mLink >= 0 then
   begin
+    // Kästchen nur lesend (#1273): kein Klick.
+    if FTasksLocked and TaskAt(X, Y) then
+      Exit;
     if FView.Link(mLink).Kind = TAtlasDocLinkKind.Url then
     begin
       mUrl := FView.Link(mLink).Url;
@@ -453,15 +509,62 @@ begin
     Exit;
   end;
   mLink := FView.LinkAt(X, Y);
-  if mLink >= 0 then
-    Cursor := crHandPoint
+  // Kästchen (#1273): Tooltip, nur lesend mit Pfeil.
+  if (mLink >= 0) and TaskAt(X, Y) then
+  begin
+    if Hint <> FTaskHint then
+    begin
+      Hint := FTaskHint;
+      Application.CancelHint;
+    end;
+    ShowHint := FTaskHint <> '';
+    if FTasksLocked then
+    begin
+      Cursor := crArrow;
+      mLink := -1;
+    end
+    else
+      Cursor := crHandPoint;
+  end
   else
-    Cursor := crIBeam;
+  begin
+    if Hint <> '' then
+    begin
+      Hint := '';
+      Application.CancelHint;
+    end;
+    if mLink >= 0 then
+      Cursor := crHandPoint
+    else
+      Cursor := crIBeam;
+  end;
   if mLink <> FView.HotLink then
   begin
     FView.HotLink := mLink;
     Invalidate;
   end;
+end;
+
+function TAtlasIssueDocBox.TaskAt(X, Y: Integer): Boolean;
+var
+  mLink, mIndex: Integer;
+begin
+  mLink := FView.LinkAt(X, Y);
+  Result := (mLink >= 0) and (FView.Link(mLink).Kind = TAtlasDocLinkKind.Url) and
+    TAtlasTrackerMarkdown.TaskIndexOf(FView.Link(mLink).Url, mIndex);
+end;
+
+function TAtlasIssueDocBox.HasTasks: Boolean;
+var
+  mSection: TAtlasDocSection;
+  mRun: TAtlasDocRun;
+  mIndex: Integer;
+begin
+  Result := False;
+  for mSection in FDoc.Sections do
+    for mRun in mSection.Runs do
+      if (mRun.Kind = TAtlasDocRunKind.Bullet) and TAtlasTrackerMarkdown.TaskIndexOf(mRun.Target, mIndex) then
+        Exit(True);
 end;
 
 procedure TAtlasIssueDocBox.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -683,6 +786,8 @@ begin
   FImages := TList<TAtlasIssueImageBox>.Create;
   FDocs := TList<TAtlasIssueDocBox>.Create;
   FDetails := TAtlasTrackerDetails.Empty;
+  FChecklists := True;
+  FPendingTask := -1;
 
   FTools := TPanel.Create(Self);
   FTools.Parent := Self;
@@ -895,6 +1000,7 @@ end;
 procedure TAtlasIssueFrame.WMDeferred(var AMessage: TMessage);
 var
   mLink: TAtlasTrackerLink;
+  mTask: Integer;
 begin
   if FPendingRebuild then
   begin
@@ -908,19 +1014,43 @@ begin
     if Assigned(FOnOpenLink) then
       FOnOpenLink(mLink);
   end;
+  if FPendingTask >= 0 then
+  begin
+    mTask := FPendingTask;
+    FPendingTask := -1;
+    if Assigned(FOnToggleTask) then
+      FOnToggleTask(mTask);
+  end;
+  if FPendingAdd then
+  begin
+    FPendingAdd := False;
+    if Assigned(FOnAddTask) then
+      FOnAddTask();
+  end;
 end;
 
-procedure TAtlasIssueFrame.AddMarkdown(const AText: string);
+procedure TAtlasIssueFrame.AddMarkdown(const AText: string; ATasks: TAtlasMarkdownTasks);
 var
   mSegment: TAtlasMarkdownSegment;
   mImage: TAtlasIssueImageBox;
+  mDoc: TAtlasIssueDocBox;
   mUrl: string;
 begin
-  for mSegment in TAtlasTrackerMarkdown.Segments(AText) do
+  for mSegment in TAtlasTrackerMarkdown.Segments(AText, ATasks) do
   begin
     if mSegment.Kind = TAtlasMarkdownSegmentKind.Doc then
     begin
-      AddDoc(mSegment.Doc);
+      mDoc := AddDoc(mSegment.Doc);
+      if ATasks = TAtlasMarkdownTasks.Clickable then
+      begin
+        mDoc.TasksLocked := FChecklistReadOnly;
+        if FChecklistReadOnly then
+          mDoc.TaskHint := TAtlasStrings.Text(TAtlasTextId.IssueChecklistReadOnly)
+        else
+          mDoc.TaskHint := TAtlasStrings.Text(TAtlasTextId.IssueChecklistToggleHint);
+        if (FTaskBox = nil) and mDoc.HasTasks then
+          FTaskBox := mDoc;
+      end;
       Continue;
     end;
     // Relative Namen (YouTrack) sind Anhänge.
@@ -955,6 +1085,8 @@ begin
     FAttachments := nil;
     FLinks := nil;
     FOlder := nil;
+    FTaskBox := nil;
+    FAddTask := nil;
     FNextTop := 0;
   finally
     FScroll.EnableAlign;
@@ -986,14 +1118,30 @@ var
   mHead: TLabel;
   mUrls: TArray<string>;
   mImage: TAtlasIssueImageBox;
+  mProgress: TAtlasChecklistProgress;
+  mTasks: TAtlasMarkdownTasks;
 begin
   FScroll.DisableAlign;
   try
     ClearContent;
+    FProgressText := '';
     FEmpty.Visible := not FHasDetails;
     if not FHasDetails then
       Exit;
-    FKey := AddLabel(FDetails.Key, False);
+    // Checklisten (#1273): Fortschritt in der Kopfzeile, Kästchen in der Beschreibung.
+    mProgress := TAtlasChecklistProgress.Create(0, 0);
+    if FChecklists then
+      mProgress := TAtlasTrackerChecklist.Progress(FDetails.Description);
+    FProgressText := mProgress.Text;
+    if FProgressText <> '' then
+    begin
+      FKey := AddLabel(TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistStatusLine, [FDetails.Key, FProgressText]),
+        False);
+      FKey.Hint := TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistProgress, [mProgress.Done, mProgress.Total]);
+      FKey.ShowHint := True;
+    end
+    else
+      FKey := AddLabel(FDetails.Key, False);
     FKey.Font.Name := FMono.Name;
     FKey.Font.Color := ToColor(FColors.Muted);
     FTitle := AddLabel(FDetails.Title, True);
@@ -1041,12 +1189,27 @@ begin
     Place(FBadges);
     FParts.Add(FBadges);
     FBadges.SetBadges(mTexts, mHints, FColors);
-    // Beschreibung.
+    // Beschreibung; mit issues.preview.checklists aus die Aufgabenlisten als Text wie geschrieben.
+    mTasks := TAtlasMarkdownTasks.Plain;
+    if FChecklists then
+      mTasks := TAtlasMarkdownTasks.Clickable;
     if Trim(FDetails.Description) = '' then
       AddLabel(TAtlasStrings.Text(TAtlasTextId.IssuePreviewNoDescription), False).Font.Color :=
         ToColor(FColors.Muted)
     else
-      AddMarkdown(FDetails.Description);
+      AddMarkdown(FDetails.Description, mTasks);
+    if mProgress.Any and not FChecklistReadOnly then
+    begin
+      FAddTask := AddLabel(TAtlasStrings.Text(TAtlasTextId.IssueChecklistAdd), False);
+      FAddTask.Font.Color := ToColor(FColors.Accent);
+      FAddTask.Font.Style := [fsUnderline];
+      FAddTask.Cursor := crHandPoint;
+      FAddTask.OnClick := AddTaskClick;
+    end;
+    // Checklisten in Kommentaren nur als Kästchen (nicht geschrieben).
+    mTasks := TAtlasMarkdownTasks.Plain;
+    if FChecklists then
+      mTasks := TAtlasMarkdownTasks.Boxes;
     // Kommentare: neueste unten, ältere eingeklappt.
     if FCommentsOff then
       AddLabel(TAtlasStrings.Text(TAtlasTextId.IssuePreviewCommentsOff), False).Font.Color := ToColor(FColors.Muted)
@@ -1073,7 +1236,7 @@ begin
         mHead := AddLabel(mComments[mIndex].Author + ' · ' + AgeText(mComments[mIndex].Created), True);
         mHead.Hint := AbsoluteText(mComments[mIndex].Created);
         mHead.ShowHint := True;
-        AddMarkdown(mComments[mIndex].Text);
+        AddMarkdown(mComments[mIndex].Text, mTasks);
       end;
     end;
     // Anhänge: Name und Größe; Doppelklick öffnet.
@@ -1176,9 +1339,15 @@ end;
 
 procedure TAtlasIssueFrame.ShowDetails(const ADetails: TAtlasTrackerDetails; ANow: TDateTime;
   const AStale: string; ACommentsOff: Boolean);
+var
+  mSame: Boolean;
+  mPosition: Integer;
 begin
-  // Anderes Issue: ältere Kommentare wieder eingeklappt.
-  if not FHasDetails or not SameText(FDetails.Key, ADetails.Key) then
+  // Anderes Issue: ältere Kommentare wieder eingeklappt, oben anfangen. Dasselbe frisch geladen (auch nach dem
+  // Zwischenspeicher): Bildlauf bleibt, z. B. an der Checkliste (#1273).
+  mSame := FHasDetails and SameText(FDetails.Key, ADetails.Key);
+  mPosition := FScroll.VertScrollBar.Position;
+  if not mSame then
     FCommentsExpanded := False;
   FDetails := ADetails;
   FHasDetails := True;
@@ -1188,8 +1357,85 @@ begin
   FFix.Visible := False;
   FStatus.Visible := AStale <> '';
   Rebuild;
-  FScroll.VertScrollBar.Position := 0;
+  if mSame then
+    FScroll.VertScrollBar.Position := mPosition
+  else
+    FScroll.VertScrollBar.Position := 0;
+  if FRevealTasks then
+    ScrollToTasks;
   UpdateButtons;
+end;
+
+procedure TAtlasIssueFrame.ReplaceDescription(const AText: string);
+var
+  mPosition: Integer;
+begin
+  if not FHasDetails then
+    Exit;
+  mPosition := FScroll.VertScrollBar.Position;
+  FDetails.Description := AText;
+  Rebuild;
+  FScroll.VertScrollBar.Position := mPosition;
+end;
+
+procedure TAtlasIssueFrame.SetChecklistBusy(AValue: Boolean);
+begin
+  FChecklistBusy := AValue;
+  if AValue then
+  begin
+    FStatusText.Caption := TAtlasStrings.Text(TAtlasTextId.IssueChecklistSaving);
+    FFix.Visible := False;
+    FStatus.Visible := True;
+  end
+  else if FStatusText.Caption = TAtlasStrings.Text(TAtlasTextId.IssueChecklistSaving) then
+    FStatus.Visible := False;
+end;
+
+procedure TAtlasIssueFrame.ShowNotice(const AText: string);
+begin
+  ShowError(AText, TAtlasIssueFix.None);
+end;
+
+procedure TAtlasIssueFrame.RevealChecklist;
+begin
+  FRevealTasks := True;
+  if FHasDetails and (FTaskBox <> nil) then
+    ScrollToTasks;
+end;
+
+procedure TAtlasIssueFrame.ScrollToTasks;
+begin
+  if FTaskBox = nil then
+    Exit;
+  FRevealTasks := False;
+  FScroll.VertScrollBar.Position := Max(0, FTaskBox.Top + FScroll.VertScrollBar.Position - FScroll.Padding.Top);
+end;
+
+procedure TAtlasIssueFrame.SetChecklists(AValue: Boolean);
+begin
+  if FChecklists = AValue then
+    Exit;
+  FChecklists := AValue;
+  if FHasDetails then
+    Rebuild;
+end;
+
+procedure TAtlasIssueFrame.SetChecklistReadOnly(AValue: Boolean);
+begin
+  if FChecklistReadOnly = AValue then
+    Exit;
+  FChecklistReadOnly := AValue;
+  if FHasDetails then
+    Rebuild;
+end;
+
+procedure TAtlasIssueFrame.AddTaskClick(Sender: TObject);
+begin
+  // Der Dialog und das Neuzeichnen kommen nach dem Klick: Das Label gehört zum Inhalt.
+  if FChecklistBusy or FChecklistReadOnly then
+    Exit;
+  FPendingAdd := True;
+  Defer;
 end;
 
 procedure TAtlasIssueFrame.ShowError(const AText: string; AFix: TAtlasIssueFix);
@@ -1463,7 +1709,19 @@ begin
 end;
 
 procedure TAtlasIssueFrame.LinkOpened(const AUrl: string);
+var
+  mTask: Integer;
 begin
+  // Kästchen einer Checkliste (#1273): nach dem Klick melden, das Zurückschreiben baut den Inhalt neu.
+  if TAtlasTrackerMarkdown.TaskIndexOf(AUrl, mTask) then
+  begin
+    if FChecklists and not FChecklistReadOnly and not FChecklistBusy then
+    begin
+      FPendingTask := mTask;
+      Defer;
+    end;
+    Exit;
+  end;
   if Assigned(FOnOpenUrl) then
     FOnOpenUrl(AUrl);
 end;

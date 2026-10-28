@@ -262,6 +262,10 @@ type
     StatusId = 'atlas.issue';
     /// <summary>Nach Server, Version, Index und Datei.</summary>
     StatusOrder = 30;
+    /// <summary>Fortschritt der Checkliste des aktuellen Issues im Statusfeld (#1273): „ATL-131 · 3/5“.</summary>
+    ChecklistStatusId = 'atlas.issue.checklist';
+    /// <summary>Direkt hinter dem aktuellen Issue.</summary>
+    ChecklistStatusOrder = 31;
   public
     class function StartName(AStart: TAtlasIssueStart): string; static;
     /// <summary>Versionsverwaltung aus der Projekt-Zusammenfassung ("git", "svn", sonst None).</summary>

@@ -155,6 +155,9 @@ type
     FOnTimeStatus: TAtlasIdeTimeStatus;
     FLine: TAtlasStatusLine;
     FLineRef: IAtlasStatusItem;
+    // Checkliste des aktuellen Issues (#1273, issues.checklistStatus).
+    FChecklistLine: TAtlasStatusLine;
+    FChecklistLineRef: IAtlasStatusItem;
     FWatch: TTimer;
     FTicks: Integer;
     FPrefix: string;
@@ -204,6 +207,9 @@ type
     procedure ClearPrefixes;
     procedure UpdateStatus;
     procedure RemoveStatus;
+    procedure UpdateChecklistStatus(const AProject, AKey: string);
+    procedure RemoveChecklistStatus;
+    procedure ChecklistClicked;
     procedure WatchTick(Sender: TObject);
     procedure FillCommitDialog;
     procedure RegisterSection;
@@ -323,6 +329,7 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.TeamFile,
+  Atlas.Core.Tracker.Checklist,
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Naming,
@@ -1554,16 +1561,95 @@ begin
   Text := TAtlasStrings.Fmt(TAtlasTextId.WelcomeIssuesStatusLine, [Trim(Data.Active.Key + ' ' + Data.Active.Title)]);
   FLine.Update(Text, TAtlasStatusState.Neutral, Data.Active.Key, TAtlasWelcomeIssuesFrame.TileText(Data),
     TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesStatusHint));
+  UpdateChecklistStatus(Project, Data.Active.Key);
 end;
 
 procedure TAtlasIdeIssues.RemoveStatus;
 begin
+  RemoveChecklistStatus;
   if FLine = nil then
     Exit;
   FLine.Detach;
   TAtlasStatusRegistry.Default.Remove(TAtlasWelcomeIssues.StatusId);
   FLine := nil;
   FLineRef := nil;
+end;
+
+procedure TAtlasIdeIssues.UpdateChecklistStatus(const AProject, AKey: string);
+var
+  mTarget: TAtlasTrackerTarget;
+  mProgress: TAtlasChecklistProgress;
+  mText: string;
+  mKeep: IAtlasIssuesSource;
+  mAction: TProc;
+begin
+  if (FPreview = nil) or not TAtlasIdeSettings.Current.IssuesChecklistStatus or (Trim(AKey) = '') then
+  begin
+    RemoveChecklistStatus;
+    Exit;
+  end;
+  // Stand aus dem Zwischenspeicher der Vorschau; fehlt er oder ist er alt, frischt ihn Prefetch im Hintergrund auf.
+  mTarget := TargetOf(AProject);
+  FPreview.Prefetch(mTarget, AKey);
+  // Ohne Checkliste kein Feld.
+  if not FPreview.ChecklistProgress(mTarget, AKey, mProgress) or not mProgress.Any then
+  begin
+    RemoveChecklistStatus;
+    Exit;
+  end;
+  if FChecklistLine = nil then
+  begin
+    mKeep := Self;
+    // Typisierte Variable: Der Konstruktor ist überladen.
+    mAction := procedure
+      begin
+        if mKeep <> nil then
+          ChecklistClicked;
+      end;
+    FChecklistLine := TAtlasStatusLine.Create(TAtlasStatusRegistry.Default, TAtlasWelcomeIssues.ChecklistStatusId,
+      TAtlasWelcomeIssues.ChecklistStatusOrder, mAction);
+    FChecklistLineRef := FChecklistLine;
+    TAtlasStatusRegistry.Default.Add(FChecklistLineRef);
+  end;
+  mText := TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistStatusLine, [AKey, mProgress.Text]);
+  FChecklistLine.Update(mText, TAtlasStatusState.Neutral, mText, mText,
+    TAtlasStrings.Fmt(TAtlasTextId.IssueChecklistProgress, [mProgress.Done, mProgress.Total]) + sLineBreak +
+    TAtlasStrings.Text(TAtlasTextId.IssueChecklistStatusHint));
+end;
+
+procedure TAtlasIdeIssues.RemoveChecklistStatus;
+begin
+  if FChecklistLine = nil then
+    Exit;
+  FChecklistLine.Detach;
+  TAtlasStatusRegistry.Default.Remove(TAtlasWelcomeIssues.ChecklistStatusId);
+  FChecklistLine := nil;
+  FChecklistLineRef := nil;
+end;
+
+procedure TAtlasIdeIssues.ChecklistClicked;
+begin
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    var
+      mData: TAtlasIssuesView;
+      mIssue: TAtlasTrackerIssue;
+    begin
+      if not FStarted then
+        Exit;
+      mData := ViewOf(CurrentProject);
+      if not mData.Active.Active or (Trim(mData.Active.Key) = '') then
+        Exit;
+      // In der Vorschau an der Liste; ist sie aus, im Browser.
+      if (FPreview <> nil) and TAtlasIdeIssuePreview.Active then
+        FPreview.ShowChecklist(TargetOf(CurrentProject), mData.Active.Key)
+      else
+      begin
+        mIssue := Default(TAtlasTrackerIssue);
+        mIssue.Key := mData.Active.Key;
+        Browse(mIssue);
+      end;
+    end);
 end;
 
 procedure TAtlasIdeIssues.WatchTick(Sender: TObject);
