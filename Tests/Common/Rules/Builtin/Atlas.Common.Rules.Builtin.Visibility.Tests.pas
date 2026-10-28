@@ -216,8 +216,22 @@ begin
 end;
 
 procedure TInaccessibleMemberTests.OverloadWithPublicVariantIsVisible;
+var
+  mSource: string;
 begin
   Assert.AreEqual(0, Integer(Length(Findings(Fremd('', '  TSperre.Betreten(B);'#10)))));
+  // Typ im implementation-Teil (Skia4Delphi, #1328): Auch dort zählt die public-Überladung.
+  mSource := 'unit Kunden;'#10'interface'#10'implementation'#10'type'#10'  THelfer = record'#10'  strict private'#10 +
+    '    class function Lies(const A: string): string; overload; static;'#10'  public'#10 +
+    '    class function Lies(const A: string; B: Integer): string; overload; static;'#10'  end;'#10 +
+    '  TNutzer = record'#10'    class procedure Lauf; static;'#10'  end;'#10 +
+    'class function THelfer.Lies(const A: string; B: Integer): string;'#10'begin'#10'  Result := A;'#10'end;'#10 +
+    'class function THelfer.Lies(const A: string): string;'#10'begin'#10'  Result := A;'#10'end;'#10 +
+    'class procedure TNutzer.Lauf;'#10'begin'#10'  THelfer.Lies(''x'', 1);'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(Findings(mSource))));
+  // Gegentest: nur die strict private-Überladung.
+  Assert.AreEqual(1, Integer(Length(Findings(mSource.Replace('  public'#10 +
+    '    class function Lies(const A: string; B: Integer)', '    class function Lies(const A: string; B: Integer)')))));
 end;
 
 procedure TInaccessibleMemberTests.PropertyReferencesAncestorPrivate;
