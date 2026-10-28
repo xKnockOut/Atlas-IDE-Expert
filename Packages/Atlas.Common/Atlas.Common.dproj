@@ -412,6 +412,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.OrdinalConstants.pas"/>
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.ConstantValues.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.ConditionalBranches.pas"/>
+        <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.RoutineSignatures.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.FormatStrings.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.FormatRoutines.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.DirectiveNames.pas"/>

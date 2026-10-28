@@ -3,7 +3,7 @@
 // Tests der Regeln für Compiler-Direktiven (#989): offene und überzählige
 // bedingte Direktiven, Symbole, unbekannte Direktiven und {$WARN}-Bezeichner,
 // {$PUSHOPT}/{$POPOPT}, {$ALIGN} und die Einstellungen; compiler-warnings-disabled
-// (#972).
+// (#972); directive-typo still bei Methodenzuordnungen (#1325, Minimalfall F03).
 
 interface
 
@@ -40,6 +40,8 @@ type
     procedure TypoPropertyDefault;
     [Test]
     procedure TypoSilentCases;
+    [Test]
+    procedure TypoMethodResolution;
     [Test]
     procedure TypoOptions;
     [Test]
@@ -358,6 +360,19 @@ begin
   // FPC kennt weitere Direktiven.
   TRuleAssert.Silent(TDirectiveTypoRule.Create, 'unit Dienst;'#10'interface'#10'implementation'#10 +
     'procedure Frei;'#10'{$IFDEF FPC} nostackframe; {$ENDIF}'#10'begin'#10'end;'#10'end.');
+end;
+
+procedure TDirectiveRulesTests.TypoMethodResolution;
+begin
+  // F03: "= MyGetX" ist das Ziel einer Methodenzuordnung, keine Direktive; auch bei generischen Interfaces.
+  TRuleAssert.Silent(TDirectiveTypoRule.Create, 'unit F03_MethodResolution;'#10'interface'#10'type'#10 +
+    '  IFoo = interface'#10'    function GetX: Integer;'#10'  end;'#10'  TA = class(TInterfacedObject, IFoo)'#10 +
+    '    function IFoo.GetX = MyGetX;'#10'    function MyGetX: Integer;'#10'  end;'#10 +
+    '  TE<T> = class(TInterfacedObject, IEnumerator<T>)'#10'    function GetCurrentGen: T;'#10 +
+    '    function IEnumerator<T>.GetCurrent = GetCurrentGen;'#10'  end;'#10'implementation'#10'end.');
+  // Gegenprobe: ein Tippfehler neben einer Zuordnung wird weiter gemeldet.
+  Assert.AreEqual(1, Integer(Length(TypoFindings(Klasse('    function IFoo.GetX = MyGetX;'#10 +
+    '    procedure Paint; overide;'#10)))));
 end;
 
 procedure TDirectiveRulesTests.TypoOptions;

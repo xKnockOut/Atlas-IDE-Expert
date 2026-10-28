@@ -1483,6 +1483,10 @@ var
         function(ANode: TSyntaxNode): Boolean
         begin
           Result := True;
+          // IEnumerator<T>.GetCurrent = GetCurrentGen nennt die Typparameter des Interfaces, deklariert keine
+          // eigenen (#1325).
+          if (ANode.Kind = TSyntaxKind.RoutineHeader) and ANode.IsMethodResolution then
+            Exit(False);
           if ANode.Kind = TSyntaxKind.GenericParams then
             Shadowing.Add(ANode);
         end);
@@ -1714,9 +1718,10 @@ begin
     Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
-        Result := True;
-        if ANode.Kind in [TSyntaxKind.GenericParams, TSyntaxKind.TypeDecl, TSyntaxKind.ClassOfType,
-          TSyntaxKind.Attribute, TSyntaxKind.RoutineHeader, TSyntaxKind.MemberAccess] then
+        // Methodenzuordnungen (function IFoo<T>.Bar = Baz;) deklarieren nichts Generisches (#1325).
+        Result := not ((ANode.Kind = TSyntaxKind.RoutineHeader) and ANode.IsMethodResolution);
+        if Result and (ANode.Kind in [TSyntaxKind.GenericParams, TSyntaxKind.TypeDecl, TSyntaxKind.ClassOfType,
+          TSyntaxKind.Attribute, TSyntaxKind.RoutineHeader, TSyntaxKind.MemberAccess]) then
           Nodes.Add(ANode);
       end);
     for Index := 0 to Nodes.Count - 1 do
