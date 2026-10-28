@@ -111,6 +111,36 @@ type
     procedure DetailsErrors;
   end;
 
+  /// <summary>Abhängigkeiten und Unteraufgaben (#1279): Linktypen aus Fixtures (deutsch und englisch),
+  /// Beziehungen von GitHub, Abhängigkeiten aus dem Text und die Anfragen beim Anlegen und Verknüpfen.</summary>
+  [TestFixture]
+  TAtlasTrackerLinkProviderTests = class
+  public
+    [Test]
+    procedure YouTrackLinksEnglish;
+    [Test]
+    procedure YouTrackLinksGerman;
+    [Test]
+    procedure YouTrackLinkTypes;
+    [Test]
+    procedure YouTrackCreateSubtaskRequests;
+    [Test]
+    procedure YouTrackAddLinkRequests;
+    [Test]
+    procedure GitHubRelationsFromFixtures;
+    [Test]
+    procedure GitHubDetailsWithRelations;
+    [Test]
+    procedure GitHubTextDependencies;
+    [Test]
+    procedure GitHubCreateSubtaskRequests;
+    [Test]
+    procedure GitHubAddLinkRequests;
+    /// <summary>Ohne Schreib-Transport, ohne Titel bzw. mit unpassender Art wird nichts gesendet.</summary>
+    [Test]
+    procedure WritesRefused;
+  end;
+
   [TestFixture]
   TAtlasCommitHookTests = class
   private
@@ -139,6 +169,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Naming,
+  Atlas.Core.Tracker.Links,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.CommitHook;
@@ -191,6 +222,49 @@ begin
     end;
   AStatus := 404;
   Result := True;
+end;
+
+type
+  /// <summary>Transport, der auch schreibt (#1279): merkt sich Adressen und Inhalte der POSTs, Antworten je
+  /// Adressanfang.</summary>
+  TFakePostTransport = class(TFakeTransport, IAtlasCiPost)
+  private
+    FPostPrefixes: TArray<string>;
+    FPostStatus: TArray<Integer>;
+    FPostTexts: TArray<string>;
+  public
+    Posts: TArray<string>;
+    Bodies: TArray<string>;
+    procedure AnswerPost(const APrefix: string; AStatus: Integer; const AText: string);
+    function Post(const AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
+      out AError: TAtlasCiFetchError): Boolean;
+  end;
+
+procedure TFakePostTransport.AnswerPost(const APrefix: string; AStatus: Integer; const AText: string);
+begin
+  FPostPrefixes := FPostPrefixes + [APrefix];
+  FPostStatus := FPostStatus + [AStatus];
+  FPostTexts := FPostTexts + [AText];
+end;
+
+function TFakePostTransport.Post(const AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
+  out AText: string; out AError: TAtlasCiFetchError): Boolean;
+var
+  mIndex: Integer;
+begin
+  Posts := Posts + [AUrl];
+  Bodies := Bodies + [ABody];
+  AStatus := 404;
+  AText := '';
+  AError := TAtlasCiFetchError.None;
+  Result := True;
+  for mIndex := 0 to High(FPostPrefixes) do
+    if Copy(AUrl, 1, Length(FPostPrefixes[mIndex])) = FPostPrefixes[mIndex] then
+    begin
+      AStatus := FPostStatus[mIndex];
+      AText := FPostTexts[mIndex];
+      Exit;
+    end;
 end;
 
 /// <summary>Datei aus Tests\Data\&lt;AFolder&gt;, gesucht ab dem Ordner des Testprogramms aufwärts.</summary>
@@ -829,7 +903,8 @@ begin
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/753', 200,
     Fixture('GitHub', 'issue-details.json'));
   Assert.IsTrue(mProvider.Details(GitHubTarget, mTransportRef, '#753', True, 5000, mDetails, mError));
-  Assert.AreEqual(3, Integer(Length(mTransport.Calls)));
+  // Issue, Kommentare, Zeitleiste; ohne Zusammenfassungen dazu Unteraufgaben, „blocked by“, „blocking“ (#1279).
+  Assert.AreEqual(6, Integer(Length(mTransport.Calls)));
   Assert.AreEqual('https://api.github.com/repos/beispiel/atlas/issues/753/comments?per_page=100&page=1',
     mTransport.Calls[1]);
   Assert.AreEqual('https://github.com/beispiel/atlas/issues/753', mDetails.Page);
@@ -874,12 +949,376 @@ begin
   Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
 end;
 
+{ TAtlasTrackerLinkProviderTests }
+
+const
+  cYouTrackApi = 'https://beispiel.youtrack.cloud/api/';
+  cGitHubIssues = 'https://api.github.com/repos/beispiel/atlas/issues';
+
+function LinkOf(const ADetails: TAtlasTrackerDetails; const AKey: string): TAtlasTrackerLink;
+var
+  mLink: TAtlasTrackerLink;
+begin
+  for mLink in ADetails.Links do
+    if mLink.Key = AKey then
+      Exit(mLink);
+  raise Exception.Create(AKey + ' fehlt');
+end;
+
+procedure TAtlasTrackerLinkProviderTests.YouTrackLinksEnglish;
+var
+  mDetails: TAtlasTrackerDetails;
+  mDone, mTotal: Integer;
+  mBlockers: TArray<TAtlasTrackerLink>;
+begin
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseDetails(Fixture('YouTrack', 'issue-links-en.json'), YouTrackTarget, False,
+    mDetails));
+  Assert.AreEqual(9, Integer(Length(mDetails.Links)));
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-129').Kind = TAtlasTrackerLinkKind.DependsOn, 'Depend, INWARD');
+  Assert.AreEqual('depends on', LinkOf(mDetails, 'ATL-129').Relation);
+  Assert.AreEqual('In Progress', LinkOf(mDetails, 'ATL-129').State, 'Feld State');
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-129').StateKnown);
+  Assert.IsFalse(LinkOf(mDetails, 'ATL-129').Resolved, 'resolved null');
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-128').Resolved);
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-140').Kind = TAtlasTrackerLinkKind.Blocks, 'Depend, OUTWARD');
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-131').Kind = TAtlasTrackerLinkKind.Subtask);
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-100').Kind = TAtlasTrackerLinkKind.Parent);
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-90').Kind = TAtlasTrackerLinkKind.Duplicates);
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-77').Kind = TAtlasTrackerLinkKind.Relates);
+  Assert.IsTrue(TAtlasTrackerLinks.Progress(mDetails.Links, mDone, mTotal));
+  Assert.AreEqual('2/3', TAtlasTrackerLinks.ProgressText(mDone, mTotal));
+  mBlockers := TAtlasTrackerLinks.WarnOnStart(True, mDetails);
+  Assert.AreEqual(1, Integer(Length(mBlockers)));
+  Assert.AreEqual('ATL-129', mBlockers[0].Key);
+  Assert.IsTrue(TAtlasTrackerLinks.Locked(mDetails));
+  // Älteres Fixture ohne resolved: Zustand unbekannt, keine Warnung; vertauschte Beschriftungen.
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseDetails(Fixture('YouTrack', 'issue-details.json'), YouTrackTarget, False,
+    mDetails));
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-100').Kind = TAtlasTrackerLinkKind.DependsOn);
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-130').Kind = TAtlasTrackerLinkKind.Blocks);
+  Assert.IsFalse(LinkOf(mDetails, 'ATL-100').StateKnown);
+  Assert.IsFalse(TAtlasTrackerLinks.Locked(mDetails));
+end;
+
+procedure TAtlasTrackerLinkProviderTests.YouTrackLinksGerman;
+var
+  mDetails: TAtlasTrackerDetails;
+begin
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseDetails(Fixture('YouTrack', 'issue-links-de.json'), YouTrackTarget, False,
+    mDetails));
+  Assert.AreEqual(7, Integer(Length(mDetails.Links)));
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-129').Kind = TAtlasTrackerLinkKind.DependsOn);
+  Assert.AreEqual('hängt ab von', LinkOf(mDetails, 'ATL-129').Relation, 'Beschriftung der Oberfläche');
+  Assert.AreEqual('In Bearbeitung', LinkOf(mDetails, 'ATL-129').State, 'Feld Zustand');
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-140').Kind = TAtlasTrackerLinkKind.Blocks, 'eigener Name, deutsche Wendung');
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-131').Kind = TAtlasTrackerLinkKind.Subtask);
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-133').Kind = TAtlasTrackerLinkKind.Subtask);
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-150').Kind = TAtlasTrackerLinkKind.DependsOn, 'vertauschte Beschriftungen');
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-90').Kind = TAtlasTrackerLinkKind.Duplicates);
+  Assert.IsTrue(LinkOf(mDetails, 'ATL-77').Kind = TAtlasTrackerLinkKind.Relates);
+  Assert.AreEqual(2, Integer(Length(TAtlasTrackerLinks.OpenBlockers(mDetails.Links))), 'ATL-129 und ATL-150');
+end;
+
+procedure TAtlasTrackerLinkProviderTests.YouTrackLinkTypes;
+var
+  mTypes, mId: string;
+begin
+  mTypes := Fixture('YouTrack', 'issue-link-types.json');
+  // Bekannte Namen gehen vor („Requirement“ steht davor).
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseLinkType(mTypes, TAtlasTrackerLinkKind.DependsOn, mId));
+  Assert.AreEqual('80-1t', mId, 'Issue im Pfad ist das Ziel von „is required for“');
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseLinkType(mTypes, TAtlasTrackerLinkKind.Blocks, mId));
+  Assert.AreEqual('80-1s', mId);
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseLinkType(mTypes, TAtlasTrackerLinkKind.Subtask, mId));
+  Assert.AreEqual('80-3s', mId);
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseLinkType(mTypes, TAtlasTrackerLinkKind.Parent, mId));
+  Assert.AreEqual('80-3t', mId);
+  // Ohne Depend: eigener Typ mit passenden Beschriftungen.
+  Assert.IsTrue(TAtlasYouTrackTracker.ParseLinkType('[{"id": "80-9", "name": "Requirement", ' +
+    '"sourceToTarget": "is required for", "targetToSource": "depends on"}]', TAtlasTrackerLinkKind.DependsOn, mId));
+  Assert.AreEqual('80-9t', mId);
+  Assert.IsFalse(TAtlasYouTrackTracker.ParseLinkType('[{"id": "80-0", "name": "Relates"}]',
+    TAtlasTrackerLinkKind.Subtask, mId));
+  Assert.AreEqual('', mId);
+  Assert.IsFalse(TAtlasYouTrackTracker.ParseLinkType('kein JSON', TAtlasTrackerLinkKind.Subtask, mId));
+  Assert.AreEqual('https://beispiel.youtrack.cloud/api/issueLinkTypes?fields=' +
+    'id%2Cname%2ClocalizedName%2CsourceToTarget%2ClocalizedSourceToTarget%2CtargetToSource%2C' +
+    'localizedTargetToSource%2Caggregation', TAtlasYouTrackTracker.LinkTypesUrl(YouTrackTarget));
+end;
+
+procedure TAtlasTrackerLinkProviderTests.YouTrackCreateSubtaskRequests;
+var
+  mTransport: TFakePostTransport;
+  mTransportRef: IAtlasCiTransport;
+  mWriter: IAtlasTrackerLinkWriter;
+  mKey: string;
+  mError: TAtlasCiFetchError;
+begin
+  mWriter := TAtlasYouTrackTracker.Create;
+  mTransport := TFakePostTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(cYouTrackApi + 'issues/ATL-130?', 200, '{"id": "2-130", "project": {"id": "0-1"}}');
+  mTransport.Answer(cYouTrackApi + 'issueLinkTypes', 200, Fixture('YouTrack', 'issue-link-types.json'));
+  mTransport.AnswerPost(cYouTrackApi + 'issues?', 200, '{"idReadable": "ATL-134"}');
+  mTransport.AnswerPost(cYouTrackApi + 'issues/ATL-130/links/', 200, '{"id": "80-3s"}');
+  Assert.IsTrue(mWriter.CreateSubtask(YouTrackTarget, mTransportRef, 'ATL-130', ' Baum ', 'Text', 5000, mKey,
+    mError));
+  Assert.AreEqual('ATL-134', mKey);
+  Assert.IsTrue(mError = TAtlasCiFetchError.None);
+  Assert.AreEqual(2, Integer(Length(mTransport.Posts)));
+  Assert.AreEqual(cYouTrackApi + 'issues?fields=idReadable', mTransport.Posts[0]);
+  Assert.AreEqual('{"project":{"id":"0-1"},"summary":"Baum","description":"Text"}', mTransport.Bodies[0]);
+  Assert.AreEqual(cYouTrackApi + 'issues/ATL-130/links/80-3s/issues?fields=id', mTransport.Posts[1]);
+  Assert.AreEqual('{"idReadable":"ATL-134"}', mTransport.Bodies[1]);
+  // Ohne Subtask-Typ entsteht kein loses Issue.
+  mTransport := TFakePostTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(cYouTrackApi + 'issues/ATL-130?', 200, '{"id": "2-130", "project": {"id": "0-1"}}');
+  mTransport.Answer(cYouTrackApi + 'issueLinkTypes', 200, '[{"id": "80-0", "name": "Relates"}]');
+  Assert.IsFalse(mWriter.CreateSubtask(YouTrackTarget, mTransportRef, 'ATL-130', 'Baum', '', 5000, mKey, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid);
+  Assert.AreEqual(0, Integer(Length(mTransport.Posts)));
+end;
+
+procedure TAtlasTrackerLinkProviderTests.YouTrackAddLinkRequests;
+var
+  mTransport: TFakePostTransport;
+  mTransportRef: IAtlasCiTransport;
+  mWriter: IAtlasTrackerLinkWriter;
+  mError: TAtlasCiFetchError;
+begin
+  mWriter := TAtlasYouTrackTracker.Create;
+  mTransport := TFakePostTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(cYouTrackApi + 'issueLinkTypes', 200, Fixture('YouTrack', 'issue-link-types.json'));
+  mTransport.AnswerPost(cYouTrackApi + 'issues/', 200, '{}');
+  Assert.IsTrue(mWriter.AddLink(YouTrackTarget, mTransportRef, 'ATL-130', TAtlasTrackerLinkKind.DependsOn, 'ATL-129',
+    5000, mError));
+  Assert.AreEqual(cYouTrackApi + 'issues/ATL-130/links/80-1t/issues?fields=id', mTransport.Posts[0]);
+  Assert.AreEqual('{"idReadable":"ATL-129"}', mTransport.Bodies[0]);
+  Assert.IsTrue(mWriter.AddLink(YouTrackTarget, mTransportRef, 'ATL-130', TAtlasTrackerLinkKind.Blocks, 'ATL-140',
+    5000, mError));
+  Assert.AreEqual(cYouTrackApi + 'issues/ATL-130/links/80-1s/issues?fields=id', mTransport.Posts[1]);
+  Assert.AreEqual('{"idReadable":"ATL-140"}', mTransport.Bodies[1]);
+  // Abgelehnt vom Server.
+  mTransport := TFakePostTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(cYouTrackApi + 'issueLinkTypes', 200, Fixture('YouTrack', 'issue-link-types.json'));
+  mTransport.AnswerPost(cYouTrackApi + 'issues/', 403, '{"error": "forbidden"}');
+  Assert.IsFalse(mWriter.AddLink(YouTrackTarget, mTransportRef, 'ATL-130', TAtlasTrackerLinkKind.DependsOn,
+    'ATL-129', 5000, mError));
+  Assert.IsFalse(mError = TAtlasCiFetchError.None);
+end;
+
+procedure TAtlasTrackerLinkProviderTests.GitHubRelationsFromFixtures;
+var
+  mSummary: TAtlasGitHubLinkSummary;
+  mLinks, mExisting: TArray<TAtlasTrackerLink>;
+  mLink: TAtlasTrackerLink;
+begin
+  mSummary := TAtlasGitHubTracker.ParseLinkSummary(Fixture('GitHub', 'issue-links-summary.json'));
+  Assert.AreEqual(3, mSummary.SubIssues);
+  Assert.AreEqual(1, mSummary.BlockedBy);
+  Assert.AreEqual(0, mSummary.Blocking);
+  mSummary := TAtlasGitHubTracker.ParseLinkSummary(Fixture('GitHub', 'issue-details.json'));
+  Assert.AreEqual(-1, mSummary.SubIssues, 'ältere Server: unbekannt');
+  Assert.AreEqual(-1, mSummary.BlockedBy);
+  Assert.IsTrue(TAtlasGitHubTracker.ParseRelated(Fixture('GitHub', 'issue-sub-issues.json'), 'beispiel/atlas',
+    TAtlasTrackerLinkKind.Subtask, mLinks));
+  Assert.AreEqual(3, Integer(Length(mLinks)), 'ohne Nummer und Nicht-Objekte entfallen');
+  Assert.AreEqual('#761', mLinks[0].Key);
+  Assert.IsTrue(mLinks[0].Local);
+  Assert.IsTrue(mLinks[0].Resolved);
+  Assert.IsTrue(mLinks[0].Kind = TAtlasTrackerLinkKind.Subtask);
+  Assert.AreEqual('sub-issue', mLinks[0].Relation);
+  Assert.AreEqual('andere/repo#12', mLinks[2].Key);
+  Assert.IsFalse(mLinks[2].Local);
+  Assert.IsFalse(mLinks[2].Resolved);
+  Assert.AreEqual('https://github.com/andere/repo/issues/12', mLinks[2].Page);
+  Assert.IsFalse(TAtlasGitHubTracker.ParseRelated('{}', 'beispiel/atlas', TAtlasTrackerLinkKind.Subtask, mLinks));
+  // Eine Erwähnung weicht der genaueren Art; dieselbe Art nicht doppelt.
+  mLink := Default(TAtlasTrackerLink);
+  mLink.Key := '#761';
+  mLink.Kind := TAtlasTrackerLinkKind.Mentioned;
+  mExisting := TArray<TAtlasTrackerLink>.Create(mLink);
+  mLink.Key := '#900';
+  mLink.Kind := TAtlasTrackerLinkKind.PullRequest;
+  mExisting := mExisting + [mLink];
+  Assert.IsTrue(TAtlasGitHubTracker.ParseRelated(Fixture('GitHub', 'issue-sub-issues.json'), 'beispiel/atlas',
+    TAtlasTrackerLinkKind.Subtask, mLinks));
+  TAtlasGitHubTracker.MergeLinks(mExisting, mLinks);
+  TAtlasGitHubTracker.MergeLinks(mExisting, mLinks);
+  Assert.AreEqual(4, Integer(Length(mExisting)));
+  Assert.IsTrue(mExisting[0].Kind = TAtlasTrackerLinkKind.Subtask, 'an der Stelle der Erwähnung');
+  Assert.AreEqual<Int64>(1753, TAtlasGitHubTracker.ParseIssueId(Fixture('GitHub', 'issue-links-summary.json')));
+  Assert.AreEqual<Int64>(0, TAtlasGitHubTracker.ParseIssueId('{"number": 1}'));
+end;
+
+procedure TAtlasTrackerLinkProviderTests.GitHubDetailsWithRelations;
+var
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mDetails: TAtlasTrackerDetails;
+  mError: TAtlasCiFetchError;
+  mDone, mTotal: Integer;
+  mCall: string;
+begin
+  mProvider := TAtlasGitHubTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(cGitHubIssues + '/753/timeline', 200, Fixture('GitHub', 'issue-timeline.json'));
+  mTransport.Answer(cGitHubIssues + '/753/sub_issues', 200, Fixture('GitHub', 'issue-sub-issues.json'));
+  mTransport.Answer(cGitHubIssues + '/753/dependencies/blocked_by', 200, Fixture('GitHub', 'issue-blocked-by.json'));
+  mTransport.Answer(cGitHubIssues + '/753', 200, Fixture('GitHub', 'issue-links-summary.json'));
+  Assert.IsTrue(mProvider.Details(GitHubTarget, mTransportRef, '#753', True, 5000, mDetails, mError));
+  // Issue (ohne Kommentare), Zeitleiste, Unteraufgaben, „blocked by“; „blocking“ meldet 0 und wird nicht
+  // gefragt, mit „blocked by“ gelten keine Abhängigkeiten aus dem Text.
+  Assert.AreEqual(4, Integer(Length(mTransport.Calls)));
+  for mCall in mTransport.Calls do
+    Assert.IsFalse(mCall.Contains('/dependencies/blocking'), mCall);
+  Assert.AreEqual(5, Integer(Length(mDetails.Links)));
+  Assert.IsTrue(LinkOf(mDetails, 'andere/repo#12').Kind = TAtlasTrackerLinkKind.Subtask, 'Erwähnung ersetzt');
+  Assert.IsTrue(TAtlasTrackerLinks.Progress(mDetails.Links, mDone, mTotal));
+  Assert.AreEqual('2/3', TAtlasTrackerLinks.ProgressText(mDone, mTotal));
+  Assert.AreEqual(1, Integer(Length(TAtlasTrackerLinks.OpenBlockers(mDetails.Links))));
+  Assert.AreEqual('#760', TAtlasTrackerLinks.OpenBlockers(mDetails.Links)[0].Key);
+end;
+
+procedure TAtlasTrackerLinkProviderTests.GitHubTextDependencies;
+var
+  mTransport: TFakeTransport;
+  mTransportRef: IAtlasCiTransport;
+  mProvider: IAtlasTrackerProvider;
+  mDetails: TAtlasTrackerDetails;
+  mError: TAtlasCiFetchError;
+begin
+  mProvider := TAtlasGitHubTracker.Create;
+  mTransport := TFakeTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(cGitHubIssues + '/753/timeline', 200, '[]');
+  mTransport.Answer(cGitHubIssues + '/753', 200, '{"number": 753, "title": "x", "state": "open", ' +
+    '"body": "Requires: #700, #753\nDie Arbeit depends on #701.", "sub_issues_summary": {"total": 0}, ' +
+    '"issue_dependencies_summary": {"total_blocked_by": 0, "total_blocking": 0}}');
+  mTransport.Answer(cGitHubIssues + '/700', 200, '{"number": 700, "title": "Basis", "state": "closed"}');
+  Assert.IsTrue(mProvider.Details(GitHubTarget, mTransportRef, '#753', True, 5000, mDetails, mError));
+  // Issue (ohne Kommentare), Zeitleiste, dann je Nummer aus dem Text (nicht das Issue selbst).
+  Assert.AreEqual(4, Integer(Length(mTransport.Calls)));
+  Assert.AreEqual(2, Integer(Length(mDetails.Links)));
+  Assert.AreEqual('#700', mDetails.Links[0].Key);
+  Assert.IsTrue(mDetails.Links[0].Kind = TAtlasTrackerLinkKind.DependsOn);
+  Assert.AreEqual('Basis', mDetails.Links[0].Title);
+  Assert.IsTrue(mDetails.Links[0].StateKnown);
+  Assert.IsTrue(mDetails.Links[0].Resolved);
+  Assert.AreEqual('#701', mDetails.Links[1].Key);
+  Assert.IsFalse(mDetails.Links[1].StateKnown, '404: Zustand unbekannt');
+  Assert.AreEqual('https://github.com/beispiel/atlas/issues/701', mDetails.Links[1].Page);
+  Assert.IsFalse(TAtlasTrackerLinks.Locked(mDetails), 'unbekannt warnt nicht');
+end;
+
+procedure TAtlasTrackerLinkProviderTests.GitHubCreateSubtaskRequests;
+var
+  mTransport: TFakePostTransport;
+  mTransportRef: IAtlasCiTransport;
+  mWriter: IAtlasTrackerLinkWriter;
+  mKey: string;
+  mError: TAtlasCiFetchError;
+begin
+  mWriter := TAtlasGitHubTracker.Create;
+  mTransport := TFakePostTransport.Create;
+  mTransportRef := mTransport;
+  // Längere Anfänge zuerst.
+  mTransport.AnswerPost(cGitHubIssues + '/753/sub_issues', 201, '{}');
+  mTransport.AnswerPost(cGitHubIssues, 201, '{"id": 9001, "number": 770}');
+  Assert.IsTrue(mWriter.CreateSubtask(GitHubTarget, mTransportRef, '#753', 'Baum', 'Text', 5000, mKey, mError));
+  Assert.AreEqual('#770', mKey);
+  Assert.AreEqual(2, Integer(Length(mTransport.Posts)));
+  Assert.AreEqual(cGitHubIssues, mTransport.Posts[0]);
+  Assert.AreEqual('{"title":"Baum","body":"Text"}', mTransport.Bodies[0]);
+  Assert.AreEqual(cGitHubIssues + '/753/sub_issues', mTransport.Posts[1]);
+  Assert.AreEqual('{"sub_issue_id":9001}', mTransport.Bodies[1]);
+  // Angelegt, aber nicht verknüpft: Kennung bleibt für die Meldung.
+  mTransport := TFakePostTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.AnswerPost(cGitHubIssues + '/753/sub_issues', 422, '{}');
+  mTransport.AnswerPost(cGitHubIssues, 201, '{"id": 9002, "number": 771}');
+  Assert.IsFalse(mWriter.CreateSubtask(GitHubTarget, mTransportRef, '#753', 'Baum', '', 5000, mKey, mError));
+  Assert.AreEqual('#771', mKey);
+  Assert.AreEqual('{"title":"Baum"}', mTransport.Bodies[0], 'ohne Beschreibung kein body');
+end;
+
+procedure TAtlasTrackerLinkProviderTests.GitHubAddLinkRequests;
+var
+  mTransport: TFakePostTransport;
+  mTransportRef: IAtlasCiTransport;
+  mWriter: IAtlasTrackerLinkWriter;
+  mError: TAtlasCiFetchError;
+begin
+  mWriter := TAtlasGitHubTracker.Create;
+  mTransport := TFakePostTransport.Create;
+  mTransportRef := mTransport;
+  mTransport.Answer(cGitHubIssues + '/760', 200, '{"id": 2760, "number": 760}');
+  mTransport.Answer(cGitHubIssues + '/753', 200, '{"id": 1753, "number": 753}');
+  mTransport.AnswerPost(cGitHubIssues, 201, '{}');
+  // #753 hängt ab von #760: #753 wird von #760 blockiert.
+  Assert.IsTrue(mWriter.AddLink(GitHubTarget, mTransportRef, '#753', TAtlasTrackerLinkKind.DependsOn, '#760', 5000,
+    mError));
+  Assert.AreEqual(cGitHubIssues + '/753/dependencies/blocked_by', mTransport.Posts[0]);
+  Assert.AreEqual('{"issue_id":2760}', mTransport.Bodies[0]);
+  // #753 blockiert #760.
+  Assert.IsTrue(mWriter.AddLink(GitHubTarget, mTransportRef, '#753', TAtlasTrackerLinkKind.Blocks, '#760', 5000,
+    mError));
+  Assert.AreEqual(cGitHubIssues + '/760/dependencies/blocked_by', mTransport.Posts[1]);
+  Assert.AreEqual('{"issue_id":1753}', mTransport.Bodies[1]);
+  // Unbekanntes Issue: kein POST.
+  Assert.IsFalse(mWriter.AddLink(GitHubTarget, mTransportRef, '#753', TAtlasTrackerLinkKind.DependsOn, '#999', 5000,
+    mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotFound);
+  Assert.AreEqual(2, Integer(Length(mTransport.Posts)));
+end;
+
+procedure TAtlasTrackerLinkProviderTests.WritesRefused;
+var
+  mReader: TFakeTransport;
+  mReaderRef: IAtlasCiTransport;
+  mTransport: TFakePostTransport;
+  mTransportRef: IAtlasCiTransport;
+  mWriter: IAtlasTrackerLinkWriter;
+  mKey: string;
+  mError: TAtlasCiFetchError;
+begin
+  mReader := TFakeTransport.Create;
+  mReaderRef := mReader;
+  mWriter := TAtlasGitHubTracker.Create;
+  Assert.IsFalse(mWriter.CreateSubtask(GitHubTarget, mReaderRef, '#753', 'Baum', '', 5000, mKey, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured, 'Transport kann nicht schreiben');
+  mTransport := TFakePostTransport.Create;
+  mTransportRef := mTransport;
+  Assert.IsFalse(mWriter.CreateSubtask(GitHubTarget, mTransportRef, '#753', '  ', '', 5000, mKey, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid, 'ohne Titel');
+  Assert.IsFalse(mWriter.AddLink(GitHubTarget, mTransportRef, '#753', TAtlasTrackerLinkKind.Relates, '#760', 5000,
+    mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid, 'nur „hängt ab von“ und „blockiert“');
+  Assert.IsFalse(mWriter.AddLink(GitHubTarget, mTransportRef, '#753', TAtlasTrackerLinkKind.DependsOn, '#753', 5000,
+    mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid, 'nicht mit sich selbst');
+  mWriter := TAtlasYouTrackTracker.Create;
+  Assert.IsFalse(mWriter.AddLink(YouTrackTarget, mTransportRef, 'ATL-130', TAtlasTrackerLinkKind.Blocks, 'atl-130',
+    5000, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.Invalid);
+  Assert.IsFalse(mWriter.CreateSubtask(YouTrackTarget, mReaderRef, 'ATL-130', 'Baum', '', 5000, mKey, mError));
+  Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
+  Assert.AreEqual(0, Integer(Length(mTransport.Posts)));
+  Assert.AreEqual(0, Integer(Length(mTransport.Calls)));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasTrackerTargetTests);
   TDUnitX.RegisterTestFixture(TAtlasTrackerNamingTests);
   TDUnitX.RegisterTestFixture(TAtlasGitHubTrackerTests);
   TDUnitX.RegisterTestFixture(TAtlasYouTrackTrackerTests);
   TDUnitX.RegisterTestFixture(TAtlasTrackerDetailsTests);
+  TDUnitX.RegisterTestFixture(TAtlasTrackerLinkProviderTests);
   TDUnitX.RegisterTestFixture(TAtlasCommitHookTests);
 
 end.

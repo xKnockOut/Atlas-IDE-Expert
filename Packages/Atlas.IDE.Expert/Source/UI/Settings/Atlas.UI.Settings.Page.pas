@@ -640,6 +640,8 @@ type
     FTrackerLogin: TCheckBox;
     FIssuesPreview: TCheckBox;
     FIssuesPreviewComments: TCheckBox;
+    FIssuesPreviewLinks: TCheckBox;
+    FIssuesWarnBlocked: TCheckBox;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1149,6 +1151,8 @@ type
     property TrackerLogin: TCheckBox read FTrackerLogin;
     property IssuesPreview: TCheckBox read FIssuesPreview;
     property IssuesPreviewComments: TCheckBox read FIssuesPreviewComments;
+    property IssuesPreviewLinks: TCheckBox read FIssuesPreviewLinks;
+    property IssuesWarnBlocked: TCheckBox read FIssuesWarnBlocked;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -2686,6 +2690,9 @@ begin
   // Issue-Vorschau (#1264): Hauptschalter, Kommentare darunter.
   FIssuesPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreview));
   FIssuesPreviewComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewComments));
+  // Abhängigkeiten und Unteraufgaben (#1279): Baum in der Vorschau, Warnung beim Beginnen.
+  FIssuesPreviewLinks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewLinks));
+  FIssuesWarnBlocked := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesWarnBlocked));
 end;
 
 procedure TAtlasSettingsPage.WelcomeIssuesLinkClick(Sender: TObject);
@@ -3973,6 +3980,8 @@ begin
   FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
   FMarks.Bind(FIssuesPreview, ['IssuesPreview']);
   FMarks.Bind(FIssuesPreviewComments, ['IssuesPreviewComments']);
+  FMarks.Bind(FIssuesPreviewLinks, ['IssuesPreviewLinks']);
+  FMarks.Bind(FIssuesWarnBlocked, ['IssuesWarnBlocked']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
@@ -6234,6 +6243,8 @@ begin
   FTrackerLogin.Checked := ASettings.TrackerLogin;
   FIssuesPreview.Checked := ASettings.IssuesPreview;
   FIssuesPreviewComments.Checked := ASettings.IssuesPreviewComments;
+  FIssuesPreviewLinks.Checked := ASettings.IssuesPreviewLinks;
+  FIssuesWarnBlocked.Checked := ASettings.IssuesWarnBlocked;
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -6795,6 +6806,8 @@ begin
   ASettings.TrackerLogin := FTrackerLogin.Checked;
   ASettings.IssuesPreview := FIssuesPreview.Checked;
   ASettings.IssuesPreviewComments := FIssuesPreviewComments.Checked;
+  ASettings.IssuesPreviewLinks := FIssuesPreviewLinks.Checked;
+  ASettings.IssuesWarnBlocked := FIssuesWarnBlocked.Checked;
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];

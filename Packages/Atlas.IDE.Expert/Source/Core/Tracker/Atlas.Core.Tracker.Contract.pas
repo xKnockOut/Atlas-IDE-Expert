@@ -23,6 +23,11 @@
 //   Issues; IAtlasTrackerProvider.Details liest es. Kein Feld enthält ein
 //   Token; Adressen kommen aus der Antwort des Trackers und werden vor dem
 //   Öffnen geprüft (nur https bzw. derselbe Server).
+// - Verknüpfungen (#1279): TAtlasTrackerLink.Kind (hängt ab von, blockiert,
+//   Unteraufgabe, übergeordnet, Duplikat, bezieht sich auf, Erwähnung) mit
+//   Zustand des verknüpften Issues; Baum, Fortschritt und „blockiert“ in
+//   Atlas.Core.Tracker.Links. IAtlasTrackerLinkWriter (optional, über
+//   Supports) legt Unteraufgaben an und verknüpft Issues über IAtlasCiPost.
 // Abfragen laufen im Hintergrund; nichts davon zeigt einen Dialog.
 
 interface
@@ -35,6 +40,13 @@ type
 {$SCOPEDENUMS ON}
   /// <summary>Zustand der Prüfungen (CI) eines Pull Requests: Ampel im Bereich.</summary>
   TAtlasTrackerChecks = (Unknown, Pending, Success, Failure);
+  /// <summary>Art einer Verknüpfung aus Sicht des gezeigten Issues (#1279). DependsOn: dieses hängt vom anderen
+  /// ab (das andere blockiert dieses); Blocks: das andere hängt von diesem ab; Subtask: das andere ist
+  /// Unteraufgabe; Parent: das andere ist übergeordnet; Duplicates: dieses ist Duplikat des anderen; DuplicatedBy:
+  /// das andere ist Duplikat von diesem; Mentioned: Erwähnung (GitHub); PullRequest: Pull Request (GitHub).
+  /// </summary>
+  TAtlasTrackerLinkKind = (Other, DependsOn, Blocks, Subtask, Parent, Duplicates, DuplicatedBy, Relates, Mentioned,
+    PullRequest);
 {$SCOPEDENUMS OFF}
 
   /// <summary>Offener Pull Request zu einem Issue (GitHub).</summary>
@@ -107,6 +119,21 @@ type
     Page: string;
     /// <summary>Im selben Tracker und Projekt: Klick öffnet es in „Atlas-Issue“.</summary>
     Local: Boolean;
+    /// <summary>Art der Verknüpfung (#1279); Other, wenn der Tracker sie nicht nennt.</summary>
+    Kind: TAtlasTrackerLinkKind;
+    /// <summary>Zustand des verknüpften Issues ist bekannt (#1279); sonst gelten State und Resolved nicht.
+    /// </summary>
+    StateKnown: Boolean;
+    /// <summary>Zustand wie im Tracker ("Offen", "In Arbeit", "closed"); '' ohne.</summary>
+    State: string;
+    /// <summary>Erledigt (YouTrack: resolved, GitHub: closed).</summary>
+    Resolved: Boolean;
+    /// <summary>Kennung der Art für den Zwischenspeicher: "dependsOn", "blocks", "subtask" …; "" für Other.</summary>
+    class function KindKey(AKind: TAtlasTrackerLinkKind): string; static;
+    /// <summary>Umkehrung von KindKey; Other für fremde Texte.</summary>
+    class function KindOf(const AKey: string): TAtlasTrackerLinkKind; static;
+    /// <summary>Offen und als „hängt ab von“ verknüpft: blockiert das gezeigte Issue.</summary>
+    function Blocking: Boolean;
   end;
 
   /// <summary>Ein Issue mit allem, was das Fenster „Atlas-Issue“ zeigt (#1264).</summary>
@@ -186,6 +213,23 @@ type
     function Secure: Boolean;
   end;
 
+  /// <summary>Unteraufgaben anlegen und Issues verknüpfen (#1279); optional, die Vorschau fragt mit Supports. Der
+  /// Transport muss IAtlasCiPost können, sonst NotConfigured. Läuft im Hintergrund.</summary>
+  IAtlasTrackerLinkWriter = interface
+    ['{8B3E5D21-4A7C-4F96-B2E8-1C6D9A4F7E53}']
+    /// <summary>Neues Issue ATitle (ADescription als Markdown) im Projekt des Issues AParentKey anlegen und als
+    /// Unteraufgabe verknüpfen. AKey: Kennung des neuen Issues, auch wenn nur das Verknüpfen scheiterte (dann
+    /// False mit AError); '' wenn nichts angelegt wurde.</summary>
+    function CreateSubtask(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+      const AParentKey, ATitle, ADescription: string; ATimeoutMs: Integer; out AKey: string;
+      out AError: TAtlasCiFetchError): Boolean;
+    /// <summary>AKey mit AOtherKey verknüpfen: DependsOn (AKey hängt von AOtherKey ab) bzw. Blocks (AOtherKey
+    /// hängt von AKey ab); andere Arten: False mit Invalid.</summary>
+    function AddLink(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      AKind: TAtlasTrackerLinkKind; const AOtherKey: string; ATimeoutMs: Integer;
+      out AError: TAtlasCiFetchError): Boolean;
+  end;
+
   IAtlasTrackerProvider = interface
     ['{6F2A9C47-3E1B-4D85-B7A0-92C4E8D15F36}']
     /// <summary>Kennung wie in .atlas, z. B. "github".</summary>
@@ -219,6 +263,8 @@ implementation
 
 const
   ChecksKeys: array[TAtlasTrackerChecks] of string = ('unknown', 'pending', 'success', 'failure');
+  LinkKindKeys: array[TAtlasTrackerLinkKind] of string = ('', 'dependsOn', 'blocks', 'subtask', 'parent',
+    'duplicates', 'duplicatedBy', 'relates', 'mentioned', 'pullRequest');
 
 { TAtlasTrackerPullRequest }
 
@@ -235,6 +281,30 @@ begin
     if SameText(ChecksKeys[Checks], AKey) then
       Exit(Checks);
   Result := TAtlasTrackerChecks.Unknown;
+end;
+
+{ TAtlasTrackerLink }
+
+class function TAtlasTrackerLink.KindKey(AKind: TAtlasTrackerLinkKind): string;
+begin
+  Result := LinkKindKeys[AKind];
+end;
+
+class function TAtlasTrackerLink.KindOf(const AKey: string): TAtlasTrackerLinkKind;
+var
+  mKind: TAtlasTrackerLinkKind;
+begin
+  Result := TAtlasTrackerLinkKind.Other;
+  if AKey = '' then
+    Exit;
+  for mKind := Low(TAtlasTrackerLinkKind) to High(TAtlasTrackerLinkKind) do
+    if SameText(LinkKindKeys[mKind], AKey) then
+      Exit(mKind);
+end;
+
+function TAtlasTrackerLink.Blocking: Boolean;
+begin
+  Result := (Kind = TAtlasTrackerLinkKind.DependsOn) and StateKnown and not Resolved;
 end;
 
 { TAtlasTrackerIssue }

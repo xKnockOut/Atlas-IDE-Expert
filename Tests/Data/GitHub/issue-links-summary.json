@@ -1,0 +1,9 @@
+{
+  "id": 1753,
+  "number": 753,
+  "title": "Issue mit Verknüpfungen",
+  "body": "Benötigt: #700, #701\nDie Arbeit depends on #702 und hängt ab von #703.\nWird benötigt von: #227",
+  "state": "open",
+  "sub_issues_summary": {"total": 3, "completed": 2, "percent_completed": 66},
+  "issue_dependencies_summary": {"blocked_by": 1, "total_blocked_by": 1, "blocking": 0, "total_blocking": 0}
+}

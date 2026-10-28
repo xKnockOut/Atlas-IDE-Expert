@@ -1940,6 +1940,8 @@ begin
     Assert.IsTrue(SheetOf(Page.TrackerLogin) = Tracker);
     Assert.IsTrue(SheetOf(Page.IssuesPreview) = Tracker, 'Vorschau (#1264)');
     Assert.IsTrue(SheetOf(Page.IssuesPreviewComments) = Tracker);
+    Assert.IsTrue(SheetOf(Page.IssuesPreviewLinks) = Tracker, 'Verknüpfungen (#1279)');
+    Assert.IsTrue(SheetOf(Page.IssuesWarnBlocked) = Tracker);
     // Die Willkommensseite behält nur den Schalter, daneben der Weg zur Seite.
     Assert.IsFalse(SheetOf(Page.WelcomeIssues) = Tracker);
     Assert.IsTrue(SheetOf(Page.WelcomeIssuesLink) = SheetOf(Page.WelcomeIssues));
@@ -2126,6 +2128,8 @@ begin
     Assert.IsTrue(Page.TrackerLogin.Checked);
     Assert.IsTrue(Page.IssuesPreview.Checked);
     Assert.IsTrue(Page.IssuesPreviewComments.Checked);
+    Assert.IsTrue(Page.IssuesPreviewLinks.Checked);
+    Assert.IsTrue(Page.IssuesWarnBlocked.Checked);
     // #764: Schnellaktionen an, alle sechs Knöpfe, wt.exe, Strg+B und Strg+T.
     Assert.IsTrue(Page.WelcomeQuickActions.Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Build).Checked);
@@ -2183,6 +2187,8 @@ begin
     Page.IssuesCommitPattern.Text := '[{kennung}] ';
     Page.TrackerLogin.Checked := False;
     Page.IssuesPreviewComments.Checked := False;
+    Page.IssuesPreviewLinks.Checked := False;
+    Page.IssuesWarnBlocked.Checked := False;
     Page.WelcomeQuickActions.Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked := False;
     Page.WelcomeQuickActionsItem(TAtlasQuickAction.Run).Checked := False;
@@ -2249,6 +2255,8 @@ begin
     Assert.IsFalse(Saved.TrackerLogin);
     Assert.IsTrue(Saved.IssuesPreview);
     Assert.IsFalse(Saved.IssuesPreviewComments);
+    Assert.IsFalse(Saved.IssuesPreviewLinks);
+    Assert.IsFalse(Saved.IssuesWarnBlocked);
     Assert.IsFalse(Saved.WelcomePageQuickActions);
     Assert.AreEqual('build,tests,pull,folder,tasks', Saved.WelcomePageQuickActionsItems, 'ohne run und console');
     Assert.AreEqual('pwsh.exe', Saved.WelcomePageQuickActionsConsole);
@@ -2281,6 +2289,8 @@ begin
     Assert.AreEqual('[{kennung}] ', Page.IssuesCommitPattern.Text);
     Assert.IsFalse(Page.TrackerLogin.Checked);
     Assert.IsFalse(Page.IssuesPreviewComments.Checked);
+    Assert.IsFalse(Page.IssuesPreviewLinks.Checked);
+    Assert.IsFalse(Page.IssuesWarnBlocked.Checked);
     Assert.IsFalse(Page.WelcomeQuickActions.Checked);
     Assert.IsFalse(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Console).Checked);
     Assert.IsTrue(Page.WelcomeQuickActionsItem(TAtlasQuickAction.Pull).Checked);

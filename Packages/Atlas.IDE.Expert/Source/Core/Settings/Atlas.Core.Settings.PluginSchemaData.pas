@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..5241] of string = (
+  Lines: array[0..5261] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -5341,6 +5341,28 @@ const
     '      "x-area": "issues",',
     '      "x-page": "Issue-Tracker",',
     '      "x-issue": "#1264"',
+    '    },',
+    '    "IssuesPreviewLinks": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Verknüpfungen in der Issue-Vorschau als Baum: „hängt ab von“, „blockiert“, Unteraufgaben mit Fortschritt (2/3), übergeordnet; Duplikate, „bezieht sich auf“ und Erwähnungen eingek' +
+      'lappt; jede Zeile mit Symbol (offen, erledigt, blockiert), Kennung, Titel und Zustand. Dazu „Unteraufgabe anlegen …“ und „Verknüpfen …“. Aus: flache Liste verknüpfter Issues.",',
+    '      "x-key": "issues.preview.links",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#1279"',
+    '    },',
+    '    "IssuesWarnBlocked": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "„Beginnen“ warnt, wenn ein Issue, von dem das gewählte abhängt, noch offen ist („ATL-129 blockiert dieses Issue und ist noch offen“ mit „Trotzdem beginnen“ und „ATL-129 ansehen“)' +
+      '. Aus: keine Rückfrage.",',
+    '      "x-key": "issues.warnBlocked",',
+    '      "x-area": "issues",',
+    '      "x-page": "Issue-Tracker",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#1279"',
     '    }',
     '  },',
     '  "additionalProperties": false',
