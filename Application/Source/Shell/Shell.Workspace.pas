@@ -40,6 +40,22 @@ uses
   Shell.Compiler;
 
 type
+  /// <summary>Hält einen TPackageLocator (#1220); der Locator wird mit dem letzten Halter frei.</summary>
+  IPackageLocatorHold = interface
+    ['{5B6F7C1E-2A9D-4E83-9F04-3C1D8A7B6E21}']
+    function Locator: TPackageLocator;
+  end;
+
+  TPackageLocatorHold = class(TInterfacedObject, IPackageLocatorHold)
+  private
+    FLocator: TPackageLocator;
+  public
+    /// <summary>Übernimmt ALocator.</summary>
+    constructor Create(ALocator: TPackageLocator);
+    destructor Destroy; override;
+    function Locator: TPackageLocator;
+  end;
+
   TShellWorkspace = class
   private
     FRoot: string;
@@ -59,7 +75,10 @@ type
     /// <summary>Packages aus requires (#46), je Indexaufbau neu; unter FLock. Frühere bleiben bis zur Freigabe des
     /// Arbeitsbereichs, weil Prüfungen in Anfrage-Threads sie noch halten können.</summary>
     FPackageLocator: TPackageLocator;
-    FRetiredLocators: TObjectList<TPackageLocator>;
+    // Der Locator lebt, solange ihn ein Halter hat (#1220): Arbeitsbereich und die Unit-Suche, die Prüfungen in
+    // Anfrage-Threads noch über die Freigabe des Arbeitsbereichs hinaus benutzen können.
+    FPackageLocatorHold: IPackageLocatorHold;
+    FRetiredLocators: TList<IPackageLocatorHold>;
     /// <summary>Unit-Suche wie beim Compiler für uses-unit-not-found (#1016), je Indexaufbau neu; unter FLock.
     /// </summary>
     FUnitLookup: IRuleUnitLookup;
@@ -426,8 +445,27 @@ end;
 
 /// <summary>Unit-Suche wie beim Compiler (#1016) über die geteilten Ordnerlisten. Ohne Installation (und ohne
 /// Bibliothekspfade aus der IDE) gilt keine Unit als sicher fehlend.</summary>
+{ TPackageLocatorHold }
+
+constructor TPackageLocatorHold.Create(ALocator: TPackageLocator);
+begin
+  inherited Create;
+  FLocator := ALocator;
+end;
+
+destructor TPackageLocatorHold.Destroy;
+begin
+  FLocator.Free;
+  inherited Destroy;
+end;
+
+function TPackageLocatorHold.Locator: TPackageLocator;
+begin
+  Result := FLocator;
+end;
+
 function UnitLookupFor(const AProject: TProjectInfo; const AInstallation: ILibraryPathProvider;
-  const ALibraryPaths: TArray<string>; ALocator: TPackageLocator; const AIndex: ISymbolIndex): IRuleUnitLookup;
+  const ALibraryPaths: TArray<string>; const AHold: IPackageLocatorHold; const AIndex: ISymbolIndex): IRuleUnitLookup;
 var
   Setup: TUnitLookupSetup;
   Text: string;
@@ -484,14 +522,15 @@ begin
           Result := False;
       end;
     end;
-  if ALocator <> nil then
+  // Die anonymen Methoden fangen den Halter ein, nicht den rohen Locator (#1220): Er bleibt, solange sie leben.
+  if AHold <> nil then
   begin
     Setup.PackageProvides :=
       function(const APackage, AUnitName: string): TRulePackageAnswer
       var
         Contains: Boolean;
       begin
-        if not ALocator.Provides(APackage, AUnitName, Contains) then
+        if not AHold.Locator.Provides(APackage, AUnitName, Contains) then
           Result := TRulePackageAnswer.Unknown
         else if Contains then
           Result := TRulePackageAnswer.Yes
@@ -503,7 +542,7 @@ begin
       var
         Contains: Boolean;
       begin
-        Result := ALocator.Provides(APackage, APackage, Contains);
+        Result := AHold.Locator.Provides(APackage, APackage, Contains);
       end;
   end;
   if AIndex <> nil then
@@ -547,7 +586,7 @@ begin
   FLock := TObject.Create;
   FOwnFiles := TDictionary<string, Boolean>.Create;
   FRetiredResolvers := TObjectList<TUnitResolver>.Create(True);
-  FRetiredLocators := TObjectList<TPackageLocator>.Create(True);
+  FRetiredLocators := TList<IPackageLocatorHold>.Create;
   FLastIndexMs := -1;
   FCacheRoot := TIndexCacheDirectory.DefaultRoot;
   FConfiguration := TLspConfiguration.Create(AStore, ATransport,
@@ -676,7 +715,8 @@ begin
   FProgress.Free;
   FUnitResolver.Free;
   FRetiredResolvers.Free;
-  FPackageLocator.Free;
+  FPackageLocator := nil;
+  FPackageLocatorHold := nil;
   FRetiredLocators.Free;
   FProcessEntry.Free;
   FConfiguration.Free;
@@ -1236,7 +1276,7 @@ end;
 
 function TShellWorkspace.RuleServices: TRuleServices;
 var
-  Locator: TPackageLocator;
+  Hold: IPackageLocatorHold;
   Context: TIdeProjectContext;
 begin
   Result := Default(TRuleServices);
@@ -1249,16 +1289,22 @@ begin
   Result.Namespaces := Namespaces;
   // Unit-Suche wie beim Compiler für uses-unit-not-found (#1016).
   Result.Units := UnitLookup;
-  // requires-Packages für implicit-package-import (#46); der Locator lebt so lange wie der Arbeitsbereich.
-  // Nicht gefundene Packages sind unbekannt, damit die Regel still bleibt statt falsch zu melden.
-  Locator := PackageLocator;
-  if Locator <> nil then
+  // requires-Packages für implicit-package-import (#46); der Halter hält den Locator, solange die Prüfung ihn
+  // braucht, auch über einen Projektwechsel hinaus (#1220). Nicht gefundene Packages sind unbekannt, damit die Regel
+  // still bleibt statt falsch zu melden.
+  TMonitor.Enter(FLock);
+  try
+    Hold := FPackageLocatorHold;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  if Hold <> nil then
     Result.PackageProvides :=
       function(const APackage, AUnitName: string): TRulePackageAnswer
       var
         Contains: Boolean;
       begin
-        if not Locator.Provides(APackage, AUnitName, Contains) then
+        if not Hold.Locator.Provides(APackage, AUnitName, Contains) then
           Result := TRulePackageAnswer.Unknown
         else if Contains then
           Result := TRulePackageAnswer.Yes
@@ -1593,6 +1639,7 @@ var
   ProjectUnit: TProjectUnit;
   PackageFolders: TArray<string>;
   Locator: TPackageLocator;
+  Hold: IPackageLocatorHold;
   Lookup: IRuleUnitLookup;
 begin
   // Mit index.projectGroup = false nur das Projekt der geöffneten Datei (#648).
@@ -1787,15 +1834,17 @@ begin
     PackageFolders := FOnPackageFolders();
   Locator := TPackageLocator.Create(PackageFolders + [ExtractFileDir(mProjectFile)] + Project.SearchPaths +
     CompilerLibraryPaths);
+  Hold := TPackageLocatorHold.Create(Locator);
   TMonitor.Enter(FLock);
   try
-    if FPackageLocator <> nil then
-      FRetiredLocators.Add(FPackageLocator);
+    if FPackageLocatorHold <> nil then
+      FRetiredLocators.Add(FPackageLocatorHold);
+    FPackageLocatorHold := Hold;
     FPackageLocator := Locator;
   finally
     TMonitor.Exit(FLock);
   end;
-  Lookup := UnitLookupFor(Project, Installation, CompilerLibraryPaths, Locator, FIndex);
+  Lookup := UnitLookupFor(Project, Installation, CompilerLibraryPaths, Hold, FIndex);
   TMonitor.Enter(FLock);
   try
     FUnitLookup := Lookup;

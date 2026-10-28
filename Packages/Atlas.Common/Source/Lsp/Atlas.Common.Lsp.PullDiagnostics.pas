@@ -39,6 +39,13 @@
 // brach jede Anfrage an derselben Datei ab, und nach einigen Stapelüberläufen
 // starb der Server. Vor jeder Datei geht ihr anonymes Kennzeichen (FileLabel)
 // an das Diagnoselog; ein Fehler nennt so Unit und Regel.
+//
+// Langsame Dateien (#1220): Jede Datei hat in workspace/diagnostic eine eigene
+// Frist (FileLimitMs). Läuft sie ab, ohne dass der Client abgebrochen hat,
+// prüft ein Hintergrund-Task die Datei ohne Frist zu Ende und legt das Ergebnis
+// in den Cache; die Anfrage meldet die übrigen Dateien weiter (unvollständig)
+// statt alles zu verwerfen. Die nächste Anfrage holt die Datei aus dem Cache;
+// eine fertige Hintergrundprüfung weckt das Long-Polling.
 
 interface
 
@@ -88,7 +95,14 @@ type
     RunningPollMs = 20;
     /// <summary>Takt, in dem Wartende Abbruch und Indexzustand prüfen; Changed weckt sofort.</summary>
     ChangeSliceMs = 100;
+    /// <summary>Höchstdauer einer Datei innerhalb von workspace/diagnostic (#1220).</summary>
+    DefaultFileLimitMs = 3000;
   private
+    FFileLimitMs: Cardinal;
+    // Laufende Hintergrundprüfungen langsamer Dateien und wie viele schon fertig sind (#1220).
+    FBackground: Integer;
+    FBackgroundDone: Integer;
+    FStopping: Integer;
     FStore: IDocumentStore;
     FDiagnostics: TLspSyntaxDiagnostics;
     FTransport: IJsonRpcTransport;
@@ -116,6 +130,10 @@ type
     FComputed: Integer;
     FSkipped: Integer;
     FFileLabel: TPullFileLabel;
+    /// <summary>Prüft gerade jemand ADocument im Stand AResultId (Anfrage oder Hintergrund)?</summary>
+    function Running(const AUri, AResultId: string): Boolean;
+    /// <summary>Langsame Datei ohne Frist zu Ende prüfen und in den Cache legen; weckt danach die Wartenden.</summary>
+    procedure FinishInBackground(const AUri, AResultId: string; const ADocument: ITextDocument);
     function IsBusy: Boolean;
     /// <summary>Befunde zu ADocument im Stand AResultId, aus dem Speicher oder neu berechnet. Rechnet
     /// gerade eine andere Anfrage denselben Stand, wartet es auf deren Ergebnis. ACancellation darf nil sein.</summary>
@@ -167,6 +185,11 @@ type
     property Generation: Integer read FGeneration;
     property RefreshSupport: Boolean read FRefreshSupport write FRefreshSupport;
     property BudgetMs: Cardinal read FBudgetMs write FBudgetMs;
+    /// <summary>Braucht eine Datei in workspace/diagnostic länger, prüft der Server sie im Hintergrund zu Ende und
+    /// liefert die übrigen weiter (#1220).</summary>
+    property FileLimitMs: Cardinal read FFileLimitMs write FFileLimitMs;
+    /// <summary>Hintergrundprüfungen, die noch laufen (für Tests).</summary>
+    property Background: Integer read FBackground;
     property WaitMs: Cardinal read FWaitMs write FWaitMs;
     /// <summary>Ohne Provider gilt der Index als fertig.</summary>
     property Busy: TPullBusy read FBusy write FBusy;
@@ -184,6 +207,7 @@ implementation
 
 uses
   System.Diagnostics,
+  System.Threading,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.Rules.Contract,
@@ -207,6 +231,7 @@ begin
   FChangedLock := TObject.Create;
   FBudgetMs := DefaultBudgetMs;
   FWaitMs := DefaultWaitMs;
+  FFileLimitMs := DefaultFileLimitMs;
   FCache := TObjectDictionary<string, TJSONArray>.Create([doOwnsValues]);
   FCacheIds := TDictionary<string, string>.Create;
   FCacheLock := TObject.Create;
@@ -214,7 +239,17 @@ begin
 end;
 
 destructor TLspPullDiagnostics.Destroy;
+var
+  Waited: Integer;
 begin
+  // Hintergrundprüfungen hören auf (ihr Abbruchsignal fragt FStopping) und dürfen nichts mehr freigegebenes anfassen.
+  TInterlocked.Exchange(FStopping, 1);
+  Waited := 0;
+  while (FBackground > 0) and (Waited < 10000) do
+  begin
+    Sleep(RunningPollMs);
+    Inc(Waited, RunningPollMs);
+  end;
   FRunning.Free;
   FCacheLock.Free;
   FCacheIds.Free;
@@ -283,12 +318,122 @@ begin
     Result := FFileLabel(AFileName);
 end;
 
+type
+  /// <summary>Frist einer Datei abgelaufen (#1220): keine Abbruch der Anfrage, die Datei geht in den Hintergrund.
+  /// </summary>
+  EFileDeadline = class(Exception);
+
+  /// <summary>Abbruchsignal einer Datei (#1220): das der Anfrage (falls vorhanden), dazu eine eigene Frist (0 = keine)
+  /// und das Beenden des Servers.</summary>
+  TFileDeadline = class(TInterfacedObject, IJsonRpcCancellationToken)
+  private
+    FInner: IJsonRpcCancellationToken;
+    FClock: TStopwatch;
+    FLimitMs: Int64;
+    FStopped: TFunc<Boolean>;
+    function Expired: Boolean;
+  public
+    constructor Create(const AInner: IJsonRpcCancellationToken; ALimitMs: Int64; const AStopped: TFunc<Boolean>);
+    function IsCancellationRequested: Boolean;
+    procedure ThrowIfCancellationRequested;
+  end;
+
+constructor TFileDeadline.Create(const AInner: IJsonRpcCancellationToken; ALimitMs: Int64;
+  const AStopped: TFunc<Boolean>);
+begin
+  inherited Create;
+  FInner := AInner;
+  FLimitMs := ALimitMs;
+  FStopped := AStopped;
+  FClock := TStopwatch.StartNew;
+end;
+
+function TFileDeadline.Expired: Boolean;
+begin
+  Result := ((FLimitMs > 0) and (FClock.ElapsedMilliseconds > FLimitMs)) or (Assigned(FStopped) and FStopped());
+end;
+
+function TFileDeadline.IsCancellationRequested: Boolean;
+begin
+  Result := ((FInner <> nil) and FInner.IsCancellationRequested) or Expired;
+end;
+
+procedure TFileDeadline.ThrowIfCancellationRequested;
+begin
+  // Ein Abbruch der Anfrage geht vor: Dann ist die ganze Antwort hinfällig.
+  if FInner <> nil then
+    FInner.ThrowIfCancellationRequested;
+  if Expired then
+    raise EFileDeadline.Create('Frist der Datei abgelaufen');
+end;
+
 /// <summary>True, wenn workspace/diagnostic die Datei nach AError überspringen darf: kein Abbruch der
-/// Anfrage und kein Protokollfehler.</summary>
+/// Anfrage, keine abgelaufene Frist (die Datei geht in den Hintergrund) und kein Protokollfehler.</summary>
 function CanSkip(const AError: Exception; const ACancellation: IJsonRpcCancellationToken): Boolean;
 begin
-  Result := not ((AError is ERuleCheckCancelled) or (AError is EJsonRpcError) or
+  Result := not ((AError is ERuleCheckCancelled) or (AError is EJsonRpcError) or (AError is EFileDeadline) or
     ((ACancellation <> nil) and ACancellation.IsCancellationRequested));
+end;
+
+function TLspPullDiagnostics.Running(const AUri, AResultId: string): Boolean;
+begin
+  TMonitor.Enter(FCacheLock);
+  try
+    Result := FRunning.ContainsKey(AUri + #0 + AResultId);
+  finally
+    TMonitor.Exit(FCacheLock);
+  end;
+end;
+
+procedure TLspPullDiagnostics.FinishInBackground(const AUri, AResultId: string; const ADocument: ITextDocument);
+var
+  Owner: TLspPullDiagnostics;
+  Uri, ResultId: string;
+  Document: ITextDocument;
+  Work: TProc;
+begin
+  Owner := Self;
+  Uri := AUri;
+  ResultId := AResultId;
+  Document := ADocument;
+  TInterlocked.Increment(FBackground);
+  Work :=
+    procedure
+    var
+      Items: TJSONArray;
+    begin
+      try
+        try
+          Items := Owner.CachedDiagnose(Uri, ResultId, Document, TFileDeadline.Create(nil, 0,
+            function: Boolean
+            begin
+              Result := Owner.FStopping <> 0;
+            end));
+          Items.Free;
+        except
+          // Scheitert sie auch ohne Frist: leer in den Cache, damit nicht jede Anfrage sie erneut anstößt (#1094).
+          on Exception do
+          begin
+            TMonitor.Enter(Owner.FCacheLock);
+            try
+              if Owner.FStopping = 0 then
+              begin
+                Owner.FCache.AddOrSetValue(Uri, TJSONArray.Create);
+                Owner.FCacheIds.AddOrSetValue(Uri, ResultId);
+              end;
+            finally
+              TMonitor.Exit(Owner.FCacheLock);
+            end;
+          end;
+        end;
+      finally
+        TInterlocked.Increment(Owner.FBackgroundDone);
+        TInterlocked.Decrement(Owner.FBackground);
+        if Owner.FStopping = 0 then
+          Owner.WakeAll;
+      end;
+    end;
+  TTask.Run(Work);
 end;
 
 function TLspPullDiagnostics.TimeLimit: Cardinal;
@@ -576,13 +721,30 @@ begin
         AComplete := False;
         Break;
       end;
+      // Prüft der Hintergrund sie gerade (#1220): die übrigen zuerst, sie kommt mit einer späteren Antwort.
+      if Running(Uri, ResultId) then
+      begin
+        AComplete := False;
+        Continue;
+      end;
       if not FReadText(FileName, Text) then
         Continue;
       // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
       Disk := TTextDocument.Create(Uri, 'objectpascal', 0, Text);
       // Erst prüfen, dann den Bericht anlegen: Ein Abbruch hinterlässt so kein Objekt.
       TRequestDiagnostics.Subject(LabelOf(FileName));
-      Items := DiagnoseOrSkip(Uri, ResultId, Disk, ACancellation);
+      try
+        Items := DiagnoseOrSkip(Uri, ResultId, Disk, TFileDeadline.Create(ACancellation, FFileLimitMs, nil));
+      except
+        // Zu langsam für eine Anfrage (#1220): im Hintergrund zu Ende prüfen, die übrigen weiter melden. Früher
+        // verwarf der Abbruch durch den Watchdog alle Berichte, und jede Anfrage begann wieder bei dieser Datei.
+        on EFileDeadline do
+        begin
+          FinishInBackground(Uri, ResultId, Disk);
+          AComplete := False;
+          Continue;
+        end;
+      end;
       Report := TJSONObject.Create;
       Report.AddPair('uri', Uri);
       Report.AddPair('version', TJSONNull.Create);
@@ -624,7 +786,7 @@ var
   Items: TJSONArray;
   Complete: Boolean;
   Pending: Boolean;
-  mGeneration: Integer;
+  mGeneration, mDone: Integer;
   Clock: TStopwatch;
   Limit, PollMs: Cardinal;
 begin
@@ -650,6 +812,7 @@ begin
         if Entry.TryGetValue<string>('uri', Uri) and Entry.TryGetValue<string>('value', Value) then
           Previous.AddOrSetValue(Uri, Value);
     mGeneration := FGeneration;
+    mDone := FBackgroundDone;
     // Während des Indexaufbaus nichts prüfen, sondern warten, bis er fertig ist.
     Pending := IsBusy;
     Complete := True;
@@ -662,9 +825,11 @@ begin
       not ACancellation.IsCancellationRequested do
     begin
       WaitSlice(mGeneration);
-      if (FGeneration <> mGeneration) or (Pending and not IsBusy) then
+      // Auch eine fertige Hintergrundprüfung (#1220) bringt Neues.
+      if (FGeneration <> mGeneration) or (Pending and not IsBusy) or (FBackgroundDone <> mDone) then
       begin
         mGeneration := FGeneration;
+        mDone := FBackgroundDone;
         Pending := IsBusy;
         if not Pending then
         begin
