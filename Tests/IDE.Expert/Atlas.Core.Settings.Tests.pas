@@ -864,6 +864,9 @@ begin
   Assert.IsTrue(Settings.TrackerLogin);
   Assert.IsTrue(Settings.IssuesPreview, 'Vorschau (#1264) an');
   Assert.IsTrue(Settings.IssuesPreviewComments);
+  Assert.IsFalse(Settings.IssuesNotify, 'Meldungen (#1271) aus');
+  Assert.AreEqual(10, Settings.IssuesNotifyIntervalMinutes);
+  Assert.AreEqual('assignedOrCreated', Settings.IssuesNotifyScope);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
   Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
@@ -890,6 +893,17 @@ begin
   Assert.AreEqual('', Settings.IssuesTracker);
   Assert.AreEqual('branch', Settings.IssuesStart);
   Assert.AreEqual('', Settings.IssuesCommitPattern, 'leer = aus');
+  // #1271: Abstand begrenzt, unbekannter Umfang fällt auf den Standard.
+  Settings.IssuesNotifyIntervalMinutes := 1;
+  Settings.IssuesNotifyScope := ' WATCHED ';
+  Settings.Normalize;
+  Assert.AreEqual(2, Settings.IssuesNotifyIntervalMinutes, 'mindestens 2 Minuten');
+  Assert.AreEqual('watched', Settings.IssuesNotifyScope);
+  Settings.IssuesNotifyIntervalMinutes := 100000;
+  Settings.IssuesNotifyScope := 'alles';
+  Settings.Normalize;
+  Assert.AreEqual(1440, Settings.IssuesNotifyIntervalMinutes, 'höchstens ein Tag');
+  Assert.AreEqual('assignedOrCreated', Settings.IssuesNotifyScope);
   // Speichern und Laden.
   Settings.WelcomePageIssues := True;
   Settings.IssuesTracker := 'github';
@@ -901,6 +915,9 @@ begin
   Settings.TrackerLogin := False;
   Settings.IssuesPreview := False;
   Settings.IssuesPreviewComments := False;
+  Settings.IssuesNotify := True;
+  Settings.IssuesNotifyIntervalMinutes := 5;
+  Settings.IssuesNotifyScope := 'assigned';
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
@@ -915,6 +932,9 @@ begin
   Assert.IsFalse(Loaded.TrackerLogin);
   Assert.IsFalse(Loaded.IssuesPreview);
   Assert.IsFalse(Loaded.IssuesPreviewComments);
+  Assert.IsTrue(Loaded.IssuesNotify);
+  Assert.AreEqual(5, Loaded.IssuesNotifyIntervalMinutes);
+  Assert.AreEqual('assigned', Loaded.IssuesNotifyScope);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;

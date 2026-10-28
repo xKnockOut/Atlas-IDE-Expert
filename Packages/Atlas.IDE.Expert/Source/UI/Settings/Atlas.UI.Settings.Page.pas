@@ -640,6 +640,9 @@ type
     FTrackerLogin: TCheckBox;
     FIssuesPreview: TCheckBox;
     FIssuesPreviewComments: TCheckBox;
+    FIssuesNotify: TCheckBox;
+    FIssuesNotifyInterval: TEdit;
+    FIssuesNotifyScope: TAtlasChoiceBox;
     FWelcomeIssuesLink: TButton;
     // Tracker-Verbindungen (#1260): Tabelle, Felder der gewählten Zeile, Knöpfe.
     FIssuesConnections: TListView;
@@ -1149,6 +1152,9 @@ type
     property TrackerLogin: TCheckBox read FTrackerLogin;
     property IssuesPreview: TCheckBox read FIssuesPreview;
     property IssuesPreviewComments: TCheckBox read FIssuesPreviewComments;
+    property IssuesNotify: TCheckBox read FIssuesNotify;
+    property IssuesNotifyInterval: TEdit read FIssuesNotifyInterval;
+    property IssuesNotifyScope: TAtlasChoiceBox read FIssuesNotifyScope;
     property WelcomeIssuesLink: TButton read FWelcomeIssuesLink;
     /// <summary>Zum Testen: Tracker-Verbindungen (#1260).</summary>
     property IssuesConnections: TListView read FIssuesConnections;
@@ -2686,6 +2692,14 @@ begin
   // Issue-Vorschau (#1264): Hauptschalter, Kommentare darunter.
   FIssuesPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreview));
   FIssuesPreviewComments := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesPreviewComments));
+  // Meldungen zu meinen Issues (#1271): Hauptschalter, Abstand und Umfang darunter.
+  FIssuesNotify := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotify));
+  FIssuesNotifyInterval := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyInterval));
+  // Reihenfolge wie TAtlasTrackerNotifyScope.
+  FIssuesNotifyScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyScope),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyScopeAssigned),
+    TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyScopeCreated),
+    TAtlasStrings.Text(TAtlasTextId.SettingsIssuesNotifyScopeWatched)]);
 end;
 
 procedure TAtlasSettingsPage.WelcomeIssuesLinkClick(Sender: TObject);
@@ -3973,6 +3987,9 @@ begin
   FMarks.Bind(FTrackerLogin, ['TrackerLogin']);
   FMarks.Bind(FIssuesPreview, ['IssuesPreview']);
   FMarks.Bind(FIssuesPreviewComments, ['IssuesPreviewComments']);
+  FMarks.Bind(FIssuesNotify, ['IssuesNotify']);
+  FMarks.Bind(FIssuesNotifyInterval, ['IssuesNotifyIntervalMinutes']);
+  FMarks.Bind(FIssuesNotifyScope, ['IssuesNotifyScope']);
   FMarks.Bind(FIssuesConnections, ['IssuesConnections']);
   FMarks.Bind(FOpenBuild, ['BuildOnOpen', 'BuildOnOpenKind']);
   FMarks.Bind(FOpenBuildScope, ['BuildOnOpenScope']);
@@ -6234,6 +6251,14 @@ begin
   FTrackerLogin.Checked := ASettings.TrackerLogin;
   FIssuesPreview.Checked := ASettings.IssuesPreview;
   FIssuesPreviewComments.Checked := ASettings.IssuesPreviewComments;
+  FIssuesNotify.Checked := ASettings.IssuesNotify;
+  FIssuesNotifyInterval.Text := IntToStr(ASettings.IssuesNotifyIntervalMinutes);
+  if SameText(ASettings.IssuesNotifyScope, TAtlasPluginSettings.IssuesNotifyAssigned) then
+    FIssuesNotifyScope.Choice := 0
+  else if SameText(ASettings.IssuesNotifyScope, TAtlasPluginSettings.IssuesNotifyWatched) then
+    FIssuesNotifyScope.Choice := 2
+  else
+    FIssuesNotifyScope.Choice := 1;
   FTrackerConnections := TAtlasTrackerConnections.Read(ASettings.IssuesConnections);
   FTrackerSelected := -1;
   if Length(FTrackerConnections) > 0 then
@@ -6795,6 +6820,17 @@ begin
   ASettings.TrackerLogin := FTrackerLogin.Checked;
   ASettings.IssuesPreview := FIssuesPreview.Checked;
   ASettings.IssuesPreviewComments := FIssuesPreviewComments.Checked;
+  ASettings.IssuesNotify := FIssuesNotify.Checked;
+  ASettings.IssuesNotifyIntervalMinutes := StrToIntDef(Trim(FIssuesNotifyInterval.Text),
+    ASettings.IssuesNotifyIntervalMinutes);
+  case FIssuesNotifyScope.Choice of
+    0:
+      ASettings.IssuesNotifyScope := TAtlasPluginSettings.IssuesNotifyAssigned;
+    2:
+      ASettings.IssuesNotifyScope := TAtlasPluginSettings.IssuesNotifyWatched;
+  else
+    ASettings.IssuesNotifyScope := TAtlasPluginSettings.IssuesNotifyAssignedOrCreated;
+  end;
   ASettings.IssuesConnections := TrackerConnectionsJson;
   ASettings.WelcomePageQuickActions := FWelcomeQuickActions.Checked;
   Items := [];

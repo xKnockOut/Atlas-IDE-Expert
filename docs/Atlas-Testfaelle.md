@@ -7853,3 +7853,31 @@ Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (YouTrack und GitH
 | IV17 | `issues.preview` aus (Schnellschalter) | Klick in „Meine Issues“ öffnet wieder den Browser; Befehl *Issue anzeigen …* nicht sichtbar |
 | IV18 | IDE beenden mit offenem Fenster, neu starten | Fenster steht wieder an seinem Platz (Desktop); Plugin entladen ohne Zugriffsverletzung |
 | IV19 | Helles und dunkles IDE-Design | Farben und Abzeichen passen jeweils |
+
+## Meldungen zu meinen Issues (#1271)
+
+Vorbereitung: Projekt mit Abschnitt `tracker` in der `.atlas` (YouTrack), eine persönliche GitHub-Verbindung in `issues.connections`, Tokens hinterlegt, `issues.notify` an (Abstand 2 Minuten), Benachrichtigungszentrale an; ein zweites Konto, das Kommentare schreibt und zuweist.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IM1 | Zweites Konto kommentiert ein mir zugewiesenes YouTrack-Issue, warten | Nach höchstens 2 Minuten Meldung „ATL-123: neuer Kommentar von …“ mit Issue-Titel und „Öffnen“, eingeblendet unten rechts (**Abnahme**) |
+| IM2 | In der Meldung „Öffnen“ | „Atlas-Issue“ öffnet das Issue am neuen Kommentar, sein Kopf ist hervorgehoben; eingeklappte Kommentare klappen dafür auf (**Abnahme**) |
+| IM3 | Zweites Konto weist mir ein Issue zu und setzt den Zustand | Eine Meldung „ATL-124 dir zugewiesen · Zustand → …“, nicht zwei |
+| IM4 | Selbst einen Kommentar schreiben | Keine Meldung |
+| IM5 | GitHub: zweites Konto kommentiert und schließt ein mir zugewiesenes Issue in einem anderen Repository | Meldung „#12: neuer Kommentar von … · Zustand → geschlossen“; „Öffnen“ zeigt das Issue aus dem richtigen Repository |
+| IM6 | Nach IM1 „Meine Issues“ ansehen, ohne zu öffnen | Punkt vor der Kennung, Punkt im Titel des Bereichs; Tooltip der Zeile „Neu seit dem letzten Öffnen“ |
+| IM7 | Das Issue in „Meine Issues“ anklicken | Vorschau am neuen Kommentar, Punkt verschwindet (auch im Titel) |
+| IM8 | `issues.notify.scope` = `assigned`, Kommentar an einem selbst erstellten, nicht zugewiesenen Issue | Keine Meldung; mit `assignedOrCreated` erscheint sie |
+| IM9 | `watched`, Kommentar an einem abonnierten (YouTrack Stern, GitHub „subscribed“) Issue | Meldung erscheint |
+| IM10 | Mehr als 10 Issues auf einmal ändern | 10 Meldungen und „N weitere Issues geändert“ |
+| IM11 | Token der GitHub-Verbindung entfernen | Keine Meldung, kein Netzzugriff auf GitHub (Proxy-Protokoll) |
+| IM12 | Netz trennen, warten | Eine Warnung „Issue-Meldungen: … nicht erreichbar“ mit „Tracker-Einstellungen …“, danach keine weitere; Abfragen werden seltener (Proxy-Protokoll, bis 60 Minuten) |
+| IM13 | Netz wieder verbinden | Nächste Abfrage gelingt; ein neuer Fehler würde wieder gemeldet |
+| IM14 | IDE minimieren bzw. 30 Minuten ohne Eingabe | Keine Abfragen (Proxy-Protokoll); nach Rückkehr wieder |
+| IM15 | „Meine Issues“ öffnen | Sofortige Abfrage, höchstens einmal je Minute |
+| IM16 | Benachrichtigungszentrale: Quelle „Issues“ auf „Sammeln“ | Keine Einblendung, Einträge nur in der Liste |
+| IM17 | `issues.notify` aus, Kommentare schreiben, wieder ein | Keine Meldungen für die Zeit dazwischen, Punkte weg; danach Neues wieder gemeldet |
+| IM18 | IDE neu starten | Bereits gemeldete Änderungen kommen nicht noch einmal (`%LOCALAPPDATA%\Atlas\issues\notify.json`) |
+| IM19 | GitHub ohne Änderung abfragen (Proxy-Protokoll) | Anfrage mit `If-Modified-Since`, Antwort 304; Abstand mindestens `X-Poll-Interval` |
+| IM20 | Plugin während einer laufenden Abfrage entladen | Kein Fehler, keine Zugriffsverletzung |
+| IM21 | Protokoll ansehen | Nur Anbieter, Anzahl und Fehlerart; keine Adresse, Kennung, Titel, Benutzer oder Token |

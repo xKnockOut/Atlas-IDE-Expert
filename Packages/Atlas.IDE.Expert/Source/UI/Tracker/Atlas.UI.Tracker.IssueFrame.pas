@@ -13,6 +13,8 @@
 //   (Delphi eingefärbt); alleinstehende Bilder als Vorschau in Fensterbreite,
 //   Klick vergrößert.
 //   KOMMENTARE (n): neueste unten, ältere hinter „12 ältere Kommentare“.
+//   Aus einer Meldung (#1271, SetAnchor) öffnet der Inhalt am ersten neuen
+//   Kommentar; sein Kopf ist hervorgehoben.
 //   ANHÄNGE (n): Name und Größe; Doppelklick öffnet.
 //   VERKNÜPFTE ISSUES (n): Kennung, Titel, Art; Klick öffnet im Fenster.
 // Ein Fenster, der Inhalt wechselt; Verlauf über Zurück/Vor (Alt+Links,
@@ -165,6 +167,11 @@ type
     FPendingRebuild: Boolean;
     FPendingLink: TAtlasTrackerLink;
     FHasPendingLink: Boolean;
+    // Anker einer Meldung (#1271): Zeit des ersten neuen Kommentars (UTC), der hervorgehobene Kommentar und
+    // sein Kopf.
+    FAnchor: TDateTime;
+    FAnchorComment: Integer;
+    FAnchorLabel: TLabel;
     FOnBack: TProc;
     FOnForward: TProc;
     FOnStart: TProc;
@@ -220,6 +227,10 @@ type
     /// ACommentsOff: issues.preview.comments aus.</summary>
     procedure ShowDetails(const ADetails: TAtlasTrackerDetails; ANow: TDateTime; const AStale: string;
       ACommentsOff: Boolean);
+    /// <summary>Die nächsten ShowDetails öffnen am Kommentar zu AAnchor (UTC; erster neuer Kommentar einer Meldung,
+    /// #1271) und heben ihn hervor, ältere Kommentare klappen dafür auf; 0 = oben wie bisher. Der Anker gilt, bis
+    /// der Kommentar gefunden wurde.</summary>
+    procedure SetAnchor(AAnchor: TDateTime);
     /// <summary>Fehler über dem Inhalt mit Knopf zum Beheben; ohne bisherigen Inhalt nur die Meldung.</summary>
     procedure ShowError(const AText: string; AFix: TAtlasIssueFix);
     /// <summary>Bild zu AUrl ist geladen (übernimmt AGraphic); nil = bleibt als Link.</summary>
@@ -235,6 +246,8 @@ type
     property Loading: Boolean read FLoading;
     property CanStart: Boolean read FCanStart write FCanStart;
     property CommentsExpanded: Boolean read FCommentsExpanded;
+    /// <summary>Für Tests: hervorgehobener Kommentar (Index in Details.Comments); -1 ohne.</summary>
+    property AnchorComment: Integer read FAnchorComment;
     property BackButton: TButton read FBack;
     property ForwardButton: TButton read FForward;
     property StartButton: TButton read FStart;
@@ -636,6 +649,7 @@ begin
   inherited Create(AOwner);
   // Der Name aus der DFM stört, wenn mehrere Frames denselben Besitzer haben.
   Name := '';
+  FAnchorComment := -1;
   FColors := TAtlasColors.Light;
   FMono := TFont.Create;
   FMono.Name := 'Consolas';
@@ -925,10 +939,13 @@ var
   mHead: TLabel;
   mUrls: TArray<string>;
   mImage: TAtlasIssueImageBox;
+  mAnchor: Integer;
 begin
   FScroll.DisableAlign;
   try
     ClearContent;
+    FAnchorLabel := nil;
+    FAnchorComment := -1;
     FEmpty.Visible := not FHasDetails;
     if not FHasDetails then
       Exit;
@@ -994,6 +1011,10 @@ begin
       AddLabel(AnsiUpperCase(TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewComments, [Length(FDetails.Comments)])),
         True).Font.Color := ToColor(FColors.Muted);
       mComments := FDetails.Comments;
+      mAnchor := TAtlasIssuePreview.CommentAt(mComments, FAnchor);
+      // Der neue Kommentar einer Meldung liegt bei den eingeklappten: aufklappen.
+      if (mAnchor >= 0) and (mAnchor < TAtlasIssuePreview.CollapsedComments(Length(mComments), FCommentsExpanded)) then
+        FCommentsExpanded := True;
       mCollapsed := TAtlasIssuePreview.CollapsedComments(Length(mComments), FCommentsExpanded);
       if mCollapsed > 0 then
       begin
@@ -1012,6 +1033,12 @@ begin
         mHead := AddLabel(mComments[mIndex].Author + ' · ' + AgeText(mComments[mIndex].Created), True);
         mHead.Hint := AbsoluteText(mComments[mIndex].Created);
         mHead.ShowHint := True;
+        if mIndex = mAnchor then
+        begin
+          mHead.Font.Color := ToColor(FColors.Accent);
+          FAnchorLabel := mHead;
+          FAnchorComment := mIndex;
+        end;
         AddMarkdown(mComments[mIndex].Text);
       end;
     end;
@@ -1121,7 +1148,20 @@ begin
   FStatus.Visible := AStale <> '';
   Rebuild;
   FScroll.VertScrollBar.Position := 0;
+  if FAnchorLabel <> nil then
+  begin
+    // Kopf des Kommentars oben ins Bild.
+    FScroll.VertScrollBar.Position := FAnchorLabel.Top - FAnchorLabel.Margins.Top;
+    // Gefunden (nicht nur der letzte als Ersatz): Der Anker hat seinen Zweck erfüllt.
+    if FDetails.Comments[FAnchorComment].Created >= FAnchor - TAtlasIssuePreview.AnchorSlackMs / MSecsPerDay then
+      FAnchor := 0;
+  end;
   UpdateButtons;
+end;
+
+procedure TAtlasIssueFrame.SetAnchor(AAnchor: TDateTime);
+begin
+  FAnchor := AAnchor;
 end;
 
 procedure TAtlasIssueFrame.ShowError(const AText: string; AFix: TAtlasIssueFix);

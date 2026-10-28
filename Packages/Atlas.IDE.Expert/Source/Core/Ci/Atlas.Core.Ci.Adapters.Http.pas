@@ -16,6 +16,8 @@
 // Die Issue-Vorschau (#1264) lädt darüber auch Bilder und Anhänge
 // (IAtlasCiDownload) und bricht beim Schließen des Fensters ab
 // (IAtlasCiCancel).
+// Die Meldungen zu Issues (#1271) fragen GitHub bedingt
+// (IAtlasCiConditional: If-Modified-Since, Last-Modified, X-Poll-Interval).
 
 interface
 
@@ -24,7 +26,8 @@ uses
   Atlas.Core.Ci.Contract;
 
 type
-  TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiCancel)
+  TAtlasCiHttpTransport = class(TInterfacedObject, IAtlasCiTransport, IAtlasCiDownload, IAtlasCiCancel,
+    IAtlasCiConditional)
   private
     FServer: string;
     FUser: string;
@@ -32,7 +35,12 @@ type
     FBearer: Boolean;
     FCancelled: Integer;
     function Request(const AUrl, AAccept: string; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer;
-      out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
+      out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean; overload;
+    /// <summary>Wie oben, mit zusätzlichem If-Modified-Since (AIfModifiedSince '' = ohne) und den Köpfen
+    /// Last-Modified und X-Poll-Interval der Antwort.</summary>
+    function Request(const AUrl, AAccept, AIfModifiedSince: string; ATimeoutMs, AMaxBytes: Integer;
+      out AStatus: Integer; out ABytes: TBytes; out ALastModified, APollInterval: string;
+      out AError: TAtlasCiFetchError): Boolean; overload;
     function Cancelled: Boolean;
   public
     /// <summary>AServer wie TAtlasCiJob.Server; AUser/AToken leer = ohne Anmeldung.</summary>
@@ -45,6 +53,8 @@ type
     function GetBytes(const AUrl: string; ATimeoutMs, AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes;
       out AError: TAtlasCiFetchError): Boolean;
     procedure Cancel;
+    function GetConditional(const AUrl, AIfModifiedSince: string; ATimeoutMs: Integer; out AStatus: Integer;
+      out AText, ALastModified: string; out APollSeconds: Integer; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -124,8 +134,35 @@ begin
   Result := AtomicCmpExchange(FCancelled, 0, 0) <> 0;
 end;
 
+function TAtlasCiHttpTransport.GetConditional(const AUrl, AIfModifiedSince: string; ATimeoutMs: Integer;
+  out AStatus: Integer; out AText, ALastModified: string; out APollSeconds: Integer;
+  out AError: TAtlasCiFetchError): Boolean;
+var
+  mBytes: TBytes;
+  mPoll: string;
+begin
+  AText := '';
+  APollSeconds := 0;
+  Result := Request(AUrl, 'application/json', AIfModifiedSince, ATimeoutMs, MaxBytes, AStatus, mBytes,
+    ALastModified, mPoll, AError);
+  if not Result then
+    Exit;
+  AText := TEncoding.UTF8.GetString(mBytes);
+  if not TryStrToInt(Trim(mPoll), APollSeconds) or (APollSeconds < 0) then
+    APollSeconds := 0;
+end;
+
 function TAtlasCiHttpTransport.Request(const AUrl, AAccept: string; ATimeoutMs, AMaxBytes: Integer;
   out AStatus: Integer; out ABytes: TBytes; out AError: TAtlasCiFetchError): Boolean;
+var
+  mLastModified, mPoll: string;
+begin
+  Result := Request(AUrl, AAccept, '', ATimeoutMs, AMaxBytes, AStatus, ABytes, mLastModified, mPoll, AError);
+end;
+
+function TAtlasCiHttpTransport.Request(const AUrl, AAccept, AIfModifiedSince: string; ATimeoutMs,
+  AMaxBytes: Integer; out AStatus: Integer; out ABytes: TBytes; out ALastModified, APollInterval: string;
+  out AError: TAtlasCiFetchError): Boolean;
 var
   Client: THTTPClient;
   Content: TBytesStream;
@@ -140,6 +177,8 @@ begin
   Result := False;
   AStatus := 0;
   ABytes := nil;
+  ALastModified := '';
+  APollInterval := '';
   AError := TAtlasCiFetchError.Network;
   if Cancelled then
   begin
@@ -175,6 +214,8 @@ begin
             Encoding.Free;
           end;
         end;
+        if AIfModifiedSince <> '' then
+          Headers := Headers + [TNetHeader.Create('If-Modified-Since', AIfModifiedSince)];
         Content.Clear;
         Async := Client.BeginGet(Url, Content, Headers);
         while not Async.IsCompleted do
@@ -206,6 +247,8 @@ begin
         Url := Next;
       end;
       AStatus := Response.StatusCode;
+      ALastModified := Response.HeaderValue['Last-Modified'];
+      APollInterval := Response.HeaderValue['X-Poll-Interval'];
       if Content.Size > AMaxBytes then
       begin
         AError := TAtlasCiFetchError.Invalid;

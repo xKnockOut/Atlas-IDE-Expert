@@ -445,6 +445,9 @@
         </DCCReference>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssueWindow.pas"/>
         <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.IssuePreview.pas"/>
+        <DCCReference Include="Source\Core\Tracker\Atlas.Core.Tracker.Notify.pas"/>
+        <DCCReference Include="Source\UI\Tracker\Atlas.UI.Tracker.Notify.pas"/>
+        <DCCReference Include="Source\IDE\Tracker\Atlas.IDE.Tracker.Notify.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.TeamFile.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.FeatureTable.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Teardown.pas"/>

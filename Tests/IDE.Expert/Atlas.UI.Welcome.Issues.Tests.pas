@@ -180,6 +180,15 @@ begin
     View := SampleView;
     Assert.AreEqual('Meine Issues · Atlas-IDE-Expert', TAtlasWelcomeIssuesFrame.TitleText(View.ProjectName));
     Assert.AreEqual('Meine Issues', TAtlasWelcomeIssuesFrame.TitleText(''));
+    // #1271: Punkt im Titel, solange ein Issue neue Änderungen hat; die Zeile trägt ihn auch.
+    Assert.AreEqual('● Meine Issues · Atlas-IDE-Expert', TAtlasWelcomeIssuesFrame.TitleText(View.ProjectName, True));
+    Assert.AreEqual('Meine Issues', TAtlasWelcomeIssuesFrame.TitleText('', False));
+    Assert.IsFalse(View.IsUnseen(View.Items[0].Key));
+    View.Unseen := [UpperCase(View.Items[0].Key)];
+    Assert.IsTrue(View.IsUnseen(View.Items[0].Key));
+    Assert.IsFalse(View.IsUnseen(View.Items[1].Key));
+    Assert.IsFalse(View.IsUnseen(''));
+    View.Unseen := nil;
     // Mockup: Chip „PR #640 · CI grün“.
     Assert.AreEqual('PR #760 · CI grün', TAtlasWelcomeIssuesFrame.PullRequestText(View.Items[0].PullRequest));
     Pull := View.Items[0].PullRequest;

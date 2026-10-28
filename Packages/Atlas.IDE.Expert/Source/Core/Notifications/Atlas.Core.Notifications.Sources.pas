@@ -42,6 +42,8 @@ type
     UnitRename = 'unitRename';
     /// <summary>Minimap (#873): Hinweis, wenn auch die Minimap der IDE sichtbar ist.</summary>
     Minimap = 'minimap';
+    /// <summary>Änderungen an meinen Issues im Issue-Tracker (#1271).</summary>
+    Issues = 'issues';
     /// <summary>Absturzsicherung (#493): eine Funktion wurde nach wiederholten Fehlern abgeschaltet. Nicht in Known:
     /// Dieser Hinweis lässt sich nicht abstellen, sonst fiele eine abgeschaltete Funktion wieder nicht auf.</summary>
     Fuse = 'fuse';
@@ -72,7 +74,7 @@ implementation
 
 class function TAtlasNotificationSources.Known: TArray<string>;
 begin
-  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer, OpenBuild, Hidden, UnitRename];
+  Result := [Build, Check, Reload, Server, ShortcutTips, BuildServer, OpenBuild, Hidden, UnitRename, Issues];
 end;
 
 class function TAtlasNotificationSources.ModeName(AMode: TAtlasNotificationMode): string;
