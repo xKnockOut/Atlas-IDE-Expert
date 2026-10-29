@@ -523,6 +523,9 @@ Gleiche Ablage wie die benannten Lesezeichen, `format` 2 mit `kind` (`named`, `q
 | QL29 | Spalte fehlt, benanntes Lesezeichen mit Nummer (#1281) | Die Rinne zeigt das Band der benannten Lesezeichen an der Zeile |
 | QL30 | Linksklick in die Spalte links der Zahlen auf einer Zeile ohne Marker, dann auf den Marker (#1281) | Erst erscheint ein Marker, dann ist er wieder weg; kein Haltepunkt, keine Markierung im Editor. In `atlas.log` höchstens einmal „Klick … kam nicht über Application.OnMessage“ (dann hat ein anderer Experte die Nachrichten übernommen) |
 | QL31 | Tooltip über der Spalte und über einer Notiz, 100/150/200 % (#1281) | Text vollständig, auch Unterlängen (g, p, y) der letzten Zeile |
+| QL32 | Große Unit, weit scrollen (Mausrad, Bild↓, Strg+Ende, Sprung über Strg+1…9), dann auf mehrere freie Zeilen der Spalte klicken, auch direkt neben vorhandenen Markern (#1281) | Jeder Klick setzt einen Marker (mit der kleinsten freien Nummer, sind alle neun belegt ohne), ein zweiter Klick auf dieselbe Zeile entfernt ihn; der blasse Vorschau-Marker folgt der Maus auf jeder freien Zeile |
+| QL33 | Zweites Editorfenster (Ansicht › Neues Editorfenster) mit anderer Unit bzw. anderer Stelle, in beiden Fenstern abwechselnd in die Spalte klicken (#1281) | Der Marker landet jeweils in der Datei und Zeile des Fensters, in das geklickt wurde |
+| QL34 | Gefaltete Methode oberhalb, darunter in die Spalte klicken (#1281) | Der Marker sitzt an der angeklickten Zeile, nicht um die gefalteten Zeilen verschoben; `atlas.log` ohne „Klick in die Spalte … ohne Zeile“ |
 
 ## Tippfehler (#485)
 
