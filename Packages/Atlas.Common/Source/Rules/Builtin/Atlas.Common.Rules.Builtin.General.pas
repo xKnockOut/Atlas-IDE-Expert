@@ -6,6 +6,7 @@
 //                             direkt davor X := T….Create steht. Korrektur: try/finally/end entfernen, Rumpf ausrücken
 //                             (als einzige Anweisung eines if/while … mit mehreren Anweisungen: begin … end)
 //   interface-guid            Interface ohne GUID; mit Supports/as/QueryInterface hohe Konfidenz
+//                             (dispinterface ohne GUID meldet dispinterface-invalid)
 //   duplicate-interface-guid  zwei Interfaces der Datei mit derselben GUID
 //   guid-syntax-invalid       GUID-Literal eines Interfaces oder einer TGUID-Konstante nicht in der Form
 //                             '{8-4-4-4-12}' (#1072, wie E2204); Korrektur: neue GUID bzw. Klammern ergänzen
@@ -380,6 +381,8 @@ type
     HeaderEnd: Integer;
     Guid: string;
     GuidToken: Integer;
+    /// <summary>dispinterface statt interface: Ohne GUID ist das ein Compilerfehler (dispinterface-invalid).</summary>
+    IsDispinterface: Boolean;
   end;
 
 function InterfaceDeclarations(const ATokens: TArray<TPascalToken>): TArray<TInterfaceDeclaration>;
@@ -404,6 +407,7 @@ begin
     Declaration.NameToken := Name;
     Declaration.HeaderEnd := Index;
     Declaration.GuidToken := -1;
+    Declaration.IsDispinterface := ATokens[Index].IsKeyword('dispinterface');
     Next := NextCode(ATokens, Index + 1);
     // Vorwärtsdeklaration "IFoo = interface;" hat keine GUID.
     if (Next <= High(ATokens)) and ATokens[Next].IsSymbol(';') then
@@ -470,7 +474,8 @@ begin
   Tokens := AContext.Tree.Tokens;
   for Declaration in InterfaceDeclarations(Tokens) do
   begin
-    if Declaration.GuidToken >= 0 then
+    // Ein dispinterface ohne GUID übersetzt nicht; das meldet dispinterface-invalid als Fehler (wie E2229, #1374).
+    if (Declaration.GuidToken >= 0) or Declaration.IsDispinterface then
       Continue;
     if IsQueried(Tokens, Declaration.Name) then
       Confidence := TRuleConfidence.High

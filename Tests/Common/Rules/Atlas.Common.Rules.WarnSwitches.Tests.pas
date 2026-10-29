@@ -22,6 +22,8 @@ type
     [Test]
     procedure MentionsAny;
     [Test]
+    procedure StateAtOffset;
+    [Test]
     procedure ProjectEntries;
   end;
 
@@ -138,6 +140,35 @@ begin
     try
       Assert.IsTrue(mSwitches.MentionsAny(['UNSAFE_CODE', 'unsafe_cast']));
       Assert.IsFalse(mSwitches.MentionsAny(['UNSAFE_CODE', 'WARNINGS']));
+    finally
+      mSwitches.Free;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TRuleWarnSwitchesTests.StateAtOffset;
+var
+  mSource: string;
+  mTree: TSyntaxTree;
+  mContext: TRuleContext;
+  mSwitches: TRuleWarnSwitches;
+begin
+  mSource := Body('  {$WARN UNSAFE_CODE ERROR}'#10);
+  mTree := TPascalParser.Parse(mSource);
+  try
+    mContext := Default(TRuleContext);
+    mContext.Text := mSource;
+    mContext.Tree := mTree;
+    mSwitches := TRuleWarnSwitches.Create(mContext);
+    try
+      // Vor dem Schalter ab Werk aus, mitten im Bezeichner Hier und dahinter als Fehler.
+      Assert.IsTrue(mSwitches.StateAtOffset('UNSAFE_CODE', False, 0) = TRuleWarnState.Disabled);
+      Assert.IsTrue(mSwitches.StateAtOffset('UNSAFE_CODE', False, Pos('Hier', mSource) - 1) = TRuleWarnState.AsError);
+      Assert.IsTrue(mSwitches.StateAtOffset('UNSAFE_CODE', False, Pos('end.', mSource) - 1) = TRuleWarnState.AsError);
+      // Hinter dem letzten Token ist der Stand unbekannt.
+      Assert.IsTrue(mSwitches.StateAtOffset('UNSAFE_CODE', False, Length(mSource) + 5) = TRuleWarnState.Unknown);
     finally
       mSwitches.Free;
     end;
