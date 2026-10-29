@@ -1,0 +1,14 @@
+﻿package CmH2235;
+
+// H2235 Package does not use or export
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
+// Vermutung; die Bedingungen für H2235 sind unklar.
+
+requires
+  rtl;
+
+contains
+  Cm.Hilfe.H2235 in 'Cm.Hilfe.H2235.pas';
+
+end. // <- ohne Meldung

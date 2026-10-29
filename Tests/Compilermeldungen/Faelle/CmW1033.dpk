@@ -1,0 +1,14 @@
+﻿package CmW1033;
+
+// W1033 Unit implicitly imported into package
+// Erwartet: W1033
+// Die Unit des Pakets benutzt Cm.Hilfe.W1033Frei, die weder im Paket steht noch aus einem
+// benötigten Paket kommt.
+
+requires
+  rtl;
+
+contains
+  Cm.Hilfe.W1033Paket in 'Cm.Hilfe.W1033Paket.pas';
+
+end. // <- W1033

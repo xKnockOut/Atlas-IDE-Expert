@@ -1,0 +1,148 @@
+﻿# Meldungen ohne Fall: mit Delphi 13 unter Windows nicht gezielt auslösbar.
+# Spalten: Code, Grund
+
+E2039  nicht belegt
+E2040  nicht belegt
+E2041  Lesefehler: Umgebungsfehler
+E2042  Schreibfehler: Umgebungsfehler
+E2043  Close-Fehler: Umgebungsfehler
+E2044  Chmod-Fehler: Umgebungsfehler
+E2045  Fehlerhafte .obj-Datei nötig
+E2068  Fehlerhafte .obj-Datei nötig
+E2084  Interner Fehler (F2084)
+E2090  Abbruch durch den Benutzer
+E2103  Fehlerhafte .obj-Datei nötig
+E2104  Fehlerhafte .obj-Datei nötig
+E2106  Stapelüberlauf des Assemblers
+E2117  486/487-Befehle sind immer an
+E2151  RLINK32.DLL fehlt: Umgebungsfehler
+E2152  RLINK32.DLL defekt: Umgebungsfehler
+E2156  Ausdruck zu kompliziert: nicht gezielt erzeugbar
+E2158  Veraltete .dcu nötig
+E2165  Abbruch durch den Benutzer
+E2171  Meldung des Debuggers
+E2172  Meldung des Linkers zu entfernten Hilfsfunktionen
+E2199  Zwei Pakete mit derselben Unit: braucht zwei gebaute Pakete
+E2201  Nur mit {$G-} und Paketen
+E2203  Nur in Paketen mit {$WEAKPACKAGEUNIT}
+E2212  Paket-Unit in contains: braucht ein gebautes Paket
+E2213  Fehlerhafte Paketdatei nötig
+E2215  Fehlerhafte .obj-Datei nötig
+E2216  Fehlerhafte .obj-Datei nötig
+E2220  Never-build-Paket neu übersetzen: braucht gebaute Pakete
+E2226  Zu viele Fehler: Folgemeldung
+E2241  C++-.obj-Ausgabe
+E2247  Bytecode (.NET)
+E2248  Bytecode (.NET)
+E2249  Bytecode (.NET)
+E2253  .NET-Konstruktoren
+E2283  Zu viele lokale Konstanten: nur mit sehr großen Routinen.
+E2284  Doppelte Ressourcen: braucht zwei gebaute .res-Dateien.
+E2285  Doppelte Ressourcen-ID: braucht zwei gebaute .res-Dateien.
+E2286  Coverage-Bibliothek: Kommandozeilenoption.
+E2288  Dateiname zu lang: hängt vom Dateisystem ab.
+E2290  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2293  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2298  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2300  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2309  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2310  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2311  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2312  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2313  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2314  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2315  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2316  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2317  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2318  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2319  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2320  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2321  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2322  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2323  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2324  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2327  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2328  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2329  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2330  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2331  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2332  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2333  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2334  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2335  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2336  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2337  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2338  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2339  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2340  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2341  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2342  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2343  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2344  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2345  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2346  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2347  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2348  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2349  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2350  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2363  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2377  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2378  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2385  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2386  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2387  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2388  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2390  .NET-Regel für private Konstruktoren.
+E2391  .NET-Regel für polymorphe Konstruktoraufrufe.
+E2392  .NET-Regel für erzeugte Accessoren.
+E2395  .NET (unsafe).
+E2396  .NET (unsafe).
+E2397  .NET (unsafe).
+E2400  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2403  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2405  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2407  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2408  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2409  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2410  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2411  Paket-Unit verweist auf Unit ohne Paket: braucht gebaute Pakete
+E2414  .NET (IDisposable).
+E2415  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2416  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2417  Feldversatz in variantem Record mit unbekannt großem Record: nur mit vorwärts deklarierten Records (.NET).
+E2422  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2428  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2429  Doppelte Mengenimplementierung: .NET.
+E2447  .NET-Compiler (Metadaten, Assemblies, Marshalling, CLR-Attribute)
+E2466  Never-build/Always-build: braucht gebaute Pakete
+E2468  Doppelter Name im Linker: nur mit C++-Ausgabe
+E2469  Doppelter Name im Linker: nur mit C++-Ausgabe
+E2470  Doppelter Name im Linker: nur mit C++-Ausgabe
+E2563  Nur mit $HPPEMIT und C++-Ausgabe
+E2575  RTTI zu groß: nur mit sehr großen Typen
+E2590  Linkeroption zu lang: Kommandozeile
+E2597  Platzhalter des Linkers
+F1027  System-Unit fehlt: Umgebungsfehler
+F2039  Ausgabedatei nicht anlegbar: Umgebungsfehler
+F2040  Seek-Fehler: Umgebungsfehler
+F2046  Speicher voll: Umgebungsfehler
+F2048  Defekte .dcu nötig
+F2051  .dcu einer anderen Version nötig
+F2063  Folgemeldung jedes Fehlers in einer benutzten Unit
+F2084  Interner Fehler des Compilers
+F2087  Testversion
+F2220  Folgemeldung beim Paketbau
+F2446  .dcu einer anderen Version nötig
+F2458  .NET
+F2462  .NET
+H2384  CLS-Regel aus der .NET-Zeit.
+H2596  Platzhaltermeldung ohne festen Inhalt.
+W1027  Unit not found in package: tritt nur bei .NET-Assemblies auf.
+W1028  Bad global symbol definition in object file: braucht eine fehlerhafte .obj-Datei.
+W1031  Paket wird wegen -J nicht geschrieben: nur Kommandozeile mit -J.
+W1039  No configuration files found: nur Kommandozeilencompiler.
+W1041  Unicode zu Locale: nur Linux-Compiler mit falscher LANG-Variable.
+W1042  Locale zu Unicode: nur Linux-Compiler mit falscher LANG-Variable.
+W1049  Option abgeschnitten: nur Kommandozeile.
+W1051  Doppelte Symbole im Namensraum: .NET.
+W1067  DLL nicht ladbar: Umgebungsfehler.

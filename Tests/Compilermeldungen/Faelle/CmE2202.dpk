@@ -1,0 +1,10 @@
+﻿package CmE2202;
+
+// E2202 Required package '%s' not found
+// Erwartet: E2202
+
+requires
+  rtl,
+  CmGibtEsNicht; // <- E2202
+
+end.
