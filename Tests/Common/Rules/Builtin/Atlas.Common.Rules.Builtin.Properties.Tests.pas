@@ -217,7 +217,7 @@ begin
   Assert.AreEqual('Basis ist eine Property; hinter read gehört ein Feld oder eine Methode (wie E2168).',
     OnlyMessage(Kunden('  private'#10'    FBasis: Integer;'#10'  public'#10 +
     '    property Basis: Integer read FBasis;'#10'    property Kopie: Integer read Basis;'#10, '')));
-  Assert.AreEqual('Die Array-Property Items braucht hinter read eine Methode; FItems ist ein Feld (wie E2174).',
+  Assert.AreEqual('Die Array-Property Items braucht hinter read eine Methode; FItems ist ein Feld (wie E2008).',
     OnlyMessage(Kunden('  private'#10'    FItems: string;'#10'  public'#10 +
     '    property Items[Index: Integer]: string read FItems;'#10, '')));
   // Gegentest PG3 aus Tests/DccFaelle (#1328): keine Überladung passt.
@@ -233,25 +233,25 @@ end;
 
 procedure TPropertyRulesTests.AccessorSignatures;
 begin
-  Assert.AreEqual('GetName passt nicht als Getter von Name; erwartet wird function GetName: string (wie E2234).',
+  Assert.AreEqual('GetName passt nicht als Getter von Name; erwartet wird function GetName: string (wie E2008).',
     OnlyMessage(Kunden('  private'#10'    procedure GetName;'#10'  public'#10'    property Name: string read GetName;'#10,
     '')));
-  Assert.AreEqual('GetName passt nicht als Getter von Name; erwartet wird function GetName: string (wie E2234).',
+  Assert.AreEqual('GetName passt nicht als Getter von Name; erwartet wird function GetName: string (wie E2008).',
     OnlyMessage(Kunden('  private'#10'    function GetName: Integer;'#10'  public'#10 +
     '    property Name: string read GetName;'#10, '')));
   // Indexparameter fehlt.
   Assert.AreEqual('GetItem passt nicht als Getter von Items; erwartet wird function GetItem(Index: Integer): string ' +
-    '(wie E2234).', OnlyMessage(Kunden('  private'#10'    function GetItem: string;'#10'  public'#10 +
+    '(wie E2008).', OnlyMessage(Kunden('  private'#10'    function GetItem: string;'#10'  public'#10 +
     '    property Items[Index: Integer]: string read GetItem;'#10, '')));
   Assert.AreEqual('GetRot passt nicht als Getter von Rot; erwartet wird function GetRot(AIndex: Integer): Integer ' +
-    '(wie E2234).', OnlyMessage(Kunden('  private'#10'    function GetRot: Integer;'#10'  public'#10 +
+    '(wie E2008).', OnlyMessage(Kunden('  private'#10'    function GetRot: Integer;'#10'  public'#10 +
     '    property Rot: Integer index 1 read GetRot;'#10, '')));
   Assert.AreEqual('SetName passt nicht als Setter von Name; erwartet wird procedure SetName(const Value: string) ' +
-    '(wie E2234).', OnlyMessage(Kunden('  private'#10'    FName: string;'#10 +
+    '(wie E2008).', OnlyMessage(Kunden('  private'#10'    FName: string;'#10 +
     '    procedure SetName(const Value: Integer);'#10'  public'#10 +
     '    property Name: string read FName write SetName;'#10, '')));
   Assert.AreEqual('SetName passt nicht als Setter von Name; erwartet wird procedure SetName(const Value: string) ' +
-    '(wie E2234).', OnlyMessage(Kunden('  private'#10'    FName: string;'#10'    function SetName: string;'#10 +
+    '(wie E2008).', OnlyMessage(Kunden('  private'#10'    FName: string;'#10'    function SetName: string;'#10 +
     '  public'#10'    property Name: string read FName write SetName;'#10, '')));
   // Unbekannte Typen (Alias aus einer anderen Unit): keine Aussage.
   Silent(Kunden('  private'#10'    function GetBetrag: TBetrag;'#10'  public'#10 +

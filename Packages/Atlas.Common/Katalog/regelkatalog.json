@@ -2850,11 +2850,12 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "The name after read or write of a property does not fit: it is declared neither in the class nor in its ancestors, or it is a property (like E2168); the getter or setter has the wrong kind, parameters or types (like E2234); the setter takes a var or out parameter (like E2282); the accessor is overloaded and no overload fits (like E2271); a class property uses an instance member or a class method without static (like E2355), or an instance property uses a class var or a static class method (like E2356); an array property uses a field (like E2174, index with a field compiles); a field selector goes through a field that is no record (like E2459), names a member that is no field (like E2461) or a field the record lacks (like E2562). Names are looked up in the file and, for ancestors, in the symbol index; the rule stays silent when the ancestor chain breaks, the name only exists in an inactive branch, the class cannot see it or the class includes files. Types are compared only when both are built in or declared as types of their own. Quick fix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/write, completion.accessorSection).",
+      "description": "The name after read or write of a property does not fit: it is declared neither in the class nor in its ancestors, or it is a property (like E2168); the getter or setter has the wrong kind, parameters or types (like E2008 in Delphi 13, documented as E2234); the setter takes a var or out parameter (like E2282); the accessor is overloaded and no overload fits (like E2271); a class property uses an instance member or a class method without static (like E2355), or an instance property uses a class var or a static class method (like E2356); an array property uses a field (like E2008 in Delphi 13, documented as E2174, index with a field compiles); a field selector goes through a field that is no record (like E2459), names a member that is no field (like E2461) or a field the record lacks (like E2562). Names are looked up in the file and, for ancestors, in the symbol index; the rule stays silent when the ancestor chain breaks, the name only exists in an inactive branch, the class cannot see it or the class includes files. Types are compared only when both are built in or declared as types of their own. Quick fix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/write, completion.accessorSection).",
       "bad": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write SetName;\nend;",
       "good": "TKunde = class\nprivate\n  FName: string;\n  procedure SetName(const Value: string);\npublic\n  property Name: string read FName write SetName;\nend;",
       "compilerCodes": [
         "E2168",
+        "E2008",
         "E2234",
         "E2282",
         "E2271",
@@ -4289,11 +4290,12 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "New (like E2255) or Dispose (like E2256) on a dynamic array, SetLength without a length (like E2246), New with a length on a type that is not a dynamic array (like E2307) and New(TArrayType) without a length (like E2308). Typical for old code that switched from pointers to dynamic arrays. The rule only reports when name resolution knows the variable or type for sure; aliases are followed (TValues = array of Double), TBytes and the other dynamic arrays of the RTL count even without an index; open array parameters and pointers stay silent. Quick fixes: Dispose(A) becomes A := nil, New(A) becomes SetLength(A, 1).",
+      "description": "New (like E2255) or Dispose (like E2008 in Delphi 13, documented as E2256) on a dynamic array, SetLength without a length (like E2246), New with a length on a type that is not a dynamic array (like E2008 in Delphi 13, documented as E2307) and New(TArrayType) without a length (like E2308). Typical for old code that switched from pointers to dynamic arrays. The rule only reports when name resolution knows the variable or type for sure; aliases are followed (TValues = array of Double), TBytes and the other dynamic arrays of the RTL count even without an index; open array parameters and pointers stay silent. Quick fixes: Dispose(A) becomes A := nil, New(A) becomes SetLength(A, 1).",
       "bad": "Dispose(Werte);",
       "good": "Werte := nil;",
       "compilerCodes": [
         "E2255",
+        "E2008",
         "E2256",
         "E2246",
         "E2307",
@@ -4358,6 +4360,25 @@
       "good": "if Liste.Count > 0 then\n  Verarbeiten;",
       "compilerCodes": [
         "E2012"
+      ],
+      "level": "T"
+    },
+    {
+      "id": "type-mismatch",
+      "name": "Incompatible types",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "An assignment, argument, var parameter, operator, typecast or procedural type uses incompatible types, and both types are certain: Integer := 'abc', a class parameter with default 0, a static array := nil, a procedure without result as a value, string + Integer or [1] + ['a'] (like E2010); an operator that is not defined for an operand, such as string - Char, Double div 2, not 'a' or X is Integer (like E2015); a var argument whose type differs from the parameter, such as Byte for Integer (like E2033); Byte(S) of a long string and an ordinal typecast of a floating-point value (like E2089); Inc/Dec with a floating-point or string step and Ptr(S) (like E2008); a routine with another parameter list for a procedural type, or a method for a type without of object and vice versa (like E2009); of overloaded routines none fits the procedural type (like E2010). As in dcc, Result has the type from the interface part, and of two declarations of the same local name the last one counts. Reported only when both sides are certain and their declarations are always compiled with the statement; records (class operator Implicit), Variant, pointers, subranges, generics, overloaded routines and with blocks stay silent. No quick fix: only the developer knows which side is wrong.",
+      "bad": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 'drei';",
+      "good": "var\n  Anzahl: Integer;\nbegin\n  Anzahl := 3;",
+      "compilerCodes": [
+        "E2010",
+        "E2008",
+        "E2009",
+        "E2015",
+        "E2033",
+        "E2089"
       ],
       "level": "T"
     },

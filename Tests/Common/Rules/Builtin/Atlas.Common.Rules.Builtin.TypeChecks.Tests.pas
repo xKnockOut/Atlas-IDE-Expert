@@ -174,7 +174,7 @@ begin
   Found := ArrayFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual(DynamicArrayMisuseRuleId, Found[0].RuleId);
-  Assert.AreEqual('Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2256).', Found[0].Message);
+  Assert.AreEqual('Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2008).', Found[0].Message);
   Assert.AreEqual(17, Found[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
   Assert.AreEqual('Werte := nil', Found[0].Fixes[0].Title);
@@ -216,7 +216,12 @@ begin
   Assert.AreEqual('New für das dynamische Array TWerte braucht mindestens eine Länge (wie E2308).', Found[0].Message);
   Found := ArrayFindings(Werte('  Reihe := New(TPunkt, 3);'#10));
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('New mit Länge erwartet den Typ eines dynamischen Arrays; TPunkt ist keiner (wie E2307).',
+  Assert.AreEqual('New mit Länge erwartet den Typ eines dynamischen Arrays; TPunkt ist keiner (wie E2008).',
+    Found[0].Message);
+  // Eingebauter Typ ohne System im Index (#1369, Fall Cm.E2307).
+  Found := ArrayFindings(Werte('  Liste := New(Integer, 3);'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('New mit Länge erwartet den Typ eines dynamischen Arrays; Integer ist keiner (wie E2008).',
     Found[0].Message);
   Assert.AreEqual(0, Integer(Length(ArrayFindings(Werte('  Reihe := New(TWerte, 3);'#10)))));
 end;

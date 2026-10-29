@@ -555,6 +555,21 @@ end;
 
 /// <summary>Knoten mit Parametern und Ergebnistyp einer Routine: der Kopf einer benannten Routine,
 /// bei einer anonymen Methode der Knoten selbst; nil ohne Kopf.</summary>
+/// <summary>Hat die Deklaration ADeclared dieselben Parametertypen wie die Routine ARoutine des Baums? Dann ist
+/// sie dieselbe Routine und keine andere Überladung.</summary>
+function SameParamTypes(const ADeclared: TResolvedSymbol; ARoutine: TSyntaxNode): Boolean;
+var
+  MinArgs, MaxArgs, Index: Integer;
+  Types: TArray<string>;
+begin
+  TIndexExtractor.ParamInfo(ARoutine, MinArgs, MaxArgs, Types);
+  Result := Length(Types) = Length(ADeclared.ParamTypes);
+  if Result then
+    for Index := 0 to High(Types) do
+      if not SameText(Trim(Types[Index]), Trim(ADeclared.ParamTypes[Index])) then
+        Exit(False);
+end;
+
 function RoutineHeaderOf(ARoutine: TSyntaxNode): TSyntaxNode;
 begin
   if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
@@ -2034,14 +2049,23 @@ var
   Child: TSyntaxNode;
   Name: string;
   Kind: TIndexSymbolKind;
+  Inner: TResolvedSymbol;
 begin
+  // Doppelt deklarierte Variablen und Konstanten (E2004): Wie dcc gilt die letzte Deklaration (#1369, Fall
+  // Cm.E2004: "mZahl: Integer; mZahl: string" macht "mZahl := 1" zu E2010 'string' und 'Integer').
+  Result := False;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Child := ANode[Index];
     case Child.Kind of
       TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
-        if LookupInDeclarations(Child, AName, AResult) then
-          Exit(True);
+        if LookupInDeclarations(Child, AName, Inner) then
+        begin
+          AResult := Inner;
+          if not (Inner.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Constant]) then
+            Exit(True);
+          Result := True;
+        end;
       TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl:
         for Name in Child.Name.Split([',']) do
           if SameText(Name.Trim, AName) then
@@ -2051,16 +2075,16 @@ begin
             else
               Kind := TIndexSymbolKind.Constant;
             AResult := FromNode(Child, Name.Trim, Kind, False);
-            Exit(True);
+            Result := True;
           end;
       TSyntaxKind.TypeDecl:
-        if SameText(Child.Name, AName) then
+        if not Result and SameText(Child.Name, AName) then
         begin
           AResult := FromNode(Child, Child.Name, TIndexSymbolKind.TypeAlias, False);
           Exit(True);
         end;
       TSyntaxKind.RoutineDecl:
-        if SameText(Child.Name, AName) then
+        if not Result and SameText(Child.Name, AName) then
         begin
           AResult := FromNode(Child, Child.Name, TIndexSymbolKind.Routine, False);
           Exit(True);
@@ -2069,7 +2093,6 @@ begin
       // Übrige Werte bewusst ohne Wirkung.
     end;
   end;
-  Result := False;
 end;
 
 function TNameResolver.IsForVar(ANode: TSyntaxNode): Boolean;
@@ -2129,6 +2152,7 @@ var
   Routine, Header, Params, Param: TSyntaxNode;
   Index: Integer;
   Name: string;
+  Declared: TResolvedSymbol;
 begin
   for Routine in EnclosingRoutines do
   begin
@@ -2155,6 +2179,16 @@ begin
       begin
         AResult := FromNode(Header, 'Result', TIndexSymbolKind.Variable, False);
         AResult.SelectionRange := AResult.Range;
+        // Weicht der Kopf im implementation-Teil vom interface-Teil ab (E2037), gilt wie bei dcc der
+        // Ergebnistyp aus dem interface-Teil (#1369, Fall Cm.E2037).
+        if (Routine.Parent <> nil) and (Routine.Parent.Kind = TSyntaxKind.ImplementationSection) and
+          (Pos('.', Routine.Name) = 0) and LookupInUnit(FCurrent, Routine.Name, True, False, Declared) and
+          (Declared.SymbolKind = TIndexSymbolKind.Routine) and (Declared.TypeName <> '') and
+          not ContainsText(Declared.Signature, 'overload') and SameParamTypes(Declared, Routine) then
+        begin
+          AResult.TypeName := Declared.TypeName;
+          AResult.TypeArgs := Declared.TypeArgs;
+        end;
         Exit(True);
       end;
     end;
@@ -2533,8 +2567,10 @@ begin
         begin
           if (ANode.ChildCount = 0) or not ExprSymbol(ANode[0], Base) then
             Exit;
-          // Liste.Items[i]: die indizierte Property selbst.
-          if (Base.SymbolKind = TIndexSymbolKind.Property_) and (Base.MaxArgs > 0) then
+          // Liste.Items[i]: die indizierte Property selbst. Bei Lines[i][j] ist Base schon der Wert von Lines[i]
+          // (ein string), nicht die Property (#1369, SynEdit).
+          if (Base.SymbolKind = TIndexSymbolKind.Property_) and (Base.MaxArgs > 0) and
+            (ANode[0].Kind <> TSyntaxKind.IndexAccess) then
           begin
             AResult := Base;
             Exit(True);
