@@ -31,6 +31,11 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
+- Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.
+- 466 Fälle, 914 Builds (Win32 und Win64), 38,5 min; kein Build mit ok=False ohne lesbare dcc-Zeile. Erwarteter Code in 604 Builds; 109 Builds ohne jede Meldung (u. a. alle W1201–W1208: Routinen nur im Implementation-Teil, die XML-Datei bleibt leer); der Rest meldet einen anderen Code (oft E2029/F2063).
+- Vergleich (`Tools/Compare-Compilermeldungen.py`): 469 dcc-Codes, 216 von Atlas erkannt (standard 214), 77 anderer Code, 176 verpasst, 168 zusätzliche Treffer.
+- Skript: `cc.ps1 start` nimmt keine Argumente (eigener Start mit `CLAUDE_COMPILE_OWNED=1`); `build -Project` baut nur offene Projekte (erzeugte `.groupproj` mit Targets, sonst lädt die IDE sie leer); `open` antwortet vor dem Laden; `--doc` = `DCC_OutputXMLDocumentation`. Die IDE hängte beim Bauen an `Cm.E2057.pas` eine Leerzeile an (zurückgesetzt).
 ## Doku-Abgleich für v1.2 (29.10.2026, Branch `claude/project-thread-h7jqt8`)
 - Auf Prep-v1.2.0 (3de2f45c) geprüft: README/README_DE, CHANGELOG, Installation, RAD-Studio, Release, Architektur, ADRs, Testfälle. Erzeugte Doku (Konfiguration, Einstellungen, Regelkatalog, Architekturkarte, Tipps) war laut CI-Lauf „Package-Abhängigkeiten“ auf 3de2f45c aktuell.
 - **Installer-Reste nachgezogen:** README (Schnellstart, Bauen, Lizenz), `docs/Installation.md` (Release-Paket von Hand einbinden), `docs/RAD-Studio.md`, `docs/Release.md`, `docs/Architektur.md`, `Einstellungen.md` samt Text in `Tools/Update-ConfigDoc.ps1`; ADR 0009 ersetzt durch **ADR 0016** (kein Installer). `release.yml` baut, signiert und packt kein `AtlasSetup.exe` mehr (Win32-Schritt prüft jetzt die BPL); mit Delphi-Runner noch ungetestet.
