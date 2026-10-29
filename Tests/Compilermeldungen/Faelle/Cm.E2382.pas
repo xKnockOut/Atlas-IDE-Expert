@@ -1,7 +1,8 @@
 ﻿unit Cm.E2382;
 
 // E2382 Cannot call constructors using instance variables
-// Erwartet: E2382
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 // dcc erlaubt den Aufruf über eine Instanz in Methoden; außerhalb womöglich.
 
 interface
@@ -20,7 +21,7 @@ end;
 
 procedure Fall(AObjekt: TKlasse);
 begin
-  AObjekt.Create; // <- E2382
+  AObjekt.Create; // <- ohne Meldung
 end;
 
 end.

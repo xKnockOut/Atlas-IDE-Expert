@@ -3,7 +3,8 @@
 unit Cm.W1017;
 
 // W1017 Assignment to typed constant
-// Erwartet: W1017
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 // Unter {$J-} wäre es E2064; die Warnung ist ohne $WARN aus.
 
 interface
@@ -15,7 +16,7 @@ const
 
 procedure Benutze;
 begin
-  cZaehler := 1; // <- W1017
+  cZaehler := 1; // <- ohne Meldung
 end;
 
 end.

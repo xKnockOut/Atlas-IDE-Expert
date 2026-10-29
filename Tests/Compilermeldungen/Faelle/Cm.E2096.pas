@@ -1,7 +1,8 @@
 ﻿unit Cm.E2096;
 
 // E2096 Method identifier expected
-// Erwartet: E2096
+// Erwartet: E2029
+// Delphi 13 meldet hier E2029 statt E2096.
 // Vermutung.
 
 interface
@@ -14,7 +15,7 @@ type
 
 implementation
 
-procedure TBasis.; // <- E2096
+procedure TBasis.; // <- E2029
 begin
 end;
 

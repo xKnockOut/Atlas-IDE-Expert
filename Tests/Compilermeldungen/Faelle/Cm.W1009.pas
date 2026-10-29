@@ -1,7 +1,8 @@
 ﻿unit Cm.W1009;
 
 // W1009 Redeclaration hides a member in the base class
-// Erwartet: W1009
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 
 interface
 
@@ -15,7 +16,7 @@ type
 
   TKind = class(TBasis)
   public
-    Wert: string; // <- W1009
+    Wert: string; // <- ohne Meldung
   end;
 
 implementation

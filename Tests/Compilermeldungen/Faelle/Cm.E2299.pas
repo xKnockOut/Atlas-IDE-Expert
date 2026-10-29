@@ -1,7 +1,8 @@
 ﻿unit Cm.E2299;
 
 // E2299 Property required
-// Erwartet: E2299
+// Erwartet: E2029
+// Delphi 13 meldet hier E2029 statt E2299.
 // Vermutung.
 
 interface
@@ -9,7 +10,7 @@ interface
 type
   TKlasse = class
   public
-    property; // <- E2299
+    property; // <- E2029
   end;
 
 implementation

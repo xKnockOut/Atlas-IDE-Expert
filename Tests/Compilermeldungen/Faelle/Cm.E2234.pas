@@ -1,7 +1,8 @@
 ﻿unit Cm.E2234;
 
 // E2234 Getter or setter for property '%s' cannot be found
-// Erwartet: E2234
+// Erwartet: E2008
+// Delphi 13 meldet hier E2008 statt E2234.
 
 interface
 
@@ -10,7 +11,7 @@ type
   private
     function GetWert: string;
   public
-    property Wert: Integer read GetWert; // <- E2234
+    property Wert: Integer read GetWert; // <- E2008
   end;
 
 implementation

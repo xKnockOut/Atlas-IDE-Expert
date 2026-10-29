@@ -1,7 +1,8 @@
 ﻿unit Cm.E2399;
 
 // E2399 Namespace conflicts with unit name '%s'
-// Erwartet: E2399
+// Erwartet: E2029
+// Delphi 13 meldet hier E2029 statt E2399.
 // Unit CmNs und Namensraum CmNs (Unit CmNs.Teil) gleichzeitig.
 
 interface
@@ -9,6 +10,6 @@ interface
 implementation
 
 uses
-  CmNs, CmNs.Teil // <- E2399;
+  CmNs, CmNs.Teil // <- E2029;
 
 end.

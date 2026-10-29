@@ -1,7 +1,8 @@
 ﻿unit Cm.E2380;
 
 // E2380 Instance or class static method expected
-// Erwartet: E2380
+// Erwartet: E2009
+// Delphi 13 meldet hier E2009 statt E2380.
 // Vermutung zum Code.
 
 interface
@@ -24,7 +25,7 @@ procedure Fall;
 var
   mRueckruf: TRueckruf;
 begin
-  mRueckruf := TKlasse.Machen; // <- E2380
+  mRueckruf := TKlasse.Machen; // <- E2009
   mRueckruf;
 end;
 

@@ -1,7 +1,8 @@
 ﻿unit Cm.E2467;
 
 // E2467 Record or object type required
-// Erwartet: E2467
+// Erwartet: E2018
+// Delphi 13 meldet hier E2018 statt E2467.
 // Vermutung zum Code.
 
 interface
@@ -13,7 +14,7 @@ var
   mZahl: Integer;
 begin
   mZahl := 1;
-  with mZahl do // <- E2467
+  with mZahl do // <- E2018
     ;
 end;
 

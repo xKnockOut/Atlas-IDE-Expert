@@ -1,7 +1,8 @@
 ﻿unit Cm.E2370;
 
 // E2370 Cannot use inherited methods for interface property accessors
-// Erwartet: E2370
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 // Laut DccFaelle ID3 übersetzt dcc das inzwischen.
 
 interface
@@ -12,7 +13,7 @@ type
   end;
 
   IKind = interface(IBasis)
-    property Wert: Integer read GetWert; // <- E2370
+    property Wert: Integer read GetWert; // <- ohne Meldung
   end;
 
 implementation

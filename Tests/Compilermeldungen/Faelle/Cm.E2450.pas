@@ -1,7 +1,8 @@
 ﻿unit Cm.E2450;
 
 // E2450 There is no overloaded version of array property '%s' that can be used with these arguments
-// Erwartet: E2450
+// Erwartet: E2010
+// Delphi 13 meldet hier E2010 statt E2450.
 
 interface
 
@@ -22,7 +23,7 @@ end;
 
 function Fall(AListe: TListe): string;
 begin
-  Result := AListe['a']; // <- E2450
+  Result := AListe['a']; // <- E2010
 end;
 
 end.

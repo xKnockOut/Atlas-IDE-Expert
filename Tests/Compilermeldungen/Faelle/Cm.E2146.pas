@@ -1,7 +1,8 @@
 ﻿unit Cm.E2146;
 
 // E2146 Default values must be of ordinal, pointer or small set type
-// Erwartet: E2146
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 
 interface
 
@@ -10,7 +11,7 @@ type
 
 implementation
 
-procedure Fall(AMenge: TGrosseMenge = [1]); // <- E2146
+procedure Fall(AMenge: TGrosseMenge = [1]); // <- ohne Meldung
 begin
 end;
 

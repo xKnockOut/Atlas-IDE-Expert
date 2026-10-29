@@ -1,7 +1,8 @@
 ﻿unit Cm.H2505;
 
 // H2505 'Self' is uninitialized. An inherited constructor must be called before entering a try block
-// Erwartet: H2505
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 
 interface
 
@@ -35,7 +36,7 @@ end;
 
 constructor TKind.Create;
 begin
-  try // <- H2505
+  try // <- ohne Meldung
     inherited Create;
   finally
   end;

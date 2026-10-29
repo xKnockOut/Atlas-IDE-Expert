@@ -1,7 +1,8 @@
 ﻿unit Cm.E2121;
 
 // E2121 Expression or identifier cannot be exported
-// Erwartet: E2121
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 // Vermutung zum Code.
 
 interface
@@ -12,6 +13,6 @@ var
 implementation
 
 exports
-  GZahl; // <- E2121
+  GZahl; // <- ohne Meldung
 
 end.

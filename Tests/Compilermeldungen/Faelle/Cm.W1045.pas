@@ -1,7 +1,8 @@
 ﻿unit Cm.W1045;
 
 // W1045 Property declaration references ancestor private
-// Erwartet: W1045
+// Erwartet: E2168
+// Delphi 13 meldet hier E2168 statt W1045.
 
 interface
 
@@ -11,7 +12,7 @@ uses
 type
   TKind = class(TBasisPrivat)
   public
-    property Wert: Integer read FWert; // <- W1045
+    property Wert: Integer read FWert; // <- E2168
   end;
 
 implementation

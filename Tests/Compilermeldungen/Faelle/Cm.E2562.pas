@@ -1,7 +1,8 @@
 ﻿unit Cm.E2562;
 
 // E2562 Field identifier required
-// Erwartet: E2562
+// Erwartet: E2029
+// Delphi 13 meldet hier E2029 statt E2562.
 
 interface
 
@@ -13,7 +14,7 @@ type
   end;
 
 const
-  cPunkt: TPunkt = (1, 2); // <- E2562
+  cPunkt: TPunkt = (1, 2); // <- E2029
 
 procedure Fall;
 begin

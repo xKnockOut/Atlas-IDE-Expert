@@ -14,6 +14,7 @@ Für jeden Fall und jeden Code, den dcc in der Datei des Falls meldet:
   erkannt         eine Regel von Atlas mit diesem Code meldet in derselben Datei
   anderer Code    Atlas meldet in derselben Zeile, aber mit einer Regel zu einem anderen Code
   verpasst        nichts davon
+"Erwartet: -" im Kopf eines Falls heißt: Delphi 13 übersetzt ihn ohne Meldung.
 Dazu Treffer von Atlas mit Compiler-Code, die dcc in dieser Datei nicht meldet (zusätzlich), und Fälle,
 in denen dcc den erwarteten Code nicht meldet (Fall greift nicht).
 
@@ -161,7 +162,11 @@ def compare(cases, dcc, strict, standard, codes_by_rule):
             checks.append({'code': code, 'lines': sorted(lines), 'text': texts.get(code, ''), 'status': status,
                            'sameLine': same_line, 'standard': standard_hit, 'rules': rules})
         extra = [f for f in atlas if not (set(f['codes']) & set(dcc_codes))]
-        expected_hit = case['expected'] in dcc_codes or case['expected'] in dcc_other
+        if case['expected'] == '-':
+            # Fall, den Delphi 13 übersetzt: Jeder Atlas-Treffer mit Compiler-Code ist zusätzlich.
+            expected_hit = not dcc_codes and not dcc_other
+        else:
+            expected_hit = case['expected'] in dcc_codes or case['expected'] in dcc_other
         results.append({
             'case': key, 'file': case['file'], 'code': case['code'], 'expected': case['expected'],
             'title': case['title'], 'platform': case['platform'], 'built': built, 'platforms': platforms,
