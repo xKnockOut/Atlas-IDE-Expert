@@ -145,6 +145,7 @@ type
     procedure MarkCyclesClick(Sender: TObject);
     procedure SubsystemsClick(Sender: TObject);
     procedure SubsystemItemClick(Sender: TObject);
+    procedure FoundationEdgesClick(Sender: TObject);
     procedure ShowAllClick(Sender: TObject);
     procedure CentralColumnClick(Sender: TObject; Column: TListColumn);
     procedure CentralDblClick(Sender: TObject);
@@ -180,6 +181,9 @@ type
     procedure OpenLink(const ALink: TAtlasArchLink);
     /// <summary>Menü „Teilsysteme ▾“ neu aufbauen: je Teilsystem ein Haken, dazu „Alle einblenden“.</summary>
     procedure FillSubsystemsMenu;
+    /// <summary>Zeile eines Teilsystems in Menü und Reiter: Name, Units, Zusammenhalt (Fundament ohne, #1365).
+    /// </summary>
+    function SubsystemCaption(ASubsystem: Integer): string;
     /// <summary>Zeile für Zeile der Text einer Liste bzw. eines Baums (für Tests und Bildschirmleser).</summary>
     function CentralText: TArray<string>;
     function SubsystemText: TArray<string>;
@@ -811,12 +815,14 @@ begin
           Members := Members + [Member];
       if Length(Members) = 0 then
         Continue;
-      Line := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine,
-        [Subsystem.Name, Length(Subsystem.Units), Round(Subsystem.Cohesion * 100)]);
+      Line := SubsystemCaption(Index);
       if Subsystem.Parent <> '' then
         Line := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemPart, [Line, Subsystem.Parent]);
       Group := FSubsystems.Items.Add(nil, Line);
       Group.Data := nil;
+      // Regel des Fundaments (#1365) als erste Zeile.
+      if Subsystem.Foundation then
+        FSubsystems.Items.AddChild(Group, TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationRule)).Data := nil;
       for Member in FModel.Sorted(Members, TAtlasArchColumn.Total, True) do
       begin
         Line := FModel.Units[Member].Name;
@@ -1237,8 +1243,7 @@ begin
   mFamily := '';
   for Index in FModel.LegendOrder do
   begin
-    mCaption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine, [FModel.Subsystems[Index].Name,
-      Length(FModel.Subsystems[Index].Units), Round(FModel.Subsystems[Index].Cohesion * 100)]);
+    mCaption := SubsystemCaption(Index);
     if FModel.Subsystems[Index].Parent = '' then
       mFamily := ''
     else
@@ -1268,6 +1273,16 @@ begin
   if FSubsystemsMenu.Items.Count = 0 then
     Exit;
   FSubsystemsMenu.Items.NewBottomLine;
+  // Kanten zum Fundament (#1365) ein- und ausblenden.
+  if FModel.HasFoundation then
+  begin
+    Item := TMenuItem.Create(FSubsystemsMenu);
+    Item.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationEdges);
+    Item.Checked := FMap.ShowFoundationEdges;
+    Item.Tag := -1;
+    Item.OnClick := FoundationEdgesClick;
+    FSubsystemsMenu.Items.Add(Item);
+  end;
   Item := TMenuItem.Create(FSubsystemsMenu);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureShowAll);
   Item.OnClick := ShowAllClick;
@@ -1281,6 +1296,25 @@ begin
   FillSubsystemsMenu;
   Point := FSubsystemsButton.ClientToScreen(System.Types.Point(0, FSubsystemsButton.Height));
   FSubsystemsMenu.Popup(Point.X, Point.Y);
+end;
+
+procedure TAtlasArchitectureFrame.FoundationEdgesClick(Sender: TObject);
+var
+  mItem: TMenuItem;
+begin
+  mItem := Sender as TMenuItem;
+  FMap.ShowFoundationEdges := not FMap.ShowFoundationEdges;
+  mItem.Checked := FMap.ShowFoundationEdges;
+end;
+
+function TAtlasArchitectureFrame.SubsystemCaption(ASubsystem: Integer): string;
+begin
+  if FModel.Subsystems[ASubsystem].Foundation then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureFoundationLine, [FModel.Subsystems[ASubsystem].Name,
+      Length(FModel.Subsystems[ASubsystem].Units)])
+  else
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine, [FModel.Subsystems[ASubsystem].Name,
+      Length(FModel.Subsystems[ASubsystem].Units), Round(FModel.Subsystems[ASubsystem].Cohesion * 100)]);
 end;
 
 procedure TAtlasArchitectureFrame.SubsystemItemClick(Sender: TObject);
