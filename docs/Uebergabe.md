@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Feinheit der Teilsysteme (#1366, AG3, 29.10.2026, Branch `feature/1366-aufloesung`)
+- Louvain mit Auflösung γ (`TLouvain.Communities`/`Modularity` mit `AResolution`, ohne = 1,0 wie bisher). `TArchitectureGrouping` (Overview) trägt γ durch Anfrage (`Key`), Übersicht, Bericht (Kopf, JSON `grouping`), gespeicherten Stand und Vergleich (Hinweis bei anderem γ). Die nächsten Gruppierungs-Issues (#1364, #1365, #1367, #1368) erweitern diesen Record und `TAtlasArchitectureOptions` im Plugin.
+- Einstellung `architecture.grouping` (`resolution` 0,2–5,0, `showResolutionSlider`), global. Das Plugin liest und schreibt sie direkt in `settings.json` (`TAtlasArchitectureGroupingSettings`), nicht über Registry oder geroutete Einstellungen; das Fenster schickt `resolution` in jeder Anfrage mit, damit der Zeitpunkt des Neuladens beim Server egal ist.
+- Regler `TAtlasResolutionSlider` (UI.Architecture.Slider): logarithmisch (`TAtlasArchResolution`, 100 Schritte), meldet erst beim Loslassen. Unter FPC nur Server- und Kerntests gelaufen (Architektur 68, Konfiguration 77 grün); Frame- und Reglertests nur mit Delphi. Handtests AF1–AF10.
+- Konfiguration.md, Einstellungen.md und ScopeData von Hand nachgezogen (pwsh fehlt in der Cloud); beim nächsten `pwsh Tools/Update-ConfigDoc.ps1` gegenprüfen.
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.

@@ -29,6 +29,9 @@ type
     procedure SavesAndLoadsFile;
     [Test]
     procedure CycleKeyIgnoresStart;
+    /// <summary>Feinheit γ (#1366) im Stand; Stände ohne "grouping" gelten als 1,0.</summary>
+    [Test]
+    procedure KeepsGroupingAndReadsOlderStates;
   end;
 
 /// <summary>Units der Berichtstests: drei Namensräume, ein Zyklus über implementation in Data.</summary>
@@ -223,6 +226,25 @@ begin
   Second := Default(TSnapshotCycle);
   Second.Units := TArray<string>.Create('a', 'B', 'C');
   Assert.AreEqual(First.Key, Second.Key);
+end;
+
+procedure TArchitectureSnapshotTests.KeepsGroupingAndReadsOlderStates;
+var
+  mOverview: TArchitectureOverview;
+  mSnapshot, mRead: TArchitectureSnapshot;
+  mText, mError: string;
+begin
+  mOverview := ArchitectureOverviewOf(ArchitectureSampleUnits);
+  mOverview.Grouping.Resolution := 0.5;
+  mSnapshot := TArchitectureSnapshots.FromOverview(mOverview);
+  mText := TArchitectureSnapshots.Json(mSnapshot);
+  Assert.Contains(mText, '"grouping": {"resolution": 0.5},');
+  Assert.IsTrue(TArchitectureSnapshots.Parse(mText, mRead, mError), mError);
+  Assert.AreEqual(Double(0.5), mRead.Grouping.Resolution, 1E-9);
+  // Älterer Stand ohne "grouping".
+  mText := StringReplace(mText, '"grouping": {"resolution": 0.5},', '', []);
+  Assert.IsTrue(TArchitectureSnapshots.Parse(mText, mRead, mError), mError);
+  Assert.AreEqual(Double(1), mRead.Grouping.Resolution, 1E-9);
 end;
 
 initialization
