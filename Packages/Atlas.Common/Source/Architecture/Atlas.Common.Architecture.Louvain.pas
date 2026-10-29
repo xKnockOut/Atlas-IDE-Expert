@@ -12,6 +12,10 @@
 //   die Gruppe mit der kleineren Nummer; ein Wechsel braucht echten Gewinn.
 // - Ergebnis: Gruppennummer je Knoten, fortlaufend ab 0 in der Reihenfolge
 //   des ersten Knotens der Gruppe.
+// - Auflösung γ (#1366): Der Gewinn eines Wechsels ist Kanten zur Zielgruppe
+//   − γ · Grad der Zielgruppe · Grad des Knotens / 2m. γ > 1 ergibt mehr und
+//   kleinere Gruppen, γ < 1 weniger und größere; 1 ist die klassische
+//   Modularität.
 
 interface
 
@@ -29,10 +33,17 @@ type
   public
     /// <summary>Gruppe je Knoten 0..ANodeCount-1. Kanten mit A = B oder Gewicht &lt;= 0 zählen nicht; doppelte
     /// Kanten addieren sich.</summary>
-    class function Communities(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>): TArray<Integer>; static;
+    class function Communities(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>): TArray<Integer>;
+      overload; static;
+    /// <summary>Wie oben mit Auflösung AResolution (γ, größer 0; 1 = wie oben).</summary>
+    class function Communities(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>;
+      AResolution: Double): TArray<Integer>; overload; static;
     /// <summary>Modularität einer Einteilung (zum Prüfen und für Tests).</summary>
     class function Modularity(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>;
-      const ACommunities: TArray<Integer>): Double; static;
+      const ACommunities: TArray<Integer>): Double; overload; static;
+    /// <summary>Wie oben mit Auflösung AResolution: Summe je Gruppe Innen/2m − γ · (Grad/2m)².</summary>
+    class function Modularity(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>;
+      const ACommunities: TArray<Integer>; AResolution: Double): Double; overload; static;
   end;
 
 implementation
@@ -117,8 +128,9 @@ begin
   end;
 end;
 
-/// <summary>Stufe 1 auf AGraph: Gruppe je Knoten; True, wenn sich etwas bewegt hat.</summary>
-function MoveNodes(const AGraph: TLevelGraph; var ACommunity: TArray<Integer>): Boolean;
+/// <summary>Stufe 1 auf AGraph mit Auflösung AResolution: Gruppe je Knoten; True, wenn sich etwas bewegt hat.
+/// </summary>
+function MoveNodes(const AGraph: TLevelGraph; AResolution: Double; var ACommunity: TArray<Integer>): Boolean;
 var
   Count, Node, Best, Current, Candidate, Index: Integer;
   Tot: TArray<Double>;
@@ -161,14 +173,14 @@ begin
         if not Links.TryGetValue(Current, Weight) then
           Weight := 0;
         Best := Current;
-        BestGain := Weight - Tot[Current] * Ki / TwoM;
+        BestGain := Weight - AResolution * Tot[Current] * Ki / TwoM;
         TArray.Sort<Integer>(Candidates);
         for Index := 0 to High(Candidates) do
         begin
           Candidate := Candidates[Index];
           if Candidate = Current then
             Continue;
-          Gain := Links[Candidate] - Tot[Candidate] * Ki / TwoM;
+          Gain := Links[Candidate] - AResolution * Tot[Candidate] * Ki / TwoM;
           if Gain > BestGain + Epsilon then
           begin
             BestGain := Gain;
@@ -251,6 +263,12 @@ end;
 { TLouvain }
 
 class function TLouvain.Communities(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>): TArray<Integer>;
+begin
+  Result := Communities(ANodeCount, AEdges, 1);
+end;
+
+class function TLouvain.Communities(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>;
+  AResolution: Double): TArray<Integer>;
 var
   Graph: TLevelGraph;
   Level: TArray<Integer>;
@@ -268,7 +286,7 @@ begin
     SetLength(Level, Count);
     for Node := 0 to Count - 1 do
       Level[Node] := Node;
-    if not MoveNodes(Graph, Level) then
+    if not MoveNodes(Graph, AResolution, Level) then
       Break;
     Merged := Renumber(Level);
     // Zuordnung der ursprünglichen Knoten nachführen.
@@ -285,6 +303,12 @@ end;
 
 class function TLouvain.Modularity(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>;
   const ACommunities: TArray<Integer>): Double;
+begin
+  Result := Modularity(ANodeCount, AEdges, ACommunities, 1);
+end;
+
+class function TLouvain.Modularity(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>;
+  const ACommunities: TArray<Integer>; AResolution: Double): Double;
 var
   Graph: TLevelGraph;
   Node, Count: Integer;
@@ -311,7 +335,7 @@ begin
         Inside[ACommunities[Node]] := Inside[ACommunities[Node]] + Neighbor.Weight;
   end;
   for Community := 0 to Count - 1 do
-    Result := Result + Inside[Community] / Graph.Total - Sqr(Tot[Community] / Graph.Total);
+    Result := Result + Inside[Community] / Graph.Total - AResolution * Sqr(Tot[Community] / Graph.Total);
 end;
 
 end.

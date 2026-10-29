@@ -2,7 +2,8 @@
 
 // Tests der Architekturübersicht (#1118): Teilsysteme mit Namen,
 // Zusammenhalt, Ausreißer, zentrale Units mit Rolle, Zyklen,
-// Querverbindungen mit Fundstelle, Steckbrief, Determinismus, Laufzeit.
+// Querverbindungen mit Fundstelle, Steckbrief, Determinismus, Laufzeit;
+// Feinheit γ der Gruppierung (#1366).
 
 interface
 
@@ -32,6 +33,12 @@ type
     [Test]
     [Category('Benchmark')]
     procedure TwoThousandUnitsAreFast;
+    [Test]
+    procedure ResolutionOneMatchesDefault;
+    [Test]
+    procedure SmallResolutionMergesNeighbours;
+    [Test]
+    procedure GroupingIsClampedAndKeyed;
   end;
 
 implementation
@@ -72,6 +79,31 @@ begin
   finally
     Graph.Free;
   end;
+end;
+
+function AnalyzeWith(const AUnits: TArray<TUnitIndex>; AResolution: Double): TArchitectureOverview;
+var
+  mGraph: TUsesGraph;
+  mGrouping: TArchitectureGrouping;
+begin
+  mGrouping := TArchitectureGrouping.Default;
+  mGrouping.Resolution := AResolution;
+  mGraph := TUsesGraph.Create(AUnits, TUsesGraphOptions.Default);
+  try
+    Result := TArchitectureAnalyzer.Analyze(mGraph, nil, 10, mGrouping);
+  finally
+    mGraph.Free;
+  end;
+end;
+
+/// <summary>Zwei Dreiergruppen A und B, die über drei interface-Kanten eng verbunden sind.</summary>
+function TwoCoupledGroups: TArray<TUnitIndex>;
+begin
+  Result := nil;
+  Result := Result + [UsesUnit('X.A.One', nil, nil), UsesUnit('X.A.Two', ['X.A.One'], nil),
+    UsesUnit('X.A.Three', ['X.A.One', 'X.A.Two'], nil)];
+  Result := Result + [UsesUnit('X.B.One', ['X.A.One'], nil), UsesUnit('X.B.Two', ['X.B.One', 'X.A.Two'], nil),
+    UsesUnit('X.B.Three', ['X.B.One', 'X.B.Two', 'X.A.Three'], nil)];
 end;
 
 function SubsystemOf(const AOverview: TArchitectureOverview; const AUnit: string): string;
@@ -290,6 +322,55 @@ begin
   Assert.IsTrue(Watch.ElapsedMilliseconds < 2000, Format('%d ms', [Watch.ElapsedMilliseconds]));
   Assert.AreEqual(2000, Integer(Length(Overview.Units)));
   Assert.IsTrue(Length(Overview.Subsystems) >= 10, IntToStr(Length(Overview.Subsystems)));
+end;
+
+procedure TOverviewTests.ResolutionOneMatchesDefault;
+var
+  mDefault, mOne: TArchitectureOverview;
+  mIndex: Integer;
+begin
+  mDefault := Analyze(Project);
+  mOne := AnalyzeWith(Project, 1);
+  Assert.AreEqual(Integer(Length(mDefault.Subsystems)), Integer(Length(mOne.Subsystems)));
+  for mIndex := 0 to High(mDefault.Units) do
+    Assert.AreEqual(mDefault.Units[mIndex].Subsystem, mOne.Units[mIndex].Subsystem, mDefault.Units[mIndex].Name);
+  Assert.AreEqual(Double(1), mDefault.Grouping.Resolution, 1E-9);
+  Assert.IsFalse(mDefault.Grouping.ResolutionChanged);
+end;
+
+procedure TOverviewTests.SmallResolutionMergesNeighbours;
+var
+  mOverview: TArchitectureOverview;
+begin
+  Assert.AreEqual(2, Integer(Length(AnalyzeWith(TwoCoupledGroups, 1).Subsystems)));
+  mOverview := AnalyzeWith(TwoCoupledGroups, 0.2);
+  Assert.AreEqual(1, Integer(Length(mOverview.Subsystems)));
+  Assert.AreEqual(Double(0.2), mOverview.Grouping.Resolution, 1E-9);
+  Assert.IsTrue(mOverview.Grouping.ResolutionChanged);
+  // Fein: nie weniger Teilsysteme als mit 1,0.
+  Assert.IsTrue(Length(AnalyzeWith(Project, 5).Subsystems) >= Length(Analyze(Project).Subsystems));
+end;
+
+procedure TOverviewTests.GroupingIsClampedAndKeyed;
+var
+  mGrouping: TArchitectureGrouping;
+begin
+  mGrouping := TArchitectureGrouping.Default;
+  mGrouping.Resolution := 0.05;
+  Assert.AreEqual(Double(0.2), mGrouping.Clamped.Resolution, 1E-9);
+  mGrouping.Resolution := 9;
+  Assert.AreEqual(Double(5), mGrouping.Clamped.Resolution, 1E-9);
+  mGrouping.Resolution := 0;
+  Assert.AreEqual(Double(1), mGrouping.Clamped.Resolution, 1E-9);
+  Assert.AreEqual(TArchitectureGrouping.Default.Key, mGrouping.Key);
+  mGrouping.Resolution := 1.5;
+  Assert.AreNotEqual(TArchitectureGrouping.Default.Key, mGrouping.Key);
+  Assert.AreEqual('1,5', TArchitectureGrouping.ResolutionText(1.5));
+  Assert.AreEqual('2,0', TArchitectureGrouping.ResolutionText(2));
+  Assert.IsTrue(TArchitectureGrouping.ValidResolution(0.2));
+  Assert.IsTrue(TArchitectureGrouping.ValidResolution(5));
+  Assert.IsFalse(TArchitectureGrouping.ValidResolution(0.19));
+  Assert.IsFalse(TArchitectureGrouping.ValidResolution(5.01));
 end;
 
 initialization

@@ -23,7 +23,7 @@
 //
 // JSON (Json, in der Antwort von atlas.architecture unter "comparison" und in
 // den Daten des HTML-Berichts):
-//   {"baseline": {"title": "Projekt", "units": 12, "edges": 30},
+//   {"baseline": {"title": "Projekt", "units": 12, "edges": 30, "resolution": 1}, "resolution": 1,
 //    "kinds": ["newCycle"], "failOn": ["newCycle"], "failed": ["newCycle"],
 //    "newCycles": [{"interfaceOnly": false, "units": ["A", "B"]}], "removedCycles": [],
 //    "newCrossLinks": [{"source": "A", "target": "C", "section": "implementation",
@@ -34,6 +34,9 @@
 //    "newUnits": ["F"], "removedUnits": [],
 //    "addedEdges": [["A", "B", "i"]], "droppedEdges": [["B", "C", "m"]]}
 // "from"/"to": Teilsystem im neuen Stand (neue Kanten) bzw. im alten (entfernte).
+// Gruppierung (#1366): "baseline" nennt die Feinheit γ des gespeicherten Stands ("resolution"), "resolution"
+// die des aktuellen. Weichen sie ab, nennen Text, Markdown und HTML-Bericht das als Hinweis: Teilsystemwechsel
+// können dann allein daher kommen.
 
 interface
 
@@ -84,6 +87,9 @@ type
     BaselineTitle: string;
     BaselineUnits: Integer;
     BaselineEdges: Integer;
+    /// <summary>Gruppierung des gespeicherten bzw. des aktuellen Stands (#1366).</summary>
+    BaselineGrouping: TArchitectureGrouping;
+    Grouping: TArchitectureGrouping;
     NewCycles: TArray<TComparisonCycle>;
     RemovedCycles: TArray<TComparisonCycle>;
     NewCrossLinks: TArray<TComparisonEdge>;
@@ -105,6 +111,10 @@ type
     function IsEmpty: Boolean;
     /// <summary>Altes Teilsystem zum neuen ANewName; '' ohne Zuordnung.</summary>
     function MatchOf(const ANewName: string): string;
+    /// <summary>Die beiden Stände wurden mit verschiedener Feinheit γ gerechnet (#1366).</summary>
+    function ResolutionDiffers: Boolean;
+    /// <summary>Hinweis auf verschiedene Feinheit; '' bei gleicher.</summary>
+    function GroupingNote: string;
   end;
 
   TArchitectureComparer = class
@@ -180,6 +190,21 @@ begin
 end;
 
 { TArchitectureComparison }
+
+function TArchitectureComparison.ResolutionDiffers: Boolean;
+begin
+  Result := not TArchitectureGrouping.SameResolution(BaselineGrouping.Clamped.Resolution, Grouping.Clamped.Resolution);
+end;
+
+function TArchitectureComparison.GroupingNote: string;
+begin
+  Result := '';
+  if ResolutionDiffers then
+    Result := 'Hinweis: Der gespeicherte Stand wurde mit Feinheit γ = ' +
+      TArchitectureGrouping.ResolutionText(BaselineGrouping.Clamped.Resolution) + ' gerechnet, der aktuelle mit γ = ' +
+      TArchitectureGrouping.ResolutionText(Grouping.Clamped.Resolution) +
+      '; Teilsystemwechsel können daher kommen.';
+end;
 
 function TArchitectureComparison.Kinds: TArchitectureFailKinds;
 begin
@@ -493,6 +518,8 @@ begin
   Result.BaselineTitle := AOld.Title;
   Result.BaselineUnits := Length(AOld.Units);
   Result.BaselineEdges := Length(AOld.Edges);
+  Result.BaselineGrouping := AOld.Grouping.Clamped;
+  Result.Grouping := ANew.Grouping.Clamped;
   Result.Matches := MatchSubsystems(AOld, ANew);
   OldUnits := UnitMap(AOld);
   NewUnits := UnitMap(ANew);
@@ -723,6 +750,8 @@ begin
   Result := 'Architekturvergleich mit dem Stand „' + AComparison.BaselineTitle + '“ (' +
     IntToStr(AComparison.BaselineUnits) + ' Units, ' + IntToStr(AComparison.BaselineEdges) + ' uses-Kanten)' +
     LineBreak;
+  if AComparison.GroupingNote <> '' then
+    Result := Result + AComparison.GroupingNote + LineBreak;
   Result := Result + Section('Neue Zyklen', CycleLines(AComparison.NewCycles), ALimit) +
     Section('Entfernte Zyklen', CycleLines(AComparison.RemovedCycles), ALimit) +
     Section('Neue Querverbindungen', LinkLines(AComparison.NewCrossLinks, True), ALimit) +
@@ -741,6 +770,11 @@ begin
   else
     Result := Result + 'Ergebnis: Abweichung ' + string.Join(', ', KindNames(Failed)) + ' (fail-on ' +
       string.Join(', ', KindNames(AFailOn)) + ')';
+end;
+
+function ResolutionJson(const AGrouping: TArchitectureGrouping): string;
+begin
+  Result := FormatFloat('0.###', AGrouping.Clamped.Resolution, TFormatSettings.Invariant);
 end;
 
 function Cell(const AText: string): string;
@@ -765,6 +799,8 @@ begin
   Result := '## Vergleich' + LineBreak + LineBreak + 'Mit dem gespeicherten Stand „' + AComparison.BaselineTitle +
     '“ (' + IntToStr(AComparison.BaselineUnits) + ' Units, ' + IntToStr(AComparison.BaselineEdges) +
     ' uses-Kanten).' + LineBreak + LineBreak;
+  if AComparison.GroupingNote <> '' then
+    Result := Result + AComparison.GroupingNote + LineBreak + LineBreak;
   if AComparison.IsEmpty then
     Result := Result + 'Keine Abweichung.' + LineBreak + LineBreak;
   Result := Result + MarkdownList('Neue Zyklen', CycleLines(AComparison.NewCycles)) +
@@ -888,7 +924,9 @@ begin
   end;
   Growth := Growth + ']';
   Result := '{"baseline":{"title":' + JsonText(AComparison.BaselineTitle) + ',"units":' +
-    IntToStr(AComparison.BaselineUnits) + ',"edges":' + IntToStr(AComparison.BaselineEdges) + '}' + LineBreak +
+    IntToStr(AComparison.BaselineUnits) + ',"edges":' + IntToStr(AComparison.BaselineEdges) + ',"resolution":' +
+    ResolutionJson(AComparison.BaselineGrouping) + '}' + LineBreak + ',"resolution":' +
+    ResolutionJson(AComparison.Grouping) + LineBreak +
     ',"kinds":' + JsonNames(KindNames(AComparison.Kinds)) + ',"failOn":' + JsonNames(KindNames(AFailOn)) +
     ',"failed":' + JsonNames(KindNames(AComparison.Kinds * AFailOn)) + LineBreak +
     ',"newCycles":' + CyclesJson(AComparison.NewCycles) + LineBreak +

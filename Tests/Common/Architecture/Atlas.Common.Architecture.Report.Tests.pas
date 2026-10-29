@@ -30,6 +30,9 @@ type
     procedure TemplateHasPlaceholdersOnce;
     [Test]
     procedure ReportsCarryComparison;
+    /// <summary>Feinheit γ (#1366): im Kopf nur, wenn sie von 1,0 abweicht; JSON immer.</summary>
+    [Test]
+    procedure HeaderNamesChangedResolution;
   end;
 
 implementation
@@ -267,6 +270,26 @@ begin
   Assert.AreEqual(1, Integer(Length(Html.Split(['{{DATA}}'])) - 1));
   Assert.AreEqual(1, Integer(Length(Html.Split(['{{TITLE}}'])) - 1));
   Assert.Contains(Html, '</html>');
+end;
+
+procedure TArchitectureReportTests.HeaderNamesChangedResolution;
+var
+  mOverview: TArchitectureOverview;
+  mText: string;
+begin
+  mOverview := Sample;
+  mText := TArchitectureReport.Markdown(mOverview);
+  Assert.IsFalse(Pos('Feinheit', mText) > 0, 'γ = 1,0 steht nicht im Kopf');
+  Assert.Contains(TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview)),
+    '"grouping":{"resolution":1}');
+  mOverview.Grouping.Resolution := 2.5;
+  mText := TArchitectureReport.Markdown(mOverview);
+  Assert.Contains(mText, 'Umfang: Projektgruppe, ohne Bibliotheks-Units, Feinheit γ = 2,5', False);
+  Assert.Contains(TArchitectureReport.Text(mOverview, TArchitectureSection.Overview, 10), 'Feinheit γ = 2,5', False);
+  Assert.Contains(TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview)),
+    '"grouping":{"resolution":2.5}');
+  // Die HTML-Seite liest denselben Wert aus den Daten.
+  Assert.Contains(TArchitectureReport.Html(mOverview), 'Feinheit γ = ', False);
 end;
 
 initialization
