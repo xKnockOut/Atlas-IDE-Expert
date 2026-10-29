@@ -13,7 +13,8 @@
 // Meldungsansicht, „Index neu aufbauen“ liest alles ohne Cache neu ein.
 // „Diagnoselog exportieren…“ (#647) packt das anonymisierte Log in eine ZIP.
 // „Prozesse am Projekt…“ (#62) zeigt Index-Cache, Sperre und die LSP- und
-// MCP-Prozesse am Projekt; sichtbar nach diagnostics.processes.
+// MCP-Prozesse am Projekt; sichtbar nach diagnostics.processes. „Atlas-Server:
+// Speicher und Laufzeiten“ (#1356) sichtbar nach server.statusWindow.
 // „Symbol umbenennen…“ (#397) ruft OnRename auf.
 // „Einrichtung prüfen…“ (#625) ruft OnSetup auf.
 // „Tastenkürzel-Übersicht…“ (#520) ruft OnKeyMap auf; sichtbar nach
@@ -89,6 +90,9 @@ type
     FKeyMapItem: TMenuItem;
     /// <summary>„Prozesse am Projekt…“ (#62), sichtbar nach diagnostics.processes.</summary>
     FProcessesItem: TMenuItem;
+    /// <summary>„Atlas-Server: Speicher und Laufzeiten“ (#1356), sichtbar nach server.statusWindow.</summary>
+    FServerStatusItem: TMenuItem;
+    FOnServerStatus: TProc;
     FOnWelcome: TProc<TAtlasWelcomeCommand>;
     FWelcome: array[TAtlasWelcomeCommand] of TMenuItem;
     FWelcomeLine: TMenuItem;
@@ -165,6 +169,7 @@ type
     procedure DiagnosticExportClick(Sender: TObject);
     procedure ProcessesClick(Sender: TObject);
     procedure BugReportClick(Sender: TObject);
+    procedure ServerStatusClick(Sender: TObject);
     procedure SetupClick(Sender: TObject);
     procedure KeyMapClick(Sender: TObject);
     procedure RootClick(Sender: TObject);
@@ -181,6 +186,8 @@ type
     property OnRename: TProc read FOnRename write FOnRename;
     /// <summary>„Fehlerbericht erstellen…“ (#108).</summary>
     property OnBugReport: TProc read FOnBugReport write FOnBugReport;
+    /// <summary>Fenster „Atlas-Server“ (#1356).</summary>
+    property OnServerStatus: TProc read FOnServerStatus write FOnServerStatus;
     /// <summary>„Einrichtung prüfen…“ (#625).</summary>
     property OnSetup: TProc read FOnSetup write FOnSetup;
     /// <summary>„Tastenkürzel-Übersicht…“ (#520).</summary>
@@ -410,6 +417,7 @@ begin
   AddItem(TAtlasTextId.SetupMenu, 0, SetupClick);
   AddItem(TAtlasTextId.DiagExportMenu, 0, DiagnosticExportClick);
   FProcessesItem := AddItem(TAtlasTextId.ProcessesMenu, 0, ProcessesClick);
+  FServerStatusItem := AddItem(TAtlasTextId.ServerWindowCommand, 0, ServerStatusClick);
   AddItem(TAtlasTextId.BugReportMenu, 0, BugReportClick);
   FRoot.Add(NewLine);
   Item := TMenuItem.Create(FRoot);
@@ -718,6 +726,18 @@ begin
       end);
 end;
 
+procedure TAtlasMainMenu.ServerStatusClick(Sender: TObject);
+begin
+  if not Assigned(FOnServerStatus) then
+    Exit;
+  TAtlasIdeShortcutTips.Invoked('Atlas.ServerStatus');
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      FOnServerStatus();
+    end);
+end;
+
 procedure TAtlasMainMenu.SetupClick(Sender: TObject);
 begin
   TAtlasIdeShortcutTips.Invoked(TAtlasSetupChecklist.CommandId);
@@ -750,6 +770,9 @@ begin
   // Prozesse am Projekt (#62) nach diagnostics.processes.
   if FProcessesItem <> nil then
     FProcessesItem.Visible := TAtlasIdeSettings.Current.DiagnosticsProcesses;
+  // Fenster „Atlas-Server“ (#1356) nach server.statusWindow.
+  if FServerStatusItem <> nil then
+    FServerStatusItem.Visible := TAtlasIdeSettings.Current.ServerStatusWindow and Assigned(FOnServerStatus);
   // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
   if FCallDiagramItem <> nil then
     FCallDiagramItem.Visible := TAtlasIdeSettings.Current.CallHierarchyDiagram;

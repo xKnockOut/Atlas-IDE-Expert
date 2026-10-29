@@ -767,6 +767,10 @@ type
     /// <summary>Menüeintrag „Prozesse am Projekt…“ (#62, diagnostics.processes): Index-Cache, Sperre und
     /// angemeldete LSP- und MCP-Prozesse; Vorgabe an.</summary>
     DiagnosticsProcesses: Boolean;
+    /// <summary>Fenster „Atlas-Server“ (#1356, server.statusWindow): Speicher, langsamste Units, Regeln und
+    /// Anfragen, Diagnosepaket; Befehl Atlas.ServerStatus und Klick in Statusfenster und Statusleiste; Vorgabe an.
+    /// </summary>
+    ServerStatusWindow: Boolean;
     /// <summary>Architekturübersicht (#1118, architecture.enabled in settings.json): Fenster „Atlas-Architektur“,
     /// Bericht und get_architecture; Vorgabe an.</summary>
     ArchitectureEnabled: Boolean;
@@ -2030,6 +2034,7 @@ begin
   Result.DiagnosticModeKey := $E044; // Strg+Umschalt+Alt+D
   Result.DiagnosticModeKeyPriority := False;
   Result.DiagnosticsProcesses := True;
+  Result.ServerStatusWindow := True;
   // Wie die Vorgaben im Schema (atlas.schema.json, architecture).
   Result.ArchitectureEnabled := True;
   Result.ArchitectureScope := 'projectGroup';
@@ -2910,6 +2915,7 @@ begin
     AStore.ReadInteger('DiagnosticModeKeyPriority', BoolValue(Default.DiagnosticModeKeyPriority)) <> 0;
   DiagnosticsProcesses :=
     AStore.ReadInteger('DiagnosticsProcesses', BoolValue(Default.DiagnosticsProcesses)) <> 0;
+  ServerStatusWindow := AStore.ReadInteger('ServerStatusWindow', BoolValue(Default.ServerStatusWindow)) <> 0;
   ArchitectureEnabled := AStore.ReadInteger('ArchitectureEnabled', BoolValue(Default.ArchitectureEnabled)) <> 0;
   ArchitectureScope := AStore.ReadString('ArchitectureScope', Default.ArchitectureScope);
   ArchitectureIncludeLibraryUnits := AStore.ReadInteger('ArchitectureIncludeLibraryUnits',
@@ -3509,6 +3515,7 @@ begin
   AStore.WriteInteger('DiagnosticModeKey', DiagnosticModeKey);
   AStore.WriteInteger('DiagnosticModeKeyPriority', BoolValue(DiagnosticModeKeyPriority));
   AStore.WriteInteger('DiagnosticsProcesses', BoolValue(DiagnosticsProcesses));
+  AStore.WriteInteger('ServerStatusWindow', BoolValue(ServerStatusWindow));
   AStore.WriteInteger('ArchitectureEnabled', BoolValue(ArchitectureEnabled));
   AStore.WriteString('ArchitectureScope', ArchitectureScope);
   AStore.WriteInteger('ArchitectureIncludeLibraryUnits', BoolValue(ArchitectureIncludeLibraryUnits));
