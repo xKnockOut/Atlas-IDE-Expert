@@ -31,6 +31,11 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## MCP-Prompts und Ressourcen mit Vorlage (#1357, 29.10.2026, Branch `feature/1357-mcp-prompts`)
+- Neue Unit `Atlas.Common.Mcp.Prompts` (eingebaute und eigene Prompts, Vorlagen `delphi://unit|form|findings/{…}`, `delphi://build/last`); `TMcpServer` kann `prompts/list`, `prompts/get`, `resources/templates/list` und `InvokeTool` (gleiche Regeln wie `tools/call`). Verdrahtung in `Shell.Mcp.pas` (UnitFileOf, ChangesOf).
+- Schlüssel flach statt verschachtelt: `mcp.prompts`, `mcp.promptLanguage` (global), `mcp.customPrompts` (Projekt), weil das Schema nur zwei Ebenen und `x-scope` je Glied kennt. Nebenbei Ursache behoben: `ParseLayered` übernahm `mcp` aus atlas.json als Ganzes und löschte die globalen Werte.
+- Commit-Präfix liest der Server aus `<gitdir>/atlas-commit-prefix` (schreibt das Plugin); `issues.commitPattern` ist eine Plugin-Einstellung. `get_affected_tests` (#1353) wird nur genutzt, wenn vorhanden, sonst Hinweis auf `get_impact`.
+- In der Cloud nicht übersetzt (FPC-Bau und pwsh gesperrt). SchemaData, ScopeData, Konfiguration.md und Einstellungen.md von Hand bzw. mit einem Python-Nachbau von `Update-ConfigDoc.ps1` erzeugt: vor dem Merge `pwsh Tools/Update-ConfigDoc.ps1 -Check` und die übrigen Prüfskripte laufen lassen. Handtests MP1–MP14.
 ## #1378 Compilerregeln für platform, library und unsicheren Code (29.10.2026, Branch `claude/project-thread-g4qosp`)
 - **Ursache W1002/W1004/W1005:** `deprecated-symbol` kannte platform und library längst, hatte sie aber über die Vorgabe der Option `kinds` („wie meist in Projekten“) abgeschaltet. dcc warnt ab Werk. Jetzt sind alle vier Arten Vorgabe; ob gemeldet wird, entscheidet wie bei dcc der Stand der Warnung.
 - **Neu `Atlas.Common.Rules.WarnSwitches` (`TRuleWarnSwitches`):** Stand einer Warnung an einer Stelle = Vorgabe von dcc, dann Projektoption (`TRuleContext.ProjectWarnings`, gefüllt in `TShellWorkspace.RuleServices` aus den `DCC_<Bezeichner>`-Eigenschaften der .dproj und `DCC_Warnings`), dann `{$WARN}`/`{$WARNINGS}` der Datei mit {$IF}-Zweigen. `deprecated-symbol` nutzt ihn statt eigener Kopie. `Units.pas` (`WarningEnabled` für UNIT_NAME_MISMATCH, IMPLICIT_VARIANTS) hat noch eine einfache eigene Fassung ohne Projektoption: Kandidat zum Umstellen.

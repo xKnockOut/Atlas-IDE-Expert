@@ -419,6 +419,7 @@ contains
   Atlas.Common.Mcp.IdeBuilds in 'Source\Mcp\Atlas.Common.Mcp.IdeBuilds.pas',
   Atlas.Common.Mcp.TestTools in 'Source\Mcp\Atlas.Common.Mcp.TestTools.pas',
   Atlas.Common.Mcp.DeadCodeTools in 'Source\Mcp\Atlas.Common.Mcp.DeadCodeTools.pas',
+  Atlas.Common.Mcp.Prompts in 'Source\Mcp\Atlas.Common.Mcp.Prompts.pas',
   Atlas.Common.Rules.Prompt in 'Source\Rules\Atlas.Common.Rules.Prompt.pas',
   Atlas.Common.Rules.Builtin.Unresolved in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.pas',
   Atlas.Common.Rules.Builtin.Deprecated in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Deprecated.pas',
