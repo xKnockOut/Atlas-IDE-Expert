@@ -204,6 +204,7 @@ uses
   Atlas.Common.Rules.Builtin.Visibility.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Visibility.Tests.pas',
   Atlas.Common.Rules.Builtin.TypeDeclarations.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.Tests.pas',
   Atlas.Common.Rules.Builtin.TypedExpressions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypedExpressions.Tests.pas',
+  Atlas.Common.Rules.Builtin.StringConversions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.StringConversions.Tests.pas',
   Atlas.Common.Rules.Builtin.TypeRestrictions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.Tests.pas',
   Atlas.Common.Rules.Builtin.PublicMembers.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PublicMembers.Tests.pas',
   Atlas.Common.Rules.Builtin.DeadCode.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DeadCode.Tests.pas',
