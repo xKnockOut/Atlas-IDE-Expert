@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..6134] of string = (
+  Lines: array[0..6152] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -104,6 +104,10 @@ const
     '    "general.architecture": {',
     '      "caption": "Architektur",',
     '      "captionEn": "Architecture"',
+    '    },',
+    '    "general.query": {',
+    '      "caption": "Code-Abfragen",',
+    '      "captionEn": "Code queries"',
     '    },',
     '    "vcs.branches": {',
     '      "caption": "Branches",',
@@ -436,6 +440,21 @@ const
     '      "x-page": "Allgemein",',
     '      "x-parent": "architecture.enabled",',
     '      "x-issue": "#1118"',
+    '    },',
+    '    "QueryEnabled": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Code-Abfragen über den Index: Fenster „Atlas-Abfrage“, Befehl „Code abfragen“ und Menüeintrag Ansicht › Atlas › Abfrage; aus = kein Menüeintrag, kein Fenster, kein Befehl; dersel' +
+      'be Schlüssel in settings.json schaltet auch MCP query_code und --query ab.",',
+    '      "x-key": "query.enabled",',
+    '      "x-area": "general",',
+    '      "x-page": "Allgemein",',
+    '      "x-node": "general.query",',
+    '      "x-feature": "Query",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Code-Abfragen",',
+    '      "x-captionEn": "Code queries",',
+    '      "x-issue": "#1351"',
     '    },',
     '    "ArchitectureWindowPlaced": {',
     '      "type": "boolean",',

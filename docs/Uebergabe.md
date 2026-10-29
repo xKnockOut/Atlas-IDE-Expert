@@ -31,6 +31,13 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Code-Abfragen #1351 (29.10.2026, Branch `claude/project-thread-1rjc4c` auf Prep-v1.2.0)
+- Server: `Atlas.Common.Query.*` (Sprache, Auswertung, Dienst `ICodeQueries`, Ausgabe), Regel `query:<name>` in `Rules.Builtin.SavedQueries` (nur über `Query.Contract`, Dienst über `TRuleServices.Queries`), `Lsp.Query` (`atlas/query`, `atlas/queryCatalog`, `atlas.query`), MCP `query_code`, `--query`/`--fail-on-match`/`--format csv`. Ohne Projekt baut `--query` einen eigenen Index aus den Dateien des Ordners (`FolderQueries` in eigener Routine wegen des Lecks durch eingefangene Rahmen).
+- Plugin: `Atlas.Core.Query.Model`, `Atlas.UI.Query.Frame`, `Atlas.IDE.Query.Window`/`Service`; abbrechbare Anfrage `TLspClient.RequestCancellable` → `TLspSession.RunRequest` → `TAtlasCodeInsightManager.RunServerRequestAsync`. Neue Absturzsicherung `TAtlasFeature.Query`, Einstellung `QueryEnabled` = `query.enabled` in settings.json (wie der Server).
+- Nur unter FPC (Common-, Core- und Lsp-Tests) und mit dem Linux-Server geprüft; Shell-Units, Fenster und Frame-Tests (`Atlas.UI.Query.Frame.Tests`) brauchen den Delphi-Build (Handtests QA1–QA20).
+- Update-ConfigDoc lief über einen Python-Nachbau (pwsh fehlt in der Cloud); Einstellungen.md hat eine neue Plugin-Zeile in `Tools/Update-ConfigDoc.ps1` (nach der Architektur). Vor dem Merge mit pwsh `Tools/Update-ConfigDoc.ps1 -Check` gegenprüfen.
+- Abweichung vom Issue: Seite „Analyse“ gibt es nicht, `query.enabled` steht auf *Allgemein* (Unterpunkt „Code-Abfragen“).
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.

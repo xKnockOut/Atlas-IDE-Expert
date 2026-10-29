@@ -305,6 +305,10 @@ type
     /// <summary>workspace/executeCommand mit Argumenten (JSON-Array, '' = keine, #399); ELspClientError bei
     /// Fehler oder Zeitlimit. Ergebnis gehört dem Aufrufer.</summary>
     function RunCommand(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>Anfrage AMethod mit Parametern (JSON-Objekt, '' = keine), abbrechbar über ACancelled (#1351:
+    /// atlas/query); ELspClientError bei Fehler, Abbruch oder Zeitlimit. Ergebnis gehört dem Aufrufer.</summary>
+    function RunRequest(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
+      const ACancelled: TFunc<Boolean>): TJSONValue;
     /// <summary>textDocument/onTypeFormatting (#399): Schnellbefehle nach Enter (ACh = #10) und
     /// ///-Gerüste (ACh = '/'). Leer, wenn der Server nichts ändert.</summary>
     function OnTypeFormatting(const AFileName: string; ALine, ACharacter: Integer; const ACh: string;
@@ -1020,6 +1024,22 @@ begin
   end;
   Result := FClient.Request('workspace/executeCommand',
     TJSONObject.Create.AddPair('command', ACommand).AddPair('arguments', Arguments), ATimeoutMs);
+end;
+
+function TLspSession.RunRequest(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
+  const ACancelled: TFunc<Boolean>): TJSONValue;
+var
+  mParams: TJSONValue;
+begin
+  mParams := nil;
+  if Trim(AParamsJson) <> '' then
+    mParams := TJSONObject.ParseJSONValue(AParamsJson);
+  if not (mParams is TJSONObject) then
+  begin
+    mParams.Free;
+    mParams := TJSONObject.Create;
+  end;
+  Result := FClient.RequestCancellable(AMethod, mParams, ATimeoutMs, ACancelled);
 end;
 
 function TLspSession.OnTypeFormatting(const AFileName: string; ALine, ACharacter: Integer; const ACh: string;

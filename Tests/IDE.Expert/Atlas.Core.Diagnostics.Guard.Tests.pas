@@ -597,6 +597,7 @@ begin
   Assert.AreEqual('Methodenreihenfolge', TAtlasGuard.FeatureName(TAtlasFeature.MethodPlacement));
   Assert.AreEqual('Issue-Kennungen', TAtlasGuard.FeatureName(TAtlasFeature.IssueLinks));
   Assert.AreEqual('Issues in der Zeilenhistorie', TAtlasGuard.FeatureName(TAtlasFeature.BlameIssues));
+  Assert.AreEqual('Code-Abfragen', TAtlasGuard.FeatureName(TAtlasFeature.Query));
 end;
 
 procedure TAtlasGuardTests.SlowProviderLogsOncePerInterval;
