@@ -39,6 +39,8 @@ CASE_NAME = re.compile(r'^(Cm\.?([EWHF]\d{4})\w*)\.(pas|dpr|dpk)$')
 # Folgemeldungen, die nur sagen, dass eine benutzte Unit nicht übersetzt wurde.
 FOLGEMELDUNGEN = {'F2063', 'F2220'}
 # Regeln, deren Katalogeintrag keinen Code nennt.
+# Stilregeln, deren Beschreibung nur nebenbei einen Code nennt.
+OHNE_CODE = {'missing-begin-end'}
 ZUORDNUNG = {
     'result-not-set': ['W1035'],
     'possibly-uninitialized': ['W1036'],
@@ -52,7 +54,7 @@ def rule_codes():
     for rule in rules:
         codes = set(rule.get('compilerCodes') or []) | set(CODE.findall(rule.get('description', '')))
         codes |= set(ZUORDNUNG.get(rule['id'], []))
-        if codes:
+        if codes and rule['id'] not in OHNE_CODE:
             result[rule['id']] = codes
     return result
 
@@ -112,6 +114,11 @@ def read_atlas(pattern):
     return findings, files
 
 
+def kind(code):
+    """E für Fehler und fatale Fehler, sonst W oder H."""
+    return 'E' if code[0] in 'EF' else code[0]
+
+
 def finding_codes(finding, codes_by_rule):
     own = set(CODE.findall(finding['message']))
     if own:
@@ -154,7 +161,8 @@ def compare(cases, dcc, strict, standard, codes_by_rule):
                 standard_hit = any(f['standard'] for f in hits)
                 rules = sorted(set(f['rule'] for f in hits))
             else:
-                near = [f for f in atlas if f['line'] in lines]
+                # Nur Treffer derselben Art: ein Hinweis von Atlas ist kein anderer Code für einen Fehler.
+                near = [f for f in atlas if f['line'] in lines and any(kind(c) == kind(code) for c in f['codes'])]
                 status = 'anderer Code' if near else 'verpasst'
                 same_line = bool(near)
                 standard_hit = any(f['standard'] for f in near)
@@ -162,6 +170,11 @@ def compare(cases, dcc, strict, standard, codes_by_rule):
             checks.append({'code': code, 'lines': sorted(lines), 'text': texts.get(code, ''), 'status': status,
                            'sameLine': same_line, 'standard': standard_hit, 'rules': rules})
         extra = [f for f in atlas if not (set(f['codes']) & set(dcc_codes))]
+        # Nach einem Fehler meldet dcc in der Unit keine Warnungen und Hinweise mehr: Solche Treffer von Atlas
+        # sind nicht vergleichbar, keine Fehlalarme.
+        stopped = any(kind(c) == 'E' for c in dcc_codes)
+        unknown = [f for f in extra if stopped and all(kind(c) != 'E' for c in f['codes'])]
+        extra = [f for f in extra if f not in unknown]
         if case['expected'] == '-':
             # Fall, den Delphi 13 übersetzt: Jeder Atlas-Treffer mit Compiler-Code ist zusätzlich.
             expected_hit = not dcc_codes and not dcc_other
@@ -172,6 +185,7 @@ def compare(cases, dcc, strict, standard, codes_by_rule):
             'title': case['title'], 'platform': case['platform'], 'built': built, 'platforms': platforms,
             'dccCodes': sorted(dcc_codes), 'dccOther': {c: sorted(v) for c, v in dcc_other.items()},
             'expectedHit': expected_hit, 'checks': checks,
+            'notComparable': [{'rule': f['rule'], 'line': f['line'], 'codes': f['codes']} for f in unknown],
             'extra': [{'rule': f['rule'], 'line': f['line'], 'codes': f['codes'], 'message': f['message'],
                        'standard': f['standard']} for f in extra],
         })
