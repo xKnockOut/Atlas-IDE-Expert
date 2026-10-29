@@ -55,7 +55,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `testUnits` | Projekt (atlas.json) | object | – |  | Testunits anlegen und zwischen Unit und Testunit wechseln: Namensmuster, Ordner neuer Testunits und Testprojekt. |
 | `minConfidence` | Projekt (atlas.json) | string | `"medium"` | `"low"`, `"medium"`, `"high"` | Regeltreffer unter dieser Konfidenz ausblenden. |
 | `exclude` | Projekt (atlas.json) | array<string> | – | z. B. `["ThirdParty/**","Generated/*.pas"]` | Ordner und Dateien, die nicht geprüft werden (Glob-Muster relativ zu diesem Ordner: *, **, ?). |
-| `mcp` | gemischt, siehe unten | object | – | z. B. `{"disabledTools":["rename_symbol","apply_code_action"]}`, `{"globalSettings":false}` | MCP-Modus (--mcp) für KI-Assistenten. |
+| `mcp` | gemischt, siehe unten | object | – | z. B. `{"disabledTools":["rename_symbol","apply_code_action"]}`, `{"globalSettings":false}`, `{"prompts":true,"promptLanguage":"en"}` | MCP-Modus (--mcp) für KI-Assistenten. |
 | `format` | Projekt (atlas.json) | object | – |  | Formatierung (Dokument und Auswahl formatieren). Gesetzte Werte haben Vorrang vor .editorconfig. |
 | `tasks` | global und Projekt | array<object> | – |  | Projektaufgaben (#900): Befehle des Projekts, die das Plugin per Befehlspalette, Menü Atlas › Aufgaben, Taste, Statusfeld oder Schnellaktion startet; die Ausgabe steht im Register „Atlas-Aufgaben“, erkannte Fundstellen als Befunde in Problemliste und Editor. Projekt vor global bei gleichem Namen. Variablen in command, args, cwd und env: ${projectDir}, ${groupDir}, ${file}, ${fileDir}, ${config}, ${platform}, ${BDS}. |
 | `issues` | global (settings.json) | object | – |  | Issue-Tracker im Plugin (Tools › Optionen › Atlas › Issue-Tracker, Bereich „Meine Issues“). Persönlich, daher nur in settings.json; der Abschnitt tracker der Projektdatei .atlas gilt daneben für das Team. |
@@ -343,6 +343,9 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 |---|---|---|---|---|---|
 | `mcp.disabledTools` | global (settings.json) | array<string> | `` |  | Werkzeuge, die der MCP-Server nicht anbietet, z. B. rename_symbol oder apply_code_action. Im eingeschränkten Modus (--restricted) sind schreibende Werkzeuge immer aus. |
 | `mcp.globalSettings` | Projekt (atlas.json) | boolean | `true` |  | Der MCP-Server liest wie der LSP-Server und der Linter die globale Datei %APPDATA%\Atlas\settings.json (z. B. mcp.disabledTools, Index, Hints). false: nur atlas.json, etwa für reproduzierbare Ergebnisse im Team. |
+| `mcp.prompts` | global (settings.json) | boolean | `true` |  | Prompts (in Claude Code Schrägstrich-Befehle wie /mcp__delphi__unit_review) und Ressourcenvorlagen (delphi://unit/{name}, delphi://form/{file}, delphi://findings/{file}, delphi://build/last) anbieten. false: prompts/list und resources/templates/list sind leer, die Werkzeuge bleiben. |
+| `mcp.promptLanguage` | global (settings.json) | string | `"de"` | `"de"`, `"en"` | Sprache der Anleitungen in den Prompts. |
+| `mcp.customPrompts` | Projekt (atlas.json) | array<object> | `` |  | Eigene Prompts des Projekts mit Platzhaltern {argument} im Text und eingebetteten Inhalten aus include (z. B. diagnostics, metrics). |
 
 ## format
 
