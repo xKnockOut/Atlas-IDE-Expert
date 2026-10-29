@@ -11,6 +11,7 @@
         <Projects Include="DccSichtbarkeitGegen.dproj"/>
         <Projects Include="DccInline.dproj"/>
         <Projects Include="DccInlineGegen.dproj"/>
+        <Projects Include="DccInlineKonstanteGegen.dproj"/>
         <Projects Include="DccVorwaerts.dproj"/>
         <Projects Include="DccVorwaertsGegen.dproj"/>
         <Projects Include="DccInterfaces.dproj"/>
@@ -53,6 +54,9 @@
     <Target Name="DccInlineGegen">
         <MSBuild Projects="DccInlineGegen.dproj"/>
     </Target>
+    <Target Name="DccInlineKonstanteGegen">
+        <MSBuild Projects="DccInlineKonstanteGegen.dproj"/>
+    </Target>
     <Target Name="DccVorwaerts">
         <MSBuild Projects="DccVorwaerts.dproj"/>
     </Target>
@@ -84,6 +88,6 @@
         <MSBuild Projects="DccPublishedGegen.dproj"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="DccEigenschaften;DccEigenschaftenGegen;DccVarParameter;DccVarParameterGegen;DccSichtbarkeit;DccSichtbarkeitGegen;DccInline;DccInlineGegen;DccVorwaerts;DccVorwaertsGegen;DccInterfaces;DccInterfacesGegen;DccOperatoren;DccOperatorenGegen;DccKonstanten;DccKonstantenGegen;DccPublished;DccPublishedGegen"/>
+        <CallTarget Targets="DccEigenschaften;DccEigenschaftenGegen;DccVarParameter;DccVarParameterGegen;DccSichtbarkeit;DccSichtbarkeitGegen;DccInline;DccInlineGegen;DccInlineKonstanteGegen;DccVorwaerts;DccVorwaertsGegen;DccInterfaces;DccInterfacesGegen;DccOperatoren;DccOperatorenGegen;DccKonstanten;DccKonstantenGegen;DccPublished;DccPublishedGegen"/>
     </Target>
 </Project>
