@@ -1698,22 +1698,6 @@ Cm.W1078	Win32	True	Cm.W1078.pas	10	W1078	Warnung	{$POPOPT} ohne übereinstimmen
 Cm.W1078	Win64	True	Cm.W1078.pas	10	W1078	Warnung	{$POPOPT} ohne übereinstimmende {$PUSHOPT} in C:\Projekte\BetterDelphiLSP\wt-cm\Tests\Compilermeldungen\Faelle\Cm.W1078.pas
 Cm.W1079	Win32	True	Cm.W1079.pas	14	W1079	Warnung	Frühere {$PUSHOPT} in Zeile 10 wurde nicht wiederhergestellt
 Cm.W1079	Win64	True	Cm.W1079.pas	14	W1079	Warnung	Frühere {$PUSHOPT} in Zeile 10 wurde nicht wiederhergestellt
-Cm.W1201	Win32	True					
-Cm.W1201	Win64	True					
-Cm.W1202	Win32	True					
-Cm.W1202	Win64	True					
-Cm.W1203	Win32	True					
-Cm.W1203	Win64	True					
-Cm.W1204	Win32	True					
-Cm.W1204	Win64	True					
-Cm.W1205	Win32	True					
-Cm.W1205	Win64	True					
-Cm.W1206	Win32	True					
-Cm.W1206	Win64	True					
-Cm.W1207	Win32	True					
-Cm.W1207	Win64	True					
-Cm.W1208	Win32	True					
-Cm.W1208	Win64	True					
 CmE2085	Win32	False	Cm.Hilfe.E2085Datei.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.Hilfe.E2085Anders' stimmt mit dem Dateinamen nicht überein
 CmE2085	Win32	False	CmE2085.dpr	7	F2063	Fataler Fehler	Verwendete Unit 'Cm.Hilfe.E2085Datei.pas' kann nicht compiliert werden
 CmE2085	Win64	False	Cm.Hilfe.E2085Datei.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.Hilfe.E2085Anders' stimmt mit dem Dateinamen nicht überein
@@ -1743,3 +1727,39 @@ CmW1033	Win32	True	CmW1033.dpk	16	W1033	Warnung	Die Unit 'Cm.Hilfe.W1033Frei' wu
 CmW1033	Win64	True	CmW1033.dpk	16	W1033	Warnung	Die Unit 'Cm.Hilfe.W1033Frei' wurde implizit in Package 'CmW1033' importiert
 CmW1043	Win32	True					
 CmW1043	Win64	True					
+Cm.E2001b	Win32	False	Cm.E2001b.pas	16	E2001	Fehler	Ordinaltyp erforderlich
+Cm.E2001b	Win32	False	PCmE2001b.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2001b.pas' kann nicht compiliert werden
+Cm.E2001b	Win64	False	Cm.E2001b.pas	16	E2001	Fehler	Ordinaltyp erforderlich
+Cm.E2001b	Win64	False	PCmE2001b.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2001b.pas' kann nicht compiliert werden
+Cm.E2005b	Win32	False	Cm.E2005b.pas	17	E2007	Fehler	Konstante oder Typenbezeichner erwartet
+Cm.E2005b	Win32	False	PCmE2005b.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2005b.pas' kann nicht compiliert werden
+Cm.E2005b	Win64	False	Cm.E2005b.pas	17	E2007	Fehler	Konstante oder Typenbezeichner erwartet
+Cm.E2005b	Win64	False	PCmE2005b.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2005b.pas' kann nicht compiliert werden
+Cm.E2014b	Win32	False	Cm.E2014b.pas	16	E2014	Fehler	Anweisung erforderlich, aber Ausdruck vom Typ 'Integer' gefunden
+Cm.E2014b	Win32	False	PCmE2014b.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2014b.pas' kann nicht compiliert werden
+Cm.E2014b	Win64	False	Cm.E2014b.pas	16	E2014	Fehler	Anweisung erforderlich, aber Ausdruck vom Typ 'Integer' gefunden
+Cm.E2014b	Win64	False	PCmE2014b.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2014b.pas' kann nicht compiliert werden
+Cm.E2121b	Win32	False	Cm.E2121b.pas	15	E2276	Fehler	Bezeichner 'TZahl' kann nicht exportiert werden
+Cm.E2121b	Win32	False	PCmE2121b.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2121b.pas' kann nicht compiliert werden
+Cm.E2121b	Win64	False	Cm.E2121b.pas	15	E2276	Fehler	Bezeichner 'TZahl' kann nicht exportiert werden
+Cm.E2121b	Win64	False	PCmE2121b.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2121b.pas' kann nicht compiliert werden
+Cm.W1009b	Win32	True	Cm.W1009b.pas	19	W1009	Warnung	Redeklaration von 'Wert' verbirgt einen Member in der Basisklasse
+Cm.W1009b	Win64	True	Cm.W1009b.pas	19	W1009	Warnung	Redeklaration von 'Wert' verbirgt einen Member in der Basisklasse
+Cm.W1201	Win32	True					
+Cm.W1201	Win64	True					
+Cm.W1202	Win32	True					
+Cm.W1202	Win64	True					
+Cm.W1203	Win32	True					
+Cm.W1203	Win64	True					
+Cm.W1204	Win32	True	Cm.W1204.pas	22	W1205	Warnung	XML-Kommentar in 'Machen' ist falsch strukturiert -- 'Das Zeichen '>' wurde erwartet.'
+Cm.W1204	Win64	True	Cm.W1204.pas	22	W1205	Warnung	XML-Kommentar in 'Machen' ist falsch strukturiert -- 'Das Zeichen '>' wurde erwartet.'
+Cm.W1205	Win32	True					
+Cm.W1205	Win64	True					
+Cm.W1206	Win32	True	Cm.W1206.pas	21	W1206	Warnung	XML-Kommentar bei 'Machen' hat das cref-Attribut 'TGibtEsNicht', das nicht aufgelöst werden konnte
+Cm.W1206	Win64	True	Cm.W1206.pas	21	W1206	Warnung	XML-Kommentar bei 'Machen' hat das cref-Attribut 'TGibtEsNicht', das nicht aufgelöst werden konnte
+Cm.W1207	Win32	True	Cm.W1207.pas	22	W1207	Warnung	XML-Kommentar bei 'Machen' hat ein param-Tag für 'AFalsch', aber es gibt keinen Parameter mit diesem Namen
+Cm.W1207	Win32	True	Cm.W1207.pas	22	W1208	Warnung	Parameter 'AWert' hat kein zugehöriges param-Tag im XML-Kommentar für 'Machen' (aber andere Parameter haben dieses Tag)
+Cm.W1207	Win64	True	Cm.W1207.pas	22	W1207	Warnung	XML-Kommentar bei 'Machen' hat ein param-Tag für 'AFalsch', aber es gibt keinen Parameter mit diesem Namen
+Cm.W1207	Win64	True	Cm.W1207.pas	22	W1208	Warnung	Parameter 'AWert' hat kein zugehöriges param-Tag im XML-Kommentar für 'Machen' (aber andere Parameter haben dieses Tag)
+Cm.W1208	Win32	True	Cm.W1208.pas	22	W1208	Warnung	Parameter 'AZweiter' hat kein zugehöriges param-Tag im XML-Kommentar für 'Machen' (aber andere Parameter haben dieses Tag)
+Cm.W1208	Win64	True	Cm.W1208.pas	22	W1208	Warnung	Parameter 'AZweiter' hat kein zugehöriges param-Tag im XML-Kommentar für 'Machen' (aber andere Parameter haben dieses Tag)
