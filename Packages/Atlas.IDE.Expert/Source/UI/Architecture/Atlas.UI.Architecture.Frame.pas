@@ -801,7 +801,8 @@ begin
   FSubsystems.Items.BeginUpdate;
   try
     FSubsystems.Items.Clear;
-    for Index := 0 to High(FModel.Subsystems) do
+    // Teile eines nachgeteilten Teilsystems (#1364) beieinander.
+    for Index in FModel.LegendOrder do
     begin
       Subsystem := FModel.Subsystems[Index];
       Members := nil;
@@ -810,8 +811,11 @@ begin
           Members := Members + [Member];
       if Length(Members) = 0 then
         Continue;
-      Group := FSubsystems.Items.Add(nil, TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine,
-        [Subsystem.Name, Length(Subsystem.Units), Round(Subsystem.Cohesion * 100)]));
+      Line := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine,
+        [Subsystem.Name, Length(Subsystem.Units), Round(Subsystem.Cohesion * 100)]);
+      if Subsystem.Parent <> '' then
+        Line := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemPart, [Line, Subsystem.Parent]);
+      Group := FSubsystems.Items.Add(nil, Line);
       Group.Data := nil;
       for Member in FModel.Sorted(Members, TAtlasArchColumn.Total, True) do
       begin
@@ -1223,15 +1227,39 @@ end;
 
 procedure TAtlasArchitectureFrame.FillSubsystemsMenu;
 var
-  Index: Integer;
+  Index, mOther, mParts: Integer;
   Item: TMenuItem;
+  mFamily, mCaption: string;
 begin
   FSubsystemsMenu.Items.Clear;
-  for Index := 0 to High(FModel.Subsystems) do
+  // Wie die Legende der HTML-Karte: die Teile eines nachgeteilten Teilsystems (#1364) eingerückt unter seinem
+  // Namen.
+  mFamily := '';
+  for Index in FModel.LegendOrder do
   begin
-    Item := TMenuItem.Create(FSubsystemsMenu);
-    Item.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine, [FModel.Subsystems[Index].Name,
+    mCaption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine, [FModel.Subsystems[Index].Name,
       Length(FModel.Subsystems[Index].Units), Round(FModel.Subsystems[Index].Cohesion * 100)]);
+    if FModel.Subsystems[Index].Parent = '' then
+      mFamily := ''
+    else
+    begin
+      if not SameText(FModel.Subsystems[Index].Parent, mFamily) then
+      begin
+        mFamily := FModel.Subsystems[Index].Parent;
+        mParts := 0;
+        for mOther := 0 to High(FModel.Subsystems) do
+          if SameText(FModel.Subsystems[mOther].Parent, mFamily) then
+            Inc(mParts);
+        Item := TMenuItem.Create(FSubsystemsMenu);
+        Item.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemFamily, [mFamily, mParts]);
+        Item.Enabled := False;
+        Item.Tag := -1;
+        FSubsystemsMenu.Items.Add(Item);
+      end;
+      mCaption := '      ' + mCaption;
+    end;
+    Item := TMenuItem.Create(FSubsystemsMenu);
+    Item.Caption := mCaption;
     Item.Tag := Index;
     Item.Checked := FMap.SubsystemVisible[Index];
     Item.OnClick := SubsystemItemClick;

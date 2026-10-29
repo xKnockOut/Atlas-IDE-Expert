@@ -32,6 +32,8 @@ type
     /// <summary>Feinheit γ (#1366) im Stand; Stände ohne "grouping" gelten als 1,0.</summary>
     [Test]
     procedure KeepsGroupingAndReadsOlderStates;
+    [Test]
+    procedure KeepsParentOfSplitSubsystem;
   end;
 
 /// <summary>Units der Berichtstests: drei Namensräume, ein Zyklus über implementation in Data.</summary>
@@ -245,6 +247,34 @@ begin
   mText := StringReplace(mText, '"grouping": {"resolution": 0.5},', '', []);
   Assert.IsTrue(TArchitectureSnapshots.Parse(mText, mRead, mError), mError);
   Assert.AreEqual(Double(1), mRead.Grouping.Resolution, 1E-9);
+end;
+
+procedure TArchitectureSnapshotTests.KeepsParentOfSplitSubsystem;
+var
+  mOverview: TArchitectureOverview;
+  mRead: TArchitectureSnapshot;
+  mText, mError, mName: string;
+  mSubsystem: TSnapshotSubsystem;
+  mFound: Boolean;
+begin
+  mOverview := ArchitectureOverviewOf(ArchitectureSampleUnits);
+  mText := TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mOverview));
+  Assert.IsFalse(Pos('"parent"', mText) > 0, 'ohne Nachteilung wie vor #1364');
+  mName := mOverview.Subsystems[1].Name;
+  mOverview.Subsystems[1].Parent := 'App';
+  mText := TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mOverview));
+  Assert.Contains(mText, '"isolated": false, "parent": "App"}');
+  Assert.IsTrue(TArchitectureSnapshots.Parse(mText, mRead, mError), mError);
+  mFound := False;
+  for mSubsystem in mRead.Subsystems do
+    if mSubsystem.Name = mName then
+    begin
+      Assert.AreEqual('App', mSubsystem.Parent);
+      mFound := True;
+    end
+    else
+      Assert.AreEqual('', mSubsystem.Parent);
+  Assert.IsTrue(mFound);
 end;
 
 initialization
