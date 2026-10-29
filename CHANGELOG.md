@@ -165,9 +165,11 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - DFM-Parser (#1235): Lange Strings, die Delphi ab der Zeile nach `=` schreibt (`Hint =` und darunter `'Bla'#123 +`), meldeten „Property oder "end" erwartet“.
 - Mitlaufender Kopf (#1228): Beim Bildlauf blieben Reste alter Kopfzeilen stehen, weil der Editor die gemalten Pixel verschiebt. Solange der Kopf an ist, verschiebt der Editor nicht mehr (Delphi 13), und jeder Bildlauf zeichnet sofort neu.
 - `uses-unit-not-found`: `contains` und `requires` gelten nur in Package-Quellen; Felder dieses Namens in Records meldeten fälschlich fehlende Units.
+- Meldungen, wo Delphi 13 nichts meldet (#1383, Testprojekt Compilermeldungen): `abstract-class-instantiated` meldet `class abstract` ohne abstrakte Methoden nicht mehr (E2402 gibt es nur unter .NET), `invalid-var-argument` lässt `S[1]` an einen var-Zeichen-Parameter zu (E2354 ebenso), `duplicate-declaration` lässt überladene Array-Properties zu, `{$WARN MOBILE_DELPHI}` und `{$WARN UNSAFE_VOID_POINTER}` gelten als bekannt. Stilregeln nennen den Compilercode nur noch, wo dcc ihn meldet: `unused-assignment` H2077 nur bei nicht verwalteten Typen, `uses-cycle` F2047 nur bei reinen interface-Zyklen (F2092 bei einer Unit, die sich selbst nennt), `xmldoc-mismatch` nur im interface-Teil und unter den XML-Fehlern nur W1205 für ein fremdes Zeichen hinter dem Tagnamen.
 
 ### Tests
 - Minimalfälle für die Compilerregeln (#1328): `Tests/DccFaelle` mit Projekten, die übersetzen, und Gegen-Projekten, die melden; `Tools/Build-DccFaelle.ps1` schreibt `Output/DccFaelle-Ergebnis.txt`.
+- `Tools/Build-Compilermeldungen.ps1` (#1383): `-Dcc` übersetzt ohne IDE mit `dcc32`/`dcc64`, `-BdsVersion 23.0` wählt Delphi 12, `-ResultFile` legt die Tabelle getrennt ab; zwölf Zusatzfälle grenzen F2069, H2367, H2440, W1009, W1071, E2373 und E2121 ein. Der Vergleich zählt Stilregeln nur über den Code in ihrer Meldung.
 - `Tools/Build-Test.ps1` repariert (#1360, #1363): Argumente an `cc.ps1` als benannte Parameter, lauffähig unter Windows PowerShell 5.1, Testergebnisse immer mit vollem Pfad (Vorgabe `Output/dunitx-ergebnisse.xml`).
 
 ### Entfernt

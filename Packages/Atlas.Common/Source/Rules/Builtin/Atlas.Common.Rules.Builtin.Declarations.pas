@@ -1327,6 +1327,9 @@ type
     Token: Integer;
     Path: string;
     IsRoutine: Boolean;
+    /// <summary>Property mit Index (property Eintrag[I: Integer]); solche dürfen überladen werden (#1383).
+    /// </summary>
+    IsArrayProperty: Boolean;
   end;
 
 procedure TDuplicateDeclarationRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1489,7 +1492,12 @@ var
           TSyntaxKind.RoutineHeader:
             AddName(Child, nil, Child.Name, 'Methode', 0, 1, NameToken(Child, Child.Name), True);
           TSyntaxKind.PropertyDecl:
-            AddName(Child, nil, Child.Name, 'Property', 0, 1, NameToken(Child, Child.Name), False);
+            begin
+              AddName(Child, nil, Child.Name, 'Property', 0, 1, NameToken(Child, Child.Name), False);
+              // Überladene Array-Properties übersetzt dcc (Cm.W1075, #1383).
+              if (Length(Names) > 0) and (Names[High(Names)].Node = Child) then
+                Names[High(Names)].IsArrayProperty := Child.FindChild(TSyntaxKind.Parameters) <> nil;
+            end;
           TSyntaxKind.VarSection:
             for Inner := 0 to Child.ChildCount - 1 do
               if Child[Inner].Kind = TSyntaxKind.VarDecl then
@@ -1576,6 +1584,7 @@ var
     for Later := 1 to High(Names) do
       for Earlier := 0 to Later - 1 do
         if (Names[Earlier].Key = Names[Later].Key) and not (Names[Earlier].IsRoutine and Names[Later].IsRoutine) and
+          not (Names[Earlier].IsArrayProperty and Names[Later].IsArrayProperty) and
           TConditionalBranches.Implies(Names[Later].Path, Names[Earlier].Path) then
         begin
           Fixes := nil;

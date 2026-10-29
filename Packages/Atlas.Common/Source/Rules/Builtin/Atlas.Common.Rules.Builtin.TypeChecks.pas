@@ -29,8 +29,7 @@
 //                     wenn jede Variante abweicht. Korrektur: den Ergebnistyp in
 //                     Deklaration und Rumpf an das Interface angleichen.
 //   invalid-var-argument
-//                     An einen var- oder out-Parameter geht ein String-Element an
-//                     einen Zeichen-Parameter (wie E2354), eine Konstante, ein
+//                     An einen var- oder out-Parameter geht eine Konstante, ein
 //                     const-Parameter, eine Property oder ein Funktionsergebnis
 //                     (wie E2197), eine Konstante an ein offenes Array (wie
 //                     E2192) oder ein Ausdruck (wie E2036) (#1037). Slice an
@@ -39,8 +38,11 @@
 //                     #1328): Slice übergibt den Speicher des Arrays. Nur bei
 //                     eindeutiger Routine ohne Überladungen und ohne
 //                     eingebaute Routinen (Inc, Move ... nehmen mehr an).
+//                     Ein String-Element (S[I]) an einen var-Zeichen-Parameter
+//                     übersetzt dcc ebenfalls (E2354 gab es nur unter .NET;
+//                     Cm.E2354, #1383).
 //                     Korrektur: über eine lokale Variable übergeben, bei
-//                     String-Elementen und Properties mit write mit Rückschreiben.
+//                     Properties mit write mit Rückschreiben.
 //   condition-not-boolean
 //                     Die Bedingung von if, while, until bzw. eines bedingten
 //                     Ausdrucks hat sicher einen Typ, der kein Boolean ist: Zahl,
@@ -1195,16 +1197,14 @@ var
         if not SameText(AArgument.Name, 'as') then
           Result := TVarArgumentKind.Expression;
       TSyntaxKind.IndexAccess:
-        // S[I] mit S vom Typ string an einen Zeichen-Parameter (wie E2354).
+        // S[I] mit S vom Typ string an einen Zeichen-Parameter: übersetzt dcc (#1383), erkannt nur, damit
+        // das Element nicht als Ausdruck gilt.
         if (AArgument.ChildCount = 2) and MatchText(AParamType, ['Char', 'WideChar', 'AnsiChar']) and
           (AArgument[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
           Resolver.NodeType(AContext.Tree, FileName, AArgument[0], Symbol, TypeInfo, TypeFound) and
           (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) and
           IsStringText(DeclaredTypeText(AContext, Symbol)) then
-        begin
-          AWriteBack := True;
           Result := TVarArgumentKind.StringElement;
-        end;
       TSyntaxKind.Call:
         if (AArgument.ChildCount > 0) and (AArgument[0].Kind = TSyntaxKind.Identifier) and
           SameText(AArgument[0].Name, 'Slice') and OpenArray and
@@ -1324,8 +1324,7 @@ var
       Kind := Classify(Argument, NormalizedType(Params[Index - 1].TypeName), Description, WriteBack);
       case Kind of
         TVarArgumentKind.StringElement:
-          Message := Format('Ein String-Element kann nicht an einen %s-Parameter übergeben werden (wie E2354).',
-            [Modifier]);
+          Continue;
         TVarArgumentKind.ConstantObject:
           Message := Format('%s ist keine Variable und kann nicht an einen %s-Parameter übergeben werden (wie E2197).',
             [Description, Modifier]);
@@ -1343,7 +1342,7 @@ var
         Continue;
       end;
       Fixes := nil;
-      if (Kind in [TVarArgumentKind.StringElement, TVarArgumentKind.ConstantObject, TVarArgumentKind.Expression]) and
+      if (Kind in [TVarArgumentKind.ConstantObject, TVarArgumentKind.Expression]) and
         LocalVariableFix(ACall, Argument, NormalizedType(Params[Index - 1].TypeName), Modifier = 'out', WriteBack, Fix)
       then
         Fixes := [Fix];

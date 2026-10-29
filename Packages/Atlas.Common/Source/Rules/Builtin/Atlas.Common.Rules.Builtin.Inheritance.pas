@@ -13,7 +13,8 @@
 //                                       auf eine statische (E2170) oder finale (E2352), Ableiten von
 //                                       einer sealed-Klasse (E2353) (#997)
 //   abstract-class-instantiated         Create auf einer Klasse mit offenen abstrakten Methoden (W1020)
-//                                       oder einer abstract-Klasse (E2402) (#999)
+//                                       (#999); "class abstract" allein erzwingt dcc nicht (E2402 gibt es
+//                                       nur unter .NET, #1383)
 //   inherited-abstract-call             inherited Name(…) auf eine im Vorfahren abstrakte Methode (E2373,
 //                                       #1026); die Methode löst TNameResolver samt Überladungen auf
 //   class-reference-nonvirtual-constructor  Create über eine Klassenreferenz (class of TBasis), deren
@@ -1990,19 +1991,6 @@ begin
     'Instanz einer Klasse mit abstrakten Methoden');
 end;
 
-/// <summary>Steht abstract in der Signatur einer Klasse ("TForm = class abstract(TBasis)")?</summary>
-function IsAbstractClass(const ASymbol: TIndexSymbol): Boolean;
-var
-  Words: TArray<string>;
-  Index: Integer;
-begin
-  Words := LowerCase(ASymbol.Signature).Split([' ', '(', ')', '<', '>', '=', ';'], TStringSplitOptions.ExcludeEmpty);
-  for Index := 0 to High(Words) - 1 do
-    if (Words[Index] = 'class') and (Words[Index + 1] = 'abstract') then
-      Exit(True);
-  Result := False;
-end;
-
 procedure TAbstractClassInstantiatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
   MaxNamed = 5;
@@ -2092,12 +2080,6 @@ var
     if not Ancestry.FindClass(Tokens[AName].Text, Location) then
       Exit;
     Range := TTextRange.Create(Tokens[AName].StartPos, Tokens[ACreate].EndPos);
-    if IsAbstractClass(Location.Symbol) then
-    begin
-      AReport.Add(Range, Format('%s ist als abstract deklariert; davon lässt sich keine Instanz erzeugen ' +
-        '(wie E2402).', [Location.Symbol.Name]), TRuleConfidence.High);
-      Exit;
-    end;
     Open := OpenMethods(Location, Owners);
     if Open = nil then
       Exit;
