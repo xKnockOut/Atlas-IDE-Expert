@@ -1,14 +1,13 @@
 {
  "summary": {
-  "faelle": 466,
-  "dccCodes": 469,
-  "verpasst": 176,
-  "erkannt": 216,
-  "erkanntStandard": 214,
-  "greiftNicht": 159,
-  "mitZusaetzlichen": 138,
-  "zusaetzlich": 168,
-  "anderer Code": 77
+  "faelle": 471,
+  "dccCodes": 482,
+  "verpasst": 237,
+  "erkannt": 228,
+  "erkanntStandard": 226,
+  "anderer Code": 17,
+  "mitZusaetzlichen": 86,
+  "zusaetzlich": 94
  },
  "cases": [
   {
@@ -41,6 +40,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -75,13 +75,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E1026",
    "file": "Cm.E1026.pas",
    "code": "E1026",
-   "expected": "E1026",
+   "expected": "F1026",
    "title": "File not found",
    "platform": "",
    "built": true,
@@ -93,7 +94,7 @@
     "F1026"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "F1026",
@@ -107,6 +108,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -128,24 +130,30 @@
     ]
    },
    "expectedHit": true,
-   "checks": [],
-   "extra": [
+   "checks": [
     {
-     "rule": "syntax",
-     "line": 12,
-     "codes": [
-      "E2029"
+     "code": "E1038",
+     "lines": [],
+     "text": "Unit-Bezeichner 'Cm.Hilfe.E1038Anders' stimmt mit dem Dateinamen nicht überein",
+     "status": "erkannt",
+     "sameLine": false,
+     "standard": true,
+     "rules": [
+      "unit-name-mismatch"
      ],
-     "message": "';' fehlt (wie E2029).",
-     "standard": true
+     "otherFile": [
+      "Cm.Hilfe.E1038.pas"
+     ]
     }
-   ]
+   ],
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.E2001",
    "file": "Cm.E2001.pas",
    "code": "E2001",
-   "expected": "E2001",
+   "expected": "E2064",
    "title": "Ordinal type required",
    "platform": "",
    "built": true,
@@ -157,7 +165,7 @@
     "E2064"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2064",
@@ -169,6 +177,50 @@
      "sameLine": false,
      "standard": false,
      "rules": []
+    }
+   ],
+   "notComparable": [],
+   "extra": []
+  },
+  {
+   "case": "Cm.E2001b",
+   "file": "Cm.E2001b.pas",
+   "code": "E2001",
+   "expected": "E2001",
+   "title": "Ordinal type required",
+   "platform": "",
+   "built": true,
+   "platforms": [
+    "Win32",
+    "Win64"
+   ],
+   "dccCodes": [
+    "E2001"
+   ],
+   "dccOther": {},
+   "expectedHit": true,
+   "checks": [
+    {
+     "code": "E2001",
+     "lines": [
+      16
+     ],
+     "text": "Ordinaltyp erforderlich",
+     "status": "erkannt",
+     "sameLine": true,
+     "standard": true,
+     "rules": [
+      "case-selector-not-ordinal"
+     ]
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 17,
+     "codes": [
+      "H2077"
+     ]
     }
    ],
    "extra": []
@@ -205,6 +257,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unresolved-type",
@@ -249,17 +302,16 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 14,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2004",
@@ -299,40 +351,35 @@
       15
      ],
      "text": "Inkompatible Typen: 'string' und 'Integer'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 15,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     },
     {
      "rule": "unused-assignment",
      "line": 15,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2005",
    "file": "Cm.E2005.pas",
    "code": "E2005",
-   "expected": "E2005",
+   "expected": "E2029",
    "title": "'%s' is not a type identifier",
    "platform": "",
    "built": true,
@@ -344,7 +391,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -352,31 +399,80 @@
       15
      ],
      "text": "'..' erwartet, aber ';' gefunden",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unresolved-type (E2005)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 18,
+     "codes": [
+      "H2077"
      ]
     }
    ],
    "extra": [
     {
      "rule": "unresolved-type",
-     "line": 15,
+     "line": 16,
      "codes": [
       "E2005"
      ],
      "message": "cZahl ist kein Typ (wie E2005).",
      "standard": true
-    },
+    }
+   ]
+  },
+  {
+   "case": "Cm.E2005b",
+   "file": "Cm.E2005b.pas",
+   "code": "E2005",
+   "expected": "E2007",
+   "title": "'%s' is not a type identifier",
+   "platform": "",
+   "built": true,
+   "platforms": [
+    "Win32",
+    "Win64"
+   ],
+   "dccCodes": [
+    "E2007"
+   ],
+   "dccOther": {},
+   "expectedHit": true,
+   "checks": [
     {
-     "rule": "unused-assignment",
-     "line": 17,
-     "codes": [
-      "H2077"
+     "code": "E2007",
+     "lines": [
+      17
      ],
-     "message": "Der an \"mWert\" zugewiesene Wert wird nie gelesen",
+     "text": "Konstante oder Typenbezeichner erwartet",
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-local",
+     "line": 18,
+     "codes": [
+      "H2164"
+     ]
+    }
+   ],
+   "extra": [
+    {
+     "rule": "unresolved-type",
+     "line": 18,
+     "codes": [
+      "E2005"
+     ],
+     "message": "Nichts ist kein Typ (wie E2005).",
      "standard": true
     }
    ]
@@ -411,13 +507,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2007",
    "file": "Cm.E2007.pas",
    "code": "E2007",
-   "expected": "E2007",
+   "expected": "E2029",
    "title": "Constant or type identifier expected",
    "platform": "",
    "built": true,
@@ -429,7 +526,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -438,20 +535,21 @@
      ],
      "text": "Ausdruck erwartet, aber ';' gefunden",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "syntax"
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2008",
    "file": "Cm.E2008.pas",
    "code": "E2008",
-   "expected": "E2008",
+   "expected": "E2010",
    "title": "Incompatible types",
    "platform": "",
    "built": true,
@@ -463,7 +561,7 @@
     "E2010"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2010",
@@ -471,25 +569,22 @@
       15
      ],
      "text": "Inkompatible Typen: 'Integer' und 'AnsiChar'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 16,
+     "codes": [
+      "H2077"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "unused-assignment",
-     "line": 15,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mMenge\" zugewiesene Wert wird nie gelesen",
-     "standard": true
-    }
-   ]
+   "extra": []
   },
   {
    "case": "Cm.E2009",
@@ -515,25 +610,22 @@
       15
      ],
      "text": "Inkompatible Typen: 'Liste der Parameter ist unterschiedlich'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 15,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mProzedur\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2010",
@@ -559,25 +651,22 @@
       14
      ],
      "text": "Inkompatible Typen: 'Integer' und 'string'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 14,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2011",
@@ -611,6 +700,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -645,32 +735,22 @@
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "missing-begin-end",
-     "line": 15,
-     "codes": [
-      "E2153"
-     ],
-     "message": "if ohne begin … end",
-     "standard": true
-    },
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 16,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2013",
    "file": "Cm.E2013.pas",
    "code": "E2013",
-   "expected": "E2013",
+   "expected": "E2008",
    "title": "Type of expression must be INTEGER",
    "platform": "",
    "built": true,
@@ -682,7 +762,7 @@
     "E2008"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2008",
@@ -696,13 +776,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2014",
    "file": "Cm.E2014.pas",
    "code": "E2014",
-   "expected": "E2014",
+   "expected": "E2029",
    "title": "Statement expected, but expression of type '%s' found",
    "platform": "",
    "built": true,
@@ -714,7 +795,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -722,18 +803,17 @@
       15
      ],
      "text": "':=' erwartet, aber '=' gefunden",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "comparison-as-statement (E2014)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "comparison-as-statement",
-     "line": 15,
+     "line": 16,
      "codes": [
       "E2014"
      ],
@@ -741,6 +821,41 @@
      "standard": true
     }
    ]
+  },
+  {
+   "case": "Cm.E2014b",
+   "file": "Cm.E2014b.pas",
+   "code": "E2014",
+   "expected": "E2014",
+   "title": "Statement expected, but expression of type '%s' found",
+   "platform": "",
+   "built": true,
+   "platforms": [
+    "Win32",
+    "Win64"
+   ],
+   "dccCodes": [
+    "E2014"
+   ],
+   "dccOther": {},
+   "expectedHit": true,
+   "checks": [
+    {
+     "code": "E2014",
+     "lines": [
+      16
+     ],
+     "text": "Anweisung erforderlich, aber Ausdruck vom Typ 'Integer' gefunden",
+     "status": "erkannt",
+     "sameLine": true,
+     "standard": true,
+     "rules": [
+      "comparison-as-statement"
+     ]
+    }
+   ],
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.E2015",
@@ -766,25 +881,22 @@
       15
      ],
      "text": "Operator ist auf diesen Operandentyp nicht anwendbar",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 15,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mText\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2016",
@@ -816,6 +928,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -848,6 +961,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -880,6 +994,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -912,13 +1027,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2020",
    "file": "Cm.E2020.pas",
    "code": "E2020",
-   "expected": "E2020",
+   "expected": "E2015",
    "title": "Object or class type required",
    "platform": "",
    "built": true,
@@ -930,7 +1046,7 @@
     "E2015"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2015",
@@ -938,25 +1054,14 @@
       16
      ],
      "text": "Operator ist auf diesen Operandentyp nicht anwendbar",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "missing-begin-end (E2153)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
-    {
-     "rule": "missing-begin-end",
-     "line": 16,
-     "codes": [
-      "E2153"
-     ],
-     "message": "if ohne begin … end",
-     "standard": true
-    }
-   ]
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.E2021",
@@ -988,6 +1093,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1020,6 +1126,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1054,6 +1161,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1080,25 +1188,22 @@
       10
      ],
      "text": "Ungültiger Funktionsrückgabetyp",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "result-not-set (W1035)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "result-not-set",
      "line": 10,
      "codes": [
       "W1035"
-     ],
-     "message": "\"Datei\" kann enden, ohne Result zu setzen; der Rückgabewert ist dann undefiniert",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2025",
@@ -1132,17 +1237,16 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "result-not-set",
      "line": 10,
      "codes": [
       "W1035"
-     ],
-     "message": "\"MitTyp\" kann enden, ohne Result zu setzen; der Rückgabewert ist dann undefiniert",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2026",
@@ -1176,6 +1280,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1210,6 +1315,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1242,6 +1348,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1276,17 +1383,16 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 14,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2030",
@@ -1320,26 +1426,23 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 16,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     },
     {
      "rule": "unused-assignment",
      "line": 17,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2031",
@@ -1373,17 +1476,16 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 14,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2032",
@@ -1417,6 +1519,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1449,6 +1552,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1483,6 +1587,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1517,6 +1622,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1543,25 +1649,22 @@
       16
      ],
      "text": "Variable erforderlich",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 16,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZeiger\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2037",
@@ -1605,6 +1708,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1639,6 +1743,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
@@ -1683,6 +1788,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1717,6 +1823,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1751,17 +1858,16 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 14,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mText\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2053",
@@ -1792,8 +1898,16 @@
      "standard": true,
      "rules": [
       "syntax (E2066)",
-      "unresolved-identifier (E2003)",
-      "unused-assignment (H2077)"
+      "unresolved-identifier (E2003)"
+     ]
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 14,
+     "codes": [
+      "H2077"
      ]
     }
    ],
@@ -1805,15 +1919,6 @@
       "E2066"
      ],
      "message": "Operator oder ';' fehlt (wie E2066).",
-     "standard": true
-    },
-    {
-     "rule": "unused-assignment",
-     "line": 14,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mWert\" zugewiesene Wert wird nie gelesen",
      "standard": true
     },
     {
@@ -1857,6 +1962,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -1889,13 +1995,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2056",
    "file": "Cm.E2056.pas",
    "code": "E2056",
-   "expected": "E2056",
+   "expected": "-",
    "title": "String literals may have at most 255 elements",
    "platform": "",
    "built": true,
@@ -1905,12 +2012,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unused-assignment",
-     "line": 15,
+     "line": 16,
      "codes": [
       "H2077"
      ],
@@ -1965,6 +2073,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -2011,17 +2120,16 @@
      "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-local",
      "line": 13,
      "codes": [
       "H2164"
-     ],
-     "message": "Variable \"mObjekt\" wird nicht verwendet",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2059",
@@ -2053,6 +2161,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
@@ -2069,7 +2178,7 @@
    "case": "Cm.E2060",
    "file": "Cm.E2060.pas",
    "code": "E2060",
-   "expected": "E2060",
+   "expected": "E2058",
    "title": "Class and interface types only allowed in type section",
    "platform": "",
    "built": true,
@@ -2082,7 +2191,7 @@
     "E2059"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2058",
@@ -2090,13 +2199,10 @@
       12
      ],
      "text": "Klasse, Interface und Objekttypen sind nur im Abschnitt type erlaubt",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "syntax (E2060)",
-      "unused-local (H2164)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     },
     {
      "code": "E2059",
@@ -2104,29 +2210,31 @@
       13
      ],
      "text": "Lokale Klasse, Interface oder Objekttypen sind nicht erlaubt",
-     "status": "verpasst",
-     "sameLine": false,
-     "standard": false,
-     "rules": []
+     "status": "anderer Code",
+     "sameLine": true,
+     "standard": true,
+     "rules": [
+      "syntax (E2060)"
+     ]
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-local",
+     "line": 13,
+     "codes": [
+      "H2164"
+     ]
     }
    ],
    "extra": [
     {
      "rule": "syntax",
-     "line": 12,
+     "line": 13,
      "codes": [
       "E2060"
      ],
      "message": "Klassen- und Interface-Typen sind nur im type-Abschnitt erlaubt (wie E2060).",
-     "standard": true
-    },
-    {
-     "rule": "unused-local",
-     "line": 12,
-     "codes": [
-      "H2164"
-     ],
-     "message": "Variable \"mObjekt\" wird nicht verwendet",
      "standard": true
     }
    ]
@@ -2135,7 +2243,7 @@
    "case": "Cm.E2061",
    "file": "Cm.E2061.pas",
    "code": "E2061",
-   "expected": "E2061",
+   "expected": "E2059",
    "title": "Local class types not allowed",
    "platform": "",
    "built": true,
@@ -2147,7 +2255,7 @@
     "E2059"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2059",
@@ -2155,16 +2263,19 @@
       14
      ],
      "text": "Lokale Klasse, Interface oder Objekttypen sind nicht erlaubt",
-     "status": "verpasst",
-     "sameLine": false,
-     "standard": false,
-     "rules": []
+     "status": "anderer Code",
+     "sameLine": true,
+     "standard": true,
+     "rules": [
+      "syntax (E2061)"
+     ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
-     "line": 13,
+     "line": 14,
      "codes": [
       "E2061"
      ],
@@ -2203,6 +2314,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -2237,6 +2349,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -2271,6 +2384,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -2305,26 +2419,23 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 14,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     },
     {
      "rule": "unused-assignment",
      "line": 14,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2067",
@@ -2358,6 +2469,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -2392,6 +2504,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -2426,6 +2539,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unresolved-type",
@@ -2470,6 +2584,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -2504,6 +2619,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -2538,13 +2654,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2075",
    "file": "Cm.E2075.pas",
    "code": "E2075",
-   "expected": "E2075",
+   "expected": "E2076",
    "title": "This form of method call only allowed in methods of derived types",
    "platform": "",
    "built": true,
@@ -2556,7 +2673,7 @@
     "E2076"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2076",
@@ -2570,6 +2687,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -2602,13 +2720,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2077",
    "file": "Cm.E2077.pas",
    "code": "E2077",
-   "expected": "E2077",
+   "expected": "E2025",
    "title": "Cannot return a value from a procedure",
    "platform": "",
    "built": true,
@@ -2620,7 +2739,7 @@
     "E2025"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2025",
@@ -2634,6 +2753,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -2668,6 +2788,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unresolved-identifier",
@@ -2684,7 +2805,7 @@
    "case": "Cm.E2079",
    "file": "Cm.E2079.pas",
    "code": "E2079",
-   "expected": "E2079",
+   "expected": "E2467",
    "title": "Procedure NEW needs constructor",
    "platform": "",
    "built": true,
@@ -2696,7 +2817,7 @@
     "E2467"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2467",
@@ -2704,18 +2825,17 @@
       15
      ],
      "text": "Record oder Objekttyp erforderlich",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unresolved-identifier (E2003)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unresolved-identifier",
-     "line": 15,
+     "line": 16,
      "codes": [
       "E2003"
      ],
@@ -2728,7 +2848,7 @@
    "case": "Cm.E2080",
    "file": "Cm.E2080.pas",
    "code": "E2080",
-   "expected": "E2080",
+   "expected": "E2019",
    "title": "Procedure DISPOSE needs destructor",
    "platform": "",
    "built": true,
@@ -2740,7 +2860,7 @@
     "E2019"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2019",
@@ -2748,18 +2868,17 @@
       16
      ],
      "text": "Objekttyp erforderlich",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unresolved-identifier (E2003)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unresolved-identifier",
-     "line": 16,
+     "line": 17,
      "codes": [
       "E2003"
      ],
@@ -2800,32 +2919,22 @@
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "missing-begin-end",
-     "line": 14,
-     "codes": [
-      "E2153"
-     ],
-     "message": "for ohne begin … end",
-     "standard": true
-    },
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 15,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mIndex\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2082",
    "file": "Cm.E2082.pas",
    "code": "E2082",
-   "expected": "E2082",
+   "expected": "E2019",
    "title": "TYPEOF can only be applied to object types with a VMT",
    "platform": "",
    "built": true,
@@ -2837,7 +2946,7 @@
     "E2019"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2019",
@@ -2845,25 +2954,22 @@
       16
      ],
      "text": "Objekttyp erforderlich",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 17,
+     "codes": [
+      "H2077"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "unused-assignment",
-     "line": 16,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mZeiger\" zugewiesene Wert wird nie gelesen",
-     "standard": true
-    }
-   ]
+   "extra": []
   },
   {
    "case": "Cm.E2083",
@@ -2897,6 +3003,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -2929,13 +3036,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2088",
    "file": "Cm.E2088.pas",
    "code": "E2088",
-   "expected": "E2088",
+   "expected": "E2029",
    "title": "Variable name expected",
    "platform": "",
    "built": true,
@@ -2947,7 +3055,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -2956,18 +3064,17 @@
       14
      ],
      "text": "Ausdruck erwartet, aber ':=' gefunden",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "syntax (E2088)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
-     "line": 12,
+     "line": 13,
      "codes": [
       "E2088"
      ],
@@ -3000,31 +3107,28 @@
       16
      ],
      "text": "Ungültige Typumwandlung",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 16,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mKlein\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2091",
    "file": "Cm.E2091.pas",
    "code": "E2091",
-   "expected": "E2091",
+   "expected": "E2088",
    "title": "Segment/Offset pairs not supported in Borland 32-bit Pascal",
    "platform": "",
    "built": true,
@@ -3036,7 +3140,7 @@
     "E2088"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2088",
@@ -3044,18 +3148,17 @@
       9
      ],
      "text": "Variable erwartet",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "syntax (E2029)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
-     "line": 9,
+     "line": 10,
      "codes": [
       "E2029"
      ],
@@ -3096,6 +3199,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3130,13 +3234,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2095",
    "file": "Cm.E2095.pas",
    "code": "E2095",
-   "expected": "E2095",
+   "expected": "E2280",
    "title": "Missing ENDIF directive",
    "platform": "",
    "built": true,
@@ -3148,7 +3253,7 @@
     "E2280"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2280",
@@ -3156,18 +3261,17 @@
       8
      ],
      "text": "Nicht abgeschlossene bedingte Direktive",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "conditional-directive-unbalanced (E2095)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
-     "line": 12,
+     "line": 13,
      "codes": [
       "E2029"
      ],
@@ -3176,7 +3280,7 @@
     },
     {
      "rule": "conditional-directive-unbalanced",
-     "line": 8,
+     "line": 9,
      "codes": [
       "E2095"
      ],
@@ -3189,7 +3293,7 @@
    "case": "Cm.E2096",
    "file": "Cm.E2096.pas",
    "code": "E2096",
-   "expected": "E2096",
+   "expected": "E2029",
    "title": "Method identifier expected",
    "platform": "",
    "built": true,
@@ -3202,7 +3306,7 @@
     "E2065"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -3225,17 +3329,18 @@
      ],
      "text": "Ungenügende Forward- oder External-Deklaration: 'TBasis.Machen'",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "declared-not-implemented"
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "duplicate-declaration",
-     "line": 17,
+     "line": 18,
      "codes": [
       "E2004"
      ],
@@ -3276,6 +3381,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3310,6 +3416,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3342,6 +3449,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3376,6 +3484,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3416,26 +3525,22 @@
       14
      ],
      "text": "Konstantenausdruck verletzt untere Grenzen",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "constant-expression-error (E2102)",
-      "unused-assignment (H2077)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 14,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2105",
@@ -3466,6 +3571,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3497,13 +3603,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2108",
    "file": "Cm.E2108.pas",
    "code": "E2108",
-   "expected": "E2108",
+   "expected": "E2107",
    "title": "Memory reference expected",
    "platform": "Win32",
    "built": true,
@@ -3514,7 +3621,7 @@
     "E2107"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2107",
@@ -3528,6 +3635,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3559,6 +3667,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3590,13 +3699,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2112",
    "file": "Cm.E2112.pas",
    "code": "E2112",
-   "expected": "E2112",
+   "expected": "E2105",
    "title": "Invalid register combination",
    "platform": "Win32",
    "built": true,
@@ -3607,7 +3717,7 @@
     "E2105"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2105",
@@ -3621,6 +3731,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3652,6 +3763,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3683,13 +3795,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2115",
    "file": "Cm.E2115.pas",
    "code": "E2115",
-   "expected": "E2115",
+   "expected": "E2003",
    "title": "Error in numeric constant",
    "platform": "Win32",
    "built": true,
@@ -3700,7 +3813,7 @@
     "E2003"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2003",
@@ -3714,13 +3827,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2116",
    "file": "Cm.E2116.pas",
    "code": "E2116",
-   "expected": "E2116",
+   "expected": "E2107",
    "title": "Invalid combination of opcode and operands",
    "platform": "Win32",
    "built": true,
@@ -3731,7 +3845,7 @@
     "E2107"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2107",
@@ -3745,6 +3859,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3776,13 +3891,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2119",
    "file": "Cm.E2119.pas",
    "code": "E2119",
-   "expected": "E2119",
+   "expected": "E2003",
    "title": "Structure field identifier expected",
    "platform": "Win32",
    "built": true,
@@ -3793,7 +3909,7 @@
     "E2003"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2003",
@@ -3807,13 +3923,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2121",
    "file": "Cm.E2121.pas",
    "code": "E2121",
-   "expected": "E2121",
+   "expected": "-",
    "title": "Expression or identifier cannot be exported",
    "platform": "",
    "built": true,
@@ -3823,16 +3940,60 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "exports-invalid",
-     "line": 15,
+     "line": 16,
      "codes": [
       "E2121"
      ],
      "message": "GZahl ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2121).",
+     "standard": true
+    }
+   ]
+  },
+  {
+   "case": "Cm.E2121b",
+   "file": "Cm.E2121b.pas",
+   "code": "E2121",
+   "expected": "E2276",
+   "title": "Expression or identifier cannot be exported",
+   "platform": "",
+   "built": true,
+   "platforms": [
+    "Win32",
+    "Win64"
+   ],
+   "dccCodes": [
+    "E2276"
+   ],
+   "dccOther": {},
+   "expectedHit": true,
+   "checks": [
+    {
+     "code": "E2276",
+     "lines": [
+      15
+     ],
+     "text": "Bezeichner 'TZahl' kann nicht exportiert werden",
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [],
+   "extra": [
+    {
+     "rule": "exports-invalid",
+     "line": 16,
+     "codes": [
+      "E2121"
+     ],
+     "message": "TZahl ist keine Prozedur oder Funktion und kann nicht exportiert werden (wie E2121).",
      "standard": true
     }
    ]
@@ -3869,6 +4030,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
@@ -3913,6 +4075,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -3947,17 +4110,16 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 15,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2126",
@@ -4005,6 +4167,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4039,6 +4202,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4073,6 +4237,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4107,6 +4272,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4139,6 +4305,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4173,6 +4340,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4207,17 +4375,16 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 16,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mInfo\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2134",
@@ -4251,17 +4418,16 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 17,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mInfo\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2136",
@@ -4295,6 +4461,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4329,6 +4496,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4363,6 +4531,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4397,6 +4566,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4431,13 +4601,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2143",
    "file": "Cm.E2143.pas",
    "code": "E2143",
-   "expected": "E2143",
+   "expected": "E2010",
    "title": "Expression has no value",
    "platform": "",
    "built": true,
@@ -4449,7 +4620,7 @@
     "E2010"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2010",
@@ -4457,25 +4628,22 @@
       18
      ],
      "text": "Inkompatible Typen: 'Integer' und 'procedure, untyped pointer or untyped parameter'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 19,
+     "codes": [
+      "H2077"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "unused-assignment",
-     "line": 18,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
-    }
-   ]
+   "extra": []
   },
   {
    "case": "Cm.E2145",
@@ -4509,13 +4677,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2146",
    "file": "Cm.E2146.pas",
    "code": "E2146",
-   "expected": "E2146",
+   "expected": "-",
    "title": "Default values must be of ordinal, pointer or small set type",
    "platform": "",
    "built": true,
@@ -4525,12 +4694,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "default-parameter-invalid",
-     "line": 13,
+     "line": 14,
      "codes": [
       "E2146"
      ],
@@ -4571,13 +4741,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2148",
    "file": "Cm.E2148.pas",
    "code": "E2148",
-   "expected": "E2148",
+   "expected": "E2169",
    "title": "Dynamic method or message handler not allowed here",
    "platform": "",
    "built": true,
@@ -4590,7 +4761,7 @@
     "E2169"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -4615,6 +4786,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4649,6 +4821,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4681,6 +4854,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4708,34 +4882,30 @@
      ],
      "text": "';' nicht erlaubt vor einem 'ELSE'",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
-      "missing-begin-end",
       "syntax"
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 16,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     },
     {
      "rule": "unused-assignment",
      "line": 18,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2154",
@@ -4769,6 +4939,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4803,6 +4974,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4829,25 +5001,22 @@
       17
      ],
      "text": "Auf Element 0 kann nicht zugegriffen werden - 'Length' oder 'SetLength' verwenden",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 17,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZeichen\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2160",
@@ -4879,6 +5048,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4911,6 +5081,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4959,6 +5130,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -4993,6 +5165,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5027,6 +5200,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5061,6 +5235,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5095,13 +5270,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2174",
    "file": "Cm.E2174.pas",
    "code": "E2174",
-   "expected": "E2174",
+   "expected": "E2008",
    "title": "'%s' not previously declared as a PROPERTY",
    "platform": "",
    "built": true,
@@ -5113,7 +5289,7 @@
     "E2008"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2008",
@@ -5121,18 +5297,17 @@
       14
      ],
      "text": "Inkompatible Typen",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "property-accessor-invalid (E2174)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "property-accessor-invalid",
-     "line": 14,
+     "line": 15,
      "codes": [
       "E2174"
      ],
@@ -5195,6 +5370,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5239,6 +5415,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5283,6 +5460,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5327,6 +5505,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5371,6 +5550,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5415,6 +5595,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5484,6 +5665,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5528,13 +5710,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2183",
    "file": "Cm.E2183.pas",
    "code": "E2183",
-   "expected": "E2183",
+   "expected": "E2185",
    "title": "Dispid clause only allowed in OLE automation section",
    "platform": "",
    "built": true,
@@ -5547,7 +5730,7 @@
     "E2185"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2169",
@@ -5572,6 +5755,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5641,6 +5825,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5686,6 +5871,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5732,6 +5918,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5778,6 +5965,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5812,17 +6000,16 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-local",
      "line": 12,
      "codes": [
       "H2164"
-     ],
-     "message": "Variable \"mZahl\" wird nicht verwendet",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2190",
@@ -5856,6 +6043,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -5890,13 +6078,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2192",
    "file": "Cm.E2192.pas",
    "code": "E2192",
-   "expected": "E2192",
+   "expected": "E2197",
    "title": "Constants cannot be used as open array arguments",
    "platform": "",
    "built": true,
@@ -5908,7 +6097,7 @@
     "E2197"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2197",
@@ -5916,18 +6105,17 @@
       17
      ],
      "text": "Konstantenobjekt kann nicht als Var-Parameter weitergegeben werden",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "invalid-var-argument (E2192)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "invalid-var-argument",
-     "line": 17,
+     "line": 18,
      "codes": [
       "E2192"
      ],
@@ -5960,25 +6148,22 @@
       15
      ],
      "text": "Standard-Funktion Slice erlaubt nur Open-Array-Argument",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-assignment",
      "line": 15,
      "codes": [
       "H2077"
-     ],
-     "message": "Der an \"mZiel\" zugewiesene Wert wird nie gelesen",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2194",
@@ -6012,6 +6197,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6046,17 +6232,16 @@
      ]
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "unused-local",
      "line": 12,
      "codes": [
       "H2164"
-     ],
-     "message": "Variable \"mZahl\" wird nicht verwendet",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.E2196",
@@ -6090,6 +6275,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6125,13 +6311,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2198",
    "file": "Cm.E2198.pas",
    "code": "E2198",
-   "expected": "E2198",
+   "expected": "E2008",
    "title": "%s cannot be applied to a long string",
    "platform": "",
    "built": true,
@@ -6143,7 +6330,7 @@
     "E2008"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2008",
@@ -6151,25 +6338,22 @@
       17
      ],
      "text": "Inkompatible Typen",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 18,
+     "codes": [
+      "H2077"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "unused-assignment",
-     "line": 17,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mZeiger\" zugewiesene Wert wird nie gelesen",
-     "standard": true
-    }
-   ]
+   "extra": []
   },
   {
    "case": "Cm.E2204",
@@ -6203,6 +6387,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6237,6 +6422,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6283,6 +6469,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6317,6 +6504,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6351,6 +6539,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6391,21 +6580,20 @@
       10
      ],
      "text": "Das private-Symbol 'FWert' wurde deklariert, aber nie verwendet",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "interface-declaration-invalid (E2209)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2210",
    "file": "Cm.E2210.pas",
    "code": "E2210",
-   "expected": "E2210",
+   "expected": "E2070",
    "title": "'%s' directive not allowed in in interface type",
    "platform": "",
    "built": true,
@@ -6417,7 +6605,7 @@
     "E2070"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2070",
@@ -6425,18 +6613,17 @@
       10
      ],
      "text": "Unbekannte Direktive: 'virtual'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "interface-declaration-invalid (E2210)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "interface-declaration-invalid",
-     "line": 10,
+     "line": 11,
      "codes": [
       "E2210"
      ],
@@ -6449,7 +6636,7 @@
    "case": "Cm.E2211",
    "file": "Cm.E2211.pas",
    "code": "E2211",
-   "expected": "E2211",
+   "expected": "E2291",
    "title": "Declaration of '%s' differs from declaration in interface '%s'",
    "platform": "",
    "built": true,
@@ -6461,7 +6648,7 @@
     "E2291"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2291",
@@ -6475,10 +6662,11 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "interface-not-implemented",
-     "line": 15,
+     "line": 16,
      "codes": [
       "E2211"
      ],
@@ -6531,13 +6719,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2218",
    "file": "Cm.E2218.pas",
    "code": "E2218",
-   "expected": "E2218",
+   "expected": "W1055",
    "title": "Published method '%s' contains an unpublishable type",
    "platform": "",
    "built": true,
@@ -6549,7 +6738,7 @@
     "W1055"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "W1055",
@@ -6563,13 +6752,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2221",
    "file": "Cm.E2221.pas",
    "code": "E2221",
-   "expected": "E2221",
+   "expected": "-",
    "title": "$WEAKPACKAGEUNIT '%s' cannot have initialization or finalization code",
    "platform": "",
    "built": true,
@@ -6579,8 +6769,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6613,6 +6804,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6645,6 +6837,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6677,6 +6870,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6709,6 +6903,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6741,6 +6936,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6773,6 +6969,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6805,13 +7002,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2233",
    "file": "Cm.E2233.pas",
    "code": "E2233",
-   "expected": "E2233",
+   "expected": "E2147",
    "title": "Property '%s' inaccessible here",
    "platform": "",
    "built": true,
@@ -6827,7 +7025,7 @@
      "Cm.Hilfe.E2233.pas"
     ]
    },
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2147",
@@ -6836,20 +7034,21 @@
      ],
      "text": "Eigenschaft 'Wert' existiert nicht in Basisklasse",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "property-redeclaration-invalid"
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2234",
    "file": "Cm.E2234.pas",
    "code": "E2234",
-   "expected": "E2234",
+   "expected": "E2008",
    "title": "Getter or setter for property '%s' cannot be found",
    "platform": "",
    "built": true,
@@ -6861,7 +7060,7 @@
     "E2008"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2008",
@@ -6869,18 +7068,17 @@
       13
      ],
      "text": "Inkompatible Typen",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "property-accessor-invalid (E2234)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "property-accessor-invalid",
-     "line": 13,
+     "line": 14,
      "codes": [
       "E2234"
      ],
@@ -6921,6 +7119,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6955,6 +7154,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -6989,6 +7189,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7023,13 +7224,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2240",
    "file": "Cm.E2240.pas",
    "code": "E2240",
-   "expected": "E2240",
+   "expected": "E2003",
    "title": "$EXTERNALSYM and $NODEFINE not allowed for '%s'; only global symbols",
    "platform": "",
    "built": true,
@@ -7042,7 +7244,7 @@
     "H2077"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2003",
@@ -7063,20 +7265,21 @@
      ],
      "text": "Auf 'mZahl' zugewiesener Wert wird niemals benutzt",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "unused-assignment"
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2242",
    "file": "Cm.E2242.pas",
    "code": "E2242",
-   "expected": "E2242",
+   "expected": "E2003",
    "title": "'%s' is not the name of a unit",
    "platform": "",
    "built": true,
@@ -7088,7 +7291,7 @@
     "E2003"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2003",
@@ -7097,18 +7300,17 @@
       14
      ],
      "text": "Undeklarierter Bezeichner: 'Cm.GibtEsNicht'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unit-name-conflict (E2242)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unit-name-conflict",
-     "line": 10,
+     "line": 11,
      "codes": [
       "E2242"
      ],
@@ -7121,7 +7323,7 @@
    "case": "Cm.E2243",
    "file": "Cm.E2243.pas",
    "code": "E2243",
-   "expected": "E2243",
+   "expected": "H2243",
    "title": "Expression needs no Initialize/Finalize",
    "platform": "",
    "built": true,
@@ -7133,7 +7335,7 @@
     "H2243"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "H2243",
@@ -7147,6 +7349,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7168,7 +7371,21 @@
     ]
    },
    "expectedHit": true,
-   "checks": [],
+   "checks": [
+    {
+     "code": "E2245",
+     "lines": [],
+     "text": "Rekursive Include-Datei C:\\Projekte\\BetterDelphiLSP\\wt-cm\\Tests\\Compilermeldungen\\Faelle\\Cm.E2245.inc",
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": [],
+     "otherFile": [
+      "Cm.E2245.inc"
+     ]
+    }
+   ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7203,6 +7420,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7235,6 +7453,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7267,13 +7486,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2252",
    "file": "Cm.E2252.pas",
    "code": "E2252",
-   "expected": "E2252",
+   "expected": "E2004",
    "title": "Method '%s' with identical parameters already exists",
    "platform": "",
    "built": true,
@@ -7285,7 +7505,7 @@
     "E2004"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2004",
@@ -7293,22 +7513,21 @@
       14
      ],
      "text": "Bezeichner redeklariert: \"Nimm\"",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "overload-directive-missing (E2252)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "overload-directive-missing",
-     "line": 14,
+     "line": 15,
      "codes": [
       "E2252"
      ],
-     "message": "Nimm mit denselben Parametern gibt es schon in Zeile 10 (wie E2252).",
+     "message": "Nimm mit denselben Parametern gibt es schon in Zeile 11 (wie E2252).",
      "standard": true
     }
    ]
@@ -7345,6 +7564,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7379,13 +7599,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2256",
    "file": "Cm.E2256.pas",
    "code": "E2256",
-   "expected": "E2256",
+   "expected": "E2008",
    "title": "Dispose not supported (nor necessary) for dynamic arrays",
    "platform": "",
    "built": true,
@@ -7397,7 +7618,7 @@
     "E2008"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2008",
@@ -7405,18 +7626,17 @@
       15
      ],
      "text": "Inkompatible Typen",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "dynamic-array-misuse (E2256)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "dynamic-array-misuse",
-     "line": 15,
+     "line": 16,
      "codes": [
       "E2256"
      ],
@@ -7457,6 +7677,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7491,6 +7712,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7525,6 +7747,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7559,6 +7782,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7593,6 +7817,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7627,6 +7852,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7675,6 +7901,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7722,13 +7949,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2265",
    "file": "Cm.E2265.pas",
    "code": "E2265",
-   "expected": "E2265",
+   "expected": "E2003",
    "title": "Interface '%s' not mentioned in interface list",
    "platform": "",
    "built": true,
@@ -7741,7 +7969,7 @@
     "H2219"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2003",
@@ -7749,12 +7977,10 @@
       17
      ],
      "text": "Undeklarierter Bezeichner: 'IEins'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "interface-not-implemented (E2265)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     },
     {
      "code": "H2219",
@@ -7768,10 +7994,11 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "interface-not-implemented",
-     "line": 17,
+     "line": 18,
      "codes": [
       "E2265"
      ],
@@ -7824,6 +8051,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7858,6 +8086,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -7892,6 +8121,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
@@ -7948,13 +8178,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2271",
    "file": "Cm.E2271.pas",
    "code": "E2271",
-   "expected": "E2271",
+   "expected": "H2219",
    "title": "Property getters and setters cannot be overloaded",
    "platform": "",
    "built": true,
@@ -7966,7 +8197,7 @@
     "H2219"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "H2219",
@@ -7980,13 +8211,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2273",
    "file": "Cm.E2273.pas",
    "code": "E2273",
-   "expected": "E2273",
+   "expected": "E2010",
    "title": "No overloaded version of '%s' with this parameter list exists",
    "platform": "",
    "built": true,
@@ -7998,7 +8230,7 @@
     "E2010"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2010",
@@ -8006,31 +8238,28 @@
       23
      ],
      "text": "Inkompatible Typen: 'Double' und 'Integer'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 24,
+     "codes": [
+      "H2077"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "unused-assignment",
-     "line": 23,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mRueckruf\" zugewiesene Wert wird nie gelesen",
-     "standard": true
-    }
-   ]
+   "extra": []
   },
   {
    "case": "Cm.E2274",
    "file": "Cm.E2274.pas",
    "code": "E2274",
-   "expected": "E2274",
+   "expected": "E2029",
    "title": "property attribute 'label' cannot be used in dispinterface",
    "platform": "",
    "built": true,
@@ -8042,7 +8271,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -8058,13 +8287,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2275",
    "file": "Cm.E2275.pas",
    "code": "E2275",
-   "expected": "E2275",
+   "expected": "E2029",
    "title": "property attribute 'label' cannot be an empty string",
    "platform": "",
    "built": true,
@@ -8076,7 +8306,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -8092,6 +8322,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -8126,6 +8357,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -8158,13 +8390,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2278",
    "file": "Cm.E2278.pas",
    "code": "E2278",
-   "expected": "E2278",
+   "expected": "F2084",
    "title": "Cannot take address of local symbol %s",
    "platform": "",
    "built": true,
@@ -8177,7 +8410,7 @@
     "F2084"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2026",
@@ -8185,12 +8418,10 @@
       14
      ],
      "text": "Konstantenausdruck erwartet",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "local-routine-as-callback (E2278)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     },
     {
      "code": "F2084",
@@ -8198,31 +8429,29 @@
       14
      ],
      "text": "Interner Fehler: AV638ED380(63880000)-R0000000C-0",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "local-routine-as-callback (E2278)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 17,
+     "codes": [
+      "H2077"
      ]
     }
    ],
    "extra": [
     {
      "rule": "local-routine-as-callback",
-     "line": 14,
+     "line": 15,
      "codes": [
       "E2278"
      ],
      "message": "Die Adresse des lokalen Symbols mZahl ist keine Konstante (wie E2278).",
-     "standard": true
-    },
-    {
-     "rule": "unused-assignment",
-     "line": 16,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
      "standard": true
     }
    ]
@@ -8231,7 +8460,7 @@
    "case": "Cm.E2279",
    "file": "Cm.E2279.pas",
    "code": "E2279",
-   "expected": "E2279",
+   "expected": "E1030",
    "title": "Too many nested conditional directives",
    "platform": "",
    "built": true,
@@ -8243,7 +8472,7 @@
     "E1030"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E1030",
@@ -8251,18 +8480,17 @@
       11
      ],
      "text": "Ungültige Compileranweisung: '$ENDIF'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "conditional-directive-unbalanced (E2279)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "conditional-directive-unbalanced",
-     "line": 11,
+     "line": 12,
      "codes": [
       "E2279"
      ],
@@ -8303,6 +8531,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
@@ -8345,6 +8574,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -8379,13 +8609,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2289",
    "file": "Cm.E2289.pas",
    "code": "E2289",
-   "expected": "E2289",
+   "expected": "E1074",
    "title": "Unresolved custom attribute %s",
    "platform": "",
    "built": true,
@@ -8397,7 +8628,7 @@
     "E1074"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E1074",
@@ -8405,25 +8636,22 @@
       14
      ],
      "text": "Unbekanntes benutzerdefiniertes Attribut",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unresolved-attribute (W1074)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unresolved-attribute",
+     "line": 15,
+     "codes": [
+      "W1074"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "unresolved-attribute",
-     "line": 14,
-     "codes": [
-      "W1074"
-     ],
-     "message": "Attribut GibtEsNichtAttribute nicht gefunden und wird ignoriert (wie W1074).",
-     "standard": true
-    }
-   ]
+   "extra": []
   },
   {
    "case": "Cm.E2291",
@@ -8457,13 +8685,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2292",
    "file": "Cm.E2292.pas",
    "code": "E2292",
-   "expected": "E2292",
+   "expected": "E2168",
    "title": "'%s' must reference a property or field of class '%s'",
    "platform": "",
    "built": true,
@@ -8476,7 +8705,7 @@
     "E2168"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -8484,10 +8713,12 @@
       20
      ],
      "text": "Typ erwartet, aber 'END' gefunden",
-     "status": "verpasst",
-     "sameLine": false,
-     "standard": false,
-     "rules": []
+     "status": "anderer Code",
+     "sameLine": true,
+     "standard": true,
+     "rules": [
+      "property-accessor-invalid (E2168)"
+     ]
     },
     {
      "code": "E2168",
@@ -8496,13 +8727,14 @@
      ],
      "text": "Feld- oder Methodenbezeichner erwartet",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "property-accessor-invalid"
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -8537,6 +8769,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -8571,13 +8804,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2296",
    "file": "Cm.E2296.pas",
    "code": "E2296",
-   "expected": "E2296",
+   "expected": "-",
    "title": "A constructor introduced in a class helper must call the parameterless constructor of the helped class as the first statement",
    "platform": "",
    "built": true,
@@ -8587,8 +8821,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "line-length",
@@ -8598,15 +8833,6 @@
      ],
      "message": "Zeile hat 134 Zeichen (Grenze 120).",
      "standard": false
-    },
-    {
-     "rule": "missing-begin-end",
-     "line": 29,
-     "codes": [
-      "E2153"
-     ],
-     "message": "if ohne begin … end",
-     "standard": true
     }
    ]
   },
@@ -8614,7 +8840,7 @@
    "case": "Cm.E2299",
    "file": "Cm.E2299.pas",
    "code": "E2299",
-   "expected": "E2299",
+   "expected": "E2029",
    "title": "Property required",
    "platform": "",
    "built": true,
@@ -8626,7 +8852,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -8635,20 +8861,21 @@
      ],
      "text": "Bezeichner erwartet, aber ';' gefunden",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "syntax"
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2301",
    "file": "Cm.E2301.pas",
    "code": "E2301",
-   "expected": "E2301",
+   "expected": "E2252",
    "title": "Method '%s' with identical parameters and result type already exists",
    "platform": "",
    "built": true,
@@ -8661,7 +8888,7 @@
     "E2252"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2065",
@@ -8670,7 +8897,7 @@
      ],
      "text": "Ungenügende Forward- oder External-Deklaration: 'TKlasse.Machen'",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "declared-not-implemented"
@@ -8683,20 +8910,21 @@
      ],
      "text": "Es gibt bereits eine Methode 'Machen' mit identischen Parametern",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "overload-directive-missing"
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2306",
    "file": "Cm.E2306.pas",
    "code": "E2306",
-   "expected": "E2306",
+   "expected": "-",
    "title": "'Self' is initialized more than once",
    "platform": "",
    "built": true,
@@ -8706,15 +8934,16 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2307",
    "file": "Cm.E2307.pas",
    "code": "E2307",
-   "expected": "E2307",
+   "expected": "E2008",
    "title": "NEW standard function expects a dynamic array type identifier",
    "platform": "",
    "built": true,
@@ -8726,7 +8955,7 @@
     "E2008"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2008",
@@ -8734,31 +8963,28 @@
       15
      ],
      "text": "Inkompatible Typen",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 16,
+     "codes": [
+      "H2077"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "unused-assignment",
-     "line": 15,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mFeld\" zugewiesene Wert wird nie gelesen",
-     "standard": true
-    }
-   ]
+   "extra": []
   },
   {
    "case": "Cm.E2308",
    "file": "Cm.E2308.pas",
    "code": "E2308",
-   "expected": "E2308",
+   "expected": "E2255",
    "title": "Need to specify at least one dimension for NEW of dynamic array",
    "platform": "",
    "built": true,
@@ -8770,7 +8996,7 @@
     "E2255"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2255",
@@ -8778,28 +9004,25 @@
       18
      ],
      "text": "New wird für dynamische Arrays nicht unterstützt - es muss Setlength verwendet werden",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "dynamic-array-misuse (E2308)",
-      "unused-assignment (H2077)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 19,
+     "codes": [
+      "H2077"
      ]
     }
    ],
    "extra": [
     {
-     "rule": "unused-assignment",
-     "line": 18,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mFeld\" zugewiesene Wert wird nie gelesen",
-     "standard": true
-    },
-    {
      "rule": "dynamic-array-misuse",
-     "line": 18,
+     "line": 19,
      "codes": [
       "E2308"
      ],
@@ -8812,7 +9035,7 @@
    "case": "Cm.E2325",
    "file": "Cm.E2325.pas",
    "code": "E2325",
-   "expected": "E2325",
+   "expected": "-",
    "title": "Attribute '%s' is not valid on this target",
    "platform": "",
    "built": true,
@@ -8822,12 +9045,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "attribute-usage-invalid",
-     "line": 12,
+     "line": 13,
      "codes": [
       "E2325"
      ],
@@ -8840,7 +9064,7 @@
    "case": "Cm.E2326",
    "file": "Cm.E2326.pas",
    "code": "E2326",
-   "expected": "E2326",
+   "expected": "-",
    "title": "Attribute '%s' can only be used once per target",
    "platform": "",
    "built": true,
@@ -8850,12 +9074,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "attribute-usage-invalid",
-     "line": 12,
+     "line": 13,
      "codes": [
       "E2326"
      ],
@@ -8896,6 +9121,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -8930,6 +9156,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -8964,13 +9191,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2354",
    "file": "Cm.E2354.pas",
    "code": "E2354",
-   "expected": "E2354",
+   "expected": "-",
    "title": "String element cannot be passed to var parameter",
    "platform": "",
    "built": true,
@@ -8980,12 +9208,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "invalid-var-argument",
-     "line": 20,
+     "line": 21,
      "codes": [
       "E2354"
      ],
@@ -9026,6 +9255,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9060,13 +9290,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2357",
    "file": "Cm.E2357.pas",
    "code": "E2357",
-   "expected": "E2357",
+   "expected": "E2029",
    "title": "PROCEDURE, FUNCTION, or CONSTRUCTOR expected",
    "platform": "",
    "built": true,
@@ -9078,7 +9309,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -9087,20 +9318,21 @@
      ],
      "text": "Bezeichner erwartet, aber ';' gefunden",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "syntax"
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2358",
    "file": "Cm.E2358.pas",
    "code": "E2358",
-   "expected": "E2358",
+   "expected": "-",
    "title": "Class constructors not allowed in class helpers",
    "platform": "",
    "built": true,
@@ -9110,8 +9342,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9146,6 +9379,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9180,6 +9414,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9218,6 +9453,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9256,13 +9492,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2366",
    "file": "Cm.E2366.pas",
    "code": "E2366",
-   "expected": "E2366",
+   "expected": "E2009",
    "title": "Global procedure or class static method expected",
    "platform": "",
    "built": true,
@@ -9274,7 +9511,7 @@
     "E2009"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2009",
@@ -9288,13 +9525,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2370",
    "file": "Cm.E2370.pas",
    "code": "E2370",
-   "expected": "E2370",
+   "expected": "-",
    "title": "Cannot use inherited methods for interface property accessors",
    "platform": "",
    "built": true,
@@ -9304,8 +9542,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9340,13 +9579,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2372",
    "file": "Cm.E2372.pas",
    "code": "E2372",
-   "expected": "E2372",
+   "expected": "E2029",
    "title": "Identifier expected",
    "platform": "",
    "built": true,
@@ -9358,7 +9598,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -9366,18 +9606,17 @@
       15
      ],
      "text": "Bezeichner erwartet, aber ':=' gefunden",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "syntax (E2066)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
-     "line": 15,
+     "line": 16,
      "codes": [
       "E2066"
      ],
@@ -9390,7 +9629,7 @@
    "case": "Cm.E2373",
    "file": "Cm.E2373.pas",
    "code": "E2373",
-   "expected": "E2373",
+   "expected": "-",
    "title": "Call to abstract method %s.%s",
    "platform": "",
    "built": true,
@@ -9400,12 +9639,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "inherited-abstract-call",
-     "line": 23,
+     "line": 24,
      "codes": [
       "E2373"
      ],
@@ -9418,7 +9658,7 @@
    "case": "Cm.E2374",
    "file": "Cm.E2374.pas",
    "code": "E2374",
-   "expected": "E2374",
+   "expected": "E2005",
    "title": "Cannot make unique type from %s",
    "platform": "",
    "built": true,
@@ -9430,7 +9670,7 @@
     "E2005"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2005",
@@ -9444,6 +9684,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9478,6 +9719,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9512,6 +9754,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9546,13 +9789,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2380",
    "file": "Cm.E2380.pas",
    "code": "E2380",
-   "expected": "E2380",
+   "expected": "E2009",
    "title": "Instance or class static method expected",
    "platform": "",
    "built": true,
@@ -9564,7 +9808,7 @@
     "E2009"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2009",
@@ -9578,6 +9822,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9612,13 +9857,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2382",
    "file": "Cm.E2382.pas",
    "code": "E2382",
-   "expected": "E2382",
+   "expected": "-",
    "title": "Cannot call constructors using instance variables",
    "platform": "",
    "built": true,
@@ -9628,8 +9874,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9676,13 +9923,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2389",
    "file": "Cm.E2389.pas",
    "code": "E2389",
-   "expected": "E2389",
+   "expected": "E2362",
    "title": "Protected member '%s' is inaccessible here",
    "platform": "",
    "built": true,
@@ -9694,7 +9942,7 @@
     "E2362"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2362",
@@ -9708,6 +9956,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9769,6 +10018,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9803,6 +10053,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -9837,13 +10088,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2399",
    "file": "Cm.E2399.pas",
    "code": "E2399",
-   "expected": "E2399",
+   "expected": "-",
    "title": "Namespace conflicts with unit name '%s'",
    "platform": "",
    "built": true,
@@ -9851,34 +10103,18 @@
     "Win32",
     "Win64"
    ],
-   "dccCodes": [
-    "E2029"
-   ],
+   "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
-   "checks": [
-    {
-     "code": "E2029",
-     "lines": [
-      14,
-      16
-     ],
-     "text": "',' oder ';' erwartet, aber 'END' gefunden",
-     "status": "erkannt",
-     "sameLine": false,
-     "standard": true,
-     "rules": [
-      "syntax"
-     ]
-    }
-   ],
+   "expectedHit": true,
+   "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2402",
    "file": "Cm.E2402.pas",
    "code": "E2402",
-   "expected": "E2402",
+   "expected": "-",
    "title": "Constructing instance of abstract class '%s'",
    "platform": "",
    "built": true,
@@ -9888,12 +10124,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "abstract-class-instantiated",
-     "line": 19,
+     "line": 20,
      "codes": [
       "E2402"
      ],
@@ -9906,7 +10143,7 @@
    "case": "Cm.E2404",
    "file": "Cm.E2404.pas",
    "code": "E2404",
-   "expected": "E2404",
+   "expected": "E2029",
    "title": "Cannot mix READ/WRITE property accessors with ADD/REMOVE accessors",
    "platform": "",
    "built": true,
@@ -9921,7 +10158,7 @@
     "H2219"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -9969,13 +10206,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2412",
    "file": "Cm.E2412.pas",
    "code": "E2412",
-   "expected": "E2412",
+   "expected": "E2029",
    "title": "CREATE expected",
    "platform": "",
    "built": true,
@@ -9987,7 +10225,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -9995,18 +10233,17 @@
       15
      ],
      "text": "Bezeichner erwartet, aber ';' gefunden",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "syntax (E2066)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
-     "line": 15,
+     "line": 16,
      "codes": [
       "E2066"
      ],
@@ -10019,7 +10256,7 @@
    "case": "Cm.E2413",
    "file": "Cm.E2413.pas",
    "code": "E2413",
-   "expected": "E2413",
+   "expected": "E2010",
    "title": "Dynamic array type needed",
    "platform": "",
    "built": true,
@@ -10031,7 +10268,7 @@
     "E2010"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2010",
@@ -10039,31 +10276,28 @@
       15
      ],
      "text": "Inkompatible Typen: 'array[0..2] of Integer' und 'Pointer'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 16,
+     "codes": [
+      "H2077"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "unused-assignment",
-     "line": 15,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mFeld\" zugewiesene Wert wird nie gelesen",
-     "standard": true
-    }
-   ]
+   "extra": []
   },
   {
    "case": "Cm.E2418",
    "file": "Cm.E2418.pas",
    "code": "E2418",
-   "expected": "E2418",
+   "expected": "E2154",
    "title": "Type '%s' needs initialization - not allowed in variant record",
    "platform": "",
    "built": true,
@@ -10075,7 +10309,7 @@
     "E2154"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2154",
@@ -10084,20 +10318,21 @@
      ],
      "text": "Typ 'IInterface' benötigt Finalization - nicht im varianten Record erlaubt",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "variant-record-managed-field"
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2419",
    "file": "Cm.E2419.pas",
    "code": "E2419",
-   "expected": "E2419",
+   "expected": "-",
    "title": "Record type too large: exceeds 1 MB",
    "platform": "",
    "built": true,
@@ -10107,15 +10342,16 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2420",
    "file": "Cm.E2420.pas",
    "code": "E2420",
-   "expected": "E2420",
+   "expected": "E2086",
    "title": "Interface '%s' used in '%s' is not yet completely defined",
    "platform": "",
    "built": true,
@@ -10127,7 +10363,7 @@
     "E2086"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2086",
@@ -10141,13 +10377,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2423",
    "file": "Cm.E2423.pas",
    "code": "E2423",
-   "expected": "E2423",
+   "expected": "H2077",
    "title": "Void type not usable in this context",
    "platform": "",
    "built": true,
@@ -10159,7 +10396,7 @@
     "H2077"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "H2077",
@@ -10173,23 +10410,14 @@
      "rules": []
     }
    ],
-   "extra": [
-    {
-     "rule": "missing-begin-end",
-     "line": 16,
-     "codes": [
-      "E2153"
-     ],
-     "message": "if ohne begin … end",
-     "standard": true
-    }
-   ]
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.E2424",
    "file": "Cm.E2424.pas",
    "code": "E2424",
-   "expected": "E2424",
+   "expected": "E1030",
    "title": "Codepage '%s' is not installed on this machine",
    "platform": "",
    "built": true,
@@ -10201,7 +10429,7 @@
     "E1030"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E1030",
@@ -10215,6 +10443,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10249,6 +10478,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10282,6 +10512,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10316,6 +10547,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10350,13 +10582,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2432",
    "file": "Cm.E2432.pas",
    "code": "E2432",
-   "expected": "E2432",
+   "expected": "E2029",
    "title": "%s cannot be applied to a rectangular dynamic array",
    "platform": "",
    "built": true,
@@ -10368,7 +10601,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -10382,6 +10615,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10430,6 +10664,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10464,6 +10699,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10498,6 +10734,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10532,6 +10769,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10566,6 +10804,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10600,6 +10839,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10634,6 +10874,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10668,13 +10909,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2448",
    "file": "Cm.E2448.pas",
    "code": "E2448",
-   "expected": "E2448",
+   "expected": "E2026",
    "title": "An attribute argument must be a constant expression, typeof expression or array constructor",
    "platform": "",
    "built": true,
@@ -10686,7 +10928,7 @@
     "E2026"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2026",
@@ -10694,18 +10936,17 @@
       19
      ],
      "text": "Konstantenausdruck erwartet",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "attribute-usage-invalid (E2448)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "attribute-usage-invalid",
-     "line": 19,
+     "line": 20,
      "codes": [
       "E2448"
      ],
@@ -10746,13 +10987,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2450",
    "file": "Cm.E2450.pas",
    "code": "E2450",
-   "expected": "E2450",
+   "expected": "E2010",
    "title": "There is no overloaded version of array property '%s' that can be used with these arguments",
    "platform": "",
    "built": true,
@@ -10764,7 +11006,7 @@
     "E2010"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2010",
@@ -10778,13 +11020,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2452",
    "file": "Cm.E2452.pas",
    "code": "E2452",
-   "expected": "E2452",
+   "expected": "W1055",
    "title": "Unicode characters not allowed in published symbols",
    "platform": "",
    "built": true,
@@ -10796,7 +11039,7 @@
     "W1055"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "W1055",
@@ -10810,10 +11053,11 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "published-type-invalid",
-     "line": 11,
+     "line": 12,
      "codes": [
       "E2452"
      ],
@@ -10826,7 +11070,7 @@
    "case": "Cm.E2453",
    "file": "Cm.E2453.pas",
    "code": "E2453",
-   "expected": "E2453",
+   "expected": "E2064",
    "title": "Destination cannot be assigned to",
    "platform": "",
    "built": true,
@@ -10838,7 +11082,7 @@
     "E2064"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2064",
@@ -10852,13 +11096,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2454",
    "file": "Cm.E2454.pas",
    "code": "E2454",
-   "expected": "E2454",
+   "expected": "-",
    "title": "Slice standard function not allowed for VAR nor OUT argument",
    "platform": "",
    "built": true,
@@ -10868,8 +11113,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -10914,13 +11160,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2460",
    "file": "Cm.E2460.pas",
    "code": "E2460",
-   "expected": "E2460",
+   "expected": "E2021",
    "title": "Cannot inherit from special class '%s.%s'",
    "platform": "",
    "built": true,
@@ -10932,7 +11179,7 @@
     "E2021"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2021",
@@ -10946,13 +11193,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2461",
    "file": "Cm.E2461.pas",
    "code": "E2461",
-   "expected": "E2461",
+   "expected": "E2356",
    "title": "Identifier '%s' is not an instance field",
    "platform": "",
    "built": true,
@@ -10964,7 +11212,7 @@
     "E2356"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2356",
@@ -10973,20 +11221,21 @@
      ],
      "text": "Für Eigenschaftszugriff muss ein Instanzenfeld oder eine Instanzenmethode verwendet werden",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "property-accessor-invalid"
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2463",
    "file": "Cm.E2463.pas",
    "code": "E2463",
-   "expected": "E2463",
+   "expected": "E2379",
    "title": "'%s' directive not allowed in record type",
    "platform": "",
    "built": true,
@@ -10998,7 +11247,7 @@
     "E2379"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2379",
@@ -11007,20 +11256,21 @@
      ],
      "text": "Virtuelle Methoden sind in Record-Typen nicht zulässig",
      "status": "erkannt",
-     "sameLine": true,
+     "sameLine": false,
      "standard": true,
      "rules": [
       "type-restriction-violated"
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2464",
    "file": "Cm.E2464.pas",
    "code": "E2464",
-   "expected": "E2464",
+   "expected": "E2617",
    "title": "First parameter of Assign operator must be var parameter",
    "platform": "",
    "built": true,
@@ -11032,7 +11282,7 @@
     "E2617"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2617",
@@ -11040,18 +11290,17 @@
       11
      ],
      "text": "Erster Parameter des Assign-Operators muss ein var-Parameter des Container-Typs sein",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "operator-declaration-invalid (E2464)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "operator-declaration-invalid",
-     "line": 11,
+     "line": 12,
      "codes": [
       "E2464"
      ],
@@ -11092,13 +11341,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2467",
    "file": "Cm.E2467.pas",
    "code": "E2467",
-   "expected": "E2467",
+   "expected": "E2018",
    "title": "Record or object type required",
    "platform": "",
    "built": true,
@@ -11110,7 +11360,7 @@
     "E2018"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2018",
@@ -11124,6 +11374,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11158,6 +11409,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11190,13 +11442,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2475",
    "file": "Cm.E2475.pas",
    "code": "E2475",
-   "expected": "E2475",
+   "expected": "E2379",
    "title": "'%s' directive not allowed in record helper type",
    "platform": "",
    "built": true,
@@ -11208,7 +11461,7 @@
     "E2379"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2379",
@@ -11216,18 +11469,17 @@
       11
      ],
      "text": "Virtuelle Methoden sind in Record-Hilfstypen nicht zulässig",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "type-restriction-violated (E2598)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "type-restriction-violated",
-     "line": 11,
+     "line": 12,
      "codes": [
       "E2598"
      ],
@@ -11268,6 +11520,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11302,6 +11555,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11336,6 +11590,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11370,6 +11625,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11404,6 +11660,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11438,6 +11695,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11472,6 +11730,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11506,6 +11765,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11540,6 +11800,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11574,6 +11835,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11608,6 +11870,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11642,6 +11905,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11676,6 +11940,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11710,13 +11975,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2520",
    "file": "Cm.E2520.pas",
    "code": "E2520",
-   "expected": "E2520",
+   "expected": "-",
    "title": "Result type of operator '%s' must be Boolean type",
    "platform": "",
    "built": true,
@@ -11726,8 +11992,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11762,13 +12029,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2522",
    "file": "Cm.E2522.pas",
    "code": "E2522",
-   "expected": "E2522",
+   "expected": "E2029",
    "title": "Operator '%s' can not convert to/from ancestor type",
    "platform": "",
    "built": true,
@@ -11782,7 +12050,7 @@
     "E2123"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -11815,18 +12083,17 @@
       15
      ],
      "text": "PROCEDURE, FUNCTION, PROPERTY oder VAR erwartet",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "operator-declaration-invalid (E2522)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "operator-declaration-invalid",
-     "line": 15,
+     "line": 16,
      "codes": [
       "E2522"
      ],
@@ -11867,6 +12134,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11899,6 +12167,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11947,6 +12216,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -11981,6 +12251,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -12007,11 +12278,18 @@
       25
      ],
      "text": "Methode 'Neu' erfordert explizite Typargumente",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unused-assignment (H2077)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 25,
+     "codes": [
+      "H2077"
      ]
     }
    ],
@@ -12023,15 +12301,6 @@
       "E2003"
      ],
      "message": "\"T\" ist nicht deklariert",
-     "standard": true
-    },
-    {
-     "rule": "unused-assignment",
-     "line": 25,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mZahl\" zugewiesene Wert wird nie gelesen",
      "standard": true
     }
    ]
@@ -12066,6 +12335,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -12100,6 +12370,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -12134,6 +12405,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -12168,6 +12440,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -12202,6 +12475,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -12234,8 +12508,7 @@
      "standard": true,
      "rules": [
       "typeinfo-invalid (E2538)",
-      "unresolved-identifier (E2003)",
-      "unused-assignment (H2077)"
+      "unresolved-identifier (E2003)"
      ]
     },
     {
@@ -12252,6 +12525,15 @@
      ]
     }
    ],
+   "notComparable": [
+    {
+     "rule": "unused-assignment",
+     "line": 15,
+     "codes": [
+      "H2077"
+     ]
+    }
+   ],
    "extra": [
     {
      "rule": "unresolved-type",
@@ -12260,15 +12542,6 @@
       "E2003"
      ],
      "message": "Typ TextFile ist nicht deklariert (wie E2003).",
-     "standard": true
-    },
-    {
-     "rule": "unused-assignment",
-     "line": 15,
-     "codes": [
-      "H2077"
-     ],
-     "message": "Der an \"mDatei\" zugewiesene Wert wird nie gelesen",
      "standard": true
     },
     {
@@ -12324,6 +12597,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -12380,13 +12654,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2543",
    "file": "Cm.E2543.pas",
    "code": "E2543",
-   "expected": "E2543",
+   "expected": "E2100",
    "title": "Instantiated data type '%s' too large: exceeds 2 GB",
    "platform": "",
    "built": true,
@@ -12398,7 +12673,7 @@
     "E2100"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2100",
@@ -12412,6 +12687,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -12458,13 +12734,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2548",
    "file": "Cm.E2548.pas",
    "code": "E2548",
-   "expected": "E2548",
+   "expected": "E2029",
    "title": "Cannot take a class reference of parameterized type",
    "platform": "",
    "built": true,
@@ -12476,7 +12753,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -12484,18 +12761,17 @@
       13
      ],
      "text": "';' erwartet, aber '<' gefunden",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "generic-declaration-invalid (E2548)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "generic-declaration-invalid",
-     "line": 13,
+     "line": 14,
      "codes": [
       "E2548"
      ],
@@ -12508,7 +12784,7 @@
    "case": "Cm.E2549",
    "file": "Cm.E2549.pas",
    "code": "E2549",
-   "expected": "E2549",
+   "expected": "-",
    "title": "Cannot declare parameterized type derived from custom attribute class",
    "platform": "",
    "built": true,
@@ -12518,12 +12794,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "generic-declaration-invalid",
-     "line": 9,
+     "line": 10,
      "codes": [
       "E2549"
      ],
@@ -12564,6 +12841,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -12596,6 +12874,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -12628,6 +12907,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -12662,13 +12942,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2556",
    "file": "Cm.E2556.pas",
    "code": "E2556",
-   "expected": "E2556",
+   "expected": "E2003",
    "title": "Type of procedure result or untyped parameter cannot be used as type argument",
    "platform": "",
    "built": true,
@@ -12681,7 +12962,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2003",
@@ -12689,12 +12970,10 @@
       19
      ],
      "text": "Undeklarierter Bezeichner: 'TBehaelter'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unresolved-type (E2005)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     },
     {
      "code": "E2029",
@@ -12702,18 +12981,17 @@
       19
      ],
      "text": "Ausdruck erwartet, aber '.' gefunden",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unresolved-type (E2005)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unresolved-type",
-     "line": 19,
+     "line": 20,
      "codes": [
       "E2005"
      ],
@@ -12752,13 +13030,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2561",
    "file": "Cm.E2561.pas",
    "code": "E2561",
-   "expected": "E2561",
+   "expected": "-",
    "title": "Specified options for $EXTERNALSYM and $NODEFINE are not allowed for '%s'",
    "platform": "",
    "built": true,
@@ -12768,15 +13047,16 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2562",
    "file": "Cm.E2562.pas",
    "code": "E2562",
-   "expected": "E2562",
+   "expected": "E2029",
    "title": "Field identifier required",
    "platform": "",
    "built": true,
@@ -12788,7 +13068,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -12802,13 +13082,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2564",
    "file": "Cm.E2564.pas",
    "code": "E2564",
-   "expected": "E2564",
+   "expected": "E2003",
    "title": "Undefined type '%s'",
    "platform": "",
    "built": true,
@@ -12820,7 +13101,7 @@
     "E2003"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2003",
@@ -12828,18 +13109,17 @@
       9
      ],
      "text": "Undeklarierter Bezeichner: 'TGibtEsNicht'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "unresolved-type (E2564)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unresolved-type",
-     "line": 9,
+     "line": 10,
      "codes": [
       "E2564"
      ],
@@ -12852,7 +13132,7 @@
    "case": "Cm.E2565",
    "file": "Cm.E2565.pas",
    "code": "E2565",
-   "expected": "E2565",
+   "expected": "W1074",
    "title": "Cannot use parameterized or instantiated type as custom attribute",
    "platform": "",
    "built": true,
@@ -12864,7 +13144,7 @@
     "W1074"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "W1074",
@@ -12872,18 +13152,17 @@
       14
      ],
      "text": "Unbekanntes benutzerdefiniertes Attribut",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "generic-declaration-invalid (E2565)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "generic-declaration-invalid",
-     "line": 9,
+     "line": 10,
      "codes": [
       "E2549"
      ],
@@ -12892,7 +13171,7 @@
     },
     {
      "rule": "generic-declaration-invalid",
-     "line": 14,
+     "line": 15,
      "codes": [
       "E2565"
      ],
@@ -12933,6 +13212,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unresolved-identifier",
@@ -12977,6 +13257,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -13009,13 +13290,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2571",
    "file": "Cm.E2571.pas",
    "code": "E2571",
-   "expected": "E2571",
+   "expected": "E2003",
    "title": "Type parameter '%s' doesn't have class or interface constraint",
    "platform": "",
    "built": true,
@@ -13027,7 +13309,7 @@
     "E2003"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2003",
@@ -13035,18 +13317,17 @@
       18
      ],
      "text": "Undeklarierter Bezeichner: 'Free'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "generic-constraint-violated (E2571)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "generic-constraint-violated",
-     "line": 18,
+     "line": 19,
      "codes": [
       "E2571"
      ],
@@ -13085,13 +13366,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2573",
    "file": "Cm.E2573.pas",
    "code": "E2573",
-   "expected": "E2573",
+   "expected": "E1030",
    "title": "Illegal value for the ALIGN directive",
    "platform": "",
    "built": true,
@@ -13103,7 +13385,7 @@
     "E1030"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E1030",
@@ -13111,18 +13393,17 @@
       8
      ],
      "text": "Ungültige Compileranweisung: 'ALIGN'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "conditional-directive-unbalanced (E2573)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "conditional-directive-unbalanced",
-     "line": 8,
+     "line": 9,
      "codes": [
       "E2573"
      ],
@@ -13161,6 +13442,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -13195,6 +13477,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -13241,13 +13524,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.E2591",
    "file": "Cm.E2591.pas",
    "code": "E2591",
-   "expected": "E2591",
+   "expected": "-",
    "title": "Only cdecl functions may use varargs",
    "platform": "",
    "built": true,
@@ -13257,12 +13541,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "calling-convention-required",
-     "line": 10,
+     "line": 11,
      "codes": [
       "E2277"
      ],
@@ -13275,7 +13560,7 @@
    "case": "Cm.E2598",
    "file": "Cm.E2598.pas",
    "code": "E2598",
-   "expected": "E2598",
+   "expected": "E2379",
    "title": "Virtual methods not allowed in record helper types",
    "platform": "",
    "built": true,
@@ -13287,7 +13572,7 @@
     "E2379"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2379",
@@ -13295,18 +13580,17 @@
       12
      ],
      "text": "Virtuelle Methoden sind in Record-Hilfstypen nicht zulässig",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "type-restriction-violated (E2598)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "type-restriction-violated",
-     "line": 12,
+     "line": 13,
      "codes": [
       "E2598"
      ],
@@ -13361,6 +13645,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -13395,6 +13680,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unresolved-identifier",
@@ -13439,6 +13725,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unresolved-identifier",
@@ -13492,6 +13779,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -13513,24 +13801,30 @@
     ]
    },
    "expectedHit": true,
-   "checks": [],
-   "extra": [
+   "checks": [
     {
-     "rule": "syntax",
-     "line": 9,
-     "codes": [
-      "E2029"
+     "code": "F2047",
+     "lines": [],
+     "text": "Zirkuläre Unit-Referenz auf 'Cm.F2047'",
+     "status": "erkannt",
+     "sameLine": false,
+     "standard": true,
+     "rules": [
+      "uses-cycle"
      ],
-     "message": "';' fehlt (wie E2029).",
-     "standard": true
+     "otherFile": [
+      "Cm.Hilfe.F2047.pas"
+     ]
     }
-   ]
+   ],
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.F2069",
    "file": "Cm.F2069.pas",
    "code": "F2069",
-   "expected": "F2069",
+   "expected": "-",
    "title": "Line too long (more than 1023 characters)",
    "platform": "",
    "built": true,
@@ -13540,16 +13834,17 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "line-length",
-     "line": 9,
+     "line": 10,
      "codes": [
       "F2069"
      ],
-     "message": "Zeile mit 1125 Zeichen; der Compiler bricht über 1023 Zeichen ab (wie F2069).",
+     "message": "Zeile mit 1132 Zeichen; der Compiler bricht über 1023 Zeichen ab (wie F2069).",
      "standard": false
     }
    ]
@@ -13578,22 +13873,23 @@
       9
      ],
      "text": "Das Programm oder die Unit 'Cm.F2092' ruft sich selbst wieder auf",
-     "status": "anderer Code",
+     "status": "erkannt",
      "sameLine": true,
      "standard": true,
      "rules": [
-      "syntax (E2029)"
+      "uses-unit-not-found"
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
-     "rule": "syntax",
+     "rule": "uses-cycle",
      "line": 9,
      "codes": [
-      "E2029"
+      "F2047"
      ],
-     "message": "';' fehlt (wie E2029).",
+     "message": "Zirkuläre Unit-Referenz: Cm.F2092 → Cm.F2092",
      "standard": true
     }
    ]
@@ -13630,6 +13926,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "syntax",
@@ -13684,25 +13981,16 @@
       11
      ],
      "text": "Unit 'Cm.GibtEsNicht' nicht gefunden.",
-     "status": "anderer Code",
+     "status": "erkannt",
      "sameLine": true,
      "standard": true,
      "rules": [
-      "syntax (E2029)"
+      "uses-unit-not-found"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "syntax",
-     "line": 11,
-     "codes": [
-      "E2029"
-     ],
-     "message": "';' fehlt (wie E2029).",
-     "standard": true
-    }
-   ]
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.H1054",
@@ -13734,6 +14022,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -13768,6 +14057,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -13815,17 +14105,8 @@
      "rules": []
     }
    ],
-   "extra": [
-    {
-     "rule": "missing-begin-end",
-     "line": 17,
-     "codes": [
-      "E2153"
-     ],
-     "message": "for ohne begin … end",
-     "standard": true
-    }
-   ]
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.H2164",
@@ -13859,6 +14140,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -13893,6 +14175,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -13925,6 +14208,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -13959,6 +14243,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -13993,13 +14278,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.H2367",
    "file": "Cm.H2367.pas",
    "code": "H2367",
-   "expected": "H2367",
+   "expected": "-",
    "title": "Case of property accessor method should be",
    "platform": "",
    "built": true,
@@ -14009,12 +14295,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "override-case-mismatch",
-     "line": 15,
+     "line": 16,
      "codes": [
       "H2367"
      ],
@@ -14027,7 +14314,7 @@
    "case": "Cm.H2368",
    "file": "Cm.H2368.pas",
    "code": "H2368",
-   "expected": "H2368",
+   "expected": "W1055",
    "title": "Visibility of property accessor method should match property",
    "platform": "",
    "built": true,
@@ -14039,7 +14326,7 @@
     "W1055"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "W1055",
@@ -14053,13 +14340,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.H2369",
    "file": "Cm.H2369.pas",
    "code": "H2369",
-   "expected": "H2369",
+   "expected": "-",
    "title": "Property accessor should be",
    "platform": "",
    "built": true,
@@ -14069,15 +14357,16 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.H2440",
    "file": "Cm.H2440.pas",
    "code": "H2440",
-   "expected": "H2440",
+   "expected": "-",
    "title": "Inline method visibility is not lower or same visibility of accessing member",
    "platform": "",
    "built": true,
@@ -14087,12 +14376,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "override-case-mismatch",
-     "line": 21,
+     "line": 22,
      "codes": [
       "H2440"
      ],
@@ -14133,13 +14423,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.H2444",
    "file": "Cm.H2444.pas",
    "code": "H2444",
-   "expected": "H2444",
+   "expected": "-",
    "title": "Inline function has not been expanded because accessing member is inaccessible",
    "platform": "",
    "built": true,
@@ -14149,8 +14440,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -14183,13 +14475,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.H2456",
    "file": "Cm.H2456.pas",
    "code": "H2456",
-   "expected": "H2456",
+   "expected": "-",
    "title": "Inline function has not been expanded because contained unit uses compiling unit",
    "platform": "",
    "built": true,
@@ -14199,12 +14492,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "uses-cycle",
-     "line": 11,
+     "line": 12,
      "codes": [
       "F2047"
      ],
@@ -14217,7 +14511,7 @@
    "case": "Cm.H2457",
    "file": "Cm.H2457.pas",
    "code": "H2457",
-   "expected": "H2457",
+   "expected": "-",
    "title": "Inline function has not been expanded because contained unit uses compiling unit indirectly",
    "platform": "",
    "built": true,
@@ -14227,12 +14521,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "uses-cycle",
-     "line": 11,
+     "line": 12,
      "codes": [
       "F2047"
      ],
@@ -14245,7 +14540,7 @@
    "case": "Cm.H2505",
    "file": "Cm.H2505.pas",
    "code": "H2505",
-   "expected": "H2505",
+   "expected": "-",
    "title": "'Self' is uninitialized. An inherited constructor must be called before entering a try block",
    "platform": "",
    "built": true,
@@ -14255,12 +14550,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "inherited-constructor-after-try",
-     "line": 38,
+     "line": 39,
      "codes": [
       "H2505"
      ],
@@ -14301,6 +14597,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -14335,13 +14632,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1001",
    "file": "Cm.W1001.pas",
    "code": "W1001",
-   "expected": "W1001",
+   "expected": "E2029",
    "title": "Symbol is specific to a library",
    "platform": "",
    "built": true,
@@ -14353,7 +14651,7 @@
     "E2029"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2029",
@@ -14367,6 +14665,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -14399,6 +14698,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -14433,6 +14733,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -14465,6 +14766,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -14497,6 +14799,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -14531,6 +14834,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -14565,6 +14869,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -14598,6 +14903,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "hresult-integer-mix",
@@ -14614,7 +14920,7 @@
    "case": "Cm.W1009",
    "file": "Cm.W1009.pas",
    "code": "W1009",
-   "expected": "W1009",
+   "expected": "-",
    "title": "Redeclaration hides a member in the base class",
    "platform": "",
    "built": true,
@@ -14624,12 +14930,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "member-hides-ancestor",
-     "line": 18,
+     "line": 19,
      "codes": [
       "W1009"
      ],
@@ -14637,6 +14944,41 @@
      "standard": true
     }
    ]
+  },
+  {
+   "case": "Cm.W1009b",
+   "file": "Cm.W1009b.pas",
+   "code": "W1009",
+   "expected": "W1009",
+   "title": "Redeclaration of '%s' hides a member in the base class",
+   "platform": "",
+   "built": true,
+   "platforms": [
+    "Win32",
+    "Win64"
+   ],
+   "dccCodes": [
+    "W1009"
+   ],
+   "dccOther": {},
+   "expectedHit": true,
+   "checks": [
+    {
+     "code": "W1009",
+     "lines": [
+      19
+     ],
+     "text": "Redeklaration von 'Wert' verbirgt einen Member in der Basisklasse",
+     "status": "erkannt",
+     "sameLine": true,
+     "standard": true,
+     "rules": [
+      "member-hides-ancestor"
+     ]
+    }
+   ],
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.W1010",
@@ -14670,6 +15012,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -14704,13 +15047,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1012",
    "file": "Cm.W1012.pas",
    "code": "W1012",
-   "expected": "W1012",
+   "expected": "E1012",
    "title": "Constant expression violates subrange bounds",
    "platform": "",
    "built": true,
@@ -14722,7 +15066,7 @@
     "E1012"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E1012",
@@ -14730,40 +15074,28 @@
       14
      ],
      "text": "Konstantenausdruck verletzt untere Grenzen",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "constant-expression-error (W1012)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "constant-expression-error",
+     "line": 15,
+     "codes": [
+      "W1012"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "constant-expression-error",
-     "line": 14,
-     "codes": [
-      "W1012"
-     ],
-     "message": "300 liegt außerhalb des Bereichs von Byte (0..255, wie W1012).",
-     "standard": true
-    },
-    {
-     "rule": "missing-begin-end",
-     "line": 15,
-     "codes": [
-      "E2153"
-     ],
-     "message": "if ohne begin … end",
-     "standard": true
-    }
-   ]
+   "extra": []
   },
   {
    "case": "Cm.W1013",
    "file": "Cm.W1013.pas",
    "code": "W1013",
-   "expected": "W1013",
+   "expected": "E2010",
    "title": "Constant 0 converted to NIL",
    "platform": "",
    "built": true,
@@ -14775,7 +15107,7 @@
     "E2010"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2010",
@@ -14789,6 +15121,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -14823,17 +15156,8 @@
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "missing-begin-end",
-     "line": 15,
-     "codes": [
-      "E2153"
-     ],
-     "message": "if ohne begin … end",
-     "standard": true
-    }
-   ]
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.W1015",
@@ -14867,23 +15191,14 @@
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "missing-begin-end",
-     "line": 19,
-     "codes": [
-      "E2153"
-     ],
-     "message": "for ohne begin … end",
-     "standard": true
-    }
-   ]
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.W1016",
    "file": "Cm.W1016.pas",
    "code": "W1016",
-   "expected": "W1016",
+   "expected": "-",
    "title": "Typed constant passed as var parameter",
    "platform": "",
    "built": true,
@@ -14893,15 +15208,16 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1017",
    "file": "Cm.W1017.pas",
    "code": "W1017",
-   "expected": "W1017",
+   "expected": "-",
    "title": "Assignment to typed constant",
    "platform": "",
    "built": true,
@@ -14911,15 +15227,16 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1018",
    "file": "Cm.W1018.pas",
    "code": "W1018",
-   "expected": "W1018",
+   "expected": "E1012",
    "title": "Case label outside of range of case expression",
    "platform": "",
    "built": true,
@@ -14931,7 +15248,7 @@
     "E1012"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E1012",
@@ -14939,25 +15256,22 @@
       14
      ],
      "text": "Konstantenausdruck verletzt untere Grenzen",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "comparison-always-constant (W1018)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "comparison-always-constant",
+     "line": 15,
+     "codes": [
+      "W1018"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "comparison-always-constant",
-     "line": 14,
-     "codes": [
-      "W1018"
-     ],
-     "message": "300 liegt außerhalb des Bereichs von Byte; der Zweig wird nie ausgeführt (wie W1018).",
-     "standard": true
-    }
-   ]
+   "extra": []
   },
   {
    "case": "Cm.W1019",
@@ -14983,14 +15297,13 @@
       16
      ],
      "text": "FOR-Schleifenvariable muss eine einfache lokale Variable sein",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "for-variable-misuse (E1019)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "for-variable-misuse",
@@ -15035,6 +15348,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15069,6 +15383,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15103,6 +15418,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15137,6 +15453,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15171,13 +15488,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1025",
    "file": "Cm.W1025.pas",
    "code": "W1025",
-   "expected": "W1025",
+   "expected": "-",
    "title": "Unsupported language feature",
    "platform": "Win64",
    "built": true,
@@ -15186,25 +15504,16 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
-   "extra": [
-    {
-     "rule": "missing-begin-end",
-     "line": 17,
-     "codes": [
-      "E2153"
-     ],
-     "message": "if ohne begin … end",
-     "standard": true
-    }
-   ]
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.W1026",
    "file": "Cm.W1026.pas",
    "code": "W1026",
-   "expected": "W1026",
+   "expected": "E1026",
    "title": "File not found",
    "platform": "",
    "built": true,
@@ -15216,7 +15525,7 @@
     "E1026"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E1026",
@@ -15230,6 +15539,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15274,13 +15584,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1030",
    "file": "Cm.W1030.pas",
    "code": "W1030",
-   "expected": "W1030",
+   "expected": "E1030",
    "title": "Invalid compiler directive",
    "platform": "",
    "built": true,
@@ -15292,7 +15603,7 @@
     "E1030"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E1030",
@@ -15300,31 +15611,28 @@
       10
      ],
      "text": "Ungültige Compileranweisung: 'UNBEKANNTE_DIREKTIVE'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "conditional-directive-unbalanced (W1030)"
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
+    }
+   ],
+   "notComparable": [
+    {
+     "rule": "conditional-directive-unbalanced",
+     "line": 11,
+     "codes": [
+      "W1030"
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "conditional-directive-unbalanced",
-     "line": 10,
-     "codes": [
-      "W1030"
-     ],
-     "message": "Unbekannte Direktive {$UNBEKANNTE_DIREKTIVE} (wie W1030).",
-     "standard": true
-    }
-   ]
+   "extra": []
   },
   {
    "case": "Cm.W1034",
    "file": "Cm.W1034.pas",
    "code": "W1034",
-   "expected": "W1034",
+   "expected": "-",
    "title": "$HPPEMIT ignored",
    "platform": "",
    "built": true,
@@ -15334,8 +15642,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15370,17 +15679,8 @@
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "missing-begin-end",
-     "line": 12,
-     "codes": [
-      "E2153"
-     ],
-     "message": "if ohne begin … end",
-     "standard": true
-    }
-   ]
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.W1036",
@@ -15414,6 +15714,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15448,13 +15749,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1038",
    "file": "Cm.W1038.pas",
    "code": "W1038",
-   "expected": "W1038",
+   "expected": "E1038",
    "title": "Unit identifier does not match file name",
    "platform": "",
    "built": true,
@@ -15466,7 +15768,7 @@
     "E1038"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E1038",
@@ -15482,13 +15784,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1040",
    "file": "Cm.W1040.pas",
    "code": "W1040",
-   "expected": "W1040",
+   "expected": "-",
    "title": "Implicit use of Variants unit",
    "platform": "",
    "built": true,
@@ -15498,12 +15801,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "implicit-variants-unit",
-     "line": 12,
+     "line": 13,
      "codes": [
       "W1040"
      ],
@@ -15544,23 +15848,14 @@
      ]
     }
    ],
-   "extra": [
-    {
-     "rule": "missing-begin-end",
-     "line": 17,
-     "codes": [
-      "E2153"
-     ],
-     "message": "if ohne begin … end",
-     "standard": true
-    }
-   ]
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.W1045",
    "file": "Cm.W1045.pas",
    "code": "W1045",
-   "expected": "W1045",
+   "expected": "E2168",
    "title": "Property declaration references ancestor private",
    "platform": "",
    "built": true,
@@ -15576,7 +15871,7 @@
      "Cm.Hilfe.W1045.pas"
     ]
    },
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2168",
@@ -15590,13 +15885,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1046",
    "file": "Cm.W1046.pas",
    "code": "W1046",
-   "expected": "W1046",
+   "expected": "-",
    "title": "Unsafe type",
    "platform": "",
    "built": true,
@@ -15606,19 +15902,10 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
-   "extra": [
-    {
-     "rule": "missing-begin-end",
-     "line": 16,
-     "codes": [
-      "E2153"
-     ],
-     "message": "if ohne begin … end",
-     "standard": true
-    }
-   ]
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.W1047",
@@ -15650,6 +15937,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15682,6 +15970,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15714,6 +16003,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15746,6 +16036,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15778,6 +16069,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15810,6 +16102,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15842,6 +16135,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15874,6 +16168,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15906,13 +16201,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1061",
    "file": "Cm.W1061.pas",
    "code": "W1061",
-   "expected": "W1061",
+   "expected": "-",
    "title": "Narrowing given WideChar constant to AnsiChar lost information",
    "platform": "",
    "built": true,
@@ -15922,8 +16218,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -15968,13 +16265,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1063",
    "file": "Cm.W1063.pas",
    "code": "W1063",
-   "expected": "W1063",
+   "expected": "-",
    "title": "Widening given AnsiChar constant to WideChar lost information",
    "platform": "",
    "built": true,
@@ -15984,15 +16282,16 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1064",
    "file": "Cm.W1064.pas",
    "code": "W1064",
-   "expected": "W1064",
+   "expected": "-",
    "title": "Widening given AnsiString constant lost information",
    "platform": "",
    "built": true,
@@ -16002,15 +16301,16 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1066",
    "file": "Cm.W1066.pas",
    "code": "W1066",
-   "expected": "W1066",
+   "expected": "-",
    "title": "Lost Extended floating point precision. Reduced to Double",
    "platform": "Win64",
    "built": true,
@@ -16019,8 +16319,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -16053,13 +16354,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1069",
    "file": "Cm.W1069.pas",
    "code": "W1069",
-   "expected": "W1069",
+   "expected": "-",
    "title": "Feature will not be available in mobile Delphi compiler",
    "platform": "",
    "built": true,
@@ -16069,8 +16371,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "conditional-directive-unbalanced",
@@ -16087,7 +16390,7 @@
    "case": "Cm.W1070",
    "file": "Cm.W1070.pas",
    "code": "W1070",
-   "expected": "W1070",
+   "expected": "-",
    "title": "Use of untyped pointer can disrupt instance reference counts",
    "platform": "",
    "built": true,
@@ -16097,12 +16400,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "untyped-pointer-refcount",
-     "line": 13,
+     "line": 14,
      "codes": [
       "W1070"
      ],
@@ -16115,7 +16419,7 @@
    "case": "Cm.W1071",
    "file": "Cm.W1071.pas",
    "code": "W1071",
-   "expected": "W1071",
+   "expected": "-",
    "title": "Implicit integer cast with potential data loss",
    "platform": "",
    "built": true,
@@ -16125,12 +16429,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "narrowing-assignment",
-     "line": 13,
+     "line": 14,
      "codes": [
       "W1071"
      ],
@@ -16143,7 +16448,7 @@
    "case": "Cm.W1072",
    "file": "Cm.W1072.pas",
    "code": "W1072",
-   "expected": "W1072",
+   "expected": "-",
    "title": "Implicit conversion may lose significant digits",
    "platform": "",
    "built": true,
@@ -16153,8 +16458,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -16189,6 +16495,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -16223,13 +16530,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1075",
    "file": "Cm.W1075.pas",
    "code": "W1075",
-   "expected": "W1075",
+   "expected": "-",
    "title": "Overloading a similar index type by declaring an array property",
    "platform": "",
    "built": true,
@@ -16239,12 +16547,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "duplicate-declaration",
-     "line": 15,
+     "line": 16,
      "codes": [
       "E2004"
      ],
@@ -16257,7 +16566,7 @@
    "case": "Cm.W1076",
    "file": "Cm.W1076.pas",
    "code": "W1076",
-   "expected": "W1076",
+   "expected": "E1030",
    "title": "Typecasting between pointer and narrower integer types",
    "platform": "",
    "built": true,
@@ -16269,7 +16578,7 @@
     "E1030"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E1030",
@@ -16277,31 +16586,28 @@
       1
      ],
      "text": "Ungültige Compileranweisung: 'NARROWING_POINTER_CAST'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "conditional-directive-unbalanced (W1030)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "conditional-directive-unbalanced",
      "line": 1,
      "codes": [
       "W1030"
-     ],
-     "message": "Unbekannte Warnung NARROWING_POINTER_CAST in {$WARN} (wie W1030).",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.W1077",
    "file": "Cm.W1077.pas",
    "code": "W1077",
-   "expected": "W1077",
+   "expected": "E1030",
    "title": "Typecasting between pointer and 32-bit integer types can cause problems on 64-bit targets",
    "platform": "Win32",
    "built": true,
@@ -16312,7 +16618,7 @@
     "E1030"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E1030",
@@ -16320,25 +16626,22 @@
       1
      ],
      "text": "Ungültige Compileranweisung: 'POINTER_INTEGER_CAST'",
-     "status": "anderer Code",
-     "sameLine": true,
-     "standard": true,
-     "rules": [
-      "conditional-directive-unbalanced (W1030)"
-     ]
+     "status": "verpasst",
+     "sameLine": false,
+     "standard": false,
+     "rules": []
     }
    ],
-   "extra": [
+   "notComparable": [
     {
      "rule": "conditional-directive-unbalanced",
      "line": 1,
      "codes": [
       "W1030"
-     ],
-     "message": "Unbekannte Warnung POINTER_INTEGER_CAST in {$WARN} (wie W1030).",
-     "standard": true
+     ]
     }
-   ]
+   ],
+   "extra": []
   },
   {
    "case": "Cm.W1078",
@@ -16372,6 +16675,7 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -16406,13 +16710,14 @@
      ]
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "Cm.W1201",
    "file": "Cm.W1201.pas",
    "code": "W1201",
-   "expected": "W1201",
+   "expected": "-",
    "title": "XML comment has badly formed XML",
    "platform": "",
    "built": true,
@@ -16422,12 +16727,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "xmldoc-mismatch",
-     "line": 12,
+     "line": 11,
      "codes": [
       "W1201",
       "W1202",
@@ -16440,15 +16746,6 @@
      ],
      "message": "Doku-Kommentar ist kein wohlgeformtes XML: <summary> wird nicht geschlossen.",
      "standard": true
-    },
-    {
-     "rule": "xmldoc-mismatch",
-     "line": 12,
-     "codes": [
-      "W1203"
-     ],
-     "message": "Doku-Kommentar ist kein wohlgeformtes XML: '<' muss &lt; heißen (wie W1203).",
-     "standard": true
     }
    ]
   },
@@ -16456,7 +16753,7 @@
    "case": "Cm.W1202",
    "file": "Cm.W1202.pas",
    "code": "W1202",
-   "expected": "W1202",
+   "expected": "-",
    "title": "XML comment has badly formed XML - Reference to undefined entity",
    "platform": "",
    "built": true,
@@ -16466,25 +16763,17 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "xmldoc-mismatch",
-     "line": 12,
+     "line": 11,
      "codes": [
       "W1202"
      ],
      "message": "Doku-Kommentar ist kein wohlgeformtes XML: &unbekannt; ist in XML nicht definiert (wie W1202).",
-     "standard": true
-    },
-    {
-     "rule": "xmldoc-mismatch",
-     "line": 12,
-     "codes": [
-      "W1203"
-     ],
-     "message": "Doku-Kommentar ist kein wohlgeformtes XML: '<' muss &lt; heißen (wie W1203).",
      "standard": true
     }
    ]
@@ -16493,7 +16782,7 @@
    "case": "Cm.W1203",
    "file": "Cm.W1203.pas",
    "code": "W1203",
-   "expected": "W1203",
+   "expected": "-",
    "title": "XML comment has badly formed XML - A name was started with an invalid character",
    "platform": "",
    "built": true,
@@ -16503,25 +16792,17 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "xmldoc-mismatch",
-     "line": 12,
+     "line": 11,
      "codes": [
       "W1201"
      ],
      "message": "Doku-Kommentar ist kein wohlgeformtes XML: '<' muss &lt; heißen (wie W1201).",
-     "standard": true
-    },
-    {
-     "rule": "xmldoc-mismatch",
-     "line": 12,
-     "codes": [
-      "W1203"
-     ],
-     "message": "Doku-Kommentar ist kein wohlgeformtes XML: '<' muss &lt; heißen (wie W1203).",
      "standard": true
     }
    ]
@@ -16530,7 +16811,7 @@
    "case": "Cm.W1204",
    "file": "Cm.W1204.pas",
    "code": "W1204",
-   "expected": "W1204",
+   "expected": "W1205",
    "title": "XML comment has badly formed XML - A name contained an invalid character",
    "platform": "",
    "built": true,
@@ -16538,36 +16819,35 @@
     "Win32",
     "Win64"
    ],
-   "dccCodes": [],
+   "dccCodes": [
+    "W1205"
+   ],
    "dccOther": {},
-   "expectedHit": false,
-   "checks": [],
+   "expectedHit": true,
+   "checks": [
+    {
+     "code": "W1205",
+     "lines": [
+      22
+     ],
+     "text": "XML-Kommentar in 'Machen' ist falsch strukturiert -- 'Das Zeichen '>' wurde erwartet.'",
+     "status": "erkannt",
+     "sameLine": false,
+     "standard": true,
+     "rules": [
+      "xmldoc-mismatch"
+     ]
+    }
+   ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "xmldoc-mismatch",
-     "line": 12,
+     "line": 11,
      "codes": [
       "W1204"
      ],
      "message": "Doku-Kommentar ist kein wohlgeformtes XML: '<' muss &lt; heißen (wie W1204).",
-     "standard": true
-    },
-    {
-     "rule": "xmldoc-mismatch",
-     "line": 12,
-     "codes": [
-      "W1205"
-     ],
-     "message": "Doku-Kommentar ist kein wohlgeformtes XML: '<' muss &lt; heißen (wie W1205).",
-     "standard": true
-    },
-    {
-     "rule": "xmldoc-mismatch",
-     "line": 12,
-     "codes": [
-      "W1203"
-     ],
-     "message": "Doku-Kommentar ist kein wohlgeformtes XML: '<' muss &lt; heißen (wie W1203).",
      "standard": true
     }
    ]
@@ -16576,7 +16856,7 @@
    "case": "Cm.W1205",
    "file": "Cm.W1205.pas",
    "code": "W1205",
-   "expected": "W1205",
+   "expected": "-",
    "title": "XML comment has badly formed XML - The character was expected",
    "platform": "",
    "built": true,
@@ -16586,12 +16866,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "xmldoc-mismatch",
-     "line": 12,
+     "line": 11,
      "codes": [
       "W1205"
      ],
@@ -16600,7 +16881,7 @@
     },
     {
      "rule": "xmldoc-mismatch",
-     "line": 12,
+     "line": 11,
      "codes": [
       "W1201",
       "W1202",
@@ -16628,30 +16909,28 @@
     "Win32",
     "Win64"
    ],
-   "dccCodes": [],
+   "dccCodes": [
+    "W1206"
+   ],
    "dccOther": {},
-   "expectedHit": false,
-   "checks": [],
-   "extra": [
+   "expectedHit": true,
+   "checks": [
     {
-     "rule": "xmldoc-mismatch",
-     "line": 12,
-     "codes": [
-      "W1206"
+     "code": "W1206",
+     "lines": [
+      21
      ],
-     "message": "cref \"TGibtEsNicht\" zeigt auf kein Symbol (wie W1206).",
-     "standard": true
-    },
-    {
-     "rule": "xmldoc-mismatch",
-     "line": 12,
-     "codes": [
-      "W1203"
-     ],
-     "message": "Doku-Kommentar ist kein wohlgeformtes XML: '<' muss &lt; heißen (wie W1203).",
-     "standard": true
+     "text": "XML-Kommentar bei 'Machen' hat das cref-Attribut 'TGibtEsNicht', das nicht aufgelöst werden konnte",
+     "status": "erkannt",
+     "sameLine": false,
+     "standard": true,
+     "rules": [
+      "xmldoc-mismatch"
+     ]
     }
-   ]
+   ],
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.W1207",
@@ -16665,37 +16944,42 @@
     "Win32",
     "Win64"
    ],
-   "dccCodes": [],
+   "dccCodes": [
+    "W1207",
+    "W1208"
+   ],
    "dccOther": {},
-   "expectedHit": false,
-   "checks": [],
-   "extra": [
+   "expectedHit": true,
+   "checks": [
     {
-     "rule": "xmldoc-mismatch",
-     "line": 13,
-     "codes": [
-      "W1201",
-      "W1202",
-      "W1203",
-      "W1204",
-      "W1205",
-      "W1206",
-      "W1207",
-      "W1208"
+     "code": "W1207",
+     "lines": [
+      22
      ],
-     "message": "<param name=\"AFalsch\"> gibt es nicht; AWert ist nicht beschrieben.",
-     "standard": true
+     "text": "XML-Kommentar bei 'Machen' hat ein param-Tag für 'AFalsch', aber es gibt keinen Parameter mit diesem Namen",
+     "status": "erkannt",
+     "sameLine": false,
+     "standard": true,
+     "rules": [
+      "xmldoc-mismatch"
+     ]
     },
     {
-     "rule": "xmldoc-mismatch",
-     "line": 13,
-     "codes": [
-      "W1203"
+     "code": "W1208",
+     "lines": [
+      22
      ],
-     "message": "Doku-Kommentar ist kein wohlgeformtes XML: '<' muss &lt; heißen (wie W1203).",
-     "standard": true
+     "text": "Parameter 'AWert' hat kein zugehöriges param-Tag im XML-Kommentar für 'Machen' (aber andere Parameter haben dieses Tag)",
+     "status": "erkannt",
+     "sameLine": false,
+     "standard": true,
+     "rules": [
+      "xmldoc-mismatch"
+     ]
     }
-   ]
+   ],
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "Cm.W1208",
@@ -16709,34 +16993,34 @@
     "Win32",
     "Win64"
    ],
-   "dccCodes": [],
+   "dccCodes": [
+    "W1208"
+   ],
    "dccOther": {},
-   "expectedHit": false,
-   "checks": [],
-   "extra": [
+   "expectedHit": true,
+   "checks": [
     {
-     "rule": "xmldoc-mismatch",
-     "line": 14,
-     "codes": [
-      "W1201",
-      "W1202",
-      "W1203",
-      "W1204",
-      "W1205",
-      "W1206",
-      "W1207",
-      "W1208"
+     "code": "W1208",
+     "lines": [
+      22
      ],
-     "message": "AZweiter ist nicht beschrieben.",
-     "standard": true
+     "text": "Parameter 'AZweiter' hat kein zugehöriges param-Tag im XML-Kommentar für 'Machen' (aber andere Parameter haben dieses Tag)",
+     "status": "erkannt",
+     "sameLine": false,
+     "standard": true,
+     "rules": [
+      "xmldoc-mismatch"
+     ]
     }
-   ]
+   ],
+   "notComparable": [],
+   "extra": []
   },
   {
    "case": "CmE2085",
    "file": "CmE2085.dpr",
    "code": "E2085",
-   "expected": "E2085",
+   "expected": "E1038",
    "title": "Unit name mismatch: '%s' '%s'",
    "platform": "",
    "built": true,
@@ -16750,12 +17034,28 @@
      "Cm.Hilfe.E2085Datei.pas"
     ]
    },
-   "expectedHit": false,
-   "checks": [],
+   "expectedHit": true,
+   "checks": [
+    {
+     "code": "E1038",
+     "lines": [],
+     "text": "Unit-Bezeichner 'Cm.Hilfe.E2085Anders' stimmt mit dem Dateinamen nicht überein",
+     "status": "erkannt",
+     "sameLine": false,
+     "standard": true,
+     "rules": [
+      "unit-name-mismatch"
+     ],
+     "otherFile": [
+      "Cm.Hilfe.E2085Datei.pas"
+     ]
+    }
+   ],
+   "notComparable": [],
    "extra": [
     {
      "rule": "unit-name-mismatch",
-     "line": 7,
+     "line": 8,
      "codes": [
       "E2085"
      ],
@@ -16794,6 +17094,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -16826,13 +17127,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "CmE2214",
    "file": "CmE2214.dpk",
    "code": "E2214",
-   "expected": "E2214",
+   "expected": "E2202",
    "title": "Package '%s' is recursively required",
    "platform": "",
    "built": true,
@@ -16844,7 +17146,7 @@
     "E2202"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2202",
@@ -16858,6 +17160,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -16890,13 +17193,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "CmE2227",
    "file": "CmE2227.dpr",
    "code": "E2227",
-   "expected": "E2227",
+   "expected": "E2654",
    "title": "Imagebase is too high - program exceeds 2 GB limit",
    "platform": "Win32",
    "built": true,
@@ -16907,7 +17211,7 @@
     "E2654"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2654",
@@ -16921,13 +17225,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "CmE2272",
    "file": "CmE2272.dpr",
    "code": "E2272",
-   "expected": "E2272",
+   "expected": "E2004",
    "title": "Cannot use reserved unit name '%s'",
    "platform": "",
    "built": true,
@@ -16939,7 +17244,7 @@
     "E2004"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "E2004",
@@ -16953,13 +17258,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "CmE2287",
    "file": "CmE2287.dpr",
    "code": "E2287",
-   "expected": "E2287",
+   "expected": "-",
    "title": "Cannot export '%s' multiple times",
    "platform": "",
    "built": true,
@@ -16969,12 +17275,13 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": [
     {
      "rule": "exports-invalid",
-     "line": 12,
+     "line": 13,
      "codes": [
       "E2287"
      ],
@@ -16987,7 +17294,7 @@
    "case": "CmE2406",
    "file": "CmE2406.dpr",
    "code": "E2406",
-   "expected": "E2406",
+   "expected": "W1002",
    "title": "EXPORTS section allowed only if compiling with $UNSAFECODE ON",
    "platform": "",
    "built": true,
@@ -16999,7 +17306,7 @@
     "W1002"
    ],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [
     {
      "code": "W1002",
@@ -17013,6 +17320,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -17045,13 +17353,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "CmH2235",
    "file": "CmH2235.dpk",
    "code": "H2235",
-   "expected": "H2235",
+   "expected": "-",
    "title": "Package does not use or export",
    "platform": "",
    "built": true,
@@ -17061,8 +17370,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -17095,6 +17405,7 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
@@ -17127,13 +17438,14 @@
      "rules": []
     }
    ],
+   "notComparable": [],
    "extra": []
   },
   {
    "case": "CmW1043",
    "file": "CmW1043.dpr",
    "code": "W1043",
-   "expected": "W1043",
+   "expected": "-",
    "title": "Imagebase is not a multiple of 64k",
    "platform": "",
    "built": true,
@@ -17143,8 +17455,9 @@
    ],
    "dccCodes": [],
    "dccOther": {},
-   "expectedHit": false,
+   "expectedHit": true,
    "checks": [],
+   "notComparable": [],
    "extra": []
   }
  ]
