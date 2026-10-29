@@ -167,6 +167,7 @@ uses
   Atlas.Core.Ci.Providers.Jenkins,
   Atlas.Core.Ci.Adapters.Http,
   Atlas.Core.Ci.Adapters.Credentials,
+  Atlas.Core.Tracker.Attach,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Providers.GitHub,
@@ -575,10 +576,15 @@ end;
 /// Falls über „An Issue anhängen“ (#1276). Ohne Tracker bzw. mit issues.create aus öffnet der Ordner des Falls.
 /// </summary>
 procedure CreateCrashIssue(ACase: TAtlasCrashCase);
+var
+  Files: TArray<TAtlasAttachFile>;
+  CaseFile: TAtlasCrashCaseFile;
 begin
+  Files := nil;
+  for CaseFile in TAtlasCrashCases.AttachFiles(ACase.Folder) do
+    Files := Files + [TAtlasAttachFile.CreateText(TAtlasAttachKind.LogFile, CaseFile.Name, CaseFile.Text)];
   if TAtlasIdeNewIssue.Enabled then
-    TAtlasIdeNewIssue.FromCrash(TAtlasCrashCases.IssueTitle(ACase), TAtlasCrashCases.IssueDescription(ACase),
-      TAtlasCrashCases.AttachFiles(ACase.Folder))
+    TAtlasIdeNewIssue.FromCrash(TAtlasCrashCases.IssueTitle(ACase), TAtlasCrashCases.IssueDescription(ACase), Files)
   else
     MessageLine(TAtlasStrings.Text(TAtlasTextId.CrashCaseTitle) + ': ' + ACase.Folder);
 end;

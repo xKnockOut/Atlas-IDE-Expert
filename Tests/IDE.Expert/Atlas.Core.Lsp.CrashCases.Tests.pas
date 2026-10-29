@@ -44,7 +44,6 @@ uses
   System.SysUtils,
   System.IOUtils,
   System.JSON,
-  Atlas.Core.Tracker.Attach,
   Atlas.Core.Lsp.CrashCases;
 
 const
@@ -171,7 +170,7 @@ end;
 procedure TAtlasCrashCasesTests.AttachFilesWithoutScriptRequestFirst;
 var
   mFolder: string;
-  mFiles: TArray<TAtlasAttachFile>;
+  mFiles: TArray<TAtlasCrashCaseFile>;
 begin
   mFolder := WriteCase('2026-10-29_211530_1', cRequest);
   TFile.WriteAllText(TPath.Combine(mFolder, 'UI.Auftrag.pas'), 'unit UI.Auftrag;', TEncoding.UTF8);

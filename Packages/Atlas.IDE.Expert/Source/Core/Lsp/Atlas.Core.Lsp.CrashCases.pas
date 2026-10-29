@@ -7,7 +7,8 @@
 // bzw. anfrage.json, wenn der Server dabei starb), baut die Texte für die
 // Meldung „Atlas-Server neu gestartet: textDocument/hover in UI.Auftrag.pas:812
 // löste EStackOverflow aus“, für „Issue anlegen“ (#1268: Titel, Text mit Stapel
-// und Version) und die Dateien des Falls als Anhang (#1276), und führt die
+// und Version) und die Dateien des Falls für den Anhang (#1276; als Name und
+// Text, ohne Abhängigkeit vom Tracker-Feature), und führt die
 // Liste der gerade übersprungenen Anfragen (Statusleiste, Prüffenster).
 // Kein Netzzugriff: Fälle verlassen den Rechner nur über „Issue anlegen“.
 
@@ -16,8 +17,7 @@ interface
 uses
   System.SysUtils,
   System.JSON,
-  System.Generics.Collections,
-  Atlas.Core.Tracker.Attach;
+  System.Generics.Collections;
 
 type
   /// <summary>Ein gesicherter Fall (atlas/crashCase bzw. anfrage.json).</summary>
@@ -38,6 +38,12 @@ type
     /// <summary>Wird die Anfrage ab jetzt übersprungen (zweiter Absturz)?</summary>
     Skipping: Boolean;
     class function Empty: TAtlasCrashCase; static;
+  end;
+
+  /// <summary>Eine Datei des Falls: Name im Ordner und Inhalt.</summary>
+  TAtlasCrashCaseFile = record
+    Name: string;
+    Text: string;
   end;
 
   /// <summary>Beginn (Active) bzw. Ende des Überspringens einer Anfrage an einer Datei (atlas/crashSkip).</summary>
@@ -80,7 +86,7 @@ type
     /// </summary>
     class function IssueDescription(const ACase: TAtlasCrashCase): string; static;
     /// <summary>Dateien des Falls als Anhang (Text, ohne wiederholen.cmd), anfrage.json zuerst.</summary>
-    class function AttachFiles(const AFolder: string): TArray<TAtlasAttachFile>; static;
+    class function AttachFiles(const AFolder: string): TArray<TAtlasCrashCaseFile>; static;
     /// <summary>Argumente von atlas.crash.retry: die Uri ('' = alle).</summary>
     class function RetryArguments(const AUri: string): TJSONArray; static;
   end;
@@ -345,11 +351,11 @@ begin
   end;
 end;
 
-class function TAtlasCrashCases.AttachFiles(const AFolder: string): TArray<TAtlasAttachFile>;
+class function TAtlasCrashCases.AttachFiles(const AFolder: string): TArray<TAtlasCrashCaseFile>;
 var
   mFiles: TArray<string>;
   mFile, mName, mText: string;
-  mAttach: TAtlasAttachFile;
+  mAttach: TAtlasCrashCaseFile;
 begin
   Result := nil;
   if (AFolder = '') or not TDirectory.Exists(AFolder) then
@@ -374,7 +380,8 @@ begin
       mText := TFile.ReadAllText(mFile, TEncoding.UTF8);
       if Length(mText) > MaxAttachChars then
         Continue;
-      mAttach := TAtlasAttachFile.CreateText(TAtlasAttachKind.LogFile, mName, mText);
+      mAttach.Name := mName;
+      mAttach.Text := mText;
       Result := Result + [mAttach];
     except
       // Gesperrt: ohne diese Datei.
