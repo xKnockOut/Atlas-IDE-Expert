@@ -51,6 +51,8 @@ type
     procedure ParsesSplitSubsystems;
     [Test]
     procedure PaletteShades;
+    [Test]
+    procedure ParsesFoundation;
   end;
 
 /// <summary>Antwort von atlas.architecture zu einem kleinen Projekt mit Zyklus (für Kern- und UI-Tests).</summary>
@@ -63,6 +65,8 @@ function SampleResolutionAnswer: string;
 /// <summary>Drei Teilsysteme Core, Data, Ui; das erste und das letzte als Teile des nachgeteilten „App“ (#1364).
 /// </summary>
 function SampleSplitAnswer: string;
+/// <summary>Wie SampleSplitAnswer ohne Teile; das erste Teilsystem ist das „Fundament“ (#1365).</summary>
+function SampleFoundationAnswer: string;
 
 implementation
 
@@ -187,6 +191,17 @@ begin
   mOverview.Subsystems[mLast].Parent := 'App';
   mOverview.Subsystems[mLast].ColorSlot := 0;
   mOverview.Subsystems[mLast].Shade := 1;
+  Result := AnswerOf(mOverview, '');
+end;
+
+function SampleFoundationAnswer: string;
+var
+  mOverview: TArchitectureOverview;
+begin
+  mOverview := ArchitectureOverviewOf(ArchitectureSampleUnits);
+  mOverview.Subsystems[0].Name := TArchitectureAnalyzer.FoundationName;
+  mOverview.Subsystems[0].Foundation := True;
+  mOverview.Subsystems[0].ColorSlot := -1;
   Result := AnswerOf(mOverview, '');
 end;
 
@@ -657,6 +672,39 @@ begin
   Assert.AreEqual(Cardinal($8C5725), mDark);
   // Höchstens 60 %.
   Assert.AreEqual(TAtlasArchitecturePalette.Color(0, 3, False), TAtlasArchitecturePalette.Color(0, 5, False));
+end;
+
+procedure TAtlasArchitectureModelTests.ParsesFoundation;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mEdge: TAtlasArchEdge;
+  mInside, mOutside: Boolean;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  Assert.IsFalse(mModel.HasFoundation);
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleFoundationAnswer, mModel, mEnabled));
+  Assert.IsTrue(mModel.HasFoundation);
+  Assert.IsTrue(mModel.Subsystems[0].Foundation);
+  Assert.IsFalse(mModel.Subsystems[1].Foundation);
+  Assert.AreEqual(TAtlasArchitecturePalette.FoundationColor(True), mModel.SubsystemColor(0, True));
+  Assert.AreEqual(Cardinal($76655D), TAtlasArchitecturePalette.FoundationColor(False));
+  Assert.AreEqual(TAtlasArchitecturePalette.Color(1, False), mModel.SubsystemColor(1, False));
+  // Kanten ins Fundament erkennt TouchesFoundation.
+  mInside := False;
+  mOutside := False;
+  for mEdge in mModel.Edges do
+    if (mModel.Units[mEdge.Source].Subsystem = 0) or (mModel.Units[mEdge.Target].Subsystem = 0) then
+    begin
+      Assert.IsTrue(mModel.TouchesFoundation(mEdge));
+      mInside := True;
+    end
+    else
+    begin
+      Assert.IsFalse(mModel.TouchesFoundation(mEdge));
+      mOutside := True;
+    end;
+  Assert.IsTrue(mInside and mOutside);
 end;
 
 procedure TAtlasArchitectureModelTests.CommandArgumentsWithResolution;
