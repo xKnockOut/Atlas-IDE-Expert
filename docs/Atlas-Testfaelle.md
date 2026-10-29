@@ -8639,6 +8639,20 @@ Vorbereitung: Minimalfall F01 aus `berichte/fp-korpus-2026-10-28/faelle`; ein ei
 | VU6 | `X.Edit` ohne `Post` auf einem Record bzw. einer Klasse ohne TDataSet-Vorfahr; Gegenprobe auf `TFDQuery` | Nur die Gegenprobe meldet `dataset-edit-without-post` |
 | VU7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 29 in Server und Plugin) |
 
+## Compilerregeln für platform, library und unsicheren Code (#1378)
+
+Vorbereitung: Atlas mit Index der RTL; `Tests/Compilermeldungen` mit den Fällen `Cm.W1002*`, `Cm.W1004*`, `Cm.W1005*`, `Cm.W1047*`, `Cm.W1048*` und `CmE2406`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PU1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TRuleWarnSwitchesTests`, `TUnsafeCodeTests`, `TDeprecatedRulesTests` grün (**Abnahme**) |
+| PU2 | `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.W100*','Cm.W104*','CmE2406' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1002, W1004, W1005, W1047, W1048 „erkannt“; die Gegenfälle `Cm.W1002b`, `Cm.W1004b`, `Cm.W1005b`, `Cm.W1047c`, `Cm.W1048c` ohne dcc-Meldung und ohne „zusätzlich“; `Cm.W1047b`, `Cm.W1048b` meldet dcc wie erwartet (**Abnahme**) |
+| PU3 | Unit, die `FindFirst`/`TSearchRec.FindData` oder `IncludeTrailingBackslash` benutzt, ohne Schalter | Wellenlinie „… ist platform (wie W1002)“, wie dcc beim Bauen |
+| PU4 | Dasselbe mit `<DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>` in der .dproj (Projektoptionen › Hinweise und Warnungen › Plattform-Symbol aus) bzw. `{$WARN SYMBOL_PLATFORM OFF}` davor | Keine Meldung, auch dcc schweigt |
+| PU5 | `{$UNSAFECODE ON}` in einer Unit | „Den Schalter UNSAFECODE gibt es nur für .NET …“ (wie W1002), Korrektur „Schalter UNSAFECODE entfernen“ |
+| PU6 | `P := @Wert;` und `K := TKunde(Zeiger);` ohne Schalter | Keine Meldung (dcc meldet W1047/W1048 ab Werk nicht) |
+| PU7 | Projektoptionen › Hinweise und Warnungen: „Unsicherer Code“ und „Unsichere Typumwandlung“ an (DCC_UNSAFE_CODE, DCC_UNSAFE_CAST), Projekt neu laden | `@Wert` meldet W1047, `TKunde(Zeiger)` W1048; `@Routine`, `TKunde(PInteger)` bleiben still; als Fehler eingestellt erscheinen beide als Fehler |
+
 ## Compileranweisungen und fehlende Dateien (#1379)
 
 Vorbereitung: Prep-v1.2.0 mit `feature/1379-compileranweisungen`, Delphi 12 und 13; Fälle aus `Tests/Compilermeldungen/Faelle`.
