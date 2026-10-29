@@ -169,7 +169,21 @@ def compare(cases, dcc, strict, standard, codes_by_rule):
                 rules = sorted(set('%s (%s)' % (f['rule'], ', '.join(f['codes'])) for f in near))
             checks.append({'code': code, 'lines': sorted(lines), 'text': texts.get(code, ''), 'status': status,
                            'sameLine': same_line, 'standard': standard_hit, 'rules': rules})
-        extra = [f for f in atlas if not (set(f['codes']) & set(dcc_codes))]
+        # Meldet dcc den erwarteten Code nur in einer Hilfsunit (E1038, F2047), zählt ein Treffer von Atlas mit
+        # diesem Code im Fall oder in der Hilfsunit wie ein Treffer in derselben Datei.
+        for code in sorted(set(dcc_other) - set(dcc_codes)):
+            if code != case['expected']:
+                continue
+            hits = [f for f in atlas if code in f['codes']]
+            for other in dcc_other[code]:
+                hits += [dict(f, standard=any(g['rule'] == f['rule'] and g['line'] == f['line']
+                                              for g in standard.get(other, [])))
+                         for f in strict.get(other, []) if code in finding_codes(f, codes_by_rule)]
+            checks.append({'code': code, 'lines': [], 'text': texts.get(code, ''),
+                           'status': 'erkannt' if hits else 'verpasst', 'sameLine': False,
+                           'standard': any(f['standard'] for f in hits), 'rules': sorted(set(f['rule'] for f in hits)),
+                           'otherFile': sorted(dcc_other[code])})
+        extra = [f for f in atlas if not (set(f['codes']) & (set(dcc_codes) | set(dcc_other)))]
         # Nach einem Fehler meldet dcc in der Unit keine Warnungen und Hinweise mehr: Solche Treffer von Atlas
         # sind nicht vergleichbar, keine Fehlalarme.
         stopped = any(kind(c) == 'E' for c in dcc_codes)
