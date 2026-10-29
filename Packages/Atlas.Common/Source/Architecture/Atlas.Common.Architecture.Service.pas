@@ -36,6 +36,9 @@ type
     Files: TArray<string>;
     /// <summary>Einstellungen der Gruppierung (architecture.grouping).</summary>
     Grouping: TArchitectureGrouping;
+    /// <summary>Zuordnung der Units erklären (architecture.explainAssignment, #1368); ändert nur die Ausgabe,
+    /// nicht die Rechnung.</summary>
+    ExplainAssignment: Boolean;
     /// <summary>Werte aus den Einstellungen architecture.*.</summary>
     class function FromSettings(const ASettings: TServerSettings): TArchitectureRequest; static;
     /// <summary>Text, der die Anfrage eindeutig beschreibt (Schlüssel des Zwischenspeichers).</summary>
@@ -78,6 +81,7 @@ begin
   Result.IncludeLibrary := ASettings.ArchitectureIncludeLibraryUnits;
   Result.CentralUnits := ASettings.ArchitectureCentralUnits;
   Result.Exclude := ASettings.ArchitectureExclude;
+  Result.ExplainAssignment := ASettings.ArchitectureExplainAssignment;
   Result.Grouping := TArchitectureGrouping.Default;
   Result.Grouping.Resolution := ASettings.ArchitectureGroupingResolution;
   Result.Grouping.MaxShare := ASettings.ArchitectureGroupingMaxShare;
@@ -187,6 +191,8 @@ begin
       Inc(FComputations);
     end;
     Result := FResult;
+    // Nicht im Schlüssel: Ein- und Ausschalten braucht keine neue Rechnung.
+    Result.ExplainAssignment := ARequest.ExplainAssignment;
   finally
     System.TMonitor.Exit(FLock);
   end;

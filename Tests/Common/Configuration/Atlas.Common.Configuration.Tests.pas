@@ -271,6 +271,14 @@ begin
   mSettings := Parse('{"architecture": {"grouping": {"foundations": "Group"}}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.AreEqual('separate', mSettings.ArchitectureGroupingFoundations);
+  // Zuordnung erklären (#1368).
+  Assert.IsTrue(TServerSettings.Default.ArchitectureExplainAssignment);
+  mSettings := Parse('{"architecture": {"explainAssignment": false}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.ArchitectureExplainAssignment);
+  mSettings := Parse('{"architecture": {"explainAssignment": "nein"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsTrue(mSettings.ArchitectureExplainAssignment);
   mSettings := Parse('{"architecture": {"grouping": {"resolution": 2.5, "showResolutionSlider": false}}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.AreEqual(Double(2.5), mSettings.ArchitectureGroupingResolution, 1E-9);

@@ -1016,6 +1016,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Map.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Slider.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Architecture.Slider.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Assignment.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Architecture.Assignment.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Frame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Architecture.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hotspots\Atlas.Core.Hotspots.Model.pas"/>

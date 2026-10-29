@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Zuordnung erklären (#1368, AG5, 29.10.2026, Branch `feature/1368-zuordnung`)
+- `TArchitectureAnalyzer.Assignments(Overview)` zählt je Unit interface- und implementation-Kanten je Teilsystem (ungerichtet, eine dichte Tabelle Units × Teilsysteme wie vorher `FindOutliers`), `AssignmentOf` sortiert nach Summe, dann Name, dann Nummer und bestimmt `Own`, `Rival` (stärkstes andere, das zählt), `Close` (ganzzahlig: Rival·100 ≥ Eigen·75) und `Missing` (Eigen − Rival + 1, mindestens 0). Kanten zum Fundament `Counts = False`; Units im Fundament sind nie knapp. `FindOutliers` liest die Liste (ungewichtete Zahl wie vorher, bei Gleichstand die kleinere Nummer).
+- `ExplainAssignment` steht in `TArchitectureRequest` und der Übersicht, nicht im Schlüssel: `TArchitectureService.Overview` setzt es auf das zwischengespeicherte Ergebnis. `ShowsAssignment` regelt alle Ausgaben; aus = Bericht und JSON wie vorher (Test `WithoutExplainAssignmentUnchanged`).
+- JSON je Unit `assignment` `[[s,i,m(,0)]]` und `close` (fehlende Kanten), dazu `explanation` (deutsch, für den HTML-Bericht) und `grouping.maxShare/minCohesion/foundations`, aus denen das Plugin die Erklärung in der IDE-Sprache baut (`TAtlasArchitectureAssignment.Explanation`).
+- Plugin: `TAtlasArchitectureAssignment` (neue Unit `Atlas.UI.Architecture.Assignment`) misst und zeichnet die Tabelle; die Karte zeichnet sie als Hinweis über der Unit unter dem Mauszeiger (`Hover`, `CM_MOUSELEAVE`), der Frame als Steckbrief (`TPaintBox` über der Infozeile) und mit Fragezeichen im Reiter *Teilsysteme*. Der Reiter ist ein Baum ohne Spalten: „knapp“ steht als Zusatz hinter der Unit wie bei den Ausreißern. VCL-Tests nur mit Delphi. Handtests AZ1–AZ12.
+
 ## Hotspots (#1354, 29.10.2026, Branch `feature/1354-hotspots`)
 - Fachlogik in `Atlas.Common.Hotspots.*` (History, Analysis, Service, Report), Server in `Atlas.Common.Lsp.Hotspots` und `Shell.Hotspots` (git/svn), Plugin in `Atlas.Core.Hotspots.Model`, `Atlas.UI.Hotspots.*`, `Atlas.IDE.Hotspots.*`.
 - `atlas.hotspots` und `atlas.hotspots.saveReport` laufen nebenläufig (`RegisterConcurrent`) und rechnen in einem eigenen Thread: Die erste Anfrage antwortet sofort mit `"pending": true`, das Fenster fragt alle 2 s nach. Grund: Ein langer `git log -L` blockierte sonst die Warteschlange des Servers bzw. wurde nach `requestTimeoutMs` abgebrochen.

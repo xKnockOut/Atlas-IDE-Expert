@@ -717,6 +717,9 @@ type
     /// (newCycle, newCrossLink, subsystemChange, centralGrowth; Vorgabe newCycle).</summary>
     ArchitectureBaseline: string;
     ArchitectureFailOn: TArray<string>;
+    /// <summary>Zuordnung jeder Unit erklären (#1368): Kanten je Teilsystem in Hinweis, Steckbrief, Bericht und
+    /// get_architecture, Spalte „knapp“ (architecture.explainAssignment, Vorgabe an).</summary>
+    ArchitectureExplainAssignment: Boolean;
     /// <summary>Gruppierung der Teilsysteme (architecture.grouping): Auflösung γ des Louvain-Verfahrens (0,2–5,0,
     /// Vorgabe 1, #1366) und ob das Fenster den Regler „Feinheit“ zeigt.</summary>
     ArchitectureGroupingResolution: Double;
@@ -1273,6 +1276,7 @@ begin
   Result.ArchitectureExclude := nil;
   Result.ArchitectureBaseline := '';
   Result.ArchitectureFailOn := ['newCycle'];
+  Result.ArchitectureExplainAssignment := True;
   Result.ArchitectureGroupingResolution := 1;
   Result.ArchitectureGroupingShowResolutionSlider := True;
   Result.ArchitectureGroupingMaxShare := 0.25;
