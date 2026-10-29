@@ -128,6 +128,7 @@
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.ConditionalBranches.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.RoutineSignatures.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.FormatStrings.Tests.pas"/>
+        <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.AsmStatements.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.FormatRoutines.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.DirectiveNames.Tests.pas"/>
         <DCCReference Include="Common\Pascal\Atlas.Common.Pascal.WarningCodes.Tests.pas"/>
@@ -287,6 +288,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Naming.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.StringAddress.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Assembler.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.FormatArgs.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.ForbiddenSymbols.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.MethodWithoutSelf.Tests.pas"/>

@@ -84,6 +84,7 @@ uses
   Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Rules.Builtin.ForbiddenSymbols,
   Atlas.Common.Rules.Builtin.MethodWithoutSelf,
+  Atlas.Common.Rules.Builtin.Assembler,
   Atlas.Common.Rules.Builtin.Unresolved;
 
 function BuiltinRules: TArray<IRule>;
@@ -163,6 +164,7 @@ begin
     RegisterFormatArgsRules(Registry);
     RegisterForbiddenSymbolRules(Registry);
     RegisterMethodWithoutSelfRules(Registry);
+    RegisterAssemblerRules(Registry);
     Result := Registry.Rules;
   finally
     Registry.Free;

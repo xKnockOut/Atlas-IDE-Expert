@@ -219,3 +219,4 @@ redundant-cast | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nty
 first-char-address | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction ErstesZeichen(const AText: string): PChar;\nbegin\n  Result := @AText[1];\nend;
 loop-runs-at-most-once | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction Enthaelt(const AWerte: TArray<string>; const AWert: string): Boolean;\nvar\n  mWert: string;\nbegin\n  Result := False;\n  for mWert in AWerte do\n  begin\n    if mWert = AWert then\n      Result := True;\n    Break;\n  end;\nend;
 format-args | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction Anzeige(const AName: string): string;\nbegin\n  Result := Format('Kunde %d', [AName]);\nend;
+asm-invalid | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction Niedrig(AWert: Integer): Integer;\nasm\n  mov al, ecx\nend;
