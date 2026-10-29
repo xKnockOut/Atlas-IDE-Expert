@@ -31,6 +31,16 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Formatieren ohne IDE (#1358, 29.10.2026, Branch `feature/1358-formatieren-ohne-ide`)
+- **Was:** `--check <Ziel> --format-check` bzw. `--format-write` (Shell.Linter `TLinterShell.Formatting`), Ausgabe `Atlas.Common.Rules.FormatOutput` (Text, JSON, Diff über `TTextDiff.Unified`), Kern `Atlas.Common.Editing.FormatCheck` (Bereiche für `--changed-lines`, Abweichungen je Zeile, Syntaxfehler, Stabilität), MCP `format_code` (`TMcpEditTools.FormatCode`, schreibt über `Apply` wie `apply_code_action`). `// atlas-format: off` … `on` kennt jetzt der Formatierer selbst (`KeepProtected` in `Atlas.Common.Editing.Formatter`), also auch das Plugin.
+- **Ursache nebenbei behoben:** `Formatter.Layout.Place` hängte `begin` nicht an eine schon angehängte Zeile; mit `beginPlacement`/`elsePlacement` = `sameLine` wurde `end`/`else`/`begin` erst im zweiten Lauf eine Zeile.
+- **Schreiben:** atomar über `<Datei>.atlas-format.tmp` und `TShellPlatform.MoveReplacing`; `TFileEncoding.EncodeKeepingLineBreaks` lässt gemischte Zeilenenden, damit Zeilen außerhalb von `--changed-lines` byte-gleich bleiben. `format_code` schreibt über `WriteSourceText` (Datei behält ihren Zeilenumbruch); `format.endOfLine` setzt nur `--format-write` um.
+- **Einstellungen:** wie `ResolvedFormatStyleFor` im Server (`format.*` über `.editorconfig` über Vorgaben, ohne IDE-Optionen). Keine neuen Schlüssel.
+- **Geprüft:** FPC-trunk-Harness 106 Tests grün (Formatter, Layout, Indent, FormatCheck samt Referenzprojekt-Stabilität, FormatOutput, Diff, FileEncoding); Shell.Linter-, Shell.CommandLine- und Mcp.EditTools-Tests nur geschrieben (Harness übersetzt die Shell-Units nicht), dafür Linux-Server gebaut und Kommandozeile sowie MCP von Hand durchgespielt. Alle Check-Skripte grün. Mit Delphi nicht gebaut; Handtests FK1–FK14.
+- **Harness-Falle:** `mk.py` aus `werkzeuge/fpc-harness` indiziert auch `Output/Linux64/Fpc/Src` (vom Server-Bau) und nimmt dann die schon umgewandelten Units; `'/Output'` ausschließen. Qualifizierte Aufrufe wie `System.SysUtils.Format` übersetzt der Harness nicht.
+
+ mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
+
 ## MCP-Prompts und Ressourcen mit Vorlage (#1357, 29.10.2026, Branch `feature/1357-mcp-prompts`)
 - Neue Unit `Atlas.Common.Mcp.Prompts` (eingebaute und eigene Prompts, Vorlagen `delphi://unit|form|findings/{…}`, `delphi://build/last`); `TMcpServer` kann `prompts/list`, `prompts/get`, `resources/templates/list` und `InvokeTool` (gleiche Regeln wie `tools/call`). Verdrahtung in `Shell.Mcp.pas` (UnitFileOf, ChangesOf).
 - Schlüssel flach statt verschachtelt: `mcp.prompts`, `mcp.promptLanguage` (global), `mcp.customPrompts` (Projekt), weil das Schema nur zwei Ebenen und `x-scope` je Glied kennt. Nebenbei Ursache behoben: `ParseLayered` übernahm `mcp` aus atlas.json als Ganzes und löschte die globalen Werte.

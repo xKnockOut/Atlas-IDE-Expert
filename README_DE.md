@@ -67,7 +67,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Defines aus Include-Dateien**: ein `{$DEFINE}` aus einer per `{$I}` eingebundenen Datei gilt für Abblenden, Gliederung, Prüfungen und Linter; ein Inlay Hint hinter `{$I}` nennt die Symbole, die die Datei definiert (#860)
 - **Dokumentationskommentare:** `///` erzeugt das XMLDoc-Gerüst mit Platzhaltern
 - **Anweisung vervollständigen** (Strg+Umschalt+Enter), **Muster fortsetzen** als Schattentext, **Kommentare fortsetzen** beim Enter
-- **Formatieren** nach eigenen Regeln (Strg+Umschalt+Alt+L), weil RAD Studio 13 keinen Formatierer mehr hat
+- **Formatieren** nach eigenen Regeln (Strg+Umschalt+Alt+L), weil RAD Studio 13 keinen Formatierer mehr hat; Bereiche zwischen `// atlas-format: off` und `// atlas-format: on` bleiben unverändert, und derselbe Formatierer läuft ohne IDE (`--format-check`, `--format-write`, MCP `format_code`, siehe [Formatieren ohne IDE](#formatieren-ohne-ide))
 - **Zeilen verschieben und duplizieren** (Alt+↑/↓, Umschalt+Alt+↑/↓), **mehrere Einfügemarken** *(experimentell)*, **Bezeichner live mitziehen** *(experimentell)*, **Einfügen mit uses-Ergänzung** *(experimentell)*
 
 ### Verstehen
@@ -135,7 +135,7 @@ Der Server prüft jede Unit beim Tippen. Treffer erscheinen als Wellenlinien, im
 - **Baseline** für Altprojekte: bekannte Treffer ausblenden, nur neue melden
 - **Compilerprüfung nach dem Speichern** und Übernahme der Meldungen aus dem Reiter „Build“
 - **Suchpfade und Defines prüfen** für das aktive Projekt (Karte auf der Atlas-Willkommensseite)
-- **Linter ohne IDE:** `AtlasServer.exe --check` für Pre-Commit-Hooks und CI, als Text, JSON oder SARIF für GitHub Code Scanning, auf Wunsch nur geänderte Dateien oder Zeilen (siehe [Linter-Modus](#linter-modus))
+- **Linter ohne IDE:** `AtlasServer.exe --check` für Pre-Commit-Hooks und CI, als Text, JSON oder SARIF für GitHub Code Scanning, auf Wunsch nur geänderte Dateien oder Zeilen (siehe [Linter-Modus](#linter-modus)); `--format-check` und `--format-write` prüfen bzw. setzen die Formatregeln um
 
 Jede Regel mit Beschreibung und Vorher-Nachher-Beispiel: [docs/Regeln.md](docs/Regeln.md).
 
@@ -397,6 +397,22 @@ Jeder Regeltreffer hat eine Konfidenz (hoch, mittel, niedrig). Sie begrenzt den 
 In einer SVN-Arbeitskopie vergleicht `--changed` ohne Basis die Arbeitskopie mit BASE (`svn status`), `--changed <Rev>` und `--diff <Rev>` mit der Revision (`svn diff -r`); `--include-uncommitted` nimmt unversionierte Dateien dazu. Es gilt die nächstliegende Arbeitskopie über dem Ordner der Konfiguration (`.git` oder `.svn`), bei Gleichstand Git; `vcs.provider` in `%APPDATA%\Atlas\settings.json` legt die Art fest (`auto`, `git`, `svn`) oder schaltet ab (`off`). svn muss als Kommandozeilenwerkzeug installiert sein (TortoiseSVN mit Kommandozeilenwerkzeugen genügt). `vcs.git.path` und `vcs.svn.path` legen das Programm fest (wie auf der Seite *Versionsverwaltung*), `vcs.timeoutSeconds` das Zeitlimit je Aufruf; fehlt die Datei unter einem eigenen Pfad, bricht `--changed` mit dieser Ursache ab.
 
 Beispiele für einen Pre-Commit-Hook und eine GitHub Action, die nur Geändertes prüfen, liegen in [docs/Beispiele](docs/Beispiele).
+
+#### Formatieren ohne IDE
+
+Derselbe Formatierer wie *Dokument formatieren* im Plugin (#1358) läuft ohne IDE, etwa im Pre-Commit-Hook, in der CI oder für Claude Code. Ziel und Auswahl wie bei `--check` (`.dproj`, Ordner oder Datei, `--units`, `--changed`/`--diff`, `--include-uncommitted`, Ausschlüsse aus `atlas.json`). Es gelten die Formatregeln des Projekts: `format.*` aus `atlas.json` über `.editorconfig` über den Vorgaben. Die Einrückung aus den Editor-Optionen der IDE kennt die Kommandozeile nicht; wer sie überall gleich haben will, setzt `format.indentSize` und `format.useTabs`.
+
+| Parameter | Bedeutung |
+|---|---|
+| `--format-check` | formatiert im Speicher und vergleicht; je abweichende Datei die ersten fünf Abweichungen mit Zeile und Art (`Einrückung 3 statt 2` = ist 3, soll 2; `Leerzeichen vor := fehlt`; ``Schreibweise `Begin` ``; `Leerzeichen am Zeilenende`; `Zeilenumbruch`; `Zeilenenden LF statt CRLF`); mit `--format json` alle Abweichungen (Zeilen ab 1, Art als Kennung wie `indent`), mit `--format diff` der vereinigte Diff. Exit-Code 1 bei einer Abweichung, einem Syntaxfehler oder instabiler Formatierung, sonst 0 |
+| `--format-write` | schreibt die formatierten Dateien atomar (Nachbardatei, dann ersetzen); Kodierung (UTF-8 mit oder ohne BOM, ANSI) und Zeilenenden bleiben, außer `format.endOfLine` verlangt andere. Exit-Code 1 nur bei Syntaxfehlern oder instabiler Formatierung, 3, wenn eine Datei nicht geschrieben werden konnte |
+| `--changed-lines` | mit `--format-check`/`--format-write`: nur die geänderten Zeilen formatieren wie *Auswahl formatieren* (`textDocument/rangeFormatting`); alle anderen Zeilen bleiben Byte für Byte gleich |
+
+Dateien mit Syntaxfehlern werden nicht formatiert und mit Zeile und Meldung genannt. Bereiche zwischen `// atlas-format: off` und `// atlas-format: on` (auch als `{ … }` oder `(* … *)`, ohne `on` bis zum Dateiende) bleiben samt dieser Zeilen unverändert, im Plugin wie auf der Kommandozeile. Jeder Lauf formatiert das Ergebnis ein zweites Mal und meldet Dateien, bei denen sich dabei noch etwas ändert.
+
+Für Claude Code formatiert das MCP-Werkzeug `format_code` eine Unit nach denselben Regeln: mit `text` geplanten Code (liefert den formatierten Text, schreibt nichts), sonst die Datei, ganz oder `startLine`..`endLine`; `dryRun` (Vorgabe `true`) zeigt den Diff, `dryRun: false` schreibt wie `apply_code_action` (in der IDE offene Dateien als ein Rückgängig-Schritt). Abschalten über `mcp.disabledTools`.
+
+Beispiele: [Pre-Commit-Hook](docs/Beispiele/pre-commit-formatierung.ps1) mit `--format-check --changed HEAD --changed-lines --include-uncommitted` (mit `ATLAS_FORMAT_WRITE=1` formatiert er selbst) und [GitHub Action](docs/Beispiele/github-action-formatierung.yml) mit dem Diff im Protokoll.
 
 ### Prüfregeln
 

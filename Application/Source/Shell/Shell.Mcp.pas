@@ -10,6 +10,7 @@
 // Sicherheit (#99): mcp.disabledTools aus atlas.json, --restricted schaltet
 // schreibende Werkzeuge ab, schreibende Aufrufe stehen im Log. Ungespeicherte
 // Dateien der IDE meldet das Plugin in %LOCALAPPDATA%\Atlas\editor-dirty-<pid>.json.
+// Formatieren (format_code, #1358) mit den Formatregeln des Projekts, zu dem die Datei gehört.
 // Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action)
 // bekommen den Symbolindex und die Projektdienste über TShellWorkspaceGroup wie
 // im Server (#1112); solange der Index lädt, sagt get_diagnostics das dazu.
@@ -68,6 +69,8 @@ uses
   Atlas.Common.Mcp.Paths,
   Atlas.Common.Mcp.Freshness,
   Atlas.Common.Mcp.EditTools,
+  Atlas.Common.Editing.FormatCheck,
+  Atlas.Common.Lsp.Formatting,
   Atlas.Common.Mcp.IdeEdits,
   Atlas.Common.Mcp.IdeBuilds,
   Atlas.Common.Mcp.TestTools,
@@ -1019,6 +1022,47 @@ begin
         raise EMcpToolError.Create('Argument "line" fehlt');
       Result := AEdit.ApplyCodeAction(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, FileName, Line,
         TMcpServer.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
+    end, TMcpToolKind.Write);
+  AServer.AddTool('format_code',
+    'Formatiert eine Unit nach den Formatregeln des Projekts (#1358; format.* in atlas.json, .editorconfig) wie ' +
+    '"Dokument formatieren" in der IDE, ganz oder nur startLine..endLine. Mit text wird geplanter Code statt der ' +
+    'Datei formatiert und als Text zurückgegeben, ohne zu schreiben. Ohne text zeigt dryRun (Vorgabe true) den ' +
+    'Diff; dryRun=false schreibt wie apply_code_action (offene Dateien als ein Rückgängig-Schritt in der IDE). ' +
+    'Dateien mit Syntaxfehlern werden nicht formatiert; // atlas-format: off ... on bleibt unverändert.',
+    '{"type":"object","properties":{' +
+      '"file":{"type":"string","description":"Pfad der Unit (relativ zum Projekt oder absolut)"},' +
+      '"text":{"type":"string","description":"Optional: geplanter Inhalt der ganzen Unit statt der Datei"},' +
+      '"startLine":{"type":"integer","minimum":1,"description":"Erste zu formatierende Zeile (ab 1); ohne Angabe die ganze Unit"},' +
+      '"endLine":{"type":"integer","minimum":1,"description":"Letzte zu formatierende Zeile; Vorgabe startLine"},' +
+      '"dryRun":{"type":"boolean","default":true,"description":"Nur Vorschau, nichts schreiben"}},' +
+      '"required":["file"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      mFileName, mText: string;
+      mStartLine, mEndLine: Integer;
+      mScope: TFormatScope;
+      mStyle: TFormatStyle;
+    begin
+      mFileName := AGuard.Resolve(TMcpServer.RequiredString(AArguments, 'file'));
+      mScope := TFormatScope.All;
+      if AArguments.TryGetValue<Integer>('startLine', mStartLine) then
+      begin
+        if not AArguments.TryGetValue<Integer>('endLine', mEndLine) then
+          mEndLine := mStartLine;
+        if (mStartLine < 1) or (mEndLine < mStartLine) then
+          raise EMcpToolError.Create('"startLine" ab 1 und "endLine" nicht davor');
+        mScope := TFormatScope.Lines([TFormatLineSpan.Create(mStartLine - 1, mEndLine - 1)]);
+      end;
+      // Formatregeln wie im Editor: format.* über .editorconfig über den Vorgaben (TLspFormatting.Resolve).
+      mStyle := TLspFormatting.Resolve(nil, mFileName, AGroup.WorkspaceOf(mFileName).Configuration.Settings.Formatting,
+        function(const AConfigFile: string; out AConfigText: string): Boolean
+        begin
+          Result := FileExists(AConfigFile) and ReadSourceText(AConfigFile, AConfigText);
+        end);
+      if AArguments.TryGetValue<string>('text', mText) then
+        Result := AEdit.FormatCode(mStyle, mFileName, mText, mScope)
+      else
+        Result := AEdit.FormatCode(mStyle, mFileName, mScope, DryRunOf(AArguments));
     end, TMcpToolKind.Write);
 end;
 
