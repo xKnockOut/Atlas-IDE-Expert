@@ -36,6 +36,8 @@ type
     procedure NewestCacheWinsPerProject;
     [Test]
     procedure FormatVersionMatchesServer;
+    [Test]
+    procedure FindsLibraryCachesPerKey;
     /// <summary>Den Cache, den der Server schreibt, liest das Plugin (#1326): Die Konstanten allein sichern das
     /// Format nicht, #1123 hatte den Unit-Kopf erweitert.</summary>
     [Test]
@@ -78,7 +80,8 @@ uses
   System.DateUtils,
   System.IOUtils,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Cache;
+  Atlas.Common.Index.Cache,
+  Atlas.Common.Index.Adapters.CacheDirectory;
 
 type
   TUnitSpec = record
@@ -275,6 +278,28 @@ begin
     'Plugin und Server lesen dasselbe Cache-Format; beide Konstanten zusammen erhöhen.');
 end;
 
+procedure TAtlasWelcomeIndexFilesTests.FindsLibraryCachesPerKey;
+var
+  mRoot, mLibrary: string;
+  mFound: TArray<string>;
+begin
+  // Der Server legt die Bibliothek je Schlüssel ab (Bibliothek\<Hash>\index-<Format>.atlasidx); Caches ohne
+  // Format im Namen stammen von älteren Servern und zählen nicht.
+  mRoot := TempFolder;
+  try
+    mLibrary := mRoot + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'Bibliothek' + PathDelim;
+    WriteCache(mLibrary + 'WIN64' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName, SampleUnits, Now);
+    WriteCache(mLibrary + 'WIN32' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName, SampleUnits, Now);
+    WriteCache(mLibrary + 'ALT' + PathDelim + 'index.atlasidx', SampleUnits, Now);
+    mFound := TAtlasWelcomeIndexFiles.LibraryCacheFiles(mRoot);
+    Assert.AreEqual(2, Integer(Length(mFound)));
+    Assert.AreEqual(TIndexCacheDirectory.CacheFileName, TAtlasWelcomeIndexFiles.CacheFileName,
+      'Plugin und Server suchen dieselbe Datei.');
+  finally
+    RemoveTree(mRoot);
+  end;
+end;
+
 procedure TAtlasWelcomeIndexFilesTests.ReadsCacheOfServer;
 var
   mUnit: TUnitIndex;
@@ -341,12 +366,12 @@ var
 begin
   Root := TempFolder;
   try
-    WriteCache(Root + PathDelim + 'Index' + PathDelim + '23.0' + PathDelim + 'AAAA' + PathDelim + 'index.atlasidx',
+    WriteCache(Root + PathDelim + 'Index' + PathDelim + '23.0' + PathDelim + 'AAAA' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName,
       SampleUnits, Now);
-    WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'BBBB' + PathDelim + 'index.atlasidx',
+    WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'BBBB' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName,
       SampleUnits, Now);
     WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'Bibliothek' + PathDelim +
-      'index.atlasidx', SampleUnits, Now);
+      TAtlasWelcomeIndexFiles.CacheFileName, SampleUnits, Now);
     ForceDirectories(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'LEER');
     Found := TAtlasWelcomeIndexFiles.CacheFiles(Root);
     Assert.AreEqual(2, Integer(Length(Found)));
@@ -366,12 +391,12 @@ begin
   Projects := TAtlasIndexProjects.Create(Root);
   try
     // Zwei Konfigurationen desselben Projekts und ein zweites Projekt.
-    WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'DEBUG' + PathDelim + 'index.atlasidx',
+    WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'DEBUG' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName,
       SampleUnits, IncDay(Now, -3));
     WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'RELEASE' + PathDelim +
-      'index.atlasidx', [Spec('Atlas', 'C:\Projekte\Atlas\Atlas.dpr', False),
+      TAtlasWelcomeIndexFiles.CacheFileName, [Spec('Atlas', 'C:\Projekte\Atlas\Atlas.dpr', False),
       Spec('Neu', 'C:\Projekte\Atlas\Neu.pas', False)], IncDay(Now, -1));
-    WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'TOOLS' + PathDelim + 'index.atlasidx',
+    WriteCache(Root + PathDelim + 'Index' + PathDelim + '37.0' + PathDelim + 'TOOLS' + PathDelim + TAtlasWelcomeIndexFiles.CacheFileName,
       [Spec('Tools', 'C:\Projekte\Tools\Tools.dpk', False)], IncDay(Now, -2));
     Projects.Refresh;
     List := Projects.Projects;
