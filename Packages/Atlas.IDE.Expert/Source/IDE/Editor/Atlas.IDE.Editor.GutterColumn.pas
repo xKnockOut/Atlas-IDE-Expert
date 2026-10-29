@@ -175,14 +175,15 @@ uses
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.Navigation,
-  Atlas.IDE.Foundation.Settings;
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 procedure InvalidateTop;
 var
   Editors: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
-    Editors.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Editors);
 end;
 
 function IsSource(const AFileName: string): Boolean;
@@ -320,7 +321,7 @@ begin
   FColumn := Editors.RequestGutterColumn(FIndex, FWantedWidth, gclAfterLineNumbers);
   FWidth := FWantedWidth;
   FRows.Clear;
-  Editors.InvalidateTopEditor;
+  TAtlasIdeEditorRefresh.InvalidateTop(Editors);
 end;
 
 procedure TAtlasIdeGutterColumn.DropColumn;
@@ -333,7 +334,7 @@ begin
   if Editors <> nil then
   begin
     Editors.RemoveGutterColumn(FColumn);
-    Editors.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Editors);
   end;
   FColumn := -1;
   FRows.Clear;
