@@ -6,7 +6,9 @@
     "  {{spalte:Text}} = Spalte (ab 1) von Text in der Zeile aus 'line'. So bleiben die Beispiele stabil, wenn sich Zeilen verschieben.",
     "contains: Text, der in der Antwort stehen muss (Groß-/Kleinschreibung zählt).",
     "process: true = Werkzeug startet einen Prozess oder braucht die IDE; läuft nur mit -WithProcessTools.",
-    "expectError: true = isError in der Antwort ist hier richtig."
+    "expectError: true = isError in der Antwort ist hier richtig.",
+    "prompts: Beispielaufrufe von prompts/get (#1357); jeder Prompt aus prompts/list braucht einen Eintrag. Argumente sind Text, Platzhalter wie oben.",
+    "templates: je Ressourcenvorlage aus resources/templates/list eine URI zum Lesen und der erwartete Text."
   ],
   "root": "Tests/Referenzprojekt",
   "tools": {
@@ -132,6 +134,43 @@
     }
   },
   "resources": {
-    "delphi://conventions": { "contains": "with-statement" }
+    "delphi://conventions": { "contains": "with-statement" },
+    "delphi://build/last": {}
+  },
+  "prompts": {
+    "unit_review": {
+      "arguments": { "unit": "Ref.Komponenten.Anzeige" },
+      "contains": "TRefAnzeige"
+    },
+    "explain_form": {
+      "arguments": { "file": "Source/Ref.Formulare.Haupt.dfm" },
+      "contains": "TButton"
+    },
+    "write_tests": {
+      "arguments": { "name": "TKundenSuche.Suchen" },
+      "contains": "TKundenSuche"
+    },
+    "fix_finding": {
+      "arguments": { "file": "Source/Ref.Pruefung.Verstoesse.pas", "line": "{{zeile:with APunkt do}}", "rule": "with-statement" },
+      "contains": "with-statement"
+    },
+    "prepare_commit": {
+      "arguments": {},
+      "contains": "Commit"
+    }
+  },
+  "templates": {
+    "delphi://unit/{name}": {
+      "uri": "delphi://unit/Ref.Komponenten.Anzeige",
+      "contains": "TRefAnzeige"
+    },
+    "delphi://form/{file}": {
+      "uri": "delphi://form/Source%2FRef.Formulare.Haupt.dfm",
+      "contains": "TButton"
+    },
+    "delphi://findings/{file}": {
+      "uri": "delphi://findings/Source%2FRef.Pruefung.Verstoesse.pas",
+      "contains": "with-statement"
+    }
   }
 }
