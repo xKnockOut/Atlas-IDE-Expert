@@ -43,3 +43,5 @@ Plattform.
 | `DccOperatorenGegen` | `operator-declaration-invalid` | OG1/OG2 falsche Parameterzahl |
 | `DccKonstanten` | `typed-constant-modified` | TC1 `{$J+}`, TC2 `{$WRITEABLECONST ON}`, TC3 `{$J+}` aus einer Include-Datei |
 | `DccKonstantenGegen` | `typed-constant-modified` | KG1 `{$J-}` |
+| `DccAssembler` | `asm-invalid` | AK1–AK23 gültiger Inline-Assembler (esp als Basis, Befehle mit verschieden großen Operanden, Segmentregister, `out 5, al`, `db` mit Konstante, `OFFSET x + 4`, vier Zeichen an `eax`, Hex mit Nachsilbe h, Präfixe, Sprungmarken), AK24 gemeinsames end von `{$IFNDEF} asm … {$ELSE} begin …` (wie FastMM5); nur Win32 (#1375) |
+| `DccAssemblerGegen` | `asm-invalid` | AF1–AF12 Formen, die Atlas meldet (Code in der Marke), AF13–AF18 Kandidaten, die Atlas noch nicht meldet (`dd` mit Variable, `db` mit Parameter, `mov al, 'ab'`, Zahl über 32 Bit, `cmp 5, eax`, `db 1 / 0`); nur Win32 |

@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 78 |
+| [Compiler vorab](#gruppe-compiler) | 79 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -155,6 +155,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`syntax`](#syntax) | Syntaxfehler | Bug | Fehler |
 | [`language-feature`](#language-feature) | Sprachmerkmal einer neueren Delphi-Version | Bug | Warnung |
+| [`asm-invalid`](#asm-invalid) | Ungültige Anweisung im Inline-Assembler | Bug | Fehler |
 | [`for-high-to-low`](#for-high-to-low) | for-Schleife zählt mit to abwärts | Bug | Warnung |
 | [`conditional-expression-version`](#conditional-expression-version) | Bedingungsausdruck vor Delphi 13 | Bug | Fehler |
 | [`deprecated-symbol`](#deprecated-symbol) | Veraltetes oder gebundenes Symbol | Code Smell | Warnung |
@@ -457,6 +458,33 @@ Richtig:
 ```pascal
 if not (Sender is TButton) then
   Exit;
+```
+
+<a id="asm-invalid"></a>
+### asm-invalid
+
+**Ungültige Anweisung im Inline-Assembler** · Bug · Fehler · Gruppe Compiler vorab
+
+Anweisungen in asm-Blöcken, die dcc ablehnt: fehlender Operand (mov eax, ) und esp als Indexregister mit Faktor ([eax + esp * 2]) wie E2105, zwei Register verschiedener Größe (mov al, ebx), lea mit einer Zahl und eine Zahl als Ziel von mov wie E2107 (dcc meldet hier E2107 statt E2108 und E2116), db mit einer lokalen Variablen der Routine wie E2109, OFFSET a + OFFSET b wie E2111, eine Zahl über 64 Bit wie E2113, eine Stringkonstante mit mehr als 4 Zeichen an einem 32-Bit-Register wie E2114 und Division durch null (/ 0, mod 0) wie E2118. Gemeldet werden nur mit dcc bestätigte Formen, höchstens ein Befund je Anweisung. Anweisungen mit einer Compiler-Direktive oder einem { }-Kommentar in derselben Zeile (Free Pascal schreibt so ARM-Registerlisten), die übrigen Datenbefehle, Register von Win64 (rax, r8 …, unter Win32 mögliche Variablennamen) und Dateien für Free Pascal ({$MODE …}, {$ASMMODE …}) bleiben still.
+
+Entspricht der Compilermeldung `E2105`, `E2107`, `E2109`, `E2111`, `E2113`, `E2114`, `E2118`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+asm
+  mov al, ebx
+end;
+```
+
+Richtig:
+
+```pascal
+asm
+  mov al, bl
+end;
 ```
 
 <a id="unused-suppression"></a>

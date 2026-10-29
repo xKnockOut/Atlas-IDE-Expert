@@ -169,7 +169,7 @@ end;
 procedure TRuleProfilesTests.BuiltinProfilesActivateExpectedRules;
 const
   Threads = 'thread-free-with-free-on-terminate,thread-use-after-free-on-terminate,thread-vcl-access';
-  All = 'abstract-class-instantiated,abstract-declaration-invalid,anonymous-capture-invalid,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,attribute-usage-invalid,bidi-control,blocking-call-in-main-thread,bool-compare,boolean-assign-if,calling-convention-required,captured-loop-variable,case-insensitive-compare,case-missing-enum-value,case-selector-not-ordinal,char-to-pchar,' +
+  All = 'abstract-class-instantiated,abstract-declaration-invalid,anonymous-capture-invalid,anonymous-thread-not-started,argument-count-mismatch,asm-invalid,assert-side-effect,assign-to-property-member,attribute-usage-invalid,bidi-control,blocking-call-in-main-thread,bool-compare,boolean-assign-if,calling-convention-required,captured-loop-variable,case-insensitive-compare,case-missing-enum-value,case-selector-not-ordinal,char-to-pchar,' +
     'class-reference-nonvirtual-constructor,collection-modified-in-loop,commented-out-code,comparison-always-constant,comparison-as-statement,' +
     'compiler-warnings-disabled,component-create-without-override,component-default-mismatch,component-fixed-pixels,' +
     'component-hardcoded-color,component-interface-dangling,component-missing-free-notification,component-missing-inherited,' +
@@ -208,7 +208,7 @@ begin
     'override-case-mismatch', 'prefer-case', 'public-field', 'random-without-randomize', 'redundant-begin-end',
     'redundant-parens', 'security-path-traversal', 'sql-select-star', 'string-concat-in-loop', 'string-if-chain',
     'todo-comment']), ActiveRules('strict'));
-  Assert.AreEqual('abstract-class-instantiated,abstract-declaration-invalid,anonymous-capture-invalid,anonymous-thread-not-started,argument-count-mismatch,assert-side-effect,assign-to-property-member,attribute-usage-invalid,bidi-control,calling-convention-required,captured-loop-variable,case-missing-enum-value,case-selector-not-ordinal,char-to-pchar,' +
+  Assert.AreEqual('abstract-class-instantiated,abstract-declaration-invalid,anonymous-capture-invalid,anonymous-thread-not-started,argument-count-mismatch,asm-invalid,assert-side-effect,assign-to-property-member,attribute-usage-invalid,bidi-control,calling-convention-required,captured-loop-variable,case-missing-enum-value,case-selector-not-ordinal,char-to-pchar,' +
     'class-reference-nonvirtual-constructor,collection-modified-in-loop,comparison-always-constant,comparison-as-statement,' +
     'component-create-without-override,component-default-mismatch,component-interface-dangling,component-missing-free-notification,' +
     'component-missing-inherited,condition-not-boolean,conditional-directive-unbalanced,conditional-expression-version,constant-condition,constant-expression-error,constant-initializer-mismatch,constructor-on-instance,control-char,create-without-assignment,createprocess-readonly-commandline,dataset-edit-without-post,dataset-loop-without-next,debug-display-placeholder,declared-not-implemented,default-parameter-invalid,default-property-invalid,delimited-text-without-strict,' +
