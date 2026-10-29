@@ -3,7 +3,10 @@
 // Tests der Regeln für Compiler-Direktiven (#989): offene und überzählige
 // bedingte Direktiven, Symbole, unbekannte Direktiven und {$WARN}-Bezeichner,
 // {$PUSHOPT}/{$POPOPT}, {$ALIGN} und die Einstellungen; compiler-warnings-disabled
-// (#972); directive-typo still bei Methodenzuordnungen (#1325, Minimalfall F03).
+// (#972); directive-typo still bei Methodenzuordnungen (#1325, Minimalfall F03);
+// compiler-directive-invalid (#1379): {$MESSAGE}, Package-Schalter,
+// {$OBJTYPENAME}, {$CODEPAGE}, fehlende und rekursive Include-Dateien, fehlende
+// Ressourcen, je mit Gegenfall aus Tests/Compilermeldungen.
 
 interface
 
@@ -52,6 +55,24 @@ type
     procedure WarningsRestoredIsSilent;
     [Test]
     procedure WarningsAllowAndOff;
+    [Test]
+    procedure InvalidMessages;
+    [Test]
+    procedure InvalidPackageSwitches;
+    [Test]
+    procedure InvalidPackageOnlyInUnit;
+    [Test]
+    procedure InvalidObjTypeName;
+    [Test]
+    procedure InvalidCodePage;
+    [Test]
+    procedure InvalidMissingInclude;
+    [Test]
+    procedure InvalidRecursiveInclude;
+    [Test]
+    procedure InvalidMissingResource;
+    [Test]
+    procedure InvalidOptions;
   end;
 
 implementation
@@ -492,6 +513,275 @@ begin
   Assert.AreEqual(0, Integer(Length(WarningsFindings(Source, '{"rules": {"group:robustness": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TCompilerWarningsDisabledRule.Create, Source,
     '{"rules": {"compiler-warnings-disabled": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Dienst.pas'))));
+end;
+
+type
+  /// <summary>Unit-Suche, die für FindFile immer FAnswer liefert (#1379).</summary>
+  TFileLookup = class(TInterfacedObject, IRuleUnitLookup)
+  private
+    FAnswer: TRuleUnitAnswer;
+  public
+    constructor Create(AAnswer: TRuleUnitAnswer);
+    function Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
+    function FindPackage(const APackage: string): TRuleUnitAnswer;
+    function FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
+    function KnownUnits(ASources: TRuleUnitSources): TArray<string>;
+    function FolderOutsidePaths(const AUnitName: string): string;
+    function ReadProject(out AFileName, AText: string): Boolean;
+  end;
+
+constructor TFileLookup.Create(AAnswer: TRuleUnitAnswer);
+begin
+  inherited Create;
+  FAnswer := AAnswer;
+end;
+
+function TFileLookup.Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
+begin
+  Result := TRuleUnitAnswer.Unknown;
+end;
+
+function TFileLookup.FindPackage(const APackage: string): TRuleUnitAnswer;
+begin
+  Result := TRuleUnitAnswer.Unknown;
+end;
+
+function TFileLookup.FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
+begin
+  Result := FAnswer;
+end;
+
+function TFileLookup.KnownUnits(ASources: TRuleUnitSources): TArray<string>;
+begin
+  Result := nil;
+end;
+
+function TFileLookup.FolderOutsidePaths(const AUnitName: string): string;
+begin
+  Result := '';
+end;
+
+function TFileLookup.ReadProject(out AFileName, AText: string): Boolean;
+begin
+  AFileName := '';
+  AText := '';
+  Result := False;
+end;
+
+function InvalidFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TCompilerDirectiveInvalidRule.Create, ASource);
+end;
+
+function InvalidFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TCompilerDirectiveInvalidRule.Create, ASource, AConfig, APath);
+end;
+
+function InvalidMessage(const ASource: string): string;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := InvalidFindings(ASource);
+  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
+  Result := mFound[0].Message;
+end;
+
+/// <summary>Dateizugriff neben der Unit: ANames (Inhalt ATexts) gibt es, sonst nichts. Eigene Routine, damit die
+/// anonymen Methoden nur die Parameter einfangen.</summary>
+function FileContext(const ASource: string; const ANames, ATexts: TArray<string>;
+  const AUnits: IRuleUnitLookup): TRuleContext;
+begin
+  Result := Default(TRuleContext);
+  Result.RelativePath := 'Source/Dienst.pas';
+  Result.UnitName := 'Dienst';
+  Result.FileName := 'C:\P\Source\Dienst.pas';
+  Result.Text := ASource;
+  Result.Units := AUnits;
+  Result.FileExists :=
+    function(const AName: string): Boolean
+    var
+      mIndex: Integer;
+    begin
+      Result := False;
+      for mIndex := 0 to High(ANames) do
+        if SameText(ANames[mIndex], AName) then
+          Result := True;
+    end;
+  Result.ReadFile :=
+    function(const AName: string; out AData: TBytes): Boolean
+    var
+      mIndex: Integer;
+    begin
+      Result := False;
+      for mIndex := 0 to High(ANames) do
+        if SameText(ANames[mIndex], AName) then
+        begin
+          AData := TEncoding.UTF8.GetBytes(ATexts[mIndex]);
+          Result := True;
+        end;
+    end;
+end;
+
+function FileFindings(const ASource: string; const ANames, ATexts: TArray<string>;
+  AAnswer: TRuleUnitAnswer): TArray<TRuleFinding>;
+var
+  mUnits: IRuleUnitLookup;
+begin
+  // Erst in eine Variable: direkt an einen const-Parameter übergeben, würde das Objekt nie freigegeben.
+  mUnits := TFileLookup.Create(AAnswer);
+  Result := TRuleAssert.ContextFindings(TCompilerDirectiveInvalidRule.Create,
+    FileContext(ASource, ANames, ATexts, mUnits), '');
+end;
+
+procedure TDirectiveRulesTests.InvalidMessages;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fälle Cm.W1054 und Cm.H1054: dcc meldet die Texte als Warnung bzw. Hinweis.
+  mFound := InvalidFindings(Dienst('{$MESSAGE WARN ''Eigene Warnung''}'#10'{$MESSAGE Hint ''Eigener Hinweis''}'#10,
+    ''));
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('{$MESSAGE WARN}: Eigene Warnung (wie W1054).', mFound[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));
+  Assert.AreEqual(3, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('{$MESSAGE HINT}: Eigener Hinweis (wie H1054).', mFound[1].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFound[1].Severity));
+  Assert.AreEqual('{$MESSAGE WARN}: Kunde''s Wert (wie W1054).',
+    InvalidMessage(Dienst('{$MESSAGE WARN ''Kunde''''s Wert''}'#10, '')));
+  // Ohne Art, ERROR/FATAL (noch nicht mit dcc abgeglichen) und in bedingten Zweigen still.
+  TRuleAssert.Silent(TCompilerDirectiveInvalidRule.Create, Dienst('{$MESSAGE ''Ohne Art''}'#10 +
+    '{$MESSAGE ERROR ''Fehler''}'#10'{$MESSAGE FATAL ''Abbruch''}'#10'{$MESSAGE WARN}'#10 +
+    '{$IFDEF DEBUG}'#10'{$MESSAGE WARN ''Nur im Debug''}'#10'{$ENDIF}'#10, ''));
+end;
+
+procedure TDirectiveRulesTests.InvalidPackageSwitches;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fall Cm.E2222: dcc meldet an der zweiten Direktive.
+  mFound := InvalidFindings('unit Dienst;'#10'{$WEAKPACKAGEUNIT ON}'#10'{$DENYPACKAGEUNIT ON}'#10'interface'#10 +
+    'implementation'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('{$WEAKPACKAGEUNIT ON} und {$DENYPACKAGEUNIT ON} schließen sich aus (wie E2222).',
+    mFound[0].Message);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(1, Integer(Length(InvalidFindings(Dienst('{$DENYPACKAGEUNIT ON}'#10'{$WEAKPACKAGEUNIT ON}'#10,
+    '')))));
+  // Nur einer, wieder aus, oder in einem bedingten Zweig: ohne Meldung.
+  TRuleAssert.Silent(TCompilerDirectiveInvalidRule.Create, Dienst('{$WEAKPACKAGEUNIT ON}'#10, ''));
+  TRuleAssert.Silent(TCompilerDirectiveInvalidRule.Create, Dienst('{$WEAKPACKAGEUNIT ON}'#10 +
+    '{$WEAKPACKAGEUNIT OFF}'#10'{$DENYPACKAGEUNIT ON}'#10, ''));
+  TRuleAssert.Silent(TCompilerDirectiveInvalidRule.Create, Dienst('{$IFDEF X}'#10'{$WEAKPACKAGEUNIT ON}'#10 +
+    '{$ENDIF}'#10'{$DENYPACKAGEUNIT ON}'#10, ''));
+end;
+
+procedure TDirectiveRulesTests.InvalidPackageOnlyInUnit;
+begin
+  // Fall Cm.E2224.
+  Assert.AreEqual('{$DESIGNONLY} ist nur in einem Package (.dpk) erlaubt, nicht in einer Unit (wie E2224).',
+    InvalidMessage('unit Dienst;'#10'{$DESIGNONLY}'#10'interface'#10'implementation'#10'end.'));
+  Assert.AreEqual('{$RUNONLY} ist nur in einem Package (.dpk) erlaubt, nicht in einer Unit (wie E2224).',
+    InvalidMessage(Dienst('{$RUNONLY ON}'#10, '')));
+  // Im Package gehören sie hin.
+  TRuleAssert.Silent(TCompilerDirectiveInvalidRule.Create, 'package Paket;'#10'{$R *.res}'#10'{$DESIGNONLY}'#10 +
+    '{$RUNONLY OFF}'#10'requires'#10'  rtl;'#10'contains'#10'  Dienst in ''Dienst.pas'';'#10'end.');
+  TRuleAssert.Silent(TCompilerDirectiveInvalidRule.Create, Dienst('{$IFDEF PAKET}'#10'{$DESIGNONLY}'#10 +
+    '{$ENDIF}'#10, ''));
+end;
+
+procedure TDirectiveRulesTests.InvalidObjTypeName;
+begin
+  // Fall Cm.E2560.
+  Assert.AreEqual('{$OBJTYPENAME} gilt nicht für den Alias TZahl; erlaubt sind nur globale Typen, die kein Alias ' +
+    'sind (wie E2560).', InvalidMessage('unit Dienst;'#10'interface'#10'type'#10'  TZahl = Integer;'#10 +
+    '  {$OBJTYPENAME TZahl ''Bzahl''}'#10'implementation'#10'end.'));
+  // Eigener Typ, Klasse, unbekannter Name: ohne Meldung.
+  TRuleAssert.Silent(TCompilerDirectiveInvalidRule.Create, 'unit Dienst;'#10'interface'#10'type'#10 +
+    '  TZahl = type Integer;'#10'  TKunde = class'#10'  end;'#10'  {$OBJTYPENAME TZahl ''Bzahl''}'#10 +
+    '  {$OBJTYPENAME TKunde ''NKunde''}'#10'  {$OBJTYPENAME TFehlt ''NFehlt''}'#10'implementation'#10'end.');
+end;
+
+procedure TDirectiveRulesTests.InvalidCodePage;
+begin
+  // Fall Cm.E2424: Delphi 13 meldet E1030 für {$CODEPAGE 99999}.
+  Assert.AreEqual('99999 ist keine Codepage für {$CODEPAGE} (wie E1030).',
+    InvalidMessage('unit Dienst;'#10'{$CODEPAGE 99999}'#10'interface'#10'implementation'#10'end.'));
+  TRuleAssert.Silent(TCompilerDirectiveInvalidRule.Create, Dienst('{$CODEPAGE 1252}'#10'{$CODEPAGE 65001}'#10, ''));
+end;
+
+procedure TDirectiveRulesTests.InvalidMissingInclude;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fall Cm.E1026: Delphi 13 meldet F1026.
+  mSource := Dienst('{$I Cm.Fehlt.E1026.inc}'#10, '');
+  mFound := FileFindings(mSource, nil, nil, TRuleUnitAnswer.Missing);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Include-Datei Cm.Fehlt.E1026.inc nicht gefunden (wie F1026).', mFound[0].Message);
+  Assert.AreEqual(3, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('Include-Datei Fehlt nicht gefunden (wie F1026).', FileFindings(Dienst('{$INCLUDE ''Fehlt''}'#10,
+    ''), nil, nil, TRuleUnitAnswer.Missing)[0].Message);
+  // Neben der Unit (auch ohne Endung als .inc), über die Suchpfade oder ohne sichere Aussage: still.
+  Assert.AreEqual(0, Integer(Length(FileFindings(Dienst('{$I Da.inc}'#10'{$I Ohne}'#10, ''), ['Da.inc', 'Ohne.inc'],
+    ['', ''], TRuleUnitAnswer.Missing))));
+  Assert.AreEqual(0, Integer(Length(FileFindings(mSource, nil, nil, TRuleUnitAnswer.Found))));
+  Assert.AreEqual(0, Integer(Length(FileFindings(mSource, nil, nil, TRuleUnitAnswer.Unknown))));
+  Assert.AreEqual(0, Integer(Length(InvalidFindings(mSource))), 'ohne Dateizugriff keine Aussage');
+  // Kurzschalter, Makros und bedingte Zweige.
+  Assert.AreEqual(0, Integer(Length(FileFindings(Dienst('{$I+}'#10'{$I-,R+}'#10'{$I %DATE%}'#10 +
+    '{$IFDEF FPC}'#10'{$I fpc.inc}'#10'{$ENDIF}'#10, ''), nil, nil, TRuleUnitAnswer.Missing))));
+end;
+
+procedure TDirectiveRulesTests.InvalidRecursiveInclude;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fall Cm.E2245: Die Include-Datei bindet sich selbst ein.
+  mFound := FileFindings(Dienst('{$I Cm.E2245.inc}'#10, ''), ['Cm.E2245.inc'],
+    ['// Bindet sich selbst ein.'#10'{$I Cm.E2245.inc}'#10], TRuleUnitAnswer.Missing);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Rekursive Include-Datei: Cm.E2245.inc → Cm.E2245.inc (wie E2245).', mFound[0].Message);
+  // Über eine zweite Datei.
+  Assert.AreEqual('Rekursive Include-Datei: A.inc → B.inc → A.inc (wie E2245).',
+    FileFindings(Dienst('{$I A.inc}'#10, ''), ['A.inc', 'B.inc'], ['{$I B.inc}', '{$INCLUDE ''A.inc''}'],
+    TRuleUnitAnswer.Missing)[0].Message);
+  // Mit Wächter, zweimal nacheinander und als Kette ohne Kreis: still.
+  Assert.AreEqual(0, Integer(Length(FileFindings(Dienst('{$I A.inc}'#10'{$I A.inc}'#10, ''), ['A.inc', 'B.inc'],
+    ['{$IFNDEF A_INC}'#10'{$DEFINE A_INC}'#10'{$I A.inc}'#10'{$ENDIF}'#10'{$I B.inc}', 'const B = 1;'],
+    TRuleUnitAnswer.Missing))));
+end;
+
+procedure TDirectiveRulesTests.InvalidMissingResource;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fall Cm.W1026: Delphi 13 meldet E1026.
+  mFound := FileFindings(Dienst('{$R Cm.Fehlt.W1026.res}'#10, ''), nil, nil, TRuleUnitAnswer.Missing);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Ressourcendatei Cm.Fehlt.W1026.res nicht gefunden (wie E1026).', mFound[0].Message);
+  Assert.AreEqual('Ressourcendatei Bilder nicht gefunden (wie E1026).', FileFindings(Dienst(
+    '{$RESOURCE ''Bilder''}'#10, ''), nil, nil, TRuleUnitAnswer.Missing)[0].Message);
+  // Vorhanden, aus einer .rc erzeugt, Masken, Formulare, Kurzschalter, über die Suchpfade gefunden: still.
+  Assert.AreEqual(0, Integer(Length(FileFindings(Dienst('{$R Da.res}'#10'{$R Bilder}'#10'{$R Version.res}'#10 +
+    '{$R ''Icons.res'' ''Icons.rc''}'#10'{$R *.res}'#10'{$R *.dfm}'#10'{$R Haupt.dfm}'#10'{$R-}'#10'{$R+,Q-}'#10,
+    ''), ['Da.res', 'Bilder.res', 'Version.rc'], ['', '', ''], TRuleUnitAnswer.Missing))));
+  Assert.AreEqual(0, Integer(Length(FileFindings(Dienst('{$R Fehlt.res}'#10, ''), nil, nil,
+    TRuleUnitAnswer.Found))));
+end;
+
+procedure TDirectiveRulesTests.InvalidOptions;
+var
+  mSource: string;
+begin
+  mSource := Dienst('{$MESSAGE WARN ''Eigene Warnung''}'#10, '');
+  Assert.AreEqual(1, Integer(Length(InvalidFindings(mSource, '', ''))));
+  Assert.AreEqual(0, Integer(Length(InvalidFindings(mSource, '{"rules": {"compiler-directive-invalid": "off"}}',
+    ''))));
+  Assert.AreEqual(0, Integer(Length(InvalidFindings(mSource, '{"rules": {"group:compiler": "off"}}', ''))));
+  Assert.AreEqual(0, Integer(Length(InvalidFindings(mSource,
+    '{"rules": {"compiler-directive-invalid": {"exclude": ["Alt/*.pas"]}}}', 'Alt/Dienst.pas'))));
 end;
 
 initialization
