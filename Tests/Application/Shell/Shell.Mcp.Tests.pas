@@ -17,6 +17,8 @@ type
     procedure ListsArchitectureTool;
     [Test]
     procedure ListsFindPathTool;
+    [Test]
+    procedure ListsHotspotsTool;
   end;
 
 implementation
@@ -84,6 +86,18 @@ begin
   for Name in TMcpShell.ToolNames do
     Found := Found or (Name = 'find_path');
   Assert.IsTrue(Found, 'find_path fehlt in tools/list');
+end;
+
+procedure TMcpShellTests.ListsHotspotsTool;
+var
+  Name: string;
+  Found: Boolean;
+begin
+  // Hotspots (#1354).
+  Found := False;
+  for Name in TMcpShell.ToolNames do
+    Found := Found or (Name = 'get_hotspots');
+  Assert.IsTrue(Found, 'get_hotspots fehlt in tools/list');
 end;
 
 initialization

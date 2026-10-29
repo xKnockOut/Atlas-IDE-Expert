@@ -298,6 +298,12 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Architecture.pas"/>
+        <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.Contract.pas"/>
+        <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.History.pas"/>
+        <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.Analysis.pas"/>
+        <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.Service.pas"/>
+        <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.Report.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hotspots.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugDisplay.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EventHandlers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>

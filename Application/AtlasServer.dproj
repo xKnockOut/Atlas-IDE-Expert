@@ -60,6 +60,7 @@
         <DCCReference Include="Source\Shell\Shell.Linter.pas"/>
         <DCCReference Include="Source\Shell\Shell.SlashHost.pas"/>
         <DCCReference Include="Source\Shell\Shell.VcsChanges.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Hotspots.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.ServerAccess.pas"/>

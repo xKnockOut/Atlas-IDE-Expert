@@ -70,6 +70,9 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
   Atlas.Common.Lsp.Architecture,
+  Atlas.Common.Lsp.Hotspots,
+  Atlas.Common.Hotspots.Contract,
+  Atlas.Common.Hotspots.Service,
   Atlas.Common.Lsp.UnitRelations,
   Atlas.Common.Lsp.SymbolPath,
   Atlas.Common.Architecture.Service,
@@ -202,6 +205,10 @@ type
     /// atlas/architecture und Befehl atlas.architecture.saveReport.</summary>
     FArchitectureService: TArchitectureService;
     FArchitecture: TLspArchitecture;
+    /// <summary>Hotspots (#1354): Dienst mit Zwischenspeicher je Stand der Versionsverwaltung und Index-Generation,
+    /// Anfrage atlas/hotspots und Befehle atlas.hotspots und atlas.hotspots.saveReport.</summary>
+    FHotspotService: THotspotService;
+    FHotspots: TLspHotspots;
     /// <summary>Unit-Beziehungen (#593): eigener Uses-Graph mit Bibliotheks-Units, Anfrage atlas/unitRelations
     /// und Befehle zum Verschieben und Entfernen von uses-Einträgen.</summary>
     FUnitRelationsGraph: TUsesGraphService;
@@ -535,6 +542,10 @@ type
     /// architecture.scope).</summary>
     function ArchitectureSourceFor(const AFileName, AScope: string; out ARequest: TArchitectureRequest;
       out ASettings: TServerSettings): Boolean;
+    /// <summary>Anfrage, Einstellungen und Versionsverwaltung für die Hotspots (#1354): Umfang wie die
+    /// Architekturübersicht mit architecture.scope.</summary>
+    function HotspotSourceFor(const AFileName: string; out ARequest: THotspotRequest; out ASettings: TServerSettings;
+      out AVcs: IHotspotVcs; out AError: string): Boolean;
     /// <summary>Einstellungen und Namensräume für den Weg zwischen Symbolen (#1117) zum Arbeitsbereich von
     /// AFileName.</summary>
     function SymbolPathSourceFor(const AFileName: string; out ASettings: TServerSettings;
@@ -659,6 +670,7 @@ uses
   Atlas.Common.Pascal.IncludeFiles,
   Shell.SlashHost,
   Shell.VcsChanges,
+  Shell.Hotspots,
   Shell.Bootstrap,
   Shell.Commands.Build,
   Shell.Commands.Index,
@@ -1415,6 +1427,14 @@ begin
     end);
   FArchitecture := TLspArchitecture.Create(FArchitectureService, ArchitectureSourceFor);
   FArchitecture.Attach(FDispatcher);
+  // Hotspots (#1354): Komplexität aus geöffneten Dokumenten bzw. der Platte, Verlauf über Shell.Hotspots.
+  FHotspotService := THotspotService.Create(FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end);
+  FHotspots := TLspHotspots.Create(FHotspotService, HotspotSourceFor);
+  FHotspots.Attach(FDispatcher);
   // Unit-Beziehungen (#593): Wurzel und Namensräume wie die Architektur; die uses-Analyse der Code-Aktionen
   // entsteht erst weiter unten, daher über UsesContextFor.
   FUnitRelationsGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
@@ -1864,6 +1884,17 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FArchitecture.SaveReport(AArguments);
+    end);
+  // Hotspots (#1354): nebenläufig; gerechnet wird im Hintergrund, die Antwort kommt sofort (sonst "pending").
+  FCommands.RegisterConcurrent(TLspHotspots.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FHotspots.Execute(AArguments);
+    end);
+  FCommands.RegisterConcurrent(TLspHotspots.SaveCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FHotspots.SaveReport(AArguments);
     end);
   FCommands.Register(TLspUnitRelations.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2547,6 +2578,8 @@ begin
   FSymbolPath.Free;
   FArchitecture.Free;
   FArchitectureService.Free;
+  FHotspots.Free;
+  FHotspotService.Free;
   FUnitRelations.Free;
   FUnitRelationsGraph.Free;
   FDebugDisplay.Free;
@@ -5701,6 +5734,27 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+end;
+
+function TServerComposition.HotspotSourceFor(const AFileName: string; out ARequest: THotspotRequest;
+  out ASettings: TServerSettings; out AVcs: IHotspotVcs; out AError: string): Boolean;
+var
+  mArchitecture: TArchitectureRequest;
+begin
+  ARequest := Default(THotspotRequest);
+  AVcs := nil;
+  AError := '';
+  Result := ArchitectureSourceFor(AFileName, '', mArchitecture, ASettings);
+  if not Result then
+    Exit;
+  ARequest := THotspotRequest.FromSettings(ASettings);
+  ARequest.Title := mArchitecture.Title;
+  ARequest.Root := mArchitecture.Root;
+  ARequest.Namespaces := mArchitecture.Namespaces;
+  ARequest.Files := mArchitecture.Files;
+  // Ohne Hotspots kein Prozess; ohne Arbeitskopie meldet die Antwort den Grund statt einer leeren Liste.
+  if ASettings.HotspotsEnabled then
+    TShellHotspotVcs.Detect(mArchitecture.Root, ASettings, AVcs, AError);
 end;
 
 function TServerComposition.UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;

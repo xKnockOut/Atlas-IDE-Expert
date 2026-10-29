@@ -124,6 +124,9 @@ type
     /// <summary>„Architekturübersicht“ (#1118) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FArchitectureItem: TMenuItem;
     FViewArchitecture: TMenuItem;
+    /// <summary>Fenster „Atlas-Hotspots“ (#1354) im Atlas-Menü und unter Ansicht › Atlas.</summary>
+    FHotspotsItem: TMenuItem;
+    FViewHotspots: TMenuItem;
     /// <summary>Fenster „Unit-Beziehungen“ (#593) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FUnitRelationsItem: TMenuItem;
     FViewUnitRelations: TMenuItem;
@@ -147,6 +150,7 @@ type
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
     procedure ArchitectureClick(Sender: TObject);
+    procedure HotspotsClick(Sender: TObject);
     procedure UnitRelationsClick(Sender: TObject);
     procedure BoardClick(Sender: TObject);
     procedure SymbolPathClick(Sender: TObject);
@@ -222,6 +226,7 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
+  Atlas.IDE.Hotspots.Service,
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.SymbolPath.Service,
   Atlas.IDE.EditorToolbar.Service,
@@ -324,6 +329,7 @@ begin
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
   FArchitectureItem := AddItem(TAtlasTextId.ArchitectureCommand, 0, ArchitectureClick);
+  FHotspotsItem := AddItem(TAtlasTextId.HotspotsCommand, 0, HotspotsClick);
   FUnitRelationsItem := AddItem(TAtlasTextId.UnitRelationsCommand, 0, UnitRelationsClick);
   // Weg zwischen Symbolen (#1117).
   FSymbolPathItem := AddItem(TAtlasTextId.SymbolPathCommand, 0, SymbolPathClick);
@@ -453,6 +459,10 @@ begin
       FViewArchitecture.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureViewMenu);
       FViewArchitecture.OnClick := ArchitectureClick;
       FViewAtlas.Add(FViewArchitecture);
+      FViewHotspots := TMenuItem.Create(FViewAtlas);
+      FViewHotspots.Caption := TAtlasStrings.Text(TAtlasTextId.HotspotsViewMenu);
+      FViewHotspots.OnClick := HotspotsClick;
+      FViewAtlas.Add(FViewHotspots);
       FViewUnitRelations := TMenuItem.Create(FViewAtlas);
       FViewUnitRelations.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsViewMenu);
       FViewUnitRelations.OnClick := UnitRelationsClick;
@@ -778,6 +788,11 @@ begin
     FArchitectureItem.Visible := TAtlasIdeArchitecture.Enabled;
   if FViewArchitecture <> nil then
     FViewArchitecture.Visible := TAtlasIdeArchitecture.Enabled;
+  // Hotspots (#1354) nach hotspots.enabled.
+  if FHotspotsItem <> nil then
+    FHotspotsItem.Visible := TAtlasIdeHotspots.Enabled;
+  if FViewHotspots <> nil then
+    FViewHotspots.Visible := TAtlasIdeHotspots.Enabled;
   // Unit-Beziehungen (#593) am selben Schalter.
   if FUnitRelationsItem <> nil then
     FUnitRelationsItem.Visible := TAtlasIdeUnitRelations.Enabled;
@@ -788,7 +803,7 @@ begin
     FViewBoard.Visible := TAtlasIdeSettings.Current.IssuesBoard;
   if FViewAtlas <> nil then
     FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled or
-      TAtlasIdeUnitRelations.Enabled or TAtlasIdeSettings.Current.IssuesBoard;
+      TAtlasIdeHotspots.Enabled or TAtlasIdeUnitRelations.Enabled or TAtlasIdeSettings.Current.IssuesBoard;
   // Weg zwischen Symbolen (#1117) nach navigation.symbolPath.
   if FSymbolPathItem <> nil then
     FSymbolPathItem.Visible := TAtlasIdeSymbolPath.Enabled;
@@ -1015,6 +1030,16 @@ begin
     procedure
     begin
       TAtlasIdeArchitecture.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.HotspotsClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.Hotspots');
+  TAtlasGuard.Run(TAtlasFeature.Hotspots,
+    procedure
+    begin
+      TAtlasIdeHotspots.ShowWindow;
     end);
 end;
 
