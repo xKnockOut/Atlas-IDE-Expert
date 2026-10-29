@@ -7254,7 +7254,7 @@ const
      'Atlas: diagnostic package saved: %s',
      'Atlas: the server returned no files; the package contains only the bug report.',
      'Double-click: “Atlas server” window',
-     'Click: “Atlas server” window'),
+     'Click: “Atlas server” window',
      'Atlas server restarted', 'Crash case saved', 'The server aborted the request: %s',
      'Open case', 'Create issue', 'Dismiss',
      'Skipped after crash',
