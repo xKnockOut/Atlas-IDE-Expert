@@ -684,6 +684,8 @@ uses
   Atlas.Core.Projects.Vcs.Tests in 'IDE.Expert\Atlas.Core.Projects.Vcs.Tests.pas',
   Atlas.Core.Tests.Run in '..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.Run.pas',
   Atlas.Core.Tests.Run.Tests in 'IDE.Expert\Atlas.Core.Tests.Run.Tests.pas',
+  Atlas.Core.Tests.AffectedHook in '..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas',
+  Atlas.Core.Tests.AffectedHook.Tests in 'IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas',
   Atlas.Core.Tests.Debug in '..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.Debug.pas',
   Atlas.Core.Tests.Debug.Tests in 'IDE.Expert\Atlas.Core.Tests.Debug.Tests.pas',
   Atlas.Core.Tests.ProjectChoice in '..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas',

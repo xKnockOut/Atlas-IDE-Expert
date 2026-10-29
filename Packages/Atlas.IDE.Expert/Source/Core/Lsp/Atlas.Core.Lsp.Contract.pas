@@ -234,6 +234,33 @@ type
     function Found: Boolean;
   end;
 
+  /// <summary>Betroffener Test aus atlas/affectedTests (#1353).</summary>
+  TAtlasAffectedTest = record
+    /// <summary>Unit.Fixture.Methode bzw. Unit.Fixture für die ganze Fixture.</summary>
+    Name: string;
+    /// <summary>Namen für den Testlauf (--run).</summary>
+    RunNames: TArray<string>;
+    FileName: string;
+    Line: Integer;
+    /// <summary>Gründe als Text: Änderung → Weg, „(erschlossen)“ bei unsicheren Schritten.</summary>
+    Reasons: TArray<string>;
+  end;
+
+  /// <summary>Antwort von atlas/affectedTests (#1353).</summary>
+  TAtlasAffectedTests = record
+    /// <summary>Basis des Vergleichs (Ref bzw. Revision).</summary>
+    Base: string;
+    Depth: Integer;
+    /// <summary>Alle Tests nötig (Grund in AllReason): Projektdatei geändert, Analyse unvollständig.</summary>
+    All: Boolean;
+    AllReason: string;
+    /// <summary>Namen für den Testlauf ohne Doppelte; leer mit All.</summary>
+    Run: TArray<string>;
+    Tests: TArray<TAtlasAffectedTest>;
+    /// <summary>Geänderte Symbole bzw. Units als Text.</summary>
+    Changes: TArray<string>;
+  end;
+
   /// <summary>Bezeichner aus textDocument/inlineValue (#508); Zeile und Spalte 0-basiert.</summary>
   TAtlasInlineValueRef = record
     Line: Integer;

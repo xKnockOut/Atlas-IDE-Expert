@@ -1193,7 +1193,11 @@ type
     StatusBarRecheckClick, StatusBarRechecking, StatusBarProjectProgress, StatusBarPausedDebugger,
     SettingsSearchFromFirst,
     // Projektprüfung als begrenzter Lauf (#1247).
-    StatusBarProjectDone, StatusBarProjectPaused);
+    StatusBarProjectDone, StatusBarProjectPaused,
+    // Betroffene Tests (#1353).
+    TestsAffectedCommand, TestsAffectedRunning, TestsAffectedFound, TestsAffectedNone, TestsAffectedAll,
+    TestsAffectedFailed, TestsAffectedOff, TestsAffectedNoProject, TestsAffectedHookForeign,
+    TestsAffectedHookInstalled, SettingsTestsAffected, SettingsTestsAffectedDepth, SettingsTestsAffectedBeforeCommit);
 
   TAtlasStrings = class
   private class var
@@ -4212,7 +4216,20 @@ const
      'Übernehmen',
      'Klick: alle Units neu prüfen', 'Atlas prüft alle Units neu …', 'Projekt %d %%', 'angehalten (Debugger)',
      'Beim Tippen zum ersten Treffer springen (sonst zum nächsten ab dem Cursor)',
-     'Projekt fertig', 'pausiert (Kompilieren)'),
+     'Projekt fertig', 'pausiert (Kompilieren)',
+     'Betroffene Tests ausführen',
+     'Atlas ermittelt die betroffenen Tests …',
+     'Betroffene Tests gegenüber %s (Tiefe %d): %d',
+     'Keine betroffenen Tests gegenüber %s.',
+     'Alle Tests nötig: %s',
+     'Betroffene Tests: %s',
+     'Betroffene Tests sind ausgeschaltet (tests.affected).',
+     'Betroffene Tests: Kein Projekt geöffnet.',
+     'Betroffene Tests vor dem Commit: In %s liegt schon ein fremder pre-commit-Hook; Atlas lässt ihn stehen.',
+     'Betroffene Tests vor dem Commit: pre-commit-Hook in %s angelegt.',
+     'Befehl „Betroffene Tests ausführen“: nur die Tests, die die Änderungen gegenüber main bzw. BASE erreichen',
+     'Ebenen von der Änderung bis zum Test (1 bis 5):',
+     'Vor dem Commit anbieten (Git-Hook pre-commit, nur Git)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -7103,7 +7120,20 @@ const
      'Apply',
      'Click: check all units again', 'Atlas is checking all units again …', 'project %d %%', 'paused (debugger)',
      'Jump to the first match while typing (otherwise the next one after the cursor)',
-     'project done', 'paused (compiling)'));
+     'project done', 'paused (compiling)',
+     'Run affected tests',
+     'Atlas is determining the affected tests …',
+     'Affected tests against %s (depth %d): %d',
+     'No affected tests against %s.',
+     'All tests needed: %s',
+     'Affected tests: %s',
+     'Affected tests are switched off (tests.affected).',
+     'Affected tests: no project open.',
+     'Affected tests before commit: %s already holds a foreign pre-commit hook; Atlas leaves it alone.',
+     'Affected tests before commit: pre-commit hook created in %s.',
+     'Command “Run affected tests”: only the tests reached by the changes against main or BASE',
+     'Levels from the change to the test (1 to 5):',
+     'Offer before committing (Git pre-commit hook, Git only)'));
 
 { TAtlasStrings }
 
