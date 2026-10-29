@@ -74,6 +74,7 @@ uses
   Atlas.Common.Rules.Builtin.Visibility,
   Atlas.Common.Rules.Builtin.TypeDeclarations,
   Atlas.Common.Rules.Builtin.TypedExpressions,
+  Atlas.Common.Rules.Builtin.StringConversions,
   Atlas.Common.Rules.Builtin.TypeRestrictions,
   Atlas.Common.Rules.Builtin.Units,
   Atlas.Common.Rules.Builtin.PublicMembers,
@@ -155,6 +156,7 @@ begin
     RegisterVisibilityRules(Registry);
     RegisterTypeDeclarationRules(Registry);
     RegisterTypedExpressionRules(Registry);
+    RegisterStringConversionRules(Registry);
     RegisterTypeRestrictionRules(Registry);
     RegisterUnitRules(Registry);
     RegisterPublicMemberRules(Registry);

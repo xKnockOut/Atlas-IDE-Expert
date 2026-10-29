@@ -13,6 +13,8 @@
 // Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action)
 // bekommen den Symbolindex und die Projektdienste über TShellWorkspaceGroup wie
 // im Server (#1112); solange der Index lädt, sagt get_diagnostics das dazu.
+// Prompts und Ressourcenvorlagen (#1357) kommen aus TMcpPrompts; hier nur die
+// Auflösung von Units und Pfaden (#99) und die Änderungen für prepare_commit.
 
 interface
 
@@ -70,6 +72,11 @@ uses
   Atlas.Common.Mcp.IdeBuilds,
   Atlas.Common.Mcp.TestTools,
   Atlas.Common.Mcp.DeadCodeTools,
+  Atlas.Common.Mcp.Prompts,
+  Atlas.Common.Rules.ChangedFiles,
+  Atlas.Core.Vcs.Providers.Git,
+  Atlas.Core.Tracker.CommitHook,
+  Shell.VcsChanges,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Rules.ProjectFiles,
@@ -1081,6 +1088,99 @@ begin
     end);
 end;
 
+/// <summary>Unit-Name oder Pfad → Datei, geprüft wie Pfadparameter (#99): Units außerhalb des Arbeitsbereichs
+/// und seiner Bibliothekspfade ergeben einen Fehler mit Begründung (#1357).</summary>
+function UnitFileOf(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup; AGuard: TMcpPathGuard):
+  TFunc<string, string>;
+begin
+  Result :=
+    function(AUnit: string): string
+    var
+      mUnit: TUnitIndex;
+    begin
+      if (Pos('\', AUnit) > 0) or (Pos('/', AUnit) > 0) or SameText(ExtractFileExt(AUnit), '.pas') then
+        Exit(AGuard.Resolve(AUnit));
+      // Units anderer Projekte der Gruppe erst bei Bedarf (#1112).
+      AGroup.EnsureUnit(AUnit);
+      if not AIndex.FindUnit(AUnit, mUnit) then
+        raise EMcpToolError.CreateFmt('Unit "%s" ist nicht im Index', [AUnit]);
+      Result := AGuard.Resolve(mUnit.FileName);
+    end;
+end;
+
+/// <summary>Änderungen laut Git oder SVN für prepare_commit (#1357): geänderte Dateien unter ARoot und ihre Befunde
+/// in geänderten Zeilen wie --changed-lines, dazu der Commit-Präfix, den das Plugin für das aktuelle Issue in
+/// &lt;gitdir&gt;/atlas-commit-prefix schreibt (#765).</summary>
+function ChangesOf(AGroup: TShellWorkspaceGroup; const ARoot: string): TMcpChangesFunc;
+begin
+  Result :=
+    function(const ABase: string): TMcpChangeSet
+    var
+      mSettings: TServerSettings;
+      mProcess: ICompilerProcess;
+      mVcs: TVcsChanges;
+      mFile, mText, mRelative: string;
+      mLines: TChangedLines;
+      mChanged: TMcpChangedFile;
+      mFinding: TRuleFinding;
+      mScopes: TFindingScopes;
+      mCheckProject: TCheckProjectFunc;
+    begin
+      Result := Default(TMcpChangeSet);
+      Result.Files := nil;
+      Result.Base := ABase;
+      if Result.Base = '' then
+        Result.Base := 'HEAD';
+      mSettings := AGroup.Main.Configuration.Settings;
+      // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
+      mProcess := TProcessRunner.Create;
+      try
+        mVcs := TVcsChanges.Detect(mProcess, ARoot, mSettings.VcsProvider, mSettings.VcsGitPath,
+          mSettings.VcsSvnPath, mSettings.VcsTimeoutSeconds);
+      except
+        on E: EVcsChanges do
+        begin
+          Result.Error := E.Message;
+          Exit;
+        end;
+      end;
+      try
+        try
+          // Ohne Basis: nicht eingecheckte Änderungen gegenüber HEAD (SVN: BASE); mit Basis seit der Abzweigung.
+          mVcs.Load(Result.Base, ABase <> '', ABase = '', True, True);
+        except
+          on E: EVcsChanges do
+          begin
+            Result.Error := E.Message;
+            Exit;
+          end;
+        end;
+        Result.Vcs := mVcs.Name;
+        mCheckProject := CheckProjectOf(AGroup);
+        for mFile in mVcs.Files do
+        begin
+          if not TMcpPathGuard.IsInside(ARoot, mFile) then
+            Continue;
+          mChanged := Default(TMcpChangedFile);
+          mRelative := ExtractRelativePath(IncludeTrailingPathDelimiter(ARoot), mFile);
+          mChanged.Path := mRelative;
+          mChanged.Findings := nil;
+          if MatchText(ExtractFileExt(mFile), ['.pas', '.dpr', '.dpk']) and ReadSourceText(mFile, mText) and
+            TChangedFiles.LinesOf(mVcs.Lines, mVcs.RepoRoot, mFile, mLines) then
+            for mFinding in TFileChecker.CheckText(BuiltinRules, mSettings, mRelative, mText, mCheckProject(mFile),
+              AGroup.Main.CheckSource(mFile), mScopes) do
+              if mLines.Contains(mFinding.Range.StartPos.Line) then
+                mChanged.Findings := mChanged.Findings + [mFinding];
+          Result.Files := Result.Files + [mChanged];
+        end;
+        if mVcs is TGitChanges then
+          Result.CommitPrefix := TAtlasCommitHook.ReadPrefix(TAtlasGitVersionControl.GitDir(mVcs.RepoRoot));
+      finally
+        mVcs.Free;
+      end;
+    end;
+end;
+
 class function TMcpShell.ToolNames: TArray<string>;
 var
   Server: TMcpServer;
@@ -1132,6 +1232,7 @@ var
   PathOptions: TUsesGraphOptions;
   EnsureAny: TFunc<string, Boolean>;
   GlobalSettings: string;
+  Prompts: TMcpPrompts;
 begin
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
@@ -1306,6 +1407,7 @@ begin
       Logger.Info(AText);
     end;
   Server := TMcpServer.Create(TProductVersion.Name, TProductVersion.Version);
+  Prompts := nil;
   Dispatcher := TJsonRpcDispatcher.Create;
   Connection := TJsonRpcConnection.Create(Transport, Dispatcher);
   try
@@ -1381,6 +1483,21 @@ begin
           Catalog.Free;
         end;
       end);
+    // Prompts und Ressourcenvorlagen (#1357), abschaltbar mit mcp.prompts.
+    Prompts := TMcpPrompts.Create(Server,
+      function: TServerSettings
+      begin
+        Result := Workspace.Configuration.Settings;
+      end);
+    Prompts.ReadText := ReadSourceText;
+    Prompts.ResolveFile :=
+      function(APath: string): string
+      begin
+        Result := Guard.Resolve(APath);
+      end;
+    Prompts.ResolveUnit := UnitFileOf(Index, Group, Guard);
+    Prompts.Changes := ChangesOf(Group, Root);
+    Prompts.Register;
     // Vor jedem Werkzeugaufruf geänderte Projektdateien nachladen (#48).
     Server.OnBeforeToolCall :=
       procedure
@@ -1419,6 +1536,7 @@ begin
     Connection.Free;
     Dispatcher.Free;
     Server.Free;
+    Prompts.Free;
     Guard.Free;
     Edit.Free;
     Code.Free;
