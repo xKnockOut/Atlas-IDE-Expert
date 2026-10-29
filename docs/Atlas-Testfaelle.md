@@ -5964,13 +5964,20 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 | QK2 | `Seiten = 5` | Keine Meldung |
 | QK3 | `const Riesig = 1000000 * 1000000 * 1000000 * 1000;` | „Überlauf in einem konstanten Ausdruck: Das Ergebnis passt in keinen Ganzzahltyp (wie E2099).“ |
 | QK4 | `type TFeld = array[5..1] of Integer;` | „Die Untergrenze 5 liegt über der Obergrenze 1 (wie E2011).“ |
-| QK5 | `const Grenze: Byte = 300;`, in einer Routine `B := 300` mit `B: Byte`, `type TProzent = 0..100;` und `Anteil := 150` | Warnung „300 liegt außerhalb des Bereichs von Byte (0..255, wie W1012).“ bzw. „… von TProzent (0..100, …)“ |
+| QK5 | `const Grenze: Byte = 300;`, in einer Routine `B := 300` mit `B: Byte`, `type TProzent = 0..100;` und `Anteil := 150` | Fehler „300 liegt außerhalb des Bereichs von Byte (0..255, wie E1012).“ bzw. „… von TProzent (0..100, wie E1012)“ (#1372); `I := $FFFFFFFF` mit `I: Integer` und `C := -1` mit `C: Cardinal` bleiben Warnungen „… wie W1012“ |
 | QK6 | `const Maske = $1FFFFFFFFFFFFFFFF;` | „Ganzzahlkonstante zu groß: … passt nicht in 64 Bit (wie E2102).“ |
 | QK7 | Konstante `Keine = 0` in einer anderen Unit des Projekts, hier `A = 100 div Keine` | Meldung wie QK1 mit „Keine = 0“ |
 | QK8 | `{$IFDEF KLEIN} Seiten = 0; {$ELSE} Seiten = 5; {$ENDIF}` und danach `ProSeite = 100 div Seiten` | Keine Meldung (Wert hängt von der Konfiguration ab) |
-| QK9 | `High(Int64) + 1`, `I div C` mit Variablen, `1 / 2` | Keine Meldung |
+| QK9 | `UInt64(High(Int64)) + 1`, `I div C` mit Variablen, `1 / 2` | Keine Meldung |
 | QK10 | `"constant-expression-error": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| QK11 | Abgleich mit Delphi: QK1, QK3 bis QK6 übersetzen | dcc meldet E2098, E2099, E2011, W1012 (bei der typisierten Konstante ggf. als Fehler) bzw. E2102 an denselben Stellen, für QK2, QK8 und QK9 nichts |
+| QK11 | Abgleich mit Delphi: QK1, QK3 bis QK6 übersetzen | dcc meldet E2098, E2099, E2011, E1012 bzw. W1012 (wie bei QK5) bzw. E2102 an denselben Stellen, für QK2, QK8 und QK9 nichts |
+| QK12 | `const Gross = High(Int64) + 1;` und `Doppelt = High(Int64) * 2;` (#1372) | Fehler „Überlauf in einem konstanten Ausdruck: … (wie E2099).“ an beiden |
+| QK13 | `var Feld: array[0..2] of Integer;` und `Feld[5] := 0`; benannter Typ `TTabelle = array[1..3] of Integer` mit `Tabelle[4]` lesend; typisierte Konstante `Prim: array[0..2] of Integer = (2, 3, 5)` mit `Prim[3]` | Fehler „Index 5 liegt außerhalb der Grenzen von Feld (0..2, wie E1012).“ usw.; still bei `Feld[2]`, dynamischen und offenen Arrays, Strings und in `with` |
+| QK14 | `case B of 300: …; -1: …; 256..300: … end` mit `B: Byte` | Fehler „300 liegt außerhalb des Bereichs von Byte (0..255, wie E1012).“ (`constant-expression-error`); an `-1` und `256..300` weiter die Warnungen von `comparison-always-constant` (wie W1018) |
+| QK15 | `type TGross = set of 0..300; TWorte = set of Word;` | Fehler „set of 0..300 hat 301 Werte; eine Menge darf höchstens 256 Elemente haben (wie E2028).“ bzw. „set of Word hat 65536 Werte; …“; still bei `set of Byte`, `set of 0..255`, Aufzählungen |
+| QK16 | `{$RTTI EXPLICIT METHODS([1])}` | Fehler „METHODS([1]) in {$RTTI} ist keine Menge aus vcPrivate, vcProtected, vcPublic und vcPublished (wie E2572).“; still bei `METHODS([vcPublic])`, `FIELDS([])` und innerhalb von `{$IFDEF}` |
+| QK17 | `var Zahl: Int64;` und `Zahl := $1FFFFFFFFFFFFFFFF;` | Fehler wie QK6 und zusätzlich Warnung „$1FFFFFFFFFFFFFFFF passt auf 64 Bit gekürzt nicht in Int64 (wie W1012).“ |
+| QK18 | Abgleich mit Delphi (#1372): `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.E1012*','Cm.W1012*','Cm.W1018*','Cm.E2099*','Cm.E2028*','Cm.E2572*','Cm.E2102' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | Alle Fälle „erkannt“, die Gegenfälle (`…Gegen`) ohne Meldung von dcc und Atlas; für `Cm.W1012b` und `Cm.W1018b` notieren, ob dcc W1012/W1018 oder E1012 meldet |
 
 ## Unzulässiger Standardwert eines Parameters (#993)
 
