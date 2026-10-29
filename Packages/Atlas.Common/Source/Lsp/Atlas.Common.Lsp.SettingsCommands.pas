@@ -33,7 +33,8 @@ type
     /// = "global" prüft den Text als globale Datei, sonst als atlas.json.</summary>
     class function Check(const AArguments: TJSONArray): TJSONObject; static;
     /// <summary>{"rules": [{"id", "name", "category", "severity", "group", "description", "bad", "good",
-    /// "options": [{"name", "type", "default", "description"}], "experimental"}], "globalFile", "version"}.
+    /// "options": [{"name", "type", "columns" (nur object-list), "default", "description"}], "experimental"}],
+    /// "globalFile", "version"}.
     /// </summary>
     class function Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string): TJSONObject;
       overload; static;
@@ -47,6 +48,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
@@ -59,6 +61,23 @@ begin
   Result := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
     Result := AArguments.Items[0].Value;
+end;
+
+/// <summary>Spalten einer Option der Art "object-list" (#1133): [{"name": …, "list": true}].</summary>
+function ColumnsJson(const AColumns: TArray<TRuleOptionColumn>): TJSONArray;
+var
+  mColumn: TRuleOptionColumn;
+  mObject: TJSONObject;
+begin
+  Result := TJSONArray.Create;
+  for mColumn in AColumns do
+  begin
+    mObject := TJSONObject.Create;
+    mObject.AddPair('name', mColumn.Name);
+    if mColumn.List then
+      mObject.AddPair('list', TJSONBool.Create(True));
+    Result.AddElement(mObject);
+  end;
 end;
 
 class function TLspSettingsCommands.Check(const AArguments: TJSONArray): TJSONObject;
@@ -142,6 +161,8 @@ begin
       OptionObject := TJSONObject.Create;
       OptionObject.AddPair('name', Option.Name);
       OptionObject.AddPair('type', Option.Kind);
+      if Option.Columns <> nil then
+        OptionObject.AddPair('columns', ColumnsJson(Option.Columns));
       DefaultValue := nil;
       if Option.DefaultJson <> '' then
         DefaultValue := TJSONObject.ParseJSONValue(Option.DefaultJson);

@@ -13,6 +13,9 @@ type
   public
     [Test]
     procedure ReadsChangesPerFile;
+    /// <summary>atlasUnchanged der Umbenennen-Antwort (#1119).</summary>
+    [Test]
+    procedure ReadsUnchangedPlaces;
     [Test]
     procedure PrefersDocumentChangesAndReadsFileOperations;
     [Test]
@@ -77,6 +80,23 @@ begin
   Assert.AreEqual(0, Edit.Unsupported);
   Assert.IsTrue(Parse('null').IsEmpty);
   Assert.IsTrue(Parse('{"changes":{}}').IsEmpty);
+end;
+
+procedure TLspWorkspaceEditTests.ReadsUnchangedPlaces;
+var
+  Edit: TLspWorkspaceEdit;
+begin
+  Edit := Parse('{"changes":{"file:///c%3A/p/a.pas":[{"range":{"start":{"line":1,"character":2},' +
+    '"end":{"line":1,"character":5}},"newText":"Neu"}]},"atlasUnchanged":[{"uri":"file:///c%3A/p/b.pas",' +
+    '"range":{"start":{"line":7,"character":4},"end":{"line":7,"character":7}},' +
+    '"atlasConfidence":{"level":"inferred","reason":"virtual","detail":"Aufruf von T.M"}},{"range":{}}]}');
+  Assert.AreEqual(1, Edit.EditCount);
+  Assert.AreEqual(1, Integer(Length(Edit.Unchanged)), 'Eintrag ohne uri entfällt');
+  Assert.AreEqual('c:\p\b.pas', Edit.Unchanged[0].FileName);
+  Assert.AreEqual(7, Edit.Unchanged[0].Line);
+  Assert.AreEqual(4, Edit.Unchanged[0].Character);
+  Assert.AreEqual('virtual', Edit.Unchanged[0].Confidence.Reason);
+  Assert.AreEqual(0, Integer(Length(Parse('{"changes":{}}').Unchanged)));
 end;
 
 procedure TLspWorkspaceEditTests.PrefersDocumentChangesAndReadsFileOperations;

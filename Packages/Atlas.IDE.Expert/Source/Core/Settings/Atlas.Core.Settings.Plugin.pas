@@ -18,6 +18,8 @@ uses
 const
   /// <summary>Werte von bookmarks.quick.scope (#1104) in der Reihenfolge der Optionsseite.</summary>
   AtlasQuickBookmarkScopes: array[0..1] of string = ('project', 'file');
+  /// <summary>Werte von editor.methodPlacement (#660).</summary>
+  AtlasMethodPlacements: array[0..2] of string = ('declaration', 'alphabetical', 'off');
 
 type
   /// <summary>Ablage für Einstellungen; Werte als ganze Zahlen (Wahrheitswerte 0/1).</summary>
@@ -29,9 +31,23 @@ type
     procedure WriteString(const AName, AValue: string);
   end;
 
+  /// <summary>Ablage, die gespeicherte Namen kennt und entfernen kann (#1280): Grundlage der Übernahme umbenannter
+  /// Einstellungen (x-renamedFrom im Plugin-Katalog).</summary>
+  IAtlasSettingsNames = interface
+    ['{6B2E9D41-7C3A-4F85-B1D6-0A8E5C2F9B73}']
+    /// <summary>Steht unter AName ein Wert (gleich welcher Art)?</summary>
+    function Contains(const AName: string): Boolean;
+    /// <summary>Wert unter AName entfernen; ohne Wert nichts.</summary>
+    procedure Remove(const AName: string);
+  end;
+
   TAtlasPluginSettings = record
   public const
     MinVisibleRows = 5;
+    /// <summary>Grenzen und Vorgabe von issues.attach.maxImageWidth (#1276), wie TAtlasAttachImage.</summary>
+    MinAttachImageWidth = 320;
+    MaxAttachImageWidth = 7680;
+    DefaultAttachImageWidth = 1920;
     MaxVisibleRows = 20;
     MinListWidth = 240;
     MaxListWidth = 720;
@@ -49,6 +65,12 @@ type
     MaxXmlDocLines = 50;
     MinPeekLines = 5;
     MaxPeekLines = 60;
+    /// <summary>Grenzen für navigation.impactDepth (#1120).</summary>
+    MinImpactDepth = 1;
+    MaxImpactDepth = 5;
+    /// <summary>Grenzen für navigation.dataFlow.maxDepth (#690).</summary>
+    MinDataFlowDepth = 1;
+    MaxDataFlowDepth = 20;
     /// <summary>Grenzen für editor.stickyScrollMaxLines (#506).</summary>
     MinStickyLines = 1;
     MaxStickyLines = 10;
@@ -70,6 +92,9 @@ type
     /// <summary>Grenzen für editor.blockEndLabels.minLines (#620).</summary>
     MinBlockEndLines = 1;
     MaxBlockEndLines = 1000;
+    /// <summary>Grenzen für debug.inlineValuesPerLine (#508).</summary>
+    MinInlineValuesPerLine = 1;
+    MaxInlineValuesPerLine = 20;
     /// <summary>Höchste Wartezeit in ms auf den zweiten Teil der Faltungsakkorde (#1104,
     /// bookmarks.quick.chordWait).</summary>
     MaxQuickChordWait = 5000;
@@ -92,6 +117,9 @@ type
     MaxUndoDepth = 200;
     MinUndoMaxSizeMb = 1;
     MaxUndoMaxSizeMb = 1024;
+    /// <summary>search.history (#893): Vorgabe und Höchstwert.</summary>
+    DefaultSearchHistory = 20;
+    MaxSearchHistory = 100;
     /// <summary>Grenzen für welcomePage.maxProjects (#592); wie TAtlasWelcomeProjects.MinMax/MaxMax.</summary>
     MinWelcomeProjects = 1;
     MaxWelcomeProjects = 30;
@@ -117,14 +145,55 @@ type
     MaxCiIntervalMinutes = 1440;
     /// <summary>Vorgabe für welcomePage.tests.ci.provider (#763).</summary>
     DefaultCiProvider = 'jenkins';
-    /// <summary>Werte von welcomePage.issues.start (#765); wie TAtlasWelcomeIssues.StartName.</summary>
+    /// <summary>Werte von issues.start (#765); wie TAtlasWelcomeIssues.StartName.</summary>
     IssuesStartBranch = 'branch';
     IssuesStartRemember = 'remember';
-    /// <summary>Vorgabe für welcomePage.issues.commitPattern (#765); wie TAtlasTrackerNaming.CommitPattern.
+    /// <summary>Vorgabe für issues.commitPattern (#765); wie TAtlasTrackerNaming.CommitPattern.
     /// </summary>
     DefaultIssuesCommitPattern = '{kennung} ';
-    /// <summary>Höchstlänge der Texte unter welcomePage.issues.* (#765).</summary>
+    /// <summary>Grenzen und Vorgabe von vcs.timeoutSeconds (#1285).</summary>
+    MinVcsTimeoutSeconds = 1;
+    MaxVcsTimeoutSeconds = 300;
+    DefaultVcsTimeoutSeconds = 15;
+    /// <summary>Vorgaben von vcs.branch.svn.* (#1290); wie TAtlasVcsSvnBranchOptions.Default.</summary>
+    DefaultVcsBranchSvnLocation = '{projektwurzel}/branches/{name}';
+    DefaultVcsBranchSvnCheckoutFolder = '..\{projekt}-{kennung}';
+    DefaultVcsBranchSvnMessage = '{kennung} Branch für {titel}';
+    /// <summary>Vorgabe für vcs.branch.git.worktreeFolder (#1289); wie
+    /// TAtlasVcsGitBranchOptions.DefaultWorktreeFolder.</summary>
+    DefaultVcsWorktreeFolder = '..\{repo}-{kennung}';
+    /// <summary>Grenzen und Vorgabe von issues.blameLinks.maxRevisions (#1275).</summary>
+    MinIssuesBlameMaxRevisions = 1;
+    MaxIssuesBlameMaxRevisions = 5000;
+    DefaultIssuesBlameMaxRevisions = 200;
+    /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
     MaxIssuesText = 200;
+    /// <summary>Vorgaben für Zustand und Kommentar (#1266); wie TAtlasTrackerWorkflow.</summary>
+    DefaultIssuesStateField = 'State';
+    DefaultIssuesAssigneeField = 'Assignee';
+    DefaultIssuesEndComment = 'Erledigt in {branch}.\n{commits}';
+    /// <summary>Vorgabe von issues.commentSnippets (#1278), wie TAtlasCommentSnippets.Defaults.</summary>
+    DefaultIssuesCommentSnippets = '[{"name":"Bitte mit aktuellem Build prüfen","text":"Bitte mit dem aktuellen Build ' +
+      'prüfen."},{"name":"Behoben in {commit}","text":"Behoben in {commit}."}]';
+    /// <summary>Höchstlänge der Kommentarvorlagen und der Liste der Zielzustände (#1266).</summary>
+    MaxIssuesTemplate = 2000;
+    /// <summary>Grenzen und Vorgaben der Zeiterfassung (#1267, issues.idleMinutes, issues.timeRounding); wie
+    /// TAtlasTimeClock bzw. TAtlasTimeRounding.</summary>
+    MinIssuesIdleMinutes = 1;
+    MaxIssuesIdleMinutes = 120;
+    DefaultIssuesIdleMinutes = 10;
+    MinIssuesTimeRounding = 1;
+    MaxIssuesTimeRounding = 60;
+    DefaultIssuesTimeRounding = 5;
+    /// <summary>Grenzen und Vorgabe von issues.notify.intervalMinutes (#1271); wie TAtlasTrackerNotify.MinInterval
+    /// und DefaultInterval (Test prüft Gleichheit).</summary>
+    MinIssuesNotifyMinutes = 2;
+    MaxIssuesNotifyMinutes = 1440;
+    DefaultIssuesNotifyMinutes = 10;
+    /// <summary>Werte von issues.notify.scope (#1271); wie TAtlasTrackerNotify.ScopeName.</summary>
+    IssuesNotifyAssigned = 'assigned';
+    IssuesNotifyAssignedOrCreated = 'assignedOrCreated';
+    IssuesNotifyWatched = 'watched';
     /// <summary>Werte von editor.completeStatement.beginEnd und .tryKind (#697).</summary>
     BeginEndAlways = 'always';
     BeginEndMultiLine = 'multiLine';
@@ -172,6 +241,8 @@ type
     AutoUses: Boolean;
     /// <summary>Parameter-Hint bei "(" und "," (#436).</summary>
     ParameterHints: Boolean;
+    /// <summary>Platzhalter von Format im Parameter-Hint zuordnen und im Editor einfärben (#451).</summary>
+    FormatPlaceholders: Boolean;
     /// <summary>Millisekunden zwischen automatischem Auslösen (".") und dem Öffnen der Liste (ARG-046).</summary>
     OpenDelayMs: Integer;
     /// <summary>Tastenkürzel der Befehlspalette und der Syntaxprüfung (TShortCut, 0 = keins, #494).</summary>
@@ -232,6 +303,9 @@ type
     InlayDefineHints: Boolean;
     /// <summary>Code hinter Steuerzeichen wie ^C in Konstanten („#3“, #862, inlayHints.controlChars).</summary>
     InlayCharHints: Boolean;
+    /// <summary>Marke „ohne Self“ hinter Methoden, die Self nicht brauchen (#686,
+    /// refactoring.methodKindMarker).</summary>
+    InlayMethodHints: Boolean;
     /// <summary>Beschriftung hinter dem end langer Blöcke (#620, editor.blockEndLabels): „// TKunde.Speichern“ in
     /// grauer Pille; Quelle sind die Endmarken des Servers (inlayHints.endMarkers, Mindestlänge
     /// inlayHints.endMarkerMinLines in atlas.json); unabhängig von InlayHints.</summary>
@@ -268,6 +342,21 @@ type
     /// <summary>Treffer der Atlas-Suche im Reiter „Atlas-Suche“ des Fensters Meldungen auflisten (#878,
     /// search.resultsInMessages; Enter bzw. „In Meldungen“ in der Suchleiste). Vorgabe an.</summary>
     SearchResultsInMessages: Boolean;
+    /// <summary>Ersetzen-Zeile der Suchleiste und Strg+H (#893, search.replace); aus = keine Ersetzen-Zeile, Strg+H
+    /// gehört der IDE. Vorgabe an.</summary>
+    SearchReplace: Boolean;
+    /// <summary>Option „.*“ (regulärer Ausdruck) und Vorschau in der Suchleiste (#893, search.regex). Vorgabe an.
+    /// </summary>
+    SearchRegex: Boolean;
+    /// <summary>Länge des Such- und Ersetzen-Verlaufs (#893, search.history; 0 = kein Verlauf, Vorgabe 20).
+    /// </summary>
+    SearchHistory: Integer;
+    /// <summary>Bereiche „Offene Dateien“, „Projekt“, „Projektgruppe“ in der Suchleiste (#893, search.multiFile).
+    /// Vorgabe an.</summary>
+    SearchMultiFile: Boolean;
+    /// <summary>Suchleiste mit Ersetzen-Zeile (#893, TShortCut, 0 = keine; Vorgabe Strg+H); nur mit
+    /// search.replaceIdeSearch und search.replace.</summary>
+    SearchReplaceKey: Integer;
     /// <summary>Beim Tippen zum ersten Treffer der Unit bzw. des Bereichs springen statt zum nächsten ab der
     /// Cursorposition (#1242, search.fromFirstHit). Vorgabe aus.</summary>
     SearchFromFirstHit: Boolean;
@@ -327,6 +416,8 @@ type
     ProblemsShowCompilerCode: Boolean;
     /// <summary>Fenster öffnen (TShortCut, 0 = keins; Vorgabe Strg+Alt+P).</summary>
     ProblemsWindowKey: Integer;
+    /// <summary>Taste für „Issue anlegen …“ (#1268, keys.createIssue); 0 = keine.</summary>
+    CreateIssueKey: Integer;
     /// <summary>Kürzel „Zum interface-Teil“ (#1101, keys.gotoInterface); 0 = keins.</summary>
     GotoInterfaceKey: Integer;
     /// <summary>Kürzel „Zum implementation-Teil“ (#1101, keys.gotoImplementation); 0 = keins.</summary>
@@ -413,16 +504,58 @@ type
     TestsAfterBuild: Boolean;
     /// <summary>Vor „Tests ausführen“ das Testprojekt bauen (make); aus = die vorhandene Test-EXE läuft.</summary>
     TestsBuildFirst: Boolean;
-    /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530). Wirkt
-    /// bisher auf „Tests nach dem Build“ (#69).</summary>
+    /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
+    /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
+    /// <summary>Kosten einer Änderung im interface-Teil in der Statusleiste (#554, build.showInterfaceCost):
+    /// „interface-Änderung: N Units werden neu kompiliert“, solange die Einfügemarke im interface steht. Aus = kein
+    /// Feld.</summary>
+    ShowInterfaceCost: Boolean;
+    /// <summary>Zusammenfassung nach jedem Build in der Atlas-Gruppe des Meldungsfensters (build.summary, #530).
+    /// Ein Build, den zeroHints oder warningsAsErrors scheitern lassen, wird auch ohne sie gemeldet.</summary>
+    BuildSummary: Boolean;
+    /// <summary>Codes von Warnungen und Hinweisen, die als Fehler zählen (build.warningsAsErrors, #530), z. B.
+    /// "W1035, H2164"; gespeichert in der Form von TAtlasBuildVerdicts.NormalizeCodes.</summary>
+    BuildWarningsAsErrors: string;
+    /// <summary>Fenster „Compiler-Schalter“ (#558, build.compilerSwitches, Befehl Atlas.CompilerSwitches): wirksame
+    /// Schalter R, Q, O, C, I, A, HINTS, WARNINGS, abgeschaltete Warnungen und aktive Symbole an der Cursorposition
+    /// mit Herkunft (Projektoption, Include-Datei, Direktive mit Zeile); Abweichungen von der .dproj hervorgehoben.
+    /// Aus = kein Fenster, kein Befehl, keine Anfrage.</summary>
+    BuildCompilerSwitches: Boolean;
+    /// <summary>Feld in der Statusleiste mit den Schaltern, die an der Cursorposition von der .dproj abweichen („R−
+    /// Q− HINTS OFF“; #558, build.showSwitchesInStatusBar); ohne Abweichung kein Feld. Ein Klick öffnet das Fenster
+    /// „Compiler-Schalter“.</summary>
+    BuildSwitchesInStatusBar: Boolean;
     /// <summary>Release-Build-Wächter (#533, build.releaseGuard): vor make und build in einer Release-Konfiguration
     /// die Projektoptionen prüfen, dazu der Befehl „Release-Build prüfen“ (Atlas.CheckRelease) mit Tipp. Aus = keine
     /// Prüfung, Befehl und Tipp verschwinden.</summary>
     ReleaseGuard: Boolean;
-    /// <summary>Verhalten bei Verstößen (build.gate, #529): off, warn (beide melden nur) oder block (bricht den
-    /// Build ab). Wirkt bisher nur auf den Release-Wächter.</summary>
+    /// <summary>Verhalten bei Verstößen (build.gate, #529): off, warn oder block (bricht den Build ab). Gilt für die
+    /// Prüfung vor dem Kompilieren (off = keine Prüfung) und den Release-Wächter (#533, off und warn melden nur).
+    /// </summary>
     BuildGate: string;
+    /// <summary>Projektaufgaben (#900, tasks.enabled): Aufgaben aus dem Abschnitt „tasks“ von atlas.json mit Befehlen,
+    /// Menü Atlas › Aufgaben, Tasten je Aufgabe, Statusfeld und Schnellaktion. Aus = keine Befehle, kein Menü, keine
+    /// Tasten und kein Lauf vor dem Build.</summary>
+    TasksEnabled: Boolean;
+    /// <summary>Fundstellen der Ausgabe als Befunde in Problemliste und Editor (tasks.problemsFromOutput); aus = nur
+    /// die Ausgabe im Register „Atlas-Aufgaben“.</summary>
+    TasksProblemsFromOutput: Boolean;
+    /// <summary>Aufgaben der Gruppe „check“ vor jedem Compile/Build (tasks.beforeBuild): off, warn (Build läuft,
+    /// Befunde erscheinen) oder block (Exit-Code ungleich 0 oder Fehler brechen den Build ab). „beforeBuild“ einer
+    /// Aufgabe überschreibt den Wert.</summary>
+    TasksBeforeBuild: string;
+    /// <summary>Geänderte Dateien vor dem Start einer Aufgabe speichern (tasks.saveBeforeRun).</summary>
+    TasksSaveBeforeRun: Boolean;
+    /// <summary>„Alle Prüfungen ausführen“ und der Lauf vor dem Build starten die check-Aufgaben gleichzeitig
+    /// (tasks.runChecksParallel); aus = nacheinander.</summary>
+    TasksRunChecksParallel: Boolean;
+    /// <summary>Register „Atlas-Aufgaben“ zeigt nur die erkannten Fundstellen (tasks.onlyFindings); aus = die ganze
+    /// Ausgabe. Umschaltbar über den Befehl „Aufgaben: nur Befunde / ganze Ausgabe“.</summary>
+    TasksOnlyFindings: Boolean;
+    /// <summary>Zeitlimit der Prüfung vor dem Kompilieren in ms (build.gateTimeoutMs, #529); danach läuft der
+    /// Compile ungeprüft.</summary>
+    BuildGateTimeoutMs: Integer;
     /// <summary>Konfigurationen, die außer „Release“ als Release gelten (build.releaseConfigs), durch Komma
     /// getrennt.</summary>
     ReleaseConfigs: string;
@@ -440,6 +573,111 @@ type
     /// Atlas den Ausdruck unter der Maus über den Debugger der IDE aus und zeigt den Wert oben im Tooltip (bzw.
     /// im Tooltip der IDE, wenn der eigene aus ist); aus = kein Wert.</summary>
     DebugHoverValues: Boolean;
+    /// <summary>Visualisierer für häufige Typen (#835, debug.visualizers): Ersatztexte für Listen, Dictionaries,
+    /// Datenmengen, Bytes und Streams, JSON, Farben, TGUID, Geometrie und Grafiken im Hover, in Überwachten
+    /// Ausdrücken und Lokalen Variablen, dazu das Ansichtsfenster über die Lupe; aus = die IDE zeigt ihre Texte.
+    /// </summary>
+    DebugVisualizers: Boolean;
+    /// <summary>Arten der Visualisierer (debug.visualizers.types), kommagetrennt, normalisiert.</summary>
+    DebugVisualizerTypes: string;
+    /// <summary>Namensfelder für Objekte in Listen (debug.visualizers.nameFields).</summary>
+    DebugVisualizerNameFields: string;
+    /// <summary>Höchstlänge des Ersatztexts (debug.visualizers.maxLength).</summary>
+    DebugVisualizerMaxLength: Integer;
+    /// <summary>Zeitlimit je Auswertung in ms (debug.visualizers.timeoutMs).</summary>
+    DebugVisualizerTimeoutMs: Integer;
+    /// <summary>Größtes gelesenes Bild in Pixeln (debug.visualizers.maxImagePixels).</summary>
+    DebugVisualizerMaxImagePixels: Integer;
+    /// <summary>fields, properties oder calls (debug.visualizers.evaluation).</summary>
+    DebugVisualizerEvaluation: string;
+    /// <summary>Eigene Wertdarstellungen (#854, debug.displayRules): Regeln aus // atlas-debug:,
+    /// [AtlasDebugDisplay] und der Projektdatei .atlas im Hover, in Überwachten Ausdrücken und Lokalen Variablen;
+    /// aus = die IDE zeigt ihre eigenen Werte.</summary>
+    DebugDisplayRules: Boolean;
+    /// <summary>Getter und Funktionsaufrufe in Vorlagen auswerten (debug.displayRules.allowCalls); aus = nur Felder
+    /// und Eigenschaften mit direktem Feldzugriff.</summary>
+    DebugDisplayRulesAllowCalls: Boolean;
+    /// <summary>Gezielt hineinspringen (#836, debug.stepIntoTarget): Befehl mit Tastenkürzel, Kontextmenü und
+    /// Befehlspalette, der im angehaltenen Zustand die Aufrufe der Anweisung zur Wahl stellt; aus = Kürzel frei, kein
+    /// Menüeintrag.</summary>
+    DebugStepIntoTarget: Boolean;
+    /// <summary>debug.stepFilters (#850): F7 überspringt eigene Routinen der Arten aus debug.stepFilters.kinds und
+    /// Methoden nach debug.stepFilters.patterns und hält in der Routine, um die es geht; Umschalt+F7 springt ohne
+    /// Filter hinein.</summary>
+    DebugStepFilters: Boolean;
+    /// <summary>Gefilterte Arten (debug.stepFilters.kinds, kommagetrennt): getters, setters, trivial, operators,
+    /// emptyConstructors; Vorgabe getters,trivial.</summary>
+    DebugStepFilterKinds: string;
+    /// <summary>Gefilterte Methoden nach Muster (debug.stepFilters.patterns): Unit.Klasse.Methode mit * als
+    /// Platzhalter, durch ; getrennt.</summary>
+    DebugStepFilterPatterns: string;
+    /// <summary>Tastenkürzel „Gezielt hineinspringen“ (debug.stepIntoTarget.key, 0 = keins).</summary>
+    DebugStepIntoTargetKey: Integer;
+    /// <summary>Beim nächsten Ereignis anhalten (#856, debug.breakOnNextEvent): Befehl im Menü Start und in der
+    /// Befehlspalette, der vorübergehende Haltepunkte auf die Ereignis-Handler setzt; aus = kein Befehl, kein
+    /// Menüeintrag.</summary>
+    DebugBreakOnNextEvent: Boolean;
+    /// <summary>Häufige Ereignisse, die nur auf ausdrückliche Wahl beobachtet werden
+    /// (debug.breakOnNextEvent.excluded, kommagetrennt).</summary>
+    DebugBreakOnNextEventExcluded: string;
+    /// <summary>„kein Zugriff auf Wert“ erklären (#840, debug.explainUnavailable): Scheitert die Auswertung im Hover
+    /// oder in den Werten im Editor mit einem bekannten Text der IDE, zeigt Atlas „‹kein Zugriff›“ mit Ursache
+    /// (Release-Start, $D-/$L-, $O+, Lebensdauer, inline, Bibliothek ohne Debug-DCUs), Herkunft des Schalters und
+    /// Korrekturen. Aus = Fehler wie bisher ausgeblendet, keine Anfrage.</summary>
+    DebugExplainUnavailable: Boolean;
+    /// <summary>Vervollständigung in Debugger-Dialogen (#538, debug.completionInDialogs): In „Auswerten/Ändern“, im
+    /// Überwachungsausdruck und in Bedingung und Log-Ausdruck eines Haltepunkts bietet Atlas Bezeichner aus dem
+    /// Gültigkeitsbereich des Ausführungspunkts bzw. der Haltepunktzeile an; Pfeil nach unten im leeren Feld zeigt
+    /// die letzten 20 Ausdrücke des Projekts. Aus = kein Zeitgeber, keine Anfrage, kein Verlauf.</summary>
+    DebugCompletionInDialogs: Boolean;
+    /// <summary>Fenster „Auswerten“ (#784, debug.evaluateWindow): andockbares Fenster mit mehreren Ausdrücken, die
+    /// bei jedem Halt neu ausgewertet werden; Objekte, Records und Arrays klappen auf (Felder aus dem Atlas-Index),
+    /// geänderte Werte sind markiert, Ansichten Text, Zeilen, JSON und Hex, Ändern, Festheften, Verlauf mit 50
+    /// Ausdrücken je Projekt. Aus = kein Fenster, kein Befehl, Strg+F7 bleibt bei der IDE.</summary>
+    DebugEvaluateWindow: Boolean;
+    /// <summary>Strg+F7 öffnet das Fenster „Auswerten“ (#784, debug.evaluateWindow.replaceCtrlF7) mit dem Ausdruck
+    /// unter dem Cursor statt des Dialogs „Auswerten/Ändern“; mit Umschalttaste bzw. Befehl
+    /// Atlas.DebugEvaluateIdeDialog kommt der Dialog der IDE. Aus = Strg+F7 gehört der IDE.</summary>
+    DebugEvaluateReplaceCtrlF7: Boolean;
+    /// <summary>debug.explainAccessViolation (#865): Beim Halt wegen einer Zugriffsverletzung in eigenem Code die
+    /// Zugriffsketten der Zeile auswerten und das nil-Glied, ein freigegebenes Objekt oder einen Index außerhalb in
+    /// der Exception-Leiste bzw. in den Meldungen nennen.</summary>
+    DebugExplainAccessViolation: Boolean;
+    /// <summary>debug.explainAccessViolation.allowCalls (#865): Glieder mit Getter oder Funktionsaufruf auswerten;
+    /// aus bleiben sie „nicht ausgewertet“.</summary>
+    DebugExplainAccessViolationAllowCalls: Boolean;
+    /// <summary>Exception-Verlauf beim Debuggen (#517, debug.exceptionHistory): Jeder Halt wegen einer Exception
+    /// landet mit Klasse, Meldung, Ort, Thread und Anzahl im Fenster „Atlas: Exceptions“ (Befehl
+    /// Atlas.DebugExceptions); Klassen lassen sich dort ignorieren, Atlas setzt dann still fort. Aus = kein Verlauf,
+    /// kein Beobachter.</summary>
+    DebugExceptionHistory: Boolean;
+    /// <summary>Nur eigener Code beim Debuggen (#578, debug.justMyCode): Nach einer Exception in Bibliothekscode
+    /// springt Atlas zur ersten eigenen Zeile des Aufrufstapels und markiert sie; landet F7 in Code ohne Quelltext,
+    /// setzt Atlas „Bis zur Rückkehr“ fort; der Exception-Verlauf nennt den ersten eigenen Rahmen als Ort und fasst
+    /// Bibliotheksrahmen zusammen. Eigener Code: Projektordner der Gruppe und debug.ownCodeFolders. Aus = IDE wie
+    /// bisher.</summary>
+    DebugJustMyCode: Boolean;
+    /// <summary>Exception-Leiste beim Debuggen (#783, debug.exceptionBanner): Hält der Debugger wegen einer
+    /// Exception, zeigt Atlas oben im Editor eine Leiste mit Klasse, Meldung, Thread, Anzahl an dieser Stelle und
+    /// der ersten eigenen Zeile; in Delphi 12 und 13 schließt Atlas den Dialog der IDE dafür über „Anhalten“, sonst
+    /// bleibt er und die Leiste kommt danach. Baut auf debug.exceptionHistory auf. Vorgabe aus bis zur
+    /// Studie.</summary>
+    DebugExceptionBanner: Boolean;
+    /// <summary>Knopf „Nur an dieser Stelle ignorieren“ der Exception-Leiste (#783,
+    /// debug.exceptionBanner.ignoreAtLocation): merkt Klasse, Datei und Zeile je Projekt; trifft dieselbe
+    /// Kombination erneut ein, setzt Atlas still fort und zählt nur im Verlauf. Aus = kein Knopf, gemerkte Orte
+    /// wirken nicht.</summary>
+    DebugExceptionBannerIgnoreAtLocation: Boolean;
+    /// <summary>Werte im Editor beim Debuggen (#508, debug.inlineValues): Steht der Prozess, zeigt Atlas am Ende der
+    /// Zeilen der Routine mit dem Ausführungspunkt gedimmt die Werte der lokalen Variablen, Parameter und Felder von
+    /// Self (Count = 3, Name = 'Meier'); seit dem letzten Halt geänderte Werte hervorgehoben. Aus = keine Anfrage,
+    /// keine Auswertung, nichts gezeichnet.</summary>
+    DebugInlineValues: Boolean;
+    /// <summary>Höchstens so viele Werte je Zeile (#508, debug.inlineValuesPerLine, 1 bis 20).</summary>
+    DebugInlineValuesPerLine: Integer;
+    /// <summary>Weitere Ordner mit eigenem Code (#578, debug.ownCodeFolders), durch „;“ getrennt; die Projektordner
+    /// der Gruppe gelten immer.</summary>
+    DebugOwnCodeFolders: string;
     /// <summary>Startprofile (#575, startProfiles.enabled): Befehl „Startprofil: …“ (Atlas.StartProfile) mit Tipp,
     /// Feld in der Statusleiste und Setzen der Startoptionen des Projekts; aus = Befehl, Tipp und Feld
     /// verschwinden, die Startoptionen der IDE bleiben, wie sie sind.</summary>
@@ -529,6 +767,25 @@ type
     /// <summary>Menüeintrag „Prozesse am Projekt…“ (#62, diagnostics.processes): Index-Cache, Sperre und
     /// angemeldete LSP- und MCP-Prozesse; Vorgabe an.</summary>
     DiagnosticsProcesses: Boolean;
+    /// <summary>Architekturübersicht (#1118, architecture.enabled in settings.json): Fenster „Atlas-Architektur“,
+    /// Bericht und get_architecture; Vorgabe an.</summary>
+    ArchitectureEnabled: Boolean;
+    /// <summary>Umfang der Übersicht (architecture.scope): 'project' oder 'projectGroup' (Vorgabe).</summary>
+    ArchitectureScope: string;
+    /// <summary>Bibliotheks-Units (RTL, VCL, Fremdbibliotheken) mitzählen (architecture.includeLibraryUnits).
+    /// </summary>
+    ArchitectureIncludeLibraryUnits: Boolean;
+    /// <summary>So viele zentrale Units (architecture.centralUnits, 5–100, Vorgabe 15).</summary>
+    ArchitectureCentralUnits: Integer;
+    /// <summary>Zustand: Das Fenster „Atlas-Architektur“ wurde einmal rechts neben die Projektverwaltung
+    /// gelegt (ui.architectureWindowPlaced); danach gilt die Lage aus dem Desktop der IDE.</summary>
+    ArchitectureWindowPlaced: Boolean;
+    /// <summary>Zustand: Das Fenster „Unit-Beziehungen“ (#593) wurde einmal rechts neben die Projektverwaltung
+    /// gelegt (ui.unitRelationsWindowPlaced); danach gilt die Lage aus dem Desktop der IDE.</summary>
+    UnitRelationsWindowPlaced: Boolean;
+    /// <summary>Befehl „Weg zwischen Symbolen…“ mit Menü- und Kontextmenüeintrag (#1117, navigation.symbolPath in
+    /// settings.json); Vorgabe an.</summary>
+    SymbolPath: Boolean;
     /// <summary>Hauptschalter der experimentellen Funktionen (#834, experimental.enabled, liegt in settings.json):
     /// aus = keine Einstellung mit x-experimental wirkt, auch wenn sie an ist; Vorgabe aus.</summary>
     ExperimentalEnabled: Boolean;
@@ -589,6 +846,10 @@ type
     UnitSearchEnabled: Boolean;
     /// <summary>Strg+F12 und Ansicht › Units öffnen das Atlas-Fenster statt des IDE-Dialogs (#777, unitSearch.replaceIdeDialog); Vorgabe an.</summary>
     UnitSearchReplaceIdeDialog: Boolean;
+    /// <summary>Alt+F11 und Datei › Unit verwenden öffnen das Atlas-Fenster im Modus „Unit verwenden“ (#786, unitSearch.replaceUseUnitDialog); Vorgabe an.</summary>
+    UnitSearchReplaceUseUnitDialog: Boolean;
+    /// <summary>Umschalt+F12 und Ansicht › Formulare öffnen das Atlas-Fenster mit Filter Formulare (#786, unitSearch.replaceFormsDialog); Vorgabe an.</summary>
+    UnitSearchReplaceFormsDialog: Boolean;
     /// <summary>Eingeklappte Gruppen je Projektgruppe merken (#777, unitSearch.rememberCollapsed); Vorgabe an.</summary>
     UnitSearchRememberCollapsed: Boolean;
     /// <summary>Chipzeile mit Herkunft und Art (#777, unitSearch.filters); Vorgabe an.</summary>
@@ -641,6 +902,24 @@ type
     PeekHeightLines: Integer;
     /// <summary>Bei Routinen auch die Implementierung zeigen (#505, peek.showImplementation).</summary>
     PeekShowImplementation: Boolean;
+    /// <summary>Erschlossene Verwendungen zeigen (#1119, references.inferred in settings.json).</summary>
+    ReferencesInferred: Boolean;
+    /// <summary>Namen in String-Literalen als erschlossene Verwendung (#1119, references.textMatches).</summary>
+    ReferencesTextMatches: Boolean;
+    /// <summary>Aufrufhierarchie auch als Diagramm (#1122, callHierarchy.diagram).</summary>
+    CallHierarchyDiagram: Boolean;
+    /// <summary>Befehl „Auswirkungen anzeigen“ mit Menüeinträgen (#1120, navigation.impact in settings.json).</summary>
+    Impact: Boolean;
+    /// <summary>Vorgabe der Tiefe der Auswirkungsanalyse (#1120, navigation.impactDepth), MinImpactDepth bis
+    /// MaxImpactDepth.</summary>
+    ImpactDepth: Integer;
+    /// <summary>„Woher kommt der Wert?“ und „Wohin geht der Wert?“ im Ergebnisfenster (#690, navigation.dataFlow).</summary>
+    DataFlow: Boolean;
+    /// <summary>Größte Tiefe beim Aufklappen (#690, navigation.dataFlow.maxDepth), MinDataFlowDepth bis
+    /// MaxDataFlowDepth.</summary>
+    DataFlowMaxDepth: Integer;
+    /// <summary>Filter „Tests ausblenden“ zu Beginn an (#690, navigation.dataFlow.excludeTests).</summary>
+    DataFlowExcludeTests: Boolean;
     /// <summary>Kürzel „Definition einblenden“ (#505, keys.peekDefinition); Vorgabe Alt+F12.</summary>
     PeekDefinitionKey: Integer;
     /// <summary>Kürzel „Referenzen einblenden“ (#505, keys.peekReferences); Vorgabe Umschalt+Alt+F12.</summary>
@@ -787,6 +1066,23 @@ type
     SelectionMatchesNavigateF3: Boolean;
     /// <summary>Höchstzahl der Treffer (#709).</summary>
     SelectionMatchesMaxMatches: Integer;
+    /// <summary>Austrittspunkte hervorheben (#698, editor.exitPoints).</summary>
+    ExitPoints: Boolean;
+    /// <summary>Auf except bzw. on die auslösenden Aufrufe zeigen (#698).</summary>
+    ExitPointsExceptions: Boolean;
+    /// <summary>Auf Break bzw. Continue die Schleife zeigen (#698).</summary>
+    ExitPointsLoops: Boolean;
+    /// <summary>Marke mit der Anzahl am Routinenkopf (#698).</summary>
+    ExitPointsBadge: Boolean;
+    /// <summary>Neu zugewiesene Variablen unterstreichen (#712, highlight.reassigned).</summary>
+    Reassigned: Boolean;
+    /// <summary>Arten, kommagetrennt: locals, loopVars, valueParams, varParams, fields (#712), siehe
+    /// TAtlasReassignedNames.</summary>
+    ReassignedTargets: string;
+    /// <summary>Linie: dotted, solid oder wavy (#712).</summary>
+    ReassignedStyle: string;
+    /// <summary>Farbe: theme oder #RRGGBB (#712).</summary>
+    ReassignedColor: string;
     /// <summary>Blockkommentar umschalten (#703, keys.toggleBlockComment); aus = Kürzel frei.</summary>
     ToggleBlockComment: Boolean;
     /// <summary>Kürzel „Blockkommentar umschalten“ (#703); Vorgabe Umschalt+Alt+A.</summary>
@@ -812,6 +1108,23 @@ type
     Unwrap: Boolean;
     /// <summary>Kürzel „Umschließung entfernen“ (#657); Vorgabe Strg+Umschalt+Entf.</summary>
     UnwrapKey: Integer;
+    /// <summary>Typ des markierten Ausdrucks (#689, hints.expressionType): Kürzel und Tooltip; aus = Kürzel frei,
+    /// kein Menüeintrag.</summary>
+    ExpressionType: Boolean;
+    /// <summary>Implizite Umwandlungen im Tooltip nennen (#689).</summary>
+    ExpressionTypeConversions: Boolean;
+    /// <summary>Wert konstanter Ausdrücke im Tooltip zeigen (#689).</summary>
+    ExpressionTypeConstValue: Boolean;
+    /// <summary>Kürzel „Typ des Ausdrucks“ (#689, keys.expressionType); Vorgabe Strg+Umschalt+T.</summary>
+    ExpressionTypeKey: Integer;
+    /// <summary>Methodenrümpfe in Deklarationsreihenfolge (#660, editor.methodPlacement): off, declaration oder
+    /// alphabetical; off schaltet Verschieben und Befehl ab.</summary>
+    MethodPlacement: string;
+    /// <summary>Sicher löschen (#716, keys.safeDelete): Kürzel im Editor; aus = Kürzel frei, kein Menüeintrag
+    /// (die Code-Aktion schaltet refactoring.safeDelete).</summary>
+    SafeDelete: Boolean;
+    /// <summary>Kürzel „Sicher löschen“ (#716); Vorgabe Alt+Entf.</summary>
+    SafeDeleteKey: Integer;
     /// <summary>Kürzel „Nächste Änderung“ (#507, keys.nextChange); Vorgabe Strg+Alt+Bild↓.</summary>
     NextChangeKey: Integer;
     /// <summary>Kürzel „Vorherige Änderung“ (#507, keys.previousChange); Vorgabe Strg+Alt+Bild↑.</summary>
@@ -1003,7 +1316,7 @@ type
     /// Knöpfe in der Zeile unter der Maus bzw. mit dem Fokus; aus = keine Knöpfe, keine Tasten.</summary>
     WelcomePageQuickActions: Boolean;
     /// <summary>Gezeigte Knöpfe (#764, welcomePage.quickActions.items): Namen durch Komma getrennt, in der
-    /// Reihenfolge build, tests, run, pull, folder, console; '' = keiner.</summary>
+    /// Reihenfolge build, tests, run, pull, folder, console, tasks (#900); '' = keiner.</summary>
     WelcomePageQuickActionsItems: string;
     /// <summary>Programm für „Konsole“ (#764, welcomePage.quickActions.console): wt.exe (Vorgabe), cmd.exe,
     /// powershell.exe, pwsh.exe oder ein anderes; ohne Windows-Terminal nimmt Atlas cmd.exe.</summary>
@@ -1018,26 +1331,205 @@ type
     /// <summary>Bereich „Meine Issues“ (#765, welcomePage.issues): offene Issues aus dem Tracker der .atlas
     /// (Abschnitt tracker) mit „Beginnen“; aus = kein Bereich, keine Abfrage, kein Netzzugriff.</summary>
     WelcomePageIssues: Boolean;
-    /// <summary>Tracker (#765, welcomePage.issues.tracker): '' = aus der .atlas, "github" oder "youtrack".</summary>
-    WelcomePageIssuesTracker: string;
-    /// <summary>Abfrage in der Sprache des Trackers (#765, welcomePage.issues.query); '' = Vorgabe des Trackers
-    /// (GitHub "assignee:@me state:open", YouTrack "for: me #Unresolved").</summary>
-    WelcomePageIssuesQuery: string;
-    /// <summary>„Beginnen“ (#765, welcomePage.issues.start): "branch" legt einen Branch an und checkt ihn aus,
+    /// <summary>Bereich „Sprint“ (#1277, welcomePage.sprint): aktueller Sprint des Boards (#1272) mit Resttagen,
+    /// eigenen Zahlen und Burndown; aus = kein Bereich, keine Abfrage.</summary>
+    WelcomePageSprint: Boolean;
+    /// <summary>Tracker (#765, issues.tracker): '' = aus der .atlas, "github" oder "youtrack".</summary>
+    IssuesTracker: string;
+    /// <summary>„Beginnen“ (#765, issues.start): "branch" legt einen Branch an und checkt ihn aus,
     /// "remember" merkt nur das Issue.</summary>
-    WelcomePageIssuesStart: string;
-    /// <summary>Muster für den Branch (#765, welcomePage.issues.branchPattern) mit {kennung}, {nummer},
+    IssuesStart: string;
+    /// <summary>Muster für den Branch (#765, issues.branchPattern) mit {kennung}, {nummer},
     /// {kurztitel}; '' = Git feature/{kennung}-{kurztitel}, SVN {kennung}-{kurztitel} unter ^/branches/.</summary>
-    WelcomePageIssuesBranchPattern: string;
-    /// <summary>Basis des Branchs (#765, welcomePage.issues.branchBase); '' = Git main (sonst master), SVN trunk.
+    IssuesBranchPattern: string;
+    /// <summary>Basis des Branchs (#765, issues.branchBase); '' = Git main (sonst master), SVN trunk.
     /// </summary>
-    WelcomePageIssuesBranchBase: string;
-    /// <summary>Anfang der Commit-Nachricht, solange ein Issue aktiv ist (#765, welcomePage.issues.commitPattern);
+    IssuesBranchBase: string;
+    /// <summary>Anfang der Commit-Nachricht, solange ein Issue aktiv ist (#765, issues.commitPattern);
     /// '' = aus. Nicht gekürzt: das Leerzeichen der Vorgabe "{kennung} " bleibt.</summary>
-    WelcomePageIssuesCommitPattern: string;
-    /// <summary>Befehl „Zugang zum Issue-Tracker hinterlegen …“ (#765, Atlas.TrackerLogin) in der Befehlspalette
-    /// und im Kontextmenü des Bereichs; aus = der Befehl und sein Tipp verschwinden.</summary>
+    IssuesCommitPattern: string;
+    /// <summary>Befehl „Zugang zum Issue-Tracker hinterlegen …“ (#765, issues.login, Atlas.TrackerLogin) in der
+    /// Befehlspalette und im Kontextmenü des Bereichs; aus = der Befehl und sein Tipp verschwinden.</summary>
     TrackerLogin: Boolean;
+    /// <summary>Persönliche Tracker-Verbindungen (#1260, issues.connections) als JSON-Liste mit name, provider und
+    /// url; liegt in settings.json (TAtlasRoutedSettingsStore), gelesen mit TAtlasTrackerConnections. '[]' = keine.
+    /// Nie ein Token.</summary>
+    IssuesConnections: string;
+    /// <summary>Issue-Vorschau (#1264, issues.preview): Klick auf ein Issue öffnet das Fenster „Atlas-Issue“ statt
+    /// des Browsers, dazu der Befehl „Issue anzeigen …“; aus = Browser wie bisher.</summary>
+    IssuesPreview: Boolean;
+    /// <summary>Kommentare in der Vorschau laden und zeigen (#1264, issues.preview.comments); aus = nicht abgefragt.
+    /// </summary>
+    IssuesPreviewComments: Boolean;
+    /// <summary>Issue-Kennungen im Code (#1265, issues.codeLinks): Kennungen wie ATL-123 oder #42 in Kommentaren
+    /// unterstreichen, Hover mit Kurzvorschau, Strg+Klick und Kontextmenü; aus = keine Erkennung, keine Abfrage.
+    /// </summary>
+    IssuesCodeLinks: Boolean;
+    /// <summary>Issues in der Zeilenhistorie (#1275, issues.blameLinks): Kennungen aus der Commit-Nachricht am
+    /// Rand, Hover mit Titel und Zustand, Strg+Klick und Befehl „Issues zu dieser Methode“; aus = Zeilenhistorie
+    /// wie bisher, kein Befehl.</summary>
+    IssuesBlameLinks: Boolean;
+    /// <summary>Höchstzahl durchsuchter Revisionen für „Issues zu dieser Methode“ (#1275,
+    /// issues.blameLinks.maxRevisions).</summary>
+    IssuesBlameMaxRevisions: Integer;
+    /// <summary>Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (#1261, issues.projects) als JSON-Liste mit
+    /// match, connection und project; liegt in settings.json, gelesen mit TAtlasTrackerProjects. '[]' = keine.
+    /// </summary>
+    IssuesProjects: string;
+    /// <summary>Benannte Abfragen für „Meine Issues“ (#1262, issues.queries) als JSON-Liste mit name, query und
+    /// optional connection und project; liegt in settings.json, gelesen mit TAtlasTrackerQueries. '[]' = keine,
+    /// dann gilt je Anbieter „Mir zugewiesen“. Ersetzt issues.query (wird einmal zur Abfrage „Standard“).
+    /// </summary>
+    IssuesQueries: string;
+    /// <summary>Klappliste der Abfragen im Bereich „Meine Issues“ (#1262, issues.queryPicker); aus = keine
+    /// Klappliste, es gilt die erste passende Abfrage.</summary>
+    IssuesQueryPicker: Boolean;
+    /// <summary>„Issue anlegen …“ im Editor und bei Befunden (#1268, issues.create).</summary>
+    IssuesCreate: Boolean;
+    /// <summary>Codeausschnitt in der Beschreibung vorschlagen (#1268, issues.create.includeCode).</summary>
+    IssuesCreateIncludeCode: Boolean;
+    /// <summary>Art der Versionsverwaltung (#571, vcs.provider, seit #1285 auf der Seite Versionsverwaltung):
+    /// auto, git, svn oder off; liegt in settings.json, damit Plugin und Server denselben Wert lesen.</summary>
+    VcsProvider: string;
+    /// <summary>Eigener Pfad zu git.exe bzw. svn.exe (#1285, vcs.git.path, vcs.svn.path); '' = in PATH und den
+    /// üblichen Ordnern suchen. Liegen in settings.json, damit auch atlas --changed dasselbe Programm verwendet.
+    /// </summary>
+    VcsGitPath: string;
+    VcsSvnPath: string;
+    /// <summary>Zeitlimit je Aufruf von git bzw. svn in Sekunden (#1285, vcs.timeoutSeconds, 1–300).</summary>
+    VcsTimeoutSeconds: Integer;
+    /// <summary>Persönliche Art und Hauptbranch je Delphi-Projekt (#1286, vcs.projects) als JSON-Liste mit match,
+    /// provider und mainBranch; liegt in settings.json, gelesen mit TAtlasVcsProjects. '[]' = keine.</summary>
+    VcsProjects: string;
+    /// <summary>SVN-Branches (#1290, vcs.branch.svn.*): Ort im Repository (Muster mit {projektwurzel} oder ^/,
+    /// {name}, {kennung}), Quelle ("head", "workingCopy"), danach ("switch", "checkout", "none"), Ordner beim
+    /// Auschecken (relativ zur Arbeitskopie, {projekt}, {name}, {kennung}) und Commit-Nachricht der Kopie
+    /// ({kennung}, {titel}, {name}). Vorgaben in den Feldern des Dialogs „Branch anlegen“. Persönlich (Registry).
+    /// </summary>
+    VcsBranchSvnLocation: string;
+    VcsBranchSvnSource: string;
+    VcsBranchSvnAfter: string;
+    VcsBranchSvnCheckoutFolder: string;
+    VcsBranchSvnMessage: string;
+    /// <summary>SVN-Externals beim Anlegen eines Branchs (#1291, vcs.externals.*): Externals ohne Revision
+    /// ("pin" festschreiben, "keep" lassen, "ask" ohne Vorauswahl), wann „mitverzweigen“ vorgeschlagen wird
+    /// ("modified", "never", "always") und feste Behandlung je Quelle als JSON-Liste mit source und onBranch
+    /// (gelesen mit TAtlasVcsBranchPlan.RulesOf; '[]' = keine). Persönlich (Registry).</summary>
+    VcsExternalsOnBranch: string;
+    VcsExternalsSuggestBranch: string;
+    VcsExternalsRules: string;
+    /// <summary>Arbeitskopien einer Gruppe (#1292, vcs.externals.show): Tabelle „Arbeitskopien“ mit Wurzel,
+    /// svn:externals und Git-Submodulen samt Aufschlüsselung in „Nicht gesicherte Arbeit“; aus = Projektstand wie
+    /// vor #1292. Persönlich (Registry).</summary>
+    VcsExternalsShow: Boolean;
+    /// <summary>Aktualisieren unter SVN (#1292, vcs.externals.update): "with" svn update samt Externals,
+    /// "without" mit --ignore-externals, "ask" fragt (Untermenü „mit Externals“/„ohne Externals“). Persönlich
+    /// (Registry).</summary>
+    VcsExternalsUpdate: string;
+    /// <summary>Dialog „Branch anlegen“ vor dem Anlegen bei „Beginnen“ zeigen (#1288, vcs.branch.confirm); aus =
+    /// mit den Vorgaben ohne Dialog. Der Befehl „Branch anlegen …“ zeigt ihn immer. Persönlich (Registry).
+    /// </summary>
+    VcsBranchConfirm: Boolean;
+    /// <summary>Git: wovon der Branch abzweigt (#1289, vcs.branch.git.base): remote (vorher fetch, dann
+    /// &lt;Remote&gt;/&lt;Hauptbranch&gt;), local (lokaler Hauptbranch, sonst origin; Verhalten vor #1289) oder
+    /// current (aktueller Branch). Persönlich (Registry).</summary>
+    VcsBranchGitBase: string;
+    /// <summary>Git: later (Upstream setzt der erste Push) oder now (gleich push --set-upstream) (#1289,
+    /// vcs.branch.git.push).</summary>
+    VcsBranchGitPush: string;
+    /// <summary>Git: offene Änderungen carry (mitnehmen), stash (vorher beiseitelegen) oder ask (nachfragen)
+    /// (#1289, vcs.branch.git.uncommitted).</summary>
+    VcsBranchGitUncommitted: string;
+    /// <summary>Git: Branch in eigenem Ordner über git worktree (#1289, vcs.branch.git.worktree).</summary>
+    VcsBranchGitWorktree: Boolean;
+    /// <summary>Ordner für den worktree mit {repo}, {name}, {kennung}, relativ zur Wurzel der Arbeitskopie
+    /// (#1289, vcs.branch.git.worktreeFolder).</summary>
+    VcsBranchGitWorktreeFolder: string;
+    /// <summary>Tracker beim Beginnen und Beenden nachführen (#1266, issues.syncState): Zustand, Zuweisung und
+    /// Kommentar beim Beginnen, Dialog „… beenden“ mit Zielzustand und Kommentar, Kommentarfeld in der Vorschau;
+    /// aus = „Beginnen“ und „Beenden“ ändern im Tracker nichts.</summary>
+    IssuesSyncState: Boolean;
+    /// <summary>Name des Zustandsfeldes im YouTrack-Projekt (#1266, issues.stateField); '' = "State".</summary>
+    IssuesStateField: string;
+    /// <summary>Name des Benutzerfeldes für die Zuständigkeit (#1266, issues.assigneeField); '' = "Assignee".
+    /// </summary>
+    IssuesAssigneeField: string;
+    /// <summary>Zustand beim Beginnen (#1266, issues.startState); '' = nicht ändern. GitHub: Label.</summary>
+    IssuesStartState: string;
+    /// <summary>Beim Beginnen mir zuweisen (#1266, issues.assignOnStart).</summary>
+    IssuesAssignOnStart: Boolean;
+    /// <summary>Kommentarvorlage beim Beginnen (#1266, issues.startComment); '' = kein Kommentar.</summary>
+    IssuesStartComment: string;
+    /// <summary>Zielzustände im Beenden-Dialog (#1266, issues.endStates), mit Komma getrennt; '' = nur „Zustand
+    /// nicht ändern“.</summary>
+    IssuesEndStates: string;
+    /// <summary>Kommentarvorlage beim Beenden (#1266, issues.endComment) mit {branch}, {commits}, {pr}, {time};
+    /// "\n" = neue Zeile.</summary>
+    IssuesEndComment: string;
+    /// <summary>Zeit für das aktuelle Issue erfassen und Buchen anbieten (#1267, issues.timeTracking); aus = weder
+    /// Anzeige noch Datei noch Dialog.</summary>
+    IssuesTimeTracking: Boolean;
+    /// <summary>Minuten ohne Eingabe, nach denen die Uhr anhält (#1267, issues.idleMinutes, 1–120).</summary>
+    IssuesIdleMinutes: Integer;
+    /// <summary>Rundung der vorgeschlagenen Dauer in Minuten (#1267, issues.timeRounding, 1–60).</summary>
+    IssuesTimeRounding: Integer;
+    /// <summary>Checklisten in der Vorschau als Häkchen, Abhaken schreibt die Beschreibung zurück (#1273,
+    /// issues.preview.checklists); aus = Liste als Text, nichts wird geschrieben.</summary>
+    IssuesPreviewChecklists: Boolean;
+    /// <summary>Fortschritt der Checkliste des aktuellen Issues im Statusfeld (#1273, issues.checklistStatus); aus =
+    /// keine Zeile.</summary>
+    IssuesChecklistStatus: Boolean;
+    /// <summary>Verknüpfungen der Vorschau als Baum (#1279, issues.preview.links): hängt ab von, blockiert,
+    /// Unteraufgaben mit Fortschritt, eingeklappt Duplikate und „bezieht sich auf“; dazu „Unteraufgabe anlegen …“
+    /// und „Verknüpfen …“. Aus = flache Liste wie in #1264.</summary>
+    IssuesPreviewLinks: Boolean;
+    /// <summary>Warnung beim Beginnen (#1279, issues.warnBlocked), wenn ein „hängt ab von“-Issue noch offen ist.
+    /// </summary>
+    IssuesWarnBlocked: Boolean;
+    /// <summary>Dockfenster „Atlas-Board“ mit Spalten und Karten (#1272, issues.board): Menü Ansicht › Atlas ›
+    /// Board und Befehl Atlas.Board; aus = kein Menüeintrag, kein Befehl, keine Abfrage.</summary>
+    IssuesBoard: Boolean;
+    /// <summary>Beim Ziehen einer Karte nachfragen (#1272, issues.board.confirmMove); aus = sofort verschieben.
+    /// „Nicht mehr fragen“ im Dialog schaltet es ab.</summary>
+    IssuesBoardConfirmMove: Boolean;
+    /// <summary>Board öffnet mit dem Filter „Nur meine“ (#1272, issues.board.onlyMine); aus = alle Karten.</summary>
+    IssuesBoardOnlyMine: Boolean;
+    /// <summary>Burndown-Linie in der Sprint-Kachel (#1277, issues.sprint.burndown); aus = nur Kopf und Zahlen.
+    /// </summary>
+    IssuesSprintBurndown: Boolean;
+    /// <summary>Vergleich mit dem vorherigen Sprint und Velocity der letzten drei (#1277, issues.sprint.compare);
+    /// aus = kein früherer Sprint wird gefragt.</summary>
+    IssuesSprintCompare: Boolean;
+    /// <summary>Issues in der Befehlspalette suchen (#1270, issues.paletteSearch): „#“ bzw. Projektkürzel mit „-“
+    /// sucht im Tracker; aus = nur Befehle, ohne Netzzugriff.</summary>
+    IssuesPaletteSearch: Boolean;
+    /// <summary>Kommentar-Editor (#1278, issues.commentEditor): Vorschläge für @ und #, Textbausteine, Vorschau und
+    /// Entwürfe; aus = einfaches Textfeld, Strg+Enter sendet.</summary>
+    IssuesCommentEditor: Boolean;
+    /// <summary>Textbausteine für Kommentare (#1278, issues.commentSnippets) als JSON-Liste [{"name", "text"}].</summary>
+    IssuesCommentSnippets: string;
+    /// <summary>Reiter „Entwicklung“ in der Vorschau (#1269, issues.preview.development): Branches, Commits, Pull
+    /// Requests und geänderte Units zum Issue; aus = Reiter fehlt, kein Log wird abgefragt.</summary>
+    IssuesPreviewDevelopment: Boolean;
+    /// <summary>Änderungen an meinen Issues melden (#1271, issues.notify): Atlas fragt jede Tracker-Verbindung alle
+    /// IssuesNotifyIntervalMinutes und meldet neue Kommentare, Zuweisungen und Zustandswechsel in der
+    /// Benachrichtigungszentrale; aus (Vorgabe) = keine Abfrage.</summary>
+    IssuesNotify: Boolean;
+    /// <summary>Abstand der Abfrage in Minuten (#1271, issues.notify.intervalMinutes), MinIssuesNotifyMinutes bis
+    /// MaxIssuesNotifyMinutes.</summary>
+    IssuesNotifyIntervalMinutes: Integer;
+    /// <summary>Beobachtete Issues (#1271, issues.notify.scope): IssuesNotifyAssigned, IssuesNotifyAssignedOrCreated
+    /// (Vorgabe) oder IssuesNotifyWatched.</summary>
+    IssuesNotifyScope: string;
+    /// <summary>„An Issue anhängen …“ (#1276, issues.attach): Bildschirmfoto, Formular, Log, Debug-Notiz und
+    /// Exception-Verlauf an ein Issue hängen; aus = der Befehl fehlt überall.</summary>
+    IssuesAttach: Boolean;
+    /// <summary>Vorgeschlagene Logdateien (#1276, issues.attach.logFiles), getrennt durch „;“, mit $(ProjectDir)
+    /// und * (TAtlasAttachLog.Candidates); '' = keine.</summary>
+    IssuesAttachLogFiles: string;
+    /// <summary>Bilder höchstens so breit (#1276, issues.attach.maxImageWidth, MinAttachImageWidth bis
+    /// MaxAttachImageWidth).</summary>
+    IssuesAttachMaxImageWidth: Integer;
     /// <summary>Willkommensseite frei anordnen (#767, welcomePage.customLayout): Bearbeitungsleiste „Seite
     /// anpassen“, Rechtsklick „Ausblenden“ und Befehl Atlas.WelcomeCustomize; aus = festes Atlas-Layout.</summary>
     WelcomePageCustomLayout: Boolean;
@@ -1096,8 +1588,14 @@ uses
   Atlas.Core.Generate.Contract,
   Atlas.Core.Build.Events,
   Atlas.Core.Build.ReleaseGuard,
+  Atlas.Core.Build.Gate,
+  Atlas.Core.Build.Verdict,
   Atlas.Core.Build.OpenBuild,
   Atlas.Core.Settings.OverviewKinds,
+  Atlas.Core.Settings.VisualizerKinds,
+  Atlas.Core.Settings.EventBreakNames,
+  Atlas.Text.StepFilter,
+  Atlas.Core.Settings.Reassigned,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.Settings.StatusBarItems;
@@ -1119,8 +1617,22 @@ const
 const
   /// <summary>Knöpfe der Schnellaktionen (#764) wie TAtlasWelcomeQuickActions.Names (Test prüft Gleichheit; die
   /// Einstellungen kennen die Willkommensseite nicht, A-09).</summary>
-  QuickActionNames: array[0..5] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console');
+  QuickActionNames: array[0..6] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
   QuickActionsDefaultConsole = 'wt.exe';
+  /// <summary>Werte von tasks.beforeBuild (#900) wie TAtlasTasks.BeforeBuildNames; die Einstellungen kennen die
+  /// Projektaufgaben nicht (A-09, sonst Feature-Zyklus), der Test hält beide gleich.</summary>
+  TasksBeforeBuildNames: array[0..2] of string = ('off', 'warn', 'block');
+
+/// <summary>tasks.beforeBuild: bekannter Wert klein, sonst „off“.</summary>
+function NormalizedTasksBeforeBuild(const AText: string): string;
+var
+  Name: string;
+begin
+  for Name in TasksBeforeBuildNames do
+    if SameText(Trim(AText), Name) then
+      Exit(Name);
+  Result := TasksBeforeBuildNames[0];
+end;
 
 /// <summary>Bekannte Knöpfe aus AText (Komma, Semikolon, Leerzeichen; Groß-/Kleinschreibung egal) in fester
 /// Reihenfolge, jeder einmal; '' = keiner.</summary>
@@ -1128,7 +1640,7 @@ function NormalizedQuickActionItems(const AText: string): string;
 var
   Part: string;
   Index: Integer;
-  Wanted: array[0..5] of Boolean;
+  Wanted: array[Low(QuickActionNames)..High(QuickActionNames)] of Boolean;
 begin
   for Index := Low(Wanted) to High(Wanted) do
     Wanted[Index] := False;
@@ -1173,6 +1685,16 @@ begin
     Result := '';
 end;
 
+function NormalizedIssuesNotifyScope(const AText: string): string;
+begin
+  if SameText(Trim(AText), TAtlasPluginSettings.IssuesNotifyAssigned) then
+    Result := TAtlasPluginSettings.IssuesNotifyAssigned
+  else if SameText(Trim(AText), TAtlasPluginSettings.IssuesNotifyWatched) then
+    Result := TAtlasPluginSettings.IssuesNotifyWatched
+  else
+    Result := TAtlasPluginSettings.IssuesNotifyAssignedOrCreated;
+end;
+
 function NormalizedIssuesStart(const AText: string): string;
 begin
   if SameText(Trim(AText), TAtlasPluginSettings.IssuesStartRemember) then
@@ -1210,6 +1732,21 @@ begin
     Result := Trim(Result);
   if Length(Result) > TAtlasPluginSettings.MaxIssuesText then
     Result := Copy(Result, 1, TAtlasPluginSettings.MaxIssuesText);
+end;
+
+/// <summary>Kommentarvorlage bzw. Liste (#1266): einzeilig (Zeilenumbruch als "\n"), außen ohne Leerraum,
+/// höchstens MaxIssuesTemplate Zeichen.</summary>
+function NormalizedIssuesTemplate(const AText: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := StringReplace(StringReplace(AText, #13#10, '\n', [rfReplaceAll]), #10, '\n', [rfReplaceAll]);
+  for mIndex := 1 to Length(Result) do
+    if Ord(Result[mIndex]) < 32 then
+      Result[mIndex] := ' ';
+  Result := Trim(Result);
+  if Length(Result) > TAtlasPluginSettings.MaxIssuesTemplate then
+    Result := Copy(Result, 1, TAtlasPluginSettings.MaxIssuesTemplate);
 end;
 
 function NormalizedTrendSeries(const AText: string): string;
@@ -1296,6 +1833,7 @@ begin
   Result.CommitCharacters := True;
   Result.AutoUses := True;
   Result.ParameterHints := True;
+  Result.FormatPlaceholders := True;
   Result.OpenDelayMs := 150;
   Result.PaletteKey := $6050; // Strg+Umschalt+P
   Result.CheckKey := $C078; // Strg+Alt+F9
@@ -1325,6 +1863,7 @@ begin
   Result.InlayTypeHints := True;
   Result.InlayDefineHints := True;
   Result.InlayCharHints := True;
+  Result.InlayMethodHints := True;
   Result.BlockEndLabels := True;
   Result.BlockEndLabelsMinLines := 25;
   Result.DimUnusedUses := True;
@@ -1337,6 +1876,11 @@ begin
   Result.HideElementKey := $40BE; // Strg+.
   Result.SearchReplaceIde := True;
   Result.SearchResultsInMessages := True;
+  Result.SearchReplace := True;
+  Result.SearchRegex := True;
+  Result.SearchHistory := DefaultSearchHistory;
+  Result.SearchMultiFile := True;
+  Result.SearchReplaceKey := $4048; // Strg+H
   Result.SearchFromFirstHit := False;
   Result.SearchKey := $4046; // Strg+F
   Result.SearchNextKey := $72; // F3
@@ -1363,6 +1907,7 @@ begin
   Result.ProblemsCompilerMerge := 'merge';
   Result.ProblemsShowCompilerCode := True;
   Result.ProblemsWindowKey := $C050; // Strg+Alt+P
+  Result.CreateIssueKey := 0;
   Result.GotoInterfaceKey := 0;
   Result.GotoImplementationKey := 0;
   Result.ProblemsLive := True;
@@ -1401,13 +1946,54 @@ begin
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
   Result.BuildZeroHints := False;
+  Result.ShowInterfaceCost := True;
+  Result.BuildSummary := True;
+  Result.BuildWarningsAsErrors := '';
+  Result.BuildCompilerSwitches := True;
+  Result.BuildSwitchesInStatusBar := False;
   Result.ReleaseGuard := True;
   Result.BuildGate := 'off';
+  Result.TasksEnabled := True;
+  Result.TasksProblemsFromOutput := True;
+  Result.TasksBeforeBuild := 'off';
+  Result.TasksSaveBeforeRun := True;
+  Result.TasksRunChecksParallel := False;
+  Result.TasksOnlyFindings := False;
+  Result.BuildGateTimeoutMs := TAtlasBuildGateCheck.DefaultTimeoutMs;
   Result.ReleaseConfigs := TAtlasReleaseGuard.ReleaseConfiguration;
   Result.ReleaseChecks := TAtlasReleaseChecks.Defaults.ToText;
   Result.TestDebug := True;
   Result.TestBreakAtStart := True;
   Result.DebugHoverValues := True;
+  Result.DebugVisualizers := True;
+  Result.DebugVisualizerTypes := TAtlasVisualizerSettings.KindsText(TAtlasVisualizerSettings.AllKinds);
+  Result.DebugVisualizerNameFields := TAtlasVisualizerSettings.DefaultNameFields;
+  Result.DebugVisualizerMaxLength := TAtlasVisualizerSettings.DefaultMaxLength;
+  Result.DebugVisualizerTimeoutMs := TAtlasVisualizerSettings.DefaultTimeoutMs;
+  Result.DebugVisualizerMaxImagePixels := TAtlasVisualizerSettings.DefaultMaxImagePixels;
+  Result.DebugVisualizerEvaluation := TAtlasVisualizerSettings.EvaluationNames[TAtlasVisualizerEvaluation.Properties];
+  Result.DebugDisplayRules := True;
+  Result.DebugDisplayRulesAllowCalls := False;
+  Result.DebugStepIntoTarget := True;
+  Result.DebugStepFilters := True;
+  Result.DebugStepFilterKinds := TStepFilterNames.KindsText(TStepFilterNames.DefaultKinds);
+  Result.DebugStepFilterPatterns := '';
+  Result.DebugStepIntoTargetKey := $C076; // Strg+Alt+F7
+  Result.DebugBreakOnNextEvent := True;
+  Result.DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.DefaultExcluded;
+  Result.DebugExplainUnavailable := True;
+  Result.DebugCompletionInDialogs := True;
+  Result.DebugEvaluateWindow := True;
+  Result.DebugEvaluateReplaceCtrlF7 := True;
+  Result.DebugExplainAccessViolation := True;
+  Result.DebugExplainAccessViolationAllowCalls := False;
+  Result.DebugExceptionHistory := True;
+  Result.DebugJustMyCode := True;
+  Result.DebugExceptionBanner := False;
+  Result.DebugExceptionBannerIgnoreAtLocation := True;
+  Result.DebugInlineValues := True;
+  Result.DebugInlineValuesPerLine := 5;
+  Result.DebugOwnCodeFolders := '';
   Result.StartProfiles := True;
   Result.StartProfilesStatusField := True;
   Result.TodoList := True;
@@ -1444,6 +2030,14 @@ begin
   Result.DiagnosticModeKey := $E044; // Strg+Umschalt+Alt+D
   Result.DiagnosticModeKeyPriority := False;
   Result.DiagnosticsProcesses := True;
+  // Wie die Vorgaben im Schema (atlas.schema.json, architecture).
+  Result.ArchitectureEnabled := True;
+  Result.ArchitectureScope := 'projectGroup';
+  Result.ArchitectureIncludeLibraryUnits := False;
+  Result.ArchitectureCentralUnits := 15;
+  Result.ArchitectureWindowPlaced := False;
+  Result.UnitRelationsWindowPlaced := False;
+  Result.SymbolPath := True;
   Result.ExperimentalEnabled := False;
   Result.SetupChecklist := True;
   Result.SetupChecklistSeen := False;
@@ -1469,6 +2063,8 @@ begin
   Result.BugReportAnonymize := True;
   Result.UnitSearchEnabled := True;
   Result.UnitSearchReplaceIdeDialog := True;
+  Result.UnitSearchReplaceUseUnitDialog := True;
+  Result.UnitSearchReplaceFormsDialog := True;
   Result.UnitSearchRememberCollapsed := True;
   Result.UnitSearchFilters := True;
   Result.UnitSearchFilterSyntax := True;
@@ -1494,6 +2090,14 @@ begin
   Result.Peek := True;
   Result.PeekHeightLines := 15;
   Result.PeekShowImplementation := True;
+  Result.ReferencesInferred := True;
+  Result.ReferencesTextMatches := False;
+  Result.CallHierarchyDiagram := True;
+  Result.Impact := True;
+  Result.ImpactDepth := 2;
+  Result.DataFlow := True;
+  Result.DataFlowMaxDepth := 6;
+  Result.DataFlowExcludeTests := False;
   Result.PeekDefinitionKey := $807B; // Alt+F12
   Result.PeekReferencesKey := $A07B; // Umschalt+Alt+F12
   Result.Outline := True;
@@ -1561,6 +2165,14 @@ begin
   Result.SelectionMatchesWholeWord := False;
   Result.SelectionMatchesNavigateF3 := True;
   Result.SelectionMatchesMaxMatches := 1000;
+  Result.ExitPoints := True;
+  Result.ExitPointsExceptions := True;
+  Result.ExitPointsLoops := True;
+  Result.ExitPointsBadge := True;
+  Result.Reassigned := True;
+  Result.ReassignedTargets := TAtlasReassignedNames.TargetsText(TAtlasReassignedNames.DefaultTargets);
+  Result.ReassignedStyle := 'dotted';
+  Result.ReassignedColor := TAtlasReassignedNames.ThemeColor;
   Result.ToggleBlockComment := True;
   Result.ToggleBlockCommentKey := $A041; // Umschalt+Alt+A
   Result.ToggleBlockCommentStyle := 'braces';
@@ -1573,6 +2185,13 @@ begin
   Result.NewLineAroundStatementAware := True;
   Result.Unwrap := True;
   Result.UnwrapKey := $602E; // Strg+Umschalt+Entf
+  Result.ExpressionType := True;
+  Result.ExpressionTypeConversions := True;
+  Result.ExpressionTypeConstValue := True;
+  Result.ExpressionTypeKey := $6054; // Strg+Umschalt+T
+  Result.MethodPlacement := 'declaration';
+  Result.SafeDelete := True;
+  Result.SafeDeleteKey := $802E; // Alt+Entf
   // Strg+Alt+↑/↓ springt in RAD Studio schon zwischen Methoden.
   Result.NextChangeKey := $C022; // Strg+Alt+Bild↓
   Result.PreviousChangeKey := $C021; // Strg+Alt+Bild↑
@@ -1658,13 +2277,75 @@ begin
   Result.WelcomePageQuickActionsBuildKey := $4042; // Strg+B
   Result.WelcomePageQuickActionsTestKey := $4054; // Strg+T
   Result.WelcomePageIssues := False;
-  Result.WelcomePageIssuesTracker := '';
-  Result.WelcomePageIssuesQuery := '';
-  Result.WelcomePageIssuesStart := IssuesStartBranch;
-  Result.WelcomePageIssuesBranchPattern := '';
-  Result.WelcomePageIssuesBranchBase := '';
-  Result.WelcomePageIssuesCommitPattern := DefaultIssuesCommitPattern;
+  Result.WelcomePageSprint := True;
+  Result.IssuesTracker := '';
+  Result.IssuesStart := IssuesStartBranch;
+  Result.IssuesBranchPattern := '';
+  Result.IssuesBranchBase := '';
+  Result.IssuesCommitPattern := DefaultIssuesCommitPattern;
   Result.TrackerLogin := True;
+  Result.IssuesConnections := '[]';
+  Result.IssuesPreview := True;
+  Result.IssuesPreviewComments := True;
+  Result.IssuesCodeLinks := True;
+  Result.IssuesBlameLinks := True;
+  Result.IssuesBlameMaxRevisions := DefaultIssuesBlameMaxRevisions;
+  Result.IssuesProjects := '[]';
+  Result.IssuesQueries := '[]';
+  Result.IssuesQueryPicker := True;
+  Result.IssuesCreate := True;
+  Result.IssuesCreateIncludeCode := True;
+  Result.VcsProvider := 'auto';
+  Result.VcsGitPath := '';
+  Result.VcsSvnPath := '';
+  Result.VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
+  Result.VcsProjects := '[]';
+  Result.VcsBranchSvnLocation := DefaultVcsBranchSvnLocation;
+  Result.VcsBranchSvnSource := 'head';
+  Result.VcsBranchSvnAfter := 'switch';
+  Result.VcsBranchSvnCheckoutFolder := DefaultVcsBranchSvnCheckoutFolder;
+  Result.VcsBranchSvnMessage := DefaultVcsBranchSvnMessage;
+  Result.VcsExternalsOnBranch := 'pin';
+  Result.VcsExternalsSuggestBranch := 'modified';
+  Result.VcsExternalsRules := '[]';
+  Result.VcsExternalsShow := True;
+  Result.VcsExternalsUpdate := 'with';
+  Result.VcsBranchConfirm := True;
+  Result.VcsBranchGitBase := 'remote';
+  Result.VcsBranchGitPush := 'later';
+  Result.VcsBranchGitUncommitted := 'carry';
+  Result.VcsBranchGitWorktree := False;
+  Result.VcsBranchGitWorktreeFolder := DefaultVcsWorktreeFolder;
+  Result.IssuesSyncState := True;
+  Result.IssuesStateField := DefaultIssuesStateField;
+  Result.IssuesAssigneeField := DefaultIssuesAssigneeField;
+  Result.IssuesStartState := '';
+  Result.IssuesAssignOnStart := False;
+  Result.IssuesStartComment := '';
+  Result.IssuesEndStates := '';
+  Result.IssuesEndComment := DefaultIssuesEndComment;
+  Result.IssuesTimeTracking := False;
+  Result.IssuesIdleMinutes := DefaultIssuesIdleMinutes;
+  Result.IssuesTimeRounding := DefaultIssuesTimeRounding;
+  Result.IssuesPreviewChecklists := True;
+  Result.IssuesChecklistStatus := True;
+  Result.IssuesPreviewLinks := True;
+  Result.IssuesWarnBlocked := True;
+  Result.IssuesBoard := True;
+  Result.IssuesBoardConfirmMove := True;
+  Result.IssuesBoardOnlyMine := True;
+  Result.IssuesSprintBurndown := True;
+  Result.IssuesSprintCompare := True;
+  Result.IssuesPaletteSearch := True;
+  Result.IssuesCommentEditor := True;
+  Result.IssuesCommentSnippets := DefaultIssuesCommentSnippets;
+  Result.IssuesPreviewDevelopment := True;
+  Result.IssuesNotify := False;
+  Result.IssuesNotifyIntervalMinutes := DefaultIssuesNotifyMinutes;
+  Result.IssuesNotifyScope := IssuesNotifyAssignedOrCreated;
+  Result.IssuesAttach := True;
+  Result.IssuesAttachLogFiles := '';
+  Result.IssuesAttachMaxImageWidth := DefaultAttachImageWidth;
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
@@ -1684,6 +2365,8 @@ end;
 
 procedure TAtlasPluginSettings.Normalize;
 begin
+  // Bereinigt (Trenner, doppelte) wird beim Speichern der Seite und beim Lesen in TAtlasDebugOwnCode.ParseFolders.
+  DebugOwnCodeFolders := Trim(DebugOwnCodeFolders);
   VisibleRows := EnsureRange(VisibleRows, MinVisibleRows, MaxVisibleRows);
   if ListWidth <> 0 then
     ListWidth := EnsureRange(ListWidth, MinListWidth, MaxListWidth);
@@ -1707,9 +2390,12 @@ begin
   XmlDocExpand := Choice(XmlDocExpand, ['last', 'collapsed', 'expanded']);
   BlockEndLabelsMinLines := EnsureRange(BlockEndLabelsMinLines, MinBlockEndLines, MaxBlockEndLines);
   RecursionMarkersDepth := EnsureRange(RecursionMarkersDepth, MinRecursionDepth, MaxRecursionDepth);
+  DebugInlineValuesPerLine := EnsureRange(DebugInlineValuesPerLine, MinInlineValuesPerLine, MaxInlineValuesPerLine);
   ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, MinPatternLines, MaxPatternLines);
   OpenDelayMs := EnsureRange(OpenDelayMs, 0, MaxOpenDelay);
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
+  ArchitectureScope := Choice(ArchitectureScope, ['projectGroup', 'project']);
+  ArchitectureCentralUnits := EnsureRange(ArchitectureCentralUnits, 5, 100);
   // TShortCut ist ein Word.
   PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
   WelcomePageSearchKey := EnsureRange(WelcomePageSearchKey, 0, $FFFF);
@@ -1730,20 +2416,89 @@ begin
   WelcomePageQuickActionsConsole := NormalizedQuickActionConsole(WelcomePageQuickActionsConsole);
   WelcomePageQuickActionsBuildKey := EnsureRange(WelcomePageQuickActionsBuildKey, 0, $FFFF);
   WelcomePageQuickActionsTestKey := EnsureRange(WelcomePageQuickActionsTestKey, 0, $FFFF);
-  WelcomePageIssuesTracker := NormalizedIssuesTracker(WelcomePageIssuesTracker);
-  WelcomePageIssuesQuery := NormalizedIssuesText(WelcomePageIssuesQuery, True);
-  WelcomePageIssuesStart := NormalizedIssuesStart(WelcomePageIssuesStart);
-  WelcomePageIssuesBranchPattern := NormalizedIssuesText(WelcomePageIssuesBranchPattern, True);
-  WelcomePageIssuesBranchBase := NormalizedIssuesText(WelcomePageIssuesBranchBase, True);
+  IssuesTracker := NormalizedIssuesTracker(IssuesTracker);
+  IssuesStart := NormalizedIssuesStart(IssuesStart);
+  IssuesBranchPattern := NormalizedIssuesText(IssuesBranchPattern, True);
+  IssuesBranchBase := NormalizedIssuesText(IssuesBranchBase, True);
   // Leerraum am Ende gehört zum Muster ("{kennung} ").
-  WelcomePageIssuesCommitPattern := NormalizedIssuesText(WelcomePageIssuesCommitPattern, False);
+  IssuesCommitPattern := NormalizedIssuesText(IssuesCommitPattern, False);
+  IssuesConnections := Trim(IssuesConnections);
+  IssuesAttachLogFiles := Trim(IssuesAttachLogFiles);
+  IssuesAttachMaxImageWidth := EnsureRange(IssuesAttachMaxImageWidth, MinAttachImageWidth, MaxAttachImageWidth);
+  if IssuesConnections = '' then
+    IssuesConnections := '[]';
+  IssuesProjects := Trim(IssuesProjects);
+  if IssuesProjects = '' then
+    IssuesProjects := '[]';
+  IssuesQueries := Trim(IssuesQueries);
+  if IssuesQueries = '' then
+    IssuesQueries := '[]';
+  VcsProvider := Choice(LowerCase(Trim(VcsProvider)), ['auto', 'git', 'svn', 'off']);
+  VcsGitPath := Trim(VcsGitPath);
+  VcsSvnPath := Trim(VcsSvnPath);
+  IssuesBlameMaxRevisions := EnsureRange(IssuesBlameMaxRevisions, MinIssuesBlameMaxRevisions,
+    MaxIssuesBlameMaxRevisions);
+  // Außerhalb der Grenzen gilt die Vorgabe wie im Server (vcs.timeoutSeconds).
+  if (VcsTimeoutSeconds < MinVcsTimeoutSeconds) or (VcsTimeoutSeconds > MaxVcsTimeoutSeconds) then
+    VcsTimeoutSeconds := DefaultVcsTimeoutSeconds;
+  VcsProjects := Trim(VcsProjects);
+  if VcsProjects = '' then
+    VcsProjects := '[]';
+  // Ort beginnt mit {projektwurzel} oder ^/ (#1290); sonst die Vorgabe.
+  VcsBranchSvnLocation := Trim(VcsBranchSvnLocation);
+  if not (SameText(Copy(VcsBranchSvnLocation, 1, 15), '{projektwurzel}') or
+    (Copy(VcsBranchSvnLocation, 1, 2) = '^/')) then
+    VcsBranchSvnLocation := DefaultVcsBranchSvnLocation;
+  VcsBranchSvnSource := Choice(VcsBranchSvnSource, ['head', 'workingCopy']);
+  VcsBranchSvnAfter := Choice(VcsBranchSvnAfter, ['switch', 'checkout', 'none']);
+  VcsBranchSvnCheckoutFolder := Trim(VcsBranchSvnCheckoutFolder);
+  if VcsBranchSvnCheckoutFolder = '' then
+    VcsBranchSvnCheckoutFolder := DefaultVcsBranchSvnCheckoutFolder;
+  VcsBranchSvnMessage := NormalizedIssuesText(VcsBranchSvnMessage, True);
+  if VcsBranchSvnMessage = '' then
+    VcsBranchSvnMessage := DefaultVcsBranchSvnMessage;
+  VcsExternalsOnBranch := Choice(VcsExternalsOnBranch, ['pin', 'keep', 'ask']);
+  VcsExternalsSuggestBranch := Choice(VcsExternalsSuggestBranch, ['modified', 'never', 'always']);
+  VcsExternalsRules := Trim(VcsExternalsRules);
+  if VcsExternalsRules = '' then
+    VcsExternalsRules := '[]';
+  VcsExternalsUpdate := Choice(VcsExternalsUpdate, ['with', 'without', 'ask']);
+  VcsBranchGitBase := Choice(LowerCase(Trim(VcsBranchGitBase)), ['remote', 'local', 'current']);
+  VcsBranchGitPush := Choice(LowerCase(Trim(VcsBranchGitPush)), ['later', 'now']);
+  VcsBranchGitUncommitted := Choice(LowerCase(Trim(VcsBranchGitUncommitted)), ['carry', 'stash', 'ask']);
+  VcsBranchGitWorktreeFolder := Trim(VcsBranchGitWorktreeFolder);
+  if VcsBranchGitWorktreeFolder = '' then
+    VcsBranchGitWorktreeFolder := DefaultVcsWorktreeFolder;
+  IssuesStateField := NormalizedIssuesText(IssuesStateField, True);
+  if IssuesStateField = '' then
+    IssuesStateField := DefaultIssuesStateField;
+  IssuesAssigneeField := NormalizedIssuesText(IssuesAssigneeField, True);
+  if IssuesAssigneeField = '' then
+    IssuesAssigneeField := DefaultIssuesAssigneeField;
+  IssuesStartState := NormalizedIssuesText(IssuesStartState, True);
+  IssuesStartComment := NormalizedIssuesTemplate(IssuesStartComment);
+  IssuesEndStates := NormalizedIssuesTemplate(IssuesEndStates);
+  IssuesEndComment := NormalizedIssuesTemplate(IssuesEndComment);
+  IssuesIdleMinutes := EnsureRange(IssuesIdleMinutes, MinIssuesIdleMinutes, MaxIssuesIdleMinutes);
+  IssuesTimeRounding := EnsureRange(IssuesTimeRounding, MinIssuesTimeRounding, MaxIssuesTimeRounding);
+  // Leer heißt: keine Textbausteine (die Vorgaben kommen nur, wenn der Wert fehlt).
+  IssuesCommentSnippets := Trim(IssuesCommentSnippets);
+  if IssuesCommentSnippets = '' then
+    IssuesCommentSnippets := '[]';
+  IssuesNotifyIntervalMinutes := EnsureRange(IssuesNotifyIntervalMinutes, MinIssuesNotifyMinutes,
+    MaxIssuesNotifyMinutes);
+  IssuesNotifyScope := NormalizedIssuesNotifyScope(IssuesNotifyScope);
   WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
   if WelcomePageActiveLayout = '' then
     WelcomePageActiveLayout := DefaultWelcomeLayoutName;
   BuildGate := TAtlasReleaseGuard.GateNames[TAtlasReleaseGuard.GateOf(BuildGate)];
+  TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
+  BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildGateCheck.MinTimeoutMs,
+    TAtlasBuildGateCheck.MaxTimeoutMs);
   ReleaseConfigs := TAtlasReleaseGuard.NormalizedConfigurations(ReleaseConfigs);
+  BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
   ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
   CheckKey := EnsureRange(CheckKey, 0, $FFFF);
   CompletionKey := EnsureRange(CompletionKey, 0, $FFFF);
@@ -1796,6 +2551,8 @@ begin
   NavForwardKey := EnsureRange(NavForwardKey, 0, $FFFF);
   LastEditKey := EnsureRange(LastEditKey, 0, $FFFF);
   PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
+  ImpactDepth := EnsureRange(ImpactDepth, MinImpactDepth, MaxImpactDepth);
+  DataFlowMaxDepth := EnsureRange(DataFlowMaxDepth, MinDataFlowDepth, MaxDataFlowDepth);
   StickyScrollMaxLines := EnsureRange(StickyScrollMaxLines, MinStickyLines, MaxStickyLines);
   StickyScrollBlockMinLines := EnsureRange(StickyScrollBlockMinLines, MinStickyBlockLines, MaxStickyBlockLines);
   SelectionMatchesMinLength := EnsureRange(SelectionMatchesMinLength, MinSelectionMatchLength,
@@ -1808,6 +2565,10 @@ begin
   NewLineBelowKey := EnsureRange(NewLineBelowKey, 0, $FFFF);
   NewLineAboveKey := EnsureRange(NewLineAboveKey, 0, $FFFF);
   UnwrapKey := EnsureRange(UnwrapKey, 0, $FFFF);
+  DebugStepIntoTargetKey := EnsureRange(DebugStepIntoTargetKey, 0, $FFFF);
+  ExpressionTypeKey := EnsureRange(ExpressionTypeKey, 0, $FFFF);
+  MethodPlacement := Choice(MethodPlacement, AtlasMethodPlacements);
+  SafeDeleteKey := EnsureRange(SafeDeleteKey, 0, $FFFF);
   MinimapRender := Choice(MinimapRender, ['blocks', 'characters']);
   MinimapWidth := EnsureRange(MinimapWidth, MinMinimapWidth, MaxMinimapWidth);
   MinimapScale := EnsureRange(MinimapScale, MinMinimapScale, MaxMinimapScale);
@@ -1830,6 +2591,21 @@ begin
   NextChangeKey := EnsureRange(NextChangeKey, 0, $FFFF);
   PreviousChangeKey := EnsureRange(PreviousChangeKey, 0, $FFFF);
   OverviewRulerKinds := TAtlasOverviewKindNames.Normalize(OverviewRulerKinds);
+  DebugVisualizerTypes := TAtlasVisualizerSettings.NormalizeKinds(DebugVisualizerTypes);
+  DebugStepFilterKinds := TStepFilterNames.NormalizeKinds(DebugStepFilterKinds);
+  DebugStepFilterPatterns := TStepFilterNames.NormalizePatterns(DebugStepFilterPatterns);
+  DebugBreakOnNextEventExcluded := TAtlasEventBreakSettings.NormalizeExcluded(DebugBreakOnNextEventExcluded);
+  DebugVisualizerNameFields := TAtlasVisualizerSettings.NormalizeNameFields(DebugVisualizerNameFields);
+  DebugVisualizerMaxLength := EnsureRange(DebugVisualizerMaxLength, TAtlasVisualizerSettings.MinMaxLength,
+    TAtlasVisualizerSettings.MaxMaxLength);
+  DebugVisualizerTimeoutMs := EnsureRange(DebugVisualizerTimeoutMs, TAtlasVisualizerSettings.MinTimeoutMs,
+    TAtlasVisualizerSettings.MaxTimeoutMs);
+  DebugVisualizerMaxImagePixels := EnsureRange(DebugVisualizerMaxImagePixels,
+    TAtlasVisualizerSettings.MinMaxImagePixels, TAtlasVisualizerSettings.MaxMaxImagePixels);
+  DebugVisualizerEvaluation := Choice(DebugVisualizerEvaluation, TAtlasVisualizerSettings.EvaluationNames);
+  ReassignedTargets := TAtlasReassignedNames.NormalizeTargets(ReassignedTargets);
+  ReassignedStyle := Choice(ReassignedStyle, TAtlasReassignedNames.Styles);
+  ReassignedColor := TAtlasReassignedNames.NormalizeColor(ReassignedColor);
   JumpToMatchKey := EnsureRange(JumpToMatchKey, 0, $FFFF);
   JumpToMatchSelectKey := EnsureRange(JumpToMatchSelectKey, 0, $FFFF);
   MoveLinesUpKey := EnsureRange(MoveLinesUpKey, 0, $FFFF);
@@ -1856,11 +2632,14 @@ begin
   ProblemsWindowClosedUnits := Choice(ProblemsWindowClosedUnits, ['dimmed', 'normal', 'hidden']);
   ProblemsCompilerMerge := Choice(ProblemsCompilerMerge, ['merge', 'both']);
   ProblemsWindowKey := EnsureRange(ProblemsWindowKey, 0, $FFFF);
+  CreateIssueKey := EnsureRange(CreateIssueKey, 0, $FFFF);
   GotoInterfaceKey := EnsureRange(GotoInterfaceKey, 0, $FFFF);
   GotoImplementationKey := EnsureRange(GotoImplementationKey, 0, $FFFF);
   NextProblemKey := EnsureRange(NextProblemKey, 0, $FFFF);
   PreviousProblemKey := EnsureRange(PreviousProblemKey, 0, $FFFF);
   SearchKey := EnsureRange(SearchKey, 0, $FFFF);
+  SearchReplaceKey := EnsureRange(SearchReplaceKey, 0, $FFFF);
+  SearchHistory := EnsureRange(SearchHistory, 0, MaxSearchHistory);
   SearchNextKey := EnsureRange(SearchNextKey, 0, $FFFF);
   SearchPreviousKey := EnsureRange(SearchPreviousKey, 0, $FFFF);
   SearchMethodKey := EnsureRange(SearchMethodKey, 0, $FFFF);
@@ -1909,6 +2688,7 @@ begin
   CommitCharacters := AStore.ReadInteger('CommitCharacters', BoolValue(Default.CommitCharacters)) <> 0;
   AutoUses := AStore.ReadInteger('AutoUses', BoolValue(Default.AutoUses)) <> 0;
   ParameterHints := AStore.ReadInteger('ParameterHints', BoolValue(Default.ParameterHints)) <> 0;
+  FormatPlaceholders := AStore.ReadInteger('FormatPlaceholders', BoolValue(Default.FormatPlaceholders)) <> 0;
   OpenDelayMs := AStore.ReadInteger('OpenDelayMs', Default.OpenDelayMs);
   PaletteKey := AStore.ReadInteger('PaletteKey', Default.PaletteKey);
   CheckKey := AStore.ReadInteger('CheckKey', Default.CheckKey);
@@ -1939,6 +2719,7 @@ begin
   InlayTypeHints := AStore.ReadInteger('InlayTypeHints', BoolValue(Default.InlayTypeHints)) <> 0;
   InlayDefineHints := AStore.ReadInteger('InlayDefineHints', BoolValue(Default.InlayDefineHints)) <> 0;
   InlayCharHints := AStore.ReadInteger('InlayCharHints', BoolValue(Default.InlayCharHints)) <> 0;
+  InlayMethodHints := AStore.ReadInteger('InlayMethodHints', BoolValue(Default.InlayMethodHints)) <> 0;
   BlockEndLabels := AStore.ReadInteger('BlockEndLabels', BoolValue(Default.BlockEndLabels)) <> 0;
   BlockEndLabelsMinLines := AStore.ReadInteger('BlockEndLabelsMinLines', Default.BlockEndLabelsMinLines);
   DimUnusedUses := AStore.ReadInteger('DimUnusedUses', BoolValue(Default.DimUnusedUses)) <> 0;
@@ -1952,6 +2733,11 @@ begin
   SearchReplaceIde := AStore.ReadInteger('SearchReplaceIde', BoolValue(Default.SearchReplaceIde)) <> 0;
   SearchResultsInMessages := AStore.ReadInteger('SearchResultsInMessages',
     BoolValue(Default.SearchResultsInMessages)) <> 0;
+  SearchReplace := AStore.ReadInteger('SearchReplace', BoolValue(Default.SearchReplace)) <> 0;
+  SearchRegex := AStore.ReadInteger('SearchRegex', BoolValue(Default.SearchRegex)) <> 0;
+  SearchHistory := AStore.ReadInteger('SearchHistory', Default.SearchHistory);
+  SearchMultiFile := AStore.ReadInteger('SearchMultiFile', BoolValue(Default.SearchMultiFile)) <> 0;
+  SearchReplaceKey := AStore.ReadInteger('SearchReplaceKey', Default.SearchReplaceKey);
   SearchFromFirstHit := AStore.ReadInteger('SearchFromFirstHit', BoolValue(Default.SearchFromFirstHit)) <> 0;
   SearchKey := AStore.ReadInteger('SearchKey', Default.SearchKey);
   SearchNextKey := AStore.ReadInteger('SearchNextKey', Default.SearchNextKey);
@@ -1982,6 +2768,7 @@ begin
   ProblemsShowCompilerCode := AStore.ReadInteger('ProblemsShowCompilerCode',
     BoolValue(Default.ProblemsShowCompilerCode)) <> 0;
   ProblemsWindowKey := AStore.ReadInteger('ProblemsWindowKey', Default.ProblemsWindowKey);
+  CreateIssueKey := AStore.ReadInteger('CreateIssueKey', Default.CreateIssueKey);
   GotoInterfaceKey := AStore.ReadInteger('GotoInterfaceKey', Default.GotoInterfaceKey);
   GotoImplementationKey := AStore.ReadInteger('GotoImplementationKey', Default.GotoImplementationKey);
   ProblemsLive := AStore.ReadInteger('ProblemsLive', BoolValue(Default.ProblemsLive)) <> 0;
@@ -2019,13 +2806,59 @@ begin
   TestsAfterBuild := AStore.ReadInteger('TestsAfterBuild', BoolValue(Default.TestsAfterBuild)) <> 0;
   TestsBuildFirst := AStore.ReadInteger('TestsBuildFirst', BoolValue(Default.TestsBuildFirst)) <> 0;
   BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
+  ShowInterfaceCost := AStore.ReadInteger('ShowInterfaceCost', BoolValue(Default.ShowInterfaceCost)) <> 0;
+  BuildSummary := AStore.ReadInteger('BuildSummary', BoolValue(Default.BuildSummary)) <> 0;
+  BuildWarningsAsErrors := AStore.ReadString('BuildWarningsAsErrors', Default.BuildWarningsAsErrors);
+  BuildCompilerSwitches := AStore.ReadInteger('BuildCompilerSwitches', BoolValue(Default.BuildCompilerSwitches)) <> 0;
+  BuildSwitchesInStatusBar := AStore.ReadInteger('BuildSwitchesInStatusBar', BoolValue(Default.BuildSwitchesInStatusBar)) <> 0;
   ReleaseGuard := AStore.ReadInteger('ReleaseGuard', BoolValue(Default.ReleaseGuard)) <> 0;
   BuildGate := AStore.ReadString('BuildGate', Default.BuildGate);
+  TasksEnabled := AStore.ReadInteger('TasksEnabled', BoolValue(Default.TasksEnabled)) <> 0;
+  TasksProblemsFromOutput := AStore.ReadInteger('TasksProblemsFromOutput',
+    BoolValue(Default.TasksProblemsFromOutput)) <> 0;
+  TasksBeforeBuild := AStore.ReadString('TasksBeforeBuild', Default.TasksBeforeBuild);
+  TasksSaveBeforeRun := AStore.ReadInteger('TasksSaveBeforeRun', BoolValue(Default.TasksSaveBeforeRun)) <> 0;
+  TasksRunChecksParallel := AStore.ReadInteger('TasksRunChecksParallel',
+    BoolValue(Default.TasksRunChecksParallel)) <> 0;
+  TasksOnlyFindings := AStore.ReadInteger('TasksOnlyFindings', BoolValue(Default.TasksOnlyFindings)) <> 0;
+  BuildGateTimeoutMs := AStore.ReadInteger('BuildGateTimeoutMs', Default.BuildGateTimeoutMs);
   ReleaseConfigs := AStore.ReadString('ReleaseConfigs', Default.ReleaseConfigs);
   ReleaseChecks := AStore.ReadString('ReleaseChecks', Default.ReleaseChecks);
   TestDebug := AStore.ReadInteger('TestDebug', BoolValue(Default.TestDebug)) <> 0;
   TestBreakAtStart := AStore.ReadInteger('TestBreakAtStart', BoolValue(Default.TestBreakAtStart)) <> 0;
   DebugHoverValues := AStore.ReadInteger('DebugHoverValues', BoolValue(Default.DebugHoverValues)) <> 0;
+  DebugVisualizers := AStore.ReadInteger('DebugVisualizers', BoolValue(Default.DebugVisualizers)) <> 0;
+  DebugVisualizerTypes := AStore.ReadString('DebugVisualizerTypes', Default.DebugVisualizerTypes);
+  DebugVisualizerNameFields := AStore.ReadString('DebugVisualizerNameFields', Default.DebugVisualizerNameFields);
+  DebugVisualizerMaxLength := AStore.ReadInteger('DebugVisualizerMaxLength', Default.DebugVisualizerMaxLength);
+  DebugVisualizerTimeoutMs := AStore.ReadInteger('DebugVisualizerTimeoutMs', Default.DebugVisualizerTimeoutMs);
+  DebugVisualizerMaxImagePixels := AStore.ReadInteger('DebugVisualizerMaxImagePixels',
+    Default.DebugVisualizerMaxImagePixels);
+  DebugVisualizerEvaluation := AStore.ReadString('DebugVisualizerEvaluation', Default.DebugVisualizerEvaluation);
+  DebugDisplayRules := AStore.ReadInteger('DebugDisplayRules', BoolValue(Default.DebugDisplayRules)) <> 0;
+  DebugDisplayRulesAllowCalls := AStore.ReadInteger('DebugDisplayRulesAllowCalls',
+    BoolValue(Default.DebugDisplayRulesAllowCalls)) <> 0;
+  DebugStepIntoTarget := AStore.ReadInteger('DebugStepIntoTarget', BoolValue(Default.DebugStepIntoTarget)) <> 0;
+  DebugStepFilters := AStore.ReadInteger('DebugStepFilters', BoolValue(Default.DebugStepFilters)) <> 0;
+  DebugStepFilterKinds := AStore.ReadString('DebugStepFilterKinds', Default.DebugStepFilterKinds);
+  DebugStepFilterPatterns := AStore.ReadString('DebugStepFilterPatterns', Default.DebugStepFilterPatterns);
+  DebugStepIntoTargetKey := AStore.ReadInteger('DebugStepIntoTargetKey', Default.DebugStepIntoTargetKey);
+  DebugBreakOnNextEvent := AStore.ReadInteger('DebugBreakOnNextEvent', BoolValue(Default.DebugBreakOnNextEvent)) <> 0;
+  DebugBreakOnNextEventExcluded := AStore.ReadString('DebugBreakOnNextEventExcluded',
+    Default.DebugBreakOnNextEventExcluded);
+  DebugExplainUnavailable := AStore.ReadInteger('DebugExplainUnavailable', BoolValue(Default.DebugExplainUnavailable)) <> 0;
+  DebugCompletionInDialogs := AStore.ReadInteger('DebugCompletionInDialogs', BoolValue(Default.DebugCompletionInDialogs)) <> 0;
+  DebugEvaluateWindow := AStore.ReadInteger('DebugEvaluateWindow', BoolValue(Default.DebugEvaluateWindow)) <> 0;
+  DebugEvaluateReplaceCtrlF7 := AStore.ReadInteger('DebugEvaluateReplaceCtrlF7', BoolValue(Default.DebugEvaluateReplaceCtrlF7)) <> 0;
+  DebugExplainAccessViolation := AStore.ReadInteger('DebugExplainAccessViolation', BoolValue(Default.DebugExplainAccessViolation)) <> 0;
+  DebugExplainAccessViolationAllowCalls := AStore.ReadInteger('DebugExplainAccessViolationAllowCalls', BoolValue(Default.DebugExplainAccessViolationAllowCalls)) <> 0;
+  DebugExceptionHistory := AStore.ReadInteger('DebugExceptionHistory', BoolValue(Default.DebugExceptionHistory)) <> 0;
+  DebugJustMyCode := AStore.ReadInteger('DebugJustMyCode', BoolValue(Default.DebugJustMyCode)) <> 0;
+  DebugExceptionBanner := AStore.ReadInteger('DebugExceptionBanner', BoolValue(Default.DebugExceptionBanner)) <> 0;
+  DebugExceptionBannerIgnoreAtLocation := AStore.ReadInteger('DebugExceptionBannerIgnoreAtLocation', BoolValue(Default.DebugExceptionBannerIgnoreAtLocation)) <> 0;
+  DebugInlineValues := AStore.ReadInteger('DebugInlineValues', BoolValue(Default.DebugInlineValues)) <> 0;
+  DebugInlineValuesPerLine := AStore.ReadInteger('DebugInlineValuesPerLine', Default.DebugInlineValuesPerLine);
+  DebugOwnCodeFolders := AStore.ReadString('DebugOwnCodeFolders', Default.DebugOwnCodeFolders);
   StartProfiles := AStore.ReadInteger('StartProfiles', BoolValue(Default.StartProfiles)) <> 0;
   StartProfilesStatusField := AStore.ReadInteger('StartProfilesStatusField',
     BoolValue(Default.StartProfilesStatusField)) <> 0;
@@ -2077,6 +2910,16 @@ begin
     AStore.ReadInteger('DiagnosticModeKeyPriority', BoolValue(Default.DiagnosticModeKeyPriority)) <> 0;
   DiagnosticsProcesses :=
     AStore.ReadInteger('DiagnosticsProcesses', BoolValue(Default.DiagnosticsProcesses)) <> 0;
+  ArchitectureEnabled := AStore.ReadInteger('ArchitectureEnabled', BoolValue(Default.ArchitectureEnabled)) <> 0;
+  ArchitectureScope := AStore.ReadString('ArchitectureScope', Default.ArchitectureScope);
+  ArchitectureIncludeLibraryUnits := AStore.ReadInteger('ArchitectureIncludeLibraryUnits',
+    BoolValue(Default.ArchitectureIncludeLibraryUnits)) <> 0;
+  ArchitectureCentralUnits := AStore.ReadInteger('ArchitectureCentralUnits', Default.ArchitectureCentralUnits);
+  ArchitectureWindowPlaced := AStore.ReadInteger('ArchitectureWindowPlaced',
+    BoolValue(Default.ArchitectureWindowPlaced)) <> 0;
+  UnitRelationsWindowPlaced := AStore.ReadInteger('UnitRelationsWindowPlaced',
+    BoolValue(Default.UnitRelationsWindowPlaced)) <> 0;
+  SymbolPath := AStore.ReadInteger('SymbolPath', BoolValue(Default.SymbolPath)) <> 0;
   ExperimentalEnabled := AStore.ReadInteger('ExperimentalEnabled', BoolValue(Default.ExperimentalEnabled)) <> 0;
   SetupChecklist := AStore.ReadInteger('SetupChecklist', BoolValue(Default.SetupChecklist)) <> 0;
   SetupChecklistSeen := AStore.ReadInteger('SetupChecklistSeen', BoolValue(Default.SetupChecklistSeen)) <> 0;
@@ -2102,6 +2945,10 @@ begin
   BugReportAnonymize := AStore.ReadInteger('BugReportAnonymize', BoolValue(Default.BugReportAnonymize)) <> 0;
   UnitSearchEnabled := AStore.ReadInteger('UnitSearchEnabled', BoolValue(Default.UnitSearchEnabled)) <> 0;
   UnitSearchReplaceIdeDialog := AStore.ReadInteger('UnitSearchReplaceIdeDialog', BoolValue(Default.UnitSearchReplaceIdeDialog)) <> 0;
+  UnitSearchReplaceUseUnitDialog := AStore.ReadInteger('UnitSearchReplaceUseUnitDialog',
+    BoolValue(Default.UnitSearchReplaceUseUnitDialog)) <> 0;
+  UnitSearchReplaceFormsDialog := AStore.ReadInteger('UnitSearchReplaceFormsDialog',
+    BoolValue(Default.UnitSearchReplaceFormsDialog)) <> 0;
   UnitSearchRememberCollapsed := AStore.ReadInteger('UnitSearchRememberCollapsed', BoolValue(Default.UnitSearchRememberCollapsed)) <> 0;
   UnitSearchFilters := AStore.ReadInteger('UnitSearchFilters', BoolValue(Default.UnitSearchFilters)) <> 0;
   UnitSearchFilterSyntax := AStore.ReadInteger('UnitSearchFilterSyntax', BoolValue(Default.UnitSearchFilterSyntax)) <> 0;
@@ -2129,6 +2976,14 @@ begin
   PeekHeightLines := AStore.ReadInteger('PeekHeightLines', Default.PeekHeightLines);
   PeekShowImplementation := AStore.ReadInteger('PeekShowImplementation',
     BoolValue(Default.PeekShowImplementation)) <> 0;
+  ReferencesInferred := AStore.ReadInteger('ReferencesInferred', BoolValue(Default.ReferencesInferred)) <> 0;
+  ReferencesTextMatches := AStore.ReadInteger('ReferencesTextMatches', BoolValue(Default.ReferencesTextMatches)) <> 0;
+  CallHierarchyDiagram := AStore.ReadInteger('CallHierarchyDiagram', BoolValue(Default.CallHierarchyDiagram)) <> 0;
+  Impact := AStore.ReadInteger('Impact', BoolValue(Default.Impact)) <> 0;
+  ImpactDepth := AStore.ReadInteger('ImpactDepth', Default.ImpactDepth);
+  DataFlow := AStore.ReadInteger('DataFlow', BoolValue(Default.DataFlow)) <> 0;
+  DataFlowMaxDepth := AStore.ReadInteger('DataFlowMaxDepth', Default.DataFlowMaxDepth);
+  DataFlowExcludeTests := AStore.ReadInteger('DataFlowExcludeTests', BoolValue(Default.DataFlowExcludeTests)) <> 0;
   PeekDefinitionKey := AStore.ReadInteger('PeekDefinitionKey', Default.PeekDefinitionKey);
   PeekReferencesKey := AStore.ReadInteger('PeekReferencesKey', Default.PeekReferencesKey);
   Outline := AStore.ReadInteger('Outline', BoolValue(Default.Outline)) <> 0;
@@ -2209,6 +3064,14 @@ begin
   SelectionMatchesNavigateF3 := AStore.ReadInteger('SelectionMatchesNavigateF3',
     BoolValue(Default.SelectionMatchesNavigateF3)) <> 0;
   SelectionMatchesMaxMatches := AStore.ReadInteger('SelectionMatchesMaxMatches', Default.SelectionMatchesMaxMatches);
+  ExitPoints := AStore.ReadInteger('ExitPoints', BoolValue(Default.ExitPoints)) <> 0;
+  ExitPointsExceptions := AStore.ReadInteger('ExitPointsExceptions', BoolValue(Default.ExitPointsExceptions)) <> 0;
+  ExitPointsLoops := AStore.ReadInteger('ExitPointsLoops', BoolValue(Default.ExitPointsLoops)) <> 0;
+  ExitPointsBadge := AStore.ReadInteger('ExitPointsBadge', BoolValue(Default.ExitPointsBadge)) <> 0;
+  Reassigned := AStore.ReadInteger('Reassigned', BoolValue(Default.Reassigned)) <> 0;
+  ReassignedTargets := AStore.ReadString('ReassignedTargets', Default.ReassignedTargets);
+  ReassignedStyle := AStore.ReadString('ReassignedStyle', Default.ReassignedStyle);
+  ReassignedColor := AStore.ReadString('ReassignedColor', Default.ReassignedColor);
   ToggleBlockComment := AStore.ReadInteger('ToggleBlockComment', BoolValue(Default.ToggleBlockComment)) <> 0;
   ToggleBlockCommentKey := AStore.ReadInteger('ToggleBlockCommentKey', Default.ToggleBlockCommentKey);
   ToggleBlockCommentStyle := AStore.ReadString('ToggleBlockCommentStyle', Default.ToggleBlockCommentStyle);
@@ -2224,6 +3087,15 @@ begin
     BoolValue(Default.NewLineAroundStatementAware)) <> 0;
   Unwrap := AStore.ReadInteger('Unwrap', BoolValue(Default.Unwrap)) <> 0;
   UnwrapKey := AStore.ReadInteger('UnwrapKey', Default.UnwrapKey);
+  ExpressionType := AStore.ReadInteger('ExpressionType', BoolValue(Default.ExpressionType)) <> 0;
+  ExpressionTypeConversions := AStore.ReadInteger('ExpressionTypeConversions',
+    BoolValue(Default.ExpressionTypeConversions)) <> 0;
+  ExpressionTypeConstValue := AStore.ReadInteger('ExpressionTypeConstValue',
+    BoolValue(Default.ExpressionTypeConstValue)) <> 0;
+  ExpressionTypeKey := AStore.ReadInteger('ExpressionTypeKey', Default.ExpressionTypeKey);
+  MethodPlacement := AStore.ReadString('MethodPlacement', Default.MethodPlacement);
+  SafeDelete := AStore.ReadInteger('SafeDelete', BoolValue(Default.SafeDelete)) <> 0;
+  SafeDeleteKey := AStore.ReadInteger('SafeDeleteKey', Default.SafeDeleteKey);
   NextChangeKey := AStore.ReadInteger('NextChangeKey', Default.NextChangeKey);
   PreviousChangeKey := AStore.ReadInteger('PreviousChangeKey', Default.PreviousChangeKey);
   OverviewRuler := AStore.ReadInteger('OverviewRuler', BoolValue(Default.OverviewRuler)) <> 0;
@@ -2334,16 +3206,83 @@ begin
   WelcomePageQuickActionsTestKey := AStore.ReadInteger('WelcomePageQuickActionsTestKey',
     Default.WelcomePageQuickActionsTestKey);
   WelcomePageIssues := AStore.ReadInteger('WelcomePageIssues', BoolValue(Default.WelcomePageIssues)) <> 0;
-  WelcomePageIssuesTracker := AStore.ReadString('WelcomePageIssuesTracker', Default.WelcomePageIssuesTracker);
-  WelcomePageIssuesQuery := AStore.ReadString('WelcomePageIssuesQuery', Default.WelcomePageIssuesQuery);
-  WelcomePageIssuesStart := AStore.ReadString('WelcomePageIssuesStart', Default.WelcomePageIssuesStart);
-  WelcomePageIssuesBranchPattern := AStore.ReadString('WelcomePageIssuesBranchPattern',
-    Default.WelcomePageIssuesBranchPattern);
-  WelcomePageIssuesBranchBase := AStore.ReadString('WelcomePageIssuesBranchBase',
-    Default.WelcomePageIssuesBranchBase);
-  WelcomePageIssuesCommitPattern := AStore.ReadString('WelcomePageIssuesCommitPattern',
-    Default.WelcomePageIssuesCommitPattern);
+  WelcomePageSprint := AStore.ReadInteger('WelcomePageSprint', BoolValue(Default.WelcomePageSprint)) <> 0;
+  IssuesTracker := AStore.ReadString('IssuesTracker', Default.IssuesTracker);
+  IssuesStart := AStore.ReadString('IssuesStart', Default.IssuesStart);
+  IssuesBranchPattern := AStore.ReadString('IssuesBranchPattern',
+    Default.IssuesBranchPattern);
+  IssuesBranchBase := AStore.ReadString('IssuesBranchBase',
+    Default.IssuesBranchBase);
+  IssuesCommitPattern := AStore.ReadString('IssuesCommitPattern',
+    Default.IssuesCommitPattern);
   TrackerLogin := AStore.ReadInteger('TrackerLogin', BoolValue(Default.TrackerLogin)) <> 0;
+  IssuesConnections := AStore.ReadString('IssuesConnections', Default.IssuesConnections);
+  IssuesPreview := AStore.ReadInteger('IssuesPreview', BoolValue(Default.IssuesPreview)) <> 0;
+  IssuesPreviewComments := AStore.ReadInteger('IssuesPreviewComments', BoolValue(Default.IssuesPreviewComments)) <> 0;
+  IssuesCodeLinks := AStore.ReadInteger('IssuesCodeLinks', BoolValue(Default.IssuesCodeLinks)) <> 0;
+  IssuesBlameLinks := AStore.ReadInteger('IssuesBlameLinks', BoolValue(Default.IssuesBlameLinks)) <> 0;
+  IssuesBlameMaxRevisions := AStore.ReadInteger('IssuesBlameMaxRevisions', Default.IssuesBlameMaxRevisions);
+  IssuesProjects := AStore.ReadString('IssuesProjects', Default.IssuesProjects);
+  IssuesQueries := AStore.ReadString('IssuesQueries', Default.IssuesQueries);
+  IssuesQueryPicker := AStore.ReadInteger('IssuesQueryPicker', BoolValue(Default.IssuesQueryPicker)) <> 0;
+  IssuesCreate := AStore.ReadInteger('IssuesCreate', BoolValue(Default.IssuesCreate)) <> 0;
+  IssuesCreateIncludeCode := AStore.ReadInteger('IssuesCreateIncludeCode',
+    BoolValue(Default.IssuesCreateIncludeCode)) <> 0;
+  VcsProvider := AStore.ReadString('VcsProvider', Default.VcsProvider);
+  VcsGitPath := AStore.ReadString('VcsGitPath', Default.VcsGitPath);
+  VcsSvnPath := AStore.ReadString('VcsSvnPath', Default.VcsSvnPath);
+  VcsTimeoutSeconds := AStore.ReadInteger('VcsTimeoutSeconds', Default.VcsTimeoutSeconds);
+  VcsProjects := AStore.ReadString('VcsProjects', Default.VcsProjects);
+  VcsBranchSvnLocation := AStore.ReadString('VcsBranchSvnLocation', Default.VcsBranchSvnLocation);
+  VcsBranchSvnSource := AStore.ReadString('VcsBranchSvnSource', Default.VcsBranchSvnSource);
+  VcsBranchSvnAfter := AStore.ReadString('VcsBranchSvnAfter', Default.VcsBranchSvnAfter);
+  VcsBranchSvnCheckoutFolder := AStore.ReadString('VcsBranchSvnCheckoutFolder', Default.VcsBranchSvnCheckoutFolder);
+  VcsBranchSvnMessage := AStore.ReadString('VcsBranchSvnMessage', Default.VcsBranchSvnMessage);
+  VcsExternalsOnBranch := AStore.ReadString('VcsExternalsOnBranch', Default.VcsExternalsOnBranch);
+  VcsExternalsSuggestBranch := AStore.ReadString('VcsExternalsSuggestBranch', Default.VcsExternalsSuggestBranch);
+  VcsExternalsRules := AStore.ReadString('VcsExternalsRules', Default.VcsExternalsRules);
+  VcsExternalsShow := AStore.ReadInteger('VcsExternalsShow', BoolValue(Default.VcsExternalsShow)) <> 0;
+  VcsExternalsUpdate := AStore.ReadString('VcsExternalsUpdate', Default.VcsExternalsUpdate);
+  VcsBranchConfirm := AStore.ReadInteger('VcsBranchConfirm', BoolValue(Default.VcsBranchConfirm)) <> 0;
+  VcsBranchGitBase := AStore.ReadString('VcsBranchGitBase', Default.VcsBranchGitBase);
+  VcsBranchGitPush := AStore.ReadString('VcsBranchGitPush', Default.VcsBranchGitPush);
+  VcsBranchGitUncommitted := AStore.ReadString('VcsBranchGitUncommitted', Default.VcsBranchGitUncommitted);
+  VcsBranchGitWorktree := AStore.ReadInteger('VcsBranchGitWorktree', BoolValue(Default.VcsBranchGitWorktree)) <> 0;
+  VcsBranchGitWorktreeFolder := AStore.ReadString('VcsBranchGitWorktreeFolder', Default.VcsBranchGitWorktreeFolder);
+  IssuesSyncState := AStore.ReadInteger('IssuesSyncState', BoolValue(Default.IssuesSyncState)) <> 0;
+  IssuesStateField := AStore.ReadString('IssuesStateField', Default.IssuesStateField);
+  IssuesAssigneeField := AStore.ReadString('IssuesAssigneeField', Default.IssuesAssigneeField);
+  IssuesStartState := AStore.ReadString('IssuesStartState', Default.IssuesStartState);
+  IssuesAssignOnStart := AStore.ReadInteger('IssuesAssignOnStart', BoolValue(Default.IssuesAssignOnStart)) <> 0;
+  IssuesStartComment := AStore.ReadString('IssuesStartComment', Default.IssuesStartComment);
+  IssuesEndStates := AStore.ReadString('IssuesEndStates', Default.IssuesEndStates);
+  IssuesEndComment := AStore.ReadString('IssuesEndComment', Default.IssuesEndComment);
+  IssuesTimeTracking := AStore.ReadInteger('IssuesTimeTracking', BoolValue(Default.IssuesTimeTracking)) <> 0;
+  IssuesIdleMinutes := AStore.ReadInteger('IssuesIdleMinutes', Default.IssuesIdleMinutes);
+  IssuesTimeRounding := AStore.ReadInteger('IssuesTimeRounding', Default.IssuesTimeRounding);
+  IssuesPreviewChecklists := AStore.ReadInteger('IssuesPreviewChecklists',
+    BoolValue(Default.IssuesPreviewChecklists)) <> 0;
+  IssuesChecklistStatus := AStore.ReadInteger('IssuesChecklistStatus', BoolValue(Default.IssuesChecklistStatus)) <> 0;
+  IssuesPreviewLinks := AStore.ReadInteger('IssuesPreviewLinks', BoolValue(Default.IssuesPreviewLinks)) <> 0;
+  IssuesWarnBlocked := AStore.ReadInteger('IssuesWarnBlocked', BoolValue(Default.IssuesWarnBlocked)) <> 0;
+  IssuesBoard := AStore.ReadInteger('IssuesBoard', BoolValue(Default.IssuesBoard)) <> 0;
+  IssuesBoardConfirmMove := AStore.ReadInteger('IssuesBoardConfirmMove',
+    BoolValue(Default.IssuesBoardConfirmMove)) <> 0;
+  IssuesBoardOnlyMine := AStore.ReadInteger('IssuesBoardOnlyMine', BoolValue(Default.IssuesBoardOnlyMine)) <> 0;
+  IssuesSprintBurndown := AStore.ReadInteger('IssuesSprintBurndown', BoolValue(Default.IssuesSprintBurndown)) <> 0;
+  IssuesSprintCompare := AStore.ReadInteger('IssuesSprintCompare', BoolValue(Default.IssuesSprintCompare)) <> 0;
+  IssuesPaletteSearch := AStore.ReadInteger('IssuesPaletteSearch', BoolValue(Default.IssuesPaletteSearch)) <> 0;
+  IssuesCommentEditor := AStore.ReadInteger('IssuesCommentEditor', BoolValue(Default.IssuesCommentEditor)) <> 0;
+  IssuesCommentSnippets := AStore.ReadString('IssuesCommentSnippets', Default.IssuesCommentSnippets);
+  IssuesPreviewDevelopment := AStore.ReadInteger('IssuesPreviewDevelopment',
+    BoolValue(Default.IssuesPreviewDevelopment)) <> 0;
+  IssuesNotify := AStore.ReadInteger('IssuesNotify', BoolValue(Default.IssuesNotify)) <> 0;
+  IssuesNotifyIntervalMinutes := AStore.ReadInteger('IssuesNotifyIntervalMinutes',
+    Default.IssuesNotifyIntervalMinutes);
+  IssuesNotifyScope := AStore.ReadString('IssuesNotifyScope', Default.IssuesNotifyScope);
+  IssuesAttach := AStore.ReadInteger('IssuesAttach', BoolValue(Default.IssuesAttach)) <> 0;
+  IssuesAttachLogFiles := AStore.ReadString('IssuesAttachLogFiles', Default.IssuesAttachLogFiles);
+  IssuesAttachMaxImageWidth := AStore.ReadInteger('IssuesAttachMaxImageWidth', Default.IssuesAttachMaxImageWidth);
   WelcomePageCustomLayout := AStore.ReadInteger('WelcomePageCustomLayout',
     BoolValue(Default.WelcomePageCustomLayout)) <> 0;
   WelcomePageColumns := AStore.ReadInteger('WelcomePageColumns', Default.WelcomePageColumns);
@@ -2375,6 +3314,7 @@ begin
   AStore.WriteInteger('CommitCharacters', BoolValue(CommitCharacters));
   AStore.WriteInteger('AutoUses', BoolValue(AutoUses));
   AStore.WriteInteger('ParameterHints', BoolValue(ParameterHints));
+  AStore.WriteInteger('FormatPlaceholders', BoolValue(FormatPlaceholders));
   AStore.WriteInteger('OpenDelayMs', OpenDelayMs);
   AStore.WriteInteger('PaletteKey', PaletteKey);
   AStore.WriteInteger('CheckKey', CheckKey);
@@ -2404,6 +3344,7 @@ begin
   AStore.WriteInteger('InlayTypeHints', BoolValue(InlayTypeHints));
   AStore.WriteInteger('InlayDefineHints', BoolValue(InlayDefineHints));
   AStore.WriteInteger('InlayCharHints', BoolValue(InlayCharHints));
+  AStore.WriteInteger('InlayMethodHints', BoolValue(InlayMethodHints));
   AStore.WriteInteger('BlockEndLabels', BoolValue(BlockEndLabels));
   AStore.WriteInteger('BlockEndLabelsMinLines', BlockEndLabelsMinLines);
   AStore.WriteInteger('DimUnusedUses', BoolValue(DimUnusedUses));
@@ -2416,6 +3357,11 @@ begin
   AStore.WriteInteger('HideElementKey', HideElementKey);
   AStore.WriteInteger('SearchReplaceIde', BoolValue(SearchReplaceIde));
   AStore.WriteInteger('SearchResultsInMessages', BoolValue(SearchResultsInMessages));
+  AStore.WriteInteger('SearchReplace', BoolValue(SearchReplace));
+  AStore.WriteInteger('SearchRegex', BoolValue(SearchRegex));
+  AStore.WriteInteger('SearchHistory', SearchHistory);
+  AStore.WriteInteger('SearchMultiFile', BoolValue(SearchMultiFile));
+  AStore.WriteInteger('SearchReplaceKey', SearchReplaceKey);
   AStore.WriteInteger('SearchFromFirstHit', BoolValue(SearchFromFirstHit));
   AStore.WriteInteger('SearchKey', SearchKey);
   AStore.WriteInteger('SearchNextKey', SearchNextKey);
@@ -2442,6 +3388,7 @@ begin
   AStore.WriteString('ProblemsCompilerMerge', ProblemsCompilerMerge);
   AStore.WriteInteger('ProblemsShowCompilerCode', BoolValue(ProblemsShowCompilerCode));
   AStore.WriteInteger('ProblemsWindowKey', ProblemsWindowKey);
+  AStore.WriteInteger('CreateIssueKey', CreateIssueKey);
   AStore.WriteInteger('GotoInterfaceKey', GotoInterfaceKey);
   AStore.WriteInteger('GotoImplementationKey', GotoImplementationKey);
   AStore.WriteInteger('ProblemsLive', BoolValue(ProblemsLive));
@@ -2479,13 +3426,54 @@ begin
   AStore.WriteInteger('TestsAfterBuild', BoolValue(TestsAfterBuild));
   AStore.WriteInteger('TestsBuildFirst', BoolValue(TestsBuildFirst));
   AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
+  AStore.WriteInteger('ShowInterfaceCost', BoolValue(ShowInterfaceCost));
+  AStore.WriteInteger('BuildSummary', BoolValue(BuildSummary));
+  AStore.WriteString('BuildWarningsAsErrors', BuildWarningsAsErrors);
+  AStore.WriteInteger('BuildCompilerSwitches', BoolValue(BuildCompilerSwitches));
+  AStore.WriteInteger('BuildSwitchesInStatusBar', BoolValue(BuildSwitchesInStatusBar));
   AStore.WriteInteger('ReleaseGuard', BoolValue(ReleaseGuard));
   AStore.WriteString('BuildGate', BuildGate);
+  AStore.WriteInteger('TasksEnabled', BoolValue(TasksEnabled));
+  AStore.WriteInteger('TasksProblemsFromOutput', BoolValue(TasksProblemsFromOutput));
+  AStore.WriteString('TasksBeforeBuild', TasksBeforeBuild);
+  AStore.WriteInteger('TasksSaveBeforeRun', BoolValue(TasksSaveBeforeRun));
+  AStore.WriteInteger('TasksRunChecksParallel', BoolValue(TasksRunChecksParallel));
+  AStore.WriteInteger('TasksOnlyFindings', BoolValue(TasksOnlyFindings));
+  AStore.WriteInteger('BuildGateTimeoutMs', BuildGateTimeoutMs);
   AStore.WriteString('ReleaseConfigs', ReleaseConfigs);
   AStore.WriteString('ReleaseChecks', ReleaseChecks);
   AStore.WriteInteger('TestDebug', BoolValue(TestDebug));
   AStore.WriteInteger('TestBreakAtStart', BoolValue(TestBreakAtStart));
   AStore.WriteInteger('DebugHoverValues', BoolValue(DebugHoverValues));
+  AStore.WriteInteger('DebugVisualizers', BoolValue(DebugVisualizers));
+  AStore.WriteString('DebugVisualizerTypes', DebugVisualizerTypes);
+  AStore.WriteString('DebugVisualizerNameFields', DebugVisualizerNameFields);
+  AStore.WriteInteger('DebugVisualizerMaxLength', DebugVisualizerMaxLength);
+  AStore.WriteInteger('DebugVisualizerTimeoutMs', DebugVisualizerTimeoutMs);
+  AStore.WriteInteger('DebugVisualizerMaxImagePixels', DebugVisualizerMaxImagePixels);
+  AStore.WriteString('DebugVisualizerEvaluation', DebugVisualizerEvaluation);
+  AStore.WriteInteger('DebugDisplayRules', BoolValue(DebugDisplayRules));
+  AStore.WriteInteger('DebugDisplayRulesAllowCalls', BoolValue(DebugDisplayRulesAllowCalls));
+  AStore.WriteInteger('DebugStepIntoTarget', BoolValue(DebugStepIntoTarget));
+  AStore.WriteInteger('DebugStepFilters', BoolValue(DebugStepFilters));
+  AStore.WriteString('DebugStepFilterKinds', DebugStepFilterKinds);
+  AStore.WriteString('DebugStepFilterPatterns', DebugStepFilterPatterns);
+  AStore.WriteInteger('DebugStepIntoTargetKey', DebugStepIntoTargetKey);
+  AStore.WriteInteger('DebugBreakOnNextEvent', BoolValue(DebugBreakOnNextEvent));
+  AStore.WriteString('DebugBreakOnNextEventExcluded', DebugBreakOnNextEventExcluded);
+  AStore.WriteInteger('DebugExplainUnavailable', BoolValue(DebugExplainUnavailable));
+  AStore.WriteInteger('DebugCompletionInDialogs', BoolValue(DebugCompletionInDialogs));
+  AStore.WriteInteger('DebugEvaluateWindow', BoolValue(DebugEvaluateWindow));
+  AStore.WriteInteger('DebugEvaluateReplaceCtrlF7', BoolValue(DebugEvaluateReplaceCtrlF7));
+  AStore.WriteInteger('DebugExplainAccessViolation', BoolValue(DebugExplainAccessViolation));
+  AStore.WriteInteger('DebugExplainAccessViolationAllowCalls', BoolValue(DebugExplainAccessViolationAllowCalls));
+  AStore.WriteInteger('DebugExceptionHistory', BoolValue(DebugExceptionHistory));
+  AStore.WriteInteger('DebugJustMyCode', BoolValue(DebugJustMyCode));
+  AStore.WriteInteger('DebugExceptionBanner', BoolValue(DebugExceptionBanner));
+  AStore.WriteInteger('DebugExceptionBannerIgnoreAtLocation', BoolValue(DebugExceptionBannerIgnoreAtLocation));
+  AStore.WriteInteger('DebugInlineValues', BoolValue(DebugInlineValues));
+  AStore.WriteInteger('DebugInlineValuesPerLine', DebugInlineValuesPerLine);
+  AStore.WriteString('DebugOwnCodeFolders', DebugOwnCodeFolders);
   AStore.WriteInteger('StartProfiles', BoolValue(StartProfiles));
   AStore.WriteInteger('StartProfilesStatusField', BoolValue(StartProfilesStatusField));
   AStore.WriteInteger('TodoList', BoolValue(TodoList));
@@ -2521,6 +3509,13 @@ begin
   AStore.WriteInteger('DiagnosticModeKey', DiagnosticModeKey);
   AStore.WriteInteger('DiagnosticModeKeyPriority', BoolValue(DiagnosticModeKeyPriority));
   AStore.WriteInteger('DiagnosticsProcesses', BoolValue(DiagnosticsProcesses));
+  AStore.WriteInteger('ArchitectureEnabled', BoolValue(ArchitectureEnabled));
+  AStore.WriteString('ArchitectureScope', ArchitectureScope);
+  AStore.WriteInteger('ArchitectureIncludeLibraryUnits', BoolValue(ArchitectureIncludeLibraryUnits));
+  AStore.WriteInteger('ArchitectureCentralUnits', ArchitectureCentralUnits);
+  AStore.WriteInteger('ArchitectureWindowPlaced', BoolValue(ArchitectureWindowPlaced));
+  AStore.WriteInteger('UnitRelationsWindowPlaced', BoolValue(UnitRelationsWindowPlaced));
+  AStore.WriteInteger('SymbolPath', BoolValue(SymbolPath));
   AStore.WriteInteger('ExperimentalEnabled', BoolValue(ExperimentalEnabled));
   AStore.WriteInteger('SetupChecklist', BoolValue(SetupChecklist));
   AStore.WriteInteger('SetupChecklistSeen', BoolValue(SetupChecklistSeen));
@@ -2545,6 +3540,8 @@ begin
   AStore.WriteInteger('BugReportAnonymize', BoolValue(BugReportAnonymize));
   AStore.WriteInteger('UnitSearchEnabled', BoolValue(UnitSearchEnabled));
   AStore.WriteInteger('UnitSearchReplaceIdeDialog', BoolValue(UnitSearchReplaceIdeDialog));
+  AStore.WriteInteger('UnitSearchReplaceUseUnitDialog', BoolValue(UnitSearchReplaceUseUnitDialog));
+  AStore.WriteInteger('UnitSearchReplaceFormsDialog', BoolValue(UnitSearchReplaceFormsDialog));
   AStore.WriteInteger('UnitSearchRememberCollapsed', BoolValue(UnitSearchRememberCollapsed));
   AStore.WriteInteger('UnitSearchFilters', BoolValue(UnitSearchFilters));
   AStore.WriteInteger('UnitSearchFilterSyntax', BoolValue(UnitSearchFilterSyntax));
@@ -2570,6 +3567,14 @@ begin
   AStore.WriteInteger('Peek', BoolValue(Peek));
   AStore.WriteInteger('PeekHeightLines', PeekHeightLines);
   AStore.WriteInteger('PeekShowImplementation', BoolValue(PeekShowImplementation));
+  AStore.WriteInteger('ReferencesInferred', BoolValue(ReferencesInferred));
+  AStore.WriteInteger('ReferencesTextMatches', BoolValue(ReferencesTextMatches));
+  AStore.WriteInteger('CallHierarchyDiagram', BoolValue(CallHierarchyDiagram));
+  AStore.WriteInteger('Impact', BoolValue(Impact));
+  AStore.WriteInteger('ImpactDepth', ImpactDepth);
+  AStore.WriteInteger('DataFlow', BoolValue(DataFlow));
+  AStore.WriteInteger('DataFlowMaxDepth', DataFlowMaxDepth);
+  AStore.WriteInteger('DataFlowExcludeTests', BoolValue(DataFlowExcludeTests));
   AStore.WriteInteger('PeekDefinitionKey', PeekDefinitionKey);
   AStore.WriteInteger('PeekReferencesKey', PeekReferencesKey);
   AStore.WriteInteger('Outline', BoolValue(Outline));
@@ -2637,6 +3642,14 @@ begin
   AStore.WriteInteger('SelectionMatchesWholeWord', BoolValue(SelectionMatchesWholeWord));
   AStore.WriteInteger('SelectionMatchesNavigateF3', BoolValue(SelectionMatchesNavigateF3));
   AStore.WriteInteger('SelectionMatchesMaxMatches', SelectionMatchesMaxMatches);
+  AStore.WriteInteger('ExitPoints', BoolValue(ExitPoints));
+  AStore.WriteInteger('ExitPointsExceptions', BoolValue(ExitPointsExceptions));
+  AStore.WriteInteger('ExitPointsLoops', BoolValue(ExitPointsLoops));
+  AStore.WriteInteger('ExitPointsBadge', BoolValue(ExitPointsBadge));
+  AStore.WriteInteger('Reassigned', BoolValue(Reassigned));
+  AStore.WriteString('ReassignedTargets', ReassignedTargets);
+  AStore.WriteString('ReassignedStyle', ReassignedStyle);
+  AStore.WriteString('ReassignedColor', ReassignedColor);
   AStore.WriteInteger('ToggleBlockComment', BoolValue(ToggleBlockComment));
   AStore.WriteInteger('ToggleBlockCommentKey', ToggleBlockCommentKey);
   AStore.WriteString('ToggleBlockCommentStyle', ToggleBlockCommentStyle);
@@ -2649,6 +3662,13 @@ begin
   AStore.WriteInteger('NewLineAroundStatementAware', BoolValue(NewLineAroundStatementAware));
   AStore.WriteInteger('Unwrap', BoolValue(Unwrap));
   AStore.WriteInteger('UnwrapKey', UnwrapKey);
+  AStore.WriteInteger('ExpressionType', BoolValue(ExpressionType));
+  AStore.WriteInteger('ExpressionTypeConversions', BoolValue(ExpressionTypeConversions));
+  AStore.WriteInteger('ExpressionTypeConstValue', BoolValue(ExpressionTypeConstValue));
+  AStore.WriteInteger('ExpressionTypeKey', ExpressionTypeKey);
+  AStore.WriteString('MethodPlacement', MethodPlacement);
+  AStore.WriteInteger('SafeDelete', BoolValue(SafeDelete));
+  AStore.WriteInteger('SafeDeleteKey', SafeDeleteKey);
   AStore.WriteInteger('NextChangeKey', NextChangeKey);
   AStore.WriteInteger('PreviousChangeKey', PreviousChangeKey);
   AStore.WriteInteger('OverviewRuler', BoolValue(OverviewRuler));
@@ -2735,13 +3755,75 @@ begin
   AStore.WriteInteger('WelcomePageQuickActionsBuildKey', WelcomePageQuickActionsBuildKey);
   AStore.WriteInteger('WelcomePageQuickActionsTestKey', WelcomePageQuickActionsTestKey);
   AStore.WriteInteger('WelcomePageIssues', BoolValue(WelcomePageIssues));
-  AStore.WriteString('WelcomePageIssuesTracker', WelcomePageIssuesTracker);
-  AStore.WriteString('WelcomePageIssuesQuery', WelcomePageIssuesQuery);
-  AStore.WriteString('WelcomePageIssuesStart', WelcomePageIssuesStart);
-  AStore.WriteString('WelcomePageIssuesBranchPattern', WelcomePageIssuesBranchPattern);
-  AStore.WriteString('WelcomePageIssuesBranchBase', WelcomePageIssuesBranchBase);
-  AStore.WriteString('WelcomePageIssuesCommitPattern', WelcomePageIssuesCommitPattern);
+  AStore.WriteInteger('WelcomePageSprint', BoolValue(WelcomePageSprint));
+  AStore.WriteString('IssuesTracker', IssuesTracker);
+  AStore.WriteString('IssuesStart', IssuesStart);
+  AStore.WriteString('IssuesBranchPattern', IssuesBranchPattern);
+  AStore.WriteString('IssuesBranchBase', IssuesBranchBase);
+  AStore.WriteString('IssuesCommitPattern', IssuesCommitPattern);
   AStore.WriteInteger('TrackerLogin', BoolValue(TrackerLogin));
+  AStore.WriteString('IssuesConnections', IssuesConnections);
+  AStore.WriteInteger('IssuesPreview', BoolValue(IssuesPreview));
+  AStore.WriteInteger('IssuesPreviewComments', BoolValue(IssuesPreviewComments));
+  AStore.WriteInteger('IssuesCodeLinks', BoolValue(IssuesCodeLinks));
+  AStore.WriteInteger('IssuesBlameLinks', BoolValue(IssuesBlameLinks));
+  AStore.WriteInteger('IssuesBlameMaxRevisions', IssuesBlameMaxRevisions);
+  AStore.WriteString('IssuesProjects', IssuesProjects);
+  AStore.WriteString('IssuesQueries', IssuesQueries);
+  AStore.WriteInteger('IssuesQueryPicker', BoolValue(IssuesQueryPicker));
+  AStore.WriteInteger('IssuesCreate', BoolValue(IssuesCreate));
+  AStore.WriteInteger('IssuesCreateIncludeCode', BoolValue(IssuesCreateIncludeCode));
+  AStore.WriteString('VcsProvider', VcsProvider);
+  AStore.WriteString('VcsGitPath', VcsGitPath);
+  AStore.WriteString('VcsSvnPath', VcsSvnPath);
+  AStore.WriteInteger('VcsTimeoutSeconds', VcsTimeoutSeconds);
+  AStore.WriteString('VcsProjects', VcsProjects);
+  AStore.WriteString('VcsBranchSvnLocation', VcsBranchSvnLocation);
+  AStore.WriteString('VcsBranchSvnSource', VcsBranchSvnSource);
+  AStore.WriteString('VcsBranchSvnAfter', VcsBranchSvnAfter);
+  AStore.WriteString('VcsBranchSvnCheckoutFolder', VcsBranchSvnCheckoutFolder);
+  AStore.WriteString('VcsBranchSvnMessage', VcsBranchSvnMessage);
+  AStore.WriteString('VcsExternalsOnBranch', VcsExternalsOnBranch);
+  AStore.WriteString('VcsExternalsSuggestBranch', VcsExternalsSuggestBranch);
+  AStore.WriteString('VcsExternalsRules', VcsExternalsRules);
+  AStore.WriteInteger('VcsExternalsShow', BoolValue(VcsExternalsShow));
+  AStore.WriteString('VcsExternalsUpdate', VcsExternalsUpdate);
+  AStore.WriteInteger('VcsBranchConfirm', BoolValue(VcsBranchConfirm));
+  AStore.WriteString('VcsBranchGitBase', VcsBranchGitBase);
+  AStore.WriteString('VcsBranchGitPush', VcsBranchGitPush);
+  AStore.WriteString('VcsBranchGitUncommitted', VcsBranchGitUncommitted);
+  AStore.WriteInteger('VcsBranchGitWorktree', BoolValue(VcsBranchGitWorktree));
+  AStore.WriteString('VcsBranchGitWorktreeFolder', VcsBranchGitWorktreeFolder);
+  AStore.WriteInteger('IssuesSyncState', BoolValue(IssuesSyncState));
+  AStore.WriteString('IssuesStateField', IssuesStateField);
+  AStore.WriteString('IssuesAssigneeField', IssuesAssigneeField);
+  AStore.WriteString('IssuesStartState', IssuesStartState);
+  AStore.WriteInteger('IssuesAssignOnStart', BoolValue(IssuesAssignOnStart));
+  AStore.WriteString('IssuesStartComment', IssuesStartComment);
+  AStore.WriteString('IssuesEndStates', IssuesEndStates);
+  AStore.WriteString('IssuesEndComment', IssuesEndComment);
+  AStore.WriteInteger('IssuesTimeTracking', BoolValue(IssuesTimeTracking));
+  AStore.WriteInteger('IssuesIdleMinutes', IssuesIdleMinutes);
+  AStore.WriteInteger('IssuesTimeRounding', IssuesTimeRounding);
+  AStore.WriteInteger('IssuesPreviewChecklists', BoolValue(IssuesPreviewChecklists));
+  AStore.WriteInteger('IssuesChecklistStatus', BoolValue(IssuesChecklistStatus));
+  AStore.WriteInteger('IssuesPreviewLinks', BoolValue(IssuesPreviewLinks));
+  AStore.WriteInteger('IssuesWarnBlocked', BoolValue(IssuesWarnBlocked));
+  AStore.WriteInteger('IssuesBoard', BoolValue(IssuesBoard));
+  AStore.WriteInteger('IssuesBoardConfirmMove', BoolValue(IssuesBoardConfirmMove));
+  AStore.WriteInteger('IssuesBoardOnlyMine', BoolValue(IssuesBoardOnlyMine));
+  AStore.WriteInteger('IssuesSprintBurndown', BoolValue(IssuesSprintBurndown));
+  AStore.WriteInteger('IssuesSprintCompare', BoolValue(IssuesSprintCompare));
+  AStore.WriteInteger('IssuesPaletteSearch', BoolValue(IssuesPaletteSearch));
+  AStore.WriteInteger('IssuesCommentEditor', BoolValue(IssuesCommentEditor));
+  AStore.WriteString('IssuesCommentSnippets', IssuesCommentSnippets);
+  AStore.WriteInteger('IssuesPreviewDevelopment', BoolValue(IssuesPreviewDevelopment));
+  AStore.WriteInteger('IssuesNotify', BoolValue(IssuesNotify));
+  AStore.WriteInteger('IssuesNotifyIntervalMinutes', IssuesNotifyIntervalMinutes);
+  AStore.WriteString('IssuesNotifyScope', IssuesNotifyScope);
+  AStore.WriteInteger('IssuesAttach', BoolValue(IssuesAttach));
+  AStore.WriteString('IssuesAttachLogFiles', IssuesAttachLogFiles);
+  AStore.WriteInteger('IssuesAttachMaxImageWidth', IssuesAttachMaxImageWidth);
   AStore.WriteInteger('WelcomePageCustomLayout', BoolValue(WelcomePageCustomLayout));
   AStore.WriteInteger('WelcomePageColumns', WelcomePageColumns);
   AStore.WriteString('WelcomePageLayouts', WelcomePageLayouts);

@@ -24,6 +24,15 @@
 // In FieldByName('…'), FindField('…') und ParamByName('…') meldet der Hover
 // einen Namen, den die Datenmenge laut Formulardatei nicht kennt, als Hinweis
 // „Feld nicht gefunden in qryOrders“ (#461); keine Diagnose.
+//
+// Begründungen (// WHY: …, #1123) des Symbols bzw. der Unit kommen aus dem
+// Index (TLspRationale.OfSymbol) und erscheinen nach der XMLDoc, gefiltert nach
+// hints.rationale und hints.rationaleMarkers; im Atlas-Tooltip als Abschnitte
+// "rationale" der strukturierten Doku mit anklickbaren ADR- und Issue-Verweisen.
+//
+// Wird der Name neu zugewiesen (#712), nennt atlas.reassigned das Ziel
+// (locals, valueParams …), die Zahl der Zuweisungen und ihre Zeilen; das
+// Plugin zeigt das unter der Unterstreichung.
 
 interface
 
@@ -41,13 +50,17 @@ uses
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.HoverTypes,
   Atlas.Common.Lsp.PublishedMembers,
-  Atlas.Common.Lsp.ConditionalSymbols;
+  Atlas.Common.Lsp.ConditionalSymbols,
+  Atlas.Common.Lsp.Rationale,
+  Atlas.Common.Rationale.Contract;
 
 type
   /// <summary>Liefert den Text einer Datei; False, wenn sie nicht lesbar ist.</summary>
   THoverReadText = TDocReadText;
   /// <summary>Delphi-Version des Dokuments AUri (z. B. "23.0"); '' = unbekannt.</summary>
   THoverVersionProvider = reference to function(const AUri: string): string;
+  /// <summary>Einstellungen der Begründungen für das Dokument AUri (#1123).</summary>
+  THoverRationaleProvider = reference to function(const AUri: string): TRationaleOptions;
 
   THoverInfo = record
     Declaration: string;
@@ -92,6 +105,17 @@ type
     ChainOf: string;
     /// <summary>Vererbungskette ab ChainOf aufwärts; leer bei anderen Arten.</summary>
     Ancestors: TArray<THoverTypeRef>;
+    /// <summary>Begründungen der Deklaration bzw. Unit (#1123); InfoAt liefert alle aus dem Index, HandleHover
+    /// filtert nach den Einstellungen.</summary>
+    Rationale: TArray<TRationaleEntry>;
+    /// <summary>Dateien im ADR-Ordner für die Verweise in Rationale; leer ohne Ordner.</summary>
+    AdrFiles: TArray<string>;
+    /// <summary>Neu zugewiesener Name an der Stelle (#712): Ziel wie in highlight.reassigned.targets (locals,
+    /// loopVars, valueParams, varParams, fields); '' ohne.</summary>
+    ReassignedTarget: string;
+    /// <summary>Zahl der schreibenden Stellen und ihre Zeilen (ab 0).</summary>
+    ReassignedWrites: Integer;
+    ReassignedLines: TArray<Integer>;
     function Found: Boolean;
     function ToMarkdown: string;
     /// <summary>Derselbe Inhalt ohne Markdown-Auszeichnung.</summary>
@@ -110,6 +134,7 @@ type
     FVersionProvider: THoverVersionProvider;
     FHintsFor: TDocHintsProvider;
     FSymbolsFor: TConditionalContextFunc;
+    FRationaleFor: THoverRationaleProvider;
     FMarkdown: Boolean;
     function HandleHover(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
@@ -135,6 +160,9 @@ type
     /// <summary>Teile des Hovers für den Atlas-Tooltip (#442): Doku strukturiert in documentation (#654) und
     /// als Klartext in documentationText, Hinweis als Klartext.</summary>
     class function AtlasJson(const AInfo: THoverInfo): TJSONObject; static;
+    /// <summary>Trägt in AInfo ein, ob der Name an APosition neu zugewiesen wird (#712).</summary>
+    class procedure AddReassigned(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
+      const APosition: TTextPosition; var AInfo: THoverInfo); static;
     /// <summary>Antwort als Markdown (Vorgabe) oder als Klartext.</summary>
     property Markdown: Boolean read FMarkdown write FMarkdown;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
@@ -145,11 +173,14 @@ type
     /// <summary>Symbole des Dokuments und Schalter directives.hover (#102); ohne Provider an, ohne Projekt.
     /// </summary>
     property SymbolsFor: TConditionalContextFunc read FSymbolsFor write FSymbolsFor;
+    /// <summary>Begründungen (#1123); ohne Provider die Vorgaben ohne ADR-Ordner.</summary>
+    property RationaleFor: THoverRationaleProvider read FRationaleFor write FRationaleFor;
   end;
 
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Index.Files,
   System.StrUtils,
@@ -175,6 +206,8 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Editing.DataFieldNames,
+  Atlas.Common.Semantics.Reassigned,
+  Atlas.Common.Lsp.Reassigned,
   Atlas.Text.Lines;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
@@ -275,20 +308,35 @@ var
   Links, Ancestors: TJSONArray;
   Link: THoverLink;
   Ancestor: THoverTypeRef;
-  Item, Members: TJSONObject;
+  Item, Members, Documentation: TJSONObject;
+  Written: TJSONArray;
+  Line: Integer;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('declaration', AInfo.Declaration);
   if AInfo.UnitName <> '' then
     Result.AddPair('unit', AInfo.UnitName);
   // Strukturiert für die volle Anzeige, Klartext für die Kurzform (#654).
+  Documentation := nil;
   if not AInfo.Doc.IsEmpty then
   begin
-    Result.AddPair('documentation', TLspDocumentation.ToJson(AInfo.Doc, AInfo.DocTargets));
+    Documentation := TLspDocumentation.ToJson(AInfo.Doc, AInfo.DocTargets);
+    Result.AddPair('documentation', Documentation);
     Result.AddPair('documentationText', AInfo.Doc.ToPlainText);
   end
   else if AInfo.Documentation <> '' then
     Result.AddPair('documentationText', StripMarkdown(AInfo.Documentation));
+  // Begründungen als eigene Abschnitte hinter der XMLDoc (#1123), auch ohne XMLDoc.
+  if Length(AInfo.Rationale) > 0 then
+  begin
+    if Documentation = nil then
+    begin
+      Documentation := TJSONObject.Create;
+      Documentation.AddPair('sections', TJSONArray.Create);
+      Result.AddPair('documentation', Documentation);
+    end;
+    TLspRationale.AddSections(TJSONArray(Documentation.GetValue('sections')), AInfo.Rationale, AInfo.AdrFiles);
+  end;
   if AInfo.Value <> '' then
     Result.AddPair('value', AInfo.Value);
   if AInfo.Deprecation <> '' then
@@ -329,6 +377,30 @@ begin
       Ancestors.AddElement(TypeRefJson(Ancestor));
     Result.AddPair('ancestors', Ancestors);
   end;
+  if AInfo.ReassignedTarget <> '' then
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('target', AInfo.ReassignedTarget);
+    Item.AddPair('writes', TJSONNumber.Create(AInfo.ReassignedWrites));
+    Written := TJSONArray.Create;
+    for Line in AInfo.ReassignedLines do
+      Written.Add(Line);
+    Item.AddPair('lines', Written);
+    Result.AddPair('reassigned', Item);
+  end;
+end;
+
+class procedure TLspHover.AddReassigned(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+  AText: string; const APosition: TTextPosition; var AInfo: THoverInfo);
+var
+  Symbol: TReassignedSymbol;
+begin
+  if not TReassigned.SymbolAt(TLspReassigned.Analyze(AResolver, ATree, AFileName, AText), APosition, Symbol) or
+    not Symbol.IsReassigned then
+    Exit;
+  AInfo.ReassignedTarget := TReassigned.TargetNames[Symbol.Target];
+  AInfo.ReassignedWrites := Symbol.WriteCount;
+  AInfo.ReassignedLines := Symbol.WriteLines;
 end;
 
 function THoverInfo.Found: Boolean;
@@ -345,6 +417,8 @@ begin
     Result := Result + #10#10 + 'Wert: `' + Value + '`';
   if Documentation <> '' then
     Result := Result + #10#10 + Documentation;
+  if Length(Rationale) > 0 then
+    Result := Result + #10#10 + TLspRationale.ToMarkdown(Rationale);
   if UnitName <> '' then
     Result := Result + #10#10 + 'Unit `' + UnitName + '`';
   if DocWikiUrl <> '' then
@@ -372,6 +446,8 @@ begin
     Result := Result + #10#10 + Doc.ToPlainText
   else if Documentation <> '' then
     Result := Result + #10#10 + StripMarkdown(Documentation);
+  if Length(Rationale) > 0 then
+    Result := Result + #10#10 + TLspRationale.ToPlainText(Rationale);
   if UnitName <> '' then
     Result := Result + #10#10 + 'Unit ' + UnitName;
   if DocWikiUrl <> '' then
@@ -548,6 +624,7 @@ begin
     begin
       Result.Declaration := 'unit ' + OwnerUnit.UnitName + ';';
       Result.DocWikiUrl := TDocWiki.Url(ADelphiVersion, OwnerUnit.UnitName, '', '');
+      Result.Rationale := TRationale.DecodeAll(OwnerUnit.Rationale);
     end;
     Result.Documentation := '`' + Targets[0].FileName + '`';
     Exit;
@@ -600,6 +677,7 @@ begin
       if DocContainer = '' then
         DocContainer := Symbol.Name;
       Result.Kind := TLspHoverTypes.KindOf(Symbol.Kind, Result.Declaration);
+      Result.Rationale := TLspRationale.OfSymbol(OwnerUnit, Symbol);
       TypeSymbol := (Symbol.Container = '') and (Symbol.Kind in [TIndexSymbolKind.ClassType,
         TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType]);
       Result.DocWikiUrl := TDocWiki.Url(ADelphiVersion, OwnerUnit.UnitName, Symbol.Container, Symbol.Name);
@@ -732,6 +810,7 @@ var
   Watch: TStopwatch;
   Symbols: TConditionalContext;
   HasSymbol, HasDirective: Boolean;
+  Rationale: TRationaleOptions;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
@@ -819,6 +898,10 @@ begin
       Resolver.Namespaces := Namespaces;
       Info := InfoAt(Resolver, FIndex, Tree, Text, TDocumentUris.ToPath(Uri),
         TLspPositions.ReadPosition(PositionValue), FReadText, DelphiVersion);
+      // Wie oft der Name geschrieben wird, für die Unterstreichung im Plugin (#712).
+      if Info.Found then
+        AddReassigned(Resolver, Tree, TDocumentUris.ToPath(Uri), Text, TLspPositions.ReadPosition(PositionValue),
+          Info);
     finally
       Resolver.Free;
     end;
@@ -829,6 +912,14 @@ begin
       Info.PublishedItems := nil;
       Info.DefaultProperty := '';
     end;
+    // Begründungen nach hints.rationale, hints.rationaleMarkers und hints.adrFolder (#1123).
+    if Assigned(FRationaleFor) then
+      Rationale := FRationaleFor(Uri)
+    else
+      Rationale := TRationaleOptions.Default;
+    Info.Rationale := TLspRationale.Select(Info.Rationale, Rationale);
+    if Length(Info.Rationale) > 0 then
+      Info.AdrFiles := TLspRationale.AdrFiles(Rationale.AdrFolder);
     if not Info.Found then
     begin
       // Seltene Schlüsselwörter und Direktiven (#187), wenn kein Symbol so heißt.

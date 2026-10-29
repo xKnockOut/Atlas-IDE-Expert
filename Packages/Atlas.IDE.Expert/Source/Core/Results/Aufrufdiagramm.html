@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="generator" content="Atlas (#1122)">
+<title>Aufrufdiagramm: {{TITLE}}</title>
+<!-- Vorlage des Aufrufdiagramms als HTML (#1122), wie die Architekturkarte (#1118). Tools/Update-ArchitectureMap.ps1
+     bettet sie in Atlas.Core.Results.CallDiagramTemplate ein; das Plugin setzt Titel und Daten (JSON, Format 1)
+     ein. Keine externen Verweise: Die Seite läuft offline. Das Layout folgt TAtlasCallDiagram.Layout. -->
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #fff; --line: #d6d9e0; --fg: #1d2330; --muted: #5d6576; --edge: #8c94a3;
+  --accent: #2f6fb3; --box: #fff; --lib: #eef0f4; --back: #c2571a;
+  --sans: "Segoe UI", system-ui, -apple-system, sans-serif; --mono: Consolas, "Cascadia Mono", monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #15181e; --panel: #1e222a; --line: #3a4150; --fg: #e3e6ec; --muted: #9aa2b2; --edge: #6d7689;
+  --accent: #6aa6e6; --box: #252a33; --lib: #1b1f26; --back: #f0945a;
+  color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); padding: 20px 16px 40px; }
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 12px; }
+h1 { font-size: 22px; margin: 0; font-weight: 600; }
+.muted { color: var(--muted); font-size: 12.5px; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; font-size: 13px; }
+button { font: inherit; font-size: 13px; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 3px 8px; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.map { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; height: 640px; overflow: hidden; }
+@media (max-width: 880px) { .map { height: 460px; } }
+.map svg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; user-select: none; }
+.hint { position: absolute; left: 10px; bottom: 6px; font-size: 11.5px; color: var(--muted); pointer-events: none; }
+.box rect { fill: var(--box); stroke: var(--line); stroke-width: 1.2; }
+.box.lib rect { fill: var(--lib); }
+.box.open rect { stroke: var(--accent); }
+.box.sel rect { stroke: var(--fg); stroke-width: 2.5; }
+.box.root rect { stroke: var(--accent); stroke-width: 2; }
+.box text { fill: var(--fg); font-size: 12px; pointer-events: none; }
+.box text.loc { fill: var(--muted); font-size: 11px; font-family: var(--mono); }
+.box { cursor: pointer; }
+.more rect { fill: var(--panel); stroke: var(--line); stroke-dasharray: 4 3; }
+.more text { fill: var(--accent); font-size: 12px; pointer-events: none; }
+.link { stroke: var(--edge); stroke-width: 1.3; fill: none; }
+.link.dash { stroke-dasharray: 5 4; }
+.link.back { stroke: var(--back); stroke-width: 1.5; }
+.lbl { fill: var(--muted); font-size: 10.5px; paint-order: stroke; stroke: var(--panel); stroke-width: 3px; }
+#status { font-family: var(--mono); font-size: 12.5px; min-height: 1.4em; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title"></h1>
+    <div class="muted" id="sub"></div>
+  </header>
+  <div class="bar">
+    <label><input id="project" type="checkbox"> nur Projekt-Units</label>
+    <button id="fit" type="button">Einpassen</button>
+    <button id="all" type="button">Alle geladenen Ebenen aufklappen</button>
+    <span class="muted">Gestrichelt: Aufruf über Interface oder virtuelle Methode (Zahl der Umsetzungen); Bogen zurück: Rekursion.</span>
+  </div>
+  <div class="map">
+    <svg id="svg" role="img" aria-label="Aufrufdiagramm"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--edge)"/></marker><marker id="arrowBack" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--back)"/></marker></defs><g id="view"><g id="links"></g><g id="boxes"></g></g></svg>
+    <div class="hint">Ziehen verschiebt, Mausrad zoomt · Klick klappt auf und zu · Doppelklick zeigt die Fundstelle</div>
+  </div>
+  <div id="status" class="muted"></div>
+</div>
+<script id="atlas-data" type="application/json">{{DATA}}</script>
+<script>
+(function () {
+  'use strict';
+  var D = JSON.parse(document.getElementById('atlas-data').textContent);
+  var N = D.nodes, NS = 'http://www.w3.org/2000/svg';
+  var COL = 250, BW = 200, ROW = 56, BH = 42, MAX = D.maxChildren || 8;
+  var projectOnly = !!D.projectOnly, selected = -1;
+  var view = { s: 1, x: 16, y: 16 };
+  var byId = {};
+  N.forEach(function (n) { byId[n.id] = n; n.children = []; n.showAll = !!n.showAll; });
+  N.forEach(function (n) { if (n.parent >= 0 && byId[n.parent]) byId[n.parent].children.push(n.id); });
+
+  document.getElementById('title').textContent = D.title;
+  document.getElementById('sub').textContent = (D.direction === 'incoming' ? 'Aufrufer' : 'Aufgerufene') +
+    ' · ' + N.length + ' geladene Einträge';
+  var projectBox = document.getElementById('project');
+  projectBox.checked = projectOnly;
+
+  function visibleChildren(n) {
+    var all = [];
+    if (!n.expanded) return { list: all, more: 0 };
+    n.children.forEach(function (id) {
+      var c = byId[id];
+      if (c.backTo >= 0) return;
+      if (projectOnly && c.library) return;
+      all.push(c);
+    });
+    if (n.showAll || all.length <= MAX) return { list: all, more: 0 };
+    return { list: all.slice(0, MAX), more: all.length - MAX };
+  }
+
+  function layout() {
+    var boxes = [], edges = [], row = 0, boxOf = {};
+    function add(kind, node, col, r, hidden) {
+      boxes.push({ kind: kind, node: node, col: col, row: r, hidden: hidden });
+      if (kind === 'call') boxOf[node.id] = boxes.length - 1;
+      return boxes.length - 1;
+    }
+    function place(n) {
+      var v = visibleChildren(n), own, first = -1, last = -1;
+      if (!v.list.length && !v.more) { own = add('call', n, n.level, row, 0); row++; return own; }
+      own = add('call', n, n.level, 0, 0);
+      v.list.forEach(function (c) {
+        var b = place(c);
+        if (first < 0) first = b;
+        last = b;
+        edges.push({ from: own, to: b, node: c, back: false });
+      });
+      if (v.more) {
+        var m = add('more', n, n.level + 1, row, v.more); row++;
+        if (first < 0) first = m;
+        last = m;
+        edges.push({ from: own, to: m, node: null, back: false });
+      }
+      boxes[own].row = (boxes[first].row + boxes[last].row) / 2;
+      return own;
+    }
+    N.forEach(function (n) { if (n.parent < 0) place(n); });
+    // Rekursion: Bogen vom Knoten zurück zum Vorfahren, wenn beide zu sehen sind.
+    N.forEach(function (n) {
+      if (n.backTo < 0 || !byId[n.parent] || !byId[n.parent].expanded) return;
+      if (boxOf[n.parent] === undefined || boxOf[n.backTo] === undefined) return;
+      edges.push({ from: boxOf[n.parent], to: boxOf[n.backTo], node: n, back: true });
+    });
+    return { boxes: boxes, edges: edges, rows: row };
+  }
+
+  function el(name, attrs, parent) {
+    var e = document.createElementNS(NS, name);
+    Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function clip(text, max) { return text.length > max ? text.slice(0, max - 1) + '…' : text; }
+
+  var L;
+  function render() {
+    L = layout();
+    var links = document.getElementById('links'), boxesG = document.getElementById('boxes');
+    links.textContent = '';
+    boxesG.textContent = '';
+    L.edges.forEach(function (e) {
+      var a = L.boxes[e.from], b = L.boxes[e.to];
+      var x1 = a.col * COL + BW, y1 = a.row * ROW + BH / 2, x2 = b.col * COL, y2 = b.row * ROW + BH / 2, d, cls = 'link';
+      if (e.back) {
+        // Bogen über beide Kästen zurück zum Vorfahren.
+        var top = Math.min(a.row, b.row) * ROW - 14;
+        x1 = a.col * COL + BW / 2; y1 = a.row * ROW; x2 = b.col * COL + BW / 2; y2 = b.row * ROW;
+        d = 'M' + x1 + ',' + y1 + ' C' + x1 + ',' + top + ' ' + x2 + ',' + top + ' ' + x2 + ',' + y2;
+        cls += ' back';
+      } else {
+        var mid = (x1 + x2) / 2;
+        d = 'M' + x1 + ',' + y1 + ' C' + mid + ',' + y1 + ' ' + mid + ',' + y2 + ' ' + x2 + ',' + y2;
+      }
+      var dashed = e.node && (e.node.dispatch || e.node.inferredReason === 'interface' || e.node.inferredReason === 'virtual');
+      if (dashed) cls += ' dash';
+      el('path', { d: d, 'class': cls, 'marker-end': e.back ? 'url(#arrowBack)' : 'url(#arrow)' }, links);
+      if (dashed && e.node.implementations > 0 && !e.back) {
+        var t = el('text', { x: x2 - 6, y: y2 - 5, 'text-anchor': 'end', 'class': 'lbl' }, links);
+        t.textContent = e.node.implementations === 1 ? '1 Umsetzung' : e.node.implementations + ' Umsetzungen';
+      }
+    });
+    L.boxes.forEach(function (b, i) {
+      var x = b.col * COL, y = b.row * ROW, g;
+      if (b.kind === 'more') {
+        g = el('g', { 'class': 'more box', 'data-i': i }, boxesG);
+        el('rect', { x: x, y: y, width: BW, height: BH, rx: 4 }, g);
+        var mt = el('text', { x: x + 10, y: y + BH / 2 + 4 }, g);
+        mt.textContent = '+ ' + b.hidden + ' …';
+        return;
+      }
+      var n = b.node, cls = 'box';
+      if (n.library) cls += ' lib';
+      if (n.parent < 0) cls += ' root';
+      if (n.expanded && n.children.length) cls += ' open';
+      if (n.id === selected) cls += ' sel';
+      g = el('g', { 'class': cls, 'data-i': i }, boxesG);
+      el('rect', { x: x, y: y, width: BW, height: BH, rx: 4 }, g);
+      var t1 = el('text', { x: x + 8, y: y + 17 }, g);
+      t1.textContent = clip((n.inferred ? '≈ ' : '') + n.name, 30);
+      var t2 = el('text', { x: x + 8, y: y + 33, 'class': 'loc' }, g);
+      t2.textContent = clip(n.location, 32) + (n.children.length && !n.expanded ? '  ▸' : '');
+      var tip = el('title', {}, g);
+      tip.textContent = n.name + (n.location ? ' (' + n.location + ')' : '') + (n.reason ? ' · ' + n.reason : '');
+    });
+    apply();
+  }
+
+  function apply() {
+    document.getElementById('view').setAttribute('transform', 'translate(' + view.x + ',' + view.y + ') scale(' + view.s + ')');
+  }
+  function fit() {
+    var svg = document.getElementById('svg'), w = svg.clientWidth || 800, h = svg.clientHeight || 600;
+    var cols = 1;
+    L.boxes.forEach(function (b) { cols = Math.max(cols, b.col + 1); });
+    var width = cols * COL - (COL - BW), height = Math.max(1, L.rows) * ROW - (ROW - BH);
+    view.s = Math.max(0.2, Math.min(1, (w - 32) / width, (h - 32) / height));
+    view.x = 16;
+    view.y = Math.max(16, (h - height * view.s) / 2);
+    apply();
+  }
+
+  function boxIndex(target) {
+    while (target && target.getAttribute && target.getAttribute('data-i') === null) target = target.parentNode;
+    return target && target.getAttribute ? parseInt(target.getAttribute('data-i'), 10) : -1;
+  }
+
+  var svg = document.getElementById('svg'), drag = null, moved = false;
+  svg.addEventListener('pointerdown', function (e) { drag = { x: e.clientX, y: e.clientY }; moved = false; });
+  svg.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    if (!moved && Math.abs(e.clientX - drag.x) + Math.abs(e.clientY - drag.y) < 4) return;
+    moved = true;
+    view.x += e.clientX - drag.x; view.y += e.clientY - drag.y;
+    drag = { x: e.clientX, y: e.clientY };
+    apply();
+  });
+  svg.addEventListener('pointerup', function (e) {
+    var was = drag; drag = null;
+    if (!was || moved) return;
+    var i = boxIndex(e.target);
+    if (i < 0) return;
+    var b = L.boxes[i];
+    if (b.kind === 'more') { b.node.showAll = true; render(); return; }
+    selected = b.node.id;
+    if (b.node.children.length) b.node.expanded = !b.node.expanded;
+    render();
+  });
+  svg.addEventListener('dblclick', function (e) {
+    var i = boxIndex(e.target);
+    if (i < 0 || L.boxes[i].kind !== 'call') return;
+    var n = L.boxes[i].node;
+    document.getElementById('status').textContent = n.name + ' · ' + (n.file || '') + (n.file ? ':' + n.line : '');
+  });
+  svg.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    var r = svg.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
+    var f = e.deltaY < 0 ? 1.15 : 1 / 1.15, s = Math.max(0.2, Math.min(4, view.s * f));
+    view.x = px - (px - view.x) * s / view.s; view.y = py - (py - view.y) * s / view.s; view.s = s;
+    apply();
+  }, { passive: false });
+  projectBox.addEventListener('change', function () { projectOnly = projectBox.checked; render(); fit(); });
+  document.getElementById('fit').addEventListener('click', fit);
+  document.getElementById('all').addEventListener('click', function () {
+    N.forEach(function (n) { if (n.children.length && n.backTo < 0) n.expanded = true; });
+    render(); fit();
+  });
+  render();
+  fit();
+})();
+</script>
+</body>
+</html>

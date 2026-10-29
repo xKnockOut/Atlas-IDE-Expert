@@ -5,12 +5,17 @@
 // „Weiterarbeiten“ (#755) zeigen in der Zeile unter der Maus bzw. in der mit
 // der Tastatur gewählten Zeile eine Knopfleiste statt der Marken:
 //   [Öffnen und bauen ▾] [Tests] [Startprofil ▾] [Pull] [Ordner] [Konsole]
+//   [Aufgaben ▾]
 // rechtsbündig, bei wenig Platz in zwei Zeilen (die Zeilenhöhe bleibt).
+// - „Aufgaben ▾“ (#900) öffnet die Projektaufgaben aus atlas.json; der Stand
+//   zeigt die gestartete Aufgabe mit ihrem Ergebnis.
 // - „Öffnen und bauen“ baut mit der zuletzt benutzten Konfiguration und
 //   Plattform; der Teil ▾ öffnet die Auswahl. „Startprofil ▾“ öffnet die
 //   Profile. „Tests“ fragt bei mehreren Testprojekten nach dem Testprojekt.
 // - Gesperrter Pull zeigt im Tooltip den Grund („Erst lokale Änderungen
-//   sichern“). Während eine Aktion läuft, zeigt ihr Knopf „baut … 12 s“,
+//   sichern“). Mit vcs.externals.update = ask (#1292) heißt er
+//   „Aktualisieren ▾“ und fragt „mit Externals“/„ohne Externals“, im
+//   Kontextmenü als Untermenü. Während eine Aktion läuft, zeigt ihr Knopf „baut … 12 s“,
 //   außerhalb der Leiste steht der Stand als Marke (Text, Farbe: StateText,
 //   StateColor).
 // - Tastatur über ein unsichtbares Steuerelement (TAtlasQuickKeySink), das
@@ -65,6 +70,12 @@ type
     function Profiles(const AProject: string; out AActive: string): TArray<string>;
     /// <summary>Öffnen und mit AProfile starten ('' = ohne Startprofil).</summary>
     procedure Run(const AProject, AProfile: string);
+    /// <summary>Namen der Projektaufgaben von AProject (#900) in der Reihenfolge der atlas.json.</summary>
+    function TaskNames(const AProject: string): TArray<string>;
+    /// <summary>Projektaufgabe AName von AProject im Hintergrund starten.</summary>
+    procedure RunTask(const AProject, AName: string);
+    /// <summary>Aktualisieren mit bzw. ohne Externals (#1292, Auswahl bei vcs.externals.update = ask).</summary>
+    procedure Pull(const AProject: string; AIgnoreExternals: Boolean);
     /// <summary>Strg+B bzw. Strg+T als TShortCut; 0 = keine Taste.</summary>
     function BuildKey: Integer;
     function TestKey: Integer;
@@ -110,7 +121,7 @@ type
     MenuPart = 16;
     TickMs = 1000;
   private type
-    TChoiceKind = (Target, Profile, TestProject);
+    TChoiceKind = (Target, Profile, TestProject, Task, Update);
     TChoice = record
       Kind: TChoiceKind;
       Project: string;
@@ -143,6 +154,7 @@ type
     FContextActions: TArray<TAtlasQuickAction>;
     FBuildWithItem: TMenuItem;
     FRunWithItem: TMenuItem;
+    FTasksItem: TMenuItem;
     FContextSeparator: TMenuItem;
     FContextRow: Integer;
     procedure SetSource(const AValue: IAtlasQuickActionsSource);
@@ -160,6 +172,8 @@ type
     procedure FillTargets(AParent: TMenuItem; const AProject: string);
     procedure FillProfiles(AParent: TMenuItem; const AProject: string);
     procedure FillTestProjects(AParent: TMenuItem; const AProject: string; const ACandidates: TArray<string>);
+    procedure FillTasks(AParent: TMenuItem; const AProject: string);
+    procedure FillUpdate(AParent: TMenuItem; const AProject: string);
     procedure PopupAt(ARow, AIndex: Integer);
     procedure UpdateTimer;
   public
@@ -198,7 +212,7 @@ type
     /// <summary>Taste wie in der Tastatur des Bereichs gedrückt.</summary>
     function HandleKey(AKey: Word; AShift: TShiftState): Boolean;
     /// <summary>Auswahl zu Knopf AIndex der Zeile ARow füllen (Konfiguration × Plattform, Startprofile bzw.
-    /// Testprojekte) in AParent; False, wenn es keine Auswahl gibt.</summary>
+    /// Testprojekte bzw. Projektaufgaben) in AParent; False, wenn es keine Auswahl gibt.</summary>
     function FillChoices(AParent: TMenuItem; ARow, AIndex: Integer): Boolean;
     /// <summary>Einträge der Schnellaktionen unten an AMenu anhängen (Kontextmenü eines Bereichs).</summary>
     procedure AttachMenu(AMenu: TPopupMenu);
@@ -782,9 +796,9 @@ begin
         PopupAt(ARow, AIndex);
         Exit;
       end;
-    TAtlasQuickAction.Run:
+    TAtlasQuickAction.Run, TAtlasQuickAction.Tasks:
       begin
-        // „Startprofil ▾“ fragt immer nach dem Profil.
+        // „Startprofil ▾“ fragt immer nach dem Profil, „Aufgaben ▾“ nach der Aufgabe.
         PopupAt(ARow, AIndex);
         Exit;
       end;
@@ -796,6 +810,13 @@ begin
           PopupAt(ARow, AIndex);
           Exit;
         end;
+      end;
+    TAtlasQuickAction.Pull:
+      // vcs.externals.update = ask (#1292): erst „mit Externals“ oder „ohne Externals“ wählen.
+      if Button.AskExternals then
+      begin
+        PopupAt(ARow, AIndex);
+        Exit;
       end;
   else
     // Übrige Werte bewusst ohne Wirkung.
@@ -913,6 +934,34 @@ begin
   end;
 end;
 
+procedure TAtlasQuickActionsBar.FillTasks(AParent: TMenuItem; const AProject: string);
+var
+  Name: string;
+  Choice: TChoice;
+begin
+  Choice := Default(TChoice);
+  Choice.Kind := TChoiceKind.Task;
+  Choice.Project := AProject;
+  for Name in FSource.TaskNames(AProject) do
+  begin
+    Choice.A := Name;
+    AddChoice(AParent, Name, Choice, False);
+  end;
+end;
+
+procedure TAtlasQuickActionsBar.FillUpdate(AParent: TMenuItem; const AProject: string);
+var
+  Choice: TChoice;
+begin
+  Choice := Default(TChoice);
+  Choice.Kind := TChoiceKind.Update;
+  Choice.Project := AProject;
+  Choice.A := 'with';
+  AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdateWithExternals), Choice, True);
+  Choice.A := 'without';
+  AddChoice(AParent, TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdateWithoutExternals), Choice, False);
+end;
+
 procedure TAtlasQuickActionsBar.AddTitle(AParent: TMenuItem; ATextId: TAtlasTextId);
 var
   Item: TMenuItem;
@@ -962,6 +1011,20 @@ begin
         AddTitle(AParent, TAtlasTextId.WelcomeQuickTestsChoose);
         FillTestProjects(AParent, mName, Candidates);
       end;
+    TAtlasQuickAction.Tasks:
+      begin
+        if Length(FSource.TaskNames(mName)) = 0 then
+          Exit;
+        AddTitle(AParent, TAtlasTextId.WelcomeQuickTasksTitle);
+        FillTasks(AParent, mName);
+      end;
+    TAtlasQuickAction.Pull:
+      begin
+        if not Buttons[AIndex].AskExternals then
+          Exit;
+        AddTitle(AParent, TAtlasTextId.WelcomeQuickUpdate);
+        FillUpdate(AParent, mName);
+      end;
   else
     Exit;
   end;
@@ -987,6 +1050,10 @@ begin
           mSource.Build(Choice.Project, Choice.A, Choice.B);
         TChoiceKind.Profile:
           mSource.Run(Choice.Project, Choice.A);
+        TChoiceKind.Task:
+          mSource.RunTask(Choice.Project, Choice.A);
+        TChoiceKind.Update:
+          mSource.Pull(Choice.Project, Choice.A = 'without');
       else
         mSource.RunTests(Choice.Project, Choice.A);
       end;
@@ -1020,6 +1087,9 @@ begin
   AMenu.Items.Add(FRunWithItem);
   Add(AMenu.Items, TAtlasQuickAction.Pull, TAtlasTextId.WelcomeQuickPull);
   Add(AMenu.Items, TAtlasQuickAction.Console, TAtlasTextId.WelcomeQuickMenuConsole);
+  FTasksItem := TMenuItem.Create(AMenu);
+  FTasksItem.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickMenuTasks);
+  AMenu.Items.Add(FTasksItem);
 end;
 
 procedure TAtlasQuickActionsBar.PrepareMenu(ARow: Integer);
@@ -1040,10 +1110,17 @@ begin
     Item.Visible := Found >= 0;
     Item.Enabled := (Found >= 0) and Buttons[Found].Enabled;
     if (Found >= 0) and (FContextActions[Index] = TAtlasQuickAction.Pull) then
+    begin
       if Buttons[Found].Update then
         Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdate)
       else
         Item.Caption := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
+      // Untermenü „mit Externals“/„ohne Externals“ (#1292); ohne Auswahl ein einfacher Eintrag.
+      if not (Buttons[Found].Enabled and Buttons[Found].AskExternals and FillChoices(Item, ARow, Found)) then
+        Item.Clear;
+    end
+    else if FContextActions[Index] = TAtlasQuickAction.Pull then
+      Item.Clear;
     Any := Any or Item.Visible;
   end;
   // Untermenüs „Bauen mit“ und „Starten mit“ mit der Auswahl der Zeile.
@@ -1058,6 +1135,14 @@ begin
     Found := TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Run);
     FRunWithItem.Visible := (Found >= 0) and FillChoices(FRunWithItem, ARow, Found);
     FRunWithItem.Enabled := FRunWithItem.Visible;
+  end;
+  // Untermenü „Aufgabe ausführen“ mit den Projektaufgaben (#900).
+  if FTasksItem <> nil then
+  begin
+    Found := TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Tasks);
+    FTasksItem.Visible := (Found >= 0) and FillChoices(FTasksItem, ARow, Found);
+    FTasksItem.Enabled := FTasksItem.Visible;
+    Any := Any or FTasksItem.Visible;
   end;
   if FContextSeparator <> nil then
     FContextSeparator.Visible := Any;
@@ -1216,12 +1301,18 @@ begin
     TAtlasQuickAction.Run:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickRun);
     TAtlasQuickAction.Pull:
-      if AButton.Update then
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdate)
-      else
-        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
+      begin
+        if AButton.Update then
+          Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickUpdate)
+        else
+          Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPull);
+        if AButton.AskExternals then
+          Result := Result + ' ' + MenuArrow;
+      end;
     TAtlasQuickAction.Folder:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickFolder);
+    TAtlasQuickAction.Tasks:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTasks);
   else
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickConsole);
   end;
@@ -1248,6 +1339,8 @@ begin
           Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickUpdating, [Seconds])
         else
           Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickPulling, [Seconds]);
+      TAtlasQuickAction.Tasks:
+        Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickTasking, [Seconds]);
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
@@ -1291,6 +1384,12 @@ begin
     TAtlasQuickAction.Console:
       if AState.Phase <> TAtlasQuickActionPhase.Succeeded then
         Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickConsoleFailed);
+    TAtlasQuickAction.Tasks:
+      // Fertig: Aufgabe und Ergebnis als Text der IDE-Schicht („Delphi-12-Prüfung: 2 Fehler 14:03“).
+      if (AState.Phase = TAtlasQuickActionPhase.Refused) or (AState.Detail = '') then
+        Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickTasksRefused)
+      else
+        Result := AState.Detail;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -1347,6 +1446,8 @@ begin
         Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintPull);
     TAtlasQuickAction.Folder:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintFolder);
+    TAtlasQuickAction.Tasks:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickHintTasks);
   else
     Result := TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickHintConsole,
       [TAtlasWelcomeQuickActions.NormalizedConsole(AConsole)]);

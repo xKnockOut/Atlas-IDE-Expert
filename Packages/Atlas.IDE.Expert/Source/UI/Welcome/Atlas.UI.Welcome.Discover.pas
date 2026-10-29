@@ -32,8 +32,8 @@
 interface
 
 uses
-  // Vor Vcl.Graphics: sonst verdeckt Winapi.Windows.TBitmap die VCL-Klasse.
   Winapi.Windows,
+  // Vor Vcl.Graphics: sonst verdeckt Winapi.Windows.TBitmap die VCL-Klasse.
   System.SysUtils,
   System.Classes,
   Vcl.Controls,

@@ -871,7 +871,7 @@ begin
   // for var V in …: das Wort hinter for ist var.
   Tokens := AFile.Tree.Tokens;
   Seen := 0;
-  for Index := 0 to High(Tokens) do
+  for Index := TSyntaxTree.FirstTokenOf(Tokens, ALoop.StartOffset) to High(Tokens) do
   begin
     if Tokens[Index].Offset < ALoop.StartOffset then
       Continue;
@@ -1155,7 +1155,7 @@ begin
   // Wort hinter read bzw. write aus den Token der Property; '' ohne.
   Result := '';
   Tokens := AFile.Tree.Tokens;
-  for Index := 0 to High(Tokens) - 1 do
+  for Index := TSyntaxTree.FirstTokenOf(Tokens, AProperty.StartOffset) to High(Tokens) - 1 do
   begin
     if (Tokens[Index].Offset < AProperty.StartOffset) or (Tokens[Index].Offset >= AProperty.EndOffset) then
       Continue;
@@ -1288,7 +1288,7 @@ var
 begin
   Result := '';
   Tokens := ATree.Tokens;
-  for Index := 0 to High(Tokens) - 1 do
+  for Index := TSyntaxTree.FirstTokenOf(Tokens, ANode.StartOffset) to High(Tokens) - 1 do
     if (Tokens[Index].Offset >= ANode.StartOffset) and (Tokens[Index].Offset < ANode.EndOffset) and
       (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AWord) and
       (Tokens[Index + 1].Kind = TPascalTokenKind.Identifier) then

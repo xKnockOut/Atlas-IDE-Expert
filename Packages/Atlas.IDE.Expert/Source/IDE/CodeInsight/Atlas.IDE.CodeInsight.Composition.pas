@@ -21,6 +21,9 @@ procedure Register;
 implementation
 
 uses
+  // Vorn, damit die folgenden Units gleichnamige Bezeichner aus Vcl.Menus verdecken; gebraucht wird nur TMenuItem
+  // (#900).
+  Vcl.Menus,
   Winapi.Windows,
   Winapi.ShellAPI,
   System.SysUtils,
@@ -64,6 +67,8 @@ uses
   Atlas.IDE.Build.Runner,
   Atlas.IDE.Build.Inbox,
   Atlas.IDE.Build.ReleaseGuard,
+  Atlas.IDE.Build.Gate,
+  Atlas.IDE.Build.Summary,
   Atlas.IDE.Build.OpenBuild,
   Atlas.IDE.Editor.UnitRename,
   Atlas.IDE.Settings.Project,
@@ -71,13 +76,19 @@ uses
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Editor.DfmPropertyRules,
   Atlas.Core.Results.Model,
+  Atlas.Core.Lsp.DataFlow,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.Results.Impact,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.Editor.NavHistory,
   Atlas.IDE.Results.Peek,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
+  Atlas.IDE.Architecture.Service,
+  Atlas.IDE.UnitRelations.Service,
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.SymbolPath.Service,
   Atlas.IDE.Outline.Breadcrumbs,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.UI.EditorToolbar.Customize,
@@ -91,6 +102,8 @@ uses
   Atlas.Core.Editor.NewLine,
   Atlas.IDE.Editor.NewLine,
   Atlas.IDE.Editor.Unwrap,
+  Atlas.IDE.Editor.ExpressionType,
+  Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.WrapSelection,
   Atlas.IDE.Editor.CommentContinuation,
   Atlas.IDE.Editor.PatternContinuation,
@@ -154,9 +167,16 @@ uses
   Atlas.Core.Ci.Adapters.Http,
   Atlas.Core.Ci.Adapters.Credentials,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.IDE.Welcome.Issues,
+  Atlas.IDE.Welcome.NewIssue,
+  Atlas.Core.Tracker.NewIssue,
+  Atlas.Core.Problems.Findings,
+  Atlas.IDE.Tracker.IssuePreview,
+  Atlas.IDE.Tracker.CodeLinks,
+  Atlas.IDE.Tracker.BlameLinks,
   Atlas.UI.Welcome.TestResults,
   Atlas.UI.Welcome.Projects,
   Atlas.Core.Editor.Metrics,
@@ -172,6 +192,8 @@ uses
   Atlas.IDE.Welcome.Setup,
   Atlas.IDE.Welcome.Commands,
   Atlas.IDE.Welcome.Layouts,
+  Atlas.IDE.Vcs.Branching,
+  Atlas.IDE.Vcs.WorkingCopies,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Notes.Gutter,
@@ -182,17 +204,38 @@ uses
   Atlas.Core.Editor.Overview,
   Atlas.IDE.Bookmarks.QuickChord,
   Atlas.IDE.Editor.SelectionMatches,
+  Atlas.IDE.Editor.ExitPoints,
+  Atlas.IDE.Editor.Reassigned,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Bookmarks.Gutter,
+  Atlas.IDE.Debug.Exceptions,
+  Atlas.IDE.Debug.OwnCode,
+  Atlas.IDE.Debug.ExceptionBar,
+  Atlas.IDE.Debug.InlineValues,
+  Atlas.IDE.Debug.Unavailable,
+  Atlas.IDE.Debug.DialogCompletion,
+  Atlas.IDE.Debug.Evaluate,
+  Atlas.IDE.Debug.AccessViolation,
+  Atlas.Core.Completion.Contract,
+  Atlas.Core.Completion.Providers.Expression,
+  Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.TeamFile,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Editor.Hide,
   Atlas.IDE.StartProfiles.Service,
+  Atlas.IDE.Debug.Visualizers,
+  Atlas.IDE.Debug.DisplayRules,
+  Atlas.IDE.Debug.StepInto,
+  Atlas.IDE.Debug.EventBreak,
+  Atlas.IDE.Debug.Trace,
+  Atlas.IDE.Debug.StepFilter,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Hover.Editor,
+  Atlas.IDE.Hover.DebugValue,
+  Atlas.Core.Hover.DebugValue,
   Atlas.Core.Lsp.TextChanges,
   Atlas.IDE.Completion.Editor,
   Atlas.Core.Undo.Contract,
@@ -217,6 +260,8 @@ uses
   Atlas.Core.Diagnostics.Teardown,
   Atlas.Core.Build.Inbox,
   Atlas.Core.Build.ReleaseGuard,
+  Atlas.Core.Build.Gate,
+  Atlas.Core.Build.Verdict,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.InlineHints,
   Atlas.Core.Projects.Summary,
@@ -225,6 +270,10 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.MessageList,
   Atlas.IDE.Tests.Runner,
+  Atlas.IDE.Tasks.Runner,
+  Atlas.Core.Tasks.Definitions,
+  Atlas.Core.Tasks.Runs,
+  Atlas.Core.Tasks.Adapters.Process,
   Atlas.IDE.Tests.Debug,
   Atlas.IDE.Tests.Lens;
 
@@ -247,6 +296,10 @@ var
   QuickColumn: TAtlasIdeQuickColumn;
   // Gleichen Text wie die Markierung hervorheben (#709).
   SelectionMatches: TAtlasIdeSelectionMatches;
+  // Issue-Kennungen im Code (#1265), über „Meine Issues“.
+  IssueLinks: TAtlasIdeCodeLinks;
+  // Issues in der Zeilenhistorie (#1275), über „Meine Issues“ und die Zeilenhistorie.
+  BlameIssues: TAtlasIdeBlameLinks;
   // Ungespeicherte Dateien für schreibende MCP-Werkzeuge (#61).
   DirtyExport: TAtlasDirtyExport;
   // Schreibende MCP-Werkzeuge ändern offene Dateien über das Plugin (#397).
@@ -254,6 +307,8 @@ var
   CheckOnSave: TAtlasIdeCheckOnSave;
   // Bauen auf Auftrag über IOTAProjectBuilder (#261), z. B. für Claude Code; lebt mit den Compile-Ereignissen.
   BuildRunner: TAtlasIdeBuildRunner;
+  // Zusammenfassung und letzte Meldungen je Projekt (#530); lebt mit den Compile-Ereignissen.
+  BuildSummary: TAtlasIdeBuildSummary;
   // Eingang des MCP-Werkzeugs build_project (#261), abschaltbar über McpBuild.
   BuildInbox: TAtlasIdeBuildInbox;
   // Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen); lebt mit den
@@ -265,6 +320,8 @@ var
   // Einzelnen Test ausführen bzw. im Debugger starten (#585), lebt mit Tests; abschaltbar über TestDebug.
   TestDebugger: TAtlasIdeTestDebugger;
   TestsLens: TAtlasIdeTestsLens;
+  // Projektaufgaben aus atlas.json (#900), abschaltbar über tasks.enabled.
+  ProjectTasks: TAtlasIdeTasks;
   // Hauptmenü Atlas mit Schnellschaltern und Einstellungen (#227).
   MainMenu: TAtlasMainMenu;
   // Tastenkürzel der Editorbefehle (#399).
@@ -796,6 +853,55 @@ begin
     GuardWarning(Reason);
 end;
 
+/// <summary>Antwort von atlas.baselineCompilerMessages (#530) in der Meldungsansicht.</summary>
+procedure ReportCompilerBaseline(AAnswer: TJSONValue);
+var
+  Added: TAtlasCompilerBaselineAdd;
+begin
+  if not TAtlasCompilerBaselineAdd.FromServer(AAnswer, Added) then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CompilerBaselineFailed));
+    Exit;
+  end;
+  MessageLine(TAtlasStrings.Fmt(TAtlasTextId.CompilerBaselineDone, [Added.FileName, Added.Total, Added.Added,
+    Added.Removed, Added.Unchanged]));
+  if Added.Skipped > 0 then
+    MessageLine(TAtlasStrings.Fmt(TAtlasTextId.CompilerBaselineSkipped, [Added.Skipped]));
+end;
+
+/// <summary>„Aktuelle Compilermeldungen in die Basislinie“ (#530): Warnungen und Hinweise des letzten Builds des
+/// aktiven Projekts über den Server in atlas-baseline.json; danach zählen nur neue Meldungen. Gehört zur Baseline
+/// (#97) und ist mit ihr abschaltbar (BaselineUpdate).</summary>
+procedure AddCompilerMessagesToBaseline;
+var
+  Project: IOTAProject;
+  Messages: TArray<TAtlasCompilerMessage>;
+begin
+  if (Manager = nil) or (BuildSummary = nil) or not TAtlasIdeSettings.Current.BaselineUpdate then
+    Exit;
+  Project := GetActiveProject;
+  if (Project = nil) or (Project.FileName = '') then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CompilerBaselineNoProject));
+    Exit;
+  end;
+  Messages := BuildSummary.Baselinable(Project.FileName);
+  if Length(Messages) = 0 then
+  begin
+    GuardWarning(TAtlasStrings.Fmt(TAtlasTextId.CompilerBaselineNone, [ExtractFileName(Project.FileName)]));
+    Exit;
+  end;
+  // Startet den Server bei Bedarf; der Befehl selbst läuft im Hintergrund.
+  if Manager.ActiveSession = nil then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.CompilerBaselineFailed));
+    Exit;
+  end;
+  Manager.RunServerCommandAsync(TAtlasBuildVerdicts.AddCommand,
+    TAtlasBuildVerdicts.Arguments(TLspSession.PathToUri(Project.FileName), Messages),
+    TAtlasBuildVerdicts.AddTimeoutMs, ReportCompilerBaseline);
+end;
+
 var
   /// <summary>Letzter Filter der TODO-Liste (#68) in dieser Sitzung; Vorgabe für den Filterdialog.</summary>
   TodoFilter: TAtlasTodoFilter;
@@ -950,6 +1056,31 @@ begin
   Result := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
 end;
 
+function CompilerSwitchesVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.BuildCompilerSwitches;
+end;
+
+function DebugExceptionsVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugExceptionHistory;
+end;
+
+function DebugEvaluateVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugEvaluateWindow;
+end;
+
+function DataFlowVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DataFlow;
+end;
+
+function DebugExceptionBarVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.DebugExceptionHistory and TAtlasIdeSettings.Current.DebugExceptionBanner;
+end;
+
 function ProblemsWindowVisible: Boolean;
 begin
   Result := TAtlasIdeProblems.Enabled;
@@ -965,6 +1096,11 @@ begin
   Result := TAtlasIdeSettings.Current.NavHistory;
 end;
 
+function ImpactVisible: Boolean;
+begin
+  Result := TAtlasIdeImpact.Enabled;
+end;
+
 function PeekVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.Peek;
@@ -973,6 +1109,21 @@ end;
 function OutlineVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.Outline;
+end;
+
+function ArchitectureVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.ArchitectureEnabled;
+end;
+
+function UnitRelationsVisible: Boolean;
+begin
+  Result := TAtlasIdeUnitRelations.Enabled;
+end;
+
+function SymbolPathVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.SymbolPath;
 end;
 
 function JumpToMatchVisible: Boolean;
@@ -1080,6 +1231,64 @@ begin
   TAtlasIdeUnwrap.Run;
 end;
 
+function StepIntoTargetVisible: Boolean;
+begin
+  Result := TAtlasIdeStepInto.Enabled;
+end;
+
+procedure StepIntoTarget;
+begin
+  TAtlasIdeStepInto.Run;
+end;
+
+function BreakOnNextEventVisible: Boolean;
+begin
+  Result := TAtlasIdeEventBreak.Enabled;
+end;
+
+procedure BreakOnNextEvent;
+begin
+  TAtlasIdeEventBreak.Run;
+end;
+
+function StepFilterRunning: Boolean;
+begin
+  Result := TAtlasIdeDebugStepFilter.Started;
+end;
+
+function ExpressionTypeVisible: Boolean;
+begin
+  Result := TAtlasIdeExpressionType.Enabled;
+end;
+
+procedure ShowExpressionType;
+begin
+  TAtlasIdeExpressionType.Run;
+end;
+
+function MethodOrderVisible: Boolean;
+begin
+  Result := TAtlasIdeMethodPlacement.Enabled;
+end;
+
+procedure ArrangeMethods;
+begin
+  TAtlasIdeMethodPlacement.Run;
+end;
+
+function SafeDeleteVisible: Boolean;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  Result := Settings.Enabled and Settings.SafeDelete;
+end;
+
+procedure SafeDelete;
+begin
+  TAtlasIdeEditorCommands.SafeDelete;
+end;
+
 procedure CompleteStatement;
 begin
   TAtlasIdeStatementCompletion.Run;
@@ -1125,6 +1334,11 @@ begin
   Result := TAtlasIdeSettings.Current.GenerateMenu;
 end;
 
+function SearchReplaceVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.SearchReplace;
+end;
+
 function MetricsReportVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.MetricsReport;
@@ -1133,6 +1347,12 @@ end;
 function NotesVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.Notes;
+end;
+
+/// <summary>Befehl „Aufrufdiagramm“ (#1122) sichtbar?</summary>
+function CallDiagramVisible: Boolean;
+begin
+  Result := TAtlasIdeResults.CallDiagramAllowed;
 end;
 
 /// <summary>Export, Import und Zurücksetzen der Einstellungen (#723): settings.exportImport.</summary>
@@ -1166,6 +1386,100 @@ begin
     Settings.ReleaseChecks);
 end;
 
+/// <summary>Einstellungen der Prüfung vor dem Kompilieren (#529) aus den aktuellen Plugin-Einstellungen.</summary>
+function GateSettings: TAtlasGateSettings;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  Result := TAtlasGateSettings.Create(Settings.BuildGate, Settings.BuildGateTimeoutMs);
+end;
+
+/// <summary>Fragt den laufenden Server (#530), welche Meldungen eines Builds von AProjectFile in der Basislinie
+/// stehen; ohne laufenden Server nicht (False), dann zählt alles.</summary>
+function BaselineClassifier(const AProjectFile: string): TAtlasBuildClassify;
+var
+  FileName: string;
+begin
+  FileName := AProjectFile;
+  Result :=
+    function(const AMessages: TArray<TAtlasCompilerMessage>; const ADone: TAtlasBuildBaselined): Boolean
+    var
+      Count: Integer;
+      Done: TAtlasBuildBaselined;
+    begin
+      // Den Server startet Atlas dafür nicht (#874).
+      Result := (Manager <> nil) and (Manager.RunningSession <> nil);
+      if not Result then
+        Exit;
+      Count := Length(AMessages);
+      Done := ADone;
+      Manager.RunServerCommandAsync(TAtlasBuildVerdicts.ClassifyCommand,
+        TAtlasBuildVerdicts.Arguments(TLspSession.PathToUri(FileName), AMessages),
+        TAtlasBuildVerdicts.ClassifyTimeoutMs,
+        procedure(AAnswer: TJSONValue)
+        begin
+          // nil (Zeitlimit, älterer Server): BaselinedOf liefert nil, dann zählt alles.
+          Done(TAtlasBuildVerdicts.BaselinedOf(AAnswer, Count));
+        end);
+    end;
+end;
+
+/// <summary>Folgen eines bewerteten Builds (#530): Zusammenfassung, Eintrag der Benachrichtigungszentrale (#601) und
+/// Tests nach dem Build (#69), alle nach derselben Bewertung.</summary>
+procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+  const AVerdict: TAtlasBuildVerdict);
+var
+  Messages: TArray<TAtlasCompilerMessage>;
+  Project: TAtlasCompileProject;
+  Verdict: TAtlasBuildVerdict;
+begin
+  Messages := AMessages;
+  Project := AProject;
+  Verdict := AVerdict;
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      TAtlasIdeBuildSummary.Report(Messages, Project, Verdict, TAtlasIdeSettings.Current.BuildSummary);
+    end);
+  if Notifications <> nil then
+    TAtlasGuard.Run(TAtlasFeature.Notifications,
+      procedure
+      begin
+        Notifications.BuildEvaluated(Messages, Project, Verdict);
+      end);
+  if Tests <> nil then
+    TAtlasGuard.Run(TAtlasFeature.Build,
+      procedure
+      begin
+        Tests.BuildFinished(Project, Verdict.Effective);
+      end);
+end;
+
+/// <summary>Bewertet einen Build des Benutzers mit lesbaren Meldungen (#530): Basislinie über den Server,
+/// build.zeroHints und build.warningsAsErrors; dann BuildEvaluated (bei Server-Frage später im Hauptthread).
+/// </summary>
+procedure EvaluateBuild(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+  ASucceeded: Boolean);
+var
+  Settings: TAtlasPluginSettings;
+  Messages: TArray<TAtlasCompilerMessage>;
+  Project: TAtlasCompileProject;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  if BuildSummary <> nil then
+    BuildSummary.Remember(AProject.FileName, AMessages);
+  Messages := AMessages;
+  Project := AProject;
+  TAtlasBuildVerdicts.Run(Messages, ASucceeded,
+    TAtlasBuildVerdictSettings.Create(Settings.BuildZeroHints, Settings.BuildWarningsAsErrors),
+    BaselineClassifier(Project.FileName),
+    procedure(const AVerdict: TAtlasBuildVerdict)
+    begin
+      BuildEvaluated(Messages, Project, AVerdict);
+    end);
+end;
+
 function ReleaseGuardVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.ReleaseGuard;
@@ -1189,6 +1503,36 @@ begin
   Result := TAtlasIdeSettings.Current.StartProfiles and TAtlasIdeStartProfiles.Started;
 end;
 
+/// <summary>Befehle der Projektaufgaben (#900) sichtbar?</summary>
+function TasksVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.TasksEnabled and (ProjectTasks <> nil);
+end;
+
+/// <summary>AProc der Projektaufgaben (#900), abgesichert; ohne Läufer nichts.</summary>
+function TasksCommand(const AProc: TProc<TAtlasIdeTasks>): TProc;
+begin
+  Result :=
+    procedure
+    begin
+      if ProjectTasks <> nil then
+        TAtlasGuard.Run(TAtlasFeature.Tasks,
+          procedure
+          begin
+            AProc(ProjectTasks);
+          end);
+    end;
+end;
+
+procedure ToggleDebugJustMyCode;
+begin
+  TAtlasIdeDebugOwnCode.ToggleSetting(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+end;
+
 procedure RegisterPalette;
 
   procedure Add(const AId: string; ATextId: TAtlasTextId; const AProc: TProc); overload;
@@ -1209,6 +1553,15 @@ procedure RegisterPalette;
       procedure
       begin
         TAtlasIdeResults.ShowHierarchy(ADirection);
+      end;
+  end;
+
+  function DataFlow(ADirection: TAtlasDataFlowDirection): TProc;
+  begin
+    Result :=
+      procedure
+      begin
+        TAtlasIdeResults.ShowDataFlow(ADirection);
       end;
   end;
 
@@ -1237,6 +1590,9 @@ begin
   Add('Atlas.References', TAtlasTextId.MenuReferences, TAtlasIdeResults.FindReferences);
   Add('Atlas.Implementations', TAtlasTextId.MenuImplementations, TAtlasIdeResults.FindImplementations);
   Add('Atlas.SymbolSearch', TAtlasTextId.MenuSymbolSearch, TAtlasIdeResults.SearchSymbol);
+  // Auswirkungsanalyse (#1120); nur sichtbar, solange navigation.impact an ist.
+  Add('Atlas.Impact', TAtlasTextId.ImpactCommand, Guarded(TAtlasFeature.Results, TAtlasIdeImpact.ShowAtCursor),
+    ImpactVisible);
   // Schnell öffnen (#503); nur sichtbar, solange quickOpen.enabled an ist.
   Add('Atlas.QuickOpen', TAtlasTextId.QuickOpenTitle, Guarded(TAtlasFeature.Palette, TAtlasIdeQuickOpen.Show),
     QuickOpenVisible);
@@ -1256,6 +1612,21 @@ begin
   // Gliederungsfenster (#537); nur sichtbar, solange outline.enabled an ist.
   Add('Atlas.Outline', TAtlasTextId.OutlineCommand,
     Guarded(TAtlasFeature.Outline, TAtlasIdeOutline.ShowWindow), OutlineVisible);
+  // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
+  Add('Atlas.Architecture', TAtlasTextId.ArchitectureCommand,
+    Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowWindow), ArchitectureVisible);
+  // Unit-Beziehungen (#593); am selben Schalter wie die Architektur (derselbe Uses-Graph).
+  Add('Atlas.UnitRelations', TAtlasTextId.UnitRelationsCommand,
+    Guarded(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowWindow), UnitRelationsVisible);
+  // Kosten einer interface-Änderung (#554): Verwender nach Abschnitt und verschiebbare uses der Unit im Editor,
+  // dazu die teuersten Units in der Architekturübersicht.
+  Add('Atlas.UnitDependencies', TAtlasTextId.UnitDependenciesCommand,
+    Guarded(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent), UnitRelationsVisible);
+  Add('Atlas.InterfaceCostRanking', TAtlasTextId.InterfaceCostRankingCommand,
+    Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowRanking), ArchitectureVisible);
+  // Weg zwischen Symbolen (#1117); nur sichtbar, solange navigation.symbolPath an ist.
+  Add('Atlas.SymbolPath', TAtlasTextId.SymbolPathCommand,
+    Guarded(TAtlasFeature.SymbolPath, TAtlasIdeSymbolPath.ShowDialog), SymbolPathVisible);
   // Brotkrumenleiste (#590): Fokus auf das letzte Glied; nur sichtbar, solange editor.breadcrumbs an ist.
   Add('Atlas.Breadcrumbs', TAtlasTextId.BreadcrumbsCommand,
     Guarded(TAtlasFeature.Breadcrumbs, TAtlasIdeBreadcrumbs.Focus), BreadcrumbsVisible);
@@ -1309,6 +1680,25 @@ begin
     NewLineAroundVisible);
   // Umschließung entfernen (#657); nur sichtbar, solange keys.unwrap an ist.
   Add('Atlas.Unwrap', TAtlasTextId.UnwrapCommand, Guarded(TAtlasFeature.Unwrap, Unwrap), UnwrapVisible);
+  // Gezielt hineinspringen (#836); nur sichtbar, solange debug.stepIntoTarget an ist.
+  Add('Atlas.StepIntoTarget', TAtlasTextId.StepIntoTargetCommand,
+    Guarded(TAtlasFeature.Debugger, StepIntoTarget), StepIntoTargetVisible);
+  // Beim nächsten Ereignis anhalten (#856); nur sichtbar, solange debug.breakOnNextEvent an ist.
+  Add('Atlas.BreakOnNextEvent', TAtlasTextId.EventBreakCommand,
+    Guarded(TAtlasFeature.Debugger, BreakOnNextEvent), BreakOnNextEventVisible);
+  // Schrittfilter (#850): Das Fenster schaltet debug.stepFilters selbst, deshalb immer sichtbar; „Trotzdem
+  // hineinspringen“ nur, solange der Ablauf läuft.
+  Add('Atlas.StepFilters', TAtlasTextId.StepFilterWindowCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugStepFilter.ShowWindow));
+  Add('Atlas.StepIntoAnyway', TAtlasTextId.StepFilterStepIntoAnywayCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugStepFilter.StepIntoAnyway), StepFilterRunning);
+  Add('Atlas.ExpressionType', TAtlasTextId.ExpressionTypeCommand,
+    Guarded(TAtlasFeature.ExpressionType, ShowExpressionType), ExpressionTypeVisible);
+  Add('Atlas.MethodOrder', TAtlasTextId.MethodOrderCommand, Guarded(TAtlasFeature.MethodPlacement, ArrangeMethods),
+    MethodOrderVisible);
+  // Sicher löschen (#716); nur sichtbar, solange keys.safeDelete an ist.
+  Add('Atlas.SafeDelete', TAtlasTextId.SafeDeleteCommand, Guarded(TAtlasFeature.EditorCommands, SafeDelete),
+    SafeDeleteVisible);
   // Mehrere Einfügemarken (#589).
   Add('Atlas.MultiCursorNext', TAtlasTextId.MultiCursorNextCommand,
     Guarded(TAtlasFeature.MultiCursor, MultiCursorNext), MultiCursorVisible);
@@ -1320,8 +1710,16 @@ begin
     Guarded(TAtlasFeature.MultiCursor, MultiCursorBelow), MultiCursorVisible);
   Add('Atlas.Callers', TAtlasTextId.MenuIncoming, Hierarchy(TAtlasHierarchyDirection.Incoming));
   Add('Atlas.Calls', TAtlasTextId.MenuOutgoing, Hierarchy(TAtlasHierarchyDirection.Outgoing));
+  // Aufrufdiagramm (#1122); nur sichtbar, solange callHierarchy.diagram an ist.
+  Add('Atlas.CallDiagram', TAtlasTextId.CallDiagramCommand,
+    Guarded(TAtlasFeature.Results, TAtlasIdeResults.ShowCallDiagram), CallDiagramVisible);
   Add('Atlas.Supertypes', TAtlasTextId.MenuSupertypes, Hierarchy(TAtlasHierarchyDirection.Supertypes));
   Add('Atlas.Subtypes', TAtlasTextId.MenuSubtypes, Hierarchy(TAtlasHierarchyDirection.Subtypes));
+  // Datenfluss (#690); nur sichtbar, solange navigation.dataFlow an ist.
+  Add('Atlas.DataFlowSources', TAtlasTextId.MenuDataFlowSources,
+    Guarded(TAtlasFeature.Results, DataFlow(TAtlasDataFlowDirection.Sources)), DataFlowVisible);
+  Add('Atlas.DataFlowTargets', TAtlasTextId.MenuDataFlowTargets,
+    Guarded(TAtlasFeature.Results, DataFlow(TAtlasDataFlowDirection.Targets)), DataFlowVisible);
   Add('Atlas.ResultsWindow', TAtlasTextId.MenuResultsWindow, TAtlasIdeResults.ShowWindow);
   // Atlas-Änderungen über mehrere Dateien (#721).
   Add('Atlas.UndoChange', TAtlasTextId.UndoMenu, TAtlasIdeUndo.UndoLast);
@@ -1348,6 +1746,23 @@ begin
     Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.NextBookmark), QuickBookmarksVisible);
   Add('Atlas.PreviousBookmark', TAtlasTextId.PreviousBookmarkCommand,
     Guarded(TAtlasFeature.QuickBookmarks, TAtlasIdeBookmarks.PreviousBookmark), QuickBookmarksVisible);
+  // Wirksame Compiler-Schalter (#558); nur sichtbar, solange build.compilerSwitches an ist.
+  Add('Atlas.CompilerSwitches', TAtlasTextId.CompilerSwitchesCommand,
+    Guarded(TAtlasFeature.Build, TAtlasIdeCompilerSwitches.ShowWindow), CompilerSwitchesVisible);
+  // Exception-Verlauf beim Debuggen (#517); nur sichtbar, solange debug.exceptionHistory an ist.
+  Add('Atlas.DebugExceptions', TAtlasTextId.DebugExceptionsCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugExceptions.ShowWindow), DebugExceptionsVisible);
+  // Fenster „Auswerten“ (#784) und der Dialog der IDE daneben; nur sichtbar, solange debug.evaluateWindow an ist.
+  Add('Atlas.DebugEvaluate', TAtlasTextId.DebugEvaluateCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugEvaluate.ShowWindow), DebugEvaluateVisible);
+  Add('Atlas.DebugEvaluateIdeDialog', TAtlasTextId.DebugEvaluateIdeDialogCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugEvaluate.OpenIdeDialog), DebugEvaluateVisible);
+  // Nur eigener Code beim Debuggen (#578): schaltet debug.justMyCode um, deshalb immer sichtbar.
+  Add('Atlas.DebugJustMyCode', TAtlasTextId.DebugJustMyCodeCommand,
+    Guarded(TAtlasFeature.Debugger, ToggleDebugJustMyCode));
+  // Exception-Leiste (#783): Dialog der IDE für die laufende Debug-Sitzung; nur mit debug.exceptionBanner.
+  Add('Atlas.DebugExceptionIdeDialog', TAtlasTextId.DebugBannerIdeDialogCommand,
+    Guarded(TAtlasFeature.Debugger, TAtlasIdeDebugExceptionBar.ToggleIdeDialog), DebugExceptionBarVisible);
   // Fenster „Atlas-Prüfung“ (#909); nur sichtbar, solange problems.window an ist.
   Add('Atlas.ProblemsWindow', TAtlasTextId.ProblemsWindowCommand,
     Guarded(TAtlasFeature.Problems, TAtlasIdeProblems.ShowWindow), ProblemsWindowVisible);
@@ -1406,10 +1821,21 @@ begin
     begin
       TAtlasIdeUnitSearch.Show;
     end);
-  Add('Atlas.UnitSearchIde', TAtlasTextId.UnitSearchIdeDialog, TAtlasIdeUnitSearch.ShowIdeDialog);
+  Add('Atlas.UnitSearchIde', TAtlasTextId.UnitSearchIdeDialog,
+    procedure
+    begin
+      TAtlasIdeUnitSearch.ShowIdeDialog;
+    end);
+  // Unit verwenden und Formulare suchen (#786), mit den Dialogen der IDE als Ausweg.
+  Add('Atlas.UseUnit', TAtlasTextId.UseUnitCommand, TAtlasIdeUnitSearch.ShowUseUnit);
+  Add('Atlas.UseUnitIde', TAtlasTextId.UseUnitIdeDialog, TAtlasIdeUnitSearch.ShowUseUnitIdeDialog);
+  Add('Atlas.Forms', TAtlasTextId.FormsCommand, TAtlasIdeUnitSearch.ShowForms);
+  Add('Atlas.FormsIde', TAtlasTextId.FormsIdeDialog, TAtlasIdeUnitSearch.ShowFormsIdeDialog);
   // Atlas-Suche (#877, #878).
   Add('Atlas.Search', TAtlasTextId.SearchCommand, TAtlasIdeSearch.Show);
   Add('Atlas.SearchInMethod', TAtlasTextId.SearchInMethodCommand, TAtlasIdeSearch.ShowInMethod);
+  // Ersetzen (#893); nur sichtbar, solange search.replace an ist.
+  Add('Atlas.SearchReplace', TAtlasTextId.SearchReplaceCommand, TAtlasIdeSearch.ShowReplace, SearchReplaceVisible);
   Add('Atlas.SearchNext', TAtlasTextId.SearchNextCommand, TAtlasIdeSearch.FindNext);
   Add('Atlas.SearchPrevious', TAtlasTextId.SearchPreviousCommand, TAtlasIdeSearch.FindPrevious);
   Add('Atlas.SearchClear', TAtlasTextId.SearchClearCommand, TAtlasIdeSearch.ClearHighlights);
@@ -1426,6 +1852,9 @@ begin
   Add('Atlas.TodoListFilter', TAtlasTextId.TodoFilterCommand, FilterProjectTodos, TodoListVisible);
   // Baseline des Projekts aktualisieren (#97); nur sichtbar, solange die Einstellung BaselineUpdate an ist.
   Add('Atlas.UpdateBaseline', TAtlasTextId.BaselineUpdateCommand, UpdateBaseline, BaselineUpdateVisible);
+  // Compilermeldungen des letzten Builds in die Baseline (#530); mit derselben Einstellung abschaltbar.
+  Add('Atlas.CompilerBaseline', TAtlasTextId.CompilerBaselineCommand, AddCompilerMessagesToBaseline,
+    BaselineUpdateVisible);
   // Eigenschaftsregeln anwenden (#309); nur sichtbar, solange die Einstellung DfmPropertyRules an ist.
   Add('Atlas.ApplyDfmRulesForm', TAtlasTextId.DfmRulesFormCommand,
     procedure
@@ -1548,6 +1977,114 @@ begin
     begin
       Result := TAtlasIdeSettings.Current.TrackerLogin and (Welcome <> nil) and (Welcome.Issues <> nil);
     end);
+  // Issue anlegen (#1268): aus Auswahl bzw. TODO im Editor; sichtbar mit issues.create.
+  Add('Atlas.CreateIssue', TAtlasTextId.CreateIssueCommand,
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.WelcomePage, TAtlasIdeNewIssue.FromEditor);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeNewIssue.Enabled;
+    end);
+  // Branch anlegen (#1288): Dialog für die Arbeitskopie des aktiven Projekts, ohne Issue; immer mit Dialog.
+  Add('Atlas.CreateBranch', TAtlasTextId.VcsBranchCommand,
+    procedure
+    var
+      mProject: string;
+    begin
+      mProject := TAtlasIdeProjects.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
+      if mProject = '' then
+      begin
+        TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsBranchNoVcs));
+        Exit;
+      end;
+      TAtlasIdeBranching.CreateFor(mProject,
+        procedure
+        begin
+          if (Welcome <> nil) and (Welcome.Projects <> nil) then
+            Welcome.Projects.Refresh(mProject);
+        end);
+    end);
+  // Arbeitskopien (#1292): Wurzel, Externals bzw. Submodule des aktiven Projekts; sichtbar mit vcs.externals.show.
+  Add('Atlas.WorkingCopies', TAtlasTextId.VcsWorkingCopiesCommand,
+    procedure
+    var
+      mProject: string;
+    begin
+      mProject := TAtlasIdeProjects.ProjectFileOf(TAtlasIdeTeamFile.ActiveProject);
+      if mProject = '' then
+      begin
+        TAtlasIdeVcs.Report(TAtlasStrings.Text(TAtlasTextId.VcsWorkingCopiesNoVcs));
+        Exit;
+      end;
+      TAtlasIdeWorkingCopies.ShowFor(mProject,
+        procedure
+        begin
+          if (Welcome <> nil) and (Welcome.Projects <> nil) then
+            Welcome.Projects.Refresh(mProject);
+        end);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.VcsExternalsShow;
+    end);
+  // Issue-Vorschau (#1264): Kennung abfragen und das Issue in „Atlas-Issue“ zeigen; sichtbar mit issues.preview.
+  Add('Atlas.IssueShow', TAtlasTextId.IssuePreviewCommand,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.ShowPreviewPrompt;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesPreview and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
+  // Issues zu dieser Methode (#1275): Issues aus der Zeilenhistorie der Methode bzw. Unit am Cursor; sichtbar mit
+  // issues.blameLinks.
+  Add('Atlas.BlameIssues', TAtlasTextId.BlameIssuesCommand,
+    procedure
+    begin
+      if BlameIssues <> nil then
+        TAtlasGuard.Run(TAtlasFeature.BlameIssues, BlameIssues.ShowScope);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeBlameLinks.Enabled and (BlameIssues <> nil);
+    end);
+  // Offene Zeitbuchungen (#1267): sichtbar mit issues.timeTracking.
+  Add('Atlas.IssueTimeOpen', TAtlasTextId.TimeMenuOpen,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.ShowTimeOpen;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesTimeTracking and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
+  // Atlas-Board (#1272): Sprint als Spalten nach Zustand; sichtbar mit issues.board.
+  Add('Atlas.Board', TAtlasTextId.BoardCommand,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) and (Welcome.Issues.Board <> nil) then
+        Welcome.Issues.Board.Show;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesBoard and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
+  // An Issue anhängen (#1276): Bildschirmfoto, Formular, Log, Debug-Notiz; sichtbar mit issues.attach.
+  Add('Atlas.IssueAttach', TAtlasTextId.AttachCommand,
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.AttachPrompt;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesAttach and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
     procedure
@@ -1574,6 +2111,43 @@ begin
       if TestDebugger <> nil then
         TAtlasGuard.Run(TAtlasFeature.Build, TestDebugger.DebugAtCursor);
     end, TestDebugVisible);
+  // Projektaufgaben (#900): sichtbar, solange tasks.enabled an ist und der Läufer läuft.
+  Add('Atlas.RunTask', TAtlasTextId.TasksRunCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.Choose;
+      end), TasksVisible);
+  Add('Atlas.RunChecks', TAtlasTextId.TasksRunChecksCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.RunChecks;
+      end), TasksVisible);
+  Add('Atlas.RepeatTask', TAtlasTextId.TasksRepeatCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.RepeatLast;
+      end), TasksVisible);
+  Add('Atlas.CancelTasks', TAtlasTextId.TasksCancelCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.CancelAll;
+      end), TasksVisible);
+  Add('Atlas.TasksOutput', TAtlasTextId.TasksOutputCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.ToggleOutput;
+      end), TasksVisible);
+  Add('Atlas.TasksFindings', TAtlasTextId.TasksFindingsCommand,
+    TasksCommand(
+      procedure(ATasks: TAtlasIdeTasks)
+      begin
+        ATasks.ChooseFindings;
+      end), TasksVisible);
   // Startprofile (#575): Auswahl für das aktive Projekt; sichtbar, solange StartProfiles an ist.
   Add('Atlas.StartProfile', TAtlasTextId.StartProfilesCommand,
     Guarded(TAtlasFeature.Build, TAtlasIdeStartProfiles.ShowPicker), StartProfilesVisible);
@@ -1714,6 +2288,8 @@ end;
 
 const
   ProblemCountsExtra = 'problemCounts';
+  /// <summary>Kosten einer interface-Änderung (#554).</summary>
+  InterfaceCostExtra = 'interfaceCost';
 
 procedure RegisterStatusField;
 begin
@@ -1901,6 +2477,24 @@ begin
     begin
       Result := ReleaseSettings();
     end));
+  // Projektaufgaben vor dem Build (#900, tasks.beforeBuild); ohne Läufer (tasks.enabled aus) nichts.
+  Events.Add(TAtlasIdeTasks.CreateParticipant(
+    function: TAtlasIdeTasks
+    begin
+      Result := ProjectTasks;
+    end));
+  // Prüfung vor dem Kompilieren (#529): geänderte Units über den laufenden Server, nur Builds des Benutzers.
+  Events.Add(TAtlasIdeBuildGate.CreateParticipant(
+    function: TAtlasGateSettings
+    begin
+      Result := GateSettings();
+    end,
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end));
   // Compilermeldungen aus dem Reiter „Build“ an den Server (#528).
   Events.Add(TAtlasMessageViewReader.Create(
     procedure(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
@@ -1938,19 +2532,20 @@ begin
           begin
             BuildRunner.MessagesRead(Messages, Project);
           end);
-      // Eintrag „Build fertig“ bzw. Hintergrundprüfung in der Benachrichtigungszentrale (#601).
-      if Notifications <> nil then
+      // Build des Benutzers mit lesbaren Meldungen (#530): erst bewerten (Basislinie, build.zeroHints,
+      // build.warningsAsErrors), dann Zusammenfassung, Benachrichtigung (#601) und Tests nach dem Build (#69).
+      if AReadable and not AProject.Background then
+        TAtlasGuard.Run(TAtlasFeature.Build,
+          procedure
+          begin
+            EvaluateBuild(Messages, Project, Succeeded);
+          end)
+      // Hintergrundprüfung bzw. Build ohne lesbare Meldungen: Eintrag in der Benachrichtigungszentrale (#601).
+      else if Notifications <> nil then
         TAtlasGuard.Run(TAtlasFeature.Notifications,
           procedure
           begin
             Notifications.BuildFinished(Messages, Project, Succeeded, Readable);
-          end);
-      // Tests nach dem Build (#69); die Prüfung auf Warnungen und Hinweise (build.zeroHints) braucht die Meldungen.
-      if (Tests <> nil) and AReadable then
-        TAtlasGuard.Run(TAtlasFeature.Build,
-          procedure
-          begin
-            Tests.BuildFinished(Project, Succeeded, Messages);
           end);
       if Manager = nil then
         Exit;
@@ -1965,6 +2560,7 @@ begin
     end));
   Compile := TAtlasIdeCompileEvents.Create(Events);
   BuildRunner := TAtlasIdeBuildRunner.Create(Events);
+  BuildSummary := TAtlasIdeBuildSummary.Create;
 end;
 
 /// <summary>Sprache der IDE (#446): Eintrag für bds.exe unter HKCU\Software\Embarcadero\Locales (von
@@ -2107,6 +2703,8 @@ begin
       if Result then
         Manager.ExecuteServerCommandAsync(ACommand, 30000, nil);
     end;
+  // Derselbe Weg nach einem Branch mit geänderten Externals (#1291).
+  TAtlasIdeBranching.ServerCommand := Hooks.ServerCommand;
   Hooks.ServerPath :=
     function: string
     var
@@ -2115,6 +2713,128 @@ begin
       Result := TAtlasCodeInsightManager.ServerPath(Arguments);
     end;
   Setup := TAtlasIdeSetupChecklist.Create(TAtlasStatusRegistry.Default, Hooks);
+end;
+
+type
+  /// <summary>Anbieter, Token und Transport des Issue-Trackers (#765, #1260) für „Meine Issues“ und die Seite
+  /// Issue-Tracker: Token im Anmeldespeicher von Windows (Ziel "Atlas:tracker:&lt;Server&gt;", Benutzer =
+  /// Anbieter), verdeckter Dialog, „Authorization: Bearer“ nur über https an die API des Trackers. Meldungen
+  /// anonym, ohne Server und Token.</summary>
+  TAtlasComposedTrackerAccess = class(TInterfacedObject, IAtlasTrackerAccess)
+  public
+    function Providers: TArray<IAtlasTrackerProvider>;
+    function Provider(const AName: string): IAtlasTrackerProvider;
+    function HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
+    function EnterToken(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
+    function RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
+    function Transport(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
+  end;
+
+var
+  TrackerAccessInstance: IAtlasTrackerAccess;
+
+function TrackerAccess: IAtlasTrackerAccess;
+begin
+  if TrackerAccessInstance = nil then
+    TrackerAccessInstance := TAtlasComposedTrackerAccess.Create;
+  Result := TrackerAccessInstance;
+end;
+
+function TAtlasComposedTrackerAccess.Providers: TArray<IAtlasTrackerProvider>;
+begin
+  // Tracker-Anbieter: YouTrack und GitHub; weitere kommen ohne Änderung an Bereich und Optionsseite dazu.
+  Result := [TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, TAtlasGitHubTracker.Create as IAtlasTrackerProvider];
+end;
+
+function TAtlasComposedTrackerAccess.Provider(const AName: string): IAtlasTrackerProvider;
+var
+  mProvider: IAtlasTrackerProvider;
+begin
+  for mProvider in Providers do
+    if SameText(mProvider.Name, Trim(AName)) then
+      Exit(mProvider);
+  Result := nil;
+end;
+
+function TAtlasComposedTrackerAccess.HasToken(const ATarget: TAtlasTrackerTarget): Boolean;
+var
+  mUser, mToken: string;
+begin
+  Result := False;
+  if ATarget.CredentialTarget = '' then
+    Exit;
+  mUser := '';
+  mToken := '';
+  Result := TAtlasCiCredentials.Read(ATarget.CredentialTarget, mUser, mToken) and (mToken <> '');
+  UniqueString(mToken);
+  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
+end;
+
+function TAtlasComposedTrackerAccess.EnterToken(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget): Boolean;
+var
+  mToken: string;
+  mOk: Boolean;
+begin
+  Result := False;
+  // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
+  if not ATarget.Secure then
+  begin
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
+    Exit;
+  end;
+  mToken := '';
+  if not TAtlasCiLoginPrompt.AskToken(TAtlasStrings.Fmt(TAtlasTextId.TrackerLoginTitle, [AProvider.Caption,
+    ATarget.Server]), TAtlasStrings.Text(TAtlasTextId.TrackerLoginToken), mToken) then
+    Exit;
+  if mToken = '' then
+  begin
+    mOk := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
+    if mOk then
+      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
+    else
+      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+    Exit(mOk);
+  end;
+  mOk := TAtlasCiCredentials.Write(ATarget.CredentialTarget, AProvider.Name, mToken, 'Atlas: Issue-Tracker');
+  UniqueString(mToken);
+  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
+  // Anonym: weder Server noch Projekt.
+  if mOk then
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved))
+  else
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+  Result := mOk;
+end;
+
+function TAtlasComposedTrackerAccess.RemoveToken(const ATarget: TAtlasTrackerTarget): Boolean;
+begin
+  Result := True;
+  if ATarget.CredentialTarget = '' then
+    Exit;
+  Result := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
+  if Result then
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
+  else
+    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
+end;
+
+function TAtlasComposedTrackerAccess.Transport(const AProvider: IAtlasTrackerProvider;
+  const ATarget: TAtlasTrackerTarget): IAtlasCiTransport;
+var
+  mUser, mToken: string;
+begin
+  Result := nil;
+  if (AProvider = nil) or not ATarget.Secure then
+    Exit;
+  mUser := '';
+  mToken := '';
+  if not TAtlasCiCredentials.Read(ATarget.CredentialTarget, mUser, mToken) or (mToken = '') then
+    Exit;
+  // „Authorization: Bearer“ nur über https an die Programmierschnittstelle des Trackers.
+  Result := TAtlasCiHttpTransport.CreateBearer(AProvider.ApiServer(ATarget), mToken);
+  UniqueString(mToken);
+  FillChar(PChar(mToken)^, Length(mToken) * SizeOf(Char), 0);
 end;
 
 /// <summary>Optionsseiten (#227) mit ihren Haken (A-09): Die Seiten importieren die Features nicht, die sie
@@ -2175,6 +2895,8 @@ begin
     begin
       Result := TAtlasEditorCompletion.SnippetFolder;
     end;
+  // Seite Issue-Tracker (#1260): Anbieter, Token und „Verbindung prüfen“.
+  Hooks.Tracker := TrackerAccess;
   TAtlasOptionsRegistration.Register(Hooks);
 end;
 
@@ -2376,6 +3098,15 @@ begin
     begin
       GuardWarning(AText);
     end);
+  // Auswirkungsanalyse (#1120): „Betroffene Tests ausführen“ über den Testläufer (#69).
+  TAtlasIdeImpact.Install(
+    procedure(const AFileName: string; const ATests: TArray<string>)
+    begin
+      if Tests <> nil then
+        Tests.RunTests(AFileName, ATests)
+      else
+        GuardWarning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
+    end);
   // Klick auf die Testunit-Lens (#189); die Lens kennt die Editorbefehle nicht (A-09).
   TAtlasEditorTestUnitLens.OnSwitchTestUnit :=
     procedure
@@ -2386,14 +3117,40 @@ begin
   // Kennung; „Regel einstellen…“ öffnet die Einstellungsseite auf der Regel.
   TAtlasEditorHover.OnProblemAction :=
     procedure(const AProblem: TAtlasProblem; const ATag: string)
+    var
+      Item: Integer;
     begin
       if ATag = 'rule.configure' then
       begin
         TAtlasOptionsRegistration.ShowRule(AProblem.Code);
         Exit;
       end;
+      // Unit-Zyklus (#896): Unit im Pfad springt an ihren uses-Eintrag, „Graph zeigen“ öffnet die
+      // Unit-Beziehungen der Unit im Editor.
+      if StartsStr('related:', ATag) then
+      begin
+        Item := StrToIntDef(Copy(ATag, Length('related:') + 1, MaxInt), -1);
+        if (Item >= 0) and (Item <= High(AProblem.Related)) then
+          TAtlasIdeNavigation.GoToLocation(TLspSession.UriToPath(AProblem.Related[Item].Uri),
+            AProblem.Related[Item].Line, AProblem.Related[Item].Character);
+        Exit;
+      end;
+      if ATag = 'cycle.showGraph' then
+      begin
+        TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
+        Exit;
+      end;
       TAtlasIdeEditorCommands.ApplyTagged(TLspRange.Create(AProblem.StartLine, AProblem.StartCharacter,
         AProblem.EndLine, AProblem.EndCharacter), ATag);
+    end;
+  // Werte im Tooltip (#835, #854): eigene Regel des Typs vor den Visualisierern für Bibliothekstypen; beide
+  // liefern '', solange ihr Teil nicht läuft. Der Tooltip kennt die Debug-Schicht nicht (A-09).
+  TAtlasEditorHover.OnVisualize :=
+    function(const AExpression: string; const ATypeChain: TArray<string>; const AText: string): string
+    begin
+      Result := TAtlasIdeDisplayRules.HoverText(AExpression, ATypeChain);
+      if Result = '' then
+        Result := TAtlasIdeVisualizers.HoverText(AExpression, ATypeChain, AText);
     end;
   // Nächster/vorheriger Befund (#509): alle Befunde der Datei aus dem Problemspeicher.
   TAtlasIdeEditorCommands.OnProblemsOf :=
@@ -2404,6 +3161,23 @@ begin
         Result := TAtlasProblemsController.Current.ForFile(AFileName);
     end;
   // Schnellkorrektur „Signaturhilfe öffnen“ (#1007): nach dem Sprung der Parameter-Hint wie mit der Taste.
+  // „Graph zeigen“ als Code-Aktion an einem Unit-Zyklus (#896, atlas.showUnitRelations).
+  TAtlasIdeEditorCommands.OnUnitRelations :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
+    end;
+  // „Issue anlegen …“ im Editor-Kontextmenü und auf der Taste (#1268).
+  TAtlasIdeEditorCommands.OnCreateIssue :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.WelcomePage, TAtlasIdeNewIssue.FromEditor);
+    end;
+  TAtlasIdeEditorCommands.CreateIssueAvailable :=
+    function: Boolean
+    begin
+      Result := TAtlasIdeNewIssue.Enabled;
+    end;
   TAtlasIdeEditorCommands.OnSignatureHelp :=
     procedure
     begin
@@ -2458,6 +3232,56 @@ begin
         Result := Manager.ActiveSession;
     end);
   TAtlasIdeOutline.Install;
+  // Fenster „Atlas-Architektur“ (#1118): fragt den Server über RunCommandAsync.
+  TAtlasIdeArchitecture.Install(
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.ActiveSession <> nil) and
+        Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
+    end);
+  // Fenster „Unit-Beziehungen“ (#593): fragt regelmäßig nach, daher nicht über den einen Hintergrundbefehl von
+  // RunCommandAsync (der bliebe sonst für Architektur und Co. belegt), und startet keinen Server.
+  TAtlasIdeUnitRelations.Install(
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<TJSONValue>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.RunningSession <> nil);
+      if Result then
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
+    end);
+  // Kosten einer interface-Änderung (#554) im Zusatzfeld der Statusleiste; Klick zeigt die Abhängigkeiten.
+  TAtlasIdeUnitRelations.SetCostHandler(
+    procedure(const AText, AHint: string)
+    begin
+      if StatusField = nil then
+        Exit;
+      if AText = '' then
+        StatusField.SetExtra(InterfaceCostExtra, '', '', nil)
+      else
+        StatusField.SetExtra(InterfaceCostExtra, AText, AHint,
+          procedure(APoint: TPoint)
+          begin
+            TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
+          end);
+    end);
+  // Strg+Doppelklick in der Architekturkarte zeigt die Unit dort.
+  TAtlasIdeArchitecture.OnUnitRelations :=
+    procedure(AFileName: string)
+    begin
+      TAtlasIdeUnitRelations.ShowFor(AFileName);
+    end;
+  // Weg zwischen Symbolen (#1117): Suche über RunCommandAsync, Vorschläge aus der Symbolsuche.
+  TAtlasIdeSymbolPath.Install(
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.ActiveSession <> nil) and
+        Manager.RunCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, ADone);
+    end,
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.ActiveSession;
+    end);
   TAtlasIdeBreadcrumbs.Install;
   // Atlas-Editorleiste (#1101) nach den Brotkrumen (Position „in der Brotkrumenzeile“).
   StartEditorToolbar;
@@ -2578,6 +3402,70 @@ begin
     begin
       MessageLine(AText);
     end);
+  // Gezielt hineinspringen (#836): Liste der Aufrufe am Ausführungspunkt; Meldungen in der Meldungsansicht.
+  TAtlasIdeStepInto.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  // Beim nächsten Ereignis anhalten (#856): Eintrag im Menü Start; Meldungen in der Meldungsansicht.
+  TAtlasIdeEventBreak.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  // Schrittfilter (#850): Fenster und Befehle; den Ablauf startet Features (debug.stepFilters).
+  TAtlasIdeDebugStepFilter.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  // Typ des markierten Ausdrucks (#689): Tooltip und Hervorhebung; Fehler in der Meldungsansicht.
+  TAtlasIdeExpressionType.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  // Methodenrümpfe in Deklarationsreihenfolge (#660): neue Rümpfe an ihre Stelle, Befehl mit Vorschau.
+  TAtlasIdeMethodPlacement.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end,
+    function: TAtlasUnopenedPolicy
+    begin
+      Result := TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits);
+    end);
   // Übersichtsleiste an der Scrollleiste (#519).
   // Mit schnellen Lesezeichen (#1104) zeigt die Art „bookmarks“ die Lesezeichen von Atlas.
   TAtlasIdeOverviewRuler.Bookmarks :=
@@ -2637,6 +3525,11 @@ begin
   TAtlasIdeLineMove.Uninstall;
   TAtlasIdeBlockComment.Uninstall;
   TAtlasIdeUnwrap.Uninstall;
+  TAtlasIdeStepInto.Uninstall;
+  TAtlasIdeEventBreak.Uninstall;
+  TAtlasIdeDebugStepFilter.Uninstall;
+  TAtlasIdeExpressionType.Uninstall;
+  TAtlasIdeMethodPlacement.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;
@@ -2645,6 +3538,9 @@ begin
   TAtlasIdeCommentContinuation.Uninstall;
   TAtlasIdeStatementCompletion.Uninstall;
   TAtlasIdeOutline.Uninstall;
+  TAtlasIdeSymbolPath.Uninstall;
+  TAtlasIdeArchitecture.Uninstall;
+  TAtlasIdeUnitRelations.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
   TAtlasIdeSearch.Uninstall;
@@ -2652,7 +3548,9 @@ begin
   TAtlasIdeGenerate.Uninstall;
   TAtlasEditorTestUnitLens.OnSwitchTestUnit := nil;
   TAtlasEditorHover.OnProblemAction := nil;
+  TAtlasEditorHover.OnVisualize := nil;
   TAtlasIdeEditorCommands.Uninstall;
+  TAtlasIdeImpact.Uninstall;
   TAtlasIdeResults.Uninstall;
   CommandsInstalled := False;
 end;
@@ -2821,6 +3719,62 @@ begin
     TAtlasProblemsController.Current.ClearTests;
 end;
 
+/// <summary>Prozessstart der Projektaufgaben (Adapter, #900); eigene Routine, damit die Referenz nichts aus
+/// StartTasks einfängt.</summary>
+function TaskProcess: TAtlasTaskProcessRun;
+begin
+  Result :=
+    function(const ATask: TAtlasTaskDefinition; ACodePage: Integer; const ACancelled: TFunc<Boolean>;
+      const AOnLine: TAtlasTaskLineProc): TAtlasTaskProcessResult
+    begin
+      Result := TAtlasTaskProcess.Run(ATask, ACodePage, ACancelled, AOnLine);
+    end;
+end;
+
+/// <summary>Projektaufgaben (#900): Läufer mit Neubau nach bestandener Prüfung über den Build-Läufer (#261) und
+/// Ergebnis für die Schnellaktion „Aufgaben“ (#764).</summary>
+procedure StartTasks;
+begin
+  ProjectTasks := TAtlasIdeTasks.Create(TaskProcess());
+  ProjectTasks.OnRebuild :=
+    function(const AProject: TAtlasCompileProject; out AReason: string): Boolean
+    var
+      Request: TAtlasBuildRequest;
+    begin
+      if BuildRunner = nil then
+      begin
+        AReason := TAtlasStrings.Text(TAtlasTextId.TestsNoBuildRunner);
+        Exit(False);
+      end;
+      Request := Default(TAtlasBuildRequest);
+      Request.Project := AProject.FileName;
+      Request.Kind := AProject.Kind;
+      // Auftraggeber '' wie ein Build des Benutzers: Tests nach dem Build und die übrigen Teilnehmer laufen mit.
+      Result := BuildRunner.Start(Request, '',
+        procedure(const AReport: TAtlasBuildReport; const AError: string)
+        begin
+        end, AReason);
+    end;
+  ProjectTasks.OnFinished :=
+    procedure(const AProject: string; const ARun: TAtlasTaskRun)
+    begin
+      if (Welcome <> nil) and (Welcome.QuickActions <> nil) and (AProject <> '') then
+        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+          procedure
+          begin
+            Welcome.QuickActions.TaskFinished(AProject, ARun);
+          end);
+    end;
+end;
+
+procedure StopTasks;
+begin
+  // Laufende Aufgaben enden mit dem Läufer; ihre Befunde verschwinden mit ihm.
+  FreeAndNil(ProjectTasks);
+  if TAtlasProblemsController.Current <> nil then
+    TAtlasProblemsController.Current.ClearTasks;
+end;
+
 const
   StartProfileExtra = 'startProfile';
 
@@ -2847,6 +3801,18 @@ begin
   TAtlasIdeStartProfiles.Start;
 end;
 
+procedure StartDisplayRules;
+begin
+  // Nur eine laufende Sitzung; die Regeln warten sonst auf den nächsten Versuch.
+  TAtlasIdeDisplayRules.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
 procedure StopStartProfiles;
 begin
   // Stop meldet noch Text '' und entfernt so das Feld; danach kein Empfänger mehr.
@@ -2871,6 +3837,15 @@ begin
     Setup.RegisterCommands(Palette);
   if KeyMap <> nil then
     KeyMap.RegisterCommands(Palette);
+  // Issues in der Palette (#1270): die Quelle aus „Meine Issues“, erst beim Öffnen gefragt (Willkommensseite
+  // entsteht ggf. später, Stop löst sie).
+  Palette.SourceOf :=
+    function: IAtlasPaletteSource
+    begin
+      Result := nil;
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Result := Welcome.Issues.PaletteSearch;
+    end;
 end;
 
 procedure StartNotes;
@@ -2909,6 +3884,187 @@ procedure StopBookmarks;
 begin
   TAtlasIdeBookmarks.Release;
   BookmarksStarted := False;
+end;
+
+procedure StartDebugExceptions;
+begin
+  TAtlasIdeDebugExceptions.Start(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+end;
+
+procedure StartDebugOwnCode;
+begin
+  TAtlasIdeDebugOwnCode.Start(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+end;
+
+procedure StartDebugExceptionBar;
+begin
+  TAtlasIdeDebugExceptionBar.Start(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end, TAtlasStatusRegistry.Default);
+end;
+
+procedure StartDebugInlineValues;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeDebugInlineValues.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
+/// <summary>„kein Zugriff auf Wert“ erklären (#840): Erklärung und Korrekturen im Hover; der Tooltip kennt die
+/// Debug-Schicht nicht (A-09).</summary>
+procedure StartDebugUnavailable;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeDebugUnavailable.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  TAtlasEditorHover.OnExplain :=
+    function(const AValue: TAtlasDebugValue; const ADone: TAtlasDebugValueEvent): TAtlasDebugValue
+    begin
+      Result := TAtlasIdeDebugUnavailable.Explain(AValue, ADone);
+    end;
+  TAtlasEditorHover.OnDebugFix :=
+    procedure(const AValue: TAtlasDebugValue; AFix: Integer)
+    begin
+      TAtlasIdeDebugUnavailable.Fix(AValue, AFix);
+    end;
+end;
+
+procedure StartDebugDialogCompletion;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeDebugDialogCompletion.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      LogLine(AText);
+    end,
+    function(const AHistory: TFunc<TArray<string>>): IAtlasCompletionProvider
+    var
+      Provider: TAtlasExpressionCompletionProvider;
+    begin
+      Provider := TAtlasExpressionCompletionProvider.Create(
+        function: TLspSession
+        begin
+          Result := nil;
+          if Manager <> nil then
+            Result := Manager.RunningSession;
+        end, AHistory,
+        function(AResponse: TJSONValue): TAtlasCompletionItems
+        begin
+          Result := TAtlasServerCompletionProvider.ItemsFromLsp(AResponse);
+        end, TAtlasExpressionCompletionProvider.DefaultTimeoutMs);
+      Provider.HistoryCaption := TAtlasStrings.Text(TAtlasTextId.DebugExpressionHistory);
+      Result := Provider;
+    end);
+  TAtlasIdeDebugDialogCompletion.ApplySettings;
+end;
+
+procedure StartDebugEvaluate;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeDebugEvaluate.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
+/// <summary>Zugriffsverletzung erklären (#865): Knöpfe der Leiste über den Datenfluss (#690) und das Fenster
+/// „Auswerten“ (#784); die Debug-Schicht kennt beide nicht.</summary>
+procedure StartDebugAccessViolation;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeDebugAccessViolation.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
+  TAtlasIdeDebugAccessViolation.SetWhereAssigned(
+    procedure(const AFileName: string; ALine, ACharacter: Integer; const AName: string)
+    begin
+      TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Sources, AFileName, ALine, ACharacter, AName);
+    end);
+  TAtlasIdeDebugAccessViolation.SetEvaluate(
+    procedure(const AExpression: string)
+    begin
+      TAtlasIdeDebugEvaluate.ShowWindow(AExpression);
+    end);
+end;
+
+procedure ReleaseDebugUnavailable;
+begin
+  TAtlasEditorHover.OnExplain := nil;
+  TAtlasEditorHover.OnDebugFix := nil;
+  TAtlasIdeDebugUnavailable.Release;
+end;
+
+const
+  CompilerSwitchesExtra = 'compilerSwitches';
+
+/// <summary>Wirksame Compiler-Schalter (#558): Fenster und Zusatzfeld der Statusleiste mit den Abweichungen.
+/// </summary>
+procedure StartCompilerSwitches;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeCompilerSwitches.Start(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end,
+    procedure(const AText, AHint: string)
+    begin
+      if StatusField = nil then
+        Exit;
+      if AText = '' then
+      begin
+        StatusField.SetExtra(CompilerSwitchesExtra, '', '', nil);
+        Exit;
+      end;
+      StatusField.SetExtra(CompilerSwitchesExtra, AText, AHint,
+        procedure(APoint: TPoint)
+        begin
+          TAtlasIdeCompilerSwitches.ShowWindow;
+        end);
+    end);
 end;
 
 /// <summary>Fenster „Atlas-Prüfung“ (#909): Code-Aktionen, Optionsseite, Serverbefehle und Meldungen über
@@ -2951,6 +4107,29 @@ begin
     begin
       APercent := -1;
       Result := (Manager <> nil) and Manager.ServerIndexing(APercent);
+    end;
+  // „Für diesen Befund ein Issue anlegen …“ (#1268): Regel, Meldung, Fundstelle und Zeile je Befund.
+  Hooks.CreateIssue :=
+    procedure(AFindings: TArray<TAtlasFinding>)
+    var
+      mItems: TArray<TAtlasNewIssueFinding>;
+      mFinding: TAtlasFinding;
+    begin
+      mItems := nil;
+      for mFinding in AFindings do
+        mItems := mItems + [TAtlasNewIssueFinding.Create(mFinding.Rule,
+          mFinding.MessageText(TAtlasIdeSettings.Current.ProblemsShowCompilerCode), mFinding.Location,
+          mFinding.LineText)];
+      TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+        procedure
+        begin
+          TAtlasIdeNewIssue.FromFindings(mItems);
+        end);
+    end;
+  Hooks.CanCreateIssue :=
+    function: Boolean
+    begin
+      Result := TAtlasIdeNewIssue.Enabled;
     end;
   TAtlasIdeProblems.Start(Hooks);
   TAtlasIdeEditorCommands.OnStepList :=
@@ -3043,6 +4222,40 @@ end;
 procedure StartSelectionMatches;
 begin
   SelectionMatches := TAtlasIdeSelectionMatches.Create;
+end;
+
+procedure StartExitPoints;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeExitPoints.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
+procedure StopExitPoints;
+begin
+  TAtlasIdeExitPoints.Uninstall;
+end;
+
+procedure StartReassigned;
+begin
+  // Fragt den Server nur, wenn er ohnehin läuft.
+  TAtlasIdeReassigned.Install(
+    function: TLspSession
+    begin
+      Result := nil;
+      if Manager <> nil then
+        Result := Manager.RunningSession;
+    end);
+end;
+
+procedure StopReassigned;
+begin
+  TAtlasIdeReassigned.Uninstall;
 end;
 
 procedure StartCompletionKey;
@@ -3201,43 +4414,8 @@ begin
   Result.OnCredentials := EnterCiCredentials;
 end;
 
-/// <summary>Token für den Issue-Tracker ATarget abfragen und im Anmeldespeicher von Windows ablegen (#765); leer
-/// entfernt es. Ziel "Atlas:tracker:&lt;Server&gt;", Benutzer = Anbieter. True, wenn sich etwas geändert hat.</summary>
-function EnterTrackerCredentials(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
-var
-  Token: string;
-  Ok: Boolean;
-begin
-  Result := False;
-  // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
-  if not ATarget.Secure then
-  begin
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
-    Exit;
-  end;
-  Token := '';
-  if not TAtlasCiLoginPrompt.AskToken(TAtlasStrings.Fmt(TAtlasTextId.TrackerLoginTitle, [AProvider.Caption,
-    ATarget.Server]), TAtlasStrings.Text(TAtlasTextId.TrackerLoginToken), Token) then
-    Exit;
-  if Token = '' then
-  begin
-    Ok := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
-    if Ok then
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
-    else
-      GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
-    Exit(Ok);
-  end;
-  Ok := TAtlasCiCredentials.Write(ATarget.CredentialTarget, AProvider.Name, Token, 'Atlas: Issue-Tracker');
-  UniqueString(Token);
-  FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
-  // Anonym: weder Server noch Projekt.
-  if Ok then
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved))
-  else
-    GuardWarning(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
-  Result := Ok;
-end;
+const
+  IssueTimeExtra = 'issueTime';
 
 function CreateWelcomeIssues(AProjects: TAtlasIdeProjects): TAtlasIdeIssues;
 begin
@@ -3247,33 +4425,52 @@ begin
       // Nur Meldungsansicht: Die Zeilen können Branch-Namen enthalten.
       MessageLine(AText);
     end);
-  // Tracker-Anbieter: GitHub und YouTrack; weitere kommen ohne Änderung am Bereich dazu.
+  // Anbieter, Transport und Zugang wie auf der Optionsseite (#1260): dieselbe Umsetzung (TrackerAccess).
   Result.ProviderFactory :=
     function(const AName: string): IAtlasTrackerProvider
     begin
-      Result := nil;
-      if SameText(AName, TAtlasGitHubTracker.ProviderName) then
-        Result := TAtlasGitHubTracker.Create
-      else if SameText(AName, TAtlasYouTrackTracker.ProviderName) then
-        Result := TAtlasYouTrackTracker.Create;
+      Result := TrackerAccess.Provider(AName);
     end;
   // Im Hintergrund-Thread: Token aus dem Anmeldespeicher, ohne Dialog; ohne Token kein Transport (kein Netz).
   Result.TransportFactory :=
     function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): IAtlasCiTransport
-    var
-      User, Token: string;
     begin
-      Result := nil;
-      User := '';
-      Token := '';
-      if not TAtlasCiCredentials.Read(ATarget.CredentialTarget, User, Token) or (Token = '') then
-        Exit;
-      // „Authorization: Bearer“ nur über https an die Programmierschnittstelle des Trackers.
-      Result := TAtlasCiHttpTransport.CreateBearer(AProvider.ApiServer(ATarget), Token);
-      UniqueString(Token);
-      FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
+      Result := TrackerAccess.Transport(AProvider, ATarget);
     end;
-  Result.OnCredentials := EnterTrackerCredentials;
+  Result.OnCredentials :=
+    function(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean
+    begin
+      Result := TrackerAccess.EnterToken(AProvider, ATarget);
+    end;
+  // Zeiterfassung (#1267): „ATL-123 · 1:25“ als Zusatzfeld im Statusfeld, Klick öffnet das Menü der Uhr.
+  Result.OnTimeStatus :=
+    procedure(const AText, AHint: string; const AOnClick: TProc<TPoint>)
+    begin
+      if StatusField <> nil then
+        StatusField.SetExtra(IssueTimeExtra, AText, AHint, AOnClick);
+    end;
+  // Knopf „Tracker-Einstellungen …“ der Issue-Vorschau (#1264).
+  Result.OnSettings :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Settings,
+        procedure
+        begin
+          TAtlasOptionsRegistration.ShowSetting('IssuesConnections');
+        end);
+    end;
+  // „zuordnen …“ (#1261): Seite Issue-Tracker mit vorbefüllter Zeile der Tabelle Projekte.
+  Result.OnAssignProject :=
+    procedure(AMatch: string)
+    begin
+      TAtlasOptionsRegistration.ShowTrackerProject(AMatch);
+    end;
+  // „Abfragen bearbeiten …“ (#1262): Seite Issue-Tracker bei der Tabelle Abfragen.
+  Result.OnEditQueries :=
+    procedure
+    begin
+      TAtlasOptionsRegistration.ShowSetting('IssuesQueries');
+    end;
 end;
 
 procedure StartWelcome;
@@ -3348,6 +4545,12 @@ begin
   // Bereich „Meine Issues“ (#765): offene Issues aus GitHub bzw. YouTrack (Tracker aus .atlas), „Beginnen“ über die
   // VCS-Schnittstelle (#571), aktuelles Issue im Statusfeld (#591); Token im Anmeldespeicher wie #763.
   Welcome.Issues := CreateWelcomeIssues(Welcome.Projects);
+  // „Issue anlegen …“ (#1268): Tracker, Transport und „Beginnen“ wie „Meine Issues“.
+  TAtlasIdeNewIssue.Start(Welcome.Issues,
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
   // Bereich „Nicht gesichert“ (#762): nicht Gesichertes je Projekt über die VCS-Schnittstelle (#571).
   Welcome.Unsaved := TAtlasIdeUnsaved.Create(
     procedure(AText: string)
@@ -3419,12 +4622,37 @@ begin
     begin
       Result := TAtlasIdeStartProfiles.Run(AProject, AProfile, True, AReason);
     end;
+  // Knopf „Aufgaben ▾“ (#900): Projektaufgaben aus der atlas.json des Projekts über den Aufgabenläufer.
+  Welcome.QuickActions.OnTaskNames :=
+    function(const AProject: string): TArray<string>
+    begin
+      Result := nil;
+      if TasksVisible then
+        Result := ProjectTasks.TaskNamesOf(AProject);
+    end;
+  Welcome.QuickActions.OnRunTask :=
+    function(const AProject, AName: string; out AReason: string): Boolean
+    begin
+      AReason := '';
+      if not TasksVisible then
+      begin
+        AReason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff);
+        Exit(False);
+      end;
+      Result := ProjectTasks.RunInProject(AProject, AName, AReason);
+    end;
   // Bereich „Weiterarbeiten“ (#755): Arbeitsstand beim Schließen, eingehende Commits (#571) und „Gemerkt“.
   Welcome.ContinueWork := TAtlasIdeContinue.Create(
     procedure(AText: string)
     begin
       GuardWarning(AText);
     end);
+  // „Anmeldung am Server nötig – prüfen …“ (#1287): Seite Versionsverwaltung, Zeile des Ordners prüfen.
+  Welcome.ContinueWork.OnServerAccess :=
+    procedure(AFolder: string)
+    begin
+      TAtlasOptionsRegistration.ShowVcsServer(AFolder);
+    end;
   // Zustandskachel „Atlas“ (#754): dieselben Zeilen wie das Statusfeld (#591).
   Welcome.State := CreateWelcomeState;
   // Karte „Atlas entdecken“ (#757): Befehle und Tasten aus der Palette, „Ausprobieren“ führt sie aus.
@@ -3498,8 +4726,78 @@ begin
     end;
 end;
 
+function IssueHooks: TAtlasCodeLinksHooks;
+var
+  mHooks: TAtlasCodeLinksHooks;
+begin
+  // Alles über „Meine Issues“ (Tracker wie dort, Zwischenspeicher der Vorschau); ohne den Bereich wirkungslos.
+  mHooks := Default(TAtlasCodeLinksHooks);
+  mHooks.Target :=
+    function(out ATarget: TAtlasTrackerTarget): Boolean
+    begin
+      ATarget := TAtlasTrackerTarget.Create('', '', '', '');
+      Result := (Welcome <> nil) and (Welcome.Issues <> nil) and Welcome.Issues.CodeTarget(ATarget);
+    end;
+  mHooks.CommitPattern :=
+    function: string
+    begin
+      Result := TAtlasIdeSettings.Current.IssuesCommitPattern;
+    end;
+  mHooks.Preview :=
+    function: TAtlasIdeIssuePreview
+    begin
+      Result := nil;
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Result := Welcome.Issues.IssuePreview;
+    end;
+  mHooks.Show :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.ShowIssue(ATarget, AKey);
+    end;
+  mHooks.Browse :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.BrowseIssue(ATarget, AKey);
+    end;
+  mHooks.Start :=
+    procedure(const ATarget: TAtlasTrackerTarget; const AKey: string)
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.StartIssue(ATarget, AKey);
+    end;
+  mHooks.CanStart :=
+    function: Boolean
+    begin
+      Result := (Welcome <> nil) and (Welcome.Issues <> nil) and Welcome.Issues.CanStartIssue;
+    end;
+  Result := mHooks;
+end;
+
+procedure StartIssueLinks;
+begin
+  IssueLinks := TAtlasIdeCodeLinks.Create(IssueHooks);
+end;
+
+procedure StartBlameIssues;
+begin
+  // Dieselben Haken wie die Kennungen im Code; die Zeilenhistorie bekommt ihre Ergänzungen (kein Zyklus).
+  BlameIssues := TAtlasIdeBlameLinks.Create(IssueHooks);
+  TAtlasIdeLineChanges.SetBlameHooks(BlameIssues.LineHooks);
+end;
+
+procedure StopBlameIssues;
+begin
+  TAtlasIdeLineChanges.SetBlameHooks(Default(TAtlasBlameHooks));
+  FreeAndNil(BlameIssues);
+end;
+
 procedure StopWelcome;
 begin
+  // Vor dem Bereich „Meine Issues“: wartet auf laufende Anfragen.
+  TAtlasIdeNewIssue.Stop;
   FreeAndNil(Welcome);
   TAtlasWelcomeViews.Release;
   TAtlasWelcomeSections.ReleaseDefault;
@@ -3521,6 +4819,18 @@ begin
       if KeyMap <> nil then
         KeyMap.ShowWindow;
     end;
+  // Untermenü Aufgaben (#900): ohne Läufer bzw. mit tasks.enabled aus ausgeblendet.
+  MainMenu.OnTasksMenu :=
+    procedure(AMenu: TMenuItem)
+    begin
+      AMenu.Visible := TasksVisible;
+      if AMenu.Visible then
+        TAtlasGuard.Run(TAtlasFeature.Tasks,
+          procedure
+          begin
+            ProjectTasks.FillMenu(AMenu);
+          end);
+    end;
   MainMenu.OnWelcome :=
     procedure(ACommand: TAtlasWelcomeCommand)
     begin
@@ -3534,6 +4844,19 @@ begin
       else
         Welcome.ResetLayout;
       end;
+    end;
+  // Ansicht › Atlas › Board (#1272).
+  MainMenu.OnBoard :=
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) and (Welcome.Issues.Board <> nil) then
+        Welcome.Issues.Board.Show;
+    end;
+  MainMenu.OnIssueAttach :=
+    procedure
+    begin
+      if (Welcome <> nil) and (Welcome.Issues <> nil) then
+        Welcome.Issues.AttachPrompt;
     end;
 end;
 
@@ -3575,6 +4898,7 @@ begin
       FreeAndNil(BuildInbox);
       FreeAndNil(BuildRunner);
       FreeAndNil(Compile);
+      FreeAndNil(BuildSummary);
     end);
   Features.Add('Watchdog', TAtlasSafeLevel.Normal,
     function: Boolean
@@ -3674,6 +4998,17 @@ begin
       Result := Tests <> nil;
     end,
     StartTests, StopTests);
+  // Projektaufgaben (#900): nur im normalen Start und solange tasks.enabled an ist.
+  Features.AddWanted('Tasks',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.TasksEnabled;
+    end,
+    function: Boolean
+    begin
+      Result := ProjectTasks <> nil;
+    end,
+    StartTasks, StopTasks);
   // Startprofile (#575): nur im normalen Start und solange StartProfiles an ist; liest .atlas über TeamFile.
   Features.AddWanted('StartProfiles',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -3685,6 +5020,39 @@ begin
       Result := TAtlasIdeStartProfiles.Started;
     end,
     StartStartProfiles, StopStartProfiles);
+  // Visualisierer für häufige Typen (#835): nur im normalen Start und solange debug.visualizers an ist.
+  Features.AddWanted('Visualizers',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.DebugVisualizers;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeVisualizers.Started;
+    end,
+    procedure
+    begin
+      TAtlasIdeVisualizers.Start;
+    end,
+    procedure
+    begin
+      TAtlasIdeVisualizers.Stop;
+    end);
+  // Eigene Wertdarstellungen (#854): nur im normalen Start und solange debug.displayRules an ist.
+  Features.AddWanted('DisplayRules',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel = TAtlasSafeLevel.Normal) and TAtlasIdeSettings.Current.DebugDisplayRules;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDisplayRules.Started;
+    end,
+    StartDisplayRules,
+    procedure
+    begin
+      TAtlasIdeDisplayRules.Stop;
+    end);
   // Änderungsprotokoll vor den Tasten: Strg+Alt+Z braucht es (#721).
   Features.Add('Undo', TAtlasSafeLevel.Safe,
     function: Boolean
@@ -3908,6 +5276,116 @@ begin
       Result := QuickColumn <> nil;
     end,
     StartQuickColumn, StopQuickColumn);
+  // Exception-Verlauf beim Debuggen (#517): Zuhörer der Debug-Sitzung; aus = kein Notifier beim Debugger.
+  Features.AddWanted('DebugExceptions',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugExceptionHistory;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugExceptions.Started;
+    end,
+    StartDebugExceptions, TAtlasIdeDebugExceptions.Release);
+  // Nur eigener Code beim Debuggen (#578): Zuhörer der Debug-Sitzung und Haken an „Einzelne Anweisung“ (F7).
+  Features.AddWanted('DebugOwnCode',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugJustMyCode;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugOwnCode.Started;
+    end,
+    StartDebugOwnCode, TAtlasIdeDebugOwnCode.Release);
+  // Exception-Leiste (#783): baut auf dem Exception-Verlauf auf; aus = Dialog der IDE unverändert.
+  Features.AddWanted('DebugExceptionBar',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and DebugExceptionBarVisible;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugExceptionBar.Started;
+    end,
+    StartDebugExceptionBar, TAtlasIdeDebugExceptionBar.Release);
+  // Werte im Editor beim Debuggen (#508): Zuhörer der Debug-Sitzung und Zeichner; aus = nichts angemeldet.
+  Features.AddWanted('DebugInlineValues',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugInlineValues;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugInlineValues.Started;
+    end,
+    StartDebugInlineValues, TAtlasIdeDebugInlineValues.Release);
+  // „kein Zugriff auf Wert“ erklären (#840): Hover und Werte im Editor; aus = Fehler wie bisher ausgeblendet.
+  Features.AddWanted('DebugUnavailable',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugExplainUnavailable;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugUnavailable.Started;
+    end,
+    StartDebugUnavailable, ReleaseDebugUnavailable);
+  // Zugriffsverletzung erklären (#865): Zuhörer des Exception-Verlaufs und Zeichner; aus = nur die Meldung.
+  Features.AddWanted('DebugAccessViolation',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugExplainAccessViolation;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugAccessViolation.Started;
+    end,
+    StartDebugAccessViolation, TAtlasIdeDebugAccessViolation.Release);
+  // Vervollständigung in Debugger-Dialogen (#538): aus = kein Zeitgeber, kein Tastatur-Hook.
+  Features.AddWanted('DebugDialogCompletion',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugCompletionInDialogs;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugDialogCompletion.Started;
+    end,
+    StartDebugDialogCompletion, TAtlasIdeDebugDialogCompletion.Release);
+  // Fenster „Auswerten“ (#784): aus = kein Fenster, kein Zuhörer, Strg+F7 bleibt bei der IDE.
+  Features.AddWanted('DebugEvaluate',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugEvaluateWindow;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugEvaluate.Started;
+    end,
+    StartDebugEvaluate, TAtlasIdeDebugEvaluate.Release);
+  // Schrittfilter beim Hineinspringen (#850): Zuhörer der Debug-Sitzung und Empfänger von F7; aus = F7 wie bisher.
+  Features.AddWanted('DebugStepFilter',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.DebugStepFilters;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeDebugStepFilter.Started;
+    end,
+    TAtlasIdeDebugStepFilter.Start, TAtlasIdeDebugStepFilter.Release);
+  // Wirksame Compiler-Schalter an der Cursorposition (#558): Fenster, Befehl und Statusfeld; aus = kein Zeitgeber.
+  Features.AddWanted('CompilerSwitches',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and TAtlasIdeSettings.Current.BuildCompilerSwitches;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeCompilerSwitches.Started;
+    end,
+    StartCompilerSwitches, TAtlasIdeCompilerSwitches.Release);
   // Gleichen Text wie die Markierung hervorheben (#709): nur im normalen Start oder mit Einstellung.
   Features.AddWanted('SelectionMatches',
     function(ALevel: TAtlasSafeLevel): Boolean
@@ -3924,6 +5402,30 @@ begin
     begin
       FreeAndNil(SelectionMatches);
     end);
+  // Austrittspunkte hervorheben (#698): nur im normalen Start oder mit Einstellung.
+  Features.AddWanted('ExitPoints',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.ExitPoints);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeExitPoints.Installed;
+    end,
+    StartExitPoints, StopExitPoints);
+  // Neu zugewiesene Variablen unterstreichen (#712): nur im normalen Start oder mit Einstellung.
+  Features.AddWanted('Reassigned',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and ((ALevel = TAtlasSafeLevel.Normal) or
+        TAtlasIdeSettings.Current.Reassigned);
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeReassigned.Installed;
+    end,
+    StartReassigned, StopReassigned);
   Features.AddWanted('CompletionKey',
     function(ALevel: TAtlasSafeLevel): Boolean
     begin
@@ -3972,6 +5474,34 @@ begin
       Result := Welcome <> nil;
     end,
     StartWelcome, StopWelcome);
+  // Issue-Kennungen im Code (#1265): nach „Meine Issues“ (Tracker und Vorschau), Abbau davor. issues.codeLinks
+  // prüft der Zeitgeber selbst (Schnellschalter ohne Neustart).
+  Features.AddWanted('IssueLinks',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := IssueLinks <> nil;
+    end,
+    StartIssueLinks,
+    procedure
+    begin
+      FreeAndNil(IssueLinks);
+    end);
+  // Issues in der Zeilenhistorie (#1275): nach „Meine Issues“; issues.blameLinks prüfen die Haken selbst
+  // (Schnellschalter ohne Neustart).
+  Features.AddWanted('BlameIssues',
+    function(ALevel: TAtlasSafeLevel): Boolean
+    begin
+      Result := (ALevel <> TAtlasSafeLevel.Minimal) and (Welcome <> nil) and (Welcome.Issues <> nil);
+    end,
+    function: Boolean
+    begin
+      Result := BlameIssues <> nil;
+    end,
+    StartBlameIssues, StopBlameIssues);
   Features.Add('MainMenu', TAtlasSafeLevel.Safe,
     function: Boolean
     begin
@@ -4032,6 +5562,8 @@ begin
     MainMenu.UpdateWelcome;
     MainMenu.UpdateKeyMap;
   end;
+  // Abschaltbare Einträge im Kontextmenü des Editors (#1120).
+  TAtlasIdeEditorCommands.UpdateContextMenus;
   // Phase und Fortschritt des Servers melden sich aus jedem Thread; gezeichnet wird gesammelt.
   if (Manager <> nil) and (StatusField <> nil) then
     Manager.OnServerChanged :=
@@ -4159,6 +5691,8 @@ begin
       TAtlasIdeBookmarks.ThemeChanged;
       TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
+      TAtlasIdeArchitecture.ThemeChanged;
+      TAtlasIdeUnitRelations.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeEditorToolbar.ThemeChanged;
       TAtlasIdeStatusBar.ThemeChanged;
@@ -4166,6 +5700,11 @@ begin
       TAtlasIdeLineChanges.ThemeChanged;
       TAtlasIdeOverviewRuler.ThemeChanged;
       TAtlasIdeMinimap.ThemeChanged;
+      TAtlasIdeDebugExceptions.ThemeChanged;
+      TAtlasIdeCompilerSwitches.ThemeChanged;
+      TAtlasIdeDebugExceptionBar.ThemeChanged;
+      TAtlasIdeDebugEvaluate.ThemeChanged;
+      TAtlasIdeDebugStepFilter.ThemeChanged;
     end;
   // Zuerst entscheiden, ob Atlas abgesichert startet (#722): Davon hängt ab, was angemeldet wird.
   if SafeMode = nil then
@@ -4209,16 +5748,42 @@ begin
       TAtlasIdeProblems.ApplySettings;
       // outline.* (#537).
       TAtlasIdeOutline.ApplySettings;
+      // architecture.* (#1118).
+      TAtlasIdeArchitecture.ApplySettings;
+      TAtlasIdeUnitRelations.ApplySettings;
+      // callHierarchy.diagram (#1122).
+      TAtlasIdeResultsWindow.ApplySettings;
+      // navigation.symbolPath (#1117): Kontextmenü „Weg von hier nach …“.
+      TAtlasIdeEditorCommands.ApplySettings;
       // editor.breadcrumbs* (#590).
       TAtlasIdeBreadcrumbs.ApplySettings;
       // editor.toolbar* (#1101).
       TAtlasIdeEditorToolbar.ApplySettings;
       // editor.statusBar* (#1155); das Atlas-Feld zieht um oder zurück (RequestRefresh unten).
       TAtlasIdeStatusBar.ApplySettings;
+      // debug.breakOnNextEvent (#856).
+      TAtlasIdeEventBreak.ApplySettings;
       // search.resultsInMessages (#878).
       TAtlasIdeSearch.ApplySettings;
+      // tasks.onlyFindings und Tasten der Projektaufgaben (#900).
+      if ProjectTasks <> nil then
+        ProjectTasks.ApplySettings;
       // editor.stickyScroll* (#506).
       TAtlasIdeStickyScroll.ApplySettings;
+      // debug.exceptionHistory (#517).
+      TAtlasIdeDebugExceptions.ApplySettings;
+      // build.compilerSwitches, build.showSwitchesInStatusBar (#558).
+      TAtlasIdeCompilerSwitches.ApplySettings;
+      // debug.exceptionBanner* (#783).
+      TAtlasIdeDebugExceptionBar.ApplySettings;
+      // debug.explainUnavailable (#840): Ergänzungen der Fehlertexte neu lesen.
+      TAtlasIdeDebugUnavailable.ApplySettings;
+      // debug.completionInDialogs (#538): Breiten des Popups.
+      TAtlasIdeDebugDialogCompletion.ApplySettings;
+      // debug.evaluateWindow.replaceCtrlF7 (#784): Strg+F7 an- bzw. abhängen.
+      TAtlasIdeDebugEvaluate.ApplySettings;
+      // debug.stepFilters* (#850): Fenster mit dem gespeicherten Stand, Treffer neuer Muster zählen.
+      TAtlasIdeDebugStepFilter.ApplySettings;
       // editor.gitGutter, editor.gitBlame (#507).
       TAtlasIdeLineChanges.ApplySettings;
       // editor.overviewRuler, editor.overviewRulerKinds (#519).
@@ -4232,6 +5797,10 @@ begin
       TAtlasIdeTeamFile.Refresh;
       // Wirksame experimentelle Funktionen im Statusfeld und im Protokoll (#834).
       TAtlasIdeExperimental.ApplySettings;
+      // debug.visualizers aus: abmelden; Arten geändert: neu anmelden (#835).
+      TAtlasIdeVisualizers.ApplySettings;
+      // debug.displayRules aus: abmelden; an: Regeln beim nächsten Takt neu lesen (#854).
+      TAtlasIdeDisplayRules.ApplySettings;
       // startProfiles.enabled aus: Zeitgeber und Feld weg (RegisterFeatures startet sie wieder);
       // startProfiles.statusField oder .atlas geändert: Feld neu melden (#575).
       if not TAtlasIdeSettings.Current.StartProfiles then
@@ -4462,6 +6031,7 @@ begin
     Teardown.Step('Vcs',
       procedure
       begin
+        TAtlasIdeBranching.ServerCommand := nil;
         TAtlasIdeVcs.Stop;
       end);
     Teardown.Step('Experimental',
@@ -4494,6 +6064,12 @@ begin
     // Einrichtung, Update-Prüfung und Willkommensseite haben Zeilen in dessen Registry (#479, #625, #754).
     if Features <> nil then
       Teardown.AddFailures(Features.StopAll);
+    // Nach den Debugger-Funktionen: Sie melden sich dort ab; was übrig bleibt, hängt Atlas hier von F7 ab (#850).
+    Teardown.Step('DebugTrace',
+      procedure
+      begin
+        TAtlasIdeDebugTrace.Release;
+      end);
     Teardown.Step('QuickToggles',
       procedure
       begin

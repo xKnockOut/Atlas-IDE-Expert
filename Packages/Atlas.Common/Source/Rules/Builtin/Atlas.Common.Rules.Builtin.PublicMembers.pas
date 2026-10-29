@@ -2,9 +2,17 @@
 
 // Regel unused-public-member (#1102, Gruppe „Stil und Metriken“): eine
 // public- oder published-Methode, -Konstante oder -Property (auf Wunsch auch
-// protected und Felder) bzw. eine Routine oder Konstante aus dem
-// interface-Teil, die in der ganzen Projektgruppe nirgends verwendet wird.
-// Erweitert unused-private-member (#1020) über die Grenze der Unit.
+// protected und Felder) bzw. eine Routine, Konstante, ein Typ oder eine
+// globale Variable aus dem interface-Teil (Option unitKinds, Typen und
+// Variablen seit #64), die in der ganzen Projektgruppe nirgends verwendet
+// wird. Erweitert unused-private-member (#1020) über die Grenze der Unit.
+//
+// Bei Typen zählen Vorkommen in der eigenen Deklaration und in den Rümpfen
+// der eigenen Methoden (samt Methodenkopf TTyp.Name) nicht; ein Typ, den eine
+// Datei des Suchbereichs registriert (RegisterComponents …), gilt als
+// verwendet. Für Attributklassen (XyzAttribute) zählt auch die Kurzform [Xyz].
+// Zu keepAttributes und keepPatterns kommen deadCode.keepAttributes und
+// deadCode.keepPatterns aus den Einstellungen (#64).
 //
 // Ablauf je Kandidat:
 // - Ausnahmen über den Dienst „gilt als verwendet“ (Rules.ConsideredUsed).
@@ -90,6 +98,15 @@ var
   Noun: string;
   Neuter: Boolean;
 begin
+  // Unit-Ebene (#64): Typen und globale Variablen.
+  if ASymbol.Container = '' then
+    case ASymbol.Kind of
+      TIndexSymbolKind.Variable:
+        Exit('Globale Variable');
+      TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias:
+        Exit('Öffentlicher Typ');
+    end;
   Neuter := ASymbol.Kind = TIndexSymbolKind.Field;
   case ASymbol.Kind of
     TIndexSymbolKind.Field:
@@ -153,6 +170,55 @@ begin
   end;
 end;
 
+/// <summary>Kennung für die Option unitKinds (#64); '' für Arten, die die Regel auf Unit-Ebene nicht prüft
+/// (Helfer werden über den erweiterten Typ verwendet).</summary>
+function UnitKindKey(const ASymbol: TIndexSymbol): string;
+begin
+  case ASymbol.Kind of
+    TIndexSymbolKind.Routine:
+      Result := 'routine';
+    TIndexSymbolKind.Constant:
+      Result := 'constant';
+    TIndexSymbolKind.Variable:
+      Result := 'variable';
+    TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+    TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias:
+      Result := 'type';
+  else
+    Result := '';
+  end;
+end;
+
+function IsTypeSymbol(const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := (ASymbol.Container = '') and (UnitKindKey(ASymbol) = 'type');
+end;
+
+/// <summary>Name ohne Typparameter: TListe&lt;T&gt;.Add -> TListe.Add.</summary>
+function WithoutTypeParams(const AName: string): string;
+var
+  Index, Depth: Integer;
+begin
+  Result := '';
+  Depth := 0;
+  for Index := 1 to Length(AName) do
+    if AName[Index] = '<' then
+      Inc(Depth)
+    else if AName[Index] = '>' then
+      Dec(Depth)
+    else if Depth = 0 then
+      Result := Result + AName[Index];
+end;
+
+/// <summary>Kurzform einer Attributklasse ([Behalten] für BehaltenAttribute), sonst ''.</summary>
+function AttributeShortName(const ASymbol: TIndexSymbol): string;
+begin
+  Result := '';
+  if (ASymbol.Kind = TIndexSymbolKind.ClassType) and (Length(ASymbol.Name) > Length('Attribute')) and
+    EndsText('Attribute', ASymbol.Name) then
+    Result := Copy(ASymbol.Name, 1, Length(ASymbol.Name) - Length('Attribute'));
+end;
+
 function ProjectKindKey(AKind: TRuleProjectKind): string;
 begin
   case AKind of
@@ -208,7 +274,7 @@ var
   Tokens: TArray<TPascalToken>;
   Lines: TArray<string>;
   FileName, Reason, LineBreak: string;
-  Visibilities, MemberKinds, ProjectKinds: TArray<string>;
+  Visibilities, MemberKinds, ProjectKinds, UnitKinds: TArray<string>;
   UnitLevel, WholeGroup, TestsCount, StringsCount: Boolean;
   Projects: TArray<TRuleProject>;
   Files: TList<TSearchFile>;
@@ -342,8 +408,9 @@ var
           Result := Result + [Symbol.SelectionRange.StartPos];
   end;
 
-  /// <summary>Rümpfe von ASymbol in der eigenen Datei (Rekursion ist keine Verwendung).</summary>
-  function OwnBodies(const ASymbol: TIndexSymbol): TArray<TSyntaxNode>;
+  /// <summary>Bereiche von ASymbol in der eigenen Datei, deren Vorkommen keine Verwendung sind: die Rümpfe der
+  /// Routine (Rekursion), bei Typen die Deklaration und die Rümpfe ihrer Methoden samt Kopf (#64).</summary>
+  function OwnRanges(const ASymbol: TIndexSymbol): TArray<TTextRange>;
   var
     Node: TSyntaxNode;
     Wanted: string;
@@ -353,19 +420,22 @@ var
       Wanted := ASymbol.Container + '.' + ASymbol.Name
     else
       Wanted := ASymbol.Name;
+    if IsTypeSymbol(ASymbol) then
+      Result := [ASymbol.Range];
     for Node in TRuleDerived.Routines(Cache, AContext) do
-      if SameText(Node.Name, Wanted) then
-        Result := Result + [Node];
+      if SameText(Node.Name, Wanted) or (IsTypeSymbol(ASymbol) and
+        StartsText(ASymbol.Name + '.', WithoutTypeParams(Node.Name))) then
+        Result := Result + [TTextRange.Create(Node.StartPos, Node.EndPos)];
   end;
 
-  function Inside(const APosition: TTextPosition; const ANodes: TArray<TSyntaxNode>): Boolean;
+  function Inside(const APosition: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
   var
-    Node: TSyntaxNode;
+    Range: TTextRange;
   begin
-    for Node in ANodes do
-      if ((APosition.Line > Node.StartPos.Line) or ((APosition.Line = Node.StartPos.Line) and
-        (APosition.Character >= Node.StartPos.Character))) and ((APosition.Line < Node.EndPos.Line) or
-        ((APosition.Line = Node.EndPos.Line) and (APosition.Character <= Node.EndPos.Character))) then
+    for Range in ARanges do
+      if ((APosition.Line > Range.StartPos.Line) or ((APosition.Line = Range.StartPos.Line) and
+        (APosition.Character >= Range.StartPos.Character))) and ((APosition.Line < Range.EndPos.Line) or
+        ((APosition.Line = Range.EndPos.Line) and (APosition.Character <= Range.EndPos.Character))) then
         Exit(True);
     Result := False;
   end;
@@ -375,24 +445,31 @@ var
   function UsedInTree(ATree: TSyntaxTree; const AFile: string; const ASymbol: TIndexSymbol): Boolean;
   var
     Declared: TArray<TTextPosition>;
-    Bodies: TArray<TSyntaxNode>;
+    Bodies: TArray<TTextRange>;
     Index: Integer;
     Position, Skip: TTextPosition;
     Excluded: Boolean;
     Results: TArray<TResolvedSymbol>;
     Resolved: TResolvedSymbol;
+    Name, Short: string;
   begin
     Result := False;
     Declared := DeclaredAt(AFile, ASymbol.Name);
     Bodies := nil;
     if SameText(AFile, FileName) then
-      Bodies := OwnBodies(ASymbol);
+      Bodies := OwnRanges(ASymbol);
+    Short := AttributeShortName(ASymbol);
     Resolver.PinTree(ATree, AFile);
     try
       for Index := 0 to High(ATree.Tokens) do
       begin
-        if (ATree.Tokens[Index].Kind <> TPascalTokenKind.Identifier) or
-          not SameText(CleanName(ATree.Tokens[Index].Text), ASymbol.Name) then
+        if ATree.Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+          Continue;
+        Name := CleanName(ATree.Tokens[Index].Text);
+        // [Behalten] verwendet BehaltenAttribute; die Namensauflösung kennt die Kurzform nicht.
+        if (Short <> '') and SameText(Name, Short) and not Inside(ATree.Tokens[Index].StartPos, Bodies) then
+          Exit(True);
+        if not SameText(Name, ASymbol.Name) then
           Continue;
         Position := ATree.Tokens[Index].StartPos;
         Excluded := False;
@@ -562,6 +639,14 @@ var
     Result := False;
   end;
 
+  /// <summary>Kommt der Name von ASymbol (bei Attributklassen auch die Kurzform) in AFile vor?</summary>
+  function NameInFile(const AFile: string; const ASymbol: TIndexSymbol): TRuleNameAnswer;
+  begin
+    Result := AContext.ProjectFiles.NameIn(AFile, ASymbol.Name);
+    if (Result = TRuleNameAnswer.Absent) and (AttributeShortName(ASymbol) <> '') then
+      Result := AContext.ProjectFiles.NameIn(AFile, AttributeShortName(ASymbol));
+  end;
+
   /// <summary>Wo wird ASymbol verwendet? ATestProject: das Testprojekt bei OnlyTests. Was nicht sicher zu
   /// beantworten ist, gilt als Used.</summary>
   function UsageOf(const ASymbol: TIndexSymbol; out ATestProject: string): TUsage;
@@ -579,7 +664,7 @@ var
         Used := UsedInTree(AContext.Tree, FileName, ASymbol)
       else
       begin
-        case AContext.ProjectFiles.NameIn(Entry.FileName, ASymbol.Name) of
+        case NameInFile(Entry.FileName, ASymbol) of
           TRuleNameAnswer.Absent:
             Continue;
           TRuleNameAnswer.Unknown:
@@ -626,11 +711,14 @@ var
 
   function Wanted(const ASymbol: TIndexSymbol): Boolean;
   begin
-    if ASymbol.Unavailable or (ASymbol.FileName <> '') or not Contains(MemberKinds, MemberKindKey(ASymbol)) then
+    if ASymbol.Unavailable or (ASymbol.FileName <> '') then
       Exit(False);
+    // Unit-Ebene: Arten aus unitKinds (#64), unabhängig von memberKinds.
     if ASymbol.Container = '' then
-      Exit(UnitLevel and ASymbol.InInterface and (ASymbol.Kind in [TIndexSymbolKind.Routine,
-        TIndexSymbolKind.Constant]));
+      Exit(UnitLevel and ASymbol.InInterface and (UnitKindKey(ASymbol) <> '') and
+        Contains(UnitKinds, UnitKindKey(ASymbol)));
+    if not Contains(MemberKinds, MemberKindKey(ASymbol)) then
+      Exit(False);
     Result := (ASymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constant, TIndexSymbolKind.Property_,
       TIndexSymbolKind.Field, TIndexSymbolKind.Variable]) and Contains(Visibilities, VisibilityKey(ASymbol.Visibility));
   end;
@@ -666,6 +754,9 @@ var
     if (ASymbol.Visibility = TIndexVisibility.Published) and (ASymbol.Container <> '') and
       (((ASymbol.Kind = TIndexSymbolKind.Method) and FormUnreadable) or IsRegistered(ASymbol.Container)) then
       Exit;
+    // Registrierte Klassen erreichen Streaming und Objektinspektor über RTTI (#64).
+    if IsTypeSymbol(ASymbol) and IsRegistered(ASymbol.Name) then
+      Exit;
     case UsageOf(ASymbol, TestProject) of
       TUsage.Unused:
         AReport.AddWithDetails(ASymbol.SelectionRange, Format('%s %s wird im Projekt nirgends verwendet.',
@@ -690,6 +781,7 @@ begin
   MemberKinds := TRuleOptions.Strings(AContext.Options, 'memberKinds', ['method', 'constant', 'property']);
   ProjectKinds := TRuleOptions.Strings(AContext.Options, 'projectKinds', ['application']);
   UnitLevel := TRuleOptions.Bool(AContext.Options, 'unitLevel', True);
+  UnitKinds := TRuleOptions.Strings(AContext.Options, 'unitKinds', ['routine', 'constant', 'type', 'variable']);
   WholeGroup := not SameText(TRuleOptions.Text(AContext.Options, 'scope', 'projectGroup'), 'project');
   TestsCount := TRuleOptions.Bool(AContext.Options, 'testsCountAsUse', True);
   StringsCount := TRuleOptions.Bool(AContext.Options, 'stringLiteralsCountAsUse', True);
@@ -708,10 +800,11 @@ begin
   Registered := TDictionary<string, Boolean>.Create;
   FormsState := 0;
   Seen := TDictionary<string, Boolean>.Create;
+  // Optionen der Regel und deadCode.keep* aus den Einstellungen (#64) zusammen.
   Considered := TConsideredUsed.Create(AContext.Index, Local, Tokens,
-    TRuleOptions.Strings(AContext.Options, 'keepAttributes', []),
-    TRuleOptions.Strings(AContext.Options, 'keepPatterns', []));
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+    TRuleOptions.Strings(AContext.Options, 'keepAttributes', []) + AContext.KeepAttributes,
+    TRuleOptions.Strings(AContext.Options, 'keepPatterns', []) + AContext.KeepPatterns);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     CollectFiles;

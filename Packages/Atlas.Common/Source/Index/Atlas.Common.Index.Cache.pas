@@ -87,7 +87,9 @@ type
     // 25: Methodenzuordnungen IFoo.Bar=Baz je Klasse statt als Mitglied (#849 mit #1000 und #1040).
     // 26: Namen ohne Escape-& (&begin → begin, &&op_Equality → &op_Equality, #1137).
     // 27: type AnsiString(Codepage) ohne Zieltyp, RawByteString/UTF8String bleiben eigene Typen (#1140).
-    const FormatVersion = 27;
+    // 28: Begründungen (// WHY: …) je Symbol und Unit (#1123).
+    // 29: Prozedurtypen über mehrere Zeilen vollständig, Merkmal "of object"/"reference to" in Directives (#1326).
+    const FormatVersion = 29;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -458,6 +460,7 @@ begin
   AWriter.WriteVar(ATable.IndexOf(ASymbol.VariantBranch));
   WriteList(AWriter, ATable, ASymbol.InlineRefs);
   WriteList(AWriter, ATable, ASymbol.Resolutions);
+  WriteList(AWriter, ATable, ASymbol.Rationale);
 end;
 
 procedure WriteUsage(AWriter: TCacheWriter; ATable: TStringTable; const AUsage: TIndexUsage);
@@ -535,6 +538,7 @@ begin
       end;
       WriteList(AWriter, ATable, UnitIndex.Directives);
       AWriter.WriteVar(ATable.IndexOf(UnitIndex.DeprecatedText));
+      WriteList(AWriter, ATable, UnitIndex.Rationale);
       AWriter.WriteVar(Length(UnitIndex.Symbols));
       AWriter.WriteVar(Length(UnitIndex.Unavailable));
       // Block erst sammeln, damit seine Länge davor stehen kann.
@@ -669,6 +673,7 @@ begin
   Result.VariantBranch := AReader.ReadString(AStrings);
   Result.InlineRefs := AReader.ReadList(AStrings);
   Result.Resolutions := AReader.ReadList(AStrings);
+  Result.Rationale := AReader.ReadList(AStrings);
 end;
 
 function ReadUsage(var AReader: TCacheReader; const AStrings: TArray<string>): TIndexUsage;
@@ -772,6 +777,7 @@ begin
       end;
       Entry.Header.Directives := Reader.ReadList(Strings);
       Entry.Header.DeprecatedText := Reader.ReadString(Strings);
+      Entry.Header.Rationale := Reader.ReadList(Strings);
       Entry.SymbolCount := Reader.ReadCount;
       Entry.UnavailableCount := Reader.ReadCount;
       Size := Reader.ReadCount;

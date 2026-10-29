@@ -1,0 +1,6 @@
+[
+  {"number": 753, "title": "Board im Plugin", "state": "open", "html_url": "https://github.com/beispiel/atlas/issues/753", "body": "- [ ] A",
+   "assignees": [{"login": "xKnockOut"}]},
+  {"number": 754, "title": "Ein Pull Request", "state": "open", "html_url": "https://github.com/beispiel/atlas/pull/754", "pull_request": {"url": "x"},
+   "assignees": []}
+]

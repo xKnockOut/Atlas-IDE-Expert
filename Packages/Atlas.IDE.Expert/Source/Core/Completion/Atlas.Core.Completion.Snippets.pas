@@ -140,6 +140,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.Classes,
   System.StrUtils,
   Atlas.Text.Lines,

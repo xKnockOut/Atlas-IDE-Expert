@@ -16,6 +16,7 @@ uses
   System.Generics.Collections,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Projects.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
@@ -31,10 +32,15 @@ uses
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Lsp.LinkedEditing,
+  Atlas.Common.Lsp.InlineValues,
+  Atlas.Common.Lsp.CompilerSwitches,
+  Atlas.Common.Lsp.DebugUnavailable,
+  Atlas.Common.Lsp.ExpressionCompletion,
   Atlas.Common.Lsp.Formatting,
   Atlas.Common.Lsp.SelectionRanges,
   Atlas.Common.Lsp.Definition,
   Atlas.Common.Lsp.Hover,
+  Atlas.Common.Lsp.Rationale,
   Atlas.Common.Lsp.WorkspaceSymbols,
   Atlas.Common.Editing.Bookmarks,
   Atlas.Common.Lsp.DocumentHighlights,
@@ -51,18 +57,44 @@ uses
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.Preprocessor,
+  Atlas.Common.Pascal.CompilerSwitches,
   Atlas.Common.Lsp.SignatureHelp,
+  Atlas.Common.Pascal.FormatRoutines,
   Atlas.Common.Lsp.Hierarchies,
+  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Lsp.DataFlow,
+  Atlas.Common.Lsp.AccessChains,
   Atlas.Common.Lsp.Implementations,
   Atlas.Common.Lsp.InlayHints,
   Atlas.Common.Lsp.CodeLens,
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
+  Atlas.Common.Lsp.Architecture,
+  Atlas.Common.Lsp.UnitRelations,
+  Atlas.Common.Lsp.SymbolPath,
+  Atlas.Common.Architecture.Service,
+  Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Architecture.UsesService,
+  Atlas.Common.Lsp.DebugDisplay,
+  Atlas.Common.Lsp.EventHandlers,
   Atlas.Common.Lsp.Recursion,
+  Atlas.Common.Lsp.ExitPoints,
+  Atlas.Common.Lsp.Reassigned,
+  Atlas.Common.Lsp.ExpressionType,
+  Atlas.Common.Lsp.MethodOrder,
+  Atlas.Common.Editing.SuggestConst,
+  Atlas.Common.Editing.VarBlock,
+  Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Lsp.Baseline,
+  Atlas.Common.Lsp.CompilerBaseline,
+  Atlas.Common.Lsp.DisableWarning,
+  Atlas.Common.Lsp.CompilerFixes,
+  Atlas.Common.Editing.CompilerFixes,
+  Atlas.Common.Projects.MissingUnit,
+  Atlas.Common.Lsp.MissingUnit,
   Atlas.Common.Lsp.SemanticTokens,
   Atlas.Common.Lsp.Status,
   Atlas.Common.Projects.Selection,
@@ -120,6 +152,9 @@ type
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
     FLinkedEditing: TLspLinkedEditing;
+    FInlineValues: TLspInlineValues;
+    FCompilerSwitches: TLspCompilerSwitches;
+    FDebugUnavailable: TLspDebugUnavailable;
     FFormatting: TLspFormatting;
     FSlashMenu: TLspSlashMenu;
     FSelectionRanges: TLspSelectionRanges;
@@ -146,8 +181,14 @@ type
     /// <summary>Zuletzt gesetztes Zeitlimit für Anfragen, für die Einordnung als timeout.</summary>
     FRequestTimeout: Cardinal;
     FCompletion: TLspCompletion;
+    FExpressionCompletion: TLspExpressionCompletion;
     FSignatureHelp: TLspSignatureHelp;
     FHierarchies: TLspHierarchies;
+    FImpact: TImpactAnalysis;
+    // Datenfluss „Woher/Wohin geht der Wert?“ (#690).
+    FDataFlow: TLspDataFlow;
+    // Zugriffsketten am Ausführungspunkt (#865).
+    FAccessChains: TLspAccessChains;
     FImplementations: TLspImplementations;
     FInlayHints: TLspInlayHints;
     FCodeLens: TLspCodeLens;
@@ -155,9 +196,23 @@ type
     FMetrics: TLspMetrics;
     /// <summary>TODO-Übersicht (#68): Befehl atlas.server.todos.</summary>
     FTodos: TLspTodos;
+    /// <summary>Architekturübersicht (#1118): Dienst mit Zwischenspeicher je Index-Generation, Anfrage
+    /// atlas/architecture und Befehl atlas.architecture.saveReport.</summary>
+    FArchitectureService: TArchitectureService;
+    FArchitecture: TLspArchitecture;
+    /// <summary>Unit-Beziehungen (#593): eigener Uses-Graph mit Bibliotheks-Units, Anfrage atlas/unitRelations
+    /// und Befehle zum Verschieben und Entfernen von uses-Einträgen.</summary>
+    FUnitRelationsGraph: TUsesGraphService;
+    FUnitRelations: TLspUnitRelations;
+    FSymbolPath: TLspSymbolPath;
+    /// <summary>Eigene Wertdarstellungen beim Debuggen (#854): Befehl atlas.server.debugDisplayRules.</summary>
+    FDebugDisplay: TLspDebugDisplay;
+    FEventHandlers: TLspEventHandlers;
     FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
+    /// <summary>Compilermeldungen in der Baseline (#530).</summary>
+    FCompilerBaseline: TLspCompilerBaseline;
     FSemanticTokens: TLspSemanticTokens;
     FCodeActions: TLspCodeActions;
     /// <summary>Testunit anlegen und wechseln (#274, #189).</summary>
@@ -182,6 +237,8 @@ type
     FWatchedFiles: TLspWatchedFiles;
     /// <summary>Aktive Unit nach der Tipp-Pause neu in den Index (#492).</summary>
     FIndexRefresh: TLspIndexRefresh;
+    /// <summary>uses-Listen der übernommenen Puffer (#896): bei Änderung andere offene Units neu prüfen.</summary>
+    FUsesChanges: TLspUsesChanges;
     /// <summary>Build-Ergebnisse und Compilermeldungen aus der IDE (#528).</summary>
     FIdeBuild: TLspIdeBuild;
     /// <summary>Projektkontext aus der IDE (#396).</summary>
@@ -196,6 +253,8 @@ type
     FLooseConfiguration: TLspConfiguration;
     FConnection: TJsonRpcConnection;
     FIndex: ISymbolIndex;
+    /// <summary>Uses-Graph über FIndex für uses-cycle und unused-unit (#64); lebt so lange wie der Index.</summary>
+    FUsesGraph: TUsesGraphService;
     // Ordner des Arbeitsbereichs. Ändern nur im Thread der Nachrichtenschleife,
     // unter FWorkspacesLock, weil Anfrage-Threads lesen.
     FWorkspaces: TObjectList<TShellWorkspace>;
@@ -347,14 +406,80 @@ type
     function PropertyFromAccessorsActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Property aus Getter und Setter“ (#682): das WorkspaceEdit für Stelle und Aufrufe.</summary>
     function PropertyFromAccessors(const AArguments: TJSONArray): TJSONValue;
+    function InlineAccessorActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Befehl atlas.server.inlineAccessor: [uri, position, here|unit|project] (#717).</summary>
+    function InlineAccessor(const AArguments: TJSONArray): TJSONValue;
+    function SafeDeleteActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Befehle atlas.server.safeDelete.prepare: [uri, position] und atlas.server.safeDelete: [uri,
+    /// position, {overrides, cascade, force}] (#716).</summary>
+    function SafeDelete(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+    /// <summary>Projekt der Datei AFileName für Umbauten mit neuen Units; False ohne Projekt.</summary>
+    function RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
+    /// <summary>Gibt es die Datei auf der Platte oder als offenes Dokument?</summary>
+    function SourceExists(const AFileName: string): Boolean;
+    /// <summary>Code-Aktion „Interface aus … herauslösen …“ an APosition (#664).</summary>
+    function ExtractInterfaceActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Interface herauslösen“ (#664): APrepare = Kandidaten, sonst das WorkspaceEdit.</summary>
+    function ExtractInterface(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+    /// <summary>Code-Aktion „Basisklasse aus … herauslösen …“ an APosition (#713).</summary>
+    function ExtractSuperclassActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Basisklasse herauslösen“ (#713): APrepare = Kandidaten, sonst das WorkspaceEdit.</summary>
+    function ExtractSuperclass(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+    /// <summary>„In Vorfahr/Nachfahren verschieben“ an APosition (#675).</summary>
+    function MoveMemberActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Mitglied verschieben“ (#675): APrepare = Kandidaten und Ziele, sonst das WorkspaceEdit.</summary>
+    function MoveMember(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
     /// <summary>„Bedeutung umkehren“ an APosition (#715).</summary>
     function InvertBooleanActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>„Boolean umkehren“ (#715): das WorkspaceEdit für alle Stellen.</summary>
     function InvertBoolean(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>„In Feld umwandeln“ bzw. „In lokale Variable umwandeln“ an APosition (#668).</summary>
+    function PromoteVariableActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Lokale Variable und Feld umwandeln (#668): das WorkspaceEdit mit dem gewählten Namen.</summary>
+    function PromoteVariable(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>„In Methode umwandeln“ und „Als anonyme Methode einbetten“ an APosition (#680).</summary>
+    function AnonymousMethodActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Anonyme Methode in Methode umwandeln (#680): das WorkspaceEdit mit dem gewählten Namen.</summary>
+    function AnonymousMethod(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Methode ohne Self umwandeln (#686): Code-Aktionen an APosition.</summary>
+    function MethodKindActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Methode ohne Self umwandeln (#686): das WorkspaceEdit der gewählten Umwandlung über alle Dateien.
+    /// </summary>
+    function MethodKind(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Typ-Alias einführen und auflösen (#681): Code-Aktionen an APosition.</summary>
+    function TypeAliasActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Typ-Alias einführen (#681): das WorkspaceEdit mit dem gewählten Namen und der Reichweite.</summary>
+    function TypeAlias(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Alias auflösen (#681): das WorkspaceEdit über alle Verwendungen.</summary>
+    function InlineTypeAlias(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Aufzählung mit Namenstabelle (#667): Code-Aktionen an APosition.</summary>
+    function EnumTableActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>Namenstabelle anlegen (#667): das WorkspaceEdit mit dem gewählten Namen und der Stelle.</summary>
+    function EnumTable(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Tabellen und case-Anweisungen über einen Aufzählungstyp nachziehen (#667).</summary>
+    function EnumTablesSync(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Umschließung entfernen“ (#657): Konstrukte am Cursor mit Varianten und Vorschau.</summary>
     function Unwrap(const AArguments: TJSONArray): TJSONValue;
+    function StepTargets(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Schrittfilter (#850): Routine an [uri, line] mit Namen und Arten.</summary>
+    function StepFilter(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Schrittfilter (#850): Treffer der Arten und Muster über alle Projekt-Units.</summary>
+    function StepFilterCounts(const AArguments: TJSONArray): TJSONValue;
     /// <summary>„Typ ausschreiben“ (#453) für die Inline-Variable an APosition.</summary>
     function ExplicitTypeActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>„Warnung hier abschalten“ auf Meldungen des letzten Compilerlaufs (#531).</summary>
+    function DisableWarningActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+    function DisableWarning(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Schnellkorrekturen an Meldungen des letzten Compilerlaufs (#549).</summary>
+    function CompilerFixActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+    /// <summary>„Unit nicht gefunden“: Suchpfad ergänzen (#550).</summary>
+    function MissingUnitActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+    /// <summary>Suche nach AUnitName im Projekt der Datei AFileName vorbereiten (#550).</summary>
+    function MissingUnitSetupFor(const AFileName, AUnitName: string; out ASetup: TMissingUnitSetup): Boolean;
+    /// <summary>„Als Konstante deklarieren“ (#712, refactoring.suggestConst).</summary>
+    function SuggestConstActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    /// <summary>var-Block pflegen (#644, refactoring.varBlock): umwandeln in beide Richtungen, aufräumen.</summary>
+    function VarBlockActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
     /// <summary>Extrahieren, „case vervollständigen“ und „with auflösen“ (#50).</summary>
     function RefactoringActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
     /// <summary>Index, Einstellungen, Sprachversion und Formatstil für die Aktionen aus #50.</summary>
@@ -375,6 +500,10 @@ type
     /// <summary>Include-Resolver mit den Suchpfaden des Projekts von AUri (#860).</summary>
     function IncludeResolverFor(const AUri: string): TIncludeResolver;
     function DelphiVersionFor(const AUri: string): string;
+    /// <summary>Sprachstand von AUri (#1126): die ältere aus DelphiVersionFor und minDelphiVersion des Projekts.
+    /// Gilt für Diagnosen, Code-Aktionen, Schnellbefehle und Formatieren; Hover und Hilfe-Links nehmen weiter
+    /// DelphiVersionFor.</summary>
+    function LanguageLevelFor(const AUri: string): string;
     /// <summary>Schnellbefehle (#293): False = aus; ADisabled samt "uses" bei usesCommand = false.</summary>
     function SlashCommandsFor(const AUri: string; out ADisabled: TArray<string>): Boolean;
     /// <summary>Kennungen der Prüfregeln, die in Zeile ALine von AText treffen (/ignore, #297); False ohne
@@ -383,6 +512,9 @@ type
     /// <summary>Index und usesKeep für /sortuses (#297) und die uses-Diagnosen (#621); False, solange die
     /// Code-Aktionen fehlen.</summary>
     function UsesContextFor(const AUri: string; out AContext: TUsesContext): Boolean;
+    /// <summary>Optionen des Graphen der Unit-Beziehungen (#593): Wurzel und Namensräume des Projekts der
+    /// Datei, ohne Ausschlüsse der Architektur, damit „Wird verwendet von“ vollständig bleibt.</summary>
+    function UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
     /// <summary>Regeltreffer der Zeile ALine mit Erklärung aus dem Katalog und sicherer Korrektur (/fix,
     /// /explain, #300); False ohne Prüfregeln für die Datei.</summary>
     function SlashFindingsAt(const AUri, AText: string; ALine: Integer; out AFindings: TArray<TSlashFinding>): Boolean;
@@ -392,12 +524,34 @@ type
     /// <summary>Einstellungen, Wurzel und Dateien für die Code-Metriken (#66): Datei, Projekt (.dproj/.dpr/.dpk),
     /// Ordner oder '' (einziger Arbeitsbereich).</summary>
     function MetricsSourceFor(const AFileName: string; AProject: Boolean; out ASource: TLspMetricsSource): Boolean;
+    /// <summary>Anfrage der Architekturübersicht (#1118) zum Arbeitsbereich von AFileName: Einstellungen, Wurzel,
+    /// Titel, Namensräume und Dateien des Projekts (AScope "project") bzw. aller Projekte (sonst; leer =
+    /// architecture.scope).</summary>
+    function ArchitectureSourceFor(const AFileName, AScope: string; out ARequest: TArchitectureRequest;
+      out ASettings: TServerSettings): Boolean;
+    /// <summary>Einstellungen und Namensräume für den Weg zwischen Symbolen (#1117) zum Arbeitsbereich von
+    /// AFileName.</summary>
+    function SymbolPathSourceFor(const AFileName: string; out ASettings: TServerSettings;
+      out ANamespaces: TArray<string>): Boolean;
     function HintSettingsFor(const AUri: string): THintSettings;
+    /// <summary>Begründungen (#1123): hints.rationale, Marken, TODO-Marken und ADR-Ordner des Arbeitsbereichs.
+    /// </summary>
+    function RationaleOptionsFor(const AUri: string): TRationaleOptions;
     /// <summary>Bedingte Symbole für Hover und Vervollständigung in Direktiven (#102): Symbole des Projekts mit
     /// Herkunft aus der .dproj, Compiler-Vorgaben, Include-Pfade und der Schalter "directives".</summary>
     function ConditionalContextFor(const AUri: string): TConditionalContext;
+    /// <summary>Projektstand für atlas/compilerSwitches (#558), unabhängig von directives.*.</summary>
+    function CompilerSwitchContextFor(const AUri: string): TCompilerSwitchContext;
     function RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
     function CompletionSettingsFor(const AUri: string): TCompletionSettings;
+    /// <summary>Formatroutinen für den Parameter-Hint (#451): eingebaute, formatMethods der Regel format-args
+    /// (atlas.json) und formatFunctions der Projektdatei .atlas (Projektkontext der IDE).</summary>
+    function FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
+    /// <summary>"references" (#1119): Treffersicherheit für Verwendungen, Aufrufer und Umbenennen.</summary>
+    function ReferenceSettingsFor(const AUri: string): TReferenceSettings;
+    /// <summary>Auswirkungsanalyse (#1120): Tiefe aus "navigation", Treffersicherheit, Testunits des Testprogramms
+    /// und ein Zeitlimit unter dem der Anfrage, damit die Antwort mit Hinweis statt eines Abbruchs kommt.</summary>
+    function ImpactOptionsFor(const AUri: string): TImpactOptions;
     /// <summary>"stringLiteral" für AUri; AMultiline nach Stil und Delphi-Version (#312).</summary>
     function StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
     function FormatStyleFor(const AUri: string): TFormatStyle;
@@ -503,10 +657,13 @@ uses
   Shell.Commands.Build,
   Shell.Commands.Index,
   Atlas.Common.Rules.Engine,
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Builtin.FormFields,
@@ -514,10 +671,24 @@ uses
   Atlas.Common.Lsp.DfmPropertyRules,
   Atlas.Common.Lsp.ChangeSignature,
   Atlas.Common.Lsp.MoveClass,
+  Atlas.Common.Lsp.ExtractInterface,
+  Atlas.Common.Lsp.ExtractSuperclass,
+  Atlas.Common.Lsp.MoveMember,
   Atlas.Common.Editing.PropertyFromAccessors,
   Atlas.Common.Lsp.PropertyFromAccessors,
+  Atlas.Common.Editing.InlineAccessor,
+  Atlas.Common.Lsp.InlineAccessor,
+  Atlas.Common.Lsp.SafeDelete,
   Atlas.Common.Lsp.InvertBoolean,
+  Atlas.Common.Lsp.PromoteVariable,
+  Atlas.Common.Lsp.AnonymousMethods,
+  Atlas.Common.Lsp.MethodWithoutSelf,
+  Atlas.Common.Lsp.TypeAlias,
+  Atlas.Common.Editing.TypeAlias,
+  Atlas.Common.Lsp.EnumTables,
   Atlas.Common.Lsp.Unwrap,
+  Atlas.Common.Lsp.StepTargets,
+  Atlas.Common.Lsp.StepFilter,
   Atlas.Common.Lsp.UnitRename,
   Atlas.Common.Lsp.SmartPaste,
   Atlas.Common.Editing.SmartPaste,
@@ -542,7 +713,6 @@ uses
   Atlas.Common.Projects.DelphiVersions,
   Atlas.Common.Compiler.Edition,
   Atlas.Common.Logging.RotatingFileStream,
-  Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.GroupReader,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Index.Cache,
@@ -788,7 +958,7 @@ begin
         AText := TFileEncoding.LoadText(AFileName);
     end);
   FFormatting.SlashCommandsFor := SlashCommandsFor;
-  FFormatting.DelphiVersionFor := DelphiVersionFor;
+  FFormatting.DelphiVersionFor := LanguageLevelFor;
   FFormatting.DocCommentsFor := DocCommentsFor;
   SlashHost := TShellSlashHost.Create(
     function(const AUri: string): TShellWorkspace
@@ -923,7 +1093,7 @@ begin
   // Erzeugen-Menü (#719): dieselben Schalter, Versionen und derselbe Host wie die Schnellbefehle nach Enter.
   FSlashMenu := TLspSlashMenu.Create(FDocuments);
   FSlashMenu.SlashCommandsFor := SlashCommandsFor;
-  FSlashMenu.DelphiVersionFor := DelphiVersionFor;
+  FSlashMenu.DelphiVersionFor := LanguageLevelFor;
   FSlashMenu.SlashHost := SlashHost;
   // Einrückung wie beim Formatieren (#43), ohne Editor-Optionen: .editorconfig und "format".
   FSlashMenu.FormatStyleFor := ResolvedFormatStyleFor;
@@ -958,6 +1128,7 @@ var
   mIndex: ISymbolIndex;
 begin
   FIndex := TSymbolIndex.Create;
+  FUsesGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
   // Declared(X) in {$IF} fragt den Index (#847). Die Referenz hält den Index, bis Destroy den Anbieter abmeldet.
   mIndex := FIndex;
   TPascalPreprocessor.SetDeclaredProvider(
@@ -1004,6 +1175,7 @@ begin
     EnsureUnit);
   FHover.VersionProvider := DelphiVersionFor;
   FHover.HintsFor := HintSettingsFor;
+  FHover.RationaleFor := RationaleOptionsFor;
   // Zustand und Herkunft bedingter Symbole (#102).
   FHover.SymbolsFor := ConditionalContextFor;
   FHover.Attach(FDispatcher);
@@ -1033,15 +1205,24 @@ begin
   // Lokale Bezeichner brauchen den Index (#658).
   FLinkedEditing := TLspLinkedEditing.Create(FDocuments, FIndex, EnsureUnit);
   FLinkedEditing.Attach(FDispatcher);
+  // Werte beim Debuggen am Zeilenende (#508).
+  FInlineValues := TLspInlineValues.Create(FDocuments, FIndex, EnsureUnit);
+  FInlineValues.Attach(FDispatcher);
+  FCompilerSwitches := TLspCompilerSwitches.Create(FDocuments, CompilerSwitchContextFor);
+  FCompilerSwitches.Attach(FDispatcher);
+  FDebugUnavailable := TLspDebugUnavailable.Create(FDocuments, FIndex, EnsureUnit, CompilerSwitchContextFor);
+  FDebugUnavailable.Attach(FDispatcher);
   FReferences := TLspReferences.Create(FDocuments, FIndex,
     ReadSourceText,
     ProjectSourceFiles,
     EnsureUnit);
+  FReferences.SettingsFor := ReferenceSettingsFor;
   FReferences.Attach(FDispatcher);
   FRename := TLspRename.Create(FDocuments, FIndex,
     ReadSourceText,
     ProjectSourceFiles,
     EnsureUnit);
+  FRename.SettingsFor := ReferenceSettingsFor;
   FRename.Attach(FDispatcher);
 end;
 
@@ -1070,7 +1251,7 @@ begin
       Result := TPostfixOptions.Default;
       Result.Enabled := CompletionSettingsFor(AUri).PostfixTemplates;
       Result.InlineVar := RefactoringSettingsFor(AUri).InlineVar and
-        TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
+        TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, LanguageLevelFor(AUri));
     end;
   // with auflösen über Strg+Leer auf with (#50), abschaltbar mit refactoring.resolveWith.
   FCompletion.WithFor :=
@@ -1148,6 +1329,9 @@ begin
       FLogger.Debug(AText);
     end;
   FCompletion.Attach(FDispatcher);
+  // Ausdrücke in den Debug-Dialogen (#538) mit denselben Einträgen wie im Editor.
+  FExpressionCompletion := TLspExpressionCompletion.Create(FDocuments, FCompletion);
+  FExpressionCompletion.Attach(FDispatcher);
   // „Interface implementieren“ im Erzeugen-Menü (#719, #466) wie in der Vervollständigung.
   FSlashMenu.Completion := FCompletion;
 end;
@@ -1157,12 +1341,30 @@ begin
   FSignatureHelp := TLspSignatureHelp.Create(FDocuments, FIndex,
     ReadSourceText,
     EnsureUnit);
+  // Platzhalter von Format und eigenen Formatroutinen (#451).
+  FSignatureHelp.FormatRoutinesFor := FormatRoutinesFor;
   FSignatureHelp.Attach(FDispatcher);
   FHierarchies := TLspHierarchies.Create(FDocuments, FIndex,
     ReadSourceText,
     ProjectSourceFiles,
     EnsureUnit);
+  FHierarchies.SettingsFor := ReferenceSettingsFor;
   FHierarchies.Attach(FDispatcher);
+  FImpact := TImpactAnalysis.Create(FDocuments, FIndex,
+    ReadSourceText,
+    ProjectSourceFiles,
+    EnsureUnit);
+  FImpact.OptionsFor := ImpactOptionsFor;
+  FImpact.Attach(FDispatcher);
+  FDataFlow := TLspDataFlow.Create(FDocuments, FIndex,
+    ReadSourceText,
+    ProjectSourceFiles,
+    EnsureUnit);
+  FDataFlow.Attach(FDispatcher);
+  FAccessChains := TLspAccessChains.Create(FDocuments, FIndex,
+    ReadSourceText,
+    EnsureUnit);
+  FAccessChains.Attach(FDispatcher);
   FImplementations := TLspImplementations.Create(FDocuments, FIndex,
     EnsureUnit);
   FImplementations.Attach(FDispatcher);
@@ -1193,6 +1395,59 @@ begin
   // Gleiche Quelle wie die Metriken: Einstellungen, Wurzel und Dateien des Projektmodells (#14).
   FTodos := TLspTodos.Create(MetricsSourceFor,
     ReadSourceText);
+  // Architekturübersicht (#1118): Fundstellen der uses-Einträge mit den Defines des Projekts der Datei.
+  FArchitectureService := TArchitectureService.Create(FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
+        Result := nil;
+    end);
+  FArchitecture := TLspArchitecture.Create(FArchitectureService, ArchitectureSourceFor);
+  FArchitecture.Attach(FDispatcher);
+  // Unit-Beziehungen (#593): Wurzel und Namensräume wie die Architektur; die uses-Analyse der Code-Aktionen
+  // entsteht erst weiter unten, daher über UsesContextFor.
+  FUnitRelationsGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
+  FUnitRelations := TLspUnitRelations.Create(FUnitRelationsGraph,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
+        Result := nil;
+    end,
+    function(const AUri: string; out AContext: TUsesContext): Boolean
+    begin
+      Result := UsesContextFor(AUri, AContext);
+    end,
+    function(const AFileName: string): TUsesGraphOptions
+    begin
+      Result := UnitRelationsOptionsFor(AFileName);
+    end);
+  FUnitRelations.Attach(FDispatcher);
+  // Weg zwischen Symbolen (#1117): eigener Uses-Graph samt Bibliotheks-Units, Fundstellen wie oben.
+  FSymbolPath := TLspSymbolPath.Create(FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    function(const AFileName: string): TArray<string>
+    begin
+      if not DefinesFor(TDocumentUris.FromPath(AFileName), Result) then
+        Result := nil;
+    end,
+    EnsureUnit, SymbolPathSourceFor);
+  FSymbolPath.Attach(FDispatcher);
+  // Wertdarstellungen (#854): Dateien wie die TODO-Übersicht, Typen und Vorfahren aus dem Index.
+  FDebugDisplay := TLspDebugDisplay.Create(MetricsSourceFor, ReadSourceText);
+  FDebugDisplay.Index := FIndex;
+  FEventHandlers := TLspEventHandlers.Create(MetricsSourceFor, ReadSourceText);
+  FEventHandlers.Index := FIndex;
   // Rekursionssymbole im Editorrand (#623).
   FRecursion := TLspRecursion.Create(ReadSourceText);
   // Baseline (#97): dieselben Dateien wie die Metriken, Prüfung wie im Editor (Regeln, Index, Formulardatei).
@@ -1223,6 +1478,18 @@ begin
     procedure(AFileName: string)
     begin
       // Der Arbeitsbereich liest die Datei beim nächsten Prüfen neu; offene Dokumente gleich neu prüfen.
+      FSyntaxDiagnostics.RefreshLater;
+    end;
+  // Compilermeldungen in derselben Baseline (#530): Text wie im Editor, offene Dokumente vor der Platte.
+  FCompilerBaseline := TLspCompilerBaseline.Create(MetricsSourceFor,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    BaselineFiles);
+  FCompilerBaseline.OnWritten :=
+    procedure(AFileName: string)
+    begin
       FSyntaxDiagnostics.RefreshLater;
     end;
   FSemanticTokens := TLspSemanticTokens.Create(FDocuments, FIndex,
@@ -1261,7 +1528,7 @@ begin
     begin
       Result := TClassActionContext.Default;
       Result.Index := FIndex;
-      Result.DelphiVersion := DelphiVersionFor(AUri);
+      Result.DelphiVersion := LanguageLevelFor(AUri);
       Result.Uri := AUri;
       Result.Host := FFormatting.SlashHost;
     end;
@@ -1363,8 +1630,23 @@ begin
       Result := Result + ChangeSignatureActions(AUri, ARange.StartPos);
       Result := Result + MoveClassActions(AUri, ARange.StartPos);
       Result := Result + PropertyFromAccessorsActions(AUri, ARange.StartPos);
+      Result := Result + InlineAccessorActions(AUri, ARange.StartPos);
+      Result := Result + SafeDeleteActions(AUri, ARange.StartPos);
+      Result := Result + ExtractInterfaceActions(AUri, ARange.StartPos);
+      Result := Result + ExtractSuperclassActions(AUri, ARange.StartPos);
+      Result := Result + MoveMemberActions(AUri, ARange.StartPos);
       Result := Result + InvertBooleanActions(AUri, ARange.StartPos);
+      Result := Result + PromoteVariableActions(AUri, ARange.StartPos);
+      Result := Result + AnonymousMethodActions(AUri, ARange.StartPos);
+      Result := Result + MethodKindActions(AUri, ARange.StartPos);
+      Result := Result + TypeAliasActions(AUri, ARange.StartPos);
+      Result := Result + EnumTableActions(AUri, ARange.StartPos);
       Result := Result + ExplicitTypeActions(AUri, ARange.StartPos);
+      Result := Result + CompilerFixActions(AUri, ARange);
+      Result := Result + MissingUnitActions(AUri, ARange);
+      Result := Result + DisableWarningActions(AUri, ARange);
+      Result := Result + SuggestConstActions(AUri, ARange.StartPos);
+      Result := Result + VarBlockActions(AUri, ARange.StartPos);
       Result := Result + RefactoringActions(AUri, ARange);
     end;
   FCodeActions.Attach(FDispatcher);
@@ -1431,20 +1713,120 @@ begin
     begin
       Result := MoveClass(AArguments);
     end);
+  FCommands.Register(TLspExtractInterface.PrepareCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := ExtractInterface(AArguments, True);
+    end);
+  FCommands.Register(TLspExtractInterface.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := ExtractInterface(AArguments, False);
+    end);
+  FCommands.Register(TLspExtractSuperclass.PrepareCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := ExtractSuperclass(AArguments, True);
+    end);
+  FCommands.Register(TLspExtractSuperclass.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := ExtractSuperclass(AArguments, False);
+    end);
+  FCommands.Register(TLspMoveMember.PrepareCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := MoveMember(AArguments, True);
+    end);
+  FCommands.Register(TLspMoveMember.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := MoveMember(AArguments, False);
+    end);
   FCommands.Register(TLspPropertyFromAccessors.ApplyCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := PropertyFromAccessors(AArguments);
+    end);
+  FCommands.Register(TLspInlineAccessor.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := InlineAccessor(AArguments);
+    end);
+  FCommands.Register(TLspSafeDelete.PrepareCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := SafeDelete(AArguments, True);
+    end);
+  FCommands.Register(TLspSafeDelete.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := SafeDelete(AArguments, False);
     end);
   FCommands.Register(TLspInvertBoolean.ApplyCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := InvertBoolean(AArguments);
     end);
+  FCommands.Register(TLspDisableWarning.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := DisableWarning(AArguments);
+    end);
+  FCommands.Register(TLspPromoteVariable.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := PromoteVariable(AArguments);
+    end);
+  FCommands.Register(TLspAnonymousMethods.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := AnonymousMethod(AArguments);
+    end);
+  FCommands.Register(TLspMethodWithoutSelf.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := MethodKind(AArguments);
+    end);
+  FCommands.Register(TLspTypeAlias.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TypeAlias(AArguments);
+    end);
+  FCommands.Register(TLspTypeAlias.InlineApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := InlineTypeAlias(AArguments);
+    end);
+  FCommands.Register(TLspEnumTables.ApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := EnumTable(AArguments);
+    end);
+  FCommands.Register(TLspEnumTables.SyncApplyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := EnumTablesSync(AArguments);
+    end);
   FCommands.Register(TLspUnwrap.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := Unwrap(AArguments);
+    end);
+  FCommands.Register(TLspStepTargets.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := StepTargets(AArguments);
+    end);
+  FCommands.Register(TLspStepFilter.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := StepFilter(AArguments);
+    end);
+  FCommands.Register(TLspStepFilter.CountsCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := StepFilterCounts(AArguments);
     end);
   FCommands.Register(TLspUnitRename.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1466,10 +1848,85 @@ begin
     begin
       Result := FTodos.Execute(AArguments);
     end);
+  FCommands.Register(TLspArchitecture.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FArchitecture.Execute(AArguments);
+    end);
+  FCommands.Register(TLspArchitecture.SaveCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FArchitecture.SaveReport(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Execute(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.MoveCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Move(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.RemoveCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Remove(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.CostCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.Cost(AArguments);
+    end);
+  FCommands.Register(TLspUnitRelations.UseUnitCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FUnitRelations.UseUnitInfo(AArguments);
+    end);
+  FCommands.Register(TLspSymbolPath.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FSymbolPath.Execute(AArguments);
+    end);
+  FCommands.Register(TLspDebugDisplay.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FDebugDisplay.Execute(AArguments);
+    end);
+  FCommands.Register(TLspEventHandlers.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FEventHandlers.Execute(AArguments);
+    end);
   FCommands.Register(TLspRecursion.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FRecursion.Execute(AArguments);
+    end);
+  // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
+  FCommands.Register(TLspExitPoints.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspExitPoints.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, FReadSourceTextRef,
+        FDocumentHighlights.SettingsFor, AArguments);
+    end);
+  // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712).
+  FCommands.Register(TLspReassigned.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspReassigned.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
+    end);
+  // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
+  FCommands.Register(TLspExpressionType.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspExpressionType.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
+    end);
+  // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
+  FCommands.Register(TLspMethodOrder.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := TLspMethodOrder.Execute(FDocuments, AArguments);
     end);
   // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
   FCommands.Register(TLspOverrideMarks.Command,
@@ -1491,6 +1948,20 @@ begin
           TJSONObject(Result).GetValue<Integer>('files', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
           TJSONObject(Result).GetValue<Integer>('removed', -1),
           TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
+    end);
+  FCommands.Register(TLspCompilerBaseline.AddCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FCompilerBaseline.ExecuteAdd(AArguments);
+      if Result is TJSONObject then
+        FLogger.Info(Format('Compilermeldungen in die Baseline: %d Einträge (%d neu, %d entfernt)',
+          [TJSONObject(Result).GetValue<Integer>('total', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
+          TJSONObject(Result).GetValue<Integer>('removed', -1)]));
+    end);
+  FCommands.Register(TLspCompilerBaseline.ClassifyCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FCompilerBaseline.ExecuteClassify(AArguments);
     end);
   FCommands.Register(TLspSlashMenu.MenuCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1774,6 +2245,7 @@ procedure TServerComposition.WireWatchedFiles;
 begin
   FWatchedFiles := TLspWatchedFiles.Create(FTransport);
   FWatchedFiles.OnChanged := HandleWatchedFiles;
+  FUsesChanges := TLspUsesChanges.Create;
   FIndexRefresh := TLspIndexRefresh.Create(TLspIndexRefresh.DefaultDelayMs,
     procedure(const AFileName, AText: string)
     var
@@ -1793,6 +2265,10 @@ begin
           Updated := True;
       if Updated then
         FLogger.Debug(Format('Index nach Tipp-Pause aktualisiert: %s', [ExtractFileName(AFileName)]));
+      // Geänderte uses (#896): Ein Unit-Zyklus anderer offener Units kann über diese Unit laufen; der Graph
+      // folgt dem Index, die Neuprüfung ist gebündelt.
+      if Updated and FUsesChanges.Changed(AFileName, AText) and (FSyntaxDiagnostics <> nil) then
+        FSyntaxDiagnostics.RefreshLater;
     end);
   FIndexRefresh.OnError :=
     procedure(E: Exception)
@@ -1955,6 +2431,7 @@ begin
   TPascalPreprocessor.SetDeclaredProvider(nil);
   // Zuerst: Eine laufende Übernahme greift auf die Ordner zu.
   FreeAndNil(FIndexRefresh);
+  FreeAndNil(FUsesChanges);
   // Vor der Verbindung: Beide Wächter rufen FConnection.
   FreeAndNil(FFileWatcher);
   FreeAndNil(FParentWatcher);
@@ -2037,10 +2514,14 @@ begin
   FIndexScheduler.Free;
   FLooseConfiguration.Free;
   FWorkspaceFolders.Free;
+  FreeAndNil(FUsesGraph);
   FIndex := nil;
   FDocumentSymbols.Free;
   FFoldingRanges.Free;
   FLinkedEditing.Free;
+  FInlineValues.Free;
+  FCompilerSwitches.Free;
+  FDebugUnavailable.Free;
   FFormatting.Free;
   FSlashMenu.Free;
   FSelectionRanges.Free;
@@ -2054,12 +2535,24 @@ begin
   FCodeLens.Free;
   FMetrics.Free;
   FTodos.Free;
+  FSymbolPath.Free;
+  FArchitecture.Free;
+  FArchitectureService.Free;
+  FUnitRelations.Free;
+  FUnitRelationsGraph.Free;
+  FDebugDisplay.Free;
+  FEventHandlers.Free;
   FRecursion.Free;
+  FCompilerBaseline.Free;
   FBaseline.Free;
   FInlayHints.Free;
   FImplementations.Free;
+  FImpact.Free;
+  FAccessChains.Free;
+  FDataFlow.Free;
   FHierarchies.Free;
   FSignatureHelp.Free;
+  FExpressionCompletion.Free;
   FCompletion.Free;
   FRename.Free;
   FCodeActions.Free;
@@ -2628,9 +3121,10 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
-  // Hauptquelltexte und Formulardateien außerhalb der Sperre lesen.
+  // Hauptquelltexte und Formulardateien außerhalb der Sperre lesen (dieselbe Regel wie find_unused_code, #64).
   for mIndex := 0 to High(Built) do
-    TShellWorkspace.CompleteRuleProject(Built[mIndex], MainSources[mIndex], ReadSourceText);
+    Built[mIndex] := TRuleProjectFiles.ProjectOf(Built[mIndex].FileName, MainSources[mIndex], Built[mIndex].Sources,
+      ReadSourceText);
   TMonitor.Enter(FWorkspacesLock);
   try
     // Inzwischen ein anderes Projekt geladen: Das Ergebnis gilt für diese Prüfung, aber nicht als Vorrat.
@@ -3155,6 +3649,156 @@ begin
   Result := Answer;
 end;
 
+function InlineAccessorOptionsOf(const ASettings: TRefactoringSettings): TInlineAccessorOptions;
+begin
+  Result := TInlineAccessorOptions.Default;
+  Result.EqualityCheck := ASettings.InlineAccessorEqualityCheck;
+end;
+
+function TServerComposition.InlineAccessorActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Settings: TRefactoringSettings;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.InlineAccessor or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspInlineAccessor.Actions(True, Settings.InlineAccessorBulk, Shared.Tree, Document.Text, AUri,
+    APosition, InlineAccessorOptionsOf(Settings), FIndex);
+end;
+
+function TServerComposition.InlineAccessor(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri, Scope: string;
+  Position: TTextPosition;
+  Settings: TRefactoringSettings;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Context: TInlineAccessorContext;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, Bereich (here, unit, project).
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "scope" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Scope := AArguments.Items[2].Value;
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.InlineAccessor then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Zugriffsmethode durch Feld ersetzen" ist abgeschaltet (refactoring.inlineAccessor).');
+  if (Scope <> TLspInlineAccessor.ScopeHere) and not Settings.InlineAccessorBulk then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      'Die Sammelaktion ist abgeschaltet (refactoring.inlineAccessorBulk).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TInlineAccessorContext);
+  Context.Index := FIndex;
+  Context.Options := InlineAccessorOptionsOf(Settings);
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspInlineAccessor.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text,
+      Position, Scope, Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Zugriffsmethode durch Feld ersetzen: %d Methoden, %d Dateien',
+    [(Answer.GetValue('accessors') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt]));
+  Result := Answer;
+end;
+
+function TServerComposition.SafeDeleteActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).SafeDelete or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspSafeDelete.Actions(True, Shared.Tree, Document.Text, AUri, APosition);
+end;
+
+function TServerComposition.SafeDelete(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Settings: TRefactoringSettings;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Choices: TSafeDeleteChoices;
+  Context: TSafeDeleteContext;
+  Provider: TUsesContextProvider;
+begin
+  // Argumente: URI, Position, beim Löschen die Antworten auf die Rückfragen.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Choices := Default(TSafeDeleteChoices);
+  if AArguments.Count > 2 then
+    Choices := TSafeDeleteChoices.FromJson(AArguments.Items[2]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.SafeDelete then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, '"Sicher löschen" ist abgeschaltet (refactoring.safeDelete).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TSafeDeleteContext);
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Provider := FCodeActions.UsesContextFor;
+  if Assigned(Provider) then
+    Context.UsesFor :=
+      function(const AFileName: string): TUsesContext
+      begin
+        if not Provider(TDocumentUris.FromPath(AFileName), Result) then
+          Result := Default(TUsesContext);
+      end;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    if APrepare then
+    begin
+      Answer := TLspSafeDelete.Prepare(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+        Context);
+      // Die Einstellungen entscheiden im Plugin über Rückfragen und Vorschau.
+      Answer.AddPair('previewWhenUnused', TJSONBool.Create(Settings.SafeDeletePreviewWhenUnused));
+      Answer.AddPair('cascadeMode', Settings.SafeDeleteCascade);
+      Answer.AddPair('overridesMode', Settings.SafeDeleteIncludeOverrides);
+    end
+    else
+      Answer := TLspSafeDelete.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+        Choices, Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  if APrepare then
+    FLogger.Info(Format('Sicher löschen geprüft: %d Verwendungen, %d Überschreibungen',
+      [(Answer.GetValue('usages') as TJSONArray).Count, (Answer.GetValue('overrides') as TJSONArray).Count]))
+  else
+    FLogger.Info(Format('Sicher löschen: %d Symbole, %d Dateien',
+      [(Answer.GetValue('deleted') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt]));
+  Result := Answer;
+end;
+
 function InvertBooleanContextOf(const ASettings: TRefactoringSettings): TInvertBooleanContext;
 begin
   Result := Default(TInvertBooleanContext);
@@ -3233,6 +3877,419 @@ begin
   Result := Answer;
 end;
 
+function TServerComposition.PromoteVariableActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).PromoteVariable or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspPromoteVariable.Actions(Shared.Tree, Document.Text, AUri, APosition,
+        TLspPromoteVariable.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), ReadSourceText));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.PromoteVariable(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, Name.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "name" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).PromoteVariable then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Lokale Variable und Feld umwandeln" ist abgeschaltet (refactoring.promoteVariable).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(Uri));
+    try
+      Answer := TLspPromoteVariable.Execute(Shared.Tree, Document.Text, Uri, Position,
+        Trim(AArguments.Items[2].Value), TLspPromoteVariable.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri),
+        ReadSourceText), ResolvedFormatStyleFor(Uri));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Variable/Feld umwandeln: %d Stellen, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.AnonymousMethodActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.AnonymousMethod or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspAnonymousMethods.Actions(Shared.Tree, Document.Text, AUri, APosition,
+        TLspAnonymousMethods.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), ReadSourceText),
+        TLspAnonymousMethods.CaptureOf(Settings.AnonymousMethodDeferredCapture), ResolvedFormatStyleFor(AUri));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.AnonymousMethod(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Settings: TRefactoringSettings;
+begin
+  // Argumente: URI, Position, Name.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und "name" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.AnonymousMethod then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Anonyme Methode und Methode umwandeln" ist abgeschaltet (refactoring.anonymousMethod).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(Uri));
+    try
+      Answer := TLspAnonymousMethods.Execute(Shared.Tree, Document.Text, Uri, Position,
+        Trim(AArguments.Items[2].Value), TLspAnonymousMethods.Lookup(Resolver, Shared.Tree,
+        TDocumentUris.ToPath(Uri), ReadSourceText), TLspAnonymousMethods.CaptureOf(
+        Settings.AnonymousMethodDeferredCapture), ResolvedFormatStyleFor(Uri));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Anonyme Methode umwandeln: %d Änderungen, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.MethodKindActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).MethodKind or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspMethodWithoutSelf.Actions(Shared.Tree, Document.Text, AUri, APosition,
+        TLspMethodWithoutSelf.Lookup(Resolver, Shared.Tree, TDocumentUris.ToPath(AUri), ReadSourceText));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.MethodKind(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Settings: TRefactoringSettings;
+  Context: TMethodKindContext;
+begin
+  // Argumente: URI, Position, Umwandlung.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Argumente "uri", "position" und "conversion" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.MethodKind then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Methode ohne Self umwandeln" ist abgeschaltet (refactoring.methodKind).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Context.WithStatic := Settings.MethodKindStatic;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspMethodWithoutSelf.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text,
+      Position, Trim(AArguments.Items[2].Value), Context, ResolvedFormatStyleFor(Uri));
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Methode ohne Self umwandeln: %d Änderungen, %d Aufrufe, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('calls') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.TypeAliasActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+  Scope: TTypeAliasScope;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.TypeAlias or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  if not TTypeAlias.ScopeOf(Settings.TypeAliasScope, Scope) then
+    Scope := TTypeAliasScope.InUnit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspTypeAlias.Actions(Shared.Tree, Document.Text, AUri, APosition, Scope,
+        TLspTypeAlias.Lookup(Resolver));
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.TypeAlias(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Context: TTypeAliasContext;
+begin
+  // Argumente: URI, Position, Name, Reichweite.
+  if (AArguments = nil) or (AArguments.Count < 4) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Argumente "uri", "position", "name" und "scope" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).TypeAlias then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Typ-Alias einführen" ist abgeschaltet (refactoring.typeAlias).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspTypeAlias.Execute(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+      AArguments.Items[2].Value, Trim(AArguments.Items[3].Value), Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Typ-Alias einführen: %d Stellen, %d Dateien, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.InlineTypeAlias(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Context: TTypeAliasContext;
+begin
+  // Argumente: URI, Position des Alias-Namens.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).TypeAlias then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Alias auflösen" ist abgeschaltet (refactoring.typeAlias).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspTypeAlias.ExecuteInline(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+      Context);
+  finally
+    Resolver.Free;
+  end;
+  FLogger.Info(Format('Alias auflösen: %d Stellen, %d Dateien, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.EnumTableActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).EnumTables or not FDocuments.TryGet(AUri, Document) or
+    not MatchText(ExtractFileExt(TDocumentUris.ToPath(AUri)), ['.pas', '.dpr']) then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, TDocumentUris.ToPath(AUri));
+    try
+      Result := TLspEnumTables.Actions(Resolver, FIndex, Shared.Tree, Document.Text, AUri, APosition);
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+function TServerComposition.EnumTable(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Context: TEnumTablesContext;
+begin
+  // Argumente: URI, Position, Name, Stelle.
+  if (AArguments = nil) or (AArguments.Count < 4) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      'Argumente "uri", "position", "name" und "placement" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).EnumTables then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Namenstabelle anlegen" ist abgeschaltet (refactoring.enumTables).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TEnumTablesContext);
+  Context.ResourceStrings := RefactoringSettingsFor(Uri).EnumTablesResourceStrings;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspEnumTables.Execute(Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+    AArguments.Items[2].Value, Trim(AArguments.Items[3].Value), Context);
+  FLogger.Info('Namenstabelle angelegt');
+end;
+
+function TServerComposition.EnumTablesSync(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+  Context: TEnumTablesContext;
+begin
+  // Argumente: URI, Position des Typnamens.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).EnumTables then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Tabellen nachziehen" ist abgeschaltet (refactoring.enumTables).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Context := Default(TEnumTablesContext);
+  Context.Index := FIndex;
+  Context.Files := ProjectSourceFiles;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspEnumTables.Sync(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, Position,
+      Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Tabellen nachziehen: %d Stellen, %d Dateien, %d Warnungen',
+    [(Answer.GetValue('places') as TJSONNumber).AsInt, (Answer.GetValue('files') as TJSONNumber).AsInt,
+    (Answer.GetValue('warnings') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
 function TServerComposition.Unwrap(const AArguments: TJSONArray): TJSONValue;
 var
   Uri: string;
@@ -3265,6 +4322,106 @@ begin
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Umschließung entfernen: %d Konstrukte', [(Answer.GetValue('candidates') as TJSONArray).Count]));
   Result := Answer;
+end;
+
+function TServerComposition.StepTargets(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Line: Integer;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI und Zeile (ab 0) des Ausführungspunkts (#836).
+  if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONNumber) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "line" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Line := TJSONNumber(AArguments.Items[1]).AsInt;
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspStepTargets.Execute(Resolver, FIndex, Shared.Tree, Document.Text, TDocumentUris.ToPath(Uri), Line,
+      ReadSourceText);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Gezielt hineinspringen: %d Aufrufe', [(Answer.GetValue('calls') as TJSONArray).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.StepFilter(const AArguments: TJSONArray): TJSONValue;
+var
+  mUri, mFileName, mText: string;
+  mLine: Integer;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mTree: TSyntaxTree;
+  mAnswer: TJSONObject;
+begin
+  // Argumente: URI und Zeile (ab 0) des Halts nach F7 bzw. des Methodenkopfs im Kontextmenü (#850).
+  if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONNumber) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "line" fehlen');
+  mUri := AArguments.Items[0].Value;
+  mLine := TJSONNumber(AArguments.Items[1]).AsInt;
+  if FDocuments.TryGet(mUri, mDocument) then
+  begin
+    mShared := TSyntaxTreeCache.Get(mDocument, nil);
+    mAnswer := TLspStepFilter.Execute(mShared.Tree, mDocument.Text, mLine);
+  end
+  else
+  begin
+    // Nach F7 steht der Halt oft in einer Datei, die der Editor erst jetzt öffnet: selbst lesen.
+    mFileName := TDocumentUris.ToPath(mUri);
+    if not ReadSourceText(mFileName, mText) then
+      raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht lesbar.');
+    mTree := TSyntaxTreeCache.Parse(mText);
+    try
+      mAnswer := TLspStepFilter.Execute(mTree, mText, mLine);
+    finally
+      mTree.Free;
+    end;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Schrittfilter: Routine %s', [BoolToStr(mAnswer.GetValue<Boolean>('found', False), True)]));
+  Result := mAnswer;
+end;
+
+function TServerComposition.StepFilterCounts(const AArguments: TJSONArray): TJSONValue;
+var
+  mPatterns: TArray<string>;
+  mCounts: TLspStepFilterCounts;
+  mUnit: TUnitIndex;
+  mText: string;
+  mTree: TSyntaxTree;
+begin
+  // Argument: Liste der Muster (#850). Gezählt werden die Projekt-Units, Bibliotheken nicht.
+  mPatterns := TLspStepFilter.ReadPatterns(AArguments);
+  mCounts := TLspStepFilter.NewCounts(mPatterns);
+  for mUnit in FIndex.Units do
+  begin
+    if mUnit.Library_ or (mUnit.FileName = '') then
+      Continue;
+    if mCounts.Files >= TLspStepFilter.MaxFiles then
+    begin
+      mCounts.Truncated := True;
+      Break;
+    end;
+    if not ReadSourceText(mUnit.FileName, mText) then
+      Continue;
+    mTree := TSyntaxTreeCache.Parse(mText);
+    try
+      TLspStepFilter.AddCounts(mTree, mText, mPatterns, mCounts);
+    finally
+      mTree.Free;
+    end;
+  end;
+  FLogger.Info(Format('Schrittfilter: %d Dateien, %d Routinen', [mCounts.Files, mCounts.Routines]));
+  Result := TLspStepFilter.CountsToJson(mCounts);
 end;
 
 function TServerComposition.MoveClass(const AArguments: TJSONArray): TJSONValue;
@@ -3319,6 +4476,208 @@ begin
   // Nur Zahlen ins Log, keine Namen und Pfade (#647).
   FLogger.Info(Format('Klasse verschieben: %d Dateiänderungen',
     [TJSONArray(TJSONObject(Answer.GetValue('edit')).GetValue('documentChanges')).Count]));
+  Result := Answer;
+end;
+
+function TServerComposition.RefactoringProject(const AFileName: string; out AProject: TProjectInfo): Boolean;
+var
+  Workspace: TShellWorkspace;
+begin
+  AProject := Default(TProjectInfo);
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(AFileName);
+    Result := (Workspace <> nil) and Workspace.Project(AProject);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.SourceExists(const AFileName: string): Boolean;
+var
+  Open: ITextDocument;
+begin
+  Result := FileExists(AFileName) or FDocuments.TryGet(TDocumentUris.FromPath(AFileName), Open);
+end;
+
+function TServerComposition.ExtractInterfaceActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).ExtractInterface or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspExtractInterface.Actions(True, Shared.Tree, Document.Text, AUri, APosition);
+end;
+
+function TServerComposition.ExtractInterface(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+var
+  Uri, FileName: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Context: TExtractInterfaceContext;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, beim Ausführen {name, unit, members}.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  if not RefactoringSettingsFor(Uri).ExtractInterface then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Interface herauslösen" ist abgeschaltet (refactoring.extractInterface).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  FileName := TDocumentUris.ToPath(Uri);
+  Context := Default(TExtractInterfaceContext);
+  Context.Index := FIndex;
+  Context.ReadText := ReadSourceText;
+  Context.Exists := SourceExists;
+  Context.HasProject := RefactoringProject(FileName, Context.Project);
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  if APrepare then
+    Exit(TLspExtractInterface.Prepare(Shared.Tree, Document.Text, Position, Context));
+  if AArguments.Count < 3 then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument mit Name, Ziel und Mitgliedern fehlt');
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspExtractInterface.Execute(Resolver, Shared.Tree, FileName, Document.Text, Position,
+      AArguments.Items[2], Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Interface herauslösen: %d Methoden', [(Answer.GetValue('methods') as TJSONNumber).AsInt]));
+  Result := Answer;
+end;
+
+function TServerComposition.ExtractSuperclassActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).ExtractSuperclass or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspExtractSuperclass.Actions(True, Shared.Tree, Document.Text, AUri, APosition);
+end;
+
+function TServerComposition.ExtractSuperclass(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+var
+  Uri, FileName: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+  Context: TExtractSuperclassContext;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, beim Ausführen {name, unit, members, abstract}.
+  if (AArguments = nil) or (AArguments.Count < 2) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri" und "position" fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Settings := RefactoringSettingsFor(Uri);
+  if not Settings.ExtractSuperclass then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Basisklasse herauslösen" ist abgeschaltet (refactoring.extractSuperclass).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  FileName := TDocumentUris.ToPath(Uri);
+  Context := Default(TExtractSuperclassContext);
+  Context.Index := FIndex;
+  Context.ReadText := ReadSourceText;
+  Context.Exists := SourceExists;
+  Context.HasProject := RefactoringProject(FileName, Context.Project);
+  Context.Target := Settings.ExtractSuperclassTarget;
+  Context.NameSuffix := Settings.ExtractSuperclassNameSuffix;
+  Context.MethodMode := Settings.ExtractSuperclassMethodMode;
+  Context.RaiseVisibility := Settings.ExtractSuperclassRaiseVisibility;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  if APrepare then
+    Exit(TLspExtractSuperclass.Prepare(Shared.Tree, Document.Text, Position, Context));
+  if AArguments.Count < 3 then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument mit Name, Ziel und Mitgliedern fehlt');
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspExtractSuperclass.Execute(Resolver, Shared.Tree, FileName, Document.Text, Position,
+      AArguments.Items[2], Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Basisklasse herauslösen: %d Mitglieder', [(Answer.GetValue('moved') as TJSONNumber).AsInt]));
+  Result := Answer;
+end;
+
+function TServerComposition.MoveMemberActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).MoveMember or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspMoveMember.Actions(True, Shared.Tree, Document.Text, TDocumentUris.ToPath(AUri), AUri, APosition,
+    FIndex);
+end;
+
+function TServerComposition.MoveMember(const AArguments: TJSONArray; APrepare: Boolean): TJSONValue;
+var
+  Uri, FileName, Direction: string;
+  Position: TTextPosition;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Context: TMoveMemberContext;
+  Answer: TJSONObject;
+begin
+  // Argumente: URI, Position, Richtung, beim Ausführen {members, abstract, targets, option}.
+  if (AArguments = nil) or (AArguments.Count < 3) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argumente "uri", "position" und Richtung fehlen');
+  Uri := AArguments.Items[0].Value;
+  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+  Direction := AArguments.Items[2].Value;
+  if not RefactoringSettingsFor(Uri).MoveMember then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Mitglied verschieben" ist abgeschaltet (refactoring.moveMember).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  FileName := TDocumentUris.ToPath(Uri);
+  Context := Default(TMoveMemberContext);
+  Context.Index := FIndex;
+  Context.ReadText := ReadSourceText;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  if APrepare then
+    Exit(TLspMoveMember.Prepare(Shared.Tree, Document.Text, FileName, Position, Direction, Context));
+  if AArguments.Count < 4 then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument mit Mitgliedern und Zielen fehlt');
+  Context.Files := ProjectSourceFiles;
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Answer := TLspMoveMember.Execute(Resolver, Shared.Tree, FileName, Document.Text, Position, Direction,
+      AArguments.Items[3], Context);
+  finally
+    Resolver.Free;
+  end;
+  // Nur Zahlen ins Log, keine Namen und Pfade (#647).
+  FLogger.Info(Format('Mitglied verschieben: %d Mitglieder', [(Answer.GetValue('moved') as TJSONNumber).AsInt]));
   Result := Answer;
 end;
 
@@ -3422,6 +4781,258 @@ begin
   end;
 end;
 
+function TServerComposition.DisableWarningActions(const AUri: string;
+  const ARange: TTextRange): TArray<TJSONObject>;
+var
+  Options: TDisableWarningOptions;
+  Messages: TArray<TCompilerMessage>;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  Result := nil;
+  Options := Default(TDisableWarningOptions);
+  Options.Enabled := RefactoringSettingsFor(AUri).DisableWarning;
+  if not Options.Enabled or not FDocuments.TryGet(AUri, Document) then
+    Exit;
+  Messages := FCompilerResults.MessagesFor(TDocumentUris.ToPath(AUri));
+  if Messages = nil then
+    Exit;
+  Options.AskReason := RefactoringSettingsFor(AUri).DisableWarningReason;
+  Options.Version := DelphiVersionFor(AUri);
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspDisableWarning.Actions(Options, Shared.Tree, AUri, ARange.StartPos.Line, ARange.EndPos.Line,
+    Messages);
+end;
+
+function TServerComposition.CompilerFixActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+var
+  Messages: TArray<TCompilerMessage>;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Uses_: TUsesContext;
+  Context: TCompilerFixContext;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).CompilerFixes or not FDocuments.TryGet(AUri, Document) then
+    Exit;
+  Messages := FCompilerResults.MessagesFor(TDocumentUris.ToPath(AUri));
+  if Messages = nil then
+    Exit;
+  Context := Default(TCompilerFixContext);
+  if FCodeActions.UsesContextFor(AUri, Uses_) then
+  begin
+    Context.Declaring := Uses_.Declaring;
+    Context.Namespaces := Uses_.Namespaces;
+  end;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspCompilerFixes.Actions(True, Document.Text, Shared.Tree, AUri, ARange, Messages, Context);
+end;
+
+function TServerComposition.MissingUnitActions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+var
+  FileName: string;
+  Messages: TArray<TCompilerMessage>;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).MissingUnit then
+    Exit;
+  FileName := TDocumentUris.ToPath(AUri);
+  Messages := FCompilerResults.MessagesFor(FileName);
+  if Messages = nil then
+    Exit;
+  Result := TLspMissingUnit.Actions(True, ARange.StartPos.Line, ARange.EndPos.Line, Messages,
+    function(const AUnitName: string; out ASetup: TMissingUnitSetup): Boolean
+    begin
+      Result := MissingUnitSetupFor(FileName, AUnitName, ASetup);
+    end);
+end;
+
+function TServerComposition.MissingUnitSetupFor(const AFileName, AUnitName: string;
+  out ASetup: TMissingUnitSetup): Boolean;
+var
+  Workspace, Other: TShellWorkspace;
+  Group: TArray<TMissingUnitProject>;
+  Member: TMissingUnitProject;
+  OtherProject: TProjectInfo;
+  Users: Integer;
+begin
+  ASetup := Default(TMissingUnitSetup);
+  Group := nil;
+  // Arbeitsbereich festhalten, die .dproj-Dateien aber außerhalb von FWorkspacesLock lesen (#647).
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(AFileName);
+    if Workspace = nil then
+      Exit(False);
+    for Other in FWorkspaces do
+      if (Other <> Workspace) and Other.Project(OtherProject) and
+        not SameFileName(OtherProject.FileName, Workspace.ProjectFileName) then
+      begin
+        Member.FileName := OtherProject.FileName;
+        Member.SearchPaths := OtherProject.SearchPaths;
+        Group := Group + [Member];
+      end;
+    if FWorkspaceUsers.TryGetValue(Workspace, Users) then
+      FWorkspaceUsers[Workspace] := Users + 1
+    else
+      FWorkspaceUsers.Add(Workspace, 1);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  try
+    Result := Workspace.MissingUnitSetup(ASetup);
+  finally
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      Users := FWorkspaceUsers[Workspace] - 1;
+      if Users = 0 then
+        FWorkspaceUsers.Remove(Workspace)
+      else
+        FWorkspaceUsers[Workspace] := Users;
+      TMonitor.PulseAll(FWorkspacesLock);
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+  end;
+  if not Result then
+    Exit;
+  ASetup.UnitName := AUnitName;
+  ASetup.GroupProjects := Group;
+  // Nur der Index: nichts nachladen, die Suche läuft bei jeder Code-Aktion auf der Zeile.
+  ASetup.IndexFile :=
+    function(AName: string): string
+    var
+      UnitIndex: TUnitIndex;
+    begin
+      if FIndex.FindUnit(AName, UnitIndex) then
+        Result := UnitIndex.FileName
+      else
+        Result := '';
+    end;
+end;
+
+function TServerComposition.DisableWarning(const AArguments: TJSONArray): TJSONValue;
+var
+  Uri: string;
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+begin
+  if (AArguments = nil) or (AArguments.Count < 1) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Argument "uri" fehlt');
+  Uri := AArguments.Items[0].Value;
+  if not RefactoringSettingsFor(Uri).DisableWarning then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      '"Warnung abschalten" ist abgeschaltet (refactoring.disableWarning).');
+  if not FDocuments.TryGet(Uri, Document) then
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht geöffnet.');
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  Result := TLspDisableWarning.Execute(AArguments, Document.Text, Shared.Tree, DelphiVersionFor(Uri));
+end;
+
+function TServerComposition.SuggestConstActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Action: TCodeAction;
+  FileName: string;
+begin
+  Result := nil;
+  if not RefactoringSettingsFor(AUri).SuggestConst or
+    not TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, LanguageLevelFor(AUri)) or
+    not FDocuments.TryGet(AUri, Document) or not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  FileName := TDocumentUris.ToPath(AUri);
+  // Dieselbe Übergabeart von Argumenten wie die Unterstreichung im Plugin (atlas.server.reassigned).
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, FileName);
+    try
+      if TSuggestConst.Action(Document.Text, Shared.Tree, APosition,
+        TResolvedSignatures.Lookup(Resolver, Shared.Tree, FileName), Action) then
+        Result := [TLspCodeActions.ActionToJson(AUri, Action)];
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
+/// <summary>Typ einer Inline-Variablen ohne Typangabe für „In var-Block verschieben“ (#644): dieselbe Ermittlung
+/// wie „Typ ausschreiben“ (#453), samt der uses, die ihn sichtbar machen.</summary>
+function VarBlockTypes(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
+  ALineBreak: string): TVarBlockTypeLookup;
+begin
+  Result :=
+    function(ADecl: TSyntaxNode; out AType: string; out AEdits: TArray<TTextEdit>): Boolean
+    var
+      Found: TInferredType;
+      Action: TCodeAction;
+    begin
+      AType := '';
+      AEdits := nil;
+      Result := False;
+      for Found in TLspInlayHints.Inferred(AResolver, ATree, AFileName, TTextRange.Create(ADecl.StartPos,
+        ADecl.EndPos)) do
+        if not Found.ForIn and TLspInlayHints.ExplicitTypeAction(AResolver, ATree, AFileName, Found.NameStart,
+          ALineBreak, Action) and (Action.Edits <> nil) then
+        begin
+          // Erstes Edit ": Typ", die übrigen ergänzen uses.
+          AType := Copy(Action.Edits[0].NewText, 3, MaxInt);
+          AEdits := Copy(Action.Edits, 1, MaxInt);
+          Exit(True);
+        end;
+    end;
+end;
+
+function TServerComposition.VarBlockActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  Document: ITextDocument;
+  Shared: ISharedSyntaxTree;
+  Resolver: TNameResolver;
+  Settings: TRefactoringSettings;
+  Options: TVarBlockOptions;
+  Action: TCodeAction;
+  FileName, LineBreak: string;
+begin
+  Result := nil;
+  Settings := RefactoringSettingsFor(AUri);
+  if not Settings.VarBlock or not FDocuments.TryGet(AUri, Document) or
+    not SameText(ExtractFileExt(TDocumentUris.ToPath(AUri)), '.pas') then
+    Exit;
+  Shared := TSyntaxTreeCache.Get(Document, nil);
+  FileName := TDocumentUris.ToPath(AUri);
+  Resolver := TNameResolver.Create(FIndex, EnsureUnit);
+  try
+    Resolver.Namespaces := FRename.Namespaces;
+    Resolver.PinTree(Shared.Tree, FileName);
+    try
+      Options := TVarBlockOptions.Default;
+      Options.InlineVariables := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable,
+        LanguageLevelFor(AUri));
+      Options.Merge := Settings.VarBlockMerge;
+      Options.Sort := TVarBlock.SortOf(Settings.VarBlockSort);
+      Options.Style := ResolvedFormatStyleFor(AUri);
+      Options.Lookup := TResolvedSignatures.Lookup(Resolver, Shared.Tree, FileName);
+      LineBreak := #10;
+      if Pos(#13#10, Document.Text) > 0 then
+        LineBreak := #13#10;
+      Options.Types := VarBlockTypes(Resolver, Shared.Tree, FileName, LineBreak);
+      for Action in TVarBlock.Actions(Document.Text, Shared.Tree, APosition, Options) do
+        Result := Result + [TLspCodeActions.ActionToJson(AUri, Action)];
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 function TServerComposition.RefactoringContextFor(const AUri: string): TRefactoringContext;
 begin
   Result := Default(TRefactoringContext);
@@ -3432,7 +5043,8 @@ begin
   Result.FileName := TDocumentUris.ToPath(AUri);
   Result.ReadText := ReadSourceText;
   Result.InlineVar := Result.Settings.InlineVar and
-    TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, DelphiVersionFor(AUri));
+    TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, LanguageLevelFor(AUri));
+  Result.IfExpression := TLanguageFeatures.IsAvailable(TLanguageFeature.IfExpression, LanguageLevelFor(AUri));
   Result.Style := ResolvedFormatStyleFor(AUri);
   Result.NewNames := NewNamesFor(AUri);
 end;
@@ -3476,7 +5088,8 @@ begin
     Exit;
   Context := RefactoringContextFor(AUri);
   if not (Context.Settings.Extract or Context.Settings.CompleteCase or Context.Settings.ResolveWith or
-    Context.Settings.CreateMethod or Context.Settings.InlineCode) then
+    Context.Settings.CreateMethod or Context.Settings.InlineCode or Context.Settings.IfCase or
+    Context.Settings.Conditions or Context.Settings.ConditionalExpression or Context.Settings.NestedRoutine) then
     Exit;
   Shared := TSyntaxTreeCache.Get(Document, nil);
   for Action in TLspRefactorings.Actions(Shared.Tree, Document.Text, ARange, Context) do
@@ -3890,9 +5503,55 @@ begin
   end;
 end;
 
+function TServerComposition.LanguageLevelFor(const AUri: string): string;
+begin
+  Result := TLanguageFeatures.LanguageLevel(DelphiVersionFor(AUri), SettingsFor(AUri).MinDelphiVersion);
+end;
+
 function TServerComposition.CompletionSettingsFor(const AUri: string): TCompletionSettings;
 begin
   Result := SettingsFor(AUri).Completion;
+end;
+
+function TServerComposition.FormatRoutinesFor(const AUri: string): TArray<TFormatRoutine>;
+var
+  Workspace: TShellWorkspace;
+  Project: TProjectInfo;
+  Context: TIdeProjectContext;
+  Name: string;
+begin
+  Result := TFormatRoutines.Defaults;
+  for Name in TRuleOptions.Strings(TRuleEngine.RuleOptions(FormatArgsRuleId, SettingsFor(AUri)), 'formatMethods',
+    nil) do
+    if Trim(Name) <> '' then
+      Result := Result + [TFormatRoutines.Custom(Name, -1)];
+  Workspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+  if (Workspace <> nil) and Workspace.Project(Project) and FIdeProject.Find(Project.FileName, Context) then
+    Result := Result + Context.FormatFunctions;
+end;
+
+function TServerComposition.ReferenceSettingsFor(const AUri: string): TReferenceSettings;
+begin
+  Result := SettingsFor(AUri).References;
+end;
+
+function TServerComposition.ImpactOptionsFor(const AUri: string): TImpactOptions;
+var
+  Context: TTestUnitContext;
+  Text: string;
+begin
+  Result := TImpactOptions.Default;
+  Result.Depth := SettingsFor(AUri).Navigation.ImpactDepth;
+  Result.References := ReferenceSettingsFor(AUri);
+  // Vier Fünftel des Zeitlimits der Anfrage: Danach bräche der Watchdog sie ohne Ergebnis ab.
+  Result.TimeoutMs := Integer(FRequestTimeout div 5 * 4);
+  if TestUnitContextFor(AUri, Context) then
+  begin
+    Text := '';
+    if (Context.TestProgram <> '') and not ReadSourceText(Context.TestProgram, Text) then
+      Text := '';
+    Result.Tests := TImpactTestScope.FromProgram(Context.Settings.Pattern, Text);
+  end;
 end;
 
 function TServerComposition.RefactoringSettingsFor(const AUri: string): TRefactoringSettings;
@@ -3903,7 +5562,7 @@ end;
 function TServerComposition.StringLiteralFor(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings;
 begin
   Result := SettingsFor(AUri).StringLiteral;
-  AMultiline := TStringLiterals.UseMultiline(Result.Style, DelphiVersionFor(AUri));
+  AMultiline := TStringLiterals.UseMultiline(Result.Style, LanguageLevelFor(AUri));
 end;
 
 function TServerComposition.MetricsSourceFor(const AFileName: string; AProject: Boolean;
@@ -3948,14 +5607,132 @@ begin
   end;
 end;
 
-function TServerComposition.InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
+function TServerComposition.SymbolPathSourceFor(const AFileName: string; out ASettings: TServerSettings;
+  out ANamespaces: TArray<string>): Boolean;
+var
+  Source: TLspMetricsSource;
+  Workspace: TShellWorkspace;
 begin
-  Result := SettingsFor(AUri).InlayHints;
+  ASettings := TServerSettings.Default;
+  ANamespaces := nil;
+  Result := MetricsSourceFor(AFileName, True, Source);
+  if not Result then
+    Exit;
+  ASettings := Source.Settings;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := nil;
+    if AFileName <> '' then
+      Workspace := WorkspaceOf(AFileName);
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    if Workspace <> nil then
+      ANamespaces := Workspace.Namespaces;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.ArchitectureSourceFor(const AFileName, AScope: string;
+  out ARequest: TArchitectureRequest; out ASettings: TServerSettings): Boolean;
+var
+  Source: TLspMetricsSource;
+  Workspace: TShellWorkspace;
+  Scope: string;
+  Files: TArray<string>;
+begin
+  ARequest := Default(TArchitectureRequest);
+  ASettings := TServerSettings.Default;
+  Result := MetricsSourceFor(AFileName, True, Source);
+  if not Result then
+    Exit;
+  ASettings := Source.Settings;
+  ARequest := TArchitectureRequest.FromSettings(ASettings);
+  Scope := AScope;
+  if Scope = '' then
+    Scope := ASettings.ArchitectureScope;
+  ARequest.Scope := Scope;
+  ARequest.Root := Source.Root;
+  ARequest.Title := Source.Title;
+  if Scope = 'project' then
+    ARequest.Files := Source.Files
+  else
+  begin
+    // Projektgruppe (#648): die Dateien aller geladenen Projekte.
+    Files := nil;
+    TMonitor.Enter(FWorkspacesLock);
+    try
+      for Workspace in FWorkspaces do
+        Files := Files + Workspace.ProjectFiles;
+    finally
+      TMonitor.Exit(FWorkspacesLock);
+    end;
+    ARequest.Files := Files;
+  end;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := nil;
+    if AFileName <> '' then
+      Workspace := WorkspaceOf(AFileName);
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    if Workspace <> nil then
+      ARequest.Namespaces := Workspace.Namespaces;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
+var
+  Workspace: TShellWorkspace;
+begin
+  Result := TUsesGraphOptions.Default;
+  Result.IncludeLibrary := True;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := nil;
+    if AFileName <> '' then
+      Workspace := WorkspaceOf(AFileName);
+    Workspace := TShellWorkspace.Choose(Workspace, FWorkspaces);
+    if Workspace <> nil then
+    begin
+      Result.Root := Workspace.Root;
+      Result.Namespaces := Workspace.Namespaces;
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.InlayHintSettingsFor(const AUri: string): TInlayHintSettings;
+var
+  Settings: TServerSettings;
+begin
+  Settings := SettingsFor(AUri);
+  Result := Settings.InlayHints;
+  // Marke „ohne Self“ (#686) hängt an der Umwandlung, nicht an inlayHints.
+  Result.MethodWithoutSelf := Settings.Refactoring.MethodKind and Settings.Refactoring.MethodKindMarker;
 end;
 
 function TServerComposition.HintSettingsFor(const AUri: string): THintSettings;
 begin
   Result := SettingsFor(AUri).Hints;
+end;
+
+function TServerComposition.RationaleOptionsFor(const AUri: string): TRationaleOptions;
+var
+  Workspace: TShellWorkspace;
+begin
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(TDocumentUris.ToPath(AUri));
+    // ADR-Ordner relativ zum Arbeitsbereich; ohne Arbeitsbereich nur ein absoluter.
+    if Workspace = nil then
+      Result := TRationaleOptions.FromSettings(FLooseSettings, '')
+    else
+      Result := TRationaleOptions.FromSettings(Workspace.Configuration.Settings, Workspace.Root);
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
 end;
 
 function TServerComposition.ConditionalContextFor(const AUri: string): TConditionalContext;
@@ -4007,6 +5784,56 @@ begin
   Result.Sources := TConditionalSymbols.SourcesOf(Own, Project.DefineOrigins, Predefined, Project.Platform);
 end;
 
+function TServerComposition.CompilerSwitchContextFor(const AUri: string): TCompilerSwitchContext;
+var
+  Workspace: TShellWorkspace;
+  Project: TProjectInfo;
+  Defines, Predefined, Own: TArray<string>;
+  IncludePaths: TArray<string>;
+  Define: string;
+  Source: TSymbolSource;
+  Kind: TSwitchOriginKind;
+begin
+  Result := Default(TCompilerSwitchContext);
+  Result.FileName := TDocumentUris.ToPath(AUri);
+  IncludePaths := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    Workspace := PickWorkspace(Result.FileName);
+    if Workspace <> nil then
+    begin
+      IncludePaths := Workspace.IncludePaths;
+      Result.HasProject := Workspace.Project(Project);
+    end;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  Result.ResolveInclude := TIncludeFiles.Resolver(IncludePaths);
+  if not Result.HasProject then
+    Project := Default(TProjectInfo);
+  Result.Configuration := Project.Config;
+  Result.Platform := Project.Platform;
+  Result.Input.Properties := Project.Properties;
+  // Dieselben Symbole und Schalterstände wie beim Abblenden inaktiver Zweige.
+  if not DefinesFor(AUri, Defines) then
+    Exit;
+  Result.Input.Defines := Defines;
+  Predefined := TPascalPreprocessor.PredefinedSymbols(Project.Platform,
+    TPascalPreprocessor.CompilerVersionFromDefines(Defines));
+  Own := nil;
+  for Define in Defines do
+    if (IndexText(Define, Predefined) < 0) and not TPascalPreprocessor.IsSwitchEntry(Define) then
+      Own := Own + [Define];
+  for Source in TConditionalSymbols.SourcesOf(Own, Project.DefineOrigins, Predefined, Project.Platform) do
+  begin
+    Kind := TSwitchOriginKind.Project;
+    if IndexText(Source.Name, Predefined) >= 0 then
+      Kind := TSwitchOriginKind.Default;
+    Result.Input.DefineOrigins := Result.Input.DefineOrigins +
+      [TSwitchDefineOrigin.Create(Source.Name, TSwitchOrigin.Make(Kind, Source.Origin))];
+  end;
+end;
+
 function TServerComposition.FormatStyleFor(const AUri: string): TFormatStyle;
 begin
   Result := SettingsFor(AUri).Formatting;
@@ -4048,7 +5875,8 @@ function TServerComposition.SyntaxDiagnosticsProviders: TSyntaxDiagnosticsProvid
 begin
   Result := Default(TSyntaxDiagnosticsProviders);
   Result.Defines := DefinesFor;
-  Result.Version := DelphiVersionFor;
+  // Sprachstand (#1126): minDelphiVersion begrenzt, was die Regeln als verfügbar ansehen.
+  Result.Version := LanguageLevelFor;
   Result.BuildTarget := BuildTargetFor;
   Result.Rules := RuleContextFor;
   Result.CompilerMessages :=
@@ -4121,7 +5949,10 @@ begin
     AContext.Services.EnsureUnit := nil;
   end;
   AContext.Services.ProjectFiles := TRuleProjectFiles.Create(RuleProjects, FIndex, ReadSourceText,
-    RuleProjectsComplete);
+    RuleProjectsComplete, FUsesGraph);
+  // Editor-Prüfung (#896): Diagnosen, Code-Aktionen, Slash-Befehle und Baseline wie im Editor; uses-cycle folgt
+  // dort diagnostics.usesCycleLive.
+  AContext.Live := True;
   // Formulardatei neben der Unit für den Abgleich von Feldern und Objekten (#123).
   // Mit Pfad, damit Korrekturen die Formulardatei ändern können (#309).
   if SameText(ExtractFileExt(FileName), '.pas') then
@@ -4158,6 +5989,7 @@ var
   Namespaces: TArray<string>;
   Namespace: string;
   LibraryRoots: TArray<string>;
+  GraphOptions: TUsesGraphOptions;
 begin
   // Neues Projekt oder neue Installation: Der Compiler bekommt eine neue Chance (#40).
   if FCompileLock <> nil then
@@ -4192,13 +6024,24 @@ begin
   end;
   FDefinition.Namespaces := Namespaces;
   FHover.Namespaces := Namespaces;
+  // Uses-Graph (#64) löst Namen ohne Namensraum über dieselbe Liste auf; neu aufgebaut nur bei Änderung.
+  GraphOptions := FUsesGraph.Options;
+  if string.Join(';', GraphOptions.Namespaces) <> string.Join(';', Namespaces) then
+  begin
+    GraphOptions.Namespaces := Namespaces;
+    FUsesGraph.SetOptions(GraphOptions);
+  end;
   FDocumentHighlights.Namespaces := Namespaces;
   FLinkedEditing.Namespaces := Namespaces;
+  FInlineValues.Namespaces := Namespaces;
   FReferences.Namespaces := Namespaces;
   FRename.Namespaces := Namespaces;
   FCompletion.Namespaces := Namespaces;
   FSignatureHelp.Namespaces := Namespaces;
   FHierarchies.Namespaces := Namespaces;
+  FImpact.Namespaces := Namespaces;
+  FDataFlow.Namespaces := Namespaces;
+  FAccessChains.Namespaces := Namespaces;
   FImplementations.Namespaces := Namespaces;
   FInlayHints.Namespaces := Namespaces;
   FCodeLens.Namespaces := Namespaces;
@@ -4229,6 +6072,7 @@ begin
         if TLspIndexRefresh.Applies(TDocumentUris.ToPath(ADocument.Uri)) then
         begin
           FIndexRefresh.Closed(TDocumentUris.ToPath(ADocument.Uri));
+          FUsesChanges.Forget(TDocumentUris.ToPath(ADocument.Uri));
           HandleWatchedFiles([TFileChange.Create(TDocumentUris.ToPath(ADocument.Uri), TFileChangeKind.Changed)]);
         end;
     else
@@ -4899,6 +6743,7 @@ begin
   Result.AddPair('callHierarchyProvider', TJSONBool.Create(True));
   Result.AddPair('implementationProvider', TJSONBool.Create(True));
   Result.AddPair('inlayHintProvider', TJSONBool.Create(True));
+  Result.AddPair('inlineValueProvider', TJSONBool.Create(True));
   Result.AddPair('codeLensProvider', TLspCodeLens.Capability);
   Result.AddPair('semanticTokensProvider', TLspSemanticTokens.Capability);
   Result.AddPair('codeActionProvider', TLspCodeActions.Capability);

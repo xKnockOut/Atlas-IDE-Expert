@@ -13,7 +13,7 @@
 //   - Unter der Tabelle die markierte Regel: Name, Marke „Experimentell“ (#834),
 //     Katalogtext, Schweregrad (Vorgabe, Error, Warnung, Info, Hinweis, aus),
 //     Ausnahmen ("exclude"), Optionen nach Typ (Zahl, Schalter, Text, Liste,
-//     JSON) und die Beispiele falsch und richtig.
+//     JSON, Tabelle von Objekten #1133) und die Beispiele falsch und richtig.
 // Reine VCL; das Modell ist TAtlasRuleTable. Der Editor kennt weder Dateien
 // noch Server: Er bekommt den Katalog und den Wert von "rules" und meldet
 // Änderungen über OnChange; RulesJson ist der neue Wert. Tabelle und Auswahl-
@@ -33,6 +33,7 @@ uses
   Vcl.StdCtrls,
   Vcl.ComCtrls,
   Vcl.ExtCtrls,
+  Vcl.Grids,
   Atlas.Core.Settings.RuleTable;
 
 type
@@ -102,6 +103,8 @@ type
     procedure Refill;
     procedure ShowDetails;
     procedure BuildOptions(const ARow: TAtlasRuleRow);
+    /// <summary>Tabelle der Option AOption (Art "object-list", #1133) in ALine; Tag = AIndex.</summary>
+    function BuildTable(ALine: TWinControl; const AOption: TAtlasRuleOption; AIndex: Integer): TControl;
     procedure UpdateEnabled;
     procedure UpdateMaster;
     procedure Apply(const ARulesJson: string);
@@ -115,6 +118,7 @@ type
     procedure SeverityChange(Sender: TObject);
     procedure ExcludeChange(Sender: TObject);
     procedure OptionChange(Sender: TObject);
+    procedure OptionTableEdit(Sender: TObject; ACol, ARow: Integer; const AValue: string);
   protected
     procedure CreateWnd; override;
     /// <summary>AutoSize regelt nur die Höhe; die Breite gibt der Behälter vor (Align oder SetBounds mit
@@ -776,6 +780,11 @@ begin
       Check.OnClick := OptionChange;
       Control := Check;
     end
+    else if SameText(Option.Kind, 'object-list') and (Option.Columns <> nil) then
+    begin
+      Line.Height := 150;
+      Control := BuildTable(Line, Option, Index);
+    end
     else
     begin
       mCaption := TLabel.Create(Self);
@@ -801,6 +810,46 @@ begin
     Control.Tag := Index;
     FOptionControls := FOptionControls + [Control];
   end;
+end;
+
+function TAtlasRulesEditor.BuildTable(ALine: TWinControl; const AOption: TAtlasRuleOption;
+  AIndex: Integer): TControl;
+var
+  mCaption: TLabel;
+  mGrid: TStringGrid;
+  mCells: TArray<TArray<string>>;
+  mRow, mCol: Integer;
+begin
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := ALine;
+  mCaption.Align := alTop;
+  mCaption.ShowAccelChar := False;
+  mCaption.Caption := AOption.Name + ':';
+  mCaption.Hint := AOption.Description;
+  mCaption.ShowHint := AOption.Description <> '';
+  // Eine Zeile je Eintrag und unten eine leere für den nächsten; eine geleerte Zeile entfällt beim Speichern.
+  mCells := TAtlasRuleTable.TableCells(AOption);
+  mGrid := TStringGrid.Create(Self);
+  mGrid.Parent := ALine;
+  mGrid.Align := alClient;
+  mGrid.ColCount := Length(AOption.Columns);
+  mGrid.RowCount := Length(mCells) + 2;
+  mGrid.FixedCols := 0;
+  mGrid.FixedRows := 1;
+  mGrid.Options := mGrid.Options + [goEditing, goTabs, goColSizing, goThumbTracking];
+  mGrid.Hint := AOption.Description;
+  mGrid.ShowHint := AOption.Description <> '';
+  for mCol := 0 to High(AOption.Columns) do
+  begin
+    mGrid.Cells[mCol, 0] := AOption.Columns[mCol].Name;
+    mGrid.ColWidths[mCol] := 120;
+  end;
+  for mRow := 0 to High(mCells) do
+    for mCol := 0 to High(mCells[mRow]) do
+      mGrid.Cells[mCol, mRow + 1] := mCells[mRow][mCol];
+  mGrid.OnSetEditText := OptionTableEdit;
+  mGrid.Tag := AIndex;
+  Result := mGrid;
 end;
 
 procedure TAtlasRulesEditor.Apply(const ARulesJson: string);
@@ -1007,6 +1056,42 @@ begin
   if Json = Option.DefaultJson then
     Json := '';
   Apply(TAtlasRuleTable.WithOption(FRulesJson, FRows[Row].Id, Option.Name, Json));
+end;
+
+procedure TAtlasRulesEditor.OptionTableEdit(Sender: TObject; ACol, ARow: Integer; const AValue: string);
+var
+  mGrid: TStringGrid;
+  mRuleRow, mIndex, mRow, mCol: Integer;
+  mOption: TAtlasRuleOption;
+  mCells: TArray<TArray<string>>;
+  mLine: TArray<string>;
+  mJson: string;
+begin
+  mRuleRow := SelectedRow;
+  if FFilling or (mRuleRow < 0) or not (Sender is TStringGrid) then
+    Exit;
+  mGrid := TStringGrid(Sender);
+  mIndex := mGrid.Tag;
+  if (mIndex < 0) or (mIndex > High(FRows[mRuleRow].Options)) then
+    Exit;
+  mOption := FRows[mRuleRow].Options[mIndex];
+  // Unten bleibt immer eine leere Zeile für den nächsten Eintrag.
+  if (ARow = mGrid.RowCount - 1) and (Trim(AValue) <> '') then
+    mGrid.RowCount := mGrid.RowCount + 1;
+  mCells := nil;
+  for mRow := mGrid.FixedRows to mGrid.RowCount - 1 do
+  begin
+    mLine := nil;
+    for mCol := 0 to mGrid.ColCount - 1 do
+      mLine := mLine + [mGrid.Cells[mCol, mRow]];
+    mCells := mCells + [mLine];
+  end;
+  mJson := TAtlasRuleTable.TableJson(mOption, mCells);
+  // Gleich der Vorgabe: Option entfernen.
+  if mJson = mOption.DefaultJson then
+    mJson := '';
+  FInvalid.Visible := False;
+  Apply(TAtlasRuleTable.WithOption(FRulesJson, FRows[mRuleRow].Id, mOption.Name, mJson));
 end;
 
 end.

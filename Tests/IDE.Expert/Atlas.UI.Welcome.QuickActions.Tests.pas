@@ -5,8 +5,8 @@
 // Testquelle. Knöpfe nur in der aktiven Zeile und nur eingeschaltet, Liste
 // aus welcomePage.quickActions.items, Klicks und Tasten erreichen die Quelle
 // über die Nachrichtenschleife, ein gesperrter Pull tut nichts, die Auswahl
-// (Konfiguration und Plattform, Startprofil, Testprojekt), Texte von
-// Knöpfen, Fortschritt und Ergebnis sowie das Kontextmenü.
+// (Konfiguration und Plattform, Startprofil, Testprojekt, Projektaufgabe
+// #900), Texte von Knöpfen, Fortschritt und Ergebnis sowie das Kontextmenü.
 
 interface
 
@@ -28,9 +28,12 @@ type
     Items: TAtlasQuickActions;
     Vcs: TAtlasProjectVcs;
     Busy: Boolean;
+    /// <summary>vcs.externals.update = ask (#1292).</summary>
+    AskExternals: Boolean;
     FState: TAtlasQuickActionState;
     FNowMs: UInt64;
     FTests: TArray<string>;
+    FTaskNames: TArray<string>;
     Calls: TArray<string>;
     constructor Create;
     function Enabled: Boolean;
@@ -44,6 +47,9 @@ type
     procedure RunTests(const AProject, ATestProject: string);
     function Profiles(const AProject: string; out AActive: string): TArray<string>;
     procedure Run(const AProject, AProfile: string);
+    function TaskNames(const AProject: string): TArray<string>;
+    procedure RunTask(const AProject, AName: string);
+    procedure Pull(const AProject: string; AIgnoreExternals: Boolean);
     function BuildKey: Integer;
     function TestKey: Integer;
     function ConsoleProgram: string;
@@ -82,6 +88,12 @@ type
     procedure EnglishTexts;
     [Test]
     procedure ContextMenuFollowsRow;
+    [Test]
+    procedure TasksChooseAndShowResult;
+    /// <summary>#1292: „Aktualisieren ▾“ mit „mit Externals“/„ohne Externals“, im Kontextmenü als Untermenü;
+    /// ohne ask wie bisher.</summary>
+    [Test]
+    procedure UpdateAsksForExternals;
   end;
 
 implementation
@@ -113,6 +125,7 @@ begin
   Vcs.Changed := 0;
   FState := TAtlasQuickActionState.Idle;
   FNowMs := 100000;
+  FTaskNames := TArray<string>.Create('Delphi-12-Prüfung', 'Konfigurationsdoku');
 end;
 
 function TAtlasFakeQuickActions.Enabled: Boolean;
@@ -123,6 +136,8 @@ end;
 function TAtlasFakeQuickActions.Buttons(const AProject: string): TAtlasQuickActionButtons;
 begin
   Result := TAtlasWelcomeQuickActions.Buttons(Items, Vcs, Busy);
+  if AskExternals then
+    TAtlasWelcomeQuickActions.AskExternals(Result);
 end;
 
 function TAtlasFakeQuickActions.State(const AProject: string): TAtlasQuickActionState;
@@ -173,6 +188,21 @@ end;
 procedure TAtlasFakeQuickActions.Run(const AProject, AProfile: string);
 begin
   Calls := Calls + ['run ' + AProject + ' ' + AProfile];
+end;
+
+function TAtlasFakeQuickActions.TaskNames(const AProject: string): TArray<string>;
+begin
+  Result := FTaskNames;
+end;
+
+procedure TAtlasFakeQuickActions.RunTask(const AProject, AName: string);
+begin
+  Calls := Calls + ['task ' + AProject + ' ' + AName];
+end;
+
+procedure TAtlasFakeQuickActions.Pull(const AProject: string; AIgnoreExternals: Boolean);
+begin
+  Calls := Calls + ['update ' + AProject + ' ' + BoolToStr(AIgnoreExternals, True)];
 end;
 
 function TAtlasFakeQuickActions.BuildKey: Integer;
@@ -308,9 +338,10 @@ begin
   try
     Assert.IsTrue(Host.Bar.Active);
     Buttons := Host.Bar.ButtonsOf(0);
-    Assert.AreEqual(6, Integer(Length(Buttons)), 'alle sechs Knöpfe');
+    Assert.AreEqual(7, Integer(Length(Buttons)), 'alle sieben Knöpfe');
     Assert.IsTrue(Buttons[0].Action = TAtlasQuickAction.Build);
     Assert.IsTrue(Buttons[5].Action = TAtlasQuickAction.Console);
+    Assert.IsTrue(Buttons[6].Action = TAtlasQuickAction.Tasks);
     // items ohne console: nur dieser Knopf fehlt.
     Fake.Items := TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder');
     Host.Bar.SetRows([ProjectOne, ProjectTwo]);
@@ -667,6 +698,129 @@ begin
   finally
     Host.Free;
   end;
+end;
+
+procedure TAtlasQuickActionsBarTests.UpdateAsksForExternals;
+var
+  mFake: TAtlasFakeQuickActions;
+  mSource: IAtlasQuickActionsSource;
+  mHost: TBarHost;
+  mMenu: TPopupMenu;
+  mItems, mUpdate: TMenuItem;
+  mIndex, mPull: Integer;
+begin
+  mFake := TAtlasFakeQuickActions.Create;
+  mSource := mFake;
+  mFake.Items := TAtlasWelcomeQuickActions.ParseItems('pull,folder');
+  mFake.Vcs.Kind := 'svn';
+  mFake.AskExternals := True;
+  mHost := TBarHost.Create(mSource);
+  try
+    mPull := TAtlasWelcomeQuickActions.IndexOf(mHost.Bar.ButtonsOf(0), TAtlasQuickAction.Pull);
+    Assert.AreEqual('Aktualisieren ' + #$25BE, TAtlasQuickActionsBar.Caption(mHost.Bar.ButtonsOf(0)[mPull],
+      TAtlasQuickActionState.Idle, 0));
+    mItems := mHost.Bar.Menu.Items;
+    Assert.IsTrue(mHost.Bar.FillChoices(mItems, 0, mPull));
+    Assert.AreEqual(4, Integer(mItems.Count));
+    Assert.AreEqual('Aktualisieren', StripHotkey(mItems[0].Caption));
+    Assert.AreEqual('mit Externals', StripHotkey(mItems[2].Caption));
+    Assert.IsTrue(mItems[2].Default);
+    Assert.AreEqual('ohne Externals', StripHotkey(mItems[3].Caption));
+    mItems[3].Click;
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(mFake.Calls)));
+    Assert.AreEqual('update ' + ProjectOne + ' True', mFake.Calls[0]);
+    // Kontextmenü: „Aktualisieren“ als Untermenü.
+    mMenu := TPopupMenu.Create(mHost.Host);
+    mHost.Bar.AttachMenu(mMenu);
+    mHost.Bar.PrepareMenu(1);
+    mUpdate := nil;
+    for mIndex := 0 to mMenu.Items.Count - 1 do
+      if mMenu.Items[mIndex].Visible and (StripHotkey(mMenu.Items[mIndex].Caption) = 'Aktualisieren') then
+        mUpdate := mMenu.Items[mIndex];
+    Assert.IsNotNull(mUpdate);
+    Assert.AreEqual(2, Integer(mUpdate.Count));
+    mUpdate[0].Click;
+    CheckSynchronize;
+    Assert.AreEqual('update ' + ProjectTwo + ' False', mFake.Calls[1]);
+    // Ohne ask: einfacher Eintrag, Knopf holt sofort.
+    mFake.AskExternals := False;
+    mHost.Bar.SetRows([ProjectOne, ProjectTwo]);
+    mHost.Bar.PrepareMenu(1);
+    Assert.AreEqual(0, Integer(mUpdate.Count));
+    Assert.IsFalse(mHost.Bar.FillChoices(mItems, 0, mPull));
+    mHost.Bar.Activate(0, mPull, False);
+    CheckSynchronize;
+    Assert.AreEqual('pull ' + ProjectOne, mFake.Calls[2]);
+  finally
+    mHost.Free;
+  end;
+  mFake.Calls := nil;
+end;
+
+procedure TAtlasQuickActionsBarTests.TasksChooseAndShowResult;
+var
+  Fake: TAtlasFakeQuickActions;
+  Source: IAtlasQuickActionsSource;
+  Host: TBarHost;
+  Items: TMenuItem;
+  Menu: TPopupMenu;
+  Index: Integer;
+  Button: TAtlasQuickActionButton;
+  State: TAtlasQuickActionState;
+begin
+  Fake := TAtlasFakeQuickActions.Create;
+  Source := Fake;
+  Fake.Items := [TAtlasQuickAction.Folder, TAtlasQuickAction.Tasks];
+  Host := TBarHost.Create(Source);
+  try
+    // „Aufgaben ▾“: Überschrift, dann die Aufgaben der atlas.json in ihrer Reihenfolge.
+    Items := Host.Bar.Menu.Items;
+    Assert.IsTrue(Host.Bar.ButtonsOf(0)[1].HasMenu);
+    Assert.IsTrue(Host.Bar.FillChoices(Items, 0, 1));
+    Assert.AreEqual(4, Integer(Items.Count));
+    Assert.AreEqual('Projektaufgabe', StripHotkey(Items[0].Caption));
+    Assert.AreEqual('Delphi-12-Prüfung', StripHotkey(Items[2].Caption));
+    Assert.AreEqual('Konfigurationsdoku', StripHotkey(Items[3].Caption));
+    Items[3].Click;
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(Fake.Calls)));
+    Assert.AreEqual('task ' + ProjectOne + ' Konfigurationsdoku', Fake.Calls[0]);
+    // Kontextmenü: Untermenü „Aufgabe ausführen“ ohne Überschrift.
+    Menu := TPopupMenu.Create(Host.Host);
+    Host.Bar.AttachMenu(Menu);
+    Host.Bar.PrepareMenu(1);
+    Items := nil;
+    for Index := 0 to Menu.Items.Count - 1 do
+      if StripHotkey(Menu.Items[Index].Caption) = 'Aufgabe ausführen' then
+        Items := Menu.Items[Index];
+    Assert.IsNotNull(Items);
+    Assert.IsTrue(Items.Visible);
+    Assert.AreEqual(2, Integer(Items.Count));
+    Items[0].Click;
+    CheckSynchronize;
+    Assert.AreEqual('task ' + ProjectTwo + ' Delphi-12-Prüfung', Fake.Calls[1]);
+    // Ohne Aufgaben keine Auswahl.
+    Fake.FTaskNames := nil;
+    Assert.IsFalse(Host.Bar.FillChoices(Host.Bar.Menu.Items, 0, 1));
+    Host.Bar.PrepareMenu(0);
+    Assert.IsFalse(Items.Visible);
+  finally
+    Host.Free;
+  end;
+  // Texte: Knopf, Fortschritt, Ergebnis aus der IDE-Schicht, nicht gestartet, Tooltip.
+  Button := Default(TAtlasQuickActionButton);
+  Button.Action := TAtlasQuickAction.Tasks;
+  Button.Enabled := True;
+  Assert.AreEqual('Aufgaben ▾', TAtlasQuickActionsBar.Caption(Button, TAtlasQuickActionState.Idle, 0));
+  State := TAtlasQuickActionState.Started(TAtlasQuickAction.Tasks, 1000);
+  Assert.AreEqual('Aufgabe … 3 s', TAtlasQuickActionsBar.Caption(Button, State, 4200));
+  State.Phase := TAtlasQuickActionPhase.Failed;
+  State.Detail := 'Delphi-12-Prüfung: 2 Fehler 14:03';
+  Assert.AreEqual('Delphi-12-Prüfung: 2 Fehler 14:03', TAtlasQuickActionsBar.StateText(State, 0, False));
+  State.Phase := TAtlasQuickActionPhase.Refused;
+  Assert.AreEqual('Aufgabe nicht gestartet', TAtlasQuickActionsBar.StateText(State, 0, False));
+  Assert.IsTrue(TAtlasQuickActionsBar.ButtonHint(Button, False, 0, '').Contains('Atlas-Aufgaben'));
 end;
 
 initialization

@@ -16,6 +16,10 @@
 //   - Verschachtelte Aufrufe (#438): Pfadzeile oben mit den äußeren Aufrufen,
 //     "ShowMessage › Format"; höchstens drei Ebenen, darüber "… ›".
 //   - Klick auf eine Überladung wählt sie; Alt+↑/↓ über die Tastatur (Atlas.IDE).
+//   - Formatroutinen (#451): Oben in der Doku-Fläche eine Zeile zum Platzhalter des
+//     Arguments am Cursor („Platzhalter 2 von 2 erwartet ganzzahlig“) in Akzentfarbe,
+//     ein Problem (überzähliges Argument, Typkonflikt, ungültiger Platzhalter) in
+//     Fehlerfarbe. Abschaltbar mit completion.formatPlaceholders (FormatPlaceholders).
 // Platz: unter der Zeile an der öffnenden Klammer; über der Zeile, wenn unten
 // kein Platz ist oder das Vervollständigungs-Popup offen ist. Breite höchstens
 // 520 px (logisch); lange Signaturen brechen nach "; " um, Folgezeilen eingerückt.
@@ -32,6 +36,7 @@ uses
   Vcl.Controls,
   Atlas.Core.Signature.Contract,
   Atlas.Core.Signature.Controller,
+  Atlas.Core.Signature.Format,
   Atlas.UI.Popup.Window,
   Atlas.UI.Popup.Styled;
 
@@ -58,6 +63,10 @@ type
     FFirstRows: TArray<Integer>;
     FOuter: TArray<string>;
     FCallName: string;
+    FFormatPlaceholders: Boolean;
+    /// <summary>Zeile der Platzhalter (#451), Kind = None ohne.</summary>
+    FFormatLine: TAtlasFormatLine;
+    function FormatText: string;
     function CrumbHeight: Integer;
     function CrumbParts: TArray<string>;
     procedure PaintCrumb;
@@ -101,6 +110,10 @@ type
     procedure SetPath(const AOuter: TArray<string>; const ACallName: string);
     /// <summary>Klick auf eine Überladung.</summary>
     property OnSelect: TAtlasIndexEvent read FOnSelect write FOnSelect;
+    /// <summary>Zeile der Platzhalter von Format zeigen (#451); vor ShowSignature setzen.</summary>
+    property FormatPlaceholders: Boolean read FFormatPlaceholders write FFormatPlaceholders;
+    /// <summary>Zum Testen: die gezeigte Zeile der Platzhalter.</summary>
+    property FormatLine: TAtlasFormatLine read FFormatLine;
   end;
 
 implementation
@@ -215,12 +228,17 @@ begin
   Result := Trim(StringReplace(mText, #10, ' ', [rfReplaceAll]));
 end;
 
+function TAtlasSignatureHint.FormatText: string;
+begin
+  Result := TAtlasStrings.SignatureFormatLine(FFormatLine);
+end;
+
 function TAtlasSignatureHint.HasDocLine: Boolean;
 var
   mName, mText: string;
   Documented: Boolean;
 begin
-  Result := TooMany or ParameterDoc(mName, mText, Documented);
+  Result := TooMany or ParameterDoc(mName, mText, Documented) or (FormatText <> '');
 end;
 
 function TAtlasSignatureHint.DocRowHeight: Integer;
@@ -233,6 +251,8 @@ end;
 function TAtlasSignatureHint.DocHeight: Integer;
 var
   Rows: Integer;
+  Name, Text: string;
+  Documented: Boolean;
 begin
   // Fehlerzeile allein; sonst Überschrift, Parameter und ggf. die Beschreibung der Methode.
   Rows := 1;
@@ -241,6 +261,13 @@ begin
     Rows := 2;
     if SummaryText <> '' then
       Inc(Rows);
+  end;
+  // Platzhalter-Zeile (#451) oben; ohne Parameter-Doku steht sie allein.
+  if FormatText <> '' then
+  begin
+    Inc(Rows);
+    if not TooMany and not ParameterDoc(Name, Text, Documented) then
+      Rows := 1;
   end;
   Result := Rows * DocRowHeight + Scale(8);
 end;
@@ -361,6 +388,11 @@ begin
     Canvas.Font := Font;
     Widest := Max(Widest, Min(Canvas.TextWidth(String.Join(' › ', CrumbParts)), Available));
   end;
+  if FormatText <> '' then
+  begin
+    Canvas.Font := UIFont;
+    Widest := Max(Widest, Min(Canvas.TextWidth(FormatText), Available));
+  end;
   Canvas.Font := Font;
   mWidth := Min(Widest + 2 * Gap + Bar + 2, Scale(MaxWidth));
   mHeight := CrumbHeight + 2 * Pad + TotalRows * LineHeight;
@@ -396,6 +428,15 @@ begin
   FHelp := AHelp;
   FSignature := ASignature;
   FParameter := AParameter;
+  // Platzhalter (#451): Eintrag am Cursor nur, solange der Cursor in der Liste steht.
+  FFormatLine := Default(TAtlasFormatLine);
+  if FFormatPlaceholders then
+  begin
+    if AParameter = AHelp.Format.ListParameter then
+      FFormatLine := TAtlasSignatureFormats.Line(AHelp.Format, AHelp.Format.ActiveArgument)
+    else
+      FFormatLine := TAtlasSignatureFormats.Line(AHelp.Format, -1);
+  end;
   Place;
   // Sprachausgabe (#447): Signatur und aktueller Parameter.
   SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessSignature));
@@ -404,6 +445,8 @@ begin
   if (AParameter >= 0) and (AParameter <= High(AHelp.Signatures[ASignature].Parameters)) then
     Spoken := Spoken + '. ' + TAtlasStrings.Fmt(TAtlasTextId.AccessParameter, [AParameter + 1,
       AHelp.Signatures[ASignature].Parameters[AParameter].Text(AHelp.Signatures[ASignature].Label_)]);
+  if FormatText <> '' then
+    Spoken := Spoken + '. ' + FormatText;
   Announce(Spoken);
 end;
 
@@ -486,6 +529,7 @@ begin
   FCallName := '';
   FLayouts := nil;
   FFirstRows := nil;
+  FFormatLine := Default(TAtlasFormatLine);
 end;
 
 procedure TAtlasSignatureHint.PaintDocLine(ATop: Integer);
@@ -517,6 +561,17 @@ begin
   X := Gap + Bar;
   Row := DocRowHeight;
   Part := Rect(X, ATop + Scale(4), ClientWidth - Gap, ATop + Scale(4) + Row);
+  // Platzhalter (#451) zuerst: Problem in Fehlerfarbe, sonst Akzent.
+  if FormatText <> '' then
+  begin
+    Canvas.Font := UIFont;
+    if FFormatLine.IsError then
+      Canvas.Font.Color := ToColor(Colors.Error)
+    else
+      Canvas.Font.Color := ToColor(Colors.Accent);
+    DrawText(Canvas.Handle, PChar(FormatText), -1, Part, TextFlags or DT_END_ELLIPSIS);
+    OffsetRect(Part, 0, Row);
+  end;
   if TooMany then
   begin
     Canvas.Font := UIFont;

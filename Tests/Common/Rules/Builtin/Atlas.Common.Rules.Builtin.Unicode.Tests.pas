@@ -65,6 +65,16 @@ type
     procedure PlainAnsiFileIsNoInvalidUtf8;
     [Test]
     procedure InvalidUtf8InForm;
+    /// <summary>Minimalfall F15 (#1327): ANSI mit Umlauten und einem zufällig gültigen UTF-8-Paar.</summary>
+    [Test]
+    procedure AnsiFileWithStrayUtf8PairIsSilent;
+    /// <summary>Minimalfall F16 (#1327): gültiges UTF-8 mit U+FFFD im Kommentar.</summary>
+    [Test]
+    procedure ReplacementCharInCommentIsSilent;
+    [Test]
+    procedure ReplacementCharInStringIsHint;
+    [Test]
+    procedure ReplacementCharInCodeIsError;
     [Test]
     procedure TypographicQuotesBecomeString;
     [Test]
@@ -207,7 +217,8 @@ end;
 
 procedure TUnicodeRuleTests.NulAndReplacementCharReported;
 begin
-  TRuleAssert.Reports(TControlCharRule.Create, UnitWith('// a'#0'b ' + Char($FFFD)), 2);
+  // NUL im Kommentar und U+FFFD im Code; U+FFFD im Kommentar übersetzt dcc (#1327).
+  TRuleAssert.Reports(TControlCharRule.Create, UnitWith('// a'#0'b'#13#10'var X' + Char($FFFD) + ': Integer;'), 2);
 end;
 
 procedure TUnicodeRuleTests.TabsAndLineBreaksAreFine;
@@ -433,8 +444,10 @@ begin
   Assert.AreEqual(1, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(4, Findings[0].Range.StartPos.Character);
   Assert.Contains(Findings[0].Message, '$FF');
-  // Geänderter Puffer: die Stellen der Datei gelten nicht, dann nur U+FFFD.
+  // Geänderter Puffer: die Stellen der Datei gelten nicht, dann nur U+FFFD; im Kommentar übersetzt dcc es (#1327).
   Findings := Run(TControlCharRule.Create, 'unit U;'#13#10'// xa' + Char($FFFD) + 'b', '', Data, nil, '');
+  Assert.AreEqual(0, Integer(Length(Findings)), 'Kommentar');
+  Findings := Run(TControlCharRule.Create, 'unit U;'#13#10'var xa' + Char($FFFD) + 'b', '', Data, nil, '');
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.Contains(Findings[0].Message, 'U+FFFD');
 end;
@@ -446,14 +459,15 @@ var
   Format: TFileFormat;
   Findings: TArray<TRuleFinding>;
 begin
-  // Ohne BOM: gültiges "ä" (C3 A4) und ein einzelnes $FF; Atlas liest die Datei als ANSI.
-  Data := Bytes([Ord('/'), Ord('/'), Ord(' '), $C3, $A4, Ord(' '), $FF, 13, 10, Ord('u'), Ord('n'), Ord('i'),
-    Ord('t'), Ord(' '), Ord('U'), Ord(';')]);
+  // Ohne BOM: gültiges "ä" und "ö" (C3 A4, C3 B6) und ein einzelnes $FF; Atlas liest die Datei als ANSI.
+  // Die gültigen Folgen überwiegen: beschädigtes UTF-8 (#1327).
+  Data := Bytes([Ord('/'), Ord('/'), Ord(' '), $C3, $A4, $C3, $B6, Ord(' '), $FF, 13, 10, Ord('u'), Ord('n'),
+    Ord('i'), Ord('t'), Ord(' '), Ord('U'), Ord(';')]);
   Source := TFileEncoding.Decode(Data, Format);
   Findings := Run(TControlCharRule.Create, Source, '', Data, nil, '');
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.AreEqual(0, Findings[0].Range.StartPos.Line);
-  Assert.AreEqual(6, Findings[0].Range.StartPos.Character);
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Character);
 end;
 
 procedure TUnicodeRuleTests.PlainAnsiFileIsNoInvalidUtf8;
@@ -484,6 +498,65 @@ begin
   Findings := Run(TControlCharRule.Create, FormUnit, Form, nil, Data, '');
   Assert.AreEqual(1, Integer(Length(Findings)), Form);
   Assert.Contains(Findings[0].Message, 'Zeile 2, Spalte 14');
+end;
+
+/// <summary>Bytes von F15_AnsiDatei.pas: Windows-1252 mit "ü", "ß", "ö", "ä" und "°" als UTF-8 (C2 B0).</summary>
+function F15Bytes: TBytes;
+begin
+  Result := TEncoding.ASCII.GetBytes('unit F15_AnsiDatei;'#13#10'// Gr') + Bytes([$FC, $DF]) +
+    TEncoding.ASCII.GetBytes('e aus K') + Bytes([$F6]) + TEncoding.ASCII.GetBytes('ln, Zeichen ') +
+    Bytes([$C2, $B0]) + TEncoding.ASCII.GetBytes(' '#13#10'interface'#13#10'const S = ''') + Bytes([$E4, $F6, $FC]) +
+    TEncoding.ASCII.GetBytes(''';'#13#10'implementation'#13#10'end.'#13#10);
+end;
+
+procedure TUnicodeRuleTests.AnsiFileWithStrayUtf8PairIsSilent;
+var
+  mData: TBytes;
+  mSource: string;
+  mFormat: TFileFormat;
+begin
+  mData := F15Bytes;
+  mSource := TFileEncoding.Decode(mData, mFormat);
+  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Ansi1252, 'Kodierung');
+  Assert.AreEqual(0, Integer(Length(Run(TControlCharRule.Create, mSource, '', mData, nil, ''))));
+end;
+
+procedure TUnicodeRuleTests.ReplacementCharInCommentIsSilent;
+var
+  mData: TBytes;
+  mSource: string;
+  mFormat: TFileFormat;
+begin
+  // F16_Ersatzzeichen.pas: zwei U+FFFD (EF BF BD) in einem Kommentar, sonst ASCII, ohne BOM.
+  mData := TEncoding.ASCII.GetBytes('unit F16_Ersatzzeichen;'#13#10'// Kommentar mit ') +
+    Bytes([$EF, $BF, $BD, $EF, $BF, $BD]) +
+    TEncoding.ASCII.GetBytes(' im Text'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10);
+  mSource := TFileEncoding.Decode(mData, mFormat);
+  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Utf8, 'Kodierung');
+  Assert.AreEqual(0, Integer(Length(Run(TControlCharRule.Create, mSource, '', mData, nil, ''))));
+  TRuleAssert.Silent(TControlCharRule.Create, UnitWith('{ a' + Char($FFFD) + ' }'#13#10'(* ' + Char($FFFD) + ' *)'));
+end;
+
+procedure TUnicodeRuleTests.ReplacementCharInStringIsHint;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TControlCharRule.Create, UnitWith('const S = ''a' + Char($FFFD) + 'b'';'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.IsTrue(mFindings[0].Severity = TRuleSeverity.Hint, 'Schweregrad');
+  // Mit einem echten Steuerzeichen daneben bleibt es ein Fehler.
+  mFindings := TRuleAssert.Findings(TControlCharRule.Create, UnitWith('const S = ''a' + Char($FFFD) + #1'b'';'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.IsTrue(mFindings[0].Severity = TRuleSeverity.Error, 'Schweregrad mit Steuerzeichen');
+end;
+
+procedure TUnicodeRuleTests.ReplacementCharInCodeIsError;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  mFindings := TRuleAssert.Findings(TControlCharRule.Create, UnitWith('var X' + Char($FFFD) + ': Integer;'));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.IsTrue(mFindings[0].Severity = TRuleSeverity.Error, 'Schweregrad');
 end;
 
 { file-encoding-unsupported (#1085) }

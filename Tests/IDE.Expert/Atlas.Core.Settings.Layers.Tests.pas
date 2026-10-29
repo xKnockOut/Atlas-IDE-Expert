@@ -25,6 +25,8 @@ type
     [Test]
     procedure DelphiVersionsShowProductAndStoreNumber;
     [Test]
+    procedure KnownVersionsForMinDelphiVersion;
+    [Test]
     procedure ReadsConfigsAndPlatformsFromDproj;
     [Test]
     procedure ProfilesIncludeOwnOnes;
@@ -223,6 +225,18 @@ begin
   Assert.AreEqual('"23.0"', Choices[2].Json);
   Assert.AreEqual(2, TAtlasSettingChoices.IndexOf(Choices, '"23.0"'));
   Assert.AreEqual(-1, TAtlasSettingChoices.IndexOf(Choices, '"12"'));
+end;
+
+procedure TAtlasSettingsLayersTests.KnownVersionsForMinDelphiVersion;
+var
+  Choices: TArray<TAtlasSettingChoice>;
+begin
+  // #1126: auch nicht installierte Versionen, neueste zuerst.
+  Choices := TAtlasSettingChoices.DelphiVersions(TAtlasSettingChoices.KnownVersions);
+  Assert.AreEqual(Integer(Length(TAtlasSettingChoices.KnownVersions)), Integer(Length(Choices)));
+  Assert.AreEqual('Delphi 13 (37.0)', Choices[0].Caption);
+  Assert.IsTrue(TAtlasSettingChoices.IndexOf(Choices, '"23.0"') > 0);
+  Assert.IsTrue(TAtlasSettingChoices.IndexOf(Choices, '"20.0"') > 0);
 end;
 
 procedure TAtlasSettingsLayersTests.ReadsConfigsAndPlatformsFromDproj;

@@ -25,6 +25,9 @@ type
     /// </summary>
     [Test]
     procedure EditorStatusBarOptions;
+    /// <summary>#1122: Aufrufdiagramm standardmäßig an, abschaltbar, übersteht Speichern und Laden.</summary>
+    [Test]
+    procedure CallHierarchyDiagramOption;
     /// <summary>Schnelle Lesezeichen (#1104): Vorgaben laut Issue, Grenzen, Speichern und Laden.</summary>
     [Test]
     procedure QuickBookmarkOptions;
@@ -36,6 +39,22 @@ type
     procedure IndexOptionsGoToGlobalFile;
     [Test]
     procedure XmlDocOptionsGoToGlobalFile;
+    /// <summary>#1260: issues.connections als JSON-Liste in settings.json, nie in der Registry; leere Liste
+    /// ohne Eintrag, kaputter Text nie in die Datei.</summary>
+    [Test]
+    procedure IssuesConnectionsGoToGlobalFile;
+    /// <summary>#1261: issues.projects wie die Verbindungen als JSON-Liste in settings.json.</summary>
+    [Test]
+    procedure IssuesProjectsGoToGlobalFile;
+    /// <summary>#1262: issues.queries wie die Verbindungen als JSON-Liste in settings.json; issues.queryPicker
+    /// bleibt in der Registry.</summary>
+    [Test]
+    procedure IssuesQueriesGoToGlobalFile;
+    /// <summary>#1285: vcs.provider, vcs.git.path, vcs.svn.path und vcs.timeoutSeconds in settings.json (der
+    /// Server liest dieselben Werte), nie in der Registry; ungültige Werte werden zur Vorgabe. #1288:
+    /// vcs.branch.confirm nur im Plugin (Registry).</summary>
+    [Test]
+    procedure VcsSettingsGoToGlobalFile;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -48,6 +67,8 @@ type
     procedure NavHistoryOptions;
     [Test]
     procedure PeekOptions;
+    [Test]
+    procedure DataFlowOptions;
     /// <summary>Gliederungsfenster (#537): an, Quelltextreihenfolge, Cursor folgen; Speichern und Laden.</summary>
     [Test]
     procedure OutlineOptions;
@@ -96,12 +117,30 @@ type
     /// <summary>Umschließung entfernen (#657): Vorgaben, Speichern und Laden, Kürzel normalisiert.</summary>
     [Test]
     procedure UnwrapOptions;
+    [Test]
+    procedure ExpressionTypeOptions;
+    /// <summary>Methodenrümpfe in Deklarationsreihenfolge (#660): Vorgabe, Werte normalisiert, Speichern und
+    /// Laden.</summary>
+    [Test]
+    procedure MethodPlacementOptions;
+    [Test]
+    procedure SafeDeleteOptions;
     /// <summary>Markierung beim Tippen umschließen (#672): Vorgaben, Speichern und Laden.</summary>
     [Test]
     procedure WrapSelectionOptions;
     /// <summary>Übersichtsleiste (#519): Vorgaben, Arten normalisiert, Speichern und Laden.</summary>
     [Test]
     procedure OverviewRulerOptions;
+    [Test]
+    procedure DebugVisualizerOptions;
+    [Test]
+    procedure DebugDisplayRuleOptions;
+    [Test]
+    procedure DebugStepIntoTargetOptions;
+    [Test]
+    procedure DebugBreakOnNextEventOptions;
+    [Test]
+    procedure DebugStepFilterOptions;
     /// <summary>Erzeugen-Menü (#719): Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure GenerateMenuOptions;
@@ -120,10 +159,29 @@ type
     /// Speichern und Laden.</summary>
     [Test]
     procedure WelcomeIssuesOptions;
+    /// <summary>Tracker nachführen (#1266): Vorgaben, Normalisieren und Speichern.</summary>
+    [Test]
+    procedure IssuesSyncOptions;
+    /// <summary>Zeiterfassung (#1267): ab Werk aus, Leerlauf 10, Rundung 5, Grenzen, Speichern und Laden.</summary>
+    [Test]
+    procedure IssuesTimeOptions;
+    /// <summary>Kommentar-Editor (#1278): Schalter und Textbausteine mit Vorgaben, Normalisieren und Speichern.</summary>
+    [Test]
+    procedure IssuesCommentOptions;
     /// <summary>Release-Build-Wächter (#533): build.releaseGuard, build.gate, build.releaseConfigs und
     /// build.releaseChecks mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
     procedure ReleaseGuardOptions;
+    [Test]
+    procedure TasksOptions;
+    /// <summary>Prüfung vor dem Compile (#529): build.gateTimeoutMs mit Vorgabe, Grenzen, Speichern und Laden.
+    /// </summary>
+    [Test]
+    procedure BuildGateTimeoutOption;
+    /// <summary>Schranke für Hinweise und Warnungen (#530): build.summary und build.warningsAsErrors mit Vorgaben,
+    /// Normalisieren, Speichern und Laden.</summary>
+    [Test]
+    procedure BuildSummaryOptions;
     /// <summary>Beim Öffnen bauen: build.onOpen, build.onOpenKind, build.onOpenScope, build.onOpenDelayMs und
     /// build.onOpenExclude mit Vorgaben, Normalisieren, Speichern und Laden.</summary>
     [Test]
@@ -138,6 +196,8 @@ type
     [Test]
     procedure RoutesServerSettingsToGlobalFile;
     [Test]
+    procedure ArchitectureSettingsLiveInGlobalFile;
+    [Test]
     procedure KeepsCommentsAndOtherKeys;
     [Test]
     procedure MigratesRegistryValuesOnce;
@@ -151,10 +211,12 @@ implementation
 
 uses
   System.SysUtils,
+  System.StrUtils,
   System.Generics.Collections,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Completion.Ranking,
   Atlas.Core.Welcome.QuickActions,
+  Atlas.Core.Tasks.Definitions,
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Welcome.Issues,
   Atlas.Core.Settings.Plugin,
@@ -242,16 +304,36 @@ begin
   Assert.AreEqual(0, Settings.TestUnitKey, 'Testunit-Wechsel ohne Kürzel (#189)');
   Assert.IsTrue(Settings.CodeLensTestUnit, 'Code Lens Testunit standardmäßig an (#189)');
   Assert.IsTrue(Settings.CodeLensMetrics, 'Code Lens Metriken standardmäßig an (#66)');
+  Assert.IsTrue(Settings.ReferencesInferred, 'erschlossene Verwendungen standardmäßig an (#1119)');
+  Assert.IsFalse(Settings.ReferencesTextMatches, 'Textfunde standardmäßig aus (#1119)');
+  Assert.IsTrue(Settings.Impact, 'Auswirkungen anzeigen standardmäßig an (#1120)');
+  Assert.AreEqual(2, Settings.ImpactDepth, 'Tiefe der Auswirkungsanalyse standardmäßig 2 (#1120)');
   Assert.IsTrue(Settings.CodeLensTests, 'Code Lens „Test ausführen“ standardmäßig an (#69)');
   Assert.IsTrue(Settings.TestRun, 'Tests ausführen standardmäßig da (#69)');
   Assert.IsFalse(Settings.TestsAfterBuild, 'Tests nach dem Build standardmäßig aus (#69)');
   Assert.IsTrue(Settings.TestsBuildFirst, 'vor den Tests bauen standardmäßig an (#69)');
   Assert.IsFalse(Settings.BuildZeroHints, 'build.zeroHints standardmäßig aus (#530)');
+  Assert.IsTrue(Settings.ShowInterfaceCost, 'build.showInterfaceCost standardmäßig an (#554)');
+  Assert.IsTrue(Settings.BuildCompilerSwitches, 'build.compilerSwitches (#558)');
+  Assert.IsFalse(Settings.BuildSwitchesInStatusBar, 'build.showSwitchesInStatusBar (#558)');
   Assert.IsTrue(Settings.StartProfiles, 'Startprofile standardmäßig an (#575)');
   Assert.IsTrue(Settings.StartProfilesStatusField, 'Startprofil in der Statusleiste standardmäßig an (#575)');
   Assert.IsTrue(Settings.TestDebug, 'Test debuggen standardmäßig da (#585)');
   Assert.IsTrue(Settings.TestBreakAtStart, 'debug.testBreakAtStart standardmäßig an (#585)');
   Assert.IsTrue(Settings.DebugHoverValues, 'debug.hoverValues standardmäßig an (#891)');
+  Assert.IsTrue(Settings.DebugExplainUnavailable, 'debug.explainUnavailable (#840)');
+  Assert.IsTrue(Settings.DebugCompletionInDialogs, 'debug.completionInDialogs (#538)');
+  Assert.IsTrue(Settings.DebugEvaluateWindow, 'debug.evaluateWindow (#784)');
+  Assert.IsTrue(Settings.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+  Assert.IsTrue(Settings.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
+  Assert.IsFalse(Settings.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.IsTrue(Settings.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
+  Assert.IsTrue(Settings.DebugJustMyCode, 'debug.justMyCode (#578)');
+  Assert.IsFalse(Settings.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
+  Assert.IsTrue(Settings.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
+  Assert.IsTrue(Settings.DebugInlineValues, 'debug.inlineValues (#508)');
+  Assert.AreEqual(5, Settings.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.AreEqual('', Settings.DebugOwnCodeFolders, 'debug.ownCodeFolders leer (#578)');
   Assert.IsTrue(Settings.TodoList, 'Befehl standardmäßig da (#68)');
   Assert.IsTrue(Settings.MetricsReport, 'Befehl standardmäßig da (#66)');
   Assert.IsTrue(Settings.TeamFile, 'Projektdatei standardmäßig an (#486)');
@@ -345,11 +427,27 @@ begin
   Settings.TestsAfterBuild := True;
   Settings.TestsBuildFirst := False;
   Settings.BuildZeroHints := True;
+  Settings.ShowInterfaceCost := False;
+  Settings.BuildCompilerSwitches := False;
+  Settings.BuildSwitchesInStatusBar := True;
   Settings.StartProfiles := False;
   Settings.StartProfilesStatusField := False;
   Settings.TestDebug := False;
   Settings.TestBreakAtStart := False;
   Settings.DebugHoverValues := False;
+  Settings.DebugExplainUnavailable := False;
+  Settings.DebugCompletionInDialogs := False;
+  Settings.DebugEvaluateWindow := False;
+  Settings.DebugEvaluateReplaceCtrlF7 := False;
+  Settings.DebugExplainAccessViolation := False;
+  Settings.DebugExplainAccessViolationAllowCalls := True;
+  Settings.DebugExceptionHistory := False;
+  Settings.DebugJustMyCode := False;
+  Settings.DebugExceptionBanner := True;
+  Settings.DebugExceptionBannerIgnoreAtLocation := False;
+  Settings.DebugInlineValues := False;
+  Settings.DebugInlineValuesPerLine := 7;
+  Settings.DebugOwnCodeFolders := '  C:\Komponenten;D:\Lib ';
   Settings.TodoList := False;
   Settings.MetricsReport := False;
   Settings.TeamFile := False;
@@ -428,11 +526,27 @@ begin
   Assert.IsTrue(Loaded.TestsAfterBuild);
   Assert.IsFalse(Loaded.TestsBuildFirst);
   Assert.IsTrue(Loaded.BuildZeroHints);
+  Assert.IsFalse(Loaded.ShowInterfaceCost, 'build.showInterfaceCost (#554)');
+  Assert.IsFalse(Loaded.BuildCompilerSwitches);
+  Assert.IsTrue(Loaded.BuildSwitchesInStatusBar);
   Assert.IsFalse(Loaded.StartProfiles);
   Assert.IsFalse(Loaded.StartProfilesStatusField);
   Assert.IsFalse(Loaded.TestDebug, 'Test debuggen (#585)');
   Assert.IsFalse(Loaded.TestBreakAtStart, 'debug.testBreakAtStart (#585)');
   Assert.IsFalse(Loaded.DebugHoverValues, 'debug.hoverValues (#891)');
+  Assert.IsFalse(Loaded.DebugExplainUnavailable, 'debug.explainUnavailable (#840)');
+  Assert.IsFalse(Loaded.DebugCompletionInDialogs, 'debug.completionInDialogs (#538)');
+  Assert.IsFalse(Loaded.DebugEvaluateWindow, 'debug.evaluateWindow (#784)');
+  Assert.IsFalse(Loaded.DebugEvaluateReplaceCtrlF7, 'debug.evaluateWindow.replaceCtrlF7 (#784)');
+  Assert.IsFalse(Loaded.DebugExplainAccessViolation, 'debug.explainAccessViolation (#865)');
+  Assert.IsTrue(Loaded.DebugExplainAccessViolationAllowCalls, 'debug.explainAccessViolation.allowCalls (#865)');
+  Assert.IsFalse(Loaded.DebugExceptionHistory, 'debug.exceptionHistory (#517)');
+  Assert.IsFalse(Loaded.DebugJustMyCode, 'debug.justMyCode (#578)');
+  Assert.IsTrue(Loaded.DebugExceptionBanner, 'debug.exceptionBanner (#783)');
+  Assert.IsFalse(Loaded.DebugExceptionBannerIgnoreAtLocation, 'debug.exceptionBanner.ignoreAtLocation (#783)');
+  Assert.IsFalse(Loaded.DebugInlineValues, 'debug.inlineValues (#508)');
+  Assert.AreEqual(7, Loaded.DebugInlineValuesPerLine, 'debug.inlineValuesPerLine (#508)');
+  Assert.AreEqual('C:\Komponenten;D:\Lib', Loaded.DebugOwnCodeFolders, 'debug.ownCodeFolders ohne Leerraum (#578)');
   Assert.IsFalse(Loaded.TodoList);
   Assert.IsFalse(Loaded.MetricsReport);
   Assert.IsFalse(Loaded.TeamFile);
@@ -521,6 +635,233 @@ begin
   Assert.AreEqual(TAtlasPluginSettings.MaxMemoryBudgetMb, Loaded.MemoryBudgetMb);
 end;
 
+procedure TAtlasPluginSettingsTests.IssuesConnectionsGoToGlobalFile;
+const
+  cList = '[{"name": "Firma", "provider": "youtrack", "url": "https://youtrack.firma.local"}]';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('[]', mSettings.IssuesConnections);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.Save(mStore);
+  Assert.IsFalse(mRouted.Text.Contains('issues'), 'leere Liste ohne Eintrag: ' + mRouted.Text);
+  mSettings.IssuesConnections := cList;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"connections": [{"name": "Firma"');
+  Assert.AreEqual('', mRegistry.ReadString('IssuesConnections', ''), 'nicht in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesConnections.Contains('"Firma"'), mLoaded.IssuesConnections);
+  // Kaputter Text kommt nie in die Datei; der gespeicherte Stand bleibt.
+  mStore.WriteString('IssuesConnections', '[{"name": ');
+  Assert.Contains(mRouted.Text, '"Firma"');
+  // Falsche Art in der Datei (der Server meldet sie): Vorgabe.
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '{"issues": {"connections": "Firma"}}');
+  mStore := mRouted;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('[]', mLoaded.IssuesConnections);
+  Assert.IsTrue(MatchText('issues.connections', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesProjectsGoToGlobalFile;
+const
+  cList = '[{"match": "C:\\Projekte\\Kasse\\Kasse.groupproj", "connection": "Firma", "project": "KASSE"}]';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('[]', mSettings.IssuesProjects);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.Save(mStore);
+  Assert.IsFalse(mRouted.Text.Contains('projects'), 'leere Liste ohne Eintrag: ' + mRouted.Text);
+  mSettings.IssuesProjects := cList;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"projects": [{"match": ');
+  Assert.AreEqual('', mRegistry.ReadString('IssuesProjects', ''), 'nicht in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesProjects.Contains('"KASSE"'), mLoaded.IssuesProjects);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '{"issues": {"projects": 3}}');
+  mStore := mRouted;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('[]', mLoaded.IssuesProjects, 'falsche Art: Vorgabe');
+  Assert.IsTrue(MatchText('issues.projects', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesQueriesGoToGlobalFile;
+const
+  cList = '[{"name": "Sprint", "query": "#{Aktueller Sprint}", "connection": "Firma"}]';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.Save(mStore);
+  Assert.IsFalse(mRouted.Text.Contains('queries'), 'leere Liste ohne Eintrag: ' + mRouted.Text);
+  mSettings.IssuesQueries := cList;
+  mSettings.IssuesQueryPicker := False;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"queries": [{"name": ');
+  Assert.AreEqual('', mRegistry.ReadString('IssuesQueries', ''), 'nicht in der Registry');
+  Assert.AreEqual(0, mRegistry.ReadInteger('IssuesQueryPicker', 1), 'Klappliste in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesQueries.Contains('"Sprint"'), mLoaded.IssuesQueries);
+  Assert.IsFalse(mLoaded.IssuesQueryPicker);
+  Assert.IsTrue(MatchText('issues.queries', TAtlasSettingsScopes.IdeManagedPaths), 'nicht im Dialog');
+end;
+
+procedure TAtlasPluginSettingsTests.VcsSettingsGoToGlobalFile;
+const
+  cGit = 'D:\Portable\Git\cmd\git.exe';
+var
+  mRegistry, mStore: IAtlasSettingsStore;
+  mRouted: TAtlasRoutedSettingsStore;
+  mSettings, mLoaded: TAtlasPluginSettings;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('auto', mSettings.VcsProvider);
+  Assert.AreEqual('', mSettings.VcsGitPath, 'leer = automatisch suchen');
+  Assert.AreEqual('', mSettings.VcsSvnPath);
+  Assert.AreEqual(15, mSettings.VcsTimeoutSeconds);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.VcsProvider := 'svn';
+  mSettings.VcsGitPath := cGit;
+  mSettings.VcsTimeoutSeconds := 60;
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"provider": "svn"');
+  Assert.Contains(mRouted.Text, '"timeoutSeconds": 60');
+  Assert.Contains(mRouted.Text, '"git": {');
+  Assert.AreEqual('', mRegistry.ReadString('VcsGitPath', ''), 'nicht in der Registry');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.AreEqual('svn', mLoaded.VcsProvider);
+  Assert.AreEqual(cGit, mLoaded.VcsGitPath);
+  Assert.AreEqual('', mLoaded.VcsSvnPath);
+  Assert.AreEqual(60, mLoaded.VcsTimeoutSeconds);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create,
+    '{"vcs": {"provider": "cvs", "svn": {"path": "  s.exe "}, "timeoutSeconds": 0}}');
+  mStore := mRouted;
+  mLoaded.Load(mStore);
+  Assert.AreEqual('auto', mLoaded.VcsProvider, 'unbekannte Art: Vorgabe');
+  Assert.AreEqual('s.exe', mLoaded.VcsSvnPath, 'ohne Leerzeichen');
+  Assert.AreEqual(15, mLoaded.VcsTimeoutSeconds, 'außerhalb 1 bis 300: Vorgabe');
+  // #1286: vcs.projects als JSON-Liste wie issues.projects.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('[]', mSettings.VcsProjects);
+  mRouted := TAtlasRoutedSettingsStore.Create(TMemoryStore.Create, '');
+  mStore := mRouted;
+  mSettings.VcsProjects := '[{"match": "C:\\Kasse", "provider": "svn", "mainBranch": "trunk"}]';
+  mSettings.Save(mStore);
+  Assert.Contains(mRouted.Text, '"projects": [{"match": ');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.VcsProjects.Contains('"trunk"'), mLoaded.VcsProjects);
+  // #1288: vcs.branch.confirm betrifft nur das Plugin und bleibt in der Registry; Vorgabe: Dialog zeigen.
+  Assert.IsTrue(mSettings.VcsBranchConfirm);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.VcsBranchConfirm := False;
+  mSettings.Save(mStore);
+  Assert.AreEqual(0, mRegistry.ReadInteger('VcsBranchConfirm', 1));
+  Assert.IsFalse(mRouted.Text.Contains('confirm'), 'nicht in settings.json');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.VcsBranchConfirm);
+  // #1290: vcs.branch.svn.* ebenfalls persönlich (Registry), mit Vorgaben und Normalisierung.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('{projektwurzel}/branches/{name}', mSettings.VcsBranchSvnLocation);
+  Assert.AreEqual('head', mSettings.VcsBranchSvnSource);
+  Assert.AreEqual('switch', mSettings.VcsBranchSvnAfter);
+  Assert.AreEqual('..\{projekt}-{kennung}', mSettings.VcsBranchSvnCheckoutFolder);
+  Assert.AreEqual('{kennung} Branch für {titel}', mSettings.VcsBranchSvnMessage);
+  mRegistry := TMemoryStore.Create;
+  mRouted := TAtlasRoutedSettingsStore.Create(mRegistry, '');
+  mStore := mRouted;
+  mSettings.VcsBranchSvnLocation := '^/branches/{kennung}';
+  mSettings.VcsBranchSvnSource := 'workingCopy';
+  mSettings.VcsBranchSvnAfter := 'checkout';
+  mSettings.VcsBranchSvnCheckoutFolder := 'D:\Branches\{name}';
+  mSettings.VcsBranchSvnMessage := 'Neu: {kennung}';
+  mSettings.Save(mStore);
+  Assert.AreEqual('checkout', mRegistry.ReadString('VcsBranchSvnAfter', ''));
+  Assert.IsFalse(mRouted.Text.Contains('svn": {"location'), 'nicht in settings.json');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.AreEqual('^/branches/{kennung}', mLoaded.VcsBranchSvnLocation);
+  Assert.AreEqual('workingCopy', mLoaded.VcsBranchSvnSource);
+  Assert.AreEqual('checkout', mLoaded.VcsBranchSvnAfter);
+  Assert.AreEqual('D:\Branches\{name}', mLoaded.VcsBranchSvnCheckoutFolder);
+  Assert.AreEqual('Neu: {kennung}', mLoaded.VcsBranchSvnMessage);
+  mRegistry.WriteString('VcsBranchSvnLocation', 'branches/{name}');
+  mRegistry.WriteString('VcsBranchSvnSource', 'gestern');
+  mRegistry.WriteString('VcsBranchSvnAfter', '');
+  mRegistry.WriteString('VcsBranchSvnCheckoutFolder', '  ');
+  mRegistry.WriteString('VcsBranchSvnMessage', '');
+  mLoaded.Load(mStore);
+  Assert.AreEqual('{projektwurzel}/branches/{name}', mLoaded.VcsBranchSvnLocation, 'ohne {projektwurzel} oder ^/');
+  Assert.AreEqual('head', mLoaded.VcsBranchSvnSource);
+  Assert.AreEqual('switch', mLoaded.VcsBranchSvnAfter);
+  Assert.AreEqual('..\{projekt}-{kennung}', mLoaded.VcsBranchSvnCheckoutFolder);
+  Assert.AreEqual('{kennung} Branch für {titel}', mLoaded.VcsBranchSvnMessage);
+  // #1291: vcs.externals.* persönlich (Registry), mit Vorgaben und Normalisierung.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('pin', mSettings.VcsExternalsOnBranch);
+  Assert.AreEqual('modified', mSettings.VcsExternalsSuggestBranch);
+  Assert.AreEqual('[]', mSettings.VcsExternalsRules);
+  mSettings.VcsExternalsOnBranch := 'ask';
+  mSettings.VcsExternalsSuggestBranch := 'always';
+  mSettings.VcsExternalsRules := '[{"source": "^/Packages/Basis", "onBranch": "keep"}]';
+  mSettings.Save(mStore);
+  Assert.AreEqual('ask', mRegistry.ReadString('VcsExternalsOnBranch', ''));
+  Assert.IsFalse(mRouted.Text.Contains('externals'), 'nicht in settings.json');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.AreEqual('ask', mLoaded.VcsExternalsOnBranch);
+  Assert.AreEqual('always', mLoaded.VcsExternalsSuggestBranch);
+  Assert.AreEqual('[{"source": "^/Packages/Basis", "onBranch": "keep"}]', mLoaded.VcsExternalsRules);
+  mRegistry.WriteString('VcsExternalsOnBranch', 'branch');
+  mRegistry.WriteString('VcsExternalsSuggestBranch', 'KEEP');
+  mRegistry.WriteString('VcsExternalsRules', ' ');
+  mLoaded.Load(mStore);
+  Assert.AreEqual('pin', mLoaded.VcsExternalsOnBranch, 'branch ist keine Vorgabe für alle');
+  Assert.AreEqual('modified', mLoaded.VcsExternalsSuggestBranch);
+  Assert.AreEqual('[]', mLoaded.VcsExternalsRules);
+  // #1292: vcs.externals.show und .update ebenfalls persönlich.
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.VcsExternalsShow);
+  Assert.AreEqual('with', mSettings.VcsExternalsUpdate);
+  mSettings.VcsExternalsShow := False;
+  mSettings.VcsExternalsUpdate := 'ask';
+  mSettings.Save(mStore);
+  Assert.AreEqual(0, mRegistry.ReadInteger('VcsExternalsShow', 1));
+  Assert.AreEqual('ask', mRegistry.ReadString('VcsExternalsUpdate', ''));
+  Assert.IsFalse(mRouted.Text.Contains('externals'), 'nicht in settings.json');
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.VcsExternalsShow);
+  Assert.AreEqual('ask', mLoaded.VcsExternalsUpdate);
+  mRegistry.WriteString('VcsExternalsUpdate', 'immer');
+  mLoaded.Load(mStore);
+  Assert.AreEqual('with', mLoaded.VcsExternalsUpdate);
+end;
+
 procedure TAtlasPluginSettingsTests.XmlDocOptionsGoToGlobalFile;
 var
   Store, Inner: IAtlasSettingsStore;
@@ -583,6 +924,7 @@ begin
   Assert.IsTrue(Settings.CommitCharacters);
   Assert.IsTrue(Settings.AutoUses);
   Assert.IsTrue(Settings.ParameterHints);
+  Assert.IsTrue(Settings.FormatPlaceholders);
   Assert.AreEqual(150, Settings.OpenDelayMs);
   // Auswahl mit Rahmen und Marke (#447).
   Assert.IsTrue(Settings.SelectionMarker);
@@ -591,6 +933,7 @@ begin
   Settings.SelectionMarker := False;
   Settings.AutoUses := False;
   Settings.ParameterHints := False;
+  Settings.FormatPlaceholders := False;
   Settings.OpenDelayMs := 400;
   Settings.Save(Store);
   Loaded := Default(TAtlasPluginSettings);
@@ -599,6 +942,7 @@ begin
   Assert.IsFalse(Loaded.SelectionMarker);
   Assert.IsFalse(Loaded.AutoUses);
   Assert.IsFalse(Loaded.ParameterHints);
+  Assert.IsFalse(Loaded.FormatPlaceholders);
   Assert.AreEqual(400, Loaded.OpenDelayMs);
   Store.WriteInteger('OpenDelayMs', 99999);
   Loaded.Load(Store);
@@ -654,6 +998,13 @@ begin
   Settings.ShortcutTipsScope := 'ide';
   Settings.Normalize;
   Assert.AreEqual('all', Settings.ShortcutTipsScope, 'unbekannt: all');
+  // navigation.impactDepth (#1120): 1 bis 5.
+  Settings.ImpactDepth := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinImpactDepth, Settings.ImpactDepth);
+  Settings.ImpactDepth := 9;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxImpactDepth, Settings.ImpactDepth);
 end;
 
 procedure TAtlasPluginSettingsTests.OneActionAfterSaving;
@@ -719,60 +1070,259 @@ var
 begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsFalse(Settings.WelcomePageIssues, 'standardmäßig aus: kein Netzzugriff');
-  Assert.AreEqual('', Settings.WelcomePageIssuesTracker, 'aus der .atlas');
-  Assert.AreEqual('', Settings.WelcomePageIssuesQuery);
-  Assert.AreEqual('branch', Settings.WelcomePageIssuesStart);
-  Assert.AreEqual('', Settings.WelcomePageIssuesBranchPattern, 'je Versionsverwaltung');
-  Assert.AreEqual('', Settings.WelcomePageIssuesBranchBase);
-  Assert.AreEqual('{kennung} ', Settings.WelcomePageIssuesCommitPattern);
+  Assert.AreEqual('', Settings.IssuesTracker, 'aus der .atlas');
+  Assert.AreEqual('[]', Settings.IssuesQueries, 'je Anbieter „Mir zugewiesen“ (#1262)');
+  Assert.IsTrue(Settings.IssuesQueryPicker);
+  Assert.IsTrue(Settings.IssuesCreate, '„Issue anlegen …“ an (#1268)');
+  Assert.IsTrue(Settings.IssuesCreateIncludeCode, 'Codeausschnitt vorgeschlagen (#1268)');
+  Assert.AreEqual(0, Settings.CreateIssueKey, 'frei belegbar, ohne Vorgabe');
+  Assert.AreEqual('branch', Settings.IssuesStart);
+  Assert.AreEqual('', Settings.IssuesBranchPattern, 'je Versionsverwaltung');
+  Assert.AreEqual('', Settings.IssuesBranchBase);
+  Assert.AreEqual('{kennung} ', Settings.IssuesCommitPattern);
   Assert.IsTrue(Settings.TrackerLogin);
+  Assert.IsTrue(Settings.IssuesPreview, 'Vorschau (#1264) an');
+  Assert.IsTrue(Settings.IssuesPreviewComments);
+  Assert.IsTrue(Settings.IssuesCodeLinks);
+  Assert.IsTrue(Settings.IssuesBlameLinks);
+  Assert.AreEqual(200, Settings.IssuesBlameMaxRevisions);
+  Assert.IsTrue(Settings.IssuesPreviewChecklists);
+  Assert.IsTrue(Settings.IssuesChecklistStatus);
+  Assert.IsTrue(Settings.IssuesPreviewLinks, 'Verknüpfungen als Baum (#1279) an');
+  Assert.IsTrue(Settings.IssuesWarnBlocked, 'Warnung beim Beginnen (#1279) an');
+  Assert.IsTrue(Settings.IssuesBoard, 'Board (#1272) an');
+  Assert.IsTrue(Settings.IssuesBoardConfirmMove, 'Rückfrage beim Ziehen an');
+  Assert.IsTrue(Settings.IssuesBoardOnlyMine, 'Board öffnet mit „Nur meine“');
+  Assert.IsTrue(Settings.WelcomePageSprint, 'Sprint-Kachel (#1277) an');
+  Assert.IsTrue(Settings.IssuesSprintBurndown, 'Burndown an');
+  Assert.IsTrue(Settings.IssuesSprintCompare, 'Vergleich mit dem Vorsprint an');
+  Assert.IsTrue(Settings.IssuesPaletteSearch, 'Palettensuche (#1270) an');
+  Assert.IsTrue(Settings.IssuesPreviewDevelopment, 'Reiter „Entwicklung“ (#1269)');
+  Assert.IsFalse(Settings.IssuesNotify, 'Meldungen (#1271) aus');
+  Assert.AreEqual(10, Settings.IssuesNotifyIntervalMinutes);
+  Assert.AreEqual('assignedOrCreated', Settings.IssuesNotifyScope);
+  Assert.IsTrue(Settings.IssuesAttach, 'Anhängen (#1276) an');
+  Assert.AreEqual('', Settings.IssuesAttachLogFiles);
+  Assert.AreEqual(1920, Settings.IssuesAttachMaxImageWidth);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
-  Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.WelcomePageIssuesCommitPattern);
+  Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, Settings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
   Assert.AreEqual(TAtlasWelcomeIssues.StartName(TAtlasIssueStart.Remember),
     TAtlasPluginSettings.IssuesStartRemember);
   // Normalisieren.
-  Settings.WelcomePageIssuesTracker := ' YouTrack ';
-  Settings.WelcomePageIssuesQuery := '  for: me'#13#10'#Unresolved  ';
-  Settings.WelcomePageIssuesStart := 'REMEMBER';
-  Settings.WelcomePageIssuesBranchPattern := ' bugfix/{kennung} ';
-  Settings.WelcomePageIssuesBranchBase := ' develop ';
-  Settings.WelcomePageIssuesCommitPattern := '[{kennung}] ';
+  Settings.IssuesTracker := ' YouTrack ';
+  Settings.IssuesQueries := '  ';
+  Settings.IssuesStart := 'REMEMBER';
+  Settings.IssuesBranchPattern := ' bugfix/{kennung} ';
+  Settings.IssuesBranchBase := ' develop ';
+  Settings.IssuesCommitPattern := '[{kennung}] ';
   Settings.Normalize;
-  Assert.AreEqual('youtrack', Settings.WelcomePageIssuesTracker);
-  Assert.AreEqual('for: me  #Unresolved', Settings.WelcomePageIssuesQuery, 'einzeilig');
-  Assert.AreEqual('remember', Settings.WelcomePageIssuesStart);
-  Assert.AreEqual('bugfix/{kennung}', Settings.WelcomePageIssuesBranchPattern);
-  Assert.AreEqual('develop', Settings.WelcomePageIssuesBranchBase);
-  Assert.AreEqual('[{kennung}] ', Settings.WelcomePageIssuesCommitPattern, 'Leerzeichen am Ende bleibt');
-  Settings.WelcomePageIssuesTracker := 'jira';
-  Settings.WelcomePageIssuesStart := 'egal';
-  Settings.WelcomePageIssuesCommitPattern := '';
+  Assert.AreEqual('youtrack', Settings.IssuesTracker);
+  Assert.AreEqual('[]', Settings.IssuesQueries, 'leer = keine');
+  Assert.AreEqual('remember', Settings.IssuesStart);
+  Assert.AreEqual('bugfix/{kennung}', Settings.IssuesBranchPattern);
+  Assert.AreEqual('develop', Settings.IssuesBranchBase);
+  Assert.AreEqual('[{kennung}] ', Settings.IssuesCommitPattern, 'Leerzeichen am Ende bleibt');
+  Settings.IssuesTracker := 'jira';
+  Settings.IssuesStart := 'egal';
+  Settings.IssuesCommitPattern := '';
+  Settings.IssuesBlameMaxRevisions := 0;
   Settings.Normalize;
-  Assert.AreEqual('', Settings.WelcomePageIssuesTracker);
-  Assert.AreEqual('branch', Settings.WelcomePageIssuesStart);
-  Assert.AreEqual('', Settings.WelcomePageIssuesCommitPattern, 'leer = aus');
+  Assert.AreEqual(1, Settings.IssuesBlameMaxRevisions, 'unter 1: 1');
+  Settings.IssuesBlameMaxRevisions := 100000;
+  Settings.Normalize;
+  Assert.AreEqual(5000, Settings.IssuesBlameMaxRevisions, 'über 5000: 5000');
+  Assert.AreEqual('', Settings.IssuesTracker);
+  Assert.AreEqual('branch', Settings.IssuesStart);
+  Assert.AreEqual('', Settings.IssuesCommitPattern, 'leer = aus');
+  // #1271: Abstand begrenzt, unbekannter Umfang fällt auf den Standard.
+  Settings.IssuesNotifyIntervalMinutes := 1;
+  Settings.IssuesNotifyScope := ' WATCHED ';
+  Settings.Normalize;
+  Assert.AreEqual(2, Settings.IssuesNotifyIntervalMinutes, 'mindestens 2 Minuten');
+  Assert.AreEqual('watched', Settings.IssuesNotifyScope);
+  Settings.IssuesNotifyIntervalMinutes := 100000;
+  Settings.IssuesNotifyScope := 'alles';
+  Settings.Normalize;
+  Assert.AreEqual(1440, Settings.IssuesNotifyIntervalMinutes, 'höchstens ein Tag');
+  Assert.AreEqual('assignedOrCreated', Settings.IssuesNotifyScope);
   // Speichern und Laden.
   Settings.WelcomePageIssues := True;
-  Settings.WelcomePageIssuesTracker := 'github';
-  Settings.WelcomePageIssuesQuery := 'label:bug';
-  Settings.WelcomePageIssuesStart := 'remember';
-  Settings.WelcomePageIssuesBranchPattern := 'issue/{nummer}';
-  Settings.WelcomePageIssuesBranchBase := 'trunk';
-  Settings.WelcomePageIssuesCommitPattern := '{kennung}: ';
+  Settings.IssuesTracker := 'github';
+  Settings.IssuesQueries := '[{"name": "Bugs", "query": "label:bug"}]';
+  Settings.IssuesQueryPicker := False;
+  Settings.IssuesCreate := False;
+  Settings.IssuesCreateIncludeCode := False;
+  Settings.CreateIssueKey := $4049;
+  Settings.IssuesStart := 'remember';
+  Settings.IssuesBranchPattern := 'issue/{nummer}';
+  Settings.IssuesBranchBase := 'trunk';
+  Settings.IssuesCommitPattern := '{kennung}: ';
   Settings.TrackerLogin := False;
+  Settings.IssuesPreview := False;
+  Settings.IssuesPreviewComments := False;
+  Settings.IssuesCodeLinks := False;
+  Settings.IssuesBlameLinks := False;
+  Settings.IssuesBlameMaxRevisions := 75;
+  Settings.IssuesPreviewChecklists := False;
+  Settings.IssuesChecklistStatus := False;
+  Settings.IssuesPreviewLinks := False;
+  Settings.IssuesWarnBlocked := False;
+  Settings.IssuesBoard := False;
+  Settings.IssuesBoardConfirmMove := False;
+  Settings.IssuesBoardOnlyMine := False;
+  Settings.WelcomePageSprint := False;
+  Settings.IssuesSprintBurndown := False;
+  Settings.IssuesSprintCompare := False;
+  Settings.IssuesPaletteSearch := False;
+  Settings.IssuesPreviewDevelopment := False;
+  Settings.IssuesNotify := True;
+  Settings.IssuesNotifyIntervalMinutes := 5;
+  Settings.IssuesNotifyScope := 'assigned';
+  Settings.IssuesAttach := False;
+  Settings.IssuesAttachLogFiles := '$(ProjectDir)\logs\*.log;C:\Temp\app.log';
+  Settings.IssuesAttachMaxImageWidth := 1280;
   Store := TMemoryStore.Create;
   Settings.Save(Store);
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.IsTrue(Loaded.WelcomePageIssues);
-  Assert.AreEqual('github', Loaded.WelcomePageIssuesTracker);
-  Assert.AreEqual('label:bug', Loaded.WelcomePageIssuesQuery);
-  Assert.AreEqual('remember', Loaded.WelcomePageIssuesStart);
-  Assert.AreEqual('issue/{nummer}', Loaded.WelcomePageIssuesBranchPattern);
-  Assert.AreEqual('trunk', Loaded.WelcomePageIssuesBranchBase);
-  Assert.AreEqual('{kennung}: ', Loaded.WelcomePageIssuesCommitPattern);
+  Assert.AreEqual('github', Loaded.IssuesTracker);
+  Assert.AreEqual('[{"name": "Bugs", "query": "label:bug"}]', Loaded.IssuesQueries);
+  Assert.IsFalse(Loaded.IssuesQueryPicker);
+  Assert.IsFalse(Loaded.IssuesCreate);
+  Assert.IsFalse(Loaded.IssuesCreateIncludeCode);
+  Assert.AreEqual($4049, Loaded.CreateIssueKey, 'Strg+I');
+  Assert.AreEqual('remember', Loaded.IssuesStart);
+  Assert.AreEqual('issue/{nummer}', Loaded.IssuesBranchPattern);
+  Assert.AreEqual('trunk', Loaded.IssuesBranchBase);
+  Assert.AreEqual('{kennung}: ', Loaded.IssuesCommitPattern);
   Assert.IsFalse(Loaded.TrackerLogin);
+  Assert.IsFalse(Loaded.IssuesPreview);
+  Assert.IsFalse(Loaded.IssuesPreviewComments);
+  Assert.IsFalse(Loaded.IssuesCodeLinks);
+  Assert.IsFalse(Loaded.IssuesBlameLinks);
+  Assert.AreEqual(75, Loaded.IssuesBlameMaxRevisions);
+  Assert.IsFalse(Loaded.IssuesPaletteSearch);
+  Assert.IsFalse(Loaded.IssuesPreviewChecklists);
+  Assert.IsFalse(Loaded.IssuesChecklistStatus);
+  Assert.IsFalse(Loaded.IssuesPreviewLinks);
+  Assert.IsFalse(Loaded.IssuesWarnBlocked);
+  Assert.IsFalse(Loaded.IssuesBoard);
+  Assert.IsFalse(Loaded.IssuesBoardConfirmMove);
+  Assert.IsFalse(Loaded.IssuesBoardOnlyMine);
+  Assert.IsFalse(Loaded.WelcomePageSprint);
+  Assert.IsFalse(Loaded.IssuesSprintBurndown);
+  Assert.IsFalse(Loaded.IssuesSprintCompare);
+  Assert.IsFalse(Loaded.IssuesPreviewDevelopment);
+  Assert.IsTrue(Loaded.IssuesNotify);
+  Assert.AreEqual(5, Loaded.IssuesNotifyIntervalMinutes);
+  Assert.AreEqual('assigned', Loaded.IssuesNotifyScope);
+  Assert.IsFalse(Loaded.IssuesAttach);
+  Assert.AreEqual('$(ProjectDir)\logs\*.log;C:\Temp\app.log', Loaded.IssuesAttachLogFiles);
+  Assert.AreEqual(1280, Loaded.IssuesAttachMaxImageWidth);
+  // Bildbreite außerhalb 320–7680 wird begrenzt.
+  Settings.IssuesAttachMaxImageWidth := 50;
+  Settings.Normalize;
+  Assert.AreEqual(320, Settings.IssuesAttachMaxImageWidth);
+  Settings.IssuesAttachMaxImageWidth := 100000;
+  Settings.Normalize;
+  Assert.AreEqual(7680, Settings.IssuesAttachMaxImageWidth);
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesSyncOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.IssuesSyncState, 'an: geschrieben wird trotzdem nur nach Senden bzw. Beginnen');
+  Assert.AreEqual('State', mSettings.IssuesStateField);
+  Assert.AreEqual('Assignee', mSettings.IssuesAssigneeField);
+  Assert.AreEqual('', mSettings.IssuesStartState, 'Zustand beim Beginnen nicht ändern');
+  Assert.IsFalse(mSettings.IssuesAssignOnStart);
+  Assert.AreEqual('', mSettings.IssuesStartComment);
+  Assert.AreEqual('', mSettings.IssuesEndStates);
+  Assert.AreEqual('Erledigt in {branch}.\n{commits}', mSettings.IssuesEndComment);
+  // Normalisieren: Felder ohne Leerraum außen, leer = Vorgabe; Vorlagen einzeilig mit \n.
+  mSettings.IssuesStateField := '  Status ';
+  mSettings.IssuesAssigneeField := '';
+  mSettings.IssuesStartState := ' In Arbeit ';
+  mSettings.IssuesStartComment := 'Beginne {kennung}'#13#10'in {branch}';
+  mSettings.IssuesEndStates := ' Zur Prüfung, Erledigt ';
+  mSettings.IssuesEndComment := StringOfChar('x', TAtlasPluginSettings.MaxIssuesTemplate + 10);
+  mSettings.Normalize;
+  Assert.AreEqual('Status', mSettings.IssuesStateField);
+  Assert.AreEqual('Assignee', mSettings.IssuesAssigneeField, 'leer = Vorgabe');
+  Assert.AreEqual('In Arbeit', mSettings.IssuesStartState);
+  Assert.AreEqual('Beginne {kennung}\nin {branch}', mSettings.IssuesStartComment);
+  Assert.AreEqual('Zur Prüfung, Erledigt', mSettings.IssuesEndStates);
+  Assert.AreEqual(TAtlasPluginSettings.MaxIssuesTemplate, Integer(Length(mSettings.IssuesEndComment)));
+  // Speichern und Laden.
+  mSettings.IssuesSyncState := False;
+  mSettings.IssuesAssignOnStart := True;
+  mSettings.IssuesEndComment := 'Fertig: {pr}';
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.IssuesSyncState);
+  Assert.AreEqual('Status', mLoaded.IssuesStateField);
+  Assert.AreEqual('Assignee', mLoaded.IssuesAssigneeField);
+  Assert.AreEqual('In Arbeit', mLoaded.IssuesStartState);
+  Assert.IsTrue(mLoaded.IssuesAssignOnStart);
+  Assert.AreEqual('Beginne {kennung}\nin {branch}', mLoaded.IssuesStartComment);
+  Assert.AreEqual('Zur Prüfung, Erledigt', mLoaded.IssuesEndStates);
+  Assert.AreEqual('Fertig: {pr}', mLoaded.IssuesEndComment);
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesTimeOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsFalse(mSettings.IssuesTimeTracking, 'ab Werk aus');
+  Assert.AreEqual(10, mSettings.IssuesIdleMinutes);
+  Assert.AreEqual(5, mSettings.IssuesTimeRounding);
+  mSettings.IssuesIdleMinutes := 0;
+  mSettings.IssuesTimeRounding := 500;
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinIssuesIdleMinutes, mSettings.IssuesIdleMinutes);
+  Assert.AreEqual(TAtlasPluginSettings.MaxIssuesTimeRounding, mSettings.IssuesTimeRounding);
+  mSettings.IssuesTimeTracking := True;
+  mSettings.IssuesIdleMinutes := 15;
+  mSettings.IssuesTimeRounding := 15;
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsTrue(mLoaded.IssuesTimeTracking);
+  Assert.AreEqual(15, mLoaded.IssuesIdleMinutes);
+  Assert.AreEqual(15, mLoaded.IssuesTimeRounding);
+end;
+
+procedure TAtlasPluginSettingsTests.IssuesCommentOptions;
+var
+  mSettings, mLoaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+begin
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.IssuesCommentEditor, 'Kommentar-Editor ist vorgegeben an');
+  Assert.AreEqual(TAtlasPluginSettings.DefaultIssuesCommentSnippets, mSettings.IssuesCommentSnippets, 'zwei Vorgabe-Bausteine');
+  // Normalisieren: leer = keine Bausteine, nicht die Vorgabe.
+  mSettings.IssuesCommentSnippets := '   ';
+  mSettings.Normalize;
+  Assert.AreEqual('[]', mSettings.IssuesCommentSnippets);
+  // Speichern und Laden.
+  mSettings.IssuesCommentEditor := False;
+  mSettings.IssuesCommentSnippets := '[{"name":"Danke","text":"Danke!"}]';
+  mStore := TMemoryStore.Create;
+  mSettings.Save(mStore);
+  mLoaded := TAtlasPluginSettings.Defaults;
+  mLoaded.Load(mStore);
+  Assert.IsFalse(mLoaded.IssuesCommentEditor);
+  Assert.AreEqual('[{"name":"Danke","text":"Danke!"}]', mLoaded.IssuesCommentSnippets);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;
@@ -803,13 +1353,28 @@ begin
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MinBlockEndLines, Settings.BlockEndLabelsMinLines, 'unten begrenzt');
   Settings.BlockEndLabelsMinLines := 5000;
+  Settings.DebugInlineValuesPerLine := 0;
   Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinInlineValuesPerLine, Settings.DebugInlineValuesPerLine,
+    'debug.inlineValuesPerLine unten begrenzt (#508)');
   Assert.AreEqual(TAtlasPluginSettings.MaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
   Settings.BlockEndLabels := False;
   Settings.BlockEndLabelsMinLines := 40;
   Settings.DimUnusedUses := False;
   Settings.RecursionMarkers := False;
   Settings.RecursionMarkersDepth := 7;
+  Settings.ExitPoints := False;
+  Settings.ExitPointsExceptions := False;
+  Settings.ExitPointsLoops := False;
+  Settings.ExitPointsBadge := False;
+  Settings.Reassigned := False;
+  Settings.ReassignedTargets := 'fields,locals';
+  Settings.ReassignedStyle := 'wavy';
+  Settings.ReassignedColor := '#00ff80';
+  Settings.ExpressionType := False;
+  Settings.ExpressionTypeConversions := False;
+  Settings.ExpressionTypeConstValue := False;
+  Settings.ExpressionTypeKey := $4054;
   Settings.InlineDiagnostics := 'off';
   Settings.ProblemsStatusCounter := False;
   Settings.NextProblemKey := 0;
@@ -824,6 +1389,18 @@ begin
   Assert.IsFalse(Loaded.DimUnusedUses, 'uses-Abblenden abschaltbar');
   Assert.IsFalse(Loaded.RecursionMarkers, 'Rekursionssymbole abschaltbar (#623)');
   Assert.AreEqual(7, Loaded.RecursionMarkersDepth);
+  Assert.IsFalse(Loaded.ExitPoints, 'Austrittspunkte abschaltbar (#698)');
+  Assert.IsFalse(Loaded.ExitPointsExceptions);
+  Assert.IsFalse(Loaded.ExitPointsLoops);
+  Assert.IsFalse(Loaded.ExitPointsBadge);
+  Assert.IsFalse(Loaded.Reassigned, 'Unterstreichung abschaltbar (#712)');
+  Assert.AreEqual('locals,fields', Loaded.ReassignedTargets, 'feste Reihenfolge');
+  Assert.AreEqual('wavy', Loaded.ReassignedStyle);
+  Assert.AreEqual('#00FF80', Loaded.ReassignedColor);
+  Assert.IsFalse(Loaded.ExpressionType, 'Typ des Ausdrucks abschaltbar (#689)');
+  Assert.IsFalse(Loaded.ExpressionTypeConversions);
+  Assert.IsFalse(Loaded.ExpressionTypeConstValue);
+  Assert.AreEqual($4054, Loaded.ExpressionTypeKey);
   Assert.AreEqual('off', Loaded.InlineDiagnostics, 'Fehlertext abschaltbar');
   Assert.IsFalse(Loaded.ProblemsStatusCounter, 'Zähler abschaltbar');
   Assert.AreEqual(0, Loaded.NextProblemKey);
@@ -838,7 +1415,7 @@ var
 begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.WelcomePageQuickActions, 'standardmäßig an');
-  Assert.AreEqual('build,tests,run,pull,folder,console', Settings.WelcomePageQuickActionsItems);
+  Assert.AreEqual('build,tests,run,pull,folder,console,tasks', Settings.WelcomePageQuickActionsItems);
   Assert.AreEqual('wt.exe', Settings.WelcomePageQuickActionsConsole);
   Assert.AreEqual($4042, Settings.WelcomePageQuickActionsBuildKey, 'Strg+B');
   Assert.AreEqual($4054, Settings.WelcomePageQuickActionsTestKey, 'Strg+T');
@@ -962,6 +1539,93 @@ begin
   Assert.AreEqual(Settings.ReleaseChecks, Loaded.ReleaseChecks);
 end;
 
+procedure TAtlasPluginSettingsTests.TasksOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+  Mode: TAtlasTaskBeforeBuild;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.TasksEnabled, 'tasks.enabled standardmäßig an (#900)');
+  Assert.IsTrue(Settings.TasksProblemsFromOutput);
+  Assert.AreEqual('off', Settings.TasksBeforeBuild);
+  Assert.IsTrue(Settings.TasksSaveBeforeRun);
+  Assert.IsFalse(Settings.TasksRunChecksParallel);
+  Assert.IsFalse(Settings.TasksOnlyFindings);
+  // Normalisieren: Groß-/Kleinschreibung egal, Unbekanntes = off.
+  Settings.TasksBeforeBuild := ' Block ';
+  Settings.Normalize;
+  Assert.AreEqual('block', Settings.TasksBeforeBuild);
+  Settings.TasksBeforeBuild := 'immer';
+  Settings.Normalize;
+  Assert.AreEqual('off', Settings.TasksBeforeBuild);
+  // Die Einstellungen kennen die Projektaufgaben nicht (A-09): dieselben Werte wie dort.
+  for Mode := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
+  begin
+    Settings.TasksBeforeBuild := UpperCase(TAtlasTasks.BeforeBuildNames[Mode]);
+    Settings.Normalize;
+    Assert.AreEqual(TAtlasTasks.BeforeBuildNames[Mode], Settings.TasksBeforeBuild);
+  end;
+  // Speichern und Laden, jede Einstellung abweichend von der Vorgabe.
+  Settings.TasksEnabled := False;
+  Settings.TasksProblemsFromOutput := False;
+  Settings.TasksBeforeBuild := 'warn';
+  Settings.TasksSaveBeforeRun := False;
+  Settings.TasksRunChecksParallel := True;
+  Settings.TasksOnlyFindings := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.TasksEnabled, 'abschaltbar');
+  Assert.IsFalse(Loaded.TasksProblemsFromOutput);
+  Assert.AreEqual('warn', Loaded.TasksBeforeBuild);
+  Assert.IsFalse(Loaded.TasksSaveBeforeRun);
+  Assert.IsTrue(Loaded.TasksRunChecksParallel);
+  Assert.IsTrue(Loaded.TasksOnlyFindings);
+end;
+
+procedure TAtlasPluginSettingsTests.BuildGateTimeoutOption;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual(300, Settings.BuildGateTimeoutMs, 'Vorgabe 300 ms');
+  Settings.BuildGateTimeoutMs := 1;
+  Settings.Normalize;
+  Assert.AreEqual(50, Settings.BuildGateTimeoutMs, 'untere Grenze');
+  Settings.BuildGateTimeoutMs := 100000;
+  Settings.Normalize;
+  Assert.AreEqual(10000, Settings.BuildGateTimeoutMs, 'obere Grenze');
+  Settings.BuildGateTimeoutMs := 750;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.AreEqual(750, Loaded.BuildGateTimeoutMs);
+end;
+
+procedure TAtlasPluginSettingsTests.BuildSummaryOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.BuildSummary, 'Zusammenfassung standardmäßig an');
+  Assert.AreEqual('', Settings.BuildWarningsAsErrors);
+  Settings.BuildSummary := False;
+  Settings.BuildWarningsAsErrors := 'w1035; H2164 x123 W1035';
+  Settings.Normalize;
+  Assert.AreEqual('W1035, H2164', Settings.BuildWarningsAsErrors, 'groß, ohne Doppelte und Ungültiges');
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.BuildSummary);
+  Assert.AreEqual('W1035, H2164', Loaded.BuildWarningsAsErrors);
+end;
+
 procedure TAtlasPluginSettingsTests.BuildOnOpenOptions;
 var
   Settings, Loaded: TAtlasPluginSettings;
@@ -1066,6 +1730,8 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.UnitSearchEnabled);
   Assert.IsTrue(Settings.UnitSearchReplaceIdeDialog, 'überschreibt Strg+F12 standardmäßig');
+  Assert.IsTrue(Settings.UnitSearchReplaceUseUnitDialog, 'überschreibt Alt+F11 standardmäßig (#786)');
+  Assert.IsTrue(Settings.UnitSearchReplaceFormsDialog, 'überschreibt Umschalt+F12 standardmäßig (#786)');
   Assert.IsTrue(Settings.UnitSearchRememberCollapsed);
   Assert.IsTrue(Settings.UnitSearchFilters);
   Assert.IsTrue(Settings.UnitSearchFilterSyntax);
@@ -1092,6 +1758,8 @@ begin
   // Speichern und Laden.
   Settings.UnitSearchEnabled := False;
   Settings.UnitSearchReplaceIdeDialog := False;
+  Settings.UnitSearchReplaceUseUnitDialog := False;
+  Settings.UnitSearchReplaceFormsDialog := False;
   Settings.UnitSearchRememberCollapsed := False;
   Settings.UnitSearchFilters := False;
   Settings.UnitSearchFilterSyntax := False;
@@ -1114,6 +1782,8 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.UnitSearchEnabled);
   Assert.IsFalse(Loaded.UnitSearchReplaceIdeDialog);
+  Assert.IsFalse(Loaded.UnitSearchReplaceUseUnitDialog);
+  Assert.IsFalse(Loaded.UnitSearchReplaceFormsDialog);
   Assert.IsFalse(Loaded.SearchResultsInMessages);
   Assert.IsFalse(Loaded.UnitSearchRememberCollapsed);
   Assert.IsFalse(Loaded.UnitSearchFilters);
@@ -1216,6 +1886,34 @@ begin
   Assert.IsFalse(Loaded.PeekShowImplementation);
   Assert.AreEqual(0, Loaded.PeekDefinitionKey);
   Assert.AreEqual($C07B, Loaded.PeekReferencesKey);
+end;
+
+procedure TAtlasPluginSettingsTests.DataFlowOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // Datenfluss (#690): an, Tiefe 6, Tests sichtbar.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DataFlow, 'navigation.dataFlow (#690)');
+  Assert.AreEqual(6, Settings.DataFlowMaxDepth);
+  Assert.IsFalse(Settings.DataFlowExcludeTests);
+  Settings.DataFlowMaxDepth := 0;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinDataFlowDepth, Settings.DataFlowMaxDepth);
+  Settings.DataFlowMaxDepth := 99;
+  Settings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxDataFlowDepth, Settings.DataFlowMaxDepth);
+  Settings.DataFlow := False;
+  Settings.DataFlowMaxDepth := 3;
+  Settings.DataFlowExcludeTests := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.DataFlow);
+  Assert.AreEqual(3, Loaded.DataFlowMaxDepth);
+  Assert.IsTrue(Loaded.DataFlowExcludeTests);
 end;
 
 procedure TAtlasPluginSettingsTests.OutlineOptions;
@@ -1781,6 +2479,45 @@ begin
   Assert.AreEqual(0, Loaded.NewLineBelowKey);
 end;
 
+procedure TAtlasPluginSettingsTests.ExpressionTypeOptions;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  // Typ des markierten Ausdrucks (#689): an, mit Umwandlungen und Wert, Strg+Umschalt+T.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ExpressionType);
+  Assert.IsTrue(Settings.ExpressionTypeConversions);
+  Assert.IsTrue(Settings.ExpressionTypeConstValue);
+  Assert.AreEqual($6054, Settings.ExpressionTypeKey, 'Strg+Umschalt+T');
+  Settings.ExpressionTypeKey := $1FFFF;
+  Settings.Normalize;
+  Assert.AreEqual($FFFF, Settings.ExpressionTypeKey);
+  Settings.ExpressionTypeKey := -3;
+  Settings.Normalize;
+  Assert.AreEqual(0, Settings.ExpressionTypeKey);
+end;
+
+procedure TAtlasPluginSettingsTests.MethodPlacementOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('declaration', Settings.MethodPlacement);
+  Settings.MethodPlacement := 'Alphabetical';
+  Settings.Normalize;
+  Assert.AreEqual('alphabetical', Settings.MethodPlacement);
+  Settings.MethodPlacement := 'irgendwie';
+  Settings.Normalize;
+  Assert.AreEqual('declaration', Settings.MethodPlacement, 'Unbekanntes wird zur Vorgabe');
+  Settings.MethodPlacement := 'off';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.AreEqual('off', Loaded.MethodPlacement, 'abschaltbar');
+end;
+
 procedure TAtlasPluginSettingsTests.UnwrapOptions;
 var
   Settings, Loaded: TAtlasPluginSettings;
@@ -1800,6 +2537,27 @@ begin
   Loaded.UnwrapKey := $1FFFF;
   Loaded.Normalize;
   Assert.AreEqual($FFFF, Loaded.UnwrapKey);
+end;
+
+procedure TAtlasPluginSettingsTests.SafeDeleteOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.SafeDelete);
+  Assert.AreEqual($802E, Settings.SafeDeleteKey, 'Alt+Entf');
+  Settings.SafeDelete := False;
+  Settings.SafeDeleteKey := $402E;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.SafeDelete);
+  Assert.AreEqual($402E, Loaded.SafeDeleteKey);
+  Loaded.SafeDeleteKey := -1;
+  Loaded.Normalize;
+  Assert.AreEqual(0, Loaded.SafeDeleteKey);
 end;
 
 procedure TAtlasPluginSettingsTests.GitChangeOptions;
@@ -1856,6 +2614,147 @@ begin
   Assert.AreEqual('', Loaded.OverviewRulerKinds, 'leer = keine Marken');
 end;
 
+procedure TAtlasPluginSettingsTests.DebugDisplayRuleOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #854: an, Aufrufe aus; beide überleben Speichern und Laden.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugDisplayRules);
+  Assert.IsFalse(Settings.DebugDisplayRulesAllowCalls);
+  Settings.DebugDisplayRules := False;
+  Settings.DebugDisplayRulesAllowCalls := True;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugDisplayRules);
+  Assert.IsTrue(Loaded.DebugDisplayRulesAllowCalls);
+end;
+
+procedure TAtlasPluginSettingsTests.DebugStepIntoTargetOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #836: an mit Strg+Alt+F7; Schalter und Taste überleben Speichern und Laden, 0 = keine Taste.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugStepIntoTarget);
+  Assert.AreEqual($C076, Settings.DebugStepIntoTargetKey);
+  Settings.DebugStepIntoTarget := False;
+  Settings.DebugStepIntoTargetKey := 0;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugStepIntoTarget);
+  Assert.AreEqual(0, Loaded.DebugStepIntoTargetKey);
+  Loaded.DebugStepIntoTargetKey := -5;
+  Loaded.Normalize;
+  Assert.AreEqual(0, Loaded.DebugStepIntoTargetKey);
+end;
+
+procedure TAtlasPluginSettingsTests.DebugBreakOnNextEventOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #856: an, ausgenommen OnPaint, OnMouseMove und OnUpdate; die Liste wird beim Normalisieren bereinigt.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugBreakOnNextEvent);
+  Assert.AreEqual('OnPaint, OnMouseMove, OnUpdate', Settings.DebugBreakOnNextEventExcluded);
+  Settings.DebugBreakOnNextEvent := False;
+  Settings.DebugBreakOnNextEventExcluded := 'OnPaint, OnResize';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugBreakOnNextEvent);
+  Assert.AreEqual('OnPaint, OnResize', Loaded.DebugBreakOnNextEventExcluded);
+  Loaded.DebugBreakOnNextEventExcluded := ' OnPaint ;; OnResize,';
+  Loaded.Normalize;
+  Assert.AreEqual('OnPaint, OnResize', Loaded.DebugBreakOnNextEventExcluded);
+end;
+
+procedure TAtlasPluginSettingsTests.DebugStepFilterOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  // #850: an, Getter und triviale Routinen, keine Muster; alles überlebt Speichern und Laden, Normalize bereinigt.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugStepFilters);
+  Assert.AreEqual('getters,trivial', Settings.DebugStepFilterKinds);
+  Assert.AreEqual('', Settings.DebugStepFilterPatterns);
+  Settings.DebugStepFilters := False;
+  Settings.DebugStepFilterKinds := 'Operators, setters, quatsch';
+  Settings.DebugStepFilterPatterns := ' *.Log* ;; TBasisForm.*;*.log*';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugStepFilters);
+  Assert.AreEqual('setters,operators', Loaded.DebugStepFilterKinds);
+  Assert.AreEqual('*.Log*;TBasisForm.*', Loaded.DebugStepFilterPatterns);
+end;
+
+procedure TAtlasPluginSettingsTests.DebugVisualizerOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.DebugVisualizers);
+  Assert.AreEqual('lists,dictionaries,dataSets,bytes,json,colors,guid,geometry,graphics',
+    Settings.DebugVisualizerTypes);
+  Assert.AreEqual('Name,Caption,Text', Settings.DebugVisualizerNameFields);
+  Assert.AreEqual(120, Settings.DebugVisualizerMaxLength);
+  Assert.AreEqual(200, Settings.DebugVisualizerTimeoutMs);
+  Assert.AreEqual(4000000, Settings.DebugVisualizerMaxImagePixels);
+  Assert.AreEqual('properties', Settings.DebugVisualizerEvaluation);
+  Settings.DebugVisualizers := False;
+  Settings.DebugVisualizerTypes := 'json,lists';
+  Settings.DebugVisualizerNameFields := 'Bezeichnung';
+  Settings.DebugVisualizerMaxLength := 80;
+  Settings.DebugVisualizerTimeoutMs := 500;
+  Settings.DebugVisualizerMaxImagePixels := 100000;
+  Settings.DebugVisualizerEvaluation := 'calls';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Loaded.Normalize;
+  Assert.IsFalse(Loaded.DebugVisualizers);
+  Assert.AreEqual('lists,json', Loaded.DebugVisualizerTypes, 'feste Reihenfolge');
+  Assert.AreEqual('Bezeichnung', Loaded.DebugVisualizerNameFields);
+  Assert.AreEqual(80, Loaded.DebugVisualizerMaxLength);
+  Assert.AreEqual(500, Loaded.DebugVisualizerTimeoutMs);
+  Assert.AreEqual(100000, Loaded.DebugVisualizerMaxImagePixels);
+  Assert.AreEqual('calls', Loaded.DebugVisualizerEvaluation);
+  // Grenzen und unbekannte Werte.
+  Loaded.DebugVisualizerTypes := 'gibtsnicht, Colors';
+  Loaded.DebugVisualizerNameFields := ' Name , ,Name, Text ';
+  Loaded.DebugVisualizerMaxLength := 5;
+  Loaded.DebugVisualizerTimeoutMs := 100000;
+  Loaded.DebugVisualizerMaxImagePixels := 1;
+  Loaded.DebugVisualizerEvaluation := 'alles';
+  Loaded.Normalize;
+  Assert.AreEqual('colors', Loaded.DebugVisualizerTypes);
+  Assert.AreEqual('Name,Text', Loaded.DebugVisualizerNameFields);
+  Assert.AreEqual(20, Loaded.DebugVisualizerMaxLength);
+  Assert.AreEqual(5000, Loaded.DebugVisualizerTimeoutMs);
+  Assert.AreEqual(10000, Loaded.DebugVisualizerMaxImagePixels);
+  Assert.AreEqual('fields', Loaded.DebugVisualizerEvaluation, 'unbekannt = erster Wert');
+  Loaded.DebugVisualizerTypes := '';
+  Loaded.Normalize;
+  Assert.AreEqual('', Loaded.DebugVisualizerTypes, 'leer = keine Art');
+end;
+
 { TAtlasSettingsScopesTests }
 
 procedure TAtlasSettingsScopesTests.RoutesServerSettingsToGlobalFile;
@@ -1872,6 +2771,10 @@ begin
   Store.WriteInteger('InlayHints', 1);
   Store.WriteInteger('CompileOnSave', 1);
   Store.WriteInteger('CodeLensMetrics', 0);
+  Store.WriteInteger('ReferencesInferred', 0);
+  Store.WriteInteger('ReferencesTextMatches', 1);
+  Store.WriteInteger('Impact', 0);
+  Store.WriteInteger('ImpactDepth', 4);
   Store.WriteInteger('PairColors', 0);
   Store.WriteString('ServerPath', 'C:\Atlas\AtlasServer.exe');
   Assert.Contains(Routed.Text, '"slashCommands": {');
@@ -1879,6 +2782,17 @@ begin
   Assert.Contains(Routed.Text, '"parameterNames": true');
   Assert.Contains(Routed.Text, '"onSave": true');
   Assert.Contains(Routed.Text, '"metrics": false', 'codeLens.metrics in settings.json (#66)');
+  // Treffersicherheit (#1119): Server und Plugin lesen denselben Wert.
+  Assert.Contains(Routed.Text, '"references": {');
+  Assert.Contains(Routed.Text, '"inferred": false');
+  Assert.Contains(Routed.Text, '"textMatches": true');
+  // Auswirkungsanalyse (#1120): navigation.* für Plugin, Server und MCP.
+  Assert.Contains(Routed.Text, '"navigation": {');
+  Assert.Contains(Routed.Text, '"impact": false');
+  Assert.Contains(Routed.Text, '"impactDepth": 4');
+  Assert.AreEqual(4, Store.ReadInteger('ImpactDepth', 2));
+  Assert.AreEqual(0, Store.ReadInteger('ReferencesInferred', 1));
+  Assert.AreEqual(-1, Registry.ReadInteger('ReferencesInferred', -1));
   // Reine Plugin-Werte bleiben in der Registry.
   Assert.DoesNotContain(Routed.Text, 'PairColors');
   Assert.AreEqual(0, Registry.ReadInteger('PairColors', 1));
@@ -1889,6 +2803,56 @@ begin
   Assert.IsFalse(TAtlasSettingsScopes.TryRouted('PairColors', Setting));
   Assert.AreEqual(Integer(Length(TAtlasSettingsScopes.Routed) + 1), Integer(Length(TAtlasSettingsScopes.IdeManagedPaths)));
   Assert.AreEqual('delphiVersion', TAtlasSettingsScopes.IdeManagedPaths[0]);
+end;
+
+procedure TAtlasSettingsScopesTests.ArchitectureSettingsLiveInGlobalFile;
+var
+  Registry: IAtlasSettingsStore;
+  Routed: TAtlasRoutedSettingsStore;
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  // Architekturübersicht (#1118): Plugin und Server lesen architecture.* aus settings.json.
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.ArchitectureEnabled);
+  Assert.AreEqual('projectGroup', Settings.ArchitectureScope);
+  Assert.IsFalse(Settings.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(15, Settings.ArchitectureCentralUnits);
+  Registry := TMemoryStore.Create;
+  Routed := TAtlasRoutedSettingsStore.Create(Registry, '');
+  Store := Routed;
+  Settings.ArchitectureEnabled := False;
+  Settings.ArchitectureScope := 'project';
+  Settings.ArchitectureIncludeLibraryUnits := True;
+  Settings.ArchitectureCentralUnits := 30;
+  Settings.Save(Store);
+  Assert.Contains(Routed.Text, '"architecture": {');
+  Assert.Contains(Routed.Text, '"scope": "project"');
+  Assert.Contains(Routed.Text, '"includeLibraryUnits": true');
+  Assert.Contains(Routed.Text, '"centralUnits": 30');
+  Assert.AreEqual(-1, Registry.ReadInteger('ArchitectureEnabled', -1), 'nicht in der Registry');
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.ArchitectureEnabled);
+  Assert.AreEqual('project', Loaded.ArchitectureScope);
+  Assert.IsTrue(Loaded.ArchitectureIncludeLibraryUnits);
+  Assert.AreEqual(30, Loaded.ArchitectureCentralUnits);
+  // Unbekannter Umfang und Zahl außerhalb der Grenzen fallen auf gültige Werte.
+  Loaded.ArchitectureScope := 'irgendwas';
+  Loaded.ArchitectureCentralUnits := 0;
+  Loaded.Normalize;
+  Assert.AreEqual('projectGroup', Loaded.ArchitectureScope);
+  Assert.AreEqual(5, Loaded.ArchitectureCentralUnits);
+  // Der Zustand „Fenster einmal rechts angelegt“ bleibt in der Registry.
+  Assert.IsFalse(TAtlasPluginSettings.Defaults.ArchitectureWindowPlaced);
+  Loaded.ArchitectureWindowPlaced := True;
+  Loaded.Save(Store);
+  Assert.AreEqual(1, Registry.ReadInteger('ArchitectureWindowPlaced', -1));
+  // Ebenso für das Fenster „Unit-Beziehungen“ (#593).
+  Assert.IsFalse(TAtlasPluginSettings.Defaults.UnitRelationsWindowPlaced);
+  Loaded.UnitRelationsWindowPlaced := True;
+  Loaded.Save(Store);
+  Assert.AreEqual(1, Registry.ReadInteger('UnitRelationsWindowPlaced', -1));
 end;
 
 procedure TAtlasSettingsScopesTests.KeepsCommentsAndOtherKeys;
@@ -1964,21 +2928,29 @@ begin
   Assert.Contains(Paths, '|completion.senderCast|');
   Assert.DoesNotContain(Paths, '|index.projectGroup|');
   Assert.DoesNotContain(Paths, '|language|');
+  // Unit-Zyklus beim Tippen (#896): Glied mit eigener Seite und eigenem Ort im sonst globalen diagnostics.
+  Assert.Contains(Paths, '|diagnostics.usesCycleLive|');
+  Assert.Contains(Paths, '|diagnostics.usesCycleImplementation|');
+  Assert.DoesNotContain(Paths, '|diagnostics.log|');
+  for Field in Project do
+    if Field.Path = 'diagnostics.usesCycleLive' then
+    begin
+      Assert.AreEqual('Prüfregeln', Field.Page);
+      Assert.AreEqual('true', Field.DefaultJson);
+    end;
   Paths := '|';
   for Field in Global do
     Paths := Paths + Field.Path + '|';
   Assert.Contains(Paths, '|language|');
   Assert.Contains(Paths, '|completion.matching|');
-  // Versionsverwaltung (#571): im Dialog der globalen Einstellungen, Seite Allgemein, als Auswahl.
-  Assert.Contains(Paths, '|vcs.provider|');
-  for Field in Global do
-    if Field.Path = 'vcs.provider' then
-    begin
-      Assert.AreEqual('Allgemein', Field.Page);
-      Assert.AreEqual('"auto"', Field.DefaultJson);
-      Assert.AreEqual(4, Integer(Length(Field.Choices)));
-      Assert.AreEqual('"off"', Field.Choices[3]);
-    end;
+  // Versionsverwaltung (#571) hat seit #1285 eine eigene Seite, Issue-Tracker seit #1260: Das ganze Objekt
+  // ("vcs", "issues") enthält Glieder dieser Seiten und steht deshalb nicht im Dialog.
+  Assert.DoesNotContain(Paths, '|vcs|');
+  Assert.DoesNotContain(Paths, '|vcs.provider|');
+  Assert.DoesNotContain(Paths, '|issues|');
+  for Field in Fields do
+    if Field.Path = 'vcs' then
+      Assert.IsTrue(Field.Global, 'vcs bleibt global');
   // Auf den Reitern der Optionsseite bzw. von der IDE gesetzt: nicht noch einmal im Dialog.
   Assert.DoesNotContain(Paths, '|index.projectGroup|');
   Assert.DoesNotContain(Paths, '|hints.xmlDocFull|');
@@ -1987,7 +2959,8 @@ begin
   Assert.Contains(Paths, '|rules|');
   // Jedes umgeleitete Feld ist im Schema global.
   for Field in Fields do
-    if Pos('|' + Field.Path + '|', '|index.projectGroup|memoryBudgetMb|compiler.onSave|slashCommands.enabled|') > 0 then
+    if Pos('|' + Field.Path + '|',
+      '|index.projectGroup|memoryBudgetMb|compiler.onSave|slashCommands.enabled|references.inferred|') > 0 then
       Assert.IsTrue(Field.Global, Field.Path);
 end;
 
@@ -2079,6 +3052,22 @@ begin
   Assert.IsFalse(Loaded.ProblemsWindowOpenFirst);
   Assert.AreEqual('normal', Loaded.ProblemsWindowClosedUnits);
   Assert.IsFalse(Loaded.ProblemsWindowShowCleanActive);
+end;
+
+procedure TAtlasPluginSettingsTests.CallHierarchyDiagramOption;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(Settings.CallHierarchyDiagram, 'Aufrufdiagramm standardmäßig an');
+  Settings.CallHierarchyDiagram := False;
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Assert.AreEqual(0, Store.ReadInteger('CallHierarchyDiagram', 1));
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.CallHierarchyDiagram);
 end;
 
 procedure TAtlasPluginSettingsTests.EditorToolbarOptions;

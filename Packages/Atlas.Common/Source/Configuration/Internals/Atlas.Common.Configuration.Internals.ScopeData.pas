@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..42] of string = (
+  GlobalSettingPaths: array[0..57] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -25,6 +25,11 @@ const
     'completion.assignAllFields',
     'completion.usesDetails',
     'completion.inheritedCall',
+    'completion.attributes',
+    'completion.anonymousMethods',
+    'completion.withOrigin',
+    'completion.exceptionClasses',
+    'completion.syntaxNotice',
     'completion.sameNameVariants',
     'completion.sameNameInsert',
     'completion.showFmxUnits',
@@ -42,19 +47,30 @@ const
     'index.removeOrphans',
     'index.cacheMaxAgeDays',
     'index.cacheMaxMb',
+    'architecture.enabled',
+    'architecture.scope',
+    'architecture.includeLibraryUnits',
+    'architecture.centralUnits',
     'requestTimeoutMs',
-    'diagnostics',
+    'diagnostics.log',
+    'diagnostics.logDays',
+    'diagnostics.logMapFile',
     'highlight',
     'inlayHints',
     'codeLens',
+    'references',
+    'navigation',
     'hints',
     'directives',
     'mcp.disabledTools',
+    'tasks',
+    'issues',
     'logLevel',
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..27] of string = (
+  ProjectSettingPaths: array[0..35] of string = (
+    'minDelphiVersion',
     'encoding',
     'project',
     'config',
@@ -74,15 +90,22 @@ const
     'refactoring',
     'sortUses',
     'usesKeep',
+    'deadCode',
     'dfmPropertyRules',
     'index.exclude',
+    'architecture.exclude',
+    'architecture.baseline',
+    'architecture.failOn',
+    'diagnostics.usesCycleLive',
+    'diagnostics.usesCycleImplementation',
     'stringLiteral',
     'memberOrder',
     'testUnits',
     'minConfidence',
     'exclude',
     'mcp.globalSettings',
-    'format');
+    'format',
+    'tasks');
 
 /// <summary>Experimentelle Schlüssel (x-experimental, #834): wirken nur mit experimental.enabled.</summary>
 function ExperimentalSettingPaths: TArray<string>;

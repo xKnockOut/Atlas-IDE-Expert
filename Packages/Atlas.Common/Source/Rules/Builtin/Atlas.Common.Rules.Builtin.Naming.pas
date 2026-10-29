@@ -93,6 +93,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Unused;
@@ -297,7 +298,7 @@ var
   Index: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(FTokens) do
+  for Index := TSyntaxTree.FirstTokenOf(FTokens, AStart) to High(FTokens) do
   begin
     if FTokens[Index].Offset >= AEnd then
       Break;
@@ -329,7 +330,7 @@ function TNamingCheck.FirstNameToken(ANode: TSyntaxNode; const AName: string; ou
 var
   Index: Integer;
 begin
-  for Index := 0 to High(FTokens) do
+  for Index := TSyntaxTree.FirstTokenOf(FTokens, ANode.StartOffset) to High(FTokens) do
   begin
     if FTokens[Index].Offset >= ANode.EndOffset then
       Break;
@@ -366,16 +367,23 @@ end;
 
 function TNamingCheck.OccursIn(const AName: string; const AScopes: TArray<TPoint>): Boolean;
 var
-  Token: TPascalToken;
   Scope: TPoint;
+  mIndex: Integer;
 begin
   if AScopes = nil then
     Exit(OccursInFile(AName));
-  for Token in FTokens do
-    if (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and SameText(Token.Text, AName) then
-      for Scope in AScopes do
-        if (Token.Offset >= Scope.X) and (Token.Offset < Scope.Y) then
-          Exit(True);
+  // Je Bereich binär zum ersten Token statt jedes Mal die ganze Datei (#1323).
+  for Scope in AScopes do
+  begin
+    mIndex := TRoutineBody.TokenAt(FTokens, Scope.X);
+    while (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < Scope.Y) do
+    begin
+      if (FTokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+        SameText(FTokens[mIndex].Text, AName) then
+        Exit(True);
+      Inc(mIndex);
+    end;
+  end;
   Result := False;
 end;
 
@@ -767,10 +775,9 @@ function TNamingCheck.IsInlineFor(AFor: TSyntaxNode): Boolean;
 var
   Index: Integer;
 begin
-  Result := False;
-  for Index := 0 to High(FTokens) - 1 do
-    if FTokens[Index].Offset >= AFor.StartOffset then
-      Exit(FTokens[Index].IsKeyword('for') and FTokens[Index + 1].IsKeyword('var'));
+  // Binär zum Anfang der Schleife statt ab Dateianfang (#1342).
+  Index := TSyntaxTree.FirstTokenOf(FTokens, AFor.StartOffset);
+  Result := (Index < High(FTokens)) and FTokens[Index].IsKeyword('for') and FTokens[Index + 1].IsKeyword('var');
 end;
 
 procedure TNamingCheck.CheckInlineFor(AFor: TSyntaxNode);
@@ -822,7 +829,7 @@ begin
       if ContainsKind(Method, TSyntaxKind.WithStatement) or RedeclaresInBody(Method, AName) then
         CanFix := False;
     // Ab dem Ende der Klasse: Methoden (unqualifiziert, Self.Name) und TTyp.Name überall.
-    for Index := 0 to High(FTokens) do
+    for Index := TSyntaxTree.FirstTokenOf(FTokens, ABody.EndOffset) to High(FTokens) do
       if (FTokens[Index].Offset >= ABody.EndOffset) and SameText(FTokens[Index].Text, AName) and
         (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
         ((FTokens[Index - 1].IsSymbol('.') and MatchText(FTokens[Index - 2].Text, ['Self', TypeName])) or

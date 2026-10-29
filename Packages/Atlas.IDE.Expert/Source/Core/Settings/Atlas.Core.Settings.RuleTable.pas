@@ -10,6 +10,8 @@
 // ("group:<gruppe>": "off", vom Server ausgewertet). Optionen und Ausnahmen
 // als Text für die Felder der Seite (OptionText, OptionJson, ListText,
 // ParseList); GroupIds sind die Gruppen des Servers in Reihenfolge der Seite.
+// Optionen der Art "object-list" (#1133) als Tabelle mit den Spalten des
+// Katalogs (TableCells, TableJson).
 
 interface
 
@@ -19,11 +21,21 @@ uses
   System.JSON;
 
 type
+  /// <summary>Spalte einer Option der Art "object-list" (#1133).</summary>
+  TAtlasRuleColumn = record
+    Name: string;
+    /// <summary>Der Wert ist eine Liste von Texten (in der Zelle mit "; " getrennt).</summary>
+    List: Boolean;
+  end;
+
   /// <summary>Option einer Regel aus dem Katalog; Werte als JSON-Text.</summary>
   TAtlasRuleOption = record
     Name: string;
-    /// <summary>"integer", "string", "string-list", "number-list" (#937) oder "json".</summary>
+    /// <summary>"integer", "string", "string-list", "number-list" (#937), "object-list" (#1133) oder "json".
+    /// </summary>
     Kind: string;
+    /// <summary>Nur "object-list": Spalten der Tabelle.</summary>
+    Columns: TArray<TAtlasRuleColumn>;
     /// <summary>Vorgabe als JSON-Text; '' = keine.</summary>
     DefaultJson: string;
     Description: string;
@@ -125,6 +137,13 @@ type
     /// <summary>Feldtext AText einer Option der Art AKind als JSON-Text; '' = Vorgabe (leeres Feld). False
     /// bei ungültiger Eingabe (keine Zahl, kein true/false, kein JSON).</summary>
     class function OptionJson(const AKind, AText: string; out AJson: string): Boolean; static;
+    /// <summary>Zellen einer Option der Art "object-list" (#1133): je Objekt des Werts (sonst der Vorgabe) eine
+    /// Zeile mit den Spalten von AOption.Columns; Text ohne Anführungszeichen, Liste mit "; " getrennt, andere
+    /// Werte als JSON.</summary>
+    class function TableCells(const AOption: TAtlasRuleOption): TArray<TArray<string>>; static;
+    /// <summary>JSON-Text zu den Zellen ACells mit den Spalten von AOption: leere Zellen fehlen im Objekt, Zeilen
+    /// ohne Inhalt entfallen; "[]" ohne Zeile.</summary>
+    class function TableJson(const AOption: TAtlasRuleOption; const ACells: TArray<TArray<string>>): string; static;
     /// <summary>Kennung der eingeschalteten Regel aus ARow.OverriddenBy, die ARow übersteuert (#1025); ''
     /// ohne.</summary>
     class function OverridingRule(const ARows: TArray<TAtlasRuleRow>; const ARow: TAtlasRuleRow): string; static;
@@ -215,6 +234,25 @@ begin
   end;
 end;
 
+/// <summary>Spalten "columns" einer Option aus dem Katalog des Servers (#1133); leer ohne.</summary>
+function ColumnsOf(AValue: TJSONValue): TArray<TAtlasRuleColumn>;
+var
+  mItem: TJSONValue;
+  mColumn: TAtlasRuleColumn;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+    Exit;
+  for mItem in TJSONArray(AValue) do
+    if mItem is TJSONObject then
+    begin
+      mColumn.Name := TJSONObject(mItem).GetValue<string>('name', '');
+      mColumn.List := TJSONObject(mItem).GetValue<Boolean>('list', False);
+      if mColumn.Name <> '' then
+        Result := Result + [mColumn];
+    end;
+end;
+
 procedure ReadOptions(AOptions: TJSONValue; var ARow: TAtlasRuleRow);
 var
   Item, DefaultValue: TJSONValue;
@@ -231,6 +269,7 @@ begin
       if Option.Name = '' then
         Continue;
       Option.Kind := TJSONObject(Item).GetValue<string>('type', 'json');
+      Option.Columns := ColumnsOf(TJSONObject(Item).GetValue('columns'));
       Option.Description := TJSONObject(Item).GetValue<string>('description', '');
       DefaultValue := TJSONObject(Item).GetValue('default');
       if DefaultValue <> nil then
@@ -703,6 +742,97 @@ begin
     end;
   finally
     Value.Free;
+  end;
+end;
+
+class function TAtlasRuleTable.TableCells(const AOption: TAtlasRuleOption): TArray<TArray<string>>;
+var
+  mJson: string;
+  mValue, mItem, mCell, mEntry: TJSONValue;
+  mRow, mItems: TArray<string>;
+  mColumn: TAtlasRuleColumn;
+begin
+  Result := nil;
+  mJson := AOption.ValueJson;
+  if mJson = '' then
+    mJson := AOption.DefaultJson;
+  if mJson = '' then
+    Exit;
+  mValue := TJSONObject.ParseJSONValue(mJson);
+  try
+    if not (mValue is TJSONArray) then
+      Exit;
+    for mItem in TJSONArray(mValue) do
+    begin
+      if not (mItem is TJSONObject) then
+        Continue;
+      mRow := nil;
+      for mColumn in AOption.Columns do
+      begin
+        mCell := TJSONObject(mItem).GetValue(mColumn.Name);
+        if mCell = nil then
+          mRow := mRow + ['']
+        else if (mCell is TJSONString) and not (mCell is TJSONNumber) then
+          mRow := mRow + [TJSONString(mCell).Value]
+        else if mCell is TJSONArray then
+        begin
+          mItems := nil;
+          for mEntry in TJSONArray(mCell) do
+            if (mEntry is TJSONString) and not (mEntry is TJSONNumber) then
+              mItems := mItems + [TJSONString(mEntry).Value]
+            else
+              mItems := mItems + [mEntry.ToJSON];
+          mRow := mRow + [ListText(mItems)];
+        end
+        else
+          mRow := mRow + [mCell.ToJSON];
+      end;
+      Result := Result + [mRow];
+    end;
+  finally
+    mValue.Free;
+  end;
+end;
+
+class function TAtlasRuleTable.TableJson(const AOption: TAtlasRuleOption;
+  const ACells: TArray<TArray<string>>): string;
+var
+  mItems, mList: TJSONArray;
+  mObject: TJSONObject;
+  mRow: TArray<string>;
+  mIndex: Integer;
+  mText, mEntry: string;
+begin
+  mItems := TJSONArray.Create;
+  try
+    for mRow in ACells do
+    begin
+      mObject := TJSONObject.Create;
+      for mIndex := 0 to High(AOption.Columns) do
+      begin
+        mText := '';
+        if mIndex <= High(mRow) then
+          mText := Trim(mRow[mIndex]);
+        if mText = '' then
+          Continue;
+        if AOption.Columns[mIndex].List then
+        begin
+          mList := TJSONArray.Create;
+          for mEntry in ParseList(mText) do
+            mList.Add(mEntry);
+          mObject.AddPair(AOption.Columns[mIndex].Name, mList);
+        end
+        else
+          mObject.AddPair(AOption.Columns[mIndex].Name, mText);
+      end;
+      if mObject.Count = 0 then
+        mObject.Free
+      else
+        mItems.AddElement(mObject);
+    end;
+    Result := mItems.ToJSON;
+  finally
+    mItems.Free;
   end;
 end;
 

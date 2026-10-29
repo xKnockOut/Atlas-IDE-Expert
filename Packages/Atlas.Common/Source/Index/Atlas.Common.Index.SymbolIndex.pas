@@ -95,6 +95,7 @@ type
     function FindUnit(const AUnitName: string; out AUnit: TUnitIndex): Boolean;
     function FindFile(const AFileName: string; out AUnit: TUnitIndex): Boolean;
     function FindSymbols(const AName: string): TArray<TSymbolLocation>;
+    function HasSymbol(const AName: string; const AMatch: TSymbolMatch): Boolean;
     function Descendants(const ATypeName: string): TArray<TSymbolLocation>;
     function Units: TArray<TUnitIndex>;
     function UnavailableUnits: TArray<TUnitIndex>;
@@ -444,6 +445,40 @@ begin
   FLock.Enter;
   try
     Result := LocationsLocked(FByName, UpperCase(AName));
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSymbolIndex.HasSymbol(const AName: string; const AMatch: TSymbolMatch): Boolean;
+var
+  mRefs: TSymbolRefs;
+  mIndex, mLastSlot: Integer;
+  mRef: TSymbolRef;
+  mFileKey: string;
+  mOwner: TUnitIndex;
+  mKnown: Boolean;
+begin
+  Result := False;
+  FLock.Enter;
+  try
+    if not FByName.TryGetValue(UpperCase(AName), mRefs) then
+      Exit;
+    mLastSlot := -1;
+    mKnown := False;
+    for mIndex := 0 to mRefs.Count - 1 do
+    begin
+      mRef := mRefs[mIndex];
+      // Wie LocationsLocked: die Unit nur beim Wechsel des Platzes nachschlagen.
+      if mRef.Slot <> mLastSlot then
+      begin
+        mLastSlot := mRef.Slot;
+        mFileKey := FSlotKeys[mRef.Slot];
+        mKnown := (mFileKey <> '') and FFiles.TryGetValue(mFileKey, mOwner);
+      end;
+      if mKnown and (mRef.Position <= High(mOwner.Symbols)) and AMatch(mOwner.Symbols[mRef.Position]) then
+        Exit(True);
+    end;
   finally
     FLock.Leave;
   end;

@@ -310,7 +310,7 @@ begin
   Process.Answer(GitPrefix + 'rev-parse --show-toplevel', [StringReplace(FFolder, '\', '/', [rfReplaceAll]) + '/']);
   Process.Answer(GitPrefix + 'diff --name-status -M --no-color main HEAD',
     ['M'#9'Src/A.pas', 'D'#9'Src/Alt.pas', 'R087'#9'Src/B.pas'#9'Src/C.pas', 'A'#9'Neu.pas', 'T'#9'Typ.pas']);
-  Changes := TGitChanges.Create(Keep, TPath.Combine(FFolder, 'Sub'));
+  Changes := TGitChanges.Create(Keep, TPath.Combine(FFolder, 'Sub'), '');
   try
     Changes.Load('main', False, False, False, False);
     Assert.AreEqual('Git', Changes.Name);
@@ -343,7 +343,7 @@ begin
   Process.Answer(GitPrefix + 'rev-parse --show-toplevel', [FFolder]);
   Process.Answer(GitPrefix + 'merge-base main HEAD', ['  abc123  ']);
   Process.Answer(GitPrefix + 'diff --name-status -M --no-color abc123 HEAD', ['M'#9'A.pas']);
-  Changes := TGitChanges.Create(Keep, FFolder);
+  Changes := TGitChanges.Create(Keep, FFolder, '');
   try
     Changes.Load('main', True, True, False, False);
     Assert.AreEqual(3, Integer(Process.Calls.Count));
@@ -372,7 +372,7 @@ begin
     '@@ -10 +12 @@', '-alt', '+neu', '@@ -20,2 +21,0 @@', '-weg', '-weg',
     '--- a/Weg.pas', '+++ /dev/null', '@@ -1 +0,0 @@', '-weg']);
   Process.Answer(GitPrefix + 'ls-files --others --exclude-standard --full-name :/', ['Neu/X.pas', '', '  ']);
-  Changes := TGitChanges.Create(Keep, FFolder);
+  Changes := TGitChanges.Create(Keep, FFolder, '');
   try
     Changes.Load('HEAD', False, False, True, True);
     Assert.AreEqual(4, Integer(Process.Calls.Count));
@@ -406,7 +406,7 @@ procedure TShellVcsChangesTests.GitWithoutRepositoryRaises;
 var
   Changes: TGitChanges;
 begin
-  Changes := TGitChanges.Create(NoProcess, FFolder);
+  Changes := TGitChanges.Create(NoProcess, FFolder, '');
   try
     Assert.AreEqual('Kein Git-Repository', LoadError(Changes, 'main', False));
   finally
@@ -425,7 +425,7 @@ begin
   Keep := Process;
   Process.Answer(GitPrefix + 'rev-parse --show-toplevel', ['fatal: not a git repository']);
   Process.Fail(GitPrefix + 'rev-parse --show-toplevel', 128);
-  Changes := TGitChanges.Create(Keep, FFolder);
+  Changes := TGitChanges.Create(Keep, FFolder, '');
   try
     Message := LoadError(Changes, 'main', False);
     Assert.Contains(Message, 'Exit-Code 128');
@@ -445,7 +445,7 @@ begin
   Process := TFakeProcess.Create;
   Keep := Process;
   Process.Answer(GitPrefix + 'rev-parse --show-toplevel', [FFolder]);
-  Changes := TGitChanges.Create(Keep, FFolder);
+  Changes := TGitChanges.Create(Keep, FFolder, '');
   try
     Assert.AreEqual('Keine Merge-Base mit fremd', LoadError(Changes, 'fremd', True));
   finally
@@ -469,7 +469,7 @@ begin
     '--- Src/A.pas'#9'(revision 123)', '+++ Src/A.pas'#9'(working copy)', '@@ -1,3 +1,4 @@', ' a', '+b', '+c', ' d']);
   WorkingCopy.Kind := TAtlasVcsKind.Svn;
   WorkingCopy.Root := FFolder;
-  Changes := TSvnChanges.Create(Keep, TPath.Combine(FFolder, 'Sub'), WorkingCopy, 'svn');
+  Changes := TSvnChanges.Create(Keep, TPath.Combine(FFolder, 'Sub'), WorkingCopy, 'svn', 60000);
   try
     Changes.Load('123', False, False, False, True);
     Assert.AreEqual('SVN', Changes.Name);
@@ -508,7 +508,7 @@ begin
   Process.Answer('--non-interactive diff --summarize -r 7', ['M       A.pas']);
   WorkingCopy.Kind := TAtlasVcsKind.Svn;
   WorkingCopy.Root := FFolder;
-  Changes := TSvnChanges.Create(Keep, FFolder, WorkingCopy, Svn);
+  Changes := TSvnChanges.Create(Keep, FFolder, WorkingCopy, Svn, 60000);
   try
     Changes.Load('7', False, False, False, False);
     Assert.AreEqual(1, Integer(Process.Calls.Count));

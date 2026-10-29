@@ -159,12 +159,13 @@ begin
   Moved := TAtlasWelcomeLayout.Atlas.MovedTo(TAtlasWelcomeIds.State, 0, TAtlasWelcomeIds.Continue);
   Columns := Moved.Arrange(AtlasSections, 2);
   Assert.AreEqual('atlas.state,atlas.continue,atlas.projects,atlas.history,atlas.tests', Joined(Columns[0]));
-  Assert.AreEqual('atlas.unsaved,atlas.news,atlas.discover,atlas.setup,atlas.issues,atlas.help', Joined(Columns[1]));
+  Assert.AreEqual('atlas.unsaved,atlas.news,atlas.discover,atlas.setup,atlas.issues,atlas.sprint,atlas.help',
+    Joined(Columns[1]));
   Assert.AreEqual(Integer(Length(TAtlasWelcomeLayout.Atlas.Slots)), Integer(Length(Moved.Slots)));
   // Ans Ende einer Spalte; unbekanntes ABefore heißt ebenso ans Ende.
   Columns := Moved.MovedTo(TAtlasWelcomeIds.State, 1, '').Arrange(AtlasSections, 2);
-  Assert.AreEqual('atlas.unsaved,atlas.news,atlas.discover,atlas.setup,atlas.issues,atlas.help,atlas.state',
-    Joined(Columns[1]));
+  Assert.AreEqual('atlas.unsaved,atlas.news,atlas.discover,atlas.setup,atlas.issues,atlas.sprint,atlas.help,' +
+    'atlas.state', Joined(Columns[1]));
   Columns := Moved.MovedTo(TAtlasWelcomeIds.State, 1, 'gibt.es.nicht').Arrange(AtlasSections, 2);
   Assert.AreEqual('atlas.state', Columns[1][High(Columns[1])]);
   // Gleiche Stelle: unverändert.
@@ -209,11 +210,11 @@ begin
   Assert.IsTrue(Layout.MovedBy(TAtlasWelcomeIds.State, TAtlasWelcomeMove.Right, AtlasSections, Moved));
   Columns := Moved.Arrange(AtlasSections, 2);
   Assert.AreEqual(TAtlasWelcomeIds.State, Columns[1][0]);
-  // Runter bis ans Ende der Spalte.
+  // Runter bis ans Ende der Spalte: die vorletzte Kachel (Sprint, #1277) hinter die Hilfe.
   Layout := TAtlasWelcomeLayout.Atlas;
-  Assert.IsTrue(Layout.MovedBy(TAtlasWelcomeIds.Issues, TAtlasWelcomeMove.Down, AtlasSections, Moved));
+  Assert.IsTrue(Layout.MovedBy(TAtlasWelcomeIds.Sprint, TAtlasWelcomeMove.Down, AtlasSections, Moved));
   Columns := Moved.Arrange(AtlasSections, 2);
-  Assert.AreEqual(TAtlasWelcomeIds.Issues, Columns[1][High(Columns[1])]);
+  Assert.AreEqual(TAtlasWelcomeIds.Sprint, Columns[1][High(Columns[1])]);
 end;
 
 procedure TAtlasWelcomeArrangeTests.CtrlArrowsStopAtTheEdge;

@@ -20,7 +20,7 @@ type
     FIncomplete: Boolean;
   protected
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
+      const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   public
     /// <summary>AIncomplete: meldet die Liste als gekürzt (#431).</summary>
     constructor Create(const AItems: TAtlasCompletionItems; ADelayMs: Cardinal = 0; AIncomplete: Boolean = False);
@@ -41,11 +41,12 @@ begin
 end;
 
 function TAtlasFixedCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
 var
   Start: UInt64;
 begin
-  AIncomplete := FIncomplete;
+  AState := Default(TAtlasFetchState);
+  AState.Incomplete := FIncomplete;
   Start := TThread.GetTickCount64;
   while TThread.GetTickCount64 - Start < FDelayMs do
   begin

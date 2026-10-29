@@ -235,7 +235,8 @@ var
 begin
   Value := TJSONString.Create(AValue);
   try
-    Result := Value.ToJSON;
+    // Ohne Option: Umlaute bleiben lesbar (die Dateien sind UTF-8); ToJSON allein schreibt \u-Folgen.
+    Result := Value.ToJSON([]);
   finally
     Value.Free;
   end;

@@ -4,7 +4,10 @@
 // Fundstellen (Referenzen, Implementierungen, Umbenennen-Vorschau) mit
 // Zeilentext, nach Datei gruppiert; Symbole der projektweiten Suche
 // (workspace/symbol) und Einträge der Typ- und Aufrufhierarchie. Positionen
-// sind 0-basiert in UTF-16-Einheiten wie im LSP.
+// sind 0-basiert in UTF-16-Einheiten wie im LSP. Fundstellen der Referenzsuche
+// tragen ihre Treffersicherheit (#1119); die Umbenennen-Vorschau nennt nicht
+// geänderte, erschlossene Stellen als erschlossene Einträge. Issues zu einer
+// Methode (#1275) stehen mit ihren Commits als fertige Texte darin.
 
 interface
 
@@ -24,6 +27,8 @@ type
     Text: string;
     /// <summary>Umbenennen-Vorschau: die Zeile nach der Änderung; sonst leer.</summary>
     Detail: string;
+    /// <summary>Sicher oder erschlossen (#1119); Einträge ohne Referenzsuche sind sicher.</summary>
+    Confidence: TAtlasConfidence;
     class function Create(const AFileName: string; ALine, ACharacter: Integer): TAtlasResultEntry; static;
   end;
 
@@ -34,6 +39,21 @@ type
     function Caption: string;
   end;
 
+  /// <summary>Commit unter einem Issue (#1275).</summary>
+  TAtlasResultCommit = record
+    /// <summary>Kennung für OnIssueCommit (Index beim Aufrufer).</summary>
+    Id: Integer;
+    Text: string;
+  end;
+
+  /// <summary>Issue mit den Commits, die eine Methode bzw. Unit geändert haben (#1275).</summary>
+  TAtlasResultIssue = record
+    /// <summary>Kennung für OnIssueOpen und SetIssueText (Index beim Aufrufer).</summary>
+    Id: Integer;
+    Text: string;
+    Commits: TArray<TAtlasResultCommit>;
+  end;
+
   /// <summary>Liefert den Text einer Datei (offener Puffer oder Platte); '' wenn sie fehlt.</summary>
   TAtlasReadText = reference to function(const AFileName: string): string;
 
@@ -41,6 +61,7 @@ type
   TAtlasSymbol = Atlas.Core.Lsp.Contract.TAtlasSymbol;
   TAtlasHierarchyDirection = Atlas.Core.Lsp.Contract.TAtlasHierarchyDirection;
   TAtlasHierarchyItem = Atlas.Core.Lsp.Contract.TAtlasHierarchyItem;
+  TAtlasConfidence = Atlas.Core.Lsp.Contract.TAtlasConfidence;
 
   TAtlasResults = class
   public
@@ -58,6 +79,10 @@ type
     /// </summary>
     class function RenamePreview(const AEdit: TLspWorkspaceEdit; const AReadText: TAtlasReadText):
       TArray<TAtlasResultEntry>; static;
+    /// <summary>Nur die sicheren Fundstellen (#1119).</summary>
+    class function SureOnly(const AEntries: TArray<TAtlasResultEntry>): TArray<TAtlasResultEntry>; static;
+    /// <summary>Anzahl der erschlossenen Fundstellen (#1119).</summary>
+    class function InferredCount(const AEntries: TArray<TAtlasResultEntry>): Integer; static;
     /// <summary>Kürzel wie im Vervollständigungs-Popup (fn, pr, fd, ty, …) zu einem LSP SymbolKind.</summary>
     class function SymbolBadge(AKind: Integer): string; static;
     /// <summary>Richtung für die Anfrage zum Vorbereiten: Aufrufe oder Typen.</summary>
@@ -183,6 +208,8 @@ var
   Before, After: string;
   Entry: TAtlasResultEntry;
   Operation: TLspFileOperation;
+  Place: TLspUnchangedPlace;
+  Unchanged: TArray<TAtlasResultEntry>;
 begin
   Result := nil;
   for Operation in AEdit.Operations do
@@ -253,6 +280,36 @@ begin
   finally
     Changed.Free;
   end;
+  // Nicht geänderte, erschlossene Stellen (#1119): zum Prüfen, ohne Vorschau.
+  Unchanged := nil;
+  for Place in AEdit.Unchanged do
+  begin
+    Entry := TAtlasResultEntry.Create(Place.FileName, Place.Line, Place.Character);
+    Entry.Confidence := Place.Confidence;
+    Unchanged := Unchanged + [Entry];
+  end;
+  FillText(Unchanged, AReadText);
+  Result := Result + Unchanged;
+end;
+
+class function TAtlasResults.SureOnly(const AEntries: TArray<TAtlasResultEntry>): TArray<TAtlasResultEntry>;
+var
+  Entry: TAtlasResultEntry;
+begin
+  Result := nil;
+  for Entry in AEntries do
+    if not Entry.Confidence.Inferred then
+      Result := Result + [Entry];
+end;
+
+class function TAtlasResults.InferredCount(const AEntries: TArray<TAtlasResultEntry>): Integer;
+var
+  Entry: TAtlasResultEntry;
+begin
+  Result := 0;
+  for Entry in AEntries do
+    if Entry.Confidence.Inferred then
+      Inc(Result);
 end;
 
 class function TAtlasResults.SymbolBadge(AKind: Integer): string;

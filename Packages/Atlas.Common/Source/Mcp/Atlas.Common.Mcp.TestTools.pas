@@ -79,6 +79,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.StrUtils,
   Atlas.Common.Projects.Paths,
   Atlas.Text.DUnitX;

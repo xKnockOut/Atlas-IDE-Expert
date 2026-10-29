@@ -25,6 +25,14 @@ type
     procedure NestedRoutine;
     [Test]
     procedure RoutineFromIndex;
+    /// <summary>Überladungen im Vorfahren (#1326, Indy): override bzw. overload im Nachfahren verdeckt sie nicht;
+    /// eine neue Methode ohne beides schon.</summary>
+    [Test]
+    procedure AncestorOverloads;
+    /// <summary>#1326: Ein Vorfahr außerhalb des Index kann den Namen verdecken (Read im with eines
+    /// TMemoryStream-Nachfahren, Error in einem TStrings-Nachfahren); Gegenprobe mit vollständiger Kette.</summary>
+    [Test]
+    procedure UnknownAncestorMayHideName;
     [Test]
     procedure SilentCases;
     [Test]
@@ -200,6 +208,69 @@ begin
   Assert.AreEqual('Versenden erwartet mindestens 2 Argumente, übergeben ist 1; Betreff fehlt (wie E2035).',
     Found[0].Message);
   Assert.AreEqual('Versenden erwartet höchstens 3 Argumente, übergeben sind 4 (wie E2034).', Found[1].Message);
+end;
+
+procedure TCallRulesTests.AncestorOverloads;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Verbindung;'#10'interface'#10'type'#10'  TVerbindung = class'#10 +
+    '  public'#10'    procedure Trennen; overload;'#10'    procedure Trennen(AMelden: Boolean); overload; virtual;'#10 +
+    '    function Senden(ABefehl: string; const AAntwort: SmallInt = -1): SmallInt; overload;'#10 +
+    '    function Senden(ABefehl: string; const AAntworten: array of SmallInt): SmallInt; overload; virtual;'#10 +
+    '  end;'#10'implementation'#10'end.', 'C:\Projekt\Verbindung.pas', nil));
+  // Indy: TIdSMTP.Disconnect(Boolean) override neben TIdTCPConnection.Disconnect; overload.
+  mFound := TRuleAssert.IndexFindings(TArgumentCountMismatchRule.Create, 'unit Post;'#10'interface'#10'uses'#10 +
+    '  Verbindung;'#10'type'#10'  TPost = class(TVerbindung)'#10'  public'#10 +
+    '    procedure Trennen(AMelden: Boolean); override;'#10 +
+    '    function Senden(ABefehl: string; const AAntworten: array of SmallInt): SmallInt; override;'#10 +
+    '    procedure Lauf;'#10'  end;'#10'  TNeu = class(TVerbindung)'#10'  public'#10 +
+    '    procedure Trennen(AMelden: Boolean); overload;'#10'  end;'#10'implementation'#10 +
+    'procedure TPost.Trennen(AMelden: Boolean);'#10'begin'#10'end;'#10 +
+    'function TPost.Senden(ABefehl: string; const AAntworten: array of SmallInt): SmallInt;'#10'begin'#10 +
+    '  Result := 0;'#10'end;'#10'procedure TPost.Lauf;'#10'begin'#10'  Trennen;'#10'  Senden(''MODE'');'#10 +
+    '  Self.Trennen;'#10'end;'#10'procedure TNeu.Trennen(AMelden: Boolean);'#10'begin'#10'end;'#10 +
+    'procedure Test(APost: TPost; ANeu: TNeu);'#10'begin'#10'  APost.Trennen;'#10'  ANeu.Trennen;'#10'end;'#10 +
+    'end.', mIndex, '', '');
+  Assert.AreEqual(0, Integer(Length(mFound)));
+  // Gegenprobe: ohne overload und override verdeckt die neue Methode die des Vorfahren (wie E2035).
+  mFound := TRuleAssert.IndexFindings(TArgumentCountMismatchRule.Create, 'unit Post;'#10'interface'#10'uses'#10 +
+    '  Verbindung;'#10'type'#10'  TVerdeckt = class(TVerbindung)'#10'  public'#10 +
+    '    procedure Trennen(AMelden: Boolean);'#10'  end;'#10'implementation'#10 +
+    'procedure TVerdeckt.Trennen(AMelden: Boolean);'#10'begin'#10'end;'#10 +
+    'procedure Test(AVerdeckt: TVerdeckt);'#10'begin'#10'  AVerdeckt.Trennen;'#10'end;'#10'end.', mIndex, '', '');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Trennen erwartet 1 Argument, übergeben ist keins; AMelden fehlt (wie E2035).', mFound[0].Message);
+end;
+
+procedure TCallRulesTests.UnknownAncestorMayHideName;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := TRuleAssert.Findings(TArgumentCountMismatchRule.Create, 'unit Tags;'#10'interface'#10'uses'#10 +
+    '  System.Classes;'#10'type'#10'  TTagStrom = class(TMemoryStream)'#10'  end;'#10'  TRahmen = class'#10 +
+    '  public'#10'    procedure Read;'#10'    procedure Lesen(AStrom: TTagStrom);'#10'  end;'#10 +
+    '  TListe = class(TStrings)'#10'  public'#10'    procedure Holen(AIndex: Integer);'#10'  end;'#10 +
+    'procedure Error(const AText: string);'#10'implementation'#10'procedure Error(const AText: string);'#10 +
+    'begin'#10'end;'#10'procedure TRahmen.Read;'#10'begin'#10'end;'#10 +
+    'procedure TRahmen.Lesen(AStrom: TTagStrom);'#10'var'#10'  mWert: Byte;'#10'begin'#10'  with AStrom do'#10 +
+    '    Read(mWert, 1);'#10'end;'#10'procedure TListe.Holen(AIndex: Integer);'#10'begin'#10 +
+    '  Error(''Index'', AIndex);'#10'end;'#10'end.');
+  Assert.AreEqual(0, Integer(Length(mFound)));
+  // Gegenprobe: Ohne unbekannten Vorfahren meinen beide Namen die Routinen der Unit.
+  mFound := TRuleAssert.Findings(TArgumentCountMismatchRule.Create, 'unit Tags;'#10'interface'#10'type'#10 +
+    '  TTagStrom = class'#10'  end;'#10'  TRahmen = class'#10'  public'#10'    procedure Read;'#10 +
+    '    procedure Lesen(AStrom: TTagStrom);'#10'  end;'#10'  TListe = class'#10'  public'#10 +
+    '    procedure Holen(AIndex: Integer);'#10'  end;'#10'procedure Error(const AText: string);'#10 +
+    'implementation'#10'procedure Error(const AText: string);'#10'begin'#10'end;'#10 +
+    'procedure TRahmen.Read;'#10'begin'#10'end;'#10'procedure TRahmen.Lesen(AStrom: TTagStrom);'#10'var'#10 +
+    '  mWert: Byte;'#10'begin'#10'  with AStrom do'#10'    Read(mWert, 1);'#10'end;'#10 +
+    'procedure TListe.Holen(AIndex: Integer);'#10'begin'#10'  Error(''Index'', AIndex);'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Read erwartet keine Argumente, übergeben sind 2 (wie E2034).', mFound[0].Message);
+  Assert.AreEqual('Error erwartet 1 Argument, übergeben sind 2 (wie E2034).', mFound[1].Message);
 end;
 
 procedure TCallRulesTests.SilentCases;

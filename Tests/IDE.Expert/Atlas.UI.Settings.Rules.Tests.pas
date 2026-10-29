@@ -54,6 +54,7 @@ implementation
 uses
   System.SysUtils,
   System.Classes,
+  System.Generics.Collections,
   System.JSON,
   Vcl.Controls,
   Vcl.Forms,

@@ -35,6 +35,8 @@ type
     procedure InactiveBranchIsSilent;
     [Test]
     procedure MessageNamesProducts;
+    [Test]
+    procedure LanguageLevelIsTheOlderVersion;
   end;
 
 implementation
@@ -238,6 +240,19 @@ begin
   Items := Findings(IfExprSource, '23.0');
   Assert.AreEqual(1, Integer(Length(Items)));
   Assert.AreEqual('If-Ausdruck erst ab Delphi 13 Florence verfügbar (eingestellt: Delphi 12 Athens)', Items[0].Message);
+end;
+
+procedure TLanguageFeaturesTests.LanguageLevelIsTheOlderVersion;
+begin
+  // #1126: minDelphiVersion senkt den Sprachstand, hebt ihn aber nie.
+  Assert.AreEqual('23.0', TLanguageFeatures.LanguageLevel('37.0', '23.0'));
+  Assert.AreEqual('23.0', TLanguageFeatures.LanguageLevel('23.0', '37.0'));
+  Assert.AreEqual('23.0', TLanguageFeatures.LanguageLevel('', '23.0'));
+  Assert.AreEqual('37.0', TLanguageFeatures.LanguageLevel('37.0', ''));
+  Assert.AreEqual('37.0', TLanguageFeatures.LanguageLevel('37.0', 'neu'));
+  Assert.AreEqual('', TLanguageFeatures.LanguageLevel('', ''));
+  Assert.IsFalse(TLanguageFeatures.IsAvailable(TLanguageFeature.IsNotOperator,
+    TLanguageFeatures.LanguageLevel('37.0', '23.0')));
 end;
 
 initialization

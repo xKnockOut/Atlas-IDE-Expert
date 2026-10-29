@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Lsp.UnitSearch.Tests;
 
 // Tests für die Daten des Fensters „Units suchen“ (#777): Art der Unit,
-// Herkunft, Kopfkommentar, Git-Zustand, Formularskizze und „Verwendet von“.
+// Herkunft, Kopfkommentar, Git-Zustand, Formularskizze und „Verwendet von“;
+// „In uses aufnehmen“ auch mit festem Abschnitt (#786).
 
 interface
 
@@ -43,6 +44,8 @@ type
     procedure PreviewWithoutOpening;
     [Test]
     procedure AddUsesBuildsWorkspaceEdit;
+    [Test]
+    procedure AddUsesTakesSection;
   end;
 
 implementation
@@ -429,6 +432,74 @@ begin
     Assert.AreEqual(0, Integer(Answer.GetValue<TJSONArray>('added').Count));
   finally
     Answer.Free;
+  end;
+end;
+
+function NewText(const AEdits: TJSONArray): string;
+var
+  Item: TJSONValue;
+begin
+  Result := '';
+  for Item in AEdits do
+    Result := Result + (Item as TJSONObject).GetValue<string>('newText');
+end;
+
+procedure TUnitSearchTests.AddUsesTakesSection;
+var
+  Search: TUnitSearch;
+  Args, Names: TJSONArray;
+  Section: TJSONObject;
+  Answer: TJSONValue;
+  Edits: TJSONArray;
+begin
+  Search := TUnitSearch.Create(
+    function(out AContext: TUnitSearchContext): Boolean
+    begin
+      AContext := Default(TUnitSearchContext);
+      AContext.ReadText :=
+        function(AFile: string): string
+        begin
+          Result := 'unit Haupt;'#10'interface'#10'uses'#10'  Basis;'#10'implementation'#10'end.';
+        end;
+      Result := True;
+    end);
+  try
+    // Ohne Abschnitt käme Werkzeug ins implementation-uses (der interface-Teil nennt nichts daraus).
+    Args := TJSONArray.Create;
+    try
+      Args.Add('file:///C:/P/Haupt.pas');
+      Names := TJSONArray.Create;
+      Names.Add('Werkzeug');
+      Args.AddElement(Names);
+      Section := TJSONObject.Create;
+      Section.AddPair('section', 'interface');
+      Args.AddElement(Section);
+      Answer := Search.ExecuteAddUses(Args);
+      try
+        Edits := (Answer as TJSONObject).GetValue<TJSONObject>('edit.changes').Pairs[0].JsonValue as TJSONArray;
+        Assert.AreEqual(1, Integer(Edits.Count));
+        // Angehängt an die interface-Liste: Komma hinter Basis, kein neues uses.
+        Assert.IsFalse(NewText(Edits).Contains('uses'), NewText(Edits));
+        Assert.AreEqual('["Werkzeug"]', (Answer as TJSONObject).GetValue<TJSONArray>('added').ToJSON);
+      finally
+        Answer.Free;
+      end;
+      Args.Remove(2).Free;
+      Section := TJSONObject.Create;
+      Section.AddPair('section', 'implementation');
+      Args.AddElement(Section);
+      Answer := Search.ExecuteAddUses(Args);
+      try
+        Edits := (Answer as TJSONObject).GetValue<TJSONObject>('edit.changes').Pairs[0].JsonValue as TJSONArray;
+        Assert.IsTrue(NewText(Edits).Contains('uses'), 'neues implementation-uses');
+      finally
+        Answer.Free;
+      end;
+    finally
+      Args.Free;
+    end;
+  finally
+    Search.Free;
   end;
 end;
 

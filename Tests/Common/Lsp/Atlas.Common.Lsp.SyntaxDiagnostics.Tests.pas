@@ -77,6 +77,8 @@ type
     [Test]
     procedure DataCarriesGroupCategoryAndFixTitle;
     [Test]
+    procedure RelatedPlacesBecomeRelatedInformation;
+    [Test]
     procedure DataSkipsAlternativeFixesAndUnknownRules;
     [Test]
     procedure AddsCompilerMessagesToOpenDocuments;
@@ -99,6 +101,7 @@ uses
   Atlas.Common.Pascal.TreeCache,
   System.Classes,
   System.Diagnostics,
+  System.StrUtils,
   Atlas.Common.Documents.Providers.DocumentStore,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
@@ -465,6 +468,42 @@ begin
     Assert.AreEqual('Meldung', Item.GetValue<string>('message'));
     Assert.AreEqual('medium', Item.GetValue<string>('data.confidence'));
     Assert.AreEqual(RuleDocumentationBaseUri + Finding.RuleId, Item.GetValue<string>('codeDescription.href'));
+  finally
+    Item.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.RelatedPlacesBecomeRelatedInformation;
+var
+  Finding: TRuleFinding;
+  Related: TRuleRelated;
+  Item: TJSONObject;
+  Items: TJSONArray;
+begin
+  // Unit-Zyklus (#896): jede Unit des Pfads mit ihrem uses-Eintrag als relatedInformation.
+  Finding := Default(TRuleFinding);
+  Finding.RuleId := 'uses-cycle';
+  Finding.Message := 'Zirkuläre Unit-Referenz: C → A → C';
+  Related.FileName := 'C:\P\A.pas';
+  Related.Range := TTextRange.Create(3, 2, 3, 3);
+  Related.Message := 'C';
+  Finding.Related := [Related];
+  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  try
+    Items := Item.GetValue('relatedInformation') as TJSONArray;
+    Assert.AreEqual(1, Items.Count);
+    Assert.AreEqual('C', (Items.Items[0] as TJSONObject).GetValue('message').Value);
+    Assert.AreEqual(3, (Items.Items[0] as TJSONObject).GetValue<Integer>('location.range.start.line'));
+    Assert.AreEqual(2, (Items.Items[0] as TJSONObject).GetValue<Integer>('location.range.start.character'));
+    Assert.IsTrue(EndsText('A.pas', (Items.Items[0] as TJSONObject).GetValue<string>('location.uri')));
+  finally
+    Item.Free;
+  end;
+  // Ohne weitere Stellen kein Feld.
+  Finding.Related := nil;
+  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  try
+    Assert.IsNull(Item.FindValue('relatedInformation'));
   finally
     Item.Free;
   end;

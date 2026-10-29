@@ -6,6 +6,10 @@
 //     4 Dateien geändert · seit 2 Tagen
 //   ● Atlas · main                                                [Push …]
 //     3 Commits nicht gepusht (main) · seit 30 Std.
+//   ● Kasse · trunk
+//     7 Dateien geändert (Kasse 2 · Packages\Drucken 5) · seit 3 Std.
+// Mit Externals bzw. Submodulen (#1292) stehen die Anteile je Arbeitskopie
+// in Klammern hinter der Summe.
 // Der Punkt trägt die Ampel (grün, gelb ab warnHours, rot ab alertHours).
 // „Ansehen“ öffnet das Projekt und die geänderten Dateien, „Push …“ fragt
 // erst mit Ziel und Commits nach (TAtlasPushDialog). Kontextmenü: „Ordner
@@ -302,9 +306,13 @@ end;
 
 class function TAtlasWelcomeUnsavedFrame.DetailText(const ARow: TAtlasUnsavedRow; ANowUtc: TDateTime): string;
 var
-  Age: string;
+  Age, mPlaces: string;
 begin
   Result := WhatText(ARow.Item);
+  // Externals bzw. Submodule (#1292): die Summe mit den Anteilen je Arbeitskopie.
+  mPlaces := TAtlasWelcomeUnsaved.PlacesText(ARow.Item, ARow.Name);
+  if mPlaces <> '' then
+    Result := Result + ' (' + mPlaces + ')';
   Age := AgeText(ARow.Item.Since, ANowUtc);
   if Age <> '' then
     Result := Result + Separator + Age;

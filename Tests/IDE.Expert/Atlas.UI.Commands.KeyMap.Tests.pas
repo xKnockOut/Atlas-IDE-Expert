@@ -304,6 +304,7 @@ begin
   Assert.AreEqual('Neue Zeile darunter', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NewLineBelow));
   Assert.AreEqual('Neue Zeile darüber', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.NewLineAbove));
   Assert.AreEqual('Umschließung entfernen', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.Unwrap));
+  Assert.AreEqual('Typ des Ausdrucks', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ExpressionType));
   Assert.AreEqual('Fenster „Atlas-Prüfung“', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.ProblemsWindow));
   Assert.AreEqual('Zum interface-Teil', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.SectionInterface));
   Assert.AreEqual('Zum implementation-Teil', TAtlasKeyMapWindow.FunctionCaption(TAtlasKeyFunction.SectionImplementation));

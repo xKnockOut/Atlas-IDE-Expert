@@ -59,6 +59,11 @@ type
     /// <summary>Indexaufbau des Servers; projektweite Regeln (unused-public-member, #1102) schweigen so lange.
     /// nil = unbekannt.</summary>
     Indexing: TAtlasProblemsIndexingFunc;
+    /// <summary>„Für diesen Befund ein Issue anlegen …“ (#1268) mit den markierten Befunden; nil = kein Eintrag.
+    /// </summary>
+    CreateIssue: TProc<TArray<TAtlasFinding>>;
+    /// <summary>Eintrag sichtbar (issues.create).</summary>
+    CanCreateIssue: TFunc<Boolean>;
   end;
 
   TAtlasIdeProblems = class
@@ -556,6 +561,18 @@ begin
         begin
           Explain(AFinding);
         end);
+    end;
+  AFrame.OnCreateIssue :=
+    procedure(const AFindings: TArray<TAtlasFinding>)
+    begin
+      if (State <> nil) and Assigned(State.Hooks.CreateIssue) then
+        State.Hooks.CreateIssue(AFindings);
+    end;
+  AFrame.CanCreateIssue :=
+    function: Boolean
+    begin
+      Result := (State <> nil) and Assigned(State.Hooks.CreateIssue) and Assigned(State.Hooks.CanCreateIssue) and
+        State.Hooks.CanCreateIssue();
     end;
   AFrame.OnScope :=
     procedure(AScope: TAtlasFindingScope)

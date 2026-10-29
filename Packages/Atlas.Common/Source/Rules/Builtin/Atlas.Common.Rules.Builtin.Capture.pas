@@ -201,14 +201,19 @@ end;
 
 function NextToken(const AContext: TRuleContext; AOffset: Integer; out AToken: TPascalToken): Boolean;
 var
-  Token: TPascalToken;
+  mIndex: Integer;
 begin
-  for Token in AContext.Tree.Tokens do
-    if (Token.Offset >= AOffset) and not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+  // Binär zum ersten Token ab AOffset statt ab Dateianfang (#1323).
+  mIndex := AContext.Tree.FirstTokenFrom(AOffset);
+  while mIndex <= High(AContext.Tree.Tokens) do
+  begin
+    if not (AContext.Tree.Tokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      AToken := Token;
+      AToken := AContext.Tree.Tokens[mIndex];
       Exit(True);
     end;
+    Inc(mIndex);
+  end;
   Result := False;
 end;
 

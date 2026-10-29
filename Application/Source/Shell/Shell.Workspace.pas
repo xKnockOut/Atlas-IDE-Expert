@@ -25,6 +25,7 @@ uses
   Atlas.Common.Projects.UnitResolver,
   Atlas.Common.Projects.PackageLocator,
   Atlas.Common.Projects.Selection,
+  Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Service,
@@ -237,6 +238,10 @@ type
     function DelphiVersion: string;
     /// <summary>Ordner der Delphi-Installation ($(BDS)); '' ohne Installation. Threadsicher.</summary>
     function BdsRoot: string;
+    /// <summary>Suche nach einer Unit, die der Compiler nicht fand (#550): aktives Projekt, alle
+    /// Konfigurationen und Plattformen der .dproj, Bibliothekspfade und Ordnerzugriff. Gruppe und Index
+    /// ergänzt der Aufrufer. False ohne Projekt. Threadsicher.</summary>
+    function MissingUnitSetup(out ASetup: TMissingUnitSetup): Boolean;
     /// <summary>Fortschritt des laufenden Indexaufbaus in Prozent; -1, wenn keiner läuft (#647).</summary>
     function IndexLoading: Integer;
     /// <summary>Letzter Indexlauf für den Status-Befehl (#28). Threadsicher.</summary>
@@ -312,12 +317,9 @@ type
     class function MergeRuleProjects(const AProjects: TArray<TCheckProject>;
       const AFileName: string): TCheckProject; static;
     /// <summary>Projekt dieses Arbeitsbereichs für projektweite Regeln (#1102) mit Datei und Quelltexten, dazu
-    /// der Hauptquelltext; False ohne geladenes Projekt. Threadsicher, liest keine Dateien.</summary>
+    /// der Hauptquelltext; False ohne geladenes Projekt. Threadsicher, liest keine Dateien; Art, Test-Projekt und
+    /// Formulare ergänzt TRuleProjectFiles.ProjectOf außerhalb von Sperren.</summary>
     function RuleProject(out AProject: TRuleProject; out AMainSource: string): Boolean;
-    /// <summary>Art, Test-Projekt und Formulardateien von AProject aus dem Hauptquelltext AMainSource; liest
-    /// Dateien, deshalb außerhalb von Sperren aufrufen.</summary>
-    class procedure CompleteRuleProject(var AProject: TRuleProject; const AMainSource: string;
-      const AReadText: TRuleProjectReadText); static;
     /// <summary>Projekt geladen und Index fertig (#1102, #1112)? Sonst der Grund in AReason. Ein Arbeitsbereich,
     /// dessen Projekt noch lädt, kann Verwendungen enthalten, die keiner kennt. Ein Arbeitsbereich ohne Projekt ist
     /// bereit, sobald der Aufbau das festgestellt hat (#1220). Threadsicher.</summary>
@@ -1074,6 +1076,94 @@ begin
   end;
 end;
 
+function TShellWorkspace.MissingUnitSetup(out ASetup: TMissingUnitSetup): Boolean;
+var
+  Project: TProjectInfo;
+  Version: string;
+  Installation: ILibraryPathProvider;
+  Options: TDprojOptions;
+  Config, Platform: string;
+  Loaded: TProjectInfo;
+  Target: TMissingUnitTarget;
+begin
+  ASetup := Default(TMissingUnitSetup);
+  TMonitor.Enter(FLock);
+  try
+    Result := FHasProject;
+    Project := FProject;
+    Version := FDelphiVersion;
+    ASetup.ActiveLibraryPaths := FCompilerLibraryPaths;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  if not Result then
+    Exit;
+  ASetup.Project := Project;
+  ASetup.Namespaces := Project.Namespaces;
+  Installation := nil;
+  if Version <> '' then
+  try
+    Installation := TDelphiInstallation.Create(Version);
+  except
+    // Installation nicht lesbar: ohne Bibliothek und ohne $(BDS) in den Suchpfaden.
+    on EProjectError do
+      Installation := nil;
+  end;
+  Options := Default(TDprojOptions);
+  Options.FileExists :=
+    function(AFileName: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+    end;
+  if Installation <> nil then
+    Options.Variables := Installation.Variables;
+  // Jede Konfiguration mit jeder Plattform, wie der Compiler sie sähe.
+  for Config in Project.Configs do
+    for Platform in Project.Platforms do
+    begin
+      Options.Config := Config;
+      Options.Platform := Platform;
+      try
+        Loaded := TDprojReader.Load(Project.FileName, Options);
+      except
+        on EProjectError do
+          Continue;
+      end;
+      Target.Config := Config;
+      Target.Platform := Platform;
+      Target.SearchPaths := Loaded.SearchPaths;
+      ASetup.Targets := ASetup.Targets + [Target];
+    end;
+  if Installation <> nil then
+  begin
+    ASetup.Platforms := TMissingUnitSearch.KnownPlatforms;
+    ASetup.LibraryPaths :=
+      function(APlatform: string): TArray<string>
+      begin
+        try
+          Result := Installation.LibraryPaths(APlatform);
+        except
+          // Plattform nicht installiert.
+          on EProjectError do
+            Result := nil;
+        end;
+      end;
+  end;
+  ASetup.ListFiles := TSharedUnitListings.ListUnitFiles;
+  ASetup.ListFolders :=
+    function(AFolder: string): TArray<string>
+    begin
+      Result := nil;
+      try
+        if TDirectory.Exists(AFolder) then
+          Result := TDirectory.GetDirectories(AFolder);
+      except
+        on Exception do
+          Result := nil;
+      end;
+    end;
+end;
+
 function TShellWorkspace.IndexLoading: Integer;
 begin
   if FProgress.Active then
@@ -1422,28 +1512,6 @@ begin
   AMainSource := Info.MainSource;
 end;
 
-class procedure TShellWorkspace.CompleteRuleProject(var AProject: TRuleProject; const AMainSource: string;
-  const AReadText: TRuleProjectReadText);
-var
-  Source, Text: string;
-begin
-  if AReadText(AMainSource, Text) then
-  begin
-    AProject.Kind := TRuleProjectFiles.KindOfSource(AMainSource, Text);
-    AProject.IsTest := TRuleProjectFiles.IsTestSource(Text);
-  end
-  else if SameText(ExtractFileExt(AMainSource), '.dpk') then
-    AProject.Kind := TRuleProjectKind.Package;
-  for Source in AProject.Sources do
-    if SameText(ExtractFileExt(Source), '.pas') then
-    begin
-      if TFile.Exists(ChangeFileExt(Source, '.dfm')) then
-        AProject.Forms := AProject.Forms + [ChangeFileExt(Source, '.dfm')]
-      else if TFile.Exists(ChangeFileExt(Source, '.fmx')) then
-        AProject.Forms := AProject.Forms + [ChangeFileExt(Source, '.fmx')];
-    end;
-end;
-
 function TShellWorkspace.RuleReady(out AReason: string): Boolean;
 var
   Info: TProjectInfo;
@@ -1650,6 +1718,7 @@ var
   Resolver: TUnitResolver;
   FileExistsFunc: TFunc<string, Boolean>;
   ProjectVersion, Version: string;
+  mInstalled: TArray<string>;
   ConfiguredMissing: Boolean;
   ListUnits: TIndexListUnits;
   Excluded: TIndexExcluded;
@@ -1689,32 +1758,37 @@ begin
     on Exception do
       ProjectVersion := '';
   end;
+  mInstalled := TDelphiInstallation.Versions;
   try
-    if HasContext and (Context.BdsVersion <> '') and (IndexText(Context.BdsVersion, TDelphiInstallation.Versions) >= 0) then
+    if HasContext and (Context.BdsVersion <> '') and (IndexText(Context.BdsVersion, mInstalled) >= 0) then
       Version := Context.BdsVersion
     else
     begin
-      Version := TDelphiVersions.Choose(ASettings.DelphiVersion, ProjectVersion, TDelphiInstallation.Versions,
-        ConfiguredMissing);
+      // Ohne Installation die erwartete Version: Sie liefert nur die Symbole (#1321).
+      Version := TDelphiVersions.Choose(ASettings.DelphiVersion, ProjectVersion, mInstalled, ConfiguredMissing);
       // Die Warnung steht auch an "delphiVersion" in atlas.json (#47).
       if ConfiguredMissing then
         FLogger.Warning(Format('%s: delphiVersion %s ist nicht installiert; automatisch gewählt: %s',
           [FName, ASettings.DelphiVersion, Version]));
     end;
-    if Version <> '' then
+    if TDelphiVersions.IsInstalled(Version, mInstalled) then
     begin
       Installation := TDelphiInstallation.Create(Version);
       FLogger.Info(Format('%s: %s (BDS %s, ProjectVersion %s)',
         [FName, TDelphiVersions.ProductName(Version), Version, ProjectVersion]));
     end
     else
+    begin
       Installation := nil;
+      FLogger.Info(Format('%s: kein Delphi installiert; Symbole wie %s (BDS %s, ProjectVersion %s), ' +
+        'ohne Bibliothekspfade', [FName, TDelphiVersions.ProductName(Version), Version, ProjectVersion]));
+    end;
   except
+    // Version bleibt: CompilerVersion und VERxxx hängen nicht an den Pfaden der Installation (#1321).
     on E: EProjectError do
     begin
       FLogger.Warning('Delphi-Installation nicht gefunden: ' + E.Message);
       Installation := nil;
-      Version := '';
     end;
   end;
   FileExistsFunc :=

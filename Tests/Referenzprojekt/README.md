@@ -49,7 +49,13 @@ Für `unused-public-member` (#1102) prüft
 `TUnusedPublicMemberTests.ReferenceProjectMatchesMarkers` RefApp als Ganzes:
 genau die markierten Zeilen müssen gemeldet werden, jede weitere Meldung ist ein
 Fehlalarm. `TKundenSuche.Anmelden` ist markiert, weil nur RefDaten es aufruft und
-RefDaten nicht zu RefApp gehört.
+RefDaten nicht zu RefApp gehört. `TPluginAufruf.Melden` ist ein Gegenbeispiel: Der
+Test setzt `deadCode.keepAttributes` auf `Schnittstelle` (#64).
+Für `uses-cycle` und `unused-unit` (#64) prüft
+`TDeadCodeTests.ReferenceProjectMatchesMarkers` RefApp ebenso: der Zyklus
+`Ref.Formulare.Haupt` ↔ `Ref.Formulare.Detail` über implementation-uses und die
+Units, die nur `RefApp.dpr` nennt. `unused-declaration` läuft je Datei und trägt
+`// ERWARTET:` wie die übrigen Regeln.
 
 Regeln, die die RTL im Index brauchen (z. B. `System.Contnrs.TObjectStack`),
 schweigen ohne Symbolindex. Ihre Treffer tragen `// ERWARTET-INDEX: <regel-id>`.
@@ -59,6 +65,22 @@ unter `Source` und RTL-Stubs im Index) zählen `ERWARTET` und `ERWARTET-INDEX`.
 Genau die markierten Zeilen müssen gemeldet werden, jede weitere Meldung ist ein
 Fehlalarm. `TLegacyStackQueueTests.ReferenceProjectMatchesMarkers` prüft
 `legacy-stack-queue` (#1106) zusätzlich für sich.
+
+Regeln, die erst mit Optionen etwas melden, schweigen im Golden-Korpus mit den
+Standardeinstellungen. Ihre Treffer tragen `// ERWARTET-OPTION: <regel-id>`.
+Für `forbidden-symbol` (#1133) prüft
+`TForbiddenSymbolTests.ReferenceProjectMatchesMarkers` alle Units unter `Source`
+mit `TThread` als Stub im Index und dieser Liste:
+
+```json
+[{"name": "System.Write*", "kind": "routine", "message": "Nur über das Protokoll",
+  "allowFirstArgument": ["ErrOutput", "TextFile", "Text"]},
+ {"name": "Ref.Pruefung.Verstoesse.AltMelden", "replacement": "Melden", "units": ["Ref.*"]},
+ {"name": "System.Classes.TThread.*Queue", "firstArgument": ["nil"], "units": ["Ref.Pruefung.*"]}]
+```
+
+Genau die markierten Zeilen müssen gemeldet werden, jede weitere Meldung ist ein
+Fehlalarm.
 
 ## Marker-IDs und zuständige Regeln
 
@@ -78,6 +100,12 @@ Fehlalarm. `TLegacyStackQueueTests.ReferenceProjectMatchesMarkers` prüft
 | `inherited-without-ancestor` | Regel im Katalog (#1144), in `Ref.Pruefung.Verstoesse` |
 | `redundant-jump` | Regel im Katalog (#1141), in `Ref.Pruefung.Verstoesse` |
 | `noreturn-returns` | Regel im Katalog (#1132), nur in `mutationen.txt` (noreturn gibt es erst ab Delphi 13, das Referenzprojekt übersetzt auch mit Delphi 12) |
+| `unrelated-class-cast` | Regel im Katalog (#1129), in `Ref.Pruefung.Verstoesse` |
+| `redundant-cast` | Regel im Katalog (#1139), in `Ref.Pruefung.Verstoesse` |
+| `first-char-address` | Regel im Katalog (#1130), in `Ref.Pruefung.Verstoesse` |
+| `loop-runs-at-most-once` | Regel im Katalog (#1131), in `Ref.Pruefung.Verstoesse` |
+| `format-args` | Regel im Katalog (#56), in `Ref.Pruefung.Verstoesse` |
+| `forbidden-symbol` | Regel im Katalog (#1133), `ERWARTET-OPTION`, in `Ref.Pruefung.Verstoesse` |
 
 Jede ID steht im Regelkatalog oder in `geplante-regeln.txt` mit dem
 offenen Issue, das sie in den Katalog übernimmt. Eine ID ohne Issue lässt

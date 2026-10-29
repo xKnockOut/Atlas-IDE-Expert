@@ -25,6 +25,9 @@ type
   /// <summary>Farben der Klammer- und Blockpaare je Tiefe, zyklisch (#514).</summary>
   TAtlasPairColors = array[0..4] of TAtlasColor;
 
+  /// <summary>Farben der Platzhalter von Format und ihrer Argumente (#451), zyklisch.</summary>
+  TAtlasPlaceholderColors = array[0..5] of TAtlasColor;
+
   /// <summary>Farben einer Inlay-Hint-Marke (P-10): aus dem Editorhintergrund gemischt.</summary>
   TAtlasHintColors = record
     Text: TAtlasColor;
@@ -60,6 +63,8 @@ type
     Badges: array[TAtlasBadgeKind] of TAtlasBadgeColors;
     /// <summary>Klammer- und Blockpaare je Tiefe, zyklisch (#514).</summary>
     Pairs: TAtlasPairColors;
+    /// <summary>Platzhalter von Format und ihre Argumente (#451), halb durchsichtig über dem Text.</summary>
+    Placeholders: TAtlasPlaceholderColors;
     /// <summary>Zustandspunkte, Plaketten und Befundsymbole (#1255); nicht Add/Warn/Error, die für Text gedacht
     /// sind.</summary>
     Signals: TAtlasSignals;
@@ -157,6 +162,13 @@ begin
   Result.Pairs[2] := Hex('#007C8A');
   Result.Pairs[3] := Hex('#C000E0');
   Result.Pairs[4] := Hex('#008700');
+  // Sechs deutlich verschiedene Töne für die Platzhalter (#451); Rot fehlt, es bleibt den Fehlern.
+  Result.Placeholders[0] := Hex('#0071E3');
+  Result.Placeholders[1] := Hex('#D86A00');
+  Result.Placeholders[2] := Hex('#008700');
+  Result.Placeholders[3] := Hex('#C000E0');
+  Result.Placeholders[4] := Hex('#007C8A');
+  Result.Placeholders[5] := Hex('#A08000');
   Result.Signals := TAtlasSignals.Light;
 end;
 
@@ -202,6 +214,12 @@ begin
   Result.Pairs[2] := Hex('#00A4A4');
   Result.Pairs[3] := Hex('#E250FF');
   Result.Pairs[4] := Hex('#24AA24');
+  Result.Placeholders[0] := Hex('#3C94FF');
+  Result.Placeholders[1] := Hex('#FF9A3D');
+  Result.Placeholders[2] := Hex('#24AA24');
+  Result.Placeholders[3] := Hex('#E250FF');
+  Result.Placeholders[4] := Hex('#00A4A4');
+  Result.Placeholders[5] := Hex('#D6B020');
   Result.Signals := TAtlasSignals.Dark;
 end;
 

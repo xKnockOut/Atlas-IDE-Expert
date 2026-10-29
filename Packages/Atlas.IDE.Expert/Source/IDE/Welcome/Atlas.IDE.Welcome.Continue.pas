@@ -115,6 +115,8 @@ type
     FNotice: string;
     // Quelle der Schnellaktionen (#764); nil = keine Knöpfe.
     FQuickActions: IAtlasQuickActionsSource;
+    // Seite Versionsverwaltung mit Ordner (#1287); nil = Link ohne Wirkung.
+    FOnServerAccess: TProc<string>;
     procedure Changed;
     procedure Report(const AText: string);
     function Enabled: Boolean;
@@ -168,9 +170,13 @@ type
     procedure Resume(const AProject: string);
     procedure ShowCommit(const AProject: string; const ACommit: TAtlasContinueCommit);
     procedure OpenSaved(const AItem: TAtlasSavedItem);
+    procedure ShowServerAccess(const AProject: string);
     procedure Shown;
     /// <summary>Quelle der Schnellaktionen (#764) für neue Frames; vor Start setzen.</summary>
     property QuickActions: IAtlasQuickActionsSource read FQuickActions write FQuickActions;
+    /// <summary>„Anmeldung am Server nötig – prüfen …“ (#1287): Seite Versionsverwaltung für den Ordner öffnen;
+    /// setzt die Komposition.</summary>
+    property OnServerAccess: TProc<string> read FOnServerAccess write FOnServerAccess;
   end;
 
 implementation
@@ -196,6 +202,7 @@ uses
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Vcs.Service,
+  Atlas.IDE.Foundation.Files,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Completion.Favorites,
   Atlas.IDE.Welcome.Search,
@@ -397,6 +404,7 @@ begin
       TAtlasGuard.Report(TAtlasFeature.WelcomePage, E);
   end;
   FStopped := True;
+  FOnServerAccess := nil;
   if FNotifier <> nil then
   begin
     FNotifier.FOwner := nil;
@@ -887,7 +895,7 @@ procedure TAtlasIdeContinue.RefreshIncoming(AForce: Boolean);
 var
   Keep: IAtlasContinueSource;
   Entry: TAtlasContinueEntry;
-  EntryKey, Dir, Project: string;
+  EntryKey, Dir, Project, MainBranch: string;
   State: TAtlasWorkState;
   Fetch, Ok: Boolean;
   Stamp: TDateTime;
@@ -907,6 +915,11 @@ begin
   Project := Entry.Project;
   State := Entry.State;
   Dir := ExtractFileDir(Entry.Project);
+  // Hauptbranch des Projekts (#1286) für Branches ohne verfolgten Branch; .atlas und Gruppe im Hauptthread.
+  if SameText(ExtractFileExt(Project), '.groupproj') then
+    MainBranch := TAtlasIdeVcs.MainBranchOf(Project, Project)
+  else
+    MainBranch := TAtlasIdeVcs.MainBranchOf(Project, TAtlasIdeFiles.GroupOfProject(Project));
   Fetch := TAtlasIdeSettings.Current.WelcomePageContinueFetch;
   Stamp := NowUtc;
   Ok := False;
@@ -927,7 +940,7 @@ begin
       if Fetch then
         FetchVcs := TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeContinue.FetchTimeoutMs);
       Ok := TAtlasWelcomeContinue.ProbeIncoming(TAtlasIdeVcs.ForFolder(Dir, TAtlasWelcomeContinue.CallTimeoutMs),
-        FetchVcs, Project, State, Stamp, Found);
+        FetchVcs, Project, MainBranch, State, Stamp, Found);
     end,
     procedure
     begin
@@ -1291,6 +1304,22 @@ begin
   if Line < 0 then
     Line := 0;
   TAtlasIdeResults.Open(FileName, Line, 0);
+end;
+
+procedure TAtlasIdeContinue.ShowServerAccess(const AProject: string);
+var
+  mFolder: string;
+begin
+  mFolder := ExtractFileDir(AProject);
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    begin
+      if FStopped or not Assigned(FOnServerAccess) or (mFolder = '') then
+        Exit;
+      FOnServerAccess(mFolder);
+      // Nach dem Dialog (vielleicht angemeldet): eingehende Commits neu abfragen.
+      RefreshIncoming(True);
+    end);
 end;
 
 procedure TAtlasIdeContinue.OpenSaved(const AItem: TAtlasSavedItem);

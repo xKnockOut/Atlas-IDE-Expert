@@ -47,7 +47,7 @@ type
     function IsFailure(E: Exception): Boolean; override;
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
+      const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   public
     constructor Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal = DefaultTimeoutMs);
     /// <summary>LSP-CompletionItemKind → Art des Eintrags.</summary>
@@ -58,6 +58,8 @@ type
     class function ItemsFromLsp(AResponse: TJSONValue; AFirstRank: Integer = 0): TAtlasCompletionItems; static;
     /// <summary>AItems ohne Code-Vorlagen des Servers (Einträge mit Snippet, #51); Postfix-Vorlagen bleiben.</summary>
     class function WithoutSnippets(const AItems: TAtlasCompletionItems): TAtlasCompletionItems; static;
+    /// <summary>Hinweis bei unvollständigem Code (#457) aus "syntaxNotice" der CompletionList; Sure ohne.</summary>
+    class function SyntaxNoticeOf(AResponse: TJSONValue): TAtlasSyntaxNotice; static;
     /// <summary>AItem ohne Platzhalter: Vorgabetexte eingesetzt, auch in verknüpften Zusatzänderungen.</summary>
     class function Plain(const AItem: TAtlasCompletionItem): TAtlasCompletionItem; static;
     /// <summary>Details aus der Antwort auf completionItem/resolve (data.atlas, sonst detail/documentation).</summary>
@@ -201,6 +203,13 @@ begin
       for Value in TJSONArray(Data.GetValue('hides')) do
         if Value is TJSONString then
           Result.Hides := Result.Hides + [TJSONString(Value).Value];
+    // Mitglied eines with-Objekts (#481).
+    Result.WithOrigin := Data.GetValue<string>('withOrigin', '');
+    Value := Data.GetValue('withShadows');
+    if Value is TJSONArray then
+      for Value in TJSONArray(Data.GetValue('withShadows')) do
+        if Value is TJSONString then
+          Result.WithShadows := Result.WithShadows + [TJSONString(Value).Value];
     Result.HasParameters := Data.GetValue('parameters') is TJSONTrue;
     Result.ExpectedType := Data.GetValue<string>('expected', '');
     Result.Fits := Data.GetValue('fits') is TJSONTrue;
@@ -262,6 +271,13 @@ begin
     Result.Constraint := Data.GetValue<string>('constraint', '');
     Result.ConstraintHint := Data.GetValue<string>('constraintHint', '');
     Result.HiddenKinds := Data.GetValue<string>('hiddenKinds', '');
+    // Attribute nach "[" (#465).
+    Result.Attribute := Data.GetValue('attribute') is TJSONTrue;
+    // Anonyme Methoden (#468).
+    Result.MethodRef := Data.GetValue<string>('methodRef', '');
+    // Exception-Klassen (#483).
+    Result.ExceptionGroup := Data.GetValue<string>('exceptionGroup', '');
+    Result.Unreachable := Data.GetValue<string>('unreachable', '');
     // uses-Abschnitt (#469): gefiltert wird nach dem Namensteil ab dem Getippten ("Classes" für System.Classes).
     Result.UsesGroup := Data.GetValue<string>('usesGroup', '');
     if Data.GetValue<string>('usesFilter', '') <> '' then
@@ -372,6 +388,31 @@ begin
   Result.LinkedEdits := False;
 end;
 
+class function TAtlasServerCompletionProvider.SyntaxNoticeOf(AResponse: TJSONValue): TAtlasSyntaxNotice;
+var
+  Notice: TJSONValue;
+  Trust: string;
+begin
+  Result := Default(TAtlasSyntaxNotice);
+  Result.Line := -1;
+  Result.Character := -1;
+  if not (AResponse is TJSONObject) then
+    Exit;
+  Notice := TJSONObject(AResponse).GetValue('syntaxNotice');
+  if not (Notice is TJSONObject) then
+    Exit;
+  Trust := TJSONObject(Notice).GetValue<string>('trust', '');
+  if Trust = 'limited' then
+    Result.Trust := TAtlasSyntaxTrust.Limited
+  else if Trust = 'unknown' then
+    Result.Trust := TAtlasSyntaxTrust.Unknown
+  else
+    Exit;
+  Result.Line := TJSONObject(Notice).GetValue<Integer>('line', -1);
+  Result.Character := TJSONObject(Notice).GetValue<Integer>('character', -1);
+  Result.Message := TJSONObject(Notice).GetValue<string>('message', '');
+end;
+
 class function TAtlasServerCompletionProvider.WithoutSnippets(
   const AItems: TAtlasCompletionItems): TAtlasCompletionItems;
 var
@@ -379,11 +420,13 @@ var
 begin
   Result := nil;
   // Postfix-Vorlagen (#188) haben ihren eigenen Schalter completion.postfixTemplates. Einträge, die Code erzeugen
-  // (resourcestring auslagern, #473), bleiben ohne Platzhalter.
+  // (resourcestring auslagern, #473), Gerüste anonymer Methoden (#468, eigener Schalter
+  // completion.anonymousMethods) und "EFoo.Create('')" nach raise (#483, completion.exceptionClasses) bleiben ohne
+  // Platzhalter.
   for Item in AItems do
     if (Item.Snippet = '') or Item.Postfix then
       Result := Result + [Item]
-    else if Item.IsAction then
+    else if Item.IsAction or (Item.MethodRef <> '') or (Item.ExceptionGroup <> '') then
       Result := Result + [Plain(Item)];
 end;
 
@@ -439,7 +482,7 @@ begin
 end;
 
 function TAtlasServerCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
 var
   Response: TJSONValue;
   NextRank: Integer;
@@ -447,7 +490,7 @@ var
   Watch: TStopwatch;
   mSnippets: Boolean;
 begin
-  AIncomplete := False;
+  AState := Default(TAtlasFetchState);
   NextRank := 0;
   Emit := AEmit;
   mSnippets := FSnippets;
@@ -479,8 +522,9 @@ begin
       Exit(nil);
     // CompletionList mit isIncomplete: Der Server hat gekürzt und will beim Weitertippen neu gefragt werden.
     // Ohne GetValue<Boolean>: das lässt über TValue Speicher liegen (Leck-Monitor).
-    AIncomplete := (Response is TJSONObject) and (TJSONObject(Response).GetValue('isIncomplete') is TJSONBool) and
+    AState.Incomplete := (Response is TJSONObject) and (TJSONObject(Response).GetValue('isIncomplete') is TJSONBool) and
       TJSONBool(TJSONObject(Response).GetValue('isIncomplete')).AsBoolean;
+    AState.Syntax := SyntaxNoticeOf(Response);
     Result := ItemsFromLsp(Response, NextRank);
     if not mSnippets then
       Result := WithoutSnippets(Result);
@@ -575,12 +619,13 @@ var
   Callback: TAtlasDetailsCallback;
   Item: TJSONObject;
   Hides: TArray<string>;
-  LossyFrom, LossyTo: string;
+  WithOrigin, LossyFrom, LossyTo: string;
 begin
   Result := False;
   if AItem.ResolveData = '' then
     Exit;
   Hides := AItem.Hides;
+  WithOrigin := AItem.WithOrigin;
   LossyFrom := AItem.Lossy;
   LossyTo := '';
   if LossyFrom <> '' then
@@ -617,6 +662,7 @@ begin
         Response.Free;
       end;
       Details.Hides := Hides;
+      Details.WithOrigin := WithOrigin;
       Details.LossyFrom := LossyFrom;
       Details.LossyTo := LossyTo;
       // Der Rückruf zeigt das Detailpanel; die Hülle zählt seine Fehler für die Vervollständigung (S-05, A-02).

@@ -12,6 +12,7 @@ uses
   DUnitX.TestFramework,
   System.SysUtils,
   Atlas.Core.Build.Messages,
+  Atlas.Core.Build.Verdict,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Sources,
   Atlas.Core.Notifications.Center,
@@ -79,6 +80,10 @@ type
     procedure BuildWithErrorsTargetsFirstErrorWithFile;
     [Test]
     procedure BuildWithWarningsSucceededOrFailed;
+    /// <summary>#530: Eintrag nach der Bewertung; zeroHints macht einen erfolgreichen Build rot, Meldungen in der
+    /// Basislinie zählen nicht.</summary>
+    [Test]
+    procedure VerdictRejectsAndSkipsBaseline;
     [Test]
     procedure BackgroundCheckOnlyOnErrorsAndRecovery;
   private
@@ -482,13 +487,14 @@ procedure TAtlasNotificationSourcesTests.KnownSourcesAndModeNames;
 var
   Mode: TAtlasNotificationMode;
 begin
-  Assert.AreEqual(9, Integer(Length(TAtlasNotificationSources.Known)));
+  Assert.AreEqual(10, Integer(Length(TAtlasNotificationSources.Known)));
   Assert.AreEqual('build', TAtlasNotificationSources.Known[0]);
   Assert.AreEqual('shortcutTips', TAtlasNotificationSources.Known[4]);
   Assert.AreEqual('buildServer', TAtlasNotificationSources.Known[5], 'Build-Server (#763)');
   Assert.AreEqual('openBuild', TAtlasNotificationSources.Known[6], 'Bauen beim Öffnen');
   Assert.AreEqual('hidden', TAtlasNotificationSources.Known[7], 'Ausblenden am Element (#628)');
   Assert.AreEqual('unitRename', TAtlasNotificationSources.Known[8], 'uses nachziehen (#512)');
+  Assert.AreEqual('issues', TAtlasNotificationSources.Known[9], 'Meldungen zu meinen Issues (#1271)');
   Assert.AreEqual('show', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Show));
   Assert.AreEqual('collect', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Collect));
   Assert.AreEqual('off', TAtlasNotificationSources.ModeName(TAtlasNotificationMode.Off));
@@ -529,6 +535,35 @@ begin
   Assert.AreEqual('C:\P\Main.pas', Notice.Target.FileName, 'erste Fehlermeldung mit Datei');
   Assert.AreEqual(12, Notice.Target.Line);
   Assert.AreEqual(TAtlasNotificationSources.Build, TAtlasBuildNotices.SourceOf(False));
+end;
+
+procedure TAtlasBuildNoticeTests.VerdictRejectsAndSkipsBaseline;
+var
+  Messages: TArray<TAtlasCompilerMessage>;
+  Notice: TAtlasBuildNotice;
+begin
+  Messages := [Msg(TAtlasCompilerSeverity.Warning, 'C:\P\B.pas', 7),
+    Msg(TAtlasCompilerSeverity.Hint, 'C:\P\A.pas', 3)];
+  Messages[0].Code := 'W1035';
+  Messages[1].Code := 'H2164';
+  Notice := TAtlasBuildNotices.FromVerdict(Messages, TAtlasBuildVerdicts.Evaluate(Messages, nil, True,
+    TAtlasBuildVerdictSettings.Create(True, '')));
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Rejected), Ord(Notice.Kind));
+  Assert.AreEqual(Ord(TAtlasNotificationSeverity.Error), Ord(Notice.Severity));
+  Assert.IsTrue(Notice.HasTarget, 'Zur Meldung');
+  Assert.AreEqual(7, Notice.Target.Line);
+  Notice := TAtlasBuildNotices.FromVerdict(Messages, TAtlasBuildVerdicts.Evaluate(Messages, nil, True,
+    TAtlasBuildVerdictSettings.Create(False, 'H2164')));
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Rejected), Ord(Notice.Kind));
+  Assert.AreEqual('H2164', Notice.PromotedCode);
+  Assert.AreEqual(3, Notice.Target.Line, 'Ziel ist die Meldung aus warningsAsErrors');
+  // Warnung in der Basislinie: nur der Hinweis zählt, der Build ist ohne Schranke erfolgreich.
+  Notice := TAtlasBuildNotices.FromVerdict(Messages, TAtlasBuildVerdicts.Evaluate(Messages,
+    TArray<Boolean>.Create(True, False), True, TAtlasBuildVerdictSettings.Create(False, '')));
+  Assert.AreEqual(Ord(TAtlasBuildNoticeKind.Succeeded), Ord(Notice.Kind));
+  Assert.AreEqual(0, Notice.Warnings);
+  Assert.AreEqual(1, Notice.Hints);
+  Assert.AreEqual(1, Notice.Baselined);
 end;
 
 procedure TAtlasBuildNoticeTests.BuildWithWarningsSucceededOrFailed;

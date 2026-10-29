@@ -29,6 +29,9 @@ type
     procedure RangeLimitsTokens;
     [Test]
     procedure EncodesRelativePositions;
+    /// <summary>Modifier reassigned an jeder Stelle neu zugewiesener Namen und in der Legende (#712).</summary>
+    [Test]
+    procedure MarksReassignedNames;
   end;
 
 implementation
@@ -39,7 +42,10 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  System.JSON,
+  Atlas.Common.Semantics.Reassigned,
+  Atlas.Common.Lsp.Reassigned;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -129,7 +135,8 @@ begin
   // +0 declaration, +1 readonly, +2 defaultLibrary
   Assert.AreEqual('2 enum+0|12 enumMember+0|17 enumMember+0|', Describe(Tokens, 4));
   Assert.AreEqual('4 field+0|', Describe(Tokens, 6));
-  Assert.AreEqual('13 property+0|', Describe(Tokens, 8));
+  // read FWert löst seit #690 zum Feld auf.
+  Assert.AreEqual('13 property+0|32 field|', Describe(Tokens, 8));
   Assert.AreEqual('13 event+0|', Describe(Tokens, 9));
   Assert.AreEqual('2 variable+0+1|', Describe(Tokens, 12));
 end;
@@ -184,6 +191,46 @@ begin
     IntToStr(Data[0]), IntToStr(Data[1]), IntToStr(Data[2]), IntToStr(Data[3]), IntToStr(Data[4]),
     IntToStr(Data[5]), IntToStr(Data[6]), IntToStr(Data[7]), IntToStr(Data[8]), IntToStr(Data[9]),
     IntToStr(Data[10]), IntToStr(Data[11]), IntToStr(Data[12]), IntToStr(Data[13]), IntToStr(Data[14]))));
+end;
+
+procedure TLspSemanticTokensTests.MarksReassignedNames;
+const
+  Source =
+    'unit R;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P(A: Integer);'#10 +
+    'var'#10 +
+    '  Total, Once: Integer;'#10 +   // 5
+    'begin'#10 +
+    '  Total := A;'#10 +             // 7
+    '  Once := Total;'#10 +
+    '  Total := Once;'#10 +          // 9
+    'end;'#10 +
+    'end.';
+var
+  Tree: TSyntaxTree;
+  Tokens: TArray<TSemanticToken>;
+  Capability: TJSONObject;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Tokens := TLspSemanticTokens.Collect(FResolver, FIndex, Tree, 'C:\P\R.pas', Default(TTextRange), False);
+    TLspSemanticTokens.MarkReassigned(Tokens, TReassigned.Filter(TLspReassigned.Analyze(FResolver, Tree,
+      'C:\P\R.pas', Source), TReassigned.DefaultTargets));
+  finally
+    Tree.Free;
+  end;
+  // +3 reassigned: Total an Deklaration und jeder Verwendung, Once nicht.
+  Assert.AreEqual('2 variable+3|9 variable|', Describe(Tokens, 5));
+  Assert.AreEqual('2 variable+3|11 parameter|', Describe(Tokens, 7));
+  Assert.AreEqual('2 variable|10 variable+3|', Describe(Tokens, 8));
+  Capability := TLspSemanticTokens.Capability;
+  try
+    Assert.IsTrue(Pos('"reassigned"', Capability.ToJSON) > 0);
+  finally
+    Capability.Free;
+  end;
 end;
 
 initialization

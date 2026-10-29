@@ -114,6 +114,8 @@ begin
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescSetup)
   else if SameText(AId, TAtlasWelcomeIds.Issues) then
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescIssues)
+  else if SameText(AId, TAtlasWelcomeIds.Sprint) then
+    Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescSprint)
   else if SameText(AId, TAtlasWelcomeIds.Help) then
     Result := TAtlasStrings.Text(TAtlasTextId.WelcomeArrangeDescHelp)
   else

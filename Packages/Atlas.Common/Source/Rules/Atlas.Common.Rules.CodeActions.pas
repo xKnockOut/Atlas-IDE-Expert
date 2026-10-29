@@ -120,6 +120,9 @@ begin
           Action.Command := ShowSignatureHelpCommand;
         Action.CommandArguments := [IntToStr(Fix.JumpTo.Line), IntToStr(Fix.JumpTo.Character)];
       end;
+      // „Graph zeigen“ an einem Unit-Zyklus (#896): der Client öffnet die Unit-Beziehungen.
+      if Fix.ShowsUnitRelations then
+        Action.Command := ShowUnitRelationsCommand;
       Action.IsPreferred := First and not Fix.Alternative;
       Action.RuleId := Finding.RuleId;
       Action.DiagnosticRange := Finding.Range;
@@ -129,7 +132,10 @@ begin
       Result := Result + [Action];
       First := False;
     end;
-    if SameText(Finding.RuleId, 'unused-suppression') or SameText(Finding.RuleId, 'syntax') then
+    // Syntaxfehler und Sprachmerkmale (#1126) laufen nicht über die Engine, ein lsp-ignore wirkt dort nicht;
+    // Sprachmerkmale für neuere Versionen gehören in {$IF CompilerVersion >= …}.
+    if SameText(Finding.RuleId, 'unused-suppression') or SameText(Finding.RuleId, 'syntax') or
+      SameText(Finding.RuleId, 'language-feature') then
       Continue;
     Action := Default(TCodeAction);
     Action.Title := Format('"%s" für diese Zeile unterdrücken', [Finding.RuleId]);

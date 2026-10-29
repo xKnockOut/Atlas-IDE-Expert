@@ -63,6 +63,16 @@ type
     procedure ContextIgnoresIndentationAndRoutineName;
     [Test]
     procedure CountersJsonListsOrphans;
+    /// <summary>Compilermeldungen (#530): ReplaceCompiler ersetzt je Datei, Regeln und andere Dateien bleiben.
+    /// </summary>
+    [Test]
+    procedure ReplaceCompilerReplacesPerFile;
+    /// <summary>Update (Regeln neu schreiben) behält Compilermeldungen, Classify meldet sie nie als Absent.
+    /// </summary>
+    [Test]
+    procedure UpdateKeepsCompilerEntries;
+    [Test]
+    procedure RecognizesCompilerCodes;
     /// <summary>Abnahme (#147): Unterdrückung für einen Treffer aus der Baseline ist keine unused-suppression.
     /// </summary>
     [Test]
@@ -466,7 +476,75 @@ begin
   Orphan.Count := 2;
   Outcome.Orphans := [Orphan];
   Assert.AreEqual('{"total": 4, "files": 2, "added": 1, "removed": 3, "unchanged": 3, "completed": 0, ' +
-    '"orphaned": {"count": 2, "entries": [{"path": "Alt/U.pas", "count": 2}]}}', Outcome.CountersJson);
+    '"compiler": 0, "orphaned": {"count": 2, "entries": [{"path": "Alt/U.pas", "count": 2}]}}', Outcome.CountersJson);
+end;
+
+procedure TRuleBaselineTests.ReplaceCompilerReplacesPerFile;
+var
+  Old, Next: IRuleBaseline;
+  Outcome: TBaselineUpdate;
+begin
+  Old := BaselineOf([Source('U.pas', TwoRoutines, [Finding('a', 5)])]);
+  Outcome := TRuleBaseline.ReplaceCompiler(Old, [Source('U.pas', TwoRoutines, [Finding('w1035', 5)]),
+    Source('V.pas', TwoRoutines, [Finding('h2164', 9)])]);
+  Assert.AreEqual(2, Outcome.Total);
+  Assert.AreEqual(2, Outcome.Added);
+  Old := TRuleBaseline.FromJson(Outcome.Json);
+  Assert.AreEqual(3, Old.Count, 'Regeltreffer bleibt');
+  // Neuer Build von U.pas: W1035 ist weg, H2164 neu; V.pas wurde nicht übersetzt und bleibt.
+  Outcome := TRuleBaseline.ReplaceCompiler(Old, [Source('U.pas', TwoRoutines, [Finding('h2164', 9)])]);
+  Assert.AreEqual(2, Outcome.Total, 'U: H2164, V: H2164');
+  Assert.AreEqual(1, Outcome.Added);
+  Assert.AreEqual(1, Outcome.Removed);
+  Assert.AreEqual(0, Outcome.Unchanged);
+  Next := TRuleBaseline.FromJson(Outcome.Json);
+  Assert.AreEqual(3, Next.Count);
+  Assert.AreEqual<NativeInt>(0, Length(Next.Filter('U.pas', TwoRoutines, [Finding('a', 5), Finding('h2164', 9)])),
+    'Regel und Compilermeldung bekannt');
+  Assert.AreEqual<NativeInt>(1, Length(Next.Filter('U.pas', TwoRoutines, [Finding('w1035', 5)])), 'W1035 wieder neu');
+  // Gleiche Meldung noch einmal: unverändert.
+  Outcome := TRuleBaseline.ReplaceCompiler(Next, [Source('U.pas', TwoRoutines, [Finding('h2164', 9)])]);
+  Assert.AreEqual(1, Outcome.Unchanged);
+  Assert.AreEqual(0, Outcome.Added);
+  Assert.AreEqual(0, Outcome.Removed);
+end;
+
+procedure TRuleBaselineTests.UpdateKeepsCompilerEntries;
+var
+  Old: IRuleBaseline;
+  Outcome: TBaselineUpdate;
+  Mark: TBaselineMark;
+begin
+  Old := TRuleBaseline.FromJson(TRuleBaseline.ReplaceCompiler(BaselineOf([Source('U.pas', TwoRoutines,
+    [Finding('a', 5)])]), [Source('U.pas', TwoRoutines, [Finding('w1035', 5)]), Source('Alt.pas', TwoRoutines,
+    [Finding('h2164', 9)])]).Json);
+  for Mark in Old.Classify('U.pas', TwoRoutines, TFindingScopes.FromText(TwoRoutines), [Finding('a', 5)]) do
+    Assert.IsTrue(Mark.State <> TBaselineState.Absent, 'Compilermeldung ist für die Regeln nicht verschwunden');
+  Assert.AreEqual<NativeInt>(0, Length(Old.AbsentOf('Alt.pas')));
+  // Alt.pas gibt es nicht mehr: dessen Compilermeldung fällt heraus, die von U.pas bleibt.
+  Outcome := TRuleBaseline.Update(Old, [Source('U.pas', TwoRoutines, [Finding('a', 5)])],
+    function(const APath: string): Boolean
+    begin
+      Result := SameText(APath, 'U.pas');
+    end);
+  Assert.AreEqual(1, Outcome.Total);
+  Assert.AreEqual(1, Outcome.Unchanged);
+  Assert.AreEqual(1, Outcome.Compiler);
+  Assert.AreEqual(1, Outcome.Removed, 'nur die Meldung der verschwundenen Datei');
+  Assert.AreEqual(1, Outcome.OrphanCount);
+  Old := TRuleBaseline.FromJson(Outcome.Json);
+  Assert.AreEqual(2, Old.Count);
+  Assert.AreEqual<NativeInt>(0, Length(Old.Filter('U.pas', TwoRoutines, [Finding('w1035', 5)])));
+end;
+
+procedure TRuleBaselineTests.RecognizesCompilerCodes;
+begin
+  Assert.IsTrue(TRuleBaseline.IsCompilerCode('W1035'));
+  Assert.IsTrue(TRuleBaseline.IsCompilerCode('h2164'));
+  Assert.IsTrue(TRuleBaseline.IsCompilerCode('E2003'));
+  Assert.IsFalse(TRuleBaseline.IsCompilerCode('empty-except'));
+  Assert.IsFalse(TRuleBaseline.IsCompilerCode('W103'));
+  Assert.IsFalse(TRuleBaseline.IsCompilerCode('X1035'));
 end;
 
 procedure TRuleBaselineTests.SuppressionOfBaselineFindingIsNotUnused;

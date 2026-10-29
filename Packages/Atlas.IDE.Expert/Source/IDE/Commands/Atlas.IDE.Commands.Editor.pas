@@ -6,14 +6,21 @@
 //   in einem Fenster wie die Befehlspalette, in der Reihenfolge des Servers,
 //   bevorzugte zuerst (Ersatz für die Glühbirne). Die gewählte ändert die
 //   Puffer über TAtlasIdeWorkspaceEdit (je Datei ein Rückgängig-Schritt, #397)
-//   und führt danach ihren Befehl aus: atlas.copyText legt das erste Argument
-//   in die Zwischenablage, atlas.openFile öffnet die Datei der URI im ersten
-//   Argument (Testunit, #274/#189), atlas.goToPosition setzt den Cursor im
+//   und führt danach ihren Befehl aus. Trägt die Aktion eine Vorschau
+//   (data.preview, #663), zeigt Atlas vorher die Änderungen mit diesem Text wie
+//   beim Umbenennen und übernimmt erst nach Bestätigung. Gesperrte Aktionen
+//   (disabled) stehen als Hinweis am Ende und nennen beim Wählen den Grund.
+//   Befehle: atlas.copyText legt das erste Argument in die Zwischenablage,
+//   atlas.openFile öffnet die Datei der URI im ersten Argument (Testunit, #274/#189), atlas.goToPosition setzt den Cursor im
 //   oberen Editor auf Zeile und Zeichen aus den Argumenten (Sprung zur
 //   Freigabe, #915), atlas.showSignatureHelp setzt ihn ebenso und öffnet
 //   den Parameter-Hint (OnSignatureHelp, setzt die Composition; #1007),
-//   atlas.changeSignature (#100) und
-//   atlas.moveClass (#103) öffnen ihren Dialog, alle anderen gehen als
+//   atlas.showUnitRelations zeigt die Unit-Beziehungen der Unit im Editor
+//   („Graph zeigen“ an einem Unit-Zyklus, OnUnitRelations; #896),
+//   atlas.changeSignature (#100), atlas.moveClass (#103),
+//   atlas.extractInterface (#664), atlas.extractSuperclass (#713) und
+//   atlas.moveMember (#675) öffnen ihren Dialog, atlas.invertBoolean (#715) und
+//   atlas.promoteVariable (#668) fragen einen Namen, alle anderen gehen als
 //   workspace/executeCommand an den Server.
 // - Auswahl erweitern und verkleinern (textDocument/selectionRange).
 // - Gehe zu Typdefinition (textDocument/typeDefinition); Gehe zu
@@ -21,6 +28,9 @@
 // - Zwischen Deklaration und Implementierung wechseln (#775): ohne Server,
 //   direkt aus dem Puffer (Atlas.Core.Editor.MethodToggle).
 // - Qualifizierten Namen kopieren (atlas.server.qualifiedName, #128).
+// - „Weg von hier nach …“ (#1117): Dialog „Weg zwischen Symbolen“ mit dem
+//   qualifizierten Namen am Cursor als „Von“; nur sichtbar, solange
+//   navigation.symbolPath an ist (ApplySettings).
 // - Zwischen Unit und Testunit wechseln (atlas.server.testUnit, #189): öffnet
 //   das Gegenstück; fehlt die Testunit, legt das Edit des Servers sie an und
 //   trägt sie ins Testprojekt ein (#274), danach wird sie geöffnet.
@@ -87,6 +97,9 @@ type
     FStepList: TFunc<Boolean, Boolean>;
     FOnPlaceholders: TAtlasPlaceholdersProc;
     FOnSignatureHelp: TProc;
+    FOnUnitRelations: TProc;
+    FOnCreateIssue: TProc;
+    FCreateIssueAvailable: TFunc<Boolean>;
   private
     class function Session: TLspSession; static;
     class procedure Say(const AText: string); static;
@@ -99,8 +112,13 @@ type
     class procedure Select(const AView: IOTAEditView; const ALines: TArray<string>; const ARange: TLspRange); static;
     class procedure Step(AExpand: Boolean); static;
     class procedure Apply(const AAction: TLspCodeAction); static;
+    /// <summary>Vorschau der Änderungen mit AAction.Preview als Hinweis; True, wenn übernommen werden soll.</summary>
+    class function ConfirmPreview(const AAction: TLspCodeAction): Boolean; static;
     class procedure RunCommand(const ACommand, AArgumentsJson: string); static;
     class procedure RunSlash(const AView: IOTAEditView; AKind: TAtlasSlashKind); static;
+    /// <summary>Qualifizierter Name am Cursor (#128); False mit Meldung ohne Server oder Editor, True mit
+    /// AName = '' ohne Symbol.</summary>
+    class function FetchQualifiedName(AWithParameters: Boolean; out AName: string): Boolean; static;
   public
     /// <summary>ASessionOf: laufende Sitzung (Server bei Bedarf gestartet) oder nil; AMessage: Zeile für
     /// die Meldungsansicht.</summary>
@@ -117,6 +135,8 @@ type
     class procedure ExpandSelection; static;
     class procedure ShrinkSelection; static;
     class procedure GoToTypeDefinition; static;
+    /// <summary>„Sicher löschen“ für das Symbol am Cursor (#716, Alt+Entf).</summary>
+    class procedure SafeDelete; static;
     /// <summary>Cursor zum Gegenstück der Methode am Cursor (Deklaration ⇄ Implementierung, #775); False ohne
     /// Gegenstück, dann ohne Meldung (die Taste geht an die IDE weiter).</summary>
     class function TryToggleMethod: Boolean; static;
@@ -131,6 +151,13 @@ type
     /// passender Markierung an die IDE.</summary>
     class function TryFindSelection(ABackward: Boolean): Boolean; static;
     class procedure CopyQualifiedName(AWithParameters: Boolean); static;
+    /// <summary>Qualifizierter Name am Cursor der oberen Datei (ohne Parameter); False mit Meldung ohne Server,
+    /// Editor oder Symbol.</summary>
+    class function QualifiedNameHere(out AName: string): Boolean; static;
+    /// <summary>„Weg von hier nach …“ (#1117).</summary>
+    class procedure SymbolPathFromHere; static;
+    /// <summary>Nach geänderten Einstellungen: Sichtbarkeit der Kontextmenüeinträge.</summary>
+    class procedure ApplySettings; static;
     /// <summary>Zur Testunit bzw. getesteten Unit der oberen Datei; legt eine fehlende Testunit an (#189).</summary>
     class procedure SwitchTestUnit; static;
     /// <summary>Obere Datei formatieren (#43): mit Auswahl nur deren Zeilen. Ausgeschaltet oder ohne Änderung eine
@@ -140,6 +167,9 @@ type
     class procedure EditorModified(const AView: IOTAEditView); static;
     /// <summary>Untermenü Atlas in die Kontextmenüs der Editorfenster hängen.</summary>
     class procedure EnsureContextMenus; static;
+    /// <summary>Nach einer Einstellungsänderung: abschaltbare Einträge des Kontextmenüs (#1120) ein- bzw. ausblenden.
+    /// </summary>
+    class procedure UpdateContextMenus; static;
     /// <summary>Kontextmenü „Test am Cursor ausführen“ (#585); setzt die Composition, nil = ausgeschaltet (der
     /// Eintrag meldet das).</summary>
     class property OnRunTest: TProc read FOnRunTest write FOnRunTest;
@@ -159,11 +189,21 @@ type
     /// <summary>Parameter-Hint an der Schreibmarke öffnen (atlas.showSignatureHelp, #1007); setzt die Composition,
     /// nil = nur der Sprung.</summary>
     class property OnSignatureHelp: TProc read FOnSignatureHelp write FOnSignatureHelp;
+    /// <summary>Unit-Beziehungen der Unit im Editor zeigen (atlas.showUnitRelations, #896); setzt die
+    /// Composition, nil = nichts.</summary>
+    class property OnUnitRelations: TProc read FOnUnitRelations write FOnUnitRelations;
+    /// <summary>„Issue anlegen …“ (#1268) an der Schreibmarke; setzt die Composition, nil = nichts.</summary>
+    class property OnCreateIssue: TProc read FOnCreateIssue write FOnCreateIssue;
+    /// <summary>Sichtbarkeit des Eintrags „Issue anlegen …“ (issues.create); nil = unsichtbar.</summary>
+    class property CreateIssueAvailable: TFunc<Boolean> read FCreateIssueAvailable write FCreateIssueAvailable;
+    /// <summary>Befehl Atlas.CreateIssue: ruft OnCreateIssue, solange CreateIssueAvailable True liefert.</summary>
+    class procedure CreateIssue; static;
   end;
 
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Core.Diagnostics.MainThread,
   System.Types,
   System.JSON,
@@ -189,6 +229,7 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.Results.Impact,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
@@ -198,17 +239,38 @@ uses
   Atlas.Core.Problems.InlineHints,
   Atlas.IDE.Editor.ChangeSignature,
   Atlas.IDE.Editor.MoveClass,
+  Atlas.IDE.Editor.ExtractInterface,
+  Atlas.IDE.Editor.ExtractSuperclass,
+  Atlas.IDE.Editor.MoveMember,
   Atlas.IDE.Editor.PropertyFromAccessors,
+  Atlas.IDE.Editor.InlineAccessor,
+  Atlas.IDE.Editor.SafeDelete,
+  Atlas.Core.Editor.SafeDelete,
   Atlas.IDE.Editor.InvertBoolean,
+  Atlas.IDE.Editor.DisableWarning,
+  Atlas.IDE.Editor.MissingUnit,
+  Atlas.IDE.Editor.PromoteVariable,
+  Atlas.IDE.Editor.AnonymousMethod,
+  Atlas.IDE.Editor.MethodKind,
+  Atlas.IDE.Editor.TypeAlias,
+  Atlas.IDE.Editor.EnumTables,
   Atlas.IDE.Editor.EnterWatch,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
   Atlas.IDE.Editor.LinkedEditing,
   Atlas.IDE.Editor.SmartPaste,
   Atlas.IDE.Editor.Unwrap,
+  Atlas.IDE.Debug.StepInto,
+  Atlas.IDE.Debug.StepFilter,
+  Atlas.IDE.Editor.ExpressionType,
+  Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.EditorToolbar.Service,
+  Atlas.IDE.SymbolPath.Service,
   Atlas.Core.Editor.WorkspacePlan,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.Core.Results.Model,
+  Atlas.UI.Results.Frame,
+  Atlas.UI.Results.RenamePreview;
 
 const
   // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
@@ -219,6 +281,7 @@ const
   OpenFileCommand = 'atlas.openFile';
   GoToPositionCommand = 'atlas.goToPosition';
   ShowSignatureHelpCommand = 'atlas.showSignatureHelp';
+  ShowUnitRelationsCommand = 'atlas.showUnitRelations';
   QualifiedNameCommand = 'atlas.server.qualifiedName';
   TestUnitCommand = 'atlas.server.testUnit';
 
@@ -298,6 +361,24 @@ begin
     begin
       TAtlasIdeUnwrap.Dismiss;
     end);
+  // Gezielt hineinspringen (#836): die Liste gehört zum Ausführungspunkt in der bisherigen Ansicht.
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeStepInto.Dismiss;
+    end);
+  // Typ des Ausdrucks (#689): Der Tooltip gilt nur in seiner Ansicht.
+  TAtlasGuard.Run(TAtlasFeature.ExpressionType,
+    procedure
+    begin
+      TAtlasIdeExpressionType.Dismiss;
+    end);
+  // Methodenreihenfolge (#660): Neue Rümpfe zählen gegen den Stand der neuen Ansicht.
+  TAtlasGuard.Run(TAtlasFeature.MethodPlacement,
+    procedure
+    begin
+      TAtlasIdeMethodPlacement.Dismiss;
+    end);
 end;
 
 procedure TEditorNotifier.EditorViewModified(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
@@ -341,6 +422,18 @@ begin
     procedure
     begin
       TAtlasIdeUnwrap.EditorModified;
+    end);
+  // Typ des Ausdrucks (#689): Jede Änderung schließt den Tooltip.
+  TAtlasGuard.Run(TAtlasFeature.ExpressionType,
+    procedure
+    begin
+      TAtlasIdeExpressionType.EditorModified;
+    end);
+  // Methodenreihenfolge (#660): nach der Ruhezeit auf neue Rümpfe sehen.
+  TAtlasGuard.Run(TAtlasFeature.MethodPlacement,
+    procedure
+    begin
+      TAtlasIdeMethodPlacement.EditorModified;
     end);
 end;
 
@@ -471,10 +564,63 @@ begin
     begin
       FormatCode;
     end);
+  // Gezielt hineinspringen (#836); aus oder ohne angehaltenes Programm meldet der Aufruf das.
+  FContextMenu.AddGuarded(TAtlasFeature.Debugger, 'Atlas.StepIntoTarget',
+    TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand),
+    function: Integer
+    begin
+      Result := 0;
+      if TAtlasIdeSettings.Current.DebugStepIntoTarget then
+        Result := TAtlasIdeSettings.Current.DebugStepIntoTargetKey;
+    end,
+    procedure
+    begin
+      TAtlasIdeStepInto.Run;
+    end);
+  // Schrittfilter (#850): Routine an der Schreibmarke als Muster in debug.stepFilters.patterns aufnehmen bzw.
+  // entfernen; der Aufruf meldet, was danach noch filtert.
+  FContextMenu.AddGuarded(TAtlasFeature.Debugger, 'Atlas.StepFilterSkip',
+    TAtlasStrings.Text(TAtlasTextId.StepFilterSkipCommand), nil,
+    procedure
+    begin
+      TAtlasIdeDebugStepFilter.SkipAtCursor;
+    end);
+  FContextMenu.AddGuarded(TAtlasFeature.Debugger, 'Atlas.StepFilterUnskip',
+    TAtlasStrings.Text(TAtlasTextId.StepFilterUnskipCommand), nil,
+    procedure
+    begin
+      TAtlasIdeDebugStepFilter.UnskipAtCursor;
+    end);
+  // Methodenrümpfe wie die Klasse ordnen (#660); abgeschaltet meldet der Aufruf das.
+  FContextMenu.AddGuarded(TAtlasFeature.MethodPlacement, 'Atlas.MethodOrder',
+    TAtlasStrings.Text(TAtlasTextId.MethodOrderCommand), nil,
+    procedure
+    begin
+      TAtlasIdeMethodPlacement.Run;
+    end);
   FContextMenu.Add('Atlas.References', TAtlasStrings.Text(TAtlasTextId.MenuReferences), nil,
     procedure
     begin
       TAtlasIdeResults.FindReferences;
+    end);
+  // Aufrufdiagramm (#1122): Das Kontextmenü entsteht einmal, deshalb gilt callHierarchy.diagram hier ab dem
+  // nächsten Start; Palette und Menü Atlas folgen sofort.
+  if TAtlasIdeResults.CallDiagramAllowed then
+    FContextMenu.AddGuarded(TAtlasFeature.Results, 'Atlas.CallDiagram',
+      TAtlasStrings.Text(TAtlasTextId.CallDiagramCommand), nil,
+      procedure
+      begin
+        TAtlasIdeResults.ShowCallDiagram;
+      end);
+  // Auswirkungen anzeigen (#1120), nur mit navigation.impact.
+  FContextMenu.AddWhen(TAtlasFeature.Results, 'Atlas.Impact', TAtlasStrings.Text(TAtlasTextId.ImpactCommand), nil,
+    procedure
+    begin
+      TAtlasIdeImpact.ShowAtCursor;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeImpact.Enabled;
     end);
   FContextMenu.Add('-', nil, nil);
   FContextMenu.Add('Atlas.SwitchTestUnit', TAtlasStrings.Text(TAtlasTextId.EditorTestUnit),
@@ -512,6 +658,17 @@ begin
     procedure
     begin
       CopyQualifiedName(True);
+    end);
+  // Weg zwischen Symbolen (#1117).
+  FContextMenu.AddWhen(TAtlasFeature.SymbolPath, 'Atlas.SymbolPath',
+    TAtlasStrings.Text(TAtlasTextId.SymbolPathFromHere), nil,
+    procedure
+    begin
+      SymbolPathFromHere;
+    end,
+    function: Boolean
+    begin
+      Result := TAtlasIdeSymbolPath.Enabled;
     end);
   // Atlas-Änderungen über mehrere Dateien (#721).
   FContextMenu.Add('-', nil, nil);
@@ -604,6 +761,21 @@ begin
     begin
       StepProblem(False);
     end);
+  // Issue anlegen (#1268): aus Auswahl bzw. TODO an der Schreibmarke, nur mit issues.create.
+  FContextMenu.AddWhen(TAtlasFeature.WelcomePage, 'Atlas.CreateIssue',
+    TAtlasStrings.Text(TAtlasTextId.CreateIssueCommand),
+    function: Integer
+    begin
+      Result := TAtlasIdeSettings.Current.CreateIssueKey;
+    end,
+    procedure
+    begin
+      CreateIssue;
+    end,
+    function: Boolean
+    begin
+      Result := Assigned(FCreateIssueAvailable) and FCreateIssueAvailable();
+    end);
   // Ausblenden am Element (#628): nach einem Rechtsklick auf ein Element im Text oder in der Rinne für dieses.
   FContextMenu.Add('-', nil, nil);
   FContextMenu.AddGuarded(TAtlasFeature.Hide, 'Atlas.HideElement', TAtlasStrings.Text(TAtlasTextId.HideElementCommand),
@@ -638,12 +810,27 @@ begin
   FProblemsOf := nil;
   FOnPlaceholders := nil;
   FOnSignatureHelp := nil;
+  FOnUnitRelations := nil;
+  FOnCreateIssue := nil;
+  FCreateIssueAvailable := nil;
+end;
+
+class procedure TAtlasIdeEditorCommands.CreateIssue;
+begin
+  if Assigned(FOnCreateIssue) and Assigned(FCreateIssueAvailable) and FCreateIssueAvailable() then
+    FOnCreateIssue();
 end;
 
 class procedure TAtlasIdeEditorCommands.EnsureContextMenus;
 begin
   if FContextMenu <> nil then
     FContextMenu.EnsureAll;
+end;
+
+class procedure TAtlasIdeEditorCommands.UpdateContextMenus;
+begin
+  if FContextMenu <> nil then
+    FContextMenu.UpdateVisibility;
 end;
 
 class function TAtlasIdeEditorCommands.Session: TLspSession;
@@ -828,6 +1015,24 @@ begin
     Result := TTextDefines.Predefined(Target.Platform, CompilerVersion) + Target.Defines;
 end;
 
+class procedure TAtlasIdeEditorCommands.SafeDelete;
+var
+  View: IOTAEditView;
+  FileName: string;
+  Lines: TArray<string>;
+  Selection: TLspRange;
+begin
+  if not Current(View, FileName, Lines, Selection) then
+    Exit;
+  TAtlasIdeSafeDelete.Execute(Session, TAtlasSafeDelete.Arguments(TLspSession.PathToUri(FileName),
+    Selection.StartPos.Line, Selection.StartPos.Character),
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+    procedure(AText: string)
+    begin
+      Say(AText);
+    end);
+end;
+
 class function TAtlasIdeEditorCommands.TryToggleMethod: Boolean;
 var
   Editors: IOTAEditorServices;
@@ -1006,7 +1211,25 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.EditorMethodToggleNone));
 end;
 
-class procedure TAtlasIdeEditorCommands.CopyQualifiedName(AWithParameters: Boolean);
+class procedure TAtlasIdeEditorCommands.SymbolPathFromHere;
+var
+  Name: string;
+begin
+  if not TAtlasIdeSymbolPath.Enabled then
+    Exit;
+  // Ohne Symbol am Cursor trotzdem den Dialog: „Von“ lässt sich dort eintippen.
+  if not QualifiedNameHere(Name) then
+    Name := '';
+  TAtlasIdeSymbolPath.ShowDialogFrom(Name);
+end;
+
+class procedure TAtlasIdeEditorCommands.ApplySettings;
+begin
+  if FContextMenu <> nil then
+    FContextMenu.UpdateVisibility;
+end;
+
+class function TAtlasIdeEditorCommands.FetchQualifiedName(AWithParameters: Boolean; out AName: string): Boolean;
 var
   View: IOTAEditView;
   FileName, Arguments: string;
@@ -1015,6 +1238,8 @@ var
   Values: TJSONArray;
   Answer: TJSONValue;
 begin
+  AName := '';
+  Result := False;
   if not Current(View, FileName, Lines, Selection) then
     Exit;
   Values := TJSONArray.Create;
@@ -1037,16 +1262,32 @@ begin
     end;
   end;
   try
-    if not (Answer is TJSONString) or (Answer.Value = '') then
-    begin
-      Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
-      Exit;
-    end;
-    Clipboard.AsText := Answer.Value;
-    Say(TAtlasStrings.Fmt(TAtlasTextId.EditorCopied, [Answer.Value]));
+    if Answer is TJSONString then
+      AName := Answer.Value;
+    Result := True;
   finally
     Answer.Free;
   end;
+end;
+
+class function TAtlasIdeEditorCommands.QualifiedNameHere(out AName: string): Boolean;
+begin
+  Result := FetchQualifiedName(False, AName) and (AName <> '');
+end;
+
+class procedure TAtlasIdeEditorCommands.CopyQualifiedName(AWithParameters: Boolean);
+var
+  Name: string;
+begin
+  if not FetchQualifiedName(AWithParameters, Name) then
+    Exit;
+  if Name = '' then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
+    Exit;
+  end;
+  Clipboard.AsText := Name;
+  Say(TAtlasStrings.Fmt(TAtlasTextId.EditorCopied, [Name]));
 end;
 
 class procedure TAtlasIdeEditorCommands.FormatCode;
@@ -1214,6 +1455,10 @@ begin
   for Action in Found do
     if not Action.Preferred and (Action.Disabled = '') then
       Usable := Usable + [Action];
+  // Hinweis statt Aktion (#663): am Ende, wählen nennt den Grund.
+  for Action in Found do
+    if Action.Disabled <> '' then
+      Usable := Usable + [Action];
   if Length(Usable) = 0 then
   begin
     Say(TAtlasStrings.Text(TAtlasTextId.EditorNoActions));
@@ -1226,6 +1471,8 @@ begin
     Command.Id := IntToStr(Index);
     Command.Caption := Usable[Index].Title;
     Command.Path := KindCaption(Usable[Index].Kind);
+    if Usable[Index].Disabled <> '' then
+      Command.Path := TAtlasStrings.Text(TAtlasTextId.EditorActionNote);
     if Usable[Index].Preferred then
       Command.ShortCut := '★';
     Commands := Commands + [Command];
@@ -1289,13 +1536,38 @@ begin
   Say(TAtlasStrings.Text(TAtlasTextId.UsesActionMissing));
 end;
 
+class function TAtlasIdeEditorCommands.ConfirmPreview(const AAction: TLspCodeAction): Boolean;
+var
+  Preview: TArray<TAtlasResultEntry>;
+  Open: TAtlasResultsOpen;
+begin
+  Preview := TAtlasResults.RenamePreview(AAction.Edit,
+    function(const AFileName: string): string
+    begin
+      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
+    end);
+  Open :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      TAtlasIdeNavigation.GoToLocation(AFileName, ALine, ACharacter);
+    end;
+  Result := TAtlasRenamePreview.Execute(AAction.Title, AAction.Preview, TAtlasResults.Group(Preview), Open);
+end;
+
 class procedure TAtlasIdeEditorCommands.Apply(const AAction: TLspCodeAction);
 var
   Outcome: TAtlasWorkspaceEditResult;
 begin
+  if AAction.Disabled <> '' then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditorActionDisabled, [AAction.Title, AAction.Disabled]));
+    Exit;
+  end;
   // LSP: erst die Änderung, dann der Befehl.
   if not AAction.Edit.IsEmpty then
   begin
+    if (AAction.Preview <> '') and not ConfirmPreview(AAction) then
+      Exit;
     Outcome := TAtlasIdeWorkspaceEdit.Apply(AAction.Edit,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       AAction.Title);
@@ -1376,6 +1648,13 @@ begin
     end;
     Exit;
   end;
+  if ACommand = ShowUnitRelationsCommand then
+  begin
+    // Client-Befehl: „Graph zeigen“ an einem Unit-Zyklus (#896).
+    if Assigned(FOnUnitRelations) then
+      FOnUnitRelations();
+    Exit;
+  end;
   if ACommand = TAtlasIdeChangeSignature.ClientCommand then
   begin
     // Client-Befehl: Dialog „Signatur ändern“ (#100); er fragt den Server selbst.
@@ -1398,10 +1677,193 @@ begin
       end);
     Exit;
   end;
+  if ACommand = TAtlasIdeInlineAccessor.ClientCommand then
+  begin
+    // Client-Befehl: Vorschau „Zugriffsmethode durch Feld ersetzen“ (#717); er fragt den Server selbst.
+    TAtlasIdeInlineAccessor.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeSafeDelete.ClientCommand then
+  begin
+    // Client-Befehl: „Sicher löschen“ (#716) prüfen, nachfragen, löschen; er fragt den Server selbst.
+    TAtlasIdeSafeDelete.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
   if ACommand = TAtlasIdeInvertBoolean.ClientCommand then
   begin
     // Client-Befehl: Namen abfragen und „Boolean umkehren“ (#715); er fragt den Server selbst.
     TAtlasIdeInvertBoolean.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeDisableWarning.ClientCommand then
+  begin
+    // Client-Befehl: Begründung abfragen und Schalter um die Meldung setzen (#531); er fragt den Server selbst.
+    TAtlasIdeDisableWarning.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeDisableWarning.ProjectCommand then
+  begin
+    // Client-Befehl: Warnung nach Rückfrage in den Projektoptionen abschalten (#531).
+    TAtlasIdeDisableWarning.ExecuteProject(AArgumentsJson,
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMissingUnit.SearchPathCommand then
+  begin
+    // Client-Befehl: Ordner in den Suchpfad des Projekts (#550).
+    TAtlasIdeMissingUnit.AddSearchPath(AArgumentsJson,
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMissingUnit.AddUnitCommand then
+  begin
+    // Client-Befehl: gefundene Unit ins Projekt aufnehmen (#550).
+    TAtlasIdeMissingUnit.AddUnit(AArgumentsJson,
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMissingUnit.InfoCommand then
+  begin
+    // Client-Befehl: Hinweis anzeigen, etwa die durchsuchten Orte (#550).
+    TAtlasIdeMissingUnit.ShowInfo(AArgumentsJson,
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdePromoteVariable.ClientCommand then
+  begin
+    // Client-Befehl: Namen abfragen und „Lokale Variable und Feld umwandeln“ (#668); er fragt den Server selbst.
+    TAtlasIdePromoteVariable.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeAnonymousMethod.ClientCommand then
+  begin
+    // Client-Befehl: Namen abfragen und „Anonyme Methode in Methode umwandeln“ (#680); er fragt den Server selbst.
+    TAtlasIdeAnonymousMethod.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMethodKind.ClientCommand then
+  begin
+    // Client-Befehl: Methode ohne Self umwandeln (#686); er fragt den Server selbst, ohne Namensabfrage.
+    TAtlasIdeMethodKind.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeTypeAlias.ClientCommand then
+  begin
+    // Client-Befehl: Namen abfragen und „Typ-Alias einführen“ (#681); er fragt den Server selbst.
+    TAtlasIdeTypeAlias.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeTypeAlias.InlineClientCommand then
+  begin
+    // Client-Befehl: „Alias auflösen“ (#681), ohne Namensabfrage.
+    TAtlasIdeTypeAlias.ExecuteInline(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeEnumTables.ClientCommand then
+  begin
+    // Client-Befehl: Namen abfragen und „Namenstabelle anlegen“ (#667); er fragt den Server selbst.
+    TAtlasIdeEnumTables.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeEnumTables.SyncClientCommand then
+  begin
+    // Client-Befehl: „Tabellen nachziehen“ (#667), ohne Namensabfrage.
+    TAtlasIdeEnumTables.ExecuteSync(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeExtractInterface.ClientCommand then
+  begin
+    // Client-Befehl: Dialog und „Interface herauslösen“ (#664); er fragt den Server selbst.
+    TAtlasIdeExtractInterface.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeExtractSuperclass.ClientCommand then
+  begin
+    // Client-Befehl: Dialog und „Basisklasse herauslösen“ (#713); er fragt den Server selbst.
+    TAtlasIdeExtractSuperclass.Execute(Session, AArgumentsJson,
+      TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
+      procedure(AText: string)
+      begin
+        Say(AText);
+      end);
+    Exit;
+  end;
+  if ACommand = TAtlasIdeMoveMember.ClientCommand then
+  begin
+    // Client-Befehl: Dialog und „Mitglied verschieben“ (#675); er fragt den Server selbst.
+    TAtlasIdeMoveMember.Execute(Session, AArgumentsJson,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
       procedure(AText: string)
       begin

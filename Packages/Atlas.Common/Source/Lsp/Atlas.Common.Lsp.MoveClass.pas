@@ -63,62 +63,16 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.TestUnits,
-  Atlas.Common.Editing.UnitTemplates,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions;
-
-type
-  TFileEdits = record
-    FileName: string;
-    Edits: TArray<TTextEdit>;
-  end;
-
-procedure AddEdits(var AFiles: TArray<TFileEdits>; const AFileName: string; const AEdits: TArray<TTextEdit>);
-var
-  Index: Integer;
-  Item: TFileEdits;
-begin
-  if AEdits = nil then
-    Exit;
-  for Index := 0 to High(AFiles) do
-    if SameText(AFiles[Index].FileName, AFileName) then
-    begin
-      AFiles[Index].Edits := AFiles[Index].Edits + AEdits;
-      Exit;
-    end;
-  Item.FileName := AFileName;
-  Item.Edits := AEdits;
-  AFiles := AFiles + [Item];
-end;
-
-function DocumentEdit(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
-var
-  Document, Item: TJSONObject;
-  Edits: TJSONArray;
-  Edit: TTextEdit;
-begin
-  Document := TJSONObject.Create;
-  Document.AddPair('uri', AUri);
-  Document.AddPair('version', TJSONNull.Create);
-  Edits := TJSONArray.Create;
-  for Edit in AEdits do
-  begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    Edits.AddElement(Item);
-  end;
-  Result := TJSONObject.Create;
-  Result.AddPair('textDocument', Document);
-  Result.AddPair('edits', Edits);
-end;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Lsp.WorkspaceChanges;
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
@@ -202,21 +156,17 @@ class function TLspMoveClass.Execute(AResolver: TNameResolver; ATree: TSyntaxTre
   const APosition: TTextPosition; const AUnitName: string; const AContext: TMoveClassContext): TJSONObject;
 var
   Plan: TMoveClassPlan;
-  Reason, NewFile, NewUri, Text, Relative, MainSource, ProjectFile: string;
+  Reason, NewFile, Text, MainSource: string;
   Decl: TSyntaxNode;
   Item: TProjectUnit;
-  Files: TArray<TFileEdits>;
-  FileEdit: TFileEdits;
+  Changes: TWorkspaceChanges;
   References: TArray<TReferenceLocation>;
   Location: TReferenceLocation;
   Users: TArray<string>;
   User: string;
   Ranges: TArray<TTextRange>;
   Edits: TArray<TTextEdit>;
-  Edit: TTextEdit;
   Tree: TSyntaxTree;
-  Changes, Warnings: TJSONArray;
-  Creation, Options, WorkspaceEdit: TJSONObject;
   Known: Boolean;
 begin
   Decl := TMoveClass.ClassAt(ATree, APosition);
@@ -239,84 +189,54 @@ begin
   finally
     AResolver.UnpinTree;
   end;
-  Files := nil;
-  AddEdits(Files, AFileName, Plan.OriginEdits);
-  MainSource := '';
-  if AContext.HasProject then
-    MainSource := AContext.Project.MainSource;
-  Users := nil;
-  for Location in References do
-  begin
-    Known := SameText(Location.FileName, AFileName) or not IsSource(Location.FileName);
-    for User in Users do
-      if SameText(User, Location.FileName) then
-        Known := True;
-    if not Known then
-      Users := Users + [Location.FileName];
-  end;
-  for User in Users do
-  begin
-    if not (Assigned(AContext.ReadText) and AContext.ReadText(User, Text)) then
-      Continue;
-    Ranges := nil;
+  Changes := TWorkspaceChanges.Create;
+  try
+    // documentChanges: erst die neue Datei, dann die Änderungen je Datei.
+    Changes.CreateFile(NewFile, Plan.Text);
+    Changes.Add(AFileName, Plan.OriginEdits);
+    MainSource := '';
+    if AContext.HasProject then
+      MainSource := AContext.Project.MainSource;
+    Users := nil;
     for Location in References do
-      if SameText(Location.FileName, User) then
-        Ranges := Ranges + [Location.Range];
-    Tree := TSyntaxTreeCache.Parse(Text);
-    try
-      // Die Hauptdatei des Projekts erhält die Unit unten mit Pfad.
-      if TMoveClass.UpdateUser(Text, Tree, Plan.OriginUnit, Plan.NewUnit, Plan.ClassName, Ranges,
-        not SameText(User, MainSource), Edits) then
-        AddEdits(Files, User, Edits);
-    finally
-      Tree.Free;
+    begin
+      Known := SameText(Location.FileName, AFileName) or not IsSource(Location.FileName);
+      for User in Users do
+        if SameText(User, Location.FileName) then
+          Known := True;
+      if not Known then
+        Users := Users + [Location.FileName];
     end;
+    for User in Users do
+    begin
+      if not (Assigned(AContext.ReadText) and AContext.ReadText(User, Text)) then
+        Continue;
+      Ranges := nil;
+      for Location in References do
+        if SameText(Location.FileName, User) then
+          Ranges := Ranges + [Location.Range];
+      Tree := TSyntaxTreeCache.Parse(Text);
+      try
+        // Die Hauptdatei des Projekts erhält die Unit unten mit Pfad.
+        if TMoveClass.UpdateUser(Text, Tree, Plan.OriginUnit, Plan.NewUnit, Plan.ClassName, Ranges,
+          not SameText(User, MainSource), Edits) then
+          Changes.Add(User, Edits);
+      finally
+        Tree.Free;
+      end;
+    end;
+    // Projekt: uses bzw. contains der .dpr/.dpk und DCCReference der .dproj, jeweils mit relativem Pfad.
+    Changes.RegisterUnit(AContext.HasProject, AContext.Project, AContext.ReadText, NewFile, Plan.NewUnit);
+    if Plan.Unresolved <> nil then
+      Changes.Warn(Format('Unbekannte Herkunft von %s: Die neue Unit übernimmt dafür die uses der Ursprungs-Unit.',
+        [string.Join(', ', Plan.Unresolved)]));
+    Result := TJSONObject.Create;
+    Result.AddPair('edit', Changes.ToJson);
+    Result.AddPair('file', TDocumentUris.FromPath(NewFile));
+    Result.AddPair('warnings', Changes.WarningsJson);
+  finally
+    Changes.Free;
   end;
-  // Projekt: uses bzw. contains der .dpr/.dpk und DCCReference der .dproj, jeweils mit relativem Pfad.
-  Warnings := TJSONArray.Create;
-  if AContext.HasProject then
-  begin
-    if (MainSource <> '') and Assigned(AContext.ReadText) and AContext.ReadText(MainSource, Text) then
-    begin
-      Relative := TTestUnits.RelativePath(TProjectPaths.DirectoryOf(MainSource), NewFile);
-      if TUnitTemplates.UnitProgramEdit(Text, Plan.NewUnit, Relative, Edit) then
-        AddEdits(Files, MainSource, [Edit])
-      else
-        Warnings.Add(Format('%s hat kein uses bzw. contains für die neue Unit', [ExtractFileName(MainSource)]));
-    end;
-    ProjectFile := AContext.Project.FileName;
-    if Assigned(AContext.ReadText) and AContext.ReadText(ProjectFile, Text) then
-    begin
-      Relative := TTestUnits.RelativePath(TProjectPaths.DirectoryOf(ProjectFile), NewFile);
-      if (Pos('"' + Relative + '"', Text) = 0) and
-        TUnitTemplates.ProjectEdit(Text, Relative, '', TFormKind.Form, False, Edit) then
-        AddEdits(Files, ProjectFile, [Edit]);
-    end;
-  end
-  else
-    Warnings.Add('Kein Projekt geladen: Die neue Unit steht in keiner .dpr, .dpk oder .dproj.');
-  if Plan.Unresolved <> nil then
-    Warnings.Add(Format('Unbekannte Herkunft von %s: Die neue Unit übernimmt dafür die uses der Ursprungs-Unit.',
-      [string.Join(', ', Plan.Unresolved)]));
-  // documentChanges: erst die neue Datei, dann die Änderungen je Datei.
-  NewUri := TDocumentUris.FromPath(NewFile);
-  Changes := TJSONArray.Create;
-  Creation := TJSONObject.Create;
-  Creation.AddPair('kind', 'create');
-  Creation.AddPair('uri', NewUri);
-  Options := TJSONObject.Create;
-  Options.AddPair('ignoreIfExists', TJSONBool.Create(False));
-  Creation.AddPair('options', Options);
-  Changes.AddElement(Creation);
-  Changes.AddElement(DocumentEdit(NewUri, [TTextEdit.Create(TTextRange.Create(0, 0, 0, 0), Plan.Text)]));
-  for FileEdit in Files do
-    Changes.AddElement(DocumentEdit(TDocumentUris.FromPath(FileEdit.FileName), FileEdit.Edits));
-  WorkspaceEdit := TJSONObject.Create;
-  WorkspaceEdit.AddPair('documentChanges', Changes);
-  Result := TJSONObject.Create;
-  Result.AddPair('edit', WorkspaceEdit);
-  Result.AddPair('file', NewUri);
-  Result.AddPair('warnings', Warnings);
 end;
 
 end.

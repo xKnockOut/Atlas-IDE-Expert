@@ -10,11 +10,14 @@
 // x-control (Bedienelement laut Issue), examples (Vorschläge für Textfelder),
 // x-restart (wirkt erst nach Neustart) und x-scope (Ort: "global" =
 // settings.json, "project" = atlas.json; ein Glied erbt den Ort seines
-// Objekts) werden mitgelesen.
+// Objekts) werden mitgelesen. Ein Glied mit eigenem x-page steht auf dieser
+// Seite (#896: diagnostics.usesCycleLive unter Prüfregeln, die übrigen
+// diagnostics.* unter Robustheit).
 
 interface
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON;
 
@@ -55,7 +58,8 @@ type
   public
     /// <summary>Felder in der Reihenfolge des Schemas; leer bei ungültigem Schema.</summary>
     class function Fields(const ASchemaJson: string): TArray<TAtlasSettingField>; static;
-    /// <summary>Felder eines Orts: AGlobal = settings.json, sonst atlas.json; ohne die Pfade in AExclude.</summary>
+    /// <summary>Felder eines Orts: AGlobal = settings.json, sonst atlas.json; ohne die Pfade in AExclude und ohne
+    /// zusammengesetzte Felder, die einen davon enthalten (z. B. "vcs" mit "vcs.provider").</summary>
     class function ForScope(const AFields: TArray<TAtlasSettingField>; AGlobal: Boolean;
       const AExclude: TArray<string>): TArray<TAtlasSettingField>; static;
     /// <summary>Seiten in der Reihenfolge ihres ersten Felds.</summary>
@@ -196,7 +200,7 @@ var
   begin
     Result := Default(TAtlasSettingField);
     Result.Path := APath;
-    Result.Page := APage;
+    Result.Page := ASchema.GetValue<string>('x-page', APage);
     Result.Description := DescriptionOf(ASchema);
     if Result.Description = '' then
       Result.Description := AFallback;
@@ -272,7 +276,9 @@ begin
       Continue;
     Excluded := False;
     for Path in AExclude do
-      if SameText(Path, Field.Path) then
+      // Ein zusammengesetztes Feld (ganzes Objekt als JSON, z. B. "vcs" seit #1285) mit einem ausgeschlossenen
+      // Glied fällt mit weg: Es im Dialog als Ganzes zu bearbeiten, überschriebe die Werte der eigenen Seite.
+      if SameText(Path, Field.Path) or SameText(Copy(Path, 1, Length(Field.Path) + 1), Field.Path + '.') then
         Excluded := True;
     if not Excluded then
       Result := Result + [Field];

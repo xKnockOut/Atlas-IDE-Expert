@@ -32,6 +32,10 @@ type
     /// <summary>#862: hinter ^C in Konstanten der Code, nicht in Ausdrücken; abschaltbar; data.controlChar.</summary>
     [Test]
     procedure ControlCharCodesBehindConstants;
+    /// <summary>#686: „ohne Self“ hinter dem Kopf von Methoden ohne Self; aus in Default; data.methodWithoutSelf.
+    /// </summary>
+    [Test]
+    procedure MethodMarkersBehindHeaders;
     [Test]
     procedure SettingsSwitchHintsOffAndSort;
     /// <summary>#620: jede Blockart mit Beschriftung und Blockanfang, mit Mindestlänge 1.</summary>
@@ -373,6 +377,43 @@ begin
     Json := TLspInlayHints.ToJson(TLspInlayHints.ControlChars(Tree, Source, WholeFile));
     try
       Assert.AreEqual(27, Json.Items[1].GetValue<Integer>('data.controlChar.code'));
+    finally
+      Json.Free;
+    end;
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TLspInlayHintsTests.MethodMarkersBehindHeaders;
+const
+  Source = 'unit R;'#10'interface'#10'type'#10'  TRechner = class'#10'  private'#10'    FWert: Integer;'#10 +
+    '  public'#10'    function Doppelt(A: Integer): Integer;'#10'    function Wert: Integer;'#10'  end;'#10 +
+    'implementation'#10'function TRechner.Doppelt(A: Integer): Integer;'#10'begin'#10'  Result := A * 2;'#10 +
+    'end;'#10'function TRechner.Wert: Integer;'#10'begin'#10'  Result := FWert;'#10'end;'#10'end.';
+var
+  Tree: TSyntaxTree;
+  Settings: TInlayHintSettings;
+  Json: TJSONArray;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Settings := TInlayHintSettings.Default;
+    Settings.ParameterNames := False;
+    Settings.InferredTypes := False;
+    Settings.EndMarkers := False;
+    Settings.ControlChars := False;
+    // Vorgabe ist an (refactoring.methodKindMarker); hier erst ohne.
+    Settings.MethodWithoutSelf := False;
+    Assert.AreEqual('', Describe(TLspInlayHints.Collect(FResolver, FIndex, Tree, Source, 'R.pas', WholeFile,
+      Settings, nil)));
+    Settings.MethodWithoutSelf := True;
+    Assert.AreEqual('11:47 ohne Self|', Describe(TLspInlayHints.Collect(FResolver, FIndex, Tree, Source, 'R.pas',
+      WholeFile, Settings, nil)));
+    Json := TLspInlayHints.ToJson(TLspInlayHints.MethodMarkers(FResolver, Tree, Source, 'R.pas', WholeFile, nil));
+    try
+      Assert.AreEqual(1, Integer(Json.Count));
+      Assert.IsTrue(Json.Items[0].GetValue<Boolean>('data.methodWithoutSelf'));
     finally
       Json.Free;
     end;

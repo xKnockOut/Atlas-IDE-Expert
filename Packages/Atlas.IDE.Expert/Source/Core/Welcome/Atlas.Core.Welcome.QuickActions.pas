@@ -3,9 +3,11 @@
 // Schnellaktionen je Projekt auf der Willkommensseite (#764, Mockup #ws10),
 // Teil ohne VCL und Open Tools API:
 // - Knöpfe in fester Reihenfolge „Öffnen und bauen“, „Tests“, „Startprofil ▾“,
-//   „Pull“, „Ordner“, „Konsole“; welche erscheinen, legt
+//   „Pull“, „Ordner“, „Konsole“, „Aufgaben ▾“; welche erscheinen, legt
 //   welcomePage.quickActions.items fest (Liste aus build, tests, run, pull,
-//   folder, console; Vorgabe alle, leer = keiner).
+//   folder, console, tasks; Vorgabe alle, leer = keiner). „Aufgaben ▾“
+//   startet eine Projektaufgabe aus atlas.json (#900); die IDE-Schicht zeigt
+//   ihn nur bei eingeschalteten Aufgaben und mit Aufgaben im Projekt.
 // - Sperrlogik von „Pull“: gesperrt bei lokalen Änderungen im Projektordner
 //   (wie die Marke „N geändert“ des Bereichs „Projekte“, #592) mit dem Tooltip
 //   „Erst lokale Änderungen sichern“, ohne Arbeitskopie und solange auf dem
@@ -13,7 +15,9 @@
 //   prüft vor dem Holen die ganze Arbeitskopie noch einmal (geänderte
 //   versionierte Dateien sperren, unversionierte nicht) und holt dann nur
 //   vorwärts (Git: pull --ff-only, SVN: update; IAtlasVcsUpdate). Bei SVN
-//   heißt der Knopf „Aktualisieren“.
+//   heißt der Knopf „Aktualisieren“. vcs.externals.update (#1292) wählt bei
+//   SVN mit Externals bzw. ohne (--ignore-externals); „fragen“ gibt dem Knopf
+//   die Auswahl „mit Externals“/„ohne Externals“ (AskExternals).
 // - Zuordnung Projekt → Testprojekt ohne IDE: ein DUnitX-Programm ist sein
 //   eigenes Testprojekt; sonst die Testprojekte nach Namensmuster neben dem
 //   Projekt, in Tests\ bzw. Test\ darunter oder daneben (<Name>.Tests.dproj,
@@ -39,7 +43,7 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasQuickAction = (Build, Tests, Run, Pull, Folder, Console);
+  TAtlasQuickAction = (Build, Tests, Run, Pull, Folder, Console, Tasks);
   /// <summary>Stand einer Aktion je Projekt: läuft, fertig (ok bzw. fehlgeschlagen) oder nicht ausgeführt.</summary>
   TAtlasQuickActionPhase = (Idle, Running, Succeeded, Failed, Refused);
   /// <summary>Grund, aus dem „Pull“ gesperrt ist.</summary>
@@ -57,8 +61,11 @@ type
     Block: TAtlasPullBlock;
     /// <summary>Pull heißt „Aktualisieren“ (SVN).</summary>
     Update: Boolean;
-    /// <summary>Der Knopf hat eine Auswahl (▾): Konfiguration und Plattform bzw. Startprofil.</summary>
+    /// <summary>Der Knopf hat eine Auswahl (▾): Konfiguration und Plattform, Startprofil bzw. Aufgabe.</summary>
     HasMenu: Boolean;
+    /// <summary>Nur Pull unter SVN mit vcs.externals.update = ask (#1292): Auswahl „mit Externals“ bzw. „ohne
+    /// Externals“ statt sofort zu aktualisieren.</summary>
+    AskExternals: Boolean;
   end;
 
   TAtlasQuickActionButtons = TArray<TAtlasQuickActionButton>;
@@ -96,8 +103,8 @@ type
 
   TAtlasWelcomeQuickActions = class
   public const
-    Names: array[TAtlasQuickAction] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console');
-    DefaultItems = 'build,tests,run,pull,folder,console';
+    Names: array[TAtlasQuickAction] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
+    DefaultItems = 'build,tests,run,pull,folder,console,tasks';
     DefaultConsole = 'wt.exe';
     FallbackConsole = 'cmd.exe';
     /// <summary>Strg+B und Strg+T als TShortCut (scCtrl or Ord(Taste)).</summary>
@@ -167,6 +174,12 @@ type
     /// Ok.</summary>
     class function Pull(const AVcs: IAtlasVersionControl; out AReason: TAtlasVcsOutcome): TAtlasPullOutcome;
       overload; static;
+    /// <summary>Wie oben; AIgnoreExternals: SVN ohne Externals (svn update --ignore-externals, #1292), sonst wie
+    /// Pull. Git kennt das nicht und holt wie immer.</summary>
+    class function Pull(const AVcs: IAtlasVersionControl; AIgnoreExternals: Boolean;
+      out AReason: TAtlasVcsOutcome): TAtlasPullOutcome; overload; static;
+    /// <summary>Pull-Knöpfe unter SVN mit vcs.externals.update = ask bekommen die Auswahl (#1292).</summary>
+    class procedure AskExternals(var AButtons: TAtlasQuickActionButtons); static;
     /// <summary>„a\..\b“ und doppelte Trenner auflösen (Windows-Pfade, auch unter Linux in den Tests).</summary>
     class function CombinePath(const AFolder, ARelative: string): string; static;
   end;
@@ -393,7 +406,8 @@ begin
     // Die IDE öffnet immer nur ein Projekt zur Zeit.
     if AIdeBusy and UsesIde(Action) then
       Button.Enabled := False;
-    Button.HasMenu := (Action = TAtlasQuickAction.Build) or (Action = TAtlasQuickAction.Run);
+    Button.HasMenu := (Action = TAtlasQuickAction.Build) or (Action = TAtlasQuickAction.Run) or
+      (Action = TAtlasQuickAction.Tasks);
     if Action = TAtlasQuickAction.Pull then
     begin
       Button.Update := IsUpdate(AVcs);
@@ -692,11 +706,30 @@ end;
 
 class function TAtlasWelcomeQuickActions.Pull(const AVcs: IAtlasVersionControl;
   out AReason: TAtlasVcsOutcome): TAtlasPullOutcome;
+begin
+  Result := Pull(AVcs, False, AReason);
+end;
+
+class procedure TAtlasWelcomeQuickActions.AskExternals(var AButtons: TAtlasQuickActionButtons);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AButtons) do
+    if (AButtons[mIndex].Action = TAtlasQuickAction.Pull) and AButtons[mIndex].Update then
+    begin
+      AButtons[mIndex].AskExternals := True;
+      AButtons[mIndex].HasMenu := True;
+    end;
+end;
+
+class function TAtlasWelcomeQuickActions.Pull(const AVcs: IAtlasVersionControl; AIgnoreExternals: Boolean;
+  out AReason: TAtlasVcsOutcome): TAtlasPullOutcome;
 var
   Before, After: TAtlasVcsHead;
   Changes: TArray<TAtlasVcsChange>;
   Outcome: TAtlasVcsOutcome;
   Update: IAtlasVcsUpdate;
+  mExternals: IAtlasVcsSvnExternals;
 begin
   AReason := TAtlasVcsOutcome.Ok;
   if AVcs = nil then
@@ -713,12 +746,15 @@ begin
     Exit(TAtlasPullOutcome.Failed);
   if ChangesBlockPull(Changes) then
     Exit(TAtlasPullOutcome.Blocked);
-  if not Supports(AVcs, IAtlasVcsUpdate, Update) then
+  if AIgnoreExternals and Supports(AVcs, IAtlasVcsSvnExternals, mExternals) then
+    AReason := mExternals.Update(True)
+  else if Supports(AVcs, IAtlasVcsUpdate, Update) then
+    AReason := Update.Pull
+  else
   begin
     AReason := TAtlasVcsOutcome.Failed;
     Exit(TAtlasPullOutcome.Failed);
   end;
-  AReason := Update.Pull;
   if AReason <> TAtlasVcsOutcome.Ok then
     Exit(TAtlasPullOutcome.Failed);
   Result := TAtlasPullOutcome.UpToDate;

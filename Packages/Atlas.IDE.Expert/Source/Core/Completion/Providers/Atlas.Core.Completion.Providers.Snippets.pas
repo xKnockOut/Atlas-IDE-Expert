@@ -25,7 +25,7 @@ type
   protected
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
+      const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   public
     constructor Create(const ASnippets: TAtlasSnippetList);
     destructor Destroy; override;
@@ -160,11 +160,11 @@ begin
 end;
 
 function TAtlasSnippetCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems;
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
 var
   Snippets: TAtlasSnippetList;
 begin
-  AIncomplete := False;
+  AState := Default(TAtlasFetchState);
   Result := nil;
   if not IsSnippetContext(Copy(LineOf(AContext.Text, AContext.Line), 1, AContext.Character), AContext.Prefix) then
     Exit;

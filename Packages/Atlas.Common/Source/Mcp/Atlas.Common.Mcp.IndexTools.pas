@@ -3,6 +3,8 @@
 // Lesende MCP-Werkzeuge auf dem Symbolindex (#48). Die Ergebnisse sind kurzer
 // Text für ein Sprachmodell: Fundstellen mit Datei und Zeile (1-basiert) statt
 // ganzer Quelltexte, damit das Modell Dateien nicht vollständig lesen muss.
+// Begründungen (// WHY: …, #1123) hängt Declaration als Abschnitt an;
+// Rationale listet sie für eine Unit oder ein Symbol (get_rationale).
 
 interface
 
@@ -10,12 +12,15 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Lsp.Rationale;
 
 type
   TMcpReadText = reference to function(const AFileName: string; out AText: string): Boolean;
   /// <summary>Package (.dpk), das die Unit in contains führt; '' ohne.</summary>
   TMcpPackageOf = reference to function(const AUnitName: string): string;
+  /// <summary>Einstellungen der Begründungen (#1123) des Arbeitsbereichs.</summary>
+  TMcpRationaleOptions = reference to function: TRationaleOptions;
 
   /// <summary>Eintrag aus RegisterComponents('Seite', [TKlasse, …]).</summary>
   TComponentRegistration = record
@@ -32,6 +37,8 @@ type
     FIndex: ISymbolIndex;
     FReadText: TMcpReadText;
     FPackageOf: TMcpPackageOf;
+    FRationaleOptions: TMcpRationaleOptions;
+    function RationaleOptions: TRationaleOptions;
     function TypeMatches(const AName: string): TArray<TSymbolLocation>;
     procedure AddDescendants(ALines: TStrings; const ATypeName: string; ADepth: Integer;
       AVisited: TDictionary<string, Boolean>);
@@ -42,8 +49,12 @@ type
     function Matches(const AName: string): TArray<TSymbolLocation>;
     /// <summary>Symbole nach Name ("Bar" oder "TFoo.Bar"); ohne exakten Treffer Teilstring-Suche.</summary>
     function FindSymbol(const AQuery: string): string;
-    /// <summary>Quelltext der Deklaration(en) mit Fundstelle.</summary>
+    /// <summary>Quelltext der Deklaration(en) mit Fundstelle, dazu Begründungen (#1123), wenn hints.rationale an
+    /// ist.</summary>
     function Declaration(const AQuery: string): string;
+    /// <summary>get_rationale (#1123): Begründungen der Unit AUnitOrFile (Name oder Pfad) samt ihrer Symbole bzw.
+    /// des Symbols AName mit Fundstelle; genau eins von beiden ist gesetzt.</summary>
+    function Rationale(const AUnitOrFile, AName: string): string;
     /// <summary>Vorfahren (bis zur Wurzel) und Nachfahren (rekursiv) eines Typs.</summary>
     function TypeHierarchy(const ATypeName: string): string;
     /// <summary>uses-Listen und Symbole einer Unit (Name oder Dateipfad).</summary>
@@ -57,6 +68,8 @@ type
     class function PackageContains(const ADpkText, AUnitName: string): Boolean; static;
     /// <summary>Für ComponentInfo; ohne Zuweisung ist das Package unbekannt.</summary>
     property PackageOf: TMcpPackageOf read FPackageOf write FPackageOf;
+    /// <summary>Ohne Zuweisung gelten TRationaleOptions.Default.</summary>
+    property RationaleOptionsFunc: TMcpRationaleOptions read FRationaleOptions write FRationaleOptions;
     /// <summary>Komponentenbaum mit Typen, Ereignissen und Eigenschaften eines Formulars.</summary>
     class function DfmInfo(const AText: string): string; static;
     class function KindName(AKind: TIndexSymbolKind): string; static;
@@ -67,6 +80,7 @@ implementation
 
 uses
   System.StrUtils,
+  Atlas.Common.Rationale.Contract,
   Atlas.Common.Lsp.PublishedMembers,
   Atlas.Common.Dfm.FormInfo;
 
@@ -225,13 +239,43 @@ begin
   end;
 end;
 
+function TMcpIndexTools.RationaleOptions: TRationaleOptions;
+begin
+  if Assigned(FRationaleOptions) then
+    Result := FRationaleOptions()
+  else
+    Result := TRationaleOptions.Default;
+end;
+
+/// <summary>"- WHY (Zeile 12): Text" je Eintrag (Zeilen ab 1).</summary>
+procedure AddEntries(ALines: TStrings; const AEntries: TArray<TRationaleEntry>);
+var
+  mEntry: TRationaleEntry;
+begin
+  for mEntry in AEntries do
+    ALines.Add(Format('- %s (Zeile %d): %s', [mEntry.Marker, mEntry.Line + 1, mEntry.Text]));
+end;
+
+/// <summary>Begründungen des Symbols an ALocation samt Implementierung bzw. Deklaration; leer ohne Unit.</summary>
+function EntriesOf(const AIndex: ISymbolIndex; const ALocation: TSymbolLocation): TArray<TRationaleEntry>;
+var
+  mUnit: TUnitIndex;
+begin
+  Result := nil;
+  if AIndex.FindUnit(ALocation.UnitName, mUnit) then
+    Result := TLspRationale.OfSymbol(mUnit, ALocation.Symbol);
+end;
+
 function TMcpIndexTools.Declaration(const AQuery: string): string;
 var
   Lines, Source: TStringList;
   Location: TSymbolLocation;
   Text: string;
   Line, Count: Integer;
+  Options: TRationaleOptions;
+  Entries: TArray<TRationaleEntry>;
 begin
+  Options := RationaleOptions;
   Lines := TStringList.Create;
   Source := TStringList.Create;
   try
@@ -254,12 +298,89 @@ begin
           if (Line >= 0) and (Line < Source.Count) then
             Lines.Add(Source[Line]);
       end;
+      // Begründungen (#1123): über der Deklaration und im Rumpf der Implementierung.
+      Entries := TLspRationale.Select(EntriesOf(FIndex, Location), Options);
+      if Length(Entries) > 0 then
+      begin
+        Lines.Add('Begründungen:');
+        AddEntries(Lines, Entries);
+      end;
     end;
     if Count = 0 then
       Exit(Format('Kein Symbol "%s" im Index.', [AQuery]));
     Result := JoinLines(Lines);
   finally
     Source.Free;
+    Lines.Free;
+  end;
+end;
+
+function TMcpIndexTools.Rationale(const AUnitOrFile, AName: string): string;
+var
+  Lines: TStringList;
+  Options: TRationaleOptions;
+  UnitIndex: TUnitIndex;
+  Symbol: TIndexSymbol;
+  Location: TSymbolLocation;
+  Entries: TArray<TRationaleEntry>;
+  Count: Integer;
+begin
+  if (Trim(AUnitOrFile) = '') = (Trim(AName) = '') then
+    Exit('Genau eins von "unit" und "name" angeben.');
+  // get_rationale ist über mcp.disabledTools abschaltbar; hints.rationale gilt für Hover und get_declaration.
+  Options := RationaleOptions;
+  Lines := TStringList.Create;
+  try
+    Count := 0;
+    if Trim(AName) <> '' then
+    begin
+      for Location in Matches(AName) do
+      begin
+        Entries := TLspRationale.ByMarkers(EntriesOf(FIndex, Location), Options);
+        if Length(Entries) = 0 then
+          Continue;
+        if Count >= MaxDeclarations then
+        begin
+          Lines.Add('… weitere Symbole, Namen genauer fassen (TFoo.Bar)');
+          Break;
+        end;
+        Inc(Count);
+        if Lines.Count > 0 then
+          Lines.Add('');
+        Lines.Add(Describe(Location));
+        AddEntries(Lines, Entries);
+      end;
+      if Count = 0 then
+        Exit(Format('Keine Begründungen zu "%s".', [AName]));
+      Exit(JoinLines(Lines));
+    end;
+    if not FIndex.FindUnit(AUnitOrFile, UnitIndex) and not FIndex.FindFile(AUnitOrFile, UnitIndex) then
+      Exit(Format('Unit "%s" nicht im Index.', [AUnitOrFile]));
+    Lines.Add(Format('unit %s – %s', [UnitIndex.UnitName, UnitIndex.FileName]));
+    Entries := TLspRationale.ByMarkers(TRationale.DecodeAll(UnitIndex.Rationale), Options);
+    if Length(Entries) > 0 then
+    begin
+      Lines.Add('Unit:');
+      AddEntries(Lines, Entries);
+      Inc(Count, Length(Entries));
+    end;
+    // Je Symbol nur die eigenen Einträge: Deklaration und Implementierung stehen mit ihrer Fundstelle getrennt.
+    for Symbol in UnitIndex.Symbols do
+    begin
+      Entries := TLspRationale.ByMarkers(TRationale.DecodeAll(Symbol.Rationale), Options);
+      if Length(Entries) = 0 then
+        Continue;
+      Location.UnitName := UnitIndex.UnitName;
+      Location.FileName := UnitIndex.SymbolFile(Symbol);
+      Location.Symbol := Symbol;
+      Lines.Add(Describe(Location));
+      AddEntries(Lines, Entries);
+      Inc(Count, Length(Entries));
+    end;
+    if Count = 0 then
+      Exit(Format('Keine Begründungen in Unit %s.', [UnitIndex.UnitName]));
+    Result := JoinLines(Lines);
+  finally
     Lines.Free;
   end;
 end;

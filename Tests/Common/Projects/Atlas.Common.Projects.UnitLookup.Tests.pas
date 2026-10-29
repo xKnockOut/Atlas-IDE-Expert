@@ -29,6 +29,8 @@ type
     procedure FolderOutsideSearchPaths;
     [Test]
     procedure KnownUnitsAndPackages;
+    [Test]
+    procedure RepeatedQuestionsGiveSameAnswers;
   end;
 
 implementation
@@ -114,6 +116,30 @@ begin
   Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(Lookup, 'Rechnung.Druck')), 'Suchpfad, .pas');
   Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(Lookup, 'Rechnungs.Druck')));
   Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(Lookup, 'Winapi.Windows')));
+end;
+
+procedure TUnitLookupTests.RepeatedQuestionsGiveSameAnswers;
+var
+  Data: TUnitLookupSetup;
+  Entry: TProjectUnit;
+  Lookup: IRuleUnitLookup;
+  mPass: Integer;
+begin
+  // Projekt-Units stehen in einer Namensliste, die Antwort der Projektordner je Unit wird gemerkt (#1342):
+  // Groß-/Kleinschreibung, Namespaces und fehlende Units wie bei der Suche über alle Einträge.
+  Data := Setup(LibraryFiles + ['C:\P\Src\Rechnung.Druck.pas']);
+  Entry.Name := 'Vcl.Kunden';
+  Entry.FileName := 'C:\Q\Vcl.Kunden.pas';
+  Data.Project.Units := [Entry];
+  Lookup := TUnitLookup.Create(Data);
+  for mPass := 1 to 2 do
+  begin
+    Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(Lookup, 'KUNDEN')), 'Projekt-Unit mit Namespace Vcl');
+    Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(Lookup, 'vcl.kunden')), 'Projekt-Unit');
+    Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(Lookup, 'SysUtils')), 'Bibliothek mit Namespace');
+    Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(Lookup, 'rechnung.druck')), 'Suchpfad');
+    Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(Lookup, 'Fehlt')));
+  end;
 end;
 
 procedure TUnitLookupTests.ProjectUnitsAndFolderOfFile;

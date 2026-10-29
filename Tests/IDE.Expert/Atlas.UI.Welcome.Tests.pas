@@ -347,6 +347,7 @@ type
     procedure Resume(const AProject: string);
     procedure ShowCommit(const AProject: string; const ACommit: TAtlasContinueCommit);
     procedure OpenSaved(const AItem: TAtlasSavedItem);
+    procedure ShowServerAccess(const AProject: string);
     procedure Shown;
   end;
 
@@ -421,6 +422,9 @@ type
     procedure Open(const AProject: string);
     procedure OpenAt(const AProject: string; const ATarget: TAtlasProjectLocation);
     procedure OpenFolder(const AProject: string);
+    procedure CreateBranch(const AProject: string);
+    procedure ShowWorkingCopies(const AProject: string);
+    function WorkingCopies: Boolean;
     procedure Remove(const AProject: string);
     procedure Shown;
     function Selectable: Boolean;
@@ -429,6 +433,8 @@ type
   public
     /// <summary>Projektverlauf an (#758): Klick wählt.</summary>
     FSelectable: Boolean;
+    /// <summary>vcs.externals.show (#1292).</summary>
+    FWorkingCopies: Boolean;
     FSelected: string;
   end;
 
@@ -528,6 +534,21 @@ end;
 procedure TFakeProjects.OpenFolder(const AProject: string);
 begin
   Calls := Calls + ['folder ' + AProject];
+end;
+
+procedure TFakeProjects.CreateBranch(const AProject: string);
+begin
+  Calls := Calls + ['branch ' + AProject];
+end;
+
+procedure TFakeProjects.ShowWorkingCopies(const AProject: string);
+begin
+  Calls := Calls + ['copies ' + AProject];
+end;
+
+function TFakeProjects.WorkingCopies: Boolean;
+begin
+  Result := FWorkingCopies;
 end;
 
 procedure TFakeProjects.Remove(const AProject: string);
@@ -1845,15 +1866,26 @@ begin
     Frame.ClickAt(Hit);
     Frame.MenuRow := 1;
     Frame.OpenFolderItem.Click;
+    Frame.CreateBranchItem.Click;
     Frame.RemoveItem.Click;
+    Frame.WorkingCopiesItem.Click;
     Assert.AreEqual(0, Integer(Length(Fake.Calls)), 'alles über die Nachrichtenschleife');
     CheckSynchronize;
-    Assert.AreEqual(5, Integer(Length(Fake.Calls)));
+    Assert.AreEqual(7, Integer(Length(Fake.Calls)));
     Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[0]);
     Assert.AreEqual('openAt C:\P\Zwei.dproj C:\P\Main.pas 12', Fake.Calls[1]);
     Assert.AreEqual('open C:\P\Eins.dproj', Fake.Calls[2]);
     Assert.AreEqual('folder C:\P\Zwei.dproj', Fake.Calls[3]);
-    Assert.AreEqual('remove C:\P\Zwei.dproj', Fake.Calls[4]);
+    // „Branch anlegen …“ (#1288) geht an die Quelle; dort öffnet der Dialog.
+    Assert.AreEqual('branch C:\P\Zwei.dproj', Fake.Calls[4]);
+    Assert.AreEqual('remove C:\P\Zwei.dproj', Fake.Calls[5]);
+    // „Arbeitskopien …“ (#1292) ebenso; sichtbar nur mit vcs.externals.show.
+    Assert.AreEqual('copies C:\P\Zwei.dproj', Fake.Calls[6]);
+    Frame.Menu.OnPopup(Frame.Menu);
+    Assert.IsFalse(Frame.WorkingCopiesItem.Visible);
+    Fake.FWorkingCopies := True;
+    Frame.Menu.OnPopup(Frame.Menu);
+    Assert.IsTrue(Frame.WorkingCopiesItem.Visible);
   finally
     Host.Free;
   end;
@@ -1900,7 +1932,7 @@ begin
   try
     Frame := ProjectsFrame(Host, Source);
     Frame.QuickActions := QuickSource;
-    Assert.AreEqual(6, Integer(Length(Frame.Quick.ButtonsOf(0))));
+    Assert.AreEqual(7, Integer(Length(Frame.Quick.ButtonsOf(0))), 'Vorgabe mit Aufgaben (#900)');
     // items ohne console: nur dieser Knopf fehlt.
     Quick.Items := TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder');
     Frame.UpdateContent;
@@ -2276,6 +2308,11 @@ begin
     Assert.AreEqual('2 Dateien geändert · seit 3 Std.', TAtlasWelcomeUnsavedFrame.DetailText(Row, NowUtc));
     Assert.AreEqual('Ansehen', TAtlasWelcomeUnsavedFrame.ButtonText(Row.Item));
     Assert.AreEqual('Svn · main', TAtlasWelcomeUnsavedFrame.TitleText(Row));
+    // #1292: Anteile je Arbeitskopie hinter der Summe.
+    Row.Item.Places := [TAtlasUnsavedPlace.Create('', 1), TAtlasUnsavedPlace.Create('Packages/Drucken', 1)];
+    Assert.AreEqual('2 Dateien geändert (Svn 1 · Packages\Drucken 1) · seit 3 Std.',
+      TAtlasWelcomeUnsavedFrame.DetailText(Row, NowUtc));
+    Row.Item.Places := nil;
     Row.Item.Count := 1;
     Row.Item.Modified := 1;
     Assert.AreEqual('1 Datei geändert', TAtlasWelcomeUnsavedFrame.WhatText(Row.Item));
@@ -3513,6 +3550,11 @@ begin
   Calls := Calls + ['open ' + AItem.Id];
 end;
 
+procedure TFakeContinue.ShowServerAccess(const AProject: string);
+begin
+  Calls := Calls + ['login ' + AProject];
+end;
+
 procedure TFakeContinue.Shown;
 begin
   Calls := Calls + ['shown'];
@@ -3640,6 +3682,7 @@ begin
     Assert.AreEqual(2, Integer(Length(Frame.Entries)));
     Fake.Calls := nil;
     // Klick auf die Zeile außerhalb von „Fortsetzen“: nichts.
+    Hit := Default(TAtlasContinueHit);
     Hit.Row := 0;
     Hit.Button := False;
     Hit.Commit := -1;
@@ -3660,6 +3703,20 @@ begin
     Assert.AreEqual('commit C:\Repo\Atlas.dproj abc1234', Fake.Calls[1]);
     Assert.AreEqual(-1, Frame.HitTest(20, -5).Row, 'über der ersten Zeile');
     Assert.AreEqual(1, Frame.HitTest(20, Frame.RowTop(1) + 4).Row);
+    // Anmeldung am Server nötig (#1287): Hinweis als Link unter dem Commit, Klick öffnet die Seite.
+    Assert.IsFalse(Frame.HitTest(20, Frame.IncomingTop + 2 * Frame.ScaleValue(TAtlasWelcomeContinueFrame.LineHeight) +
+      4).Login, 'ohne fehlende Anmeldung kein Link');
+    Fake.FIncoming.FetchFailed := True;
+    Fake.FIncoming.LoginNeeded := True;
+    Frame.UpdateContent;
+    Hit := Frame.HitTest(20, Frame.IncomingTop + 2 * Frame.ScaleValue(TAtlasWelcomeContinueFrame.LineHeight) + 4);
+    Assert.IsTrue(Hit.Login, 'Zeile unter dem einen Commit');
+    Assert.AreEqual(-1, Hit.Commit);
+    Fake.Calls := nil;
+    Frame.ClickAt(Hit);
+    CheckSynchronize;
+    Assert.AreEqual(1, Integer(Length(Fake.Calls)));
+    Assert.AreEqual('login C:\Repo\Atlas.dproj', Fake.Calls[0]);
   finally
     Host.Free;
   end;
@@ -3687,7 +3744,7 @@ begin
     Frame.Source := Source;
     Assert.AreEqual(0, Integer(Length(Frame.Quick.ButtonsOf(0))), 'ohne Quelle keine Knöpfe');
     Frame.QuickActions := QuickSource;
-    Assert.AreEqual(6, Integer(Length(Frame.Quick.ButtonsOf(1))));
+    Assert.AreEqual(7, Integer(Length(Frame.Quick.ButtonsOf(1))), 'Vorgabe mit Aufgaben (#900)');
     Assert.IsTrue(Frame.Quick.Sink.Visible, 'Tastatur auf „Zuletzt“');
     Fake.Calls := nil;
     // Ohne Maus: Pfeil ab, Strg+B baut die Gruppe, Pos1 und Enter setzen fort.

@@ -4,15 +4,20 @@
 // Befehlspalette: Referenzen (samt Fundstellen in .dfm) und
 // Implementierungen des Symbols am Cursor, Aufrufer und Aufrufe, Vorfahren und
 // Nachfahren als Baum, dessen Ebenen beim Aufklappen nachgeladen werden, und
-// die projektweite Symbolsuche in einem Fenster wie die Befehlspalette.
+// die projektweite Symbolsuche in einem Fenster wie die Befehlspalette. Das
+// Aufrufdiagramm (#1122) zeigt die Aufrufhierarchie gleich als Diagramm,
+// ausgehend; nur solange callHierarchy.diagram an ist.
 // Vor jeder Anfrage bekommt der Server den aktuellen Text der offenen Dateien.
 // Meldungen nur als Zeile in der Meldungsansicht, nie als Dialog.
+// Datenfluss (#690): „Woher kommt der Wert?“ und „Wohin geht der Wert?“ als Baum; jede aufgeklappte Quelle
+// fragt mit dem Pfad ihrer Vorfahren und den Filtern der ersten Anfrage nach (navigation.dataFlow).
 
 interface
 
 uses
   System.SysUtils,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.DataFlow,
   Atlas.Core.Results.Model;
 
 type
@@ -20,7 +25,15 @@ type
   private
     class var FSessionOf: TFunc<TLspSession>;
     class var FMessage: TProc<string>;
+    /// <summary>Erste Anfrage des zuletzt gezeigten Datenflusses; Filter und Folgeanfragen bauen darauf.</summary>
+    class var FFlowRequest: TAtlasDataFlowRequest;
+    /// <summary>Wort am Cursor zur ersten Anfrage, für den Titel eines leeren Baums.</summary>
+    class var FFlowName: string;
     class function Entries(const ALocations: TArray<TLspLocation>): TArray<TAtlasResultEntry>; static;
+    /// <summary>Erste Ebene holen und zeigen; AFromFilter: kein „nichts gefunden“, der Baum leert sich nur.</summary>
+    class procedure RunDataFlow(AFromFilter: Boolean); static;
+    class function ExpandDataFlow(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
+      const APath: TArray<string>): TAtlasDataFlowResult; static;
   public
     /// <summary>ASessionOf: laufende Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>
     class procedure Install(const ASessionOf: TFunc<TLspSession>; const AMessage: TProc<string>); static;
@@ -34,7 +47,19 @@ type
     class function AtCursor(out AFileName: string; out ALine, ACharacter: Integer; out AName: string): Boolean; static;
     class procedure FindReferences; static;
     class procedure FindImplementations; static;
-    class procedure ShowHierarchy(ADirection: TAtlasHierarchyDirection); static;
+    class procedure ShowHierarchy(ADirection: TAtlasHierarchyDirection); overload; static;
+    /// <summary>Wie oben; AAsDiagram: gleich als Aufrufdiagramm (#1122).</summary>
+    class procedure ShowHierarchy(ADirection: TAtlasHierarchyDirection; AAsDiagram: Boolean); overload; static;
+    /// <summary>Befehl „Aufrufdiagramm“ (#1122): ausgehende Aufrufe des Symbols am Cursor als Diagramm.</summary>
+    class procedure ShowCallDiagram; static;
+    /// <summary>callHierarchy.diagram an?</summary>
+    class function CallDiagramAllowed: Boolean; static;
+    /// <summary>Datenfluss des Symbols am Cursor (#690); nur mit navigation.dataFlow.</summary>
+    class procedure ShowDataFlow(ADirection: TAtlasDataFlowDirection); overload; static;
+    /// <summary>Datenfluss des Symbols an AFileName/ALine/ACharacter (0-basiert), etwa „Wo wird Kunde
+    /// zugewiesen?“ aus der Exception-Leiste (#865).</summary>
+    class procedure ShowDataFlow(ADirection: TAtlasDataFlowDirection; const AFileName: string; ALine,
+      ACharacter: Integer; const AName: string); overload; static;
     class procedure SearchSymbol; static;
     /// <summary>Referenzen auf ein Symbol an einem Fundort (z. B. aus dem Tooltip); Anzahl der Fundstellen.</summary>
     class function ShowReferences(const AFileName: string; ALine, ACharacter: Integer; const AName: string): Integer; static;
@@ -61,7 +86,9 @@ uses
   Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.Rename,
   Atlas.IDE.Foundation.ResultsWindow,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Foundation.Settings,
+  Atlas.IDE.Foundation.Files;
 
 const
   // Projektweit über viele Units; deutlich länger als ein Hover.
@@ -112,6 +139,42 @@ begin
         end);
       Result := Children;
     end;
+  // Aufrufdiagramm (#1122): nach callHierarchy.diagram; „Nur Projekt-Units“ über die Projektgruppe.
+  TAtlasIdeResultsWindow.DiagramAllowed :=
+    function: Boolean
+    begin
+      Result := CallDiagramAllowed;
+    end;
+  TAtlasIdeResultsWindow.IsProjectFile :=
+    function(AFileName: string): Boolean
+    begin
+      Result := TAtlasIdeFiles.ProjectOfFile(AFileName) <> '';
+    end;
+  TAtlasIdeResultsWindow.OnFlowExpand :=
+    function(ADirection: TAtlasDataFlowDirection; const ASource: TAtlasDataFlowSymbol;
+      const APath: TArray<string>): TAtlasDataFlowResult
+    var
+      Found: TAtlasDataFlowResult;
+    begin
+      Found := Default(TAtlasDataFlowResult);
+      TAtlasGuard.Run(TAtlasFeature.Results,
+        procedure
+        begin
+          Found := ExpandDataFlow(ADirection, ASource, APath);
+        end);
+      Result := Found;
+    end;
+  TAtlasIdeResultsWindow.OnFlowFilter :=
+    procedure(AOnlyProject, AExcludeTests: Boolean)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Results,
+        procedure
+        begin
+          FFlowRequest.OnlyProject := AOnlyProject;
+          FFlowRequest.ExcludeTests := AExcludeTests;
+          RunDataFlow(True);
+        end);
+    end;
   // Früh anmelden: Die IDE speichert das Fenster im Desktop und legt es beim Laden selbst an (#879).
   TAtlasIdeResultsWindow.Prepare;
 end;
@@ -120,6 +183,10 @@ class procedure TAtlasIdeResults.Uninstall;
 begin
   FSessionOf := nil;
   FMessage := nil;
+  TAtlasIdeResultsWindow.DiagramAllowed := nil;
+  TAtlasIdeResultsWindow.IsProjectFile := nil;
+  FFlowRequest := Default(TAtlasDataFlowRequest);
+  FFlowName := '';
   TAtlasIdeResultsWindow.Release;
 end;
 
@@ -194,10 +261,15 @@ end;
 class function TAtlasIdeResults.Entries(const ALocations: TArray<TLspLocation>): TArray<TAtlasResultEntry>;
 var
   Location: TLspLocation;
+  Entry: TAtlasResultEntry;
 begin
   Result := nil;
   for Location in ALocations do
-    Result := Result + [TAtlasResultEntry.Create(Location.FileName, Location.Line, Location.Character)];
+  begin
+    Entry := TAtlasResultEntry.Create(Location.FileName, Location.Line, Location.Character);
+    Entry.Confidence := Location.Confidence;
+    Result := Result + [Entry];
+  end;
   TAtlasResults.FillText(Result,
     function(const AFileName: string): string
     begin
@@ -233,7 +305,7 @@ begin
     Screen.Cursor := crDefault;
   end;
   Result := Length(Found);
-  TAtlasIdeResultsWindow.ShowEntries(TAtlasStrings.Fmt(TAtlasTextId.ResultsReferences,
+  TAtlasIdeResultsWindow.ShowReferences(TAtlasStrings.Fmt(TAtlasTextId.ResultsReferences,
     [AName, Length(Found), Length(TAtlasResults.Group(Found))]), Found);
 end;
 
@@ -284,6 +356,22 @@ begin
 end;
 
 class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection);
+begin
+  ShowHierarchy(ADirection, False);
+end;
+
+class function TAtlasIdeResults.CallDiagramAllowed: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.CallHierarchyDiagram;
+end;
+
+class procedure TAtlasIdeResults.ShowCallDiagram;
+begin
+  if CallDiagramAllowed then
+    ShowHierarchy(TAtlasHierarchyDirection.Outgoing, True);
+end;
+
+class procedure TAtlasIdeResults.ShowHierarchy(ADirection: TAtlasHierarchyDirection; AAsDiagram: Boolean);
 const
   Titles: array[TAtlasHierarchyDirection] of TAtlasTextId = (TAtlasTextId.ResultsIncoming,
     TAtlasTextId.ResultsOutgoing, TAtlasTextId.ResultsSupertypes, TAtlasTextId.ResultsSubtypes);
@@ -313,7 +401,120 @@ begin
     Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
     Exit;
   end;
-  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasStrings.Fmt(Titles[ADirection], [Roots[0].Name]), ADirection, Roots);
+  TAtlasIdeResultsWindow.ShowHierarchy(TAtlasStrings.Fmt(Titles[ADirection], [Roots[0].Name]), ADirection, Roots,
+    AAsDiagram);
+end;
+
+class procedure TAtlasIdeResults.ShowDataFlow(ADirection: TAtlasDataFlowDirection);
+var
+  FileName, Name: string;
+  Line, Character: Integer;
+begin
+  // Abgeschaltet: Befehl und Menüeintrag sind verborgen; über die Palette nur eine Zeile.
+  if not TAtlasIdeSettings.Current.DataFlow then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.ResultsDataFlowOff));
+    Exit;
+  end;
+  if not AtCursor(FileName, Line, Character, Name) then
+    Exit;
+  FFlowRequest := TAtlasDataFlowRequest.Create(ADirection, FileName, Line, Character);
+  FFlowRequest.ExcludeTests := TAtlasIdeSettings.Current.DataFlowExcludeTests;
+  FFlowName := Name;
+  RunDataFlow(False);
+end;
+
+class procedure TAtlasIdeResults.ShowDataFlow(ADirection: TAtlasDataFlowDirection; const AFileName: string; ALine,
+  ACharacter: Integer; const AName: string);
+var
+  Current: TLspSession;
+begin
+  if not TAtlasIdeSettings.Current.DataFlow then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.ResultsDataFlowOff));
+    Exit;
+  end;
+  Current := Session;
+  if Current = nil then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    Exit;
+  end;
+  // Projektweite Anfrage: wie am Cursor alle offenen Puffer abgleichen.
+  TAtlasIdeRename.SyncOpenBuffers(Current);
+  FFlowRequest := TAtlasDataFlowRequest.Create(ADirection, AFileName, ALine, ACharacter);
+  FFlowRequest.ExcludeTests := TAtlasIdeSettings.Current.DataFlowExcludeTests;
+  FFlowName := AName;
+  RunDataFlow(False);
+end;
+
+class procedure TAtlasIdeResults.RunDataFlow(AFromFilter: Boolean);
+const
+  Titles: array[TAtlasDataFlowDirection] of TAtlasTextId = (TAtlasTextId.ResultsDataFlowSources,
+    TAtlasTextId.ResultsDataFlowTargets);
+var
+  Current: TLspSession;
+  Found: TAtlasDataFlowResult;
+begin
+  Current := Session;
+  if Current = nil then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
+    Exit;
+  end;
+  Screen.Cursor := crHourGlass;
+  try
+    try
+      Found := Current.DataFlow(FFlowRequest);
+    except
+      on E: ELspClientError do
+      begin
+        Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
+        Exit;
+      end;
+    end;
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  // Nach einem Filterwechsel bleibt der Baum stehen, auch wenn er leer wird: Die Filter lassen sich zurücknehmen.
+  if (not Found.Found) and (not AFromFilter) then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.ResultsNothing));
+    Exit;
+  end;
+  if not Found.Found then
+    Found.Symbol.Name := FFlowName;
+  TAtlasIdeResultsWindow.ShowDataFlow(TAtlasStrings.Fmt(Titles[FFlowRequest.Direction],
+    [Found.Symbol.Name, Length(Found.Nodes)]), FFlowRequest.Direction, Found,
+    TAtlasIdeSettings.Current.DataFlowMaxDepth, FFlowRequest.OnlyProject, FFlowRequest.ExcludeTests);
+end;
+
+class function TAtlasIdeResults.ExpandDataFlow(ADirection: TAtlasDataFlowDirection;
+  const ASource: TAtlasDataFlowSymbol; const APath: TArray<string>): TAtlasDataFlowResult;
+var
+  Current: TLspSession;
+  Request: TAtlasDataFlowRequest;
+begin
+  Result := Default(TAtlasDataFlowResult);
+  Current := Session;
+  if Current = nil then
+    Exit;
+  // Gefragt wird an der Deklaration der Quelle; der Pfad lässt den Server Zyklen erkennen.
+  Request := TAtlasDataFlowRequest.Create(ADirection, ASource.FileName, ASource.Line, ASource.Character);
+  Request.Path := APath;
+  Request.OnlyProject := FFlowRequest.OnlyProject;
+  Request.ExcludeTests := FFlowRequest.ExcludeTests;
+  Screen.Cursor := crHourGlass;
+  try
+    try
+      Result := Current.DataFlow(Request);
+    except
+      on E: ELspClientError do
+        Say(TAtlasStrings.Fmt(TAtlasTextId.ResultsFailed, [E.Message]));
+    end;
+  finally
+    Screen.Cursor := crDefault;
+  end;
 end;
 
 class procedure TAtlasIdeResults.SearchSymbol;

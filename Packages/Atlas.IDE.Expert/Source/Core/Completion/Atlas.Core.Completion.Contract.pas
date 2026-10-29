@@ -35,6 +35,26 @@ type
   /// <summary>Lernende Gewichtung (#418): zuletzt bzw. häufig gewählt.</summary>
   TAtlasUsageMark = (None, Recent, Frequent);
 
+  /// <summary>Wie sicher die Quelle den Kontext bestimmen konnte (#457): sicher, eingeschränkt (Syntaxfehler vor dem
+  /// Cursor in der aktuellen Routine), unbekannt (dazu keine Einträge).</summary>
+  TAtlasSyntaxTrust = (Sure, Limited, Unknown);
+
+  /// <summary>Hinweis bei unvollständigem Code (#457): Status und erster Fehler, Zeile und Spalte 0-basiert.
+  /// </summary>
+  TAtlasSyntaxNotice = record
+    Trust: TAtlasSyntaxTrust;
+    Line: Integer;
+    Character: Integer;
+    Message: string;
+  end;
+
+  /// <summary>Zustand einer abgerufenen Liste: gekürzt (LSP isIncomplete, #431) und Hinweis bei unvollständigem
+  /// Code (#457).</summary>
+  TAtlasFetchState = record
+    Incomplete: Boolean;
+    Syntax: TAtlasSyntaxNotice;
+  end;
+
   /// <summary>Textänderung, 0-basiert in UTF-16-Einheiten wie im LSP.</summary>
   TAtlasTextEdit = record
     StartLine: Integer;
@@ -42,6 +62,13 @@ type
     EndLine: Integer;
     EndCharacter: Integer;
     NewText: string;
+  end;
+
+  /// <summary>Besondere Werte von TAtlasContext.Trigger.</summary>
+  TAtlasTriggers = record
+  public const
+    /// <summary>Verlauf der Debug-Dialoge (#538) statt einer Anfrage an den Server.</summary>
+    History = 'history';
   end;
 
   TAtlasContext = record
@@ -119,11 +146,15 @@ type
     /// <summary>Unter der aktiven Konfiguration nicht deklariert: abgeschwächt und am Ende (#476).</summary>
     Unavailable: Boolean;
     /// <summary>Gültigkeitsbereich (#488): 1 lokal, 2 Parameter, 3 Mitglied von Self, 4 eigene Unit,
-    /// 5 andere Unit; 0 ohne Angabe.</summary>
+    /// 5 andere Unit, 6 Mitglied eines with-Objekts (#481); 0 ohne Angabe.</summary>
     Scope: Integer;
     /// <summary>Verdeckte gleichnamige Deklarationen weiter außen (#488), z. B. "Feld TKunde.Total";
     /// das Detailpanel nennt sie.</summary>
     Hides: TArray<string>;
+    /// <summary>Bei Scope 6 (#481): Ausdruck des with-Objekts ("qryOrders") und verdeckte lokale Namen bzw.
+    /// Mitglieder von Self ("Self.Name"), als Marken „aus …“ und „verdeckt …“.</summary>
+    WithOrigin: string;
+    WithShadows: TArray<string>;
     /// <summary>ResolveData der weiteren Überladungen (#425); die erste ist ResolveData.</summary>
     OverloadData: TArray<string>;
     /// <summary>Routine mit Parametern (#430): beim Übernehmen Klammern ergänzen.</summary>
@@ -205,6 +236,16 @@ type
     Constraint: string;
     ConstraintHint: string;
     HiddenKinds: string;
+    /// <summary>Attribut nach "[" (#465): Name ohne Endung Attribute, Badge "at".</summary>
+    Attribute: Boolean;
+    /// <summary>Gerüst einer anonymen Methode (#468): erwarteter Methodenreferenztyp, als Tag gezeigt; '' sonst.
+    /// </summary>
+    MethodRef: string;
+    /// <summary>Exception-Klassen (#483): Gruppe ("raise" nach raise, "try" bzw. "general" nach "on E: " mit den
+    /// Überschriften „Aus dem try-Block“ und „Allgemein“; '' sonst) und die Klasse eines früheren Zweigs, die diese
+    /// schon fängt (Marke „nie erreicht“; '' sonst).</summary>
+    ExceptionGroup: string;
+    Unreachable: string;
     /// <summary>uses-Abschnitt (#469): Gruppe ("project", "rtl", "library"), Abschnitt, in dem die Unit schon steht
     /// ("interface", "implementation"; '' sonst), Kette eines Zirkelbezugs ("uA → uB → Haupt"; '' ohne), die ersten
     /// exportierten Typen samt ihrer Gesamtzahl und die schon eingebundenen Units für die Fußzeile.</summary>
@@ -267,6 +308,8 @@ type
     Display: TAtlasDocDisplay;
     /// <summary>Vom gewählten Eintrag verdeckte Deklarationen (#488).</summary>
     Hides: TArray<string>;
+    /// <summary>with-Objekt, dem der gewählte Eintrag gehört (#481); '' sonst.</summary>
+    WithOrigin: string;
     /// <summary>Warum der Eintrag im aktiven Ziel fehlt (#476); '' = verfügbar.</summary>
     Availability: string;
     /// <summary>Gleitkomma für eine Ganzzahl (#490): Typ des Werts und erwarteter Typ; '' sonst.</summary>
@@ -306,6 +349,8 @@ type
     /// <summary>Die Liste ist gekürzt (LSP isIncomplete): Beim Weitertippen neu fragen (#431).
     /// Vor Complete aufzurufen.</summary>
     procedure MarkIncomplete;
+    /// <summary>Hinweis bei unvollständigem Code (#457), nur wenn nicht sicher; vor Complete aufzurufen.</summary>
+    procedure MarkSyntax(const ANotice: TAtlasSyntaxNotice);
     /// <summary>Die Quelle ist fertig; genau einmal je Query.</summary>
     procedure Complete;
   end;
