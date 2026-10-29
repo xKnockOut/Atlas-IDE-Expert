@@ -650,6 +650,11 @@ type
     MemoryBudgetMb: Integer;
     /// <summary>Zeitlimit für Anfragen in ms (#283); länger laufende werden abgebrochen.</summary>
     RequestTimeoutMs: Integer;
+    /// <summary>Absturzfälle sichern und melden (#1355, server.crashCases).</summary>
+    ServerCrashCases: Boolean;
+    /// <summary>Sicherheitsnetz: Anfrage nach zwei Abstürzen an derselben Datei überspringen (#1355,
+    /// server.crashSkip).</summary>
+    ServerCrashSkip: Boolean;
     /// <summary>Anonymisiertes Diagnoselog (#647): schreiben, Aufbewahrung in Tagen und lokale
     /// Zuordnung Kurz-ID → Name (nur für die eigene Analyse).</summary>
     DiagnosticsLog: Boolean;
@@ -1182,6 +1187,8 @@ begin
   // Wie die Vorgabe des Plugins (#492): darüber zuerst Verwendungen auslagern.
   Result.MemoryBudgetMb := 768;
   Result.RequestTimeoutMs := 10000;
+  Result.ServerCrashCases := True;
+  Result.ServerCrashSkip := True;
   Result.DiagnosticsLog := True;
   Result.DiagnosticsLogDays := 7;
   Result.DiagnosticsLogMapFile := False;

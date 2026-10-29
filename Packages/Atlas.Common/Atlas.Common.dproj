@@ -86,6 +86,7 @@
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.TracingTransport.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.PendingRequests.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Watchdog.pas"/>
+        <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.RecentMessages.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.CurrentRequest.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Dispatcher.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Connection.pas"/>
@@ -121,6 +122,9 @@
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.ShutdownLeaks.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.RequestScope.pas"/>
         <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.StackGuard.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CrashCase.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CrashSkip.pas"/>
+        <DCCReference Include="Source\Diagnostics\Atlas.Common.Diagnostics.CrashReserve.pas"/>
         <DCCReference Include="Source\Diagnostics\Providers\Atlas.Common.Diagnostics.Providers.Log.pas"/>
         <DCCReference Include="Source\Diagnostics\Adapters\Atlas.Common.Diagnostics.Adapters.LogFolder.pas"/>
         <DCCReference Include="Source\Index\Atlas.Common.Index.Contract.pas"/>

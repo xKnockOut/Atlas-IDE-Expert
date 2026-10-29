@@ -47,6 +47,16 @@ type
     procedure GuardRejectsRequestWithItsCode;
     [Test]
     procedure GuardDropsNotification;
+    /// <summary>#1355: RequestGuard sieht Methode und Parameter und weist die Anfrage mit seinem Code ab, ohne den
+    /// Handler.</summary>
+    [Test]
+    procedure RequestGuardRejectsWithParams;
+    /// <summary>#1355: Recent bekommt jede eingehende Nachricht, auch Benachrichtigungen.</summary>
+    [Test]
+    procedure RecentGetsEveryMessage;
+    /// <summary>#1355: Ein Stapelüberlauf im Handler stellt die Schutzseite wieder her, bevor geantwortet wird.</summary>
+    [Test]
+    procedure OverflowInHandlerRestoresGuardPage;
     [Test]
     procedure RunsConcurrentRequestDirectlyWithoutScheduler;
     [Test]
@@ -83,7 +93,13 @@ uses
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.JsonRpc.Watchdog,
   Atlas.Common.JsonRpc.CurrentRequest,
+  Atlas.Common.JsonRpc.RecentMessages,
+  Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.JsonRpc.TestSupport;
+
+type
+  /// <summary>Gleichnamig zur veralteten RTL-Klasse (W1000): TStackGuard erkennt den Überlauf am Namen.</summary>
+  EStackOverflow = class(Exception);
 
 type
   ETestFailure = class(Exception);
@@ -724,6 +740,89 @@ begin
     Scheduling.Free;
   end;
   FDispatcher.Observer := nil;
+end;
+
+procedure TJsonRpcDispatcherTests.RequestGuardRejectsWithParams;
+var
+  mResponse: TJSONObject;
+  mCalled: Boolean;
+  mSeen: string;
+  mCode: Integer;
+begin
+  mCalled := False;
+  mSeen := '';
+  FDispatcher.RegisterRequest('probe',
+    function(const AParams: TJSONValue): TJSONValue
+    begin
+      mCalled := True;
+      Result := TJSONNull.Create;
+    end);
+  FDispatcher.RequestGuard :=
+    procedure(const AMethod: string; const AParams: TJSONValue)
+    begin
+      mSeen := AMethod + ' ' + AParams.ToJSON;
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, 'übersprungen');
+    end;
+  mResponse := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":3,"method":"probe","params":{"a":1}}');
+  try
+    mCode := mResponse.GetValue<Integer>('error.code');
+    Assert.AreEqual(TJsonRpcErrorCode.RequestFailed, mCode);
+    Assert.IsFalse(mCalled);
+    Assert.AreEqual('probe {"a":1}', mSeen);
+  finally
+    mResponse.Free;
+  end;
+  FDispatcher.RequestGuard := nil;
+end;
+
+procedure TJsonRpcDispatcherTests.RecentGetsEveryMessage;
+var
+  mRecent: IJsonRpcRecentMessages;
+  mLast: TArray<string>;
+  mMethod, mParams: string;
+begin
+  mRecent := TJsonRpcRecentMessages.Create;
+  FDispatcher.Recent := mRecent;
+  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":4,"method":"echo","params":{"x":2}}').Free;
+  DispatchJson(FDispatcher, '{"jsonrpc":"2.0","method":"unknown/note"}').Free;
+  mLast := mRecent.Last(5);
+  Assert.AreEqual(2, Integer(Length(mLast)));
+  Assert.IsTrue(mLast[0].Contains('"echo"'));
+  Assert.IsTrue(mLast[1].Contains('unknown/note'));
+  Assert.IsTrue(mRecent.FindRequest('4', mMethod, mParams));
+  Assert.AreEqual('echo', mMethod);
+  Assert.AreEqual('{"x":2}', mParams);
+  FDispatcher.Recent := nil;
+end;
+
+procedure TJsonRpcDispatcherTests.OverflowInHandlerRestoresGuardPage;
+var
+  mRestored, mCode: Integer;
+  mResponse: TJSONObject;
+begin
+  mRestored := 0;
+  TStackGuard.Restore :=
+    procedure
+    begin
+      Inc(mRestored);
+    end;
+  try
+    FDispatcher.RegisterRequest('deep',
+      function(const AParams: TJSONValue): TJSONValue
+      begin
+        raise EStackOverflow.Create('Stapel');
+      end);
+    mResponse := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":5,"method":"deep"}');
+    try
+      mCode := mResponse.GetValue<Integer>('error.code');
+      Assert.AreEqual(TJsonRpcErrorCode.InternalError, mCode);
+    finally
+      mResponse.Free;
+    end;
+    Assert.AreEqual(1, mRestored);
+  finally
+    TStackGuard.Restore := nil;
+  end;
 end;
 
 initialization

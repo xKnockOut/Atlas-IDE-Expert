@@ -93,6 +93,9 @@
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Tests.pas"/>
         <DCCReference Include="Common\Compiler\Atlas.Common.Compiler.Backend.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.StackGuard.Tests.pas"/>
+        <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.CrashCase.Tests.pas"/>
+        <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.CrashSkip.Tests.pas"/>
+        <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.CrashReserve.Tests.pas"/>
         <DCCReference Include="Common\Diagnostics\Atlas.Common.Diagnostics.Tests.pas"/>
         <DCCReference Include="Windows\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.Tests.pas"/>
         <DCCReference Include="Common\Documents\Atlas.Common.Documents.Providers.DocumentStore.Tests.pas"/>
@@ -330,6 +333,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.Namespaces.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Internals.FormCache.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Watchdog.Tests.pas"/>
+        <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.RecentMessages.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.CurrentRequest.Tests.pas"/>
         <DCCReference Include="Common\JsonRpc\Atlas.Common.JsonRpc.Messages.Tests.pas"/>
         <DCCReference Include="Windows\Diagnostics\Atlas.Windows.Diagnostics.StackTrace.Tests.pas"/>
@@ -1244,6 +1248,13 @@
         <DCCReference Include="Application\Shell\Shell.VcsChanges.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Platform.pas"/>
         <DCCReference Include="Application\Shell\Shell.Platform.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.CrashCases.pas"/>
+        <DCCReference Include="Application\Shell\Shell.CrashCases.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Replay.pas"/>
+        <DCCReference Include="Application\Shell\Shell.Replay.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.Composition.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.ReplayServer.pas"/>
+        <DCCReference Include="Application\Shell\Shell.ReplayServer.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.pas"/>
         <DCCReference Include="Application\Shell\Shell.Linter.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.NestedOverloads.Tests.pas"/>
