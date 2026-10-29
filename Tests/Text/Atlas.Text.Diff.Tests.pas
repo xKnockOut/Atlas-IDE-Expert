@@ -25,6 +25,10 @@ type
     procedure ChangedLinesLimit;
     [Test]
     procedure ChangedLinesEqualIsEmpty;
+    /// <summary>#1358: Kopf, Blöcke mit Umgebung, zusammengefasste Blöcke, Einfügen am Anfang, gleich = leer.
+    /// </summary>
+    [Test]
+    procedure UnifiedDiff;
   end;
 
 implementation
@@ -126,6 +130,22 @@ procedure TTextDiffTests.ChangedLinesEqualIsEmpty;
 begin
   Assert.AreEqual<Integer>(0, Length(TTextDiff.ChangedLines(['a', ''], ['a', ''])));
   Assert.AreEqual<Integer>(0, Length(TTextDiff.ChangedLines(nil, nil)));
+end;
+
+procedure TTextDiffTests.UnifiedDiff;
+begin
+  Assert.AreEqual('--- a'#10'+++ b'#10'@@ -1,3 +1,3 @@'#10' 1'#10'-2'#10'+x'#10' 3',
+    string.Join(#10, TTextDiff.Unified('a', 'b', ['1', '2', '3'], ['1', 'x', '3'], 1)));
+  // Zwei Blöcke mit sich berührender Umgebung werden ein Abschnitt, entfernte zwei.
+  Assert.AreEqual('--- a'#10'+++ b'#10'@@ -1,5 +1,5 @@'#10'-1'#10'+x'#10' 2'#10' 3'#10'-4'#10'+y'#10' 5',
+    string.Join(#10, TTextDiff.Unified('a', 'b', ['1', '2', '3', '4', '5', '6', '7'],
+    ['x', '2', '3', 'y', '5', '6', '7'], 1)));
+  Assert.AreEqual('--- a'#10'+++ b'#10'@@ -1 +1 @@'#10'-1'#10'+x'#10'@@ -7 +7 @@'#10'-7'#10'+y',
+    string.Join(#10, TTextDiff.Unified('a', 'b', ['1', '2', '3', '4', '5', '6', '7'],
+    ['x', '2', '3', '4', '5', '6', 'y'], 0)));
+  Assert.AreEqual('--- a'#10'+++ b'#10'@@ -0,0 +1 @@'#10'+neu',
+    string.Join(#10, TTextDiff.Unified('a', 'b', ['1'], ['neu', '1'], 0)));
+  Assert.AreEqual(0, Integer(Length(TTextDiff.Unified('a', 'b', ['1'], ['1'], 3))));
 end;
 
 initialization

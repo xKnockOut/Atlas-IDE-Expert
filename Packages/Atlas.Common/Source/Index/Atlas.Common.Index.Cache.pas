@@ -89,7 +89,8 @@ type
     // 27: type AnsiString(Codepage) ohne Zieltyp, RawByteString/UTF8String bleiben eigene Typen (#1140).
     // 28: Begründungen (// WHY: …) je Symbol und Unit (#1123).
     // 29: Prozedurtypen über mehrere Zeilen vollständig, Merkmal "of object"/"reference to" in Directives (#1326).
-    const FormatVersion = 29;
+    // 30: inline-Routinen ohne Verweise tragen InlineWithoutRefs statt nil (#1381).
+    const FormatVersion = 30;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
