@@ -3,13 +3,15 @@
 // W1203 XML comment has badly formed XML - A name was started with an invalid character
 // Erwartet: W1203
 // Schalter: --doc
-// Nur mit XML-Dokumentation (--doc).
+// Nur mit XML-Dokumentation (--doc); dcc prüft nur Kommentare im interface-Teil.
 
 interface
 
+/// <summary>A < B</summary>
+procedure Machen; // <- W1203
+
 implementation
 
-/// <summary>A < B</summary> // <- W1203
 procedure Machen;
 begin
 end;
