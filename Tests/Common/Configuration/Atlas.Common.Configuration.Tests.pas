@@ -1021,17 +1021,17 @@ begin
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.IndexRemoveOrphans, 'verwaiste Caches standardmäßig löschen');
   Assert.AreEqual(14, Settings.IndexCacheMaxAgeDays);
-  Assert.AreEqual(256, Settings.IndexCacheMaxMb);
-  Settings := Parse('{"index": {"removeOrphans": false, "cacheMaxAgeDays": 0, "cacheMaxMb": 1024}}', Issues);
+  Assert.AreEqual(1024, Settings.IndexCacheMaxMb);
+  Settings := Parse('{"index": {"removeOrphans": false, "cacheMaxAgeDays": 0, "cacheMaxMb": 2048}}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.IsFalse(Settings.IndexRemoveOrphans);
   Assert.AreEqual(0, Settings.IndexCacheMaxAgeDays);
-  Assert.AreEqual(1024, Settings.IndexCacheMaxMb);
+  Assert.AreEqual(2048, Settings.IndexCacheMaxMb);
   Settings := Parse('{"index": {"removeOrphans": 1, "cacheMaxAgeDays": -1, "cacheMaxMb": "viel"}}', Issues);
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.IsTrue(Settings.IndexRemoveOrphans);
   Assert.AreEqual(14, Settings.IndexCacheMaxAgeDays);
-  Assert.AreEqual(256, Settings.IndexCacheMaxMb);
+  Assert.AreEqual(1024, Settings.IndexCacheMaxMb);
   Settings := TConfigurationParser.ParseLayered('{"index": {"cacheMaxAgeDays": 30}}', '{}', Issues);
   Assert.AreEqual(30, Settings.IndexCacheMaxAgeDays);
   // Schlüsselworthervorhebung (#307)

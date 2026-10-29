@@ -130,6 +130,10 @@ type
     function GroupColumn: TAtlasFindingColumn;
     function FilterFromControls: TAtlasFindingFilter;
     procedure UpdateKindCaptions;
+    /// <summary>Nach neuen Befunden: Hervorhebung neu starten, Liste neu füllen.</summary>
+    procedure FindingsChanged;
+    /// <summary>Hat die aktive Unit seit ABefore gewechselt: Auswahl bzw. oberste Zeile sichtbar halten.</summary>
+    procedure KeepInView(const ABefore: string);
     function RowAt(AIndex: Integer; out ARow: TAtlasFindingRow): Boolean;
     function SelectedRows: TArray<Integer>;
     function Current(out AFinding: TAtlasFinding): Boolean;
@@ -180,7 +184,11 @@ type
     function OpenFirst: Boolean;
     /// <summary>Neuer Stand; ACurrentFile und AFiles bestimmen den Bereich (siehe TAtlasFindingFilter).</summary>
     procedure SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
-      const AFiles: TArray<string>);
+      const AFiles: TArray<string>); overload;
+    /// <summary>Neuer Stand samt aktiver und geöffneter Dateien in einem Schritt: ein Neuaufbau der Liste statt
+    /// drei. Wirkt wie SetFindings und danach SetOpenFiles(ACurrentFile, AOpen, AActiveChecked).</summary>
+    procedure SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
+      const AFiles, AOpen: TArray<string>; AActiveChecked: Boolean); overload;
     procedure SetStatus(const AText: string);
     /// <summary>„Live“ bei laufender Prüfung, sonst „Angehalten“.</summary>
     procedure SetLive(ALive: Boolean);
@@ -737,12 +745,18 @@ procedure TAtlasProblemsFrame.SetOpenFiles(const AActive: string; const AOpen: T
   AActiveChecked: Boolean);
 var
   Before: string;
-  Selected: Integer;
 begin
   Before := FView.ActiveFile;
   FView.SetOpenFiles(AActive, AOpen, AActiveChecked);
   Refill;
-  if SameText(Before, FView.ActiveFile) or (FList.Items.Count = 0) then
+  KeepInView(Before);
+end;
+
+procedure TAtlasProblemsFrame.KeepInView(const ABefore: string);
+var
+  Selected: Integer;
+begin
+  if SameText(ABefore, FView.ActiveFile) or (FList.Items.Count = 0) then
     Exit;
   // Editorwechsel: Die ausgewählte Zeile bleibt sichtbar; ohne Auswahl steht die angepinnte Unit oben.
   Selected := FView.SelectedRow;
@@ -791,14 +805,47 @@ procedure TAtlasProblemsFrame.SetFindings(const AFindings: TArray<TAtlasFinding>
   const AFiles: TArray<string>);
 var
   Filter: TAtlasFindingFilter;
+begin
+  FView.BeginUpdate;
+  try
+    Filter := FView.Filter;
+    Filter.CurrentFile := ACurrentFile;
+    Filter.Files := AFiles;
+    FView.Filter := Filter;
+    FView.SetFindings(AFindings);
+  finally
+    FView.EndUpdate;
+  end;
+  FindingsChanged;
+end;
+
+procedure TAtlasProblemsFrame.SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
+  const AFiles, AOpen: TArray<string>; AActiveChecked: Boolean);
+var
+  Filter: TAtlasFindingFilter;
+  Before: string;
+begin
+  Before := FView.ActiveFile;
+  FView.BeginUpdate;
+  try
+    Filter := FView.Filter;
+    Filter.CurrentFile := ACurrentFile;
+    Filter.Files := AFiles;
+    FView.Filter := Filter;
+    FView.SetFindings(AFindings);
+    FView.SetOpenFiles(ACurrentFile, AOpen, AActiveChecked);
+  finally
+    FView.EndUpdate;
+  end;
+  FindingsChanged;
+  KeepInView(Before);
+end;
+
+procedure TAtlasProblemsFrame.FindingsChanged;
+var
   Row: TAtlasFindingRow;
   HasNew: Boolean;
 begin
-  Filter := FView.Filter;
-  Filter.CurrentFile := ACurrentFile;
-  Filter.Files := AFiles;
-  FView.Filter := Filter;
-  FView.SetFindings(AFindings);
   HasNew := False;
   for Row in FView.Rows do
     if Row.IsNew then

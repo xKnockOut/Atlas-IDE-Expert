@@ -66,6 +66,10 @@ type
     [Test]
     procedure ProjectAndLibraryLiveUnderIdeVersion;
     [Test]
+    procedure FileNameCarriesFormatVersion;
+    [Test]
+    procedure RemoveKeepsOriginOfOtherFormat;
+    [Test]
     procedure ClearRemovesNewLayoutAndEmptyFolders;
     [Test]
     procedure RemoveAndSizeOfNamedCaches;
@@ -498,10 +502,10 @@ var
 begin
   // Je IDE-Version ein Ordner, darin je Projekt einer; die Bibliothek getrennt (#492).
   Version := TPath.Combine(TPath.Combine(FRoot, 'Index'), '37.0');
-  Assert.AreEqual(TPath.Combine(TPath.Combine(Version, TIndexCacheDirectory.KeyHash('Projekt')), 'index.atlasidx'),
-    TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'));
+  Assert.AreEqual(TPath.Combine(TPath.Combine(Version, TIndexCacheDirectory.KeyHash('Projekt')),
+    TIndexCacheDirectory.CacheFileName), TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'));
   Assert.AreEqual(TPath.Combine(TPath.Combine(TPath.Combine(Version, 'Bibliothek'),
-    TIndexCacheDirectory.KeyHash('Win64')), 'index.atlasidx'),
+    TIndexCacheDirectory.KeyHash('Win64')), TIndexCacheDirectory.CacheFileName),
     TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64'));
   Assert.AreNotEqual(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'),
     TIndexCacheDirectory.FileFor(FRoot, '23.0', 'Projekt'));
@@ -526,6 +530,34 @@ begin
   Assert.IsFalse(TDirectory.Exists(ExtractFileDir(Project)));
   Assert.IsTrue(FileExists(TPath.Combine(FRoot, 'anderes.json')));
   Assert.AreEqual<Int64>(0, TIndexCacheDirectory.TotalSize(FRoot));
+end;
+
+procedure TIndexCacheDirectoryTests.FileNameCarriesFormatVersion;
+begin
+  // Server verschiedener Atlas-Versionen (installiert und neu) teilen sich sonst eine Datei und verwerfen
+  // gegenseitig ihre Caches („Formatversion 27 statt 29“).
+  Assert.AreEqual(Format('index-%d.atlasidx', [TIndexCache.FormatVersion]), TIndexCacheDirectory.CacheFileName);
+  Assert.AreEqual(TIndexCacheDirectory.CacheFileName,
+    ExtractFileName(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt')));
+  Assert.AreEqual(TIndexCacheDirectory.CacheFileName,
+    ExtractFileName(TIndexCacheDirectory.LibraryFileFor(FRoot, '37.0', 'Win64')));
+end;
+
+procedure TIndexCacheDirectoryTests.RemoveKeepsOriginOfOtherFormat;
+var
+  Current, Older, Folder: string;
+begin
+  // Ein Cache älteren Formats im selben Projektordner behält Herkunft und Benutzungsmarke.
+  Current := CreateFile(TIndexCacheDirectory.FileFor(FRoot, '37.0', 'Projekt'), 10);
+  Folder := ExtractFileDir(Current);
+  Older := CreateFile(TPath.Combine(Folder, 'index.atlasidx'), 10);
+  TIndexCacheDirectory.WriteOrigin(Current, 'C:\Projekte\App.dproj');
+  TIndexCacheDirectory.TouchUse(Current);
+  Assert.AreEqual(1, TIndexCacheDirectory.Remove([Current]));
+  Assert.IsTrue(FileExists(TPath.Combine(Folder, TIndexCacheDirectory.OriginFileName)));
+  Assert.IsTrue(FileExists(TPath.Combine(Folder, TIndexCacheDirectory.UseMarkerFileName)));
+  Assert.AreEqual(1, TIndexCacheDirectory.Remove([Older]));
+  Assert.IsFalse(TDirectory.Exists(Folder));
 end;
 
 procedure TIndexCacheDirectoryTests.RemoveAndSizeOfNamedCaches;
