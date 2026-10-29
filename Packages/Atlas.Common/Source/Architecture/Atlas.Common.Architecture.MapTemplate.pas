@@ -11,7 +11,7 @@ function ArchitectureMapHtml: string;
 implementation
 
 const
-  Lines: array[0..506] of string = (
+  Lines: array[0..518] of string = (
     '<!doctype html>',
     '<html lang="de">',
     '<head>',
@@ -191,6 +191,13 @@ const
     '  function where(e) { return e.file ? e.file + '':'' + e.line + '':'' + e.character : ''''; }',
     '  function edgeText(e) { var w = where(e); return U[e.source].name + '' → '' + U[e.target].name + '' ('' + e.section + (w ? '', '' + w : '''') + '')''; }',
     '',
+    '  // Feinheit der Teilsysteme (#1366), nur wenn sie von 1,0 abweicht: wie TArchitectureGrouping.ResolutionText.',
+    '  function gammaText(r) { return r.toFixed(2).replace(/0$/, '''').replace(''.'', '',''); }',
+    '  function resolutionText() {',
+    '    var r = D.grouping ? D.grouping.resolution : 1;',
+    '    return Math.abs(r - 1) < 0.005 ? '''' : '', Feinheit γ = '' + gammaText(r);',
+    '  }',
+    '',
     '  // Kopf',
     '  $(''title'').textContent = ''Architektur: '' + D.title;',
     '  $(''stamp'').textContent = ''Stand '' + D.created.replace(''T'', '' '').substring(0, 16) + '' · Index-Generation '' + D.generation + '' · Rechendauer '' + D.durationMs + '' ms'';',
@@ -198,7 +205,7 @@ const
     '  $(''counts'').textContent = ''Units: '' + sm.units + '' · uses-Kanten: '' + sm.edges + '' · Teilsysteme: '' + sm.subsystems + '' · Zyklen: '' + sm.cycles +',
     '    (sm.interfaceCycles ? '' (davon nur interface: '' + sm.interfaceCycles + '')'' : '''') + '' · Querverbindungen: '' + sm.crossLinks + '' · Ausreißer: '' + sm.outliers;',
     '  $(''scope'').textContent = ''Umfang: '' + (D.scope === ''project'' ? ''Projekt'' : ''Projektgruppe'') + (D.includeLibrary ? '', mit'' : '', ohne'') + '' Bibliotheks-Units'' +',
-    '    (D.excludes.length ? '', ausgeschlossen: '' + D.excludes.join('', '') : '''');',
+    '    (D.excludes.length ? '', ausgeschlossen: '' + D.excludes.join('', '') : '''') + resolutionText();',
     '',
     '  // Graph',
     '  var out = U.map(function () { return []; }), inn = U.map(function () { return []; });',
@@ -501,6 +508,11 @@ const
     '    var box = $(''comparison''), b0 = C.baseline;',
     '    box.appendChild(el(''p'', { ''class'': ''muted'' }, ''Mit dem gespeicherten Stand „'' + b0.title + ''“ ('' + b0.units + '' Units, '' + b0.edges + '' uses-Kanten).'' +',
     '      (C.failed.length ? '' Abweichung: '' + C.failed.join('', '') + ''.'' : '''')));',
+    '    // Verschiedene Feinheit γ (#1366): Teilsystemwechsel können allein daher kommen.',
+    '    var gOld = b0.resolution || 1, gNew = C.resolution || 1;',
+    '    if (Math.abs(gOld - gNew) >= 0.005)',
+    '      box.appendChild(el(''p'', { ''class'': ''muted'' }, ''Hinweis: Der gespeicherte Stand wurde mit Feinheit γ = '' + gammaText(gOld) +',
+    '        '' gerechnet, der aktuelle mit γ = '' + gammaText(gNew) + ''; Teilsystemwechsel können daher kommen.''));',
     '    function cycleLine(c) { return c.units.join('' → '') + (c.units.length ? '' → '' + c.units[0] : '''') + (c.interfaceOnly ? '' (nur über interface)'' : '' (über implementation)''); }',
     '    function edgeLine(e) { return e.source + '' → '' + e.target + '' ('' + e.section + '') '' + e.from + '' → '' + e.to + (e.reason ? '', '' + (e.reason === ''rare'' ? ''selten'' : ''gegen die Hauptri' +
       'chtung'') : ''''); }',

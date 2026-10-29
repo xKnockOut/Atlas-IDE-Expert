@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2974] of string = (
+  Lines: array[0..3000] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2212,13 +2212,40 @@ const
     '          ],',
     '          "description": "Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Unit' +
       's mit stark gewachsener Abhängigkeit."',
+    '        },',
+    '        "grouping": {',
+    '          "type": "object",',
+    '          "x-page": "Architektur",',
+    '          "x-control": "resolution: Zahl (0,2–5,0) und Regler „Feinheit“ im Fenster; showResolutionSlider: Kontrollkästchen",',
+    '          "x-issue": "#1366",',
+    '          "description": "Wie die Architekturübersicht die Units in Teilsysteme gruppiert (Louvain auf dem uses-Graphen). Gilt für Fenster, Bericht, AtlasServer --architecture und get_architecture.",',
+    '          "additionalProperties": false,',
+    '          "properties": {',
+    '            "resolution": {',
+    '              "x-control": "Zahl (0,2–5,0); im Fenster Regler „Feinheit“ (grob … fein, Doppelklick = 1,0)",',
+    '              "x-issue": "#1366",',
+    '              "type": "number",',
+    '              "minimum": 0.2,',
+    '              "maximum": 5,',
+    '              "default": 1,',
+    '              "description": "Feinheit der Teilsysteme (Auflösung γ des Louvain-Verfahrens): größer = mehr und kleinere Teilsysteme, kleiner = weniger und größere; 1,0 = Verhalten wie bisher. atlas/ar' +
+      'chitecture und get_architecture übersteuern den Wert mit \"resolution\" für einen Aufruf."',
+    '            },',
+    '            "showResolutionSlider": {',
+    '              "x-control": "Kontrollkästchen",',
+    '              "x-issue": "#1366",',
+    '              "type": "boolean",',
+    '              "default": true,',
+    '              "description": "Regler „Feinheit“ in der Werkzeugleiste des Fensters „Atlas-Architektur“ zeigen; aus = kein Regler, resolution wirkt weiter."',
+    '            }',
+    '          }',
     '        }',
     '      },',
     '      "x-scope": "global",',
     '      "x-area": "general",',
     '      "x-page": "Architektur",',
     '      "x-control": "Kontrollkästchen, Auswahl, Kontrollkästchen, Zahl (5–100); exclude: Liste mit Hinzufügen/Entfernen in den Projekt-Einstellungen; baseline: Datei wählen, failOn: Liste (Projekt-Eins' +
-      'tellungen, #1121)",',
+      'tellungen, #1121); grouping: Gruppierung der Teilsysteme (#1366)",',
     '      "x-issue": "#1118"',
     '    },',
     '    "requestTimeoutMs": {',

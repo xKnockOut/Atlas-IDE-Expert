@@ -888,6 +888,8 @@ uses
   Atlas.Core.Architecture.Model in '..\Packages\Atlas.IDE.Expert\Source\Core\Architecture\Atlas.Core.Architecture.Model.pas',
   Atlas.Core.Architecture.Model.Tests in 'IDE.Expert\Atlas.Core.Architecture.Model.Tests.pas',
   Atlas.UI.Architecture.Map in '..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Map.pas',
+  Atlas.UI.Architecture.Slider in '..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Slider.pas',
+  Atlas.UI.Architecture.Slider.Tests in 'IDE.Expert\Atlas.UI.Architecture.Slider.Tests.pas',
   Atlas.UI.Architecture.Frame in '..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Frame.pas',
   Atlas.UI.Architecture.Frame.Tests in 'IDE.Expert\Atlas.UI.Architecture.Frame.Tests.pas',
   Atlas.Core.UnitRelations.Model in '..\Packages\Atlas.IDE.Expert\Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas',
