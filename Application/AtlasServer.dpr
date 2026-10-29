@@ -20,6 +20,7 @@ uses
   Shell.Linter in 'Source\Shell\Shell.Linter.pas',
   Shell.SlashHost in 'Source\Shell\Shell.SlashHost.pas',
   Shell.VcsChanges in 'Source\Shell\Shell.VcsChanges.pas',
+  Shell.AffectedTests in 'Source\Shell\Shell.AffectedTests.pas',
   Atlas.Core.Vcs.Contract in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Contract.pas',
   Atlas.Core.Vcs.Internals.Text in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Internals.Text.pas',
   Atlas.Core.Vcs.ServerAccess in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.ServerAccess.pas',

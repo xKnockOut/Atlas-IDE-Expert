@@ -39,6 +39,11 @@
 // ganze Gruppe) und liest dabei den gemeinsamen Index-Cache (--index-cache,
 // sonst der Ordner des Servers), damit Regeln Typen aus anderen Units und der
 // RTL kennen. --no-index prüft wie früher jede Datei für sich.
+// --affected-tests (#1353, TLinterShell.AffectedTests): statt der Prüfung die
+// DUnitX-Tests, die eine Änderung gegenüber der Basis betrifft; Ziel ist das
+// Testprojekt (.dproj), die Projektgruppe (.groupproj) oder ein Ordner. Exit-Code
+// 0, 2 wenn alle Tests nötig sind (die Ausgabe sagt warum), 3 bei Fehlern und
+// mit tests.affected = false.
 // Exit-Code: 1, wenn ein Treffer --fail-on erreicht (Standard error: mindestens
 // ein Fehler; Baseline-Treffer zählen nie), sonst 0; 3 Aufruf- oder Lesefehler.
 
@@ -59,6 +64,10 @@ type
     class function Architecture(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>--clear-cache: löscht alle Index-Caches, die keine laufende Instanz nutzt (#184).</summary>
     class function ClearCache: Integer; static;
+    /// <summary>--affected-tests (#1353): betroffene Tests als text, json oder dunitx (--format) auf stdout bzw. in
+    /// --output. Exit-Code 0; 2, wenn alle Tests nötig sind; 3 bei Fehlern oder mit tests.affected = false.
+    /// </summary>
+    class function AffectedTests(const AOptions: TCommandLineOptions): Integer; static;
   end;
 
 implementation
@@ -115,8 +124,13 @@ uses
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Lsp.Impact,
+  Atlas.Common.Lsp.AffectedTests,
   Shell.Platform,
   Shell.VcsChanges,
+  Shell.AffectedTests,
   Shell.Bootstrap;
 
 procedure WriteText(const AStream: TStream; const AText: string);
@@ -620,6 +634,156 @@ begin
       WriteError(E.Message);
       Result := TFindingsOutput.ExitFailure;
     end;
+  end;
+end;
+
+/// <summary>Hauptdatei (.dpr) der .dproj AProject; '' ohne.</summary>
+function MainSourceOf(const AProject: string; const ASettings: TServerSettings): string;
+var
+  mOptions: TDprojOptions;
+begin
+  mOptions := Default(TDprojOptions);
+  mOptions.Config := ASettings.Config;
+  mOptions.Platform := ASettings.Platform;
+  mOptions.FileExists :=
+    function(APath: string): Boolean
+    begin
+      Result := TFile.Exists(APath) or TDirectory.Exists(APath);
+    end;
+  Result := TDprojReader.Load(TPath.GetFullPath(AProject), mOptions).MainSource;
+  if (Result = '') and TFile.Exists(ChangeFileExt(AProject, '.dpr')) then
+    Result := TPath.GetFullPath(ChangeFileExt(AProject, '.dpr'));
+end;
+
+class function TLinterShell.AffectedTests(const AOptions: TCommandLineOptions): Integer;
+const
+  /// <summary>Alle Tests nötig (eine Datei nicht zuzuordnen, Testprogramm geändert, Analyse unvollständig).</summary>
+  cExitAllTests = 2;
+var
+  mTarget, mConfigRoot, mProject, mOutput, mArgument: string;
+  mSettings: TServerSettings;
+  mFormat: TAffectedFormat;
+  mGroup: TShellWorkspaceGroup;
+  mResolver: TNameResolver;
+  mRequest: TAffectedRequest;
+  mQuery: TShellAffectedQuery;
+  mFound: TAffectedResult;
+  mProcess: ICompilerProcess;
+  mPrograms: TArray<string>;
+  mReadText: TReferenceReadText;
+  mEnsureUnit: TEnsureUnitFunc;
+  mWarning: string;
+begin
+  for mWarning in AOptions.Warnings do
+    WriteError(mWarning);
+  if not TAffectedTests.TryParseFormat(AOptions.FormatText, mFormat) then
+  begin
+    WriteError(Format('--affected-tests kennt --format text, json und dunitx, nicht "%s"', [AOptions.FormatText]));
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  mTarget := AOptions.CheckTarget;
+  if mTarget = '' then
+    mTarget := GetCurrentDir;
+  if not (TFile.Exists(mTarget) or TDirectory.Exists(mTarget)) then
+  begin
+    WriteError(Format('Ziel "%s" nicht gefunden', [mTarget]));
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  mGroup := nil;
+  try
+    try
+      if TDirectory.Exists(mTarget) then
+        mConfigRoot := TPath.GetFullPath(mTarget)
+      else
+        mConfigRoot := ExtractFileDir(TPath.GetFullPath(mTarget));
+      mSettings := LoadSettings(mConfigRoot);
+      if not mSettings.Tests.Affected then
+      begin
+        WriteError(TShellAffectedTests.OffMessage + '; einschalten mit "tests": {"affected": true}');
+        Exit(TFindingsOutput.ExitFailure);
+      end;
+      TFileEncodingDefaults.SetFolder(mConfigRoot, mSettings.DefaultEncoding);
+      mReadText :=
+        function(const AFileName: string; out AText: string): Boolean
+        begin
+          Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+        end;
+      mGroup := LoadIndex(AOptions, mConfigRoot);
+      // Testprogramme: das Ziel bzw. die Projekte der Gruppe, sonst testUnits.project, sonst alle DUnitX-Programme.
+      mPrograms := nil;
+      if SameText(ExtractFileExt(mTarget), '.dproj') then
+        mPrograms := [MainSourceOf(mTarget, mSettings)]
+      else if SameText(ExtractFileExt(mTarget), '.groupproj') then
+      begin
+        for mProject in TShellBootstrap.LoadGroup(TPath.GetFullPath(mTarget), nil) do
+          mPrograms := mPrograms + [MainSourceOf(mProject, mSettings)];
+        mPrograms := TShellAffectedTests.TestPrograms(mPrograms, mReadText);
+      end
+      else if mSettings.TestUnits.Project <> '' then
+        mPrograms := [ChangeFileExt(TPath.GetFullPath(TPath.Combine(mConfigRoot, mSettings.TestUnits.Project)), '.dpr')]
+      else
+        mPrograms := TShellAffectedTests.TestPrograms(mGroup.AllFiles, mReadText);
+      mRequest := Default(TAffectedRequest);
+      mRequest.Files := mGroup.AllFiles;
+      mRequest.TestPrograms := mPrograms;
+      mRequest.Options := TImpactOptions.Default;
+      mRequest.Options.References := mSettings.References;
+      mRequest.Options.Tests := TShellAffectedTests.TestScope(mSettings.TestUnits.Pattern, mPrograms, mReadText);
+      mQuery := Default(TShellAffectedQuery);
+      mQuery.WorkingDir := mConfigRoot;
+      mQuery.Base := AOptions.AffectedBase;
+      mQuery.IncludeUncommitted := AOptions.IncludeUncommitted;
+      // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
+      mProcess := TProcessRunner.Create;
+      // Typisierte Variable: TNameResolver.Create ist überladen.
+      mEnsureUnit :=
+        function(const AUnitName: string): Boolean
+        begin
+          Result := mGroup.EnsureUnit(AUnitName);
+        end;
+      mResolver := TNameResolver.Create(mGroup.Index, mEnsureUnit);
+      try
+        mResolver.Namespaces := mGroup.Main.Namespaces;
+        mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery, mResolver, mGroup.Index, mRequest, mReadText,
+          nil);
+      finally
+        mResolver.Free;
+      end;
+      if (mFormat = TAffectedFormat.DUnitX) and not TAffectedTests.DUnitXArgument(mFound, mArgument) then
+      begin
+        // Zu viele Namen für eine Befehlszeile: dann ohne --run alle.
+        mFound.All := True;
+        mFound.AllReason := 'zu viele Tests für ein --run-Argument';
+      end;
+      mOutput := TAffectedTests.Render(mFound, mFormat);
+      if mFormat = TAffectedFormat.DUnitX then
+      begin
+        // Auf stdout nur das Argument; Gründe und „alle“ für Menschen auf stderr.
+        if mFound.All then
+          WriteError('Alle Tests nötig: ' + mFound.AllReason)
+        else if Length(mFound.Tests) = 0 then
+          WriteError(Format('Keine betroffenen Tests gegenüber %s', [mFound.Base]))
+        else
+          WriteError(Format('%d betroffene Tests gegenüber %s', [Length(mFound.Tests), mFound.Base]));
+        if mOutput <> '' then
+          mOutput := mOutput + sLineBreak;
+      end;
+      WriteOutput(AOptions, mOutput);
+      if mFound.All then
+        Result := cExitAllTests
+      else
+        Result := TFindingsOutput.ExitClean;
+    except
+      on E: Exception do
+      begin
+        WriteError(E.Message);
+        Result := TFindingsOutput.ExitFailure;
+      end;
+    end;
+  finally
+    if mGroup <> nil then
+      mGroup.Stop;
+    mGroup.Free;
   end;
 end;
 
