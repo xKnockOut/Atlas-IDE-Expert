@@ -8623,3 +8623,24 @@ Vorbereitung: Minimalfall F01 aus `berichte/fp-korpus-2026-10-28/faelle`; ein ei
 | VU5 | `property Capacity write SetCapacity;` ohne Typ im Nachfahren, danach `Capacity := 10` | Kein `readonly-property-assigned` |
 | VU6 | `X.Edit` ohne `Post` auf einem Record bzw. einer Klasse ohne TDataSet-Vorfahr; Gegenprobe auf `TFDQuery` | Nur die Gegenprobe meldet `dataset-edit-without-post` |
 | VU7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 29 in Server und Plugin) |
+
+## MCP-Prompts und Ressourcen mit Vorlage (#1357)
+
+Vorbereitung: Claude Code mit `claude mcp add delphi -- AtlasServer.exe --mcp --root <Projekt>` (bzw. das Plugin `atlas`), Projekt mit Formular, DUnitX-Testprojekt und Git; eine Prüfregel mit Befund in einer Unit.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MP1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TMcpPromptsTests`, `TMcpServerTests`, `ReadsMcpPrompts`, `ChecksMcpCustomPrompts`, `LayersMcpMembersSeparately` grün (**Abnahme**) |
+| MP2 | In Claude Code `/` tippen, dann `unit_review` | Die fünf Befehle `unit_review`, `explain_form`, `write_tests`, `fix_finding`, `prepare_commit` mit Beschreibung und Argumenten (**Abnahme**) |
+| MP3 | `/mcp__delphi__unit_review UI.Auftrag` | Eine Nachricht mit Gliederung, Befunden, Metriken über Grenzwert, ungenutztem Code und Konventionen; Claude ruft dafür keine weiteren Werkzeuge auf (**Abnahme**) |
+| MP4 | `@delphi:delphi://unit/UI.Auftrag` an eine Frage hängen | Gliederung und interface-Teil der Unit hängen an (**Abnahme**) |
+| MP5 | `@delphi:delphi://unit/System.SysUtils` bzw. eine Unit außerhalb des Projekts und seiner Such- und Bibliothekspfade | Fehler mit Begründung „liegt außerhalb des Arbeitsbereichs …“ (**Abnahme**) |
+| MP6 | Eigener Prompt in `atlas.json` (`mcp.customPrompts`, Beispiel aus docs/MCP.md), Claude Code neu verbinden | Erscheint mit seinen Argumenten; `{unit}` ist ersetzt, Befunde und Metriken hängen an (**Abnahme**) |
+| MP7 | `"mcp": { "prompts": false }` in settings.json, neu verbinden | Keine Prompts nach `/`, keine Vorlagen, `delphi://build/last` fehlt; Werkzeuge unverändert (**Abnahme**) |
+| MP8 | Server mit `--restricted`, `/mcp__delphi__fix_finding <Datei> <Zeile>` | Keine Korrekturen, kein `apply_code_action`, Hinweis „Eingeschränkter Modus“; `prepare_commit` sagt „Committe nicht“ (**Abnahme**) |
+| MP9 | `pwsh Tools/Start-McpInspector.ps1 -ProjectRoot Tests/Referenzprojekt`, Reiter Prompts und Resources | Fünf Prompts, drei Vorlagen und `delphi://build/last`; `prompts/get` liefert eine Nachricht (**Abnahme**) |
+| MP10 | `pwsh Tools/Test-McpTools.ps1` | Alle Werkzeuge, Ressourcen, Prompts und Vorlagen ok, Exit-Code 0 (**Abnahme**) |
+| MP11 | `/mcp__delphi__explain_form Source\UI.Auftrag.dfm` | Komponentenbaum, Ereignis-Handler mit Rumpf und Zeile (gemeinsame Handler einmal mit allen Komponenten), Datenbindungen |
+| MP12 | `/mcp__delphi__write_tests TAuftrag.Speichern` | Deklaration, Aufrufer, vorhandene Tests, Namensmuster der Testunit; Claude legt Tests in der passenden Testunit an und führt sie mit `run_tests` aus |
+| MP13 | Issue in „Meine Issues“ beginnen (Präfix `ATL-12 `), eine Unit ändern, `/mcp__delphi__prepare_commit` | Geänderte Dateien, Befunde nur in geänderten Zeilen, Hinweis auf betroffene Tests, Commit-Nachricht beginnt mit `ATL-12 ` |
+| MP14 | `"mcp": { "promptLanguage": "en" }`, `/mcp__delphi__unit_review UI.Auftrag` | Anleitung und Beschreibungen englisch |

@@ -31,6 +31,11 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## MCP-Prompts und Ressourcen mit Vorlage (#1357, 29.10.2026, Branch `feature/1357-mcp-prompts`)
+- Neue Unit `Atlas.Common.Mcp.Prompts` (eingebaute und eigene Prompts, Vorlagen `delphi://unit|form|findings/{…}`, `delphi://build/last`); `TMcpServer` kann `prompts/list`, `prompts/get`, `resources/templates/list` und `InvokeTool` (gleiche Regeln wie `tools/call`). Verdrahtung in `Shell.Mcp.pas` (UnitFileOf, ChangesOf).
+- Schlüssel flach statt verschachtelt: `mcp.prompts`, `mcp.promptLanguage` (global), `mcp.customPrompts` (Projekt), weil das Schema nur zwei Ebenen und `x-scope` je Glied kennt. Nebenbei Ursache behoben: `ParseLayered` übernahm `mcp` aus atlas.json als Ganzes und löschte die globalen Werte.
+- Commit-Präfix liest der Server aus `<gitdir>/atlas-commit-prefix` (schreibt das Plugin); `issues.commitPattern` ist eine Plugin-Einstellung. `get_affected_tests` (#1353) wird nur genutzt, wenn vorhanden, sonst Hinweis auf `get_impact`.
+- In der Cloud nicht übersetzt (FPC-Bau und pwsh gesperrt). SchemaData, ScopeData, Konfiguration.md und Einstellungen.md von Hand bzw. mit einem Python-Nachbau von `Update-ConfigDoc.ps1` erzeugt: vor dem Merge `pwsh Tools/Update-ConfigDoc.ps1 -Check` und die übrigen Prüfskripte laufen lassen. Handtests MP1–MP14.
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.
