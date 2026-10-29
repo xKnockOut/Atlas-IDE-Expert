@@ -3,11 +3,13 @@
 // Compilerfehler aus Typen von Ausdrücken schon beim Tippen (Gruppe „Compiler
 // vorab“, #1024). Gemeldet wird nur, was die Namensauflösung sicher findet:
 //   dynamic-array-misuse
-//                     New (wie E2255) oder Dispose (wie E2256) auf einem
-//                     dynamischen Array, SetLength ohne Länge (wie E2246), New
-//                     mit Länge auf einem Typ, der kein dynamisches Array ist
-//                     (wie E2307), und New(TArrayTyp) ohne Länge (wie E2308)
-//                     (#1038). Korrekturen: Dispose(A) wird A := nil, New(A)
+//                     New (wie E2255) oder Dispose (wie E2008; Doku: E2256)
+//                     auf einem dynamischen Array, SetLength ohne Länge (wie
+//                     E2246), New mit Länge auf einem Typ, der kein dynamisches
+//                     Array ist (wie E2008; Doku: E2307), und New(TArrayTyp)
+//                     ohne Länge (wie E2308) (#1038). Delphi 13 meldet Dispose
+//                     und New mit Länge als E2008 (dcc-Lauf vom 29.10.2026,
+//                     #1369). Korrekturen: Dispose(A) wird A := nil, New(A)
 //                     wird SetLength(A, 1).
 //   local-routine-as-callback
 //                     Eine lokale (verschachtelte) Routine wird einer Variablen
@@ -516,6 +518,13 @@ var
     AOther := False;
     Result := (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
       Resolver.NodeType(AContext.Tree, FileName, ANode, Symbol, TypeInfo, TypeFound) and Symbol.IsType;
+    // Eingebaute Typen wie Integer stehen ohne System nicht im Index (#1369, Fall Cm.E2307).
+    if not Result and (ANode.Kind = TSyntaxKind.Identifier) and TNameResolver.IsBuiltinTypeName(ANode.Name) and
+      (Length(Resolver.CallCandidates(AContext.Tree, FileName, ANode)) = 0) then
+    begin
+      AOther := not MatchText(ANode.Name, ['Pointer', 'PChar', 'PWideChar', 'PAnsiChar']);
+      Exit(True);
+    end;
     if not Result then
       Exit;
     if Symbol.Builtin then
@@ -559,7 +568,7 @@ var
           Fixes := [TRuleFix.Create(Format('%s := nil', [TargetText]), [TTextEdit.Create(TTextRange.Create(
             ACall.StartPos, ACall.EndPos), TargetText + ' := nil')])];
         AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
-          'Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2256).', TRuleConfidence.High,
+          'Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2008).', TRuleConfidence.High,
           Fixes);
       end;
     end
@@ -580,7 +589,7 @@ var
             TRuleConfidence.High)
         else if (ArgCount > 1) and Other then
           AReport.Add(TTextRange.Create(ACall.StartPos, ACall.EndPos),
-            Format('New mit Länge erwartet den Typ eines dynamischen Arrays; %s ist keiner (wie E2307).',
+            Format('New mit Länge erwartet den Typ eines dynamischen Arrays; %s ist keiner (wie E2008).',
             [TargetText]), TRuleConfidence.High);
       end
       else if (ArgCount = 1) and IsArrayVariable(Target) then

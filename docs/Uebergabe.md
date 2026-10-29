@@ -31,6 +31,15 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Inkompatible Typen: Regel type-mismatch (#1369, 29.10.2026, Branch `feature/1369-inkompatible-typen` auf Prep-v1.2.0, ungebaut mit Delphi)
+
+- **Regel:** `type-mismatch` (Stufe T, Gruppe compiler) meldet wie E2010 Zuweisung, Argument, Vorgabewert und Index einer Array-Property, wie E2015 Operatoren (`div` auf Double, `Boolean + 1`, `not` auf String, `is` mit eingebautem Typ), wie E2089 Typumwandlung `Integer(1.5)`, wie E2008 `Inc(I, 1.5)`/`Ptr(1.5)`, wie E2033 var-Argumente anderen Typs, wie E2009 Prozedurtypen (Parameterliste, Methodenzeiger und reguläre Prozedur). Entscheidung in `Semantics.TypeCompatibility` (neu): nur eingebaute Typen, Klassen, Aufzählungen, statische Arrays; plattformabhängige Typen, Variant, Char mit Zahl und alles Unklare bleiben `Unknown`.
+- **Ursachen statt Symptome (Korpus):** Alias-Ketten werden Glied für Glied verfolgt (`ResolveNameFrom`) und sind unbekannt, sobald ein Glied in `{$IFDEF}` steht; var-Argumente nur bei eingebauten Namen ohne Alias; `TNameResolver`: doppelte var/const nimmt wie dcc die letzte, `Result` übernimmt den Typ aus dem Interface nur ohne `overload` und bei gleichen Parametertypen, `Lines[i][j]` ist ein Char. Korpus (11 Projekte): keine Fehlalarme, neun echte Fehler in veralteten Indy-Tests (Bubbles/boxtests, Test/Protocols, TestDotNet).
+- **Codes wie Delphi 13:** Der dcc-Lauf vom 29.10. meldet E2008 statt E2234/E2174 (`property-accessor-invalid`) und E2256/E2307 (`dynamic-array-misuse`); Meldungen und compilerCodes angepasst, Testfälle ZG3/ZG7/ZG11, YD1/YD5/YD9 nachgezogen.
+- **Neue Fälle in `Tests/Compilermeldungen`:** Cm.E2009b, Cm.E2010b–e (e ist Gegenfall), Cm.E2015b–d, Cm.E2033b, Cm.E2089b; noch nicht mit dcc gebaut (Handtest TM11). Offen: Cm.W1013 braucht System im Index (auf Marcos PC vorhanden), Cm.E2538 gehört zu #1382.
+- **Tests:** `Rules.Builtin.TypeMismatch.Tests` (16), `Semantics.TypeCompatibility.Tests`, `NameResolver.DuplicateLocalsAndResultLikeDcc`, Profile, Goldkorpus (Mutation `Benutzt := 'eins'`); unter FPC grün, alle Prüfskripte grün. Handtests TM1–TM11.
+- **Beim Delphi-Build prüfen:** `Ord()` in `Assert.AreEqual` mit `TOperatorFit`, `TDictionary`-Memo in `TTypeMismatchCheck` (Leckmonitor), `MatchText`-Aufrufe mit offenen Arrays.
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.

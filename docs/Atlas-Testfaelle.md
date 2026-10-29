@@ -5499,15 +5499,15 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 |---|---|---|
 | ZG1 | Das Beispiel aus #1001: `TKunde = class` mit `FName: string;` und `property Name: string read FName write SetName;` | Fehler `property-accessor-invalid` an `SetName`: „SetName ist in TKunde nicht deklariert (wie E2168).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
 | ZG2 | Schnellkorrektur „SetName anlegen“, danach Strg+Z | Deklaration `procedure SetName(const Value: string);` vor der Property und Rumpf mit Änderungsprüfung; danach keine Meldung; ein Undo-Schritt nimmt es zurück. Mit `completion.accessorSection` = `protected` landet der Setter in protected |
-| ZG3 | `read GetName` mit `procedure GetName;` bzw. `function GetName: Integer;`, `property Items[Index: Integer]: string read GetItem` mit `function GetItem: string;` | „… passt nicht als Getter von …; erwartet wird function …“ (wie E2234) |
+| ZG3 | `read GetName` mit `procedure GetName;` bzw. `function GetName: Integer;`, `property Items[Index: Integer]: string read GetItem` mit `function GetItem: string;` | „… passt nicht als Getter von …; erwartet wird function …“ (wie E2008; Delphi 13 meldet E2008, dokumentiert ist E2234) |
 | ZG4 | Setter `procedure SetName(var Value: string);` | „Der Setter SetName nimmt den Wert als var-Parameter …“ (wie E2282) |
 | ZG5 | `GetName` zweimal mit `overload` | „GetName ist überladen …“ (wie E2271) |
 | ZG6 | `class property Anzahl: Integer read FAnzahl` mit Instanzfeld, mit `class function GetAnzahl` ohne `static`; `property Anzahl read FAnzahl` mit `class var FAnzahl` | Meldungen wie E2355 bzw. E2356 |
-| ZG7 | `property Items[I: Integer]: string read FItems;`, `property Rot: Integer index 1 read FRot;`, `read Basis` auf eine andere Property | Meldungen wie E2174 bzw. E2168 |
+| ZG7 | `property Items[I: Integer]: string read FItems;`, `property Rot: Integer index 1 read FRot;`, `read Basis` auf eine andere Property | Meldungen wie E2008 (dokumentiert als E2174) bzw. E2168 |
 | ZG8 | Feldselektoren: `read FAdresse.Ort` (Klasse), `read FPunkt.Z` (fehlt im Record), `read FPunkt.Laenge` (Methode des Records); `read FPunkt.X` | Meldungen wie E2459, E2562, E2461; `FPunkt.X` still |
 | ZG9 | Geerbte Felder und Methoden aus VCL-Vorfahren (`TCustomControl`), Property ohne Typ (`property Caption;`), Klasse mit `{$I …}`, Accessor nur in `{$IFDEF}` | Keine Meldung |
 | ZG10 | `"property-accessor-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
-| ZG11 | Abgleich mit Delphi: ZG1, ZG3 bis ZG8 übersetzen | dcc meldet an denselben Stellen E2168, E2234, E2282, E2271, E2355, E2356, E2174, E2459, E2461 bzw. E2562; für ZG9 nichts. Abweichende Codes im Issue nachtragen |
+| ZG11 | Abgleich mit Delphi: ZG1, ZG3 bis ZG8 übersetzen | dcc meldet an denselben Stellen E2168, E2008, E2282, E2271, E2355, E2356, E2008, E2459, E2461 bzw. E2562; für ZG9 nichts. Abweichende Codes im Issue nachtragen |
 
 ## Zuweisung an ein Feld eines Property-Records (#1005)
 
@@ -5872,15 +5872,15 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| YD1 | Das Beispiel aus #1038: `var Werte: TArray<Double>;` und `Dispose(Werte);` | Fehler `dynamic-array-misuse` an `Dispose(Werte)`: „Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2256).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YD1 | Das Beispiel aus #1038: `var Werte: TArray<Double>;` und `Dispose(Werte);` | Fehler `dynamic-array-misuse` an `Dispose(Werte)`: „Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2008).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
 | YD2 | Schnellkorrektur „Werte := nil“, danach Strg+Z | Zeile wird `Werte := nil;`, keine Meldung mehr; ein Undo-Schritt nimmt es zurück |
 | YD3 | `var Liste: array of Integer;` und `New(Liste);` | „New ist für dynamische Arrays nicht erlaubt; die Länge setzt SetLength (wie E2255).“; Korrektur `SetLength(Liste, 1)` |
 | YD4 | `SetLength(Werte);` | „SetLength braucht für das dynamische Array Werte mindestens eine Länge (wie E2246).“ ohne Korrektur |
-| YD5 | `type TWerte = array of Double;` mit `R := New(TWerte);` bzw. `R := New(TPunkt, 3);` (TPunkt ein Record) | „New für das dynamische Array TWerte braucht mindestens eine Länge (wie E2308).“ bzw. „New mit Länge erwartet den Typ eines dynamischen Arrays; TPunkt ist keiner (wie E2307).“ |
+| YD5 | `type TWerte = array of Double;` mit `R := New(TWerte);` bzw. `R := New(TPunkt, 3);` (TPunkt ein Record) | „New für das dynamische Array TWerte braucht mindestens eine Länge (wie E2308).“ bzw. „New mit Länge erwartet den Typ eines dynamischen Arrays; TPunkt ist keiner (wie E2008).“ |
 | YD6 | `Dispose(Daten)` mit `Daten: TBytes`, Alias `TReihe = TWerte` | Je eine Meldung wie YD1 |
 | YD7 | `New(P)`/`Dispose(P)` mit `P: PPunkt`, `R := New(TWerte, 3)`, `SetLength(Werte, 3)`, `Dispose(Offen)` mit offenem Array-Parameter, eigene Prozedur `New` in der Unit | Keine Meldung |
 | YD8 | `"dynamic-array-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| YD9 | Abgleich mit Delphi: YD1, YD3 bis YD6 übersetzen | dcc meldet E2256, E2255, E2246, E2308 bzw. E2307 an denselben Stellen, für YD7 nichts (offenes Array: eigener Fehler, den die Regel nicht meldet) |
+| YD9 | Abgleich mit Delphi: YD1, YD3 bis YD6 übersetzen | dcc 13 meldet E2008, E2255, E2246, E2308 bzw. E2008 an denselben Stellen, für YD7 nichts (offenes Array: eigener Fehler, den die Regel nicht meldet) |
 
 ## Lokale Routine als Prozedurvariable (#1039)
 
@@ -8623,3 +8623,21 @@ Vorbereitung: Minimalfall F01 aus `berichte/fp-korpus-2026-10-28/faelle`; ein ei
 | VU5 | `property Capacity write SetCapacity;` ohne Typ im Nachfahren, danach `Capacity := 10` | Kein `readonly-property-assigned` |
 | VU6 | `X.Edit` ohne `Post` auf einem Record bzw. einer Klasse ohne TDataSet-Vorfahr; Gegenprobe auf `TFDQuery` | Nur die Gegenprobe meldet `dataset-edit-without-post` |
 | VU7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 29 in Server und Plugin) |
+
+## Inkompatible Typen in Zuweisung, Aufruf und Operator (#1369)
+
+Vorbereitung: Testprojekt `Tests/Compilermeldungen` (Fälle `Cm.E2008` bis `Cm.E2089b`), ein eigenes Projekt mit VCL-Formular.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TM1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TTypeMismatchTests`, `TTypeCompatibilityTests`, `NameResolver.DuplicateLocalsAndResultLikeDcc` grün |
+| TM2 | `var S: string; begin S := 1; end;` | Fehler `type-mismatch` an `1`: „Inkompatible Typen: 'string' und 'Integer' (wie E2010).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
+| TM3 | `Zeige(1)` mit `procedure Zeige(const S: string)`, Vorgabewert `procedure P(A: Integer = 'x')`, Indexer einer Array-Property mit Text statt Zahl | Je eine Meldung wie E2010 |
+| TM4 | `X := 'a' + 1`, `D div 2` mit `D: Double`, `B + 1` mit `B: Boolean`, `not S` mit `S: string`, `O is Integer` | Meldungen wie E2010 bzw. E2015 |
+| TM5 | `Integer(1.5)`, `Inc(I, 1.5)`, `Ptr(1.5)` | Meldungen wie E2089 bzw. E2008 |
+| TM6 | `Lies(A)` mit `procedure Lies(var S: string)` und `A: AnsiString` | „Die Typen der tatsächlichen und formalen var-Parameter müssen übereinstimmen …“ (wie E2033) |
+| TM7 | `Button1.OnClick := Klick` mit `procedure Klick(Sender: TObject; X: Integer)`; Zuweisung einer normalen Prozedur an ein Ereignis und umgekehrt | Meldungen wie E2009 (Parameterliste, reguläre Prozedur und Methodenzeiger) |
+| TM8 | Gegenproben: `S := 'a' + S`, `I := Ord('a')`, `F := I`, `V := 1` mit `V: Variant`, `TFloat = Single` an `var X: Single`, Alias nur in `{$IFDEF}`, Ergebnis überladener Funktionen, `Lines[i][j]`, `with`-Block, Operatorüberladung in einem Record | Keine Meldung |
+| TM9 | `property-accessor-invalid` (ZG3, ZG7) und `dynamic-array-misuse` (YD1, YD5) | Meldungen nennen jetzt E2008 wie Delphi 13 |
+| TM10 | `"type-mismatch": "off"`, `"group:compiler": "off"` bzw. `"group:compiler": {"typeLevel": "off"}` | Keine Meldung |
+| TM11 | Abgleich mit Delphi: `Tools/Build-Compilermeldungen.ps1` für die neuen Fälle `Cm.E2009b`, `Cm.E2010b` bis `Cm.E2010e`, `Cm.E2015b` bis `Cm.E2015d`, `Cm.E2033b`, `Cm.E2089b` | dcc meldet den Code im Dateinamen (für `Cm.E2010e` nichts), Atlas denselben; im Vergleich keine neuen „zusätzlich“ |

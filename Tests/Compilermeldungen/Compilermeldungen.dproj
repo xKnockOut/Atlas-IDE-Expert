@@ -40,13 +40,21 @@
         <DCCReference Include="Faelle\Cm.E2007.pas"/>
         <DCCReference Include="Faelle\Cm.E2008.pas"/>
         <DCCReference Include="Faelle\Cm.E2009.pas"/>
+        <DCCReference Include="Faelle\Cm.E2009b.pas"/>
         <DCCReference Include="Faelle\Cm.E2010.pas"/>
+        <DCCReference Include="Faelle\Cm.E2010b.pas"/>
+        <DCCReference Include="Faelle\Cm.E2010c.pas"/>
+        <DCCReference Include="Faelle\Cm.E2010d.pas"/>
+        <DCCReference Include="Faelle\Cm.E2010e.pas"/>
         <DCCReference Include="Faelle\Cm.E2011.pas"/>
         <DCCReference Include="Faelle\Cm.E2012.pas"/>
         <DCCReference Include="Faelle\Cm.E2013.pas"/>
         <DCCReference Include="Faelle\Cm.E2014.pas"/>
         <DCCReference Include="Faelle\Cm.E2014b.pas"/>
         <DCCReference Include="Faelle\Cm.E2015.pas"/>
+        <DCCReference Include="Faelle\Cm.E2015b.pas"/>
+        <DCCReference Include="Faelle\Cm.E2015c.pas"/>
+        <DCCReference Include="Faelle\Cm.E2015d.pas"/>
         <DCCReference Include="Faelle\Cm.E2016.pas"/>
         <DCCReference Include="Faelle\Cm.E2017.pas"/>
         <DCCReference Include="Faelle\Cm.E2018.pas"/>
@@ -65,6 +73,7 @@
         <DCCReference Include="Faelle\Cm.E2031.pas"/>
         <DCCReference Include="Faelle\Cm.E2032.pas"/>
         <DCCReference Include="Faelle\Cm.E2033.pas"/>
+        <DCCReference Include="Faelle\Cm.E2033b.pas"/>
         <DCCReference Include="Faelle\Cm.E2034.pas"/>
         <DCCReference Include="Faelle\Cm.E2035.pas"/>
         <DCCReference Include="Faelle\Cm.E2036.pas"/>
@@ -104,6 +113,7 @@
         <DCCReference Include="Faelle\Cm.E2086.pas"/>
         <DCCReference Include="Faelle\Cm.E2088.pas"/>
         <DCCReference Include="Faelle\Cm.E2089.pas"/>
+        <DCCReference Include="Faelle\Cm.E2089b.pas"/>
         <DCCReference Include="Faelle\Cm.E2091.pas"/>
         <DCCReference Include="Faelle\Cm.E2093.pas"/>
         <DCCReference Include="Faelle\Cm.E2094.pas"/>
