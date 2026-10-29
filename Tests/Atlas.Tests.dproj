@@ -370,6 +370,7 @@
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.CodeActions.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Confidence.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Output.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.FormatOutput.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Baseline.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Scopes.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.Options.Tests.pas"/>
@@ -507,6 +508,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Indent.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Formatter.Layout.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.FormatCheck.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.DocumentLinks.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Colors.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Lsp\Atlas.Core.Lsp.Client.pas"/>
