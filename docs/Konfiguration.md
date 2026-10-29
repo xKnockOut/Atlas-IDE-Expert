@@ -243,6 +243,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `architecture.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["Tests/**","*.Tests"]` | Units, die nicht in die Auswertung eingehen: Glob-Muster auf den Unit-Namen oder den Pfad relativ zum Projekt (*, **, ?). |
 | `architecture.baseline` | Projekt (atlas.json) | string | `""` | z. B. `"architektur-main.json"` | Gespeicherter Architekturstand (JSON aus AtlasServer --architecture <Datei.json> oder „Stand speichern …“), Pfad relativ zum Projekt: Fenster, Bericht und get_architecture vergleichen automatisch damit. Leer = kein Vergleich. |
 | `architecture.failOn` | Projekt (atlas.json) | array<string> | `"newCycle"` |  | Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Units mit stark gewachsener Abhängigkeit. |
+| `architecture.explainAssignment` | global (settings.json) | boolean | `true` |  | Zuordnung jeder Unit erklären: Tabelle der Kanten je Teilsystem (interface, implementation, gewichtete Summe) im Hinweis und Steckbrief des Fensters, im Bericht und in get_architecture mit unit, dazu die Spalte „knapp“ für Units, bei denen ein anderes Teilsystem mindestens 75 % der Summe erreicht. |
 | `architecture.grouping` | global (settings.json) | object | – |  | Wie die Architekturübersicht die Units in Teilsysteme gruppiert (Louvain auf dem uses-Graphen). Gilt für Fenster, Bericht, AtlasServer --architecture und get_architecture. |
 
 ## hotspots

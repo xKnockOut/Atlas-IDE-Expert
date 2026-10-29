@@ -15,6 +15,11 @@
 //   bleiben. Ausreißer: Unit, deren Namensraum zu einem anderen Teilsystem
 //   passt, oder die mehr Kanten in ein anderes Teilsystem hat als ins eigene;
 //   mit Vorschlag.
+// - Zuordnung (#1368): je Unit ihre Kanten je Teilsystem (interface,
+//   implementation, gewichtete Summe), absteigend nach Summe. Knapp, wenn das
+//   stärkste andere Teilsystem mindestens 75 % der Summe des eigenen hat;
+//   Kanten zum Fundament zählen nicht. Die Ausreißer nach Kanten lesen
+//   dieselbe Liste.
 // - Zyklen aus dem Uses-Graphen (reine interface-Zyklen zuerst), je Kante mit
 //   Fundstelle.
 // - Querverbindungen: Kanten zwischen zwei Teilsystemen, die selten sind
@@ -166,6 +171,38 @@ type
     Toward: Integer;
   end;
 
+  /// <summary>Kanten einer Unit zu einem Teilsystem (#1368), ein- und ausgehend zusammen wie bei der Gruppierung.
+  /// </summary>
+  TOverviewAssignmentRow = record
+    Subsystem: Integer;
+    Interfaces: Integer;
+    Implementations: Integer;
+    /// <summary>Gewichtete Summe (interface 2, implementation 1).</summary>
+    Sum: Integer;
+    /// <summary>False bei Kanten zum Teilsystem „Fundament“: Sie zählen bei der Zuordnung nicht (#1365).</summary>
+    Counts: Boolean;
+    /// <summary>Zahl der Kanten (ungewichtet).</summary>
+    function Edges: Integer;
+  end;
+
+  /// <summary>Warum eine Unit in ihrem Teilsystem liegt (#1368).</summary>
+  TOverviewAssignment = record
+    /// <summary>Teilsysteme mit Kanten der Unit, nach Summe absteigend, bei Gleichstand nach Name; das eigene
+    /// steht immer darin (auch ohne Kanten).</summary>
+    Rows: TArray<TOverviewAssignmentRow>;
+    /// <summary>Stelle des eigenen Teilsystems in Rows; -1 ohne Daten.</summary>
+    Own: Integer;
+    /// <summary>Stelle des stärksten anderen Teilsystems, das zählt; -1 ohne.</summary>
+    Rival: Integer;
+    /// <summary>Knapp zugeordnet: Rival erreicht mindestens 75 % der Summe des eigenen Teilsystems.</summary>
+    Close: Boolean;
+    /// <summary>Gewichtete Kanten, die Rival zum Wechsel fehlen (0, wenn es schon gleich viele oder mehr hat).
+    /// </summary>
+    Missing: Integer;
+    function OwnSum: Integer;
+    function RivalSum: Integer;
+  end;
+
   TOverviewCycle = record
     Units: TArray<Integer>;
     Edges: TArray<TOverviewEdge>;
@@ -218,8 +255,19 @@ type
     Outliers: TArray<TOverviewOutlier>;
     Cycles: TArray<TOverviewCycle>;
     CrossLinks: TArray<TOverviewCrossLink>;
+    /// <summary>Je Unit ihre Kanten je Teilsystem (#1368); daraus ergeben sich auch die Ausreißer.</summary>
+    Assignments: TArray<TOverviewAssignment>;
+    /// <summary>Zuordnung in Bericht, Fenster und get_architecture zeigen (architecture.explainAssignment).
+    /// </summary>
+    ExplainAssignment: Boolean;
     /// <summary>Unit mit diesem Namen (ohne Groß-/Kleinschreibung); -1 ohne.</summary>
     function IndexOf(const AName: string): Integer;
+    /// <summary>Zuordnung der Unit; Own = -1, wenn die Übersicht keine hat (gespeicherter Stand).</summary>
+    function Assignment(AUnit: Integer): TOverviewAssignment;
+    /// <summary>ExplainAssignment und Zuordnungen für alle Units vorhanden.</summary>
+    function ShowsAssignment: Boolean;
+    /// <summary>Zahl der knapp zugeordneten Units.</summary>
+    function CloseCount: Integer;
     function Profile(AUnit: Integer): TOverviewProfile;
     /// <summary>Pfad relativ zu Root mit /, sonst unverändert.</summary>
     function RelativePath(const AFileName: string): string;
@@ -243,6 +291,9 @@ type
     /// </summary>
     FoundationRule = 'Units mit Rolle Fundament, deren direkt Abhängige in mindestens drei Teilsystemen liegen ' +
       'oder höchstens zu 60 % im eigenen, und Units, die nur sie verwenden';
+    /// <summary>Knapp zugeordnet (#1368), wenn das stärkste andere Teilsystem mindestens so viel Prozent der Summe
+    /// des eigenen erreicht.</summary>
+    ClosePercent = 75;
   public
     /// <summary>Übersicht über alle aktiven Units von AGraph. ALocator darf nil sein (dann ohne Fundstellen).
     /// ACentralCount: Länge der Liste zentraler Units (5..100).</summary>
@@ -261,6 +312,14 @@ type
     /// Ergebnis die Nummer der Ausgangsgruppe.</summary>
     class function SplitGroups(const AGroups: TArray<TArray<Integer>>; ASkip, ADepth: Integer;
       const ASplit: TArchitectureSplitFunc; out AFamilies: TArray<Integer>): TArray<TArray<Integer>>; static;
+    /// <summary>Zuordnung aus den Zeilen ARows (#1368): sortiert sie, sucht das eigene Teilsystem AOwn und das
+    /// stärkste andere, das zählt, und bestimmt Knapp und fehlende Kanten. ANames: Namen der Teilsysteme für den
+    /// Gleichstand.</summary>
+    class function AssignmentOf(const ARows: TArray<TOverviewAssignmentRow>; AOwn: Integer;
+      const ANames: TArray<string>): TOverviewAssignment; static;
+    /// <summary>Je Unit von AOverview ihre Kanten je Teilsystem (ungerichtet, wie bei der Gruppierung; #1368).
+    /// </summary>
+    class function Assignments(const AOverview: TArchitectureOverview): TArray<TOverviewAssignment>; static;
   end;
 
 implementation
@@ -433,6 +492,53 @@ begin
       Result.Outlier := Index;
 end;
 
+function TArchitectureOverview.Assignment(AUnit: Integer): TOverviewAssignment;
+begin
+  if (AUnit >= 0) and (AUnit < Length(Assignments)) then
+    Exit(Assignments[AUnit]);
+  Result := Default(TOverviewAssignment);
+  Result.Own := -1;
+  Result.Rival := -1;
+end;
+
+function TArchitectureOverview.ShowsAssignment: Boolean;
+begin
+  Result := ExplainAssignment and (Length(Units) > 0) and (Length(Assignments) = Length(Units));
+end;
+
+function TArchitectureOverview.CloseCount: Integer;
+var
+  mAssignment: TOverviewAssignment;
+begin
+  Result := 0;
+  for mAssignment in Assignments do
+    if mAssignment.Close then
+      Inc(Result);
+end;
+
+{ TOverviewAssignmentRow }
+
+function TOverviewAssignmentRow.Edges: Integer;
+begin
+  Result := Interfaces + Implementations;
+end;
+
+{ TOverviewAssignment }
+
+function TOverviewAssignment.OwnSum: Integer;
+begin
+  Result := 0;
+  if Own >= 0 then
+    Result := Rows[Own].Sum;
+end;
+
+function TOverviewAssignment.RivalSum: Integer;
+begin
+  Result := 0;
+  if Rival >= 0 then
+    Result := Rows[Rival].Sum;
+end;
+
 { TArchitectureAnalyzer }
 
 class function TArchitectureAnalyzer.RoleCaption(ARole: TOverviewUnitRole): string;
@@ -515,6 +621,7 @@ type
     function SplitGroup(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
     procedure NameSubsystems;
     procedure AssignColors;
+    procedure CollectAssignments;
     procedure FindOutliers;
     procedure CollectCycles;
     procedure CollectCrossLinks;
@@ -1357,39 +1464,158 @@ begin
   end;
 end;
 
+class function TArchitectureAnalyzer.AssignmentOf(const ARows: TArray<TOverviewAssignmentRow>; AOwn: Integer;
+  const ANames: TArray<string>): TOverviewAssignment;
+var
+  mIndex: Integer;
+  mOwnSum, mRivalSum: Integer;
+begin
+  Result := Default(TOverviewAssignment);
+  Result.Rows := Copy(ARows);
+  // TArray.Sort ist nicht stabil: bei gleichem Namen weiter nach Nummer.
+  TArray.Sort<TOverviewAssignmentRow>(Result.Rows, TComparer<TOverviewAssignmentRow>.Construct(
+    function(const ALeft, ARight: TOverviewAssignmentRow): Integer
+    begin
+      Result := ARight.Sum - ALeft.Sum;
+      if (Result = 0) and (ALeft.Subsystem < Length(ANames)) and (ARight.Subsystem < Length(ANames)) then
+        Result := CompareText(ANames[ALeft.Subsystem], ANames[ARight.Subsystem]);
+      if Result = 0 then
+        Result := ALeft.Subsystem - ARight.Subsystem;
+    end));
+  Result.Own := -1;
+  Result.Rival := -1;
+  for mIndex := 0 to High(Result.Rows) do
+    if Result.Rows[mIndex].Subsystem = AOwn then
+      Result.Own := mIndex
+    else if Result.Rows[mIndex].Counts and (Result.Rival < 0) then
+      Result.Rival := mIndex;
+  mOwnSum := Result.OwnSum;
+  mRivalSum := Result.RivalSum;
+  // Ganzzahlig verglichen: 6 von 8 sind genau 75 %.
+  Result.Close := (Result.Own >= 0) and Result.Rows[Result.Own].Counts and (Result.Rival >= 0) and (mOwnSum > 0) and
+    (mRivalSum * 100 >= mOwnSum * ClosePercent);
+  if Result.Close then
+    Result.Missing := Max(0, mOwnSum - mRivalSum + 1);
+end;
+
+class function TArchitectureAnalyzer.Assignments(const AOverview: TArchitectureOverview):
+  TArray<TOverviewAssignment>;
+var
+  mInterfaces, mImplementations: TArray<TArray<Integer>>;
+  mNames: TArray<string>;
+  mRows: TArray<TOverviewAssignmentRow>;
+  mEdge: TOverviewEdge;
+  mIndex, mSubsystem, mCount, mOwn: Integer;
+
+  procedure Count(AUnit, ASubsystem: Integer; AInterface: Boolean);
+  begin
+    if AInterface then
+      Inc(mInterfaces[AUnit][ASubsystem])
+    else
+      Inc(mImplementations[AUnit][ASubsystem]);
+  end;
+
+begin
+  SetLength(mInterfaces, Length(AOverview.Units));
+  SetLength(mImplementations, Length(AOverview.Units));
+  for mIndex := 0 to High(AOverview.Units) do
+  begin
+    SetLength(mInterfaces[mIndex], Length(AOverview.Subsystems));
+    SetLength(mImplementations[mIndex], Length(AOverview.Subsystems));
+  end;
+  for mEdge in AOverview.Edges do
+  begin
+    Count(mEdge.Source, AOverview.Units[mEdge.Target].Subsystem, mEdge.Section = TUsesSection.Interface_);
+    Count(mEdge.Target, AOverview.Units[mEdge.Source].Subsystem, mEdge.Section = TUsesSection.Interface_);
+  end;
+  SetLength(mNames, Length(AOverview.Subsystems));
+  for mSubsystem := 0 to High(AOverview.Subsystems) do
+    mNames[mSubsystem] := AOverview.Subsystems[mSubsystem].Name;
+  SetLength(Result, Length(AOverview.Units));
+  SetLength(mRows, Length(AOverview.Subsystems));
+  for mIndex := 0 to High(AOverview.Units) do
+  begin
+    mOwn := AOverview.Units[mIndex].Subsystem;
+    mCount := 0;
+    if (mOwn < 0) or (mOwn > High(AOverview.Subsystems)) then
+    begin
+      Result[mIndex] := AssignmentOf(nil, -1, mNames);
+      Continue;
+    end;
+    for mSubsystem := 0 to High(AOverview.Subsystems) do
+    begin
+      if (mSubsystem <> mOwn) and (mInterfaces[mIndex][mSubsystem] = 0) and
+        (mImplementations[mIndex][mSubsystem] = 0) then
+        Continue;
+      mRows[mCount].Subsystem := mSubsystem;
+      mRows[mCount].Interfaces := mInterfaces[mIndex][mSubsystem];
+      mRows[mCount].Implementations := mImplementations[mIndex][mSubsystem];
+      mRows[mCount].Sum := mRows[mCount].Interfaces * InterfaceWeight +
+        mRows[mCount].Implementations * ImplementationWeight;
+      // Kanten zum Fundament zählen bei der Zuordnung nicht (#1365); im Fundament selbst zählen sie.
+      mRows[mCount].Counts := not AOverview.Subsystems[mSubsystem].Foundation or
+        AOverview.Subsystems[mOwn].Foundation;
+      Inc(mCount);
+    end;
+    Result[mIndex] := AssignmentOf(Copy(mRows, 0, mCount), mOwn, mNames);
+    // Ins Fundament kommt eine Unit nach der Regel FoundationRule, nicht nach ihren Kanten: nie knapp.
+    if AOverview.Subsystems[mOwn].Foundation then
+    begin
+      Result[mIndex].Close := False;
+      Result[mIndex].Missing := 0;
+    end;
+  end;
+end;
+
+procedure TAnalysis.CollectAssignments;
+begin
+  // Einmal gerechnet für Ausreißer und Erklärung (#1368).
+  FResult.Assignments := TArchitectureAnalyzer.Assignments(FResult);
+end;
+
+/// <summary>Kanten (ungerichtet, ungewichtet) der Zuordnung zum Teilsystem ASubsystem; 0 ohne Zeile.</summary>
+function EdgesTo(const AAssignment: TOverviewAssignment; ASubsystem: Integer): Integer;
+var
+  mRow: TOverviewAssignmentRow;
+begin
+  Result := 0;
+  for mRow in AAssignment.Rows do
+    if mRow.Subsystem = ASubsystem then
+      Exit(mRow.Edges);
+end;
+
 procedure TAnalysis.FindOutliers;
 var
-  Links: TArray<TArray<Integer>>;
-  Edge: TOverviewEdge;
+  mAssignment: TOverviewAssignment;
+  mRow: TOverviewAssignmentRow;
   Index, Own, Best, Subsystem: Integer;
   Outlier: TOverviewOutlier;
   Parts: TArray<string>;
   Part: string;
   NameOwn: Boolean;
+  mBestEdges: Integer;
 begin
-  // Kantengewichte je Unit und Teilsystem (ungerichtet).
-  SetLength(Links, Length(FResult.Units));
-  for Index := 0 to High(Links) do
-    SetLength(Links[Index], Length(FResult.Subsystems));
-  for Edge in FResult.Edges do
-  begin
-    Inc(Links[Edge.Source][FResult.Units[Edge.Target].Subsystem]);
-    Inc(Links[Edge.Target][FResult.Units[Edge.Source].Subsystem]);
-  end;
   for Index := 0 to High(FResult.Units) do
   begin
     Own := FResult.Units[Index].Subsystem;
     // Ausreißer nur unter den übrigen Teilsystemen (#1365): weder aus dem Fundament noch dorthin.
     if IsFoundation(Own) then
       Continue;
+    mAssignment := FResult.Assignments[Index];
     Outlier := Default(TOverviewOutlier);
     Outlier.Unit_ := Index;
     Outlier.Suggested := -1;
-    // Nach Kanten: ein anderes Teilsystem mit mehr Kanten als das eigene.
+    // Nach Kanten (ungewichtet): ein anderes Teilsystem mit mehr Kanten als das eigene, bei Gleichstand das mit
+    // der kleineren Nummer.
     Best := Own;
-    for Subsystem := 0 to High(FResult.Subsystems) do
-      if (Subsystem <> Own) and not IsFoundation(Subsystem) and (Links[Index][Subsystem] > Links[Index][Best]) then
-        Best := Subsystem;
+    mBestEdges := EdgesTo(mAssignment, Own);
+    for mRow in mAssignment.Rows do
+      if (mRow.Subsystem <> Own) and not IsFoundation(mRow.Subsystem) and ((mRow.Edges > mBestEdges) or
+        ((mRow.Edges = mBestEdges) and (Best <> Own) and (mRow.Subsystem < Best))) then
+      begin
+        Best := mRow.Subsystem;
+        mBestEdges := mRow.Edges;
+      end;
     if Best <> Own then
     begin
       Outlier.Suggested := Best;
@@ -1420,8 +1646,8 @@ begin
     end;
     if Outlier.Suggested < 0 then
       Continue;
-    Outlier.Inside := Links[Index][Own];
-    Outlier.Toward := Links[Index][Outlier.Suggested];
+    Outlier.Inside := EdgesTo(mAssignment, Own);
+    Outlier.Toward := EdgesTo(mAssignment, Outlier.Suggested);
     FResult.Outliers := FResult.Outliers + [Outlier];
   end;
 end;
@@ -1604,6 +1830,7 @@ function TAnalysis.Run(ACentralCount: Integer): TArchitectureOverview;
 begin
   FResult := Default(TArchitectureOverview);
   FResult.Grouping := FGrouping;
+  FResult.ExplainAssignment := True;
   CollectUnits;
   CollectEdges;
   Measure;
@@ -1611,6 +1838,7 @@ begin
   SortSubsystems;
   NameSubsystems;
   AssignColors;
+  CollectAssignments;
   FindOutliers;
   CollectCycles;
   CollectCrossLinks;
