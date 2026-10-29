@@ -3,7 +3,7 @@
 // Mitlaufender Kopf (#506): Kopf einer langen Methode, äußerer und innerer
 // Kopf untereinander, nach inneren Routinen nur der äußere, Zusammenfassung
 // bei vier Ebenen, gekürzte mehrzeilige Köpfe, Klasse im interface,
-// Sprungziel.
+// Sprungziel, Arten im Kopf, Beginn und Einblenden der Blocklinien im Kopf.
 
 interface
 
@@ -44,6 +44,20 @@ type
     /// </summary>
     [Test]
     procedure SyntaxLikeTheEditor;
+    /// <summary>Blocklinie beginnt in der Kopfzeile ihres Elements; ohne Kopfzeile (Art aus, zusammengefasst)
+    /// blendet sie in der letzten Kopfzeile ein statt ohne Anfang darunter.</summary>
+    [Test]
+    procedure GuideStartsAtItsRowOrFadesIn;
+    /// <summary>Einblenden: unten volle Deckkraft, oben fast keine, dazwischen steigend.</summary>
+    [Test]
+    procedure FadeRisesToTheBottom;
+    /// <summary>Besitzerwort ordnet den Block seiner Art zu: if/else, Schleifen, try, case, with; sonst keine.
+    /// </summary>
+    [Test]
+    procedure OwnerWordsHaveTheirKind;
+    /// <summary>Nur die eingestellten Arten der Gliederung (Klassen, Routinen) bekommen eine Kopfzeile.</summary>
+    [Test]
+    procedure OutlineKindsCanBeSwitchedOff;
   end;
 
 implementation
@@ -412,6 +426,92 @@ begin
   // Ohne Besitzer (PairOwners aus) bleibt procedure ungefärbt wie im Editor.
   for var Span in TAtlasPairs.Spans('procedure Innen(…): Boolean;', Lines[1], Line1, False) do
     Assert.AreNotEqual(1, Span.Start);
+end;
+
+function Row(ALine: Integer; ASummary: Boolean): TAtlasStickyRow;
+begin
+  Result := Default(TAtlasStickyRow);
+  Result.Text := 'Kopf';
+  Result.Line := ALine;
+  Result.Summary := ASummary;
+end;
+
+procedure TAtlasStickyScrollTests.GuideStartsAtItsRowOrFadesIn;
+var
+  Rows: TAtlasStickyRows;
+  Start: TAtlasStickyGuideStart;
+begin
+  // Zusammenfassung mit Sprungziel 3, procedure in 10, if in 14.
+  Rows := [Row(3, True), Row(10, False), Row(14, False)];
+  Start := TAtlasStickyScroll.GuideStart(Rows, 10);
+  Assert.AreEqual(1, Start.Row);
+  Assert.IsFalse(Start.FadeIn);
+  Start := TAtlasStickyScroll.GuideStart(Rows, 14);
+  Assert.AreEqual(2, Start.Row);
+  Assert.IsFalse(Start.FadeIn);
+  // for in 12 ohne Kopfzeile: in der letzten Zeile eingeblendet.
+  Start := TAtlasStickyScroll.GuideStart(Rows, 12);
+  Assert.AreEqual(2, Start.Row);
+  Assert.IsTrue(Start.FadeIn);
+  // Die Zusammenfassung ist nicht das Element der Linie.
+  Start := TAtlasStickyScroll.GuideStart(Rows, 3);
+  Assert.AreEqual(2, Start.Row);
+  Assert.IsTrue(Start.FadeIn);
+  // Ohne Kopf keine Linie im Kopf.
+  Rows := nil;
+  Start := TAtlasStickyScroll.GuideStart(Rows, 12);
+  Assert.AreEqual(-1, Start.Row);
+  Assert.IsFalse(Start.FadeIn);
+end;
+
+procedure TAtlasStickyScrollTests.FadeRisesToTheBottom;
+var
+  Offset: Integer;
+begin
+  Assert.AreEqual(1.0, TAtlasStickyScroll.FadeWeight(19, 20), 1e-9, 'unterste Pixelzeile voll');
+  Assert.IsTrue(TAtlasStickyScroll.FadeWeight(0, 20) < 0.01, 'oben fast unsichtbar');
+  for Offset := 1 to 19 do
+    Assert.IsTrue(TAtlasStickyScroll.FadeWeight(Offset, 20) > TAtlasStickyScroll.FadeWeight(Offset - 1, 20));
+  // Weich: in der Mitte noch unter der Hälfte.
+  Assert.IsTrue(TAtlasStickyScroll.FadeWeight(9, 20) < 0.5);
+  Assert.AreEqual(1.0, TAtlasStickyScroll.FadeWeight(0, 1), 1e-9, 'eine Pixelzeile');
+end;
+
+procedure TAtlasStickyScrollTests.OwnerWordsHaveTheirKind;
+var
+  Kind: TAtlasStickyKind;
+begin
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('if', Kind) and (Kind = TAtlasStickyKind.Branches));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('else', Kind) and (Kind = TAtlasStickyKind.Branches));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('for', Kind) and (Kind = TAtlasStickyKind.Loops));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('while', Kind) and (Kind = TAtlasStickyKind.Loops));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('repeat', Kind) and (Kind = TAtlasStickyKind.Loops));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('try', Kind) and (Kind = TAtlasStickyKind.TryBlocks));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('case', Kind) and (Kind = TAtlasStickyKind.CaseBlocks));
+  Assert.IsTrue(TAtlasStickyScroll.OwnerKind('with', Kind) and (Kind = TAtlasStickyKind.WithBlocks));
+  // Ohne Anweisung davor (begin, asm) und Ausnahmezweige (on) bekommen keine eigene Zeile.
+  Assert.IsFalse(TAtlasStickyScroll.OwnerKind('begin', Kind));
+  Assert.IsFalse(TAtlasStickyScroll.OwnerKind('asm', Kind));
+  Assert.IsFalse(TAtlasStickyScroll.OwnerKind('on', Kind));
+end;
+
+procedure TAtlasStickyScrollTests.OutlineKindsCanBeSwitchedOff;
+var
+  Source: TSource;
+begin
+  Source := Build;
+  // Klasse: nur mit Types.
+  Assert.AreEqual('TForm1 = class(TObject)', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil,
+    [TAtlasStickyKind.Types], Source.Marks.FormClass + 2, 3, 8)));
+  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil, [TAtlasStickyKind.Routines],
+    Source.Marks.FormClass + 2, 3, 8)));
+  // Routinen: nur mit Routines; ohne beide bleibt der Kopf leer.
+  Assert.AreEqual('procedure TForm1.Laden; | function Eins: Integer;', Texts(TAtlasStickyScroll.Rows(Source.Nodes,
+    Source.Lines, nil, [TAtlasStickyKind.Routines], Source.Marks.EinsBody + 5, 3, 8)));
+  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil, [TAtlasStickyKind.Types],
+    Source.Marks.EinsBody + 5, 3, 8)));
+  Assert.AreEqual('', Texts(TAtlasStickyScroll.Rows(Source.Nodes, Source.Lines, nil, [], Source.Marks.EinsBody + 5,
+    3, 8)));
 end;
 
 initialization

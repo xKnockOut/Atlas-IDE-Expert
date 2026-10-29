@@ -372,6 +372,12 @@ type
     /// <summary>Projekte, die beim Öffnen nicht gebaut werden (build.onOpenExclude), Namen ohne Endung, durch
     /// Komma getrennt, z. B. ein in der IDE installiertes Package.</summary>
     BuildOnOpenExclude: string;
+    /// <summary>Konfiguration für den Lauf beim Öffnen (build.onOpenConfig, #1293), z. B. Debug; '' = wie im
+    /// Projekt. Kennt ein Projekt sie nicht, gilt dort die Einstellung des Projekts.</summary>
+    BuildOnOpenConfig: string;
+    /// <summary>Zielplattform für den Lauf beim Öffnen (build.onOpenPlatform, #1293), z. B. Win64; '' = wie im
+    /// Projekt. Ist sie in einem Projekt nicht aktiviert, gilt dort die Einstellung des Projekts.</summary>
+    BuildOnOpenPlatform: string;
     /// <summary>Tastenkürzel im Editor (#399, TShortCut, 0 = keins): Code-Aktionen, Auswahl erweitern und
     /// verkleinern, Gehe zu Implementierung und zu Typdefinition.</summary>
     ActionsKey: Integer;
@@ -589,6 +595,8 @@ type
     UnitSearchFilters: Boolean;
     /// <summary>Tippsyntax p:/t: im Suchfeld (#777, unitSearch.filterSyntax); Vorgabe an.</summary>
     UnitSearchFilterSyntax: Boolean;
+    /// <summary>Formulare auch über ihre Caption finden (#1310, unitSearch.formCaptions); Vorgabe an.</summary>
+    UnitSearchFormCaptions: Boolean;
     /// <summary>Vorschaubereich (#777, unitSearch.preview); Vorgabe an.</summary>
     UnitSearchPreview: Boolean;
     /// <summary>Formularskizze in der Vorschau (#777, unitSearch.preview.form); Vorgabe an.</summary>
@@ -713,8 +721,18 @@ type
     /// <summary>Höchstzahl seiner Zeilen, MinStickyLines bis MaxStickyLines (#506,
     /// editor.stickyScrollMaxLines).</summary>
     StickyScrollMaxLines: Integer;
+    /// <summary>Was der Kopf zeigt (editor.stickyScrollTypes, …Routines): Klassen/Records und Routinen der
+    /// Gliederung.</summary>
+    StickyScrollTypes: Boolean;
+    StickyScrollRoutines: Boolean;
     /// <summary>Große if/else-Blöcke im Kopf (#1230, editor.stickyScrollBlocks).</summary>
     StickyScrollBlocks: Boolean;
+    /// <summary>Weitere große Anweisungsblöcke im Kopf: for/while/repeat, try, case, with
+    /// (editor.stickyScrollLoops, …Try, …Case, …With).</summary>
+    StickyScrollLoops: Boolean;
+    StickyScrollTry: Boolean;
+    StickyScrollCase: Boolean;
+    StickyScrollWith: Boolean;
     /// <summary>Mindestlänge solcher Blöcke in Zeilen, MinStickyBlockLines bis MaxStickyBlockLines (#1230,
     /// editor.stickyScrollBlockMinLines).</summary>
     StickyScrollBlockMinLines: Integer;
@@ -1364,6 +1382,8 @@ begin
   Result.BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuildScope.All];
   Result.BuildOnOpenDelayMs := TAtlasOpenBuild.DefaultDelayMs;
   Result.BuildOnOpenExclude := '';
+  Result.BuildOnOpenConfig := '';
+  Result.BuildOnOpenPlatform := '';
   Result.ActionsKey := $800D; // Alt+Enter
   Result.ExpandKey := $4057; // Strg+W
   Result.ShrinkKey := $6057; // Strg+Umschalt+W
@@ -1452,6 +1472,7 @@ begin
   Result.UnitSearchRememberCollapsed := True;
   Result.UnitSearchFilters := True;
   Result.UnitSearchFilterSyntax := True;
+  Result.UnitSearchFormCaptions := True;
   Result.UnitSearchPreview := True;
   Result.UnitSearchPreviewForm := True;
   Result.UnitSearchPreviewUsedBy := True;
@@ -1507,7 +1528,13 @@ begin
   Result.PreviousBookmarkKey := 0;
   Result.StickyScroll := False;
   Result.StickyScrollMaxLines := 3;
+  Result.StickyScrollTypes := True;
+  Result.StickyScrollRoutines := True;
   Result.StickyScrollBlocks := True;
+  Result.StickyScrollLoops := False;
+  Result.StickyScrollTry := False;
+  Result.StickyScrollCase := False;
+  Result.StickyScrollWith := False;
   Result.StickyScrollBlockMinLines := 25;
   Result.Minimap := False;
   Result.MinimapRender := 'blocks';
@@ -1671,6 +1698,8 @@ begin
   BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuild.ScopeOf(BuildOnOpenScope)];
   BuildOnOpenDelayMs := EnsureRange(BuildOnOpenDelayMs, TAtlasOpenBuild.MinDelayMs, TAtlasOpenBuild.MaxDelayMs);
   BuildOnOpenExclude := TAtlasOpenBuild.NormalizedExclude(BuildOnOpenExclude);
+  BuildOnOpenConfig := Trim(BuildOnOpenConfig);
+  BuildOnOpenPlatform := Trim(BuildOnOpenPlatform);
   // Nach dem Speichern genau eins von beiden: Die Syntaxprüfung der IDE gewinnt.
   if CheckOnSave then
     CompileOnSave := False;
@@ -1970,6 +1999,8 @@ begin
   BuildOnOpenScope := AStore.ReadString('BuildOnOpenScope', Default.BuildOnOpenScope);
   BuildOnOpenDelayMs := AStore.ReadInteger('BuildOnOpenDelayMs', Default.BuildOnOpenDelayMs);
   BuildOnOpenExclude := AStore.ReadString('BuildOnOpenExclude', Default.BuildOnOpenExclude);
+  BuildOnOpenConfig := AStore.ReadString('BuildOnOpenConfig', Default.BuildOnOpenConfig);
+  BuildOnOpenPlatform := AStore.ReadString('BuildOnOpenPlatform', Default.BuildOnOpenPlatform);
   CompileOnSave := AStore.ReadInteger('CompileOnSave', BoolValue(Default.CompileOnSave)) <> 0;
   ActionsKey := AStore.ReadInteger('ActionsKey', Default.ActionsKey);
   ExpandKey := AStore.ReadInteger('ExpandKey', Default.ExpandKey);
@@ -2074,6 +2105,7 @@ begin
   UnitSearchRememberCollapsed := AStore.ReadInteger('UnitSearchRememberCollapsed', BoolValue(Default.UnitSearchRememberCollapsed)) <> 0;
   UnitSearchFilters := AStore.ReadInteger('UnitSearchFilters', BoolValue(Default.UnitSearchFilters)) <> 0;
   UnitSearchFilterSyntax := AStore.ReadInteger('UnitSearchFilterSyntax', BoolValue(Default.UnitSearchFilterSyntax)) <> 0;
+  UnitSearchFormCaptions := AStore.ReadInteger('UnitSearchFormCaptions', BoolValue(Default.UnitSearchFormCaptions)) <> 0;
   UnitSearchPreview := AStore.ReadInteger('UnitSearchPreview', BoolValue(Default.UnitSearchPreview)) <> 0;
   UnitSearchPreviewForm := AStore.ReadInteger('UnitSearchPreviewForm', BoolValue(Default.UnitSearchPreviewForm)) <> 0;
   UnitSearchPreviewUsedBy := AStore.ReadInteger('UnitSearchPreviewUsedBy', BoolValue(Default.UnitSearchPreviewUsedBy)) <> 0;
@@ -2139,7 +2171,13 @@ begin
   PreviousBookmarkKey := AStore.ReadInteger('PreviousBookmarkKey', Default.PreviousBookmarkKey);
   StickyScroll := AStore.ReadInteger('StickyScroll', BoolValue(Default.StickyScroll)) <> 0;
   StickyScrollMaxLines := AStore.ReadInteger('StickyScrollMaxLines', Default.StickyScrollMaxLines);
+  StickyScrollTypes := AStore.ReadInteger('StickyScrollTypes', BoolValue(Default.StickyScrollTypes)) <> 0;
+  StickyScrollRoutines := AStore.ReadInteger('StickyScrollRoutines', BoolValue(Default.StickyScrollRoutines)) <> 0;
   StickyScrollBlocks := AStore.ReadInteger('StickyScrollBlocks', BoolValue(Default.StickyScrollBlocks)) <> 0;
+  StickyScrollLoops := AStore.ReadInteger('StickyScrollLoops', BoolValue(Default.StickyScrollLoops)) <> 0;
+  StickyScrollTry := AStore.ReadInteger('StickyScrollTry', BoolValue(Default.StickyScrollTry)) <> 0;
+  StickyScrollCase := AStore.ReadInteger('StickyScrollCase', BoolValue(Default.StickyScrollCase)) <> 0;
+  StickyScrollWith := AStore.ReadInteger('StickyScrollWith', BoolValue(Default.StickyScrollWith)) <> 0;
   StickyScrollBlockMinLines := AStore.ReadInteger('StickyScrollBlockMinLines', Default.StickyScrollBlockMinLines);
   Minimap := AStore.ReadInteger('Minimap', BoolValue(Default.Minimap)) <> 0;
   MinimapRender := AStore.ReadString('MinimapRender', Default.MinimapRender);
@@ -2421,6 +2459,8 @@ begin
   AStore.WriteString('BuildOnOpenScope', BuildOnOpenScope);
   AStore.WriteInteger('BuildOnOpenDelayMs', BuildOnOpenDelayMs);
   AStore.WriteString('BuildOnOpenExclude', BuildOnOpenExclude);
+  AStore.WriteString('BuildOnOpenConfig', BuildOnOpenConfig);
+  AStore.WriteString('BuildOnOpenPlatform', BuildOnOpenPlatform);
   AStore.WriteInteger('CompileOnSave', BoolValue(CompileOnSave));
   AStore.WriteInteger('ActionsKey', ActionsKey);
   AStore.WriteInteger('ExpandKey', ExpandKey);
@@ -2508,6 +2548,7 @@ begin
   AStore.WriteInteger('UnitSearchRememberCollapsed', BoolValue(UnitSearchRememberCollapsed));
   AStore.WriteInteger('UnitSearchFilters', BoolValue(UnitSearchFilters));
   AStore.WriteInteger('UnitSearchFilterSyntax', BoolValue(UnitSearchFilterSyntax));
+  AStore.WriteInteger('UnitSearchFormCaptions', BoolValue(UnitSearchFormCaptions));
   AStore.WriteInteger('UnitSearchPreview', BoolValue(UnitSearchPreview));
   AStore.WriteInteger('UnitSearchPreviewForm', BoolValue(UnitSearchPreviewForm));
   AStore.WriteInteger('UnitSearchPreviewUsedBy', BoolValue(UnitSearchPreviewUsedBy));
@@ -2563,7 +2604,13 @@ begin
   AStore.WriteInteger('PreviousBookmarkKey', PreviousBookmarkKey);
   AStore.WriteInteger('StickyScroll', BoolValue(StickyScroll));
   AStore.WriteInteger('StickyScrollMaxLines', StickyScrollMaxLines);
+  AStore.WriteInteger('StickyScrollTypes', BoolValue(StickyScrollTypes));
+  AStore.WriteInteger('StickyScrollRoutines', BoolValue(StickyScrollRoutines));
   AStore.WriteInteger('StickyScrollBlocks', BoolValue(StickyScrollBlocks));
+  AStore.WriteInteger('StickyScrollLoops', BoolValue(StickyScrollLoops));
+  AStore.WriteInteger('StickyScrollTry', BoolValue(StickyScrollTry));
+  AStore.WriteInteger('StickyScrollCase', BoolValue(StickyScrollCase));
+  AStore.WriteInteger('StickyScrollWith', BoolValue(StickyScrollWith));
   AStore.WriteInteger('StickyScrollBlockMinLines', StickyScrollBlockMinLines);
   AStore.WriteInteger('Minimap', BoolValue(Minimap));
   AStore.WriteString('MinimapRender', MinimapRender);

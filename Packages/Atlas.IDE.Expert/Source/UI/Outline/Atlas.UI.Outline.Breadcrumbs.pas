@@ -28,6 +28,9 @@
 //   halb seiner Region liegt oder WM_NCHITTEST HTTRANSPARENT liefert; das
 //   prüft HitProblem in dieser Reihenfolge, damit das Protokoll die Ursache
 //   nennt statt einer Vermutung.
+// - Höhe, Farben, Hervorhebung, Klick beim Loslassen, Kontextmenü (geht nie
+//   an den Editor) und OnDisabled kommen vom Vorfahr TAtlasEditorBar (#1248).
+//   Teile: Glied i ist i, das „›“ dahinter SeparatorPart + i.
 
 interface
 
@@ -42,7 +45,8 @@ uses
   Vcl.Graphics,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
-  Atlas.Core.Outline.Breadcrumbs;
+  Atlas.Core.Outline.Breadcrumbs,
+  Atlas.UI.Editor.Bar;
 
 type
   /// <summary>Menü zum Glied AIndex öffnen; APoint ist die linke untere Ecke des Glieds am Bildschirm.</summary>
@@ -50,17 +54,17 @@ type
   /// <summary>Zum Glied AIndex springen; ADeclaration = zur Deklaration statt zur Implementierung.</summary>
   TAtlasCrumbJumpEvent = reference to procedure(AIndex: Integer; ADeclaration: Boolean);
 
-  TAtlasBreadcrumbBar = class(TCustomControl)
+  TAtlasBreadcrumbBar = class(TAtlasEditorBar)
+  private const
+    /// <summary>Teil des „›“ hinter Glied i: SeparatorPart + i.</summary>
+    SeparatorPart = $10000;
   private
     FCrumbs: TAtlasCrumbs;
-    FColors: TAtlasColors;
     FRects: TArray<TRect>;
     /// <summary>„›“ hinter dem Glied; leer, wenn keins steht.</summary>
     FSeparators: TArray<TRect>;
     FFirstShown: Integer;
     FLaidOut: Boolean;
-    FHot: Integer;
-    FHotSeparator: Integer;
     FSelected: Integer;
     FEmptyText: string;
     FCrumbHint: string;
@@ -69,8 +73,6 @@ type
     FOnOpenChildren: TAtlasCrumbMenuEvent;
     FOnJump: TAtlasCrumbJumpEvent;
     FOnLeave: TProc;
-    FOnDisabled: TProc;
-    function Scale(AValue: Integer): Integer;
     function BadgeWidth: Integer;
     function CrumbWidth(AIndex: Integer): Integer;
     function SeparatorWidth: Integer;
@@ -82,15 +84,17 @@ type
     procedure DrawSeparator(ALeft: Integer; const AText: string); overload;
     procedure DrawSeparator(AIndex: Integer); overload;
     function TrailingSeparator: Boolean;
+    /// <summary>Glied mit Menü oder Sprungziel (Hand, Hervorhebung)?</summary>
+    function Clickable(AIndex: Integer): Boolean;
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
-    procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
-    procedure WMEnable(var Message: TWMEnable); message WM_ENABLE;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
   protected
+    function PartAt(X, Y: Integer): Integer; override;
+    function PartHint(APart: Integer): string; override;
+    function PartEnabled(APart: Integer): Boolean; override;
+    procedure PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer); override;
     procedure Paint; override;
     procedure Resize; override;
-    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure DoEnter; override;
     procedure DoExit; override;
@@ -102,7 +106,6 @@ type
     function ContentRight: Integer;
     /// <summary>Glieder setzen; gleiche Glieder zeichnen nicht neu. Die Auswahl springt aufs letzte Glied.</summary>
     procedure SetCrumbs(const ACrumbs: TAtlasCrumbs);
-    procedure SetColors(const AColors: TAtlasColors);
     /// <summary>Glied unter dem Punkt (Client); -1 = keins.</summary>
     function CrumbAt(X, Y: Integer): Integer;
     /// <summary>Fläche des Glieds (Client); leer, wenn es wegen der Breite entfällt.</summary>
@@ -119,8 +122,6 @@ type
     procedure OpenChildren(AIndex: Integer);
     /// <summary>Zum Glied springen (OnJump), wenn es einen Knoten hat oder die Unit ist.</summary>
     procedure Jump(AIndex: Integer; ADeclaration: Boolean);
-    /// <summary>Höhe der Leiste bei APPI (eine Zeile).</summary>
-    class function BarHeight(APPI: Integer): Integer; static;
     /// <summary>Was am Fenster der Leiste unabhängig vom Mauspunkt nicht stimmt (kein Fenster, anderer Thread,
     /// anderes Elternfenster, gesperrt, ausgeblendet); '' = in Ordnung.</summary>
     function WindowProblem: string;
@@ -141,9 +142,6 @@ type
     property OnOpenChildren: TAtlasCrumbMenuEvent read FOnOpenChildren write FOnOpenChildren;
     property OnJump: TAtlasCrumbJumpEvent read FOnJump write FOnJump;
     property OnLeave: TProc read FOnLeave write FOnLeave;
-    /// <summary>Das Fenster der Leiste wurde gesperrt (WM_ENABLE mit False, über VCL oder EnableWindow); ein
-    /// gesperrtes Fenster bekommt keine Maus, die Klicks landen beim Elternfenster.</summary>
-    property OnDisabled: TProc read FOnDisabled write FOnDisabled;
   end;
 
 implementation
@@ -155,8 +153,6 @@ uses
 const
   Separator = '›';
   Ellipsis = '…';
-  /// <summary>Höhe bei 96 DPI.</summary>
-  BaseHeight = 22;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -197,38 +193,14 @@ constructor TAtlasBreadcrumbBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   // csAcceptsControls: Kinder rechts (Editorleiste, #1101), mit WS_CLIPCHILDREN übermalt Paint sie nicht.
-  ControlStyle := ControlStyle + [csOpaque, csAcceptsControls] - [csSetCaption];
-  DoubleBuffered := True;
-  TabStop := False;
-  FColors := TAtlasColors.Light;
-  FHot := -1;
-  FHotSeparator := -1;
+  ControlStyle := ControlStyle + [csAcceptsControls];
   FSelected := -1;
-  ShowHint := True;
-  Height := BarHeight(96);
-  Constraints.MinHeight := Height;
-  Constraints.MaxHeight := Height;
-end;
-
-class function TAtlasBreadcrumbBar.BarHeight(APPI: Integer): Integer;
-begin
-  Result := MulDiv(BaseHeight, Max(APPI, 96), 96);
 end;
 
 procedure TAtlasBreadcrumbBar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
 begin
-  Constraints.MinHeight := 0;
-  Constraints.MaxHeight := 0;
   inherited ChangeScale(M, D, isDpiChange);
-  Height := BarHeight(CurrentPPI);
-  Constraints.MinHeight := Height;
-  Constraints.MaxHeight := Height;
   FLaidOut := False;
-end;
-
-function TAtlasBreadcrumbBar.Scale(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Max(CurrentPPI, 96), 96);
 end;
 
 procedure TAtlasBreadcrumbBar.SetCrumbs(const ACrumbs: TAtlasCrumbs);
@@ -237,15 +209,8 @@ begin
     Exit;
   FCrumbs := ACrumbs;
   FSelected := High(FCrumbs);
-  FHot := -1;
-  FHotSeparator := -1;
+  SetHot(PartNone);
   FLaidOut := False;
-  Invalidate;
-end;
-
-procedure TAtlasBreadcrumbBar.SetColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
   Invalidate;
 end;
 
@@ -435,7 +400,7 @@ var
   Part: TRect;
 begin
   Canvas.Font := Font;
-  Canvas.Font.Color := ToColor(FColors.Muted);
+  Canvas.Font.Color := ToColor(Colors.Muted);
   Canvas.Brush.Style := bsClear;
   Part := Rect(ALeft, 0, ALeft + Canvas.TextWidth(AText) + Scale(10), ClientHeight);
   DrawText(Canvas.Handle, PChar(AText), -1, Part, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
@@ -447,11 +412,11 @@ var
   Radius: Integer;
 begin
   Area := FSeparators[AIndex];
-  if AIndex = FHotSeparator then
+  if Hot = SeparatorPart + AIndex then
   begin
     Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(FColors.Selection);
-    Canvas.Pen.Color := ToColor(FColors.Selection);
+    Canvas.Brush.Color := ToColor(Colors.Selection);
+    Canvas.Pen.Color := ToColor(Colors.Selection);
     Radius := Scale(4);
     Canvas.RoundRect(Area.Left + Scale(1), Area.Top + Scale(2), Area.Right - Scale(1), Area.Bottom - Scale(2), Radius,
       Radius);
@@ -468,12 +433,12 @@ begin
   Crumb := FCrumbs[AIndex];
   Area := FRects[AIndex];
   Canvas.Brush.Style := bsSolid;
-  if (AIndex = FHot) or ((AIndex = FSelected) and Focused) then
+  if ((Hot = AIndex) and Clickable(AIndex)) or ((AIndex = FSelected) and Focused) then
   begin
-    Canvas.Brush.Color := ToColor(FColors.Selection);
-    Canvas.Pen.Color := ToColor(FColors.Selection);
+    Canvas.Brush.Color := ToColor(Colors.Selection);
+    Canvas.Pen.Color := ToColor(Colors.Selection);
     if Focused and (AIndex = FSelected) then
-      Canvas.Pen.Color := ToColor(FColors.Accent);
+      Canvas.Pen.Color := ToColor(Colors.Accent);
     Radius := Scale(4);
     Canvas.RoundRect(Area.Left, Area.Top + Scale(2), Area.Right, Area.Bottom - Scale(2), Radius, Radius);
   end;
@@ -484,14 +449,14 @@ begin
     Box := Rect(Left_, (ClientHeight - BoxHeight) div 2, Left_ + BadgeWidth, (ClientHeight - BoxHeight) div 2 +
       BoxHeight);
     Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(FColors.Badges[Crumb.Badge.Kind].Background);
+    Canvas.Brush.Color := ToColor(Colors.Badges[Crumb.Badge.Kind].Background);
     Canvas.Pen.Color := Canvas.Brush.Color;
     Radius := Scale(4);
     Canvas.RoundRect(Box.Left, Box.Top, Box.Right, Box.Bottom, Radius, Radius);
     Canvas.Font := Font;
     Canvas.Font.Style := [fsBold];
     Canvas.Font.Height := -Round(Box.Height * 0.62);
-    Canvas.Font.Color := ToColor(FColors.Badges[Crumb.Badge.Kind].Text);
+    Canvas.Font.Color := ToColor(Colors.Badges[Crumb.Badge.Kind].Text);
     Canvas.Brush.Style := bsClear;
     DrawText(Canvas.Handle, PChar(Crumb.Badge.Code), -1, Box, DT_CENTER or DT_VCENTER or DT_SINGLELINE or
       DT_NOPREFIX);
@@ -502,10 +467,10 @@ begin
   if AIndex = High(FCrumbs) then
   begin
     Canvas.Font.Style := [fsBold];
-    Canvas.Font.Color := ToColor(FColors.Text);
+    Canvas.Font.Color := ToColor(Colors.Text);
   end
   else
-    Canvas.Font.Color := ToColor(FColors.Muted);
+    Canvas.Font.Color := ToColor(Colors.Muted);
   Part := Rect(Left_, 0, Area.Right - Scale(2), ClientHeight);
   DrawText(Canvas.Handle, PChar(Crumb.Text), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
     DT_END_ELLIPSIS);
@@ -518,16 +483,11 @@ var
   Part: TRect;
 begin
   Layout;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FColors.Gutter);
-  Canvas.FillRect(ClientRect);
-  Canvas.Pen.Color := ToColor(FColors.Line);
-  Canvas.MoveTo(0, ClientHeight - 1);
-  Canvas.LineTo(ClientWidth, ClientHeight - 1);
+  PaintChrome(False);
   if Length(FCrumbs) = 0 then
   begin
     Canvas.Font := Font;
-    Canvas.Font.Color := ToColor(FColors.Muted);
+    Canvas.Font.Color := ToColor(Colors.Muted);
     Canvas.Brush.Style := bsClear;
     Part := Rect(Scale(8), 0, ContentRight - Scale(4), ClientHeight);
     DrawText(Canvas.Handle, PChar(FEmptyText), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
@@ -547,67 +507,59 @@ begin
   end;
 end;
 
-procedure TAtlasBreadcrumbBar.MouseMove(Shift: TShiftState; X, Y: Integer);
+function TAtlasBreadcrumbBar.Clickable(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex <= High(FCrumbs)) and
+    ((Length(FCrumbs[AIndex].Siblings) > 0) or (FCrumbs[AIndex].Node >= 0));
+end;
+
+function TAtlasBreadcrumbBar.PartAt(X, Y: Integer): Integer;
 var
-  Hot, HotSeparator: Integer;
+  mIndex: Integer;
 begin
-  inherited MouseMove(Shift, X, Y);
-  Hot := CrumbAt(X, Y);
-  if (Hot >= 0) and (Length(FCrumbs[Hot].Siblings) = 0) and (FCrumbs[Hot].Node < 0) then
-    Hot := -1;
-  HotSeparator := SeparatorAt(X, Y);
-  if (Hot = FHot) and (HotSeparator = FHotSeparator) then
-    Exit;
-  FHot := Hot;
-  FHotSeparator := HotSeparator;
-  if (Hot >= 0) or (HotSeparator >= 0) then
-    Cursor := crHandPoint
-  else
-    Cursor := crDefault;
+  mIndex := SeparatorAt(X, Y);
+  if mIndex >= 0 then
+    Exit(SeparatorPart + mIndex);
+  Result := CrumbAt(X, Y);
+  if Result < 0 then
+    Result := PartNone;
+end;
+
+function TAtlasBreadcrumbBar.PartHint(APart: Integer): string;
+begin
   // Hinweis je Teil: Glied (Menü, Strg+Klick) oder „›“ (Kinder).
-  Application.CancelHint;
-  if HotSeparator >= 0 then
-    Hint := FSeparatorHint
-  else if Hot >= 0 then
-    Hint := FCrumbHint
+  if APart >= SeparatorPart then
+    Result := FSeparatorHint
+  else if Clickable(APart) then
+    Result := FCrumbHint
   else
-    Hint := '';
-  Invalidate;
+    Result := '';
 end;
 
-procedure TAtlasBreadcrumbBar.CMMouseLeave(var Message: TMessage);
+function TAtlasBreadcrumbBar.PartEnabled(APart: Integer): Boolean;
 begin
-  inherited;
-  if (FHot < 0) and (FHotSeparator < 0) then
-    Exit;
-  FHot := -1;
-  FHotSeparator := -1;
-  Invalidate;
+  Result := (APart >= SeparatorPart) or Clickable(APart);
 end;
 
-procedure TAtlasBreadcrumbBar.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TAtlasBreadcrumbBar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
 var
   Index: Integer;
 begin
-  inherited MouseUp(Button, Shift, X, Y);
-  // Erst beim Loslassen: Beim Drücken holt die IDE den Fokus zurück in den Editor, das Menü ginge sofort
+  // Erst beim Loslassen (Vorfahr): Beim Drücken holt die IDE den Fokus zurück in den Editor, das Menü ginge sofort
   // wieder zu.
-  if Button <> mbLeft then
-    Exit;
-  Index := SeparatorAt(X, Y);
-  if Index >= 0 then
+  if APart >= SeparatorPart then
   begin
-    OpenChildren(Index);
+    OpenChildren(APart - SeparatorPart);
     Exit;
   end;
-  Index := CrumbAt(X, Y);
+  Index := APart;
   if Index < 0 then
     Exit;
   FSelected := Index;
   Invalidate;
   // Ohne Geschwister gibt es kein Menü; dann springt auch der einfache Klick.
-  if (ssCtrl in Shift) or (Length(FCrumbs[Index].Siblings) = 0) then
-    Jump(Index, ssShift in Shift)
+  if (ssCtrl in AShift) or (Length(FCrumbs[Index].Siblings) = 0) then
+    Jump(Index, ssShift in AShift)
   else
     OpenMenu(Index);
 end;
@@ -697,13 +649,6 @@ begin
     Exit;
   end;
   Key := 0;
-end;
-
-procedure TAtlasBreadcrumbBar.WMEnable(var Message: TWMEnable);
-begin
-  inherited;
-  if not Message.Enabled and Assigned(FOnDisabled) then
-    FOnDisabled();
 end;
 
 /// <summary>Klasse und, wenn es ein VCL-Steuerelement ist, dessen Name.</summary>

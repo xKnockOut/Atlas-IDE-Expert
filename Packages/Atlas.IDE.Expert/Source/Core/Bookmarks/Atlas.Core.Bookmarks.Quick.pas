@@ -86,7 +86,10 @@ type
     /// <summary>Unnummeriertes schnelles Lesezeichen an ALine setzen bzw. entfernen.</summary>
     class function Toggle(var AList: TAtlasBookmarkList; const AFileName, AText: string; ALine: Integer;
       ANowUtc: TDateTime): TAtlasQuickChange; static;
-    /// <summary>Klick in die Spalte: Marker der Zeile entfernen bzw. ein unnummeriertes Lesezeichen setzen.</summary>
+    /// <summary>Kleinste freie Nummer 1–9; 0, wenn alle belegt sind.</summary>
+    class function FreeNumber(const AList: TAtlasBookmarkList): Integer; static;
+    /// <summary>Klick in die Spalte: Marker der Zeile entfernen bzw. ein Lesezeichen mit der kleinsten freien
+    /// Nummer setzen (ohne, wenn alle belegt sind).</summary>
     class function Click(var AList: TAtlasBookmarkList; const AFileName, AText: string; ALine: Integer;
       ANowUtc: TDateTime): TAtlasQuickChange; static;
     /// <summary>Marker der Zeile entfernen: schnelle ganz, benannte verlieren ihre Nummer. Anzahl.</summary>
@@ -111,6 +114,9 @@ type
     /// <summary>Breite der Spalte in Pixeln zur Zeilenhöhe: Platz für Band und Ziffer, mindestens MinColumnWidth.
     /// </summary>
     class function ColumnWidth(ALineHeight: Integer): Integer; static;
+    /// <summary>Editorzeile unter der Höhe AY, geschätzt aus einer gezeichneten Zeile (AKnownLine, Oberkante
+    /// AKnownTop, Höhe ALineHeight); auch über und unter ihr. Ohne Höhe AKnownLine.</summary>
+    class function RowGuess(AKnownLine, AKnownTop, ALineHeight, AY: Integer): Integer; static;
     /// <summary>Taste für Nummer ANumber aus der Grundtaste ABase (Taste für 1); 0 ohne Grundtaste.</summary>
     class function KeyFor(ABase: Word; ANumber: Integer): Word; static;
     /// <summary>Nummer 1–9, wenn AShortCut die Grundtaste ABase mit einer anderen Ziffer ist; sonst 0.</summary>
@@ -268,6 +274,15 @@ begin
   Result := TAtlasQuickChange.Added;
 end;
 
+class function TAtlasQuickBookmarks.FreeNumber(const AList: TAtlasBookmarkList): Integer;
+begin
+  Result := 1;
+  while (Result <= MaxNumber) and (AList.IndexOfNumber(Result) >= 0) do
+    Inc(Result);
+  if Result > MaxNumber then
+    Result := 0;
+end;
+
 class function TAtlasQuickBookmarks.Click(var AList: TAtlasBookmarkList; const AFileName, AText: string;
   ALine: Integer; ANowUtc: TDateTime): TAtlasQuickChange;
 begin
@@ -276,7 +291,8 @@ begin
     Exit;
   if RemoveAt(AList, AFileName, ALine) > 0 then
     Exit(TAtlasQuickChange.Removed);
-  AddQuick(AList, AFileName, AText, ALine, 0, ANowUtc);
+  // Die kleinste freie Nummer 1–9 gleich mit (Marco 28.10.2026); sind alle belegt, ohne Nummer.
+  AddQuick(AList, AFileName, AText, ALine, FreeNumber(AList), ANowUtc);
   Result := TAtlasQuickChange.Added;
 end;
 
@@ -423,6 +439,21 @@ begin
   Result := (ALineHeight * 4) div 5;
   if Result < MinColumnWidth then
     Result := MinColumnWidth;
+end;
+
+class function TAtlasQuickBookmarks.RowGuess(AKnownLine, AKnownTop, ALineHeight, AY: Integer): Integer;
+var
+  Offset: Integer;
+begin
+  Result := AKnownLine;
+  if ALineHeight <= 0 then
+    Exit;
+  // Abrunden auch oberhalb der bekannten Zeile (div rundet zur Null).
+  Offset := AY - AKnownTop;
+  if Offset >= 0 then
+    Result := AKnownLine + Offset div ALineHeight
+  else
+    Result := AKnownLine - (ALineHeight - 1 - Offset) div ALineHeight;
 end;
 
 class function TAtlasQuickBookmarks.KeyFor(ABase: Word; ANumber: Integer): Word;

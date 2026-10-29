@@ -82,6 +82,7 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Welcome.Registry;
 
@@ -373,7 +374,7 @@ begin
           if AHit.Line >= 0 then
             TAtlasIdeResults.Open(AHit.Target, AHit.Line, AHit.Character)
           else
-            Actions.OpenFile(AHit.Target);
+            TAtlasIdeNavigation.ShowFile(AHit.Target);
         end;
       end;
     end);

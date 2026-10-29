@@ -76,6 +76,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Status.Lines,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Backup,
@@ -281,7 +282,6 @@ uses
   ToolsAPI,
   Atlas.Core.Product.Version,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Settings.Plugin,
   Atlas.Core.Status.Registry,
   Atlas.Core.Welcome.Greeting,
   Atlas.Core.Welcome.Layout,

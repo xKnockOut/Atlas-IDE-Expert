@@ -85,6 +85,8 @@ type
     FWidth: Integer;
     FWantedWidth: Integer;
     FTimer: TTimer;
+    /// <summary>Anmeldung bei TAtlasIdeGutterColumns: Spalte vor dem Abbau eines Editorfensters abgeben (#1233).</summary>
+    FColumnsHandle: Integer;
     FTip: TAtlasNoteTip;
     FLinks: TArray<TProc>;
     FOptions: TAtlasGutterColumnOptions;
@@ -171,6 +173,7 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Elements,
+  Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings;
 
@@ -245,6 +248,11 @@ begin
   FEvents.OnEditorMouseDown := EditorMouseDown;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
     FIndex := Editors.AddEditorEventsNotifier(FEventsRef);
+  FColumnsHandle := TAtlasIdeGutterColumns.Register(
+    procedure
+    begin
+      DropColumn;
+    end);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 100;
   FTimer.OnTimer := Tick;
@@ -256,6 +264,7 @@ var
   Editors: INTACodeEditorServices;
 begin
   FTimer.Free;
+  TAtlasIdeGutterColumns.Unregister(FColumnsHandle);
   // Erst Spalte und Notifier abmelden, dann freigeben (#493).
   DropColumn;
   if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
@@ -304,7 +313,8 @@ begin
   if (FColumn >= 0) and (FWidth = FWantedWidth) then
     Exit;
   Editors := Services;
-  if Editors = nil then
+  // Kurz nach dem Abbau eines Editorfensters nicht wieder anfordern (#1233, TAtlasIdeGutterColumns).
+  if (Editors = nil) or not TAtlasIdeGutterColumns.Allowed then
     Exit;
   DropColumn;
   FColumn := Editors.RequestGutterColumn(FIndex, FWantedWidth, gclAfterLineNumbers);

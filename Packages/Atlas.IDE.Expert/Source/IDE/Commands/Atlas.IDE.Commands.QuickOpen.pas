@@ -419,7 +419,6 @@ end;
 
 procedure OpenTarget(const ACommand: TAtlasCommand);
 var
-  Actions: IOTAActionServices;
   Parts: TArray<string>;
   Line, Character: Integer;
 begin
@@ -432,8 +431,8 @@ begin
     State.Recent.Executed(TAtlasQuickOpen.RecentKey(ACommand.Description));
   if Line >= 0 then
     TAtlasIdeNavigation.GoToLocation(ACommand.Description, Line, Character)
-  else if Supports(BorlandIDEServices, IOTAActionServices, Actions) then
-    Actions.OpenFile(ACommand.Description);
+  else
+    TAtlasIdeNavigation.ShowFile(ACommand.Description);
 end;
 
 { TAtlasIdeQuickOpen }
