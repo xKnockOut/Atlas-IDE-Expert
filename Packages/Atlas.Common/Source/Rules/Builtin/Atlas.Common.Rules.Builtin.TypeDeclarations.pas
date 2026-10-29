@@ -44,7 +44,11 @@
 //                        (#1078): Konstruktoren und Destruktoren einer Klasse
 //                        nur mit register (wie E2236), Getter und Setter
 //                        von published-Properties ebenso (wie E2270), varargs
-//                        nur mit cdecl (wie E2277 bei external, sonst E2591).
+//                        bei external nur mit cdecl (wie E2277). varargs
+//                        ohne external meldet dcc nur unter Win32, mit jeder
+//                        Konvention (wie E2277, Cm.E2277, #1380); unter Win64
+//                        übersetzt es, die Regel richtet sich nach der
+//                        Plattform des Baums (TSyntaxTree.Platform).
 //                        Korrektur: die Konvention in Deklaration und Rumpf
 //                        der Datei entfernen bzw. cdecl setzen.
 
@@ -1244,12 +1248,19 @@ var
     Position: TTextPosition;
   begin
     Varargs := Directive(AHeader, 'varargs');
-    if (Varargs = nil) or (Directive(AHeader, 'cdecl') <> nil) or not Scan.Unconditional(AHeader) then
+    if (Varargs = nil) or not Scan.Unconditional(AHeader) then
       Exit;
-    if Directive(AHeader, 'external') <> nil then
-      Code := 'E2277'
-    else
-      Code := 'E2591';
+    // Ohne external: dcc meldet E2277 unter Win32 auch mit cdecl; Win64 übersetzt es (Cm.E2277, #1380).
+    if Directive(AHeader, 'external') = nil then
+    begin
+      if AContext.Tree.Platform = 'Win32' then
+        AReport.Add(Scan.FirstRange(Varargs), 'varargs ist unter Win32 nur an external-Routinen mit cdecl ' +
+          'erlaubt (wie E2277).', TRuleConfidence.High);
+      Exit;
+    end;
+    if Directive(AHeader, 'cdecl') <> nil then
+      Exit;
+    Code := 'E2277';
     Found := Convention(AHeader);
     if Found = nil then
       Found := Directive(AHeader, 'register');

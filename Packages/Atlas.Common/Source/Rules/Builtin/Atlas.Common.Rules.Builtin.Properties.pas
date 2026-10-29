@@ -12,12 +12,15 @@
 //                              umgekehrt bei class var und statischer
 //                              Klassenmethode (E2356), Feld hinter
 //                              einer Array-Property (E2174), Feldselektor über
-//                              ein Feld, das kein Record ist (E2459), auf ein
+//                              ein Feld, das kein Record ist (E2459), an einer
+//                              Klassen-Property (E2459, #1380), auf ein
 //                              Mitglied, das kein Feld ist (E2461), oder auf
 //                              ein fehlendes Feld (E2562).
 //   default-property-invalid   default falsch (#1073): an einer Property ohne
 //                              Index (E2132), zweite default-Property mit
-//                              denselben Indextypen (E2131), Obj[I] auf einer
+//                              denselben Indextypen oder mit einem anderen
+//                              Namen (E2131, #1380; überladene default-
+//                              Properties gleichen Namens erlaubt dcc), Obj[I] auf einer
 //                              Klasse ohne default-Property in ihrer ganzen
 //                              Vorfahrenkette (E2149, Typ über TNameResolver).
 //   property-redeclaration-invalid
@@ -557,6 +560,14 @@ var
           'eine Instanzmethode (wie E2356).', [Symbol.Name, AShape.Symbol.Name]), TRuleConfidence.High);
         Exit;
       end;
+      // Klassen-Properties lesen und schreiben nur ganze class vars (Cm.E2459, #1380).
+      if AShape.IsClass and (AAccessor.Selectors <> nil) then
+      begin
+        AReport.Add(Range(AAccessor), Format('Die Klassen-Property %s darf hinter %s keinen Feldselektor ' +
+          'haben; %s.%s geht nur an Instanz-Properties (wie E2459).', [AShape.Symbol.Name, Clause, Symbol.Name,
+          string.Join('.', AAccessor.Selectors)]), TRuleConfidence.High);
+        Exit;
+      end;
       CheckSelectors(AAccessor, Symbol);
       Exit;
     end;
@@ -759,10 +770,19 @@ var
       end;
       for Earlier in Seen do
         if SameText(Earlier.Container, Symbol.Container) and (Symbol.TypeName <> '') and
-          (Earlier.TypeName <> '') and SameIndexTypes(Earlier, Symbol) then
+          (Earlier.TypeName <> '') and (Earlier.Condition = '') and (Symbol.Condition = '') then
         begin
-          AReport.Add(Range, Format('%s hat schon die default-Property %s mit denselben Indextypen (wie E2131).',
-            [Symbol.Container, Earlier.Name]), TRuleConfidence.High);
+          // Überladene default-Properties gleichen Namens unterscheiden sich in den Indextypen; zwei
+          // verschiedene Namen lässt dcc nie zu (Cm.E2131, #1380).
+          if not SameText(Earlier.Name, Symbol.Name) then
+            AReport.Add(Range, Format('%s hat schon die default-Property %s; eine Klasse hat höchstens eine ' +
+              'default-Property, überladen nur unter demselben Namen (wie E2131).', [Symbol.Container,
+              Earlier.Name]), TRuleConfidence.High)
+          else if SameIndexTypes(Earlier, Symbol) then
+            AReport.Add(Range, Format('%s hat schon die default-Property %s mit denselben Indextypen (wie E2131).',
+              [Symbol.Container, Earlier.Name]), TRuleConfidence.High)
+          else
+            Continue;
           Break;
         end;
       Seen := Seen + [Symbol];
