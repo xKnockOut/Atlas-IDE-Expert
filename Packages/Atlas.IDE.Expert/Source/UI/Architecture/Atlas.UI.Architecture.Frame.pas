@@ -26,8 +26,9 @@
 //   Abschnitt (neue Zyklen, Querverbindungen, Kanten zwischen Teilsystemen,
 //   Wechsel, Wachstum, Units) die Einträge; ohne Vergleich ein Hinweis, bei
 //   unlesbarem Stand die Meldung.
-// Unten die Statuszeile (Zahlen, Index-Stand, Rechendauer und Ausschlüsse
-// bzw. ein Hinweis).
+// Unten die Statuszeile (Zahlen, Index-Stand, Rechendauer und Ausschlüsse,
+// „Teilsysteme an Stand vom … angeglichen“ (#1367) bzw. ein Hinweis). Das Menü
+// „Teilsysteme ▾“ bietet mit OnRenameSubsystems „Teilsysteme neu benennen“.
 // Doppelklick oder Enter öffnet die Unit (OnOpenUnit) bzw. springt zum
 // uses-Eintrag (OnOpenLocation, Zeile und Spalte ab 1); Strg+Doppelklick auf
 // eine Unit zeigt sie im Fenster „Unit-Beziehungen“ (OnUnitRelations, #593).
@@ -116,6 +117,7 @@ type
     FOnScopeChanged: TProc<string>;
     FOnLibraryChanged: TProc<Boolean>;
     FOnResolutionChanged: TProc<Double>;
+    FOnRenameSubsystems: TProc;
     FOnOpenUnit: TProc<string>;
     FOnOpenLocation: TProc<string, Integer, Integer>;
     FOnUnitRelations: TProc<string>;
@@ -159,6 +161,7 @@ type
     procedure SubsystemItemClick(Sender: TObject);
     procedure FoundationEdgesClick(Sender: TObject);
     procedure ShowAllClick(Sender: TObject);
+    procedure RenameSubsystemsClick(Sender: TObject);
     procedure CentralColumnClick(Sender: TObject; Column: TListColumn);
     procedure CentralDblClick(Sender: TObject);
     procedure CrossDblClick(Sender: TObject);
@@ -191,7 +194,8 @@ type
     procedure OpenUnit(AUnit: Integer);
     /// <summary>uses-Eintrag öffnen (OnOpenLocation), ohne Fundstelle die Unit, in der er steht.</summary>
     procedure OpenLink(const ALink: TAtlasArchLink);
-    /// <summary>Menü „Teilsysteme ▾“ neu aufbauen: je Teilsystem ein Haken, dazu „Alle einblenden“.</summary>
+    /// <summary>Menü „Teilsysteme ▾“ neu aufbauen: je Teilsystem ein Haken, dazu „Alle einblenden“ und mit
+    /// OnRenameSubsystems „Teilsysteme neu benennen“ (#1367).</summary>
     procedure FillSubsystemsMenu;
     /// <summary>Zeile eines Teilsystems in Menü und Reiter: Name, Units, Zusammenhalt (Fundament ohne, #1365).
     /// </summary>
@@ -253,6 +257,9 @@ type
     property OnLibraryChanged: TProc<Boolean> read FOnLibraryChanged write FOnLibraryChanged;
     /// <summary>Regler losgelassen, Doppelklick oder Taste: neue Feinheit (#1366).</summary>
     property OnResolutionChanged: TProc<Double> read FOnResolutionChanged write FOnResolutionChanged;
+    /// <summary>„Teilsysteme neu benennen“ im Menü „Teilsysteme ▾“ (#1367): einmal ohne Angleichung rechnen.
+    /// </summary>
+    property OnRenameSubsystems: TProc read FOnRenameSubsystems write FOnRenameSubsystems;
     property OnOpenUnit: TProc<string> read FOnOpenUnit write FOnOpenUnit;
     /// <summary>Absoluter Pfad, Zeile und Spalte ab 1.</summary>
     property OnOpenLocation: TProc<string, Integer, Integer> read FOnOpenLocation write FOnOpenLocation;
@@ -1103,6 +1110,13 @@ begin
     if Length(FModel.Excludes) > 0 then
       FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusExcludes,
         [string.Join(', ', FModel.Excludes)]);
+    // Angleichung an einen vorigen Stand (#1367).
+    if FModel.AlignedSource = 'baseline' then
+      FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusAlignedBaseline,
+        [FModel.AlignedText])
+    else if FModel.AlignedSource <> '' then
+      FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusAlignedLast,
+        [FModel.AlignedText]);
     if FModel.Comparison.Present then
       FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusComparison,
         [FModel.Comparison.Count])
@@ -1394,6 +1408,22 @@ begin
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureShowAll);
   Item.OnClick := ShowAllClick;
   FSubsystemsMenu.Items.Add(Item);
+  // Farben und Namen neu vergeben (#1367), nur wenn der Dienst es anbietet.
+  if Assigned(FOnRenameSubsystems) then
+  begin
+    Item := TMenuItem.Create(FSubsystemsMenu);
+    Item.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureRenameSubsystems);
+    Item.Hint := TAtlasStrings.Text(TAtlasTextId.ArchitectureRenameHint);
+    Item.Tag := -1;
+    Item.OnClick := RenameSubsystemsClick;
+    FSubsystemsMenu.Items.Add(Item);
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.RenameSubsystemsClick(Sender: TObject);
+begin
+  if Assigned(FOnRenameSubsystems) then
+    FOnRenameSubsystems();
 end;
 
 procedure TAtlasArchitectureFrame.SubsystemsClick(Sender: TObject);

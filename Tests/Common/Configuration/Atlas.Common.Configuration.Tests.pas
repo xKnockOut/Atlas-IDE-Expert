@@ -277,6 +277,14 @@ begin
   mSettings := Parse('{"architecture": {"explainAssignment": "nein"}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
   Assert.IsTrue(mSettings.ArchitectureExplainAssignment);
+  // Farben und Namen halten (#1367).
+  Assert.IsTrue(TServerSettings.Default.ArchitectureGroupingKeepPrevious);
+  mSettings := Parse('{"architecture": {"grouping": {"keepPrevious": false}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.ArchitectureGroupingKeepPrevious);
+  mSettings := Parse('{"architecture": {"grouping": {"keepPrevious": "aus"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsTrue(mSettings.ArchitectureGroupingKeepPrevious);
   mSettings := Parse('{"architecture": {"grouping": {"resolution": 2.5, "showResolutionSlider": false}}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.AreEqual(Double(2.5), mSettings.ArchitectureGroupingResolution, 1E-9);

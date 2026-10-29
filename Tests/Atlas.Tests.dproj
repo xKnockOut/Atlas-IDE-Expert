@@ -235,6 +235,8 @@
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Layout.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Snapshot.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Comparison.Tests.pas"/>
+        <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Matching.Tests.pas"/>
+        <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Alignment.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Report.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Service.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.Tests.pas"/>
