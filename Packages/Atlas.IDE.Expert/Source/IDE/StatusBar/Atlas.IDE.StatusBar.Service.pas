@@ -16,6 +16,8 @@
 // - Zeigt die Leiste das Element status, ist das Atlas-Feld der Statuszeile
 //   0 breit (TAtlasStatusField.Relocated); Klick und Rechtsklick öffnen dort
 //   wie bisher Statusfenster und Schnellschalter, nur über der Leiste.
+//   Doppelklick auf den Status öffnet das Fenster „Atlas-Server“ (#1356,
+//   nur mit server.statusWindow).
 // - Ungelesene Benachrichtigungen (#1234) stehen als Plakette hinter dem
 //   Status (aus dem Atlas-Feld, das dann 0 breit ist); Klick öffnet die Liste.
 // - Klick auf einen Zähler springt zum nächsten Befund dieser Art in der
@@ -107,7 +109,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Problems.Controller,
-  Atlas.IDE.Problems.Service;
+  Atlas.IDE.Problems.Service,
+  Atlas.IDE.Status.ServerWindow;
 
 const
   TickMs = 250;
@@ -364,6 +367,19 @@ begin
           JumpToFinding(Kind);
         end);
     end;
+  Bar.OnStatusOpen :=
+    procedure
+    begin
+      // Fenster „Atlas-Server“ (#1356); mit server.statusWindow aus tut der Doppelklick nichts.
+      if not TAtlasIdeServerWindow.Enabled then
+        Exit;
+      TAtlasGuard.Log(LogPrefix + 'Doppelklick auf Status');
+      Later(
+        procedure
+        begin
+          TAtlasIdeServerWindow.Show;
+        end);
+    end;
   Bar.OnFindingsOpen :=
     procedure
     begin
@@ -467,6 +483,8 @@ begin
     Text := Text + TAtlasStatusSummary.Separator + TAtlasStrings.Text(TAtlasTextId.StatusBarReady);
   AView.StatusText := Text;
   AView.StatusHint := Field.Tooltip + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarStatusClicks);
+  if TAtlasIdeServerWindow.Enabled then
+    AView.StatusHint := AView.StatusHint + sLineBreak + TAtlasStrings.Text(TAtlasTextId.StatusBarStatusServer);
   AView.StatusState := Field.State;
   // Plakette der Benachrichtigungen (#1234): Das umgezogene Feld ist 0 breit, die Leiste zeigt sie.
   AView.BadgeCount := Field.BadgeCount;

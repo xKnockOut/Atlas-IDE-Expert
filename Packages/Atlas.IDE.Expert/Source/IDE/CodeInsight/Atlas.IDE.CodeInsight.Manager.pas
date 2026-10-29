@@ -269,6 +269,9 @@ type
     procedure OpenSignature;
     /// <summary>Stand des Servers für das Statusfeld (#591); startet keinen Server.</summary>
     function ServerInfo: TAtlasServerInfo;
+    /// <summary>Neustarts des Servers in dieser Sitzung (Starts nach dem ersten; Fenster „Atlas-Server“, #1356).
+    /// </summary>
+    function ServerRestarts: Integer;
     /// <summary>Indizierung läuft? APercent = Fortschritt, -1 = unbekannt; False ohne Sitzung.</summary>
     function ServerIndexing(out APercent: Integer): Boolean;
     /// <summary>„Server neu starten“ (#591, #393): Sitzung beenden und neu starten; hebt das Anhalten nach
@@ -709,6 +712,13 @@ begin
   Changed := FOnServerChanged;
   if Assigned(Changed) then
     Changed();
+end;
+
+function TAtlasCodeInsightManager.ServerRestarts: Integer;
+begin
+  Result := AtomicCmpExchange(FStarts, 0, 0) - 1;
+  if Result < 0 then
+    Result := 0;
 end;
 
 function TAtlasCodeInsightManager.ServerInfo: TAtlasServerInfo;

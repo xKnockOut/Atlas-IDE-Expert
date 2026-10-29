@@ -24,6 +24,9 @@ type
     procedure LineReportsOnlyRealChanges;
     [Test]
     procedure DetachedLineReportsNothing;
+    /// <summary>#1356: Die Aktion der Zeile „Server“ gilt nur mit server.statusWindow.</summary>
+    [Test]
+    procedure ActionFollowsEnabled;
     [Test]
     procedure OverallIsWorstState;
     [Test]
@@ -354,6 +357,34 @@ begin
   Item.Update('neu', TAtlasStatusState.Red);
   Assert.AreEqual(0, Calls);
   Assert.AreEqual('neu', Ref.Text);
+end;
+
+procedure TAtlasStatusRegistryTests.ActionFollowsEnabled;
+var
+  Registry: IAtlasStatusRegistry;
+  Ref: IAtlasStatusItem;
+  mEnabled: Boolean;
+  mRuns: Integer;
+begin
+  Registry := TAtlasStatusRegistry.Create;
+  mEnabled := False;
+  mRuns := 0;
+  Ref := TAtlasStatusLine.Create(Registry, 'x', 0,
+    procedure
+    begin
+      Inc(mRuns);
+    end,
+    function: Boolean
+    begin
+      Result := mEnabled;
+    end);
+  Assert.IsFalse(Ref.HasAction);
+  Ref.Execute;
+  Assert.AreEqual(0, mRuns, 'abgeschaltet tut ein Klick nichts');
+  mEnabled := True;
+  Assert.IsTrue(Ref.HasAction);
+  Ref.Execute;
+  Assert.AreEqual(1, mRuns);
 end;
 
 procedure TAtlasStatusRegistryTests.OverallIsWorstState;
