@@ -338,6 +338,11 @@ begin
   Assert.AreEqual('In Kunden.Daten ändern', Found[0].Fixes[0].Title);
   Assert.AreEqual('program Projekt;'#10'uses'#10'  Kunden.Daten in ''Quellen\Kunden.Daten.pas'','#10 +
     '  Haupt in ''Haupt.pas'';'#10'begin'#10'end.', ApplyEdit(Projekt, Found[0].Fixes[0].Edits[0]));
+  // Passt der Name der Unit auch nicht zu ihrer Datei, meldet Delphi 13 nur E1038 in der Unit (Fall CmE2085,
+  // #1382).
+  Assert.AreEqual(0, Integer(Length(Run(TUnitNameMismatchRule.Create, Projekt, 'Projekt.dpr',
+    ['Quellen\Kunden.Daten.pas', 'unit Kunden.Anders;'#10'interface'#10'implementation'#10'end.', 'Haupt.pas',
+    'unit Haupt;'#10'interface'#10'implementation'#10'end.'], ''))));
   // Datei nicht lesbar, kein unit-Kopf oder Eintrag in einem {$IF…}-Zweig: still.
   Assert.AreEqual(0, Integer(Length(Run(TUnitNameMismatchRule.Create, Projekt, 'Projekt.dpr', nil, ''))));
   Assert.AreEqual(0, Integer(Length(Run(TUnitNameMismatchRule.Create, Projekt, 'Projekt.dpr',

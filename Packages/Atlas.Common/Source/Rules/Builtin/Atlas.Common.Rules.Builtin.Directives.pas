@@ -14,7 +14,8 @@
 //                                     (E2095, E2280), {$ELSE}/{$ENDIF} ohne
 //                                     Gegenstück (E2279), fehlendes oder
 //                                     ungültiges Symbol (E2173), unbekannte
-//                                     Direktive oder {$WARN}-Bezeichner (W1030),
+//                                     Direktive oder {$WARN}-Bezeichner (E1030,
+//                                     vor Delphi 13 W1030),
 //                                     {$POPOPT}/{$PUSHOPT} ohne Gegenstück
 //                                     (W1078, W1079), ungültiger Wert für
 //                                     {$ALIGN} (E2573).
@@ -77,10 +78,15 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.DirectiveNames,
+  Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines;
+
+const
+  /// <summary>BDS-Nummer von Delphi 13: ab hier ist eine unbekannte Direktive ein Fehler (E1030, #1382).</summary>
+  Delphi13 = '37.0';
 
 type
   /// <summary>Offenes {$IF…} mit seiner Kette aus {$ELSEIF}/{$ELSE}.</summary>
@@ -175,7 +181,7 @@ var
   Stack: TArray<TOpenConditional>;
   Options: TArray<Integer>;
   OptionInBranch: Boolean;
-  LineBreak: string;
+  LineBreak, mUnknownCode: string;
 
   function RangeOf(AIndex: Integer): TTextRange;
   begin
@@ -292,10 +298,11 @@ var
       Exit;
     Closest := TTextFuzzy.Closest(AName, TDirectiveNames.Directives);
     if (Closest <> '') and ReplaceFix(AIndex, AName, Closest, '{$' + Closest + '}', 1, Fix) then
-      AReport.Add(RangeOf(AIndex), Format('Unbekannte Direktive {$%s}; gemeint ist wohl {$%s} (wie W1030).',
-        [AName, Closest]), TRuleConfidence.High, [Fix])
+      AReport.Add(RangeOf(AIndex), Format('Unbekannte Direktive {$%s}; gemeint ist wohl {$%s} (wie %s).',
+        [AName, Closest, mUnknownCode]), TRuleConfidence.High, [Fix])
     else
-      AReport.Add(RangeOf(AIndex), Format('Unbekannte Direktive {$%s} (wie W1030).', [AName]), TRuleConfidence.High);
+      AReport.Add(RangeOf(AIndex), Format('Unbekannte Direktive {$%s} (wie %s).', [AName, mUnknownCode]),
+        TRuleConfidence.High);
   end;
 
   /// <summary>AFrom: erstes Zeichen hinter WARN in der Direktive.</summary>
@@ -309,10 +316,10 @@ var
       Exit;
     Closest := TTextFuzzy.Closest(Id, TDirectiveNames.Warnings);
     if (Closest <> '') and ReplaceFix(AIndex, Id, Closest, Closest, AFrom, Fix) then
-      AReport.Add(RangeOf(AIndex), Format('Unbekannte Warnung %s in {$WARN}; gemeint ist wohl %s (wie W1030).',
-        [Id, Closest]), TRuleConfidence.High, [Fix])
+      AReport.Add(RangeOf(AIndex), Format('Unbekannte Warnung %s in {$WARN}; gemeint ist wohl %s (wie %s).',
+        [Id, Closest, mUnknownCode]), TRuleConfidence.High, [Fix])
     else
-      AReport.Add(RangeOf(AIndex), Format('Unbekannte Warnung %s in {$WARN} (wie W1030).', [Id]),
+      AReport.Add(RangeOf(AIndex), Format('Unbekannte Warnung %s in {$WARN} (wie %s).', [Id, mUnknownCode]),
         TRuleConfidence.High);
   end;
 
@@ -437,6 +444,11 @@ begin
   Stack := nil;
   Options := nil;
   OptionInBranch := False;
+  // Delphi 13 meldet unbekannte Direktiven und {$WARN}-Bezeichner als Fehler E1030, ältere Versionen als W1030
+  // (#1382).
+  mUnknownCode := 'W1030';
+  if TLanguageFeatures.IsAtLeast(AContext.DelphiVersion, Delphi13) then
+    mUnknownCode := 'E1030';
   for Index := 0 to High(Tokens) do
     if Tokens[Index].Kind = TPascalTokenKind.Directive then
       Visit(Index);

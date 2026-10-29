@@ -814,7 +814,10 @@ begin
       for Name in Unresolved do
       begin
         Inc(Count);
-        if (Count <= MaxFindings) and (Name.Suggestion <> '') then
+        if (Count <= MaxFindings) and (Name.Code <> '') then
+          Lines.Add(Format('%d:%d: warning [unresolved-identifier] %s', [Name.Range.StartPos.Line + 1,
+            Name.Range.StartPos.Character + 1, TUnresolvedNames.Describe(Name)]))
+        else if (Count <= MaxFindings) and (Name.Suggestion <> '') then
           Lines.Add(Format('%d:%d: warning [unresolved-identifier] "%s" ist nicht auflösbar; gemeint ist %s? ' +
             '({$SCOPEDENUMS ON})', [Name.Range.StartPos.Line + 1, Name.Range.StartPos.Character + 1, Name.Name,
             Name.Suggestion]))

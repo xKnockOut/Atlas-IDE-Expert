@@ -7,7 +7,7 @@
 //                     außer mit Kommentar darin (Option allowCommented).
 //   loop-off-by-one   for I := 0 to X.Count bzw. to Length(A) über nullbasierte
 //                     Listen und Arrays, 0 to Length(S) und S[0] bei einsbasierten
-//                     Strings (#913); {$ZEROBASEDSTRINGS ON} macht Strings
+//                     Strings (#913, S[0] wie E2157); {$ZEROBASEDSTRINGS ON} macht Strings
 //                     nullbasiert. Gemeldet wird eine Schleife nur, wenn ihr
 //                     Rumpf X[I] bzw. A[I] liest; die Anzahl erkennt die Option
 //                     countNames (Vorgabe Count und Length).
@@ -840,7 +840,7 @@ var
       if not IsStringType(Types.DeclaredType(Name, Tokens[Index].StartPos)) then
         Continue;
       AReport.Add(TTextRange.Create(Tokens[Index].StartPos, Tokens[Close].EndPos),
-        Format('Strings beginnen bei 1: %s[0] liegt vor dem ersten Zeichen.', [Name]), TRuleConfidence.High,
+        Format('Strings beginnen bei 1: %s[0] liegt vor dem ersten Zeichen (wie E2157).', [Name]), TRuleConfidence.High,
         [TRuleFix.Create(Format('Low(%s) verwenden', [Name]),
         [TRuleEdit.Create(TTextRange.Create(Tokens[Zero].StartPos, Tokens[Zero].EndPos), Format('Low(%s)', [Name]))])]);
     end;

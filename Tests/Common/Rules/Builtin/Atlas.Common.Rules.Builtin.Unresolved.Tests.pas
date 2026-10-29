@@ -71,6 +71,8 @@ type
     [Test]
     procedure NotATypeAndPointerTarget;
     [Test]
+    procedure NotATypeCodesLikeDelphi13;
+    [Test]
     procedure SilentCases;
     [Test]
     procedure TypeOffGroupAndExclude;
@@ -626,6 +628,24 @@ begin
   Assert.AreEqual('Zaehler ist kein Typ (wie E2005).', Found[1].Message);
 end;
 
+procedure TUnresolvedTypeTests.NotATypeCodesLikeDelphi13;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fälle Cm.E2005b (Routine, E2007), Cm.E2005 (Konstante, E2029) und Cm.E2374 (Mitglied hinter einem Punkt,
+  // E2005) mit den Codes von Delphi 13 (#1382).
+  mFound := TypeFindings('unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10 +
+    '  TKunde = class'#10'    constructor Erzeuge;'#10'  end;'#10'  TEigen = type TKunde.Erzeuge;'#10 +
+    'const'#10'  cZahl = 1;'#10'procedure Nichts;'#10'var'#10'  GWert: Nichts;'#10'  GZahl: cZahl;'#10 +
+    'implementation'#10'end.');
+  Assert.AreEqual(3, Integer(Length(mFound)));
+  Assert.AreEqual('TKunde.Erzeuge ist kein Typ (wie E2005).', mFound[0].Message);
+  Assert.AreEqual('Nichts ist eine Routine, kein Typ (wie E2007).', mFound[1].Message);
+  Assert.AreEqual('cZahl ist eine Konstante, kein Typ; der Compiler liest sie als Anfang eines Teilbereichs ' +
+    'cZahl..Ende (wie E2029).', mFound[2].Message);
+  mFound := nil;
+end;
+
 procedure TUnresolvedTypeTests.SilentCases;
 begin
   // Typparameter, verschachtelte Typen (eigene und geerbte), später deklarierte Typen, eingebaute, string,
@@ -637,6 +657,10 @@ begin
     '    FZahl: Integer;'#10'    FFehler: System.SysUtils.Exception;'#10 +
     '    procedure Log(const Werte: array of const);'#10'  end;'#10'  TSpaeter = class(TSteuerung)'#10'  end;'#10 +
     '{$IFDEF NEU}'#10'  TNeu = class(TGibtEsNicht)'#10'  end;'#10'{$ENDIF}'#10)))));
+  // Typen des Compilers ohne Deklaration in System.pas (Fälle Cm.E2002, Cm.E2071, #1382).
+  Assert.AreEqual(0, Integer(Length(TypeFindings(KundenUnit('System.SysUtils',
+    '  TProtokoll = class'#10'    FDatei: TextFile;'#10'    FAlt: Text;'#10'    FWert: Real48;'#10 +
+    '    procedure Lies(var ADatei: TextFile);'#10'  end;'#10)))));
   // Teilbereich aus Konstanten.
   Assert.AreEqual(0, Integer(Length(TypeFindings('unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
     'const'#10'  MinWert = 1;'#10'  MaxWert = 9;'#10'type'#10'  TBereich = MinWert..MaxWert;'#10 +

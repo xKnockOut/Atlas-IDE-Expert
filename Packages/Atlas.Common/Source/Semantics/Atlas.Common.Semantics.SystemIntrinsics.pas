@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Semantics.SystemIntrinsics;
 
 // Bezeichner der Unit System ohne Quelltext (#880): Compiler-Intrinsics (Assigned, Length, SetLength,
-// Inc ...), eingebaute Typen (Integer, Int64, NativeInt ...) und True/False. Die Unit System ist immer
+// Inc ...), eingebaute Typen (Integer, Int64, NativeInt ..., auch Text/TextFile und die alten Typen Real48,
+// OpenString, #1382) und True/False. Die Unit System ist immer
 // eingebunden; was in System.pas steht, kommt aus dem Index, sofern die RTL-Quelle indexiert ist. Diese
 // Liste ergänzt nur, was dort fehlt, und gilt deshalb erst nach allen indexierten Units.
 // Die Köpfe sind für Parameter-Hinweis und Hover gedacht; generische bzw. untypisierte Parameter
@@ -35,6 +36,8 @@ type
     /// <summary>Alle Überladungen zu AName (Groß-/Kleinschreibung egal); leer, wenn unbekannt.</summary>
     class function Find(const AName: string): TArray<TSystemIntrinsic>; static;
     class function IsKnown(const AName: string): Boolean; static;
+    /// <summary>Ist AName ein eingebauter Typ dieser Liste (Integer, TextFile …)?</summary>
+    class function IsType(const AName: string): Boolean; static;
     /// <summary>Bezeichner an APosition (im Namen oder direkt dahinter), der ein Eintrag dieser Liste sein
     /// kann: nicht hinter einem Punkt (Liste.Length ist ein Mitglied) und nicht mit &amp;-Escape.</summary>
     class function NameAt(ATree: TSyntaxTree; const APosition: TTextPosition; out AName: string): Boolean; static;
@@ -48,7 +51,7 @@ uses
 
 const
   // Name|Art (R Routine, T Typ, C Konstante)|Kopf|Beschreibung
-  Entries: array[0..97] of string = (
+  Entries: array[0..104] of string = (
     'Abs|R|function Abs(X): <Typ von X>;|Betrag einer Zahl.',
     'Addr|R|function Addr(var X): Pointer;|Adresse einer Variablen oder Routine (wie @).',
     'Assert|R|procedure Assert(Condition: Boolean);|Löst EAssertionFailed aus, wenn Condition False ist.',
@@ -72,6 +75,7 @@ const
     'Exclude|R|procedure Exclude(var S; I);|Entfernt das Element I aus der Menge S.',
     'Exit|R|procedure Exit;|Verlässt die aktuelle Routine.',
     'Exit|R|procedure Exit(const Value);|Setzt Result auf Value und verlässt die Funktion.',
+    'Fail|R|procedure Fail;|Bricht im Konstruktor eines object-Typs das Anlegen ab (alte object-Syntax).',
     'Finalize|R|procedure Finalize(var V; Count: NativeInt = 1);|Gibt verwaltete Inhalte (Strings, Interfaces ...) von V frei.',
     'GetTypeKind|R|function GetTypeKind(T): TTypeKind;|Art des Typs T, zur Übersetzungszeit ausgewertet.',
     'Halt|R|procedure Halt(ExitCode: Integer = 0);|Beendet das Programm.',
@@ -145,6 +149,12 @@ const
     'Comp|T|type Comp|64-Bit-Ganzzahl im Gleitkommaformat.',
     'Currency|T|type Currency|Festkommazahl mit 4 Nachkommastellen, 8 Byte.',
     'Variant|T|type Variant|Wert wechselnden Typs.',
+    'Text|T|type Text|Textdatei für AssignFile, Reset, Readln und Writeln.',
+    'TextFile|T|type TextFile = Text;|Textdatei für AssignFile, Reset, Readln und Writeln.',
+    'Real48|T|type Real48|Alte Gleitkommazahl mit 6 Byte.',
+    'OpenString|T|type OpenString|Offener ShortString-Parameter (alte Syntax).',
+    'PShortString|T|type PShortString = ^ShortString;|Zeiger auf einen ShortString.',
+    'Extended80|T|type Extended80|Gleitkommazahl mit 10 Byte auf allen Plattformen.',
     'True|C|const True = Boolean(1);|Wahrheitswert wahr.',
     'False|C|const False = Boolean(0);|Wahrheitswert falsch.');
 
@@ -221,6 +231,16 @@ end;
 class function TSystemIntrinsics.IsKnown(const AName: string): Boolean;
 begin
   Result := Length(Find(AName)) > 0;
+end;
+
+class function TSystemIntrinsics.IsType(const AName: string): Boolean;
+var
+  mEntry: TSystemIntrinsic;
+begin
+  for mEntry in GEntries do
+    if (mEntry.Kind = TIndexSymbolKind.RecordType) and SameText(mEntry.Name, AName) then
+      Exit(True);
+  Result := False;
 end;
 
 class function TSystemIntrinsics.NameAt(ATree: TSyntaxTree; const APosition: TTextPosition;
