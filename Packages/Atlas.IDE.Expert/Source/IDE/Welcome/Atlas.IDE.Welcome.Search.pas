@@ -12,9 +12,10 @@
 // - Befehle: die Atlas-Befehle der Palette (#399, #502).
 // Enter auf Datei oder Symbol öffnet zuerst das Projekt (wenn es noch nicht
 // offen ist), dann die Datei an der Stelle. Die Taste (welcomePage.search.key,
-// Vorgabe Strg+E) setzt den Fokus ins Suchfeld, solange der Fokus im
-// Fenster „Atlas-Start“ liegt (#1114); sonst bleibt sie der IDE
-// (inkrementelle Suche im Editor).
+// Vorgabe Strg+E) setzt den Fokus ins Suchfeld, solange der Fokus in der
+// Form des Suchfelds liegt: im Fenster „Atlas-Start“ (#1114) bzw. im
+// Editorfenster, das gerade die Willkommensseite der IDE zeigt (#761); sonst
+// bleibt sie der IDE (inkrementelle Suche im Editor).
 
 interface
 
@@ -410,10 +411,12 @@ begin
   begin
     if not Box.Showing or not Box.Edit.CanFocus then
       Continue;
-    // Seit #1114 steht das Suchfeld nur im Fenster „Atlas-Start“. Angedockt
-    // ist dessen oberste Form das Hauptfenster der IDE; die Taste gehört
-    // Atlas daher nur, wenn der Fokus im Fenster selbst liegt, sonst bliebe
-    // Strg+E im Editor nicht die inkrementelle Suche der IDE.
+    // Innerste Form, nicht die oberste: Angedockt ist die oberste Form von
+    // „Atlas-Start“ das Hauptfenster der IDE; die Taste gehört Atlas daher
+    // nur, wenn der Fokus im Fenster selbst liegt, sonst bliebe Strg+E im
+    // Editor nicht die inkrementelle Suche der IDE. Auf der Willkommensseite
+    // der IDE ist es das Editorfenster; Showing gilt dort nur, solange die
+    // Willkommensseite der sichtbare Reiter ist.
     Form := GetParentForm(Box, False);
     if Form = nil then
       Continue;

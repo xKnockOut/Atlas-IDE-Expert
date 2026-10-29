@@ -31,6 +31,13 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Atlas-Willkommensseite wieder auf der Willkommensseite der IDE (29.10.2026, #761, ADR 0015)
+- **Branch `claude/project-thread-7k47w7` auf main (mit dem Fix für #1233), Draft-PR, nicht gebaut.** Marco baut in Delphi.
+- **Was:** `Atlas.IDE.Welcome.Page` und das Atlas-Layout (Befehle *Atlas-Layout anwenden/zurücksetzen*, Tipp, `welcomePage.layout`) sind zurück. Statt `welcomePage.host` gibt es `welcomePage.ideWelcomePage` (Registry `WelcomePageIdePage`, Vorgabe an); das Fenster „Atlas-Start“ (#1114) bleibt unabhängig.
+- **Aufräumen:** `TAtlasWelcomeRetire` läuft beim Start nur noch, wenn Atlas nicht auf der Willkommensseite der IDE stehen soll, und beim Abschalten. Was beim Umschalten passiert, entscheidet `TAtlasIdePageSteps` (getestet); beim Wiedereinschalten wird die Marke des Aufräumens gelöscht.
+- **Abbau:** `TAtlasIdeWelcomePage.RemoveAll` gibt vor dem Abmelden die Atlas-Inhalte in den Rahmen der IDE frei (gleiche Ursache wie #1233).
+- **Offen in der IDE:** Handtests WP18–WP27 in `docs/Atlas-Testfaelle.md`, besonders WP18 (wo die IDE neu angemeldete Bereiche einsetzt) und WP27 (Beenden ohne Zugriffsverletzung).
+
 ## RAD Studio als LSP-Client (#175)
 - **Anleitung:** `docs/RAD-Studio.md`, Kurzanleitung in `docs/Installation.md` (Abschnitt „Ohne Plugin: Code Insight-Manager“).
 - **Eintrag in RAD Studio:**

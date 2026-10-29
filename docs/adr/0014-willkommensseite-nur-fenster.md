@@ -1,6 +1,6 @@
 # 0014: Atlas-Willkommensseite nur im Fenster „Atlas-Start“
 
-- Status: Angenommen
+- Status: Teilweise abgelöst durch [ADR 0015](0015-willkommensseite-und-fenster.md) (#761): Die Plugins auf der Willkommensseite der IDE und das Atlas-Layout sind zurück (abschaltbar). Fenster „Atlas-Start“, `welcomePage.openOnStart`, `welcomePage.openWhenNoProject`, das Aufräumen und die Suchtaste gelten weiter.
 - Datum: 2026-10-23
 - Bezug: #1114, löst ADR 0011 teilweise ab (Plugins der IDE-Willkommensseite, Atlas-Layout in der Registry); #761 Willkommensseite (Epic), #879 Toolfenster
 
