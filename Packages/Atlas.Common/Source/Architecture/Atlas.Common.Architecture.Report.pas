@@ -8,7 +8,8 @@
 // JSON (Format 1; Nummern beziehen sich auf "units" bzw. "subsystems"):
 //   {"format": 1, "title": "Projekt", "created": "2026-10-23T10:00:00",
 //    "generation": 7, "durationMs": 12, "scope": "projectGroup",
-//    "includeLibrary": false, "excludes": ["Tests/**"],
+//    "includeLibrary": false, "grouping": {"resolution": 1},
+//    "excludes": ["Tests/**"],
 //    "summary": {"units": 3, "edges": 2, "subsystems": 1, "cycles": 0,
 //                "interfaceCycles": 0, "crossLinks": 0, "outliers": 0},
 //    "units": [{"name": "A", "file": "Source/A.pas", "subsystem": 0,
@@ -214,6 +215,9 @@ begin
     Result := Result + ', ohne Bibliotheks-Units';
   if Length(AOverview.Excludes) > 0 then
     Result := Result + ', ausgeschlossen: ' + string.Join(', ', AOverview.Excludes);
+  // Feinheit der Teilsysteme (#1366) nur, wenn sie von 1,0 abweicht.
+  if AOverview.Grouping.ResolutionChanged then
+    Result := Result + ', Feinheit γ = ' + TArchitectureGrouping.ResolutionText(AOverview.Grouping.Clamped.Resolution);
 end;
 
 { TArchitectureReport }
@@ -362,6 +366,7 @@ begin
       .Append(',"durationMs":').Append(IntToStr(AOverview.DurationMs))
       .Append(',"scope":').Append(JsonText(AOverview.Scope))
       .Append(',"includeLibrary":').Append(JsonBool(AOverview.IncludeLibrary))
+      .Append(',"grouping":{"resolution":').Append(JsonNumber(AOverview.Grouping.Clamped.Resolution)).Append('}')
       .Append(',"excludes":[');
     for Index := 0 to High(AOverview.Excludes) do
     begin

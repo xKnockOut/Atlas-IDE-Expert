@@ -16,6 +16,7 @@
 // Format 2 (dieses):
 //   {"format": 2, "kind": "atlas.architecture", "title": "Projekt",
 //    "scope": "projectGroup", "includeLibrary": false, "excludes": ["Tests/**"],
+//    "grouping": {"resolution": 1},
 //    "summary": {"units": 3, "edges": 2, "subsystems": 1, "cycles": 0,
 //                "interfaceCycles": 0, "crossLinks": 0, "outliers": 0},
 //    "units": [{"name": "A", "file": "Source/A.pas", "subsystem": "Kern",
@@ -33,7 +34,8 @@
 //                    "forward": 1, "backward": 0}]}
 // Format 1 (die Daten aus TArchitectureReport.Json mit Nummern statt Namen,
 // z. B. aus atlas/architecture) liest Parse ebenfalls; jedes andere Format
-// lehnt es mit einer Meldung ab.
+// lehnt es mit einer Meldung ab. Ohne "grouping" (Stände vor #1366) gelten die
+// Vorgaben der Gruppierung.
 
 interface
 
@@ -107,6 +109,8 @@ type
     Scope: string;
     IncludeLibrary: Boolean;
     Excludes: TArray<string>;
+    /// <summary>Einstellungen der Gruppierung, mit denen der Stand entstand (#1366).</summary>
+    Grouping: TArchitectureGrouping;
     Units: TArray<TSnapshotUnit>;
     Edges: TArray<TSnapshotEdge>;
     /// <summary>Zentrale Units, die zentralste zuerst.</summary>
@@ -259,6 +263,7 @@ begin
   Result.Scope := AOverview.Scope;
   Result.IncludeLibrary := AOverview.IncludeLibrary;
   Result.Excludes := Copy(AOverview.Excludes);
+  Result.Grouping := AOverview.Grouping.Clamped;
   SetLength(Result.Units, Length(AOverview.Units));
   for Index := 0 to High(AOverview.Units) do
   begin
@@ -449,6 +454,8 @@ begin
       .Append('"scope": ').Append(Text(ASnapshot.Scope)).Append(',').Append(LineBreak)
       .Append('"includeLibrary": ').Append(Bool(ASnapshot.IncludeLibrary)).Append(',').Append(LineBreak)
       .Append('"excludes": ').Append(Names(ASnapshot.Excludes)).Append(',').Append(LineBreak)
+      .Append('"grouping": {"resolution": ').Append(Number(ASnapshot.Grouping.Clamped.Resolution)).Append('},')
+      .Append(LineBreak)
       .Append('"summary": {"units": ').Append(Length(ASnapshot.Units))
       .Append(', "edges": ').Append(Length(ASnapshot.Edges))
       .Append(', "subsystems": ').Append(Length(ASnapshot.Subsystems))
@@ -737,6 +744,14 @@ begin
   Result.Title := TextOf(FData, 'title');
   Result.Scope := TextOf(FData, 'scope');
   Result.IncludeLibrary := FlagOf(FData, 'includeLibrary');
+  Result.Grouping := TArchitectureGrouping.Default;
+  if Field(FData, 'grouping') is TJSONObject then
+  begin
+    Item := TJSONObject(Field(FData, 'grouping'));
+    if Field(Item, 'resolution') is TJSONNumber then
+      Result.Grouping.Resolution := FloatOf(Item, 'resolution');
+    Result.Grouping := Result.Grouping.Clamped;
+  end;
   Items := ArrayOf(FData, 'excludes');
   if Items <> nil then
     for Value in Items do
