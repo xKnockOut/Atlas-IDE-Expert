@@ -151,6 +151,7 @@ type
     FRoot: TSyntaxNode;
     FTokens: TArray<TPascalToken>;
     FDiagnostics: TArray<TSyntaxDiagnostic>;
+    FPlatform: string;
     // 0 = noch nicht bestimmt.
     FDepth: Integer;
     FDeepest: TSyntaxNode;
@@ -180,6 +181,10 @@ type
     /// <summary>Alle Token einschließlich Kommentaren und Direktiven.</summary>
     property Tokens: TArray<TPascalToken> read FTokens;
     property Diagnostics: TArray<TSyntaxDiagnostic> read FDiagnostics;
+    /// <summary>Zielplattform, für die der Baum gelesen wurde ("Win32", "Win64" …, #1380); setzt
+    /// TPascalParser.ParseActive aus den Symbolen. '' = unbekannt (Parse ohne Symbole, Baum aller Zweige):
+    /// Regeln, die nur auf einer Plattform gelten, schweigen dann.</summary>
+    property Platform: string read FPlatform write FPlatform;
   end;
 
 /// <summary>Name einer Knotenart, z. B. für Tests und Protokolle.</summary>

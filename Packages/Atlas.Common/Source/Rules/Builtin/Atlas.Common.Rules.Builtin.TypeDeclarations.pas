@@ -44,9 +44,25 @@
 //                        (#1078): Konstruktoren und Destruktoren einer Klasse
 //                        nur mit register (wie E2236), Getter und Setter
 //                        von published-Properties ebenso (wie E2270), varargs
-//                        nur mit cdecl (wie E2277 bei external, sonst E2591).
+//                        bei external nur mit cdecl (wie E2277). varargs
+//                        ohne external meldet dcc nur unter Win32, mit jeder
+//                        Konvention (wie E2277, Cm.E2277, #1380); unter Win64
+//                        übersetzt es, die Regel richtet sich nach der
+//                        Plattform des Baums (TSyntaxTree.Platform).
 //                        Korrektur: die Konvention in Deklaration und Rumpf
 //                        der Datei entfernen bzw. cdecl setzen.
+//   dispinterface-invalid
+//                        unzulässige dispinterface-Deklarationen (#1374): ein
+//                        Vorfahr in Klammern (wie E2228), keine GUID (wie
+//                        E2229), Direktiven an Methoden außer dispid und den
+//                        Hinweisen deprecated, platform, library und
+//                        experimental (wie E2230; gemeldet werden nur
+//                        Aufrufkonventionen und Bindungsdirektiven wie
+//                        virtual, overload bleibt still) und read oder write an
+//                        Properties (wie E2231). Vorwärtsdeklarationen und
+//                        Deklarationen in bedingten Zweigen bleiben still.
+//                        Korrekturen: Vorfahren entfernen, GUID einfügen,
+//                        Direktive entfernen.
 
 interface
 
@@ -59,6 +75,7 @@ const
   InterfaceDeclarationInvalidRuleId = 'interface-declaration-invalid';
   ImplementsClauseInvalidRuleId = 'implements-clause-invalid';
   CallingConventionRequiredRuleId = 'calling-convention-required';
+  DispinterfaceInvalidRuleId = 'dispinterface-invalid';
 
 type
   TMessageMethodInvalidRule = class(TInterfacedObject, IRule)
@@ -85,6 +102,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TDispinterfaceInvalidRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterTypeDeclarationRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -100,7 +123,9 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Semantics.ConstantValues;
+  Atlas.Common.Semantics.ConstantValues,
+  Atlas.Common.Rules.Builtin.General,
+  Atlas.Text.Lines;
 
 const
   // Knoten, unter denen Klassendeklarationen stehen können (Anweisungen bleiben außen vor).
@@ -113,6 +138,10 @@ const
     'reintroduce');
   // Aufrufkonventionen, die ein implements-Getter nicht haben darf (E2262).
   ForeignConventions: array[0..4] of string = ('cdecl', 'stdcall', 'pascal', 'safecall', 'winapi');
+  // Direktiven, die an Methoden eines dispinterface sicher nicht erlaubt sind (E2230). Erlaubt sind dispid und die
+  // Hinweise; overload und übrige Wörter bleiben ungeprüft still (#1328: nie strenger als dcc).
+  DispForbiddenDirectives: array[0..15] of string = ('register', 'pascal', 'cdecl', 'stdcall', 'safecall', 'winapi',
+    'virtual', 'dynamic', 'abstract', 'override', 'reintroduce', 'message', 'static', 'final', 'inline', 'varargs');
   // Spezifizierer einer Property nach Name und Typ.
   PropertySpecifiers: array[0..9] of string = ('read', 'write', 'stored', 'default', 'nodefault', 'index',
     'implements', 'dispid', 'readonly', 'writeonly');
@@ -192,6 +221,13 @@ type
     function StopToken(ANode: TSyntaxNode): Integer;
     /// <summary>Erstes Token ab AIndex, das kein Kommentar und keine Direktive ist (höchstens AStop).</summary>
     function NextCode(AIndex, AStop: Integer): Integer;
+    /// <summary>Letztes Token vor AIndex, das kein Kommentar und keine Direktive ist; -1 ohne.</summary>
+    function PreviousCode(AIndex: Integer): Integer;
+    /// <summary>Löscht die Direktive ADirective samt ihrem Semikolon und dem Leerraum davor.</summary>
+    function DirectiveRemoval(ADirective: TSyntaxNode): TTextEdit;
+    /// <summary>Token des Schlüsselworts dispinterface am Anfang von AType (InterfaceType); -1 bei
+    /// interface.</summary>
+    function DispKeyword(AType: TSyntaxNode): Integer;
     /// <summary>Steht ANode außerhalb jeder bedingten Übersetzung?</summary>
     function Unconditional(ANode: TSyntaxNode): Boolean;
     function TokenRange(AIndex: Integer): TTextRange;
@@ -258,6 +294,35 @@ begin
   Result := AIndex;
   while (Result < AStop) and IsTrivia(FTokens[Result]) do
     Inc(Result);
+end;
+
+function TDeclarationScan.PreviousCode(AIndex: Integer): Integer;
+begin
+  Result := AIndex - 1;
+  while (Result >= 0) and IsTrivia(FTokens[Result]) do
+    Dec(Result);
+end;
+
+function TDeclarationScan.DirectiveRemoval(ADirective: TSyntaxNode): TTextEdit;
+var
+  mFirst, mLast, mNext, mBefore: Integer;
+begin
+  mFirst := FirstToken(ADirective);
+  mLast := StopToken(ADirective) - 1;
+  mNext := NextCode(mLast + 1, Length(FTokens));
+  if (mNext < Length(FTokens)) and FTokens[mNext].IsSymbol(';') then
+    mLast := mNext;
+  mBefore := PreviousCode(mFirst);
+  if mBefore < 0 then
+    mBefore := mFirst;
+  Result := TTextEdit.Create(TTextRange.Create(FTokens[mBefore].EndPos, FTokens[mLast].EndPos), '');
+end;
+
+function TDeclarationScan.DispKeyword(AType: TSyntaxNode): Integer;
+begin
+  Result := NextCode(FirstToken(AType), Length(FTokens));
+  if (Result >= Length(FTokens)) or not SameText(FTokens[Result].Text, 'dispinterface') then
+    Result := -1;
 end;
 
 function TDeclarationScan.Unconditional(ANode: TSyntaxNode): Boolean;
@@ -752,16 +817,6 @@ var
     end;
   end;
 
-  function IsDispInterface(AType: TSyntaxNode): Boolean;
-  var
-    Index: Integer;
-  begin
-    Index := Scan.FirstToken(AType);
-    while (Index < Length(Scan.Tokens)) and IsTrivia(Scan.Tokens[Index]) do
-      Inc(Index);
-    Result := (Index < Length(Scan.Tokens)) and SameText(Scan.Tokens[Index].Text, 'dispinterface');
-  end;
-
   /// <summary>Klauseln stored, nodefault und default mit Wert vor dem ersten Semikolon der Property.</summary>
   procedure CheckPropertyClauses(AProperty: TSyntaxNode);
   var
@@ -826,7 +881,8 @@ var
     Child: TSyntaxNode;
     First: Boolean;
   begin
-    if IsDispInterface(AType) then
+    // dispinterface prüft dispinterface-invalid.
+    if Scan.DispKeyword(AType) >= 0 then
       Exit;
     First := True;
     for Index := 0 to AType.ChildCount - 1 do
@@ -1118,29 +1174,6 @@ procedure TCallingConventionRequiredRule.Check(const AContext: TRuleContext; con
 var
   Scan: TDeclarationScan;
 
-  function PreviousCode(AIndex: Integer): Integer;
-  begin
-    Result := AIndex - 1;
-    while (Result >= 0) and IsTrivia(Scan.Tokens[Result]) do
-      Dec(Result);
-  end;
-
-  /// <summary>Löscht die Direktive ADirective samt ihrem Semikolon und dem Leerraum davor.</summary>
-  function RemoveDirective(ADirective: TSyntaxNode): TTextEdit;
-  var
-    First, Last, Before: Integer;
-  begin
-    First := Scan.FirstToken(ADirective);
-    Last := Scan.StopToken(ADirective) - 1;
-    if (Scan.NextCode(Last + 1, Length(Scan.Tokens)) < Length(Scan.Tokens)) and
-      Scan.Tokens[Scan.NextCode(Last + 1, Length(Scan.Tokens))].IsSymbol(';') then
-      Last := Scan.NextCode(Last + 1, Length(Scan.Tokens));
-    Before := PreviousCode(First);
-    if Before < 0 then
-      Before := First;
-    Result := TTextEdit.Create(TTextRange.Create(Scan.Tokens[Before].EndPos, Scan.Tokens[Last].EndPos), '');
-  end;
-
   function Directive(AHeader: TSyntaxNode; const AName: string): TSyntaxNode;
   var
     Index: Integer;
@@ -1177,7 +1210,7 @@ var
     Edits: TArray<TTextEdit>;
     Body, Other: TSyntaxNode;
   begin
-    Edits := [RemoveDirective(AConvention)];
+    Edits := [Scan.DirectiveRemoval(AConvention)];
     Body := MethodBody(AContext.Tree, AClassName, AHeader.Name);
     if Body <> nil then
       Body := Body.FindChild(TSyntaxKind.RoutineHeader);
@@ -1185,7 +1218,7 @@ var
     begin
       Other := Directive(Body, AConvention.Name);
       if Other <> nil then
-        Edits := Edits + [RemoveDirective(Other)];
+        Edits := Edits + [Scan.DirectiveRemoval(Other)];
     end;
     Result := [TRuleFix.Create(Format('%s entfernen', [AConvention.Name]), Edits)];
   end;
@@ -1244,12 +1277,19 @@ var
     Position: TTextPosition;
   begin
     Varargs := Directive(AHeader, 'varargs');
-    if (Varargs = nil) or (Directive(AHeader, 'cdecl') <> nil) or not Scan.Unconditional(AHeader) then
+    if (Varargs = nil) or not Scan.Unconditional(AHeader) then
       Exit;
-    if Directive(AHeader, 'external') <> nil then
-      Code := 'E2277'
-    else
-      Code := 'E2591';
+    // Ohne external: dcc meldet E2277 unter Win32 auch mit cdecl; Win64 übersetzt es (Cm.E2277, #1380).
+    if Directive(AHeader, 'external') = nil then
+    begin
+      if AContext.Tree.Platform = 'Win32' then
+        AReport.Add(Scan.FirstRange(Varargs), 'varargs ist unter Win32 nur an external-Routinen mit cdecl ' +
+          'erlaubt (wie E2277).', TRuleConfidence.High);
+      Exit;
+    end;
+    if Directive(AHeader, 'cdecl') <> nil then
+      Exit;
+    Code := 'E2277';
     Found := Convention(AHeader);
     if Found = nil then
       Found := Directive(AHeader, 'register');
@@ -1320,12 +1360,157 @@ begin
   end;
 end;
 
+{ TDispinterfaceInvalidRule }
+
+function TDispinterfaceInvalidRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(DispinterfaceInvalidRuleId, TRuleSeverity.Error,
+    'Unzulässige dispinterface-Deklaration');
+end;
+
+procedure TDispinterfaceInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Scan: TDeclarationScan;
+
+  /// <summary>Schließende Klammer zur öffnenden an AOpen (Klammerebene 0); Length(Tokens) ohne.</summary>
+  function ClosingParen(AOpen: Integer): Integer;
+  var
+    mDepth: Integer;
+  begin
+    mDepth := 0;
+    Result := AOpen;
+    while Result < Length(Scan.Tokens) do
+    begin
+      if Scan.Tokens[Result].IsSymbol('(') then
+        Inc(mDepth)
+      else if Scan.Tokens[Result].IsSymbol(')') then
+      begin
+        Dec(mDepth);
+        if mDepth = 0 then
+          Exit;
+      end;
+      Inc(Result);
+    end;
+  end;
+
+  /// <summary>Vorfahr in Klammern (E2228) und fehlende GUID (E2229). AKeyword ist das Token dispinterface.</summary>
+  procedure CheckHeader(ADeclaration: TSyntaxNode; AKeyword: Integer);
+  var
+    mHeaderEnd, mNext, mClose: Integer;
+    mIndent: string;
+  begin
+    mHeaderEnd := AKeyword;
+    mNext := Scan.NextCode(AKeyword + 1, Length(Scan.Tokens));
+    if (mNext < Length(Scan.Tokens)) and Scan.Tokens[mNext].IsSymbol('(') then
+    begin
+      mClose := ClosingParen(mNext);
+      if mClose >= Length(Scan.Tokens) then
+        Exit;
+      AReport.Add(TTextRange.Create(Scan.Tokens[mNext].StartPos, Scan.Tokens[mClose].EndPos),
+        'Ein dispinterface kann keinen Vorfahren haben (wie E2228).', TRuleConfidence.High,
+        [TRuleFix.Create('Vorfahren entfernen', [TTextEdit.Create(TTextRange.Create(Scan.Tokens[AKeyword].EndPos,
+          Scan.Tokens[mClose].EndPos), '')])]);
+      mHeaderEnd := mClose;
+      mNext := Scan.NextCode(mClose + 1, Length(Scan.Tokens));
+    end;
+    // Kurzform "D = dispinterface(I);" hat keinen Rumpf; dazu ist nichts belegt.
+    if (mNext >= Length(Scan.Tokens)) or Scan.Tokens[mNext].IsSymbol('[') or Scan.Tokens[mNext].IsSymbol(';') then
+      Exit;
+    mIndent := TTextLines.IndentOf(AContext.Text, Scan.Tokens[Scan.FirstToken(ADeclaration)].StartPos.Line);
+    AReport.Add(Scan.FirstRange(ADeclaration), Format('Das dispinterface %s braucht eine GUID (wie E2229).',
+      [ADeclaration.Name]), TRuleConfidence.High, [TRuleFix.Create('GUID einfügen',
+      [TTextEdit.Create(TTextRange.Create(Scan.Tokens[mHeaderEnd].EndPos, Scan.Tokens[mHeaderEnd].EndPos),
+        TTextLines.LineBreakOf(AContext.Text) + mIndent + '  ' + GuidLine)])]);
+  end;
+
+  procedure CheckMembers(AType: TSyntaxNode);
+  var
+    mIndex, mInner: Integer;
+    mChild: TSyntaxNode;
+    mWord: string;
+  begin
+    for mIndex := 0 to AType.ChildCount - 1 do
+    begin
+      mChild := AType[mIndex];
+      if not Scan.Unconditional(mChild) then
+        Continue;
+      case mChild.Kind of
+        TSyntaxKind.RoutineHeader:
+          for mInner := 0 to mChild.ChildCount - 1 do
+            if (mChild[mInner].Kind = TSyntaxKind.Directive) and
+              MatchText(mChild[mInner].Name, DispForbiddenDirectives) then
+              AReport.Add(Scan.FirstRange(mChild[mInner]), Format('Methoden eines dispinterface dürfen keine ' +
+                'Direktive %s haben (wie E2230).', [mChild[mInner].Name]), TRuleConfidence.High,
+                [TRuleFix.Create(Format('%s entfernen', [mChild[mInner].Name]),
+                [Scan.DirectiveRemoval(mChild[mInner])])]);
+        TSyntaxKind.PropertyDecl:
+          for mInner in Scan.ClauseWords(mChild) do
+          begin
+            mWord := LowerCase(Scan.Tokens[mInner].Text);
+            if (mWord = 'read') or (mWord = 'write') then
+              AReport.Add(Scan.TokenRange(mInner), Format('Die Direktive %s ist in einem dispinterface nicht ' +
+                'erlaubt (wie E2231).', [mWord]), TRuleConfidence.High);
+          end;
+      else
+        // Übrige Werte bewusst ohne Wirkung.
+      end;
+    end;
+  end;
+
+  // Iterativ (Bericht M1).
+  procedure Visit(ARoot: TSyntaxNode);
+  var
+    mPending: TStack<TSyntaxNode>;
+    mNode, mBody: TSyntaxNode;
+    mIndex, mKeyword: Integer;
+  begin
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
+      begin
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.TypeDecl then
+        begin
+          mBody := mNode.FindChild(TSyntaxKind.InterfaceType);
+          if mBody <> nil then
+            mKeyword := Scan.DispKeyword(mBody)
+          else
+            mKeyword := -1;
+          if mKeyword >= 0 then
+          begin
+            if Scan.Unconditional(mNode) then
+              CheckHeader(mNode, mKeyword);
+            CheckMembers(mBody);
+          end;
+        end;
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+          if mNode[mIndex].Kind in DeclarationKinds then
+            mPending.Push(mNode[mIndex]);
+      end;
+    finally
+      mPending.Free;
+    end;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Scan := TDeclarationScan.Create(AContext);
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Scan.Free;
+  end;
+end;
+
 procedure RegisterTypeDeclarationRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TMessageMethodInvalidRule.Create);
   ARegistry.Register(TInterfaceDeclarationInvalidRule.Create);
   ARegistry.Register(TImplementsClauseInvalidRule.Create);
   ARegistry.Register(TCallingConventionRequiredRule.Create);
+  ARegistry.Register(TDispinterfaceInvalidRule.Create);
 end;
 
 end.
