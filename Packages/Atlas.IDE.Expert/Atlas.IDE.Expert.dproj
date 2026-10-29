@@ -153,6 +153,7 @@
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Symbol.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBuffer.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.EditorSnapshot.pas"/>
+        <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.GutterColumns.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.Navigation.pas"/>
         <DCCReference Include="Source\IDE\Editor\Atlas.IDE.Editor.WorkspaceEdit.pas"/>

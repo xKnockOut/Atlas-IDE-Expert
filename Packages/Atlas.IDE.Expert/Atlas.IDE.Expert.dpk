@@ -111,6 +111,7 @@ contains
   Atlas.IDE.Foundation.Symbol in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Symbol.pas',
   Atlas.IDE.Foundation.EditorBuffer in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorBuffer.pas',
   Atlas.IDE.Foundation.EditorSnapshot in 'Source\IDE\Foundation\Atlas.IDE.Foundation.EditorSnapshot.pas',
+  Atlas.IDE.Foundation.GutterColumns in 'Source\IDE\Foundation\Atlas.IDE.Foundation.GutterColumns.pas',
   Atlas.IDE.Foundation.Files in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Files.pas',
   Atlas.IDE.Foundation.Navigation in 'Source\IDE\Foundation\Atlas.IDE.Foundation.Navigation.pas',
   Atlas.IDE.Editor.WorkspaceEdit in 'Source\IDE\Editor\Atlas.IDE.Editor.WorkspaceEdit.pas',
