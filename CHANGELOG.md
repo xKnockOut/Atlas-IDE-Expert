@@ -167,7 +167,6 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - `uses-unit-not-found`: `contains` und `requires` gelten nur in Package-Quellen; Felder dieses Namens in Records meldeten fälschlich fehlende Units.
 
 ### Tests
-- Testprojekt Compilermeldungen (#1361): `Tests/Compilermeldungen` mit einem Fall je dcc-Warnung, -Hinweis und -Fehler (471 Fälle), `Tools/Build-Compilermeldungen.ps1` baut sie über `cc.ps1` in einer Scratch-IDE mit eigenem Registry-Profil und prüft sie auf Wunsch mit `AtlasServer --check`, `Tools/Compare-Compilermeldungen.py` vergleicht dcc und Atlas je Fall. Erster Lauf mit Delphi 13: 228 von 482 Meldungen erkannt; die Lücken stehen in #1369–#1383.
 - Minimalfälle für die Compilerregeln (#1328): `Tests/DccFaelle` mit Projekten, die übersetzen, und Gegen-Projekten, die melden; `Tools/Build-DccFaelle.ps1` schreibt `Output/DccFaelle-Ergebnis.txt`.
 - `Tools/Build-Test.ps1` repariert (#1360, #1363): Argumente an `cc.ps1` als benannte Parameter, lauffähig unter Windows PowerShell 5.1, Testergebnisse immer mit vollem Pfad (Vorgabe `Output/dunitx-ergebnisse.xml`).
 
