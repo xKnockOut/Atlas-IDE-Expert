@@ -294,6 +294,12 @@ type
     function Impact(const AFileName: string; ALine, ACharacter, ADepth: Integer): TAtlasImpact;
     /// <summary>Antwort von atlas/impact (#1120); ohne Objekt leer (kein Symbol am Cursor).</summary>
     class function ImpactFromJson(const AValue: TJSONValue): TAtlasImpact; static;
+    /// <summary>Betroffene Tests der Änderungen gegenüber ABase ('' = main bzw. BASE) im Arbeitsbereich von
+    /// AFileName, mit nicht eingecheckten Änderungen (atlas/affectedTests, #1353). Ein Fehler des Servers
+    /// (tests.affected aus, keine Arbeitskopie) kommt als Exception.</summary>
+    function AffectedTests(const AFileName, ABase: string): TAtlasAffectedTests;
+    /// <summary>Antwort von atlas/affectedTests (#1353); ohne Objekt leer.</summary>
+    class function AffectedTestsFromJson(const AValue: TJSONValue): TAtlasAffectedTests; static;
     /// <summary>Woher kommt bzw. wohin geht der Wert des Symbols an der Stelle (atlas/dataFlow, #690).</summary>
     function DataFlow(const ARequest: TAtlasDataFlowRequest): TAtlasDataFlowResult;
     /// <summary>Code-Aktionen für ARange (textDocument/codeAction, #399), Reihenfolge des Servers.</summary>
@@ -1405,6 +1411,86 @@ begin
     Result := ImpactFromJson(Response);
   finally
     Response.Free;
+  end;
+end;
+
+function TLspSession.AffectedTests(const AFileName, ABase: string): TAtlasAffectedTests;
+var
+  mParams: TJSONObject;
+  mResponse: TJSONValue;
+begin
+  mParams := TJSONObject.Create;
+  mParams.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  mParams.AddPair('base', ABase);
+  mParams.AddPair('includeUncommitted', TJSONBool.Create(True));
+  // git bzw. svn und eine Auswirkungsanalyse je geänderter Routine; der Server begrenzt die Zeit selbst.
+  mResponse := FClient.Request('atlas/affectedTests', mParams, FTimeoutMs * 30);
+  try
+    Result := AffectedTestsFromJson(mResponse);
+  finally
+    mResponse.Free;
+  end;
+end;
+
+class function TLspSession.AffectedTestsFromJson(const AValue: TJSONValue): TAtlasAffectedTests;
+var
+  mRoot, mEntry, mReasonEntry: TJSONObject;
+  mItem, mReason, mStep, mValue, mTests, mReasons, mPath: TJSONValue;
+  mTest: TAtlasAffectedTest;
+  mText: string;
+begin
+  Result := Default(TAtlasAffectedTests);
+  if not (AValue is TJSONObject) then
+    Exit;
+  mRoot := TJSONObject(AValue);
+  Result.Base := mRoot.GetValue<string>('base', '');
+  Result.Depth := mRoot.GetValue<Integer>('depth', 0);
+  Result.All := mRoot.GetValue<Boolean>('all', False);
+  Result.AllReason := mRoot.GetValue<string>('reason', '');
+  mValue := mRoot.GetValue('run');
+  if mValue is TJSONArray then
+    for mItem in TJSONArray(mValue) do
+      Result.Run := Result.Run + [mItem.Value];
+  mValue := mRoot.GetValue('changes');
+  if mValue is TJSONArray then
+    for mItem in TJSONArray(mValue) do
+      if mItem is TJSONObject then
+        Result.Changes := Result.Changes + [TJSONObject(mItem).GetValue<string>('name', '')];
+  mTests := mRoot.GetValue('tests');
+  if not (mTests is TJSONArray) then
+    Exit;
+  for mItem in TJSONArray(mTests) do
+  begin
+    if not (mItem is TJSONObject) then
+      Continue;
+    mEntry := TJSONObject(mItem);
+    mTest := Default(TAtlasAffectedTest);
+    mTest.Name := mEntry.GetValue<string>('name', '');
+    mValue := mEntry.GetValue('run');
+    if mValue is TJSONArray then
+      for mStep in TJSONArray(mValue) do
+        mTest.RunNames := mTest.RunNames + [mStep.Value];
+    if mTest.RunNames = nil then
+      mTest.RunNames := TArray<string>.Create(mTest.Name);
+    mTest.FileName := TLspSession.UriToPath(mEntry.GetValue<string>('uri', ''));
+    mTest.Line := mEntry.GetValue<Integer>('line', 0);
+    mReasons := mEntry.GetValue('reasons');
+    if mReasons is TJSONArray then
+      for mReason in TJSONArray(mReasons) do
+      begin
+        if not (mReason is TJSONObject) then
+          Continue;
+        mReasonEntry := TJSONObject(mReason);
+        mText := mReasonEntry.GetValue<string>('change', '');
+        mPath := mReasonEntry.GetValue('path');
+        if mPath is TJSONArray then
+          for mStep in TJSONArray(mPath) do
+            mText := mText + ' → ' + mStep.Value;
+        if mReasonEntry.GetValue<Boolean>('inferred', False) then
+          mText := mText + ' (erschlossen)';
+        mTest.Reasons := mTest.Reasons + [mText];
+      end;
+    Result.Tests := Result.Tests + [mTest];
   end;
 end;
 

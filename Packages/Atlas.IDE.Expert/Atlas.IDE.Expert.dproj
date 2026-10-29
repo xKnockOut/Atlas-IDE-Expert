@@ -551,6 +551,7 @@
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Matching.pas"/>
         <DCCReference Include="Source\Core\Projects\Atlas.Core.Projects.Vcs.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
+        <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>
         <DCCReference Include="Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas"/>
         <DCCReference Include="Source\Core\InlayHints\Atlas.Core.InlayHints.Store.pas"/>
@@ -785,6 +786,7 @@
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickColumn.pas"/>
         <DCCReference Include="Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickChord.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Runner.pas"/>
+        <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Affected.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Debug.pas"/>
         <DCCReference Include="Source\IDE\Tests\Atlas.IDE.Tests.Lens.pas"/>
         <DCCReference Include="Source\Core\StartProfiles\Atlas.Core.StartProfiles.Store.pas"/>

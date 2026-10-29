@@ -358,6 +358,9 @@ type
     FTestRun: TCheckBox;
     FTestsBuildFirst: TCheckBox;
     FTestsAfterBuild: TCheckBox;
+    FTestsAffected: TCheckBox;
+    FTestsAffectedDepth: TEdit;
+    FTestsAffectedBeforeCommit: TCheckBox;
     FBuildZeroHints: TCheckBox;
     /// <summary>Kosten einer interface-Änderung in der Statusleiste (#554).</summary>
     FShowInterfaceCost: TCheckBox;
@@ -1662,6 +1665,9 @@ type
     property TestRunCheck: TCheckBox read FTestRun;
     property TestsBuildFirstCheck: TCheckBox read FTestsBuildFirst;
     property TestsAfterBuildCheck: TCheckBox read FTestsAfterBuild;
+    property TestsAffectedCheck: TCheckBox read FTestsAffected;
+    property TestsAffectedDepthEdit: TEdit read FTestsAffectedDepth;
+    property TestsAffectedBeforeCommitCheck: TCheckBox read FTestsAffectedBeforeCommit;
     property BuildZeroHintsCheck: TCheckBox read FBuildZeroHints;
     property ShowInterfaceCostCheck: TCheckBox read FShowInterfaceCost;
     /// <summary>Zum Testen: Alt+F11 und Umschalt+F12 übernehmen (#786).</summary>
@@ -2636,6 +2642,10 @@ begin
   FTestRun := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestRun));
   FTestsBuildFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsBuildFirst));
   FTestsAfterBuild := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAfterBuild));
+  // Betroffene Tests (#1353).
+  FTestsAffected := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAffected));
+  FTestsAffectedDepth := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAffectedDepth));
+  FTestsAffectedBeforeCommit := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsTestsAffectedBeforeCommit));
   FBuildZeroHints := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBuildZeroHints));
   FShowInterfaceCost := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsShowInterfaceCost));
   // Schranke für Hinweise und Warnungen (#530).
@@ -6611,6 +6621,9 @@ begin
   FMarks.Bind(FTestRun, ['TestRun']);
   FMarks.Bind(FTestsBuildFirst, ['TestsBuildFirst']);
   FMarks.Bind(FTestsAfterBuild, ['TestsAfterBuild']);
+  FMarks.Bind(FTestsAffected, ['TestsAffected']);
+  FMarks.Bind(FTestsAffectedDepth, ['TestsAffectedDepth']);
+  FMarks.Bind(FTestsAffectedBeforeCommit, ['TestsAffectedBeforeCommit']);
   FMarks.Bind(FBuildZeroHints, ['BuildZeroHints']);
   FMarks.Bind(FShowInterfaceCost, ['ShowInterfaceCost']);
   FMarks.Bind(FBuildSummary, ['BuildSummary']);
@@ -8947,6 +8960,9 @@ begin
   FTestRun.Checked := ASettings.TestRun;
   FTestsBuildFirst.Checked := ASettings.TestsBuildFirst;
   FTestsAfterBuild.Checked := ASettings.TestsAfterBuild;
+  FTestsAffected.Checked := ASettings.TestsAffected;
+  FTestsAffectedDepth.Text := IntToStr(ASettings.TestsAffectedDepth);
+  FTestsAffectedBeforeCommit.Checked := ASettings.TestsAffectedBeforeCommit;
   FBuildZeroHints.Checked := ASettings.BuildZeroHints;
   FShowInterfaceCost.Checked := ASettings.ShowInterfaceCost;
   FBuildSummary.Checked := ASettings.BuildSummary;
@@ -9594,6 +9610,9 @@ begin
   ASettings.TestRun := FTestRun.Checked;
   ASettings.TestsBuildFirst := FTestsBuildFirst.Checked;
   ASettings.TestsAfterBuild := FTestsAfterBuild.Checked;
+  ASettings.TestsAffected := FTestsAffected.Checked;
+  ASettings.TestsAffectedDepth := StrToIntDef(FTestsAffectedDepth.Text, ASettings.TestsAffectedDepth);
+  ASettings.TestsAffectedBeforeCommit := FTestsAffectedBeforeCommit.Checked;
   ASettings.BuildZeroHints := FBuildZeroHints.Checked;
   ASettings.ShowInterfaceCost := FShowInterfaceCost.Checked;
   ASettings.BuildSummary := FBuildSummary.Checked;

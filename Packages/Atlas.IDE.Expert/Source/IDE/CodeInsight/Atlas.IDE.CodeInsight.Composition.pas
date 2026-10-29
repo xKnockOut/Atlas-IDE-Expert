@@ -79,6 +79,7 @@ uses
   Atlas.Core.Lsp.DataFlow,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Results.Impact,
+  Atlas.IDE.Tests.Affected,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Commands.QuickOpen,
   Atlas.IDE.Editor.NavHistory,
@@ -1491,6 +1492,54 @@ begin
   Result := TAtlasIdeSettings.Current.TestRun and (Tests <> nil);
 end;
 
+/// <summary>Befehl „Betroffene Tests ausführen“ (#1353) sichtbar?</summary>
+function AffectedTestsVisible: Boolean;
+begin
+  Result := TAtlasIdeAffectedTests.Enabled and (Tests <> nil);
+end;
+
+/// <summary>„Betroffene Tests ausführen“ (#1353) an Testläufer und Server binden (A-09).</summary>
+procedure InstallAffectedTests;
+var
+  mHooks: TAtlasAffectedTestsHooks;
+begin
+  mHooks := Default(TAtlasAffectedTestsHooks);
+  mHooks.RunTests :=
+    procedure(const AFileName: string; const ATests: TArray<string>)
+    begin
+      if Tests <> nil then
+        Tests.RunTests(AFileName, ATests)
+      else
+        GuardWarning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
+    end;
+  mHooks.RunAll :=
+    procedure
+    begin
+      if Tests <> nil then
+        Tests.RunAll
+      else
+        GuardWarning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
+    end;
+  mHooks.ResolveTarget :=
+    procedure(const AThen: TAtlasAffectedTargetProc)
+    begin
+      if Tests <> nil then
+        Tests.ResolveProject('',
+          procedure(const AProject: IOTAProject)
+          begin
+            AThen(TAtlasIdeTests.TargetOf(AProject, nil));
+          end);
+    end;
+  mHooks.ServerPath :=
+    function: string
+    var
+      mArguments: string;
+    begin
+      Result := TAtlasCodeInsightManager.ServerPath(mArguments);
+    end;
+  TAtlasIdeAffectedTests.Install(mHooks);
+end;
+
 /// <summary>Befehl „Test am Cursor debuggen“ (#585) sichtbar?</summary>
 function TestDebugVisible: Boolean;
 begin
@@ -2085,6 +2134,9 @@ begin
     begin
       Result := TAtlasIdeSettings.Current.IssuesAttach and (Welcome <> nil) and (Welcome.Issues <> nil);
     end);
+  // Betroffene Tests (#1353): sichtbar mit tests.affected und tests.run.
+  Add('Atlas.RunAffectedTests', TAtlasTextId.TestsAffectedCommand,
+    Guarded(TAtlasFeature.Build, TAtlasIdeAffectedTests.Run), AffectedTestsVisible);
   // DUnitX-Tests (#69): sichtbar, solange TestRun an ist und der Läufer läuft (auch später gestartet).
   Add('Atlas.RunTests', TAtlasTextId.TestsRunCommand,
     procedure
@@ -3107,6 +3159,7 @@ begin
       else
         GuardWarning(TAtlasStrings.Text(TAtlasTextId.TestsRunOff));
     end);
+  InstallAffectedTests;
   // Klick auf die Testunit-Lens (#189); die Lens kennt die Editorbefehle nicht (A-09).
   TAtlasEditorTestUnitLens.OnSwitchTestUnit :=
     procedure
@@ -3551,6 +3604,7 @@ begin
   TAtlasEditorHover.OnVisualize := nil;
   TAtlasIdeEditorCommands.Uninstall;
   TAtlasIdeImpact.Uninstall;
+  TAtlasIdeAffectedTests.Uninstall;
   TAtlasIdeResults.Uninstall;
   CommandsInstalled := False;
 end;
@@ -5754,6 +5808,8 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // architecture.* (#1118).
       TAtlasIdeArchitecture.ApplySettings;
+      // tests.affectedBeforeCommit (#1353): pre-commit-Hook anlegen bzw. entfernen.
+      TAtlasIdeAffectedTests.ApplySettings;
       TAtlasIdeUnitRelations.ApplySettings;
       // callHierarchy.diagram (#1122).
       TAtlasIdeResultsWindow.ApplySettings;

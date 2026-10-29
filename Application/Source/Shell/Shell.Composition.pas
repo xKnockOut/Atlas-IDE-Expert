@@ -5593,6 +5593,7 @@ var
   mWorkspace: TShellWorkspace;
   mResolver: TNameResolver;
   mEnsureUnit: TEnsureUnitFunc;
+  mReadDisk: TReferenceReadText;
   mFound: TAffectedResult;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
@@ -5627,13 +5628,20 @@ begin
     ReadSourceText);
   // Typisierte Variable: TNameResolver.Create ist überladen.
   mEnsureUnit := EnsureUnit;
+  // git bzw. svn vergleichen die gespeicherten Dateien: Die geänderten Zeilen passen nur zum Text auf der Platte,
+  // nicht zu einem ungespeicherten Puffer im Editor.
+  mReadDisk :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := TShellBootstrap.ReadSourceText(AFileName, AText);
+    end;
   mResolver := TNameResolver.Create(FIndex, mEnsureUnit);
   try
     mResolver.Namespaces := FImpact.Namespaces;
     try
       // Eigener Prozessstarter: git/svn laufen neben einem Compilerlauf.
       mFound := TShellAffectedTests.Run(TProcessRunner.Create, mSettings, mQuery, mResolver, FIndex, mRequest,
-        ReadSourceText, ACancellation);
+        mReadDisk, ACancellation);
     except
       on E: EAffectedTestsOff do
         raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, E.Message);

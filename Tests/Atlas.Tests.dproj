@@ -791,6 +791,8 @@
         <DCCReference Include="IDE.Expert\Atlas.Core.Projects.Vcs.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.Run.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Run.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.AffectedHook.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Tests.AffectedHook.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.Debug.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Tests.Debug.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Tests\Atlas.Core.Tests.ProjectChoice.pas"/>

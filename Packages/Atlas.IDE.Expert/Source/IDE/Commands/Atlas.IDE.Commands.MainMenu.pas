@@ -133,6 +133,7 @@ type
     FSymbolPathItem: TMenuItem;
     /// <summary>„Auswirkungen anzeigen“ (#1120), sichtbar nach navigation.impact.</summary>
     FImpactItem: TMenuItem;
+    FAffectedTestsItem: TMenuItem;
     /// <summary>Untermenü „Aufgaben“ (#900).</summary>
     FTasksGroup: TMenuItem;
     FOnTasksMenu: TProc<TMenuItem>;
@@ -150,6 +151,7 @@ type
     procedure UnitRelationsClick(Sender: TObject);
     procedure BoardClick(Sender: TObject);
     procedure SymbolPathClick(Sender: TObject);
+    procedure AffectedTestsClick(Sender: TObject);
     procedure DebugExceptionsClick(Sender: TObject);
     procedure DebugEvaluateClick(Sender: TObject);
     procedure IssueAttachClick(Sender: TObject);
@@ -217,6 +219,7 @@ uses
   Atlas.UI.Diagnostics.ProcessesDialog,
   Atlas.IDE.Results.Commands,
   Atlas.IDE.Results.Impact,
+  Atlas.IDE.Tests.Affected,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Bookmarks.Service,
@@ -359,6 +362,8 @@ begin
   AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
   AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
   FImpactItem := AddItem(TAtlasTextId.ImpactCommand, 9, ResultsClick);
+  // Betroffene Tests (#1353) nach tests.affected und tests.run.
+  FAffectedTestsItem := AddItem(TAtlasTextId.TestsAffectedCommand, 0, AffectedTestsClick);
   // Datenfluss (#690).
   FDataFlowItems := [AddItem(TAtlasTextId.MenuDataFlowSources, 10, ResultsClick),
     AddItem(TAtlasTextId.MenuDataFlowTargets, 11, ResultsClick)];
@@ -795,6 +800,8 @@ begin
   // Auswirkungen anzeigen (#1120) nach navigation.impact.
   if FImpactItem <> nil then
     FImpactItem.Visible := TAtlasIdeImpact.Enabled;
+  if FAffectedTestsItem <> nil then
+    FAffectedTestsItem.Visible := TAtlasIdeAffectedTests.Enabled;
   // Exception-Verlauf (#517) nach debug.exceptionHistory.
   if FDebugExceptionsItem <> nil then
     FDebugExceptionsItem.Visible := TAtlasIdeSettings.Current.DebugExceptionHistory;
@@ -1037,6 +1044,16 @@ begin
     procedure
     begin
       TAtlasIdeUnitRelations.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.AffectedTestsClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.RunAffectedTests');
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      TAtlasIdeAffectedTests.Run;
     end);
 end;
 

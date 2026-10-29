@@ -401,7 +401,8 @@ begin
 
     Inc(Index);
   end;
-  if (Result.IncludeUncommitted or Result.ChangedLines) and (Result.ChangedRef = '') then
+  // Mit --affected-tests gilt --include-uncommitted für dessen Basis, nicht als --changed.
+  if (Result.IncludeUncommitted or Result.ChangedLines) and (Result.ChangedRef = '') and not Result.AffectedTests then
   begin
     // Ohne Ref gilt --changed mit der Standardbasis.
     Result.ChangedRef := DefaultChangedBase;
