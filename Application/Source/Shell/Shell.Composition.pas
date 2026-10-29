@@ -13,6 +13,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.JSON,
+  System.Diagnostics,
   System.Generics.Collections,
   Atlas.Common.Logging.Contract,
   Atlas.Common.Pascal.Contract,
@@ -144,8 +145,12 @@ type
     /// <summary>Mitschnitt (--trace) in FTransport, nicht besitzend; nil ohne Mitschnitt.</summary>
     FTracing: TJsonRpcTracingTransport;
     FLogger: ILogger;
-    /// <summary>Anonymisiert das Server-Log (#647); nil ohne --log oder mit --log-names.</summary>
+    /// <summary>Anonymisiert das Server-Log (#647) und den Status im Diagnosepaket (#1356); kennt alle Namen der
+    /// Projekte. Ohne --log bzw. mit --log-names nur für das Paket; nil nur ohne CreateForStdio.</summary>
     FLogAnonymizer: ILogAnonymizer;
+    /// <summary>Start des Prozesses für den Status (#1356).</summary>
+    FStartedAt: TDateTime;
+    FUptime: TStopwatch;
     FDispatcher: TJsonRpcDispatcher;
     FLifecycle: TLspLifecycle;
     FDocuments: IDocumentStore;
@@ -503,8 +508,19 @@ type
     /// <summary>Inhalt des Status-Befehls (#28).</summary>
     function CollectBookmarks: TArray<TBookmarkHit>;
     function CollectStatus: TServerStatus;
+    /// <summary>Status als JSON für atlas.server.status und das Diagnosepaket (#1356); AAnonymize ersetzt die
+    /// Unit-Namen der langsamsten Units durch name#N und lässt die Pfade weg. Nicht anonym schreibt es ihn
+    /// zusätzlich für get_server_status (MCP) in die Statusdatei.</summary>
+    function StatusJson(AAnonymize: Boolean): TJSONObject;
+    /// <summary>Teil des Servers im Diagnosepaket (#1356); AArguments optional [{"anonymize", "traceMinutes"}].
+    /// </summary>
+    function DiagnosticPackage(const AArguments: TJSONArray): TJSONValue;
+    /// <summary>Wurzeln der Arbeitsbereiche.</summary>
+    function WorkspaceRoots: TArray<string>;
     /// <summary>Weg zum Compiler für den Status (#28, #261).</summary>
     procedure CollectCompilerStatus(var AStatus: TServerStatus);
+    /// <summary>Prozess, Speicher je Bereich, Prüflauf, Warteschlangen und Cache-Treffer (#1356).</summary>
+    procedure CollectDiagnosticsStatus(var AStatus: TServerStatus);
     /// <summary>Fehlerbericht (#108); AArguments optional [{"anonymize", "client", "target"}].</summary>
     function BugReport(const AArguments: TJSONArray): TJSONValue;
     /// <summary>Wirksame Konfiguration je Arbeitsbereich als formatiertes JSON.</summary>
@@ -653,7 +669,6 @@ uses
   System.IOUtils,
   System.Math,
   System.StrUtils,
-  System.Diagnostics,
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Product.Version,
   Atlas.Common.Configuration.Parser,
@@ -682,6 +697,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.Parser,
+  Atlas.Common.Diagnostics.CheckProfile,
+  Atlas.Common.Diagnostics.ServerPackage,
+  Atlas.Common.Lsp.StatusFile,
   Atlas.Common.Rules.Builtin.General,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Builtin.FormFields,
@@ -777,6 +795,8 @@ begin
   inherited Create;
   FTransport := ATransport;
   FLogger := ALogger;
+  FStartedAt := Now;
+  FUptime := TStopwatch.StartNew;
   WireProtocol;
   WireDocuments;
   WireEditing;
@@ -2073,14 +2093,21 @@ begin
     end);
   // Reine Lesebefehle laufen nebenläufig (#874): Status, Prüfung und Katalog der Einstellungen, Fehlerbericht.
   // Sie warten so nicht hinter einem Neuladen, während das Plugin auf die Antwort wartet.
+  // Status (#28); Argument optional {"anonymize": true} (#1356, Fenster „Atlas-Server“ und Diagnosepaket).
   FCommands.RegisterConcurrent(StatusCommand,
     function(const AArguments: TJSONArray): TJSONValue
     var
-      Status: TServerStatus;
+      mAnonymize: Boolean;
     begin
-      Status := CollectStatus;
-      FLogger.Info('Status:' + sLineBreak + Status.ToMarkdown);
-      Result := Status.ToJson;
+      mAnonymize := (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) and
+        (TJSONObject(AArguments.Items[0]).GetValue('anonymize') is TJSONBool) and
+        TJSONBool(TJSONObject(AArguments.Items[0]).GetValue('anonymize')).AsBoolean;
+      Result := StatusJson(mAnonymize);
+    end);
+  FCommands.RegisterConcurrent(TServerPackage.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := DiagnosticPackage(AArguments);
     end);
   // Prozesse am selben Index-Cache (#62): Sperre, Stand, Prozesse und Ereignisse.
   FCommands.RegisterConcurrent(ProcessesCommand,
@@ -2499,6 +2526,8 @@ begin
     FreeFeatures;
   if FTracing <> nil then
     FTracing.OnFailed := nil;
+  // Statusdatei für get_server_status (#1356) gehört nur dem laufenden Server.
+  TServerStatusFile.Delete(TIndexCacheDirectory.DefaultRoot, TShellPlatform.CurrentProcessId);
   FTransport := nil;
   FLogger := nil;
   inherited;
@@ -5299,6 +5328,20 @@ begin
   end;
 end;
 
+const
+  /// <summary>So viele Zeilen des Protokolls im Fehlerbericht (#108); das Diagnosepaket nimmt alle (#1356).</summary>
+  BugReportLogLines = 200;
+  /// <summary>Protokoll der Sitzung im Speicher für Fehlerbericht und Diagnosepaket (#1356).</summary>
+  SessionLogLines = 10000;
+
+/// <summary>Die letzten ACount Einträge von ALines.</summary>
+function LastLines(const ALines: TArray<string>; ACount: Integer): TArray<string>;
+begin
+  if Length(ALines) <= ACount then
+    Exit(ALines);
+  Result := Copy(ALines, Length(ALines) - ACount, ACount);
+end;
+
 function TServerComposition.BugReport(const AArguments: TJSONArray): TJSONValue;
 var
   Input: TBugReportInput;
@@ -5326,7 +5369,7 @@ begin
   Input.Created := Now;
   Input.Configuration := ConfigurationReport;
   if FRecentLog <> nil then
-    Input.LogLines := FRecentLog.Lines;
+    Input.LogLines := LastLines(FRecentLog.Lines, BugReportLogLines);
   Input.Requests := FStatistics.Recent;
   TMonitor.Enter(FWorkspacesLock);
   try
@@ -5410,6 +5453,128 @@ begin
   end;
   Result.Requests := FStatistics.Snapshot;
   CollectCompilerStatus(Result);
+  CollectDiagnosticsStatus(Result);
+end;
+
+procedure TServerComposition.CollectDiagnosticsStatus(var AStatus: TServerStatus);
+var
+  mParts: TIndexMemoryParts;
+  mTrees: TSyntaxTreeCacheStats;
+  mIndexQueue: TIndexSchedulerQueue;
+  mCheckQueue: TWorkspaceCheckQueue;
+  mWorkspace: TWorkspaceStatus;
+begin
+  // Fenster „Atlas-Server“ (#1356): Prozess, Speicher je Bereich, Prüflauf, Warteschlangen, Cache-Treffer.
+  AStatus.ProcessId := TShellPlatform.CurrentProcessId;
+  AStatus.Version := TProductVersion.Version;
+  AStatus.Started := FStartedAt;
+  AStatus.UptimeMs := FUptime.ElapsedMilliseconds;
+  mParts := FIndex.MemoryParts;
+  mTrees := TSyntaxTreeCache.Stats;
+  AStatus.Memory.Symbols := mParts.ProjectBytes;
+  AStatus.Memory.Usages := mParts.UsageBytes;
+  AStatus.Memory.LibraryUnits := mParts.LibraryBytes;
+  AStatus.Memory.TreeCache := mTrees.Bytes;
+  AStatus.Memory.Documents := AStatus.DocumentBytes;
+  AStatus.Memory.Total := AStatus.MemoryBytes;
+  AStatus.Memory.Budget := AStatus.BudgetBytes;
+  AStatus.IndexCacheHitPercent := TServerStatus.CacheHitPercent(AStatus.Workspaces);
+  AStatus.TreeCacheHitPercent := mTrees.HitPercent;
+  AStatus.TreeCacheTrees := mTrees.Trees;
+  mCheckQueue := Default(TWorkspaceCheckQueue);
+  if FPullDiagnostics <> nil then
+  begin
+    AStatus.CheckRun := FPullDiagnostics.Check.Profile(TCheckRunProfile.cTop);
+    mCheckQueue := FPullDiagnostics.Check.Queue;
+  end;
+  mIndexQueue := FIndexScheduler.Queue;
+  AStatus.Queue.IndexWaiting := mIndexQueue.Waiting;
+  AStatus.Queue.IndexRunning := mIndexQueue.Running;
+  AStatus.Queue.CheckWaiting := mCheckQueue.Waiting;
+  AStatus.Queue.CheckRunning := mCheckQueue.Running;
+  AStatus.Queue.OldestWaitMs := Max(mIndexQueue.OldestWaitMs, mCheckQueue.OldestWaitMs);
+  // Zustand: lädt, solange ein Arbeitsbereich seinen Index aufbaut; prüft, solange ein Prüflauf aktiv ist.
+  AStatus.State := TServerStatus.StateReady;
+  if AStatus.CheckRun.Active then
+    AStatus.State := TServerStatus.StateChecking;
+  for mWorkspace in AStatus.Workspaces do
+    if mWorkspace.LastIndexMs < 0 then
+      AStatus.State := TServerStatus.StateLoading;
+end;
+
+function TServerComposition.WorkspaceRoots: TArray<string>;
+var
+  mWorkspace: TShellWorkspace;
+begin
+  Result := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    for mWorkspace in FWorkspaces do
+      Result := Result + [mWorkspace.Root];
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+end;
+
+function TServerComposition.StatusJson(AAnonymize: Boolean): TJSONObject;
+var
+  mStatus: TServerStatus;
+  mAnonymizer: ILogAnonymizer;
+begin
+  mStatus := CollectStatus;
+  if AAnonymize then
+  begin
+    mAnonymizer := FLogAnonymizer;
+    mStatus.CheckRun := mStatus.CheckRun.Anonymized(
+      function(const AName: string): string
+      begin
+        Result := AName;
+        if mAnonymizer <> nil then
+          Result := mAnonymizer.Anonymize(AName);
+      end);
+  end;
+  FLogger.Info('Status:' + sLineBreak + mStatus.ToMarkdown);
+  Result := mStatus.ToJson;
+  // Für get_server_status (#1356): dieselben Zahlen wie das Fenster, nur lokal und nie anonym abgefragt.
+  if not AAnonymize then
+    TServerStatusFile.Write(TIndexCacheDirectory.DefaultRoot, TShellPlatform.CurrentProcessId, WorkspaceRoots,
+      Result, Now);
+end;
+
+function TServerComposition.DiagnosticPackage(const AArguments: TJSONArray): TJSONValue;
+var
+  mInput: TServerPackageInput;
+  mOptions: TJSONObject;
+  mStatus: TJSONObject;
+begin
+  mInput := Default(TServerPackageInput);
+  mInput.Anonymize := True;
+  mInput.TraceMinutes := TServerPackage.DefaultTraceMinutes;
+  mOptions := nil;
+  if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
+    mOptions := TJSONObject(AArguments.Items[0]);
+  if mOptions <> nil then
+  begin
+    if mOptions.GetValue('anonymize') is TJSONBool then
+      mInput.Anonymize := TJSONBool(mOptions.GetValue('anonymize')).AsBoolean;
+    if mOptions.GetValue('traceMinutes') is TJSONNumber then
+      mInput.TraceMinutes := TJSONNumber(mOptions.GetValue('traceMinutes')).AsInt;
+  end;
+  mStatus := StatusJson(mInput.Anonymize);
+  try
+    mInput.StatusJson := mStatus.ToJSON([]);
+  finally
+    mStatus.Free;
+  end;
+  if FRecentLog <> nil then
+    mInput.LogLines := FRecentLog.Lines;
+  mInput.Tracing := FTracing <> nil;
+  if FTracing <> nil then
+    mInput.TraceLines := FTracing.RecentLines(mInput.TraceMinutes, Now);
+  mInput.Workspaces := WorkspaceRoots;
+  mInput.Identity := TProcessInfo.IdentityNames;
+  Result := TServerPackage.ToJson(TServerPackage.Build(mInput));
+  FLogger.Info('Diagnosepaket des Servers erstellt');
 end;
 
 procedure TServerComposition.CollectCompilerStatus(var AStatus: TServerStatus);
@@ -6719,12 +6884,17 @@ begin
   // stderr zeigt VS Code ebenfalls im Ausgabefenster; dort nur Fehler, um
   // Doppelungen mit window/logMessage zu vermeiden.
   LoggerImpl.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Error);
-  // Auszug für den Fehlerbericht (#108), unabhängig von --log.
-  RecentSink := TRecentLogSink.Create;
+  // Auszug für den Fehlerbericht (#108) und das Protokoll der Sitzung im Diagnosepaket (#1356), unabhängig von
+  // --log.
+  RecentSink := TRecentLogSink.Create(SessionLogLines);
   RecentLog := RecentSink;
   LoggerImpl.AddSink(RecentSink, TLogLevel.Info);
   TShellDiagnostics.AddLogFile(LoggerImpl, AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
     AOptions.LogNames, AOptions.LogLevel, Anonymizer);
+  // Ohne --log bzw. mit --log-names trotzdem einer: Er sammelt die Namen der Projekte für den anonymen Status im
+  // Diagnosepaket (#1356).
+  if Anonymizer = nil then
+    Anonymizer := TLogAnonymizer.Create(TProcessInfo.IdentityNames);
 
   // Ab hier erreichen versehentliche Ausgaben (Writeln, Bibliotheken) nur noch stderr.
   Transport := TJsonRpcStreamTransport.Create(TStdStreams.CreateInput, TStdStreams.ReserveOutputForProtocol, True);
@@ -6843,6 +7013,7 @@ begin
   Commands.Add(ClearIndexCommand);
   Commands.Add(TLspPullDiagnostics.RecheckCommand);
   Commands.Add(TBugReport.Command);
+  Commands.Add(TServerPackage.Command);
   Commands.Add(TQualifiedNames.Command);
   Commands.Add(TEnumValueCommands.Command);
   Commands.Add(TStringLiteralCommands.PlainTextCommand);

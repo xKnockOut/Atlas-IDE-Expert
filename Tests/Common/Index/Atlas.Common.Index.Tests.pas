@@ -235,6 +235,9 @@ type
   public
     [Test]
     procedure OrdersByStageThenPriority;
+    /// <summary>#1356: wartende und laufende Aufbauten mit Wartezeit für das Fenster „Atlas-Server“.</summary>
+    [Test]
+    procedure QueueCountsWaitingBuilds;
   end;
 
   [TestFixture]
@@ -2636,6 +2639,25 @@ end;
 
 { TIndexSchedulerTests }
 
+/// <summary>Abbruchprüfung, die die Warteschlange merkt und abbricht, sobald der Aufbau 100 ms wartet
+/// (höchstens 50 Prüfungen).</summary>
+function QueueProbe(AScheduler: TIndexScheduler; var AQueue: TIndexSchedulerQueue;
+  var APolls: Integer): TIndexCancelled;
+var
+  mQueue: ^TIndexSchedulerQueue;
+  mPolls: PInteger;
+begin
+  mQueue := @AQueue;
+  mPolls := @APolls;
+  Result :=
+    function: Boolean
+    begin
+      mQueue^ := AScheduler.Queue;
+      Inc(mPolls^);
+      Result := (mQueue^.OldestWaitMs >= 100) or (mPolls^ >= 50);
+    end;
+end;
+
 procedure TIndexSchedulerTests.OrdersByStageThenPriority;
 var
   Scheduler: TIndexScheduler;
@@ -2670,6 +2692,35 @@ begin
     Other := nil;
   finally
     Scheduler.Free;
+  end;
+end;
+
+procedure TIndexSchedulerTests.QueueCountsWaitingBuilds;
+var
+  mScheduler: TIndexScheduler;
+  mActive, mOther: IIndexTurn;
+  mQueue: TIndexSchedulerQueue;
+  mPolls: Integer;
+begin
+  mScheduler := TIndexScheduler.Create;
+  try
+    mActive := mScheduler.Register(0);
+    mOther := mScheduler.Register(1);
+    Assert.AreEqual(0, mScheduler.Queue.Running);
+    Assert.IsTrue(mActive.Enter(TIndexStage.Project, nil));
+    // Ohne zweiten Thread: Die Abbruchprüfung des Wartenden liest die Warteschlange, bis er 100 ms wartet.
+    mPolls := 0;
+    Assert.IsFalse(mOther.Enter(TIndexStage.Project, QueueProbe(mScheduler, mQueue, mPolls)));
+    Assert.AreEqual(1, mQueue.Running);
+    Assert.AreEqual(1, mQueue.Waiting);
+    Assert.IsTrue(mQueue.OldestWaitMs >= 100, IntToStr(mQueue.OldestWaitMs));
+    Assert.AreEqual(0, mScheduler.Queue.Waiting, 'abgebrochen wartet er nicht mehr');
+    mActive.Leave;
+    Assert.AreEqual(0, mScheduler.Queue.Running);
+    mActive := nil;
+    mOther := nil;
+  finally
+    mScheduler.Free;
   end;
 end;
 
