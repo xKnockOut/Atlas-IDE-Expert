@@ -31,6 +31,14 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Compilerregeln: Ausdruck hat nicht die geforderte Typart (#1370, 29.10.2026, Branch `feature/1370-type-kind-required`)
+- Neue Regel `type-kind-required` (Gruppe „Compiler vorab“, Stufe T) in `Atlas.Common.Rules.Builtin.TypeKinds` für E2016, E2017, E2018, E2019, E2021, E2022, E2467, E2474, E2076, E2193, E2150, E2054, E2055. Gemeinsamer Typprüfer `TResolvedTypeKinds` in `Atlas.Common.Semantics.TypeKinds` (Typart eines aufgelösten Typs; für #1369 und weitere Typregeln gedacht).
+- Nicht strenger als dcc: still bei unbekanntem Typ, bedingter Deklaration, sichtbarem Helper (auch für eingebaute Aliase und den deklarierten Alias), sobald eine Unit aus uses nicht im Index steht (`TUnresolvedNames.UsesKnown`), bei Records mit `Implicit`, unbekannten Vorfahren und eigenen Routinen namens New, Write … Index nur auf Variablen, Feldern und Konstanten (indizierte Properties sehen im Baum gleich aus).
+- Cloud-Abgleich: `AtlasServer --check` (Linux, FPC) auf `Tests/Compilermeldungen` mit einer Stub-Unit System (TObject, TClass, PInteger): alle 18 Fälle der Codes „erkannt“, keine zusätzlichen Treffer der Regel; ohne System im Index bleiben die Fälle mit TObject, TClass und PInteger still (erwartet). Fehlalarm-Scan über die eigenen Packages und Tests: 0 Treffer. FPC-Tests: TypeKinds, Semantics.TypeKinds, TypeChecks, Profiles, Catalog, Golden-Korpus samt neuer Mutation grün.
+- Neue Gegenproben im Testprojekt (479 Fälle): `Cm.E2016b`, `Cm.E2017b`, `Cm.E2021b`, `Cm.E2054b`, `Cm.E2193b`, `Cm.E2474b` (erwarteter Code) und `Cm.E2018b`, `Cm.E2076b` (`Erwartet: -`). Noch nicht mit dcc gebaut; Handtest YK12. Unsicher ohne dcc: Code bei Slice an einen Integer-Parameter (E2193 angenommen) und bei class(Integer) (E2021 angenommen).
+- E2003 für `Init`/`Done` in `New(P, Init)`/`Dispose(P, Done)` bleibt Sache von #1382 (Namensauflösung der object-Syntax).
+- Offen: Delphi-Build (Win64-Gruppe und Win32-Plugin) und dcc-Lauf der neuen Fälle auf Marcos PC.
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.

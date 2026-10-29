@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 78 |
+| [Compiler vorab](#gruppe-compiler) | 79 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -221,6 +221,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`invalid-var-argument`](#invalid-var-argument) | Ungültiges Argument für einen var- oder out-Parameter | Bug | Fehler |
 | [`condition-not-boolean`](#condition-not-boolean) | Bedingung ist kein Boolean | Bug | Fehler |
 | [`for-in-not-enumerable`](#for-in-not-enumerable) | for-in über einen Typ ohne Enumerator | Bug | Fehler |
+| [`type-kind-required`](#type-kind-required) | Ausdruck oder Deklaration hat nicht die geforderte Typart | Bug | Fehler |
 | [`inherited-abstract-call`](#inherited-abstract-call) | inherited ruft eine abstrakte Methode auf | Bug | Fehler |
 | [`generic-constraint-violated`](#generic-constraint-violated) | Typargument verletzt eine Einschränkung | Bug | Fehler |
 | [`unresolved-type`](#unresolved-type) | Typ in einer Deklaration nicht gefunden | Bug | Fehler |
@@ -7899,6 +7900,31 @@ Richtig:
 
 ```pascal
 for F in Felder do
+```
+
+<a id="type-kind-required"></a>
+### type-kind-required
+
+**Ausdruck oder Deklaration hat nicht die geforderte Typart** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Operation verlangt eine Typart, die der Operand sicher nicht hat: ein Index auf einer Zahl, einem Boolean, Zeichen oder Aufzählungswert (wie E2016); ^ auf einem solchen Wert, einer Klasse, einem Record oder Interface (wie E2017); Punkt oder with auf einem solchen Wert (wie E2018); ein object-Typ mit einem Vorfahr, der kein object-Typ ist, TypeOf auf einem einfachen Wert und Dispose mit Destruktor auf einem Zeiger auf einen einfachen Typ (wie E2019); eine Klasse mit einem Record, einer Klassenreferenz, Aufzählung oder einem einfachen Typ als Vorfahr (wie E2021); ein Class-Helper, dessen Vorfahr kein Helper ist (wie E2022); New mit Konstruktor auf einem Zeiger auf einen einfachen Typ (wie E2467); ein Record-Helper für eine Klasse oder ein Interface (wie E2474); eine Methode ohne class über den Klassentyp aufgerufen, außerhalb von Methoden der Klasse und ihrer Nachfahren (wie E2076); Slice außerhalb eines Arguments für ein offenes Array (wie E2193); ein Record in einem Array an array of const (wie E2150); Write/Writeln bzw. Read/Readln mit einer Klasse, einem Record oder Interface (wie E2054, E2055). Gemeldet nur bei sicher bekanntem Typ: unbekannte Typen, bedingte Deklarationen, sichtbare Helper, Units außerhalb des Index, Records mit Implicit-Operator und unbekannte Vorfahren bleiben still. Korrekturen: ^ vor einem Punkt bei Klassen, Records und Interfaces entfernen; in Write/Writeln Objekt.ToString schreiben.
+
+Entspricht der Compilermeldung `E2016`, `E2017`, `E2018`, `E2019`, `E2021`, `E2022`, `E2467`, `E2474`, `E2076`, `E2193`, `E2150`, `E2054`, `E2055`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
+Mit Treffer:
+
+```pascal
+Kunde^.Name := 'A';
+Writeln(ErrOutput, Kunde);
+```
+
+Richtig:
+
+```pascal
+Kunde.Name := 'A';
+Writeln(ErrOutput, Kunde.ToString);
 ```
 
 <a id="inherited-abstract-call"></a>
