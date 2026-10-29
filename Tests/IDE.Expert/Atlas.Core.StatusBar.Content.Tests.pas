@@ -35,6 +35,9 @@ type
     /// <summary>#1232: „ · Projekt 45 %“ nur, solange Units fehlen; abgerundet.</summary>
     [Test]
     procedure ProjectProgressUntilComplete;
+    /// <summary>#1247: Lauf der Projektprüfung mit Fortschritt, Pause beim Kompilieren und „fertig“.</summary>
+    [Test]
+    procedure RunTextShowsProgressPauseAndDone;
   end;
 
 implementation
@@ -84,6 +87,8 @@ begin
   Result.Hours := '%d h';
   Result.Separator := ' · ';
   Result.ProjectProgress := 'Projekt %d %%';
+  Result.ProjectDone := 'Projekt fertig';
+  Result.ProjectPaused := 'pausiert (Kompilieren)';
 end;
 
 function Node(const AName: string; ACategory: TAtlasOutlineCategory; AStart, AEnd, AParent: Integer): TAtlasOutlineNode;
@@ -268,6 +273,21 @@ begin
   Assert.AreEqual(' · Projekt 0 %', TAtlasStatusBarContent.ProgressText(0, 27, Texts));
   Assert.AreEqual('', TAtlasStatusBarContent.ProgressText(27, 27, Texts), 'fertig');
   Assert.AreEqual('', TAtlasStatusBarContent.ProgressText(0, 0, Texts), 'ohne Projekt');
+end;
+
+procedure TAtlasStatusBarContentTests.RunTextShowsProgressPauseAndDone;
+begin
+  Assert.AreEqual(' · Projekt 44 %', TAtlasStatusBarContent.RunText(True, 40, 90, '', High(UInt64), Texts));
+  Assert.AreEqual(' · Projekt 44 % pausiert (Kompilieren)',
+    TAtlasStatusBarContent.RunText(True, 40, 90, 'compile', High(UInt64), Texts));
+  Assert.AreEqual(' · Projekt 0 %', TAtlasStatusBarContent.RunText(True, 0, 90, 'index', High(UInt64), Texts),
+    'Indexaufbau gehört zum Lauf');
+  Assert.AreEqual(' · Projekt 100 %', TAtlasStatusBarContent.RunText(True, 95, 90, '', High(UInt64), Texts),
+    'höchstens 100 %');
+  Assert.AreEqual(' · Projekt fertig', TAtlasStatusBarContent.RunText(False, 90, 90, '', 1000, Texts));
+  Assert.AreEqual('', TAtlasStatusBarContent.RunText(False, 90, 90, '', 6000, Texts), 'danach ruhig');
+  Assert.AreEqual('', TAtlasStatusBarContent.RunText(False, 90, 90, '', High(UInt64), Texts), 'nie gelaufen');
+  Assert.AreEqual('', TAtlasStatusBarContent.RunText(True, 0, 0, '', High(UInt64), Texts), 'ohne Units');
 end;
 
 initialization

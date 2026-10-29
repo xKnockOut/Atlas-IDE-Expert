@@ -973,13 +973,19 @@ begin
   Assert.AreEqual('all', Settings.BuildOnOpenScope);
   Assert.AreEqual(3000, Settings.BuildOnOpenDelayMs);
   Assert.AreEqual('', Settings.BuildOnOpenExclude);
+  Assert.AreEqual('', Settings.BuildOnOpenConfig, 'wie im Projekt (#1293)');
+  Assert.AreEqual('', Settings.BuildOnOpenPlatform, 'wie im Projekt (#1293)');
   // Normalisieren: unbekannte Art = make, unbekannter Umfang = all, Wartezeit in den Grenzen, Liste ohne Endung
   // und Doppelte.
   Settings.BuildOnOpenKind := 'BUILD';
   Settings.BuildOnOpenScope := 'Active';
   Settings.BuildOnOpenDelayMs := 10;
   Settings.BuildOnOpenExclude := ' Atlas.IDE.Expert.dproj; atlas.ide.expert,, Demo ';
+  Settings.BuildOnOpenConfig := ' Debug ';
+  Settings.BuildOnOpenPlatform := ' Win64 ';
   Settings.Normalize;
+  Assert.AreEqual('Debug', Settings.BuildOnOpenConfig);
+  Assert.AreEqual('Win64', Settings.BuildOnOpenPlatform);
   Assert.AreEqual('build', Settings.BuildOnOpenKind);
   Assert.AreEqual('active', Settings.BuildOnOpenScope);
   Assert.AreEqual(500, Settings.BuildOnOpenDelayMs);
@@ -1005,6 +1011,8 @@ begin
   Assert.AreEqual('active', Loaded.BuildOnOpenScope);
   Assert.AreEqual(5000, Loaded.BuildOnOpenDelayMs);
   Assert.AreEqual('Atlas.IDE.Expert, Demo', Loaded.BuildOnOpenExclude);
+  Assert.AreEqual('Debug', Loaded.BuildOnOpenConfig);
+  Assert.AreEqual('Win64', Loaded.BuildOnOpenPlatform);
 end;
 
 procedure TAtlasPluginSettingsTests.CompletionListModeOptions;
@@ -1061,6 +1069,7 @@ begin
   Assert.IsTrue(Settings.UnitSearchRememberCollapsed);
   Assert.IsTrue(Settings.UnitSearchFilters);
   Assert.IsTrue(Settings.UnitSearchFilterSyntax);
+  Assert.IsTrue(Settings.UnitSearchFormCaptions);
   Assert.IsTrue(Settings.UnitSearchPreview);
   Assert.IsTrue(Settings.UnitSearchPreviewForm);
   Assert.IsTrue(Settings.UnitSearchPreviewUsedBy);
@@ -1086,6 +1095,7 @@ begin
   Settings.UnitSearchRememberCollapsed := False;
   Settings.UnitSearchFilters := False;
   Settings.UnitSearchFilterSyntax := False;
+  Settings.UnitSearchFormCaptions := False;
   Settings.UnitSearchPreview := False;
   Settings.UnitSearchPreviewForm := False;
   Settings.UnitSearchPreviewUsedBy := False;
@@ -1108,6 +1118,7 @@ begin
   Assert.IsFalse(Loaded.UnitSearchRememberCollapsed);
   Assert.IsFalse(Loaded.UnitSearchFilters);
   Assert.IsFalse(Loaded.UnitSearchFilterSyntax);
+  Assert.IsFalse(Loaded.UnitSearchFormCaptions);
   Assert.IsFalse(Loaded.UnitSearchPreview);
   Assert.IsFalse(Loaded.UnitSearchPreviewForm);
   Assert.IsFalse(Loaded.UnitSearchPreviewUsedBy);
@@ -1448,6 +1459,22 @@ begin
   Loaded.StickyScrollBlockMinLines := 1;
   Loaded.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MinStickyBlockLines, Loaded.StickyScrollBlockMinLines);
+  // Was der Kopf zeigt: Typen und Routinen an, weitere Anweisungsblöcke aus; jede Art einzeln gespeichert.
+  Assert.IsTrue(Settings.StickyScrollTypes and Settings.StickyScrollRoutines);
+  Assert.IsFalse(Settings.StickyScrollLoops or Settings.StickyScrollTry or Settings.StickyScrollCase or
+    Settings.StickyScrollWith);
+  Settings.StickyScrollTypes := False;
+  Settings.StickyScrollLoops := True;
+  Settings.StickyScrollCase := True;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.StickyScrollTypes);
+  Assert.IsTrue(Loaded.StickyScrollRoutines);
+  Assert.IsTrue(Loaded.StickyScrollLoops);
+  Assert.IsFalse(Loaded.StickyScrollTry);
+  Assert.IsTrue(Loaded.StickyScrollCase);
+  Assert.IsFalse(Loaded.StickyScrollWith);
 end;
 
 procedure TAtlasPluginSettingsTests.MinimapOptions;

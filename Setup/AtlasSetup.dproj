@@ -66,6 +66,8 @@
         <DCCReference Include="..\Packages\Atlas.Text\Source\Checkin\Atlas.Text.Checkin.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Color.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Palette.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Style\Atlas.Core.Style.Signal.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Status\Atlas.Core.Status.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Generate\Atlas.Core.Generate.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.Events.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Build\Atlas.Core.Build.OpenBuild.pas"/>

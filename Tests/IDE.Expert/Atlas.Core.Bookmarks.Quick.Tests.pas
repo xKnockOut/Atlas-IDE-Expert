@@ -33,6 +33,8 @@ type
     [Test]
     procedure ClickSetsAndRemoves;
     [Test]
+    procedure ClickTakesFreeNumberOrNone;
+    [Test]
     procedure ClickOnNamedNumberKeepsNamedBookmark;
     [Test]
     procedure ToggleUnnumbered;
@@ -60,6 +62,8 @@ type
     procedure KeysForNumbers;
     [Test]
     procedure ColumnWidthFollowsLineHeight;
+    [Test]
+    procedure RowGuessAboveAndBelow;
   end;
 
 implementation
@@ -157,12 +161,28 @@ procedure TAtlasQuickBookmarkTests.ClickSetsAndRemoves;
 begin
   Assert.AreEqual(Ord(TAtlasQuickChange.Added), Ord(TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 23, 0)));
   Assert.AreEqual(1, Integer(Length(TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 23))));
-  Assert.AreEqual(0, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 23)[0].Number);
+  Assert.AreEqual(1, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 23)[0].Number, 'kleinste freie Nummer');
   TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 23, 4, 0);
   // Klick auf den Marker: alle Marker der Zeile weg.
   Assert.AreEqual(Ord(TAtlasQuickChange.Removed), Ord(TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 23, 0)));
   Assert.AreEqual(0, Integer(FList.Count));
   Assert.AreEqual(Ord(TAtlasQuickChange.None), Ord(TAtlasQuickBookmarks.Click(FList, KundeFile, Text, -1, 0)));
+end;
+
+procedure TAtlasQuickBookmarkTests.ClickTakesFreeNumberOrNone;
+var
+  Number: Integer;
+begin
+  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 3, 1, 0);
+  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 4, 3, 0);
+  Assert.AreEqual(2, TAtlasQuickBookmarks.FreeNumber(FList), 'Lücke zuerst');
+  TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 10, 0);
+  Assert.AreEqual(2, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 10)[0].Number);
+  for Number := 1 to 9 do
+    TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 20 + Number, Number, 0);
+  Assert.AreEqual(0, TAtlasQuickBookmarks.FreeNumber(FList), 'alle belegt');
+  TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 40, 0);
+  Assert.AreEqual(0, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 40)[0].Number, 'dann ohne Nummer');
 end;
 
 procedure TAtlasQuickBookmarkTests.ClickOnNamedNumberKeepsNamedBookmark;
@@ -405,6 +425,19 @@ begin
   Assert.AreEqual(16, TAtlasQuickBookmarks.ColumnWidth(20));
   Assert.AreEqual(TAtlasQuickBookmarks.MinColumnWidth, TAtlasQuickBookmarks.ColumnWidth(0), 'Mindestbreite');
   Assert.AreEqual(TAtlasQuickBookmarks.MinColumnWidth, TAtlasQuickBookmarks.ColumnWidth(8));
+end;
+
+procedure TAtlasQuickBookmarkTests.RowGuessAboveAndBelow;
+begin
+  // Bekannt: Editorzeile 10 mit Oberkante 180, Höhe 18.
+  Assert.AreEqual(10, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 180), 'Oberkante');
+  Assert.AreEqual(10, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 197), 'Unterkante');
+  Assert.AreEqual(11, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 198), 'nächste Zeile');
+  Assert.AreEqual(9, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 179), 'knapp darüber');
+  Assert.AreEqual(9, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 162), 'Oberkante darüber');
+  Assert.AreEqual(8, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 161), 'zwei darüber');
+  Assert.AreEqual(1, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 18), 'oben im Editor');
+  Assert.AreEqual(10, TAtlasQuickBookmarks.RowGuess(10, 180, 0, 500), 'ohne Höhe');
 end;
 
 initialization

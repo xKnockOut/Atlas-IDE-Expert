@@ -8,12 +8,16 @@
 // (z. B. MCP, #556) stehen. Zeilen und Spalten kommen 1-basiert aus der IDE.
 // Hintergrundprüfungen nach dem Speichern (#548, "background") ersetzen die
 // Meldungen, zählen aber nicht als letzter Build des Benutzers.
+// Laufende Compiles (#1247): Beginn und Ende je Projekt bzw. Gruppenlauf
+// ("group") ergeben Compiling; OnCompiling meldet den Wechsel, damit die
+// Projektprüfung solange pausiert. Das Ende eines Gruppenlaufs beendet alle.
 
 interface
 
 uses
   System.SysUtils,
   System.JSON,
+  System.Generics.Collections,
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Compiler.Contract;
 
@@ -34,6 +38,7 @@ type
 
   TIdeBuildMessagesEvent = reference to procedure(const AMessages: TArray<TCompilerMessage>);
   TIdeBuildChangedEvent = reference to procedure(const ABuild: TIdeBuild);
+  TIdeBuildCompilingEvent = reference to procedure(ARunning: Boolean);
 
   TLspIdeBuild = class
   public const
@@ -45,7 +50,12 @@ type
     FLast: TIdeBuild;
     FOnMessages: TIdeBuildMessagesEvent;
     FOnChanged: TIdeBuildChangedEvent;
+    FOnCompiling: TIdeBuildCompilingEvent;
+    // Laufende Compiles: "group" bzw. Projektdatei in Kleinschreibung. Unter FLock.
+    FRunning: TDictionary<string, Boolean>;
     procedure Changed;
+    /// <summary>Compile AParams beginnt (ARunning) bzw. endet; meldet den Wechsel von Compiling.</summary>
+    procedure Track(const AParams: TJSONValue; ARunning: Boolean);
     procedure HandleFinished(const AParams: TJSONValue);
     procedure HandleMessages(const AParams: TJSONValue);
   public
@@ -59,6 +69,10 @@ type
     property OnMessages: TIdeBuildMessagesEvent read FOnMessages write FOnMessages;
     /// <summary>Der letzte Build hat sich geändert (nicht bei Hintergrundprüfungen, #548), z. B. zum Speichern (#556).</summary>
     property OnChanged: TIdeBuildChangedEvent read FOnChanged write FOnChanged;
+    /// <summary>Läuft gerade ein Compile in der IDE (auch im Hintergrund)?</summary>
+    function Compiling: Boolean;
+    /// <summary>Compiling hat gewechselt (#1247).</summary>
+    property OnCompiling: TIdeBuildCompilingEvent read FOnCompiling write FOnCompiling;
   end;
 
 implementation
@@ -69,20 +83,23 @@ constructor TLspIdeBuild.Create;
 begin
   inherited Create;
   FLock := TObject.Create;
+  FRunning := TDictionary<string, Boolean>.Create;
 end;
 
 destructor TLspIdeBuild.Destroy;
 begin
+  FRunning.Free;
   FLock.Free;
   inherited;
 end;
 
 procedure TLspIdeBuild.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  // Beginn nur zur Kenntnis; das Ende und die Meldungen tragen alles Nötige.
+  // Der Beginn zählt nur für Compiling (#1247); das Ende und die Meldungen tragen alles Nötige.
   ADispatcher.RegisterNotification(StartedMethod,
     procedure(const AParams: TJSONValue)
     begin
+      Track(AParams, True);
     end);
   ADispatcher.RegisterNotification(FinishedMethod, HandleFinished);
   ADispatcher.RegisterNotification(MessagesMethod, HandleMessages);
@@ -134,6 +151,7 @@ var
 begin
   if not (AParams is TJSONObject) then
     Exit;
+  Track(AParams, False);
   Params := TJSONObject(AParams);
   if Params.GetValue<Boolean>('background', False) then
     Exit;
@@ -194,6 +212,47 @@ begin
   if Assigned(FOnMessages) then
     FOnMessages(Messages);
   Changed;
+end;
+
+procedure TLspIdeBuild.Track(const AParams: TJSONValue; ARunning: Boolean);
+var
+  mKey: string;
+  mBefore, mAfter: Boolean;
+begin
+  if not (AParams is TJSONObject) then
+    Exit;
+  if TJSONObject(AParams).GetValue<Boolean>('group', False) then
+    mKey := 'group'
+  else
+    mKey := AnsiLowerCase(TJSONObject(AParams).GetValue<string>('project', ''));
+  if mKey = '' then
+    Exit;
+  TMonitor.Enter(FLock);
+  try
+    mBefore := FRunning.Count > 0;
+    if ARunning then
+      FRunning.AddOrSetValue(mKey, True)
+    else if mKey = 'group' then
+      // Ein Gruppenlauf endet erst nach allen Projekten; fehlt ein Projektende, endet es hier.
+      FRunning.Clear
+    else
+      FRunning.Remove(mKey);
+    mAfter := FRunning.Count > 0;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  if (mBefore <> mAfter) and Assigned(FOnCompiling) then
+    FOnCompiling(mAfter);
+end;
+
+function TLspIdeBuild.Compiling: Boolean;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FRunning.Count > 0;
+  finally
+    TMonitor.Exit(FLock);
+  end;
 end;
 
 function TLspIdeBuild.LastBuild: TIdeBuild;

@@ -43,6 +43,10 @@ type
     /// Anker (früher blieb der Editor bei den 185 Pixeln eines frischen Panels).</summary>
     [Test]
     procedure KeepsRequestedWidth;
+    /// <summary>#1296: Eingeblendete Teile (Marke, Optionen, Beispiele, Fehlermeldung) stehen an ihrem Platz und
+    /// nicht am Ende des Detailbereichs.</summary>
+    [Test]
+    procedure DetailsKeepOrderWhenShown;
   end;
 
 implementation
@@ -158,6 +162,42 @@ begin
     Host.ClientWidth := 1000;
     Assert.AreEqual(800, Editor.Width, 'folgt dem Anker');
   finally
+    Host.Free;
+    Catalog.Free;
+  end;
+end;
+
+procedure TAtlasRulesEditorTests.DetailsKeepOrderWhenShown;
+var
+  Host: TForm;
+  Catalog: TJSONValue;
+  Editor: TAtlasRulesEditor;
+  Order: TArray<TControl>;
+  Index: Integer;
+begin
+  Catalog := TJSONObject.ParseJSONValue(CatalogText);
+  Host := TForm.CreateNew(nil);
+  try
+    // Ohne Auswahl sind Marke, Optionen und Beispiele ausgeblendet; die übrigen Teile sind schon ausgerichtet.
+    Editor := NewEditor(Host, 'style', Catalog, '', '');
+    Assert.IsFalse(Editor.BadMemo.Visible);
+    Assert.IsTrue(Editor.SelectRule('magic-number'));
+    Assert.IsTrue(Editor.MarkLabel.Visible);
+    Assert.IsTrue(Editor.OptionsTitleLabel.Visible);
+    Assert.IsTrue(Editor.GoodMemo.Visible);
+    Order := TArray<TControl>.Create(Editor.TitleLabel, Editor.MarkLabel, Editor.DescriptionLabel,
+      Editor.SeverityChoice.Parent, Editor.ExcludeEdit, Editor.OptionsTitleLabel, Editor.OptionsBox,
+      Editor.BadLabel, Editor.BadMemo, Editor.GoodLabel, Editor.GoodMemo);
+    for Index := 1 to High(Order) do
+      Assert.IsTrue(Order[Index - 1].Top + Order[Index - 1].Height <= Order[Index].Top,
+        Format('%d (%s) vor %d (%s)', [Index - 1, Order[Index - 1].ClassName, Index, Order[Index].ClassName]));
+    // Ungültige Zahl: Die Meldung steht unter den Optionen, nicht unter den Beispielen.
+    (Editor.OptionControls[1] as TEdit).Text := 'x';
+    Assert.IsTrue(Editor.InvalidLabel.Visible);
+    Assert.IsTrue(Editor.InvalidLabel.Top >= Editor.OptionsBox.Top + Editor.OptionsBox.Height);
+    Assert.IsTrue(Editor.InvalidLabel.Top + Editor.InvalidLabel.Height <= Editor.BadLabel.Top);
+  finally
+    Order := nil;
     Host.Free;
     Catalog.Free;
   end;

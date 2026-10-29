@@ -76,7 +76,8 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
   Shell.CommandLine,
-  Shell.Linter;
+  Shell.Linter,
+  Shell.Workspace;
 
 const
   CleanUnit = 'unit Gut;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10;
@@ -118,6 +119,8 @@ begin
     TDirectory.Delete(FFolder, True);
   // Der Leckmonitor misst den Saldo von Setup und TearDown; Run merkt sich den Ordner in den Encoding-Vorgaben.
   TFileEncodingDefaults.Clear;
+  // Ebenso die Ordnerlisten der .pas-/.dcu-Dateien: je Testordner ein Eintrag (IndexKnowsTypesOfOtherUnits).
+  TShellWorkspace.ClearSharedListings;
   FFolder := '';
   FOutput := '';
 end;

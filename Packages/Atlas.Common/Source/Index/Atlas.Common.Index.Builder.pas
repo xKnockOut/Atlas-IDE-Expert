@@ -24,6 +24,11 @@
 //   veraltet; ohne Usages bleiben Verwendungen aus dem Cache weg.
 // - Läuft im aufrufenden Thread; den Hintergrund-Thread stellt die
 //   Komposition bereit.
+// - Jede Datei liest nur ein Thread zur selben Zeit (#1236): Fragen Aufbau und
+//   Anfragen (EnsureUnit) dieselbe Unit gleichzeitig an, wartet der zweite
+//   auf den ersten und übernimmt sein Ergebnis. Früher parsten beim Start
+//   mehrere Anfrage-Threads und der Aufbau dieselben RTL-/VCL-Units parallel.
+//   Verschiedene Units laufen weiter parallel (#617).
 // - ReleaseCache gibt die Cache-Einträge nach dem Aufbau frei (Rückmeldung
 //   15.10.2026): Jeder Eintrag hält die ganze gelesene Cache-Datei; mit sechs
 //   Projekten lagen so Projekt- und Bibliotheks-Cache sechsmal im Speicher,
@@ -72,6 +77,9 @@ type
     // Von EnsureUnit aus Anfrage-Threads genutzt.
     FFailedUnits: TDictionary<string, Boolean>;
     FFailedLock: TObject;
+    // Dateien, die gerade ein Thread liest (Großschreibung); Wartende schlafen an FFlightLock.
+    FInFlight: TDictionary<string, Boolean>;
+    FFlightLock: TObject;
     FIncludePaths: TArray<string>;
     FLibraryDefines: TArray<string>;
     FUsages: Boolean;
@@ -86,7 +94,10 @@ type
     function DefinesFor(const AFileName: string): TArray<string>;
     function IncludeStampsOf(const AIncludes: TArray<string>): TArray<Int64>;
     function IncludesUnchanged(const ACached: TUnitIndex): Boolean;
+    /// <summary>Indiziert AFileName; liest ein anderer Thread die Datei gerade, wartet es auf ihn und übernimmt sein
+    /// Ergebnis (#1236).</summary>
     function IndexFile(const AFileName: string; ALibrary: Boolean; var AResult: TIndexBuildResult): Boolean;
+    function IndexFileNow(const AFileName: string; ALibrary: Boolean; var AResult: TIndexBuildResult): Boolean;
     procedure IndexReferenced(var AResult: TIndexBuildResult; const AProgress: TIndexProgressEvent;
       const ACancelled: TIndexCancelled);
     function IsCancelled(const ACancelled: TIndexCancelled): Boolean;
@@ -157,6 +168,8 @@ begin
   FCacheLock := TObject.Create;
   FFailedUnits := TDictionary<string, Boolean>.Create;
   FFailedLock := TObject.Create;
+  FInFlight := TDictionary<string, Boolean>.Create;
+  FFlightLock := TObject.Create;
 end;
 
 class function TIndexBuilder.IsUnder(const AFileName: string; const ARoots: TArray<string>): Boolean;
@@ -186,6 +199,8 @@ end;
 
 destructor TIndexBuilder.Destroy;
 begin
+  FFlightLock.Free;
+  FInFlight.Free;
   FFailedLock.Free;
   FFailedUnits.Free;
   FCacheLock.Free;
@@ -348,6 +363,44 @@ begin
 end;
 
 function TIndexBuilder.IndexFile(const AFileName: string; ALibrary: Boolean;
+  var AResult: TIndexBuildResult): Boolean;
+const
+  cWaitSliceMs = 50;
+var
+  mKey: string;
+  mWaited: Boolean;
+  mExisting: TUnitIndex;
+begin
+  mKey := AnsiUpperCase(AFileName);
+  mWaited := False;
+  TMonitor.Enter(FFlightLock);
+  try
+    while FInFlight.ContainsKey(mKey) do
+    begin
+      mWaited := True;
+      TMonitor.Wait(FFlightLock, cWaitSliceMs);
+    end;
+    // Ein anderer Thread hat die Datei eben gelesen: sein Ergebnis gilt, kein zweites Parsen.
+    if mWaited and FIndex.FindFile(AFileName, mExisting) then
+      Exit(True);
+    FInFlight.Add(mKey, True);
+  finally
+    TMonitor.Exit(FFlightLock);
+  end;
+  try
+    Result := IndexFileNow(AFileName, ALibrary, AResult);
+  finally
+    TMonitor.Enter(FFlightLock);
+    try
+      FInFlight.Remove(mKey);
+      TMonitor.PulseAll(FFlightLock);
+    finally
+      TMonitor.Exit(FFlightLock);
+    end;
+  end;
+end;
+
+function TIndexBuilder.IndexFileNow(const AFileName: string; ALibrary: Boolean;
   var AResult: TIndexBuildResult): Boolean;
 var
   Stamp: Int64;
