@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## #1383 Meldungen, wo Delphi 13 schweigt (29.10.2026, Branch `feature/1383-ohne-dcc-befund`, Entwurfs-PR #1397)
+- Versionsunabhängig behoben: `class abstract` (E2402) und `S[1]` an var (E2354) gibt es nur unter .NET; überladene Array-Properties (W1075); `{$WARN MOBILE_DELPHI}`/`UNSAFE_VOID_POINTER` bekannt. Stilregeln nennen den Code nur, wo dcc meldet: `unused-assignment` H2077 nur bei nicht verwalteten Typen, `uses-cycle` F2047 nur bei reinen interface-Zyklen (Selbstverweis F2092), `xmldoc-mismatch` nur im interface-Teil und nur W1205 (fremdes Zeichen hinter dem Tagnamen). `Compare-Compilermeldungen.py` zählt diese vier Regeln nur über den Code in der Meldung (`NUR_MELDUNG`).
+- Delphi-12-Lauf vorbereitet: `Build-Compilermeldungen.ps1 -Dcc -BdsVersion 23.0 -ResultFile …` (ohne IDE mit dcc32/dcc64), Anleitung im Projektordner `anleitungen/1383-delphi12-faelle-bauen.md`; zwölf Zusatzfälle (F2069b–d, H2367b, H2440b, W1009c/d, W1071b/c, E2373b, CmE2121c), auch mit Delphi 13 zu bauen.
+- Offen bis zum Ergebnis: E2121/E2287, E2146, E2325/E2326, E2373, E2549, E2591, F2069, H2367, H2440, H2505, W1009, W1040, W1070, W1071.
+- Cloud: `--check` ohne RTL-Index lässt indexabhängige Regeln (E2003 usw.) aus; Vergleich in der Cloud nur für die geänderten Regeln aussagekräftig. Katalog-Unit per Python-Nachbau von `Update-RuleCatalog.ps1` erzeugt (byte-gleich geprüft), `Update-RuleCatalog.ps1 -Check` auf Windows laufen lassen.
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.
