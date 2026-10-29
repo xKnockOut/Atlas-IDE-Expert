@@ -265,7 +265,9 @@ begin
   mOverview.Subsystems[1].Parent := 'App';
   mOverview.Subsystems[1].Foundation := True;
   mText := TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mOverview));
-  Assert.Contains(mText, '"isolated": false, "foundation": true, "parent": "App"}');
+  // Farbe dahinter (#1367).
+  Assert.Contains(mText, '"isolated": false, "foundation": true, "parent": "App", "color": ' +
+    IntToStr(mOverview.Subsystems[1].ColorSlot) + ', "shade": 0}');
   Assert.IsTrue(TArchitectureSnapshots.Parse(mText, mRead, mError), mError);
   mFound := False;
   for mSubsystem in mRead.Subsystems do

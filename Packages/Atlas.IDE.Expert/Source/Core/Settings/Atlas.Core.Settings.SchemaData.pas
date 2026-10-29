@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3072] of string = (
+  Lines: array[0..3079] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2275,6 +2275,15 @@ const
     '              "description": "Übergreifende Fundament-Units (Rolle Fundament, direkt Abhängige in mindestens drei Teilsystemen oder höchstens zu 60 % im eigenen) beim Gruppieren: group = mitgruppieren' +
       ' wie bisher; attach = ohne sie gruppieren und danach ins Teilsystem mit den meisten Abhängigen; separate = eigenes Teilsystem „Fundament“ in der Mitte der Karte, Kanten dorthin keine Querverbindungen.' +
       '"',
+    '            },',
+    '            "keepPrevious": {',
+    '              "x-control": "Kontrollkästchen; im Fenster Befehl „Teilsysteme neu benennen“",',
+    '              "x-issue": "#1367",',
+    '              "type": "boolean",',
+    '              "default": true,',
+    '              "description": "Farben und Namen der Teilsysteme an den vorigen Stand angleichen: an architecture.baseline, sonst an den zuletzt berechneten Stand im Cache-Verzeichnis. Ein Teilsystem be' +
+      'hält Farbe und Namen, wenn es mit einem alten mehr als die Hälfte der Units beider teilt. aus = Farben und Namen nach Reihenfolge wie bisher. AtlasServer --architecture gleicht nur an architecture.bas' +
+      'eline an und schreibt keinen Stand."',
     '            }',
     '          }',
     '        }',
@@ -2283,7 +2292,7 @@ const
     '      "x-area": "general",',
     '      "x-page": "Architektur",',
     '      "x-control": "Kontrollkästchen, Auswahl, Kontrollkästchen, Zahl (5–100); exclude: Liste mit Hinzufügen/Entfernen in den Projekt-Einstellungen; baseline: Datei wählen, failOn: Liste (Projekt-Eins' +
-      'tellungen, #1121); grouping: Gruppierung der Teilsysteme (#1366)",',
+      'tellungen, #1121); grouping: Gruppierung der Teilsysteme (#1366), keepPrevious: Farben und Namen halten (#1367)",',
     '      "x-issue": "#1118"',
     '    },',
     '    "hotspots": {',

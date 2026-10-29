@@ -296,6 +296,8 @@
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.MapTemplate.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Snapshot.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Comparison.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Matching.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Alignment.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Report.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Service.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas"/>

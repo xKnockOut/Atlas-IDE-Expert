@@ -43,6 +43,8 @@
 //   ohne Zusammenhalt, keine Querverbindungen und Ausreißer dorthin). Units,
 //   deren einzige Kanten zu Fundamenten führen, folgen ihrem Fundament.
 // - Alles deterministisch: Units nach Name, Teilsysteme nach Größe und Name.
+//   Farben und Namen kann danach Atlas.Common.Architecture.Alignment an einen
+//   vorigen Stand angleichen (#1367); die Reihenfolge bleibt.
 
 interface
 
@@ -260,6 +262,13 @@ type
     /// <summary>Zuordnung in Bericht, Fenster und get_architecture zeigen (architecture.explainAssignment).
     /// </summary>
     ExplainAssignment: Boolean;
+    /// <summary>Angleichung an einen vorigen Stand (#1367): Herkunft ('' = keine, AlignedBaseline oder
+    /// AlignedLast), Zeitpunkt des Stands und Zahl der Teilsysteme, die Name oder Farbe behielten.</summary>
+    AlignedSource: string;
+    AlignedAt: TDateTime;
+    AlignedKept: Integer;
+    /// <summary>Teilsysteme an einen vorigen Stand angeglichen (AlignedSource gesetzt).</summary>
+    function IsAligned: Boolean;
     /// <summary>Unit mit diesem Namen (ohne Groß-/Kleinschreibung); -1 ohne.</summary>
     function IndexOf(const AName: string): Integer;
     /// <summary>Zuordnung der Unit; Own = -1, wenn die Übersicht keine hat (gespeicherter Stand).</summary>
@@ -294,6 +303,9 @@ type
     /// <summary>Knapp zugeordnet (#1368), wenn das stärkste andere Teilsystem mindestens so viel Prozent der Summe
     /// des eigenen erreicht.</summary>
     ClosePercent = 75;
+    /// <summary>Herkunft der Angleichung (#1367): architecture.baseline bzw. der zuletzt berechnete Stand.</summary>
+    AlignedBaseline = 'baseline';
+    AlignedLast = 'last';
   public
     /// <summary>Übersicht über alle aktiven Units von AGraph. ALocator darf nil sein (dann ohne Fundstellen).
     /// ACentralCount: Länge der Liste zentraler Units (5..100).</summary>
@@ -499,6 +511,11 @@ begin
   Result := Default(TOverviewAssignment);
   Result.Own := -1;
   Result.Rival := -1;
+end;
+
+function TArchitectureOverview.IsAligned: Boolean;
+begin
+  Result := AlignedSource <> '';
 end;
 
 function TArchitectureOverview.ShowsAssignment: Boolean;

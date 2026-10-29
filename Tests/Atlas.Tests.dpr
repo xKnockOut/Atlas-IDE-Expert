@@ -161,6 +161,8 @@ uses
   Atlas.Common.Architecture.Layout.Tests in 'Common\Architecture\Atlas.Common.Architecture.Layout.Tests.pas',
   Atlas.Common.Architecture.Snapshot.Tests in 'Common\Architecture\Atlas.Common.Architecture.Snapshot.Tests.pas',
   Atlas.Common.Architecture.Comparison.Tests in 'Common\Architecture\Atlas.Common.Architecture.Comparison.Tests.pas',
+  Atlas.Common.Architecture.Matching.Tests in 'Common\Architecture\Atlas.Common.Architecture.Matching.Tests.pas',
+  Atlas.Common.Architecture.Alignment.Tests in 'Common\Architecture\Atlas.Common.Architecture.Alignment.Tests.pas',
   Atlas.Common.Hotspots.History.Tests in 'Common\Hotspots\Atlas.Common.Hotspots.History.Tests.pas',
   Atlas.Common.Hotspots.Analysis.Tests in 'Common\Hotspots\Atlas.Common.Hotspots.Analysis.Tests.pas',
   Atlas.Common.Hotspots.Service.Tests in 'Common\Hotspots\Atlas.Common.Hotspots.Service.Tests.pas',

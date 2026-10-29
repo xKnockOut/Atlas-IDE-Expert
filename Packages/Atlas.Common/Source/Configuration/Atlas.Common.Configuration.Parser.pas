@@ -2281,7 +2281,7 @@ procedure TValidator.ReadArchitecture(ANode: TJsonNode);
       ReportNode(AValueNode, Format('"architecture.grouping.%s" muss eine Zahl von %s sein', [AName, ARange]));
   end;
 
-  // architecture.grouping: Gruppierung der Teilsysteme (#1366, #1364, #1365).
+  // architecture.grouping: Gruppierung der Teilsysteme (#1366, #1364, #1365, #1367).
   procedure ReadGrouping(AGroupNode: TJsonNode);
   var
     mIndex: Integer;
@@ -2312,6 +2312,8 @@ procedure TValidator.ReadArchitecture(ANode: TJsonNode);
       end
       else if mKey = 'showResolutionSlider' then
         ExpectBoolean(AGroupNode[mIndex], mKey, FSettings.ArchitectureGroupingShowResolutionSlider)
+      else if mKey = 'keepPrevious' then
+        ExpectBoolean(AGroupNode[mIndex], mKey, FSettings.ArchitectureGroupingKeepPrevious)
       else
         Report(AGroupNode.KeyStarts[mIndex], AGroupNode.KeyStarts[mIndex] + Length(mKey) + 2,
           Format('Unbekannte Einstellung "architecture.grouping.%s"', [mKey]), False);
@@ -3584,6 +3586,7 @@ begin
       Result.ArchitectureGroupingMaxShare := FileSettings.ArchitectureGroupingMaxShare;
       Result.ArchitectureGroupingMinCohesion := FileSettings.ArchitectureGroupingMinCohesion;
       Result.ArchitectureGroupingFoundations := FileSettings.ArchitectureGroupingFoundations;
+      Result.ArchitectureGroupingKeepPrevious := FileSettings.ArchitectureGroupingKeepPrevious;
     end
     else if Key = 'hotspots' then
     begin

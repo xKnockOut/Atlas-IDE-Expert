@@ -25,6 +25,11 @@
 //     zum Fundament. "close" nur bei knapper Zuordnung: fehlende gewichtete
 //     Kanten zum Wechsel.)
 //    "explanation": "Atlas bildet die Teilsysteme …",
+//    "aligned": {"source": "baseline", "at": "2026-10-29T14:23:00", "kept": 5},
+//    ("aligned" nur, wenn Farben und Namen an einen vorigen Stand angeglichen
+//     wurden, #1367: "baseline" = architecture.baseline, "last" = zuletzt
+//     berechneter Stand; "at" = Zeitpunkt des Stands, "kept" = Teilsysteme,
+//     die Farbe und Namen behielten.)
 //    "edges": [[0, 1, "i"], [1, 2, "m"]],            (i = interface, m = implementation)
 //    "central": [0, 1],
 //    "subsystems": [{"name": "Kern", "units": [0, 1], "central": 0,
@@ -107,6 +112,8 @@ type
     /// <summary>Wie Atlas die Teilsysteme bildet (#1368): drei Sätze und die aktiven Einstellungen AGrouping.
     /// </summary>
     class function GroupingExplanation(const AGrouping: TArchitectureGrouping): string; static;
+    /// <summary>„Teilsysteme an Stand vom … angeglichen (…)“ (#1367); '' ohne Angleichung.</summary>
+    class function AlignedText(const AOverview: TArchitectureOverview): string; static;
     /// <summary>"Data erreicht 6 von 8, 3 Kanten fehlen zum Wechsel"; '' bei klarer Zuordnung.</summary>
     class function CloseText(const AOverview: TArchitectureOverview; const AAssignment: TOverviewAssignment): string;
       static;
@@ -271,6 +278,22 @@ begin
 end;
 
 { TArchitectureReport }
+
+class function TArchitectureReport.AlignedText(const AOverview: TArchitectureOverview): string;
+begin
+  Result := '';
+  if not AOverview.IsAligned then
+    Exit;
+  Result := 'Teilsysteme an Stand vom ' + FormatDateTime('yyyy-mm-dd hh:nn', AOverview.AlignedAt) + ' angeglichen (';
+  if AOverview.AlignedSource = TArchitectureAnalyzer.AlignedBaseline then
+    Result := Result + 'architecture.baseline'
+  else
+    Result := Result + 'zuletzt berechneter Stand';
+  if AOverview.AlignedKept = 1 then
+    Result := Result + '; 1 Teilsystem behält Farbe und Namen)'
+  else
+    Result := Result + '; ' + IntToStr(AOverview.AlignedKept) + ' Teilsysteme behalten Farbe und Namen)';
+end;
 
 class function TArchitectureReport.GroupingExplanation(const AGrouping: TArchitectureGrouping): string;
 var
@@ -549,6 +572,10 @@ begin
       .Append(',"outliers":').Append(Length(AOverview.Outliers)).Append('}');
     if AOverview.ShowsAssignment then
       Builder.Append(',"explanation":').Append(JsonText(GroupingExplanation(AOverview.Grouping)));
+    if AOverview.IsAligned then
+      Builder.Append(',"aligned":{"source":').Append(JsonText(AOverview.AlignedSource))
+        .Append(',"at":').Append(JsonText(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AOverview.AlignedAt)))
+        .Append(',"kept":').Append(AOverview.AlignedKept).Append('}');
     Builder.Append(',"units":[');
     for Index := 0 to High(AOverview.Units) do
     begin
@@ -722,6 +749,8 @@ begin
       .Append(' ms').Append(LineBreak).Append(LineBreak);
     Builder.Append(Counts(AOverview)).Append(LineBreak).Append(LineBreak);
     Builder.Append('Umfang: ').Append(ScopeText(AOverview)).Append(LineBreak).Append(LineBreak);
+    if AOverview.IsAligned then
+      Builder.Append(AlignedText(AOverview)).Append(LineBreak).Append(LineBreak);
     Builder.Append('- [Zentrale Units](#zentrale-units)').Append(LineBreak)
       .Append('- [Teilsysteme](#teilsysteme)').Append(LineBreak)
       .Append('- [Ausreißer](#ausreißer)').Append(LineBreak)
@@ -922,6 +951,8 @@ begin
   ALimit := Max(ALimit, 1);
   Result := 'Architektur ' + AOverview.Title + ' (' + ScopeText(AOverview) + ')' + LineBreak + Counts(AOverview) +
     LineBreak;
+  if AOverview.IsAligned then
+    Result := Result + AlignedText(AOverview) + LineBreak;
   case ASection of
     TArchitectureSection.Overview:
       begin

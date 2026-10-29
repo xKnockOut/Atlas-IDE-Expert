@@ -2089,6 +2089,13 @@
               "enum": ["group", "attach", "separate"],
               "default": "separate",
               "description": "Übergreifende Fundament-Units (Rolle Fundament, direkt Abhängige in mindestens drei Teilsystemen oder höchstens zu 60 % im eigenen) beim Gruppieren: group = mitgruppieren wie bisher; attach = ohne sie gruppieren und danach ins Teilsystem mit den meisten Abhängigen; separate = eigenes Teilsystem „Fundament“ in der Mitte der Karte, Kanten dorthin keine Querverbindungen."
+            },
+            "keepPrevious": {
+              "x-control": "Kontrollkästchen; im Fenster Befehl „Teilsysteme neu benennen“",
+              "x-issue": "#1367",
+              "type": "boolean",
+              "default": true,
+              "description": "Farben und Namen der Teilsysteme an den vorigen Stand angleichen: an architecture.baseline, sonst an den zuletzt berechneten Stand im Cache-Verzeichnis. Ein Teilsystem behält Farbe und Namen, wenn es mit einem alten mehr als die Hälfte der Units beider teilt. aus = Farben und Namen nach Reihenfolge wie bisher. AtlasServer --architecture gleicht nur an architecture.baseline an und schreibt keinen Stand."
             }
           }
         }
@@ -2096,7 +2103,7 @@
       "x-scope": "global",
       "x-area": "general",
       "x-page": "Architektur",
-      "x-control": "Kontrollkästchen, Auswahl, Kontrollkästchen, Zahl (5–100); exclude: Liste mit Hinzufügen/Entfernen in den Projekt-Einstellungen; baseline: Datei wählen, failOn: Liste (Projekt-Einstellungen, #1121); grouping: Gruppierung der Teilsysteme (#1366)",
+      "x-control": "Kontrollkästchen, Auswahl, Kontrollkästchen, Zahl (5–100); exclude: Liste mit Hinzufügen/Entfernen in den Projekt-Einstellungen; baseline: Datei wählen, failOn: Liste (Projekt-Einstellungen, #1121); grouping: Gruppierung der Teilsysteme (#1366), keepPrevious: Farben und Namen halten (#1367)",
       "x-issue": "#1118"
     },
     "hotspots": {

@@ -638,6 +638,10 @@ begin
         Request.Title := ExtractFileName(ExcludeTrailingPathDelimiter(TPath.GetFullPath(Target)))
       else
         Request.Title := ChangeFileExt(ExtractFileName(Target), '');
+      // Angleichung (#1367) nur an architecture.baseline; ohne PreviousFile liest und schreibt der Lauf keinen
+      // zuletzt berechneten Stand, damit CI-Läufe reproduzierbar bleiben.
+      Request.Baseline := TArchitectureComparer.ResolvePath(ConfigRoot, Settings.ArchitectureBaseline);
+      Request.PreviousFile := '';
       Overview := Service.Overview(Request);
     finally
       Service.Free;
