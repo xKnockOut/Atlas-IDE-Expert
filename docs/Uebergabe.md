@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Delphi 12: E2010 bei gleich aufgebauten Methodenreferenztypen (29.10.2026, PR 1348)
+- Delphi 12 meldete `Atlas.Common.Lsp.MethodWithoutSelf.pas(81): E2010 Inkompatible Typen: 'TMethodInFormFunc' und 'TPromoteInFormFunc'`; Delphi 13 und FPC übersetzen das.
+- Ursache: zwei getrennt deklarierte, gleich aufgebaute `reference to`-Typen. `TMethodLookup.InForm` nutzt jetzt `TPromoteInFormFunc`, `TMethodInFormFunc` entfällt. Falle in `CLAUDE.md`.
+- Gebaut: Delphi 12 (anderer Rechner des Users) erfolgreich; RAD Studio 13 (Worktree `wt-d12`) Win64 0/0/0, Win32-Plugin 0 Fehler, 9335 Tests grün ohne Lecks.
+- Offen: `Tools/Build-Test.ps1` scheitert unter PowerShell 7.6 beim Start der IDE („kein Positionsparameter für -Project“, Argumente als Array an `cc.ps1`).
+
 ## Atlas-Willkommensseite wieder auf der Willkommensseite der IDE (29.10.2026, #761, ADR 0015)
 - **Branch `claude/project-thread-7k47w7` (PR 1347), main mit Prep-v1.2.0 gemergt, mit Delphi gebaut:** Win64-Gruppe und Win32-Plugin 0/0/0, 9335 Tests grün ohne Lecks (Worktree `wt-1347`). Korrekturen: `Atlas.Core.Settings.Plugin` in den Interface-uses von `Atlas.IDE.Welcome.Commands` (E2003), Erstbenutzung im Benchmark der Issue-Entwicklung vorgewärmt (184 Byte Leck).
 - **Was:** `Atlas.IDE.Welcome.Page` und das Atlas-Layout (Befehle *Atlas-Layout anwenden/zurücksetzen*, Tipp, `welcomePage.layout`) sind zurück. Statt `welcomePage.host` gibt es `welcomePage.ideWelcomePage` (Registry `WelcomePageIdePage`, Vorgabe an); das Fenster „Atlas-Start“ (#1114) bleibt unabhängig.

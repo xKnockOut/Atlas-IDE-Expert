@@ -43,4 +43,5 @@
   - `TJSONValue.ToJSON` ohne Argument schreibt Umlaute als `ö`; lesbar mit `ToJSON([])`.
   - `TPath.IsPathRooted`/`TPath.Combine` lehnen `*` und `?` ab (Masken): `ExtractFileDrive` bzw. `IncludeTrailingPathDelimiter`.
   - Benannte Funktion `Inline`, `Padding` als Unit-Konstante in einer Komponente (verdeckt von `TControl.Padding`), `Winapi.Windows` nach `Vcl.Graphics` (verdeckt `TBitmap`).
+  - Zwei Methodenreferenztypen mit gleicher Signatur (`TA = reference to function(const AName: string): Boolean` und `TB = …` gleich aufgebaut) sind in Delphi 12 verschiedene Typen: Wert von `TA` an `TB` zuweisen gibt E2010 (Delphi 13 und FPC nehmen es an). Einen gemeinsamen Typ verwenden, nicht einen zweiten gleichen deklarieren.
   - Tests: DUnitX `AreNotSame` vergleicht über `Equals` (`TGraphic` vergleicht Inhalt); `KeyDown` setzt `Key` auf 0, vor dem zweiten Aufruf neu setzen; Records mit Aufzählungsfeldern mit `Default(…)` anlegen.
