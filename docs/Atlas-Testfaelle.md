@@ -8789,3 +8789,25 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | CR6 | Eigene inline-Funktion `Rechne`, die `Doppelt` aus einer Unit im implementation-uses ruft; `Doppelt` verweist auf nichts außerhalb seiner Unit (wie `Cm.H2445`) | Hinweis `inline-not-expanded` „… steht nur im uses des implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).“ (**Abnahme**) |
 | CR7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 30 in Server und Plugin, Datei `index-30.atlasidx`) |
 | CR8 | Abgleich mit Delphi 12 und 13: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.W1055','Cm.E2243','Cm.H2244','Cm.H2445','Cm.W1055b','Cm.H2243b' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1055, H2243, H2244 und H2445 „erkannt“, keine neuen Einträge unter „zusätzlich“ |
+
+## Fenster „Atlas-Server“ (#1356)
+
+Vorbereitung: Projektgruppe mit einigen Hundert Units, Index aufgebaut; für SRV7 und SRV9 der Server mit `--trace` (Einstellung `traceFile`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SRV1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasServerSnapshotTests`, `TAtlasServerDiagnosticsTests`, `TAtlasServerFrameTests`, `TServerStatusFileTests`, `TMcpStatusToolsTests`, `TCheckProfileTests`, `TServerPackageTests` grün |
+| SRV2 | *Atlas › Hilfe und Diagnose › Atlas-Server: Speicher und Laufzeiten* bzw. Befehlspalette `Atlas.ServerStatus` | Dockfenster „Atlas-Server“ mit Kopf „Prozess … · Version … · läuft seit … · bereit · Neustarts in dieser Sitzung: 0“, Warteschlange, Cache-Treffer und „Noch kein Prüflauf …“ bzw. dem letzten Lauf |
+| SRV3 | Statusfeld öffnen, auf die Zeile „Server“ klicken; in der Atlas-Statusleiste doppelt auf den Status klicken | Beide Male öffnet „Atlas-Server“; der Tooltip des Status nennt „Doppelklick: Fenster „Atlas-Server““ |
+| SRV4 | Projektgruppe prüfen lassen (Live-Prüfung „alle Units neu prüfen“), danach Fenster ansehen | „Letzter Prüflauf hh:nn: n Units in … s“; die 10 langsamsten Units und Regeln mit ms; die Summe der Unit-Zeiten liegt bei der Dauer des Laufs (**Abnahme**) |
+| SRV5 | Doppelklick auf eine Unit bzw. auf eine Regel | Die Unit öffnet im Editor; die Regel öffnet ihre Seite in den Projekt-Einstellungen (#909) |
+| SRV6 | Speicher mit Taskmanager vergleichen; `memoryBudgetMb` klein setzen (z. B. 200), Index neu aufbauen | Summe der Bereiche weicht höchstens 25 % vom Prozessspeicher ab (**Abnahme**); über dem Budget roter Strich, Balken „Prozess gesamt“ und „Verwendungen“ in Warnfarbe und der Hinweis „Budget überschritten: Verwendungen werden ausgelagert.“ |
+| SRV7 | Fenster schließen bzw. als Reiter in den Hintergrund legen; Trace des Servers (`--trace`) 30 s beobachten | Nur die Abfragen der Statuszeilen alle 5 s, keine zusätzlichen; sichtbar aktualisiert das Fenster alle 5 s, „Aktualisieren“ fragt sofort (**Abnahme**) |
+| SRV8 | „Index neu aufbauen“ | Meldung „Index wird neu aufgebaut“; Zustand „lädt“, Warteschlange zeigt den laufenden Aufbau |
+| SRV9 | „Diagnosepaket erstellen …“ mit `diagnostics.bugReport.anonymize` an, Server ohne bzw. mit `--trace` | Vorschau mit `fehlerbericht.md`, `server/status.json`, `server/protokoll.txt` (und mit Trace `server/trace.txt`); keine Projektpfade, Benutzer- oder Rechnernamen; gespeicherte ZIP enthält genau diese Dateien (**Abnahme**) |
+| SRV10 | Wie SRV9 mit Anonymisierung aus und einem Tracker-Token in den Einstellungen | Pfade lesbar, aber kein Token, Passwort oder `Authorization` in Status und Trace (`<geheim>`) |
+| SRV11 | Server über das Statusfenster neu starten, dann Fenster ansehen | „Neustarts in dieser Sitzung: 1“, neue Prozessnummer |
+| SRV12 | `server.statusWindow` aus (Optionen › Allgemein) | Menüeintrag, Palettenbefehl und Fenster fehlen; Klick auf „Server“ im Statusfenster tut nichts, Doppelklick in der Statusleiste nicht; der Klick auf den Status öffnet wie bisher das Statusfenster (**Abnahme**) |
+| SRV13 | `AtlasServer --check <Ordner> --timings profil.md`, dann `--timings profil.json`, dann ohne Datei; jeweils `> treffer.txt` | Markdown mit Indexzeit, Units, Regeln, Speicher bzw. JSON; ohne Datei die Tabellen auf stderr; `treffer.txt` jedes Mal gleich wie ohne `--timings` (**Abnahme**) |
+| SRV14 | Claude Code im Projektordner, während die IDE läuft: `get_server_status`, dann mit `format: json` | Erste Zeile „Quelle: Atlas-Server der IDE (Prozess …)“, dieselben Zahlen wie das Fenster (**Abnahme**); JSON mit `source`; IDE beendet: „Quelle: dieser MCP-Prozess …“ |
+| SRV15 | Einstellungsseite (Symbolindex) und Statuszeilen mit dem neuen Server | Wie vorher; ein älteres Plugin zeigt den Status des neuen Servers unverändert |

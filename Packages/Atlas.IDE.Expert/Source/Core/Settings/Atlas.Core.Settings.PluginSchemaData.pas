@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..6134] of string = (
+  Lines: array[0..6143] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -386,6 +386,16 @@ const
     '      "x-area": "general",',
     '      "x-page": "Allgemein",',
     '      "x-issue": "#62"',
+    '    },',
+    '    "ServerStatusWindow": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Fenster „Atlas-Server“ mit Speicher je Bereich, langsamsten Units, Regeln und Anfragen und Diagnosepaket: Befehl Atlas.ServerStatus, Atlas › Hilfe und Diagnose, Klick auf die Zei' +
+      'le „Server“ im Statusfenster und Doppelklick auf den Status in der Atlas-Statusleiste; aus = Fenster und Befehl fehlen, die Statusleiste tut wie bisher.",',
+    '      "x-key": "server.statusWindow",',
+    '      "x-area": "general",',
+    '      "x-page": "Allgemein",',
+    '      "x-issue": "#1356"',
     '    },',
     '    "ArchitectureEnabled": {',
     '      "type": "boolean",',
