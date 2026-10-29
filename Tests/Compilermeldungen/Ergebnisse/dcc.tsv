@@ -9,10 +9,6 @@ Cm.E1019	Win64	False	Cm.E1019.pas	17	E1019	Fehler	FOR-Schleifenvariable muss ein
 Cm.E1019	Win64	False	PCmE1019.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E1019.pas' kann nicht compiliert werden
 Cm.E1026	Win32	False	Cm.E1026.pas	10	F1026	Fataler Fehler	Datei nicht gefunden: 'Cm.Fehlt.E1026.inc'
 Cm.E1026	Win64	False	Cm.E1026.pas	10	F1026	Fataler Fehler	Datei nicht gefunden: 'Cm.Fehlt.E1026.inc'
-Cm.E1038	Win32	False	Cm.Hilfe.E1038.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.Hilfe.E1038Anders' stimmt mit dem Dateinamen nicht überein
-Cm.E1038	Win32	False	Cm.E1038.pas	12	F2063	Fataler Fehler	Verwendete Unit 'Cm.Hilfe.E1038.pas' kann nicht compiliert werden
-Cm.E1038	Win64	False	Cm.Hilfe.E1038.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.Hilfe.E1038Anders' stimmt mit dem Dateinamen nicht überein
-Cm.E1038	Win64	False	Cm.E1038.pas	12	F2063	Fataler Fehler	Verwendete Unit 'Cm.Hilfe.E1038.pas' kann nicht compiliert werden
 Cm.E2001	Win32	False	Cm.E2001.pas	15	E2064	Fehler	Der linken Seite kann nichts zugewiesen werden
 Cm.E2001	Win32	False	PCmE2001.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2001.pas' kann nicht compiliert werden
 Cm.E2001	Win64	False	Cm.E2001.pas	15	E2064	Fehler	Der linken Seite kann nichts zugewiesen werden
@@ -1081,12 +1077,6 @@ Cm.E2398	Win32	False	Cm.E2398.pas	10	E2398	Fehler	Klassenmethoden in Record-Type
 Cm.E2398	Win32	False	PCmE2398.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2398.pas' kann nicht compiliert werden
 Cm.E2398	Win64	False	Cm.E2398.pas	10	E2398	Fehler	Klassenmethoden in Record-Typen müssen statisch sein
 Cm.E2398	Win64	False	PCmE2398.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2398.pas' kann nicht compiliert werden
-Cm.E2399	Win32	False	Cm.E2399.pas	14	E2029	Fehler	',' oder ';' erwartet, aber 'END' gefunden
-Cm.E2399	Win32	False	Cm.E2399.pas	16	E2029	Fehler	'.' erwartet, aber Dateiende gefunden
-Cm.E2399	Win32	False	PCmE2399.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2399.pas' kann nicht compiliert werden
-Cm.E2399	Win64	False	Cm.E2399.pas	14	E2029	Fehler	',' oder ';' erwartet, aber 'END' gefunden
-Cm.E2399	Win64	False	Cm.E2399.pas	16	E2029	Fehler	'.' erwartet, aber Dateiende gefunden
-Cm.E2399	Win64	False	PCmE2399.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2399.pas' kann nicht compiliert werden
 Cm.E2402	Win32	True					
 Cm.E2402	Win64	True					
 Cm.E2404	Win32	False	Cm.E2404.pas	18	E2029	Fehler	';' erwartet, aber Bezeichner 'add' gefunden
@@ -1491,16 +1481,10 @@ Cm.E2603	Win32	False	Cm.E2603.pas	9	E2603	Fehler	Einschränkung 'class' darf nur
 Cm.E2603	Win32	False	PCmE2603.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2603.pas' kann nicht compiliert werden
 Cm.E2603	Win64	False	Cm.E2603.pas	9	E2603	Fehler	Einschränkung 'class' darf nur einmal angegeben werden
 Cm.E2603	Win64	False	PCmE2603.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2603.pas' kann nicht compiliert werden
-Cm.F2047	Win32	False	Cm.Hilfe.F2047.pas	6	F2047	Fataler Fehler	Zirkuläre Unit-Referenz auf 'Cm.F2047'
-Cm.F2047	Win64	False	Cm.Hilfe.F2047.pas	6	F2047	Fataler Fehler	Zirkuläre Unit-Referenz auf 'Cm.F2047'
 Cm.F2069	Win32	True					
 Cm.F2069	Win64	True					
-Cm.F2092	Win32	False	Cm.F2092.pas	9	F2092	Fataler Fehler	Das Programm oder die Unit 'Cm.F2092' ruft sich selbst wieder auf
-Cm.F2092	Win64	False	Cm.F2092.pas	9	F2092	Fataler Fehler	Das Programm oder die Unit 'Cm.F2092' ruft sich selbst wieder auf
 Cm.F2438	Win32	False			F2438	Fataler Fehler	UCS-4-Textcodierung nicht unterstützt. Konvertieren Sie in UCS-2 oder UTF-8
 Cm.F2438	Win64	False			F2438	Fataler Fehler	UCS-4-Textcodierung nicht unterstützt. Konvertieren Sie in UCS-2 oder UTF-8
-Cm.F2613	Win32	False	Cm.F2613.pas	11	F2613	Fataler Fehler	Unit 'Cm.GibtEsNicht' nicht gefunden.
-Cm.F2613	Win64	False	Cm.F2613.pas	11	F2613	Fataler Fehler	Unit 'Cm.GibtEsNicht' nicht gefunden.
 Cm.H1054	Win32	True	Cm.H1054.pas	11	H1054	Hinweis	Eigener Hinweis
 Cm.H1054	Win64	True	Cm.H1054.pas	11	H1054	Hinweis	Eigener Hinweis
 Cm.H2077	Win32	True	Cm.H2077.pas	14	H2077	Hinweis	Auf 'mWert' zugewiesener Wert wird niemals benutzt
@@ -1763,3 +1747,15 @@ Cm.W1207	Win64	True	Cm.W1207.pas	22	W1207	Warnung	XML-Kommentar bei 'Machen' hat
 Cm.W1207	Win64	True	Cm.W1207.pas	22	W1208	Warnung	Parameter 'AWert' hat kein zugehöriges param-Tag im XML-Kommentar für 'Machen' (aber andere Parameter haben dieses Tag)
 Cm.W1208	Win32	True	Cm.W1208.pas	22	W1208	Warnung	Parameter 'AZweiter' hat kein zugehöriges param-Tag im XML-Kommentar für 'Machen' (aber andere Parameter haben dieses Tag)
 Cm.W1208	Win64	True	Cm.W1208.pas	22	W1208	Warnung	Parameter 'AZweiter' hat kein zugehöriges param-Tag im XML-Kommentar für 'Machen' (aber andere Parameter haben dieses Tag)
+Cm.E1038	Win32	False	Cm.Hilfe.E1038.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.Hilfe.E1038Anders' stimmt mit dem Dateinamen nicht überein
+Cm.E1038	Win32	False	Cm.E1038.pas	12	F2063	Fataler Fehler	Verwendete Unit 'Cm.Hilfe.E1038.pas' kann nicht compiliert werden
+Cm.E1038	Win64	False	Cm.Hilfe.E1038.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.Hilfe.E1038Anders' stimmt mit dem Dateinamen nicht überein
+Cm.E1038	Win64	False	Cm.E1038.pas	12	F2063	Fataler Fehler	Verwendete Unit 'Cm.Hilfe.E1038.pas' kann nicht compiliert werden
+Cm.E2399	Win32	True					
+Cm.E2399	Win64	True					
+Cm.F2047	Win32	False	Cm.Hilfe.F2047.pas	6	F2047	Fataler Fehler	Zirkuläre Unit-Referenz auf 'Cm.F2047'
+Cm.F2047	Win64	False	Cm.Hilfe.F2047.pas	6	F2047	Fataler Fehler	Zirkuläre Unit-Referenz auf 'Cm.F2047'
+Cm.F2092	Win32	False	Cm.F2092.pas	9	F2092	Fataler Fehler	Das Programm oder die Unit 'Cm.F2092' ruft sich selbst wieder auf
+Cm.F2092	Win64	False	Cm.F2092.pas	9	F2092	Fataler Fehler	Das Programm oder die Unit 'Cm.F2092' ruft sich selbst wieder auf
+Cm.F2613	Win32	False	Cm.F2613.pas	11	F2613	Fataler Fehler	Unit 'Cm.GibtEsNicht' nicht gefunden.
+Cm.F2613	Win64	False	Cm.F2613.pas	11	F2613	Fataler Fehler	Unit 'Cm.GibtEsNicht' nicht gefunden.
