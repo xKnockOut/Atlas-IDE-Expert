@@ -2,7 +2,8 @@
 
 // Tests der Regel default-property-invalid (#1073) aus Rules.Builtin.Properties:
 // default an einer Property ohne Index (E2132), zwei default-Properties mit
-// denselben Indextypen (E2131), Obj[I] auf einer Klasse ohne default-Property
+// denselben Indextypen oder verschiedenen Namen (E2131, Cm.E2131, #1380),
+// Obj[I] auf einer Klasse ohne default-Property
 // (E2149), Typen aus dem Index und Einstellungen.
 
 interface
@@ -110,14 +111,25 @@ end;
 
 procedure TDefaultPropertyRulesTests.SecondDefaultProperty;
 begin
-  Assert.AreEqual('TListe hat schon die default-Property Items mit denselben Indextypen (wie E2131).',
+  Assert.AreEqual('TListe hat schon die default-Property Items; eine Klasse hat höchstens eine default-Property, ' +
+    'überladen nur unter demselben Namen (wie E2131).',
     OnlyMessage(Listen('    function GetItem(I: Integer): string;'#10'    function GetText(I: Integer): string;'#10 +
     '    property Items[I: Integer]: string read GetItem; default;'#10 +
     '    property Texte[I: Integer]: string read GetText; default;'#10, '')));
-  // Überladung über den Indextyp ist erlaubt; ebenso in einer anderen Klasse.
+  Assert.AreEqual('TListe hat schon die default-Property Items mit denselben Indextypen (wie E2131).',
+    OnlyMessage(Listen('    function GetItem(I: Integer): string;'#10'    function GetText(I: Integer): string;'#10 +
+    '    property Items[I: Integer]: string read GetItem; default;'#10 +
+    '    property Items[I: Integer]: string read GetText; default;'#10, '')));
+  // Verschiedene Namen meldet dcc auch bei verschiedenen Indextypen (Cm.E2131).
+  Assert.AreEqual('TListe hat schon die default-Property Items; eine Klasse hat höchstens eine default-Property, ' +
+    'überladen nur unter demselben Namen (wie E2131).',
+    OnlyMessage(Listen('    function GetItem(I: Integer): string;'#10'    function GetNamed(const N: string): string;'#10 +
+    '    property Items[I: Integer]: string read GetItem; default;'#10 +
+    '    property Named[const N: string]: string read GetNamed; default;'#10, '')));
+  // Überladung über den Indextyp unter demselben Namen ist erlaubt; ebenso in einer anderen Klasse.
   Silent(Listen('    function GetItem(I: Integer): string;'#10'    function GetNamed(const N: string): string;'#10 +
     '    property Items[I: Integer]: string read GetItem; default;'#10 +
-    '    property Named[const N: string]: string read GetNamed; default;'#10, ''));
+    '    property Items[const N: string]: string read GetNamed; default;'#10, ''));
   Silent('unit Listen;'#10'interface'#10'type'#10'  TA = class'#10'    function G(I: Integer): string;'#10 +
     '    property Items[I: Integer]: string read G; default;'#10'  end;'#10'  TB = class(TA)'#10 +
     '    function H(I: Integer): string;'#10'    property Texte[I: Integer]: string read H; default;'#10 +

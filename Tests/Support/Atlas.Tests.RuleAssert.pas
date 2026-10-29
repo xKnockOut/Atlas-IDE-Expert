@@ -21,6 +21,9 @@ type
     /// <summary>Treffer von ARule auf ASource mit Einstellungen aus AConfigJson ('' = Vorgaben).</summary>
     class function Findings(ARule: IRule; const ASource: string;
       const AConfigJson: string = ''; const ARelativePath: string = ''): TArray<TRuleFinding>; static;
+    /// <summary>Treffer von ARule auf ASource, gelesen wie im Editor mit den Symbolen der Plattform APlatform
+    /// ("Win32", "Win64"; TSyntaxTree.Platform, #1380).</summary>
+    class function PlatformFindings(ARule: IRule; const ASource, APlatform: string): TArray<TRuleFinding>; static;
     /// <summary>Treffer von ARule auf ASource in einem Projekt der Anwendungsart AApplication (#926).</summary>
     class function ApplicationFindings(ARule: IRule; const ASource: string;
       AApplication: TRuleApplicationKind): TArray<TRuleFinding>; static;
@@ -88,6 +91,7 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Rules.Engine;
 
 class function TRuleAssert.Findings(ARule: IRule; const ASource, AConfigJson,
@@ -113,6 +117,22 @@ begin
     Result := TRuleEngine.Run([ARule], Settings, Context);
   finally
     Tree.Free;
+  end;
+end;
+
+class function TRuleAssert.PlatformFindings(ARule: IRule; const ASource, APlatform: string): TArray<TRuleFinding>;
+var
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+begin
+  mTree := TPascalParser.ParseActive(ASource, TPascalPreprocessor.PredefinedSymbols(APlatform, 37.0));
+  try
+    mContext := Default(TRuleContext);
+    mContext.Text := ASource;
+    mContext.Tree := mTree;
+    Result := TRuleEngine.Run([ARule], TServerSettings.Default, mContext);
+  finally
+    mTree.Free;
   end;
 end;
 
