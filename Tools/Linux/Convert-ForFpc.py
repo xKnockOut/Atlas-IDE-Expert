@@ -16,6 +16,8 @@ Die Anpassungen sind rein mechanisch und ändern keine Logik:
 - Nicht-ASCII in Zeichenketten als #$XXXX, in Kommentaren als '?', damit die Codepage
   der Quelle keine Rolle spielt.
 - In jede Unit kommt DelphiCompat (TProc, TFunc, TPredicate, TLightweightEvent).
+- TJSONObject.ParseJSONValue geht über AtlasJsonCompat.ParseJSONValueOrNil: Der Parser
+  aus vcl-compat liefert bei ungültigem Text kein nil, sondern einen nicht gesetzten Zeiger.
 - Delphi-Schreibweisen, die FPC anders liest: '>>' in Generics, TArray.Sort<T>(...),
   TStringBuilder (UnicodeString), verschachtelte generische Typen im Rumpf (Alias),
   Aufrufe generischer Methoden mitten im Ausdruck (Klammern).
@@ -383,6 +385,10 @@ def convert(txt, is_program):
     txt = re.sub(r"\bTStringBuilder\b", 'TUnicodeStringBuilder', txt)
     txt = re.sub(r"\bTUTF8Encoding\.Create\(\s*False\s*\)", 'TUTF8NoBomEncoding.Create', txt, flags=re.I)
     txt = re.sub(r"\bSystem\.TMonitor\b", 'TMonitor', txt)
+    if any(n.lower() == 'system.json' for n in uses_of(txt)):
+        txt = sub_code(re.compile(r"(?<![\w.])T(?:JSONObject|JSONValue)\.ParseJSONValue\("),
+                       lambda m: 'AtlasJsonCompat.ParseJSONValueOrNil(', txt)
+        txt = re.sub(r"\bDelphiCompat([,;])", r"DelphiCompat, AtlasJsonCompat\1", txt, count=1)
     if any(n.lower() == 'system.threading' for n in uses_of(txt)):
         # System.Threading von FPC deklariert eigene TProc<T>/TFunc<T> und verdeckt die aus DelphiCompat.
         txt = sub_code(re.compile(r"(?<![\w.])(TProc|TFunc|TPredicate)\b"), lambda m: 'DelphiCompat.' + m.group(1), txt)
