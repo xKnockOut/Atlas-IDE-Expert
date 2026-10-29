@@ -1,0 +1,10 @@
+Fall	Plattform	Ok	Datei	Zeile	Code	Art	Text
+Cm.W1201	Win32	True					
+Cm.W1202	Win32	True					
+Cm.W1203	Win32	True					
+Cm.W1204	Win32	True	Cm.W1204.pas	21	W1205	Warnung	XML-Kommentar in 'Machen' ist falsch strukturiert -- 'Das Zeichen '>' wurde erwartet.'
+Cm.W1205	Win32	True					
+Cm.W1206	Win32	True	Cm.W1206.pas	21	W1206	Warnung	XML-Kommentar bei 'Machen' hat das cref-Attribut 'TGibtEsNicht', das nicht aufgelöst werden konnte
+Cm.W1207	Win32	True	Cm.W1207.pas	22	W1207	Warnung	XML-Kommentar bei 'Machen' hat ein param-Tag für 'AFalsch', aber es gibt keinen Parameter mit diesem Namen
+Cm.W1207	Win32	True	Cm.W1207.pas	22	W1208	Warnung	Parameter 'AWert' hat kein zugehöriges param-Tag im XML-Kommentar für 'Machen' (aber andere Parameter haben dieses Tag)
+Cm.W1208	Win32	True	Cm.W1208.pas	22	W1208	Warnung	Parameter 'AZweiter' hat kein zugehöriges param-Tag im XML-Kommentar für 'Machen' (aber andere Parameter haben dieses Tag)

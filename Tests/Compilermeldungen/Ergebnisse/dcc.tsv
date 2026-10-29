@@ -1,0 +1,1745 @@
+Fall	Plattform	Ok	Datei	Zeile	Code	Art	Text
+Cm.E1012	Win32	False	Cm.E1012.pas	14	E1012	Fehler	Konstantenausdruck verletzt untere Grenzen
+Cm.E1012	Win32	False	PCmE1012.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E1012.pas' kann nicht compiliert werden
+Cm.E1012	Win64	False	Cm.E1012.pas	14	E1012	Fehler	Konstantenausdruck verletzt untere Grenzen
+Cm.E1012	Win64	False	PCmE1012.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E1012.pas' kann nicht compiliert werden
+Cm.E1019	Win32	False	Cm.E1019.pas	17	E1019	Fehler	FOR-Schleifenvariable muss eine einfache lokale Variable sein
+Cm.E1019	Win32	False	PCmE1019.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E1019.pas' kann nicht compiliert werden
+Cm.E1019	Win64	False	Cm.E1019.pas	17	E1019	Fehler	FOR-Schleifenvariable muss eine einfache lokale Variable sein
+Cm.E1019	Win64	False	PCmE1019.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E1019.pas' kann nicht compiliert werden
+Cm.E1026	Win32	False	Cm.E1026.pas	10	F1026	Fataler Fehler	Datei nicht gefunden: 'Cm.Fehlt.E1026.inc'
+Cm.E1026	Win64	False	Cm.E1026.pas	10	F1026	Fataler Fehler	Datei nicht gefunden: 'Cm.Fehlt.E1026.inc'
+Cm.E1038	Win32	False	Cm.Hilfe.E1038.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.Hilfe.E1038Anders' stimmt mit dem Dateinamen nicht überein
+Cm.E1038	Win32	False	Cm.E1038.pas	12	F2063	Fataler Fehler	Verwendete Unit 'Cm.Hilfe.E1038.pas' kann nicht compiliert werden
+Cm.E1038	Win64	False	Cm.Hilfe.E1038.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.Hilfe.E1038Anders' stimmt mit dem Dateinamen nicht überein
+Cm.E1038	Win64	False	Cm.E1038.pas	12	F2063	Fataler Fehler	Verwendete Unit 'Cm.Hilfe.E1038.pas' kann nicht compiliert werden
+Cm.E2001	Win32	False	Cm.E2001.pas	15	E2064	Fehler	Der linken Seite kann nichts zugewiesen werden
+Cm.E2001	Win32	False	PCmE2001.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2001.pas' kann nicht compiliert werden
+Cm.E2001	Win64	False	Cm.E2001.pas	15	E2064	Fehler	Der linken Seite kann nichts zugewiesen werden
+Cm.E2001	Win64	False	PCmE2001.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2001.pas' kann nicht compiliert werden
+Cm.E2002	Win32	False	Cm.E2002.pas	10	E2002	Fehler	Dateityp ist hier nicht zulässig
+Cm.E2002	Win32	False	PCmE2002.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2002.pas' kann nicht compiliert werden
+Cm.E2002	Win64	False	Cm.E2002.pas	10	E2002	Fehler	Dateityp ist hier nicht zulässig
+Cm.E2002	Win64	False	PCmE2002.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2002.pas' kann nicht compiliert werden
+Cm.E2003	Win32	False	Cm.E2003.pas	14	E2003	Fehler	Undeklarierter Bezeichner: 'GibtEsNicht'
+Cm.E2003	Win32	False	PCmE2003.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2003.pas' kann nicht compiliert werden
+Cm.E2003	Win64	False	Cm.E2003.pas	14	E2003	Fehler	Undeklarierter Bezeichner: 'GibtEsNicht'
+Cm.E2003	Win64	False	PCmE2003.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2003.pas' kann nicht compiliert werden
+Cm.E2004	Win32	False	Cm.E2004.pas	13	E2004	Fehler	Bezeichner redeklariert: "mZahl"
+Cm.E2004	Win32	False	Cm.E2004.pas	15	E2010	Fehler	Inkompatible Typen: 'string' und 'Integer'
+Cm.E2004	Win32	False	PCmE2004.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2004.pas' kann nicht compiliert werden
+Cm.E2004	Win64	False	Cm.E2004.pas	13	E2004	Fehler	Bezeichner redeklariert: "mZahl"
+Cm.E2004	Win64	False	Cm.E2004.pas	15	E2010	Fehler	Inkompatible Typen: 'string' und 'Integer'
+Cm.E2004	Win64	False	PCmE2004.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2004.pas' kann nicht compiliert werden
+Cm.E2005	Win32	False	Cm.E2005.pas	15	E2029	Fehler	'..' erwartet, aber ';' gefunden
+Cm.E2005	Win32	False	PCmE2005.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2005.pas' kann nicht compiliert werden
+Cm.E2005	Win64	False	Cm.E2005.pas	15	E2029	Fehler	'..' erwartet, aber ';' gefunden
+Cm.E2005	Win64	False	PCmE2005.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2005.pas' kann nicht compiliert werden
+Cm.E2006	Win32	False	Cm.E2006.pas	9	E2006	Fehler	PACKED ist hier nicht erlaubt
+Cm.E2006	Win32	False	PCmE2006.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2006.pas' kann nicht compiliert werden
+Cm.E2006	Win64	False	Cm.E2006.pas	9	E2006	Fehler	PACKED ist hier nicht erlaubt
+Cm.E2006	Win64	False	PCmE2006.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2006.pas' kann nicht compiliert werden
+Cm.E2007	Win32	False	Cm.E2007.pas	10	E2029	Fehler	Ausdruck erwartet, aber ';' gefunden
+Cm.E2007	Win32	False	PCmE2007.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2007.pas' kann nicht compiliert werden
+Cm.E2007	Win64	False	Cm.E2007.pas	10	E2029	Fehler	Ausdruck erwartet, aber ';' gefunden
+Cm.E2007	Win64	False	PCmE2007.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2007.pas' kann nicht compiliert werden
+Cm.E2008	Win32	False	Cm.E2008.pas	15	E2010	Fehler	Inkompatible Typen: 'Integer' und 'AnsiChar'
+Cm.E2008	Win32	False	PCmE2008.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2008.pas' kann nicht compiliert werden
+Cm.E2008	Win64	False	Cm.E2008.pas	15	E2010	Fehler	Inkompatible Typen: 'Integer' und 'AnsiChar'
+Cm.E2008	Win64	False	PCmE2008.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2008.pas' kann nicht compiliert werden
+Cm.E2009	Win32	False	Cm.E2009.pas	15	E2009	Fehler	Inkompatible Typen: 'Liste der Parameter ist unterschiedlich'
+Cm.E2009	Win32	False	PCmE2009.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2009.pas' kann nicht compiliert werden
+Cm.E2009	Win64	False	Cm.E2009.pas	15	E2009	Fehler	Inkompatible Typen: 'Liste der Parameter ist unterschiedlich'
+Cm.E2009	Win64	False	PCmE2009.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2009.pas' kann nicht compiliert werden
+Cm.E2010	Win32	False	Cm.E2010.pas	14	E2010	Fehler	Inkompatible Typen: 'Integer' und 'string'
+Cm.E2010	Win32	False	PCmE2010.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2010.pas' kann nicht compiliert werden
+Cm.E2010	Win64	False	Cm.E2010.pas	14	E2010	Fehler	Inkompatible Typen: 'Integer' und 'string'
+Cm.E2010	Win64	False	PCmE2010.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2010.pas' kann nicht compiliert werden
+Cm.E2011	Win32	False	Cm.E2011.pas	9	E2011	Fehler	Unterer Bereich überschreitet oberen Bereich
+Cm.E2011	Win32	False	PCmE2011.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2011.pas' kann nicht compiliert werden
+Cm.E2011	Win64	False	Cm.E2011.pas	9	E2011	Fehler	Unterer Bereich überschreitet oberen Bereich
+Cm.E2011	Win64	False	PCmE2011.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2011.pas' kann nicht compiliert werden
+Cm.E2012	Win32	False	Cm.E2012.pas	15	E2012	Fehler	Ausdruckstyp muss BOOLEAN sein
+Cm.E2012	Win32	False	PCmE2012.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2012.pas' kann nicht compiliert werden
+Cm.E2012	Win64	False	Cm.E2012.pas	15	E2012	Fehler	Ausdruckstyp muss BOOLEAN sein
+Cm.E2012	Win64	False	PCmE2012.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2012.pas' kann nicht compiliert werden
+Cm.E2013	Win32	False	Cm.E2013.pas	16	E2008	Fehler	Inkompatible Typen
+Cm.E2013	Win32	False	PCmE2013.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2013.pas' kann nicht compiliert werden
+Cm.E2013	Win64	False	Cm.E2013.pas	16	E2008	Fehler	Inkompatible Typen
+Cm.E2013	Win64	False	PCmE2013.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2013.pas' kann nicht compiliert werden
+Cm.E2014	Win32	False	Cm.E2014.pas	15	E2029	Fehler	':=' erwartet, aber '=' gefunden
+Cm.E2014	Win32	False	PCmE2014.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2014.pas' kann nicht compiliert werden
+Cm.E2014	Win64	False	Cm.E2014.pas	15	E2029	Fehler	':=' erwartet, aber '=' gefunden
+Cm.E2014	Win64	False	PCmE2014.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2014.pas' kann nicht compiliert werden
+Cm.E2015	Win32	False	Cm.E2015.pas	15	E2015	Fehler	Operator ist auf diesen Operandentyp nicht anwendbar
+Cm.E2015	Win32	False	PCmE2015.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2015.pas' kann nicht compiliert werden
+Cm.E2015	Win64	False	Cm.E2015.pas	15	E2015	Fehler	Operator ist auf diesen Operandentyp nicht anwendbar
+Cm.E2015	Win64	False	PCmE2015.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2015.pas' kann nicht compiliert werden
+Cm.E2016	Win32	False	Cm.E2016.pas	14	E2016	Fehler	Array-Typ erforderlich
+Cm.E2016	Win32	False	PCmE2016.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2016.pas' kann nicht compiliert werden
+Cm.E2016	Win64	False	Cm.E2016.pas	14	E2016	Fehler	Array-Typ erforderlich
+Cm.E2016	Win64	False	PCmE2016.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2016.pas' kann nicht compiliert werden
+Cm.E2017	Win32	False	Cm.E2017.pas	14	E2017	Fehler	Zeigertyp erforderlich
+Cm.E2017	Win32	False	PCmE2017.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2017.pas' kann nicht compiliert werden
+Cm.E2017	Win64	False	Cm.E2017.pas	14	E2017	Fehler	Zeigertyp erforderlich
+Cm.E2017	Win64	False	PCmE2017.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2017.pas' kann nicht compiliert werden
+Cm.E2018	Win32	False	Cm.E2018.pas	14	E2018	Fehler	Record, Objekt oder Klassentyp erforderlich
+Cm.E2018	Win32	False	PCmE2018.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2018.pas' kann nicht compiliert werden
+Cm.E2018	Win64	False	Cm.E2018.pas	14	E2018	Fehler	Record, Objekt oder Klassentyp erforderlich
+Cm.E2018	Win64	False	PCmE2018.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2018.pas' kann nicht compiliert werden
+Cm.E2019	Win32	False	Cm.E2019.pas	10	E2019	Fehler	Objekttyp erforderlich
+Cm.E2019	Win32	False	PCmE2019.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2019.pas' kann nicht compiliert werden
+Cm.E2019	Win64	False	Cm.E2019.pas	10	E2019	Fehler	Objekttyp erforderlich
+Cm.E2019	Win64	False	PCmE2019.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2019.pas' kann nicht compiliert werden
+Cm.E2020	Win32	False	Cm.E2020.pas	16	E2015	Fehler	Operator ist auf diesen Operandentyp nicht anwendbar
+Cm.E2020	Win32	False	PCmE2020.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2020.pas' kann nicht compiliert werden
+Cm.E2020	Win64	False	Cm.E2020.pas	16	E2015	Fehler	Operator ist auf diesen Operandentyp nicht anwendbar
+Cm.E2020	Win64	False	PCmE2020.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2020.pas' kann nicht compiliert werden
+Cm.E2021	Win32	False	Cm.E2021.pas	13	E2021	Fehler	Klassentyp erwartet
+Cm.E2021	Win32	False	PCmE2021.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2021.pas' kann nicht compiliert werden
+Cm.E2021	Win64	False	Cm.E2021.pas	13	E2021	Fehler	Klassentyp erwartet
+Cm.E2021	Win64	False	PCmE2021.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2021.pas' kann nicht compiliert werden
+Cm.E2022	Win32	False	Cm.E2022.pas	9	E2022	Fehler	Klassen-Helper-Typ erwartet
+Cm.E2022	Win32	False	PCmE2022.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2022.pas' kann nicht compiliert werden
+Cm.E2022	Win64	False	Cm.E2022.pas	9	E2022	Fehler	Klassen-Helper-Typ erwartet
+Cm.E2022	Win64	False	PCmE2022.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2022.pas' kann nicht compiliert werden
+Cm.E2023	Win32	False	Cm.E2023.pas	10	E2023	Fehler	Funktion benötigt Ergebnistyp
+Cm.E2023	Win32	False	PCmE2023.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2023.pas' kann nicht compiliert werden
+Cm.E2023	Win64	False	Cm.E2023.pas	10	E2023	Fehler	Funktion benötigt Ergebnistyp
+Cm.E2023	Win64	False	PCmE2023.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2023.pas' kann nicht compiliert werden
+Cm.E2024	Win32	False	Cm.E2024.pas	10	E2024	Fehler	Ungültiger Funktionsrückgabetyp
+Cm.E2024	Win32	False	PCmE2024.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2024.pas' kann nicht compiliert werden
+Cm.E2024	Win64	False	Cm.E2024.pas	10	E2024	Fehler	Ungültiger Funktionsrückgabetyp
+Cm.E2024	Win64	False	PCmE2024.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2024.pas' kann nicht compiliert werden
+Cm.E2025	Win32	False	Cm.E2025.pas	10	E2025	Fehler	Prozedur kann keinen Ergebnistyp besitzen
+Cm.E2025	Win32	False	PCmE2025.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2025.pas' kann nicht compiliert werden
+Cm.E2025	Win64	False	Cm.E2025.pas	10	E2025	Fehler	Prozedur kann keinen Ergebnistyp besitzen
+Cm.E2025	Win64	False	PCmE2025.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2025.pas' kann nicht compiliert werden
+Cm.E2026	Win32	False	Cm.E2026.pas	12	E2026	Fehler	Konstantenausdruck erwartet
+Cm.E2026	Win32	False	PCmE2026.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2026.pas' kann nicht compiliert werden
+Cm.E2026	Win64	False	Cm.E2026.pas	12	E2026	Fehler	Konstantenausdruck erwartet
+Cm.E2026	Win64	False	PCmE2026.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2026.pas' kann nicht compiliert werden
+Cm.E2027	Win32	False	Cm.E2027.pas	12	E2027	Fehler	Doppelter Tag-Wert
+Cm.E2027	Win32	False	PCmE2027.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2027.pas' kann nicht compiliert werden
+Cm.E2027	Win64	False	Cm.E2027.pas	12	E2027	Fehler	Doppelter Tag-Wert
+Cm.E2027	Win64	False	PCmE2027.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2027.pas' kann nicht compiliert werden
+Cm.E2028	Win32	False	Cm.E2028.pas	9	E2028	Fehler	Mengen (Sets) dürfen nur maximal 256 Elemente besitzen
+Cm.E2028	Win32	False	PCmE2028.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2028.pas' kann nicht compiliert werden
+Cm.E2028	Win64	False	Cm.E2028.pas	9	E2028	Fehler	Mengen (Sets) dürfen nur maximal 256 Elemente besitzen
+Cm.E2028	Win64	False	PCmE2028.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2028.pas' kann nicht compiliert werden
+Cm.E2029	Win32	False	Cm.E2029.pas	13	E2029	Fehler	';' erwartet, aber 'BEGIN' gefunden
+Cm.E2029	Win32	False	PCmE2029.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2029.pas' kann nicht compiliert werden
+Cm.E2029	Win64	False	Cm.E2029.pas	13	E2029	Fehler	';' erwartet, aber 'BEGIN' gefunden
+Cm.E2029	Win64	False	PCmE2029.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2029.pas' kann nicht compiliert werden
+Cm.E2030	Win32	False	Cm.E2030.pas	17	E2030	Fehler	Doppeltes Case-Label
+Cm.E2030	Win32	False	PCmE2030.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2030.pas' kann nicht compiliert werden
+Cm.E2030	Win64	False	Cm.E2030.pas	17	E2030	Fehler	Doppeltes Case-Label
+Cm.E2030	Win64	False	PCmE2030.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2030.pas' kann nicht compiliert werden
+Cm.E2031	Win32	False	Cm.E2031.pas	15	E2031	Fehler	Label erwartet
+Cm.E2031	Win32	False	PCmE2031.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2031.pas' kann nicht compiliert werden
+Cm.E2031	Win64	False	Cm.E2031.pas	15	E2031	Fehler	Label erwartet
+Cm.E2031	Win64	False	PCmE2031.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2031.pas' kann nicht compiliert werden
+Cm.E2032	Win32	False	Cm.E2032.pas	14	E2032	Fehler	FOR-Schleifenvariable muss von ordinalem Typ sein
+Cm.E2032	Win32	False	PCmE2032.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2032.pas' kann nicht compiliert werden
+Cm.E2032	Win64	False	Cm.E2032.pas	14	E2032	Fehler	FOR-Schleifenvariable muss von ordinalem Typ sein
+Cm.E2032	Win64	False	PCmE2032.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2032.pas' kann nicht compiliert werden
+Cm.E2033	Win32	False	Cm.E2033.pas	20	E2033	Fehler	Die Typen der tatsächlichen und formalen Var-Parameter müssen übereinstimmen: Integer und Byte
+Cm.E2033	Win32	False	PCmE2033.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2033.pas' kann nicht compiliert werden
+Cm.E2033	Win64	False	Cm.E2033.pas	20	E2033	Fehler	Die Typen der tatsächlichen und formalen Var-Parameter müssen übereinstimmen: Integer und Byte
+Cm.E2033	Win64	False	PCmE2033.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2033.pas' kann nicht compiliert werden
+Cm.E2034	Win32	False	Cm.E2034.pas	16	E2034	Fehler	Zu viele Parameter
+Cm.E2034	Win32	False	PCmE2034.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2034.pas' kann nicht compiliert werden
+Cm.E2034	Win64	False	Cm.E2034.pas	16	E2034	Fehler	Zu viele Parameter
+Cm.E2034	Win64	False	PCmE2034.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2034.pas' kann nicht compiliert werden
+Cm.E2035	Win32	False	Cm.E2035.pas	16	E2035	Fehler	Nicht genügend wirkliche Parameter
+Cm.E2035	Win32	False	PCmE2035.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2035.pas' kann nicht compiliert werden
+Cm.E2035	Win64	False	Cm.E2035.pas	16	E2035	Fehler	Nicht genügend wirkliche Parameter
+Cm.E2035	Win64	False	PCmE2035.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2035.pas' kann nicht compiliert werden
+Cm.E2036	Win32	False	Cm.E2036.pas	16	E2036	Fehler	Variable erforderlich
+Cm.E2036	Win32	False	PCmE2036.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2036.pas' kann nicht compiliert werden
+Cm.E2036	Win64	False	Cm.E2036.pas	16	E2036	Fehler	Variable erforderlich
+Cm.E2036	Win64	False	PCmE2036.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2036.pas' kann nicht compiliert werden
+Cm.E2037	Win32	False	Cm.E2037.pas	12	E2037	Fehler	Deklaration von 'Liefere' unterscheidet sich von vorheriger Deklaration
+Cm.E2037	Win32	False	Cm.E2037.pas	14	E2010	Fehler	Inkompatible Typen: 'Integer' und 'string'
+Cm.E2037	Win32	False	PCmE2037.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2037.pas' kann nicht compiliert werden
+Cm.E2037	Win64	False	Cm.E2037.pas	12	E2037	Fehler	Deklaration von 'Liefere' unterscheidet sich von vorheriger Deklaration
+Cm.E2037	Win64	False	Cm.E2037.pas	14	E2010	Fehler	Inkompatible Typen: 'Integer' und 'string'
+Cm.E2037	Win64	False	PCmE2037.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2037.pas' kann nicht compiliert werden
+Cm.E2038	Win32	False	Cm.E2038.pas	14	E2038	Fehler	Ungültiges Zeichen in Eingabedatei: '!' (#$21)
+Cm.E2038	Win32	False	PCmE2038.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2038.pas' kann nicht compiliert werden
+Cm.E2038	Win64	False	Cm.E2038.pas	14	E2038	Fehler	Ungültiges Zeichen in Eingabedatei: '!' (#$21)
+Cm.E2038	Win64	False	PCmE2038.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2038.pas' kann nicht compiliert werden
+Cm.E2049	Win32	False	Cm.E2049.pas	8	E2049	Fehler	Labeldeklaration ist im Interface-Abschnitt nicht erlaubt
+Cm.E2049	Win32	False	PCmE2049.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2049.pas' kann nicht compiliert werden
+Cm.E2049	Win64	False	Cm.E2049.pas	8	E2049	Fehler	Labeldeklaration ist im Interface-Abschnitt nicht erlaubt
+Cm.E2049	Win64	False	PCmE2049.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2049.pas' kann nicht compiliert werden
+Cm.E2050	Win32	False	Cm.E2050.pas	11	E2050	Fehler	Anweisungen sind im Interface-Teil nicht erlaubt
+Cm.E2050	Win32	False	PCmE2050.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2050.pas' kann nicht compiliert werden
+Cm.E2050	Win64	False	Cm.E2050.pas	11	E2050	Fehler	Anweisungen sind im Interface-Teil nicht erlaubt
+Cm.E2050	Win64	False	PCmE2050.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2050.pas' kann nicht compiliert werden
+Cm.E2052	Win32	False	Cm.E2052.pas	14	E2052	Fehler	Nicht abgeschlossener String
+Cm.E2052	Win32	False	PCmE2052.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2052.pas' kann nicht compiliert werden
+Cm.E2052	Win64	False	Cm.E2052.pas	14	E2052	Fehler	Nicht abgeschlossener String
+Cm.E2052	Win64	False	PCmE2052.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2052.pas' kann nicht compiliert werden
+Cm.E2053	Win32	False	Cm.E2053.pas	14	E2053	Fehler	Syntaxfehler in Real-Zahl
+Cm.E2053	Win32	False	PCmE2053.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2053.pas' kann nicht compiliert werden
+Cm.E2053	Win64	False	Cm.E2053.pas	14	E2053	Fehler	Syntaxfehler in Real-Zahl
+Cm.E2053	Win64	False	PCmE2053.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2053.pas' kann nicht compiliert werden
+Cm.E2054	Win32	False	Cm.E2054.pas	15	E2054	Fehler	Ungültiger Typ in Write/Writeln-Anweisung
+Cm.E2054	Win32	False	PCmE2054.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2054.pas' kann nicht compiliert werden
+Cm.E2054	Win64	False	Cm.E2054.pas	15	E2054	Fehler	Ungültiger Typ in Write/Writeln-Anweisung
+Cm.E2054	Win64	False	PCmE2054.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2054.pas' kann nicht compiliert werden
+Cm.E2055	Win32	False	Cm.E2055.pas	14	E2055	Fehler	Ungültiger Typ in Read/Readln-Anweisung
+Cm.E2055	Win32	False	PCmE2055.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2055.pas' kann nicht compiliert werden
+Cm.E2055	Win64	False	Cm.E2055.pas	14	E2055	Fehler	Ungültiger Typ in Read/Readln-Anweisung
+Cm.E2055	Win64	False	PCmE2055.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2055.pas' kann nicht compiliert werden
+Cm.E2056	Win32	True					
+Cm.E2056	Win64	True					
+Cm.E2057	Win32	False	Cm.E2057.pas	13	E2057	Fehler	Unerwartetes Dateiende bei Kommentarbeginn in Zeile 10
+Cm.E2057	Win32	False	Cm.E2057.pas	15	E2029	Fehler	Deklaration erwartet, aber Dateiende gefunden
+Cm.E2057	Win32	False	PCmE2057.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2057.pas' kann nicht compiliert werden
+Cm.E2057	Win64	False	Cm.E2057.pas	14	E2057	Fehler	Unerwartetes Dateiende bei Kommentarbeginn in Zeile 10
+Cm.E2057	Win64	False	Cm.E2057.pas	16	E2029	Fehler	Deklaration erwartet, aber Dateiende gefunden
+Cm.E2057	Win64	False	PCmE2057.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2057.pas' kann nicht compiliert werden
+Cm.E2058	Win32	False	Cm.E2058.pas	13	E2058	Fehler	Klasse, Interface und Objekttypen sind nur im Abschnitt type erlaubt
+Cm.E2058	Win32	False	Cm.E2058.pas	14	E2059	Fehler	Lokale Klasse, Interface oder Objekttypen sind nicht erlaubt
+Cm.E2058	Win32	False	PCmE2058.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2058.pas' kann nicht compiliert werden
+Cm.E2058	Win64	False	Cm.E2058.pas	13	E2058	Fehler	Klasse, Interface und Objekttypen sind nur im Abschnitt type erlaubt
+Cm.E2058	Win64	False	Cm.E2058.pas	14	E2059	Fehler	Lokale Klasse, Interface oder Objekttypen sind nicht erlaubt
+Cm.E2058	Win64	False	PCmE2058.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2058.pas' kann nicht compiliert werden
+Cm.E2059	Win32	False	Cm.E2059.pas	14	E2059	Fehler	Lokale Klasse, Interface oder Objekttypen sind nicht erlaubt
+Cm.E2059	Win32	False	PCmE2059.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2059.pas' kann nicht compiliert werden
+Cm.E2059	Win64	False	Cm.E2059.pas	14	E2059	Fehler	Lokale Klasse, Interface oder Objekttypen sind nicht erlaubt
+Cm.E2059	Win64	False	PCmE2059.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2059.pas' kann nicht compiliert werden
+Cm.E2060	Win32	False	Cm.E2060.pas	12	E2058	Fehler	Klasse, Interface und Objekttypen sind nur im Abschnitt type erlaubt
+Cm.E2060	Win32	False	Cm.E2060.pas	13	E2059	Fehler	Lokale Klasse, Interface oder Objekttypen sind nicht erlaubt
+Cm.E2060	Win32	False	PCmE2060.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2060.pas' kann nicht compiliert werden
+Cm.E2060	Win64	False	Cm.E2060.pas	12	E2058	Fehler	Klasse, Interface und Objekttypen sind nur im Abschnitt type erlaubt
+Cm.E2060	Win64	False	Cm.E2060.pas	13	E2059	Fehler	Lokale Klasse, Interface oder Objekttypen sind nicht erlaubt
+Cm.E2060	Win64	False	PCmE2060.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2060.pas' kann nicht compiliert werden
+Cm.E2061	Win32	False	Cm.E2061.pas	14	E2059	Fehler	Lokale Klasse, Interface oder Objekttypen sind nicht erlaubt
+Cm.E2061	Win32	False	PCmE2061.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2061.pas' kann nicht compiliert werden
+Cm.E2061	Win64	False	Cm.E2061.pas	14	E2059	Fehler	Lokale Klasse, Interface oder Objekttypen sind nicht erlaubt
+Cm.E2061	Win64	False	PCmE2061.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2061.pas' kann nicht compiliert werden
+Cm.E2062	Win32	False	Cm.E2062.pas	10	E2062	Fehler	Virtuelle Konstruktoren sind nicht erlaubt
+Cm.E2062	Win32	False	PCmE2062.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2062.pas' kann nicht compiliert werden
+Cm.E2062	Win64	False	Cm.E2062.pas	10	E2062	Fehler	Virtuelle Konstruktoren sind nicht erlaubt
+Cm.E2062	Win64	False	PCmE2062.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2062.pas' kann nicht compiliert werden
+Cm.E2064	Win32	False	Cm.E2064.pas	16	E2064	Fehler	Der linken Seite kann nichts zugewiesen werden
+Cm.E2064	Win32	False	PCmE2064.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2064.pas' kann nicht compiliert werden
+Cm.E2064	Win64	False	Cm.E2064.pas	16	E2064	Fehler	Der linken Seite kann nichts zugewiesen werden
+Cm.E2064	Win64	False	PCmE2064.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2064.pas' kann nicht compiliert werden
+Cm.E2065	Win32	False	Cm.E2065.pas	8	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'OhneRumpf'
+Cm.E2065	Win32	False	PCmE2065.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2065.pas' kann nicht compiliert werden
+Cm.E2065	Win64	False	Cm.E2065.pas	8	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'OhneRumpf'
+Cm.E2065	Win64	False	PCmE2065.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2065.pas' kann nicht compiliert werden
+Cm.E2066	Win32	False	Cm.E2066.pas	14	E2066	Fehler	Operator oder Semikolon fehlt
+Cm.E2066	Win32	False	PCmE2066.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2066.pas' kann nicht compiliert werden
+Cm.E2066	Win64	False	Cm.E2066.pas	14	E2066	Fehler	Operator oder Semikolon fehlt
+Cm.E2066	Win64	False	PCmE2066.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2066.pas' kann nicht compiliert werden
+Cm.E2067	Win32	False	Cm.E2067.pas	10	E2067	Fehler	Fehlender Parametertyp
+Cm.E2067	Win32	False	PCmE2067.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2067.pas' kann nicht compiliert werden
+Cm.E2067	Win64	False	Cm.E2067.pas	10	E2067	Fehler	Fehlender Parametertyp
+Cm.E2067	Win64	False	PCmE2067.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2067.pas' kann nicht compiliert werden
+Cm.E2070	Win32	False	Cm.E2070.pas	10	E2070	Fehler	Unbekannte Direktive: 'unbekannt'
+Cm.E2070	Win32	False	PCmE2070.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2070.pas' kann nicht compiliert werden
+Cm.E2070	Win64	False	Cm.E2070.pas	10	E2070	Fehler	Unbekannte Direktive: 'unbekannt'
+Cm.E2070	Win64	False	PCmE2070.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2070.pas' kann nicht compiliert werden
+Cm.E2071	Win32	False	Cm.E2071.pas	10	E2071	Fehler	Dieser Typ kann nicht initialisiert werden
+Cm.E2071	Win32	False	PCmE2071.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2071.pas' kann nicht compiliert werden
+Cm.E2071	Win64	False	Cm.E2071.pas	10	E2071	Fehler	Dieser Typ kann nicht initialisiert werden
+Cm.E2071	Win64	False	PCmE2071.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2071.pas' kann nicht compiliert werden
+Cm.E2072	Win32	False	Cm.E2072.pas	9	E2072	Fehler	Anzahl der Elemente (2) weicht von der Deklaration (3) ab
+Cm.E2072	Win32	False	PCmE2072.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2072.pas' kann nicht compiliert werden
+Cm.E2072	Win64	False	Cm.E2072.pas	9	E2072	Fehler	Anzahl der Elemente (2) weicht von der Deklaration (3) ab
+Cm.E2072	Win64	False	PCmE2072.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2072.pas' kann nicht compiliert werden
+Cm.E2073	Win32	False	Cm.E2073.pas	15	E2073	Fehler	Label ist bereits definiert: 'Ziel'
+Cm.E2073	Win32	False	PCmE2073.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2073.pas' kann nicht compiliert werden
+Cm.E2073	Win64	False	Cm.E2073.pas	15	E2073	Fehler	Label ist bereits definiert: 'Ziel'
+Cm.E2073	Win64	False	PCmE2073.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2073.pas' kann nicht compiliert werden
+Cm.E2074	Win32	False	Cm.E2074.pas	12	E2074	Fehler	Label wurde deklariert und referenziert, aber nicht gesetzt: 'Ziel'
+Cm.E2074	Win32	False	PCmE2074.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2074.pas' kann nicht compiliert werden
+Cm.E2074	Win64	False	Cm.E2074.pas	12	E2074	Fehler	Label wurde deklariert und referenziert, aber nicht gesetzt: 'Ziel'
+Cm.E2074	Win64	False	PCmE2074.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2074.pas' kann nicht compiliert werden
+Cm.E2075	Win32	False	Cm.E2075.pas	27	E2076	Fehler	Diese Form des Methodenaufrufs ist nur für Klassenmethoden oder Konstruktoren zulässig
+Cm.E2075	Win32	False	PCmE2075.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2075.pas' kann nicht compiliert werden
+Cm.E2075	Win64	False	Cm.E2075.pas	27	E2076	Fehler	Diese Form des Methodenaufrufs ist nur für Klassenmethoden oder Konstruktoren zulässig
+Cm.E2075	Win64	False	PCmE2075.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2075.pas' kann nicht compiliert werden
+Cm.E2076	Win32	False	Cm.E2076.pas	22	E2076	Fehler	Diese Form des Methodenaufrufs ist nur für Klassenmethoden oder Konstruktoren zulässig
+Cm.E2076	Win32	False	PCmE2076.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2076.pas' kann nicht compiliert werden
+Cm.E2076	Win64	False	Cm.E2076.pas	22	E2076	Fehler	Diese Form des Methodenaufrufs ist nur für Klassenmethoden oder Konstruktoren zulässig
+Cm.E2076	Win64	False	PCmE2076.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2076.pas' kann nicht compiliert werden
+Cm.E2077	Win32	False	Cm.E2077.pas	12	E2025	Fehler	Prozedur kann keinen Ergebnistyp besitzen
+Cm.E2077	Win32	False	PCmE2077.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2077.pas' kann nicht compiliert werden
+Cm.E2077	Win64	False	Cm.E2077.pas	12	E2025	Fehler	Prozedur kann keinen Ergebnistyp besitzen
+Cm.E2077	Win64	False	PCmE2077.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2077.pas' kann nicht compiliert werden
+Cm.E2078	Win32	False	Cm.E2078.pas	12	E2078	Fehler	Prozedur FAIL nur im Objektkonstruktor erlaubt
+Cm.E2078	Win32	False	PCmE2078.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2078.pas' kann nicht compiliert werden
+Cm.E2078	Win64	False	Cm.E2078.pas	12	E2078	Fehler	Prozedur FAIL nur im Objektkonstruktor erlaubt
+Cm.E2078	Win64	False	PCmE2078.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2078.pas' kann nicht compiliert werden
+Cm.E2079	Win32	False	Cm.E2079.pas	15	E2467	Fehler	Record oder Objekttyp erforderlich
+Cm.E2079	Win32	False	PCmE2079.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2079.pas' kann nicht compiliert werden
+Cm.E2079	Win64	False	Cm.E2079.pas	15	E2467	Fehler	Record oder Objekttyp erforderlich
+Cm.E2079	Win64	False	PCmE2079.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2079.pas' kann nicht compiliert werden
+Cm.E2080	Win32	False	Cm.E2080.pas	16	E2019	Fehler	Objekttyp erforderlich
+Cm.E2080	Win32	False	PCmE2080.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2080.pas' kann nicht compiliert werden
+Cm.E2080	Win64	False	Cm.E2080.pas	16	E2019	Fehler	Objekttyp erforderlich
+Cm.E2080	Win64	False	PCmE2080.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2080.pas' kann nicht compiliert werden
+Cm.E2081	Win32	False	Cm.E2081.pas	15	E2081	Fehler	Anweisung für FOR-Schleifenvariablen 'mIndex'
+Cm.E2081	Win32	False	PCmE2081.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2081.pas' kann nicht compiliert werden
+Cm.E2081	Win64	False	Cm.E2081.pas	15	E2081	Fehler	Anweisung für FOR-Schleifenvariablen 'mIndex'
+Cm.E2081	Win64	False	PCmE2081.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2081.pas' kann nicht compiliert werden
+Cm.E2082	Win32	False	Cm.E2082.pas	16	E2019	Fehler	Objekttyp erforderlich
+Cm.E2082	Win32	False	PCmE2082.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2082.pas' kann nicht compiliert werden
+Cm.E2082	Win64	False	Cm.E2082.pas	16	E2019	Fehler	Objekttyp erforderlich
+Cm.E2082	Win64	False	PCmE2082.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2082.pas' kann nicht compiliert werden
+Cm.E2083	Win32	False	Cm.E2083.pas	16	E2083	Fehler	Reihenfolge der Felder in der Record-Konstante unterscheiden sich von der Deklaration
+Cm.E2083	Win32	False	PCmE2083.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2083.pas' kann nicht compiliert werden
+Cm.E2083	Win64	False	Cm.E2083.pas	16	E2083	Fehler	Reihenfolge der Felder in der Record-Konstante unterscheiden sich von der Deklaration
+Cm.E2083	Win64	False	PCmE2083.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2083.pas' kann nicht compiliert werden
+Cm.E2086	Win32	False	Cm.E2086.pas	10	E2086	Fehler	Typ 'TKreis' ist nicht vollständig definiert
+Cm.E2086	Win32	False	PCmE2086.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2086.pas' kann nicht compiliert werden
+Cm.E2086	Win64	False	Cm.E2086.pas	10	E2086	Fehler	Typ 'TKreis' ist nicht vollständig definiert
+Cm.E2086	Win64	False	PCmE2086.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2086.pas' kann nicht compiliert werden
+Cm.E2088	Win32	False	Cm.E2088.pas	12	E2029	Fehler	Ausdruck erwartet, aber ':=' gefunden
+Cm.E2088	Win32	False	Cm.E2088.pas	14	E2029	Fehler	Ausdruck erwartet, aber 'END' gefunden
+Cm.E2088	Win32	False	PCmE2088.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2088.pas' kann nicht compiliert werden
+Cm.E2088	Win64	False	Cm.E2088.pas	12	E2029	Fehler	Ausdruck erwartet, aber ':=' gefunden
+Cm.E2088	Win64	False	Cm.E2088.pas	14	E2029	Fehler	Ausdruck erwartet, aber 'END' gefunden
+Cm.E2088	Win64	False	PCmE2088.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2088.pas' kann nicht compiliert werden
+Cm.E2089	Win32	False	Cm.E2089.pas	16	E2089	Fehler	Ungültige Typumwandlung
+Cm.E2089	Win32	False	PCmE2089.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2089.pas' kann nicht compiliert werden
+Cm.E2089	Win64	False	Cm.E2089.pas	16	E2089	Fehler	Ungültige Typumwandlung
+Cm.E2089	Win64	False	PCmE2089.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2089.pas' kann nicht compiliert werden
+Cm.E2091	Win32	False	Cm.E2091.pas	9	E2088	Fehler	Variable erwartet
+Cm.E2091	Win32	False	PCmE2091.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2091.pas' kann nicht compiliert werden
+Cm.E2091	Win64	False	Cm.E2091.pas	9	E2088	Fehler	Variable erwartet
+Cm.E2091	Win64	False	PCmE2091.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2091.pas' kann nicht compiliert werden
+Cm.E2093	Win32	False	Cm.E2093.pas	16	E2093	Fehler	Label 'Ziel' ist in der aktuellen Prozedur nicht deklariert
+Cm.E2093	Win32	False	PCmE2093.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2093.pas' kann nicht compiliert werden
+Cm.E2093	Win64	False	Cm.E2093.pas	16	E2093	Fehler	Label 'Ziel' ist in der aktuellen Prozedur nicht deklariert
+Cm.E2093	Win64	False	PCmE2093.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2093.pas' kann nicht compiliert werden
+Cm.E2094	Win32	False	Cm.E2094.pas	22	E2094	Fehler	Lokale Prozedur/Funktion 'Innen' wurde Prozedurenvariable zugewiesen
+Cm.E2094	Win32	False	PCmE2094.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2094.pas' kann nicht compiliert werden
+Cm.E2094	Win64	False	Cm.E2094.pas	22	E2094	Fehler	Lokale Prozedur/Funktion 'Innen' wurde Prozedurenvariable zugewiesen
+Cm.E2094	Win64	False	PCmE2094.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2094.pas' kann nicht compiliert werden
+Cm.E2095	Win32	False	Cm.E2095.pas	8	E2280	Fataler Fehler	Nicht abgeschlossene bedingte Direktive
+Cm.E2095	Win64	False	Cm.E2095.pas	8	E2280	Fataler Fehler	Nicht abgeschlossene bedingte Direktive
+Cm.E2096	Win32	False	Cm.E2096.pas	17	E2029	Fehler	Bezeichner erwartet, aber ';' gefunden
+Cm.E2096	Win32	False	Cm.E2096.pas	18	E2029	Fehler	';' erwartet, aber 'BEGIN' gefunden
+Cm.E2096	Win32	False	Cm.E2096.pas	12	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TBasis.Machen'
+Cm.E2096	Win32	False	PCmE2096.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2096.pas' kann nicht compiliert werden
+Cm.E2096	Win64	False	Cm.E2096.pas	17	E2029	Fehler	Bezeichner erwartet, aber ';' gefunden
+Cm.E2096	Win64	False	Cm.E2096.pas	18	E2029	Fehler	';' erwartet, aber 'BEGIN' gefunden
+Cm.E2096	Win64	False	Cm.E2096.pas	12	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TBasis.Machen'
+Cm.E2096	Win64	False	PCmE2096.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2096.pas' kann nicht compiliert werden
+Cm.E2097	Win32	False	Cm.E2097.pas	12	E2097	Fehler	BREAK oder CONTINUE außerhalb der Schleife
+Cm.E2097	Win32	False	PCmE2097.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2097.pas' kann nicht compiliert werden
+Cm.E2097	Win64	False	Cm.E2097.pas	12	E2097	Fehler	BREAK oder CONTINUE außerhalb der Schleife
+Cm.E2097	Win64	False	PCmE2097.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2097.pas' kann nicht compiliert werden
+Cm.E2098	Win32	False	Cm.E2098.pas	9	E2098	Fehler	Division durch Null
+Cm.E2098	Win32	False	PCmE2098.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2098.pas' kann nicht compiliert werden
+Cm.E2098	Win64	False	Cm.E2098.pas	9	E2098	Fehler	Division durch Null
+Cm.E2098	Win64	False	PCmE2098.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2098.pas' kann nicht compiliert werden
+Cm.E2099	Win32	False	Cm.E2099.pas	9	E2099	Fehler	Überlauf bei Konvertierung oder arithmetischer Operation
+Cm.E2099	Win32	False	PCmE2099.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2099.pas' kann nicht compiliert werden
+Cm.E2099	Win64	False	Cm.E2099.pas	9	E2099	Fehler	Überlauf bei Konvertierung oder arithmetischer Operation
+Cm.E2099	Win64	False	PCmE2099.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2099.pas' kann nicht compiliert werden
+Cm.E2100	Win32	False	Cm.E2100.pas	9	E2100	Fehler	Datentyp zu groß: 2 GB überschritten
+Cm.E2100	Win32	False	PCmE2100.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2100.pas' kann nicht compiliert werden
+Cm.E2100	Win64	False	Cm.E2100.pas	9	E2100	Fehler	Datentyp zu groß: 2 GB überschritten
+Cm.E2100	Win64	False	PCmE2100.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2100.pas' kann nicht compiliert werden
+Cm.E2102	Win32	False	Cm.E2102.pas	14	E2102	Fehler	Integerkonstante zu lang
+Cm.E2102	Win32	False	Cm.E2102.pas	14	W1012	Warnung	Konstantenausdruck verletzt untere Grenzen
+Cm.E2102	Win32	False	PCmE2102.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2102.pas' kann nicht compiliert werden
+Cm.E2102	Win64	False	Cm.E2102.pas	14	E2102	Fehler	Integerkonstante zu lang
+Cm.E2102	Win64	False	Cm.E2102.pas	14	W1012	Warnung	Konstantenausdruck verletzt untere Grenzen
+Cm.E2102	Win64	False	PCmE2102.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2102.pas' kann nicht compiliert werden
+Cm.E2105	Win32	False	Cm.E2105.pas	14	E2105	Fehler	Inline Assembler Syntaxfehler
+Cm.E2105	Win32	False	PCmE2105.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2105.pas' kann nicht compiliert werden
+Cm.E2107	Win32	False	Cm.E2107.pas	14	E2107	Fehler	Operandengröße stimmt nicht überein
+Cm.E2107	Win32	False	PCmE2107.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2107.pas' kann nicht compiliert werden
+Cm.E2108	Win32	False	Cm.E2108.pas	14	E2107	Fehler	Operandengröße stimmt nicht überein
+Cm.E2108	Win32	False	PCmE2108.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2108.pas' kann nicht compiliert werden
+Cm.E2109	Win32	False	Cm.E2109.pas	17	E2109	Fehler	Konstante erwartet
+Cm.E2109	Win32	False	PCmE2109.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2109.pas' kann nicht compiliert werden
+Cm.E2111	Win32	False	Cm.E2111.pas	14	E2111	Fehler	Hinzufügen oder Entfernen relozierbarer Symbole nicht möglich
+Cm.E2111	Win32	False	PCmE2111.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2111.pas' kann nicht compiliert werden
+Cm.E2112	Win32	False	Cm.E2112.pas	14	E2105	Fehler	Inline Assembler Syntaxfehler
+Cm.E2112	Win32	False	PCmE2112.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2112.pas' kann nicht compiliert werden
+Cm.E2113	Win32	False	Cm.E2113.pas	14	E2113	Fehler	Nummerischer Überlauf
+Cm.E2113	Win32	False	PCmE2113.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2113.pas' kann nicht compiliert werden
+Cm.E2114	Win32	False	Cm.E2114.pas	14	E2114	Fehler	Stringkonstante zu lang
+Cm.E2114	Win32	False	PCmE2114.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2114.pas' kann nicht compiliert werden
+Cm.E2115	Win32	False	Cm.E2115.pas	15	E2003	Fehler	Undeklarierter Bezeichner: 'Gh'
+Cm.E2115	Win32	False	PCmE2115.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2115.pas' kann nicht compiliert werden
+Cm.E2116	Win32	False	Cm.E2116.pas	14	E2107	Fehler	Operandengröße stimmt nicht überein
+Cm.E2116	Win32	False	PCmE2116.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2116.pas' kann nicht compiliert werden
+Cm.E2118	Win32	False	Cm.E2118.pas	14	E2118	Fehler	Division durch Null
+Cm.E2118	Win32	False	PCmE2118.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2118.pas' kann nicht compiliert werden
+Cm.E2119	Win32	False	Cm.E2119.pas	19	E2003	Fehler	Undeklarierter Bezeichner: 'Z'
+Cm.E2119	Win32	False	PCmE2119.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2119.pas' kann nicht compiliert werden
+Cm.E2121	Win32	True					
+Cm.E2121	Win64	True					
+Cm.E2123	Win32	False	Cm.E2123.pas	11	E2123	Fehler	PROCEDURE, FUNCTION, PROPERTY oder VAR erwartet
+Cm.E2123	Win32	False	PCmE2123.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2123.pas' kann nicht compiliert werden
+Cm.E2123	Win64	False	Cm.E2123.pas	11	E2123	Fehler	PROCEDURE, FUNCTION, PROPERTY oder VAR erwartet
+Cm.E2123	Win64	False	PCmE2123.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2123.pas' kann nicht compiliert werden
+Cm.E2124	Win32	False	Cm.E2124.pas	20	E2124	Fehler	Instanzenelement 'FWert' in diesem Zusammenhang nicht verfügbar
+Cm.E2124	Win32	False	PCmE2124.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2124.pas' kann nicht compiliert werden
+Cm.E2124	Win64	False	Cm.E2124.pas	20	E2124	Fehler	Instanzenelement 'FWert' in diesem Zusammenhang nicht verfügbar
+Cm.E2124	Win64	False	PCmE2124.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2124.pas' kann nicht compiliert werden
+Cm.E2125	Win32	False	Cm.E2125.pas	16	E2125	Fehler	EXCEPT oder FINALLY erwartet
+Cm.E2125	Win32	False	PCmE2125.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2125.pas' kann nicht compiliert werden
+Cm.E2125	Win64	False	Cm.E2125.pas	16	E2125	Fehler	EXCEPT oder FINALLY erwartet
+Cm.E2125	Win64	False	PCmE2125.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2125.pas' kann nicht compiliert werden
+Cm.E2126	Win32	False	Cm.E2126.pas	15	H2077	Hinweis	Auf 'mZahl' zugewiesener Wert wird niemals benutzt
+Cm.E2126	Win32	False	Cm.E2126.pas	17	E2126	Fehler	BREAK, CONTINUE oder EXIT bei FINALLY-Klausel nicht möglich
+Cm.E2126	Win32	False	PCmE2126.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2126.pas' kann nicht compiliert werden
+Cm.E2126	Win64	False	Cm.E2126.pas	15	H2077	Hinweis	Auf 'mZahl' zugewiesener Wert wird niemals benutzt
+Cm.E2126	Win64	False	Cm.E2126.pas	17	E2126	Fehler	BREAK, CONTINUE oder EXIT bei FINALLY-Klausel nicht möglich
+Cm.E2126	Win64	False	PCmE2126.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2126.pas' kann nicht compiliert werden
+Cm.E2127	Win32	False	Cm.E2127.pas	16	E2127	Fehler	'GOTO Ziel' führt in eine TRY-Anweisung, in eine FOR-IN-Anweisung, deren Enumerator einen Destruktor hat, oder in einen Block mit einer lokalen Variable hinein oder heraus
+Cm.E2127	Win32	False	PCmE2127.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2127.pas' kann nicht compiliert werden
+Cm.E2127	Win64	False	Cm.E2127.pas	16	E2127	Fehler	'GOTO Ziel' führt in eine TRY-Anweisung, in eine FOR-IN-Anweisung, deren Enumerator einen Destruktor hat, oder in einen Block mit einer lokalen Variable hinein oder heraus
+Cm.E2127	Win64	False	PCmE2127.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2127.pas' kann nicht compiliert werden
+Cm.E2129	Win32	False	Cm.E2129.pas	20	E2129	Fehler	Einer Nur-Lesen Eigenschaft kann kein Wert zugewiesen werden
+Cm.E2129	Win32	False	PCmE2129.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2129.pas' kann nicht compiliert werden
+Cm.E2129	Win64	False	Cm.E2129.pas	20	E2129	Fehler	Einer Nur-Lesen Eigenschaft kann kein Wert zugewiesen werden
+Cm.E2129	Win64	False	PCmE2129.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2129.pas' kann nicht compiliert werden
+Cm.E2130	Win32	False	Cm.E2130.pas	20	E2130	Fehler	Lesen einer Nur-Schreiben-Eigenschaft nicht möglich
+Cm.E2130	Win32	False	PCmE2130.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2130.pas' kann nicht compiliert werden
+Cm.E2130	Win64	False	Cm.E2130.pas	20	E2130	Fehler	Lesen einer Nur-Schreiben-Eigenschaft nicht möglich
+Cm.E2130	Win64	False	PCmE2130.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2130.pas' kann nicht compiliert werden
+Cm.E2131	Win32	False	Cm.E2131.pas	16	E2131	Fehler	Klasse besitzt bereits eine Standardeigenschaft
+Cm.E2131	Win32	False	PCmE2131.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2131.pas' kann nicht compiliert werden
+Cm.E2131	Win64	False	Cm.E2131.pas	16	E2131	Fehler	Klasse besitzt bereits eine Standardeigenschaft
+Cm.E2131	Win64	False	PCmE2131.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2131.pas' kann nicht compiliert werden
+Cm.E2132	Win32	False	Cm.E2132.pas	13	E2132	Fehler	Standardeigenschaft muss eine Array-Eigenschaft sein
+Cm.E2132	Win32	False	PCmE2132.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2132.pas' kann nicht compiliert werden
+Cm.E2132	Win64	False	Cm.E2132.pas	13	E2132	Fehler	Standardeigenschaft muss eine Array-Eigenschaft sein
+Cm.E2132	Win64	False	PCmE2132.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2132.pas' kann nicht compiliert werden
+Cm.E2133	Win32	False	Cm.E2133.pas	16	E2133	Fehler	Standardfunktion TYPEINFO erwartet einen Typbezeichner
+Cm.E2133	Win32	False	PCmE2133.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2133.pas' kann nicht compiliert werden
+Cm.E2133	Win64	False	Cm.E2133.pas	16	E2133	Fehler	Standardfunktion TYPEINFO erwartet einen Typbezeichner
+Cm.E2133	Win64	False	PCmE2133.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2133.pas' kann nicht compiliert werden
+Cm.E2134	Win32	False	Cm.E2134.pas	17	E2134	Fehler	Typ 'TLuecke' besitzt keine Typinformation
+Cm.E2134	Win32	False	PCmE2134.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2134.pas' kann nicht compiliert werden
+Cm.E2134	Win64	False	Cm.E2134.pas	17	E2134	Fehler	Typ 'TLuecke' besitzt keine Typinformation
+Cm.E2134	Win64	False	PCmE2134.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2134.pas' kann nicht compiliert werden
+Cm.E2136	Win32	False	Cm.E2136.pas	16	E2136	Fehler	Definition für abstrakte Methode 'Machen' nicht erlaubt
+Cm.E2136	Win32	False	PCmE2136.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2136.pas' kann nicht compiliert werden
+Cm.E2136	Win64	False	Cm.E2136.pas	16	E2136	Fehler	Definition für abstrakte Methode 'Machen' nicht erlaubt
+Cm.E2136	Win64	False	PCmE2136.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2136.pas' kann nicht compiliert werden
+Cm.E2137	Win32	False	Cm.E2137.pas	11	E2137	Fehler	Methode 'Machen' nicht in Basisklasse gefunden
+Cm.E2137	Win32	False	PCmE2137.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2137.pas' kann nicht compiliert werden
+Cm.E2137	Win64	False	Cm.E2137.pas	11	E2137	Fehler	Methode 'Machen' nicht in Basisklasse gefunden
+Cm.E2137	Win64	False	PCmE2137.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2137.pas' kann nicht compiliert werden
+Cm.E2138	Win32	False	Cm.E2138.pas	11	E2138	Fehler	Ungültige Botschaftsparameterliste
+Cm.E2138	Win32	False	PCmE2138.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2138.pas' kann nicht compiliert werden
+Cm.E2138	Win64	False	Cm.E2138.pas	11	E2138	Fehler	Ungültige Botschaftsparameterliste
+Cm.E2138	Win64	False	PCmE2138.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2138.pas' kann nicht compiliert werden
+Cm.E2139	Win32	False	Cm.E2139.pas	12	E2139	Fehler	Ungültiger Botschaftsmethoden-Index
+Cm.E2139	Win32	False	PCmE2139.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2139.pas' kann nicht compiliert werden
+Cm.E2139	Win64	False	Cm.E2139.pas	12	E2139	Fehler	Ungültiger Botschaftsmethoden-Index
+Cm.E2139	Win64	False	PCmE2139.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2139.pas' kann nicht compiliert werden
+Cm.E2140	Win32	False	Cm.E2140.pas	12	E2140	Fehler	Doppelter Botschaftsmethoden-Index
+Cm.E2140	Win32	False	PCmE2140.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2140.pas' kann nicht compiliert werden
+Cm.E2140	Win64	False	Cm.E2140.pas	12	E2140	Fehler	Doppelter Botschaftsmethoden-Index
+Cm.E2140	Win64	False	PCmE2140.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2140.pas' kann nicht compiliert werden
+Cm.E2143	Win32	False	Cm.E2143.pas	18	E2010	Fehler	Inkompatible Typen: 'Integer' und 'procedure, untyped pointer or untyped parameter'
+Cm.E2143	Win32	False	PCmE2143.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2143.pas' kann nicht compiliert werden
+Cm.E2143	Win64	False	Cm.E2143.pas	18	E2010	Fehler	Inkompatible Typen: 'Integer' und 'procedure, untyped pointer or untyped parameter'
+Cm.E2143	Win64	False	PCmE2143.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2143.pas' kann nicht compiliert werden
+Cm.E2145	Win32	False	Cm.E2145.pas	12	E2145	Fehler	Wiederhervorrufen einer Exception ist nur im Exception-Handler möglich
+Cm.E2145	Win32	False	PCmE2145.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2145.pas' kann nicht compiliert werden
+Cm.E2145	Win64	False	Cm.E2145.pas	12	E2145	Fehler	Wiederhervorrufen einer Exception ist nur im Exception-Handler möglich
+Cm.E2145	Win64	False	PCmE2145.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2145.pas' kann nicht compiliert werden
+Cm.E2146	Win32	True					
+Cm.E2146	Win64	True					
+Cm.E2147	Win32	False	Cm.E2147.pas	11	E2147	Fehler	Eigenschaft 'Wert' existiert nicht in Basisklasse
+Cm.E2147	Win32	False	PCmE2147.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2147.pas' kann nicht compiliert werden
+Cm.E2147	Win64	False	Cm.E2147.pas	11	E2147	Fehler	Eigenschaft 'Wert' existiert nicht in Basisklasse
+Cm.E2147	Win64	False	PCmE2147.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2147.pas' kann nicht compiliert werden
+Cm.E2148	Win32	False	Cm.E2148.pas	11	E2169	Fehler	Felddefinition nicht erlaubt nach Methoden oder Eigenschaften
+Cm.E2148	Win32	False	Cm.E2148.pas	12	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2148	Win32	False	PCmE2148.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2148.pas' kann nicht compiliert werden
+Cm.E2148	Win64	False	Cm.E2148.pas	11	E2169	Fehler	Felddefinition nicht erlaubt nach Methoden oder Eigenschaften
+Cm.E2148	Win64	False	Cm.E2148.pas	12	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2148	Win64	False	PCmE2148.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2148.pas' kann nicht compiliert werden
+Cm.E2149	Win32	False	Cm.E2149.pas	15	E2149	Fehler	Klasse besitzt keine Standardeigenschaft
+Cm.E2149	Win32	False	PCmE2149.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2149.pas' kann nicht compiliert werden
+Cm.E2149	Win64	False	Cm.E2149.pas	15	E2149	Fehler	Klasse besitzt keine Standardeigenschaft
+Cm.E2149	Win64	False	PCmE2149.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2149.pas' kann nicht compiliert werden
+Cm.E2150	Win32	False	Cm.E2150.pas	24	E2150	Fehler	Falscher Argumententyp im Konstruktor des Variablentyp array
+Cm.E2150	Win32	False	PCmE2150.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2150.pas' kann nicht compiliert werden
+Cm.E2150	Win64	False	Cm.E2150.pas	24	E2150	Fehler	Falscher Argumententyp im Konstruktor des Variablentyp array
+Cm.E2150	Win64	False	PCmE2150.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2150.pas' kann nicht compiliert werden
+Cm.E2153	Win32	False	Cm.E2153.pas	17	E2153	Fehler	';' nicht erlaubt vor einem 'ELSE'
+Cm.E2153	Win32	False	PCmE2153.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2153.pas' kann nicht compiliert werden
+Cm.E2153	Win64	False	Cm.E2153.pas	17	E2153	Fehler	';' nicht erlaubt vor einem 'ELSE'
+Cm.E2153	Win64	False	PCmE2153.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2153.pas' kann nicht compiliert werden
+Cm.E2154	Win32	False	Cm.E2154.pas	12	E2154	Fehler	Typ 'string' benötigt Finalization - nicht im varianten Record erlaubt
+Cm.E2154	Win32	False	PCmE2154.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2154.pas' kann nicht compiliert werden
+Cm.E2154	Win64	False	Cm.E2154.pas	12	E2154	Fehler	Typ 'string' benötigt Finalization - nicht im varianten Record erlaubt
+Cm.E2154	Win64	False	PCmE2154.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2154.pas' kann nicht compiliert werden
+Cm.E2155	Win32	False	Cm.E2155.pas	9	E2155	Fehler	Typ 'string' benötigt Finalization - nicht im Dateityp erlaubt
+Cm.E2155	Win32	False	PCmE2155.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2155.pas' kann nicht compiliert werden
+Cm.E2155	Win64	False	Cm.E2155.pas	9	E2155	Fehler	Typ 'string' benötigt Finalization - nicht im Dateityp erlaubt
+Cm.E2155	Win64	False	PCmE2155.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2155.pas' kann nicht compiliert werden
+Cm.E2157	Win32	False	Cm.E2157.pas	17	E2157	Fehler	Auf Element 0 kann nicht zugegriffen werden - 'Length' oder 'SetLength' verwenden
+Cm.E2157	Win32	False	PCmE2157.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2157.pas' kann nicht compiliert werden
+Cm.E2157	Win64	False	Cm.E2157.pas	17	E2157	Fehler	Auf Element 0 kann nicht zugegriffen werden - 'Length' oder 'SetLength' verwenden
+Cm.E2157	Win64	False	PCmE2157.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2157.pas' kann nicht compiliert werden
+Cm.E2160	Win32	False	Cm.E2160.pas	25	E2160	Fehler	Typ in einem OLE-Automatisierungsaufruf nicht erlaubt
+Cm.E2160	Win32	False	PCmE2160.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2160.pas' kann nicht compiliert werden
+Cm.E2160	Win64	False	Cm.E2160.pas	25	E2160	Fehler	Typ in einem OLE-Automatisierungsaufruf nicht erlaubt
+Cm.E2160	Win64	False	PCmE2160.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2160.pas' kann nicht compiliert werden
+Cm.E2166	Win32	False	Cm.E2166.pas	18	E2166	Fehler	Unbenannte Argumente müssen benannten Argumenten in der OLE-Automatisierung vorangestellt werden
+Cm.E2166	Win32	False	PCmE2166.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2166.pas' kann nicht compiliert werden
+Cm.E2166	Win64	False	Cm.E2166.pas	18	E2166	Fehler	Unbenannte Argumente müssen benannten Argumenten in der OLE-Automatisierung vorangestellt werden
+Cm.E2166	Win64	False	PCmE2166.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2166.pas' kann nicht compiliert werden
+Cm.E2167	Win32	False	Cm.E2167.pas	11	E2167	Fehler	Abstrakte Methoden müssen virtuell oder dynamisch sein
+Cm.E2167	Win32	False	Cm.E2167.pas	11	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TKlasse.Machen'
+Cm.E2167	Win32	False	PCmE2167.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2167.pas' kann nicht compiliert werden
+Cm.E2167	Win64	False	Cm.E2167.pas	11	E2167	Fehler	Abstrakte Methoden müssen virtuell oder dynamisch sein
+Cm.E2167	Win64	False	Cm.E2167.pas	11	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TKlasse.Machen'
+Cm.E2167	Win64	False	PCmE2167.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2167.pas' kann nicht compiliert werden
+Cm.E2168	Win32	False	Cm.E2168.pas	11	E2168	Fehler	Feld- oder Methodenbezeichner erwartet
+Cm.E2168	Win32	False	PCmE2168.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2168.pas' kann nicht compiliert werden
+Cm.E2168	Win64	False	Cm.E2168.pas	11	E2168	Fehler	Feld- oder Methodenbezeichner erwartet
+Cm.E2168	Win64	False	PCmE2168.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2168.pas' kann nicht compiliert werden
+Cm.E2169	Win32	False	Cm.E2169.pas	12	E2169	Fehler	Felddefinition nicht erlaubt nach Methoden oder Eigenschaften
+Cm.E2169	Win32	False	PCmE2169.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2169.pas' kann nicht compiliert werden
+Cm.E2169	Win64	False	Cm.E2169.pas	12	E2169	Fehler	Felddefinition nicht erlaubt nach Methoden oder Eigenschaften
+Cm.E2169	Win64	False	PCmE2169.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2169.pas' kann nicht compiliert werden
+Cm.E2170	Win32	False	Cm.E2170.pas	16	E2170	Fehler	Eine nichtvirtuelle Methode kann nicht überschrieben werden
+Cm.E2170	Win32	False	PCmE2170.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2170.pas' kann nicht compiliert werden
+Cm.E2170	Win64	False	Cm.E2170.pas	16	E2170	Fehler	Eine nichtvirtuelle Methode kann nicht überschrieben werden
+Cm.E2170	Win64	False	PCmE2170.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2170.pas' kann nicht compiliert werden
+Cm.E2173	Win32	False	Cm.E2173.pas	10	E2173	Fehler	Fehlendes oder ungültiges Bedingungssymbol in der Direktive '$IFDEF'
+Cm.E2173	Win32	False	PCmE2173.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2173.pas' kann nicht compiliert werden
+Cm.E2173	Win64	False	Cm.E2173.pas	10	E2173	Fehler	Fehlendes oder ungültiges Bedingungssymbol in der Direktive '$IFDEF'
+Cm.E2173	Win64	False	PCmE2173.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2173.pas' kann nicht compiliert werden
+Cm.E2174	Win32	False	Cm.E2174.pas	14	E2008	Fehler	Inkompatible Typen
+Cm.E2174	Win32	False	PCmE2174.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2174.pas' kann nicht compiliert werden
+Cm.E2174	Win64	False	Cm.E2174.pas	14	E2008	Fehler	Inkompatible Typen
+Cm.E2174	Win64	False	PCmE2174.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2174.pas' kann nicht compiliert werden
+Cm.E2175	Win32	False	Cm.E2175.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2175	Win32	False	Cm.E2175.pas	11	E2175	Fehler	Felddefinition nicht erlaubt in OLE-Automatisierungsbereich
+Cm.E2175	Win32	False	Cm.E2175.pas	11	H2219	Hinweis	Das private-Symbol 'FWert' wurde deklariert, aber nie verwendet
+Cm.E2175	Win32	False	PCmE2175.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2175.pas' kann nicht compiliert werden
+Cm.E2175	Win64	False	Cm.E2175.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2175	Win64	False	Cm.E2175.pas	11	E2175	Fehler	Felddefinition nicht erlaubt in OLE-Automatisierungsbereich
+Cm.E2175	Win64	False	Cm.E2175.pas	11	H2219	Hinweis	Das private-Symbol 'FWert' wurde deklariert, aber nie verwendet
+Cm.E2175	Win64	False	PCmE2175.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2175.pas' kann nicht compiliert werden
+Cm.E2176	Win32	False	Cm.E2176.pas	14	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2176	Win32	False	Cm.E2176.pas	15	E2176	Fehler	Ungültiger Typ im OLE-Automatisierungsbereich: 'TPunkt'
+Cm.E2176	Win32	False	PCmE2176.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2176.pas' kann nicht compiliert werden
+Cm.E2176	Win64	False	Cm.E2176.pas	14	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2176	Win64	False	Cm.E2176.pas	15	E2176	Fehler	Ungültiger Typ im OLE-Automatisierungsbereich: 'TPunkt'
+Cm.E2176	Win64	False	PCmE2176.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2176.pas' kann nicht compiliert werden
+Cm.E2177	Win32	False	Cm.E2177.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2177	Win32	False	Cm.E2177.pas	11	E2177	Fehler	Konstruktoren und Destruktoren sind im OLE-Automatisierungsbereich nicht zulässig
+Cm.E2177	Win32	False	PCmE2177.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2177.pas' kann nicht compiliert werden
+Cm.E2177	Win64	False	Cm.E2177.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2177	Win64	False	Cm.E2177.pas	11	E2177	Fehler	Konstruktoren und Destruktoren sind im OLE-Automatisierungsbereich nicht zulässig
+Cm.E2177	Win64	False	PCmE2177.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2177.pas' kann nicht compiliert werden
+Cm.E2178	Win32	False	Cm.E2178.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2178	Win32	False	Cm.E2178.pas	11	E2178	Fehler	Dynamische Methoden und Methoden zur Nachrichtenbehandlung sind nicht im OLE-Automatisierungbereich erlaubt
+Cm.E2178	Win32	False	PCmE2178.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2178.pas' kann nicht compiliert werden
+Cm.E2178	Win64	False	Cm.E2178.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2178	Win64	False	Cm.E2178.pas	11	E2178	Fehler	Dynamische Methoden und Methoden zur Nachrichtenbehandlung sind nicht im OLE-Automatisierungbereich erlaubt
+Cm.E2178	Win64	False	PCmE2178.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2178.pas' kann nicht compiliert werden
+Cm.E2179	Win32	False	Cm.E2179.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2179	Win32	False	Cm.E2179.pas	11	E2179	Fehler	Im OLE-Automatisierungsbereich sind nur register-Aufrufkonventionen zulässig
+Cm.E2179	Win32	False	PCmE2179.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2179.pas' kann nicht compiliert werden
+Cm.E2179	Win64	False	Cm.E2179.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2179	Win64	False	Cm.E2179.pas	11	E2179	Fehler	Im OLE-Automatisierungsbereich sind nur register-Aufrufkonventionen zulässig
+Cm.E2179	Win64	False	PCmE2179.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2179.pas' kann nicht compiliert werden
+Cm.E2180	Win32	False	Cm.E2180.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2180	Win32	False	Cm.E2180.pas	12	E2180	Fehler	Dispid '1' wird bereits von 'Erste' verwendet
+Cm.E2180	Win32	False	PCmE2180.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2180.pas' kann nicht compiliert werden
+Cm.E2180	Win64	False	Cm.E2180.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2180	Win64	False	Cm.E2180.pas	12	E2180	Fehler	Dispid '1' wird bereits von 'Erste' verwendet
+Cm.E2180	Win64	False	PCmE2180.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2180.pas' kann nicht compiliert werden
+Cm.E2181	Win32	False	Cm.E2181.pas	12	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2181	Win32	False	Cm.E2181.pas	13	E2096	Fehler	Methodenbezeichner erwartet
+Cm.E2181	Win32	False	Cm.E2181.pas	17	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2181	Win32	False	Cm.E2181.pas	18	E2181	Fehler	Redeklaration der Eigenschaft im OLE-Automatisierungsbereich nicht erlaubt
+Cm.E2181	Win32	False	Cm.E2181.pas	19	E2128	Fehler	INDEX, READ oder WRITE-Klausel erwartet, aber 'END' gefunden
+Cm.E2181	Win32	False	PCmE2181.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2181.pas' kann nicht compiliert werden
+Cm.E2181	Win64	False	Cm.E2181.pas	12	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2181	Win64	False	Cm.E2181.pas	13	E2096	Fehler	Methodenbezeichner erwartet
+Cm.E2181	Win64	False	Cm.E2181.pas	17	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2181	Win64	False	Cm.E2181.pas	18	E2181	Fehler	Redeklaration der Eigenschaft im OLE-Automatisierungsbereich nicht erlaubt
+Cm.E2181	Win64	False	Cm.E2181.pas	19	E2128	Fehler	INDEX, READ oder WRITE-Klausel erwartet, aber 'END' gefunden
+Cm.E2181	Win64	False	PCmE2181.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2181.pas' kann nicht compiliert werden
+Cm.E2182	Win32	False	Cm.E2182.pas	12	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2182	Win32	False	Cm.E2182.pas	13	E2182	Fehler	'index' Anweisung im OLE Automatisierungsbereich nicht erlaubt
+Cm.E2182	Win32	False	PCmE2182.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2182.pas' kann nicht compiliert werden
+Cm.E2182	Win64	False	Cm.E2182.pas	12	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2182	Win64	False	Cm.E2182.pas	13	E2182	Fehler	'index' Anweisung im OLE Automatisierungsbereich nicht erlaubt
+Cm.E2182	Win64	False	PCmE2182.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2182.pas' kann nicht compiliert werden
+Cm.E2183	Win32	False	Cm.E2183.pas	11	E2185	Fehler	Überschriebene automatisierte virtuelle Methode 'Machen' kann keinen Dispid definieren
+Cm.E2183	Win32	False	Cm.E2183.pas	11	E2169	Fehler	Felddefinition nicht erlaubt nach Methoden oder Eigenschaften
+Cm.E2183	Win32	False	PCmE2183.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2183.pas' kann nicht compiliert werden
+Cm.E2183	Win64	False	Cm.E2183.pas	11	E2185	Fehler	Überschriebene automatisierte virtuelle Methode 'Machen' kann keinen Dispid definieren
+Cm.E2183	Win64	False	Cm.E2183.pas	11	E2169	Fehler	Felddefinition nicht erlaubt nach Methoden oder Eigenschaften
+Cm.E2183	Win64	False	PCmE2183.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2183.pas' kann nicht compiliert werden
+Cm.E2185	Win32	False	Cm.E2185.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2185	Win32	False	Cm.E2185.pas	15	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2185	Win32	False	Cm.E2185.pas	16	E2185	Fehler	Überschriebene automatisierte virtuelle Methode 'Machen' kann keinen Dispid definieren
+Cm.E2185	Win32	False	Cm.E2185.pas	16	E2169	Fehler	Felddefinition nicht erlaubt nach Methoden oder Eigenschaften
+Cm.E2185	Win32	False	Cm.E2185.pas	16	H2219	Hinweis	Das private-Symbol 'dispid' wurde deklariert, aber nie verwendet
+Cm.E2185	Win32	False	PCmE2185.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2185.pas' kann nicht compiliert werden
+Cm.E2185	Win64	False	Cm.E2185.pas	10	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2185	Win64	False	Cm.E2185.pas	15	W1000	Warnung	Symbol 'AUTOMATED' ist veraltet
+Cm.E2185	Win64	False	Cm.E2185.pas	16	E2185	Fehler	Überschriebene automatisierte virtuelle Methode 'Machen' kann keinen Dispid definieren
+Cm.E2185	Win64	False	Cm.E2185.pas	16	E2169	Fehler	Felddefinition nicht erlaubt nach Methoden oder Eigenschaften
+Cm.E2185	Win64	False	Cm.E2185.pas	16	H2219	Hinweis	Das private-Symbol 'dispid' wurde deklariert, aber nie verwendet
+Cm.E2185	Win64	False	PCmE2185.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2185.pas' kann nicht compiliert werden
+Cm.E2186	Win32	False	Cm.E2186.pas	13	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2186	Win32	False	Cm.E2186.pas	14	E2186	Fehler	Die Published-Fließkomma-Eigenschaft 'Wert' muss von Typ Single, Real, Double oder Extended sein
+Cm.E2186	Win32	False	PCmE2186.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2186.pas' kann nicht compiliert werden
+Cm.E2187	Win32	False	Cm.E2187.pas	14	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2187	Win32	False	Cm.E2187.pas	15	E2187	Fehler	Größe von Published-Menge 'Menge' ist >4 Byte
+Cm.E2187	Win32	False	PCmE2187.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2187.pas' kann nicht compiliert werden
+Cm.E2187	Win64	False	Cm.E2187.pas	14	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2187	Win64	False	Cm.E2187.pas	15	E2187	Fehler	Größe von Published-Menge 'Menge' ist >4 Byte
+Cm.E2187	Win64	False	PCmE2187.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2187.pas' kann nicht compiliert werden
+Cm.E2188	Win32	False	Cm.E2188.pas	14	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2188	Win32	False	Cm.E2188.pas	15	E2188	Fehler	Published-Eigenschaft 'Feld' kann nicht vom Typ ARRAY sein
+Cm.E2188	Win32	False	PCmE2188.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2188.pas' kann nicht compiliert werden
+Cm.E2188	Win64	False	Cm.E2188.pas	14	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2188	Win64	False	Cm.E2188.pas	15	E2188	Fehler	Published-Eigenschaft 'Feld' kann nicht vom Typ ARRAY sein
+Cm.E2188	Win64	False	PCmE2188.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2188.pas' kann nicht compiliert werden
+Cm.E2189	Win32	False	Cm.E2189.pas	12	E2189	Fehler	Variablen, die in einem Thread lokal sind, können nicht lokal zu einer Funktion sein
+Cm.E2189	Win32	False	PCmE2189.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2189.pas' kann nicht compiliert werden
+Cm.E2189	Win64	False	Cm.E2189.pas	12	E2189	Fehler	Variablen, die in einem Thread lokal sind, können nicht lokal zu einer Funktion sein
+Cm.E2189	Win64	False	PCmE2189.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2189.pas' kann nicht compiliert werden
+Cm.E2190	Win32	False	Cm.E2190.pas	12	E2190	Fehler	Variablen, die in einem Thread lokal sind, können nicht ABSOLUTE sein
+Cm.E2190	Win32	False	PCmE2190.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2190.pas' kann nicht compiliert werden
+Cm.E2190	Win64	False	Cm.E2190.pas	12	E2190	Fehler	Variablen, die in einem Thread lokal sind, können nicht ABSOLUTE sein
+Cm.E2190	Win64	False	PCmE2190.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2190.pas' kann nicht compiliert werden
+Cm.E2191	Win32	False	Cm.E2191.pas	16	E2191	Fehler	EXPORTS nur im globalen Bereich erlaubt
+Cm.E2191	Win32	False	PCmE2191.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2191.pas' kann nicht compiliert werden
+Cm.E2191	Win64	False	Cm.E2191.pas	16	E2191	Fehler	EXPORTS nur im globalen Bereich erlaubt
+Cm.E2191	Win64	False	PCmE2191.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2191.pas' kann nicht compiliert werden
+Cm.E2192	Win32	False	Cm.E2192.pas	17	E2197	Fehler	Konstantenobjekt kann nicht als Var-Parameter weitergegeben werden
+Cm.E2192	Win32	False	PCmE2192.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2192.pas' kann nicht compiliert werden
+Cm.E2192	Win64	False	Cm.E2192.pas	17	E2197	Fehler	Konstantenobjekt kann nicht als Var-Parameter weitergegeben werden
+Cm.E2192	Win64	False	PCmE2192.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2192.pas' kann nicht compiliert werden
+Cm.E2193	Win32	False	Cm.E2193.pas	15	E2193	Fehler	Standard-Funktion Slice erlaubt nur Open-Array-Argument
+Cm.E2193	Win32	False	PCmE2193.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2193.pas' kann nicht compiliert werden
+Cm.E2193	Win64	False	Cm.E2193.pas	15	E2193	Fehler	Standard-Funktion Slice erlaubt nur Open-Array-Argument
+Cm.E2193	Win64	False	PCmE2193.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2193.pas' kann nicht compiliert werden
+Cm.E2194	Win32	False	Cm.E2194.pas	9	E2194	Fehler	Thread-lokale Variablen können nicht initialisiert werden
+Cm.E2194	Win32	False	PCmE2194.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2194.pas' kann nicht compiliert werden
+Cm.E2194	Win64	False	Cm.E2194.pas	9	E2194	Fehler	Thread-lokale Variablen können nicht initialisiert werden
+Cm.E2194	Win64	False	PCmE2194.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2194.pas' kann nicht compiliert werden
+Cm.E2195	Win32	False	Cm.E2195.pas	12	E2195	Fehler	Lokale Variablen können nicht initialisiert werden
+Cm.E2195	Win32	False	PCmE2195.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2195.pas' kann nicht compiliert werden
+Cm.E2195	Win64	False	Cm.E2195.pas	12	E2195	Fehler	Lokale Variablen können nicht initialisiert werden
+Cm.E2195	Win64	False	PCmE2195.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2195.pas' kann nicht compiliert werden
+Cm.E2196	Win32	False	Cm.E2196.pas	9	E2196	Fehler	Mehrfach-Variablen können nicht initialisiert werden
+Cm.E2196	Win32	False	PCmE2196.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2196.pas' kann nicht compiliert werden
+Cm.E2196	Win64	False	Cm.E2196.pas	9	E2196	Fehler	Mehrfach-Variablen können nicht initialisiert werden
+Cm.E2196	Win64	False	PCmE2196.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2196.pas' kann nicht compiliert werden
+Cm.E2197	Win32	False	Cm.E2197.pas	21	E2197	Fehler	Konstantenobjekt kann nicht als Var-Parameter weitergegeben werden
+Cm.E2197	Win32	False	PCmE2197.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2197.pas' kann nicht compiliert werden
+Cm.E2197	Win64	False	Cm.E2197.pas	21	E2197	Fehler	Konstantenobjekt kann nicht als Var-Parameter weitergegeben werden
+Cm.E2197	Win64	False	PCmE2197.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2197.pas' kann nicht compiliert werden
+Cm.E2198	Win32	False	Cm.E2198.pas	17	E2008	Fehler	Inkompatible Typen
+Cm.E2198	Win32	False	PCmE2198.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2198.pas' kann nicht compiliert werden
+Cm.E2198	Win64	False	Cm.E2198.pas	17	E2008	Fehler	Inkompatible Typen
+Cm.E2198	Win64	False	PCmE2198.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2198.pas' kann nicht compiliert werden
+Cm.E2204	Win32	False	Cm.E2204.pas	10	E2204	Fehler	Falsche GUID-Syntax
+Cm.E2204	Win32	False	PCmE2204.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2204.pas' kann nicht compiliert werden
+Cm.E2204	Win64	False	Cm.E2204.pas	10	E2204	Fehler	Falsche GUID-Syntax
+Cm.E2204	Win64	False	PCmE2204.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2204.pas' kann nicht compiliert werden
+Cm.E2205	Win32	False	Cm.E2205.pas	9	E2205	Fehler	Interface-Typ benötigt
+Cm.E2205	Win32	False	PCmE2205.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2205.pas' kann nicht compiliert werden
+Cm.E2205	Win64	False	Cm.E2205.pas	9	E2205	Fehler	Interface-Typ benötigt
+Cm.E2205	Win64	False	PCmE2205.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2205.pas' kann nicht compiliert werden
+Cm.E2206	Win32	False	Cm.E2206.pas	15	E2206	Fehler	Das Überschreiben von Eigenschaften ist im Typ interface nicht erlaubt
+Cm.E2206	Win32	False	Cm.E2206.pas	16	E2128	Fehler	INDEX, READ oder WRITE-Klausel erwartet, aber 'END' gefunden
+Cm.E2206	Win32	False	PCmE2206.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2206.pas' kann nicht compiliert werden
+Cm.E2206	Win64	False	Cm.E2206.pas	15	E2206	Fehler	Das Überschreiben von Eigenschaften ist im Typ interface nicht erlaubt
+Cm.E2206	Win64	False	Cm.E2206.pas	16	E2128	Fehler	INDEX, READ oder WRITE-Klausel erwartet, aber 'END' gefunden
+Cm.E2206	Win64	False	PCmE2206.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2206.pas' kann nicht compiliert werden
+Cm.E2207	Win32	False	Cm.E2207.pas	11	E2207	Fehler	Die Klausel 'stored' ist im Typ interface nicht erlaubt
+Cm.E2207	Win32	False	PCmE2207.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2207.pas' kann nicht compiliert werden
+Cm.E2207	Win64	False	Cm.E2207.pas	11	E2207	Fehler	Die Klausel 'stored' ist im Typ interface nicht erlaubt
+Cm.E2207	Win64	False	PCmE2207.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2207.pas' kann nicht compiliert werden
+Cm.E2208	Win32	False	Cm.E2208.pas	13	E2208	Fehler	Interface 'IEins' bereits implementiert von 'TKlasse'
+Cm.E2208	Win32	False	PCmE2208.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2208.pas' kann nicht compiliert werden
+Cm.E2208	Win64	False	Cm.E2208.pas	13	E2208	Fehler	Interface 'IEins' bereits implementiert von 'TKlasse'
+Cm.E2208	Win64	False	PCmE2208.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2208.pas' kann nicht compiliert werden
+Cm.E2209	Win32	False	Cm.E2209.pas	10	E2209	Fehler	Felddeklarationen sind im Typ interface nicht erlaubt
+Cm.E2209	Win32	False	Cm.E2209.pas	10	H2219	Hinweis	Das private-Symbol 'FWert' wurde deklariert, aber nie verwendet
+Cm.E2209	Win32	False	PCmE2209.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2209.pas' kann nicht compiliert werden
+Cm.E2209	Win64	False	Cm.E2209.pas	10	E2209	Fehler	Felddeklarationen sind im Typ interface nicht erlaubt
+Cm.E2209	Win64	False	Cm.E2209.pas	10	H2219	Hinweis	Das private-Symbol 'FWert' wurde deklariert, aber nie verwendet
+Cm.E2209	Win64	False	PCmE2209.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2209.pas' kann nicht compiliert werden
+Cm.E2210	Win32	False	Cm.E2210.pas	10	E2070	Fehler	Unbekannte Direktive: 'virtual'
+Cm.E2210	Win32	False	PCmE2210.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2210.pas' kann nicht compiliert werden
+Cm.E2210	Win64	False	Cm.E2210.pas	10	E2070	Fehler	Unbekannte Direktive: 'virtual'
+Cm.E2210	Win64	False	PCmE2210.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2210.pas' kann nicht compiliert werden
+Cm.E2211	Win32	False	Cm.E2211.pas	13	E2291	Fehler	Implementierung der Interface-Methode IEins.Machen fehlt
+Cm.E2211	Win32	False	PCmE2211.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2211.pas' kann nicht compiliert werden
+Cm.E2211	Win64	False	Cm.E2211.pas	13	E2291	Fehler	Implementierung der Interface-Methode IEins.Machen fehlt
+Cm.E2211	Win64	False	PCmE2211.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2211.pas' kann nicht compiliert werden
+Cm.E2217	Win32	False	Cm.E2217.pas	10	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2217	Win32	False	Cm.E2217.pas	11	E2217	Fehler	Published-Feld 'FWert' ist weder vom Typ class noch interface
+Cm.E2217	Win32	False	PCmE2217.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2217.pas' kann nicht compiliert werden
+Cm.E2217	Win64	False	Cm.E2217.pas	10	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2217	Win64	False	Cm.E2217.pas	11	E2217	Fehler	Published-Feld 'FWert' ist weder vom Typ class noch interface
+Cm.E2217	Win64	False	PCmE2217.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2217.pas' kann nicht compiliert werden
+Cm.E2218	Win32	True	Cm.E2218.pas	10	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2218	Win64	True	Cm.E2218.pas	10	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2221	Win32	True					
+Cm.E2221	Win64	True					
+Cm.E2222	Win32	False	Cm.E2222.pas	7	E2222	Fehler	$WEAKPACKAGEUNIT & $DENYPACKAGEUNIT wurden beide angegeben
+Cm.E2222	Win32	False	PCmE2222.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2222.pas' kann nicht compiliert werden
+Cm.E2222	Win64	False	Cm.E2222.pas	7	E2222	Fehler	$WEAKPACKAGEUNIT & $DENYPACKAGEUNIT wurden beide angegeben
+Cm.E2222	Win64	False	PCmE2222.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2222.pas' kann nicht compiliert werden
+Cm.E2224	Win32	False	Cm.E2224.pas	12	E2224	Fehler	$DESIGNONLY und $RUNONLY sind nur in einer Package-Unit erlaubt
+Cm.E2224	Win32	False	PCmE2224.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2224.pas' kann nicht compiliert werden
+Cm.E2224	Win64	False	Cm.E2224.pas	12	E2224	Fehler	$DESIGNONLY und $RUNONLY sind nur in einer Package-Unit erlaubt
+Cm.E2224	Win64	False	PCmE2224.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2224.pas' kann nicht compiliert werden
+Cm.E2228	Win32	False	Cm.E2228.pas	12	E2228	Fehler	Ein Typ dispinterface kann keinen Vorfahr interface haben
+Cm.E2228	Win32	False	PCmE2228.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2228.pas' kann nicht compiliert werden
+Cm.E2228	Win64	False	Cm.E2228.pas	12	E2228	Fehler	Ein Typ dispinterface kann keinen Vorfahr interface haben
+Cm.E2228	Win64	False	PCmE2228.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2228.pas' kann nicht compiliert werden
+Cm.E2229	Win32	False	Cm.E2229.pas	10	E2229	Fehler	Ein Typ dispinterface benötigt eine interface-Identifikation
+Cm.E2229	Win32	False	PCmE2229.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2229.pas' kann nicht compiliert werden
+Cm.E2229	Win64	False	Cm.E2229.pas	10	E2229	Fehler	Ein Typ dispinterface benötigt eine interface-Identifikation
+Cm.E2229	Win64	False	PCmE2229.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2229.pas' kann nicht compiliert werden
+Cm.E2230	Win32	False	Cm.E2230.pas	11	E2230	Fehler	Methoden des Typs dispinterface dürfen keine Direktiven spezifizieren
+Cm.E2230	Win32	False	PCmE2230.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2230.pas' kann nicht compiliert werden
+Cm.E2230	Win64	False	Cm.E2230.pas	11	E2230	Fehler	Methoden des Typs dispinterface dürfen keine Direktiven spezifizieren
+Cm.E2230	Win64	False	PCmE2230.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2230.pas' kann nicht compiliert werden
+Cm.E2231	Win32	False	Cm.E2231.pas	13	E2231	Fehler	Die Direktive 'read' ist im Typ dispinterface nicht erlaubt
+Cm.E2231	Win32	False	PCmE2231.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2231.pas' kann nicht compiliert werden
+Cm.E2231	Win64	False	Cm.E2231.pas	13	E2231	Fehler	Die Direktive 'read' ist im Typ dispinterface nicht erlaubt
+Cm.E2231	Win64	False	PCmE2231.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2231.pas' kann nicht compiliert werden
+Cm.E2232	Win32	False	Cm.E2232.pas	21	E2232	Fehler	Interface 'IOhneGuid' besitzt keine Interface-Identifikation
+Cm.E2232	Win32	False	PCmE2232.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2232.pas' kann nicht compiliert werden
+Cm.E2232	Win64	False	Cm.E2232.pas	21	E2232	Fehler	Interface 'IOhneGuid' besitzt keine Interface-Identifikation
+Cm.E2232	Win64	False	PCmE2232.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2232.pas' kann nicht compiliert werden
+Cm.E2233	Win32	False	Cm.Hilfe.E2233.pas	9	H2219	Hinweis	Das private-Symbol 'Wert' wurde deklariert, aber nie verwendet
+Cm.E2233	Win32	False	Cm.E2233.pas	14	E2147	Fehler	Eigenschaft 'Wert' existiert nicht in Basisklasse
+Cm.E2233	Win32	False	PCmE2233.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2233.pas' kann nicht compiliert werden
+Cm.E2233	Win64	False	Cm.Hilfe.E2233.pas	9	H2219	Hinweis	Das private-Symbol 'Wert' wurde deklariert, aber nie verwendet
+Cm.E2233	Win64	False	Cm.E2233.pas	14	E2147	Fehler	Eigenschaft 'Wert' existiert nicht in Basisklasse
+Cm.E2233	Win64	False	PCmE2233.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2233.pas' kann nicht compiliert werden
+Cm.E2234	Win32	False	Cm.E2234.pas	13	E2008	Fehler	Inkompatible Typen
+Cm.E2234	Win32	False	PCmE2234.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2234.pas' kann nicht compiliert werden
+Cm.E2234	Win64	False	Cm.E2234.pas	13	E2008	Fehler	Inkompatible Typen
+Cm.E2234	Win64	False	PCmE2234.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2234.pas' kann nicht compiliert werden
+Cm.E2236	Win32	False	Cm.E2236.pas	11	E2236	Fehler	Konstruktoren und Destruktoren müssen eine REGISTER-Aufrufkonvention haben
+Cm.E2236	Win32	False	PCmE2236.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2236.pas' kann nicht compiliert werden
+Cm.E2236	Win64	False	Cm.E2236.pas	11	E2236	Fehler	Konstruktoren und Destruktoren müssen eine REGISTER-Aufrufkonvention haben
+Cm.E2236	Win64	False	PCmE2236.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2236.pas' kann nicht compiliert werden
+Cm.E2237	Win32	False	Cm.E2237.pas	10	E2237	Fehler	Parameter 'AZweiter' ist hier wegen des Vorgabewerts nicht erlaubt.
+Cm.E2237	Win32	False	PCmE2237.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2237.pas' kann nicht compiliert werden
+Cm.E2237	Win64	False	Cm.E2237.pas	10	E2237	Fehler	Parameter 'AZweiter' ist hier wegen des Vorgabewerts nicht erlaubt.
+Cm.E2237	Win64	False	PCmE2237.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2237.pas' kann nicht compiliert werden
+Cm.E2238	Win32	False	Cm.E2238.pas	10	E2238	Fehler	Für 'AZweiter' ist ein Vorgabewert erforderlich
+Cm.E2238	Win32	False	PCmE2238.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2238.pas' kann nicht compiliert werden
+Cm.E2238	Win64	False	Cm.E2238.pas	10	E2238	Fehler	Für 'AZweiter' ist ein Vorgabewert erforderlich
+Cm.E2238	Win64	False	PCmE2238.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2238.pas' kann nicht compiliert werden
+Cm.E2239	Win32	False	Cm.E2239.pas	10	E2239	Fehler	Der Vorgabeparameter 'AWert' muss als Wert oder Konstante übergeben werden
+Cm.E2239	Win32	False	PCmE2239.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2239.pas' kann nicht compiliert werden
+Cm.E2239	Win64	False	Cm.E2239.pas	10	E2239	Fehler	Der Vorgabeparameter 'AWert' muss als Wert oder Konstante übergeben werden
+Cm.E2239	Win64	False	PCmE2239.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2239.pas' kann nicht compiliert werden
+Cm.E2240	Win32	False	Cm.E2240.pas	15	H2077	Hinweis	Auf 'mZahl' zugewiesener Wert wird niemals benutzt
+Cm.E2240	Win32	False	Cm.E2240.pas	13	E2003	Fehler	Undeklarierter Bezeichner: 'mZahl'
+Cm.E2240	Win32	False	Cm.E2240.pas	20	E2003	Fehler	Undeklarierter Bezeichner: 'mZahl'
+Cm.E2240	Win32	False	PCmE2240.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2240.pas' kann nicht compiliert werden
+Cm.E2240	Win64	False	Cm.E2240.pas	15	H2077	Hinweis	Auf 'mZahl' zugewiesener Wert wird niemals benutzt
+Cm.E2240	Win64	False	Cm.E2240.pas	13	E2003	Fehler	Undeklarierter Bezeichner: 'mZahl'
+Cm.E2240	Win64	False	Cm.E2240.pas	20	E2003	Fehler	Undeklarierter Bezeichner: 'mZahl'
+Cm.E2240	Win64	False	PCmE2240.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2240.pas' kann nicht compiliert werden
+Cm.E2242	Win32	False	Cm.E2242.pas	10	E2003	Fehler	Undeklarierter Bezeichner: 'Cm.GibtEsNicht'
+Cm.E2242	Win32	False	Cm.E2242.pas	14	E2003	Fehler	Undeklarierter Bezeichner: 'Cm.GibtEsNicht'
+Cm.E2242	Win32	False	PCmE2242.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2242.pas' kann nicht compiliert werden
+Cm.E2242	Win64	False	Cm.E2242.pas	10	E2003	Fehler	Undeklarierter Bezeichner: 'Cm.GibtEsNicht'
+Cm.E2242	Win64	False	Cm.E2242.pas	14	E2003	Fehler	Undeklarierter Bezeichner: 'Cm.GibtEsNicht'
+Cm.E2242	Win64	False	PCmE2242.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2242.pas' kann nicht compiliert werden
+Cm.E2243	Win32	True	Cm.E2243.pas	15	H2243	Hinweis	Der Ausdruck benötigt kein Initialize/Finalize
+Cm.E2243	Win64	True	Cm.E2243.pas	15	H2243	Hinweis	Der Ausdruck benötigt kein Initialize/Finalize
+Cm.E2245	Win32	False	Cm.E2245.inc	2	E2245	Fataler Fehler	Rekursive Include-Datei C:\Projekte\BetterDelphiLSP\wt-cm\Tests\Compilermeldungen\Faelle\Cm.E2245.inc
+Cm.E2245	Win64	False	Cm.E2245.inc	2	E2245	Fataler Fehler	Rekursive Include-Datei C:\Projekte\BetterDelphiLSP\wt-cm\Tests\Compilermeldungen\Faelle\Cm.E2245.inc
+Cm.E2246	Win32	False	Cm.E2246.pas	14	E2246	Fehler	Es muss mindestens 1 Dimension für SetLength des dyn. Array angegeben werden
+Cm.E2246	Win32	False	PCmE2246.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2246.pas' kann nicht compiliert werden
+Cm.E2246	Win64	False	Cm.E2246.pas	14	E2246	Fehler	Es muss mindestens 1 Dimension für SetLength des dyn. Array angegeben werden
+Cm.E2246	Win64	False	PCmE2246.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2246.pas' kann nicht compiliert werden
+Cm.E2250	Win32	False	Cm.E2250.pas	20	E2250	Fehler	Es gibt keine überladene Version von 'Nimm', die man mit diesen Argumenten aufrufen kann
+Cm.E2250	Win32	False	PCmE2250.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2250.pas' kann nicht compiliert werden
+Cm.E2250	Win64	False	Cm.E2250.pas	20	E2250	Fehler	Es gibt keine überladene Version von 'Nimm', die man mit diesen Argumenten aufrufen kann
+Cm.E2250	Win64	False	PCmE2250.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2250.pas' kann nicht compiliert werden
+Cm.E2251	Win32	False	Cm.E2251.pas	20	E2251	Fehler	Doppeldeutiger überladener Aufruf von 'Nimm'
+Cm.E2251	Win32	False	PCmE2251.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2251.pas' kann nicht compiliert werden
+Cm.E2251	Win64	False	Cm.E2251.pas	20	E2251	Fehler	Doppeldeutiger überladener Aufruf von 'Nimm'
+Cm.E2251	Win64	False	PCmE2251.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2251.pas' kann nicht compiliert werden
+Cm.E2252	Win32	False	Cm.E2252.pas	14	E2004	Fehler	Bezeichner redeklariert: "Nimm"
+Cm.E2252	Win32	False	PCmE2252.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2252.pas' kann nicht compiliert werden
+Cm.E2252	Win64	False	Cm.E2252.pas	14	E2004	Fehler	Bezeichner redeklariert: "Nimm"
+Cm.E2252	Win64	False	PCmE2252.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2252.pas' kann nicht compiliert werden
+Cm.E2254	Win32	False	Cm.E2254.pas	14	E2254	Fehler	Die überladene Prozedur 'Nimm' muss mit der Direktive 'overload' gekennzeichnet sein
+Cm.E2254	Win32	False	PCmE2254.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2254.pas' kann nicht compiliert werden
+Cm.E2254	Win64	False	Cm.E2254.pas	14	E2254	Fehler	Die überladene Prozedur 'Nimm' muss mit der Direktive 'overload' gekennzeichnet sein
+Cm.E2254	Win64	False	PCmE2254.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2254.pas' kann nicht compiliert werden
+Cm.E2255	Win32	False	Cm.E2255.pas	14	E2255	Fehler	New wird für dynamische Arrays nicht unterstützt - es muss Setlength verwendet werden
+Cm.E2255	Win32	False	PCmE2255.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2255.pas' kann nicht compiliert werden
+Cm.E2255	Win64	False	Cm.E2255.pas	14	E2255	Fehler	New wird für dynamische Arrays nicht unterstützt - es muss Setlength verwendet werden
+Cm.E2255	Win64	False	PCmE2255.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2255.pas' kann nicht compiliert werden
+Cm.E2256	Win32	False	Cm.E2256.pas	15	E2008	Fehler	Inkompatible Typen
+Cm.E2256	Win32	False	PCmE2256.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2256.pas' kann nicht compiliert werden
+Cm.E2256	Win64	False	Cm.E2256.pas	15	E2008	Fehler	Inkompatible Typen
+Cm.E2256	Win64	False	PCmE2256.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2256.pas' kann nicht compiliert werden
+Cm.E2257	Win32	False	Cm.E2257.pas	19	E2257	Fehler	Doppelte implements-Klausel für Interface 'IEins'
+Cm.E2257	Win32	False	PCmE2257.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2257.pas' kann nicht compiliert werden
+Cm.E2257	Win64	False	Cm.E2257.pas	19	E2257	Fehler	Doppelte implements-Klausel für Interface 'IEins'
+Cm.E2257	Win64	False	PCmE2257.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2257.pas' kann nicht compiliert werden
+Cm.E2258	Win32	False	Cm.E2258.pas	15	E2258	Fehler	Implements-Klausel ist nur innerhalb von Klassentypen erlaubt
+Cm.E2258	Win32	False	PCmE2258.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2258.pas' kann nicht compiliert werden
+Cm.E2258	Win64	False	Cm.E2258.pas	15	E2258	Fehler	Implements-Klausel ist nur innerhalb von Klassentypen erlaubt
+Cm.E2258	Win64	False	PCmE2258.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2258.pas' kann nicht compiliert werden
+Cm.E2259	Win32	False	Cm.E2259.pas	17	E2259	Fehler	Implements-Klausel ist nur für Eigenschaften von Klassen- und Interface-Typen erlaubt
+Cm.E2259	Win32	False	PCmE2259.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2259.pas' kann nicht compiliert werden
+Cm.E2259	Win64	False	Cm.E2259.pas	17	E2259	Fehler	Implements-Klausel ist nur für Eigenschaften von Klassen- und Interface-Typen erlaubt
+Cm.E2259	Win64	False	PCmE2259.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2259.pas' kann nicht compiliert werden
+Cm.E2260	Win32	False	Cm.E2260.pas	17	E2260	Fehler	Implements-Klausel kann nicht zusammen mit der Index-Klausel verwendet werden
+Cm.E2260	Win32	False	PCmE2260.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2260.pas' kann nicht compiliert werden
+Cm.E2260	Win64	False	Cm.E2260.pas	17	E2260	Fehler	Implements-Klausel kann nicht zusammen mit der Index-Klausel verwendet werden
+Cm.E2260	Win64	False	PCmE2260.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2260.pas' kann nicht compiliert werden
+Cm.E2261	Win32	False	Cm.E2261.pas	17	E2261	Fehler	Implements-Klausel ist nur für lesbare Eigenschaften erlaubt
+Cm.E2261	Win32	False	PCmE2261.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2261.pas' kann nicht compiliert werden
+Cm.E2261	Win64	False	Cm.E2261.pas	17	E2261	Fehler	Implements-Klausel ist nur für lesbare Eigenschaften erlaubt
+Cm.E2261	Win64	False	PCmE2261.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2261.pas' kann nicht compiliert werden
+Cm.E2262	Win32	False	Cm.E2262.pas	17	E2262	Fehler	Der Implements-Getter muss die Aufrufkonvention REGISTER haben
+Cm.E2262	Win32	False	PCmE2262.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2262.pas' kann nicht compiliert werden
+Cm.E2262	Win64	False	Cm.E2262.pas	17	E2262	Fehler	Der Implements-Getter muss die Aufrufkonvention REGISTER haben
+Cm.E2262	Win64	False	PCmE2262.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2262.pas' kann nicht compiliert werden
+Cm.E2263	Win32	False	Cm.E2263.pas	17	E2148	Fehler	Dynamische Methode oder Methoden zur Nachrichtenbehandlung ist hier nicht erlaubt
+Cm.E2263	Win32	False	Cm.E2263.pas	17	E2263	Fehler	Der Implements-Getter darf keine dynamische oder message-Methode sein
+Cm.E2263	Win32	False	PCmE2263.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2263.pas' kann nicht compiliert werden
+Cm.E2263	Win64	False	Cm.E2263.pas	17	E2148	Fehler	Dynamische Methode oder Methoden zur Nachrichtenbehandlung ist hier nicht erlaubt
+Cm.E2263	Win64	False	Cm.E2263.pas	17	E2263	Fehler	Der Implements-Getter darf keine dynamische oder message-Methode sein
+Cm.E2263	Win64	False	PCmE2263.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2263.pas' kann nicht compiliert werden
+Cm.E2264	Win32	False	Cm.E2264.pas	21	E2264	Fehler	Das Zurückschreiben von Methoden ist für Interface 'IEins' nicht erlaubt
+Cm.E2264	Win32	False	Cm.E2264.pas	14	E2264	Fehler	Das Zurückschreiben von Methoden ist für Interface 'IEins' nicht erlaubt
+Cm.E2264	Win32	False	Cm.E2264.pas	17	H2219	Hinweis	Das private-Symbol 'Tun' wurde deklariert, aber nie verwendet
+Cm.E2264	Win32	False	PCmE2264.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2264.pas' kann nicht compiliert werden
+Cm.E2264	Win64	False	Cm.E2264.pas	21	E2264	Fehler	Das Zurückschreiben von Methoden ist für Interface 'IEins' nicht erlaubt
+Cm.E2264	Win64	False	Cm.E2264.pas	14	E2264	Fehler	Das Zurückschreiben von Methoden ist für Interface 'IEins' nicht erlaubt
+Cm.E2264	Win64	False	Cm.E2264.pas	17	H2219	Hinweis	Das private-Symbol 'Tun' wurde deklariert, aber nie verwendet
+Cm.E2264	Win64	False	PCmE2264.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2264.pas' kann nicht compiliert werden
+Cm.E2265	Win32	False	Cm.E2265.pas	17	E2003	Fehler	Undeklarierter Bezeichner: 'IEins'
+Cm.E2265	Win32	False	Cm.E2265.pas	15	H2219	Hinweis	Das private-Symbol 'Tun' wurde deklariert, aber nie verwendet
+Cm.E2265	Win32	False	PCmE2265.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2265.pas' kann nicht compiliert werden
+Cm.E2265	Win64	False	Cm.E2265.pas	17	E2003	Fehler	Undeklarierter Bezeichner: 'IEins'
+Cm.E2265	Win64	False	Cm.E2265.pas	15	H2219	Hinweis	Das private-Symbol 'Tun' wurde deklariert, aber nie verwendet
+Cm.E2265	Win64	False	PCmE2265.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2265.pas' kann nicht compiliert werden
+Cm.E2266	Win32	False	Cm.E2266.pas	10	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2266	Win32	False	Cm.E2266.pas	12	E2266	Fehler	Nur eine Methode aus einer Gruppe überladener Methoden darf 'published' sein
+Cm.E2266	Win32	False	PCmE2266.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2266.pas' kann nicht compiliert werden
+Cm.E2266	Win64	False	Cm.E2266.pas	10	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2266	Win64	False	Cm.E2266.pas	12	E2266	Fehler	Nur eine Methode aus einer Gruppe überladener Methoden darf 'published' sein
+Cm.E2266	Win64	False	PCmE2266.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2266.pas' kann nicht compiliert werden
+Cm.E2267	Win32	False	Cm.E2267.pas	14	E2267	Fehler	Bei der vorherigen Deklaration von Nimm wurde die Direktive 'overload' nicht angegeben
+Cm.E2267	Win32	False	PCmE2267.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2267.pas' kann nicht compiliert werden
+Cm.E2267	Win64	False	Cm.E2267.pas	14	E2267	Fehler	Bei der vorherigen Deklaration von Nimm wurde die Direktive 'overload' nicht angegeben
+Cm.E2267	Win64	False	PCmE2267.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2267.pas' kann nicht compiliert werden
+Cm.E2268	Win32	False	Cm.E2268.pas	16	E2268	Fehler	Parameter dieses Typs dürfen keine Standardwerte haben
+Cm.E2268	Win32	False	PCmE2268.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2268.pas' kann nicht compiliert werden
+Cm.E2268	Win64	False	Cm.E2268.pas	16	E2268	Fehler	Parameter dieses Typs dürfen keine Standardwerte haben
+Cm.E2268	Win64	False	PCmE2268.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2268.pas' kann nicht compiliert werden
+Cm.E2270	Win32	False	Cm.E2270.pas	12	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2270	Win32	False	Cm.E2270.pas	13	E2270	Fehler	Published-Methoden zum Setzen und Lesen von Eigenschaften müssen eine REGISTER-Aufrufkonvention besitzen
+Cm.E2270	Win32	False	PCmE2270.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2270.pas' kann nicht compiliert werden
+Cm.E2270	Win64	False	Cm.E2270.pas	12	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2270	Win64	False	Cm.E2270.pas	13	E2270	Fehler	Published-Methoden zum Setzen und Lesen von Eigenschaften müssen eine REGISTER-Aufrufkonvention besitzen
+Cm.E2270	Win64	False	PCmE2270.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2270.pas' kann nicht compiliert werden
+Cm.E2271	Win32	True	Cm.E2271.pas	13	H2219	Hinweis	Das private-Symbol 'GetWert' wurde deklariert, aber nie verwendet
+Cm.E2271	Win64	True	Cm.E2271.pas	13	H2219	Hinweis	Das private-Symbol 'GetWert' wurde deklariert, aber nie verwendet
+Cm.E2273	Win32	False	Cm.E2273.pas	23	E2010	Fehler	Inkompatible Typen: 'Double' und 'Integer'
+Cm.E2273	Win32	False	PCmE2273.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2273.pas' kann nicht compiliert werden
+Cm.E2273	Win64	False	Cm.E2273.pas	23	E2010	Fehler	Inkompatible Typen: 'Double' und 'Integer'
+Cm.E2273	Win64	False	PCmE2273.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2273.pas' kann nicht compiliert werden
+Cm.E2274	Win32	False	Cm.E2274.pas	12	E2029	Fehler	';' erwartet, aber 'LABEL' gefunden
+Cm.E2274	Win32	False	Cm.E2274.pas	12	E2029	Fehler	',' oder ';' erwartet, aber Zahl gefunden
+Cm.E2274	Win32	False	Cm.E2274.pas	13	E2029	Fehler	'IMPLEMENTATION' erwartet, aber ';' gefunden
+Cm.E2274	Win32	False	Cm.E2274.pas	15	E2029	Fehler	Deklaration erwartet, aber 'IMPLEMENTATION' gefunden
+Cm.E2274	Win32	False	PCmE2274.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2274.pas' kann nicht compiliert werden
+Cm.E2274	Win64	False	Cm.E2274.pas	12	E2029	Fehler	';' erwartet, aber 'LABEL' gefunden
+Cm.E2274	Win64	False	Cm.E2274.pas	12	E2029	Fehler	',' oder ';' erwartet, aber Zahl gefunden
+Cm.E2274	Win64	False	Cm.E2274.pas	13	E2029	Fehler	'IMPLEMENTATION' erwartet, aber ';' gefunden
+Cm.E2274	Win64	False	Cm.E2274.pas	15	E2029	Fehler	Deklaration erwartet, aber 'IMPLEMENTATION' gefunden
+Cm.E2274	Win64	False	PCmE2274.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2274.pas' kann nicht compiliert werden
+Cm.E2275	Win32	False	Cm.E2275.pas	14	E2029	Fehler	';' erwartet, aber 'LABEL' gefunden
+Cm.E2275	Win32	False	Cm.E2275.pas	15	E2029	Fehler	'IMPLEMENTATION' erwartet, aber ';' gefunden
+Cm.E2275	Win32	False	Cm.E2275.pas	17	E2029	Fehler	Deklaration erwartet, aber 'IMPLEMENTATION' gefunden
+Cm.E2275	Win32	False	PCmE2275.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2275.pas' kann nicht compiliert werden
+Cm.E2275	Win64	False	Cm.E2275.pas	14	E2029	Fehler	';' erwartet, aber 'LABEL' gefunden
+Cm.E2275	Win64	False	Cm.E2275.pas	15	E2029	Fehler	'IMPLEMENTATION' erwartet, aber ';' gefunden
+Cm.E2275	Win64	False	Cm.E2275.pas	17	E2029	Fehler	Deklaration erwartet, aber 'IMPLEMENTATION' gefunden
+Cm.E2275	Win64	False	PCmE2275.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2275.pas' kann nicht compiliert werden
+Cm.E2276	Win32	False	Cm.E2276.pas	15	E2276	Fehler	Bezeichner 'GProFaden' kann nicht exportiert werden
+Cm.E2276	Win32	False	PCmE2276.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2276.pas' kann nicht compiliert werden
+Cm.E2276	Win64	False	Cm.E2276.pas	15	E2276	Fehler	Bezeichner 'GProFaden' kann nicht exportiert werden
+Cm.E2276	Win64	False	PCmE2276.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2276.pas' kann nicht compiliert werden
+Cm.E2277	Win32	False	Cm.E2277.pas	11	E2277	Fehler	Nur externe cdecl-Funktionen dürfen varargs verwenden
+Cm.E2277	Win32	False	PCmE2277.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2277.pas' kann nicht compiliert werden
+Cm.E2277	Win64	True					
+Cm.E2278	Win32	False	Cm.E2278.pas	14	E2026	Fehler	Konstantenausdruck erwartet
+Cm.E2278	Win32	False	PCmE2278.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2278.pas' kann nicht compiliert werden
+Cm.E2278	Win64	False	Cm.E2278.pas	14	E2026	Fehler	Konstantenausdruck erwartet
+Cm.E2278	Win64	False	Cm.E2278.pas	14	F2084	Fataler Fehler	Interner Fehler: AV638ED380(63880000)-R0000000C-0
+Cm.E2279	Win32	False	Cm.E2279.pas	11	E1030	Fehler	Ungültige Compileranweisung: '$ENDIF'
+Cm.E2279	Win32	False	PCmE2279.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2279.pas' kann nicht compiliert werden
+Cm.E2279	Win64	False	Cm.E2279.pas	11	E1030	Fehler	Ungültige Compileranweisung: '$ENDIF'
+Cm.E2279	Win64	False	PCmE2279.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2279.pas' kann nicht compiliert werden
+Cm.E2280	Win32	False	Cm.E2280.pas	10	E2280	Fataler Fehler	Nicht abgeschlossene bedingte Direktive
+Cm.E2280	Win64	False	Cm.E2280.pas	10	E2280	Fataler Fehler	Nicht abgeschlossene bedingte Direktive
+Cm.E2281	Win32	False	Cm.E2281.pas	20	E2281	Fehler	Typ ist im Aufruf von Variant Dispatch nicht zulässig
+Cm.E2281	Win32	False	PCmE2281.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2281.pas' kann nicht compiliert werden
+Cm.E2281	Win64	False	Cm.E2281.pas	20	E2281	Fehler	Typ ist im Aufruf von Variant Dispatch nicht zulässig
+Cm.E2281	Win64	False	PCmE2281.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2281.pas' kann nicht compiliert werden
+Cm.E2282	Win32	False	Cm.E2282.pas	13	E2282	Fehler	Methoden zum Setzen von Eigenschaften können keine var-Parameter übernehmen
+Cm.E2282	Win32	False	PCmE2282.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2282.pas' kann nicht compiliert werden
+Cm.E2282	Win64	False	Cm.E2282.pas	13	E2282	Fehler	Methoden zum Setzen von Eigenschaften können keine var-Parameter übernehmen
+Cm.E2282	Win64	False	PCmE2282.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2282.pas' kann nicht compiliert werden
+Cm.E2289	Win32	False	Cm.E2289.pas	14	E1074	Fehler	Unbekanntes benutzerdefiniertes Attribut
+Cm.E2289	Win32	False	PCmE2289.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2289.pas' kann nicht compiliert werden
+Cm.E2289	Win64	False	Cm.E2289.pas	14	E1074	Fehler	Unbekanntes benutzerdefiniertes Attribut
+Cm.E2289	Win64	False	PCmE2289.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2289.pas' kann nicht compiliert werden
+Cm.E2291	Win32	False	Cm.E2291.pas	13	E2291	Fehler	Implementierung der Interface-Methode IEins.Machen fehlt
+Cm.E2291	Win32	False	PCmE2291.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2291.pas' kann nicht compiliert werden
+Cm.E2291	Win64	False	Cm.E2291.pas	13	E2291	Fehler	Implementierung der Interface-Methode IEins.Machen fehlt
+Cm.E2291	Win64	False	PCmE2291.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2291.pas' kann nicht compiliert werden
+Cm.E2292	Win32	False	Cm.E2292.pas	19	E2168	Fehler	Feld- oder Methodenbezeichner erwartet
+Cm.E2292	Win32	False	Cm.E2292.pas	20	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2292	Win32	False	PCmE2292.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2292.pas' kann nicht compiliert werden
+Cm.E2292	Win64	False	Cm.E2292.pas	19	E2168	Fehler	Feld- oder Methodenbezeichner erwartet
+Cm.E2292	Win64	False	Cm.E2292.pas	20	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2292	Win64	False	PCmE2292.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2292.pas' kann nicht compiliert werden
+Cm.E2294	Win32	False	Cm.E2294.pas	16	E2294	Fehler	Eine von 'THelferEins' abgeleitete unterstützende Klasse steht nur für von  'TStream' abgeleitete Klassen zur Verfügung
+Cm.E2294	Win32	False	PCmE2294.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2294.pas' kann nicht compiliert werden
+Cm.E2294	Win64	False	Cm.E2294.pas	16	E2294	Fehler	Eine von 'THelferEins' abgeleitete unterstützende Klasse steht nur für von  'TStream' abgeleitete Klassen zur Verfügung
+Cm.E2294	Win64	False	PCmE2294.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2294.pas' kann nicht compiliert werden
+Cm.E2295	Win32	False	Cm.E2295.pas	11	E2295	Fehler	Eine unterstützende Klasse darf keinen Destruktor einführen
+Cm.E2295	Win32	False	PCmE2295.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2295.pas' kann nicht compiliert werden
+Cm.E2295	Win64	False	Cm.E2295.pas	11	E2295	Fehler	Eine unterstützende Klasse darf keinen Destruktor einführen
+Cm.E2295	Win64	False	PCmE2295.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2295.pas' kann nicht compiliert werden
+Cm.E2296	Win32	True					
+Cm.E2296	Win64	True					
+Cm.E2299	Win32	False	Cm.E2299.pas	12	E2029	Fehler	Bezeichner erwartet, aber ';' gefunden
+Cm.E2299	Win32	False	PCmE2299.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2299.pas' kann nicht compiliert werden
+Cm.E2299	Win64	False	Cm.E2299.pas	12	E2029	Fehler	Bezeichner erwartet, aber ';' gefunden
+Cm.E2299	Win64	False	PCmE2299.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2299.pas' kann nicht compiliert werden
+Cm.E2301	Win32	False	Cm.E2301.pas	12	E2252	Fehler	Es gibt bereits eine Methode 'Machen' mit identischen Parametern
+Cm.E2301	Win32	False	Cm.E2301.pas	12	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TKlasse.Machen'
+Cm.E2301	Win32	False	PCmE2301.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2301.pas' kann nicht compiliert werden
+Cm.E2301	Win64	False	Cm.E2301.pas	12	E2252	Fehler	Es gibt bereits eine Methode 'Machen' mit identischen Parametern
+Cm.E2301	Win64	False	Cm.E2301.pas	12	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TKlasse.Machen'
+Cm.E2301	Win64	False	PCmE2301.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2301.pas' kann nicht compiliert werden
+Cm.E2306	Win32	True					
+Cm.E2306	Win64	True					
+Cm.E2307	Win32	False	Cm.E2307.pas	15	E2008	Fehler	Inkompatible Typen
+Cm.E2307	Win32	False	PCmE2307.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2307.pas' kann nicht compiliert werden
+Cm.E2307	Win64	False	Cm.E2307.pas	15	E2008	Fehler	Inkompatible Typen
+Cm.E2307	Win64	False	PCmE2307.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2307.pas' kann nicht compiliert werden
+Cm.E2308	Win32	False	Cm.E2308.pas	18	E2255	Fehler	New wird für dynamische Arrays nicht unterstützt - es muss Setlength verwendet werden
+Cm.E2308	Win32	False	PCmE2308.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2308.pas' kann nicht compiliert werden
+Cm.E2308	Win64	False	Cm.E2308.pas	18	E2255	Fehler	New wird für dynamische Arrays nicht unterstützt - es muss Setlength verwendet werden
+Cm.E2308	Win64	False	PCmE2308.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2308.pas' kann nicht compiliert werden
+Cm.E2325	Win32	True					
+Cm.E2325	Win64	True					
+Cm.E2326	Win32	True					
+Cm.E2326	Win64	True					
+Cm.E2351	Win32	False	Cm.E2351.pas	11	E2351	Fehler	Final-Methoden müssen virtual oder dynamic sein
+Cm.E2351	Win32	False	PCmE2351.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2351.pas' kann nicht compiliert werden
+Cm.E2351	Win64	False	Cm.E2351.pas	11	E2351	Fehler	Final-Methoden müssen virtual oder dynamic sein
+Cm.E2351	Win64	False	PCmE2351.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2351.pas' kann nicht compiliert werden
+Cm.E2352	Win32	False	Cm.E2352.pas	21	E2352	Fehler	Eine final-Methode darf nicht überschrieben werden
+Cm.E2352	Win32	False	PCmE2352.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2352.pas' kann nicht compiliert werden
+Cm.E2352	Win64	False	Cm.E2352.pas	21	E2352	Fehler	Eine final-Methode darf nicht überschrieben werden
+Cm.E2352	Win64	False	PCmE2352.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2352.pas' kann nicht compiliert werden
+Cm.E2353	Win32	False	Cm.E2353.pas	13	E2353	Fehler	Sealed-Klasse 'TVersiegelt' kann nicht erweitert werden
+Cm.E2353	Win32	False	PCmE2353.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2353.pas' kann nicht compiliert werden
+Cm.E2353	Win64	False	Cm.E2353.pas	13	E2353	Fehler	Sealed-Klasse 'TVersiegelt' kann nicht erweitert werden
+Cm.E2353	Win64	False	PCmE2353.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2353.pas' kann nicht compiliert werden
+Cm.E2354	Win32	True					
+Cm.E2354	Win64	True					
+Cm.E2355	Win32	False	Cm.E2355.pas	13	E2355	Fehler	Für den Zugriff auf Klasseneigenschaften muss ein Klassenfeld oder eine statische Klassenmethode verwendet werden
+Cm.E2355	Win32	False	PCmE2355.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2355.pas' kann nicht compiliert werden
+Cm.E2355	Win64	False	Cm.E2355.pas	13	E2355	Fehler	Für den Zugriff auf Klasseneigenschaften muss ein Klassenfeld oder eine statische Klassenmethode verwendet werden
+Cm.E2355	Win64	False	PCmE2355.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2355.pas' kann nicht compiliert werden
+Cm.E2356	Win32	False	Cm.E2356.pas	13	E2356	Fehler	Für Eigenschaftszugriff muss ein Instanzenfeld oder eine Instanzenmethode verwendet werden
+Cm.E2356	Win32	False	PCmE2356.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2356.pas' kann nicht compiliert werden
+Cm.E2356	Win64	False	Cm.E2356.pas	13	E2356	Fehler	Für Eigenschaftszugriff muss ein Instanzenfeld oder eine Instanzenmethode verwendet werden
+Cm.E2356	Win64	False	PCmE2356.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2356.pas' kann nicht compiliert werden
+Cm.E2357	Win32	False	Cm.E2357.pas	12	E2029	Fehler	Bezeichner erwartet, aber ';' gefunden
+Cm.E2357	Win32	False	PCmE2357.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2357.pas' kann nicht compiliert werden
+Cm.E2357	Win64	False	Cm.E2357.pas	12	E2029	Fehler	Bezeichner erwartet, aber ';' gefunden
+Cm.E2357	Win64	False	PCmE2357.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2357.pas' kann nicht compiliert werden
+Cm.E2358	Win32	True					
+Cm.E2358	Win64	True					
+Cm.E2359	Win32	False	Cm.E2359.pas	12	E2359	Fehler	Mehrere Klassen constructors in der Klasse TKlasse:  Erster und Zweiter
+Cm.E2359	Win32	False	PCmE2359.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2359.pas' kann nicht compiliert werden
+Cm.E2359	Win64	False	Cm.E2359.pas	12	E2359	Fehler	Mehrere Klassen constructors in der Klasse TKlasse:  Erster und Zweiter
+Cm.E2359	Win64	False	PCmE2359.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2359.pas' kann nicht compiliert werden
+Cm.E2360	Win32	False	Cm.E2360.pas	11	E2360	Fehler	Klasse constructors darf keine Parameter besitzen
+Cm.E2360	Win32	False	PCmE2360.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2360.pas' kann nicht compiliert werden
+Cm.E2360	Win64	False	Cm.E2360.pas	11	E2360	Fehler	Klasse constructors darf keine Parameter besitzen
+Cm.E2360	Win64	False	PCmE2360.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2360.pas' kann nicht compiliert werden
+Cm.E2361	Win32	False	Cm.Hilfe.E2361.pas	8	H2219	Hinweis	Das private-Symbol 'FWert' wurde deklariert, aber nie verwendet
+Cm.E2361	Win32	False	Cm.E2361.pas	18	E2361	Fehler	Auf private-Symbol TVerborgen.FWert kann nicht zugegriffen werden
+Cm.E2361	Win32	False	PCmE2361.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2361.pas' kann nicht compiliert werden
+Cm.E2361	Win64	False	Cm.Hilfe.E2361.pas	8	H2219	Hinweis	Das private-Symbol 'FWert' wurde deklariert, aber nie verwendet
+Cm.E2361	Win64	False	Cm.E2361.pas	18	E2361	Fehler	Auf private-Symbol TVerborgen.FWert kann nicht zugegriffen werden
+Cm.E2361	Win64	False	PCmE2361.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2361.pas' kann nicht compiliert werden
+Cm.E2362	Win32	False	Cm.Hilfe.E2361.pas	8	H2219	Hinweis	Das private-Symbol 'FWert' wurde deklariert, aber nie verwendet
+Cm.E2362	Win32	False	Cm.E2362.pas	18	E2362	Fehler	Auf protected-Symbol TVerborgen.FGeschuetzt kann nicht zugegriffen werden
+Cm.E2362	Win32	False	PCmE2362.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2362.pas' kann nicht compiliert werden
+Cm.E2362	Win64	False	Cm.Hilfe.E2361.pas	8	H2219	Hinweis	Das private-Symbol 'FWert' wurde deklariert, aber nie verwendet
+Cm.E2362	Win64	False	Cm.E2362.pas	18	E2362	Fehler	Auf protected-Symbol TVerborgen.FGeschuetzt kann nicht zugegriffen werden
+Cm.E2362	Win64	False	PCmE2362.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2362.pas' kann nicht compiliert werden
+Cm.E2366	Win32	False	Cm.E2366.pas	27	E2009	Fehler	Inkompatible Typen: 'Reguläre Prozedur und Methodenzeiger'
+Cm.E2366	Win32	False	PCmE2366.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2366.pas' kann nicht compiliert werden
+Cm.E2366	Win64	False	Cm.E2366.pas	27	E2009	Fehler	Inkompatible Typen: 'Reguläre Prozedur und Methodenzeiger'
+Cm.E2366	Win64	False	PCmE2366.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2366.pas' kann nicht compiliert werden
+Cm.E2370	Win32	True					
+Cm.E2370	Win64	True					
+Cm.E2371	Win32	False	Cm.E2371.pas	11	E2371	Fehler	ABSTRACT und FINAL dürfen nicht zusammen verwendet werden
+Cm.E2371	Win32	False	PCmE2371.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2371.pas' kann nicht compiliert werden
+Cm.E2371	Win64	False	Cm.E2371.pas	11	E2371	Fehler	ABSTRACT und FINAL dürfen nicht zusammen verwendet werden
+Cm.E2371	Win64	False	PCmE2371.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2371.pas' kann nicht compiliert werden
+Cm.E2372	Win32	False	Cm.E2372.pas	15	E2029	Fehler	Bezeichner erwartet, aber ':=' gefunden
+Cm.E2372	Win32	False	PCmE2372.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2372.pas' kann nicht compiliert werden
+Cm.E2372	Win64	False	Cm.E2372.pas	15	E2029	Fehler	Bezeichner erwartet, aber ':=' gefunden
+Cm.E2372	Win64	False	PCmE2372.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2372.pas' kann nicht compiliert werden
+Cm.E2373	Win32	True					
+Cm.E2373	Win64	True					
+Cm.E2374	Win32	False	Cm.E2374.pas	10	E2005	Fehler	'Create' ist kein gültiger Typenbezeichner
+Cm.E2374	Win32	False	PCmE2374.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2374.pas' kann nicht compiliert werden
+Cm.E2374	Win64	False	Cm.E2374.pas	10	E2005	Fehler	'Create' ist kein gültiger Typenbezeichner
+Cm.E2374	Win64	False	PCmE2374.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2374.pas' kann nicht compiliert werden
+Cm.E2375	Win32	False	Cm.E2375.pas	10	E2375	Fehler	PRIVATE oder PROTECTED erwartet
+Cm.E2375	Win32	False	PCmE2375.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2375.pas' kann nicht compiliert werden
+Cm.E2375	Win64	False	Cm.E2375.pas	10	E2375	Fehler	PRIVATE oder PROTECTED erwartet
+Cm.E2375	Win64	False	PCmE2375.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2375.pas' kann nicht compiliert werden
+Cm.E2376	Win32	False	Cm.E2376.pas	11	E2376	Fehler	STATIC kann nur für nicht-virtuelle Klassenmethoden verwendet werden
+Cm.E2376	Win32	False	PCmE2376.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2376.pas' kann nicht compiliert werden
+Cm.E2376	Win64	False	Cm.E2376.pas	11	E2376	Fehler	STATIC kann nur für nicht-virtuelle Klassenmethoden verwendet werden
+Cm.E2376	Win64	False	PCmE2376.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2376.pas' kann nicht compiliert werden
+Cm.E2379	Win32	False	Cm.E2379.pas	10	E2379	Fehler	Virtuelle Methoden sind in Record-Typen nicht zulässig
+Cm.E2379	Win32	False	PCmE2379.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2379.pas' kann nicht compiliert werden
+Cm.E2379	Win64	False	Cm.E2379.pas	10	E2379	Fehler	Virtuelle Methoden sind in Record-Typen nicht zulässig
+Cm.E2379	Win64	False	PCmE2379.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2379.pas' kann nicht compiliert werden
+Cm.E2380	Win32	False	Cm.E2380.pas	27	E2009	Fehler	Inkompatible Typen: 'Methodenzeiger und reguläre Prozedur'
+Cm.E2380	Win32	False	PCmE2380.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2380.pas' kann nicht compiliert werden
+Cm.E2380	Win64	False	Cm.E2380.pas	27	E2009	Fehler	Inkompatible Typen: 'Methodenzeiger und reguläre Prozedur'
+Cm.E2380	Win64	False	PCmE2380.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2380.pas' kann nicht compiliert werden
+Cm.E2381	Win32	False	Cm.E2381.pas	31	E2381	Fehler	Länge des Ressourcenstrings übersteigt das Windows-Limit von 4096 Zeichen
+Cm.E2381	Win32	False	PCmE2381.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2381.pas' kann nicht compiliert werden
+Cm.E2381	Win64	False	Cm.E2381.pas	31	E2381	Fehler	Länge des Ressourcenstrings übersteigt das Windows-Limit von 4096 Zeichen
+Cm.E2381	Win64	False	PCmE2381.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2381.pas' kann nicht compiliert werden
+Cm.E2382	Win32	True					
+Cm.E2382	Win64	True					
+Cm.E2383	Win32	False	Cm.E2383.pas	9	E2383	Fehler	ABSTRACT und SEALED  dürfen nicht zusammen verwendet werden
+Cm.E2383	Win32	False	Cm.E2383.pas	10	E2540	Fehler	Abstrakter Typ 'TKlasse' kann nicht als 'sealed' verwendet werden
+Cm.E2383	Win32	False	PCmE2383.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2383.pas' kann nicht compiliert werden
+Cm.E2383	Win64	False	Cm.E2383.pas	9	E2383	Fehler	ABSTRACT und SEALED  dürfen nicht zusammen verwendet werden
+Cm.E2383	Win64	False	Cm.E2383.pas	10	E2540	Fehler	Abstrakter Typ 'TKlasse' kann nicht als 'sealed' verwendet werden
+Cm.E2383	Win64	False	PCmE2383.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2383.pas' kann nicht compiliert werden
+Cm.E2389	Win32	False	Cm.E2389.pas	22	E2362	Fehler	Auf protected-Symbol TBasis.Geschuetzt kann nicht zugegriffen werden
+Cm.E2389	Win32	False	PCmE2389.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2389.pas' kann nicht compiliert werden
+Cm.E2389	Win64	False	Cm.E2389.pas	22	E2362	Fehler	Auf protected-Symbol TBasis.Geschuetzt kann nicht zugegriffen werden
+Cm.E2389	Win64	False	PCmE2389.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2389.pas' kann nicht compiliert werden
+Cm.E2393	Win32	False	Cm.E2393.pas	10	E2393	Fehler	Ungültige Operatordeklaration
+Cm.E2393	Win32	False	Cm.E2393.pas	10	E2029	Fehler	',' oder ')' erwartet, aber ':' gefunden
+Cm.E2393	Win32	False	Cm.E2393.pas	10	E2029	Fehler	',' oder ':' erwartet, aber ';' gefunden
+Cm.E2393	Win32	False	Cm.E2393.pas	11	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2393	Win32	False	Cm.E2393.pas	15	E2037	Fehler	Deklaration von 'TRec' unterscheidet sich von vorheriger Deklaration
+Cm.E2393	Win32	False	PCmE2393.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2393.pas' kann nicht compiliert werden
+Cm.E2393	Win64	False	Cm.E2393.pas	10	E2393	Fehler	Ungültige Operatordeklaration
+Cm.E2393	Win64	False	Cm.E2393.pas	10	E2029	Fehler	',' oder ')' erwartet, aber ':' gefunden
+Cm.E2393	Win64	False	Cm.E2393.pas	10	E2029	Fehler	',' oder ':' erwartet, aber ';' gefunden
+Cm.E2393	Win64	False	Cm.E2393.pas	11	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2393	Win64	False	Cm.E2393.pas	15	E2037	Fehler	Deklaration von 'TRec' unterscheidet sich von vorheriger Deklaration
+Cm.E2393	Win64	False	PCmE2393.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2393.pas' kann nicht compiliert werden
+Cm.E2394	Win32	False	Cm.E2394.pas	10	E2394	Fehler	Parameterlose Konstruktoren sind für Record-Typen nicht zulässig
+Cm.E2394	Win32	False	PCmE2394.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2394.pas' kann nicht compiliert werden
+Cm.E2394	Win64	False	Cm.E2394.pas	10	E2394	Fehler	Parameterlose Konstruktoren sind für Record-Typen nicht zulässig
+Cm.E2394	Win64	False	PCmE2394.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2394.pas' kann nicht compiliert werden
+Cm.E2398	Win32	False	Cm.E2398.pas	10	E2398	Fehler	Klassenmethoden in Record-Typen müssen statisch sein
+Cm.E2398	Win32	False	PCmE2398.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2398.pas' kann nicht compiliert werden
+Cm.E2398	Win64	False	Cm.E2398.pas	10	E2398	Fehler	Klassenmethoden in Record-Typen müssen statisch sein
+Cm.E2398	Win64	False	PCmE2398.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2398.pas' kann nicht compiliert werden
+Cm.E2399	Win32	False	Cm.E2399.pas	14	E2029	Fehler	',' oder ';' erwartet, aber 'END' gefunden
+Cm.E2399	Win32	False	Cm.E2399.pas	16	E2029	Fehler	'.' erwartet, aber Dateiende gefunden
+Cm.E2399	Win32	False	PCmE2399.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2399.pas' kann nicht compiliert werden
+Cm.E2399	Win64	False	Cm.E2399.pas	14	E2029	Fehler	',' oder ';' erwartet, aber 'END' gefunden
+Cm.E2399	Win64	False	Cm.E2399.pas	16	E2029	Fehler	'.' erwartet, aber Dateiende gefunden
+Cm.E2399	Win64	False	PCmE2399.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2399.pas' kann nicht compiliert werden
+Cm.E2402	Win32	True					
+Cm.E2402	Win64	True					
+Cm.E2404	Win32	False	Cm.E2404.pas	18	E2029	Fehler	';' erwartet, aber Bezeichner 'add' gefunden
+Cm.E2404	Win32	False	Cm.E2404.pas	19	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2404	Win32	False	Cm.E2404.pas	23	E2037	Fehler	Deklaration von 'Hinzu' unterscheidet sich von vorheriger Deklaration
+Cm.E2404	Win32	False	Cm.E2404.pas	16	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TKlasse.Hinzu'
+Cm.E2404	Win32	False	Cm.E2404.pas	16	H2219	Hinweis	Das private-Symbol 'Hinzu' wurde deklariert, aber nie verwendet
+Cm.E2404	Win32	False	PCmE2404.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2404.pas' kann nicht compiliert werden
+Cm.E2404	Win64	False	Cm.E2404.pas	18	E2029	Fehler	';' erwartet, aber Bezeichner 'add' gefunden
+Cm.E2404	Win64	False	Cm.E2404.pas	19	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2404	Win64	False	Cm.E2404.pas	23	E2037	Fehler	Deklaration von 'Hinzu' unterscheidet sich von vorheriger Deklaration
+Cm.E2404	Win64	False	Cm.E2404.pas	16	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TKlasse.Hinzu'
+Cm.E2404	Win64	False	Cm.E2404.pas	16	H2219	Hinweis	Das private-Symbol 'Hinzu' wurde deklariert, aber nie verwendet
+Cm.E2404	Win64	False	PCmE2404.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2404.pas' kann nicht compiliert werden
+Cm.E2412	Win32	False	Cm.E2412.pas	15	E2029	Fehler	Bezeichner erwartet, aber ';' gefunden
+Cm.E2412	Win32	False	PCmE2412.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2412.pas' kann nicht compiliert werden
+Cm.E2412	Win64	False	Cm.E2412.pas	15	E2029	Fehler	Bezeichner erwartet, aber ';' gefunden
+Cm.E2412	Win64	False	PCmE2412.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2412.pas' kann nicht compiliert werden
+Cm.E2413	Win32	False	Cm.E2413.pas	15	E2010	Fehler	Inkompatible Typen: 'array[0..2] of Integer' und 'Pointer'
+Cm.E2413	Win32	False	PCmE2413.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2413.pas' kann nicht compiliert werden
+Cm.E2413	Win64	False	Cm.E2413.pas	15	E2010	Fehler	Inkompatible Typen: 'array[0..2] of Integer' und 'Pointer'
+Cm.E2413	Win64	False	PCmE2413.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2413.pas' kann nicht compiliert werden
+Cm.E2418	Win32	False	Cm.E2418.pas	12	E2154	Fehler	Typ 'IInterface' benötigt Finalization - nicht im varianten Record erlaubt
+Cm.E2418	Win32	False	PCmE2418.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2418.pas' kann nicht compiliert werden
+Cm.E2418	Win64	False	Cm.E2418.pas	12	E2154	Fehler	Typ 'IInterface' benötigt Finalization - nicht im varianten Record erlaubt
+Cm.E2418	Win64	False	PCmE2418.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2418.pas' kann nicht compiliert werden
+Cm.E2419	Win32	True					
+Cm.E2419	Win64	True					
+Cm.E2420	Win32	False	Cm.E2420.pas	11	E2086	Fehler	Typ 'IEins' ist nicht vollständig definiert
+Cm.E2420	Win32	False	PCmE2420.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2420.pas' kann nicht compiliert werden
+Cm.E2420	Win64	False	Cm.E2420.pas	11	E2086	Fehler	Typ 'IEins' ist nicht vollständig definiert
+Cm.E2420	Win64	False	PCmE2420.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2420.pas' kann nicht compiliert werden
+Cm.E2423	Win32	True	Cm.E2423.pas	15	H2077	Hinweis	Auf 'mZeiger' zugewiesener Wert wird niemals benutzt
+Cm.E2423	Win64	True	Cm.E2423.pas	15	H2077	Hinweis	Auf 'mZeiger' zugewiesener Wert wird niemals benutzt
+Cm.E2424	Win32	False	Cm.E2424.pas	6	E1030	Fehler	Ungültige Compileranweisung: 'CODEPAGE'
+Cm.E2424	Win32	False	PCmE2424.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2424.pas' kann nicht compiliert werden
+Cm.E2424	Win64	False	Cm.E2424.pas	6	E1030	Fehler	Ungültige Compileranweisung: 'CODEPAGE'
+Cm.E2424	Win64	False	PCmE2424.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2424.pas' kann nicht compiliert werden
+Cm.E2425	Win32	False	Cm.E2425.pas	11	E2425	Fehler	Inline-Methoden dürfen nicht virtual oder dynamic sein
+Cm.E2425	Win32	False	PCmE2425.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2425.pas' kann nicht compiliert werden
+Cm.E2425	Win64	False	Cm.E2425.pas	11	E2425	Fehler	Inline-Methoden dürfen nicht virtual oder dynamic sein
+Cm.E2425	Win64	False	PCmE2425.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2425.pas' kann nicht compiliert werden
+Cm.E2426	Win32	False	Cm.E2426.pas	14	E2426	Fehler	Inline-Funktion darf keinen asm-Block haben
+Cm.E2426	Win32	False	PCmE2426.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2426.pas' kann nicht compiliert werden
+Cm.E2430	Win32	False	Cm.E2430.pas	16	E2430	Fehler	for-in-Anweisung arbeitet nicht mit Kollektionstyp 'Integer'
+Cm.E2430	Win32	False	PCmE2430.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2430.pas' kann nicht compiliert werden
+Cm.E2430	Win64	False	Cm.E2430.pas	16	E2430	Fehler	for-in-Anweisung arbeitet nicht mit Kollektionstyp 'Integer'
+Cm.E2430	Win64	False	PCmE2430.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2430.pas' kann nicht compiliert werden
+Cm.E2431	Win32	False	Cm.E2431.pas	38	E2431	Fehler	for-in-Anweisung arbeitet nicht mit Kollektionstyp 'TSammlung', weil 'TOhneMoveNext' kein Element für 'MoveNext' enthält oder darauf nicht zugegriffen werden kann
+Cm.E2431	Win32	False	PCmE2431.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2431.pas' kann nicht compiliert werden
+Cm.E2431	Win64	False	Cm.E2431.pas	38	E2431	Fehler	for-in-Anweisung arbeitet nicht mit Kollektionstyp 'TSammlung', weil 'TOhneMoveNext' kein Element für 'MoveNext' enthält oder darauf nicht zugegriffen werden kann
+Cm.E2431	Win64	False	PCmE2431.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2431.pas' kann nicht compiliert werden
+Cm.E2432	Win32	False	Cm.E2432.pas	16	E2029	Fehler	')' erwartet, aber ',' gefunden
+Cm.E2432	Win32	False	PCmE2432.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2432.pas' kann nicht compiliert werden
+Cm.E2432	Win64	False	Cm.E2432.pas	16	E2029	Fehler	')' erwartet, aber ',' gefunden
+Cm.E2432	Win64	False	PCmE2432.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2432.pas' kann nicht compiliert werden
+Cm.E2433	Win32	False	Cm.E2433.pas	13	E2433	Fehler	Methodendeklarationen sind im anonymen Record- oder lokalem Record-Typ nicht zulässig
+Cm.E2433	Win32	False	Cm.E2433.pas	13	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TLokal.Machen'
+Cm.E2433	Win32	False	PCmE2433.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2433.pas' kann nicht compiliert werden
+Cm.E2433	Win64	False	Cm.E2433.pas	13	E2433	Fehler	Methodendeklarationen sind im anonymen Record- oder lokalem Record-Typ nicht zulässig
+Cm.E2433	Win64	False	Cm.E2433.pas	13	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TLokal.Machen'
+Cm.E2433	Win64	False	PCmE2433.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2433.pas' kann nicht compiliert werden
+Cm.E2434	Win32	False	Cm.E2434.pas	14	E2434	Fehler	Eigenschaftsdeklarationen sind im anonymen Record- oder lokalem Record-Typ nicht zulässig
+Cm.E2434	Win32	False	PCmE2434.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2434.pas' kann nicht compiliert werden
+Cm.E2434	Win64	False	Cm.E2434.pas	14	E2434	Fehler	Eigenschaftsdeklarationen sind im anonymen Record- oder lokalem Record-Typ nicht zulässig
+Cm.E2434	Win64	False	PCmE2434.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2434.pas' kann nicht compiliert werden
+Cm.E2435	Win32	False	Cm.E2435.pas	13	E2435	Fehler	Klassenelementdeklarationen sind im anonymen Record- oder lokalem Record-Typ nicht zulässig
+Cm.E2435	Win32	False	PCmE2435.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2435.pas' kann nicht compiliert werden
+Cm.E2435	Win64	False	Cm.E2435.pas	13	E2435	Fehler	Klassenelementdeklarationen sind im anonymen Record- oder lokalem Record-Typ nicht zulässig
+Cm.E2435	Win64	False	PCmE2435.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2435.pas' kann nicht compiliert werden
+Cm.E2436	Win32	False	Cm.E2436.pas	13	E2436	Fehler	Typdeklarationen sind im anonymen Record- oder lokalem Record-Typ nicht zulässig
+Cm.E2436	Win32	False	PCmE2436.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2436.pas' kann nicht compiliert werden
+Cm.E2436	Win64	False	Cm.E2436.pas	13	E2436	Fehler	Typdeklarationen sind im anonymen Record- oder lokalem Record-Typ nicht zulässig
+Cm.E2436	Win64	False	PCmE2436.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2436.pas' kann nicht compiliert werden
+Cm.E2437	Win32	False	Cm.E2437.pas	13	E2437	Fehler	Konstantendeklarationen sind im anonymen Record- oder lokalem Record-Typ nicht zulässig
+Cm.E2437	Win32	False	PCmE2437.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2437.pas' kann nicht compiliert werden
+Cm.E2437	Win64	False	Cm.E2437.pas	13	E2437	Fehler	Konstantendeklarationen sind im anonymen Record- oder lokalem Record-Typ nicht zulässig
+Cm.E2437	Win64	False	PCmE2437.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2437.pas' kann nicht compiliert werden
+Cm.E2439	Win32	False	Cm.E2439.pas	11	E2439	Fehler	Inline-Funktion darf kein Argument für ein Open Array haben
+Cm.E2439	Win32	False	PCmE2439.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2439.pas' kann nicht compiliert werden
+Cm.E2439	Win64	False	Cm.E2439.pas	11	E2439	Fehler	Inline-Funktion darf kein Argument für ein Open Array haben
+Cm.E2439	Win64	False	PCmE2439.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2439.pas' kann nicht compiliert werden
+Cm.E2441	Win32	False	Cm.E2441.pas	17	E2441	Fehler	Im interface-Abschnitt deklarierte Inline-Funktion darf kein lokales Symbol 'GVerborgen' verwenden
+Cm.E2441	Win32	False	PCmE2441.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2441.pas' kann nicht compiliert werden
+Cm.E2441	Win64	False	Cm.E2441.pas	17	E2441	Fehler	Im interface-Abschnitt deklarierte Inline-Funktion darf kein lokales Symbol 'GVerborgen' verwenden
+Cm.E2441	Win64	False	PCmE2441.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2441.pas' kann nicht compiliert werden
+Cm.E2442	Win32	False	Cm.E2442.pas	11	E2442	Fehler	Inline-Direktive im Konstruktor oder Destruktor nicht zulässig
+Cm.E2442	Win32	False	PCmE2442.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2442.pas' kann nicht compiliert werden
+Cm.E2442	Win64	False	Cm.E2442.pas	11	E2442	Fehler	Inline-Direktive im Konstruktor oder Destruktor nicht zulässig
+Cm.E2442	Win64	False	PCmE2442.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2442.pas' kann nicht compiliert werden
+Cm.E2448	Win32	False	Cm.E2448.pas	19	E2026	Fehler	Konstantenausdruck erwartet
+Cm.E2448	Win32	False	PCmE2448.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2448.pas' kann nicht compiliert werden
+Cm.E2448	Win64	False	Cm.E2448.pas	19	E2026	Fehler	Konstantenausdruck erwartet
+Cm.E2448	Win64	False	PCmE2448.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2448.pas' kann nicht compiliert werden
+Cm.E2449	Win32	False	Cm.E2449.pas	16	E2449	Fehler	Verschachtelte Inline-Routine 'Innen' kann nicht auf Variable 'mWert' außerhalb des Gültigkeitsbereichs zugreifen
+Cm.E2449	Win32	False	PCmE2449.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2449.pas' kann nicht compiliert werden
+Cm.E2449	Win64	False	Cm.E2449.pas	16	E2449	Fehler	Verschachtelte Inline-Routine 'Innen' kann nicht auf Variable 'mWert' außerhalb des Gültigkeitsbereichs zugreifen
+Cm.E2449	Win64	False	PCmE2449.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2449.pas' kann nicht compiliert werden
+Cm.E2450	Win32	False	Cm.E2450.pas	25	E2010	Fehler	Inkompatible Typen: 'Integer' und 'Char'
+Cm.E2450	Win32	False	PCmE2450.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2450.pas' kann nicht compiliert werden
+Cm.E2450	Win64	False	Cm.E2450.pas	25	E2010	Fehler	Inkompatible Typen: 'Integer' und 'Char'
+Cm.E2450	Win64	False	PCmE2450.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2450.pas' kann nicht compiliert werden
+Cm.E2452	Win32	True	Cm.E2452.pas	10	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2452	Win64	True	Cm.E2452.pas	10	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2453	Win32	False	Cm.E2453.pas	16	E2064	Fehler	Der linken Seite kann nichts zugewiesen werden
+Cm.E2453	Win32	False	PCmE2453.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2453.pas' kann nicht compiliert werden
+Cm.E2453	Win64	False	Cm.E2453.pas	16	E2064	Fehler	Der linken Seite kann nichts zugewiesen werden
+Cm.E2453	Win64	False	PCmE2453.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2453.pas' kann nicht compiliert werden
+Cm.E2454	Win32	True					
+Cm.E2454	Win64	True					
+Cm.E2459	Win32	False	Cm.E2459.pas	16	E2459	Fehler	Für den Zugriff auf Klasseneigenschaften darf kein Feldselektor vorhanden sein
+Cm.E2459	Win32	False	Cm.E2459.pas	17	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2459	Win32	False	PCmE2459.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2459.pas' kann nicht compiliert werden
+Cm.E2459	Win64	False	Cm.E2459.pas	16	E2459	Fehler	Für den Zugriff auf Klasseneigenschaften darf kein Feldselektor vorhanden sein
+Cm.E2459	Win64	False	Cm.E2459.pas	17	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2459	Win64	False	PCmE2459.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2459.pas' kann nicht compiliert werden
+Cm.E2460	Win32	False	Cm.E2460.pas	13	E2021	Fehler	Klassentyp erwartet
+Cm.E2460	Win32	False	PCmE2460.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2460.pas' kann nicht compiliert werden
+Cm.E2460	Win64	False	Cm.E2460.pas	13	E2021	Fehler	Klassentyp erwartet
+Cm.E2460	Win64	False	PCmE2460.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2460.pas' kann nicht compiliert werden
+Cm.E2461	Win32	False	Cm.E2461.pas	14	E2356	Fehler	Für Eigenschaftszugriff muss ein Instanzenfeld oder eine Instanzenmethode verwendet werden
+Cm.E2461	Win32	False	PCmE2461.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2461.pas' kann nicht compiliert werden
+Cm.E2461	Win64	False	Cm.E2461.pas	14	E2356	Fehler	Für Eigenschaftszugriff muss ein Instanzenfeld oder eine Instanzenmethode verwendet werden
+Cm.E2461	Win64	False	PCmE2461.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2461.pas' kann nicht compiliert werden
+Cm.E2463	Win32	False	Cm.E2463.pas	10	E2379	Fehler	Virtuelle Methoden sind in Record-Typen nicht zulässig
+Cm.E2463	Win32	False	PCmE2463.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2463.pas' kann nicht compiliert werden
+Cm.E2463	Win64	False	Cm.E2463.pas	10	E2379	Fehler	Virtuelle Methoden sind in Record-Typen nicht zulässig
+Cm.E2463	Win64	False	PCmE2463.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2463.pas' kann nicht compiliert werden
+Cm.E2464	Win32	False	Cm.E2464.pas	11	E2617	Fehler	Erster Parameter des Assign-Operators muss ein var-Parameter des Container-Typs sein
+Cm.E2464	Win32	False	PCmE2464.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2464.pas' kann nicht compiliert werden
+Cm.E2464	Win64	False	Cm.E2464.pas	11	E2617	Fehler	Erster Parameter des Assign-Operators muss ein var-Parameter des Container-Typs sein
+Cm.E2464	Win64	False	PCmE2464.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2464.pas' kann nicht compiliert werden
+Cm.E2465	Win32	False	Cm.E2465.pas	10	E2465	Fehler	Ein Record darf keinen Destruktor einführen
+Cm.E2465	Win32	False	PCmE2465.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2465.pas' kann nicht compiliert werden
+Cm.E2465	Win64	False	Cm.E2465.pas	10	E2465	Fehler	Ein Record darf keinen Destruktor einführen
+Cm.E2465	Win64	False	PCmE2465.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2465.pas' kann nicht compiliert werden
+Cm.E2467	Win32	False	Cm.E2467.pas	16	E2018	Fehler	Record, Objekt oder Klassentyp erforderlich
+Cm.E2467	Win32	False	PCmE2467.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2467.pas' kann nicht compiliert werden
+Cm.E2467	Win64	False	Cm.E2467.pas	16	E2018	Fehler	Record, Objekt oder Klassentyp erforderlich
+Cm.E2467	Win64	False	PCmE2467.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2467.pas' kann nicht compiliert werden
+Cm.E2471	Win32	False	Cm.E2471.pas	10	E2471	Fehler	Möglicherweise parameterlose Konstruktoren sind in Record-Typen nicht zulässig
+Cm.E2471	Win32	False	PCmE2471.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2471.pas' kann nicht compiliert werden
+Cm.E2471	Win64	False	Cm.E2471.pas	10	E2471	Fehler	Möglicherweise parameterlose Konstruktoren sind in Record-Typen nicht zulässig
+Cm.E2471	Win64	False	PCmE2471.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2471.pas' kann nicht compiliert werden
+Cm.E2474	Win32	False	Cm.E2474.pas	10	E2474	Fehler	Record-Typ erforderlich
+Cm.E2474	Win32	False	PCmE2474.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2474.pas' kann nicht compiliert werden
+Cm.E2474	Win64	False	Cm.E2474.pas	10	E2474	Fehler	Record-Typ erforderlich
+Cm.E2474	Win64	False	PCmE2474.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2474.pas' kann nicht compiliert werden
+Cm.E2475	Win32	False	Cm.E2475.pas	11	E2379	Fehler	Virtuelle Methoden sind in Record-Hilfstypen nicht zulässig
+Cm.E2475	Win32	False	PCmE2475.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2475.pas' kann nicht compiliert werden
+Cm.E2475	Win64	False	Cm.E2475.pas	11	E2379	Fehler	Virtuelle Methoden sind in Record-Hilfstypen nicht zulässig
+Cm.E2475	Win64	False	PCmE2475.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2475.pas' kann nicht compiliert werden
+Cm.E2501	Win32	False	Cm.E2501.pas	18	E2501	Fehler	Inline-Funktion kann verschachtelte Routine 'Innen' nicht aufrufen
+Cm.E2501	Win32	False	PCmE2501.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2501.pas' kann nicht compiliert werden
+Cm.E2501	Win64	False	Cm.E2501.pas	18	E2501	Fehler	Inline-Funktion kann verschachtelte Routine 'Innen' nicht aufrufen
+Cm.E2501	Win64	False	PCmE2501.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2501.pas' kann nicht compiliert werden
+Cm.E2506	Win32	False	Cm.E2506.pas	21	E2506	Fehler	Im interface-Abschnitt deklarierte Methode des parametrisierten Typs darf kein lokales Symbol 'GVerborgen' verwenden
+Cm.E2506	Win32	False	PCmE2506.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2506.pas' kann nicht compiliert werden
+Cm.E2506	Win64	False	Cm.E2506.pas	21	E2506	Fehler	Im interface-Abschnitt deklarierte Methode des parametrisierten Typs darf kein lokales Symbol 'GVerborgen' verwenden
+Cm.E2506	Win64	False	PCmE2506.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2506.pas' kann nicht compiliert werden
+Cm.E2507	Win32	False	Cm.E2507.pas	9	E2507	Fehler	Einschränkungen CLASS und RECORD dürfen nicht gemeinsam angegeben werden
+Cm.E2507	Win32	False	PCmE2507.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2507.pas' kann nicht compiliert werden
+Cm.E2507	Win64	False	Cm.E2507.pas	9	E2507	Fehler	Einschränkungen CLASS und RECORD dürfen nicht gemeinsam angegeben werden
+Cm.E2507	Win64	False	PCmE2507.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2507.pas' kann nicht compiliert werden
+Cm.E2508	Win32	False	Cm.E2508.pas	9	E2508	Fehler	Typparameter sind bei diesem Typ nicht erlaubt
+Cm.E2508	Win32	False	PCmE2508.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2508.pas' kann nicht compiliert werden
+Cm.E2508	Win64	False	Cm.E2508.pas	9	E2508	Fehler	Typparameter sind bei diesem Typ nicht erlaubt
+Cm.E2508	Win64	False	PCmE2508.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2508.pas' kann nicht compiliert werden
+Cm.E2510	Win32	False	Cm.E2510.pas	9	E2510	Fehler	Typ Integer' ist keine gültige Einschränkung
+Cm.E2510	Win32	False	PCmE2510.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2510.pas' kann nicht compiliert werden
+Cm.E2510	Win64	False	Cm.E2510.pas	9	E2510	Fehler	Typ Integer' ist keine gültige Einschränkung
+Cm.E2510	Win64	False	PCmE2510.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2510.pas' kann nicht compiliert werden
+Cm.E2511	Win32	False	Cm.E2511.pas	15	E2511	Fehler	Typparameter 'T' muss ein Klassentyp sein
+Cm.E2511	Win32	False	PCmE2511.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2511.pas' kann nicht compiliert werden
+Cm.E2511	Win64	False	Cm.E2511.pas	15	E2511	Fehler	Typparameter 'T' muss ein Klassentyp sein
+Cm.E2511	Win64	False	PCmE2511.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2511.pas' kann nicht compiliert werden
+Cm.E2512	Win32	False	Cm.E2512.pas	15	E2512	Fehler	Typparameter 'T' muss ein nicht-nullable Wertetyp sein
+Cm.E2512	Win32	False	PCmE2512.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2512.pas' kann nicht compiliert werden
+Cm.E2512	Win64	False	Cm.E2512.pas	15	E2512	Fehler	Typparameter 'T' muss ein nicht-nullable Wertetyp sein
+Cm.E2512	Win64	False	PCmE2512.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2512.pas' kann nicht compiliert werden
+Cm.E2513	Win32	False	Cm.E2513.pas	18	E2513	Fehler	Typparameter 'T' muss parameterlosen Konstruktor haben
+Cm.E2513	Win32	False	PCmE2513.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2513.pas' kann nicht compiliert werden
+Cm.E2513	Win64	False	Cm.E2513.pas	18	E2513	Fehler	Typparameter 'T' muss parameterlosen Konstruktor haben
+Cm.E2513	Win64	False	PCmE2513.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2513.pas' kann nicht compiliert werden
+Cm.E2514	Win32	False	Cm.E2514.pas	18	E2514	Fehler	Typparameter 'T' muss Interface 'IEins' unterstützen
+Cm.E2514	Win32	False	PCmE2514.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2514.pas' kann nicht compiliert werden
+Cm.E2514	Win64	False	Cm.E2514.pas	18	E2514	Fehler	Typparameter 'T' muss Interface 'IEins' unterstützen
+Cm.E2514	Win64	False	PCmE2514.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2514.pas' kann nicht compiliert werden
+Cm.E2515	Win32	False	Cm.E2515.pas	18	E2515	Fehler	Typparameter 'T' ist mit Typ 'TStream' nicht kompatibel
+Cm.E2515	Win32	False	PCmE2515.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2515.pas' kann nicht compiliert werden
+Cm.E2515	Win64	False	Cm.E2515.pas	18	E2515	Fehler	Typparameter 'T' ist mit Typ 'TStream' nicht kompatibel
+Cm.E2515	Win64	False	PCmE2515.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2515.pas' kann nicht compiliert werden
+Cm.E2516	Win32	False	Cm.E2516.pas	10	E2516	Fehler	Einschränkung 'constructor' steht im Konflikt mit vorherigen Einschränkungen
+Cm.E2516	Win32	False	PCmE2516.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2516.pas' kann nicht compiliert werden
+Cm.E2516	Win64	False	Cm.E2516.pas	10	E2516	Fehler	Einschränkung 'constructor' steht im Konflikt mit vorherigen Einschränkungen
+Cm.E2516	Win64	False	PCmE2516.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2516.pas' kann nicht compiliert werden
+Cm.E2517	Win32	False	Cm.E2517.pas	10	E2517	Fehler	Operator 'Add' muss 2 Parameter übernehmen
+Cm.E2517	Win32	False	PCmE2517.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2517.pas' kann nicht compiliert werden
+Cm.E2517	Win64	False	Cm.E2517.pas	10	E2517	Fehler	Operator 'Add' muss 2 Parameter übernehmen
+Cm.E2517	Win64	False	PCmE2517.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2517.pas' kann nicht compiliert werden
+Cm.E2518	Win32	False	Cm.E2518.pas	10	E2518	Fehler	Operator 'Add' muss mindestens einen 'TRec'-Typ in den Parametern übernehmen
+Cm.E2518	Win32	False	PCmE2518.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2518.pas' kann nicht compiliert werden
+Cm.E2518	Win64	False	Cm.E2518.pas	10	E2518	Fehler	Operator 'Add' muss mindestens einen 'TRec'-Typ in den Parametern übernehmen
+Cm.E2518	Win64	False	PCmE2518.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2518.pas' kann nicht compiliert werden
+Cm.E2519	Win32	False	Cm.E2519.pas	10	E2519	Fehler	Erster Parametertyp des Operators 'Inc' und Ergebnistyp müssen identisch sein
+Cm.E2519	Win32	False	PCmE2519.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2519.pas' kann nicht compiliert werden
+Cm.E2519	Win64	False	Cm.E2519.pas	10	E2519	Fehler	Erster Parametertyp des Operators 'Inc' und Ergebnistyp müssen identisch sein
+Cm.E2519	Win64	False	PCmE2519.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2519.pas' kann nicht compiliert werden
+Cm.E2520	Win32	True					
+Cm.E2520	Win64	True					
+Cm.E2521	Win32	False	Cm.E2521.pas	10	E2521	Fehler	Operator 'Implicit' muss einen 'TRec'-Typ im Parameter oder Ergebnistyp übernehmen
+Cm.E2521	Win32	False	PCmE2521.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2521.pas' kann nicht compiliert werden
+Cm.E2521	Win64	False	Cm.E2521.pas	10	E2521	Fehler	Operator 'Implicit' muss einen 'TRec'-Typ im Parameter oder Ergebnistyp übernehmen
+Cm.E2521	Win64	False	PCmE2521.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2521.pas' kann nicht compiliert werden
+Cm.E2522	Win32	False	Cm.E2522.pas	15	E2123	Fehler	PROCEDURE, FUNCTION, PROPERTY oder VAR erwartet
+Cm.E2522	Win32	False	Cm.E2522.pas	15	E2029	Fehler	',' oder ':' erwartet, aber '(' gefunden
+Cm.E2522	Win32	False	Cm.E2522.pas	15	E2029	Fehler	',' oder ':' erwartet, aber ';' gefunden
+Cm.E2522	Win32	False	Cm.E2522.pas	16	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2522	Win32	False	Cm.E2522.pas	20	E2037	Fehler	Deklaration von 'TKind' unterscheidet sich von vorheriger Deklaration
+Cm.E2522	Win32	False	PCmE2522.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2522.pas' kann nicht compiliert werden
+Cm.E2522	Win64	False	Cm.E2522.pas	15	E2123	Fehler	PROCEDURE, FUNCTION, PROPERTY oder VAR erwartet
+Cm.E2522	Win64	False	Cm.E2522.pas	15	E2029	Fehler	',' oder ':' erwartet, aber '(' gefunden
+Cm.E2522	Win64	False	Cm.E2522.pas	15	E2029	Fehler	',' oder ':' erwartet, aber ';' gefunden
+Cm.E2522	Win64	False	Cm.E2522.pas	16	E2029	Fehler	Typ erwartet, aber 'END' gefunden
+Cm.E2522	Win64	False	Cm.E2522.pas	20	E2037	Fehler	Deklaration von 'TKind' unterscheidet sich von vorheriger Deklaration
+Cm.E2522	Win64	False	PCmE2522.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2522.pas' kann nicht compiliert werden
+Cm.E2527	Win32	False	Cm.E2527.pas	15	E2527	Fehler	Hilfstyp 'THelfer' darf in Deklarationen nicht verwendet werden
+Cm.E2527	Win32	False	PCmE2527.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2527.pas' kann nicht compiliert werden
+Cm.E2527	Win64	False	Cm.E2527.pas	15	E2527	Fehler	Hilfstyp 'THelfer' darf in Deklarationen nicht verwendet werden
+Cm.E2527	Win64	False	PCmE2527.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2527.pas' kann nicht compiliert werden
+Cm.E2528	Win32	False	Cm.E2528.pas	12	E2528	Fehler	Typparameter sind bei dieser Methode nicht erlaubt
+Cm.E2528	Win32	False	PCmE2528.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2528.pas' kann nicht compiliert werden
+Cm.E2528	Win64	False	Cm.E2528.pas	12	E2528	Fehler	Typparameter sind bei dieser Methode nicht erlaubt
+Cm.E2528	Win64	False	PCmE2528.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2528.pas' kann nicht compiliert werden
+Cm.E2529	Win32	False	Cm.E2529.pas	10	E2529	Fehler	Typparameter bei Operator nicht zulässig
+Cm.E2529	Win32	False	Cm.E2529.pas	10	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TRec.Add<T>'
+Cm.E2529	Win32	False	PCmE2529.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2529.pas' kann nicht compiliert werden
+Cm.E2529	Win64	False	Cm.E2529.pas	10	E2529	Fehler	Typparameter bei Operator nicht zulässig
+Cm.E2529	Win64	False	Cm.E2529.pas	10	E2065	Fehler	Ungenügende Forward- oder External-Deklaration: 'TRec.Add<T>'
+Cm.E2529	Win64	False	PCmE2529.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2529.pas' kann nicht compiliert werden
+Cm.E2530	Win32	False	Cm.E2530.pas	10	E2530	Fehler	Typparameter bei globaler Prozedur oder Funktion nicht zulässig
+Cm.E2530	Win32	False	PCmE2530.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2530.pas' kann nicht compiliert werden
+Cm.E2530	Win64	False	Cm.E2530.pas	10	E2530	Fehler	Typparameter bei globaler Prozedur oder Funktion nicht zulässig
+Cm.E2530	Win64	False	PCmE2530.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2530.pas' kann nicht compiliert werden
+Cm.E2531	Win32	False	Cm.E2531.pas	25	E2531	Fehler	Methode 'Neu' erfordert explizite Typargumente
+Cm.E2531	Win32	False	PCmE2531.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2531.pas' kann nicht compiliert werden
+Cm.E2531	Win64	False	Cm.E2531.pas	25	E2531	Fehler	Methode 'Neu' erfordert explizite Typargumente
+Cm.E2531	Win64	False	PCmE2531.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2531.pas' kann nicht compiliert werden
+Cm.E2532	Win32	False	Cm.E2532.pas	22	E2532	Fehler	Generisches Typargument konnte aus den unterschiedlichen Argumenttypen für Methode 'Paar' nicht abgeleitet werden
+Cm.E2532	Win32	False	PCmE2532.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2532.pas' kann nicht compiliert werden
+Cm.E2532	Win64	False	Cm.E2532.pas	22	E2532	Fehler	Generisches Typargument konnte aus den unterschiedlichen Argumenttypen für Methode 'Paar' nicht abgeleitet werden
+Cm.E2532	Win64	False	PCmE2532.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2532.pas' kann nicht compiliert werden
+Cm.E2533	Win32	False	Cm.E2533.pas	11	E2533	Fehler	Virtual-, dynamic- und message-Methoden dürfen keine Typparameter haben
+Cm.E2533	Win32	False	PCmE2533.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2533.pas' kann nicht compiliert werden
+Cm.E2533	Win64	False	Cm.E2533.pas	11	E2533	Fehler	Virtual-, dynamic- und message-Methoden dürfen keine Typparameter haben
+Cm.E2533	Win64	False	PCmE2533.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2533.pas' kann nicht compiliert werden
+Cm.E2534	Win32	False	Cm.E2534.pas	11	E2534	Fehler	Klassenkonstruktor darf nicht virtual, dynamic oder message
+Cm.E2534	Win32	False	PCmE2534.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2534.pas' kann nicht compiliert werden
+Cm.E2534	Win64	False	Cm.E2534.pas	11	E2534	Fehler	Klassenkonstruktor darf nicht virtual, dynamic oder message
+Cm.E2534	Win64	False	PCmE2534.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2534.pas' kann nicht compiliert werden
+Cm.E2535	Win32	False	Cm.E2535.pas	10	E2535	Fehler	Interface-Methoden dürfen keine parametrisierten Methoden haben
+Cm.E2535	Win32	False	PCmE2535.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2535.pas' kann nicht compiliert werden
+Cm.E2535	Win64	False	Cm.E2535.pas	10	E2535	Fehler	Interface-Methoden dürfen keine parametrisierten Methoden haben
+Cm.E2535	Win64	False	PCmE2535.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2535.pas' kann nicht compiliert werden
+Cm.E2537	Win32	False	Cm.E2537.pas	14	E2537	Fehler	Standardfunktion DEFAULT erwartet einen Typbezeichner
+Cm.E2537	Win32	False	PCmE2537.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2537.pas' kann nicht compiliert werden
+Cm.E2537	Win64	False	Cm.E2537.pas	14	E2537	Fehler	Standardfunktion DEFAULT erwartet einen Typbezeichner
+Cm.E2537	Win64	False	PCmE2537.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2537.pas' kann nicht compiliert werden
+Cm.E2538	Win32	False	Cm.E2538.pas	15	E2015	Fehler	Operator ist auf diesen Operandentyp nicht anwendbar
+Cm.E2538	Win32	False	Cm.E2538.pas	15	E2538	Fehler	Die Standardfunktion DEFAULT ist für diesen Typ nicht zulässig
+Cm.E2538	Win32	False	PCmE2538.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2538.pas' kann nicht compiliert werden
+Cm.E2538	Win64	False	Cm.E2538.pas	15	E2015	Fehler	Operator ist auf diesen Operandentyp nicht anwendbar
+Cm.E2538	Win64	False	Cm.E2538.pas	15	E2538	Fehler	Die Standardfunktion DEFAULT ist für diesen Typ nicht zulässig
+Cm.E2538	Win64	False	PCmE2538.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2538.pas' kann nicht compiliert werden
+Cm.E2539	Win32	False	Cm.E2539.pas	19	E2539	Fehler	Implementierung der abstrakten Methode 'TAbstrakt.Machen' fehlt
+Cm.E2539	Win32	False	Cm.E2539.pas	19	E2540	Fehler	Abstrakter Typ 'TVersiegelt' kann nicht als 'sealed' verwendet werden
+Cm.E2539	Win32	False	PCmE2539.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2539.pas' kann nicht compiliert werden
+Cm.E2539	Win64	False	Cm.E2539.pas	19	E2539	Fehler	Implementierung der abstrakten Methode 'TAbstrakt.Machen' fehlt
+Cm.E2539	Win64	False	Cm.E2539.pas	19	E2540	Fehler	Abstrakter Typ 'TVersiegelt' kann nicht als 'sealed' verwendet werden
+Cm.E2539	Win64	False	PCmE2539.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2539.pas' kann nicht compiliert werden
+Cm.E2540	Win32	False	Cm.E2540.pas	12	E2383	Fehler	ABSTRACT und SEALED  dürfen nicht zusammen verwendet werden
+Cm.E2540	Win32	False	Cm.E2540.pas	13	E2539	Fehler	Implementierung der abstrakten Methode 'TKlasse.Machen' fehlt
+Cm.E2540	Win32	False	Cm.E2540.pas	13	E2540	Fehler	Abstrakter Typ 'TKlasse' kann nicht als 'sealed' verwendet werden
+Cm.E2540	Win32	False	PCmE2540.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2540.pas' kann nicht compiliert werden
+Cm.E2540	Win64	False	Cm.E2540.pas	12	E2383	Fehler	ABSTRACT und SEALED  dürfen nicht zusammen verwendet werden
+Cm.E2540	Win64	False	Cm.E2540.pas	13	E2539	Fehler	Implementierung der abstrakten Methode 'TKlasse.Machen' fehlt
+Cm.E2540	Win64	False	Cm.E2540.pas	13	E2540	Fehler	Abstrakter Typ 'TKlasse' kann nicht als 'sealed' verwendet werden
+Cm.E2540	Win64	False	PCmE2540.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2540.pas' kann nicht compiliert werden
+Cm.E2543	Win32	False	Cm.E2543.pas	16	E2100	Fehler	Datentyp zu groß: 2 GB überschritten
+Cm.E2543	Win32	False	PCmE2543.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2543.pas' kann nicht compiliert werden
+Cm.E2543	Win64	False	Cm.E2543.pas	16	E2100	Fehler	Datentyp zu groß: 2 GB überschritten
+Cm.E2543	Win64	False	PCmE2543.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2543.pas' kann nicht compiliert werden
+Cm.E2545	Win32	False	Cm.E2545.pas	12	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2545	Win32	False	Cm.E2545.pas	13	E2545	Fehler	Klasseneigenschaft 'Wert' kann nicht veröffentlicht werden - nur Instanzeigenschaften können veröffentlicht werden
+Cm.E2545	Win32	False	PCmE2545.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2545.pas' kann nicht compiliert werden
+Cm.E2545	Win64	False	Cm.E2545.pas	12	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TKlasse'
+Cm.E2545	Win64	False	Cm.E2545.pas	13	E2545	Fehler	Klasseneigenschaft 'Wert' kann nicht veröffentlicht werden - nur Instanzeigenschaften können veröffentlicht werden
+Cm.E2545	Win64	False	PCmE2545.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2545.pas' kann nicht compiliert werden
+Cm.E2548	Win32	False	Cm.E2548.pas	13	E2029	Fehler	';' erwartet, aber '<' gefunden
+Cm.E2548	Win32	False	PCmE2548.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2548.pas' kann nicht compiliert werden
+Cm.E2548	Win64	False	Cm.E2548.pas	13	E2029	Fehler	';' erwartet, aber '<' gefunden
+Cm.E2548	Win64	False	PCmE2548.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2548.pas' kann nicht compiliert werden
+Cm.E2549	Win32	True					
+Cm.E2549	Win64	True					
+Cm.E2551	Win32	False	Cm.E2551.pas	22	E2551	Fehler	Es gibt keine parametrisierten Methoden von 'Machen', die mit dieser Anzahl von Typparametern verwendet werden können
+Cm.E2551	Win32	False	PCmE2551.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2551.pas' kann nicht compiliert werden
+Cm.E2551	Win64	False	Cm.E2551.pas	22	E2551	Fehler	Es gibt keine parametrisierten Methoden von 'Machen', die mit dieser Anzahl von Typparametern verwendet werden können
+Cm.E2551	Win64	False	PCmE2551.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2551.pas' kann nicht compiliert werden
+Cm.E2552	Win32	False	Cm.E2552.pas	12	E2552	Fehler	CLASS- oder RECORD-Einschränkung und Klassentypeinschränkung dürfen nicht zusammen angegeben werden
+Cm.E2552	Win32	False	PCmE2552.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2552.pas' kann nicht compiliert werden
+Cm.E2552	Win64	False	Cm.E2552.pas	12	E2552	Fehler	CLASS- oder RECORD-Einschränkung und Klassentypeinschränkung dürfen nicht zusammen angegeben werden
+Cm.E2552	Win64	False	PCmE2552.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2552.pas' kann nicht compiliert werden
+Cm.E2553	Win32	False	Cm.E2553.pas	12	E2553	Fehler	Klassentypeinschränkung darf nicht mehr als einmal angegeben werden
+Cm.E2553	Win32	False	PCmE2553.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2553.pas' kann nicht compiliert werden
+Cm.E2553	Win64	False	Cm.E2553.pas	12	E2553	Fehler	Klassentypeinschränkung darf nicht mehr als einmal angegeben werden
+Cm.E2553	Win64	False	PCmE2553.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2553.pas' kann nicht compiliert werden
+Cm.E2555	Win32	False	Cm.E2555.pas	20	E2555	Fehler	Symbol 'AWert' kann nicht erfasst werden
+Cm.E2555	Win32	False	PCmE2555.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2555.pas' kann nicht compiliert werden
+Cm.E2555	Win64	False	Cm.E2555.pas	20	E2555	Fehler	Symbol 'AWert' kann nicht erfasst werden
+Cm.E2555	Win64	False	PCmE2555.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2555.pas' kann nicht compiliert werden
+Cm.E2556	Win32	False	Cm.E2556.pas	19	E2003	Fehler	Undeklarierter Bezeichner: 'TBehaelter'
+Cm.E2556	Win32	False	Cm.E2556.pas	19	E2029	Fehler	Ausdruck erwartet, aber '.' gefunden
+Cm.E2556	Win32	False	PCmE2556.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2556.pas' kann nicht compiliert werden
+Cm.E2556	Win64	False	Cm.E2556.pas	19	E2003	Fehler	Undeklarierter Bezeichner: 'TBehaelter'
+Cm.E2556	Win64	False	Cm.E2556.pas	19	E2029	Fehler	Ausdruck erwartet, aber '.' gefunden
+Cm.E2556	Win64	False	PCmE2556.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2556.pas' kann nicht compiliert werden
+Cm.E2560	Win32	False	Cm.E2560.pas	10	E2560	Fehler	$OBJTYPENAME für 'TZahl' nicht zulässig; nur globales und Nicht-Aliastypsymbol
+Cm.E2560	Win32	False	PCmE2560.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2560.pas' kann nicht compiliert werden
+Cm.E2560	Win64	False	Cm.E2560.pas	10	E2560	Fehler	$OBJTYPENAME für 'TZahl' nicht zulässig; nur globales und Nicht-Aliastypsymbol
+Cm.E2560	Win64	False	PCmE2560.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2560.pas' kann nicht compiliert werden
+Cm.E2561	Win32	True					
+Cm.E2561	Win64	True					
+Cm.E2562	Win32	False	Cm.E2562.pas	16	E2029	Fehler	')' erwartet, aber Zahl gefunden
+Cm.E2562	Win32	False	PCmE2562.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2562.pas' kann nicht compiliert werden
+Cm.E2562	Win64	False	Cm.E2562.pas	16	E2029	Fehler	')' erwartet, aber Zahl gefunden
+Cm.E2562	Win64	False	PCmE2562.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2562.pas' kann nicht compiliert werden
+Cm.E2564	Win32	False	Cm.E2564.pas	9	E2003	Fehler	Undeklarierter Bezeichner: 'TGibtEsNicht'
+Cm.E2564	Win32	False	PCmE2564.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2564.pas' kann nicht compiliert werden
+Cm.E2564	Win64	False	Cm.E2564.pas	9	E2003	Fehler	Undeklarierter Bezeichner: 'TGibtEsNicht'
+Cm.E2564	Win64	False	PCmE2564.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2564.pas' kann nicht compiliert werden
+Cm.E2565	Win32	True	Cm.E2565.pas	14	W1074	Warnung	Unbekanntes benutzerdefiniertes Attribut
+Cm.E2565	Win64	True	Cm.E2565.pas	14	W1074	Warnung	Unbekanntes benutzerdefiniertes Attribut
+Cm.E2568	Win32	False	Cm.E2568.pas	18	E2568	Fehler	Neue Instanz kann ohne CONSTRUCTOR-Einschränkung in der Typparameterdeklaration nicht erstellt werden
+Cm.E2568	Win32	False	PCmE2568.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2568.pas' kann nicht compiliert werden
+Cm.E2568	Win64	False	Cm.E2568.pas	18	E2568	Fehler	Neue Instanz kann ohne CONSTRUCTOR-Einschränkung in der Typparameterdeklaration nicht erstellt werden
+Cm.E2568	Win64	False	PCmE2568.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2568.pas' kann nicht compiliert werden
+Cm.E2569	Win32	False	Cm.E2569.pas	12	E2569	Fehler	Typparameter 'T' benötigt evtl. Finalisierung - im varianten Record nicht zulässig.  Verwenden Sie die RECORD-Einschränkung
+Cm.E2569	Win32	False	PCmE2569.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2569.pas' kann nicht compiliert werden
+Cm.E2569	Win64	False	Cm.E2569.pas	12	E2569	Fehler	Typparameter 'T' benötigt evtl. Finalisierung - im varianten Record nicht zulässig.  Verwenden Sie die RECORD-Einschränkung
+Cm.E2569	Win64	False	PCmE2569.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2569.pas' kann nicht compiliert werden
+Cm.E2570	Win32	False	Cm.E2570.pas	19	E2570	Fehler	Lokale Prozedur in generischer Methode oder Methode des generischen Typs wird nicht unterstützt
+Cm.E2570	Win32	False	PCmE2570.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2570.pas' kann nicht compiliert werden
+Cm.E2570	Win64	False	Cm.E2570.pas	19	E2570	Fehler	Lokale Prozedur in generischer Methode oder Methode des generischen Typs wird nicht unterstützt
+Cm.E2570	Win64	False	PCmE2570.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2570.pas' kann nicht compiliert werden
+Cm.E2571	Win32	False	Cm.E2571.pas	18	E2003	Fehler	Undeklarierter Bezeichner: 'Free'
+Cm.E2571	Win32	False	PCmE2571.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2571.pas' kann nicht compiliert werden
+Cm.E2571	Win64	False	Cm.E2571.pas	18	E2003	Fehler	Undeklarierter Bezeichner: 'Free'
+Cm.E2571	Win64	False	PCmE2571.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2571.pas' kann nicht compiliert werden
+Cm.E2572	Win32	False	Cm.E2572.pas	8	E2572	Fehler	Konstanter Ausdruck des Typs System.TVisibilityClasses zum Setzen der RTTI-Sichtbarkeit erwartet
+Cm.E2572	Win32	False	PCmE2572.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2572.pas' kann nicht compiliert werden
+Cm.E2572	Win64	False	Cm.E2572.pas	8	E2572	Fehler	Konstanter Ausdruck des Typs System.TVisibilityClasses zum Setzen der RTTI-Sichtbarkeit erwartet
+Cm.E2572	Win64	False	PCmE2572.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2572.pas' kann nicht compiliert werden
+Cm.E2573	Win32	False	Cm.E2573.pas	8	E1030	Fehler	Ungültige Compileranweisung: 'ALIGN'
+Cm.E2573	Win32	False	PCmE2573.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2573.pas' kann nicht compiliert werden
+Cm.E2573	Win64	False	Cm.E2573.pas	8	E1030	Fehler	Ungültige Compileranweisung: 'ALIGN'
+Cm.E2573	Win64	False	PCmE2573.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2573.pas' kann nicht compiliert werden
+Cm.E2574	Win32	False	Cm.E2574.pas	12	E2574	Fehler	Instantiierter Typ kann nicht für TYPE-Typdeklaration verwendet werden
+Cm.E2574	Win32	False	PCmE2574.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2574.pas' kann nicht compiliert werden
+Cm.E2574	Win64	False	Cm.E2574.pas	12	E2574	Fehler	Instantiierter Typ kann nicht für TYPE-Typdeklaration verwendet werden
+Cm.E2574	Win64	False	PCmE2574.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2574.pas' kann nicht compiliert werden
+Cm.E2584	Win32	False	Cm.E2584.pas	11	E2584	Fehler	Das Attribut 'weak' ist nur für Felder oder Variablen vom Typ 'class' oder 'interface' zulässig: FZahl
+Cm.E2584	Win32	False	PCmE2584.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2584.pas' kann nicht compiliert werden
+Cm.E2584	Win64	False	Cm.E2584.pas	11	E2584	Fehler	Das Attribut 'weak' ist nur für Felder oder Variablen vom Typ 'class' oder 'interface' zulässig: FZahl
+Cm.E2584	Win64	False	PCmE2584.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2584.pas' kann nicht compiliert werden
+Cm.E2589	Win32	False	Cm.E2589.pas	12	E2589	Fehler	Hilfstyp kann in parametrisiertem Typkontext nicht deklariert werden
+Cm.E2589	Win32	False	Cm.E2589.pas	13	E2029	Fehler	'END' erwartet, aber ';' gefunden
+Cm.E2589	Win32	False	PCmE2589.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2589.pas' kann nicht compiliert werden
+Cm.E2589	Win64	False	Cm.E2589.pas	12	E2589	Fehler	Hilfstyp kann in parametrisiertem Typkontext nicht deklariert werden
+Cm.E2589	Win64	False	Cm.E2589.pas	13	E2029	Fehler	'END' erwartet, aber ';' gefunden
+Cm.E2589	Win64	False	PCmE2589.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2589.pas' kann nicht compiliert werden
+Cm.E2591	Win32	True					
+Cm.E2591	Win64	True					
+Cm.E2598	Win32	False	Cm.E2598.pas	12	E2379	Fehler	Virtuelle Methoden sind in Record-Hilfstypen nicht zulässig
+Cm.E2598	Win32	False	PCmE2598.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2598.pas' kann nicht compiliert werden
+Cm.E2598	Win64	False	Cm.E2598.pas	12	E2379	Fehler	Virtuelle Methoden sind in Record-Hilfstypen nicht zulässig
+Cm.E2598	Win64	False	PCmE2598.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2598.pas' kann nicht compiliert werden
+Cm.E2599	Win32	False	Cm.E2599.pas	11	E2599	Fehler	Felddefinition in Hilfstyp nicht zulässig
+Cm.E2599	Win32	False	Cm.E2599.pas	11	E2029	Fehler	'END' erwartet, aber ';' gefunden
+Cm.E2599	Win32	False	PCmE2599.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2599.pas' kann nicht compiliert werden
+Cm.E2599	Win64	False	Cm.E2599.pas	11	E2599	Fehler	Felddefinition in Hilfstyp nicht zulässig
+Cm.E2599	Win64	False	Cm.E2599.pas	11	E2029	Fehler	'END' erwartet, aber ';' gefunden
+Cm.E2599	Win64	False	PCmE2599.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2599.pas' kann nicht compiliert werden
+Cm.E2601	Win32	False	Cm.E2601.pas	26	E2601	Fehler	Prozedur NEW benötigt Konstruktorbezeichner 'TAltObjekt', aber nicht deklarierten Bezeichner 'Anlegen' gefunden
+Cm.E2601	Win32	False	PCmE2601.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2601.pas' kann nicht compiliert werden
+Cm.E2601	Win64	False	Cm.E2601.pas	26	E2601	Fehler	Prozedur NEW benötigt Konstruktorbezeichner 'TAltObjekt', aber nicht deklarierten Bezeichner 'Anlegen' gefunden
+Cm.E2601	Win64	False	PCmE2601.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2601.pas' kann nicht compiliert werden
+Cm.E2602	Win32	False	Cm.E2602.pas	32	E2602	Fehler	Prozedur DISPOSE benötigt Destruktorbezeichner 'TAltObjekt', aber nicht deklarierten Bezeichner 'Abbauen' gefunden
+Cm.E2602	Win32	False	PCmE2602.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2602.pas' kann nicht compiliert werden
+Cm.E2602	Win64	False	Cm.E2602.pas	32	E2602	Fehler	Prozedur DISPOSE benötigt Destruktorbezeichner 'TAltObjekt', aber nicht deklarierten Bezeichner 'Abbauen' gefunden
+Cm.E2602	Win64	False	PCmE2602.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2602.pas' kann nicht compiliert werden
+Cm.E2603	Win32	False	Cm.E2603.pas	9	E2603	Fehler	Einschränkung 'class' darf nur einmal angegeben werden
+Cm.E2603	Win32	False	PCmE2603.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2603.pas' kann nicht compiliert werden
+Cm.E2603	Win64	False	Cm.E2603.pas	9	E2603	Fehler	Einschränkung 'class' darf nur einmal angegeben werden
+Cm.E2603	Win64	False	PCmE2603.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.E2603.pas' kann nicht compiliert werden
+Cm.F2047	Win32	False	Cm.Hilfe.F2047.pas	6	F2047	Fataler Fehler	Zirkuläre Unit-Referenz auf 'Cm.F2047'
+Cm.F2047	Win64	False	Cm.Hilfe.F2047.pas	6	F2047	Fataler Fehler	Zirkuläre Unit-Referenz auf 'Cm.F2047'
+Cm.F2069	Win32	True					
+Cm.F2069	Win64	True					
+Cm.F2092	Win32	False	Cm.F2092.pas	9	F2092	Fataler Fehler	Das Programm oder die Unit 'Cm.F2092' ruft sich selbst wieder auf
+Cm.F2092	Win64	False	Cm.F2092.pas	9	F2092	Fataler Fehler	Das Programm oder die Unit 'Cm.F2092' ruft sich selbst wieder auf
+Cm.F2438	Win32	False			F2438	Fataler Fehler	UCS-4-Textcodierung nicht unterstützt. Konvertieren Sie in UCS-2 oder UTF-8
+Cm.F2438	Win64	False			F2438	Fataler Fehler	UCS-4-Textcodierung nicht unterstützt. Konvertieren Sie in UCS-2 oder UTF-8
+Cm.F2613	Win32	False	Cm.F2613.pas	11	F2613	Fataler Fehler	Unit 'Cm.GibtEsNicht' nicht gefunden.
+Cm.F2613	Win64	False	Cm.F2613.pas	11	F2613	Fataler Fehler	Unit 'Cm.GibtEsNicht' nicht gefunden.
+Cm.H1054	Win32	True	Cm.H1054.pas	11	H1054	Hinweis	Eigener Hinweis
+Cm.H1054	Win64	True	Cm.H1054.pas	11	H1054	Hinweis	Eigener Hinweis
+Cm.H2077	Win32	True	Cm.H2077.pas	14	H2077	Hinweis	Auf 'mWert' zugewiesener Wert wird niemals benutzt
+Cm.H2077	Win64	True	Cm.H2077.pas	14	H2077	Hinweis	Auf 'mWert' zugewiesener Wert wird niemals benutzt
+Cm.H2135	Win32	True	Cm.H2135.pas	17	H2135	Hinweis	FOR oder WHILE Schleife wird nicht durchlaufen - gelöscht
+Cm.H2135	Win32	True	Cm.H2135.pas	15	H2164	Hinweis	Variable 'mIndex' wurde deklariert, aber in 'Schleife' nicht verwendet
+Cm.H2135	Win32	True	Cm.H2135.pas	11	H2164	Hinweis	Variable 'GSumme' wurde deklariert, aber in 'Cm.H2135' nicht verwendet
+Cm.H2135	Win64	True	Cm.H2135.pas	17	H2135	Hinweis	FOR oder WHILE Schleife wird nicht durchlaufen - gelöscht
+Cm.H2135	Win64	True	Cm.H2135.pas	15	H2164	Hinweis	Variable 'mIndex' wurde deklariert, aber in 'Schleife' nicht verwendet
+Cm.H2135	Win64	True	Cm.H2135.pas	11	H2164	Hinweis	Variable 'GSumme' wurde deklariert, aber in 'Cm.H2135' nicht verwendet
+Cm.H2164	Win32	True	Cm.H2164.pas	12	H2164	Hinweis	Variable 'mUnbenutzt' wurde deklariert, aber in 'Machen' nicht verwendet
+Cm.H2164	Win64	True	Cm.H2164.pas	12	H2164	Hinweis	Variable 'mUnbenutzt' wurde deklariert, aber in 'Machen' nicht verwendet
+Cm.H2219	Win32	True	Cm.H2219.pas	11	H2219	Hinweis	Das private-Symbol 'FVergessen' wurde deklariert, aber nie verwendet
+Cm.H2219	Win64	True	Cm.H2219.pas	11	H2219	Hinweis	Das private-Symbol 'FVergessen' wurde deklariert, aber nie verwendet
+Cm.H2244	Win32	True	Cm.H2244.pas	12	H2244	Hinweis	Der Zeigerausdruck benötigt kein Initialize/Finalize, aber möglicherweise einen ^-Operator.
+Cm.H2244	Win64	True	Cm.H2244.pas	12	H2244	Hinweis	Der Zeigerausdruck benötigt kein Initialize/Finalize, aber möglicherweise einen ^-Operator.
+Cm.H2269	Win32	True	Cm.H2269.pas	16	H2269	Hinweis	Durch das Überschreiben erhält die virtuelle Methode 'TKind.Machen' eine geringere Sichtbarkeit (protected) als die Basisklasse 'TBasis' (public)
+Cm.H2269	Win64	True	Cm.H2269.pas	16	H2269	Hinweis	Durch das Überschreiben erhält die virtuelle Methode 'TKind.Machen' eine geringere Sichtbarkeit (protected) als die Basisklasse 'TBasis' (public)
+Cm.H2365	Win32	True	Cm.H2365.pas	16	H2365	Hinweis	Schreibweise der Überschreiben-Methode TKind.MACHEN muss exakt ihrem Vorfahren TBasis.Machen entsprechen
+Cm.H2365	Win64	True	Cm.H2365.pas	16	H2365	Hinweis	Schreibweise der Überschreiben-Methode TKind.MACHEN muss exakt ihrem Vorfahren TBasis.Machen entsprechen
+Cm.H2367	Win32	True					
+Cm.H2367	Win64	True					
+Cm.H2368	Win32	True	Cm.H2368.pas	13	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TMitEigenschaft'
+Cm.H2368	Win64	True	Cm.H2368.pas	13	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TMitEigenschaft'
+Cm.H2369	Win32	True					
+Cm.H2369	Win64	True					
+Cm.H2440	Win32	True					
+Cm.H2440	Win64	True					
+Cm.H2443	Win32	True	Cm.H2443.pas	15	H2443	Hinweis	Inline-Funktion 'Doppelt' wurde nicht expandiert, weil Unit 'Cm.Hilfe.H2443Tiefe' in der USES-Liste nicht angegeben ist
+Cm.H2443	Win64	True	Cm.H2443.pas	15	H2443	Hinweis	Inline-Funktion 'Doppelt' wurde nicht expandiert, weil Unit 'Cm.Hilfe.H2443Tiefe' in der USES-Liste nicht angegeben ist
+Cm.H2444	Win32	True					
+Cm.H2444	Win64	True					
+Cm.H2445	Win32	True	Cm.H2445.pas	18	H2445	Hinweis	Inline-Funktion 'Doppelt' wurde nicht expandiert, weil ihre Unit 'Cm.Hilfe.H2445' in der USES-Anweisung des IMPLEMENTATION-Abschnitts angegeben ist und die aktuelle Funktion eine Inline-Funktion ist
+Cm.H2445	Win64	True	Cm.H2445.pas	18	H2445	Hinweis	Inline-Funktion 'Doppelt' wurde nicht expandiert, weil ihre Unit 'Cm.Hilfe.H2445' in der USES-Anweisung des IMPLEMENTATION-Abschnitts angegeben ist und die aktuelle Funktion eine Inline-Funktion ist
+Cm.H2456	Win32	True					
+Cm.H2456	Win64	True					
+Cm.H2457	Win32	True					
+Cm.H2457	Win64	True					
+Cm.H2505	Win32	True					
+Cm.H2505	Win64	True					
+Cm.H2509	Win32	True	Cm.H2509.pas	11	H2509	Hinweis	Bezeichner 'T' steht im Konflikt mit Typparametern des Container-Typs
+Cm.H2509	Win64	True	Cm.H2509.pas	11	H2509	Hinweis	Bezeichner 'T' steht im Konflikt mit Typparametern des Container-Typs
+Cm.W1000	Win32	True	Cm.W1000.pas	16	W1000	Warnung	Symbol 'Alt' ist veraltet
+Cm.W1000	Win64	True	Cm.W1000.pas	16	W1000	Warnung	Symbol 'Alt' ist veraltet
+Cm.W1001	Win32	False	Cm.W1001.pas	10	E2029	Fehler	Deklaration erwartet, aber 'LIBRARY' gefunden
+Cm.W1001	Win32	False	PCmW1001.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1001.pas' kann nicht compiliert werden
+Cm.W1001	Win64	False	Cm.W1001.pas	10	E2029	Fehler	Deklaration erwartet, aber 'LIBRARY' gefunden
+Cm.W1001	Win64	False	PCmW1001.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1001.pas' kann nicht compiliert werden
+Cm.W1002	Win32	True	Cm.W1002.pas	16	W1002	Warnung	Symbol 'Alt' ist plattformspezifisch
+Cm.W1002	Win64	True	Cm.W1002.pas	16	W1002	Warnung	Symbol 'Alt' ist plattformspezifisch
+Cm.W1003	Win32	True	Cm.W1003.pas	16	W1003	Warnung	Symbol 'Alt' ist experimentell
+Cm.W1003	Win64	True	Cm.W1003.pas	16	W1003	Warnung	Symbol 'Alt' ist experimentell
+Cm.W1004	Win32	True	Cm.W1004.pas	11	W1004	Warnung	Unit 'Cm.Hilfe.W1004' ist bibliotheksspezifisch
+Cm.W1004	Win64	True	Cm.W1004.pas	11	W1004	Warnung	Unit 'Cm.Hilfe.W1004' ist bibliotheksspezifisch
+Cm.W1005	Win32	True	Cm.W1005.pas	11	W1005	Warnung	Unit 'Cm.Hilfe.W1005' ist plattformspezifisch
+Cm.W1005	Win64	True	Cm.W1005.pas	11	W1005	Warnung	Unit 'Cm.Hilfe.W1005' ist plattformspezifisch
+Cm.W1006	Win32	True	Cm.W1006.pas	11	W1006	Warnung	Unit 'Cm.Hilfe.W1006' ist veraltet
+Cm.W1006	Win64	True	Cm.W1006.pas	11	W1006	Warnung	Unit 'Cm.Hilfe.W1006' ist veraltet
+Cm.W1007	Win32	True	Cm.W1007.pas	11	W1007	Warnung	Unit 'Cm.Hilfe.W1007' ist experimentell
+Cm.W1007	Win64	True	Cm.W1007.pas	11	W1007	Warnung	Unit 'Cm.Hilfe.W1007' ist experimentell
+Cm.W1008	Win32	True	Cm.W1008.pas	14	W1008	Warnung	Integer und HResult werden ausgetauscht
+Cm.W1008	Win32	True	Cm.W1008.pas	18	W1008	Warnung	Integer und HResult werden ausgetauscht
+Cm.W1008	Win64	True	Cm.W1008.pas	14	W1008	Warnung	Integer und HResult werden ausgetauscht
+Cm.W1008	Win64	True	Cm.W1008.pas	18	W1008	Warnung	Integer und HResult werden ausgetauscht
+Cm.W1009	Win32	True					
+Cm.W1009	Win64	True					
+Cm.W1010	Win32	True	Cm.W1010.pas	16	W1010	Warnung	Methode 'Machen' verbirgt virtuelle Methode vom Basistyp 'TBasis'
+Cm.W1010	Win64	True	Cm.W1010.pas	16	W1010	Warnung	Methode 'Machen' verbirgt virtuelle Methode vom Basistyp 'TBasis'
+Cm.W1011	Win32	True	Cm.W1011.pas	11	W1011	Warnung	Text hinter dem abschließenden 'END.' - wird vom Compiler ignoriert
+Cm.W1011	Win64	True	Cm.W1011.pas	11	W1011	Warnung	Text hinter dem abschließenden 'END.' - wird vom Compiler ignoriert
+Cm.W1012	Win32	False	Cm.W1012.pas	14	E1012	Fehler	Konstantenausdruck verletzt untere Grenzen
+Cm.W1012	Win32	False	PCmW1012.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1012.pas' kann nicht compiliert werden
+Cm.W1012	Win64	False	Cm.W1012.pas	14	E1012	Fehler	Konstantenausdruck verletzt untere Grenzen
+Cm.W1012	Win64	False	PCmW1012.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1012.pas' kann nicht compiliert werden
+Cm.W1013	Win32	False	Cm.W1013.pas	11	E2010	Fehler	Inkompatible Typen: 'TObject' und 'Integer'
+Cm.W1013	Win32	False	PCmW1013.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1013.pas' kann nicht compiliert werden
+Cm.W1013	Win64	False	Cm.W1013.pas	11	E2010	Fehler	Inkompatible Typen: 'TObject' und 'Integer'
+Cm.W1013	Win64	False	PCmW1013.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1013.pas' kann nicht compiliert werden
+Cm.W1014	Win32	True	Cm.W1014.pas	14	W1014	Warnung	Stringkonstante abgeschnitten damit sie in STRING[3] passt
+Cm.W1014	Win64	True	Cm.W1014.pas	14	W1014	Warnung	Stringkonstante abgeschnitten damit sie in STRING[3] passt
+Cm.W1015	Win32	True	Cm.W1015.pas	20	W1015	Warnung	FOR-Schleifenvariable 'mIndex' kann nicht als Var-Parameter weitergegeben werden
+Cm.W1015	Win64	True	Cm.W1015.pas	20	W1015	Warnung	FOR-Schleifenvariable 'mIndex' kann nicht als Var-Parameter weitergegeben werden
+Cm.W1016	Win32	True					
+Cm.W1016	Win64	True					
+Cm.W1017	Win32	True					
+Cm.W1017	Win64	True					
+Cm.W1018	Win32	False	Cm.W1018.pas	14	E1012	Fehler	Konstantenausdruck verletzt untere Grenzen
+Cm.W1018	Win32	False	PCmW1018.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1018.pas' kann nicht compiliert werden
+Cm.W1018	Win64	False	Cm.W1018.pas	14	E1012	Fehler	Konstantenausdruck verletzt untere Grenzen
+Cm.W1018	Win64	False	PCmW1018.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1018.pas' kann nicht compiliert werden
+Cm.W1019	Win32	True	Cm.W1019.pas	16	W1019	Warnung	FOR-Schleifenvariable muss eine einfache lokale Variable sein
+Cm.W1019	Win64	True	Cm.W1019.pas	16	W1019	Warnung	FOR-Schleifenvariable muss eine einfache lokale Variable sein
+Cm.W1020	Win32	True	Cm.W1020.pas	20	W1020	Warnung	Instanz von 'TAbstrakt' mit der abstrakten Methode 'TAbstrakt.Machen' wird angelegt
+Cm.W1020	Win64	True	Cm.W1020.pas	20	W1020	Warnung	Instanz von 'TAbstrakt' mit der abstrakten Methode 'TAbstrakt.Machen' wird angelegt
+Cm.W1021	Win32	True	Cm.W1021.pas	12	W1021	Warnung	Der Vergleich ergibt immer False
+Cm.W1021	Win64	True	Cm.W1021.pas	12	W1021	Warnung	Der Vergleich ergibt immer False
+Cm.W1022	Win32	True	Cm.W1022.pas	12	W1022	Warnung	Der Vergleich ergibt immer True
+Cm.W1022	Win64	True	Cm.W1022.pas	12	W1022	Warnung	Der Vergleich ergibt immer True
+Cm.W1023	Win32	True	Cm.W1023.pas	12	W1023	Warnung	Vorzeichenbehaftete und -lose Typen werden verglichen - beide Operanden werden erweitert
+Cm.W1023	Win64	True	Cm.W1023.pas	12	W1023	Warnung	Vorzeichenbehaftete und -lose Typen werden verglichen - beide Operanden werden erweitert
+Cm.W1024	Win32	True	Cm.W1024.pas	12	W1024	Warnung	Vorzeichenbehaftete und -lose Typen werden kombiniert - beide Operanden werden erweitert
+Cm.W1024	Win64	True	Cm.W1024.pas	12	W1024	Warnung	Vorzeichenbehaftete und -lose Typen werden kombiniert - beide Operanden werden erweitert
+Cm.W1025	Win64	True					
+Cm.W1026	Win32	False			E1026	Fehler	Datei nicht gefunden: 'Cm.Fehlt.W1026.res'
+Cm.W1026	Win64	False			E1026	Fehler	Datei nicht gefunden: 'Cm.Fehlt.W1026.res'
+Cm.W1029	Win32	True	Cm.W1029.pas	32	W1029	Warnung	constructor 'TDoppelt.Anlegen' doppelt mit identischen Parametern; Zugriff von C++ nicht möglich
+Cm.W1029	Win32	True	Cm.W1029.pas	32	W1029	Warnung	constructor 'TDoppelt.Anlegen' doppelt mit identischen Parametern; Zugriff von C++ nicht möglich
+Cm.W1029	Win32	True			W1031	Warnung	Package 'PCmW1029' wird nicht auf Festplatte geschrieben, da die Option -J aktiviert ist
+Cm.W1029	Win64	True	Cm.W1029.pas	32	W1029	Warnung	constructor 'TDoppelt.Anlegen' doppelt mit identischen Parametern; Zugriff von C++ nicht möglich
+Cm.W1029	Win64	True	Cm.W1029.pas	32	W1029	Warnung	constructor 'TDoppelt.Anlegen' doppelt mit identischen Parametern; Zugriff von C++ nicht möglich
+Cm.W1029	Win64	True	Cm.W1029.pas	32	W1029	Warnung	constructor 'TDoppelt.Anlegen' doppelt mit identischen Parametern; Zugriff von C++ nicht möglich
+Cm.W1029	Win64	True	Cm.W1029.pas	32	W1029	Warnung	constructor 'TDoppelt.Anlegen' doppelt mit identischen Parametern; Zugriff von C++ nicht möglich
+Cm.W1029	Win64	True	Cm.W1029.pas	32	W1029	Warnung	constructor 'TDoppelt.Anlegen' doppelt mit identischen Parametern; Zugriff von C++ nicht möglich
+Cm.W1029	Win64	True			W1031	Warnung	Package 'PCmW1029' wird nicht auf Festplatte geschrieben, da die Option -J aktiviert ist
+Cm.W1030	Win32	False	Cm.W1030.pas	10	E1030	Fehler	Ungültige Compileranweisung: 'UNBEKANNTE_DIREKTIVE'
+Cm.W1030	Win32	False	PCmW1030.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1030.pas' kann nicht compiliert werden
+Cm.W1030	Win64	False	Cm.W1030.pas	10	E1030	Fehler	Ungültige Compileranweisung: 'UNBEKANNTE_DIREKTIVE'
+Cm.W1030	Win64	False	PCmW1030.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1030.pas' kann nicht compiliert werden
+Cm.W1034	Win32	True					
+Cm.W1034	Win64	True					
+Cm.W1035	Win32	True	Cm.W1035.pas	14	W1035	Warnung	Rückgabewert der Funktion 'Liefere' könnte undefiniert sein
+Cm.W1035	Win64	True	Cm.W1035.pas	14	W1035	Warnung	Rückgabewert der Funktion 'Liefere' könnte undefiniert sein
+Cm.W1036	Win32	True	Cm.W1036.pas	14	W1036	Warnung	Variable 'mWert' ist möglicherweise nicht initialisiert worden
+Cm.W1036	Win64	True	Cm.W1036.pas	14	W1036	Warnung	Variable 'mWert' ist möglicherweise nicht initialisiert worden
+Cm.W1037	Win32	True	Cm.W1037.pas	16	W1037	Warnung	FOR-Schleifenvariable 'mIndex' kann nach Durchlauf undefiniert sein
+Cm.W1037	Win64	True	Cm.W1037.pas	16	W1037	Warnung	FOR-Schleifenvariable 'mIndex' kann nach Durchlauf undefiniert sein
+Cm.W1038	Win32	False	Cm.W1038.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.W1038Anders' stimmt mit dem Dateinamen nicht überein
+Cm.W1038	Win32	False	PCmW1038.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1038.pas' kann nicht compiliert werden
+Cm.W1038	Win64	False	Cm.W1038.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.W1038Anders' stimmt mit dem Dateinamen nicht überein
+Cm.W1038	Win64	False	PCmW1038.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1038.pas' kann nicht compiliert werden
+Cm.W1040	Win32	True					
+Cm.W1040	Win64	True					
+Cm.W1044	Win32	True	Cm.W1044.pas	16	W1044	Warnung	Bedenkliche Typumwandlung von string in PAnsiChar
+Cm.W1044	Win64	True	Cm.W1044.pas	16	W1044	Warnung	Bedenkliche Typumwandlung von string in PAnsiChar
+Cm.W1045	Win32	False	Cm.Hilfe.W1045.pas	8	H2219	Hinweis	Das private-Symbol 'FWert' wurde deklariert, aber nie verwendet
+Cm.W1045	Win32	False	Cm.W1045.pas	14	E2168	Fehler	Feld- oder Methodenbezeichner erwartet
+Cm.W1045	Win32	False	PCmW1045.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1045.pas' kann nicht compiliert werden
+Cm.W1045	Win64	False	Cm.Hilfe.W1045.pas	8	H2219	Hinweis	Das private-Symbol 'FWert' wurde deklariert, aber nie verwendet
+Cm.W1045	Win64	False	Cm.W1045.pas	14	E2168	Fehler	Feld- oder Methodenbezeichner erwartet
+Cm.W1045	Win64	False	PCmW1045.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1045.pas' kann nicht compiliert werden
+Cm.W1046	Win32	True					
+Cm.W1046	Win64	True					
+Cm.W1047	Win32	True	Cm.W1047.pas	13	W1047	Warnung	Unsicherer Code '@-Operator'
+Cm.W1047	Win64	True	Cm.W1047.pas	13	W1047	Warnung	Unsicherer Code '@-Operator'
+Cm.W1048	Win32	True	Cm.W1048.pas	13	W1048	Warnung	Unsichere Typumwandlung von 'Pointer' nach 'TObject'
+Cm.W1048	Win64	True	Cm.W1048.pas	13	W1048	Warnung	Unsichere Typumwandlung von 'Pointer' nach 'TObject'
+Cm.W1050	Win32	True	Cm.W1050.pas	12	W1050	Warnung	WideChar reduced to byte char in set expressions.  Consider using 'CharInSet' function in 'SysUtils' unit.
+Cm.W1050	Win64	True	Cm.W1050.pas	12	W1050	Warnung	WideChar reduced to byte char in set expressions.  Consider using 'CharInSet' function in 'SysUtils' unit.
+Cm.W1054	Win32	True	Cm.W1054.pas	11	W1054	Warnung	Eigene Warnung
+Cm.W1054	Win64	True	Cm.W1054.pas	11	W1054	Warnung	Eigene Warnung
+Cm.W1055	Win32	True	Cm.W1055.pas	11	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TOhneRtti'
+Cm.W1055	Win64	True	Cm.W1055.pas	11	W1055	Warnung	PUBLISHED verursachte das Hinzufügen von RTTI ($M+) zu Typ 'TOhneRtti'
+Cm.W1057	Win32	True	Cm.W1057.pas	12	W1057	Warnung	Implizite String-Umwandlung von 'AnsiString' zu 'string'
+Cm.W1057	Win64	True	Cm.W1057.pas	12	W1057	Warnung	Implizite String-Umwandlung von 'AnsiString' zu 'string'
+Cm.W1058	Win32	True	Cm.W1058.pas	12	W1058	Warnung	Implizite String-Umwandlung mit potenziellem Datenverlust von 'string' zu 'AnsiString'
+Cm.W1058	Win64	True	Cm.W1058.pas	12	W1058	Warnung	Implizite String-Umwandlung mit potenziellem Datenverlust von 'string' zu 'AnsiString'
+Cm.W1059	Win32	True	Cm.W1059.pas	13	W1059	Warnung	Explizite String-Umwandlung von 'AnsiString' zu 'string'
+Cm.W1059	Win64	True	Cm.W1059.pas	13	W1059	Warnung	Explizite String-Umwandlung von 'AnsiString' zu 'string'
+Cm.W1060	Win32	True	Cm.W1060.pas	13	W1060	Warnung	Explizite String-Umwandlung mit potenziellem Datenverlust von 'string' zu 'AnsiString'
+Cm.W1060	Win64	True	Cm.W1060.pas	13	W1060	Warnung	Explizite String-Umwandlung mit potenziellem Datenverlust von 'string' zu 'AnsiString'
+Cm.W1061	Win32	True					
+Cm.W1061	Win64	True					
+Cm.W1062	Win32	True	Cm.W1062.pas	12	W1058	Warnung	Implizite String-Umwandlung mit potenziellem Datenverlust von 'string' zu 'AnsiString'
+Cm.W1062	Win32	True	Cm.W1062.pas	12	W1062	Warnung	Bei Umwandlung der angegebenen WideString-Konstante gehen Informationen verloren
+Cm.W1062	Win64	True	Cm.W1062.pas	12	W1058	Warnung	Implizite String-Umwandlung mit potenziellem Datenverlust von 'string' zu 'AnsiString'
+Cm.W1062	Win64	True	Cm.W1062.pas	12	W1062	Warnung	Bei Umwandlung der angegebenen WideString-Konstante gehen Informationen verloren
+Cm.W1063	Win32	True					
+Cm.W1063	Win64	True					
+Cm.W1064	Win32	True					
+Cm.W1064	Win64	True					
+Cm.W1066	Win64	True					
+Cm.W1068	Win32	True	Cm.W1068.pas	13	W1068	Warnung	Das direkte Įdern von Strings wird möglicherweise künftig nicht mehr unterstützt
+Cm.W1068	Win64	True	Cm.W1068.pas	13	W1068	Warnung	Das direkte Įdern von Strings wird möglicherweise künftig nicht mehr unterstützt
+Cm.W1069	Win32	True					
+Cm.W1069	Win64	True					
+Cm.W1070	Win32	True					
+Cm.W1070	Win64	True					
+Cm.W1071	Win32	True					
+Cm.W1071	Win64	True					
+Cm.W1072	Win32	True					
+Cm.W1072	Win64	True					
+Cm.W1073	Win32	True	Cm.W1073.pas	12	W1073	Warnung	Kombination von vorzeichenbehaftetem Typ und vorzeichenlosem 64-Bit-Typ - wird als vorzeichenloser Typ behandelt
+Cm.W1073	Win64	True	Cm.W1073.pas	12	W1073	Warnung	Kombination von vorzeichenbehaftetem Typ und vorzeichenlosem 64-Bit-Typ - wird als vorzeichenloser Typ behandelt
+Cm.W1074	Win32	True	Cm.W1074.pas	11	W1074	Warnung	Unbekanntes benutzerdefiniertes Attribut
+Cm.W1074	Win64	True	Cm.W1074.pas	11	W1074	Warnung	Unbekanntes benutzerdefiniertes Attribut
+Cm.W1075	Win32	True					
+Cm.W1075	Win64	True					
+Cm.W1076	Win32	False	Cm.W1076.pas	1	E1030	Fehler	Ungültige Compileranweisung: 'NARROWING_POINTER_CAST'
+Cm.W1076	Win32	False	PCmW1076.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1076.pas' kann nicht compiliert werden
+Cm.W1076	Win64	False	Cm.W1076.pas	1	E1030	Fehler	Ungültige Compileranweisung: 'NARROWING_POINTER_CAST'
+Cm.W1076	Win64	False	PCmW1076.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1076.pas' kann nicht compiliert werden
+Cm.W1077	Win32	False	Cm.W1077.pas	1	E1030	Fehler	Ungültige Compileranweisung: 'POINTER_INTEGER_CAST'
+Cm.W1077	Win32	False	PCmW1077.dpr	6	F2063	Fataler Fehler	Verwendete Unit 'Cm.W1077.pas' kann nicht compiliert werden
+Cm.W1078	Win32	True	Cm.W1078.pas	10	W1078	Warnung	{$POPOPT} ohne übereinstimmende {$PUSHOPT} in C:\Projekte\BetterDelphiLSP\wt-cm\Tests\Compilermeldungen\Faelle\Cm.W1078.pas
+Cm.W1078	Win64	True	Cm.W1078.pas	10	W1078	Warnung	{$POPOPT} ohne übereinstimmende {$PUSHOPT} in C:\Projekte\BetterDelphiLSP\wt-cm\Tests\Compilermeldungen\Faelle\Cm.W1078.pas
+Cm.W1079	Win32	True	Cm.W1079.pas	14	W1079	Warnung	Frühere {$PUSHOPT} in Zeile 10 wurde nicht wiederhergestellt
+Cm.W1079	Win64	True	Cm.W1079.pas	14	W1079	Warnung	Frühere {$PUSHOPT} in Zeile 10 wurde nicht wiederhergestellt
+Cm.W1201	Win32	True					
+Cm.W1201	Win64	True					
+Cm.W1202	Win32	True					
+Cm.W1202	Win64	True					
+Cm.W1203	Win32	True					
+Cm.W1203	Win64	True					
+Cm.W1204	Win32	True					
+Cm.W1204	Win64	True					
+Cm.W1205	Win32	True					
+Cm.W1205	Win64	True					
+Cm.W1206	Win32	True					
+Cm.W1206	Win64	True					
+Cm.W1207	Win32	True					
+Cm.W1207	Win64	True					
+Cm.W1208	Win32	True					
+Cm.W1208	Win64	True					
+CmE2085	Win32	False	Cm.Hilfe.E2085Datei.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.Hilfe.E2085Anders' stimmt mit dem Dateinamen nicht überein
+CmE2085	Win32	False	CmE2085.dpr	7	F2063	Fataler Fehler	Verwendete Unit 'Cm.Hilfe.E2085Datei.pas' kann nicht compiliert werden
+CmE2085	Win64	False	Cm.Hilfe.E2085Datei.pas	1	E1038	Fehler	Unit-Bezeichner 'Cm.Hilfe.E2085Anders' stimmt mit dem Dateinamen nicht überein
+CmE2085	Win64	False	CmE2085.dpr	7	F2063	Fataler Fehler	Verwendete Unit 'Cm.Hilfe.E2085Datei.pas' kann nicht compiliert werden
+CmE2200	Win32	False	CmE2200.dpk	10	E2200	Fehler	Package 'rtl' enthält bereits die Unit 'System.SysUtils'
+CmE2200	Win64	False	CmE2200.dpk	10	E2200	Fehler	Package 'rtl' enthält bereits die Unit 'System.SysUtils'
+CmE2202	Win32	False	CmE2202.dpk	8	E2202	Fataler Fehler	Package 'CmGibtEsNicht' wird benötigt, konnte aber nicht gefunden werden
+CmE2202	Win64	False	CmE2202.dpk	8	E2202	Fataler Fehler	Package 'CmGibtEsNicht' wird benötigt, konnte aber nicht gefunden werden
+CmE2214	Win32	False	CmE2214.dpk	8	E2202	Fataler Fehler	Package 'CmE2214' wird benötigt, konnte aber nicht gefunden werden
+CmE2214	Win64	False	CmE2214.dpk	8	E2202	Fataler Fehler	Package 'CmE2214' wird benötigt, konnte aber nicht gefunden werden
+CmE2223	Win32	False			E2223	Fehler	$DENYPACKAGEUNIT 'Cm.Hilfe.E2223' kann nicht in ein Package getan werden
+CmE2223	Win64	False			E2223	Fehler	$DENYPACKAGEUNIT 'Cm.Hilfe.E2223' kann nicht in ein Package getan werden
+CmE2227	Win32	False			E2654	Fataler Fehler	Abschnittsgröße überschreitet die Grenze von 2 GB
+CmE2272	Win32	False	CmE2272.dpr	7	E2004	Fehler	Bezeichner redeklariert: "SysInit"
+CmE2272	Win64	False	CmE2272.dpr	7	E2004	Fehler	Bezeichner redeklariert: "SysInit"
+CmE2287	Win32	True					
+CmE2287	Win64	True					
+CmE2406	Win32	True	CmE2406.dpr	7	W1002	Warnung	Symbol 'UNSAFECODE' ist plattformspezifisch
+CmE2406	Win64	True	CmE2406.dpr	7	W1002	Warnung	Symbol 'UNSAFECODE' ist plattformspezifisch
+CmF1026	Win32	False	CmF1026.dpr	7	F1026	Fataler Fehler	Datei nicht gefunden: 'C:\Projekte\BetterDelphiLSP\wt-cm\Tests\Compilermeldungen\Faelle\Cm.Fehlt.pas'
+CmF1026	Win64	False	CmF1026.dpr	7	F1026	Fataler Fehler	Datei nicht gefunden: 'C:\Projekte\BetterDelphiLSP\wt-cm\Tests\Compilermeldungen\Faelle\Cm.Fehlt.pas'
+CmH2235	Win32	True					
+CmH2235	Win64	True					
+CmW1032	Win32	True	CmW1032.dpk	14	W1032	Warnung	Die exportierte Package-Thread-Variable 'Cm.Hilfe.W1032.GProFaden' darf nicht außerhalb dieses Package verwendet werden
+CmW1032	Win64	True	CmW1032.dpk	14	W1032	Warnung	Die exportierte Package-Thread-Variable 'Cm.Hilfe.W1032.GProFaden' darf nicht außerhalb dieses Package verwendet werden
+CmW1033	Win32	True	CmW1033.dpk	16	W1033	Warnung	Die Unit 'Cm.Hilfe.W1033Frei' wurde implizit in Package 'CmW1033' importiert
+CmW1033	Win64	True	CmW1033.dpk	16	W1033	Warnung	Die Unit 'Cm.Hilfe.W1033Frei' wurde implizit in Package 'CmW1033' importiert
+CmW1043	Win32	True					
+CmW1043	Win64	True					
