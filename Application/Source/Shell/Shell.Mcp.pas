@@ -99,6 +99,8 @@ uses
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Projects.Contract,
   Shell.Platform,
+  Shell.CrashCases,
+  Atlas.Common.JsonRpc.RecentMessages,
   Atlas.Common.Diagnostics.Anonymizer,
   Shell.Workspace,
   Shell.WorkspaceGroup,
@@ -1132,6 +1134,8 @@ var
   PathOptions: TUsesGraphOptions;
   EnsureAny: TFunc<string, Boolean>;
   GlobalSettings: string;
+  Recent: IJsonRpcRecentMessages;
+  CrashCases: TShellCrashCases;
 begin
   LoggerImpl := TLogger.Create;
   Logger := LoggerImpl;
@@ -1308,6 +1312,27 @@ begin
   Server := TMcpServer.Create(TProductVersion.Name, TProductVersion.Version);
   Dispatcher := TJsonRpcDispatcher.Create;
   Connection := TJsonRpcConnection.Create(Transport, Dispatcher);
+  // Absturzfälle auch im MCP-Modus (#1355): Werkzeugaufrufe haben kein Dokument, also nur der Fall, kein
+  // Überspringen. Eine Meldung an den Client gibt es nicht (Claude Code kennt atlas/crashCase nicht).
+  Recent := TJsonRpcRecentMessages.Create;
+  Dispatcher.Recent := Recent;
+  CrashCases := TShellCrashCases.Create('', Logger, nil, Recent);
+  CrashCases.AtlasVersion := TProductVersion.Version;
+  CrashCases.ServerPath := ParamStr(0);
+  CrashCases.Client := 'Claude Code (MCP)';
+  CrashCases.SkipEnabled := False;
+  CrashCases.SettingsFiles :=
+    function(const AUri: string): TArray<string>
+    begin
+      Result := TArray<string>.Create(TShellBootstrap.GlobalSettingsFile,
+        ExistingOrLegacyFile(Root, ConfigurationFileName, LegacyConfigurationFileName));
+    end;
+  Dispatcher.OnRequestFailed :=
+    procedure(const AMethod: string; const AParams: TJSONValue; const AError: Exception)
+    begin
+      CrashCases.Enabled := Workspace.Configuration.Settings.ServerCrashCases;
+      CrashCases.RequestFailed(AMethod, AParams, AError, TShellPlatform.StackTraceOf(AError));
+    end;
   try
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
@@ -1418,6 +1443,7 @@ begin
   finally
     Connection.Free;
     Dispatcher.Free;
+    CrashCases.Free;
     Server.Free;
     Guard.Free;
     Edit.Free;

@@ -1193,7 +1193,10 @@ type
     StatusBarRecheckClick, StatusBarRechecking, StatusBarProjectProgress, StatusBarPausedDebugger,
     SettingsSearchFromFirst,
     // Projektprüfung als begrenzter Lauf (#1247).
-    StatusBarProjectDone, StatusBarProjectPaused);
+    StatusBarProjectDone, StatusBarProjectPaused,
+    // Absturzfälle des Servers (#1355).
+    CrashRestartedTitle, CrashCaseTitle, CrashCaseText, CrashOpenCase, CrashCreateIssue, CrashHide,
+    CrashSkipTitle, CrashSkipText, CrashSkipEnded, CrashRetry, CrashSkipProblem, AttachCrashCase);
 
   TAtlasStrings = class
   private class var
@@ -4212,7 +4215,14 @@ const
      'Übernehmen',
      'Klick: alle Units neu prüfen', 'Atlas prüft alle Units neu …', 'Projekt %d %%', 'angehalten (Debugger)',
      'Beim Tippen zum ersten Treffer springen (sonst zum nächsten ab dem Cursor)',
-     'Projekt fertig', 'pausiert (Kompilieren)'),
+     'Projekt fertig', 'pausiert (Kompilieren)',
+     'Atlas-Server neu gestartet', 'Absturzfall gesichert', 'Der Server hat die Anfrage abgebrochen: %s',
+     'Fall öffnen', 'Issue anlegen', 'Ausblenden',
+     'Übersprungen nach Absturz',
+     '%s an %s wird bis zur nächsten Änderung übersprungen (%d Abstürze, %s).',
+     '%s an %s wird wieder beantwortet.', 'Erneut versuchen',
+     'Übersprungen nach Absturz: %s (%d Abstürze, %s); Fall %s',
+     'Absturzfall (%d Dateien)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -7103,7 +7113,14 @@ const
      'Apply',
      'Click: check all units again', 'Atlas is checking all units again …', 'project %d %%', 'paused (debugger)',
      'Jump to the first match while typing (otherwise the next one after the cursor)',
-     'project done', 'paused (compiling)'));
+     'project done', 'paused (compiling)',
+     'Atlas server restarted', 'Crash case saved', 'The server aborted the request: %s',
+     'Open case', 'Create issue', 'Dismiss',
+     'Skipped after crash',
+     '%s on %s is skipped until the next change (%d crashes, %s).',
+     '%s on %s is answered again.', 'Retry',
+     'Skipped after crash: %s (%d crashes, %s); case %s',
+     'Crash case (%d files)'));
 
 { TAtlasStrings }
 

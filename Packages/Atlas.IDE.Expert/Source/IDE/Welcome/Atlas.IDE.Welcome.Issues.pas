@@ -110,6 +110,7 @@ uses
   Atlas.Core.Status.Contract,
   Atlas.Core.Status.Registry,
   Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Attach,
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.TimeLog,
   Atlas.Core.Vcs.BranchPlan,
@@ -352,6 +353,10 @@ type
     /// <summary>Befehl Atlas.IssueAttach (#1276): Dialog „An Issue anhängen“ für den Tracker des aktiven Projekts,
     /// das aktuelle Issue vorgewählt.</summary>
     procedure AttachPrompt;
+    /// <summary>Dialog „An Issue anhängen“ für AKey bei ATarget mit AFiles vorgewählt (Absturzfall nach „Issue
+    /// anlegen“, #1355).</summary>
+    procedure AttachFiles(const ATarget: TAtlasTrackerTarget; const AKey: string;
+      const AFiles: TArray<TAtlasAttachFile>);
     /// <summary>Vorschau-Steuerung (nil vor Start bzw. nach Stop).</summary>
     property IssuePreview: TAtlasIdeIssuePreview read FPreview;
     /// <summary>Fenster „Atlas-Board“ (#1272; nil vor Start bzw. nach Stop).</summary>
@@ -1222,6 +1227,14 @@ begin
         mKey := mData.Active.Key;
       FAttach.Execute(mTarget, mKey);
     end);
+end;
+
+procedure TAtlasIdeIssues.AttachFiles(const ATarget: TAtlasTrackerTarget; const AKey: string;
+  const AFiles: TArray<TAtlasAttachFile>);
+begin
+  if not FStarted or (FAttach = nil) or not TAtlasIdeIssueAttach.Active then
+    Exit;
+  FAttach.Execute(ATarget, AKey, AFiles);
 end;
 
 procedure TAtlasIdeIssues.UpdateAttachStatus(const AKey: string);
