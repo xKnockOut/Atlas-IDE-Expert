@@ -6,7 +6,7 @@
 interface
 
 uses
-  Cm.F2092 // <- F2092;
+  Cm.F2092; // <- F2092
 
 implementation
 
