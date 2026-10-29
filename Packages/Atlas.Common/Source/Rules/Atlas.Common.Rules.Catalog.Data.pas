@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4576] of string = (
+  BaseLines: array[0..4591] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -5316,6 +5316,26 @@ const
     '      "level": "T"',
     '    },',
     '    {',
+    '      "id": "overload-resolution",',
+    '      "name": "Overload not resolvable or ambiguous",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A call of an overloaded routine or method matches no overload (like E2250), for example a floating-point value where only Integer and string are offered, or is ambiguous (like E2' +
+    '251) because the matching overloads only differ in parameters with default values. Checked only when the list of overloads is certainly complete: System and all units in uses are indexed, no other uni' +
+    't declares a free routine of the same name, ancestors are known, no conditional, generic, nested or varargs declarations, no with. Only built-in type families without implicit conversion count as mism' +
+    'atching (float to integer, string to Char, Boolean to number …), aliases like their base type; records with an Implicit operator, classes, pointers, open arrays, Variant and overloaded calls inside th' +
+    'e argument are left to the compiler. Ambiguous means: all matching overloads of the same class or unit have exactly the argument types for the passed arguments. Quick fix: Signature help shows all ove' +
+    'rloads.",',
+    '      "bad": "procedure Nimm(AWert: Integer); overload;\nprocedure Nimm(const AWert: string); overload;\n\nNimm(1.5);  // no overload takes a float",',
+    '      "good": "Nimm(Round(1.5));",',
+    '      "compilerCodes": [',
+    '        "E2250",',
+    '        "E2251"',
+    '      ],',
+    '      "level": "T"',
+    '    },',
+    '    {',
     '      "id": "method-without-self",',
     '      "name": "Method does not need Self",',
     '      "category": "code-smell",',
@@ -5332,7 +5352,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2125] of string = (
+  OverlayLines_de: array[0..2130] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -8230,6 +8250,16 @@ const
     ' wird nur, wenn der Name sicher genau eine Routine meint: Überladungen, varargs, Typumwandlungen, Variablen prozeduralen Typs, Bezeichner von System ohne Quelltext und Deklarationen in bedingten Zweig' +
     'en bleiben beim Compiler (E2250). Eine Funktion mit zu vielen Argumenten meldet die Regel nur bei bekanntem, nicht prozeduralem Ergebnistyp. Korrektur: Signaturhilfe öffnen setzt die Schreibmarke in d' +
     'ie Klammern und öffnet den Parameter-Hint (ergänzt () bei Bedarf)."',
+    '    },',
+    '    {',
+    '      "id": "overload-resolution",',
+    '      "name": "Überladung nicht auflösbar oder mehrdeutig",',
+    '      "description": "Ein Aufruf einer überladenen Routine oder Methode passt zu keiner Überladung (wie E2250), etwa ein Gleitkommawert, wo nur Integer und string angeboten sind, oder ist mehrdeutig (' +
+    'wie E2251), weil sich die passenden Überladungen nur in Parametern mit Standardwert unterscheiden. Geprüft wird nur, wenn die Liste der Überladungen sicher vollständig ist: System und alle Units in us' +
+    'es im Index, keine gleichnamige freie Routine in einer anderen Unit, bekannte Vorfahren, keine bedingten, generischen, verschachtelten oder varargs-Deklarationen, kein with. Als unpassend gelten nur e' +
+    'ingebaute Typfamilien ohne implizite Umwandlung (Gleitkomma an Ganzzahl, string an Char, Boolean an Zahl …), Aliase wie ihr Grundtyp; Records mit Implicit-Operator, Klassen, Zeiger, offene Arrays, Var' +
+    'iant und überladene Aufrufe im Argument bleiben beim Compiler. Mehrdeutig heißt: Alle passenden Überladungen derselben Klasse bzw. Unit haben für die übergebenen Argumente genau deren Typen. Korrektur' +
+    ': Signaturhilfe öffnen zeigt alle Überladungen."',
     '    },',
     '    {',
     '      "id": "method-without-self",',
