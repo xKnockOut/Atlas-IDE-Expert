@@ -209,6 +209,7 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.SignatureFormat.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hierarchies.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Impact.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.AffectedTests.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Implementations.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.InlayHints.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DeepTrees.Tests.pas"/>
@@ -1242,6 +1243,8 @@
         <DCCReference Include="Application\Shell\Shell.Commands.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.VcsChanges.pas"/>
         <DCCReference Include="Application\Shell\Shell.VcsChanges.Tests.pas"/>
+        <DCCReference Include="..\Application\Source\Shell\Shell.AffectedTests.pas"/>
+        <DCCReference Include="Application\Shell\Shell.AffectedTests.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Platform.pas"/>
         <DCCReference Include="Application\Shell\Shell.Platform.Tests.pas"/>
         <DCCReference Include="..\Application\Source\Shell\Shell.Linter.pas"/>

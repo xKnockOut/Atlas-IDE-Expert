@@ -87,6 +87,8 @@ type
     /// <summary>Projekte der Gruppe neu ermitteln (nach geänderten Projektdateien).</summary>
     procedure Invalidate;
     property Main: TShellWorkspace read FMain;
+    /// <summary>Symbolindex aller Projekte der Gruppe.</summary>
+    property Index: ISymbolIndex read FIndex;
     /// <summary>Vor Load setzen (#62): Anmeldung am Index-Cache.</summary>
     property ProcessIdentity: TIndexProcessInfo read FProcessIdentity write FProcessIdentity;
     /// <summary>Vor Load setzen (#1112): Ordner der Index-Caches.</summary>

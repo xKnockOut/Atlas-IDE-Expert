@@ -107,6 +107,7 @@ type
     procedure ReadStringLiteral(ANode: TJsonNode);
     procedure ReadMemberOrder(ANode: TJsonNode);
     procedure ReadTestUnits(ANode: TJsonNode);
+    procedure ReadTests(ANode: TJsonNode);
     procedure ReadDfmPropertyRules(ANode: TJsonNode);
     function ReadDfmPropertyRule(ANode: TJsonNode; out ARule: TDfmPropertyRule): Boolean;
     procedure ReadHighlight(ANode: TJsonNode);
@@ -1317,6 +1318,37 @@ begin
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "memberOrder.%s"', [Key]), False);
+  end;
+end;
+
+procedure TValidator.ReadTests(ANode: TJsonNode);
+var
+  mIndex, mDepth: Integer;
+  mKey: string;
+  mValue: TJsonNode;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"tests" muss ein Objekt sein');
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    mKey := ANode.Keys[mIndex];
+    mValue := ANode[mIndex];
+    if mKey = 'affected' then
+      ExpectBoolean(mValue, mKey, FSettings.Tests.Affected)
+    else if mKey = 'affectedDepth' then
+    begin
+      if (mValue.Kind = TJsonKind.Number) and TryStrToInt(mValue.Value, mDepth) and
+        (mDepth >= TTestsSettings.MinAffectedDepth) and (mDepth <= TTestsSettings.MaxAffectedDepth) then
+        FSettings.Tests.AffectedDepth := mDepth
+      else
+        ReportNode(mValue, '"affectedDepth" muss eine ganze Zahl von 1 bis 5 sein');
+    end
+    else
+      Report(ANode.KeyStarts[mIndex], ANode.KeyStarts[mIndex] + Length(mKey) + 2,
+        Format('Unbekannte Einstellung "tests.%s"', [mKey]), False);
   end;
 end;
 
@@ -2839,6 +2871,8 @@ begin
         ReadMemberOrder(Value)
       else if Key = 'testUnits' then
         ReadTestUnits(Value)
+      else if Key = 'tests' then
+        ReadTests(Value)
       else if Key = 'dfmPropertyRules' then
         ReadDfmPropertyRules(Value)
       else if Key = 'highlight' then
@@ -3209,6 +3243,8 @@ begin
       Result.MemberOrder := FileSettings.MemberOrder
     else if Key = 'testUnits' then
       Result.TestUnits := FileSettings.TestUnits
+    else if Key = 'tests' then
+      Result.Tests := FileSettings.Tests
     else if Key = 'dfmPropertyRules' then
       Result.DfmPropertyRules := FileSettings.DfmPropertyRules
     else if Key = 'highlight' then

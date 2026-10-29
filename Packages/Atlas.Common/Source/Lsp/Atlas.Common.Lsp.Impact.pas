@@ -34,6 +34,10 @@
 // Leistung: Projektdateien, in denen der gesuchte Name laut den Verwendungen im
 // Index (#492) nicht vorkommt, liest die Referenzsuche gar nicht erst.
 //
+// Mehrere Symbole (betroffene Tests einer Änderung, #1353): AnalyzeEach
+// verfolgt jedes für sich, teilt aber die gelesenen Bäume, Formulare und
+// Testunits zwischen den Läufen.
+//
 // LSP: atlas/impact {textDocument, position, depth?}.
 
 interface
@@ -170,6 +174,12 @@ type
     class function Analyze(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AStart: THierarchyItem;
       const AFiles: TArray<string>; const AReadText: TReferenceReadText; const AOptions: TImpactOptions;
       const ACancellation: IJsonRpcCancellationToken): TImpactResult; static;
+    /// <summary>Wie Analyze für jedes Symbol aus AStarts (#1353), in derselben Reihenfolge; die Läufe teilen sich
+    /// die gelesenen Dateien. AOptions.TimeoutMs gilt für alle zusammen: Jedes Symbol bekommt die verbleibende Zeit
+    /// geteilt durch die Zahl der übrigen.</summary>
+    class function AnalyzeEach(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+      const AStarts: TArray<THierarchyItem>; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
+      const AOptions: TImpactOptions; const ACancellation: IJsonRpcCancellationToken): TArray<TImpactResult>; static;
     /// <summary>Projektdateien, in denen AName vorkommen kann: ohne die, in denen er laut Index fehlt.</summary>
     class function CandidateFiles(const AIndex: ISymbolIndex; const AFiles: TArray<string>;
       const AName: string): TArray<string>; static;
@@ -232,6 +242,17 @@ type
     procedure ThrowIfCancellationRequested;
   end;
 
+  /// <summary>Gelesene Dateien einer oder mehrerer Analysen (AnalyzeEach, #1353).</summary>
+  TImpactFiles = class
+  public
+    Trees: TObjectDictionary<string, TSyntaxTree>;
+    Units: TDictionary<string, TUnitIndex>;
+    Forms: TObjectDictionary<string, TFormModel>;
+    TestUnits: TDictionary<string, TDUnitXUnit>;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
   /// <summary>Zustand einer Analyse.</summary>
   TImpactRun = class
   private
@@ -246,10 +267,8 @@ type
     FTests: TList<TImpactTest>;
     /// <summary>Deklarationsschlüssel → Index in FPlaces; -1 = das Symbol.</summary>
     FKeys: TDictionary<string, Integer>;
-    FTrees: TObjectDictionary<string, TSyntaxTree>;
-    FUnits: TDictionary<string, TUnitIndex>;
-    FForms: TObjectDictionary<string, TFormModel>;
-    FTestUnits: TDictionary<string, TDUnitXUnit>;
+    FCache: TImpactFiles;
+    FOwnsFiles: Boolean;
     FMaxPlaces: Integer;
     FFull: Boolean;
     function ReadText(const AFileName: string; out AText: string): Boolean;
@@ -277,9 +296,10 @@ type
     procedure AddStructural(const AItem: THierarchyItem; ACause, ALevel: Integer; var ANext: TList<Integer>);
     procedure Expand(const AItem: THierarchyItem; ACause, ALevel: Integer; var ANext: TList<Integer>);
   public
+    /// <summary>AShared: gelesene Dateien mehrerer Läufe (bleibt beim Aufrufer); nil = eigene.</summary>
     constructor Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AFiles: TArray<string>;
       const AReadText: TReferenceReadText; const AOptions: TImpactOptions;
-      const ACancellation: IJsonRpcCancellationToken);
+      const ACancellation: IJsonRpcCancellationToken; AShared: TImpactFiles);
     destructor Destroy; override;
     function Run(const AStart: THierarchyItem): TImpactResult;
   end;
@@ -417,11 +437,31 @@ begin
   end;
 end;
 
+{ TImpactFiles }
+
+constructor TImpactFiles.Create;
+begin
+  inherited Create;
+  Trees := TObjectDictionary<string, TSyntaxTree>.Create([doOwnsValues]);
+  Units := TDictionary<string, TUnitIndex>.Create;
+  Forms := TObjectDictionary<string, TFormModel>.Create([doOwnsValues]);
+  TestUnits := TDictionary<string, TDUnitXUnit>.Create;
+end;
+
+destructor TImpactFiles.Destroy;
+begin
+  TestUnits.Free;
+  Forms.Free;
+  Units.Free;
+  Trees.Free;
+  inherited;
+end;
+
 { TImpactRun }
 
 constructor TImpactRun.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AFiles: TArray<string>;
   const AReadText: TReferenceReadText; const AOptions: TImpactOptions;
-  const ACancellation: IJsonRpcCancellationToken);
+  const ACancellation: IJsonRpcCancellationToken; AShared: TImpactFiles);
 begin
   inherited Create;
   FResolver := AResolver;
@@ -438,18 +478,17 @@ begin
   FPlaces := TList<TImpactPlace>.Create;
   FTests := TList<TImpactTest>.Create;
   FKeys := TDictionary<string, Integer>.Create;
-  FTrees := TObjectDictionary<string, TSyntaxTree>.Create([doOwnsValues]);
-  FUnits := TDictionary<string, TUnitIndex>.Create;
-  FForms := TObjectDictionary<string, TFormModel>.Create([doOwnsValues]);
-  FTestUnits := TDictionary<string, TDUnitXUnit>.Create;
+  FOwnsFiles := AShared = nil;
+  if FOwnsFiles then
+    FCache := TImpactFiles.Create
+  else
+    FCache := AShared;
 end;
 
 destructor TImpactRun.Destroy;
 begin
-  FTestUnits.Free;
-  FForms.Free;
-  FUnits.Free;
-  FTrees.Free;
+  if FOwnsFiles then
+    FCache.Free;
   FKeys.Free;
   FTests.Free;
   FPlaces.Free;
@@ -467,33 +506,33 @@ function TImpactRun.TreeOf(const AFileName: string): TSyntaxTree;
 var
   Text: string;
 begin
-  if FTrees.TryGetValue(UpperCase(AFileName), Result) then
+  if FCache.Trees.TryGetValue(UpperCase(AFileName), Result) then
     Exit;
   Result := nil;
   if not ReadText(AFileName, Text) then
     Exit;
   // Große Gruppen: nicht alle Bäume zugleich halten.
-  if FTrees.Count >= MaxCachedTrees then
+  if FCache.Trees.Count >= MaxCachedTrees then
   begin
-    FTrees.Clear;
-    FUnits.Clear;
+    FCache.Trees.Clear;
+    FCache.Units.Clear;
   end;
   Result := TSyntaxTreeCache.Parse(Text);
-  FTrees.Add(UpperCase(AFileName), Result);
+  FCache.Trees.Add(UpperCase(AFileName), Result);
 end;
 
 function TImpactRun.ExtractedUnit(const AFileName: string; out AUnit: TUnitIndex): Boolean;
 var
   Tree: TSyntaxTree;
 begin
-  if FUnits.TryGetValue(UpperCase(AFileName), AUnit) then
+  if FCache.Units.TryGetValue(UpperCase(AFileName), AUnit) then
     Exit(True);
   Tree := TreeOf(AFileName);
   Result := Tree <> nil;
   if Result then
   begin
     AUnit := TIndexExtractor.Extract(Tree, AFileName);
-    FUnits.AddOrSetValue(UpperCase(AFileName), AUnit);
+    FCache.Units.AddOrSetValue(UpperCase(AFileName), AUnit);
   end;
 end;
 
@@ -558,12 +597,12 @@ begin
     Exit;
   for FormFile in TFormFiles.FormFiles(AItem.FileName, Text) do
   begin
-    if not FForms.TryGetValue(UpperCase(FormFile), Model) then
+    if not FCache.Forms.TryGetValue(UpperCase(FormFile), Model) then
     begin
       if not ReadText(FormFile, Text) then
         Continue;
       Model := TFormModel.Create(Text);
-      FForms.Add(UpperCase(FormFile), Model);
+      FCache.Forms.Add(UpperCase(FormFile), Model);
     end;
     Lines := nil;
     for Range in Model.Occurrences(AItem.Name) do
@@ -609,7 +648,7 @@ begin
     UnitName := Indexed.UnitName
   else
     UnitName := '';
-  if not FTestUnits.TryGetValue(UpperCase(AItem.FileName), Source) then
+  if not FCache.TestUnits.TryGetValue(UpperCase(AItem.FileName), Source) then
   begin
     Source := Default(TDUnitXUnit);
     // Nur Testunits parsen: Attribute stehen nicht im Index.
@@ -619,7 +658,7 @@ begin
       if not FOptions.Tests.Contains(Source.UnitName) then
         Source := Default(TDUnitXUnit);
     end;
-    FTestUnits.Add(UpperCase(AItem.FileName), Source);
+    FCache.TestUnits.Add(UpperCase(AItem.FileName), Source);
   end;
   if not Source.Find(AItem.Container, AItem.Name, FixtureIndex, TestIndex) or (TestIndex < 0) then
     Exit;
@@ -1039,11 +1078,51 @@ class function TImpactAnalysis.Analyze(AResolver: TNameResolver; const AIndex: I
 var
   Run: TImpactRun;
 begin
-  Run := TImpactRun.Create(AResolver, AIndex, AFiles, AReadText, AOptions, ACancellation);
+  Run := TImpactRun.Create(AResolver, AIndex, AFiles, AReadText, AOptions, ACancellation, nil);
   try
     Result := Run.Run(AStart);
   finally
     Run.Free;
+  end;
+end;
+
+class function TImpactAnalysis.AnalyzeEach(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AStarts: TArray<THierarchyItem>; const AFiles: TArray<string>; const AReadText: TReferenceReadText;
+  const AOptions: TImpactOptions; const ACancellation: IJsonRpcCancellationToken): TArray<TImpactResult>;
+var
+  mShared: TImpactFiles;
+  mRun: TImpactRun;
+  mIndex: Integer;
+  mOptions: TImpactOptions;
+  mClock: TStopwatch;
+  mLeft: Int64;
+begin
+  SetLength(Result, Length(AStarts));
+  mOptions := AOptions;
+  mClock := TStopwatch.StartNew;
+  mShared := TImpactFiles.Create;
+  try
+    for mIndex := 0 to High(AStarts) do
+    begin
+      if ACancellation <> nil then
+        ACancellation.ThrowIfCancellationRequested;
+      if AOptions.TimeoutMs > 0 then
+      begin
+        // Mindestens 1 ms: 0 hieße ohne Zeitlimit.
+        mLeft := (AOptions.TimeoutMs - mClock.ElapsedMilliseconds) div (Length(AStarts) - mIndex);
+        if mLeft < 1 then
+          mLeft := 1;
+        mOptions.TimeoutMs := Integer(mLeft);
+      end;
+      mRun := TImpactRun.Create(AResolver, AIndex, AFiles, AReadText, mOptions, ACancellation, mShared);
+      try
+        Result[mIndex] := mRun.Run(AStarts[mIndex]);
+      finally
+        mRun.Free;
+      end;
+    end;
+  finally
+    mShared.Free;
   end;
 end;
 
