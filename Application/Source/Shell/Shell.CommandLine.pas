@@ -30,6 +30,13 @@
 //                         oder der RTL brauchen, schweigen dann
 //   --index-cache <Ordner> Ordner der Index-Caches (Standard wie der Server, %LOCALAPPDATA%\Atlas)
 //
+// Formatieren ohne IDE (#1358), Ziel wie bei --check:
+//   --format-check        prüft, ob die Dateien den Formatregeln (format.*, .editorconfig) entsprechen;
+//                         mit --format json alle Abweichungen, mit --format diff der vereinigte Diff;
+//                         Exit-Code 1 bei einer Abweichung
+//   --format-write        schreibt die formatierten Dateien (atomar, Kodierung bleibt)
+//                         Beide mit --changed/--diff, --changed-lines (nur geänderte Zeilen) und --units.
+//
 // Architekturbericht (#1118):
 //   --architecture <Datei> Architekturübersicht des Ziels aus --check (Standard: aktueller Ordner)
 //                         als Markdown (.md) oder interaktive HTML-Seite (.html) schreiben,
@@ -116,6 +123,12 @@ type
     IncludeUncommitted: Boolean;
     /// <summary>Nur Treffer in geänderten Zeilen ausgeben.</summary>
     ChangedLines: Boolean;
+    /// <summary>--format-check (#1358): Formatierung prüfen statt Regeln.</summary>
+    FormatCheck: Boolean;
+    /// <summary>--format-write (#1358): formatierte Dateien schreiben.</summary>
+    FormatWrite: Boolean;
+    /// <summary>--format diff (#1358): vereinigter Diff; nur mit --format-check/--format-write.</summary>
+    FormatDiff: Boolean;
     /// <summary>Index-Caches löschen und beenden (#184).</summary>
     ClearCache: Boolean;
     /// <summary>Nicht vertrauenswürdiger Arbeitsbereich (#186): nichts ausführen, was Code aus dem Projekt startet.</summary>
@@ -257,7 +270,8 @@ begin
     FlagOption('--include-uncommitted', @Result.IncludeUncommitted),
     FlagOption('--changed-lines', @Result.ChangedLines), FlagOption('--update-baseline', @Result.UpdateBaseline),
     FlagOption('--suppression-stats', @Result.SuppressionStats), FlagOption('--metrics', @Result.Metrics),
-    FlagOption('--todos', @Result.Todos), FlagOption('--no-index', @Result.NoIndex)];
+    FlagOption('--todos', @Result.Todos), FlagOption('--no-index', @Result.NoIndex),
+    FlagOption('--format-check', @Result.FormatCheck), FlagOption('--format-write', @Result.FormatWrite)];
 
   Index := Low(AArgs);
   while Index <= High(AArgs) do
@@ -307,8 +321,14 @@ begin
     else if Name = '--format' then
     begin
       if TakeValue then
-        if TFindingsOutput.TryParseFormat(Value, CheckFormat) then
-          Result.CheckFormat := CheckFormat
+        // diff gibt es nur beim Formatieren (#1358); die Prüfung dort lehnt es ohne --format-check ab.
+        if SameText(Value.Trim, 'diff') then
+          Result.FormatDiff := True
+        else if TFindingsOutput.TryParseFormat(Value, CheckFormat) then
+        begin
+          Result.CheckFormat := CheckFormat;
+          Result.FormatDiff := False;
+        end
         else
           AddWarning(Format('Unbekanntes Format "%s", verwendet wird text', [Value]));
     end
