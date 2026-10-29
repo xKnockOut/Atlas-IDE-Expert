@@ -56,9 +56,10 @@
 //                                 E2437); inline an virtuellen Methoden
 //                                 (E2425), mit asm (E2426), an Konstruktoren
 //                                 (E2442), mit offenen Arrays (E2439), mit
-//                                 Variablen, typisierten Konstanten oder
-//                                 Typen des implementation-Teils (E2441; echte
-//                                 Konstanten und Routinen übersetzt dcc, #1328),
+//                                 Variablen oder typisierten Konstanten des
+//                                 implementation-Teils (E2441; echte
+//                                 Konstanten, Typen und Routinen übersetzt
+//                                 dcc, #1328),
 //                                 mit Zugriff auf die umgebende Routine
 //                                 (E2449) oder Aufruf eigener lokaler
 //                                 Routinen (E2501); lokale, absolute oder
@@ -1151,9 +1152,9 @@ begin
 end;
 
 /// <summary>Namen des implementation-Teils, die eine Inline-Routine aus dem interface-Teil verwenden darf: echte
-/// Konstanten, Aufzählungswerte und Routinen. dcc übersetzt das (mORMot2, Clipper2 in Graphics32; TR1, TR2, TR4,
-/// #1328); E2441 bleibt für Variablen, typisierte Konstanten und Typen. Abgeleitet aus dem Korpus, der dcc-Lauf der
-/// Minimalfälle steht aus.</summary>
+/// Konstanten, Typen samt Aufzählungswerten und Routinen. dcc übersetzt das (mORMot2, Clipper2 in Graphics32; TR1,
+/// TR2, TR4, TR8; dcc-Lauf vom 29.10.2026, #1328); E2441 bleibt für Variablen und typisierte Konstanten (TG1,
+/// TG4).</summary>
 function InlineUsableNames(ASection: TSyntaxNode): TArray<string>;
 var
   mIndex, mInner: Integer;
@@ -1178,6 +1179,8 @@ begin
         for mInner := 0 to mChild.ChildCount - 1 do
         begin
           mDecl := mChild[mInner];
+          if mDecl.Kind = TSyntaxKind.TypeDecl then
+            Result := Result + DeclaredNames(mDecl);
           if (mDecl.Kind = TSyntaxKind.TypeDecl) and (TypeOfDecl(mDecl) <> nil) and
             (TypeOfDecl(mDecl).Kind = TSyntaxKind.EnumType) then
             Result := Result + NamesBelow(TypeOfDecl(mDecl));

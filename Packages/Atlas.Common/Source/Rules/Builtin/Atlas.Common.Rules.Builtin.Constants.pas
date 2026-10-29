@@ -45,7 +45,8 @@
 //                              und Übergabe als var- oder out-Argument samt
 //                              Inc, Dec, Include, Exclude … (W1016); steht
 //                              vor der Deklaration in derselben Datei {$J-},
-//                              ist es ein Fehler (E2064 bzw. E2197); {$J±}
+//                              ist es ein Fehler (E2064 bzw. E2197), mit
+//                              {$J+} schweigt die Regel wie dcc; {$J±}
 //                              aus einer mit {$I} eingebundenen Datei zählt
 //                              mit (#1328), eine unlesbare macht den Stand
 //                              unbekannt. Dazu 0
@@ -2171,6 +2172,9 @@ var
         TRuleSeverity.Error, Fixes);
       Exit;
     end;
+    // Mit {$J+} vor der Deklaration meldet dcc nichts (TC1-TC3, dcc-Lauf vom 29.10.2026, #1328).
+    if (Decl <> nil) and (WriteableAt(Decl.StartPos) = TWriteable.On_) then
+      Exit;
     if AsArgument then
       Code := 'W1016'
     else

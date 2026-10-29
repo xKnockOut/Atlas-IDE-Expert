@@ -9,6 +9,7 @@ uses
 
 function Wert(AObjekt: TEinfach): Integer;
 function Anzahl(ABaum: TBaumBasis): Integer;
+function KonkretZweiter(AKnoten: TKnoten<Integer>): TKnoten<Integer>;
 
 implementation
 
@@ -20,6 +21,11 @@ end;
 function Anzahl(ABaum: TBaumBasis): Integer;
 begin
   Result := ABaum.FAnzahl; // SG2: protected-Feld, nicht generischer Code
+end;
+
+function KonkretZweiter(AKnoten: TKnoten<Integer>): TKnoten<Integer>;
+begin
+  Result := AKnoten.FNaechster; // SG3 (vorher IM3): protected-Feld einer generischen Klasse, aus nicht generischem Code
 end;
 
 end.
