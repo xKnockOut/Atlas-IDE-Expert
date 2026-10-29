@@ -1,6 +1,6 @@
 # 0009: Installer als eigene VCL-Anwendung je Benutzer
 
-- Status: Angenommen
+- Status: Ersetzt durch [0016](0016-kein-installer.md)
 - Datum: 2026-10-14
 - Bezug: #495 Installation und Updates, #83 Release-Prozess, #281 Delphi 12 und 64-Bit-IDE, ADR 0006 IDE-Plugin, ADR 0008 Plattformen
 

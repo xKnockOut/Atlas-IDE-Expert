@@ -165,7 +165,8 @@ uses
   Atlas.Core.Projects.Summary,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Elements;
+  Atlas.IDE.Foundation.Elements,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 { TAtlasGutterLayer }
 
@@ -253,7 +254,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 class function TAtlasIdeGutterMarks.IconRect(const AGutter: TRect; ASlot: Integer): TRect;

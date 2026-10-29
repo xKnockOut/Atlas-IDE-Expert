@@ -7,7 +7,7 @@
 // Einstellungen.
 // interface-declaration-invalid (#1075): Beispiel aus dem Issue (E2209),
 // Sichtbarkeit und Direktiven (E2210), Property-Klauseln (E2207), Properties
-// und Accessoren aus Vorfahr-Interfaces (E2206, E2370), Klassen und Records
+// und Neudeklarationen ohne Typ (E2206), Klassen und Records
 // als Interfaces und doppelte Einträge (E2205, E2208), stille Fälle und die
 // Einstellungen.
 // implements-clause-invalid (#1076): Beispiel aus dem Issue (E2261), Typ,
@@ -375,15 +375,12 @@ var
 begin
   Found := InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10'    property Name;'#10 +
     '    property Titel: string read GetName;'#10'  end;'#10));
-  Assert.AreEqual(2, Integer(Length(Found)));
+  // Titel mit dem geerbten Getter GetName übersetzt dcc (ID3, #1328).
+  Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('Die Property Name ist schon in IBasis deklariert; Interfaces dürfen Properties nicht ' +
     'ohne Typ neu aufführen (wie E2206).', Found[0].Message);
   Assert.AreEqual(6, Found[0].Range.StartPos.Line);
   Assert.AreEqual(13, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('GetName stammt aus IBasis; Accessoren einer Interface-Property müssen im Interface selbst ' +
-    'stehen (wie E2370).', Found[1].Message);
-  Assert.AreEqual(7, Found[1].Range.StartPos.Line);
-  Assert.AreEqual(32, Found[1].Range.StartPos.Character);
   // Eigener Accessor und neuer Name: still.
   Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10 +
     '    function GetTitel: string;'#10'    property Titel: string read GetTitel;'#10'  end;'#10)))));
@@ -391,7 +388,10 @@ begin
   Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10 +
     '    procedure SetName(const AName: string);'#10'    function GetName: string;'#10 +
     '    property Name: string read GetName write SetName;'#10'  end;'#10)))));
-  // Geerbter Accessor in einem generischen Interface übersetzt dcc (DUnitX IList<T>, ID2; #1328).
+  // Geerbter Accessor übersetzt dcc, generisch (DUnitX IList<T>, ID2) wie nicht generisch (ID1; #1328).
+  Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IKunde = interface(IBasis)'#10 +
+    '    procedure SetName(const AName: string);'#10'    property Name: string read GetName write SetName;'#10 +
+    '  end;'#10)))));
   Assert.AreEqual(0, Integer(Length(InterfaceFindings(Kunden('  IListe<T> = interface'#10 +
     '    function GetAnzahl: Integer;'#10'    property Anzahl: Integer read GetAnzahl;'#10'  end;'#10 +
     '  IVoll<T> = interface(IListe<T>)'#10'    procedure SetAnzahl(AWert: Integer);'#10 +

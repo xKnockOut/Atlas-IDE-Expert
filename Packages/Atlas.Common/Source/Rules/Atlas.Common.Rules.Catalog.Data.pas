@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4578] of string = (
+  BaseLines: array[0..4576] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -3743,10 +3743,10 @@ const
     ' a constructor call compile, Skia4Delphi), a class helper descending from a helper whose type the new target does not descend from (E2294, only with a known ancestor chain), a helper used as type of a' +
     ' declaration (E2527) or declared inside a generic type (E2589); several class constructors (E2359, exclusive conditional branches count once), class constructors with parameters (E2360) or virtual, dy' +
     'namic or message (E2534); methods, properties, class members, types and constants in local or anonymous records (E2433 to E2437); inline on virtual or dynamic methods (E2425), on constructors and dest' +
-    'ructors (E2442), with open array parameters (E2439), with an asm body (E2426), declared in the interface section and using a variable, typed constant or type of the implementation section (E2441; true' +
-    ' constants, enumeration values and routines compile, mORMot2, Clipper2), as local routine reading variables of the enclosing routine (E2449) or calling its own local routines (E2501); local, absolute ' +
-    'or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes: remove the directive, ' +
-    'add static.",',
+    'ructors (E2442), with open array parameters (E2439), with an asm body (E2426), declared in the interface section and using a variable or typed constant of the implementation section (E2441; true const' +
+    'ants, enumeration values, types and routines compile, mORMot2, Clipper2, dcc run of 29.10.2026), as local routine reading variables of the enclosing routine (E2449) or calling its own local routines (' +
+    'E2501); local, absolute or initialized threadvar (E2189, E2190, E2194). The checks apply to all supported Delphi versions (10 Seattle to 13). Option disabledChecks leaves out single codes. Quick fixes' +
+    ': remove the directive, add static.",',
     '      "bad": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double; virtual;\nend;",',
     '      "good": "TPoint2 = record\n  X, Y: Integer;\n  function Length: Double;\nend;",',
     '      "compilerCodes": [',
@@ -4042,8 +4042,8 @@ const
     't and its descendants (like E2362, E2389). Inside a class method or static method, an instance field, method or property of the class is not reachable (like E2124). A property that refers to a private' +
     ' member of an ancestor in the same unit is reported as a warning (like W1045). The rule only reports when name resolution knows the receiver and its type for sure and finds the member only without reg' +
     'ard to visibility; protected members stay visible through a class declared in the same unit (TAccess(Control).Click). A private class constructor does not hide an inherited Create, and a class overloa' +
-    'd of a method stays reachable from a class method. Protected members reached through a generic receiver (TNode<T>) compile from other units as well (Spring4D). Declarations in conditional branches, me' +
-    'thods of helpers and nested types stay silent.",',
+    'd of a method stays reachable from a class method. Protected members reached through a generic receiver (TNode<T>) compile from generic code in other units as well (Spring4D); from non-generic code dc' +
+    'c reports E2362. Declarations in conditional branches, methods of helpers and nested types stay silent.",',
     '      "bad": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := FBasisPfad;\nend;",',
     '      "good": "class function TKonfig.Standard: TKonfig;\nbegin\n  Result := TKonfig.Create;\n  Result.Pfad := Result.FBasisPfad;\nend;",',
     '      "compilerCodes": [',
@@ -4239,10 +4239,10 @@ const
     '      "severity": "error",',
     '      "group": "compiler",',
     '      "description": "An interface type declares something interfaces cannot have: fields (like E2209), visibility sections or method directives such as virtual, dynamic, abstract, override, message o' +
-    'r reintroduce (like E2210), the property clauses stored, nodefault or default with a value (like E2207; default; after an array property is fine), a property an ancestor interface already declares, li' +
-    'sted again without a type (like E2206; a redeclaration with a type compiles) or a property accessor that only the ancestor interface declares (like E2370; not for generic interfaces, DUnitX). A class,' +
-    ' record or enumeration as the ancestor of an interface or in the interface list of a class is reported as well (like E2205), and so is the same interface twice in that list (like E2208). Types are res' +
-    'olved through the uses clauses; aliases, unknown types, dispinterfaces and declarations inside conditional branches stay silent.",',
+    'r reintroduce (like E2210), the property clauses stored, nodefault or default with a value (like E2207; default; after an array property is fine), or a property an ancestor interface already declares,' +
+    ' listed again without a type (like E2206; a redeclaration with a type compiles, also with inherited accessors). A class, record or enumeration as the ancestor of an interface or in the interface list ' +
+    'of a class is reported as well (like E2205), and so is the same interface twice in that list (like E2208). Types are resolved through the uses clauses; aliases, unknown types, dispinterfaces and decla' +
+    'rations inside conditional branches stay silent.",',
     '      "bad": "IKunde = interface\n  FName: string;\n  function GetName: string;\nend;",',
     '      "good": "IKunde = interface\n  function GetName: string;\n  property Name: string read GetName;\nend;",',
     '      "compilerCodes": [',
@@ -4251,8 +4251,7 @@ const
     '        "E2207",',
     '        "E2208",',
     '        "E2209",',
-    '        "E2210",',
-    '        "E2370"',
+    '        "E2210"',
     '      ],',
     '      "level": "B"',
     '    },',
@@ -4373,11 +4372,11 @@ const
     '      "category": "bug",',
     '      "severity": "error",',
     '      "group": "compiler",',
-    '      "description": "A member behind an explicit published that the compiler rejects: a property of a record, array, pointer or plain procedural type (like E2188), of type Real48 (like E2186) or of a' +
-    ' set larger than 4 bytes (like E2187), a field that is neither a class nor an interface (like E2217), more than one published overload (like E2266), a class property (like E2545) or a name with non-AS' +
-    'CII characters (like E2452). Types are resolved through the file and the index, aliases are followed; type parameters, unknown types and sections whose published is in another conditional branch than ' +
-    'the member stay silent. The section without visibility specifier is not checked, because the compiler silently demotes such members to public there. Quick fix: move the member into the public section.' +
-    '",',
+    '      "description": "A member behind an explicit published that the compiler rejects: a property of a static array, pointer or plain procedural type (like E2188; records and dynamic arrays compile), ' +
+    'of type Real48 (like E2186) or of a set larger than 4 bytes (like E2187), a field that is neither a class nor an interface (like E2217), more than one published overload (like E2266), a class property' +
+    ' (like E2545) or a name with non-ASCII characters (like E2452). Types are resolved through the file and the index, aliases are followed; type parameters, unknown types and sections whose published is ' +
+    'in another conditional branch than the member stay silent. The section without visibility specifier is not checked, because the compiler silently demotes such members to public there. Quick fix: move ' +
+    'the member into the public section.",',
     '      "bad": "TKarte = class(TCustomControl)\npublished\n  property Mitte: TPointF read FMitte write SetMitte;\nend;",',
     '      "good": "TKarte = class(TCustomControl)\npublic\n  property Mitte: TPointF read FMitte write SetMitte;\nend;",',
     '      "compilerCodes": [',
@@ -4947,10 +4946,10 @@ const
     '      "severity": "warning",',
     '      "group": "compiler",',
     '      "description": "A typed constant (const Counter: Integer = 0) is assigned (like W1017, also an element or a record field of it) or passed as a var or out argument, including Inc, Dec, Include, E' +
-    'xclude, Delete, SetLength and the like (like W1016). Usually a variable was meant; this only compiles with {$J+}. When {$J-} or {$WRITEABLECONST OFF} is in effect before the declaration in the same fi' +
-    'le or in a file it includes before that point, it is reported as an error (like E2064 or E2197). Also reports 0 as the value of a pointer constant or an initialised pointer variable (like W1013). Quic' +
-    'k fixes: turn a unit-level constant into a variable with an initial value (the const section is split if needed; local typed constants keep their value between calls and get no fix); write nil instead' +
-    ' of 0.",',
+    'xclude, Delete, SetLength and the like (like W1016). Usually a variable was meant; this only compiles with {$J+}, and with {$J+} in effect before the declaration the rule stays silent like dcc. When {' +
+    '$J-} or {$WRITEABLECONST OFF} is in effect before the declaration in the same file or in a file it includes before that point, it is reported as an error (like E2064 or E2197). Also reports 0 as the v' +
+    'alue of a pointer constant or an initialised pointer variable (like W1013). Quick fixes: turn a unit-level constant into a variable with an initial value (the const section is split if needed; local t' +
+    'yped constants keep their value between calls and get no fix); write nil instead of 0.",',
     '      "bad": "const\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",',
     '      "good": "var\n  Zaehler: Integer = 0;\n…\nInc(Zaehler);",',
     '      "compilerCodes": [',
@@ -5044,16 +5043,15 @@ const
     '      "severity": "error",',
     '      "group": "compiler",',
     '      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function' +
-    ' result (like E2197), a constant for an open array (like E2192), Slice for an out parameter (like E2454; Slice for a var open array compiles, Spring4D) or an expression (like E2036). Reported only for' +
-    ' routines without overloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as con' +
-    'stants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and write it back for string elements and properties with write.",',
+    ' result (like E2197), a constant for an open array (like E2192) or an expression (like E2036). Reported only for routines without overloads whose header is known from the file or the index; built-in r' +
+    'outines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and ' +
+    'write it back for string elements and properties with write.",',
     '      "bad": "procedure Erhoehen(var Zeichen: Char);\n…\nErhoehen(Zeile[1]);",',
     '      "good": "Zeichen := Zeile[1];\nErhoehen(Zeichen);\nZeile[1] := Zeichen;",',
     '      "compilerCodes": [',
     '        "E2354",',
     '        "E2197",',
     '        "E2192",',
-    '        "E2454",',
     '        "E2036"',
     '      ],',
     '      "level": "T"',
@@ -7455,10 +7453,10 @@ const
     'nd Helfer-Konstruktoren ohne Konstruktoraufruf übersetzt dcc, Skia4Delphi), ein Class-Helfer mit Vorfahr-Helfer für einen Typ, der nicht vom Typ des Vorfahren abstammt (E2294, nur bei bekannter Vorfah' +
     'renkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), Klassenkonstrukt' +
     'oren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437); inline an virt' +
-    'uellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Variablen, typisierte' +
-    'n Konstanten oder Typen des implementation-Teils (E2441; echte Konstanten, Aufzählungswerte und Routinen übersetzt dcc, mORMot2, Clipper2), als lokale Routine mit Zugriff auf Variablen der umgebenden ' +
-    'Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Versionen (10' +
-    ' Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.",',
+    'uellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Variablen oder typisi' +
+    'erten Konstanten des implementation-Teils (E2441; echte Konstanten, Aufzählungswerte, Typen und Routinen übersetzt dcc, mORMot2, Clipper2, dcc-Lauf vom 29.10.2026), als lokale Routine mit Zugriff auf ' +
+    'Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstüt' +
+    'zten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.",',
     '      "options": [',
     '        {',
     '          "name": "disabledChecks",',
@@ -7584,7 +7582,8 @@ const
     '4). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen ' +
     'Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Ein privater Klasse' +
     'nkonstruktor verdeckt kein geerbtes Create, und eine class-Überladung einer Methode bleibt aus einer Klassenmethode erreichbar. protected-Mitglieder über einen generischen Empfänger (TKnoten<T>) übers' +
-    'etzt dcc auch aus anderen Units (Spring4D). Deklarationen in bedingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still."',
+    'etzt dcc aus generischem Code auch in anderen Units (Spring4D); aus nicht generischem Code meldet dcc E2362. Deklarationen in bedingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben ' +
+    'still."',
     '    },',
     '    {',
     '      "id": "unused-private-member",',
@@ -7694,10 +7693,10 @@ const
     '      "id": "interface-declaration-invalid",',
     '      "name": "Unzulässige Deklaration in einem Interface",',
     '      "description": "Ein Interface deklariert etwas, das Interfaces nicht haben dürfen: Felder (wie E2209), Sichtbarkeitsabschnitte oder Methodendirektiven wie virtual, dynamic, abstract, override, m' +
-    'essage oder reintroduce (wie E2210), die Property-Klauseln stored, nodefault oder default mit Wert (wie E2207; default; hinter einer Array-Property ist erlaubt), eine Property, die ein Vorfahr-Interfa' +
-    'ce schon deklariert, ohne Typ erneut aufgeführt (wie E2206; eine Neudeklaration mit Typ übersetzt dcc), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370; nicht bei gen' +
-    'erischen Interfaces, DUnitX). Ebenso gemeldet werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr eines Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interfa' +
-    'ce zweimal in dieser Liste (wie E2208). Typen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, dispinterface und Deklarationen in bedingten Zweigen bleiben still."',
+    'essage oder reintroduce (wie E2210), die Property-Klauseln stored, nodefault oder default mit Wert (wie E2207; default; hinter einer Array-Property ist erlaubt) oder eine Property, die ein Vorfahr-Int' +
+    'erface schon deklariert, ohne Typ erneut aufgeführt (wie E2206; eine Neudeklaration mit Typ übersetzt dcc, auch mit geerbten Accessoren). Ebenso gemeldet werden eine Klasse, ein Record oder eine Aufzä' +
+    'hlung als Vorfahr eines Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interface zweimal in dieser Liste (wie E2208). Typen werden über die uses-Klauseln aufgelöst; Alias' +
+    'e, unbekannte Typen, dispinterface und Deklarationen in bedingten Zweigen bleiben still."',
     '    },',
     '    {',
     '      "id": "implements-clause-invalid",',
@@ -7748,11 +7747,11 @@ const
     '    {',
     '      "id": "published-type-invalid",',
     '      "name": "Unzulässiges Mitglied im published-Abschnitt",',
-    '      "description": "Ein Mitglied hinter einem ausdrücklichen published, das der Compiler ablehnt: eine Property vom Typ Record, Array, Zeiger oder Prozedurtyp ohne of object (wie E2188), vom Typ Rea' +
-    'l48 (wie E2186) oder eine Menge über 4 Byte (wie E2187), ein Feld, das weder Klasse noch Interface ist (wie E2217), mehr als eine published-Überladung (wie E2266), eine Klassen-Property (wie E2545) od' +
-    'er ein Name mit Zeichen außerhalb von ASCII (wie E2452). Typen löst die Regel über die Datei und den Index auf und verfolgt Aliase; Typparameter, unbekannte Typen und Abschnitte, deren published in ei' +
-    'nem anderen Zweig der bedingten Übersetzung steht als das Mitglied, bleiben still. Den Abschnitt ohne Sichtbarkeitsangabe prüft sie nicht, weil der Compiler solche Mitglieder dort still zu public hera' +
-    'bstuft. Korrektur: das Mitglied in den public-Abschnitt verschieben."',
+    '      "description": "Ein Mitglied hinter einem ausdrücklichen published, das der Compiler ablehnt: eine Property vom Typ statisches Array, Zeiger oder Prozedurtyp ohne of object (wie E2188; Records u' +
+    'nd dynamische Arrays übersetzt dcc), vom Typ Real48 (wie E2186) oder eine Menge über 4 Byte (wie E2187), ein Feld, das weder Klasse noch Interface ist (wie E2217), mehr als eine published-Überladung (' +
+    'wie E2266), eine Klassen-Property (wie E2545) oder ein Name mit Zeichen außerhalb von ASCII (wie E2452). Typen löst die Regel über die Datei und den Index auf und verfolgt Aliase; Typparameter, unbeka' +
+    'nnte Typen und Abschnitte, deren published in einem anderen Zweig der bedingten Übersetzung steht als das Mitglied, bleiben still. Den Abschnitt ohne Sichtbarkeitsangabe prüft sie nicht, weil der Comp' +
+    'iler solche Mitglieder dort still zu public herabstuft. Korrektur: das Mitglied in den public-Abschnitt verschieben."',
     '    },',
     '    {',
     '      "id": "override-case-mismatch",',
@@ -8068,10 +8067,10 @@ const
     '      "id": "typed-constant-modified",',
     '      "name": "Typisierte Konstante verändert",',
     '      "description": "Einer typisierten Konstante (const Zaehler: Integer = 0) wird etwas zugewiesen (wie W1017, auch einem Element oder Record-Feld davon), oder sie wird als var- oder out-Argument üb' +
-    'ergeben, auch an Inc, Dec, Include, Exclude, Delete, SetLength und ähnliche (wie W1016). Gemeint war meist eine Variable; übersetzbar ist das nur mit {$J+}. Gilt vor der Deklaration in derselben Datei' +
-    ' oder in einer davor eingebundenen Include-Datei {$J-} bzw. {$WRITEABLECONST OFF}, meldet Atlas einen Fehler (wie E2064 bzw. E2197). Dazu 0 als Wert einer Zeigerkonstante oder einer initialisierten Ze' +
-    'igervariable (wie W1013). Korrekturen: eine Konstante auf Unit-Ebene in eine Variable mit Initialwert umwandeln (der const-Abschnitt wird bei Bedarf geteilt; lokale typisierte Konstanten behalten ihre' +
-    'n Wert zwischen Aufrufen und bekommen keine Korrektur); nil statt 0 schreiben."',
+    'ergeben, auch an Inc, Dec, Include, Exclude, Delete, SetLength und ähnliche (wie W1016). Gemeint war meist eine Variable; übersetzbar ist das nur mit {$J+}, und gilt {$J+} vor der Deklaration, schweig' +
+    't die Regel wie dcc. Gilt vor der Deklaration in derselben Datei oder in einer davor eingebundenen Include-Datei {$J-} bzw. {$WRITEABLECONST OFF}, meldet Atlas einen Fehler (wie E2064 bzw. E2197). Daz' +
+    'u 0 als Wert einer Zeigerkonstante oder einer initialisierten Zeigervariable (wie W1013). Korrekturen: eine Konstante auf Unit-Ebene in eine Variable mit Initialwert umwandeln (der const-Abschnitt wir' +
+    'd bei Bedarf geteilt; lokale typisierte Konstanten behalten ihren Wert zwischen Aufrufen und bekommen keine Korrektur); nil statt 0 schreiben."',
     '    },',
     '    {',
     '      "id": "string-length-limit",',
@@ -8109,10 +8108,9 @@ const
     '      "id": "invalid-var-argument",',
     '      "name": "Ungültiges Argument für einen var- oder out-Parameter",',
     '      "description": "Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Propert' +
-    'y oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192), Slice für einen out-Parameter (wie E2454; Slice für ein var-Open-Array übersetzt dcc, Spring4D) oder einen A' +
-    'usdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr ' +
-    'an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit ' +
-    'Rückschreiben."',
+    'y oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder d' +
+    'em Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: ei' +
+    'ne lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben."',
     '    },',
     '    {',
     '      "id": "condition-not-boolean",',

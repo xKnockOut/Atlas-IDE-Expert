@@ -40,7 +40,8 @@
 // meint dann den geerbten Konstruktor (IM4). In einer Klassenmethode gilt ein
 // Aufruf als erreichbar, sobald eine Überladung eine Klassenmethode ist (IM5).
 // protected-Mitglieder eines generischen Empfängers (TKnoten<T>) übersetzt
-// dcc auch aus fremden Units (Spring4D, IM1-IM3); strict protected bleibt.
+// dcc aus generischem Code fremder Units (Spring4D, IM1, IM2); aus nicht
+// generischem Code (SG3) und bei strict protected meldet es E2362.
 
 interface
 
@@ -169,6 +170,26 @@ var
     end;
   end;
 
+  /// <summary>Steht ANode in generischem Code, also in einer Routine oder Methode mit Typparametern im Kopf
+  /// (TListe&lt;T&gt;.Zweiter, Sortiere&lt;T&gt;)?</summary>
+  function InGenericCode(ANode: TSyntaxNode): Boolean;
+  var
+    mNode, mHeader: TSyntaxNode;
+  begin
+    mNode := ANode.Parent;
+    while mNode <> nil do
+    begin
+      if mNode.Kind = TSyntaxKind.RoutineDecl then
+      begin
+        mHeader := mNode.FindChild(TSyntaxKind.RoutineHeader);
+        if (mHeader <> nil) and (mHeader.FindChild(TSyntaxKind.GenericParams) <> nil) then
+          Exit(True);
+      end;
+      mNode := mNode.Parent;
+    end;
+    Result := False;
+  end;
+
   /// <summary>Darf die Methode AMethod mehr sehen als die Regel prüft? Methoden von Helfern (protected
   /// des erweiterten Typs) und verschachtelten Typen (Mitglieder des äußeren Typs).</summary>
   function WiderScope(AMethod: TSyntaxNode): Boolean;
@@ -237,10 +258,11 @@ var
       Exit;
     if (Member.Visibility <> TIndexVisibility.Private) and WiderScope(EnclosingMethod(ANode)) then
       Exit;
-    // protected über einen generischen Empfänger (TKnoten<T>, TBaum<T>) übersetzt dcc auch aus einer anderen
-    // Unit (Spring4D TLinkedListNode<T>, TRedBlackTree<T>; IM1-IM3, #1328). Abgeleitet aus dem Korpus, dcc-Lauf
-    // der Minimalfälle steht aus.
-    if (Member.Visibility = TIndexVisibility.Protected) and (ReceiverType.TypeParams <> '') then
+    // protected über einen generischen Empfänger (TKnoten<T>, TBaum<T>) übersetzt dcc aus generischem Code
+    // einer anderen Unit (Spring4D TLinkedListNode<T>, TRedBlackTree<T>; IM1, IM2); aus nicht generischem Code
+    // meldet es E2362 (SG3, dcc-Lauf vom 29.10.2026, #1328).
+    if (Member.Visibility = TIndexVisibility.Protected) and (ReceiverType.TypeParams <> '') and
+      InGenericCode(ANode) then
       Exit;
     Code := 'E2361';
     if Member.Visibility in [TIndexVisibility.Protected, TIndexVisibility.StrictProtected] then

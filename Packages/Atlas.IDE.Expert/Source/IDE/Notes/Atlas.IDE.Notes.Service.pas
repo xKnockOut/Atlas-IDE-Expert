@@ -92,7 +92,8 @@ uses
   Atlas.IDE.Foundation.GutterMarks,
   Atlas.IDE.Foundation.ResultsWindow,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Files;
+  Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 { TAtlasIdeNotes }
 
@@ -199,7 +200,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 class function TAtlasIdeNotes.Track(const AFileName, AText: string): Boolean;

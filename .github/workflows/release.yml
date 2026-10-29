@@ -6,7 +6,7 @@ name: Release
 # 2. Baut den Server (Win64 Release) auf dem selbst gehosteten Delphi-Runner,
 #    sofern DELPHI_RUNNER = 'true'; signiert ihn, wenn SIGN_CERT_BASE64 und
 #    SIGN_CERT_PASSWORD gesetzt sind.
-#    Baut außerdem Plugin (Win32 und Win64) und Installer (#495) und packt sie
+#    Baut außerdem das Plugin (Win32 und Win64) und packt es
 #    mit dem Server, whatsnew.json und den Beispielen (#756), tips.json und den
 #    Bildern der Tipps (#757), der lokalen HTML-Doku (#766) und den Vorlagen
 #    für atlas.json (#759) in atlas-ide-expert-<Version>.zip.
@@ -62,8 +62,7 @@ jobs:
       - name: Server bauen (Win64 Release)
         shell: pwsh
         run: |
-          # Projekt für Projekt: Die Gruppe enthält AtlasSetup, das nur Win32 kennt; die IDE stürzt beim
-          # Win64-Build daran ab (Zugriffsverletzung in coreide370.bpl).
+          # Projekt für Projekt: Das Testprojekt der Gruppe wird für das Release nicht gebraucht.
           $start = Get-Date
           foreach ($project in 'Packages\Atlas.Text\Atlas.Text.dproj', 'Packages\Atlas.Common\Atlas.Common.dproj',
             'Packages\Atlas.Windows\Atlas.Windows.dproj', 'Application\AtlasServer.dproj',
@@ -75,17 +74,17 @@ jobs:
           }
           $exe = 'Output\Win64\Release\Bin\AtlasServer.exe'
           if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $start) { throw 'Release-exe wurde nicht neu geschrieben' }
-      - name: Plugin und Installer bauen (Win32 Release)
+      - name: Plugin bauen (Win32 Release)
         shell: pwsh
         run: |
-          # Die klassische IDE lädt die Win32-BPL; der Installer läuft als 32-Bit-Programm überall.
+          # Die klassische IDE lädt die Win32-BPL.
           $start = Get-Date
           $r = & $env:CC_SCRIPT group-build -Instance ${{ steps.ide.outputs.pid }} -Platform Win32 -Config Release -Json | Out-String | ConvertFrom-Json
           $r | ConvertTo-Json -Depth 5 | Write-Host
           if (-not $r.ok -or -not $r.outputWritten) { throw 'Build fehlgeschlagen oder keine Ausgabe geschrieben' }
           if ($r.logFile -and (Select-String -Path $r.logFile -Pattern '\[dcc.*(Hinweis|Warnung)')) { throw 'Build hat Hinweise oder Warnungen' }
-          $exe = 'Output\Win32\Release\Bin\AtlasSetup.exe'
-          if (-not (Test-Path $exe) -or (Get-Item $exe).LastWriteTime -lt $start) { throw 'AtlasSetup.exe wurde nicht neu geschrieben' }
+          $bpl = Get-ChildItem 'Output\Win32\Release\Bpl\Atlas.IDE.Expert*.bpl' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $bpl -or $bpl.LastWriteTime -lt $start) { throw 'Win32-BPL des Plugins wurde nicht neu geschrieben' }
       - name: Scratch-IDE beenden
         if: always() && steps.ide.outputs.pid != ''
         shell: pwsh
@@ -105,7 +104,7 @@ jobs:
           $pfx = Join-Path $env:RUNNER_TEMP 'sign.pfx'
           [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_CERT_BASE64))
           try {
-            $files = @('Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win32\Release\Bin\AtlasSetup.exe') +
+            $files = @('Output\Win64\Release\Bin\AtlasServer.exe') +
               @(Get-ChildItem 'Output\Win32\Release\Bpl\Atlas.IDE.Expert*.bpl', 'Output\Win64\Release\Bpl\Atlas.IDE.Expert*.bpl' -ErrorAction SilentlyContinue | ForEach-Object FullName)
             foreach ($file in $files) {
               signtool sign /f $pfx /p $env:SIGN_CERT_PASSWORD /fd sha256 /tr http://timestamp.digicert.com /td sha256 $file
@@ -117,11 +116,11 @@ jobs:
       - name: Installationspaket packen (#495)
         shell: pwsh
         run: |
-          # Aufbau wie der Zielordner: der Installer nimmt die Dateien aus seinem eigenen Ordner.
+          # Aufbau wie der Zielordner (ADR 0016): Das Plugin findet Server und Daten eine Ebene über der BPL.
           $dist = Join-Path $env:RUNNER_TEMP 'atlas-ide-expert'
           Remove-Item $dist -Recurse -Force -ErrorAction SilentlyContinue
           New-Item -ItemType Directory -Force "$dist\Win32", "$dist\Win64" | Out-Null
-          Copy-Item 'Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win32\Release\Bin\AtlasSetup.exe', 'LICENSE', 'EULA.txt', 'THIRD-PARTY-NOTICES.md' $dist
+          Copy-Item 'Output\Win64\Release\Bin\AtlasServer.exe', 'LICENSE', 'EULA.txt', 'THIRD-PARTY-NOTICES.md' $dist
           # Karte „Neu in Atlas“ (#756): whatsnew.json aus den markierten Einträgen des Changelogs, dazu die Beispiele.
           ./Tools/Update-WhatsNew.ps1 -OutFile "$dist\whatsnew.json"
           Copy-Item 'Setup\Beispiele' "$dist\Beispiele" -Recurse
@@ -138,7 +137,7 @@ jobs:
           Copy-Item 'Output\Win32\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win32"
           Copy-Item 'Output\Win64\Release\Bpl\Atlas.IDE.Expert*.bpl' "$dist\Win64"
           # Map-Dateien für Stacktraces mit Unit und Zeile: AtlasServer.map neben die EXE, die Map des Plugins
-          # unter dem Namen der BPL daneben (der Installer kopiert beide mit). Alle Projekte bauen mit
+          # unter dem Namen der BPL daneben. Alle Projekte bauen mit
           # DCC_MapFile=3; fehlt eine Map, stimmt der Build nicht.
           Copy-Item 'Output\Win64\Release\Bin\AtlasServer.map' $dist
           foreach ($platform in 'Win32', 'Win64') {

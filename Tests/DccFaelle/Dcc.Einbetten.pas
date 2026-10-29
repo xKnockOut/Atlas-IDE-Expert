@@ -1,7 +1,7 @@
 ﻿unit Dcc.Einbetten;
 
 // #1328, Regel type-restriction-violated (E2441, E2296, E2358): Fälle, die Atlas
-// meldet, die Delphi aber nach den Korpus-Projekten übersetzt.
+// meldete, die Delphi aber übersetzt (Korpus-Projekte, dcc-Lauf vom 29.10.2026).
 
 interface
 
@@ -23,18 +23,23 @@ type
     class constructor Create; // TR7: class constructor im Class-Helfer (Skia4Delphi MobileBars)
   public
     constructor CreateAus(AGroesse: Integer); // TR6: Konstruktor ruft in einem if einen überladenen Konstruktor (Skia4Delphi)
+    constructor CreateLeer; // TR9 (vorher TG3): Konstruktor im Class-Helfer ruft keinen Konstruktor
   end;
 
 function KonstanteNutzen: Integer; inline; // TR2: echte Konstante aus dem implementation-Teil (mORMot2)
-function TypKonstanteNutzen: Integer; inline; // TR3: typisierte Konstante aus dem implementation-Teil
+function TypNutzen: Integer; inline; // TR8 (vorher TG2): Typ aus dem implementation-Teil
 function RoutineNutzen(AWert: Integer): Double; inline; // TR4: Routine aus dem implementation-Teil (Clipper2)
 function NurHintenInline(AWert: Integer): Double; // TR5: inline nur an der Implementierung (HtmlViewer)
 
 implementation
 
+type
+  TIntern = record
+    Wert: Integer;
+  end;
+
 const
   cGesperrt = 1;
-  cStart: Integer = 2;
 
 function Quadrat(AWert: Integer): Double; inline;
 begin
@@ -69,14 +74,21 @@ begin
     Create(AGroesse, AGroesse);
 end;
 
+constructor TBildHelfer.CreateLeer;
+begin
+end;
+
 function KonstanteNutzen: Integer;
 begin
   Result := cGesperrt;
 end;
 
-function TypKonstanteNutzen: Integer;
+function TypNutzen: Integer;
+var
+  mWert: TIntern;
 begin
-  Result := cStart;
+  mWert.Wert := 1;
+  Result := mWert.Wert;
 end;
 
 function RoutineNutzen(AWert: Integer): Double;
