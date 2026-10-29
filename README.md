@@ -332,7 +332,7 @@ pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use th
 
 `Tests/DccFaelle` holds minimal cases for the compiler rules: each one states whether dcc reports it or compiles it. `pwsh Tools/Build-DccFaelle.ps1` builds them in a scratch IDE via `cc.ps1` (Win32 and Win64) and writes the dcc messages per case to `Output/DccFaelle-Ergebnis.txt`; the rules must not be stricter than that result (#1328).
 
-`Tests/Compilermeldungen` holds one case for every dcc warning, hint and error (471 cases; codes without a case are listed with a reason in `ohne-fall.txt`). `pwsh Tools/Build-Compilermeldungen.ps1 -IdeProfile <profile> [-AtlasServer <exe>]` builds each case through `cc.ps1` in a scratch IDE and records the real dcc messages, with `-AtlasServer` also the Atlas findings; `Tools/Compare-Compilermeldungen.py` compares both per case (`Ergebnisse/vergleich.md`). As of 29 Oct 2026 with Delphi 13, Atlas recognises 228 of 482 dcc messages while typing (#1361, missing rules in #1369–#1383). Details (German): [Tests/Compilermeldungen](Tests/Compilermeldungen/README.md).
+`Tests/Compilermeldungen` has one case for every dcc warning, hint and error that Delphi 13 can be made to report (471 cases; codes without a case are listed in `ohne-fall.txt`). `pwsh Tools/Build-Compilermeldungen.ps1 -IdeProfile <profile> -AtlasServer <exe>` builds each case on its own in a scratch IDE (Win32 and Win64) and runs `AtlasServer --check` over them; `python3 Tools/Compare-Compilermeldungen.py` writes `vergleich.md` with what Atlas finds, misses or reports with another code. The results of the first Delphi 13 run are checked in under `Tests/Compilermeldungen/Ergebnisse` (Atlas finds 211 of 332 codes; the missing rules are #1369–#1383).
 
 ## CI
 
