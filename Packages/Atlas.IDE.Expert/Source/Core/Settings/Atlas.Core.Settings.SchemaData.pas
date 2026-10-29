@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3000] of string = (
+  Lines: array[0..3018] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2216,8 +2216,8 @@ const
     '        "grouping": {',
     '          "type": "object",',
     '          "x-page": "Architektur",',
-    '          "x-control": "resolution: Zahl (0,2–5,0) und Regler „Feinheit“ im Fenster; showResolutionSlider: Kontrollkästchen",',
-    '          "x-issue": "#1366",',
+    '          "x-control": "resolution: Zahl (0,2–5,0) und Regler „Feinheit“ im Fenster; showResolutionSlider: Kontrollkästchen; maxShare: Zahl (0–0,9); minCohesion: Zahl (0–1)",',
+    '          "x-issue": "#1366, #1364",',
     '          "description": "Wie die Architekturübersicht die Units in Teilsysteme gruppiert (Louvain auf dem uses-Graphen). Gilt für Fenster, Bericht, AtlasServer --architecture und get_architecture.",',
     '          "additionalProperties": false,',
     '          "properties": {',
@@ -2237,6 +2237,25 @@ const
     '              "type": "boolean",',
     '              "default": true,',
     '              "description": "Regler „Feinheit“ in der Werkzeugleiste des Fensters „Atlas-Architektur“ zeigen; aus = kein Regler, resolution wirkt weiter."',
+    '            },',
+    '            "maxShare": {',
+    '              "x-control": "Zahl (0–0,9)",',
+    '              "x-issue": "#1364",',
+    '              "type": "number",',
+    '              "minimum": 0,',
+    '              "maximum": 0.9,',
+    '              "default": 0.25,',
+    '              "description": "Ab diesem Anteil aller Units wird ein Teilsystem (ab 10 Units) mit einem zweiten Louvain-Lauf auf seinen Units nachgeteilt, höchstens zwei Stufen tief; die Teile tragen d' +
+      'en Namen des ursprünglichen Teilsystems als „Teil von …“. 0 = nie nach Größe teilen."',
+    '            },',
+    '            "minCohesion": {',
+    '              "x-control": "Zahl (0–1)",',
+    '              "x-issue": "#1364",',
+    '              "type": "number",',
+    '              "minimum": 0,',
+    '              "maximum": 1,',
+    '              "default": 0.3,',
+    '              "description": "Teilsysteme ab 30 Units, deren Zusammenhalt (Anteil der Kanten, die im Teilsystem bleiben) darunter liegt, werden ebenso nachgeteilt. 0 = nie nach Zusammenhalt teilen."',
     '            }',
     '          }',
     '        }',
