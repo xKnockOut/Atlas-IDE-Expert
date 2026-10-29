@@ -15,6 +15,9 @@ type
     procedure ReadsArchitectureSettings;
     [Test]
     procedure ReadsArchitectureComparisonSettings;
+    /// <summary>architecture.grouping (#1366): Feinheit 0,2–5,0 und Regler im Fenster.</summary>
+    [Test]
+    procedure ReadsArchitectureGrouping;
     [Test]
     procedure ReadsNavigationSymbolPath;
     [Test]
@@ -54,6 +57,15 @@ type
     procedure ReadsMcpDisabledTools;
     [Test]
     procedure ReadsMcpGlobalSettings;
+    /// <summary>#1357: mcp.prompts, mcp.promptLanguage und eigene Prompts aus mcp.customPrompts.</summary>
+    [Test]
+    procedure ReadsMcpPrompts;
+    /// <summary>#1357: Fehler in eigenen Prompts (Name, Text, include, Platzhalter) werden gemeldet.</summary>
+    [Test]
+    procedure ChecksMcpCustomPrompts;
+    /// <summary>#1357: atlas.json mit nur mcp.customPrompts lässt das globale mcp.prompts stehen.</summary>
+    [Test]
+    procedure LayersMcpMembersSeparately;
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
@@ -221,6 +233,63 @@ begin
     '"failOn": ["subsystemChange"]}}', Issues);
   Assert.AreEqual('a.json', Settings.ArchitectureBaseline);
   Assert.AreEqual('subsystemChange', string.Join(',', Settings.ArchitectureFailOn));
+end;
+
+procedure TConfigurationParserTests.ReadsArchitectureGrouping;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.AreEqual(Double(1), mSettings.ArchitectureGroupingResolution, 1E-9);
+  Assert.IsTrue(mSettings.ArchitectureGroupingShowResolutionSlider);
+  Assert.AreEqual(Double(0.25), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(0.3), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  // Nachteilung (#1364): 0 schaltet ab, Grenzen 0,9 bzw. 1.
+  mSettings := Parse('{"architecture": {"grouping": {"maxShare": 0, "minCohesion": 1}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(0), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(1), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  mSettings := Parse('{"architecture": {"grouping": {"maxShare": 0.9, "minCohesion": 0.05}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(0.9), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(0.05), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  mSettings := Parse('{"architecture": {"grouping": {"maxShare": 0.95, "minCohesion": -0.1}}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].IsError);
+  Assert.AreEqual(Double(0.25), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(0.3), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  Parse('{"architecture": {"grouping": {"maxShare": "viel"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  mSettings := Parse('{"architecture": {"grouping": {"resolution": 2.5, "showResolutionSlider": false}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(2.5), mSettings.ArchitectureGroupingResolution, 1E-9);
+  Assert.IsFalse(mSettings.ArchitectureGroupingShowResolutionSlider);
+  // Grenzen 0,2 und 5,0 gelten noch.
+  mSettings := Parse('{"architecture": {"grouping": {"resolution": 0.2}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(0.2), mSettings.ArchitectureGroupingResolution, 1E-9);
+  mSettings := Parse('{"architecture": {"grouping": {"resolution": 5}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(5), mSettings.ArchitectureGroupingResolution, 1E-9);
+  // Außerhalb, falscher Typ und unbekannte Schlüssel: Meldung, Vorgabe bleibt.
+  mSettings := Parse('{"architecture": {"grouping": {"resolution": 0.1, "showResolutionSlider": 1, "x": 1}}}',
+    mIssues);
+  Assert.AreEqual(3, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].IsError);
+  Assert.IsFalse(mIssues[2].IsError);
+  Assert.AreEqual(Double(1), mSettings.ArchitectureGroupingResolution, 1E-9);
+  Assert.IsTrue(mSettings.ArchitectureGroupingShowResolutionSlider);
+  Parse('{"architecture": {"grouping": {"resolution": 5.5}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Parse('{"architecture": {"grouping": {"resolution": "fein"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Parse('{"architecture": {"grouping": true}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  // Globale Ebene wie die übrigen architecture-Schlüssel.
+  mSettings := TConfigurationParser.ParseLayered('{"architecture": {"grouping": {"resolution": 0.5}}}', '{}',
+    mIssues);
+  Assert.AreEqual(Double(0.5), mSettings.ArchitectureGroupingResolution, 1E-9);
 end;
 
 procedure TConfigurationParserTests.ReadsNavigationSymbolPath;
@@ -1203,6 +1272,71 @@ begin
   Settings := TConfigurationParser.ParseLayered('{"mcp": {"globalSettings": true}}',
     '{"mcp": {"globalSettings": false}}', Issues);
   Assert.IsFalse(Settings.McpGlobalSettings, 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ReadsMcpPrompts;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpPrompts, 'Vorgabe: Prompts an');
+  Assert.AreEqual('de', mSettings.McpPromptLanguage);
+  Assert.AreEqual(0, Integer(Length(mSettings.McpCustomPrompts)));
+  mSettings := Parse('{"mcp": {"prompts": false, "promptLanguage": "en", "customPrompts": [' +
+    '{"name": "check_unit", "description": "Unit prüfen", "arguments": [{"name": "unit", "description": "Unit", ' +
+    '"required": true}, {"name": "focus"}], "text": "Prüfe {unit} mit Blick auf {focus}.", ' +
+    '"include": ["diagnostics", "metrics"]}]}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.McpPrompts);
+  Assert.AreEqual('en', mSettings.McpPromptLanguage);
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)));
+  Assert.AreEqual('check_unit', mSettings.McpCustomPrompts[0].Name);
+  Assert.AreEqual('Unit prüfen', mSettings.McpCustomPrompts[0].Description);
+  Assert.AreEqual(2, Integer(Length(mSettings.McpCustomPrompts[0].Arguments)));
+  Assert.IsTrue(mSettings.McpCustomPrompts[0].Arguments[0].Required);
+  Assert.IsFalse(mSettings.McpCustomPrompts[0].Arguments[1].Required, 'Vorgabe: kein Pflichtargument');
+  Assert.AreEqual('Prüfe {unit} mit Blick auf {focus}.', mSettings.McpCustomPrompts[0].Text);
+  Assert.AreEqual(2, Integer(Length(mSettings.McpCustomPrompts[0].Include)));
+  Assert.AreEqual('metrics', mSettings.McpCustomPrompts[0].Include[1]);
+end;
+
+procedure TConfigurationParserTests.ChecksMcpCustomPrompts;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{"mcp": {"promptLanguage": "fr"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'nur de oder en');
+  Assert.AreEqual('de', mSettings.McpPromptLanguage, 'ungültige Sprache lässt die Vorgabe');
+  mSettings := Parse('{"mcp": {"customPrompts": {"name": "a"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
+  // Ohne Text, Name mit Leerzeichen, unbekannter Inhalt, doppelter Name.
+  mSettings := Parse('{"mcp": {"customPrompts": [{"name": "ohne_text"}, {"name": "mit leer", "text": "x"}, ' +
+    '{"name": "a", "text": "x", "include": ["metrics", "wetter"]}, {"name": "A", "text": "y"}]}}', mIssues);
+  Assert.AreEqual(4, Integer(Length(mIssues)), 'ohne Text, ungültiger Name, unbekannter Inhalt, doppelter Name');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)), 'nur der gültige Prompt a');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts[0].Include)), 'unbekannter Inhalt fällt weg');
+  // Platzhalter ohne Argument: nur eine Warnung, der Prompt gilt.
+  mSettings := Parse('{"mcp": {"customPrompts": [{"name": "b", "text": "Prüfe {unit}."}]}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsFalse(mIssues[0].IsError, 'Platzhalter ohne Argument ist eine Warnung');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)));
+end;
+
+procedure TConfigurationParserTests.LayersMcpMembersSeparately;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"prompts": false, "disabledTools": ["a"]}}',
+    '{"mcp": {"customPrompts": [{"name": "c", "text": "x"}]}}', mIssues);
+  Assert.IsFalse(mSettings.McpPrompts, 'mcp.prompts aus der globalen Ebene bleibt');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpDisabledTools)), 'mcp.disabledTools aus der globalen Ebene bleibt');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)), 'mcp.customPrompts aus der Datei');
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"promptLanguage": "en"}}',
+    '{"mcp": {"promptLanguage": "de"}}', mIssues);
+  Assert.AreEqual('de', mSettings.McpPromptLanguage, 'Datei vor Editor');
 end;
 
 procedure TConfigurationParserTests.ChecksTasks;

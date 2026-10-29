@@ -34,6 +34,8 @@ type
     Namespaces: TArray<string>;
     /// <summary>Dateien im Umfang; leer = alle Units des Index (außer Bibliothek ohne IncludeLibrary).</summary>
     Files: TArray<string>;
+    /// <summary>Einstellungen der Gruppierung (architecture.grouping).</summary>
+    Grouping: TArchitectureGrouping;
     /// <summary>Werte aus den Einstellungen architecture.*.</summary>
     class function FromSettings(const ASettings: TServerSettings): TArchitectureRequest; static;
     /// <summary>Text, der die Anfrage eindeutig beschreibt (Schlüssel des Zwischenspeichers).</summary>
@@ -76,6 +78,10 @@ begin
   Result.IncludeLibrary := ASettings.ArchitectureIncludeLibraryUnits;
   Result.CentralUnits := ASettings.ArchitectureCentralUnits;
   Result.Exclude := ASettings.ArchitectureExclude;
+  Result.Grouping := TArchitectureGrouping.Default;
+  Result.Grouping.Resolution := ASettings.ArchitectureGroupingResolution;
+  Result.Grouping.MaxShare := ASettings.ArchitectureGroupingMaxShare;
+  Result.Grouping.MinCohesion := ASettings.ArchitectureGroupingMinCohesion;
 end;
 
 function TArchitectureRequest.Key: string;
@@ -85,7 +91,8 @@ begin
   Files := Copy(Self.Files);
   TArray.Sort<string>(Files);
   Result := Title + #1 + Root + #1 + Scope + #1 + BoolToStr(IncludeLibrary, True) + #1 + IntToStr(CentralUnits) + #1 +
-    string.Join(#2, Exclude) + #1 + string.Join(#2, Namespaces) + #1 + LowerCase(string.Join(#2, Files));
+    string.Join(#2, Exclude) + #1 + string.Join(#2, Namespaces) + #1 + LowerCase(string.Join(#2, Files)) + #1 +
+    Grouping.Key;
 end;
 
 { TArchitectureService }
@@ -147,9 +154,9 @@ begin
   Graph := TUsesGraph.Create(Selected, Options);
   try
     if ARequest.CentralUnits > 0 then
-      Result := TArchitectureAnalyzer.Analyze(Graph, FLocator, ARequest.CentralUnits)
+      Result := TArchitectureAnalyzer.Analyze(Graph, FLocator, ARequest.CentralUnits, ARequest.Grouping)
     else
-      Result := TArchitectureAnalyzer.Analyze(Graph, FLocator, 15);
+      Result := TArchitectureAnalyzer.Analyze(Graph, FLocator, 15, ARequest.Grouping);
   finally
     Graph.Free;
   end;

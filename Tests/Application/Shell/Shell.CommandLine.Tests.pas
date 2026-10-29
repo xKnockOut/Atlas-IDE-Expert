@@ -49,6 +49,9 @@ type
     /// <summary>#1355: --replay nennt anfrage.json eines Absturzfalls.</summary>
     [Test]
     procedure ReadsReplayFile;
+    /// <summary>#1358: --format-check, --format-write und --format diff.</summary>
+    [Test]
+    procedure ReadsFormatterArguments;
   end;
 
 implementation
@@ -322,6 +325,23 @@ begin
   Assert.AreEqual<NativeInt>(0, Length(Options.Warnings));
   Options := TCommandLineOptions.Parse(['--stdio']);
   Assert.AreEqual('', Options.ReplayFile);
+end;
+
+procedure TCommandLineOptionsTests.ReadsFormatterArguments;
+var
+  mOptions: TCommandLineOptions;
+begin
+  mOptions := TCommandLineOptions.Parse(['--check', 'Src', '--format-check', '--format', 'diff', '--changed-lines']);
+  Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
+  Assert.IsTrue(mOptions.FormatCheck);
+  Assert.IsFalse(mOptions.FormatWrite);
+  Assert.IsTrue(mOptions.FormatDiff);
+  Assert.IsTrue(mOptions.ChangedLines);
+  mOptions := TCommandLineOptions.Parse(['--check', 'Src', '--format-write', '--format=DIFF', '--format', 'json']);
+  Assert.IsTrue(mOptions.FormatWrite);
+  Assert.IsFalse(mOptions.FormatDiff);
+  Assert.IsTrue(mOptions.CheckFormat = TFindingsFormat.Json);
+  Assert.IsFalse(TCommandLineOptions.Parse([]).FormatCheck);
 end;
 
 initialization
