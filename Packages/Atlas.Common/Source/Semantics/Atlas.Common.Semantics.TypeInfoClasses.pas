@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.TypeInfoClasses;
+﻿unit Atlas.Common.Semantics.TypeInfoClasses;
 
 // Standardsichtbarkeit von Klassenmitgliedern ohne Sichtbarkeitsabschnitt
 // (#537): published, wenn die Klasse mit RTTI für published übersetzt wird,
