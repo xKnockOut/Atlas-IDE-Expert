@@ -4,7 +4,9 @@
 // Argumente, Anweisung ohne Klammern, verschachtelte Routinen, Routinen aus
 // dem Index, stille Fälle (Überladungen, varargs, Typumwandlungen,
 // prozedurale Variablen, System), Korrektur „Signaturhilfe öffnen“ samt
-// Client-Befehl und Einstellungen.
+// Client-Befehl und Einstellungen. Dazu overload-resolution (#1371): keine
+// Überladung passt (wie E2250), mehrdeutiger Aufruf (wie E2251), Gegenfälle,
+// die dcc ohne Meldung übersetzt, und unvollständige Kandidatenlisten.
 
 interface
 
@@ -43,6 +45,36 @@ type
     procedure Options;
   end;
 
+  [TestFixture]
+  TOverloadResolutionTests = class
+  public
+    /// <summary>Fall Cm.E2250 aus Tests/Compilermeldungen samt Gegenfällen.</summary>
+    [Test]
+    procedure NoOverloadFits;
+    /// <summary>Fall Cm.E2251 samt Gegenfällen.</summary>
+    [Test]
+    procedure AmbiguousCall;
+    [Test]
+    procedure MethodOverloads;
+    /// <summary>Aliase auf eingebaute Typen zählen wie ihr Grundtyp, Records mit Implicit-Operator passen.</summary>
+    [Test]
+    procedure AliasesAndOperators;
+    /// <summary>Gegenfälle aus Tests/DccFaelle/Dcc.Ueberladungen.pas: dcc übersetzt sie ohne Meldung.</summary>
+    [Test]
+    procedure CompilerAccepts;
+    /// <summary>Kandidatenliste nicht sicher vollständig: ohne System im Index, unbekannte Unit in uses,
+    /// gleichnamige Routine in einer anderen Unit, bedingte Deklaration, with, unbekannter Vorfahr.</summary>
+    [Test]
+    procedure IncompleteCandidates;
+    /// <summary>Argumenttyp nicht sicher: Variant, überladene Funktion im Argument, untypisierte Konstante.</summary>
+    [Test]
+    procedure UncertainArguments;
+    [Test]
+    procedure FitTable;
+    [Test]
+    procedure Options;
+  end;
+
 implementation
 
 uses
@@ -56,6 +88,7 @@ uses
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.Builtin.Calls,
+  Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Tests.RuleAssert;
 
 const
@@ -359,7 +392,305 @@ begin
     '{"rules": {"argument-count-mismatch": {"exclude": ["Alt/*.pas"]}}}', 'Source/Post.pas'))));
 end;
 
+{ TOverloadResolutionTests }
+
+const
+  cSystem = 'unit System;'#10'interface'#10'type'#10'  TObject = class'#10'  end;'#10'implementation'#10'end.';
+  // Zeilen 0–8; Fall beginnt nach den Deklarationen.
+  cNimm = 'unit Faelle;'#10'interface'#10'implementation'#10'procedure Nimm(AWert: Integer); overload;'#10 +
+    'begin'#10'end;'#10'procedure Nimm(const AWert: string); overload;'#10'begin'#10'end;'#10;
+  cFall = 'procedure Fall(AZahl: Double; AFlag: Boolean; AText: string; AZeichen: Char; AWert: Variant);'#10 +
+    'begin'#10;
+
+/// <summary>Index mit einer kleinen Unit System: Ohne sie schweigt overload-resolution.</summary>
+function SystemIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText(cSystem, 'C:\Delphi\System.pas', nil));
+end;
+
+/// <summary>Unit mit den beiden Überladungen von Nimm (Integer, string), ADeclarations und Fall mit ABody.</summary>
+function NimmUnit(const ADeclarations, ABody: string): string;
+begin
+  Result := cNimm + ADeclarations + cFall + ABody + #10'end;'#10'end.';
+end;
+
+/// <summary>Unit mit ADeclarations und Fall mit ABody, ohne Nimm.</summary>
+function FallUnit(const ADeclarations, ABody: string): string;
+begin
+  Result := 'unit Faelle;'#10'interface'#10'implementation'#10 + ADeclarations + cFall + ABody + #10'end;'#10'end.';
+end;
+
+function OverloadFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TOverloadResolutionRule.Create, ASource, SystemIndex, '', '');
+end;
+
+function OverloadFindings(const ASource: string; const AIndex: ISymbolIndex): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.IndexFindings(TOverloadResolutionRule.Create, ASource, AIndex, '', '');
+end;
+
+function OverloadMessage(const ASource: string): string;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := OverloadFindings(ASource);
+  Assert.AreEqual(1, Integer(Length(mFound)), ASource);
+  Result := mFound[0].Message;
+end;
+
+procedure OverloadSilent(const ASource: string); overload;
+begin
+  Assert.AreEqual(0, Integer(Length(OverloadFindings(ASource))), ASource);
+end;
+
+procedure OverloadSilent(const ASource: string; const AIndex: ISymbolIndex); overload;
+begin
+  Assert.AreEqual(0, Integer(Length(OverloadFindings(ASource, AIndex))), ASource);
+end;
+
+procedure TOverloadResolutionTests.NoOverloadFits;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := OverloadFindings(NimmUnit('', '  Nimm(1.5);'));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(OverloadResolutionRuleId, mFound[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
+  Assert.AreEqual('Keine der 2 Überladungen von Nimm passt zu den Argumenten (Extended) (wie E2250).',
+    mFound[0].Message);
+  Assert.AreEqual(11, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(2, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(11, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual('Signaturhilfe öffnen', mFound[0].Fixes[0].Title);
+  Assert.IsTrue(mFound[0].Fixes[0].OpensSignature);
+  Assert.AreEqual(10, mFound[0].Fixes[0].JumpTo.Character);
+  Assert.AreEqual('Keine der 2 Überladungen von Nimm passt zu den Argumenten (Double) (wie E2250).',
+    OverloadMessage(NimmUnit('', '  Nimm(AZahl);')));
+  Assert.AreEqual('Keine der 2 Überladungen von Nimm passt zu den Argumenten (Boolean) (wie E2250).',
+    OverloadMessage(NimmUnit('', '  Nimm(AFlag);')));
+  Assert.AreEqual('Keine der 2 Überladungen von Nimm passt zu den Argumenten (Integer, Integer) (wie E2250).',
+    OverloadMessage(NimmUnit('', '  Nimm(1, 2);')));
+  Assert.AreEqual('Keine der 2 Überladungen von Nimm lässt sich ohne Argumente aufrufen (wie E2250).',
+    OverloadMessage(NimmUnit('', '  Nimm;')));
+  // Gegenfälle: Ganzzahl, string, Char und Char-Literal passen.
+  OverloadSilent(NimmUnit('', '  Nimm(1);'#10'  Nimm(''Text'');'#10'  Nimm(AText);'#10'  Nimm(''a'');'#10 +
+    '  Nimm(AZeichen);'#10'  Nimm(Length(AText));'));
+end;
+
+procedure TOverloadResolutionTests.AmbiguousCall;
+const
+  cZwei = 'procedure Zwei(AWert: Integer; AText: string = ''''); overload;'#10'begin'#10'end;'#10 +
+    'procedure Zwei(AWert: Integer; AZahl: Integer = 0); overload;'#10'begin'#10'end;'#10;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := OverloadFindings(FallUnit(cZwei, '  Zwei(1);'));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Aufruf von Zwei ist mehrdeutig: (AWert: Integer; AText: string = '''') und ' +
+    '(AWert: Integer; AZahl: Integer = 0) passen gleich gut (wie E2251).', mFound[0].Message);
+  // Beispiel der Delphi-Hilfe zu Standardparametern und Überladungen.
+  Assert.AreEqual('Aufruf von Verwirrt ist mehrdeutig: (I: Integer) und (I: Integer; J: Integer = 0) passen ' +
+    'gleich gut (wie E2251).', OverloadMessage(FallUnit('procedure Verwirrt(I: Integer); overload;'#10'begin'#10 +
+    'end;'#10'procedure Verwirrt(I: Integer; J: Integer = 0); overload;'#10'begin'#10'end;'#10, '  Verwirrt(1);')));
+  Assert.AreEqual('Aufruf von Zwei ist mehrdeutig: (AWert: Integer; AText: string = ''''), ' +
+    '(AWert: Integer; AZahl: Integer = 0) und (AWert: Integer; AFlag: Boolean = False) passen gleich gut ' +
+    '(wie E2251).', OverloadMessage(FallUnit(cZwei + 'procedure Zwei(AWert: Integer; AFlag: Boolean = False); ' +
+    'overload;'#10'begin'#10'end;'#10, '  Zwei(1);')));
+  // Gegenfälle: weitere Argumente entscheiden; verschiedene Typen entscheidet dcc nach der besseren Umwandlung.
+  OverloadSilent(FallUnit(cZwei, '  Zwei(1, ''x'');'#10'  Zwei(1, 2);'));
+  OverloadSilent(FallUnit('procedure Wahl(AWert: Integer; AText: string = ''''); overload;'#10'begin'#10'end;'#10 +
+    'procedure Wahl(AWert: Double; AZahl: Integer = 0); overload;'#10'begin'#10'end;'#10, '  Wahl(1);'));
+  // Die zweite Überladung steht erst hinter dem Aufruf: dcc sieht sie dort nicht.
+  OverloadSilent('unit Faelle;'#10'interface'#10'implementation'#10 +
+    'procedure Spaet(AWert: Integer; AText: string = ''''); overload;'#10'begin'#10'end;'#10 + cFall +
+    '  Spaet(1);'#10'end;'#10'procedure Spaet(AWert: Integer; AZahl: Integer = 0); overload;'#10'begin'#10'end;'#10 +
+    'end.');
+  // var gegen Wert und ein Argument, dessen Typ nicht genau der des Parameters ist.
+  OverloadSilent(FallUnit('procedure Teil(var AWert: Integer; AText: string = ''''); overload;'#10'begin'#10 +
+    'end;'#10'procedure Teil(AWert: Integer; AZahl: Integer = 0); overload;'#10'begin'#10'end;'#10 +
+    'procedure Breit(AWert: Int64; AText: string = ''''); overload;'#10'begin'#10'end;'#10 +
+    'procedure Breit(AWert: Int64; AZahl: Integer = 0); overload;'#10'begin'#10'end;'#10,
+    '  Teil(1);'#10'  Breit(1);'));
+end;
+
+procedure TOverloadResolutionTests.MethodOverloads;
+const
+  cRechner = 'unit Faelle;'#10'interface'#10'type'#10'  TRechner = class'#10'  public'#10 +
+    '    procedure Merke(AWert: Integer); overload;'#10'    procedure Merke(const AText: string); overload;'#10 +
+    '    procedure Teile(AWert: Integer; ARest: Integer = 0); overload;'#10 +
+    '    procedure Teile(AWert: Integer; const AText: string = ''''); overload;'#10'    procedure Lauf;'#10 +
+    '  end;'#10'  TBasis = class'#10'  public'#10'    procedure Nenne(AWert: Integer); overload;'#10 +
+    '    procedure Zaehle(AWert: Integer); overload;'#10'  end;'#10'  TKind = class(TBasis)'#10'  public'#10 +
+    '    procedure Nenne(const AText: string); overload;'#10 +
+    '    procedure Zaehle(AWert: Integer; ARest: Integer = 0); overload;'#10'  end;'#10'implementation'#10 +
+    'procedure TRechner.Merke(AWert: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TRechner.Merke(const AText: string);'#10'begin'#10'end;'#10 +
+    'procedure TRechner.Teile(AWert: Integer; ARest: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TRechner.Teile(AWert: Integer; const AText: string);'#10'begin'#10'end;'#10 +
+    'procedure TRechner.Lauf;'#10'begin'#10'  Merke(True);'#10'end;'#10 +
+    'procedure TBasis.Nenne(AWert: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TBasis.Zaehle(AWert: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TKind.Nenne(const AText: string);'#10'begin'#10'end;'#10 +
+    'procedure TKind.Zaehle(AWert: Integer; ARest: Integer);'#10'begin'#10'end;'#10 +
+    'procedure Test(ARechner: TRechner; AKind: TKind);'#10'begin'#10;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := OverloadFindings(cRechner + '  ARechner.Merke(1.5);'#10'  ARechner.Teile(1);'#10 +
+    '  AKind.Nenne(1.5);'#10'end;'#10'end.');
+  Assert.AreEqual(4, Integer(Length(mFound)));
+  Assert.AreEqual('Keine der 2 Überladungen von Merke passt zu den Argumenten (Boolean) (wie E2250).',
+    mFound[0].Message);
+  Assert.AreEqual('Keine der 2 Überladungen von Merke passt zu den Argumenten (Extended) (wie E2250).',
+    mFound[1].Message);
+  Assert.AreEqual('Aufruf von Teile ist mehrdeutig: (AWert: Integer; ARest: Integer = 0) und ' +
+    '(AWert: Integer; const AText: string = '''') passen gleich gut (wie E2251).', mFound[2].Message);
+  // Überladungen aus dem Vorfahren zählen mit.
+  Assert.AreEqual('Keine der 2 Überladungen von Nenne passt zu den Argumenten (Extended) (wie E2250).',
+    mFound[3].Message);
+  // Gegenfälle; Überladungen aus verschiedenen Klassen der Hierarchie gelten nie als mehrdeutig.
+  mFound := OverloadFindings(cRechner + '  ARechner.Merke(1);'#10'  ARechner.Teile(1, 2);'#10 +
+    '  AKind.Nenne(1);'#10'  AKind.Nenne(''x'');'#10'  AKind.Zaehle(1);'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Keine der 2 Überladungen von Merke passt zu den Argumenten (Boolean) (wie E2250).',
+    mFound[0].Message);
+end;
+
+procedure TOverloadResolutionTests.AliasesAndOperators;
+const
+  cTypen = 'type'#10'  TText = string;'#10'  TZahl = Integer;'#10'  TBetrag = record'#10 +
+    '    class operator Implicit(AWert: Double): TBetrag;'#10'  end;'#10 +
+    'class operator TBetrag.Implicit(AWert: Double): TBetrag;'#10'begin'#10'end;'#10 +
+    'procedure Nenne(const AText: TText); overload;'#10'begin'#10'end;'#10 +
+    'procedure Nenne(AWert: TZahl); overload;'#10'begin'#10'end;'#10 +
+    'procedure Buche(const ABetrag: TBetrag); overload;'#10'begin'#10'end;'#10 +
+    'procedure Buche(const AText: string); overload;'#10'begin'#10'end;'#10;
+begin
+  Assert.AreEqual('Keine der 2 Überladungen von Nenne passt zu den Argumenten (Extended) (wie E2250).',
+    OverloadMessage(FallUnit(cTypen, '  Nenne(1.5);')));
+  OverloadSilent(FallUnit(cTypen, '  Nenne(1);'#10'  Nenne(AText);'#10'  Buche(1.5);'#10'  Buche(AZahl);'));
+end;
+
+procedure TOverloadResolutionTests.CompilerAccepts;
+begin
+  // UL1–UL7 aus Tests/DccFaelle/Dcc.Ueberladungen.pas.
+  OverloadSilent(NimmUnit('procedure Zahl(AWert: Double); overload;'#10'begin'#10'end;'#10 +
+    'procedure Zahl(const AText: string); overload;'#10'begin'#10'end;'#10 +
+    'procedure Zeichen(AWert: Char); overload;'#10'begin'#10'end;'#10 +
+    'procedure Zeichen(AWert: Integer); overload;'#10'begin'#10'end;'#10 +
+    'const'#10'  cZeichen = ''a'';'#10,
+    '  Nimm(1);'#10'  Nimm(''Text'');'#10'  Nimm(''a'');'#10'  Zahl(1);'#10'  Zahl(AZahl);'#10 +
+    '  Zeichen(cZeichen);'#10'  Zeichen(''b'');'));
+end;
+
+procedure TOverloadResolutionTests.IncompleteCandidates;
+var
+  mIndex: ISymbolIndex;
+begin
+  // Ohne System im Index.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TOverloadResolutionRule.Create,
+    NimmUnit('', '  Nimm(1.5);')))));
+  // Unbekannte Unit in uses: Sie kann weitere Überladungen von Nimm deklarieren.
+  OverloadSilent(StringReplace(NimmUnit('', '  Nimm(1.5);'), 'implementation'#10, 'implementation'#10'uses'#10 +
+    '  Fremd;'#10, []));
+  // Eine andere Unit deklariert Nimm: dcc nimmt deren Überladungen mit.
+  mIndex := SystemIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'procedure Nimm(AWert: Double); ' +
+    'overload;'#10'implementation'#10'procedure Nimm(AWert: Double);'#10'begin'#10'end;'#10'end.',
+    'C:\Projekt\Fremd.pas', nil));
+  OverloadSilent(StringReplace(NimmUnit('', '  Nimm(1.5);'), 'implementation'#10, 'implementation'#10'uses'#10 +
+    '  Fremd;'#10, []), mIndex);
+  // Gegenprobe: Ohne Fremd in uses sieht dcc dessen Nimm nicht.
+  Assert.AreEqual(1, Integer(Length(OverloadFindings(NimmUnit('', '  Nimm(1.5);'), mIndex))));
+  // Gegenprobe: Fremd ohne Nimm.
+  mIndex := SystemIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Fremd;'#10'interface'#10'implementation'#10'end.',
+    'C:\Projekt\Fremd.pas', nil));
+  Assert.AreEqual(1, Integer(Length(OverloadFindings(StringReplace(NimmUnit('', '  Nimm(1.5);'),
+    'implementation'#10, 'implementation'#10'uses'#10'  Fremd;'#10, []), mIndex))));
+  // Bedingte Überladung, with, unbekannter Vorfahr, verschachtelte und generische Routinen, keine Überladung.
+  OverloadSilent(NimmUnit('{$IFDEF ALT}'#10'procedure Nimm(AWert: Double); overload;'#10'begin'#10'end;'#10 +
+    '{$ENDIF}'#10, '  Nimm(1.5);'));
+  OverloadSilent(NimmUnit('', '  with TObject.Create do'#10'    Nimm(1.5);'));
+  OverloadSilent(NimmUnit('type'#10'  TFenster = class(TForm)'#10'    procedure Lauf;'#10'  end;'#10 +
+    'procedure TFenster.Lauf;'#10'begin'#10'  Nimm(1.5);'#10'end;'#10, ''));
+  OverloadSilent(FallUnit('procedure Aussen;'#10'  procedure Innen(AWert: Integer); overload;'#10'  begin'#10 +
+    '  end;'#10'  procedure Innen(const AText: string); overload;'#10'  begin'#10'  end;'#10'begin'#10 +
+    '  Innen(1.5);'#10'end;'#10, ''));
+  OverloadSilent(FallUnit('type'#10'  TListe = class'#10'    procedure Add<T>(AWert: T); overload;'#10 +
+    '    procedure Add(AWert: Integer); overload;'#10'  end;'#10'procedure TListe.Add<T>(AWert: T);'#10'begin'#10 +
+    'end;'#10'procedure TListe.Add(AWert: Integer);'#10'begin'#10'end;'#10'procedure Lauf(AListe: TListe);'#10 +
+    'begin'#10'  AListe.Add(1.5);'#10'end;'#10, ''));
+  OverloadSilent(FallUnit('procedure Einzeln(AWert: Integer);'#10'begin'#10'end;'#10, '  Einzeln(1.5);'));
+end;
+
+procedure TOverloadResolutionTests.UncertainArguments;
+begin
+  OverloadSilent(NimmUnit('function Wert: Integer; overload;'#10'begin'#10'end;'#10 +
+    'function Wert(AWert: Integer): Double; overload;'#10'begin'#10'end;'#10 +
+    'procedure Zeiger(AText: PChar); overload;'#10'begin'#10'end;'#10 +
+    'procedure Zeiger(AWert: Integer); overload;'#10'begin'#10'end;'#10 +
+    'procedure Liste(const AWerte: array of Integer); overload;'#10'begin'#10'end;'#10 +
+    'procedure Liste(AFlag: Boolean); overload;'#10'begin'#10'end;'#10 +
+    'procedure Zeichen(AWert: Char); overload;'#10'begin'#10'end;'#10 +
+    'procedure Zeichen(AWert: Integer); overload;'#10'begin'#10'end;'#10 +
+    'const'#10'  cZeichen = ''a'';'#10,
+    '  Nimm(AWert);'#10'  Nimm(Wert(1));'#10'  Zeiger(''abc'');'#10'  Liste([1]);'#10'  Liste(1.5);'#10 +
+    '  Zeichen(cZeichen);'));
+end;
+
+procedure TOverloadResolutionTests.FitTable;
+begin
+  Assert.AreEqual(Ord(TArgumentFit.Fails), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.Integer_,
+    TExpressionCategory.Float)));
+  Assert.AreEqual(Ord(TArgumentFit.Fits), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.Float,
+    TExpressionCategory.Integer_)));
+  Assert.AreEqual(Ord(TArgumentFit.Fits), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.Currency_,
+    TExpressionCategory.Integer_)));
+  Assert.AreEqual(Ord(TArgumentFit.Fits), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.Float,
+    TExpressionCategory.Currency_)));
+  Assert.AreEqual(Ord(TArgumentFit.Fits), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.String_,
+    TExpressionCategory.Char_)));
+  Assert.AreEqual(Ord(TArgumentFit.Fails), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.Char_,
+    TExpressionCategory.String_)));
+  Assert.AreEqual(Ord(TArgumentFit.Fails), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.Integer_,
+    TExpressionCategory.Boolean_)));
+  Assert.AreEqual(Ord(TArgumentFit.Fails), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.String_,
+    TExpressionCategory.Integer_)));
+  Assert.AreEqual(Ord(TArgumentFit.Fits), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.Variant_,
+    TExpressionCategory.Boolean_)));
+  Assert.AreEqual(Ord(TArgumentFit.Unknown), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.Other,
+    TExpressionCategory.Integer_)));
+  Assert.AreEqual(Ord(TArgumentFit.Unknown), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.Integer_,
+    TExpressionCategory.Variant_)));
+  Assert.AreEqual(Ord(TArgumentFit.Unknown), Ord(TOverloadResolutionRule.Fit(TExpressionCategory.Pointer_,
+    TExpressionCategory.String_)));
+  Assert.IsTrue(TOverloadResolutionRule.SameTypeName('Integer', 'LongInt'));
+  Assert.IsTrue(TOverloadResolutionRule.SameTypeName('string', 'UnicodeString'));
+  Assert.IsTrue(TOverloadResolutionRule.SameTypeName('System.Char', 'WideChar'));
+  Assert.IsFalse(TOverloadResolutionRule.SameTypeName('Integer', 'Int64'));
+  Assert.IsFalse(TOverloadResolutionRule.SameTypeName('', ''));
+end;
+
+procedure TOverloadResolutionTests.Options;
+var
+  mSource: string;
+begin
+  mSource := NimmUnit('', '  Nimm(1.5);');
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TOverloadResolutionRule.Create, mSource,
+    SystemIndex, '', 'Source/Faelle.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TOverloadResolutionRule.Create, mSource,
+    SystemIndex, '{"rules": {"overload-resolution": "off"}}', 'Source/Faelle.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TOverloadResolutionRule.Create, mSource,
+    SystemIndex, '{"rules": {"group:compiler": "off"}}', 'Source/Faelle.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TOverloadResolutionRule.Create, mSource,
+    SystemIndex, '{"rules": {"group:compiler": {"typeLevel": "off"}}}', 'Source/Faelle.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TCallRulesTests);
+  TDUnitX.RegisterTestFixture(TOverloadResolutionTests);
 
 end.

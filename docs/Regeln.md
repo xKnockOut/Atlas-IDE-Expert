@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 78 |
+| [Compiler vorab](#gruppe-compiler) | 79 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -231,6 +231,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`for-variable-misuse`](#for-variable-misuse) | Schleifenvariable verändert oder nicht lokal | Bug | Fehler |
 | [`for-variable-after-loop`](#for-variable-after-loop) | Schleifenvariable nach der Schleife gelesen | Bug | Warnung |
 | [`argument-count-mismatch`](#argument-count-mismatch) | Falsche Anzahl Argumente | Bug | Fehler |
+| [`overload-resolution`](#overload-resolution) | Überladung nicht auflösbar oder mehrdeutig | Bug | Fehler |
 
 <a id="gruppe-robustness"></a>
 ### Robustheit und Muster
@@ -8285,6 +8286,32 @@ Richtig:
 
 ```pascal
 Versenden(Kunde.Mail, 'Rechnung', Text);
+```
+
+<a id="overload-resolution"></a>
+### overload-resolution
+
+**Überladung nicht auflösbar oder mehrdeutig** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Aufruf einer überladenen Routine oder Methode passt zu keiner Überladung (wie E2250), etwa ein Gleitkommawert, wo nur Integer und string angeboten sind, oder ist mehrdeutig (wie E2251), weil sich die passenden Überladungen nur in Parametern mit Standardwert unterscheiden. Geprüft wird nur, wenn die Liste der Überladungen sicher vollständig ist: System und alle Units in uses im Index, keine gleichnamige freie Routine in einer anderen Unit, bekannte Vorfahren, keine bedingten, generischen, verschachtelten oder varargs-Deklarationen, kein with. Als unpassend gelten nur eingebaute Typfamilien ohne implizite Umwandlung (Gleitkomma an Ganzzahl, string an Char, Boolean an Zahl …), Aliase wie ihr Grundtyp; Records mit Implicit-Operator, Klassen, Zeiger, offene Arrays, Variant und überladene Aufrufe im Argument bleiben beim Compiler. Mehrdeutig heißt: Alle passenden Überladungen derselben Klasse bzw. Unit haben für die übergebenen Argumente genau deren Typen. Korrektur: Signaturhilfe öffnen zeigt alle Überladungen.
+
+Entspricht der Compilermeldung `E2250`, `E2251`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
+Mit Treffer:
+
+```pascal
+procedure Nimm(AWert: Integer); overload;
+procedure Nimm(const AWert: string); overload;
+
+Nimm(1.5);  // no overload takes a float
+```
+
+Richtig:
+
+```pascal
+Nimm(Round(1.5));
 ```
 
 <a id="method-without-self"></a>

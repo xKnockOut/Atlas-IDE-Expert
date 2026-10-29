@@ -43,3 +43,5 @@ Plattform.
 | `DccOperatorenGegen` | `operator-declaration-invalid` | OG1/OG2 falsche Parameterzahl |
 | `DccKonstanten` | `typed-constant-modified` | TC1 `{$J+}`, TC2 `{$WRITEABLECONST ON}`, TC3 `{$J+}` aus einer Include-Datei |
 | `DccKonstantenGegen` | `typed-constant-modified` | KG1 `{$J-}` |
+| `DccUeberladungen` | `overload-resolution` | UL1–UL3 Ganzzahl, string und Char an Integer/string, UL4 Ganzzahl an Double, UL5 untypisierte Konstante `'a'` an Char/Integer, UL6 Record mit Implicit-Operator, UL7 Alias auf Integer, UL8 weiteres Argument entscheidet, UL9 Integer passt genauer als Double, UL10 Überladung erst hinter dem Aufruf, UL11 Überladung aus dem Vorfahren (#1371) |
+| `DccUeberladungenGegen` | `overload-resolution` | UG1–UG6 keine Überladung passt (E2250: Gleitkomma, Boolean, Double-Variable, zu viele und keine Argumente, Aliase), UG7/UG8 nur Standardparameter verschieden (E2251), UG9–UG11 dasselbe an Methoden und mit Überladung aus dem Vorfahren |

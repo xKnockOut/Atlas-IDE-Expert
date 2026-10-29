@@ -8623,3 +8623,17 @@ Vorbereitung: Minimalfall F01 aus `berichte/fp-korpus-2026-10-28/faelle`; ein ei
 | VU5 | `property Capacity write SetCapacity;` ohne Typ im Nachfahren, danach `Capacity := 10` | Kein `readonly-property-assigned` |
 | VU6 | `X.Edit` ohne `Post` auf einem Record bzw. einer Klasse ohne TDataSet-Vorfahr; Gegenprobe auf `TFDQuery` | Nur die Gegenprobe meldet `dataset-edit-without-post` |
 | VU7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 29 in Server und Plugin) |
+
+## Überladung nicht auflösbar oder mehrdeutig (#1371)
+
+Vorbereitung: Projekt `Tests/DccFaelle/DccUeberladungen.dproj` bzw. `DccUeberladungenGegen.dproj` öffnen; der Index muss System kennen (Delphi-Quellen im Bibliothekspfad).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OR1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TOverloadResolutionTests` grün |
+| OR2 | `pwsh Tools/Build-DccFaelle.ps1` | `DccUeberladungen` übersetzt ohne Meldung (UL1–UL11); `DccUeberladungenGegen` meldet E2250 an UG1–UG6, UG9, UG11 und E2251 an UG7, UG8, UG10 (UG5 darf auch E2035 sein) (**Abnahme**) |
+| OR3 | `Dcc.Ueberladungen.Gegen.pas` im Editor öffnen | Fehler `overload-resolution` an UG1–UG11, z. B. „Keine der 2 Überladungen von Nimm passt zu den Argumenten (Extended) (wie E2250).“ und „Aufruf von Zwei ist mehrdeutig: (AWert: Integer; AText: string = '') und (AWert: Integer; AZahl: Integer = 0) passen gleich gut (wie E2251).“ |
+| OR4 | `Dcc.Ueberladungen.pas` im Editor öffnen | Keine Meldung von `overload-resolution` |
+| OR5 | Strg+F9 auf `DccUeberladungenGegen` | Je Zeile ein Eintrag „Atlas + dcc“ (E2250 bzw. E2251), keine zweite Zeile von dcc |
+| OR6 | `pwsh Tools/Build-Compilermeldungen.ps1 -Cases Cm.E2250,Cm.E2251 -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | Beide Codes „erkannt“, keine neuen Treffer unter „zusätzlich“ (**Abnahme**) |
+| OR7 | `"overload-resolution": "off"`, `"group:compiler": "off"` bzw. `{"typeLevel": "off"}` | Keine Meldung |
