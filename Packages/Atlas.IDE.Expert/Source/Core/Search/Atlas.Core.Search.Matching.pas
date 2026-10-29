@@ -133,6 +133,7 @@ implementation
 
 uses
   System.Character,
+  System.Generics.Collections,
   Atlas.Text.Chars;
 
 { TAtlasSearchOptions }
@@ -300,7 +301,7 @@ end;
 
 /// <summary>Textmodus: Treffer einer Zeile.</summary>
 procedure FindInLine(const ALine: string; ALineIndex: Integer; const ANeedle: string;
-  const AOptions: TAtlasSearchOptions; const AArea: TAtlasSearchArea; var AHits: TArray<TAtlasSearchHit>);
+  const AOptions: TAtlasSearchOptions; const AArea: TAtlasSearchArea; AHits: TList<TAtlasSearchHit>);
 var
   Line, Haystack, Needle: string;
   At, Stop: Integer;
@@ -335,7 +336,7 @@ begin
     Hit := TAtlasSearchHit.Create(ALineIndex, At - 1, Length(Needle));
     if Whole and AArea.Covers(Hit.StartPos, Hit.StopPos) then
     begin
-      AHits := AHits + [Hit];
+      AHits.Add(Hit);
       At := Pos(Needle, Haystack, Stop);
     end
     else
@@ -483,7 +484,7 @@ end;
 /// <summary>Bezeichner-Modus: Bezeichner im Code (CodeOnly); Kommentare und Strings dürfen Zeilen überspannen.
 /// </summary>
 procedure FindIdentifiers(const ALines: TArray<string>; const ANeedle: string; const AArea: TAtlasSearchArea;
-  var AHits: TArray<TAtlasSearchHit>);
+  AHits: TList<TAtlasSearchHit>);
 var
   Code: TArray<string>;
   LineIndex, I, First, Count: Integer;
@@ -535,7 +536,7 @@ begin
           begin
             Hit := TAtlasSearchHit.Create(LineIndex, First - 1, I - First);
             if AArea.Covers(Hit.StartPos, Hit.StopPos) then
-              AHits := AHits + [Hit];
+              AHits.Add(Hit);
           end;
         end
         else
@@ -547,7 +548,7 @@ end;
 
 /// <summary>Regex-Modus: Treffer je Zeile; ACode (CodeOnly) nur im Bezeichner-Modus, sonst nil.</summary>
 procedure FindPattern(const ALines, ACode: TArray<string>; const APattern: string;
-  const AOptions: TAtlasSearchOptions; const AArea: TAtlasSearchArea; var AHits: TArray<TAtlasSearchHit>);
+  const AOptions: TAtlasSearchOptions; const AArea: TAtlasSearchArea; AHits: TList<TAtlasSearchHit>);
 var
   Expression: TRegEx;
   Found: TMatch;
@@ -578,7 +579,7 @@ begin
           Keep := Pos(TAtlasTextSearch.CodeMask, Copy(ACode[LineIndex], At, Found.Length)) = 0;
         Hit := TAtlasSearchHit.Create(LineIndex, At - 1, Found.Length);
         if Keep and AArea.Covers(Hit.StartPos, Hit.StopPos) then
-          AHits := AHits + [Hit];
+          AHits.Add(Hit);
       end;
       Found := Found.NextMatch;
     end;
@@ -591,28 +592,34 @@ var
   LineIndex: Integer;
   Error: string;
   Code: TArray<string>;
+  Hits: TList<TAtlasSearchHit>;
 begin
   Result := nil;
   if (ANeedle = '') or AArea.IsEmpty then
     Exit;
-  if AOptions.Regex then
-  begin
-    if not TAtlasSearchRegex.Check(ANeedle, Error) then
-      Exit;
-    Code := nil;
-    if AOptions.Identifier then
-      Code := CodeOnly(ALines);
-    FindPattern(ALines, Code, ANeedle, AOptions, AArea, Result);
-    Exit;
+  // Liste statt Array + [Hit] (#1227): Das Anhängen kopierte jedes Mal alle Treffer; ein Buchstabe in einer großen
+  // Unit (Zehntausende Treffer) kostete so Sekunden je Tastendruck.
+  Hits := TList<TAtlasSearchHit>.Create;
+  try
+    if AOptions.Regex then
+    begin
+      if not TAtlasSearchRegex.Check(ANeedle, Error) then
+        Exit;
+      Code := nil;
+      if AOptions.Identifier then
+        Code := CodeOnly(ALines);
+      FindPattern(ALines, Code, ANeedle, AOptions, AArea, Hits);
+    end
+    else if AOptions.Identifier then
+      FindIdentifiers(ALines, Trim(ANeedle), AArea, Hits)
+    else
+      for LineIndex := AArea.Start.Line to AArea.Stop.Line do
+        if (LineIndex >= 0) and (LineIndex <= High(ALines)) then
+          FindInLine(ALines[LineIndex], LineIndex, ANeedle, AOptions, AArea, Hits);
+    Result := Hits.ToArray;
+  finally
+    Hits.Free;
   end;
-  if AOptions.Identifier then
-  begin
-    FindIdentifiers(ALines, Trim(ANeedle), AArea, Result);
-    Exit;
-  end;
-  for LineIndex := AArea.Start.Line to AArea.Stop.Line do
-    if (LineIndex >= 0) and (LineIndex <= High(ALines)) then
-      FindInLine(ALines[LineIndex], LineIndex, ANeedle, AOptions, AArea, Result);
 end;
 
 class function TAtlasTextSearch.Next(const AHits: TArray<TAtlasSearchHit>; const AFrom: TAtlasSearchPos;

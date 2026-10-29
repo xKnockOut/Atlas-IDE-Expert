@@ -37,7 +37,7 @@ type
   /// <summary>Ergebnis des Schreibens, im Hauptthread.</summary>
   TAtlasTrackerSendDone = reference to procedure(const AResult: TAtlasTrackerWriteResult);
   /// <summary>AChange im Hintergrund schreiben und ADone im Hauptthread aufrufen (genau einmal).</summary>
-  TAtlasTrackerSendEvent = reference to procedure(const AChange: TAtlasTrackerChange;
+  TAtlasTrackerSendEvent = reference to procedure(const AChange: TAtlasTrackerWrite;
     const ADone: TAtlasTrackerSendDone);
 
   TAtlasTrackerEndDialog = class(TForm)
@@ -60,7 +60,7 @@ type
     FOnSend: TAtlasTrackerSendEvent;
     FSending: Boolean;
     FSent: Boolean;
-    FChange: TAtlasTrackerChange;
+    FChange: TAtlasTrackerWrite;
     function AddRow(AHeight: Integer): TPanel;
     function AddButton(AParent: TWinControl; const ACaption: string): TButton;
     procedure SendClick(Sender: TObject);
@@ -78,7 +78,7 @@ type
     /// <summary>Benutzer vom Tracker für „Zuständigkeit übergeben an“.</summary>
     procedure SetUsers(const AUsers: TArray<string>);
     /// <summary>Änderung nach den Feldern.</summary>
-    function Change: TAtlasTrackerChange;
+    function Change: TAtlasTrackerWrite;
     /// <summary>Ergebnis von OnSend: geschrieben schließt den Dialog mit mrOk, sonst steht der Grund im Dialog.
     /// </summary>
     procedure SendDone(const AResult: TAtlasTrackerWriteResult);
@@ -87,18 +87,18 @@ type
     /// <summary>Grund eines Fehlers mit dem Text des Trackers; '' bei Erfolg.</summary>
     class function ErrorText(const AKey: string; const AResult: TAtlasTrackerWriteResult): string; static;
     /// <summary>Was geschrieben wurde, z. B. „Zustand „Erledigt“, an anna übergeben, Kommentar“.</summary>
-    class function SummaryText(const AChange: TAtlasTrackerChange): string; static;
+    class function SummaryText(const AChange: TAtlasTrackerWrite): string; static;
     /// <summary>Modal zeigen; True nach erfolgreichem „Senden“ mit der geschriebenen Änderung in AChange.
     /// APrepare (darf nil sein) passt das Fenster vorher an und kann Werte nachladen (SetUsers).</summary>
     class function Execute(const AKey: string; const AOptions: TAtlasTrackerSyncOptions; const AComment: string;
       const AOnSend: TAtlasTrackerSendEvent; const APrepare: TProc<TAtlasTrackerEndDialog>;
-      out AChange: TAtlasTrackerChange): Boolean; static;
+      out AChange: TAtlasTrackerWrite): Boolean; static;
     property OnSend: TAtlasTrackerSendEvent read FOnSend write FOnSend;
     /// <summary>Senden war erfolgreich.</summary>
     property Sent: Boolean read FSent;
     property Sending: Boolean read FSending;
     /// <summary>Gesendete Änderung (gilt mit Sent).</summary>
-    property SentChange: TAtlasTrackerChange read FChange;
+    property SentChange: TAtlasTrackerWrite read FChange;
     property StateBox: TAtlasValueBox read FState;
     property CommentMemo: TMemo read FComment;
     /// <summary>Kommentar-Editor (#1278); CommentMemo ist sein Memo.</summary>
@@ -134,7 +134,7 @@ begin
   inherited CreateNew(AOwner);
   FKey := AKey;
   FOptions := AOptions;
-  FChange := TAtlasTrackerChange.Empty;
+  FChange := TAtlasTrackerWrite.Empty;
   Caption := TAtlasStrings.Fmt(TAtlasTextId.TrackerEndCaption, [AKey]);
   BorderStyle := bsDialog;
   Position := poMainFormCenter;
@@ -291,7 +291,7 @@ begin
     FHandOver.Checked := True;
 end;
 
-function TAtlasTrackerEndDialog.Change: TAtlasTrackerChange;
+function TAtlasTrackerEndDialog.Change: TAtlasTrackerWrite;
 var
   mState: string;
 begin
@@ -410,7 +410,7 @@ begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.TrackerWriteReason, [Result, AResult.Message]);
 end;
 
-class function TAtlasTrackerEndDialog.SummaryText(const AChange: TAtlasTrackerChange): string;
+class function TAtlasTrackerEndDialog.SummaryText(const AChange: TAtlasTrackerWrite): string;
 var
   mParts: TArray<string>;
 begin
@@ -432,7 +432,7 @@ end;
 
 class function TAtlasTrackerEndDialog.Execute(const AKey: string; const AOptions: TAtlasTrackerSyncOptions;
   const AComment: string; const AOnSend: TAtlasTrackerSendEvent; const APrepare: TProc<TAtlasTrackerEndDialog>;
-  out AChange: TAtlasTrackerChange): Boolean;
+  out AChange: TAtlasTrackerWrite): Boolean;
 var
   mDialog: TAtlasTrackerEndDialog;
 begin

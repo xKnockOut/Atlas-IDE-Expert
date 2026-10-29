@@ -389,13 +389,20 @@ begin
       not SameText(Statement[0].Name, Name) then
       Continue;
     Value := Statement[1];
+    // Erst Result, dann Exit: Exit([...]) liest Delphi als Menge (E2001).
     if IsPure(Value, LocalNames(RoutineOf(Statement))) then
-      Exit([Fix(AMessage.Code, Format('Wirkungslose Zuweisung an %s entfernen (%s)', [Name, AMessage.Code]),
-        [StatementRemoval(AText, ATokens, Statement)], True)])
+    begin
+      Result := [Fix(AMessage.Code, Format('Wirkungslose Zuweisung an %s entfernen (%s)', [Name, AMessage.Code]),
+        [StatementRemoval(AText, ATokens, Statement)], True)];
+      Exit;
+    end
     else if Value.Kind = TSyntaxKind.Call then
+    begin
       // Der Aufruf bleibt, nur die Zuweisung fällt weg.
-      Exit([Fix(AMessage.Code, Format('Zuweisung an %s entfernen, nur %s aufrufen (%s)', [Name, Value.Name,
-        AMessage.Code]), [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Value.StartPos), '')], True)]);
+      Result := [Fix(AMessage.Code, Format('Zuweisung an %s entfernen, nur %s aufrufen (%s)', [Name, Value.Name,
+        AMessage.Code]), [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Value.StartPos), '')], True)];
+      Exit;
+    end;
   end;
 end;
 

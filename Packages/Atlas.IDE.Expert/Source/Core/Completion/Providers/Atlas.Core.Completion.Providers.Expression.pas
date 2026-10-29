@@ -39,7 +39,7 @@ type
     function IsFailure(E: Exception): Boolean; override;
     function Prepare(const AContext: TAtlasContext; out AData: TObject): Boolean; override;
     function Fetch(const AContext: TAtlasContext; AData: TObject; const ACancelled: TAtlasCancelledFunc;
-      const AEmit: TAtlasEmitProc; out AIncomplete: Boolean): TAtlasCompletionItems; override;
+      const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems; override;
   public
     /// <summary>AHistory: Verlauf des aktuellen Projekts, im Hintergrund aufgerufen (sperrt selbst).</summary>
     constructor Create(const ASession: TAtlasSessionFunc; const AHistory: TFunc<TArray<string>>;
@@ -90,12 +90,12 @@ begin
 end;
 
 function TAtlasExpressionCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
-  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AIncomplete: Boolean):
+  const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState):
   TAtlasCompletionItems;
 var
   Response: TJSONValue;
 begin
-  AIncomplete := False;
+  AState := Default(TAtlasFetchState);
   if AContext.Trigger = TAtlasTriggers.History then
     Exit(HistoryItems(FHistory(), FHistoryCaption));
   Response := TLspSession(AData).ExpressionCompletion(AContext.FileName, AContext.Line, AContext.Text,

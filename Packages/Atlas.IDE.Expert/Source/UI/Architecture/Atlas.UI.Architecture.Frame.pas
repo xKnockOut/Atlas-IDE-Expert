@@ -58,6 +58,8 @@ type
     FLibrary: TCheckBox;
     FFilter: TEdit;
     FPages: TPageControl;
+    /// <summary>Reiter in Reihenfolge; CreateWnd hängt sie ein (das braucht das Fenster des PageControls).</summary>
+    FSheets: TArray<TTabSheet>;
     FMapBar: TPanel;
     FFit: TButton;
     FNames: TCheckBox;
@@ -471,8 +473,11 @@ end;
 function TAtlasArchitectureFrame.NewSheet(const ACaption: string): TTabSheet;
 begin
   Result := TTabSheet.Create(Self);
+  // Ohne Reiter einhängen: Ein sichtbarer Reiter braucht das Fenster des PageControls (CreateWnd zeigt ihn).
+  Result.TabVisible := False;
   Result.PageControl := FPages;
   Result.Caption := ACaption;
+  FSheets := FSheets + [Result];
 end;
 
 function TAtlasArchitectureFrame.NewList(AParent: TWinControl): TListView;
@@ -507,8 +512,14 @@ begin
 end;
 
 procedure TAtlasArchitectureFrame.CreateWnd;
+var
+  Sheet: TTabSheet;
 begin
   inherited CreateWnd;
+  for Sheet in FSheets do
+    Sheet.TabVisible := True;
+  if (FPages.ActivePage = nil) and (Length(FSheets) > 0) then
+    FPages.ActivePage := FSheets[0];
   // Combo, Listen und Bäume halten ihre Einträge im Fenster: erst jetzt füllen.
   FillScope;
   FillAll;

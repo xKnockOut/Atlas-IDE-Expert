@@ -75,9 +75,12 @@ type
 implementation
 
 uses
+  System.UITypes,
   Winapi.Windows,
   System.Math,
+  Vcl.Forms,
   Vcl.Themes,
+  Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.UI.Strings;
 

@@ -117,7 +117,7 @@ const
   /// <summary>Höchstens so viele geprüfte Glieder; der Rest als „… n weitere“.</summary>
   MaxExplanationLines = 6;
   BaseRow = 24;
-  Padding = 6;
+  BarPadding = 6;
   Gap = 6;
 
 function ToColor(AColor: TAtlasColor): TColor;
@@ -149,7 +149,7 @@ end;
 
 class function TAtlasDebugExceptionBar.BarHeight(APPI, ARows: Integer): Integer;
 begin
-  Result := MulDiv(ARows * BaseRow + Padding, Max(APPI, 96), 96);
+  Result := MulDiv(ARows * BaseRow + BarPadding, Max(APPI, 96), 96);
 end;
 
 function TAtlasDebugExceptionBar.ShownLines: Integer;
@@ -195,7 +195,7 @@ end;
 
 function TAtlasDebugExceptionBar.RowTop(ARow: Integer): Integer;
 begin
-  Result := Scale(Padding div 2) + ARow * RowHeight;
+  Result := Scale(BarPadding div 2) + ARow * RowHeight;
 end;
 
 procedure TAtlasDebugExceptionBar.ApplyHeight;
@@ -308,15 +308,15 @@ begin
   if FInfo.HasLocation then
   begin
     Place := DetailText;
-    Width_ := Min(Canvas.TextWidth(Place), ClientWidth - 2 * Scale(Padding + Gap));
-    FRects[TAtlasDebugBarAction.Open] := Rect(Scale(Padding + Gap), Scale(Padding div 2) + RowHeight,
-      Scale(Padding + Gap) + Width_, Scale(Padding div 2) + 2 * RowHeight);
+    Width_ := Min(Canvas.TextWidth(Place), ClientWidth - 2 * Scale(BarPadding + Gap));
+    FRects[TAtlasDebugBarAction.Open] := Rect(Scale(BarPadding + Gap), Scale(BarPadding div 2) + RowHeight,
+      Scale(BarPadding + Gap) + Width_, Scale(BarPadding div 2) + 2 * RowHeight);
   end;
   // Knöpfe der Erklärung in ihrer letzten Zeile (über den Knöpfen der Leiste).
   if FExplanation.Active and not FExplanation.Busy then
   begin
     Top := RowTop(Rows - 2) + Scale(2);
-    Left := Scale(Padding + Gap);
+    Left := Scale(BarPadding + Gap);
     for Action in ExplanationButtons do
     begin
       if not ExplanationHas(Action) then
@@ -327,7 +327,7 @@ begin
     end;
   end;
   Top := RowTop(Rows - 1) + Scale(2);
-  Left := Scale(Padding + Gap);
+  Left := Scale(BarPadding + Gap);
   for Action in BarButtons do
   begin
     if (Action = TAtlasDebugBarAction.IgnoreLocation) and not FInfo.CanIgnoreLocation then
@@ -435,7 +435,7 @@ begin
   // Fläche des Editors außen, die Leiste als Karte mit Akzentrahmen darin.
   Canvas.Brush.Color := ToColor(FColors.Gutter);
   Canvas.FillRect(ClientRect);
-  Frame := Rect(Scale(Padding div 2), Scale(1), ClientWidth - Scale(Padding div 2), ClientHeight - Scale(1));
+  Frame := Rect(Scale(BarPadding div 2), Scale(1), ClientWidth - Scale(BarPadding div 2), ClientHeight - Scale(1));
   Canvas.Brush.Color := ToColor(FColors.Surface);
   Canvas.Pen.Color := ToColor(FColors.Accent);
   Canvas.RoundRect(Frame.Left, Frame.Top, Frame.Right, Frame.Bottom, Scale(8), Scale(8));

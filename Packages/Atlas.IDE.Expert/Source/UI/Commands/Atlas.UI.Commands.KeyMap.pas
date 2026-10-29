@@ -362,6 +362,8 @@ begin
       Id := TAtlasTextId.ExpressionTypeCommand;
     TAtlasKeyFunction.SafeDelete:
       Id := TAtlasTextId.SafeDeleteCommand;
+    TAtlasKeyFunction.CreateIssue:
+      Id := TAtlasTextId.CreateIssueCommand;
   else
     Id := TAtlasTextId.KeyMapUnitSearchIde;
   end;

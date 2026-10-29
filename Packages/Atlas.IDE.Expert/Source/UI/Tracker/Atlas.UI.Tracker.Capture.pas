@@ -94,6 +94,24 @@ uses
 const
   // Fehlt in älteren Winapi.Windows: auch Inhalte von DirectX und WinUI zeichnen (ab Windows 8.1).
   PW_RENDERFULLCONTENT = 2;
+  // Die ersten acht Bytes jeder PNG-Datei.
+  PngSignature: array[0..7] of Byte = ($89, $50, $4E, $47, $0D, $0A, $1A, $0A);
+  // Fehlt in Winapi.Windows: Bildschirmkopie samt überlagerter Fenster.
+  CAPTUREBLT = $40000000;
+
+type
+  // Fehlt in Winapi.Windows: Daten des systemweiten Maus-Hooks (WH_MOUSE_LL).
+  TMsllHookStruct = record
+    pt: TPoint;
+    mouseData: DWORD;
+    flags: DWORD;
+    time: DWORD;
+    dwExtraInfo: ULONG_PTR;
+  end;
+  PMSLLHookStruct = ^TMsllHookStruct;
+
+// Fehlt in Winapi.Windows.
+function PrintWindow(AWindow: HWND; ADC: HDC; AFlags: UINT): BOOL; stdcall; external user32;
 
 type
   TCollect = record
@@ -371,7 +389,8 @@ var
   mStream: TBytesStream;
 begin
   Result := nil;
-  if Length(ABytes) = 0 then
+  // Ohne PNG-Signatur gar nicht erst laden (TPngImage meldet das mit eigener Ausnahmeklasse).
+  if (Length(ABytes) < Length(PngSignature)) or not CompareMem(@ABytes[0], @PngSignature[0], Length(PngSignature)) then
     Exit;
   mPng := TPngImage.Create;
   mStream := TBytesStream.Create(ABytes);

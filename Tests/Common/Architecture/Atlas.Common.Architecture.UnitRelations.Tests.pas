@@ -147,7 +147,7 @@ begin
   Add('G', nil, ['E']);
   Add('H', nil, ['F']);
   FGraph := TUsesGraph.Create(Units, TUsesGraphOptions.Default);
-  FLocator := TUsesLocator.Create(Reader, NoDefines);
+  FLocator := TUsesLocator.Create(Reader(), NoDefines());
 end;
 
 procedure TUnitRelationsTests.TearDown;
@@ -177,7 +177,7 @@ function Build(AGraph: TUsesGraph; ALocator: TUsesLocator; const AReader: TUsesT
 var
   Builder: TUnitRelationsBuilder;
 begin
-  Builder := TUnitRelationsBuilder.Create(AGraph, ALocator, AReader, NoDefines);
+  Builder := TUnitRelationsBuilder.Create(AGraph, ALocator, AReader, NoDefines());
   try
     Result := Builder.Build(AFileName, ADepth, AUnused);
   finally
@@ -190,7 +190,7 @@ var
   Relations: TUnitRelations;
   System_: TUnitRelation;
 begin
-  Relations := Build(FGraph, FLocator, Reader, FileOf('A'), 1, nil);
+  Relations := Build(FGraph, FLocator, Reader(), FileOf('A'), 1, nil);
   Assert.IsTrue(Relations.Found);
   Assert.AreEqual('A', Relations.UnitName);
   Assert.AreEqual('B,System,C', Names(Relations.Uses_), 'Quelltextreihenfolge, erst interface');
@@ -214,7 +214,7 @@ var
   Relations: TUnitRelations;
   F: TUnitRelation;
 begin
-  Relations := Build(FGraph, FLocator, Reader, FileOf('A'), 1, nil);
+  Relations := Build(FGraph, FLocator, Reader(), FileOf('A'), 1, nil);
   Assert.AreEqual('B,E,F', Names(Relations.UsedBy), 'genau drei, nach Name');
   Assert.AreEqual(Ord(TUsesSection.Interface_), Ord(Find(Relations.UsedBy, 'B').Section));
   Assert.AreEqual(Ord(TUsesSection.Interface_), Ord(Find(Relations.UsedBy, 'E').Section));
@@ -232,7 +232,7 @@ procedure TUnitRelationsTests.InterfaceCycleIsMarkedWithPath;
 var
   Relations: TUnitRelations;
 begin
-  Relations := Build(FGraph, FLocator, Reader, FileOf('A'), 1, nil);
+  Relations := Build(FGraph, FLocator, Reader(), FileOf('A'), 1, nil);
   Assert.IsTrue(Relations.InCycle);
   Assert.AreEqual('A → B → A', Relations.CyclePath);
   Assert.IsTrue(Find(Relations.Uses_, 'B').Cycle, 'Verwendet: B rot');
@@ -243,7 +243,7 @@ begin
   Assert.AreEqual('A → B → A', Find(Relations.UsedBy, 'B').CyclePath);
   Assert.IsFalse(Find(Relations.UsedBy, 'E').Cycle, 'E verwendet A, aber A nicht E');
   // C liegt in keinem Zyklus.
-  Relations := Build(FGraph, FLocator, Reader, FileOf('C'), 1, nil);
+  Relations := Build(FGraph, FLocator, Reader(), FileOf('C'), 1, nil);
   Assert.IsFalse(Relations.InCycle);
   Assert.AreEqual('', Relations.CyclePath);
 end;
@@ -253,10 +253,10 @@ var
   Relations: TUnitRelations;
 begin
   // A ändert sein interface: B, E, F direkt; G über E (interface); H nicht (F verwendet A im implementation).
-  Relations := Build(FGraph, FLocator, Reader, FileOf('A'), 1, nil);
+  Relations := Build(FGraph, FLocator, Reader(), FileOf('A'), 1, nil);
   Assert.AreEqual(4, Relations.RecompileCount);
   Assert.AreEqual(FGraph.RecompileCount(FGraph.IndexOf('A')), Relations.RecompileCount);
-  Relations := Build(FGraph, FLocator, Reader, FileOf('D'), 1, nil);
+  Relations := Build(FGraph, FLocator, Reader(), FileOf('D'), 1, nil);
   // D: C, dann über C (interface) A, über A (interface) B und E sowie F und G.
   Assert.AreEqual(FGraph.RecompileCount(FGraph.IndexOf('D')), Relations.RecompileCount);
   Assert.AreEqual(1, Integer(Length(Relations.UsedBy)));
@@ -267,7 +267,7 @@ var
   Relations: TUnitRelations;
   B, C, E: TUnitRelation;
 begin
-  Relations := Build(FGraph, FLocator, Reader, FileOf('A'), 0, nil);
+  Relations := Build(FGraph, FLocator, Reader(), FileOf('A'), 0, nil);
   C := Find(Relations.Uses_, 'C');
   Assert.AreEqual('D', Names(C.Children));
   B := Find(Relations.Uses_, 'B');
@@ -294,10 +294,10 @@ begin
   FTexts.AddOrSetValue(FileOf('A'), UnitSource('A', ['B'], nil));
   Graph := TUsesGraph.Create(Units, TUsesGraphOptions.Default);
   try
-    Relations := Build(Graph, nil, Reader, FileOf('A'), 2, nil);
+    Relations := Build(Graph, nil, Reader(), FileOf('A'), 2, nil);
     Assert.AreEqual('C', Names(Find(Relations.Uses_, 'B').Children));
     Assert.IsNull(Find(Relations.Uses_, 'B').Children[0].Children, 'Tiefe 2');
-    Relations := Build(Graph, nil, Reader, FileOf('A'), 3, nil);
+    Relations := Build(Graph, nil, Reader(), FileOf('A'), 3, nil);
     Assert.AreEqual('D', Names(Find(Relations.Uses_, 'B').Children[0].Children));
     Assert.AreEqual(-1, Find(Find(Relations.Uses_, 'B').Children, 'C').Line, 'ohne Locator keine Fundstelle');
   finally
@@ -309,7 +309,7 @@ procedure TUnitRelationsTests.UnusedEntriesAreMarked;
 var
   Relations: TUnitRelations;
 begin
-  Relations := Build(FGraph, FLocator, Reader, FileOf('A'), 1, TArray<string>.Create('System', 'X.C'));
+  Relations := Build(FGraph, FLocator, Reader(), FileOf('A'), 1, TArray<string>.Create('System', 'X.C'));
   Assert.IsTrue(Find(Relations.Uses_, 'System').Unused);
   Assert.IsFalse(Find(Relations.Uses_, 'B').Unused);
   Assert.IsTrue(Find(Relations.Uses_, 'C').Unused, 'mit Namensraum geschrieben');
@@ -320,7 +320,7 @@ var
   Relations: TUnitRelations;
 begin
   FTexts.AddOrSetValue('C:\Neu\Neu.pas', UnitSource('Neu', ['A'], ['Fremd']));
-  Relations := Build(FGraph, FLocator, Reader, 'C:\Neu\Neu.pas', 0, nil);
+  Relations := Build(FGraph, FLocator, Reader(), 'C:\Neu\Neu.pas', 0, nil);
   Assert.IsFalse(Relations.Found);
   Assert.AreEqual('Neu', Relations.UnitName);
   Assert.AreEqual('A,Fremd', Names(Relations.Uses_));
@@ -335,7 +335,7 @@ var
   Json: TJSONObject;
   Item: TJSONObject;
 begin
-  Json := TUnitRelationsBuilder.ToJson(Build(FGraph, FLocator, Reader, FileOf('A'), 1,
+  Json := TUnitRelationsBuilder.ToJson(Build(FGraph, FLocator, Reader(), FileOf('A'), 1,
     TArray<string>.Create('System')));
   try
     Assert.IsTrue(Json.GetValue<Boolean>('found'));
@@ -369,11 +369,11 @@ var
   Json, Item: TJSONObject;
 begin
   // B steht im interface und wird nur in der implementation gebraucht; C steht schon dort.
-  Relations := Build(FGraph, FLocator, Reader, FileOf('A'), 1, nil);
+  Relations := Build(FGraph, FLocator, Reader(), FileOf('A'), 1, nil);
   Assert.IsFalse(Find(Relations.Uses_, 'B').OnlyImplementation, 'ohne Angabe nichts');
   Json := nil;
   try
-    Builder := TUnitRelationsBuilder.Create(FGraph, FLocator, Reader, NoDefines);
+    Builder := TUnitRelationsBuilder.Create(FGraph, FLocator, Reader(), NoDefines());
     try
       Relations := Builder.Build(FileOf('A'), 1, nil, TArray<string>.Create('X.B', 'C'));
     finally

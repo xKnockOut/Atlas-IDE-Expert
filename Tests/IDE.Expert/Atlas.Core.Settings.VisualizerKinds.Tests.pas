@@ -68,13 +68,20 @@ begin
 end;
 
 procedure TAtlasVisualizerSettingsTests.DefaultsLieWithinLimits;
+
+  // Über eine Variable, sonst rechnet der Compiler den Vergleich der Konstanten aus (W1022).
+  procedure Within(AValue, AMin, AMax: Int64; const AName: string);
+  begin
+    Assert.IsTrue((AValue >= AMin) and (AValue <= AMax), AName);
+  end;
+
 begin
-  Assert.IsTrue((TAtlasVisualizerSettings.DefaultMaxLength >= TAtlasVisualizerSettings.MinMaxLength) and
-    (TAtlasVisualizerSettings.DefaultMaxLength <= TAtlasVisualizerSettings.MaxMaxLength));
-  Assert.IsTrue((TAtlasVisualizerSettings.DefaultTimeoutMs >= TAtlasVisualizerSettings.MinTimeoutMs) and
-    (TAtlasVisualizerSettings.DefaultTimeoutMs <= TAtlasVisualizerSettings.MaxTimeoutMs));
-  Assert.IsTrue((TAtlasVisualizerSettings.DefaultMaxImagePixels >= TAtlasVisualizerSettings.MinMaxImagePixels) and
-    (TAtlasVisualizerSettings.DefaultMaxImagePixels <= TAtlasVisualizerSettings.MaxMaxImagePixels));
+  Within(TAtlasVisualizerSettings.DefaultMaxLength, TAtlasVisualizerSettings.MinMaxLength,
+    TAtlasVisualizerSettings.MaxMaxLength, 'MaxLength');
+  Within(TAtlasVisualizerSettings.DefaultTimeoutMs, TAtlasVisualizerSettings.MinTimeoutMs,
+    TAtlasVisualizerSettings.MaxTimeoutMs, 'TimeoutMs');
+  Within(TAtlasVisualizerSettings.DefaultMaxImagePixels, TAtlasVisualizerSettings.MinMaxImagePixels,
+    TAtlasVisualizerSettings.MaxMaxImagePixels, 'MaxImagePixels');
 end;
 
 initialization

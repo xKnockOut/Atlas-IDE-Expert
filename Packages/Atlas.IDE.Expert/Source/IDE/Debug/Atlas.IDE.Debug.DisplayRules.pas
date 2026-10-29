@@ -102,6 +102,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Winapi.Windows,
   System.JSON,
   Atlas.Core.Diagnostics.Guard,
@@ -213,7 +214,7 @@ function TAtlasIdeDisplayVisualizer.Show(const Expression, TypeName, EvalResult:
 begin
   Result := nil;
   try
-    Result := TAtlasIdeViewerUpdater.Create(TAtlasViewerGroup.DisplayRules, DisplaySource, Expression, TypeName,
+    Result := TAtlasIdeViewerUpdater.Create(TAtlasViewerGroup.DisplayRules, DisplaySource(), Expression, TypeName,
       EvalResult, SuggestedLeft, SuggestedTop);
   except
     on E: Exception do

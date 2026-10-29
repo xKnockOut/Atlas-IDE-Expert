@@ -92,6 +92,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Winapi.Windows,
   System.Math,
   System.JSON,

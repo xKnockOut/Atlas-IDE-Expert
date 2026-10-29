@@ -182,6 +182,8 @@ var
 
 const
   cDefaultTimeoutSeconds = 15;
+  cMinTimeoutSeconds = 1;
+  cMaxTimeoutSeconds = 300;
 
 type
   /// <summary>Offene Konsolen von „Anmelden …“ (#1287): ein Zeitgeber im Hauptthread fragt, ob der Prozess endete.
@@ -251,8 +253,6 @@ begin
     end;
   FTimer.Enabled := FProcesses.Count > 0;
 end;
-  cMinTimeoutSeconds = 1;
-  cMaxTimeoutSeconds = 300;
 
 class function TVcsSettings.Default: TVcsSettings;
 begin

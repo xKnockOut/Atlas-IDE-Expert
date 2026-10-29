@@ -319,10 +319,6 @@ begin
   end;
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TLspInitializeParamsTests);
-  TDUnitX.RegisterTestFixture(TLspImpactResponseTests);
-
 procedure TLspInitializeParamsTests.InlineValueRefsAreVariableLookups;
 var
   Response: TJSONValue;
@@ -348,5 +344,9 @@ begin
   Assert.AreEqual('', Refs[1].TypeName);
   Assert.AreEqual(0, Integer(Length(TLspSession.InlineValueRefsOf(nil))), 'ohne Antwort');
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TLspInitializeParamsTests);
+  TDUnitX.RegisterTestFixture(TLspImpactResponseTests);
 
 end.

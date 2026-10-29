@@ -28,6 +28,9 @@
 //   Feature-Zyklus (A-09).
 // - Eigene Sicherung TAtlasFeature.EditorToolbar: Löst sie aus, verschwinden
 //   die Leisten, bis „Abgeschaltete Funktionen einschalten“.
+// - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die
+//   IDE, Protokoll des Sperrenden und Abbau übernimmt TAtlasEditorBarHost
+//   (#1248); hier stehen nur Einordnen (Place) und Inhalt.
 // - editor.toolbar aus: Leisten weg, der Editor bekommt seine Höhe zurück;
 //   Position, Text neben den Symbolen und Belegung gelten ohne Neustart.
 // Nur im Hauptthread.
@@ -110,18 +113,16 @@ uses
   Atlas.UI.Commands.Palette,
   Atlas.UI.Outline.Breadcrumbs,
   Atlas.UI.EditorToolbar.Bar,
+  Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Diagnostics.StackCapture,
   Atlas.IDE.Outline.Cache;
 
 const
   TickMs = 150;
-  /// <summary>So oft je Sitzung den Aufrufer protokollieren, der eine Leiste sperrt.</summary>
-  MaxDisabledLogs = 3;
   /// <summary>Befehlsliste und offene Dateien nur alle so viele Takte neu lesen (etwa 2 s).</summary>
   SlowTicks = 13;
   PositionBelow = 'belowBreadcrumbs';
@@ -133,27 +134,13 @@ const
   ForwardId = 'Atlas.NavForward';
 
 type
-  TToolbarState = class;
-
-  /// <summary>Erfährt, wenn die IDE eine Leiste mit ihrem Fenster (bzw. der Brotkrumenleiste) freigibt.</summary>
-  TToolbarWatcher = class(TComponent)
-  private
-    FState: TToolbarState;
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  end;
-
   TToolbarState = class
   private
     FTimer: TTimer;
-    FWatcher: TToolbarWatcher;
-    FBars: TList<TAtlasEditorToolbar>;
-    /// <summary>Eltern-Steuerelement des Editors je Leiste (gleicher Index wie FBars).</summary>
-    FHosts: TList<TWinControl>;
+    FHost: TAtlasEditorBarHost;
     FPoints: TAtlasReturnPoints;
     FCommands: TArray<TAtlasCommand>;
     FSlow: Integer;
-    FHidden: Boolean;
     // Abschnitte der zuletzt gelesenen Datei.
     FSectionsFile: string;
     FSectionsVersion: Cardinal;
@@ -162,17 +149,11 @@ type
     FLineCounts: TDictionary<string, Integer>;
     FLastFile: string;
     FLastLine: Integer;
-    FDisabledLogged: Integer;
     procedure Tick(Sender: TObject);
     function ToolbarOn: Boolean;
-    function EditorOf(const AWindow: INTAEditWindow): TWinControl;
-    function BarOf(AHost: TWinControl): TAtlasEditorToolbar;
     function CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar;
-    procedure EnsureBars;
-    procedure CreateBar(AHost: TWinControl);
+    function CreateBar(AHost: TWinControl): TAtlasEditorToolbar;
     procedure Place(ABar: TAtlasEditorToolbar; AHost: TWinControl);
-    procedure RemoveBars;
-    procedure ShowBars(AShown: Boolean);
     procedure Track(const AView: IOTAEditView; const AFileName: string; ALine: Integer);
     procedure UpdateBar(ABar: TAtlasEditorToolbar; const AFileName: string;
       ALine, ACharacter: Integer);
@@ -180,15 +161,9 @@ type
     function CommandOf(const AId: string; out ACommand: TAtlasCommand): Boolean;
     procedure ForgetClosedFiles;
     procedure Later(const AAction: TProc);
-    procedure BarDisabled(Sender: TObject);
-    /// <summary>Gibt gesperrte Leisten frei, sobald wieder ein Editor aktiv ist. Beim Schließen aller Editoren
-    /// (Projektwechsel) sperrt die IDE jedes Steuerelement im Editor-Panel (Aufrufer laut Protokoll coreide370) und
-    /// gibt danach nur ihre eigenen wieder frei; ohne Abgleich blieben die Leisten bis zum Neustart taub.</summary>
-    procedure EnableBars;
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Removed(ABar: TAtlasEditorToolbar);
     /// <summary>Nach geänderten Einstellungen: Leisten neu anlegen (Position, Belegung), Befehle neu lesen.</summary>
     procedure Reset;
     procedure ApplyTheme;
@@ -281,26 +256,22 @@ begin
   Result := True;
 end;
 
-{ TToolbarWatcher }
-
-procedure TToolbarWatcher.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent is TAtlasEditorToolbar) and (FState <> nil) then
-    FState.Removed(TAtlasEditorToolbar(AComponent));
-end;
-
 { TToolbarState }
 
 constructor TToolbarState.Create;
 begin
   inherited Create;
-  FBars := TList<TAtlasEditorToolbar>.Create;
-  FHosts := TList<TWinControl>.Create;
+  FHost := TAtlasEditorBarHost.Create('Editorleiste', TAtlasFeature.EditorToolbar,
+    function(AEditorParent: TWinControl): TControl
+    begin
+      Result := CreateBar(AEditorParent);
+    end,
+    procedure(ABar: TControl; AEditorParent: TWinControl)
+    begin
+      Place(TAtlasEditorToolbar(ABar), AEditorParent);
+    end);
   FPoints := TAtlasReturnPoints.Create;
   FLineCounts := TDictionary<string, Integer>.Create;
-  FWatcher := TToolbarWatcher.Create(nil);
-  FWatcher.FState := Self;
   FLastLine := -1;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
@@ -312,43 +283,10 @@ end;
 destructor TToolbarState.Destroy;
 begin
   FTimer.Free;
-  RemoveBars;
-  FWatcher.Free;
+  FHost.Free;
   FLineCounts.Free;
   FPoints.Free;
-  FHosts.Free;
-  FBars.Free;
   inherited Destroy;
-end;
-
-procedure TToolbarState.RemoveBars;
-var
-  Bar: TAtlasEditorToolbar;
-begin
-  // Leisten selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
-  FWatcher.FState := nil;
-  try
-    for Bar in FBars.ToArray do
-    begin
-      Bar.RemoveFreeNotification(FWatcher);
-      Bar.Free;
-    end;
-  finally
-    FBars.Clear;
-    FHosts.Clear;
-    FWatcher.FState := Self;
-  end;
-end;
-
-procedure TToolbarState.Removed(ABar: TAtlasEditorToolbar);
-var
-  Index: Integer;
-begin
-  Index := FBars.IndexOf(ABar);
-  if Index < 0 then
-    Exit;
-  FBars.Delete(Index);
-  FHosts.Delete(Index);
 end;
 
 function TToolbarState.ToolbarOn: Boolean;
@@ -357,14 +295,15 @@ begin
 end;
 
 procedure TToolbarState.Reset;
-var
-  Bar: TAtlasEditorToolbar;
 begin
   FSlow := 0;
   FSectionsFile := '';
   // Die Position stellt Place beim nächsten Takt um, die Knöpfe UpdateBar; hier nur, was alle Leisten betrifft.
-  for Bar in FBars do
-    Bar.Labels := TAtlasIdeSettings.Current.EditorToolbarLabels;
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasEditorToolbar(ABar).Labels := TAtlasIdeSettings.Current.EditorToolbarLabels;
+    end);
   ApplyTheme;
   if Assigned(TAtlasIdeEditorToolbar.FHooks.Commands) then
     FCommands := TAtlasIdeEditorToolbar.FHooks.Commands()
@@ -374,34 +313,14 @@ end;
 
 procedure TToolbarState.ApplyTheme;
 var
-  Bar: TAtlasEditorToolbar;
   Colors: TAtlasColors;
 begin
   Colors := BarColors;
-  for Bar in FBars do
-    Bar.SetColors(Colors);
-end;
-
-function TToolbarState.EditorOf(const AWindow: INTAEditWindow): TWinControl;
-var
-  Editor: TComponent;
-begin
-  Result := nil;
-  if (AWindow = nil) or (AWindow.Form = nil) then
-    Exit;
-  Editor := AWindow.Form.FindComponent('Editor');
-  if (Editor is TWinControl) and (TWinControl(Editor).Parent <> nil) then
-    Result := TWinControl(Editor);
-end;
-
-function TToolbarState.BarOf(AHost: TWinControl): TAtlasEditorToolbar;
-var
-  Index: Integer;
-begin
-  for Index := 0 to FHosts.Count - 1 do
-    if FHosts[Index] = AHost then
-      Exit(FBars[Index]);
-  Result := nil;
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasEditorToolbar(ABar).SetColors(Colors);
+    end);
 end;
 
 function TToolbarState.CrumbsOf(AHost: TWinControl): TAtlasBreadcrumbBar;
@@ -414,43 +333,24 @@ begin
   Result := nil;
 end;
 
-procedure TToolbarState.EnsureBars;
-var
-  Services: INTAEditorServices;
-  Index: Integer;
-  Editor: TWinControl;
-  Bar: TAtlasEditorToolbar;
-begin
-  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
-    Exit;
-  for Index := 0 to Services.EditWindowCount - 1 do
-  begin
-    Editor := EditorOf(Services.EditWindow[Index]);
-    if Editor = nil then
-      Continue;
-    Bar := BarOf(Editor.Parent);
-    if Bar = nil then
-      CreateBar(Editor.Parent)
-    else
-      Place(Bar, Editor.Parent);
-  end;
-end;
-
-/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable.</summary>
-procedure TToolbarState.CreateBar(AHost: TWinControl);
+/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
+function TToolbarState.CreateBar(AHost: TWinControl): TAtlasEditorToolbar;
 var
   Bar: TAtlasEditorToolbar;
+  Host: TAtlasEditorBarHost;
 begin
   Bar := TAtlasEditorToolbar.Create(nil);
-  Bar.FreeNotification(FWatcher);
-  FBars.Add(Bar);
-  FHosts.Add(AHost);
+  Host := FHost;
   Bar.SetColors(BarColors);
   Bar.Labels := TAtlasIdeSettings.Current.EditorToolbarLabels;
   Bar.MoreHint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarMore);
   Bar.GearHint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarCustomizeCommand);
   Bar.CustomizeCaption := TAtlasStrings.Text(TAtlasTextId.EditorToolbarCustomizeCommand);
-  Bar.OnDisabled := BarDisabled;
+  Bar.OnDisabled :=
+    procedure(ASender: TObject)
+    begin
+      Host.Disabled(ASender);
+    end;
   Bar.OnCommand :=
     procedure(const AId: string)
     var
@@ -492,7 +392,7 @@ begin
           TAtlasIdeEditorToolbar.Customize;
         end);
     end;
-  Place(Bar, AHost);
+  Result := Bar;
 end;
 
 /// <summary>Leiste an ihre Stelle: rechts in der Brotkrumenzeile oder oben, unter bzw. über den Brotkrumen. Die
@@ -541,49 +441,6 @@ begin
   end
   else if ABar.Top < Crumbs.Top then
     ABar.Top := Crumbs.Top + Crumbs.Height;
-end;
-
-/// <summary>Etwas außerhalb von Atlas sperrt die Leiste; danach kommt kein Klick mehr an. Den Aufrufer
-/// protokollieren, damit die Ursache feststeht (das Protokoll der Brotkrumen nannte nur den Zustand).</summary>
-procedure TToolbarState.BarDisabled(Sender: TObject);
-var
-  Chain: string;
-  Control: TControl;
-begin
-  // Die ersten Male reichen, um den Aufrufer zu sehen; ein Stapel hat bis zu 32 Zeilen.
-  if FDisabledLogged >= MaxDisabledLogs then
-    Exit;
-  Inc(FDisabledLogged);
-  Chain := '';
-  Control := TControl(Sender).Parent;
-  while Control <> nil do
-  begin
-    Chain := Chain + ' < ' + Control.ClassName + ' ' + Control.Name;
-    Control := Control.Parent;
-  end;
-  TAtlasGuard.Log('Editorleiste: wird gesperrt (Enabled := False), in' + Chain + '; Aufrufer:' + sLineBreak +
-    TAtlasIdeStackCapture.CurrentStack(1));
-end;
-
-procedure TToolbarState.EnableBars;
-var
-  Bar: TAtlasEditorToolbar;
-begin
-  for Bar in FBars do
-    if not Bar.Enabled then
-    begin
-      Bar.Enabled := True;
-      TAtlasGuard.Log('Editorleiste: wieder freigegeben, ein Editor ist aktiv');
-    end;
-end;
-
-procedure TToolbarState.ShowBars(AShown: Boolean);
-var
-  Bar: TAtlasEditorToolbar;
-begin
-  for Bar in FBars do
-    if Bar.Visible <> AShown then
-      Bar.Visible := AShown;
 end;
 
 function TToolbarState.SectionsOf(const AView: IOTAEditView; out AFileName: string): TAtlasUnitSections;
@@ -749,32 +606,14 @@ var
   On_: Boolean;
 begin
   On_ := ToolbarOn;
-  if TAtlasGuard.Disabled(TAtlasFeature.EditorToolbar) then
-  begin
-    // Sicherung ausgelöst: Leisten weg, bis die Funktion wieder eingeschaltet ist.
-    if not FHidden then
-    begin
-      FHidden := True;
-      TAtlasGuard.Log('Editorleiste: durch die Sicherung abgeschaltet');
-      try
-        ShowBars(False);
-      except
-        on E: Exception do
-          TAtlasGuard.Log('Editorleiste: nicht ausgeblendet: ' + TAtlasGuard.SafeMessage(E.Message));
-      end;
-    end;
+  // Sicherung ausgelöst: Leisten weg, bis die Funktion wieder eingeschaltet ist.
+  if not FHost.Guard then
     Exit;
-  end;
-  if FHidden then
-  begin
-    FHidden := False;
-    ShowBars(True);
-  end;
   // Ohne Leiste und ohne Rücksprungpunkte gibt es nichts zu tun.
   if not On_ and (FPoints.Count = 0) then
   begin
-    if FBars.Count > 0 then
-      RemoveBars;
+    if FHost.Count > 0 then
+      FHost.Clear;
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.EditorToolbar,
@@ -783,8 +622,6 @@ begin
       View: IOTAEditView;
       FileName: string;
       Line, Character: Integer;
-      Services: INTAEditorServices;
-      Editor: TWinControl;
       Bar: TAtlasEditorToolbar;
     begin
       Inc(FSlow);
@@ -795,22 +632,19 @@ begin
           FCommands := TAtlasIdeEditorToolbar.FHooks.Commands();
         ForgetClosedFiles;
       end;
+      // Ensure gibt auch die von der IDE gesperrten Leisten frei, sobald ein Editor aktiv ist.
       if On_ then
-        EnsureBars
-      else if FBars.Count > 0 then
-        RemoveBars;
+        FHost.Ensure
+      else if FHost.Count > 0 then
+        FHost.Clear;
       View := TAtlasEditorBuffer.ActiveView;
       if (View = nil) or not CaretOf(View, Line, Character) then
         Exit;
-      EnableBars;
       FileName := View.Buffer.FileName;
       Track(View, FileName, Line);
-      if not On_ or not Supports(BorlandIDEServices, INTAEditorServices, Services) then
+      if not On_ then
         Exit;
-      Editor := EditorOf(Services.TopEditWindow);
-      if Editor = nil then
-        Exit;
-      Bar := BarOf(Editor.Parent);
+      Bar := TAtlasEditorToolbar(FHost.ActiveBar);
       if Bar = nil then
         Exit;
       SectionsOf(View, FileName);

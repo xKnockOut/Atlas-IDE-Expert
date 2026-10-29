@@ -76,6 +76,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Documents.Contract,

@@ -21,6 +21,9 @@ type
     FOpened: string;
     FLine: Integer;
   public
+    /// <summary>Einmalige VCL-Puffer (PageControl, Listen, Karte) vor dem Leckmonitor anlegen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -62,6 +65,16 @@ uses
 function Joined(const ALines: TArray<string>): string;
 begin
   Result := string.Join(#10, ALines);
+end;
+
+procedure TAtlasArchitectureFrameTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    FillsTablesAndTrees;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasArchitectureFrameTests.SetUp;

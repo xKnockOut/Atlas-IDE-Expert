@@ -58,7 +58,7 @@ type
     MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
-    PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete);
+    PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -281,7 +281,10 @@ begin
     // übernommen, darum mit Vorrang. Aus = die IDE behält die Taste.
     Create(TAtlasKeyFunction.ExpressionType, Word(ASettings.ExpressionTypeKey), True, ASettings.ExpressionType),
     // Sicher löschen (#716): aus = Kürzel frei.
-    Create(TAtlasKeyFunction.SafeDelete, Word(ASettings.SafeDeleteKey), Shared, ASettings.SafeDelete)];
+    Create(TAtlasKeyFunction.SafeDelete, Word(ASettings.SafeDeleteKey), Shared, ASettings.SafeDelete),
+    // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
+    Create(TAtlasKeyFunction.CreateIssue, Word(ASettings.CreateIssueKey), Shared,
+      ASettings.WelcomePage and ASettings.IssuesCreate)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -458,6 +461,8 @@ begin
         ASettings.ExpressionTypeKey := Entry.Key;
       TAtlasKeyFunction.SafeDelete:
         ASettings.SafeDeleteKey := Entry.Key;
+      TAtlasKeyFunction.CreateIssue:
+        ASettings.CreateIssueKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;

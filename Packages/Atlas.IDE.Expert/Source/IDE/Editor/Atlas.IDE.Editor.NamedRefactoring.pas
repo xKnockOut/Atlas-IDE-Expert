@@ -59,6 +59,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON,
   Vcl.Dialogs,
   Atlas.Core.Lsp.Client,

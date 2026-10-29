@@ -91,7 +91,7 @@ type
   TAtlasIssueDevelopmentRequest = record
   public const
     /// <summary>Höchstens so viele Commits bzw. Branches.</summary>
-    MaxCommits = 200;
+    DefaultMaxCommits = 200;
     MaxBranches = 10;
   public
     /// <summary>Anbieter des Trackers ("github", "youtrack").</summary>
@@ -241,7 +241,7 @@ begin
   Result.Key := Trim(AKey);
   Result.Bases := ABases;
   Result.Projects := AProjects;
-  Result.MaxCommits := MaxCommits;
+  Result.MaxCommits := DefaultMaxCommits;
 end;
 
 { TAtlasIssueDevelopment }
@@ -542,7 +542,7 @@ begin
   end;
   mMax := ARequest.MaxCommits;
   if mMax < 1 then
-    mMax := TAtlasIssueDevelopmentRequest.MaxCommits;
+    mMax := TAtlasIssueDevelopmentRequest.DefaultMaxCommits;
   Result := mHistory.SearchLog(SearchText(ARequest.Key), mMax, mEntries);
   ADevelopment.VcsOutcome := Result;
   if Result <> TAtlasVcsOutcome.Ok then

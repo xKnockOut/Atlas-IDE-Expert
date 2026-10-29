@@ -14,6 +14,9 @@ type
   [TestFixture]
   TAtlasSearchReplaceTests = class
   public
+    /// <summary>Einmalige Puffer der Regex-Engine (Fehlertexte, Gruppen) vor dem Leckmonitor anlegen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure RegexFindsMatchesPerLine;
     [Test]
@@ -108,6 +111,12 @@ begin
   Lines := TTextLines.SplitLines(AText);
   Hits := TAtlasTextSearch.FindAll(Lines, AQuery.Text, AQuery.Options, TAtlasSearchArea.Whole(Lines));
   Result := TLspEdits.Apply(AText, TAtlasSearchReplace.Edits(Lines, Hits, AQuery, AReplace));
+end;
+
+procedure TAtlasSearchReplaceTests.WarmUpFirstUse;
+begin
+  InvalidRegexReportsErrorAndFindsNothing;
+  ExpandHandlesGroupsNamesAndDollar;
 end;
 
 procedure TAtlasSearchReplaceTests.RegexFindsMatchesPerLine;

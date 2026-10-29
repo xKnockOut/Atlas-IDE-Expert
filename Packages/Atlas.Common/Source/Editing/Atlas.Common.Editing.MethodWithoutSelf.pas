@@ -164,6 +164,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.TreeCache,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
@@ -693,7 +694,6 @@ var
   Child: TSyntaxNode;
   InClause: Boolean;
 begin
-  Result := False;
   if TRoutineParts.HasWord(Tokens, Declaration, ['virtual', 'dynamic', 'override', 'abstract', 'message',
     'reintroduce', 'final']) then
     Exit(Fail('virtuell, override oder Botschaft', AReason));
@@ -736,7 +736,6 @@ var
   Index: Integer;
   InHead: Boolean;
 begin
-  Result := False;
   Statics := nil;
   if not Assigned(Lookup.MemberLevel) then
     Exit(Fail('Namen nicht auflösbar', AReason));
@@ -805,7 +804,6 @@ var
   Use: TMethodUse;
 begin
   // In den Methoden der Klasse: Methodenzeiger ohne Self. davor (OnClick := Name) sieht schon die Datei.
-  Result := False;
   Implementation_ := Routine.Parent;
   Uses_ := TList<TSyntaxNode>.Create;
   try
@@ -1060,7 +1058,6 @@ var
   Edit: TOffsetEdit;
   Changed: Boolean;
 begin
-  Result := False;
   Line := AWork.Lines.PositionAt(AOffset).Line;
   Use := TMethodWithoutSelf.UseAt(AWork.Tree, AOffset, Plan.Target.Name, Callee, Call);
   if Plan.IsPointer(Use) then
@@ -1230,7 +1227,6 @@ var
   Start, Stop, InsertAt, Line: Integer;
   Inner: TArray<TOffsetEdit>;
 begin
-  Result := False;
   Work := Works[0];
   if CalledOutside and not Plan.ClassInInterface then
     Exit(Fail('andere Units rufen auf, die Klasse steht aber im implementation-Teil', AReason));
@@ -1273,7 +1269,6 @@ var
   TypeName, Base, Visible: string;
   Taken: TArray<string>;
 begin
-  Result := False;
   TypeName := Plan.Target.HelperType;
   Found := Plan.Tree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
@@ -1422,7 +1417,6 @@ var
   Tree: TSyntaxTree;
   Action: string;
 begin
-  Result := False;
   AResult := Default(TMethodResult);
   for Work in Works do
   begin
@@ -1439,7 +1433,7 @@ begin
     if Item.Edits = nil then
       Continue;
     NewText := TChangeSignature.ApplyEdits(Work.Text, Item.Edits);
-    Tree := TPascalParser.Parse(NewText);
+    Tree := TSyntaxTreeCache.Parse(NewText);
     try
       if Length(Tree.Diagnostics) > Length(Work.Tree.Diagnostics) then
         Exit(Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s)',

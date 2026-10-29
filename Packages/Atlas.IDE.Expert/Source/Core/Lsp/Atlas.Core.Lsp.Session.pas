@@ -107,6 +107,23 @@ type
     class function FromJson(const AReport: TJSONObject; const AFileName: string): TLspDiagnosticReport; static;
   end;
 
+  /// <summary>Stand der Projektprüfung des Servers (#1247) aus "atlas.run" der Antwort auf workspace/diagnostic.
+  /// </summary>
+  TLspWorkspaceRun = record
+    /// <summary>Der Server hat einen Stand gemeldet (ältere Server nicht).</summary>
+    Known: Boolean;
+    Serial: Integer;
+    Active: Boolean;
+    Done: Integer;
+    Total: Integer;
+    Skipped: Integer;
+    /// <summary>"compile", "debug", "index" oder ''.</summary>
+    Paused: string;
+    ElapsedMs: Int64;
+    /// <summary>Aus der ganzen Antwort; Known = False ohne "atlas.run".</summary>
+    class function FromJson(const AResponse: TJSONValue): TLspWorkspaceRun; static;
+  end;
+
   /// <summary>Zähler, den der Lese-Thread erhöht; überlebt die Sitzung, solange der Client ihn hält.</summary>
   ILspSignal = interface
     ['{6B0C1E57-3A44-4E0B-9A63-2F7A5C0D8E11}']
@@ -146,6 +163,7 @@ type
     FDocLock: TObject;
     FInitialized: Boolean;
     FProjects: TArray<string>;
+    FProjectsRemoved: Integer;
     /// <summary>Projektkontexte für initialize (#396).</summary>
     FContexts: TArray<TAtlasProjectContext>;
     /// <summary>Zuletzt gemeldeter Schlüssel je Projekt (#396).</summary>
@@ -178,6 +196,9 @@ type
     /// <summary>Projekte der Gruppe, aktives zuerst. Vor Initialize nur gemerkt, danach als
     /// didChangeWorkspaceFolders gemeldet, falls sich etwas geändert hat (#648).</summary>
     procedure SetProjects(const AProjects: TArray<string>);
+    /// <summary>Zählt jedes Melden weggefallener Projekte (Projektgruppe geschlossen oder gewechselt): Befunde
+    /// dieser Projekte liefert der Server nicht mehr, der Empfänger verwirft seine.</summary>
+    property ProjectsRemoved: Integer read FProjectsRemoved;
     /// <summary>Projektkontexte aus der IDE (#396). Vor Initialize nur gemerkt, danach jeder neue oder
     /// geänderte als atlas/projectContext gemeldet. Vor SetProjects aufrufen, damit ein neues Projekt
     /// gleich mit seinem Kontext geladen wird. Ergebnis: die neu gemeldeten oder für initialize
@@ -342,7 +363,10 @@ type
     /// <summary>Diagnosen aller Projektdateien außer den geöffneten (workspace/diagnostic, Long-Polling);
     /// APrevious mit FileName und ResultId der bekannten Stände. Threadsicher wie Completion.</summary>
     function WorkspaceDiagnostics(const APrevious: TArray<TLspDiagnosticReport>;
-      ATimeoutMs: Cardinal): TArray<TLspDiagnosticReport>;
+      ATimeoutMs: Cardinal): TArray<TLspDiagnosticReport>; overload;
+    /// <summary>Wie oben, dazu der Stand der Projektprüfung (#1247).</summary>
+    function WorkspaceDiagnostics(const APrevious: TArray<TLspDiagnosticReport>; ATimeoutMs: Cardinal;
+      out ARun: TLspWorkspaceRun): TArray<TLspDiagnosticReport>; overload;
     /// <summary>didClose für eine abgeglichene Datei; danach liest der Server sie wieder von der Platte.</summary>
     procedure Close(const AFileName: string);
     /// <summary>didSave für eine abgeglichene Datei: Der Server prüft dann mit dcc (compiler.onSave, #40).</summary>
@@ -1677,6 +1701,14 @@ end;
 function TLspSession.WorkspaceDiagnostics(const APrevious: TArray<TLspDiagnosticReport>;
   ATimeoutMs: Cardinal): TArray<TLspDiagnosticReport>;
 var
+  mRun: TLspWorkspaceRun;
+begin
+  Result := WorkspaceDiagnostics(APrevious, ATimeoutMs, mRun);
+end;
+
+function TLspSession.WorkspaceDiagnostics(const APrevious: TArray<TLspDiagnosticReport>; ATimeoutMs: Cardinal;
+  out ARun: TLspWorkspaceRun): TArray<TLspDiagnosticReport>;
+var
   Params: TJSONObject;
   Previous: TJSONArray;
   Known: TLspDiagnosticReport;
@@ -1691,10 +1723,12 @@ begin
         .AddPair('value', Known.ResultId));
   Params := TJSONObject.Create;
   Params.AddPair('previousResultIds', Previous);
+  ARun := Default(TLspWorkspaceRun);
   Response := FClient.Request('workspace/diagnostic', Params, ATimeoutMs);
   try
     if not (Response is TJSONObject) then
       Exit;
+    ARun := TLspWorkspaceRun.FromJson(Response);
     Items := TJSONObject(Response).GetValue('items');
     if Items is TJSONArray then
       for Item in TJSONArray(Items) do
@@ -1862,6 +1896,25 @@ end;
 function TLspSession.RefreshCount: Integer;
 begin
   Result := FRefresh.Count;
+end;
+
+{ TLspWorkspaceRun }
+
+class function TLspWorkspaceRun.FromJson(const AResponse: TJSONValue): TLspWorkspaceRun;
+var
+  mRun: TJSONObject;
+begin
+  Result := Default(TLspWorkspaceRun);
+  if not ((AResponse is TJSONObject) and TJSONObject(AResponse).TryGetValue<TJSONObject>('atlas.run', mRun)) then
+    Exit;
+  Result.Known := True;
+  Result.Serial := mRun.GetValue<Integer>('serial', 0);
+  Result.Active := mRun.GetValue<Boolean>('active', False);
+  Result.Done := mRun.GetValue<Integer>('done', 0);
+  Result.Total := mRun.GetValue<Integer>('total', 0);
+  Result.Skipped := mRun.GetValue<Integer>('skipped', 0);
+  Result.Paused := mRun.GetValue<string>('paused', '');
+  Result.ElapsedMs := mRun.GetValue<Int64>('elapsedMs', 0);
 end;
 
 { TLspDiagnosticReport }
@@ -2121,6 +2174,8 @@ begin
   FProjects := AProjects;
   if (Length(Added) = 0) and (Length(Removed) = 0) then
     Exit;
+  if Length(Removed) > 0 then
+    Inc(FProjectsRemoved);
   FClient.Notify('workspace/didChangeWorkspaceFolders', TJSONObject.Create(TJSONPair.Create('event',
     TJSONObject.Create.AddPair('added', ProjectFolders(Added)).AddPair('removed', ProjectFolders(Removed)))));
 end;

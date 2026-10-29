@@ -124,6 +124,7 @@ uses
   System.Math,
   System.DateUtils,
   Vcl.Graphics,
+  Atlas.Core.Style.Color,
   Atlas.UI.Strings;
 
 function ToColor(AColor: TAtlasColor): TColor;

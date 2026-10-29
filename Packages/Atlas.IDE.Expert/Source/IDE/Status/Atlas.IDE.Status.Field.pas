@@ -38,6 +38,8 @@
 //   Atlas-Feld die Zahl der ungelesenen Einträge in der Farbe des schwersten;
 //   ein Linksklick darauf ruft ihr OnClick (Liste) statt des Statusfensters.
 //   Der Tooltip des Felds nennt die Zahl. Nur mit eingeschaltetem Atlas-Feld.
+//   Ist das Feld in die Atlas-Statusleiste umgezogen (Relocated, 0 breit),
+//   zeigt die Leiste die Plakette (BadgeCount, ClickBadge, #1234).
 // - Die Panels gehören der Leiste, und die IDE löscht sie unter Umständen
 //   selbst (Delphi 12: Absturz in PanelRect über ein freigegebenes Panel).
 //   Deshalb sind sie vom eigenen Typ TFieldPanel und melden ihre Freigabe dem
@@ -200,6 +202,13 @@ type
     /// Nur im Hauptthread.</summary>
     procedure SetBadge(ACount: Integer; AState: TAtlasStatusState; const AHint: string;
       const AOnClick: TProc<TPoint>);
+    /// <summary>Plakette für die Atlas-Statusleiste (#1234): Bei Relocated ist das Feld 0 breit, die Leiste zeigt
+    /// sie dann selbst.</summary>
+    property BadgeCount: Integer read FBadgeCount;
+    property BadgeState: TAtlasStatusState read FBadgeState;
+    property BadgeHint: string read FBadgeHint;
+    /// <summary>Wie ein Klick auf die Plakette, Liste mit der linken Oberkante an APoint (#1234).</summary>
+    procedure ClickBadge(const APoint: TPoint);
   end;
 
 implementation
@@ -218,6 +227,7 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.Core.Style.Symbol,
+  Atlas.Core.Style.Signal,
   Atlas.UI.Style.Symbol,
   Atlas.IDE.Foundation.Symbol;
 
@@ -667,6 +677,12 @@ begin
   RequestRefresh;
 end;
 
+procedure TAtlasStatusField.ClickBadge(const APoint: TPoint);
+begin
+  if (FBadgeCount > 0) and Assigned(FOnBadge) then
+    FOnBadge(APoint);
+end;
+
 procedure TAtlasStatusField.SetBadge(ACount: Integer; AState: TAtlasStatusState; const AHint: string;
   const AOnClick: TProc<TPoint>);
 begin
@@ -792,7 +808,7 @@ var
   Radius, Center, Left_, Pixels: Integer;
   Symbol: TWICImage;
   Target: TRect;
-  Dot: TColor;
+  Signals: TAtlasSignals;
   Part, Badge: TRect;
   Text: string;
   Inset: Integer;
@@ -822,9 +838,10 @@ begin
         Canvas.StretchDraw(Target, Symbol);
       Inc(Left_, SymbolWidth(StatusBar.CurrentPPI));
     end;
-    Dot := TColor(TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, FState));
-    Canvas.Pen.Color := Dot;
-    Canvas.Brush.Color := Dot;
+    // Signalfarben der Statusleiste der IDE (Fläche clBtnFace), nicht der Editorfläche (#1255).
+    Signals := TAtlasIdeStyle.ChromeColors.Signals;
+    Canvas.Pen.Color := TColor(Signals.ForStatus(FState).Ring);
+    Canvas.Brush.Color := TColor(Signals.ForStatus(FState).Fill);
     Canvas.Brush.Style := bsSolid;
     Canvas.Ellipse(Left_ + 2 * Radius - Radius, Center - Radius, Left_ + 2 * Radius + Radius + 1,
       Center + Radius + 1);
@@ -840,17 +857,12 @@ begin
       Badge.Top := Rect.Top + Inset;
       Badge.Right := Rect.Right - Inset;
       Badge.Bottom := Rect.Bottom - Inset;
-      Dot := TColor(TAtlasStatusWindow.StateColor(TAtlasIdeStyle.Colors, FBadgeState));
-      Canvas.Pen.Color := Dot;
-      Canvas.Brush.Color := Dot;
+      Canvas.Pen.Color := TColor(Signals.ForStatus(FBadgeState).Solid);
+      Canvas.Brush.Color := TColor(Signals.ForStatus(FBadgeState).Solid);
       Canvas.Brush.Style := bsSolid;
       Canvas.RoundRect(Badge.Left, Badge.Top, Badge.Right, Badge.Bottom, Badge.Height, Badge.Height);
       Canvas.Brush.Style := bsClear;
-      // Auf Gelb dunkle Schrift, sonst weiße.
-      if FBadgeState = TAtlasStatusState.Yellow then
-        Canvas.Font.Color := clBlack
-      else
-        Canvas.Font.Color := clWhite;
+      Canvas.Font.Color := TColor(Signals.ForStatus(FBadgeState).OnSolid);
       Text := BadgeText;
       DrawText(Canvas.Handle, PChar(Text), -1, Badge, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
       Canvas.Font.Color := StyleServices.GetSystemColor(clBtnText);

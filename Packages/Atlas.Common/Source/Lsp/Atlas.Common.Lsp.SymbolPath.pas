@@ -63,6 +63,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.StrUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.CurrentRequest,

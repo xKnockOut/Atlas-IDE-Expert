@@ -426,7 +426,7 @@ begin
   Started := TThread.GetTickCount64;
   LastFlush := Started;
   Flag := FFlag;
-  Exists := ExistsProc;
+  Exists := ExistsProc();
   LineCount := 0;
   try
     Matcher := TAtlasTaskLineMatcher.Create(FTask.Matcher);

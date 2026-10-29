@@ -93,7 +93,7 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Gehe zu** Definition (Strg+Klick), Implementierung und Typdefinition; Wechsel zwischen Deklaration und Implementierung (Strg+Umschalt+↑/↓); **Sprung zum Gegenstück** (begin ⇄ end, try → finally → end, `{$IFDEF}` → `{$ENDIF}`)
 - **Brotkrumenleiste** über dem Editor mit Sprungmenüs zu Unit, Klasse, Methode und deren Kindern
 - **Editorleiste** mit Symbolen: Sprung zum interface- bzw. implementation-Teil (und zurück mit „↩ 214“), Methode suchen, Navigationsverlauf und beliebige Palettenbefehle; Überlaufmenü, frei belegbar, auch rechts in der Brotkrumenzeile
-- **Atlas-Statusleiste** unten in jedem Editorfenster: Server-Status, Meldungen dieser Unit je Art (Klick springt zum nächsten Befund, Doppelklick öffnet „Atlas-Prüfung“ für die Unit), Live-Prüfung („live · geprüft vor 2 s“) und die Methode am Cursor mit Zeilen und CC (über der Grenze der Metrikregeln in Warnfarbe); jedes Element abschaltbar, das Atlas-Feld verlässt die Statuszeile der IDE, solange die Leiste den Status zeigt
+- **Atlas-Statusleiste** unten in jedem Editorfenster (Zustandsfarben für helles und dunkles Design eigens abgestimmt): Server-Status, Meldungen dieser Unit je Art (Klick springt zum nächsten Befund, Doppelklick öffnet „Atlas-Prüfung“ für die Unit), Live-Prüfung („live · geprüft vor 2 s“, während der Projektprüfung „· Projekt 45 %“, danach kurz „Projekt fertig“) und die Methode am Cursor mit Zeilen und CC (über der Grenze der Metrikregeln in Warnfarbe); jedes Element abschaltbar, das Atlas-Feld verlässt die Statuszeile der IDE, solange die Leiste den Status zeigt
 - **Gliederung** als andockbares Fenster mit Filter
 - **Definition einblenden** (Alt+F12) unter der Zeile, ohne die Datei zu wechseln
 - **Datei und Symbol schnell öffnen** (Strg+P) über Projekt, Projektgruppe und Suchpfad; projektweite **Symbolsuche**
@@ -105,8 +105,8 @@ Alles Folgende ist in `main` umgesetzt. Funktionen mit *(experimentell)* sind ab
 - **Datenfluss:** „Woher kommt der Wert?“ und „Wohin geht der Wert?“ zeigen einen Baum im Ergebnisfenster: Zuweisungen, var-/out-Argumente, bei einem Parameter die Argumente der Aufrufer, bei einer Funktion `Result` und `Exit(…)`, Setter und Getter von Properties, jeweils mit Datei, Zeile und Quelltextzeile. Gleiche Stellen werden zusammengefasst („3 Zuweisungen“), tiefere Ebenen laden beim Aufklappen bis `navigation.dataFlow.maxDepth`, Zyklen, Konstanten und Code außerhalb des Projekts beenden den Weg, unsichere Kanten (Zeiger, `absolute`, `Move`, `FillChar`, `@`) sind markiert. Enter oder Doppelklick springt; Filter „Nur Projektcode“ und „Tests ausblenden“. Abschaltbar über `navigation.dataFlow`
 - **Navigationsverlauf** über Dateien hinweg
 - **Benannte Lesezeichen** (Strg+Alt+K) und persönliche **Notizen** an Codezeilen, die nicht im Quelltext landen
-- **Schnelle Lesezeichen** in einer Spalte links der Zeilennummern: Klick setzt und entfernt, Strg+Umschalt+1…9 nummeriert, Strg+1…9 springt projektweit, Strg+Umschalt+K unnummeriert (die Faltungsakkorde der IDE bleiben), wandern mit dem Code mit und übernehmen die IDE-Lesezeichen
-- **Übersichtsleiste** an der Scrollleiste mit Fehlern, Treffern und Änderungen; **Minimap** *(experimentell)*; **mitlaufender Kopf** der umgebenden Klasse und Routine *(experimentell)*
+- **Schnelle Lesezeichen** in einer Spalte links der Zeilennummern: Klick setzt und entfernt, Strg+Umschalt+1…9 nummeriert, Strg+1…9 springt projektweit, Strg+Umschalt+K unnummeriert (die Faltungsakkorde der IDE bleiben), wandern mit dem Code mit und übernehmen die IDE-Lesezeichen, sobald die Spalte gezeichnet ist
+- **Übersichtsleiste** an der Scrollleiste mit Fehlern, Treffern und Änderungen; **Minimap** *(experimentell)*; **mitlaufender Kopf** der umgebenden Klasse, Routine und großen Blöcke, je Art abschaltbar *(experimentell)*
 - **TODO-Übersicht** des Projekts aus `// TODO`, `// FIXME` und dem To-do-Format der IDE
 
 ### Code-Analyse
@@ -173,6 +173,7 @@ Code-Aktionen öffnet Alt+Enter; alles steht auch im Menü *Atlas* und im Kontex
 - **Unit nicht gefunden:** Bei F2613/F1026 sucht Atlas im Projektordner, in der Projektgruppe, in den anderen Konfigurationen, in den Bibliotheken anderer Plattformen und im Index und bietet an, den Ordner in den Suchpfad dieser oder aller Konfigurationen aufzunehmen (relativ zur `.dproj`) oder die Unit ins Projekt; sonst „nur für Win32, Win64“ bzw. die durchsuchten Orte (`refactoring.missingUnit`)
 - **Prüfung vor dem Kompilieren:** prüft vor jedem Build die seit dem letzten erfolgreichen Compile geänderten Units auf Syntaxfehler und Regelfehler; melden oder Build abbrechen (`build.gate`)
 - **Release-Build-Wächter:** prüft vor einem Release-Build die Projektoptionen (DEBUG-Symbol, Debug-Informationen, …)
+- **Beim Öffnen einmal bauen**, sobald die IDE ruhig ist, auf Wunsch immer mit derselben Konfiguration und Zielplattform (etwa Debug/Win64), egal was im Projekt eingestellt ist; danach steht das Projekt wieder wie vorher
 - **DUnitX-Tests** aus dem Editor ausführen und einen einzelnen Test im Debugger starten (Code Lens an `[Test]` und `[TestFixture]`)
 - **Startprofile** für Parameter, Arbeitsordner, Umgebung und Host-Anwendung
 - **Werte im Hover beim Debuggen** (siehe [Verstehen](#verstehen))
@@ -329,6 +330,7 @@ Prüfskripte (laufen auch als GitHub Action):
 pwsh Tools/Check-PackageDependencies.ps1   # Packages halten ihre Abhängigkeiten ein
 pwsh Tools/Check-ConsoleOutput.ps1         # kein Write/Writeln auf stdout
 pwsh Tools/Check-TestCoverage.ps1          # jede Unit mit Logik hat Tests, jede Testunit läuft
+pwsh Tools/Check-WindowHosts.ps1           # Fenster und Editorleisten über die gemeinsamen Hüllen
 ```
 
 `Tests/DccFaelle` enthält Minimalfälle für die Compilerregeln, je Fall mit der Angabe, ob dcc meldet oder übersetzt. `pwsh Tools/Build-DccFaelle.ps1` baut sie in einer Zweit-IDE über `cc.ps1` (Win32 und Win64) und schreibt die dcc-Meldungen je Fall nach `Output/DccFaelle-Ergebnis.txt`; die Regeln dürfen nicht strenger sein als dieses Ergebnis (#1328).
@@ -339,7 +341,7 @@ pwsh Tools/Check-TestCoverage.ps1          # jede Unit mit Logik hat Tests, jede
   - Der Job braucht einen selbst gehosteten Windows-Runner (Labels `self-hosted`, `windows`, `delphi`) auf dem Arbeitsrechner des Entwicklers. Er läuft im angemeldeten Benutzerkontext und nicht als Dienst, weil `cc.ps1` eine IDE startet, und nur, solange dieser Rechner eingeschaltet ist. Jeder Job startet eine eigene Scratch-IDE.
   - Er läuft nur mit der Repository-Variablen `DELPHI_RUNNER=true`; sonst meldet der Job „uebersprungen“ das in der Zusammenfassung des Laufs. `CC_SCRIPT` überschreibt den Pfad zu `cc.ps1`.
   - Ein neuer Push auf denselben Branch bricht den laufenden Build ab (`concurrency`).
-- `package-dependencies.yml`: Package-Abhängigkeiten, stdout-Regel, Delphi-12-Verträglichkeit, Regelkatalog, Konfigurationsdoku und keine Embarcadero-Quellen in `Tests/`.
+- `package-dependencies.yml`: Package-Abhängigkeiten, stdout-Regel, Delphi-12-Verträglichkeit, Regelkatalog, Konfigurationsdoku, keine Embarcadero-Quellen in `Tests/` und Atlas-Fenster und Editorleisten nur über ihre gemeinsamen Hüllen.
 
 ## Kommandozeile
 

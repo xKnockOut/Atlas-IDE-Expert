@@ -82,6 +82,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,

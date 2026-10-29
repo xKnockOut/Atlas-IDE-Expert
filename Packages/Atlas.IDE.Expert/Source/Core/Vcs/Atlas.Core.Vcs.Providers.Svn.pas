@@ -505,7 +505,6 @@ end;
 function TAtlasSvnVersionControl.SwitchBranch(const AName: string;
   const AOptions: TAtlasVcsSvnBranchOptions): TAtlasVcsOutcome;
 var
-  Output: TBytes;
   mPath: string;
 begin
   Result := BranchLocation(AName, AOptions, mPath);

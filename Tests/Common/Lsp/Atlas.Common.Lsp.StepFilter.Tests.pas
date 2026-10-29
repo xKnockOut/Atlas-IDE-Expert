@@ -60,6 +60,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Text.StepFilter,
   Atlas.Common.Pascal.Parser;

@@ -87,6 +87,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.TreeCache,
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
@@ -698,7 +699,7 @@ var
   Answer: TFlowAnswer;
 begin
   // Am umgewandelten Text: Die lokale Variable muss auf jedem Weg geschrieben werden, bevor sie gelesen wird.
-  Check := TPascalParser.Parse(AResultText);
+  Check := TSyntaxTreeCache.Parse(AResultText);
   try
     Section := Check.Root.FindChild(TSyntaxKind.ImplementationSection);
     Routine := nil;
@@ -741,7 +742,7 @@ begin
   if not Result then
     Exit;
   Done := TChangeSignature.ApplyEdits(Text, Edits);
-  Check := TPascalParser.Parse(Done);
+  Check := TSyntaxTreeCache.Parse(Done);
   try
     if Length(Check.Diagnostics) > 0 then
       Exit(Fail('Ergebnis parst nicht', AReason));

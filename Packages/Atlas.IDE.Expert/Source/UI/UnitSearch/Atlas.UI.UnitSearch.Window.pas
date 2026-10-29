@@ -201,7 +201,9 @@ type
     procedure DrawChips;
     procedure DrawList;
     procedure DrawRow(ARow: Integer; const ARect: TRect);
-    procedure DrawHighlighted(const AText: string; ARect: TRect);
+    /// <summary>Text mit hervorgehobenen Treffern, sonst in ABase; Ergebnis: rechter Rand des Gezeichneten.
+    /// </summary>
+    function DrawHighlighted(const AText: string; ARect: TRect; ABase: TAtlasColor): Integer;
     procedure DrawPreview;
     procedure DrawSketch(var ATop: Integer; const AArea: TRect);
     function SketchHeight(AWidth: Integer): Integer;
@@ -1061,7 +1063,7 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasUnitSearchWindow.DrawHighlighted(const AText: string; ARect: TRect);
+function TAtlasUnitSearchWindow.DrawHighlighted(const AText: string; ARect: TRect; ABase: TAtlasColor): Integer;
 var
   Marks: TArray<Boolean>;
   Position, Index, Run, X: Integer;
@@ -1090,7 +1092,7 @@ begin
     else
     begin
       Canvas.Font.Style := [];
-      Canvas.Font.Color := C(FColors.Text);
+      Canvas.Font.Color := C(ABase);
     end;
     Part := Rect(X, ARect.Top, ARect.Right, ARect.Bottom);
     DrawText(Canvas.Handle, PChar(Chunk), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
@@ -1098,6 +1100,7 @@ begin
     Index := Run + 1;
   end;
   Canvas.Font.Style := [];
+  Result := Min(X, ARect.Right);
 end;
 
 procedure TAtlasUnitSearchWindow.DrawChip(var X: Integer; Y: Integer; const ACaption: string; AOn: Boolean;
@@ -1286,7 +1289,7 @@ var
   Entry: TAtlasUnitEntry;
   Part, Badge, Box: TRect;
   mText, Path: string;
-  Right, Width_, MaxChars: Integer;
+  Right, Width_, MaxChars, NameEnd: Integer;
   Marked, InUses: Boolean;
   Cycle: TAtlasUseUnitCycle;
   State: TAtlasUseUnitCycleState;
@@ -1444,7 +1447,12 @@ begin
     DrawText(Canvas.Handle, PChar(mText), -1, Badge, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
   end
   else
-    DrawHighlighted(Entry.Name, Rect(Part.Left, ARect.Top + S(2), Right, ARect.Top + S(22)));
+  begin
+    NameEnd := DrawHighlighted(Entry.Name, Rect(Part.Left, ARect.Top + S(2), Right, ARect.Top + S(22)), FColors.Text);
+    // Caption des Formulars (#1310) grau hinter dem Namen: Damit ist ein Treffer über sie erkennbar.
+    if (Entry.Caption <> '') and (NameEnd + S(30) < Right) then
+      DrawHighlighted(Entry.Caption, Rect(NameEnd + S(10), ARect.Top + S(2), Right, ARect.Top + S(22)), FColors.Muted);
+  end;
   Canvas.Font.Assign(FSmallFont);
   Canvas.Font.Color := C(FColors.Muted);
   Path := TAtlasUnitSearch.DisplayPath(Entry.FileName, FOptions.Root, FOptions.PathStyle, 0);

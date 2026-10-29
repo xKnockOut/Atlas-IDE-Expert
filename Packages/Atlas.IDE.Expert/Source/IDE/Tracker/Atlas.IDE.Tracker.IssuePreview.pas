@@ -77,7 +77,7 @@ uses
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Tracker.IssueFrame,
-  Atlas.UI.Tracker.EndDialog;
+  Atlas.UI.Tracker.EndDialog,
   Atlas.IDE.Tracker.Development;
 
 type
@@ -1706,7 +1706,9 @@ begin
     ADone(False, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.Unauthorized);
     Exit;
   end;
-  FLookups.Add(mId, TArray<TAtlasIssueLookupDone>.Create(ADone));
+  SetLength(mWaiting, 1);
+  mWaiting[0] := ADone;
+  FLookups.Add(mId, mWaiting);
   ReleaseThreads(False);
   mKeep := Self;
   mOwner := Self;

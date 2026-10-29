@@ -22,7 +22,9 @@
 // wie im Editor, Esc schließt (OnClose). Im Ersetzen-Feld ersetzt Enter den
 // aktuellen Treffer, Strg+Enter alle. Pfeil hoch/runter im Such- und im
 // Ersetzen-Feld blättert im Verlauf (TAtlasSearchHistory), Alt+↓ öffnet die
-// Liste. Jede Änderung an Text, Optionen oder Bereich meldet OnQueryChanged.
+// Liste. Bearbeitungstasten wie Strg+V behalten Such- und Ersetzen-Feld
+// selbst (TAtlasSearchCombo, #1243). Jede Änderung an Text, Optionen oder
+// Bereich meldet OnQueryChanged.
 // Bekommt ein Feld der Leiste den Fokus, meldet OnControlEnter es (der
 // Aufrufer prüft, ob die IDE ihn gleich wieder in den Editor holt). Reine
 // VCL; gesucht, markiert, ersetzt und gesprungen wird vom Aufrufer
@@ -36,6 +38,7 @@ uses
   System.SysUtils,
   System.Classes,
   Winapi.Windows,
+  Winapi.Messages,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.StdCtrls,
@@ -57,6 +60,17 @@ type
     class function Create(AReplace, ARegex, AMultiFile: Boolean): TAtlasSearchBarFeatures; static;
   end;
 
+  /// <summary>Such- bzw. Ersetzen-Feld mit Verlauf, das Bearbeitungstasten (Strg+V/C/X/A/Z/Y, Entf, Umschalt+Einfg …)
+  /// selbst behält (#1243). Sonst prüft das Editorfenster der IDE sie zuerst als eigene Tastenkürzel und fügt etwa in
+  /// den Editor ein. CN_KEYDOWN des inneren Eingabefelds kommt bei der Combobox an.</summary>
+  TAtlasSearchCombo = class(TComboBox)
+  private
+    procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
+  public
+    /// <summary>Bleibt die Taste im Feld, statt als Tastenkürzel der IDE zu gelten?</summary>
+    class function KeepsKey(AKey: Word; AShift: TShiftState): Boolean; static;
+  end;
+
   TAtlasSearchBar = class(TCustomPanel)
   private type
 {$SCOPEDENUMS ON}
@@ -69,7 +83,7 @@ type
     FToggle: TButton;
     FTextLabel: TLabel;
     FTextFrame: TPanel;
-    FText: TComboBox;
+    FText: TAtlasSearchCombo;
     FCase: TCheckBox;
     FWhole: TCheckBox;
     FIdentifier: TCheckBox;
@@ -85,7 +99,7 @@ type
     FClose: TButton;
     FReplaceSpacer: TPanel;
     FReplaceLabel: TLabel;
-    FReplaceText: TComboBox;
+    FReplaceText: TAtlasSearchCombo;
     FReplaceOne: TButton;
     FReplaceAll: TButton;
     FChoose: TButton;
@@ -203,8 +217,8 @@ type
     /// <summary>Ersetzen-Zeile auf- oder zugeklappt bzw. Ersatztext geändert.</summary>
     property OnReplaceShown: TProc read FOnReplaceShown write FOnReplaceShown;
     // Für Tests.
-    property TextEdit: TComboBox read FText;
-    property ReplaceEdit: TComboBox read FReplaceText;
+    property TextEdit: TAtlasSearchCombo read FText;
+    property ReplaceEdit: TAtlasSearchCombo read FReplaceText;
     property ScopeBox: TComboBox read FScope;
     property LevelBox: TComboBox read FLevel;
     property CaseBox: TCheckBox read FCase;
@@ -219,6 +233,7 @@ type
 implementation
 
 uses
+  Vcl.Forms,
   Atlas.UI.Strings;
 
 const
@@ -238,6 +253,35 @@ begin
   Result.Replace := AReplace;
   Result.Regex := ARegex;
   Result.MultiFile := AMultiFile;
+end;
+
+{ TAtlasSearchCombo }
+
+class function TAtlasSearchCombo.KeepsKey(AKey: Word; AShift: TShiftState): Boolean;
+begin
+  if AShift = [ssCtrl] then
+    Result := CharInSet(Char(AKey), ['A', 'C', 'V', 'X', 'Y', 'Z']) or (AKey = VK_INSERT) or (AKey = VK_BACK) or
+      (AKey = VK_DELETE) or (AKey = VK_LEFT) or (AKey = VK_RIGHT)
+  else if AShift = [ssShift] then
+    Result := (AKey = VK_INSERT) or (AKey = VK_DELETE) or (AKey = VK_HOME) or (AKey = VK_END) or (AKey = VK_LEFT) or
+      (AKey = VK_RIGHT)
+  else if AShift = [ssCtrl, ssShift] then
+    Result := (AKey = Ord('Z')) or (AKey = VK_LEFT) or (AKey = VK_RIGHT)
+  else if AShift = [] then
+    Result := (AKey = VK_DELETE) or (AKey = VK_HOME) or (AKey = VK_END) or (AKey = VK_BACK)
+  else
+    Result := False;
+end;
+
+procedure TAtlasSearchCombo.CNKeyDown(var Message: TWMKeyDown);
+begin
+  // Vor der Prüfung der Tastenkürzel des Formulars (IsMenuKey): Result 0 lässt die Taste als WM_KEYDOWN ins Feld.
+  if KeepsKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
+  begin
+    Message.Result := 0;
+    Exit;
+  end;
+  inherited;
 end;
 
 { TAtlasSearchBar }
@@ -281,7 +325,7 @@ begin
   FTextFrame.Padding.SetBounds(1, 1, 1, 1);
   Place(FSearchRow, FTextFrame, TextBoxWidth + 2);
   FTextFrame.Margins.SetBounds(Gap, 2, 0, 2);
-  FText := TComboBox.Create(Self);
+  FText := TAtlasSearchCombo.Create(Self);
   FText.Parent := FTextFrame;
   FText.Style := csDropDown;
   FText.Align := alClient;
@@ -327,7 +371,7 @@ begin
   FReplaceSpacer.ShowCaption := False;
   Place(FReplaceRow, FReplaceSpacer, ToggleWidth);
   FReplaceLabel := AddLabel(FReplaceRow, TAtlasStrings.Text(TAtlasTextId.SearchReplaceLabel));
-  FReplaceText := AddCombo(FReplaceRow, csDropDown, TextBoxWidth);
+  FReplaceText := AddCombo(FReplaceRow, csDropDown, TextBoxWidth) as TAtlasSearchCombo;
   FReplaceText.OnChange := ReplaceChanged;
   FReplaceText.OnDropDown := HistoryDropDown;
   FReplaceLabel.FocusControl := FReplaceText;
@@ -414,7 +458,8 @@ end;
 
 function TAtlasSearchBar.AddCombo(ARow: TPanel; AStyle: TComboBoxStyle; AWidth: Integer): TComboBox;
 begin
-  Result := TComboBox.Create(Self);
+  // Mit Tasten wie im Suchfeld (#1243): Im Ersetzen-Feld fügte Strg+V sonst in den Editor ein.
+  Result := TAtlasSearchCombo.Create(Self);
   Result.Parent := ARow;
   Result.Style := AStyle;
   Place(ARow, Result, AWidth);

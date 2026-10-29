@@ -372,7 +372,6 @@ begin
   First := Statements[0];
   Values := nil;
   Differs := -1;
-  FirstCall := nil;
   if First.Kind = TSyntaxKind.AssignStatement then
   begin
     if First.ChildCount <> 2 then

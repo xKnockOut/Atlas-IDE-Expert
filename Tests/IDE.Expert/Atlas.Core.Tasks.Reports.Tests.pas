@@ -67,7 +67,7 @@ begin
     Finding('C:\p\Kunde.pas', 88, 0, TAtlasTaskSeverity.Error, '„is not“ gibt es erst ab Delphi 13'),
     Finding('', 0, 0, TAtlasTaskSeverity.Error, 'ohne Datei'),
     Finding('C:\p\Kunde.pas', 0, 0, TAtlasTaskSeverity.Warning, ''),
-    Finding('C:\p\Fremd.pas', 3, 0, TAtlasTaskSeverity.Info, 'Hinweis')), Lines);
+    Finding('C:\p\Fremd.pas', 3, 0, TAtlasTaskSeverity.Info, 'Hinweis')), Lines());
   Assert.AreEqual(3, Integer(Length(Found)), 'Fundstellen ohne Datei zählen nur in der Ausgabe');
   Assert.AreEqual('C:\p\Kunde.pas', Found[0].Key);
   Assert.AreEqual('Delphi-12-Prüfung', Found[0].Value.Source);
@@ -88,7 +88,7 @@ begin
     Finding('C:\p\Kunde.pas', 88, 10, TAtlasTaskSeverity.Error, 'b'),
     Finding('C:\p\Kunde.pas', 88, 9, TAtlasTaskSeverity.Error, 'c'),
     Finding('C:\p\Fremd.pas', 3, 5, TAtlasTaskSeverity.Error, 'd'),
-    Finding('C:\p\Fremd.pas', 3, 0, TAtlasTaskSeverity.Error, 'e')), Lines);
+    Finding('C:\p\Fremd.pas', 3, 0, TAtlasTaskSeverity.Error, 'e')), Lines());
   Assert.AreEqual(4, Found[0].Value.StartCharacter, 'ohne Einrückung');
   Assert.AreEqual(25, Found[0].Value.EndCharacter, 'ohne Leerraum am Ende');
   Assert.AreEqual(9, Found[1].Value.StartCharacter);

@@ -83,6 +83,9 @@ type
     class function StepWindow(AForward: Boolean): Boolean; static;
     /// <summary>problems.window an.</summary>
     class function Enabled: Boolean; static;
+    /// <summary>Fortschritt der Projektprüfung (#1232): geprüfte und alle Units des aktiven Projekts wie in der
+    /// Statuszeile des Fensters. False ohne Projekt oder Speicher. Die Projektliste höchstens alle 2 s neu.</summary>
+    class function ProjectProgress(out AChecked, ATotal: Integer): Boolean; static;
   end;
 
 implementation
@@ -628,6 +631,34 @@ begin
   Result := Settings.Enabled and Settings.Problems and Settings.ProblemsWindow;
 end;
 
+var
+  // Projektliste für ProjectProgress (#1232): Die Statusleiste fragt alle 250 ms.
+  ProgressFiles: TArray<string>;
+  ProgressAt: UInt64;
+
+class function TAtlasIdeProblems.ProjectProgress(out AChecked, ATotal: Integer): Boolean;
+const
+  RefreshMs = 2000;
+var
+  Store: TAtlasProblemStore;
+begin
+  AChecked := 0;
+  ATotal := 0;
+  Store := TAtlasProblemsController.Current;
+  if Store = nil then
+    Exit(False);
+  if (ProgressAt = 0) or (TThread.GetTickCount64 - ProgressAt >= RefreshMs) then
+  begin
+    ProgressFiles := ProjectFiles;
+    ProgressAt := TThread.GetTickCount64;
+  end;
+  ATotal := Length(ProgressFiles);
+  if ATotal = 0 then
+    Exit(False);
+  AChecked := TAtlasFindings.CheckedCount(Store, ProgressFiles);
+  Result := True;
+end;
+
 class procedure TAtlasIdeProblems.Start(const AHooks: TAtlasIdeProblemsHooks);
 begin
   if State = nil then
@@ -655,6 +686,8 @@ begin
     SaveLayout(TAtlasIdeProblemsWindow.ExistingFrame);
   TAtlasIdeProblemsWindow.Release;
   FreeAndNil(State);
+  ProgressFiles := nil;
+  ProgressAt := 0;
 end;
 
 class procedure TAtlasIdeProblems.ApplySettings;

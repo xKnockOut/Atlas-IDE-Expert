@@ -9,7 +9,8 @@
 interface
 
 uses
-  Atlas.Core.Style.Color;
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Signal;
 
 type
   /// <summary>Art eines Badges in der Liste (#421); bestimmt dessen Farben.</summary>
@@ -64,6 +65,9 @@ type
     Pairs: TAtlasPairColors;
     /// <summary>Platzhalter von Format und ihre Argumente (#451), halb durchsichtig über dem Text.</summary>
     Placeholders: TAtlasPlaceholderColors;
+    /// <summary>Zustandspunkte, Plaketten und Befundsymbole (#1255); nicht Add/Warn/Error, die für Text gedacht
+    /// sind.</summary>
+    Signals: TAtlasSignals;
     /// <summary>Eigene Paarfarben aus den Einstellungen: leer oder ungültig = Palette.</summary>
     function WithPairs(const ACustom: string): TAtlasColors;
     /// <summary>„#RRGGBB,…“ mit genau fünf Farben in Reihenfolge der Tiefe.</summary>
@@ -165,6 +169,7 @@ begin
   Result.Placeholders[3] := Hex('#C000E0');
   Result.Placeholders[4] := Hex('#007C8A');
   Result.Placeholders[5] := Hex('#A08000');
+  Result.Signals := TAtlasSignals.Light;
 end;
 
 class function TAtlasColors.Dark: TAtlasColors;
@@ -215,6 +220,7 @@ begin
   Result.Placeholders[3] := Hex('#E250FF');
   Result.Placeholders[4] := Hex('#00A4A4');
   Result.Placeholders[5] := Hex('#D6B020');
+  Result.Signals := TAtlasSignals.Dark;
 end;
 
 function TAtlasColors.WithPairs(const ACustom: string): TAtlasColors;

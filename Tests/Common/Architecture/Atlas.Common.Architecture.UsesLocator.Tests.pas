@@ -99,7 +99,7 @@ begin
   Files.Add(Main.FileName, MainText);
   Graph := TUsesGraph.Create([Main, UsesUnit('Kern', nil, nil), UsesUnit('Daten', nil, nil),
     UsesUnit('Kern.Hilfe', nil, nil)], TUsesGraphOptions.Default);
-  Locator := TUsesLocator.Create(Reader(Files, Reads), NoDefines);
+  Locator := TUsesLocator.Create(Reader(Files, Reads), NoDefines());
   try
     Assert.IsTrue(Locator.Locate(Graph, EdgeTo(Graph, 'Main', 'Kern'), Location));
     Assert.AreEqual(Main.FileName, Location.FileName);
@@ -133,7 +133,7 @@ begin
   Files.Add(Main.FileName, BranchText);
   Graph := TUsesGraph.Create([Main, UsesUnit('Kern', nil, nil), UsesUnit('Daten', nil, nil),
     UsesUnit('Ende', nil, nil)], TUsesGraphOptions.Default);
-  Locator := TUsesLocator.Create(Reader(Files, Reads), NoDefines);
+  Locator := TUsesLocator.Create(Reader(Files, Reads), NoDefines());
   try
     Assert.IsTrue(Locator.Locate(Graph, EdgeTo(Graph, 'Main', 'Kern'), Location));
     Assert.AreEqual(6, Location.Range.StartPos.Line);
@@ -162,7 +162,7 @@ begin
   // Datei von Main ohne den Eintrag (veralteter Index), Datei von Other fehlt.
   Files.Add(Main.FileName, 'unit Main; interface implementation end.');
   Graph := TUsesGraph.Create([Main, Other, UsesUnit('Kern', nil, nil)], TUsesGraphOptions.Default);
-  Locator := TUsesLocator.Create(Reader(Files, Reads), NoDefines);
+  Locator := TUsesLocator.Create(Reader(Files, Reads), NoDefines());
   try
     Assert.IsFalse(Locator.Locate(Graph, EdgeTo(Graph, 'Main', 'Kern'), Location));
     Assert.IsFalse(Locator.Locate(Graph, EdgeTo(Graph, 'Other', 'Kern'), Location));
@@ -190,11 +190,11 @@ begin
   Files.Add(Main.FileName, MainText);
   Graph := TUsesGraph.Create([Main, UsesUnit('Kern', nil, nil), UsesUnit('Daten', nil, nil),
     UsesUnit('Kern.Hilfe', nil, nil)], TUsesGraphOptions.Default);
-  Locator := TUsesLocator.Create(Reader(Files, Reads), NoDefines);
+  Locator := TUsesLocator.Create(Reader(Files, Reads), NoDefines());
   try
     Locator.Locate(Graph, EdgeTo(Graph, 'Main', 'Kern'), Location);
     Locator.Locate(Graph, EdgeTo(Graph, 'Main', 'Daten'), Location);
-    Assert.AreEqual(1, Reads.Count);
+    Assert.AreEqual(1, Integer(Reads.Count));
   finally
     Locator.Free;
     Graph.Free;

@@ -51,6 +51,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON,
   Atlas.Core.Settings.JsonText;
 
@@ -109,7 +110,7 @@ begin
       begin
         if IsStandard(mItem) then
           Exit;
-        mParts := mParts + [mItem.ToJSON];
+        mParts := mParts + [mItem.ToJSON([])];
       end;
   finally
     mRoot.Free;

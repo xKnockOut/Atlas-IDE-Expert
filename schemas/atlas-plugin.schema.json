@@ -1,4 +1,4 @@
-﻿{
+{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Plugin-Einstellungen",
   "description": "Katalog der Einstellungen des IDE-Plugins (#227, #604, #723). Schlüssel = Name in TAtlasPluginSettings.Load/Save (Registry HKCU\\Software\\Atlas\\IdePlugin; ein Teil liegt in %APPDATA%\\Atlas\\settings.json). x-key: Schlüssel in Doku und Exportdatei atlas-settings.json; x-area: Bereich für Export, Import und Zurücksetzen (x-areas); x-page: Seite; x-state: interner Zustand (nicht exportiert, nicht zurückgesetzt, nicht markiert); x-machine: gilt nur für diesen Rechner (nicht exportiert); x-path: Pfad (Benutzerordner als Pfadmakro, sonst ausgelassen); x-secret: Zugangsdaten; x-formerKeys: frühere Schlüssel, die der Import umrechnet; x-renamedFrom (#1280): frühere Registry-Namen derselben Einstellung mit unverändertem Wert, beim ersten Start übernommen und entfernt; x-format \"shortcut\": Tastenkürzel (TShortCut) für die Anzeige; x-team: Pfad in der Projektdatei .atlas, deren Wert die Einstellung überdeckt; x-project: Pfad in atlas.json, dessen Wert sie überdeckt; x-quickToggle, x-caption, x-captionEn, x-drawing, x-feature: Schnellschalter (#604); x-experimental: experimentelle Funktion (#834), Vorgabe aus, wirkt nur mit experimental.enabled. x-parent (#890): x-key des Hauptschalters (boolesch), der die Einstellung auf der Optionsseite sperrt, \"\" = keiner; ohne x-parent gilt die Präfixregel (längstes Präfix P mit boolescher Einstellung P oder P.enabled); x-node (#890): Unterpunkt im Baum der Optionsseite (Kennung aus x-nodes), \"\" = Hauptknoten des Reiters; ohne x-node erbt die Einstellung den Unterpunkt ihres Hauptschalters. Neue Plugin-Einstellung: Eintrag hier (mit x-key, x-area, x-page), Feld in TAtlasPluginSettings, Test; dann pwsh Tools/Update-ConfigDoc.ps1.",
@@ -604,7 +604,7 @@
     "InlayMethodHints": {
       "type": "boolean",
       "default": true,
-      "x-key": "refactoring.methodKindMarker",
+      "x-key": "inlayHints.methodKind",
       "x-area": "editor",
       "x-feature": "InlayHints",
       "x-page": "Editor",
@@ -1435,7 +1435,7 @@
     "TasksEnabled": {
       "type": "boolean",
       "default": true,
-      "x-key": "tasks.enabled",
+      "x-key": "taskRunner.enabled",
       "x-area": "build",
       "x-feature": "Tasks",
       "x-page": "Compiler",
@@ -1450,10 +1450,10 @@
     "TasksProblemsFromOutput": {
       "type": "boolean",
       "default": true,
-      "x-key": "tasks.problemsFromOutput",
+      "x-key": "taskRunner.problemsFromOutput",
       "x-area": "build",
       "x-page": "Compiler",
-      "x-parent": "tasks.enabled",
+      "x-parent": "taskRunner.enabled",
       "x-caption": "Fundstellen als Befunde",
       "x-captionEn": "Findings from the output",
       "x-control": "Kontrollkästchen",
@@ -1468,10 +1468,10 @@
         "block"
       ],
       "default": "off",
-      "x-key": "tasks.beforeBuild",
+      "x-key": "taskRunner.beforeBuild",
       "x-area": "build",
       "x-page": "Compiler",
-      "x-parent": "tasks.enabled",
+      "x-parent": "taskRunner.enabled",
       "x-caption": "Prüfungen vor dem Build",
       "x-captionEn": "Checks before the build",
       "x-control": "Auswahl",
@@ -1481,10 +1481,10 @@
     "TasksSaveBeforeRun": {
       "type": "boolean",
       "default": true,
-      "x-key": "tasks.saveBeforeRun",
+      "x-key": "taskRunner.saveBeforeRun",
       "x-area": "build",
       "x-page": "Compiler",
-      "x-parent": "tasks.enabled",
+      "x-parent": "taskRunner.enabled",
       "x-caption": "Vor dem Start speichern",
       "x-captionEn": "Save before running",
       "x-control": "Kontrollkästchen",
@@ -1494,10 +1494,10 @@
     "TasksRunChecksParallel": {
       "type": "boolean",
       "default": false,
-      "x-key": "tasks.runChecksParallel",
+      "x-key": "taskRunner.runChecksParallel",
       "x-area": "build",
       "x-page": "Compiler",
-      "x-parent": "tasks.enabled",
+      "x-parent": "taskRunner.enabled",
       "x-caption": "Prüfungen gleichzeitig",
       "x-captionEn": "Run checks in parallel",
       "x-control": "Kontrollkästchen",
@@ -1507,10 +1507,10 @@
     "TasksOnlyFindings": {
       "type": "boolean",
       "default": false,
-      "x-key": "tasks.onlyFindings",
+      "x-key": "taskRunner.onlyFindings",
       "x-area": "build",
       "x-page": "Compiler",
-      "x-parent": "tasks.enabled",
+      "x-parent": "taskRunner.enabled",
       "x-caption": "Nur Befunde zeigen",
       "x-captionEn": "Show findings only",
       "x-control": "Kontrollkästchen",
@@ -2057,6 +2057,16 @@
       "description": "Atlas-Suche ersetzt die IDE-Suche: Strg+F öffnet die Suchleiste unter dem Editor (Bereich Methode, Unit, Auswahl; Groß-/Kleinschreibung, ganzes Wort, Bezeichner statt Text), F3/Umschalt+F3 springen zum nächsten/vorigen Treffer der letzten Atlas-Suche; aus = Suchen der IDE wie bisher",
       "x-issue": "#878"
     },
+    "SearchFromFirstHit": {
+      "type": "boolean",
+      "default": false,
+      "x-key": "search.fromFirstHit",
+      "x-area": "editor",
+      "x-page": "Units suchen",
+      "x-control": "Kontrollkästchen",
+      "description": "Beim Tippen in der Suchleiste zum ersten Treffer der Unit bzw. des Bereichs springen; aus = zum nächsten Treffer ab der Cursorposition beim Öffnen der Leiste",
+      "x-issue": "#1242"
+    },
     "SearchResultsInMessages": {
       "type": "boolean",
       "default": true,
@@ -2481,6 +2491,24 @@
       "x-area": "build",
       "x-page": "Compiler",
       "x-parent": "build.onOpen"
+    },
+    "BuildOnOpenConfig": {
+      "type": "string",
+      "default": "",
+      "x-key": "build.onOpenConfig",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "build.onOpen",
+      "x-issue": "#1293"
+    },
+    "BuildOnOpenPlatform": {
+      "type": "string",
+      "default": "",
+      "x-key": "build.onOpenPlatform",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "build.onOpen",
+      "x-issue": "#1293"
     },
     "CompileOnSave": {
       "type": "boolean",
@@ -3561,6 +3589,14 @@
       "x-area": "editor",
       "x-page": "Units suchen"
     },
+    "UnitSearchFormCaptions": {
+      "type": "boolean",
+      "default": true,
+      "x-key": "unitSearch.formCaptions",
+      "x-area": "editor",
+      "x-page": "Units suchen",
+      "x-issue": "#1310"
+    },
     "UnitSearchPreview": {
       "type": "boolean",
       "default": true,
@@ -4104,6 +4140,102 @@
       "x-page": "Editor",
       "x-parent": "editor.stickyScroll",
       "x-issue": "#506"
+    },
+    "StickyScrollTypes": {
+      "description": "Klassen, Records, Interfaces und Objekte erscheinen als Kopfzeile im mitlaufenden Kopf. Aus: Ihre Blocklinien blenden in der letzten Kopfzeile ein.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.stickyScrollTypes",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.stickyScroll",
+      "x-caption": "Klassen und Records im Kopf",
+      "x-captionEn": "Classes and records in the header",
+      "x-issue": "#1230"
+    },
+    "StickyScrollRoutines": {
+      "description": "Routinen mit Rumpf (Methoden, Routinen der Unit, verschachtelte Routinen) erscheinen als Kopfzeile im mitlaufenden Kopf. Aus: Ihre Blocklinien blenden in der letzten Kopfzeile ein.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.stickyScrollRoutines",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.stickyScroll",
+      "x-caption": "Routinen im Kopf",
+      "x-captionEn": "Routines in the header",
+      "x-issue": "#1230"
+    },
+    "StickyScrollBlocks": {
+      "description": "Große if/else-Blöcke (ab editor.stickyScrollBlockMinLines Zeilen) erscheinen als eigene Zeile im mitlaufenden Kopf, eingereiht zwischen Klasse und Routinen nach ihrer Lage: Zeile des if bzw. else ohne Einrückung, Klick springt dorthin. Blöcke ohne begin … end zählen nicht. Blöcke ohne Kopfzeile (Art aus oder zu kurz): Ihre Blocklinien blenden in der letzten Kopfzeile ein, statt an der Trennlinie abzubrechen.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "editor.stickyScrollBlocks",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.stickyScroll",
+      "x-caption": "Große if/else-Blöcke im Kopf",
+      "x-captionEn": "Large if/else blocks in the header",
+      "x-issue": "#1230"
+    },
+    "StickyScrollLoops": {
+      "description": "Große for-, while- und repeat-Blöcke (ab editor.stickyScrollBlockMinLines Zeilen) erscheinen als eigene Zeile im mitlaufenden Kopf, wie die if/else-Blöcke.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "editor.stickyScrollLoops",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.stickyScroll",
+      "x-caption": "Große Schleifen im Kopf",
+      "x-captionEn": "Large loops in the header",
+      "x-issue": "#1230"
+    },
+    "StickyScrollTry": {
+      "description": "Große try-Blöcke (ab editor.stickyScrollBlockMinLines Zeilen) erscheinen als eigene Zeile im mitlaufenden Kopf, wie die if/else-Blöcke.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "editor.stickyScrollTry",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.stickyScroll",
+      "x-caption": "Große try-Blöcke im Kopf",
+      "x-captionEn": "Large try blocks in the header",
+      "x-issue": "#1230"
+    },
+    "StickyScrollCase": {
+      "description": "Große case-Blöcke (ab editor.stickyScrollBlockMinLines Zeilen) erscheinen als eigene Zeile im mitlaufenden Kopf, wie die if/else-Blöcke.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "editor.stickyScrollCase",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.stickyScroll",
+      "x-caption": "Große case-Blöcke im Kopf",
+      "x-captionEn": "Large case blocks in the header",
+      "x-issue": "#1230"
+    },
+    "StickyScrollWith": {
+      "description": "Große with-Blöcke (ab editor.stickyScrollBlockMinLines Zeilen) erscheinen als eigene Zeile im mitlaufenden Kopf, wie die if/else-Blöcke.",
+      "type": "boolean",
+      "default": false,
+      "x-key": "editor.stickyScrollWith",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.stickyScroll",
+      "x-caption": "Große with-Blöcke im Kopf",
+      "x-captionEn": "Large with blocks in the header",
+      "x-issue": "#1230"
+    },
+    "StickyScrollBlockMinLines": {
+      "description": "Mindestlänge eines Anweisungsblocks (if/else, Schleife, try, case, with) in Zeilen, ab der er im mitlaufenden Kopf erscheint (5 bis 1000).",
+      "type": "integer",
+      "default": 25,
+      "minimum": 5,
+      "maximum": 1000,
+      "x-key": "editor.stickyScrollBlockMinLines",
+      "x-area": "editor",
+      "x-page": "Editor",
+      "x-parent": "editor.stickyScroll",
+      "x-issue": "#1230"
     },
     "Minimap": {
       "description": "Minimap neben der Scrollleiste: verkleinerte Ansicht der ganzen Datei mit dem sichtbaren Bereich als Schieber; Ziehen scrollt den Editor, Klick springt bzw. scrollt. Gefaltete Bereiche nehmen eine Zeile ein, lange Dateien werden gestaucht. Läuft nur mit experimental.enabled. Sind Atlas- und IDE-Minimap zugleich sichtbar, weist Atlas einmal darauf hin.",

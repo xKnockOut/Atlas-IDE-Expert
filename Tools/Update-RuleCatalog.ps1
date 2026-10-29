@@ -143,17 +143,19 @@ foreach ($Language in $Overlays.Keys) {
     }
 }
 
-# Eingebettete Unit
-function ConvertTo-DelphiLiteral([string] $Text) {
+# Eingebettete Unit. Je Katalog ein konstantes Array mit einer JSON-Zeile je Element, zur Laufzeit mit #10
+# verbunden. Früher war jeder Katalog ein einziger Ausdruck aus über 5000 mit + verketteten Literalen; daran lief
+# der Compiler der IDE (32 Bit) aus dem Speicher (F2046 „Zu wenig Arbeitsspeicher“).
+function ConvertTo-DelphiLines([string] $Name, [string] $Text) {
     $Lines = $Text -replace "`r", '' -split "`n"
     $Parts = foreach ($Line in $Lines) {
         $Chunks = for ($I = 0; $I -lt [Math]::Max(1, $Line.Length); $I += 200) {
             "'" + ($Line.Substring($I, [Math]::Min(200, $Line.Length - $I)) -replace "'", "''") + "'"
         }
         # Jedes Stück in eine eigene Zeile: Delphi bricht bei mehr als 1023 Zeichen je Zeile ab (F2069).
-        ($Chunks -join " +`r`n    ") + ' + #10'
+        '    ' + ($Chunks -join " +`r`n    ")
     }
-    '    ' + ($Parts -join " +`r`n    ")
+    "  ${Name}: array[0..$($Lines.Count - 1)] of string = (`r`n" + ($Parts -join ",`r`n") + ");`r`n"
 }
 
 $Unit = New-Object System.Text.StringBuilder
@@ -163,12 +165,16 @@ $Unit = New-Object System.Text.StringBuilder
 [void]$Unit.Append("/// <summary>Englischer Grundkatalog als JSON.</summary>`r`nfunction RuleCatalogBaseJson: string;`r`n")
 [void]$Unit.Append("/// <summary>Übersetzung als JSON, '' für unbekannte Sprachen.</summary>`r`nfunction RuleCatalogOverlayJson(const ALanguage: string): string;`r`n`r`n")
 [void]$Unit.Append("implementation`r`n`r`nuses`r`n  System.SysUtils;`r`n`r`n")
-[void]$Unit.Append("function RuleCatalogBaseJson: string;`r`nbegin`r`n  Result :=`r`n")
-[void]$Unit.Append((ConvertTo-DelphiLiteral $BaseText) + ";`r`nend;`r`n`r`n")
+[void]$Unit.Append("const`r`n")
+[void]$Unit.Append((ConvertTo-DelphiLines 'BaseLines' $BaseText) + "`r`n")
+foreach ($Language in $Overlays.Keys) {
+    [void]$Unit.Append((ConvertTo-DelphiLines "OverlayLines_$Language" $Overlays[$Language]) + "`r`n")
+}
+[void]$Unit.Append("/// <summary>Zeilen mit #10 verbunden, auch nach der letzten.</summary>`r`nfunction Joined(const ALines: array of string): string;`r`nbegin`r`n  Result := string.Join(#10, ALines) + #10;`r`nend;`r`n`r`n")
+[void]$Unit.Append("function RuleCatalogBaseJson: string;`r`nbegin`r`n  Result := Joined(BaseLines);`r`nend;`r`n`r`n")
 [void]$Unit.Append("function RuleCatalogOverlayJson(const ALanguage: string): string;`r`nbegin`r`n")
 foreach ($Language in $Overlays.Keys) {
-    [void]$Unit.Append("  if SameText(ALanguage, '$Language') then`r`n    Exit(`r`n")
-    [void]$Unit.Append((ConvertTo-DelphiLiteral $Overlays[$Language]) + ");`r`n")
+    [void]$Unit.Append("  if SameText(ALanguage, '$Language') then`r`n    Exit(Joined(OverlayLines_$Language));`r`n")
 }
 [void]$Unit.Append("  Result := '';`r`nend;`r`n`r`nend.`r`n")
 $UnitText = $Unit.ToString()

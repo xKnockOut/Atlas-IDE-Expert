@@ -93,7 +93,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Go to** definition (Ctrl+click), implementation and type definition; switch between declaration and implementation (Ctrl+Shift+↑/↓); **jump to the counterpart** (begin ⇄ end, try → finally → end, `{$IFDEF}` → `{$ENDIF}`)
 - **Breadcrumb bar** above the editor with jump menus for unit, class, method and their children
 - **Editor toolbar** with icons: jump to the interface or implementation section (and back with "↩ 214"), find method, navigation history and any palette command; overflow menu, customizable, can also sit inside the breadcrumb row
-- **Atlas status bar** at the bottom of each editor window: server status, findings of this unit per kind (click jumps to the next one, double-click opens "Atlas-Prüfung" for the unit), live check ("live · checked 2 s ago") and the method at the cursor with lines and CC (warning colour above the metric limit); each element can be switched off, the Atlas field leaves the IDE status line while the bar shows the status
+- **Atlas status bar** at the bottom of each editor window (state colours tuned separately for light and dark themes): server status, findings of this unit per kind (click jumps to the next one, double-click opens "Atlas-Prüfung" for the unit), live check ("live · checked 2 s ago", during the project check "· project 45 %", then briefly "project done") and the method at the cursor with lines and CC (warning colour above the metric limit); each element can be switched off, the Atlas field leaves the IDE status line while the bar shows the status
 - **Outline** as a dockable window with filter
 - **Peek definition** (Alt+F12) below the line without switching files
 - **Quick open** of files and symbols (Ctrl+P) across project, project group and search path; project-wide **symbol search**
@@ -105,8 +105,8 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Data flow:** "Where does the value come from?" and "Where does the value go?" show a tree in the results window: assignments, var/out arguments, callers' arguments for a parameter, `Result` and `Exit(…)` of a function, property setters and getters, each with file, line and source line. Equal places are grouped ("3 assignments"), deeper levels load when expanded up to `navigation.dataFlow.maxDepth`, cycles, constants and code outside the project end the path, unsafe edges (pointers, `absolute`, `Move`, `FillChar`, `@`) are marked. Enter or double-click jumps; filters "Project code only" and "Hide tests". Switched by `navigation.dataFlow`
 - **Navigation history** across files
 - **Named bookmarks** (Ctrl+Alt+K) and personal **notes** on code lines that never go into the source
-- **Quick bookmarks** in a column left of the line numbers: click to set and remove, Ctrl+Shift+1…9 numbers them, Ctrl+1…9 jumps project-wide, Ctrl+Shift+K unnumbered (the IDE's folding chords keep working); they follow code changes and take over the IDE bookmarks
-- **Overview ruler** at the scroll bar with errors, matches and changes; **minimap** *(experimental)*; **sticky scroll** of the enclosing class and routine *(experimental)*
+- **Quick bookmarks** in a column left of the line numbers: click to set and remove, Ctrl+Shift+1…9 numbers them, Ctrl+1…9 jumps project-wide, Ctrl+Shift+K unnumbered (the IDE's folding chords keep working); they follow code changes and take over the IDE bookmarks as soon as the column is drawn
+- **Overview ruler** at the scroll bar with errors, matches and changes; **minimap** *(experimental)*; **sticky scroll** of the enclosing class, routine and large blocks, each kind switchable *(experimental)*
 - **TODO overview** of the project from `// TODO`, `// FIXME` and the IDE's to-do format
 
 ### Code analysis
@@ -173,6 +173,7 @@ Alt+Enter opens the code actions; everything is also in the *Atlas* menu and the
 - **Unit not found:** on F2613/F1026 Atlas searches the project folder, the project group, the other configurations, the libraries of other platforms and the index, and offers to add the folder to the search path of this or all configurations (relative to the `.dproj`) or to add the unit to the project; "only for Win32, Win64" or the searched places otherwise (`refactoring.missingUnit`)
 - **Check before compiling:** the units changed since the last successful compile are checked for syntax errors and rule errors before each build; report or cancel the build (`build.gate`)
 - **Release build guard:** checks the project options before a release build (DEBUG symbol, debug information, …)
+- **Build once on opening**, as soon as the IDE is idle, optionally always with the same configuration and target platform (say Debug/Win64) whatever the project is set to; afterwards the project is back as it was
 - **DUnitX tests** run from the editor, and a single test starts in the debugger (code lens on `[Test]` and `[TestFixture]`)
 - **Launch profiles** for parameters, working folder, environment and host application
 - **Values in the hover while debugging** (see [Understanding](#understanding))
@@ -329,6 +330,7 @@ Check scripts (also run as GitHub Actions):
 pwsh Tools/Check-PackageDependencies.ps1   # packages keep their dependencies
 pwsh Tools/Check-ConsoleOutput.ps1         # no Write/Writeln to stdout
 pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, every test unit runs
+pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use their shared hosts
 ```
 
 `Tests/DccFaelle` holds minimal cases for the compiler rules: each one states whether dcc reports it or compiles it. `pwsh Tools/Build-DccFaelle.ps1` builds them in a scratch IDE via `cc.ps1` (Win32 and Win64) and writes the dcc messages per case to `Output/DccFaelle-Ergebnis.txt`; the rules must not be stricter than that result (#1328).
@@ -339,7 +341,7 @@ pwsh Tools/Check-TestCoverage.ps1          # every unit with logic has tests, ev
   - The job needs a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`) on the developer's workstation. It runs in the signed-in user context, not as a service, because `cc.ps1` starts an IDE, and only while that machine is switched on. Every job starts its own scratch IDE.
   - It runs only with the repository variable `DELPHI_RUNNER=true`; otherwise the job "uebersprungen" says so in the run summary. `CC_SCRIPT` overrides the path to `cc.ps1`.
   - A new push to the same branch cancels the running build (`concurrency`).
-- `package-dependencies.yml`: package dependencies, the stdout rule, Delphi 12 compatibility, rule catalog, configuration docs and no Embarcadero sources in `Tests/`.
+- `package-dependencies.yml`: package dependencies, the stdout rule, Delphi 12 compatibility, rule catalog, configuration docs, no Embarcadero sources in `Tests/`, and Atlas windows and editor bars only through their shared hosts.
 
 ## Command line
 

@@ -1395,8 +1395,11 @@ begin
     GitOptions(TAtlasVcsGitBaseOption.Local, False, TAtlasVcsGitUncommitted.Stash, True), mRequest));
   Assert.AreEqual(RepoParent + PathDelim + 'Kasse-ATL-13', mRequest.WorktreeFolder);
   Assert.IsFalse(mRequest.Stash);
-  // SVN: Git-Optionen ohne Wirkung.
-  Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(SvnFacts('48230'), 'ATL-1-a', '', 'ATL-1',
+  // SVN: Git-Optionen ohne Wirkung (Layout bekannt, sonst fehlt das Ziel der Vorgabe {root}/branches/…).
+  mFacts := SvnFacts('48230');
+  mFacts.LayoutKnown := True;
+  mFacts.ProjectRoot := 'Kasse';
+  Assert.IsTrue(TAtlasVcsBranchPlan.DefaultRequest(mFacts, 'ATL-1-a', '', 'ATL-1',
     GitOptions(TAtlasVcsGitBaseOption.Remote, True, TAtlasVcsGitUncommitted.Stash, True), mRequest));
   Assert.IsTrue(mRequest.Base.Kind = TAtlasVcsBranchBaseKind.Head);
   Assert.IsFalse(mRequest.Fetch);

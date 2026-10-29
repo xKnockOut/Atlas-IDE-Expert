@@ -63,6 +63,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.Classes,
   System.JSON,
   System.IOUtils,

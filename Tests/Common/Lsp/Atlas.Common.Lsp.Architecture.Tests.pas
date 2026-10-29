@@ -12,6 +12,12 @@ type
   [TestFixture]
   TLspArchitectureTests = class
   public
+    /// <summary>Einmalige Puffer der JSON-Antwort vor dem Leckmonitor anlegen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
+    /// <summary>Globalen String LastScope leeren, sonst zählt der Leckmonitor ihn.</summary>
+    [TearDown]
+    procedure TearDown;
     [Test]
     procedure JsonAnswerHasDataAndLayout;
     [Test]
@@ -33,6 +39,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.Contract,
@@ -113,6 +120,19 @@ begin
 end;
 
 { TLspArchitectureTests }
+
+procedure TLspArchitectureTests.TearDown;
+begin
+  LastScope := '';
+end;
+
+procedure TLspArchitectureTests.WarmUpFirstUse;
+begin
+  JsonAnswerHasDataAndLayout;
+  CommandAnswersLikeRequest;
+  SavesStateAndCompares;
+  TearDown;
+end;
 
 procedure TLspArchitectureTests.JsonAnswerHasDataAndLayout;
 var

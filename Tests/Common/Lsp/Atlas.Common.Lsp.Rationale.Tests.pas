@@ -32,6 +32,7 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,

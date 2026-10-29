@@ -19,6 +19,9 @@ type
   private
     FDir: string;
   public
+    /// <summary>Einmalige Puffer des Multipart-Aufbaus (PNG, Kodierung) vor dem Leckmonitor anlegen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -126,6 +129,23 @@ begin
   Result := True;
 end;
 
+/// <summary>Rumpf als Text: UTF-8, mit Binärteilen (PNG im Multipart) Byte für Byte.</summary>
+function BodyText(const ABody: TBytes): string;
+var
+  mIndex: Integer;
+begin
+  try
+    Result := TEncoding.UTF8.GetString(ABody);
+  except
+    on EEncodingError do
+    begin
+      SetLength(Result, Length(ABody));
+      for mIndex := 0 to High(ABody) do
+        Result[mIndex + 1] := Char(ABody[mIndex]);
+    end;
+  end;
+end;
+
 function TFakeSend.Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
   out AStatus: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
 var
@@ -134,7 +154,7 @@ begin
   mIndex := Length(Urls);
   Urls := Urls + [AUrl];
   ContentTypes := ContentTypes + [AContentType];
-  Bodies := Bodies + [TEncoding.UTF8.GetString(ABody)];
+  Bodies := Bodies + [BodyText(ABody)];
   AStatus := 200;
   if mIndex < Length(FStatus) then
     AStatus := FStatus[mIndex];
@@ -157,7 +177,7 @@ begin
   Result := TAtlasAttachFile.CreateImage(TAtlasAttachKind.Screenshot, AName, TBytes.Create($89, $50, $4E, $47));
 end;
 
-function Log(const AName, AText: string): TAtlasAttachFile;
+function LogFile(const AName, AText: string): TAtlasAttachFile;
 begin
   Result := TAtlasAttachFile.CreateText(TAtlasAttachKind.LogFile, AName, AText);
 end;
@@ -172,6 +192,16 @@ begin
 end;
 
 { TAtlasAttachTests }
+
+procedure TAtlasAttachTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    YouTrackUploadsThenComments;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasAttachTests.Setup;
 begin
@@ -191,7 +221,7 @@ var
   mFiles: TAtlasAttachFiles;
   mBody: string;
 begin
-  mFiles := [Log('app.log', 'a'#13#10'b'), TAtlasAttachFile.CreateText(TAtlasAttachKind.DebugNote, 'notiz.md', '# N')];
+  mFiles := [LogFile('app.log', 'a'#13#10'b'), TAtlasAttachFile.CreateText(TAtlasAttachKind.DebugNote, 'notiz.md', '# N')];
   mBody := TEncoding.UTF8.GetString(TAtlasAttachMultipart.Build('XYZ', mFiles));
   Assert.AreEqual(
     '--XYZ'#13#10 +
@@ -233,7 +263,7 @@ begin
   Assert.AreEqual('app.log', TAtlasAttachFile.SafeName('C:\Logs\app.log'));
   Assert.AreEqual('mein-log_1_.txt', TAtlasAttachFile.SafeName('mein log(1).txt'));
   Assert.AreEqual('a_b.png', TAtlasAttachFile.SafeName('a"b.png'));
-  mFiles := TAtlasAttachFile.UniqueNames([Png('bild.png'), Png('Bild.png'), Log('bild.png', 'x'), Log('x.log', '')]);
+  mFiles := TAtlasAttachFile.UniqueNames([Png('bild.png'), Png('Bild.png'), LogFile('bild.png', 'x'), LogFile('x.log', '')]);
   Assert.AreEqual('bild.png', mFiles[0].Name);
   Assert.AreEqual('Bild-2.png', mFiles[1].Name);
   Assert.AreEqual('bild-3.png', mFiles[2].Name);
@@ -335,7 +365,7 @@ procedure TAtlasAttachTests.CommentReferencesAttachments;
 var
   mFile: TAtlasAttachFile;
 begin
-  mFile := Log('app.log', 'x');
+  mFile := LogFile('app.log', 'x');
   mFile.Caption := 'app.log (letzte 200 Zeilen)';
   Assert.AreEqual('Absturz beim Speichern.'#13#10#13#10'![](bild.png)'#13#10'[app.log (letzte 200 Zeilen)](app.log)',
     TAtlasAttachComment.Referencing('  Absturz beim Speichern. ', [Png('bild.png'), mFile]));
@@ -348,7 +378,7 @@ var
   mNote: TAtlasAttachFile;
 begin
   mNote := TAtlasAttachFile.CreateText(TAtlasAttachKind.DebugNote, 'notiz.md', '# Debug-Notiz'#13#10'- Ort');
-  mText := TAtlasAttachComment.WithTexts('Siehe unten.', [Png('bild.png'), Log('app.log', 'a'#13#10'```b'),
+  mText := TAtlasAttachComment.WithTexts('Siehe unten.', [Png('bild.png'), LogFile('app.log', 'a'#13#10'```b'),
     mNote], TAtlasAttachComment.MaxTextsLength);
   Assert.AreEqual('Siehe unten.'#13#10#13#10 +
     '**app.log**'#13#10#13#10'```text'#13#10'a'#13#10'` ` `b'#13#10'```'#13#10#13#10 +
@@ -360,7 +390,7 @@ procedure TAtlasAttachTests.CommentWithTextsKeepsLogTail;
 var
   mText: string;
 begin
-  mText := TAtlasAttachComment.WithTexts('', [Log('app.log', NumberedLines(1, 5000))], 2000);
+  mText := TAtlasAttachComment.WithTexts('', [LogFile('app.log', NumberedLines(1, 5000))], 2000);
   Assert.IsTrue(Length(mText) < 2200, IntToStr(Length(mText)));
   Assert.Contains(mText, 'Zeile 5000');
   Assert.DoesNotContain(mText, 'Zeile 1'#13#10);
@@ -385,10 +415,10 @@ begin
   mRequest := Default(TAtlasAttachRequest);
   mRequest.Target := TAtlasTrackerTarget.Create('youtrack', 'https://beispiel.youtrack.cloud', 'ATL', '');
   mRequest.Key := 'ATL-123';
-  mRequest.Files := [Png('bildschirmfoto.png'), Log('app.log', 'Zeile')];
+  mRequest.Files := [Png('bildschirmfoto.png'), LogFile('app.log', 'Zeile')];
   mRequest.Comment := 'Fehlerbild';
   mRequest.WithComment := True;
-  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create, mTransport, mRequest, 1000);
+  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, mTransport, mRequest, 1000);
   Assert.IsTrue(mOutcome.Succeeded);
   Assert.IsFalse(mOutcome.Fallback);
   Assert.AreEqual(2, mOutcome.Uploaded);
@@ -419,13 +449,13 @@ begin
   mRequest.Key := 'ATL-123';
   mRequest.Files := [Png('a.png')];
   mRequest.WithComment := True;
-  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create, mTransport, mRequest, 1000);
+  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, mTransport, mRequest, 1000);
   Assert.IsFalse(mOutcome.Succeeded);
   Assert.AreEqual(TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.Unauthorized), TAtlasCiBuild.ErrorKey(mOutcome.Error));
   Assert.AreEqual(1, Integer(Length(mSend.Urls)), 'kein Kommentar nach abgelehntem Hochladen');
   // Ungültige Kennung: nichts geht ins Netz.
   mRequest.Key := 'ATL 1/../x';
-  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create, mTransport, mRequest, 1000);
+  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, mTransport, mRequest, 1000);
   Assert.AreEqual(TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.NotConfigured), TAtlasCiBuild.ErrorKey(mOutcome.Error));
   Assert.AreEqual(1, Integer(Length(mSend.Urls)));
   mRequest.Files := nil;
@@ -444,10 +474,10 @@ begin
   mRequest := Default(TAtlasAttachRequest);
   mRequest.Target := TAtlasTrackerTarget.Create('github', '', 'beispiel/atlas', '');
   mRequest.Key := '#12';
-  mRequest.Files := [Png('bildschirmfoto.png'), Log('app.log', 'Fehler 42')];
+  mRequest.Files := [Png('bildschirmfoto.png'), LogFile('app.log', 'Fehler 42')];
   mRequest.Comment := 'Absturz';
   mRequest.WithComment := True;
-  mOutcome := TAtlasAttachSender.Send(TAtlasGitHubTracker.Create, mTransport, mRequest, 1000);
+  mOutcome := TAtlasAttachSender.Send(TAtlasGitHubTracker.Create as IAtlasTrackerProvider, mTransport, mRequest, 1000);
   Assert.IsTrue(mOutcome.Succeeded);
   Assert.IsTrue(mOutcome.Fallback);
   Assert.AreEqual(0, mOutcome.Uploaded);
@@ -476,7 +506,7 @@ begin
   mRequest.Key := '#12';
   mRequest.Files := [Png('formular.png')];
   mRequest.WithComment := True;
-  mOutcome := TAtlasAttachSender.Send(TAtlasGitHubTracker.Create, mTransport, mRequest, 1000);
+  mOutcome := TAtlasAttachSender.Send(TAtlasGitHubTracker.Create as IAtlasTrackerProvider, mTransport, mRequest, 1000);
   Assert.IsTrue(mOutcome.Succeeded);
   Assert.IsTrue(mOutcome.Fallback);
   Assert.IsFalse(mOutcome.Commented);
@@ -494,9 +524,9 @@ begin
   mRequest := Default(TAtlasAttachRequest);
   mRequest.Target := TAtlasTrackerTarget.Create('youtrack', 'https://beispiel.youtrack.cloud', 'ATL', '');
   mRequest.Key := 'ATL-1';
-  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create, TFakeGetOnly.Create, mRequest, 1000);
+  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, TFakeGetOnly.Create as IAtlasCiTransport, mRequest, 1000);
   Assert.AreEqual(TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.NotConfigured), TAtlasCiBuild.ErrorKey(mOutcome.Error));
-  mOutcome := TAtlasAttachSender.Send(nil, TFakeSend.Create, mRequest, 1000);
+  mOutcome := TAtlasAttachSender.Send(nil, TFakeSend.Create as IAtlasCiTransport, mRequest, 1000);
   Assert.AreEqual(TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.NotConfigured), TAtlasCiBuild.ErrorKey(mOutcome.Error));
 end;
 
@@ -507,7 +537,7 @@ var
 begin
   mTemp := TAtlasAttachTemp.Create(FDir);
   try
-    mPath := mTemp.Write(Log('Pfad\app.log', 'x'));
+    mPath := mTemp.Write(LogFile('Pfad\app.log', 'x'));
     mFolder := mTemp.Folder;
     Assert.IsTrue(TFile.Exists(mPath));
     Assert.AreEqual('app.log', ExtractFileName(mPath));

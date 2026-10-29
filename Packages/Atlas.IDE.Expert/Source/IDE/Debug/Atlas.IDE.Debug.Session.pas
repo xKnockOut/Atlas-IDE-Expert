@@ -90,7 +90,7 @@ type
     FConfiguration: string;
     FPlatform: string;
     FLaunchValues: array[0..3] of string;
-    class procedure Dispatch(const AEvent: TProc<IAtlasIdeDebugListener>); static;
+    class procedure NotifyListeners(const AEvent: TProc<IAtlasIdeDebugListener>); static;
     class procedure StateChanged(const AProcess: IOTAProcess); static;
     class procedure Ended; static;
   public
@@ -181,7 +181,7 @@ begin
   begin
     TAtlasIdeDebugSession.FStopped := False;
     TAtlasIdeDebugSession.FStopCount := 0;
-    TAtlasIdeDebugSession.Dispatch(
+    TAtlasIdeDebugSession.NotifyListeners(
       procedure(AListener: IAtlasIdeDebugListener)
       begin
         AListener.DebugStarted;
@@ -312,7 +312,7 @@ begin
     Stop;
 end;
 
-class procedure TAtlasIdeDebugSession.Dispatch(const AEvent: TProc<IAtlasIdeDebugListener>);
+class procedure TAtlasIdeDebugSession.NotifyListeners(const AEvent: TProc<IAtlasIdeDebugListener>);
 var
   Listeners: TArray<IAtlasIdeDebugListener>;
   Listener: IAtlasIdeDebugListener;
@@ -359,7 +359,7 @@ begin
         Thread := StoppedThread;
         if Thread = nil then
           Exit;
-        Dispatch(
+        NotifyListeners(
           procedure(AListener: IAtlasIdeDebugListener)
           begin
             AListener.DebugStopped(Stop);
@@ -369,7 +369,7 @@ begin
   else if (State = psRunning) and FStopped then
   begin
     FStopped := False;
-    Dispatch(
+    NotifyListeners(
       procedure(AListener: IAtlasIdeDebugListener)
       begin
         AListener.DebugResumed;
@@ -380,7 +380,7 @@ end;
 class procedure TAtlasIdeDebugSession.Ended;
 begin
   FStopped := False;
-  Dispatch(
+  NotifyListeners(
     procedure(AListener: IAtlasIdeDebugListener)
     begin
       AListener.DebugEnded;

@@ -243,6 +243,8 @@ begin
     FStepsUpDown.Position := AValue.MaxSteps
   else
     FStepsUpDown.Position := DefaultSteps;
+  // Ohne Fenster schreibt TUpDown nicht ins verbundene Feld; GetInput liest das Feld.
+  FSteps.Text := IntToStr(FStepsUpDown.Position);
   FAll.Checked := AValue.All;
 end;
 

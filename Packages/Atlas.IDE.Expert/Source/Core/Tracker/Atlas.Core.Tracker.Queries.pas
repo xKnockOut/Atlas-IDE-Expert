@@ -70,6 +70,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON;
 
 { TAtlasTrackerQuery }
@@ -98,7 +99,8 @@ var
 begin
   mValue := TJSONString.Create(AText);
   try
-    Result := mValue.ToJSON;
+    // Ohne Option: Umlaute bleiben lesbar (ToJSON ohne Argument schreibt sie als \u-Folge).
+    Result := mValue.ToJSON([]);
   finally
     mValue.Free;
   end;

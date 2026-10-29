@@ -1489,7 +1489,6 @@ begin
     FrontB.AddRange(ATargets);
     DepthF := 0;
     DepthB := 0;
-    Count := 0;
     // Je Schritt die kleinere Front um eine ganze Ebene erweitern; sobald sich beide treffen, ist die
     // kürzeste Länge das Minimum über die gemeinsamen Knoten.
     while DepthF + DepthB < ALimit do

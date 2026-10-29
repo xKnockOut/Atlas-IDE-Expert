@@ -150,6 +150,7 @@ type
 implementation
 
 uses
+  System.UITypes,
   Winapi.Windows,
   System.Types,
   Vcl.Themes,
@@ -612,7 +613,7 @@ begin
     FInput.Text := AExpression;
     FInput.SelectAll;
   end;
-  if FInput.CanFocus then
+  if FInput.CanFocus and FInput.Showing then
     FInput.SetFocus;
 end;
 

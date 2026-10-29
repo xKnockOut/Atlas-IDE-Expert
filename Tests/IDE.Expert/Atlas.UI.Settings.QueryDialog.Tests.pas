@@ -164,10 +164,10 @@ begin
     Assert.AreEqual('ATL', mSeen.Project);
     Assert.AreEqual('assignee: me #Unresolved', mSeen.Query);
     Assert.AreEqual('de', mSeen.Language, 'Sprache der Verbindung');
-    Assert.IsTrue(mDialog.ResultMemo.Text.Contains(TAtlasStrings.Fmt(TAtlasTextId.QueryTestEmpty, [120])),
+    Assert.IsTrue(string(mDialog.ResultMemo.Text).Contains(TAtlasStrings.Fmt(TAtlasTextId.QueryTestEmpty, [120])),
       mDialog.ResultMemo.Text);
-    Assert.IsTrue(mDialog.ResultMemo.Text.Contains('assignee: meine #Ungelöst'), 'Tipp');
-    Assert.IsTrue(mDialog.ResultMemo.Text.Contains(TAtlasStrings.Fmt(TAtlasTextId.QueryTestSent,
+    Assert.IsTrue(string(mDialog.ResultMemo.Text).Contains('assignee: meine #Ungelöst'), 'Tipp');
+    Assert.IsTrue(string(mDialog.ResultMemo.Text).Contains(TAtlasStrings.Fmt(TAtlasTextId.QueryTestSent,
       ['Firma', 'project: ATL assignee: me #Unresolved'])), 'gesendete Abfrage');
     Assert.IsTrue(mDialog.TestButton.Enabled, 'nach dem Ergebnis wieder frei');
   finally

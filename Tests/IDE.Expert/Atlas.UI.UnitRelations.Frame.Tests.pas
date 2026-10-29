@@ -53,6 +53,7 @@ type
 implementation
 
 uses
+  Vcl.Controls,
   System.SysUtils,
   Vcl.ComCtrls,
   Atlas.UI.Strings,
@@ -152,8 +153,8 @@ var
 begin
   Load;
   Assert.AreEqual('A', FFrame.Title.Caption);
-  Assert.IsTrue(FFrame.Info.Caption.StartsWith(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsRecompile, [4])));
-  Assert.IsTrue(FFrame.Info.Caption.EndsWith(TAtlasStrings.Text(TAtlasTextId.UnitRelationsCycle)));
+  Assert.IsTrue(string(FFrame.Info.Caption).StartsWith(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsRecompile, [4])));
+  Assert.IsTrue(string(FFrame.Info.Caption).EndsWith(TAtlasStrings.Text(TAtlasTextId.UnitRelationsCycle)));
   Assert.AreEqual('A - B - A', FFrame.Info.Hint);
   B := FFrame.FindEntry('B', True);
   Assert.IsNotNull(B);

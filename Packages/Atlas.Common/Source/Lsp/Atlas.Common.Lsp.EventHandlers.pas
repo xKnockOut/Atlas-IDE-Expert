@@ -61,6 +61,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Dfm.FormFiles,
@@ -97,7 +98,7 @@ begin
   FBodies.Add(LowerCase(AFileName), Result);
   if not (Assigned(FReadText) and FReadText(AFileName, Text)) then
     Exit;
-  Tree := TPascalParser.Parse(Text, nil);
+  Tree := TSyntaxTreeCache.Parse(Text, nil);
   try
     TEventHandlers.Bodies(Tree, Result);
   finally

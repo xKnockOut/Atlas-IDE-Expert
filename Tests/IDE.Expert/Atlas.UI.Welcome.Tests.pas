@@ -1932,7 +1932,7 @@ begin
   try
     Frame := ProjectsFrame(Host, Source);
     Frame.QuickActions := QuickSource;
-    Assert.AreEqual(6, Integer(Length(Frame.Quick.ButtonsOf(0))));
+    Assert.AreEqual(7, Integer(Length(Frame.Quick.ButtonsOf(0))), 'Vorgabe mit Aufgaben (#900)');
     // items ohne console: nur dieser Knopf fehlt.
     Quick.Items := TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder');
     Frame.UpdateContent;
@@ -3744,7 +3744,7 @@ begin
     Frame.Source := Source;
     Assert.AreEqual(0, Integer(Length(Frame.Quick.ButtonsOf(0))), 'ohne Quelle keine Knöpfe');
     Frame.QuickActions := QuickSource;
-    Assert.AreEqual(6, Integer(Length(Frame.Quick.ButtonsOf(1))));
+    Assert.AreEqual(7, Integer(Length(Frame.Quick.ButtonsOf(1))), 'Vorgabe mit Aufgaben (#900)');
     Assert.IsTrue(Frame.Quick.Sink.Visible, 'Tastatur auf „Zuletzt“');
     Fake.Calls := nil;
     // Ohne Maus: Pfeil ab, Strg+B baut die Gruppe, Pos1 und Enter setzen fort.

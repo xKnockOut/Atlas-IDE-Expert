@@ -84,7 +84,8 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
   Shell.CommandLine,
-  Shell.Linter;
+  Shell.Linter,
+  Shell.Workspace;
 
 const
   CleanUnit = 'unit Gut;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10;
@@ -126,6 +127,8 @@ begin
     TDirectory.Delete(FFolder, True);
   // Der Leckmonitor misst den Saldo von Setup und TearDown; Run merkt sich den Ordner in den Encoding-Vorgaben.
   TFileEncodingDefaults.Clear;
+  // Ebenso die Ordnerlisten der .pas-/.dcu-Dateien: je Testordner ein Eintrag (IndexKnowsTypesOfOtherUnits).
+  TShellWorkspace.ClearSharedListings;
   FFolder := '';
   FOutput := '';
 end;
@@ -251,9 +254,10 @@ begin
     '--architecture', Path('architektur.pdf')])));
   Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Path('Fehlt'),
     '--architecture', Report])));
+  // architecture gilt nur global (settings.json): in atlas.json am falschen Ort, gemeldet und ohne Wirkung.
   TFile.WriteAllText(Path('Src/atlas.json'), '{"architecture": {"enabled": false}}');
-  Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
-    '--architecture', Report])), 'ausgeschaltet: kein Bericht');
+  Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--architecture', Report])), 'atlas.json schaltet nicht ab');
 end;
 
 procedure TShellLinterTests.ArchitectureCompareFailsOnNewCycle;
@@ -371,14 +375,14 @@ const
     '<Config Condition="''$(Config)''==''''">Release</Config>' +
     '<Platform Condition="''$(Platform)''==''''">Win32</Platform></PropertyGroup>'#13#10 +
     '  <ItemGroup><DCCReference Include="T1.pas"/></ItemGroup>'#13#10'</Project>'#13#10;
-  Inline = 'unit T1;'#13#10'interface'#13#10'type'#13#10'  TA = class'#13#10 +
+  UnitText = 'unit T1;'#13#10'interface'#13#10'type'#13#10'  TA = class'#13#10 +
     '    F: {$IF CompilerVersion >= 36}Int64{$ELSE}Integer{$ENDIF};'#13#10'  end;'#13#10'implementation'#13#10 +
     '{$IF CompilerVersion >= 36}'#13#10'const A = 1;'#13#10'{$ELSE}'#13#10'const A = 2;'#13#10'{$IFEND}'#13#10 +
     'end.'#13#10;
 begin
   ForceDirectories(Path('Cv'));
   TFile.WriteAllText(Path('Cv/T.dproj'), Dproj);
-  TFile.WriteAllText(Path('Cv/T1.pas'), Inline);
+  TFile.WriteAllText(Path('Cv/T1.pas'), UnitText);
   Assert.AreEqual(0, Run(['--check', Path('Cv/T.dproj'), '--format', 'json', '--fail-on', 'never', '--no-index']));
   Assert.Contains(OutputText, 'T1.pas');
   Assert.IsFalse(Pos('"syntax"', OutputText) > 0, OutputText);

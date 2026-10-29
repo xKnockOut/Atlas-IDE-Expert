@@ -19,6 +19,9 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Einmalige VCL-Puffer (Baumansicht) vor dem Leckmonitor anlegen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -48,6 +51,16 @@ uses
   Atlas.UI.Debug.EvaluateFrame;
 
 { TAtlasDebugEvaluateFrameTests }
+
+procedure TAtlasDebugEvaluateFrameTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    TreeWithPlaceholderAndParts;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasDebugEvaluateFrameTests.Setup;
 begin

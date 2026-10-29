@@ -34,6 +34,12 @@ type
     procedure UsedByListsProjectUnits;
     [Test]
     procedure UnitsCarryOriginKindAndProjects;
+    /// <summary>#1310: Caption des Wurzelobjekts, entschlüsselt und fortgesetzt, nie die eines Kindes.</summary>
+    [Test]
+    procedure FormCaptionReadsRootOnly;
+    /// <summary>#1310: atlas.server.units liefert Captions nur auf Wunsch und nur für Formulare.</summary>
+    [Test]
+    procedure UnitsCarryFormCaptionsOnRequest;
     [Test]
     procedure PreviewWithoutOpening;
     [Test]
@@ -288,6 +294,68 @@ begin
     Assert.IsTrue(TJSONObject(Answer.GetValue<TJSONArray>('projects').Items[1]).GetValue<Boolean>('isTest'));
   finally
     Answer.Free;
+  end;
+end;
+
+procedure TUnitSearchTests.FormCaptionReadsRootOnly;
+begin
+  Assert.AreEqual('Kunden', TUnitSearch.FormCaption(FormText));
+  Assert.AreEqual('Kunden'#$E4'nderung', TUnitSearch.FormCaption(
+    'inherited Pflege: TPflege'#13#10'  Caption = ''Kunden''#228''nderung'''#13#10'end'));
+  // Lange Werte in Folgezeilen.
+  Assert.AreEqual('Stammdaten der Kunden', TUnitSearch.FormCaption(
+    'object F: TF'#13#10'  Caption ='#13#10'    ''Stammdaten '' +'#13#10'    ''der Kunden'''#13#10 +
+    '  Width = 10'#13#10'end'));
+  // Nur das Wurzelobjekt: Captions von Kindern und Collection-Einträgen zählen nicht.
+  Assert.AreEqual('', TUnitSearch.FormCaption(
+    'object F: TF'#13#10'  Columns = <'#13#10'    item'#13#10'      Caption = ''Spalte'''#13#10'    end>'#13#10 +
+    '  object B: TButton'#13#10'    Caption = ''OK'''#13#10'  end'#13#10'end'));
+  Assert.AreEqual('', TUnitSearch.FormCaption('object F: TF'#13#10'  CaptionX = ''Nein'''#13#10'end'));
+  Assert.AreEqual('', TUnitSearch.FormCaption('TPF0'#0#1'F'));
+  Assert.AreEqual('', TUnitSearch.FormCaption(''));
+end;
+
+procedure TUnitSearchTests.UnitsCarryFormCaptionsOnRequest;
+var
+  Search: TUnitSearch;
+  Shared: TUnitSearchContext;
+  Arguments: TJSONArray;
+  Answer: TJSONValue;
+  Units: TJSONArray;
+  Pass: Integer;
+begin
+  Shared := Context;
+  Search := TUnitSearch.Create(
+    function(out AContext: TUnitSearchContext): Boolean
+    begin
+      AContext := Shared;
+      Result := True;
+    end);
+  Arguments := TJSONArray.Create;
+  try
+    Answer := Search.ExecuteUnits(nil);
+    try
+      Units := TJSONObject(Answer).GetValue<TJSONArray>('units');
+      Assert.IsNull(Find(Units, 'Haupt').GetValue('caption'), 'ohne Wunsch keine Caption');
+    finally
+      Answer.Free;
+    end;
+    Arguments.Add(TJSONObject.Create(TJSONPair.Create('captions', TJSONBool.Create(True))));
+    // Zweiter Lauf aus dem Zwischenspeicher.
+    for Pass := 1 to 2 do
+    begin
+      Answer := Search.ExecuteUnits(Arguments);
+      try
+        Units := TJSONObject(Answer).GetValue<TJSONArray>('units');
+        Assert.AreEqual('Kunden', Find(Units, 'Haupt').GetValue<string>('caption'));
+        Assert.IsNull(Find(Units, 'Kunden').GetValue('caption'), 'keine Formular-Unit');
+      finally
+        Answer.Free;
+      end;
+    end;
+  finally
+    Arguments.Free;
+    Search.Free;
   end;
 end;
 

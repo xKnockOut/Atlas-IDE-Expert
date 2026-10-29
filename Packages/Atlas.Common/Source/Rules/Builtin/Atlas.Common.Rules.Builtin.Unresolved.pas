@@ -175,8 +175,18 @@ var
   Entry: TUsesListEntry;
   Name, InPath: string;
   AfterIn: Boolean;
+  IsPackage: Boolean;
 begin
   Result := nil;
+  // contains und requires gibt es nur in einer Package-Quelle (beginnt mit "package"). In einer Unit sind es
+  // Bezeichner, etwa Felder eines Records ("Requires: TArray<TPackageEntry>;" nach einem Semikolon).
+  IsPackage := False;
+  for Index := 0 to High(ATokens) do
+    if IsCode(ATokens[Index]) then
+    begin
+      IsPackage := SameText(ATokens[Index].Text, 'package');
+      Break;
+    end;
   Index := 0;
   Previous := -1;
   while Index <= High(ATokens) do
@@ -186,13 +196,13 @@ begin
       Inc(Index);
       Continue;
     end;
-    // uses überall; contains und requires nur am Anfang einer Anweisung (sonst ein Bezeichner).
+    // uses überall; contains und requires nur in Packages am Anfang einer Anweisung (sonst ein Bezeichner).
     if ATokens[Index].IsKeyword('uses') then
       Kind := TUsesListKind.UsedUnit
-    else if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and (Previous >= 0) and
+    else if IsPackage and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and (Previous >= 0) and
       ATokens[Previous].IsSymbol(';') and SameText(ATokens[Index].Text, 'contains') then
       Kind := TUsesListKind.ContainedUnit
-    else if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and (Previous >= 0) and
+    else if IsPackage and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and (Previous >= 0) and
       ATokens[Previous].IsSymbol(';') and SameText(ATokens[Index].Text, 'requires') then
       Kind := TUsesListKind.RequiredPackage
     else

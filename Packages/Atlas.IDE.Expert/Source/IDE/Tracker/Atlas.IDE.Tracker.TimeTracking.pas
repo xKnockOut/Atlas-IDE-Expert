@@ -668,7 +668,7 @@ begin
       mComment := TAtlasStrings.Fmt(TAtlasTextId.TimeBookComment, [TAtlasTrackerWorkflow.DurationText(AItem.Minutes)]);
       if AItem.Text <> '' then
         mComment := mComment + #10#10 + AItem.Text;
-      mOwner.FSync.Apply(mProvider, mTarget, mKey, TAtlasTrackerChange.CommentOnly(mComment), ADone);
+      mOwner.FSync.Apply(mProvider, mTarget, mKey, TAtlasTrackerWrite.CommentOnly(mComment), ADone);
     end;
 end;
 

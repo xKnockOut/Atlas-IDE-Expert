@@ -10,6 +10,7 @@
 - Jede Prüfregel und jede Kernfunktion bekommt DUnitX-Tests in `Tests/`; Zeitmessungen mit `[Category('Benchmark')]`. `pwsh Tools/Check-TestCoverage.ps1` prüft, dass jede Unit mit Logik eine Testunit hat und jede Testunit in `Atlas.Tests.dpr` steht.
 - Neue Einstellung: Schema `schemas/atlas.schema.json` (mit `x-page`, `x-control`, `x-issue`), Parser, Test; dann `pwsh Tools/Update-ConfigDoc.ps1` ausführen. Es erzeugt Konfiguration.md, Einstellungen.md und die Schema-Unit des Plugins und prüft den Parser.
 - Im IDE-Plugin nur über `TAtlasMainThread` in den Hauptthread einreihen, nie `TThread.Queue(nil, …)`/`ForceQueue(nil, …)` (sonst laufen Einträge nach dem Entladen in fremdem Speicher). `pwsh Tools/Check-MainThreadQueue.ps1` prüft das; Ausnahme je Zeile mit `// mainthread-ok` oder `// lsp-ignore: forbidden-symbol` (dieselben Verbote stehen als Regel `forbidden-symbol` in `atlas.json`).
+- Andockbare Fenster nur über `TAtlasIdeDockWindow`, Leisten im Editorfenster nur über `TAtlasEditorBarHost` (Steuerelemente mit Vorfahr `TAtlasEditorBar`). `pwsh Tools/Check-WindowHosts.ps1` prüft das.
 
 ## Mit Delphi bauen vor dem Merge
 
@@ -36,3 +37,10 @@
   - Referenzprojekt und Mutationen: `{$IFDEF WIN32}`/`WIN64`-Zweige sind unter Windows anders aktiv als unter Linux.
   - Anonyme Methode in einer lokalen Variablen, die andere anonyme Methoden derselben Routine einfangen: Der gemeinsame Rahmen hält sich selbst fest (Leck). Die Methodenreferenz in einer eigenen Routine bauen.
   - Zeilenenden CRLF.
+  - Ohne Fenster scheitern: `TTabSheet.PageControl := …` mit sichtbarem Reiter (erst `TabVisible := False`, in `CreateWnd` zeigen), `ClientWidth` einer `TScrollBox`, `ActivePage` im Konstruktor. Fehlermeldung „Element … hat kein übergeordnetes Fenster“.
+  - Listen und Bäume auf noch nicht gezeigten Reitern haben kein Fenster: `HandleNeeded` am Steuerelement, sobald die Seite eines hat, statt still nichts zu füllen.
+  - `CanFocus` prüft das Formular selbst nicht: vor `SetFocus` auch `Showing`.
+  - `TJSONValue.ToJSON` ohne Argument schreibt Umlaute als `ö`; lesbar mit `ToJSON([])`.
+  - `TPath.IsPathRooted`/`TPath.Combine` lehnen `*` und `?` ab (Masken): `ExtractFileDrive` bzw. `IncludeTrailingPathDelimiter`.
+  - Benannte Funktion `Inline`, `Padding` als Unit-Konstante in einer Komponente (verdeckt von `TControl.Padding`), `Winapi.Windows` nach `Vcl.Graphics` (verdeckt `TBitmap`).
+  - Tests: DUnitX `AreNotSame` vergleicht über `Equals` (`TGraphic` vergleicht Inhalt); `KeyDown` setzt `Key` auf 0, vor dem zweiten Aufruf neu setzen; Records mit Aufzählungsfeldern mit `Default(…)` anlegen.

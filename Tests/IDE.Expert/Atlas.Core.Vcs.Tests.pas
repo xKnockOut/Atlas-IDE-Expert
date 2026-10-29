@@ -2173,8 +2173,10 @@ begin
   Assert.IsTrue(History.ContentOf('57', Entries[0].Files[1], False, Content) = TAtlasVcsOutcome.Ok,
     'gelöscht: danach leer');
   Assert.AreEqual(5, Integer(Length(Runner.Calls)));
+  // Vorher merken: Das gescheiterte SearchLog leert Entries (out).
+  FileOf := Entries[0].Files[0];
   Assert.IsTrue(History.SearchLog('ATL-*', 50, Entries) = TAtlasVcsOutcome.Failed, 'Glob-Zeichen');
-  Assert.IsTrue(History.ContentOf('x', Entries[0].Files[0], True, Content) = TAtlasVcsOutcome.Failed);
+  Assert.IsTrue(History.ContentOf('x', FileOf, True, Content) = TAtlasVcsOutcome.Failed);
   Assert.AreEqual(5, Integer(Length(Runner.Calls)));
 
   Vcs := TAtlasNullVersionControl.Create(TAtlasVcsOutcome.Disabled);

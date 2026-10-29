@@ -446,7 +446,7 @@ begin
       if FList.Visible and (FList.Items.Count > 0) then
       begin
         Key := 0;
-        if FList.CanFocus then
+        if FList.CanFocus and FList.Showing then
           FList.SetFocus;
       end;
     VK_RETURN:

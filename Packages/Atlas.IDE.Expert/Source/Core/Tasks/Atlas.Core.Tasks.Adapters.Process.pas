@@ -164,7 +164,7 @@ begin
     Exit;
   end;
   ProgramPath := TAtlasTaskCommands.FindProgram(ATask.Command, ATask.Cwd, GetEnvironmentVariable('PATH'),
-    GetEnvironmentVariable('PATHEXT'), FileExistsProc);
+    GetEnvironmentVariable('PATHEXT'), FileExistsProc());
   if ProgramPath = '' then
   begin
     Result.Outcome := TAtlasTaskOutcome.ProgramMissing;

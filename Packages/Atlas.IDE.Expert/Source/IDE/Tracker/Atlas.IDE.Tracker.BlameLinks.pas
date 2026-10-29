@@ -270,7 +270,7 @@ begin
     end;
   Result.Messages := LoadMessages;
   Result.Suffix :=
-    function(const AMessage: string): string
+    function(AMessage: string): string
     var
       mTarget: TAtlasTrackerTarget;
       mPattern: TAtlasIssueKeyPattern;

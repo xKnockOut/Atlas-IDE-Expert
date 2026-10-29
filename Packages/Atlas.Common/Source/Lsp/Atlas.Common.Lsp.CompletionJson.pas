@@ -25,6 +25,7 @@ function NeedsData(const AItem: TCompletionItem): Boolean;
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Contract,

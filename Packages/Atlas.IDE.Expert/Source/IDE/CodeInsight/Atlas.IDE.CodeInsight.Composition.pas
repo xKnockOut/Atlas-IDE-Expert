@@ -35,6 +35,8 @@ uses
   System.IOUtils,
   System.Generics.Collections,
   System.UITypes,
+  Vcl.Controls,
+  Vcl.Forms,
   Vcl.Dialogs,
   ToolsAPI,
   Atlas.UI.Strings,
@@ -1520,6 +1522,15 @@ begin
             AProc(ProjectTasks);
           end);
     end;
+end;
+
+procedure ToggleDebugJustMyCode;
+begin
+  TAtlasIdeDebugOwnCode.ToggleSetting(
+    procedure(AText: string)
+    begin
+      MessageLine(AText);
+    end);
 end;
 
 procedure RegisterPalette;
@@ -3038,6 +3049,13 @@ begin
     begin
       MessageLine(AText);
     end;
+  Hooks.Recheck :=
+    procedure
+    begin
+      // Klick auf die Live-Prüfung (#1231); startet keinen Server.
+      if Manager <> nil then
+        Manager.RunServerCommandAsync('atlas.server.recheck', '[]', 10000, nil);
+    end;
   TAtlasIdeStatusBar.Install(Hooks);
   if StatusField <> nil then
     StatusField.RequestRefresh;
@@ -4034,15 +4052,6 @@ begin
         begin
           TAtlasIdeCompilerSwitches.ShowWindow;
         end);
-    end);
-end;
-
-procedure ToggleDebugJustMyCode;
-begin
-  TAtlasIdeDebugOwnCode.ToggleSetting(
-    procedure(AText: string)
-    begin
-      MessageLine(AText);
     end);
 end;
 
@@ -5826,6 +5835,156 @@ begin
     end);
 end;
 
+/// <summary>Stammt die Klasse von AObject aus diesem Package?</summary>
+function OwnClass(AObject: TObject): Boolean;
+begin
+  Result := (AObject <> nil) and (FindClassHInstance(AObject.ClassType) = HInstance);
+end;
+
+/// <summary>„TEditWindow EditWindow_0 › TPanel EditorPanel“: Owner- bzw. Elternkette für das Protokoll.</summary>
+function ChainOf(AComponent: TComponent): string;
+var
+  Item: TComponent;
+begin
+  Result := '';
+  Item := AComponent;
+  while Item <> nil do
+  begin
+    if Result <> '' then
+      Result := ' › ' + Result;
+    Result := Item.ClassName + ' ' + Item.Name + Result;
+    if Item.Owner <> nil then
+      Item := Item.Owner
+    else if (Item is TControl) and (TControl(Item).Parent <> nil) then
+      Item := TControl(Item).Parent
+    else
+      Item := nil;
+  end;
+end;
+
+/// <summary>Atlas-Komponenten, die nach dem Abbau noch einem Objekt der IDE gehören oder in einem ihrer Fenster
+/// liegen (#1233). Die IDE gibt sie erst nach dem Entladen frei und rief dabei Notification bzw. den Destruktor in
+/// nicht mehr geladenem Code auf (Zugriffsverletzung in TComponent.Notification beim Beenden). Nur die obersten:
+/// Ihre eigenen Kinder gehen mit ihnen.</summary>
+procedure CollectLeftovers(AComponent: TComponent; AFound: TList<TComponent>);
+var
+  Index: Integer;
+  Control: TWinControl;
+begin
+  for Index := 0 to AComponent.ComponentCount - 1 do
+    if OwnClass(AComponent.Components[Index]) then
+    begin
+      if not AFound.Contains(AComponent.Components[Index]) then
+        AFound.Add(AComponent.Components[Index]);
+    end
+    else
+      CollectLeftovers(AComponent.Components[Index], AFound);
+  if not (AComponent is TWinControl) then
+    Exit;
+  Control := TWinControl(AComponent);
+  for Index := 0 to Control.ControlCount - 1 do
+    if OwnClass(Control.Controls[Index]) then
+    begin
+      if not AFound.Contains(Control.Controls[Index]) then
+        AFound.Add(Control.Controls[Index]);
+    end
+    // Fremde Kinder ohne eigenen Owner-Baum hier (der kommt über Components).
+    else if (Control.Controls[Index] is TWinControl) and (Control.Controls[Index].Owner <> AComponent) then
+      CollectLeftovers(Control.Controls[Index], AFound);
+end;
+
+type
+  /// <summary>Streicht Funde, die beim Freigeben eines anderen Fundes mit frei werden.</summary>
+  TLeftoverTracker = class(TComponent)
+  public
+    Found: TList<TComponent>;
+  protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+  end;
+
+procedure TLeftoverTracker.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (Found <> nil) then
+    Found.Remove(AComponent);
+end;
+
+/// <summary>Modul einer Klasse ('' = unbekannt), für das Protokoll.</summary>
+function ModuleOf(AClass: TClass): string;
+var
+  Buffer: array[0..MAX_PATH] of Char;
+begin
+  Result := '';
+  if GetModuleFileName(FindClassHInstance(AClass), Buffer, MAX_PATH) > 0 then
+    Result := ExtractFileName(Buffer);
+end;
+
+/// <summary>Komponenten der Editorfenster mit Modul ihrer Klasse ins Protokoll (#1233): Beim Beenden ruft die IDE
+/// Notification einer Komponente eines Editorfensters auf, deren Code schon entladen ist.</summary>
+procedure LogEditorComponents;
+var
+  FormIndex, Index: Integer;
+  Form: TCustomForm;
+  Module: string;
+begin
+  for FormIndex := 0 to Screen.FormCount - 1 do
+  begin
+    Form := Screen.Forms[FormIndex];
+    if not SameText(Form.ClassName, 'TEditWindow') then
+      Continue;
+    for Index := 0 to Form.ComponentCount - 1 do
+    begin
+      Module := ModuleOf(Form.Components[Index].ClassType);
+      // Nur, was nicht aus der IDE selbst stammt.
+      if not (StartsText('coreide', Module) or StartsText('vcl', Module) or StartsText('rtl', Module) or
+        SameText(Module, 'bds.exe')) then
+        TAtlasGuard.Log(Format('Beim Entladen in %s: %s "%s" aus %s', [Form.Name,
+          Form.Components[Index].ClassName, Form.Components[Index].Name, Module]));
+    end;
+  end;
+end;
+
+procedure FreeLeftovers;
+var
+  Tracker: TLeftoverTracker;
+  Item: TComponent;
+  Index: Integer;
+begin
+  LogEditorComponents;
+  Tracker := TLeftoverTracker.Create(nil);
+  try
+    Tracker.Found := TList<TComponent>.Create;
+    for Index := 0 to Screen.FormCount - 1 do
+      if OwnClass(Screen.Forms[Index]) then
+        Tracker.Found.Add(Screen.Forms[Index])
+      else
+        CollectLeftovers(Screen.Forms[Index], Tracker.Found);
+    for Index := 0 to Screen.DataModuleCount - 1 do
+      if not OwnClass(Screen.DataModules[Index]) then
+        CollectLeftovers(Screen.DataModules[Index], Tracker.Found);
+    CollectLeftovers(Application, Tracker.Found);
+    for Item in Tracker.Found do
+      Item.FreeNotification(Tracker);
+    while Tracker.Found.Count > 0 do
+    begin
+      Item := Tracker.Found.Last;
+      TAtlasGuard.Log('Atlas-Komponente nach dem Abbau noch vorhanden, wird freigegeben: ' + ChainOf(Item));
+      try
+        Item.Free;
+      except
+        on E: Exception do
+          TAtlasGuard.Log('Freigeben fehlgeschlagen: ' + E.ClassName);
+      end;
+      // Ohne Benachrichtigung (Ausnahme im Destruktor) nicht endlos.
+      Tracker.Found.Remove(Item);
+    end;
+  finally
+    Tracker.Found.Free;
+    Tracker.Found := nil;
+    Tracker.Free;
+  end;
+end;
+
 procedure Unregister;
 var
   StartedAt: UInt64;
@@ -5953,6 +6112,12 @@ begin
       procedure
       begin
         TAtlasIdeStackCapture.Uninstall;
+      end);
+    // Zuletzt (#1233): Was jetzt noch an der IDE hängt, gäbe die IDE nach dem Entladen frei.
+    Teardown.Step('Leftovers',
+      procedure
+      begin
+        FreeLeftovers;
       end);
   finally
     TAtlasGuard.Log(Format('Atlas entladen in %d ms; Hintergrund-Threads beendet: %s; Fehler beim Abbau: %s',

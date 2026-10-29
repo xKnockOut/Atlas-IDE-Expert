@@ -445,7 +445,7 @@ begin
     FDraftRestored := False;
     ShowDraftNote('', '');
   end;
-  if FMemo.CanFocus then
+  if FMemo.CanFocus and FMemo.Showing then
     FMemo.SetFocus;
 end;
 
@@ -712,7 +712,7 @@ begin
   if FList = nil then
     Exit;
   Accept(FList.ItemIndex);
-  if FMemo.CanFocus then
+  if FMemo.CanFocus and FMemo.Showing then
     FMemo.SetFocus;
 end;
 
@@ -809,7 +809,7 @@ begin
   mText := TAtlasCommentEditing.Insert(FMemo.Text, FMemo.SelStart, FMemo.SelLength,
     TAtlasCommentSnippets.Expand(MemoText(AText), AValues), mCaret);
   ApplyEdit(mText, mCaret, 0);
-  if FMemo.CanFocus then
+  if FMemo.CanFocus and FMemo.Showing then
     FMemo.SetFocus;
 end;
 
@@ -885,7 +885,7 @@ begin
   else
   begin
     FPreviewButton.Caption := TAtlasStrings.Text(TAtlasTextId.CommentEditorPreview);
-    if FMemo.CanFocus then
+    if FMemo.CanFocus and FMemo.Showing then
       FMemo.SetFocus;
   end;
 end;

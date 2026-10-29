@@ -107,6 +107,7 @@ type
 implementation
 
 uses
+  System.UITypes,
   Winapi.Windows,
   Vcl.Themes,
   Atlas.Core.Style.Color,

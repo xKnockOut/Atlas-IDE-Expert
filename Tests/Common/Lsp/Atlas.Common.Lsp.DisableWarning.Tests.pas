@@ -30,6 +30,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.JsonRpc.Contract,

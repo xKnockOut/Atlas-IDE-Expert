@@ -238,6 +238,8 @@ uses
   Vcl.Clipbrd,
   Vcl.Themes,
   Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
+  Atlas.Core.Style.Signal,
   Atlas.Core.Problems.Colors,
   Atlas.UI.Strings,
   Atlas.UI.Problems.KindIcon;
@@ -494,33 +496,32 @@ var
   Kind: TAtlasFindingKind;
   Bitmap: TBitmap;
   Size, Pass: Integer;
-  mColor, Mark, WarningMark: TColor;
+  mSignals: TAtlasSignals;
+  mSignal: TAtlasSignal;
 begin
   // Zuerst die drei Arten, dahinter dieselben Formen ausgegraut für nicht geöffnete Units (#1108): aufgehellt bzw.
   // abgedunkelt zur Fläche der Liste, damit Fehler weiter von Warnungen unterscheidbar bleiben.
   FImagesBack := ListBack;
   FImages.Clear;
   Size := FImages.Width;
+  // Signalfarben der Liste (#1255): hell kräftig mit dunklem Rand, dunkel hell mit dunklem Zeichen.
+  mSignals := TAtlasColors.ForBackground(TAtlasColor(FImagesBack)).Signals;
   for Pass := 0 to 1 do
     for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
     begin
-      mColor := TAtlasFindingIcon.KindColor(Kind);
-      Mark := clWhite;
+      mSignal := mSignals.Get(TAtlasFindingIcon.SignalOf(Kind));
       if Pass = 1 then
       begin
-        mColor := TColor(DimmedIconColor(TAtlasColor(mColor), TAtlasColor(FImagesBack)));
-        Mark := TColor(DimmedIconColor(TAtlasColor(clWhite), TAtlasColor(FImagesBack)));
+        mSignal.Fill := DimmedIconColor(mSignal.Fill, TAtlasColor(FImagesBack));
+        mSignal.Ring := DimmedIconColor(mSignal.Ring, TAtlasColor(FImagesBack));
+        mSignal.Mark := DimmedIconColor(mSignal.Mark, TAtlasColor(FImagesBack));
       end;
       Bitmap := TBitmap.Create;
       try
         Bitmap.SetSize(Size, Size);
         Bitmap.Canvas.Brush.Color := clFuchsia;
         Bitmap.Canvas.FillRect(Rect(0, 0, Size, Size));
-        // Schwarzes Ausrufezeichen auf dem Dreieck, ausgegraut wie die Fläche.
-        WarningMark := clBlack;
-        if Pass = 1 then
-          WarningMark := TColor(DimmedIconColor(TAtlasColor(clBlack), TAtlasColor(FImagesBack)));
-        TAtlasFindingIcon.Draw(Bitmap.Canvas, Rect(0, 0, Size, Size), Kind, mColor, Mark, WarningMark);
+        TAtlasFindingIcon.Draw(Bitmap.Canvas, Rect(0, 0, Size, Size), Kind, mSignal);
         FImages.AddMasked(Bitmap, clFuchsia);
       finally
         Bitmap.Free;

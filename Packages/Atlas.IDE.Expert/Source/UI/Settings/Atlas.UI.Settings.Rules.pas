@@ -22,9 +22,12 @@
 interface
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   System.JSON,
+  System.Math,
+  System.UITypes,
   Vcl.Controls,
   Vcl.Graphics,
   Vcl.StdCtrls,
@@ -78,10 +81,15 @@ type
     FGoodLabel: TLabel;
     FGood: TMemo;
     FNextTop: Integer;
+    /// <summary>Alle über Stack gestapelten Steuerelemente in Aufbaureihenfolge (#1296).</summary>
+    FStacked: TArray<TControl>;
     function AddLabel(AParent: TWinControl; const ACaption: string): TLabel;
     function AddMemo(AParent: TWinControl): TMemo;
+    /// <summary>Höhe nach Zeilenzahl, damit das Beispiel ganz zu sehen ist.</summary>
+    procedure FitMemo(AMemo: TMemo);
     /// <summary>AControl oben in AParent unter die bisherigen (alTop ordnet nach Top).</summary>
     procedure Stack(AParent: TWinControl; AControl: TControl);
+    procedure Restack;
     function Group: string;
     function RowOf(const AId: string): Integer;
     function SelectedRow: Integer;
@@ -142,6 +150,8 @@ type
     property RulesJson: string read FRulesJson;
     property Rows: TArray<TAtlasRuleRow> read FRows;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    /// <summary>Höhe oder Breite geändert; die Höhe folgt dem Inhalt der markierten Regel (#1296).</summary>
+    property OnResize;
     property Search: TEdit read FSearch;
     property GroupChoice: TComboBox read FGroupChoice;
     property Master: TCheckBox read FMaster;
@@ -157,6 +167,10 @@ type
     property ExcludeEdit: TEdit read FExclude;
     property OptionControls: TArray<TControl> read FOptionControls;
     property InvalidLabel: TLabel read FInvalid;
+    property OptionsTitleLabel: TLabel read FOptionsTitle;
+    property OptionsBox: TAtlasRulesBox read FOptionsBox;
+    property BadLabel: TLabel read FBadLabel;
+    property GoodLabel: TLabel read FGoodLabel;
     property BadMemo: TMemo read FBad;
     property GoodMemo: TMemo read FGood;
   end;
@@ -172,6 +186,8 @@ uses
 const
   Gap = 6;
   ListHeight = 230;
+  /// <summary>Höhe der Beispiel-Memos bei kurzen Beispielen.</summary>
+  MinMemoHeight = 72;
   /// <summary>Auswahl des Schweregrads; Eintrag 0 ist die Vorgabe.</summary>
   SeverityValues: array[0..5] of string = ('', 'error', 'warning', 'info', 'hint', 'off');
   GroupTexts: array[0..13] of TAtlasTextId = (TAtlasTextId.RulesGroupFindBugs, TAtlasTextId.RulesGroupExceptions,
@@ -334,11 +350,31 @@ function TAtlasRulesEditor.AddMemo(AParent: TWinControl): TMemo;
 begin
   Result := TMemo.Create(Self);
   Result.ReadOnly := True;
-  Result.ScrollBars := ssBoth;
+  Result.ScrollBars := ssHorizontal;
   Result.WordWrap := False;
   Result.Font.Name := 'Consolas';
-  Result.Height := 72;
+  Result.Height := MinMemoHeight;
   Stack(AParent, Result);
+end;
+
+procedure TAtlasRulesEditor.FitMemo(AMemo: TMemo);
+const
+  MaxLines = 20;
+var
+  Lines, LineHeight: Integer;
+  Bars: System.UITypes.TScrollStyle;
+begin
+  // Das ganze Beispiel zeigen statt vier Zeilen mit Rollbalken; sehr lange Beispiele bleiben rollbar.
+  Lines := EnsureRange(AMemo.Lines.Count, 1, MaxLines);
+  LineHeight := MulDiv(Abs(AMemo.Font.Height), 5, 4);
+  Bars := ssHorizontal;
+  if AMemo.Lines.Count > MaxLines then
+    Bars := ssBoth;
+  // Nur bei Änderung: ScrollBars legt das Fenster des Memos neu an.
+  if AMemo.ScrollBars <> Bars then
+    AMemo.ScrollBars := Bars;
+  // Nie kleiner als bisher: Kurze Beispiele behalten ihre gewohnte Höhe.
+  AMemo.Height := Max(MinMemoHeight, Lines * LineHeight + GetSystemMetrics(SM_CYHSCROLL) + 8);
 end;
 
 procedure TAtlasRulesEditor.Stack(AParent: TWinControl; AControl: TControl);
@@ -349,6 +385,36 @@ begin
   AControl.Align := alTop;
   AControl.AlignWithMargins := True;
   AControl.Top := FNextTop;
+  FStacked := FStacked + [AControl];
+end;
+
+procedure TAtlasRulesEditor.Restack;
+var
+  Control: TControl;
+  Next: Integer;
+begin
+  // alTop ordnet nach Top. Ausgeblendete Steuerelemente behalten ihr Top aus dem Aufbau, das größer ist als das
+  // der inzwischen ausgerichteten Geschwister; eingeblendet rutschten sie ans Ende (#1296). Darum alle in
+  // Aufbaureihenfolge neu durchnummerieren, jedes hinter alle bisherigen. In Einerschritten: Mit 1000er-Schritten
+  // kamen die Memos über 32767, dort kappt Windows ihre Koordinaten (die Beschriftungen ohne Fenster nicht), und
+  // „Falsch“/„Richtig“ standen unter statt über ihrem Memo.
+  Next := FNextTop;
+  DisableAlign;
+  FDetails.DisableAlign;
+  try
+    for Control in FStacked do
+    begin
+      Inc(Next);
+      Control.Top := Next;
+    end;
+  finally
+    FDetails.EnableAlign;
+    EnableAlign;
+  end;
+  // Höhe ausdrücklich nachziehen: Nach DisableAlign/EnableAlign rechnet AutoSize sie nicht neu, der Editor
+  // behielt seine alte Höhe und überdeckte die Felder darunter (DialogRuleEditorPushesFieldsDown).
+  TAtlasRulesBox(FDetails).AdjustSize;
+  AdjustSize;
 end;
 
 function TAtlasRulesEditor.CanAutoSize(var NewWidth, NewHeight: Integer): Boolean;
@@ -400,6 +466,7 @@ begin
   FLoaded := False;
   FStatus.Caption := TAtlasStrings.Text(TAtlasTextId.RulesLoading);
   FStatus.Visible := True;
+  Restack;
 end;
 
 function TAtlasRulesEditor.Group: string;
@@ -663,6 +730,8 @@ begin
       BuildOptions(Row);
       FBad.Lines.Text := Row.Bad;
       FGood.Lines.Text := Row.Good;
+      FitMemo(FBad);
+      FitMemo(FGood);
     end;
     FBadLabel.Visible := Present and (Row.Bad <> '');
     FBad.Visible := FBadLabel.Visible;
@@ -672,6 +741,7 @@ begin
   finally
     FFilling := False;
   end;
+  Restack;
   UpdateEnabled;
 end;
 
@@ -970,10 +1040,18 @@ begin
   if not TAtlasRuleTable.OptionJson(Option.Kind, mText, Json) then
   begin
     FInvalid.Caption := TAtlasStrings.Fmt(TAtlasTextId.RulesOptionInvalid, [Option.Name]);
-    FInvalid.Visible := True;
+    if not FInvalid.Visible then
+    begin
+      FInvalid.Visible := True;
+      Restack;
+    end;
     Exit;
   end;
-  FInvalid.Visible := False;
+  if FInvalid.Visible then
+  begin
+    FInvalid.Visible := False;
+    Restack;
+  end;
   // Gleich der Vorgabe: Option entfernen.
   if Json = Option.DefaultJson then
     Json := '';

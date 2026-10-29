@@ -76,7 +76,7 @@ begin
   try
     mScaled := TAtlasAttachImages.Scaled(mSource, 1920);
     try
-      Assert.AreNotSame(mSource, mScaled, 'immer eine Kopie');
+      Assert.IsTrue(Pointer(mSource) <> Pointer(mScaled), 'immer eine Kopie');
       Assert.AreEqual(800, mScaled.Width);
       Assert.AreEqual(600, mScaled.Height);
     finally

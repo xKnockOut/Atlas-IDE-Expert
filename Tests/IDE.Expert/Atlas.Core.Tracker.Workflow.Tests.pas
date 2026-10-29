@@ -384,7 +384,7 @@ end;
 procedure TAtlasTrackerWorkflowTests.StartChangeOnlyWithSyncState;
 var
   mOptions: TAtlasTrackerSyncOptions;
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
 begin
   mOptions := Options('');
   Assert.IsTrue(mOptions.HasStartWork);
@@ -403,7 +403,7 @@ end;
 
 procedure TAtlasTrackerWorkflowTests.EndChangeStateCommentAndHandOver;
 var
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
 begin
   mChange := TAtlasTrackerWorkflow.EndChange(Options('Erledigt'), 'Erledigt', ' Fertig ', True, ' anna ');
   Assert.AreEqual('Erledigt', mChange.State);
@@ -464,14 +464,14 @@ end;
 
 procedure TAtlasTrackerWriterTests.YouTrackCommandWithBraces;
 var
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
 begin
   Assert.AreEqual('Erledigt', TAtlasYouTrackTracker.CommandWord('Erledigt'));
   Assert.AreEqual('Geprüft', TAtlasYouTrackTracker.CommandWord(' Geprüft '), 'Umlaute ohne Klammern');
   Assert.AreEqual('{In Arbeit}', TAtlasYouTrackTracker.CommandWord('In Arbeit'));
   Assert.AreEqual('{Won''t fix}', TAtlasYouTrackTracker.CommandWord('Won''t fix'));
   Assert.AreEqual('{a b}', TAtlasYouTrackTracker.CommandWord('a {b}'), 'Klammern im Namen entfallen');
-  mChange := TAtlasTrackerChange.Empty;
+  mChange := TAtlasTrackerWrite.Empty;
   mChange.StateField := 'Status';
   mChange.State := 'In Arbeit';
   mChange.Assign := TAtlasTrackerAssign.Me;
@@ -480,7 +480,7 @@ begin
   mChange.Assign := TAtlasTrackerAssign.User;
   mChange.Assignee := 'anna.m';
   Assert.AreEqual('Status {In Arbeit} {Zuständige Person} anna.m', TAtlasYouTrackTracker.CommandQuery(mChange));
-  mChange := TAtlasTrackerChange.CommentOnly('Nur Text');
+  mChange := TAtlasTrackerWrite.CommentOnly('Nur Text');
   Assert.AreEqual('', TAtlasYouTrackTracker.CommandQuery(mChange), 'nur Kommentar: kein Befehl');
 end;
 
@@ -509,7 +509,7 @@ var
   mTransport: TFakeSendTransport;
   mKeep: IAtlasCiTransport;
   mWriter: IAtlasTrackerWriter;
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
   mResult: TAtlasTrackerWriteResult;
 begin
   mWriter := TAtlasYouTrackTracker.Create;
@@ -517,7 +517,7 @@ begin
   mKeep := mTransport;
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/commands', 200, '{}');
   mTransport.Answer('POST', 'https://yt.beispiel.de/api/issues/ATL-123/comments', 200, '{"id":"1"}');
-  mChange := TAtlasTrackerChange.Empty;
+  mChange := TAtlasTrackerWrite.Empty;
   mChange.State := 'In Arbeit';
   mChange.Comment := 'Beginne';
   mResult := mWriter.Apply(YouTrackTarget, mKeep, 'ATL-123', mChange, 5000);
@@ -526,15 +526,15 @@ begin
   Assert.AreEqual('POST https://yt.beispiel.de/api/commands', mTransport.Calls[0]);
   Assert.AreEqual('State {In Arbeit}', JsonText(mTransport.Bodies[0], 'query'));
   Assert.AreEqual('Beginne', JsonText(mTransport.Bodies[0], 'comment'));
-  mResult := mWriter.Apply(YouTrackTarget, mKeep, 'ATL-123', TAtlasTrackerChange.CommentOnly('Nur Text'), 5000);
+  mResult := mWriter.Apply(YouTrackTarget, mKeep, 'ATL-123', TAtlasTrackerWrite.CommentOnly('Nur Text'), 5000);
   Assert.IsTrue(mResult.Succeeded);
   Assert.AreEqual('POST https://yt.beispiel.de/api/issues/ATL-123/comments?fields=id', mTransport.Calls[1]);
   Assert.AreEqual('Nur Text', JsonText(mTransport.Bodies[1], 'text'));
   // Nichts zu tun: kein Aufruf.
-  Assert.IsTrue(mWriter.Apply(YouTrackTarget, mKeep, 'ATL-123', TAtlasTrackerChange.Empty, 5000).Succeeded);
+  Assert.IsTrue(mWriter.Apply(YouTrackTarget, mKeep, 'ATL-123', TAtlasTrackerWrite.Empty, 5000).Succeeded);
   Assert.AreEqual(2, Integer(Length(mTransport.Calls)));
   // Ungültige Kennung: nichts senden.
-  Assert.IsFalse(mWriter.Apply(YouTrackTarget, mKeep, 'ATL 1/../x', TAtlasTrackerChange.CommentOnly('x'),
+  Assert.IsFalse(mWriter.Apply(YouTrackTarget, mKeep, 'ATL 1/../x', TAtlasTrackerWrite.CommentOnly('x'),
     5000).Succeeded);
   Assert.AreEqual(2, Integer(Length(mTransport.Calls)));
 end;
@@ -577,10 +577,10 @@ var
   mKeep: IAtlasCiTransport;
   mWriter: IAtlasTrackerWriter;
   mResult: TAtlasTrackerWriteResult;
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
 begin
   mWriter := TAtlasYouTrackTracker.Create;
-  mChange := TAtlasTrackerChange.Empty;
+  mChange := TAtlasTrackerWrite.Empty;
   mChange.State := 'Erledigt';
   mTransport := TFakeSendTransport.Create;
   mKeep := mTransport;
@@ -607,14 +607,14 @@ end;
 
 procedure TAtlasTrackerWriterTests.GitHubPatchJson;
 var
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
   mJson: string;
 begin
   Assert.IsTrue(TAtlasGitHubTracker.ClosesIssue('Erledigt'));
   Assert.IsTrue(TAtlasGitHubTracker.ClosesIssue('done'));
   Assert.IsFalse(TAtlasGitHubTracker.ClosesIssue('Zur Prüfung'));
   // Beginnen: Label dazu, mich als Zuständigen dazu.
-  mChange := TAtlasTrackerChange.Empty;
+  mChange := TAtlasTrackerWrite.Empty;
   mChange.State := 'in arbeit';
   mChange.Assign := TAtlasTrackerAssign.Me;
   mJson := TAtlasGitHubTracker.PatchJson(TArray<string>.Create('bug'), TArray<string>.Create('bert'), mChange, 'anna');
@@ -625,7 +625,7 @@ begin
   Assert.AreEqual('', TAtlasGitHubTracker.PatchJson(TArray<string>.Create('in arbeit'), TArray<string>.Create('anna'),
     mChange, 'anna'));
   // Beenden: Label aus „Beginnen“ weg, „Erledigt“ schließt (ohne Label), übergeben ersetzt die Zuständigen.
-  mChange := TAtlasTrackerChange.Empty;
+  mChange := TAtlasTrackerWrite.Empty;
   mChange.State := 'Erledigt';
   mChange.PreviousState := 'in arbeit';
   mChange.Assign := TAtlasTrackerAssign.User;
@@ -643,7 +643,7 @@ var
   mTransport: TFakeSendTransport;
   mKeep: IAtlasCiTransport;
   mWriter: IAtlasTrackerWriter;
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
 begin
   mWriter := TAtlasGitHubTracker.Create;
   mTransport := TFakeSendTransport.Create;
@@ -653,7 +653,7 @@ begin
   mTransport.Answer('GET', 'https://api.github.com/repos/beispiel/atlas/issues/7', 200,
     '{"number":7,"labels":[{"name":"bug"}],"assignees":[]}');
   mTransport.Answer('PATCH', 'https://api.github.com/repos/beispiel/atlas/issues/7', 200, '{"number":7}');
-  mChange := TAtlasTrackerChange.Empty;
+  mChange := TAtlasTrackerWrite.Empty;
   mChange.State := 'In Arbeit';
   mChange.Assign := TAtlasTrackerAssign.Me;
   mChange.Comment := 'Beginne';
@@ -669,7 +669,7 @@ begin
   Assert.AreEqual('["anna"]', JsonText(mTransport.Bodies[1], 'assignees'));
   // Nur ein Kommentar: kein GET und kein PATCH.
   mTransport.Calls := nil;
-  Assert.IsTrue(mWriter.Apply(GitHubTarget, mKeep, '#7', TAtlasTrackerChange.CommentOnly('Hallo'), 5000).Succeeded);
+  Assert.IsTrue(mWriter.Apply(GitHubTarget, mKeep, '#7', TAtlasTrackerWrite.CommentOnly('Hallo'), 5000).Succeeded);
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)));
   mTransport.Calls := nil;
   mTransport.Bodies := nil;
@@ -680,7 +680,7 @@ var
   mTransport: TFakeSendTransport;
   mKeep: IAtlasCiTransport;
   mWriter: IAtlasTrackerWriter;
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
   mResult: TAtlasTrackerWriteResult;
 begin
   mWriter := TAtlasGitHubTracker.Create;
@@ -688,7 +688,7 @@ begin
   mKeep := mTransport;
   mTransport.Answer('POST', 'https://api.github.com/repos/beispiel/atlas/issues/7/comments', 403,
     '{"message":"Must have admin rights to Repository."}');
-  mChange := TAtlasTrackerChange.Empty;
+  mChange := TAtlasTrackerWrite.Empty;
   mChange.State := 'Erledigt';
   mChange.Comment := 'Fertig';
   mResult := mWriter.Apply(GitHubTarget, mKeep, '#7', mChange, 5000);
@@ -699,9 +699,9 @@ begin
   // 404 beim Lesen des Issues.
   mTransport := TFakeSendTransport.Create;
   mKeep := mTransport;
-  mResult := mWriter.Apply(GitHubTarget, mKeep, '#8', TAtlasTrackerChange.Empty, 5000);
+  mResult := mWriter.Apply(GitHubTarget, mKeep, '#8', TAtlasTrackerWrite.Empty, 5000);
   Assert.IsTrue(mResult.Succeeded, 'nichts zu tun');
-  mChange := TAtlasTrackerChange.Empty;
+  mChange := TAtlasTrackerWrite.Empty;
   mChange.State := 'Zur Prüfung';
   mResult := mWriter.Apply(GitHubTarget, mKeep, '#8', mChange, 5000);
   Assert.AreEqual(Ord(TAtlasCiFetchError.NotFound), Ord(mResult.Error));
@@ -760,10 +760,10 @@ begin
   // Ein Transport ohne IAtlasCiSend (kein Token für das Schreiben): nichts geschrieben, Grund „nicht eingerichtet“.
   mKeep := TFakeGetTransport.Create;
   mResult := (TAtlasYouTrackTracker.Create as IAtlasTrackerWriter).Apply(YouTrackTarget, mKeep, 'ATL-1',
-    TAtlasTrackerChange.CommentOnly('x'), 5000);
+    TAtlasTrackerWrite.CommentOnly('x'), 5000);
   Assert.AreEqual(Ord(TAtlasCiFetchError.NotConfigured), Ord(mResult.Error));
   mResult := (TAtlasGitHubTracker.Create as IAtlasTrackerWriter).Apply(GitHubTarget, mKeep, '#1',
-    TAtlasTrackerChange.CommentOnly('x'), 5000);
+    TAtlasTrackerWrite.CommentOnly('x'), 5000);
   Assert.AreEqual(Ord(TAtlasCiFetchError.NotConfigured), Ord(mResult.Error));
 end;
 

@@ -403,7 +403,8 @@ begin
     Settings.InferredTypes := False;
     Settings.EndMarkers := False;
     Settings.ControlChars := False;
-    Assert.IsFalse(Settings.MethodWithoutSelf);
+    // Vorgabe ist an (refactoring.methodKindMarker); hier erst ohne.
+    Settings.MethodWithoutSelf := False;
     Assert.AreEqual('', Describe(TLspInlayHints.Collect(FResolver, FIndex, Tree, Source, 'R.pas', WholeFile,
       Settings, nil)));
     Settings.MethodWithoutSelf := True;

@@ -67,13 +67,13 @@ type
     /// <summary>Art aus wc-status item und props; False für Einträge ohne Änderung.</summary>
     class function KindOf(const AItem, AProps: string; out AKind: TAtlasVcsChangeKind): Boolean; static;
     /// <summary>Ausgabe von "svn log --xml" (#1275): Revision, Autor, Zeit und Nachricht, ohne Patch.</summary>
-    class function ParseLog(const AText: string): TArray<TAtlasVcsLineCommit>; static;
+    class function ParseLog(const AText: string): TArray<TAtlasVcsLineCommit>; overload; static;
     /// <summary>Ausgabe von "svn log --diff" (#1275): je Revision ihr Unterschied, in der Reihenfolge der Ausgabe.
     /// Löst EAtlasVcsParse aus, wenn ein Kopf fehlt.</summary>
     class function ParseLogDiff(const AText: string): TArray<TAtlasSvnLogDiff>; static;
     /// <summary>Ausgabe von "svn log --xml -v"; ARelativeUrl: Pfad der Arbeitskopie im Repository (ohne "^/"),
     /// ARoot ihre Wurzel. Dateien außerhalb der Arbeitskopie behalten nur RepositoryPath.</summary>
-    class function ParseLog(const AText, ARoot, ARelativeUrl: string): TArray<TAtlasVcsLogEntry>; static;
+    class function ParseLog(const AText, ARoot, ARelativeUrl: string): TArray<TAtlasVcsLogEntry>; overload; static;
     /// <summary>Ausgabe von "svn list --xml": Einträge mit Name und letztem Commit; ACurrent ist der Branch der
     /// Arbeitskopie (wie BranchOf, z. B. "branches/x").</summary>
     class function ParseList(const AText, ACurrent: string): TArray<TAtlasVcsRef>; static;

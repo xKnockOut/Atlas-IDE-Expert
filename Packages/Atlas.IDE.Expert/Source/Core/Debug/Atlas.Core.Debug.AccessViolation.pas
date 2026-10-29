@@ -593,7 +593,6 @@ begin
     ARequest := FPending;
     Exit(True);
   end;
-  Result := False;
   while FPhase <> TPhase.Done do
     case FPhase of
       TPhase.Links:

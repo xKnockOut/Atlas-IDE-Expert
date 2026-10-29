@@ -1003,7 +1003,6 @@ begin
   // Lücken zwischen zugeordneten Einträgen: der Reihe nach, Rest einfügen bzw. entfernen.
   PreviousName := -1;
   PreviousEntry := -1;
-  Entry := 0;
   while PreviousEntry < Count do
   begin
     NextEntry := PreviousEntry + 1;

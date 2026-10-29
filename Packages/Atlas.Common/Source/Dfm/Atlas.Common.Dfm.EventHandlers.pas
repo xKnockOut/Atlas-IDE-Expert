@@ -89,6 +89,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.TreeCache,
   System.StrUtils,
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.FormModel,
@@ -290,7 +291,7 @@ begin
   if (Length(AForms) = 0) and not MayAssignHandlers(AUnitText) then
     Exit;
   Bodies := TDictionary<string, TEventHandlerBody>.Create;
-  Tree := TPascalParser.Parse(AUnitText, nil);
+  Tree := TSyntaxTreeCache.Parse(AUnitText, nil);
   try
     TEventHandlers.Bodies(Tree, Bodies);
     for Form in AForms do

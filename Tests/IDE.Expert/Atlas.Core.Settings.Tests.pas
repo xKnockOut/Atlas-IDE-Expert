@@ -1204,6 +1204,30 @@ begin
   Assert.IsFalse(Loaded.IssuesBlameLinks);
   Assert.AreEqual(75, Loaded.IssuesBlameMaxRevisions);
   Assert.IsFalse(Loaded.IssuesPaletteSearch);
+  Assert.IsFalse(Loaded.IssuesPreviewChecklists);
+  Assert.IsFalse(Loaded.IssuesChecklistStatus);
+  Assert.IsFalse(Loaded.IssuesPreviewLinks);
+  Assert.IsFalse(Loaded.IssuesWarnBlocked);
+  Assert.IsFalse(Loaded.IssuesBoard);
+  Assert.IsFalse(Loaded.IssuesBoardConfirmMove);
+  Assert.IsFalse(Loaded.IssuesBoardOnlyMine);
+  Assert.IsFalse(Loaded.WelcomePageSprint);
+  Assert.IsFalse(Loaded.IssuesSprintBurndown);
+  Assert.IsFalse(Loaded.IssuesSprintCompare);
+  Assert.IsFalse(Loaded.IssuesPreviewDevelopment);
+  Assert.IsTrue(Loaded.IssuesNotify);
+  Assert.AreEqual(5, Loaded.IssuesNotifyIntervalMinutes);
+  Assert.AreEqual('assigned', Loaded.IssuesNotifyScope);
+  Assert.IsFalse(Loaded.IssuesAttach);
+  Assert.AreEqual('$(ProjectDir)\logs\*.log;C:\Temp\app.log', Loaded.IssuesAttachLogFiles);
+  Assert.AreEqual(1280, Loaded.IssuesAttachMaxImageWidth);
+  // Bildbreite außerhalb 320–7680 wird begrenzt.
+  Settings.IssuesAttachMaxImageWidth := 50;
+  Settings.Normalize;
+  Assert.AreEqual(320, Settings.IssuesAttachMaxImageWidth);
+  Settings.IssuesAttachMaxImageWidth := 100000;
+  Settings.Normalize;
+  Assert.AreEqual(7680, Settings.IssuesAttachMaxImageWidth);
 end;
 
 procedure TAtlasPluginSettingsTests.IssuesSyncOptions;
@@ -1276,16 +1300,6 @@ begin
   Assert.IsTrue(mLoaded.IssuesTimeTracking);
   Assert.AreEqual(15, mLoaded.IssuesIdleMinutes);
   Assert.AreEqual(15, mLoaded.IssuesTimeRounding);
-  Assert.IsFalse(Loaded.IssuesPreviewChecklists);
-  Assert.IsFalse(Loaded.IssuesChecklistStatus);
-  Assert.IsFalse(Loaded.IssuesPreviewLinks);
-  Assert.IsFalse(Loaded.IssuesWarnBlocked);
-  Assert.IsFalse(Loaded.IssuesBoard);
-  Assert.IsFalse(Loaded.IssuesBoardConfirmMove);
-  Assert.IsFalse(Loaded.IssuesBoardOnlyMine);
-  Assert.IsFalse(Loaded.WelcomePageSprint);
-  Assert.IsFalse(Loaded.IssuesSprintBurndown);
-  Assert.IsFalse(Loaded.IssuesSprintCompare);
 end;
 
 procedure TAtlasPluginSettingsTests.IssuesCommentOptions;
@@ -1295,7 +1309,7 @@ var
 begin
   mSettings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(mSettings.IssuesCommentEditor, 'Kommentar-Editor ist vorgegeben an');
-  Assert.AreEqual(DefaultIssuesCommentSnippets, mSettings.IssuesCommentSnippets, 'zwei Vorgabe-Bausteine');
+  Assert.AreEqual(TAtlasPluginSettings.DefaultIssuesCommentSnippets, mSettings.IssuesCommentSnippets, 'zwei Vorgabe-Bausteine');
   // Normalisieren: leer = keine Bausteine, nicht die Vorgabe.
   mSettings.IssuesCommentSnippets := '   ';
   mSettings.Normalize;
@@ -1309,20 +1323,6 @@ begin
   mLoaded.Load(mStore);
   Assert.IsFalse(mLoaded.IssuesCommentEditor);
   Assert.AreEqual('[{"name":"Danke","text":"Danke!"}]', mLoaded.IssuesCommentSnippets);
-  Assert.IsFalse(Loaded.IssuesPreviewDevelopment);
-  Assert.IsTrue(Loaded.IssuesNotify);
-  Assert.AreEqual(5, Loaded.IssuesNotifyIntervalMinutes);
-  Assert.AreEqual('assigned', Loaded.IssuesNotifyScope);
-  Assert.IsFalse(Loaded.IssuesAttach);
-  Assert.AreEqual('$(ProjectDir)\logs\*.log;C:\Temp\app.log', Loaded.IssuesAttachLogFiles);
-  Assert.AreEqual(1280, Loaded.IssuesAttachMaxImageWidth);
-  // Bildbreite außerhalb 320–7680 wird begrenzt.
-  Settings.IssuesAttachMaxImageWidth := 50;
-  Settings.Normalize;
-  Assert.AreEqual(320, Settings.IssuesAttachMaxImageWidth);
-  Settings.IssuesAttachMaxImageWidth := 100000;
-  Settings.Normalize;
-  Assert.AreEqual(7680, Settings.IssuesAttachMaxImageWidth);
 end;
 
 procedure TAtlasPluginSettingsTests.HideElementOptions;
@@ -1637,13 +1637,19 @@ begin
   Assert.AreEqual('all', Settings.BuildOnOpenScope);
   Assert.AreEqual(3000, Settings.BuildOnOpenDelayMs);
   Assert.AreEqual('', Settings.BuildOnOpenExclude);
+  Assert.AreEqual('', Settings.BuildOnOpenConfig, 'wie im Projekt (#1293)');
+  Assert.AreEqual('', Settings.BuildOnOpenPlatform, 'wie im Projekt (#1293)');
   // Normalisieren: unbekannte Art = make, unbekannter Umfang = all, Wartezeit in den Grenzen, Liste ohne Endung
   // und Doppelte.
   Settings.BuildOnOpenKind := 'BUILD';
   Settings.BuildOnOpenScope := 'Active';
   Settings.BuildOnOpenDelayMs := 10;
   Settings.BuildOnOpenExclude := ' Atlas.IDE.Expert.dproj; atlas.ide.expert,, Demo ';
+  Settings.BuildOnOpenConfig := ' Debug ';
+  Settings.BuildOnOpenPlatform := ' Win64 ';
   Settings.Normalize;
+  Assert.AreEqual('Debug', Settings.BuildOnOpenConfig);
+  Assert.AreEqual('Win64', Settings.BuildOnOpenPlatform);
   Assert.AreEqual('build', Settings.BuildOnOpenKind);
   Assert.AreEqual('active', Settings.BuildOnOpenScope);
   Assert.AreEqual(500, Settings.BuildOnOpenDelayMs);
@@ -1669,6 +1675,8 @@ begin
   Assert.AreEqual('active', Loaded.BuildOnOpenScope);
   Assert.AreEqual(5000, Loaded.BuildOnOpenDelayMs);
   Assert.AreEqual('Atlas.IDE.Expert, Demo', Loaded.BuildOnOpenExclude);
+  Assert.AreEqual('Debug', Loaded.BuildOnOpenConfig);
+  Assert.AreEqual('Win64', Loaded.BuildOnOpenPlatform);
 end;
 
 procedure TAtlasPluginSettingsTests.CompletionListModeOptions;
@@ -1727,6 +1735,7 @@ begin
   Assert.IsTrue(Settings.UnitSearchRememberCollapsed);
   Assert.IsTrue(Settings.UnitSearchFilters);
   Assert.IsTrue(Settings.UnitSearchFilterSyntax);
+  Assert.IsTrue(Settings.UnitSearchFormCaptions);
   Assert.IsTrue(Settings.UnitSearchPreview);
   Assert.IsTrue(Settings.UnitSearchPreviewForm);
   Assert.IsTrue(Settings.UnitSearchPreviewUsedBy);
@@ -1754,6 +1763,7 @@ begin
   Settings.UnitSearchRememberCollapsed := False;
   Settings.UnitSearchFilters := False;
   Settings.UnitSearchFilterSyntax := False;
+  Settings.UnitSearchFormCaptions := False;
   Settings.UnitSearchPreview := False;
   Settings.UnitSearchPreviewForm := False;
   Settings.UnitSearchPreviewUsedBy := False;
@@ -1778,6 +1788,7 @@ begin
   Assert.IsFalse(Loaded.UnitSearchRememberCollapsed);
   Assert.IsFalse(Loaded.UnitSearchFilters);
   Assert.IsFalse(Loaded.UnitSearchFilterSyntax);
+  Assert.IsFalse(Loaded.UnitSearchFormCaptions);
   Assert.IsFalse(Loaded.UnitSearchPreview);
   Assert.IsFalse(Loaded.UnitSearchPreviewForm);
   Assert.IsFalse(Loaded.UnitSearchPreviewUsedBy);
@@ -2133,6 +2144,35 @@ begin
   Loaded.StickyScrollMaxLines := 99;
   Loaded.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MaxStickyLines, Loaded.StickyScrollMaxLines);
+  // #1230: if/else-Blöcke an, ab 25 Zeilen; Grenzen 5 bis 1000.
+  Assert.IsTrue(Settings.StickyScrollBlocks);
+  Assert.AreEqual(25, Settings.StickyScrollBlockMinLines);
+  Settings.StickyScrollBlocks := False;
+  Settings.StickyScrollBlockMinLines := 40;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.StickyScrollBlocks);
+  Assert.AreEqual(40, Loaded.StickyScrollBlockMinLines);
+  Loaded.StickyScrollBlockMinLines := 1;
+  Loaded.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinStickyBlockLines, Loaded.StickyScrollBlockMinLines);
+  // Was der Kopf zeigt: Typen und Routinen an, weitere Anweisungsblöcke aus; jede Art einzeln gespeichert.
+  Assert.IsTrue(Settings.StickyScrollTypes and Settings.StickyScrollRoutines);
+  Assert.IsFalse(Settings.StickyScrollLoops or Settings.StickyScrollTry or Settings.StickyScrollCase or
+    Settings.StickyScrollWith);
+  Settings.StickyScrollTypes := False;
+  Settings.StickyScrollLoops := True;
+  Settings.StickyScrollCase := True;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.IsFalse(Loaded.StickyScrollTypes);
+  Assert.IsTrue(Loaded.StickyScrollRoutines);
+  Assert.IsTrue(Loaded.StickyScrollLoops);
+  Assert.IsFalse(Loaded.StickyScrollTry);
+  Assert.IsTrue(Loaded.StickyScrollCase);
+  Assert.IsFalse(Loaded.StickyScrollWith);
 end;
 
 procedure TAtlasPluginSettingsTests.MinimapOptions;

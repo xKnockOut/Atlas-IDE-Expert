@@ -3,6 +3,8 @@
 // Andockbares Seitenfenster „Gliederung“ (#537): verankerbar wie das
 // Diagnosefenster (#479) über INTAServices.CreateDockableForm, Inhalt
 // TAtlasOutlineFrame, IDE-Thema, Atlas-Symbol (#751) im Fenstertitel.
+// Form, Frame, Wächter und Abbau verwaltet TAtlasIdeDockWindow wie bei allen
+// Atlas-Fenstern (#1248; Tools/Check-WindowHosts.ps1 prüft das).
 // OnFrame meldet einen neuen Frame, damit TAtlasIdeOutline ihn verdrahtet
 // und füllt.
 
@@ -66,16 +68,9 @@ type
     function EditAction(Action: TEditAction): Boolean;
   end;
 
-  TWatch = class(TComponent)
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  end;
-
 var
-  Dock: INTACustomDockableForm;
-  Form: TCustomForm;
-  Frame: TAtlasOutlineFrame;
-  Watch: TWatch;
+  // Verwaltet Form, Frame und Anmeldung bei der IDE (#879).
+  Host: TAtlasIdeDockWindow;
 
 procedure Theme(AFrame: TCustomFrame);
 begin
@@ -103,11 +98,12 @@ procedure TOutlineDock.FrameCreated(AFrame: TCustomFrame);
 begin
   if not (AFrame is TAtlasOutlineFrame) then
     Exit;
-  Frame := TAtlasOutlineFrame(AFrame);
-  Frame.FreeNotification(Watch);
-  Theme(Frame);
+  if Host <> nil then
+    Host.FrameCreated(AFrame);
+  TAtlasIdeOutlineWindow.UpdateIcon;
+  Theme(AFrame);
   if Assigned(TAtlasIdeOutlineWindow.OnFrame) then
-    TAtlasIdeOutlineWindow.OnFrame(Frame);
+    TAtlasIdeOutlineWindow.OnFrame(TAtlasOutlineFrame(AFrame));
 end;
 
 function TOutlineDock.GetMenuActionList: TCustomActionList;
@@ -156,85 +152,65 @@ begin
   Result := False;
 end;
 
-{ TWatch }
-
-procedure TWatch.Notification(AComponent: TComponent; Operation: TOperation);
+procedure EnsureHost;
 begin
-  inherited;
-  if Operation <> opRemove then
-    Exit;
-  if AComponent = Frame then
-    Frame := nil;
-  if AComponent = Form then
-  begin
-    Form := nil;
-    Frame := nil;
-  end;
+  if Host = nil then
+    Host := TAtlasIdeDockWindow.Create(TOutlineDock.Create, False);
 end;
 
 { TAtlasIdeOutlineWindow }
 
 class function TAtlasIdeOutlineWindow.Show: TAtlasOutlineFrame;
 var
-  Services: INTAServices;
+  Created: Boolean;
 begin
-  if Form = nil then
-  begin
-    if not Supports(BorlandIDEServices, INTAServices, Services) then
-      Exit(nil);
-    if Watch = nil then
-      Watch := TWatch.Create(nil);
-    Dock := TOutlineDock.Create;
-    Form := Services.CreateDockableForm(Dock);
-    if Form <> nil then
-    begin
-      Form.FreeNotification(Watch);
-      UpdateIcon;
-    end;
-  end;
-  if Form <> nil then
-  begin
-    Form.Show;
-    Form.BringToFront;
-  end;
-  Result := Frame;
+  // Lebt die Form noch (X versteckt nur), wird sie samt Gastgebern gezeigt; sonst neu angelegt.
+  EnsureHost;
+  Host.Show(Created);
+  if Created then
+    UpdateIcon;
+  Result := ExistingFrame;
 end;
 
 class function TAtlasIdeOutlineWindow.ExistingFrame: TAtlasOutlineFrame;
 begin
   Result := nil;
-  if Form <> nil then
-    Result := Frame;
+  if (Host <> nil) and (Host.Frame is TAtlasOutlineFrame) then
+    Result := TAtlasOutlineFrame(Host.Frame);
 end;
 
 class function TAtlasIdeOutlineWindow.Visible: Boolean;
 begin
-  Result := (Form <> nil) and Form.Visible;
+  // Angedockt in verstecktem Gastgeber zählt nicht als sichtbar.
+  Result := (Host <> nil) and Host.Shown;
 end;
 
 class procedure TAtlasIdeOutlineWindow.Hide;
 begin
-  if Form <> nil then
-    Form.Hide;
+  if Host <> nil then
+    Host.Hide;
 end;
 
 class procedure TAtlasIdeOutlineWindow.UpdateIcon;
 var
   Icon: TIcon;
 begin
-  if Form = nil then
+  if (Host = nil) or (Host.Form = nil) then
     Exit;
   Icon := TAtlasSymbolImages.Icon(TAtlasIdeSymbol.Current);
   try
     // Icon ist erst in TForm öffentlich.
-    TForm(Form).Icon.Assign(Icon);
+    TForm(Host.Form).Icon.Assign(Icon);
   finally
     Icon.Free;
   end;
 end;
 
 class procedure TAtlasIdeOutlineWindow.ApplyTheme;
+var
+  Frame: TAtlasOutlineFrame;
 begin
+  Frame := ExistingFrame;
   if Frame <> nil then
     Theme(Frame);
   UpdateIcon;
@@ -243,10 +219,8 @@ end;
 class procedure TAtlasIdeOutlineWindow.Release;
 begin
   OnFrame := nil;
-  Frame := nil;
-  FreeAndNil(Form);
-  Dock := nil;
-  FreeAndNil(Watch);
+  // Meldet ab und gibt die Form nur frei, wenn die IDE sie nicht schon zerstört hat.
+  FreeAndNil(Host);
 end;
 
 end.

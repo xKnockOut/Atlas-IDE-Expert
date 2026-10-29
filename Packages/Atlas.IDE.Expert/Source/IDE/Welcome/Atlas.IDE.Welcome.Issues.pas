@@ -112,6 +112,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Queries,
   Atlas.Core.Tracker.TimeLog,
+  Atlas.Core.Vcs.BranchPlan,
   Atlas.Core.Welcome.Issues,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Welcome.Issues,
@@ -421,13 +422,11 @@ uses
   Atlas.Core.Tracker.CommitHook,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Links,
-  Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Naming,
   Atlas.Core.Tracker.Preview,
   Atlas.Core.Tracker.Projects,
   Atlas.Core.Tracker.Templates,
   Atlas.Core.Vcs.Contract,
-  Atlas.Core.Vcs.BranchPlan,
   Atlas.Core.Welcome.Projects,
   Atlas.UI.Strings,
   Atlas.UI.Tracker.IssueTip,
@@ -829,7 +828,7 @@ begin
   mHooks.Assign :=
     procedure(const ATarget: TAtlasTrackerTarget; const AKey: string; const ADone: TAtlasTrackerSendDone)
     var
-      mChange: TAtlasTrackerChange;
+      mChange: TAtlasTrackerWrite;
     begin
       if (mKeep = nil) or (mOwner.FSync = nil) then
       begin
@@ -837,7 +836,7 @@ begin
         Exit;
       end;
       // Derselbe Schreibweg wie „Beginnen“ (#1266), mit dem Benutzerfeld der Verbindung.
-      mChange := TAtlasTrackerChange.Empty;
+      mChange := TAtlasTrackerWrite.Empty;
       mChange.AssigneeField := TAtlasIdeTrackerSync.Options(ATarget).AssigneeField;
       mChange.Assign := TAtlasTrackerAssign.Me;
       mOwner.FSync.Apply(mOwner.ProviderOf(ATarget.Provider), ATarget, AKey, mChange, ADone);
@@ -2914,7 +2913,7 @@ begin
     mPullRequest := AProvider.PullRequestPage(ATarget, mIssue.PullRequest.Number);
   FSync.EndIssue(AProvider, ATarget, TAtlasIdeTrackerEnd.Create(AKey, ABranch, ExtractFileDir(AProject),
     TAtlasIdeSettings.Current.IssuesBranchBase, mPullRequest),
-    procedure(AChange: TAtlasTrackerChange)
+    procedure(AChange: TAtlasTrackerWrite)
     begin
       if mKeep <> nil then
         mOwner.EndedLocally(mProject, mBranch, mKey);

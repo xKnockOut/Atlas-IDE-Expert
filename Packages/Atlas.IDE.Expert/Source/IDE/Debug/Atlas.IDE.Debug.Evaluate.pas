@@ -46,6 +46,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Generics.Collections,
+  System.Actions,
   Vcl.ExtCtrls,
   Vcl.ActnList,
   Vcl.Controls,

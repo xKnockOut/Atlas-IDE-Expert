@@ -9,6 +9,7 @@ interface
 
 uses
   DUnitX.TestFramework,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,

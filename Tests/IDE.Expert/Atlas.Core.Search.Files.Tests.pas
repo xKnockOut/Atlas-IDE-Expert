@@ -165,7 +165,7 @@ var
 begin
   FileName := TPath.Combine(FFolder, 'Umlaut.pas');
   TFile.WriteAllText(FileName, 'Größe := 1;', TEncoding.UTF8);
-  Load := TAtlasFileSearch.DiskLoader;
+  Load := TAtlasFileSearch.DiskLoader();
   Assert.IsTrue(Load(FileName, Text));
   Assert.AreEqual('Größe := 1;', Text);
   Assert.IsFalse(Load(TPath.Combine(FFolder, 'Fehlt.pas'), Text));

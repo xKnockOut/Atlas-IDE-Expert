@@ -119,7 +119,12 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.Core.Editor.Elements,
+  Atlas.IDE.Outline.StickyScroll,
   Atlas.IDE.Problems.Controller;
+
+const
+  /// <summary>Mindestkontrast einer Paarfarbe zum Hintergrund der Zeile (#1244); darunter die Farbe der IDE.</summary>
+  MinPairContrast = 3.0;
 
 { TAtlasEditorPairs.TEvents }
 
@@ -468,6 +473,13 @@ begin
     end;
     if not Found then
       Exit;
+    // Zeilen mit eigenem Hintergrund (Haltepunkt, Ausführungspunkt, Fehlerzeile, #1244): Eine Paarfarbe, die dort zu
+    // wenig absticht, weicht der Schriftfarbe, die die IDE für die Zeile vorbereitet hat.
+    for Index := 0 to High(CharColors) do
+      if (CharColors[Index] <> Original) and not Dimmed[Index] and
+        (TAtlasColorMath.Contrast(TAtlasColor(ColorToRGB(CharColors[Index])),
+        TAtlasColor(ColorToRGB(Canvas.Brush.Color))) < MinPairContrast) then
+        CharColors[Index] := Original;
     // Gezeichnete Elemente der Zeile (#628).
     if Colored then
       TAtlasIdeElements.Painted(TAtlasDrawnElement.PairColors, Context.FileName, Line, '', Rect,
@@ -536,6 +548,36 @@ begin
   end;
 end;
 
+/// <summary>Blocklinie über die Zeile ARect, spitz zulaufend (oben, mit ADown unten): je Pixelzeile ein Streifen,
+/// der zur Spitze hin auf 1 Pixel schrumpft und (mit bekanntem Hintergrund) in dessen Farbe ausläuft.</summary>
+procedure PaintTaper(ADC: HDC; AX: Integer; const ARect: TRect; AWidth: Integer; AColor, ABack: TAtlasColor;
+  AHasBack, ADown: Boolean);
+var
+  Offset, Height, Thick, Distance: Integer;
+  Color: TAtlasColor;
+  Brush: HBRUSH;
+begin
+  Height := Max(1, ARect.Height);
+  for Offset := 0 to Height - 1 do
+  begin
+    // Abstand von der Spitze: oben bzw. unten 0.
+    Distance := Offset;
+    if ADown then
+      Distance := Height - 1 - Offset;
+    Thick := Max(1, MulDiv(AWidth, Distance + 1, Height));
+    Color := AColor;
+    if AHasBack then
+      Color := TAtlasColorMath.Mix(AColor, ABack, Sqr((Distance + 1) / Height));
+    Brush := CreateSolidBrush(ColorToRGB(TColor(Color)));
+    try
+      FillRect(ADC, TRect.Create(AX - (Thick - 1) div 2, ARect.Top + Offset, AX - (Thick - 1) div 2 + Thick,
+        ARect.Top + Offset + 1), Brush);
+    finally
+      DeleteObject(Brush);
+    end;
+  end;
+end;
+
 procedure TAtlasEditorPairs.PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
   var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 const
@@ -544,7 +586,7 @@ const
 var
   Settings: TAtlasPluginSettings;
   LineState: INTACodeEditorLineState;
-  Line, X, Top, Bottom, Tick, Width: Integer;
+  Line, X, Top, Bottom, Tick, Width, Visible: Integer;
   LineColor: TAtlasColor;
   Guide: TLineGuide;
   Colors: TAtlasColors;
@@ -568,6 +610,10 @@ begin
       Refresh(Context);
     Line := Context.LogicalLineNum - 1;
     if (Line < 0) or (Line > High(FGuides)) or (Length(FGuides[Line]) = 0) then
+      Exit;
+    // Unter dem mitlaufenden Kopf zeichnet der Kopf die Linien selbst, jede erst unter ihrem Element.
+    if (Rect.Height > 0) and
+      ((Rect.Top + Rect.Height div 2) div Rect.Height < TAtlasIdeStickyScroll.CoveredRows(Context.FileName)) then
       Exit;
     // Wie bei den Läufen: nur, wenn die Zeile zur Analyse passt.
     LineState := Context.LineState;
@@ -609,6 +655,31 @@ begin
         if FHasBackground and (Settings.PairGuideOpacity < 100) then
           LineColor := TAtlasColorMath.Mix(LineColor, TAtlasColor(ColorToRGB(FBackground)),
             Settings.PairGuideOpacity / 100);
+        // Erste Zeile unter dem mitlaufenden Kopf: Ist das Element der Linie dahinter verschwunden und läge ihre
+        // Spitze im Text der letzten Kopfzeile, beginnt sie hier spitz und eingeblendet (Marco 28.10.2026).
+        if (Guide.Part <> gpFirst) and (Rect.Height > 0) and
+          ((Rect.Top + Rect.Height div 2) div Rect.Height = TAtlasIdeStickyScroll.CoveredRows(Context.FileName)) and
+          TAtlasIdeStickyScroll.TaperBelow(Context.FileName, Guide.Column) then
+        begin
+          PaintTaper(DC, X, Rect, Width, LineColor, TAtlasColor(ColorToRGB(FBackground)), FHasBackground, False);
+          Continue;
+        end;
+        // Letzte sichtbare Zeile: Läuft die Linie darunter weiter (ihr end ist nicht zu sehen), endet sie hier spitz
+        // wie oben unter dem Kopf (Marco 28.10.2026).
+        // Genau eine Zeile läuft aus: die angeschnittene letzte, wenn mindestens die Hälfte zu sehen ist (bis zum
+        // Rand), sonst die vorletzte; im Rest darunter dann nichts, sonst begänne die Linie dort wieder breit.
+        // Der Rest gilt auch für das Ende der Linie: Steht ihr end dort, lief sie in der Zeile darüber schon aus.
+        if (Guide.Part <> gpFirst) and (Context.EditControl <> nil) and
+          (Context.EditControl.ClientHeight - Rect.Top < Rect.Height div 2) then
+          Continue;
+        if (Guide.Part <> gpLast) and (Guide.Part <> gpFirst) and (Context.EditControl <> nil) and
+          (Rect.Bottom + Rect.Height div 2 > Context.EditControl.ClientHeight) then
+        begin
+          Visible := Context.EditControl.ClientHeight - Rect.Top;
+          PaintTaper(DC, X, TRect.Create(Rect.Left, Rect.Top, Rect.Right, Rect.Top + Min(Visible, Rect.Height)),
+            Width, LineColor, TAtlasColor(ColorToRGB(FBackground)), FHasBackground, True);
+          Continue;
+        end;
         Pen := CreatePen(PS_SOLID, Width, ColorToRGB(TColor(LineColor)));
         Old := SelectObject(DC, Pen);
         try

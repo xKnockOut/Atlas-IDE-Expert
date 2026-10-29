@@ -173,9 +173,6 @@ begin
     TMcpServer.StringSchema(['a', 'b'], ['A', 'B'], 1));
 end;
 
-initialization
-  TDUnitX.RegisterTestFixture(TMcpServerTests);
-
 procedure TMcpServerTests.ResourceTemplatesAreEmptyList;
 var
   Server: TMcpServer;
@@ -193,5 +190,8 @@ begin
     Server.Free;
   end;
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TMcpServerTests);
 
 end.

@@ -173,7 +173,11 @@ class function TVcsChanges.ToolFor(AKind: TAtlasVcsKind; const AConfigured: stri
 var
   mLocation: TAtlasVcsToolLocation;
 begin
-  mLocation := TAtlasVcsTools.Probe(AKind, AConfigured);
+  // Ohne eigenen Pfad der gemerkte Fund (auch TAtlasVcsTools.Preset), sonst neu suchen.
+  if AConfigured = '' then
+    mLocation := TAtlasVcsTools.Where(AKind)
+  else
+    mLocation := TAtlasVcsTools.Probe(AKind, AConfigured);
   if mLocation.Source = TAtlasVcsToolSource.ConfiguredMissing then
     raise EVcsChanges.CreateFmt('%s nicht gefunden unter %s (vcs.%s.path)',
       [TAtlasVcsTools.ProgramName(AKind), mLocation.Configured, TAtlasVcsTools.ProgramName(AKind)]);

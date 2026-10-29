@@ -105,6 +105,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Lsp.Internals.Namespaces,
   System.StrUtils,
   Atlas.Common.Dfm.FormFiles,

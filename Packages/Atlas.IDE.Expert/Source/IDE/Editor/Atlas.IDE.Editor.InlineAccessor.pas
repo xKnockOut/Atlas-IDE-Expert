@@ -31,6 +31,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON,
   Atlas.UI.Strings,
   Atlas.Core.Lsp.Client,

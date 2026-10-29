@@ -601,7 +601,7 @@ begin
   FPathChain.Parent := FPathBox;
   FPathChain.Left := 0;
   FPathChain.Top := 0;
-  FPathChain.Width := FPathBox.ClientWidth;
+  // Breite erst mit Fenster (PathBoxResize): ClientWidth der ScrollBox braucht ein Handle.
   FPathChain.OnOpen :=
     procedure(const AFileName: string; ALine, ACharacter: Integer)
     begin
@@ -1133,7 +1133,7 @@ begin
     FDiagram.ShowRoots(FDirection, FRoots);
   end;
   UpdateDiagramControls;
-  if AValue and FDiagram.CanFocus then
+  if AValue and FDiagram.CanFocus and FDiagram.Showing then
     FDiagram.SetFocus;
 end;
 

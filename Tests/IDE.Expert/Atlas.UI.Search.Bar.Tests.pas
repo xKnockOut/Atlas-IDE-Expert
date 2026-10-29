@@ -45,6 +45,9 @@ type
     procedure ErrorAndPreviewShowInTheInfoRow;
     [Test]
     procedure ArrowKeysWalkTheHistory;
+    /// <summary>#1243: Bearbeitungstasten bleiben im Suchfeld, Enter/F3/Esc nicht.</summary>
+    [Test]
+    procedure EditingKeysStayInTheField;
   end;
 
 implementation
@@ -460,6 +463,17 @@ begin
     Search.Free;
     Replace.Free;
   end;
+end;
+
+procedure TAtlasSearchBarTests.EditingKeysStayInTheField;
+begin
+  Assert.IsTrue(TAtlasSearchCombo.KeepsKey(Ord('V'), [ssCtrl]), 'Strg+V');
+  Assert.IsTrue(TAtlasSearchCombo.KeepsKey(Ord('A'), [ssCtrl]), 'Strg+A');
+  Assert.IsTrue(TAtlasSearchCombo.KeepsKey(VK_INSERT, [ssShift]), 'Umschalt+Einfg');
+  Assert.IsTrue(TAtlasSearchCombo.KeepsKey(VK_DELETE, []), 'Entf');
+  Assert.IsFalse(TAtlasSearchCombo.KeepsKey(VK_RETURN, []), 'Enter');
+  Assert.IsFalse(TAtlasSearchCombo.KeepsKey(VK_F3, []), 'F3');
+  Assert.IsFalse(TAtlasSearchCombo.KeepsKey(Ord('F'), [ssCtrl]), 'Strg+F');
 end;
 
 initialization

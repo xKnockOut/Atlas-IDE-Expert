@@ -28,7 +28,7 @@
 //   Token; Adressen kommen aus der Antwort des Trackers und werden vor dem
 //   Öffnen geprüft (nur https bzw. derselbe Server).
 // - IAtlasTrackerWriter (#1266): Zustand, Zuständigkeit und Kommentar eines
-//   Issues ändern (TAtlasTrackerChange) und Werte für Klapplisten lesen
+//   Issues ändern (TAtlasTrackerWrite) und Werte für Klapplisten lesen
 //   (Zustände, Felder, Benutzer); Anbieter, die schreiben können, setzen sie
 //   zusätzlich um. Geschrieben wird über IAtlasCiSend, nur nach einem Klick
 //   des Benutzers und nie wiederholt; Fehler kommen mit dem Text des Trackers
@@ -455,10 +455,22 @@ type
     /// False mit AError (NotFound, wenn es die Kennung nicht gibt).</summary>
     function Lookup(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
       ATimeoutMs: Integer; out AIssue: TAtlasTrackerIssue; out AError: TAtlasCiFetchError): Boolean;
+    /// <summary>Pull Requests (GitHub, mit CI-Ampel) bzw. verknüpfte VCS-Änderungen (YouTrack) zu Issue AKey,
+    /// insgesamt höchstens ATimeoutMs; im Hintergrund (#1269). Ein Tracker ohne solche Angaben liefert True mit
+    /// leerem Ergebnis. False mit AError, wenn die Abfrage scheiterte.</summary>
+    function Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment; out AError: TAtlasCiFetchError): Boolean;
+    /// <summary>Änderungen an den Issues im Umfang APoll.Scope nach APoll.Since, über alle Projekte des Servers
+    /// (#1271): neue Kommentare, Zuweisungen und Zustandswechsel, älteste zuerst; eigene sind noch dabei
+    /// (Atlas.Core.Tracker.Notify filtert sie). Setzt APoll.Latest (und bei GitHub LastModified und PollSeconds).
+    /// Insgesamt höchstens ATimeoutMs; im Hintergrund. False mit AError, wenn nichts gelesen werden konnte.
+    /// </summary>
+    function Changes(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
+      var APoll: TAtlasTrackerPoll; out AChanges: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
   end;
 
   /// <summary>Eine Änderung an einem Issue (#1266): Zustand, Zuständigkeit und Kommentar in einem Schritt.</summary>
-  TAtlasTrackerChange = record
+  TAtlasTrackerWrite = record
     /// <summary>Name des Zustandsfeldes (YouTrack, z. B. "State" oder "Status"); GitHub ohne Bedeutung.</summary>
     StateField: string;
     /// <summary>Neuer Zustand; '' = nicht ändern. GitHub: Name des Labels; ein Erledigt-Zustand schließt das
@@ -474,9 +486,9 @@ type
     Assignee: string;
     /// <summary>Kommentar (Markdown); '' = keiner.</summary>
     Comment: string;
-    class function Empty: TAtlasTrackerChange; static;
+    class function Empty: TAtlasTrackerWrite; static;
     /// <summary>Nur ein Kommentar.</summary>
-    class function CommentOnly(const AText: string): TAtlasTrackerChange; static;
+    class function CommentOnly(const AText: string): TAtlasTrackerWrite; static;
     /// <summary>Es gibt etwas zu schreiben.</summary>
     function HasWork: Boolean;
   end;
@@ -502,7 +514,7 @@ type
     /// <summary>AChange auf AKey anwenden, insgesamt höchstens ATimeoutMs (YouTrack: ein Befehl bzw. Kommentar;
     /// GitHub: Kommentar, dann Labels, Zuständigkeit und Zustand mit einem PATCH).</summary>
     function Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
-      const AChange: TAtlasTrackerChange; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+      const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
     /// <summary>Werte der Art AKind; AField = Zustandsfeld bei States (YouTrack). Ohne Leserecht auf die Felder
     /// des Projekts kommt ein Fehler zurück, die Klappliste bleibt dann frei beschreibbar.</summary>
     function Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
@@ -569,18 +581,6 @@ type
     /// Repositorys, hier gefiltert), eine Abfrage, höchstens ATimeoutMs; im Hintergrund.</summary>
     function Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
       ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
-    /// <summary>Pull Requests (GitHub, mit CI-Ampel) bzw. verknüpfte VCS-Änderungen (YouTrack) zu Issue AKey,
-    /// insgesamt höchstens ATimeoutMs; im Hintergrund (#1269). Ein Tracker ohne solche Angaben liefert True mit
-    /// leerem Ergebnis. False mit AError, wenn die Abfrage scheiterte.</summary>
-    function Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
-      ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment; out AError: TAtlasCiFetchError): Boolean;
-    /// <summary>Änderungen an den Issues im Umfang APoll.Scope nach APoll.Since, über alle Projekte des Servers
-    /// (#1271): neue Kommentare, Zuweisungen und Zustandswechsel, älteste zuerst; eigene sind noch dabei
-    /// (Atlas.Core.Tracker.Notify filtert sie). Setzt APoll.Latest (und bei GitHub LastModified und PollSeconds).
-    /// Insgesamt höchstens ATimeoutMs; im Hintergrund. False mit AError, wenn nichts gelesen werden konnte.
-    /// </summary>
-    function Changes(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
-      var APoll: TAtlasTrackerPoll; out AChanges: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
   end;
 
 implementation
@@ -789,21 +789,21 @@ begin
   Result := -1;
 end;
 
-{ TAtlasTrackerChange }
+{ TAtlasTrackerWrite }
 
-class function TAtlasTrackerChange.Empty: TAtlasTrackerChange;
+class function TAtlasTrackerWrite.Empty: TAtlasTrackerWrite;
 begin
-  Result := Default(TAtlasTrackerChange);
+  Result := Default(TAtlasTrackerWrite);
   Result.Assign := TAtlasTrackerAssign.Keep;
 end;
 
-class function TAtlasTrackerChange.CommentOnly(const AText: string): TAtlasTrackerChange;
+class function TAtlasTrackerWrite.CommentOnly(const AText: string): TAtlasTrackerWrite;
 begin
   Result := Empty;
   Result.Comment := AText;
 end;
 
-function TAtlasTrackerChange.HasWork: Boolean;
+function TAtlasTrackerWrite.HasWork: Boolean;
 begin
   Result := (Trim(State) <> '') or (Assign <> TAtlasTrackerAssign.Keep) or (Trim(Comment) <> '');
 end;

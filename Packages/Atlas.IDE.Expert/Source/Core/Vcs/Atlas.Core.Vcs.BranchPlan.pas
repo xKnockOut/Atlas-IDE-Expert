@@ -387,6 +387,7 @@ TAtlasVcsBranchBase = record
 implementation
 
 uses
+  System.Generics.Collections,
   System.IOUtils,
   System.JSON,
   Atlas.Core.Vcs.Internals.SvnExternals,
