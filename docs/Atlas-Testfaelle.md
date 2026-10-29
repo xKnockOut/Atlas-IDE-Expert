@@ -8623,3 +8623,24 @@ Vorbereitung: Minimalfall F01 aus `berichte/fp-korpus-2026-10-28/faelle`; ein ei
 | VU5 | `property Capacity write SetCapacity;` ohne Typ im Nachfahren, danach `Capacity := 10` | Kein `readonly-property-assigned` |
 | VU6 | `X.Edit` ohne `Post` auf einem Record bzw. einer Klasse ohne TDataSet-Vorfahr; Gegenprobe auf `TFDQuery` | Nur die Gegenprobe meldet `dataset-edit-without-post` |
 | VU7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 29 in Server und Plugin) |
+
+## Formatieren ohne IDE (#1358)
+
+Vorbereitung: Projekt mit `atlas.json` (`"format": {"indentSize": 2}`), Git-Arbeitskopie, `AtlasServer.exe` aus dem Build im Pfad; eine Unit in UTF-8 mit BOM, eine ohne BOM, eine in ANSI mit Umlauten.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FK1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; Tests grün (**Abnahme**) |
+| FK2 | `AtlasServer.exe --check <korrekt formatierte Unit> --format-check` | Exit-Code 0, Zusammenfassung auf stderr „0 von 1 Dateien weichen ab“ |
+| FK3 | In einer Unit eine Zeile mit 3 statt 2 Leerzeichen einrücken, `A:=1` schreiben, `--format-check` | Exit-Code 1; Ausgabe nennt Datei, „Zeile n: Einrückung 3 statt 2“ und „Leerzeichen vor := fehlt“; Datei unverändert |
+| FK4 | FK3 mit `--format json` und `--format diff` | JSON mit allen Abweichungen (`kind` `indent`, `spaceAroundAssignment`); Diff mit `--- a/…`, `+++ b/…`, `@@`-Blöcken |
+| FK5 | Dieselbe Unit in der IDE öffnen, Strg+Umschalt+Alt+L, Ergebnis speichern; zurücksetzen; `--format-write` | Beide Dateien sind byte-gleich (IDE-Option Einrückung = `format.indentSize`) |
+| FK6 | `--format-write` über den Ordner mit den drei Kodierungen | Kodierung bleibt (BOM, ohne BOM, ANSI-Umlaute), Zeilenenden bleiben; kein `.atlas-format.tmp` liegt herum; danach `--format-check` Exit-Code 0 |
+| FK7 | Eine Zeile ändern (nicht committen) in einer sonst schlecht formatierten Unit, `--format-write --changed HEAD --changed-lines --include-uncommitted` | Nur die geänderte Zeile ist formatiert; `git diff` zeigt keine andere Zeile |
+| FK8 | Unit mit Syntaxfehler, `--format-write` | Datei unverändert, Meldung „…(Zeile,Spalte): Syntaxfehler, nicht formatiert: …“, Exit-Code 1 |
+| FK9 | Bereich zwischen `// atlas-format: off` und `// atlas-format: on` absichtlich schief einrücken; in der IDE Strg+Umschalt+Alt+L und `--format-write` | Der Bereich bleibt samt der Markenzeilen unverändert, der Rest wird formatiert |
+| FK10 | `docs/Beispiele/pre-commit-formatierung.ps1` als Hook einrichten, schief eingerückte Zeile committen | Commit bricht ab mit Hinweis; mit `ATLAS_FORMAT_WRITE=1` wird die Zeile formatiert und der Commit läuft durch |
+| FK11 | Claude Code: `format_code` mit `file` und `text` (geplanter Code) | Antwort mit Abweichungen und formatiertem Text; Datei unverändert |
+| FK12 | Claude Code: `format_code` mit `file`, `dryRun: false`, Unit in der IDE offen (gespeichert) | Änderung landet im Editorpuffer; ein Strg+Z macht sie ganz rückgängig |
+| FK13 | `format_code` in `mcp.disabledTools` eintragen, Claude Code neu starten | Werkzeug fehlt in der Liste |
+| FK14 | `format.beginPlacement` und `format.elsePlacement` = `sameLine`, Unit mit `end` / `else` / `begin` auf drei Zeilen, zweimal formatieren | Schon der erste Lauf ergibt `end else begin`, der zweite ändert nichts |

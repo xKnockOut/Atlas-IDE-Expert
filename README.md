@@ -67,7 +67,7 @@ Everything below is implemented in `main`. Features marked *(experimental)* are 
 - **Defines from include files**: a `{$DEFINE}` in a file pulled in with `{$I}` counts for greying out, the outline, checks and the linter; an inlay hint behind `{$I}` lists the symbols the file defines (#860)
 - **Documentation comments:** `///` creates the XMLDoc skeleton with placeholders
 - **Complete statement** (Ctrl+Shift+Enter), **continue patterns** as ghost text, **continue comments** on Enter
-- **Formatting** by its own rules (Ctrl+Shift+Alt+L), since RAD Studio 13 no longer has a formatter
+- **Formatting** by its own rules (Ctrl+Shift+Alt+L), since RAD Studio 13 no longer has a formatter; regions between `// atlas-format: off` and `// atlas-format: on` stay untouched, and the same formatter runs without the IDE (`--format-check`, `--format-write`, MCP `format_code`, see [Formatting without the IDE](#formatting-without-the-ide))
 - **Move and duplicate lines** (Alt+↑/↓, Shift+Alt+↑/↓), **multiple cursors** *(experimental)*, **linked editing of identifiers** *(experimental)*, **paste with uses completion** *(experimental)*
 
 ### Understanding
@@ -135,7 +135,7 @@ The server checks every unit while you type. Findings appear as squiggles, in th
 - **Baseline** for legacy projects: hide known findings, report only new ones
 - **Compiler check after saving** and the messages of the "Build" tab
 - **Check search paths and defines** of the active project (card on the Atlas welcome page)
-- **Linter without the IDE:** `AtlasServer.exe --check` for pre-commit hooks and CI, as text, JSON or SARIF for GitHub code scanning, optionally only changed files or lines (see [Linter mode](#linter-mode))
+- **Linter without the IDE:** `AtlasServer.exe --check` for pre-commit hooks and CI, as text, JSON or SARIF for GitHub code scanning, optionally only changed files or lines (see [Linter mode](#linter-mode)); `--format-check` and `--format-write` check or apply the formatting rules
 
 Every rule with description and before/after example: [docs/Regeln.md](docs/Regeln.md).
 
@@ -398,6 +398,22 @@ Every rule finding has a confidence (high, medium, low). It caps the severity ev
 In an SVN working copy, `--changed` without a base compares the working copy with BASE (`svn status`), `--changed <rev>` and `--diff <rev>` with the revision (`svn diff -r`); `--include-uncommitted` adds unversioned files. The nearest working copy above the configuration folder wins (`.git` or `.svn`), Git on a tie; `vcs.provider` in `%APPDATA%\Atlas\settings.json` picks the kind (`auto`, `git`, `svn`) or turns it off (`off`). svn must be installed as a command-line tool (TortoiseSVN with command-line tools is enough). `vcs.git.path` and `vcs.svn.path` pick the program (as on the *Version control* page), `vcs.timeoutSeconds` the time limit per call; if the file under a custom path is missing, `--changed` stops with that cause.
 
 Examples for a pre-commit hook and a GitHub Action that check only changes are in [docs/Beispiele](docs/Beispiele).
+
+#### Formatting without the IDE
+
+The same formatter as *Format document* in the plugin (#1358) runs without the IDE, for example in a pre-commit hook, in CI or for Claude Code. Target and selection as with `--check` (`.dproj`, folder or file, `--units`, `--changed`/`--diff`, `--include-uncommitted`, exclusions from `atlas.json`). The project's formatting rules apply: `format.*` from `atlas.json` over `.editorconfig` over the defaults. The command line does not know the indentation from the IDE's editor options; to get the same everywhere, set `format.indentSize` and `format.useTabs`.
+
+| Parameter | Meaning |
+|---|---|
+| `--format-check` | formats in memory and compares; per deviating file the first five deviations with line and kind (German text such as `Einrückung 3 statt 2` = is 3, should be 2); `--format json` lists all deviations (lines from 1, kind as an id such as `indent`), `--format diff` prints the unified diff. Exit code 1 on a deviation, a syntax error or unstable formatting, otherwise 0 |
+| `--format-write` | writes the formatted files atomically (sibling file, then replace); encoding (UTF-8 with or without BOM, ANSI) and line endings stay, unless `format.endOfLine` asks for others. Exit code 1 only on syntax errors or unstable formatting, 3 if a file could not be written |
+| `--changed-lines` | with `--format-check`/`--format-write`: formats only the changed lines like *Format selection* (`textDocument/rangeFormatting`); every other line stays byte for byte |
+
+Files with syntax errors are not formatted and are reported with line and message. Regions between `// atlas-format: off` and `// atlas-format: on` (also as `{ … }` or `(* … *)`, without `on` up to the end of the file) stay untouched including these lines, in the plugin as on the command line. Every run formats the result a second time and reports files that still change.
+
+For Claude Code the MCP tool `format_code` formats a unit by the same rules: with `text` planned code (returns the formatted text, writes nothing), otherwise the file, whole or `startLine`..`endLine`; `dryRun` (default `true`) shows the diff, `dryRun: false` writes like `apply_code_action` (files open in the IDE as one undo step). Switch it off via `mcp.disabledTools`.
+
+Examples: [pre-commit hook](docs/Beispiele/pre-commit-formatierung.ps1) with `--format-check --changed HEAD --changed-lines --include-uncommitted` (with `ATLAS_FORMAT_WRITE=1` it formats itself) and [GitHub Action](docs/Beispiele/github-action-formatierung.yml) with the diff in the log.
 
 ### Rules
 
