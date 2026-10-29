@@ -52,6 +52,13 @@
 //                         --fail-on newCycle,newCrossLink,subsystemChange,centralGrowth
 //                         (Standard architecture.failOn, sonst newCycle)
 //
+// Hotspots (#1354):
+//   --hotspots <Datei>    Hotspots des Ziels aus --check (Standard: aktueller Ordner) aus
+//                         Änderungshäufigkeit und Komplexität samt Methoden und
+//                         Änderungskopplung als Markdown (.md), HTML-Seite mit Blasendiagramm
+//                         (.html) oder Daten (.json) schreiben; Exit-Code 3 ohne
+//                         Versionsverwaltung oder mit hotspots.enabled = false
+//
 // MCP-Modus (#48):
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
 //   --root <Ordner>       Projektordner (Standard: aktuelles Verzeichnis)
@@ -109,6 +116,8 @@ type
     TimingsFile: string;
     /// <summary>--architecture: Zieldatei des Architekturberichts (#1118, .md oder .html); '' = keiner.</summary>
     ArchitectureFile: string;
+    /// <summary>--hotspots: Zieldatei des Hotspot-Berichts (#1354, .md, .html oder .json); '' = keiner.</summary>
+    HotspotsFile: string;
     /// <summary>--compare: gespeicherter Architekturstand für den Vergleich (#1121); '' = keiner.</summary>
     CompareFile: string;
     /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
@@ -267,7 +276,8 @@ begin
     StringOption('--source-root', @Result.SourceRoot), StringOption('--profile', @Result.Profile),
     StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot),
     StringOption('--index-cache', @Result.IndexCacheFolder),
-    StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile)];
+    StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile),
+    StringOption('--hotspots', @Result.HotspotsFile)];
   Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
     FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),
     FlagOption('--include-uncommitted', @Result.IncludeUncommitted),
