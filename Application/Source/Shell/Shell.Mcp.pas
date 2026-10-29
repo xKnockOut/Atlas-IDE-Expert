@@ -448,9 +448,10 @@ end;
 
 type
   /// <summary>Text der Architekturübersicht (#1118) zu Abschnitt bzw. Unit ('' = Abschnitt); mit ACompareWith
-  /// (absoluter Pfad eines gespeicherten Stands, #1121) der Text des Vergleichs.</summary>
+  /// (absoluter Pfad eines gespeicherten Stands, #1121) der Text des Vergleichs. AResolution: Feinheit γ für
+  /// diesen Aufruf (#1366), 0 = architecture.grouping.resolution.</summary>
   TMcpArchitectureFunc = reference to function(ASection: TArchitectureSection;
-    const AUnit, ACompareWith: string): string;
+    const AUnit, ACompareWith: string; AResolution: Double): string;
   /// <summary>Antwort von find_path (#1117) als Text.</summary>
   TMcpFindPathFunc = reference to function(const ARequest: TSymbolPathRequest): string;
 
@@ -823,24 +824,39 @@ begin
     'der Steckbrief einer Unit (Teilsystem, Abhängigkeiten, Zyklen, Ausreißer). Mit "compareWith" der Vergleich ' +
     'mit einem gespeicherten Stand (#1121): neue und entfernte Zyklen, Querverbindungen und uses-Kanten zwischen ' +
     'Teilsystemen, Teilsystemwechsel, gewachsene zentrale Units, neue und entfernte Units. Umfang und ' +
-    'Bibliotheks-Units aus architecture.* in atlas.json.',
+    'Bibliotheks-Units aus architecture.* in atlas.json. "resolution" (0,2–5,0) stellt die Feinheit der ' +
+    'Teilsysteme für diesen Aufruf ein (#1366): größer = mehr und kleinere Teilsysteme.',
     '{"type":"object","properties":{' +
       '"section":{"type":"string","enum":["overview","central","subsystems","cycles","crossLinks"],' +
         '"description":"Abschnitt; Vorgabe overview"},' +
       '"unit":{"type":"string","description":"Steckbrief dieser Unit statt eines Abschnitts"},' +
       '"compareWith":{"type":"string","description":"Gespeicherter Stand (JSON aus AtlasServer --architecture ' +
-        '<Datei.json>), Pfad relativ zum Projekt: liefert die Abschnitte des Vergleichs"}}}',
+        '<Datei.json>), Pfad relativ zum Projekt: liefert die Abschnitte des Vergleichs"},' +
+      '"resolution":{"type":"number","minimum":0.2,"maximum":5,"description":"Feinheit der Teilsysteme ' +
+        '(Louvain-Auflösung γ); Vorgabe architecture.grouping.resolution, 1 = klassisch"}}}',
     function(const AArguments: TJSONObject): string
     var
       Section: TArchitectureSection;
       CompareWith: string;
+      mValue: TJSONValue;
+      mResolution: Double;
     begin
       if not TArchitectureReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), Section) then
         raise EMcpToolError.Create('"section" ist overview, central, subsystems, cycles oder crossLinks');
+      mResolution := 0;
+      mValue := nil;
+      if AArguments <> nil then
+        mValue := AArguments.GetValue('resolution');
+      if mValue <> nil then
+      begin
+        if not (mValue is TJSONNumber) or not TArchitectureGrouping.ValidResolution(TJSONNumber(mValue).AsDouble) then
+          raise EMcpToolError.Create('"resolution" ist eine Zahl von 0,2 bis 5,0');
+        mResolution := TJSONNumber(mValue).AsDouble;
+      end;
       CompareWith := TMcpServer.OptionalString(AArguments, 'compareWith');
       if CompareWith <> '' then
         CompareWith := AGuard.Resolve(CompareWith);
-      Result := AArchitecture(Section, TMcpServer.OptionalString(AArguments, 'unit'), CompareWith);
+      Result := AArchitecture(Section, TMcpServer.OptionalString(AArguments, 'unit'), CompareWith, mResolution);
     end);
   AServer.AddTool('find_path',
     'Kürzester Weg zwischen zwei Symbolen oder Units (#1117), z. B. „Wie hängt TKundenForm mit TDatenbank ' +
@@ -1529,7 +1545,7 @@ begin
     Server.Instructions := 'Delphi-Projekt in ' + Root + '. Für Fragen zu Typen, Units und Formularen ' +
       'zuerst diese Werkzeuge nutzen statt Quelldateien vollständig zu lesen.';
     RegisterTools(Server, Tools, Code, Group, Root, Guard, Edit,
-      function(ASection: TArchitectureSection; const AUnit, ACompareWith: string): string
+      function(ASection: TArchitectureSection; const AUnit, ACompareWith: string; AResolution: Double): string
       var
         Settings: TServerSettings;
         Request: TArchitectureRequest;
@@ -1542,6 +1558,9 @@ begin
         if not Settings.ArchitectureEnabled then
           raise EMcpToolError.Create('Architekturübersicht ist ausgeschaltet (architecture.enabled)');
         Request := TArchitectureRequest.FromSettings(Settings);
+        // Nur für diesen Aufruf (#1366); die Einstellung bleibt.
+        if AResolution > 0 then
+          Request.Grouping.Resolution := AResolution;
         Request.Title := ExtractFileName(Root);
         Request.Root := Root;
         Request.Namespaces := Workspace.Namespaces;

@@ -2214,6 +2214,47 @@ begin
 end;
 
 procedure TValidator.ReadArchitecture(ANode: TJsonNode);
+
+  // Zahl von AMin bis AMax; sonst Fehler mit ARange ("0,2 bis 5,0").
+  procedure ReadNumber(AValueNode: TJsonNode; const AName, ARange: string; AMin, AMax: Double; var AValue: Double);
+  var
+    mNumber: Double;
+  begin
+    if (AValueNode.Kind = TJsonKind.Number) and TryStrToFloat(AValueNode.Value, mNumber, TFormatSettings.Invariant) and
+      (mNumber >= AMin) and (mNumber <= AMax) then
+      AValue := mNumber
+    else
+      ReportNode(AValueNode, Format('"architecture.grouping.%s" muss eine Zahl von %s sein', [AName, ARange]));
+  end;
+
+  // architecture.grouping: Gruppierung der Teilsysteme (#1366, #1364).
+  procedure ReadGrouping(AGroupNode: TJsonNode);
+  var
+    mIndex: Integer;
+    mKey: string;
+  begin
+    if AGroupNode.Kind <> TJsonKind.Object_ then
+    begin
+      ReportNode(AGroupNode, '"architecture.grouping" muss ein Objekt sein');
+      Exit;
+    end;
+    for mIndex := 0 to AGroupNode.Count - 1 do
+    begin
+      mKey := AGroupNode.Keys[mIndex];
+      if mKey = 'resolution' then
+        ReadNumber(AGroupNode[mIndex], mKey, '0,2 bis 5,0', 0.2, 5, FSettings.ArchitectureGroupingResolution)
+      else if mKey = 'maxShare' then
+        ReadNumber(AGroupNode[mIndex], mKey, '0 bis 0,9', 0, 0.9, FSettings.ArchitectureGroupingMaxShare)
+      else if mKey = 'minCohesion' then
+        ReadNumber(AGroupNode[mIndex], mKey, '0 bis 1', 0, 1, FSettings.ArchitectureGroupingMinCohesion)
+      else if mKey = 'showResolutionSlider' then
+        ExpectBoolean(AGroupNode[mIndex], mKey, FSettings.ArchitectureGroupingShowResolutionSlider)
+      else
+        Report(AGroupNode.KeyStarts[mIndex], AGroupNode.KeyStarts[mIndex] + Length(mKey) + 2,
+          Format('Unbekannte Einstellung "architecture.grouping.%s"', [mKey]), False);
+    end;
+  end;
+
 var
   Index, Item, Number: Integer;
   Key, Value: string;
@@ -2283,6 +2324,8 @@ begin
               'newCycle, newCrossLink, subsystemChange, centralGrowth)', [Value]));
         end;
     end
+    else if Key = 'grouping' then
+      ReadGrouping(ANode[Index])
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "architecture.%s"', [Key]), False);
@@ -3468,6 +3511,10 @@ begin
       Result.ArchitectureExclude := FileSettings.ArchitectureExclude;
       Result.ArchitectureBaseline := FileSettings.ArchitectureBaseline;
       Result.ArchitectureFailOn := FileSettings.ArchitectureFailOn;
+      Result.ArchitectureGroupingResolution := FileSettings.ArchitectureGroupingResolution;
+      Result.ArchitectureGroupingShowResolutionSlider := FileSettings.ArchitectureGroupingShowResolutionSlider;
+      Result.ArchitectureGroupingMaxShare := FileSettings.ArchitectureGroupingMaxShare;
+      Result.ArchitectureGroupingMinCohesion := FileSettings.ArchitectureGroupingMinCohesion;
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
