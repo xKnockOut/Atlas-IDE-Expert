@@ -86,6 +86,8 @@ type
     ChangeSliceMs = 100;
     /// <summary>Neuer Fortschritt ohne neue Befunde beendet das Long-Polling frühestens nach dieser Zeit.</summary>
     ProgressMs = 1000;
+    /// <summary>Neue Befunde während eines Laufs sammelt eine Anfrage so lange, bevor sie antwortet.</summary>
+    BatchMs = 1000;
   private
     FStore: IDocumentStore;
     FDiagnostics: TLspSyntaxDiagnostics;
@@ -587,9 +589,13 @@ begin
     mStart := FCheck.Run;
     mItems := FCheck.Collect(mPrevious, MaxWorkspaceReports);
     // Nichts Neues: auf neue Befunde oder einen neuen Stand des Laufs warten (Long-Polling).
-    while (mItems.Count = 0) and (mClock.ElapsedMilliseconds < Int64(mPollMs)) and
-      not ACancellation.IsCancellationRequested do
+    while (mClock.ElapsedMilliseconds < Int64(mPollMs)) and not ACancellation.IsCancellationRequested do
     begin
+      // Befunde gebündelt ausliefern: Solange der Lauf rechnet, folgen gleich weitere. Früher kam jede Unit
+      // einzeln, der Client fragte sofort neu, und das Plugin baute seine Ansicht je Unit neu auf.
+      if (mItems.Count > 0) and ((mClock.ElapsedMilliseconds >= BatchMs) or
+        (mItems.Count >= MaxWorkspaceReports) or not FCheck.Run.Active) then
+        Break;
       mNext := FCheck.WaitForChange(mChange, ChangeSliceMs);
       if mNext = mChange then
         Continue;
