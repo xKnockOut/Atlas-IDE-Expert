@@ -116,7 +116,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Elements;
+  Atlas.IDE.Foundation.Elements,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 { TAtlasIdeReassigned.TEvents }
 
@@ -193,7 +194,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 class function TAtlasIdeReassigned.IsSource(const AFileName: string): Boolean;

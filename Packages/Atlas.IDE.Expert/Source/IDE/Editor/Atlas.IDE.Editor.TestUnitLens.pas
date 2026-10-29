@@ -99,7 +99,8 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Elements;
+  Atlas.IDE.Foundation.Elements,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 const
   TestUnitCommand = 'atlas.server.testUnit';
@@ -157,7 +158,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 function Wanted(const ASettings: TAtlasPluginSettings): Boolean;

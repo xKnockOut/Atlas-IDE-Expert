@@ -62,7 +62,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Lsp.Session,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 { TAtlasIdeFormatMarks.TEvents }
 
@@ -116,7 +117,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 procedure TAtlasIdeFormatMarks.Show(const AFileName, AText: string; ATabWidth: Integer;

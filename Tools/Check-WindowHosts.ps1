@@ -15,6 +15,10 @@
       (Atlas.IDE.Foundation.EditorBarHost): Nur dort wird das Editor-
       Steuerelement über FindComponent('Editor') gesucht; die Dienste nehmen
       EditorOf, TopEditor bzw. FocusEditor des Hosts.
+    - Den Editor neu zeichnen lässt nur TAtlasIdeEditorRefresh
+      (Atlas.IDE.Foundation.EditorRefresh): InvalidateTopEditor legt ohne
+      offenes Editorfenster ein neues an, beim Beenden der IDE mit Absturz
+      nach dem Entladen fremder Experten (#1233).
 
     Geprüft werden alle Quelltexte unter Packages/Atlas.IDE.Expert/Source/.
     Kommentare werden übergangen.
@@ -35,6 +39,7 @@ $ErrorActionPreference = 'Stop'
 $SourceDir = 'Packages/Atlas.IDE.Expert/Source'
 $DockUnit = 'Atlas.IDE.Foundation.DockWindow.pas'
 $BarUnit = 'Atlas.IDE.Foundation.EditorBarHost.pas'
+$RefreshUnit = 'Atlas.IDE.Foundation.EditorRefresh.pas'
 
 function Remove-PascalComments([string] $Text) {
     # Ersetzt Kommentare durch Leerzeichen, Strings bleiben (gesucht wird 'Editor'),
@@ -55,7 +60,9 @@ $Rules = @(
     @{ Pattern = '(?i)\b(Create|Register|Unregister)DockableForm\s*\('; Allowed = $DockUnit
        Message = 'Andockbares Fenster am Fenster-Host vorbei; TAtlasIdeDockWindow verwenden' },
     @{ Pattern = '(?i)\bFindComponent\s*\(\s*''Editor''\s*\)'; Allowed = $BarUnit
-       Message = 'Editor-Steuerelement am Leisten-Host vorbei gesucht; TAtlasEditorBarHost.EditorOf/TopEditor/FocusEditor verwenden' }
+       Message = 'Editor-Steuerelement am Leisten-Host vorbei gesucht; TAtlasEditorBarHost.EditorOf/TopEditor/FocusEditor verwenden' },
+    @{ Pattern = '(?i)\.\s*InvalidateTopEditor(LogicalLine)?\b'; Allowed = $RefreshUnit
+       Message = 'Editor direkt neu gezeichnet (legt ohne Editorfenster eins an); TAtlasIdeEditorRefresh.InvalidateTop/InvalidateTopLine verwenden' }
 )
 
 $violations = @()
@@ -86,5 +93,5 @@ if ($violations.Count -gt 0) {
     exit 1
 }
 
-Write-Host 'Atlas-Fenster laufen über TAtlasIdeDockWindow, Editorleisten über TAtlasEditorBarHost.' -ForegroundColor Green
+Write-Host 'Atlas-Fenster laufen über TAtlasIdeDockWindow, Editorleisten über TAtlasEditorBarHost, Neuzeichnen über TAtlasIdeEditorRefresh.' -ForegroundColor Green
 exit 0

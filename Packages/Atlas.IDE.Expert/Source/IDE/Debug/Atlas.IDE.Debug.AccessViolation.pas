@@ -165,7 +165,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Debug.ExceptionBar,
   Atlas.UI.Debug.AccessViolation,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 { TAtlasIdeDebugAccessViolation.TListener }
 
@@ -330,7 +331,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 procedure TAtlasIdeDebugAccessViolation.EndInternal;

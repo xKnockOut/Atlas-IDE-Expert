@@ -111,7 +111,8 @@ uses
   Atlas.Core.Editor.Pairs,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 /// <summary>Zeile ALine (0-basiert) aus AText ohne Zeilenende.</summary>
 function LineOf(const AText: string; ALine: Integer): string;
@@ -254,7 +255,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 function TAtlasEditorPlaceholders.EditPos(const AText: string; AOffset: Integer): TOTAEditPos;

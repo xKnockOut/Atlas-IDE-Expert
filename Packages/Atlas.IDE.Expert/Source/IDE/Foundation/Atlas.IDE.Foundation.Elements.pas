@@ -127,7 +127,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.TeamFile,
-  Atlas.IDE.Foundation.TeamFile;
+  Atlas.IDE.Foundation.TeamFile,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 { TAtlasIdeElements.TEvents }
 
@@ -385,7 +386,7 @@ begin
     FInstance.FHiddenVersion := -1;
   end;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 procedure TAtlasIdeElements.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;

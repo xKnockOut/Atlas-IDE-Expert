@@ -3769,10 +3769,14 @@ end;
 
 procedure StopTasks;
 begin
-  // Laufende Aufgaben enden mit dem Läufer; ihre Befunde verschwinden mit ihm.
-  FreeAndNil(ProjectTasks);
-  if TAtlasProblemsController.Current <> nil then
-    TAtlasProblemsController.Current.ClearTasks;
+  // Laufende Aufgaben enden mit dem Läufer; ihre Befunde verschwinden mit ihm. Schutznetz: Die Befunde
+  // gehen auch dann weg, wenn der Abbau des Läufers scheitert.
+  try
+    FreeAndNil(ProjectTasks);
+  finally
+    if TAtlasProblemsController.Current <> nil then
+      TAtlasProblemsController.Current.ClearTasks;
+  end;
 end;
 
 const

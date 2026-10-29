@@ -187,7 +187,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 function PatternKey(const ATarget: TAtlasTrackerTarget; const ACommit: string): string;
 begin
@@ -278,7 +279,7 @@ var
   mServices: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
-    mServices.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
 end;
 
 class function TAtlasIdeCodeLinks.IsPascal(const AFileName: string): Boolean;
