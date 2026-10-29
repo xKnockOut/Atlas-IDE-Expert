@@ -443,9 +443,12 @@
         <DCCReference Include="Faelle\Cm.W1000.pas"/>
         <DCCReference Include="Faelle\Cm.W1001.pas"/>
         <DCCReference Include="Faelle\Cm.W1002.pas"/>
+        <DCCReference Include="Faelle\Cm.W1002b.pas"/>
         <DCCReference Include="Faelle\Cm.W1003.pas"/>
         <DCCReference Include="Faelle\Cm.W1004.pas"/>
+        <DCCReference Include="Faelle\Cm.W1004b.pas"/>
         <DCCReference Include="Faelle\Cm.W1005.pas"/>
+        <DCCReference Include="Faelle\Cm.W1005b.pas"/>
         <DCCReference Include="Faelle\Cm.W1006.pas"/>
         <DCCReference Include="Faelle\Cm.W1007.pas"/>
         <DCCReference Include="Faelle\Cm.W1008.pas"/>
@@ -480,7 +483,11 @@
         <DCCReference Include="Faelle\Cm.W1045.pas"/>
         <DCCReference Include="Faelle\Cm.W1046.pas"/>
         <DCCReference Include="Faelle\Cm.W1047.pas"/>
+        <DCCReference Include="Faelle\Cm.W1047b.pas"/>
+        <DCCReference Include="Faelle\Cm.W1047c.pas"/>
         <DCCReference Include="Faelle\Cm.W1048.pas"/>
+        <DCCReference Include="Faelle\Cm.W1048b.pas"/>
+        <DCCReference Include="Faelle\Cm.W1048c.pas"/>
         <DCCReference Include="Faelle\Cm.W1050.pas"/>
         <DCCReference Include="Faelle\Cm.W1054.pas"/>
         <DCCReference Include="Faelle\Cm.W1054b.pas"/>

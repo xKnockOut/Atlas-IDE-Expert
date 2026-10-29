@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4632] of string = (
+  BaseLines: array[0..4648] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -1524,9 +1524,10 @@ const
     '      "group": "compiler",',
     '      "description": "A routine, type, constant or member marked deprecated, experimental, platform or library is used (like W1000, W1003, W1002, W1001), or a unit whose header carries one of these hi' +
     'nts is listed in uses (like W1006, W1007, W1005, W1004). Reported only when the name resolves for sure. The editor strikes deprecated names through; the message carries the reason from deprecated ''rea' +
-    'son''. The declaration and the head of its implementation are not reported. Which kinds are reported is set by the option kinds (deprecated and experimental by default, as in most projects); the switch' +
-    'es {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} apply from their position like in the compiler; a switch in an {$IF} branch that is not surely ' +
-    'compiled with the position keeps it silent. Quick fix: replace with the name the reason gives (or, for IncludeTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exa' +
+    'son''. The declaration and the head of its implementation are not reported. Whether a kind is reported follows the state of the warning as in dcc: all eight are on by default, then the project option o' +
+    'f the .dproj (DCC_SYMBOL_PLATFORM = false and so on), then the switches {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} from their position; a swi' +
+    'tch in an {$IF} branch that is not surely compiled with the position keeps it silent. The option kinds narrows the kinds further. The .NET directive {$UNSAFECODE ON|OFF} is reported like a platform sy' +
+    'mbol (like W1002), as dcc for Windows does. Quick fix: replace with the name the reason gives (or, for IncludeTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exa' +
     'ctly one name fits, is visible at that position and is of the same kind. Without a project index only the symbols of the file itself are checked.",',
     '      "bad": "Pfad := IncludeTrailingBackslash(Basis) + Name;",',
     '      "good": "Pfad := IncludeTrailingPathDelimiter(Basis) + Name;",',
@@ -1547,9 +1548,11 @@ const
     '          "type": "string-list",',
     '          "default": [',
     '            "deprecated",',
-    '            "experimental"',
+    '            "experimental",',
+    '            "platform",',
+    '            "library"',
     '          ],',
-    '          "description": "Reported kinds: deprecated, experimental, platform, library (platform and library are off by default)."',
+    '          "description": "Reported kinds: deprecated, experimental, platform, library (all four by default; a warning switched off in the project or file stays silent anyway)."',
     '        }',
     '      ]',
     '    },',
@@ -4057,10 +4060,27 @@ const
     '      "bad": "var Pfad: AnsiString; ... DeleteFile(PChar(Pfad));",',
     '      "good": "var Pfad: string; ... DeleteFile(PChar(Pfad));",',
     '      "compilerCodes": [',
-    '        "W1044",',
-    '        "W1048"',
+    '        "W1044"',
     '      ],',
     '      "level": "T"',
+    '    },',
+    '    {',
+    '      "id": "unsafe-code",',
+    '      "name": "Unsafe code",',
+    '      "category": "code-smell",',
+    '      "severity": "warning",',
+    '      "group": "compiler",',
+    '      "description": "Code that dcc reports as unsafe since Delphi for .NET: the @ operator on a variable, field or parameter (like W1047) and a cast of an untyped Pointer to a class, TObject(P) or TC' +
+    'ustomer(P) (like W1048). dcc switches these warnings off by default; the rule only reports where they are on as in dcc: {$WARN UNSAFE_CODE ON} or {$WARN UNSAFE_CAST ON} before the position, or DCC_UNS' +
+    'AFE_CODE or DCC_UNSAFE_CAST = true in the .dproj; ERROR turns the finding into an error, OFF and {$WARNINGS OFF} silence it. @ on routines and methods, typed pointers, casts as the argument (TObject(P' +
+    'ointer(I))) and interfaces stay silent. The rule only reports when the type is known for sure and its declaration is always compiled together with the position.",',
+    '      "bad": "{$WARN UNSAFE_CAST ON}\n...\nKunde := TKunde(Zeiger);",',
+    '      "good": "{$WARN UNSAFE_CAST ON}\n...\nKunde := Kunden[I]; // TObjectList<TKunde> statt TList mit Zeigern",',
+    '      "level": "B",',
+    '      "compilerCodes": [',
+    '        "W1047",',
+    '        "W1048"',
+    '      ]',
     '    },',
     '    {',
     '      "id": "inaccessible-member",',
@@ -5402,7 +5422,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2140] of string = (
+  OverlayLines_de: array[0..2145] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -6238,14 +6258,15 @@ const
     '      "name": "Veraltetes oder gebundenes Symbol",',
     '      "description": "Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, experimental, platform oder library wird verwendet (wie W1000, W1003, W1002, W1001), oder eine Unit, deren' +
     ' Kopf einen dieser Hinweise trägt, steht in uses (wie W1006, W1007, W1005, W1004). Gemeldet wird nur, was sicher aufgelöst ist. Der Editor streicht veraltete Namen durch; die Meldung nennt den Grund a' +
-    'us deprecated ''Grund''. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet. Welche Arten gemeldet werden, legt die Option kinds fest (Standard deprecated und experimental, wie mei' +
-    'st in Projekten); die Schalter {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} usw. und {$WARNINGS OFF} gelten ab ihrer Stelle wie beim Compiler; ein Schalter in einem {$IF}-Zw' +
-    'eig, der nicht sicher mit übersetzt wird, hält die Stelle still. Korrektur: durch den Namen aus dem Grund ersetzen (bei IncludeTrailingBackslash und ExcludeTrailingBackslash durch die plattformunabhän' +
-    'gige Routine), wenn genau ein Name passt, an der Stelle sichtbar ist und dieselbe Art hat. Ohne Projektindex prüft die Regel nur die Symbole der Datei selbst.",',
+    'us deprecated ''Grund''. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet. Ob eine Art gemeldet wird, folgt wie bei dcc dem Stand der Warnung: ab Werk sind alle acht an, dann gil' +
+    't die Projektoption der .dproj (DCC_SYMBOL_PLATFORM = false usw.), dann die Schalter {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} usw. und {$WARNINGS OFF} ab ihrer Stelle; e' +
+    'in Schalter in einem {$IF}-Zweig, der nicht sicher mit übersetzt wird, hält die Stelle still. Die Option kinds schränkt die Arten zusätzlich ein. Die .NET-Direktive {$UNSAFECODE ON|OFF} meldet die Reg' +
+    'el wie ein plattformspezifisches Symbol (wie W1002), so wie dcc für Windows. Korrektur: durch den Namen aus dem Grund ersetzen (bei IncludeTrailingBackslash und ExcludeTrailingBackslash durch die plat' +
+    'tformunabhängige Routine), wenn genau ein Name passt, an der Stelle sichtbar ist und dieselbe Art hat. Ohne Projektindex prüft die Regel nur die Symbole der Datei selbst.",',
     '      "options": [',
     '        {',
     '          "name": "kinds",',
-    '          "description": "Gemeldete Arten: deprecated, experimental, platform, library (platform und library sind standardmäßig aus)."',
+    '          "description": "Gemeldete Arten: deprecated, experimental, platform, library (Standard alle vier; eine im Projekt oder in der Datei abgeschaltete Warnung bleibt ohnehin still)."',
     '        }',
     '      ]',
     '    },',
@@ -7656,6 +7677,14 @@ const
     'n nicht zusammen, typisch nach der Unicode-Umstellung; die API liest dann Datenmüll bzw. nur das erste Zeichen. Gemeldet wird nur bei sicher bekanntem Typ des Arguments, dessen Deklaration immer mit d' +
     'er Umwandlung übersetzt wird. string(PAnsiChar) wandelt korrekt um, ein Zeiger auf TBytes kann gewollt sein; beides meldet die Regel nicht. Korrekturen: eigene Variable mit passendem Stringtyp deklari' +
     'eren (PChar(Pfad) mit Pfad: AnsiString wird Pfad: string), string(…) bzw. AnsiString(…) um das Argument, passenden Zeigertyp verwenden."',
+    '    },',
+    '    {',
+    '      "id": "unsafe-code",',
+    '      "name": "Unsicherer Code",',
+    '      "description": "Code, den dcc seit Delphi für .NET als unsicher meldet: der @-Operator auf eine Variable, ein Feld oder einen Parameter (wie W1047) und die Umwandlung eines untypisierten Pointer' +
+    ' in eine Klasse, TObject(P) bzw. TKunde(P) (wie W1048). dcc schaltet diese Warnungen ab Werk ab; die Regel meldet nur, wo sie wie bei dcc an sind: {$WARN UNSAFE_CODE ON} bzw. {$WARN UNSAFE_CAST ON} vo' +
+    'r der Stelle oder DCC_UNSAFE_CODE bzw. DCC_UNSAFE_CAST = true in der .dproj; ERROR macht den Treffer zum Fehler, OFF und {$WARNINGS OFF} halten ihn still. @ auf Routinen und Methoden, typisierte Zeige' +
+    'r, Umwandlungen als Argument (TObject(Pointer(I))) und Interfaces bleiben still. Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit der Stelle übersetzt wird."',
     '    },',
     '    {',
     '      "id": "inaccessible-member",',
