@@ -160,6 +160,9 @@ type
     class function Process(const AText: string; const AOptions: TPreprocessorOptions): TPreprocessorResult; static;
     /// <summary>Vordefinierte Symbole für Plattform und Compilerversion (z. B. Win64, 37.0).</summary>
     class function PredefinedSymbols(const APlatform: string; ACompilerVersion: Double): TArray<string>; static;
+    /// <summary>Zielplattform zu den Symbolen ADefines ("Win32", "Win64", "Linux64" …, wie die Plattformnamen
+    /// der .dproj); '' ohne Plattformsymbol (#1380).</summary>
+    class function PlatformOf(const ADefines: TArray<string>): string; static;
     /// <summary>Compilerversion zur BDS-Version der Registry: bis Delphi 12 (BDS 23.0) BDS + 13,
     /// z. B. 23.0 -> 36.0; ab Delphi 13 gleich (37.0). 0 für unbekannte Werte.</summary>
     class function CompilerVersionOfBds(ABdsVersion: Double): Double; static;
@@ -532,24 +535,7 @@ begin
     FPointerSize := 4
   else
     FPointerSize := 0;
-  if FDefines.ContainsKey('WIN64') then
-    FPlatform := 'Win64'
-  else if FDefines.ContainsKey('WIN32') then
-    FPlatform := 'Win32'
-  else if FDefines.ContainsKey('LINUX64') then
-    FPlatform := 'Linux64'
-  else if FDefines.ContainsKey('MACOS64') and FDefines.ContainsKey('CPUARM64') then
-    FPlatform := 'OSXARM64'
-  else if FDefines.ContainsKey('MACOS64') and not FDefines.ContainsKey('IOS') then
-    FPlatform := 'OSX64'
-  else if FDefines.ContainsKey('IOS64') then
-    FPlatform := 'iOSDevice64'
-  else if FDefines.ContainsKey('ANDROID64') then
-    FPlatform := 'Android64'
-  else if FDefines.ContainsKey('ANDROID') then
-    FPlatform := 'Android'
-  else
-    FPlatform := '';
+  FPlatform := TPascalPreprocessor.PlatformOf(FDefines.Keys.ToArray);
 end;
 
 destructor TExpressionEvaluator.Destroy;
@@ -1891,6 +1877,39 @@ begin
     Start := Pos('$I', Upper, Next);
   end;
   Result := False;
+end;
+
+class function TPascalPreprocessor.PlatformOf(const ADefines: TArray<string>): string;
+
+  function Has(const AName: string): Boolean;
+  var
+    mDefine: string;
+  begin
+    for mDefine in ADefines do
+      if SameText(Trim(mDefine), AName) then
+        Exit(True);
+    Result := False;
+  end;
+
+begin
+  if Has('WIN64') then
+    Result := 'Win64'
+  else if Has('WIN32') then
+    Result := 'Win32'
+  else if Has('LINUX64') then
+    Result := 'Linux64'
+  else if Has('MACOS64') and Has('CPUARM64') then
+    Result := 'OSXARM64'
+  else if Has('MACOS64') and not Has('IOS') then
+    Result := 'OSX64'
+  else if Has('IOS64') then
+    Result := 'iOSDevice64'
+  else if Has('ANDROID64') then
+    Result := 'Android64'
+  else if Has('ANDROID') then
+    Result := 'Android'
+  else
+    Result := '';
 end;
 
 class function TPascalPreprocessor.PredefinedSymbols(const APlatform: string; ACompilerVersion: Double): TArray<string>;

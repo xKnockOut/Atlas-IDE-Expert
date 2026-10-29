@@ -31,6 +31,13 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## #1380 weitere Deklarationsfehler (29.10.2026, Branch `claude/project-thread-oxggd3`)
+- Neue Regel `declaration-invalid` (`Rules.Builtin.InvalidDeclarations`): E2006, E2024, E2062, E2128, W1029. W1029 nur, wenn `TRuleContext.Units.ReadProject` eine `.dproj` mit `DCC_CBuilderOutput` (nicht None) oder einem Schalter `-J…` in `DCC_AdditionalSwitches` liefert; `Tests/Compilermeldungen/Compilermeldungen.dproj` trägt dafür `-JPHNE` (dcc baut sie nicht).
+- Erweitert: `abstract-declaration-invalid` (E2383/E2540 bei sealed, E2539 über `TAncestry.OpenAbstractMethods`, aus der W1020-Regel herausgezogen), `default-property-invalid` (E2131 bei anderem Namen; der alte Test „anderer Name, andere Indextypen still“ widersprach dcc), `property-accessor-invalid` (E2459 Klassen-Property mit Selektor), `signature-mismatch` (Unit-Routinen, nur eindeutiger Name ohne overload/external/forward), `unsatisfied-forward` (E2086), `operator-declaration-invalid` (E2617, E2037 an Rümpfen), `invalid-var-argument` (E2036 bei `@(A*B)`), `calling-convention-required` (E2277 ohne external nur unter Win32).
+- Plattform im Syntaxbaum: `TSyntaxTree.Platform` setzt `ParseActive` aus den Defines (`TPascalPreprocessor.PlatformOf`); leer heißt unbekannt, plattformabhängige Regeln schweigen dann. Testhilfe `TRuleAssert.PlatformFindings`.
+- Vergleich mit dem Linux-Server über alle Compilermeldungen-Fälle: keine neuen zusätzlichen Treffer gegenüber Prep-v1.2.0. Offen bei anderen Threads: E2037 in Cm.E2404 (.NET-`add`-Syntax, #1382), E2181 (#1373), E2591-Fehlalarm bei external stdcall varargs (#1383).
+- dcc-Minimalfälle: `Tests/DccFaelle/DccDeklarationen` (DK1–DK11, still) und `DccDeklarationenGegen` (DG1–DG7). Noch nicht mit dcc gebaut.
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.
