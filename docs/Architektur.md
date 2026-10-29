@@ -446,8 +446,8 @@ Aufbau (`TIndexBuilder`, `TIndexService`): Der Hintergrund-Thread liest den Cach
 Entscheidung in [ADR 0010](adr/0010-binaerer-index-cache.md) (ersetzt ADR 0003). Ablage (`Atlas.Common.Index.Adapters.CacheDirectory`, #184, #492):
 
 ```text
-%LOCALAPPDATA%\Atlas\Index\<IDE-Version>\<Projekt-Hash>\index.atlasidx
-%LOCALAPPDATA%\Atlas\Index\<IDE-Version>\Bibliothek\<Hash>\index.atlasidx   (RTL, VCL, FMX je Plattform)
+%LOCALAPPDATA%\Atlas\Index\<IDE-Version>\<Projekt-Hash>\index-<Format>.atlasidx
+%LOCALAPPDATA%\Atlas\Index\<IDE-Version>\Bibliothek\<Hash>\index-<Format>.atlasidx   (RTL, VCL, FMX je Plattform)
 ```
 
 `TIndexCache` schreibt ein Binärformat mit String-Tabelle (Formatversion: `TIndexCache.FormatVersion`; das Plugin liest das Format für die Suche der Willkommensseite selbst, `TAtlasWelcomeIndexFiles.FormatVersion`, #760):

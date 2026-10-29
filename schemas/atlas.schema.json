@@ -1938,7 +1938,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1048576,
-          "default": 256,
+          "default": 1024,
           "description": "Höchstgröße des Cache-Ordners in MB; darüber gehen die am längsten nicht benutzten Caches zuerst. 0 = ohne Grenze."
         },
         "exclude": {

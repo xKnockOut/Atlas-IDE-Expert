@@ -96,12 +96,24 @@ type
     procedure ClosedUnitsNames;
     [Test]
     procedure DimmedColorsStayReadable;
+    [Test]
+    procedure ReadLinesOncePerFile;
+    [Test]
+    procedure StampChangesOnlyForTheChangedFile;
+    [Test]
+    procedure CacheRebuildsOnlyChangedFiles;
+    [Test]
+    procedure CacheSurvivesNewStore;
+    [Test]
+    [Category('Benchmark')]
+    procedure CacheWithManyFindingsIsFast;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.Diagnostics,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Problems.Findings,
@@ -205,17 +217,17 @@ procedure TAtlasFindingsTests.ReadLineFillsTextOfUnopenedFiles;
 var
   Store: TAtlasProblemStore;
   Items: TArray<TAtlasFinding>;
-  ReadLine: TFunc<string, Integer, string>;
+  ReadLines: TFunc<string, TArray<string>>;
 begin
   Store := TAtlasProblemStore.Create;
   try
     Store.Update('C:\P\Zu.pas', '', False, [Problem(4, 'r', 'Treffer', TAtlasProblemSeverity.Error)], '', True);
-    ReadLine :=
-      function(AFileName: string; ALine: Integer): string
+    ReadLines :=
+      function(AFileName: string): TArray<string>
       begin
-        Result := Format('  %s:%d', [ExtractFileName(AFileName), ALine]);
+        Result := TArray<string>.Create('', '', '', '', Format('  %s:%d', [ExtractFileName(AFileName), 4]));
       end;
-    Items := TAtlasFindings.FromStore(Store, ['C:\P\Zu.pas'], ReadLine);
+    Items := TAtlasFindings.FromStore(Store, ['C:\P\Zu.pas'], ReadLines);
     Assert.AreEqual('Zu.pas:4', Items[0].LineText);
     Items := TAtlasFindings.FromStore(Store, nil, nil);
     Assert.AreEqual('', Items[0].LineText);
@@ -397,6 +409,13 @@ begin
     Assert.AreEqual(2, Counts.OfKind(TAtlasFindingKind.Warning));
     // Dateien zählen nur, was sichtbar ist: der eine Fehler steht in B.pas.
     Assert.AreEqual(1, Counts.Files);
+    // Gemerkte Zähler folgen jeder Änderung.
+    Filter.Kinds := [TAtlasFindingKind.Error, TAtlasFindingKind.Warning];
+    View.Filter := Filter;
+    Assert.AreEqual(4, View.Counts.Total);
+    Assert.AreEqual(2, View.Counts.Files);
+    View.SetFindings(nil);
+    Assert.AreEqual(0, View.Counts.Total);
   finally
     View.Free;
   end;
@@ -1049,7 +1068,221 @@ begin
   Assert.AreNotEqual(TAtlasColorMath.ToHex(Backs[1]), TAtlasColorMath.ToHex(NewBackColor(Backs[1])));
 end;
 
+type
+  /// <summary>Zählt Lesezugriffe auf die Platte in den Tests unten.</summary>
+  TReadCounter = class
+  public
+    Count: Integer;
+    function Reader: TFunc<string, TArray<string>>;
+  end;
+
+function TReadCounter.Reader: TFunc<string, TArray<string>>;
+begin
+  Result :=
+    function(AFileName: string): TArray<string>
+    var
+      Index: Integer;
+    begin
+      Inc(Count);
+      SetLength(Result, 40);
+      for Index := 0 to High(Result) do
+        Result[Index] := Format('%s %d', [ExtractFileName(AFileName), Index]);
+    end;
+end;
+
+function ManyProblems(ACount: Integer): TArray<TAtlasProblem>;
+var
+  Index: Integer;
+begin
+  SetLength(Result, ACount);
+  for Index := 0 to ACount - 1 do
+    Result[Index] := Problem(Index, 'r' + IntToStr(Index mod 7), 'Treffer ' + IntToStr(Index),
+      TAtlasProblemSeverity.Warning);
+end;
+
+procedure TAtlasFindingsTests.ReadLinesOncePerFile;
+var
+  Store: TAtlasProblemStore;
+  Counter: TReadCounter;
+  Items: TArray<TAtlasFinding>;
+begin
+  Store := TAtlasProblemStore.Create;
+  Counter := TReadCounter.Create;
+  try
+    Store.Update('C:\P\Zu.pas', '', False, ManyProblems(30), '', True);
+    Items := TAtlasFindings.FromStore(Store, nil, Counter.Reader());
+    Assert.AreEqual(30, Integer(Length(Items)));
+    Assert.AreEqual(1, Counter.Count);
+    Assert.AreEqual('Zu.pas 29', Items[29].LineText);
+  finally
+    Counter.Free;
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.StampChangesOnlyForTheChangedFile;
+var
+  Store: TAtlasProblemStore;
+  A, B: Integer;
+begin
+  Store := TAtlasProblemStore.Create;
+  try
+    Assert.AreEqual(0, Store.Stamp('C:\P\A.pas'));
+    Store.Update('C:\P\A.pas', 'a' + #10 + 'b' + #10, True, ManyProblems(2), '', True);
+    Store.Update('C:\P\B.pas', '', False, ManyProblems(1), '', True);
+    A := Store.Stamp('c:\p\a.pas');
+    B := Store.Stamp('C:\P\B.pas');
+    Assert.IsTrue(A > 0);
+    Store.Update('C:\P\A.pas', 'a' + #10 + 'b' + #10, True, ManyProblems(1), '', True);
+    Assert.AreNotEqual(A, Store.Stamp('C:\P\A.pas'));
+    Assert.AreEqual(B, Store.Stamp('C:\P\B.pas'));
+    // Text statt Platte: andere Zeilentexte, auch ohne neue Version.
+    A := Store.Stamp('C:\P\A.pas');
+    Store.Edit('C:\P\B.pas', 'x' + #10);
+    Assert.AreNotEqual(B, Store.Stamp('C:\P\B.pas'));
+    B := Store.Stamp('C:\P\B.pas');
+    Store.Edit('C:\P\A.pas', 'neu' + #10 + 'a' + #10 + 'b' + #10);
+    Assert.AreNotEqual(A, Store.Stamp('C:\P\A.pas'));
+    Assert.AreEqual(B, Store.Stamp('C:\P\B.pas'));
+    // Ausblenden einer Aufgabe ändert ForFile aller Dateien.
+    A := Store.Stamp('C:\P\A.pas');
+    Store.SetTaskHidden('Aufgabe', True);
+    Assert.AreNotEqual(A, Store.Stamp('C:\P\A.pas'));
+    Assert.AreNotEqual(B, Store.Stamp('C:\P\B.pas'));
+    Store.Remove('C:\P\A.pas');
+    Assert.AreEqual(0, Store.Stamp('C:\P\A.pas'));
+  finally
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.CacheRebuildsOnlyChangedFiles;
+var
+  Store: TAtlasProblemStore;
+  Cache: TAtlasFindingsCache;
+  Counter: TReadCounter;
+  Items: TArray<TAtlasFinding>;
+  Changed: Boolean;
+begin
+  Store := TAtlasProblemStore.Create;
+  Cache := TAtlasFindingsCache.Create;
+  Counter := TReadCounter.Create;
+  try
+    Store.Update('C:\P\A.pas', '', False, ManyProblems(3), '', True);
+    Store.Update('C:\P\B.pas', '', False, ManyProblems(2), '', True);
+    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
+    Assert.IsTrue(Changed);
+    Assert.AreEqual(5, Integer(Length(Items)));
+    Assert.AreEqual(2, Counter.Count);
+    // Nichts geändert: keine Platte, keine Änderung.
+    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
+    Assert.IsFalse(Changed);
+    Assert.AreEqual(5, Integer(Length(Items)));
+    Assert.AreEqual(2, Counter.Count);
+    // Eine Datei neu: nur sie wird gelesen.
+    Store.Update('C:\P\B.pas', '', False, ManyProblems(4), '', True);
+    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
+    Assert.IsTrue(Changed);
+    Assert.AreEqual(7, Integer(Length(Items)));
+    Assert.AreEqual(3, Counter.Count);
+    // Eine Datei außerhalb der Auswahl ändert die Auswahl nicht.
+    Items := Cache.Build(Store, ['C:\P\A.pas'], Counter.Reader(), Changed);
+    Assert.IsTrue(Changed);
+    Assert.AreEqual(3, Integer(Length(Items)));
+    Store.Update('C:\P\B.pas', '', False, ManyProblems(1), '', True);
+    Items := Cache.Build(Store, ['C:\P\A.pas'], Counter.Reader(), Changed);
+    Assert.IsFalse(Changed);
+    Assert.AreEqual(3, Integer(Length(Items)));
+    Assert.AreEqual(3, Counter.Count);
+    // Clear baut alles neu.
+    Cache.Clear;
+    Items := Cache.Build(Store, ['C:\P\A.pas'], Counter.Reader(), Changed);
+    Assert.IsTrue(Changed);
+    Assert.AreEqual(3, Integer(Length(Items)));
+    Assert.AreEqual(4, Counter.Count);
+  finally
+    Counter.Free;
+    Cache.Free;
+    Store.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.CacheSurvivesNewStore;
+var
+  First, Second: TAtlasProblemStore;
+  Cache: TAtlasFindingsCache;
+  Items: TArray<TAtlasFinding>;
+  Changed: Boolean;
+begin
+  Cache := TAtlasFindingsCache.Create;
+  First := TAtlasProblemStore.Create;
+  Second := TAtlasProblemStore.Create;
+  try
+    First.Update('C:\P\A.pas', '', False, ManyProblems(3), '', True);
+    Items := Cache.Build(First, nil, nil, Changed);
+    Assert.AreEqual(3, Integer(Length(Items)));
+    // Neuer Speicher (Neustart des Servers) mit denselben Dateien: neuer Stand, kein alter Befund.
+    Second.Update('C:\P\A.pas', '', False, ManyProblems(1), '', True);
+    Items := Cache.Build(Second, nil, nil, Changed);
+    Assert.IsTrue(Changed);
+    Assert.AreEqual(1, Integer(Length(Items)));
+  finally
+    Second.Free;
+    First.Free;
+    Cache.Free;
+  end;
+end;
+
+procedure TAtlasFindingsTests.CacheWithManyFindingsIsFast;
+const
+  Files = 2000;
+  PerFile = 28;
+var
+  Store: TAtlasProblemStore;
+  Cache: TAtlasFindingsCache;
+  Counter: TReadCounter;
+  Items: TArray<TAtlasFinding>;
+  Changed: Boolean;
+  Index: Integer;
+  Watch: TStopwatch;
+  FirstMs, SameMs, OneMs: Int64;
+begin
+  // Großes Projekt mit Prüfung über alle Units: 56000 Befunde, der Server liefert Datei für Datei.
+  Store := TAtlasProblemStore.Create;
+  Cache := TAtlasFindingsCache.Create;
+  Counter := TReadCounter.Create;
+  try
+    for Index := 0 to Files - 1 do
+      Store.Update(Format('C:\P\Unit%d.pas', [Index]), '', False, ManyProblems(PerFile), '', True);
+    Watch := TStopwatch.StartNew;
+    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
+    FirstMs := Watch.ElapsedMilliseconds;
+    Assert.AreEqual(Files * PerFile, Integer(Length(Items)));
+    Watch := TStopwatch.StartNew;
+    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
+    SameMs := Watch.ElapsedMilliseconds;
+    Assert.IsFalse(Changed);
+    Assert.AreEqual(Files * PerFile, Integer(Length(Items)));
+    Store.Update('C:\P\Unit7.pas', '', False, ManyProblems(PerFile - 1), '', True);
+    Watch := TStopwatch.StartNew;
+    Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
+    OneMs := Watch.ElapsedMilliseconds;
+    Assert.IsTrue(Changed);
+    Assert.AreEqual(Files * PerFile - 1, Integer(Length(Items)));
+    Assert.AreEqual(Files + 1, Counter.Count);
+    // Viertelsekunden-Takt des Fensters: Ein Takt muss deutlich darunter bleiben.
+    Assert.IsTrue(OneMs < 100, Format('erster Aufbau %d ms, unverändert %d ms, eine Datei neu %d ms',
+      [FirstMs, SameMs, OneMs]));
+  finally
+    Items := nil;
+    Counter.Free;
+    Cache.Free;
+    Store.Free;
+  end;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasFindingsTests);
+
 
 end.

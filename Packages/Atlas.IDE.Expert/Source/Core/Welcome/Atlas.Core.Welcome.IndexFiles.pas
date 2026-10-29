@@ -8,12 +8,13 @@
 // Units; Symbol- und Verwendungsblöcke werden übersprungen. Andere Version,
 // falsche Prüfsumme oder fremder Inhalt ergeben eine leere Liste statt
 // Unsinn.
-// Ablage: <Cache>\Atlas\Index\<IDE-Version>\<Schlüssel>\index.atlasidx. Der
+// Ablage: <Cache>\Atlas\Index\<IDE-Version>\<Schlüssel>\index-<Format>.atlasidx
+// (Formatversion im Namen wie TIndexCacheDirectory.CacheFileName). Der
 // Schlüssel ist ein Hash über Projekt, Konfiguration, Suchpfade usw.
 // (TIndexProjectFiles.Signature) und lässt sich ohne das Projekt nicht
 // nachrechnen. Welches Projekt ein Cache beschreibt, steht deshalb in ihm
 // selbst: Die Hauptdatei (.dpr/.dpk) ist eine seiner Units. Der gemeinsame
-// Bibliotheks-Cache (Ordner „Bibliothek“) gehört keinem Projekt.
+// Bibliotheks-Cache (Ordner „Bibliothek\<Schlüssel>“) gehört keinem Projekt.
 // Der Reiter „Gemerkt“ (#755) sucht die Unit eines Favoriten auch unter den
 // Bibliotheks-Units (ReadAll, LibraryCacheFiles, LoadUnits).
 // Nur SysUtils und Classes: läuft ohne Windows-Unit und in den Tests.
@@ -49,13 +50,14 @@ type
     // Strings (#1140), 28: Begründungen (#1123), 29: Prozedurtypen vollständig (#1326). 19 (#1001) fehlte hier,
     // die Willkommensseite fand deshalb keinen Cache.
     FormatVersion = 29;
-    CacheFileName = 'index.atlasidx';
     IndexFolder = 'Index';
     LibraryFolder = 'Bibliothek';
   private
     class function ReadEntries(const AData: TBytes; AWithLibrary: Boolean;
       out AReason: string): TArray<TAtlasIndexFile>; static;
   public
+    /// <summary>Name der Cache-Datei mit der Formatversion wie beim Server (index-29.atlasidx).</summary>
+    class function CacheFileName: string; static;
     /// <summary>Units des Caches ohne die der Bibliothek; leer, wenn AData kein gültiger Cache in Format 15 ist.</summary>
     class function Read(const AData: TBytes): TArray<TAtlasIndexFile>; overload; static;
     /// <summary>Wie oben; AReason nennt bei leerem Ergebnis den Grund ('' = gültig).</summary>
@@ -65,11 +67,11 @@ type
     /// <summary>Units samt Bibliothek aus der Cache-Datei AFileName; leer, wenn sie fehlt, gesperrt oder ungültig
     /// ist.</summary>
     class function LoadUnits(const AFileName: string): TArray<TAtlasIndexFile>; static;
-    /// <summary>Gemeinsame Bibliotheks-Caches unter ARoot\Index\*\Bibliothek\index.atlasidx.</summary>
+    /// <summary>Gemeinsame Bibliotheks-Caches unter ARoot\Index\*\Bibliothek\*\CacheFileName.</summary>
     class function LibraryCacheFiles(const ARoot: string): TArray<string>; static;
     /// <summary>Hauptdatei (.dpr, .dpk) unter AFiles; '' ohne.</summary>
     class function MainFileOf(const AFiles: TArray<TAtlasIndexFile>): string; static;
-    /// <summary>Alle Projekt-Caches unter ARoot\Index\*\*\index.atlasidx, ohne Bibliothek.</summary>
+    /// <summary>Alle Projekt-Caches unter ARoot\Index\*\*\CacheFileName, ohne Bibliothek.</summary>
     class function CacheFiles(const ARoot: string): TArray<string>; static;
     /// <summary>AProjectFile (.dproj, .dpr, .dpk) und AMainFile benennen dasselbe Projekt: gleicher Pfad ohne Endung.</summary>
     class function SameProject(const AProjectFile, AMainFile: string): Boolean; static;
@@ -198,6 +200,11 @@ begin
 end;
 
 { TAtlasWelcomeIndexFiles }
+
+class function TAtlasWelcomeIndexFiles.CacheFileName: string;
+begin
+  Result := Format('index-%d.atlasidx', [FormatVersion]);
+end;
 
 class function TAtlasWelcomeIndexFiles.Read(const AData: TBytes): TArray<TAtlasIndexFile>;
 var
@@ -392,17 +399,19 @@ end;
 
 class function TAtlasWelcomeIndexFiles.LibraryCacheFiles(const ARoot: string): TArray<string>;
 var
-  Version, FileName: string;
+  Version, Key, FileName: string;
 begin
   Result := nil;
   if ARoot = '' then
     Exit;
+  // Der Server legt je Bibliotheks-Schlüssel (Plattform, Suchpfade) einen Ordner unter „Bibliothek“ an.
   for Version in SubFolders(IncludeTrailingPathDelimiter(ARoot) + IndexFolder) do
-  begin
-    FileName := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(Version) + LibraryFolder) + CacheFileName;
-    if FileExists(FileName) then
-      Result := Result + [FileName];
-  end;
+    for Key in SubFolders(IncludeTrailingPathDelimiter(Version) + LibraryFolder) do
+    begin
+      FileName := IncludeTrailingPathDelimiter(Key) + CacheFileName;
+      if FileExists(FileName) then
+        Result := Result + [FileName];
+    end;
 end;
 
 class function TAtlasWelcomeIndexFiles.LoadUnits(const AFileName: string): TArray<TAtlasIndexFile>;
