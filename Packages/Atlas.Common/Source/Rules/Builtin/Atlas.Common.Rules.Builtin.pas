@@ -73,6 +73,7 @@ uses
   Atlas.Common.Rules.Builtin.Visibility,
   Atlas.Common.Rules.Builtin.TypeDeclarations,
   Atlas.Common.Rules.Builtin.TypedExpressions,
+  Atlas.Common.Rules.Builtin.StringConversions,
   Atlas.Common.Rules.Builtin.TypeRestrictions,
   Atlas.Common.Rules.Builtin.Units,
   Atlas.Common.Rules.Builtin.PublicMembers,
@@ -80,6 +81,7 @@ uses
   Atlas.Common.Rules.Builtin.XmlDoc,
   Atlas.Common.Rules.Builtin.Naming,
   Atlas.Common.Rules.Builtin.Casts,
+  Atlas.Common.Rules.Builtin.UnsafeCode,
   Atlas.Common.Rules.Builtin.StringAddress,
   Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Rules.Builtin.ForbiddenSymbols,
@@ -153,6 +155,7 @@ begin
     RegisterVisibilityRules(Registry);
     RegisterTypeDeclarationRules(Registry);
     RegisterTypedExpressionRules(Registry);
+    RegisterStringConversionRules(Registry);
     RegisterTypeRestrictionRules(Registry);
     RegisterUnitRules(Registry);
     RegisterPublicMemberRules(Registry);
@@ -160,6 +163,7 @@ begin
     RegisterXmlDocRules(Registry);
     RegisterNamingRules(Registry);
     RegisterCastRules(Registry);
+    RegisterUnsafeCodeRules(Registry);
     RegisterStringAddressRules(Registry);
     RegisterFormatArgsRules(Registry);
     RegisterForbiddenSymbolRules(Registry);
