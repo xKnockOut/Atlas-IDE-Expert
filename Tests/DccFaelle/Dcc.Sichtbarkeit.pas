@@ -25,7 +25,6 @@ type
     function Anzahl: Integer;
   end;
 
-function KonkretZweiter(AKnoten: TKnoten<Integer>): TKnoten<Integer>;
 function ErzeugeInspektor: TObject;
 
 implementation
@@ -48,11 +47,6 @@ end;
 function TWoerterbuch<K>.Anzahl: Integer;
 begin
   Result := FBaum.FAnzahl; // IM2: geerbtes protected-Feld einer nicht generischen Basis, aus generischem Code
-end;
-
-function KonkretZweiter(AKnoten: TKnoten<Integer>): TKnoten<Integer>;
-begin
-  Result := AKnoten.FNaechster; // IM3: protected-Feld einer generischen Klasse, aus nicht generischem Code
 end;
 
 function ErzeugeInspektor: TObject;

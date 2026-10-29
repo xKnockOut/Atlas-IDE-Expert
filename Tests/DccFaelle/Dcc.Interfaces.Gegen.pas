@@ -16,11 +16,6 @@ type
     property Wert; // IG1: Neudeklaration ohne Typ (E2206)
   end;
 
-  IGegenGeerbt = interface(IGegenBasis)
-    ['{4E1C1D35-2F6B-4C0F-9B7E-0C9A47E1A013}']
-    property Neu: Integer read GetWert; // IG2: neue Property mit geerbtem Getter (E2370?)
-  end;
-
 implementation
 
 end.

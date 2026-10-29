@@ -46,7 +46,8 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.ControlFlow,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Editing.PromoteVariable;
 
 type
 {$SCOPEDENUMS ON}
@@ -64,15 +65,16 @@ type
   TMethodTypeMemberFunc = reference to function(const ATypeName, AName: string; AOffset: Integer): Boolean;
   /// <summary>Name des an AOffset sichtbaren Helpers für ATypeName, '' ohne.</summary>
   TMethodHelperFunc = reference to function(const ATypeName: string; AOffset: Integer): string;
-  /// <summary>Steht AName in der Formulardatei?</summary>
-  TMethodInFormFunc = reference to function(const AName: string): Boolean;
   /// <summary>Ist der Name AName an AOffset schon sichtbar (Typ einer anderen Unit)?</summary>
   TMethodNameVisibleFunc = reference to function(const AName: string; AOffset: Integer): Boolean;
 
   TMethodLookup = record
     MemberLevel: TMemberLevelFunc;
     InterfaceMember: TMethodTypeMemberFunc;
-    InForm: TMethodInFormFunc;
+    /// <summary>Steht AName in der Formulardatei? Derselbe Typ wie bei „Variable befördern“, weil
+    /// TLspMethodWithoutSelf.Lookup das Feld von dort übernimmt (Delphi 12 lehnt gleich aufgebaute, aber
+    /// verschieden deklarierte Methodenreferenztypen ab).</summary>
+    InForm: TPromoteInFormFunc;
     VisibleHelper: TMethodHelperFunc;
     NameVisible: TMethodNameVisibleFunc;
     /// <summary>Art der Argumente bekannter Aufrufe (var-Argumente schreiben).</summary>
