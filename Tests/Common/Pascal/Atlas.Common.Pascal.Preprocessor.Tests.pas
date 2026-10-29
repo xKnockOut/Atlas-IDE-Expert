@@ -41,6 +41,9 @@ type
     procedure KeepsOtherDirectives;
     [Test]
     procedure PredefinesPlatformSymbols;
+    /// <summary>#1380: Plattform zu den Symbolen; ParseActive legt sie am Baum ab.</summary>
+    [Test]
+    procedure PlatformFromSymbols;
     [Test]
     procedure MapsBdsToCompilerVersion;
     [Test]
@@ -80,6 +83,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Preprocessor;
 
 function Options(const ADefines: array of string): TPreprocessorOptions;
@@ -357,6 +362,37 @@ begin
   Assert.IsTrue(Has('LINUX'));
   Assert.IsTrue(Has('POSIX'));
   Assert.IsFalse(Has('MSWINDOWS'));
+end;
+
+procedure TPascalPreprocessorTests.PlatformFromSymbols;
+var
+  mTree: TSyntaxTree;
+begin
+  Assert.AreEqual('Win64', TPascalPreprocessor.PlatformOf(TPascalPreprocessor.PredefinedSymbols('Win64', 37.0)));
+  Assert.AreEqual('Win32', TPascalPreprocessor.PlatformOf(TPascalPreprocessor.PredefinedSymbols('Win32', 36.0)));
+  Assert.AreEqual('Linux64', TPascalPreprocessor.PlatformOf(TPascalPreprocessor.PredefinedSymbols('Linux64', 37.0)));
+  Assert.AreEqual('Win32', TPascalPreprocessor.PlatformOf(TArray<string>.Create('debug', 'win32')));
+  Assert.AreEqual('', TPascalPreprocessor.PlatformOf(TArray<string>.Create('DEBUG')));
+  // Ohne Symbole liest der Editor für Win32; Parse ohne Präprozessor kennt keine Plattform.
+  mTree := TPascalParser.ParseActive('unit A;'#10'interface'#10'implementation'#10'end.', nil);
+  try
+    Assert.AreEqual('Win32', mTree.Platform);
+  finally
+    mTree.Free;
+  end;
+  mTree := TPascalParser.ParseActive('unit A;'#10'interface'#10'{$IFDEF X}{$ENDIF}'#10'implementation'#10'end.',
+    TPascalPreprocessor.PredefinedSymbols('Win64', 37.0));
+  try
+    Assert.AreEqual('Win64', mTree.Platform);
+  finally
+    mTree.Free;
+  end;
+  mTree := TPascalParser.Parse('unit A;'#10'interface'#10'implementation'#10'end.');
+  try
+    Assert.AreEqual('', mTree.Platform);
+  finally
+    mTree.Free;
+  end;
 end;
 
 procedure TPascalPreprocessorTests.MapsBdsToCompilerVersion;

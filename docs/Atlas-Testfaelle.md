@@ -1464,6 +1464,24 @@ Voraussetzung wie oben (#1118); ein großes Projekt, in dem ein Teilsystem mehr 
 | AN9 | `"maxShare": 1` in settings.json | Problemmeldung „… muss eine Zahl von 0 bis 0,9 sein“, Vorgabe 0,25 gilt |
 | AN10 | Großes Projekt (≈ 2000 Units): Fenster öffnen | Rechendauer in der Statuszeile unter 2 s |
 
+## Fundament-Units (#1365)
+
+Voraussetzung wie oben (#1118); ein Projekt mit einer Logging-Unit, die von mehreren fachlich getrennten Teilen verwendet wird (z. B. Atlas: `Atlas.Common.Logging`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AFU1 | Fenster „Atlas-Architektur“ öffnen (Vorgabe `separate`) | Teilsystem „Fundament“ in der Mitte der Karte, neutral grau und gestrichelt, mit den übergreifenden Units (Logging, Json-Helfer …); Teilsysteme, die vorher nur über diese Units zusammenhingen, stehen getrennt (**Abnahme**) |
+| AFU2 | Kanten auf der Karte ansehen; Menü „Teilsysteme“ › „Kanten zum Fundament“ ab- und wieder anhaken | Kanten zum Fundament blass gepunktet; abgehakt verschwinden sie, die übrigen bleiben |
+| AFU3 | Reiter *Teilsysteme* und *Querverbindungen* | „Fundament (n Units, übergreifende Fundamente)“ ohne Zusammenhalt, darunter die Regel; keine Querverbindung von oder zum Fundament |
+| AFU4 | Eine Unit mit Rolle Fundament, die nur in ihrem Teilsystem verwendet wird (z. B. `Atlas.Common.Index.Types`) | Bleibt in ihrem Teilsystem |
+| AFU5 | „Bericht speichern …“ als HTML und Markdown | HTML: Fundament in der Legende mit Schalter „Kanten zum Fundament“ und der Regel darunter, Tabelle mit „–“ als Zusammenhalt; Markdown: Zeile „Fundament“ mit „–“ und Hinweis unter der Tabelle |
+| AFU6 | Claude Code: `get_architecture` mit `section: "subsystems"` | „Fundament: n Units, Zusammenhalt –“ und die Regel |
+| AFU7 | In `settings.json` unter `architecture.grouping` `"foundations": "attach"`, „Neu berechnen“ | Kein Teilsystem „Fundament“; Logging steht in dem Teilsystem mit den meisten Abhängigen |
+| AFU8 | `"foundations": "group"` | Ergebnis wie vor #1365 |
+| AFU9 | `"foundations": "Separate"` (falsche Schreibweise) | Problemmeldung „… muss "group", "attach" oder "separate" sein“, Vorgabe gilt |
+| AFU10 | Stand mit `group` speichern, auf `separate` umstellen, „Vergleichen mit …“; einen alten Stand ohne `foundation` laden | Teilsystemwechsel der Fundament-Units; der alte Stand lädt ohne Fehler |
+| AFU11 | Hell und dunkel, englische IDE-Sprache | Fundament gut erkennbar; „shared foundations“, „Edges to the foundation“ |
+
 ## Minimap neben der Scrollleiste (#873, experimentell)
 
 Vorher: „Experimentelle Funktionen erlauben“ an, auf der Seite Editor „Minimap neben der Scrollleiste“ an. Eine Unit mit mehreren Klassen und Methoden, eine lange Unit (10 000 Zeilen).

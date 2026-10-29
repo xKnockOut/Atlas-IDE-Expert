@@ -59,6 +59,8 @@ type
     procedure ComparisonNamesDifferentResolution;
     [Test]
     procedure SplitSubsystemsGroupedInMenuAndTree;
+    [Test]
+    procedure FoundationInMenuAndTree;
   end;
 
 implementation
@@ -67,6 +69,7 @@ uses
   System.SysUtils,
   System.StrUtils,
   Vcl.Controls,
+  Vcl.Menus,
   Atlas.UI.Strings,
   Atlas.Core.Architecture.Model,
   Atlas.Core.Architecture.Model.Tests;
@@ -506,6 +509,34 @@ begin
     if not StartsStr(' ', mLine) then
       mLines := mLines + [mLine];
   Assert.IsTrue(StartsStr(mModel.Subsystems[mLast].Name + ' ', mLines[1]), mLines[1]);
+end;
+
+procedure TAtlasArchitectureFrameTests.FoundationInMenuAndTree;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mToggle: TMenuItem;
+  mIndex: Integer;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleFoundationAnswer, mModel, mEnabled));
+  FFrame.SetModel(mModel);
+  // Reiter: „Fundament (n Units, übergreifende Fundamente)“, darunter zuerst die Regel.
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureFoundationLine, ['Fundament',
+    Length(mModel.Subsystems[0].Units)]), FFrame.SubsystemText[0]);
+  Assert.AreEqual('  ' + TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationRule), FFrame.SubsystemText[1]);
+  // Menü: Schalter „Kanten zum Fundament“ vor „Alle einblenden“.
+  FFrame.FillSubsystemsMenu;
+  mToggle := nil;
+  for mIndex := 0 to FFrame.SubsystemsMenu.Items.Count - 1 do
+    if FFrame.SubsystemsMenu.Items[mIndex].Caption = TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationEdges) then
+      mToggle := FFrame.SubsystemsMenu.Items[mIndex];
+  Assert.IsNotNull(mToggle);
+  Assert.IsTrue(mToggle.Checked);
+  mToggle.Click;
+  Assert.IsFalse(FFrame.Map.ShowFoundationEdges);
+  Assert.IsFalse(mToggle.Checked);
+  mToggle.Click;
+  Assert.IsTrue(FFrame.Map.ShowFoundationEdges);
 end;
 
 initialization

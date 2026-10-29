@@ -264,6 +264,14 @@ begin
   Assert.AreEqual(Double(0.3), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
   Parse('{"architecture": {"grouping": {"maxShare": "viel"}}}', mIssues);
   Assert.AreEqual(1, Integer(Length(mIssues)));
+  // Fundamente (#1365).
+  Assert.AreEqual('separate', TServerSettings.Default.ArchitectureGroupingFoundations);
+  mSettings := Parse('{"architecture": {"grouping": {"foundations": "attach"}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('attach', mSettings.ArchitectureGroupingFoundations);
+  mSettings := Parse('{"architecture": {"grouping": {"foundations": "Group"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.AreEqual('separate', mSettings.ArchitectureGroupingFoundations);
   mSettings := Parse('{"architecture": {"grouping": {"resolution": 2.5, "showResolutionSlider": false}}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.AreEqual(Double(2.5), mSettings.ArchitectureGroupingResolution, 1E-9);

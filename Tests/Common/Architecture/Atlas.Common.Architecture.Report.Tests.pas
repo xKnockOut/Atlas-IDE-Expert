@@ -35,6 +35,8 @@ type
     procedure HeaderNamesChangedResolution;
     [Test]
     procedure NamesParentOfSplitSubsystem;
+    [Test]
+    procedure MarksFoundation;
   end;
 
 implementation
@@ -312,6 +314,28 @@ begin
   Assert.Contains(TArchitectureReport.Markdown(mOverview), '### ' + mName + ' (Teil von App)');
   Assert.Contains(TArchitectureReport.Text(mOverview, TArchitectureSection.Subsystems, 10),
     mName + ' (Teil von App): ');
+end;
+
+procedure TArchitectureReportTests.MarksFoundation;
+var
+  mOverview: TArchitectureOverview;
+  mJson, mMarkdown, mText: string;
+begin
+  mOverview := Sample;
+  Assert.IsFalse(Pos('"foundation":true', TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview))) > 0);
+  // Teilsystem „Fundament“ (#1365): Kennzeichen, kein Zusammenhalt, Regel als Hinweis.
+  mOverview.Subsystems[0].Name := TArchitectureAnalyzer.FoundationName;
+  mOverview.Subsystems[0].Foundation := True;
+  mOverview.Subsystems[0].ColorSlot := -1;
+  mJson := TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview));
+  Assert.Contains(mJson, '"color":-1,"shade":0,"foundation":true');
+  mMarkdown := TArchitectureReport.Markdown(mOverview);
+  Assert.Contains(mMarkdown, '| Fundament | ');
+  Assert.Contains(mMarkdown, ' | – | ');
+  Assert.Contains(mMarkdown, 'Fundament: ' + TArchitectureAnalyzer.FoundationRule);
+  mText := TArchitectureReport.Text(mOverview, TArchitectureSection.Subsystems, 10);
+  Assert.Contains(mText, 'Fundament: ' + IntToStr(Length(mOverview.Subsystems[0].Units)) + ' Units, Zusammenhalt –');
+  Assert.Contains(mText, TArchitectureAnalyzer.FoundationRule);
 end;
 
 initialization

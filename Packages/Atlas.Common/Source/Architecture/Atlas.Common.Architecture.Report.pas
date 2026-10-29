@@ -19,8 +19,9 @@
 //    "central": [0, 1],
 //    "subsystems": [{"name": "Kern", "units": [0, 1], "central": 0,
 //                    "inner": 2, "outer": 0, "cohesion": 1, "isolated": false,
-//                    "color": 0, "shade": 0, "parent": "Common",
-//                    "x": 0, "y": 0, "r": 70}],         ("parent" nur bei nachgeteilten, #1364)
+//                    "color": 0, "shade": 0, "foundation": true, "parent": "Common",
+//                    "x": 0, "y": 0, "r": 70}],         ("parent" nur bei nachgeteilten, #1364;
+//                                                        "foundation" nur am Teilsystem „Fundament“, #1365)
 //    "outliers": [{"unit": 3, "suggested": 1, "reason": "namespace",
 //                  "inside": 2, "toward": 0}],
 //    "cycles": [{"interfaceOnly": true, "units": [0, 1], "component": [0, 1],
@@ -185,6 +186,27 @@ begin
   Result := ASubsystem.Name;
   if ASubsystem.Parent <> '' then
     Result := Result + ' (Teil von ' + ASubsystem.Parent + ')';
+end;
+
+/// <summary>Zusammenhalt in Prozent; „–“ beim Teilsystem „Fundament“ (#1365).</summary>
+function CohesionText(const ASubsystem: TOverviewSubsystem): string;
+begin
+  if ASubsystem.Foundation then
+    Result := '–'
+  else
+    Result := Percent(ASubsystem.Cohesion);
+end;
+
+/// <summary>Hinweis, nach welcher Regel das Teilsystem „Fundament“ entstand; '' ohne Fundament.</summary>
+function FoundationNote(const AOverview: TArchitectureOverview): string;
+var
+  mSubsystem: TOverviewSubsystem;
+begin
+  Result := '';
+  for mSubsystem in AOverview.Subsystems do
+    if mSubsystem.Foundation then
+      Result := TArchitectureAnalyzer.FoundationName + ': ' + TArchitectureAnalyzer.FoundationRule +
+        '; Kanten dorthin zählen nicht als Querverbindung und nicht im Zusammenhalt.';
 end;
 
 function CreatedText(const AOverview: TArchitectureOverview): string;
@@ -440,6 +462,8 @@ begin
         .Append(',"isolated":').Append(JsonBool(Subsystem.Isolated))
         .Append(',"color":').Append(Subsystem.ColorSlot)
         .Append(',"shade":').Append(Subsystem.Shade);
+      if Subsystem.Foundation then
+        Builder.Append(',"foundation":true');
       if Subsystem.Parent <> '' then
         Builder.Append(',"parent":').Append(JsonText(Subsystem.Parent));
       if Index < Length(ALayout.Subsystems) then
@@ -570,10 +594,12 @@ begin
         .Append(' | ');
       if Subsystem.Central >= 0 then
         Builder.Append(Cell(AOverview.Units[Subsystem.Central].Name));
-      Builder.Append(' | ').Append(Percent(Subsystem.Cohesion)).Append(' | ').Append(Subsystem.InnerEdges)
+      Builder.Append(' | ').Append(CohesionText(Subsystem)).Append(' | ').Append(Subsystem.InnerEdges)
         .Append(' | ').Append(Subsystem.OuterEdges).Append(' |').Append(LineBreak);
     end;
     Builder.Append(LineBreak);
+    if FoundationNote(AOverview) <> '' then
+      Builder.Append(FoundationNote(AOverview)).Append(LineBreak).Append(LineBreak);
     for Index := 0 to High(AOverview.Subsystems) do
     begin
       Subsystem := AOverview.Subsystems[Index];
@@ -743,7 +769,7 @@ begin
         begin
           Subsystem := AOverview.Subsystems[Index];
           Result := Result + '  ' + SubsystemCaption(Subsystem) + ': ' + IntToStr(Length(Subsystem.Units)) +
-            ' Units, Zusammenhalt ' + Percent(Subsystem.Cohesion) + LineBreak;
+            ' Units, Zusammenhalt ' + CohesionText(Subsystem) + LineBreak;
         end;
         Result := Limited(Result, Length(AOverview.Subsystems), ALimit);
         Result := Result + 'Weitere Abschnitte: central, subsystems, cycles, crossLinks; unit für einen Steckbrief.';
@@ -778,9 +804,11 @@ begin
           if Length(Subsystem.Units) > 10 then
             Names := Names + ' … (' + IntToStr(Length(Subsystem.Units)) + ')';
           Result := Result + SubsystemCaption(Subsystem) + ': ' + IntToStr(Length(Subsystem.Units)) +
-            ' Units, Zusammenhalt ' + Percent(Subsystem.Cohesion) + LineBreak + '  ' + Names + LineBreak;
+            ' Units, Zusammenhalt ' + CohesionText(Subsystem) + LineBreak + '  ' + Names + LineBreak;
         end;
         Result := Limited(Result, Length(AOverview.Subsystems), ALimit);
+        if FoundationNote(AOverview) <> '' then
+          Result := Result + FoundationNote(AOverview) + LineBreak;
         if Length(AOverview.Outliers) > 0 then
         begin
           Result := Result + 'Ausreißer:' + LineBreak;

@@ -2253,7 +2253,7 @@ procedure TValidator.ReadArchitecture(ANode: TJsonNode);
       ReportNode(AValueNode, Format('"architecture.grouping.%s" muss eine Zahl von %s sein', [AName, ARange]));
   end;
 
-  // architecture.grouping: Gruppierung der Teilsysteme (#1366, #1364).
+  // architecture.grouping: Gruppierung der Teilsysteme (#1366, #1364, #1365).
   procedure ReadGrouping(AGroupNode: TJsonNode);
   var
     mIndex: Integer;
@@ -2273,6 +2273,15 @@ procedure TValidator.ReadArchitecture(ANode: TJsonNode);
         ReadNumber(AGroupNode[mIndex], mKey, '0 bis 0,9', 0, 0.9, FSettings.ArchitectureGroupingMaxShare)
       else if mKey = 'minCohesion' then
         ReadNumber(AGroupNode[mIndex], mKey, '0 bis 1', 0, 1, FSettings.ArchitectureGroupingMinCohesion)
+      else if mKey = 'foundations' then
+      begin
+        if (AGroupNode[mIndex].Kind = TJsonKind.String_) and ((AGroupNode[mIndex].Value = 'group') or
+          (AGroupNode[mIndex].Value = 'attach') or (AGroupNode[mIndex].Value = 'separate')) then
+          FSettings.ArchitectureGroupingFoundations := AGroupNode[mIndex].Value
+        else
+          ReportNode(AGroupNode[mIndex],
+            '"architecture.grouping.foundations" muss "group", "attach" oder "separate" sein');
+      end
       else if mKey = 'showResolutionSlider' then
         ExpectBoolean(AGroupNode[mIndex], mKey, FSettings.ArchitectureGroupingShowResolutionSlider)
       else
@@ -3545,6 +3554,7 @@ begin
       Result.ArchitectureGroupingShowResolutionSlider := FileSettings.ArchitectureGroupingShowResolutionSlider;
       Result.ArchitectureGroupingMaxShare := FileSettings.ArchitectureGroupingMaxShare;
       Result.ArchitectureGroupingMinCohesion := FileSettings.ArchitectureGroupingMinCohesion;
+      Result.ArchitectureGroupingFoundations := FileSettings.ArchitectureGroupingFoundations;
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
