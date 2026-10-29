@@ -3,7 +3,10 @@
 // Inhalt des Seitenfensters „Atlas-Architektur“ (#1118), reine VCL: oben
 // „Neu berechnen“, „Bericht speichern …“, „Stand speichern …“ und
 // „Vergleichen mit …“ (#1121, Datei .json), Umfang (Projektgruppe, Projekt),
-// „Bibliotheks-Units“ und ein Filter nach Unit-Namen; darunter sechs Reiter:
+// „Bibliotheks-Units“, der Regler „Feinheit“ (#1366, TAtlasResolutionSlider,
+// daneben „γ = 1,0 · 6 Teilsysteme“; OnResolutionChanged beim Loslassen,
+// ShowResolution blendet ihn aus) und ein Filter nach Unit-Namen; darunter
+// sechs Reiter:
 // - Übersicht: „Einpassen“, „Namen“, „implementation-uses“, „Zyklen
 //   markieren“, „Änderungen zum Stand“ (nur mit Vergleich) und „Teilsysteme ▾“
 //   (ein- und ausblenden), die Karte (TAtlasArchitectureMap), darunter Angaben
@@ -44,7 +47,8 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Atlas.Core.Architecture.Model,
-  Atlas.UI.Architecture.Map;
+  Atlas.UI.Architecture.Map,
+  Atlas.UI.Architecture.Slider;
 
 type
   TAtlasArchitectureFrame = class(TFrame)
@@ -56,6 +60,9 @@ type
     FCompare: TButton;
     FScope: TComboBox;
     FLibrary: TCheckBox;
+    FResolutionCaption: TLabel;
+    FResolution: TAtlasResolutionSlider;
+    FResolutionInfo: TLabel;
     FFilter: TEdit;
     FPages: TPageControl;
     /// <summary>Reiter in Reihenfolge; CreateWnd hängt sie ein (das braucht das Fenster des PageControls).</summary>
@@ -99,6 +106,7 @@ type
     FOnClearComparison: TProc;
     FOnScopeChanged: TProc<string>;
     FOnLibraryChanged: TProc<Boolean>;
+    FOnResolutionChanged: TProc<Double>;
     FOnOpenUnit: TProc<string>;
     FOnOpenLocation: TProc<string, Integer, Integer>;
     FOnUnitRelations: TProc<string>;
@@ -149,6 +157,12 @@ type
     procedure SetScopeValue(const AValue: string);
     function GetIncludeLibrary: Boolean;
     procedure SetIncludeLibrary(AValue: Boolean);
+    function GetResolutionValue: Double;
+    procedure SetResolutionValue(AValue: Double);
+    function GetShowResolution: Boolean;
+    procedure SetShowResolution(AValue: Boolean);
+    /// <summary>„γ = 1,0 · 6 Teilsysteme“; die Zahl nur, wenn die Karte mit diesem Wert gerechnet ist.</summary>
+    procedure UpdateResolutionInfo(AValue: Double);
   protected
     procedure CreateWnd; override;
   public
@@ -199,6 +213,12 @@ type
     property SubsystemsMenu: TPopupMenu read FSubsystemsMenu;
     property ScopeValue: string read FScopeValue write SetScopeValue;
     property IncludeLibrary: Boolean read GetIncludeLibrary write SetIncludeLibrary;
+    /// <summary>Feinheit γ des Reglers (#1366); Setzen meldet nichts.</summary>
+    property ResolutionValue: Double read GetResolutionValue write SetResolutionValue;
+    /// <summary>Regler „Feinheit“ zeigen (architecture.grouping.showResolutionSlider).</summary>
+    property ShowResolution: Boolean read GetShowResolution write SetShowResolution;
+    property ResolutionSlider: TAtlasResolutionSlider read FResolution;
+    property ResolutionInfo: TLabel read FResolutionInfo;
     property SortColumn: TAtlasArchColumn read FSortColumn;
     property SortDescending: Boolean read FSortDescending;
     property OnRefresh: TProc read FOnRefresh write FOnRefresh;
@@ -212,6 +232,8 @@ type
     property OnClearComparison: TProc read FOnClearComparison write FOnClearComparison;
     property OnScopeChanged: TProc<string> read FOnScopeChanged write FOnScopeChanged;
     property OnLibraryChanged: TProc<Boolean> read FOnLibraryChanged write FOnLibraryChanged;
+    /// <summary>Regler losgelassen, Doppelklick oder Taste: neue Feinheit (#1366).</summary>
+    property OnResolutionChanged: TProc<Double> read FOnResolutionChanged write FOnResolutionChanged;
     property OnOpenUnit: TProc<string> read FOnOpenUnit write FOnOpenUnit;
     /// <summary>Absoluter Pfad, Zeile und Spalte ab 1.</summary>
     property OnOpenLocation: TProc<string, Integer, Integer> read FOnOpenLocation write FOnOpenLocation;
@@ -310,6 +332,45 @@ begin
   FLibrary.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureLibrary);
   FLibrary.Width := 120;
   FLibrary.OnClick := LibraryClick;
+
+  FResolutionCaption := TLabel.Create(Self);
+  FResolutionCaption.Parent := FTop;
+  FResolutionCaption.Align := alLeft;
+  FResolutionCaption.AlignWithMargins := True;
+  FResolutionCaption.Left := FLibrary.Left + FLibrary.Width + 1;
+  FResolutionCaption.Layout := tlCenter;
+  FResolutionCaption.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureResolutionCaption);
+  FResolutionCaption.ShowAccelChar := False;
+
+  FResolution := TAtlasResolutionSlider.Create(Self);
+  FResolution.Parent := FTop;
+  FResolution.Align := alLeft;
+  FResolution.AlignWithMargins := True;
+  FResolution.Left := FResolutionCaption.Left + FResolutionCaption.Width + 1;
+  FResolution.Width := 140;
+  FResolution.Hint := TAtlasStrings.Text(TAtlasTextId.ArchitectureResolutionHint);
+  FResolution.ShowHint := True;
+  FResolution.OnTracking :=
+    procedure(AValue: Double)
+    begin
+      UpdateResolutionInfo(AValue);
+    end;
+  FResolution.OnChange :=
+    procedure(AValue: Double)
+    begin
+      UpdateResolutionInfo(AValue);
+      if Assigned(FOnResolutionChanged) then
+        FOnResolutionChanged(AValue);
+    end;
+
+  FResolutionInfo := TLabel.Create(Self);
+  FResolutionInfo.Parent := FTop;
+  FResolutionInfo.Align := alLeft;
+  FResolutionInfo.AlignWithMargins := True;
+  FResolutionInfo.Left := FResolution.Left + FResolution.Width + 1;
+  FResolutionInfo.Layout := tlCenter;
+  FResolutionInfo.ShowAccelChar := False;
+  UpdateResolutionInfo(FResolution.Value);
 
   FFilter := TEdit.Create(Self);
   FFilter.Parent := FTop;
@@ -577,6 +638,41 @@ begin
   end;
 end;
 
+function TAtlasArchitectureFrame.GetResolutionValue: Double;
+begin
+  Result := FResolution.Value;
+end;
+
+procedure TAtlasArchitectureFrame.SetResolutionValue(AValue: Double);
+begin
+  FResolution.Value := AValue;
+  UpdateResolutionInfo(FResolution.Value);
+end;
+
+function TAtlasArchitectureFrame.GetShowResolution: Boolean;
+begin
+  Result := FResolution.Visible;
+end;
+
+procedure TAtlasArchitectureFrame.SetShowResolution(AValue: Boolean);
+begin
+  FResolutionCaption.Visible := AValue;
+  FResolution.Visible := AValue;
+  FResolutionInfo.Visible := AValue;
+end;
+
+procedure TAtlasArchitectureFrame.UpdateResolutionInfo(AValue: Double);
+var
+  mText: string;
+begin
+  mText := TAtlasArchResolution.Text(AValue, FormatSettings);
+  if FHasModel and TAtlasArchResolution.Same(FModel.Resolution, AValue) then
+    FResolutionInfo.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionInfo, [mText,
+      FModel.SubsystemCount])
+  else
+    FResolutionInfo.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionValue, [mText]);
+end;
+
 procedure TAtlasArchitectureFrame.SetModel(const AModel: TAtlasArchitectureModel);
 begin
   FModel := AModel;
@@ -585,6 +681,7 @@ begin
   FMap.SetModel(FModel);
   FMap.Filter := FFilter.Text;
   FillAll;
+  UpdateResolutionInfo(FResolution.Value);
 end;
 
 procedure TAtlasArchitectureFrame.SetMessage(const AText: string; AKeep: Boolean);
@@ -596,6 +693,7 @@ begin
     FHasModel := False;
     FMap.SetModel(FModel);
     FillAll;
+    UpdateResolutionInfo(FResolution.Value);
   end;
   UpdateStatus;
 end;
@@ -870,6 +968,11 @@ begin
     if Length(Comparison.Failed) > 0 then
       Info := Info + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonFailed,
         [string.Join(', ', Comparison.Failed)]);
+    // Verschiedene Feinheit (#1366): Teilsystemwechsel können allein daher kommen.
+    if Comparison.ResolutionDiffers then
+      Info := Info + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonResolution,
+        [TAtlasArchResolution.Text(Comparison.BaselineResolution, FormatSettings),
+        TAtlasArchResolution.Text(Comparison.Resolution, FormatSettings)]);
   end
   else
     Info := TAtlasStrings.Text(TAtlasTextId.ArchitectureNoComparison);
