@@ -3204,7 +3204,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A generic declaration that Delphi rejects: class and record constraints together (like E2507), a constraint twice (E2603), record together with constructor (E2516), a class type next to class or record (E2552), two class types (E2553), a constraint type that is neither class nor interface (E2510); type parameters on an enumeration, set, subrange, pointer, class reference, alias or helper (E2508), on a destructor or class constructor (E2528), an operator (E2529), a global routine (E2530), a virtual, dynamic, message or override method (E2533) or an interface method (E2535); class of a parameterized type (E2548), a generic class derived from TCustomAttribute (E2549), a parameterized type as attribute (E2565); a type parameter that hides one of the enclosing type (H2509); a call with a number of type arguments no overload has (E2551, classes and records of the file with their ancestors in the file); a method of a generic type or a generic method declared in the interface section that uses a symbol of the implementation section (E2506; silent inside with and when the ancestor chain is not known). Types count only when they are built in or declared in the file; unknown types keep the rule silent. Local procedures in generic methods (E2570) are not reported until a check against Delphi 12/13 confirms that they are still rejected.",
+      "description": "A generic declaration that Delphi rejects: class and record constraints together (like E2507), a constraint twice (E2603), record together with constructor (E2516), a class type next to class or record (E2552), two class types (E2553), a constraint type that is neither class nor interface (E2510); type parameters on an enumeration, set, subrange, pointer, class reference, alias or helper (E2508), on a constructor of a class, a destructor or a class constructor (E2528), an operator (E2529), a global routine (E2530), a virtual, dynamic, message or override method (E2533) or an interface method (E2535); class of a parameterized type (E2548), a generic class derived from TCustomAttribute (E2549), a parameterized type as attribute (E2565); a type parameter that hides one of the enclosing type (H2509); a call with a number of type arguments no overload has (E2551, classes and records of the file with their ancestors in the file); a method of a generic type or a generic method declared in the interface section that uses a symbol of the implementation section (E2506; silent inside with and when the ancestor chain is not known); a local routine in a generic method or a method of a generic type (E2570); type before an instantiated type such as type TList<Integer> (E2574, quick fix: remove type and declare an alias). Types count when they are built in, declared in the file or, for class constraints (E2552, E2553), found in the symbol index; unknown types keep the rule silent.",
       "bad": "procedure Swap<T>(var A, B: T);",
       "good": "type\n  TSwap = record\n    class procedure Swap<T>(var A, B: T); static;\n  end;",
       "compilerCodes": [
@@ -3224,10 +3224,12 @@
         "E2552",
         "E2553",
         "E2565",
+        "E2570",
+        "E2574",
         "E2603",
         "H2509"
       ],
-      "level": "A"
+      "level": "B"
     },
     {
       "id": "type-restriction-violated",
@@ -4439,6 +4441,21 @@
         "E2571"
       ],
       "level": "B"
+    },
+    {
+      "id": "generic-inference-failed",
+      "name": "Type arguments cannot be inferred",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A call of a generic method without type arguments whose type parameters cannot be inferred from the arguments: a type parameter that occurs in no parameter, for example only in the result (like E2531), or arguments of different kinds (number, string, Boolean) for parameters whose type is the same type parameter (like E2532). E2531 is reported as a statement, as a call with parentheses and on the right side of an assignment to a value of known, non-procedural type, and only when every overload has such a type parameter. E2532 is reported only for exactly one routine without overload; arguments of unknown type (Variant, classes, expressions) and numbers of different size keep the rule silent. Like argument-count-mismatch it is silent for declarations in conditional branches and names that an unknown ancestor can hide.",
+      "bad": "Zahl := TFabrik.Neu;\nTFabrik.Paar(1, 'a');",
+      "good": "Zahl := TFabrik.Neu<Integer>;\nTFabrik.Paar<string>('1', 'a');",
+      "compilerCodes": [
+        "E2531",
+        "E2532"
+      ],
+      "level": "T"
     },
     {
       "id": "unresolved-type",

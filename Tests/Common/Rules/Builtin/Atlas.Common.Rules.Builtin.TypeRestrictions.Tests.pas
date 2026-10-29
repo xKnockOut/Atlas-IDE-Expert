@@ -6,7 +6,9 @@
 // Fällen (richtige Operatoren, Aliase, unbekannte Typen) und Abschalten;
 // generic-declaration-invalid (#1029) mit dem Beispiel und je Gruppe von
 // Codes ein gemeldeter und ein stiller Fall, still bei Methodenzuordnungen
-// (#1325); type-restriction-violated (#994)
+// (#1325), Klassen als Einschränkung aus dem Index, lokale Routinen in
+// generischen Methoden und type vor instanziierten Typen samt Korrektur
+// (#1376); type-restriction-violated (#994)
 // mit dem Beispiel samt Korrektur, Records, lokalen Records, Helfern,
 // Klassenkonstruktoren, inline, threadvar und der Option disabledChecks.
 
@@ -58,6 +60,12 @@ type
     procedure TypeArgumentCount;
     [Test]
     procedure LocalSymbolsInGenericMethods;
+    [Test]
+    procedure ConstraintClassesFromIndex;
+    [Test]
+    procedure LocalRoutinesInGenericMethods;
+    [Test]
+    procedure TypedInstantiatedType;
     [Test]
     procedure OffAndExclude;
   end;
@@ -122,6 +130,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Builtin.TypeRestrictions,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
@@ -397,7 +408,8 @@ begin
     '8: Klassenkonstruktoren dürfen keine Typparameter haben (wie E2528).|' +
     '9: Virtuelle, dynamische und message-Methoden dürfen keine Typparameter haben (wie E2533).|' +
     '10: Virtuelle, dynamische und message-Methoden dürfen keine Typparameter haben (wie E2533).|' +
-    '13: Interface-Methoden dürfen keine Typparameter haben (wie E2535).',
+    '11: Konstruktoren dürfen keine Typparameter haben (wie E2528).|' +
+    '14: Interface-Methoden dürfen keine Typparameter haben (wie E2535).',
     Messages(GenericFindings(GenericUnit(
     '  TA = class'#10'  public'#10 +
     '    class operator Add<T>(const A, B: TA): TA;'#10 +
@@ -405,14 +417,21 @@ begin
     '    class constructor Create<T>;'#10 +
     '    procedure Laden<T>; virtual;'#10 +
     '    procedure Lesen<T>(A: T); override;'#10 +
+    '    constructor Create<T>(A: T);'#10 +
     '  end;'#10 +
     '  IA = interface'#10 +
     '    procedure Schreiben<T>(A: T);'#10 +
     '  end;'#10, ''))));
+  // Fall Cm.E2528 aus dem Testprojekt: gemeldet in der Deklaration, nicht noch einmal am Rumpf.
+  Assert.AreEqual('6: Konstruktoren dürfen keine Typparameter haben (wie E2528).',
+    Messages(GenericFindings(GenericUnit('  TKlasse = class'#10'  public'#10'    constructor Create<T>;'#10 +
+    '  end;'#10, 'constructor TKlasse.Create<T>;'#10'begin'#10'end;'#10))));
+  // Gegenfall: Konstruktor ohne Typparameter in generischer Klasse, Konstruktoren in Records bleiben still.
   Assert.AreEqual('', Messages(GenericFindings(GenericUnit(
-    '  TA = class'#10'  public'#10'    class function Neu<T>: T; static;'#10'    constructor Create<T>(A: T);'#10 +
+    '  TA = class'#10'  public'#10'    class function Neu<T>: T; static;'#10'    constructor Create(A: Integer);'#10 +
     '    procedure Laden<T>(A: T);'#10'    procedure Lesen; virtual;'#10'    destructor Destroy; override;'#10 +
-    '  end;'#10,
+    '  end;'#10'  TB<T> = class'#10'    constructor Create(A: T);'#10'  end;'#10 +
+    '  TR = record'#10'    constructor Create<T>(A: T);'#10'  end;'#10,
     'procedure TA.Laden<T>(A: T);'#10'begin'#10'end;'#10))));
 end;
 
@@ -504,6 +523,86 @@ begin
     '  with Self do'#10'    Hilf := Grenze;'#10'end;'#10 +
     'procedure TFest.Pruefen;'#10'begin'#10'  if Hilf > Grenze then'#10'    Exit;'#10'end;'#10);
   Assert.AreEqual('', Messages(GenericFindings(Source)));
+end;
+
+/// <summary>Index mit der Unit Klassen (TBasis, TZweite, IZeigbar, TZahl als Alias).</summary>
+function ClassIndex: ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Klassen;'#10'interface'#10'type'#10 +
+    '  TBasis = class'#10'  end;'#10'  TZweite = class(TBasis)'#10'  end;'#10'  IZeigbar = interface'#10 +
+    '  end;'#10'  TZahl = Integer;'#10'  TPunkt = record'#10'  end;'#10'implementation'#10'end.',
+    'C:\Quellen\Klassen.pas', nil));
+end;
+
+function IndexedFindings(const ATypes: string): string;
+begin
+  Result := Messages(TRuleAssert.IndexFindings(TGenericDeclarationInvalidRule.Create, 'unit G;'#10'interface'#10 +
+    'uses Klassen;'#10'type'#10 + ATypes + 'implementation'#10'end.', ClassIndex, '', 'G.pas'));
+end;
+
+procedure TGenericDeclarationInvalidTests.ConstraintClassesFromIndex;
+begin
+  // Fälle Cm.E2552 und Cm.E2553: Klassen aus einer anderen Unit (dort TStream, TComponent).
+  Assert.AreEqual('5: Die Klasse TBasis lässt sich nicht zusammen mit class bzw. record fordern (wie E2552).',
+    IndexedFindings('  TBehaelter<T: class, TBasis> = class'#10'  end;'#10));
+  Assert.AreEqual('5: record lässt sich nicht zusammen mit einer Klasse als Einschränkung fordern (wie E2552).',
+    IndexedFindings('  TBehaelter<T: Klassen.TBasis, record> = class'#10'  end;'#10));
+  Assert.AreEqual('5: Nur eine Klasse ist als Einschränkung erlaubt; TZweite ist die zweite (wie E2553).',
+    IndexedFindings('  TBehaelter<T: TBasis, TZweite> = class'#10'  end;'#10));
+  // Gegenfälle, die dcc übersetzt: Klasse mit Interface und constructor, Interface mit class, eine Klasse.
+  Assert.AreEqual('', IndexedFindings('  TA<T: TBasis, IZeigbar, constructor> = class'#10'  end;'#10 +
+    '  TB<T: class, IZeigbar> = class'#10'  end;'#10'  TC<T: TZweite> = class'#10'  end;'#10));
+  // Unbekannt, Alias und Typparameter: still; ohne Index ebenso.
+  Assert.AreEqual('', IndexedFindings('  TA<T: class, TFremd> = class'#10'  end;'#10 +
+    '  TB<T: TBasis; U: class, T> = class'#10'  end;'#10));
+  Assert.AreEqual('', Messages(GenericFindings(GenericUnit('  TA<T: class, TBasis> = class'#10'  end;'#10, ''))));
+end;
+
+procedure TGenericDeclarationInvalidTests.LocalRoutinesInGenericMethods;
+const
+  Hint = ' nicht erlaubt: Methoden generischer Typen und generische Methoden haben keine lokalen Routinen; als ' +
+    'private Methode oder anonyme Methode schreiben (wie E2570).';
+begin
+  // Fall Cm.E2570: Methode eines generischen Typs; dazu eine generische Methode einer normalen Klasse.
+  Assert.AreEqual('13: Die lokale Routine Innen ist in TBehaelter.Machen' + Hint + '|' +
+    '21: Die lokale Routine Zaehlen ist in TWerkzeug.Neu' + Hint, Messages(GenericFindings(GenericUnit(
+    '  TBehaelter<T> = class'#10'    procedure Machen;'#10'  end;'#10 +
+    '  TWerkzeug = class'#10'    function Neu<T>: Integer;'#10'  end;'#10,
+    'procedure TBehaelter<T>.Machen;'#10#10'  procedure Innen;'#10'  begin'#10'  end;'#10#10'begin'#10 +
+    '  Innen;'#10'end;'#10'function TWerkzeug.Neu<T>: Integer;'#10'  function Zaehlen: Integer;'#10'  begin'#10 +
+    '    Result := 1;'#10'  end;'#10'begin'#10'  Result := Zaehlen;'#10'end;'#10))));
+  // Gegenfälle: lokale Routine in einer normalen Methode und in einer globalen Routine, anonyme Methode in
+  // einer Methode eines generischen Typs.
+  Assert.AreEqual('', Messages(GenericFindings(GenericUnit(
+    '  TBehaelter<T> = class'#10'    procedure Machen;'#10'  end;'#10'  TFest = class'#10 +
+    '    procedure Machen;'#10'  end;'#10,
+    'procedure TBehaelter<T>.Machen;'#10'var'#10'  P: TProc;'#10'begin'#10'  P := procedure'#10'    begin'#10 +
+    '    end;'#10'  P;'#10'end;'#10'procedure TFest.Machen;'#10'  procedure Innen;'#10'  begin'#10'  end;'#10 +
+    'begin'#10'  Innen;'#10'end;'#10'procedure Frei;'#10'  procedure Innen;'#10'  begin'#10'  end;'#10 +
+    'begin'#10'  Innen;'#10'end;'#10))));
+end;
+
+procedure TGenericDeclarationInvalidTests.TypedInstantiatedType;
+var
+  Source, Fixed: string;
+  Found: TArray<TRuleFinding>;
+begin
+  // Fall Cm.E2574.
+  Source := GenericUnit('  TBehaelter<T> = class'#10'  end;'#10#10'  TEigen = type TBehaelter<Integer>;'#10, '');
+  Found := GenericFindings(Source);
+  Assert.AreEqual('7: Der instanziierte Typ TBehaelter<Integer> lässt sich nicht mit type als eigener Typ ' +
+    'deklarieren (wie E2574).', Messages(Found));
+  Assert.AreEqual(11, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
+  Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
+  Assert.AreEqual(GenericUnit('  TBehaelter<T> = class'#10'  end;'#10#10'  TEigen = TBehaelter<Integer>;'#10, ''),
+    Fixed);
+  Assert.AreEqual('', Messages(GenericFindings(Fixed)));
+  // Gegenfälle: Alias auf den instanziierten Typ, type vor einem normalen Typ, generische Typen.
+  Assert.AreEqual('', Messages(GenericFindings(GenericUnit('  TBehaelter<T> = class'#10'  end;'#10 +
+    '  TListe = TBehaelter<Integer>;'#10'  TZahl = type Integer;'#10'  TOffen<T> = class(TBehaelter<T>)'#10 +
+    '  end;'#10, ''))));
 end;
 
 procedure TGenericDeclarationInvalidTests.OffAndExclude;

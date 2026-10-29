@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Weitere Generics-Fehler (#1376, 29.10.2026, Branch `feature/1376-generics-fehler`)
+- `generic-declaration-invalid` (jetzt Stufe B): E2528 auch für Konstruktoren von Klassen (dcc 13 meldet `constructor Create<T>;`, GD10 nannte den generischen Konstruktor fälschlich erlaubt; Records und `object` bleiben ungeprüft still), E2552/E2553 mit Klassen aus dem Index (`TNameResolver.ResolveTypeTextFrom`, nur wenn der Name weder Typparameter noch in der Datei deklariert ist), E2570 (lokale Routine in Methoden generischer Typen und generischen Methoden; Kopf mit Punkt und GenericParams; spring4d hat in 1207 generischen Methoden keine einzige lokale Routine), E2574 (`type` vor `TypeReference` mit GenericArgs außerhalb generischer Typen, Korrektur entfernt `type`).
+- Neue Regel `generic-inference-failed` (Stufe T, Unit `Builtin.Generics`): E2531 und E2532 über `CallCandidates`; eigene Typparameter liest `TGenericInferenceFailedRule.OwnTypeParams` aus der Signatur. Vorfilter: Name hat einen generischen Kopf in der Datei oder `Index.HasSymbol` mit TypeParams.
+- Vergleich in der Cloud (AtlasServer --check auf `Compilermeldungen.dproj`, dcc.tsv aus Ergebnisse): alle sieben Codes erkannt, keine Zusatztreffer der beiden Regeln; E2552/E2553 nur mit RTL im Index (in der Cloud mit Stub `System.Classes` nachgestellt).
+- Offen: dcc-Lauf über `Tests/DccFaelle` (neu `DccGenerics`, `DccGenericsGegen`: Konstruktor mit Parameter, `type TArray<Integer>`, Integer+Double, Variant), Delphi-Build 12/13, Handtests GD13–GD16, GI1–GI7.
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.
