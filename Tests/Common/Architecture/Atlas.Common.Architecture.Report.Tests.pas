@@ -33,6 +33,8 @@ type
     /// <summary>Feinheit γ (#1366): im Kopf nur, wenn sie von 1,0 abweicht; JSON immer.</summary>
     [Test]
     procedure HeaderNamesChangedResolution;
+    [Test]
+    procedure NamesParentOfSplitSubsystem;
   end;
 
 implementation
@@ -290,6 +292,26 @@ begin
     '"grouping":{"resolution":2.5}');
   // Die HTML-Seite liest denselben Wert aus den Daten.
   Assert.Contains(TArchitectureReport.Html(mOverview), 'Feinheit γ = ', False);
+end;
+
+procedure TArchitectureReportTests.NamesParentOfSplitSubsystem;
+var
+  mOverview: TArchitectureOverview;
+  mJson, mName: string;
+begin
+  mOverview := Sample;
+  mJson := TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview));
+  Assert.IsFalse(Pos('"parent"', mJson) > 0, 'ohne Nachteilung kein "parent"');
+  Assert.Contains(mJson, '"color":1,"shade":0');
+  // Teil eines nachgeteilten Teilsystems (#1364).
+  mName := mOverview.Subsystems[0].Name;
+  mOverview.Subsystems[0].Parent := 'App';
+  mOverview.Subsystems[0].Shade := 1;
+  mJson := TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview));
+  Assert.Contains(mJson, '"color":0,"shade":1,"parent":"App"');
+  Assert.Contains(TArchitectureReport.Markdown(mOverview), '### ' + mName + ' (Teil von App)');
+  Assert.Contains(TArchitectureReport.Text(mOverview, TArchitectureSection.Subsystems, 10),
+    mName + ' (Teil von App): ');
 end;
 
 initialization

@@ -8,7 +8,9 @@
 //   nach gesamt abhängig auf Ringen nach außen (Ring r fasst 6·r Units).
 // - Teilsysteme nach Größe: das größte in der Mitte, jedes weitere berührt
 //   ein schon gesetztes, so nah wie möglich am Schwerpunkt der Teilsysteme,
-//   mit denen es Kanten hat, ohne sich zu überlappen.
+//   mit denen es Kanten hat, ohne sich zu überlappen. Teile eines
+//   nachgeteilten Teilsystems (#1364, gleicher Parent) legen sich an ihre
+//   schon gesetzten Geschwister.
 // - Einheiten: Abstand zweier Units auf einem Ring etwa Spacing; Ursprung
 //   ist die Mitte des ersten Teilsystems, die Karte verschiebt nach Bedarf.
 
@@ -50,7 +52,14 @@ type
 implementation
 
 uses
-  System.Math;
+  System.Math,
+  System.SysUtils;
+
+function Siblings(const AOverview: TArchitectureOverview; ALeft, ARight: Integer): Boolean;
+begin
+  Result := (AOverview.Subsystems[ALeft].Parent <> '') and
+    SameText(AOverview.Subsystems[ALeft].Parent, AOverview.Subsystems[ARight].Parent);
+end;
 
 /// <summary>Lage einer Unit an Stelle AIndex im Teilsystem (0 = Mitte), relativ zur Mitte.</summary>
 function RingPoint(AIndex: Integer): TLayoutPoint;
@@ -114,6 +123,8 @@ var
   Edge: TOverviewEdge;
   From_, To_: Integer;
   TargetX, TargetY, Weight, Total, Angle, X, Y, Distance, BestX, BestY, BestDistance: Double;
+  SiblingX, SiblingY: Double;
+  SiblingCount: Integer;
   Circle: TLayoutCircle;
   Point: TLayoutPoint;
 begin
@@ -160,6 +171,22 @@ begin
       TargetX := TargetX / Total;
       TargetY := TargetY / Total;
     end;
+    // Geschwister ziehen stärker als Kanten: Ziel ist ihr Schwerpunkt.
+    SiblingX := 0;
+    SiblingY := 0;
+    SiblingCount := 0;
+    for Other := 0 to Placed - 1 do
+      if Siblings(AOverview, Placed, Other) then
+      begin
+        SiblingX := SiblingX + Result.Subsystems[Other].X;
+        SiblingY := SiblingY + Result.Subsystems[Other].Y;
+        Inc(SiblingCount);
+      end;
+    if SiblingCount > 0 then
+    begin
+      TargetX := SiblingX / SiblingCount;
+      TargetY := SiblingY / SiblingCount;
+    end;
     BestDistance := MaxDouble;
     BestX := 0;
     BestY := 0;
@@ -169,7 +196,8 @@ begin
     begin
       for Other := 0 to Placed - 1 do
       begin
-        if (Pass = 0) and (Links[Placed][Other] = 0) and (Other < Placed - 6) and (Other > 0) then
+        if (Pass = 0) and (Links[Placed][Other] = 0) and (Other < Placed - 6) and (Other > 0) and
+          not Siblings(AOverview, Placed, Other) then
           Continue;
         for Step := 0 to Angles - 1 do
         begin

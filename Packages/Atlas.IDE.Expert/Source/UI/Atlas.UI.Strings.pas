@@ -845,6 +845,8 @@ type
     // Feinheit der Teilsysteme (#1366).
     ArchitectureResolutionCaption, ArchitectureResolutionHint, ArchitectureResolutionInfo, ArchitectureResolutionValue,
     ArchitectureComparisonResolution,
+    // Nachgeteilte Teilsysteme (#1364).
+    ArchitectureSubsystemPart, ArchitectureSubsystemFamily,
     // Treffersicherheit der Verwendungen (#1119).
     ResultsSureGroup, ResultsInferredGroup, ResultsOnlySure, RenameChangedGroup, RenameUnchangedGroup,
     ReferenceReasonInterface, ReferenceReasonVirtual, ReferenceReasonAmbiguous, ReferenceReasonUnresolved, ReferenceReasonInactiveBranch, ReferenceReasonText,
@@ -3136,6 +3138,8 @@ const
      'γ = %s · %d Teilsysteme',
      'γ = %s',
      ' · Feinheit verschieden (Stand γ = %s, jetzt %s): Teilsystemwechsel können daher kommen',
+     '%s · Teil von %s',
+     '%s (nachgeteilt in %d Teile)',
      'Sicher (%d)',
      'Erschlossen (%d) · vor dem Umbenennen prüfen',
      'Nur sichere',
@@ -6046,6 +6050,8 @@ const
      'γ = %s · %d subsystems',
      'γ = %s',
      ' · different granularity (state γ = %s, now %s): subsystem moves may come from that',
+     '%s · part of %s',
+     '%s (split into %d parts)',
      'Sure (%d)',
      'Inferred (%d) · check before renaming',
      'Sure only',
