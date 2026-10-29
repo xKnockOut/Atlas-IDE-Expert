@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Published.Tests;
 
 // Tests der Regel published-type-invalid (#1004): Property-Typen, die das
-// Streaming nicht kennt, Real48, große Mengen, Felder, Überladungen,
+// Streaming nicht kennt (Records und dynamische Arrays erlaubt, #1328), Real48, große Mengen, Felder, Überladungen,
 // Klassen-Properties, Nicht-ASCII-Namen, bedingte Zweige, Typen aus dem
 // Index, Korrektur und Einstellungen.
 
@@ -138,11 +138,11 @@ var
   Source, Fixed: string;
   Found: TArray<TRuleFinding>;
 begin
-  Source := Karte('    FMitte: TPointF;'#10'    procedure SetMitte(const Value: TPointF);'#10,
-    '    property Mitte: TPointF read FMitte write SetMitte;'#10);
+  Source := Karte('    FMitte: Pointer;'#10'    procedure SetMitte(const Value: Pointer);'#10,
+    '    property Mitte: Pointer read FMitte write SetMitte;'#10);
   Found := Findings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('TPointF (Record) kann nicht published sein (wie E2188).', Found[0].Message);
+  Assert.AreEqual('Pointer (Zeiger) kann nicht published sein (wie E2188).', Found[0].Message);
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Found[0].Confidence));
   Assert.AreEqual(20, Found[0].Range.StartPos.Line);
   Assert.AreEqual(20, Found[0].Range.StartPos.Character);
@@ -150,8 +150,8 @@ begin
   Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
   Assert.AreEqual('In den public-Abschnitt verschieben', Found[0].Fixes[0].Title);
   Fixed := ApplyFix(Source, Found[0].Fixes[0]);
-  Assert.AreEqual(Karte('    FMitte: TPointF;'#10'    procedure SetMitte(const Value: TPointF);'#10'  public'#10 +
-    '    property Mitte: TPointF read FMitte write SetMitte;'#10, ''), Fixed);
+  Assert.AreEqual(Karte('    FMitte: Pointer;'#10'    procedure SetMitte(const Value: Pointer);'#10'  public'#10 +
+    '    property Mitte: Pointer read FMitte write SetMitte;'#10, ''), Fixed);
   Silent(Fixed);
 end;
 
@@ -183,16 +183,14 @@ begin
     '    property Puffer: PChar read FPuffer;'#10'    property Rueckruf: TRueckruf read FRueckruf;'#10 +
     '    property Liste: TArray<Integer> read FListe;'#10'    property Punkt: TPunkt read FPunkt;'#10 +
     '    property Kennung: TGUID read FKennung;'#10));
-  Assert.AreEqual(8, Integer(Length(Found)), Join(Found));
-  Assert.AreEqual('TZahlen (Array) kann nicht published sein (wie E2188).', Found[0].Message);
-  Assert.AreEqual('TFeld (Array) kann nicht published sein (wie E2188).', Found[1].Message);
-  Assert.AreEqual('PKnoten (Zeiger) kann nicht published sein (wie E2188).', Found[2].Message);
-  Assert.AreEqual('PChar (Zeiger) kann nicht published sein (wie E2188).', Found[3].Message);
+  // Dynamische Arrays (TZahlen, TArray<Integer>) und Records (TPunkt, TGUID) übersetzt dcc (PU1-PU3, #1328);
+  // statische Arrays, Zeiger und Prozedurtypen nicht (PV1, PV2).
+  Assert.AreEqual(4, Integer(Length(Found)), Join(Found));
+  Assert.AreEqual('TFeld (Array) kann nicht published sein (wie E2188).', Found[0].Message);
+  Assert.AreEqual('PKnoten (Zeiger) kann nicht published sein (wie E2188).', Found[1].Message);
+  Assert.AreEqual('PChar (Zeiger) kann nicht published sein (wie E2188).', Found[2].Message);
   Assert.AreEqual('TRueckruf (Prozedurtyp ohne "of object") kann nicht published sein (wie E2188).',
-    Found[4].Message);
-  Assert.AreEqual('TArray<Integer> (Array) kann nicht published sein (wie E2188).', Found[5].Message);
-  Assert.AreEqual('TPunkt (Record) kann nicht published sein (wie E2188).', Found[6].Message);
-  Assert.AreEqual('TGUID (Record) kann nicht published sein (wie E2188).', Found[7].Message);
+    Found[3].Message);
 end;
 
 procedure TPublishedRulesTests.Real48AndLargeSets;
@@ -264,18 +262,18 @@ var
   Source: string;
   Found: TArray<TRuleFinding>;
 begin
-  Source := 'unit Karten;'#10'interface'#10'type'#10'  TPunkt = record X: Integer; end;'#10 +
+  Source := 'unit Karten;'#10'interface'#10'type'#10'  TFeld = array[0..1] of Integer;'#10 +
     '  TKarte = class'#10'  public'#10'    constructor Create;'#10'  published'#10 +
-    '    property Name: string read FName;'#10'    property Punkt: TPunkt read FPunkt;'#10'  end;'#10 +
+    '    property Name: string read FName;'#10'    property Feld: TFeld read FFeld;'#10'  end;'#10 +
     'implementation'#10'end.';
   Found := Findings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('unit Karten;'#10'interface'#10'type'#10'  TPunkt = record X: Integer; end;'#10 +
-    '  TKarte = class'#10'  public'#10'    constructor Create;'#10'    property Punkt: TPunkt read FPunkt;'#10 +
+  Assert.AreEqual('unit Karten;'#10'interface'#10'type'#10'  TFeld = array[0..1] of Integer;'#10 +
+    '  TKarte = class'#10'  public'#10'    constructor Create;'#10'    property Feld: TFeld read FFeld;'#10 +
     '  published'#10'    property Name: string read FName;'#10'  end;'#10'implementation'#10'end.',
     ApplyFix(Source, Found[0].Fixes[0]));
   // Ein Mitglied, das sich die Zeile mit anderem teilt, verschiebt die Korrektur nicht.
-  Found := Findings(Karte('', '    property Punkt: TPunkt read FPunkt; property Name: string read FName;'#10));
+  Found := Findings(Karte('', '    property Feld: TFeld read FFeld; property Name: string read FName;'#10));
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
 end;
@@ -284,11 +282,11 @@ procedure TPublishedRulesTests.ConditionalAndGenericAreSilent;
 begin
   // published nur in einem Zweig, das Mitglied in beiden.
   Silent(Karte('', '  public'#10'  {$IFDEF ALT}'#10'  published'#10'  {$ENDIF}'#10 +
-    '    property Punkt: TPunkt read FPunkt;'#10));
+    '    property Feld: TFeld read FFeld;'#10));
   // Typparameter der Klasse passen zu allem; der Typ im inaktiven Zweig ist doppelt deklariert.
   Silent('unit Karten;'#10'interface'#10'type'#10'  TBox<T> = class'#10'  published'#10 +
     '    property Wert: T read FWert;'#10'    FInhalt: T;'#10'  end;'#10'implementation'#10'end.');
-  Silent('unit Karten;'#10'interface'#10'type'#10'  {$IFDEF ALT}'#10'  TWert = record end;'#10'  {$ELSE}'#10 +
+  Silent('unit Karten;'#10'interface'#10'type'#10'  {$IFDEF ALT}'#10'  TWert = array[0..1] of Byte;'#10'  {$ELSE}'#10 +
     '  TWert = class end;'#10'  {$ENDIF}'#10'  TKarte = class'#10'  published'#10 +
     '    property Wert: TWert read FWert;'#10'  end;'#10'implementation'#10'end.');
   // Records erlauben kein published; die Regel schaut nur auf Klassen.
@@ -304,16 +302,17 @@ begin
   Index := TSymbolIndex.Create;
   Index.AddUnit(TIndexExtractor.ExtractText('unit Geometrie;'#10'interface'#10'type'#10 +
     '  TVektor = record X, Y: Double; end;'#10'  TPunkte = TArray<TVektor>;'#10'  TFigur = class end;'#10 +
+    '  TEcken = array[0..3] of TVektor;'#10 +
     '  TFlaeche = TVektor;'#10'implementation'#10'end.', 'C:\Projekt\Geometrie.pas', nil));
   Found := TRuleAssert.IndexFindings(TPublishedTypeInvalidRule.Create, 'unit Karten;'#10'interface'#10'uses'#10 +
     '  Geometrie;'#10'type'#10'  TKarte = class'#10'  published'#10'    property Mitte: TVektor read FMitte;'#10 +
     '    property Ecken: TPunkte read FEcken;'#10'    property Figur: TFigur read FFigur;'#10 +
-    '    property Flaeche: TFlaeche read FFlaeche;'#10'    FFigur: TFigur;'#10'  end;'#10'implementation'#10 +
+    '    property Flaeche: TFlaeche read FFlaeche;'#10'    property Ecken4: TEcken read FEcken4;'#10 +
+    '    FFigur: TFigur;'#10'  end;'#10'implementation'#10 +
     'end.', Index, '', '');
-  Assert.AreEqual(3, Integer(Length(Found)), Join(Found));
-  Assert.AreEqual('TVektor (Record) kann nicht published sein (wie E2188).', Found[0].Message);
-  Assert.AreEqual('TPunkte (Array) kann nicht published sein (wie E2188).', Found[1].Message);
-  Assert.AreEqual('TFlaeche (Record) kann nicht published sein (wie E2188).', Found[2].Message);
+  // Record, Alias darauf und TArray<T> sind erlaubt; das statische Array aus dem Index nicht.
+  Assert.AreEqual(1, Integer(Length(Found)), Join(Found));
+  Assert.AreEqual('TEcken (Array) kann nicht published sein (wie E2188).', Found[0].Message);
 end;
 
 procedure TPublishedRulesTests.MultilineProcedureTypes;
@@ -356,7 +355,7 @@ procedure TPublishedRulesTests.Options;
 var
   Source: string;
 begin
-  Source := Karte('', '    property Punkt: TPunkt read FPunkt;'#10);
+  Source := Karte('', '    property Feld: TFeld read FFeld;'#10);
   Assert.AreEqual(1, Integer(Length(Findings(Source, '', 'Source/Karten.pas'))));
   Assert.AreEqual(0, Integer(Length(Findings(Source, '{"rules": {"published-type-invalid": "off"}}',
     'Source/Karten.pas'))));

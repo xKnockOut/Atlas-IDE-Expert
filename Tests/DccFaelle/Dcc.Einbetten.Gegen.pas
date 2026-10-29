@@ -1,53 +1,28 @@
 ﻿unit Dcc.Einbetten.Gegen;
 
-// #1328, Gegentests zu type-restriction-violated: Hier soll dcc vermutlich melden.
+// #1328, Gegentests zu type-restriction-violated: Hier meldet dcc E2441.
 
 interface
 
-type
-  TBild = class
-  public
-    constructor Create(ABreite, AHoehe: Integer);
-  end;
-
-  TBildHelfer = class helper for TBild
-  public
-    constructor CreateLeer; // TG3: Konstruktor im Class-Helfer ruft keinen Konstruktor
-  end;
-
 function VariableNutzen: Integer; inline; // TG1: Variable aus dem implementation-Teil
-function TypNutzen: Integer; inline; // TG2: Typ aus dem implementation-Teil
+function TypKonstanteNutzen: Integer; inline; // TG4 (vorher TR3): typisierte Konstante aus dem implementation-Teil
 
 implementation
 
-type
-  TIntern = record
-    Wert: Integer;
-  end;
+const
+  cStart: Integer = 2;
 
 var
   gZaehler: Integer;
-
-constructor TBild.Create(ABreite, AHoehe: Integer);
-begin
-  inherited Create;
-end;
-
-constructor TBildHelfer.CreateLeer;
-begin
-end;
 
 function VariableNutzen: Integer;
 begin
   Result := gZaehler;
 end;
 
-function TypNutzen: Integer;
-var
-  mWert: TIntern;
+function TypKonstanteNutzen: Integer;
 begin
-  mWert.Wert := 1;
-  Result := mWert.Wert;
+  Result := cStart;
 end;
 
 end.

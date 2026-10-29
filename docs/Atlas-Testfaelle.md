@@ -5916,11 +5916,11 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 | YV1 | `procedure Erhoehen(var Zeichen: Char);` und `Erhoehen(Zeile[1]);` mit `Zeile: string` (das Beispiel `Inc(Zeile[1])` aus #1037 nimmt der Compiler an, weil `Inc` eingebaut ist) | Fehler `invalid-var-argument` an `Zeile[1]`: „Ein String-Element kann nicht an einen var-Parameter übergeben werden (wie E2354).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
 | YV2 | Schnellkorrektur „Über eine lokale Variable Wert übergeben“, danach Strg+Z | `Wert: Char;` im var-Abschnitt, davor `Wert := Zeile[1];`, danach `Zeile[1] := Wert;`; keine Meldung mehr, kompiliert; ein Undo-Schritt nimmt es zurück |
 | YV3 | An `procedure Zaehlen(var Ziel: Integer)`: eine Konstante, eine typisierte Konstante, einen const-Parameter, eine Property ohne write, `Doppelt(2)` und `5` übergeben | Je eine Meldung „… ist keine Variable und kann nicht an einen var-Parameter übergeben werden (wie E2197).“ |
-| YV4 | An `procedure Fuellen(var Werte: array of Integer)`: eine Konstante, `[1, 2]` und `Slice(Feld, 2)`; an `Zaehlen` den Ausdruck `Zahl + 1` | „… als offenes Array … (wie E2192)“, „Slice ist für einen var-Parameter nicht erlaubt … (wie E2454)“ bzw. „… kein Ausdruck (wie E2036)“ |
+| YV4 | An `procedure Fuellen(var Werte: array of Integer)`: eine Konstante, `[1, 2]` und `Slice(Feld, 2)`; an `Zaehlen` den Ausdruck `Zahl + 1` | „… als offenes Array … (wie E2192)“ bzw. „… kein Ausdruck (wie E2036)“; `Slice(Feld, 2)` an var oder out bleibt still (übersetzt dcc, #1328) |
 | YV5 | Property mit write an einen var-Parameter, Korrektur anwenden | Die Korrektur schreibt nach dem Aufruf `Zeile.Text := Wert;` zurück; bei einem out-Parameter ohne Zuweisung davor |
 | YV6 | Variablen, Feldelemente, `Inc(Zahl)`, `Move(S[1], …)`, untypisierte var-Parameter, Typumwandlung `Integer(Zahl)`, überladene Routinen aus einer anderen Unit, typisierte Konstante unter `{$J+}` | Keine Meldung |
 | YV7 | `"invalid-var-argument": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| YV8 | Abgleich mit Delphi: YV1, YV3 und YV4 übersetzen | dcc meldet an denselben Stellen Fehler; die Codes in den Meldungen stimmen (E2354, E2197, E2192, E2454, E2036); Abweichungen im Code bitte notieren |
+| YV8 | Abgleich mit Delphi: YV1, YV3 und YV4 übersetzen | dcc meldet an denselben Stellen Fehler; die Codes in den Meldungen stimmen (E2354, E2197, E2192, E2036; bei konstantem Ausdruck nennt dcc E2197); Abweichungen im Code bitte notieren |
 
 ## Bedingung ist kein Boolean (#1069)
 
@@ -6032,7 +6032,7 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | QT8 | `const Leer: Pointer = 0;`, `Text: PChar = 0;`, Schnellkorrektur „nil schreiben“ | „Leer ist ein Zeiger; die 0 wird zu nil umgewandelt (wie W1013).“; danach `= nil` |
 | QT9 | Lesen, `Ziel^ := 1` bei einer Zeigerkonstante, lokale Variable mit demselben Namen | Keine Meldung |
 | QT10 | `"typed-constant-modified": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| QT11 | Abgleich mit Delphi: QT1, QT4 bis QT6, QT8 übersetzen, einmal mit `{$J+}`, einmal ohne | Mit `{$J+}` W1016/W1017 bzw. W1013, mit `{$J-}` E2064/E2197 an denselben Stellen; für QT9 nichts |
+| QT11 | Abgleich mit Delphi: QT1, QT4 bis QT6, QT8 übersetzen, einmal mit `{$J+}`, einmal ohne | Mit `{$J+}` meldet dcc für QT1 und QT4 bis QT6 nichts, und Atlas schweigt dort auch (#1328, TC1–TC3); mit `{$J-}` E2064/E2197 an denselben Stellen; für QT9 nichts |
 
 ## String-Grenze überschritten (#1036)
 
@@ -6522,9 +6522,9 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| JP1 | Das Beispiel aus #1004: `TKarte = class(TCustomControl)` mit `published` und `property Mitte: TPointF read FMitte write SetMitte;`, `System.Types` in uses | Fehler `published-type-invalid` an `TPointF`: „TPointF (Record) kann nicht published sein (wie E2188).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| JP1 | `TKarte = class(TCustomControl)` mit `published` und `property Mitte: Pointer read FMitte write SetMitte;` (das Beispiel aus #1004 mit `TPointF` übersetzt dcc, #1328) | Fehler `published-type-invalid` an `Pointer`: „Pointer (Zeiger) kann nicht published sein (wie E2188).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
 | JP2 | Schnellkorrektur „In den public-Abschnitt verschieben“, danach Strg+Z | Die Property steht unter einem neuen `public` direkt vor `published` (bzw. am Ende eines unmittelbar davor stehenden `public`), keine Meldung mehr; ein Undo-Schritt |
-| JP3 | published-Properties vom Typ `TArray<Integer>`, eigenes `array of`, `PChar`, `^Integer`, `procedure(A: Integer)` | Je eine Meldung wie E2188 mit (Array), (Zeiger) bzw. (Prozedurtyp ohne "of object") |
+| JP3 | published-Properties vom Typ `array[0..3] of Byte`, `PChar`, `^Integer`, `procedure(A: Integer)`; dazu `TArray<Integer>`, eigenes `array of`, `TPointF` | Je eine Meldung wie E2188 mit (Array), (Zeiger) bzw. (Prozedurtyp ohne "of object"); dynamische Arrays und Records ohne Meldung (#1328) |
 | JP4 | `property Alt: Real48`, `set of Byte`, Menge über eine Aufzählung mit 33 Werten, `set of 0..32` | Meldungen wie E2186 bzw. E2187; `set of 0..31` und `set of 8..39` ohne Meldung |
 | JP5 | published-Feld `FZahl: Integer;` und `FPunkt: TPoint;` | Meldung wie E2217; Feld vom Typ einer Klasse oder eines Interfaces ohne Meldung |
 | JP6 | Zwei published-Überladungen `procedure Laden; overload;` und `procedure Laden(const APfad: string); overload;` | Meldung wie E2266 an der zweiten; liegt sie in public oder im anderen `{$IFDEF}`-Zweig, keine Meldung |
@@ -6631,11 +6631,11 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | IZ1 | Das Beispiel aus #1075: `IKunde = interface` mit `FName: string;` und `function GetName: string;` | Fehler `interface-declaration-invalid` an `FName`: „Interfaces dürfen keine Felder haben (wie E2209).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
 | IZ2 | `private` im Interface, `procedure A; virtual;` | „Die Direktive private …“ bzw. „Die Direktive virtual ist in Interfaces nicht erlaubt (wie E2210).“; `stdcall`, `safecall` und `overload` bleiben still |
 | IZ3 | `property X: Integer read GetX stored False;`, `… default 0;`, `… nodefault;` | „Die Klausel stored ist in Interfaces nicht erlaubt (wie E2207).“ usw.; `property Items[…] … ; default;` bleibt still |
-| IZ4 | `IKunde = interface(IBasis)` mit `property Name: string read GetName;`, wobei Name und GetName nur in IBasis stehen | E2206 am Namen („… ist schon in IBasis deklariert …“) und E2370 an `GetName` („GetName stammt aus IBasis …“) |
+| IZ4 | `IKunde = interface(IBasis)` mit `property Name: string read GetName;`, wobei Name und GetName nur in IBasis stehen | Keine Meldung: Neudeklaration mit Typ und geerbter Getter übersetzt dcc (#1328); `property Name;` ohne Typ gibt E2206 am Namen („… ist schon in IBasis deklariert …“) |
 | IZ5 | `IFalsch = interface(TKlasse)`; `TDienst = class(TInterfacedObject, TPunkt, IBasis, IBasis)` | E2205 an `TKlasse` und `TPunkt`, E2208 am zweiten `IBasis` |
 | IZ6 | Feld in `{$IFDEF}`, Alias als Vorfahr, unbekannter Typ, `dispinterface` mit `readonly dispid 1` | Keine Meldung |
 | IZ7 | `"interface-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| IZ8 | Abgleich mit Delphi: IZ1 bis IZ5 übersetzen | dcc meldet E2209, E2210, E2207, E2206, E2370, E2205 und E2208 an denselben Stellen; für IZ6 nichts |
+| IZ8 | Abgleich mit Delphi: IZ1 bis IZ5 übersetzen | dcc meldet E2209, E2210, E2207, E2206, E2205 und E2208 an denselben Stellen; für IZ6 nichts |
 
 ## implements-Klausel unzulässig (#1076)
 
@@ -8555,3 +8555,5 @@ Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DC
 | DY2 | `pwsh Tools/Build-DccFaelle.ps1` | `Output/DccFaelle-Ergebnis.txt` entsteht; Projekte ohne „Gegen“ übersetzen ohne Fehler, die Gegen-Projekte melden die genannten Codes. Weicht ein Fall ab, Regel nachziehen |
 | DY3 | `Tests/DccFaelle/DccFaelle.groupproj` in der IDE öffnen, jede Unit ansehen | Atlas meldet in Projekten ohne „Gegen“ nichts von den acht Regeln, in den Gegen-Projekten je markierter Zeile einen Befund |
 | DY4 | `AtlasServer.exe --check` über Spring4D, DUnitX, Skia4Delphi, mORMot2 | Keine Befunde mehr zu Slice an var-Open-Arrays, protected über generische Typen, Vergleichsoperatoren ohne Boolean, Klassenkonstruktor im Class-Helfer, geerbten Accessoren generischer Interfaces (**Abnahme**: mindestens 80 % weniger Befunde der acht Regeln als im Bericht vom 28.10.2026) |
+| DY5 | Nach dem Nachzug auf den dcc-Lauf vom 29.10.2026: `pwsh Tools/Build-DccFaelle.ps1` erneut | Alle Projekte ohne „Gegen“ übersetzen ohne Fehler und ohne Hinweis (auch die verschobenen Fälle IV4, TR8, TR9, ID3); die Gegen-Projekte melden SG3 (E2362) und TG4 (E2441) zusätzlich. Meldet dcc ID3 doch (E2370), Bescheid geben |
+| DY6 | In der IDE: `property Mitte: TPointF` und `property Liste: TArray<Integer>` unter published, `Inc(Zaehler)` einer typisierten Konstante nach `{$J+}`, `Slice(Feld, 2)` an einen out-Parameter, `TKnoten<Integer>.FNaechster` (protected) aus einer gewöhnlichen Funktion einer anderen Unit | Keine Meldung bei den ersten vier; beim letzten „… ist protected und hier nicht sichtbar (wie E2362).“ |

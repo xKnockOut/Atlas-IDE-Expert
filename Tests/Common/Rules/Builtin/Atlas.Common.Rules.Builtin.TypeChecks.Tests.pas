@@ -605,19 +605,18 @@ var
 begin
   Found := VarFindings(Zeilen('  Fuellen(Grenze);'#10'  Fuellen([1, 2]);'#10'  Leeren(Slice(Feld, 2));'#10 +
     '  Zaehlen(Zahl + 1);'#10'  Lesen(-Zahl);'#10));
-  Assert.AreEqual(5, Integer(Length(Found)));
+  // Slice an ein out-Open-Array übersetzt dcc (IV4, #1328) und bleibt still.
+  Assert.AreEqual(4, Integer(Length(Found)));
   Assert.AreEqual('Eine Konstante kann nicht als offenes Array an einen var-Parameter übergeben werden (wie E2192).',
     Found[0].Message);
   Assert.AreEqual(Found[0].Message, Found[1].Message);
-  Assert.AreEqual('Slice ist für einen out-Parameter nicht erlaubt (wie E2454).', Found[2].Message);
   Assert.AreEqual('An einen var-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).',
-    Found[3].Message);
+    Found[2].Message);
   Assert.AreEqual('An einen out-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).',
-    Found[4].Message);
+    Found[3].Message);
   Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual(0, Integer(Length(Found[2].Fixes)));
-  Assert.AreEqual(1, Integer(Length(Found[3].Fixes)));
-  // Slice an ein var-Open-Array übersetzt dcc (Spring4D, #1328), auch über eine Typumwandlung.
+  Assert.AreEqual(1, Integer(Length(Found[2].Fixes)));
+  // Slice an ein var-Open-Array übersetzt dcc (Spring4D, IV1-IV3, #1328).
   Assert.AreEqual(0, Integer(Length(VarFindings(Zeilen('  Fuellen(Slice(Feld, 2));'#10)))));
 end;
 

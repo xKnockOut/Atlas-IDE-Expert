@@ -1,6 +1,6 @@
 ﻿unit Dcc.VarParameter;
 
-// #1328, Regel invalid-var-argument: Slice an einen var-Open-Array-Parameter
+// #1328, Regel invalid-var-argument: Slice an einen var- oder out-Open-Array-Parameter
 // (Spring4D Spring.pas, Spring.Benchmark).
 
 interface
@@ -14,6 +14,14 @@ implementation
 
 type
   TAusschnitt = array[0..0] of Double;
+
+procedure Fuelle(out AWerte: array of Double);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AWerte) do
+    AWerte[mIndex] := 0;
+end;
 
 procedure Sortiere(var AWerte: array of Double);
 var
@@ -32,6 +40,7 @@ var
 begin
   FillChar(mWerte, SizeOf(mWerte), 0);
   Sortiere(Slice(mWerte, 2)); // IV3: Slice eines statischen Arrays
+  Fuelle(Slice(mWerte, 2)); // IV4 (vorher VG1): Slice an einen out-Parameter
 end;
 
 end.
