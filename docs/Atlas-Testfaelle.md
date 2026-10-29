@@ -8825,3 +8825,48 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | CR6 | Eigene inline-Funktion `Rechne`, die `Doppelt` aus einer Unit im implementation-uses ruft; `Doppelt` verweist auf nichts außerhalb seiner Unit (wie `Cm.H2445`) | Hinweis `inline-not-expanded` „… steht nur im uses des implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).“ (**Abnahme**) |
 | CR7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 30 in Server und Plugin, Datei `index-30.atlasidx`) |
 | CR8 | Abgleich mit Delphi 12 und 13: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.W1055','Cm.E2243','Cm.H2244','Cm.H2445','Cm.W1055b','Cm.H2243b' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1055, H2243, H2244 und H2445 „erkannt“, keine neuen Einträge unter „zusätzlich“ |
+
+## Fenster „Atlas-Server“ (#1356)
+
+Vorbereitung: Projektgruppe mit einigen Hundert Units, Index aufgebaut; für SRV7 und SRV9 der Server mit `--trace` (Einstellung `traceFile`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SRV1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasServerSnapshotTests`, `TAtlasServerDiagnosticsTests`, `TAtlasServerFrameTests`, `TServerStatusFileTests`, `TMcpStatusToolsTests`, `TCheckProfileTests`, `TServerPackageTests` grün |
+| SRV2 | *Atlas › Hilfe und Diagnose › Atlas-Server: Speicher und Laufzeiten* bzw. Befehlspalette `Atlas.ServerStatus` | Dockfenster „Atlas-Server“ mit Kopf „Prozess … · Version … · läuft seit … · bereit · Neustarts in dieser Sitzung: 0“, Warteschlange, Cache-Treffer und „Noch kein Prüflauf …“ bzw. dem letzten Lauf |
+| SRV3 | Statusfeld öffnen, auf die Zeile „Server“ klicken; in der Atlas-Statusleiste doppelt auf den Status klicken | Beide Male öffnet „Atlas-Server“; der Tooltip des Status nennt „Doppelklick: Fenster „Atlas-Server““ |
+| SRV4 | Projektgruppe prüfen lassen (Live-Prüfung „alle Units neu prüfen“), danach Fenster ansehen | „Letzter Prüflauf hh:nn: n Units in … s“; die 10 langsamsten Units und Regeln mit ms; die Summe der Unit-Zeiten liegt bei der Dauer des Laufs (**Abnahme**) |
+| SRV5 | Doppelklick auf eine Unit bzw. auf eine Regel | Die Unit öffnet im Editor; die Regel öffnet ihre Seite in den Projekt-Einstellungen (#909) |
+| SRV6 | Speicher mit Taskmanager vergleichen; `memoryBudgetMb` klein setzen (z. B. 200), Index neu aufbauen | Summe der Bereiche weicht höchstens 25 % vom Prozessspeicher ab (**Abnahme**); über dem Budget roter Strich, Balken „Prozess gesamt“ und „Verwendungen“ in Warnfarbe und der Hinweis „Budget überschritten: Verwendungen werden ausgelagert.“ |
+| SRV7 | Fenster schließen bzw. als Reiter in den Hintergrund legen; Trace des Servers (`--trace`) 30 s beobachten | Nur die Abfragen der Statuszeilen alle 5 s, keine zusätzlichen; sichtbar aktualisiert das Fenster alle 5 s, „Aktualisieren“ fragt sofort (**Abnahme**) |
+| SRV8 | „Index neu aufbauen“ | Meldung „Index wird neu aufgebaut“; Zustand „lädt“, Warteschlange zeigt den laufenden Aufbau |
+| SRV9 | „Diagnosepaket erstellen …“ mit `diagnostics.bugReport.anonymize` an, Server ohne bzw. mit `--trace` | Vorschau mit `fehlerbericht.md`, `server/status.json`, `server/protokoll.txt` (und mit Trace `server/trace.txt`); keine Projektpfade, Benutzer- oder Rechnernamen; gespeicherte ZIP enthält genau diese Dateien (**Abnahme**) |
+| SRV10 | Wie SRV9 mit Anonymisierung aus und einem Tracker-Token in den Einstellungen | Pfade lesbar, aber kein Token, Passwort oder `Authorization` in Status und Trace (`<geheim>`) |
+| SRV11 | Server über das Statusfenster neu starten, dann Fenster ansehen | „Neustarts in dieser Sitzung: 1“, neue Prozessnummer |
+| SRV12 | `server.statusWindow` aus (Optionen › Allgemein) | Menüeintrag, Palettenbefehl und Fenster fehlen; Klick auf „Server“ im Statusfenster tut nichts, Doppelklick in der Statusleiste nicht; der Klick auf den Status öffnet wie bisher das Statusfenster (**Abnahme**) |
+| SRV13 | `AtlasServer --check <Ordner> --timings profil.md`, dann `--timings profil.json`, dann ohne Datei; jeweils `> treffer.txt` | Markdown mit Indexzeit, Units, Regeln, Speicher bzw. JSON; ohne Datei die Tabellen auf stderr; `treffer.txt` jedes Mal gleich wie ohne `--timings` (**Abnahme**) |
+| SRV14 | Claude Code im Projektordner, während die IDE läuft: `get_server_status`, dann mit `format: json` | Erste Zeile „Quelle: Atlas-Server der IDE (Prozess …)“, dieselben Zahlen wie das Fenster (**Abnahme**); JSON mit `source`; IDE beendet: „Quelle: dieser MCP-Prozess …“ |
+| SRV15 | Einstellungsseite (Symbolindex) und Statuszeilen mit dem neuen Server | Wie vorher; ein älteres Plugin zeigt den Status des neuen Servers unverändert |
+
+## Hotspots (#1354)
+
+Vorbereitung: ein Projekt in einem Git-Repository mit mindestens einigen Dutzend Commits im letzten Jahr (etwa Atlas selbst), eine Unit, die per `git mv` umbenannt wurde; für HS12 eine SVN-Arbeitskopie desselben Projekts.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HS1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; Hotspot-Tests grün, `FiveThousandCommitsThousandUnits` (Kategorie Benchmark) unter 30 s, `Atlas.UI.Hotspots.Frame.Tests` grün (**Abnahme**) |
+| HS2 | *Ansicht › Atlas › Hotspots* | Fenster *Atlas-Hotspots* dockt neben der Projektverwaltung; zuerst „Lese den Verlauf …“, dann Blasendiagramm und Rangliste; die IDE bleibt bedienbar |
+| HS3 | Blase anklicken, dann Doppelklick | Zeile in der Liste gewählt, Tooltip mit Änderungen, Komplexität, Zeilen und Wert; Doppelklick öffnet die Unit |
+| HS4 | Ebene „Methoden“ | Liste der Methoden, die gewählte Unit bleibt gewählt; Doppelklick springt zur Methode |
+| HS5 | Kontextmenü „Verlauf zeigen“ auf einer Methode | Reiter *Verlauf* mit den Commits (Revision, Datum, Autor, Betreff, Zeilen); der Editor steht auf der Methode |
+| HS6 | Kontextmenü „Auswirkungen anzeigen“ auf einer Methode | Auswirkungen (#1120) der Methode öffnen sich |
+| HS7 | Reiter *Änderungskopplung* | Nur Paare ohne uses-Kante, keine .pas/.dfm-Paare, Anteil ≥ 70 %, gemeinsam ≥ `hotspots.coupling.minCommits` |
+| HS8 | Umbenannte Unit ansehen | Änderungen vor und nach der Umbenennung zählen zusammen unter dem heutigen Namen |
+| HS9 | Fenster schließen und wieder öffnen, dann einen Commit machen und „Neu berechnen“ | Ohne Commit sofort aus dem Speicher; nach dem Commit neu gerechnet |
+| HS10 | „Bericht speichern …“ als HTML, Markdown und JSON | HTML zeigt das Blasendiagramm ohne externe Verweise, Markdown die Tabellen, JSON die Daten |
+| HS11 | Projekt außerhalb jeder Versionsverwaltung öffnen | Hinweis „Keine Versionsverwaltung: …“ statt Daten |
+| HS12 | Dasselbe Projekt aus einer SVN-Arbeitskopie (`vcs.provider` = svn) | Dieselben Änderungen, Autoren und Kopplungen wie aus Git (**Abnahme**) |
+| HS13 | `hotspots.enabled` = false (Seite *Allgemein › Hotspots* oder Schnellschalter) | Menüeinträge und Fenster weg; MCP bietet `get_hotspots` nicht an; `AtlasServer.exe --hotspots h.md` endet mit Exit-Code 3 |
+| HS14 | `hotspots.months` auf 3 und `hotspots.coupling.minCommits` auf 2 setzen | Fenster rechnet neu; Kopfzeile nennt 3 Monate; mehr Kopplungen |
+| HS15 | `AtlasServer.exe --check <Projekt> --hotspots h.html` in einem Repository bzw. in einem Ordner ohne Versionsverwaltung | Exit-Code 0 und Bericht bzw. Exit-Code 3 mit Ursache |
+| HS16 | Claude Code: „Wo sind die Hotspots im Projekt?“ | Claude ruft `get_hotspots` und nennt dieselben Zahlen wie das Fenster |

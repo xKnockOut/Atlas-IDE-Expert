@@ -297,11 +297,17 @@ type
     FDiagnosticMode: TCheckBox;
     /// <summary>„Prozesse am Projekt…“ (#62).</summary>
     FDiagnosticsProcesses: TCheckBox;
+    /// <summary>Fenster „Atlas-Server“ (#1356).</summary>
+    FServerStatusWindow: TCheckBox;
     // Architekturübersicht (#1118).
     FArchitecture: TCheckBox;
     FArchitectureScope: TAtlasChoiceBox;
     FArchitectureLibrary: TCheckBox;
     FArchitectureCentral: TEdit;
+    // Hotspots (#1354).
+    FHotspots: TCheckBox;
+    FHotspotsMonths: TEdit;
+    FHotspotsMinCommits: TEdit;
     FSetupChecklist: TCheckBox;
     FShortcutTips: TCheckBox;
     FShortcutTipsScope: TAtlasChoiceBox;
@@ -1352,6 +1358,7 @@ type
     /// <summary>Zum Testen: Einstellungen des Statusfelds (#591).</summary>
     property StatusField: TCheckBox read FStatusField;
     property DiagnosticMode: TCheckBox read FDiagnosticMode;
+    property ServerStatusWindow: TCheckBox read FServerStatusWindow;
     property ExperimentalEnabled: TCheckBox read FExperimentalEnabled;
     property ExperimentalBanner: TWinControl read FExperimentalBanner;
     property Filter: TAtlasChoiceBox read FFilter;
@@ -1787,6 +1794,9 @@ type
     property ArchitectureCheck: TCheckBox read FArchitecture;
     property ArchitectureScopeChoice: TAtlasChoiceBox read FArchitectureScope;
     property ArchitectureCentralEdit: TEdit read FArchitectureCentral;
+    property HotspotsCheck: TCheckBox read FHotspots;
+    property HotspotsMonthsEdit: TEdit read FHotspotsMonths;
+    property HotspotsMinCommitsEdit: TEdit read FHotspotsMinCommits;
     property ProblemsWindowScopeChoice: TAtlasChoiceBox read FProblemsWindowScope;
     property ProblemsWindowGroupByChoice: TAtlasChoiceBox read FProblemsWindowGroupBy;
     property ProblemsWindowCompilerCheck: TCheckBox read FProblemsWindowCompiler;
@@ -2279,6 +2289,8 @@ begin
   FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
   // Menüeintrag „Prozesse am Projekt…“ (#62).
   FDiagnosticsProcesses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticsProcesses));
+  // Fenster „Atlas-Server“ (#1356).
+  FServerStatusWindow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsServerStatusWindow));
   // Architekturübersicht (#1118): Unterpunkt „Architektur“ über x-node; Reihenfolge wie die Werte von
   // architecture.scope (projectGroup, project).
   FArchitecture := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitecture));
@@ -2286,6 +2298,10 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup), TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject)]);
   FArchitectureLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureLibrary));
   FArchitectureCentral := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureCentral));
+  // Hotspots (#1354): Unterpunkt „Hotspots“ über x-node.
+  FHotspots := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHotspots));
+  FHotspotsMonths := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHotspotsMonths));
+  FHotspotsMinCommits := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHotspotsMinCommits));
   // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
   FSetupChecklist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist));
   // Hauptschalter der experimentellen Funktionen (#834).
@@ -2943,6 +2959,7 @@ begin
   Bind('Problems', FProblems);
   Bind('ProblemsWindow', FProblemsWindow);
   Bind('ArchitectureEnabled', FArchitecture);
+  Bind('HotspotsEnabled', FHotspots);
   Bind('ProblemsLive', FProblemsLive);
   Bind('HoverProblemActions', FHoverProblemActions);
   Bind('Notes', FNotes);
@@ -6584,10 +6601,14 @@ begin
   FMarks.Bind(FStatusField, ['StatusField']);
   FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
   FMarks.Bind(FDiagnosticsProcesses, ['DiagnosticsProcesses']);
+  FMarks.Bind(FServerStatusWindow, ['ServerStatusWindow']);
   FMarks.Bind(FArchitecture, ['ArchitectureEnabled']);
   FMarks.Bind(FArchitectureScope, ['ArchitectureScope']);
   FMarks.Bind(FArchitectureLibrary, ['ArchitectureIncludeLibraryUnits']);
   FMarks.Bind(FArchitectureCentral, ['ArchitectureCentralUnits']);
+  FMarks.Bind(FHotspots, ['HotspotsEnabled']);
+  FMarks.Bind(FHotspotsMonths, ['HotspotsMonths']);
+  FMarks.Bind(FHotspotsMinCommits, ['HotspotsCouplingMinCommits']);
   FMarks.Bind(FExperimentalEnabled, ['ExperimentalEnabled']);
   FMarks.Bind(FSetupChecklist, ['SetupChecklist']);
   FMarks.Bind(FShortcutTips, ['ShortcutTips']);
@@ -8901,10 +8922,14 @@ begin
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
   FDiagnosticsProcesses.Checked := ASettings.DiagnosticsProcesses;
+  FServerStatusWindow.Checked := ASettings.ServerStatusWindow;
   FArchitecture.Checked := ASettings.ArchitectureEnabled;
   FArchitectureScope.Choice := Max(0, IndexText(ASettings.ArchitectureScope, ['projectGroup', 'project']));
   FArchitectureLibrary.Checked := ASettings.ArchitectureIncludeLibraryUnits;
   FArchitectureCentral.Text := IntToStr(ASettings.ArchitectureCentralUnits);
+  FHotspots.Checked := ASettings.HotspotsEnabled;
+  FHotspotsMonths.Text := IntToStr(ASettings.HotspotsMonths);
+  FHotspotsMinCommits.Text := IntToStr(ASettings.HotspotsCouplingMinCommits);
   FExperimentalEnabled.Checked := ASettings.ExperimentalEnabled;
   // Checked löst OnClick nur bei einer Änderung aus.
   FHangTestRow.Visible := ASettings.DiagnosticMode;
@@ -9546,6 +9571,7 @@ begin
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
   ASettings.DiagnosticsProcesses := FDiagnosticsProcesses.Checked;
+  ASettings.ServerStatusWindow := FServerStatusWindow.Checked;
   ASettings.ArchitectureEnabled := FArchitecture.Checked;
   if FArchitectureScope.Choice = 1 then
     ASettings.ArchitectureScope := 'project'
@@ -9553,6 +9579,9 @@ begin
     ASettings.ArchitectureScope := 'projectGroup';
   ASettings.ArchitectureIncludeLibraryUnits := FArchitectureLibrary.Checked;
   ASettings.ArchitectureCentralUnits := StrToIntDef(FArchitectureCentral.Text, ASettings.ArchitectureCentralUnits);
+  ASettings.HotspotsEnabled := FHotspots.Checked;
+  ASettings.HotspotsMonths := StrToIntDef(FHotspotsMonths.Text, ASettings.HotspotsMonths);
+  ASettings.HotspotsCouplingMinCommits := StrToIntDef(FHotspotsMinCommits.Text, ASettings.HotspotsCouplingMinCommits);
   ASettings.ExperimentalEnabled := FExperimentalEnabled.Checked;
   ASettings.SetupChecklist := FSetupChecklist.Checked;
   ASettings.ShortcutTips := FShortcutTips.Checked;

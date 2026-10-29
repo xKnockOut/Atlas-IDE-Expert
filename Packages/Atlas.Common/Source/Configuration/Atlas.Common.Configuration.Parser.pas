@@ -117,6 +117,7 @@ type
     procedure ReadDiagnostics(ANode: TJsonNode);
     procedure ReadIndex(ANode: TJsonNode);
     procedure ReadArchitecture(ANode: TJsonNode);
+    procedure ReadHotspots(ANode: TJsonNode);
     procedure ReadFormat(ANode: TJsonNode);
     procedure ReadTasks(ANode: TJsonNode);
     procedure ReadIssues(ANode: TJsonNode);
@@ -2213,6 +2214,59 @@ begin
   end;
 end;
 
+procedure TValidator.ReadHotspots(ANode: TJsonNode);
+var
+  mIndex, mInner, mNumber: Integer;
+  mKey, mInnerKey: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"hotspots" muss ein Objekt sein');
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    mKey := ANode.Keys[mIndex];
+    if mKey = 'enabled' then
+      ExpectBoolean(ANode[mIndex], mKey, FSettings.HotspotsEnabled)
+    else if mKey = 'months' then
+    begin
+      if (ANode[mIndex].Kind = TJsonKind.Number) and TryStrToInt(ANode[mIndex].Value, mNumber) and (mNumber >= 1) and
+        (mNumber <= 60) then
+        FSettings.HotspotsMonths := mNumber
+      else
+        ReportNode(ANode[mIndex], '"hotspots.months" muss eine ganze Zahl von 1 bis 60 sein');
+    end
+    else if mKey = 'coupling' then
+    begin
+      if ANode[mIndex].Kind <> TJsonKind.Object_ then
+      begin
+        ReportNode(ANode[mIndex], '"hotspots.coupling" muss ein Objekt sein');
+        Continue;
+      end;
+      for mInner := 0 to ANode[mIndex].Count - 1 do
+      begin
+        mInnerKey := ANode[mIndex].Keys[mInner];
+        if mInnerKey = 'minCommits' then
+        begin
+          if (ANode[mIndex][mInner].Kind = TJsonKind.Number) and TryStrToInt(ANode[mIndex][mInner].Value, mNumber) and
+            (mNumber >= 2) and (mNumber <= 1000) then
+            FSettings.HotspotsCouplingMinCommits := mNumber
+          else
+            ReportNode(ANode[mIndex][mInner],
+              '"hotspots.coupling.minCommits" muss eine ganze Zahl von 2 bis 1000 sein');
+        end
+        else
+          Report(ANode[mIndex].KeyStarts[mInner], ANode[mIndex].KeyStarts[mInner] + Length(mInnerKey) + 2,
+            Format('Unbekannte Einstellung "hotspots.coupling.%s"', [mInnerKey]), False);
+      end;
+    end
+    else
+      Report(ANode.KeyStarts[mIndex], ANode.KeyStarts[mIndex] + Length(mKey) + 2,
+        Format('Unbekannte Einstellung "hotspots.%s"', [mKey]), False);
+  end;
+end;
+
 procedure TValidator.ReadArchitecture(ANode: TJsonNode);
 
   // Zahl von AMin bis AMax; sonst Fehler mit ARange ("0,2 bis 5,0").
@@ -3091,6 +3145,8 @@ begin
         ReadIndex(Value)
       else if Key = 'architecture' then
         ReadArchitecture(Value)
+      else if Key = 'hotspots' then
+        ReadHotspots(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
       else if Key = 'completeBlocks' then
@@ -3531,6 +3587,12 @@ begin
       Result.ArchitectureGroupingMinCohesion := FileSettings.ArchitectureGroupingMinCohesion;
       Result.ArchitectureGroupingFoundations := FileSettings.ArchitectureGroupingFoundations;
       Result.ArchitectureGroupingKeepPrevious := FileSettings.ArchitectureGroupingKeepPrevious;
+    end
+    else if Key = 'hotspots' then
+    begin
+      Result.HotspotsEnabled := FileSettings.HotspotsEnabled;
+      Result.HotspotsMonths := FileSettings.HotspotsMonths;
+      Result.HotspotsCouplingMinCommits := FileSettings.HotspotsCouplingMinCommits;
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
