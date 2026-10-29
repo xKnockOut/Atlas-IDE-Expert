@@ -39,6 +39,9 @@ Plattform.
 | `DccInterfacesGegen` | `interface-declaration-invalid` | IG1 Neudeklaration ohne Typ (E2206) |
 | `DccPublished` | `published-type-invalid` | PU1 `TArray<Integer>`, PU2 benanntes dynamisches Array, PU3 Record als published-Property (aus #1326); dcc übersetzt alle drei |
 | `DccPublishedGegen` | `published-type-invalid` | PV1 statisches Array, PV2 Zeiger (E2188) |
+| `DccAutomation` | `automation-invalid` | AU1–AU5 erlaubte Typen, register, dispid, Getter und Setter als Methoden im Abschnitt automated, AU6 override ohne dispid, AU7 dispid des Vorfahren noch einmal (Atlas still), AU8–AU10 Aufrufe über Variant mit erlaubten und benannten Argumenten (aus #1373) |
+| `DccAutomationGegen` | `automation-invalid` | AG1 Destruktor (E2177), AG2 message (E2178), AG3 safecall (E2179), AG4–AG7 und AG13 Zeiger, Menge und Record als Typ (E2176), AG8–AG10 stored, default, nodefault (E2182), AG11/AG12 dieselbe dispid als Hex und an einer Property (E2180) |
+| `DccAutomationAufrufGegen` | `automation-invalid` | AC1 Variant mit Record, AC2 OleVariant mit Pointer (welcher Code: E2160 oder E2281?), AC3 typisierter Zeiger, AC4 Kette über OleVariant, AC5 unbenannt nach benannt (E2166) |
 | `DccOperatoren` | `operator-declaration-invalid` | OP1–OP4 Vergleichsoperatoren ohne Boolean-Ergebnis, OP5 Benutzung |
 | `DccOperatorenGegen` | `operator-declaration-invalid` | OG1/OG2 falsche Parameterzahl |
 | `DccKonstanten` | `typed-constant-modified` | TC1 `{$J+}`, TC2 `{$WRITEABLECONST ON}`, TC3 `{$J+}` aus einer Include-Datei |

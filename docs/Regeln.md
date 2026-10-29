@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 78 |
+| [Compiler vorab](#gruppe-compiler) | 79 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -200,6 +200,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`interface-declaration-invalid`](#interface-declaration-invalid) | Unzulässige Deklaration in einem Interface | Bug | Fehler |
 | [`implements-clause-invalid`](#implements-clause-invalid) | implements-Klausel unzulässig | Bug | Fehler |
 | [`calling-convention-required`](#calling-convention-required) | Aufrufkonvention passt nicht | Bug | Fehler |
+| [`automation-invalid`](#automation-invalid) | OLE-Automation falsch deklariert oder aufgerufen | Bug | Fehler |
 | [`abstract-declaration-invalid`](#abstract-declaration-invalid) | abstract, final oder static falsch kombiniert | Bug | Fehler |
 | [`unsatisfied-forward`](#unsatisfied-forward) | Vorwärtsdeklaration nie aufgelöst | Bug | Fehler |
 | [`member-hides-ancestor`](#member-hides-ancestor) | Member verdeckt einen Member des Vorfahren | Bug | Warnung |
@@ -3004,7 +3005,7 @@ end;
 
 **Veraltetes oder gebundenes Symbol** · Code Smell · Warnung · Gruppe Compiler vorab
 
-Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, experimental, platform oder library wird verwendet (wie W1000, W1003, W1002, W1001), oder eine Unit, deren Kopf einen dieser Hinweise trägt, steht in uses (wie W1006, W1007, W1005, W1004). Gemeldet wird nur, was sicher aufgelöst ist. Der Editor streicht veraltete Namen durch; die Meldung nennt den Grund aus deprecated 'Grund'. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet. Welche Arten gemeldet werden, legt die Option kinds fest (Standard deprecated und experimental, wie meist in Projekten); die Schalter {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} usw. und {$WARNINGS OFF} gelten ab ihrer Stelle wie beim Compiler; ein Schalter in einem {$IF}-Zweig, der nicht sicher mit übersetzt wird, hält die Stelle still. Korrektur: durch den Namen aus dem Grund ersetzen (bei IncludeTrailingBackslash und ExcludeTrailingBackslash durch die plattformunabhängige Routine), wenn genau ein Name passt, an der Stelle sichtbar ist und dieselbe Art hat. Ohne Projektindex prüft die Regel nur die Symbole der Datei selbst.
+Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, experimental, platform oder library wird verwendet (wie W1000, W1003, W1002, W1001), oder eine Unit, deren Kopf einen dieser Hinweise trägt, steht in uses (wie W1006, W1007, W1005, W1004); auch der veraltete Abschnitt automated einer Klasse zählt als veraltetes Symbol (wie W1000). Gemeldet wird nur, was sicher aufgelöst ist. Der Editor streicht veraltete Namen durch; die Meldung nennt den Grund aus deprecated 'Grund'. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet. Welche Arten gemeldet werden, legt die Option kinds fest (Standard deprecated und experimental, wie meist in Projekten); die Schalter {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} usw. und {$WARNINGS OFF} gelten ab ihrer Stelle wie beim Compiler; ein Schalter in einem {$IF}-Zweig, der nicht sicher mit übersetzt wird, hält die Stelle still. Korrektur: durch den Namen aus dem Grund ersetzen (bei IncludeTrailingBackslash und ExcludeTrailingBackslash durch die plattformunabhängige Routine), wenn genau ein Name passt, an der Stelle sichtbar ist und dieselbe Art hat. Ohne Projektindex prüft die Regel nur die Symbole der Datei selbst.
 
 Entspricht der Compilermeldung `W1000`, `W1001`, `W1002`, `W1003`, `W1004`, `W1005`, `W1006`, `W1007`.
 
@@ -6751,6 +6752,35 @@ Richtig:
 
 ```pascal
 function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external 'msvcrt.dll';
+```
+
+<a id="automation-invalid"></a>
+### automation-invalid
+
+**OLE-Automation falsch deklariert oder aufgerufen** · Bug · Fehler · Gruppe Compiler vorab
+
+Deklarationen, die der Compiler im Abschnitt automated einer Klasse ablehnt: Felder (wie E2175), Konstruktoren und Destruktoren (wie E2177), dynamic- und message-Methoden (wie E2178), andere Aufrufkonventionen als register (wie E2179), dieselbe dispid zweimal in einer Klasse (wie E2180), eine Property, die ohne Typ neu deklariert wird (wie E2181), index, stored, default und nodefault an Properties (wie E2182), read oder write auf ein Feld der Klasse (wie E2096), eine dispid an einer override-Methode (wie E2185) sowie Records, Zeiger und Mengen als Typ von Parametern, Ergebnissen und Properties (wie E2176). Eine dispid an einer Methode außerhalb von automated meldet die Regel wie Delphi 13 als E2185 (dokumentiert ist E2183). Aufrufe über Variant oder OleVariant (V.Oeffnen(...), auch V.Dokument.Oeffnen(...)): ein Record ohne Operatoren oder ein Zeiger als Argument (wie E2160 bei OleVariant, wie E2281 bei Variant) und ein unbenanntes Argument nach einem benannten (wie E2166). Mitglieder in bedingten Zweigen und Typen, die die Namensauflösung nicht sicher kennt, bleiben still. Dass automated selbst veraltet ist, meldet deprecated-symbol.
+
+Entspricht der Compilermeldung `E2096`, `E2160`, `E2166`, `E2175`, `E2176`, `E2177`, `E2178`, `E2179`, `E2180`, `E2181`, `E2182`, `E2183`, `E2185`, `E2281`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+TAuto = class
+  automated
+    procedure Run; stdcall;
+  end;
+```
+
+Richtig:
+
+```pascal
+TAuto = class
+  automated
+    procedure Run;
+  end;
 ```
 
 <a id="abstract-declaration-invalid"></a>

@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Compilerregeln OLE-Automation (#1373, 29.10.2026, Branch `feature/1373-automation-invalid`)
+- Neue Regel `automation-invalid` in `Atlas.Common.Rules.Builtin.Automation` (Gruppe Compiler vorab, Stufe A): Abschnitt `automated` (E2175, E2177, E2178, E2179, E2180, E2181, E2182, E2096, E2185, E2176) und Aufrufe über Variant/OleVariant (E2160, E2281, E2166). `deprecated-symbol` meldet `automated` selbst (W1000).
+- dcc-Eigenheiten aus dem Testprojekt: dispid an einer Methode außerhalb von automated meldet Delphi 13 als E2185 (dokumentiert E2183); `property X: T read FFeld` im Abschnitt automated ist E2096. Ob E2160 oder E2281 von der Art des Variants (so umgesetzt: OleVariant → E2160, Variant → E2281) oder vom Argumenttyp abhängt, klären `Tests/DccFaelle/DccAutomationAufrufGegen` (AC1–AC5). Aus der Sprachreferenz abgeleitet und noch ohne dcc-Lauf: Zeiger/Mengen als Typ (AG4–AG6), stored/default/nodefault (AG8–AG10), dispid an Properties (AG12); Gegenproben in `DccAutomation` (AU1–AU10).
+- Ursache behoben: `OleVariant` fehlte in `BuiltinTypes` von `TNameResolver`; Variablen dieses Typs hatten keinen Typ.
+- Geprüft in der Cloud: FPC trunk (Regel-, Semantik- und LSP-Tests), `AtlasServer --check` (Linux) über `Tests/Compilermeldungen` gegen `dcc.tsv` vom 29.10.: alle 13 Codes und W1000 in den Fällen „erkannt“, keine neuen Treffer unter „zusätzlich“ (Vergleich mit dem Linux-Server aus Prep-v1.2.0). Offen: Delphi-Build (12 und 13), `Tools/Build-DccFaelle.ps1` für die neuen Projekte, Handtests OA1–OA11.
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.
