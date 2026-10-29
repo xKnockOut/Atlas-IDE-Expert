@@ -32,11 +32,13 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $Root = (Split-Path -Parent $PSScriptRoot),
+    # Leer: Ordner über Tools. Windows PowerShell 5.1 kennt $PSScriptRoot im param-Block noch nicht.
+    [string] $Root = '',
     [string] $CcScript = $(if ($env:CC_SCRIPT) { $env:CC_SCRIPT } else { 'C:\Projekte\IDE-Plugins\Claude-Compile\cc.ps1' }),
     [string] $Config = 'Debug',
     [switch] $Win32,
-    [string] $ResultFile = 'dunitx-ergebnisse.xml',
+    # Leer: Output/dunitx-ergebnisse.xml unter $Root.
+    [string] $ResultFile = '',
     [switch] $SkipTests,
     [switch] $Benchmarks,
     [int] $QuitAttempts = 10,
@@ -45,6 +47,11 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if (-not $Root) { $Root = Split-Path -Parent $PSScriptRoot }
+# Der XML-Logger von DUnitX legt den Ordner der Datei an und scheitert bei einem Namen ohne Ordner
+# (EInOutError "Verzeichnis kann nicht erstellt werden"): immer einen vollen Pfad übergeben.
+if (-not $ResultFile) { $ResultFile = Join-Path $Root 'Output/dunitx-ergebnisse.xml' }
+if (-not [System.IO.Path]::IsPathRooted($ResultFile)) { $ResultFile = Join-Path (Get-Location).Path $ResultFile }
 
 $GroupProject = Join-Path $Root 'Atlas.groupproj'
 $TestExe = Join-Path $Root (Join-Path "Output/Win64/$Config/Bin" 'Atlas.Tests.exe')
@@ -78,8 +85,35 @@ function Get-IdeProcessIds {
 }
 
 function Invoke-Cc([string[]] $Arguments) {
-    $output = & $CcScript @Arguments 2>&1 | Out-String
+    # Benannte Parameter als Hashtable: Beim Splatting eines Arrays käme "-Project" als Wert an
+    # ("kein Positionsparameter … akzeptiert das Argument -Project"), wie in Build-DccFaelle.ps1.
+    $named = @{}
+    $positional = @()
+    for ($i = 0; $i -lt $Arguments.Count; $i++) {
+        $arg = $Arguments[$i]
+        if ($arg -match '^-(\w+)$') {
+            if ($i + 1 -lt $Arguments.Count -and $Arguments[$i + 1] -notmatch '^-\w+$') {
+                $named[$Matches[1]] = $Arguments[$i + 1]
+                $i++
+            } else {
+                $named[$Matches[1]] = $true
+            }
+        } else {
+            $positional += $arg
+        }
+    }
+    # StrictMode dieses Skripts nicht an cc.ps1 vererben (liest optionale Felder aus status.json).
+    $output = & { Set-StrictMode -Off; & $CcScript @positional @named } *>&1 | Out-String
     [pscustomobject]@{ Output = $output; ExitCode = $LASTEXITCODE }
+}
+
+# outputWritten steht oben im JSON oder (neuere cc.ps1) nur je Schritt unter steps[].
+function Test-OutputWritten($Result) {
+    $top = Get-Property $Result 'outputWritten'
+    if ($null -ne $top) { return [bool] $top }
+    $flags = @(@(Get-Property $Result 'steps') | Where-Object { $null -ne $_ } |
+        ForEach-Object { Get-Property $_ 'outputWritten' } | Where-Object { $null -ne $_ })
+    ($flags.Count -gt 0) -and -not ($flags -contains $false)
 }
 
 # Liest die JSON-Antwort von group-build; cc.ps1 kann davor Text ausgeben.
@@ -111,7 +145,7 @@ function Test-Build($Result, [string] $Platform, [datetime] $Started, [bool] $Te
     } else {
         foreach ($line in $errors) { $problems += "$Platform`: $line" }
         if (-not (Get-Property $Result 'ok')) { $problems += "$Platform`: group-build meldet ok = false" }
-        if (-not (Get-Property $Result 'outputWritten')) { $problems += "$Platform`: keine Ausgabe geschrieben (outputWritten)" }
+        if (-not (Test-OutputWritten $Result)) { $problems += "$Platform`: keine Ausgabe geschrieben (outputWritten)" }
     }
     $problems
 }

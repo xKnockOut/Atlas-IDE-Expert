@@ -10,6 +10,8 @@
 //   Text für problems.window.columns. Spalte „Compiler“ (#1024): Code der
 //   Compilermeldung bzw. die Codes, denen die Regel entspricht, mit
 //   „Atlas + dcc“, wenn der letzte Build den Befund bestätigt.
+// - TAtlasFindingsCache: Befunde je Datei mit dem Stand des Speichers; nur
+//   geänderte Dateien werden neu gebaut und von der Platte gelesen.
 // - TAtlasFindingsView: Filter (Bereich, Arten, Kategorie, Text, Compiler),
 //   Gruppierung (keine, Datei, Regel, Kategorie), Sortierung (Vorgabe Art,
 //   Datei, Zeile; Klick auf eine Spalte sortiert nach ihr, zweiter Klick
@@ -181,9 +183,14 @@ type
     /// </summary>
     class function IsFinding(const AProblem: TAtlasProblem): Boolean; static;
     /// <summary>Befunde der Dateien AFiles (nil = alle Dateien des Speichers). Zeilentext aus dem bekannten Text
-    /// des Speichers, sonst über AReadLine (nil = ohne).</summary>
+    /// des Speichers, sonst aus den Zeilen von AReadLines (je Datei höchstens ein Aufruf; nil = ohne).</summary>
     class function FromStore(AStore: TAtlasProblemStore; const AFiles: TArray<string>;
-      const AReadLine: TFunc<string, Integer, string>): TArray<TAtlasFinding>; static;
+      const AReadLines: TFunc<string, TArray<string>>): TArray<TAtlasFinding>; static;
+    /// <summary>Befunde einer Datei des Speichers, Zeilentext wie bei FromStore.</summary>
+    class function FromStoreFile(AStore: TAtlasProblemStore; const AFileName: string;
+      const AReadLines: TFunc<string, TArray<string>>): TArray<TAtlasFinding>; static;
+    /// <summary>Hängt die Listen aneinander, mit einer einzigen Belegung.</summary>
+    class function Concat(const AParts: TArray<TArray<TAtlasFinding>>): TArray<TAtlasFinding>; static;
     /// <summary>Aus einer Liste je Datei; vergibt die Schlüssel.</summary>
     class function FromProblems(const AFileName: string; const AProblems: TArray<TAtlasProblem>;
       const ALines: TArray<string>): TArray<TAtlasFinding>; static;
@@ -204,6 +211,32 @@ type
     /// <summary>„Kopieren“: je Befund eine Zeile im Format des Compilers, "Unit.pas:12:5: warning [regel]
     /// Meldung", dahinter eingerückt der Zeilentext; Zeilenende CRLF.</summary>
     class function AsText(const AFindings: TArray<TAtlasFinding>): string; static;
+  end;
+
+  /// <summary>Befunde je Datei mit dem Stand des Speichers (TAtlasProblemStore.Stamp): Build baut nur Dateien
+  /// neu, deren Stand sich geändert hat, und meldet, ob sich an der Auswahl überhaupt etwas geändert hat. So
+  /// kostet ein neuer Befund in einer Datei nicht den Neuaufbau (und das Lesen von der Platte) aller Dateien.
+  /// </summary>
+  TAtlasFindingsCache = class
+  private type
+    TItem = record
+      Stamp: Integer;
+      Findings: TArray<TAtlasFinding>;
+    end;
+  private
+    FItems: TDictionary<string, TItem>;
+    FLastKeys: TArray<string>;
+    FLastStamps: TArray<Integer>;
+    FBuilt: Boolean;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    /// <summary>Befunde der Dateien AFiles (nil = alle Dateien des Speichers), wie TAtlasFindings.FromStore.
+    /// AChanged = False: dieselben Dateien mit demselben Stand wie beim letzten Aufruf.</summary>
+    function Build(AStore: TAtlasProblemStore; const AFiles: TArray<string>;
+      const AReadLines: TFunc<string, TArray<string>>; out AChanged: Boolean): TArray<TAtlasFinding>;
+    /// <summary>Alles vergessen; der nächste Build baut alle Dateien neu.</summary>
+    procedure Clear;
   end;
 
   TAtlasFindingsView = class
@@ -228,6 +261,12 @@ type
     FActiveKey: string;
     FActiveChecked: Boolean;
     FOpenKeys: TDictionary<string, Boolean>;
+    // Counts bis zum nächsten Rebuild: Das Fenster fragt sie in jedem Takt für die Statuszeile.
+    FCounts: TAtlasFindingCounts;
+    FCountsValid: Boolean;
+    // BeginUpdate/EndUpdate: ein Neuaufbau für mehrere Änderungen.
+    FUpdateCount: Integer;
+    FRebuildPending: Boolean;
     procedure Rebuild;
     procedure SetFilter(const AValue: TAtlasFindingFilter);
     procedure SetGrouping(AValue: TAtlasFindingGrouping);
@@ -258,6 +297,10 @@ type
     /// IDE geöffneten Dateien; AActiveChecked = der Server hat die aktive Datei schon geliefert (sonst zeigt die
     /// Zeile ohne Befunde „wird geprüft …“).</summary>
     procedure SetOpenFiles(const AActive: string; const AOpen: TArray<string>; AActiveChecked: Boolean);
+    /// <summary>Änderungen sammeln (Filter, Befunde, offene Dateien): Zeilen und Zähler werden erst mit dem letzten
+    /// EndUpdate einmal neu aufgebaut, nicht nach jeder einzelnen Änderung. Dazwischen nicht lesen.</summary>
+    procedure BeginUpdate;
+    procedure EndUpdate;
     /// <summary>Wirkt die Stufe gerade? Offene-zuerst an und Bereich nicht „Aktuelle Datei“.</summary>
     function TiersActive: Boolean;
     /// <summary>Markierung „neu“ entfernen (nach dem kurzen Hervorheben).</summary>
@@ -465,9 +508,10 @@ var
   Finding: TAtlasFinding;
   Seen: TDictionary<string, Integer>;
   Base: string;
-  Number: Integer;
+  Number, Count: Integer;
 begin
-  Result := nil;
+  SetLength(Result, Length(AProblems));
+  Count := 0;
   Seen := TDictionary<string, Integer>.Create;
   try
     for Problem in AProblems do
@@ -487,47 +531,87 @@ begin
       Inc(Number);
       Seen.AddOrSetValue(Base, Number);
       Finding.Key := Base + '|' + IntToStr(Number);
-      Result := Result + [Finding];
+      Result[Count] := Finding;
+      Inc(Count);
     end;
   finally
     Seen.Free;
   end;
+  SetLength(Result, Count);
+end;
+
+class function TAtlasFindings.FromStoreFile(AStore: TAtlasProblemStore; const AFileName: string;
+  const AReadLines: TFunc<string, TArray<string>>): TArray<TAtlasFinding>;
+var
+  Text: string;
+  Problems: TArray<TAtlasProblem>;
+  Lines, Disk: TArray<string>;
+  Problem: TAtlasProblem;
+  Last: Integer;
+  DiskRead: Boolean;
+begin
+  Problems := AStore.ForFile(AFileName);
+  Result := nil;
+  if Problems = nil then
+    Exit;
+  Last := -1;
+  for Problem in Problems do
+    Last := Max(Last, Problem.StartLine);
+  SetLength(Lines, Last + 1);
+  // Die Platte höchstens einmal je Datei, nicht je Zeile (Hänger mit vielen Befunden).
+  Disk := nil;
+  DiskRead := False;
+  for Problem in Problems do
+    if (Problem.StartLine >= 0) and (Lines[Problem.StartLine] = '') then
+    begin
+      if AStore.LineText(AFileName, Problem.StartLine, Text) then
+        Lines[Problem.StartLine] := Text
+      else if Assigned(AReadLines) then
+      begin
+        if not DiskRead then
+        begin
+          Disk := AReadLines(AFileName);
+          DiskRead := True;
+        end;
+        if Problem.StartLine < Length(Disk) then
+          Lines[Problem.StartLine] := Disk[Problem.StartLine];
+      end;
+    end;
+  Result := FromProblems(AFileName, Problems, Lines);
+end;
+
+class function TAtlasFindings.Concat(const AParts: TArray<TArray<TAtlasFinding>>): TArray<TAtlasFinding>;
+var
+  Part: TArray<TAtlasFinding>;
+  Count, Index: Integer;
+begin
+  Count := 0;
+  for Part in AParts do
+    Inc(Count, Length(Part));
+  SetLength(Result, Count);
+  Count := 0;
+  for Part in AParts do
+    for Index := 0 to High(Part) do
+    begin
+      Result[Count] := Part[Index];
+      Inc(Count);
+    end;
 end;
 
 class function TAtlasFindings.FromStore(AStore: TAtlasProblemStore; const AFiles: TArray<string>;
-  const AReadLine: TFunc<string, Integer, string>): TArray<TAtlasFinding>;
+  const AReadLines: TFunc<string, TArray<string>>): TArray<TAtlasFinding>;
 var
   Files: TArray<string>;
-  FileName, Text: string;
-  Problems: TArray<TAtlasProblem>;
-  Lines: TArray<string>;
-  Problem: TAtlasProblem;
-  Last: Integer;
+  Parts: TArray<TArray<TAtlasFinding>>;
+  Index: Integer;
 begin
-  Result := nil;
   Files := AFiles;
   if Files = nil then
     Files := AStore.Files;
-  for FileName in Files do
-  begin
-    Problems := AStore.ForFile(FileName);
-    if Problems = nil then
-      Continue;
-    Last := -1;
-    for Problem in Problems do
-      Last := Max(Last, Problem.StartLine);
-    SetLength(Lines, Last + 1);
-    for Problem in Problems do
-      if (Problem.StartLine >= 0) and (Lines[Problem.StartLine] = '') then
-      begin
-        if AStore.LineText(FileName, Problem.StartLine, Text) then
-          Lines[Problem.StartLine] := Text
-        else if Assigned(AReadLine) then
-          Lines[Problem.StartLine] := AReadLine(FileName, Problem.StartLine);
-      end;
-    Result := Result + FromProblems(FileName, Problems, Lines);
-    Lines := nil;
-  end;
+  SetLength(Parts, Length(Files));
+  for Index := 0 to High(Files) do
+    Parts[Index] := FromStoreFile(AStore, Files[Index], AReadLines);
+  Result := Concat(Parts);
 end;
 
 class function TAtlasFindings.Shorten(const AText: string; AMax: Integer): string;
@@ -688,6 +772,83 @@ begin
   end;
 end;
 
+{ TAtlasFindingsCache }
+
+constructor TAtlasFindingsCache.Create;
+begin
+  inherited Create;
+  FItems := TDictionary<string, TItem>.Create;
+end;
+
+destructor TAtlasFindingsCache.Destroy;
+begin
+  FItems.Free;
+  inherited Destroy;
+end;
+
+procedure TAtlasFindingsCache.Clear;
+begin
+  FItems.Clear;
+  FLastKeys := nil;
+  FLastStamps := nil;
+  FBuilt := False;
+end;
+
+function TAtlasFindingsCache.Build(AStore: TAtlasProblemStore; const AFiles: TArray<string>;
+  const AReadLines: TFunc<string, TArray<string>>; out AChanged: Boolean): TArray<TAtlasFinding>;
+var
+  Files, Keys: TArray<string>;
+  Stamps: TArray<Integer>;
+  Parts: TArray<TArray<TAtlasFinding>>;
+  Item: TItem;
+  Index: Integer;
+  Next: TDictionary<string, TItem>;
+begin
+  Files := AFiles;
+  if Files = nil then
+    Files := AStore.Files;
+  SetLength(Keys, Length(Files));
+  SetLength(Stamps, Length(Files));
+  SetLength(Parts, Length(Files));
+  AChanged := not FBuilt or (Length(Files) <> Length(FLastKeys));
+  for Index := 0 to High(Files) do
+  begin
+    Keys[Index] := TAtlasProblemStore.Key(Files[Index]);
+    Stamps[Index] := AStore.Stamp(Files[Index]);
+    if not AChanged and ((Keys[Index] <> FLastKeys[Index]) or (Stamps[Index] <> FLastStamps[Index])) then
+      AChanged := True;
+    if not FItems.TryGetValue(Keys[Index], Item) or (Item.Stamp <> Stamps[Index]) then
+    begin
+      Item.Stamp := Stamps[Index];
+      Item.Findings := TAtlasFindings.FromStoreFile(AStore, Files[Index], AReadLines);
+      FItems.AddOrSetValue(Keys[Index], Item);
+    end;
+    Parts[Index] := Item.Findings;
+  end;
+  if AChanged then
+  begin
+    // Nur die Dateien dieser Auswahl behalten: Der Speicher bleibt so groß wie die Liste.
+    if FItems.Count > Length(Files) then
+    begin
+      Next := TDictionary<string, TItem>.Create;
+      try
+        for Index := 0 to High(Keys) do
+          if FItems.TryGetValue(Keys[Index], Item) then
+            Next.AddOrSetValue(Keys[Index], Item);
+        FItems.Free;
+        FItems := Next;
+        Next := nil;
+      finally
+        Next.Free;
+      end;
+    end;
+    FLastKeys := Keys;
+    FLastStamps := Stamps;
+    FBuilt := True;
+  end;
+  Result := TAtlasFindings.Concat(Parts);
+end;
+
 { TAtlasFindingsView }
 
 constructor TAtlasFindingsView.Create;
@@ -753,6 +914,20 @@ begin
   Rebuild;
 end;
 
+procedure TAtlasFindingsView.BeginUpdate;
+begin
+  Inc(FUpdateCount);
+end;
+
+procedure TAtlasFindingsView.EndUpdate;
+begin
+  if FUpdateCount = 0 then
+    Exit;
+  Dec(FUpdateCount);
+  if (FUpdateCount = 0) and FRebuildPending then
+    Rebuild;
+end;
+
 function TAtlasFindingsView.TierOf(const AFileName: string): TAtlasFindingTier;
 var
   Key: string;
@@ -769,9 +944,21 @@ end;
 procedure TAtlasFindingsView.AssignTiers;
 var
   Index: Integer;
+  Last: string;
+  Tier: TAtlasFindingTier;
 begin
+  // Befunde einer Datei stehen hintereinander: die Stufe je Datei nur einmal bestimmen.
+  Last := '';
+  Tier := TAtlasFindingTier.Closed;
   for Index := 0 to High(FFindings) do
-    FFindings[Index].Tier := TierOf(FFindings[Index].FileName);
+  begin
+    if (Index = 0) or (FFindings[Index].FileName <> Last) then
+    begin
+      Last := FFindings[Index].FileName;
+      Tier := TierOf(Last);
+    end;
+    FFindings[Index].Tier := Tier;
+  end;
 end;
 
 function TAtlasFindingsView.TiersActive: Boolean;
@@ -988,9 +1175,22 @@ var
   First: TAtlasFinding;
   Tier: TAtlasFindingTier;
   OfTier: array[TAtlasFindingTier] of TArray<Integer>;
+  TierCount: array[TAtlasFindingTier] of Integer;
   Started: array[TAtlasFindingTier] of Boolean;
+  RowList: TList<TAtlasFindingRow>;
+  VisibleList: TList<Integer>;
 begin
+  FCountsValid := False;
+  if FUpdateCount > 0 then
+  begin
+    FRebuildPending := True;
+    Exit;
+  end;
+  FRebuildPending := False;
   Tiers := TiersActive;
+  // Zeilen über Listen statt Array + [x]: Mit zehntausenden Befunden wäre jeder Neuaufbau quadratisch.
+  RowList := TList<TAtlasFindingRow>.Create;
+  VisibleList := TList<Integer>.Create;
   Order := TList<Integer>.Create;
   try
     for Index := 0 to High(FFindings) do
@@ -1001,36 +1201,42 @@ begin
       begin
         Result := Compare(FFindings[A], FFindings[B]);
       end));
-    FRows := nil;
     for Tier := Low(TAtlasFindingTier) to High(TAtlasFindingTier) do
     begin
-      OfTier[Tier] := nil;
+      TierCount[Tier] := 0;
       Started[Tier] := False;
     end;
-    HasActive := False;
+    for Index in Order do
+      Inc(TierCount[FFindings[Index].Tier]);
+    for Tier := Low(TAtlasFindingTier) to High(TAtlasFindingTier) do
+    begin
+      SetLength(OfTier[Tier], TierCount[Tier]);
+      TierCount[Tier] := 0;
+    end;
     for Index in Order do
     begin
       Tier := FFindings[Index].Tier;
-      OfTier[Tier] := OfTier[Tier] + [Index];
-      if Tier = TAtlasFindingTier.Active then
-        HasActive := True;
+      OfTier[Tier][TierCount[Tier]] := Index;
+      Inc(TierCount[Tier]);
     end;
+    HasActive := Length(OfTier[TAtlasFindingTier.Active]) > 0;
     if FGrouping = TAtlasFindingGrouping.None then
     begin
       FVisible := Order.ToArray;
       // Ohne Gruppierung (#1108): die drei Stufen als Trennzeilen, die aktive Unit auch ohne Befunde.
       if Tiers and not HasActive and CleanActiveRow(Row) then
-        FRows := FRows + [Row];
+        RowList.Add(Row);
       for Index in FVisible do
       begin
         Tier := FFindings[Index].Tier;
         if Tiers and not Started[Tier] then
         begin
           Started[Tier] := True;
-          FRows := FRows + [SectionRow(Tier, OfTier[Tier])];
+          RowList.Add(SectionRow(Tier, OfTier[Tier]));
         end;
-        FRows := FRows + [FindingRow(Index, '')];
+        RowList.Add(FindingRow(Index, ''));
       end;
+      FRows := RowList.ToArray;
       Exit;
     end;
     Groups := TList<string>.Create;
@@ -1071,9 +1277,8 @@ begin
           if Result = 0 then
             Result := CompareText(A, B);
         end));
-      FVisible := nil;
       if Tiers and (FGrouping = TAtlasFindingGrouping.ByFile) and not HasActive and CleanActiveRow(Row) then
-        FRows := FRows + [Row];
+        RowList.Add(Row);
       for Key in Groups do
       begin
         First := FFindings[Members[Key][0]];
@@ -1083,7 +1288,7 @@ begin
           not Started[First.Tier] then
         begin
           Started[First.Tier] := True;
-          FRows := FRows + [SectionRow(First.Tier, OfTier[First.Tier])];
+          RowList.Add(SectionRow(First.Tier, OfTier[First.Tier]));
         end;
         Row := Default(TAtlasFindingRow);
         Row.IsGroup := True;
@@ -1109,21 +1314,25 @@ begin
         if not FCollapsed.TryGetValue(Key, Collapsed) then
           Collapsed := False;
         Row.Expanded := not Collapsed;
-        FRows := FRows + [Row];
+        RowList.Add(Row);
         for Member in Members[Key] do
         begin
-          FVisible := FVisible + [Member];
+          VisibleList.Add(Member);
           if Collapsed then
             Continue;
-          FRows := FRows + [FindingRow(Member, Key)];
+          RowList.Add(FindingRow(Member, Key));
         end;
       end;
+      FVisible := VisibleList.ToArray;
+      FRows := RowList.ToArray;
     finally
       Members.Free;
       Groups.Free;
     end;
   finally
     Order.Free;
+    VisibleList.Free;
+    RowList.Free;
   end;
   // Zugeklappte Gruppen, die gerade keine Befunde haben, bleiben gemerkt: Kommen ihre Befunde wieder, bleiben sie
   // zugeklappt.
@@ -1143,9 +1352,9 @@ function TAtlasFindingsView.Visible: TArray<TAtlasFinding>;
 var
   Index: Integer;
 begin
-  Result := nil;
-  for Index in FVisible do
-    Result := Result + [FFindings[Index]];
+  SetLength(Result, Length(FVisible));
+  for Index := 0 to High(FVisible) do
+    Result[Index] := FFindings[FVisible[Index]];
 end;
 
 function TAtlasFindingsView.Counts: TAtlasFindingCounts;
@@ -1154,6 +1363,8 @@ var
   Files, OpenUnits, mClosedUnits, HiddenUnits: TDictionary<string, Boolean>;
   Tiers: Boolean;
 begin
+  if FCountsValid then
+    Exit(FCounts);
   Result := Default(TAtlasFindingCounts);
   Tiers := TiersActive;
   Files := TDictionary<string, Boolean>.Create;
@@ -1200,6 +1411,8 @@ begin
     Result.OpenUnits := OpenUnits.Count;
     Result.ClosedUnits := mClosedUnits.Count;
     Result.HiddenUnits := HiddenUnits.Count;
+    FCounts := Result;
+    FCountsValid := True;
   finally
     HiddenUnits.Free;
     mClosedUnits.Free;
