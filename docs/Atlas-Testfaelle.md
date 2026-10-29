@@ -404,7 +404,7 @@ Abgrenzung: IDE Insight (Strg+.) ist modal und durchsucht auch Optionen und Komp
 |---|---|---|
 | SX1 | Projekt öffnen, das noch nie indiziert war | Das Atlas-Feld der Statuszeile ist gelb mit „Atlas · Index n %“ (#591), die Vervollständigung vermerkt „eingeschränkt“; nach dem Aufbau wird das Feld grün |
 | SX2 | IDE schließen und wieder öffnen | Index kommt aus dem Cache (Protokoll: „aus dem Cache“), bei 1000 Units in unter 3 s |
-| SX3 | `%LOCALAPPDATA%\Atlas\Index\<Version>\<Hash>\index.atlasidx` mit einem Hex-Editor verändern, IDE neu starten | Kein Fehlerdialog; Server-Protokoll „Index-Cache verworfen (Prüfsumme stimmt nicht)“, der Index wird neu aufgebaut |
+| SX3 | `%LOCALAPPDATA%\Atlas\Index\<Version>\<Hash>\index-<Format>.atlasidx` mit einem Hex-Editor verändern, IDE neu starten | Kein Fehlerdialog; Server-Protokoll „Index-Cache verworfen (Prüfsumme stimmt nicht)“, der Index wird neu aufgebaut |
 | SX4 | Neue Funktion im interface einer Unit deklarieren, speichern, in einer anderen Unit Strg+Leer | Die Funktion ist nach höchstens 1 s in der Liste |
 | SX5 | *Tools › Optionen › Drittanbieter › Atlas*, Abschnitt „Symbolindex“ | Units, Deklarationen, Speicher von Grenze, Größe auf der Platte, letzte Aktualisierung |
 | SX6 | „Index löschen“, Rückfrage mit Nein, dann mit Ja | Nein: nichts passiert; Ja: Meldung „Index gelöscht: n Caches, … frei“, danach SX1 |
@@ -5684,8 +5684,9 @@ Voraussetzung: Zwei Projekte, die unterschiedliche VCL-Units verwenden (z. B. ei
 |---|---|---|
 | IC1 | Index löschen, beide Projekte in einer Projektgruppe öffnen, warten, bis der Index fertig ist; IDE schließen und neu starten | Beim zweiten Start kommen die Units beider Projekte aus dem Cache (Statuszeile „Index“, „aus dem Cache“); im Log keine Warnung „Index-Cache … nicht geschrieben“ |
 | IC2 | Zwei IDEs gleichzeitig starten, in jeder eines der Projekte; nach dem Index beide schließen, eine IDE mit dem anderen Projekt neu öffnen | Die Bibliotheks-Units des anderen Projekts kommen aus dem Cache, nichts wird doppelt eingelesen |
-| IC3 | Während eine IDE indiziert, `%LOCALAPPDATA%\Atlas\Index\<Version>\Bibliothek\<Hash>\index.atlasidx.lock` in PowerShell exklusiv öffnen (`$f = [IO.File]::Open($pfad, 'Open', 'ReadWrite', 'None')`), 35 Sekunden warten, dann `$f.Close()` | Im Server-Log „Index-Cache (Bibliothek) nicht geschrieben: Schreibsperre nicht erhalten“, ohne Pfad; der nächste Aufbau schreibt den Cache wieder |
+| IC3 | Während eine IDE indiziert, `%LOCALAPPDATA%\Atlas\Index\<Version>\Bibliothek\<Hash>\index-<Format>.atlasidx.lock` in PowerShell exklusiv öffnen (`$f = [IO.File]::Open($pfad, 'Open', 'ReadWrite', 'None')`), 35 Sekunden warten, dann `$f.Close()` | Im Server-Log „Index-Cache (Bibliothek) nicht geschrieben: Schreibsperre nicht erhalten“, ohne Pfad; der nächste Aufbau schreibt den Cache wieder |
 | IC4 | Testlauf `Atlas.Tests.exe` | Grün, darunter `ServiceKeepsLibraryUnitsOfOtherWriters`, `ServiceWaitsForLibraryWriteLock`, `ServiceReportsUnwrittenCache`, `DiskWriteLockIsExclusive` |
+| IC5 | Installiertes Atlas 1.1 (z. B. für Claude Code) und das Plugin aus 1.2 nacheinander mit demselben Projekt starten, danach die IDE ein zweites Mal öffnen | Im Index-Ordner liegen `index.atlasidx` (1.1) und `index-29.atlasidx` (1.2) nebeneinander; der zweite Start liest den Index aus dem Cache (Diagnose-Log „cached“ > 0, kein „cache rejected … Formatversion“) |
 
 ## Leckprüfung ohne Pauschalausnahmen (Bericht N2)
 

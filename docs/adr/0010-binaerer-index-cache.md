@@ -14,7 +14,7 @@ ADR 0003 legte den Cache als JSON-Datei fest, die immer ganz gelesen wird. Bei e
 - **String-Tabelle:** Jeder Text steht einmal in der Datei; Units und Symbole verweisen per Nummer darauf. Nach dem Laden teilen sich gleiche Texte eine Instanz.
 - **Zahlen als Varint** (vorzeichenbehaftete per ZigZag).
 - **Blöcke je Unit mit Länge:** Beim Start liest der Server nur die Köpfe (Name, Datei, Zeitstempel, Hash, uses, Includes). Die Symbole einer Unit dekodiert er erst, wenn der Builder sie übernimmt; die Verwendungen stehen in einem eigenen Block und können bei knappem Speicher in der Datei bleiben.
-- **Ablage** je IDE-Version und Projekt unter `%LOCALAPPDATA%\Atlas\Index\<IDE-Version>\<Projekt-Hash>\index.atlasidx`, die Bibliothek (RTL, VCL, FMX) getrennt unter `…\<IDE-Version>\Bibliothek\<Hash>\`, damit Projekte sie teilen.
+- **Ablage** je IDE-Version und Projekt unter `%LOCALAPPDATA%\Atlas\Index\<IDE-Version>\<Projekt-Hash>\index-<Format>.atlasidx` (Formatversion im Namen, damit Server verschiedener Atlas-Versionen sich die Caches nicht gegenseitig überschreiben), die Bibliothek (RTL, VCL, FMX) getrennt unter `…\<IDE-Version>\Bibliothek\<Hash>\`, damit Projekte sie teilen.
 - **Verwerfen statt reparieren:** Andere Version, falsche Prüfsumme, abgeschnittene Datei oder ein früheres Format verwerfen den Cache; der Grund steht im Protokoll, der Aufbau liest still neu.
 
 Das Format beschreibt `docs/Architektur.md` (Abschnitt Cache-Format) und der Kopfkommentar von `Atlas.Common.Index.Cache`.
