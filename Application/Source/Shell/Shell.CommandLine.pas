@@ -29,6 +29,10 @@
 //   --no-index            ohne Symbolindex prüfen (#1112); Regeln, die Typen anderer Units
 //                         oder der RTL brauchen, schweigen dann
 //   --index-cache <Ordner> Ordner der Index-Caches (Standard wie der Server, %LOCALAPPDATA%\Atlas)
+//   --timings [<Datei>]   nach dem Lauf das Zeitprofil (#1356): langsamste Units und Regeln,
+//                         Indexzeit, Speicher; als Markdown, mit Endung .json als JSON; ohne
+//                         Datei auf stderr. Die Treffer bleiben unverändert auf stdout bzw. --output.
+//                         (Nicht --profile: Das wählt seit #146 das Regelprofil.)
 //
 // Formatieren ohne IDE (#1358), Ziel wie bei --check:
 //   --format-check        prüft, ob die Dateien den Formatregeln (format.*, .editorconfig) entsprechen;
@@ -98,6 +102,9 @@ type
     NoIndex: Boolean;
     /// <summary>Ordner der Index-Caches für --check (#1112); '' = wie der Server.</summary>
     IndexCacheFolder: string;
+    /// <summary>--timings (#1356): Zeitprofil nach dem Lauf; TimingsFile '' = auf stderr.</summary>
+    Timings: Boolean;
+    TimingsFile: string;
     /// <summary>--architecture: Zieldatei des Architekturberichts (#1118, .md oder .html); '' = keiner.</summary>
     ArchitectureFile: string;
     /// <summary>--compare: gespeicherter Architekturstand für den Vergleich (#1121); '' = keiner.</summary>
@@ -365,6 +372,18 @@ begin
       end
       else
         Result.ChangedRef := DefaultChangedBase;
+    end
+    else if Name = '--timings' then
+    begin
+      // Datei optional: --timings, --timings=profil.md oder --timings profil.md
+      Result.Timings := True;
+      if HasValue then
+        Result.TimingsFile := Value
+      else if (Index < High(AArgs)) and not AArgs[Index + 1].StartsWith('-') then
+      begin
+        Inc(Index);
+        Result.TimingsFile := AArgs[Index];
+      end;
     end
     else if Name = '--diff' then
     begin
