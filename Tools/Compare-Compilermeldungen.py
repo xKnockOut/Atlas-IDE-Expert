@@ -8,7 +8,8 @@ Eingaben (Vorgabe: Output/Compilermeldungen, beide erzeugt von Tools/Build-Compi
 
 Welche Regel welchem Code entspricht, steht im Regelkatalog (compilerCodes und "like Xnnnn" in der
 Beschreibung); nennt eine Meldung selbst Codes ("wie E2029"), gelten diese. ZUORDNUNG ergänzt Regeln,
-deren Katalogeintrag keinen Code nennt.
+deren Katalogeintrag keinen Code nennt. Regeln aus NUR_MELDUNG zählen nur mit einem Code in der Meldung
+(#1383): Sie melden auch Formen, die dcc übersetzt, und nennen den Code nur, wo dcc ihn wirklich meldet.
 
 Für jeden Fall und jeden Code, den dcc in der Datei des Falls meldet:
   erkannt         eine Regel von Atlas mit diesem Code meldet in derselben Datei
@@ -41,6 +42,9 @@ FOLGEMELDUNGEN = {'F2063', 'F2220'}
 # Regeln, deren Katalogeintrag keinen Code nennt.
 # Stilregeln, deren Beschreibung nur nebenbei einen Code nennt.
 OHNE_CODE = {'missing-begin-end'}
+# Regeln, deren Meldung den Code selbst nennt, wenn dcc ihn meldet (#1383): Stilmeldung zu langer Zeilen, Zyklus
+# über implementation, Wert nie gelesen bei verwalteten Typen, XML-Doku außerhalb des interface-Teils.
+NUR_MELDUNG = {'line-length', 'uses-cycle', 'unused-assignment', 'xmldoc-mismatch'}
 ZUORDNUNG = {
     'result-not-set': ['W1035'],
     'possibly-uninitialized': ['W1036'],
@@ -54,7 +58,7 @@ def rule_codes():
     for rule in rules:
         codes = set(rule.get('compilerCodes') or []) | set(CODE.findall(rule.get('description', '')))
         codes |= set(ZUORDNUNG.get(rule['id'], []))
-        if codes and rule['id'] not in OHNE_CODE:
+        if codes and rule['id'] not in OHNE_CODE and rule['id'] not in NUR_MELDUNG:
             result[rule['id']] = codes
     return result
 

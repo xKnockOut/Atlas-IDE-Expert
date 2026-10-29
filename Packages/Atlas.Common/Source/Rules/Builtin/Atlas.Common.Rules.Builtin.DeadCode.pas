@@ -390,8 +390,8 @@ begin
   // Selbstverweis (#896): braucht keinen Graphen und ist immer ein Compilerfehler.
   for Reference in TUsesClauses.References(AContext.Tree.Tokens) do
     if (Reference.List = TUsesListKind.UsesList) and SameText(CleanName(Reference.Name), OwnName) then
-      AddFinding(Reference.Range, 'Zirkuläre Unit-Referenz: ' + OwnName + ' → ' + OwnName,
-        'Die Unit nennt sich selbst im uses: Der Compiler lehnt das ab (F2047).', TRuleSeverity.Error,
+      AddFinding(Reference.Range, 'Zirkuläre Unit-Referenz: ' + OwnName + ' → ' + OwnName + ' (wie F2092)',
+        'Die Unit nennt sich selbst im uses: Der Compiler lehnt das ab (F2092).', TRuleSeverity.Error,
         RemoveFixes(Reference.Range), TArray<TRuleRelated>.Create(RelatedOf(AContext.FileName, Reference.Range,
         OwnName)));
   if (AContext.ProjectFiles = nil) or not AContext.ProjectFiles.Complete(Reason) then
@@ -446,7 +446,7 @@ begin
         Fixes := Fixes + [TRuleFix.UnitRelations('Graph zeigen (Unit-Beziehungen)')];
       if AllInterface then
       begin
-        Message := 'Zirkuläre Unit-Referenz: ' + PathText;
+        Message := 'Zirkuläre Unit-Referenz: ' + PathText + ' (wie F2047)';
         Severity := TRuleSeverity.Error;
       end
       else

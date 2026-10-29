@@ -771,11 +771,15 @@ const
 var
   Findings: TArray<TRuleFinding>;
 begin
-  Findings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+  // "class abstract" ohne abstrakte Methoden übersetzt dcc still (#1383, Cm.E2402); mit offener Methode W1020.
+  TRuleAssert.Silent(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
     '  TBasis = class abstract'#10'  end;'#10'implementation'#10'procedure P;'#10'begin'#10 +
     '  TBasis.Create.Free;'#10'end;'#10'end.');
+  Findings := TRuleAssert.Findings(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TBasis = class abstract'#10'  public'#10'    procedure Eins; virtual; abstract;'#10'  end;'#10 +
+    'implementation'#10'procedure P;'#10'begin'#10'  TBasis.Create.Free;'#10'end;'#10'end.');
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('TBasis ist als abstract deklariert; davon lässt sich keine Instanz erzeugen (wie E2402).',
+  Assert.AreEqual('TBasis hat die abstrakte Methode Eins; der Aufruf löst EAbstractError aus (wie W1020).',
     Findings[0].Message);
   // Klassen aus dem Index; geerbte Methoden fremder Units ohne Korrektur.
   Findings := Run(TAbstractClassInstantiatedRule.Create, 'unit U;'#10'interface'#10'uses Listen;'#10 +

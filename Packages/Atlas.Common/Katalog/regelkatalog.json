@@ -140,11 +140,12 @@
       "category": "code-smell",
       "severity": "warning",
       "group": "architecture",
-      "description": "A uses entry leads, through the uses clauses of other units, back to the unit itself. If every edge of the cycle is in an interface section, the compiler rejects it (like F2047) and the finding is an error; cycles with at least one implementation edge are allowed by Delphi but couple the units tightly (initialization order, recompiling, testing) and are reported with the rule's severity (option implementation). The message shows the complete shortest path (A → B → C → A), the finding hover each edge with its section. Based on the shared uses graph over the symbol index (#268), with inactive conditional branches hidden; the checked unit counts with its editor text. Silent without projects (linter, file without project), while projects are loading or the index is incomplete, and for units the uses graph does not know.",
+      "description": "A uses entry leads, through the uses clauses of other units, back to the unit itself. If every edge of the cycle is in an interface section, the compiler rejects it (like F2047; a unit naming itself like F2092) and the finding is an error; only then does the message name the code (#1383); cycles with at least one implementation edge are allowed by Delphi but couple the units tightly (initialization order, recompiling, testing) and are reported with the rule's severity (option implementation). The message shows the complete shortest path (A → B → C → A), the finding hover each edge with its section. Based on the shared uses graph over the symbol index (#268), with inactive conditional branches hidden; the checked unit counts with its editor text. Silent without projects (linter, file without project), while projects are loading or the index is incomplete, and for units the uses graph does not know.",
       "bad": "unit uKunde;\ninterface\nuses uAuftrag;   // uAuftrag uses uKunde in its interface\n",
       "good": "unit uKunde;\ninterface\n// common types moved to uTypen, used by both\nuses uTypen;",
       "compilerCodes": [
-        "F2047"
+        "F2047",
+        "F2092"
       ],
       "options": [
         {
@@ -402,7 +403,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077. Variables of an interface type are exempt: assigning them holds or releases a reference (scope guards, Writer := nil).",
+      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077, which dcc gives only for unmanaged types: for strings, dynamic arrays, variants and records with such fields, and for variables without a declared type, the message names no code (#1383). Variables of an interface type are exempt: assigning them holds or releases a reference (scope guards, Writer := nil).",
       "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",
       "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;",
       "options": [
@@ -2222,7 +2223,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A /// comment does not match its declaration or is not well-formed XML, like the compiler warnings W1201 to W1208 with XML documentation enabled. Reported: <param> for a parameter that does not exist; missing <param> when the block describes parameters at all (like W1208, 'but other parameters do'); with checkReturns, <returns> on a routine without a result and missing <returns> on a function whose block describes parameters. <inheritdoc/> fills in what is missing. Also '<' and '&' outside tags and entities, unknown entities, attribute values without quotes, unclosed and stray end tags, and cref targets that do not exist (W1206, only with an index and when every unit in uses is known; generic targets, unit names and types with unknown ancestors stay silent). With requirePublic, public and published methods and properties of types in the interface section without a /// comment are reported too (not override, not properties without a type). Quick fixes: rename unknown <param> in order to the missing ones, add the rest as empty lines in signature order, remove surplus <param> and stray <returns>; escape the character, add quotes, add or remove the end tag, write an unknown empty tag like TList<T> as text; set cref to the most similar symbol; generate the comment skeleton.",
+      "description": "A /// comment does not match its declaration or is not well-formed XML, like the compiler warnings W1201 to W1208 with XML documentation enabled. The message names a code only where dcc reports it (#1383): for comments in the interface section of a unit (dcc documents nothing else), and among the XML errors only a stray character after a tag name (W1205); Delphi 13 compiles '<' followed by a space, unknown entities, empty attribute values and unclosed tags without a warning. Reported: <param> for a parameter that does not exist; missing <param> when the block describes parameters at all (like W1208, 'but other parameters do'); with checkReturns, <returns> on a routine without a result and missing <returns> on a function whose block describes parameters. <inheritdoc/> fills in what is missing. Also '<' and '&' outside tags and entities, unknown entities, attribute values without quotes, unclosed and stray end tags, and cref targets that do not exist (W1206, only with an index and when every unit in uses is known; generic targets, unit names and types with unknown ancestors stay silent). With requirePublic, public and published methods and properties of types in the interface section without a /// comment are reported too (not override, not properties without a type). Quick fixes: rename unknown <param> in order to the missing ones, add the rest as empty lines in signature order, remove surplus <param> and stray <returns>; escape the character, add quotes, add or remove the end tag, write an unknown empty tag like TList<T> as text; set cref to the most similar symbol; generate the comment skeleton.",
       "bad": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Nummer\">Kundennummer</param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde;",
       "good": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Id\">Kundennummer</param>\n/// <param name=\"Aktive\"></param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde;",
       "compilerCodes": [
@@ -2775,7 +2776,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "An identifier is declared twice in the same scope (like E2004): a local variable, constant, type or label and a parameter of the routine, two fields, a field and a method or property of a type, two types, a constant and a variable of the unit across interface and implementation. Likewise a unit twice in uses or in the uses clauses of interface and implementation at once (option checkUses). Overloads and bodies of routines, a forward declaration and its type, TList next to TList<T> and declarations in different branches of the same {$IF} do not count. Quick fix: remove the second declaration (the whole var, const, type or label section when it was its only one; for uses the duplicate entry); none for parameters, methods and properties.",
+      "description": "An identifier is declared twice in the same scope (like E2004): a local variable, constant, type or label and a parameter of the routine, two fields, a field and a method or property of a type, two types, a constant and a variable of the unit across interface and implementation. Likewise a unit twice in uses or in the uses clauses of interface and implementation at once (option checkUses). Overloads and bodies of routines, overloaded array properties (property Items[I: Integer] next to Items[I: Byte], #1383), a forward declaration and its type, TList next to TList<T> and declarations in different branches of the same {$IF} do not count. Quick fix: remove the second declaration (the whole var, const, type or label section when it was its only one; for uses the duplicate entry); none for parameters, methods and properties.",
       "bad": "procedure TRechnung.Summieren(Betrag: Currency);\nvar\n  Betrag: Currency;\nbegin",
       "good": "procedure TRechnung.Summieren(Betrag: Currency);\nbegin",
       "compilerCodes": [
@@ -2835,12 +2836,11 @@
       "category": "bug",
       "severity": "warning",
       "group": "compiler",
-      "description": "Create on a class that declares or inherits abstract methods without overriding them (like W1020), or on a class declared abstract (like E2402). Calling an abstract method raises EAbstractError at run time; the message names the open methods. Classes are looked up in the file and in the symbol index; overloads with the same number of parameters count as one method. Calls on class references, inherited Create and constructor bodies are not checked. Quick fix for a class of this file that inherits the abstract methods: override them there (like the code action \"override\").",
+      "description": "Create on a class that declares or inherits abstract methods without overriding them (like W1020). A class declared abstract without abstract methods can be created; dcc does not enforce \"class abstract\" (E2402 exists only for .NET, #1383). Calling an abstract method raises EAbstractError at run time; the message names the open methods. Classes are looked up in the file and in the symbol index; overloads with the same number of parameters count as one method. Calls on class references, inherited Create and constructor bodies are not checked. Quick fix for a class of this file that inherits the abstract methods: override them there (like the code action \"override\").",
       "bad": "Form := TForm.Create;\nGesamt := Gesamt + Form.Flaeche;",
       "good": "Form := TKreis.Create;\nGesamt := Gesamt + Form.Flaeche;",
       "compilerCodes": [
-        "W1020",
-        "E2402"
+        "W1020"
       ],
       "level": "B"
     },
@@ -4336,11 +4336,10 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function result (like E2197), a constant for an open array (like E2192) or an expression (like E2036). Reported only for routines without overloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and write it back for string elements and properties with write.",
-      "bad": "procedure Erhoehen(var Zeichen: Char);\n…\nErhoehen(Zeile[1]);",
-      "good": "Zeichen := Zeile[1];\nErhoehen(Zeichen);\nZeile[1] := Zeichen;",
+      "description": "A var or out parameter receives something that is not a variable: a constant, a const parameter, a property or a function result (like E2197), a constant for an open array (like E2192) or an expression (like E2036). A string element for a character parameter (S[1]) is a variable for dcc and stays silent (E2354 exists only for .NET, #1383). Reported only for routines without overloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and write it back for properties with write.",
+      "bad": "procedure Zaehlen(var Wert: Integer);\n…\nZaehlen(Liste.Count);",
+      "good": "Anzahl := Liste.Count;\nZaehlen(Anzahl);",
       "compilerCodes": [
-        "E2354",
         "E2197",
         "E2192",
         "E2036"

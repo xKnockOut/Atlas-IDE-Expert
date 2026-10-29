@@ -5485,11 +5485,11 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 | AI1 | Das Beispiel aus #999: `TForm` mit `function Flaeche: Double; virtual; abstract;`, dann `Form := TForm.Create;` | Warnung `abstract-class-instantiated` an `TForm.Create`: „TForm hat die abstrakte Methode Flaeche; der Aufruf löst EAbstractError aus (wie W1020).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
 | AI2 | `TKreis = class(TForm)` ohne `Flaeche`, `TKreis.Create`; Schnellkorrektur „Flaeche in TKreis überschreiben“, danach Strg+Z | Meldung nennt `TForm.Flaeche`; die Korrektur legt Deklaration und Rumpf mit `override` an, danach keine Meldung; ein Undo-Schritt nimmt es zurück |
 | AI3 | Klasse mit zwei offenen abstrakten Methoden | Eine Meldung „… hat die abstrakten Methoden Eins, Zwei; ihr Aufruf …“ |
-| AI4 | `TBasis = class abstract`, `TBasis.Create` | „TBasis ist als abstract deklariert; davon lässt sich keine Instanz erzeugen (wie E2402).“ |
+| AI4 | `TBasis = class abstract` ohne abstrakte Methoden, `TBasis.Create` | Keine Meldung: dcc setzt `class abstract` nicht durch (#1383, Cm.E2402); mit einer abstrakten Methode W1020 wie AI1 |
 | AI5 | `TStrings.Create` (RTL im Index) | Meldung mit den abstrakten Methoden von TStrings (Get, GetCount …); `TStringList.Create` bleibt still |
 | AI6 | Konstruktor-Rumpf `constructor TA.Create`, `inherited Create`, Klassenreferenz `K.Create`, unbekannte Klasse | Keine Meldung |
 | AI7 | `"abstract-class-instantiated": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
-| AI8 | Abgleich mit Delphi: AI1, AI3 bis AI5 übersetzen | dcc meldet W1020 (je abstrakte Methode) bzw. E2402 an denselben Aufrufen, für AI6 nichts |
+| AI8 | Abgleich mit Delphi: AI1, AI3 bis AI5 übersetzen | dcc meldet W1020 (je abstrakte Methode) an denselben Aufrufen, für AI4 und AI6 nichts |
 
 ## Getter oder Setter einer Property ungültig (#1001)
 
@@ -5918,14 +5918,14 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| YV1 | `procedure Erhoehen(var Zeichen: Char);` und `Erhoehen(Zeile[1]);` mit `Zeile: string` (das Beispiel `Inc(Zeile[1])` aus #1037 nimmt der Compiler an, weil `Inc` eingebaut ist) | Fehler `invalid-var-argument` an `Zeile[1]`: „Ein String-Element kann nicht an einen var-Parameter übergeben werden (wie E2354).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
-| YV2 | Schnellkorrektur „Über eine lokale Variable Wert übergeben“, danach Strg+Z | `Wert: Char;` im var-Abschnitt, davor `Wert := Zeile[1];`, danach `Zeile[1] := Wert;`; keine Meldung mehr, kompiliert; ein Undo-Schritt nimmt es zurück |
+| YV1 | `procedure Erhoehen(var Zeichen: Char);` und `Erhoehen(Zeile[1]);` mit `Zeile: string` | Keine Meldung: dcc übersetzt das String-Element an einen var-Zeichen-Parameter (#1383, Cm.E2354) |
+| YV2 | `Zaehlen(Doppelt(2))`, Schnellkorrektur „Über eine lokale Variable … übergeben“, danach Strg+Z | Lokale Variable im var-Abschnitt, davor die Zuweisung; keine Meldung mehr, kompiliert; ein Undo-Schritt nimmt es zurück (**Abnahme**) |
 | YV3 | An `procedure Zaehlen(var Ziel: Integer)`: eine Konstante, eine typisierte Konstante, einen const-Parameter, eine Property ohne write, `Doppelt(2)` und `5` übergeben | Je eine Meldung „… ist keine Variable und kann nicht an einen var-Parameter übergeben werden (wie E2197).“ |
 | YV4 | An `procedure Fuellen(var Werte: array of Integer)`: eine Konstante, `[1, 2]` und `Slice(Feld, 2)`; an `Zaehlen` den Ausdruck `Zahl + 1` | „… als offenes Array … (wie E2192)“ bzw. „… kein Ausdruck (wie E2036)“; `Slice(Feld, 2)` an var oder out bleibt still (übersetzt dcc, #1328) |
 | YV5 | Property mit write an einen var-Parameter, Korrektur anwenden | Die Korrektur schreibt nach dem Aufruf `Zeile.Text := Wert;` zurück; bei einem out-Parameter ohne Zuweisung davor |
 | YV6 | Variablen, Feldelemente, `Inc(Zahl)`, `Move(S[1], …)`, untypisierte var-Parameter, Typumwandlung `Integer(Zahl)`, überladene Routinen aus einer anderen Unit, typisierte Konstante unter `{$J+}` | Keine Meldung |
 | YV7 | `"invalid-var-argument": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| YV8 | Abgleich mit Delphi: YV1, YV3 und YV4 übersetzen | dcc meldet an denselben Stellen Fehler; die Codes in den Meldungen stimmen (E2354, E2197, E2192, E2036; bei konstantem Ausdruck nennt dcc E2197); Abweichungen im Code bitte notieren |
+| YV8 | Abgleich mit Delphi: YV1, YV3 und YV4 übersetzen | dcc meldet an YV3 und YV4 Fehler, an YV1 nichts; die Codes in den Meldungen stimmen (E2197, E2192, E2036; bei konstantem Ausdruck nennt dcc E2197); Abweichungen im Code bitte notieren |
 
 ## Bedingung ist kein Boolean (#1069)
 
@@ -8623,3 +8623,17 @@ Vorbereitung: Minimalfall F01 aus `berichte/fp-korpus-2026-10-28/faelle`; ein ei
 | VU5 | `property Capacity write SetCapacity;` ohne Typ im Nachfahren, danach `Capacity := 10` | Kein `readonly-property-assigned` |
 | VU6 | `X.Edit` ohne `Post` auf einem Record bzw. einer Klasse ohne TDataSet-Vorfahr; Gegenprobe auf `TFDQuery` | Nur die Gegenprobe meldet `dataset-edit-without-post` |
 | VU7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 29 in Server und Plugin) |
+
+## Meldungen ohne dcc-Befund (#1383)
+
+Vorbereitung: Branch `feature/1383-ohne-dcc-befund`; Fälle aus `Tests/Compilermeldungen/Faelle`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OD1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `XmlDoc.CodesOnlyWhereDccReports`, `Unused.AssignmentCodeOnlyForUnmanagedTypes`, `Declarations.DuplicateDeclaration…` u. a. grün (**Abnahme**) |
+| OD2 | Rechner mit Delphi 12: `pwsh Tools/Build-Compilermeldungen.ps1 -Dcc -BdsVersion 23.0 -ResultFile Output\Compilermeldungen\dcc-delphi12.tsv -Cases …` laut `anleitungen/1383-delphi12-faelle-bauen.md` | Tabelle mit je Fall und Plattform einer Zeile; keine IDE startet (**Abnahme**) |
+| OD3 | `Cm.E2056` öffnen: `mText := 'xxx…'` ohne Lesen | Hinweis „Der an "mText" zugewiesene Wert wird nie gelesen“ ohne „(wie H2077)“; mit `Integer` statt `string` mit Code |
+| OD4 | `Cm.H2456`/`Cm.H2457` mit Projekt öffnen | Zyklus über implementation-uses ohne Compilercode; ein reiner interface-Zyklus endet auf „(wie F2047)“, eine Unit, die sich selbst nennt, auf „(wie F2092)“ |
+| OD5 | `Cm.W1201`–`Cm.W1205` öffnen | Befunde von `xmldoc-mismatch` ohne Compilercode, außer `Cm.W1204` („(wie W1205)“); dieselben Kommentare im implementation-Teil nennen nie einen Code |
+| OD6 | `Cm.W1069` (`{$WARN MOBILE_DELPHI ON}`), `Cm.E2402`, `Cm.E2354`, `Cm.W1075` öffnen | Keine Meldung mit Compilercode |
+| OD7 | Nach Marcos Delphi-12-Lauf: `python3 Tools/Compare-Compilermeldungen.py` | Unter „zusätzlich“ keine Fälle mit `Erwartet: -`, außer solchen, die Delphi 12 meldet (**Abnahme**) |

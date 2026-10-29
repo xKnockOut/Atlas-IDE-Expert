@@ -628,9 +628,9 @@ uses System.Classes;
 
 **Zirkuläre Unit-Referenz über uses** · Code Smell · Warnung · Gruppe Architektur
 
-Ein uses-Eintrag führt über die uses-Listen anderer Units zurück zur eigenen Unit. Liegt jede Kante des Zyklus im interface-Abschnitt, lehnt der Compiler ihn ab (wie F2047), und der Befund ist ein Fehler; Zyklen mit mindestens einer implementation-Kante erlaubt Delphi, sie koppeln die Units aber eng (Initialisierungsreihenfolge, Neuübersetzen, Testen) und erscheinen mit dem Schweregrad der Regel (Option implementation). Die Meldung zeigt den vollständigen kürzesten Pfad (A → B → C → A), der Befund-Hover jede Kante mit ihrem Abschnitt. Grundlage ist der gemeinsame Uses-Graph über den Symbolindex (#268), inaktive Zweige der bedingten Kompilierung ausgeblendet; die geprüfte Unit zählt mit ihrem Editor-Stand. Still ohne Projekte (Linter, Datei ohne Projekt), solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt.
+Ein uses-Eintrag führt über die uses-Listen anderer Units zurück zur eigenen Unit. Liegt jede Kante des Zyklus im interface-Abschnitt, lehnt der Compiler ihn ab (wie F2047; eine Unit, die sich selbst nennt, wie F2092), und der Befund ist ein Fehler; nur dann nennt die Meldung den Code (#1383); Zyklen mit mindestens einer implementation-Kante erlaubt Delphi, sie koppeln die Units aber eng (Initialisierungsreihenfolge, Neuübersetzen, Testen) und erscheinen mit dem Schweregrad der Regel (Option implementation). Die Meldung zeigt den vollständigen kürzesten Pfad (A → B → C → A), der Befund-Hover jede Kante mit ihrem Abschnitt. Grundlage ist der gemeinsame Uses-Graph über den Symbolindex (#268), inaktive Zweige der bedingten Kompilierung ausgeblendet; die geprüfte Unit zählt mit ihrem Editor-Stand. Still ohne Projekte (Linter, Datei ohne Projekt), solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt.
 
-Entspricht der Compilermeldung `F2047`.
+Entspricht der Compilermeldung `F2047`, `F2092`.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -1045,7 +1045,7 @@ end;
 
 **Zugewiesener Wert ungenutzt** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077. Variablen mit Interface-Typ sind ausgenommen: Die Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil).
+Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077, den dcc nur für nicht verwaltete Typen gibt: Bei Strings, dynamischen Arrays, Variants und Records mit solchen Feldern sowie bei Variablen ohne Typangabe nennt die Meldung keinen Code (#1383). Variablen mit Interface-Typ sind ausgenommen: Die Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4370,7 +4370,7 @@ property Passwort: string read FPasswort write SetPasswort;
 
 **XMLDoc passt nicht zur Signatur** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Ein ///-Kommentar passt nicht zu seiner Deklaration oder ist kein wohlgeformtes XML, wie die Compilerwarnungen W1201 bis W1208 mit eingeschalteter XML-Dokumentation. Gemeldet werden: <param> zu einem Parameter, den es nicht gibt; fehlende <param>, wenn der Block überhaupt Parameter beschreibt (wie W1208, „but other parameters do“); mit checkReturns <returns> an einer Routine ohne Ergebnis und fehlendes <returns> an einer Funktion, deren Block Parameter beschreibt. <inheritdoc/> ergänzt, was fehlt. Außerdem '<' und '&' außerhalb von Tags und Entitäten, unbekannte Entitäten, Attributwerte ohne Anführungszeichen, nicht geschlossene und überzählige Endtags sowie cref-Ziele, die es nicht gibt (W1206, nur mit Index und wenn jede Unit aus uses bekannt ist; generische Ziele, Unit-Namen und Typen mit unbekannten Vorfahren bleiben still). Mit requirePublic zusätzlich public- und published-Methoden und -Properties von Typen im interface ohne ///-Kommentar (nicht override, nicht Properties ohne Typ). Schnellkorrekturen: unbekannte <param> der Reihe nach auf die fehlenden umbenennen, die übrigen als leere Zeilen in Signaturreihenfolge ergänzen, überzählige <param> und <returns> an Prozeduren entfernen; Zeichen maskieren, Anführungszeichen setzen, Endtag ergänzen oder entfernen, ein fremdes leeres Tag wie TList<T> als Text schreiben; cref auf das ähnlichste Symbol setzen; Kommentargerüst erzeugen.
+Ein ///-Kommentar passt nicht zu seiner Deklaration oder ist kein wohlgeformtes XML, wie die Compilerwarnungen W1201 bis W1208 mit eingeschalteter XML-Dokumentation. Einen Code nennt die Meldung nur, wo dcc ihn meldet (#1383): bei Kommentaren im interface-Teil einer Unit (nur die dokumentiert dcc) und unter den XML-Fehlern nur bei einem fremden Zeichen hinter dem Tagnamen (W1205); '<' mit folgendem Leerzeichen, unbekannte Entitäten, leere Attributwerte und offene Tags übersetzt Delphi 13 ohne Warnung. Gemeldet werden: <param> zu einem Parameter, den es nicht gibt; fehlende <param>, wenn der Block überhaupt Parameter beschreibt (wie W1208, „but other parameters do“); mit checkReturns <returns> an einer Routine ohne Ergebnis und fehlendes <returns> an einer Funktion, deren Block Parameter beschreibt. <inheritdoc/> ergänzt, was fehlt. Außerdem '<' und '&' außerhalb von Tags und Entitäten, unbekannte Entitäten, Attributwerte ohne Anführungszeichen, nicht geschlossene und überzählige Endtags sowie cref-Ziele, die es nicht gibt (W1206, nur mit Index und wenn jede Unit aus uses bekannt ist; generische Ziele, Unit-Namen und Typen mit unbekannten Vorfahren bleiben still). Mit requirePublic zusätzlich public- und published-Methoden und -Properties von Typen im interface ohne ///-Kommentar (nicht override, nicht Properties ohne Typ). Schnellkorrekturen: unbekannte <param> der Reihe nach auf die fehlenden umbenennen, die übrigen als leere Zeilen in Signaturreihenfolge ergänzen, überzählige <param> und <returns> an Prozeduren entfernen; Zeichen maskieren, Anführungszeichen setzen, Endtag ergänzen oder entfernen, ein fremdes leeres Tag wie TList<T> als Text schreiben; cref auf das ähnlichste Symbol setzen; Kommentargerüst erzeugen.
 
 Entspricht der Compilermeldung `W1201`, `W1202`, `W1203`, `W1204`, `W1205`, `W1206`, `W1207`, `W1208`.
 
@@ -5374,7 +5374,7 @@ procedure Laden(Strom: TStream); overload;
 
 **Bezeichner doppelt deklariert** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein Bezeichner ist im selben Gültigkeitsbereich zweimal deklariert (wie E2004): lokale Variable, Konstante, Typ oder Label und ein Parameter der Routine, zwei Felder, ein Feld und eine Methode oder Property eines Typs, zwei Typen, Konstante und Variable der Unit über interface und implementation hinweg. Ebenso eine Unit doppelt in uses oder in den uses-Klauseln von interface und implementation zugleich (Option checkUses). Überladungen und Rümpfe von Routinen, eine Vorwärtsdeklaration und ihr Typ, TList neben TList<T> und Deklarationen in verschiedenen Zweigen desselben {$IF} zählen nicht. Korrektur: zweite Deklaration entfernen (den ganzen var-, const-, type- oder label-Abschnitt, wenn sie seine einzige war; bei uses den doppelten Eintrag); keine bei Parametern, Methoden und Properties.
+Ein Bezeichner ist im selben Gültigkeitsbereich zweimal deklariert (wie E2004): lokale Variable, Konstante, Typ oder Label und ein Parameter der Routine, zwei Felder, ein Feld und eine Methode oder Property eines Typs, zwei Typen, Konstante und Variable der Unit über interface und implementation hinweg. Ebenso eine Unit doppelt in uses oder in den uses-Klauseln von interface und implementation zugleich (Option checkUses). Überladungen und Rümpfe von Routinen, überladene Array-Properties (property Eintrag[I: Integer] neben Eintrag[I: Byte], #1383), eine Vorwärtsdeklaration und ihr Typ, TList neben TList<T> und Deklarationen in verschiedenen Zweigen desselben {$IF} zählen nicht. Korrektur: zweite Deklaration entfernen (den ganzen var-, const-, type- oder label-Abschnitt, wenn sie seine einzige war; bei uses den doppelten Eintrag); keine bei Parametern, Methoden und Properties.
 
 Entspricht der Compilermeldung `E2004`.
 
@@ -5468,9 +5468,9 @@ end;
 
 **Instanz einer Klasse mit abstrakten Methoden** · Bug · Warnung · Gruppe Compiler vorab
 
-Create auf einer Klasse, die abstrakte Methoden deklariert oder erbt, ohne sie zu überschreiben (wie W1020), oder auf einer als abstract deklarierten Klasse (wie E2402). Der Aufruf einer abstrakten Methode löst zur Laufzeit EAbstractError aus; die Meldung nennt die offenen Methoden. Klassen sucht die Regel in der Datei und im Symbolindex; Überladungen mit gleicher Parameterzahl gelten als eine Methode. Aufrufe über Klassenreferenzen, inherited Create und Konstruktor-Rümpfe prüft sie nicht. Korrektur für eine Klasse dieser Datei, die die abstrakten Methoden erbt: dort überschreiben (wie die Code-Aktion „überschreiben“).
+Create auf einer Klasse, die abstrakte Methoden deklariert oder erbt, ohne sie zu überschreiben (wie W1020). Eine als abstract deklarierte Klasse ohne abstrakte Methoden lässt sich erzeugen; dcc setzt "class abstract" nicht durch (E2402 gibt es nur unter .NET, #1383). Der Aufruf einer abstrakten Methode löst zur Laufzeit EAbstractError aus; die Meldung nennt die offenen Methoden. Klassen sucht die Regel in der Datei und im Symbolindex; Überladungen mit gleicher Parameterzahl gelten als eine Methode. Aufrufe über Klassenreferenzen, inherited Create und Konstruktor-Rümpfe prüft sie nicht. Korrektur für eine Klasse dieser Datei, die die abstrakten Methoden erbt: dort überschreiben (wie die Code-Aktion „überschreiben“).
 
-Entspricht der Compilermeldung `W1020`, `E2402`.
+Entspricht der Compilermeldung `W1020`.
 
 Stufe B (Namensauflösung über Units).
 
@@ -7831,26 +7831,25 @@ end;
 
 **Ungültiges Argument für einen var- oder out-Parameter** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Property oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben.
+Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: eine Konstante, einen const-Parameter, eine Property oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192) oder einen Ausdruck (wie E2036). Ein String-Element für einen Zeichen-Parameter (S[1]) ist für dcc eine Variable und bleibt still (E2354 gibt es nur unter .NET, #1383). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei Properties mit write mit Rückschreiben.
 
-Entspricht der Compilermeldung `E2354`, `E2197`, `E2192`, `E2036`.
+Entspricht der Compilermeldung `E2197`, `E2192`, `E2036`.
 
 Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
 
 Mit Treffer:
 
 ```pascal
-procedure Erhoehen(var Zeichen: Char);
+procedure Zaehlen(var Wert: Integer);
 …
-Erhoehen(Zeile[1]);
+Zaehlen(Liste.Count);
 ```
 
 Richtig:
 
 ```pascal
-Zeichen := Zeile[1];
-Erhoehen(Zeichen);
-Zeile[1] := Zeichen;
+Anzahl := Liste.Count;
+Zaehlen(Anzahl);
 ```
 
 <a id="condition-not-boolean"></a>

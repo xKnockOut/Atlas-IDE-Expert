@@ -558,19 +558,17 @@ var
   Source, Fixed: string;
   Found: TArray<TRuleFinding>;
 begin
-  Source := Zeilen('  Erhoehen(S[1]);'#10);
+  // Das Beispiel aus #1037 (S[1] an einen var-Zeichen-Parameter) übersetzt dcc still (#1383, Cm.E2354).
+  Assert.AreEqual(0, Integer(Length(VarFindings(Zeilen('  Erhoehen(S[1]);'#10)))));
+  // Korrektur über eine lokale Variable am Beispiel eines Funktionsergebnisses.
+  Source := Zeilen('  Zaehlen(Doppelt(2));'#10);
   Found := VarFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual(InvalidVarArgumentRuleId, Found[0].RuleId);
-  Assert.AreEqual('Ein String-Element kann nicht an einen var-Parameter übergeben werden (wie E2354).',
-    Found[0].Message);
   Assert.AreEqual(43, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(11, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(10, Found[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
-  Assert.AreEqual('Über eine lokale Variable Wert übergeben', Found[0].Fixes[0].Title);
   Fixed := Apply(Source, Found[0].Fixes[0]);
-  Assert.IsTrue(Pos('  Feld: array[0..3] of Integer;'#10'  Wert: Char;'#10'begin'#10'  Wert := S[1];'#10 +
-    '  Erhoehen(Wert);'#10'  S[1] := Wert;'#10'end;', Fixed) > 0, Fixed);
   Assert.AreEqual(0, Integer(Length(VarFindings(Fixed))), Fixed);
 end;
 
@@ -669,7 +667,7 @@ procedure TInvalidVarArgumentTests.OffAndExclude;
 var
   Source: string;
 begin
-  Source := Zeilen('  Erhoehen(S[1]);'#10);
+  Source := Zeilen('  Zaehlen(Doppelt(2));'#10);
   Assert.AreEqual(1, Integer(Length(VarFindings(Source, '', 'Source/Zeilen.pas'))));
   Assert.AreEqual(0, Integer(Length(VarFindings(Source, '{"rules": {"invalid-var-argument": "off"}}',
     'Source/Zeilen.pas'))));

@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4576] of string = (
+  BaseLines: array[0..4575] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -176,15 +176,16 @@ const
     '      "category": "code-smell",',
     '      "severity": "warning",',
     '      "group": "architecture",',
-    '      "description": "A uses entry leads, through the uses clauses of other units, back to the unit itself. If every edge of the cycle is in an interface section, the compiler rejects it (like F2047) ' +
-    'and the finding is an error; cycles with at least one implementation edge are allowed by Delphi but couple the units tightly (initialization order, recompiling, testing) and are reported with the rule' +
-    '''s severity (option implementation). The message shows the complete shortest path (A → B → C → A), the finding hover each edge with its section. Based on the shared uses graph over the symbol index (#' +
-    '268), with inactive conditional branches hidden; the checked unit counts with its editor text. Silent without projects (linter, file without project), while projects are loading or the index is incomp' +
-    'lete, and for units the uses graph does not know.",',
+    '      "description": "A uses entry leads, through the uses clauses of other units, back to the unit itself. If every edge of the cycle is in an interface section, the compiler rejects it (like F2047; ' +
+    'a unit naming itself like F2092) and the finding is an error; only then does the message name the code (#1383); cycles with at least one implementation edge are allowed by Delphi but couple the units ' +
+    'tightly (initialization order, recompiling, testing) and are reported with the rule''s severity (option implementation). The message shows the complete shortest path (A → B → C → A), the finding hover ' +
+    'each edge with its section. Based on the shared uses graph over the symbol index (#268), with inactive conditional branches hidden; the checked unit counts with its editor text. Silent without project' +
+    's (linter, file without project), while projects are loading or the index is incomplete, and for units the uses graph does not know.",',
     '      "bad": "unit uKunde;\ninterface\nuses uAuftrag;   // uAuftrag uses uKunde in its interface\n",',
     '      "good": "unit uKunde;\ninterface\n// common types moved to uTypen, used by both\nuses uTypen;",',
     '      "compilerCodes": [',
-    '        "F2047"',
+    '        "F2047",',
+    '        "F2092"',
     '      ],',
     '      "options": [',
     '        {',
@@ -454,8 +455,9 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "style",',
-    '      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077. Variables of an interface type are exempt: assigning them hol' +
-    'ds or releases a reference (scope guards, Writer := nil).",',
+    '      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077, which dcc gives only for unmanaged types: for strings, dynami' +
+    'c arrays, variants and records with such fields, and for variables without a declared type, the message names no code (#1383). Variables of an interface type are exempt: assigning them holds or releas' +
+    'es a reference (scope guards, Writer := nil).",',
     '      "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",',
     '      "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;",',
     '      "options": [',
@@ -2489,13 +2491,15 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "style",',
-    '      "description": "A /// comment does not match its declaration or is not well-formed XML, like the compiler warnings W1201 to W1208 with XML documentation enabled. Reported: <param> for a paramete' +
-    'r that does not exist; missing <param> when the block describes parameters at all (like W1208, ''but other parameters do''); with checkReturns, <returns> on a routine without a result and missing <retur' +
-    'ns> on a function whose block describes parameters. <inheritdoc/> fills in what is missing. Also ''<'' and ''&'' outside tags and entities, unknown entities, attribute values without quotes, unclosed and ' +
-    'stray end tags, and cref targets that do not exist (W1206, only with an index and when every unit in uses is known; generic targets, unit names and types with unknown ancestors stay silent). With requ' +
-    'irePublic, public and published methods and properties of types in the interface section without a /// comment are reported too (not override, not properties without a type). Quick fixes: rename unkno' +
-    'wn <param> in order to the missing ones, add the rest as empty lines in signature order, remove surplus <param> and stray <returns>; escape the character, add quotes, add or remove the end tag, write ' +
-    'an unknown empty tag like TList<T> as text; set cref to the most similar symbol; generate the comment skeleton.",',
+    '      "description": "A /// comment does not match its declaration or is not well-formed XML, like the compiler warnings W1201 to W1208 with XML documentation enabled. The message names a code only wh' +
+    'ere dcc reports it (#1383): for comments in the interface section of a unit (dcc documents nothing else), and among the XML errors only a stray character after a tag name (W1205); Delphi 13 compiles ''' +
+    '<'' followed by a space, unknown entities, empty attribute values and unclosed tags without a warning. Reported: <param> for a parameter that does not exist; missing <param> when the block describes pa' +
+    'rameters at all (like W1208, ''but other parameters do''); with checkReturns, <returns> on a routine without a result and missing <returns> on a function whose block describes parameters. <inheritdoc/> ' +
+    'fills in what is missing. Also ''<'' and ''&'' outside tags and entities, unknown entities, attribute values without quotes, unclosed and stray end tags, and cref targets that do not exist (W1206, only wi' +
+    'th an index and when every unit in uses is known; generic targets, unit names and types with unknown ancestors stay silent). With requirePublic, public and published methods and properties of types in' +
+    ' the interface section without a /// comment are reported too (not override, not properties without a type). Quick fixes: rename unknown <param> in order to the missing ones, add the rest as empty lin' +
+    'es in signature order, remove surplus <param> and stray <returns>; escape the character, add quotes, add or remove the end tag, write an unknown empty tag like TList<T> as text; set cref to the most s' +
+    'imilar symbol; generate the comment skeleton.",',
     '      "bad": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Nummer\">Kundennummer</param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde;",',
     '      "good": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Id\">Kundennummer</param>\n/// <param name=\"Aktive\"></param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde' +
     ';",',
@@ -3172,8 +3176,9 @@ const
     '      "group": "compiler",',
     '      "description": "An identifier is declared twice in the same scope (like E2004): a local variable, constant, type or label and a parameter of the routine, two fields, a field and a method or prop' +
     'erty of a type, two types, a constant and a variable of the unit across interface and implementation. Likewise a unit twice in uses or in the uses clauses of interface and implementation at once (opti' +
-    'on checkUses). Overloads and bodies of routines, a forward declaration and its type, TList next to TList<T> and declarations in different branches of the same {$IF} do not count. Quick fix: remove the' +
-    ' second declaration (the whole var, const, type or label section when it was its only one; for uses the duplicate entry); none for parameters, methods and properties.",',
+    'on checkUses). Overloads and bodies of routines, overloaded array properties (property Items[I: Integer] next to Items[I: Byte], #1383), a forward declaration and its type, TList next to TList<T> and ' +
+    'declarations in different branches of the same {$IF} do not count. Quick fix: remove the second declaration (the whole var, const, type or label section when it was its only one; for uses the duplicat' +
+    'e entry); none for parameters, methods and properties.",',
     '      "bad": "procedure TRechnung.Summieren(Betrag: Currency);\nvar\n  Betrag: Currency;\nbegin",',
     '      "good": "procedure TRechnung.Summieren(Betrag: Currency);\nbegin",',
     '      "compilerCodes": [',
@@ -3242,15 +3247,14 @@ const
     '      "category": "bug",',
     '      "severity": "warning",',
     '      "group": "compiler",',
-    '      "description": "Create on a class that declares or inherits abstract methods without overriding them (like W1020), or on a class declared abstract (like E2402). Calling an abstract method raises' +
-    ' EAbstractError at run time; the message names the open methods. Classes are looked up in the file and in the symbol index; overloads with the same number of parameters count as one method. Calls on c' +
-    'lass references, inherited Create and constructor bodies are not checked. Quick fix for a class of this file that inherits the abstract methods: override them there (like the code action \"override\")' +
-    '.",',
+    '      "description": "Create on a class that declares or inherits abstract methods without overriding them (like W1020). A class declared abstract without abstract methods can be created; dcc does not' +
+    ' enforce \"class abstract\" (E2402 exists only for .NET, #1383). Calling an abstract method raises EAbstractError at run time; the message names the open methods. Classes are looked up in the file and' +
+    ' in the symbol index; overloads with the same number of parameters count as one method. Calls on class references, inherited Create and constructor bodies are not checked. Quick fix for a class of thi' +
+    's file that inherits the abstract methods: override them there (like the code action \"override\").",',
     '      "bad": "Form := TForm.Create;\nGesamt := Gesamt + Form.Flaeche;",',
     '      "good": "Form := TKreis.Create;\nGesamt := Gesamt + Form.Flaeche;",',
     '      "compilerCodes": [',
-    '        "W1020",',
-    '        "E2402"',
+    '        "W1020"',
     '      ],',
     '      "level": "B"',
     '    },',
@@ -5042,14 +5046,13 @@ const
     '      "category": "bug",',
     '      "severity": "error",',
     '      "group": "compiler",',
-    '      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function' +
-    ' result (like E2197), a constant for an open array (like E2192) or an expression (like E2036). Reported only for routines without overloads whose header is known from the file or the index; built-in r' +
-    'outines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and ' +
-    'write it back for string elements and properties with write.",',
-    '      "bad": "procedure Erhoehen(var Zeichen: Char);\n…\nErhoehen(Zeile[1]);",',
-    '      "good": "Zeichen := Zeile[1];\nErhoehen(Zeichen);\nZeile[1] := Zeichen;",',
+    '      "description": "A var or out parameter receives something that is not a variable: a constant, a const parameter, a property or a function result (like E2197), a constant for an open array (like ' +
+    'E2192) or an expression (like E2036). A string element for a character parameter (S[1]) is a variable for dcc and stays silent (E2354 exists only for .NET, #1383). Reported only for routines without o' +
+    'verloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+}' +
+    ' is set. Quick fix: pass a local variable of the parameter type, and write it back for properties with write.",',
+    '      "bad": "procedure Zaehlen(var Wert: Integer);\n…\nZaehlen(Liste.Count);",',
+    '      "good": "Anzahl := Liste.Count;\nZaehlen(Anzahl);",',
     '      "compilerCodes": [',
-    '        "E2354",',
     '        "E2197",',
     '        "E2192",',
     '        "E2036"',
@@ -5410,11 +5413,11 @@ const
     '    {',
     '      "id": "uses-cycle",',
     '      "name": "Zirkuläre Unit-Referenz über uses",',
-    '      "description": "Ein uses-Eintrag führt über die uses-Listen anderer Units zurück zur eigenen Unit. Liegt jede Kante des Zyklus im interface-Abschnitt, lehnt der Compiler ihn ab (wie F2047), und ' +
-    'der Befund ist ein Fehler; Zyklen mit mindestens einer implementation-Kante erlaubt Delphi, sie koppeln die Units aber eng (Initialisierungsreihenfolge, Neuübersetzen, Testen) und erscheinen mit dem S' +
-    'chweregrad der Regel (Option implementation). Die Meldung zeigt den vollständigen kürzesten Pfad (A → B → C → A), der Befund-Hover jede Kante mit ihrem Abschnitt. Grundlage ist der gemeinsame Uses-Gra' +
-    'ph über den Symbolindex (#268), inaktive Zweige der bedingten Kompilierung ausgeblendet; die geprüfte Unit zählt mit ihrem Editor-Stand. Still ohne Projekte (Linter, Datei ohne Projekt), solange Proje' +
-    'kte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt.",',
+    '      "description": "Ein uses-Eintrag führt über die uses-Listen anderer Units zurück zur eigenen Unit. Liegt jede Kante des Zyklus im interface-Abschnitt, lehnt der Compiler ihn ab (wie F2047; eine ' +
+    'Unit, die sich selbst nennt, wie F2092), und der Befund ist ein Fehler; nur dann nennt die Meldung den Code (#1383); Zyklen mit mindestens einer implementation-Kante erlaubt Delphi, sie koppeln die Un' +
+    'its aber eng (Initialisierungsreihenfolge, Neuübersetzen, Testen) und erscheinen mit dem Schweregrad der Regel (Option implementation). Die Meldung zeigt den vollständigen kürzesten Pfad (A → B → C → ' +
+    'A), der Befund-Hover jede Kante mit ihrem Abschnitt. Grundlage ist der gemeinsame Uses-Graph über den Symbolindex (#268), inaktive Zweige der bedingten Kompilierung ausgeblendet; die geprüfte Unit zäh' +
+    'lt mit ihrem Editor-Stand. Still ohne Projekte (Linter, Datei ohne Projekt), solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt.",',
     '      "options": [',
     '        {',
     '          "name": "implementation",',
@@ -5556,8 +5559,9 @@ const
     '    {',
     '      "id": "unused-assignment",',
     '      "name": "Zugewiesener Wert ungenutzt",',
-    '      "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077. Variablen mit Interface-Typ sind ausgeno' +
-    'mmen: Die Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil).",',
+    '      "description": "Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077, den dcc nur für nicht verwaltete Typen g' +
+    'ibt: Bei Strings, dynamischen Arrays, Variants und Records mit solchen Feldern sowie bei Variablen ohne Typangabe nennt die Meldung keinen Code (#1383). Variablen mit Interface-Typ sind ausgenommen: D' +
+    'ie Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil).",',
     '      "options": [',
     '        {',
     '          "name": "ignore",',
@@ -6765,14 +6769,15 @@ const
     '    {',
     '      "id": "xmldoc-mismatch",',
     '      "name": "XMLDoc passt nicht zur Signatur",',
-    '      "description": "Ein ///-Kommentar passt nicht zu seiner Deklaration oder ist kein wohlgeformtes XML, wie die Compilerwarnungen W1201 bis W1208 mit eingeschalteter XML-Dokumentation. Gemeldet wer' +
-    'den: <param> zu einem Parameter, den es nicht gibt; fehlende <param>, wenn der Block überhaupt Parameter beschreibt (wie W1208, „but other parameters do“); mit checkReturns <returns> an einer Routine ' +
-    'ohne Ergebnis und fehlendes <returns> an einer Funktion, deren Block Parameter beschreibt. <inheritdoc/> ergänzt, was fehlt. Außerdem ''<'' und ''&'' außerhalb von Tags und Entitäten, unbekannte Entitäten' +
-    ', Attributwerte ohne Anführungszeichen, nicht geschlossene und überzählige Endtags sowie cref-Ziele, die es nicht gibt (W1206, nur mit Index und wenn jede Unit aus uses bekannt ist; generische Ziele, ' +
-    'Unit-Namen und Typen mit unbekannten Vorfahren bleiben still). Mit requirePublic zusätzlich public- und published-Methoden und -Properties von Typen im interface ohne ///-Kommentar (nicht override, ni' +
-    'cht Properties ohne Typ). Schnellkorrekturen: unbekannte <param> der Reihe nach auf die fehlenden umbenennen, die übrigen als leere Zeilen in Signaturreihenfolge ergänzen, überzählige <param> und <ret' +
-    'urns> an Prozeduren entfernen; Zeichen maskieren, Anführungszeichen setzen, Endtag ergänzen oder entfernen, ein fremdes leeres Tag wie TList<T> als Text schreiben; cref auf das ähnlichste Symbol setze' +
-    'n; Kommentargerüst erzeugen.",',
+    '      "description": "Ein ///-Kommentar passt nicht zu seiner Deklaration oder ist kein wohlgeformtes XML, wie die Compilerwarnungen W1201 bis W1208 mit eingeschalteter XML-Dokumentation. Einen Code n' +
+    'ennt die Meldung nur, wo dcc ihn meldet (#1383): bei Kommentaren im interface-Teil einer Unit (nur die dokumentiert dcc) und unter den XML-Fehlern nur bei einem fremden Zeichen hinter dem Tagnamen (W1' +
+    '205); ''<'' mit folgendem Leerzeichen, unbekannte Entitäten, leere Attributwerte und offene Tags übersetzt Delphi 13 ohne Warnung. Gemeldet werden: <param> zu einem Parameter, den es nicht gibt; fehlend' +
+    'e <param>, wenn der Block überhaupt Parameter beschreibt (wie W1208, „but other parameters do“); mit checkReturns <returns> an einer Routine ohne Ergebnis und fehlendes <returns> an einer Funktion, de' +
+    'ren Block Parameter beschreibt. <inheritdoc/> ergänzt, was fehlt. Außerdem ''<'' und ''&'' außerhalb von Tags und Entitäten, unbekannte Entitäten, Attributwerte ohne Anführungszeichen, nicht geschlossene ' +
+    'und überzählige Endtags sowie cref-Ziele, die es nicht gibt (W1206, nur mit Index und wenn jede Unit aus uses bekannt ist; generische Ziele, Unit-Namen und Typen mit unbekannten Vorfahren bleiben stil' +
+    'l). Mit requirePublic zusätzlich public- und published-Methoden und -Properties von Typen im interface ohne ///-Kommentar (nicht override, nicht Properties ohne Typ). Schnellkorrekturen: unbekannte <p' +
+    'aram> der Reihe nach auf die fehlenden umbenennen, die übrigen als leere Zeilen in Signaturreihenfolge ergänzen, überzählige <param> und <returns> an Prozeduren entfernen; Zeichen maskieren, Anführung' +
+    'szeichen setzen, Endtag ergänzen oder entfernen, ein fremdes leeres Tag wie TList<T> als Text schreiben; cref auf das ähnlichste Symbol setzen; Kommentargerüst erzeugen.",',
     '      "options": [',
     '        {',
     '          "name": "requirePublic",',
@@ -7148,9 +7153,9 @@ const
     '      "name": "Bezeichner doppelt deklariert",',
     '      "description": "Ein Bezeichner ist im selben Gültigkeitsbereich zweimal deklariert (wie E2004): lokale Variable, Konstante, Typ oder Label und ein Parameter der Routine, zwei Felder, ein Feld un' +
     'd eine Methode oder Property eines Typs, zwei Typen, Konstante und Variable der Unit über interface und implementation hinweg. Ebenso eine Unit doppelt in uses oder in den uses-Klauseln von interface ' +
-    'und implementation zugleich (Option checkUses). Überladungen und Rümpfe von Routinen, eine Vorwärtsdeklaration und ihr Typ, TList neben TList<T> und Deklarationen in verschiedenen Zweigen desselben {$' +
-    'IF} zählen nicht. Korrektur: zweite Deklaration entfernen (den ganzen var-, const-, type- oder label-Abschnitt, wenn sie seine einzige war; bei uses den doppelten Eintrag); keine bei Parametern, Metho' +
-    'den und Properties.",',
+    'und implementation zugleich (Option checkUses). Überladungen und Rümpfe von Routinen, überladene Array-Properties (property Eintrag[I: Integer] neben Eintrag[I: Byte], #1383), eine Vorwärtsdeklaration' +
+    ' und ihr Typ, TList neben TList<T> und Deklarationen in verschiedenen Zweigen desselben {$IF} zählen nicht. Korrektur: zweite Deklaration entfernen (den ganzen var-, const-, type- oder label-Abschnitt' +
+    ', wenn sie seine einzige war; bei uses den doppelten Eintrag); keine bei Parametern, Methoden und Properties.",',
     '      "options": [',
     '        {',
     '          "name": "checkUses",',
@@ -7179,10 +7184,10 @@ const
     '    {',
     '      "id": "abstract-class-instantiated",',
     '      "name": "Instanz einer Klasse mit abstrakten Methoden",',
-    '      "description": "Create auf einer Klasse, die abstrakte Methoden deklariert oder erbt, ohne sie zu überschreiben (wie W1020), oder auf einer als abstract deklarierten Klasse (wie E2402). Der Aufr' +
-    'uf einer abstrakten Methode löst zur Laufzeit EAbstractError aus; die Meldung nennt die offenen Methoden. Klassen sucht die Regel in der Datei und im Symbolindex; Überladungen mit gleicher Parameterza' +
-    'hl gelten als eine Methode. Aufrufe über Klassenreferenzen, inherited Create und Konstruktor-Rümpfe prüft sie nicht. Korrektur für eine Klasse dieser Datei, die die abstrakten Methoden erbt: dort über' +
-    'schreiben (wie die Code-Aktion „überschreiben“)."',
+    '      "description": "Create auf einer Klasse, die abstrakte Methoden deklariert oder erbt, ohne sie zu überschreiben (wie W1020). Eine als abstract deklarierte Klasse ohne abstrakte Methoden lässt si' +
+    'ch erzeugen; dcc setzt \"class abstract\" nicht durch (E2402 gibt es nur unter .NET, #1383). Der Aufruf einer abstrakten Methode löst zur Laufzeit EAbstractError aus; die Meldung nennt die offenen Met' +
+    'hoden. Klassen sucht die Regel in der Datei und im Symbolindex; Überladungen mit gleicher Parameterzahl gelten als eine Methode. Aufrufe über Klassenreferenzen, inherited Create und Konstruktor-Rümpfe' +
+    ' prüft sie nicht. Korrektur für eine Klasse dieser Datei, die die abstrakten Methoden erbt: dort überschreiben (wie die Code-Aktion „überschreiben“)."',
     '    },',
     '    {',
     '      "id": "property-accessor-invalid",',
@@ -8107,10 +8112,10 @@ const
     '    {',
     '      "id": "invalid-var-argument",',
     '      "name": "Ungültiges Argument für einen var- oder out-Parameter",',
-    '      "description": "Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Propert' +
-    'y oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder d' +
-    'em Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: ei' +
-    'ne lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben."',
+    '      "description": "Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: eine Konstante, einen const-Parameter, eine Property oder ein Funktionsergebnis (wie E2197), eine Konstante für' +
+    ' ein offenes Array (wie E2192) oder einen Ausdruck (wie E2036). Ein String-Element für einen Zeichen-Parameter (S[1]) ist für dcc eine Variable und bleibt still (E2354 gibt es nur unter .NET, #1383). ' +
+    'Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still.' +
+    ' Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei Properties mit write mit Rückschreiben."',
     '    },',
     '    {',
     '      "id": "condition-not-boolean",',
