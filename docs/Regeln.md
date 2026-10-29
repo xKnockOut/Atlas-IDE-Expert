@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 79 |
+| [Compiler vorab](#gruppe-compiler) | 80 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -200,6 +200,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`interface-declaration-invalid`](#interface-declaration-invalid) | Unzulässige Deklaration in einem Interface | Bug | Fehler |
 | [`implements-clause-invalid`](#implements-clause-invalid) | implements-Klausel unzulässig | Bug | Fehler |
 | [`calling-convention-required`](#calling-convention-required) | Aufrufkonvention passt nicht | Bug | Fehler |
+| [`dispinterface-invalid`](#dispinterface-invalid) | dispinterface-Deklaration unzulässig | Bug | Fehler |
 | [`abstract-declaration-invalid`](#abstract-declaration-invalid) | abstract, final oder static falsch kombiniert | Bug | Fehler |
 | [`unsatisfied-forward`](#unsatisfied-forward) | Vorwärtsdeklaration nie aufgelöst | Bug | Fehler |
 | [`member-hides-ancestor`](#member-hides-ancestor) | Member verdeckt einen Member des Vorfahren | Bug | Warnung |
@@ -1861,7 +1862,7 @@ end;
 
 **Interface ohne GUID** · Bug · Warnung · Gruppe Fehler finden
 
-Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst niedrig. Die Schnellkorrektur fügt eine neue GUID ein.
+Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst niedrig. Die Schnellkorrektur fügt eine neue GUID ein. Ein dispinterface ohne GUID übersetzt nicht; das meldet dispinterface-invalid.
 
 Mit Treffer:
 
@@ -6752,6 +6753,29 @@ Richtig:
 
 ```pascal
 function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external 'msvcrt.dll';
+```
+
+<a id="dispinterface-invalid"></a>
+### dispinterface-invalid
+
+**dispinterface-Deklaration unzulässig** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein dispinterface verletzt eine seiner festen Regeln: kein Vorfahr in Klammern (wie E2228), eine GUID ist Pflicht (wie E2229), Methoden tragen keine Direktiven außer dispid und den Hinweisen deprecated, platform, library und experimental (wie E2230; gemeldet werden Aufrufkonventionen und Bindungsdirektiven wie virtual, overload bleibt still) und Properties kein read oder write (wie E2231; stattdessen readonly, writeonly oder dispid). Vorwärtsdeklarationen und Deklarationen in bedingten Zweigen bleiben still. Korrekturen: Vorfahren entfernen, GUID einfügen, Direktive entfernen.
+
+Entspricht der Compilermeldung `E2228`, `E2229`, `E2230`, `E2231`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+DAnzeige = dispinterface(IBasis) ['{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A2228}'] procedure Machen; stdcall; dispid 1; end;
+```
+
+Richtig:
+
+```pascal
+DAnzeige = dispinterface ['{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A2228}'] procedure Machen; dispid 1; end;
 ```
 
 <a id="abstract-declaration-invalid"></a>
