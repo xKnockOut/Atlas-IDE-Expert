@@ -31,6 +31,15 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Doku-Abgleich für v1.2 (29.10.2026, Branch `claude/project-thread-h7jqt8`)
+- Auf Prep-v1.2.0 (3de2f45c) geprüft: README/README_DE, CHANGELOG, Installation, RAD-Studio, Release, Architektur, ADRs, Testfälle. Erzeugte Doku (Konfiguration, Einstellungen, Regelkatalog, Architekturkarte, Tipps) war laut CI-Lauf „Package-Abhängigkeiten“ auf 3de2f45c aktuell.
+- **Installer-Reste nachgezogen:** README (Schnellstart, Bauen, Lizenz), `docs/Installation.md` (Release-Paket von Hand einbinden), `docs/RAD-Studio.md`, `docs/Release.md`, `docs/Architektur.md`, `Einstellungen.md` samt Text in `Tools/Update-ConfigDoc.ps1`; ADR 0009 ersetzt durch **ADR 0016** (kein Installer). `release.yml` baut, signiert und packt kein `AtlasSetup.exe` mehr (Win32-Schritt prüft jetzt die BPL); mit Delphi-Runner noch ungetestet.
+- **README:** doppelte Zeilen aus Merges entfernt (Tabellenzeile „Bauen, Testen, Debuggen“, zweimal „Compiler vorab“ und „Architektur und Stil“; Inhalte zusammengeführt).
+- **CHANGELOG:** je Art nur noch ein Abschnitt unter [Unveröffentlicht] (vorher Geändert/Behoben doppelt aus release/1.1), FP-Korrekturen #1321, #1322/#1323, #1324, #1326, #1327, #1328 ergänzt, Abschnitt „Entfernt“ (Installer), überholter Eintrag zum AtlasSetup-Bau gestrichen.
+- **Release-Notiz `docs/Release-Notizen/1.2.0.md`:** Der Changelog-Abschnitt hat rund 143000 Zeichen, GitHub nimmt höchstens 125000; ohne die Kurzfassung scheitert der Release-Workflow.
+- **Testfälle ergänzt:** VW1–VW5 (#1285), TI1–TI5 (#1324), SD1–SD6 (#1325), VU1–VU7 (#1326).
+- **Offen:** Version steht noch auf 1.1.0 (`Tools/Set-Version.ps1 -Version 1.2.0` beim Release). Kommentare im Plugin nennen den Installer noch (`Atlas.IDE.Welcome.WhatsNew`, `Atlas.IDE.CodeInsight.Manager`, `Atlas.Core.Projects.Setup`, `Atlas.Core.Product.Version`). Offene Draft-PRs, deren Inhalt schon in Prep steckt: #1299 (#1285), #1303 (#1286), #1316 (#1265).
+
 ## Atlas-Willkommensseite wieder auf der Willkommensseite der IDE (29.10.2026, #761, ADR 0015)
 - **Branch `claude/project-thread-7k47w7` (PR 1347), main mit Prep-v1.2.0 gemergt, mit Delphi gebaut:** Win64-Gruppe und Win32-Plugin 0/0/0, 9335 Tests grün ohne Lecks (Worktree `wt-1347`). Korrekturen: `Atlas.Core.Settings.Plugin` in den Interface-uses von `Atlas.IDE.Welcome.Commands` (E2003), Erstbenutzung im Benchmark der Issue-Entwicklung vorgewärmt (184 Byte Leck).
 - **Was:** `Atlas.IDE.Welcome.Page` und das Atlas-Layout (Befehle *Atlas-Layout anwenden/zurücksetzen*, Tipp, `welcomePage.layout`) sind zurück. Statt `welcomePage.host` gibt es `welcomePage.ideWelcomePage` (Registry `WelcomePageIdePage`, Vorgabe an); das Fenster „Atlas-Start“ (#1114) bleibt unabhängig.
