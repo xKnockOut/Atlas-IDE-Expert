@@ -5687,6 +5687,7 @@ Voraussetzung: Zwei Projekte, die unterschiedliche VCL-Units verwenden (z. B. ei
 | IC3 | Während eine IDE indiziert, `%LOCALAPPDATA%\Atlas\Index\<Version>\Bibliothek\<Hash>\index-<Format>.atlasidx.lock` in PowerShell exklusiv öffnen (`$f = [IO.File]::Open($pfad, 'Open', 'ReadWrite', 'None')`), 35 Sekunden warten, dann `$f.Close()` | Im Server-Log „Index-Cache (Bibliothek) nicht geschrieben: Schreibsperre nicht erhalten“, ohne Pfad; der nächste Aufbau schreibt den Cache wieder |
 | IC4 | Testlauf `Atlas.Tests.exe` | Grün, darunter `ServiceKeepsLibraryUnitsOfOtherWriters`, `ServiceWaitsForLibraryWriteLock`, `ServiceReportsUnwrittenCache`, `DiskWriteLockIsExclusive` |
 | IC5 | Installiertes Atlas 1.1 (z. B. für Claude Code) und das Plugin aus 1.2 nacheinander mit demselben Projekt starten, danach die IDE ein zweites Mal öffnen | Im Index-Ordner liegen `index.atlasidx` (1.1) und `index-29.atlasidx` (1.2) nebeneinander; der zweite Start liest den Index aus dem Cache (Diagnose-Log „cached“ > 0, kein „cache rejected … Formatversion“) |
+| IC6 | Zwei große Projektgruppen (z. B. Atlas und XML-Inspector) im Wechsel je zweimal öffnen, jeweils bis der Index fertig ist | Beim zweiten Öffnen jeder Gruppe im Diagnose-Log „done … parsed“ nahe 0 und „cached“ > 0; kein „cacheCleanup removed“, solange der Cache-Ordner unter 1024 MB bleibt |
 
 ## Leckprüfung ohne Pauschalausnahmen (Bericht N2)
 

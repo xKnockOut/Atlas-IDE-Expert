@@ -982,7 +982,13 @@ begin
     Removed := TIndexCacheDirectory.Cleanup(FCacheRoot,
       TIndexCacheHousekeeping.MaxBytesOf(ASettings.IndexCacheMaxMb), Keep);
     if Removed > 0 then
+    begin
       FLogger.Info(Format('%d alte Index-Caches gelöscht (Höchstgröße %d MB)', [Removed, ASettings.IndexCacheMaxMb]));
+      // Auch ins Diagnose-Log: Ohne --log stand es nirgends, und gelöschte Caches anderer Projektgruppen sahen
+      // aus wie ein Cache, der nicht greift (29.10.2026).
+      IndexEvent(Format('index project#%d cacheCleanup removed %d limit %d MB', [FPriority, Removed,
+        ASettings.IndexCacheMaxMb]));
+    end;
   except
     on E: Exception do
       FLogger.Warning(Format('Aufräumen des Cache-Ordners fehlgeschlagen: %s', [E.Message]));
