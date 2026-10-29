@@ -38,6 +38,12 @@
 - FPC-Harness: `Atlas.Common.Lsp.Implementations` braucht die von Convert-ForFpc umgeschriebene Fassung (verschachtelte Generics), sonst baut MCP-EditTools.Tests nicht. Ein Test (Umlaut im JSON) scheitert nur unter FPC.
 - Offen: Delphi-Bau und Handtests SK1–SK17.
 
+## Nachteilung großer und loser Teilsysteme (#1364, AG1, 29.10.2026, Branch `feature/1364-nachteilen` auf `feature/1366-aufloesung`)
+- `TAnalysis.Split` nach dem ersten Louvain-Lauf: `TArchitectureAnalyzer.SplitGroups` (allgemein, mit Tiefe, getestet mit Halbieren) ruft `SplitGroup` = `NeedsSplit` (Schwellen in `TArchitectureGrouping.NeedsSplit`) und `SplitMembers` (Louvain auf dem Teilgraphen, Units ohne Kante zum größten Teil). `FFamily` je Teilsystem = Nummer des ersten Teils; `NameSubsystems` benennt Teile gegen die Units der Familie, `Parent` gegen das ganze Projekt; `AssignColors` gibt `ColorSlot`/`Shade` (ohne Nachteilung Farbe = Nummer wie vorher).
+- Testgraph `BigProject` (Overview.Tests): drei 12er-Gruppen neben einem 80er-interface-Block verschmelzen bei γ = 1 zu einem Teilsystem (Auflösungsgrenze), die Nachteilung trennt sie wieder.
+- Karte: `TArchitectureLayouter` zieht Teile an ihre Geschwister; HTML `color()` mischt mit `color-mix`, Plugin `TAtlasArchitecturePalette.Color(Slot, Shade, Dark)` gleich (22 % je Stufe, höchstens 60 %). Legende/Menü gruppiert über `LegendOrder`.
+- `maxShare`/`minCohesion` nur in settings.json (Dialog „Weitere globale Einstellungen“), keine eigene Optionsseite. Frame-Test `SplitSubsystemsGroupedInMenuAndTree` noch nicht gelaufen (VCL-Tests nur mit Delphi). Handtests AN1–AN10.
+
 ## Feinheit der Teilsysteme (#1366, AG3, 29.10.2026, Branch `feature/1366-aufloesung`)
 - Louvain mit Auflösung γ (`TLouvain.Communities`/`Modularity` mit `AResolution`, ohne = 1,0 wie bisher). `TArchitectureGrouping` (Overview) trägt γ durch Anfrage (`Key`), Übersicht, Bericht (Kopf, JSON `grouping`), gespeicherten Stand und Vergleich (Hinweis bei anderem γ). Die nächsten Gruppierungs-Issues (#1364, #1365, #1367, #1368) erweitern diesen Record und `TAtlasArchitectureOptions` im Plugin.
 - Einstellung `architecture.grouping` (`resolution` 0,2–5,0, `showResolutionSlider`), global. Das Plugin liest und schreibt sie direkt in `settings.json` (`TAtlasArchitectureGroupingSettings`), nicht über Registry oder geroutete Einstellungen; das Fenster schickt `resolution` in jeder Anfrage mit, damit der Zeitpunkt des Neuladens beim Server egal ist.

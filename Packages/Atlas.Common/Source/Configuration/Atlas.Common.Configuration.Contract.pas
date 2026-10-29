@@ -723,6 +723,10 @@ type
     /// Vorgabe 1, #1366) und ob das Fenster den Regler „Feinheit“ zeigt.</summary>
     ArchitectureGroupingResolution: Double;
     ArchitectureGroupingShowResolutionSlider: Boolean;
+    /// <summary>Nachteilung (#1364): ab diesem Anteil aller Units (0–0,9, Vorgabe 0,25; 0 = nie nach Größe) bzw.
+    /// unter diesem Zusammenhalt ab 30 Units (0–1, Vorgabe 0,3; 0 = nie) wird ein Teilsystem geteilt.</summary>
+    ArchitectureGroupingMaxShare: Double;
+    ArchitectureGroupingMinCohesion: Double;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -1265,6 +1269,8 @@ begin
   Result.ArchitectureFailOn := ['newCycle'];
   Result.ArchitectureGroupingResolution := 1;
   Result.ArchitectureGroupingShowResolutionSlider := True;
+  Result.ArchitectureGroupingMaxShare := 0.25;
+  Result.ArchitectureGroupingMinCohesion := 0.3;
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';

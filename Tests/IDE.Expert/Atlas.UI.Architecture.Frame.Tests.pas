@@ -57,6 +57,8 @@ type
     procedure ResolutionSliderCanBeHidden;
     [Test]
     procedure ComparisonNamesDifferentResolution;
+    [Test]
+    procedure SplitSubsystemsGroupedInMenuAndTree;
   end;
 
 implementation
@@ -470,6 +472,40 @@ begin
   Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleComparisonAnswer, mModel, mEnabled));
   FFrame.SetModel(mModel);
   Assert.IsFalse(ContainsStr(FFrame.ComparisonInfo.Caption, mNote), FFrame.ComparisonInfo.Caption);
+end;
+
+procedure TAtlasArchitectureFrameTests.SplitSubsystemsGroupedInMenuAndTree;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mLast: Integer;
+  mFirst, mLine: string;
+  mLines: TArray<string>;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleSplitAnswer, mModel, mEnabled));
+  FFrame.SetModel(mModel);
+  mLast := High(mModel.Subsystems);
+  // Menü: Überschrift „App (nachgeteilt in 2 Teile)“, darunter die beiden Teile eingerückt.
+  FFrame.FillSubsystemsMenu;
+  Assert.AreEqual(Integer(Length(mModel.Subsystems)) + 3, FFrame.SubsystemsMenu.Items.Count);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemFamily, ['App', 2]),
+    FFrame.SubsystemsMenu.Items[0].Caption);
+  Assert.IsFalse(FFrame.SubsystemsMenu.Items[0].Enabled);
+  Assert.AreEqual(0, FFrame.SubsystemsMenu.Items[1].Tag);
+  Assert.AreEqual(mLast, FFrame.SubsystemsMenu.Items[2].Tag);
+  Assert.IsTrue(StartsStr('      ', FFrame.SubsystemsMenu.Items[2].Caption));
+  Assert.AreEqual(1, FFrame.SubsystemsMenu.Items[3].Tag);
+  FFrame.SubsystemsMenu.Items[2].Click;
+  Assert.IsFalse(FFrame.Map.SubsystemVisible[mLast]);
+  // Reiter Teilsysteme: „… · Teil von App“, die Teile beieinander (erst das erste Teil mit seinen Units, dann das
+  // letzte Teilsystem).
+  mFirst := FFrame.SubsystemText[0];
+  Assert.IsTrue(EndsStr(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemPart, ['', 'App']), mFirst), mFirst);
+  mLines := nil;
+  for mLine in FFrame.SubsystemText do
+    if not StartsStr(' ', mLine) then
+      mLines := mLines + [mLine];
+  Assert.IsTrue(StartsStr(mModel.Subsystems[mLast].Name + ' ', mLines[1]), mLines[1]);
 end;
 
 initialization
