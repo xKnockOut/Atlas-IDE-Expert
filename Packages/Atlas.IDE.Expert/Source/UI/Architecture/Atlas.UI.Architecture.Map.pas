@@ -509,12 +509,12 @@ begin
     Radius := Max(2, Px(Subsystem.R * FView.Scale));
     Canvas.Pen.Style := psDot;
     Canvas.Pen.Width := 1;
-    Canvas.Pen.Color := TColor(TAtlasArchitecturePalette.Color(Index, Dark));
+    Canvas.Pen.Color := TColor(FModel.SubsystemColor(Index, Dark));
     Canvas.Brush.Style := bsClear;
     Canvas.Ellipse(X - Radius, Y - Radius, X + Radius + 1, Y + Radius + 1);
     Caption := Subsystem.Name;
     TextSize := Canvas.TextExtent(Caption);
-    Canvas.Font.Color := TColor(TAtlasArchitecturePalette.Color(Index, Dark));
+    Canvas.Font.Color := TColor(FModel.SubsystemColor(Index, Dark));
     Canvas.Font.Style := [fsBold];
     Canvas.TextOut(X - TextSize.cx div 2, Y - Radius - TextSize.cy - 2, Caption);
     Canvas.Font.Style := [];
@@ -596,7 +596,7 @@ begin
       Visible := FPathNodes[Index]
     else
       Visible := not Filtered or FModel.Matches(Index, FFilter);
-    Fill := TAtlasColor(TAtlasArchitecturePalette.Color(Item.Subsystem, Dark));
+    Fill := TAtlasColor(FModel.SubsystemColor(Item.Subsystem, Dark));
     if not Visible then
       Fill := TAtlasColorMath.Mix(Fill, Colors.Surface, DimAlpha);
     Canvas.Brush.Style := bsSolid;

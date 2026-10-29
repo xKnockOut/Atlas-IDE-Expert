@@ -89,9 +89,16 @@ begin
     Request.Title := 'Anders';
     Service.Overview(Request);
     Assert.AreEqual(2, Service.Computations, 'andere Anfrage');
+    Request.Grouping.Resolution := 2;
+    Overview := Service.Overview(Request);
+    Assert.AreEqual(3, Service.Computations, 'andere Feinheit (#1366)');
+    Request.Grouping.MaxShare := 0.5;
+    Service.Overview(Request);
+    Assert.AreEqual(4, Service.Computations, 'andere Nachteilung (#1364)');
+    Assert.AreEqual(Double(2), Overview.Grouping.Resolution, 1E-9);
     Index.AddUnit(UsesUnit('C', ['A'], nil));
     Overview := Service.Overview(Request);
-    Assert.AreEqual(3, Service.Computations, 'neue Index-Generation');
+    Assert.AreEqual(5, Service.Computations, 'neue Index-Generation');
     Assert.AreEqual(3, Integer(Length(Overview.Units)));
   finally
     Service.Free;
@@ -165,7 +172,13 @@ begin
   Settings.ArchitectureIncludeLibraryUnits := True;
   Settings.ArchitectureCentralUnits := 20;
   Settings.ArchitectureExclude := ['Tests/**'];
+  Settings.ArchitectureGroupingResolution := 1.5;
+  Settings.ArchitectureGroupingMaxShare := 0.4;
+  Settings.ArchitectureGroupingMinCohesion := 0;
   Request := TArchitectureRequest.FromSettings(Settings);
+  Assert.AreEqual(Double(1.5), Request.Grouping.Resolution, 1E-9);
+  Assert.AreEqual(Double(0.4), Request.Grouping.MaxShare, 1E-9);
+  Assert.AreEqual(Double(0), Request.Grouping.MinCohesion, 1E-9);
   Assert.AreEqual('project', Request.Scope);
   Assert.IsTrue(Request.IncludeLibrary);
   Assert.AreEqual(20, Request.CentralUnits);

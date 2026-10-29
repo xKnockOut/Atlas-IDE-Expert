@@ -34,6 +34,13 @@ type
     procedure FormatsEmptyText;
     [Test]
     procedure LeavesFormattedCodeAlone;
+    /// <summary>#1358: Zeilen von "atlas-format: off" bis "on" bleiben samt der Marken unverändert, in jeder
+    /// Kommentarform; ohne "on" bis zum Dateiende.</summary>
+    [Test]
+    procedure KeepsProtectedRegions;
+    /// <summary>#1358: Eine geschützte Zeile verhindert auch, dass begin an sie angehängt wird.</summary>
+    [Test]
+    procedure ProtectedLineIsNotJoined;
   end;
 
   [TestFixture]
@@ -233,6 +240,31 @@ begin
   finally
     Files.Free;
   end;
+end;
+
+procedure TFormatterTests.KeepsProtectedRegions;
+begin
+  Assert.AreEqual('begin'#10'  // atlas-format: off'#10'      A:=1;'#10'  // atlas-format: on'#10'  B := 2;'#10'end.',
+    Formatted('begin'#10'  // atlas-format: off'#10'      A:=1;'#10'  // atlas-format: on'#10'   B:=2;'#10'end.',
+    TFormatStyle.Default));
+  Assert.AreEqual('begin'#10'  {Atlas-Format:OFF}'#10'      A:=1;'#10'  (* atlas-format: on *)'#10'  B := 2;'#10'end.',
+    Formatted('begin'#10'  {Atlas-Format:OFF}'#10'      A:=1;'#10'  (* atlas-format: on *)'#10'      B:=2;'#10'end.',
+    TFormatStyle.Default));
+  // Ohne "on": bis zum Ende, davor wird formatiert.
+  Assert.AreEqual('begin'#10'  A := 1;'#10'    // atlas-format: off'#10'      B:=2;'#10'end.',
+    Formatted('begin'#10'    A:=1;'#10'    // atlas-format: off'#10'      B:=2;'#10'end.', TFormatStyle.Default));
+end;
+
+procedure TFormatterTests.ProtectedLineIsNotJoined;
+var
+  mSettings: TFormatStyle;
+  mText: string;
+begin
+  mSettings := TFormatStyle.Default;
+  mSettings.BeginPlacement := TBlockPlacement.SameLine;
+  mText := 'procedure P;'#10'begin'#10'  if A then // atlas-format: off'#10'  begin'#10'  end; // atlas-format: on'#10 +
+    'end;';
+  Assert.AreEqual(mText, Formatted(mText, mSettings));
 end;
 
 initialization

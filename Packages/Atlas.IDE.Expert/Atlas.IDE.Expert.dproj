@@ -732,6 +732,7 @@
         <DCCReference Include="Source\Core\Outline\Atlas.Core.Outline.Model.pas"/>
         <DCCReference Include="Source\Core\Architecture\Atlas.Core.Architecture.Model.pas"/>
         <DCCReference Include="Source\UI\Architecture\Atlas.UI.Architecture.Map.pas"/>
+        <DCCReference Include="Source\UI\Architecture\Atlas.UI.Architecture.Slider.pas"/>
         <DCCReference Include="Source\UI\Architecture\Atlas.UI.Architecture.Frame.pas">
             <Form>AtlasArchitectureFrame</Form>
             <FormType>dfm</FormType>
