@@ -8543,7 +8543,7 @@ Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DC
 | TS3 | Unit mit einer Konstanten von 20.000 Elementen öffnen und eine Zeile ändern | Diagnosen kommen nach wenigen Sekunden, kein „Server langsam“ |
 | TS4 | `AtlasServer.exe --check` über HtmlViewer vor und nach dem Branch | Dieselben Befunde, unter 2 min (Linux-Bau: 116 s, **Abnahme**) |
 
-## #1342 Wiederholte Suchen im Prüflauf (Branch `claude/project-thread-zmblrn`)
+## #1342 Wiederholte Suchen im Prüflauf (PR #1344, in Prep-v1.2.0; WL1 mit dem Delphi-Build zu PR #1362 erledigt)
 
 | Nr. | Schritt | Erwartung |
 |---|---|---|
