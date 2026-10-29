@@ -62,6 +62,8 @@ type
     procedure KeysForNumbers;
     [Test]
     procedure ColumnWidthFollowsLineHeight;
+    [Test]
+    procedure RowGuessAboveAndBelow;
   end;
 
 implementation
@@ -423,6 +425,19 @@ begin
   Assert.AreEqual(16, TAtlasQuickBookmarks.ColumnWidth(20));
   Assert.AreEqual(TAtlasQuickBookmarks.MinColumnWidth, TAtlasQuickBookmarks.ColumnWidth(0), 'Mindestbreite');
   Assert.AreEqual(TAtlasQuickBookmarks.MinColumnWidth, TAtlasQuickBookmarks.ColumnWidth(8));
+end;
+
+procedure TAtlasQuickBookmarkTests.RowGuessAboveAndBelow;
+begin
+  // Bekannt: Editorzeile 10 mit Oberkante 180, Höhe 18.
+  Assert.AreEqual(10, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 180), 'Oberkante');
+  Assert.AreEqual(10, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 197), 'Unterkante');
+  Assert.AreEqual(11, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 198), 'nächste Zeile');
+  Assert.AreEqual(9, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 179), 'knapp darüber');
+  Assert.AreEqual(9, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 162), 'Oberkante darüber');
+  Assert.AreEqual(8, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 161), 'zwei darüber');
+  Assert.AreEqual(1, TAtlasQuickBookmarks.RowGuess(10, 180, 18, 18), 'oben im Editor');
+  Assert.AreEqual(10, TAtlasQuickBookmarks.RowGuess(10, 180, 0, 500), 'ohne Höhe');
 end;
 
 initialization
