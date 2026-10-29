@@ -227,7 +227,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `index.usages` | global (settings.json) | boolean | `true` |  | Verwendungen der Bezeichner in Projekt-Units mit indizieren (Verwendungsbeispiele); aus = nur Deklarationen, kleinerer Index. |
 | `index.removeOrphans` | global (settings.json) | boolean | `true` |  | Index-Caches gelöschter Projekte (z. B. entfernter Branch-Ordner) und Caches im alten Format beim Laden eines Projekts löschen. Liegt das Projekt auf einem gerade nicht verbundenen Laufwerk, bleibt der Cache. |
 | `index.cacheMaxAgeDays` | global (settings.json) | integer | `14` | 0…3650 | Index-Caches löschen, die so viele Tage nicht benutzt wurden (Laden des Projekts zählt als Benutzung); 0 = aus. Das betrifft auch die Bibliotheks-Caches deinstallierter Delphi-Versionen. |
-| `index.cacheMaxMb` | global (settings.json) | integer | `256` | 0…1048576 | Höchstgröße des Cache-Ordners in MB; darüber gehen die am längsten nicht benutzten Caches zuerst. 0 = ohne Grenze. |
+| `index.cacheMaxMb` | global (settings.json) | integer | `1024` | 0…1048576 | Höchstgröße des Cache-Ordners in MB; darüber gehen die am längsten nicht benutzten Caches zuerst. 0 = ohne Grenze. |
 | `index.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["**/Demos/**","**/Samples/**"]` | Ordner oder Dateien, die nicht indiziert werden (Glob-Muster gegen den vollen Pfad: *, **, ?). |
 
 ## architecture

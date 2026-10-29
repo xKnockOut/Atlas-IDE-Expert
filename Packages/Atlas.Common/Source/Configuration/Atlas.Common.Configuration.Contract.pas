@@ -1196,7 +1196,10 @@ begin
   Result.IndexExclude := nil;
   Result.IndexRemoveOrphans := True;
   Result.IndexCacheMaxAgeDays := 14;
-  Result.IndexCacheMaxMb := 256;
+  // Ein Bibliotheks-Cache allein hat rund 85 MB (RTL, VCL, FMX je Plattform), ein Projekt 1-10 MB. Mit 256 MB
+  // passten keine zwei Projektgruppen hinein: Jedes Öffnen der einen löschte die Caches der anderen, die dann
+  // komplett neu eingelesen wurde (XML-Inspector und Atlas im Wechsel, 29.10.2026).
+  Result.IndexCacheMaxMb := 1024;
   Result.ArchitectureEnabled := True;
   Result.ArchitectureScope := 'projectGroup';
   Result.ArchitectureIncludeLibraryUnits := False;
