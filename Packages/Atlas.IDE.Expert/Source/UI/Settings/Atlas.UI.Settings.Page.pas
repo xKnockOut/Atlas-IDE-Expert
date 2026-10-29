@@ -304,6 +304,10 @@ type
     FArchitectureScope: TAtlasChoiceBox;
     FArchitectureLibrary: TCheckBox;
     FArchitectureCentral: TEdit;
+    // Hotspots (#1354).
+    FHotspots: TCheckBox;
+    FHotspotsMonths: TEdit;
+    FHotspotsMinCommits: TEdit;
     FSetupChecklist: TCheckBox;
     FShortcutTips: TCheckBox;
     FShortcutTipsScope: TAtlasChoiceBox;
@@ -1790,6 +1794,9 @@ type
     property ArchitectureCheck: TCheckBox read FArchitecture;
     property ArchitectureScopeChoice: TAtlasChoiceBox read FArchitectureScope;
     property ArchitectureCentralEdit: TEdit read FArchitectureCentral;
+    property HotspotsCheck: TCheckBox read FHotspots;
+    property HotspotsMonthsEdit: TEdit read FHotspotsMonths;
+    property HotspotsMinCommitsEdit: TEdit read FHotspotsMinCommits;
     property ProblemsWindowScopeChoice: TAtlasChoiceBox read FProblemsWindowScope;
     property ProblemsWindowGroupByChoice: TAtlasChoiceBox read FProblemsWindowGroupBy;
     property ProblemsWindowCompilerCheck: TCheckBox read FProblemsWindowCompiler;
@@ -2291,6 +2298,10 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup), TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject)]);
   FArchitectureLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureLibrary));
   FArchitectureCentral := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureCentral));
+  // Hotspots (#1354): Unterpunkt „Hotspots“ über x-node.
+  FHotspots := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHotspots));
+  FHotspotsMonths := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHotspotsMonths));
+  FHotspotsMinCommits := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHotspotsMinCommits));
   // Prüfliste der Einrichtung beim Start (#625); aus: nur auf Abruf.
   FSetupChecklist := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSetupChecklist));
   // Hauptschalter der experimentellen Funktionen (#834).
@@ -2948,6 +2959,7 @@ begin
   Bind('Problems', FProblems);
   Bind('ProblemsWindow', FProblemsWindow);
   Bind('ArchitectureEnabled', FArchitecture);
+  Bind('HotspotsEnabled', FHotspots);
   Bind('ProblemsLive', FProblemsLive);
   Bind('HoverProblemActions', FHoverProblemActions);
   Bind('Notes', FNotes);
@@ -6594,6 +6606,9 @@ begin
   FMarks.Bind(FArchitectureScope, ['ArchitectureScope']);
   FMarks.Bind(FArchitectureLibrary, ['ArchitectureIncludeLibraryUnits']);
   FMarks.Bind(FArchitectureCentral, ['ArchitectureCentralUnits']);
+  FMarks.Bind(FHotspots, ['HotspotsEnabled']);
+  FMarks.Bind(FHotspotsMonths, ['HotspotsMonths']);
+  FMarks.Bind(FHotspotsMinCommits, ['HotspotsCouplingMinCommits']);
   FMarks.Bind(FExperimentalEnabled, ['ExperimentalEnabled']);
   FMarks.Bind(FSetupChecklist, ['SetupChecklist']);
   FMarks.Bind(FShortcutTips, ['ShortcutTips']);
@@ -8912,6 +8927,9 @@ begin
   FArchitectureScope.Choice := Max(0, IndexText(ASettings.ArchitectureScope, ['projectGroup', 'project']));
   FArchitectureLibrary.Checked := ASettings.ArchitectureIncludeLibraryUnits;
   FArchitectureCentral.Text := IntToStr(ASettings.ArchitectureCentralUnits);
+  FHotspots.Checked := ASettings.HotspotsEnabled;
+  FHotspotsMonths.Text := IntToStr(ASettings.HotspotsMonths);
+  FHotspotsMinCommits.Text := IntToStr(ASettings.HotspotsCouplingMinCommits);
   FExperimentalEnabled.Checked := ASettings.ExperimentalEnabled;
   // Checked löst OnClick nur bei einer Änderung aus.
   FHangTestRow.Visible := ASettings.DiagnosticMode;
@@ -9561,6 +9579,9 @@ begin
     ASettings.ArchitectureScope := 'projectGroup';
   ASettings.ArchitectureIncludeLibraryUnits := FArchitectureLibrary.Checked;
   ASettings.ArchitectureCentralUnits := StrToIntDef(FArchitectureCentral.Text, ASettings.ArchitectureCentralUnits);
+  ASettings.HotspotsEnabled := FHotspots.Checked;
+  ASettings.HotspotsMonths := StrToIntDef(FHotspotsMonths.Text, ASettings.HotspotsMonths);
+  ASettings.HotspotsCouplingMinCommits := StrToIntDef(FHotspotsMinCommits.Text, ASettings.HotspotsCouplingMinCommits);
   ASettings.ExperimentalEnabled := FExperimentalEnabled.Checked;
   ASettings.SetupChecklist := FSetupChecklist.Checked;
   ASettings.ShortcutTips := FShortcutTips.Checked;
