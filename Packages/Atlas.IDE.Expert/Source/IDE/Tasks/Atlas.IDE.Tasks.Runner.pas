@@ -536,11 +536,15 @@ begin
   FreeAndNil(FNameSignatures);
   FreeAndNil(FPreBuild);
   FreeAndNil(FHistory);
-  if FOutput <> nil then
-    FOutput.Clear;
-  FreeAndNil(FOutput);
-  FAliveRef := nil;
-  inherited Destroy;
+  // Schutznetz: Scheitert das Leeren des Registers, wird der Läufer trotzdem ganz abgebaut.
+  try
+    if FOutput <> nil then
+      FOutput.Clear;
+  finally
+    FreeAndNil(FOutput);
+    FAliveRef := nil;
+    inherited Destroy;
+  end;
 end;
 
 class function TAtlasIdeTasks.CreateParticipant(const AGet: TFunc<TAtlasIdeTasks>): TAtlasCompileParticipant;

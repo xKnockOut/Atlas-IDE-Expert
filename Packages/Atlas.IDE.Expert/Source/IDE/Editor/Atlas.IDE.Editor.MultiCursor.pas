@@ -188,7 +188,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Editor.WrapSelection;
+  Atlas.IDE.Editor.WrapSelection,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 const
   // Fehlt in älteren Fassungen von Winapi.Windows.
@@ -352,7 +353,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 class function TAtlasIdeMultiCursor.ReadMain(const AView: IOTAEditView): TAtlasCaret;

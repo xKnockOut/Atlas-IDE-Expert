@@ -12,6 +12,9 @@
 //   den gemerkten Läufen neu auf (die Kopfzeile steht über ihrer Ausgabe).
 // - Gemerkt werden die letzten MaxRuns Läufe der Sitzung mit höchstens
 //   MaxLines Zeilen; der Rest erscheint als „… n weitere Zeilen“.
+// - Clear entfernt nur eine Gruppe, die Atlas angelegt hat, und beim Beenden
+//   der IDE gar nichts (TAtlasTaskOutputGroup): Dann hat die IDE das
+//   Meldungsfenster samt Gruppen schon abgebaut.
 // Nur im Hauptthread.
 
 interface
@@ -19,7 +22,9 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
+  ToolsAPI,
   Atlas.Core.Tasks.Matchers,
+  Atlas.Core.Tasks.OutputGroup,
   Atlas.Core.Tasks.Runs;
 
 type
@@ -44,6 +49,9 @@ type
   private
     FEntries: TObjectList<TEntry>;
     FOnlyFindings: Boolean;
+    FGroup: TAtlasTaskOutputGroup;
+    /// <summary>Gruppe „Atlas-Aufgaben“; mit ACreate angelegt, falls sie fehlt.</summary>
+    function Group(const AMessages: IOTAMessageServices; ACreate: Boolean): IOTAMessageGroup;
     function Find(AId: Integer): TEntry;
     procedure SetOnlyFindings(AValue: Boolean);
     procedure AddHeader(AEntry: TEntry);
@@ -68,8 +76,9 @@ implementation
 
 uses
   System.Types,
+  System.Classes,
   Vcl.Graphics,
-  ToolsAPI,
+  Vcl.Forms,
   Atlas.Core.Style.Palette,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.UI.Strings,
@@ -94,14 +103,11 @@ type
     function CalcRect(Canvas: TCanvas; MaxWidth: Integer; Wrap: Boolean): TRect;
   end;
 
-function Group(const AMessages: IOTAMessageServices; ACreate: Boolean): IOTAMessageGroup;
-var
-  Name: string;
+/// <summary>Die IDE wird beendet: Sie hat das Meldungsfenster schon abgebaut, bevor sie Atlas entlädt.</summary>
+function IdeClosing: Boolean;
 begin
-  Name := TAtlasStrings.Text(TAtlasTextId.TasksGroup);
-  Result := AMessages.GetGroup(Name);
-  if (Result = nil) and ACreate then
-    Result := AMessages.AddMessageGroup(Name);
+  Result := Application.Terminated or (Application.MainForm = nil) or
+    (csDestroying in Application.MainForm.ComponentState);
 end;
 
 { THeaderMessage }
@@ -155,6 +161,18 @@ begin
 end;
 
 { TAtlasIdeTaskOutput }
+
+function TAtlasIdeTaskOutput.Group(const AMessages: IOTAMessageServices; ACreate: Boolean): IOTAMessageGroup;
+var
+  Name: string;
+begin
+  Name := TAtlasStrings.Text(TAtlasTextId.TasksGroup);
+  Result := AMessages.GetGroup(Name);
+  if (Result = nil) and ACreate then
+    Result := AMessages.AddMessageGroup(Name);
+  if Result <> nil then
+    FGroup.Used;
+end;
 
 constructor TAtlasIdeTaskOutput.Create;
 begin
@@ -337,6 +355,9 @@ var
   Target: IOTAMessageGroup;
 begin
   FEntries.Clear;
+  // Ohne eigene Gruppe und beim Beenden der IDE das Meldungsfenster nicht anfassen.
+  if FGroup.Release(IdeClosing) <> TAtlasTaskOutputRelease.Remove then
+    Exit;
   if not Supports(BorlandIDEServices, IOTAMessageServices, Messages) then
     Exit;
   Target := Group(Messages, False);
