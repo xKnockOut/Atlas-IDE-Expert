@@ -16,6 +16,7 @@
 // Format 2 (dieses):
 //   {"format": 2, "kind": "atlas.architecture", "title": "Projekt",
 //    "scope": "projectGroup", "includeLibrary": false, "excludes": ["Tests/**"],
+//    "grouping": {"resolution": 1},
 //    "summary": {"units": 3, "edges": 2, "subsystems": 1, "cycles": 0,
 //                "interfaceCycles": 0, "crossLinks": 0, "outliers": 0},
 //    "units": [{"name": "A", "file": "Source/A.pas", "subsystem": "Kern",
@@ -24,7 +25,10 @@
 //    "edges": [["A", "B", "interface"]],
 //    "central": ["A"],
 //    "subsystems": [{"name": "Kern", "units": ["A", "B"], "central": "A",
-//                    "inner": 2, "outer": 0, "cohesion": 1, "isolated": false}],
+//                    "inner": 2, "outer": 0, "cohesion": 1, "isolated": false,
+//                    "foundation": true, "parent": "Common"}],
+//                   ("foundation" nur am Teilsystem „Fundament“, #1365; "parent" nur bei
+//                    nachgeteilten Teilsystemen, #1364)
 //    "outliers": [{"unit": "C", "suggested": "Kern", "reason": "namespace"}],
 //    "cycles": [{"interfaceOnly": true, "units": ["A", "B"],
 //                "edges": [["A", "B", "interface"], ["B", "A", "interface"]]}],
@@ -33,7 +37,8 @@
 //                    "forward": 1, "backward": 0}]}
 // Format 1 (die Daten aus TArchitectureReport.Json mit Nummern statt Namen,
 // z. B. aus atlas/architecture) liest Parse ebenfalls; jedes andere Format
-// lehnt es mit einer Meldung ab.
+// lehnt es mit einer Meldung ab. Ohne "grouping" (Stände vor #1366) gelten die
+// Vorgaben der Gruppierung.
 
 interface
 
@@ -71,6 +76,10 @@ type
     Outer: Integer;
     Cohesion: Double;
     Isolated: Boolean;
+    /// <summary>Ursprüngliches Teilsystem bei Nachteilung (#1364); '' sonst und in älteren Ständen.</summary>
+    Parent: string;
+    /// <summary>Teilsystem „Fundament“ (#1365); False in älteren Ständen.</summary>
+    Foundation: Boolean;
   end;
 
   TSnapshotOutlier = record
@@ -107,6 +116,8 @@ type
     Scope: string;
     IncludeLibrary: Boolean;
     Excludes: TArray<string>;
+    /// <summary>Einstellungen der Gruppierung, mit denen der Stand entstand (#1366).</summary>
+    Grouping: TArchitectureGrouping;
     Units: TArray<TSnapshotUnit>;
     Edges: TArray<TSnapshotEdge>;
     /// <summary>Zentrale Units, die zentralste zuerst.</summary>
@@ -259,6 +270,7 @@ begin
   Result.Scope := AOverview.Scope;
   Result.IncludeLibrary := AOverview.IncludeLibrary;
   Result.Excludes := Copy(AOverview.Excludes);
+  Result.Grouping := AOverview.Grouping.Clamped;
   SetLength(Result.Units, Length(AOverview.Units));
   for Index := 0 to High(AOverview.Units) do
   begin
@@ -291,6 +303,8 @@ begin
     Result.Subsystems[Index].Outer := Subsystem.OuterEdges;
     Result.Subsystems[Index].Cohesion := Subsystem.Cohesion;
     Result.Subsystems[Index].Isolated := Subsystem.Isolated;
+    Result.Subsystems[Index].Parent := Subsystem.Parent;
+    Result.Subsystems[Index].Foundation := Subsystem.Foundation;
   end;
   SetLength(Result.Outliers, Length(AOverview.Outliers));
   for Index := 0 to High(AOverview.Outliers) do
@@ -449,6 +463,8 @@ begin
       .Append('"scope": ').Append(Text(ASnapshot.Scope)).Append(',').Append(LineBreak)
       .Append('"includeLibrary": ').Append(Bool(ASnapshot.IncludeLibrary)).Append(',').Append(LineBreak)
       .Append('"excludes": ').Append(Names(ASnapshot.Excludes)).Append(',').Append(LineBreak)
+      .Append('"grouping": {"resolution": ').Append(Number(ASnapshot.Grouping.Clamped.Resolution)).Append('},')
+      .Append(LineBreak)
       .Append('"summary": {"units": ').Append(Length(ASnapshot.Units))
       .Append(', "edges": ').Append(Length(ASnapshot.Edges))
       .Append(', "subsystems": ').Append(Length(ASnapshot.Subsystems))
@@ -489,7 +505,13 @@ begin
         .Append(', "inner": ').Append(Subsystem.Inner)
         .Append(', "outer": ').Append(Subsystem.Outer)
         .Append(', "cohesion": ').Append(Number(Subsystem.Cohesion))
-        .Append(', "isolated": ').Append(Bool(Subsystem.Isolated)).Append('}');
+        .Append(', "isolated": ').Append(Bool(Subsystem.Isolated));
+      // Nur bei nachgeteilten Teilsystemen: Stände ohne Nachteilung bleiben wie vor #1364.
+      if Subsystem.Foundation then
+        Builder.Append(', "foundation": true');
+      if Subsystem.Parent <> '' then
+        Builder.Append(', "parent": ').Append(Text(Subsystem.Parent));
+      Builder.Append('}');
     end;
     Builder.Append(LineBreak).Append('],').Append(LineBreak).Append('"outliers": [');
     for Index := 0 to High(ASnapshot.Outliers) do
@@ -737,6 +759,14 @@ begin
   Result.Title := TextOf(FData, 'title');
   Result.Scope := TextOf(FData, 'scope');
   Result.IncludeLibrary := FlagOf(FData, 'includeLibrary');
+  Result.Grouping := TArchitectureGrouping.Default;
+  if Field(FData, 'grouping') is TJSONObject then
+  begin
+    Item := TJSONObject(Field(FData, 'grouping'));
+    if Field(Item, 'resolution') is TJSONNumber then
+      Result.Grouping.Resolution := FloatOf(Item, 'resolution');
+    Result.Grouping := Result.Grouping.Clamped;
+  end;
   Items := ArrayOf(FData, 'excludes');
   if Items <> nil then
     for Value in Items do
@@ -798,6 +828,8 @@ begin
       Result.Subsystems[Index].Outer := IntOf(Item, 'outer');
       Result.Subsystems[Index].Cohesion := FloatOf(Item, 'cohesion');
       Result.Subsystems[Index].Isolated := FlagOf(Item, 'isolated');
+      Result.Subsystems[Index].Parent := TextOf(Item, 'parent');
+      Result.Subsystems[Index].Foundation := FlagOf(Item, 'foundation');
     end;
   end;
   Items := ArrayOf(FData, 'outliers');

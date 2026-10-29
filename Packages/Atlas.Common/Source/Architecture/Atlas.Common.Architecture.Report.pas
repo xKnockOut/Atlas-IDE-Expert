@@ -8,7 +8,8 @@
 // JSON (Format 1; Nummern beziehen sich auf "units" bzw. "subsystems"):
 //   {"format": 1, "title": "Projekt", "created": "2026-10-23T10:00:00",
 //    "generation": 7, "durationMs": 12, "scope": "projectGroup",
-//    "includeLibrary": false, "excludes": ["Tests/**"],
+//    "includeLibrary": false, "grouping": {"resolution": 1},
+//    "excludes": ["Tests/**"],
 //    "summary": {"units": 3, "edges": 2, "subsystems": 1, "cycles": 0,
 //                "interfaceCycles": 0, "crossLinks": 0, "outliers": 0},
 //    "units": [{"name": "A", "file": "Source/A.pas", "subsystem": 0,
@@ -18,7 +19,9 @@
 //    "central": [0, 1],
 //    "subsystems": [{"name": "Kern", "units": [0, 1], "central": 0,
 //                    "inner": 2, "outer": 0, "cohesion": 1, "isolated": false,
-//                    "x": 0, "y": 0, "r": 70}],
+//                    "color": 0, "shade": 0, "foundation": true, "parent": "Common",
+//                    "x": 0, "y": 0, "r": 70}],         ("parent" nur bei nachgeteilten, #1364;
+//                                                        "foundation" nur am Teilsystem „Fundament“, #1365)
 //    "outliers": [{"unit": 3, "suggested": 1, "reason": "namespace",
 //                  "inside": 2, "toward": 0}],
 //    "cycles": [{"interfaceOnly": true, "units": [0, 1], "component": [0, 1],
@@ -176,6 +179,36 @@ begin
     Result := '';
 end;
 
+/// <summary>Name mit dem ursprünglichen Teilsystem, wenn es nachgeteilt wurde (#1364): "Lsp (Teil von Common)".
+/// </summary>
+function SubsystemCaption(const ASubsystem: TOverviewSubsystem): string;
+begin
+  Result := ASubsystem.Name;
+  if ASubsystem.Parent <> '' then
+    Result := Result + ' (Teil von ' + ASubsystem.Parent + ')';
+end;
+
+/// <summary>Zusammenhalt in Prozent; „–“ beim Teilsystem „Fundament“ (#1365).</summary>
+function CohesionText(const ASubsystem: TOverviewSubsystem): string;
+begin
+  if ASubsystem.Foundation then
+    Result := '–'
+  else
+    Result := Percent(ASubsystem.Cohesion);
+end;
+
+/// <summary>Hinweis, nach welcher Regel das Teilsystem „Fundament“ entstand; '' ohne Fundament.</summary>
+function FoundationNote(const AOverview: TArchitectureOverview): string;
+var
+  mSubsystem: TOverviewSubsystem;
+begin
+  Result := '';
+  for mSubsystem in AOverview.Subsystems do
+    if mSubsystem.Foundation then
+      Result := TArchitectureAnalyzer.FoundationName + ': ' + TArchitectureAnalyzer.FoundationRule +
+        '; Kanten dorthin zählen nicht als Querverbindung und nicht im Zusammenhalt.';
+end;
+
 function CreatedText(const AOverview: TArchitectureOverview): string;
 begin
   Result := FormatDateTime('yyyy-mm-dd hh:nn', AOverview.Created);
@@ -214,6 +247,9 @@ begin
     Result := Result + ', ohne Bibliotheks-Units';
   if Length(AOverview.Excludes) > 0 then
     Result := Result + ', ausgeschlossen: ' + string.Join(', ', AOverview.Excludes);
+  // Feinheit der Teilsysteme (#1366) nur, wenn sie von 1,0 abweicht.
+  if AOverview.Grouping.ResolutionChanged then
+    Result := Result + ', Feinheit γ = ' + TArchitectureGrouping.ResolutionText(AOverview.Grouping.Clamped.Resolution);
 end;
 
 { TArchitectureReport }
@@ -362,6 +398,7 @@ begin
       .Append(',"durationMs":').Append(IntToStr(AOverview.DurationMs))
       .Append(',"scope":').Append(JsonText(AOverview.Scope))
       .Append(',"includeLibrary":').Append(JsonBool(AOverview.IncludeLibrary))
+      .Append(',"grouping":{"resolution":').Append(JsonNumber(AOverview.Grouping.Clamped.Resolution)).Append('}')
       .Append(',"excludes":[');
     for Index := 0 to High(AOverview.Excludes) do
     begin
@@ -422,7 +459,13 @@ begin
         .Append(',"inner":').Append(Subsystem.InnerEdges)
         .Append(',"outer":').Append(Subsystem.OuterEdges)
         .Append(',"cohesion":').Append(JsonNumber(Subsystem.Cohesion))
-        .Append(',"isolated":').Append(JsonBool(Subsystem.Isolated));
+        .Append(',"isolated":').Append(JsonBool(Subsystem.Isolated))
+        .Append(',"color":').Append(Subsystem.ColorSlot)
+        .Append(',"shade":').Append(Subsystem.Shade);
+      if Subsystem.Foundation then
+        Builder.Append(',"foundation":true');
+      if Subsystem.Parent <> '' then
+        Builder.Append(',"parent":').Append(JsonText(Subsystem.Parent));
       if Index < Length(ALayout.Subsystems) then
         Builder.Append(',"x":').Append(JsonNumber(ALayout.Subsystems[Index].X))
           .Append(',"y":').Append(JsonNumber(ALayout.Subsystems[Index].Y))
@@ -547,17 +590,20 @@ begin
     Builder.Append('|---|---|---|---|---|---|').Append(LineBreak);
     for Subsystem in AOverview.Subsystems do
     begin
-      Builder.Append('| ').Append(Cell(Subsystem.Name)).Append(' | ').Append(Length(Subsystem.Units)).Append(' | ');
+      Builder.Append('| ').Append(Cell(SubsystemCaption(Subsystem))).Append(' | ').Append(Length(Subsystem.Units))
+        .Append(' | ');
       if Subsystem.Central >= 0 then
         Builder.Append(Cell(AOverview.Units[Subsystem.Central].Name));
-      Builder.Append(' | ').Append(Percent(Subsystem.Cohesion)).Append(' | ').Append(Subsystem.InnerEdges)
+      Builder.Append(' | ').Append(CohesionText(Subsystem)).Append(' | ').Append(Subsystem.InnerEdges)
         .Append(' | ').Append(Subsystem.OuterEdges).Append(' |').Append(LineBreak);
     end;
     Builder.Append(LineBreak);
+    if FoundationNote(AOverview) <> '' then
+      Builder.Append(FoundationNote(AOverview)).Append(LineBreak).Append(LineBreak);
     for Index := 0 to High(AOverview.Subsystems) do
     begin
       Subsystem := AOverview.Subsystems[Index];
-      Builder.Append('### ').Append(Subsystem.Name).Append(LineBreak).Append(LineBreak);
+      Builder.Append('### ').Append(SubsystemCaption(Subsystem)).Append(LineBreak).Append(LineBreak);
       Names := '';
       for Member in Subsystem.Units do
       begin
@@ -722,8 +768,8 @@ begin
         for Index := 0 to Min(High(AOverview.Subsystems), ALimit - 1) do
         begin
           Subsystem := AOverview.Subsystems[Index];
-          Result := Result + '  ' + Subsystem.Name + ': ' + IntToStr(Length(Subsystem.Units)) + ' Units, Zusammenhalt ' +
-            Percent(Subsystem.Cohesion) + LineBreak;
+          Result := Result + '  ' + SubsystemCaption(Subsystem) + ': ' + IntToStr(Length(Subsystem.Units)) +
+            ' Units, Zusammenhalt ' + CohesionText(Subsystem) + LineBreak;
         end;
         Result := Limited(Result, Length(AOverview.Subsystems), ALimit);
         Result := Result + 'Weitere Abschnitte: central, subsystems, cycles, crossLinks; unit für einen Steckbrief.';
@@ -757,10 +803,12 @@ begin
           end;
           if Length(Subsystem.Units) > 10 then
             Names := Names + ' … (' + IntToStr(Length(Subsystem.Units)) + ')';
-          Result := Result + Subsystem.Name + ': ' + IntToStr(Length(Subsystem.Units)) + ' Units, Zusammenhalt ' +
-            Percent(Subsystem.Cohesion) + LineBreak + '  ' + Names + LineBreak;
+          Result := Result + SubsystemCaption(Subsystem) + ': ' + IntToStr(Length(Subsystem.Units)) +
+            ' Units, Zusammenhalt ' + CohesionText(Subsystem) + LineBreak + '  ' + Names + LineBreak;
         end;
         Result := Limited(Result, Length(AOverview.Subsystems), ALimit);
+        if FoundationNote(AOverview) <> '' then
+          Result := Result + FoundationNote(AOverview) + LineBreak;
         if Length(AOverview.Outliers) > 0 then
         begin
           Result := Result + 'Ausreißer:' + LineBreak;

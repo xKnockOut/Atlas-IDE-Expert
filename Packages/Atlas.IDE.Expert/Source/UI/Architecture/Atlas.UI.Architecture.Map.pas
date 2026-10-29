@@ -50,6 +50,7 @@ type
     FShowImplementation: Boolean;
     FMarkCycles: Boolean;
     FShowChanges: Boolean;
+    FShowFoundationEdges: Boolean;
     /// <summary>Je Kante in Model.Edges: neu gegenüber dem gespeicherten Stand.</summary>
     FAddedEdges: TArray<Boolean>;
     FCentral: TArray<Boolean>;
@@ -84,6 +85,7 @@ type
     procedure SetShowImplementation(AValue: Boolean);
     procedure SetMarkCycles(AValue: Boolean);
     procedure SetShowChanges(AValue: Boolean);
+    procedure SetShowFoundationEdges(AValue: Boolean);
     function HasChanges: Boolean;
     procedure ComputePath;
     procedure PathChanged;
@@ -129,6 +131,8 @@ type
     property MarkCycles: Boolean read FMarkCycles write SetMarkCycles;
     /// <summary>Geänderte Kanten des Vergleichs zeigen (wirkt nur mit Model.Comparison.Present).</summary>
     property ShowChanges: Boolean read FShowChanges write SetShowChanges;
+    /// <summary>Kanten zum Teilsystem „Fundament“ (#1365) blass zeigen; aus = ausgeblendet.</summary>
+    property ShowFoundationEdges: Boolean read FShowFoundationEdges write SetShowFoundationEdges;
     property SubsystemVisible[ASubsystem: Integer]: Boolean read GetSubsystemVisible write SetSubsystemVisible;
     /// <summary>Start und Ziel des Wegs, -1 ohne Weg.</summary>
     property PathFrom: Integer read FPathFrom;
@@ -177,6 +181,7 @@ begin
   FPathTo := -1;
   FShowNames := True;
   FShowImplementation := True;
+  FShowFoundationEdges := True;
   FShowChanges := True;
   FView := Default(TAtlasArchitectureView);
   FView.Scale := 1;
@@ -450,6 +455,12 @@ begin
   Invalidate;
 end;
 
+procedure TAtlasArchitectureMap.SetShowFoundationEdges(AValue: Boolean);
+begin
+  FShowFoundationEdges := AValue;
+  Invalidate;
+end;
+
 procedure TAtlasArchitectureMap.SetShowChanges(AValue: Boolean);
 begin
   FShowChanges := AValue;
@@ -507,14 +518,23 @@ begin
     X := Px(FView.ScreenX(Subsystem.X));
     Y := Px(FView.ScreenY(Subsystem.Y));
     Radius := Max(2, Px(Subsystem.R * FView.Scale));
-    Canvas.Pen.Style := psDot;
-    Canvas.Pen.Width := 1;
-    Canvas.Pen.Color := TColor(TAtlasArchitecturePalette.Color(Index, Dark));
+    // Das Fundament (#1365) deutlicher gestrichelt.
+    if Subsystem.Foundation then
+    begin
+      Canvas.Pen.Style := psDash;
+      Canvas.Pen.Width := 2;
+    end
+    else
+    begin
+      Canvas.Pen.Style := psDot;
+      Canvas.Pen.Width := 1;
+    end;
+    Canvas.Pen.Color := TColor(FModel.SubsystemColor(Index, Dark));
     Canvas.Brush.Style := bsClear;
     Canvas.Ellipse(X - Radius, Y - Radius, X + Radius + 1, Y + Radius + 1);
     Caption := Subsystem.Name;
     TextSize := Canvas.TextExtent(Caption);
-    Canvas.Font.Color := TColor(TAtlasArchitecturePalette.Color(Index, Dark));
+    Canvas.Font.Color := TColor(FModel.SubsystemColor(Index, Dark));
     Canvas.Font.Style := [fsBold];
     Canvas.TextOut(X - TextSize.cx div 2, Y - Radius - TextSize.cy - 2, Caption);
     Canvas.Font.Style := [];
@@ -530,12 +550,23 @@ begin
     Added := Changes and FAddedEdges[Index];
     if OnCycle or Touches or Added or (Pathing and FPathEdges[Index]) then
       Continue;
-    if Edge.Interface_ then
-      Canvas.Pen.Style := psSolid
-    else
-      Canvas.Pen.Style := psDot;
     Canvas.Pen.Width := 1;
-    Canvas.Pen.Color := ToColor(Colors.Line);
+    // Kanten zum Fundament (#1365) blass und gepunktet, abschaltbar.
+    if FModel.TouchesFoundation(Edge) then
+    begin
+      if not FShowFoundationEdges then
+        Continue;
+      Canvas.Pen.Style := psDot;
+      Canvas.Pen.Color := ToColor(TAtlasColorMath.Mix(Colors.Line, Colors.Surface, 0.4));
+    end
+    else
+    begin
+      if Edge.Interface_ then
+        Canvas.Pen.Style := psSolid
+      else
+        Canvas.Pen.Style := psDot;
+      Canvas.Pen.Color := ToColor(Colors.Line);
+    end;
     DrawEdge(Edge);
   end;
   for Index := 0 to High(FModel.Edges) do
@@ -596,7 +627,7 @@ begin
       Visible := FPathNodes[Index]
     else
       Visible := not Filtered or FModel.Matches(Index, FFilter);
-    Fill := TAtlasColor(TAtlasArchitecturePalette.Color(Item.Subsystem, Dark));
+    Fill := TAtlasColor(FModel.SubsystemColor(Item.Subsystem, Dark));
     if not Visible then
       Fill := TAtlasColorMath.Mix(Fill, Colors.Surface, DimAlpha);
     Canvas.Brush.Style := bsSolid;

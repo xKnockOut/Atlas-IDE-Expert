@@ -53,6 +53,8 @@ ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 2px; font-size: 12
 .legend { display: flex; flex-wrap: wrap; gap: 6px 8px; font-size: 12px; }
 .legend button { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px; border-radius: 10px; }
 .legend button[aria-pressed="false"] { opacity: .4; }
+.legend .family { flex-basis: 100%; }
+.legend .parts { display: flex; flex-wrap: wrap; gap: 6px 8px; padding-left: 14px; border-left: 2px solid var(--line); margin-top: 2px; }
 .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
 .node circle { stroke: var(--panel); stroke-width: 1.5; }
 .node text { font-size: 10px; }
@@ -69,6 +71,8 @@ circle.ring { fill: none; stroke: var(--line); stroke-dasharray: 4 4; }
 .link.cycle { stroke: var(--cycle); stroke-width: 2.5; opacity: 1; }
 .link.added { stroke: var(--add); stroke-width: 2.5; opacity: 1; }
 .link.removed { stroke: var(--error); stroke-width: 2; stroke-dasharray: 6 4; opacity: 1; }
+.link.found { stroke-dasharray: 2 4; opacity: .35; }
+.group circle.body.foundation, circle.ring.foundation { stroke-dasharray: 8 5; }
 .added-text { color: var(--add); font-weight: 600; }
 .node.onpath circle { stroke: var(--path); stroke-width: 3; }
 .node.oncycle circle { stroke: var(--cycle); stroke-width: 3; }
@@ -124,7 +128,7 @@ summary { cursor: pointer; }
       <div class="hint" id="hint">Ziehen verschiebt, Mausrad zoomt · Klick wählt eine Unit · Umschalt+Klick setzt das Ziel</div>
     </div>
     <div class="side">
-      <div class="card"><h3>Teilsysteme</h3><div class="legend" id="legend"></div><div class="muted">Klick blendet ein Teilsystem aus und ein.</div></div>
+      <div class="card"><h3>Teilsysteme</h3><div class="legend" id="legend"></div><div class="muted">Klick blendet ein Teilsystem aus und ein.</div><div class="muted" id="foundationNote" hidden>Fundament: Units mit Rolle Fundament, deren direkt Abhängige in mindestens drei Teilsystemen liegen oder höchstens zu 60 % im eigenen, und Units, die nur sie verwenden; Kanten dorthin zählen nicht als Querverbindung und nicht im Zusammenhalt.</div></div>
       <div class="card"><h3>Weg</h3><div class="muted" id="pathInfo">Von und nach wählen, dann „Weg zeigen“.</div><ol class="steps" id="steps"></ol></div>
       <div class="card"><h3>Unit</h3><div id="unitInfo" class="muted">Klick auf eine Unit zeigt ihren Steckbrief.</div></div>
     </div>
@@ -170,12 +174,29 @@ summary { cursor: pointer; }
     for (var k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]);
     return e;
   }
-  function color(s) { return 'var(--c' + (s % 10) + ')'; }
+  // Farbe eines Teilsystems; die Teile eines nachgeteilten (#1364) teilen eine Farbe in helleren und dunkleren Tönen
+  // (wie TAtlasArchitecturePalette: je Stufe 22 % Weiß bzw. Schwarz, höchstens 60 %).
+  function color(i) {
+    var s = S[i] || {}, slot = s.color !== undefined ? s.color : i, base = 'var(--c' + (slot % 10) + ')', shade = s.shade || 0;
+    // Das Teilsystem „Fundament“ (#1365) in neutraler Farbe.
+    if (s.foundation) return 'var(--muted)';
+    if (!shade) return base;
+    var mix = Math.min(60, 22 * Math.abs(shade));
+    return 'color-mix(in srgb, ' + base + ' ' + (100 - mix) + '%, ' + (shade > 0 ? '#fff' : '#000') + ')';
+  }
+  function subsystemCaption(s) { return s.parent ? s.name + ' (Teil von ' + s.parent + ')' : s.name; }
   function section(k) { return k === 'i' ? 'interface' : 'implementation'; }
   function roleCaption(r) { return r === 'foundation' ? 'Fundament' : r === 'hub' ? 'Drehscheibe' : ''; }
   function cycleCaption(c) { return c.interfaceOnly ? 'Zyklus nur über interface (Compilerfehler F2047)' : 'Zyklus über implementation'; }
   function where(e) { return e.file ? e.file + ':' + e.line + ':' + e.character : ''; }
   function edgeText(e) { var w = where(e); return U[e.source].name + ' → ' + U[e.target].name + ' (' + e.section + (w ? ', ' + w : '') + ')'; }
+
+  // Feinheit der Teilsysteme (#1366), nur wenn sie von 1,0 abweicht: wie TArchitectureGrouping.ResolutionText.
+  function gammaText(r) { return r.toFixed(2).replace(/0$/, '').replace('.', ','); }
+  function resolutionText() {
+    var r = D.grouping ? D.grouping.resolution : 1;
+    return Math.abs(r - 1) < 0.005 ? '' : ', Feinheit γ = ' + gammaText(r);
+  }
 
   // Kopf
   $('title').textContent = 'Architektur: ' + D.title;
@@ -184,7 +205,7 @@ summary { cursor: pointer; }
   $('counts').textContent = 'Units: ' + sm.units + ' · uses-Kanten: ' + sm.edges + ' · Teilsysteme: ' + sm.subsystems + ' · Zyklen: ' + sm.cycles +
     (sm.interfaceCycles ? ' (davon nur interface: ' + sm.interfaceCycles + ')' : '') + ' · Querverbindungen: ' + sm.crossLinks + ' · Ausreißer: ' + sm.outliers;
   $('scope').textContent = 'Umfang: ' + (D.scope === 'project' ? 'Projekt' : 'Projektgruppe') + (D.includeLibrary ? ', mit' : ', ohne') + ' Bibliotheks-Units' +
-    (D.excludes.length ? ', ausgeschlossen: ' + D.excludes.join(', ') : '');
+    (D.excludes.length ? ', ausgeschlossen: ' + D.excludes.join(', ') : '') + resolutionText();
 
   // Graph
   var out = U.map(function () { return []; }), inn = U.map(function () { return []; });
@@ -239,7 +260,8 @@ summary { cursor: pointer; }
   });
   svg.addEventListener('pointerup', function () { setTimeout(function () { drag = null; }, 0); });
 
-  // Zeichnen
+  // Zeichnen; showFound: Kanten zum Fundament (#1365) zeigen.
+  var showFound = true;
   function nodeRadius(u) { return 5 + Math.sqrt(U[u].total) * 1.8; }
   function anchor(u) { var s = U[u].subsystem; return isOpen(s) ? { x: U[u].x, y: U[u].y, r: nodeRadius(u) } : { x: S[s].x, y: S[s].y, r: groupRadius(s) }; }
   // Zugeklappt füllt ein Teilsystem den größten Teil seines Platzes auf der Karte.
@@ -257,10 +279,12 @@ summary { cursor: pointer; }
       var a = anchor(l.s), b = anchor(l.t), ss = U[l.s].subsystem, ts = U[l.t].subsystem;
       var key = (isOpen(ss) ? 'u' + l.s : 's' + ss) + '>' + (isOpen(ts) ? 'u' + l.t : 's' + ts);
       if (!isOpen(ss) && !isOpen(ts) && ss === ts) return;
-      var onPath = pathLinks && pathLinks.indexOf(l) >= 0;
+      var onPath = pathLinks && pathLinks.indexOf(l) >= 0, found = S[ss].foundation || S[ts].foundation;
+      if (found && !showFound && !onPath) return;
       if (seen[key] && !onPath) return; seen[key] = true;
       var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
       var cls = 'link' + (l.k === 'm' ? ' impl' : '');
+      if (found && !onPath) cls += ' found';
       if (onPath) cls += ' path';
       else if (showCmp && addedLink[l.s + '>' + l.t]) cls += ' added';
       else if (showCyc && cycleOf[l.s] !== undefined && cycleOf[l.s] === cycleOf[l.t]) cls += ' cycle';
@@ -275,7 +299,7 @@ summary { cursor: pointer; }
     S.forEach(function (s, i) {
       if (hidden[i]) return;
       if (isOpen(i)) {
-        if (collapsed || S.length > 1) rings.appendChild(svgEl('circle', { 'class': 'ring', cx: s.x, cy: s.y, r: s.r }));
+        if (collapsed || S.length > 1) rings.appendChild(svgEl('circle', { 'class': 'ring' + (s.foundation ? ' foundation' : ''), cx: s.x, cy: s.y, r: s.r }));
         if (collapsed) {
           var g0 = svgEl('g', { 'class': 'group', 'data-s': i });
           var t0 = svgEl('text', { x: s.x, y: s.y - s.r - 6, 'text-anchor': 'middle', 'font-size': groupFont(i) });
@@ -285,7 +309,7 @@ summary { cursor: pointer; }
         return;
       }
       var g = svgEl('g', { 'class': 'group', 'data-s': i, tabindex: 0 });
-      g.appendChild(svgEl('circle', { 'class': 'body', cx: s.x, cy: s.y, r: groupRadius(i), fill: color(i), stroke: color(i) }));
+      g.appendChild(svgEl('circle', { 'class': 'body' + (s.foundation ? ' foundation' : ''), cx: s.x, cy: s.y, r: groupRadius(i), fill: color(i), stroke: color(i) }));
       var t = svgEl('text', { x: s.x, y: s.y + groupFont(i) / 3, 'text-anchor': 'middle', 'font-size': groupFont(i) });
       t.textContent = s.name + ' (' + s.units.length + ')';
       g.appendChild(t);
@@ -386,7 +410,7 @@ summary { cursor: pointer; }
     box.appendChild(el('div', { 'class': 'mono', style: 'font-weight:600' }, x.name));
     box.appendChild(el('div', { 'class': 'muted mono' }, x.file));
     var kv = el('div', { 'class': 'kv' });
-    var rows = [['Teilsystem', S[x.subsystem].name], ['direkt abhängig', x.direct], ['gesamt abhängig', x.total], ['verwendet', x.uses]];
+    var rows = [['Teilsystem', subsystemCaption(S[x.subsystem])], ['direkt abhängig', x.direct], ['gesamt abhängig', x.total], ['verwendet', x.uses]];
     if (x.role) rows.push(['Rolle', roleCaption(x.role)]);
     rows.push(['Zyklus', cycleOf[u] !== undefined ? cycleCaption(D.cycles[cycleOf[u]]) : 'keiner']);
     D.outliers.forEach(function (o) { if (o.unit === u) rows.push(['Ausreißer', 'gehört eher zu ' + S[o.suggested].name]); });
@@ -397,13 +421,33 @@ summary { cursor: pointer; }
   }
   function unitLink(u) { var a = el('span', { 'class': 'unit-link mono', tabindex: 0 }, U[u].name); a.addEventListener('click', function () { expanded[U[u].subsystem] = true; select(u); $('karte').scrollIntoView(); }); return a; }
 
-  // Legende
-  S.forEach(function (s, i) {
+  // Legende; die Teile eines nachgeteilten Teilsystems (#1364) eingerückt unter seinem Namen.
+  function legendButton(s, i, target) {
     var b = el('button', { type: 'button', 'aria-pressed': 'true' });
     var sw = el('span', { 'class': 'sw' }); sw.style.background = color(i); b.appendChild(sw);
     b.appendChild(document.createTextNode(s.name + ' ')); b.appendChild(el('span', { 'class': 'muted' }, String(s.units.length)));
     b.addEventListener('click', function () { hidden[i] = !hidden[i]; b.setAttribute('aria-pressed', String(!hidden[i])); draw(); });
-    $('legend').appendChild(b);
+    target.appendChild(b);
+  }
+  // Kanten zum Fundament (#1365) blass, über die Legende ein- und ausblendbar.
+  var hasFoundation = S.some(function (s) { return s.foundation; });
+  if (hasFoundation) {
+    $('foundationNote').hidden = false;
+    var fb = el('button', { type: 'button', 'aria-pressed': 'true', title: 'Kanten zu den Units im Teilsystem „Fundament“ zeigen' }, 'Kanten zum Fundament');
+    fb.addEventListener('click', function () { showFound = !showFound; fb.setAttribute('aria-pressed', String(showFound)); draw(); });
+    $('legend').appendChild(fb);
+  }
+  var familyDone = {};
+  S.forEach(function (s, i) {
+    if (!s.parent) { legendButton(s, i, $('legend')); return; }
+    if (familyDone[s.parent]) return;
+    familyDone[s.parent] = true;
+    var family = el('div', { 'class': 'family' });
+    family.appendChild(el('div', { 'class': 'muted' }, s.parent + ' (nachgeteilt)'));
+    var parts = el('div', { 'class': 'parts' });
+    S.forEach(function (t, j) { if (t.parent === s.parent) legendButton(t, j, parts); });
+    family.appendChild(parts);
+    $('legend').appendChild(family);
   });
 
   // Tabellen
@@ -435,7 +479,7 @@ summary { cursor: pointer; }
     D.central.map(function (u, i) { var x = U[u]; return [{ v: i + 1 }, { v: x.name, node: function () { return unitLink(u); } }, { v: S[x.subsystem].name }, { v: x.direct }, { v: x.total }, { v: x.uses }, { v: roleCaption(x.role) }]; }),
     [true, false, false, true, true, true, false]);
   table('subsystems', ['#', 'Teilsystem', 'Units', 'zentrale Unit', 'Zusammenhalt %', 'Kanten innen', 'Kanten nach außen'],
-    S.map(function (s, i) { return [{ v: i + 1 }, { v: s.name }, { v: s.units.length }, { v: s.central >= 0 ? U[s.central].name : '' }, { v: Math.round(s.cohesion * 100) }, { v: s.inner }, { v: s.outer }]; }),
+    S.map(function (s, i) { return [{ v: i + 1 }, { v: subsystemCaption(s) }, { v: s.units.length }, { v: s.central >= 0 ? U[s.central].name : '' }, { v: s.foundation ? '–' : Math.round(s.cohesion * 100) }, { v: s.inner }, { v: s.outer }]; }),
     [true, false, true, false, true, true, true]);
   var outlierOf = {}; D.outliers.forEach(function (o) { outlierOf[o.unit] = o; });
   S.forEach(function (s) {
@@ -480,6 +524,11 @@ summary { cursor: pointer; }
     var box = $('comparison'), b0 = C.baseline;
     box.appendChild(el('p', { 'class': 'muted' }, 'Mit dem gespeicherten Stand „' + b0.title + '“ (' + b0.units + ' Units, ' + b0.edges + ' uses-Kanten).' +
       (C.failed.length ? ' Abweichung: ' + C.failed.join(', ') + '.' : '')));
+    // Verschiedene Feinheit γ (#1366): Teilsystemwechsel können allein daher kommen.
+    var gOld = b0.resolution || 1, gNew = C.resolution || 1;
+    if (Math.abs(gOld - gNew) >= 0.005)
+      box.appendChild(el('p', { 'class': 'muted' }, 'Hinweis: Der gespeicherte Stand wurde mit Feinheit γ = ' + gammaText(gOld) +
+        ' gerechnet, der aktuelle mit γ = ' + gammaText(gNew) + '; Teilsystemwechsel können daher kommen.'));
     function cycleLine(c) { return c.units.join(' → ') + (c.units.length ? ' → ' + c.units[0] : '') + (c.interfaceOnly ? ' (nur über interface)' : ' (über implementation)'); }
     function edgeLine(e) { return e.source + ' → ' + e.target + ' (' + e.section + ') ' + e.from + ' → ' + e.to + (e.reason ? ', ' + (e.reason === 'rare' ? 'selten' : 'gegen die Hauptrichtung') : ''); }
     function growthLine(g) { return g.unit + ': gesamt abhängig ' + g.before + ' → ' + g.after + ' (+' + (g.after - g.before) + ')'; }

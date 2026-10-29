@@ -11,6 +11,10 @@
 // - Umfang und „Bibliotheks-Units“ im Fenster schreiben architecture.scope
 //   bzw. architecture.includeLibraryUnits (settings.json, wie der Server) und
 //   rechnen neu.
+// - Regler „Feinheit“ (#1366): Wert und Sichtbarkeit aus architecture.grouping
+//   in settings.json (TAtlasArchitectureGroupingSettings); Loslassen schreibt
+//   den Wert dorthin und rechnet neu (Anfrage mit "resolution", die alte
+//   Karte bleibt bis zur Antwort stehen). Berichte nehmen denselben Wert mit.
 // - „Bericht speichern …“ geht an atlas.architecture.saveReport; der Server
 //   schreibt HTML oder Markdown nach der Endung, „Stand speichern …“ (#1121)
 //   ebenso den Stand als .json.
@@ -93,6 +97,9 @@ type
     FPending: Boolean;
     FScope: string;
     FIncludeLibrary: Boolean;
+    /// <summary>Feinheit γ aus architecture.grouping.resolution (#1366).</summary>
+    FResolution: Double;
+    FShowResolution: Boolean;
     /// <summary>Gewählter Stand ("compareWith"); '' = architecture.baseline bzw. keiner.</summary>
     FCompareWith: string;
     /// <summary>False nach „Vergleich aufheben“.</summary>
@@ -103,6 +110,10 @@ type
     function ProjectUri(out AUri: string): Boolean;
     procedure ChangeScope(const AScope: string);
     procedure ChangeLibrary(AValue: Boolean);
+    procedure ChangeResolution(AValue: Double);
+    /// <summary>architecture.grouping aus settings.json lesen; True, wenn sich die Feinheit geändert hat.</summary>
+    function ReadGrouping: Boolean;
+    function Options: TAtlasArchitectureOptions;
     procedure CompareWith(const AFileName: string);
     procedure ClearComparison;
   public
@@ -133,6 +144,7 @@ begin
   FCompare := True;
   FScope := TAtlasIdeSettings.Current.ArchitectureScope;
   FIncludeLibrary := TAtlasIdeSettings.Current.ArchitectureIncludeLibraryUnits;
+  ReadGrouping;
   TAtlasIdeArchitectureWindow.OnFrame :=
     procedure(AFrame: TAtlasArchitectureFrame)
     begin
@@ -162,6 +174,7 @@ begin
     Frame.OnClearComparison := nil;
     Frame.OnScopeChanged := nil;
     Frame.OnLibraryChanged := nil;
+    Frame.OnResolutionChanged := nil;
     Frame.OnOpenUnit := nil;
     Frame.OnOpenLocation := nil;
     Frame.OnUnitRelations := nil;
@@ -173,6 +186,8 @@ procedure TArchitectureState.Wire(AFrame: TAtlasArchitectureFrame);
 begin
   AFrame.ScopeValue := FScope;
   AFrame.IncludeLibrary := FIncludeLibrary;
+  AFrame.ResolutionValue := FResolution;
+  AFrame.ShowResolution := FShowResolution;
   AFrame.OnRefresh :=
     procedure
     begin
@@ -220,6 +235,15 @@ begin
     procedure(AValue: Boolean)
     begin
       ChangeLibrary(AValue);
+    end;
+  AFrame.OnResolutionChanged :=
+    procedure(AValue: Double)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Architecture,
+        procedure
+        begin
+          ChangeResolution(AValue);
+        end);
     end;
   AFrame.OnOpenUnit :=
     procedure(AFileName: string)
@@ -290,6 +314,33 @@ begin
   Refresh;
 end;
 
+function TArchitectureState.ReadGrouping: Boolean;
+var
+  mResolution: Double;
+begin
+  TAtlasArchitectureGroupingSettings.Read(TAtlasIdeSettings.GlobalText, mResolution, FShowResolution);
+  Result := not TAtlasArchResolution.Same(mResolution, FResolution);
+  FResolution := mResolution;
+end;
+
+procedure TArchitectureState.ChangeResolution(AValue: Double);
+begin
+  FResolution := TAtlasArchResolution.Clamp(AValue);
+  // Benutzereinstellung wie der Server (settings.json): Bericht, --architecture und get_architecture nehmen
+  // denselben Wert. Eine unlesbare Datei bleibt unangetastet; der Wert gilt dann für diese Sitzung.
+  TAtlasIdeSettings.SaveGlobalText(TAtlasArchitectureGroupingSettings.WithResolution(TAtlasIdeSettings.GlobalText,
+    FResolution));
+  Refresh;
+end;
+
+function TArchitectureState.Options: TAtlasArchitectureOptions;
+begin
+  Result := TAtlasArchitectureOptions.Create(FScope, FIncludeLibrary);
+  Result.CompareWith := FCompareWith;
+  Result.Compare := FCompare;
+  Result.Resolution := FResolution;
+end;
+
 procedure TArchitectureState.CompareWith(const AFileName: string);
 begin
   if AFileName = '' then
@@ -325,7 +376,7 @@ begin
   FPending := True;
   Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureLoading), True);
   if not FRun(TAtlasArchitectureCommands.Command,
-    TAtlasArchitectureCommands.Arguments(Uri, FScope, FIncludeLibrary, FCompareWith, FCompare), TimeoutMs,
+    TAtlasArchitectureCommands.Arguments(Uri, Options), TimeoutMs,
     procedure(AAnswer: string)
     var
       Model: TAtlasArchitectureModel;
@@ -375,7 +426,7 @@ begin
     Exit;
   end;
   if not FRun(TAtlasArchitectureCommands.SaveCommand,
-    TAtlasArchitectureCommands.SaveArguments(Uri, AFileName, FScope, FIncludeLibrary, FCompareWith, FCompare),
+    TAtlasArchitectureCommands.SaveArguments(Uri, AFileName, Options),
     TimeoutMs,
     procedure(AAnswer: string)
     var
@@ -431,6 +482,8 @@ var
 begin
   Changed := (FScope <> TAtlasIdeSettings.Current.ArchitectureScope) or
     (FIncludeLibrary <> TAtlasIdeSettings.Current.ArchitectureIncludeLibraryUnits);
+  // Feinheit und Regler (#1366) stehen in settings.json (Dialog der globalen Einstellungen).
+  Changed := ReadGrouping or Changed;
   FScope := TAtlasIdeSettings.Current.ArchitectureScope;
   FIncludeLibrary := TAtlasIdeSettings.Current.ArchitectureIncludeLibraryUnits;
   Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
@@ -438,6 +491,8 @@ begin
     Exit;
   Frame.ScopeValue := FScope;
   Frame.IncludeLibrary := FIncludeLibrary;
+  Frame.ResolutionValue := FResolution;
+  Frame.ShowResolution := FShowResolution;
   // Umfang oder Bibliotheks-Units auf der Optionsseite geändert: neu rechnen, solange das Fenster offen ist.
   if Changed and TAtlasIdeArchitectureWindow.Visible then
     Refresh;
