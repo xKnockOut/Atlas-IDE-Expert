@@ -144,6 +144,9 @@ type
     /// die Windows-1252 nicht kennt, werden zu '?'.
     /// </summary>
     class function Encode(const AText: string; const AFormat: TFileFormat): TBytes; static;
+    /// <summary>Wie Encode, lässt aber jeden Zeilenumbruch, wie er in AText steht (#1358): Formatieren ändert
+    /// Zeilenenden nur nach format.endOfLine, auch in Dateien mit gemischten Umbrüchen.</summary>
+    class function EncodeKeepingLineBreaks(const AText: string; const AFormat: TFileFormat): TBytes; static;
     /// <summary>Ersetzt alle Zeilenumbrüche durch AStyle.</summary>
     class function NormalizeLineBreaks(const AText: string; AStyle: TLineBreakStyle): string; static;
     /// <summary>
@@ -686,11 +689,16 @@ begin
 end;
 
 class function TFileEncoding.Encode(const AText: string; const AFormat: TFileFormat): TBytes;
+begin
+  Result := EncodeKeepingLineBreaks(NormalizeLineBreaks(AText, AFormat.LineBreak), AFormat);
+end;
+
+class function TFileEncoding.EncodeKeepingLineBreaks(const AText: string; const AFormat: TFileFormat): TBytes;
 var
   Text: string;
   Body: TBytes;
 begin
-  Text := NormalizeLineBreaks(AText, AFormat.LineBreak);
+  Text := AText;
   case AFormat.Encoding of
     TFileEncodingKind.Utf8:
       Result := TEncoding.UTF8.GetBytes(Text);

@@ -9,6 +9,8 @@
 //                      im Editor ungespeicherte Dateien bleiben unberührt und
 //                      werden genannt, in der IDE offene gehen über das Plugin
 //                      als ein Rückgängig-Schritt je Datei (#397)
+//   format_code        Datei oder geplanten Text nach den Formatregeln des
+//                      Projekts formatieren (#1358), ganz oder einen Zeilenbereich
 // dryRun (Vorgabe true) liefert nur den Diff und schreibt nichts. Mit
 // dryRun=false wird atomar geschrieben: alle neuen Texte werden vorher
 // berechnet; hat sich eine Datei seit dem Lesen geändert oder ist sie im Editor
@@ -19,6 +21,10 @@
 // mit Symbolindex und Projektdiensten (CheckProject, #1112) wie der Server.
 // rename_symbol ändert nur sichere Stellen (#1119); erschlossene nennt der
 // Bericht unter „Nicht geändert, bitte prüfen“.
+// format_code schreibt über denselben Weg (offene Dateien über das Plugin als
+// ein Rückgängig-Schritt, #397); mit Text statt Datei liefert es nur den
+// formatierten Text. Dateien mit Syntaxfehlern formatiert es nicht. Die
+// Zeilenenden der Datei bleiben dabei; format.endOfLine setzt --format-write um.
 
 interface
 
@@ -31,6 +37,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Lsp.References;
 
 type
@@ -79,6 +86,14 @@ type
     /// = fix.minConfidence, sonst nur höher. Liefert Zusammenfassung und Diff.</summary>
     function FixFindings(const ARules: TArray<IRule>; const ASettings: TServerSettings; const ARoot: string;
       const AFiles, AFixRules: TArray<string>; const AMinConfidence: string; ADryRun: Boolean): string;
+    /// <summary>format_code mit Text (#1358): formatiert AText (geplanter Inhalt von AFileName) nach AStyle und
+    /// liefert die Abweichungen und den formatierten Text; schreibt nichts.</summary>
+    function FormatCode(const AStyle: TFormatStyle; const AFileName, AText: string;
+      const AScope: TFormatScope): string; overload;
+    /// <summary>format_code für die Datei (#1358): Vorschau als Diff bzw. mit ADryRun = False schreiben wie
+    /// apply_code_action.</summary>
+    function FormatCode(const AStyle: TFormatStyle; const AFileName: string; const AScope: TFormatScope;
+      ADryRun: Boolean): string; overload;
     property Namespaces: TArray<string> read FNamespaces write FNamespaces;
     property DirtyFiles: TMcpDirtyFiles read FDirtyFiles write FDirtyFiles;
     property Audit: TMcpAudit read FAudit write FAudit;
@@ -108,6 +123,7 @@ uses
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Lsp.Rename,
+  Atlas.Common.Editing.TextChanges,
   Atlas.Common.Mcp.Server,
   Atlas.Text.Lines,
   Atlas.Text.Diff;
@@ -468,6 +484,76 @@ begin
   finally
     mReport.Free;
   end;
+end;
+
+/// <summary>Ergebnis von format_code ohne Syntaxfehler: Zahl und erste Abweichungen; '' ohne Abweichung.</summary>
+function DeviationReport(const AFileName: string; const AOutcome: TFormatOutcome): string;
+const
+  cShown = 20;
+var
+  mLines: TStringList;
+  mIndex: Integer;
+begin
+  mLines := TStringList.Create;
+  try
+    mLines.Add(Format('%s: %d Abweichungen von den Formatregeln', [ExtractFileName(AFileName),
+      Length(AOutcome.Deviations)]));
+    for mIndex := 0 to Min(Length(AOutcome.Deviations), cShown) - 1 do
+      mLines.Add(Format('- Zeile %d: %s', [AOutcome.Deviations[mIndex].Line + 1,
+        AOutcome.Deviations[mIndex].Message]));
+    if Length(AOutcome.Deviations) > cShown then
+      mLines.Add(Format('- … und %d weitere', [Length(AOutcome.Deviations) - cShown]));
+    if not AOutcome.Stable then
+      mLines.Add('Hinweis: Die Formatierung ist nicht stabil, ein zweiter Lauf ändert erneut.');
+    Result := TrimRight(mLines.Text);
+  finally
+    mLines.Free;
+  end;
+end;
+
+/// <summary>Formatiert AText; EMcpToolError bei Syntaxfehlern.</summary>
+function FormatOrFail(const AStyle: TFormatStyle; const AFileName, AText: string; const AScope: TFormatScope;
+  const ASource: TCheckSource): TFormatOutcome;
+begin
+  Result := TFormatCheck.Run(AText, AStyle, AScope, ASource.Options);
+  if Result.HasSyntaxError then
+    raise EMcpToolError.CreateFmt('%s: Syntaxfehler in Zeile %d, nicht formatiert: %s',
+      [ExtractFileName(AFileName), Result.SyntaxError.StartPos.Line + 1, Result.SyntaxError.Message]);
+end;
+
+function TMcpEditTools.FormatCode(const AStyle: TFormatStyle; const AFileName, AText: string;
+  const AScope: TFormatScope): string;
+var
+  mOutcome: TFormatOutcome;
+begin
+  mOutcome := FormatOrFail(AStyle, AFileName, AText, AScope, TFileChecker.SourceOf(FCheckSource, AFileName));
+  if not mOutcome.Changed then
+    Exit('Keine Abweichung von den Formatregeln; der Text bleibt, wie er ist.');
+  Result := DeviationReport(AFileName, mOutcome) + sLineBreak + sLineBreak + 'Formatierter Text:' + sLineBreak +
+    '```pascal' + sLineBreak + mOutcome.Formatted + sLineBreak + '```';
+end;
+
+function TMcpEditTools.FormatCode(const AStyle: TFormatStyle; const AFileName: string;
+  const AScope: TFormatScope; ADryRun: Boolean): string;
+var
+  mText: string;
+  mOutcome: TFormatOutcome;
+  mEdit: TTextEdit;
+  mEdits: TArray<TMcpFileEdit>;
+begin
+  if not FReadText(AFileName, mText) then
+    raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [AFileName]);
+  mOutcome := FormatOrFail(AStyle, AFileName, mText, AScope, TFileChecker.SourceOf(FCheckSource, AFileName));
+  if not mOutcome.Changed then
+    Exit(Format('%s: keine Abweichung von den Formatregeln.', [ExtractFileName(AFileName)]));
+  mEdits := nil;
+  for mEdit in TTextChanges.Diff(mText, mOutcome.Formatted) do
+    mEdits := mEdits + [TMcpFileEdit.Create(AFileName, mEdit.Range, mEdit.NewText)];
+  // Die Datei behält ihre Zeilenenden (TFileEncoding beim Schreiben); andere setzt --format-write um.
+  if Length(mEdits) = 0 then
+    Exit(DeviationReport(AFileName, mOutcome) + sLineBreak + 'Nur die Zeilenenden weichen ab (format.endOfLine); ' +
+      'format_code ändert sie nicht, dafür AtlasServer --check <Datei> --format-write verwenden.');
+  Result := DeviationReport(AFileName, mOutcome) + sLineBreak + sLineBreak + Apply('format_code', mEdits, ADryRun);
 end;
 
 end.
