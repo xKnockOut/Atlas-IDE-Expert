@@ -41,6 +41,14 @@
 // RTL kennen. --no-index prüft wie früher jede Datei für sich.
 // Exit-Code: 1, wenn ein Treffer --fail-on erreicht (Standard error: mindestens
 // ein Fehler; Baseline-Treffer zählen nie), sonst 0; 3 Aufruf- oder Lesefehler.
+// Formatieren ohne IDE (#1358): --format-check bzw. --format-write statt der
+// Regeln. Dieselben Dateien wie --check (Ziel, --units, --changed/--diff,
+// Ausschlüsse aus atlas.json), mit --changed-lines nur die geänderten Zeilen.
+// Formatregeln wie „Dokument formatieren“: format.* aus atlas.json über
+// .editorconfig über den Vorgaben (ohne die Einrückung der IDE-Optionen).
+// Geschrieben wird atomar über eine Nachbardatei; Kodierung und Zeilenenden
+// bleiben, außer format.endOfLine verlangt andere. Exit-Codes in
+// Atlas.Common.Rules.FormatOutput.
 
 interface
 
@@ -57,6 +65,8 @@ type
     /// stdout (bzw. in --output); Exit-Code 1, wenn eine Abweichung aus --fail-on (sonst architecture.failOn)
     /// vorkommt, sonst 0; bei Fehlern 3.</summary>
     class function Architecture(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--format-check bzw. --format-write (#1358), siehe Kopf der Unit.</summary>
+    class function Formatting(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>--clear-cache: löscht alle Index-Caches, die keine laufende Instanz nutzt (#184).</summary>
     class function ClearCache: Integer; static;
   end;
@@ -115,6 +125,10 @@ uses
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
+  Atlas.Common.Editing.FormatCheck,
+  Atlas.Common.Rules.FormatOutput,
+  Atlas.Common.Lsp.Formatting,
+  Atlas.Common.Editing.EditorConfig,
   Shell.Platform,
   Shell.VcsChanges,
   Shell.Bootstrap;
@@ -623,6 +637,168 @@ begin
   end;
 end;
 
+/// <summary>Schreibt AText atomar (#1358): erst eine Nachbardatei, dann in einem Schritt ersetzen. Kodierung aus
+/// AFormat, Zeilenumbrüche wie in AText.</summary>
+procedure WriteFormatted(const AFileName, AText: string; const AFormat: TFileFormat);
+var
+  mTemp: string;
+begin
+  if TFileEncoding.IsBinaryFormFile(AFileName) then
+    raise EFileEncodingError.Create('Binär gespeichertes Formular wird nicht geändert');
+  mTemp := AFileName + '.atlas-format.tmp';
+  TFile.WriteAllBytes(mTemp, TFileEncoding.EncodeKeepingLineBreaks(AText, AFormat));
+  if not TShellPlatform.MoveReplacing(mTemp, AFileName) then
+  begin
+    if TFile.Exists(mTemp) then
+      TFile.Delete(mTemp);
+    raise EInOutError.Create('Datei nicht ersetzbar (gesperrt oder schreibgeschützt)');
+  end;
+end;
+
+/// <summary>Geänderte Zeilen von AFileName als Bereiche des Formatierers; False ohne geänderte Zeile.</summary>
+function ChangedSpans(AGit: TVcsChanges; const AFileName: string; out ASpans: TArray<TFormatLineSpan>): Boolean;
+var
+  mLines: TChangedLines;
+  mSpan: TLineSpan;
+begin
+  ASpans := nil;
+  Result := TChangedFiles.LinesOf(AGit.Lines, AGit.RepoRoot, AFileName, mLines);
+  if not Result then
+    Exit;
+  for mSpan in mLines.Spans do
+    ASpans := ASpans + [TFormatLineSpan.Create(mSpan.First, mSpan.Last)];
+  Result := Length(ASpans) > 0;
+end;
+
+class function TLinterShell.Formatting(const AOptions: TCommandLineOptions): Integer;
+var
+  mWarning, mConfigRoot, mRoot, mFileName, mRelativePath, mText, mProblem: string;
+  mSettings: TServerSettings;
+  mFilter: TFindingFilter;
+  mSources: TCheckSourceFunc;
+  mCandidates: TArray<string>;
+  mFiles: TArray<TFormattedFile>;
+  mItem: TFormattedFile;
+  mFileFormat: TFileFormat;
+  mStyle: TFormatStyle;
+  mScope: TFormatScope;
+  mSpans: TArray<TFormatLineSpan>;
+  mGit: TVcsChanges;
+  mProcess: ICompilerProcess;
+  mKind: TFormatOutputKind;
+  mReadEditorConfig: TEditorConfigReadFile;
+begin
+  for mWarning in AOptions.Warnings do
+    WriteError(mWarning);
+  if AOptions.FormatCheck and AOptions.FormatWrite then
+  begin
+    WriteError('--format-check und --format-write schließen sich aus');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  if AOptions.Metrics or AOptions.Todos or AOptions.SuppressionStats or AOptions.UpdateBaseline then
+  begin
+    WriteError('--format-check und --format-write gehen nicht mit --metrics, --todos, --suppression-stats ' +
+      'oder --update-baseline');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  if AOptions.FormatDiff then
+    mKind := TFormatOutputKind.Diff
+  else if AOptions.CheckFormat = TFindingsFormat.Json then
+    mKind := TFormatOutputKind.Json
+  else if AOptions.CheckFormat = TFindingsFormat.Sarif then
+  begin
+    WriteError('--format-check und --format-write gibt es mit --format text, json oder diff');
+    Exit(TFindingsOutput.ExitFailure);
+  end
+  else
+    mKind := TFormatOutputKind.Text;
+  if not (TFile.Exists(AOptions.CheckTarget) or TDirectory.Exists(AOptions.CheckTarget)) then
+  begin
+    WriteError(Format('Ziel "%s" nicht gefunden', [AOptions.CheckTarget]));
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  mReadEditorConfig :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+      if Result then
+        AText := TFileEncoding.LoadText(AFileName);
+    end;
+  mGit := nil;
+  try
+    try
+      if TDirectory.Exists(AOptions.CheckTarget) then
+        mConfigRoot := TPath.GetFullPath(AOptions.CheckTarget)
+      else
+        mConfigRoot := ExtractFileDir(TPath.GetFullPath(AOptions.CheckTarget));
+      mSettings := LoadSettings(mConfigRoot);
+      TFileEncodingDefaults.SetFolder(mConfigRoot, mSettings.DefaultEncoding);
+      mFilter := Default(TFindingFilter);
+      mFilter.Units := AOptions.UnitFilter;
+      mCandidates := CollectFiles(AOptions.CheckTarget, mSettings, mRoot, mSources);
+      if AOptions.ChangedRef <> '' then
+      begin
+        // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
+        mProcess := TProcessRunner.Create;
+        mGit := TVcsChanges.Detect(mProcess, mConfigRoot, mSettings.VcsProvider, mSettings.VcsGitPath,
+          mSettings.VcsSvnPath, mSettings.VcsTimeoutSeconds);
+        mCandidates := SelectChanged(AOptions, mCandidates, mGit);
+      end;
+      mFiles := nil;
+      for mFileName in mCandidates do
+      begin
+        mRelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(mRoot), mFileName);
+        if not mFilter.AcceptsFile(mRelativePath) or mSettings.IsExcluded(mRelativePath) then
+          Continue;
+        mScope := TFormatScope.All;
+        if (mGit <> nil) and AOptions.ChangedLines then
+        begin
+          // Nur über DFM oder Include-Datei ausgewählt: keine eigene geänderte Zeile, nichts zu formatieren.
+          if not ChangedSpans(mGit, mFileName, mSpans) then
+            Continue;
+          mScope := TFormatScope.Lines(mSpans);
+        end;
+        try
+          mText := TFileEncoding.LoadFromFile(mFileName, mFileFormat);
+        except
+          on E: Exception do
+          begin
+            WriteError(Format('%s: %s', [mFileName, E.Message]));
+            Continue;
+          end;
+        end;
+        mStyle := TLspFormatting.Resolve(nil, mFileName, mSettings.Formatting, mReadEditorConfig);
+        mItem := TFormattedFile.Create(mRelativePath, TFormatCheck.Run(mText, mStyle, mScope,
+          mSources(mFileName).Options));
+        if AOptions.FormatWrite and mItem.Outcome.Changed then
+          try
+            WriteFormatted(mFileName, mItem.Outcome.Formatted, mFileFormat);
+            mItem.Written := True;
+          except
+            on E: Exception do
+              mItem.Error := E.Message;
+          end;
+        mFiles := mFiles + [mItem];
+      end;
+    finally
+      mGit.Free;
+    end;
+    WriteOutput(AOptions, TFormatOutput.Render(mFiles, mKind, AOptions.FormatWrite));
+    // Beim Diff gehören Syntaxfehler und instabile Dateien nicht in den Diff.
+    if mKind = TFormatOutputKind.Diff then
+      for mProblem in TFormatOutput.Problems(mFiles) do
+        WriteError(mProblem);
+    WriteError(TFormatOutput.Summary(mFiles, AOptions.FormatWrite));
+    Result := TFormatOutput.ExitCode(mFiles, AOptions.FormatWrite);
+  except
+    on E: Exception do
+    begin
+      WriteError(Format('%s: %s', [E.ClassName, E.Message]));
+      Result := TFindingsOutput.ExitFailure;
+    end;
+  end;
+end;
+
 class function TLinterShell.ClearCache: Integer;
 begin
   try
@@ -676,8 +852,15 @@ var
   CheckSources: TCheckSourceFunc;
   Group: TShellWorkspaceGroup;
 begin
+  if AOptions.FormatCheck or AOptions.FormatWrite then
+    Exit(Formatting(AOptions));
   for Warning in AOptions.Warnings do
     WriteError(Warning);
+  if AOptions.FormatDiff then
+  begin
+    WriteError('--format diff gibt es nur mit --format-check oder --format-write');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
   if AOptions.Metrics and (AOptions.CheckFormat = TFindingsFormat.Sarif) then
   begin
     WriteError('--metrics gibt es nur mit --format text (Markdown) oder json');

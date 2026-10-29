@@ -15,9 +15,13 @@
 // Methodenzuordnungen (E2257, E2264), implements außerhalb von Klassen
 // (E2258), stille Fälle und die Einstellungen.
 // calling-convention-required (#1078): Beispiel aus dem Issue mit Korrektur
-// (E2277), varargs ohne external (E2591), Konstruktoren und Destruktoren
+// (E2277), varargs ohne external nur unter Win32 (E2277, Cm.E2277, #1380),
+// Konstruktoren und Destruktoren
 // (E2236) und Accessoren von published-Properties (E2270) mit Korrektur in
 // Deklaration und Rumpf, stille Fälle und die Einstellungen.
+// dispinterface-invalid (#1374): die Fälle aus Tests/Compilermeldungen (E2228
+// bis E2231) mit Position, die Korrekturen, Vorfahr und fehlende GUID
+// zusammen, stille Fälle (Gegenfall Cm.E2228b) und die Einstellungen.
 
 interface
 
@@ -84,9 +88,26 @@ type
     [Test]
     procedure IssueExampleVarargsWithFix;
     [Test]
+    procedure VarargsWithoutExternalOnWin32;
+    [Test]
     procedure ConstructorsAndDestructors;
     [Test]
     procedure PublishedAccessors;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TDispinterfaceInvalidTests = class
+  public
+    [Test]
+    procedure IssueCasesWithPositions;
+    [Test]
+    procedure FixesRemoveAndInsert;
+    [Test]
+    procedure AncestorWithoutGuid;
+    [Test]
+    procedure SilentCases;
     [Test]
     procedure OffAndExclude;
   end;
@@ -599,11 +620,9 @@ var
 begin
   Source := Druck('function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external ''msvcrt.dll'';'#10 +
     'function Zwei(Muster: PAnsiChar): Integer; varargs; external ''msvcrt.dll'';'#10 +
-    'function Drei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';'#10 +
-    'procedure Vier(Muster: PAnsiChar); stdcall; varargs;'#10, 'procedure Vier(Muster: PAnsiChar);'#10'begin'#10 +
-    'end;'#10);
+    'function Drei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';'#10, '');
   Found := ConventionFindings(Source);
-  Assert.AreEqual(3, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual(2, Integer(Length(Found)), Messages(Found));
   Assert.AreEqual('varargs ist nur mit cdecl erlaubt (wie E2277).', Found[0].Message);
   Assert.AreEqual(2, Found[0].Range.StartPos.Line);
   Assert.AreEqual(59, Found[0].Range.StartPos.Character);
@@ -614,10 +633,31 @@ begin
   Fixed := ApplyFix(Fixed, Found[1].Fixes[0]);
   Assert.IsTrue(Pos('function Zwei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';', Fixed) > 0,
     Fixed);
-  Assert.AreEqual('varargs ist nur mit cdecl erlaubt (wie E2591).', Found[2].Message);
-  Assert.AreEqual(5, Found[2].Range.StartPos.Line);
-  Fixed := ApplyFix(Fixed, Found[2].Fixes[0]);
   Assert.AreEqual(0, Integer(Length(ConventionFindings(Fixed))), Fixed);
+end;
+
+procedure TCallingConventionRequiredTests.VarargsWithoutExternalOnWin32;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Cm.E2277: dcc meldet varargs ohne external unter Win32, auch mit cdecl; Win64 übersetzt es.
+  mSource := Druck('', 'procedure Fall(AWert: Integer); cdecl; varargs;'#10'begin'#10'end;'#10);
+  mFound := TRuleAssert.PlatformFindings(TCallingConventionRequiredRule.Create, mSource, 'Win32');
+  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual('varargs ist unter Win32 nur an external-Routinen mit cdecl erlaubt (wie E2277).',
+    mFound[0].Message);
+  Assert.AreEqual(3, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.PlatformFindings(TCallingConventionRequiredRule.Create,
+    Druck('', 'procedure Fall(AWert: Integer); stdcall; varargs;'#10'begin'#10'end;'#10), 'Win32'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PlatformFindings(TCallingConventionRequiredRule.Create, mSource,
+    'Win64'))));
+  // Ohne bekannte Plattform (Baum ohne Symbole) bleibt die Regel still.
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(mSource))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PlatformFindings(TCallingConventionRequiredRule.Create,
+    Druck('function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';'#10, ''),
+    'Win32'))));
 end;
 
 procedure TCallingConventionRequiredTests.ConstructorsAndDestructors;
@@ -683,10 +723,143 @@ begin
     '{"rules": {"calling-convention-required": {"exclude": ["Source/*.pas"]}}}', 'Source/Druck.pas'))));
 end;
 
+{ TDispinterfaceInvalidTests }
+
+function DispFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TDispinterfaceInvalidRule.Create, ASource);
+end;
+
+function DispFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TDispinterfaceInvalidRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Unit Anzeige mit IBasis (Zeilen 3 und 4) und ATypes ab Zeile 5 im type-Abschnitt.</summary>
+function Anzeige(const ATypes: string): string;
+begin
+  Result := 'unit Anzeige;'#10'interface'#10'type'#10'  IBasis = interface'#10'  end;'#10 + ATypes +
+    'implementation'#10'end.';
+end;
+
+/// <summary>Die vier Fälle Cm.E2228 bis Cm.E2231 in einer Unit.</summary>
+function DispCases: string;
+begin
+  Result := Anzeige('  DA = dispinterface(IBasis)'#10'    [''{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A0001}'']'#10'  end;'#10 +
+    '  DB = dispinterface'#10'    procedure Machen; dispid 1;'#10'  end;'#10 +
+    '  DC = dispinterface'#10'    [''{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A0003}'']'#10 +
+    '    procedure Machen; stdcall; dispid 1;'#10'  end;'#10 +
+    '  DD = dispinterface'#10'    [''{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A0004}'']'#10 +
+    '    function GetWert: Integer; dispid 1;'#10'    procedure SetWert(AWert: Integer); dispid 2;'#10 +
+    '    property Wert: Integer read GetWert write SetWert;'#10'  end;'#10);
+end;
+
+procedure TDispinterfaceInvalidTests.IssueCasesWithPositions;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := DispFindings(DispCases);
+  Assert.AreEqual(5, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual('Ein dispinterface kann keinen Vorfahren haben (wie E2228).', mFound[0].Message);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(20, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(28, mFound[0].Range.EndPos.Character);
+  Assert.AreEqual('Das dispinterface DB braucht eine GUID (wie E2229).', mFound[1].Message);
+  Assert.AreEqual(8, mFound[1].Range.StartPos.Line);
+  Assert.AreEqual(2, mFound[1].Range.StartPos.Character);
+  Assert.AreEqual('Methoden eines dispinterface dürfen keine Direktive stdcall haben (wie E2230).',
+    mFound[2].Message);
+  Assert.AreEqual(13, mFound[2].Range.StartPos.Line);
+  Assert.AreEqual(22, mFound[2].Range.StartPos.Character);
+  Assert.AreEqual('Die Direktive read ist in einem dispinterface nicht erlaubt (wie E2231).', mFound[3].Message);
+  Assert.AreEqual(19, mFound[3].Range.StartPos.Line);
+  Assert.AreEqual(27, mFound[3].Range.StartPos.Character);
+  Assert.AreEqual('Die Direktive write ist in einem dispinterface nicht erlaubt (wie E2231).', mFound[4].Message);
+  Assert.AreEqual(40, mFound[4].Range.StartPos.Character);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(mFound[0].Severity));
+end;
+
+procedure TDispinterfaceInvalidTests.FixesRemoveAndInsert;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := DispCases;
+  mFound := DispFindings(mSource);
+  Assert.AreEqual('Vorfahren entfernen', mFound[0].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('  DA = dispinterface'#10'    [''{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A0001}'']', mFixed) > 0, mFixed);
+  Assert.AreEqual(4, Integer(Length(DispFindings(mFixed))), mFixed);
+  Assert.AreEqual('GUID einfügen', mFound[1].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[1].Fixes[0]);
+  Assert.IsTrue(Pos('  DB = dispinterface'#10'    [''{', mFixed) > 0, mFixed);
+  Assert.AreEqual(4, Integer(Length(DispFindings(mFixed))), mFixed);
+  Assert.AreEqual('stdcall entfernen', mFound[2].Fixes[0].Title);
+  mFixed := ApplyFix(mSource, mFound[2].Fixes[0]);
+  Assert.AreEqual(0, Pos('stdcall', mFixed), mFixed);
+  Assert.IsTrue(Pos('2A0003}'']'#10'    procedure Machen; dispid 1;'#10, mFixed) > 0, mFixed);
+  Assert.AreEqual(4, Integer(Length(DispFindings(mFixed))), mFixed);
+  // Für read und write gibt es keine sichere Korrektur (readonly/writeonly hängen vom Getter ab).
+  Assert.AreEqual(0, Integer(Length(mFound[3].Fixes)));
+end;
+
+procedure TDispinterfaceInvalidTests.AncestorWithoutGuid;
+var
+  mSource, mFixed: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  mSource := Anzeige('  DE = dispinterface(IBasis)'#10'    procedure Machen; dispid 1;'#10'  end;'#10);
+  mFound := DispFindings(mSource);
+  Assert.AreEqual(2, Integer(Length(mFound)), Messages(mFound));
+  // Nach Position: zuerst der Name (E2229), dann die Klammer (E2228).
+  Assert.AreEqual('Das dispinterface DE braucht eine GUID (wie E2229).', mFound[0].Message);
+  // GUID hinter der Klammer der Vorfahren, danach lässt sich der Vorfahr entfernen.
+  mFixed := ApplyFix(mSource, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('  DE = dispinterface(IBasis)'#10'    [''{', mFixed) > 0, mFixed);
+  mFound := DispFindings(mFixed);
+  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  mFixed := ApplyFix(mFixed, mFound[0].Fixes[0]);
+  Assert.IsTrue(Pos('  DE = dispinterface'#10'    [''{', mFixed) > 0, mFixed);
+  Assert.AreEqual(0, Integer(Length(DispFindings(mFixed))), mFixed);
+end;
+
+procedure TDispinterfaceInvalidTests.SilentCases;
+begin
+  // Vorwärtsdeklaration, GUID über eine Konstante, dispid, readonly, writeonly, default an einer Array-Property,
+  // Hinweise, overload (von dcc nicht belegt), bedingte Zweige und gewöhnliche Interfaces.
+  Assert.AreEqual(0, Integer(Length(DispFindings(Anzeige('  DAnzeige = dispinterface;'#10 +
+    '  DListe = dispinterface'#10'    [cListeGuid]'#10 +
+    '    property Eintrag[AIndex: Integer]: DAnzeige readonly dispid 0; default;'#10'  end;'#10 +
+    '  DAnzeige = dispinterface'#10'    [''{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A2280}'']'#10 +
+    '    procedure Machen; dispid 1;'#10'    procedure Alt; dispid 2; deprecated;'#10 +
+    '    procedure Laden(AWert: Integer); overload; dispid 3;'#10 +
+    '    property Name: WideString readonly dispid 4;'#10'    property Ziel: WideString writeonly dispid 5;'#10 +
+    '    property Breite: Integer dispid 6;'#10'  {$IFDEF ALT}'#10'    procedure Neu; stdcall;'#10 +
+    '    property Wert: Integer read GetWert;'#10'  {$ENDIF}'#10'  end;'#10 +
+    '  {$IFDEF ALT}'#10'  DOhne = dispinterface(IBasis)'#10'    procedure Machen; stdcall;'#10'  end;'#10 +
+    '  {$ENDIF}'#10'  IKunde = interface'#10'    function GetWert: Integer; stdcall;'#10 +
+    '    property Wert: Integer read GetWert;'#10'  end;'#10)))));
+end;
+
+procedure TDispinterfaceInvalidTests.OffAndExclude;
+var
+  mSource: string;
+begin
+  mSource := Anzeige('  DB = dispinterface'#10'    procedure Machen; dispid 1;'#10'  end;'#10);
+  Assert.AreEqual(1, Integer(Length(DispFindings(mSource, '', 'Source/Anzeige.pas'))));
+  Assert.AreEqual(0, Integer(Length(DispFindings(mSource, '{"rules": {"dispinterface-invalid": "off"}}',
+    'Source/Anzeige.pas'))));
+  Assert.AreEqual(0, Integer(Length(DispFindings(mSource, '{"rules": {"group:compiler": "off"}}',
+    'Source/Anzeige.pas'))));
+  Assert.AreEqual(0, Integer(Length(DispFindings(mSource,
+    '{"rules": {"dispinterface-invalid": {"exclude": ["Source/*.pas"]}}}', 'Source/Anzeige.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TMessageMethodInvalidTests);
   TDUnitX.RegisterTestFixture(TInterfaceDeclarationInvalidTests);
   TDUnitX.RegisterTestFixture(TImplementsClauseInvalidTests);
   TDUnitX.RegisterTestFixture(TCallingConventionRequiredTests);
+  TDUnitX.RegisterTestFixture(TDispinterfaceInvalidTests);
 
 end.
