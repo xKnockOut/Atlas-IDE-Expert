@@ -1205,9 +1205,15 @@ type
     MultiCursorLineEndsKey: Integer;
     MultiCursorAboveKey: Integer;
     MultiCursorBelowKey: Integer;
-    /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Fenster „Atlas-Start“ mit
-    /// den Atlas-Bereichen (seit #1114 nicht mehr auf der Willkommensseite der IDE).</summary>
+    /// <summary>Hauptschalter der Atlas-Willkommensseite (#753, welcomePage.enabled): Atlas-Bereiche auf der
+    /// Willkommensseite der IDE und Fenster „Atlas-Start“.</summary>
     WelcomePage: Boolean;
+    /// <summary>Atlas-Bereiche auf der Willkommensseite der IDE (welcomePage.ideWelcomePage, #761); unabhängig
+    /// vom Fenster „Atlas-Start“. Ohne Schnittstelle der IDE wirkungslos.</summary>
+    WelcomePageIdePage: Boolean;
+    /// <summary>off oder atlas (welcomePage.layout); setzt der Befehl „Atlas-Layout anwenden“. Gilt nur auf
+    /// der Willkommensseite der IDE.</summary>
+    WelcomePageLayout: string;
     /// <summary>Fenster „Atlas-Start“ beim Start der IDE öffnen (welcomePage.openOnStart, #1114); sonst nur
     /// über Menü, Palette und Desktop.</summary>
     WelcomePageOpenOnStart: Boolean;
@@ -2225,6 +2231,8 @@ begin
   Result.MultiCursorAboveKey := $C026; // Strg+Alt+↑
   Result.MultiCursorBelowKey := $C028; // Strg+Alt+↓
   Result.WelcomePage := True;
+  Result.WelcomePageIdePage := True;
+  Result.WelcomePageLayout := 'off';
   Result.WelcomePageOpenOnStart := False;
   Result.WelcomePageOpenWhenNoProject := True;
   Result.WelcomePageHeader := True;
@@ -2638,6 +2646,10 @@ begin
   GenerateMenuKey := EnsureRange(GenerateMenuKey, 0, $FFFF);
   GenerateMenuGroups := TAtlasGenerateLists.NormalizeGroups(GenerateMenuGroups);
   GenerateMenuHidden := TAtlasGenerateLists.NormalizeHidden(GenerateMenuHidden);
+  if SameText(Trim(WelcomePageLayout), 'atlas') then
+    WelcomePageLayout := 'atlas'
+  else
+    WelcomePageLayout := 'off';
   if SameText(Trim(WelcomePageWhatsNew), 'off') then
     WelcomePageWhatsNew := 'off'
   else if SameText(Trim(WelcomePageWhatsNew), 'always') then
@@ -3125,6 +3137,8 @@ begin
   MultiCursorAboveKey := AStore.ReadInteger('MultiCursorAboveKey', Default.MultiCursorAboveKey);
   MultiCursorBelowKey := AStore.ReadInteger('MultiCursorBelowKey', Default.MultiCursorBelowKey);
   WelcomePage := AStore.ReadInteger('WelcomePage', BoolValue(Default.WelcomePage)) <> 0;
+  WelcomePageIdePage := AStore.ReadInteger('WelcomePageIdePage', BoolValue(Default.WelcomePageIdePage)) <> 0;
+  WelcomePageLayout := AStore.ReadString('WelcomePageLayout', Default.WelcomePageLayout);
   WelcomePageOpenOnStart := AStore.ReadInteger('WelcomePageOpenOnStart', BoolValue(Default.WelcomePageOpenOnStart)) <> 0;
   WelcomePageOpenWhenNoProject := AStore.ReadInteger('WelcomePageOpenWhenNoProject',
     BoolValue(Default.WelcomePageOpenWhenNoProject)) <> 0;
@@ -3692,6 +3706,8 @@ begin
   AStore.WriteInteger('MultiCursorAboveKey', MultiCursorAboveKey);
   AStore.WriteInteger('MultiCursorBelowKey', MultiCursorBelowKey);
   AStore.WriteInteger('WelcomePage', BoolValue(WelcomePage));
+  AStore.WriteInteger('WelcomePageIdePage', BoolValue(WelcomePageIdePage));
+  AStore.WriteString('WelcomePageLayout', WelcomePageLayout);
   AStore.WriteInteger('WelcomePageOpenOnStart', BoolValue(WelcomePageOpenOnStart));
   AStore.WriteInteger('WelcomePageOpenWhenNoProject', BoolValue(WelcomePageOpenWhenNoProject));
   AStore.WriteInteger('WelcomePageHeader', BoolValue(WelcomePageHeader));

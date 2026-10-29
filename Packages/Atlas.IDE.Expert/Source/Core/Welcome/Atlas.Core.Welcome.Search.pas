@@ -7,7 +7,7 @@
 // Name, Anfang, Wortanfänge, Teilstring, Teilfolge) mit Tippfehler-Toleranz
 // (#485), die hier auch ab jedem Wortanfang greift: „Wlecome“ trifft
 // „Atlas.IDE.Expert.WelcomePage.pas“. Befehle passen zusätzlich über ihre
-// Kennung („wel“ → „Atlas-Start“ über Atlas.WelcomeStart).
+// Kennung („wel“ → „Atlas-Layout anwenden“ über Atlas.WelcomeApply).
 // Symbole kommen vom Server, der schon unscharf gefiltert hat; sie behalten
 // dessen Reihenfolge. Läuft kein Server, zeigt die Gruppe statt Treffern
 // einen Hinweis.
