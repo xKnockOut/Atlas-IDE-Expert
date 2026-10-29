@@ -42,6 +42,9 @@ type
     procedure ImpactFromJson;
     [Test]
     procedure ImpactWithoutSymbol;
+    /// <summary>Antwort von atlas/affectedTests (#1353): Tests mit Gründen, alle nötig, ohne Objekt.</summary>
+    [Test]
+    procedure AffectedTestsFromJson;
   end;
 
 implementation
@@ -317,6 +320,44 @@ begin
   finally
     Json.Free;
   end;
+end;
+
+procedure TLspImpactResponseTests.AffectedTestsFromJson;
+var
+  mJson: TJSONValue;
+  mFound: TAtlasAffectedTests;
+begin
+  mJson := TJSONObject.ParseJSONValue('{"base":"main","depth":3,"all":false,"reason":"","run":["B.T.M",' +
+    '"B.T.N"],"tests":[{"name":"B.T.M","unit":"B","fixture":"T","method":"M","run":["B.T.M"],' +
+    '"uri":"file:///c%3A/p/B.pas","line":7,"reasons":[{"change":"TBaseline.Match","path":["TBaseline.Match",' +
+    '"T.M"],"inferred":true}]},{"name":"B.T.N","uri":"file:///c%3A/p/B.pas","line":9,"reasons":[]}],' +
+    '"changes":[{"kind":"symbol","name":"TBaseline.Match","place":"implementation","uri":"file:///c%3A/p/A.pas"}],' +
+    '"skipped":[],"limits":{}}');
+  try
+    mFound := TLspSession.AffectedTestsFromJson(mJson);
+  finally
+    mJson.Free;
+  end;
+  Assert.AreEqual('main', mFound.Base);
+  Assert.AreEqual(3, mFound.Depth);
+  Assert.IsFalse(mFound.All);
+  Assert.AreEqual(2, Integer(Length(mFound.Run)));
+  Assert.AreEqual(2, Integer(Length(mFound.Tests)));
+  Assert.AreEqual('B.T.M', mFound.Tests[0].Name);
+  Assert.AreEqual(7, mFound.Tests[0].Line);
+  Assert.AreEqual('TBaseline.Match → T.M (erschlossen)', mFound.Tests[0].Reasons[0]);
+  // Ohne "run" läuft der Test unter seinem Namen.
+  Assert.AreEqual('B.T.N', mFound.Tests[1].RunNames[0]);
+  Assert.AreEqual('TBaseline.Match', mFound.Changes[0]);
+  mJson := TJSONObject.ParseJSONValue('{"base":"BASE","all":true,"reason":"Testprogramm Tests.dpr geändert"}');
+  try
+    mFound := TLspSession.AffectedTestsFromJson(mJson);
+  finally
+    mJson.Free;
+  end;
+  Assert.IsTrue(mFound.All);
+  Assert.AreEqual('Testprogramm Tests.dpr geändert', mFound.AllReason);
+  Assert.AreEqual(0, Integer(Length(TLspSession.AffectedTestsFromJson(nil).Tests)));
 end;
 
 procedure TLspInitializeParamsTests.InlineValueRefsAreVariableLookups;

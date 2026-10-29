@@ -27,6 +27,7 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
 - Geplanten Code mit `check_code` prüfen, bevor er in die Datei geht
   (Syntax, Prüfregeln, nicht auflösbare Bezeichner).
 - `get_diagnostics` für den Stand einer Datei oder des Projekts.
+- `get_affected_tests` nach den Änderungen: nur die DUnitX-Tests, die die geänderten Routinen erreichen (gegenüber `main` bzw. `BASE`, mit nicht eingecheckten Änderungen); `format: "json"` liefert `run` direkt für `run_tests.tests`, bei `all: true` alle Tests laufen lassen.
 - `find_unused_code` vor dem Aufräumen: ungenutzte Member, Deklarationen und Units des Projekts; `get_unit_dependencies` für uses, Nutzer und Zyklen einer Unit, bevor sie verschoben oder aufgeteilt wird.
 - `get_metrics` vor und nach einem Umbau: welche Methoden zu lang, zu tief verschachtelt oder zu komplex sind (Grenzwerte aus `atlas.json`).
 - `get_todos` vor einer Aufgabe oder einem Release: offene `TODO`/`FIXME` des Projekts, gefiltert nach Kategorie (`category`), Person (`owner`), Unit oder Marke; `includeDone` zeigt erledigte.

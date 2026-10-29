@@ -1481,11 +1481,17 @@ begin
         if not (mReason is TJSONObject) then
           Continue;
         mReasonEntry := TJSONObject(mReason);
-        mText := mReasonEntry.GetValue<string>('change', '');
+        // Der Weg beginnt mit der geänderten Stelle; ohne Weg nur sie.
+        mText := '';
         mPath := mReasonEntry.GetValue('path');
         if mPath is TJSONArray then
           for mStep in TJSONArray(mPath) do
-            mText := mText + ' → ' + mStep.Value;
+            if mText = '' then
+              mText := mStep.Value
+            else
+              mText := mText + ' → ' + mStep.Value;
+        if mText = '' then
+          mText := mReasonEntry.GetValue<string>('change', '');
         if mReasonEntry.GetValue<Boolean>('inferred', False) then
           mText := mText + ' (erschlossen)';
         mTest.Reasons := mTest.Reasons + [mText];
