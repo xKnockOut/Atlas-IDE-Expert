@@ -1,0 +1,12 @@
+﻿package CmE2223;
+
+// E2223 $DENYPACKAGEUNIT '%s' cannot be put into a package
+// Erwartet: E2223
+
+requires
+  rtl;
+
+contains
+  Cm.Hilfe.E2223 in 'Cm.Hilfe.E2223.pas'; // <- E2223
+
+end.

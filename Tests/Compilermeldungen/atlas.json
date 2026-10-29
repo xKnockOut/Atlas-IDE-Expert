@@ -1,0 +1,6 @@
+{
+  "minDelphiVersion": "37.0",
+  "rules": {
+    "unused-unit": "off"
+  }
+}

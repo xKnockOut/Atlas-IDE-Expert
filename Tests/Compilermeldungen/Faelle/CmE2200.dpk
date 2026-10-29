@@ -1,0 +1,12 @@
+﻿package CmE2200;
+
+// E2200 Package '%s' already contains unit '%s'
+// Erwartet: E2200
+
+requires
+  rtl;
+
+contains
+  System.SysUtils; // <- E2200
+
+end.
