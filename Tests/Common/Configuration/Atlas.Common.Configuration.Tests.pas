@@ -54,6 +54,15 @@ type
     procedure ReadsMcpDisabledTools;
     [Test]
     procedure ReadsMcpGlobalSettings;
+    /// <summary>#1357: mcp.prompts, mcp.promptLanguage und eigene Prompts aus mcp.customPrompts.</summary>
+    [Test]
+    procedure ReadsMcpPrompts;
+    /// <summary>#1357: Fehler in eigenen Prompts (Name, Text, include, Platzhalter) werden gemeldet.</summary>
+    [Test]
+    procedure ChecksMcpCustomPrompts;
+    /// <summary>#1357: atlas.json mit nur mcp.customPrompts lässt das globale mcp.prompts stehen.</summary>
+    [Test]
+    procedure LayersMcpMembersSeparately;
     /// <summary>#900: Abschnitt "tasks" (Projektaufgaben des Plugins) wird geprüft, nicht gemeldet.</summary>
     [Test]
     procedure ChecksTasks;
@@ -1197,6 +1206,71 @@ begin
   Settings := TConfigurationParser.ParseLayered('{"mcp": {"globalSettings": true}}',
     '{"mcp": {"globalSettings": false}}', Issues);
   Assert.IsFalse(Settings.McpGlobalSettings, 'Datei vor Editor');
+end;
+
+procedure TConfigurationParserTests.ReadsMcpPrompts;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.McpPrompts, 'Vorgabe: Prompts an');
+  Assert.AreEqual('de', mSettings.McpPromptLanguage);
+  Assert.AreEqual(0, Integer(Length(mSettings.McpCustomPrompts)));
+  mSettings := Parse('{"mcp": {"prompts": false, "promptLanguage": "en", "customPrompts": [' +
+    '{"name": "check_unit", "description": "Unit prüfen", "arguments": [{"name": "unit", "description": "Unit", ' +
+    '"required": true}, {"name": "focus"}], "text": "Prüfe {unit} mit Blick auf {focus}.", ' +
+    '"include": ["diagnostics", "metrics"]}]}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.McpPrompts);
+  Assert.AreEqual('en', mSettings.McpPromptLanguage);
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)));
+  Assert.AreEqual('check_unit', mSettings.McpCustomPrompts[0].Name);
+  Assert.AreEqual('Unit prüfen', mSettings.McpCustomPrompts[0].Description);
+  Assert.AreEqual(2, Integer(Length(mSettings.McpCustomPrompts[0].Arguments)));
+  Assert.IsTrue(mSettings.McpCustomPrompts[0].Arguments[0].Required);
+  Assert.IsFalse(mSettings.McpCustomPrompts[0].Arguments[1].Required, 'Vorgabe: kein Pflichtargument');
+  Assert.AreEqual('Prüfe {unit} mit Blick auf {focus}.', mSettings.McpCustomPrompts[0].Text);
+  Assert.AreEqual(2, Integer(Length(mSettings.McpCustomPrompts[0].Include)));
+  Assert.AreEqual('metrics', mSettings.McpCustomPrompts[0].Include[1]);
+end;
+
+procedure TConfigurationParserTests.ChecksMcpCustomPrompts;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := Parse('{"mcp": {"promptLanguage": "fr"}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'nur de oder en');
+  Assert.AreEqual('de', mSettings.McpPromptLanguage, 'ungültige Sprache lässt die Vorgabe');
+  mSettings := Parse('{"mcp": {"customPrompts": {"name": "a"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)), 'keine Liste');
+  // Ohne Text, Name mit Leerzeichen, unbekannter Inhalt, doppelter Name.
+  mSettings := Parse('{"mcp": {"customPrompts": [{"name": "ohne_text"}, {"name": "mit leer", "text": "x"}, ' +
+    '{"name": "a", "text": "x", "include": ["metrics", "wetter"]}, {"name": "A", "text": "y"}]}}', mIssues);
+  Assert.AreEqual(4, Integer(Length(mIssues)), 'ohne Text, ungültiger Name, unbekannter Inhalt, doppelter Name');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)), 'nur der gültige Prompt a');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts[0].Include)), 'unbekannter Inhalt fällt weg');
+  // Platzhalter ohne Argument: nur eine Warnung, der Prompt gilt.
+  mSettings := Parse('{"mcp": {"customPrompts": [{"name": "b", "text": "Prüfe {unit}."}]}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  Assert.IsFalse(mIssues[0].IsError, 'Platzhalter ohne Argument ist eine Warnung');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)));
+end;
+
+procedure TConfigurationParserTests.LayersMcpMembersSeparately;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"prompts": false, "disabledTools": ["a"]}}',
+    '{"mcp": {"customPrompts": [{"name": "c", "text": "x"}]}}', mIssues);
+  Assert.IsFalse(mSettings.McpPrompts, 'mcp.prompts aus der globalen Ebene bleibt');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpDisabledTools)), 'mcp.disabledTools aus der globalen Ebene bleibt');
+  Assert.AreEqual(1, Integer(Length(mSettings.McpCustomPrompts)), 'mcp.customPrompts aus der Datei');
+  mSettings := TConfigurationParser.ParseLayered('{"mcp": {"promptLanguage": "en"}}',
+    '{"mcp": {"promptLanguage": "de"}}', mIssues);
+  Assert.AreEqual('de', mSettings.McpPromptLanguage, 'Datei vor Editor');
 end;
 
 procedure TConfigurationParserTests.ChecksTasks;

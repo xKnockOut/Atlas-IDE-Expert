@@ -2,7 +2,7 @@
 
 // Tests für die Sicherheit der MCP-Schicht (#99), schreibende Werkzeuge (#61),
 // Projektkonventionen als Ressource (#272), Befund an KI (#158) und
-// Sammelkorrektur fix_findings (#1352).
+// Sammelkorrektur fix_findings (#1352) und format_code (#1358).
 
 interface
 
@@ -45,6 +45,15 @@ type
     procedure FixFindingsSkipsDirtyFiles;
     [Test]
     procedure FixFindingsRefusesLowerConfidence;
+    /// <summary>#1358: format_code mit Text liefert den formatierten Text und schreibt nichts.</summary>
+    [Test]
+    procedure FormatCodeWithTextWritesNothing;
+    /// <summary>#1358: Vorschau zeigt den Diff, dryRun=false schreibt über denselben Weg, nur den Bereich.</summary>
+    [Test]
+    procedure FormatCodeWritesFileOrRange;
+    /// <summary>#1358: Syntaxfehler: nicht formatiert, Fehler statt Änderung.</summary>
+    [Test]
+    procedure FormatCodeRefusesSyntaxErrors;
   end;
 
 implementation
@@ -63,6 +72,7 @@ uses
   Atlas.Common.Rules.Conventions,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Mcp.Server,
+  Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Mcp.EditTools;
 
 type
@@ -617,6 +627,83 @@ begin
   finally
     Edit.Free;
     Files.Free;
+  end;
+end;
+
+const
+  cSchief = 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'   P;'#10'     P;'#10'end;'#10 +
+    'end.';
+
+procedure TMcpEditToolsTests.FormatCodeWithTextWritesNothing;
+var
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+  mText: string;
+begin
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
+  try
+    mText := mEdit.FormatCode(TFormatStyle.Default, 'U.pas', cSchief, TFormatScope.All);
+    Assert.Contains(mText, '2 Abweichungen');
+    Assert.Contains(mText, 'Zeile 6: Einrückung 3 statt 2');
+    Assert.Contains(mText, #10'  P;'#10'  P;'#10);
+    Assert.AreEqual(0, mFiles.Writes);
+    Assert.Contains(mEdit.FormatCode(TFormatStyle.Default, 'U.pas', 'unit U;'#10'interface'#10'implementation'#10 +
+      'end.', TFormatScope.All), 'Keine Abweichung');
+  finally
+    mEdit.Free;
+    mFiles.Free;
+  end;
+end;
+
+procedure TMcpEditToolsTests.FormatCodeWritesFileOrRange;
+var
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+  mText: string;
+begin
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
+  try
+    mFiles.Files.Add('U.pas', cSchief);
+    mText := mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, True);
+    Assert.Contains(mText, 'Vorschau');
+    Assert.Contains(mText, '-    P;');
+    Assert.AreEqual(0, mFiles.Writes);
+    // Nur Zeile 7 (0-basiert 6).
+    mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.Lines([TFormatLineSpan.Create(6, 6)]), False);
+    Assert.AreEqual(1, mFiles.Writes);
+    Assert.AreEqual(StringReplace(cSchief, '     P;', '  P;', []), mFiles.Files['U.pas']);
+    mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, False);
+    Assert.AreEqual(StringReplace(StringReplace(cSchief, '     P;', '  P;', []), '   P;', '  P;', []),
+      mFiles.Files['U.pas']);
+    Assert.Contains(mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, False), 'keine Abweichung');
+    Assert.AreEqual(2, mFiles.Writes);
+  finally
+    mEdit.Free;
+    mFiles.Free;
+  end;
+end;
+
+procedure TMcpEditToolsTests.FormatCodeRefusesSyntaxErrors;
+var
+  mFiles: TMemoryFiles;
+  mEdit: TMcpEditTools;
+begin
+  mFiles := TMemoryFiles.Create;
+  mEdit := Tools(mFiles);
+  try
+    mFiles.Files.Add('U.pas', 'unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10'   if then;'#10 +
+      'end;'#10'end.');
+    Assert.WillRaise(
+      procedure
+      begin
+        mEdit.FormatCode(TFormatStyle.Default, 'U.pas', TFormatScope.All, False);
+      end, EMcpToolError);
+    Assert.AreEqual(0, mFiles.Writes);
+  finally
+    mEdit.Free;
+    mFiles.Free;
   end;
 end;
 

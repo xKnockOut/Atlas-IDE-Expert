@@ -1326,9 +1326,9 @@ begin
       Nodes.Free;
     end;
     Result := Refs.ToArray;
-    // Nur gesetzt, wenn es etwas zu prüfen gibt; nil hält den Index klein.
+    // nil heißt „nicht einbettbar“; ohne Verweise bleibt die Routine trotzdem als inline erkennbar (#1381).
     if Length(Result) = 0 then
-      Result := nil;
+      Result := TArray<string>.Create(TIndexSymbol.InlineWithoutRefs);
   finally
     Members.Free;
     Own.Free;

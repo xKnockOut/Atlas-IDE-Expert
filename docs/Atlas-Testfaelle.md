@@ -6672,6 +6672,21 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | AK7 | `"calling-convention-required": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | AK8 | Abgleich mit Delphi: AK1, AK3, AK4, AK5 übersetzen | dcc meldet E2277, E2591, E2236 und E2270 an denselben Stellen; für AK6 nichts |
 
+## dispinterface-Deklaration unzulässig (#1374)
+
+Voraussetzung: Server läuft in der IDE mit Projekt. Vorlagen: `Tests/Compilermeldungen/Faelle/Cm.E2228.pas` bis `Cm.E2231b.pas`, Gegenfall `Cm.E2228b.pas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DS1 | `DAnzeige = dispinterface(IBasis)` mit GUID (wie `Cm.E2228`) | Fehler `dispinterface-invalid` an `(IBasis)`: „Ein dispinterface kann keinen Vorfahren haben (wie E2228).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DS2 | Schnellkorrektur „Vorfahren entfernen“, danach Strg+Z | `(IBasis)` verschwindet; ein Undo-Schritt |
+| DS3 | `DAnzeige = dispinterface` ohne GUID (wie `Cm.E2229`), Schnellkorrektur „GUID einfügen“ | „Das dispinterface DAnzeige braucht eine GUID (wie E2229).“ am Namen; die Korrektur fügt unter `dispinterface` eine neue GUID-Zeile ein; keine Warnung `interface-guid` mehr |
+| DS4 | `procedure Machen; stdcall; dispid 1;` im dispinterface (wie `Cm.E2230`, `Cm.E2230b`), Schnellkorrektur „stdcall entfernen“ | „Methoden eines dispinterface dürfen keine Direktive stdcall haben (wie E2230).“; ebenso für `safecall` und `virtual`; die Korrektur entfernt `stdcall;` |
+| DS5 | `property Wert: Integer read GetWert;` bzw. `write SetWert` im dispinterface (wie `Cm.E2231`, `Cm.E2231b`) | „Die Direktive read ist in einem dispinterface nicht erlaubt (wie E2231).“ bzw. write; keine Schnellkorrektur |
+| DS6 | Gegenfall `Cm.E2228b`: Vorwärtsdeklaration, GUID über Konstante, `dispid`, `readonly`, `writeonly`, `default` an einer Array-Property; dazu `overload`, `deprecated` und Deklarationen in `{$IFDEF}` | Keine Meldung |
+| DS7 | `"dispinterface-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| DS8 | Abgleich mit Delphi 12 und 13: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.E222*','Cm.E223*' -AtlasServer <exe>`, danach `python3 Tools/Compare-Compilermeldungen.py` | E2228 bis E2231 stehen auf „erkannt“, keine neuen Treffer unter „zusätzlich“; `Cm.E2228b` baut ohne Meldung (sonst den Gegenfall bzw. die Regel anpassen); `Cm.E2230b` und `Cm.E2231b` greifen |
+
 ## Vergleich immer wahr oder immer falsch (#1011)
 
 Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
@@ -8647,3 +8662,101 @@ Vorbereitung: Kopie von `Tests/Referenzprojekt`; ein eigenes Projekt mit drei Un
 | SK15 | Regel ohne sichere Korrektur (z. B. `empty-except`) wählen | Meldung „Keine sicheren Korrekturen für empty-except.“ mit Zusammenfassung, kein Dialog |
 | SK16 | Optionen › Prüfregeln › Prüffenster: „Sammelkorrektur im Fenster Atlas-Prüfung“ aus | Kein Kontextmenüeintrag; mit „Atlas-Prüfung“ aus ist der Schalter gesperrt |
 | SK17 | `mcp.disabledTools: ["fix_findings"]` | Werkzeug fehlt in der Liste und wird abgelehnt |
+## Formatieren ohne IDE (#1358)
+
+Vorbereitung: Projekt mit `atlas.json` (`"format": {"indentSize": 2}`), Git-Arbeitskopie, `AtlasServer.exe` aus dem Build im Pfad; eine Unit in UTF-8 mit BOM, eine ohne BOM, eine in ANSI mit Umlauten.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FK1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; Tests grün (**Abnahme**) |
+| FK2 | `AtlasServer.exe --check <korrekt formatierte Unit> --format-check` | Exit-Code 0, Zusammenfassung auf stderr „0 von 1 Dateien weichen ab“ |
+| FK3 | In einer Unit eine Zeile mit 3 statt 2 Leerzeichen einrücken, `A:=1` schreiben, `--format-check` | Exit-Code 1; Ausgabe nennt Datei, „Zeile n: Einrückung 3 statt 2“ und „Leerzeichen vor := fehlt“; Datei unverändert |
+| FK4 | FK3 mit `--format json` und `--format diff` | JSON mit allen Abweichungen (`kind` `indent`, `spaceAroundAssignment`); Diff mit `--- a/…`, `+++ b/…`, `@@`-Blöcken |
+| FK5 | Dieselbe Unit in der IDE öffnen, Strg+Umschalt+Alt+L, Ergebnis speichern; zurücksetzen; `--format-write` | Beide Dateien sind byte-gleich (IDE-Option Einrückung = `format.indentSize`) |
+| FK6 | `--format-write` über den Ordner mit den drei Kodierungen | Kodierung bleibt (BOM, ohne BOM, ANSI-Umlaute), Zeilenenden bleiben; kein `.atlas-format.tmp` liegt herum; danach `--format-check` Exit-Code 0 |
+| FK7 | Eine Zeile ändern (nicht committen) in einer sonst schlecht formatierten Unit, `--format-write --changed HEAD --changed-lines --include-uncommitted` | Nur die geänderte Zeile ist formatiert; `git diff` zeigt keine andere Zeile |
+| FK8 | Unit mit Syntaxfehler, `--format-write` | Datei unverändert, Meldung „…(Zeile,Spalte): Syntaxfehler, nicht formatiert: …“, Exit-Code 1 |
+| FK9 | Bereich zwischen `// atlas-format: off` und `// atlas-format: on` absichtlich schief einrücken; in der IDE Strg+Umschalt+Alt+L und `--format-write` | Der Bereich bleibt samt der Markenzeilen unverändert, der Rest wird formatiert |
+| FK10 | `docs/Beispiele/pre-commit-formatierung.ps1` als Hook einrichten, schief eingerückte Zeile committen | Commit bricht ab mit Hinweis; mit `ATLAS_FORMAT_WRITE=1` wird die Zeile formatiert und der Commit läuft durch |
+| FK11 | Claude Code: `format_code` mit `file` und `text` (geplanter Code) | Antwort mit Abweichungen und formatiertem Text; Datei unverändert |
+| FK12 | Claude Code: `format_code` mit `file`, `dryRun: false`, Unit in der IDE offen (gespeichert) | Änderung landet im Editorpuffer; ein Strg+Z macht sie ganz rückgängig |
+| FK13 | `format_code` in `mcp.disabledTools` eintragen, Claude Code neu starten | Werkzeug fehlt in der Liste |
+| FK14 | `format.beginPlacement` und `format.elsePlacement` = `sameLine`, Unit mit `end` / `else` / `begin` auf drei Zeilen, zweimal formatieren | Schon der erste Lauf ergibt `end else begin`, der zweite ändert nichts |
+
+## MCP-Prompts und Ressourcen mit Vorlage (#1357)
+
+Vorbereitung: Claude Code mit `claude mcp add delphi -- AtlasServer.exe --mcp --root <Projekt>` (bzw. das Plugin `atlas`), Projekt mit Formular, DUnitX-Testprojekt und Git; eine Prüfregel mit Befund in einer Unit.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| MP1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TMcpPromptsTests`, `TMcpServerTests`, `ReadsMcpPrompts`, `ChecksMcpCustomPrompts`, `LayersMcpMembersSeparately` grün (**Abnahme**) |
+| MP2 | In Claude Code `/` tippen, dann `unit_review` | Die fünf Befehle `unit_review`, `explain_form`, `write_tests`, `fix_finding`, `prepare_commit` mit Beschreibung und Argumenten (**Abnahme**) |
+| MP3 | `/mcp__delphi__unit_review UI.Auftrag` | Eine Nachricht mit Gliederung, Befunden, Metriken über Grenzwert, ungenutztem Code und Konventionen; Claude ruft dafür keine weiteren Werkzeuge auf (**Abnahme**) |
+| MP4 | `@delphi:delphi://unit/UI.Auftrag` an eine Frage hängen | Gliederung und interface-Teil der Unit hängen an (**Abnahme**) |
+| MP5 | `@delphi:delphi://unit/System.SysUtils` bzw. eine Unit außerhalb des Projekts und seiner Such- und Bibliothekspfade | Fehler mit Begründung „liegt außerhalb des Arbeitsbereichs …“ (**Abnahme**) |
+| MP6 | Eigener Prompt in `atlas.json` (`mcp.customPrompts`, Beispiel aus docs/MCP.md), Claude Code neu verbinden | Erscheint mit seinen Argumenten; `{unit}` ist ersetzt, Befunde und Metriken hängen an (**Abnahme**) |
+| MP7 | `"mcp": { "prompts": false }` in settings.json, neu verbinden | Keine Prompts nach `/`, keine Vorlagen, `delphi://build/last` fehlt; Werkzeuge unverändert (**Abnahme**) |
+| MP8 | Server mit `--restricted`, `/mcp__delphi__fix_finding <Datei> <Zeile>` | Keine Korrekturen, kein `apply_code_action`, Hinweis „Eingeschränkter Modus“; `prepare_commit` sagt „Committe nicht“ (**Abnahme**) |
+| MP9 | `pwsh Tools/Start-McpInspector.ps1 -ProjectRoot Tests/Referenzprojekt`, Reiter Prompts und Resources | Fünf Prompts, drei Vorlagen und `delphi://build/last`; `prompts/get` liefert eine Nachricht (**Abnahme**) |
+| MP10 | `pwsh Tools/Test-McpTools.ps1` | Alle Werkzeuge, Ressourcen, Prompts und Vorlagen ok, Exit-Code 0 (**Abnahme**) |
+| MP11 | `/mcp__delphi__explain_form Source\UI.Auftrag.dfm` | Komponentenbaum, Ereignis-Handler mit Rumpf und Zeile (gemeinsame Handler einmal mit allen Komponenten), Datenbindungen |
+| MP12 | `/mcp__delphi__write_tests TAuftrag.Speichern` | Deklaration, Aufrufer, vorhandene Tests, Namensmuster der Testunit; Claude legt Tests in der passenden Testunit an und führt sie mit `run_tests` aus |
+| MP13 | Issue in „Meine Issues“ beginnen (Präfix `ATL-12 `), eine Unit ändern, `/mcp__delphi__prepare_commit` | Geänderte Dateien, Befunde nur in geänderten Zeilen, Hinweis auf betroffene Tests, Commit-Nachricht beginnt mit `ATL-12 ` |
+| MP14 | `"mcp": { "promptLanguage": "en" }`, `/mcp__delphi__unit_review UI.Auftrag` | Anleitung und Beschreibungen englisch |
+
+## Compilerregeln für platform, library und unsicheren Code (#1378)
+
+Vorbereitung: Atlas mit Index der RTL; `Tests/Compilermeldungen` mit den Fällen `Cm.W1002*`, `Cm.W1004*`, `Cm.W1005*`, `Cm.W1047*`, `Cm.W1048*` und `CmE2406`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PU1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TRuleWarnSwitchesTests`, `TUnsafeCodeTests`, `TDeprecatedRulesTests` grün (**Abnahme**) |
+| PU2 | `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.W100*','Cm.W104*','CmE2406' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1002, W1004, W1005, W1047, W1048 „erkannt“; die Gegenfälle `Cm.W1002b`, `Cm.W1004b`, `Cm.W1005b`, `Cm.W1047c`, `Cm.W1048c` ohne dcc-Meldung und ohne „zusätzlich“; `Cm.W1047b`, `Cm.W1048b` meldet dcc wie erwartet (**Abnahme**) |
+| PU3 | Unit, die `FindFirst`/`TSearchRec.FindData` oder `IncludeTrailingBackslash` benutzt, ohne Schalter | Wellenlinie „… ist platform (wie W1002)“, wie dcc beim Bauen |
+| PU4 | Dasselbe mit `<DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>` in der .dproj (Projektoptionen › Hinweise und Warnungen › Plattform-Symbol aus) bzw. `{$WARN SYMBOL_PLATFORM OFF}` davor | Keine Meldung, auch dcc schweigt |
+| PU5 | `{$UNSAFECODE ON}` in einer Unit | „Den Schalter UNSAFECODE gibt es nur für .NET …“ (wie W1002), Korrektur „Schalter UNSAFECODE entfernen“ |
+| PU6 | `P := @Wert;` und `K := TKunde(Zeiger);` ohne Schalter | Keine Meldung (dcc meldet W1047/W1048 ab Werk nicht) |
+| PU7 | Projektoptionen › Hinweise und Warnungen: „Unsicherer Code“ und „Unsichere Typumwandlung“ an (DCC_UNSAFE_CODE, DCC_UNSAFE_CAST), Projekt neu laden | `@Wert` meldet W1047, `TKunde(Zeiger)` W1048; `@Routine`, `TKunde(PInteger)` bleiben still; als Fehler eingestellt erscheinen beide als Fehler |
+
+## Compileranweisungen und fehlende Dateien (#1379)
+
+Vorbereitung: Prep-v1.2.0 mit `feature/1379-compileranweisungen`, Delphi 12 und 13; Fälle aus `Tests/Compilermeldungen/Faelle`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IR1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `Directives.Invalid*`, `Unresolved.InPathFileMissingWithoutProject`, `Unresolved.ErrorSwitchGivesE1074`, `UnitLookup.FindFileLikeCompiler` grün (**Abnahme**) |
+| IR2 | `pwsh Tools/Build-Compilermeldungen.ps1 -AtlasServer <exe> -Cases 'Cm.W1054','Cm.H1054','Cm.E2222','Cm.E2224','Cm.E2560','Cm.E2424','Cm.E1026','Cm.W1026','Cm.E2245','Cm.E2289','CmF1026'`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1054, H1054, E2222, E2224, E2560, E1030 (Cm.E2424), F1026, E1026, E2245, E1074 stehen auf „erkannt“, keine neuen Einträge unter „zusätzlich“ (**Abnahme**) |
+| IR3 | Delphi 12: dieselben Fälle wie IR2 bauen | Dieselben Codes wie Delphi 13; sonst Meldungstext an `delphiVersion` binden (#1382) |
+| IR4 | In einer Unit `{$MESSAGE WARN 'Noch offen'}` und `{$MESSAGE HINT 'Später'}` tippen | Warnung „{$MESSAGE WARN}: Noch offen (wie W1054).“ und Hinweis „{$MESSAGE HINT}: Später (wie H1054).“ sofort, ohne Build; in `{$IFDEF DEBUG}` keine Meldung |
+| IR5 | `{$I Gibts.Nicht.inc}` in einer Unit eines Projekts; danach die Datei im Ordner der Unit, in einem Suchpfad bzw. in `DCC_IncludePath` anlegen | Fehler „Include-Datei Gibts.Nicht.inc nicht gefunden (wie F1026).“; nach dem Anlegen verschwindet er an allen drei Orten |
+| IR6 | `{$R Fehlt.res}` in einer Unit; danach `Fehlt.rc` daneben anlegen | Fehler „Ressourcendatei Fehlt.res nicht gefunden (wie E1026).“; mit der .rc keine Meldung; `{$R *.res}` in der .dpr meldet nie |
+| IR7 | Include-Datei, die sich selbst einbindet; dann mit Wächter `{$IFNDEF X_INC}{$DEFINE X_INC} … {$ENDIF}` | „Rekursive Include-Datei: A.inc → A.inc (wie E2245).“; mit Wächter keine Meldung |
+| IR8 | `.dpr` ohne `.dproj` mit `uses X in 'Fehlt.pas'` öffnen bzw. mit `AtlasServer --check` prüfen | „Datei Fehlt.pas für X nicht gefunden (wie F1026).“ |
+| IR9 | `{$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR}` vor einem unbekannten Attribut | `unresolved-attribute` nennt E1074 statt W1074 |
+| IR10 | `"compiler-directive-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+## Umwandlungen zwischen Unicode- und ANSI-Strings (#1377)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| UW1 | `pwsh Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -Cases 'Cm.W105*','Cm.W106*' -AtlasServer <AtlasServer.exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1050, W1057, W1058, W1059, W1060, W1062 und W1068 stehen auf „erkannt“, auch in den neuen Fällen `Cm.W1050b`, `Cm.W1057b`, `Cm.W1058b`, `Cm.W1062b`; keine neuen Treffer unter „zusätzlich“ |
+| UW2 | Gegenfall `Cm.W1057c` im selben Lauf | dcc meldet nichts (sonst den Fall und die Regel anpassen); Atlas meldet nichts |
+| UW3 | In der IDE: `function IstZiffer(C: Char): Boolean; begin Result := C in ['0'..'9']; end;` in einer Unit ohne System.SysUtils, Alt+Enter „CharInSet verwenden“ | Befund „C ist Char; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt (wie W1050).“; danach `CharInSet(C, ['0'..'9'])` und System.SysUtils im uses, der Befund ist weg; der nächste Build meldet kein W1050 |
+| UW4 | `S := A;` mit `S: string; A: AnsiString`, Alt+Enter „Ausdrücklich in string umwandeln“ | Befund wie W1057, nach der Korrektur `S := string(A);` ohne Befund und ohne W1059 im Build |
+| UW5 | Vor der Zeile `{$WARN IMPLICIT_STRING_CAST OFF}`, danach `{$WARN IMPLICIT_STRING_CAST ERROR}` | Erst kein Befund, dann ein Fehler; der Build meldet wie Atlas nichts bzw. einen Fehler |
+| UW6 | `A := 'Schnee '#$2603;` mit `A: AnsiString` (deutsches Windows, Codepage 1252), dann in atlas.json `"string-conversion": {"ansiCodePage": 0}` | Befund „… (wie W1058 und W1062).“ wie im Build; mit 0 kein Befund |
+
+
+## Compilerhinweise zu RTTI, Initialize und Inline (#1381)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CR1 | `TOhneRtti = class` mit `published procedure Machen;` (wie `Cm.W1055`) | Hinweis `compiler-hints` an `Machen`: „published schaltet für TOhneRtti RTTI ein ($M+) … (wie W1055).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CR2 | Dieselbe Klasse als `class(TPersistent)`, als `TForm`-Nachfahr, mit `{$M+}` davor, mit `{$WARN TYPEINFO_IMPLICITLY_ADDED OFF}` davor | Keine Meldung; der Build meldet ebenfalls kein W1055 |
+| CR3 | Vorfahr in einer anderen Unit des Projekts unter `{$M+}`, Nachfahr mit published-Methode | Keine Meldung; ohne `{$M+}` am Vorfahren meldet der Nachfahr |
+| CR4 | `var Zahl: Integer; … Finalize(Zahl);` (wie `Cm.E2243`) | „Finalize(Zahl) hat keine Wirkung: Integer braucht kein Initialize/Finalize (wie H2243).“ |
+| CR5 | `procedure P(AZeiger: PString); begin Finalize(AZeiger); end;` (wie `Cm.H2244`), danach `Finalize(AZeiger^)` | Erst „… gemeint ist wohl AZeiger^ (wie H2244).“, danach keine Meldung |
+| CR6 | Eigene inline-Funktion `Rechne`, die `Doppelt` aus einer Unit im implementation-uses ruft; `Doppelt` verweist auf nichts außerhalb seiner Unit (wie `Cm.H2445`) | Hinweis `inline-not-expanded` „… steht nur im uses des implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).“ (**Abnahme**) |
+| CR7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 30 in Server und Plugin, Datei `index-30.atlasidx`) |
+| CR8 | Abgleich mit Delphi 12 und 13: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.W1055','Cm.E2243','Cm.H2244','Cm.H2445','Cm.W1055b','Cm.H2243b' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1055, H2243, H2244 und H2445 „erkannt“, keine neuen Einträge unter „zusätzlich“ |

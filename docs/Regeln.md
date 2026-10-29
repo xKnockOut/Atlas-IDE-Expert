@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 78 |
+| [Compiler vorab](#gruppe-compiler) | 83 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -168,6 +168,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`overload-directive-missing`](#overload-directive-missing) | Überladung ohne overload oder mit gleicher Signatur | Bug | Fehler |
 | [`duplicate-declaration`](#duplicate-declaration) | Bezeichner doppelt deklariert | Bug | Fehler |
 | [`conditional-directive-unbalanced`](#conditional-directive-unbalanced) | Bedingte Direktiven unvollständig oder unbekannt | Bug | Fehler |
+| [`compiler-directive-invalid`](#compiler-directive-invalid) | Compileranweisung ungültig oder Datei aus {$I}/{$R} fehlt | Bug | Fehler |
 | [`override-target-missing`](#override-target-missing) | override ohne passende virtuelle Methode | Bug | Fehler |
 | [`abstract-class-instantiated`](#abstract-class-instantiated) | Instanz einer Klasse mit abstrakten Methoden | Bug | Warnung |
 | [`property-accessor-invalid`](#property-accessor-invalid) | Getter oder Setter einer Property ungültig | Bug | Fehler |
@@ -194,12 +195,15 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`constant-initializer-mismatch`](#constant-initializer-mismatch) | Initialisierung einer Konstanten passt nicht | Bug | Fehler |
 | [`case-selector-not-ordinal`](#case-selector-not-ordinal) | case oder for ohne ordinalen Typ | Bug | Fehler |
 | [`suspicious-string-pointer-cast`](#suspicious-string-pointer-cast) | Zeiger und Zeichenbreite eines Strings passen nicht zusammen | Bug | Warnung |
+| [`string-conversion`](#string-conversion) | Umwandlung zwischen Unicode- und ANSI-Strings | Bug | Warnung |
+| [`unsafe-code`](#unsafe-code) | Unsicherer Code | Code Smell | Warnung |
 | [`inaccessible-member`](#inaccessible-member) | Zugriff auf ein nicht sichtbares Mitglied | Bug | Fehler |
 | [`unused-private-member`](#unused-private-member) | Privates Mitglied wird nie verwendet | Code Smell | Hinweis |
 | [`message-method-invalid`](#message-method-invalid) | message-Methode falsch deklariert | Bug | Fehler |
 | [`interface-declaration-invalid`](#interface-declaration-invalid) | Unzulässige Deklaration in einem Interface | Bug | Fehler |
 | [`implements-clause-invalid`](#implements-clause-invalid) | implements-Klausel unzulässig | Bug | Fehler |
 | [`calling-convention-required`](#calling-convention-required) | Aufrufkonvention passt nicht | Bug | Fehler |
+| [`dispinterface-invalid`](#dispinterface-invalid) | dispinterface-Deklaration unzulässig | Bug | Fehler |
 | [`abstract-declaration-invalid`](#abstract-declaration-invalid) | abstract, final oder static falsch kombiniert | Bug | Fehler |
 | [`unsatisfied-forward`](#unsatisfied-forward) | Vorwärtsdeklaration nie aufgelöst | Bug | Fehler |
 | [`member-hides-ancestor`](#member-hides-ancestor) | Member verdeckt einen Member des Vorfahren | Bug | Warnung |
@@ -208,6 +212,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`default-property-invalid`](#default-property-invalid) | default-Property falsch deklariert oder fehlt | Bug | Fehler |
 | [`property-redeclaration-invalid`](#property-redeclaration-invalid) | Neu deklarierte Property fehlt im Vorfahren | Bug | Fehler |
 | [`inline-not-expanded`](#inline-not-expanded) | Inline-Funktion wird nicht eingebettet | Code Smell | Hinweis |
+| [`compiler-hints`](#compiler-hints) | Compilerhinweis ohne eigene Regel | Code Smell | Hinweis |
 | [`directive-typo`](#directive-typo) | Unbekannte Direktive (Tippfehler) | Bug | Fehler |
 | [`constant-expression-error`](#constant-expression-error) | Fehler in einem konstanten Ausdruck | Bug | Fehler |
 | [`default-parameter-invalid`](#default-parameter-invalid) | Unzulässiger Standardwert eines Parameters | Bug | Fehler |
@@ -1869,7 +1874,7 @@ end;
 
 **Interface ohne GUID** · Bug · Warnung · Gruppe Fehler finden
 
-Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst niedrig. Die Schnellkorrektur fügt eine neue GUID ein.
+Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst niedrig. Die Schnellkorrektur fügt eine neue GUID ein. Ein dispinterface ohne GUID übersetzt nicht; das meldet dispinterface-invalid.
 
 Mit Treffer:
 
@@ -3017,7 +3022,7 @@ end;
 
 **Veraltetes oder gebundenes Symbol** · Code Smell · Warnung · Gruppe Compiler vorab
 
-Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, experimental, platform oder library wird verwendet (wie W1000, W1003, W1002, W1001), oder eine Unit, deren Kopf einen dieser Hinweise trägt, steht in uses (wie W1006, W1007, W1005, W1004). Gemeldet wird nur, was sicher aufgelöst ist. Der Editor streicht veraltete Namen durch; die Meldung nennt den Grund aus deprecated 'Grund'. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet. Welche Arten gemeldet werden, legt die Option kinds fest (Standard deprecated und experimental, wie meist in Projekten); die Schalter {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} usw. und {$WARNINGS OFF} gelten ab ihrer Stelle wie beim Compiler; ein Schalter in einem {$IF}-Zweig, der nicht sicher mit übersetzt wird, hält die Stelle still. Korrektur: durch den Namen aus dem Grund ersetzen (bei IncludeTrailingBackslash und ExcludeTrailingBackslash durch die plattformunabhängige Routine), wenn genau ein Name passt, an der Stelle sichtbar ist und dieselbe Art hat. Ohne Projektindex prüft die Regel nur die Symbole der Datei selbst.
+Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, experimental, platform oder library wird verwendet (wie W1000, W1003, W1002, W1001), oder eine Unit, deren Kopf einen dieser Hinweise trägt, steht in uses (wie W1006, W1007, W1005, W1004). Gemeldet wird nur, was sicher aufgelöst ist. Der Editor streicht veraltete Namen durch; die Meldung nennt den Grund aus deprecated 'Grund'. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet. Ob eine Art gemeldet wird, folgt wie bei dcc dem Stand der Warnung: ab Werk sind alle acht an, dann gilt die Projektoption der .dproj (DCC_SYMBOL_PLATFORM = false usw.), dann die Schalter {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} usw. und {$WARNINGS OFF} ab ihrer Stelle; ein Schalter in einem {$IF}-Zweig, der nicht sicher mit übersetzt wird, hält die Stelle still. Die Option kinds schränkt die Arten zusätzlich ein. Die .NET-Direktive {$UNSAFECODE ON|OFF} meldet die Regel wie ein plattformspezifisches Symbol (wie W1002), so wie dcc für Windows. Korrektur: durch den Namen aus dem Grund ersetzen (bei IncludeTrailingBackslash und ExcludeTrailingBackslash durch die plattformunabhängige Routine), wenn genau ein Name passt, an der Stelle sichtbar ist und dieselbe Art hat. Ohne Projektindex prüft die Regel nur die Symbole der Datei selbst.
 
 Entspricht der Compilermeldung `W1000`, `W1001`, `W1002`, `W1003`, `W1004`, `W1005`, `W1006`, `W1007`.
 
@@ -3025,7 +3030,7 @@ Stufe B (Namensauflösung über Units).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
-| `kinds` | string-list | `["deprecated","experimental"]` | Gemeldete Arten: deprecated, experimental, platform, library (platform und library sind standardmäßig aus). |
+| `kinds` | string-list | `["deprecated","experimental","platform","library"]` | Gemeldete Arten: deprecated, experimental, platform, library (Standard alle vier; eine im Projekt oder in der Datei abgeschaltete Warnung bleibt ohnehin still). |
 
 Mit Treffer:
 
@@ -5220,7 +5225,7 @@ end;
 
 **Unit in uses nicht gefunden** · Bug · Fehler · Gruppe Compiler vorab
 
-Eine Unit aus uses oder contains liegt weder im Projekt noch in den Ordnern, die der Compiler durchsucht: Ordner der verwendenden Datei, Projektordner, Suchpfade und DCU-Ausgabeordner der .dproj, Bibliothekspfade der Installation, jeweils als .pas oder .dcu und mit jedem Unit-Namespace davor (SysUtils → System.SysUtils); bei Packages zusätzlich die Units der requires-Packages (wie F2613). Ebenso gemeldet: eine Datei aus in '…', die es nicht gibt (F1026), ein Package aus requires, das weder als .dpk noch als .dcp gefunden wird (E2202), eine Unit, die sich selbst einbindet (F2092), und einmal eine fehlende Unit System, also ein fehlender Bibliothekspfad, statt einer Meldung je Unit (F1027). Einträge in {$IF}-Blöcken werden übergangen; ohne bekannte Installation, mit offenem Makro in einem Suchpfad oder einem requires-Package mit unbekanntem Inhalt bleibt die Regel still. Die Meldung nennt ähnliche Units. Korrekturen: die Unit mit Namespace (Forms → Vcl.Forms) bzw. eine ähnlich geschriebene einsetzen oder den Ordner unter dem Projekt, in dem die Unit liegt, in DCC_UnitSearchPath der Basiskonfiguration der .dproj aufnehmen.
+Eine Unit aus uses oder contains liegt weder im Projekt noch in den Ordnern, die der Compiler durchsucht: Ordner der verwendenden Datei, Projektordner, Suchpfade und DCU-Ausgabeordner der .dproj, Bibliothekspfade der Installation, jeweils als .pas oder .dcu und mit jedem Unit-Namespace davor (SysUtils → System.SysUtils); bei Packages zusätzlich die Units der requires-Packages (wie F2613). Ebenso gemeldet: eine Datei aus in '…', die es nicht gibt (F1026, auch ohne Projekt, denn es zählt nur der Pfad relativ zur verwendenden Datei), ein Package aus requires, das weder als .dpk noch als .dcp gefunden wird (E2202), eine Unit, die sich selbst einbindet (F2092), und einmal eine fehlende Unit System, also ein fehlender Bibliothekspfad, statt einer Meldung je Unit (F1027). Einträge in {$IF}-Blöcken werden übergangen; ohne bekannte Installation, mit offenem Makro in einem Suchpfad oder einem requires-Package mit unbekanntem Inhalt bleibt die Regel still. Die Meldung nennt ähnliche Units. Korrekturen: die Unit mit Namespace (Forms → Vcl.Forms) bzw. eine ähnlich geschriebene einsetzen oder den Ordner unter dem Projekt, in dem die Unit liegt, in DCC_UnitSearchPath der Basiskonfiguration der .dproj aufnehmen.
 
 Entspricht der Compilermeldung `F2613`, `F1027`, `F1026`, `E2202`, `F2092`.
 
@@ -5249,9 +5254,9 @@ uses
 
 **Attribut nicht gefunden und still ignoriert** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein Attribut [Name] lässt sich weder einer Klasse NameAttribute noch Name zuordnen, meist weil eine Unit in uses fehlt. Delphi warnt nur (W1074) und übergeht das Attribut: DUnitX-Tests laufen dann nicht, JSON- oder ORM-Zuordnungen fehlen. Die Meldung nennt die Unit, die das Attribut im Index deklariert; eine Fassaden-Unit, die den Typ aus einer anderen Kandidatin weiterreicht (DUnitX.TestFramework statt DUnitX.Attributes), geht vor, und die DUnitX-Attribute sind auch ohne DUnitX im Index bekannt. Attribute des Compilers wie Weak, Unsafe, Ref und Volatile zählen immer. Still ohne die Unit System im Index, wenn eine Unit aus uses nicht im Index steht (sie könnte das Attribut deklarieren), in {$IF}-Blöcken und bei unbekanntem Vorfahren der umgebenden Klasse; mit Include-Dateien ist die Konfidenz mittel. Korrektur: Unit in uses aufnehmen.
+Ein Attribut [Name] lässt sich weder einer Klasse NameAttribute noch Name zuordnen, meist weil eine Unit in uses fehlt. Delphi warnt nur (W1074, nach {$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR} E1074) und übergeht das Attribut: DUnitX-Tests laufen dann nicht, JSON- oder ORM-Zuordnungen fehlen. Die Meldung nennt die Unit, die das Attribut im Index deklariert; eine Fassaden-Unit, die den Typ aus einer anderen Kandidatin weiterreicht (DUnitX.TestFramework statt DUnitX.Attributes), geht vor, und die DUnitX-Attribute sind auch ohne DUnitX im Index bekannt. Attribute des Compilers wie Weak, Unsafe, Ref und Volatile zählen immer. Still ohne die Unit System im Index, wenn eine Unit aus uses nicht im Index steht (sie könnte das Attribut deklarieren), in {$IF}-Blöcken und bei unbekanntem Vorfahren der umgebenden Klasse; mit Include-Dateien ist die Konfidenz mittel. Korrektur: Unit in uses aufnehmen.
 
-Entspricht der Compilermeldung `W1074`, `E2289`.
+Entspricht der Compilermeldung `W1074`, `E2289`, `E1074`.
 
 Stufe B (Namensauflösung über Units).
 
@@ -5447,6 +5452,38 @@ Richtig:
 {$ENDIF}
 
 procedure TDienst.Starten;
+```
+
+<a id="compiler-directive-invalid"></a>
+### compiler-directive-invalid
+
+**Compileranweisung ungültig oder Datei aus {$I}/{$R} fehlt** · Bug · Fehler · Gruppe Compiler vorab
+
+Eine Compileranweisung außerhalb bedingter Zweige, die dcc ablehnt oder selbst meldet: {$MESSAGE WARN 'Text'} und {$MESSAGE HINT 'Text'} zeigen ihren Text als Warnung bzw. Hinweis (wie W1054, H1054); {$WEAKPACKAGEUNIT ON} zusammen mit {$DENYPACKAGEUNIT ON} (wie E2222); {$DESIGNONLY} oder {$RUNONLY} in einer Unit statt in einem Package (wie E2224); {$OBJTYPENAME} für einen schlichten Alias wie TZahl = Integer (wie E2560); {$CODEPAGE} mit einer Zahl über 65535 (wie E1030); eine Datei aus {$I} bzw. {$INCLUDE}, die es weder neben der Unit noch in den Suchpfaden des Projekts gibt (wie F1026); eine Include-Datei, die sich über unbedingte {$I} selbst einbindet, direkt oder über weitere Include-Dateien (wie E2245); eine Ressourcendatei aus {$R} bzw. {$RESOURCE}, die sich nicht finden lässt (wie E1026). Dateien sucht die Regel wie dcc: neben der Unit, im Projektordner, in den Suchpfaden, DCC_IncludePath, DCC_ResourcePath und den Bibliothekspfaden der Installation; ohne Projekt, mit unbekannter Installation oder offenem Makro in einem Pfad bleibt sie still. Nicht geprüft: {$R Name.res Name.rc} und eine .res neben einer gleichnamigen .rc (die IDE übersetzt sie vor dem Compiler), Formulare ({$R *.dfm}, form-resource-missing), Masken wie {$R *.res}, Schalter wie {$I+} und {$R-} sowie {$MESSAGE} ohne Art oder mit ERROR bzw. FATAL. Direktiven in bedingten Zweigen übergeht die Regel, denn dcc meldet nur, was es übersetzt.
+
+Entspricht der Compilermeldung `W1054`, `H1054`, `E2222`, `E2224`, `E2560`, `E1030`, `F1026`, `E2245`, `E1026`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+unit Kunden;
+
+{$I Gemeinsam.inc}
+{$DESIGNONLY}
+
+interface
+```
+
+Richtig:
+
+```pascal
+unit Kunden;
+
+{$I Gemeinsam.inc}
+
+interface
 ```
 
 <a id="override-target-missing"></a>
@@ -6495,7 +6532,7 @@ case IndexStr(Befehl, ['start', 'stop']) of 0: Starten; 1: Stoppen; end;
 
 PChar bzw. PWideChar auf einen AnsiString, RawByteString oder UTF8String und PAnsiChar auf einen string, UnicodeString oder WideString (wie W1044): Zeiger und Zeichenbreite passen nicht zusammen, typisch nach der Unicode-Umstellung; die API liest dann Datenmüll bzw. nur das erste Zeichen. Gemeldet wird nur bei sicher bekanntem Typ des Arguments, dessen Deklaration immer mit der Umwandlung übersetzt wird. string(PAnsiChar) wandelt korrekt um, ein Zeiger auf TBytes kann gewollt sein; beides meldet die Regel nicht. Korrekturen: eigene Variable mit passendem Stringtyp deklarieren (PChar(Pfad) mit Pfad: AnsiString wird Pfad: string), string(…) bzw. AnsiString(…) um das Argument, passenden Zeigertyp verwenden.
 
-Entspricht der Compilermeldung `W1044`, `W1048`.
+Entspricht der Compilermeldung `W1044`.
 
 Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
 
@@ -6509,6 +6546,66 @@ Richtig:
 
 ```pascal
 var Pfad: string; ... DeleteFile(PChar(Pfad));
+```
+
+<a id="string-conversion"></a>
+### string-conversion
+
+**Umwandlung zwischen Unicode- und ANSI-Strings** · Bug · Warnung · Gruppe Compiler vorab
+
+Implizite und ausdrückliche Umwandlungen zwischen string, UnicodeString oder WideString auf der einen und AnsiString, RawByteString oder UTF8String auf der anderen Seite, wie die Compilerwarnungen: implizit in string (wie W1057) bzw. in AnsiString mit möglichem Datenverlust (wie W1058) bei Zuweisungen, Inline-Variablen mit Typ und Argumenten für Wert- und const-Parameter von Routinen ohne Überladungen; ausdrückliche Umwandlungen string(A) (wie W1059) und AnsiString(S) (wie W1060); eine Stringkonstante mit Zeichen, die die ANSI-Codepage nicht kennt, an einen AnsiString (wie W1058 und W1062); ein WideChar in einem Mengenausdruck aus Zeichenliteralen wie C in ['0'..'9'] (wie W1050); ein Zeichen eines string direkt ändern (S[1] := 'x', wie W1068). Wie bei dcc meldet die Regel W1059, W1060 und W1068 nur nach {$WARN EXPLICIT_STRING_CAST ON}, {$WARN EXPLICIT_STRING_CAST_LOSS ON} bzw. {$WARN IMMUTABLE_STRINGS ON}; {$WARN … OFF} und {$WARNINGS OFF} schalten sie ab ihrer Stelle ab, {$WARN … ERROR} meldet einen Fehler. Gemeldet wird nur, wenn beide Typen sicher bekannt sind (Variablen, Felder, Properties, Funktionsergebnisse und typisierte Konstanten der eingebauten Stringtypen aus System, auch über einen einfachen Alias) und ihre Deklarationen immer mit der Anweisung übersetzt werden. Still bleiben: Verkettungen, Umwandlungen als Quelle, Umwandlungen zwischen zwei ANSI-Typen (AnsiString, RawByteString, UTF8String; dcc wandelt nach Codepage um), eigene Stringtypen wie type AnsiString(28591), {$H-} und Delphi vor 2009. W1062 hängt von der ANSI-Codepage des übersetzenden Rechners ab (Option ansiCodePage, Vorgabe 1252; 0 schaltet diese Prüfung ab); gemeldet werden nur Zeichen, die Windows auch nicht ersatzweise abbildet: Hebräisch bis Thai, Hangul, Kana und CJK, Symbole und Dingbats U+2600–U+27BF und Zeichen außerhalb der BMP (Emoji). Projektoptionen der .dproj (DCC_IMPLICIT_STRING_CAST = false, true oder error usw.) gelten wie bei dcc. Korrekturen: ausdrücklich umwandeln (string(A), AnsiString(S)); CharInSet verwenden und System.SysUtils in uses eintragen.
+
+Entspricht der Compilermeldung `W1050`, `W1057`, `W1058`, `W1059`, `W1060`, `W1062`, `W1068`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `ansiCodePage` | integer | `1252` | ANSI-Codepage des Rechners, der übersetzt; Zeichen, die ihr sicher fehlen, meldet die Regel wie W1062, wenn sie an einen AnsiString gehen. Bekannt ist nur 1252; 0 oder ein anderer Wert schaltet diese Prüfung ab. |
+
+Mit Treffer:
+
+```pascal
+function IstZiffer(const Zeichen: Char): Boolean;
+begin
+  Result := Zeichen in ['0'..'9'];
+end;
+```
+
+Richtig:
+
+```pascal
+function IstZiffer(const Zeichen: Char): Boolean;
+begin
+  Result := CharInSet(Zeichen, ['0'..'9']);
+end;
+```
+
+<a id="unsafe-code"></a>
+### unsafe-code
+
+**Unsicherer Code** · Code Smell · Warnung · Gruppe Compiler vorab
+
+Code, den dcc seit Delphi für .NET als unsicher meldet: der @-Operator auf eine Variable, ein Feld oder einen Parameter (wie W1047) und die Umwandlung eines untypisierten Pointer in eine Klasse, TObject(P) bzw. TKunde(P) (wie W1048). dcc schaltet diese Warnungen ab Werk ab; die Regel meldet nur, wo sie wie bei dcc an sind: {$WARN UNSAFE_CODE ON} bzw. {$WARN UNSAFE_CAST ON} vor der Stelle oder DCC_UNSAFE_CODE bzw. DCC_UNSAFE_CAST = true in der .dproj; ERROR macht den Treffer zum Fehler, OFF und {$WARNINGS OFF} halten ihn still. @ auf Routinen und Methoden, typisierte Zeiger, Umwandlungen als Argument (TObject(Pointer(I))) und Interfaces bleiben still. Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit der Stelle übersetzt wird.
+
+Entspricht der Compilermeldung `W1047`, `W1048`.
+
+Stufe B (Namensauflösung über Units).
+
+Mit Treffer:
+
+```pascal
+{$WARN UNSAFE_CAST ON}
+...
+Kunde := TKunde(Zeiger);
+```
+
+Richtig:
+
+```pascal
+{$WARN UNSAFE_CAST ON}
+...
+Kunde := Kunden[I]; // TObjectList<TKunde> statt TList mit Zeigern
 ```
 
 <a id="inaccessible-member"></a>
@@ -6810,6 +6907,29 @@ Richtig:
 function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external 'msvcrt.dll';
 ```
 
+<a id="dispinterface-invalid"></a>
+### dispinterface-invalid
+
+**dispinterface-Deklaration unzulässig** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein dispinterface verletzt eine seiner festen Regeln: kein Vorfahr in Klammern (wie E2228), eine GUID ist Pflicht (wie E2229), Methoden tragen keine Direktiven außer dispid und den Hinweisen deprecated, platform, library und experimental (wie E2230; gemeldet werden Aufrufkonventionen und Bindungsdirektiven wie virtual, overload bleibt still) und Properties kein read oder write (wie E2231; stattdessen readonly, writeonly oder dispid). Vorwärtsdeklarationen und Deklarationen in bedingten Zweigen bleiben still. Korrekturen: Vorfahren entfernen, GUID einfügen, Direktive entfernen.
+
+Entspricht der Compilermeldung `E2228`, `E2229`, `E2230`, `E2231`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+DAnzeige = dispinterface(IBasis) ['{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A2228}'] procedure Machen; stdcall; dispid 1; end;
+```
+
+Richtig:
+
+```pascal
+DAnzeige = dispinterface ['{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A2228}'] procedure Machen; dispid 1; end;
+```
+
 <a id="abstract-declaration-invalid"></a>
 ### abstract-declaration-invalid
 
@@ -7055,6 +7175,37 @@ uses
   System.JSON, System.Generics.Collections;
 ...
 for Wert in Feld as TJSONArray do
+```
+
+<a id="compiler-hints"></a>
+### compiler-hints
+
+**Compilerhinweis ohne eigene Regel** · Code Smell · Hinweis · Gruppe Compiler vorab
+
+Hinweise und Warnungen des Compilers, die zu keiner anderen Regel gehören. published in einer Klasse ohne RTTI: Der Compiler schaltet für sie {$M+} ein (wie W1055); gemeldet einmal je Klasse am ersten Mitglied hinter dem ersten ausdrücklichen published, still bei {$M+} oder {$TYPEINFO ON} an der Deklaration, bei einem Vorfahren mit RTTI (bekannte Nachfahren von TPersistent, {$M+} an seiner Deklaration oder eigene published-Mitglieder) und nach {$WARN TYPEINFO_IMPLICITLY_ADDED OFF} oder {$WARNINGS OFF}; ein Vorfahr, dessen Kette nicht bis TObject bekannt ist oder dessen Datei sich nicht lesen lässt, hält die Regel still, ebenso generische und verschachtelte Klassen. Initialize oder Finalize mit einer Variablen eines eingebauten Typs ohne verwaltete Teile wie Integer, Double oder Boolean, auch über Aliase (wie H2243), oder mit einer Variablen eines Zeigers auf einen verwalteten Typ wie PString oder PVariant, wo wohl P^ gemeint war (wie H2244); nur Aufrufe mit einem einfachen Bezeichner, dessen Typ sicher bekannt ist, still nach {$HINTS OFF} und wenn Initialize bzw. Finalize eine eigene Routine oder ein Mitglied meinen kann (with, Methode einer Klasse mit unbekanntem Vorfahren).
+
+Entspricht der Compilermeldung `W1055`, `H2243`, `H2244`.
+
+Stufe B (Namensauflösung über Units).
+
+Mit Treffer:
+
+```pascal
+type
+  TEinstellung = class
+  published
+    property Wert: Integer read FWert;
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  TEinstellung = class(TPersistent)
+  published
+    property Wert: Integer read FWert;
+  end;
 ```
 
 <a id="directive-typo"></a>
