@@ -6,7 +6,7 @@
 interface
 
 uses
-  Cm.Hilfe.F2047 // <- F2047;
+  Cm.Hilfe.F2047; // <- F2047
 
 implementation
 
