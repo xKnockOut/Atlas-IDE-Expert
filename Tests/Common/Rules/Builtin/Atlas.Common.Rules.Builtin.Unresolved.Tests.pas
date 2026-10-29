@@ -3,9 +3,11 @@
 // Tests für uses-unit-not-found (#1016): Beispiel aus dem Issue mit Vorschlag,
 // Namespace-Korrektur, Suchpfad-Korrektur in der .dproj, "in 'Pfad'" (F1026),
 // Selbstbezug (F2092), requires (E2202), fehlende Bibliothek (F1027), bedingte
-// Einträge, unsichere Suche, Option searchPaths, Abschalten und Ausnahmen;
+// Einträge, unsichere Suche, Option searchPaths, Abschalten und Ausnahmen,
+// "in 'Pfad'" ohne Projekt (#1379);
 // unresolved-attribute (#1019): Beispiel mit Korrektur, aufgelöste und
-// Compiler-Attribute, andere Bibliothek, unbekanntes Attribut, Fassaden-Unit;
+// Compiler-Attribute, andere Bibliothek, unbekanntes Attribut, Fassaden-Unit,
+// E1074 nach {$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR} (#1379);
 // unresolved-type (#1031): Beispiel mit Korrektur, Deklarationsarten, kein Typ
 // (E2005), Zeigerziel (E2564), stille Fälle, Abschalten.
 
@@ -28,6 +30,8 @@ type
     procedure SearchPathFixEditsProject;
     [Test]
     procedure InPathFileMissing;
+    [Test]
+    procedure InPathFileMissingWithoutProject;
     [Test]
     procedure SelfUseWithoutLookup;
     [Test]
@@ -59,6 +63,8 @@ type
     procedure FacadeUnitWins;
     [Test]
     procedure AttributeOffGroupAndExclude;
+    [Test]
+    procedure ErrorSwitchGivesE1074;
   end;
 
   [TestFixture]
@@ -258,6 +264,42 @@ begin
     Lookup(LibraryFiles + ['C:\P\Src\Haupt.pas'], ['System']), '', '');
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('Datei Alt\Alt.pas für Alt nicht gefunden (wie F1026).', Found[0].Message);
+end;
+
+/// <summary>Kontext ohne Unit-Suche, in dem es neben der Datei nur ANames gibt (#1379).</summary>
+function ExistingFilesContext(const AText: string; const ANames: TArray<string>): TRuleContext;
+begin
+  Result := Default(TRuleContext);
+  Result.Text := AText;
+  Result.FileName := 'C:\P\App.dpr';
+  Result.FileExists :=
+    function(const AName: string): Boolean
+    begin
+      Result := IndexText(AName, ANames) >= 0;
+    end;
+end;
+
+procedure TUsesUnitNotFoundTests.InPathFileMissingWithoutProject;
+var
+  mText: string;
+  mFound: TArray<TRuleFinding>;
+  mContext: TRuleContext;
+begin
+  // Fall CmF1026: eine .dpr ohne .dproj, also ohne Unit-Suche; "in '…'" braucht keine Suchpfade.
+  mText := 'program App;'#10'uses'#10'  System.SysUtils,'#10'  Haupt in ''Src\Haupt.pas'','#10 +
+    '  Alt in ''Alt\Alt.pas'';'#10'begin'#10'end.';
+  mFound := TRuleAssert.ContextFindings(TUsesUnitNotFoundRule.Create, ExistingFilesContext(mText,
+    ['Src\Haupt.pas']), '');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Datei Alt\Alt.pas für Alt nicht gefunden (wie F1026).', mFound[0].Message);
+  Assert.AreEqual(4, mFound[0].Range.StartPos.Line);
+  // Ohne Dateizugriff keine Aussage; Einträge in bedingten Blöcken bleiben still.
+  mContext := ExistingFilesContext(mText, nil);
+  mContext.FileExists := nil;
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TUsesUnitNotFoundRule.Create, mContext, ''))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.ContextFindings(TUsesUnitNotFoundRule.Create, ExistingFilesContext(
+    'program App;'#10'uses'#10'{$IFDEF ALT}'#10'  Alt in ''Alt\Alt.pas'','#10'{$ENDIF}'#10 +
+    '  System.SysUtils;'#10'begin'#10'end.', nil), ''))));
 end;
 
 procedure TUsesUnitNotFoundTests.SelfUseWithoutLookup;
@@ -574,6 +616,27 @@ function KundenUnit(const AUses, ATypes: string): string;
 begin
   Result := 'unit Kunden;'#10'interface'#10'uses'#10'  ' + AUses + ';'#10'type'#10'  TKunde = class'#10'  end;'#10 +
     ATypes + 'implementation'#10'end.';
+end;
+
+procedure TUnresolvedAttributeTests.ErrorSwitchGivesE1074;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fall Cm.E2289: Mit {$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR} meldet Delphi 13 E1074 statt W1074.
+  mFound := AttributeFindings('{$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR}'#10'unit U;'#10'interface'#10'type'#10 +
+    '  TMitAttribut = class'#10'  public'#10'    [GibtEsNichtAttribute]'#10'    procedure Machen;'#10'  end;'#10 +
+    'implementation'#10'procedure TMitAttribut.Machen;'#10'begin'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Attribut GibtEsNichtAttribute nicht gefunden und wird ignoriert (wie E1074).', mFound[0].Message);
+  // Wieder auf ON gestellt, erst danach oder in einem bedingten Block: W1074.
+  mFound := AttributeFindings('unit U;'#10'interface'#10'{$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR}'#10 +
+    '{$WARN UNKNOWN_CUSTOM_ATTRIBUTE ON}'#10'type'#10'  TKunde = class'#10'  public'#10'    [GibtEsNicht]'#10 +
+    '    FName: string;'#10'  end;'#10'{$IFDEF STRENG}'#10'{$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR}'#10'{$ENDIF}'#10 +
+    '  TAuftrag = class'#10'  public'#10'    [GibtEsAuchNicht]'#10'    FNummer: Integer;'#10'  end;'#10 +
+    '{$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR}'#10'implementation'#10'end.');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Attribut GibtEsNicht nicht gefunden und wird ignoriert (wie W1074).', mFound[0].Message);
+  Assert.AreEqual('Attribut GibtEsAuchNicht nicht gefunden und wird ignoriert (wie W1074).', mFound[1].Message);
 end;
 
 procedure TUnresolvedTypeTests.IssueExampleWithFix;
