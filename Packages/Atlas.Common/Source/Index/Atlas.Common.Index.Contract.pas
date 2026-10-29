@@ -201,6 +201,16 @@ type
     Symbol: TIndexSymbol;
   end;
 
+  /// <summary>Geschätzter Speicher des Index nach Bereichen in Byte (#1356); die drei ergeben MemoryBytes.</summary>
+  TIndexMemoryParts = record
+    /// <summary>Symbole und uses der Projekt-Units (ohne Verwendungen).</summary>
+    ProjectBytes: Int64;
+    /// <summary>Symbole und uses der Bibliotheks-Units (ohne Verwendungen).</summary>
+    LibraryBytes: Int64;
+    /// <summary>Verwendungen aller Units, soweit nicht ausgelagert.</summary>
+    UsageBytes: Int64;
+  end;
+
   /// <summary>Prüffunktion für ISymbolIndex.HasSymbol.</summary>
   TSymbolMatch = reference to function(const ASymbol: TIndexSymbol): Boolean;
 
@@ -228,6 +238,8 @@ type
     function SymbolCount: Integer;
     /// <summary>Geschätzter Speicherbedarf der Einträge in Byte.</summary>
     function MemoryBytes: Int64;
+    /// <summary>MemoryBytes nach Bereichen: Projekt, Bibliothek, Verwendungen (#1356).</summary>
+    function MemoryParts: TIndexMemoryParts;
     /// <summary>Zahl der kompakt gehaltenen Units.</summary>
     function CompactCount: Integer;
     /// <summary>Zahl der Units, deren Verwendungen wegen des Budgets ausgelagert sind (#492).</summary>
