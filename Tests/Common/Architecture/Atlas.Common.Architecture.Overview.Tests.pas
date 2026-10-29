@@ -4,7 +4,7 @@
 // Zusammenhalt, Ausreißer, zentrale Units mit Rolle, Zyklen,
 // Querverbindungen mit Fundstelle, Steckbrief, Determinismus, Laufzeit;
 // Feinheit γ der Gruppierung (#1366); Nachteilung übergroßer und loser
-// Teilsysteme (#1364).
+// Teilsysteme (#1364); Fundament-Units beim Gruppieren (#1365).
 
 interface
 
@@ -53,6 +53,16 @@ type
     [Test]
     [Category('Benchmark')]
     procedure SplittingTwoThousandUnitsIsFast;
+    [Test]
+    procedure FoundationsGroupedLikeBefore;
+    [Test]
+    procedure FoundationsSeparate;
+    [Test]
+    procedure FoundationsAttached;
+    [Test]
+    procedure LocalFoundationStays;
+    [Test]
+    procedure FoundationsTextAndKey;
   end;
 
 implementation
@@ -66,6 +76,7 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.Overview,
+  Atlas.Common.Architecture.Layout,
   Atlas.Common.Architecture.UsesGraph.Tests;
 
 /// <summary>Drei Namensräume Core, Data, Ui mit je vier eng verbundenen Units; Data.Db → Core.Base und
@@ -166,6 +177,39 @@ begin
       mUses := mUses + [Format('Rest.Core.K%.2d', [mOther])];
     Result := Result + [UsesUnit(Format('Rest.Core.K%.2d', [mItem]), mUses, nil)];
   end;
+end;
+
+/// <summary>Zwei getrennte Gruppen App.Ui (fünf Units) und App.Dbg (vier Units), je als Kette über implementation,
+/// die beide über interface stark an App.Common.Logging hängen; App.Tool.Only verwendet nur Logging. Dazu App.Index mit drei Units, die nur sie
+/// verwenden, an App.Index.Types (Rolle Fundament, aber nur im eigenen Teilsystem verwendet).</summary>
+function FoundationProject: TArray<TUnitIndex>;
+begin
+  Result := nil;
+  Result := Result + [UsesUnit('App.Common.Logging', nil, nil), UsesUnit('App.Tool.Only', ['App.Common.Logging'], nil)];
+  Result := Result + [UsesUnit('App.Ui.U1', ['App.Common.Logging'], nil),
+    UsesUnit('App.Ui.U2', ['App.Common.Logging'], ['App.Ui.U1']),
+    UsesUnit('App.Ui.U3', ['App.Common.Logging'], ['App.Ui.U2']),
+    UsesUnit('App.Ui.U4', ['App.Common.Logging'], ['App.Ui.U3']),
+    UsesUnit('App.Ui.U5', ['App.Common.Logging'], ['App.Ui.U4'])];
+  Result := Result + [UsesUnit('App.Dbg.D1', ['App.Common.Logging'], nil),
+    UsesUnit('App.Dbg.D2', ['App.Common.Logging'], ['App.Dbg.D1']),
+    UsesUnit('App.Dbg.D3', ['App.Common.Logging'], ['App.Dbg.D2']),
+    UsesUnit('App.Dbg.D4', ['App.Common.Logging'], ['App.Dbg.D3'])];
+  Result := Result + [UsesUnit('App.Index.Types', nil, nil), UsesUnit('App.Index.A', ['App.Index.Types'], nil),
+    UsesUnit('App.Index.B', ['App.Index.Types', 'App.Index.A'], nil),
+    UsesUnit('App.Index.C', ['App.Index.Types', 'App.Index.B'], nil)];
+end;
+
+function FoundationsWith(AMode: TArchitectureFoundations): TArchitectureOverview;
+var
+  mGrouping: TArchitectureGrouping;
+begin
+  // Ohne Nachteilung (#1364), die das zusammengezogene Teilsystem sonst ebenfalls trennen würde.
+  mGrouping := TArchitectureGrouping.Default;
+  mGrouping.Foundations := AMode;
+  mGrouping.MaxShare := 0;
+  mGrouping.MinCohesion := 0;
+  Result := AnalyzeGrouped(FoundationProject, mGrouping);
 end;
 
 function SubsystemOf(const AOverview: TArchitectureOverview; const AUnit: string): string;
@@ -552,6 +596,18 @@ begin
   Assert.AreNotEqual(TArchitectureGrouping.Default.Key, mGrouping.Key);
 end;
 
+function SortedNames(const AOverview: TArchitectureOverview; const AUnits: TArray<Integer>): string;
+var
+  mNames: TArray<string>;
+  mUnit: Integer;
+begin
+  mNames := nil;
+  for mUnit in AUnits do
+    mNames := mNames + [AOverview.Units[mUnit].Name];
+  TArray.Sort<string>(mNames);
+  Result := string.Join(',', mNames);
+end;
+
 function IntsText(const AValues: TArray<Integer>): string;
 var
   mValue: Integer;
@@ -625,6 +681,114 @@ begin
   Assert.IsTrue(mWatch.ElapsedMilliseconds < 2000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
   Assert.IsTrue(Length(mOverview.Subsystems) > Length(Analyze(mUnits).Subsystems),
     IntToStr(Length(mOverview.Subsystems)));
+end;
+
+procedure TOverviewTests.FoundationsGroupedLikeBefore;
+var
+  mOverview: TArchitectureOverview;
+  mSubsystem: TOverviewSubsystem;
+begin
+  // Mit group zieht Logging Ui und Dbg in ein Teilsystem (wie vor #1365).
+  mOverview := FoundationsWith(TArchitectureFoundations.Group);
+  Assert.AreEqual(SubsystemOf(mOverview, 'App.Ui.U3'), SubsystemOf(mOverview, 'App.Dbg.D3'));
+  Assert.AreEqual(SubsystemOf(mOverview, 'App.Ui.U3'), SubsystemOf(mOverview, 'App.Common.Logging'));
+  for mSubsystem in mOverview.Subsystems do
+    Assert.IsFalse(mSubsystem.Foundation);
+end;
+
+procedure TOverviewTests.FoundationsSeparate;
+var
+  mOverview: TArchitectureOverview;
+  mFoundation, mUi: TOverviewSubsystem;
+  mLink: TOverviewCrossLink;
+  mOutlier: TOverviewOutlier;
+begin
+  mOverview := FoundationsWith(TArchitectureFoundations.Separate);
+  // Fundament zuerst, mit Logging und der Unit, die nur Logging verwendet.
+  mFoundation := mOverview.Subsystems[0];
+  Assert.IsTrue(mFoundation.Foundation);
+  Assert.AreEqual(TArchitectureAnalyzer.FoundationName, mFoundation.Name);
+  Assert.AreEqual('App.Common.Logging,App.Tool.Only', SortedNames(mOverview, mFoundation.Units));
+  Assert.AreEqual(-1, mFoundation.ColorSlot);
+  Assert.AreEqual(Double(0), mFoundation.Cohesion, 1E-9);
+  // Ui und Dbg getrennt.
+  Assert.AreNotEqual(SubsystemOf(mOverview, 'App.Ui.U3'), SubsystemOf(mOverview, 'App.Dbg.D3'));
+  Assert.AreEqual('Ui', SubsystemOf(mOverview, 'App.Ui.U1'));
+  Assert.AreEqual('Dbg', SubsystemOf(mOverview, 'App.Dbg.D1'));
+  // Zusammenhalt ohne die Kanten ins Fundament: Ui hat nur innere Kanten.
+  mUi := SubsystemAt(mOverview, 'App.Ui.U1');
+  Assert.AreEqual(4, mUi.InnerEdges);
+  Assert.AreEqual(0, mUi.OuterEdges);
+  Assert.AreEqual(Double(1), mUi.Cohesion, 1E-9);
+  // Keine Querverbindung und kein Ausreißer zum Fundament.
+  for mLink in mOverview.CrossLinks do
+  begin
+    Assert.IsFalse(mOverview.Subsystems[mLink.FromSubsystem].Foundation);
+    Assert.IsFalse(mOverview.Subsystems[mLink.ToSubsystem].Foundation);
+  end;
+  for mOutlier in mOverview.Outliers do
+  begin
+    Assert.IsFalse(mOverview.Subsystems[mOverview.Units[mOutlier.Unit_].Subsystem].Foundation);
+    Assert.IsFalse(mOverview.Subsystems[mOutlier.Suggested].Foundation);
+  end;
+  // Farben der übrigen ab 0 wie ohne Fundament.
+  Assert.AreEqual(0, mOverview.Subsystems[1].ColorSlot);
+  // Mit allen Vorgaben (Nachteilung an) ebenso, das Fundament in der Mitte der Karte.
+  mOverview := Analyze(FoundationProject);
+  Assert.IsTrue(mOverview.Subsystems[0].Foundation);
+  Assert.AreNotEqual(SubsystemOf(mOverview, 'App.Ui.U3'), SubsystemOf(mOverview, 'App.Dbg.D3'));
+  Assert.AreEqual(Double(0), TArchitectureLayouter.Compute(mOverview).Subsystems[0].X, 1E-9);
+  mOverview := FoundationsWith(TArchitectureFoundations.Separate);
+  // Zweimal gleich.
+  Assert.AreEqual(UnitNames(mOverview, mOverview.Subsystems[1].Units),
+    UnitNames(FoundationsWith(TArchitectureFoundations.Separate), FoundationsWith(
+    TArchitectureFoundations.Separate).Subsystems[1].Units));
+end;
+
+procedure TOverviewTests.FoundationsAttached;
+var
+  mOverview: TArchitectureOverview;
+  mSubsystem: TOverviewSubsystem;
+begin
+  mOverview := FoundationsWith(TArchitectureFoundations.Attach);
+  Assert.AreNotEqual(SubsystemOf(mOverview, 'App.Ui.U3'), SubsystemOf(mOverview, 'App.Dbg.D3'));
+  // Logging kommt zu Ui (fünf Abhängige gegen vier), App.Tool.Only folgt ihm.
+  Assert.AreEqual(SubsystemOf(mOverview, 'App.Ui.U3'), SubsystemOf(mOverview, 'App.Common.Logging'));
+  Assert.AreEqual(SubsystemOf(mOverview, 'App.Common.Logging'), SubsystemOf(mOverview, 'App.Tool.Only'));
+  for mSubsystem in mOverview.Subsystems do
+    Assert.IsFalse(mSubsystem.Foundation);
+end;
+
+procedure TOverviewTests.LocalFoundationStays;
+var
+  mMode: TArchitectureFoundations;
+  mOverview: TArchitectureOverview;
+begin
+  // App.Index.Types hat die Rolle Fundament, wird aber nur in Index verwendet: bleibt dort.
+  for mMode := Low(TArchitectureFoundations) to High(TArchitectureFoundations) do
+  begin
+    mOverview := FoundationsWith(mMode);
+    Assert.IsTrue(mOverview.Units[mOverview.IndexOf('App.Index.Types')].Role = TOverviewUnitRole.Foundation);
+    Assert.AreEqual(SubsystemOf(mOverview, 'App.Index.A'), SubsystemOf(mOverview, 'App.Index.Types'));
+    Assert.AreEqual('Index', SubsystemOf(mOverview, 'App.Index.Types'));
+  end;
+end;
+
+procedure TOverviewTests.FoundationsTextAndKey;
+var
+  mGrouping: TArchitectureGrouping;
+  mMode: TArchitectureFoundations;
+begin
+  Assert.IsTrue(TArchitectureGrouping.Default.Foundations = TArchitectureFoundations.Separate);
+  for mMode := Low(TArchitectureFoundations) to High(TArchitectureFoundations) do
+  begin
+    Assert.IsTrue(TArchitectureGrouping.TryFoundations(TArchitectureGrouping.FoundationsText(mMode), mGrouping.Foundations));
+    Assert.IsTrue(mGrouping.Foundations = mMode);
+  end;
+  Assert.IsFalse(TArchitectureGrouping.TryFoundations('Separate', mMode));
+  mGrouping := TArchitectureGrouping.Default;
+  mGrouping.Foundations := TArchitectureFoundations.Attach;
+  Assert.AreNotEqual(TArchitectureGrouping.Default.Key, mGrouping.Key);
 end;
 
 initialization

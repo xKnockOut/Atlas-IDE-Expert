@@ -847,6 +847,8 @@ type
     ArchitectureComparisonResolution,
     // Nachgeteilte Teilsysteme (#1364).
     ArchitectureSubsystemPart, ArchitectureSubsystemFamily,
+    // Teilsystem „Fundament“ (#1365).
+    ArchitectureFoundationLine, ArchitectureFoundationRule, ArchitectureFoundationEdges,
     // Treffersicherheit der Verwendungen (#1119).
     ResultsSureGroup, ResultsInferredGroup, ResultsOnlySure, RenameChangedGroup, RenameUnchangedGroup,
     ReferenceReasonInterface, ReferenceReasonVirtual, ReferenceReasonAmbiguous, ReferenceReasonUnresolved, ReferenceReasonInactiveBranch, ReferenceReasonText,
@@ -3152,6 +3154,10 @@ const
      ' · Feinheit verschieden (Stand γ = %s, jetzt %s): Teilsystemwechsel können daher kommen',
      '%s · Teil von %s',
      '%s (nachgeteilt in %d Teile)',
+     '%s (%d Units, übergreifende Fundamente)',
+     'Units mit Rolle Fundament, deren direkt Abhängige in mindestens drei Teilsystemen liegen oder höchstens ' +
+       'zu 60 Prozent im eigenen, und Units, die nur sie verwenden; Kanten dorthin zählen nicht als Querverbindung',
+     'Kanten zum Fundament',
      'Sicher (%d)',
      'Erschlossen (%d) · vor dem Umbenennen prüfen',
      'Nur sichere',
@@ -6114,6 +6120,10 @@ const
      ' · different granularity (state γ = %s, now %s): subsystem moves may come from that',
      '%s · part of %s',
      '%s (split into %d parts)',
+     '%s (%d units, shared foundations)',
+     'Units with the foundation role whose direct dependents lie in at least three subsystems or at most 60 percent in ' +
+       'their own, and units that only use them; edges there are not cross links',
+     'Edges to the foundation',
      'Sure (%d)',
      'Inferred (%d) · check before renaming',
      'Sure only',
