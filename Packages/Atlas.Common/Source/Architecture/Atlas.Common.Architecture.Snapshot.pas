@@ -26,7 +26,9 @@
 //    "central": ["A"],
 //    "subsystems": [{"name": "Kern", "units": ["A", "B"], "central": "A",
 //                    "inner": 2, "outer": 0, "cohesion": 1, "isolated": false,
-//                    "parent": "Common"}],   ("parent" nur bei nachgeteilten Teilsystemen, #1364)
+//                    "foundation": true, "parent": "Common"}],
+//                   ("foundation" nur am Teilsystem „Fundament“, #1365; "parent" nur bei
+//                    nachgeteilten Teilsystemen, #1364)
 //    "outliers": [{"unit": "C", "suggested": "Kern", "reason": "namespace"}],
 //    "cycles": [{"interfaceOnly": true, "units": ["A", "B"],
 //                "edges": [["A", "B", "interface"], ["B", "A", "interface"]]}],
@@ -76,6 +78,8 @@ type
     Isolated: Boolean;
     /// <summary>Ursprüngliches Teilsystem bei Nachteilung (#1364); '' sonst und in älteren Ständen.</summary>
     Parent: string;
+    /// <summary>Teilsystem „Fundament“ (#1365); False in älteren Ständen.</summary>
+    Foundation: Boolean;
   end;
 
   TSnapshotOutlier = record
@@ -300,6 +304,7 @@ begin
     Result.Subsystems[Index].Cohesion := Subsystem.Cohesion;
     Result.Subsystems[Index].Isolated := Subsystem.Isolated;
     Result.Subsystems[Index].Parent := Subsystem.Parent;
+    Result.Subsystems[Index].Foundation := Subsystem.Foundation;
   end;
   SetLength(Result.Outliers, Length(AOverview.Outliers));
   for Index := 0 to High(AOverview.Outliers) do
@@ -502,6 +507,8 @@ begin
         .Append(', "cohesion": ').Append(Number(Subsystem.Cohesion))
         .Append(', "isolated": ').Append(Bool(Subsystem.Isolated));
       // Nur bei nachgeteilten Teilsystemen: Stände ohne Nachteilung bleiben wie vor #1364.
+      if Subsystem.Foundation then
+        Builder.Append(', "foundation": true');
       if Subsystem.Parent <> '' then
         Builder.Append(', "parent": ').Append(Text(Subsystem.Parent));
       Builder.Append('}');
@@ -822,6 +829,7 @@ begin
       Result.Subsystems[Index].Cohesion := FloatOf(Item, 'cohesion');
       Result.Subsystems[Index].Isolated := FlagOf(Item, 'isolated');
       Result.Subsystems[Index].Parent := TextOf(Item, 'parent');
+      Result.Subsystems[Index].Foundation := FlagOf(Item, 'foundation');
     end;
   end;
   Items := ArrayOf(FData, 'outliers');
