@@ -12,9 +12,10 @@
 // uses-unit-not-found (#1016, wie F2613, F1026, F1027, E2202, F2092): Units in
 // uses und contains, die der Compiler nicht findet (TRuleContext.Units, die
 // Suche steht in Atlas.Common.Projects.UnitLookup), Dateien aus "in '…'",
-// Packages aus requires und Units, die sich selbst einbinden. Findet die Suche
-// nicht einmal System, fehlt der Bibliothekspfad: eine Meldung F1027 statt
-// einer je Unit. Einträge in {$IF…}-Blöcken bleiben still, ebenso alles, worüber
+// Packages aus requires und Units, die sich selbst einbinden. Fehlt die Datei
+// aus "in '…'", meldet die Regel das auch ohne Projekt (#1379). Findet die
+// Suche nicht einmal System, fehlt der Bibliothekspfad: eine Meldung F1027
+// statt einer je Unit. Einträge in {$IF…}-Blöcken bleiben still, ebenso alles, worüber
 // die Suche keine sichere Aussage trifft (Installation unbekannt, Makro im
 // Pfad). Korrekturen: Namen mit Namespace bzw. ähnlich geschriebene Units
 // einsetzen, Ordner außerhalb der Suchpfade in DCC_UnitSearchPath der .dproj
@@ -22,7 +23,8 @@
 //
 // unresolved-attribute (#1019, wie W1074, E2289): Ein Attribut [Name] lässt
 // sich weder als Klasse NameAttribute noch als Name auflösen; Delphi warnt nur
-// und übergeht es (DUnitX-Tests laufen dann nicht). Vorgeschlagen wird die Unit,
+// und übergeht es (DUnitX-Tests laufen dann nicht). Nach {$WARN
+// UNKNOWN_CUSTOM_ATTRIBUTE ERROR} meldet Delphi 13 E1074 (#1379). Vorgeschlagen wird die Unit,
 // die den Typ im Index deklariert; Fassaden-Units, die ihn aus einer anderen
 // Kandidaten-Unit weiterreichen (DUnitX.TestFramework), gehen vor. Ohne System
 // im Index, wenn eine Unit aus uses nicht im Index steht (sie könnte das
@@ -114,6 +116,7 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.Attributes,
   Atlas.Common.Semantics.SystemIntrinsics,
@@ -447,7 +450,17 @@ begin
     if (Entry.Kind <> TUsesListKind.RequiredPackage) and (Own <> '') and SameText(Entry.Name, Own) then
       AReport.Add(Entry.Range, Format('%s verwendet sich selbst (wie F2092).', [Entry.Name]));
   if AContext.Units = nil then
+  begin
+    // F1026 auch ohne Projekt (#1379, Fall CmF1026): "in '…'" gilt nur relativ zur verwendenden Datei, dafür
+    // braucht es keine Suchpfade.
+    if Assigned(AContext.FileExists) then
+      for Entry in List do
+        if (Entry.Kind <> TUsesListKind.RequiredPackage) and (Entry.InPath <> '') and
+          not ((Entry.Range.StartPos.Line <= High(Lines)) and Lines[Entry.Range.StartPos.Line]) and
+          not AContext.FileExists(Entry.InPath) then
+          AReport.Add(Entry.Range, Format('Datei %s für %s nicht gefunden (wie F1026).', [Entry.InPath, Entry.Name]));
     Exit;
+  end;
   Sources := SourcesOf(AContext.Options);
   // F1027: Ohne System fehlt der Bibliothekspfad; dann eine Meldung statt einer je Unit.
   if AContext.Units.Find('System', '', AContext.FileName, [TRuleUnitSource.Project]) = TRuleUnitAnswer.Missing then
@@ -587,6 +600,47 @@ var
   Lines: TArray<Boolean>;
   LineBreak: string;
   Level: TRuleConfidence;
+  // {$WARN UNKNOWN_CUSTOM_ATTRIBUTE …} außerhalb bedingter Blöcke: Offset und ob ERROR (#1379).
+  mSwitchOffsets: TArray<Integer>;
+  mSwitchErrors: TArray<Boolean>;
+
+  procedure ReadSwitches;
+  var
+    mToken: TPascalToken;
+    mWords: TArray<string>;
+  begin
+    mSwitchOffsets := nil;
+    mSwitchErrors := nil;
+    for mToken in AContext.Tree.Tokens do
+    begin
+      if (mToken.Kind <> TPascalTokenKind.Directive) or
+        ((mToken.StartPos.Line <= High(Lines)) and Lines[mToken.StartPos.Line]) then
+        Continue;
+      mWords := TDirectiveNames.Body(mToken.Text).Split([' ', #9, #13, #10], TStringSplitOptions.ExcludeEmpty);
+      if (Length(mWords) >= 3) and SameText(mWords[0], 'WARN') and
+        SameText(mWords[1], 'UNKNOWN_CUSTOM_ATTRIBUTE') then
+      begin
+        mSwitchOffsets := mSwitchOffsets + [mToken.Offset];
+        mSwitchErrors := mSwitchErrors + [SameText(mWords[2], 'ERROR')];
+      end;
+    end;
+  end;
+
+  /// <summary>Mit {$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR} davor meldet dcc E1074 statt W1074 (#1379).</summary>
+  function CodeAt(AOffset: Integer): string;
+  var
+    mIndex: Integer;
+  begin
+    Result := 'W1074';
+    for mIndex := 0 to High(mSwitchOffsets) do
+      if mSwitchOffsets[mIndex] < AOffset then
+      begin
+        if mSwitchErrors[mIndex] then
+          Result := 'E1074'
+        else
+          Result := 'W1074';
+      end;
+  end;
 
   procedure CheckItem(AItem: TSyntaxNode);
   var
@@ -626,7 +680,7 @@ var
     Message := Format('Attribut %s nicht gefunden und wird ignoriert', [Use.Name]);
     if MatchText(Bare, DUnitXAttributes) or ((Length(Units) > 0) and StartsText('DUnitX', Units[0])) then
       Message := Message + '; die Tests laufen nicht';
-    Message := Message + ' (wie W1074).';
+    Message := Message + Format(' (wie %s).', [CodeAt(NameNode.StartOffset)]);
     if Length(Units) = 1 then
       Message := Message + Format(' Unit %s fehlt.', [Units[0]])
     else if Length(Units) > 1 then
@@ -685,6 +739,7 @@ begin
     AContext.Namespaces, AContext.EnsureUnit) then
     Exit;
   Lines := ConditionalLines(AContext.Tree.Tokens);
+  ReadSwitches;
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
   // Mit Include-Dateien kann das Attribut dort deklariert sein.
   Level := TRuleConfidence.High;
