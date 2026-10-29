@@ -3967,6 +3967,22 @@
       "level": "B"
     },
     {
+      "id": "compiler-hints",
+      "name": "Compiler hint without its own rule",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "compiler",
+      "description": "Hints and warnings of the compiler that belong to no other rule. published in a class without RTTI: the compiler switches on {$M+} for it (like W1055); reported once per class at the first member behind the first explicit published, silent with {$M+} or {$TYPEINFO ON} at the declaration, with an ancestor that has RTTI (known descendants of TPersistent, {$M+} at its declaration or own published members) and after {$WARN TYPEINFO_IMPLICITLY_ADDED OFF} or {$WARNINGS OFF}; an ancestor whose chain is not known up to TObject or whose file cannot be read keeps the rule silent, as do generic and nested classes. Initialize or Finalize with a variable of a built-in type without managed parts such as Integer, Double or Boolean, also through aliases (like H2243), or with a variable of a pointer to a managed type such as PString or PVariant, where P^ was probably meant (like H2244); only calls with one plain identifier whose type is known for sure, silent after {$HINTS OFF} and when Initialize or Finalize can mean an own routine or a member (with, method of a class with an unknown ancestor).",
+      "bad": "type\n  TEinstellung = class\n  published\n    property Wert: Integer read FWert;\n  end;",
+      "good": "type\n  TEinstellung = class(TPersistent)\n  published\n    property Wert: Integer read FWert;\n  end;",
+      "compilerCodes": [
+        "W1055",
+        "H2243",
+        "H2244"
+      ],
+      "level": "B"
+    },
+    {
       "id": "directive-typo",
       "name": "Unknown directive (typo)",
       "category": "bug",

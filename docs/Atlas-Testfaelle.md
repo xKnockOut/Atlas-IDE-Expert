@@ -8721,3 +8721,19 @@ Vorbereitung: Prep-v1.2.0 mit `feature/1379-compileranweisungen`, Delphi 12 und 
 | UW4 | `S := A;` mit `S: string; A: AnsiString`, Alt+Enter „Ausdrücklich in string umwandeln“ | Befund wie W1057, nach der Korrektur `S := string(A);` ohne Befund und ohne W1059 im Build |
 | UW5 | Vor der Zeile `{$WARN IMPLICIT_STRING_CAST OFF}`, danach `{$WARN IMPLICIT_STRING_CAST ERROR}` | Erst kein Befund, dann ein Fehler; der Build meldet wie Atlas nichts bzw. einen Fehler |
 | UW6 | `A := 'Schnee '#$2603;` mit `A: AnsiString` (deutsches Windows, Codepage 1252), dann in atlas.json `"string-conversion": {"ansiCodePage": 0}` | Befund „… (wie W1058 und W1062).“ wie im Build; mit 0 kein Befund |
+
+
+## Compilerhinweise zu RTTI, Initialize und Inline (#1381)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CR1 | `TOhneRtti = class` mit `published procedure Machen;` (wie `Cm.W1055`) | Hinweis `compiler-hints` an `Machen`: „published schaltet für TOhneRtti RTTI ein ($M+) … (wie W1055).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CR2 | Dieselbe Klasse als `class(TPersistent)`, als `TForm`-Nachfahr, mit `{$M+}` davor, mit `{$WARN TYPEINFO_IMPLICITLY_ADDED OFF}` davor | Keine Meldung; der Build meldet ebenfalls kein W1055 |
+| CR3 | Vorfahr in einer anderen Unit des Projekts unter `{$M+}`, Nachfahr mit published-Methode | Keine Meldung; ohne `{$M+}` am Vorfahren meldet der Nachfahr |
+| CR4 | `var Zahl: Integer; … Finalize(Zahl);` (wie `Cm.E2243`) | „Finalize(Zahl) hat keine Wirkung: Integer braucht kein Initialize/Finalize (wie H2243).“ |
+| CR5 | `procedure P(AZeiger: PString); begin Finalize(AZeiger); end;` (wie `Cm.H2244`), danach `Finalize(AZeiger^)` | Erst „… gemeint ist wohl AZeiger^ (wie H2244).“, danach keine Meldung |
+| CR6 | Eigene inline-Funktion `Rechne`, die `Doppelt` aus einer Unit im implementation-uses ruft; `Doppelt` verweist auf nichts außerhalb seiner Unit (wie `Cm.H2445`) | Hinweis `inline-not-expanded` „… steht nur im uses des implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).“ (**Abnahme**) |
+| CR7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 30 in Server und Plugin, Datei `index-30.atlasidx`) |
+| CR8 | Abgleich mit Delphi 12 und 13: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.W1055','Cm.E2243','Cm.H2244','Cm.H2445','Cm.W1055b','Cm.H2243b' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1055, H2243, H2244 und H2445 „erkannt“, keine neuen Einträge unter „zusätzlich“ |

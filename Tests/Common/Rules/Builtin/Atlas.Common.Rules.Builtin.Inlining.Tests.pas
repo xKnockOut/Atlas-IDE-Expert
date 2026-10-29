@@ -5,7 +5,8 @@
 // eingebettete Routine schweigen; strict private (H2444), inline-Aufrufer mit
 // Unit nur im implementation-uses (H2445), direkter und indirekter Zyklus
 // (H2456, H2457); Schnellkorrektur; abschaltbar; die Verweise im Index;
-// Laufzeit bei vielen Aufrufen und langer uses-Kette (#1220).
+// Laufzeit bei vielen Aufrufen und langer uses-Kette (#1220); H2445 auch
+// bei inline-Routinen, deren Rumpf auf nichts außerhalb verweist (#1381).
 
 interface
 
@@ -32,6 +33,14 @@ type
     procedure StrictPrivateInSameUnit;
     [Test]
     procedure InlineCallerWithImplementationUses;
+    /// <summary>#1381: Halb verweist auf nichts außerhalb seiner Unit (Cm.H2445); auch dann meldet dcc H2445.
+    /// Gegenfälle: nicht inline aufrufende Routine, Unit im interface-uses.</summary>
+    [Test]
+    procedure InlineCallerWithoutBodyReferences;
+    /// <summary>#1381: Wie Cm.H2456 bleibt dcc 13 bei einem Zyklus still, wenn der Rumpf auf nichts außerhalb
+    /// verweist (abhängig von der Reihenfolge der Übersetzung, #1383).</summary>
+    [Test]
+    procedure CycleWithoutBodyReferencesIsSilent;
     [Test]
     procedure CircularUnits;
     [Test]
@@ -81,10 +90,15 @@ const
     'unit Werk.Mathe;'#10 +
     'interface'#10 +
     'function Mal2(A: Integer): Integer;'#10 +
+    'function Halb(A: Integer): Integer; inline;'#10 +
     'implementation'#10 +
     'function Mal2(A: Integer): Integer;'#10 +
     'begin'#10 +
     '  Result := A * 2;'#10 +
+    'end;'#10 +
+    'function Halb(A: Integer): Integer;'#10 +
+    'begin'#10 +
+    '  Result := A div 2;'#10 +
     'end;'#10 +
     'end.';
 
@@ -330,6 +344,63 @@ begin
     Messages(Findings(Source)));
 end;
 
+procedure TInliningRulesTests.InlineCallerWithoutBodyReferences;
+const
+  Source =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'function Vier: Integer; inline;'#10 +
+    'implementation'#10 +
+    'uses Werk.Mathe;'#10 +
+    'function Vier: Integer;'#10 +
+    'begin'#10 +
+    '  Result := Halb(8);'#10 +
+    'end;'#10 +
+    'function Acht: Integer;'#10 +
+    'begin'#10 +
+    '  Result := Halb(16);'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  Assert.AreEqual('7:12 Inline-Funktion Halb wird nicht eingebettet: Werk.Mathe steht nur im uses des ' +
+    'implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).|',
+    Messages(Findings(Source)));
+  Assert.AreEqual('', Messages(Findings(ReplaceStr(ReplaceStr(Source, 'uses Werk.Mathe;'#10, ''),
+    'interface'#10, 'interface'#10'uses Werk.Mathe;'#10))));
+end;
+
+procedure TInliningRulesTests.CycleWithoutBodyReferencesIsSilent;
+const
+  cZirkel =
+    'unit Werk.Zirkel;'#10 +
+    'interface'#10 +
+    'function Drei: Integer; inline;'#10 +
+    'implementation'#10 +
+    'uses Haupt;'#10 +
+    'function Drei: Integer;'#10 +
+    'begin'#10 +
+    '  Result := 3;'#10 +
+    'end;'#10 +
+    'end.';
+  cSource =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'uses Werk.Zirkel;'#10 +
+    'function Rechne: Integer;'#10 +
+    'begin'#10 +
+    '  Result := Drei;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mIndex: ISymbolIndex;
+begin
+  mIndex := NewIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cZirkel, 'C:\P\Werk.Zirkel.pas', nil));
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+    'Haupt.pas')));
+end;
+
 procedure TInliningRulesTests.CircularUnits;
 const
   Source =
@@ -381,6 +452,14 @@ begin
   // nicht inline. Eingebaute Typen (Integer) löst erst die Regel auf.
   Assert.AreEqual('TJsonFeld.GetZahl=:TListe<Integer>|TJsonFeld.Anzahl=:Integer,:TListe<Integer>|' +
     'TJsonFeld.Geheim=!FGeheim|TJsonFeld.GetEnumerator=:TListe<Integer>|Doppelt=Mal2|', Refs);
+  // Ohne Verweise bleibt die inline-Routine erkennbar (#1381); Mal2 ist nicht inline.
+  UnitIndex := TIndexExtractor.ExtractText(UnitMathe, 'C:\P\Werk.Mathe.pas', nil);
+  Refs := '';
+  for Symbol in UnitIndex.Symbols do
+    if Symbol.InInterface and (Symbol.InlineRefs <> nil) then
+      Refs := Refs + Symbol.QualifiedName + '=' + IntToStr(Length(Symbol.InlineRefs)) + ':' +
+        String.Join(',', Symbol.InlineRefs) + '|';
+  Assert.AreEqual('Halb=1:|', Refs);
 end;
 
 procedure TInliningRulesTests.RuleIsRegistered;

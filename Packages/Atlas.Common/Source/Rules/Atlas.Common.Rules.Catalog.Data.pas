@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4681] of string = (
+  BaseLines: array[0..4697] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -4607,6 +4607,27 @@ const
     '      "level": "B"',
     '    },',
     '    {',
+    '      "id": "compiler-hints",',
+    '      "name": "Compiler hint without its own rule",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "compiler",',
+    '      "description": "Hints and warnings of the compiler that belong to no other rule. published in a class without RTTI: the compiler switches on {$M+} for it (like W1055); reported once per class at' +
+    ' the first member behind the first explicit published, silent with {$M+} or {$TYPEINFO ON} at the declaration, with an ancestor that has RTTI (known descendants of TPersistent, {$M+} at its declaratio' +
+    'n or own published members) and after {$WARN TYPEINFO_IMPLICITLY_ADDED OFF} or {$WARNINGS OFF}; an ancestor whose chain is not known up to TObject or whose file cannot be read keeps the rule silent, a' +
+    's do generic and nested classes. Initialize or Finalize with a variable of a built-in type without managed parts such as Integer, Double or Boolean, also through aliases (like H2243), or with a variab' +
+    'le of a pointer to a managed type such as PString or PVariant, where P^ was probably meant (like H2244); only calls with one plain identifier whose type is known for sure, silent after {$HINTS OFF} an' +
+    'd when Initialize or Finalize can mean an own routine or a member (with, method of a class with an unknown ancestor).",',
+    '      "bad": "type\n  TEinstellung = class\n  published\n    property Wert: Integer read FWert;\n  end;",',
+    '      "good": "type\n  TEinstellung = class(TPersistent)\n  published\n    property Wert: Integer read FWert;\n  end;",',
+    '      "compilerCodes": [',
+    '        "W1055",',
+    '        "H2243",',
+    '        "H2244"',
+    '      ],',
+    '      "level": "B"',
+    '    },',
+    '    {',
     '      "id": "directive-typo",',
     '      "name": "Unknown directive (typo)",',
     '      "category": "bug",',
@@ -5470,7 +5491,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2156] of string = (
+  OverlayLines_de: array[0..2161] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -7988,6 +8009,17 @@ const
     't der gerufenen steht nur im uses des implementation-Teils (wie H2445), oder die Unit der gerufenen Routine verwendet diese Unit direkt (wie H2456) bzw. über andere Units (wie H2457). Geprüft werden A' +
     'ufrufe, Properties mit inline-Getter bzw. -Setter und for-in (GetEnumerator, MoveNext, Current). Der Index merkt sich, worauf jeder inline-Rumpf verweist; die Regel meldet nur, was sie sicher auflöst ' +
     '(unbekannte Verweise und geerbte Mitglieder aus anderen Units bleiben stumm). Mit {$INLINE OFF} in der Datei schweigt sie. Korrektur: die fehlenden Units in das uses des Abschnitts aufnehmen."',
+    '    },',
+    '    {',
+    '      "id": "compiler-hints",',
+    '      "name": "Compilerhinweis ohne eigene Regel",',
+    '      "description": "Hinweise und Warnungen des Compilers, die zu keiner anderen Regel gehören. published in einer Klasse ohne RTTI: Der Compiler schaltet für sie {$M+} ein (wie W1055); gemeldet einm' +
+    'al je Klasse am ersten Mitglied hinter dem ersten ausdrücklichen published, still bei {$M+} oder {$TYPEINFO ON} an der Deklaration, bei einem Vorfahren mit RTTI (bekannte Nachfahren von TPersistent, {' +
+    '$M+} an seiner Deklaration oder eigene published-Mitglieder) und nach {$WARN TYPEINFO_IMPLICITLY_ADDED OFF} oder {$WARNINGS OFF}; ein Vorfahr, dessen Kette nicht bis TObject bekannt ist oder dessen Da' +
+    'tei sich nicht lesen lässt, hält die Regel still, ebenso generische und verschachtelte Klassen. Initialize oder Finalize mit einer Variablen eines eingebauten Typs ohne verwaltete Teile wie Integer, D' +
+    'ouble oder Boolean, auch über Aliase (wie H2243), oder mit einer Variablen eines Zeigers auf einen verwalteten Typ wie PString oder PVariant, wo wohl P^ gemeint war (wie H2244); nur Aufrufe mit einem ' +
+    'einfachen Bezeichner, dessen Typ sicher bekannt ist, still nach {$HINTS OFF} und wenn Initialize bzw. Finalize eine eigene Routine oder ein Mitglied meinen kann (with, Methode einer Klasse mit unbekan' +
+    'ntem Vorfahren)."',
     '    },',
     '    {',
     '      "id": "directive-typo",',

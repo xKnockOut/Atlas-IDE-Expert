@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 83 |
+| [Compiler vorab](#gruppe-compiler) | 84 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -213,6 +213,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`default-property-invalid`](#default-property-invalid) | default-Property falsch deklariert oder fehlt | Bug | Fehler |
 | [`property-redeclaration-invalid`](#property-redeclaration-invalid) | Neu deklarierte Property fehlt im Vorfahren | Bug | Fehler |
 | [`inline-not-expanded`](#inline-not-expanded) | Inline-Funktion wird nicht eingebettet | Code Smell | Hinweis |
+| [`compiler-hints`](#compiler-hints) | Compilerhinweis ohne eigene Regel | Code Smell | Hinweis |
 | [`directive-typo`](#directive-typo) | Unbekannte Direktive (Tippfehler) | Bug | Fehler |
 | [`constant-expression-error`](#constant-expression-error) | Fehler in einem konstanten Ausdruck | Bug | Fehler |
 | [`default-parameter-invalid`](#default-parameter-invalid) | Unzulässiger Standardwert eines Parameters | Bug | Fehler |
@@ -7145,6 +7146,37 @@ uses
   System.JSON, System.Generics.Collections;
 ...
 for Wert in Feld as TJSONArray do
+```
+
+<a id="compiler-hints"></a>
+### compiler-hints
+
+**Compilerhinweis ohne eigene Regel** · Code Smell · Hinweis · Gruppe Compiler vorab
+
+Hinweise und Warnungen des Compilers, die zu keiner anderen Regel gehören. published in einer Klasse ohne RTTI: Der Compiler schaltet für sie {$M+} ein (wie W1055); gemeldet einmal je Klasse am ersten Mitglied hinter dem ersten ausdrücklichen published, still bei {$M+} oder {$TYPEINFO ON} an der Deklaration, bei einem Vorfahren mit RTTI (bekannte Nachfahren von TPersistent, {$M+} an seiner Deklaration oder eigene published-Mitglieder) und nach {$WARN TYPEINFO_IMPLICITLY_ADDED OFF} oder {$WARNINGS OFF}; ein Vorfahr, dessen Kette nicht bis TObject bekannt ist oder dessen Datei sich nicht lesen lässt, hält die Regel still, ebenso generische und verschachtelte Klassen. Initialize oder Finalize mit einer Variablen eines eingebauten Typs ohne verwaltete Teile wie Integer, Double oder Boolean, auch über Aliase (wie H2243), oder mit einer Variablen eines Zeigers auf einen verwalteten Typ wie PString oder PVariant, wo wohl P^ gemeint war (wie H2244); nur Aufrufe mit einem einfachen Bezeichner, dessen Typ sicher bekannt ist, still nach {$HINTS OFF} und wenn Initialize bzw. Finalize eine eigene Routine oder ein Mitglied meinen kann (with, Methode einer Klasse mit unbekanntem Vorfahren).
+
+Entspricht der Compilermeldung `W1055`, `H2243`, `H2244`.
+
+Stufe B (Namensauflösung über Units).
+
+Mit Treffer:
+
+```pascal
+type
+  TEinstellung = class
+  published
+    property Wert: Integer read FWert;
+  end;
+```
+
+Richtig:
+
+```pascal
+type
+  TEinstellung = class(TPersistent)
+  published
+    property Wert: Integer read FWert;
+  end;
 ```
 
 <a id="directive-typo"></a>
