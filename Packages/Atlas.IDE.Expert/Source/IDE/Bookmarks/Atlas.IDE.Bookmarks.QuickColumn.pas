@@ -97,6 +97,8 @@ type
     FWidth: Integer;
     FWantedWidth: Integer;
     FTimer: TTimer;
+    /// <summary>Anmeldung bei TAtlasIdeGutterColumns: Spalte vor dem Abbau eines Editorfensters abgeben (#1233).</summary>
+    FColumnsHandle: Integer;
     FTip: TAtlasNoteTip;
     FAppEvents: TApplicationEvents;
     FMenu: TPopupMenu;
@@ -173,6 +175,7 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
+  Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Bookmarks.Service;
 
@@ -233,6 +236,11 @@ begin
     TAtlasGuard.Log('Schnelle Lesezeichen: Die IDE nimmt keinen Editor-Notifier an, die Spalte bleibt aus');
   FAppEvents := TApplicationEvents.Create(nil);
   FAppEvents.OnMessage := AppMessage;
+  FColumnsHandle := TAtlasIdeGutterColumns.Register(
+    procedure
+    begin
+      DropColumn;
+    end);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 100;
   FTimer.OnTimer := Tick;
@@ -244,6 +252,7 @@ var
   Editors: INTACodeEditorServices;
 begin
   FTimer.Free;
+  TAtlasIdeGutterColumns.Unregister(FColumnsHandle);
   if FAppEvents <> nil then
   begin
     FAppEvents.OnMessage := nil;
@@ -311,6 +320,9 @@ begin
     FLoggedNoServices := True;
     Exit;
   end;
+  // Kurz nach dem Abbau eines Editorfensters nicht wieder anfordern (#1233, TAtlasIdeGutterColumns).
+  if not TAtlasIdeGutterColumns.Allowed then
+    Exit;
   DropColumn;
   // Hinter den Haltepunkten, also weiterhin links der Zahlen. gclBeforeLineNumbers überzeichnete die IDE in
   // Delphi 13 mit den Zeilennummern; sichtbar war die Spalte nur in frisch eingefügten Zeilen (#1281).
