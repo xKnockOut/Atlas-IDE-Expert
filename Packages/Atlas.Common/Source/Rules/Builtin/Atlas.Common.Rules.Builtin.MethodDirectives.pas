@@ -8,9 +8,17 @@
 //                                 zusammen mit final (E2371), eine Klasse
 //                                 abstract sealed (E2383) und static an einer
 //                                 Instanzmethode oder virtuellen Klassenmethode
-//                                 (E2376).
+//                                 (E2376). Eine Klasse sealed mit offenen
+//                                 abstrakten Methoden (#1380): an der Klasse
+//                                 E2540 und je Methode E2539, an einer eigenen
+//                                 abstrakten Methode zusätzlich E2383;
+//                                 abstract sealed meldet auch E2540 (wie dcc in
+//                                 Cm.E2383, Cm.E2539, Cm.E2540).
 //
-// Die Regel liest die Direktiven aus dem Syntaxbaum und braucht keinen Index.
+// Die Regel liest die Direktiven aus dem Syntaxbaum. Nur für geerbte abstrakte
+// Methoden fragt sie Datei und Index über TAncestry (wie
+// abstract-class-instantiated); bricht die Kette der Vorfahren ab, fehlen nur
+// die Methoden jenseits der Lücke.
 // override und message zählen wie virtual (override; abstract; deklariert eine
 // geerbte Methode neu als abstrakt). Ein Rumpf gilt nur dann als Rumpf einer
 // abstrakten Methode, wenn keine gleichnamige nicht abstrakte Methode derselben
@@ -45,9 +53,12 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Text.Lines;
 
 type
@@ -79,6 +90,8 @@ var
   Paths: TArray<string>;
   Declared: TArray<TDeclaredMethod>;
   Lines: TArray<string>;
+  Cache: IRuleDerivedCache;
+  Ancestry: TAncestry;
 
   /// <summary>Erstes Token ab AOffset (Index); Length(Tokens) ohne.</summary>
   function TokenAt(AOffset: Integer): Integer;
@@ -162,12 +175,15 @@ var
     Declared := Declared + [Method];
   end;
 
-  /// <summary>E2383: "class abstract sealed" bzw. "class sealed abstract".</summary>
-  procedure CheckClassHeader(ABody: TSyntaxNode);
+  /// <summary>E2383: "class abstract sealed" bzw. "class sealed abstract". ASealed: die Klasse ist sealed,
+  /// AAbstract: abstract.</summary>
+  procedure CheckClassHeader(ABody: TSyntaxNode; out AAbstract, ASealed: Boolean);
   var
     Index: Integer;
     Abstract_, Sealed: Boolean;
   begin
+    AAbstract := False;
+    ASealed := False;
     Index := TokenAt(ABody.StartOffset);
     if (Index >= Length(Tokens)) or not Tokens[Index].IsKeyword('class') then
       Exit;
@@ -185,6 +201,8 @@ var
           Sealed := True
         else
           Break;
+        AAbstract := Abstract_;
+        ASealed := Sealed;
         if Abstract_ and Sealed then
         begin
           AReport.Add(TokenRange(Index), 'Eine Klasse ist entweder abstract oder sealed, nicht beides ' +
@@ -196,12 +214,54 @@ var
     end;
   end;
 
+  /// <summary>Klasse sealed (#1380): eigene abstrakte Methoden (E2383 an der Methode), offene abstrakte
+  /// Methoden je E2539 und an der Klasse E2540; abstract sealed ebenso E2540.</summary>
+  procedure CheckSealed(ADecl, ABody: TSyntaxNode; AAbstract: Boolean);
+  var
+    mName: string;
+    mNameToken, mIndex, mAbstract: Integer;
+    mLocation: TSymbolLocation;
+    mOpen: TArray<TIndexSymbol>;
+    mOwners: TArray<string>;
+  begin
+    mName := WithoutTypeParams(ADecl.Name);
+    // Der Name vor dem Rumpf (davor können Attribute stehen).
+    mNameToken := TokenAt(ADecl.StartOffset);
+    while (mNameToken < Length(Tokens)) and (Tokens[mNameToken].Offset < ABody.StartOffset) and
+      not ((Tokens[mNameToken].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[mNameToken].Text, mName)) do
+      Inc(mNameToken);
+    if (mNameToken >= Length(Tokens)) or (Tokens[mNameToken].Offset >= ABody.StartOffset) then
+      Exit;
+    for mIndex := 0 to ABody.ChildCount - 1 do
+      if ABody[mIndex].Kind = TSyntaxKind.RoutineHeader then
+      begin
+        mAbstract := DirectiveToken(ABody[mIndex], 'abstract');
+        if mAbstract >= 0 then
+          AReport.Add(TokenRange(mAbstract), Format('%s ist abstract, die Klasse %s aber sealed; abstract und ' +
+            'sealed schließen sich aus (wie E2383).', [ABody[mIndex].Name, mName]), TRuleConfidence.High);
+      end;
+    mOpen := nil;
+    mOwners := nil;
+    if Ancestry.FindClass(mName, mLocation) and (mLocation.FileName = '') then
+      mOpen := Ancestry.OpenAbstractMethods(mLocation, mOwners);
+    for mIndex := 0 to High(mOpen) do
+      AReport.Add(TokenRange(mNameToken), Format('%s ist sealed und implementiert die abstrakte Methode %s.%s ' +
+        'nicht (wie E2539).', [mName, mOwners[mIndex], mOpen[mIndex].Name]), TRuleConfidence.High);
+    if mOpen <> nil then
+      AReport.Add(TokenRange(mNameToken), Format('%s hat abstrakte Methoden und kann deshalb nicht sealed sein; ' +
+        'kein Nachfahre könnte sie implementieren (wie E2540).', [mName]), TRuleConfidence.High)
+    else if AAbstract then
+      AReport.Add(TokenRange(mNameToken), Format('%s ist abstract und kann deshalb nicht sealed sein (wie E2540).',
+        [mName]), TRuleConfidence.High);
+  end;
+
   // Iterativ (Bericht M1).
   procedure Visit(ARoot: TSyntaxNode);
   var
     Pending: TStack<TSyntaxNode>;
     Node, Body: TSyntaxNode;
     Index: Integer;
+    mAbstract, mSealed: Boolean;
   begin
     Pending := TStack<TSyntaxNode>.Create;
     try
@@ -216,11 +276,15 @@ var
             Body := Node.FindChild(TSyntaxKind.ObjectType);
           if Body <> nil then
           begin
+            mAbstract := False;
+            mSealed := False;
             if Body.Kind = TSyntaxKind.ClassType then
-              CheckClassHeader(Body);
+              CheckClassHeader(Body, mAbstract, mSealed);
             for Index := 0 to Body.ChildCount - 1 do
               if Body[Index].Kind = TSyntaxKind.RoutineHeader then
                 CheckHeader(WithoutTypeParams(Node.Name), Body[Index]);
+            if mSealed then
+              CheckSealed(Node, Body, mAbstract);
             Node := Body;
           end;
         end;
@@ -326,7 +390,13 @@ begin
   Paths := TConditionalBranches.Paths(Tokens);
   Lines := TTextLines.SplitLines(AContext.Text);
   Declared := nil;
-  Visit(AContext.Tree.Root);
+  Cache := TRuleDerived.Open(AContext);
+  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+  try
+    Visit(AContext.Tree.Root);
+  finally
+    Ancestry.Free;
+  end;
   if Declared <> nil then
     VisitBodies(AContext.Tree.Root);
 end;

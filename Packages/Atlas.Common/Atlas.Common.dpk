@@ -453,6 +453,7 @@ contains
   Atlas.Common.Rules.Builtin.Inlining in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inlining.pas',
   Atlas.Common.Rules.Builtin.CompilerHints in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerHints.pas',
   Atlas.Common.Rules.Builtin.MethodDirectives in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.MethodDirectives.pas',
+  Atlas.Common.Rules.Builtin.InvalidDeclarations in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.InvalidDeclarations.pas',
   Atlas.Common.Rules.Builtin.Published in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Published.pas',
   Atlas.Common.Rules.Builtin.Collections in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Collections.pas',
   Atlas.Common.Rules.Builtin.Visibility in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Visibility.pas',
