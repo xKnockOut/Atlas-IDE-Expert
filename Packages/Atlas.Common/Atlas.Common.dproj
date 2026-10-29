@@ -150,6 +150,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.GoldenCorpus.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Filter.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Output.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.FormatOutput.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Baseline.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Scopes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Options.pas"/>
@@ -237,6 +238,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Indent.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Layout.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.FormatCheck.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.DocumentLinks.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Colors.pas"/>
         <DCCReference Include="Source\JsonRpc\Atlas.Common.JsonRpc.Statistics.pas"/>
