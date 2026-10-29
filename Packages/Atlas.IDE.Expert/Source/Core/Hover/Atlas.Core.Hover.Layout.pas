@@ -19,6 +19,9 @@
 // „dcc · W1036“, die Konfidenz, wenn sie nicht hoch ist, und mit
 // Input.ProblemActions die Aktionszeile „Alt+Enter: <Korrektur>“ (nur mit
 // Korrektur), „Für diese Zeile unterdrücken“, „Regel einstellen…“.
+// Weitere Stellen eines Befunds (relatedInformation, #896) stehen darunter als
+// Links, beim Unit-Zyklus als Pfad „uC → uA → uB → uC“ und mit „Graph
+// zeigen“; ihre Klickfläche trägt Problem, Aktion Related und die Stelle.
 // Bei Komponentenklassen (#110) folgt unter der Beschreibung „published: n
 // Properties · m Ereignisse“ mit den Schaltern „geerbte“ und „nur mit
 // default“, dann die Tabellen PROPERTIES (Name, Typ, Vorgabe, deklariert in)
@@ -44,12 +47,14 @@ type
   TAtlasHoverAction = (Navigate, Usages, Copy, Help);
   /// <summary>Schriften des Tooltips: UI, Editorschrift, beide verkleinert, Badge.</summary>
   TAtlasHoverFont = (Ui, Mono, SmallUi, SmallMono, Badge);
-  TAtlasHoverHitKind = (Link, Ancestor, Path, Back, Action, ProblemAction, Published);
+  /// <summary>DebugFix: Korrektur unter „kein Zugriff“ (#840), Index in View.DebugValue.Note.Fixes.</summary>
+  TAtlasHoverHitKind = (Link, Ancestor, Path, Back, Action, ProblemAction, Published, DebugFix);
   /// <summary>Schalter der published-Mitglieder (#110): geerbte zeigen, nur mit Vorgabe, Abschnitte zu- bzw.
   /// aufklappen, alle Zeilen zeigen.</summary>
   TAtlasHoverPublishedToggle = (ShowInherited, OnlyDefaults, Properties, Events, MoreProperties, MoreEvents);
-  /// <summary>Aktion unter einem Problem im Tooltip (#621).</summary>
-  TAtlasHoverProblemAction = (RemoveUses, RemoveAllUses, MoveUses, Fix, SuppressLine, Configure);
+  /// <summary>Aktion unter einem Problem im Tooltip (#621). Related: Sprung zu einer weiteren Stelle (#896),
+  /// ShowGraph: Unit-Beziehungen zeigen (#896).</summary>
+  TAtlasHoverProblemAction = (RemoveUses, RemoveAllUses, MoveUses, Fix, SuppressLine, Configure, Related, ShowGraph);
   /// <summary>Fill: Fläche; Line: waagrechte Linie; Text: Text ab Rect.TopLeft; CenterText: zentriert in
   /// Rect; Frame: umrandetes Rechteck mit Fläche Back; RoundFill: gefülltes Rechteck mit Radius; Block:
   /// umbrechender Text in Rect (UI-Schrift, Ellipse); Styled: eingefärbte Deklaration From..Till; Doc: XMLDoc
@@ -130,6 +135,8 @@ type
     UsesRemove: string;
     UsesRemoveAll: string;
     UsesMove: string;
+    /// <summary>„Graph zeigen“ unter einem Unit-Zyklus (#896); '' = kein Link.</summary>
+    ShowGraph: string;
     /// <summary>Befund-Hover (#909): Pillen je Art und die Aktionen unterdrücken und einstellen.</summary>
     KindError: string;
     KindWarning: string;
@@ -143,6 +150,14 @@ type
     ConfirmedCode: string;
     /// <summary>Statt des Werts, solange der Debugger noch auswertet (#891).</summary>
     DebugPending: string;
+    /// <summary>„kein Zugriff“ (#840): solange die Ursache ermittelt wird, Überschrift der geprüften Punkte.
+    /// </summary>
+    DebugExplaining: string;
+    DebugChecked: string;
+    /// <summary>Neu zugewiesene Variablen (#712): „Einmal neu zugewiesen (Zeile %s)“ und
+    /// „Neu zugewiesen: %d Zuweisungen (Zeilen %s)“.</summary>
+    ReassignedOne: string;
+    ReassignedCount: string;
     /// <summary>published-Mitglieder (#110): Format mit %d, %d für Properties und Ereignisse; Schalter,
     /// Abschnitte, Spaltenköpfe, Formate „+ %d weitere …“, Hinweise und „Liste kopieren“.</summary>
     PublishedSummary: string;
@@ -230,9 +245,16 @@ type
     class function Build(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure): TAtlasHoverLayout;
       static;
     /// <summary>Index der Klickfläche ProblemAction: Problem in View.Problems und Aktion (#621).</summary>
-    class function ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction): Integer; static;
+    class function ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction): Integer; overload;
+      static;
+    /// <summary>Wie oben mit der Stelle AItem in Problem.Related (Aktion Related, #896); 0 bis MaxRelated - 1.
+    /// </summary>
+    class function ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction; AItem: Integer): Integer;
+      overload; static;
     class procedure DecodeProblemAction(ACode: Integer; out AProblem: Integer;
-      out AAction: TAtlasHoverProblemAction); static;
+      out AAction: TAtlasHoverProblemAction); overload; static;
+    class procedure DecodeProblemAction(ACode: Integer; out AProblem: Integer;
+      out AAction: TAtlasHoverProblemAction; out AItem: Integer); overload; static;
     /// <summary>Reihenfolge der Probleme im Hover: Fehler zuerst, sonst wie geliefert (#909).</summary>
     class function ProblemOrder(const AProblems: TArray<TAtlasProblem>): TArray<Integer>; static;
     /// <summary>Nächste (AForward) bzw. vorige Klickfläche ProblemAction nach AHot (Index in Hits, -1 vor der
@@ -265,6 +287,8 @@ const
   /// </summary>
   PropertyRows = 7;
   EventRows = 4;
+  /// <summary>Höchstens so viele weitere Stellen je Problem im Hover (#896).</summary>
+  MaxRelated = 64;
 
 type
   TBuilder = class
@@ -301,6 +325,9 @@ type
     procedure Chip(const AText: string; ACurrent: Boolean; AIndex: Integer);
     procedure ActionItem(const AKey, ACaption: string; AAction: TAtlasHoverAction; AEnabled: Boolean);
     procedure ProblemLink(const ACaption: string; AProblem: Integer; AAction: TAtlasHoverProblemAction);
+    /// <summary>Weitere Stellen eines Problems als Links (#896), beim Unit-Zyklus als Pfad mit „Graph zeigen“.
+    /// </summary>
+    procedure RelatedLinks(const AProblem: TAtlasProblem; AIndex: Integer);
     /// <summary>Pille mit der Art des Befunds (#909); setzt FLeft hinter die Pille für die Meldung.</summary>
     procedure SeverityPill(const AProblem: TAtlasProblem);
     procedure RuleActions(const AProblem: TAtlasProblem; AIndex: Integer);
@@ -309,6 +336,7 @@ type
     procedure DrawPart(AFrom, ATill: Integer);
     procedure Navigation;
     procedure DebugValue;
+    procedure DebugNote(const ANote: TAtlasDebugValueNote);
     procedure Problems;
     procedure Header;
     procedure Declaration;
@@ -616,6 +644,36 @@ begin
   Flow(ACaption, FColors.Accent, False, TAtlasHoverHitKind.ProblemAction, Code, Code, FColors.Accent);
 end;
 
+procedure TBuilder.RelatedLinks(const AProblem: TAtlasProblem; AIndex: Integer);
+var
+  OldFont: TAtlasHoverFont;
+  Item, Code: Integer;
+  Cycle: Boolean;
+begin
+  Cycle := AProblem.Code = TAtlasProblem.UsesCycleCode;
+  if (AProblem.Related = nil) and not Cycle then
+    Exit;
+  OldFont := FFlowFont;
+  FFlowFont := TAtlasHoverFont.SmallUi;
+  FX := FLeft;
+  FRowHeight := 0;
+  for Item := 0 to Min(High(AProblem.Related), MaxRelated - 1) do
+  begin
+    if (Item > 0) and Cycle then
+      Flow(' → ', FColors.Muted, False, TAtlasHoverHitKind.ProblemAction, -1, -1, FColors.Muted)
+    else if Item > 0 then
+      Flow(' · ', FColors.Muted, False, TAtlasHoverHitKind.ProblemAction, -1, -1, FColors.Muted);
+    Code := TAtlasHoverLayout.ProblemActionCode(AIndex, TAtlasHoverProblemAction.Related, Item);
+    Flow(AProblem.Related[Item].Message, FColors.Accent, False, TAtlasHoverHitKind.ProblemAction, Code, Code,
+      FColors.Accent);
+  end;
+  if Cycle and (FInput.Texts.ShowGraph <> '') then
+    ProblemLink(FInput.Texts.ShowGraph, AIndex, TAtlasHoverProblemAction.ShowGraph);
+  EndFlow;
+  Inc(FY, Scale(6));
+  FFlowFont := OldFont;
+end;
+
 procedure TBuilder.BandContent(AKind: Integer);
 var
   Chain: TArray<Integer>;
@@ -797,6 +855,8 @@ begin
   Inc(FY, Height(MonoFace) + Scale(3));
   if Value.State = TAtlasDebugValueState.Pending then
     Block(FInput.Texts.DebugPending, FColors.Muted, 1)
+  else if Value.Explained then
+    DebugNote(Value.Note)
   else
     Block(Value.Text, FColors.Text, 6);
   FLeft := Scale(11);
@@ -804,6 +864,45 @@ begin
     FColors.Accent);
   Bar.Radius := 1;
   Add(Bar);
+end;
+
+procedure TBuilder.DebugNote(const ANote: TAtlasDebugValueNote);
+var
+  Line: string;
+  Index: Integer;
+  OldFont: TAtlasHoverFont;
+begin
+  // „kein Zugriff“ (#840): Kennzeichen, Ursache, Herkunft des Schalters, geprüfte Punkte, Korrekturen.
+  Block(ANote.Caption, FColors.Warn, 1);
+  if ANote.Pending then
+  begin
+    Block(FInput.Texts.DebugExplaining, FColors.Muted, 1);
+    Exit;
+  end;
+  Block(ANote.Reason, FColors.Text, 6);
+  Block(ANote.Origin, FColors.Muted, 2);
+  if Length(ANote.Checked) > 0 then
+  begin
+    Block(FInput.Texts.DebugChecked, FColors.Muted, 1);
+    for Line in ANote.Checked do
+      Block('• ' + Line, FColors.Muted, 2);
+  end;
+  if Length(ANote.Fixes) = 0 then
+    Exit;
+  OldFont := FFlowFont;
+  FFlowFont := TAtlasHoverFont.SmallUi;
+  FX := FLeft;
+  FRowHeight := 0;
+  for Index := 0 to High(ANote.Fixes) do
+  begin
+    if FX > FLeft then
+      Inc(FX, Scale(12));
+    Flow(ANote.Fixes[Index].Caption, FColors.Accent, False, TAtlasHoverHitKind.DebugFix, Index, Index,
+      FColors.Accent);
+  end;
+  EndFlow;
+  Inc(FY, Scale(6));
+  FFlowFont := OldFont;
 end;
 
 procedure TBuilder.SeverityPill(const AProblem: TAtlasProblem);
@@ -952,6 +1051,8 @@ begin
       AddText(FLeft, FY, Problem.Details, SmallFace, FColors.Muted);
     end;
     Inc(FY, Height(SmallFace) + Scale(6));
+    // Weitere Stellen (#896), z. B. die Units eines Zyklus mit Sprung an ihren uses-Eintrag.
+    RelatedLinks(Problem, Index);
     // Aktionen zum uses-Eintrag (#621).
     if (Problem.UsesState = TAtlasProblem.UsesUnused) or (Problem.UsesState = TAtlasProblem.UsesImplementation) then
     begin
@@ -1087,10 +1188,13 @@ begin
 end;
 
 procedure TBuilder.Description;
+var
+  Reassigned: string;
 begin
   // Beschreibung unter einer Linie; nur die XMLDoc scrollt.
+  Reassigned := FData.ReassignedText(FInput.Texts.ReassignedOne, FInput.Texts.ReassignedCount);
   if not (((FData.LocationText = '') and (FData.UnitName <> '')) or (FData.Value <> '') or
-    (FData.Deprecation <> '') or FInput.HasDoc) then
+    (FData.Deprecation <> '') or (Reassigned <> '') or FInput.HasDoc) then
     Exit;
   HorizontalLine(FY);
   Inc(FY, Scale(7));
@@ -1099,6 +1203,7 @@ begin
   if FData.Value <> '' then
     Block('= ' + FData.Value, FColors.Muted, 0);
   Block(FData.Deprecation, FColors.Warn, 0);
+  Block(Reassigned, FColors.Muted, 0);
   FLayout.DocLeft := FLeft;
   FLayout.DocTop := FY;
   if FInput.HasDoc then
@@ -1462,14 +1567,32 @@ end;
 
 class function TAtlasHoverLayout.ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction): Integer;
 begin
-  Result := AProblem * (Ord(High(TAtlasHoverProblemAction)) + 1) + Ord(AAction);
+  Result := ProblemActionCode(AProblem, AAction, 0);
+end;
+
+class function TAtlasHoverLayout.ProblemActionCode(AProblem: Integer; AAction: TAtlasHoverProblemAction;
+  AItem: Integer): Integer;
+begin
+  Result := (AProblem * MaxRelated + AItem) * (Ord(High(TAtlasHoverProblemAction)) + 1) + Ord(AAction);
 end;
 
 class procedure TAtlasHoverLayout.DecodeProblemAction(ACode: Integer; out AProblem: Integer;
   out AAction: TAtlasHoverProblemAction);
+var
+  Item: Integer;
 begin
-  AProblem := ACode div (Ord(High(TAtlasHoverProblemAction)) + 1);
+  DecodeProblemAction(ACode, AProblem, AAction, Item);
+end;
+
+class procedure TAtlasHoverLayout.DecodeProblemAction(ACode: Integer; out AProblem: Integer;
+  out AAction: TAtlasHoverProblemAction; out AItem: Integer);
+var
+  Rest: Integer;
+begin
   AAction := TAtlasHoverProblemAction(ACode mod (Ord(High(TAtlasHoverProblemAction)) + 1));
+  Rest := ACode div (Ord(High(TAtlasHoverProblemAction)) + 1);
+  AProblem := Rest div MaxRelated;
+  AItem := Rest mod MaxRelated;
 end;
 
 class function TAtlasHoverLayout.ProblemOrder(const AProblems: TArray<TAtlasProblem>): TArray<Integer>;

@@ -132,7 +132,7 @@ var
 begin
   if (AContext.Tree = nil) or not TUnresolvedNames.Available(AContext.Index) then
     Exit;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     for Name in TUnresolvedNames.Find(Resolver, AContext.Tree, AContext.RelativePath) do
@@ -683,7 +683,7 @@ begin
     if (Token.Kind = TPascalTokenKind.Directive) and (StartsText('{$I ', Token.Text) or
       StartsText('{$INCLUDE ', Token.Text)) then
       Level := TRuleConfidence.Medium;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, AContext.RelativePath);
@@ -913,7 +913,7 @@ begin
       StartsText('{$INCLUDE ', Token.Text)) then
       Level := TRuleConfidence.Medium;
   Declared := TDictionary<string, Boolean>.Create;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Collect(AContext.Tree.Root);
     Resolver.Namespaces := AContext.Namespaces;

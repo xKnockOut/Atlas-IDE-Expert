@@ -50,6 +50,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.DateUtils,
   System.Classes;
 

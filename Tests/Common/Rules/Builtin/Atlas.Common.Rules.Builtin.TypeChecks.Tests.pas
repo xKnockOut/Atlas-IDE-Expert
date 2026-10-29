@@ -546,7 +546,8 @@ begin
     '  Start: Integer = 1;'#10'implementation'#10'procedure Erhoehen(var Zeichen: Char);'#10'begin'#10'end;'#10 +
     'procedure Zaehlen(var Ziel: Integer);'#10'begin'#10'end;'#10'procedure Lesen(out Ziel: Integer);'#10 +
     'begin'#10'end;'#10'procedure Fuellen(var Werte: array of Integer);'#10'begin'#10'end;'#10 +
-    'procedure Puffer(var Daten);'#10'begin'#10'end;'#10'procedure Anhaengen(var Text: string);'#10'begin'#10 +
+    'procedure Leeren(out Werte: array of Integer); begin end; procedure Puffer(var Daten);'#10'begin'#10'end;'#10 +
+    'procedure Anhaengen(var Text: string);'#10'begin'#10 +
     'end;'#10'function Doppelt(Zahl: Integer): Integer;'#10'begin'#10'  Result := Zahl * 2;'#10'end;'#10 +
     'procedure Bearbeiten(const Fest: Integer; Zeile: TZeile);'#10'var'#10'  S: string;'#10'  Zahl: Integer;'#10 +
     '  Feld: array[0..3] of Integer;'#10'begin'#10 + AStatements + 'end;'#10'end.';
@@ -602,14 +603,13 @@ procedure TInvalidVarArgumentTests.OpenArraysSliceAndExpressions;
 var
   Found: TArray<TRuleFinding>;
 begin
-  Found := VarFindings(Zeilen('  Fuellen(Grenze);'#10'  Fuellen([1, 2]);'#10'  Fuellen(Slice(Feld, 2));'#10 +
+  Found := VarFindings(Zeilen('  Fuellen(Grenze);'#10'  Fuellen([1, 2]);'#10'  Leeren(Slice(Feld, 2));'#10 +
     '  Zaehlen(Zahl + 1);'#10'  Lesen(-Zahl);'#10));
   Assert.AreEqual(5, Integer(Length(Found)));
   Assert.AreEqual('Eine Konstante kann nicht als offenes Array an einen var-Parameter übergeben werden (wie E2192).',
     Found[0].Message);
   Assert.AreEqual(Found[0].Message, Found[1].Message);
-  Assert.AreEqual('Slice ist für einen var-Parameter nicht erlaubt; Änderungen kämen nicht im Array an (wie E2454).',
-    Found[2].Message);
+  Assert.AreEqual('Slice ist für einen out-Parameter nicht erlaubt (wie E2454).', Found[2].Message);
   Assert.AreEqual('An einen var-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).',
     Found[3].Message);
   Assert.AreEqual('An einen out-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).',
@@ -617,6 +617,8 @@ begin
   Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
   Assert.AreEqual(0, Integer(Length(Found[2].Fixes)));
   Assert.AreEqual(1, Integer(Length(Found[3].Fixes)));
+  // Slice an ein var-Open-Array übersetzt dcc (Spring4D, #1328), auch über eine Typumwandlung.
+  Assert.AreEqual(0, Integer(Length(VarFindings(Zeilen('  Fuellen(Slice(Feld, 2));'#10)))));
 end;
 
 procedure TInvalidVarArgumentTests.PropertyFixWritesBack;

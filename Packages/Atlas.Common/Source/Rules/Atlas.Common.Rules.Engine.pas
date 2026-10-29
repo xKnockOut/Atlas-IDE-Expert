@@ -121,12 +121,15 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Profiles,
-  Atlas.Common.Rules.Suppressions;
+  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Semantics.Contract,
+  Atlas.Common.Semantics.TreeUnits;
 
 type
-  TRuleReport = class(TInterfacedObject, IRuleReport)
+  TRuleReport = class(TInterfacedObject, IRuleReport, IRuleRelatedReport)
   private
     FRuleId: string;
     FSeverity: TRuleSeverity;
@@ -142,6 +145,8 @@ type
       const AFixes: TArray<TRuleFix>);
     procedure AddWithDetails(const ARange: TTextRange; const AMessage, ADetails: string; AConfidence: TRuleConfidence;
       const AFixes: TArray<TRuleFix>);
+    procedure AddRelated(const ARange: TTextRange; const AMessage, ADetails: string; ASeverity: TRuleSeverity;
+      const AFixes: TArray<TRuleFix>; const ARelated: TArray<TRuleRelated>);
   end;
 
 /// <summary>Hinweis unit-too-deep an der tiefsten Stelle einer Unit, deren Baum tiefer als MaxTreeDepth ist
@@ -271,6 +276,27 @@ begin
   Finding.Confidence := TRuleConfidence.High;
   Finding.Fixes := AFixes;
   Finding.Details := '';
+  FFindings.Add(Finding);
+end;
+
+procedure TRuleReport.AddRelated(const ARange: TTextRange; const AMessage, ADetails: string; ASeverity: TRuleSeverity;
+  const AFixes: TArray<TRuleFix>; const ARelated: TArray<TRuleRelated>);
+var
+  Finding: TRuleFinding;
+begin
+  if ASeverity = TRuleSeverity.Off then
+    Exit;
+  Finding.RuleId := FRuleId;
+  Finding.Range := ARange;
+  Finding.Message := AMessage;
+  if ASeverity = TRuleSeverity.Default then
+    Finding.Severity := FSeverity
+  else
+    Finding.Severity := ASeverity;
+  Finding.Confidence := TRuleConfidence.High;
+  Finding.Fixes := AFixes;
+  Finding.Details := ADetails;
+  Finding.Related := ARelated;
   FFindings.Add(Finding);
 end;
 
@@ -485,6 +511,7 @@ var
   Elapsed: Int64;
   Shared: TRuleContext;
   OwnCache: IRuleDerivedCache;
+  mOwnUnits: ITreeUnits;
   Known: TArray<string>;
   Index: Integer;
   Suggestion: string;
@@ -524,6 +551,14 @@ begin
     OwnCache := TRuleDerivedCache.Create;
     Shared.Derived := OwnCache;
   end;
+  // Eine Auswertung des Baums für alle Namensauflöser des Laufs (#1322): Sonst extrahierte jede Typabfrage
+  // eines nicht gepinnten Resolvers die ganze Unit neu, und Regeln mit vielen Abfragen wurden quadratisch.
+  mOwnUnits := nil;
+  if (Shared.TreeUnits = nil) and (Shared.Tree <> nil) then
+  begin
+    mOwnUnits := TTreeUnits.Create(Shared.Tree);
+    Shared.TreeUnits := mOwnUnits;
+  end;
   Findings := TList<TRuleFinding>.Create;
   Kept := TList<TRuleFinding>.Create;
   Suppressions := nil;
@@ -544,16 +579,28 @@ begin
       if OverridingRule(Descriptor.Id, ARules, Settings, AContext.RelativePath, AContext.UnitName) <> '' then
         Continue;
       Context := Shared;
+      // Sprachstand (#1126): Korrekturen erzeugen keine Merkmale, die minDelphiVersion nicht kennt.
       if Context.DelphiVersion = '' then
-        Context.DelphiVersion := Settings.DelphiVersion;
+        Context.DelphiVersion := TLanguageFeatures.LanguageLevel(Settings.DelphiVersion, Settings.MinDelphiVersion);
       Context.Options := RuleOptions(Descriptor.Id, Settings);
       Context.DfmPropertyRules := Settings.DfmPropertyRules;
       Context.NoSignatureSync := not Settings.Refactoring.SyncSignatures;
       Context.NoForwardDeclaration := not Settings.Refactoring.ForwardDeclaration;
       Context.NoFreeFields := not Settings.Refactoring.FreeFields;
       Context.FreeFieldsFreeAndNil := SameText(Settings.Refactoring.FreeFieldsStyle, 'freeAndNil');
+      Context.NoMethodKind := not Settings.Refactoring.MethodKind;
+      Context.MethodKindStatic := Settings.Refactoring.MethodKindStatic;
+      Context.InlineAccessorDiagnostic := Settings.Refactoring.InlineAccessor and
+        Settings.Refactoring.InlineAccessorDiagnostic;
+      Context.NoAccessorEqualityCheck := not Settings.Refactoring.InlineAccessorEqualityCheck;
       Context.AccessorsProtected := Settings.Completion.AccessorSection = TCompletionAccessorSection.Protected;
       Context.Formatting := Settings.Formatting;
+      Context.KeepAttributes := Settings.DeadCodeKeepAttributes;
+      Context.KeepPatterns := Settings.DeadCodeKeepPatterns;
+      Context.NoUsesCycleLive := not Settings.DiagnosticsUsesCycleLive;
+      Context.UsesCycleImplementation := Settings.DiagnosticsUsesCycleImplementation;
+      Context.SortUses := Settings.SortUses;
+      Context.SortUsesByNamespace := Settings.SortUsesByNamespace;
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
       // Erst in einer Interface-Variablen halten: Check nimmt den Report als
@@ -693,6 +740,9 @@ begin
     // Referenzzyklen über Kontextkopien in abgelegten Objekten.
     if OwnCache <> nil then
       OwnCache.Clear;
+    // Kontextkopien in abgelegten Objekten können die Auswertung überleben: ohne Baum bedient sie keinen mehr.
+    if mOwnUnits <> nil then
+      mOwnUnits.Clear;
     AfterContexts.Free;
     AfterSeverities.Free;
     AfterIds.Free;

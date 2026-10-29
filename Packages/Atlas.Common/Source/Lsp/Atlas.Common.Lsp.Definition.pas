@@ -68,6 +68,11 @@ type
     /// <summary>Sprungziele für den Bezeichner an APosition; leer, wenn er nicht auflösbar ist.</summary>
     class function Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
       const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean): TArray<TDefinitionTarget>; static;
+    /// <summary>Wie Targets, für ein schon aufgelöstes Symbol (etwa einen Kandidaten aus ResolveAll, #1119).
+    /// </summary>
+    class function TargetsOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const APosition: TTextPosition; const AResolved: TResolvedSymbol;
+      ADeclaration: Boolean): TArray<TDefinitionTarget>; static;
     /// <summary>Deklaration des Typs des Bezeichners an APosition; leer, wenn er keinen bekannten Typ hat.</summary>
     class function TypeTargets(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
       const APosition: TTextPosition): TArray<TDefinitionTarget>; static;
@@ -82,6 +87,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Index.Files,
   Atlas.Common.Documents.Uris,
@@ -153,6 +159,14 @@ end;
 
 class function TLspDefinition.Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean): TArray<TDefinitionTarget>;
+begin
+  Result := TargetsOf(AResolver, AIndex, ATree, AFileName, APosition, AResolver.Resolve(ATree, AFileName, APosition),
+    ADeclaration);
+end;
+
+class function TLspDefinition.TargetsOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string; const APosition: TTextPosition; const AResolved: TResolvedSymbol;
+  ADeclaration: Boolean): TArray<TDefinitionTarget>;
 var
   Resolved: TResolvedSymbol;
   OwnerUnit, Here: TUnitIndex;
@@ -184,8 +198,9 @@ begin
       Resolved.ParamTypes := Symbol.ParamTypes;
       Break;
     end;
+  // Sonst die schon aufgelöste Verwendung des Aufrufers (TargetsOf, #1119).
   if Resolved.Kind = TResolvedKind.None then
-    Resolved := AResolver.Resolve(ATree, AFileName, APosition);
+    Resolved := AResolved;
   case Resolved.Kind of
     TResolvedKind.None:
       Exit;

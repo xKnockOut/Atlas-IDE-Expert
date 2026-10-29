@@ -39,6 +39,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions;
 

@@ -26,9 +26,14 @@ type
     procedure ClassReferenceTitleIsOwnName;
     [Test]
     procedure ReadsStructuredDocumentation;
+    /// <summary>#1123: Nur Begründungen strukturiert; die Doku als Klartext bleibt davor.</summary>
+    [Test]
+    procedure KeepsPlainDocumentationBeforeRationale;
     /// <summary>#110: atlas.published, Filter und Liste für die Zwischenablage.</summary>
     [Test]
     procedure ReadsPublishedMembers;
+    [Test]
+    procedure ReadsReassigned;
   end;
 
   [TestFixture]
@@ -128,6 +133,19 @@ begin
   Assert.IsFalse(Data.Display.Known);
 end;
 
+procedure TAtlasHoverTests.KeepsPlainDocumentationBeforeRationale;
+var
+  Data: TAtlasHoverData;
+begin
+  Data := Parse('{"contents": "x", "atlas": {"declaration": "var Zaehler: Integer;",' +
+    '"documentationText": "Zaehlt.", "documentation": {"sections": [' +
+    '{"kind": "rationale", "name": "WHY", "runs": [{"kind": "text", "text": "Schnell."}]}]}}}');
+  Assert.AreEqual(2, Integer(Length(Data.Doc.Sections)));
+  Assert.AreEqual(Ord(TAtlasDocSectionKind.Summary), Ord(Data.Doc.Sections[0].Kind));
+  Assert.AreEqual('Zaehlt.', Data.Doc.Sections[0].Text);
+  Assert.AreEqual(Ord(TAtlasDocSectionKind.Rationale), Ord(Data.Doc.Sections[1].Kind));
+end;
+
 procedure TAtlasHoverTests.ReadsPublishedMembers;
 var
   Data: TAtlasHoverData;
@@ -157,6 +175,34 @@ begin
     'OnKlick'#9'TKlickEvent'#9#9'TBasis' + sLineBreak + 'Items[I: Integer]: string'#9'default',
     Data.MembersText(True, False, 'implizit'));
   Assert.IsTrue(Parse(HoverJson).Members = nil);
+end;
+
+procedure TAtlasHoverTests.ReadsReassigned;
+var
+  Data: TAtlasHoverData;
+begin
+  Data := Parse('{"contents": "x", "atlas": {"declaration": "Summe: Integer", "kind": "variable",' +
+    '"reassigned": {"target": "locals", "writes": 3, "lines": [4, 6, 8]}}}');
+  Assert.AreEqual('locals', Data.ReassignedTarget);
+  Assert.AreEqual(3, Data.ReassignedWrites);
+  Assert.AreEqual(3, Integer(Length(Data.ReassignedLines)));
+  // Zeilen 1-basiert.
+  Assert.AreEqual('3 x 5, 7, 9', Data.ReassignedText('eins %s', '%d x %s'));
+  Data.ReassignedWrites := 1;
+  Data.ReassignedLines := TArray<Integer>.Create(11);
+  Assert.AreEqual('eins 12', Data.ReassignedText('eins %s', '%d x %s'));
+  // Mehr als fünf Zeilen werden gekürzt.
+  Data.ReassignedWrites := 7;
+  Data.ReassignedLines := TArray<Integer>.Create(0, 1, 2, 3, 4, 5, 6);
+  Assert.AreEqual('7 x 1, 2, 3, 4, 5, ' + #$2026, Data.ReassignedText('eins %s', '%d x %s'));
+  // Ausgeblendet (Einstellung aus oder Art nicht gewaehlt).
+  Data.ClearReassigned;
+  Assert.AreEqual('', Data.ReassignedTarget);
+  Assert.AreEqual('', Data.ReassignedText('eins %s', '%d x %s'));
+  // Ohne Angabe nichts.
+  Data := Parse(HoverJson);
+  Assert.AreEqual('', Data.ReassignedTarget);
+  Assert.AreEqual(0, Integer(Length(Data.ReassignedLines)));
 end;
 
 procedure TAtlasHoverTests.ReadsAtlasParts;

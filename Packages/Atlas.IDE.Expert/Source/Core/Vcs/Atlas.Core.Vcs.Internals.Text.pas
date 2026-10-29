@@ -45,9 +45,17 @@ type
 
 /// <summary>UTF-8-Bytes als Text; ein BOM am Anfang entfällt.</summary>
 function VcsUtf8(const ABytes: TBytes): string;
+/// <summary>Ausgabe ohne --xml (svn log --diff, #1275): gültiges UTF-8 als UTF-8, sonst in der ANSI-Codepage.
+/// </summary>
+function VcsConsoleText(const ABytes: TBytes): string;
+/// <summary>Sind ABytes gültiges UTF-8 (ohne überlange Folgen)?</summary>
+function VcsIsUtf8(const ABytes: TBytes): Boolean;
 /// <summary>Pfad von AFileName relativ zu ARoot mit "/" getrennt; False, wenn AFileName nicht unter ARoot liegt.
 /// Unter Windows ohne Unterscheidung von Groß- und Kleinschreibung.</summary>
 function VcsRelativePath(const ARoot, AFileName: string; out ARelative: string): Boolean;
+/// <summary>Wie VcsRelativePath, aber ARoot selbst gehört dazu (ARelative '', #1292): Ordner und Einträge "."
+/// der Wurzel.</summary>
+function VcsRelativeOrRoot(const ARoot, AFileName: string; out ARelative: string): Boolean;
 /// <summary>Vollständiger Pfad zu einem Pfad relativ zu ARoot ("/" oder "\" getrennt).</summary>
 function VcsFullPath(const ARoot, ARelative: string): string;
 /// <summary>Ordner ohne abschließenden Trenner, "/" unter Windows als "\".</summary>
@@ -80,6 +88,46 @@ begin
   Result := TEncoding.UTF8.GetString(ABytes, Start, Length(ABytes) - Start);
 end;
 
+function VcsIsUtf8(const ABytes: TBytes): Boolean;
+var
+  mIndex, mFollow, mStep: Integer;
+  mByte: Byte;
+begin
+  Result := True;
+  mIndex := 0;
+  while mIndex < Length(ABytes) do
+  begin
+    mByte := ABytes[mIndex];
+    if mByte < $80 then
+      mFollow := 0
+    else if (mByte >= $C2) and (mByte <= $DF) then
+      mFollow := 1
+    else if (mByte >= $E0) and (mByte <= $EF) then
+      mFollow := 2
+    else if (mByte >= $F0) and (mByte <= $F4) then
+      mFollow := 3
+    else
+      Exit(False);
+    if mIndex + mFollow >= Length(ABytes) then
+      Exit(False);
+    for mStep := 1 to mFollow do
+      if (ABytes[mIndex + mStep] and $C0) <> $80 then
+        Exit(False);
+    // Überlange Folgen für drei und vier Bytes.
+    if ((mByte = $E0) and (ABytes[mIndex + 1] < $A0)) or ((mByte = $F0) and (ABytes[mIndex + 1] < $90)) then
+      Exit(False);
+    Inc(mIndex, mFollow + 1);
+  end;
+end;
+
+function VcsConsoleText(const ABytes: TBytes): string;
+begin
+  if VcsIsUtf8(ABytes) then
+    Result := VcsUtf8(ABytes)
+  else
+    Result := TEncoding.ANSI.GetString(ABytes);
+end;
+
 function VcsNormalizeDir(const ADir: string): string;
 begin
   Result := Trim(ADir);
@@ -110,6 +158,18 @@ begin
     Exit(False);
   ARelative := StringReplace(Copy(FileName, Length(Prefix) + 1, MaxInt), '\', '/', [rfReplaceAll]);
   Result := ARelative <> '';
+end;
+
+function VcsRelativeOrRoot(const ARoot, AFileName: string; out ARelative: string): Boolean;
+var
+  Root, FileName: string;
+begin
+  ARelative := '';
+  Root := VcsNormalizeDir(ARoot);
+  FileName := VcsNormalizeDir(AFileName);
+  if (Root <> '') and ((PathDelim = '\') and SameText(Root, FileName) or (Root = FileName)) then
+    Exit(True);
+  Result := VcsRelativePath(ARoot, AFileName, ARelative);
 end;
 
 function VcsFullPath(const ARoot, ARelative: string): string;

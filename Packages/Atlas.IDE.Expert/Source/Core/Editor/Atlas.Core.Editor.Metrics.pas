@@ -116,6 +116,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Text.Chars;
 
 { TAtlasFileMetrics }

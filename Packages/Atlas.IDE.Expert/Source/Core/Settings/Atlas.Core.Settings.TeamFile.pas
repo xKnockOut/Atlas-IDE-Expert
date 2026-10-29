@@ -22,8 +22,12 @@
 //             "job": "kasse", "multibranch": true},
 //      "tracker": {"provider": "youtrack",                              #765
 //                  "url": "https://firma.youtrack.cloud", "project": "ATL"},
+//      "vcs": {"provider": "svn", "mainBranch": "trunk"},              #1286
 //      "hidden": [{"setting": "BlockEndLabels", "file": "Source/Kunde.pas", #628
-//                  "anchor": "TKunde.Speichern"}]}
+//                  "anchor": "TKunde.Speichern"}],
+//      "debugDisplayRules": {                                            #854
+//        "FireDAC.Comp.Client.TFDConnection": "{ConnectionName} ({DriverName})",
+//        "TKunde": {"template": "{Name}, {Ort}", "children": ["Name", "Ort"]}}}
 // - Verboten und beim Lesen ignoriert (mit Meldung, Atlas.Text.Checkin):
 //   Zugangsdaten (Schlüssel wie token oder password auf jeder Ebene, Adressen
 //   mit Benutzer oder Token, Umgebungsvariablen wie DB_PASSWORD), absolute
@@ -115,6 +119,26 @@ type
     function Configured: Boolean;
   end;
 
+  /// <summary>Versionsverwaltung des Projekts (#1286): Art und Hauptbranch für alle im Team; Vorrang vor der
+  /// persönlichen Zeile in vcs.projects.</summary>
+  TAtlasTeamVcs = record
+    /// <summary>"auto", "git", "svn" oder "off"; '' = nicht gesetzt.</summary>
+    Provider: string;
+    /// <summary>Hauptbranch, z. B. "develop" bzw. SVN "trunk"; '' = nicht gesetzt.</summary>
+    MainBranch: string;
+    function Configured: Boolean;
+  end;
+
+  /// <summary>Wertdarstellung beim Debuggen für einen Typ (#854, debug.displayRules.project), etwa für fremde
+  /// Klassen wie TFDConnection.</summary>
+  TAtlasTeamDisplayRule = record
+    /// <summary>Typname mit oder ohne Unit.</summary>
+    TypeName: string;
+    /// <summary>Vorlage wie in // atlas-debug: ('' = nur children).</summary>
+    Template: string;
+    Children: TArray<string>;
+  end;
+
   /// <summary>Eine Zeile der Anzeige „aus .atlas“.</summary>
   TAtlasTeamValue = record
     Key: string;
@@ -145,8 +169,11 @@ type
     StartProfiles: TArray<TAtlasStartProfile>;
     Ci: TAtlasTeamCi;
     Tracker: TAtlasTeamTracker;
+    Vcs: TAtlasTeamVcs;
     /// <summary>An einer Stelle oder in einer Datei ausgeblendete Elemente (#628).</summary>
     Hidden: TArray<TAtlasHiddenPlace>;
+    /// <summary>Wertdarstellungen beim Debuggen (#854).</summary>
+    DisplayRules: TArray<TAtlasTeamDisplayRule>;
     Issues: TArray<TAtlasTeamIssue>;
     /// <summary>Es gibt eine Projektdatei (gültig oder nicht).</summary>
     function Exists: Boolean;
@@ -163,6 +190,7 @@ type
   TAtlasTeamFile = class
   public const
     FileName = '.atlas';
+    DisplayRulesKey = 'debugDisplayRules';
     CurrentVersion = 1;
   public
     /// <summary>Projektdatei zum Ordner einer .dproj: dort, sonst im nächsthöheren Ordner mit .git; '' ohne.
@@ -201,7 +229,8 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Text.Jsonc,
-  Atlas.Text.Checkin;
+  Atlas.Text.Checkin,
+  Atlas.Text.DebugDisplay;
 
 const
   NamingKeys: array[TAtlasNamingKind] of string = ('field', 'parameter', 'local', 'constant');
@@ -299,6 +328,13 @@ begin
   Result := (Provider <> '') and (Url <> '');
 end;
 
+{ TAtlasTeamVcs }
+
+function TAtlasTeamVcs.Configured: Boolean;
+begin
+  Result := (Provider <> '') or (MainBranch <> '');
+end;
+
 { TAtlasTeamSettings }
 
 function TAtlasTeamSettings.Exists: Boolean;
@@ -351,7 +387,9 @@ type
     procedure ReadStartProfiles(AValue: TJSONValue);
     procedure ReadCi(AValue: TJSONValue);
     procedure ReadTracker(AValue: TJSONValue);
+    procedure ReadVcs(AValue: TJSONValue);
     procedure ReadHidden(AValue: TJSONValue);
+    procedure ReadDisplayRules(AValue: TJSONValue);
     procedure ReadVersion(AValue: TJSONValue);
   public
     constructor Create(const AFileName, ARoot: string);
@@ -411,7 +449,8 @@ end;
 function TTeamReader.ReadString(AValue: TJSONValue; const APath: string; out AText: string): Boolean;
 begin
   AText := '';
-  Result := AValue is TJSONString;
+  // TJSONNumber erbt von TJSONString: Zahlen sind hier falsche Typen.
+  Result := (AValue is TJSONString) and not (AValue is TJSONNumber);
   if not Result then
   begin
     Report(TAtlasTeamIssueKind.WrongType, APath);
@@ -736,6 +775,57 @@ begin
   end;
 end;
 
+procedure TTeamReader.ReadDisplayRules(AValue: TJSONValue);
+var
+  Index, Member: Integer;
+  Key, Path, Text: string;
+  Value, Field: TJSONValue;
+  Rule: TAtlasTeamDisplayRule;
+  Usable: Boolean;
+begin
+  if not (AValue is TJSONObject) then
+  begin
+    Report(TAtlasTeamIssueKind.WrongType, TAtlasTeamFile.DisplayRulesKey);
+    Exit;
+  end;
+  for Index := 0 to TJSONObject(AValue).Count - 1 do
+  begin
+    Rule := Default(TAtlasTeamDisplayRule);
+    Rule.TypeName := Trim(TJSONObject(AValue).Pairs[Index].JsonString.Value);
+    Value := TJSONObject(AValue).Pairs[Index].JsonValue;
+    Path := TAtlasTeamFile.DisplayRulesKey + '.' + Rule.TypeName;
+    Usable := Rule.TypeName <> '';
+    if Value is TJSONObject then
+      for Member := 0 to TJSONObject(Value).Count - 1 do
+      begin
+        Key := TJSONObject(Value).Pairs[Member].JsonString.Value;
+        Field := TJSONObject(Value).Pairs[Member].JsonValue;
+        if Key = 'template' then
+          Usable := ReadString(Field, Path + '.template', Rule.Template) and Usable
+        else if Key = 'children' then
+        begin
+          // Liste oder kommagetrennt wie in // atlas-debug-children:
+          if (Field is TJSONString) and not (Field is TJSONNumber) then
+            Rule.Children := TDebugDisplayText.SplitNames(Field.Value)
+          else
+            Rule.Children := TDebugDisplayText.SplitNames(string.Join(',', ReadNames(Field, Path + '.children')));
+        end
+        else
+          Report(TAtlasTeamIssueKind.UnknownKey, Path + '.' + Key);
+      end
+    else if not ReadString(Value, Path, Rule.Template) then
+      Continue;
+    Text := Rule.Template;
+    if not Usable or ((Text = '') and (Rule.Children = nil)) or
+      ((Text <> '') and not TDebugDisplayTemplate.Parse(Text).Valid) then
+    begin
+      Report(TAtlasTeamIssueKind.InvalidValue, Path);
+      Continue;
+    end;
+    FTeam.DisplayRules := FTeam.DisplayRules + [Rule];
+  end;
+end;
+
 procedure TTeamReader.ReadCi(AValue: TJSONValue);
 var
   Index: Integer;
@@ -843,6 +933,55 @@ begin
   FTeam.Tracker := Tracker;
 end;
 
+procedure TTeamReader.ReadVcs(AValue: TJSONValue);
+var
+  mIndex: Integer;
+  mKey, mPath, mText: string;
+  mValue: TJSONValue;
+  mVcs: TAtlasTeamVcs;
+begin
+  if not (AValue is TJSONObject) then
+  begin
+    Report(TAtlasTeamIssueKind.WrongType, 'vcs');
+    Exit;
+  end;
+  mVcs := Default(TAtlasTeamVcs);
+  for mIndex := 0 to TJSONObject(AValue).Count - 1 do
+  begin
+    mKey := TJSONObject(AValue).Pairs[mIndex].JsonString.Value;
+    mValue := TJSONObject(AValue).Pairs[mIndex].JsonValue;
+    mPath := 'vcs.' + mKey;
+    if IsCredential(mKey, mPath) then
+      Continue;
+    if mKey = 'provider' then
+    begin
+      if ReadString(mValue, mPath, mText) then
+      begin
+        mText := LowerCase(Trim(mText));
+        if (mText = 'auto') or (mText = 'git') or (mText = 'svn') or (mText = 'off') then
+          mVcs.Provider := mText
+        else
+          Report(TAtlasTeamIssueKind.InvalidValue, mPath);
+      end;
+    end
+    else if mKey = 'mainBranch' then
+    begin
+      // Leerzeichen und Steuerzeichen gibt es in keinem Branch-Namen; ein solcher Wert gilt nicht.
+      if ReadString(mValue, mPath, mText) then
+        if (Trim(mText) = '') or (Trim(mText).IndexOfAny([' ', #9, #10, #13]) >= 0) then
+          Report(TAtlasTeamIssueKind.InvalidValue, mPath)
+        else
+          mVcs.MainBranch := Trim(mText);
+    end
+    else
+    begin
+      Report(TAtlasTeamIssueKind.UnknownKey, mPath);
+      ScanCredentials(mValue, mPath);
+    end;
+  end;
+  FTeam.Vcs := mVcs;
+end;
+
 procedure TTeamReader.ReadVersion(AValue: TJSONValue);
 var
   Version: Integer;
@@ -901,8 +1040,12 @@ begin
       ReadCi(Value)
     else if Key = 'tracker' then
       ReadTracker(Value)
+    else if Key = 'vcs' then
+      ReadVcs(Value)
     else if Key = TAtlasHiddenPlaces.Key then
       ReadHidden(Value)
+    else if Key = TAtlasTeamFile.DisplayRulesKey then
+      ReadDisplayRules(Value)
     else
     begin
       Report(TAtlasTeamIssueKind.UnknownKey, Key);
@@ -975,7 +1118,7 @@ end;
 
 class function TAtlasTeamFile.Skeleton: string;
 const
-  Lines: array[0..31] of string = (
+  Lines: array[0..33] of string = (
     '{',
     '  // Projekteinstellungen von Atlas für alle im Team (eingecheckt). Persönliche',
     '  // Einstellungen stehen unter Tools > Optionen > Atlas; ein Wert aus dieser',
@@ -1007,6 +1150,8 @@ const
     '  // "tracker": {"provider": "youtrack", "url": "https://example.youtrack.cloud", "project": "ATL"},',
     '  // Im Editor ausgeblendete Elemente („Nur hier“ bzw. „In dieser Datei ausblenden“, #628):',
     '  // "hidden": [{"setting": "BlockEndLabels", "file": "Source/Kunde.pas", "anchor": "TKunde.Speichern"}],',
+    '  // Wertdarstellung beim Debuggen für fremde Klassen (eigene: // atlas-debug: über dem Typ, #854):',
+    '  // "debugDisplayRules": {"FireDAC.Comp.Client.TFDConnection": "{ConnectionName} ({DriverName})"},',
     '}');
 var
   Line: string;
@@ -1102,6 +1247,7 @@ var
   Item: TAtlasFormatFunction;
   Profile: TAtlasStartProfile;
   Place: TAtlasHiddenPlace;
+  Rule: TAtlasTeamDisplayRule;
   Text: string;
 begin
   Result := nil;
@@ -1149,6 +1295,17 @@ begin
       Text := Text + ', ' + ATeam.Tracker.Project;
     Add('tracker', Text);
   end;
+  if ATeam.Vcs.Configured then
+  begin
+    Text := ATeam.Vcs.Provider;
+    if ATeam.Vcs.MainBranch <> '' then
+    begin
+      if Text <> '' then
+        Text := Text + ', ';
+      Text := Text + ATeam.Vcs.MainBranch;
+    end;
+    Add('vcs', Text);
+  end;
   if Length(ATeam.Hidden) > 0 then
   begin
     Text := '';
@@ -1161,6 +1318,17 @@ begin
         Text := Text + ' (' + Place.Anchor + ')';
     end;
     Add(TAtlasHiddenPlaces.Key, Text);
+  end;
+  if Length(ATeam.DisplayRules) > 0 then
+  begin
+    Text := '';
+    for Rule in ATeam.DisplayRules do
+    begin
+      if Text <> '' then
+        Text := Text + ', ';
+      Text := Text + Rule.TypeName;
+    end;
+    Add(DisplayRulesKey, Text);
   end;
 end;
 

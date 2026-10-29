@@ -43,6 +43,9 @@ const
   GoToPositionCommand = 'atlas.goToPosition';
   /// <summary>Wie GoToPositionCommand; danach öffnet der Client den Parameter-Hint an der Stelle (#1007).</summary>
   ShowSignatureHelpCommand = 'atlas.showSignatureHelp';
+  /// <summary>Client-Befehl, der die Unit-Beziehungen (#593) der Datei der Aktion zeigt, z. B. „Graph zeigen“ an
+  /// einem Unit-Zyklus (#896).</summary>
+  ShowUnitRelationsCommand = 'atlas.showUnitRelations';
   /// <summary>Kennungen der uses-Aktionen für den Hover des Plugins (#621), in data.tag.</summary>
   UsesRemoveTag = 'uses.remove';
   UsesRemoveAllTag = 'uses.removeAll';
@@ -82,6 +85,10 @@ type
     CommandArguments: TArray<string>;
     /// <summary>Kennung für Clients, die eine bestimmte Aktion suchen (UsesRemoveTag, #621); '' ohne.</summary>
     Tag: string;
+    /// <summary>Text, den der Client vor dem Übernehmen als Vorschau zeigt (neue Signatur, #663); '' ohne.</summary>
+    Preview: string;
+    /// <summary>Grund, warum die Aktion hier nicht geht (Hinweis statt Aktion, #663); '' wenn sie geht.</summary>
+    Disabled: string;
   end;
 
   TCodeActions = class

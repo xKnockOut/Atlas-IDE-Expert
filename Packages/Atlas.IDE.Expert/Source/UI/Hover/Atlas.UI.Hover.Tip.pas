@@ -25,7 +25,8 @@
 // Schweregrad, Meldung, Regel-ID bzw. Meldungsnummer und Herkunft; ohne
 // Bezeichner zeigt der Tooltip nur sie.
 // Im angehaltenen Debugger steht darüber der Wert des Ausdrucks unter der Maus
-// (#891): Akzentbalken, Ausdruck, Wert bzw. „wird ausgewertet …“.
+// (#891): Akzentbalken, Ausdruck, Wert bzw. „wird ausgewertet …“; bei „kein
+// Zugriff“ die Ursache mit Korrekturen als Verweise (#840, OnDebugFix).
 // Ohne Fokus wie alle Atlas-Fenster; Klicks kommen trotzdem an (MA_NOACTIVATE).
 // Beim Wechsel des Inhalts bleibt die Position, das Fenster wächst höchstens.
 // Satz (P-09): Positionen, Klickflächen und Bausteine rechnet
@@ -58,9 +59,10 @@ type
   TAtlasHoverIndexEvent = procedure(Sender: TObject; AIndex: Integer) of object;
   TAtlasHoverActionEvent = procedure(Sender: TObject; AAction: TAtlasHoverAction) of object;
   TAtlasHoverUrlEvent = procedure(Sender: TObject; const AUrl: string) of object;
-  /// <summary>Klick auf eine Aktion unter einem Problem (#621); AProblem ist der Index in View.Problems.</summary>
+  /// <summary>Klick auf eine Aktion unter einem Problem (#621); AProblem ist der Index in View.Problems.
+  /// AItem: Stelle in Problem.Related bei der Aktion Related (#896), sonst 0.</summary>
   TAtlasHoverProblemActionEvent = procedure(Sender: TObject; AProblem: Integer;
-    AAction: TAtlasHoverProblemAction) of object;
+    AAction: TAtlasHoverProblemAction; AItem: Integer) of object;
 
   TAtlasHoverTip = class(TAtlasPopupWindow)
   public const
@@ -78,6 +80,7 @@ type
     FOnAction: TAtlasHoverActionEvent;
     FOnUrl: TAtlasHoverUrlEvent;
     FOnProblemAction: TAtlasHoverProblemActionEvent;
+    FOnDebugFix: TAtlasHoverIndexEvent;
     FProblemActions: Boolean;
     FHideCompilerCode: Boolean;
     FDoc: TAtlasDocView;
@@ -154,6 +157,9 @@ type
     property OnUrl: TAtlasHoverUrlEvent read FOnUrl write FOnUrl;
     /// <summary>Aktion unter einem uses-Hinweis (#621).</summary>
     property OnProblemAction: TAtlasHoverProblemActionEvent read FOnProblemAction write FOnProblemAction;
+    /// <summary>Klick auf eine Korrektur unter „kein Zugriff“ (#840); AIndex in View.DebugValue.Note.Fixes.
+    /// </summary>
+    property OnDebugFix: TAtlasHoverIndexEvent read FOnDebugFix write FOnDebugFix;
     /// <summary>Aktionszeile unter Regelbefunden (hover.problemActions, #909).</summary>
     property ProblemActions: Boolean read FProblemActions write SetProblemActions;
     /// <summary>problems.showCompilerCode aus (#1024).</summary>
@@ -422,6 +428,7 @@ begin
   Result.UsesRemove := TAtlasStrings.Text(TAtlasTextId.UsesRemove);
   Result.UsesRemoveAll := TAtlasStrings.Text(TAtlasTextId.UsesRemoveAll);
   Result.UsesMove := TAtlasStrings.Text(TAtlasTextId.UsesMove);
+  Result.ShowGraph := TAtlasStrings.Text(TAtlasTextId.HoverShowGraph);
   Result.KindError := TAtlasStrings.Text(TAtlasTextId.ProblemsKindError);
   Result.KindWarning := TAtlasStrings.Text(TAtlasTextId.ProblemsKindWarning);
   Result.KindInfo := TAtlasStrings.Text(TAtlasTextId.ProblemsKindInfo);
@@ -429,6 +436,10 @@ begin
   Result.Configure := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure);
   Result.Stale := TAtlasStrings.Text(TAtlasTextId.ProblemsStale);
   Result.DebugPending := TAtlasStrings.Text(TAtlasTextId.HoverDebugPending);
+  Result.DebugExplaining := TAtlasStrings.Text(TAtlasTextId.HoverDebugExplaining);
+  Result.DebugChecked := TAtlasStrings.Text(TAtlasTextId.HoverDebugChecked);
+  Result.ReassignedOne := TAtlasStrings.Text(TAtlasTextId.ReassignedOne);
+  Result.ReassignedCount := TAtlasStrings.Text(TAtlasTextId.ReassignedCount);
   Result.PublishedSummary := TAtlasStrings.Text(TAtlasTextId.PublishedSummary);
   Result.PublishedInherited := TAtlasStrings.Text(TAtlasTextId.PublishedInherited);
   Result.PublishedOnlyDefaults := TAtlasStrings.Text(TAtlasTextId.PublishedOnlyDefaults);
@@ -761,6 +772,9 @@ begin
     // Schalter und Abschnitte der published-Mitglieder (#110).
     TAtlasHoverHitKind.Published:
       TogglePublished(TAtlasHoverPublishedToggle(Hit.Index));
+    TAtlasHoverHitKind.DebugFix:
+      if Assigned(FOnDebugFix) then
+        FOnDebugFix(Self, Hit.Index);
   end;
 end;
 
@@ -785,15 +799,15 @@ end;
 
 function TAtlasHoverTip.FireProblemAction(AHit: Integer): Boolean;
 var
-  ProblemIndex: Integer;
+  ProblemIndex, Item: Integer;
   ProblemAction: TAtlasHoverProblemAction;
 begin
   Result := (AHit >= 0) and (AHit <= High(FLayout.Hits)) and
     (FLayout.Hits[AHit].Kind = TAtlasHoverHitKind.ProblemAction) and Assigned(FOnProblemAction);
   if not Result then
     Exit;
-  TAtlasHoverLayout.DecodeProblemAction(FLayout.Hits[AHit].Index, ProblemIndex, ProblemAction);
-  FOnProblemAction(Self, ProblemIndex, ProblemAction);
+  TAtlasHoverLayout.DecodeProblemAction(FLayout.Hits[AHit].Index, ProblemIndex, ProblemAction, Item);
+  FOnProblemAction(Self, ProblemIndex, ProblemAction, Item);
 end;
 
 function TAtlasHoverTip.HasProblemActions: Boolean;
@@ -834,7 +848,7 @@ function TAtlasHoverTip.ApplyFix: Boolean;
 begin
   Result := HasFix and Assigned(FOnProblemAction);
   if Result then
-    FOnProblemAction(Self, FLayout.FixProblem, TAtlasHoverProblemAction.Fix);
+    FOnProblemAction(Self, FLayout.FixProblem, TAtlasHoverProblemAction.Fix, 0);
 end;
 
 procedure TAtlasHoverTip.Paint;

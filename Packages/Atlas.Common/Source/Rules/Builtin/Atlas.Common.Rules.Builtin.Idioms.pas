@@ -31,6 +31,13 @@
 //                    System.StrUtils im uses; keine Korrektur bei Kommentaren oder
 //                    Direktiven in der Kette, doppelten Literalen oder gemischter
 //                    Groß-/Kleinschreibung.
+//   prefer-case      if … else if-Kette mit mindestens min Zweigen (Vorgabe 4,
+//                    der else-Zweig zählt mit), die denselben ordinalen Ausdruck
+//                    ohne Seiteneffekte mit Konstanten vergleicht und sich ohne
+//                    Bedeutungsänderung als case schreiben lässt (#646; Erkennung
+//                    und Korrektur aus Editing.IfCase, Typen über die
+//                    Namensauflösung). Standard aus. Keine Meldung bei Direktiven
+//                    in der Kette.
 
 interface
 
@@ -41,6 +48,7 @@ uses
 const
   MoneyAsFloatRuleId = 'money-as-float';
   StringIfChainRuleId = 'string-if-chain';
+  PreferCaseRuleId = 'prefer-case';
 
 type
   TMoneyAsFloatRule = class(TInterfacedObject, IRule)
@@ -68,6 +76,14 @@ type
     class function CountWord(ACount: Integer): string; static;
   end;
 
+  TPreferCaseRule = class(TInterfacedObject, IRule)
+  public const
+    DefaultMin = 4;
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 /// <summary>Registriert die Regeln für das passendere Sprachmittel.</summary>
 procedure RegisterIdiomRules(const ARegistry: TRuleRegistry);
 
@@ -84,6 +100,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Editing.StatementText,
+  Atlas.Common.Editing.IfCase,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines;
 
@@ -986,10 +1005,91 @@ begin
     end;
 end;
 
+{ TPreferCaseRule }
+
+function TPreferCaseRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(PreferCaseRuleId, TRuleSeverity.Hint, 'if-Kette lässt sich als case schreiben',
+    True);
+end;
+
+procedure TPreferCaseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  Resolver: TNameResolver;
+  Lookup: TIfCaseLookup;
+  Layout: TStatementLayout;
+  FileName: string;
+  Tokens: TTokens;
+  Min, Conditions, Branches, Index: Integer;
+  Node, Last: TSyntaxNode;
+  Conversion: TIfCaseConversion;
+  Fixes: TArray<TRuleFix>;
+  HasDirective: Boolean;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  Min := TRuleOptions.Int(AContext.Options, 'min', DefaultMin);
+  if Min < 2 then
+    Min := DefaultMin;
+  FileName := AContext.FileName;
+  if FileName = '' then
+    FileName := AContext.RelativePath;
+  if FileName = '' then
+    FileName := AContext.UnitName + '.pas';
+  Tokens := AContext.Tree.Tokens;
+  Layout := TStatementLayout.Create('', '  ', TTextLines.LineBreakOf(AContext.Text));
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
+  try
+    Resolver.Namespaces := AContext.Namespaces;
+    Resolver.PinTree(AContext.Tree, FileName);
+    try
+      Lookup := TIfCaseLookup.FromResolver(Resolver, AContext.Tree, FileName);
+      for Node in NodesOf(AContext.Tree.Root) do
+      begin
+        if not TIfCase.IsChainHead(Node) then
+          Continue;
+        Conditions := TIfCase.ConvertibleConditions(AContext.Text, AContext.Tree, Node, Lookup);
+        if Conditions = 0 then
+          Continue;
+        // Zweige: die Bedingungen und ein abschließendes else.
+        Branches := Conditions;
+        Last := Node;
+        while (Last.ChildCount = 3) and (Last[2].Kind = TSyntaxKind.IfStatement) do
+          Last := Last[2];
+        if Last.ChildCount = 3 then
+          Inc(Branches);
+        if Branches < Min then
+          Continue;
+        HasDirective := False;
+        Index := TokenAt(Tokens, Node.StartOffset);
+        while (Index <= High(Tokens)) and (Tokens[Index].Offset < Node.EndOffset) do
+        begin
+          if Tokens[Index].Kind = TPascalTokenKind.Directive then
+            HasDirective := True;
+          Inc(Index);
+        end;
+        if HasDirective then
+          Continue;
+        Fixes := nil;
+        if TIfCase.ToCase(AContext.Text, AContext.Tree, Node.StartPos, Lookup, Layout, Conversion) then
+          Fixes := [TRuleFix.Create(Conversion.Title, [Conversion.Edit])];
+        AReport.Add(TTextRange.Create(Node.StartPos, Node[0].EndPos),
+          Format('%s Zweige vergleichen denselben Ausdruck mit Konstanten; als case ist die Kette kürzer.',
+          [TStringIfChainRule.CountWord(Branches)]), TRuleConfidence.High, Fixes);
+      end;
+    finally
+      Resolver.UnpinTree;
+    end;
+  finally
+    Resolver.Free;
+  end;
+end;
+
 procedure RegisterIdiomRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TMoneyAsFloatRule.Create);
   ARegistry.Register(TStringIfChainRule.Create);
+  ARegistry.Register(TPreferCaseRule.Create);
 end;
 
 end.

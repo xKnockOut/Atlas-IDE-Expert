@@ -33,8 +33,10 @@
 //                     einen Zeichen-Parameter (wie E2354), eine Konstante, ein
 //                     const-Parameter, eine Property oder ein Funktionsergebnis
 //                     (wie E2197), eine Konstante an ein offenes Array (wie
-//                     E2192), Slice (wie E2454) oder ein Ausdruck (wie E2036)
-//                     (#1037). Nur bei eindeutiger Routine ohne Überladungen und
+//                     E2192), Slice an einen out-Parameter (wie E2454) oder ein
+//                     Ausdruck (wie E2036) (#1037). Slice an ein var-Open-Array
+//                     übersetzt dcc (Spring4D TArray.Sort<T>, #1328): Slice
+//                     übergibt den Speicher des Arrays, Änderungen kommen an. Nur bei eindeutiger Routine ohne Überladungen und
 //                     ohne eingebaute Routinen (Inc, Move ... nehmen mehr an).
 //                     Korrektur: über eine lokale Variable übergeben, bei
 //                     String-Elementen und Properties mit write mit Rückschreiben.
@@ -601,7 +603,7 @@ begin
     not ContainsText(AContext.Text, 'SetLength') then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -856,7 +858,7 @@ begin
     Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
     if LineBreak = '' then
       LineBreak := sLineBreak;
-    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+    Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
     try
       Resolver.Namespaces := AContext.Namespaces;
       Resolver.PinTree(AContext.Tree, FileName);
@@ -1073,7 +1075,7 @@ begin
     not ContainsText(AContext.Text, 'Integer') and not ContainsText(AContext.Text, 'LongInt')) then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -1330,8 +1332,10 @@ var
           Message := Format('Eine Konstante kann nicht als offenes Array an einen %s-Parameter übergeben werden ' +
             '(wie E2192).', [Modifier]);
         TVarArgumentKind.SliceCall:
-          Message := Format('Slice ist für einen %s-Parameter nicht erlaubt; Änderungen kämen nicht im Array an ' +
-            '(wie E2454).', [Modifier]);
+          if Modifier = 'out' then
+            Message := 'Slice ist für einen out-Parameter nicht erlaubt (wie E2454).'
+          else
+            Continue;
         TVarArgumentKind.Expression:
           Message := Format('An einen %s-Parameter muss eine Variable übergeben werden, kein Ausdruck (wie E2036).',
             [Modifier]);
@@ -1357,7 +1361,7 @@ begin
   Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
   if LineBreak = '' then
     LineBreak := sLineBreak;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -1455,7 +1459,7 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -1593,7 +1597,7 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, ' in') then
     Exit;
   FileName := ResolverFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);

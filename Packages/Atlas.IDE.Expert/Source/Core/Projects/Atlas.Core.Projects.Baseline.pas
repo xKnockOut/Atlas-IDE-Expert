@@ -122,6 +122,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON;
 
 /// <summary>Ordner von AFileName, normiert (Großbuchstaben, „\“, ohne Trenner am Ende); '' ohne Ordner.</summary>

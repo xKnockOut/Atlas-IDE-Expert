@@ -52,8 +52,10 @@ contains
   Atlas.Text.Entities in 'Source\Entities\Atlas.Text.Entities.pas',
   Atlas.Text.Defines in 'Source\Defines\Atlas.Text.Defines.pas',
   Atlas.Text.Checkin in 'Source\Checkin\Atlas.Text.Checkin.pas',
+  Atlas.Text.DebugDisplay in 'Source\DebugDisplay\Atlas.Text.DebugDisplay.pas',
   Atlas.Text.DUnitX in 'Source\DUnitX\Atlas.Text.DUnitX.pas',
   Atlas.Text.TestResults in 'Source\TestResults\Atlas.Text.TestResults.pas',
-  Atlas.Text.MapFile in 'Source\MapFile\Atlas.Text.MapFile.pas';
+  Atlas.Text.MapFile in 'Source\MapFile\Atlas.Text.MapFile.pas',
+  Atlas.Text.StepFilter in 'Source\StepFilter\Atlas.Text.StepFilter.pas';
 
 end.

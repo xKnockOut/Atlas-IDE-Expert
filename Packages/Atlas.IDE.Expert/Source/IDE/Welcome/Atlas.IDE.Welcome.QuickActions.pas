@@ -21,7 +21,14 @@
 //   Projekt bzw. das aktive Projekt der Gruppe.
 // - „Pull“ bzw. „Aktualisieren“ (SVN): im Hintergrund über TAtlasIdeVcs.Run
 //   mit Zeitlimit, nur vorwärts, vorher frisch auf lokale Änderungen geprüft;
-//   danach fragt „Projekte“ Branch und Änderungen neu ab.
+//   danach fragt „Projekte“ Branch und Änderungen neu ab. Unter SVN nach
+//   vcs.externals.update (#1292): mit Externals, ohne (--ignore-externals)
+//   oder mit Auswahl am Knopf (AskExternals). Den Index der geholten Ordner
+//   frischt die Dateiüberwachung (#395) auf, sie umfasst die Projektordner.
+// - „Aufgaben ▾“ (#900): Namen über OnTaskNames, Start über OnRunTask (der
+//   Aufgabenläufer, im Hintergrund); das Ende meldet TaskFinished mit dem
+//   Ergebnis („Delphi-12-Prüfung: 2 Fehler 14:03“). Ohne tasks.enabled bzw.
+//   ohne Aufgaben im Projekt gibt es den Knopf nicht.
 // - „Ordner“: Explorer wie im Kontextmenü von „Projekte“. „Konsole“:
 //   welcomePage.quickActions.console im Projektordner, ohne Windows-Terminal
 //   cmd.exe.
@@ -43,6 +50,7 @@ uses
   Vcl.ExtCtrls,
   Vcl.AppEvnts,
   Atlas.Core.Projects.Summary,
+  Atlas.Core.Tasks.Runs,
   Atlas.Core.Welcome.QuickActions,
   Atlas.UI.Welcome.QuickActions,
   Atlas.IDE.Welcome.Projects;
@@ -59,6 +67,10 @@ type
   TAtlasQuickProfilesFunc = reference to function(const AProject: string; out AActive: string): TArray<string>;
   /// <summary>Startet das offene AProject mit Profil AProfile ('' = ohne); False mit Grund.</summary>
   TAtlasQuickRunFunc = reference to function(const AProject, AProfile: string; out AReason: string): Boolean;
+  /// <summary>Namen der Projektaufgaben von AProject (#900).</summary>
+  TAtlasQuickTaskNamesFunc = reference to function(const AProject: string): TArray<string>;
+  /// <summary>Startet die Projektaufgabe AName von AProject; False mit Grund.</summary>
+  TAtlasQuickRunTaskFunc = reference to function(const AProject, AName: string; out AReason: string): Boolean;
 
   TAtlasIdeQuickActions = class(TInterfacedObject, IAtlasQuickActionsSource)
   public const
@@ -78,6 +90,8 @@ type
     FStates: TDictionary<string, TAtlasQuickActionState>;
     // Normiertes Testprojekt → Projekt der Zeile, deren Tests laufen.
     FTests: TDictionary<string, string>;
+    // Normiertes Projekt → Name der gestarteten Projektaufgabe.
+    FTasks: TDictionary<string, string>;
     FWatch: TTimer;
     FEvents: TApplicationEvents;
     FKeyAt: UInt64;
@@ -87,6 +101,8 @@ type
     FOnIdeBusy: TFunc<Boolean>;
     FOnProfiles: TAtlasQuickProfilesFunc;
     FOnRun: TAtlasQuickRunFunc;
+    FOnTaskNames: TAtlasQuickTaskNamesFunc;
+    FOnRunTask: TAtlasQuickRunTaskFunc;
     procedure Changed;
     procedure Report(const AText: string);
     function Key(const AProject: string): string;
@@ -98,7 +114,7 @@ type
     function EnsureOpen(const AProject: string; out AReason: string): Boolean;
     procedure BuildNext(const ARow: string; const AProjects: TArray<string>; AIndex: Integer;
       const AConfiguration, APlatform: string);
-    procedure Pull(const AProject: string);
+    procedure Pull(const AProject: string); overload;
     procedure OpenConsole(const AProject: string);
     procedure CountUse(const AId: string);
     procedure WatchTick(Sender: TObject);
@@ -121,6 +137,9 @@ type
     /// <summary>Ein Testlauf (#69) von ATestProject ist fertig; gehört er zu einer Schnellaktion, steht das
     /// Ergebnis in deren Zeile. Hauptthread.</summary>
     procedure TestsFinished(const ATestProject: string; const ATests: TAtlasProjectTests);
+    /// <summary>Eine Projektaufgabe von AProject ist fertig; hat die Schnellaktion sie gestartet, steht das
+    /// Ergebnis in deren Zeile. Hauptthread.</summary>
+    procedure TaskFinished(const AProject: string; const ARun: TAtlasTaskRun);
     { IAtlasQuickActionsSource }
     function Enabled: Boolean;
     function Buttons(const AProject: string): TAtlasQuickActionButtons;
@@ -133,6 +152,9 @@ type
     procedure RunTests(const AProject, ATestProject: string);
     function Profiles(const AProject: string; out AActive: string): TArray<string>;
     procedure Run(const AProject, AProfile: string);
+    function TaskNames(const AProject: string): TArray<string>;
+    procedure RunTask(const AProject, AName: string);
+    procedure Pull(const AProject: string; AIgnoreExternals: Boolean); overload;
     function BuildKey: Integer;
     function TestKey: Integer;
     function ConsoleProgram: string;
@@ -144,6 +166,8 @@ type
     property OnIdeBusy: TFunc<Boolean> read FOnIdeBusy write FOnIdeBusy;
     property OnProfiles: TAtlasQuickProfilesFunc read FOnProfiles write FOnProfiles;
     property OnRun: TAtlasQuickRunFunc read FOnRun write FOnRun;
+    property OnTaskNames: TAtlasQuickTaskNamesFunc read FOnTaskNames write FOnTaskNames;
+    property OnRunTask: TAtlasQuickRunTaskFunc read FOnRunTask write FOnRunTask;
   end;
 
 implementation
@@ -162,6 +186,7 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.Sections,
   Atlas.UI.Strings,
+  Atlas.UI.Tasks.Texts,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Vcs.Service,
   Atlas.IDE.Commands.ShortcutTips,
@@ -194,11 +219,13 @@ begin
   FMessage := AMessage;
   FStates := TDictionary<string, TAtlasQuickActionState>.Create;
   FTests := TDictionary<string, string>.Create;
+  FTasks := TDictionary<string, string>.Create;
 end;
 
 destructor TAtlasIdeQuickActions.Destroy;
 begin
   Stop;
+  FTasks.Free;
   FTests.Free;
   FStates.Free;
   inherited;
@@ -233,6 +260,8 @@ begin
   FOnIdeBusy := nil;
   FOnProfiles := nil;
   FOnRun := nil;
+  FOnTaskNames := nil;
+  FOnRunTask := nil;
 end;
 
 procedure TAtlasIdeQuickActions.Refresh;
@@ -346,8 +375,14 @@ begin
   // Ohne „Tests ausführen“ (#69) gibt es keinen Läufer: kein Knopf.
   if not Settings.TestRun then
     Exclude(Items, TAtlasQuickAction.Tests);
+  // „Aufgaben ▾“ nur mit eingeschalteten Projektaufgaben (#900) und Aufgaben im Projekt.
+  if (TAtlasQuickAction.Tasks in Items) and (not Settings.TasksEnabled or (Length(TaskNames(AProject)) = 0)) then
+    Exclude(Items, TAtlasQuickAction.Tasks);
   Vcs := FProjects.VcsOf(AProject);
   Result := TAtlasWelcomeQuickActions.Buttons(Items, Vcs, State(AProject).Running, IdeBusy(AProject));
+  // vcs.externals.update = ask (#1292): „Aktualisieren ▾“ mit Auswahl.
+  if AtlasVcsExternalsUpdateOf(Settings.VcsExternalsUpdate) = TAtlasVcsExternalsUpdate.Ask then
+    TAtlasWelcomeQuickActions.AskExternals(Result);
 end;
 
 class function TAtlasIdeQuickActions.ProjectOpen(const AFileName: string): Boolean;
@@ -414,7 +449,7 @@ end;
 procedure TAtlasIdeQuickActions.Execute(const AProject: string; AAction: TAtlasQuickAction);
 var
   Configuration, Platform: string;
-  Candidates: TArray<string>;
+  Candidates, Names: TArray<string>;
 begin
   if FStopped or not Enabled then
     Exit;
@@ -448,6 +483,13 @@ begin
         FProjects.OpenFolder(AProject);
     TAtlasQuickAction.Console:
       OpenConsole(AProject);
+    TAtlasQuickAction.Tasks:
+      begin
+        // Ohne Auswahl (Kontextmenü, Enter) die erste Aufgabe; die Leiste fragt sonst vorher.
+        Names := TaskNames(AProject);
+        if Length(Names) > 0 then
+          RunTask(AProject, Names[0]);
+      end;
   end;
 end;
 
@@ -713,9 +755,61 @@ begin
   Finish(AProject, TAtlasQuickAction.Run, TAtlasQuickActionPhase.Succeeded, '');
 end;
 
+function TAtlasIdeQuickActions.TaskNames(const AProject: string): TArray<string>;
+begin
+  Result := nil;
+  if not FStopped and Settings.TasksEnabled and Assigned(FOnTaskNames) then
+    Result := FOnTaskNames(AProject);
+end;
+
+procedure TAtlasIdeQuickActions.RunTask(const AProject, AName: string);
+var
+  Reason: string;
+begin
+  if FStopped or not Enabled or State(AProject).Running then
+    Exit;
+  StartAction(AProject, TAtlasQuickAction.Tasks);
+  Reason := '';
+  // Vor dem Start eintragen: Ein sofort scheiternder Lauf meldet sein Ende schon im Start.
+  FTasks.AddOrSetValue(Key(AProject), AName);
+  if not Assigned(FOnRunTask) then
+    Reason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonTasksOff)
+  else if not FOnRunTask(AProject, AName, Reason) and (Reason = '') then
+    Reason := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickReasonSeeMessages);
+  if Reason = '' then
+    Exit;
+  FTasks.Remove(Key(AProject));
+  Finish(AProject, TAtlasQuickAction.Tasks, TAtlasQuickActionPhase.Refused, Reason);
+  Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgTaskRefused, [AName, NameOf(AProject), Reason]));
+end;
+
+procedure TAtlasIdeQuickActions.TaskFinished(const AProject: string; const ARun: TAtlasTaskRun);
+var
+  Name: string;
+  Phase: TAtlasQuickActionPhase;
+begin
+  if FStopped or not FTasks.TryGetValue(Key(AProject), Name) or not SameText(Name, ARun.Name) then
+    Exit;
+  FTasks.Remove(Key(AProject));
+  if ARun.Passed then
+    Phase := TAtlasQuickActionPhase.Succeeded
+  else
+    Phase := TAtlasQuickActionPhase.Failed;
+  Finish(AProject, TAtlasQuickAction.Tasks, Phase, TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickTasksResult,
+    [ARun.Name, TAtlasTaskTexts.LastResult(TAtlasTaskLastRun.From(ARun), True)]));
+end;
+
 procedure TAtlasIdeQuickActions.Pull(const AProject: string);
+begin
+  // Ohne Auswahl (Taste, Kontextmenü ohne Untermenü): „ask“ holt wie „with“ samt Externals.
+  Pull(AProject, AtlasVcsExternalsUpdateOf(Settings.VcsExternalsUpdate) =
+    TAtlasVcsExternalsUpdate.WithoutExternals);
+end;
+
+procedure TAtlasIdeQuickActions.Pull(const AProject: string; AIgnoreExternals: Boolean);
 var
   Keep: IInterface;
+  mIgnore: Boolean;
   Project, Dir: string;
   Vcs: TAtlasProjectVcs;
   Update: Boolean;
@@ -738,12 +832,13 @@ begin
   Dir := ExtractFileDir(AProject);
   Outcome := TAtlasPullOutcome.Failed;
   Reason := TAtlasVcsOutcome.Failed;
+  mIgnore := AIgnoreExternals;
   // Arbeit und Ergebnis teilen sich Outcome und Reason; das Ergebnis kommt erst nach der Arbeit.
   if not TAtlasIdeVcs.Run(
     procedure
     begin
       Outcome := TAtlasWelcomeQuickActions.Pull(TAtlasIdeVcs.ForFolder(Dir,
-        TAtlasWelcomeQuickActions.PullTimeoutMs), Reason);
+        TAtlasIdeVcs.AtLeast(TAtlasWelcomeQuickActions.PullTimeoutMs)), mIgnore, Reason);
     end,
     procedure
     var
@@ -773,7 +868,13 @@ begin
         begin
           Value.Phase := TAtlasQuickActionPhase.Failed;
           Value.Detail := AtlasVcsOutcomeName(Reason);
-          if Update then
+          // Fehlende Anmeldung (#1287): Ursache und Weg zur Seite Versionsverwaltung statt eines Codes.
+          if Reason = TAtlasVcsOutcome.LoginNeeded then
+          begin
+            Value.Detail := TAtlasStrings.Text(TAtlasTextId.WelcomeQuickPullLogin);
+            Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgPullLogin, [NameOf(Project)]));
+          end
+          else if Update then
             Report(TAtlasStrings.Fmt(TAtlasTextId.WelcomeQuickMsgUpdateFailed, [NameOf(Project),
               AtlasVcsOutcomeName(Reason)]))
           else

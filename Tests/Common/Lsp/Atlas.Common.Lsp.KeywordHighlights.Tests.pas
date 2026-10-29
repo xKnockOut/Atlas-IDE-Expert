@@ -115,10 +115,11 @@ const
     '  procedure Q;'#10'  begin'#10'    Exit;'#10'  end;'#10 +
     'begin'#10'  if A then'#10'    Exit;'#10'  raise E.Create;'#10'end;'#10'end.';
 begin
-  // Exit in P: eigenes Exit, raise und end von P, nicht das Exit in Q
-  Assert.AreEqual('9:4 10:2 11:0', Highlight(Source, 9, 5));
+  // Exit in P: eigenes Exit und raise von P, nicht das Exit in Q; das end nicht, weil nach dem raise kein Weg
+  // dort herausfällt (#698).
+  Assert.AreEqual('9:4 10:2', Highlight(Source, 9, 5));
   // Routinenname im Kopf zeigt dasselbe
-  Assert.AreEqual('9:4 10:2 11:0', Highlight(Source, 2, 10));
+  Assert.AreEqual('9:4 10:2', Highlight(Source, 2, 10));
 end;
 
 procedure TKeywordHighlightsTests.ExitPointsSwitchedOff;

@@ -377,7 +377,7 @@ begin
       Info.TypeName := TypeRef.Name;
     Mode := '';
     Count := 0;
-    for TokenIndex := 0 to High(Tokens) do
+    for TokenIndex := TSyntaxTree.FirstTokenOf(Tokens, Decl.StartOffset) to High(Tokens) do
     begin
       Token := Tokens[TokenIndex];
       if Token.Offset < Decl.StartOffset then
@@ -427,9 +427,11 @@ end;
 function TComponentModel.HasToken(ANode: TSyntaxNode; const AWords: array of string): Boolean;
 var
   Token: TPascalToken;
+  mIndex: Integer;
 begin
-  for Token in FContext.Tree.Tokens do
+  for mIndex := FContext.Tree.FirstTokenFrom(ANode.StartOffset) to High(FContext.Tree.Tokens) do
   begin
+    Token := FContext.Tree.Tokens[mIndex];
     if Token.Offset < ANode.StartOffset then
       Continue;
     if Token.Offset >= ANode.EndOffset then
@@ -449,14 +451,16 @@ function TComponentModel.NameToken(const AMethod: TMethodImpl; out AToken: TPasc
 var
   Header: TSyntaxNode;
   Token: TPascalToken;
+  mIndex: Integer;
 begin
   Header := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
   Result := False;
   if Header = nil then
     Exit;
   // Der letzte passende Bezeichner im Kopf vor der Parameterliste.
-  for Token in FContext.Tree.Tokens do
+  for mIndex := FContext.Tree.FirstTokenFrom(Header.StartOffset) to High(FContext.Tree.Tokens) do
   begin
+    Token := FContext.Tree.Tokens[mIndex];
     if Token.Offset < Header.StartOffset then
       Continue;
     if (Token.Offset >= Header.EndOffset) or Token.IsSymbol('(') or Token.IsSymbol(';') or Token.IsSymbol(':') then
@@ -472,25 +476,30 @@ end;
 function TComponentModel.InsertAfterBegin(ABlock: TSyntaxNode; const AText: string; out AEdit: TRuleEdit): Boolean;
 var
   Token: TPascalToken;
-  Indent: Integer;
+  Indent, mIndex: Integer;
 begin
   Result := False;
-  for Token in FContext.Tree.Tokens do
-    if (Token.Offset = ABlock.StartOffset) and Token.IsKeyword('begin') then
-    begin
-      if ABlock.ChildCount > 0 then
-        Indent := ABlock[0].StartPos.Character
-      else
-        Indent := Token.StartPos.Character + 2;
-      AEdit := TRuleEdit.Create(TTextRange.Create(Token.EndPos, Token.EndPos),
-        FLineBreak + StringOfChar(' ', Indent) + AText);
-      Exit(True);
-    end;
+  // Höchstens das Token am Blockanfang kommt in Frage: binär dorthin statt ab Dateianfang (#1342).
+  mIndex := FContext.Tree.FirstTokenFrom(ABlock.StartOffset);
+  if mIndex > High(FContext.Tree.Tokens) then
+    Exit;
+  Token := FContext.Tree.Tokens[mIndex];
+  if (Token.Offset = ABlock.StartOffset) and Token.IsKeyword('begin') then
+  begin
+    if ABlock.ChildCount > 0 then
+      Indent := ABlock[0].StartPos.Character
+    else
+      Indent := Token.StartPos.Character + 2;
+    AEdit := TRuleEdit.Create(TTextRange.Create(Token.EndPos, Token.EndPos),
+      FLineBreak + StringOfChar(' ', Indent) + AText);
+    Result := True;
+  end;
 end;
 
 function TComponentModel.InsertBeforeEnd(ABlock: TSyntaxNode; const AText: string; out AEdit: TRuleEdit): Boolean;
 var
   Token, Last, Begin_: TPascalToken;
+  mIndex: Integer;
   Found: Boolean;
   Indent: Integer;
   Prefix: string;
@@ -500,8 +509,9 @@ begin
   Begin_ := Default(TPascalToken);
   Last := Default(TPascalToken);
   // Letztes Token vor dem abschließenden end des Blocks.
-  for Token in FContext.Tree.Tokens do
+  for mIndex := FContext.Tree.FirstTokenFrom(ABlock.StartOffset) to High(FContext.Tree.Tokens) do
   begin
+    Token := FContext.Tree.Tokens[mIndex];
     if Token.Offset < ABlock.StartOffset then
       Continue;
     if Token.Offset >= ABlock.EndOffset then
@@ -1252,14 +1262,19 @@ var
   function AnswersItself(ABlock: TSyntaxNode): Boolean;
   var
     Code: TArray<TPascalToken>;
-    Token: TPascalToken;
     Index: Integer;
+    mTokens: TArray<TPascalToken>;
   begin
     Code := nil;
-    for Token in AContext.Tree.Tokens do
-      if (Token.Offset >= ABlock.StartOffset) and (Token.Offset < ABlock.EndOffset) and
-        not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-        Code := Code + [Token];
+    // Nur die Token des Blocks, binär angesprungen statt die ganze Datei je Handler (#1323).
+    mTokens := AContext.Tree.Tokens;
+    Index := AContext.Tree.FirstTokenFrom(ABlock.StartOffset);
+    while (Index <= High(mTokens)) and (mTokens[Index].Offset < ABlock.EndOffset) do
+    begin
+      if not (mTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+        Code := Code + [mTokens[Index]];
+      Inc(Index);
+    end;
     for Index := 1 to High(Code) - 1 do
       if Code[Index - 1].IsSymbol('.') and SameText(Code[Index].Text, 'Result') and Code[Index + 1].IsSymbol(':=') then
         Exit(True);

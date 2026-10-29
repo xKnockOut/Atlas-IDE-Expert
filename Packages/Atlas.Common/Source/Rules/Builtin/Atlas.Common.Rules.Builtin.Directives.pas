@@ -30,7 +30,8 @@
 // einem bedingten Zweig steht.
 //
 // directive-typo liest die Directive-Knoten des Syntaxbaums: Der Parser legt
-// sie auch für unbekannte Wörter mit ';' dahinter an. In Zweigen, deren
+// sie auch für unbekannte Wörter mit ';' dahinter an. Methodenzuordnungen
+// (procedure IFoo.Bar = Baz;) übergeht sie (#1325). In Zweigen, deren
 // Bedingung FPC abfragt, bleibt sie still (FPC kennt weitere Direktiven wie
 // nostackframe).
 
@@ -505,6 +506,9 @@ begin
       // Nach einer Property steht nur default, nach Routinenköpfen eine der Direktiven.
       if ANode.Parent.Kind = TSyntaxKind.PropertyDecl then
         Candidates := ['default']
+      // Methodenzuordnung "function IFoo.GetX = MyGetX;": "= MyGetX" ist keine Direktive (#1325).
+      else if (ANode.Parent.Kind = TSyntaxKind.RoutineHeader) and ANode.Parent.IsMethodResolution then
+        Exit
       else if ANode.Parent.Kind = TSyntaxKind.RoutineHeader then
         Candidates := TDirectiveNames.RoutineDirectives
       else

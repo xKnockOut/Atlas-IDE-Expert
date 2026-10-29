@@ -68,6 +68,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Documents.Uris;
 
 function ReadFolders(const AValue: TJSONValue): TArray<TWorkspaceFolder>;

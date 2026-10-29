@@ -1,0 +1,34 @@
+{
+  "idReadable": "ATL-123",
+  "numberInProject": 123,
+  "summary": "Tracker im Plugin anbinden",
+  "description": "## Ziel\n\nIssues **direkt** in der IDE zeigen.\n\n- [x] Liste\n- [ ] Vorschau\n\n![Skizze](skizze.png)",
+  "created": 1761645649000,
+  "updated": 1761649249500,
+  "customFields": [
+    {"name": "State", "value": {"name": "In Progress", "$type": "StateBundleElement"}},
+    {"name": "Priority", "value": {"name": "Major", "$type": "EnumBundleElement"}},
+    {"name": "Type", "value": {"name": "Feature", "$type": "EnumBundleElement"}},
+    {"name": "Assignee", "value": {"login": "mb", "fullName": "Marco B.", "$type": "User"}},
+    {"name": "Sprints", "value": [{"name": "Sprint 42", "$type": "Sprint"}]},
+    {"name": "Estimation", "value": null}
+  ],
+  "tags": [{"name": "plugin"}, {"name": "ui"}],
+  "attachments": [
+    {"name": "skizze.png", "size": 2048, "url": "/api/files/1-2?sign=abc", "mimeType": "image/png", "removed": false},
+    {"name": "alt.txt", "size": 10, "url": "/api/files/1-3?sign=def", "mimeType": "text/plain", "removed": true},
+    {"name": "fremd.zip", "url": "https://andere.example.com/files/x.zip", "mimeType": "application/zip"}
+  ],
+  "links": [
+    {"direction": "OUTWARD", "linkType": {"name": "Depend", "sourceToTarget": "depends on", "targetToSource": "is required for"},
+     "issues": [{"idReadable": "ATL-100", "summary": "Tracker-Einstellungen"}]},
+    {"direction": "INWARD", "linkType": {"name": "Depend", "sourceToTarget": "depends on", "targetToSource": "is required for"},
+     "issues": [{"idReadable": "ATL-130", "summary": "Commit-Präfix"}]},
+    {"direction": "BOTH", "linkType": {"name": "Relates", "sourceToTarget": "", "targetToSource": ""}, "issues": []}
+  ],
+  "comments": [
+    {"text": "Erster Kommentar", "created": 1761645700000, "deleted": false, "author": {"login": "mb", "fullName": "Marco B."}},
+    {"text": "gelöscht", "created": 1761645800000, "deleted": true, "author": {"login": "x"}},
+    {"text": "Zweiter `Code`", "created": 1761645900000, "author": {"login": "kollege"}}
+  ]
+}

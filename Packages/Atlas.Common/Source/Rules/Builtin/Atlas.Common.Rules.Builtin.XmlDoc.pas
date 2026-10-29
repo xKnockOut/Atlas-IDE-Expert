@@ -1348,7 +1348,7 @@ begin
     CollectDeclarations(AContext.Tree.Root, Declarations);
     if CrefsKnown then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
       Resolver.Namespaces := AContext.Namespaces;
       FromUnit := TRuleDerived.UnitIndex(Cache, AContext);
     end;

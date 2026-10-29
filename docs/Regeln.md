@@ -6,18 +6,18 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 | Gruppe | Regeln |
 |---|---|
-| [Fehler finden](#gruppe-find-bugs) | 71 |
+| [Fehler finden](#gruppe-find-bugs) | 75 |
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 76 |
-| [Robustheit und Muster](#gruppe-robustness) | 13 |
+| [Compiler vorab](#gruppe-compiler) | 78 |
+| [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
 | [Formulare und Daten](#gruppe-forms) | 14 |
-| [Architektur](#gruppe-architecture) | 3 |
-| [Stil und Metriken](#gruppe-style) | 47 |
+| [Architektur](#gruppe-architecture) | 5 |
+| [Stil und Metriken](#gruppe-style) | 53 |
 | [Packages und Tests](#gruppe-packages) | 3 |
 | [Atlas intern](#gruppe-internal) | 4 |
 
@@ -46,8 +46,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`int32-mul-overflow`](#int32-mul-overflow) | Int32-Multiplikation an Int64 zugewiesen | Bug | Warnung |
 | [`sizeof-pointer`](#sizeof-pointer) | SizeOf eines Zeigers in Move oder FillChar | Bug | Fehler |
 | [`char-to-pchar`](#char-to-pchar) | Char nach PChar umgewandelt | Bug | Fehler |
+| [`unrelated-class-cast`](#unrelated-class-cast) | Harte Umwandlung zwischen nicht verwandten Klassen | Bug | Warnung |
+| [`first-char-address`](#first-char-address) | Adresse des ersten Zeichens über S[1] | Bug | Warnung |
 | [`float-equality`](#float-equality) | Gleitkommavergleich mit = oder <> | Bug | Hinweis |
 | [`constructor-on-instance`](#constructor-on-instance) | Konstruktor auf einer Instanz aufgerufen | Bug | Warnung |
+| [`format-args`](#format-args) | Formatstring passt nicht zu den Argumenten | Bug | Fehler |
 | [`unresolved-identifier`](#unresolved-identifier) | Nicht deklarierter Bezeichner | Bug | Warnung |
 | [`type-used-before-declaration`](#type-used-before-declaration) | Typ vor seiner Deklaration benutzt | Bug | Fehler |
 | [`field-not-freed`](#field-not-freed) | Feld erzeugt, aber nie freigegeben | Bug | Warnung |
@@ -94,6 +97,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`constant-condition`](#constant-condition) | Bedingung ist immer gleich | Bug | Warnung |
 | [`infinite-loop`](#infinite-loop) | Schleife ohne Ausgang | Bug | Fehler |
 | [`loop-condition-unchanged`](#loop-condition-unchanged) | Schleifenbedingung ändert sich im Rumpf nie | Bug | Warnung |
+| [`loop-runs-at-most-once`](#loop-runs-at-most-once) | Schleife läuft höchstens einmal | Bug | Warnung |
 | [`unconditional-recursion`](#unconditional-recursion) | Rekursion ohne Abbruch | Bug | Fehler |
 | [`pos-arguments-swapped`](#pos-arguments-swapped) | Argumente von Pos vertauscht | Bug | Warnung |
 | [`integer-division-to-float`](#integer-division-to-float) | Ganzzahldivision an Gleitkommazahl | Bug | Warnung |
@@ -150,7 +154,9 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | Regel | Name | Kategorie | Schweregrad |
 |---|---|---|---|
 | [`syntax`](#syntax) | Syntaxfehler | Bug | Fehler |
+| [`language-feature`](#language-feature) | Sprachmerkmal einer neueren Delphi-Version | Bug | Warnung |
 | [`for-high-to-low`](#for-high-to-low) | for-Schleife zählt mit to abwärts | Bug | Warnung |
+| [`conditional-expression-version`](#conditional-expression-version) | Bedingungsausdruck vor Delphi 13 | Bug | Fehler |
 | [`deprecated-symbol`](#deprecated-symbol) | Veraltetes oder gebundenes Symbol | Code Smell | Warnung |
 | [`signature-mismatch`](#signature-mismatch) | Implementierung weicht von der Deklaration ab | Bug | Fehler |
 | [`interface-not-implemented`](#interface-not-implemented) | Interface-Methode fehlt in der Klasse | Bug | Fehler |
@@ -233,6 +239,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 |---|---|---|---|
 | [`random-without-randomize`](#random-without-randomize) | Random ohne Randomize | Code Smell | Hinweis |
 | [`format-without-settings`](#format-without-settings) | Formatierung abhängig vom Gebietsschema | Code Smell | Hinweis |
+| [`debug-display-placeholder`](#debug-display-placeholder) | Wertdarstellung nennt unbekanntes Mitglied | Bug | Warnung |
 | [`null-compare`](#null-compare) | Vergleich mit Null statt VarIsNull oder IsNull | Code Smell | Warnung |
 | [`path-concat-without-delimiter`](#path-concat-without-delimiter) | Pfad ohne Trennzeichen zusammengesetzt | Bug | Warnung |
 | [`hardcoded-path`](#hardcoded-path) | Fester Dateipfad im Code | Code Smell | Hinweis |
@@ -314,8 +321,10 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | Regel | Name | Kategorie | Schweregrad |
 |---|---|---|---|
 | [`forbidden-uses`](#forbidden-uses) | Verbotene uses-Beziehung | Code Smell | Fehler |
+| [`uses-cycle`](#uses-cycle) | Zirkuläre Unit-Referenz über uses | Code Smell | Warnung |
 | [`architecture-role-import`](#architecture-role-import) | Import verletzt die Rollenmatrix | Code Smell | Warnung |
 | [`architecture-contract-content`](#architecture-contract-content) | Klasse in einer Contract-Unit | Code Smell | Warnung |
+| [`forbidden-symbol`](#forbidden-symbol) | Verbotenes Symbol verwendet | Code Smell | Warnung |
 
 <a id="gruppe-style"></a>
 ### Stil und Metriken
@@ -330,6 +339,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`bool-compare`](#bool-compare) | Vergleich mit True oder False | Code Smell | Hinweis |
 | [`redundant-assigned-free`](#redundant-assigned-free) | Assigned-Prüfung vor Free | Code Smell | Hinweis |
 | [`redundant-parens`](#redundant-parens) | Überflüssige Klammern | Code Smell | Hinweis |
+| [`redundant-cast`](#redundant-cast) | Überflüssige Typumwandlung | Code Smell | Hinweis |
 | [`redundant-begin-end`](#redundant-begin-end) | begin … end um eine einzelne Anweisung | Code Smell | Hinweis |
 | [`with-statement`](#with-statement) | with-Anweisung | Code Smell | Hinweis |
 | [`metric-method-length`](#metric-method-length) | Methode zu lang | Code Smell | Hinweis |
@@ -358,17 +368,22 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`commented-out-code`](#commented-out-code) | Auskommentierter Code | Code Smell | Hinweis |
 | [`default-parameter`](#default-parameter) | Standardparameter statt Überladung | Code Smell | Warnung |
 | [`empty-routine`](#empty-routine) | Leere Methode | Code Smell | Hinweis |
+| [`trivial-accessor`](#trivial-accessor) | Zugriffsmethode liest bzw. setzt nur ein Feld | Code Smell | Hinweis |
 | [`write-only-property`](#write-only-property) | Property ohne read | Code Smell | Hinweis |
 | [`xmldoc-mismatch`](#xmldoc-mismatch) | XMLDoc passt nicht zur Signatur | Code Smell | Hinweis |
 | [`missing-begin-end`](#missing-begin-end) | Bedingung oder Schleife ohne begin … end | Code Smell | Hinweis |
 | [`unused-public-member`](#unused-public-member) | Öffentliches Mitglied wird im Projekt nie verwendet | Code Smell | Hinweis |
+| [`unused-declaration`](#unused-declaration) | Deklaration im implementation-Abschnitt wird nie verwendet | Code Smell | Hinweis |
+| [`unused-unit`](#unused-unit) | Unit wird von keiner anderen Unit verwendet | Code Smell | Hinweis |
 | [`now-for-elapsed-time`](#now-for-elapsed-time) | Laufzeit mit Now gemessen | Code Smell | Hinweis |
 | [`money-as-float`](#money-as-float) | Geldbetrag als Gleitkommazahl | Bug | Hinweis |
 | [`string-if-chain`](#string-if-chain) | Lange if-Kette über denselben String | Code Smell | Hinweis |
+| [`prefer-case`](#prefer-case) | if-Kette lässt sich als case schreiben | Code Smell | Hinweis |
 | [`empty-finally`](#empty-finally) | Leerer finally-Block | Code Smell | Hinweis |
 | [`override-only-inherited`](#override-only-inherited) | override ruft nur inherited auf | Code Smell | Hinweis |
 | [`inherited-without-ancestor`](#inherited-without-ancestor) | inherited ohne Methode im Vorfahr | Code Smell | Hinweis |
 | [`redundant-jump`](#redundant-jump) | Überflüssiges Exit oder Continue | Code Smell | Hinweis |
+| [`method-without-self`](#method-without-self) | Methode braucht Self nicht | Code Smell | Hinweis |
 
 <a id="gruppe-packages"></a>
 ### Packages und Tests
@@ -418,6 +433,30 @@ if Gueltig then
   Speichern
 else
   Verwerfen;
+```
+
+<a id="language-feature"></a>
+### language-feature
+
+**Sprachmerkmal einer neueren Delphi-Version** · Bug · Warnung · Gruppe Compiler vorab
+
+Der Code nutzt ein Sprachmerkmal, das der Sprachstand des Projekts noch nicht kennt: Inline-Variable und -Konstante (Delphi 10.3), Managed Record mit class operator Initialize/Finalize (Delphi 10.4), Ziffern-Trennzeichen 1_000 und Binärliteral %1010 (Delphi 11), mehrzeiliger String ''' (Delphi 12), If-Ausdruck, „is not“ und „not in“ (Delphi 13). Der Sprachstand ist die ältere aus delphiVersion und minDelphiVersion in atlas.json: minDelphiVersion nennt die älteste Delphi-Version, mit der das Projekt noch übersetzen muss (z. B. „12“ für Code, den Delphi 12 und 13 übersetzen). Ohne beide Angaben meldet Atlas nichts. Inaktive Zweige {$IF CompilerVersion >= …} bleiben still, so kann Code für mehrere Versionen nebeneinander stehen. Gemeldet im Editor, von --check, check_code und dem Claude-Code-Hook (hook_check). Code-Aktionen und Schnellbefehle erzeugen keine Merkmale über den Sprachstand hinaus.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+// minDelphiVersion "12"
+if Sender is not TButton then
+  Exit;
+```
+
+Richtig:
+
+```pascal
+if not (Sender is TButton) then
+  Exit;
 ```
 
 <a id="unused-suppression"></a>
@@ -524,7 +563,7 @@ Count := 0;
 
 **Steuerzeichen** · Bug · Fehler · Gruppe Sicherheit
 
-NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei; ungültige Bytes mit genauer Zeile und Spalte.
+NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei; ungültige Bytes mit genauer Zeile und Spalte. Wie dcc gilt eine Datei ohne BOM nur als UTF-8, wenn sie ganz gültiges UTF-8 ist; eine ANSI-Datei wird nur dann auf ungültige Bytes geprüft, wenn ihre gültigen UTF-8-Folgen überwiegen. U+FFFD ist im Code ein Fehler, im String ein Hinweis, im Kommentar kein Befund.
 
 Mit Treffer:
 
@@ -582,6 +621,37 @@ Richtig:
 unit App.Common.Model;
 interface
 uses System.Classes;
+```
+
+<a id="uses-cycle"></a>
+### uses-cycle
+
+**Zirkuläre Unit-Referenz über uses** · Code Smell · Warnung · Gruppe Architektur
+
+Ein uses-Eintrag führt über die uses-Listen anderer Units zurück zur eigenen Unit. Liegt jede Kante des Zyklus im interface-Abschnitt, lehnt der Compiler ihn ab (wie F2047), und der Befund ist ein Fehler; Zyklen mit mindestens einer implementation-Kante erlaubt Delphi, sie koppeln die Units aber eng (Initialisierungsreihenfolge, Neuübersetzen, Testen) und erscheinen mit dem Schweregrad der Regel (Option implementation). Die Meldung zeigt den vollständigen kürzesten Pfad (A → B → C → A), der Befund-Hover jede Kante mit ihrem Abschnitt. Grundlage ist der gemeinsame Uses-Graph über den Symbolindex (#268), inaktive Zweige der bedingten Kompilierung ausgeblendet; die geprüfte Unit zählt mit ihrem Editor-Stand. Still ohne Projekte (Linter, Datei ohne Projekt), solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt.
+
+Entspricht der Compilermeldung `F2047`.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `implementation` | boolean | `true` | Auch Zyklen mit mindestens einer Kante im implementation-Abschnitt melden (vom Compiler erlaubt). |
+
+Mit Treffer:
+
+```pascal
+unit uKunde;
+interface
+uses uAuftrag;   // uAuftrag uses uKunde in its interface
+
+```
+
+Richtig:
+
+```pascal
+unit uKunde;
+interface
+// common types moved to uTypen, used by both
+uses uTypen;
 ```
 
 <a id="architecture-role-import"></a>
@@ -643,6 +713,36 @@ interface
 type
   IOrderList = interface
   end;
+```
+
+<a id="forbidden-symbol"></a>
+### forbidden-symbol
+
+**Verbotenes Symbol verwendet** · Code Smell · Warnung · Gruppe Architektur
+
+Eine Liste unter "symbols" in atlas.json verbietet Routinen, Typen, Konstanten, Felder, Properties, Aufzählungswerte oder Bezeichner, jeweils mit Meldung und Ersatz. Verglichen wird über die Namensauflösung, nicht über Text: System.SysUtils.FileExists trifft auch FileExists, aber nicht eine eigene Methode gleichen Namens. Ein Eintrag darf den Namen ab einer Punktgrenze kürzen (TThread.Queue) und * enthalten. Bezeichner aus System ohne Quelltext (Writeln, Halt) gelten als System.<Name>. Ist der linke Teil eines qualifizierten Namens gar nicht auflösbar (Unit nicht indexiert), wird der geschriebene Name mit dem Ende des Eintrags verglichen. Je Eintrag: kind (routine, type, constant, field, property, enumValue, identifier = nach Namen ohne Auflösung), message, replacement, severity, units (Muster der Unit-Namen, "!" schließt aus), firstArgument (nur mit diesem ersten Argument, z. B. nil) und allowFirstArgument (erlaubt mit diesem ersten Argument, z. B. ErrOutput); beide vergleichen den Text des Arguments oder den Namen seines Typs (TextFile). Standard aus und ohne Liste stumm; im Profil strict an. Sicherheit hoch. Schnellkorrektur: durch den konfigurierten Ersatz ersetzen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `symbols` | object-list | `[]` | Tabelle der verbotenen Symbole, ein Objekt je Eintrag: name (qualifiziert, * erlaubt), kind (routine, type, constant, field, property, enumValue oder identifier), message, replacement, severity, units (Muster, ! schließt aus), firstArgument und allowFirstArgument (Texte oder Typnamen des Arguments). |
+
+Mit Treffer:
+
+```pascal
+// atlas.json: "forbidden-symbol": {"symbols": [{"name": "System.Write*", "kind": "routine", "message": "Only via ILogger"}]}
+procedure TImport.Report(const AText: string);
+begin
+  Writeln(AText);
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Report(const AText: string);
+begin
+  FLogger.Info(AText);
+end;
 ```
 
 <a id="thread-vcl-access"></a>
@@ -1900,6 +2000,32 @@ for I := 10 downto 1 do
   Countdown(I);
 ```
 
+<a id="conditional-expression-version"></a>
+### conditional-expression-version
+
+**Bedingungsausdruck vor Delphi 13** · Bug · Fehler · Gruppe Compiler vorab
+
+Den Bedingungsausdruck X := if C then A else B gibt es erst ab Delphi 13; ein Projekt, das noch mit Delphi 12 oder älter übersetzen muss, scheitert hier (wie E2029). Gemeldet wird der äußerste Ausdruck, nicht in Zweigen von {$IF}, die nach CompilerVersion, RTLVersion, VERnnn oder Declared fragen. Ohne bekannte Delphi-Version still. Korrektur (auch für die ganze Unit): in eine if-Anweisung umwandeln, die Anweisung je Zweig wiederholt; nicht angeboten, wenn der Rest der Anweisung Seiteneffekte hat.
+
+Entspricht der Compilermeldung `E2029`.
+
+Stufe A (Parser genügt).
+
+Mit Treffer:
+
+```pascal
+Caption := if Done then 'Ready' else 'Busy';
+```
+
+Richtig:
+
+```pascal
+if Done then
+  Caption := 'Ready'
+else
+  Caption := 'Busy';
+```
+
 <a id="exception-not-raised"></a>
 ### exception-not-raised
 
@@ -2042,6 +2168,66 @@ Richtig:
 ShowMessage(PChar(string(C)));
 ```
 
+<a id="unrelated-class-cast"></a>
+### unrelated-class-cast
+
+**Harte Umwandlung zwischen nicht verwandten Klassen** · Bug · Warnung · Gruppe Fehler finden
+
+TButton(Obj) prüft nichts. Ist der statische Typ von Obj weder Vorfahr noch Nachfahr von TButton (z. B. TEdit oder TForm), liest der Zugriff Speicher eines Objekts mit anderem Aufbau. Gemeldet wird nur, wenn beide Typen sicher bekannt sind, beide Vererbungsketten bis TObject bekannt sind und beide Deklarationen immer mit der Umwandlung übersetzt werden. Interfaces, Zeiger, Zahlen, TObject als Quelle und Umwandlungen in oder aus Klassenreferenzen (class of) bleiben still, ebenso der Zugriffsklassen-Trick: Das Ziel und seine Vorfahren bis zu einem gemeinsamen Vorfahren deklarieren weder Felder noch neue virtuelle Methoden (THackControl = class(TControl)), der Aufbau ist also derselbe. Sicherheit hoch. Korrektur: (Obj as TButton) prüft den Typ zur Laufzeit.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowTypes` | string-list | `[]` | Typen, die absichtlich hart umgewandelt werden: ein Typname (als Quelle oder Ziel) oder ein Paar "Quelle=Ziel". |
+
+Mit Treffer:
+
+```pascal
+procedure TForm1.EditExit(Sender: TObject);
+var
+  mEdit: TEdit;
+begin
+  mEdit := Sender as TEdit;
+  TButton(mEdit).Caption := 'OK';
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TForm1.EditExit(Sender: TObject);
+var
+  mEdit: TEdit;
+begin
+  mEdit := Sender as TEdit;
+  (mEdit as TButton).Caption := 'OK';
+end;
+```
+
+<a id="first-char-address"></a>
+### first-char-address
+
+**Adresse des ersten Zeichens über S[1]** · Bug · Warnung · Gruppe Fehler finden
+
+@S[1] und PChar(@S[1]) lösen bei leerem String mit {$R+} einen Bereichsfehler aus, ohne Bereichsprüfung ergibt sich nil oder Müll. Außerdem erzwingt der Indexzugriff eine eindeutige Kopie (UniqueString). PChar(S) und Pointer(S) sind auch für leere Strings sicher. Gilt für string, UnicodeString, WideString, AnsiString, RawByteString und UTF8String, auch S[Low(S)]; ShortString, Arrays und andere Indizes bleiben still. Gemeldet wird nur, wenn der Typ von S sicher bekannt ist. Sicherheit hoch. Korrektur bei const-Parametern: durch PChar(S) ersetzen (PAnsiChar bei AnsiString-Typen), ein umgebendes PChar(…), PAnsiChar(…), PWideChar(…), PByte(…) oder Pointer(…) wird als Ganzes ersetzt. Bei anderen Strings kann der Zeiger zum Schreiben dienen, dann ist die eigene Kopie gewollt; dort gibt es keine Korrektur, die Meldung nennt UniqueString(S).
+
+Mit Treffer:
+
+```pascal
+procedure Send(const AText: string);
+begin
+  WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));
+end;
+```
+
+Richtig:
+
+```pascal
+procedure Send(const AText: string);
+begin
+  WriteBuffer(PChar(AText), Length(AText) * SizeOf(Char));
+end;
+```
+
 <a id="float-equality"></a>
 ### float-equality
 
@@ -2097,6 +2283,29 @@ Richtig:
 
 ```pascal
 Line := Format('%.2f', [Amount], TFormatSettings.Invariant);
+```
+
+<a id="format-args"></a>
+### format-args
+
+**Formatstring passt nicht zu den Argumenten** · Bug · Fehler · Gruppe Fehler finden
+
+Format, FmtStr, FormatBuf, StrFmt, StrLFmt, WideFormat, WideFmtStr, Exception.CreateFmt bzw. CreateFmtHelp und TStringBuilder.AppendFormat mit bekanntem Formatstring (Literal, mit + verbundene Literale, const oder resourcestring der Datei bzw. des Index), dessen Platzhalter nicht zur Argumentliste [...] passen: ungültiger Platzhalter (%q, '%' bzw. '%5' am Ende, %0: ohne Typbuchstaben), weniger Argumente als Platzhalter oder ein Argument vom falschen Typ: %d %u %x nur Ganzzahlen, %e %f %g %n %m nur Gleitkommazahlen, %s Strings, Zeichen und Variants, %p Zeiger und Objekte, ein * für Breite bzw. Genauigkeit eine Ganzzahl; Variants passen überall. Boolean und Aufzählungswerte werden bei jedem Typbuchstaben gemeldet, mit Ord(...) bzw. BoolToStr(..., True) als Hinweis. All das löst zur Laufzeit EConvertError aus. Ein Argument hinter dem letzten verwendeten wird mit mittlerer Sicherheit gemeldet (nur ohne Index im Formatstring), es wird nie ausgegeben. Typen werden nur geprüft, wenn sie sicher bekannt sind; Formatstrings aus Variablen, Index * und Bereiche bleiben still. Eigene Routinen namens Format bleiben still, wenn die Namensauflösung sie findet. Teilt die Zerlegung der Formatstrings mit format-without-settings. Keine Korrektur. Sicherheit hoch.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `formatMethods` | string-list | `[]` | Weitere Routinen mit Formatstring und folgender Argumentliste array of const, z. B. "TLogger.LogFmt" oder "Protokoll". Mit Punkt zählt ohne Namensauflösung der Methodenname hinter einem beliebigen Qualifizierer. |
+
+Mit Treffer:
+
+```pascal
+Result := Format('%d orders for %s', [ACustomer.Name]);
+```
+
+Richtig:
+
+```pascal
+Result := Format('%d orders for %s', [ACustomer.OrderCount, ACustomer.Name]);
 ```
 
 <a id="generic-exception-raised"></a>
@@ -2384,6 +2593,37 @@ Richtig:
 ```pascal
 if Done then
   Exit;
+```
+
+<a id="redundant-cast"></a>
+### redundant-cast
+
+**Überflüssige Typumwandlung** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destruktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstanten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu deklariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `checkFree` | boolean | `true` | Auch eine Klassenumwandlung melden, die nur vor Free steht (CastAndFree). |
+
+Mit Treffer:
+
+```pascal
+procedure TImport.Cleanup;
+begin
+  TStringList(FLines).Clear;
+  TObject(FStream).Free;
+end;
+```
+
+Richtig:
+
+```pascal
+procedure TImport.Cleanup;
+begin
+  FLines.Clear;
+  FStream.Free;
+end;
 ```
 
 <a id="redundant-begin-end"></a>
@@ -2685,6 +2925,31 @@ Edit.Text := '';
 Edit.SetFocus;
 ```
 
+<a id="debug-display-placeholder"></a>
+### debug-display-placeholder
+
+**Wertdarstellung nennt unbekanntes Mitglied** · Bug · Warnung · Gruppe Robustheit und Muster
+
+Eine Regel für die Wertdarstellung beim Debuggen über einem Typ (// atlas-debug: '{Name}, {Ort}', [AtlasDebugDisplay('…')], // atlas-debug-children: Name, Ort oder [AtlasDebugChildren('…')]) nennt einen Platzhalter oder ein Unterelement, das weder Feld noch Eigenschaft noch Methode des Typs oder eines Vorfahren ist, oder die Vorlage ist ungültig (offene oder leere Klammer). Im Debugger bliebe ein solcher Platzhalter leer ({?Name}). Vorfahren kommen aus der Unit und dem Index; ist ein Vorfahr unbekannt, schweigt die Regel für den Typ. Mitglieder von TObject (ClassName, ToString, …) gelten immer als bekannt.
+
+Mit Treffer:
+
+```pascal
+// atlas-debug: '{Name}, {Stadt}'
+TKunde = class
+  Name, Ort: string;
+end;
+```
+
+Richtig:
+
+```pascal
+// atlas-debug: '{Name}, {Ort}'
+TKunde = class
+  Name, Ort: string;
+end;
+```
+
 <a id="component-palette-icon"></a>
 ### component-palette-icon
 
@@ -2794,7 +3059,7 @@ end.
 
 **Typ vor seiner Deklaration benutzt** · Bug · Fehler · Gruppe Fehler finden
 
-Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber erst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet. Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund.
+Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber erst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet, ebenso wenig class of auf eine Klasse weiter unten im selben type-Block (das übersetzt dcc). Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund.
 
 Mit Treffer:
 
@@ -4053,6 +4318,30 @@ begin
 end;
 ```
 
+<a id="trivial-accessor"></a>
+### trivial-accessor
+
+**Zugriffsmethode liest bzw. setzt nur ein Feld** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Ein Getter, dessen Rumpf nur Result := FName; enthält (auch Exit(FName), Self.FName), oder ein Setter, dessen Rumpf nur FName := Value; enthält (mit refactoring.inlineAccessorEqualityCheck auch if FName <> Value then FName := Value;). Die Property kann direkt auf das Feld zeigen. Nur Methoden, die nicht virtual, dynamic, override oder abstract, keine class-Methoden, nicht überladen oder generisch sind, keine Interface-Methode implementieren (auch nicht über eine Methodenzuordnung), keinen index haben und von keinem anderen Mitglied der Klasse benutzt werden; das Feld gehört zur Klasse und hat den Typ der Property. Stumm, solange refactoring.inlineAccessorDiagnostic aus ist (Vorgabe) oder refactoring.inlineAccessor aus ist. Sicherheit mittel: Aufrufe in anderen Units sieht die Regel nicht. Keine Korrektur in der Regel; die Code-Aktion „Zugriffsmethode GetName durch Feld FName ersetzen“ an derselben Stelle prüft die Aufrufe mit der Referenzsuche und ersetzt.
+
+Mit Treffer:
+
+```pascal
+property Name: string read GetName write FName;
+...
+function TCustomer.GetName: string;
+begin
+  Result := FName;
+end;
+```
+
+Richtig:
+
+```pascal
+property Name: string read FName write FName;
+```
+
 <a id="write-only-property"></a>
 ### write-only-property
 
@@ -5204,7 +5493,7 @@ Gesamt := Gesamt + Form.Flaeche;
 
 **Getter oder Setter einer Property ungültig** · Bug · Fehler · Gruppe Compiler vorab
 
-Der Name hinter read oder write einer Property passt nicht: Er ist weder in der Klasse noch in ihren Vorfahren deklariert oder ist eine Property (wie E2168); Getter oder Setter haben die falsche Art, Parameter oder Typen (wie E2234); der Setter nimmt einen var- oder out-Parameter (wie E2282); die Zugriffsmethode ist überladen (wie E2271); eine Klassen-Property nutzt ein Instanzmitglied oder eine Klassenmethode ohne static (wie E2355), eine Instanz-Property ein Klassenmitglied (wie E2356); eine Array-Property oder eine Property mit index nutzt ein Feld (wie E2174); ein Feldselektor geht über ein Feld, das kein Record ist (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Record fehlt (wie E2562). Namen sucht die Regel in der Datei und für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Klasse ihn nicht sieht oder Include-Dateien einbindet. Typen vergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: anlegen (wie die Vervollständigung hinter read/write, completion.accessorSection).
+Der Name hinter read oder write einer Property passt nicht: Er ist weder in der Klasse noch in ihren Vorfahren deklariert oder ist eine Property (wie E2168); Getter oder Setter haben die falsche Art, Parameter oder Typen (wie E2234); der Setter nimmt einen var- oder out-Parameter (wie E2282); die Zugriffsmethode ist überladen, und keine Überladung passt (wie E2271); eine Klassen-Property nutzt ein Instanzmitglied oder eine Klassenmethode ohne static (wie E2355), eine Instanz-Property eine class var oder eine statische Klassenmethode (wie E2356); eine Array-Property nutzt ein Feld (wie E2174, index mit Feld übersetzt dcc); ein Feldselektor geht über ein Feld, das kein Record ist (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Record fehlt (wie E2562). Namen sucht die Regel in der Datei und für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Klasse ihn nicht sieht oder Include-Dateien einbindet. Typen vergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: anlegen (wie die Vervollständigung hinter read/write, completion.accessorSection).
 
 Entspricht der Compilermeldung `E2168`, `E2234`, `E2282`, `E2271`, `E2355`, `E2356`, `E2174`, `E2459`, `E2461`, `E2562`.
 
@@ -5805,9 +6094,9 @@ end;
 
 **Operator falsch deklariert** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein class operator in einem Record oder einer Klasse ist so deklariert, wie Delphi es ablehnt: unbekannter Operatorname (wie E2393), falsche Parameterzahl (E2517), eigener Typ fehlt in den Parametern (E2518) bzw. bei Implicit/Explicit in Parametern und Ergebnis (E2521), Inc/Dec mit anderem Ergebnistyp als dem ersten Parameter (E2519), Vergleichsoperator ohne Boolean-Ergebnis (E2520), Umwandlung in oder aus einem Vorfahren (E2522, Kette innerhalb der Datei) oder Assign ohne var vor dem ersten Parameter (E2464). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und Typargumente übereinstimmen; Aliase des eigenen Typs in der Datei halten die Regel still, True, False und OnesComplement gelten als bekannt. Korrekturen: nächstliegender Operatorname, Boolean als Ergebnis, Ergebnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf.
+Ein class operator in einem Record oder einer Klasse ist so deklariert, wie Delphi es ablehnt: unbekannter Operatorname (wie E2393), falsche Parameterzahl (E2517), eigener Typ fehlt in den Parametern (E2518) bzw. bei Implicit/Explicit in Parametern und Ergebnis (E2521), Inc/Dec mit anderem Ergebnistyp als dem ersten Parameter (E2519), Umwandlung in oder aus einem Vorfahren (E2522, Kette innerhalb der Datei) oder Assign ohne var vor dem ersten Parameter (E2464). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und Typargumente übereinstimmen; Aliase des eigenen Typs in der Datei halten die Regel still, True, False und OnesComplement gelten als bekannt. Vergleichsoperatoren mit anderem Ergebnis als Boolean übersetzt dcc (Spring4D-Kriterien); sie bleiben still. Korrekturen: nächstliegender Operatorname, Ergebnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf.
 
-Entspricht der Compilermeldung `E2393`, `E2464`, `E2517`, `E2518`, `E2519`, `E2520`, `E2521`, `E2522`.
+Entspricht der Compilermeldung `E2393`, `E2464`, `E2517`, `E2518`, `E2519`, `E2521`, `E2522`.
 
 Stufe A (Parser genügt).
 
@@ -5815,7 +6104,7 @@ Mit Treffer:
 
 ```pascal
 TGeld = record
-  class operator Equal(const A, B: TGeld): Integer;
+  class operator Inc(const A: TGeld): Integer;
 end;
 ```
 
@@ -5823,7 +6112,7 @@ Richtig:
 
 ```pascal
 TGeld = record
-  class operator Equal(const A, B: TGeld): Boolean;
+  class operator Inc(const A: TGeld): TGeld;
 end;
 ```
 
@@ -5858,9 +6147,9 @@ type
 
 **Sprachregel für Records, Inline und Helfer verletzt** · Bug · Fehler · Gruppe Compiler vorab
 
-Feste Sprachregeln, die erst der Compiler meldet: virtuelle Methoden (wie E2379) oder andere virtuelle Direktiven (override, abstract, reintroduce, message, final; E2463) in Records, parameterlose Konstruktoren (E2394), Konstruktoren, deren Parameter alle Vorgabewerte haben (E2471), und Destruktoren (E2465) in Records, Klassenmethoden in Records ohne static (E2398); in Record-Helfern virtuelle Methoden (E2598) und die übrigen virtuellen Direktiven (E2475); Felder in Helfern (class var ist erlaubt, E2599), Destruktor (E2295) oder Klassenkonstruktor (E2358) in einem Class-Helfer, ein Helfer-Konstruktor, dessen erster Befehl kein Aufruf ohne Argumente ist (E2296), ein Class-Helfer mit Vorfahr-Helfer für einen Typ, der nicht vom Typ des Vorfahren abstammt (E2294, nur bei bekannter Vorfahrenkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), Klassenkonstruktoren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437); inline an virtuellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Symbolen des implementation-Teils (E2441), als lokale Routine mit Zugriff auf Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.
+Feste Sprachregeln, die erst der Compiler meldet: virtuelle Methoden (wie E2379) oder andere virtuelle Direktiven (override, abstract, reintroduce, message, final; E2463) in Records, parameterlose Konstruktoren (E2394), Konstruktoren, deren Parameter alle Vorgabewerte haben (E2471), und Destruktoren (E2465) in Records, Klassenmethoden in Records ohne static (E2398); in Record-Helfern virtuelle Methoden (E2598) und die übrigen virtuellen Direktiven (E2475); Felder in Helfern (class var ist erlaubt, E2599), ein Destruktor in einem Class-Helfer (E2295; Klassenkonstruktoren und Helfer-Konstruktoren ohne Konstruktoraufruf übersetzt dcc, Skia4Delphi), ein Class-Helfer mit Vorfahr-Helfer für einen Typ, der nicht vom Typ des Vorfahren abstammt (E2294, nur bei bekannter Vorfahrenkette), ein Helfer als Typ einer Deklaration (E2527) oder in einem generischen Typ (E2589); mehrere Klassenkonstruktoren (E2359, sich ausschließende bedingte Zweige zählen einmal), Klassenkonstruktoren mit Parametern (E2360) oder virtual, dynamic bzw. message (E2534); Methoden, Properties, Klassenmitglieder, Typen und Konstanten in lokalen oder anonymen Records (E2433 bis E2437); inline an virtuellen oder dynamischen Methoden (E2425), an Konstruktoren und Destruktoren (E2442), mit offenen Array-Parametern (E2439), mit asm-Rumpf (E2426), im interface-Teil deklariert mit Variablen, typisierten Konstanten oder Typen des implementation-Teils (E2441; echte Konstanten, Aufzählungswerte und Routinen übersetzt dcc, mORMot2, Clipper2), als lokale Routine mit Zugriff auf Variablen der umgebenden Routine (E2449) oder mit Aufruf eigener lokaler Routinen (E2501); lokale, absolute oder initialisierte threadvar (E2189, E2190, E2194). Die Prüfungen gelten für alle unterstützten Delphi-Versionen (10 Seattle bis 13). Option disabledChecks nimmt einzelne Codes aus. Korrekturen: Direktive entfernen, static ergänzen.
 
-Entspricht der Compilermeldung `E2189`, `E2190`, `E2194`, `E2294`, `E2295`, `E2296`, `E2358`, `E2359`, `E2360`, `E2379`, `E2394`, `E2398`, `E2425`, `E2426`, `E2433`, `E2434`, `E2435`, `E2436`, `E2437`, `E2439`, `E2441`, `E2442`, `E2449`, `E2463`, `E2465`, `E2471`, `E2475`, `E2501`, `E2527`, `E2534`, `E2589`, `E2598`, `E2599`.
+Entspricht der Compilermeldung `E2189`, `E2190`, `E2194`, `E2294`, `E2295`, `E2359`, `E2360`, `E2379`, `E2394`, `E2398`, `E2425`, `E2426`, `E2433`, `E2434`, `E2435`, `E2436`, `E2437`, `E2439`, `E2441`, `E2442`, `E2449`, `E2463`, `E2465`, `E2471`, `E2475`, `E2501`, `E2527`, `E2534`, `E2589`, `E2598`, `E2599`.
 
 Stufe A (Parser genügt).
 
@@ -6137,7 +6426,7 @@ while Rest > 0 do
 
 **Initialisierung einer Konstanten passt nicht** · Bug · Fehler · Gruppe Compiler vorab
 
-Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ hat mehr oder weniger Elemente als ihr Indexbereich (wie E2072), typisch nach einem neuen Wert in einer Aufzählung (array[TStatus] of string); geprüft je Dimension und auch für benannte Array-Typen der Datei. Ebenso Record-Konstanten, deren Felder in anderer Reihenfolge als deklariert stehen (wie E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: fehlende Einträge mit Platzhalter ergänzen (Name des Aufzählungswerts als Kommentar), Felder in die Reihenfolge der Deklaration bringen.
+Eine typisierte Konstante oder initialisierte Variable vom statischen Array-Typ hat mehr oder weniger Elemente als ihr Indexbereich (wie E2072), typisch nach einem neuen Wert in einer Aufzählung (array[TStatus] of string); geprüft je Dimension und auch für benannte Array-Typen der Datei. Ebenso Record-Konstanten, deren Felder in anderer Reihenfolge als deklariert stehen (wie E2083). Indexbereiche: Teilbereiche mit konstanten Grenzen, Aufzählungen ohne eigene Werte, Boolean, Byte, Char usw. Deklarationen mit bedingten Direktiven gelten als unsicher. Korrekturen: über einer Aufzählung fehlende Einträge an ihrer Stelle ergänzen bzw. überzählige entfernen (erkannt an Texten, Bezeichnern und Kommentaren mit dem Wertnamen; sonst hinten und als geschätzt benannt), neue Strings mit dem Text aus dem Namen, andere Typen mit Standardwert und Kommentar {TODO Wert} (#667); über anderen Bereichen fehlende Einträge mit Platzhalter ergänzen; Felder in die Reihenfolge der Deklaration bringen.
 
 Entspricht der Compilermeldung `E2072`, `E2083`.
 
@@ -6206,7 +6495,7 @@ var Pfad: string; ... DeleteFile(PChar(Pfad));
 
 **Zugriff auf ein nicht sichtbares Mitglied** · Bug · Fehler · Gruppe Compiler vorab
 
-Zugriff A.B auf ein Mitglied, das an der Stelle nicht sichtbar ist: private bzw. strict private einer anderen Unit oder Klasse (wie E2361), protected bzw. strict protected außerhalb der deklarierenden Unit und ihrer Nachfahren (wie E2362, E2389). In einer Klassenmethode oder statischen Methode sind Instanzfelder, -methoden und -Properties der Klasse nicht erreichbar (wie E2124). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Deklarationen in bedingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still.
+Zugriff A.B auf ein Mitglied, das an der Stelle nicht sichtbar ist: private bzw. strict private einer anderen Unit oder Klasse (wie E2361), protected bzw. strict protected außerhalb der deklarierenden Unit und ihrer Nachfahren (wie E2362, E2389). In einer Klassenmethode oder statischen Methode sind Instanzfelder, -methoden und -Properties der Klasse nicht erreichbar (wie E2124). Eine Property, die auf ein private-Mitglied eines Vorfahren derselben Unit verweist, meldet die Regel als Warnung (wie W1045). Gemeldet wird nur, wenn die Namensauflösung den Empfänger und seinen Typ sicher kennt und das Mitglied erst ohne Rücksicht auf die Sichtbarkeit findet; protected-Mitglieder bleiben über eine Klasse der eigenen Unit sichtbar (TZugang(Control).Click). Ein privater Klassenkonstruktor verdeckt kein geerbtes Create, und eine class-Überladung einer Methode bleibt aus einer Klassenmethode erreichbar. protected-Mitglieder über einen generischen Empfänger (TKnoten<T>) übersetzt dcc auch aus anderen Units (Spring4D). Deklarationen in bedingten Zweigen, Methoden von Helfern und verschachtelten Typen bleiben still.
 
 Entspricht der Compilermeldung `E2361`, `E2362`, `E2389`, `E2124`, `W1045`.
 
@@ -6270,14 +6559,15 @@ Richtig:
 
 **Öffentliches Mitglied wird im Projekt nie verwendet** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen sowie Routinen und Konstanten im interface-Abschnitt einer Unit) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren Verwendungen im Index den Namen enthalten, werden gelesen, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in Formulardateien (.dfm/.fmx) und in String-Literalen zählen als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract oder message, Konstruktoren, Destruktoren, Operatoren, Enumeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming), von Klassen aus RegisterComponents, RegisterClass oder RegisterClasses und von Testklassen, published-Methoden, solange eine Formulardatei nicht lesbar ist, Property-Zugriffsmethoden, exportierte Routinen, Klassenhelfer und Mitglieder von Klassen mit unbekanntem Vorfahren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei Units von Packages oder Bibliotheken (Nutzer außerhalb des Projekts), außer projectKinds lässt sie zu. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).
+Eine public- oder published-Methode, -Konstante oder -Property (wahlweise auch protected-Mitglieder, Felder und Klassenvariablen) bzw. eine Routine, Konstante, ein Typ oder eine globale Variable im interface-Abschnitt einer Unit (Option unitKinds) wird in den Projekten der Projektgruppe nirgends verwendet. Die Suche läuft projektweit über den Symbolindex: Nur Dateien, deren Verwendungen im Index den Namen enthalten, werden gelesen, und jedes Vorkommen wird über die Namensauflösung zugeordnet; ein Vorkommen, das sich nicht auflösen lässt, zählt als Verwendung. Namen in Formulardateien (.dfm/.fmx) und in String-Literalen zählen als Verwendung. Gelten als verwendet: Interface-Umsetzungen und Mitglieder von Interfaces, Methoden mit virtual, dynamic, override, abstract oder message, Konstruktoren, Destruktoren, Operatoren, Enumeratoren, Default-Properties, implements, Mitglieder mit Attributen, published-Mitglieder von TPersistent-Nachfahren (Streaming), von Klassen aus RegisterComponents, RegisterClass oder RegisterClasses und von Testklassen, published-Methoden, solange eine Formulardatei nicht lesbar ist, Property-Zugriffsmethoden, exportierte Routinen, Klassenhelfer und Mitglieder von Klassen mit unbekanntem Vorfahren. Still, solange Projekte laden oder der Index unvollständig ist, wenn eine Datei nicht lesbar ist, bei Units mit Include-Dateien und bei Units von Packages oder Bibliotheken (Nutzer außerhalb des Projekts), außer projectKinds lässt sie zu. Bei Typen zählen Vorkommen in der eigenen Deklaration und in den Rümpfen der eigenen Methoden (samt Kopf TTyp.Name) nicht; Typen aus RegisterComponents, RegisterClass oder RegisterClasses gelten als verwendet, bei Attributklassen (XyzAttribute) zählt auch die Kurzform [Xyz]. deadCode.keepAttributes und deadCode.keepPatterns aus den Einstellungen gelten zusätzlich zu keepAttributes und keepPatterns. Korrektur: als bewusst öffentlich markieren (lsp-ignore-Kommentar).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `visibilities` | string-list | `["public","published"]` | Geprüfte Sichtbarkeiten: public, published, protected. |
-| `memberKinds` | string-list | `["method","constant","property"]` | Geprüfte Mitgliedsarten: method, constant, property, field, classVar. |
+| `memberKinds` | string-list | `["method","constant","property"]` | Geprüfte Arten von Typmitgliedern: method, constant, property, field, classVar. Deklarationen auf Unit-Ebene richten sich nach unitKinds. |
 | `projectKinds` | string-list | `["application"]` | Projektarten, deren Units geprüft werden: application, package, library. Packages und Bibliotheken haben Nutzer außerhalb der Projektgruppe und sind deshalb standardmäßig aus. |
-| `unitLevel` | boolean | `true` | Auch Routinen und Konstanten aus dem interface-Abschnitt einer Unit prüfen. |
+| `unitLevel` | boolean | `true` | Auch Deklarationen des interface-Abschnitts einer Unit prüfen (Arten aus unitKinds). |
+| `unitKinds` | string-list | `["routine","constant","type","variable"]` | Mit unitLevel geprüfte Arten auf Unit-Ebene: routine, constant, type, variable. Helfer werden nie gemeldet (sie werden über den erweiterten Typ verwendet). |
 | `scope` | string | `"projectGroup"` | Wo nach Verwendungen gesucht wird: projectGroup (alle Projekte der Gruppe) oder project (nur die Projekte der Datei). |
 | `testsCountAsUse` | boolean | `true` | Verwendungen in Testprojekten zählen; ist es aus, wird ein Mitglied, das nur Tests verwenden, als solches gemeldet. |
 | `stringLiteralsCountAsUse` | boolean | `true` | Der Name als String-Literal ('Name') zählt als Verwendung (RTTI, MethodAddress, Skripte). |
@@ -6301,6 +6591,66 @@ Richtig:
   public
     procedure ExportiereAlsJson; // called by TMainForm
   end;
+```
+
+<a id="unused-declaration"></a>
+### unused-declaration
+
+**Deklaration im implementation-Abschnitt wird nie verwendet** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine Routine, ein Typ, eine Konstante oder eine globale Variable aus dem implementation-Abschnitt einer Unit (bzw. aus einem Programm oder einer DLL) wird in der Unit nirgends verwendet; der Compiler meldet das nicht. Jedes Vorkommen des Namens als Bezeichner zählt als Verwendung, auch in inaktiven Zweigen; nicht zählen die Deklarationen selbst (auch forward), Vorkommen im eigenen Rumpf (Rekursion) und bei Typen Vorkommen in der eigenen Deklaration und in den Rümpfen der eigenen Methoden samt Kopf TTyp.Name. Bei Attributklassen (XyzAttribute) zählt auch die Kurzform [Xyz]. Gelten als verwendet (Dienst, den auch unused-public-member nutzt): exportierte Routinen, Deklarationen mit Attributen, Namen aus deadCode.keepPatterns, Typen mit einem Attribut aus deadCode.keepAttributes und Namen aus der Formulardatei. Rümpfe von Routinen des interface-Abschnitts prüft unused-public-member. Still bei Units mit Include-Dateien. Korrektur: als bewusst vorhanden markieren (lsp-ignore-Kommentar).
+
+Mit Treffer:
+
+```pascal
+implementation
+
+procedure AltesFormat(const AText: string);  // called nowhere
+begin
+end;
+```
+
+Richtig:
+
+```pascal
+implementation
+
+procedure NeuesFormat(const AText: string);
+begin
+end;
+
+procedure Exportieren;
+begin
+  NeuesFormat('x');
+end;
+```
+
+<a id="unused-unit"></a>
+### unused-unit
+
+**Unit wird von keiner anderen Unit verwendet** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine Unit einer Anwendung verwendet keine andere Unit des Uses-Graphen: Höchstens Programme nennen sie im uses, und sie verwenden außerhalb ihres uses keinen ihrer Bezeichner (Application.CreateForm(TForm1, Form1) zählt als Verwendung). Units mit initialization- oder finalization-Abschnitt (Registrierungen, Seiteneffekte beim Start) gelten als verwendet. Konfidenz mittel: Code außerhalb der Projektgruppe, Skripte oder zur Laufzeit geladene Packages können die Unit trotzdem nutzen. Still bei Units von Packages und DLLs (Nutzer außerhalb der Gruppe), solange projectKinds sie nicht erlaubt, ohne Projekte, solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt. Gemeldet am Unit-Namen im Kopf.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `projectKinds` | string-list | `["application"]` | Projektarten, deren Units geprüft werden: application, package, library. |
+
+Mit Treffer:
+
+```pascal
+program App;
+uses
+  Haupt,
+  AltExport;  // AltExport is used nowhere else
+```
+
+Richtig:
+
+```pascal
+program App;
+uses
+  Haupt;
 ```
 
 <a id="message-method-invalid"></a>
@@ -6333,7 +6683,7 @@ procedure WMMove(var Msg: TWMMove); message WM_MOVE;
 
 **Unzulässige Deklaration in einem Interface** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein Interface deklariert etwas, das Interfaces nicht haben dürfen: Felder (wie E2209), Sichtbarkeitsabschnitte oder Methodendirektiven wie virtual, dynamic, abstract, override, message oder reintroduce (wie E2210), die Property-Klauseln stored, nodefault oder default mit Wert (wie E2207; default; hinter einer Array-Property ist erlaubt), eine Property, die ein Vorfahr-Interface schon deklariert (wie E2206), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370). Ebenso gemeldet werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr eines Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interface zweimal in dieser Liste (wie E2208). Typen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, dispinterface und Deklarationen in bedingten Zweigen bleiben still.
+Ein Interface deklariert etwas, das Interfaces nicht haben dürfen: Felder (wie E2209), Sichtbarkeitsabschnitte oder Methodendirektiven wie virtual, dynamic, abstract, override, message oder reintroduce (wie E2210), die Property-Klauseln stored, nodefault oder default mit Wert (wie E2207; default; hinter einer Array-Property ist erlaubt), eine Property, die ein Vorfahr-Interface schon deklariert, ohne Typ erneut aufgeführt (wie E2206; eine Neudeklaration mit Typ übersetzt dcc), oder einen Property-Accessor, den nur das Vorfahr-Interface deklariert (wie E2370; nicht bei generischen Interfaces, DUnitX). Ebenso gemeldet werden eine Klasse, ein Record oder eine Aufzählung als Vorfahr eines Interfaces oder in der Interface-Liste einer Klasse (wie E2205) und dasselbe Interface zweimal in dieser Liste (wie E2208). Typen werden über die uses-Klauseln aufgelöst; Aliase, unbekannte Typen, dispinterface und Deklarationen in bedingten Zweigen bleiben still.
 
 Entspricht der Compilermeldung `E2205`, `E2206`, `E2207`, `E2208`, `E2209`, `E2210`, `E2370`.
 
@@ -6828,6 +7178,38 @@ case IndexStr(Befehl, ['neu', 'oeffnen', 'speichern', 'beenden']) of
 end;
 ```
 
+<a id="prefer-case"></a>
+### prefer-case
+
+**if-Kette lässt sich als case schreiben** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine if … else if-Kette mit mindestens min Zweigen (das abschließende else zählt mit) vergleicht denselben ordinalen Ausdruck (Ganzzahl, Zeichen, Aufzählung; ohne Seiteneffekte, kein Funktionsaufruf) mit Konstanten: X = a, a = X, X in [a, b..c], (X >= a) and (X <= b), auch mit or verknüpft. Die Marken sind Literale, Konstantenausdrücke, untypisierte Konstanten oder Aufzählungswerte, ohne Doppelte und Überlappungen. Den Typ liefert die Namensauflösung; Ketten mit unbekanntem Typ und Ketten mit Direktiven bleiben still. Standard aus, Konfidenz hoch. Schnellkorrektur: die Code-Aktion „In case umwandeln“ (#646, refactoring.ifCase); begin … end nur, wo ein Zweig mehrere Anweisungen hat, Kommentare in den Zweigen bleiben.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `min` | integer | `4` | Ab so vielen Zweigen (das abschließende else eingeschlossen) meldet die Regel; mindestens 2. |
+
+Mit Treffer:
+
+```pascal
+if Kind = 1 then Neu
+else if (Kind = 2) or (Kind = 3) then Oeffnen
+else if (Kind >= 4) and (Kind <= 6) then Speichern
+else Beenden;
+```
+
+Richtig:
+
+```pascal
+case Kind of
+  1: Neu;
+  2, 3: Oeffnen;
+  4..6: Speichern;
+else
+  Beenden;
+end;
+```
+
 <a id="constant-condition"></a>
 ### constant-condition
 
@@ -6906,6 +7288,36 @@ begin
   Check(List[I]);
   Inc(I);
 end;
+```
+
+<a id="loop-runs-at-most-once"></a>
+### loop-runs-at-most-once
+
+**Schleife läuft höchstens einmal** · Bug · Warnung · Gruppe Fehler finden
+
+Jeder Weg durch den Rumpf einer for-, for-in-, while- oder repeat-Schleife endet mit Exit, Break, raise, Halt, Abort, RunError, ExitProcess oder dem Aufruf einer Routine der Datei, die eine Ausnahme auslöst; die Schleife läuft also höchstens einmal. Meist fehlt ein if vor dem Sprung, oder ein Continue war gemeint. Ein Weg zählt als Sprung bei if mit else und beiden Zweigen, case mit else und allen Zweigen, try … finally mit try- oder finally-Teil und try … except mit try-Teil und jedem Behandler. Still bei Continue dieser Schleife, goto bzw. Marken und bedingten Direktiven im Rumpf; ein Break innerer Schleifen zählt nicht. Ergänzt infinite-loop und loop-condition-unchanged. Keine Korrektur, die Absicht ist unklar; steht der Sprung direkt hinter einem if ohne else, fragt die Meldung, ob er in den if-Zweig gehört. Sicherheit hoch.
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `allowFirstElement` | boolean | `false` | for-in aus einfachen Anweisungen, das mit Exit bzw. Break endet (erstes Element holen), nicht melden. |
+
+Mit Treffer:
+
+```pascal
+for mCustomer in FCustomers do
+begin
+  if mCustomer.Id = AId then
+    Result := mCustomer;
+  Exit;
+end;
+```
+
+Richtig:
+
+```pascal
+for mCustomer in FCustomers do
+  if mCustomer.Id = AId then
+    Exit(mCustomer);
 ```
 
 <a id="unconditional-recursion"></a>
@@ -7271,7 +7683,7 @@ Anzahl := Integer(Strom.Size);
 
 **Typisierte Konstante verändert** · Bug · Warnung · Gruppe Compiler vorab
 
-Einer typisierten Konstante (const Zaehler: Integer = 0) wird etwas zugewiesen (wie W1017, auch einem Element oder Record-Feld davon), oder sie wird als var- oder out-Argument übergeben, auch an Inc, Dec, Include, Exclude, Delete, SetLength und ähnliche (wie W1016). Gemeint war meist eine Variable; übersetzbar ist das nur mit {$J+}. Gilt vor der Deklaration in derselben Datei {$J-} bzw. {$WRITEABLECONST OFF}, meldet Atlas einen Fehler (wie E2064 bzw. E2197). Dazu 0 als Wert einer Zeigerkonstante oder einer initialisierten Zeigervariable (wie W1013). Korrekturen: eine Konstante auf Unit-Ebene in eine Variable mit Initialwert umwandeln (der const-Abschnitt wird bei Bedarf geteilt; lokale typisierte Konstanten behalten ihren Wert zwischen Aufrufen und bekommen keine Korrektur); nil statt 0 schreiben.
+Einer typisierten Konstante (const Zaehler: Integer = 0) wird etwas zugewiesen (wie W1017, auch einem Element oder Record-Feld davon), oder sie wird als var- oder out-Argument übergeben, auch an Inc, Dec, Include, Exclude, Delete, SetLength und ähnliche (wie W1016). Gemeint war meist eine Variable; übersetzbar ist das nur mit {$J+}. Gilt vor der Deklaration in derselben Datei oder in einer davor eingebundenen Include-Datei {$J-} bzw. {$WRITEABLECONST OFF}, meldet Atlas einen Fehler (wie E2064 bzw. E2197). Dazu 0 als Wert einer Zeigerkonstante oder einer initialisierten Zeigervariable (wie W1013). Korrekturen: eine Konstante auf Unit-Ebene in eine Variable mit Initialwert umwandeln (der const-Abschnitt wird bei Bedarf geteilt; lokale typisierte Konstanten behalten ihren Wert zwischen Aufrufen und bekommen keine Korrektur); nil statt 0 schreiben.
 
 Entspricht der Compilermeldung `W1016`, `W1017`, `W1013`, `E2064`, `E2197`.
 
@@ -7419,7 +7831,7 @@ end;
 
 **Ungültiges Argument für einen var- oder out-Parameter** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Property oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192), Slice (wie E2454) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben.
+Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen const-Parameter, eine Property oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192), Slice für einen out-Parameter (wie E2454; Slice für ein var-Open-Array übersetzt dcc, Spring4D) oder einen Ausdruck (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben.
 
 Entspricht der Compilermeldung `E2354`, `E2197`, `E2192`, `E2454`, `E2036`.
 
@@ -7873,4 +8285,29 @@ Richtig:
 
 ```pascal
 Versenden(Kunde.Mail, 'Rechnung', Text);
+```
+
+<a id="method-without-self"></a>
+### method-without-self
+
+**Methode braucht Self nicht** · Code Smell · Hinweis · Gruppe Stil und Metriken
+
+Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe.
+
+Mit Treffer:
+
+```pascal
+function TRechner.Doppelt(A: Integer): Integer;
+begin
+  Result := A * 2;  // no field, no Self
+end;
+```
+
+Richtig:
+
+```pascal
+class function TRechner.Doppelt(A: Integer): Integer; static;
+begin
+  Result := A * 2;
+end;
 ```

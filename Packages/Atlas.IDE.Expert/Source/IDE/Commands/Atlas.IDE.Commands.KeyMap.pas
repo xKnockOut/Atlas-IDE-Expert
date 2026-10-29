@@ -142,7 +142,17 @@ const
     // Abschnittsknöpfe der Editorleiste (#1101): Editorbefehle.
     3, 3,
     // Schnelle Lesezeichen (#1104): Editorbefehle.
-    3, 3, 3, 3, 3);
+    3, 3, 3, 3, 3,
+    // Ersetzen in der Atlas-Suche (#893): Editorbefehl.
+    3,
+    // Gezielt hineinspringen (#836): Editorbefehl.
+    3,
+    // Typ des markierten Ausdrucks (#689): Editorbefehl.
+    3,
+    // Sicher löschen (#716): Editorbefehl.
+    3,
+    // Issue anlegen (#1268): Editorbefehl.
+    3);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

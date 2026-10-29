@@ -22,6 +22,8 @@
 //                        die Vorfahrenkette nicht bekannt, gelten Methoden von
 //                        Typen mit Interfaces als verwendet. Dazu Namen aus der
 //                        Formulardatei und Units mit Include-Dateien.
+//                        deadCode.keepAttributes und deadCode.keepPatterns
+//                        (#64) gelten auch hier.
 //                        Verwendung ist jedes Vorkommen des Namens als
 //                        Bezeichner außer Deklarationen und Methodenköpfen,
 //                        auch in inaktiven Zweigen. Korrektur: Deklaration
@@ -32,6 +34,13 @@
 // Rücksicht auf die Sichtbarkeit nicht findet und ohne sie (DeclaredMember)
 // schon. Deklarationen in bedingten Zweigen, Methoden von Helfern und
 // verschachtelten Typen (die mehr sehen dürfen) bleiben still.
+//
+// Nicht strenger als dcc (#1328, Minimalfälle in Tests/DccFaelle): Ein class
+// constructor bzw. class destructor ist nie Ziel eines Aufrufs; TX.Create
+// meint dann den geerbten Konstruktor (IM4). In einer Klassenmethode gilt ein
+// Aufruf als erreichbar, sobald eine Überladung eine Klassenmethode ist (IM5).
+// protected-Mitglieder eines generischen Empfängers (TKnoten<T>) übersetzt
+// dcc auch aus fremden Units (Spring4D, IM1-IM3); strict protected bleibt.
 
 interface
 
@@ -129,7 +138,6 @@ var
   function Suspect(const AName: string): Boolean;
   var
     Symbol: TIndexSymbol;
-    Location: TSymbolLocation;
   begin
     if Suspects.TryGetValue(LowerCase(AName), Result) then
       Exit;
@@ -138,12 +146,11 @@ var
       if (Symbol.Container <> '') and (Symbol.Visibility in Restricted) and SameText(Symbol.Name, AName) then
         Result := True;
     if not Result and (AContext.Index <> nil) then
-      for Location in AContext.Index.FindSymbols(AName) do
-        if (Location.Symbol.Container <> '') and (Location.Symbol.Visibility in Restricted) then
+      Result := AContext.Index.HasSymbol(AName,
+        function(const ASymbol: TIndexSymbol): Boolean
         begin
-          Result := True;
-          Break;
-        end;
+          Result := (ASymbol.Container <> '') and (ASymbol.Visibility in Restricted);
+        end);
     Suspects.Add(LowerCase(AName), Result);
   end;
 
@@ -225,13 +232,32 @@ var
       not Resolver.DeclaredMember(ReceiverType, ANode.Name, Member) or not (Member.Visibility in Restricted) or
       (Member.Condition <> '') then
       Exit;
+    // class constructor Create verdeckt den geerbten Konstruktor nicht (Spring4D, IM4).
+    if (Member.SymbolKind = TIndexSymbolKind.Constructor_) and HasDirective(Member.Directives, 'class') then
+      Exit;
     if (Member.Visibility <> TIndexVisibility.Private) and WiderScope(EnclosingMethod(ANode)) then
+      Exit;
+    // protected über einen generischen Empfänger (TKnoten<T>, TBaum<T>) übersetzt dcc auch aus einer anderen
+    // Unit (Spring4D TLinkedListNode<T>, TRedBlackTree<T>; IM1-IM3, #1328). Abgeleitet aus dem Korpus, dcc-Lauf
+    // der Minimalfälle steht aus.
+    if (Member.Visibility = TIndexVisibility.Protected) and (ReceiverType.TypeParams <> '') then
       Exit;
     Code := 'E2361';
     if Member.Visibility in [TIndexVisibility.Protected, TIndexVisibility.StrictProtected] then
       Code := 'E2362';
     AReport.Add(MemberRange(ANode), Format('%s.%s ist %s und hier nicht sichtbar (wie %s).', [Member.Container,
       Member.Name, VisibilityText(Member.Visibility), Code]), TRuleConfidence.High);
+  end;
+
+  /// <summary>Hat der Aufruf ANode eine Überladung, die eine Klassenmethode ist (DMVC, JCL, IM5)?</summary>
+  function HasClassOverload(ANode: TSyntaxNode): Boolean;
+  var
+    mCandidate: TResolvedSymbol;
+  begin
+    for mCandidate in Resolver.CallCandidates(AContext.Tree, FileName, ANode) do
+      if HasDirective(mCandidate.Directives, 'class') then
+        Exit(True);
+    Result := False;
   end;
 
   procedure CheckInstanceMember(ANode: TSyntaxNode; AMethod: TSyntaxNode);
@@ -250,6 +276,8 @@ var
     // Mitglied eines with-Ausdrucks (with Result do Pfad := …) ist erreichbar.
     if Resolver.WithMember(AContext.Tree, FileName, ANode.Name, ANode.StartOffset, WithNode, Element, Unknown) or
       Unknown then
+      Exit;
+    if (Symbol.SymbolKind = TIndexSymbolKind.Method) and HasClassOverload(ANode) then
       Exit;
     case Symbol.SymbolKind of
       TIndexSymbolKind.Field:
@@ -406,7 +434,7 @@ begin
     FileName := AContext.UnitName + '.pas';
   CheckPropertyAccessors;
   Suspects := TDictionary<string, Boolean>.Create;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -647,7 +675,8 @@ begin
   Occurrences := TDictionary<string, TList<TTextPosition>>.Create;
   Declared := TDictionary<string, TList<TTextPosition>>.Create;
   Seen := TDictionary<string, Boolean>.Create;
-  Considered := TConsideredUsed.Create(AContext.Index, Local, Tokens, nil, nil);
+  // deadCode.keepAttributes und deadCode.keepPatterns (#64).
+  Considered := TConsideredUsed.Create(AContext.Index, Local, Tokens, AContext.KeepAttributes, AContext.KeepPatterns);
   try
     for Token in Tokens do
       if Token.Kind = TPascalTokenKind.Identifier then

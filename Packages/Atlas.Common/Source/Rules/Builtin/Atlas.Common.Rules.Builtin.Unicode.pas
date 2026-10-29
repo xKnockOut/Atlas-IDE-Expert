@@ -27,7 +27,10 @@
 //
 // Ungültige UTF-8-Bytes: control-char liest die Datei über ReadFile und
 // meldet die Fehlstellen aus TFileEncoding.InvalidUtf8 mit Zeile und Spalte,
-// sofern der gelesene Text dem geprüften entspricht.
+// sofern der gelesene Text dem geprüften entspricht. Eine ANSI-Datei mit
+// einem zufällig gültigen UTF-8-Paar bleibt ANSI (#1327).
+// U+FFFD selbst (nicht an einer Fehlstelle): im Code ein Fehler, im String
+// ein Hinweis, im Kommentar nichts; dcc übersetzt beides (#1327).
 //
 // file-encoding-unsupported: UTF-32 erkennt die BOM der über ReadFile gelesenen Bytes; dann meldet
 // control-char die Unit nicht, weil ihr Text falsch dekodiert ist. E2038 nur außerhalb von Strings,
@@ -601,6 +604,39 @@ begin
   Result := True;
 end;
 
+/// <summary>
+/// Schweregrad eines Bereichs, der nur aus U+FFFD besteht (#1327): Off im Kommentar, Hint im String, sonst der
+/// der Regel. dcc übersetzt das Ersatzzeichen in Kommentaren und Strings; nur im Code ist es ein Fehler (E2038).
+/// Ein Ersatzzeichen im String deutet auf ein beim Umkodieren verlorenes Zeichen hin, ist aber kein Fehler.
+/// </summary>
+function ReplacementSeverity(ARule: TCharRule; const ARun: TRun): TRuleSeverity;
+begin
+  Result := TRuleSeverity.Default;
+  if (ARule <> TCharRule.Control) or not OnlyReplacement(ARun) then
+    Exit;
+  case ARun.Place of
+    TCharPlace.Comment:
+      Result := TRuleSeverity.Off;
+    TCharPlace.StringLiteral:
+      Result := TRuleSeverity.Hint;
+  end;
+end;
+
+/// <summary>Meldet einen Bereich mit dem Schweregrad aus ReplacementSeverity; Off meldet nichts.</summary>
+procedure AddRun(ARule: TCharRule; const ARun: TRun; const AReport: IRuleReport; const ARange: TTextRange;
+  const AMessage: string; const AFixes: TArray<TRuleFix>);
+var
+  mSeverity: TRuleSeverity;
+begin
+  mSeverity := ReplacementSeverity(ARule, ARun);
+  if mSeverity = TRuleSeverity.Off then
+    Exit;
+  if mSeverity = TRuleSeverity.Default then
+    AReport.Add(ARange, AMessage, RunConfidence(ARun), AFixes)
+  else
+    AReport.AddWithSeverity(ARange, AMessage, mSeverity, AFixes);
+end;
+
 /// <summary>Name der Formularklasse in der Unit; Default(TTextRange) ohne.</summary>
 function FormClassRange(const AUnitIndex: TUnitIndex; const AFormClass: string): TTextRange;
 var
@@ -678,8 +714,8 @@ begin
         Fix.FileName := AContext.FormFile;
         Fixes := [Fix];
       end;
-      AReport.Add(Range, Format('Formulardatei, Zeile %d%s: %s %s', [Run.Hits[0].Pos.Line + 1, Where, AWhat,
-        RunCodes(Run)]), RunConfidence(Run), Fixes);
+      AddRun(ARule, Run, AReport, Range, Format('Formulardatei, Zeile %d%s: %s %s', [Run.Hits[0].Pos.Line + 1,
+        Where, AWhat, RunCodes(Run)]), Fixes);
     end;
   finally
     Scan.Free;
@@ -827,7 +863,7 @@ begin
           (Item.Position.Character = Hit.Pos.Character) then
           Covered := True;
     if not Covered then
-      AReport.Add(RunRange(Run), 'Steuerzeichen oder ungültiges Byte ' + RunCodes(Run), RunConfidence(Run),
+      AddRun(TCharRule.Control, Run, AReport, RunRange(Run), 'Steuerzeichen oder ungültiges Byte ' + RunCodes(Run),
         RunFixes(Run));
   end;
   // Ungültige Bytes der Formulardatei: an der Formularklasse, mit Zeile und Spalte der Formulardatei.

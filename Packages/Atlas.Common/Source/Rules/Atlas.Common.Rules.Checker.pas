@@ -13,11 +13,15 @@
 // Konfiguration, .dproj-Defines), den Dateinamen und den Include-Resolver mit,
 // damit $DEFINE aus {$I datei.inc} wirken. Ohne Angabe gelten die
 // Vordefinitionen von Delphi 13 für Win32.
+// Sprachmerkmale, die der Sprachstand des Projekts nicht kennt (#109), meldet die
+// Regel "language-feature" (#1126); Maßstab ist die ältere aus delphiVersion und
+// minDelphiVersion. Editor, Linter und MCP nutzen dieselbe Funktion.
 
 interface
 
 uses
   System.SysUtils,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
@@ -28,6 +32,7 @@ uses
 
 const
   SyntaxRuleId = 'syntax';
+  LanguageFeatureRuleId = 'language-feature';
 
 type
   /// <summary>Treffer einer geprüften Datei.</summary>
@@ -88,6 +93,16 @@ type
     /// Gemeinsam für Linter, Diagnosen und Schnellkorrekturen im Editor.</summary>
     class function SyntaxFindings(const ADiagnostics: TArray<TSyntaxDiagnostic>;
       const ASettings: TServerSettings): TArray<TRuleFinding>; static;
+    /// <summary>Beschreibung der Regel language-feature (#1126).</summary>
+    class function LanguageFeatureDescriptor: TRuleDescriptor; static;
+    /// <summary>Sprachmerkmale in ATree, die ALanguageLevel nicht kennt, als Treffer der Regel
+    /// language-feature (#1126) mit Schweregrad aus ASettings; ohne die in AInactive beginnenden. Leer ohne
+    /// gültigen Sprachstand oder wenn die Regel oder ihre Gruppe abgeschaltet ist.</summary>
+    class function LanguageFeatureFindings(ATree: TSyntaxTree; const ASettings: TServerSettings;
+      const ALanguageLevel: string; const AInactive: TArray<TTextRange>): TArray<TRuleFinding>; static;
+    /// <summary>Sprachstand für Prüfungen ohne Editor: die ältere aus delphiVersion und minDelphiVersion.
+    /// </summary>
+    class function LanguageLevelOf(const ASettings: TServerSettings): string; static;
     /// <summary>Treffer für AText; leer, wenn ARelativePath global ausgeschlossen ist.</summary>
     class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
       const ARelativePath, AText: string): TArray<TRuleFinding>; overload; static;
@@ -127,7 +142,7 @@ uses
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Rules.Engine;
 
 /// <summary>Formulardatei neben AFileName und Dateizugriff relativ zu ihrem Ordner, wie im Server (#1054).</summary>
@@ -220,6 +235,43 @@ begin
       Finding.Fixes := [TRuleFix.Create(Diagnostic.FixTitle, Diagnostic.FixEdits, Diagnostic.FixSafe)];
     Result := Result + [Finding];
   end;
+end;
+
+class function TFileChecker.LanguageFeatureDescriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(LanguageFeatureRuleId, TRuleSeverity.Warning,
+    'Sprachmerkmal einer neueren Delphi-Version');
+end;
+
+class function TFileChecker.LanguageFeatureFindings(ATree: TSyntaxTree; const ASettings: TServerSettings;
+  const ALanguageLevel: string; const AInactive: TArray<TTextRange>): TArray<TRuleFinding>;
+var
+  Feature: TLanguageFeatureFinding;
+  Finding: TRuleFinding;
+  Severity: TRuleSeverity;
+begin
+  Result := nil;
+  Severity := ASettings.RuleSeverity(LanguageFeatureRuleId, TRuleSeverity.Warning);
+  if (Severity = TRuleSeverity.Off) or TRuleEngine.GroupOff(LanguageFeatureRuleId, ASettings) then
+    Exit;
+  for Feature in TLanguageFeatures.Check(ATree, ALanguageLevel, AInactive) do
+  begin
+    // Bedingungsausdrücke meldet die Regel conditional-expression-version (#684) als Fehler mit Korrektur.
+    if Feature.Feature = TLanguageFeature.IfExpression then
+      Continue;
+    Finding := Default(TRuleFinding);
+    Finding.RuleId := LanguageFeatureRuleId;
+    Finding.Range := TTextRange.Create(Feature.StartPos, Feature.EndPos);
+    Finding.Message := Feature.Message;
+    Finding.Severity := Severity;
+    Finding.Confidence := TRuleConfidence.High;
+    Result := Result + [Finding];
+  end;
+end;
+
+class function TFileChecker.LanguageLevelOf(const ASettings: TServerSettings): string;
+begin
+  Result := TLanguageFeatures.LanguageLevel(ASettings.DelphiVersion, ASettings.MinDelphiVersion);
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -320,7 +372,8 @@ begin
   try
     AScopes := TFindingScopes.FromTree(Tree);
     // Der Baum enthält nur die aktiven Zweige: Inaktive erzeugen keine Syntaxfehler.
-    Syntax := SyntaxFindings(Tree.Diagnostics, ASettings);
+    Syntax := SyntaxFindings(Tree.Diagnostics, ASettings) +
+      LanguageFeatureFindings(Tree, ASettings, LanguageLevelOf(ASettings), nil);
     Context := Default(TRuleContext);
     Context.RelativePath := ARelativePath;
     Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARelativePath, '/', '\', [rfReplaceAll])), '');

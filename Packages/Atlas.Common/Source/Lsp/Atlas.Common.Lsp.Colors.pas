@@ -37,6 +37,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.Math,
   Atlas.Common.Lsp.Positions;
 

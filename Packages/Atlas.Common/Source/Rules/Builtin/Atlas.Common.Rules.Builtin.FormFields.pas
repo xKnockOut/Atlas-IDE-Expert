@@ -489,11 +489,20 @@ var
   end;
 
   function CodeAt(AOffset: Integer): Integer;
+  var
+    mHigh, mMiddle: Integer;
   begin
-    for Result := 0 to High(Code) do
-      if Token(Result).Offset >= AOffset then
-        Exit;
-    Result := Length(Code);
+    // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
+    Result := 0;
+    mHigh := Length(Code);
+    while Result < mHigh do
+    begin
+      mMiddle := (Result + mHigh) div 2;
+      if Tokens[Code[mMiddle]].Offset < AOffset then
+        Result := mMiddle + 1
+      else
+        mHigh := mMiddle;
+    end;
   end;
 
   function FormIndex(const AName: string): Integer;

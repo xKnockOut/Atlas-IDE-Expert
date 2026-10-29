@@ -3,9 +3,10 @@
 // DUnitX-Tests aus der IDE ausführen (#69), ohne VCL und Open Tools API:
 // - Testprogramm erkennen (Hauptdatei verwendet DUnitX.TestFramework) und
 //   entscheiden, ob die Tests nach einem Build laufen (Einstellungen
-//   TestRun und TestsAfterBuild, mit build.zeroHints #530 nur ohne Warnungen
-//   und Hinweise; nie nach der Hintergrundprüfung und nie nach einem Build,
-//   den Atlas oder Claude Code angestoßen hat).
+//   TestRun und TestsAfterBuild, nur nach einem Build, der nach der Bewertung
+//   von #530 als erfolgreich gilt (build.zeroHints, build.warningsAsErrors,
+//   Basislinie; Atlas.Core.Build.Verdict); nie nach der Hintergrundprüfung und
+//   nie nach einem Build, den Atlas oder Claude Code angestoßen hat).
 // - Ergebnis aus dem XML-Bericht (Atlas.Text.TestResults) den Testmethoden
 //   zuordnen: Unit der Fixture über das Projekt, darin der Methodenkopf im
 //   implementation-Teil (Atlas.Text.DUnitX, gemeinsam mit dem MCP-Werkzeug
@@ -22,7 +23,6 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Core.Problems.Contract,
-  Atlas.Core.Build.Messages,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Projects.Summary,
   Atlas.Text.TestResults;
@@ -74,12 +74,11 @@ type
     class function IsTestProgram(const ALines: TArray<string>): Boolean; static;
     /// <summary>Kann Atlas eine EXE der Plattform starten (Windows)? '' gilt als Win32 der IDE.</summary>
     class function CanRun(const APlatform: string): Boolean; static;
-    /// <summary>Warnungen und Hinweise eines Builds.</summary>
-    class function WarningsAndHints(const AMessages: TArray<TAtlasCompilerMessage>): Integer; static;
-    /// <summary>Tests nach diesem Build ausführen? AIsTestProgram: das gebaute Projekt ist ein Testprogramm.
+    /// <summary>Tests nach diesem Build ausführen? ASucceeded: Der Build gilt als erfolgreich
+    /// (TAtlasBuildVerdict.Effective, #530). AIsTestProgram: das gebaute Projekt ist ein Testprogramm.
     /// ARequestedBy: Auftraggeber des Builds ('' = Benutzer).</summary>
     class function ShouldRunAfterBuild(const ASettings: TAtlasPluginSettings; ASucceeded, ABackground: Boolean;
-      const ARequestedBy: string; AWarningsAndHints: Integer; AIsTestProgram: Boolean): Boolean; static;
+      const ARequestedBy: string; AIsTestProgram: Boolean): Boolean; static;
     /// <summary>Fehlgeschlagene Tests mit Fundstelle; liest jede Testunit höchstens einmal.</summary>
     class function Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;
       const AReadLines: TAtlasTestReadLines): TArray<TAtlasTestFailure>; static;
@@ -123,24 +122,12 @@ begin
     SameText(APlatform, 'Win64x');
 end;
 
-class function TAtlasTestRun.WarningsAndHints(const AMessages: TArray<TAtlasCompilerMessage>): Integer;
-var
-  Message: TAtlasCompilerMessage;
-begin
-  Result := 0;
-  for Message in AMessages do
-    if (Message.Severity = TAtlasCompilerSeverity.Warning) or (Message.Severity = TAtlasCompilerSeverity.Hint) then
-      Inc(Result);
-end;
-
 class function TAtlasTestRun.ShouldRunAfterBuild(const ASettings: TAtlasPluginSettings; ASucceeded,
-  ABackground: Boolean; const ARequestedBy: string; AWarningsAndHints: Integer; AIsTestProgram: Boolean): Boolean;
+  ABackground: Boolean; const ARequestedBy: string; AIsTestProgram: Boolean): Boolean;
 begin
+  // build.zeroHints und build.warningsAsErrors stecken in ASucceeded (eine Bewertung, #530).
   Result := ASettings.Enabled and ASettings.TestRun and ASettings.TestsAfterBuild and ASucceeded and
     not ABackground and (ARequestedBy = '') and AIsTestProgram;
-  // build.zeroHints (#530): nur ein Build ohne Warnungen und Hinweise gilt als erfolgreich.
-  if Result and ASettings.BuildZeroHints then
-    Result := AWarningsAndHints = 0;
 end;
 
 class function TAtlasTestRun.Failures(const ARun: TTestRunResult; const AUnitFile: TAtlasTestUnitFile;

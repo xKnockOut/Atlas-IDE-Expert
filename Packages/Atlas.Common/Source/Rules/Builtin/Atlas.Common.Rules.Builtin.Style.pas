@@ -753,11 +753,16 @@ var
 
   function HasComment(AStart, AEnd: Integer): Boolean;
   var
-    Token: TPascalToken;
+    mIndex: Integer;
   begin
-    for Token in Tokens do
-      if (Token.Offset >= AStart) and (Token.Offset < AEnd) and (Token.Kind = TPascalTokenKind.Comment) then
+    // Binär zum ersten Token des Bereichs statt ab Dateianfang (#1323).
+    mIndex := AContext.Tree.FirstTokenFrom(AStart);
+    while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < AEnd) do
+    begin
+      if Tokens[mIndex].Kind = TPascalTokenKind.Comment then
         Exit(True);
+      Inc(mIndex);
+    end;
     Result := False;
   end;
 
@@ -1399,10 +1404,14 @@ var
     Index: Integer;
   begin
     Result := TTextRange.Create(ADecl.StartPos, ADecl.EndPos);
-    for Index := 0 to High(Tokens) do
-      if (Tokens[Index].Offset >= ADecl.StartOffset) and (Tokens[Index].Offset < ADecl.EndOffset) and
-        (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
+    // Nur die Token der Deklaration, binär angesprungen statt die ganze Datei (#1342).
+    Index := TSyntaxTree.FirstTokenOf(Tokens, ADecl.StartOffset);
+    while (Index <= High(Tokens)) and (Tokens[Index].Offset < ADecl.EndOffset) do
+    begin
+      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
         Exit(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos));
+      Inc(Index);
+    end;
   end;
 
   procedure CheckSection(ASection: TSyntaxNode);

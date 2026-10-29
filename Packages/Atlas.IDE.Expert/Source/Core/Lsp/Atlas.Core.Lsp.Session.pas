@@ -42,6 +42,8 @@ uses
   Atlas.Core.Lsp.Progress,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Lsp.Contract,
+  Atlas.Core.Lsp.DataFlow,
+  Atlas.Core.Lsp.AccessChains,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Projects.Contract,
   Atlas.Core.InlayHints.Store,
@@ -55,6 +57,8 @@ type
     Line: Integer;
     /// <summary>0-basiert.</summary>
     Character: Integer;
+    /// <summary>Referenzsuche (#1119): sicher oder erschlossen; sonst sicher.</summary>
+    Confidence: TAtlasConfidence;
   end;
 
   /// <summary>Code-Aktion oder Befehl aus textDocument/codeAction (#399).</summary>
@@ -72,6 +76,8 @@ type
     ArgumentsJson: string;
     /// <summary>Kennung aus data.tag, z. B. "uses.remove" (#621); '' ohne.</summary>
     Tag: string;
+    /// <summary>Vorschau aus data.preview (#663): vor dem Übernehmen zeigen; '' ohne.</summary>
+    Preview: string;
     /// <summary>Regel des behobenen Treffers aus diagnostics[0].code (#909); '' ohne.</summary>
     Rule: string;
     /// <summary>Aus einem Eintrag der Antwort: CodeAction oder Command; False bei anderem.</summary>
@@ -208,6 +214,31 @@ type
     /// Include-Symbole hinter {$I} (#860) kommen als DefineHint mit den Symbolen aus data.includeDefines.</summary>
     function InlayHints(const AFileName: string; AFromLine, AToLine, AEndMarkerMinLines: Integer;
       ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>; overload;
+    /// <summary>Bezeichner für Werte beim Debuggen (#508, textDocument/inlineValue) in den Zeilen
+    /// AFromLine..AToLine (0-basiert), Halt an AStoppedLine; ohne Abgleich: Sync vorher im Hauptthread.
+    /// Threadsicher wie Completion.</summary>
+    function InlineValues(const AFileName: string; AFromLine, AToLine, AStoppedLine: Integer;
+      ATimeoutMs: Cardinal): TAtlasInlineValueRefs;
+    /// <summary>Bezeichner aus der Antwort auf textDocument/inlineValue; nur InlineValueVariableLookup mit
+    /// variableName.</summary>
+    class function InlineValueRefsOf(const AResponse: TJSONValue): TAtlasInlineValueRefs; static;
+    /// <summary>Wirksame Compiler-Schalter an ALine/ACharacter (0-basiert, #558, atlas/compilerSwitches); ohne
+    /// Abgleich: Sync vorher im Hauptthread. Threadsicher wie Completion. Gehört dem Aufrufer; nil ohne Antwort.
+    /// </summary>
+    function CompilerSwitches(const AFileName: string; ALine, ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>atlas/debugUnavailable (#840): Schalter D, L, O, Routine, Lebensdauer von AName und Korrekturen
+    /// am Halt in ALine (0-basiert); gehört dem Aufrufer.</summary>
+    function DebugUnavailable(const AFileName: string; ALine: Integer; const AName: string;
+      ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>atlas/expressionCompletion (#538): Vorschläge für AExpression im Gültigkeitsbereich der Zeile
+    /// ALine (0-basiert) von AFileName, Schreibmarke ACharacter im Ausdruck. Ohne Abgleich; gehört dem Aufrufer.
+    /// </summary>
+    function ExpressionCompletion(const AFileName: string; ALine: Integer; const AExpression: string;
+      ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+    /// <summary>atlas/accessChains (#865): Zugriffsketten der Anweisungen in ALine (0-basiert) von AFileName für
+    /// einen Prozess mit APointerSize. Ohne Abgleich: Sync vorher im Hauptthread. Found = False ohne Antwort.
+    /// </summary>
+    function AccessChains(const AFileName: string; ALine, APointerSize: Integer; ATimeoutMs: Cardinal): TAtlasAvChains;
     procedure Initialize;
     /// <summary>Parameter von initialize (#396, #397, #408, #648, #652). AApplyEdit: workspace.applyEdit
     /// ankündigen. Gehört dem Aufrufer.</summary>
@@ -258,6 +289,13 @@ type
     /// <summary>Nächste Ebene unter AItem in Richtung ADirection (#400).</summary>
     function HierarchyChildren(ADirection: TAtlasHierarchyDirection;
       const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
+    /// <summary>Auswirkungen des Symbols am Fundort bis zur Tiefe ADepth (atlas/impact, #1120); ohne Symbol leer.
+    /// </summary>
+    function Impact(const AFileName: string; ALine, ACharacter, ADepth: Integer): TAtlasImpact;
+    /// <summary>Antwort von atlas/impact (#1120); ohne Objekt leer (kein Symbol am Cursor).</summary>
+    class function ImpactFromJson(const AValue: TJSONValue): TAtlasImpact; static;
+    /// <summary>Woher kommt bzw. wohin geht der Wert des Symbols an der Stelle (atlas/dataFlow, #690).</summary>
+    function DataFlow(const ARequest: TAtlasDataFlowRequest): TAtlasDataFlowResult;
     /// <summary>Code-Aktionen für ARange (textDocument/codeAction, #399), Reihenfolge des Servers.</summary>
     function CodeActions(const AFileName: string; const ARange: TLspRange): TArray<TLspCodeAction>; overload;
     /// <summary>Wie oben mit eigener Wartezeit, etwa für die Glühbirne der Zeilenleiste (#768), die den Editor
@@ -818,6 +856,7 @@ begin
           Location.FileName := UriToPath(TJSONObject(Item).GetValue<string>('uri', ''));
           Location.Line := TJSONObject(Item).GetValue<Integer>('range.start.line', 0);
           Location.Character := TJSONObject(Item).GetValue<Integer>('range.start.character', 0);
+          Location.Confidence := TAtlasConfidence.FromJson(Item);
           if Location.FileName <> '' then
             Result := Result + [Location];
         end;
@@ -844,6 +883,7 @@ class function TLspSession.LocationsOf(const AResponse: TJSONValue): TArray<TLsp
     Location.FileName := UriToPath(Uri);
     Location.Line := TJSONObject(AItem).GetValue<Integer>(Prefix + '.start.line', 0);
     Location.Character := TJSONObject(AItem).GetValue<Integer>(Prefix + '.start.character', 0);
+    Location.Confidence := TAtlasConfidence.FromJson(AItem);
     if Location.FileName <> '' then
       Result := Result + [Location];
   end;
@@ -928,6 +968,7 @@ begin
   AAction.Disabled := Item.GetValue<string>('disabled.reason', '');
   AAction.Edit := TLspWorkspaceEdit.FromJson(Item.GetValue('edit'));
   AAction.Tag := Item.GetValue<string>('data.tag', '');
+  AAction.Preview := Item.GetValue<string>('data.preview', '');
   if Item.TryGetValue<TJSONArray>('diagnostics', Arguments) and (Arguments.Count > 0) and
     (Arguments.Items[0] is TJSONObject) then
     AAction.Rule := TJSONObject(Arguments.Items[0]).GetValue<string>('code', '');
@@ -1241,6 +1282,95 @@ begin
   Result.Raw := Entry.ToJSON;
 end;
 
+function ImpactFormsOf(const AValue: TJSONValue): TArray<TAtlasImpactForm>;
+var
+  Item: TJSONValue;
+  Form: TAtlasImpactForm;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(AValue) do
+    if Item is TJSONObject then
+    begin
+      Form.FileName := TLspSession.UriToPath(TJSONObject(Item).GetValue<string>('uri', ''));
+      Form.Line := TJSONObject(Item).GetValue<Integer>('range.start.line', 0);
+      Form.Character := TJSONObject(Item).GetValue<Integer>('range.start.character', 0);
+      Form.Text := TJSONObject(Item).GetValue<string>('text', '');
+      Result := Result + [Form];
+    end;
+end;
+
+class function TLspSession.ImpactFromJson(const AValue: TJSONValue): TAtlasImpact;
+var
+  Root, Entry: TJSONObject;
+  List, Item, Ranges, First, Names, Name: TJSONValue;
+  Place: TAtlasImpactPlace;
+  Test: TAtlasImpactTest;
+begin
+  Result := Default(TAtlasImpact);
+  if not (AValue is TJSONObject) then
+    Exit;
+  Root := TJSONObject(AValue);
+  Result.Symbol := HierarchyItemOf(Root.GetValue('symbol'));
+  Result.SymbolForms := ImpactFormsOf(Root.GetValue('symbolForms'));
+  Result.Depth := Root.GetValue<Integer>('depth', 0);
+  Result.DepthReached := Root.GetValue<Boolean>('limits.depth', False);
+  Result.CountReached := Root.GetValue<Boolean>('limits.count', False);
+  Result.TimeReached := Root.GetValue<Boolean>('limits.time', False);
+  Result.Unexpanded := Root.GetValue<Integer>('unexpanded', 0);
+  Result.MaxPlaces := Root.GetValue<Integer>('maxPlaces', 0);
+  Result.TimeoutMs := Root.GetValue<Integer>('timeoutMs', 0);
+  List := Root.GetValue('places');
+  if List is TJSONArray then
+    for Item in TJSONArray(List) do
+    begin
+      if not (Item is TJSONObject) then
+        Continue;
+      Entry := TJSONObject(Item);
+      Place := Default(TAtlasImpactPlace);
+      Place.Item := HierarchyItemOf(Entry.GetValue('item'));
+      Place.Item.Confidence := TAtlasConfidence.FromJson(Entry);
+      Place.Level := Entry.GetValue<Integer>('level', 0);
+      Place.Edge := Entry.GetValue<string>('edge', '');
+      Place.Cause := Entry.GetValue<Integer>('cause', -1);
+      Place.UseLine := Place.Item.Line;
+      Place.UseCharacter := Place.Item.Character;
+      Ranges := Entry.GetValue('ranges');
+      if (Ranges is TJSONArray) and (TJSONArray(Ranges).Count > 0) then
+      begin
+        Place.UseCount := TJSONArray(Ranges).Count;
+        First := TJSONArray(Ranges).Items[0];
+        Place.UseLine := First.GetValue<Integer>('start.line', Place.UseLine);
+        Place.UseCharacter := First.GetValue<Integer>('start.character', Place.UseCharacter);
+      end;
+      Place.Forms := ImpactFormsOf(Entry.GetValue('forms'));
+      Place.Terminal := Entry.GetValue<Boolean>('terminal', False);
+      Place.Test := Entry.GetValue<string>('test', '');
+      Result.Places := Result.Places + [Place];
+    end;
+  List := Root.GetValue('tests');
+  if List is TJSONArray then
+    for Item in TJSONArray(List) do
+    begin
+      if not (Item is TJSONObject) then
+        Continue;
+      Entry := TJSONObject(Item);
+      Test := Default(TAtlasImpactTest);
+      Test.Name := Entry.GetValue<string>('name', '');
+      Names := Entry.GetValue('run');
+      if Names is TJSONArray then
+        for Name in TJSONArray(Names) do
+          Test.RunNames := Test.RunNames + [Name.Value];
+      if Test.RunNames = nil then
+        Test.RunNames := TArray<string>.Create(Test.Name);
+      Test.FileName := TLspSession.UriToPath(Entry.GetValue<string>('uri', ''));
+      Test.Line := Entry.GetValue<Integer>('line', 0);
+      Test.Level := Entry.GetValue<Integer>('level', 0);
+      Result.Tests := Result.Tests + [Test];
+    end;
+end;
+
 function TLspSession.PrepareHierarchy(ADirection: TAtlasHierarchyDirection; const AFileName: string; ALine,
   ACharacter: Integer): TArray<TAtlasHierarchyItem>;
 var
@@ -1262,6 +1392,35 @@ begin
   end;
 end;
 
+function TLspSession.Impact(const AFileName: string; ALine, ACharacter, ADepth: Integer): TAtlasImpact;
+var
+  Params: TJSONObject;
+  Response: TJSONValue;
+begin
+  Params := PositionParams(AFileName, ALine, ACharacter);
+  Params.AddPair('depth', TJSONNumber.Create(ADepth));
+  // Mehrere Referenzsuchen über das ganze Projekt; der Server begrenzt die Zeit selbst und meldet es.
+  Response := FClient.Request('atlas/impact', Params, FTimeoutMs * 30);
+  try
+    Result := ImpactFromJson(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.DataFlow(const ARequest: TAtlasDataFlowRequest): TAtlasDataFlowResult;
+var
+  Response: TJSONValue;
+begin
+  // Projektweit über die Referenzsuche; dafür so viel Zeit wie für die Hierarchien.
+  Response := FClient.Request(TAtlasDataFlowJson.Method, TAtlasDataFlowJson.Params(ARequest), FTimeoutMs * 10);
+  try
+    Result := TAtlasDataFlowJson.Parse(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
 function TLspSession.HierarchyChildren(ADirection: TAtlasHierarchyDirection;
   const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
 const
@@ -1271,6 +1430,7 @@ const
   Members: array[TAtlasHierarchyDirection] of string = ('from', 'to', '', '');
 var
   Raw, Response, Item, Inner: TJSONValue;
+  Child: TAtlasHierarchyItem;
 begin
   Result := nil;
   Raw := TJSONObject.ParseJSONValue(AItem.Raw);
@@ -1289,10 +1449,125 @@ begin
       if (Members[ADirection] <> '') and (Item is TJSONObject) then
         Inner := TJSONObject(Item).GetValue(Members[ADirection]);
       if Inner is TJSONObject then
-        Result := Result + [HierarchyItemOf(Inner)];
+      begin
+        Child := HierarchyItemOf(Inner);
+        // Eingehende Aufrufe (#1119): atlasConfidence steht am Aufruf, nicht am Element.
+        Child.Confidence := TAtlasConfidence.FromJson(Item);
+        // Aufruf über Interface oder virtuelle Methode (#1122), ebenfalls am Aufruf.
+        if Item is TJSONObject then
+        begin
+          Child.Dispatch := TJSONObject(Item).GetValue<string>('atlasDispatch.kind', '');
+          Child.Implementations := TJSONObject(Item).GetValue<Integer>('atlasDispatch.implementations', 0);
+        end;
+        Result := Result + [Child];
+      end;
     end;
   finally
     Response.Free;
+  end;
+end;
+
+function TLspSession.InlineValues(const AFileName: string; AFromLine, AToLine, AStoppedLine: Integer;
+  ATimeoutMs: Cardinal): TAtlasInlineValueRefs;
+var
+  Params, Range, Stopped: TJSONObject;
+  Response: TJSONValue;
+begin
+  Range := TJSONObject.Create;
+  Range.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AFromLine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Range.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AToLine + 1))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Stopped := TJSONObject.Create;
+  Stopped.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AStoppedLine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Stopped.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AStoppedLine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('range', Range);
+  Params.AddPair('context', TJSONObject.Create.AddPair('frameId', TJSONNumber.Create(0))
+    .AddPair('stoppedLocation', Stopped));
+  Response := FClient.Request('textDocument/inlineValue', Params, ATimeoutMs);
+  try
+    Result := InlineValueRefsOf(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.CompilerSwitches(const AFileName: string; ALine, ACharacter: Integer;
+  ATimeoutMs: Cardinal): TJSONValue;
+var
+  Params: TJSONObject;
+begin
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+    .AddPair('character', TJSONNumber.Create(ACharacter)));
+  Result := FClient.Request('atlas/compilerSwitches', Params, ATimeoutMs);
+end;
+
+function TLspSession.DebugUnavailable(const AFileName: string; ALine: Integer; const AName: string;
+  ATimeoutMs: Cardinal): TJSONValue;
+var
+  Params: TJSONObject;
+begin
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Params.AddPair('name', AName);
+  Result := FClient.Request('atlas/debugUnavailable', Params, ATimeoutMs);
+end;
+
+function TLspSession.AccessChains(const AFileName: string; ALine, APointerSize: Integer;
+  ATimeoutMs: Cardinal): TAtlasAvChains;
+var
+  Response: TJSONValue;
+begin
+  Response := FClient.Request(TAtlasAvJson.Method, TAtlasAvJson.Params(AFileName, ALine, APointerSize), ATimeoutMs);
+  try
+    Result := TAtlasAvJson.Parse(Response);
+  finally
+    Response.Free;
+  end;
+end;
+
+function TLspSession.ExpressionCompletion(const AFileName: string; ALine: Integer; const AExpression: string;
+  ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
+var
+  Params: TJSONObject;
+begin
+  Params := TJSONObject.Create;
+  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+    .AddPair('character', TJSONNumber.Create(0)));
+  Params.AddPair('expression', AExpression);
+  Params.AddPair('character', TJSONNumber.Create(ACharacter));
+  Result := FClient.Request('atlas/expressionCompletion', Params, ATimeoutMs);
+end;
+
+class function TLspSession.InlineValueRefsOf(const AResponse: TJSONValue): TAtlasInlineValueRefs;
+var
+  Item: TJSONValue;
+  Entry: TJSONObject;
+  Name: string;
+begin
+  Result := nil;
+  if not (AResponse is TJSONArray) then
+    Exit;
+  for Item in TJSONArray(AResponse) do
+  begin
+    if not (Item is TJSONObject) then
+      Continue;
+    Entry := TJSONObject(Item);
+    // InlineValueText (text) und InlineValueEvaluatableExpression (expression) wertet Atlas nicht aus.
+    Name := Entry.GetValue<string>('variableName', '');
+    if Name = '' then
+      Continue;
+    Result := Result + [TAtlasInlineValueRef.Create(Entry.GetValue<Integer>('range.start.line', -1),
+      Entry.GetValue<Integer>('range.start.character', 0), Name, Entry.GetValue<string>('atlasType', ''))];
   end;
 end;
 
@@ -1335,7 +1610,8 @@ begin
         Continue;
       Entry := TJSONObject(Item);
       // Parameternamen (kind 2), Typmarken (kind 1, #453), Endmarken ohne kind mit "// …" (#620) und
-      // Include-Symbole ohne kind mit data.includeDefines (#860) und Steuerzeichen mit data.controlChar (#862).
+      // Include-Symbole ohne kind mit data.includeDefines (#860), Steuerzeichen mit data.controlChar (#862) und
+      // Methoden ohne Self mit data.methodWithoutSelf (#686).
       Kind := Entry.GetValue<Integer>('kind', 0);
       if (Kind <> 2) and (Kind <> 1) and (Kind <> 0) then
         Continue;
@@ -1364,6 +1640,9 @@ begin
       end
       else if (Kind = 0) and (Entry.GetValue<Integer>('data.controlChar.code', -1) >= 0) then
         Hint.CharHint := True
+      else if (Kind = 0) and Entry.GetValue<Boolean>('data.methodWithoutSelf', False) then
+        // Methode ohne Self (#686); die Beschriftung baut die Oberfläche in der Sprache der IDE.
+        Hint.MethodHint := True
       else if Kind = 0 then
       begin
         if not Text.StartsWith('//') then

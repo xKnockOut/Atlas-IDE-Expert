@@ -223,6 +223,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.DeclaredTypes,
+  Atlas.Common.Pascal.FormatStrings,
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Editing.UsesClause,
@@ -633,29 +634,13 @@ end;
 
 class function TFormatWithoutSettingsRule.HasLocaleSpecifier(const AFormat: string): Boolean;
 var
-  Index: Integer;
+  mValue: string;
 begin
-  Index := 1;
-  while Index <= Length(AFormat) do
-  begin
-    if AFormat[Index] = '%' then
-    begin
-      Inc(Index);
-      if (Index <= Length(AFormat)) and (AFormat[Index] = '%') then
-      begin
-        Inc(Index);
-        Continue;
-      end;
-      // Index, Ausrichtung, Breite, Genauigkeit: %0:-10.2f
-      while (Index <= Length(AFormat)) and CharInSet(AFormat[Index], ['0'..'9', ':', '-', '.', '*']) do
-        Inc(Index);
-      if (Index <= Length(AFormat)) and CharInSet(AFormat[Index], ['f', 'F', 'n', 'N', 'm', 'M', 'g', 'G',
-        'e', 'E']) then
-        Exit(True);
-    end;
-    Inc(Index);
-  end;
-  Result := False;
+  // Zerlegung gemeinsam mit format-args; ein Literal mit Hochkommas wird erst ausgewertet.
+  if TFormatString.LiteralValue(AFormat, mValue) then
+    Result := TFormatString.HasLocaleSpecifier(mValue)
+  else
+    Result := TFormatString.HasLocaleSpecifier(AFormat);
 end;
 
 class function TFormatWithoutSettingsRule.PictureDependsOnLocale(const AFunction, APicture: string): Boolean;
@@ -1032,7 +1017,7 @@ var
     if not Managed.IsPrimitive(TypeName) then
       Shown := Format('%s (enthält %s)', [TypeName, Kind]);
     for Name in SplitString(ADecl.Name, ',') do
-      for Index := 0 to High(Tokens) do
+      for Index := TSyntaxTree.FirstTokenOf(Tokens, ADecl.StartOffset) to High(Tokens) do
       begin
         if Tokens[Index].Offset >= ADecl.EndOffset then
           Break;
@@ -1265,12 +1250,16 @@ var
 
     function Used(const AName: string): Boolean;
     var
-      Token: TPascalToken;
+      mIndex: Integer;
     begin
-      for Token in Tokens do
-        if (Token.Offset >= ARoutine.StartOffset) and (Token.Offset < ARoutine.EndOffset) and
-          (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, AName) then
+      // Binär zum ersten Token der Routine statt ab Dateianfang (#1323).
+      mIndex := TRoutineBody.TokenAt(Tokens, ARoutine.StartOffset);
+      while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < ARoutine.EndOffset) do
+      begin
+        if (Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[mIndex].Text, AName) then
           Exit(True);
+        Inc(mIndex);
+      end;
       Result := False;
     end;
 
@@ -2074,11 +2063,16 @@ var
   // Breitenangaben wie X:5:2 lassen sich nicht in einen String übertragen.
   function HasWidth(ACall: TSyntaxNode): Boolean;
   var
-    Token: TPascalToken;
+    mIndex: Integer;
   begin
-    for Token in Tokens do
-      if (Token.Offset >= ACall.StartOffset) and (Token.Offset < ACall.EndOffset) and Token.IsSymbol(':') then
+    // Binär zum ersten Token des Aufrufs statt ab Dateianfang (#1323).
+    mIndex := TRoutineBody.TokenAt(Tokens, ACall.StartOffset);
+    while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < ACall.EndOffset) do
+    begin
+      if Tokens[mIndex].IsSymbol(':') then
         Exit(True);
+      Inc(mIndex);
+    end;
     Result := False;
   end;
 
@@ -3117,11 +3111,20 @@ var
   end;
 
   function CodeAt(AOffset: Integer): Integer;
+  var
+    mHigh, mMiddle: Integer;
   begin
-    for Result := 0 to High(Code) do
-      if Token(Result).Offset >= AOffset then
-        Exit;
-    Result := Length(Code);
+    // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
+    Result := 0;
+    mHigh := Length(Code);
+    while Result < mHigh do
+    begin
+      mMiddle := (Result + mHigh) div 2;
+      if Tokens[Code[mMiddle]].Offset < AOffset then
+        Result := mMiddle + 1
+      else
+        mHigh := mMiddle;
+    end;
   end;
 
   // Aufzählungstyp AName in AUnit: Zahl der Werte und ob sie eigene Ordinalwerte tragen.
@@ -3900,7 +3903,7 @@ begin
   Lines := TTextLines.SplitLines(AContext.Text);
   LineBreak := TTextLines.LineBreakOf(AContext.Text);
   Found := nil;
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Visit(AContext.Tree.Root);

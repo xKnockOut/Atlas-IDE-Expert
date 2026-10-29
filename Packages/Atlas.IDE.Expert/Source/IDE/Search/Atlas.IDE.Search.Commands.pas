@@ -30,6 +30,32 @@
 //   einmal zurück; liegt über der Leiste ein anderes Fenster, wird sie nach
 //   vorn geholt. Beides steht mit Fensterklasse im Diagnoseprotokoll, ebenso
 //   beim ersten Öffnen je Fenster die Lage von Editor und Leiste.
+// Ersetzen, Regex, Verlauf und Bereiche über Dateien (#893):
+// - ShowReplace (Strg+H, search.replace) öffnet die Leiste mit Ersetzen-Zeile,
+//   Show ohne. „Ersetzen“ ersetzt den markierten Treffer und springt weiter;
+//   steht keiner markiert, springt es nur. „Alle ersetzen“ ersetzt im Bereich:
+//   in einer Datei als ein Rückgängig-Schritt (Schreiber der IDE), über Dateien
+//   über TAtlasIdeWorkspaceEdit mit dem Änderungsprotokoll (#721). Danach
+//   steht „n Ersetzungen in m Dateien“ in der Leiste.
+// - Regex (search.regex): ungültiger Ausdruck färbt das Suchfeld rot und zeigt
+//   den Fehlertext; dann wird nichts markiert, gezählt oder ersetzt. Bei
+//   offener Ersetzen-Zeile zeigt die Leiste die Vorschau des aktuellen
+//   Treffers.
+// - Bereiche „Offene Dateien“, „Projekt“, „Projektgruppe“ (search.multiFile):
+//   Der Editor hebt nur die aktive Datei hervor; nach einer kurzen Pause im
+//   Tippen sucht TAtlasIdeFileSearch im Hintergrund (Puffer vor Platte), der
+//   Zähler zeigt „n Treffer in m Dateien“. Enter bzw. „In Meldungen“ listet
+//   die Dateien nach und nach im Reiter „Atlas-Suche“; „Abbrechen“ beendet
+//   die Suche. F3 springt über Dateien (aktive Datei mit ihrem aktuellen
+//   Text). „Auswählen …“ zeigt die Treffer mit Häkchen im Fenster
+//   „Atlas-Suche: Ersetzen“; „Ausgewählte ersetzen“ ändert nur angehakte,
+//   schreibgeschützte und seit der Suche geänderte Dateien werden gemeldet und
+//   übersprungen. „Alle ersetzen“ sucht vorher neu.
+// - Verlauf (search.history): Such- und Ersetzen-Verlauf in
+//   %APPDATA%\Atlas\search-history.json über Neustarts (TAtlasDataFile).
+// Tasten: Strg+F/F3/Umschalt+F3 nur mit search.replaceIdeSearch, Strg+H
+// zusätzlich nur mit search.replace (Atlas.IDE.Commands.Bindings), „In
+// Methode suchen“ immer. Nur im Hauptthread.
 // - Anlegen je Editorfenster (auf Abruf, EnsureFor), Wächter, Freigabe nach
 //   der Sperre durch die IDE und Abbau übernimmt TAtlasEditorBarHost (#1248).
 //   Die Leisten sind verborgen, bis Show sie öffnet; deshalb kein Guard.
@@ -49,6 +75,9 @@ uses
   ToolsAPI,
   ToolsAPI.Editor,
   Atlas.Core.Search.Matching,
+  Atlas.Core.Search.Files,
+  Atlas.Core.Search.History,
+  Atlas.Core.Search.ReplaceList,
   Atlas.UI.Search.Bar,
   Atlas.IDE.Foundation.EditorBarHost;
 
@@ -85,6 +114,7 @@ type
     TProbeOwner = class(TComponent)
     public
       procedure Tick(Sender: TObject);
+      procedure FilesTick(Sender: TObject);
     end;
   private class var
     FLast: TAtlasSearchQuery;
@@ -105,6 +135,17 @@ type
     FProbed: HWND;
     FEntered: TWinControl;
     FEnteredAt: UInt64;
+    // Such- und Ersetzen-Verlauf (#893); Kept: Datei nicht lesbar, nicht überschreiben.
+    FSearchHistory: TAtlasSearchHistory;
+    FReplaceHistory: TAtlasSearchHistory;
+    FHistoryKept: Boolean;
+    // Suche über Dateien (#893): Ergebnisse, Schlüssel der Suche, Stand und was danach kommt.
+    FFiles: TAtlasReplaceList;
+    FFilesKey: string;
+    FFilesDone: Boolean;
+    FFilesListed: Boolean;
+    FAfterFiles: TProc;
+    FFilesTimer: TTimer;
   private
     class procedure Say(const AText: string); static;
     class function TopView(out AView: IOTAEditView): Boolean; static;
@@ -117,7 +158,36 @@ type
     class procedure SelectHit(const AView: IOTAEditView; const ALines: TArray<string>;
       const AHit: TAtlasSearchHit); static;
     class procedure Repaint; static;
-    class procedure Open(AInMethod: Boolean); static;
+    class procedure Open(AInMethod, AReplace: Boolean); static;
+    class function Features: TAtlasSearchBarFeatures; static;
+    class function TabWidth: Integer; static;
+    // Verlauf.
+    class function HistoryFile: string; static;
+    class procedure LoadHistories; static;
+    class procedure SaveHistories; static;
+    // Suche über Dateien.
+    class function FilesKey(const AQuery: TAtlasSearchQuery): string; static;
+    class function FilesCurrent: Boolean; static;
+    class procedure ScheduleFiles; static;
+    class procedure StartFiles(AListed: Boolean; const AThen: TProc); static;
+    class procedure FileFound(const AHits: TAtlasFileHits); static;
+    class procedure FilesDone(const ASummary: TAtlasFileSearchSummary); static;
+    class procedure ListFiles; static;
+    class procedure DropFiles; static;
+    class procedure RefreshReplaceWindow(const ANotice: string); static;
+    class function NextAcrossFiles(ABackward: Boolean): Boolean; static;
+    class procedure OpenHit(const AFileName: string; ALine, ACharacter: Integer); static;
+    // Ersetzen.
+    class function ReplaceText: string; static;
+    class function MarkedHit(const AView: IOTAEditView; const ALines: TArray<string>;
+      const AHits: TArray<TAtlasSearchHit>): Integer; static;
+    class procedure UpdatePreview; static;
+    class procedure Notice(const AText: string); static;
+    class procedure BarReplace; static;
+    class procedure BarReplaceAll; static;
+    class procedure BarChoose; static;
+    class procedure BarCancel; static;
+    class procedure ReplaceChosen; static;
     // Leisten.
     class function BarFor(const AWindow: INTAEditWindow): TAtlasSearchBar; static;
     class function CreateBar(AParent: TWinControl): TAtlasSearchBar; static;
@@ -146,6 +216,9 @@ type
     class procedure Show; static;
     /// <summary>Suchleiste mit Bereich Methode (#877, Befehl Atlas.SearchInMethod).</summary>
     class procedure ShowInMethod; static;
+    /// <summary>Suchleiste mit Ersetzen-Zeile (#893, Strg+H, Befehl Atlas.SearchReplace); mit search.replace aus
+    /// wie Show.</summary>
+    class procedure ShowReplace; static;
     /// <summary>F3/Umschalt+F3: False ohne letzte Atlas-Suche oder ohne Editor.</summary>
     class function TryNext(ABackward: Boolean): Boolean; static;
     /// <summary>Für Palette und Menü: wie TryNext, ohne letzte Suche öffnet sich die Leiste.</summary>
@@ -157,10 +230,16 @@ type
 implementation
 
 uses
+  System.IOUtils,
   Vcl.Graphics,
   Vcl.Forms,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Files.DataFile,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Core.Editor.WorkspacePlan,
+  Atlas.Core.Search.Replace,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Palette,
   Atlas.Core.Editor.Pairs,
   Atlas.Core.Search.Scopes,
@@ -171,12 +250,61 @@ uses
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Search.MessageList,
+  Atlas.IDE.Search.FileSearch,
+  Atlas.IDE.Search.ReplaceWindow,
+  Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.IDE.Foundation.Files,
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.UI.Search.ReplaceFrame,
   Atlas.IDE.Foundation.DockWindow;
 
 const
   // Takt bei offener Leiste und Frist, in der ein Fokusverlust nach dem Klick als zurückgeholt gilt.
   ProbeMs = 100;
   FocusGraceMs = 400;
+  // Pause im Tippen, nach der die Suche über Dateien beginnt (#893).
+  FilesDelayMs = 400;
+  HistoryKind = 'Suchverlauf';
+
+/// <summary>„1 Datei“, „3 Dateien“.</summary>
+function Plural(ACount: Integer; AOne, AMany: TAtlasTextId): string;
+begin
+  if ACount = 1 then
+    Result := TAtlasStrings.Text(AOne)
+  else
+    Result := TAtlasStrings.Text(AMany);
+end;
+
+/// <summary>„12 Ersetzungen in 3 Dateien“.</summary>
+function ReplacedText(AReplacements, AFiles: Integer): string;
+begin
+  Result := TAtlasStrings.Fmt(TAtlasTextId.SearchReplaced, [AReplacements,
+    Plural(AReplacements, TAtlasTextId.SearchReplacementOne, TAtlasTextId.SearchReplacementMany), AFiles,
+    Plural(AFiles, TAtlasTextId.SearchFileOne, TAtlasTextId.SearchFileMany)]);
+end;
+
+/// <summary>Schreibgeschützt: offener Puffer der IDE, sonst die Datei auf der Platte.</summary>
+function IsReadOnlyFile(const AFileName: string): Boolean;
+var
+  Buffer: IOTAEditBuffer;
+  Attributes: DWORD;
+begin
+  Buffer := TAtlasIdeFiles.BufferOf(AFileName);
+  if Buffer <> nil then
+    Exit(Buffer.IsReadOnly);
+  Attributes := GetFileAttributes(PChar(AFileName));
+  Result := (Attributes <> INVALID_FILE_ATTRIBUTES) and ((Attributes and FILE_ATTRIBUTE_READONLY) <> 0);
+end;
+
+/// <summary>Änderungen in die Puffer bzw. Dateien (#397, #721); '' oder der Fehler.</summary>
+function ApplyEdit(const AEdit: TLspWorkspaceEdit; const AAction: string): string;
+var
+  Outcome: TAtlasWorkspaceEditResult;
+begin
+  Outcome := TAtlasIdeWorkspaceEdit.Apply(AEdit,
+    TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits), AAction);
+  Result := Outcome.Error;
+end;
 
 { TAtlasIdeSearch.TPainter.TEvents }
 
@@ -327,6 +455,19 @@ begin
   TAtlasGuard.Run(TAtlasFeature.Search, TAtlasIdeSearch.Probe);
 end;
 
+procedure TAtlasIdeSearch.TProbeOwner.FilesTick(Sender: TObject);
+begin
+  TAtlasIdeSearch.FFilesTimer.Enabled := False;
+  TAtlasGuard.Run(TAtlasFeature.Search,
+    procedure
+    begin
+      // Nur, wenn die Leiste noch offen ist und der Bereich noch über Dateien geht.
+      if (TAtlasIdeSearch.FBar <> nil) and TAtlasIdeSearch.FBar.Visible and
+        TAtlasSearchScopes.SpansFiles(TAtlasIdeSearch.FLast.Scope) and not TAtlasIdeSearch.FilesCurrent then
+        TAtlasIdeSearch.StartFiles(False, nil);
+    end);
+end;
+
 { TAtlasIdeSearch }
 
 class procedure TAtlasIdeSearch.Install(const AMessage: TProc<string>);
@@ -360,14 +501,30 @@ begin
     FProbe.Interval := ProbeMs;
     FProbe.OnTimer := FProbeOwner.Tick;
   end;
+  if FFilesTimer = nil then
+  begin
+    FFilesTimer := TTimer.Create(FProbeOwner);
+    FFilesTimer.Enabled := False;
+    FFilesTimer.Interval := FilesDelayMs;
+    FFilesTimer.OnTimer := FProbeOwner.FilesTick;
+  end;
+  if FSearchHistory = nil then
+    FSearchHistory := TAtlasSearchHistory.Create(TAtlasIdeSettings.Current.SearchHistory);
+  if FReplaceHistory = nil then
+    FReplaceHistory := TAtlasSearchHistory.Create(TAtlasIdeSettings.Current.SearchHistory);
+  LoadHistories;
 end;
 
 class procedure TAtlasIdeSearch.Uninstall;
 begin
   FreeAndNil(FPainter);
+  // Erst die Suche über Dateien beenden (wartet auf den Thread), dann das Fenster und die Leisten.
+  DropFiles;
+  TAtlasIdeSearchReplaceWindow.Release;
   FreeAndNil(FHost);
-  // Der Takt gehört seinem Besitzer.
+  // Die Takte gehören ihrem Besitzer.
   FProbe := nil;
+  FFilesTimer := nil;
   FEntered := nil;
   FreeAndNil(FProbeOwner);
   FBar := nil;
@@ -375,6 +532,10 @@ begin
   FHighlight := False;
   FListedKey := '';
   FLast := Default(TAtlasSearchQuery);
+  SaveHistories;
+  FreeAndNil(FSearchHistory);
+  FreeAndNil(FReplaceHistory);
+  FHistoryKept := False;
 end;
 
 class procedure TAtlasIdeSearch.ApplySettings;
@@ -387,11 +548,23 @@ begin
     TAtlasIdeSearchMessages.Clear;
     FListedKey := '';
   end;
+  // Verlauf kürzen; 0 = aus (#893).
+  if FSearchHistory <> nil then
+    FSearchHistory.Capacity := TAtlasIdeSettings.Current.SearchHistory;
+  if FReplaceHistory <> nil then
+    FReplaceHistory.Capacity := TAtlasIdeSettings.Current.SearchHistory;
+  SaveHistories;
+  // Ohne Bereiche über Dateien bzw. ohne Ersetzen: laufende Suche und Fenster weg.
+  if not TAtlasIdeSettings.Current.SearchMultiFile or not TAtlasIdeSettings.Current.SearchReplace then
+    TAtlasIdeSearchReplaceWindow.Hide;
+  if not TAtlasIdeSettings.Current.SearchMultiFile then
+    DropFiles;
   if FHost <> nil then
     FHost.ForEach(
       procedure(ABar: TControl)
       begin
         TAtlasSearchBar(ABar).ListVisible := Listed;
+        TAtlasSearchBar(ABar).Features := Features;
       end);
 end;
 
@@ -403,6 +576,60 @@ begin
       begin
         ThemeBar(TAtlasSearchBar(ABar));
       end);
+  TAtlasIdeSearchReplaceWindow.ApplyTheme;
+end;
+
+class function TAtlasIdeSearch.Features: TAtlasSearchBarFeatures;
+var
+  Settings: TAtlasPluginSettings;
+begin
+  Settings := TAtlasIdeSettings.Current;
+  Result := TAtlasSearchBarFeatures.Create(Settings.SearchReplace, Settings.SearchRegex, Settings.SearchMultiFile);
+end;
+
+class function TAtlasIdeSearch.TabWidth: Integer;
+var
+  View: IOTAEditView;
+begin
+  Result := 8;
+  if TopView(View) then
+    Result := TAtlasEditorBuffer.TabWidth(View.Buffer);
+end;
+
+{ Verlauf (#893) }
+
+class function TAtlasIdeSearch.HistoryFile: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('APPDATA'), 'Atlas'), 'search-history.json');
+end;
+
+class procedure TAtlasIdeSearch.LoadHistories;
+begin
+  if (FSearchHistory = nil) or (FReplaceHistory = nil) then
+    Exit;
+  // Gesperrt: leer beginnen und die Datei nicht überschreiben; TAtlasDataFile protokolliert das ohne Pfad.
+  FHistoryKept := not TAtlasDataFile.Writable(TAtlasDataFile.Load(HistoryFile, HistoryKind,
+    function(const AText: string): Boolean
+    begin
+      Result := TAtlasSearchHistories.FromText(AText, FSearchHistory, FReplaceHistory);
+    end));
+  if FHistoryKept then
+  begin
+    FSearchHistory.Clear;
+    FReplaceHistory.Clear;
+  end;
+end;
+
+class procedure TAtlasIdeSearch.SaveHistories;
+begin
+  if (FSearchHistory = nil) or (FReplaceHistory = nil) or FHistoryKept then
+    Exit;
+  try
+    TAtlasDataFile.Write(HistoryFile, TAtlasSearchHistories.ToText(FSearchHistory, FReplaceHistory));
+  except
+    on E: Exception do
+      TAtlasDataFile.ReportNotWritten(HistoryKind, E);
+  end;
 end;
 
 class procedure TAtlasIdeSearch.ThemeBar(ABar: TAtlasSearchBar);
@@ -560,6 +787,36 @@ begin
       if Bar = FBar then
         TAtlasGuard.Run(TAtlasFeature.Search, CloseBar);
     end;
+  Bar.OnReplace :=
+    procedure
+    begin
+      if Bar = FBar then
+        TAtlasGuard.Run(TAtlasFeature.Search, BarReplace);
+    end;
+  Bar.OnReplaceAll :=
+    procedure
+    begin
+      if Bar = FBar then
+        TAtlasGuard.Run(TAtlasFeature.Search, BarReplaceAll);
+    end;
+  Bar.OnChoose :=
+    procedure
+    begin
+      if Bar = FBar then
+        TAtlasGuard.Run(TAtlasFeature.Search, BarChoose);
+    end;
+  Bar.OnCancel :=
+    procedure
+    begin
+      if Bar = FBar then
+        TAtlasGuard.Run(TAtlasFeature.Search, BarCancel);
+    end;
+  Bar.OnReplaceShown :=
+    procedure
+    begin
+      if Bar = FBar then
+        TAtlasGuard.Run(TAtlasFeature.Search, UpdatePreview);
+    end;
   Bar.OnControlEnter :=
     procedure(AControl: TWinControl)
     begin
@@ -569,6 +826,9 @@ begin
         FEnteredAt := TThread.GetTickCount64;
       end;
     end;
+  // Verlauf und Teile nach den Einstellungen (#893); Platz und Farben setzt Place über den Host (#1248).
+  Bar.SetHistories(FSearchHistory, FReplaceHistory);
+  Bar.Features := Features;
 end;
 
 class procedure TAtlasIdeSearch.Place(ABar: TAtlasSearchBar; AParent: TWinControl);
@@ -591,7 +851,7 @@ begin
   end;
 end;
 
-class procedure TAtlasIdeSearch.Open(AInMethod: Boolean);
+class procedure TAtlasIdeSearch.Open(AInMethod, AReplace: Boolean);
 var
   View: IOTAEditView;
   Editors: INTAEditorServices;
@@ -639,6 +899,9 @@ begin
     FBar.Visible := False;
   FBar := Bar;
   Bar.ListVisible := TAtlasIdeSettings.Current.SearchResultsInMessages;
+  Bar.Features := Features;
+  // Strg+H mit, Strg+F ohne Ersetzen-Zeile.
+  Bar.ReplaceShown := AReplace;
   Bar.Prepare(Query, Levels, HasSelection);
   Bar.Visible := True;
   // Vor alle Geschwister: Kein Fenster der IDE soll über der Leiste liegen.
@@ -663,6 +926,7 @@ var
   Hits: TArray<TAtlasSearchHit>;
   Index: Integer;
   Wrapped: Boolean;
+  Error: string;
 begin
   if (FBar = nil) or not TopView(View) then
     Exit;
@@ -677,6 +941,21 @@ begin
   end;
   Query := FBar.Query;
   Query.FileName := FFileName;
+  // Ungültiger Ausdruck (#893): Feld rot, Fehlertext der Engine, nichts markiert, gezählt oder gesucht.
+  if Query.Options.Regex and not TAtlasSearchRegex.Check(Query.Text, Error) then
+  begin
+    FLast := Query;
+    FHighlight := False;
+    DropFiles;
+    Repaint;
+    FBar.SetError(Error);
+    FBar.SetCounter('');
+    FBar.ClearPreview;
+    Exit;
+  end;
+  FBar.SetError('');
+  // Eine Meldung wie „12 Ersetzungen in 3 Dateien“ gilt bis zur nächsten Suche.
+  FBar.SetNotice('');
   if not TAtlasSearchScopes.AreaFor(Text, Query.Scope, FOrigin, FSelection, Query.Level, Area) then
   begin
     Query.Area := TAtlasSearchArea.Create(0, 0, 0, 0);
@@ -704,6 +983,11 @@ begin
       Index := TAtlasTextSearch.Next(Hits, FOrigin, False, Wrapped);
     SelectHit(View, Lines, Hits[Index]);
   end;
+  // Über Dateien: nach einer Pause im Tippen im Hintergrund; sonst gilt eine frühere Suche nicht mehr.
+  if TAtlasSearchScopes.SpansFiles(Query.Scope) then
+    ScheduleFiles
+  else
+    DropFiles;
   UpdateCounter;
 end;
 
@@ -714,7 +998,7 @@ var
   Lines: TArray<string>;
   Area, Selection: TAtlasSearchArea;
   Hits: TArray<TAtlasSearchHit>;
-  Index: Integer;
+  Index, Count, Files: Integer;
   At: TAtlasSearchPos;
 begin
   if (FBar = nil) or not FBar.Visible or not TopView(View) then
@@ -722,6 +1006,21 @@ begin
   if FLast.Text = '' then
   begin
     FBar.SetCounter('');
+    FBar.ClearPreview;
+    Exit;
+  end;
+  UpdatePreview;
+  // Über Dateien (#893): Treffer und Dateien der Suche im Hintergrund.
+  if FilesCurrent then
+  begin
+    Count := FFiles.HitCount;
+    Files := Length(FFiles.Results);
+    if FFilesDone then
+      FBar.SetCounter(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesCounter,
+        [Count, Files, Plural(Files, TAtlasTextId.SearchFileOne, TAtlasTextId.SearchFileMany)]))
+    else
+      FBar.SetCounter(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesRunning,
+        [Count, Files, Plural(Files, TAtlasTextId.SearchFileOne, TAtlasTextId.SearchFileMany)]));
     Exit;
   end;
   Text := TAtlasEditorBuffer.Text(View.Buffer);
@@ -746,6 +1045,7 @@ end;
 
 class procedure TAtlasIdeSearch.BarStep(ABackward: Boolean);
 begin
+  SaveHistories;
   Sync(False);
   TryNext(ABackward);
 end;
@@ -761,13 +1061,26 @@ var
 begin
   if (FBar = nil) or not TAtlasIdeSettings.Current.SearchResultsInMessages or not TopView(View) then
     Exit;
+  SaveHistories;
   Sync(False);
-  if FLast.IsEmpty or FLast.Area.IsEmpty then
+  if FLast.IsEmpty or FLast.Area.IsEmpty or FBar.HasError then
     Exit;
+  // Über Dateien (#893): die laufende bzw. fertige Suche auflisten, sonst eine neue beginnen.
+  if TAtlasSearchScopes.SpansFiles(FLast.Scope) then
+  begin
+    if FilesCurrent then
+      ListFiles
+    else
+      StartFiles(True, nil);
+    if FBar <> nil then
+      FBar.FocusText;
+    Exit;
+  end;
   Text := TAtlasEditorBuffer.Text(View.Buffer);
   // Dieselbe Suche im selben Text nicht erneut aufbauen (Enter springt auch nur weiter).
   Key := FFileName + #0 + FLast.Text + #0 + BoolToStr(FLast.Options.CaseSensitive) +
-    BoolToStr(FLast.Options.WholeWord) + BoolToStr(FLast.Options.Identifier) + #0 + IntToStr(Ord(FLast.Scope)) + #0 +
+    BoolToStr(FLast.Options.WholeWord) + BoolToStr(FLast.Options.Identifier) + BoolToStr(FLast.Options.Regex) + #0 +
+    IntToStr(Ord(FLast.Scope)) + #0 +
     IntToStr(FLast.Area.Start.Line) + ':' + IntToStr(FLast.Area.Start.Character) + '-' +
     IntToStr(FLast.Area.Stop.Line) + ':' + IntToStr(FLast.Area.Stop.Character) + #0 + Text;
   if Key = FListedKey then
@@ -809,6 +1122,12 @@ begin
     Exit;
   Bar := FBar;
   StopProbe;
+  SaveHistories;
+  if FFilesTimer <> nil then
+    FFilesTimer.Enabled := False;
+  // Eine laufende Suche über Dateien endet mit der Leiste; fertige Ergebnisse bleiben für F3.
+  if TAtlasIdeFileSearch.Running then
+    DropFiles;
   FBar.Visible := False;
   FHighlight := False;
   Repaint;
@@ -907,16 +1226,576 @@ begin
   Bar.BringToFront;
 end;
 
+{ Suche über Dateien (#893) }
+
+class function TAtlasIdeSearch.FilesKey(const AQuery: TAtlasSearchQuery): string;
+begin
+  Result := AQuery.Text + #0 + BoolToStr(AQuery.Options.CaseSensitive) + BoolToStr(AQuery.Options.WholeWord) +
+    BoolToStr(AQuery.Options.Identifier) + BoolToStr(AQuery.Options.Regex) + #0 + IntToStr(Ord(AQuery.Scope));
+end;
+
+/// <summary>Gehört die Suche über Dateien (laufend oder fertig) zur letzten Suche?</summary>
+class function TAtlasIdeSearch.FilesCurrent: Boolean;
+begin
+  Result := (FFiles <> nil) and TAtlasSearchScopes.SpansFiles(FLast.Scope) and (FFilesKey = FilesKey(FLast));
+end;
+
+class procedure TAtlasIdeSearch.ScheduleFiles;
+begin
+  if FilesCurrent or (FFilesTimer = nil) then
+    Exit;
+  // Andere Suche: Die alte gilt nicht mehr; die neue beginnt nach einer Pause im Tippen.
+  DropFiles;
+  FFilesTimer.Enabled := False;
+  if FLast.Text <> '' then
+    FFilesTimer.Enabled := True;
+end;
+
+class procedure TAtlasIdeSearch.StartFiles(AListed: Boolean; const AThen: TProc);
+var
+  Files: TArray<string>;
+  Mode: string;
+  After: TProc;
+begin
+  DropFiles;
+  if FFilesTimer <> nil then
+    FFilesTimer.Enabled := False;
+  if FLast.Text = '' then
+    Exit;
+  FFilesKey := FilesKey(FLast);
+  FFiles := TAtlasReplaceList.Create(FLast, ReplaceText);
+  FFilesListed := AListed and TAtlasIdeSettings.Current.SearchResultsInMessages;
+  FAfterFiles := AThen;
+  if FFilesListed then
+  begin
+    Mode := '';
+    if FLast.Options.Identifier then
+      Mode := TAtlasStrings.Text(TAtlasTextId.SearchListIdentifier);
+    TAtlasIdeSearchMessages.Start(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesTitle,
+      [FLast.Text, Mode, TAtlasSearchBar.ScopeCaption(FLast.Scope)]));
+  end;
+  Files := TAtlasIdeFileSearch.FilesOf(FLast.Scope);
+  if not TAtlasIdeFileSearch.Start(Files, FFileName, FLast,
+    procedure(AHits: TAtlasFileHits)
+    begin
+      FileFound(AHits);
+    end,
+    procedure(ASummary: TAtlasFileSearchSummary)
+    begin
+      FilesDone(ASummary);
+    end) then
+  begin
+    // Keine Datei im Bereich (kein Projekt geöffnet): fertig mit nichts.
+    FFilesDone := True;
+    if FFilesListed then
+      TAtlasIdeSearchMessages.AddTitle(TAtlasStrings.Text(TAtlasTextId.SearchNoFiles));
+    After := FAfterFiles;
+    FAfterFiles := nil;
+    if FBar <> nil then
+      FBar.SetCounter(TAtlasStrings.Text(TAtlasTextId.SearchNoFiles));
+    if Assigned(After) then
+      After();
+    Exit;
+  end;
+  if FBar <> nil then
+    FBar.SetSearching(True);
+  UpdateCounter;
+end;
+
+class procedure TAtlasIdeSearch.FileFound(const AHits: TAtlasFileHits);
+begin
+  if FFiles = nil then
+    Exit;
+  FFiles.Add(AHits);
+  if FFilesListed then
+    TAtlasIdeSearchMessages.AddFile(AHits.FileName, TAtlasSearchResults.Entries(AHits.Lines, AHits.Hits, TabWidth));
+  UpdateCounter;
+  RefreshReplaceWindow('');
+end;
+
+class procedure TAtlasIdeSearch.FilesDone(const ASummary: TAtlasFileSearchSummary);
+var
+  After: TProc;
+begin
+  if FFiles = nil then
+    Exit;
+  FFilesDone := True;
+  if FBar <> nil then
+    FBar.SetSearching(False);
+  if FFilesListed then
+  begin
+    TAtlasIdeSearchMessages.AddTitle(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesDone,
+      [ASummary.Hits, ASummary.FilesWithHits, ASummary.Files]));
+    if ASummary.Skipped > 0 then
+      TAtlasIdeSearchMessages.AddTitle(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesSkipped, [ASummary.Skipped]));
+    if ASummary.Cancelled then
+      TAtlasIdeSearchMessages.AddTitle(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesCancelled, [ASummary.Files]));
+  end;
+  UpdateCounter;
+  if ASummary.Cancelled and (FBar <> nil) then
+    FBar.SetCounter(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesCancelled, [ASummary.Files]));
+  RefreshReplaceWindow('');
+  // Was auf die fertige Suche gewartet hat (Alle ersetzen, F3); nicht nach einem Abbruch.
+  After := FAfterFiles;
+  FAfterFiles := nil;
+  if Assigned(After) and not ASummary.Cancelled then
+    After();
+end;
+
+/// <summary>Ergebnisse der aktuellen Suche über Dateien in den Reiter „Atlas-Suche“ (Enter nach der Suche).</summary>
+class procedure TAtlasIdeSearch.ListFiles;
+var
+  Item: TAtlasFileHits;
+  Mode: string;
+  Width: Integer;
+begin
+  if (FFiles = nil) or FFilesListed or not TAtlasIdeSettings.Current.SearchResultsInMessages then
+    Exit;
+  FFilesListed := True;
+  Mode := '';
+  if FLast.Options.Identifier then
+    Mode := TAtlasStrings.Text(TAtlasTextId.SearchListIdentifier);
+  TAtlasIdeSearchMessages.Start(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesTitle,
+    [FLast.Text, Mode, TAtlasSearchBar.ScopeCaption(FLast.Scope)]));
+  Width := TabWidth;
+  for Item in FFiles.Results do
+    TAtlasIdeSearchMessages.AddFile(Item.FileName, TAtlasSearchResults.Entries(Item.Lines, Item.Hits, Width));
+  if FFilesDone then
+    TAtlasIdeSearchMessages.AddTitle(TAtlasStrings.Fmt(TAtlasTextId.SearchFilesCounter, [FFiles.HitCount,
+      Length(FFiles.Results), Plural(Length(FFiles.Results), TAtlasTextId.SearchFileOne,
+      TAtlasTextId.SearchFileMany)]));
+end;
+
+/// <summary>Suche über Dateien beenden und vergessen (Thread beendet, Fenster leer).</summary>
+class procedure TAtlasIdeSearch.DropFiles;
+begin
+  if FFilesTimer <> nil then
+    FFilesTimer.Enabled := False;
+  TAtlasIdeFileSearch.Stop;
+  FAfterFiles := nil;
+  FFilesKey := '';
+  FFilesDone := False;
+  FFilesListed := False;
+  if FBar <> nil then
+    FBar.SetSearching(False);
+  if FFiles = nil then
+    Exit;
+  FreeAndNil(FFiles);
+  RefreshReplaceWindow('');
+end;
+
+class procedure TAtlasIdeSearch.RefreshReplaceWindow(const ANotice: string);
+var
+  Frame: TAtlasSearchReplaceFrame;
+begin
+  Frame := TAtlasIdeSearchReplaceWindow.ExistingFrame;
+  if Frame = nil then
+    Exit;
+  if FFiles <> nil then
+    FFiles.Replace := ReplaceText;
+  Frame.SetModel(FFiles);
+  if ANotice <> '' then
+    Frame.SetNotice(ANotice);
+end;
+
+class procedure TAtlasIdeSearch.OpenHit(const AFileName: string; ALine, ACharacter: Integer);
+var
+  View: IOTAEditView;
+  Lines: TArray<string>;
+  Hits: TArray<TAtlasSearchHit>;
+  Area: TAtlasSearchArea;
+  Index: Integer;
+  Wrapped: Boolean;
+begin
+  TAtlasIdeNavigation.GoToLocation(AFileName, ALine, 0);
+  if not TopView(View) or not SameText(View.Buffer.FileName, AFileName) then
+    Exit;
+  // Mit dem aktuellen Text: Der Treffer kann sich seit der Suche verschoben haben.
+  Lines := TTextLines.SplitLines(TAtlasEditorBuffer.Text(View.Buffer));
+  Area := TAtlasSearchArea.Whole(Lines);
+  Hits := TAtlasTextSearch.FindAll(Lines, FLast.Text, FLast.Options, Area);
+  if Length(Hits) = 0 then
+    Exit;
+  Index := TAtlasTextSearch.Next(Hits, TAtlasSearchPos.Create(ALine, ACharacter), False, Wrapped);
+  SelectHit(View, Lines, Hits[Index]);
+  Repaint;
+end;
+
+class function TAtlasIdeSearch.NextAcrossFiles(ABackward: Boolean): Boolean;
+var
+  View: IOTAEditView;
+  Lines: TArray<string>;
+  Results: TArray<TAtlasFileHits>;
+  Active: TAtlasFileHits;
+  Selection: TAtlasSearchArea;
+  From: TAtlasSearchPos;
+  FileIndex, HitIndex, Index: Integer;
+  Wrapped: Boolean;
+begin
+  Result := True;
+  if not TopView(View) then
+    Exit(False);
+  if not FilesCurrent then
+  begin
+    // Noch keine Suche über Dateien (Leiste zu): suchen, dann springen.
+    StartFiles(False,
+      procedure
+      begin
+        if FilesCurrent then
+          NextAcrossFiles(ABackward);
+      end);
+    Exit;
+  end;
+  if not FFilesDone and (Length(FFiles.Results) = 0) then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.SearchFilesWait));
+    Exit;
+  end;
+  // Die aktive Datei mit ihrem aktuellen Text, die übrigen wie gefunden.
+  Lines := TTextLines.SplitLines(TAtlasEditorBuffer.Text(View.Buffer));
+  Active := TAtlasFileSearch.SearchText(View.Buffer.FileName, TAtlasEditorBuffer.Text(View.Buffer), FLast);
+  Results := Copy(FFiles.Results);
+  Index := TAtlasFileSearch.IndexOfFile(Results, View.Buffer.FileName);
+  if Index >= 0 then
+    Results[Index] := Active
+  else if Length(Active.Hits) > 0 then
+    Results := TArray<TAtlasFileHits>.Create(Active) + Results;
+  From := CursorOf(View, Lines);
+  if ABackward and SelectionOf(View, Lines, Selection) then
+    From := Selection.Start;
+  if not TAtlasFileSearch.NextLocation(Results, View.Buffer.FileName, From, ABackward, FileIndex, HitIndex,
+    Wrapped) then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchNothing, [FLast.Text]));
+    Exit;
+  end;
+  if Wrapped then
+    Say(TAtlasStrings.Text(TAtlasTextId.SearchWrapped));
+  if SameText(Results[FileIndex].FileName, View.Buffer.FileName) then
+  begin
+    SelectHit(View, Lines, Results[FileIndex].Hits[HitIndex]);
+    UpdateCounter;
+  end
+  else
+    OpenHit(Results[FileIndex].FileName, Results[FileIndex].Hits[HitIndex].Line,
+      Results[FileIndex].Hits[HitIndex].Character);
+end;
+
+{ Ersetzen (#893) }
+
+class function TAtlasIdeSearch.ReplaceText: string;
+begin
+  Result := '';
+  if FBar <> nil then
+    Result := FBar.ReplaceText;
+end;
+
+/// <summary>Index des Treffers, der genau markiert ist; -1 ohne.</summary>
+class function TAtlasIdeSearch.MarkedHit(const AView: IOTAEditView; const ALines: TArray<string>;
+  const AHits: TArray<TAtlasSearchHit>): Integer;
+var
+  Selection: TAtlasSearchArea;
+  Index: Integer;
+begin
+  Result := -1;
+  if not SelectionOf(AView, ALines, Selection) then
+    Exit;
+  for Index := 0 to High(AHits) do
+    if (TAtlasSearchPos.Compare(AHits[Index].StartPos, Selection.Start) = 0) and
+      (TAtlasSearchPos.Compare(AHits[Index].StopPos, Selection.Stop) = 0) then
+      Exit(Index);
+end;
+
+class procedure TAtlasIdeSearch.UpdatePreview;
+var
+  View: IOTAEditView;
+  Text: string;
+  Lines: TArray<string>;
+  Area, Selection: TAtlasSearchArea;
+  Hits: TArray<TAtlasSearchHit>;
+  At: TAtlasSearchPos;
+  Index: Integer;
+  Preview: TAtlasReplacePreview;
+begin
+  if FBar = nil then
+    Exit;
+  // Vorschau nur mit Regex und offener Ersetzen-Zeile; ohne Regex ist der neue Text das Feld selbst.
+  if not FBar.ReplaceShown or not FLast.Options.Regex or FBar.HasError or (FLast.Text = '') or
+    not TopView(View) then
+  begin
+    FBar.ClearPreview;
+    Exit;
+  end;
+  Text := TAtlasEditorBuffer.Text(View.Buffer);
+  Lines := TTextLines.SplitLines(Text);
+  At := CursorOf(View, Lines);
+  if SelectionOf(View, Lines, Selection) then
+    At := Selection.Start;
+  Hits := nil;
+  if AreaOf(Text, FLast, At, Area) then
+    Hits := TAtlasTextSearch.FindAll(Lines, FLast.Text, FLast.Options, Area);
+  Index := TAtlasSearchResults.IndexAt(Hits, At);
+  if Index < 0 then
+  begin
+    FBar.ClearPreview;
+    Exit;
+  end;
+  Preview := TAtlasSearchReplace.Preview(Lines, Hits[Index], FLast, ReplaceText);
+  FBar.SetPreview(Preview.Before, Preview.After);
+end;
+
+class procedure TAtlasIdeSearch.Notice(const AText: string);
+begin
+  if FBar <> nil then
+    FBar.SetNotice(AText);
+end;
+
+class procedure TAtlasIdeSearch.BarReplace;
+var
+  View: IOTAEditView;
+  Text, NewText, Error: string;
+  Lines: TArray<string>;
+  Area: TAtlasSearchArea;
+  Hits: TArray<TAtlasSearchHit>;
+  Index: Integer;
+  Edit: TLspWorkspaceEdit;
+  Changes: TLspFileEdits;
+  Hit: TAtlasSearchHit;
+  Target: TOTAEditPos;
+  LineText: string;
+begin
+  SaveHistories;
+  if (FBar = nil) or not TopView(View) then
+    Exit;
+  Sync(False);
+  if FBar.HasError or FLast.IsEmpty then
+    Exit;
+  Text := TAtlasEditorBuffer.Text(View.Buffer);
+  Lines := TTextLines.SplitLines(Text);
+  Hits := nil;
+  if AreaOf(Text, FLast, CursorOf(View, Lines), Area) then
+    Hits := TAtlasTextSearch.FindAll(Lines, FLast.Text, FLast.Options, Area);
+  Index := MarkedHit(View, Lines, Hits);
+  // Kein Treffer markiert: erst hinspringen, der nächste Klick ersetzt.
+  if Index < 0 then
+  begin
+    TryNext(False);
+    Exit;
+  end;
+  if View.Buffer.IsReadOnly then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceReadOnly, [ExtractFileName(View.Buffer.FileName)]));
+    Exit;
+  end;
+  Hit := Hits[Index];
+  Changes.FileName := View.Buffer.FileName;
+  Changes.Edits := TAtlasSearchReplace.Edits(Lines, [Hit], FLast, ReplaceText);
+  NewText := Changes.Edits[0].NewText;
+  Edit := Default(TLspWorkspaceEdit);
+  Edit.Files := [Changes];
+  Error := ApplyEdit(Edit, TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceAction, [FLast.Text, ReplaceText]));
+  if Error <> '' then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Error]));
+    Exit;
+  end;
+  // Weiter hinter dem neuen Text: Enthält er den Suchtext, wird er nicht gleich wieder gefunden.
+  Lines := TTextLines.SplitLines(TAtlasEditorBuffer.Text(View.Buffer));
+  LineText := '';
+  if Hit.Line <= High(Lines) then
+    LineText := Lines[Hit.Line];
+  Target.Line := Hit.Line + 1;
+  Target.Col := TLspSession.IndexToColumn(LineText, Hit.Character + Length(NewText),
+    TAtlasEditorBuffer.TabWidth(View.Buffer));
+  View.Block.Reset;
+  View.CursorPos := Target;
+  Repaint;
+  TryNext(False);
+end;
+
+class procedure TAtlasIdeSearch.BarReplaceAll;
+var
+  View: IOTAEditView;
+  Lines: TArray<string>;
+  Hits: TArray<TAtlasSearchHit>;
+  Edit: TLspWorkspaceEdit;
+  Changes: TLspFileEdits;
+  Error: string;
+begin
+  SaveHistories;
+  if (FBar = nil) or not TopView(View) then
+    Exit;
+  Sync(False);
+  if FBar.HasError or FLast.IsEmpty then
+    Exit;
+  // Über Dateien: frisch suchen (Ergebnisse von vorhin können veraltet sein), dann alle Treffer ersetzen.
+  if TAtlasSearchScopes.SpansFiles(FLast.Scope) then
+  begin
+    StartFiles(FFilesListed,
+      procedure
+      var
+        Index: Integer;
+      begin
+        if FFiles = nil then
+          Exit;
+        for Index := 0 to High(FFiles.Results) do
+          FFiles.SetFileChecked(Index, True);
+        ReplaceChosen;
+      end);
+    Exit;
+  end;
+  // Eine Datei: alle Treffer im Bereich als ein Rückgängig-Schritt (ein Schreiber der IDE).
+  Lines := TTextLines.SplitLines(TAtlasEditorBuffer.Text(View.Buffer));
+  Hits := nil;
+  if not FLast.Area.IsEmpty then
+    Hits := TAtlasTextSearch.FindAll(Lines, FLast.Text, FLast.Options, FLast.Area);
+  if Length(Hits) = 0 then
+  begin
+    Notice(TAtlasStrings.Text(TAtlasTextId.SearchReplaceNone));
+    Exit;
+  end;
+  if View.Buffer.IsReadOnly then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceReadOnly, [ExtractFileName(View.Buffer.FileName)]));
+    Exit;
+  end;
+  Changes.FileName := View.Buffer.FileName;
+  Changes.Edits := TAtlasSearchReplace.Edits(Lines, Hits, FLast, ReplaceText);
+  Edit := Default(TLspWorkspaceEdit);
+  Edit.Files := [Changes];
+  Error := ApplyEdit(Edit, TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceAction, [FLast.Text, ReplaceText]));
+  if Error <> '' then
+  begin
+    Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Error]));
+    Notice(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Error]));
+    Exit;
+  end;
+  Notice(ReplacedText(Length(Hits), 1));
+  Repaint;
+  UpdateCounter;
+end;
+
+class procedure TAtlasIdeSearch.BarChoose;
+var
+  View: IOTAEditView;
+  Frame: TAtlasSearchReplaceFrame;
+  Item: TAtlasFileHits;
+begin
+  SaveHistories;
+  if (FBar = nil) or not TopView(View) then
+    Exit;
+  Sync(False);
+  if FBar.HasError or FLast.IsEmpty then
+    Exit;
+  Frame := TAtlasIdeSearchReplaceWindow.Show;
+  if Frame = nil then
+    Exit;
+  Frame.OnReplace :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Search, ReplaceChosen);
+    end;
+  Frame.OnOpen :=
+    procedure(const AFileName: string; ALine, ACharacter: Integer)
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Search,
+        procedure
+        begin
+          OpenHit(AFileName, ALine, ACharacter);
+        end);
+    end;
+  Frame.SetNotice('');
+  if TAtlasSearchScopes.SpansFiles(FLast.Scope) then
+  begin
+    if not FilesCurrent then
+      StartFiles(FFilesListed, nil);
+  end
+  else
+  begin
+    // Eine Datei: ihre Treffer im Bereich als Liste.
+    DropFiles;
+    Item := TAtlasFileSearch.SearchText(View.Buffer.FileName, TAtlasEditorBuffer.Text(View.Buffer), FLast);
+    Item.Hits := nil;
+    if not FLast.Area.IsEmpty then
+      Item.Hits := TAtlasTextSearch.FindAll(Item.Lines, FLast.Text, FLast.Options, FLast.Area);
+    FFiles := TAtlasReplaceList.Create(FLast, ReplaceText);
+    FFiles.Add(Item);
+    FFilesDone := True;
+  end;
+  RefreshReplaceWindow('');
+end;
+
+class procedure TAtlasIdeSearch.BarCancel;
+begin
+  TAtlasIdeFileSearch.Cancel;
+end;
+
+class procedure TAtlasIdeSearch.ReplaceChosen;
+var
+  Plan: TAtlasReplacePlan;
+  FileName, Error, Report: string;
+begin
+  if FFiles = nil then
+    Exit;
+  FFiles.Replace := ReplaceText;
+  Plan := FFiles.Plan(
+    function(const AFileName: string): Boolean
+    begin
+      Result := IsReadOnlyFile(AFileName);
+    end,
+    function(const AFileName: string): string
+    begin
+      Result := TAtlasIdeWorkspaceEdit.CurrentText(AFileName);
+    end);
+  // Vorab melden, was übersprungen wird.
+  for FileName in Plan.ReadOnly do
+    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceReadOnly, [FileName]));
+  for FileName in Plan.Changed do
+    Say(TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceChanged, [FileName]));
+  if Plan.Replacements = 0 then
+    Report := TAtlasStrings.Text(TAtlasTextId.SearchReplaceNone)
+  else
+  begin
+    Error := ApplyEdit(Plan.Edit, TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceAction, [FFiles.Query.Text,
+      FFiles.Replace]));
+    if Error <> '' then
+    begin
+      Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Error]));
+      Report := TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [Error]);
+    end
+    else
+      Report := ReplacedText(Plan.Replacements, Plan.Files);
+  end;
+  if Length(Plan.ReadOnly) + Length(Plan.Changed) > 0 then
+    Report := Report + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.SearchReplaceSkipped,
+      [Length(Plan.ReadOnly) + Length(Plan.Changed)]);
+  Say(Report);
+  Notice(Report);
+  // Die Ergebnisse stimmen nicht mehr: vergessen, das Fenster zeigt die Meldung.
+  DropFiles;
+  RefreshReplaceWindow(Report);
+  Repaint;
+  if (FBar <> nil) and FBar.Visible and TAtlasSearchScopes.SpansFiles(FLast.Scope) then
+    ScheduleFiles;
+  UpdateCounter;
+end;
+
 class procedure TAtlasIdeSearch.Show;
 begin
   EnableBars;
-  Open(False);
+  Open(False, False);
 end;
 
 class procedure TAtlasIdeSearch.ShowInMethod;
 begin
   EnableBars;
-  Open(True);
+  Open(True, False);
+end;
+
+class procedure TAtlasIdeSearch.ShowReplace;
+begin
+  EnableBars;
+  Open(False, TAtlasIdeSettings.Current.SearchReplace);
 end;
 
 class function TAtlasIdeSearch.TryNext(ABackward: Boolean): Boolean;
@@ -933,6 +1812,9 @@ begin
   Result := False;
   if FLast.IsEmpty or not TopView(View) then
     Exit;
+  // Über Dateien (#893): mit den Ergebnissen der Suche im Hintergrund.
+  if TAtlasSearchScopes.SpansFiles(FLast.Scope) and TAtlasIdeSettings.Current.SearchMultiFile then
+    Exit(NextAcrossFiles(ABackward));
   // Auswahl gilt nur in der Datei, in der gesucht wurde; in anderen Dateien die ganze Unit.
   if (FLast.Scope = TAtlasSearchScope.Selection) and not SameText(FLast.FileName, View.Buffer.FileName) then
     FLast.Scope := TAtlasSearchScope.UnitFile;

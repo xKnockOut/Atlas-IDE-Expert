@@ -37,6 +37,8 @@
 //   „definiert COMPLIB_VCL“ in einer Pille; ausblendbar je Codezeile.
 // - Steuerzeichen (#862, Einstellung InlayCharHints): hinter ^C in einer
 //   Konstanten der Code „#3“ in einer Pille; ausblendbar je Codezeile.
+// - Methoden ohne Self (#686, Einstellung InlayMethodHints): hinter dem Kopf
+//   der Implementierung „ohne Self“ in einer Pille; ausblendbar je Codezeile.
 // - Platz hinter dem Zeilenende (#509): teilt sich der Zeichner über
 //   TAtlasLineTail mit dem Fehlertext am Zeilenende.
 
@@ -249,7 +251,7 @@ begin
   try
     if not TAtlasIdeSettings.InlayHintsOn and not TAtlasIdeSettings.InlayTypeHintsOn and
       not TAtlasIdeSettings.InlayDefineHintsOn and not TAtlasIdeSettings.InlayCharHintsOn and
-      not TAtlasIdeSettings.BlockEndLabelsOn then
+      not TAtlasIdeSettings.InlayMethodHintsOn and not TAtlasIdeSettings.BlockEndLabelsOn then
     begin
       if FShowing then
       begin
@@ -392,7 +394,7 @@ var
   DC: HDC;
   Saved: Integer;
   Size: TSize;
-  ShowNames, ShowTypes, ShowDefines, ShowChars, ShowEnd: Boolean;
+  ShowNames, ShowTypes, ShowDefines, ShowChars, ShowMethod, ShowEnd: Boolean;
   Index: Integer;
   TailKey: string;
 begin
@@ -407,17 +409,19 @@ begin
     Types := FStore.TypesOnLine(Context.FileName, Line);
     Defines := FStore.DefinesOnLine(Context.FileName, Line);
     Chars := FStore.CharsOnLine(Context.FileName, Line);
+    ShowMethod := FStore.MethodOnLine(Context.FileName, Line);
     ShowEnd := FStore.EndLabelOn(Context.FileName, Line, EndText, EndLabel, EndHint);
     if (Length(Names) = 0) and (Length(Types) = 0) and (Length(Defines) = 0) and (Length(Chars) = 0) and
-      not ShowEnd then
+      not ShowMethod and not ShowEnd then
       Exit;
     // Erst hier: die meisten Zeilen haben keine Hinweise (P-10).
     ShowNames := (Length(Names) > 0) and TAtlasIdeSettings.InlayHintsOn;
     ShowTypes := (Length(Types) > 0) and TAtlasIdeSettings.InlayTypeHintsOn;
     ShowDefines := (Length(Defines) > 0) and TAtlasIdeSettings.InlayDefineHintsOn;
     ShowChars := (Length(Chars) > 0) and TAtlasIdeSettings.InlayCharHintsOn;
+    ShowMethod := ShowMethod and TAtlasIdeSettings.InlayMethodHintsOn;
     ShowEnd := ShowEnd and TAtlasIdeSettings.BlockEndLabelsOn;
-    if not ShowNames and not ShowTypes and not ShowDefines and not ShowChars and not ShowEnd then
+    if not ShowNames and not ShowTypes and not ShowDefines and not ShowChars and not ShowMethod and not ShowEnd then
       Exit;
     LineState := Context.LineState;
     if (LineState = nil) or (Context.EditView = nil) or (Context.EditView.Buffer = nil) or
@@ -437,9 +441,11 @@ begin
       ShowDefines := False;
     if ShowChars and TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlayCharHints, Context.FileName, Stored) then
       ShowChars := False;
+    if ShowMethod and TAtlasIdeElements.Hidden(TAtlasDrawnElement.InlayMethodHints, Context.FileName, Stored) then
+      ShowMethod := False;
     if ShowEnd and TAtlasIdeElements.Hidden(TAtlasDrawnElement.BlockEndLabels, Context.FileName, EndText) then
       ShowEnd := False;
-    if not ShowNames and not ShowTypes and not ShowDefines and not ShowChars and not ShowEnd then
+    if not ShowNames and not ShowTypes and not ShowDefines and not ShowChars and not ShowMethod and not ShowEnd then
       Exit;
     Canvas := Context.Canvas;
     DC := Canvas.Handle;
@@ -493,6 +499,14 @@ begin
       begin
         Hints := DrawPills(DC, Chars, Top, Height, X);
         TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayCharHints, Context.FileName, Line, Stored, Hints,
+          Context.EditView.TopRow, Rect.Height);
+      end;
+      // Methode ohne Self (#686): „ohne Self“ in der Sprache der IDE hinter dem Kopf.
+      if ShowMethod then
+      begin
+        Hints := DrawPills(DC, TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.InlayMethodWithoutSelf)), Top,
+          Height, X);
+        TAtlasIdeElements.Painted(TAtlasDrawnElement.InlayMethodHints, Context.FileName, Line, Stored, Hints,
           Context.EditView.TopRow, Rect.Height);
       end;
       // Blockende-Beschriftung (#620): gedämpfter Text wie ein Kommentar, ohne Rahmen.

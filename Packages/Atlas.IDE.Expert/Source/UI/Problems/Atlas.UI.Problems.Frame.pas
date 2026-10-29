@@ -53,6 +53,8 @@ uses
 type
   TAtlasFindingEvent = reference to procedure(const AFinding: TAtlasFinding);
   TAtlasFindingScopeEvent = reference to procedure(AScope: TAtlasFindingScope);
+  /// <summary>Mehrere markierte Befunde (#1268: ein Issue mit Liste).</summary>
+  TAtlasFindingsEvent = reference to procedure(const AFindings: TArray<TAtlasFinding>);
 
   TAtlasProblemsFrame = class(TFrame)
   private
@@ -76,6 +78,7 @@ type
     FConfigureItem: TMenuItem;
     FDisableItem: TMenuItem;
     FExplainItem: TMenuItem;
+    FIssueItem: TMenuItem;
     FCopyItem: TMenuItem;
     FColumnsItem: TMenuItem;
     FResetSortItem: TMenuItem;
@@ -102,6 +105,8 @@ type
     FOnConfigure: TAtlasFindingEvent;
     FOnDisable: TAtlasFindingEvent;
     FOnExplain: TAtlasFindingEvent;
+    FOnCreateIssue: TAtlasFindingsEvent;
+    FCanCreateIssue: TFunc<Boolean>;
     FOnScope: TAtlasFindingScopeEvent;
     FOnLayout: TProc;
     function AddMenuItem(AParent: TMenuItem; const ACaption: string; AClick: TNotifyEvent): TMenuItem;
@@ -153,6 +158,7 @@ type
     procedure ConfigureClick(Sender: TObject);
     procedure DisableClick(Sender: TObject);
     procedure ExplainClick(Sender: TObject);
+    procedure IssueClick(Sender: TObject);
     procedure CopyClick(Sender: TObject);
     procedure ColumnToggleClick(Sender: TObject);
     procedure ResetSortClick(Sender: TObject);
@@ -212,6 +218,12 @@ type
     property OnConfigure: TAtlasFindingEvent read FOnConfigure write FOnConfigure;
     property OnDisable: TAtlasFindingEvent read FOnDisable write FOnDisable;
     property OnExplain: TAtlasFindingEvent read FOnExplain write FOnExplain;
+    /// <summary>„Für diesen Befund ein Issue anlegen …“ (#1268) mit den markierten Befunden.</summary>
+    property OnCreateIssue: TAtlasFindingsEvent read FOnCreateIssue write FOnCreateIssue;
+    /// <summary>Eintrag sichtbar (issues.create); nil = unsichtbar.</summary>
+    property CanCreateIssue: TFunc<Boolean> read FCanCreateIssue write FCanCreateIssue;
+    /// <summary>Markierte Befunde ohne Gruppen- und Trennzeilen, in Anzeigereihenfolge.</summary>
+    function SelectedFindings: TArray<TAtlasFinding>;
     /// <summary>Bereich gewechselt: Die IDE-Schicht liefert die Dateien des Bereichs neu.</summary>
     property OnScope: TAtlasFindingScopeEvent read FOnScope write FOnScope;
     /// <summary>Bereich, Gruppierung, Spalten oder „Offene zuerst“ geändert: zum Speichern.</summary>
@@ -355,6 +367,8 @@ begin
   FConfigureItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure), ConfigureClick);
   FDisableItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuDisable), DisableClick);
   FExplainItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuExplain), ExplainClick);
+  FIssueItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuCreateIssue), IssueClick);
+  FIssueItem.Visible := False;
   FMenu.Items.Add(NewLine);
   FCopyItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuCopy), CopyClick);
   FCopyItem.ShortCut := ShortCut(Ord('C'), [ssCtrl]);
@@ -1324,6 +1338,7 @@ procedure TAtlasProblemsFrame.MenuPopup(Sender: TObject);
 var
   Finding: TAtlasFinding;
   Has, Rule: Boolean;
+  Count: Integer;
 begin
   Has := Current(Finding);
   Rule := Has and IsRule(Finding);
@@ -1338,6 +1353,14 @@ begin
   FConfigureItem.Enabled := Rule;
   FDisableItem.Enabled := Rule;
   FExplainItem.Enabled := Rule;
+  // Issue anlegen (#1268): auch für Compilermeldungen; mehrere markierte ergeben ein Issue mit Liste.
+  Count := Length(SelectedFindings);
+  FIssueItem.Visible := Assigned(FOnCreateIssue) and Assigned(FCanCreateIssue) and FCanCreateIssue();
+  FIssueItem.Enabled := Count > 0;
+  if Count > 1 then
+    FIssueItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuCreateIssueMany, [Count])
+  else
+    FIssueItem.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuCreateIssue);
   FCopyItem.Enabled := Length(SelectedRows) > 0;
   FResetSortItem.Enabled := FView.SortCustom;
 end;
@@ -1370,6 +1393,20 @@ end;
 procedure TAtlasProblemsFrame.ExplainClick(Sender: TObject);
 begin
   Fire(FOnExplain);
+end;
+
+function TAtlasProblemsFrame.SelectedFindings: TArray<TAtlasFinding>;
+begin
+  Result := FView.FindingsOfRows(SelectedRows);
+end;
+
+procedure TAtlasProblemsFrame.IssueClick(Sender: TObject);
+var
+  mFindings: TArray<TAtlasFinding>;
+begin
+  mFindings := SelectedFindings;
+  if Assigned(FOnCreateIssue) and (Length(mFindings) > 0) then
+    FOnCreateIssue(mFindings);
 end;
 
 procedure TAtlasProblemsFrame.CopyClick(Sender: TObject);

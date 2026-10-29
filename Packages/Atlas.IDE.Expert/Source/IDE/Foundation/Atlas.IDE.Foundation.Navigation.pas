@@ -18,6 +18,9 @@ type
     /// <summary>Setzt den Cursor im oberen Editor auf ALine/ACharacter (0-basiert), z. B. für den Sprung
     /// einer Code-Aktion zur Freigabe (#915).</summary>
     class procedure GoToPosition(ALine, ACharacter: Integer); static;
+    /// <summary>Öffnet AFileName, markiert die ganze Zeile ALine (0-basiert) und setzt den Cursor an ihren Anfang,
+    /// z. B. für den Sprung in eigenen Code nach einer Exception (#578).</summary>
+    class procedure MarkLine(const AFileName: string; ALine: Integer); static;
   end;
 
 implementation
@@ -101,6 +104,33 @@ begin
     Exit;
   Cursor.Line := ALine + 1;
   Cursor.Col := ACharacter + 1;
+  View.CursorPos := Cursor;
+  View.MoveViewToCursor;
+  View.Paint;
+end;
+
+class procedure TAtlasIdeNavigation.MarkLine(const AFileName: string; ALine: Integer);
+var
+  Editors: IOTAEditorServices;
+  View: IOTAEditView;
+  Cursor: TOTAEditPos;
+begin
+  GoToLocation(AFileName, ALine, 0);
+  if not Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+    Exit;
+  View := Editors.TopView;
+  if (View = nil) or (View.Buffer = nil) or not SameText(View.Buffer.FileName, AFileName) then
+    Exit;
+  // Zeilenanfang markieren, Cursor an den Anfang der nächsten Zeile, Ende markieren, Cursor zurück.
+  View.Block.Style := btNonInclusive;
+  Cursor.Line := ALine + 1;
+  Cursor.Col := 1;
+  View.CursorPos := Cursor;
+  View.Block.BeginBlock;
+  Cursor.Line := ALine + 2;
+  View.CursorPos := Cursor;
+  View.Block.EndBlock;
+  Cursor.Line := ALine + 1;
   View.CursorPos := Cursor;
   View.MoveViewToCursor;
   View.Paint;

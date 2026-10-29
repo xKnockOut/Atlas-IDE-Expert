@@ -9,6 +9,7 @@
 //   tools/list                 alle registrierten Werkzeuge mit Schema
 //   tools/call                 {name, arguments} → {content:[{type:"text"}], isError}
 //   resources/list, resources/read  Ressourcen als Text (#272)
+//   resources/templates/list   leere Liste: Atlas hat keine Ressourcenvorlagen (#1125)
 //
 // Sicherheit (#99): Werkzeuge sind lesend, schreibend oder starten Prozesse.
 // Abgeschaltete Werkzeuge (mcp.disabledTools) und im eingeschränkten Modus
@@ -68,6 +69,7 @@ type
     CallToolMethod = 'tools/call';
     ListResourcesMethod = 'resources/list';
     ReadResourceMethod = 'resources/read';
+    ListResourceTemplatesMethod = 'resources/templates/list';
   private
     FName: string;
     FVersion: string;
@@ -92,6 +94,9 @@ type
     function ListResources: TJSONObject;
     /// <summary>EJsonRpcError(InvalidParams) bei unbekannter Ressource.</summary>
     function ReadResource(const AParams: TJSONValue): TJSONObject;
+    /// <summary>Immer leer. Clients wie der MCP Inspector fragen die Vorlagen ab, sobald der Server
+    /// resources anbietet; ohne Methode sähen sie einen Fehler (#1125).</summary>
+    function ListResourceTemplates: TJSONObject;
     /// <summary>Registriert die MCP-Methoden am Dispatcher.</summary>
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     function Initialize(const AParams: TJSONValue): TJSONObject;
@@ -230,6 +235,12 @@ begin
   raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Ressource "%s"', [Uri]));
 end;
 
+function TMcpServer.ListResourceTemplates: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('resourceTemplates', TJSONArray.Create);
+end;
+
 function TMcpServer.FindTool(const AName: string; out ATool: TMcpTool): Boolean;
 var
   Tool: TMcpTool;
@@ -278,6 +289,11 @@ begin
     function(const AParams: TJSONValue): TJSONValue
     begin
       Result := ReadResource(AParams);
+    end);
+  ADispatcher.RegisterRequest(ListResourceTemplatesMethod,
+    function(const AParams: TJSONValue): TJSONValue
+    begin
+      Result := ListResourceTemplates;
     end);
 end;
 

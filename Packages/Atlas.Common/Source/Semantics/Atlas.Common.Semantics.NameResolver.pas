@@ -50,7 +50,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Semantics.Contract;
 
 type
   TResolvedKind = (None, UnitName, Symbol, Local);
@@ -89,6 +90,12 @@ type
     /// <summary>Gleichnamige Deklarationen weiter außen, die dieser Eintrag verdeckt (#488), als Text wie
     /// "Feld TKunde.Total"; nur bei Kandidaten für die Vervollständigung.</summary>
     Hides: TArray<string>;
+    /// <summary>Mitglied eines with-Objekts (#481): der Ausdruck des Elements wie im Quelltext ("qryOrders");
+    /// '' sonst. Nur bei Kandidaten für die Vervollständigung.</summary>
+    WithOrigin: string;
+    /// <summary>Bei WithOrigin: verdeckte gleichnamige lokale Namen und Mitglieder von Self (#481), als Text wie
+    /// "Self.Name" bzw. "lokale Variable Name".</summary>
+    WithShadows: TArray<string>;
     /// <summary>Wie im Index (#263).</summary>
     TypeArgs: string;
     AncestorArgs: string;
@@ -124,6 +131,9 @@ type
 
   TNameResolver = class
   private type
+    /// <summary>Was OwnScopeCandidates gerade sammelt (#481): Verdeckt ein with-Mitglied einen Namen dieser Stufe,
+    /// kommt er in WithShadows.</summary>
+    TScopeStage = (Other, Local, OwnClass);
     /// <summary>Mit PinTree vorab ausgewerteter Baum (Code-Review P-01/P-02).</summary>
     TPin = record
       Tree: TSyntaxTree;
@@ -146,9 +156,16 @@ type
       Symbols: TArray<TIndexSymbol>;
       Positions: TArray<Integer>;
     end;
+    /// <summary>Gemerkte Antwort von FindUnit bzw. FindQualifierUnit (#1342).</summary>
+    TUnitAnswer = record
+      Found: Boolean;
+      UnitIndex: TUnitIndex;
+    end;
   private
     FIndex: ISymbolIndex;
     FEnsureUnit: TEnsureUnitFunc;
+    // Auswertung des geprüften Baums, geteilt mit den anderen Resolvern des Laufs (#1322); nil = selbst auswerten.
+    FTreeUnits: ITreeUnits;
     FNamespaces: TArray<string>;
     FNameFilter: TCandidateNameFilter;
     // Gestaffelte Kandidaten (#616): Stand nach OwnScopeCandidates für UsedScopeCandidates.
@@ -156,6 +173,7 @@ type
     FScopeUnit: TUnitIndex;
     FScopeInImplementation: Boolean;
     FScopeOpen: Boolean;
+    FScopeStage: TScopeStage;
     // Pro Aufruf von Resolve
     FTree: TSyntaxTree;
     FCurrent: TUnitIndex;
@@ -182,12 +200,21 @@ type
     FAncestors: TDictionary<string, TResolvedSymbol>;
     // Units, die in diesem Resolver schon nicht gefunden wurden: nicht erneut suchen.
     FMissingUnits: TDictionary<string, Boolean>;
+    // Antworten von FindUnit (Schlüssel Name groß) und FindQualifierUnit (Name, aktuelle Unit, Abschnitt): Jede
+    // Typabfrage schlug sonst alle uses-Units samt Namespace-Varianten neu im Index nach (#1342).
+    FUnitAnswers: TDictionary<string, TUnitAnswer>;
+    FQualifierAnswers: TDictionary<string, TUnitAnswer>;
     // Zeit im Nachladen (EnsureUnit) für das Diagnoselog (#647).
     FEnsureMs: Int64;
     FClassState: Integer;
     FClass: TResolvedSymbol;
     FInferDepth: Integer;
     function FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+    procedure SetNamespaces(const AValue: TArray<string>);
+    /// <summary>FindUnit ohne gemerkte Antworten (außer der eigenen Unit).</summary>
+    function SearchUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+    /// <summary>FindQualifierUnit ohne gemerkte Antworten.</summary>
+    function SearchQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
     /// <summary>Unit als Qualifizierer in einem Ausdruck (A.B.C): nachgeladen nur, wenn sie in uses steht.</summary>
     function FindQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
     function UnitOf(const AResolved: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
@@ -210,7 +237,15 @@ type
     function ResolveTypeText(const AText: string; const AFromUnit: TUnitIndex; AWithImplementation: Boolean;
       out AResult: TResolvedSymbol): Boolean;
     function QualifyType(const AText: string; const AFromUnit: TUnitIndex; AWithImplementation: Boolean): string;
+    /// <summary>Mitglieder AName von AType: die des nächsten Typs, der den Namen deklariert, bzw. seines Helfers.
+    /// Sind dort alle Methoden mit overload oder override deklariert, kommen die Überladungen der Vorfahren dazu
+    /// (#1326); eine neu deklarierte Property ohne Typ trägt Typ und Zugriffe der geerbten (MergedProperty).
+    /// </summary>
     function FindMembers(const AType: TResolvedSymbol; const AName: string): TArray<TResolvedSymbol>;
+    /// <summary>Neu deklarierte Property AOwn ohne Typ (property Items write SetItems;) mit Typ, Indexparametern
+    /// und den Zugriffen der gleichnamigen Property der Vorfahren von AOwner, die AOwn nicht selbst nennt (#1326);
+    /// AOwn unverändert, wenn die Vorfahren keine solche Property kennen.</summary>
+    function MergedProperty(const AOwner, AOwn: TResolvedSymbol): TResolvedSymbol;
     function UnitRoutines(const ASymbol: TResolvedSymbol): TArray<TResolvedSymbol>;
     function HelperFor(const AType: TResolvedSymbol; out AHelper: TResolvedSymbol): Boolean;
     /// <summary>Ist ASymbol (Mitglied von AOwner aus AOwnerUnit) an der vorbereiteten Stelle sichtbar? ALocalChain:
@@ -227,17 +262,21 @@ type
     function LookupWith(const AName: string; out AResults: TArray<TResolvedSymbol>; out AStop: Boolean): Boolean;
     function LookupWithOwner(const AName: string; out AResults: TArray<TResolvedSymbol>; out AStop: Boolean;
       out AWith: TSyntaxNode; out AElement: Integer): Boolean;
+    /// <summary>with-Anweisungen, in deren Rumpf FOffset liegt, innerste zuerst.</summary>
+    function EnclosingWiths: TArray<TSyntaxNode>;
+    /// <summary>Typ des Elements AIndex von AWith, aufgelöst an seiner eigenen Stelle.</summary>
+    function WithElementType(AWith: TSyntaxNode; AIndex: Integer; out AType: TResolvedSymbol): Boolean;
+    /// <summary>Mitglieder der with-Objekte am Cursor (#481): innerstes with zuerst, darin das letzte Element.
+    /// </summary>
+    procedure CollectWithMembers(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>);
     function FindReceiver(AEndOffset: Integer): TSyntaxNode;
     function FindCall(ACalleeEnd: Integer): TSyntaxNode;
     function IsForVar(ANode: TSyntaxNode): Boolean;
-    /// <summary>Index des ersten Tokens von FTree mit Offset &gt;= AOffset (binäre Suche).</summary>
-    function FirstTokenAt(AOffset: Integer): Integer;
     function ResolveFirstAll(const ANames: TArray<string>; out AConsumed: Integer;
       out AResults: TArray<TResolvedSymbol>): Boolean;
     function ResolveNames(ATree: TSyntaxTree; const AFileName: string; const ANames: TArray<string>;
       AOffset: Integer; AInherited: Boolean; AReceiver, ACall: TSyntaxNode): TArray<TResolvedSymbol>;
     function ResolveAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TArray<TResolvedSymbol>;
-    function TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
     /// <summary>Im Typ AOuter selbst deklarierter Typ AName, ohne Sichtbarkeitsprüfung (Pfad im Methodenkopf).</summary>
     function NestedType(const AOuter: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function IsAttributeClass(const AType: TResolvedSymbol): Boolean;
@@ -247,12 +286,14 @@ type
     function LookupInlineVars(ANode: TSyntaxNode; const AName: string; out AResult: TResolvedSymbol): Boolean;
     function MethodClass(out AType: TResolvedSymbol): Boolean;
     /// <summary>Typ der umgebenden Methode und bei verschachtelten Typen (TAussen.TInnen.Methode) die
-    /// äußeren Typen, innerster zuerst; ihre Mitglieder sind dort ohne Präfix sichtbar.</summary>
+    /// äußeren Typen, innerster zuerst; ihre Mitglieder sind dort ohne Präfix sichtbar. In einer
+    /// Property-Deklaration deren Typ (#690).</summary>
     function MethodClasses: TArray<TResolvedSymbol>;
+    /// <summary>Qualifizierter Name des Typs, wenn FOffset in einer Property-Deklaration steht; sonst ''.</summary>
+    function PropertyClassName: string;
     /// <summary>Unit aus dem Baum samt der Symbole ihrer $I-Dateien aus dem Index (#500).</summary>
     function TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
     function ResolveFirst(const ANames: TArray<string>; out AConsumed: Integer; out AResult: TResolvedSymbol): Boolean;
-    function TokenIndexAt(const APosition: TTextPosition): Integer;
     procedure Prepare(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer);
     procedure AddCandidate(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>;
       const ASymbol: TResolvedSymbol);
@@ -266,8 +307,15 @@ type
     procedure CollectInlineVars(ANode: TSyntaxNode; AList: TList<TResolvedSymbol>;
       ASeen: TDictionary<string, Boolean>);
   public
-    constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc = nil);
+    constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc = nil); overload;
+    /// <summary>Wie Create, aber Bäume, die ATreeUnits hält, wertet der Resolver nicht selbst aus, sondern nimmt
+    /// deren geteilten Stand (#1322). So extrahiert ein Prüflauf die Unit einmal statt je Typabfrage.</summary>
+    constructor Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
+      const ATreeUnits: ITreeUnits); overload;
     destructor Destroy; override;
+    /// <summary>Typ eines aufgelösten Namens, Aliase verfolgt (Typen sind ihr eigener Typ, TFoo.Create ein TFoo);
+    /// im Rahmen der zuletzt vorbereiteten Stelle (#689 nutzt es für den Grundtyp eines Alias).</summary>
+    function TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
     /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei Helfern.</summary>
     function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
     /// <summary>Vorfahr-Helfer eines Helfers (class helper (TBaseHelper) for T, #848); False ohne.</summary>
@@ -330,6 +378,10 @@ type
     /// <summary>Passt der Zieltyp ATarget eines Helpers (ggf. mit Unit-Präfix) zu AType? string und
     /// UnicodeString gelten als gleich.</summary>
     class function HelperTargets(const ATarget: string; const AType: TResolvedSymbol): Boolean; static;
+    /// <summary>Helper für den Typ ATypeName (auch eingebaute wie string), der an AOffset wirkt (#686): der
+    /// zuletzt sichtbare, eigene Unit zuerst. False ohne.</summary>
+    function VisibleHelper(ATree: TSyntaxTree; const AFileName, ATypeName: string; AOffset: Integer;
+      out AHelper: TResolvedSymbol): Boolean;
     /// <summary>Deklaration und Typ des Ausdrucks ANode aus ATree (#1005): Variable, Feld, Property (bei Liste[i]
     /// die indizierte bzw. Default-Property), Funktion eines Aufrufs. False, wenn der Ausdruck nicht sicher
     /// auflösbar ist; ATypeFound sagt, ob der Typ bekannt ist (Aliase verfolgt).</summary>
@@ -339,6 +391,12 @@ type
     /// Aufrufs meinen kann, ohne Auswahl nach den Argumenten (#1007): Überladungen samt geerbter, Deklaration und
     /// Rumpf mit gleichen Parametern einmal. Leer, wenn ACallee nicht auflösbar ist.</summary>
     function CallCandidates(ATree: TSyntaxTree; const AFileName: string; ACallee: TSyntaxNode): TArray<TResolvedSymbol>;
+    /// <summary>Kann ein Mitglied außerhalb des Index den Bezeichner ACallee aus ATree verdecken, sodass
+    /// ACandidate gar nicht gemeint ist (#1326)? Ja bei einem with-Objekt, dessen Typ den Namen nicht kennt, aber
+    /// einen unbekannten Vorfahren hat, und bei einer Methode, deren Klasse einen unbekannten Vorfahren hat, wenn
+    /// ACandidate weder lokal noch ein Mitglied ist (Error aus TStrings statt einer freien Routine Error).</summary>
+    function MayBeHiddenMember(ATree: TSyntaxTree; const AFileName: string; ACallee: TSyntaxNode;
+      const ACandidate: TResolvedSymbol): Boolean;
     /// <summary>Liest die Property AProperty direkt aus einem Feld (read FFeld, read FFeld.X)? False, wenn das
     /// nicht sicher feststeht (kein read, Typ oder Mitglied unbekannt); sonst AReadsField (#1005).</summary>
     function PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;
@@ -421,8 +479,25 @@ type
     /// stünden (#417).</summary>
     function TypeDescendsFrom(ATree: TSyntaxTree; const AFileName: string; AOffset: Integer;
       const ATypeName, ATargetName: string): Boolean;
+    /// <summary>Attributklasse hinter ASymbol (#465): ein Alias wird verfolgt, die Klasse muss von
+    /// TCustomAttribute abstammen. Strenger als die Auflösung von [Foo]: Bricht die Kette an einem unbekannten
+    /// Vorfahren ab, zählt sie nur, wenn dessen Name auf Attribute endet. TCustomAttribute selbst zählt nicht.
+    /// </summary>
+    function AttributeClassOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
+    /// <summary>Exception-Klasse hinter ASymbol (#483): ein Alias wird verfolgt, die Klasse ist Exception oder
+    /// stammt davon ab. Bricht die Kette an einem unbekannten Vorfahren ab, zählt sie nur, wenn dessen Name wie
+    /// eine Exception aussieht (Exception, EFoo).</summary>
+    function ExceptionClassOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
+    /// <summary>Namen ohne Unit von AClass und seinen Vorfahren, AClass zuerst (#483); bricht die Kette ab,
+    /// zuletzt der Name des unbekannten Vorfahren.</summary>
+    function AncestorNames(const AClass: TResolvedSymbol): TArray<string>; overload;
+    /// <summary>Wie oben; AComplete: Die Kette reicht ohne unbekannten Vorfahren bis zum Ende (#1326).</summary>
+    function AncestorNames(const AClass: TResolvedSymbol; out AComplete: Boolean): TArray<string>; overload;
+    /// <summary>Sieht AName (auch mit Unit) wie eine Exception-Klasse aus: Exception oder E mit Großbuchstaben?
+    /// </summary>
+    class function LooksLikeException(const AName: string): Boolean; static;
     /// <summary>Unit-Namespaces des Projekts (DCC_Namespace) für uses ohne Präfix.</summary>
-    property Namespaces: TArray<string> read FNamespaces write FNamespaces;
+    property Namespaces: TArray<string> read FNamespaces write SetNamespaces;
     /// <summary>Ist AName der Anfang eines Unit-Namens im Bereich (Atlas in Atlas.Core.Foo.Bar, Winapi in
     /// Winapi.Windows.TextOut)? Nach PinTree bzw. Resolve gültig.</summary>
     function IsUnitPrefix(const AName: string): Boolean;
@@ -445,7 +520,8 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Semantics.Attributes,
-  Atlas.Common.Semantics.SystemIntrinsics;
+  Atlas.Common.Semantics.SystemIntrinsics,
+  Atlas.Common.Semantics.TreeUnits;
 
 const
   TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
@@ -518,14 +594,6 @@ begin
     if (Child.StartOffset < AOffset) and (AOffset <= Child.EndOffset) then
       APending.Push(Child);
   end;
-end;
-
-function ComparePositions(const A, B: TTextPosition): Integer;
-begin
-  if A.Line <> B.Line then
-    Result := A.Line - B.Line
-  else
-    Result := A.Character - B.Character;
 end;
 
 /// <summary>Kommagetrennte Liste auf oberster Ebene: 'string, TList&lt;A, B&gt;' → ['string', 'TList&lt;A, B&gt;'].</summary>
@@ -774,9 +842,18 @@ begin
   FUnitHelpers := TDictionary<string, TUnitHelpers>.Create;
 end;
 
+constructor TNameResolver.Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
+  const ATreeUnits: ITreeUnits);
+begin
+  Create(AIndex, AEnsureUnit);
+  FTreeUnits := ATreeUnits;
+end;
+
 destructor TNameResolver.Destroy;
 begin
   FScopeSeen.Free;
+  FQualifierAnswers.Free;
+  FUnitAnswers.Free;
   FMissingUnits.Free;
   FUnitHelpers.Free;
   FPinCalls.Free;
@@ -786,11 +863,22 @@ begin
   inherited;
 end;
 
+procedure TNameResolver.SetNamespaces(const AValue: TArray<string>);
+begin
+  FNamespaces := AValue;
+  // Die gemerkten Antworten hängen an den Namespaces.
+  if FUnitAnswers <> nil then
+    FUnitAnswers.Clear;
+  if FQualifierAnswers <> nil then
+    FQualifierAnswers.Clear;
+end;
+
 function TNameResolver.FindUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
 var
-  Namespace, Key: string;
-  Watch: TStopwatch;
+  mKey: string;
+  mAnswer: TUnitAnswer;
 begin
+  // Die eigene Unit zuerst und nie gemerkt: FCurrent wechselt mit PinTree.
   if SameText(AName, FCurrent.UnitName) then
   begin
     AUnit := FCurrent;
@@ -799,6 +887,26 @@ begin
   // Ohne Index (Schnellbefehle in Tests) nur die eigene Unit.
   if FIndex = nil then
     Exit(False);
+  mKey := UpperCase(AName);
+  if FUnitAnswers = nil then
+    FUnitAnswers := TDictionary<string, TUnitAnswer>.Create
+  else if FUnitAnswers.TryGetValue(mKey, mAnswer) then
+  begin
+    AUnit := mAnswer.UnitIndex;
+    Exit(mAnswer.Found);
+  end;
+  mAnswer.Found := SearchUnit(AName, mAnswer.UnitIndex);
+  FUnitAnswers.Add(mKey, mAnswer);
+  AUnit := mAnswer.UnitIndex;
+  Result := mAnswer.Found;
+end;
+
+function TNameResolver.SearchUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+var
+  Namespace, Key: string;
+  Watch: TStopwatch;
+begin
+  AUnit := Default(TUnitIndex);
   if FIndex.FindUnit(AName, AUnit) then
     Exit(True);
   // Erst alle Schreibweisen im Index (uses SysUtils mit Namespace System → System.SysUtils), dann
@@ -839,8 +947,35 @@ end;
 
 function TNameResolver.FindQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
 var
+  mKey: string;
+  mAnswer: TUnitAnswer;
+begin
+  // Die eigene Unit nie gemerkt (wie in FindUnit); sonst hängt die Antwort an der aktuellen Unit und am Abschnitt
+  // (uses von interface bzw. implementation).
+  if SameText(AName, FCurrent.UnitName) then
+  begin
+    AUnit := FCurrent;
+    Exit(True);
+  end;
+  mKey := UpperCase(AName) + '|' + FCurrent.FileName + '|' + FCurrent.UnitName + '|' + BoolToStr(FInImplementation);
+  if FQualifierAnswers = nil then
+    FQualifierAnswers := TDictionary<string, TUnitAnswer>.Create
+  else if FQualifierAnswers.TryGetValue(mKey, mAnswer) then
+  begin
+    AUnit := mAnswer.UnitIndex;
+    Exit(mAnswer.Found);
+  end;
+  mAnswer.Found := SearchQualifierUnit(AName, mAnswer.UnitIndex);
+  FQualifierAnswers.Add(mKey, mAnswer);
+  AUnit := mAnswer.UnitIndex;
+  Result := mAnswer.Found;
+end;
+
+function TNameResolver.SearchQualifierUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
+var
   Used, Namespace: string;
 begin
+  AUnit := Default(TUnitIndex);
   // Jeder Ausdruck wie Form1.Edit1.Text prüft, ob ein Präfix eine Unit ist. Nachladen durchsucht die
   // Suchpfade aller Projekte; das lohnt nur für Units aus uses, alle anderen nur aus dem Index (#647).
   for Used in ScopeUnits(FCurrent, FInImplementation) do
@@ -1011,11 +1146,23 @@ begin
   Result.VariantParams := [String.Join(';', ASymbol.ParamTypes)];
 end;
 
+/// <summary>Hat die Deklaration ANode eine Typangabe ohne Namen (array, set, record, Prozedurtyp …)?</summary>
+function HasAnonymousType(ANode: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+    if ANode[mIndex].Kind in [TSyntaxKind.ArrayType, TSyntaxKind.PointerType, TSyntaxKind.ClassOfType,
+      TSyntaxKind.SetType, TSyntaxKind.RecordType, TSyntaxKind.ProcedureType, TSyntaxKind.FileType,
+      TSyntaxKind.EnumType, TSyntaxKind.SubrangeType] then
+      Exit(True);
+end;
+
 function TNameResolver.FromNode(ANode: TSyntaxNode; const AName: string; AKind: TIndexSymbolKind;
   AIsParameter: Boolean): TResolvedSymbol;
 var
   Index: Integer;
-  Token: TPascalToken;
 begin
   Result := NoResult;
   Result.Kind := TResolvedKind.Local;
@@ -1026,15 +1173,14 @@ begin
   Result.SelectionRange := Result.Range;
   // Auswahl auf den Namen selbst legen; ab dem ersten Token des Knotens, nicht ab Dateianfang: Das
   // kostete je lokalem Namen einen Lauf über alle Tokens davor (Diagnoselog 15.10.2026, große Units).
-  for Index := FirstTokenAt(ANode.StartOffset) to High(FTree.Tokens) do
+  for Index := FTree.FirstTokenFrom(ANode.StartOffset) to High(FTree.Tokens) do
   begin
-    Token := FTree.Tokens[Index];
-    if Token.Offset >= ANode.EndOffset then
+    if FTree.Tokens[Index].Offset >= ANode.EndOffset then
       Break;
-    if (Token.Kind = TPascalTokenKind.Identifier) and
-      (SameText(Token.Text, AName) or SameText(Token.Text, '&' + AName)) then
+    if (FTree.Tokens[Index].Kind = TPascalTokenKind.Identifier) and
+      (SameText(FTree.Tokens[Index].Text, AName) or SameText(FTree.Tokens[Index].Text, '&' + AName)) then
     begin
-      Result.SelectionRange := TTextRange.Create(Token.StartPos, Token.EndPos);
+      Result.SelectionRange := TTextRange.Create(FTree.Tokens[Index].StartPos, FTree.Tokens[Index].EndPos);
       Break;
     end;
   end;
@@ -1042,9 +1188,11 @@ begin
   Result.TypeName := TIndexExtractor.DeclaredType(ANode);
   if Result.TypeName <> '' then
     Result.TypeArgs := TIndexExtractor.GenericArgsText(TIndexExtractor.DeclaredTypeNode(ANode))
-  // var X := TFoo.Create; const C = 5; for var I := 0 ...: Typ aus dem Ausdruck.
+  // var X := TFoo.Create; const C = 5; for var I := 0 ...: Typ aus dem Ausdruck. Eine Typangabe ohne Namen
+  // (const Klassen: array[0..1] of TFooClass = (TFoo, TBar)) hat keinen Typ des Ausdrucks: Das erste Element
+  // der Liste ist nicht der Typ der Konstanten (#1326).
   else if (ANode.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.ConstDecl]) and
-    (ANode.ChildCount > 0) then
+    (ANode.ChildCount > 0) and not HasAnonymousType(ANode) then
     Result.Initializer := ANode[ANode.ChildCount - 1]
   else if (ANode.Kind = TSyntaxKind.ForStatement) and (ANode.ChildCount > 0) then
     Result.Initializer := ANode[0];
@@ -1297,6 +1445,97 @@ begin
   Result := True;
 end;
 
+function TNameResolver.AttributeClassOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
+var
+  Current, Next: TResolvedSymbol;
+  Depth: Integer;
+begin
+  Result := False;
+  AClass := NoResult;
+  if not ASymbol.Found or not ASymbol.IsType or not TypeOf(ASymbol, Current) or
+    (Current.SymbolKind <> TIndexSymbolKind.ClassType) or SameText(Current.Name, 'TCustomAttribute') then
+    Exit;
+  AClass := Current;
+  for Depth := 0 to MaxDepth do
+  begin
+    if SameText(Current.Name, 'TCustomAttribute') then
+      Exit(True);
+    if (Length(Current.Ancestors) = 0) or SameText(Current.Ancestors[0], 'TObject') or
+      SameText(Current.Ancestors[0], 'System.TObject') then
+      Exit;
+    if not AncestorOf(Current, Next) then
+      Exit(EndsText('Attribute', Current.Ancestors[0]));
+    Current := Next;
+  end;
+end;
+
+class function TNameResolver.LooksLikeException(const AName: string): Boolean;
+var
+  Plain: string;
+begin
+  Plain := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
+  Result := SameText(Plain, 'Exception') or ((Length(Plain) > 1) and (Plain[1] = 'E') and
+    CharInSet(Plain[2], ['A'..'Z']));
+end;
+
+function TNameResolver.ExceptionClassOf(const ASymbol: TResolvedSymbol; out AClass: TResolvedSymbol): Boolean;
+var
+  Current, Next: TResolvedSymbol;
+  Depth: Integer;
+begin
+  Result := False;
+  AClass := NoResult;
+  if not ASymbol.Found or not ASymbol.IsType or not TypeOf(ASymbol, Current) or
+    (Current.SymbolKind <> TIndexSymbolKind.ClassType) then
+    Exit;
+  AClass := Current;
+  for Depth := 0 to MaxDepth do
+  begin
+    if SameText(Current.Name, 'Exception') then
+      Exit(True);
+    if (Length(Current.Ancestors) = 0) or SameText(Current.Ancestors[0], 'TObject') or
+      SameText(Current.Ancestors[0], 'System.TObject') then
+      Exit;
+    if not AncestorOf(Current, Next) then
+      Exit(LooksLikeException(Current.Ancestors[0]));
+    Current := Next;
+  end;
+end;
+
+function TNameResolver.AncestorNames(const AClass: TResolvedSymbol): TArray<string>;
+var
+  mComplete: Boolean;
+begin
+  Result := AncestorNames(AClass, mComplete);
+end;
+
+function TNameResolver.AncestorNames(const AClass: TResolvedSymbol; out AComplete: Boolean): TArray<string>;
+var
+  Current, Next: TResolvedSymbol;
+  Depth: Integer;
+begin
+  Result := nil;
+  AComplete := False;
+  if not AClass.Found then
+    Exit;
+  Current := AClass;
+  for Depth := 0 to MaxDepth do
+  begin
+    Result := Result + [Current.Name];
+    if Length(Current.Ancestors) = 0 then
+    begin
+      AComplete := True;
+      Exit;
+    end;
+    if not AncestorOf(Current, Next) then
+    begin
+      Result := Result + [Copy(Current.Ancestors[0], LastDelimiter('.', Current.Ancestors[0]) + 1, MaxInt)];
+      Exit;
+    end;
+    Current := Next;
+  end;
+end;
+
 function TNameResolver.CurrentClass(out AType: TResolvedSymbol): Boolean;
 begin
   // Einmal je Prepare: Klasse der umgebenden Methode. 0 = noch nicht ermittelt, 1 = keine, 2 = FClass,
@@ -1427,6 +1666,24 @@ begin
   Result := AHelper.Found;
 end;
 
+function TNameResolver.VisibleHelper(ATree: TSyntaxTree; const AFileName, ATypeName: string; AOffset: Integer;
+  out AHelper: TResolvedSymbol): Boolean;
+var
+  Target: TResolvedSymbol;
+begin
+  AHelper := NoResult;
+  if (ATree = nil) or (Trim(ATypeName) = '') then
+    Exit(False);
+  Prepare(ATree, AFileName, AOffset);
+  if not ResolveTypeName(Trim(ATypeName), FCurrent, FInImplementation, Target) then
+  begin
+    // Eingebaute Typen ohne Deklaration: Der Name genügt für den Vergleich mit dem Zieltyp.
+    Target := NoResult;
+    Target.Name := Trim(ATypeName);
+  end;
+  Result := HelperFor(Target, AHelper);
+end;
+
 function TNameResolver.HelperParent(const AHelper: TResolvedSymbol; out AParent: TResolvedSymbol): Boolean;
 var
   FromUnit: TUnitIndex;
@@ -1442,22 +1699,121 @@ begin
     AParent := NoResult;
 end;
 
+/// <summary>Verdecken die Methoden AMembers ab AFrom die gleichnamigen der Vorfahren nicht? So ist es, wenn jede
+/// overload trägt oder eine Methode überschreibt (override einer überladenen Methode bleibt überladen, Indy
+/// TIdSMTP.Disconnect(Boolean) neben TIdTCPConnection.Disconnect, #1326). Felder und Properties verdecken immer.
+/// </summary>
+function KeepsAncestorOverloads(const AMembers: TArray<TResolvedSymbol>; AFrom: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := True;
+  for mIndex := AFrom to High(AMembers) do
+    if not (AMembers[mIndex].SymbolKind in RoutineKinds) or
+      ((IndexText('overload', AMembers[mIndex].Directives) < 0) and
+      (IndexText('override', AMembers[mIndex].Directives) < 0)) then
+      Exit(False);
+end;
+
+/// <summary>Wort hinter AKeyword (read, write) in der Signatur einer Property; '' ohne.</summary>
+function PropertyAccessor(const ASignature, AKeyword: string): string;
+var
+  mWords: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := '';
+  mWords := ASignature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(mWords) - 1 do
+    if SameText(mWords[mIndex], AKeyword) then
+      Exit(mWords[mIndex + 1]);
+end;
+
+/// <summary>Signatur einer Property bis vor das erste read bzw. write ("property Items: TStrings").</summary>
+function PropertyHead(const ASignature: string): string;
+var
+  mWords: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := '';
+  mWords := ASignature.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(mWords) do
+  begin
+    if MatchText(mWords[mIndex], ['read', 'write']) then
+      Break;
+    if Result <> '' then
+      Result := Result + ' ';
+    Result := Result + mWords[mIndex];
+  end;
+end;
+
+function TNameResolver.MergedProperty(const AOwner, AOwn: TResolvedSymbol): TResolvedSymbol;
+var
+  mAncestor, mInherited: TResolvedSymbol;
+  mCandidates: TArray<TResolvedSymbol>;
+  mRead, mWrite: string;
+begin
+  Result := AOwn;
+  if (AOwn.SymbolKind <> TIndexSymbolKind.Property_) or (AOwn.TypeName <> '') or
+    not AncestorOf(AOwner, mAncestor) then
+    Exit;
+  // Die Vorfahren können selbst nur neu deklarieren (property Items; im published-Teil): FindMembers führt sie
+  // ebenso zusammen.
+  mCandidates := FindMembers(mAncestor, AOwn.Name);
+  if (Length(mCandidates) = 0) or (mCandidates[0].SymbolKind <> TIndexSymbolKind.Property_) or
+    (mCandidates[0].TypeName = '') then
+    Exit;
+  mInherited := mCandidates[0];
+  Result.TypeName := mInherited.TypeName;
+  Result.TypeArgs := mInherited.TypeArgs;
+  Result.MinArgs := mInherited.MinArgs;
+  Result.MaxArgs := mInherited.MaxArgs;
+  Result.ParamTypes := mInherited.ParamTypes;
+  Result.IsDefault := AOwn.IsDefault or mInherited.IsDefault;
+  mRead := PropertyAccessor(AOwn.Signature, 'read');
+  if mRead = '' then
+    mRead := PropertyAccessor(mInherited.Signature, 'read');
+  mWrite := PropertyAccessor(AOwn.Signature, 'write');
+  if mWrite = '' then
+    mWrite := PropertyAccessor(mInherited.Signature, 'write');
+  Result.Signature := PropertyHead(mInherited.Signature);
+  if mRead <> '' then
+    Result.Signature := Result.Signature + ' read ' + mRead;
+  if mWrite <> '' then
+    Result.Signature := Result.Signature + ' write ' + mWrite;
+end;
+
+/// <summary>Steht AMember (aus AOwnerUnit) als Rumpf hinter der Deklaration des Typs AType? In einer anderen
+/// Datei als der Typ (Include) entscheidet, ob AMember außerhalb des interface-Teils steht.</summary>
+function IsBodyOf(const AOwnerUnit: TUnitIndex; const AMember: TIndexSymbol; const AType: TResolvedSymbol): Boolean;
+var
+  mEnd, mStart: TTextPosition;
+begin
+  if not SameText(AOwnerUnit.SymbolFile(AMember), AType.FileName) or
+    ((AType.Range.EndPos.Line = 0) and (AType.Range.EndPos.Character = 0)) then
+    Exit(not AMember.InInterface);
+  mEnd := AType.Range.EndPos;
+  mStart := AMember.Range.StartPos;
+  Result := (mStart.Line > mEnd.Line) or ((mStart.Line = mEnd.Line) and (mStart.Character >= mEnd.Character));
+end;
+
 function TNameResolver.FindMembers(const AType: TResolvedSymbol; const AName: string): TArray<TResolvedSymbol>;
 var
   Current, Ancestor, Helper, Parent, Found: TResolvedSymbol;
   OwnerUnit, HelperUnit: TUnitIndex;
   Symbol: TIndexSymbol;
-  Depth, Position, HelperDepth: Integer;
+  Depth, Position, HelperDepth, mLevelStart: Integer;
   TypeName: string;
-  Hidden, LocalChain: Boolean;
+  Hidden, LocalChain, mOverloads: Boolean;
 begin
   Result := nil;
   Current := AType;
   LocalChain := False;
+  // Nach einer Stufe, deren Methoden alle overload bzw. override tragen: nur noch Methoden der Vorfahren sammeln.
+  mOverloads := False;
   for Depth := 0 to MaxDepth do
   begin
     // Helfer zuerst: ihre Mitglieder verdecken gleichnamige des Typs; danach die Vorfahr-Helfer (#848).
-    if HelperFor(Current, Helper) then
+    if not mOverloads and HelperFor(Current, Helper) then
       for HelperDepth := 0 to MaxDepth do
       begin
         if UnitOf(Helper, HelperUnit) then
@@ -1482,16 +1838,19 @@ begin
     LocalChain := LocalChain or SameText(OwnerUnit.FileName, FCurrent.FileName);
     TypeName := Current.QualifiedName;
     Hidden := False;
+    mLevelStart := Length(Result);
     // Erste Fundstelle: die Deklaration im Typ steht vor dem Rumpf in implementation.
     for Position in OwnerUnit.SymbolsNamed(AName) do
     begin
       Symbol := OwnerUnit.Symbols[Position];
-      if SameText(Symbol.Container, TypeName) then
+      if SameText(Symbol.Container, TypeName) and (not mOverloads or (Symbol.Kind in RoutineKinds)) then
       begin
         // Ist die Deklaration unsichtbar, gilt das auch für ihren Rumpf (implementation, dort public). Weitere
-        // Deklarationen im interface prüft IsVisible einzeln: Überladungen dürfen anders sichtbar sein
-        // (System.TMonitor.Enter: strict private als Instanzmethode, public als Klassenmethode).
-        if Hidden and not Symbol.InInterface then
+        // Deklarationen im Typ prüft IsVisible einzeln: Überladungen dürfen anders sichtbar sein
+        // (System.TMonitor.Enter: strict private als Instanzmethode, public als Klassenmethode). Rumpf heißt
+        // hinter dem Typ; InInterface allein trennt das nicht bei Typen im implementation-Teil (Skia4Delphi,
+        // #1328).
+        if Hidden and IsBodyOf(OwnerUnit, Symbol, Current) then
           Continue;
         if not IsVisible(Symbol, OwnerUnit, Current, LocalChain) then
         begin
@@ -1500,11 +1859,18 @@ begin
         end;
         Found := FromSymbol(OwnerUnit, Symbol);
         Found.Bindings := Current.Bindings;
+        if Found.SymbolKind = TIndexSymbolKind.Property_ then
+          Found := MergedProperty(Current, Found);
         AddDistinct(Result, Found);
       end;
     end;
-    if Result <> nil then
-      Exit;
+    // Eine Stufe ohne neue Methode (nur Rümpfe, nur Gleiches) ändert nichts an der Überladung.
+    if Length(Result) > mLevelStart then
+    begin
+      if not KeepsAncestorOverloads(Result, mLevelStart) then
+        Exit;
+      mOverloads := True;
+    end;
     if not AncestorOf(Current, Ancestor) then
       Exit;
     Current := Ancestor;
@@ -1711,27 +2077,9 @@ var
   Index: Integer;
 begin
   // for var I := ...: das Wort nach "for" ist "var".
-  Index := FirstTokenAt(ANode.StartOffset);
+  Index := FTree.FirstTokenFrom(ANode.StartOffset);
   Result := (Index < High(FTree.Tokens)) and FTree.Tokens[Index].IsKeyword('for') and
     FTree.Tokens[Index + 1].IsKeyword('var');
-end;
-
-function TNameResolver.FirstTokenAt(AOffset: Integer): Integer;
-var
-  Low, High_, Middle: Integer;
-begin
-  // Binäre Suche: erstes Token mit Offset >= AOffset; Length(Tokens), wenn es keines gibt.
-  Low := 0;
-  High_ := Length(FTree.Tokens);
-  while Low < High_ do
-  begin
-    Middle := (Low + High_) div 2;
-    if FTree.Tokens[Middle].Offset < AOffset then
-      Low := Middle + 1
-    else
-      High_ := Middle;
-  end;
-  Result := Low;
 end;
 
 function TNameResolver.LookupInlineVars(ANode: TSyntaxNode; const AName: string;
@@ -1839,13 +2187,22 @@ begin
   if FTree = nil then
     Exit;
   Routines := EnclosingRoutines;
-  if Length(Routines) = 0 then
-    Exit;
-  Name := Routines[High(Routines)].Name;
-  Dot := LastDelimiter('.', Name);
-  if Dot = 0 then
-    Exit;
-  TypeName := Copy(Name, 1, Dot - 1);
+  if Length(Routines) > 0 then
+  begin
+    Name := Routines[High(Routines)].Name;
+    Dot := LastDelimiter('.', Name);
+    if Dot = 0 then
+      Exit;
+    TypeName := Copy(Name, 1, Dot - 1);
+  end
+  else
+  begin
+    // Zugriffe einer Property (read FName write SetName, #690) stehen im Bereich ihres Typs: Ohne das blieben
+    // sie unaufgelöst, und Referenzsuche, Umbenennen und Datenfluss übersahen sie.
+    TypeName := PropertyClassName;
+    if TypeName = '' then
+      Exit;
+  end;
   // Verschachtelte Typen zuerst (procedure TAussen.TInnen.Methode): TAussen.TInnen sonst als Unit
   // TAussen gesucht, mit Nachladen über alle Suchpfade, und die Felder blieben unaufgelöst (#647).
   Parts := TypeName.Split(['.']);
@@ -1870,6 +2227,28 @@ begin
   end;
   if ResolveTypeName(TypeName, FCurrent, True, Current) then
     Result := [Current];
+end;
+
+function TNameResolver.PropertyClassName: string;
+var
+  Node, Inner: TSyntaxNode;
+  Index: Integer;
+begin
+  Result := '';
+  Node := FTree.Root;
+  while Node <> nil do
+  begin
+    if Node.Kind = TSyntaxKind.PropertyDecl then
+      Exit(Node.EnclosingTypeName);
+    // Rümpfe enthalten keine Property-Deklarationen.
+    if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+      Exit;
+    Inner := nil;
+    for Index := 0 to Node.ChildCount - 1 do
+      if Contains(Node[Index], FOffset) then
+        Inner := Node[Index];
+    Node := Inner;
+  end;
 end;
 
 class function TNameResolver.IsBuiltinTypeName(const AName: string): Boolean;
@@ -2236,13 +2615,9 @@ end;
 function TNameResolver.LookupWithOwner(const AName: string; out AResults: TArray<TResolvedSymbol>;
   out AStop: Boolean; out AWith: TSyntaxNode; out AElement: Integer): Boolean;
 var
-  Withs: TList<TSyntaxNode>;
-  Node, WithNode: TSyntaxNode;
+  WithNode: TSyntaxNode;
   Index: Integer;
-  Descended: Boolean;
-  Value, TypeInfo: TResolvedSymbol;
-  SavedOffset: Integer;
-  Known: Boolean;
+  TypeInfo: TResolvedSymbol;
 begin
   Result := False;
   AStop := False;
@@ -2251,50 +2626,120 @@ begin
   AElement := -1;
   if FTree = nil then
     Exit;
-  // with-Anweisungen, in deren Rumpf FOffset liegt, innerste zuerst.
-  Withs := TList<TSyntaxNode>.Create;
+  for WithNode in EnclosingWiths do
+    for Index := WithNode.ChildCount - 2 downto 0 do
+    begin
+      if not WithElementType(WithNode, Index, TypeInfo) then
+      begin
+        // Unbekannter Typ: der Name könnte ein Mitglied sein, also lieber nichts liefern.
+        AStop := True;
+        Exit;
+      end;
+      AResults := FindMembers(TypeInfo, AName);
+      if Length(AResults) > 0 then
+      begin
+        AWith := WithNode;
+        AElement := Index;
+        Exit(True);
+      end;
+    end;
+end;
+
+function TNameResolver.EnclosingWiths: TArray<TSyntaxNode>;
+var
+  Node: TSyntaxNode;
+  Index: Integer;
+  Descended: Boolean;
+begin
+  Result := nil;
+  if FTree = nil then
+    Exit;
+  Node := FTree.Root;
+  repeat
+    Descended := False;
+    for Index := 0 to Node.ChildCount - 1 do
+      if Contains(Node[Index], FOffset) then
+      begin
+        Node := Node[Index];
+        if (Node.Kind = TSyntaxKind.WithStatement) and (Node.ChildCount >= 2) and
+          Contains(Node[Node.ChildCount - 1], FOffset) then
+          Result := [Node] + Result;
+        Descended := True;
+        Break;
+      end;
+  until not Descended;
+end;
+
+function TNameResolver.WithElementType(AWith: TSyntaxNode; AIndex: Integer; out AType: TResolvedSymbol): Boolean;
+var
+  Value: TResolvedSymbol;
+  SavedOffset: Integer;
+begin
+  // Den Ausdruck an seiner eigenen Stelle auflösen, außerhalb des with-Rumpfs.
+  SavedOffset := FOffset;
+  FOffset := AWith[AIndex].StartOffset;
   try
-    Node := FTree.Root;
-    repeat
-      Descended := False;
-      for Index := 0 to Node.ChildCount - 1 do
-        if Contains(Node[Index], FOffset) then
-        begin
-          Node := Node[Index];
-          if (Node.Kind = TSyntaxKind.WithStatement) and (Node.ChildCount >= 2) and
-            Contains(Node[Node.ChildCount - 1], FOffset) then
-            Withs.Insert(0, Node);
-          Descended := True;
-          Break;
-        end;
-    until not Descended;
-    for WithNode in Withs do
+    Result := ExprSymbol(AWith[AIndex], Value) and TypeOf(Value, AType);
+  finally
+    FOffset := SavedOffset;
+  end;
+end;
+
+/// <summary>Quelltext von ANode aus den Tokens von ATree, in einer Zeile; Leerraum dazwischen als ein Leerzeichen.
+/// </summary>
+function NodeSource(ATree: TSyntaxTree; ANode: TSyntaxNode): string;
+var
+  mIndex, mLastEnd: Integer;
+begin
+  Result := '';
+  mLastEnd := -1;
+  // Ab dem ersten Token des Knotens statt ab Dateianfang und ohne Kopie je Token (#1323).
+  for mIndex := ATree.FirstTokenFrom(ANode.StartOffset) to High(ATree.Tokens) do
+  begin
+    if ATree.Tokens[mIndex].Offset >= ANode.EndOffset then
+      Break;
+    if ATree.Tokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+      Continue;
+    if (mLastEnd >= 0) and (ATree.Tokens[mIndex].Offset > mLastEnd) then
+      Result := Result + ' ';
+    Result := Result + ATree.Tokens[mIndex].Text;
+    mLastEnd := ATree.Tokens[mIndex].Offset + Length(ATree.Tokens[mIndex].Text);
+  end;
+end;
+
+procedure TNameResolver.CollectWithMembers(AList: TList<TResolvedSymbol>; ASeen: TDictionary<string, Boolean>);
+var
+  WithNode: TSyntaxNode;
+  Index: Integer;
+  TypeInfo, Member: TResolvedSymbol;
+  Members: TList<TResolvedSymbol>;
+  Seen: TDictionary<string, Boolean>;
+  Origin: string;
+begin
+  Members := TList<TResolvedSymbol>.Create;
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    for WithNode in EnclosingWiths do
       for Index := WithNode.ChildCount - 2 downto 0 do
       begin
-        // Den Ausdruck an seiner eigenen Stelle auflösen, außerhalb des with-Rumpfs.
-        SavedOffset := FOffset;
-        FOffset := WithNode[Index].StartOffset;
-        try
-          Known := ExprSymbol(WithNode[Index], Value) and TypeOf(Value, TypeInfo);
-        finally
-          FOffset := SavedOffset;
-        end;
-        if not Known then
+        // Unbekannter Typ: keine Mitglieder; Namen weiter außen bleiben dann ohne Hinweis.
+        if not WithElementType(WithNode, Index, TypeInfo) then
+          Continue;
+        // Eigene Sammlung: Unsichtbare Mitglieder des with-Typs dürfen äußere Namen nicht ausblenden.
+        Members.Clear;
+        Seen.Clear;
+        CollectMembers(TypeInfo, Members, Seen);
+        Origin := NodeSource(FTree, WithNode[Index]);
+        for Member in Members do
         begin
-          // Unbekannter Typ: der Name könnte ein Mitglied sein, also lieber nichts liefern.
-          AStop := True;
-          Exit;
-        end;
-        AResults := FindMembers(TypeInfo, AName);
-        if Length(AResults) > 0 then
-        begin
-          AWith := WithNode;
-          AElement := Index;
-          Exit(True);
+          TypeInfo := Member;
+          TypeInfo.WithOrigin := Origin;
+          AddCandidate(AList, ASeen, TypeInfo);
         end;
       end;
   finally
-    Withs.Free;
+    Seen.Free;
+    Members.Free;
   end;
 end;
 
@@ -2541,6 +2986,18 @@ begin
           Params := ShadowText(ASymbol);
           if not MatchText(Params, Existing.Hides) then
             Existing.Hides := Existing.Hides + [Params];
+          // with-Mitglied über einem lokalen Namen oder einem Mitglied von Self (#481): Warnung in der Liste.
+          if Existing.WithOrigin <> '' then
+          begin
+            case FScopeStage of
+              TScopeStage.Local: Params := ShadowText(ASymbol);
+              TScopeStage.OwnClass: Params := 'Self.' + ASymbol.Name;
+            else
+              Params := '';
+            end;
+            if (Params <> '') and not MatchText(Params, Existing.WithShadows) then
+              Existing.WithShadows := Existing.WithShadows + [Params];
+          end;
           AList[Index] := Existing;
         end;
         Break;
@@ -2725,6 +3182,10 @@ begin
   Prepare(ATree, AFileName, AOffset);
   List := TList<TResolvedSymbol>.Create;
   try
+    // with-Objekte verdecken alles weiter außen (#481); innerstes zuerst.
+    FScopeStage := TScopeStage.Other;
+    CollectWithMembers(List, FScopeSeen);
+    FScopeStage := TScopeStage.Local;
     for Routine in EnclosingRoutines do
     begin
       // Lokale Namen vor den Parametern (#488): Stufe 1 vor Stufe 2.
@@ -2758,8 +3219,10 @@ begin
       ResultSymbol.SymbolKind := TIndexSymbolKind.Variable;
       ResultSymbol.TypeName := ClassType.QualifiedName;
       AddCandidate(List, FScopeSeen, ResultSymbol);
+      FScopeStage := TScopeStage.OwnClass;
       CollectMembers(ClassType, List, FScopeSeen);
     end;
+    FScopeStage := TScopeStage.Other;
     CollectUnit(FCurrent, not FInImplementation, List, FScopeSeen);
     // Für den zweiten Teil merken: Andere Aufrufe dazwischen (z. B. Typprüfungen) bereiten den Zustand neu vor.
     FScopeUnit := FCurrent;
@@ -2881,33 +3344,15 @@ end;
 
 function TNameResolver.TreeUnit(ATree: TSyntaxTree; const AFileName: string): TUnitIndex;
 begin
-  Result := MergedUnit(TIndexExtractor.Extract(ATree, AFileName), AFileName);
+  if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+    Result := FTreeUnits.Merged(FIndex, AFileName)
+  else
+    Result := MergedUnit(TIndexExtractor.Extract(ATree, AFileName), AFileName);
 end;
 
 function TNameResolver.MergedUnit(const AExtracted: TUnitIndex; const AFileName: string): TUnitIndex;
-var
-  Indexed: TUnitIndex;
-  Count, Position: Integer;
 begin
-  Result := AExtracted;
-  // Der Baum kennt nur die Datei selbst; Deklarationen aus Include-Dateien stehen im Index.
-  if (FIndex <> nil) and (AFileName <> '') and FIndex.FindFile(AFileName, Indexed) then
-  begin
-    // Eigenes Array (Copy): Result.Symbols teilt es sonst mit AExtracted. Einmal vergrößern statt je
-    // Symbol anhängen (Code-Review P-08).
-    Count := Length(AExtracted.Symbols);
-    Result.Symbols := Copy(AExtracted.Symbols);
-    SetLength(Result.Symbols, Count + Length(Indexed.Symbols));
-    for Position := 0 to High(Indexed.Symbols) do
-      if Indexed.Symbols[Position].FileName <> '' then
-      begin
-        Result.Symbols[Count] := Indexed.Symbols[Position];
-        Inc(Count);
-      end;
-    SetLength(Result.Symbols, Count);
-    Result.Includes := Indexed.Includes;
-  end;
-  Result.PrepareNames;
+  Result := TTreeUnits.Merge(FIndex, AExtracted, AFileName);
 end;
 
 function TNameResolver.PinnedIndex(ATree: TSyntaxTree; const AFileName: string): Integer;
@@ -2927,6 +3372,8 @@ begin
   PinIndex := PinnedIndex(ATree, AFileName);
   if PinIndex >= 0 then
     Result := FPins[PinIndex].Extracted
+  else if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+    Result := FTreeUnits.Extracted(AFileName)
   else
     Result := TIndexExtractor.Extract(ATree, AFileName);
 end;
@@ -2995,6 +3442,35 @@ begin
   Result := ExprCandidates(ACallee);
 end;
 
+function TNameResolver.MayBeHiddenMember(ATree: TSyntaxTree; const AFileName: string; ACallee: TSyntaxNode;
+  const ACandidate: TResolvedSymbol): Boolean;
+var
+  mWith: TSyntaxNode;
+  mIndex: Integer;
+  mType: TResolvedSymbol;
+  mComplete: Boolean;
+begin
+  Result := False;
+  if (ACallee = nil) or (ACallee.Kind <> TSyntaxKind.Identifier) then
+    Exit;
+  Prepare(ATree, AFileName, ACallee.StartOffset);
+  // with-Objekte verdecken alles weiter außen, innerstes zuerst (wie LookupWithOwner).
+  for mWith in EnclosingWiths do
+    for mIndex := mWith.ChildCount - 2 downto 0 do
+    begin
+      if not WithElementType(mWith, mIndex, mType) then
+        Exit(True);
+      if Length(FindMembers(mType, ACallee.Name)) > 0 then
+        Exit;
+      AncestorNames(mType, mComplete);
+      if not mComplete then
+        Exit(True);
+    end;
+  if (ACandidate.Kind = TResolvedKind.Local) or (ACandidate.Container <> '') then
+    Exit;
+  Result := HasUnknownAncestor;
+end;
+
 function TNameResolver.PropertyReadsField(const AProperty: TResolvedSymbol; out AReadsField: Boolean): Boolean;
 var
   Words: TArray<string>;
@@ -3061,8 +3537,16 @@ begin
   Pin := Default(TPin);
   Pin.Tree := ATree;
   Pin.FileName := AFileName;
-  Pin.Extracted := TIndexExtractor.Extract(ATree, AFileName);
-  Pin.Merged := MergedUnit(Pin.Extracted, AFileName);
+  if (FTreeUnits <> nil) and FTreeUnits.Holds(ATree) then
+  begin
+    Pin.Extracted := FTreeUnits.Extracted(AFileName);
+    Pin.Merged := FTreeUnits.Merged(FIndex, AFileName);
+  end
+  else
+  begin
+    Pin.Extracted := TIndexExtractor.Extract(ATree, AFileName);
+    Pin.Merged := MergedUnit(Pin.Extracted, AFileName);
+  end;
   Pin.Depth := 1;
   FPins.Add(Pin);
 end;
@@ -3622,37 +4106,6 @@ begin
     Result := NoResult;
 end;
 
-function TNameResolver.TokenIndexAt(const APosition: TTextPosition): Integer;
-var
-  mLow, mHigh, mMiddle, Index: Integer;
-begin
-  // Binäre Suche (#1220): Der Durchlauf von vorn machte jede Auflösung linear in der Zahl der Token, Regeln wie
-  // inline-not-expanded, die viele Bezeichner einer großen Unit auflösen, also quadratisch. Die Token stehen in
-  // Quelltextreihenfolge und überlappen nicht. mLow wird das erste Token, das hinter APosition beginnt.
-  mLow := 0;
-  mHigh := Length(FTree.Tokens);
-  while mLow < mHigh do
-  begin
-    mMiddle := (mLow + mHigh) div 2;
-    if ComparePositions(FTree.Tokens[mMiddle].StartPos, APosition) > 0 then
-      mHigh := mMiddle
-    else
-      mLow := mMiddle + 1;
-  end;
-  // Cursor auf oder direkt hinter dem Bezeichner. Reichen zwei Token bis APosition, gilt wie bisher das vordere.
-  Result := -1;
-  Index := mLow - 1;
-  while (Index >= 0) and (ComparePositions(APosition, FTree.Tokens[Index].EndPos) <= 0) do
-  begin
-    if FTree.Tokens[Index].Kind = TPascalTokenKind.Identifier then
-      Result := Index;
-    Dec(Index);
-  end;
-  // C in ^C ist ein Zeichen (#862).
-  if (Result >= 0) and FTree.IsControlCharPart(Result) then
-    Result := -1;
-end;
-
 /// <summary>Typ, dessen Methodenzuordnung (procedure IFoo.Bar = MyBar) an AOffset ihr Ziel nennt (#849);
 /// '' an anderen Stellen.</summary>
 function ResolutionOwner(ANode: TSyntaxNode; AOffset: Integer): string;
@@ -3701,7 +4154,7 @@ begin
     Exit;
   FTree := ATree;
   Tokens := ATree.Tokens;
-  Index := TokenIndexAt(APosition);
+  Index := ATree.IdentifierAt(APosition);
   if Index < 0 then
     Exit;
   Names := TList<string>.Create;

@@ -12,7 +12,9 @@
 // - Verhalten einer Quelle aus dem Kontextmenü der Liste wird in
 //   notifications.sources gespeichert.
 // - Einträge der Quellen „Build fertig“ und „Hintergrundprüfung“ nach jedem
-//   Lauf (BuildFinished) mit „Zum Fehler“. Eine eigene Einblendung „Build
+//   Lauf (BuildFinished) mit „Zum Fehler“; Builds des Benutzers mit lesbaren
+//   Meldungen nach der Bewertung von #530 (BuildEvaluated: Basislinie,
+//   build.zeroHints, build.warningsAsErrors). Eine eigene Einblendung „Build
 //   fertig“ gibt es noch nicht (#535); dort wirken Show und Collect gleich.
 // Die übrigen Quellen melden selbst über IAtlasNotificationCenter.
 
@@ -25,7 +27,9 @@ uses
   System.Generics.Collections,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Events,
+  Atlas.Core.Build.Verdict,
   Atlas.Core.Notifications.Contract,
+  Atlas.Core.Notifications.Build,
   Atlas.UI.Notifications.Window;
 
 type
@@ -46,6 +50,7 @@ type
     FCheckErrors: TDictionary<string, Integer>;
     procedure Changed;
     procedure Refresh;
+    procedure Post(const ANotice: TAtlasBuildNotice; const AProject: TAtlasCompileProject);
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
@@ -67,6 +72,10 @@ type
     /// <summary>Eintrag nach einem Build bzw. einer Hintergrundprüfung (Hauptthread).</summary>
     procedure BuildFinished(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
       ASucceeded, AReadable: Boolean);
+    /// <summary>Eintrag nach einem Build des Benutzers mit lesbaren Meldungen, bewertet nach #530 (Hauptthread).
+    /// </summary>
+    procedure BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>; const AProject: TAtlasCompileProject;
+      const AVerdict: TAtlasBuildVerdict);
     /// <summary>Linke Oberkante des Statusfelds im obersten Editorfenster; (MaxInt, MaxInt) ohne Feld.</summary>
     property OnAnchor: TFunc<TPoint> read FOnAnchor write FOnAnchor;
     /// <summary>Plakette nachführen; läuft im Hauptthread.</summary>
@@ -83,7 +92,6 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
-  Atlas.Core.Notifications.Build,
   Atlas.UI.Strings,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorStyle,
@@ -257,9 +265,7 @@ procedure TAtlasIdeNotifications.BuildFinished(const AMessages: TArray<TAtlasCom
 var
   Notice: TAtlasBuildNotice;
   Previous: Integer;
-  Key, Project, Title, Text: string;
-  Actions: TArray<TAtlasNotificationAction>;
-  Target: TAtlasCompilerMessage;
+  Key: string;
 begin
   if not Active then
     Exit;
@@ -270,7 +276,26 @@ begin
   Notice := TAtlasBuildNotices.FromRun(AMessages, ASucceeded, AReadable, AProject.Background, Previous);
   if AProject.Background and AReadable then
     FCheckErrors.AddOrSetValue(Key, Notice.Errors);
+  Post(Notice, AProject);
+end;
+
+procedure TAtlasIdeNotifications.BuildEvaluated(const AMessages: TArray<TAtlasCompilerMessage>;
+  const AProject: TAtlasCompileProject; const AVerdict: TAtlasBuildVerdict);
+begin
+  if Active then
+    Post(TAtlasBuildNotices.FromVerdict(AMessages, AVerdict), AProject);
+end;
+
+procedure TAtlasIdeNotifications.Post(const ANotice: TAtlasBuildNotice; const AProject: TAtlasCompileProject);
+var
+  Notice: TAtlasBuildNotice;
+  Project, Title, Text, Action: string;
+  Actions: TArray<TAtlasNotificationAction>;
+  Target: TAtlasCompilerMessage;
+begin
+  Notice := ANotice;
   Project := ChangeFileExt(ExtractFileName(AProject.FileName), '');
+  Action := TAtlasStrings.Text(TAtlasTextId.NotificationsGoToError);
   case Notice.Kind of
     TAtlasBuildNoticeKind.Errors:
       Title := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildErrors, [Notice.Errors]);
@@ -284,17 +309,27 @@ begin
       Title := TAtlasStrings.Fmt(TAtlasTextId.NotificationsCheckErrors, [Notice.Errors]);
     TAtlasBuildNoticeKind.CheckClean:
       Title := TAtlasStrings.Text(TAtlasTextId.NotificationsCheckClean);
+    TAtlasBuildNoticeKind.Rejected:
+      begin
+        if Notice.Reason = TAtlasBuildVerdictReason.WarningsAsErrors then
+          Title := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildRejectedCodes, [Notice.PromotedCode])
+        else
+          Title := TAtlasStrings.Text(TAtlasTextId.NotificationsBuildRejected);
+        Action := TAtlasStrings.Text(TAtlasTextId.NotificationsGoToMessage);
+      end;
   else
     Exit;
   end;
   Text := TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildText, [Project, Notice.Errors, Notice.Warnings,
     Notice.Hints]);
+  if Notice.Baselined > 0 then
+    Text := Text + ' ' + TAtlasStrings.Fmt(TAtlasTextId.NotificationsBuildBaselined, [Notice.Baselined]);
   Actions := nil;
   if Notice.HasTarget then
   begin
     Target := Notice.Target;
     Text := Text + ' · ' + Format('%s(%d): %s', [ExtractFileName(Target.FileName), Target.Line, Target.Text]);
-    Actions := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.NotificationsGoToError),
+    Actions := [TAtlasNotificationCenter.Action(Action,
       procedure
       begin
         // Meldungen zählen ab 1, der Editor ab 0.

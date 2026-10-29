@@ -2,7 +2,8 @@
 
 // Darstellung eines Eintrags in der Liste (#420, #421), ohne Fenster:
 //   - Badge: Kürzel und Farbart nach der Art; Funktion oder Prozedur nach
-//     der Signatur, solange der Server beides als Methode meldet.
+//     der Signatur, solange der Server beides als Methode meldet. Attribute
+//     nach "[" (#465) tragen "at" in der Farbe der Typen.
 //   - Detail: gedämpfter Text rechts (Typ, Klasse, Unit-Datei).
 //   - Tags: "+ Unit" für Einträge aus nicht eingebundenen Units (#180),
 //     "deprecated", "constructor"/"destructor", "+2" bei drei Überladungen
@@ -42,6 +43,8 @@ type
     Id: TAtlasTagId;
     /// <summary>Einzusetzender Wert übersetzbarer Marken, bei VariantBranch die Zweigmarken ("0").</summary>
     Arg: string;
+    /// <summary>Mit Fläche in der weichen Farbe der Art (Warnfläche bei „verdeckt …“, #481).</summary>
+    Filled: Boolean;
   end;
 
   TAtlasTags = TArray<TAtlasTag>;
@@ -103,6 +106,8 @@ end;
 
 function MakeTag(const AText: string; AKind: TAtlasTagKind): TAtlasTag;
 begin
+  // Alle Felder auf den Ausgangswert, auch die später hinzugekommenen (Filled, #481).
+  Result := Default(TAtlasTag);
   Result.Text := AText;
   Result.Kind := AKind;
   Result.Id := TAtlasTagId.Plain;
@@ -201,6 +206,8 @@ var
   Signature: string;
 begin
   Signature := LowerCase(TrimLeft(AItem.Signature));
+  if AItem.Attribute then
+    Exit(MakeBadge(TAtlasBadgeKind.Type_, 'at'));
   case AItem.Kind of
     TAtlasItemKind.Procedure_, TAtlasItemKind.Destructor_:
       Result := MakeBadge(TAtlasBadgeKind.Procedure_, 'pr');
@@ -313,6 +320,15 @@ var
   Directive, MissingName: string;
 begin
   Result := nil;
+  // Gerüst einer anonymen Methode (#468): der erwartete Typ.
+  if AItem.MethodRef <> '' then
+    Result := Result + [MakeTag(AItem.MethodRef, TAtlasTagKind.Accent)];
+  // Exception-Klassen (#483): Ein früherer Zweig fängt die Klasse schon, dieser würde nie erreicht.
+  if AItem.Unreachable <> '' then
+  begin
+    Result := Result + [MakeTag('nie erreicht: ' + AItem.Unreachable + ' davor', TAtlasTagKind.Warn)];
+    Result[High(Result)].Filled := True;
+  end;
   if AItem.Count > 0 then
     Result := Result + [MakeTag(IntToStr(AItem.Count), TAtlasTagKind.Accent)];
   // Zirkelbezug im uses-Abschnitt (#469).
@@ -365,6 +381,17 @@ begin
         // Methoden von Self: die Klasse, die sie deklariert.
         Result := Result + [MakeTag(AItem.DeclaringClass, TAtlasTagKind.Neutral)];
     4: Result := Result + [MakeTag('Unit', TAtlasTagKind.Neutral)];
+    6:
+      if AItem.WithOrigin <> '' then
+      begin
+        // with-Objekt (#481): Herkunft und, was das Mitglied verdeckt, als Warnung mit Fläche.
+        Result := Result + [MakeTag('aus ' + AItem.WithOrigin, TAtlasTagKind.Accent)];
+        for Directive in AItem.WithShadows do
+        begin
+          Result := Result + [MakeTag('verdeckt ' + Directive, TAtlasTagKind.Warn)];
+          Result[High(Result)].Filled := True;
+        end;
+      end;
     5:
       if AItem.DeclaringUnit <> '' then
         Result := Result + [MakeTag(AItem.DeclaringUnit, TAtlasTagKind.Neutral)];

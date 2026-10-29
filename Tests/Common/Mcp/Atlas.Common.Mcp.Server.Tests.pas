@@ -21,6 +21,8 @@ type
     procedure UnknownToolIsInvalidParams;
     [Test]
     procedure BuildsStringSchema;
+    [Test]
+    procedure ResourceTemplatesAreEmptyList;
   end;
 
 implementation
@@ -169,6 +171,24 @@ begin
   Assert.AreEqual('{"type":"object","properties":{"a":{"type":"string","description":"A"},' +
     '"b":{"type":"string","description":"B"}},"required":["a"]}',
     TMcpServer.StringSchema(['a', 'b'], ['A', 'B'], 1));
+end;
+
+procedure TMcpServerTests.ResourceTemplatesAreEmptyList;
+var
+  Server: TMcpServer;
+  Result_: TJSONObject;
+begin
+  Server := NewServer;
+  try
+    Result_ := Server.ListResourceTemplates;
+    try
+      Assert.AreEqual(0, Integer(Result_.GetValue<TJSONArray>('resourceTemplates').Count));
+    finally
+      Result_.Free;
+    end;
+  finally
+    Server.Free;
+  end;
 end;
 
 initialization

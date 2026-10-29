@@ -124,6 +124,15 @@ begin
   References := TUsesClauses.References(TPascalLexer.Tokenize(
     'unit U;'#10'interface'#10'uses A, B.C in ''b.pas'';'#10'implementation'#10'end.'));
   Assert.AreEqual(Ord(TUsesListKind.UsesList), Ord(References[0].List));
+  // Abschnitt je Eintrag (#268): interface bis "implementation", in Packages und Programmen nie.
+  Assert.IsTrue(References[0].InInterface);
+  References := TUsesClauses.References(TPascalLexer.Tokenize(
+    'unit U;'#10'interface'#10'uses A;'#10'type IX = interface end;'#10'implementation'#10'uses B;'#10'end.'));
+  Assert.AreEqual(2, Integer(Length(References)));
+  Assert.IsTrue(References[0].InInterface, 'A');
+  Assert.IsFalse(References[1].InInterface, 'B');
+  References := TUsesClauses.References(TPascalLexer.Tokenize('program P;'#10'uses A;'#10'begin end.'));
+  Assert.IsFalse(References[0].InInterface, 'Programm');
 end;
 
 procedure TUsesClauseTests.ReadsOwnName;

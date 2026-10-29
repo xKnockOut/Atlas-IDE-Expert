@@ -14,6 +14,7 @@
 interface
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON,
   Atlas.Core.Lsp.WorkspaceEdits,

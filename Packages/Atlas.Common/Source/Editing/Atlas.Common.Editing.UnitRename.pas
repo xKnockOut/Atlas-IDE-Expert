@@ -174,7 +174,7 @@ begin
     end;
   // Qualifizierte Bezeichner, sofern die Datei den Namen nicht selbst deklariert.
   if not Declares(ATree.Root, Parts[0]) then
-    for Index := 0 to High(Tokens) do
+    for Index := TSyntaxTree.FirstTokenOf(Tokens, HeaderEnd + 1) to High(Tokens) do
     begin
       if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or (Tokens[Index].Offset <= HeaderEnd) or
         not SameText(CleanName(Tokens[Index].Text), Parts[0]) then

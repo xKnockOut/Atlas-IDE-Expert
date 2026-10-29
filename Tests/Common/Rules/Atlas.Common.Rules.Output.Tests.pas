@@ -22,6 +22,10 @@ type
     [Test]
     procedure CheckerSyntaxRuleCanBeTurnedOff;
     [Test]
+    procedure CheckerReportsLanguageFeaturesBelowMinDelphiVersion;
+    [Test]
+    procedure CheckerLeavesIfExpressionsToTheirRule;
+    [Test]
     procedure FilterByRule;
     [Test]
     procedure FilterBySeverity;
@@ -151,6 +155,37 @@ procedure TLinterOutputTests.CheckerSyntaxRuleCanBeTurnedOff;
 begin
   Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{ "rules": { "syntax": "off" } }'),
     'U.pas', 'unit U; begin if then'))));
+end;
+
+procedure TLinterOutputTests.CheckerReportsLanguageFeaturesBelowMinDelphiVersion;
+const
+  Source = 'unit U; interface implementation function F(A: TObject): Boolean; ' +
+    'begin Result := A is not TList; end; end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // #1126: Ohne Sprachstand meldet Atlas nichts; mit minDelphiVersion 12 ist "is not" (Delphi 13) ein Befund.
+  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{}'), 'U.pas', Source))));
+  Findings := TFileChecker.CheckText(nil, Settings('{ "minDelphiVersion": "12" }'), 'U.pas', Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(LanguageFeatureRuleId, Findings[0].RuleId);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.IsTrue(Pos('Delphi 13', Findings[0].Message) > 0, Findings[0].Message);
+  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{ "minDelphiVersion": "13" }'), 'U.pas',
+    Source))));
+  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil,
+    Settings('{ "minDelphiVersion": "12", "rules": { "language-feature": "off" } }'), 'U.pas', Source))));
+end;
+
+procedure TLinterOutputTests.CheckerLeavesIfExpressionsToTheirRule;
+const
+  Source = 'unit U; interface implementation function F(A: Boolean): Integer; ' +
+    'begin Result := if A then 1 else 2; end; end.';
+begin
+  // #684 mit #1126: Bedingungsausdrücke meldet conditional-expression-version als Fehler mit Korrektur, nicht
+  // zusätzlich language-feature.
+  Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{ "minDelphiVersion": "12" }'), 'U.pas',
+    Source))));
 end;
 
 procedure TLinterOutputTests.FilterByRule;

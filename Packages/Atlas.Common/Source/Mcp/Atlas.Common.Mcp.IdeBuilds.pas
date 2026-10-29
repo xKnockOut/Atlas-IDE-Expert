@@ -82,6 +82,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.IOUtils,
   System.JSON,
   Atlas.Common.Projects.Paths;

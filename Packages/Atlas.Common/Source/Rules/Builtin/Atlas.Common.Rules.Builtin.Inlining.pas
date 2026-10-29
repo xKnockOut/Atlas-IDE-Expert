@@ -168,9 +168,9 @@ begin
   FIndex := AContext.Index;
   if FIndex = nil then
     FIndex := TSymbolIndex.Create;
-  FResolver := TNameResolver.Create(FIndex, AContext.EnsureUnit);
+  FResolver := TNameResolver.Create(FIndex, AContext.EnsureUnit, AContext.TreeUnits);
   FResolver.Namespaces := AContext.Namespaces;
-  FCallee := TNameResolver.Create(FIndex, AContext.EnsureUnit);
+  FCallee := TNameResolver.Create(FIndex, AContext.EnsureUnit, AContext.TreeUnits);
   FCallee.Namespaces := AContext.Namespaces;
   FNeeds := TDictionary<string, TInlineNeeds>.Create;
   FCandidates := TDictionary<string, Boolean>.Create;
@@ -340,19 +340,22 @@ end;
 
 function TInlineCheck.HasInlineAccessor(const AProperty: TIndexSymbol): Boolean;
 var
-  Name: string;
+  Name, mContainer: string;
   Accessors: TArray<string>;
-  Other: TSymbolLocation;
   Symbol: TIndexSymbol;
 begin
+  mContainer := AProperty.Container;
   Result := False;
   Accessors := [AccessorName(AProperty.Signature, False), AccessorName(AProperty.Signature, True)];
   for Name in Accessors do
     if Name <> '' then
     begin
-      for Other in FIndex.FindSymbols(Name) do
-        if (Other.Symbol.InlineRefs <> nil) and SameText(Other.Symbol.Container, AProperty.Container) then
-          Exit(True);
+      if FIndex.HasSymbol(Name,
+        function(const AOther: TIndexSymbol): Boolean
+        begin
+          Result := (AOther.InlineRefs <> nil) and SameText(AOther.Container, mContainer);
+        end) then
+        Exit(True);
       for Symbol in FOwn.Symbols do
         if (Symbol.InlineRefs <> nil) and SameText(Symbol.Name, Name) and
           SameText(Symbol.Container, AProperty.Container) then
@@ -362,21 +365,18 @@ end;
 
 function TInlineCheck.IsCandidate(const AName: string): Boolean;
 var
-  Location: TSymbolLocation;
   Symbol: TIndexSymbol;
 begin
   // Vorfilter wie deprecated-symbol: Gibt es im Index oder in der Datei eine gleichnamige inline-Routine mit
   // Verweisen, oder eine Property, deren Getter oder Setter eine ist?
   if FCandidates.TryGetValue(LowerCase(AName), Result) then
     Exit;
-  Result := False;
-  for Location in FIndex.FindSymbols(AName) do
-    if (Location.Symbol.InlineRefs <> nil) or
-      ((Location.Symbol.Kind = TIndexSymbolKind.Property_) and HasInlineAccessor(Location.Symbol)) then
+  Result := FIndex.HasSymbol(AName,
+    function(const ASymbol: TIndexSymbol): Boolean
     begin
-      Result := True;
-      Break;
-    end;
+      Result := (ASymbol.InlineRefs <> nil) or
+        ((ASymbol.Kind = TIndexSymbolKind.Property_) and HasInlineAccessor(ASymbol));
+    end);
   if not Result then
     for Symbol in FOwn.Symbols do
       if SameText(Symbol.Name, AName) and ((Symbol.InlineRefs <> nil) or

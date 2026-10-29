@@ -25,11 +25,21 @@ type
   TRuleGroup = (FindBugs, Exceptions, Threads, Database, Compiler, Robustness, Performance, Security, Components,
     Forms, Architecture, Style, Packages, Internal);
 
+  /// <summary>Spalte einer Option der Art "object-list" (#1133): Schlüssel der Objekte.</summary>
+  TRuleOptionColumn = record
+    Name: string;
+    /// <summary>Der Wert ist eine Liste von Texten.</summary>
+    List: Boolean;
+  end;
+
   /// <summary>Eine Option einer Regel in "rules.&lt;id&gt;" (#909).</summary>
   TRuleOption = record
     Name: string;
-    /// <summary>"integer", "boolean", "string", "string-list", "number-list" (#937) oder "json".</summary>
+    /// <summary>"integer", "boolean", "string", "string-list", "number-list" (#937), "object-list" (#1133) oder
+    /// "json".</summary>
     Kind: string;
+    /// <summary>Nur "object-list": Spalten der Tabelle in der Reihenfolge der Seite Prüfregeln.</summary>
+    Columns: TArray<TRuleOptionColumn>;
     /// <summary>Vorgabe als JSON-Text, z. B. 60, ["TODO"] oder "".</summary>
     DefaultJson: string;
     Description: string;
@@ -63,6 +73,8 @@ type
     FShared: TRuleCatalog;
   private
     FEntries: TList<TRuleCatalogEntry>;
+    // Kennung (klein) -> Position des ersten Eintrags in FEntries; IndexOf lief linear über alle Regeln (#1342).
+    FPositions: TDictionary<string, Integer>;
     procedure ParseBase(const AJson: string);
     procedure ApplyOverlay(const AJson: string);
     function IndexOf(const AId: string): Integer;
@@ -105,7 +117,8 @@ const
   CategoryNames: array[TRuleCategory] of string = ('bug', 'vulnerability', 'code-smell', 'security-hotspot');
   GroupNames: array[TRuleGroup] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
     'robustness', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages', 'internal');
-  OptionKinds: array[0..5] of string = ('integer', 'boolean', 'string', 'string-list', 'number-list', 'json');
+  OptionKinds: array[0..6] of string = ('integer', 'boolean', 'string', 'string-list', 'number-list', 'object-list',
+    'json');
 
 var
   SharedLock: TCriticalSection;
@@ -134,6 +147,27 @@ begin
     Result := TJSONString(Value).Value
   else
     Result := '';
+end;
+
+/// <summary>Spalten "columns" einer Option der Art "object-list" (#1133).</summary>
+function ColumnsOf(AItem: TJSONObject; const AId, AName: string): TArray<TRuleOptionColumn>;
+var
+  mValue, mItem, mList: TJSONValue;
+  mColumn: TRuleOptionColumn;
+begin
+  Result := nil;
+  mValue := AItem.GetValue('columns');
+  if not (mValue is TJSONArray) or (TJSONArray(mValue).Count = 0) then
+    raise ERuleCatalog.CreateFmt('Regelkatalog: Option "%s" von "%s" braucht "columns"', [AName, AId]);
+  for mItem in TJSONArray(mValue) do
+  begin
+    if not (mItem is TJSONObject) or (StringOf(TJSONObject(mItem), 'name') = '') then
+      raise ERuleCatalog.CreateFmt('Regelkatalog: Spalte von "%s" in "%s" ohne "name"', [AName, AId]);
+    mColumn.Name := StringOf(TJSONObject(mItem), 'name');
+    mList := TJSONObject(mItem).GetValue('list');
+    mColumn.List := (mList is TJSONBool) and TJSONBool(mList).AsBoolean;
+    Result := Result + [mColumn];
+  end;
 end;
 
 function OptionsOf(AItem: TJSONObject; const AId: string): TArray<TRuleOption>;
@@ -166,6 +200,8 @@ begin
         Known := True;
     if not Known then
       raise ERuleCatalog.CreateFmt('Regelkatalog: Option "%s" von "%s" hat keinen gültigen Typ', [Option.Name, AId]);
+    if Option.Kind = 'object-list' then
+      Option.Columns := ColumnsOf(TJSONObject(Item), AId, Option.Name);
     DefaultValue := TJSONObject(Item).GetValue('default');
     if DefaultValue <> nil then
       Option.DefaultJson := DefaultValue.ToJSON;
@@ -239,6 +275,7 @@ constructor TRuleCatalog.Create(const ABase, AOverlay: string);
 begin
   inherited Create;
   FEntries := TList<TRuleCatalogEntry>.Create;
+  FPositions := TDictionary<string, Integer>.Create;
   ParseBase(ABase);
   if AOverlay <> '' then
     ApplyOverlay(AOverlay);
@@ -246,6 +283,7 @@ end;
 
 destructor TRuleCatalog.Destroy;
 begin
+  FPositions.Free;
   FEntries.Free;
   inherited;
 end;
@@ -291,6 +329,8 @@ begin
         raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Stufe "%s"', [Entry.Id, Entry.Level]);
       Entry.OverriddenBy := OverriddenByOf(Item, Entry.Id);
       FEntries.Add(Entry);
+      if not FPositions.ContainsKey(LowerCase(Entry.Id)) then
+        FPositions.Add(LowerCase(Entry.Id), FEntries.Count - 1);
     end;
   finally
     Root.Free;
@@ -347,13 +387,9 @@ begin
 end;
 
 function TRuleCatalog.IndexOf(const AId: string): Integer;
-var
-  I: Integer;
 begin
-  for I := 0 to FEntries.Count - 1 do
-    if SameText(FEntries[I].Id, AId) then
-      Exit(I);
-  Result := -1;
+  if not FPositions.TryGetValue(LowerCase(AId), Result) then
+    Result := -1;
 end;
 
 function TRuleCatalog.TryFind(const AId: string; out AEntry: TRuleCatalogEntry): Boolean;

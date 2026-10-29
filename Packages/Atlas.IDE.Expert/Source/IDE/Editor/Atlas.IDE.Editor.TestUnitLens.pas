@@ -83,6 +83,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Core.Diagnostics.MainThread,
   Winapi.Windows,
   System.Math,

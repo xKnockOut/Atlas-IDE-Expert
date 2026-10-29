@@ -39,6 +39,10 @@ type
     procedure PullReportsUpdatedAndUpToDate;
     [Test]
     procedure PullFailuresAndNoWorkingCopy;
+    /// <summary>#1292: ohne Externals über IAtlasVcsSvnExternals.Update(True), sonst Pull; Auswahl am Knopf
+    /// nur unter SVN.</summary>
+    [Test]
+    procedure PullWithAndWithoutExternals;
     [Test]
     procedure TestProjectByNamePattern;
     [Test]
@@ -98,6 +102,15 @@ type
     function ChangeMarker: string;
     function Pull: TAtlasVcsOutcome;
     function Called(const AName: string): Boolean;
+  end;
+
+  /// <summary>SVN mit Externals (#1292): Update protokolliert, ob ohne Externals.</summary>
+  TFakeSvnExternals = class(TFakeVcs, IAtlasVcsSvnExternals)
+  public
+    function StatusXml(out AText: string): TAtlasVcsOutcome;
+    function Update(AIgnoreExternals: Boolean): TAtlasVcsOutcome;
+    function CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
+    function SetExternals(const AOwner, AText: string): TAtlasVcsOutcome;
   end;
 
   /// <summary>Ohne IAtlasVcsUpdate (z. B. eine fremde Umsetzung): Pull schlägt fehl.</summary>
@@ -217,6 +230,33 @@ begin
     FHead.Revision := FPulledRevision;
 end;
 
+{ TFakeSvnExternals }
+
+function TFakeSvnExternals.StatusXml(out AText: string): TAtlasVcsOutcome;
+begin
+  AText := '';
+  Result := TAtlasVcsOutcome.Failed;
+end;
+
+function TFakeSvnExternals.Update(AIgnoreExternals: Boolean): TAtlasVcsOutcome;
+begin
+  Calls := Calls + ['update ' + BoolToStr(AIgnoreExternals, True)];
+  Result := FPullOutcome;
+  if (Result = TAtlasVcsOutcome.Ok) and (FPulledRevision <> '') then
+    FHead.Revision := FPulledRevision;
+end;
+
+function TFakeSvnExternals.CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
+begin
+  ACount := 0;
+  Result := TAtlasVcsOutcome.Failed;
+end;
+
+function TFakeSvnExternals.SetExternals(const AOwner, AText: string): TAtlasVcsOutcome;
+begin
+  Result := TAtlasVcsOutcome.Failed;
+end;
+
 function TFakeVcs.Called(const AName: string): Boolean;
 var
   Call: string;
@@ -310,7 +350,9 @@ var
 begin
   Items := TAtlasWelcomeQuickActions.ParseItems(TAtlasWelcomeQuickActions.DefaultItems);
   Assert.IsTrue(Items = [TAtlasQuickAction.Build, TAtlasQuickAction.Tests, TAtlasQuickAction.Run,
-    TAtlasQuickAction.Pull, TAtlasQuickAction.Folder, TAtlasQuickAction.Console], 'Vorgabe: alle');
+    TAtlasQuickAction.Pull, TAtlasQuickAction.Folder, TAtlasQuickAction.Console, TAtlasQuickAction.Tasks],
+    'Vorgabe: alle');
+  Assert.AreEqual('tests,tasks', TAtlasWelcomeQuickActions.NormalizedItems('Tasks tests'));
   Assert.AreEqual('build,pull,console', TAtlasWelcomeQuickActions.NormalizedItems(' Console; PULL build build x'),
     'feste Reihenfolge, jeder einmal, Unbekanntes fällt weg');
   Assert.AreEqual('', TAtlasWelcomeQuickActions.NormalizedItems(''), 'leer = keiner');
@@ -334,6 +376,13 @@ begin
   Assert.IsTrue(Buttons[0].HasMenu and Buttons[2].HasMenu, 'Konfiguration bzw. Startprofil wählbar');
   Assert.IsFalse(Buttons[1].HasMenu);
   Assert.IsTrue(Buttons[0].Enabled and Buttons[1].Enabled and Buttons[3].Enabled);
+  // „Aufgaben ▾“ (#900): Auswahl der Aufgabe; braucht die IDE nicht, geht also auch, wenn sie beschäftigt ist.
+  Buttons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Tasks], Vcs(True, 'git', 0), False, True);
+  Assert.AreEqual(1, Integer(Length(Buttons)));
+  Assert.IsTrue(Buttons[0].HasMenu and Buttons[0].Enabled);
+  Assert.IsFalse(TAtlasWelcomeQuickActions.UsesIde(TAtlasQuickAction.Tasks));
+  Buttons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Tasks], Vcs(True, 'git', 0), True);
+  Assert.IsFalse(Buttons[0].Enabled, 'auf dem Projekt läuft schon eine Aktion');
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeQuickActions.Buttons([], Vcs(True, 'git', 0), False))));
 end;
 
@@ -436,6 +485,54 @@ begin
   Assert.AreEqual('head', Fake.Calls[3]);
   Fake.FPulledRevision := '';
   Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref) = TAtlasPullOutcome.UpToDate);
+end;
+
+procedure TAtlasWelcomeQuickActionsTests.PullWithAndWithoutExternals;
+var
+  mFake: TFakeSvnExternals;
+  mPlain: TFakeVcs;
+  mRef, mPlainRef: IAtlasVersionControl;
+  mReason: TAtlasVcsOutcome;
+  mButtons: TAtlasQuickActionButtons;
+begin
+  mFake := TFakeSvnExternals.Create;
+  mRef := mFake;
+  mFake.FPulledRevision := '48300';
+  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(mRef, True, mReason) = TAtlasPullOutcome.Updated);
+  Assert.IsTrue(mReason = TAtlasVcsOutcome.Ok);
+  Assert.IsTrue(mFake.Called('update True'));
+  Assert.IsFalse(mFake.Called('pull'));
+  mFake.Calls := nil;
+  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(mRef, False, mReason) = TAtlasPullOutcome.UpToDate);
+  Assert.IsTrue(mFake.Called('pull'), 'mit Externals = Pull des Providers');
+  // Ohne lokale Änderungen weiterhin gesperrt, auch ohne Externals.
+  mFake.Calls := nil;
+  mFake.FChanges := TArray<TAtlasVcsChange>.Create(Change('C:\Repo\Packages\Basis\A.pas',
+    TAtlasVcsChangeKind.Modified));
+  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(mRef, True, mReason) = TAtlasPullOutcome.Blocked);
+  Assert.IsFalse(mFake.Called('update True'));
+  mFake.FChanges := nil;
+  mFake.FPullOutcome := TAtlasVcsOutcome.LoginNeeded;
+  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(mRef, True, mReason) = TAtlasPullOutcome.Failed);
+  Assert.IsTrue(mReason = TAtlasVcsOutcome.LoginNeeded);
+  // Git kennt keine Externals: holt wie immer.
+  mPlain := TFakeVcs.Create;
+  mPlainRef := mPlain;
+  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(mPlainRef, True, mReason) = TAtlasPullOutcome.UpToDate);
+  Assert.IsTrue(mPlain.Called('pull'));
+  // Auswahl am Knopf nur für „Aktualisieren“ (SVN).
+  mButtons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull, TAtlasQuickAction.Folder],
+    Vcs(True, 'svn', 0), False);
+  TAtlasWelcomeQuickActions.AskExternals(mButtons);
+  Assert.IsTrue(mButtons[0].AskExternals);
+  Assert.IsTrue(mButtons[0].HasMenu);
+  Assert.IsFalse(mButtons[1].AskExternals);
+  mButtons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull], Vcs(True, 'git', 0), False);
+  TAtlasWelcomeQuickActions.AskExternals(mButtons);
+  Assert.IsFalse(mButtons[0].AskExternals);
+  mButtons := nil;
+  mFake.Calls := nil;
+  mPlain.Calls := nil;
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.PullFailuresAndNoWorkingCopy;
@@ -698,12 +795,12 @@ begin
   // Alle Knöpfe, Pull (Index 3) wegen lokaler Änderungen gesperrt.
   Buttons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
     TAtlasWelcomeQuickActions.DefaultItems), Vcs(True, 'git', 1), False);
-  Assert.AreEqual(6, Integer(Length(Buttons)));
+  Assert.AreEqual(7, Integer(Length(Buttons)));
   Assert.AreEqual(0, TAtlasWelcomeQuickActions.MoveButton(Buttons, -1, 1), 'rechts: erster Knopf');
-  Assert.AreEqual(5, TAtlasWelcomeQuickActions.MoveButton(Buttons, -1, -1), 'links: letzter Knopf');
+  Assert.AreEqual(6, TAtlasWelcomeQuickActions.MoveButton(Buttons, -1, -1), 'links: letzter Knopf');
   Assert.AreEqual(4, TAtlasWelcomeQuickActions.MoveButton(Buttons, 2, 1), 'überspringt gesperrten Pull');
   Assert.AreEqual(2, TAtlasWelcomeQuickActions.MoveButton(Buttons, 4, -1));
-  Assert.AreEqual(5, TAtlasWelcomeQuickActions.MoveButton(Buttons, 5, 1), 'bleibt am Ende');
+  Assert.AreEqual(6, TAtlasWelcomeQuickActions.MoveButton(Buttons, 6, 1), 'bleibt am Ende');
   Assert.AreEqual(-1, TAtlasWelcomeQuickActions.MoveButton(nil, -1, 1));
 end;
 

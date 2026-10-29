@@ -23,6 +23,11 @@ type
     procedure TypeArgHeadingAndFooter;
     [Test]
     procedure UsesFooterAndCycle;
+    [Test]
+    procedure SignatureFormatLines;
+    /// <summary>Abnahme #530: ein Hinweis H2164 zeigt „1 Hinweis“ in der Zusammenfassung.</summary>
+    [Test]
+    procedure BuildCountsSingularAndPlural;
   end;
 
 implementation
@@ -30,6 +35,8 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Documentation.Layout,
+  Atlas.Core.Signature.Contract,
+  Atlas.Core.Signature.Format,
   Atlas.UI.Strings;
 
 function Placeholders(const AText: string): string;
@@ -77,6 +84,24 @@ begin
     Assert.AreEqual('', TAtlasStrings.Confidence(''), 'Syntax- und Compilermeldungen ohne Konfidenz');
     TAtlasStrings.Language := TAtlasLanguage.English;
     Assert.AreEqual('Confidence: low', TAtlasStrings.Confidence('low'));
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasStringsTests.BuildCountsSingularAndPlural;
+var
+  Saved: TAtlasLanguage;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    Assert.AreEqual('1 Hinweis', TAtlasStrings.BuildCounts(0, 1));
+    Assert.AreEqual('2 Warnungen, 1 Hinweis', TAtlasStrings.BuildCounts(2, 1));
+    Assert.AreEqual('1 Warnung, 3 Hinweise', TAtlasStrings.BuildCounts(1, 3));
+    Assert.AreEqual('', TAtlasStrings.BuildCounts(0, 0));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Assert.AreEqual('2 warnings, 1 hint', TAtlasStrings.BuildCounts(2, 1));
   finally
     TAtlasStrings.Language := Saved;
   end;
@@ -194,6 +219,42 @@ begin
     Assert.AreEqual(Expected.ItemRemarks, Labels.ItemRemarks);
     Assert.AreEqual(Expected.ItemExample, Labels.ItemExample);
     Assert.AreEqual(Expected.ItemSeeAlso, Labels.ItemSeeAlso);
+  finally
+    TAtlasStrings.Language := Saved;
+  end;
+end;
+
+procedure TAtlasStringsTests.SignatureFormatLines;
+var
+  Saved: TAtlasLanguage;
+  Line: TAtlasFormatLine;
+begin
+  Saved := TAtlasStrings.Language;
+  try
+    TAtlasStrings.Language := TAtlasLanguage.German;
+    // Akzeptanz #451: Platzhalter 2 als ganzzahlig.
+    Line := Default(TAtlasFormatLine);
+    Line.Kind := TAtlasFormatLineKind.Placeholder;
+    Line.Placeholder := 1;
+    Line.Count := 2;
+    Line.TypeChar := 'd';
+    Assert.AreEqual('Platzhalter 2 von 2 erwartet ganzzahlig', TAtlasStrings.SignatureFormatLine(Line));
+    Line.Kind := TAtlasFormatLineKind.Problem;
+    Line.Problem := TAtlasFormatProblem.TooManyArguments;
+    Line.Argument := 2;
+    Assert.AreEqual('Mehr Argumente als Platzhalter: Argument 3 wird nicht ausgegeben.',
+      TAtlasStrings.SignatureFormatLine(Line));
+    Line.Problem := TAtlasFormatProblem.TypeConflict;
+    Line.Argument := 1;
+    Line.PlaceholderText := '%d';
+    Line.ProblemKind := 'string';
+    Assert.AreEqual('Platzhalter 2 (%d) erwartet ganzzahlig, Argument 2 ist ein String: EConvertError zur Laufzeit.',
+      TAtlasStrings.SignatureFormatLine(Line));
+    TAtlasStrings.Language := TAtlasLanguage.English;
+    Line.Kind := TAtlasFormatLineKind.Placeholder;
+    Line.TypeChar := 's';
+    Assert.AreEqual('Placeholder 2 of 2 expects string', TAtlasStrings.SignatureFormatLine(Line));
+    Assert.AreEqual('', TAtlasStrings.SignatureFormatLine(Default(TAtlasFormatLine)));
   finally
     TAtlasStrings.Language := Saved;
   end;

@@ -4,7 +4,9 @@
 // Jeder Bezeichner wird über die Namensauflösung eingeordnet: Unit, Klasse, Record,
 // Interface, Aufzählung, Typ, Parameter, Variable, Feld, Property, Ereignis,
 // Aufzählungswert, Funktion, Methode. Modifier: declaration (Name einer Deklaration),
-// readonly (Konstanten), defaultLibrary (RTL, VCL, FMX, Winapi).
+// readonly (Konstanten), defaultLibrary (RTL, VCL, FMX, Winapi), reassigned (#712:
+// lokale Variablen und Wertparameter, die neu zugewiesen werden, siehe
+// Atlas.Common.Semantics.Reassigned).
 // "field" ist ein eigener Typ; die VS-Code-Erweiterung meldet ihn mit Obertyp "property".
 
 interface
@@ -19,14 +21,15 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.NameResolver;
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.Reassigned;
 
 type
   /// <summary>Reihenfolge = Index in der Legende.</summary>
   TSemanticTokenType = (Namespace, Class_, Enum, Interface_, Struct, Type_, Parameter, Variable, Field, Property_,
     Event, EnumMember, Function_, Method);
 
-  TSemanticTokenModifier = (Declaration, Readonly, DefaultLibrary);
+  TSemanticTokenModifier = (Declaration, Readonly, DefaultLibrary, Reassigned);
   TSemanticTokenModifiers = set of TSemanticTokenModifier;
 
   TSemanticToken = record
@@ -65,6 +68,9 @@ type
     class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AFileName: string;
       const ARange: TTextRange; AWithRange: Boolean;
       const ACancellation: IJsonRpcCancellationToken = nil): TArray<TSemanticToken>; static;
+    /// <summary>Modifier reassigned an jedem Token, das eine Stelle der Namen ASymbols ist (#712).</summary>
+    class procedure MarkReassigned(var ATokens: TArray<TSemanticToken>;
+      const ASymbols: TArray<TReassignedSymbol>); static;
     /// <summary>Relative Kodierung des LSP (je Token fünf Zahlen).</summary>
     class function Encode(const ATokens: TArray<TSemanticToken>): TArray<Integer>; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
@@ -82,12 +88,14 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.LibraryUnits,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Lsp.Reassigned;
 
 const
   TypeNames: array[TSemanticTokenType] of string = ('namespace', 'class', 'enum', 'interface', 'struct', 'type',
     'parameter', 'variable', 'field', 'property', 'event', 'enumMember', 'function', 'method');
-  ModifierNames: array[TSemanticTokenModifier] of string = ('declaration', 'readonly', 'defaultLibrary');
+  ModifierNames: array[TSemanticTokenModifier] of string = ('declaration', 'readonly', 'defaultLibrary',
+    'reassigned');
 
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
@@ -353,6 +361,31 @@ begin
   end;
 end;
 
+class procedure TLspSemanticTokens.MarkReassigned(var ATokens: TArray<TSemanticToken>;
+  const ASymbols: TArray<TReassignedSymbol>);
+var
+  Places: TDictionary<string, Boolean>;
+  Symbol: TReassignedSymbol;
+  Occurrence: TReassignedOccurrence;
+  Index: Integer;
+begin
+  if ASymbols = nil then
+    Exit;
+  Places := TDictionary<string, Boolean>.Create;
+  try
+    for Symbol in ASymbols do
+      for Occurrence in Symbol.Occurrences do
+        Places.AddOrSetValue(IntToStr(Occurrence.Range.StartPos.Line) + ':' +
+          IntToStr(Occurrence.Range.StartPos.Character), True);
+    for Index := 0 to High(ATokens) do
+      if Places.ContainsKey(IntToStr(ATokens[Index].Position.Line) + ':' +
+        IntToStr(ATokens[Index].Position.Character)) then
+        Include(ATokens[Index].Modifiers, TSemanticTokenModifier.Reassigned);
+  finally
+    Places.Free;
+  end;
+end;
+
 class function TLspSemanticTokens.Encode(const ATokens: TArray<TSemanticToken>): TArray<Integer>;
 var
   Index, Line, Character, Bits: Integer;
@@ -391,6 +424,7 @@ var
   Shared: ISharedSyntaxTree;
   Resolver: TNameResolver;
   Values: TArray<Integer>;
+  Tokens: TArray<TSemanticToken>;
   Data: TJSONArray;
   Value: Integer;
 begin
@@ -412,7 +446,12 @@ begin
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := Namespaces;
-    Values := Encode(Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Range, AWithRange, ACancellation));
+    Tokens := Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Range, AWithRange, ACancellation);
+    ACancellation.ThrowIfCancellationRequested;
+    // Andere Clients kennen die Ziele des Plugins nicht: Es gilt die Vorgabe (lokale Variablen, Wertparameter).
+    MarkReassigned(Tokens, TReassigned.Filter(TLspReassigned.Analyze(Resolver, Tree, TDocumentUris.ToPath(Uri),
+      Document.Text), TReassigned.DefaultTargets));
+    Values := Encode(Tokens);
   finally
     Resolver.Free;
   end;

@@ -37,6 +37,21 @@ type
     procedure ProbeFindsTypeAndKind;
     [Test]
     procedure SettingsSwitchActionsOff;
+    /// <summary>if-Kette und case (#646): Typ des Ausdrucks über den Index, Einrückung nach dem Formatstil.
+    /// </summary>
+    [Test]
+    procedure ConvertsCaseAndIfChain;
+    /// <summary>Bedingungen umformen (#656): angeboten auf dem if, abschaltbar.</summary>
+    [Test]
+    procedure RewritesConditions;
+    /// <summary>Bedingungsausdruck (#684): Typen über den Index, vor Delphi 13 nur der Rückweg, abschaltbar.
+    /// </summary>
+    [Test]
+    procedure ConvertsConditionalExpression;
+    /// <summary>Lokale Routine herauslösen (#663): Record über die Namensauflösung als const, Vorschau,
+    /// abschaltbar.</summary>
+    [Test]
+    procedure ExtractsNestedRoutine;
     /// <summary>Strg+Leertaste auf dem Wort with bietet „with auflösen“ an.</summary>
     [Test]
     procedure CompletionOffersWithItem;
@@ -70,6 +85,7 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.Extract,
+  Atlas.Common.Editing.NestedRoutines,
   Atlas.Common.Lsp.CompletionRequest,
   Atlas.Common.Lsp.Completion;
 
@@ -251,6 +267,7 @@ begin
   Result.ReadText := ReadFile;
   Result.Settings := TRefactoringSettings.Default;
   Result.InlineVar := True;
+  Result.IfExpression := True;
   Result.Style := TFormatStyle.Default;
 end;
 
@@ -339,13 +356,102 @@ procedure TLspRefactoringsTests.SettingsSwitchActionsOff;
 var
   Off: TRefactoringContext;
 begin
-  Assert.AreEqual('case vervollständigen (4 fehlende Werte)|', Titles(UnitHaupt, 17, 4, Context));
+  Assert.AreEqual('case vervollständigen (4 fehlende Werte)|In if-Kette umwandeln|', Titles(UnitHaupt, 17, 4,
+    Context));
   Assert.AreEqual('with auflösen|', Titles(UnitHaupt, 25, 3, Context));
   Off := Context;
   Off.Settings.CompleteCase := False;
   Off.Settings.ResolveWith := False;
+  Off.Settings.IfCase := False;
   Assert.AreEqual('', Titles(UnitHaupt, 17, 4, Off));
   Assert.AreEqual('', Titles(UnitHaupt, 25, 3, Off));
+end;
+
+procedure TLspRefactoringsTests.ConvertsCaseAndIfChain;
+var
+  Chain: string;
+begin
+  Chain := StringReplace(UnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10,
+    '  if A = alNone then'#10'    Exit'#10'  else if A in [alTop, alBottom] then'#10'    Exit;'#10, []);
+  Assert.AreEqual(StringReplace(UnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10,
+    '  case A of'#10'    alNone: Exit;'#10'    alTop, alBottom: Exit;'#10, []), Applied(Chain, 'In case umwandeln', 17,
+    4));
+  Assert.AreEqual('-', Applied(Chain, 'In if-Kette umwandeln', 17, 4));
+end;
+
+procedure TLspRefactoringsTests.RewritesConditions;
+var
+  Chain: string;
+  Off: TRefactoringContext;
+begin
+  Chain := StringReplace(UnitHaupt, '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10,
+    '  if A = alNone then'#10'    Exit'#10'  else if A in [alTop, alBottom] then'#10'    Exit;'#10, []);
+  Assert.AreEqual(StringReplace(Chain, '  if A = alNone then'#10'    Exit'#10'  else if A in [alTop, alBottom] then'#10 +
+    '    Exit;'#10, '  if A <> alNone then'#10'  begin'#10'    if A in [alTop, alBottom] then'#10'      Exit;'#10 +
+    '  end'#10'  else'#10'    Exit;'#10, []), Applied(Chain, 'Bedingung umkehren', 17, 4));
+  Assert.IsTrue(Pos('Bedingung umkehren|', Titles(Chain, 17, 4, Context)) > 0);
+  Off := Context;
+  Off.Settings.Conditions := False;
+  Assert.AreEqual(0, Pos('Bedingung umkehren', Titles(Chain, 17, 4, Off)));
+end;
+
+procedure TLspRefactoringsTests.ConvertsConditionalExpression;
+const
+  CaseText = '  case A of'#10'    alNone: ;'#10'    alTop: ;'#10'    alBottom: ;'#10'  end;'#10;
+var
+  Statement, Expression: string;
+  Old: TRefactoringContext;
+begin
+  Statement := StringReplace(UnitHaupt, CaseText, '  if A = alNone then'#10'    Zeige(alTop)'#10'  else'#10 +
+    '    Zeige(alLeft);'#10, []);
+  Expression := StringReplace(UnitHaupt, CaseText, '  Zeige(if A = alNone then alTop else alLeft);'#10, []);
+  // Die Aufzählungswerte haben über die Namensauflösung denselben Typ.
+  Assert.AreEqual(Expression, Applied(Statement, 'In bedingten Ausdruck umwandeln', 17, 3));
+  Assert.AreEqual(Statement, Applied(Expression, 'In if-Anweisung umwandeln', 17, 9));
+  // Delphi 12: nur der Rückweg.
+  Old := Context;
+  Old.IfExpression := False;
+  Assert.AreEqual(0, Pos('In bedingten Ausdruck umwandeln', Titles(Statement, 17, 3, Old)));
+  Assert.IsTrue(Pos('In if-Anweisung umwandeln|', Titles(Expression, 17, 9, Old)) > 0);
+  Old := Context;
+  Old.Settings.ConditionalExpression := False;
+  Assert.AreEqual(0, Pos('In bedingten Ausdruck umwandeln', Titles(Statement, 17, 3, Old)));
+  Assert.AreEqual(0, Pos('In if-Anweisung umwandeln', Titles(Expression, 17, 9, Old)));
+end;
+
+procedure TLspRefactoringsTests.ExtractsNestedRoutine;
+const
+  Text =
+    'unit Haupt;'#10 +                            // 0
+    'interface'#10 +                              // 1
+    'type'#10 +                                   // 2
+    '  TPunkt = record X: Integer; end;'#10 +     // 3
+    'implementation'#10 +                         // 4
+    'procedure Zeige;'#10 +                       // 5
+    'var'#10 +                                    // 6
+    '  P: TPunkt;'#10 +                           // 7
+    '  N: Integer;'#10 +                          // 8
+    #10 +                                         // 9
+    '  procedure Lies;'#10 +                      // 10
+    '  begin'#10 +                                // 11
+    '    N := P.X;'#10 +                          // 12
+    '  end;'#10 +                                 // 13
+    #10 +                                         // 14
+    'begin'#10 +                                  // 15
+    '  Lies;'#10 +                                // 16
+    'end;'#10 +                                   // 17
+    'end.'#10;
+var
+  Done: string;
+  Off: TRefactoringContext;
+begin
+  Done := Applied(Text, TNestedRoutines.ToUnitRoutineTitle, 10, 4);
+  Assert.IsTrue(Pos('procedure Lies(var N: Integer; const P: TPunkt);'#10'begin'#10'  N := P.X;', Done) > 0, Done);
+  Assert.IsTrue(Pos('  Lies(N, P);'#10, Done) > 0, Done);
+  Assert.IsTrue(Pos(TNestedRoutines.ToUnitRoutineTitle + '|', Titles(Text, 10, 4, Context)) > 0);
+  Off := Context;
+  Off.Settings.NestedRoutine := False;
+  Assert.AreEqual(0, Pos(TNestedRoutines.ToUnitRoutineTitle, Titles(Text, 10, 4, Off)));
 end;
 
 procedure TLspRefactoringsTests.CompletionOffersWithItem;

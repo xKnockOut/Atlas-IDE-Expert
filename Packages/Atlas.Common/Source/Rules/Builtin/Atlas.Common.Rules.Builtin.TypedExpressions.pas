@@ -66,7 +66,11 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Ergebnis von "X AOperator AValue" für X im Bereich ALow..AHigh: 1 immer wahr, 0 immer falsch,
     /// -1 abhängig von X. AOperator ist = &lt;&gt; &lt; &lt;= &gt; &gt;=.</summary>
-    class function Outcome(const AOperator: string; AValue, ALow, AHigh: Int64): Integer; static;
+    class function Outcome(const AOperator: string; AValue, ALow, AHigh: Int64): Integer; overload; static;
+    /// <summary>Wie oben; AHighKnown False: Die Obergrenze liegt über High(Int64) (UInt64, #1324), kein Wert
+    /// erreicht sie.</summary>
+    class function Outcome(const AOperator: string; AValue, ALow, AHigh: Int64; AHighKnown: Boolean): Integer;
+      overload; static;
   end;
 
   TConstantInitializerMismatchRule = class(TInterfacedObject, IRule)
@@ -110,139 +114,14 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Contract,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Rules.TypedScope,
+  Atlas.Common.Editing.EnumTables,
   Atlas.Text.Lines;
-
-type
-  /// <summary>Gemeinsamer Rahmen der Regeln: Namensauflösung über den gepinnten Baum, Konstantenwerte und die
-  /// Prüfung, ob eine Deklaration immer mit einer Stelle übersetzt wird.</summary>
-  TTypedScope = class
-  private
-    FContext: TRuleContext;
-    FFileName: string;
-    FResolver: TNameResolver;
-    FValues: TConstantValues;
-    FPaths: TArray<string>;
-    FTokens: TArray<TPascalToken>;
-    function TokenAtPosition(const APosition: TTextPosition): Integer;
-  public
-    constructor Create(const AContext: TRuleContext);
-    destructor Destroy; override;
-    /// <summary>Quelltext von ANode, Leerraum zu einem Leerzeichen zusammengefasst.</summary>
-    function Text(ANode: TSyntaxNode): string;
-    /// <summary>Wird die Deklaration ASymbol immer übersetzt, wenn ANode übersetzt wird?</summary>
-    function DeclarationSure(const ASymbol: TResolvedSymbol; ANode: TSyntaxNode): Boolean;
-    /// <summary>Deklaration und Typ von ANode wie TNameResolver.NodeType, aber nur bei sicher bekanntem Typ und
-    /// einer Deklaration, die immer mit ANode übersetzt wird.</summary>
-    function SureType(ANode: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): Boolean;
-    property Resolver: TNameResolver read FResolver;
-    property Values: TConstantValues read FValues;
-    property FileName: string read FFileName;
-  end;
-
-constructor TTypedScope.Create(const AContext: TRuleContext);
-begin
-  inherited Create;
-  FContext := AContext;
-  FFileName := AContext.FileName;
-  if FFileName = '' then
-    FFileName := AContext.RelativePath;
-  if FFileName = '' then
-    FFileName := AContext.UnitName + '.pas';
-  FTokens := AContext.Tree.Tokens;
-  FPaths := TConditionalBranches.Paths(FTokens);
-  FResolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
-  FResolver.Namespaces := AContext.Namespaces;
-  FResolver.PinTree(AContext.Tree, FFileName);
-  FValues := TConstantValues.Create(AContext.Tree, FFileName, AContext.Index, FResolver);
-end;
-
-destructor TTypedScope.Destroy;
-begin
-  FValues.Free;
-  if FResolver <> nil then
-    FResolver.UnpinTree;
-  FResolver.Free;
-  inherited;
-end;
-
-function TTypedScope.Text(ANode: TSyntaxNode): string;
-var
-  Index: Integer;
-  Space: Boolean;
-  Raw: string;
-begin
-  Raw := Copy(FContext.Text, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-  Result := '';
-  Space := False;
-  for Index := 1 to Length(Raw) do
-    if CharInSet(Raw[Index], [' ', #9, #10, #13]) then
-      Space := True
-    else
-    begin
-      if Space and (Result <> '') then
-        Result := Result + ' ';
-      Space := False;
-      Result := Result + Raw[Index];
-    end;
-end;
-
-function TTypedScope.TokenAtPosition(const APosition: TTextPosition): Integer;
-var
-  Low, High, Middle: Integer;
-begin
-  Low := 0;
-  High := Length(FTokens);
-  while Low < High do
-  begin
-    Middle := (Low + High) div 2;
-    if (FTokens[Middle].StartPos.Line < APosition.Line) or ((FTokens[Middle].StartPos.Line = APosition.Line) and
-      (FTokens[Middle].StartPos.Character < APosition.Character)) then
-      Low := Middle + 1
-    else
-      High := Middle;
-  end;
-  Result := Low;
-end;
-
-function TTypedScope.DeclarationSure(const ASymbol: TResolvedSymbol; ANode: TSyntaxNode): Boolean;
-var
-  Use: Integer;
-begin
-  if ASymbol.Condition <> '' then
-    Exit(False);
-  if (ASymbol.Kind <> TResolvedKind.Local) and (ASymbol.FileName <> '') and not SameText(ASymbol.FileName,
-    FFileName) then
-    Exit(True);
-  // Deklaration in dieser Datei: Der Baum enthält beide Zweige von {$IFDEF} … {$ELSE}.
-  if FPaths = nil then
-    Exit(True);
-  Use := TConstantValues.TokenFrom(FTokens, ANode.StartOffset);
-  Result := TConditionalBranches.Implies(TConditionalBranches.PathAt(FPaths, Use),
-    TConditionalBranches.PathAt(FPaths, TokenAtPosition(ASymbol.Range.StartPos)));
-end;
-
-function TTypedScope.SureType(ANode: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): Boolean;
-var
-  TypeFound: Boolean;
-begin
-  Result := (ANode <> nil) and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
-    TSyntaxKind.IndexAccess]) and FResolver.NodeType(FContext.Tree, FFileName, ANode, ASymbol, AType, TypeFound) and
-    TypeFound and (ASymbol.Kind <> TResolvedKind.UnitName) and DeclarationSure(ASymbol, ANode);
-end;
-
-/// <summary>Ausdruck ohne umschließende Klammern.</summary>
-function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
-    Result := Result[0];
-end;
 
 { TComparisonAlwaysConstantRule }
 
@@ -254,27 +133,38 @@ end;
 
 class function TComparisonAlwaysConstantRule.Outcome(const AOperator: string; AValue, ALow, AHigh: Int64): Integer;
 begin
+  Result := Outcome(AOperator, AValue, ALow, AHigh, True);
+end;
+
+class function TComparisonAlwaysConstantRule.Outcome(const AOperator: string; AValue, ALow, AHigh: Int64;
+  AHighKnown: Boolean): Integer;
+var
+  mAbove, mAtHigh: Boolean;
+begin
+  // Ohne bekannte Obergrenze liegt kein Int64-Wert auf oder über ihr.
+  mAbove := AHighKnown and (AValue > AHigh);
+  mAtHigh := AHighKnown and (AValue >= AHigh);
   Result := -1;
   if AOperator = '=' then
   begin
-    if (AValue < ALow) or (AValue > AHigh) then
+    if (AValue < ALow) or mAbove then
       Result := 0;
   end
   else if AOperator = '<>' then
   begin
-    if (AValue < ALow) or (AValue > AHigh) then
+    if (AValue < ALow) or mAbove then
       Result := 1;
   end
   else if AOperator = '<' then
   begin
-    if AValue > AHigh then
+    if mAbove then
       Result := 1
     else if AValue <= ALow then
       Result := 0;
   end
   else if AOperator = '<=' then
   begin
-    if AValue >= AHigh then
+    if mAtHigh then
       Result := 1
     else if AValue < ALow then
       Result := 0;
@@ -283,14 +173,14 @@ begin
   begin
     if AValue < ALow then
       Result := 1
-    else if AValue >= AHigh then
+    else if mAtHigh then
       Result := 0;
   end
   else if AOperator = '>=' then
   begin
     if AValue <= ALow then
       Result := 1
-    else if AValue > AHigh then
+    else if mAbove then
       Result := 0;
   end;
 end;
@@ -401,7 +291,9 @@ var
     end;
     if not IntegerOperand(Operand, TypeName, LowValue, HighValue) then
       Exit;
-    Verdict := Outcome(Operation, Value, LowValue, HighValue);
+    // UInt64, NativeUInt und LongWord (64 Bit je Plattform) reichen über High(Int64) hinaus (#1324).
+    Verdict := Outcome(Operation, Value, LowValue, HighValue, not MatchText(TypeName, ['UInt64', 'NativeUInt',
+      'LongWord']));
     if Verdict < 0 then
       Exit;
     Note := LoopNote(ANode, Verdict = 1);
@@ -767,6 +659,27 @@ var
       Result := Placeholder(TypeInfo.Name);
   end;
 
+  /// <summary>Wie neue Einträge einer Tabelle mit Elementtyp ANode aussehen (#667).</summary>
+  function ElementValues(ANode: TSyntaxNode; const AIndexType: string): TEnumTableValues;
+  var
+    Filler, Name: string;
+    Element: TEnumTableElement;
+  begin
+    Name := '';
+    if ANode.Kind = TSyntaxKind.TypeReference then
+      Name := ANode.Name;
+    Element := TEnumTables.ElementOf(Name);
+    if Element = TEnumTableElement.Other then
+    begin
+      Filler := ElementPlaceholder(ANode);
+      if Filler = 'nil' then
+        Element := TEnumTableElement.Pointer_
+      else if StartsStr('Low(', Filler) then
+        Element := TEnumTableElement.Enum;
+    end;
+    Result := TEnumTableValues.Create(Element, Name, AIndexType);
+  end;
+
   /// <summary>Text für die fehlenden Einträge ab AGiven: ", ''{stArchiviert}" je Eintrag.</summary>
   function MissingText(const AInfo: TIndexInfo; AGiven: Integer; const APlaceholder: string): string;
   var
@@ -864,6 +777,8 @@ var
     Fixes: TArray<TRuleFix>;
     Names: TArray<string>;
     Last: TSyntaxNode;
+    Repair: TEnumTableRepair;
+    Repaired: Boolean;
   begin
     Dimensions := AArray.ChildCount - 1;
     // () setzt alle Elemente auf null, wie bei Records (#1138).
@@ -882,9 +797,16 @@ var
     begin
       Message := Format('%s hat %s, die Konstante %s', [Info.Text, Counted(Info.Count, 'Wert', 'Werte'),
         Counted(AValue.ChildCount, 'Eintrag', 'Einträge')]);
+      // Über einer Aufzählung nennt die Zuordnung die wirklich fehlenden Werte, nicht die letzten (#667).
+      Repaired := (Length(Info.Names) = Info.Count) and (ADimension = Dimensions - 1) and
+        TEnumTables.Repair(AContext.Text, AContext.Tree, AValue, Info.Names,
+        ElementValues(AArray[AArray.ChildCount - 1], Info.Text), Repair);
       Names := nil;
-      for Index := AValue.ChildCount to Integer(Length(Info.Names)) - 1 do
-        Names := Names + [Info.Names[Index]];
+      if Repaired and not Repair.Uncertain then
+        Names := Repair.Added
+      else
+        for Index := AValue.ChildCount to Integer(Length(Info.Names)) - 1 do
+          Names := Names + [Info.Names[Index]];
       if Length(Names) = 1 then
         Message := Message + '; ' + Names[0] + ' fehlt'
       else if Length(Names) > 3 then
@@ -892,7 +814,10 @@ var
       else if Length(Names) > 1 then
         Message := Message + '; ' + string.Join(', ', Names) + ' fehlen';
       Fixes := nil;
-      if (Info.Count > AValue.ChildCount) and (AValue.ChildCount > 0) and (ADimension = Dimensions - 1) and
+      // Über einer Aufzählung: Einträge an ihrer Stelle ergänzen bzw. entfernen (#667).
+      if Repaired then
+        Fixes := [TRuleFix.Create(Repair.Title, Repair.Edits)]
+      else if (Info.Count > AValue.ChildCount) and (AValue.ChildCount > 0) and (ADimension = Dimensions - 1) and
         (Info.Count - AValue.ChildCount <= 64) then
       begin
         Filler := ElementPlaceholder(AArray[AArray.ChildCount - 1]);

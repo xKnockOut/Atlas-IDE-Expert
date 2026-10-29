@@ -80,6 +80,7 @@ const
 implementation
 
 uses
+  System.Generics.Collections,
   System.DateUtils;
 
 /// <summary>ISO 8601 in UTC; '' für 0.</summary>

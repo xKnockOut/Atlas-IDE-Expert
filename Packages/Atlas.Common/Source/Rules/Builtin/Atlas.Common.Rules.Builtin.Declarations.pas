@@ -70,9 +70,13 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Registry,
-  Atlas.Common.Editing.ClassCompletion;
+  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Common.Semantics.TypeIdentity;
 
 type
+  /// <summary>Vergleicht den Typ ADeclType der Deklaration mit dem Typ ABodyType des Rumpfs (#1324).</summary>
+  TSignatureTypeMatch = reference to function(const ADeclType, ABodyType: string): TTypeMatch;
+
   TDeclaredNotImplementedRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
@@ -98,8 +102,13 @@ type
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Abweichungen des Rumpfs ABody von der Deklaration ADeclaration, z. B. "Betrag ohne const",
-    /// "Datum TDateTime statt TDate"; leer, wenn die Köpfe gleich sind.</summary>
-    class function Differences(const ADeclaration, ABody: TSignatureShape): TArray<string>; static;
+    /// "Datum TDateTime statt TDate"; leer, wenn die Köpfe gleich sind. Typen vergleicht TTypeIdentity.Same.
+    /// </summary>
+    class function Differences(const ADeclaration, ABody: TSignatureShape): TArray<string>; overload; static;
+    /// <summary>Wie oben; Typen vergleicht AMatch (#1324). Nur sicher verschiedene Typen zählen als Abweichung.
+    /// </summary>
+    class function Differences(const ADeclaration, ABody: TSignatureShape;
+      const AMatch: TSignatureTypeMatch): TArray<string>; overload; static;
   end;
 
   TFieldAfterMethodRule = class(TInterfacedObject, IRule)
@@ -160,6 +169,7 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.ConditionalBranches,
+  Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
@@ -489,7 +499,7 @@ begin
   Index := AContext.Index;
   if Index = nil then
     Index := TSymbolIndex.Create;
-  Resolver := TNameResolver.Create(Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(Index, AContext.EnsureUnit, AContext.TreeUnits);
   Names := TList<string>.Create;
   try
     Resolver.Namespaces := AContext.Namespaces;
@@ -569,6 +579,105 @@ begin
   end;
 end;
 
+type
+  /// <summary>Typvergleich für signature-mismatch (#1324): löst die Typen eines Paars dort auf, wo sie stehen, die
+  /// der Deklaration im Typ, die des Rumpfs im implementation-Teil. Ohne Projektindex zählt der Text.</summary>
+  TSignatureTypes = class
+  private
+    FContext: TRuleContext;
+    FResolver: TNameResolver;
+    FPinned: Boolean;
+    function Resolver: TNameResolver;
+    function OffsetOf(const APosition: TTextPosition): Integer;
+    function ChainAt(AOffset: Integer): TTypeChainResolver;
+  public
+    constructor Create(const AContext: TRuleContext);
+    destructor Destroy; override;
+    /// <summary>Vergleich für die Typen von APair.</summary>
+    function Matcher(const APair: TSignaturePair): TSignatureTypeMatch;
+  end;
+
+/// <summary>Vergleich ohne Namensauflösung: verschiedene Namen sind verschiedene Typen.</summary>
+function TextTypeMatch(const ADeclType, ABodyType: string): TTypeMatch;
+begin
+  if TTypeIdentity.Same(ADeclType, ABodyType) then
+    Result := TTypeMatch.Same
+  else
+    Result := TTypeMatch.Different;
+end;
+
+{ TSignatureTypes }
+
+constructor TSignatureTypes.Create(const AContext: TRuleContext);
+begin
+  inherited Create;
+  FContext := AContext;
+end;
+
+destructor TSignatureTypes.Destroy;
+begin
+  if FPinned then
+    FResolver.UnpinTree;
+  FResolver.Free;
+  inherited Destroy;
+end;
+
+function TSignatureTypes.Resolver: TNameResolver;
+begin
+  // Erst beim ersten abweichenden Typ: Die meisten Paare unterscheiden sich nicht im Typtext.
+  if FResolver = nil then
+  begin
+    FResolver := TNameResolver.Create(FContext.Index, FContext.EnsureUnit, FContext.TreeUnits);
+    FResolver.Namespaces := FContext.Namespaces;
+    FResolver.PinTree(FContext.Tree, FContext.RelativePath);
+    FPinned := True;
+  end;
+  Result := FResolver;
+end;
+
+function TSignatureTypes.OffsetOf(const APosition: TTextPosition): Integer;
+var
+  mToken: TPascalToken;
+begin
+  Result := -1;
+  for mToken in FContext.Tree.Tokens do
+    if mToken.StartPos = APosition then
+      Exit(mToken.Offset);
+end;
+
+function TSignatureTypes.ChainAt(AOffset: Integer): TTypeChainResolver;
+var
+  mSelf: TSignatureTypes;
+begin
+  mSelf := Self;
+  Result :=
+    function(const ANames: TArray<string>; out AType: TResolvedSymbol): Boolean
+    begin
+      AType := mSelf.Resolver.ResolveChain(mSelf.FContext.Tree, mSelf.FContext.RelativePath, ANames, AOffset);
+      Result := AType.Found;
+    end;
+end;
+
+function TSignatureTypes.Matcher(const APair: TSignaturePair): TSignatureTypeMatch;
+var
+  mSelf: TSignatureTypes;
+  mDeclaration, mBody: TTypeChainResolver;
+begin
+  if FContext.Index = nil then
+  begin
+    Result := TextTypeMatch;
+    Exit;
+  end;
+  mSelf := Self;
+  mDeclaration := ChainAt(OffsetOf(APair.Declaration.Symbol.SelectionRange.StartPos));
+  mBody := ChainAt(OffsetOf(APair.Body.Symbol.SelectionRange.StartPos));
+  Result :=
+    function(const ADeclType, ABodyType: string): TTypeMatch
+    begin
+      Result := TTypeIdentity.Compare(ADeclType, ABodyType, mDeclaration, mBody, mSelf.Resolver);
+    end;
+end;
+
 { TSignatureMismatchRule }
 
 function TSignatureMismatchRule.Descriptor: TRuleDescriptor;
@@ -578,10 +687,23 @@ begin
 end;
 
 class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSignatureShape): TArray<string>;
+var
+  mMatch: TSignatureTypeMatch;
+begin
+  // Typisierte Variable: Delphi wählt die Überladung sonst nicht sicher.
+  mMatch := TextTypeMatch;
+  Result := Differences(ADeclaration, ABody, mMatch);
+end;
 
-  function Normalized(const AText: string): string;
+class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSignatureShape;
+  const AMatch: TSignatureTypeMatch): TArray<string>;
+
+  function Differs(const ADeclType, ABodyType: string): Boolean;
   begin
-    Result := LowerCase(StringReplace(AText, ' ', '', [rfReplaceAll]));
+    if (ADeclType = '') or (ABodyType = '') then
+      Result := (ADeclType <> '') or (ABodyType <> '')
+    else
+      Result := AMatch(ADeclType, ABodyType) = TTypeMatch.Different;
   end;
 
   function ConventionOf(const AShape: TSignatureShape): string;
@@ -616,7 +738,7 @@ begin
         else
           Result := Result + [Format('%s %s statt %s', [Body.Name, Body.Modifier, Decl.Modifier])];
       end;
-      if Normalized(Decl.TypeName) <> Normalized(Body.TypeName) then
+      if Differs(Decl.TypeName, Body.TypeName) then
       begin
         if Body.TypeName = '' then
           Result := Result + [Format('%s ohne Typ statt %s', [Body.Name, Decl.TypeName])]
@@ -626,7 +748,7 @@ begin
           Result := Result + [Format('%s %s statt %s', [Body.Name, Body.TypeName, Decl.TypeName])];
       end;
     end;
-  if (ADeclaration.Kind = ABody.Kind) and (Normalized(ADeclaration.ResultType) <> Normalized(ABody.ResultType)) then
+  if (ADeclaration.Kind = ABody.Kind) and Differs(ADeclaration.ResultType, ABody.ResultType) then
     Result := Result + [Format('Ergebnis %s statt %s', [ABody.ResultType, ADeclaration.ResultType])];
   // Der Rumpf darf die Konvention weglassen; nur eine abweichende Angabe ist ein Fehler.
   if (ABody.Convention <> '') and (ConventionOf(ABody) <> ConventionOf(ADeclaration)) then
@@ -642,25 +764,33 @@ var
   Fixes: TArray<TRuleFix>;
   Index: Integer;
   Level: TRuleConfidence;
+  mTypes: TSignatureTypes;
 begin
   if AContext.Tree = nil then
     Exit;
   Lines := ConditionalLines(AContext);
   Level := Confidence(AContext);
-  for Pair in TClassCompletion.Pairs(AContext.Tree, AContext.Text) do
-  begin
-    if IsConditional(Lines, Pair.Declaration) or IsConditional(Lines, Pair.Body) then
-      Continue;
-    Changes := Differences(Pair.DeclarationShape, Pair.BodyShape);
-    if Changes = nil then
-      Continue;
-    Fixes := nil;
-    // refactoring.syncSignatures aus (#100): die Meldung bleibt, die Angleich-Aktionen entfallen.
-    if not AContext.NoSignatureSync and TClassCompletion.PairFixes(AContext.Tree, AContext.Text, Pair, Actions) then
-      for Index := 0 to High(Actions) do
-        Fixes := Fixes + [Alternative(TRuleFix.Create(Actions[Index].Title, Actions[Index].Edits), Index > 0)];
-    AReport.Add(Pair.Body.Symbol.SelectionRange, Format('%s weicht von der Deklaration ab: %s (wie E2037).',
-      [Pair.Body.Symbol.Name, string.Join(', ', Changes)]), Level, Fixes);
+  mTypes := TSignatureTypes.Create(AContext);
+  try
+    for Pair in TClassCompletion.Pairs(AContext.Tree, AContext.Text) do
+    begin
+      // Bedingte Übersetzung im Kopf ({$IFDEF} in der Parameterliste): Welche Parameter gelten, ist offen (#1324).
+      if IsConditional(Lines, Pair.Declaration) or IsConditional(Lines, Pair.Body) or
+        Pair.DeclarationShape.Conditional or Pair.BodyShape.Conditional then
+        Continue;
+      Changes := Differences(Pair.DeclarationShape, Pair.BodyShape, mTypes.Matcher(Pair));
+      if Changes = nil then
+        Continue;
+      Fixes := nil;
+      // refactoring.syncSignatures aus (#100): die Meldung bleibt, die Angleich-Aktionen entfallen.
+      if not AContext.NoSignatureSync and TClassCompletion.PairFixes(AContext.Tree, AContext.Text, Pair, Actions) then
+        for Index := 0 to High(Actions) do
+          Fixes := Fixes + [Alternative(TRuleFix.Create(Actions[Index].Title, Actions[Index].Edits), Index > 0)];
+      AReport.Add(Pair.Body.Symbol.SelectionRange, Format('%s weicht von der Deklaration ab: %s (wie E2037).',
+        [Pair.Body.Symbol.Name, string.Join(', ', Changes)]), Level, Fixes);
+    end;
+  finally
+    mTypes.Free;
   end;
 end;
 
@@ -905,7 +1035,7 @@ var
     Modifiers: array[TParameterModifier] of string = ('', 'const ', 'var ', 'out ', 'constref ');
   var
     Index, Inner, Count: Integer;
-    Child, Parameter: TSyntaxNode;
+    Child, Parameter, TypeNode: TSyntaxNode;
     TypeText: string;
   begin
     Result := Default(TOverloadEntry);
@@ -917,7 +1047,9 @@ var
       Child := AHeader[Index];
       case Child.Kind of
         TSyntaxKind.Directive:
-          if SameText(Child.Name, 'overload') then
+          // override braucht kein overload: Delphi übernimmt es von der überschriebenen Methode (mORMot2,
+          // Graphics32, #1325).
+          if SameText(Child.Name, 'overload') or SameText(Child.Name, 'override') then
             Result.HasOverload := True;
         TSyntaxKind.GenericParams:
           Result.Parameters := Result.Parameters + '<' + IntToStr(Child.ChildCount) + '>';
@@ -927,9 +1059,11 @@ var
             Parameter := Child[Inner];
             if Parameter.Kind <> TSyntaxKind.Parameter then
               Continue;
+            // Auch offene Arrays: array of PTypeInfo ist nicht array of TValue (#1325).
+            TypeNode := TRoutineSignatures.ParameterType(Parameter);
             TypeText := '?';
-            if (Parameter.ChildCount > 0) and (Parameter[0].Kind = TSyntaxKind.TypeReference) then
-              TypeText := NodeKey(Parameter[0]);
+            if TypeNode <> nil then
+              TypeText := NodeKey(TypeNode);
             // A, B: Integer zählt als zwei Parameter.
             for Count := 1 to Length(Parameter.Name.Split([','])) do
               Result.Parameters := Result.Parameters + Modifiers[Parameter.Modifier] + TypeText + ';';
@@ -1035,8 +1169,33 @@ var
       end;
   end;
 
-  // Deklarationen eines Bereichs nach Namen; ein Rumpf zu einer früheren Deklaration (interface, forward)
-  // mit gleichen Parametern zählt nicht.
+  // Ist AEntry eine Deklaration ohne eigene Implementierung (interface-Teil, forward)?
+  function Open(const AEntry: TOverloadEntry): Boolean;
+  begin
+    Result := not TRoutineSignatures.HasImplementation(AEntry.Header.Parent);
+  end;
+
+  // Gehört die Implementierung AEntry zu einer früheren Deklaration ohne Implementierung? Mit gleichen Parametern
+  // oder in Kurzform (function Foo;) zur einzigen gleichen Namens (#1325).
+  function ImplementsEarlier(const AEntries: TArray<TOverloadEntry>; const AEntry: TOverloadEntry): Boolean;
+  var
+    mOther: TOverloadEntry;
+    mCount: Integer;
+  begin
+    mCount := 0;
+    for mOther in AEntries do
+      if SameText(mOther.Name, AEntry.Name) and Open(mOther) then
+      begin
+        if mOther.Parameters = AEntry.Parameters then
+          Exit(True);
+        Inc(mCount);
+      end;
+    Result := (mCount = 1) and TRoutineSignatures.IsShortForm(AEntry.Header);
+  end;
+
+  // Deklarationen eines Bereichs nach Namen; eine Implementierung (begin, asm oder external) zu einer früheren
+  // Deklaration (interface, forward) zählt nicht. class constructor und class destructor sind keine Überladungen
+  // der Instanzmethoden (#1325).
   procedure CheckScope(const AHeaders: TArray<TSyntaxNode>; ABodiesFollow: Boolean);
   var
     Entries, Group: TArray<TOverloadEntry>;
@@ -1048,16 +1207,12 @@ var
     Entries := nil;
     for Index := 0 to High(AHeaders) do
     begin
-      if (Pos('.', AHeaders[Index].Name) > 0) or (AHeaders[Index].Name = '') or IsOperator(AHeaders[Index]) then
+      if (Pos('.', AHeaders[Index].Name) > 0) or (AHeaders[Index].Name = '') or IsOperator(AHeaders[Index]) or
+        TRoutineSignatures.IsClassConstructor(Tokens, AHeaders[Index]) then
         Continue;
       Entry := EntryOf(AHeaders[Index]);
-      IsBody := False;
-      if ABodiesFollow and (AHeaders[Index].Parent <> nil) and (AHeaders[Index].Parent.Kind = TSyntaxKind.RoutineDecl) and
-        (AHeaders[Index].Parent.FindChild(TSyntaxKind.Block) <> nil) then
-        for Other in Entries do
-          if SameText(Other.Name, Entry.Name) and (Other.Parameters = Entry.Parameters) and
-            ((Other.Header.Parent = nil) or (Other.Header.Parent.FindChild(TSyntaxKind.Block) = nil)) then
-            IsBody := True;
+      IsBody := ABodiesFollow and (AHeaders[Index].Parent <> nil) and
+        TRoutineSignatures.HasImplementation(AHeaders[Index].Parent) and ImplementsEarlier(Entries, Entry);
       if not IsBody then
         Entries := Entries + [Entry];
     end;

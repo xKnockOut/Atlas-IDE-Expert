@@ -81,6 +81,7 @@ uses
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Semantics.ControlFlow,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Semantics.ResolvedSignatures,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Derived;
 
@@ -844,9 +845,6 @@ const
   /// <summary>Direktiven, bei denen die Signatur von außen vorgegeben ist (Vorfahr, Nachfahren, Aufrufer).</summary>
   FixedSignatureDirectives: array[0..10] of string = ('virtual', 'dynamic', 'abstract', 'message', 'stdcall',
     'cdecl', 'safecall', 'pascal', 'register', 'external', 'export');
-  /// <summary>Typumwandlungen, die das Argument nur lesen.</summary>
-  ValueCasts: array[0..9] of string = ('PChar', 'PWideChar', 'PAnsiChar', 'string', 'AnsiString', 'UTF8String',
-    'RawByteString', 'WideString', 'UnicodeString', 'Pointer');
 
 type
   TSyntaxKinds = set of TSyntaxKind;
@@ -1015,36 +1013,6 @@ begin
       if (AHeader[Index].Kind = TSyntaxKind.Directive) and MatchText(AHeader[Index].Name, ANames) then
         Exit(True);
   Result := False;
-end;
-
-/// <summary>Modifizierer der Parameter einer Signatur je Name ('' bei Wertparametern); False ohne Klammern.
-/// </summary>
-function SignatureModes(const ASignature: string; out AModes: TArray<string>): Boolean;
-var
-  Open, Close, Depth, Index: Integer;
-  Parameter: TSignatureParameter;
-begin
-  AModes := nil;
-  Open := Pos('(', ASignature);
-  Close := 0;
-  Depth := 0;
-  if Open > 0 then
-    for Index := Open to Length(ASignature) do
-      if ASignature[Index] = '(' then
-        Inc(Depth)
-      else if ASignature[Index] = ')' then
-      begin
-        Dec(Depth);
-        if Depth = 0 then
-        begin
-          Close := Index;
-          Break;
-        end;
-      end;
-  Result := Close > 0;
-  if Result then
-    for Parameter in TChangeSignature.ParseParameters(Copy(ASignature, Open + 1, Close - Open - 1)) do
-      AModes := AModes + [LowerCase(Trim(Parameter.Modifier))];
 end;
 
 function RecordSize(const AText: string; ARecord: TSyntaxNode; const ARecords: TDictionary<string, TSyntaxNode>;
@@ -1223,42 +1191,13 @@ var
 
   /// <summary>Übergabeart über die Namensauflösung (Methoden, Routinen anderer Units, Typumwandlungen).</summary>
   function ResolvedMode(ACall: TSyntaxNode; AArgument: Integer): TFlowArgumentMode;
-  var
-    Callee: TSyntaxNode;
-    Offset: Integer;
-    Symbol: TResolvedSymbol;
-    Modes: TArray<string>;
   begin
-    Result := TFlowArgumentMode.Unknown;
-    Callee := ACall[0];
-    if (Callee.Kind = TSyntaxKind.Identifier) and MatchText(Callee.Name, ValueCasts) then
-      Exit(TFlowArgumentMode.Value);
-    if Callee.Kind = TSyntaxKind.Identifier then
-      Offset := Callee.StartOffset
-    else if Callee.Kind = TSyntaxKind.MemberAccess then
-      Offset := Callee.EndOffset - Length(Callee.Name)
-    else
-      Exit;
-    if (AContext.Index = nil) or not SameText(Copy(AContext.Text, Offset + 1, Length(Callee.Name)), Callee.Name) then
-      Exit;
-    if Resolver = nil then
+    if (Resolver = nil) and (AContext.Index <> nil) then
     begin
-      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+      Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
       Resolver.Namespaces := AContext.Namespaces;
     end;
-    Symbol := Resolver.Resolve(AContext.Tree, AContext.RelativePath, TRuleDerived.PositionAt(Cache, AContext, Offset));
-    if not Symbol.Found then
-      Exit;
-    if Symbol.IsType then
-      Exit(TFlowArgumentMode.Value);
-    // Bei Überladungen ist nicht sicher, welche Variante gemeint ist.
-    if (Length(Symbol.Overloads) > 0) or (Length(Symbol.VariantParams) > 1) or
-      not SignatureModes(Symbol.Signature, Modes) or (AArgument >= Length(Modes)) then
-      Exit;
-    if ContainsText(' ' + Modes[AArgument] + ' ', ' var ') or ContainsText(' ' + Modes[AArgument] + ' ', ' out ') then
-      Result := TFlowArgumentMode.Reference
-    else
-      Result := TFlowArgumentMode.Value;
+    Result := TResolvedSignatures.Mode(Resolver, AContext.Tree, AContext.RelativePath, ACall, AArgument);
   end;
 
   function CandidateOf(AGroup: TSyntaxNode; APosition: Integer; out ACandidate: TParamCandidate): Boolean;

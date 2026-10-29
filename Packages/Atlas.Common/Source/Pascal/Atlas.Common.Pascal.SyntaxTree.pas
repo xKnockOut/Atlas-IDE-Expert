@@ -168,6 +168,14 @@ type
     /// <summary>Steht das Token ATokenIndex in einem Steuerzeichen wie ^C (#862)? Dann ist der Bezeichner C
     /// kein Name, sondern Teil eines Literals.</summary>
     function IsControlCharPart(ATokenIndex: Integer): Boolean;
+    /// <summary>Erstes Token mit Offset >= AOffset, binär gesucht; Length(Tokens), wenn es keines gibt.</summary>
+    function FirstTokenFrom(AOffset: Integer): Integer;
+    /// <summary>Erstes Token in ATokens (nach Offset sortiert, z. B. Tokens oder nur die Code-Token) mit
+    /// Offset >= AOffset, binär gesucht; Length(ATokens), wenn es keines gibt (#1342).</summary>
+    class function FirstTokenOf(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer; static;
+    /// <summary>Bezeichner, auf dem APosition steht oder direkt hinter dem sie steht (Cursor am Wortende); -1 ohne
+    /// Bezeichner und für C in ^C (#862). Binär gesucht (#1323).</summary>
+    function IdentifierAt(const APosition: TTextPosition): Integer;
     property Root: TSyntaxNode read FRoot;
     /// <summary>Alle Token einschließlich Kommentaren und Direktiven.</summary>
     property Tokens: TArray<TPascalToken> read FTokens;
@@ -393,6 +401,67 @@ begin
 end;
 
 { TSyntaxTree }
+
+function ComparePositions(const A, B: TTextPosition): Integer;
+begin
+  if A.Line <> B.Line then
+    Result := A.Line - B.Line
+  else
+    Result := A.Character - B.Character;
+end;
+
+function TSyntaxTree.FirstTokenFrom(AOffset: Integer): Integer;
+begin
+  Result := FirstTokenOf(FTokens, AOffset);
+end;
+
+class function TSyntaxTree.FirstTokenOf(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
+var
+  mLow, mHigh, mMiddle: Integer;
+begin
+  mLow := 0;
+  mHigh := Length(ATokens);
+  while mLow < mHigh do
+  begin
+    mMiddle := (mLow + mHigh) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
+      mLow := mMiddle + 1
+    else
+      mHigh := mMiddle;
+  end;
+  Result := mLow;
+end;
+
+function TSyntaxTree.IdentifierAt(const APosition: TTextPosition): Integer;
+var
+  mLow, mHigh, mMiddle: Integer;
+begin
+  // Die Token folgen ohne Überlappung aufeinander, ihre Enden steigen also mit: Vor dem ersten Token, das nicht vor
+  // APosition endet, berührt keines APosition. Früher lief die Suche ab Dateianfang und kopierte jedes Token, und
+  // Regeln, die für jedes Element großer Konstanten-Arrays fragen, wurden quadratisch (#1323).
+  mLow := 0;
+  mHigh := Length(FTokens);
+  while mLow < mHigh do
+  begin
+    mMiddle := (mLow + mHigh) div 2;
+    if ComparePositions(FTokens[mMiddle].EndPos, APosition) < 0 then
+      mLow := mMiddle + 1
+    else
+      mHigh := mMiddle;
+  end;
+  // Höchstens zwei Kandidaten: das Token, das vor APosition endet, und das, das dort beginnt; der frühere gewinnt.
+  while (mLow <= High(FTokens)) and (ComparePositions(FTokens[mLow].StartPos, APosition) <= 0) do
+  begin
+    if FTokens[mLow].Kind = TPascalTokenKind.Identifier then
+    begin
+      if IsControlCharPart(mLow) then
+        Exit(-1);
+      Exit(mLow);
+    end;
+    Inc(mLow);
+  end;
+  Result := -1;
+end;
 
 function TSyntaxTree.IsControlCharPart(ATokenIndex: Integer): Boolean;
 var

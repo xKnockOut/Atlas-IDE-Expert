@@ -37,6 +37,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Core.Settings.JsonText;
 
 { TAtlasSettingIssue }

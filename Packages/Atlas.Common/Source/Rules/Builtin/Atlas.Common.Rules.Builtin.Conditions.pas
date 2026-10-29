@@ -46,6 +46,24 @@
 //                       bzw. try … except, Anweisungen mit Marke und Rümpfe mit
 //                       bedingten Direktiven. Korrektur „Anweisung entfernen“,
 //                       wenn die Anweisung in einem begin … end steht.
+//   loop-runs-at-most-once
+//                       Jeder Weg durch den Rumpf einer for-, for-in-, while- oder
+//                       repeat-Schleife endet mit Exit, Break, raise, Halt, Abort,
+//                       RunError, ExitProcess oder dem Aufruf einer Routine der
+//                       Datei, die auf jedem Weg eine Ausnahme auslöst (#1131):
+//                       Die Schleife läuft höchstens einmal. Ein Weg zählt als
+//                       Sprung bei if mit else und beiden Zweigen, case mit else
+//                       und allen Zweigen, try … finally mit try- oder
+//                       finally-Teil, try … except mit try-Teil und jedem
+//                       Behandler. Still bei
+//                       Continue dieser Schleife, goto bzw. Marken und bedingten
+//                       Direktiven im Rumpf (der Baum enthält alle Zweige); ein
+//                       Break innerer Schleifen zählt nicht, TMonitor.Exit(…)
+//                       ist kein Sprung. Option allowFirstElement: for-in, in
+//                       dem keine Bedingung die Schleifenvariable liest („erstes
+//                       Element holen“), bleibt still. Keine Korrektur, die Absicht ist unklar; steht der
+//                       Sprung direkt hinter einem if ohne else, fragt die
+//                       Meldung, ob er in den if-Zweig gehört.
 
 interface
 
@@ -58,6 +76,7 @@ const
   InfiniteLoopRuleId = 'infinite-loop';
   LoopConditionUnchangedRuleId = 'loop-condition-unchanged';
   RedundantJumpRuleId = 'redundant-jump';
+  LoopRunsAtMostOnceRuleId = 'loop-runs-at-most-once';
 
 type
   TConstantConditionRule = class(TInterfacedObject, IRule)
@@ -79,6 +98,12 @@ type
   end;
 
   TRedundantJumpRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TLoopRunsAtMostOnceRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -676,7 +701,7 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   FileName := RuleFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -724,6 +749,17 @@ begin
   if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) then
     ANode := ANode[0];
   if ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess] then
+    Result := ANode.Name;
+end;
+
+/// <summary>Name eines Sprungs ohne Qualifizierer (Exit, Break, Halt, Exit(X)); '' sonst. TMonitor.Exit(…) ist
+/// kein Sprung.</summary>
+function JumpName(ANode: TSyntaxNode): string;
+begin
+  Result := '';
+  if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) then
+    ANode := ANode[0];
+  if ANode.Kind = TSyntaxKind.Identifier then
     Result := ANode.Name;
 end;
 
@@ -844,10 +880,10 @@ begin
         TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call:
           begin
             Name := CalledName(Node);
-            if SameText(Name, 'Terminated') or MatchText(Name, LeavingCalls) or
+            if SameText(Name, 'Terminated') or MatchText(JumpName(Node), LeavingCalls) or
               ((Name <> '') and ARaising.ContainsKey(LowerCase(Name))) then
               Exit(True);
-            if SameText(Name, 'Break') and not Inner then
+            if SameText(JumpName(Node), 'Break') and not Inner then
               Exit(True);
           end;
       else
@@ -959,7 +995,7 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   FileName := RuleFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -1415,7 +1451,7 @@ begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
   FileName := RuleFileName(AContext);
-  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit);
+  Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
   try
     Resolver.Namespaces := AContext.Namespaces;
     Resolver.PinTree(AContext.Tree, FileName);
@@ -1449,9 +1485,11 @@ end;
 function HasDirectiveBetween(const ATokens: TTokens; AStart, AEnd: Integer): Boolean;
 var
   mToken: TPascalToken;
+  mIndex: Integer;
 begin
-  for mToken in ATokens do
+  for mIndex := TSyntaxTree.FirstTokenOf(ATokens, AStart) to High(ATokens) do
   begin
+    mToken := ATokens[mIndex];
     if mToken.Offset < AStart then
       Continue;
     if mToken.Offset >= AEnd then
@@ -1478,19 +1516,23 @@ begin
       Result := Result[Result.ChildCount - 1];
 end;
 
-/// <summary>Letzte Anweisung des Rumpfs einer Schleife in ALast; bei repeat die vor der Bedingung.</summary>
-function LoopBody(ALoop: TSyntaxNode; out ALast: TSyntaxNode): Boolean;
+/// <summary>Rumpf einer for-, for-in- oder while-Schleife; bei repeat (die Anweisungen sind direkte Kinder) und
+/// bei anderen Knoten nil.</summary>
+function LoopBody(ALoop: TSyntaxNode): TSyntaxNode;
 begin
-  ALast := nil;
-  case ALoop.Kind of
-    TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement:
-      if ALoop.ChildCount > 0 then
-        ALast := ALoop[ALoop.ChildCount - 1];
-    TSyntaxKind.RepeatStatement:
-      // Kinder: Anweisungen, dann die Bedingung hinter until.
-      if ALoop.ChildCount > 1 then
-        ALast := ALoop[ALoop.ChildCount - 2];
-  end;
+  Result := nil;
+  if (ALoop.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement]) and
+    (ALoop.ChildCount > 0) then
+    Result := ALoop[ALoop.ChildCount - 1];
+end;
+
+/// <summary>Letzte Anweisung des Rumpfs einer Schleife in ALast: der Rumpf aus LoopBody, bei repeat die Anweisung
+/// vor der Bedingung hinter until.</summary>
+function LoopLastStatement(ALoop: TSyntaxNode; out ALast: TSyntaxNode): Boolean;
+begin
+  ALast := LoopBody(ALoop);
+  if (ALast = nil) and (ALoop.Kind = TSyntaxKind.RepeatStatement) and (ALoop.ChildCount > 1) then
+    ALast := ALoop[ALoop.ChildCount - 2];
   Result := ALast <> nil;
 end;
 
@@ -1538,7 +1580,7 @@ begin
           not HasDirectiveBetween(mTokens, mBlock.StartOffset, mBlock.EndOffset) then
           ReportJump(mBlock[mBlock.ChildCount - 1], cExitMessage);
       end
-      else if LoopBody(mNode, mLast) and not HasDirectiveBetween(mTokens, mNode.StartOffset, mNode.EndOffset) then
+      else if LoopLastStatement(mNode, mLast) and not HasDirectiveBetween(mTokens, mNode.StartOffset, mNode.EndOffset) then
       begin
         mStatement := LastStatement(mLast);
         if (mStatement <> nil) and IsBareJump(mStatement, 'Continue') then
@@ -1550,12 +1592,450 @@ begin
   end;
 end;
 
+{ TLoopRunsAtMostOnceRule }
+
+function TLoopRunsAtMostOnceRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(LoopRunsAtMostOnceRuleId, TRuleSeverity.Warning, 'Schleife läuft höchstens einmal');
+end;
+
+function IsLoop(ANode: TSyntaxNode): Boolean;
+begin
+  Result := ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+    TSyntaxKind.RepeatStatement];
+end;
+
+procedure TLoopRunsAtMostOnceRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mRaising: TDictionary<string, Boolean>;
+  mAllowFirstElement, mRaisingOnly: Boolean;
+
+  /// <summary>Name des Sprungs, mit dem die Anweisung ANode die Schleife immer verlässt (Exit, Break, raise,
+  /// Halt …), '' wenn sie es nicht immer tut. AMixed: verschiedene Sprünge auf verschiedenen Wegen. Mit
+  /// FRaisingOnly zählen nur Ausnahmen und Programmende (Rumpf einer Routine: Exit verlässt nur sie).
+  /// </summary>
+  function Leaves(ANode: TSyntaxNode; out AMixed: Boolean): string;
+  var
+    mIndex: Integer;
+    mName, mOther: string;
+    mMixed, mHandlers: Boolean;
+    mChild, mPart: TSyntaxNode;
+
+    /// <summary>Kinder von AParent ab AFrom als Anweisungsfolge (ohne on-Behandler): Ein Sprung beendet sie,
+    /// was danach steht, ist unerreichbar.</summary>
+    function Sequence(AParent: TSyntaxNode; AFrom, ATo: Integer; out ASequenceMixed: Boolean): string;
+    var
+      mAt: Integer;
+    begin
+      Result := '';
+      ASequenceMixed := False;
+      for mAt := AFrom to ATo do
+        if AParent[mAt].Kind <> TSyntaxKind.ExceptionHandler then
+        begin
+          Result := Leaves(AParent[mAt], ASequenceMixed);
+          if Result <> '' then
+            Exit;
+        end;
+    end;
+
+    /// <summary>Verlässt auch AOther die Schleife? Merkt verschiedene Sprünge in AMixed.</summary>
+    function Both(const AFirst, AOther: string; AOtherMixed: Boolean): string;
+    begin
+      Result := '';
+      if (AFirst = '') or (AOther = '') then
+        Exit;
+      AMixed := AMixed or AOtherMixed or not SameText(AFirst, AOther);
+      Result := AFirst;
+    end;
+
+  begin
+    Result := '';
+    AMixed := False;
+    case ANode.Kind of
+      TSyntaxKind.RaiseStatement:
+        Result := 'raise';
+      TSyntaxKind.CallStatement:
+        if ANode.ChildCount > 0 then
+        begin
+          mName := CalledName(ANode[0]);
+          if MatchText(JumpName(ANode[0]), RaisingCalls) or ((mName <> '') and
+            mRaising.ContainsKey(LowerCase(mName))) or not mRaisingOnly and
+            MatchText(JumpName(ANode[0]), ['Exit', 'Break']) then
+            Result := mName;
+        end;
+      TSyntaxKind.Block:
+        Result := Sequence(ANode, 0, ANode.ChildCount - 1, AMixed);
+      TSyntaxKind.WithStatement:
+        if ANode.ChildCount > 0 then
+          Result := Leaves(ANode[ANode.ChildCount - 1], AMixed);
+      TSyntaxKind.IfStatement:
+        // Nur mit else: Ohne else läuft ein Weg am Sprung vorbei.
+        if ANode.ChildCount = 3 then
+        begin
+          mName := Leaves(ANode[1], AMixed);
+          if mName <> '' then
+            Result := Both(mName, Leaves(ANode[2], mMixed), mMixed);
+        end;
+      TSyntaxKind.CaseStatement:
+        // Jeder Zweig und ein else-Zweig.
+        if ANode.FindChild(TSyntaxKind.CaseElse) <> nil then
+        begin
+          mName := '';
+          for mIndex := 1 to ANode.ChildCount - 1 do
+          begin
+            mChild := ANode[mIndex];
+            if (mChild.Kind = TSyntaxKind.CaseItem) and (mChild.ChildCount > 0) then
+              mOther := Leaves(mChild[mChild.ChildCount - 1], mMixed)
+            else if mChild.Kind = TSyntaxKind.CaseElse then
+              mOther := Sequence(mChild, 0, mChild.ChildCount - 1, mMixed)
+            else
+              mOther := '';
+            if mOther = '' then
+              Exit('');
+            if mName = '' then
+            begin
+              mName := mOther;
+              AMixed := mMixed;
+            end
+            else
+              mName := Both(mName, mOther, mMixed);
+          end;
+          Result := mName;
+        end;
+      TSyntaxKind.TryStatement:
+        if ANode.ChildCount > 0 then
+        begin
+          // try … finally: der try- oder der finally-Teil; try … except: der try-Teil und jeder Behandler.
+          mPart := ANode[ANode.ChildCount - 1];
+          mName := Sequence(ANode, 0, ANode.ChildCount - 2, AMixed);
+          if mPart.Kind = TSyntaxKind.FinallyBlock then
+          begin
+            Result := mName;
+            if Result = '' then
+              Result := Sequence(mPart, 0, mPart.ChildCount - 1, AMixed);
+            Exit;
+          end;
+          if (mName = '') or (mPart.Kind <> TSyntaxKind.ExceptBlock) then
+            Exit;
+          mHandlers := False;
+          for mIndex := 0 to mPart.ChildCount - 1 do
+            if mPart[mIndex].Kind = TSyntaxKind.ExceptionHandler then
+            begin
+              mHandlers := True;
+              mChild := mPart[mIndex];
+              if mChild.ChildCount = 0 then
+                Exit;
+              mName := Both(mName, Leaves(mChild[mChild.ChildCount - 1], mMixed), mMixed);
+              if mName = '' then
+                Exit;
+            end;
+          // Anweisungen ohne on bzw. der else-Teil; nur on-Behandler: andere Ausnahmen laufen nach außen.
+          if not mHandlers or (mPart[mPart.ChildCount - 1].Kind <> TSyntaxKind.ExceptionHandler) then
+            mName := Both(mName, Sequence(mPart, 0, mPart.ChildCount - 1, mMixed), mMixed);
+          Result := mName;
+        end;
+    end;
+  end;
+
+  /// <summary>Enthält ANode ein Continue dieser Schleife (nicht in inneren Schleifen und anonymen Methoden),
+  /// ein goto oder eine Marke? Dann gibt es einen Weg zum nächsten Durchlauf.</summary>
+  function MayContinue(ANode: TSyntaxNode): Boolean;
+  var
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+  begin
+    // Iterativ (Bericht M1).
+    Result := False;
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
+      begin
+        mNode := mPending.Pop;
+        if mNode.Kind in [TSyntaxKind.GotoStatement, TSyntaxKind.LabeledStatement] then
+          Exit(True);
+        if (mNode.Kind = TSyntaxKind.AnonymousMethod) or ((mNode <> ANode) and IsLoop(mNode)) then
+          Continue;
+        if (mNode.Kind = TSyntaxKind.CallStatement) and (mNode.ChildCount > 0) and
+          SameText(JumpName(mNode[0]), 'Continue') then
+          Exit(True);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+          mPending.Push(mNode[mIndex]);
+      end;
+    finally
+      mPending.Free;
+    end;
+  end;
+
+  /// <summary>Steht im Bereich von ANode eine bedingte Direktive? Der Baum enthält dann alle Zweige.</summary>
+  function HasConditional(ANode: TSyntaxNode): Boolean;
+  var
+    mToken: TPascalToken;
+    mIndex: Integer;
+    mText: string;
+  begin
+    for mIndex := AContext.Tree.FirstTokenFrom(ANode.StartOffset) to High(AContext.Tree.Tokens) do
+    begin
+      mToken := AContext.Tree.Tokens[mIndex];
+      if mToken.Offset >= ANode.EndOffset then
+        Break;
+      if (mToken.Offset < ANode.StartOffset) or (mToken.Kind <> TPascalTokenKind.Directive) then
+        Continue;
+      mText := UpperCase(Copy(mToken.Text, 1, 8));
+      if StartsStr('{$IF', mText) or StartsStr('{$ELSE', mText) or StartsStr('{$END', mText) or
+        StartsStr('(*$IF', mText) or StartsStr('(*$ELSE', mText) or StartsStr('(*$END', mText) then
+        Exit(True);
+    end;
+    Result := False;
+  end;
+
+  /// <summary>Anweisungen des Rumpfs als Folge (Block, einzelne Anweisung bzw. die Anweisungen von repeat).
+  /// </summary>
+  function Statements(ALoop: TSyntaxNode): TArray<TSyntaxNode>;
+  var
+    mIndex: Integer;
+    mBody: TSyntaxNode;
+  begin
+    Result := nil;
+    if ALoop.Kind = TSyntaxKind.RepeatStatement then
+    begin
+      for mIndex := 0 to ALoop.ChildCount - 2 do
+        Result := Result + [ALoop[mIndex]];
+      Exit;
+    end;
+    mBody := LoopBody(ALoop);
+    if mBody = nil then
+      Exit;
+    if mBody.Kind = TSyntaxKind.Block then
+    begin
+      for mIndex := 0 to mBody.ChildCount - 1 do
+        Result := Result + [mBody[mIndex]];
+    end
+    else
+      Result := [mBody];
+  end;
+
+  /// <summary>for-in, das nur das erste Element holt: Keine Bedingung im Rumpf (if, case, Schleife) liest die
+  /// Schleifenvariable, der Sprung hängt also nicht vom Element ab.</summary>
+  function ReadsFirstElement(ALoop: TSyntaxNode): Boolean;
+  var
+    mIndex: Integer;
+    mNode, mCondition: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+
+    function Mentions(ARoot: TSyntaxNode): Boolean;
+    var
+      mAt: Integer;
+      mInner: TSyntaxNode;
+      mStack: TStack<TSyntaxNode>;
+    begin
+      Result := False;
+      mStack := TStack<TSyntaxNode>.Create;
+      try
+        mStack.Push(ARoot);
+        while mStack.Count > 0 do
+        begin
+          mInner := mStack.Pop;
+          if (mInner.Kind = TSyntaxKind.Identifier) and SameText(mInner.Name, ALoop.Name) then
+            Exit(True);
+          for mAt := 0 to mInner.ChildCount - 1 do
+            mStack.Push(mInner[mAt]);
+        end;
+      finally
+        mStack.Free;
+      end;
+    end;
+
+  begin
+    Result := False;
+    if (ALoop.Kind <> TSyntaxKind.ForInStatement) or (ALoop.Name = '') then
+      Exit;
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(LoopBody(ALoop));
+      while mPending.Count > 0 do
+      begin
+        mNode := mPending.Pop;
+        mCondition := nil;
+        case mNode.Kind of
+          TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.WhileStatement:
+            if mNode.ChildCount > 0 then
+              mCondition := mNode[0];
+          TSyntaxKind.RepeatStatement:
+            if mNode.ChildCount > 0 then
+              mCondition := mNode[mNode.ChildCount - 1];
+          TSyntaxKind.IfExpr:
+            if mNode.ChildCount > 0 then
+              mCondition := mNode[0];
+        end;
+        if (mCondition <> nil) and Mentions(mCondition) then
+          Exit;
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+          mPending.Push(mNode[mIndex]);
+      end;
+    finally
+      mPending.Free;
+    end;
+    Result := True;
+  end;
+
+  /// <summary>Schlüsselwort der Schleife für den Meldungsbereich.</summary>
+  function KeywordRange(ALoop: TSyntaxNode): TTextRange;
+  var
+    mLength: Integer;
+  begin
+    mLength := 3;
+    if ALoop.Kind = TSyntaxKind.WhileStatement then
+      mLength := 5
+    else if ALoop.Kind = TSyntaxKind.RepeatStatement then
+      mLength := 6;
+    Result := TTextRange.Create(ALoop.StartPos, TTextPosition.Create(ALoop.StartPos.Line,
+      ALoop.StartPos.Character + mLength));
+  end;
+
+  procedure CheckLoop(ALoop: TSyntaxNode);
+  var
+    mStatements: TArray<TSyntaxNode>;
+    mIndex, mJumpAt: Integer;
+    mJump, mMessage, mSubject: string;
+    mMixed, mOtherMixed: Boolean;
+    mBody: TSyntaxNode;
+  begin
+    mStatements := Statements(ALoop);
+    mJump := '';
+    mJumpAt := -1;
+    mMixed := False;
+    for mIndex := 0 to High(mStatements) do
+    begin
+      mJump := Leaves(mStatements[mIndex], mMixed);
+      if mJump <> '' then
+      begin
+        mJumpAt := mIndex;
+        Break;
+      end;
+    end;
+    if mJump = '' then
+      Exit;
+    mBody := LoopBody(ALoop);
+    if mBody = nil then
+      mBody := ALoop;
+    if MayContinue(mBody) or HasConditional(ALoop) then
+      Exit;
+    if mAllowFirstElement and ReadsFirstElement(ALoop) then
+      Exit;
+    if mMixed then
+      mJump := 'einem Sprung';
+    case ALoop.Kind of
+      TSyntaxKind.ForInStatement:
+        begin
+          mSubject := '';
+          if ALoop.ChildCount > 1 then
+            mSubject := Format(' von %s', [NodeText(AContext.Text, ALoop[ALoop.ChildCount - 2])]);
+          mMessage := Format('Jeder Durchlauf endet mit %s: Die Schleife prüft nur das erste Element%s.',
+            [mJump, mSubject]);
+        end;
+      TSyntaxKind.RepeatStatement:
+        mMessage := Format('Jeder Durchlauf endet mit %s: Die Schleife läuft genau einmal.', [mJump]);
+    else
+      mMessage := Format('Jeder Durchlauf endet mit %s: Die Schleife läuft höchstens einmal.', [mJump]);
+    end;
+    // Typisch: "if … then X; Exit;" – der Sprung gehört in den if-Zweig.
+    if not mMixed and (mJumpAt > 0) and (mStatements[mJumpAt].Kind = TSyntaxKind.CallStatement) and
+      (mStatements[mJumpAt - 1].Kind = TSyntaxKind.IfStatement) and (mStatements[mJumpAt - 1].ChildCount = 2) and
+      (Leaves(mStatements[mJumpAt - 1][1], mOtherMixed) = '') then
+      mMessage := mMessage + Format(' Gehört %s in den if-Zweig?', [mJump]);
+    AReport.Add(KeywordRange(ALoop), mMessage, TRuleConfidence.High);
+  end;
+
+  procedure Visit(ARoot: TSyntaxNode);
+  var
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+  begin
+    // Iterativ (Bericht M1).
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
+      begin
+        mNode := mPending.Pop;
+        if IsLoop(mNode) then
+          CheckLoop(mNode);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+          mPending.Push(mNode[mIndex]);
+      end;
+    finally
+      mPending.Free;
+    end;
+  end;
+
+  /// <summary>Routinen der Datei (Kurzname klein), deren Rumpf auf jedem Weg eine Ausnahme auslöst bzw. das
+  /// Programm beendet; RaisingRoutines genügt nicht, dort reicht ein raise irgendwo.</summary>
+  procedure CollectAlwaysRaising;
+  var
+    mRoutines: TList<TSyntaxNode>;
+    mRoutine, mBlock, mNode: TSyntaxNode;
+    mChanged, mMixed: Boolean;
+    mIndex: Integer;
+    mPending: TStack<TSyntaxNode>;
+  begin
+    mRoutines := TList<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(AContext.Tree.Root);
+      while mPending.Count > 0 do
+      begin
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
+          mRoutines.Add(mNode);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+          mPending.Push(mNode[mIndex]);
+      end;
+      mRaisingOnly := True;
+      // Bis nichts mehr dazukommt: A ruft B, B löst immer aus.
+      repeat
+        mChanged := False;
+        for mRoutine in mRoutines do
+        begin
+          mBlock := mRoutine.FindChild(TSyntaxKind.Block);
+          if (mBlock <> nil) and not mRaising.ContainsKey(LowerCase(ShortName(mRoutine.Name))) and
+            (Leaves(mBlock, mMixed) <> '') then
+          begin
+            mRaising.Add(LowerCase(ShortName(mRoutine.Name)), True);
+            mChanged := True;
+          end;
+        end;
+      until not mChanged;
+      mRaisingOnly := False;
+    finally
+      mPending.Free;
+      mRoutines.Free;
+    end;
+  end;
+
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+    Exit;
+  mAllowFirstElement := TRuleOptions.Bool(AContext.Options, 'allowFirstElement', False);
+  mRaisingOnly := False;
+  mRaising := TDictionary<string, Boolean>.Create;
+  try
+    CollectAlwaysRaising;
+    Visit(AContext.Tree.Root);
+  finally
+    mRaising.Free;
+  end;
+end;
+
 procedure RegisterConditionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TConstantConditionRule.Create);
   ARegistry.Register(TInfiniteLoopRule.Create);
   ARegistry.Register(TLoopConditionUnchangedRule.Create);
   ARegistry.Register(TRedundantJumpRule.Create);
+  ARegistry.Register(TLoopRunsAtMostOnceRule.Create);
 end;
 
 end.

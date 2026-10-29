@@ -42,6 +42,10 @@
 //
 // Freigabe absichern (#489): Steht nur dieses Angebot in der Liste, schließt jedes getippte Zeichen sie.
 //
+// Hinweis bei unvollständigem Code (#457): Meldet die Quelle MarkSyntax, gibt der Controller den Hinweis an eine
+// Ansicht mit IAtlasCompletionSyntaxView, sofort und noch einmal beim Abschluss der Abfrage (ohne Meldung dann
+// „sicher“, damit ein alter Hinweis nach Requery verschwindet).
+//
 // Esc (#414): Nach dem Schließen mit Esc öffnet ein automatischer Start im selben Wort (Datei, Zeile,
 // Wortanfang) die Liste nicht wieder; Strg+Leer öffnet sie und hebt die Sperre auf.
 //
@@ -80,6 +84,13 @@ type
     procedure ShowChips(const ACounts: TAtlasChipCounts; AActive: TAtlasChip; AVisible: Boolean);
   end;
 
+  /// <summary>Ansicht mit Hinweis bei unvollständigem Code (#457); das Popup, wahlweise auch Tests.</summary>
+  IAtlasCompletionSyntaxView = interface
+    ['{2C6E9B41-7A3D-4E85-B0F2-9D1C5A8E3B76}']
+    /// <summary>Warnleiste bzw. Hinweis im leeren Zustand; Trust Sure blendet ihn aus.</summary>
+    procedure ShowSyntax(const ANotice: TAtlasSyntaxNotice);
+  end;
+
   TAtlasCommitEvent = reference to procedure(const AItem: TAtlasCompletionItem);
 
   TAtlasCompletionController = class
@@ -100,6 +111,7 @@ type
       constructor Create(AController: TAtlasCompletionController; AFlag: TAliveFlag; AGeneration: Integer);
       procedure AddItems(const AItems: TAtlasCompletionItems);
       procedure MarkIncomplete;
+      procedure MarkSyntax(const ANotice: TAtlasSyntaxNotice);
       procedure Complete;
     end;
   private
@@ -126,6 +138,9 @@ type
     /// <summary>Mitgliederliste nach "." (#497).</summary>
     FMembers: Boolean;
     FIncomplete: Boolean;
+    /// <summary>Hinweis bei unvollständigem Code (#457): gezeigt bzw. von der laufenden Abfrage gemeldet.</summary>
+    FSyntax: TAtlasSyntaxNotice;
+    FPendingSyntax: TAtlasSyntaxNotice;
     /// <summary>Die nächsten Einträge ersetzen die Liste (laufendes Requery).</summary>
     FReplace: Boolean;
     FOnCommit: TAtlasCommitEvent;
@@ -155,6 +170,9 @@ type
     /// <summary>Marken „zuletzt“/„häufig“ (#418) und Favorit (#458) ab AFrom setzen.</summary>
     procedure MarkItems(AFrom: Integer);
     procedure IncompleteArrived(AGeneration: Integer);
+    procedure SyntaxArrived(AGeneration: Integer; const ANotice: TAtlasSyntaxNotice);
+    /// <summary>FSyntax an eine Ansicht mit IAtlasCompletionSyntaxView.</summary>
+    procedure ShowSyntax;
     procedure Query(const AContext: TAtlasContext);
     procedure SelectByName(const AName: string);
     procedure Completed(AGeneration: Integer);
@@ -199,6 +217,8 @@ type
     property Passive: Boolean read FPassive;
     /// <summary>Die Quelle hat gekürzt; beim Weitertippen Requery statt UpdatePrefix.</summary>
     property Incomplete: Boolean read FIncomplete;
+    /// <summary>Gezeigter Hinweis bei unvollständigem Code (#457); Trust Sure ohne.</summary>
+    property Syntax: TAtlasSyntaxNotice read FSyntax;
     property Prefix: string read FPrefix;
     property Items: TAtlasCompletionItems read FItems;
     property Order: TArray<Integer> read FOrder;
@@ -321,6 +341,31 @@ begin
           procedure
           begin
             Controller.IncompleteArrived(Generation);
+          end);
+    end);
+end;
+
+procedure TAtlasCompletionController.TControllerSink.MarkSyntax(const ANotice: TAtlasSyntaxNotice);
+var
+  Controller: TAtlasCompletionController;
+  Flag: TAliveFlag;
+  FlagRef: IInterface;
+  Generation: Integer;
+  Notice: TAtlasSyntaxNotice;
+begin
+  Controller := FController;
+  Flag := FFlag;
+  FlagRef := FFlagRef;
+  Generation := FGeneration;
+  Notice := ANotice;
+  TAtlasMainThread.Queue(TAtlasFeature.Completion,
+    procedure
+    begin
+      if Flag.Alive and (FlagRef <> nil) then
+        TAtlasGuard.Run(TAtlasFeature.Completion,
+          procedure
+          begin
+            Controller.SyntaxArrived(Generation, Notice);
           end);
     end);
 end;
@@ -475,6 +520,7 @@ var
   Sink: IAtlasCompletionSink;
 begin
   FIncomplete := False;
+  FPendingSyntax := Default(TAtlasSyntaxNotice);
   FQueryPrefix := AContext.Prefix;
   Sink := TControllerSink.Create(Self, FFlag, FGeneration);
   FProvider.Query(AContext, Sink);
@@ -502,6 +548,23 @@ begin
     FIncomplete := True;
 end;
 
+procedure TAtlasCompletionController.SyntaxArrived(AGeneration: Integer; const ANotice: TAtlasSyntaxNotice);
+begin
+  if not FActive or (AGeneration <> FGeneration) then
+    Exit;
+  FPendingSyntax := ANotice;
+  FSyntax := ANotice;
+  ShowSyntax;
+end;
+
+procedure TAtlasCompletionController.ShowSyntax;
+var
+  View: IAtlasCompletionSyntaxView;
+begin
+  if Supports(FView, IAtlasCompletionSyntaxView, View) then
+    View.ShowSyntax(FSyntax);
+end;
+
 procedure TAtlasCompletionController.SelectByName(const AName: string);
 var
   Position: Integer;
@@ -521,6 +584,8 @@ begin
   FActive := False;
   FLoading := False;
   FIncomplete := False;
+  FSyntax := Default(TAtlasSyntaxNotice);
+  FPendingSyntax := FSyntax;
   FReplace := False;
   Inc(FGeneration);
   FProvider.Cancel;
@@ -604,6 +669,9 @@ begin
   if not FActive or (AGeneration <> FGeneration) then
     Exit;
   FLoading := False;
+  // Der Hinweis gilt für die Liste dieser Abfrage (#457).
+  FSyntax := FPendingSyntax;
+  ShowSyntax;
   // Requery ohne Einträge: Die alte Liste gilt nicht mehr.
   if FReplace then
   begin

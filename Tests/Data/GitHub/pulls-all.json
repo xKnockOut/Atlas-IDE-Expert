@@ -1,0 +1,52 @@
+[
+  {
+    "number": 1300,
+    "title": "Reiter Entwicklung",
+    "state": "open",
+    "draft": false,
+    "merged_at": null,
+    "updated_at": "2026-10-28T12:00:00Z",
+    "body": "Umsetzung.",
+    "head": {"ref": "feature/1269-reiter-entwicklung", "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+  },
+  {
+    "number": 1295,
+    "title": "Vorarbeit für die Vorschau",
+    "state": "closed",
+    "draft": false,
+    "merged_at": "2026-10-27T10:00:00Z",
+    "updated_at": "2026-10-27T10:00:00Z",
+    "body": "Closes #1269",
+    "head": {"ref": "bugfix/vorschau", "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+  },
+  {
+    "number": 1290,
+    "title": "Verworfen (#1269)",
+    "state": "closed",
+    "draft": false,
+    "merged_at": null,
+    "updated_at": "2026-10-26T09:00:00Z",
+    "body": "",
+    "head": {"ref": "spike/x", "sha": "cccccccccccccccccccccccccccccccccccccccc"}
+  },
+  {
+    "number": 1288,
+    "title": "Anderes #12690",
+    "state": "open",
+    "draft": true,
+    "merged_at": null,
+    "updated_at": "2026-10-25T09:00:00Z",
+    "body": "Siehe #1269 nebenbei.",
+    "head": {"ref": "feature/1268-x", "sha": "dddddddddddddddddddddddddddddddddddddddd"}
+  },
+  {
+    "number": 1287,
+    "title": "Entwurf zu #1269",
+    "state": "open",
+    "draft": true,
+    "merged_at": null,
+    "updated_at": "2026-10-24T09:00:00Z",
+    "body": null,
+    "head": {"ref": "x", "sha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}
+  }
+]

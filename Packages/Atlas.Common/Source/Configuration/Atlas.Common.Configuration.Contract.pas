@@ -82,6 +82,10 @@ type
     IncludeDefines: Boolean;
     /// <summary>Hinter Steuerzeichen wie ^C in Konstanten der Code (#3, #862).</summary>
     ControlChars: Boolean;
+    /// <summary>Marke „ohne Self“ hinter Methoden, die Self nicht brauchen (#686). Kein Schlüssel unter
+    /// inlayHints: Die Komposition setzt sie aus refactoring.methodKind und refactoring.methodKindMarker; in
+    /// Default aus.</summary>
+    MethodWithoutSelf: Boolean;
     class function Default: TInlayHintSettings; static;
   end;
 
@@ -91,6 +95,30 @@ type
     /// Parameter.</summary>
     Metrics: Boolean;
     class function Default: TCodeLensSettings; static;
+  end;
+
+  /// <summary>Treffersicherheit der Verwendungen ("references", #1119).</summary>
+  TReferenceSettings = record
+    /// <summary>Erschlossene Treffer zeigen (über ein Interface, eine überschriebene Methode, nicht eindeutige
+    /// Überladung, unbekannter Typ, inaktiver Zweig); aus = nur sichere, wie vor #1119.</summary>
+    Inferred: Boolean;
+    /// <summary>Auch Namen in String-Literalen als erschlossen melden (RTTI, MethodAddress).</summary>
+    TextMatches: Boolean;
+    class function Default: TReferenceSettings; static;
+    /// <summary>Nur sichere Treffer wie vor #1119, für Umbauten, die nur eindeutige Stellen ändern.</summary>
+    class function SureOnly: TReferenceSettings; static;
+  end;
+
+  /// <summary>Navigation über den Code ("navigation"): Weg zwischen Symbolen (#1117) und Auswirkungsanalyse
+  /// (#1120).</summary>
+  TNavigationSettings = record
+    /// <summary>IDE-Befehl „Weg zwischen Symbolen…“ mit Menü- und Kontextmenüeintrag.</summary>
+    SymbolPath: Boolean;
+    /// <summary>Befehl „Auswirkungen anzeigen“ im Plugin mit seinen Menüeinträgen.</summary>
+    Impact: Boolean;
+    /// <summary>Vorgabe der Tiefe der Auswirkungsanalyse in IDE und MCP (1–5).</summary>
+    ImpactDepth: Integer;
+    class function Default: TNavigationSettings; static;
   end;
 
   /// <summary>Anzeige von XMLDoc in Hover und Detailpanel des Plugins (#654, #770). Der Server bereitet die Doku
@@ -109,6 +137,13 @@ type
     XmlDocMaxLines: Integer;
     /// <summary>Hover über Komponentenklassen (#110): published-Properties und Ereignisse samt geerbter.</summary>
     PublishedMembers: Boolean;
+    /// <summary>Begründungen (// WHY: …, #1123) im Hover und in get_declaration.</summary>
+    Rationale: Boolean;
+    /// <summary>Marken der Begründungen; nil = Vorgabe (TRationale.DefaultMarkers).</summary>
+    RationaleMarkers: TArray<string>;
+    /// <summary>Ordner der Architekturentscheidungen für ADR-Verweise, relativ zum Projekt; '' = Vorgabe
+    /// (TRationale.DefaultAdrFolder).</summary>
+    AdrFolder: string;
     class function Default: THintSettings; static;
   end;
 
@@ -316,6 +351,23 @@ type
     /// <summary>Nach "inherited " zuerst der vollständige Aufruf der Vorfahrmethode mit den eigenen Parametern,
     /// in Konstruktoren und Destruktoren auch die übrigen; abstrakte fehlen (#482). Aus: nur die Namen.</summary>
     InheritedCall: Boolean;
+    /// <summary>Nach "[" vor einer Deklaration nur Attributklassen ohne Endung Attribute, bekannte zuerst, dazu
+    /// die Compiler-Attribute (#465). Aus: die gewöhnliche Liste.</summary>
+    Attributes: Boolean;
+    /// <summary>Erwartet ein Argument oder eine Zuweisung einen Methodenreferenztyp, oben ein Gerüst
+    /// "procedure(…) begin end" bzw. "function(…): T" mit passender Signatur (#468). Aus: kein Gerüst.</summary>
+    AnonymousMethods: Boolean;
+    /// <summary>In with-Blöcken Mitglieder des with-Objekts mit „aus Ausdruck“ und der Warnung „verdeckt Self.Name“
+    /// bzw. „verdeckt lokale Variable Name“ (#481). Aus: ohne Herkunft.</summary>
+    WithOrigin: Boolean;
+    /// <summary>Nach "raise " und "on E: " nur Exception-Klassen; nach raise mit Create('') bzw. CreateFmt, nach on
+    /// zuerst die aus dem try-Block (XMLDoc), ohne schon behandelte, mit Warnung bei unerreichbaren Zweigen (#483).
+    /// Aus: die gewöhnliche Liste.</summary>
+    ExceptionClasses: Boolean;
+    /// <summary>Hinweis bei unvollständigem Code (#457): Steht vor dem Cursor in der aktuellen Routine bzw.
+    /// Klassendeklaration ein Syntaxfehler, meldet die Antwort „eingeschränkt“ samt Fehlerzeile (ohne Einträge
+    /// „unbekannt“). Aus: kein Hinweis.</summary>
+    SyntaxNotice: Boolean;
     /// <summary>Gleichnamige Bezeichner aus verschiedenen Units als Varianten mit ihrer Unit; die vom Compiler
     /// gewählte zuerst mit „aktiv“ (#475). Aus: nur die aktive.</summary>
     SameNameVariants: Boolean;
@@ -347,6 +399,14 @@ type
     ClassActions: Boolean;
     /// <summary>Code-Aktion „Typ ausschreiben“ für var X := … ohne Typangabe (#453).</summary>
     ExplicitType: Boolean;
+    /// <summary>Schnellkorrekturen an Compilermeldungen, Teil 2 (#549).</summary>
+    CompilerFixes: Boolean;
+    /// <summary>Code-Aktionen zu „Unit nicht gefunden“ (F2613, F1026): Suchpfad ergänzen (#550).</summary>
+    MissingUnit: Boolean;
+    /// <summary>Code-Aktionen „Warnung hier abschalten“ auf Compilermeldungen (#531).</summary>
+    DisableWarning: Boolean;
+    /// <summary>Beim Abschalten einer Warnung nach einer Begründung fragen (#531).</summary>
+    DisableWarningReason: Boolean;
     /// <summary>Code-Aktionen „Methode extrahieren“, „Variable einführen“ und „Konstante extrahieren“ (#50).</summary>
     Extract: Boolean;
     /// <summary>Code-Aktion „case vervollständigen“ (#50).</summary>
@@ -382,6 +442,9 @@ type
     FreeFields: Boolean;
     /// <summary>Form der Freigabe: free (FFeld.Free) oder freeAndNil (#666).</summary>
     FreeFieldsStyle: string;
+    /// <summary>Glühbirne „Als Konstante deklarieren“ für Variablen, die genau einmal zugewiesen und nie geändert
+    /// werden (#712); nur, wenn die Sprachversion Inline-Konstanten kennt.</summary>
+    SuggestConst: Boolean;
     /// <summary>Code-Aktion „Bedeutung umkehren“ für Boolean-Symbole (#715).</summary>
     InvertBoolean: Boolean;
     /// <summary>Eigene Gegensatzpaare als "A=B", vor den eingebauten (#715).</summary>
@@ -390,6 +453,73 @@ type
     InvertBooleanFallbackPrefix: string;
     /// <summary>Published Properties auch in den Formularen umkehren (#715).</summary>
     InvertBooleanIncludeDfm: Boolean;
+    /// <summary>Code-Aktionen „In case umwandeln“ und „In if-Kette umwandeln“ (#646).</summary>
+    IfCase: Boolean;
+    /// <summary>Code-Aktionen zum Umformen von Bedingungen (#656).</summary>
+    Conditions: Boolean;
+    /// <summary>Code-Aktionen zwischen if-Anweisung und Bedingungsausdruck, IfThen ersetzen (#684).</summary>
+    ConditionalExpression: Boolean;
+    /// <summary>Code-Aktionen zwischen lokaler Routine und Methode bzw. Routine der Unit (#663).</summary>
+    NestedRoutine: Boolean;
+    /// <summary>Code-Aktionen zwischen lokaler Variable und Feld (#668).</summary>
+    PromoteVariable: Boolean;
+    /// <summary>Code-Aktionen zwischen anonymer Methode und Methode (#680).</summary>
+    AnonymousMethod: Boolean;
+    /// <summary>Später laufende anonyme Methode mit erfassten Variablen: forward (Weiterleitung bleibt) oder fields
+    /// (Werte als Felder) (#680).</summary>
+    AnonymousMethodDeferredCapture: string;
+    /// <summary>Erkennung und Code-Aktionen für Methoden ohne Self (#686): class-Methode, freie Routine,
+    /// Record-Helper.</summary>
+    MethodKind: Boolean;
+    /// <summary>Marke „ohne Self“ am Kopf solcher Methoden (#686); aus = nur über Strg+.</summary>
+    MethodKindMarker: Boolean;
+    /// <summary>class-Methoden mit static erzeugen (#686).</summary>
+    MethodKindStatic: Boolean;
+    /// <summary>Code-Aktionen „Typ-Alias einführen“ und „Alias auflösen“ (#681).</summary>
+    TypeAlias: Boolean;
+    /// <summary>Reichweite der ersten Aktion „Typ-Alias einführen“: here, unit oder project (#681).</summary>
+    TypeAliasScope: string;
+    /// <summary>Namenstabelle anlegen und Tabellen über Aufzählungen nachziehen (#667).</summary>
+    EnumTables: Boolean;
+    /// <summary>Texte der Namenstabelle als resourcestring je Element (#667).</summary>
+    EnumTablesResourceStrings: Boolean;
+    /// <summary>Code-Aktionen „In Inline-Variable umwandeln“, „In var-Block verschieben“ und „var-Block
+    /// aufräumen“ (#644).</summary>
+    VarBlock: Boolean;
+    /// <summary>Beim Aufräumen gleiche Typen zusammenfassen; False trennt sie (#644).</summary>
+    VarBlockMerge: Boolean;
+    /// <summary>Reihenfolge beim Aufräumen: usage, alpha oder none (#644).</summary>
+    VarBlockSort: string;
+    /// <summary>Code-Aktion „Interface aus Klasse herauslösen“ (#664).</summary>
+    ExtractInterface: Boolean;
+    /// <summary>Code-Aktion „Basisklasse herauslösen“ (#713).</summary>
+    ExtractSuperclass: Boolean;
+    /// <summary>Vorgabe für das Ziel: sameUnit oder newUnit (#713).</summary>
+    ExtractSuperclassTarget: string;
+    /// <summary>Endung des vorgeschlagenen Namens; Custom als Präfix TCustom… (#713).</summary>
+    ExtractSuperclassNameSuffix: string;
+    /// <summary>Vorgabe je Methode: move oder abstract (#713).</summary>
+    ExtractSuperclassMethodMode: string;
+    /// <summary>Sichtbarkeit gehobener private-Mitglieder: protected oder strictProtected (#713).</summary>
+    ExtractSuperclassRaiseVisibility: string;
+    /// <summary>Code-Aktionen „In Vorfahr/Nachfahren verschieben“ (#675).</summary>
+    MoveMember: Boolean;
+    /// <summary>Code-Aktion „Zugriffsmethode durch Feld ersetzen“ (#717).</summary>
+    InlineAccessor: Boolean;
+    /// <summary>Setter mit Gleichheitsprüfung als trivial behandeln (#717).</summary>
+    InlineAccessorEqualityCheck: Boolean;
+    /// <summary>Sammelaktionen für Unit und Projekt (#717).</summary>
+    InlineAccessorBulk: Boolean;
+    /// <summary>Hinweis-Diagnose trivial-accessor an trivialen Zugriffsmethoden (#717).</summary>
+    InlineAccessorDiagnostic: Boolean;
+    /// <summary>„Sicher löschen“ (#716).</summary>
+    SafeDelete: Boolean;
+    /// <summary>Auch ohne Verwendungen erst die Vorschau zeigen (#716).</summary>
+    SafeDeletePreviewWhenUnused: Boolean;
+    /// <summary>Freigewordenes mitlöschen: ask, always oder never (#716).</summary>
+    SafeDeleteCascade: string;
+    /// <summary>Überschreibungen einer virtuellen Methode mitlöschen: ask, always oder never (#716).</summary>
+    SafeDeleteIncludeOverrides: string;
     class function Default: TRefactoringSettings; static;
   end;
 
@@ -400,6 +530,10 @@ type
     /// <summary>Stelle des Werts von "delphiVersion" in der gelesenen Datei, für die Warnung, wenn diese
     /// Version nicht installiert ist (#47); leer ohne Angabe.</summary>
     DelphiVersionRange: TTextRange;
+    /// <summary>Älteste Delphi-Version, mit der das Projekt übersetzen muss, als BDS-Version wie DelphiVersion
+    /// (#1126); '' = keine. Sprachmerkmale neuerer Versionen meldet die Regel language-feature, und Code-Aktionen
+    /// erzeugen sie nicht (TLanguageFeatures.LanguageLevel).</summary>
+    MinDelphiVersion: string;
     /// <summary>Sprache der Meldungen, "de" oder "en".</summary>
     Language: string;
     /// <summary>Vorgabe-Codepage für Dateien ohne BOM, wenn die Erkennung nicht entscheidet (#121);
@@ -434,10 +568,24 @@ type
     McpGlobalSettings: Boolean;
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
     Format: string;
+    /// <summary>Projektaufgaben (#900) als JSON-Liste (Text), sonst ''. Ausführen tut sie das Plugin; der Server
+    /// prüft nur die Datei.</summary>
+    Tasks: string;
+    /// <summary>Persönliche Tracker-Verbindungen (issues.connections, #1260) als JSON-Liste (Text), sonst ''.
+    /// Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    IssueConnections: string;
+    /// <summary>Persönliche Zuordnung Delphi-Projekt → Tracker-Projekt (issues.projects, #1261) als JSON-Liste
+    /// (Text), sonst ''. Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    IssueProjects: string;
+    /// <summary>Benannte Abfragen für „Meine Issues“ (issues.queries, #1262) als JSON-Liste (Text), sonst ''.
+    /// Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    IssueQueries: string;
     /// <summary>Ausgewerteter Block "format" (#43).</summary>
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
+    References: TReferenceSettings;
+    Navigation: TNavigationSettings;
     Hints: THintSettings;
     Directives: TDirectiveSettings;
     Highlight: THighlightSettings;
@@ -485,6 +633,11 @@ type
     SortUsesByNamespace: Boolean;
     /// <summary>Units, die "ungenutzte uses entfernen" nie entfernt (#284).</summary>
     UsesKeep: TArray<string>;
+    /// <summary>Toter Code (#64): Attribute (z. B. JsonName) und Namensmuster (z. B. *Handler), deren Elemente als
+    /// verwendet gelten (deadCode.keepAttributes, deadCode.keepPatterns); für unused-private-member,
+    /// unused-public-member und unused-declaration.</summary>
+    DeadCodeKeepAttributes: TArray<string>;
+    DeadCodeKeepPatterns: TArray<string>;
     /// <summary>Klartext als String-Literal (#312).</summary>
     StringLiteral: TStringLiteralSettings;
     /// <summary>Klassenmitglieder ordnen (#89).</summary>
@@ -502,6 +655,12 @@ type
     DiagnosticsLog: Boolean;
     DiagnosticsLogDays: Integer;
     DiagnosticsLogMapFile: Boolean;
+    /// <summary>Unit-Zyklen beim Tippen melden (#896, diagnostics.usesCycleLive): uses-cycle in den Diagnosen des
+    /// Editors; die projektweite Prüfung (#64) bleibt davon unberührt.</summary>
+    DiagnosticsUsesCycleLive: Boolean;
+    /// <summary>Im Editor auch Zyklen mit implementation-Kante, als Hinweis (#896,
+    /// diagnostics.usesCycleImplementation).</summary>
+    DiagnosticsUsesCycleImplementation: Boolean;
     /// <summary>Umfang des Index (#648): alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und
     /// der Bibliotheks- und Suchpfade der Installation; False = nur über uses erreichbare (bisher).</summary>
     IndexProjectGroup: Boolean;
@@ -516,6 +675,20 @@ type
     IndexRemoveOrphans: Boolean;
     IndexCacheMaxAgeDays: Integer;
     IndexCacheMaxMb: Integer;
+    /// <summary>Architekturübersicht (#1118): Hauptschalter (aus = kein Fenster, kein Bericht, kein
+    /// get_architecture), Umfang ("project" oder "projectGroup"), Bibliotheks-Units mitzählen, Länge der Liste
+    /// zentraler Units (5..100) und Glob-Muster für Units, die nicht eingehen (Unit-Name oder Pfad relativ zum
+    /// Projekt).</summary>
+    ArchitectureEnabled: Boolean;
+    ArchitectureScope: string;
+    ArchitectureIncludeLibraryUnits: Boolean;
+    ArchitectureCentralUnits: Integer;
+    ArchitectureExclude: TArray<string>;
+    /// <summary>Architekturvergleich (#1121): gespeicherter Stand (Pfad relativ zum Projekt, '' = keiner), mit dem
+    /// Fenster und Bericht automatisch vergleichen, und die Abweichungen, die --compare als Fehler meldet
+    /// (newCycle, newCrossLink, subsystemChange, centralGrowth; Vorgabe newCycle).</summary>
+    ArchitectureBaseline: string;
+    ArchitectureFailOn: TArray<string>;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -524,6 +697,14 @@ type
     TraceFile: string;
     /// <summary>Versionsverwaltung (vcs.provider, #571): "auto", "git", "svn" oder "off".</summary>
     VcsProvider: string;
+    /// <summary>Eigener Pfad zu git bzw. svn (vcs.git.path, vcs.svn.path, #1285); '' = automatisch suchen.</summary>
+    VcsGitPath: string;
+    VcsSvnPath: string;
+    /// <summary>Zeitlimit je Aufruf von git bzw. svn in Sekunden (vcs.timeoutSeconds, #1285, 1–300).</summary>
+    VcsTimeoutSeconds: Integer;
+    /// <summary>Persönliche Art und Hauptbranch je Delphi-Projekt (vcs.projects, #1286) als JSON-Liste (Text),
+    /// sonst ''. Nutzen tut sie das Plugin; der Server prüft nur die Datei.</summary>
+    VcsProjects: string;
     /// <summary>True, wenn AFileName unter ein Muster aus IndexExclude fällt.</summary>
     function IsIndexExcluded(const AFileName: string): Boolean;
     /// <summary>Vorgaben, wenn keine Konfigurationsdatei existiert.</summary>
@@ -719,6 +900,29 @@ begin
   Result.ControlChars := True;
 end;
 
+{ TReferenceSettings }
+
+class function TReferenceSettings.Default: TReferenceSettings;
+begin
+  Result.Inferred := True;
+  Result.TextMatches := False;
+end;
+
+class function TReferenceSettings.SureOnly: TReferenceSettings;
+begin
+  Result.Inferred := False;
+  Result.TextMatches := False;
+end;
+
+{ TNavigationSettings }
+
+class function TNavigationSettings.Default: TNavigationSettings;
+begin
+  Result.SymbolPath := True;
+  Result.Impact := True;
+  Result.ImpactDepth := 2;
+end;
+
 { TCodeLensSettings }
 
 class function TCodeLensSettings.Default: TCodeLensSettings;
@@ -769,6 +973,9 @@ begin
   Result.XmlDocExpand := ExpandLast;
   Result.XmlDocMaxLines := 0;
   Result.PublishedMembers := True;
+  Result.Rationale := True;
+  Result.RationaleMarkers := nil;
+  Result.AdrFolder := '';
 end;
 
 { THighlightSettings }
@@ -825,6 +1032,10 @@ begin
   Result.TryFinally := True;
   Result.ClassActions := True;
   Result.ExplicitType := True;
+  Result.CompilerFixes := True;
+  Result.MissingUnit := True;
+  Result.DisableWarning := True;
+  Result.DisableWarningReason := True;
   Result.Extract := True;
   Result.CompleteCase := True;
   Result.ResolveWith := True;
@@ -842,10 +1053,43 @@ begin
   Result.PropertyFromAccessorsHideAccessors := 'off';
   Result.FreeFields := True;
   Result.FreeFieldsStyle := 'free';
+  Result.SuggestConst := False;
   Result.InvertBoolean := True;
   Result.InvertBooleanAntonyms := nil;
   Result.InvertBooleanFallbackPrefix := 'Not';
   Result.InvertBooleanIncludeDfm := True;
+  Result.IfCase := True;
+  Result.Conditions := True;
+  Result.ConditionalExpression := True;
+  Result.NestedRoutine := True;
+  Result.PromoteVariable := True;
+  Result.AnonymousMethod := True;
+  Result.AnonymousMethodDeferredCapture := 'forward';
+  Result.MethodKind := True;
+  Result.MethodKindMarker := True;
+  Result.MethodKindStatic := True;
+  Result.TypeAlias := True;
+  Result.TypeAliasScope := 'unit';
+  Result.EnumTables := True;
+  Result.EnumTablesResourceStrings := False;
+  Result.VarBlock := True;
+  Result.VarBlockMerge := True;
+  Result.VarBlockSort := 'usage';
+  Result.ExtractInterface := True;
+  Result.ExtractSuperclass := True;
+  Result.ExtractSuperclassTarget := 'sameUnit';
+  Result.ExtractSuperclassNameSuffix := 'Base';
+  Result.ExtractSuperclassMethodMode := 'move';
+  Result.ExtractSuperclassRaiseVisibility := 'protected';
+  Result.MoveMember := True;
+  Result.InlineAccessor := True;
+  Result.InlineAccessorEqualityCheck := True;
+  Result.InlineAccessorBulk := True;
+  Result.InlineAccessorDiagnostic := False;
+  Result.SafeDelete := True;
+  Result.SafeDeletePreviewWhenUnused := False;
+  Result.SafeDeleteCascade := 'ask';
+  Result.SafeDeleteIncludeOverrides := 'ask';
 end;
 
 { TCompletionSettings }
@@ -869,6 +1113,11 @@ begin
   Result.AssignAllFields := False;
   Result.UsesDetails := True;
   Result.InheritedCall := True;
+  Result.Attributes := True;
+  Result.AnonymousMethods := True;
+  Result.WithOrigin := True;
+  Result.ExceptionClasses := True;
+  Result.SyntaxNotice := True;
   Result.SameNameVariants := True;
   Result.SameNameInsert := TCompletionSameNameInsert.Prefix;
   Result.ShowFmxUnits := False;
@@ -879,6 +1128,7 @@ end;
 class function TServerSettings.Default: TServerSettings;
 begin
   Result.DelphiVersion := '';
+  Result.MinDelphiVersion := '';
   Result.Language := 'de';
   Result.DefaultEncoding := 65001;
   Result.Project := '';
@@ -898,6 +1148,8 @@ begin
   Result.Formatting := TFormatStyle.Default;
   Result.InlayHints := TInlayHintSettings.Default;
   Result.CodeLens := TCodeLensSettings.Default;
+  Result.References := TReferenceSettings.Default;
+  Result.Navigation := TNavigationSettings.Default;
   Result.Hints := THintSettings.Default;
   Result.Directives := TDirectiveSettings.Default;
   Result.Highlight := THighlightSettings.Default;
@@ -921,6 +1173,8 @@ begin
   Result.SortUses := False;
   Result.SortUsesByNamespace := False;
   Result.UsesKeep := nil;
+  Result.DeadCodeKeepAttributes := nil;
+  Result.DeadCodeKeepPatterns := nil;
   Result.StringLiteral := TStringLiteralSettings.Default;
   Result.MemberOrder := TMemberOrderSettings.Default;
   Result.TestUnits := TTestUnitSettings.Default;
@@ -931,6 +1185,8 @@ begin
   Result.DiagnosticsLog := True;
   Result.DiagnosticsLogDays := 7;
   Result.DiagnosticsLogMapFile := False;
+  Result.DiagnosticsUsesCycleLive := True;
+  Result.DiagnosticsUsesCycleImplementation := False;
   Result.IndexProjectGroup := True;
   Result.McpGlobalSettings := True;
   Result.IndexSearchPaths := True;
@@ -941,10 +1197,21 @@ begin
   Result.IndexRemoveOrphans := True;
   Result.IndexCacheMaxAgeDays := 14;
   Result.IndexCacheMaxMb := 256;
+  Result.ArchitectureEnabled := True;
+  Result.ArchitectureScope := 'projectGroup';
+  Result.ArchitectureIncludeLibraryUnits := False;
+  Result.ArchitectureCentralUnits := 15;
+  Result.ArchitectureExclude := nil;
+  Result.ArchitectureBaseline := '';
+  Result.ArchitectureFailOn := ['newCycle'];
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';
   Result.VcsProvider := 'auto';
+  Result.VcsGitPath := '';
+  Result.VcsSvnPath := '';
+  Result.VcsTimeoutSeconds := 15;
+  Result.VcsProjects := '';
 end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;

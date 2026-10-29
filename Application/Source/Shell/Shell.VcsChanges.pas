@@ -6,6 +6,11 @@
 // über die gemeinsame Schnittstelle der Versionsverwaltung (#571,
 // Atlas.Core.Vcs.*): die nächstliegende Arbeitskopie (.git oder .svn, bei
 // Gleichstand Git) nach vcs.provider (auto/git/svn/off).
+// vcs.git.path und vcs.svn.path (#1285): derselbe eigene Pfad wie im Plugin
+// (TAtlasVcsTools.Probe); fehlt die Datei dort, bricht --changed mit dieser
+// Ursache ab, statt ein anderes Programm zu nehmen. vcs.timeoutSeconds gilt
+// für die Abfragen über die gemeinsame Umsetzung (SVN-Status), mal vier wie
+// bisher, weil die Kommandozeile warten darf.
 //
 // Git (#157):
 //   git rev-parse --show-toplevel              Wurzel des Repositorys
@@ -53,6 +58,13 @@ type
     /// wenn keins passt, die Versionsverwaltung abgeschaltet ist oder svn fehlt.</summary>
     class function Detect(const AProcess: ICompilerProcess; const AWorkingDir, AProvider: string): TVcsChanges;
       overload; static;
+    /// <summary>Wie oben mit eigenen Programmpfaden (vcs.git.path, vcs.svn.path; '' = automatisch suchen) und
+    /// Zeitlimit je Aufruf in Sekunden (vcs.timeoutSeconds, #1285).</summary>
+    class function Detect(const AProcess: ICompilerProcess; const AWorkingDir, AProvider, AGitPath,
+      ASvnPath: string; ATimeoutSeconds: Integer): TVcsChanges; overload; static;
+    /// <summary>Programm für AKind nach dem eigenen Pfad AConfigured ('' = PATH und bekannte Ordner); Ausnahme,
+    /// wenn ein eigener Pfad gesetzt ist und die Datei fehlt. '' ohne Fund.</summary>
+    class function ToolFor(AKind: TAtlasVcsKind; const AConfigured: string): string; static;
     /// <summary>Wie oben mit vcs.provider = auto.</summary>
     class function Detect(const AProcess: ICompilerProcess; const AWorkingDir: string): TVcsChanges; overload;
       static;
@@ -71,8 +83,11 @@ type
 
   TGitChanges = class(TVcsChanges)
   private
+    FGit: string;
     function Git(const AArguments: TArray<string>): TArray<string>;
   public
+    /// <summary>AGit: vollständiger Pfad von git; '' = git aus PATH.</summary>
+    constructor Create(const AProcess: ICompilerProcess; const AWorkingDir, AGit: string);
     procedure Load(const ARef: string; AMergeBase, ADefaultBase, AIncludeUncommitted, AWithLines: Boolean); override;
     function Name: string; override;
   end;
@@ -83,9 +98,10 @@ type
     FSvn: string;
     function Svn(const AArguments: TArray<string>): TArray<string>;
   public
-    /// <summary>AWorkingCopy: gefundene SVN-Arbeitskopie; ASvn: vollständiger Pfad von svn.</summary>
+    /// <summary>AWorkingCopy: gefundene SVN-Arbeitskopie; ASvn: vollständiger Pfad von svn; ATimeoutMs: Zeitlimit
+    /// je Aufruf über die gemeinsame Umsetzung.</summary>
     constructor Create(const AProcess: ICompilerProcess; const AWorkingDir: string;
-      const AWorkingCopy: TAtlasVcsWorkingCopy; const ASvn: string);
+      const AWorkingCopy: TAtlasVcsWorkingCopy; const ASvn: string; ATimeoutMs: Cardinal);
     procedure Load(const ARef: string; AMergeBase, ADefaultBase, AIncludeUncommitted, AWithLines: Boolean); override;
     function Name: string; override;
   end;
@@ -153,26 +169,51 @@ begin
   FLines := FLines + [Item];
 end;
 
+class function TVcsChanges.ToolFor(AKind: TAtlasVcsKind; const AConfigured: string): string;
+var
+  mLocation: TAtlasVcsToolLocation;
+begin
+  // Ohne eigenen Pfad der gemerkte Fund (auch TAtlasVcsTools.Preset), sonst neu suchen.
+  if AConfigured = '' then
+    mLocation := TAtlasVcsTools.Where(AKind)
+  else
+    mLocation := TAtlasVcsTools.Probe(AKind, AConfigured);
+  if mLocation.Source = TAtlasVcsToolSource.ConfiguredMissing then
+    raise EVcsChanges.CreateFmt('%s nicht gefunden unter %s (vcs.%s.path)',
+      [TAtlasVcsTools.ProgramName(AKind), mLocation.Configured, TAtlasVcsTools.ProgramName(AKind)]);
+  Result := mLocation.Executable;
+end;
+
 class function TVcsChanges.Detect(const AProcess: ICompilerProcess; const AWorkingDir, AProvider: string): TVcsChanges;
+begin
+  Result := Detect(AProcess, AWorkingDir, AProvider, '', '', TAtlasVcsCommand.DefaultTimeoutMs div 1000);
+end;
+
+class function TVcsChanges.Detect(const AProcess: ICompilerProcess; const AWorkingDir, AProvider, AGitPath,
+  ASvnPath: string; ATimeoutSeconds: Integer): TVcsChanges;
 var
   Provider: TAtlasVcsProvider;
   WorkingCopy: TAtlasVcsWorkingCopy;
   SvnExe: string;
+  mTimeoutMs: Cardinal;
 begin
+  mTimeoutMs := TAtlasVcsCommand.DefaultTimeoutMs;
+  if (ATimeoutSeconds >= 1) and (ATimeoutSeconds <= 300) then
+    mTimeoutMs := Cardinal(ATimeoutSeconds) * 1000;
   Provider := AtlasVcsProviderOf(AProvider);
   if Provider = TAtlasVcsProvider.Off then
     raise EVcsChanges.Create('Versionsverwaltung abgeschaltet (vcs.provider = off)');
   WorkingCopy := TAtlasVcsDetection.Find(AWorkingDir, Provider);
   case WorkingCopy.Kind of
     TAtlasVcsKind.Git:
-      Result := TGitChanges.Create(AProcess, AWorkingDir);
+      Result := TGitChanges.Create(AProcess, AWorkingDir, ToolFor(TAtlasVcsKind.Git, AGitPath));
     TAtlasVcsKind.Svn:
       begin
-        SvnExe := TAtlasVcsTools.Find(TAtlasVcsKind.Svn);
+        SvnExe := ToolFor(TAtlasVcsKind.Svn, ASvnPath);
         if SvnExe = '' then
           raise EVcsChanges.CreateFmt('%s liegt in einer SVN-Arbeitskopie, aber svn ist nicht installiert ' +
             '(TortoiseSVN mit Kommandozeilenwerkzeugen genügt)', [AWorkingDir]);
-        Result := TSvnChanges.Create(AProcess, AWorkingDir, WorkingCopy, SvnExe);
+        Result := TSvnChanges.Create(AProcess, AWorkingDir, WorkingCopy, SvnExe, mTimeoutMs * 4);
       end;
   else
     if Provider = TAtlasVcsProvider.Auto then
@@ -191,6 +232,12 @@ end;
 
 { TGitChanges }
 
+constructor TGitChanges.Create(const AProcess: ICompilerProcess; const AWorkingDir, AGit: string);
+begin
+  inherited Create(AProcess, AWorkingDir);
+  FGit := AGit;
+end;
+
 function TGitChanges.Name: string;
 begin
   Result := 'Git';
@@ -202,7 +249,10 @@ var
 begin
   // Pfade mit Sonderzeichen kommen als Oktalfolgen (core.quotepath) und damit
   // unabhängig von der Codepage, in der der Prozessläufer liest.
-  Result := Run('git', ['-c', 'core.quotepath=on'] + AArguments, True, ExitCode);
+  if FGit <> '' then
+    Result := Run(FGit, ['-c', 'core.quotepath=on'] + AArguments, True, ExitCode)
+  else
+    Result := Run('git', ['-c', 'core.quotepath=on'] + AArguments, True, ExitCode);
 end;
 
 procedure TGitChanges.Load(const ARef: string; AMergeBase, ADefaultBase, AIncludeUncommitted, AWithLines: Boolean);
@@ -242,7 +292,7 @@ end;
 { TSvnChanges }
 
 constructor TSvnChanges.Create(const AProcess: ICompilerProcess; const AWorkingDir: string;
-  const AWorkingCopy: TAtlasVcsWorkingCopy; const ASvn: string);
+  const AWorkingCopy: TAtlasVcsWorkingCopy; const ASvn: string; ATimeoutMs: Cardinal);
 var
   Runner: IAtlasVcsRunner;
 begin
@@ -252,7 +302,7 @@ begin
     FSvn := 'svn';
   // Kommandozeile: kein Fenster, der Hauptthread darf warten.
   Runner := TShellPlatform.CreateVcsRunner(True, nil);
-  FVcs := TAtlasVersionControl.ForWorkingCopy(AWorkingCopy, Runner, ASvn, TAtlasVcsCommand.DefaultTimeoutMs * 4);
+  FVcs := TAtlasVersionControl.ForWorkingCopy(AWorkingCopy, Runner, ASvn, ATimeoutMs);
 end;
 
 function TSvnChanges.Name: string;

@@ -55,6 +55,12 @@ type
     Generic: Boolean;
     GenericOwnerPos: TTextPosition;
     GenericParam: Integer;
+    /// <summary>Name in einer Attributklammer vor einer Deklaration (#465): nur Attributklassen.</summary>
+    Attribute: Boolean;
+    /// <summary>Name nach "raise " bzw. "on E: " (#483): nur Exception-Klassen; ExceptionToken ist das Token davor
+    /// (raise bzw. ":").</summary>
+    Exceptions: Boolean;
+    ExceptionToken: Integer;
   end;
 
   /// <summary>Zeile von „Alle Felder zuweisen“ (#491) für die Liste mit Kontrollkästchen.</summary>
@@ -102,8 +108,13 @@ type
     /// <summary>Unter der aktiven Konfiguration nicht deklariert; Atlas zeigt es abgeschwächt am Ende (#476).</summary>
     Unavailable: Boolean;
     /// <summary>Gültigkeitsbereich ohne Punkt davor (#488): 1 lokal, 2 Parameter, 3 Mitglied von Self,
-    /// 4 eigene Unit, 5 andere Unit; 0 = keine Angabe (nach einem Punkt, Schlüsselwörter …).</summary>
+    /// 4 eigene Unit, 5 andere Unit, 6 Mitglied eines with-Objekts (#481); 0 = keine Angabe (nach einem Punkt,
+    /// Schlüsselwörter …).</summary>
     Scope: Integer;
+    /// <summary>Bei Scope 6 (#481): Ausdruck des with-Objekts ("qryOrders") und die verdeckten lokalen Namen bzw.
+    /// Mitglieder von Self ("Self.Name"); Atlas zeigt „aus …“ und warnt „verdeckt …“.</summary>
+    WithOrigin: string;
+    WithShadows: TArray<string>;
     /// <summary>Unit der Deklaration bei Scope 5 (#488): Atlas zeigt sie als Tag.</summary>
     UnitName: string;
     /// <summary>Verdeckte gleichnamige Deklarationen weiter außen (#488), z. B. "Feld TKunde.Total".</summary>
@@ -210,6 +221,16 @@ type
     SameNameInsert: string;
     SameNameUnits: TArray<string>;
     SameNameHidden: TArray<string>;
+    /// <summary>Attribut nach "[" (#465): Name ohne Endung Attribute; Atlas zeigt das Badge "at".</summary>
+    Attribute: Boolean;
+    /// <summary>Gerüst einer anonymen Methode (#468): der erwartete Methodenreferenztyp; Atlas zeigt ihn als Tag.
+    /// '' sonst.</summary>
+    MethodRef: string;
+    /// <summary>Exception-Klassen (#483): 'raise' (Übernahme mit Create), 'try' (Gruppe „Aus dem try-Block“),
+    /// 'general' („Allgemein“); '' sonst. Unreachable: Klasse eines früheren Zweigs, die diese schon fängt.
+    /// </summary>
+    ExceptionGroup: string;
+    Unreachable: string;
   end;
 
   TCompletionItems = record

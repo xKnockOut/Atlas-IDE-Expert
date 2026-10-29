@@ -11,8 +11,6 @@
     - Atlas.IDE.Expert: eigenständig; darin Schichten (#406):
         Atlas.Core.* ohne VCL, Open Tools API, Atlas.UI.* und Atlas.IDE.*
         Atlas.UI.*   ohne Open Tools API und Atlas.IDE.*
-    - Setup (Installer, #495): ohne Atlas.Common und Atlas.Windows; darin
-        Setup.Core.* frei von Windows, VCL, Setup.Adapters und Setup.Shell
     - Atlas.Core.Vcs.* (Versionsverwaltung, #571): übersetzt auch der Server
         mit; darum nur RTL, Winapi und eigene Atlas.Core.Vcs.*-Units
 
@@ -128,15 +126,6 @@ $Packages = @(
         ForbiddenPrefix  = @('Atlas.Common', 'Atlas.Windows', 'FMX.')
         ForbiddenUnits   = @()
         Reason           = 'eigenständig ohne Atlas.Common und Atlas.Windows'
-    },
-    @{
-        # Installer (#495, ADR 0009): eigene VCL-Anwendung, teilt mit dem Plugin nur die Versionsangabe.
-        Name             = 'AtlasSetup'
-        Path             = 'Setup'
-        AllowedRequires  = @()
-        ForbiddenPrefix  = @('Atlas.Common', 'Atlas.Windows', 'FMX.')
-        ForbiddenUnits   = @()
-        Reason           = 'ohne Atlas.Common und Atlas.Windows'
     }
 )
 
@@ -156,13 +145,6 @@ $Layers = @(
         ForbiddenPrefix = @('Atlas.IDE.') + $OpenToolsPrefix
         ForbiddenUnits  = @()
         Reason          = 'frei von Open Tools API und Atlas.IDE'
-    },
-    @{
-        # Kern des Installers: nur über ISetupSystem, damit er mit einer Attrappe testbar ist.
-        UnitPrefix      = 'Setup.Core.'
-        ForbiddenPrefix = @('Winapi.', 'System.Win.', 'Vcl.', 'FMX.', 'Setup.Adapters.', 'Setup.Shell.')
-        ForbiddenUnits  = $LegacyVclUnits + $LegacyWindowsUnits
-        Reason          = 'frei von Windows, VCL, Setup.Adapters und Setup.Shell'
     }
 )
 
@@ -199,6 +181,7 @@ $AllowedLocal = @{
     'Atlas.Common.Documents.FileEncoding:TFileEncoding.DetectLineBreak' = 'Fassade mit eigenem Typ TLineBreakStyle, leitet an TTextLines.DominantOf weiter'
     'Atlas.Common.Lsp.Documentation:TLspDocumentation.SplitLines'      = 'öffentliche Weiterleitung an TTextLines.SplitLines'
     'Atlas.Common.Editing.DataFieldNames:IsWordChar'                    = 'SQL-Bezeichner mit $, @ und #, keine Pascal-Regel'
+    'Atlas.Core.Tracker.CodeLinks:IsWordChar'                           = 'Issue-Kennungen: Buchstaben ab #128 gehören zum Wort (äATL-1 ist keine Kennung, gegen IsAsciiIdentChar), Satzzeichen ab #128 („, “, –) nicht (gegen IsIdentChar)'
     'Atlas.Common.Rules.Builtin.Unused:IsWordChar'                      = 'verschachtelt mit Index; folgt mit Block Rules'
     'Atlas.Core.InlayHints.Store:TAtlasInlayHintStore.SplitLines'      = 'öffentliche Weiterleitung an TTextLines.SplitLines'
     'Atlas.Core.Files.Format:TAtlasFileFormats.IsUtf8'                 = 'Fassade, leitet an TTextEncodingProbe weiter'

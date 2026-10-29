@@ -8,7 +8,6 @@
 //                                 Parametern (E2518) bzw. in Parameter oder
 //                                 Ergebnis (E2521), Inc/Dec mit anderem
 //                                 Ergebnis als dem ersten Parameter (E2519),
-//                                 Vergleich ohne Boolean-Ergebnis (E2520),
 //                                 Umwandlung in einen Vorfahren (E2522) oder
 //                                 Assign ohne var vor dem ersten Parameter
 //                                 (E2464).
@@ -45,10 +44,8 @@
 //                                 parameterlose Konstruktoren (E2394, E2471)
 //                                 und Destruktoren (E2465) in Records, class-
 //                                 Methoden ohne static (E2398); Felder in
-//                                 Helfern (E2599), Destruktor (E2295) und
-//                                 Klassenkonstruktor (E2358) im Class-Helfer,
-//                                 Helfer-Konstruktor ohne parameterlosen
-//                                 Aufruf zuerst (E2296), Vorfahr-Helfer für
+//                                 Helfern (E2599), Destruktor (E2295) im
+//                                 Class-Helfer, Vorfahr-Helfer für
 //                                 fremde Typen (E2294), Helfer als Typ
 //                                 (E2527) oder in generischem Kontext
 //                                 (E2589); mehrere oder parametrisierte bzw.
@@ -59,7 +56,9 @@
 //                                 E2437); inline an virtuellen Methoden
 //                                 (E2425), mit asm (E2426), an Konstruktoren
 //                                 (E2442), mit offenen Arrays (E2439), mit
-//                                 Symbolen des implementation-Teils (E2441),
+//                                 Variablen, typisierten Konstanten oder
+//                                 Typen des implementation-Teils (E2441; echte
+//                                 Konstanten und Routinen übersetzt dcc, #1328),
 //                                 mit Zugriff auf die umgebende Routine
 //                                 (E2449) oder Aufruf eigener lokaler
 //                                 Routinen (E2501); lokale, absolute oder
@@ -98,10 +97,9 @@
 // Regel bei E2518, E2519, E2521 still. Operatoren, deren Namen Delphi nicht
 // sicher ablehnt (True, False, OnesComplement), gelten als bekannt.
 //
-// Korrekturen: Name des nächstliegenden Operators (E2393), Boolean als
-// Ergebnis (E2520), Ergebnis wie der erste Parameter (E2519), var vor dem
-// ersten Parameter (E2464), Parameterliste nach Vorlage (E2517); jeweils in
-// Deklaration und Rumpf.
+// Korrekturen: Name des nächstliegenden Operators (E2393), Ergebnis wie der
+// erste Parameter (E2519), var vor dem ersten Parameter (E2464),
+// Parameterliste nach Vorlage (E2517); jeweils in Deklaration und Rumpf.
 
 interface
 
@@ -782,15 +780,8 @@ var
         nil);
       Exit;
     end;
-    // Vergleich ohne Boolean (E2520).
-    if (Shape = TOperatorShape.Comparison) and (Head.ResultType <> nil) and
-      not MatchText(BareTypeName(Head.ResultType.Name), BooleanTypeNames) and
-      Types.CertainlyOther(Head.ResultType.Name, BooleanTypeNames) then
-    begin
-      Report(Range, Format('%s muss Boolean liefern (wie E2520).', [Name]),
-        [ResultFix(Own, Head, 'Boolean', 'Boolean als Ergebnis')]);
-      Exit;
-    end;
+    // Vergleiche mit anderem Ergebnis als Boolean übersetzt dcc (Spring4D Persistence.Criteria liefert
+    // ICriterion; OP1-OP5, #1328); die Prüfung auf E2520 ist entfallen.
     // Inc und Dec liefern den Typ des Parameters (E2519).
     if MatchText(Name, ['Inc', 'Dec']) and (Head.ResultType <> nil) and (ParamTypes[0] <> '') and
       not SameText(BareTypeName(Head.ResultType.Name), BareTypeName(ParamTypes[0])) and
@@ -1159,6 +1150,47 @@ begin
   end;
 end;
 
+/// <summary>Namen des implementation-Teils, die eine Inline-Routine aus dem interface-Teil verwenden darf: echte
+/// Konstanten, Aufzählungswerte und Routinen. dcc übersetzt das (mORMot2, Clipper2 in Graphics32; TR1, TR2, TR4,
+/// #1328); E2441 bleibt für Variablen, typisierte Konstanten und Typen. Abgeleitet aus dem Korpus, der dcc-Lauf der
+/// Minimalfälle steht aus.</summary>
+function InlineUsableNames(ASection: TSyntaxNode): TArray<string>;
+var
+  mIndex, mInner: Integer;
+  mChild, mDecl: TSyntaxNode;
+begin
+  Result := nil;
+  if ASection = nil then
+    Exit;
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    mChild := ASection[mIndex];
+    case mChild.Kind of
+      TSyntaxKind.ConstSection:
+        for mInner := 0 to mChild.ChildCount - 1 do
+        begin
+          mDecl := mChild[mInner];
+          // Typisierte Konstanten haben Typ und Wert als Kinder.
+          if (mDecl.Kind = TSyntaxKind.ConstDecl) and (mDecl.ChildCount < 2) then
+            Result := Result + DeclaredNames(mDecl);
+        end;
+      TSyntaxKind.TypeSection:
+        for mInner := 0 to mChild.ChildCount - 1 do
+        begin
+          mDecl := mChild[mInner];
+          if (mDecl.Kind = TSyntaxKind.TypeDecl) and (TypeOfDecl(mDecl) <> nil) and
+            (TypeOfDecl(mDecl).Kind = TSyntaxKind.EnumType) then
+            Result := Result + NamesBelow(TypeOfDecl(mDecl));
+        end;
+      TSyntaxKind.RoutineDecl:
+        if Pos('.', mChild.Name) = 0 then
+          Result := Result + [mChild.Name];
+    else
+      // Übrige Werte bewusst ohne Wirkung.
+    end;
+  end;
+end;
+
 /// <summary>Erste Typdeklaration AName (Klasse, Record, object) unterhalb von ASection, nil ohne.</summary>
 function FindStructDecl(ASection: TSyntaxNode; const AName: string): TSyntaxNode;
 var
@@ -1483,6 +1515,10 @@ var
         function(ANode: TSyntaxNode): Boolean
         begin
           Result := True;
+          // IEnumerator<T>.GetCurrent = GetCurrentGen nennt die Typparameter des Interfaces, deklariert keine
+          // eigenen (#1325).
+          if (ANode.Kind = TSyntaxKind.RoutineHeader) and ANode.IsMethodResolution then
+            Exit(False);
           if ANode.Kind = TSyntaxKind.GenericParams then
             Shadowing.Add(ANode);
         end);
@@ -1714,9 +1750,10 @@ begin
     Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
-        Result := True;
-        if ANode.Kind in [TSyntaxKind.GenericParams, TSyntaxKind.TypeDecl, TSyntaxKind.ClassOfType,
-          TSyntaxKind.Attribute, TSyntaxKind.RoutineHeader, TSyntaxKind.MemberAccess] then
+        // Methodenzuordnungen (function IFoo<T>.Bar = Baz;) deklarieren nichts Generisches (#1325).
+        Result := not ((ANode.Kind = TSyntaxKind.RoutineHeader) and ANode.IsMethodResolution);
+        if Result and (ANode.Kind in [TSyntaxKind.GenericParams, TSyntaxKind.TypeDecl, TSyntaxKind.ClassOfType,
+          TSyntaxKind.Attribute, TSyntaxKind.RoutineHeader, TSyntaxKind.MemberAccess]) then
           Nodes.Add(ANode);
       end);
     for Index := 0 to Nodes.Count - 1 do
@@ -2089,25 +2126,9 @@ var
     Result := True;
   end;
 
-  /// <summary>Ist der erste Befehl des Rumpfs ARoutine ein Aufruf ohne Argumente?</summary>
-  function StartsWithParameterlessCall(ARoutine: TSyntaxNode): Boolean;
-  var
-    Block, First: TSyntaxNode;
-  begin
-    Result := True;
-    Block := ARoutine.FindChild(TSyntaxKind.Block);
-    if Block = nil then
-      Exit;
-    if Block.ChildCount = 0 then
-      Exit(False);
-    First := Block[0];
-    if First.Kind <> TSyntaxKind.CallStatement then
-      Exit(False);
-    if (First.ChildCount > 0) and (First[0].Kind = TSyntaxKind.Call) then
-      Result := First[0].ChildCount = 1;
-  end;
-
-  // Helfer: E2599, E2598, E2475, E2295, E2358, E2296, E2294, E2589.
+  // Helfer: E2599, E2598, E2475, E2295, E2294, E2589. Klassenkonstruktoren im Class-Helfer (E2358) und
+  // Helfer-Konstruktoren ohne Konstruktoraufruf zuerst (E2296) übersetzt dcc (Skia4Delphi MobileBars,
+  // TSkPixmapHelper.Create, FMX.Skia TSkBitmapHelper; TR6, TR7, #1328); die Prüfungen sind entfallen.
   procedure CheckHelper(AHelper: TSyntaxNode);
   var
     Child, Inner: Integer;
@@ -2152,27 +2173,12 @@ var
               end;
             end
             else if (Head.Keyword = 'destructor') and not Head.IsClass then
-              Report('E2295', NameRange(Member), 'Class-Helfer dürfen keinen Destruktor einführen (wie E2295).', nil)
-            else if (Head.Keyword = 'constructor') and Head.IsClass then
-              Report('E2358', NameRange(Member), 'Class-Helfer erlauben keine Klassenkonstruktoren (wie E2358).',
-                nil);
+              Report('E2295', NameRange(Member), 'Class-Helfer dürfen keinen Destruktor einführen (wie E2295).', nil);
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
     end;
-    // Konstruktoren eines Class-Helfers rufen zuerst den parameterlosen Konstruktor auf (E2296).
-    if not IsRecordHelper and (AHelper.Parent <> nil) and (AHelper.Parent.Kind = TSyntaxKind.TypeDecl) then
-      for Child := 0 to Nodes.Count - 1 do
-        if (Nodes[Child].Kind = TSyntaxKind.RoutineDecl) and
-          SameText(Nodes[Child].Name, AHelper.Parent.Name + '.' + LastPart(Nodes[Child].Name)) and
-          (Nodes[Child].FindChild(TSyntaxKind.RoutineHeader) <> nil) then
-        begin
-          Head := TRoutineHead.Read(Tokens, Nodes[Child].FindChild(TSyntaxKind.RoutineHeader));
-          if (Head.Keyword = 'constructor') and not Head.IsClass and not StartsWithParameterlessCall(Nodes[Child]) then
-            Report('E2296', NameRange(Head.Header), Format('Ein Konstruktor im Class-Helfer muss als ersten Befehl ' +
-              'den parameterlosen Konstruktor von %s aufrufen (wie E2296).', [Helped]), nil);
-        end;
     // Vorfahr-Helfer: nur Nachfahren seines Typs (E2294).
     if not IsRecordHelper and (AncestorRef <> nil) and (Helped <> '') then
     begin
@@ -2366,14 +2372,18 @@ var
   procedure CheckInlineLocalSymbols;
   var
     Symbols: TImplementationSymbols;
-    Routine, InlineHead, Use: TSyntaxNode;
+    Routine, Use, mDeclaration: TSyntaxNode;
+    mUsable: TArray<string>;
   begin
     Symbols := TImplementationSymbols.Create(AContext);
     try
+      mUsable := InlineUsableNames(Root.FindChild(TSyntaxKind.ImplementationSection));
       for Routine in Symbols.Routines do
       begin
-        InlineHead := InlineHeader(Routine);
-        if InlineHead = nil then
+        // Nur inline an der Deklaration im interface-Teil zählt: steht es allein am Rumpf, können andere Units
+        // die Routine ohnehin nicht einbetten (HtmlViewer, TR5).
+        mDeclaration := DeclarationOf(Routine);
+        if (mDeclaration = nil) or not TRoutineHead.Read(Tokens, mDeclaration).HasDirective('inline') then
           Continue;
         if Pos('.', Routine.Name) > 0 then
         begin
@@ -2384,8 +2394,9 @@ var
           (DeclarationOf(Routine).Parent.Parent <> Symbols.InterfacePart) then
           Continue;
         for Use in Symbols.UsesIn(Routine, Symbols.OwnerType(Routine)) do
-          Report('E2441', NodeRange(Use), Format('Die Inline-Routine %s aus dem interface-Teil darf %s aus dem ' +
-            'implementation-Teil nicht verwenden (wie E2441).', [Routine.Name, Use.Name]), nil);
+          if not MatchText(Use.Name, mUsable) then
+            Report('E2441', NodeRange(Use), Format('Die Inline-Routine %s aus dem interface-Teil darf %s aus dem ' +
+              'implementation-Teil nicht verwenden (wie E2441).', [Routine.Name, Use.Name]), nil);
       end;
     finally
       Symbols.Free;

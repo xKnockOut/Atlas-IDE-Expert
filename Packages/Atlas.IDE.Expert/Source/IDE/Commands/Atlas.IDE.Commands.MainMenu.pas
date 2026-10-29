@@ -41,8 +41,15 @@
 // Tastenkürzel-Tipps (#600) als Aufruf per Menü (TAtlasIdeShortcutTips.Invoked).
 // „Atlas-Prüfung“ (#909) öffnet das Fenster der Befunde, auch unter Ansicht ›
 // Atlas › Prüfung; sichtbar nur bei problems.window.
+// „Architekturübersicht“ (#1118) öffnet das Fenster „Atlas-Architektur“, auch
+// unter Ansicht › Atlas › Architektur; sichtbar nur bei architecture.enabled.
+// „Board“ (#1272) unter Ansicht › Atlas ruft OnBoard; sichtbar nur bei
+// issues.board.
 // Unter Navigation die Abschnittssprünge, der Rücksprung und „Methode suchen“
 // der Editorleiste (#1101); sie arbeiten auch ohne die Leiste.
+// Untermenü „Aufgaben“ (#900): Beim Öffnen des Atlas-Menüs füllt
+// OnTasksMenu es mit den Projektaufgaben bzw. blendet es aus (ohne Haken oder
+// mit tasks.enabled aus).
 // Aufbau: häufige Befehle direkt, der Rest in Untermenüs (Navigation, Suchen,
 // Kopieren, Änderungen, Anzeige mit den Schaltern, Index, Hilfe und Diagnose).
 
@@ -87,19 +94,48 @@ type
     FWelcomeLine: TMenuItem;
     FViewStart: TMenuItem;
     FNoteItems: TArray<TMenuItem>;
+    FCallDiagramItem: TMenuItem;
     FBookmarkItems: TArray<TMenuItem>;
     FQuickItems: TArray<TMenuItem>;
     /// <summary>„Erzeugen…“ (#719), sichtbar nach keys.generateMenu.</summary>
     FGenerateItem: TMenuItem;
     /// <summary>„Formatieren“ (#43), nur mit editor.format.</summary>
     FFormatItem: TMenuItem;
+    /// <summary>„implementation wie Klasse ordnen“ (#660), nur mit editor.methodPlacement.</summary>
+    FMethodOrderItem: TMenuItem;
     /// <summary>„Gliederung …“ (#537), sichtbar nach outline.enabled.</summary>
     FOutlineItem: TMenuItem;
     /// <summary>Untermenü „Notizen und Lesezeichen“ (#545, #622).</summary>
     FNotesGroup: TMenuItem;
     /// <summary>„Atlas-Prüfung“ (#909) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FProblemsItem: TMenuItem;
+    /// <summary>„Atlas: Exception-Verlauf“ (#517), sichtbar nach debug.exceptionHistory.</summary>
+    FDebugExceptionsItem: TMenuItem;
+    FDebugEvaluateItem: TMenuItem;
+    /// <summary>„An Issue anhängen …“ (#1276), sichtbar nach issues.attach.</summary>
+    FIssueAttachItem: TMenuItem;
+    FOnIssueAttach: TProc;
+    /// <summary>„Woher/Wohin kommt der Wert?“ (#690), sichtbar nach navigation.dataFlow.</summary>
+    FDataFlowItems: TArray<TMenuItem>;
+    /// <summary>„Atlas: Compiler-Schalter“ (#558), sichtbar nach build.compilerSwitches.</summary>
+    FCompilerSwitchesItem: TMenuItem;
     FViewAtlas: TMenuItem;
+    FViewProblems: TMenuItem;
+    /// <summary>„Architekturübersicht“ (#1118) im Atlas-Menü und unter Ansicht › Atlas.</summary>
+    FArchitectureItem: TMenuItem;
+    FViewArchitecture: TMenuItem;
+    /// <summary>Fenster „Unit-Beziehungen“ (#593) im Atlas-Menü und unter Ansicht › Atlas.</summary>
+    FUnitRelationsItem: TMenuItem;
+    FViewUnitRelations: TMenuItem;
+    /// <summary>Fenster „Atlas-Board“ (#1272) unter Ansicht › Atlas.</summary>
+    FViewBoard: TMenuItem;
+    FOnBoard: TProc;
+    FSymbolPathItem: TMenuItem;
+    /// <summary>„Auswirkungen anzeigen“ (#1120), sichtbar nach navigation.impact.</summary>
+    FImpactItem: TMenuItem;
+    /// <summary>Untermenü „Aufgaben“ (#900).</summary>
+    FTasksGroup: TMenuItem;
+    FOnTasksMenu: TProc<TMenuItem>;
     procedure WelcomeClick(Sender: TObject);
     procedure RenameClick(Sender: TObject);
     procedure ResultsClick(Sender: TObject);
@@ -110,6 +146,14 @@ type
     procedure BookmarksClick(Sender: TObject);
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
+    procedure ArchitectureClick(Sender: TObject);
+    procedure UnitRelationsClick(Sender: TObject);
+    procedure BoardClick(Sender: TObject);
+    procedure SymbolPathClick(Sender: TObject);
+    procedure DebugExceptionsClick(Sender: TObject);
+    procedure DebugEvaluateClick(Sender: TObject);
+    procedure IssueAttachClick(Sender: TObject);
+    procedure CompilerSwitchesClick(Sender: TObject);
     function AddItem(AText: TAtlasTextId; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
@@ -141,10 +185,16 @@ type
     property OnSetup: TProc read FOnSetup write FOnSetup;
     /// <summary>„Tastenkürzel-Übersicht…“ (#520).</summary>
     property OnKeyMap: TProc read FOnKeyMap write FOnKeyMap;
+    /// <summary>Untermenü „Aufgaben“ beim Öffnen füllen bzw. ausblenden (#900); ohne Haken ausgeblendet.</summary>
+    property OnTasksMenu: TProc<TMenuItem> read FOnTasksMenu write FOnTasksMenu;
     /// <summary>Eintrag „Tastenkürzel-Übersicht…“ nach keys.overview ein- oder ausblenden.</summary>
     procedure UpdateKeyMap;
+    /// <summary>„An Issue anhängen …“ (#1276).</summary>
+    property OnIssueAttach: TProc read FOnIssueAttach write FOnIssueAttach;
     /// <summary>Befehle der Willkommensseite (#753).</summary>
     property OnWelcome: TProc<TAtlasWelcomeCommand> read FOnWelcome write FOnWelcome;
+    /// <summary>Fenster „Atlas-Board“ öffnen (#1272).</summary>
+    property OnBoard: TProc read FOnBoard write FOnBoard;
     /// <summary>Einträge der Willkommensseite nach den Einstellungen ein- oder ausblenden.</summary>
     procedure UpdateWelcome;
     /// <summary>Name der Einstellung eines Schalters (Schlüssel im Katalog der Schnellschalter, #604).</summary>
@@ -166,13 +216,21 @@ uses
   Atlas.Core.Diagnostics.Processes,
   Atlas.UI.Diagnostics.ProcessesDialog,
   Atlas.IDE.Results.Commands,
+  Atlas.IDE.Results.Impact,
   Atlas.IDE.Undo.Changes,
   Atlas.IDE.Notes.Service,
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Outline.Service,
+  Atlas.IDE.Architecture.Service,
+  Atlas.IDE.UnitRelations.Service,
+  Atlas.IDE.SymbolPath.Service,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Problems.Service,
+  Atlas.IDE.Debug.Exceptions,
+  Atlas.IDE.Debug.Evaluate,
+  Atlas.IDE.Build.CompilerSwitches,
   Atlas.IDE.Commands.Editor,
+  Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.UnitSearch.Commands,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Commands.KeyMap,
@@ -181,16 +239,19 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Results.Model,
+  Atlas.Core.Lsp.DataFlow,
   Atlas.Core.Setup.Checklist,
   Atlas.Core.Lsp.Progress;
 
 const
   // Kennungen der Befehlspalette für die Tastenkürzel-Tipps (#600), je Tag der Einträge.
-  EditorIds: array[0..11] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
+  EditorIds: array[0..12] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
-    'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode');
-  ResultsIds: array[0..7] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
-    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow');
+    'Atlas.SwitchTestUnit', 'Atlas.UnitSearch', 'Atlas.UnitSearchIde', 'Atlas.GenerateMenu', 'Atlas.FormatCode',
+    'Atlas.MethodOrder');
+  ResultsIds: array[0..11] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
+    'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow', 'Atlas.CallDiagram',
+    'Atlas.Impact', 'Atlas.DataFlowSources', 'Atlas.DataFlowTargets');
   // Editorleiste (#1101), je Tag von SectionClick.
   SectionIds: array[0..5] of string = ('Atlas.GotoInterface', 'Atlas.GotoImplementation', 'Atlas.GotoUses',
     'Atlas.GotoInitialization', 'Atlas.ReturnFromSection', 'Atlas.FindMethod');
@@ -256,10 +317,22 @@ begin
   FGenerateItem := AddItem(TAtlasTextId.GenerateMenuCommand, 10, EditorClick);
   // Formatieren (#43).
   FFormatItem := AddItem(TAtlasTextId.FormatCodeCommand, 11, EditorClick);
+  // Methodenrümpfe wie die Klasse ordnen (#660).
+  FMethodOrderItem := AddItem(TAtlasTextId.MethodOrderCommand, 12, EditorClick);
   // Units suchen (#777).
   AddItem(TAtlasTextId.UnitSearchMenu, 8, EditorClick);
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
+  FArchitectureItem := AddItem(TAtlasTextId.ArchitectureCommand, 0, ArchitectureClick);
+  FUnitRelationsItem := AddItem(TAtlasTextId.UnitRelationsCommand, 0, UnitRelationsClick);
+  // Weg zwischen Symbolen (#1117).
+  FSymbolPathItem := AddItem(TAtlasTextId.SymbolPathCommand, 0, SymbolPathClick);
+  // Exception-Verlauf beim Debuggen (#517).
+  FDebugExceptionsItem := AddItem(TAtlasTextId.DebugExceptionsCommand, 0, DebugExceptionsClick);
+  FDebugEvaluateItem := AddItem(TAtlasTextId.DebugEvaluateCommand, 0, DebugEvaluateClick);
+  FIssueAttachItem := AddItem(TAtlasTextId.AttachCommand, 0, IssueAttachClick);
+  // Wirksame Compiler-Schalter an der Cursorposition (#558).
+  FCompilerSwitchesItem := AddItem(TAtlasTextId.CompilerSwitchesCommand, 0, CompilerSwitchesClick);
   FRoot.Add(NewLine);
   AddGroup(TAtlasTextId.MenuGroupNavigation);
   AddItem(TAtlasTextId.EditorTypeDefinition, 3, EditorClick);
@@ -281,10 +354,20 @@ begin
   AddItem(TAtlasTextId.MenuImplementations, 1, ResultsClick);
   AddItem(TAtlasTextId.MenuIncoming, 3, ResultsClick);
   AddItem(TAtlasTextId.MenuOutgoing, 4, ResultsClick);
+  // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
+  FCallDiagramItem := AddItem(TAtlasTextId.CallDiagramCommand, 8, ResultsClick);
   AddItem(TAtlasTextId.MenuSupertypes, 5, ResultsClick);
   AddItem(TAtlasTextId.MenuSubtypes, 6, ResultsClick);
+  FImpactItem := AddItem(TAtlasTextId.ImpactCommand, 9, ResultsClick);
+  // Datenfluss (#690).
+  FDataFlowItems := [AddItem(TAtlasTextId.MenuDataFlowSources, 10, ResultsClick),
+    AddItem(TAtlasTextId.MenuDataFlowTargets, 11, ResultsClick)];
   FParent.Add(NewLine);
   AddItem(TAtlasTextId.MenuResultsWindow, 7, ResultsClick);
+  // Projektaufgaben (#900): Inhalt beim Öffnen (RootClick); ein Platzhalter, damit der Pfeil erscheint.
+  FTasksGroup := AddGroup(TAtlasTextId.MenuGroupTasks);
+  AddItem(TAtlasTextId.TasksMenuEmpty, 0, nil).Enabled := False;
+  FTasksGroup.Visible := False;
   AddGroup(TAtlasTextId.MenuGroupCopy);
   AddItem(TAtlasTextId.EditorCopyQualified, 4, EditorClick);
   AddItem(TAtlasTextId.EditorCopyQualifiedParams, 5, EditorClick);
@@ -359,13 +442,25 @@ begin
       FViewStart.Tag := Ord(TAtlasWelcomeCommand.Start);
       FViewStart.OnClick := WelcomeClick;
       Services.MainMenu.Items[Index].Add(FViewStart);
-      // Ansicht › Atlas › Prüfung (#909).
+      // Ansicht › Atlas › Prüfung (#909) und Architektur (#1118).
       FViewAtlas := TMenuItem.Create(FRoot);
       FViewAtlas.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuAtlas);
-      Item := TMenuItem.Create(FViewAtlas);
-      Item.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuWindow);
-      Item.OnClick := ProblemsClick;
-      FViewAtlas.Add(Item);
+      FViewProblems := TMenuItem.Create(FViewAtlas);
+      FViewProblems.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsViewMenuWindow);
+      FViewProblems.OnClick := ProblemsClick;
+      FViewAtlas.Add(FViewProblems);
+      FViewArchitecture := TMenuItem.Create(FViewAtlas);
+      FViewArchitecture.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureViewMenu);
+      FViewArchitecture.OnClick := ArchitectureClick;
+      FViewAtlas.Add(FViewArchitecture);
+      FViewUnitRelations := TMenuItem.Create(FViewAtlas);
+      FViewUnitRelations.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsViewMenu);
+      FViewUnitRelations.OnClick := UnitRelationsClick;
+      FViewAtlas.Add(FViewUnitRelations);
+      FViewBoard := TMenuItem.Create(FViewAtlas);
+      FViewBoard.Caption := TAtlasStrings.Text(TAtlasTextId.BoardViewMenu);
+      FViewBoard.OnClick := BoardClick;
+      FViewAtlas.Add(FViewBoard);
       Services.MainMenu.Items[Index].Add(FViewAtlas);
       Break;
     end;
@@ -434,6 +529,9 @@ begin
     not AtlasLayout;
   FWelcome[TAtlasWelcomeCommand.Reset].Visible := Settings.WelcomePage and Settings.WelcomePageIdePage and
     AtlasLayout;
+  // An Issue anhängen (#1276) nach issues.attach.
+  if FIssueAttachItem <> nil then
+    FIssueAttachItem.Visible := Settings.IssuesAttach;
   if FViewStart <> nil then
     FViewStart.Visible := Settings.WelcomePage;
 end;
@@ -466,6 +564,12 @@ begin
     UpdateKeyMap;
     for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
       FToggles[Toggle].Checked := TAtlasIdeQuickToggles.Checked(ToggleKey(Toggle));
+    if FTasksGroup <> nil then
+    begin
+      FTasksGroup.Visible := Assigned(FOnTasksMenu);
+      if Assigned(FOnTasksMenu) then
+        FOnTasksMenu(FTasksGroup);
+    end;
     // Anweisungen mitfärben wirkt nur mit der Paarfärbung (#653).
     FToggles[TAtlasToggle.PairOwners].Enabled := TAtlasIdeQuickToggles.Checked('PairColors');
     Names := '';
@@ -646,6 +750,9 @@ begin
   // Prozesse am Projekt (#62) nach diagnostics.processes.
   if FProcessesItem <> nil then
     FProcessesItem.Visible := TAtlasIdeSettings.Current.DiagnosticsProcesses;
+  // Aufrufdiagramm (#1122) nach callHierarchy.diagram.
+  if FCallDiagramItem <> nil then
+    FCallDiagramItem.Visible := TAtlasIdeSettings.Current.CallHierarchyDiagram;
   // Notizen (#545) nach ihrer Einstellung.
   for Item in FNoteItems do
     Item.Visible := TAtlasIdeSettings.Current.Notes;
@@ -655,14 +762,50 @@ begin
   // Formatieren (#43) nach editor.format.
   if FFormatItem <> nil then
     FFormatItem.Visible := TAtlasIdeSettings.Current.FormatCode;
+  // Methodenreihenfolge (#660) nach editor.methodPlacement.
+  if FMethodOrderItem <> nil then
+    FMethodOrderItem.Visible := TAtlasIdeMethodPlacement.Enabled;
   // Gliederung (#537) nach outline.enabled.
   if FOutlineItem <> nil then
     FOutlineItem.Visible := TAtlasIdeSettings.Current.Outline;
   // Atlas-Prüfung (#909) nach problems.window.
   if FProblemsItem <> nil then
     FProblemsItem.Visible := TAtlasIdeProblems.Enabled;
+  if FViewProblems <> nil then
+    FViewProblems.Visible := TAtlasIdeProblems.Enabled;
+  // Architekturübersicht (#1118) nach architecture.enabled.
+  if FArchitectureItem <> nil then
+    FArchitectureItem.Visible := TAtlasIdeArchitecture.Enabled;
+  if FViewArchitecture <> nil then
+    FViewArchitecture.Visible := TAtlasIdeArchitecture.Enabled;
+  // Unit-Beziehungen (#593) am selben Schalter.
+  if FUnitRelationsItem <> nil then
+    FUnitRelationsItem.Visible := TAtlasIdeUnitRelations.Enabled;
+  if FViewUnitRelations <> nil then
+    FViewUnitRelations.Visible := TAtlasIdeUnitRelations.Enabled;
+  // Atlas-Board (#1272) nach issues.board.
+  if FViewBoard <> nil then
+    FViewBoard.Visible := TAtlasIdeSettings.Current.IssuesBoard;
   if FViewAtlas <> nil then
-    FViewAtlas.Visible := TAtlasIdeProblems.Enabled;
+    FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled or
+      TAtlasIdeUnitRelations.Enabled or TAtlasIdeSettings.Current.IssuesBoard;
+  // Weg zwischen Symbolen (#1117) nach navigation.symbolPath.
+  if FSymbolPathItem <> nil then
+    FSymbolPathItem.Visible := TAtlasIdeSymbolPath.Enabled;
+  // Auswirkungen anzeigen (#1120) nach navigation.impact.
+  if FImpactItem <> nil then
+    FImpactItem.Visible := TAtlasIdeImpact.Enabled;
+  // Exception-Verlauf (#517) nach debug.exceptionHistory.
+  if FDebugExceptionsItem <> nil then
+    FDebugExceptionsItem.Visible := TAtlasIdeSettings.Current.DebugExceptionHistory;
+  if FDebugEvaluateItem <> nil then
+    FDebugEvaluateItem.Visible := TAtlasIdeSettings.Current.DebugEvaluateWindow;
+  // Datenfluss (#690) nach navigation.dataFlow.
+  for Item in FDataFlowItems do
+    Item.Visible := TAtlasIdeSettings.Current.DataFlow;
+  // Compiler-Schalter (#558) nach build.compilerSwitches.
+  if FCompilerSwitchesItem <> nil then
+    FCompilerSwitchesItem.Visible := TAtlasIdeSettings.Current.BuildCompilerSwitches;
   // Benannte Lesezeichen (#622) nach bookmarks.named, schnelle (#1104) nach bookmarks.quick; das Fenster zeigt
   // beide.
   Marks := TAtlasIdeSettings.Current.BookmarksNamed or TAtlasIdeSettings.Current.QuickBookmarks;
@@ -730,6 +873,10 @@ begin
         4: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Outgoing);
         5: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Supertypes);
         6: TAtlasIdeResults.ShowHierarchy(TAtlasHierarchyDirection.Subtypes);
+        8: TAtlasIdeResults.ShowCallDiagram;
+        9: TAtlasIdeImpact.ShowAtCursor;
+        10: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Sources);
+        11: TAtlasIdeResults.ShowDataFlow(TAtlasDataFlowDirection.Targets);
       else
         TAtlasIdeResults.ShowWindow;
       end;
@@ -758,6 +905,7 @@ begin
         9: TAtlasIdeUnitSearch.ShowIdeDialog;
         10: TAtlasIdeGenerate.Show;
         11: TAtlasIdeEditorCommands.FormatCode;
+        12: TAtlasGuard.Run(TAtlasFeature.MethodPlacement, TAtlasIdeMethodPlacement.Run);
       else
         TAtlasIdeEditorCommands.CopyQualifiedName(True);
       end;
@@ -857,6 +1005,90 @@ begin
     procedure
     begin
       TAtlasIdeProblems.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.ArchitectureClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.Architecture');
+  TAtlasGuard.Run(TAtlasFeature.Architecture,
+    procedure
+    begin
+      TAtlasIdeArchitecture.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.BoardClick(Sender: TObject);
+begin
+  if not Assigned(FOnBoard) then
+    Exit;
+  TAtlasIdeShortcutTips.Invoked('Atlas.Board');
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      FOnBoard();
+    end);
+end;
+
+procedure TAtlasMainMenu.UnitRelationsClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.UnitRelations');
+  TAtlasGuard.Run(TAtlasFeature.UnitRelations,
+    procedure
+    begin
+      TAtlasIdeUnitRelations.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.SymbolPathClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.SymbolPath');
+  TAtlasGuard.Run(TAtlasFeature.SymbolPath,
+    procedure
+    begin
+      TAtlasIdeSymbolPath.ShowDialog;
+    end);
+end;
+
+procedure TAtlasMainMenu.DebugExceptionsClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.DebugExceptions');
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugExceptions.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.IssueAttachClick(Sender: TObject);
+begin
+  if not Assigned(FOnIssueAttach) then
+    Exit;
+  TAtlasIdeShortcutTips.Invoked('Atlas.IssueAttach');
+  TAtlasGuard.Run(TAtlasFeature.Menu,
+    procedure
+    begin
+      FOnIssueAttach();
+    end);
+end;
+
+procedure TAtlasMainMenu.DebugEvaluateClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.DebugEvaluate');
+  TAtlasGuard.Run(TAtlasFeature.Debugger,
+    procedure
+    begin
+      TAtlasIdeDebugEvaluate.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.CompilerSwitchesClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.CompilerSwitches');
+  TAtlasGuard.Run(TAtlasFeature.Build,
+    procedure
+    begin
+      TAtlasIdeCompilerSwitches.ShowWindow;
     end);
 end;
 

@@ -13,6 +13,10 @@ type
   public
     [Test]
     procedure ToolsListMatchesDocumentation;
+    [Test]
+    procedure ListsArchitectureTool;
+    [Test]
+    procedure ListsFindPathTool;
   end;
 
 implementation
@@ -57,6 +61,29 @@ begin
     Assert.Contains(string.Join(' ', Listed), Name, 'in docs/MCP.md, aber nicht in tools/list: ' + Name);
   for Name in Listed do
     Assert.Contains(string.Join(' ', Documented), Name, 'in tools/list, aber nicht in docs/MCP.md: ' + Name);
+end;
+
+procedure TMcpShellTests.ListsArchitectureTool;
+var
+  Name: string;
+  Found: Boolean;
+begin
+  Found := False;
+  for Name in TMcpShell.ToolNames do
+    Found := Found or (Name = 'get_architecture');
+  Assert.IsTrue(Found, 'get_architecture fehlt in tools/list');
+end;
+
+procedure TMcpShellTests.ListsFindPathTool;
+var
+  Name: string;
+  Found: Boolean;
+begin
+  // Weg zwischen Symbolen (#1117).
+  Found := False;
+  for Name in TMcpShell.ToolNames do
+    Found := Found or (Name = 'find_path');
+  Assert.IsTrue(Found, 'find_path fehlt in tools/list');
 end;
 
 initialization
