@@ -39,6 +39,8 @@ Plattform.
 | `DccInterfacesGegen` | `interface-declaration-invalid` | IG1 Neudeklaration ohne Typ (E2206) |
 | `DccPublished` | `published-type-invalid` | PU1 `TArray<Integer>`, PU2 benanntes dynamisches Array, PU3 Record als published-Property (aus #1326); dcc übersetzt alle drei |
 | `DccPublishedGegen` | `published-type-invalid` | PV1 statisches Array, PV2 Zeiger (E2188) |
+| `DccGenerics` | `generic-declaration-invalid`, `generic-inference-failed` | GN1 anonyme Methode in einer Methode eines generischen Typs, GN2 lokale Routine in einer normalen Methode, GN3 Alias auf `TBehaelter<Integer>` und `type Integer`, GN4 ableitbarer Typparameter, GN5 gleichartige Argumente, GN6 Klasse, Interface und constructor als Einschränkung, GN7 Integer und Double, GN8 Variant und Zahl für denselben Typparameter (#1376; ungeprüft mit dcc) |
+| `DccGenericsGegen` | `generic-declaration-invalid`, `generic-inference-failed` | GG1 Konstruktor mit Typparameter und Parameter (E2528), GG2 lokale Routine in einer generischen Methode (E2570), GG3 `type TArray<Integer>` (E2574), GG4 `TStream` und `record` als Einschränkung (E2552), GG5 `Neu` ohne Typargument als Anweisung und mit Klammern (E2531), GG6 Zahl und Zeichenkette bzw. Boolean und Zahl (E2532) (#1376; ungeprüft mit dcc) |
 | `DccOperatoren` | `operator-declaration-invalid` | OP1–OP4 Vergleichsoperatoren ohne Boolean-Ergebnis, OP5 Benutzung |
 | `DccOperatorenGegen` | `operator-declaration-invalid` | OG1/OG2 falsche Parameterzahl |
 | `DccKonstanten` | `typed-constant-modified` | TC1 `{$J+}`, TC2 `{$WRITEABLECONST ON}`, TC3 `{$J+}` aus einer Include-Datei |
