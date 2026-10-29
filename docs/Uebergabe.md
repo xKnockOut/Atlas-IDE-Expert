@@ -31,6 +31,13 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Fenster „Atlas-Server“ (#1356, 29.10.2026, Branch `claude/project-thread-gxtcpz`)
+- **Server:** `atlas.server.status` liefert zusätzlich `process` (PID, Version, Laufzeit, Zustand), `memory` je Bereich gegen das Budget, `checkRun` (langsamste Units und Regeln des letzten Prüflaufs), `queue` und `cacheHits`; alte Felder bleiben. MCP-Werkzeug `get_server_status` (27 Werkzeuge), Statusdatei `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json`, Befehl `atlas.server.diagnosticPackage` (Status, Protokoll der Sitzung, Trace der letzten Minuten; Zugangsdaten immer entfernt).
+- **`--timings [<Datei>]` statt `--profile`:** `--profile` ist seit #146 die Auswahl des Regelprofils; die Zeitmessung von `--check` heißt deshalb `--timings`.
+- **Plugin:** andockbares Fenster über `TAtlasIdeDockWindow` (Id `AtlasServerStatus`), liest den Status, den `TAtlasIdeStatusLines` ohnehin alle 5 s holt (keine zusätzlichen Anfragen, nur solange sichtbar). Öffnen über Menü Hilfe, Befehlspalette, Klick auf die Zeile „Server“ im Status-Popup und Doppelklick auf das Statusfeld der Atlas-Statusleiste (einfacher Klick öffnet weiter das Popup). Einstellung `server.statusWindow` (Seite Allgemein, Standard an).
+- **Ursache FPC:** Die vcl-compat-Variante von `TJSONObject.ParseJSONValue` ließ bei ungültiger Eingabe `Result` unbelegt (Zufallszeiger, AV in `ReadEntry`). `Tools/Linux/Compat/AtlasJsonCompat.pas` (`ParseJSONValueOrNil`) und eine Ersetzung in `Convert-ForFpc.py` beheben das für alle Units; Delphi ist nicht betroffen.
+- **Offen:** Delphi-Build (Win64-Gruppe, Win32-Plugin) und Handtests SRV1–SRV15.
+
 ## Compilerhinweise W1055, H2243, H2244 und H2445 (#1381, 29.10.2026, Branch `feature/1381-compilerhinweise`)
 - **H2445 (Ursache):** `inline-not-expanded` kannte H2445 schon, sah aber inline-Routinen nicht, deren Rumpf auf nichts außerhalb ihrer Unit verweist (`Cm.Hilfe.H2445`: `Result := AWert * 2`). Der Index ließ `InlineRefs` dann nil, also wie „nicht inline“. Jetzt trägt eine solche Routine genau den Eintrag `TIndexSymbol.InlineWithoutRefs` (); nil heißt nur noch „nicht einbettbar“. Cache-Format 30 in Server und Plugin (`index-30.atlasidx`).
 - **H2456/H2457 bewusst nicht erweitert:** Mit dem Fix meldete die Regel auch `Cm.H2456`/`Cm.H2457`, wo Delphi 13 schweigt. Ob dcc dort meldet, hängt von der Reihenfolge der Übersetzung ab (die Unit des Falls wird zuerst übersetzt, die Hilfsunit danach vollständig). Zyklen meldet die Regel deshalb wie vorher nur bei Rümpfen mit Verweisen; die eigentliche Frage gehört zu #1383.
