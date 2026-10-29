@@ -8638,3 +8638,20 @@ Vorbereitung: Minimalfall F01 aus `berichte/fp-korpus-2026-10-28/faelle`; ein ei
 | VU5 | `property Capacity write SetCapacity;` ohne Typ im Nachfahren, danach `Capacity := 10` | Kein `readonly-property-assigned` |
 | VU6 | `X.Edit` ohne `Post` auf einem Record bzw. einer Klasse ohne TDataSet-Vorfahr; Gegenprobe auf `TFDQuery` | Nur die Gegenprobe meldet `dataset-edit-without-post` |
 | VU7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 29 in Server und Plugin) |
+
+## Compileranweisungen und fehlende Dateien (#1379)
+
+Vorbereitung: Prep-v1.2.0 mit `feature/1379-compileranweisungen`, Delphi 12 und 13; Fälle aus `Tests/Compilermeldungen/Faelle`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| IR1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `Directives.Invalid*`, `Unresolved.InPathFileMissingWithoutProject`, `Unresolved.ErrorSwitchGivesE1074`, `UnitLookup.FindFileLikeCompiler` grün (**Abnahme**) |
+| IR2 | `pwsh Tools/Build-Compilermeldungen.ps1 -AtlasServer <exe> -Cases 'Cm.W1054','Cm.H1054','Cm.E2222','Cm.E2224','Cm.E2560','Cm.E2424','Cm.E1026','Cm.W1026','Cm.E2245','Cm.E2289','CmF1026'`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1054, H1054, E2222, E2224, E2560, E1030 (Cm.E2424), F1026, E1026, E2245, E1074 stehen auf „erkannt“, keine neuen Einträge unter „zusätzlich“ (**Abnahme**) |
+| IR3 | Delphi 12: dieselben Fälle wie IR2 bauen | Dieselben Codes wie Delphi 13; sonst Meldungstext an `delphiVersion` binden (#1382) |
+| IR4 | In einer Unit `{$MESSAGE WARN 'Noch offen'}` und `{$MESSAGE HINT 'Später'}` tippen | Warnung „{$MESSAGE WARN}: Noch offen (wie W1054).“ und Hinweis „{$MESSAGE HINT}: Später (wie H1054).“ sofort, ohne Build; in `{$IFDEF DEBUG}` keine Meldung |
+| IR5 | `{$I Gibts.Nicht.inc}` in einer Unit eines Projekts; danach die Datei im Ordner der Unit, in einem Suchpfad bzw. in `DCC_IncludePath` anlegen | Fehler „Include-Datei Gibts.Nicht.inc nicht gefunden (wie F1026).“; nach dem Anlegen verschwindet er an allen drei Orten |
+| IR6 | `{$R Fehlt.res}` in einer Unit; danach `Fehlt.rc` daneben anlegen | Fehler „Ressourcendatei Fehlt.res nicht gefunden (wie E1026).“; mit der .rc keine Meldung; `{$R *.res}` in der .dpr meldet nie |
+| IR7 | Include-Datei, die sich selbst einbindet; dann mit Wächter `{$IFNDEF X_INC}{$DEFINE X_INC} … {$ENDIF}` | „Rekursive Include-Datei: A.inc → A.inc (wie E2245).“; mit Wächter keine Meldung |
+| IR8 | `.dpr` ohne `.dproj` mit `uses X in 'Fehlt.pas'` öffnen bzw. mit `AtlasServer --check` prüfen | „Datei Fehlt.pas für X nicht gefunden (wie F1026).“ |
+| IR9 | `{$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR}` vor einem unbekannten Attribut | `unresolved-attribute` nennt E1074 statt W1074 |
+| IR10 | `"compiler-directive-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
