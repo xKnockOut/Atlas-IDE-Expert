@@ -13,7 +13,9 @@
 //   - lange Zeilen umbrechen (format.maxLineLength)
 //   - Zeilenende vereinheitlichen, abschließende Leerzeile
 // Zeilen in mehrzeiligen Kommentaren und Strings sowie asm-Blöcke bleiben
-// unverändert. Ergebnis sind Textänderungen je Zeile bzw. Zeilenbereich.
+// unverändert, ebenso Bereiche von "// atlas-format: off" bis "// atlas-format: on"
+// samt dieser Zeilen (#1358; auch in { } und (* *), ohne "on" bis zum Dateiende).
+// Ergebnis sind Textänderungen je Zeile bzw. Zeilenbereich.
 
 interface
 
@@ -246,6 +248,118 @@ begin
   end;
 end;
 
+/// <summary>"atlas-format: off" bzw. "on" in einem Kommentar (#1358); Leerzeichen und Groß-/Kleinschreibung zählen
+/// nicht. AOff gibt an, welche Marke es ist.</summary>
+function IsFormatMarker(const AToken: TPascalToken; out AOff: Boolean): Boolean;
+var
+  mText: string;
+begin
+  Result := False;
+  AOff := False;
+  if AToken.Kind <> TPascalTokenKind.Comment then
+    Exit;
+  mText := AToken.Text;
+  if mText.StartsWith('//') then
+    mText := Copy(mText, 3, MaxInt)
+  else if mText.StartsWith('(*') then
+    mText := Copy(mText, 3, Length(mText) - 4)
+  else if mText.StartsWith('{') then
+    mText := Copy(mText, 2, Length(mText) - 2);
+  mText := LowerCase(StringReplace(mText, ' ', '', [rfReplaceAll])).Trim;
+  if mText = 'atlas-format:off' then
+  begin
+    AOff := True;
+    Result := True;
+  end
+  else
+    Result := mText = 'atlas-format:on';
+end;
+
+/// <summary>Zeilen von ALineCount, die zwischen den Marken liegen (#1358), samt der Zeilen der Marken.</summary>
+function ProtectedLines(const ATokens: TArray<TPascalToken>; ALineCount: Integer): TArray<Boolean>;
+var
+  mToken: TPascalToken;
+  mIsOff: Boolean;
+  mOffLine, mLine: Integer;
+begin
+  SetLength(Result, ALineCount);
+  mOffLine := -1;
+  for mToken in ATokens do
+  begin
+    if not IsFormatMarker(mToken, mIsOff) then
+      Continue;
+    if mIsOff and (mOffLine < 0) then
+      mOffLine := mToken.StartPos.Line
+    else if not mIsOff and (mOffLine >= 0) then
+    begin
+      for mLine := mOffLine to Min(mToken.EndPos.Line, ALineCount - 1) do
+        Result[mLine] := True;
+      mOffLine := -1;
+    end;
+  end;
+  if mOffLine >= 0 then
+    for mLine := mOffLine to ALineCount - 1 do
+      Result[mLine] := True;
+end;
+
+/// <summary>Geschützte Zeilen (#1358) wie im Original: Jede Gruppe aus einer Ursprungszeile und den an sie
+/// gehängten Folgezeilen, die eine geschützte Zeile enthält, kommt unverändert zurück.</summary>
+procedure KeepProtected(var ALines: TArray<TFormatLine>; const AOriginal: TArray<string>;
+  var AJoined: TArray<Boolean>; const AProtected: TArray<Boolean>);
+var
+  mKept: TList<TFormatLine>;
+  mItem: TFormatLine;
+  mLine, mStop, mIndex, mEach: Integer;
+  mHit, mAny: Boolean;
+begin
+  mAny := False;
+  for mEach := 0 to High(AProtected) do
+    mAny := mAny or AProtected[mEach];
+  if not mAny then
+    Exit;
+  mKept := TList<TFormatLine>.Create;
+  try
+    mIndex := 0;
+    mLine := 0;
+    while mLine <= High(AOriginal) do
+    begin
+      mStop := mLine;
+      while (mStop < High(AOriginal)) and AJoined[mStop + 1] do
+        Inc(mStop);
+      mHit := False;
+      for mEach := mLine to mStop do
+        mHit := mHit or AProtected[mEach];
+      if mHit then
+      begin
+        while (mIndex <= High(ALines)) and (ALines[mIndex].Origin <= mStop) do
+          Inc(mIndex);
+        for mEach := mLine to mStop do
+        begin
+          mItem.Text := AOriginal[mEach];
+          mItem.Origin := mEach;
+          mKept.Add(mItem);
+          AJoined[mEach] := False;
+        end;
+      end
+      else
+        while (mIndex <= High(ALines)) and (ALines[mIndex].Origin <= mStop) do
+        begin
+          mKept.Add(ALines[mIndex]);
+          Inc(mIndex);
+        end;
+      mLine := mStop + 1;
+    end;
+    while mIndex <= High(ALines) do
+    begin
+      mKept.Add(ALines[mIndex]);
+      Inc(mIndex);
+    end;
+    ALines := mKept.ToArray;
+  finally
+    mKept.Free;
+  end;
+end;
+
 /// <summary>Alle Schritte; Zeilen mit Ursprung und die an die vorige Zeile gehängten Ursprungszeilen.</summary>
 function Pipeline(const AText: string; const ATokens: TArray<TPascalToken>; const ASettings: TFormatStyle;
   AFirstLine, ALastLine: Integer; out AOriginal: TArray<string>; out AJoined: TArray<Boolean>): TArray<TFormatLine>;
@@ -281,6 +395,7 @@ begin
     for Round := 1 to 64 do
       if not TFormatLayout.Wrap(Result, TPascalLexer.Tokenize(JoinTexts(Result, LB)), Settings, First, Last) then
         Break;
+  KeepProtected(Result, AOriginal, AJoined, ProtectedLines(ATokens, Length(AOriginal)));
 end;
 
 class function TFormatter.Edits(const AText: string; const ATokens: TArray<TPascalToken>;

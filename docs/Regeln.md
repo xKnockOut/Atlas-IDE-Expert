@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 82 |
+| [Compiler vorab](#gruppe-compiler) | 83 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -195,6 +195,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`constant-initializer-mismatch`](#constant-initializer-mismatch) | Initialisierung einer Konstanten passt nicht | Bug | Fehler |
 | [`case-selector-not-ordinal`](#case-selector-not-ordinal) | case oder for ohne ordinalen Typ | Bug | Fehler |
 | [`suspicious-string-pointer-cast`](#suspicious-string-pointer-cast) | Zeiger und Zeichenbreite eines Strings passen nicht zusammen | Bug | Warnung |
+| [`string-conversion`](#string-conversion) | Umwandlung zwischen Unicode- und ANSI-Strings | Bug | Warnung |
 | [`unsafe-code`](#unsafe-code) | Unsicherer Code | Code Smell | Warnung |
 | [`inaccessible-member`](#inaccessible-member) | Zugriff auf ein nicht sichtbares Mitglied | Bug | Fehler |
 | [`unused-private-member`](#unused-private-member) | Privates Mitglied wird nie verwendet | Code Smell | Hinweis |
@@ -6524,6 +6525,39 @@ Richtig:
 
 ```pascal
 var Pfad: string; ... DeleteFile(PChar(Pfad));
+```
+
+<a id="string-conversion"></a>
+### string-conversion
+
+**Umwandlung zwischen Unicode- und ANSI-Strings** · Bug · Warnung · Gruppe Compiler vorab
+
+Implizite und ausdrückliche Umwandlungen zwischen string, UnicodeString oder WideString auf der einen und AnsiString, RawByteString oder UTF8String auf der anderen Seite, wie die Compilerwarnungen: implizit in string (wie W1057) bzw. in AnsiString mit möglichem Datenverlust (wie W1058) bei Zuweisungen, Inline-Variablen mit Typ und Argumenten für Wert- und const-Parameter von Routinen ohne Überladungen; ausdrückliche Umwandlungen string(A) (wie W1059) und AnsiString(S) (wie W1060); eine Stringkonstante mit Zeichen, die die ANSI-Codepage nicht kennt, an einen AnsiString (wie W1058 und W1062); ein WideChar in einem Mengenausdruck aus Zeichenliteralen wie C in ['0'..'9'] (wie W1050); ein Zeichen eines string direkt ändern (S[1] := 'x', wie W1068). Wie bei dcc meldet die Regel W1059, W1060 und W1068 nur nach {$WARN EXPLICIT_STRING_CAST ON}, {$WARN EXPLICIT_STRING_CAST_LOSS ON} bzw. {$WARN IMMUTABLE_STRINGS ON}; {$WARN … OFF} und {$WARNINGS OFF} schalten sie ab ihrer Stelle ab, {$WARN … ERROR} meldet einen Fehler. Gemeldet wird nur, wenn beide Typen sicher bekannt sind (Variablen, Felder, Properties, Funktionsergebnisse und typisierte Konstanten der eingebauten Stringtypen aus System, auch über einen einfachen Alias) und ihre Deklarationen immer mit der Anweisung übersetzt werden. Still bleiben: Verkettungen, Umwandlungen als Quelle, Umwandlungen zwischen zwei ANSI-Typen (AnsiString, RawByteString, UTF8String; dcc wandelt nach Codepage um), eigene Stringtypen wie type AnsiString(28591), {$H-} und Delphi vor 2009. W1062 hängt von der ANSI-Codepage des übersetzenden Rechners ab (Option ansiCodePage, Vorgabe 1252; 0 schaltet diese Prüfung ab); gemeldet werden nur Zeichen, die Windows auch nicht ersatzweise abbildet: Hebräisch bis Thai, Hangul, Kana und CJK, Symbole und Dingbats U+2600–U+27BF und Zeichen außerhalb der BMP (Emoji). Projektoptionen der .dproj (DCC_IMPLICIT_STRING_CAST = false, true oder error usw.) gelten wie bei dcc. Korrekturen: ausdrücklich umwandeln (string(A), AnsiString(S)); CharInSet verwenden und System.SysUtils in uses eintragen.
+
+Entspricht der Compilermeldung `W1050`, `W1057`, `W1058`, `W1059`, `W1060`, `W1062`, `W1068`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `ansiCodePage` | integer | `1252` | ANSI-Codepage des Rechners, der übersetzt; Zeichen, die ihr sicher fehlen, meldet die Regel wie W1062, wenn sie an einen AnsiString gehen. Bekannt ist nur 1252; 0 oder ein anderer Wert schaltet diese Prüfung ab. |
+
+Mit Treffer:
+
+```pascal
+function IstZiffer(const Zeichen: Char): Boolean;
+begin
+  Result := Zeichen in ['0'..'9'];
+end;
+```
+
+Richtig:
+
+```pascal
+function IstZiffer(const Zeichen: Char): Boolean;
+begin
+  Result := CharInSet(Zeichen, ['0'..'9']);
+end;
 ```
 
 <a id="unsafe-code"></a>
