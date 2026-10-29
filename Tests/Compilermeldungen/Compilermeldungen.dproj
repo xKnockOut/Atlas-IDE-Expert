@@ -198,6 +198,7 @@
         <DCCReference Include="Faelle\Cm.E2218.pas"/>
         <DCCReference Include="Faelle\Cm.E2221.pas"/>
         <DCCReference Include="Faelle\Cm.E2222.pas"/>
+        <DCCReference Include="Faelle\Cm.E2222b.pas"/>
         <DCCReference Include="Faelle\Cm.E2224.pas"/>
         <DCCReference Include="Faelle\Cm.E2228.pas"/>
         <DCCReference Include="Faelle\Cm.E2229.pas"/>
@@ -214,6 +215,7 @@
         <DCCReference Include="Faelle\Cm.E2242.pas"/>
         <DCCReference Include="Faelle\Cm.E2243.pas"/>
         <DCCReference Include="Faelle\Cm.E2245.pas"/>
+        <DCCReference Include="Faelle\Cm.E2245b.pas"/>
         <DCCReference Include="Faelle\Cm.E2246.pas"/>
         <DCCReference Include="Faelle\Cm.E2250.pas"/>
         <DCCReference Include="Faelle\Cm.E2251.pas"/>
@@ -366,6 +368,7 @@
         <DCCReference Include="Faelle\Cm.E2555.pas"/>
         <DCCReference Include="Faelle\Cm.E2556.pas"/>
         <DCCReference Include="Faelle\Cm.E2560.pas"/>
+        <DCCReference Include="Faelle\Cm.E2560b.pas"/>
         <DCCReference Include="Faelle\Cm.E2561.pas"/>
         <DCCReference Include="Faelle\Cm.E2562.pas"/>
         <DCCReference Include="Faelle\Cm.E2564.pas"/>
@@ -475,6 +478,7 @@
         <DCCReference Include="Faelle\Cm.W1048.pas"/>
         <DCCReference Include="Faelle\Cm.W1050.pas"/>
         <DCCReference Include="Faelle\Cm.W1054.pas"/>
+        <DCCReference Include="Faelle\Cm.W1054b.pas"/>
         <DCCReference Include="Faelle\Cm.W1055.pas"/>
         <DCCReference Include="Faelle\Cm.W1057.pas"/>
         <DCCReference Include="Faelle\Cm.W1058.pas"/>
