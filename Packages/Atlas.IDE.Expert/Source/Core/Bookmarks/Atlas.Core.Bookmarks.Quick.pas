@@ -114,6 +114,9 @@ type
     /// <summary>Breite der Spalte in Pixeln zur Zeilenhöhe: Platz für Band und Ziffer, mindestens MinColumnWidth.
     /// </summary>
     class function ColumnWidth(ALineHeight: Integer): Integer; static;
+    /// <summary>Editorzeile unter der Höhe AY, geschätzt aus einer gezeichneten Zeile (AKnownLine, Oberkante
+    /// AKnownTop, Höhe ALineHeight); auch über und unter ihr. Ohne Höhe AKnownLine.</summary>
+    class function RowGuess(AKnownLine, AKnownTop, ALineHeight, AY: Integer): Integer; static;
     /// <summary>Taste für Nummer ANumber aus der Grundtaste ABase (Taste für 1); 0 ohne Grundtaste.</summary>
     class function KeyFor(ABase: Word; ANumber: Integer): Word; static;
     /// <summary>Nummer 1–9, wenn AShortCut die Grundtaste ABase mit einer anderen Ziffer ist; sonst 0.</summary>
@@ -436,6 +439,21 @@ begin
   Result := (ALineHeight * 4) div 5;
   if Result < MinColumnWidth then
     Result := MinColumnWidth;
+end;
+
+class function TAtlasQuickBookmarks.RowGuess(AKnownLine, AKnownTop, ALineHeight, AY: Integer): Integer;
+var
+  Offset: Integer;
+begin
+  Result := AKnownLine;
+  if ALineHeight <= 0 then
+    Exit;
+  // Abrunden auch oberhalb der bekannten Zeile (div rundet zur Null).
+  Offset := AY - AKnownTop;
+  if Offset >= 0 then
+    Result := AKnownLine + Offset div ALineHeight
+  else
+    Result := AKnownLine - (ALineHeight - 1 - Offset) div ALineHeight;
 end;
 
 class function TAtlasQuickBookmarks.KeyFor(ABase: Word; ANumber: Integer): Word;
