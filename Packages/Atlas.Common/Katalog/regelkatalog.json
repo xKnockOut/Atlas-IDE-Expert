@@ -799,7 +799,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "An interface declares no GUID. Supports, as and QueryInterface need one. The confidence is high when the interface is used with them in the same file, otherwise low. The quick fix inserts a new GUID.",
+      "description": "An interface declares no GUID. Supports, as and QueryInterface need one. The confidence is high when the interface is used with them in the same file, otherwise low. The quick fix inserts a new GUID. A dispinterface without GUID does not compile; dispinterface-invalid reports it.",
       "bad": "type\n  ISaver = interface\n    procedure Save;\n  end;",
       "good": "type\n  ISaver = interface\n    ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\n    procedure Save;\n  end;"
     },
@@ -1416,7 +1416,7 @@
       "category": "code-smell",
       "severity": "warning",
       "group": "compiler",
-      "description": "A routine, type, constant or member marked deprecated, experimental, platform or library is used (like W1000, W1003, W1002, W1001), or a unit whose header carries one of these hints is listed in uses (like W1006, W1007, W1005, W1004). Reported only when the name resolves for sure. The editor strikes deprecated names through; the message carries the reason from deprecated 'reason'. The declaration and the head of its implementation are not reported. Which kinds are reported is set by the option kinds (deprecated and experimental by default, as in most projects); the switches {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} apply from their position like in the compiler; a switch in an {$IF} branch that is not surely compiled with the position keeps it silent. Quick fix: replace with the name the reason gives (or, for IncludeTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exactly one name fits, is visible at that position and is of the same kind. Without a project index only the symbols of the file itself are checked.",
+      "description": "A routine, type, constant or member marked deprecated, experimental, platform or library is used (like W1000, W1003, W1002, W1001), or a unit whose header carries one of these hints is listed in uses (like W1006, W1007, W1005, W1004). Reported only when the name resolves for sure. The editor strikes deprecated names through; the message carries the reason from deprecated 'reason'. The declaration and the head of its implementation are not reported. Whether a kind is reported follows the state of the warning as in dcc: all eight are on by default, then the project option of the .dproj (DCC_SYMBOL_PLATFORM = false and so on), then the switches {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} from their position; a switch in an {$IF} branch that is not surely compiled with the position keeps it silent. The option kinds narrows the kinds further. The .NET directive {$UNSAFECODE ON|OFF} is reported like a platform symbol (like W1002), as dcc for Windows does. Quick fix: replace with the name the reason gives (or, for IncludeTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exactly one name fits, is visible at that position and is of the same kind. Without a project index only the symbols of the file itself are checked.",
       "bad": "Pfad := IncludeTrailingBackslash(Basis) + Name;",
       "good": "Pfad := IncludeTrailingPathDelimiter(Basis) + Name;",
       "level": "B",
@@ -1436,9 +1436,11 @@
           "type": "string-list",
           "default": [
             "deprecated",
-            "experimental"
+            "experimental",
+            "platform",
+            "library"
           ],
-          "description": "Reported kinds: deprecated, experimental, platform, library (platform and library are off by default)."
+          "description": "Reported kinds: deprecated, experimental, platform, library (all four by default; a warning switched off in the project or file stays silent anyway)."
         }
       ]
     },
@@ -2694,7 +2696,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A unit in uses or contains is found neither in the project nor in the folders the compiler searches: folder of the using file, project folder, search paths and DCU output folder of the .dproj, library paths of the installation, each as .pas or .dcu and with every unit scope name in front (SysUtils → System.SysUtils); in packages also the units of the required packages (like F2613). Also reported: a file from in '…' that does not exist (F1026), a package from requires found neither as .dpk nor as .dcp (E2202), a unit that uses itself (F2092), and once a missing unit System, i.e. a missing library path, instead of one finding per unit (F1027). Entries inside {$IF} blocks are skipped; without a known installation, with an open macro in a search path or with a required package of unknown content the rule stays silent. The message names similar units. Quick fixes: use the unit with its namespace (Forms → Vcl.Forms) or a similarly written unit, or add the folder below the project that holds the unit to DCC_UnitSearchPath of the base configuration in the .dproj.",
+      "description": "A unit in uses or contains is found neither in the project nor in the folders the compiler searches: folder of the using file, project folder, search paths and DCU output folder of the .dproj, library paths of the installation, each as .pas or .dcu and with every unit scope name in front (SysUtils → System.SysUtils); in packages also the units of the required packages (like F2613). Also reported: a file from in '…' that does not exist (F1026, also without a project, since only the path relative to the using file counts), a package from requires found neither as .dpk nor as .dcp (E2202), a unit that uses itself (F2092), and once a missing unit System, i.e. a missing library path, instead of one finding per unit (F1027). Entries inside {$IF} blocks are skipped; without a known installation, with an open macro in a search path or with a required package of unknown content the rule stays silent. The message names similar units. Quick fixes: use the unit with its namespace (Forms → Vcl.Forms) or a similarly written unit, or add the folder below the project that holds the unit to DCC_UnitSearchPath of the base configuration in the .dproj.",
       "bad": "uses\n  System.SysUtils, Vcl.Forms, Kunden.Daten, Rechnungs.Druck;",
       "good": "uses\n  System.SysUtils, Vcl.Forms, Kunden.Daten, Rechnung.Druck;",
       "compilerCodes": [
@@ -2720,12 +2722,13 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "An attribute [Name] resolves neither to a class NameAttribute nor to Name, usually because a unit is missing in uses. Delphi only warns (W1074) and skips the attribute: DUnitX tests do not run, JSON or ORM mappings are missing. The message names the unit that declares the attribute in the index; a facade unit that passes the type on from another candidate (DUnitX.TestFramework instead of DUnitX.Attributes) comes first, and the DUnitX attributes are known even without DUnitX in the index. Compiler attributes such as Weak, Unsafe, Ref and Volatile always count. Silent without the unit System in the index, when a unit from uses is not in the index (it could declare the attribute), inside {$IF} blocks and when an ancestor of the surrounding class is unknown; with include files the confidence is medium. Quick fix: add the unit to uses.",
+      "description": "An attribute [Name] resolves neither to a class NameAttribute nor to Name, usually because a unit is missing in uses. Delphi only warns (W1074, E1074 after {$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR}) and skips the attribute: DUnitX tests do not run, JSON or ORM mappings are missing. The message names the unit that declares the attribute in the index; a facade unit that passes the type on from another candidate (DUnitX.TestFramework instead of DUnitX.Attributes) comes first, and the DUnitX attributes are known even without DUnitX in the index. Compiler attributes such as Weak, Unsafe, Ref and Volatile always count. Silent without the unit System in the index, when a unit from uses is not in the index (it could declare the attribute), inside {$IF} blocks and when an ancestor of the surrounding class is unknown; with include files the confidence is medium. Quick fix: add the unit to uses.",
       "bad": "uses\n  System.SysUtils;\ntype\n  [TestFixture]\n  TKundeTests = class",
       "good": "uses\n  System.SysUtils, DUnitX.TestFramework;\ntype\n  [TestFixture]\n  TKundeTests = class",
       "compilerCodes": [
         "W1074",
-        "E2289"
+        "E2289",
+        "E1074"
       ],
       "level": "B"
     },
@@ -2829,6 +2832,28 @@
         "W1078",
         "W1079",
         "E2573"
+      ],
+      "level": "A"
+    },
+    {
+      "id": "compiler-directive-invalid",
+      "name": "Compiler directive invalid or file from {$I}/{$R} missing",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A compiler directive outside conditional branches that dcc rejects or reports itself: {$MESSAGE WARN 'Text'} and {$MESSAGE HINT 'Text'} show their text as a warning or hint (like W1054, H1054); {$WEAKPACKAGEUNIT ON} together with {$DENYPACKAGEUNIT ON} (like E2222); {$DESIGNONLY} or {$RUNONLY} in a unit instead of a package (like E2224); {$OBJTYPENAME} for a plain alias such as TZahl = Integer (like E2560); {$CODEPAGE} with a number above 65535 (like E1030); a file from {$I} or {$INCLUDE} that exists neither next to the unit nor in the search paths of the project (like F1026); an include file that includes itself through unconditional {$I}, directly or via other include files (like E2245); a resource file from {$R} or {$RESOURCE} that cannot be found (like E1026). Files are searched like dcc does: next to the unit, in the project folder, the search paths, DCC_IncludePath, DCC_ResourcePath and the library paths of the installation; without a project, with an unknown installation or an open macro in a path the rule stays silent. Not checked: {$R Name.res Name.rc} and a .res next to a .rc of the same name (the IDE compiles it before the compiler), forms ({$R *.dfm}, form-resource-missing), masks such as {$R *.res}, switches such as {$I+} and {$R-}, and {$MESSAGE} without a kind or with ERROR or FATAL. Directives in conditional branches are skipped, because dcc only reports those it compiles.",
+      "bad": "unit Kunden;\n\n{$I Gemeinsam.inc}\n{$DESIGNONLY}\n\ninterface",
+      "good": "unit Kunden;\n\n{$I Gemeinsam.inc}\n\ninterface",
+      "compilerCodes": [
+        "W1054",
+        "H1054",
+        "E2222",
+        "E2224",
+        "E2560",
+        "E1030",
+        "F1026",
+        "E2245",
+        "E1026"
       ],
       "level": "A"
     },
@@ -3503,10 +3528,52 @@
       "bad": "var Pfad: AnsiString; ... DeleteFile(PChar(Pfad));",
       "good": "var Pfad: string; ... DeleteFile(PChar(Pfad));",
       "compilerCodes": [
-        "W1044",
-        "W1048"
+        "W1044"
       ],
       "level": "T"
+    },
+    {
+      "id": "string-conversion",
+      "name": "Conversion between Unicode and ANSI strings",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "Implicit and explicit conversions between string, UnicodeString or WideString on one side and AnsiString, RawByteString or UTF8String on the other, like the compiler warnings: implicit to string (like W1057) or to AnsiString with possible data loss (like W1058) in assignments, inline variables with a type and arguments for value and const parameters of routines without overloads; explicit casts string(A) (like W1059) and AnsiString(S) (like W1060); a string constant with characters the ANSI code page does not know assigned to an AnsiString (like W1058 and W1062); a WideChar in a set expression of character literals such as C in ['0'..'9'] (like W1050); changing a character of a string directly (S[1] := 'x', like W1068). Like dcc, W1059, W1060 and W1068 are only reported after {$WARN EXPLICIT_STRING_CAST ON}, {$WARN EXPLICIT_STRING_CAST_LOSS ON} or {$WARN IMMUTABLE_STRINGS ON}; {$WARN ... OFF} and {$WARNINGS OFF} silence the rule from their position, {$WARN ... ERROR} reports an error. Only reported when both types are known for sure (variables, fields, properties, function results and typed constants of the built-in string types from System, also via a plain alias) and their declarations are always compiled with the statement. Silent: concatenations, casts as source, conversions between two ANSI types (AnsiString, RawByteString, UTF8String; dcc converts by code page), own string types such as type AnsiString(28591), {$H-} and Delphi before 2009. W1062 depends on the ANSI code page of the compiling machine (option ansiCodePage, default 1252; 0 turns this check off); only characters Windows does not map to a best-fit replacement are reported: Hebrew to Thai, Hangul, kana and CJK, symbols and dingbats U+2600-U+27BF and characters outside the BMP (emoji). Project options of the .dproj (DCC_IMPLICIT_STRING_CAST = false, true or error and the like) count as with dcc. Quick fixes: convert explicitly (string(A), AnsiString(S)); use CharInSet and add System.SysUtils to uses.",
+      "bad": "function IstZiffer(const Zeichen: Char): Boolean;\nbegin\n  Result := Zeichen in ['0'..'9'];\nend;",
+      "good": "function IstZiffer(const Zeichen: Char): Boolean;\nbegin\n  Result := CharInSet(Zeichen, ['0'..'9']);\nend;",
+      "compilerCodes": [
+        "W1050",
+        "W1057",
+        "W1058",
+        "W1059",
+        "W1060",
+        "W1062",
+        "W1068"
+      ],
+      "options": [
+        {
+          "name": "ansiCodePage",
+          "type": "integer",
+          "default": 1252,
+          "description": "ANSI code page of the machine that compiles; characters it surely lacks are reported like W1062 when assigned to an AnsiString. Only 1252 is known; 0 or another value turns this check off."
+        }
+      ],
+      "level": "T"
+    },
+    {
+      "id": "unsafe-code",
+      "name": "Unsafe code",
+      "category": "code-smell",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "Code that dcc reports as unsafe since Delphi for .NET: the @ operator on a variable, field or parameter (like W1047) and a cast of an untyped Pointer to a class, TObject(P) or TCustomer(P) (like W1048). dcc switches these warnings off by default; the rule only reports where they are on as in dcc: {$WARN UNSAFE_CODE ON} or {$WARN UNSAFE_CAST ON} before the position, or DCC_UNSAFE_CODE or DCC_UNSAFE_CAST = true in the .dproj; ERROR turns the finding into an error, OFF and {$WARNINGS OFF} silence it. @ on routines and methods, typed pointers, casts as the argument (TObject(Pointer(I))) and interfaces stay silent. The rule only reports when the type is known for sure and its declaration is always compiled together with the position.",
+      "bad": "{$WARN UNSAFE_CAST ON}\n...\nKunde := TKunde(Zeiger);",
+      "good": "{$WARN UNSAFE_CAST ON}\n...\nKunde := Kunden[I]; // TObjectList<TKunde> statt TList mit Zeigern",
+      "level": "B",
+      "compilerCodes": [
+        "W1047",
+        "W1048"
+      ]
     },
     {
       "id": "inaccessible-member",
@@ -3734,6 +3801,23 @@
         "E2270",
         "E2277",
         "E2591"
+      ],
+      "level": "A"
+    },
+    {
+      "id": "dispinterface-invalid",
+      "name": "Invalid dispinterface declaration",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A dispinterface breaks one of its fixed rules: no ancestor in parentheses (like E2228), a GUID is required (like E2229), methods take no directives except dispid and the hints deprecated, platform, library and experimental (like E2230; reported are calling conventions and binding directives such as virtual, overload stays silent) and properties take no read or write (like E2231; use readonly, writeonly or dispid). Forward declarations and declarations in conditional branches stay silent. Quick fixes: remove the ancestor, insert a GUID, remove the directive.",
+      "bad": "DAnzeige = dispinterface(IBasis) ['{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A2228}'] procedure Machen; stdcall; dispid 1; end;",
+      "good": "DAnzeige = dispinterface ['{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A2228}'] procedure Machen; dispid 1; end;",
+      "compilerCodes": [
+        "E2228",
+        "E2229",
+        "E2230",
+        "E2231"
       ],
       "level": "A"
     },
