@@ -60,7 +60,8 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Winapi.Windows,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Elements;
+  Atlas.IDE.Foundation.Elements,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 { TAtlasEditorPreview.TEvents }
 
@@ -107,7 +108,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if (ALine > 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditorLogicalLine(ALine);
+    TAtlasIdeEditorRefresh.InvalidateTopLine(Services, ALine);
 end;
 
 procedure TAtlasEditorPreview.Show(const AFileName: string; ALine, AColumn: Integer; const AText: string);

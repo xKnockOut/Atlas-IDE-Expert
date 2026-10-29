@@ -176,7 +176,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 function CurrentShift: TShiftState;
 begin
@@ -313,7 +314,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 class procedure TAtlasIdeLinkedEditing.ReadCaret(const AView: IOTAEditView; out ALine, ACharacter: Integer);
