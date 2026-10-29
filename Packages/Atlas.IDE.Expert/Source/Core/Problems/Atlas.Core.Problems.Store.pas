@@ -86,17 +86,24 @@ type
       // Zeilen von Text, bei Bedarf.
       Lines: TArray<string>;
       LinesValid: Boolean;
+      /// <summary>Stand der Datei: neu bei jeder Änderung ihrer Probleme oder ihres Texts (Stamp).</summary>
+      Stamp: Integer;
     end;
   private
     FEntries: TObjectDictionary<string, TEntry>;
     FVersion: Integer;
     FCompilerMerge: Boolean;
     FHiddenTasks: TArray<string>;
+    // Über alle Speicher hinweg fortlaufend: Ein neuer Speicher (Neustart des Servers) wiederholt keinen Stand.
+    class var FLastStamp: Integer;
+  private
     procedure SetCompilerMerge(AValue: Boolean);
     /// <summary>Einträge ohne Server, Tests und Aufgaben entfernen.</summary>
     procedure DropEmpty;
     function Find(const AFileName: string): TEntry;
     function Ensure(const AFileName: string): TEntry;
+    /// <summary>Neuer Stand für AEntry (Stamp).</summary>
+    procedure Touch(AEntry: TEntry);
     class procedure Shift(AEntry: TEntry; const ANewText: string); static;
     /// <summary>Spalten der Bereiche AProblems in der Zeile (wie InactiveSpans).</summary>
     function SpansOf(const AFileName: string; const AProblems: TArray<TAtlasProblem>;
@@ -165,6 +172,9 @@ type
     /// <summary>Alle Dateien mit Diagnosen des Servers, auch ohne Probleme, nach Namen sortiert (Projektzustand
     /// #592: Was hier fehlt, ist nicht geprüft).</summary>
     function AllFiles: TArray<string>;
+    /// <summary>Stand der Datei: ändert sich mit allem, was ForFile oder LineText der Datei ändert; 0 ohne
+    /// Eintrag. Wer je Datei ableitet (Fenster „Atlas-Prüfung“), baut nur Dateien mit neuem Stand neu.</summary>
+    function Stamp(const AFileName: string): Integer;
     property Version: Integer read FVersion;
     /// <summary>Bestätigte Compilermeldungen mit dem Atlas-Befund zusammenführen (problems.compilerMerge, #1024).
     /// </summary>
@@ -224,7 +234,10 @@ begin
     Exit;
   FCompilerMerge := AValue;
   for Entry in FEntries.Values do
+  begin
     Entry.VisibleValid := False;
+    Touch(Entry);
+  end;
   Inc(FVersion);
 end;
 
@@ -267,8 +280,26 @@ begin
   begin
     Result := TEntry.Create;
     Result.FileName := AFileName;
+    Touch(Result);
     FEntries.Add(Key(AFileName), Result);
   end;
+end;
+
+procedure TAtlasProblemStore.Touch(AEntry: TEntry);
+begin
+  Inc(FLastStamp);
+  AEntry.Stamp := FLastStamp;
+end;
+
+function TAtlasProblemStore.Stamp(const AFileName: string): Integer;
+var
+  Entry: TEntry;
+begin
+  Entry := Find(AFileName);
+  if Entry = nil then
+    Result := 0
+  else
+    Result := Entry.Stamp;
 end;
 
 procedure TAtlasProblemStore.Update(const AFileName, AText: string; ATextKnown: Boolean;
@@ -301,6 +332,7 @@ begin
   Entry.ResultId := AResultId;
   Entry.FromServer := True;
   Entry.VisibleValid := False;
+  Touch(Entry);
   Entry.InactiveValid := False;
   Entry.UsesValid := False;
   Inc(FVersion);
@@ -509,9 +541,11 @@ begin
     Entry.Text := ANewText;
     Entry.LinesValid := False;
     Entry.TextKnown := True;
+    Touch(Entry);
     Exit;
   end;
   Shift(Entry, ANewText);
+  Touch(Entry);
   Inc(FVersion);
 end;
 
@@ -564,6 +598,7 @@ begin
     begin
       Entry.Tests := nil;
       Entry.VisibleValid := False;
+      Touch(Entry);
       Changed := True;
     end;
   DropEmpty;
@@ -589,6 +624,7 @@ begin
     begin
       Entry.Tasks := Kept;
       Entry.VisibleValid := False;
+      Touch(Entry);
       Changed := True;
     end;
   end;
@@ -608,6 +644,7 @@ begin
     begin
       Entry.Tasks := nil;
       Entry.VisibleValid := False;
+      Touch(Entry);
       Changed := True;
     end;
   DropEmpty;
@@ -630,6 +667,7 @@ begin
     Problem.Source := ATask;
     Entry.Tasks := Entry.Tasks + [Problem];
     Entry.VisibleValid := False;
+    Touch(Entry);
   end;
   if Length(AProblems) > 0 then
     Inc(FVersion);
@@ -664,7 +702,10 @@ begin
     FHiddenTasks := Kept;
   end;
   for Entry in FEntries.Values do
+  begin
     Entry.VisibleValid := False;
+    Touch(Entry);
+  end;
   Inc(FVersion);
 end;
 
@@ -719,6 +760,7 @@ begin
     Problem.Source := TestSource;
     Entry.Tests := Entry.Tests + [Problem];
     Entry.VisibleValid := False;
+    Touch(Entry);
   end;
   if Length(AProblems) > 0 then
     Inc(FVersion);

@@ -120,11 +120,6 @@ const
   SuppressLineTag = 'rule.suppressLine';
 
 type
-  TLineCache = record
-    Age: TDateTime;
-    Lines: TArray<string>;
-  end;
-
   TState = class
   public
     Hooks: TAtlasIdeProblemsHooks;
@@ -135,7 +130,9 @@ type
     /// <summary>Datei und Zeile des Cursors beim letzten Folgen.</summary>
     Cursor: string;
     Status: string;
-    Lines: TDictionary<string, TLineCache>;
+    /// <summary>Befunde je Datei: Neu gebaut (und von der Platte gelesen) werden nur Dateien mit neuem Stand.
+    /// </summary>
+    Findings: TAtlasFindingsCache;
     Catalog: TJSONValue;
     CatalogLanguage: TAtlasLanguage;
     constructor Create;
@@ -226,32 +223,18 @@ begin
   TAtlasFindings.TryParseClosedUnits(AText, Result);
 end;
 
-/// <summary>Zeile einer ungeöffneten Datei (0-basiert) von der Platte; je Datei und Änderungszeit gemerkt.</summary>
-function DiskLine(const AFileName: string; ALine: Integer): string;
-var
-  Key: string;
-  Cache: TLineCache;
-  Age: TDateTime;
+/// <summary>Zeilen einer ungeöffneten Datei von der Platte; nur für Dateien mit neuem Stand im Speicher.</summary>
+function DiskLines(const AFileName: string): TArray<string>;
 begin
-  Result := '';
-  if (State = nil) or not TFile.Exists(AFileName) then
-    Exit;
-  Key := AFileName.ToLower;
+  Result := nil;
   try
-    Age := TFile.GetLastWriteTime(AFileName);
-    if not State.Lines.TryGetValue(Key, Cache) or (Cache.Age <> Age) then
-    begin
-      Cache.Age := Age;
-      Cache.Lines := TAtlasTextFile.Load(AFileName).Text.Split([#13#10, #10]);
-      State.Lines.AddOrSetValue(Key, Cache);
-    end;
+    if TFile.Exists(AFileName) then
+      Result := TAtlasTextFile.Load(AFileName).Text.Split([#13#10, #10]);
   except
     // Gesperrt, gelöscht oder binär: Die Spalte „Zeile“ bleibt leer, das Fenster läuft weiter.
     on Exception do
-      Exit;
+      Result := nil;
   end;
-  if (ALine >= 0) and (ALine < Length(Cache.Lines)) then
-    Result := Cache.Lines[ALine];
 end;
 
 function ScopeOf(const AText: string): TAtlasFindingScope;
@@ -291,11 +274,11 @@ var
   Current, Inputs, Status, Last: string;
   Line: Integer;
   Files, Project, Opened: TArray<string>;
-  Checked: Boolean;
+  Checked, Changed, InputsChanged: Boolean;
   Findings: TArray<TAtlasFinding>;
   Counts: TAtlasFindingCounts;
   Check: TAtlasProblemsCheck;
-  ReadLine: TFunc<string, Integer, string>;
+  ReadLines: TFunc<string, TArray<string>>;
   Percent: Integer;
 begin
   Frame := TAtlasIdeProblemsWindow.ExistingFrame;
@@ -321,24 +304,30 @@ begin
   Frame.SetLive(Settings.ProblemsLive and Settings.Problems);
   if (Store <> nil) and (AForce or (Store.Version <> State.Version) or (Inputs <> State.Inputs)) then
   begin
+    InputsChanged := AForce or (Inputs <> State.Inputs);
     State.Version := Store.Version;
     State.Inputs := Inputs;
-    ReadLine :=
-      function(AFileName: string; ALine: Integer): string
+    if AForce then
+      State.Findings.Clear;
+    ReadLines :=
+      function(AFileName: string): TArray<string>
       begin
-        Result := DiskLine(AFileName, ALine);
+        Result := DiskLines(AFileName);
       end;
+    // Neue Version des Speichers heißt oft nur: eine andere Datei hat neue Befunde. Liste und Ansicht
+    // nur neu aufbauen, wenn sich an den gezeigten Dateien etwas geändert hat.
     if Frame.Scope = TAtlasFindingScope.CurrentFile then
-      Findings := TAtlasFindings.FromStore(Store, [Current], ReadLine)
+      Findings := State.Findings.Build(Store, [Current], ReadLines, Changed)
     else
-      Findings := TAtlasFindings.FromStore(Store, Files, ReadLine);
-    Frame.SetFindings(Findings, Current, Files);
-    Frame.SetOpenFiles(Current, Opened, Checked);
+      Findings := State.Findings.Build(Store, Files, ReadLines, Changed);
+    if Changed or InputsChanged then
+    begin
+      Frame.SetFindings(Findings, Current, Files, Opened, Checked);
+    end;
   end
   else if Store = nil then
   begin
-    Frame.SetFindings(nil, Current, Files);
-    Frame.SetOpenFiles(Current, Opened, False);
+    Frame.SetFindings(nil, Current, Files, Opened, False);
   end;
   // Statuszeile.
   Counts := Frame.View.Counts;
@@ -593,7 +582,7 @@ end;
 constructor TState.Create;
 begin
   inherited Create;
-  Lines := TDictionary<string, TLineCache>.Create;
+  Findings := TAtlasFindingsCache.Create;
   Version := -1;
   Timer := TTimer.Create(nil);
   Timer.Interval := TickMs;
@@ -604,7 +593,7 @@ end;
 destructor TState.Destroy;
 begin
   Timer.Free;
-  Lines.Free;
+  Findings.Free;
   Catalog.Free;
   inherited Destroy;
 end;

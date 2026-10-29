@@ -1,9 +1,14 @@
 ﻿unit Atlas.Common.Index.Adapters.CacheDirectory;
 
 // Cache-Ordner auf der Platte (#184, #492):
-// - Ablage: <Wurzel>\Index\<IDE-Version>\<Projekt-Hash>\index.atlasidx, der
-//   Bibliotheks-Index getrennt unter <Wurzel>\Index\<IDE-Version>\Bibliothek\
-//   <Hash>\index.atlasidx. Die Wurzel ist %LOCALAPPDATA%\Atlas.
+// - Ablage: <Wurzel>\Index\<IDE-Version>\<Projekt-Hash>\index-<Format>.atlasidx,
+//   der Bibliotheks-Index getrennt unter <Wurzel>\Index\<IDE-Version>\Bibliothek\
+//   <Hash>\index-<Format>.atlasidx. Die Wurzel ist %LOCALAPPDATA%\Atlas.
+// - Die Formatversion im Dateinamen trennt Server verschiedener Atlas-Versionen:
+//   Laufen etwa ein installierter und ein neuer Server nebeneinander, schrieben
+//   sie sonst abwechselnd dieselbe Datei, und jeder verwarf beim nächsten Start
+//   den Cache des anderen („Formatversion 27 statt 29“) und baute alles neu auf.
+//   Caches ohne Format im Namen (index.atlasidx) zählen beim Aufräumen mit.
 // - Sperre je Cache-Datei über "<cache>.lock", offen gehalten ohne Mitbenutzung.
 //   Öffnen mehrere Serverinstanzen dasselbe Projekt, schreibt nur die erste den
 //   Cache; die anderen lesen ihn nur.
@@ -35,19 +40,21 @@ type
   public const
     /// <summary>Caches bis Format 11 direkt in der Wurzel.</summary>
     LegacyPattern = 'index-*.json';
-    CacheFileName = 'index.atlasidx';
     CachePattern = '*.atlasidx';
     IndexFolder = 'Index';
     LibraryFolder = 'Bibliothek';
     /// <summary>Ordnername ohne bekannte Delphi-Version.</summary>
     NoVersion = 'ohne-Delphi';
     LockExtension = '.lock';
-    /// <summary>Herkunft eines Projekt-Caches (Projektdatei oder Arbeitsordner), neben index.atlasidx.</summary>
+    /// <summary>Herkunft eines Projekt-Caches (Projektdatei oder Arbeitsordner), neben der Cache-Datei.</summary>
     OriginFileName = 'projekt.txt';
     BuildPattern = 'build-*.json';
     /// <summary>Marke der letzten Benutzung neben jedem Cache.</summary>
     UseMarkerFileName = 'benutzt.stamp';
   public
+    /// <summary>Name der Cache-Datei mit der Formatversion (index-29.atlasidx), damit Server verschiedener
+    /// Versionen sich die Caches nicht gegenseitig überschreiben.</summary>
+    class function CacheFileName: string; static;
     /// <summary>Ordner der Caches unter dem Benutzerprofil (Windows: %LOCALAPPDATA%\Atlas).</summary>
     class function DefaultRoot: string; static;
     /// <summary>Kurzer, stabiler Hash (16 Hex-Zeichen, ohne Groß-/Kleinschreibung) eines Schlüssels.</summary>
@@ -109,6 +116,11 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Cache,
   Atlas.Common.Index.CacheHousekeeping;
+
+class function TIndexCacheDirectory.CacheFileName: string;
+begin
+  Result := Format('index-%d.atlasidx', [TIndexCache.FormatVersion]);
+end;
 
 class function TIndexCacheDirectory.DefaultRoot: string;
 begin
@@ -236,8 +248,11 @@ begin
   if not Result then
     Exit;
   System.SysUtils.DeleteFile(AFileName + TIndexCacheDirectory.LockExtension);
-  // Leeren Projektordner mitnehmen; der Versionsordner bleibt.
+  // Leeren Projektordner mitnehmen; der Versionsordner bleibt. Herkunft und Marke gehören auch einem Cache
+  // anderen Formats im selben Ordner und bleiben, solange einer da ist.
   Folder := ExtractFileDir(AFileName);
+  if Length(TDirectory.GetFiles(Folder, TIndexCacheDirectory.CachePattern)) > 0 then
+    Exit;
   System.SysUtils.DeleteFile(TPath.Combine(Folder, TIndexCacheDirectory.OriginFileName));
   System.SysUtils.DeleteFile(TPath.Combine(Folder, TIndexCacheDirectory.UseMarkerFileName));
   try
@@ -272,7 +287,7 @@ end;
 
 function IsLibraryCache(const AFileName: string): Boolean;
 begin
-  // <Version>\Bibliothek\<Hash>\index.atlasidx
+  // <Version>\Bibliothek\<Hash>\index-<Format>.atlasidx
   Result := SameText(ExtractFileName(ExtractFileDir(ExtractFileDir(AFileName))), TIndexCacheDirectory.LibraryFolder);
 end;
 
