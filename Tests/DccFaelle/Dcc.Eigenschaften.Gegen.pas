@@ -14,18 +14,12 @@ type
     class var FZaehler: Integer;
     class function GetZaehler: Integer; static;
   public
-    // PG1: Klassen-Property mit Instanzmethode als Getter
-    class property KlasseZ: Integer read GetZ;
-    // PG2: index-Angabe, der Getter hat keinen Indexparameter
-    property Z: Integer index 3 read GetZ;
-    // PG3: überladener Getter, keine Überladung passt
-    property Q: Integer read GetQ;
-    // PG4: Feld, das es nicht gibt
-    property W: Integer read FW;
-    // PG5: class var hinter read einer Instanz-Property
-    property Zaehler: Integer read FZaehler;
-    // PG6: statische Klassenmethode als Getter einer Instanz-Property
-    property ZaehlerStatisch: Integer read GetZaehler;
+    class property KlasseZ: Integer read GetZ; // PG1: Klassen-Property mit Instanzmethode als Getter
+    property Z: Integer index 3 read GetZ; // PG2: index-Angabe, der Getter hat keinen Indexparameter
+    property Q: Integer read GetQ; // PG3: überladener Getter, keine Überladung passt
+    property W: Integer read FW; // PG4: Feld, das es nicht gibt
+    property Zaehler: Integer read FZaehler; // PG5: class var hinter read einer Instanz-Property
+    property ZaehlerStatisch: Integer read GetZaehler; // PG6: statische Klassenmethode als Getter einer Instanz-Property
   end;
 
 implementation

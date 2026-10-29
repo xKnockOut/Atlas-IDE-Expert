@@ -17,7 +17,10 @@ jeder Meldung ausgibt.
 pwsh Tools/Build-DccFaelle.ps1
 ```
 
-schreibt alle dcc-Meldungen nach `Output/DccFaelle-Ergebnis.txt`.
+schreibt alle dcc-Meldungen nach `Output/DccFaelle-Ergebnis.txt`. Die Marke steht in der
+Zeile, die dcc meldet. Das Präfix „[dcc32 …]“ übernimmt das Skript aus dem
+Meldungsfenster der IDE; es steht auch bei Win64-Builds und sagt nichts über die
+Plattform.
 
 | Projekt | Regel | Fälle |
 |---|---|---|
@@ -28,7 +31,8 @@ schreibt alle dcc-Meldungen nach `Output/DccFaelle-Ergebnis.txt`.
 | `DccSichtbarkeit` | `inaccessible-member` | IM1/IM2 protected-Mitglieder generischer Klassen aus generischem Code einer anderen Unit, IM4 private class constructor neben TObject.Create, IM5 Klassenmethoden-Überladung in einer Klassenmethode |
 | `DccSichtbarkeitGegen` | `inaccessible-member` | SG1/SG2 protected-Felder nicht generischer Klassen, SG3 protected-Feld einer generischen Klasse aus nicht generischem Code (vorher IM3) |
 | `DccInline` | `type-restriction-violated` | TR1/TR2 echte Konstante aus dem implementation-Teil in einer Inline-Routine, TR4 Routine, TR5 inline nur an der Implementierung, TR6 Konstruktor im Class-Helfer ruft im if, TR7 class constructor im Class-Helfer, TR8 Typ aus dem implementation-Teil (vorher TG2), TR9 Helfer-Konstruktor ohne Aufruf (vorher TG3) |
-| `DccInlineGegen` | `type-restriction-violated` | TG1 Variable, TG4 typisierte Konstante aus dem implementation-Teil (vorher TR3), beide E2441 |
+| `DccInlineGegen` | `type-restriction-violated` | TG1 Variable aus dem implementation-Teil (E2441) |
+| `DccInlineKonstanteGegen` | `type-restriction-violated` | TG4 typisierte Konstante aus dem implementation-Teil (vorher TR3, E2441); eigenes Projekt, weil dcc E2441 nur einmal je Unit meldet |
 | `DccVorwaerts` | `type-used-before-declaration` | TU1/TU2 `class of` vor der Klasse im selben type-Block |
 | `DccVorwaertsGegen` | `type-used-before-declaration` | UG1 Klasse erst im nächsten type-Block |
 | `DccInterfaces` | `interface-declaration-invalid` | ID1 Property im abgeleiteten Interface mit write neu, ID2 dasselbe generisch, ID3 neue Property mit geerbtem Getter (vorher IG2) |
