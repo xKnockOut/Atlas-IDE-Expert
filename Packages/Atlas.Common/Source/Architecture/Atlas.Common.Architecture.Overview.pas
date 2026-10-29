@@ -29,6 +29,14 @@
 //   bleiben beim größten Teil. Die Teile heißen nach dem Abschnitt, der sie
 //   innerhalb des ursprünglichen Teilsystems unterscheidet, tragen dessen
 //   Namen in Parent und eine gemeinsame Farbfamilie (ColorSlot, Shade).
+// - Fundamente (#1365): Units mit Rolle Fundament, deren direkt Abhängige
+//   nach dem ersten Lauf in mindestens drei Teilsystemen liegen oder höchstens
+//   zu 60 % im eigenen, ziehen fremde Teilsysteme zusammen. Mit Foundations
+//   Attach bzw. Separate rechnet ein zweiter Lauf ohne sie und ihre Kanten;
+//   danach kommen sie in das Teilsystem mit den meisten Abhängigen (Attach)
+//   oder alle in das Teilsystem „Fundament“ (Separate, zuerst sortiert,
+//   ohne Zusammenhalt, keine Querverbindungen und Ausreißer dorthin). Units,
+//   deren einzige Kanten zu Fundamenten führen, folgen ihrem Fundament.
 // - Alles deterministisch: Units nach Name, Teilsysteme nach Größe und Name.
 
 interface
@@ -42,6 +50,9 @@ uses
 
 type
   TOverviewUnitRole = (None, Foundation, Hub);
+
+  /// <summary>Behandlung übergreifender Fundament-Units beim Gruppieren (#1365).</summary>
+  TArchitectureFoundations = (Group, Attach, Separate);
 
   /// <summary>Einstellungen der Gruppierung in Teilsysteme (architecture.grouping).</summary>
   TArchitectureGrouping = record
@@ -57,6 +68,11 @@ type
     LooseMinUnits = 30;
     /// <summary>Höchstens so viele Stufen Nachteilung.</summary>
     SplitDepth = 2;
+    /// <summary>Übergreifendes Fundament (#1365): Abhängige in mindestens so vielen Teilsystemen …</summary>
+    FoundationMinSpread = 3;
+    /// <summary>… oder höchstens dieser Anteil der Abhängigen (in Prozent, ganzzahlig verglichen) im eigenen
+    /// Teilsystem.</summary>
+    FoundationMaxOwnPercent = 60;
   public
     /// <summary>Auflösung γ des Louvain-Verfahrens (#1366): größer = mehr und kleinere Teilsysteme.</summary>
     Resolution: Double;
@@ -64,7 +80,10 @@ type
     MaxShare: Double;
     /// <summary>Teilsysteme ab LooseMinUnits mit geringerem Zusammenhalt werden nachgeteilt; 0 = nie.</summary>
     MinCohesion: Double;
-    /// <summary>Vorgaben: Auflösung 1 (Verhalten wie vor #1366), MaxShare 0,25, MinCohesion 0,3.</summary>
+    /// <summary>Übergreifende Fundamente mitgruppieren, anhängen oder getrennt zeigen (#1365).</summary>
+    Foundations: TArchitectureFoundations;
+    /// <summary>Vorgaben: Auflösung 1 (Verhalten wie vor #1366), MaxShare 0,25, MinCohesion 0,3, Fundamente
+    /// getrennt.</summary>
     class function Default: TArchitectureGrouping; static;
     /// <summary>Werte in ihren Grenzen (Resolution 0,2–5,0, MaxShare 0–0,9, MinCohesion 0–1).</summary>
     function Clamped: TArchitectureGrouping;
@@ -81,6 +100,9 @@ type
     class function ValidResolution(AValue: Double): Boolean; static;
     /// <summary>Zwei Auflösungen gelten als gleich (auf zwei Nachkommastellen).</summary>
     class function SameResolution(ALeft, ARight: Double): Boolean; static;
+    /// <summary>"group", "attach" oder "separate" (architecture.grouping.foundations).</summary>
+    class function FoundationsText(AValue: TArchitectureFoundations): string; static;
+    class function TryFoundations(const AText: string; out AValue: TArchitectureFoundations): Boolean; static;
   end;
 
   TOverviewUnit = record
@@ -127,6 +149,9 @@ type
     ColorSlot: Integer;
     /// <summary>Farbton innerhalb der Farbfamilie: 0 = Grundfarbe, positiv heller, negativ dunkler.</summary>
     Shade: Integer;
+    /// <summary>Teilsystem „Fundament“ der übergreifenden Fundament-Units (#1365, Foundations = Separate); ohne
+    /// Zusammenhalt (Cohesion 0), ColorSlot -1 (neutrale Farbe).</summary>
+    Foundation: Boolean;
   end;
 
   TOverviewOutlierReason = (Namespace, Edges);
@@ -213,6 +238,11 @@ type
     /// <summary>Höchstens so viele Kanten zwischen zwei Teilsystemen gelten als selten.</summary>
     RareLimit = 2;
     IsolatedName = 'Ohne uses-Beziehung';
+    FoundationName = 'Fundament';
+    /// <summary>Regel, nach der Units ins Teilsystem „Fundament“ kommen (Bericht, Fenster, get_architecture).
+    /// </summary>
+    FoundationRule = 'Units mit Rolle Fundament, deren direkt Abhängige in mindestens drei Teilsystemen liegen ' +
+      'oder höchstens zu 60 % im eigenen, und Units, die nur sie verwenden';
   public
     /// <summary>Übersicht über alle aktiven Units von AGraph. ALocator darf nil sein (dann ohne Fundstellen).
     /// ACentralCount: Länge der Liste zentraler Units (5..100).</summary>
@@ -260,6 +290,7 @@ begin
   Result.Resolution := 1;
   Result.MaxShare := DefaultMaxShare;
   Result.MinCohesion := DefaultMinCohesion;
+  Result.Foundations := TArchitectureFoundations.Separate;
 end;
 
 function TArchitectureGrouping.Clamped: TArchitectureGrouping;
@@ -289,7 +320,35 @@ begin
   mGrouping := Clamped;
   Result := 'r' + FormatFloat('0.####', mGrouping.Resolution, TFormatSettings.Invariant) + ';s' +
     FormatFloat('0.####', mGrouping.MaxShare, TFormatSettings.Invariant) + ';c' +
-    FormatFloat('0.####', mGrouping.MinCohesion, TFormatSettings.Invariant);
+    FormatFloat('0.####', mGrouping.MinCohesion, TFormatSettings.Invariant) + ';f' + FoundationsText(Foundations);
+end;
+
+class function TArchitectureGrouping.FoundationsText(AValue: TArchitectureFoundations): string;
+begin
+  case AValue of
+    TArchitectureFoundations.Attach:
+      Result := 'attach';
+    TArchitectureFoundations.Separate:
+      Result := 'separate';
+  else
+    Result := 'group';
+  end;
+end;
+
+class function TArchitectureGrouping.TryFoundations(const AText: string; out AValue: TArchitectureFoundations): Boolean;
+begin
+  Result := True;
+  if AText = 'group' then
+    AValue := TArchitectureFoundations.Group
+  else if AText = 'attach' then
+    AValue := TArchitectureFoundations.Attach
+  else if AText = 'separate' then
+    AValue := TArchitectureFoundations.Separate
+  else
+  begin
+    AValue := TArchitectureFoundations.Group;
+    Result := False;
+  end;
 end;
 
 function TArchitectureGrouping.ResolutionChanged: Boolean;
@@ -439,10 +498,17 @@ type
     FIncident: TArray<TArray<Integer>>;
     /// <summary>Je Unit die Stelle im gerade untersuchten Teilsystem; -1 außerhalb.</summary>
     FLocal: TArray<Integer>;
+    /// <summary>Je Unit: gehört ins Teilsystem „Fundament“ (#1365, nur Foundations = Separate).</summary>
+    FInFoundation: TArray<Boolean>;
+    /// <summary>Nummer des Teilsystems „Fundament“; -1 ohne.</summary>
+    FFoundation: Integer;
     procedure CollectUnits;
     procedure CollectEdges;
     procedure Measure;
     procedure Group;
+    procedure SeparateFoundations(const AEdges: TArray<TLouvainEdge>; var ACommunities: TArray<Integer>);
+    function InFoundation(AUnit: Integer): Boolean;
+    function IsFoundation(ASubsystem: Integer): Boolean;
     procedure Split(var ACommunities: TArray<Integer>; AIsolated: Integer);
     function NeedsSplit(const AMembers: TArray<Integer>): Boolean;
     function SplitMembers(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
@@ -466,6 +532,17 @@ begin
   FGraph := AGraph;
   FLocator := ALocator;
   FGrouping := AGrouping.Clamped;
+  FFoundation := -1;
+end;
+
+function TAnalysis.InFoundation(AUnit: Integer): Boolean;
+begin
+  Result := (AUnit >= 0) and (AUnit < Length(FInFoundation)) and FInFoundation[AUnit];
+end;
+
+function TAnalysis.IsFoundation(ASubsystem: Integer): Boolean;
+begin
+  Result := (FFoundation >= 0) and (ASubsystem = FFoundation);
 end;
 
 function TAnalysis.Weight(const AEdge: TOverviewEdge): Integer;
@@ -594,6 +671,8 @@ begin
     Inc(Count);
   end;
   Communities := TLouvain.Communities(Length(FResult.Units), Edges, FGrouping.Resolution);
+  if FGrouping.Foundations <> TArchitectureFoundations.Group then
+    SeparateFoundations(Edges, Communities);
   // Units ohne Kante bilden bei Louvain je eine eigene Gruppe; sie kommen in eine Sammelgruppe.
   SetLength(Degree, Length(FResult.Units));
   for Edge in FResult.Edges do
@@ -617,6 +696,13 @@ begin
         Isolated := Communities[Index];
         Break;
       end;
+  for Index := 0 to High(Communities) do
+    if InFoundation(Index) then
+    begin
+      FFoundation := Communities[Index];
+      Break;
+    end;
+  // Die Nachteilung lässt die Nummer ungeteilter Gruppen (also auch des Fundaments) stehen.
   Split(Communities, Isolated);
   Count := 0;
   for Member in Communities do
@@ -636,6 +722,9 @@ begin
   for Edge in FResult.Edges do
     if FResult.Units[Edge.Source].Subsystem = FResult.Units[Edge.Target].Subsystem then
       Inc(FResult.Subsystems[FResult.Units[Edge.Source].Subsystem].InnerEdges)
+    else if IsFoundation(FResult.Units[Edge.Source].Subsystem) or IsFoundation(FResult.Units[Edge.Target].Subsystem) then
+      // Kanten ins Fundament (#1365) gehen nicht in den Zusammenhalt ein.
+      Continue
     else
     begin
       Inc(FResult.Subsystems[FResult.Units[Edge.Source].Subsystem].OuterEdges);
@@ -645,7 +734,10 @@ begin
   begin
     Subsystem := FResult.Subsystems[Index];
     Subsystem.Isolated := Index = Isolated;
-    if Subsystem.InnerEdges + Subsystem.OuterEdges > 0 then
+    Subsystem.Foundation := IsFoundation(Index);
+    if Subsystem.Foundation then
+      Subsystem.Cohesion := 0
+    else if Subsystem.InnerEdges + Subsystem.OuterEdges > 0 then
       Subsystem.Cohesion := Subsystem.InnerEdges / (Subsystem.InnerEdges + Subsystem.OuterEdges)
     else
       Subsystem.Cohesion := 1;
@@ -708,6 +800,202 @@ begin
     Levels.Free;
     Groups.Free;
   end;
+end;
+
+procedure TAnalysis.SeparateFoundations(const AEdges: TArray<TLouvainEdge>; var ACommunities: TArray<Integer>);
+var
+  Count, Index, Unit_, Other, Best, Next, Total, Largest, Number: Integer;
+  Candidate, Foundation, Follower, Assigned_: TArray<Boolean>;
+  Degree, ReducedDegree, Follow, Probe, Second: TArray<Integer>;
+  Weights: TArray<Double>;
+  Incoming: TArray<TArray<Integer>>;
+  Edge: TLouvainEdge;
+  Spread: TDictionary<Integer, Integer>;
+  Pass: Integer;
+  Changed, Any, Same: Boolean;
+
+  /// <summary>Gemeinschaft mit dem größten Gewicht in Weights (Gleichstand: kleinere Nummer); -1 ohne.</summary>
+  function Heaviest: Integer;
+  var
+    mCommunity: Integer;
+  begin
+    Result := -1;
+    for mCommunity := 0 to High(Weights) do
+      if (Weights[mCommunity] > 0) and ((Result < 0) or (Weights[mCommunity] > Weights[Result])) then
+        Result := mCommunity;
+  end;
+
+  /// <summary>Louvain ohne die Units AExcluded und ihre Kanten, fortlaufend nummeriert; ADegree: Kanten je Unit
+  /// im verbleibenden Graphen.</summary>
+  function Without(const AExcluded: TArray<Boolean>; out ADegree: TArray<Integer>): TArray<Integer>;
+  var
+    mReduced: TList<TLouvainEdge>;
+    mEdge: TLouvainEdge;
+  begin
+    SetLength(ADegree, Count);
+    mReduced := TList<TLouvainEdge>.Create;
+    try
+      for mEdge in AEdges do
+        if not AExcluded[mEdge.A] and not AExcluded[mEdge.B] then
+        begin
+          mReduced.Add(mEdge);
+          Inc(ADegree[mEdge.A]);
+          Inc(ADegree[mEdge.B]);
+        end;
+      Result := TLouvain.Communities(Count, mReduced.ToArray, FGrouping.Resolution);
+    finally
+      mReduced.Free;
+    end;
+    Renumber(Result);
+  end;
+
+begin
+  Count := Length(FResult.Units);
+  SetLength(Candidate, Count);
+  SetLength(Foundation, Count);
+  SetLength(Incoming, Count);
+  SetLength(Degree, Count);
+  for Index := 0 to High(AEdges) do
+  begin
+    Incoming[AEdges[Index].B] := Incoming[AEdges[Index].B] + [Index];
+    Inc(Degree[AEdges[Index].A]);
+    Inc(Degree[AEdges[Index].B]);
+  end;
+  // Kandidaten: Rolle Fundament. Ihre Verteilung zählt in einem Lauf ohne sie, denn im ersten Lauf ziehen sie ihre
+  // Abhängigen ja gerade zusammen.
+  Any := False;
+  for Unit_ := 0 to Count - 1 do
+  begin
+    Candidate[Unit_] := (FResult.Units[Unit_].Role = TOverviewUnitRole.Foundation) and (Length(Incoming[Unit_]) > 0);
+    Any := Any or Candidate[Unit_];
+  end;
+  if not Any then
+    Exit;
+  Probe := Without(Candidate, ReducedDegree);
+  // Übergreifend: Abhängige (ohne Kandidaten und ohne Units, die nur an Kandidaten hängen) in mindestens drei
+  // Teilsystemen oder höchstens 60 % im größten.
+  Any := False;
+  Spread := TDictionary<Integer, Integer>.Create;
+  try
+    for Unit_ := 0 to Count - 1 do
+    begin
+      if not Candidate[Unit_] then
+        Continue;
+      Spread.Clear;
+      Total := 0;
+      for Index in Incoming[Unit_] do
+      begin
+        Other := AEdges[Index].A;
+        if Candidate[Other] or (ReducedDegree[Other] = 0) then
+          Continue;
+        Inc(Total);
+        if not Spread.TryGetValue(Probe[Other], Number) then
+          Number := 0;
+        Spread.AddOrSetValue(Probe[Other], Number + 1);
+      end;
+      if Total = 0 then
+        Continue;
+      Largest := 0;
+      for Number in Spread.Values do
+        Largest := Max(Largest, Number);
+      Foundation[Unit_] := (Spread.Count >= TArchitectureGrouping.FoundationMinSpread) or
+        (Largest * 100 <= TArchitectureGrouping.FoundationMaxOwnPercent * Total);
+      Any := Any or Foundation[Unit_];
+    end;
+  finally
+    Spread.Free;
+  end;
+  if not Any then
+    Exit;
+  // Zweiter Lauf ohne die übergreifenden Fundamente und ohne ihre Kanten (sind es alle Kandidaten, ist es der Lauf
+  // von eben).
+  Same := True;
+  for Unit_ := 0 to Count - 1 do
+    Same := Same and (Candidate[Unit_] = Foundation[Unit_]);
+  if Same then
+    Second := Probe
+  else
+    Second := Without(Foundation, ReducedDegree);
+  Next := 0;
+  for Index in Second do
+    Next := Max(Next, Index + 1);
+  // Units, deren einzige Kanten zu Fundamenten führen, folgen dem Fundament mit dem größten Gewicht.
+  SetLength(Follower, Count);
+  SetLength(Follow, Count);
+  SetLength(Weights, Count);
+  for Unit_ := 0 to Count - 1 do
+  begin
+    Follow[Unit_] := -1;
+    if Foundation[Unit_] or (Degree[Unit_] = 0) or (ReducedDegree[Unit_] > 0) then
+      Continue;
+    for Index := 0 to Count - 1 do
+      Weights[Index] := 0;
+    for Edge in AEdges do
+      if Edge.A = Unit_ then
+        Weights[Edge.B] := Weights[Edge.B] + Edge.Weight
+      else if Edge.B = Unit_ then
+        Weights[Edge.A] := Weights[Edge.A] + Edge.Weight;
+    for Other := 0 to Count - 1 do
+      if Foundation[Other] and (Weights[Other] > 0) and
+        ((Follow[Unit_] < 0) or (Weights[Other] > Weights[Follow[Unit_]])) then
+        Follow[Unit_] := Other;
+    Follower[Unit_] := Follow[Unit_] >= 0;
+  end;
+  if FGrouping.Foundations = TArchitectureFoundations.Separate then
+  begin
+    SetLength(FInFoundation, Count);
+    for Unit_ := 0 to Count - 1 do
+      if Foundation[Unit_] or Follower[Unit_] then
+      begin
+        Second[Unit_] := Next;
+        FInFoundation[Unit_] := True;
+      end;
+  end
+  else
+  begin
+    // Anhängen: in das Teilsystem, aus dem die meisten Abhängigen stammen (gewichtet, Gleichstand: kleinere
+    // Nummer). Fundamente, die nur Fundamente verwenden, folgen ihren Abhängigen, sobald diese zugeordnet sind;
+    // solche ohne zugeordnete Abhängige zuletzt den Units, die sie verwenden.
+    SetLength(Assigned_, Count);
+    for Unit_ := 0 to Count - 1 do
+      Assigned_[Unit_] := not Foundation[Unit_] and not Follower[Unit_];
+    SetLength(Weights, Next);
+    for Pass := 0 to 1 do
+      repeat
+        Changed := False;
+        for Unit_ := 0 to Count - 1 do
+        begin
+          if not Foundation[Unit_] or Assigned_[Unit_] then
+            Continue;
+          for Index := 0 to High(Weights) do
+            Weights[Index] := 0;
+          for Index in Incoming[Unit_] do
+            if Assigned_[AEdges[Index].A] then
+              Weights[Second[AEdges[Index].A]] := Weights[Second[AEdges[Index].A]] + AEdges[Index].Weight;
+          if Pass = 1 then
+            for Edge in AEdges do
+              if (Edge.A = Unit_) and Assigned_[Edge.B] then
+                Weights[Second[Edge.B]] := Weights[Second[Edge.B]] + Edge.Weight;
+          Best := Heaviest;
+          if Best < 0 then
+            Continue;
+          Second[Unit_] := Best;
+          Assigned_[Unit_] := True;
+          Changed := True;
+        end;
+      until not Changed;
+    // Ohne jede Zuordnung (nur Kanten unter solchen Fundamenten): je ein eigenes Teilsystem.
+    for Unit_ := 0 to Count - 1 do
+      if Foundation[Unit_] and not Assigned_[Unit_] then
+      begin
+        Second[Unit_] := Next;
+        Inc(Next);
+      end;
+    for Unit_ := 0 to Count - 1 do
+      if Follower[Unit_] then
+        Second[Unit_] := Second[Follow[Unit_]];
+  end;
+  ACommunities := Second;
 end;
 
 procedure TAnalysis.Split(var ACommunities: TArray<Integer>; AIsolated: Integer);
@@ -774,7 +1062,9 @@ end;
 function TAnalysis.SplitGroup(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
 begin
   AParts := nil;
-  Result := NeedsSplit(AMembers) and SplitMembers(AMembers, AParts);
+  // Das Fundament (#1365) bleibt ganz.
+  Result := (Length(AMembers) > 0) and not InFoundation(AMembers[0]) and NeedsSplit(AMembers) and
+    SplitMembers(AMembers, AParts);
 end;
 
 function TAnalysis.NeedsSplit(const AMembers: TArray<Integer>): Boolean;
@@ -799,6 +1089,9 @@ begin
           Other := Edge.Target
         else
           Other := Edge.Source;
+        // Kanten ins Fundament zählen wie in Group nicht mit.
+        if InFoundation(Other) then
+          Continue;
         if FLocal[Other] >= 0 then
           Inc(Inner)
         else
@@ -1021,6 +1314,8 @@ begin
       Key := '';
       if FResult.Subsystems[Index].Isolated then
         Name := TArchitectureAnalyzer.IsolatedName
+      else if FResult.Subsystems[Index].Foundation then
+        Name := TArchitectureAnalyzer.FoundationName
       else if FamilySize[FFamily[Index]] > 1 then
       begin
         // Teil eines nachgeteilten Teilsystems: Abschnitt, der es innerhalb des ursprünglichen unterscheidet.
@@ -1084,13 +1379,16 @@ begin
   for Index := 0 to High(FResult.Units) do
   begin
     Own := FResult.Units[Index].Subsystem;
+    // Ausreißer nur unter den übrigen Teilsystemen (#1365): weder aus dem Fundament noch dorthin.
+    if IsFoundation(Own) then
+      Continue;
     Outlier := Default(TOverviewOutlier);
     Outlier.Unit_ := Index;
     Outlier.Suggested := -1;
     // Nach Kanten: ein anderes Teilsystem mit mehr Kanten als das eigene.
     Best := Own;
     for Subsystem := 0 to High(FResult.Subsystems) do
-      if (Subsystem <> Own) and (Links[Index][Subsystem] > Links[Index][Best]) then
+      if (Subsystem <> Own) and not IsFoundation(Subsystem) and (Links[Index][Subsystem] > Links[Index][Best]) then
         Best := Subsystem;
     if Best <> Own then
     begin
@@ -1109,7 +1407,8 @@ begin
       if not NameOwn and FNamedByPart[Own] then
         for Subsystem := 0 to High(FResult.Subsystems) do
         begin
-          if (Subsystem = Own) or not FNamedByPart[Subsystem] or (Length(FResult.Subsystems[Subsystem].Units) < 2) then
+          if (Subsystem = Own) or not FNamedByPart[Subsystem] or (Length(FResult.Subsystems[Subsystem].Units) < 2) or
+            IsFoundation(Subsystem) then
             Continue;
           for Part in Parts do
             if SameText(Part, FPartKey[Subsystem]) and (Outlier.Suggested < 0) then
@@ -1193,7 +1492,8 @@ begin
         Continue;
       From_ := FResult.Units[Index].Subsystem;
       To_ := FResult.Units[FUnitOf[GraphEdge.Target]].Subsystem;
-      if From_ = To_ then
+      // Kanten ins Fundament (#1365) sind gewollt, keine Querverbindung.
+      if (From_ = To_) or IsFoundation(From_) or IsFoundation(To_) then
         Continue;
       Link := Default(TOverviewCrossLink);
       Link.FromSubsystem := From_;
@@ -1222,15 +1522,17 @@ var
   Sorted: TArray<TOverviewSubsystem>;
   Index: Integer;
 begin
-  // Größte zuerst, bei Gleichstand nach dem Namen der zentralen Unit (Namen entstehen erst danach); die
-  // Sammelgruppe ohne uses-Beziehung zuletzt.
+  // Das Fundament (#1365) zuerst (Mitte der Karte), dann die größten, bei Gleichstand nach dem Namen der zentralen
+  // Unit (Namen entstehen erst danach); die Sammelgruppe ohne uses-Beziehung zuletzt.
   SetLength(Order, Length(FResult.Subsystems));
   for Index := 0 to High(Order) do
     Order[Index] := Index;
   TArray.Sort<Integer>(Order, TComparer<Integer>.Construct(
     function(const ALeft, ARight: Integer): Integer
     begin
-      Result := Ord(FResult.Subsystems[ALeft].Isolated) - Ord(FResult.Subsystems[ARight].Isolated);
+      Result := Ord(FResult.Subsystems[ARight].Foundation) - Ord(FResult.Subsystems[ALeft].Foundation);
+      if Result = 0 then
+        Result := Ord(FResult.Subsystems[ALeft].Isolated) - Ord(FResult.Subsystems[ARight].Isolated);
       if Result = 0 then
         Result := Length(FResult.Subsystems[ARight].Units) - Length(FResult.Subsystems[ALeft].Units);
       if Result = 0 then
@@ -1253,6 +1555,8 @@ begin
   for Index := 0 to High(FFamily) do
     Family[Map[Index]] := Map[FFamily[Index]];
   FFamily := Family;
+  if FFoundation >= 0 then
+    FFoundation := Map[FFoundation];
 end;
 
 procedure TAnalysis.AssignColors;
@@ -1267,6 +1571,13 @@ begin
   try
     for Index := 0 to High(FResult.Subsystems) do
     begin
+      // Das Fundament (#1365) bekommt die neutrale Farbe und verbraucht keine.
+      if FResult.Subsystems[Index].Foundation then
+      begin
+        FResult.Subsystems[Index].ColorSlot := -1;
+        FResult.Subsystems[Index].Shade := 0;
+        Continue;
+      end;
       if not Slots.TryGetValue(FFamily[Index], Slot) then
       begin
         Slot := Slots.Count;

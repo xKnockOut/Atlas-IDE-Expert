@@ -12,7 +12,8 @@
 // - TAtlasArchitecturePalette: Farben der Teilsysteme wie in der HTML-Karte,
 //   je für helle und dunkle Themen; die Teile eines nachgeteilten
 //   Teilsystems (#1364, "parent") teilen eine Farbe ("color") in helleren und
-//   dunkleren Tönen ("shade").
+//   dunkleren Tönen ("shade"); das Teilsystem „Fundament“ (#1365,
+//   "foundation") in neutraler Farbe wie --muted der HTML-Karte.
 // - Comparison: Vergleich mit einem gespeicherten Stand (#1121) aus
 //   "comparison" (Daten aus TArchitectureComparer.Json), "baseline" und
 //   "comparisonError" der Antwort: Abschnitte mit Einträgen (Namen statt
@@ -75,6 +76,8 @@ type
     /// <summary>Farbe in der Palette (ältere Daten: Nummer des Teilsystems) und Ton (0, heller +, dunkler −).</summary>
     ColorSlot: Integer;
     Shade: Integer;
+    /// <summary>Teilsystem „Fundament“ der übergreifenden Fundament-Units (#1365): ohne Zusammenhalt.</summary>
+    Foundation: Boolean;
     X: Double;
     Y: Double;
     R: Double;
@@ -246,6 +249,10 @@ type
     function SubsystemCount: Integer;
     /// <summary>Farbe des Teilsystems in Karte und Legende (Farbfamilie bei Nachteilung, #1364).</summary>
     function SubsystemColor(ASubsystem: Integer; ADark: Boolean): Cardinal;
+    /// <summary>Die Kante führt ins oder aus dem Teilsystem „Fundament“ (#1365).</summary>
+    function TouchesFoundation(const AEdge: TAtlasArchEdge): Boolean;
+    /// <summary>Es gibt ein Teilsystem „Fundament“.</summary>
+    function HasFoundation: Boolean;
     /// <summary>Reihenfolge der Legende: wie Subsystems, die Teile eines nachgeteilten Teilsystems (gleicher
     /// Parent) zusammen an der Stelle des ersten Teils.</summary>
     function LegendOrder: TArray<Integer>;
@@ -339,6 +346,8 @@ type
     /// <summary>Farbe ASlot im Ton AShade (#1364): positiv heller, negativ dunkler, wie color-mix der HTML-Karte.
     /// </summary>
     class function Color(ASlot, AShade: Integer; ADark: Boolean): Cardinal; overload; static;
+    /// <summary>Neutrale Farbe des Teilsystems „Fundament“ (#1365), wie --muted der HTML-Karte.</summary>
+    class function FoundationColor(ADark: Boolean): Cardinal; static;
     /// <summary>Hintergrund ($00BBGGRR) ist dunkel: Helligkeit unter der Hälfte.</summary>
     class function IsDark(ABackground: Cardinal): Boolean; static;
   end;
@@ -829,6 +838,7 @@ begin
         AModel.Subsystems[Index].Parent := TextOf(Item, 'parent');
         AModel.Subsystems[Index].ColorSlot := IntOf(Item, 'color', Index);
         AModel.Subsystems[Index].Shade := IntOf(Item, 'shade', 0);
+        AModel.Subsystems[Index].Foundation := FlagOf(Item, 'foundation');
         AModel.Subsystems[Index].X := FloatOf(Item, 'x');
         AModel.Subsystems[Index].Y := FloatOf(Item, 'y');
         AModel.Subsystems[Index].R := FloatOf(Item, 'r');
@@ -1161,10 +1171,34 @@ end;
 
 function TAtlasArchitectureModel.SubsystemColor(ASubsystem: Integer; ADark: Boolean): Cardinal;
 begin
-  if (ASubsystem >= 0) and (ASubsystem < Length(Subsystems)) then
+  if (ASubsystem >= 0) and (ASubsystem < Length(Subsystems)) and Subsystems[ASubsystem].Foundation then
+    Result := TAtlasArchitecturePalette.FoundationColor(ADark)
+  else if (ASubsystem >= 0) and (ASubsystem < Length(Subsystems)) then
     Result := TAtlasArchitecturePalette.Color(Subsystems[ASubsystem].ColorSlot, Subsystems[ASubsystem].Shade, ADark)
   else
     Result := TAtlasArchitecturePalette.Color(ASubsystem, ADark);
+end;
+
+function TAtlasArchitectureModel.TouchesFoundation(const AEdge: TAtlasArchEdge): Boolean;
+
+  function InFoundation(AUnit: Integer): Boolean;
+  begin
+    Result := (AUnit >= 0) and (AUnit < Length(Units)) and (Units[AUnit].Subsystem >= 0) and
+      (Units[AUnit].Subsystem < Length(Subsystems)) and Subsystems[Units[AUnit].Subsystem].Foundation;
+  end;
+
+begin
+  Result := InFoundation(AEdge.Source) or InFoundation(AEdge.Target);
+end;
+
+function TAtlasArchitectureModel.HasFoundation: Boolean;
+var
+  mSubsystem: TAtlasArchSubsystem;
+begin
+  Result := False;
+  for mSubsystem in Subsystems do
+    if mSubsystem.Foundation then
+      Exit(True);
 end;
 
 function TAtlasArchitectureModel.LegendOrder: TArray<Integer>;
@@ -1406,6 +1440,15 @@ begin
     Result := Result or (Cardinal(EnsureRange(mChannel, 0, 255)) shl mShift);
     Inc(mShift, 8);
   end;
+end;
+
+class function TAtlasArchitecturePalette.FoundationColor(ADark: Boolean): Cardinal;
+begin
+  // #5D6576 bzw. #9AA2B2 als $00BBGGRR.
+  if ADark then
+    Result := $B2A29A
+  else
+    Result := $76655D;
 end;
 
 class function TAtlasArchitecturePalette.IsDark(ABackground: Cardinal): Boolean;

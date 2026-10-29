@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3038] of string = (
+  Lines: array[0..3046] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2216,8 +2216,8 @@ const
     '        "grouping": {',
     '          "type": "object",',
     '          "x-page": "Architektur",',
-    '          "x-control": "resolution: Zahl (0,2–5,0) und Regler „Feinheit“ im Fenster; showResolutionSlider: Kontrollkästchen; maxShare: Zahl (0–0,9); minCohesion: Zahl (0–1)",',
-    '          "x-issue": "#1366, #1364",',
+    '          "x-control": "resolution: Zahl (0,2–5,0) und Regler „Feinheit“ im Fenster; showResolutionSlider: Kontrollkästchen; maxShare: Zahl (0–0,9); minCohesion: Zahl (0–1); foundations: Auswahl",',
+    '          "x-issue": "#1366, #1364, #1365",',
     '          "description": "Wie die Architekturübersicht die Units in Teilsysteme gruppiert (Louvain auf dem uses-Graphen). Gilt für Fenster, Bericht, AtlasServer --architecture und get_architecture.",',
     '          "additionalProperties": false,',
     '          "properties": {',
@@ -2256,6 +2256,16 @@ const
     '              "maximum": 1,',
     '              "default": 0.3,',
     '              "description": "Teilsysteme ab 30 Units, deren Zusammenhalt (Anteil der Kanten, die im Teilsystem bleiben) darunter liegt, werden ebenso nachgeteilt. 0 = nie nach Zusammenhalt teilen."',
+    '            },',
+    '            "foundations": {',
+    '              "x-control": "Auswahl (mitgruppieren, anhängen, eigenes Teilsystem)",',
+    '              "x-issue": "#1365",',
+    '              "type": "string",',
+    '              "enum": ["group", "attach", "separate"],',
+    '              "default": "separate",',
+    '              "description": "Übergreifende Fundament-Units (Rolle Fundament, direkt Abhängige in mindestens drei Teilsystemen oder höchstens zu 60 % im eigenen) beim Gruppieren: group = mitgruppieren' +
+      ' wie bisher; attach = ohne sie gruppieren und danach ins Teilsystem mit den meisten Abhängigen; separate = eigenes Teilsystem „Fundament“ in der Mitte der Karte, Kanten dorthin keine Querverbindungen.' +
+      '"',
     '            }',
     '          }',
     '        }',

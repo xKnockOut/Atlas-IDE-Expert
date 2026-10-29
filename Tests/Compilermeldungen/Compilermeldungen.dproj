@@ -20,6 +20,7 @@
         <DCC_ExeOutput>.\Output\$(Platform)\Bin</DCC_ExeOutput>
         <SanitizedProjectName>Compilermeldungen</SanitizedProjectName>
         <DCC_UnitSearchPath>Faelle;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_AdditionalSwitches>-JPHNE</DCC_AdditionalSwitches>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
