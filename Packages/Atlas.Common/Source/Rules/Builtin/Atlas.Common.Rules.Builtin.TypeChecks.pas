@@ -61,7 +61,9 @@ interface
 uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
-  Atlas.Common.Rules.Registry;
+  Atlas.Common.Rules.Registry,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Editing.ChangeSignature;
 
 const
   DynamicArrayMisuseRuleId = 'dynamic-array-misuse';
@@ -112,6 +114,12 @@ type
 
 procedure RegisterTypeCheckRules(const ARegistry: TRuleRegistry);
 
+/// <summary>Parameter der Routine ASymbol in Reihenfolge, je Name ein Eintrag: aus dem Kopf im Index bzw. für
+/// lokale Routinen aus dem Baum (auch für string-conversion, #1377). False bei Überladungen (auch mit overload im Kopf) oder unbekanntem Kopf.
+/// </summary>
+function RoutineParams(const AContext: TRuleContext; const ASymbol: TResolvedSymbol;
+  out AParams: TArray<TSignatureParameter>): Boolean;
+
 implementation
 
 uses
@@ -122,9 +130,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.SystemIntrinsics,
-  Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Text.Lines;
 
@@ -357,9 +363,6 @@ begin
   Result := False;
 end;
 
-/// <summary>Parameter der Routine ASymbol in Reihenfolge, je Name ein Eintrag: aus dem Kopf im Index bzw. für
-/// lokale Routinen aus dem Baum. False bei Überladungen (auch mit overload im Kopf) oder unbekanntem Kopf.
-/// </summary>
 function RoutineParams(const AContext: TRuleContext; const ASymbol: TResolvedSymbol;
   out AParams: TArray<TSignatureParameter>): Boolean;
 var

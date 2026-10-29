@@ -523,6 +523,28 @@ type
     class function Default: TRefactoringSettings; static;
   end;
 
+  /// <summary>Argument eines eigenen MCP-Prompts (mcp.customPrompts, #1357).</summary>
+  TMcpCustomPromptArgument = record
+    Name: string;
+    Description: string;
+    Required: Boolean;
+  end;
+
+  /// <summary>Eigener MCP-Prompt aus mcp.customPrompts (#1357): Text mit Platzhaltern {argument} und
+  /// eingebettete Inhalte aus Include.</summary>
+  TMcpCustomPrompt = record
+    Name: string;
+    Description: string;
+    Arguments: TArray<TMcpCustomPromptArgument>;
+    Text: string;
+    /// <summary>Kennungen aus KnownIncludes, z. B. diagnostics oder metrics.</summary>
+    Include: TArray<string>;
+    /// <summary>Erlaubte Werte für include: outline, diagnostics, metrics, unused, todos, form, impact,
+    /// dependencies, conventions, lastBuild.</summary>
+    class function KnownIncludes: TArray<string>; static;
+    class function IsKnownInclude(const AName: string): Boolean; static;
+  end;
+
   TServerSettings = record
     /// <summary>Delphi-Version als BDS-Version der Registry, z. B. "37.0" (Produktnummern wie "12" werden
     /// beim Lesen umgerechnet, siehe BdsVersionOf); '' = passend zur ProjectVersion der .dproj, sonst neueste installierte (#47).</summary>
@@ -566,6 +588,12 @@ type
     McpDisabledTools: TArray<string>;
     /// <summary>MCP-Modus liest die globale settings.json (mcp.globalSettings, D-08); Vorgabe True.</summary>
     McpGlobalSettings: Boolean;
+    /// <summary>Prompts und Ressourcenvorlagen anbieten (mcp.prompts, #1357); Vorgabe True.</summary>
+    McpPrompts: Boolean;
+    /// <summary>Sprache der Anleitungen in den Prompts (mcp.promptLanguage): de (Vorgabe) oder en.</summary>
+    McpPromptLanguage: string;
+    /// <summary>Eigene Prompts des Projekts (mcp.customPrompts).</summary>
+    McpCustomPrompts: TArray<TMcpCustomPrompt>;
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
     Format: string;
     /// <summary>Projektaufgaben (#900) als JSON-Liste (Text), sonst ''. Ausführen tut sie das Plugin; der Server
@@ -899,6 +927,24 @@ begin
     ((Pos('*', Pattern) = 0) and (Pos('?', Pattern) = 0) and MatchAt(Pattern + '/**', 1, NormalizeSlashes(APath), 1));
 end;
 
+{ TMcpCustomPrompt }
+
+class function TMcpCustomPrompt.KnownIncludes: TArray<string>;
+begin
+  Result := TArray<string>.Create('outline', 'diagnostics', 'metrics', 'unused', 'todos', 'form', 'impact',
+    'dependencies', 'conventions', 'lastBuild');
+end;
+
+class function TMcpCustomPrompt.IsKnownInclude(const AName: string): Boolean;
+var
+  mName: string;
+begin
+  for mName in KnownIncludes do
+    if mName = AName then
+      Exit(True);
+  Result := False;
+end;
+
 { TInlayHintSettings }
 
 class function TInlayHintSettings.Default: TInlayHintSettings;
@@ -1200,6 +1246,9 @@ begin
   Result.DiagnosticsUsesCycleImplementation := False;
   Result.IndexProjectGroup := True;
   Result.McpGlobalSettings := True;
+  Result.McpPrompts := True;
+  Result.McpPromptLanguage := 'de';
+  Result.McpCustomPrompts := nil;
   Result.IndexSearchPaths := True;
   // Bibliothekspfade ganz zu indizieren dauert bei großen Installationen Minuten; nur auf Wunsch.
   Result.IndexLibraryPaths := False;

@@ -139,6 +139,9 @@ begin
     '    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']'#10'  end;'), AllConfidences))));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceGuidRule.Create, InType('  ISaver = interface;'#10 +
     '  ILoader = interface'#10'    [SID_Loader]'#10'  end;'), AllConfidences))));
+  // Ein dispinterface ohne GUID übersetzt nicht: Das meldet dispinterface-invalid als Fehler (#1374).
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceGuidRule.Create, InType('  DSaver = dispinterface'#10 +
+    '    procedure Save; dispid 1;'#10'  end;'), AllConfidences))));
   // Das Schlüsselwort interface des Unit-Abschnitts ist keine Deklaration.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TInterfaceGuidRule.Create,
     'unit U;'#10'interface'#10'implementation'#10'end.', AllConfidences))));

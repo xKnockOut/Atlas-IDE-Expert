@@ -360,6 +360,7 @@ uses
   Atlas.Common.Index.CacheHousekeeping,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
   Atlas.Common.Rules.Builtin.FormFields,
+  Atlas.Common.Rules.WarnSwitches,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Shell.Platform,
   Shell.Bootstrap;
@@ -1404,6 +1405,9 @@ function TShellWorkspace.RuleServices: TRuleServices;
 var
   Hold: IPackageLocatorHold;
   Context: TIdeProjectContext;
+  Info: TProjectInfo;
+  Pair: TPair<string, string>;
+  Entry: string;
 begin
   Result := Default(TRuleServices);
   Result.Index := FIndex;
@@ -1440,6 +1444,14 @@ begin
   // Präfixe der Projektdatei .atlas für naming-prefix und die Korrektur von shadowed-name (#1111).
   if (FIdeProjects <> nil) and (ProjectFileName <> '') and FIdeProjects.Find(ProjectFileName, Context) then
     Result.Naming := Context.RuleNaming;
+  // Warnungen der .dproj (DCC_SYMBOL_PLATFORM, DCC_UNSAFE_CODE …) für die Regeln der Gruppe Compiler vorab (#1378).
+  if Project(Info) then
+    for Pair in Info.Properties do
+    begin
+      Entry := TRuleWarnSwitches.ProjectEntry(Pair.Key, Pair.Value);
+      if Entry <> '' then
+        Result.ProjectWarnings := Result.ProjectWarnings + [Entry];
+    end;
 end;
 
 class function TShellWorkspace.RuleProjectOf(const AProject: TProjectInfo; const AFileName: string;
