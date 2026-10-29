@@ -112,6 +112,10 @@
       "arguments": {},
       "contains": "Teilsysteme:"
     },
+    "get_hotspots": {
+      "arguments": {},
+      "contains": "Hotspots"
+    },
     "get_unit_dependencies": {
       "arguments": { "unit": "Ref.Formulare.Haupt" },
       "contains": "Ref.Daten.Suche"

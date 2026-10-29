@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3034] of string = (
+  Lines: array[0..3072] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2285,6 +2285,47 @@ const
     '      "x-control": "Kontrollkästchen, Auswahl, Kontrollkästchen, Zahl (5–100); exclude: Liste mit Hinzufügen/Entfernen in den Projekt-Einstellungen; baseline: Datei wählen, failOn: Liste (Projekt-Eins' +
       'tellungen, #1121); grouping: Gruppierung der Teilsysteme (#1366)",',
     '      "x-issue": "#1118"',
+    '    },',
+    '    "hotspots": {',
+    '      "type": "object",',
+    '      "description": "Hotspots: Units und Methoden, die oft geändert werden und zugleich komplex sind (Änderungen aus Git oder SVN im Zeitraum × kognitive Komplexität), mit Trend gegenüber vor drei Mo' +
+      'naten und Änderungskopplung (Units ohne uses-Kante, die oft zusammen geändert werden). Fenster „Atlas-Hotspots“, Bericht (AtlasServer --hotspots <Datei.html|.md|.json>) und MCP-Werkzeug get_hotspots. ' +
+      'Bibliotheks-Units und architecture.exclude zählen nicht; die Versionsverwaltung kommt aus vcs.provider.",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "enabled": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Hauptschalter: false = kein Fenster, kein Menüeintrag, kein get_hotspots; AtlasServer --hotspots endet mit Exitcode 3."',
+    '        },',
+    '        "months": {',
+    '          "type": "integer",',
+    '          "minimum": 1,',
+    '          "maximum": 60,',
+    '          "default": 12,',
+    '          "description": "Ausgewerteter Zeitraum in Monaten (Commits seit heute minus months)."',
+    '        },',
+    '        "coupling": {',
+    '          "type": "object",',
+    '          "additionalProperties": false,',
+    '          "description": "Änderungskopplung: Paare mit mindestens minCommits gemeinsamen Commits und einem Anteil von mindestens 70 % ohne uses-Kante zwischen ihnen; .pas/.dfm derselben Unit und Commi' +
+      'ts mit mehr als 50 Dateien zählen nicht.",',
+    '          "properties": {',
+    '            "minCommits": {',
+    '              "type": "integer",',
+    '              "minimum": 2,',
+    '              "maximum": 1000,',
+    '              "default": 5,',
+    '              "description": "Mindestzahl gemeinsamer Commits eines Paares."',
+    '            }',
+    '          }',
+    '        }',
+    '      },',
+    '      "x-scope": "global",',
+    '      "x-area": "general",',
+    '      "x-page": "Hotspots",',
+    '      "x-control": "Kontrollkästchen, Zahl (1–60), Zahl (2–1000)",',
+    '      "x-issue": "#1354"',
     '    },',
     '    "requestTimeoutMs": {',
     '      "type": "integer",',
