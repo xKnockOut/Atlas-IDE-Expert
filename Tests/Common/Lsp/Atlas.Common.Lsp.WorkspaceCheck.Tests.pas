@@ -43,6 +43,12 @@ type
     procedure RunAsJson;
     [Test]
     procedure DependentsOfFindsUsesAndIncludes;
+    /// <summary>Projektstufe startet die Prüfung, das Ende desselben Aufbaus nicht noch einmal.</summary>
+    [Test]
+    procedure IndexGateRechecksOncePerBuild;
+    /// <summary>Ohne Projektstufe (abgebrochen, Projekt entfernt) startet das Ende die Prüfung.</summary>
+    [Test]
+    procedure IndexGateRechecksAtEndWithoutProjectStage;
   end;
 
 implementation
@@ -685,6 +691,41 @@ begin
   Assert.AreEqual(cFileB, mFound[0]);
   mFound := TLspWorkspaceCheck.DependentsOf(mUnits, cFileC);
   Assert.AreEqual(0, Integer(Length(mFound)));
+end;
+
+procedure TLspWorkspaceCheckTests.IndexGateRechecksOncePerBuild;
+var
+  mGate: TWorkspaceCheckIndexGate;
+begin
+  mGate := TWorkspaceCheckIndexGate.Create;
+  try
+    mGate.IndexStarted;
+    Assert.IsTrue(mGate.Recheck(True), 'Projektstufe');
+    Assert.IsFalse(mGate.Recheck(False), 'Ende desselben Aufbaus');
+    Assert.IsFalse(mGate.Recheck(False), 'Ende eines weiteren Projekts der Gruppe');
+    // Nächster Aufbau (Gruppenwechsel, neuer Projektkontext): wieder einmal.
+    mGate.IndexStarted;
+    Assert.IsTrue(mGate.Recheck(True));
+    Assert.IsFalse(mGate.Recheck(False));
+  finally
+    mGate.Free;
+  end;
+end;
+
+procedure TLspWorkspaceCheckTests.IndexGateRechecksAtEndWithoutProjectStage;
+var
+  mGate: TWorkspaceCheckIndexGate;
+begin
+  mGate := TWorkspaceCheckIndexGate.Create;
+  try
+    mGate.IndexStarted;
+    Assert.IsTrue(mGate.Recheck(False), 'erstes Ende');
+    Assert.IsFalse(mGate.Recheck(False), 'zweites Ende');
+    // Eine Projektstufe startet immer: Ihr Index ist neuer als jeder frühere Lauf.
+    Assert.IsTrue(mGate.Recheck(True));
+  finally
+    mGate.Free;
+  end;
 end;
 
 initialization
