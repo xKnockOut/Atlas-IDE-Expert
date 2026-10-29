@@ -80,6 +80,8 @@ begin
   Result.Exclude := ASettings.ArchitectureExclude;
   Result.Grouping := TArchitectureGrouping.Default;
   Result.Grouping.Resolution := ASettings.ArchitectureGroupingResolution;
+  Result.Grouping.MaxShare := ASettings.ArchitectureGroupingMaxShare;
+  Result.Grouping.MinCohesion := ASettings.ArchitectureGroupingMinCohesion;
 end;
 
 function TArchitectureRequest.Key: string;
