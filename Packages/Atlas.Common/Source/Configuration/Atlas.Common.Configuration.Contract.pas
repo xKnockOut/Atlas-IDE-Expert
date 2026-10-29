@@ -731,6 +731,9 @@ type
     /// <summary>Übergreifende Fundament-Units (#1365): "group" (mitgruppieren), "attach" (anhängen) oder
     /// "separate" (eigenes Teilsystem „Fundament“, Vorgabe).</summary>
     ArchitectureGroupingFoundations: string;
+    /// <summary>Farben und Namen der Teilsysteme an den vorigen Stand angleichen (#1367): architecture.baseline,
+    /// sonst den zuletzt berechneten (architecture.grouping.keepPrevious, Vorgabe an).</summary>
+    ArchitectureGroupingKeepPrevious: Boolean;
     /// <summary>Hotspots (#1354): Hauptschalter (aus = kein Fenster, kein get_hotspots, --hotspots endet mit Exit-Code
     /// 3), ausgewerteter Zeitraum in Monaten (1..60) und Mindestzahl gemeinsamer Commits für die Änderungskopplung
     /// (2..1000).</summary>
@@ -1282,6 +1285,7 @@ begin
   Result.ArchitectureGroupingMaxShare := 0.25;
   Result.ArchitectureGroupingMinCohesion := 0.3;
   Result.ArchitectureGroupingFoundations := 'separate';
+  Result.ArchitectureGroupingKeepPrevious := True;
   Result.HotspotsEnabled := True;
   Result.HotspotsMonths := 12;
   Result.HotspotsCouplingMinCommits := 5;

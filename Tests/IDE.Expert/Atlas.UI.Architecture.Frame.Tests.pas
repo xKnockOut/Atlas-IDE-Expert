@@ -66,6 +66,9 @@ type
     procedure AssignmentInProfileTreeAndExplanation;
     [Test]
     procedure WithoutAssignmentNothingExtra;
+    /// <summary>Angleichung (#1367): Statuszeile und „Teilsysteme neu benennen“ im Menü.</summary>
+    [Test]
+    procedure AlignedStatusAndRename;
   end;
 
 implementation
@@ -582,6 +585,33 @@ begin
   FFrame.Map.SelectUnit(0, False);
   FFrame.Map.OnSelect(0);
   Assert.IsFalse(FFrame.AssignmentBox.Visible);
+end;
+
+procedure TAtlasArchitectureFrameTests.AlignedStatusAndRename;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mCount, mRenamed: Integer;
+begin
+  // Ohne Angleichung kein Zusatz.
+  Assert.AreEqual(0, Pos('angeglichen', FFrame.StatusLabel.Caption));
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAlignedAnswer, mModel, mEnabled));
+  FFrame.SetModel(mModel);
+  Assert.IsTrue(Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusAlignedBaseline, ['2026-10-29 14:23']),
+    FFrame.StatusLabel.Caption) > 0, FFrame.StatusLabel.Caption);
+  mRenamed := 0;
+  FFrame.OnRenameSubsystems :=
+    procedure
+    begin
+      Inc(mRenamed);
+    end;
+  FFrame.FillSubsystemsMenu;
+  mCount := FFrame.SubsystemsMenu.Items.Count;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ArchitectureRenameSubsystems),
+    FFrame.SubsystemsMenu.Items[mCount - 1].Caption);
+  FFrame.SubsystemsMenu.Items[mCount - 1].Click;
+  Assert.AreEqual(1, mRenamed);
+  FFrame.OnRenameSubsystems := nil;
 end;
 
 initialization

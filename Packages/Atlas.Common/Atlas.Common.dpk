@@ -182,6 +182,8 @@ contains
   Atlas.Common.Architecture.MapTemplate in 'Source\Architecture\Atlas.Common.Architecture.MapTemplate.pas',
   Atlas.Common.Architecture.Snapshot in 'Source\Architecture\Atlas.Common.Architecture.Snapshot.pas',
   Atlas.Common.Architecture.Comparison in 'Source\Architecture\Atlas.Common.Architecture.Comparison.pas',
+  Atlas.Common.Architecture.Matching in 'Source\Architecture\Atlas.Common.Architecture.Matching.pas',
+  Atlas.Common.Architecture.Alignment in 'Source\Architecture\Atlas.Common.Architecture.Alignment.pas',
   Atlas.Common.Architecture.Report in 'Source\Architecture\Atlas.Common.Architecture.Report.pas',
   Atlas.Common.Architecture.Service in 'Source\Architecture\Atlas.Common.Architecture.Service.pas',
   Atlas.Common.Rules.Builtin.Todos in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas',
