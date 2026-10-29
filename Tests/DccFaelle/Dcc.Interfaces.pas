@@ -1,7 +1,8 @@
 ﻿unit Dcc.Interfaces;
 
-// #1328, Regel interface-declaration-invalid (E2206, E2370): abgeleitetes
-// Interface deklariert eine Property neu, um write zu ergänzen (DUnitX, F04).
+// #1328, Regel interface-declaration-invalid (E2206, früher E2370): abgeleitetes
+// Interface deklariert eine Property neu, um write zu ergänzen (DUnitX, F04),
+// oder nutzt einen geerbten Getter für eine neue Property.
 
 interface
 
@@ -16,6 +17,11 @@ type
     ['{4E1C1D35-2F6B-4C0F-9B7E-0C9A47E1A002}']
     procedure SetAnzahl(AWert: Integer);
     property Anzahl: Integer read GetAnzahl write SetAnzahl; // ID1
+  end;
+
+  INeuMitGeerbtem = interface(INurLesen)
+    ['{4E1C1D35-2F6B-4C0F-9B7E-0C9A47E1A003}']
+    property Zahl: Integer read GetAnzahl; // ID3 (vorher IG2): neue Property mit geerbtem Getter
   end;
 
   INurLesenListe<T> = interface

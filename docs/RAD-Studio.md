@@ -7,7 +7,7 @@ Es gibt zwei Wege:
 
 ## IDE-Plugin
 
-**Mit dem Installer (#495):** `atlas-ide-expert-<Version>.zip` aus dem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) entpacken und `AtlasSetup.exe` starten. Er zeigt jede gefundene Delphi-Version mit 32- und 64-Bit-IDE, kopiert Plugin und Server nach `%LOCALAPPDATA%\Programs\Atlas` und trägt die BPL unter „Known Packages“ der gewählten IDEs ein. Einzelheiten in [Installation.md](Installation.md#rad-studio-installer). Die Schritte unten sind der Weg ohne Installer, etwa für einen eigenen Bau.
+**Aus dem Release-Paket:** `atlas-ide-expert-<Version>.zip` aus dem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) in einen festen Ordner entpacken (z. B. `%LOCALAPPDATA%\Programs\Atlas`) und `Win32\Atlas.IDE.Expert370.bpl` (64-Bit-IDE: `Win64\…`) wie in Schritt 2 unten eintragen; den Server findet das Plugin eine Ebene über der BPL. Einzelheiten in [Installation.md](Installation.md#rad-studio-release-paket). Den Installer `AtlasSetup.exe` (bis 1.1.0) gibt es seit 1.2.0 nicht mehr ([ADR 0016](adr/0016-kein-installer.md)). Die Schritte unten sind der Weg mit einem eigenen Bau.
 
 Von Hand:
 
@@ -17,7 +17,7 @@ Von Hand:
 4. Den Server findet das Plugin in dieser Reihenfolge:
    - *Tools › Optionen › Drittanbieter › Atlas*, Feld „Atlas-Server“ (Registry `HKCU\Software\Atlas\IdePlugin`, Wert `ServerPath`; optional `ServerArguments`, z. B. `--log C:\Temp\atlas.log`). Darunter zeigt die Seite, welcher Server verwendet wird und ob er gefunden wurde.
    - `AtlasServer.exe` neben der BPL
-   - `AtlasServer.exe` eine Ebene über der BPL (Aufbau des Installers: `…\Atlas\Win32\Atlas.IDE.Expert370.bpl`, `…\Atlas\AtlasServer.exe`)
+   - `AtlasServer.exe` eine Ebene über der BPL (Aufbau des Release-Pakets: `…\Atlas\Win32\Atlas.IDE.Expert370.bpl`, `…\Atlas\AtlasServer.exe`)
    - `..\..\..\Win64\Debug\Bin\AtlasServer.exe`, sonst `..\..\..\Win32\Debug\Bin\AtlasServer.exe`, im Repo also die Build-Ausgabe
 
 Fehlt der Server, meldet das Plugin das im Meldungsfenster und überlässt Vervollständigung und Hinweise der eingebauten Code Insight. Stürzt der Server ab, startet es ihn bei der nächsten Anfrage neu.
@@ -293,8 +293,6 @@ Gebaut und geprüft wird bisher nur mit RAD Studio 13 in der 32-Bit-IDE (#281). 
 | Registry `HKCU\Software\Embarcadero\BDS\23.0` (Code Insight-Manager, Help Insight, Strukturhervorhebung) | Das Plugin liest den Schlüssel über `GetBaseRegistryKey`, nicht fest verdrahtet |
 | DUnitX-Pfad unter Delphi 12 | ungeprüft; die Tests laufen nur mit Delphi 13 |
 | Win64-Bau des Plugins und Lauf in der 64-Bit-IDE | ungeprüft; braucht `designide` für Win64 |
-| Installer: Liste der 64-Bit-IDE unter `…\BDS\<Version>\Known Packages x64` | angenommen nach dem Aufbau der 32-Bit-Liste; beim ersten Lauf mit der 64-Bit-IDE prüfen |
-| Installer: Delphi-12-BPL im Release | der Release-Runner hat nur Delphi 13; ohne `…290.bpl` zeigt der Installer Delphi 12 als „Paket fehlt im Download“ |
 | Lesen des Build-Reiters per RTTI (#528) | an IDE-Interna gebunden, meldet bei Abweichung „nicht lesbar“ |
 | Atlas-Layout und Aufräumen der Willkommensseite (#753, #1114, #761): Übernimmt die IDE das geänderte Raster sofort? Format unter Delphi 13 (37.0); wohin setzt die IDE neu angemeldete Atlas-Bereiche? | Format aus dem Export von Delphi 12 (23.0); Atlas wiederholt den gewünschten Stand beim nächsten Start einmal (ADR 0015) |
 | Suchfeld (#760): Format von `Closed Projects` und Ort der Favoriten der Willkommensseite | angenommen (Werte `File_n` mit „Klasse,Pfad,…“); Favoriten-Schlüssel geraten; ohne Treffer fehlen nur diese Projekte, Projekte mit Index-Cache erscheinen trotzdem |

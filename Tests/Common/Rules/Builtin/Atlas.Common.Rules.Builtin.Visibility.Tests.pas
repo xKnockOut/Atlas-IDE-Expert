@@ -309,14 +309,17 @@ var
   mSource: string;
   mFound: TArray<TRuleFinding>;
 begin
-  // Minimalfälle IM1/IM3 (Spring4D TLinkedListNode<T>): protected über einen generischen Empfänger.
+  // Minimalfall IM1 (Spring4D TLinkedListNode<T>): protected über einen generischen Empfänger aus generischem
+  // Code. Aus nicht generischem Code (Folge, SG3) meldet dcc E2362.
   mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Knoten;'#10'type'#10'  TListe<T> = class'#10 +
     '    FKopf: TKnoten<T>;'#10'    function Zweiter: TKnoten<T>;'#10'  end;'#10'implementation'#10 +
     'function TListe<T>.Zweiter: TKnoten<T>;'#10'begin'#10'  Result := FKopf.FNaechster;'#10'end;'#10 +
     'function Folge(AKnoten: TKnoten<Integer>): TKnoten<Integer>;'#10'begin'#10 +
     '  Result := AKnoten.FNaechster;'#10'end;'#10'end.';
-  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource,
-    KnotenIndex, '', 'Kunden.pas'))));
+  mFound := TRuleAssert.IndexFindings(TInaccessibleMemberRule.Create, mSource, KnotenIndex, '', 'Kunden.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual(16, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('TKnoten.FNaechster ist protected und hier nicht sichtbar (wie E2362).', mFound[0].Message);
   // Gegentests: strict protected am generischen Typ und protected an einem nicht generischen Typ.
   mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  Knoten;'#10'implementation'#10 +
     'function Geheim(AKnoten: TKnoten<Integer>; AEinfach: TEinfach): Integer;'#10'begin'#10 +

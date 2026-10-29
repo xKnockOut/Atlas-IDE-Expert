@@ -90,7 +90,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Outline.Cache;
+  Atlas.IDE.Outline.Cache,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 const
   TickMs = 100;
@@ -191,7 +192,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 { TEvents }
