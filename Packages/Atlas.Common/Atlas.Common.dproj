@@ -305,6 +305,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Architecture.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Query.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugDisplay.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EventHandlers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>

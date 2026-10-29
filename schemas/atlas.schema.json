@@ -2039,6 +2039,89 @@
       "x-control": "Kontrollkästchen, Auswahl, Kontrollkästchen, Zahl (5–100); exclude: Liste mit Hinzufügen/Entfernen in den Projekt-Einstellungen; baseline: Datei wählen, failOn: Liste (Projekt-Einstellungen, #1121)",
       "x-issue": "#1118"
     },
+    "query": {
+      "type": "object",
+      "description": "Code-Abfragen über den Index (#1351): eine kleine Sprache wie „classes where inherits TForm and methods > 40 order by methods desc“ im Fenster „Atlas-Abfrage“, im MCP-Werkzeug query_code und mit AtlasServer --check <Ziel> --query. Felder und Zahlen stammen aus Index, Metriken, Uses-Graph, Formulardateien und Aufrufhierarchie (dieselben wie get_metrics und find_unused_code).",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hauptschalter: false = kein Fenster, kein Menü- und Palettenbefehl, kein query_code; --query endet mit Exitcode 3 und Hinweis. Gespeicherte Abfragen mit failIfAny melden dann nichts."
+        }
+      },
+      "x-scope": "global",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-control": "Kontrollkästchen „Code-Abfragen (Fenster Atlas-Abfrage, query_code)“",
+      "x-issue": "#1351"
+    },
+    "queries": {
+      "type": "array",
+      "default": [],
+      "description": "Gespeicherte Code-Abfragen (#1351) für das Fenster „Atlas-Abfrage“, query_code und AtlasServer --query @name. Mit failIfAny wird jeder Treffer ein Befund der Regel query:<name> im Editor, bei --check und in SARIF; Baseline, Unterdrückungen und rules wirken wie bei anderen Regeln.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "query"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+$",
+            "description": "Name der Abfrage: Buchstaben, Ziffern, „-“, „_“ und „.“; Kennung der Regel query:<name> und von --query @name. Groß-/Kleinschreibung zählt nicht, doppelte Namen gelten nicht."
+          },
+          "query": {
+            "type": "string",
+            "description": "Die Abfrage, z. B. „classes where methods > 40 order by methods desc“."
+          },
+          "description": {
+            "type": "string",
+            "default": "",
+            "description": "Beschreibung für Auswahlliste und Regelbeschreibung (SARIF)."
+          },
+          "failIfAny": {
+            "type": "boolean",
+            "default": false,
+            "description": "Jeder Treffer wird ein Befund der Regel query:<name>; --check --query @name endet dann mit Exitcode 1."
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "off",
+              "hint",
+              "info",
+              "warning",
+              "error"
+            ],
+            "default": "warning",
+            "description": "Schweregrad der Befunde mit failIfAny."
+          },
+          "message": {
+            "type": "string",
+            "default": "",
+            "description": "Meldung je Treffer mit Platzhaltern aus den Feldern, {query} und {path}, z. B. „{name} hat {methods} Methoden“. Leer: „{name}: Treffer der Abfrage {query}“."
+          }
+        }
+      },
+      "examples": [
+        [
+          {
+            "name": "grosse-formulare",
+            "query": "classes where inherits TForm and methods > 40",
+            "failIfAny": true,
+            "severity": "warning",
+            "message": "{name} hat {methods} Methoden"
+          }
+        ]
+      ],
+      "x-scope": "project",
+      "x-page": "Allgemein",
+      "x-control": "Bearbeiten im Fenster „Atlas-Abfrage“ („Als Regel speichern …“) oder in atlas.json",
+      "x-issue": "#1351"
+    },
     "requestTimeoutMs": {
       "type": "integer",
       "minimum": 1000,

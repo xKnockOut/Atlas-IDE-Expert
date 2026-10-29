@@ -170,6 +170,7 @@ uses
   Atlas.Common.Rules.Builtin.DebugDisplay.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DebugDisplay.Tests.pas',
   Atlas.Common.Lsp.Todos.Tests in 'Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas',
   Atlas.Common.Lsp.Architecture.Tests in 'Common\Lsp\Atlas.Common.Lsp.Architecture.Tests.pas',
+  Atlas.Common.Lsp.Query.Tests in 'Common\Lsp\Atlas.Common.Lsp.Query.Tests.pas',
   Atlas.Common.Lsp.DebugDisplay.Tests in 'Common\Lsp\Atlas.Common.Lsp.DebugDisplay.Tests.pas',
   Atlas.Common.Lsp.EventHandlers.Tests in 'Common\Lsp\Atlas.Common.Lsp.EventHandlers.Tests.pas',
   Atlas.Common.Rules.Builtin.Recursion.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas',

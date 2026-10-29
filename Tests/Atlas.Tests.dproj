@@ -244,6 +244,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DebugDisplay.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Architecture.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Query.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DebugDisplay.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.EventHandlers.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.Tests.pas"/>
