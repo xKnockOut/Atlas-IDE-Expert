@@ -734,6 +734,12 @@ type
     /// <summary>Farben und Namen der Teilsysteme an den vorigen Stand angleichen (#1367): architecture.baseline,
     /// sonst den zuletzt berechneten (architecture.grouping.keepPrevious, Vorgabe an).</summary>
     ArchitectureGroupingKeepPrevious: Boolean;
+    /// <summary>Hotspots (#1354): Hauptschalter (aus = kein Fenster, kein get_hotspots, --hotspots endet mit Exit-Code
+    /// 3), ausgewerteter Zeitraum in Monaten (1..60) und Mindestzahl gemeinsamer Commits für die Änderungskopplung
+    /// (2..1000).</summary>
+    HotspotsEnabled: Boolean;
+    HotspotsMonths: Integer;
+    HotspotsCouplingMinCommits: Integer;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -1280,6 +1286,9 @@ begin
   Result.ArchitectureGroupingMinCohesion := 0.3;
   Result.ArchitectureGroupingFoundations := 'separate';
   Result.ArchitectureGroupingKeepPrevious := True;
+  Result.HotspotsEnabled := True;
+  Result.HotspotsMonths := 12;
+  Result.HotspotsCouplingMinCommits := 5;
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';

@@ -21,6 +21,9 @@ type
     procedure UnitBytesGrowWithSymbols;
     [Test]
     procedure IndexTracksMemoryBytes;
+    /// <summary>#1356: Speicher nach Projekt, Bibliothek und Verwendungen; die Teile ergeben MemoryBytes.</summary>
+    [Test]
+    procedure MemoryPartsSplitIndex;
     [Test]
     procedure WithoutBudgetNothingIsCompacted;
     [Test]
@@ -138,6 +141,46 @@ begin
   Assert.AreEqual<Int64>(TIndexMemory.UnitBytes(MakeUnit('A', False, 5, 5)), Index.MemoryBytes);
   Index.RemoveFile('C:\Quelle\A.pas');
   Assert.AreEqual<Int64>(0, Index.MemoryBytes);
+end;
+
+function WithUsages(const AUnit: TUnitIndex): TUnitIndex;
+var
+  mUsage: TIndexUsage;
+begin
+  Result := AUnit;
+  mUsage := Default(TIndexUsage);
+  mUsage.Name := 'TVerwendet';
+  Result.Usages := [mUsage, mUsage];
+end;
+
+procedure TIndexMemoryTests.MemoryPartsSplitIndex;
+var
+  mIndex: ISymbolIndex;
+  mProject, mLibrary: TUnitIndex;
+  mParts: TIndexMemoryParts;
+begin
+  mProject := WithUsages(MakeUnit('A', False, 3, 2));
+  mLibrary := WithUsages(MakeUnit('B', True, 4, 0));
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(mProject);
+  mIndex.AddUnit(mLibrary);
+  mParts := mIndex.MemoryParts;
+  Assert.AreEqual<Int64>(TIndexMemory.UnitBytes(mProject) - TIndexMemory.UsageBytes(mProject), mParts.ProjectBytes);
+  Assert.AreEqual<Int64>(TIndexMemory.UnitBytes(mLibrary) - TIndexMemory.UsageBytes(mLibrary), mParts.LibraryBytes);
+  Assert.AreEqual<Int64>(TIndexMemory.UsageBytes(mProject) + TIndexMemory.UsageBytes(mLibrary), mParts.UsageBytes);
+  Assert.IsTrue(mParts.UsageBytes > 0);
+  Assert.AreEqual<Int64>(mIndex.MemoryBytes, mParts.ProjectBytes + mParts.LibraryBytes + mParts.UsageBytes);
+  // Budget erzwingt das Auslagern: die Verwendungen verschwinden, die Summe stimmt weiter.
+  mIndex.SetBudget(1);
+  mIndex.AddUnit(MakeUnit('C', False, 1, 0));
+  mParts := mIndex.MemoryParts;
+  Assert.AreEqual<Int64>(0, mParts.UsageBytes);
+  Assert.AreEqual<Int64>(mIndex.MemoryBytes, mParts.ProjectBytes + mParts.LibraryBytes + mParts.UsageBytes);
+  mIndex.RemoveFile(mProject.FileName);
+  mIndex.RemoveFile(mLibrary.FileName);
+  mIndex.RemoveFile('C:\Quelle\C.pas');
+  mParts := mIndex.MemoryParts;
+  Assert.AreEqual<Int64>(0, mParts.ProjectBytes + mParts.LibraryBytes + mParts.UsageBytes);
 end;
 
 procedure TIndexMemoryTests.WithoutBudgetNothingIsCompacted;

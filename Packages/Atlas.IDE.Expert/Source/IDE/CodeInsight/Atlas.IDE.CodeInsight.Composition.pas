@@ -55,6 +55,7 @@ uses
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Diagnostics.BugReport,
+  Atlas.IDE.Diagnostics.ServerPackage,
   Atlas.IDE.Diagnostics.Timing,
   Atlas.IDE.Setup.Checklist,
   Atlas.IDE.Files.Reloader,
@@ -86,6 +87,7 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
+  Atlas.IDE.Hotspots.Service,
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.SymbolPath.Service,
@@ -123,8 +125,10 @@ uses
   Atlas.IDE.Forms.Designer,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
+  Atlas.Core.Status.Server,
   Atlas.IDE.Status.Field,
   Atlas.IDE.Status.Lines,
+  Atlas.IDE.Status.ServerWindow,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Settings.Transfer,
   Atlas.IDE.Settings.Experimental,
@@ -568,6 +572,12 @@ begin
     begin
       GuardWarning(AText);
     end);
+end;
+
+/// <summary>Fenster „Atlas-Server“ (#1356) zeigen; abgeschaltet nichts.</summary>
+procedure ShowServerWindow;
+begin
+  TAtlasIdeServerWindow.Show;
 end;
 
 const
@@ -1111,9 +1121,31 @@ begin
   Result := TAtlasIdeSettings.Current.Outline;
 end;
 
+/// <summary>Antwort von RunServerCommandAsync als JSON-Text ('' ohne Antwort) an ADone; eigene Routine, damit die
+/// anonyme Methode nur ADone einfängt.</summary>
+function HotspotsAnswer(const ADone: TProc<string>): TProc<TJSONValue>;
+var
+  mDone: TProc<string>;
+begin
+  mDone := ADone;
+  Result :=
+    procedure(AValue: TJSONValue)
+    begin
+      if AValue = nil then
+        mDone('')
+      else
+        mDone(AValue.ToJSON);
+    end;
+end;
+
 function ArchitectureVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.ArchitectureEnabled;
+end;
+
+function HotspotsVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.HotspotsEnabled;
 end;
 
 function UnitRelationsVisible: Boolean;
@@ -1615,6 +1647,9 @@ begin
   // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
   Add('Atlas.Architecture', TAtlasTextId.ArchitectureCommand,
     Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowWindow), ArchitectureVisible);
+  // Hotspots (#1354); nur sichtbar, solange hotspots.enabled an ist.
+  Add('Atlas.Hotspots', TAtlasTextId.HotspotsCommand,
+    Guarded(TAtlasFeature.Hotspots, TAtlasIdeHotspots.ShowWindow), HotspotsVisible);
   // Unit-Beziehungen (#593); am selben Schalter wie die Architektur (derselbe Uses-Graph).
   Add('Atlas.UnitRelations', TAtlasTextId.UnitRelationsCommand,
     Guarded(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowWindow), UnitRelationsVisible);
@@ -1898,6 +1933,12 @@ begin
         end);
     end);
   Add('Atlas.BugReport', TAtlasTextId.BugReportMenu, CreateBugReport);
+  // Fenster „Atlas-Server“ (#1356); nur sichtbar mit server.statusWindow.
+  Add('Atlas.ServerStatus', TAtlasTextId.ServerWindowCommand, ShowServerWindow,
+    function: Boolean
+    begin
+      Result := TAtlasIdeServerWindow.Enabled;
+    end);
   Add('Atlas.ProjectSettings', TAtlasTextId.ProjectSettingsTitle, TAtlasProjectSettings.Execute);
   Add('Atlas.WelcomeStart', TAtlasTextId.MenuWelcomeStart,
     procedure
@@ -2291,6 +2332,88 @@ const
   /// <summary>Kosten einer interface-Änderung (#554).</summary>
   InterfaceCostExtra = 'interfaceCost';
 
+/// <summary>Diagnosepaket des Fensters „Atlas-Server“ (#1356): Bericht und Dateien des laufenden Servers im
+/// Hintergrund.</summary>
+procedure CreateServerPackage;
+begin
+  TAtlasIdeServerPackage.Execute(
+    procedure(const ACommand, AArgumentsJson: string; const ADone: TProc<TJSONValue>)
+    begin
+      if Manager <> nil then
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, 30000, ADone)
+      else
+        ADone(nil);
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+end;
+
+/// <summary>Fenster „Atlas-Server“ (#1356): liest die Antwort der Statuszeilen, fragt selbst nicht ab.</summary>
+procedure InstallServerWindow;
+var
+  mHooks: TAtlasIdeServerWindow.THooks;
+begin
+  mHooks := Default(TAtlasIdeServerWindow.THooks);
+  mHooks.StatusJson :=
+    function: string
+    begin
+      Result := '';
+      if StatusLines <> nil then
+        Result := StatusLines.StatusJson;
+    end;
+  mHooks.Running :=
+    function: Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.ServerInfo.Phase = TAtlasServerPhase.Running);
+    end;
+  mHooks.Restarts :=
+    function: Integer
+    begin
+      Result := 0;
+      if Manager <> nil then
+        Result := Manager.ServerRestarts;
+    end;
+  mHooks.QueryNow :=
+    function(ADone: TProc): Boolean
+    begin
+      Result := (StatusLines <> nil) and StatusLines.QueryNow(ADone);
+    end;
+  mHooks.Rebuild :=
+    procedure
+    begin
+      if Manager = nil then
+        Exit;
+      Manager.ExecuteServerCommandAsync('atlas.server.rebuildIndex', 30000,
+        procedure(AAnswer: TJSONValue)
+        begin
+          if AAnswer = nil then
+            GuardWarning(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer))
+          else
+            GuardWarning(TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding));
+        end);
+    end;
+  mHooks.Package := CreateServerPackage;
+  mHooks.OpenUnit :=
+    procedure(AUnit: TAtlasServerSlowUnit)
+    var
+      mActions: IOTAActionServices;
+    begin
+      // Ohne Pfad (ältere Antwort) oder gelöscht: nichts zu öffnen.
+      if (AUnit.FileName = '') or not FileExists(AUnit.FileName) then
+        Exit;
+      if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+        mActions.OpenFile(AUnit.FileName);
+    end;
+  mHooks.OpenRule :=
+    procedure(ARule: string)
+    begin
+      TAtlasOptionsRegistration.ShowRule(ARule);
+    end;
+  TAtlasIdeServerWindow.Install(mHooks);
+end;
+
 procedure RegisterStatusField;
 begin
   StatusLines := TAtlasIdeStatusLines.Create(TAtlasStatusRegistry.Default,
@@ -2313,7 +2436,14 @@ begin
     procedure(AText: string)
     begin
       GuardWarning(AText);
+    end,
+    // Klick auf die Zeile „Server“: Fenster „Atlas-Server“ (#1356), nur mit server.statusWindow.
+    ShowServerWindow,
+    function: Boolean
+    begin
+      Result := TAtlasIdeServerWindow.Enabled;
     end);
+  InstallServerWindow;
   StatusField := TAtlasStatusField.Create(TAtlasStatusRegistry.Default);
   StatusField.OnRefresh :=
     procedure
@@ -2404,6 +2534,7 @@ end;
 
 procedure UnregisterStatusField;
 begin
+  TAtlasIdeServerWindow.Release;
   TAtlasProblemsController.OnCounts := nil;
   if Manager <> nil then
     Manager.OnServerChanged := nil;
@@ -2651,6 +2782,7 @@ begin
       GuardWarning(AText);
     end);
   MainMenu.OnBugReport := CreateBugReport;
+  MainMenu.OnServerStatus := ShowServerWindow;
 end;
 
 /// <summary>Einrichtung mit Prüfliste (#625); Zustand des Servers über den Manager und das Statusfeld.</summary>
@@ -3263,6 +3395,21 @@ begin
             TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
           end);
     end);
+  // Fenster „Atlas-Hotspots“ (#1354): nebenläufig zu anderen Befehlen, weil es nachfragt, solange der Server im
+  // Hintergrund rechnet; startet den Server bei Bedarf.
+  TAtlasIdeHotspots.Install(
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.ActiveSession <> nil);
+      if Result then
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, HotspotsAnswer(ADone));
+    end);
+  // „Auswirkungen anzeigen“ im Hotspot-Fenster (#1120) auf der Methode, auf die das Fenster den Cursor setzt.
+  TAtlasIdeHotspots.OnImpact :=
+    procedure
+    begin
+      TAtlasIdeImpact.ShowAtCursor;
+    end;
   // Strg+Doppelklick in der Architekturkarte zeigt die Unit dort.
   TAtlasIdeArchitecture.OnUnitRelations :=
     procedure(AFileName: string)
@@ -3540,6 +3687,7 @@ begin
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeSymbolPath.Uninstall;
   TAtlasIdeArchitecture.Uninstall;
+  TAtlasIdeHotspots.Uninstall;
   TAtlasIdeUnitRelations.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
@@ -5682,6 +5830,7 @@ begin
       if StatusField <> nil then
         StatusField.RequestRefresh;
       TAtlasIdeResultsWindow.ApplyTheme;
+      TAtlasIdeServerWindow.ApplyTheme;
       if Welcome <> nil then
         Welcome.ThemeChanged;
       if DiagnosticMode <> nil then
@@ -5696,6 +5845,7 @@ begin
       TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeArchitecture.ThemeChanged;
+      TAtlasIdeHotspots.ThemeChanged;
       TAtlasIdeUnitRelations.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeEditorToolbar.ThemeChanged;
@@ -5754,9 +5904,13 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // architecture.* (#1118).
       TAtlasIdeArchitecture.ApplySettings;
+      // hotspots.* (#1354).
+      TAtlasIdeHotspots.ApplySettings;
       TAtlasIdeUnitRelations.ApplySettings;
       // callHierarchy.diagram (#1122).
       TAtlasIdeResultsWindow.ApplySettings;
+      // server.statusWindow (#1356).
+      TAtlasIdeServerWindow.ApplySettings;
       // navigation.symbolPath (#1117): Kontextmenü „Weg von hier nach …“.
       TAtlasIdeEditorCommands.ApplySettings;
       // editor.breadcrumbs* (#590).

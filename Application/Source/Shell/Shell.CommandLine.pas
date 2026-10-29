@@ -29,6 +29,10 @@
 //   --no-index            ohne Symbolindex prüfen (#1112); Regeln, die Typen anderer Units
 //                         oder der RTL brauchen, schweigen dann
 //   --index-cache <Ordner> Ordner der Index-Caches (Standard wie der Server, %LOCALAPPDATA%\Atlas)
+//   --timings [<Datei>]   nach dem Lauf das Zeitprofil (#1356): langsamste Units und Regeln,
+//                         Indexzeit, Speicher; als Markdown, mit Endung .json als JSON; ohne
+//                         Datei auf stderr. Die Treffer bleiben unverändert auf stdout bzw. --output.
+//                         (Nicht --profile: Das wählt seit #146 das Regelprofil.)
 //
 // Formatieren ohne IDE (#1358), Ziel wie bei --check:
 //   --format-check        prüft, ob die Dateien den Formatregeln (format.*, .editorconfig) entsprechen;
@@ -45,6 +49,13 @@
 //                         auf stdout (bzw. --output), Exit-Code 1 bei einer Abweichung aus
 //                         --fail-on newCycle,newCrossLink,subsystemChange,centralGrowth
 //                         (Standard architecture.failOn, sonst newCycle)
+//
+// Hotspots (#1354):
+//   --hotspots <Datei>    Hotspots des Ziels aus --check (Standard: aktueller Ordner) aus
+//                         Änderungshäufigkeit und Komplexität samt Methoden und
+//                         Änderungskopplung als Markdown (.md), HTML-Seite mit Blasendiagramm
+//                         (.html) oder Daten (.json) schreiben; Exit-Code 3 ohne
+//                         Versionsverwaltung oder mit hotspots.enabled = false
 //
 // MCP-Modus (#48):
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
@@ -98,8 +109,13 @@ type
     NoIndex: Boolean;
     /// <summary>Ordner der Index-Caches für --check (#1112); '' = wie der Server.</summary>
     IndexCacheFolder: string;
+    /// <summary>--timings (#1356): Zeitprofil nach dem Lauf; TimingsFile '' = auf stderr.</summary>
+    Timings: Boolean;
+    TimingsFile: string;
     /// <summary>--architecture: Zieldatei des Architekturberichts (#1118, .md oder .html); '' = keiner.</summary>
     ArchitectureFile: string;
+    /// <summary>--hotspots: Zieldatei des Hotspot-Berichts (#1354, .md, .html oder .json); '' = keiner.</summary>
+    HotspotsFile: string;
     /// <summary>--compare: gespeicherter Architekturstand für den Vergleich (#1121); '' = keiner.</summary>
     CompareFile: string;
     /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
@@ -254,7 +270,8 @@ begin
     StringOption('--source-root', @Result.SourceRoot), StringOption('--profile', @Result.Profile),
     StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot),
     StringOption('--index-cache', @Result.IndexCacheFolder),
-    StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile)];
+    StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile),
+    StringOption('--hotspots', @Result.HotspotsFile)];
   Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
     FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),
     FlagOption('--include-uncommitted', @Result.IncludeUncommitted),
@@ -365,6 +382,18 @@ begin
       end
       else
         Result.ChangedRef := DefaultChangedBase;
+    end
+    else if Name = '--timings' then
+    begin
+      // Datei optional: --timings, --timings=profil.md oder --timings profil.md
+      Result.Timings := True;
+      if HasValue then
+        Result.TimingsFile := Value
+      else if (Index < High(AArgs)) and not AArgs[Index + 1].StartsWith('-') then
+      begin
+        Inc(Index);
+        Result.TimingsFile := AArgs[Index];
+      end;
     end
     else if Name = '--diff' then
     begin
