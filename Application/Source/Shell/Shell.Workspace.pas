@@ -692,11 +692,18 @@ begin
     end;
   FIndexService.OnCacheRejected :=
     procedure(const AFileName, AReason: string)
+    var
+      Kind: string;
     begin
       // Still neu aufbauen (#492): nur ins Log, keine Meldung an den Benutzer. Ohne Pfad: Das Log bleibt
-      // anonym (der Cache liegt im Benutzerprofil).
+      // anonym (der Cache liegt im Benutzerprofil). Welcher Cache und warum, steht auch im Diagnose-Log: Ohne
+      // Grund war nicht zu sehen, warum ein Rechner bei jedem Start alles neu aufbaut (29.10.2026). Die Gründe
+      // von TIndexCache.ReadEntries enthalten keinen Pfad.
+      Kind := 'project';
+      if Pos(PathDelim + TIndexCacheDirectory.LibraryFolder + PathDelim, AFileName) > 0 then
+        Kind := 'library';
       FLogger.Info(Format('Index-Cache verworfen (%s); wird neu aufgebaut', [AReason]));
-      IndexEvent('index cache rejected');
+      IndexEvent(Format('index project#%d cache rejected %s reason %s', [FPriority, Kind, AReason]));
       ReportProcess(TIndexProcessInfo.StateBuilding, WritesCache, Format('Cache verworfen (%s)', [AReason]));
     end;
   FIndexService.OnCacheNotWritten :=
