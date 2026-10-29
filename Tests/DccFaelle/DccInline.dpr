@@ -3,7 +3,7 @@
 {$APPTYPE CONSOLE}
 
 uses
-  Dcc.Inline in 'Dcc.Inline.pas';
+  Dcc.Einbetten in 'Dcc.Einbetten.pas';
 
 begin
 end.

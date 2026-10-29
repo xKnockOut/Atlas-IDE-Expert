@@ -1,4 +1,4 @@
-﻿unit Dcc.Inline;
+﻿unit Dcc.Einbetten;
 
 // #1328, Regel type-restriction-violated (E2441, E2296, E2358): Fälle, die Atlas
 // meldet, die Delphi aber nach den Korpus-Projekten übersetzt.

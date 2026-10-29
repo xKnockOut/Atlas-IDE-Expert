@@ -1,4 +1,4 @@
-﻿unit Dcc.Inline.Gegen;
+﻿unit Dcc.Einbetten.Gegen;
 
 // #1328, Gegentests zu type-restriction-violated: Hier soll dcc vermutlich melden.
 
