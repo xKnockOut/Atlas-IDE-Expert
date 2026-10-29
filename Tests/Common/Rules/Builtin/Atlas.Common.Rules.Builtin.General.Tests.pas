@@ -124,10 +124,16 @@ begin
   Findings := TRuleAssert.Findings(TInterfaceGuidRule.Create, InType(Types), AllConfidences);
   Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Findings[0].Confidence));
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
+  // Ohne Abfrage meldet dcc nichts: kein Code in der Meldung (#1382).
+  Assert.AreEqual('Interface ISaver hat keine GUID; Supports, as und QueryInterface brauchen eine',
+    Findings[0].Message);
   Findings := TRuleAssert.Findings(TInterfaceGuidRule.Create, 'unit U;'#10'interface'#10'type'#10 + Types +
     #10'implementation'#10'procedure P(X: IInterface);'#10'var S: ISaver;'#10'begin'#10 +
     '  if Supports(X, ISaver, S) then S := nil;'#10'end;'#10'end.');
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
+  // Mit Abfrage meldet Delphi 13 E2232 (Fall Cm.E2232, #1382).
+  Assert.AreEqual('Interface ISaver hat keine GUID; Supports, as und QueryInterface brauchen eine (wie E2232).',
+    Findings[0].Message);
   Findings := TRuleAssert.Findings(TInterfaceGuidRule.Create, 'unit U;'#10'interface'#10'type'#10 + Types +
     #10'implementation'#10'procedure P(X: IInterface);'#10'begin'#10'  (X as ISaver)._AddRef;'#10'end;'#10'end.');
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));

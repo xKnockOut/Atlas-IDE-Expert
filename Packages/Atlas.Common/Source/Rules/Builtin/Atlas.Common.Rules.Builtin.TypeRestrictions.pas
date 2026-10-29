@@ -7,10 +7,14 @@
 //                                 (E2517), ohne den eigenen Typ in den
 //                                 Parametern (E2518) bzw. in Parameter oder
 //                                 Ergebnis (E2521), Inc/Dec mit anderem
-//                                 Ergebnis als dem ersten Parameter (E2519),
-//                                 Umwandlung in einen Vorfahren (E2522) oder
-//                                 Assign ohne var vor dem ersten Parameter
-//                                 (E2464).
+//                                 Ergebnis als dem ersten Parameter (E2519)
+//                                 oder Assign ohne var vor dem ersten
+//                                 Parameter (E2464). Nur in Records: In
+//                                 Klassen, Interfaces und object-Typen meldet
+//                                 Delphi 13 jeden class operator als E2123
+//                                 (Regel syntax, #1382); damit entfällt auch
+//                                 E2522 (Umwandlung in einen Vorfahren), das
+//                                 nur ARC-Compiler kannten.
 //   generic-declaration-invalid   Generics, die Delphi ablehnt (#1029):
 //                                 Einschränkungen class und record zugleich
 //                                 (E2507), doppelt (E2603), widersprüchlich
@@ -669,11 +673,11 @@ var
   procedure CheckOperator(AHeader: TSyntaxNode);
   var
     Head: TRoutineHead;
-    Own, Name, Closest, Other, Template, Ancestor: string;
+    Own, Name, Closest, Other, Template: string;
     OwnNames, ParamTypes: TArray<string>;
     Shape: TOperatorShape;
     Range: TTextRange;
-    Index, Count, Expected, Depth: Integer;
+    Index, Count, Expected: Integer;
     Param: TSyntaxNode;
     HasOwn, Certain: Boolean;
   begin
@@ -756,24 +760,6 @@ var
         Report(Range, Format('%s muss %s als Parameter oder Ergebnis haben (wie E2521).', [Name, Own]), nil);
         Exit;
       end;
-      // Umwandlung in bzw. aus einem Vorfahren (E2522), Kette aus der Datei.
-      if HasOwn then
-      begin
-        Ancestor := Types.ParentOf(Own);
-        Depth := 0;
-        while (Ancestor <> '') and (Depth < 32) do
-        begin
-          if MatchText(Ancestor, ParamTypes) or ((Head.ResultType <> nil) and
-            SameText(BareTypeName(Head.ResultType.Name), Ancestor)) then
-          begin
-            Report(Range, Format('%s darf nicht in den Vorfahren %s oder aus ihm umwandeln (wie E2522).',
-              [Name, Ancestor]), nil);
-            Exit;
-          end;
-          Ancestor := Types.ParentOf(Ancestor);
-          Inc(Depth);
-        end;
-      end;
     end
     else if not HasOwn and Certain and (Shape <> TOperatorShape.Managed) then
     begin
@@ -811,8 +797,9 @@ begin
       function(ANode: TSyntaxNode): Boolean
       begin
         Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
+        // Operatoren gibt es nur in Records; in Klassen meldet syntax E2123 wie Delphi 13 (#1382).
         if (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
-          (ANode.Parent.Kind in [TSyntaxKind.RecordType, TSyntaxKind.ClassType]) then
+          (ANode.Parent.Kind = TSyntaxKind.RecordType) then
           Headers.Add(ANode);
       end);
     for Header in Headers do
@@ -3380,6 +3367,12 @@ var
             if IsTypeInfo then
               AReport.Add(NodeRange(Argument), Format('%s hat keine Typinformation: Dateitypen erzeugen keine ' +
                 'RTTI (wie E2134).', [Name]), TRuleConfidence.High, nil)
+            else if (ACall.Parent <> nil) and (ACall.Parent.Kind = TSyntaxKind.AssignStatement) and
+              (ACall.Parent.ChildCount > 1) and (ACall.Parent[1] = ACall) then
+              // Die Zuweisung an eine Dateivariable meldet dcc zusätzlich als E2015.
+              AReport.Add(NodeRange(Argument), Format('Default ist für den Dateityp %s nicht erlaubt, und ' +
+                'Dateivariablen lassen sich nicht zuweisen (wie E2538 und E2015).', [Name]),
+                TRuleConfidence.High, nil)
             else
               AReport.Add(NodeRange(Argument), Format('Default ist für den Dateityp %s nicht erlaubt (wie E2538).',
                 [Name]), TRuleConfidence.High, nil);

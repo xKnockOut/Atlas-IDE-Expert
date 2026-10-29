@@ -5,8 +5,9 @@
 //                              (#1001): Name fehlt in der Klasse und ihren
 //                              Vorfahren (E2168) oder ist eine Property
 //                              (E2168), Getter oder Setter mit falscher
-//                              Signatur (E2234), Setter mit var-Parameter
-//                              (E2282), überladene Zugriffsmethode (E2271),
+//                              Signatur (E2008, früher E2234), Setter mit
+//                              var-Parameter (E2282), überladene Zugriffsmethode
+//                              ohne passende Überladung (E2250, früher E2271),
 //                              Klassen-Property mit Instanzmitglied bzw.
 //                              nicht statischer Klassenmethode (E2355) und
 //                              umgekehrt bei class var und statischer
@@ -581,8 +582,9 @@ var
         mRole := 'Getter';
         if AAccessor.IsWrite then
           mRole := 'Setter';
+        // Delphi 13 meldet E2250 (PG3, #1382).
         AReport.Add(Range(AAccessor), Format('%s ist überladen, und keine Überladung passt als %s von %s (wie ' +
-          'E2271).', [Symbol.Name, mRole, AShape.Symbol.Name]), TRuleConfidence.High);
+          'E2250).', [Symbol.Name, mRole, AShape.Symbol.Name]), TRuleConfidence.High);
         Exit;
       end;
     end;
@@ -622,11 +624,12 @@ var
     // Ohne Typ übernimmt die Property Typ und Indexparameter vom Vorfahren.
     if (AShape.TypeText = '') or Fits(AShape, AAccessor, Symbol, AWildcards) then
       Exit;
+    // Delphi 13 meldet die falsche Signatur als E2008 (Fall Cm.E2234, PG2, #1382).
     if AAccessor.IsWrite then
-      AReport.Add(Range(AAccessor), Format('%s passt nicht als Setter von %s; erwartet wird %s (wie E2234).',
+      AReport.Add(Range(AAccessor), Format('%s passt nicht als Setter von %s; erwartet wird %s (wie E2008).',
         [Symbol.Name, AShape.Symbol.Name, Expected(AShape, AAccessor)]), TRuleConfidence.High)
     else
-      AReport.Add(Range(AAccessor), Format('%s passt nicht als Getter von %s; erwartet wird %s (wie E2234).',
+      AReport.Add(Range(AAccessor), Format('%s passt nicht als Getter von %s; erwartet wird %s (wie E2008).',
         [Symbol.Name, AShape.Symbol.Name, Expected(AShape, AAccessor)]), TRuleConfidence.High);
   end;
 

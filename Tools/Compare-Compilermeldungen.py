@@ -41,6 +41,9 @@ FOLGEMELDUNGEN = {'F2063', 'F2220'}
 # Regeln, deren Katalogeintrag keinen Code nennt.
 # Stilregeln, deren Beschreibung nur nebenbei einen Code nennt.
 OHNE_CODE = {'missing-begin-end'}
+# Regeln, die nur in einem Teil ihrer Treffer einem Compiler-Code entsprechen: Es zählen nur Codes,
+# die die Meldung selbst nennt (interface-guid: E2232 nur, wenn das Interface abgefragt wird).
+NUR_MIT_CODE = {'interface-guid'}
 ZUORDNUNG = {
     'result-not-set': ['W1035'],
     'possibly-uninitialized': ['W1036'],
@@ -121,7 +124,7 @@ def kind(code):
 
 def finding_codes(finding, codes_by_rule):
     own = set(CODE.findall(finding['message']))
-    if own:
+    if own or finding['rule'] in NUR_MIT_CODE:
         return own
     return codes_by_rule.get(finding['rule'], set())
 
