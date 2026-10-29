@@ -16,6 +16,9 @@
 //   4. bei Packages die Units der requires-Packages (.dpk bzw. .dcp)
 // Quelle Atlas: Units im Index und in den Quellpfaden (Browsing Path).
 //
+// Dateien aus {$I} und {$R} (FindFile, #1379): Ordner der einbindenden Datei,
+// dann die Ordner aus 3. samt DCC_IncludePath und DCC_ResourcePath.
+//
 // Sicher fehlend (Missing) ist eine Unit nur, wenn die Bibliothekspfade der
 // Installation bekannt sind, kein Suchpfad ein offenes Makro "$(…)" enthält und
 // kein requires-Package unbekannt ist; sonst Unknown, die Regel schweigt.
@@ -71,6 +74,9 @@ type
     FSetup: TUnitLookupSetup;
     FProjectFolders: TArray<string>;
     FUncertain: Boolean;
+    // Ordner für FindFile (#1379): FProjectFolders samt Include- und Ressourcenpfaden; nach dem Konstruktor nur
+    // gelesen.
+    FFileFolders: TArray<string>;
     FLock: TObject;
     // Ordner (klein) -> Unit-Namen (klein) -> Schreibweise. Unter FLock.
     FListings: TObjectDictionary<string, TDictionary<string, string>>;
@@ -89,6 +95,7 @@ type
     destructor Destroy; override;
     function Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
     function FindPackage(const APackage: string): TRuleUnitAnswer;
+    function FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
     function KnownUnits(ASources: TRuleUnitSources): TArray<string>;
     function FolderOutsidePaths(const AUnitName: string): string;
     function ReadProject(out AFileName, AText: string): Boolean;
@@ -137,6 +144,22 @@ begin
     Result := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AProject.FileName), Result);
 end;
 
+/// <summary>Ordner aus DCC_IncludePath und DCC_ResourcePath, absolut (#1379).</summary>
+function FileSearchPaths(const AProject: TProjectInfo): TArray<string>;
+var
+  mPair: TPair<string, string>;
+  mPath: string;
+begin
+  Result := nil;
+  for mPair in AProject.Properties do
+    if SameText(mPair.Key, 'DCC_IncludePath') or SameText(mPair.Key, 'DCC_ResourcePath') then
+      for mPath in TProjectPaths.SplitList(mPair.Value) do
+        if (AProject.FileName <> '') and not TProjectPaths.IsAbsolute(mPath) and not HasMacro(mPath) then
+          Result := Result + [TProjectPaths.Combine(TProjectPaths.DirectoryOf(AProject.FileName), mPath)]
+        else
+          Result := Result + [mPath];
+end;
+
 { TUnitLookup }
 
 constructor TUnitLookup.Create(const ASetup: TUnitLookupSetup);
@@ -170,6 +193,14 @@ begin
       if HasMacro(Folder) then
         FUncertain := True;
     FProjectFolders := Folders.ToArray;
+    // dcc sucht Include- und Ressourcendateien zusätzlich in -I und -R (#1379).
+    FFileFolders := FProjectFolders;
+    for Folder in FileSearchPaths(ASetup.Project) do
+    begin
+      FFileFolders := FFileFolders + [Folder];
+      if HasMacro(Folder) then
+        FUncertain := True;
+    end;
   finally
     Folders.Free;
   end;
@@ -347,6 +378,30 @@ begin
     Exit(TRuleUnitAnswer.Unknown);
   if FSetup.PackageExists(APackage) then
     Exit(TRuleUnitAnswer.Found);
+  Result := TRuleUnitAnswer.Missing;
+end;
+
+function TUnitLookup.FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
+var
+  mFolder: string;
+begin
+  if not Assigned(FSetup.FileExists) or (AFileName = '') then
+    Exit(TRuleUnitAnswer.Unknown);
+  if TProjectPaths.IsAbsolute(AFileName) then
+  begin
+    if FSetup.FileExists(TProjectPaths.Normalize(AFileName)) then
+      Exit(TRuleUnitAnswer.Found);
+    Exit(TRuleUnitAnswer.Missing);
+  end;
+  if (AFromFile <> '') and FSetup.FileExists(TProjectPaths.Normalize(
+    TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFromFile), AFileName))) then
+    Exit(TRuleUnitAnswer.Found);
+  for mFolder in FFileFolders do
+    if not HasMacro(mFolder) and
+      FSetup.FileExists(TProjectPaths.Normalize(TProjectPaths.Combine(mFolder, AFileName))) then
+      Exit(TRuleUnitAnswer.Found);
+  if FUncertain or not FSetup.LibraryKnown then
+    Exit(TRuleUnitAnswer.Unknown);
   Result := TRuleUnitAnswer.Missing;
 end;
 
