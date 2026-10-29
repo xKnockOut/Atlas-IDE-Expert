@@ -47,7 +47,10 @@ type
     procedure ServerPhases;
     [Test]
     procedure SlowServerIsYellow;
+    /// <summary>#1355: Übersprungene Anfragen machen das Statusfeld gelb und stehen im Text.</summary>
     [Test]
+    procedure SkippedRequestsAreYellow;
+        [Test]
     procedure IndexWhileBuildingThenUnits;
     [Test]
     procedure FileLineShowsFormatAndTarget;
@@ -503,6 +506,22 @@ begin
   Assert.AreEqual('Server langsam', TAtlasStatusLines.ServerSummary(Info));
   Info.Samples := 0;
   Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasStatusLines.ServerState(Info)), 'ohne Messung');
+end;
+
+procedure TAtlasStatusLinesTests.SkippedRequestsAreYellow;
+var
+  Info: TAtlasServerInfo;
+begin
+  Info := Default(TAtlasServerInfo);
+  Info.Phase := TAtlasServerPhase.Running;
+  Assert.AreEqual(Ord(TAtlasStatusState.Green), Ord(TAtlasStatusLines.ServerState(Info)));
+  Info.Skipped := 1;
+  Assert.AreEqual(Ord(TAtlasStatusState.Yellow), Ord(TAtlasStatusLines.ServerState(Info)));
+  Assert.IsTrue(TAtlasStatusLines.ServerText(Info).EndsWith(', 1 Anfrage übersprungen nach Absturz'));
+  Assert.AreEqual('übersprungen nach Absturz', TAtlasStatusLines.ServerSummary(Info));
+  Info.Skipped := 2;
+  Assert.AreEqual('Server läuft, 2 Anfragen übersprungen nach Absturz', TAtlasStatusLines.ServerBrief(Info));
+  Assert.AreEqual('2 Anfragen übersprungen nach Absturz', TAtlasStatusLines.ServerDetail(Info));
 end;
 
 procedure TAtlasStatusLinesTests.IndexWhileBuildingThenUnits;

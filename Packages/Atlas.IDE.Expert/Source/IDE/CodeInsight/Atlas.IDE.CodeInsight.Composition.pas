@@ -45,6 +45,7 @@ uses
   Atlas.Core.Build.Messages,
   Atlas.IDE.CodeInsight.Manager,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.CrashCases,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Favorites,
@@ -568,6 +569,18 @@ begin
     begin
       GuardWarning(AText);
     end);
+end;
+
+/// <summary>„Issue anlegen“ zu einem Absturzfall des Servers (#1355): Dialog aus #1268, danach die Dateien des
+/// Falls über „An Issue anhängen“ (#1276). Ohne Tracker bzw. mit issues.create aus öffnet der Ordner des Falls.
+/// </summary>
+procedure CreateCrashIssue(ACase: TAtlasCrashCase);
+begin
+  if TAtlasIdeNewIssue.Enabled then
+    TAtlasIdeNewIssue.FromCrash(TAtlasCrashCases.IssueTitle(ACase), TAtlasCrashCases.IssueDescription(ACase),
+      TAtlasCrashCases.AttachFiles(ACase.Folder))
+  else
+    MessageLine(TAtlasStrings.Text(TAtlasTextId.CrashCaseTitle) + ': ' + ACase.Folder);
 end;
 
 const
@@ -2915,6 +2928,8 @@ begin
     Manager.OnOpenLog := OpenLog;
     // Nach zwei gleichen Abstürzen des Servers bietet die Meldung den Fehlerbericht an (Bericht H5).
     Manager.OnBugReport := CreateBugReport;
+    // Absturzfälle des Servers (#1355): „Issue anlegen“ in der Meldung.
+    Manager.OnCrashIssue := CreateCrashIssue;
     ManagerIndex := Services.AddCodeInsightManager(Manager);
   end;
 end;

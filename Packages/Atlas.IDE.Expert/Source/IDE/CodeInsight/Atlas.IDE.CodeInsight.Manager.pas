@@ -49,6 +49,13 @@
 // mit demselben Code innerhalb von zehn Minuten, startet Atlas ihn nicht mehr
 // still neu, sondern meldet es mit „Server neu starten“ und „Fehlerbericht
 // erstellen…“ (TAtlasServerCrashes). Ein Start von Hand hebt das auf.
+// Absturzfälle (#1355): Der Server sichert jeden Absturz einer Anfrage als Fall
+// und meldet ihn mit atlas/crashCase; stirbt er dabei, sucht der Neustart den
+// jüngsten Fall seit dem letzten Start. Die Meldung nennt Methode, Datei,
+// Zeile und Ausnahme, mit „Fall öffnen“, „Issue anlegen“ (OnCrashIssue) und
+// „Ausblenden“. Übersprungene Anfragen (atlas/crashSkip, Sicherheitsnetz)
+// zählt ServerInfo.Skipped für die Statusleiste; das Prüffenster zeigt sie als
+// Warnung an der Datei, die Meldung bietet „Erneut versuchen“.
 
 interface
 
@@ -63,6 +70,7 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Lsp.Crashes,
+  Atlas.Core.Lsp.CrashCases,
   Atlas.Core.Files.WatchedChanges,
   Atlas.Core.Signature.Contract,
   Atlas.IDE.Completion.Editor,
@@ -99,6 +107,11 @@ type
     FOnBugReport: TProc;
     /// <summary>Abstürze des Servers; nach zwei gleichen startet Atlas ihn nicht mehr still neu (Bericht H5).</summary>
     FCrashes: TAtlasServerCrashes;
+    /// <summary>Anfragen, die der Server gerade nach Absturz überspringt (#1355); nur im Hauptthread.</summary>
+    FCrashSkips: TAtlasCrashSkips;
+    /// <summary>Start der laufenden Sitzung; nach einem Absturz gilt ein Fall ab hier als dessen Ursache.</summary>
+    FStartedAt: TDateTime;
+    FOnCrashIssue: TProc<TAtlasCrashCase>;
     // Ob AtlasServer.exe da ist, höchstens alle paar Sekunden neu geprüft.
     FServerChecked: Cardinal;
     FServerFound: Boolean;
@@ -169,6 +182,13 @@ type
     procedure AcceptApplyEdit(ASession: TLspSession);
     /// <summary>Warnungen und Fehler des Servers (window/showMessage) ins Meldungsfenster (#121).</summary>
     procedure AcceptShowMessage(ASession: TLspSession);
+    /// <summary>atlas/crashCase und atlas/crashSkip (#1355) in den Hauptthread.</summary>
+    procedure AcceptCrashNotifications(ASession: TLspSession);
+    function CrashActions(const ACase: TAtlasCrashCase): TArray<TAtlasNotificationAction>;
+    procedure CrashCaseSaved(const ACase: TAtlasCrashCase);
+    procedure CrashSkipChanged(const ASkip: TAtlasCrashSkip);
+    /// <summary>Übersprungene Anfragen als Warnungen ins Prüffenster.</summary>
+    procedure UpdateCrashProblems;
     procedure ReportError(const AMessage: string);
     /// <summary>Aktion „Protokoll öffnen“ für Einträge der Benachrichtigungszentrale (#601); leer ohne OnOpenLog.
     /// </summary>
@@ -278,6 +298,8 @@ type
     /// <summary>„Fehlerbericht erstellen…“ in der Meldung nach zwei gleichen Abstürzen des Servers (Bericht H5).
     /// </summary>
     property OnBugReport: TProc read FOnBugReport write FOnBugReport;
+    /// <summary>„Issue anlegen“ in der Meldung zu einem Absturzfall (#1355, Dialog aus #1268).</summary>
+    property OnCrashIssue: TProc<TAtlasCrashCase> read FOnCrashIssue write FOnCrashIssue;
     /// <summary>Bietet IOTACodeInsightManager90 (Help Insight) nur an, solange der Atlas-Tooltip an ist.</summary>
     function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;
     { IOTACodeInsightManager100 }
@@ -326,7 +348,10 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.Core.Diagnostics.Hangs,
   Atlas.Core.Problems.Contract,
+  Atlas.Core.Problems.Store,
+  System.Generics.Collections,
   Winapi.Windows,
+  Winapi.ShellAPI,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.Core.Completion.Word,
@@ -391,6 +416,7 @@ begin
   FServerCommandsIdle := TEvent.Create(nil, True, True, '');
   FThreads := TAtlasThreadList.Create;
   FCrashes := TAtlasServerCrashes.Create(nil);
+  FCrashSkips := TAtlasCrashSkips.Create;
   Diagnose('Plugin geladen: ' + GetModuleName(HInstance));
   FFileChanges := TAtlasWatchedChanges.Create;
   FFolderWatcher := FAdapters.NewFolderWatcher(FFileChanges);
@@ -466,6 +492,7 @@ begin
   FreeAndNil(FThreads);
   // Nach Shutdown: Kein Lese-Thread meldet mehr ein Ende.
   FreeAndNil(FCrashes);
+  FreeAndNil(FCrashSkips);
   FQueryIdle.Free;
   FCommandIdle.Free;
   FServerCommandsIdle.Free;
@@ -698,6 +725,8 @@ begin
     Result.Version := FSession.ServerVersion;
   if FServer <> nil then
     Result.AverageMs := FServer.Client.AverageMs(Result.Samples);
+  if (FCrashSkips <> nil) and (FPhase = TAtlasServerPhase.Running) then
+    Result.Skipped := FCrashSkips.Count;
 end;
 
 function TAtlasCodeInsightManager.ServerIndexing(out APercent: Integer): Boolean;
@@ -949,9 +978,19 @@ var
   Text: string;
   Client: TLspClient;
   Code: Cardinal;
+  PreviousStart: TDateTime;
+  CrashCase: TAtlasCrashCase;
+  HasCase: Boolean;
 begin
   // Vom Server selbst beendet (nicht von Atlas): für den Eintrag „Server neu gestartet“ (#601).
   Crashed := (FPhase = TAtlasServerPhase.Stopped) and not FPhaseEnded;
+  PreviousStart := FStartedAt;
+  // Der neue Server meldet nach initialized, was er weiter überspringt (#1355).
+  if FCrashSkips.Count > 0 then
+  begin
+    FCrashSkips.Clear;
+    UpdateCrashProblems;
+  end;
   // Abgestürzter oder hängender Server: Was die alte Sitzung abgeglichen hatte, bekommt
   // der neue Server sofort wieder, nicht erst bei der nächsten Anfrage je Datei (#393).
   Documents := nil;
@@ -988,6 +1027,7 @@ begin
     RefreshContexts;
     AcceptApplyEdit(FSession);
     AcceptShowMessage(FSession);
+    AcceptCrashNotifications(FSession);
     Projects := GroupProjects;
     FSession.SetProjects(Projects);
     WatchProjects(Projects);
@@ -1009,6 +1049,7 @@ begin
       Diagnose(Format('Nach Neustart erneut geöffnet: %d Dateien', [Length(Documents)]));
     end;
     FLastError := '';
+    FStartedAt := Now;
     SetPhase(TAtlasServerPhase.Running, '');
     Result := True;
     // Jeder weitere Start ist ein Neustart (#393): Eintrag in der Benachrichtigungszentrale (#601); drei
@@ -1023,7 +1064,15 @@ begin
         Text := TAtlasStrings.Text(TAtlasTextId.NotificationsServerCrashed);
       if Length(Documents) > 0 then
         Text := Trim(Text + ' ' + TAtlasStrings.Fmt(TAtlasTextId.NotificationsServerReopened, [Length(Documents)]));
-      if Crashed then
+      // Absturzfall des abgestürzten Servers (#1355): Methode, Datei, Zeile und Ausnahme statt nur des Codes. Mit
+      // server.crashCases aus schreibt der Server keinen, dann bleibt es beim Code.
+      HasCase := Crashed and (PreviousStart > 0) and
+        TAtlasCrashCases.Newest(TAtlasCrashCases.DefaultRoot, PreviousStart, CrashCase);
+      if HasCase then
+        TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Warning,
+          TAtlasStrings.Text(TAtlasTextId.CrashRestartedTitle), TAtlasCrashCases.SummaryText(CrashCase) + ' ' + Text,
+          CrashActions(CrashCase))
+      else if Crashed then
         TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Warning,
           TAtlasStrings.Text(TAtlasTextId.NotificationsServerRestarted), Text, LogActions)
       else
@@ -1153,6 +1202,147 @@ begin
           Messages.AddTitleMessage('Atlas: ' + AMessage, Group);
         end);
     end;
+end;
+
+procedure TAtlasCodeInsightManager.AcceptCrashNotifications(ASession: TLspSession);
+var
+  Manager: TAtlasCodeInsightManager;
+begin
+  Manager := Self;
+  ASession.OnCrashNotification :=
+    procedure(const AMethod: string; const AParams: TJSONValue)
+    var
+      CrashCase: TAtlasCrashCase;
+      Skip: TAtlasCrashSkip;
+    begin
+      // Im Lese-Thread lesen: AParams gehört dem Aufrufer und lebt nicht bis in den Hauptthread.
+      if AMethod = TAtlasCrashCases.CaseNotification then
+      begin
+        if not TAtlasCrashCases.ParseCase(AParams, CrashCase) then
+          Exit;
+        TAtlasMainThread.Queue(TAtlasFeature.Server,
+          procedure
+          begin
+            if (LiveManager = Manager) and (Manager.FSession = ASession) then
+              Manager.CrashCaseSaved(CrashCase);
+          end);
+      end
+      else if TAtlasCrashCases.ParseSkip(AParams, Skip) then
+        TAtlasMainThread.Queue(TAtlasFeature.Server,
+          procedure
+          begin
+            if (LiveManager = Manager) and (Manager.FSession = ASession) then
+              Manager.CrashSkipChanged(Skip);
+          end);
+    end;
+end;
+
+function TAtlasCodeInsightManager.CrashActions(const ACase: TAtlasCrashCase): TArray<TAtlasNotificationAction>;
+var
+  Folder: string;
+  CrashCase: TAtlasCrashCase;
+  Issue: TProc<TAtlasCrashCase>;
+begin
+  Folder := ACase.Folder;
+  CrashCase := ACase;
+  Issue := FOnCrashIssue;
+  Result := [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.CrashOpenCase),
+    procedure
+    begin
+      if DirectoryExists(Folder) then
+        ShellExecute(0, 'open', 'explorer.exe', PChar('"' + Folder + '"'), nil, SW_SHOWNORMAL);
+    end)];
+  if Assigned(Issue) then
+    Result := Result + [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.CrashCreateIssue),
+      procedure
+      begin
+        Issue(CrashCase);
+      end)];
+  // Ausblenden: nur den Eintrag schließen, der Fall bleibt im Ordner.
+  Result := Result + [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.CrashHide),
+    procedure
+    begin
+    end)];
+end;
+
+procedure TAtlasCodeInsightManager.CrashCaseSaved(const ACase: TAtlasCrashCase);
+begin
+  Diagnose('Absturzfall gesichert: ' + ACase.Summary);
+  TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Warning,
+    TAtlasStrings.Text(TAtlasTextId.CrashCaseTitle),
+    TAtlasStrings.Fmt(TAtlasTextId.CrashCaseText, [TAtlasCrashCases.SummaryText(ACase)]), CrashActions(ACase));
+end;
+
+procedure TAtlasCodeInsightManager.CrashSkipChanged(const ASkip: TAtlasCrashSkip);
+var
+  Name, Uri: string;
+  Changed: TProc;
+  Manager: TAtlasCodeInsightManager;
+begin
+  Manager := Self;
+  if not FCrashSkips.Apply(ASkip) then
+    Exit;
+  UpdateCrashProblems;
+  Name := ExtractFileName(ASkip.FileName);
+  if Name = '' then
+    Name := ASkip.Uri;
+  Uri := ASkip.Uri;
+  if ASkip.Active then
+    TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Warning,
+      TAtlasStrings.Text(TAtlasTextId.CrashSkipTitle), TAtlasStrings.Fmt(TAtlasTextId.CrashSkipText,
+      [ASkip.Method, Name, ASkip.Crashes, ASkip.ExceptionClass]),
+      [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.CrashRetry),
+      procedure
+      var
+        Arguments: TJSONArray;
+      begin
+        // Die Meldung kann den Manager überleben (Entladen).
+        if LiveManager <> Manager then
+          Exit;
+        Arguments := TAtlasCrashCases.RetryArguments(Uri);
+        try
+          Manager.RunServerCommandAsync(TAtlasCrashCases.RetryCommand, Arguments.ToJSON, 5000, nil);
+        finally
+          Arguments.Free;
+        end;
+      end)])
+  else
+    TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server, TAtlasNotificationSeverity.Info,
+      TAtlasStrings.Text(TAtlasTextId.CrashSkipTitle), TAtlasStrings.Fmt(TAtlasTextId.CrashSkipEnded,
+      [ASkip.Method, Name]), LogActions);
+  Changed := FOnServerChanged;
+  if Assigned(Changed) then
+    Changed();
+end;
+
+procedure TAtlasCodeInsightManager.UpdateCrashProblems;
+var
+  Store: TAtlasProblemStore;
+  Skip: TAtlasCrashSkip;
+  Problem: TAtlasProblem;
+  Problems: TArray<TPair<string, TAtlasProblem>>;
+begin
+  Store := TAtlasProblemsController.Current;
+  if Store = nil then
+    Exit;
+  Problems := nil;
+  for Skip in FCrashSkips.Items do
+  begin
+    if Skip.FileName = '' then
+      Continue;
+    Problem := Default(TAtlasProblem);
+    Problem.EndCharacter := 1;
+    Problem.Severity := TAtlasProblemSeverity.Warning;
+    Problem.Code := TAtlasCrashCases.ProblemCode;
+    Problem.Source := TAtlasCrashCases.ProblemSource;
+    Problem.Message := TAtlasStrings.Fmt(TAtlasTextId.CrashSkipProblem, [Skip.Method, Skip.Crashes,
+      Skip.ExceptionClass, ExtractFileName(Skip.Folder)]);
+    Problems := Problems + [TPair<string, TAtlasProblem>.Create(Skip.FileName, Problem)];
+  end;
+  if Length(Problems) = 0 then
+    Store.ClearTask(TAtlasCrashCases.ProblemSource)
+  else
+    Store.SetTaskProblems(TAtlasCrashCases.ProblemSource, Problems);
 end;
 
 procedure TAtlasCodeInsightManager.RefreshProjects;
