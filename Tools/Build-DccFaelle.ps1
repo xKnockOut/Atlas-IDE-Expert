@@ -56,7 +56,24 @@ function Get-IdeProcessIds {
 }
 
 function Invoke-Cc([string[]] $Arguments) {
-    $output = & $CcScript @Arguments 2>&1 | Out-String
+    # Benannte Parameter als Hashtable: Beim Splatting eines Arrays käme "-Project" als Wert an.
+    $named = @{}
+    $positional = @()
+    for ($i = 0; $i -lt $Arguments.Count; $i++) {
+        $arg = $Arguments[$i]
+        if ($arg -match '^-(\w+)$') {
+            if ($i + 1 -lt $Arguments.Count -and $Arguments[$i + 1] -notmatch '^-\w+$') {
+                $named[$Matches[1]] = $Arguments[$i + 1]
+                $i++
+            } else {
+                $named[$Matches[1]] = $true
+            }
+        } else {
+            $positional += $arg
+        }
+    }
+    # StrictMode dieses Skripts nicht an cc.ps1 vererben (liest optionale Felder aus status.json).
+    $output = & { Set-StrictMode -Off; & $CcScript @positional @named } *>&1 | Out-String
     [pscustomobject]@{ Output = $output; ExitCode = $LASTEXITCODE }
 }
 

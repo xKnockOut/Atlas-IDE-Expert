@@ -3,7 +3,7 @@
 {$APPTYPE CONSOLE}
 
 uses
-  Dcc.Inline.Gegen in 'Dcc.Inline.Gegen.pas';
+  Dcc.Einbetten.Gegen in 'Dcc.Einbetten.Gegen.pas';
 
 begin
 end.
