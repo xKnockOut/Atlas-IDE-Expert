@@ -8563,6 +8563,16 @@ Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DC
 | DY5 | Nach dem Nachzug auf den dcc-Lauf vom 29.10.2026: `pwsh Tools/Build-DccFaelle.ps1` erneut | Alle Projekte ohne „Gegen“ übersetzen ohne Fehler und ohne Hinweis (auch die verschobenen Fälle IV4, TR8, TR9, ID3); die Gegen-Projekte melden SG3 (E2362) und, im eigenen Projekt `DccInlineKonstanteGegen`, TG4 (E2441); PG1–PG6 tragen ihre Marke. Lauf vom 29.10.2026 13:56: alles so bis auf TG4, das neben TG1 in derselben Unit stand (dcc meldet E2441 nur einmal je Unit) |
 | DY6 | In der IDE: `property Mitte: TPointF` und `property Liste: TArray<Integer>` unter published, `Inc(Zaehler)` einer typisierten Konstante nach `{$J+}`, `Slice(Feld, 2)` an einen out-Parameter, `TKnoten<Integer>.FNaechster` (protected) aus einer gewöhnlichen Funktion einer anderen Unit | Keine Meldung bei den ersten vier; beim letzten „… ist protected und hier nicht sichtbar (wie E2362).“ |
 
+## Testprojekt Compilermeldungen (#1361)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| KM1 | Eigenes Profil anlegen (`bds -r AtlasCm`, Kopie des Standardprofils ohne Atlas), dann `pwsh Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -Cases 'Cm.W1036','Cm.E2003' -Platforms Win32` | IDE startet nur im Profil AtlasCm und wird am Ende beendet; `Output/Compilermeldungen/dcc.tsv` enthält W1036 und E2003 an den markierten Zeilen; fremde bds.exe und Known Packages des Standardprofils unverändert |
+| KM2 | Voller Lauf mit `-AtlasServer <AtlasServer.exe>` | dcc.tsv mit allen 471 Fällen für Win32 und Win64, dazu `atlas-strict*.json` und `atlas-standard*.json` |
+| KM3 | Teillauf mit `-Cases 'Cm.E2399'` nach einem vollen Lauf | dcc.tsv enthält weiter alle Fälle; nur die Zeilen von Cm.E2399 sind neu |
+| KM4 | `python3 Tools/Compare-Compilermeldungen.py --input Tests/Compilermeldungen/Ergebnisse --output <Ordner>` | `vergleich.md` und `vergleich.json` entstehen; Kennzahlen wie im Bericht (482 Meldungen, 228 erkannt) |
+| KM5 | `Tests/Compilermeldungen/Compilermeldungen.dproj` in der IDE öffnen | Atlas indiziert das Projekt; Fehler der Fälle erscheinen als Befunde, die IDE baut das Projekt nicht (nur für den Index) |
+
 ## Seite „Versionsverwaltung“ (#1285)
 
 Nachgetragen aus PR #1299 (Inhalt über die VCS-Kette in Prep-v1.2.0).

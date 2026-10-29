@@ -32,6 +32,7 @@
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
+- PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.
 - 466 Fälle, 914 Builds (Win32 und Win64), 38,5 min; kein Build mit ok=False ohne lesbare dcc-Zeile. Erwarteter Code in 604 Builds; 109 Builds ohne jede Meldung (u. a. alle W1201–W1208: Routinen nur im Implementation-Teil, die XML-Datei bleibt leer); der Rest meldet einen anderen Code (oft E2029/F2063).
 - Nach Einordnung der Fälle und zwei Nachläufen (471 Fälle): 482 dcc-Meldungen, 228 von Atlas erkannt (standard 226), 17 anderer Code, 237 verpasst, 94 zusätzliche Treffer. Über die verschiedenen Codes: 211 von 332 erkannt. Vergleich zählt jetzt auch Treffer in Hilfsunits, wenn dcc den erwarteten Code dort meldet (E1038, F2047).
