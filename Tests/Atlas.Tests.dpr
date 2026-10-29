@@ -905,6 +905,8 @@ uses
   Atlas.UI.Architecture.Map in '..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Map.pas',
   Atlas.UI.Architecture.Slider in '..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Slider.pas',
   Atlas.UI.Architecture.Slider.Tests in 'IDE.Expert\Atlas.UI.Architecture.Slider.Tests.pas',
+  Atlas.UI.Architecture.Assignment in '..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Assignment.pas',
+  Atlas.UI.Architecture.Assignment.Tests in 'IDE.Expert\Atlas.UI.Architecture.Assignment.Tests.pas',
   Atlas.UI.Architecture.Frame in '..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Frame.pas',
   Atlas.UI.Architecture.Frame.Tests in 'IDE.Expert\Atlas.UI.Architecture.Frame.Tests.pas',
   Atlas.Core.Hotspots.Model in '..\Packages\Atlas.IDE.Expert\Source\Core\Hotspots\Atlas.Core.Hotspots.Model.pas',
