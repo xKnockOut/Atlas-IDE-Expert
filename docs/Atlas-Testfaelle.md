@@ -7555,6 +7555,23 @@ Voraussetzung wie oben (#1118); Projekt unter Versionsverwaltung.
 | ARV10 | Claude Code: `get_architecture` mit `compareWith: "architektur.json"` | Die Abschnitte des Vergleichs; Pfad außerhalb des Projekts wird abgelehnt |
 | ARV11 | Hell und dunkel | Grün und Rot auf der Karte und im Reiter gut lesbar |
 
+## Feinheit der Teilsysteme (#1366)
+
+Voraussetzung wie oben (#1118); ein größeres Projekt (z. B. Atlas selbst) mit Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AF1 | Fenster „Atlas-Architektur“ öffnen | In der Werkzeugleiste nach „Bibliotheks-Units“ der Regler „Feinheit“ in der Mitte (1,0) und daneben „γ = 1,0 · n Teilsysteme“; Karte wie vor #1366 |
+| AF2 | Regler nach rechts ziehen und loslassen | Beim Ziehen zeigt die Beschriftung den Wert, die Karte bleibt; erst nach dem Loslassen rechnet der Server, die IDE bleibt bedienbar; danach mehr und kleinere Teilsysteme und „γ = … · n Teilsysteme“ mit größerem n (**Abnahme**) |
+| AF3 | Regler ganz nach links | Weniger und größere Teilsysteme |
+| AF4 | Doppelklick auf den Regler; dann Fokus auf den Regler und Pfeil rechts, Bild auf, Pos1 | Doppelklick: zurück auf 1,0 mit Neuberechnung; Tasten verschieben schrittweise, Pos1 an den Anfang |
+| AF5 | Regler auf 2,0 stellen, IDE neu starten, Fenster öffnen | Regler steht auf 2,0; in `%APPDATA%\Atlas\settings.json` steht `"architecture": {"grouping": {"resolution": 2}}` |
+| AF6 | „Bericht speichern …“ als HTML und Markdown mit γ = 2,0, dann mit 1,0 | Kopf mit „…, Feinheit γ = 2,0“; mit 1,0 kein Zusatz |
+| AF7 | „Stand speichern …“ mit γ = 1,0, Regler auf 2,0, „Vergleichen mit …“ den Stand | Reiter *Vergleich* und Infozeile weisen darauf hin, dass der Stand mit γ = 1,0 gerechnet wurde; in der HTML-Karte steht der Hinweis im Vergleichskasten |
+| AF8 | In `settings.json` `"showResolutionSlider": false` unter `architecture.grouping`, Fenster neu öffnen | Kein Regler und keine Beschriftung; die Teilsysteme folgen weiter `resolution` |
+| AF9 | Claude Code: `get_architecture` mit `resolution: 3`, dann `resolution: 9` | Text mit „Feinheit γ = 3,0“ im Kopf, Fenster unverändert; 9 wird abgelehnt („0,2 bis 5,0“) |
+| AF10 | Hell und dunkel, englische IDE-Sprache | Regler mit Mittelmarke gut lesbar; englisch „Granularity“ und „γ = … · n subsystems“ |
+
 ## Treffersicherheit der Verwendungen (#1119)
 
 Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `IKunde` mit `Speichern`, `TKunde = class(TBasis, IKunde)` überschreibt `TBasis.Speichern` (virtual); Aufrufe über `S: IKunde`, `B: TBasis`, `K: TKunde`, einer in `{$IFDEF DEBUG}` bei Release-Konfiguration, und `MethodAddress('Speichern')`.
