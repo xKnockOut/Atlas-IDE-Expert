@@ -805,11 +805,11 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | PE23 | „Commit-Zeichen“, „uses ergänzen“, „Parameter-Hints“ je aus | `;` übernimmt nicht; keine uses-Ergänzung; kein Hint bei `(` |
 | PE24 | „Listenbreite automatisch“ an | Liste passt sich der Breite der Einträge an |
 
-## Willkommensseite (#753, seit #1114 nur „Atlas-Start“)
+## Willkommensseite (#753; Willkommensseite der IDE und „Atlas-Start“ unabhängig seit #761, ADR 0015)
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| WP1 | RAD Studio 13 (und 12) mit Atlas starten | Die Willkommensseite der IDE zeigt nur ihre eigenen Bereiche; „Atlas-Start“ öffnet sich nicht (Vorgabe „Beim Start der IDE öffnen“ aus) |
+| WP1 | RAD Studio 13 (und 12) mit Atlas starten | Die Willkommensseite der IDE zeigt die Atlas-Bereiche (Kopf und je Bereich ein Rahmen mit Titel) neben ihren eigenen; „Atlas-Start“ öffnet sich nicht (Vorgabe „‚Atlas-Start‘ beim Start der IDE öffnen“ aus) |
 | WP2 | *Ansicht › Atlas-Start* (ebenso *Atlas › Anzeige › Atlas-Start*, Befehlspalette „Atlas-Start“) | Andockbares Fenster mit Symbol, „Guten Morgen/Tag/Abend, <Vorname>“, „Atlas <Version> · Server startet mit dem ersten Projekt“ und allen Bereichen; das Fenster startet keinen Server |
 | WP3 | Projekt öffnen, Index aufbauen lassen, „Atlas-Start“ ansehen | Kurzstatus „Server läuft · Index wird aufgebaut (n %)“, danach „Server läuft · 1.284 Units im Index“; ändert sich mit dem Statusfeld |
 | WP4 | Umstieg mit Sicherung: Vorher mit einer älteren Fassung „Atlas-Layout anwenden“, IDE beenden, Registry `…\BDS\<Version>\WelcomePage` exportieren; Plugin mit #1114 installieren, IDE starten | Meldung „Atlas zeigt seine Bereiche nicht mehr auf der Willkommensseite der IDE …“; Registry wie vor „Atlas-Layout anwenden“; `welcomepage-layout-backup.json` gelöscht; Willkommensseite ohne Bereich „Atlas“ (**Abnahme**) |
@@ -818,14 +818,24 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | WP7 | Neuinstallation ohne frühere Atlas-Fassung | Keine Meldung; Registry `…\WelcomePage` unverändert (Export vergleichen) |
 | WP8 | *Tools › Optionen › Atlas › Willkommensseite*: „Beim Start der IDE öffnen“ an, IDE neu starten | „Atlas-Start“ öffnet sich beim Start; mit „aus“ öffnet es sich nicht, außer es war beim Beenden offen (Desktop der IDE, #879) |
 | WP9 | „Atlas-Start“ andocken, IDE beenden und starten; danach über das X schließen, IDE neu starten | Erscheint wieder am selben Platz; nach dem Schließen bleibt es zu |
-| WP10 | Befehle „Neu in Atlas“ nach einem Update, „Willkommensseite anpassen“ | Beide öffnen „Atlas-Start“ (anpassen im Bearbeitungsmodus) |
+| WP10 | „Auf der Willkommensseite der IDE zeigen“ aus; Befehle „Neu in Atlas“ nach einem Update, „Willkommensseite anpassen“ | Beide öffnen „Atlas-Start“ (anpassen im Bearbeitungsmodus) |
 | WP11 | Optionen: Kopf aus, dann Grußzeile aus | Kopf verschwindet; ohne Grußzeile steht „Atlas“ statt des Grußes |
 | WP12 | Schnellschalter bzw. Optionen: „Atlas-Willkommensseite“ aus | „Atlas-Start“ schließt sich, Menüeintrag ausgeblendet, Befehl fehlt in der Befehlspalette; wieder an: Eintrag zurück, das Fenster öffnet sich erst auf Wunsch |
 | WP13 | IDE-Stil hell/dunkel wechseln | „Atlas-Start“ folgt dem Thema, Symbol in passender Variante |
-| WP14 | Befehlspalette: „Atlas-Layout anwenden“, „Atlas-Layout zurücksetzen“ suchen | Keine Treffer; im Atlas-Menü fehlen beide Einträge |
+| WP14 | „Auf der Willkommensseite der IDE zeigen“ aus; im Atlas-Menü und in der Befehlspalette nach „Atlas-Layout“ suchen | Im Menü fehlen *Atlas-Layout anwenden* und *zurücksetzen*; die Palette führt sie, sie tun aber nichts |
 | WP15 | „Atlas-Start“ geschlossen; Projekt öffnen, dann *Datei › Alle schließen* (ebenso eine Projektgruppe schließen) | „Atlas-Start“ öffnet sich, sobald kein Projekt mehr geladen ist; beim Schließen eines von zwei Projekten der Gruppe nicht (**Abnahme**) |
 | WP16 | Mit offenem Projekt ein anderes Projekt öffnen; danach IDE mit offenem Projekt beenden | Kein Aufblitzen von „Atlas-Start“ beim Wechsel; beim Beenden öffnet es sich nicht und es gibt keinen Fehler beim Abbau |
-| WP17 | Optionen: „Öffnen, wenn kein Projekt mehr geladen ist“ aus, dann Projekt schließen | „Atlas-Start“ bleibt zu |
+| WP17 | Optionen: „‚Atlas-Start‘ öffnen, wenn kein Projekt mehr geladen ist“ aus, dann Projekt schließen | „Atlas-Start“ bleibt zu |
+| WP18 | Erster Start nach dem Update (#761) mit dem Stand nach #1114 (Atlas-Bereiche waren aufgeräumt) | Atlas-Bereiche erscheinen wieder auf der Willkommensseite der IDE, keine Meldung. Notieren, wo die IDE sie einsetzt (im Raster oder unter „ausgeblendet“ in ihrer Anpassung) |
+| WP19 | *Tools › Optionen › Atlas › Willkommensseite*: „Auf der Willkommensseite der IDE zeigen“ aus, OK | Atlas-Bereiche verschwinden von der Willkommensseite, das Raster schließt die Lücken; Meldung „Die Atlas-Bereiche sind von der Willkommensseite der IDE genommen …“; „Atlas-Start“ bleibt, wie es war |
+| WP20 | Nach WP19 IDE beenden und starten | Willkommensseite der IDE ohne Atlas, keine Meldung; `%LOCALAPPDATA%\Atlas\welcomepage-layout-pending` ist danach weg |
+| WP21 | Schalter wieder an, OK; IDE beenden und starten | Atlas-Bereiche sind sofort wieder da und nach dem Neustart weiterhin (die Marke aus WP19 entfernt sie nicht erneut) |
+| WP22 | *Atlas › Anzeige › Atlas-Layout anwenden* | Meldung „Atlas-Layout angewendet …“; nach dem nächsten Start (oder sofort, notieren) steht der Bereich „Atlas“ mit Kopf und allen Bereichen oben über alle Spalten, die Bereiche der IDE darunter; `welcomepage-layout-backup.json` liegt in `%LOCALAPPDATA%\Atlas` |
+| WP23 | Im Atlas-Layout: „Willkommensseite anpassen“, „Neu in Atlas“ | Anpassen schaltet den Bearbeitungsmodus im Bereich „Atlas“ der Willkommensseite (öffnet „Atlas-Start“ nicht); „Neu in Atlas“ zeigt die Karte dort |
+| WP24 | *Atlas-Layout zurücksetzen* | Meldung „Das vorige Layout …“; nach dem Start wieder das Raster wie vor WP22, die Sicherung ist weg |
+| WP25 | Im Atlas-Layout „Auf der Willkommensseite der IDE zeigen“ aus | Sicherung zurück wie bei WP24 (Raster wie vor WP22), Meldung wie WP19; wieder an: Bereich „Atlas“ steht wieder oben |
+| WP26 | Fokus auf die Willkommensseite der IDE (Reiter „Willkommen“), Strg+E; dann in einer Unit im Editor Strg+E; dann „Atlas-Start“ angedockt neben dem Editor, Fokus im Editor, Strg+E | Erst Fokus im Suchfeld der Willkommensseite; im Editor beide Male die inkrementelle Suche der IDE |
+| WP27 | Atlas-Bereiche auf der Willkommensseite und „Atlas-Start“ zugleich offen, IDE mit `cc quit` und über das Fenster beenden (auch mit Beyond-Compare-Experte) | Kein „Anwendungsfehler“, keine Zugriffsverletzung (#1233, #1091), kein Eintrag „Welcome:“ im atlas.log; beide Orte zeigen dieselben Daten, Thema hell/dunkel an beiden Orten |
 
 ### Suchfeld (#760)
 

@@ -31,6 +31,13 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Atlas-Willkommensseite wieder auf der Willkommensseite der IDE (29.10.2026, #761, ADR 0015)
+- **Branch `claude/project-thread-7k47w7` (PR 1347), main mit Prep-v1.2.0 gemergt, mit Delphi gebaut:** Win64-Gruppe und Win32-Plugin 0/0/0, 9335 Tests grün ohne Lecks (Worktree `wt-1347`). Korrekturen: `Atlas.Core.Settings.Plugin` in den Interface-uses von `Atlas.IDE.Welcome.Commands` (E2003), Erstbenutzung im Benchmark der Issue-Entwicklung vorgewärmt (184 Byte Leck).
+- **Was:** `Atlas.IDE.Welcome.Page` und das Atlas-Layout (Befehle *Atlas-Layout anwenden/zurücksetzen*, Tipp, `welcomePage.layout`) sind zurück. Statt `welcomePage.host` gibt es `welcomePage.ideWelcomePage` (Registry `WelcomePageIdePage`, Vorgabe an); das Fenster „Atlas-Start“ (#1114) bleibt unabhängig.
+- **Aufräumen:** `TAtlasWelcomeRetire` läuft beim Start nur noch, wenn Atlas nicht auf der Willkommensseite der IDE stehen soll, und beim Abschalten. Was beim Umschalten passiert, entscheidet `TAtlasIdePageSteps` (getestet); beim Wiedereinschalten wird die Marke des Aufräumens gelöscht.
+- **Abbau:** `TAtlasIdeWelcomePage.RemoveAll` gibt vor dem Abmelden die Atlas-Inhalte in den Rahmen der IDE frei (gleiche Ursache wie #1233).
+- **Offen in der IDE:** Handtests WP18–WP27 in `docs/Atlas-Testfaelle.md`, besonders WP18 (wo die IDE neu angemeldete Bereiche einsetzt) und WP27 (Beenden ohne Zugriffsverletzung).
+
 ## Prep-v1.2.0 erstmals mit Delphi gebaut und mit main zusammengeführt (29.10.2026)
 - Worktree `C:\Projekte\BetterDelphiLSP\wt-prep`, Branch `prep-merge-main`; gepusht nach `Prep-v1.2.0` und `main`.
 - main (mit den 1.1-Fixes, u. a. #1233, #1243, #1248) in Prep gemergt; Konflikte nach beiden Seiten aufgelöst.

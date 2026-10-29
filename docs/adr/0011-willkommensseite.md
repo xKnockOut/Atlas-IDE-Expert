@@ -1,6 +1,6 @@
 # 0011: Atlas-Bereiche als Plugins der IDE-Willkommensseite, Layout über die Registry
 
-- Status: Teilweise abgelöst durch [ADR 0014](0014-willkommensseite-nur-fenster.md) (#1114): Atlas meldet keine Plugins mehr auf der Willkommensseite der IDE an und ändert ihr Layout nicht mehr; die Bereiche stehen nur im Fenster „Atlas-Start“. Register, Frames, Kopf und Anordnung der Bereiche gelten weiter.
+- Status: Angenommen. [ADR 0014](0014-willkommensseite-nur-fenster.md) (#1114) hatte die Plugins und das Atlas-Layout entfernt; [ADR 0015](0015-willkommensseite-und-fenster.md) (#761) nimmt das zurück. Abweichend von hier ersetzt der Schalter `welcomePage.ideWelcomePage` den Ort `welcomePage.host`: Willkommensseite der IDE und Fenster „Atlas-Start“ sind unabhängig.
 - Datum: 2026-10-15
 - Bezug: #761 Willkommensseite (Epic), #753 Rahmen und Atlas-Layout, #767 frei konfigurierbares Layout
 

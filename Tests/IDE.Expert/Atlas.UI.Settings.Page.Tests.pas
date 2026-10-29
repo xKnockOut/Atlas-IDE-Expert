@@ -3025,7 +3025,8 @@ var
   Page: TAtlasSettingsPage;
   Settings, Saved: TAtlasPluginSettings;
 begin
-  // #753: Ein/Aus, Ort (Willkommensseite oder Fenster „Atlas-Start“), Atlas-Layout, Kopf und Grußzeile;
+  // #753: Ein/Aus, Willkommensseite der IDE (#761) und Fenster „Atlas-Start“ unabhängig, Atlas-Layout, Kopf und
+  // Grußzeile;
   // #760: Suchfeld, Gruppe „Symbole“ und Taste; #756: Karte „Neu in Atlas“; #592: Bereich „Projekte“;
   // #762: Bereich „Nicht gesichert“; #755: Bereich „Weiterarbeiten“; #754: Zustandskachel „Atlas“; #757: Karte „Atlas entdecken“, Zählung und
   // ihre Knöpfe.
@@ -3034,6 +3035,8 @@ begin
   try
     Page.LoadFrom(Settings);
     Assert.IsTrue(Page.WelcomeEnabled.Checked);
+    Assert.IsTrue(Page.WelcomeIdePage.Checked, 'wieder auf der Willkommensseite der IDE (#761)');
+    Assert.IsFalse(Page.WelcomeLayout.Checked, 'Layout der IDE bleibt, bis man es anwendet');
     Assert.IsFalse(Page.WelcomeOpenOnStart.Checked, 'Atlas-Start nur auf Wunsch (#1114)');
     Assert.IsTrue(Page.WelcomeOpenWhenNoProject.Checked, 'Atlas-Start ohne Projekt (#1114)');
     Assert.IsTrue(Page.WelcomeHeader.Checked);
@@ -3121,6 +3124,8 @@ begin
     Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Page.WelcomeHelpReportUrl.Text);
     Assert.AreEqual('', Page.WelcomeHelpReportFolder.Text);
     Page.WelcomeEnabled.Checked := False;
+    Page.WelcomeIdePage.Checked := False;
+    Page.WelcomeLayout.Checked := True;
     Page.WelcomeOpenOnStart.Checked := True;
     Page.WelcomeOpenWhenNoProject.Checked := False;
     Page.WelcomeHeader.Checked := False;
@@ -3207,6 +3212,8 @@ begin
     Assert.IsFalse(Saved.WelcomePageProjectSetup);
     Assert.IsFalse(Saved.WelcomePageNewFromTemplate);
     Assert.IsFalse(Saved.WelcomePage);
+    Assert.IsFalse(Saved.WelcomePageIdePage);
+    Assert.AreEqual('atlas', Saved.WelcomePageLayout);
     Assert.IsTrue(Saved.WelcomePageOpenOnStart);
     Assert.IsFalse(Saved.WelcomePageOpenWhenNoProject);
     Assert.IsFalse(Saved.WelcomePageHeader);
@@ -3323,6 +3330,8 @@ begin
     Assert.AreEqual('D:\Diagnose', Page.WelcomeHelpReportFolder.Text);
     Assert.IsFalse(Page.WelcomeDiscover.Checked);
     Assert.IsFalse(Page.TipsUsageTracking.Checked);
+    Assert.IsFalse(Page.WelcomeIdePage.Checked);
+    Assert.IsTrue(Page.WelcomeLayout.Checked);
     Assert.IsTrue(Page.WelcomeOpenOnStart.Checked);
     Assert.AreEqual(2, Page.WelcomeWhatsNew.Choice);
     Page.WelcomeWhatsNew.Choice := 0;

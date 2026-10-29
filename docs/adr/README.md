@@ -14,10 +14,11 @@ Hier stehen Architekturentscheidungen mit Kontext, Entscheidung und Folgen. Eine
 | [0008](0008-plattformen.md) | Plattformen Win32 und Win64, Tests nur Win64 | Angenommen |
 | [0009](0009-installer.md) | Installer als eigene VCL-Anwendung je Benutzer | Angenommen |
 | [0010](0010-binaerer-index-cache.md) | Binärer Index-Cache mit String-Tabelle und Prüfsumme | Angenommen |
-| [0011](0011-willkommensseite.md) | Atlas-Bereiche als Plugins der IDE-Willkommensseite, Layout über die Registry | Teilweise abgelöst durch 0014 |
+| [0011](0011-willkommensseite.md) | Atlas-Bereiche als Plugins der IDE-Willkommensseite, Layout über die Registry | Angenommen (0014 zurückgenommen durch 0015) |
 | [0012](0012-gemeinsamer-text-code.md) | Plugin ohne Atlas.Common; gemeinsamer Code in Atlas.Text | Angenommen |
 | [0013](0013-linux-bau.md) | AtlasServer unter Linux mit Free Pascal für Cloud-Sitzungen | Angenommen |
-| [0014](0014-willkommensseite-nur-fenster.md) | Atlas-Willkommensseite nur im Fenster „Atlas-Start“ | Angenommen |
+| [0014](0014-willkommensseite-nur-fenster.md) | Atlas-Willkommensseite nur im Fenster „Atlas-Start“ | Teilweise abgelöst durch 0015 |
+| [0015](0015-willkommensseite-und-fenster.md) | Atlas-Willkommensseite wieder auf der Willkommensseite der IDE, Fenster unabhängig | Angenommen |
 
 ## Vorlage
 

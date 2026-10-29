@@ -32,9 +32,11 @@
 // öffnet TAtlasIdeOutline; sichtbar nur bei outline.enabled.
 // Das Atlas-Symbol (#751) steht am Menü und an den Einträgen für Einstellungen
 // und Optionen; UpdateImage wählt nach einem Themenwechsel die passende Variante.
-// Willkommensseite (#753): „Atlas-Start“ (auch unter Ansicht) ruft OnWelcome;
-// sichtbar nur bei welcomePage.enabled. Das Atlas-Layout auf der
-// Willkommensseite der IDE gibt es seit #1114 nicht mehr.
+// Willkommensseite (#753): „Atlas-Start“ (auch unter Ansicht), „Atlas-Layout
+// anwenden“ und „Atlas-Layout zurücksetzen“ rufen OnWelcome; sichtbar nur bei
+// welcomePage.enabled, Anwenden und Zurücksetzen nur mit Atlas-Bereichen auf
+// der Willkommensseite der IDE (welcomePage.ideWelcomePage), Anwenden nur ohne,
+// Zurücksetzen nur mit Atlas-Layout.
 // Befehle mit einer Kennung der Befehlspalette melden sich bei den
 // Tastenkürzel-Tipps (#600) als Aufruf per Menü (TAtlasIdeShortcutTips.Invoked).
 // „Atlas-Prüfung“ (#909) öffnet das Fenster der Befunde, auch unter Ansicht ›
@@ -64,6 +66,7 @@ uses
 type
 {$SCOPEDENUMS ON}
   TAtlasToggle = (Enabled, HoverTooltip, PairColors, PairGuides, PairOwners, Problems, InactiveDim, InlayHints);
+  TAtlasWelcomeCommand = (Start, Apply, Reset);
 {$SCOPEDENUMS OFF}
 
   TAtlasMainMenu = class
@@ -86,8 +89,8 @@ type
     FKeyMapItem: TMenuItem;
     /// <summary>„Prozesse am Projekt…“ (#62), sichtbar nach diagnostics.processes.</summary>
     FProcessesItem: TMenuItem;
-    FOnWelcome: TProc;
-    FWelcomeStart: TMenuItem;
+    FOnWelcome: TProc<TAtlasWelcomeCommand>;
+    FWelcome: array[TAtlasWelcomeCommand] of TMenuItem;
     FWelcomeLine: TMenuItem;
     FViewStart: TMenuItem;
     FNoteItems: TArray<TMenuItem>;
@@ -188,8 +191,8 @@ type
     procedure UpdateKeyMap;
     /// <summary>„An Issue anhängen …“ (#1276).</summary>
     property OnIssueAttach: TProc read FOnIssueAttach write FOnIssueAttach;
-    /// <summary>„Atlas-Start“ öffnen (#753, #1114).</summary>
-    property OnWelcome: TProc read FOnWelcome write FOnWelcome;
+    /// <summary>Befehle der Willkommensseite (#753).</summary>
+    property OnWelcome: TProc<TAtlasWelcomeCommand> read FOnWelcome write FOnWelcome;
     /// <summary>Fenster „Atlas-Board“ öffnen (#1272).</summary>
     property OnBoard: TProc read FOnBoard write FOnBoard;
     /// <summary>Einträge der Willkommensseite nach den Einstellungen ein- oder ausblenden.</summary>
@@ -256,7 +259,8 @@ const
   NoteIds: array[0..2] of string = ('Atlas.NoteAdd', 'Atlas.NoteDelete', 'Atlas.NoteList');
   BookmarkIds: array[0..5] of string = ('Atlas.BookmarkAdd', 'Atlas.BookmarkGoTo', 'Atlas.BookmarkWindow',
     'Atlas.QuickBookmarkToggle', 'Atlas.NextBookmark', 'Atlas.PreviousBookmark');
-  WelcomeStartId = 'Atlas.WelcomeStart';
+  WelcomeIds: array[TAtlasWelcomeCommand] of string = ('Atlas.WelcomeStart', 'Atlas.WelcomeApply',
+    'Atlas.WelcomeReset');
   // Name des Menüs „Tools“ in der IDE; Atlas steht dahinter, sonst am Ende.
   ToolsMenu = 'ToolsMenu';
   // Menü „Ansicht“ der IDE; dort steht „Atlas-Start“ zusätzlich (#753).
@@ -386,13 +390,18 @@ begin
   FQuickItems := [AddItem(TAtlasTextId.QuickBookmarkToggleCommand, 3, BookmarksClick)];
   FQuickItems := FQuickItems + [AddItem(TAtlasTextId.NextBookmarkCommand, 4, BookmarksClick)];
   FQuickItems := FQuickItems + [AddItem(TAtlasTextId.PreviousBookmarkCommand, 5, BookmarksClick)];
-  // Schalter und Willkommensseite (#753); Tag wählt den Schalter in ToggleClick.
+  // Schalter und Willkommensseite (#753); Tag wählt den Befehl in ToggleClick bzw. WelcomeClick.
   AddGroup(TAtlasTextId.MenuGroupView);
   for Toggle := Low(TAtlasToggle) to High(TAtlasToggle) do
     FToggles[Toggle] := AddItem(ToggleText(Toggle), Ord(Toggle), ToggleClick);
   FWelcomeLine := NewLine;
   FParent.Add(FWelcomeLine);
-  FWelcomeStart := AddItem(TAtlasTextId.MenuWelcomeStart, 0, WelcomeClick);
+  FWelcome[TAtlasWelcomeCommand.Start] := AddItem(TAtlasTextId.MenuWelcomeStart,
+    Ord(TAtlasWelcomeCommand.Start), WelcomeClick);
+  FWelcome[TAtlasWelcomeCommand.Apply] := AddItem(TAtlasTextId.MenuWelcomeApply,
+    Ord(TAtlasWelcomeCommand.Apply), WelcomeClick);
+  FWelcome[TAtlasWelcomeCommand.Reset] := AddItem(TAtlasTextId.MenuWelcomeReset,
+    Ord(TAtlasWelcomeCommand.Reset), WelcomeClick);
   AddGroup(TAtlasTextId.MenuGroupIndex);
   AddItem(TAtlasTextId.MenuIndexStatus, 0, IndexStatusClick);
   AddItem(TAtlasTextId.MenuIndexRebuild, 0, IndexRebuildClick);
@@ -430,6 +439,7 @@ begin
       // Gehört dem Atlas-Menü, damit es mit ihm freigegeben wird; Freigeben nimmt es aus „Ansicht“.
       FViewStart := TMenuItem.Create(FRoot);
       FViewStart.Caption := TAtlasStrings.Text(TAtlasTextId.MenuWelcomeStart);
+      FViewStart.Tag := Ord(TAtlasWelcomeCommand.Start);
       FViewStart.OnClick := WelcomeClick;
       Services.MainMenu.Items[Index].Add(FViewStart);
       // Ansicht › Atlas › Prüfung (#909) und Architektur (#1118).
@@ -506,12 +516,19 @@ end;
 procedure TAtlasMainMenu.UpdateWelcome;
 var
   Settings: TAtlasPluginSettings;
+  AtlasLayout: Boolean;
 begin
   if FRoot = nil then
     Exit;
   Settings := TAtlasIdeSettings.Current;
+  AtlasLayout := SameText(Settings.WelcomePageLayout, 'atlas');
   FWelcomeLine.Visible := Settings.WelcomePage;
-  FWelcomeStart.Visible := Settings.WelcomePage;
+  FWelcome[TAtlasWelcomeCommand.Start].Visible := Settings.WelcomePage;
+  // Das Layout gilt nur auf der Willkommensseite der IDE, nicht im Fenster „Atlas-Start“.
+  FWelcome[TAtlasWelcomeCommand.Apply].Visible := Settings.WelcomePage and Settings.WelcomePageIdePage and
+    not AtlasLayout;
+  FWelcome[TAtlasWelcomeCommand.Reset].Visible := Settings.WelcomePage and Settings.WelcomePageIdePage and
+    AtlasLayout;
   // An Issue anhängen (#1276) nach issues.attach.
   if FIssueAttachItem <> nil then
     FIssueAttachItem.Visible := Settings.IssuesAttach;
@@ -520,14 +537,17 @@ begin
 end;
 
 procedure TAtlasMainMenu.WelcomeClick(Sender: TObject);
+var
+  Command: TAtlasWelcomeCommand;
 begin
   if not Assigned(FOnWelcome) then
     Exit;
-  TAtlasIdeShortcutTips.Invoked(WelcomeStartId);
+  Command := TAtlasWelcomeCommand(TMenuItem(Sender).Tag);
+  TAtlasIdeShortcutTips.Invoked(WelcomeIds[Command]);
   TAtlasGuard.Run(TAtlasFeature.Menu,
     procedure
     begin
-      FOnWelcome();
+      FOnWelcome(Command);
     end);
 end;
 
