@@ -141,6 +141,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Contract.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Derived.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.TypedScope.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.WarnSwitches.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ManagedTypes.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Registry.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Suppressions.pas"/>
@@ -489,6 +490,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.XmlDoc.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Naming.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Casts.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.UnsafeCode.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.StringAddress.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.FormatArgs.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.ForbiddenSymbols.pas"/>

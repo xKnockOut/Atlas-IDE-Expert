@@ -23,12 +23,31 @@
 //                                     Direktive nach einem Routinenkopf
 //                                     (overide;) bzw. nach einer Property
 //                                     (defualt;), mit Vorschlag (E2070, #1068).
+//   compiler-directive-invalid        Compileranweisungen, die dcc ablehnt oder
+//                                     selbst meldet (#1379): {$MESSAGE WARN|HINT}
+//                                     (W1054, H1054), {$WEAKPACKAGEUNIT ON} mit
+//                                     {$DENYPACKAGEUNIT ON} (E2222),
+//                                     {$DESIGNONLY}/{$RUNONLY} in einer Unit
+//                                     (E2224), {$OBJTYPENAME} an einem Alias
+//                                     (E2560), {$CODEPAGE} über 65535 (E1030),
+//                                     fehlende Datei aus {$I} (F1026) bzw. {$R}
+//                                     (E1026), Include-Datei, die sich über
+//                                     unbedingte {$I} selbst einbindet (E2245).
 //
 // Die Regel liest die Direktiven-Token des ganzen Textes, auch in inaktiven
 // Zweigen; dort zählt Delphi die Verschachtelung ebenfalls. Unbekannte Namen
 // prüft sie nicht in Zweigen, deren Bedingung FPC abfragt ({$IFDEF FPC}{$MODE
 // DELPHI}{$ENDIF}). {$PUSHOPT}/{$POPOPT} prüft sie nur, wenn keines davon in
 // einem bedingten Zweig steht.
+//
+// compiler-directive-invalid prüft nur Direktiven außerhalb bedingter Zweige:
+// Welcher Zweig gilt, weiß die Regel nicht, und dcc meldet nur aus geltenden.
+// Dateien sucht sie neben der Unit (TRuleContext.FileExists) und über die
+// Suchpfade des Projekts (IRuleUnitLookup.FindFile); ohne sichere Aussage
+// schweigt sie. {$R Name.res Name.rc}, Formulare und Masken ({$R *.res}) prüft
+// sie nicht, ebenso keine .res, neben der eine .rc gleichen Namens liegt (die
+// IDE übersetzt sie vor dem Compiler). {$MESSAGE} ohne Art und mit ERROR/FATAL
+// ist noch nicht mit dcc abgeglichen und bleibt still.
 //
 // directive-typo liest die Directive-Knoten des Syntaxbaums: Der Parser legt
 // sie auch für unbekannte Wörter mit ';' dahinter an. Methodenzuordnungen
@@ -47,6 +66,7 @@ const
   ConditionalDirectiveUnbalancedRuleId = 'conditional-directive-unbalanced';
   DirectiveTypoRuleId = 'directive-typo';
   CompilerWarningsDisabledRuleId = 'compiler-warnings-disabled';
+  CompilerDirectiveInvalidRuleId = 'compiler-directive-invalid';
 
 type
   TConditionalDirectiveUnbalancedRule = class(TInterfacedObject, IRule)
@@ -67,6 +87,12 @@ type
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
   end;
 
+  TCompilerDirectiveInvalidRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
 procedure RegisterDirectiveRules(const ARegistry: TRuleRegistry);
 
 implementation
@@ -74,11 +100,13 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Documents.Contract,
+  Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Pascal.LanguageFeatures,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Text.Fuzzy,
   Atlas.Common.Rules.Options,
@@ -784,11 +812,406 @@ begin
   end;
 end;
 
+{ TCompilerDirectiveInvalidRule }
+
+const
+  /// <summary>So tief folgt compiler-directive-invalid Include-Dateien in Include-Dateien.</summary>
+  cMaxIncludeDepth = 16;
+  /// <summary>Zeichen, die in keinem Dateinamen stehen (Masken, Makros); dann schweigt die Regel.</summary>
+  cNoFileChars: TSysCharSet = ['*', '?', '<', '>', '|', '"', '%'];
+
+/// <summary>Erstes Argument einer Direktive: Text in Hochkommas ('' für ein Hochkomma) oder bis zum Leerraum;
+/// ARest erhält den Rest ohne Rand.</summary>
+function FirstArgument(const AText: string; out ARest: string): string;
+var
+  mText: string;
+  mIndex: Integer;
+begin
+  Result := '';
+  mText := Trim(AText);
+  mIndex := 1;
+  if (mText <> '') and (mText[1] = '''') then
+  begin
+    mIndex := 2;
+    while mIndex <= Length(mText) do
+    begin
+      if mText[mIndex] = '''' then
+      begin
+        if (mIndex < Length(mText)) and (mText[mIndex + 1] = '''') then
+          Inc(mIndex)
+        else
+          Break;
+      end;
+      Result := Result + mText[mIndex];
+      Inc(mIndex);
+    end;
+  end
+  else
+  begin
+    while (mIndex <= Length(mText)) and not CharInSet(mText[mIndex], [' ', #9, #10, #13]) do
+      Inc(mIndex);
+    Result := Copy(mText, 1, mIndex - 1);
+  end;
+  ARest := Trim(Copy(mText, mIndex + 1, MaxInt));
+end;
+
+/// <summary>Kann AName ein Dateiname sein (keine Maske, kein Makro)?</summary>
+function PlainFileName(const AName: string): Boolean;
+var
+  mChar: Char;
+begin
+  Result := AName <> '';
+  for mChar in AName do
+    if CharInSet(mChar, cNoFileChars) then
+      Exit(False);
+end;
+
+/// <summary>Namen, unter denen dcc die Datei aus {$I} bzw. {$R} sucht: wie geschrieben, ohne passende Endung
+/// zusätzlich mit .inc und .pas bzw. .res. Lieber ein Name zu viel als eine Meldung, wo dcc die Datei findet.
+/// </summary>
+function FileCandidates(const AName: string; AResource: Boolean): TArray<string>;
+begin
+  Result := [AName];
+  if AResource then
+  begin
+    if not EndsText('.res', AName) then
+      Result := Result + [AName + '.res'];
+  end
+  else if not EndsText('.inc', AName) and not EndsText('.pas', AName) then
+    Result := Result + [AName + '.inc', AName + '.pas'];
+end;
+
+/// <summary>Datei aus {$I}/{$INCLUDE} bzw. {$R}/{$RESOURCE} (ARest: alles hinter dem Namen der Direktive);
+/// False für Kurzschalter ({$I+}, {$R-,Q+}) und ohne Dateinamen.</summary>
+function DirectiveFile(const AName, ARest: string; out AResource: Boolean; out AFile, AMore: string): Boolean;
+begin
+  AFile := '';
+  AMore := '';
+  AResource := (AName = 'R') or (AName = 'RESOURCE');
+  Result := AResource or (AName = 'I') or (AName = 'INCLUDE');
+  if not Result then
+    Exit;
+  Result := (ARest <> '') and not CharInSet(ARest[1], ['+', '-', ',']);
+  if Result then
+    AFile := FirstArgument(ARest, AMore);
+end;
+
+/// <summary>Schlüssel einer Include-Datei für den Vergleich: "\" als Trenner, klein.</summary>
+function IncludeKey(const AName: string): string;
+begin
+  Result := LowerCase(StringReplace(AName, '/', '\', [rfReplaceAll]));
+end;
+
+function TCompilerDirectiveInvalidRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(CompilerDirectiveInvalidRuleId, TRuleSeverity.Error,
+    'Compileranweisung ungültig oder Datei aus {$I}/{$R} fehlt');
+end;
+
+procedure TCompilerDirectiveInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mTokens: TArray<TPascalToken>;
+  mPaths: TArray<string>;
+  mWeak, mDeny, mPackageUnknown: Boolean;
+  mIndex: Integer;
+
+  function RangeOf(AIndex: Integer): TTextRange;
+  begin
+    Result := TTextRange.Create(mTokens[AIndex].StartPos, mTokens[AIndex].EndPos);
+  end;
+
+  /// <summary>Gibt es eine der Dateien ACandidates (relativ zur Unit bzw. über die Suchpfade des Projekts)?
+  /// Unknown ohne Dateizugriff oder wenn die Suche keine sichere Aussage trifft.</summary>
+  function Locate(const ACandidates: TArray<string>): TRuleUnitAnswer;
+  var
+    mName: string;
+    mAnswer: TRuleUnitAnswer;
+  begin
+    if not Assigned(AContext.FileExists) or (AContext.FileName = '') then
+      Exit(TRuleUnitAnswer.Unknown);
+    for mName in ACandidates do
+      if AContext.FileExists(mName) then
+        Exit(TRuleUnitAnswer.Found);
+    if AContext.Units = nil then
+      Exit(TRuleUnitAnswer.Unknown);
+    Result := TRuleUnitAnswer.Missing;
+    for mName in ACandidates do
+    begin
+      mAnswer := AContext.Units.FindFile(mName, AContext.FileName);
+      if mAnswer = TRuleUnitAnswer.Found then
+        Exit(TRuleUnitAnswer.Found);
+      if mAnswer = TRuleUnitAnswer.Unknown then
+        Result := TRuleUnitAnswer.Unknown;
+    end;
+  end;
+
+  /// <summary>Text der Include-Datei AName relativ zum Ordner der Unit; AFound ist der gelesene Name.</summary>
+  function ReadInclude(const AName: string; out AFound, AText: string): Boolean;
+  var
+    mName: string;
+    mData: TBytes;
+    mFormat: TFileFormat;
+  begin
+    AFound := '';
+    AText := '';
+    Result := False;
+    if not Assigned(AContext.ReadFile) or not PlainFileName(AName) then
+      Exit;
+    for mName in FileCandidates(AName, False) do
+      if AContext.ReadFile(mName, mData) then
+      begin
+        AFound := mName;
+        AText := TFileEncoding.Decode(mData, mFormat);
+        Exit(True);
+      end;
+  end;
+
+  /// <summary>Bindet sich die Include-Datei AName (relativ zur Unit) über unbedingte {$I} selbst ein, direkt oder
+  /// über weitere Include-Dateien? AStack: Schlüssel der Dateien auf dem Weg dorthin; AChain: der Weg bis zur
+  /// Wiederholung, z. B. "A.inc → B.inc → A.inc".</summary>
+  function Recursive(const AName: string; const AStack: TArray<string>; out AChain: string): Boolean;
+  var
+    mFound, mText, mKey, mBody, mDirective, mRest, mFile, mMore, mInner, mFolder: string;
+    mResource: Boolean;
+    mToken: TPascalToken;
+    mDepth: Integer;
+  begin
+    AChain := '';
+    Result := False;
+    if (Length(AStack) >= cMaxIncludeDepth) or not ReadInclude(AName, mFound, mText) then
+      Exit;
+    mKey := IncludeKey(mFound);
+    if IndexStr(mKey, AStack) >= 0 then
+    begin
+      AChain := ExtractFileName(mFound);
+      Exit(True);
+    end;
+    mFolder := ExtractFilePath(StringReplace(mFound, '/', '\', [rfReplaceAll]));
+    mDepth := 0;
+    for mToken in TPascalLexer.Tokenize(mText) do
+    begin
+      if mToken.Kind <> TPascalTokenKind.Directive then
+        Continue;
+      mBody := TDirectiveNames.Body(mToken.Text);
+      mDirective := UpperCase(TDirectiveNames.LeadingName(mBody));
+      mRest := Trim(Copy(mBody, Length(mDirective) + 1, MaxInt));
+      if MatchStr(mDirective, ['IF', 'IFDEF', 'IFNDEF', 'IFOPT']) then
+        Inc(mDepth)
+      else if MatchStr(mDirective, ['ENDIF', 'IFEND']) then
+        Dec(mDepth)
+      // Nur unbedingte {$I}: Ein Wächter wie {$IFNDEF X_INC}{$DEFINE X_INC} … {$ENDIF} beendet den Kreis.
+      else if (mDepth = 0) and DirectiveFile(mDirective, mRest, mResource, mFile, mMore) and not mResource and
+        PlainFileName(mFile) then
+      begin
+        if ExtractFileDrive(mFile) = '' then
+          mFile := mFolder + mFile;
+        if Recursive(mFile, AStack + [mKey], mInner) then
+        begin
+          AChain := ExtractFileName(mFound) + ' → ' + mInner;
+          Exit(True);
+        end;
+      end;
+    end;
+  end;
+
+  procedure CheckFile(AIndex: Integer; AResource: Boolean; const AFile, AMore: string);
+  var
+    mChain: string;
+  begin
+    if not PlainFileName(AFile) then
+      Exit;
+    if AResource then
+    begin
+      // {$R Name.res Name.rc}: Die .res entsteht beim Bau aus der .rc; Formulare prüft form-resource-missing.
+      if (AMore <> '') or MatchText(ExtractFileExt(AFile), ['.dfm', '.fmx', '.xfm', '.lfm']) then
+        Exit;
+      // Eine .rc gleichen Namens übersetzt die IDE vor dem Compiler (RcCompile in der .dproj).
+      if Assigned(AContext.FileExists) and AContext.FileExists(ChangeFileExt(AFile, '.rc')) then
+        Exit;
+      if Locate(FileCandidates(AFile, True)) = TRuleUnitAnswer.Missing then
+        AReport.Add(RangeOf(AIndex), Format('Ressourcendatei %s nicht gefunden (wie E1026).', [AFile]));
+      Exit;
+    end;
+    case Locate(FileCandidates(AFile, False)) of
+      TRuleUnitAnswer.Missing:
+        AReport.Add(RangeOf(AIndex), Format('Include-Datei %s nicht gefunden (wie F1026).', [AFile]));
+      TRuleUnitAnswer.Found:
+        if Recursive(AFile, nil, mChain) then
+          AReport.Add(RangeOf(AIndex), Format('Rekursive Include-Datei: %s (wie E2245).', [mChain]));
+    end;
+  end;
+
+  procedure CheckMessage(AIndex: Integer; const ARest: string);
+  var
+    mKind, mText, mAfter: string;
+  begin
+    // {$MESSAGE HINT|WARN 'Text'}; ohne Art und mit ERROR/FATAL noch nicht mit dcc abgeglichen.
+    mKind := UpperCase(FirstArgument(ARest, mText));
+    if (mText = '') or (mText[1] <> '''') then
+      Exit;
+    mText := FirstArgument(mText, mAfter);
+    if mKind = 'WARN' then
+      AReport.AddWithSeverity(RangeOf(AIndex), Format('{$MESSAGE WARN}: %s (wie W1054).', [mText]),
+        TRuleSeverity.Warning, nil)
+    else if mKind = 'HINT' then
+      AReport.AddWithSeverity(RangeOf(AIndex), Format('{$MESSAGE HINT}: %s (wie H1054).', [mText]),
+        TRuleSeverity.Hint, nil);
+  end;
+
+  procedure CheckPackageSwitch(AIndex: Integer; const AName, ARest: string);
+  var
+    mValue, mAfter: string;
+    mOn: Boolean;
+  begin
+    mValue := UpperCase(FirstArgument(ARest, mAfter));
+    if (mValue <> 'ON') and (mValue <> 'OFF') then
+    begin
+      mPackageUnknown := True;
+      Exit;
+    end;
+    mOn := mValue = 'ON';
+    if AName = 'WEAKPACKAGEUNIT' then
+    begin
+      if mOn and mDeny and not mWeak and not mPackageUnknown then
+        AReport.Add(RangeOf(AIndex), '{$WEAKPACKAGEUNIT ON} und {$DENYPACKAGEUNIT ON} schließen sich aus ' +
+          '(wie E2222).');
+      mWeak := mOn;
+    end
+    else
+    begin
+      if mOn and mWeak and not mDeny and not mPackageUnknown then
+        AReport.Add(RangeOf(AIndex), '{$WEAKPACKAGEUNIT ON} und {$DENYPACKAGEUNIT ON} schließen sich aus ' +
+          '(wie E2222).');
+      mDeny := mOn;
+    end;
+  end;
+
+  procedure CheckPackageOnly(AIndex: Integer; const AName, ARest: string);
+  var
+    mValue, mAfter: string;
+  begin
+    if (AContext.Tree.Root = nil) or (AContext.Tree.Root.Kind <> TSyntaxKind.UnitFile) then
+      Exit;
+    mValue := UpperCase(FirstArgument(ARest, mAfter));
+    if (mValue = '') or (mValue = 'ON') then
+      AReport.Add(RangeOf(AIndex), Format('{$%s} ist nur in einem Package (.dpk) erlaubt, nicht in einer Unit ' +
+        '(wie E2224).', [AName]));
+  end;
+
+  /// <summary>Ist ADecl ein globaler, schlichter Alias wie TZahl = Integer (nicht TZahl = type Integer)?</summary>
+  function IsGlobalAlias(ADecl: TSyntaxNode): Boolean;
+  var
+    mTarget: TSyntaxNode;
+    mToken: Integer;
+  begin
+    Result := False;
+    if (ADecl.Parent = nil) or (ADecl.Parent.Kind <> TSyntaxKind.TypeSection) or (ADecl.Parent.Parent = nil) or
+      not (ADecl.Parent.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) or
+      (ADecl.ChildCount <> 1) then
+      Exit;
+    mTarget := ADecl[0];
+    if (mTarget.Kind <> TSyntaxKind.TypeReference) or (mTarget.ChildCount > 0) or
+      MatchText(mTarget.Name, ['', 'string', 'file', 'const']) then
+      Exit;
+    mToken := AContext.Tree.FirstTokenFrom(mTarget.StartOffset) - 1;
+    while (mToken >= 0) and (mTokens[mToken].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      Dec(mToken);
+    Result := (mToken >= 0) and (mTokens[mToken].Text = '=');
+  end;
+
+  procedure CheckObjTypeName(AIndex: Integer; const ARest: string);
+  var
+    mName, mAfter: string;
+    mDecls, mPending: TArray<TSyntaxNode>;
+    mDecl, mNode: TSyntaxNode;
+    mChild: Integer;
+  begin
+    mName := FirstArgument(ARest, mAfter);
+    if not IsValidIdent(mName) then
+      Exit;
+    // Iterativ (Bericht M1); Typen stehen nicht in Anweisungen.
+    mDecls := nil;
+    mPending := [AContext.Tree.Root];
+    while mPending <> nil do
+    begin
+      mNode := mPending[High(mPending)];
+      SetLength(mPending, Length(mPending) - 1);
+      if (mNode.Kind = TSyntaxKind.TypeDecl) and SameText(mNode.Name, mName) then
+        mDecls := mDecls + [mNode];
+      if not (mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock]) then
+        for mChild := 0 to mNode.ChildCount - 1 do
+          mPending := mPending + [mNode[mChild]];
+    end;
+    if mDecls = nil then
+      Exit;
+    for mDecl in mDecls do
+      if not IsGlobalAlias(mDecl) then
+        Exit;
+    AReport.Add(RangeOf(AIndex), Format('{$OBJTYPENAME} gilt nicht für den Alias %s; erlaubt sind nur globale ' +
+      'Typen, die kein Alias sind (wie E2560).', [mName]));
+  end;
+
+  procedure CheckCodePage(AIndex: Integer; const ARest: string);
+  var
+    mValue, mAfter: string;
+    mNumber: Int64;
+  begin
+    // Codepages sind 16 Bit groß; welche installiert sind, weiß nur der Rechner, der übersetzt (E2424).
+    mValue := FirstArgument(ARest, mAfter);
+    if TryStrToInt64(mValue, mNumber) and (mNumber > 65535) then
+      AReport.Add(RangeOf(AIndex), Format('%s ist keine Codepage für {$CODEPAGE} (wie E1030).', [mValue]));
+  end;
+
+  procedure Visit(AIndex: Integer);
+  var
+    mBody, mName, mRest, mFile, mMore: string;
+    mResource: Boolean;
+  begin
+    mBody := TDirectiveNames.Body(mTokens[AIndex].Text);
+    mName := UpperCase(TDirectiveNames.LeadingName(mBody));
+    mRest := Trim(Copy(mBody, Length(mName) + 1, MaxInt));
+    if (mName = 'WEAKPACKAGEUNIT') or (mName = 'DENYPACKAGEUNIT') then
+    begin
+      // Was in bedingten Zweigen steht, wird vielleicht nicht übersetzt: dann ohne Aussage.
+      if TConditionalBranches.PathAt(mPaths, AIndex) <> '' then
+        mPackageUnknown := True
+      else
+        CheckPackageSwitch(AIndex, mName, mRest);
+      Exit;
+    end;
+    if TConditionalBranches.PathAt(mPaths, AIndex) <> '' then
+      Exit;
+    if DirectiveFile(mName, mRest, mResource, mFile, mMore) then
+      CheckFile(AIndex, mResource, mFile, mMore)
+    else if mName = 'MESSAGE' then
+      CheckMessage(AIndex, mRest)
+    else if (mName = 'DESIGNONLY') or (mName = 'RUNONLY') then
+      CheckPackageOnly(AIndex, mName, mRest)
+    else if mName = 'OBJTYPENAME' then
+      CheckObjTypeName(AIndex, mRest)
+    else if mName = 'CODEPAGE' then
+      CheckCodePage(AIndex, mRest);
+  end;
+
+begin
+  if (AContext.Tree = nil) or (Pos('$', AContext.Text) = 0) then
+    Exit;
+  mTokens := AContext.Tree.Tokens;
+  mPaths := TConditionalBranches.Paths(mTokens);
+  mWeak := False;
+  mDeny := False;
+  mPackageUnknown := False;
+  for mIndex := 0 to High(mTokens) do
+    if mTokens[mIndex].Kind = TPascalTokenKind.Directive then
+      Visit(mIndex);
+end;
+
 procedure RegisterDirectiveRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TConditionalDirectiveUnbalancedRule.Create);
   ARegistry.Register(TDirectiveTypoRule.Create);
   ARegistry.Register(TCompilerWarningsDisabledRule.Create);
+  ARegistry.Register(TCompilerDirectiveInvalidRule.Create);
 end;
 
 end.
