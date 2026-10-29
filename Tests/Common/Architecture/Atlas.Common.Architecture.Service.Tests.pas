@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Architecture.Service.Tests;
 
 // Tests des Architekturdienstes (#1118): Umfang über Dateien, Bibliothek,
-// Ausschlüsse, Zwischenspeicher je Index-Generation und Anfrage.
+// Ausschlüsse, Zwischenspeicher je Index-Generation und Anfrage; Zuordnung
+// erklären ohne neue Rechnung (#1368).
 
 interface
 
@@ -22,6 +23,8 @@ type
     procedure RequestFromSettings;
     [Test]
     procedure SkipsPackagesKeepsPrograms;
+    [Test]
+    procedure ExplainAssignmentWithoutRecompute;
   end;
 
 function NoReader(const AFileName: string; out AText: string): Boolean;
@@ -188,6 +191,40 @@ begin
   Assert.AreEqual(20, Request.CentralUnits);
   Assert.AreEqual('Tests/**', Request.Exclude[0]);
   Assert.AreNotEqual(Request.Key, TArchitectureRequest.FromSettings(TServerSettings.Default).Key);
+  // Zuordnung erklären (#1368): nur Ausgabe, nicht im Schlüssel.
+  Assert.IsTrue(TArchitectureRequest.FromSettings(TServerSettings.Default).ExplainAssignment);
+  Settings := TServerSettings.Default;
+  Settings.ArchitectureExplainAssignment := False;
+  Request := TArchitectureRequest.FromSettings(Settings);
+  Assert.IsFalse(Request.ExplainAssignment);
+  Assert.AreEqual(TArchitectureRequest.FromSettings(TServerSettings.Default).Key, Request.Key);
+end;
+
+procedure TArchitectureServiceTests.ExplainAssignmentWithoutRecompute;
+var
+  mIndex: ISymbolIndex;
+  mService: TArchitectureService;
+  mRequest: TArchitectureRequest;
+  mOverview: TArchitectureOverview;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(UsesUnit('App.Data', nil, nil));
+  mIndex.AddUnit(UsesUnit('App.Main', ['App.Data'], nil));
+  mService := NewService(mIndex);
+  try
+    mRequest := Default(TArchitectureRequest);
+    mRequest.ExplainAssignment := True;
+    mOverview := mService.Overview(mRequest);
+    Assert.IsTrue(mOverview.ShowsAssignment);
+    mRequest.ExplainAssignment := False;
+    mOverview := mService.Overview(mRequest);
+    Assert.IsFalse(mOverview.ShowsAssignment);
+    // Die Daten bleiben (Ausreißer lesen sie), nur die Ausgabe fällt weg.
+    Assert.AreEqual(2, Integer(Length(mOverview.Assignments)));
+    Assert.AreEqual(1, mService.Computations);
+  finally
+    mService.Free;
+  end;
 end;
 
 procedure TArchitectureServiceTests.SkipsPackagesKeepsPrograms;
