@@ -182,6 +182,12 @@ begin
           Result := False;
       end;
     end;
+  // Fehlende Dateien aus {$I} und {$R} (#1379).
+  AContext.FileExists :=
+    function(const AName: string): Boolean
+    begin
+      Result := TFile.Exists(TPath.Combine(Folder, AName));
+    end;
 end;
 
 { TCheckSource }

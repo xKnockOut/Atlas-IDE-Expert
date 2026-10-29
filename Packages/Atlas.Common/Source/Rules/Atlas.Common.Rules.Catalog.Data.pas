@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4576] of string = (
+  BaseLines: array[0..4616] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -854,7 +854,7 @@ const
     '      "severity": "warning",',
     '      "group": "find-bugs",',
     '      "description": "An interface declares no GUID. Supports, as and QueryInterface need one. The confidence is high when the interface is used with them in the same file, otherwise low. The quick fi' +
-    'x inserts a new GUID.",',
+    'x inserts a new GUID. A dispinterface without GUID does not compile; dispinterface-invalid reports it.",',
     '      "bad": "type\n  ISaver = interface\n    procedure Save;\n  end;",',
     '      "good": "type\n  ISaver = interface\n    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']\n    procedure Save;\n  end;"',
     '    },',
@@ -3051,10 +3051,10 @@ const
     '      "group": "compiler",',
     '      "description": "A unit in uses or contains is found neither in the project nor in the folders the compiler searches: folder of the using file, project folder, search paths and DCU output folder ' +
     'of the .dproj, library paths of the installation, each as .pas or .dcu and with every unit scope name in front (SysUtils → System.SysUtils); in packages also the units of the required packages (like F' +
-    '2613). Also reported: a file from in ''…'' that does not exist (F1026), a package from requires found neither as .dpk nor as .dcp (E2202), a unit that uses itself (F2092), and once a missing unit System' +
-    ', i.e. a missing library path, instead of one finding per unit (F1027). Entries inside {$IF} blocks are skipped; without a known installation, with an open macro in a search path or with a required pa' +
-    'ckage of unknown content the rule stays silent. The message names similar units. Quick fixes: use the unit with its namespace (Forms → Vcl.Forms) or a similarly written unit, or add the folder below t' +
-    'he project that holds the unit to DCC_UnitSearchPath of the base configuration in the .dproj.",',
+    '2613). Also reported: a file from in ''…'' that does not exist (F1026, also without a project, since only the path relative to the using file counts), a package from requires found neither as .dpk nor a' +
+    's .dcp (E2202), a unit that uses itself (F2092), and once a missing unit System, i.e. a missing library path, instead of one finding per unit (F1027). Entries inside {$IF} blocks are skipped; without ' +
+    'a known installation, with an open macro in a search path or with a required package of unknown content the rule stays silent. The message names similar units. Quick fixes: use the unit with its names' +
+    'pace (Forms → Vcl.Forms) or a similarly written unit, or add the folder below the project that holds the unit to DCC_UnitSearchPath of the base configuration in the .dproj.",',
     '      "bad": "uses\n  System.SysUtils, Vcl.Forms, Kunden.Daten, Rechnungs.Druck;",',
     '      "good": "uses\n  System.SysUtils, Vcl.Forms, Kunden.Daten, Rechnung.Druck;",',
     '      "compilerCodes": [',
@@ -3081,16 +3081,17 @@ const
     '      "category": "bug",',
     '      "severity": "error",',
     '      "group": "compiler",',
-    '      "description": "An attribute [Name] resolves neither to a class NameAttribute nor to Name, usually because a unit is missing in uses. Delphi only warns (W1074) and skips the attribute: DUnitX te' +
-    'sts do not run, JSON or ORM mappings are missing. The message names the unit that declares the attribute in the index; a facade unit that passes the type on from another candidate (DUnitX.TestFramewor' +
-    'k instead of DUnitX.Attributes) comes first, and the DUnitX attributes are known even without DUnitX in the index. Compiler attributes such as Weak, Unsafe, Ref and Volatile always count. Silent witho' +
-    'ut the unit System in the index, when a unit from uses is not in the index (it could declare the attribute), inside {$IF} blocks and when an ancestor of the surrounding class is unknown; with include ' +
-    'files the confidence is medium. Quick fix: add the unit to uses.",',
+    '      "description": "An attribute [Name] resolves neither to a class NameAttribute nor to Name, usually because a unit is missing in uses. Delphi only warns (W1074, E1074 after {$WARN UNKNOWN_CUSTOM_' +
+    'ATTRIBUTE ERROR}) and skips the attribute: DUnitX tests do not run, JSON or ORM mappings are missing. The message names the unit that declares the attribute in the index; a facade unit that passes the' +
+    ' type on from another candidate (DUnitX.TestFramework instead of DUnitX.Attributes) comes first, and the DUnitX attributes are known even without DUnitX in the index. Compiler attributes such as Weak,' +
+    ' Unsafe, Ref and Volatile always count. Silent without the unit System in the index, when a unit from uses is not in the index (it could declare the attribute), inside {$IF} blocks and when an ancesto' +
+    'r of the surrounding class is unknown; with include files the confidence is medium. Quick fix: add the unit to uses.",',
     '      "bad": "uses\n  System.SysUtils;\ntype\n  [TestFixture]\n  TKundeTests = class",',
     '      "good": "uses\n  System.SysUtils, DUnitX.TestFramework;\ntype\n  [TestFixture]\n  TKundeTests = class",',
     '      "compilerCodes": [',
     '        "W1074",',
-    '        "E2289"',
+    '        "E2289",',
+    '        "E1074"',
     '      ],',
     '      "level": "B"',
     '    },',
@@ -3211,6 +3212,35 @@ const
     '        "W1078",',
     '        "W1079",',
     '        "E2573"',
+    '      ],',
+    '      "level": "A"',
+    '    },',
+    '    {',
+    '      "id": "compiler-directive-invalid",',
+    '      "name": "Compiler directive invalid or file from {$I}/{$R} missing",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A compiler directive outside conditional branches that dcc rejects or reports itself: {$MESSAGE WARN ''Text''} and {$MESSAGE HINT ''Text''} show their text as a warning or hint (like' +
+    ' W1054, H1054); {$WEAKPACKAGEUNIT ON} together with {$DENYPACKAGEUNIT ON} (like E2222); {$DESIGNONLY} or {$RUNONLY} in a unit instead of a package (like E2224); {$OBJTYPENAME} for a plain alias such a' +
+    's TZahl = Integer (like E2560); {$CODEPAGE} with a number above 65535 (like E1030); a file from {$I} or {$INCLUDE} that exists neither next to the unit nor in the search paths of the project (like F10' +
+    '26); an include file that includes itself through unconditional {$I}, directly or via other include files (like E2245); a resource file from {$R} or {$RESOURCE} that cannot be found (like E1026). File' +
+    's are searched like dcc does: next to the unit, in the project folder, the search paths, DCC_IncludePath, DCC_ResourcePath and the library paths of the installation; without a project, with an unknown' +
+    ' installation or an open macro in a path the rule stays silent. Not checked: {$R Name.res Name.rc} and a .res next to a .rc of the same name (the IDE compiles it before the compiler), forms ({$R *.dfm' +
+    '}, form-resource-missing), masks such as {$R *.res}, switches such as {$I+} and {$R-}, and {$MESSAGE} without a kind or with ERROR or FATAL. Directives in conditional branches are skipped, because dcc' +
+    ' only reports those it compiles.",',
+    '      "bad": "unit Kunden;\n\n{$I Gemeinsam.inc}\n{$DESIGNONLY}\n\ninterface",',
+    '      "good": "unit Kunden;\n\n{$I Gemeinsam.inc}\n\ninterface",',
+    '      "compilerCodes": [',
+    '        "W1054",',
+    '        "H1054",',
+    '        "E2222",',
+    '        "E2224",',
+    '        "E2560",',
+    '        "E1030",',
+    '        "F1026",',
+    '        "E2245",',
+    '        "E1026"',
     '      ],',
     '      "level": "A"',
     '    },',
@@ -4299,6 +4329,25 @@ const
     '      "level": "A"',
     '    },',
     '    {',
+    '      "id": "dispinterface-invalid",',
+    '      "name": "Invalid dispinterface declaration",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A dispinterface breaks one of its fixed rules: no ancestor in parentheses (like E2228), a GUID is required (like E2229), methods take no directives except dispid and the hints de' +
+    'precated, platform, library and experimental (like E2230; reported are calling conventions and binding directives such as virtual, overload stays silent) and properties take no read or write (like E22' +
+    '31; use readonly, writeonly or dispid). Forward declarations and declarations in conditional branches stay silent. Quick fixes: remove the ancestor, insert a GUID, remove the directive.",',
+    '      "bad": "DAnzeige = dispinterface(IBasis) [''{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A2228}''] procedure Machen; stdcall; dispid 1; end;",',
+    '      "good": "DAnzeige = dispinterface [''{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A2228}''] procedure Machen; dispid 1; end;",',
+    '      "compilerCodes": [',
+    '        "E2228",',
+    '        "E2229",',
+    '        "E2230",',
+    '        "E2231"',
+    '      ],',
+    '      "level": "A"',
+    '    },',
+    '    {',
     '      "id": "abstract-declaration-invalid",',
     '      "name": "abstract, final or static combined wrongly",',
     '      "category": "bug",',
@@ -5332,7 +5381,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2125] of string = (
+  OverlayLines_de: array[0..2135] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -5780,7 +5829,7 @@ const
     '      "id": "interface-guid",',
     '      "name": "Interface ohne GUID",',
     '      "description": "Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst nied' +
-    'rig. Die Schnellkorrektur fügt eine neue GUID ein."',
+    'rig. Die Schnellkorrektur fügt eine neue GUID ein. Ein dispinterface ohne GUID übersetzt nicht; das meldet dispinterface-invalid."',
     '    },',
     '    {',
     '      "id": "duplicate-interface-guid",',
@@ -7092,10 +7141,11 @@ const
     '      "name": "Unit in uses nicht gefunden",',
     '      "description": "Eine Unit aus uses oder contains liegt weder im Projekt noch in den Ordnern, die der Compiler durchsucht: Ordner der verwendenden Datei, Projektordner, Suchpfade und DCU-Ausgabeo' +
     'rdner der .dproj, Bibliothekspfade der Installation, jeweils als .pas oder .dcu und mit jedem Unit-Namespace davor (SysUtils → System.SysUtils); bei Packages zusätzlich die Units der requires-Packages' +
-    ' (wie F2613). Ebenso gemeldet: eine Datei aus in ''…'', die es nicht gibt (F1026), ein Package aus requires, das weder als .dpk noch als .dcp gefunden wird (E2202), eine Unit, die sich selbst einbindet ' +
-    '(F2092), und einmal eine fehlende Unit System, also ein fehlender Bibliothekspfad, statt einer Meldung je Unit (F1027). Einträge in {$IF}-Blöcken werden übergangen; ohne bekannte Installation, mit off' +
-    'enem Makro in einem Suchpfad oder einem requires-Package mit unbekanntem Inhalt bleibt die Regel still. Die Meldung nennt ähnliche Units. Korrekturen: die Unit mit Namespace (Forms → Vcl.Forms) bzw. e' +
-    'ine ähnlich geschriebene einsetzen oder den Ordner unter dem Projekt, in dem die Unit liegt, in DCC_UnitSearchPath der Basiskonfiguration der .dproj aufnehmen.",',
+    ' (wie F2613). Ebenso gemeldet: eine Datei aus in ''…'', die es nicht gibt (F1026, auch ohne Projekt, denn es zählt nur der Pfad relativ zur verwendenden Datei), ein Package aus requires, das weder als .' +
+    'dpk noch als .dcp gefunden wird (E2202), eine Unit, die sich selbst einbindet (F2092), und einmal eine fehlende Unit System, also ein fehlender Bibliothekspfad, statt einer Meldung je Unit (F1027). Ei' +
+    'nträge in {$IF}-Blöcken werden übergangen; ohne bekannte Installation, mit offenem Makro in einem Suchpfad oder einem requires-Package mit unbekanntem Inhalt bleibt die Regel still. Die Meldung nennt ' +
+    'ähnliche Units. Korrekturen: die Unit mit Namespace (Forms → Vcl.Forms) bzw. eine ähnlich geschriebene einsetzen oder den Ordner unter dem Projekt, in dem die Unit liegt, in DCC_UnitSearchPath der Bas' +
+    'iskonfiguration der .dproj aufnehmen.",',
     '      "options": [',
     '        {',
     '          "name": "searchPaths",',
@@ -7107,11 +7157,11 @@ const
     '    {',
     '      "id": "unresolved-attribute",',
     '      "name": "Attribut nicht gefunden und still ignoriert",',
-    '      "description": "Ein Attribut [Name] lässt sich weder einer Klasse NameAttribute noch Name zuordnen, meist weil eine Unit in uses fehlt. Delphi warnt nur (W1074) und übergeht das Attribut: DUnitX' +
-    '-Tests laufen dann nicht, JSON- oder ORM-Zuordnungen fehlen. Die Meldung nennt die Unit, die das Attribut im Index deklariert; eine Fassaden-Unit, die den Typ aus einer anderen Kandidatin weiterreicht' +
-    ' (DUnitX.TestFramework statt DUnitX.Attributes), geht vor, und die DUnitX-Attribute sind auch ohne DUnitX im Index bekannt. Attribute des Compilers wie Weak, Unsafe, Ref und Volatile zählen immer. Sti' +
-    'll ohne die Unit System im Index, wenn eine Unit aus uses nicht im Index steht (sie könnte das Attribut deklarieren), in {$IF}-Blöcken und bei unbekanntem Vorfahren der umgebenden Klasse; mit Include-' +
-    'Dateien ist die Konfidenz mittel. Korrektur: Unit in uses aufnehmen."',
+    '      "description": "Ein Attribut [Name] lässt sich weder einer Klasse NameAttribute noch Name zuordnen, meist weil eine Unit in uses fehlt. Delphi warnt nur (W1074, nach {$WARN UNKNOWN_CUSTOM_ATTRIB' +
+    'UTE ERROR} E1074) und übergeht das Attribut: DUnitX-Tests laufen dann nicht, JSON- oder ORM-Zuordnungen fehlen. Die Meldung nennt die Unit, die das Attribut im Index deklariert; eine Fassaden-Unit, di' +
+    'e den Typ aus einer anderen Kandidatin weiterreicht (DUnitX.TestFramework statt DUnitX.Attributes), geht vor, und die DUnitX-Attribute sind auch ohne DUnitX im Index bekannt. Attribute des Compilers w' +
+    'ie Weak, Unsafe, Ref und Volatile zählen immer. Still ohne die Unit System im Index, wenn eine Unit aus uses nicht im Index steht (sie könnte das Attribut deklarieren), in {$IF}-Blöcken und bei unbeka' +
+    'nntem Vorfahren der umgebenden Klasse; mit Include-Dateien ist die Konfidenz mittel. Korrektur: Unit in uses aufnehmen."',
     '    },',
     '    {',
     '      "id": "comparison-as-statement",',
@@ -7166,6 +7216,18 @@ const
     'WARN}-Bezeichner (wie W1030), mit dem nächstliegenden bekannten Namen als Korrektur; {$POPOPT} ohne {$PUSHOPT} (wie W1078) oder {$PUSHOPT} ohne {$POPOPT} (wie W1079); ein ungültiger Wert für {$ALIGN} ' +
     'bzw. {$A} (wie E2573). Unbekannte Namen prüft die Regel nicht in Zweigen, deren Bedingung FPC abfragt, {$PUSHOPT}/{$POPOPT} nur, wenn keines davon in einem bedingten Zweig steht. Korrekturen: {$ENDIF}' +
     ' vor der ersten Leerzeile hinter dem offenen Block ergänzen, überzählige Direktive entfernen, Tippfehler korrigieren."',
+    '    },',
+    '    {',
+    '      "id": "compiler-directive-invalid",',
+    '      "name": "Compileranweisung ungültig oder Datei aus {$I}/{$R} fehlt",',
+    '      "description": "Eine Compileranweisung außerhalb bedingter Zweige, die dcc ablehnt oder selbst meldet: {$MESSAGE WARN ''Text''} und {$MESSAGE HINT ''Text''} zeigen ihren Text als Warnung bzw. Hinwei' +
+    's (wie W1054, H1054); {$WEAKPACKAGEUNIT ON} zusammen mit {$DENYPACKAGEUNIT ON} (wie E2222); {$DESIGNONLY} oder {$RUNONLY} in einer Unit statt in einem Package (wie E2224); {$OBJTYPENAME} für einen sch' +
+    'lichten Alias wie TZahl = Integer (wie E2560); {$CODEPAGE} mit einer Zahl über 65535 (wie E1030); eine Datei aus {$I} bzw. {$INCLUDE}, die es weder neben der Unit noch in den Suchpfaden des Projekts g' +
+    'ibt (wie F1026); eine Include-Datei, die sich über unbedingte {$I} selbst einbindet, direkt oder über weitere Include-Dateien (wie E2245); eine Ressourcendatei aus {$R} bzw. {$RESOURCE}, die sich nich' +
+    't finden lässt (wie E1026). Dateien sucht die Regel wie dcc: neben der Unit, im Projektordner, in den Suchpfaden, DCC_IncludePath, DCC_ResourcePath und den Bibliothekspfaden der Installation; ohne Pro' +
+    'jekt, mit unbekannter Installation oder offenem Makro in einem Pfad bleibt sie still. Nicht geprüft: {$R Name.res Name.rc} und eine .res neben einer gleichnamigen .rc (die IDE übersetzt sie vor dem Co' +
+    'mpiler), Formulare ({$R *.dfm}, form-resource-missing), Masken wie {$R *.res}, Schalter wie {$I+} und {$R-} sowie {$MESSAGE} ohne Art oder mit ERROR bzw. FATAL. Direktiven in bedingten Zweigen übergeh' +
+    't die Regel, denn dcc meldet nur, was es übersetzt."',
     '    },',
     '    {',
     '      "id": "override-target-missing",',
@@ -7712,6 +7774,14 @@ const
     '      "description": "Der Compiler schreibt hier die Aufrufkonvention vor: Konstruktoren und Destruktoren einer Klasse nur mit register (wie E2236), Getter und Setter von published-Properties ebenso (' +
     'wie E2270) und varargs nur mit cdecl (wie E2277 bei external-Routinen, sonst E2591). Ein ausdrückliches register ist in Ordnung; Klassenkonstruktoren, Accessoren außerhalb von published-Abschnitten un' +
     'd geerbte Accessoren bleiben still. Korrektur: die Konvention in der Deklaration und im Rumpf derselben Datei entfernen bzw. bei varargs cdecl setzen."',
+    '    },',
+    '    {',
+    '      "id": "dispinterface-invalid",',
+    '      "name": "dispinterface-Deklaration unzulässig",',
+    '      "description": "Ein dispinterface verletzt eine seiner festen Regeln: kein Vorfahr in Klammern (wie E2228), eine GUID ist Pflicht (wie E2229), Methoden tragen keine Direktiven außer dispid und d' +
+    'en Hinweisen deprecated, platform, library und experimental (wie E2230; gemeldet werden Aufrufkonventionen und Bindungsdirektiven wie virtual, overload bleibt still) und Properties kein read oder writ' +
+    'e (wie E2231; stattdessen readonly, writeonly oder dispid). Vorwärtsdeklarationen und Deklarationen in bedingten Zweigen bleiben still. Korrekturen: Vorfahren entfernen, GUID einfügen, Direktive entfe' +
+    'rnen."',
     '    },',
     '    {',
     '      "id": "abstract-declaration-invalid",',

@@ -673,8 +673,9 @@ begin
   mTests := TArray<TAffectedTest>.Create(Fake('b.X', 'b', 'X'), Fake('a.Y', 'a', 'Y'), Fake('A.y', 'A', 'y'),
     Fake('a.x', 'a', 'x'));
   TAffectedTests.Sort(mTests);
-  Assert.AreEqual('A.y', mTests[0].Name);
-  Assert.AreEqual('a.x', mTests[1].Name);
+  // Ohne Groß-/Kleinschreibung a.x < a.y < b.x; Gleichstand (A.y, a.Y) ordinal.
+  Assert.AreEqual('a.x', mTests[0].Name);
+  Assert.AreEqual('A.y', mTests[1].Name);
   Assert.AreEqual('a.Y', mTests[2].Name);
   Assert.AreEqual('b.X', mTests[3].Name);
 end;

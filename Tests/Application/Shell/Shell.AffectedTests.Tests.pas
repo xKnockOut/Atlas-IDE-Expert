@@ -75,7 +75,7 @@ var
   mPrograms: TArray<string>;
 begin
   mPrograms := TShellAffectedTests.TestPrograms(TArray<string>.Create('C:\P\App.dpr', 'C:\P\Tests.dpr',
-    'C:\P\Kasse.pas', 'C:\P\Fehlt.dpr'), ReadText);
+    'C:\P\Kasse.pas', 'C:\P\Fehlt.dpr'), ReadText());
   Assert.AreEqual(1, Integer(Length(mPrograms)));
   Assert.AreEqual('C:\P\Tests.dpr', mPrograms[0]);
 end;
@@ -85,7 +85,7 @@ var
   mScope: TImpactTestScope;
 begin
   mScope := TShellAffectedTests.TestScope('{unit}.Tests', TArray<string>.Create('C:\P\Tests.dpr', 'C:\P\Mehr.dpr'),
-    ReadText);
+    ReadText());
   Assert.IsTrue(mScope.Contains('Kasse.Tests'));
   // Nicht nach dem Muster benannt, aber im zweiten Testprogramm eingebunden.
   Assert.IsTrue(mScope.Contains('Pruefung.Spezial'));
@@ -106,7 +106,7 @@ begin
   mMessage := '';
   try
     // Vor jedem Aufruf von git oder svn: Prozess, Index und Resolver bleiben unbenutzt.
-    TShellAffectedTests.Run(nil, mSettings, mQuery, nil, nil, mRequest, ReadText, nil);
+    TShellAffectedTests.Run(nil, mSettings, mQuery, nil, nil, mRequest, ReadText(), nil);
   except
     on E: EAffectedTestsOff do
       mMessage := E.Message;
