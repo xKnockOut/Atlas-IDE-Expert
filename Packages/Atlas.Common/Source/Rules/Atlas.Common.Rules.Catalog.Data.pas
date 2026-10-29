@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4632] of string = (
+  BaseLines: array[0..4660] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -4065,6 +4065,45 @@ const
     '      "level": "T"',
     '    },',
     '    {',
+    '      "id": "string-conversion",',
+    '      "name": "Conversion between Unicode and ANSI strings",',
+    '      "category": "bug",',
+    '      "severity": "warning",',
+    '      "group": "compiler",',
+    '      "description": "Implicit and explicit conversions between string, UnicodeString or WideString on one side and AnsiString, RawByteString or UTF8String on the other, like the compiler warnings: im' +
+    'plicit to string (like W1057) or to AnsiString with possible data loss (like W1058) in assignments, inline variables with a type and arguments for value and const parameters of routines without overlo' +
+    'ads; explicit casts string(A) (like W1059) and AnsiString(S) (like W1060); a string constant with characters the ANSI code page does not know assigned to an AnsiString (like W1058 and W1062); a WideCh' +
+    'ar in a set expression of character literals such as C in [''0''..''9''] (like W1050); changing a character of a string directly (S[1] := ''x'', like W1068). Like dcc, W1059, W1060 and W1068 are only report' +
+    'ed after {$WARN EXPLICIT_STRING_CAST ON}, {$WARN EXPLICIT_STRING_CAST_LOSS ON} or {$WARN IMMUTABLE_STRINGS ON}; {$WARN ... OFF} and {$WARNINGS OFF} silence the rule from their position, {$WARN ... ERR' +
+    'OR} reports an error. Only reported when both types are known for sure (variables, fields, properties, function results and typed constants of the built-in string types from System, also via a plain a' +
+    'lias) and their declarations are always compiled with the statement. Silent: concatenations, casts as source, conversions between two ANSI types (AnsiString, RawByteString, UTF8String; dcc converts by' +
+    ' code page), own string types such as type AnsiString(28591), {$H-} and Delphi before 2009. W1062 depends on the ANSI code page of the compiling machine (option ansiCodePage, default 1252; 0 turns thi' +
+    's check off); only characters Windows does not map to a best-fit replacement are reported: Hebrew to Thai, Hangul, kana and CJK, symbols and dingbats U+2600-U+27BF and characters outside the BMP (emoj' +
+    'i). Project options of the .dproj (DCC_IMPLICIT_STRING_CAST = false, true or error and the like) count as with dcc. Quick fixes: convert explicitly (string(A), AnsiString(S)); use CharInSet and add Sy' +
+    'stem.SysUtils to uses.",',
+    '      "bad": "function IstZiffer(const Zeichen: Char): Boolean;\nbegin\n  Result := Zeichen in [''0''..''9''];\nend;",',
+    '      "good": "function IstZiffer(const Zeichen: Char): Boolean;\nbegin\n  Result := CharInSet(Zeichen, [''0''..''9'']);\nend;",',
+    '      "compilerCodes": [',
+    '        "W1050",',
+    '        "W1057",',
+    '        "W1058",',
+    '        "W1059",',
+    '        "W1060",',
+    '        "W1062",',
+    '        "W1068"',
+    '      ],',
+    '      "options": [',
+    '        {',
+    '          "name": "ansiCodePage",',
+    '          "type": "integer",',
+    '          "default": 1252,',
+    '          "description": "ANSI code page of the machine that compiles; characters it surely lacks are reported like W1062 when assigned to an AnsiString. Only 1252 is known; 0 or another value turns t' +
+    'his check off."',
+    '        }',
+    '      ],',
+    '      "level": "T"',
+    '    },',
+    '    {',
     '      "id": "unsafe-code",',
     '      "name": "Unsafe code",',
     '      "category": "code-smell",',
@@ -5401,7 +5440,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2140] of string = (
+  OverlayLines_de: array[0..2151] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -7656,6 +7695,28 @@ const
     'n nicht zusammen, typisch nach der Unicode-Umstellung; die API liest dann Datenmüll bzw. nur das erste Zeichen. Gemeldet wird nur bei sicher bekanntem Typ des Arguments, dessen Deklaration immer mit d' +
     'er Umwandlung übersetzt wird. string(PAnsiChar) wandelt korrekt um, ein Zeiger auf TBytes kann gewollt sein; beides meldet die Regel nicht. Korrekturen: eigene Variable mit passendem Stringtyp deklari' +
     'eren (PChar(Pfad) mit Pfad: AnsiString wird Pfad: string), string(…) bzw. AnsiString(…) um das Argument, passenden Zeigertyp verwenden."',
+    '    },',
+    '    {',
+    '      "id": "string-conversion",',
+    '      "name": "Umwandlung zwischen Unicode- und ANSI-Strings",',
+    '      "description": "Implizite und ausdrückliche Umwandlungen zwischen string, UnicodeString oder WideString auf der einen und AnsiString, RawByteString oder UTF8String auf der anderen Seite, wie die' +
+    ' Compilerwarnungen: implizit in string (wie W1057) bzw. in AnsiString mit möglichem Datenverlust (wie W1058) bei Zuweisungen, Inline-Variablen mit Typ und Argumenten für Wert- und const-Parameter von ' +
+    'Routinen ohne Überladungen; ausdrückliche Umwandlungen string(A) (wie W1059) und AnsiString(S) (wie W1060); eine Stringkonstante mit Zeichen, die die ANSI-Codepage nicht kennt, an einen AnsiString (wi' +
+    'e W1058 und W1062); ein WideChar in einem Mengenausdruck aus Zeichenliteralen wie C in [''0''..''9''] (wie W1050); ein Zeichen eines string direkt ändern (S[1] := ''x'', wie W1068). Wie bei dcc meldet die R' +
+    'egel W1059, W1060 und W1068 nur nach {$WARN EXPLICIT_STRING_CAST ON}, {$WARN EXPLICIT_STRING_CAST_LOSS ON} bzw. {$WARN IMMUTABLE_STRINGS ON}; {$WARN … OFF} und {$WARNINGS OFF} schalten sie ab ihrer St' +
+    'elle ab, {$WARN … ERROR} meldet einen Fehler. Gemeldet wird nur, wenn beide Typen sicher bekannt sind (Variablen, Felder, Properties, Funktionsergebnisse und typisierte Konstanten der eingebauten Stri' +
+    'ngtypen aus System, auch über einen einfachen Alias) und ihre Deklarationen immer mit der Anweisung übersetzt werden. Still bleiben: Verkettungen, Umwandlungen als Quelle, Umwandlungen zwischen zwei A' +
+    'NSI-Typen (AnsiString, RawByteString, UTF8String; dcc wandelt nach Codepage um), eigene Stringtypen wie type AnsiString(28591), {$H-} und Delphi vor 2009. W1062 hängt von der ANSI-Codepage des überset' +
+    'zenden Rechners ab (Option ansiCodePage, Vorgabe 1252; 0 schaltet diese Prüfung ab); gemeldet werden nur Zeichen, die Windows auch nicht ersatzweise abbildet: Hebräisch bis Thai, Hangul, Kana und CJK,' +
+    ' Symbole und Dingbats U+2600–U+27BF und Zeichen außerhalb der BMP (Emoji). Projektoptionen der .dproj (DCC_IMPLICIT_STRING_CAST = false, true oder error usw.) gelten wie bei dcc. Korrekturen: ausdrück' +
+    'lich umwandeln (string(A), AnsiString(S)); CharInSet verwenden und System.SysUtils in uses eintragen.",',
+    '      "options": [',
+    '        {',
+    '          "name": "ansiCodePage",',
+    '          "description": "ANSI-Codepage des Rechners, der übersetzt; Zeichen, die ihr sicher fehlen, meldet die Regel wie W1062, wenn sie an einen AnsiString gehen. Bekannt ist nur 1252; 0 oder ein an' +
+    'derer Wert schaltet diese Prüfung ab."',
+    '        }',
+    '      ]',
     '    },',
     '    {',
     '      "id": "unsafe-code",',
