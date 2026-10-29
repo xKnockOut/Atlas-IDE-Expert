@@ -16,6 +16,7 @@ uses
   // Datengrundlage jeder Regel und hängt selbst nur an Contracts.
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Query.Contract,
   Atlas.Common.Semantics.Contract;
 
 type
@@ -344,6 +345,9 @@ type
     /// TRuleEngine.Run.</summary>
     SortUses: Boolean;
     SortUsesByNamespace: Boolean;
+    /// <summary>Code-Abfragen des Arbeitsbereichs (#1351) für die Regeln query:<name>; nil = keine, gespeicherte
+    /// Abfragen mit failIfAny laufen dann nicht.</summary>
+    Queries: ICodeQueries;
   end;
 
   /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,
@@ -365,6 +369,8 @@ type
     ProjectFiles: IRuleProjectFiles;
     /// <summary>Präfixe der Projektdatei .atlas (#1111); leer = unbekannt.</summary>
     Naming: TRuleNaming;
+    /// <summary>Code-Abfragen des Arbeitsbereichs (#1351); nil = keine.</summary>
+    Queries: ICodeQueries;
     /// <summary>Trägt die Dienste in AContext ein.</summary>
     procedure ApplyTo(var AContext: TRuleContext);
   end;
@@ -466,6 +472,7 @@ begin
   AContext.PackageProvides := PackageProvides;
   AContext.ProjectFiles := ProjectFiles;
   AContext.Naming := Naming;
+  AContext.Queries := Queries;
 end;
 
 { TRuleDescriptor }

@@ -218,6 +218,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.ResourceNames.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.SavedQueries.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.SlashCommands.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassCompletion.pas"/>
         <DCCReference Include="Source\Dfm\Atlas.Common.Dfm.Contract.pas"/>
@@ -269,6 +270,12 @@
         <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.Contract.pas"/>
         <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.Calculator.pas"/>
         <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.Report.pas"/>
+        <DCCReference Include="Source\Query\Atlas.Common.Query.Contract.pas"/>
+        <DCCReference Include="Source\Query\Atlas.Common.Query.Catalog.pas"/>
+        <DCCReference Include="Source\Query\Atlas.Common.Query.Language.pas"/>
+        <DCCReference Include="Source\Query\Atlas.Common.Query.Engine.pas"/>
+        <DCCReference Include="Source\Query\Atlas.Common.Query.Service.pas"/>
+        <DCCReference Include="Source\Query\Atlas.Common.Query.Output.pas"/>
         <DCCReference Include="Source\Metrics\Atlas.Common.Metrics.Collector.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Metrics.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Metrics.pas"/>

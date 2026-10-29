@@ -79,6 +79,13 @@ type
     /// <summary>Passt AName auf das Muster APattern (* beliebig viele, ? genau ein Zeichen, ohne Groß-/
     /// Kleinschreibung)?</summary>
     class function Matches(const APattern, AName: string): Boolean; static;
+    /// <summary>Erstes Token in ATokens, das bei APosition oder dahinter beginnt; -1 hinter dem letzten.</summary>
+    class function TokenIndexAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer; static;
+    /// <summary>Namen der Attribute direkt vor der Deklaration an APosition ([A, B('x')] [C]), ohne Endung
+    /// Attribute; ATokens sind Code-Tokens ohne Kommentare. Auch für Code-Abfragen (has attribute, #1351).
+    /// </summary>
+    class function AttributesAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): TArray<string>;
+      static;
   end;
 
 implementation
@@ -209,50 +216,62 @@ begin
 end;
 
 function TConsideredUsed.TokenAt(const APosition: TTextPosition): Integer;
+begin
+  Result := TokenIndexAt(FTokens, APosition);
+end;
+
+class function TConsideredUsed.TokenIndexAt(const ATokens: TArray<TPascalToken>;
+  const APosition: TTextPosition): Integer;
 var
   Low, High_, Middle: Integer;
 begin
   Low := 0;
-  High_ := Length(FTokens);
+  High_ := Length(ATokens);
   while Low < High_ do
   begin
     Middle := (Low + High_) div 2;
-    if (FTokens[Middle].StartPos.Line < APosition.Line) or ((FTokens[Middle].StartPos.Line = APosition.Line) and
-      (FTokens[Middle].StartPos.Character < APosition.Character)) then
+    if (ATokens[Middle].StartPos.Line < APosition.Line) or ((ATokens[Middle].StartPos.Line = APosition.Line) and
+      (ATokens[Middle].StartPos.Character < APosition.Character)) then
       Low := Middle + 1
     else
       High_ := Middle;
   end;
   Result := Low;
-  if Result > High(FTokens) then
+  if Result > High(ATokens) then
     Result := -1;
 end;
 
 function TConsideredUsed.AttributesBefore(const APosition: TTextPosition): TArray<string>;
+begin
+  Result := AttributesAt(FTokens, APosition);
+end;
+
+class function TConsideredUsed.AttributesAt(const ATokens: TArray<TPascalToken>;
+  const APosition: TTextPosition): TArray<string>;
 var
   At, Depth: Integer;
   Name: string;
 begin
   Result := nil;
-  At := TokenAt(APosition) - 1;
+  At := TokenIndexAt(ATokens, APosition) - 1;
   // Rückwärts über [A, B('x')] [C] direkt vor der Deklaration; der erste Bezeichner nach [ oder , ist der Name.
-  while (At >= 0) and FTokens[At].IsSymbol(']') do
+  while (At >= 0) and ATokens[At].IsSymbol(']') do
   begin
     Depth := 0;
     while At >= 0 do
     begin
-      if FTokens[At].IsSymbol(']') then
+      if ATokens[At].IsSymbol(']') then
         Inc(Depth)
-      else if FTokens[At].IsSymbol('[') then
+      else if ATokens[At].IsSymbol('[') then
       begin
         Dec(Depth);
         if Depth = 0 then
           Break;
       end
-      else if (Depth = 1) and (FTokens[At].Kind = TPascalTokenKind.Identifier) and (At > 0) and
-        (FTokens[At - 1].IsSymbol('[') or FTokens[At - 1].IsSymbol(',')) then
+      else if (Depth = 1) and (ATokens[At].Kind = TPascalTokenKind.Identifier) and (At > 0) and
+        (ATokens[At - 1].IsSymbol('[') or ATokens[At - 1].IsSymbol(',')) then
       begin
-        Name := FTokens[At].Text;
+        Name := ATokens[At].Text;
         if EndsText('Attribute', Name) and (Length(Name) > Length('Attribute')) then
           Name := Copy(Name, 1, Length(Name) - Length('Attribute'));
         Result := Result + [Name];

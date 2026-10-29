@@ -216,6 +216,9 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.OverrideMarks.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Calculator.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Report.Tests.pas"/>
+        <DCCReference Include="Common\Query\Atlas.Common.Query.Language.Tests.pas"/>
+        <DCCReference Include="Common\Query\Atlas.Common.Query.Engine.Tests.pas"/>
+        <DCCReference Include="Common\Query\Atlas.Common.Query.Output.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Collector.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Metrics.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Metrics.Tests.pas"/>
@@ -482,6 +485,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.SavedQueries.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.ComponentRename.Tests.pas"/>
