@@ -37,6 +37,9 @@ begin
     // Vor --check: Das Ziel aus --check ist hier nur das Projekt des Berichts.
     if Options.ArchitectureFile <> '' then
       Exit(TLinterShell.Architecture(Options));
+    // Code-Abfrage (#1351): das Ziel aus --check ist hier nur das Projekt der Abfrage.
+    if Options.QueryText <> '' then
+      Exit(TLinterShell.Query(Options));
     if Options.CheckTarget <> '' then
       Exit(TLinterShell.Run(Options));
     if Options.Mcp then

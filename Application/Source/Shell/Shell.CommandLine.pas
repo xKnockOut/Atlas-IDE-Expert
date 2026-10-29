@@ -39,6 +39,13 @@
 //                         --fail-on newCycle,newCrossLink,subsystemChange,centralGrowth
 //                         (Standard architecture.failOn, sonst newCycle)
 //
+// Code-Abfragen (#1351):
+//   --query "<Abfrage>"   statt der Treffer das Ergebnis einer Abfrage über das Ziel aus --check,
+//                         z. B. "classes where methods > 40"; "@name" führt eine gespeicherte Abfrage
+//                         aus atlas.json (queries) aus. --format text (Standard), json oder csv;
+//                         Exit-Code 0, Fehler in der Abfrage 3, query.enabled aus 3
+//   --fail-on-match       mit --query Exit-Code 1, sobald die Abfrage etwas findet
+//
 // MCP-Modus (#48):
 //   --mcp                 Symbolindex über das Model Context Protocol anbieten
 //   --root <Ordner>       Projektordner (Standard: aktuelles Verzeichnis)
@@ -95,6 +102,13 @@ type
     ArchitectureFile: string;
     /// <summary>--compare: gespeicherter Architekturstand für den Vergleich (#1121); '' = keiner.</summary>
     CompareFile: string;
+    /// <summary>--query: Code-Abfrage oder @name einer gespeicherten (#1351); '' = keine.</summary>
+    QueryText: string;
+    /// <summary>--fail-on-match: Exit-Code 1, wenn --query etwas findet (#1351).</summary>
+    FailOnMatch: Boolean;
+    /// <summary>Wert von --format wie angegeben, für Ausgaben mit eigenen Formaten (--query csv, #1351); '' = keiner.
+    /// </summary>
+    FormatText: string;
     /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
@@ -241,13 +255,15 @@ begin
     StringOption('--source-root', @Result.SourceRoot), StringOption('--profile', @Result.Profile),
     StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot),
     StringOption('--index-cache', @Result.IndexCacheFolder),
-    StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile)];
+    StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile),
+    StringOption('--query', @Result.QueryText)];
   Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
     FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),
     FlagOption('--include-uncommitted', @Result.IncludeUncommitted),
     FlagOption('--changed-lines', @Result.ChangedLines), FlagOption('--update-baseline', @Result.UpdateBaseline),
     FlagOption('--suppression-stats', @Result.SuppressionStats), FlagOption('--metrics', @Result.Metrics),
-    FlagOption('--todos', @Result.Todos), FlagOption('--no-index', @Result.NoIndex)];
+    FlagOption('--todos', @Result.Todos), FlagOption('--no-index', @Result.NoIndex),
+    FlagOption('--fail-on-match', @Result.FailOnMatch)];
 
   Index := Low(AArgs);
   while Index <= High(AArgs) do
@@ -297,10 +313,14 @@ begin
     else if Name = '--format' then
     begin
       if TakeValue then
+      begin
+        Result.FormatText := Value;
         if TFindingsOutput.TryParseFormat(Value, CheckFormat) then
           Result.CheckFormat := CheckFormat
-        else
+        // csv gibt es nur für --query (#1351); dort prüft der Linter das Format.
+        else if not SameText(Value, 'csv') then
           AddWarning(Format('Unbekanntes Format "%s", verwendet wird text', [Value]));
+      end;
     end
     else if Name = '--rules' then
     begin

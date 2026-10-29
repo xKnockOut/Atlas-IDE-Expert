@@ -57,6 +57,12 @@ type
     /// stdout (bzw. in --output); Exit-Code 1, wenn eine Abweichung aus --fail-on (sonst architecture.failOn)
     /// vorkommt, sonst 0; bei Fehlern 3.</summary>
     class function Architecture(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--query (#1351): Code-Abfrage über das Ziel aus --check (sonst den aktuellen Ordner) mit Symbolindex
+    /// wie --check; Ergebnis als Text, JSON oder CSV (--format) auf stdout bzw. in --output. "@name" führt eine
+    /// gespeicherte Abfrage aus. Exit-Code 0; 1 mit --fail-on-match (oder failIfAny der gespeicherten Abfrage),
+    /// wenn sie etwas findet; 3 bei einem Fehler in der Abfrage, bei Aufruffehlern und bei query.enabled aus.
+    /// </summary>
+    class function Query(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>--clear-cache: löscht alle Index-Caches, die keine laufende Instanz nutzt (#184).</summary>
     class function ClearCache: Integer; static;
   end;
@@ -115,6 +121,12 @@ uses
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
+  Atlas.Common.Query.Contract,
+  Atlas.Common.Query.Output,
+  Atlas.Common.Query.Language,
+  Atlas.Common.Query.Service,
+  Atlas.Common.Lsp.Query,
+  Atlas.Common.Rules.Builtin.SavedQueries,
   Shell.Platform,
   Shell.VcsChanges,
   Shell.Bootstrap;
@@ -190,7 +202,8 @@ begin
     Exit;
   TConfigurationParser.Parse(Text, Issues);
   TConfigurationScopes.Filter(Text, TConfigurationScope.Project, Misplaced);
-  Issues := Issues + Misplaced;
+  // Gespeicherte Abfragen mit Fehler (#1351) mit Stelle in atlas.json, wie im Editor.
+  Issues := Issues + Misplaced + TQueryParser.ConfigurationIssues(Result.Queries);
   for Issue in Issues do
     WriteError(Format('%s(%d,%d): %s', [FileName, Issue.Range.StartPos.Line + 1,
       Issue.Range.StartPos.Character + 1, Issue.Message]));
@@ -623,6 +636,141 @@ begin
   end;
 end;
 
+function ReadQueryFile(const AFileName: string; out AText: string): Boolean;
+var
+  mFormat: TFileFormat;
+begin
+  try
+    AText := TFileEncoding.LoadFromFile(AFileName, mFormat);
+    Result := True;
+  except
+    AText := '';
+    Result := False;
+  end;
+end;
+
+/// <summary>Abfragedienst über AIndex und AFiles; eigene Routine, damit der Dienst nicht den Rahmen festhält, in
+/// dem er liegt (Leck).</summary>
+function FolderQueries(const AIndex: ISymbolIndex; const ARoot: string; const AFiles: TArray<string>;
+  const AReferences: TReferenceSettings): ICodeQueries;
+begin
+  Result := TCodeQueryService.Create(
+    function(out AQuerySource: TQuerySource): Boolean
+    begin
+      AQuerySource := TLspQuery.Source(AIndex, nil, ARoot, AFiles, nil, ReadQueryFile, AReferences);
+      Result := True;
+    end);
+end;
+
+/// <summary>Abfrage über die Dateien von ATarget ohne Projekt (#1351): Index aus denselben Dateien wie --check.
+/// </summary>
+function FolderQuery(const ATarget: string; const ASettings: TServerSettings; const AQuery: string): TQueryResult;
+var
+  mIndex: ISymbolIndex;
+  mFiles: TArray<string>;
+  mFileName, mRoot, mText: string;
+  mSources: TCheckSourceFunc;
+  mSource: TCheckSource;
+begin
+  mIndex := TSymbolIndex.Create;
+  mFiles := CollectFiles(ATarget, ASettings, mRoot, mSources);
+  for mFileName in mFiles do
+    if ReadQueryFile(mFileName, mText) then
+    begin
+      mSource := mSources(mFileName);
+      mIndex.AddUnit(TIndexExtractor.ExtractText(mText, mFileName, mSource.Defines, mSource.ResolveInclude));
+    end
+    else
+      WriteError(Format('%s: nicht lesbar', [mFileName]));
+  Result := FolderQueries(mIndex, mRoot, mFiles, ASettings.References).Execute(TQueryRequest.Create(AQuery, 0));
+end;
+
+class function TLinterShell.Query(const AOptions: TCommandLineOptions): Integer;
+var
+  mTarget, mConfigRoot, mText, mWarning: string;
+  mSettings: TServerSettings;
+  mSaved: TSavedQuery;
+  mFormat: TQueryOutputFormat;
+  mFailOnMatch, mFound: Boolean;
+  mGroup: TShellWorkspaceGroup;
+  mResult: TQueryResult;
+begin
+  for mWarning in AOptions.Warnings do
+    WriteError(mWarning);
+  if not TQueryOutput.TryParseFormat(AOptions.FormatText, TQueryOutputFormat.Text, mFormat) or
+    (mFormat = TQueryOutputFormat.Markdown) then
+  begin
+    WriteError('--query gibt es mit --format text (Standard), json oder csv');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  mTarget := AOptions.CheckTarget;
+  if mTarget = '' then
+    mTarget := GetCurrentDir;
+  if not (TFile.Exists(mTarget) or TDirectory.Exists(mTarget)) then
+  begin
+    WriteError(Format('Ziel "%s" nicht gefunden', [mTarget]));
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  try
+    if TDirectory.Exists(mTarget) then
+      mConfigRoot := TPath.GetFullPath(mTarget)
+    else
+      mConfigRoot := ExtractFileDir(TPath.GetFullPath(mTarget));
+    mSettings := LoadSettings(mConfigRoot);
+    if not mSettings.QueryEnabled then
+    begin
+      WriteError('Code-Abfragen sind ausgeschaltet (query.enabled in atlas.json bzw. settings.json)');
+      Exit(TFindingsOutput.ExitFailure);
+    end;
+    TFileEncodingDefaults.SetFolder(mConfigRoot, mSettings.DefaultEncoding);
+    mText := Trim(AOptions.QueryText);
+    mFailOnMatch := AOptions.FailOnMatch;
+    if mText.StartsWith('@') then
+    begin
+      mFound := False;
+      for mSaved in mSettings.Queries do
+        if SameText(mSaved.Name, Copy(mText, 2, MaxInt)) then
+        begin
+          mText := mSaved.Query;
+          mFailOnMatch := mFailOnMatch or mSaved.FailIfAny;
+          mFound := True;
+          Break;
+        end;
+      if not mFound then
+      begin
+        WriteError(Format('Keine gespeicherte Abfrage "%s" in atlas.json (queries)', [Copy(mText, 2, MaxInt)]));
+        Exit(TFindingsOutput.ExitFailure);
+      end;
+    end;
+    mGroup := LoadIndex(AOptions, mConfigRoot);
+    try
+      if Length(mGroup.AllFiles) > 0 then
+        mResult := mGroup.Queries.Execute(TQueryRequest.Create(mText, 0))
+      else
+        // Ohne Projekt die Dateien des Ziels wie --check und --architecture, in einem eigenen Index.
+        mResult := FolderQuery(mTarget, mSettings, mText);
+    finally
+      mGroup.Free;
+    end;
+    if mResult.Failed then
+    begin
+      WriteError(TQueryOutput.ErrorText(mResult));
+      Exit(TFindingsOutput.ExitFailure);
+    end;
+    WriteOutput(AOptions, TQueryOutput.Render(mResult, mFormat));
+    if mFailOnMatch and (mResult.Total > 0) then
+      Result := TFindingsOutput.ExitFindings
+    else
+      Result := TFindingsOutput.ExitClean;
+  except
+    on E: Exception do
+    begin
+      WriteError(E.Message);
+      Result := TFindingsOutput.ExitFailure;
+    end;
+  end;
+end;
+
 class function TLinterShell.ClearCache: Integer;
 begin
   try
@@ -725,6 +873,10 @@ begin
     Descriptors := [TFileChecker.SyntaxDescriptor, TFileChecker.LanguageFeatureDescriptor];
     for Rule in Rules do
       Descriptors := Descriptors + [Rule.Descriptor];
+    // Gespeicherte Abfragen mit failIfAny (#1351) melden mit dem Index als Regeln query:<name>; SARIF beschreibt sie.
+    if not AOptions.NoIndex then
+      for Rule in TSavedQueryRule.RulesOf(Settings) do
+        Descriptors := Descriptors + [Rule.Descriptor];
 
     BaselinePath := AOptions.BaselineFile;
     // --update-baseline schreibt immer unter dem neuen Namen.

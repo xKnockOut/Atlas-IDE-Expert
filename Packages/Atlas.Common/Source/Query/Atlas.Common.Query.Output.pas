@@ -10,6 +10,7 @@ interface
 
 uses
   System.SysUtils,
+  Atlas.Common.Configuration.Contract,
   Atlas.Common.Query.Contract;
 
 {$SCOPEDENUMS ON}
@@ -31,13 +32,17 @@ type
     class function Text(const AResult: TQueryResult): string; static;
     /// <summary>Fehler mit Spalte, der Abfrage und einer Marke darunter, dazu der Vorschlag.</summary>
     class function ErrorText(const AResult: TQueryResult): string; static;
+    /// <summary>Katalog für die Vervollständigung im Fenster „Atlas-Abfrage“ (atlas/queryCatalog): Mengen mit ihren
+    /// Feldern und Prädikaten, Schlüsselwörter und die gespeicherten Abfragen AQueries.</summary>
+    class function CatalogJson(const AQueries: TArray<TSavedQuery>): string; static;
   end;
 
 implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Metrics.Report;
+  Atlas.Common.Metrics.Report,
+  Atlas.Common.Query.Catalog;
 
 function MarkdownCell(const AText: string): string;
 begin
@@ -308,6 +313,88 @@ begin
       mBuilder.Append(sLineBreak);
     end;
     mBuilder.Append(Summary(AResult)).Append(sLineBreak);
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+function JsonStrings(const AItems: TArray<string>): string;
+var
+  mIndex: Integer;
+begin
+  Result := '[';
+  for mIndex := 0 to High(AItems) do
+  begin
+    if mIndex > 0 then
+      Result := Result + ', ';
+    Result := Result + TMetricsReport.JsonString(AItems[mIndex]);
+  end;
+  Result := Result + ']';
+end;
+
+function JsonFlag(AValue: Boolean): string;
+begin
+  if AValue then
+    Result := 'true'
+  else
+    Result := 'false';
+end;
+
+class function TQueryOutput.CatalogJson(const AQueries: TArray<TSavedQuery>): string;
+var
+  mBuilder: TStringBuilder;
+  mEntity: TQueryEntity;
+  mField: TQueryFieldInfo;
+  mKind: TQueryPredicateKind;
+  mFirst: Boolean;
+  mIndex: Integer;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    mBuilder.Append('{"entities": [');
+    for mEntity := Low(TQueryEntity) to High(TQueryEntity) do
+    begin
+      if mEntity <> Low(TQueryEntity) then
+        mBuilder.Append(', ');
+      mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(TQueryCatalog.EntityName(mEntity)))
+        .Append(', "caption": ').Append(TMetricsReport.JsonString(TQueryCatalog.EntityCaption(mEntity)))
+        .Append(', "fields": [');
+      mFirst := True;
+      for mField in TQueryCatalog.FieldsOf(mEntity) do
+      begin
+        if not mFirst then
+          mBuilder.Append(', ');
+        mFirst := False;
+        mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(mField.Name))
+          .Append(', "type": ').Append(TMetricsReport.JsonString(TQueryCatalog.FieldTypeName(mField.FieldType)))
+          .Append(', "description": ').Append(TMetricsReport.JsonString(mField.Description)).Append('}');
+      end;
+      mBuilder.Append('], "predicates": [');
+      mFirst := True;
+      for mKind := Low(TQueryPredicateKind) to High(TQueryPredicateKind) do
+        if mEntity in TQueryCatalog.PredicateEntities(mKind) then
+        begin
+          if not mFirst then
+            mBuilder.Append(', ');
+          mFirst := False;
+          mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(TQueryCatalog.PredicateName(mKind)))
+            .Append(', "description": ').Append(TMetricsReport.JsonString(TQueryCatalog.PredicateDescription(mKind)))
+            .Append('}');
+        end;
+      mBuilder.Append(']}');
+    end;
+    mBuilder.Append('], "keywords": ').Append(JsonStrings(TQueryCatalog.Keywords)).Append(', "queries": [');
+    for mIndex := 0 to High(AQueries) do
+    begin
+      if mIndex > 0 then
+        mBuilder.Append(', ');
+      mBuilder.Append('{"name": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Name))
+        .Append(', "query": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Query))
+        .Append(', "description": ').Append(TMetricsReport.JsonString(AQueries[mIndex].Description))
+        .Append(', "failIfAny": ').Append(JsonFlag(AQueries[mIndex].FailIfAny)).Append('}');
+    end;
+    mBuilder.Append(']}');
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;

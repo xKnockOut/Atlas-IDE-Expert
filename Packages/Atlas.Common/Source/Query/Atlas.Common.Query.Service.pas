@@ -54,6 +54,19 @@ implementation
 uses
   Atlas.Common.Query.Engine;
 
+/// <summary>Abbruch, sobald AFirst oder ASecond ihn meldet; eigene Routine, damit die Methodenreferenz keinen
+/// Rahmen von Execute festhält.</summary>
+function CombinedCancel(const AFirst, ASecond: TQueryCancelled): TQueryCancelled;
+begin
+  if not Assigned(AFirst) then
+    Exit(ASecond);
+  Result :=
+    function: Boolean
+    begin
+      Result := AFirst() or ASecond();
+    end;
+end;
+
 { TCodeQueryService }
 
 constructor TCodeQueryService.Create(const ASourceOf: TQuerySourceFunc);
@@ -106,6 +119,8 @@ begin
   finally
     System.TMonitor.Exit(FLock);
   end;
+  if Assigned(ARequest.Cancelled) then
+    mSource.Cancelled := CombinedCancel(mSource.Cancelled, ARequest.Cancelled);
   Result := TCodeQueryEngine.Run(mSource, ARequest, FCollector);
   // Abgebrochene Läufe nicht merken: Der nächste Aufruf soll rechnen.
   if Result.Failed and (Result.ErrorColumn = 0) then

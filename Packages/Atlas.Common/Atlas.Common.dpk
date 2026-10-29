@@ -191,6 +191,7 @@ contains
   Atlas.Common.Rules.Builtin.Recursion in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas',
   Atlas.Common.Lsp.Todos in 'Source\Lsp\Atlas.Common.Lsp.Todos.pas',
   Atlas.Common.Lsp.Architecture in 'Source\Lsp\Atlas.Common.Lsp.Architecture.pas',
+  Atlas.Common.Lsp.Query in 'Source\Lsp\Atlas.Common.Lsp.Query.pas',
   Atlas.Common.Lsp.DebugDisplay in 'Source\Lsp\Atlas.Common.Lsp.DebugDisplay.pas',
   Atlas.Common.Lsp.EventHandlers in 'Source\Lsp\Atlas.Common.Lsp.EventHandlers.pas',
   Atlas.Common.Lsp.Recursion in 'Source\Lsp\Atlas.Common.Lsp.Recursion.pas',

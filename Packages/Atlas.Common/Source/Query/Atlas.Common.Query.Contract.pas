@@ -137,6 +137,9 @@ type
     Fields: TArray<string>;
     /// <summary>Höchstzahl der Zeilen; 0 = ohne Grenze (limit der Abfrage gilt zusätzlich).</summary>
     Limit: Integer;
+    /// <summary>Abbruch dieser Anfrage (LSP $/cancelRequest, Knopf „Abbrechen“); nil = nur der Abbruch der Quelle.
+    /// </summary>
+    Cancelled: TQueryCancelled;
     class function Create(const AQuery: string; ALimit: Integer): TQueryRequest; static;
   end;
 
