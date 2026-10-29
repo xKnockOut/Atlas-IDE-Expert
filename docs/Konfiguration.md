@@ -41,6 +41,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `memoryBudgetMb` | global (settings.json) | integer | `768` | 0… | Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `index` | gemischt, siehe unten | object | – |  | Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. |
 | `architecture` | gemischt, siehe unten | object | – |  | Architekturübersicht aus dem Index: zentrale Units, Teilsysteme, Zyklen und Querverbindungen im Fenster „Atlas-Architektur“, als Bericht (Markdown oder HTML, auch AtlasServer --architecture) und im MCP-Werkzeug get_architecture. |
+| `hotspots` | global (settings.json) | object | – |  | Hotspots: Units und Methoden, die oft geändert werden und zugleich komplex sind (Änderungen aus Git oder SVN im Zeitraum × kognitive Komplexität), mit Trend gegenüber vor drei Monaten und Änderungskopplung (Units ohne uses-Kante, die oft zusammen geändert werden). Fenster „Atlas-Hotspots“, Bericht (AtlasServer --hotspots <Datei.html\|.md\|.json>) und MCP-Werkzeug get_hotspots. Bibliotheks-Units und architecture.exclude zählen nicht; die Versionsverwaltung kommt aus vcs.provider. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
 | `diagnostics` | gemischt, siehe unten | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
 | `highlight` | global (settings.json) | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
@@ -243,6 +244,14 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `architecture.baseline` | Projekt (atlas.json) | string | `""` | z. B. `"architektur-main.json"` | Gespeicherter Architekturstand (JSON aus AtlasServer --architecture <Datei.json> oder „Stand speichern …“), Pfad relativ zum Projekt: Fenster, Bericht und get_architecture vergleichen automatisch damit. Leer = kein Vergleich. |
 | `architecture.failOn` | Projekt (atlas.json) | array<string> | `"newCycle"` |  | Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Units mit stark gewachsener Abhängigkeit. |
 | `architecture.grouping` | global (settings.json) | object | – |  | Wie die Architekturübersicht die Units in Teilsysteme gruppiert (Louvain auf dem uses-Graphen). Gilt für Fenster, Bericht, AtlasServer --architecture und get_architecture. |
+
+## hotspots
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `hotspots.enabled` | global (settings.json) | boolean | `true` |  | Hauptschalter: false = kein Fenster, kein Menüeintrag, kein get_hotspots; AtlasServer --hotspots endet mit Exitcode 3. |
+| `hotspots.months` | global (settings.json) | integer | `12` | 1…60 | Ausgewerteter Zeitraum in Monaten (Commits seit heute minus months). |
+| `hotspots.coupling` | global (settings.json) | object | – |  | Änderungskopplung: Paare mit mindestens minCommits gemeinsamen Commits und einem Anteil von mindestens 70 % ohne uses-Kante zwischen ihnen; .pas/.dfm derselben Unit und Commits mit mehr als 50 Dateien zählen nicht. |
 
 ## diagnostics
 

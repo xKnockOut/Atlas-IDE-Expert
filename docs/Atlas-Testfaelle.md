@@ -8834,3 +8834,26 @@ Vorbereitung: Projektgruppe mit einigen Hundert Units, Index aufgebaut; für SRV
 | SRV13 | `AtlasServer --check <Ordner> --timings profil.md`, dann `--timings profil.json`, dann ohne Datei; jeweils `> treffer.txt` | Markdown mit Indexzeit, Units, Regeln, Speicher bzw. JSON; ohne Datei die Tabellen auf stderr; `treffer.txt` jedes Mal gleich wie ohne `--timings` (**Abnahme**) |
 | SRV14 | Claude Code im Projektordner, während die IDE läuft: `get_server_status`, dann mit `format: json` | Erste Zeile „Quelle: Atlas-Server der IDE (Prozess …)“, dieselben Zahlen wie das Fenster (**Abnahme**); JSON mit `source`; IDE beendet: „Quelle: dieser MCP-Prozess …“ |
 | SRV15 | Einstellungsseite (Symbolindex) und Statuszeilen mit dem neuen Server | Wie vorher; ein älteres Plugin zeigt den Status des neuen Servers unverändert |
+
+## Hotspots (#1354)
+
+Vorbereitung: ein Projekt in einem Git-Repository mit mindestens einigen Dutzend Commits im letzten Jahr (etwa Atlas selbst), eine Unit, die per `git mv` umbenannt wurde; für HS12 eine SVN-Arbeitskopie desselben Projekts.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HS1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; Hotspot-Tests grün, `FiveThousandCommitsThousandUnits` (Kategorie Benchmark) unter 30 s, `Atlas.UI.Hotspots.Frame.Tests` grün (**Abnahme**) |
+| HS2 | *Ansicht › Atlas › Hotspots* | Fenster *Atlas-Hotspots* dockt neben der Projektverwaltung; zuerst „Lese den Verlauf …“, dann Blasendiagramm und Rangliste; die IDE bleibt bedienbar |
+| HS3 | Blase anklicken, dann Doppelklick | Zeile in der Liste gewählt, Tooltip mit Änderungen, Komplexität, Zeilen und Wert; Doppelklick öffnet die Unit |
+| HS4 | Ebene „Methoden“ | Liste der Methoden, die gewählte Unit bleibt gewählt; Doppelklick springt zur Methode |
+| HS5 | Kontextmenü „Verlauf zeigen“ auf einer Methode | Reiter *Verlauf* mit den Commits (Revision, Datum, Autor, Betreff, Zeilen); der Editor steht auf der Methode |
+| HS6 | Kontextmenü „Auswirkungen anzeigen“ auf einer Methode | Auswirkungen (#1120) der Methode öffnen sich |
+| HS7 | Reiter *Änderungskopplung* | Nur Paare ohne uses-Kante, keine .pas/.dfm-Paare, Anteil ≥ 70 %, gemeinsam ≥ `hotspots.coupling.minCommits` |
+| HS8 | Umbenannte Unit ansehen | Änderungen vor und nach der Umbenennung zählen zusammen unter dem heutigen Namen |
+| HS9 | Fenster schließen und wieder öffnen, dann einen Commit machen und „Neu berechnen“ | Ohne Commit sofort aus dem Speicher; nach dem Commit neu gerechnet |
+| HS10 | „Bericht speichern …“ als HTML, Markdown und JSON | HTML zeigt das Blasendiagramm ohne externe Verweise, Markdown die Tabellen, JSON die Daten |
+| HS11 | Projekt außerhalb jeder Versionsverwaltung öffnen | Hinweis „Keine Versionsverwaltung: …“ statt Daten |
+| HS12 | Dasselbe Projekt aus einer SVN-Arbeitskopie (`vcs.provider` = svn) | Dieselben Änderungen, Autoren und Kopplungen wie aus Git (**Abnahme**) |
+| HS13 | `hotspots.enabled` = false (Seite *Allgemein › Hotspots* oder Schnellschalter) | Menüeinträge und Fenster weg; MCP bietet `get_hotspots` nicht an; `AtlasServer.exe --hotspots h.md` endet mit Exit-Code 3 |
+| HS14 | `hotspots.months` auf 3 und `hotspots.coupling.minCommits` auf 2 setzen | Fenster rechnet neu; Kopfzeile nennt 3 Monate; mehr Kopplungen |
+| HS15 | `AtlasServer.exe --check <Projekt> --hotspots h.html` in einem Repository bzw. in einem Ordner ohne Versionsverwaltung | Exit-Code 0 und Bericht bzw. Exit-Code 3 mit Ursache |
+| HS16 | Claude Code: „Wo sind die Hotspots im Projekt?“ | Claude ruft `get_hotspots` und nennt dieselben Zahlen wie das Fenster |

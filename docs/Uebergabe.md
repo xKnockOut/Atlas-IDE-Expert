@@ -38,6 +38,13 @@
 - FPC-Harness: `Atlas.Common.Lsp.Implementations` braucht die von Convert-ForFpc umgeschriebene Fassung (verschachtelte Generics), sonst baut MCP-EditTools.Tests nicht. Ein Test (Umlaut im JSON) scheitert nur unter FPC.
 - Offen: Delphi-Bau und Handtests SK1–SK17.
 
+## Hotspots (#1354, 29.10.2026, Branch `feature/1354-hotspots`)
+- Fachlogik in `Atlas.Common.Hotspots.*` (History, Analysis, Service, Report), Server in `Atlas.Common.Lsp.Hotspots` und `Shell.Hotspots` (git/svn), Plugin in `Atlas.Core.Hotspots.Model`, `Atlas.UI.Hotspots.*`, `Atlas.IDE.Hotspots.*`.
+- `atlas.hotspots` und `atlas.hotspots.saveReport` laufen nebenläufig (`RegisterConcurrent`) und rechnen in einem eigenen Thread: Die erste Anfrage antwortet sofort mit `"pending": true`, das Fenster fragt alle 2 s nach. Grund: Ein langer `git log -L` blockierte sonst die Warteschlange des Servers bzw. wurde nach `requestTimeoutMs` abgebrochen.
+- Einstellungen auf der Seite *Allgemein › Hotspots* (eine Seite „Analyse“, wie im Issue genannt, gibt es nicht).
+- Unter FPC getestet (Common, LSP, Shell mit echtem git, Parser, CLI, MCP); `Atlas.UI.Hotspots.Frame.Tests` läuft nur unter Delphi. Delphi-Build und Handtests HS1–HS16 offen; SVN-Vergleich (HS12) braucht `svn` und `svnadmin`, im Test sonst übersprungen.
+
+
 ## Fenster „Atlas-Server“ (#1356, 29.10.2026, Branch `claude/project-thread-gxtcpz`)
 - **Server:** `atlas.server.status` liefert zusätzlich `process` (PID, Version, Laufzeit, Zustand), `memory` je Bereich gegen das Budget, `checkRun` (langsamste Units und Regeln des letzten Prüflaufs), `queue` und `cacheHits`; alte Felder bleiben. MCP-Werkzeug `get_server_status` (27 Werkzeuge), Statusdatei `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json`, Befehl `atlas.server.diagnosticPackage` (Status, Protokoll der Sitzung, Trace der letzten Minuten; Zugangsdaten immer entfernt).
 - **`--timings [<Datei>]` statt `--profile`:** `--profile` ist seit #146 die Auswahl des Regelprofils; die Zeitmessung von `--check` heißt deshalb `--timings`.
