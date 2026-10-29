@@ -203,6 +203,7 @@ uses
   Atlas.Common.Rules.Builtin.Collections.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Collections.Tests.pas',
   Atlas.Common.Rules.Builtin.Visibility.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Visibility.Tests.pas',
   Atlas.Common.Rules.Builtin.TypeDeclarations.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.Tests.pas',
+  Atlas.Common.Rules.Builtin.Automation.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Automation.Tests.pas',
   Atlas.Common.Rules.Builtin.TypedExpressions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypedExpressions.Tests.pas',
   Atlas.Common.Rules.Builtin.TypeRestrictions.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.Tests.pas',
   Atlas.Common.Rules.Builtin.PublicMembers.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PublicMembers.Tests.pas',

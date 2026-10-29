@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4576] of string = (
+  BaseLines: array[0..4603] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -1523,11 +1523,12 @@ const
     '      "severity": "warning",',
     '      "group": "compiler",',
     '      "description": "A routine, type, constant or member marked deprecated, experimental, platform or library is used (like W1000, W1003, W1002, W1001), or a unit whose header carries one of these hi' +
-    'nts is listed in uses (like W1006, W1007, W1005, W1004). Reported only when the name resolves for sure. The editor strikes deprecated names through; the message carries the reason from deprecated ''rea' +
-    'son''. The declaration and the head of its implementation are not reported. Which kinds are reported is set by the option kinds (deprecated and experimental by default, as in most projects); the switch' +
-    'es {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} apply from their position like in the compiler; a switch in an {$IF} branch that is not surely ' +
-    'compiled with the position keeps it silent. Quick fix: replace with the name the reason gives (or, for IncludeTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exa' +
-    'ctly one name fits, is visible at that position and is of the same kind. Without a project index only the symbols of the file itself are checked.",',
+    'nts is listed in uses (like W1006, W1007, W1005, W1004); the deprecated automated section of a class counts as deprecated symbol, too (like W1000). Reported only when the name resolves for sure. The e' +
+    'ditor strikes deprecated names through; the message carries the reason from deprecated ''reason''. The declaration and the head of its implementation are not reported. Which kinds are reported is set by' +
+    ' the option kinds (deprecated and experimental by default, as in most projects); the switches {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} appl' +
+    'y from their position like in the compiler; a switch in an {$IF} branch that is not surely compiled with the position keeps it silent. Quick fix: replace with the name the reason gives (or, for Includ' +
+    'eTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exactly one name fits, is visible at that position and is of the same kind. Without a project index only the sym' +
+    'bols of the file itself are checked.",',
     '      "bad": "Pfad := IncludeTrailingBackslash(Basis) + Name;",',
     '      "good": "Pfad := IncludeTrailingPathDelimiter(Basis) + Name;",',
     '      "level": "B",',
@@ -4299,6 +4300,38 @@ const
     '      "level": "A"',
     '    },',
     '    {',
+    '      "id": "automation-invalid",',
+    '      "name": "OLE Automation declared or called wrongly",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "Declarations the compiler rejects in the automated section of a class: fields (like E2175), constructors and destructors (like E2177), dynamic and message methods (like E2178), c' +
+    'alling conventions other than register (like E2179), the same dispid twice in one class (like E2180), a property redeclared without type (like E2181), index, stored, default and nodefault on propertie' +
+    's (like E2182), read or write pointing to a field of the class (like E2096), a dispid on an override method (like E2185) and records, pointers and sets as type of parameters, results and properties (l' +
+    'ike E2176). A dispid on a method outside automated is reported as E2185, as Delphi 13 does (documented as E2183). Calls through Variant or OleVariant (V.Open(...), also V.Document.Open(...)): a record' +
+    ' without operators or a pointer as argument (like E2160 for OleVariant, like E2281 for Variant) and an unnamed argument after a named one (like E2166). Members in conditional branches and types the na' +
+    'me resolution does not know for sure stay silent. That automated itself is deprecated is reported by deprecated-symbol.",',
+    '      "bad": "TAuto = class\n  automated\n    procedure Run; stdcall;\n  end;",',
+    '      "good": "TAuto = class\n  automated\n    procedure Run;\n  end;",',
+    '      "compilerCodes": [',
+    '        "E2096",',
+    '        "E2160",',
+    '        "E2166",',
+    '        "E2175",',
+    '        "E2176",',
+    '        "E2177",',
+    '        "E2178",',
+    '        "E2179",',
+    '        "E2180",',
+    '        "E2181",',
+    '        "E2182",',
+    '        "E2183",',
+    '        "E2185",',
+    '        "E2281"',
+    '      ],',
+    '      "level": "A"',
+    '    },',
+    '    {',
     '      "id": "abstract-declaration-invalid",',
     '      "name": "abstract, final or static combined wrongly",',
     '      "category": "bug",',
@@ -5332,7 +5365,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2125] of string = (
+  OverlayLines_de: array[0..2130] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -6167,11 +6200,12 @@ const
     '      "id": "deprecated-symbol",',
     '      "name": "Veraltetes oder gebundenes Symbol",',
     '      "description": "Eine Routine, ein Typ, eine Konstante oder ein Mitglied mit deprecated, experimental, platform oder library wird verwendet (wie W1000, W1003, W1002, W1001), oder eine Unit, deren' +
-    ' Kopf einen dieser Hinweise trägt, steht in uses (wie W1006, W1007, W1005, W1004). Gemeldet wird nur, was sicher aufgelöst ist. Der Editor streicht veraltete Namen durch; die Meldung nennt den Grund a' +
-    'us deprecated ''Grund''. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet. Welche Arten gemeldet werden, legt die Option kinds fest (Standard deprecated und experimental, wie mei' +
-    'st in Projekten); die Schalter {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} usw. und {$WARNINGS OFF} gelten ab ihrer Stelle wie beim Compiler; ein Schalter in einem {$IF}-Zw' +
-    'eig, der nicht sicher mit übersetzt wird, hält die Stelle still. Korrektur: durch den Namen aus dem Grund ersetzen (bei IncludeTrailingBackslash und ExcludeTrailingBackslash durch die plattformunabhän' +
-    'gige Routine), wenn genau ein Name passt, an der Stelle sichtbar ist und dieselbe Art hat. Ohne Projektindex prüft die Regel nur die Symbole der Datei selbst.",',
+    ' Kopf einen dieser Hinweise trägt, steht in uses (wie W1006, W1007, W1005, W1004); auch der veraltete Abschnitt automated einer Klasse zählt als veraltetes Symbol (wie W1000). Gemeldet wird nur, was s' +
+    'icher aufgelöst ist. Der Editor streicht veraltete Namen durch; die Meldung nennt den Grund aus deprecated ''Grund''. Die Deklaration und der Kopf ihrer Implementierung werden nicht gemeldet. Welche Art' +
+    'en gemeldet werden, legt die Option kinds fest (Standard deprecated und experimental, wie meist in Projekten); die Schalter {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} usw.' +
+    ' und {$WARNINGS OFF} gelten ab ihrer Stelle wie beim Compiler; ein Schalter in einem {$IF}-Zweig, der nicht sicher mit übersetzt wird, hält die Stelle still. Korrektur: durch den Namen aus dem Grund e' +
+    'rsetzen (bei IncludeTrailingBackslash und ExcludeTrailingBackslash durch die plattformunabhängige Routine), wenn genau ein Name passt, an der Stelle sichtbar ist und dieselbe Art hat. Ohne Projektinde' +
+    'x prüft die Regel nur die Symbole der Datei selbst.",',
     '      "options": [',
     '        {',
     '          "name": "kinds",',
@@ -7712,6 +7746,16 @@ const
     '      "description": "Der Compiler schreibt hier die Aufrufkonvention vor: Konstruktoren und Destruktoren einer Klasse nur mit register (wie E2236), Getter und Setter von published-Properties ebenso (' +
     'wie E2270) und varargs nur mit cdecl (wie E2277 bei external-Routinen, sonst E2591). Ein ausdrückliches register ist in Ordnung; Klassenkonstruktoren, Accessoren außerhalb von published-Abschnitten un' +
     'd geerbte Accessoren bleiben still. Korrektur: die Konvention in der Deklaration und im Rumpf derselben Datei entfernen bzw. bei varargs cdecl setzen."',
+    '    },',
+    '    {',
+    '      "id": "automation-invalid",',
+    '      "name": "OLE-Automation falsch deklariert oder aufgerufen",',
+    '      "description": "Deklarationen, die der Compiler im Abschnitt automated einer Klasse ablehnt: Felder (wie E2175), Konstruktoren und Destruktoren (wie E2177), dynamic- und message-Methoden (wie E2' +
+    '178), andere Aufrufkonventionen als register (wie E2179), dieselbe dispid zweimal in einer Klasse (wie E2180), eine Property, die ohne Typ neu deklariert wird (wie E2181), index, stored, default und n' +
+    'odefault an Properties (wie E2182), read oder write auf ein Feld der Klasse (wie E2096), eine dispid an einer override-Methode (wie E2185) sowie Records, Zeiger und Mengen als Typ von Parametern, Erge' +
+    'bnissen und Properties (wie E2176). Eine dispid an einer Methode außerhalb von automated meldet die Regel wie Delphi 13 als E2185 (dokumentiert ist E2183). Aufrufe über Variant oder OleVariant (V.Oeff' +
+    'nen(...), auch V.Dokument.Oeffnen(...)): ein Record ohne Operatoren oder ein Zeiger als Argument (wie E2160 bei OleVariant, wie E2281 bei Variant) und ein unbenanntes Argument nach einem benannten (wi' +
+    'e E2166). Mitglieder in bedingten Zweigen und Typen, die die Namensauflösung nicht sicher kennt, bleiben still. Dass automated selbst veraltet ist, meldet deprecated-symbol."',
     '    },',
     '    {',
     '      "id": "abstract-declaration-invalid",',
