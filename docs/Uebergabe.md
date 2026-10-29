@@ -31,6 +31,14 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## #1380 weitere Deklarationsfehler (29.10.2026, Branch `claude/project-thread-oxggd3`)
+- Neue Regel `declaration-invalid` (`Rules.Builtin.InvalidDeclarations`): E2006, E2024, E2062, E2128, W1029. W1029 nur, wenn `TRuleContext.Units.ReadProject` eine `.dproj` mit `DCC_CBuilderOutput` (nicht None) oder einem Schalter `-J…` in `DCC_AdditionalSwitches` liefert; `Tests/Compilermeldungen/Compilermeldungen.dproj` trägt dafür `-JPHNE` (dcc baut sie nicht).
+- Erweitert: `abstract-declaration-invalid` (E2383/E2540 bei sealed, E2539 über `TAncestry.OpenAbstractMethods`, aus der W1020-Regel herausgezogen), `default-property-invalid` (E2131 bei anderem Namen; der alte Test „anderer Name, andere Indextypen still“ widersprach dcc), `property-accessor-invalid` (E2459 Klassen-Property mit Selektor), `signature-mismatch` (Unit-Routinen, nur eindeutiger Name ohne overload/external/forward), `unsatisfied-forward` (E2086), `operator-declaration-invalid` (E2617, E2037 an Rümpfen), `invalid-var-argument` (E2036 bei `@(A*B)`), `calling-convention-required` (E2277 ohne external nur unter Win32).
+- Plattform im Syntaxbaum: `TSyntaxTree.Platform` setzt `ParseActive` aus den Defines (`TPascalPreprocessor.PlatformOf`); leer heißt unbekannt, plattformabhängige Regeln schweigen dann. Testhilfe `TRuleAssert.PlatformFindings`.
+- Vergleich mit dem Linux-Server über alle Compilermeldungen-Fälle: keine neuen zusätzlichen Treffer gegenüber Prep-v1.2.0. Offen bei anderen Threads: E2037 in Cm.E2404 (.NET-`add`-Syntax, #1382), E2181 (#1373), E2591-Fehlalarm bei external stdcall varargs (#1383).
+- dcc-Minimalfälle: `Tests/DccFaelle/DccDeklarationen` (DK1–DK11, still) und `DccDeklarationenGegen` (DG1–DG7). Noch nicht mit dcc gebaut.
+
+
 ## Fundament-Units (#1365, AG2, 29.10.2026, Branch `feature/1365-fundament` auf `feature/1364-nachteilen`)
 - `TAnalysis.SeparateFoundations` nach dem ersten Lauf: Kandidaten = Rolle Fundament; ihre Verteilung zählt in einem Lauf **ohne** die Kandidaten (im ersten Lauf ziehen sie ihre Abhängigen ja zusammen, die Regel „nach dem ersten Lauf“ aus dem Issue hätte den Testgraphen nie erkannt); übergreifend bei Abhängigen in mindestens 3 Gemeinschaften oder höchstens 60 % in der größten (ganzzahlig verglichen: FPC rechnet 0,6·10 in Extended knapp unter 6).
 - `separate`: Fundamente und Units, die nur an ihnen hängen (`Follower`), bilden ein Teilsystem mit `Foundation`, zuerst sortiert, ColorSlot −1, ohne Zusammenhalt, ohne Querverbindungen und Ausreißer; Nachteilung lässt es ganz. `attach`: Mehrheit der Abhängigen, gewichtet. Testgraph `FoundationProject` (Overview.Tests) mit ausgeschalteter Nachteilung, sonst trennt schon #1364 die Gruppen.
