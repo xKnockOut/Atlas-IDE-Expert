@@ -86,6 +86,7 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
+  Atlas.IDE.Hotspots.Service,
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.SymbolPath.Service,
@@ -1111,9 +1112,31 @@ begin
   Result := TAtlasIdeSettings.Current.Outline;
 end;
 
+/// <summary>Antwort von RunServerCommandAsync als JSON-Text ('' ohne Antwort) an ADone; eigene Routine, damit die
+/// anonyme Methode nur ADone einfängt.</summary>
+function HotspotsAnswer(const ADone: TProc<string>): TProc<TJSONValue>;
+var
+  mDone: TProc<string>;
+begin
+  mDone := ADone;
+  Result :=
+    procedure(AValue: TJSONValue)
+    begin
+      if AValue = nil then
+        mDone('')
+      else
+        mDone(AValue.ToJSON);
+    end;
+end;
+
 function ArchitectureVisible: Boolean;
 begin
   Result := TAtlasIdeSettings.Current.ArchitectureEnabled;
+end;
+
+function HotspotsVisible: Boolean;
+begin
+  Result := TAtlasIdeSettings.Current.HotspotsEnabled;
 end;
 
 function UnitRelationsVisible: Boolean;
@@ -1615,6 +1638,9 @@ begin
   // Architekturübersicht (#1118); nur sichtbar, solange architecture.enabled an ist.
   Add('Atlas.Architecture', TAtlasTextId.ArchitectureCommand,
     Guarded(TAtlasFeature.Architecture, TAtlasIdeArchitecture.ShowWindow), ArchitectureVisible);
+  // Hotspots (#1354); nur sichtbar, solange hotspots.enabled an ist.
+  Add('Atlas.Hotspots', TAtlasTextId.HotspotsCommand,
+    Guarded(TAtlasFeature.Hotspots, TAtlasIdeHotspots.ShowWindow), HotspotsVisible);
   // Unit-Beziehungen (#593); am selben Schalter wie die Architektur (derselbe Uses-Graph).
   Add('Atlas.UnitRelations', TAtlasTextId.UnitRelationsCommand,
     Guarded(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowWindow), UnitRelationsVisible);
@@ -3263,6 +3289,21 @@ begin
             TAtlasGuard.Run(TAtlasFeature.UnitRelations, TAtlasIdeUnitRelations.ShowCurrent);
           end);
     end);
+  // Fenster „Atlas-Hotspots“ (#1354): nebenläufig zu anderen Befehlen, weil es nachfragt, solange der Server im
+  // Hintergrund rechnet; startet den Server bei Bedarf.
+  TAtlasIdeHotspots.Install(
+    function(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal; const ADone: TProc<string>): Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.ActiveSession <> nil);
+      if Result then
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, ATimeoutMs, HotspotsAnswer(ADone));
+    end);
+  // „Auswirkungen anzeigen“ im Hotspot-Fenster (#1120) auf der Methode, auf die das Fenster den Cursor setzt.
+  TAtlasIdeHotspots.OnImpact :=
+    procedure
+    begin
+      TAtlasIdeImpact.ShowAtCursor;
+    end;
   // Strg+Doppelklick in der Architekturkarte zeigt die Unit dort.
   TAtlasIdeArchitecture.OnUnitRelations :=
     procedure(AFileName: string)
@@ -3540,6 +3581,7 @@ begin
   TAtlasIdeOutline.Uninstall;
   TAtlasIdeSymbolPath.Uninstall;
   TAtlasIdeArchitecture.Uninstall;
+  TAtlasIdeHotspots.Uninstall;
   TAtlasIdeUnitRelations.Uninstall;
   TAtlasIdeOutlineCache.Uninstall;
   TAtlasIdeNavHistory.Uninstall;
@@ -5696,6 +5738,7 @@ begin
       TAtlasIdeProblems.ThemeChanged;
       TAtlasIdeOutline.ThemeChanged;
       TAtlasIdeArchitecture.ThemeChanged;
+      TAtlasIdeHotspots.ThemeChanged;
       TAtlasIdeUnitRelations.ThemeChanged;
       TAtlasIdeBreadcrumbs.ThemeChanged;
       TAtlasIdeEditorToolbar.ThemeChanged;
@@ -5754,6 +5797,8 @@ begin
       TAtlasIdeOutline.ApplySettings;
       // architecture.* (#1118).
       TAtlasIdeArchitecture.ApplySettings;
+      // hotspots.* (#1354).
+      TAtlasIdeHotspots.ApplySettings;
       TAtlasIdeUnitRelations.ApplySettings;
       // callHierarchy.diagram (#1122).
       TAtlasIdeResultsWindow.ApplySettings;

@@ -14,6 +14,8 @@ type
     [Test]
     procedure ReadsArchitectureSettings;
     [Test]
+    procedure ReadsHotspotsSettings;
+    [Test]
     procedure ReadsArchitectureComparisonSettings;
     [Test]
     procedure ReadsNavigationSymbolPath;
@@ -279,6 +281,40 @@ begin
   Settings := TConfigurationParser.ParseLayered('{"architecture": {"centralUnits": 30}}',
     '{"architecture": {"exclude": ["Demo/**"]}}', Issues);
   Assert.AreEqual(1, Integer(Length(Settings.ArchitectureExclude)));
+end;
+
+procedure TConfigurationParserTests.ReadsHotspotsSettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Hotspots (#1354)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.HotspotsEnabled);
+  Assert.AreEqual(12, Settings.HotspotsMonths);
+  Assert.AreEqual(5, Settings.HotspotsCouplingMinCommits);
+  Settings := Parse('{"hotspots": {"enabled": false, "months": 24, "coupling": {"minCommits": 8}}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.HotspotsEnabled);
+  Assert.AreEqual(24, Settings.HotspotsMonths);
+  Assert.AreEqual(8, Settings.HotspotsCouplingMinCommits);
+  Settings := Parse('{"hotspots": {"enabled": 1, "months": 61, "coupling": {"minCommits": 1, "y": 2}, "x": true}}',
+    Issues);
+  Assert.AreEqual(5, Integer(Length(Issues)));
+  Assert.IsTrue(Settings.HotspotsEnabled);
+  Assert.AreEqual(12, Settings.HotspotsMonths);
+  Assert.AreEqual(5, Settings.HotspotsCouplingMinCommits);
+  Settings := Parse('{"hotspots": {"months": 0, "coupling": {"minCommits": 1001}}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Parse('{"hotspots": {"months": 2.5, "coupling": []}}', Issues);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Parse('{"hotspots": []}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Settings := TConfigurationParser.ParseLayered('{"hotspots": {"months": 6}}',
+    '{"hotspots": {"coupling": {"minCommits": 3}}}', Issues);
+  // Die Datei setzt "hotspots" und hat damit für den ganzen Schlüssel Vorrang.
+  Assert.AreEqual(12, Settings.HotspotsMonths);
+  Assert.AreEqual(3, Settings.HotspotsCouplingMinCommits);
 end;
 
 procedure TConfigurationParserTests.MergesLayersPerKey;

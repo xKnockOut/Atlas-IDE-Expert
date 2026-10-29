@@ -689,6 +689,12 @@ type
     /// (newCycle, newCrossLink, subsystemChange, centralGrowth; Vorgabe newCycle).</summary>
     ArchitectureBaseline: string;
     ArchitectureFailOn: TArray<string>;
+    /// <summary>Hotspots (#1354): Hauptschalter (aus = kein Fenster, kein get_hotspots, --hotspots endet mit Exit-Code
+    /// 3), ausgewerteter Zeitraum in Monaten (1..60) und Mindestzahl gemeinsamer Commits für die Änderungskopplung
+    /// (2..1000).</summary>
+    HotspotsEnabled: Boolean;
+    HotspotsMonths: Integer;
+    HotspotsCouplingMinCommits: Integer;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -1207,6 +1213,9 @@ begin
   Result.ArchitectureExclude := nil;
   Result.ArchitectureBaseline := '';
   Result.ArchitectureFailOn := ['newCycle'];
+  Result.HotspotsEnabled := True;
+  Result.HotspotsMonths := 12;
+  Result.HotspotsCouplingMinCommits := 5;
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';

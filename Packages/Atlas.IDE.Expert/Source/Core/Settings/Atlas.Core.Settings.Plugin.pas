@@ -783,6 +783,17 @@ type
     /// <summary>Zustand: Das Fenster „Unit-Beziehungen“ (#593) wurde einmal rechts neben die Projektverwaltung
     /// gelegt (ui.unitRelationsWindowPlaced); danach gilt die Lage aus dem Desktop der IDE.</summary>
     UnitRelationsWindowPlaced: Boolean;
+    /// <summary>Hotspots (#1354, hotspots.enabled in settings.json): Fenster „Atlas-Hotspots“, Bericht
+    /// (--hotspots) und get_hotspots; Vorgabe an.</summary>
+    HotspotsEnabled: Boolean;
+    /// <summary>Ausgewerteter Zeitraum in Monaten (hotspots.months, 1–60, Vorgabe 12).</summary>
+    HotspotsMonths: Integer;
+    /// <summary>Mindestzahl gemeinsamer Commits der Änderungskopplung (hotspots.coupling.minCommits, 2–1000,
+    /// Vorgabe 5).</summary>
+    HotspotsCouplingMinCommits: Integer;
+    /// <summary>Zustand: Das Fenster „Atlas-Hotspots“ wurde einmal rechts neben die Projektverwaltung gelegt
+    /// (ui.hotspotsWindowPlaced); danach gilt die Lage aus dem Desktop der IDE.</summary>
+    HotspotsWindowPlaced: Boolean;
     /// <summary>Befehl „Weg zwischen Symbolen…“ mit Menü- und Kontextmenüeintrag (#1117, navigation.symbolPath in
     /// settings.json); Vorgabe an.</summary>
     SymbolPath: Boolean;
@@ -2037,6 +2048,11 @@ begin
   Result.ArchitectureCentralUnits := 15;
   Result.ArchitectureWindowPlaced := False;
   Result.UnitRelationsWindowPlaced := False;
+  // Wie die Vorgaben im Schema (atlas.schema.json, hotspots).
+  Result.HotspotsEnabled := True;
+  Result.HotspotsMonths := 12;
+  Result.HotspotsCouplingMinCommits := 5;
+  Result.HotspotsWindowPlaced := False;
   Result.SymbolPath := True;
   Result.ExperimentalEnabled := False;
   Result.SetupChecklist := True;
@@ -2396,6 +2412,8 @@ begin
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
   ArchitectureScope := Choice(ArchitectureScope, ['projectGroup', 'project']);
   ArchitectureCentralUnits := EnsureRange(ArchitectureCentralUnits, 5, 100);
+  HotspotsMonths := EnsureRange(HotspotsMonths, 1, 60);
+  HotspotsCouplingMinCommits := EnsureRange(HotspotsCouplingMinCommits, 2, 1000);
   // TShortCut ist ein Word.
   PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
   WelcomePageSearchKey := EnsureRange(WelcomePageSearchKey, 0, $FFFF);
@@ -2919,6 +2937,11 @@ begin
     BoolValue(Default.ArchitectureWindowPlaced)) <> 0;
   UnitRelationsWindowPlaced := AStore.ReadInteger('UnitRelationsWindowPlaced',
     BoolValue(Default.UnitRelationsWindowPlaced)) <> 0;
+  HotspotsEnabled := AStore.ReadInteger('HotspotsEnabled', BoolValue(Default.HotspotsEnabled)) <> 0;
+  HotspotsMonths := AStore.ReadInteger('HotspotsMonths', Default.HotspotsMonths);
+  HotspotsCouplingMinCommits := AStore.ReadInteger('HotspotsCouplingMinCommits',
+    Default.HotspotsCouplingMinCommits);
+  HotspotsWindowPlaced := AStore.ReadInteger('HotspotsWindowPlaced', BoolValue(Default.HotspotsWindowPlaced)) <> 0;
   SymbolPath := AStore.ReadInteger('SymbolPath', BoolValue(Default.SymbolPath)) <> 0;
   ExperimentalEnabled := AStore.ReadInteger('ExperimentalEnabled', BoolValue(Default.ExperimentalEnabled)) <> 0;
   SetupChecklist := AStore.ReadInteger('SetupChecklist', BoolValue(Default.SetupChecklist)) <> 0;
@@ -3515,6 +3538,10 @@ begin
   AStore.WriteInteger('ArchitectureCentralUnits', ArchitectureCentralUnits);
   AStore.WriteInteger('ArchitectureWindowPlaced', BoolValue(ArchitectureWindowPlaced));
   AStore.WriteInteger('UnitRelationsWindowPlaced', BoolValue(UnitRelationsWindowPlaced));
+  AStore.WriteInteger('HotspotsEnabled', BoolValue(HotspotsEnabled));
+  AStore.WriteInteger('HotspotsMonths', HotspotsMonths);
+  AStore.WriteInteger('HotspotsCouplingMinCommits', HotspotsCouplingMinCommits);
+  AStore.WriteInteger('HotspotsWindowPlaced', BoolValue(HotspotsWindowPlaced));
   AStore.WriteInteger('SymbolPath', BoolValue(SymbolPath));
   AStore.WriteInteger('ExperimentalEnabled', BoolValue(ExperimentalEnabled));
   AStore.WriteInteger('SetupChecklist', BoolValue(SetupChecklist));

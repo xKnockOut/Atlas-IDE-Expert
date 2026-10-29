@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Hotspots (#1354, 29.10.2026, Branch `feature/1354-hotspots`)
+- Fachlogik in `Atlas.Common.Hotspots.*` (History, Analysis, Service, Report), Server in `Atlas.Common.Lsp.Hotspots` und `Shell.Hotspots` (git/svn), Plugin in `Atlas.Core.Hotspots.Model`, `Atlas.UI.Hotspots.*`, `Atlas.IDE.Hotspots.*`.
+- `atlas.hotspots` und `atlas.hotspots.saveReport` laufen nebenläufig (`RegisterConcurrent`) und rechnen in einem eigenen Thread: Die erste Anfrage antwortet sofort mit `"pending": true`, das Fenster fragt alle 2 s nach. Grund: Ein langer `git log -L` blockierte sonst die Warteschlange des Servers bzw. wurde nach `requestTimeoutMs` abgebrochen.
+- Einstellungen auf der Seite *Allgemein › Hotspots* (eine Seite „Analyse“, wie im Issue genannt, gibt es nicht).
+- Unter FPC getestet (Common, LSP, Shell mit echtem git, Parser, CLI, MCP); `Atlas.UI.Hotspots.Frame.Tests` läuft nur unter Delphi. Delphi-Build und Handtests HS1–HS16 offen; SVN-Vergleich (HS12) braucht `svn` und `svnadmin`, im Test sonst übersprungen.
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.

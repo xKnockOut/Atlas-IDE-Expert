@@ -57,6 +57,10 @@ type
     /// stdout (bzw. in --output); Exit-Code 1, wenn eine Abweichung aus --fail-on (sonst architecture.failOn)
     /// vorkommt, sonst 0; bei Fehlern 3.</summary>
     class function Architecture(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--hotspots (#1354): Hotspots des Ziels aus --check (sonst des aktuellen Ordners) samt Methoden und
+    /// Änderungskopplung als Markdown, HTML oder JSON nach der Endung der Datei. Exit-Code 0; 3 ohne
+    /// Versionsverwaltung, mit hotspots.enabled = false und bei Fehlern.</summary>
+    class function Hotspots(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>--clear-cache: löscht alle Index-Caches, die keine laufende Instanz nutzt (#184).</summary>
     class function ClearCache: Integer; static;
   end;
@@ -115,8 +119,13 @@ uses
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
+  Atlas.Common.Hotspots.Contract,
+  Atlas.Common.Hotspots.Analysis,
+  Atlas.Common.Hotspots.Service,
+  Atlas.Common.Hotspots.Report,
   Shell.Platform,
   Shell.VcsChanges,
+  Shell.Hotspots,
   Shell.Bootstrap;
 
 procedure WriteText(const AStream: TStream; const AText: string);
@@ -614,6 +623,104 @@ begin
       if Comparison.Kinds * FailOn <> [] then
         Result := TFindingsOutput.ExitFindings;
     end;
+  except
+    on E: Exception do
+    begin
+      WriteError(E.Message);
+      Result := TFindingsOutput.ExitFailure;
+    end;
+  end;
+end;
+
+class function TLinterShell.Hotspots(const AOptions: TCommandLineOptions): Integer;
+var
+  mTarget, mConfigRoot, mRoot, mFileName, mText, mWarning, mExtension, mError: string;
+  mSettings: TServerSettings;
+  mSources: TCheckSourceFunc;
+  mSource: TCheckSource;
+  mIndex: ISymbolIndex;
+  mService: THotspotService;
+  mRequest: THotspotRequest;
+  mResult: THotspotResult;
+  mFormat: TFileFormat;
+  mVcs: IHotspotVcs;
+begin
+  for mWarning in AOptions.Warnings do
+    WriteError(mWarning);
+  mExtension := LowerCase(ExtractFileExt(AOptions.HotspotsFile));
+  if (mExtension <> '.md') and (mExtension <> '.html') and (mExtension <> '.htm') and (mExtension <> '.json') then
+  begin
+    WriteError('--hotspots erwartet eine .md-, .html- oder .json-Datei');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  mTarget := AOptions.CheckTarget;
+  if mTarget = '' then
+    mTarget := GetCurrentDir;
+  if not (TFile.Exists(mTarget) or TDirectory.Exists(mTarget)) then
+  begin
+    WriteError(Format('Ziel "%s" nicht gefunden', [mTarget]));
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  try
+    if TDirectory.Exists(mTarget) then
+      mConfigRoot := TPath.GetFullPath(mTarget)
+    else
+      mConfigRoot := ExtractFileDir(TPath.GetFullPath(mTarget));
+    mSettings := LoadSettings(mConfigRoot);
+    if not mSettings.HotspotsEnabled then
+    begin
+      WriteError('Hotspots sind ausgeschaltet (hotspots.enabled in settings.json)');
+      Exit(TFindingsOutput.ExitFailure);
+    end;
+    if not TShellHotspotVcs.Detect(mConfigRoot, mSettings, mVcs, mError) then
+    begin
+      WriteError('Hotspots brauchen eine Versionsverwaltung: ' + mError);
+      Exit(TFindingsOutput.ExitFailure);
+    end;
+    TFileEncodingDefaults.SetFolder(mConfigRoot, mSettings.DefaultEncoding);
+    // Dieselben Dateien wie --check; der Index enthält nur das Projekt (keine Bibliothek).
+    mIndex := TSymbolIndex.Create;
+    for mFileName in CollectFiles(mTarget, mSettings, mRoot, mSources) do
+      try
+        mText := TFileEncoding.LoadFromFile(mFileName, mFormat);
+        mSource := mSources(mFileName);
+        mIndex.AddUnit(TIndexExtractor.ExtractText(mText, mFileName, mSource.Defines, mSource.ResolveInclude));
+      except
+        on E: Exception do
+          WriteError(Format('%s: %s', [mFileName, E.Message]));
+      end;
+    mService := THotspotService.Create(mIndex,
+      function(const AFileName: string; out AText: string): Boolean
+      var
+        mTextFormat: TFileFormat;
+      begin
+        try
+          AText := TFileEncoding.LoadFromFile(AFileName, mTextFormat);
+          Result := True;
+        except
+          AText := '';
+          Result := False;
+        end;
+      end);
+    try
+      mRequest := THotspotRequest.FromSettings(mSettings);
+      // Der Bericht zeigt beide Tabellen: Units und die Methoden der obersten Kandidaten.
+      mRequest.Level := THotspotLevel.Methods;
+      mRequest.Root := mRoot;
+      if TDirectory.Exists(mTarget) then
+        mRequest.Title := ExtractFileName(ExcludeTrailingPathDelimiter(TPath.GetFullPath(mTarget)))
+      else
+        mRequest.Title := ChangeFileExt(ExtractFileName(mTarget), '');
+      mResult := mService.Analyze(mRequest, mVcs);
+    finally
+      mService.Free;
+    end;
+    ForceDirectories(ExtractFileDir(TPath.GetFullPath(AOptions.HotspotsFile)));
+    TFile.WriteAllBytes(AOptions.HotspotsFile, TEncoding.UTF8.GetBytes(THotspotReport.ForFile(mResult,
+      AOptions.HotspotsFile)));
+    WriteError(Format('Hotspot-Bericht %s: %s, %d Units, %d Methoden, %d Kopplungen', [AOptions.HotspotsFile,
+      THotspotReport.RangeText(mResult), Length(mResult.Units), Length(mResult.Methods), Length(mResult.Coupling)]));
+    Result := TFindingsOutput.ExitClean;
   except
     on E: Exception do
     begin
