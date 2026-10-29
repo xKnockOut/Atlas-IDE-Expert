@@ -31,6 +31,13 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Sammelkorrektur #1352 (29.10.2026, Branch `feature/1352-fix-befunde`)
+- Kern `Atlas.Common.Rules.BulkFix` (TBulkFix): gemeinsam für `--fix` (Shell.Linter), MCP `fix_findings` (TMcpEditTools.FixFindings) und Plugin (Serverbefehl `atlas.server.fixFindings`, Atlas.Common.Lsp.BulkFix). Sicher = Konfidenz ab `fix.minConfidence`, Katalogfeld `safeFix`, genau eine Text-Korrektur mit `TRuleFix.Safe`, nicht Alternative, nur die eigene Datei. `TBulkFix.WriteAll` (alles oder nichts) nutzt jetzt auch `TMcpEditTools.Apply`.
+- Neue Regel `unused-uses` (DeadCode): schweigt Live (der Editor blendet die uses ab), ohne Index, bei Syntaxfehlern und in .dpr/.dpk. `TRuleContext.InactiveRanges` und `UsesKeep` neu (Checker bzw. Engine setzen sie).
+- Plugin: Kontextmenü im Frame (OnFixAll/CanFixAll), Modell `Atlas.Core.Problems.BulkFix`, Dialog `Atlas.UI.Problems.BulkFix`; Service bekommt die Haken FixFindings (300 s Frist) und ApplyEdit aus der CodeInsight-Composition (sonst Feature-Zyklus Problems ↔ Editor).
+- FPC-Harness: `Atlas.Common.Lsp.Implementations` braucht die von Convert-ForFpc umgeschriebene Fassung (verschachtelte Generics), sonst baut MCP-EditTools.Tests nicht. Ein Test (Umlaut im JSON) scheitert nur unter FPC.
+- Offen: Delphi-Bau und Handtests SK1–SK17.
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.

@@ -2411,6 +2411,18 @@
       "x-node": "rules.window",
       "x-issue": "#909"
     },
+    "FixBulk": {
+      "type": "boolean",
+      "default": true,
+      "description": "Kontextmenü „Alle sicheren Treffer von … korrigieren …“ im Fenster „Atlas-Prüfung“: korrigiert alle sicheren Treffer einer Regel mit Vorschau (Dateien mit Diff, abwählbar), ein Rückgängig-Schritt je Datei; aus = kein Eintrag.",
+      "x-key": "fix.bulk",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-parent": "problems.window",
+      "x-node": "rules.window",
+      "x-control": "Schalter „Sammelkorrektur im Fenster Atlas-Prüfung“",
+      "x-issue": "#1352"
+    },
     "HoverProblemActions": {
       "type": "boolean",
       "default": true,

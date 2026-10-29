@@ -582,6 +582,7 @@ type
     FProblemsWindowClosedUnits: TAtlasChoiceBox;
     FProblemsWindowShowCleanActive: TCheckBox;
     FProblemsLive: TCheckBox;
+    FFixBulk: TCheckBox;
     FProblemsCompilerMerge: TAtlasChoiceBox;
     FProblemsShowCompilerCode: TCheckBox;
     FHoverProblemActions: TCheckBox;
@@ -1795,6 +1796,7 @@ type
     property ProblemsWindowClosedUnitsChoice: TAtlasChoiceBox read FProblemsWindowClosedUnits;
     property ProblemsWindowShowCleanActiveCheck: TCheckBox read FProblemsWindowShowCleanActive;
     property ProblemsLiveCheck: TCheckBox read FProblemsLive;
+    property FixBulkCheck: TCheckBox read FFixBulk;
     property ProblemsCompilerMergeChoice: TAtlasChoiceBox read FProblemsCompilerMerge;
     property ProblemsShowCompilerCodeCheck: TCheckBox read FProblemsShowCompilerCode;
     property HoverProblemActionsCheck: TCheckBox read FHoverProblemActions;
@@ -2680,6 +2682,8 @@ begin
   FProblemsWindowShowCleanActive := AddCheck(
     TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowShowCleanActive));
   FProblemsLive := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsLive));
+  // Sammelkorrektur im Kontextmenü des Fensters (#1352).
+  FFixBulk := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsFixBulk));
   // Gruppe „Compiler vorab“ (#1024): stehen über x-node im Knoten der Gruppe unter dem Regel-Editor.
   FProblemsCompilerMerge := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsCompilerMerge),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsCompilerMergeMerge),
@@ -6577,6 +6581,7 @@ begin
   FMarks.Bind(FProblemsWindowClosedUnits, ['ProblemsWindowClosedUnits']);
   FMarks.Bind(FProblemsWindowShowCleanActive, ['ProblemsWindowShowCleanActive']);
   FMarks.Bind(FProblemsLive, ['ProblemsLive']);
+  FMarks.Bind(FFixBulk, ['FixBulk']);
   FMarks.Bind(FProblemsCompilerMerge, ['ProblemsCompilerMerge']);
   FMarks.Bind(FProblemsShowCompilerCode, ['ProblemsShowCompilerCode']);
   FMarks.Bind(FHoverProblemActions, ['HoverProblemActions']);
@@ -8897,6 +8902,7 @@ begin
   FProblemsCompilerMerge.Choice := Max(0, IndexText(ASettings.ProblemsCompilerMerge, CompilerMergeValues));
   FProblemsShowCompilerCode.Checked := ASettings.ProblemsShowCompilerCode;
   FProblemsLive.Checked := ASettings.ProblemsLive;
+  FFixBulk.Checked := ASettings.FixBulk;
   FProblemsStatusCounter.Checked := ASettings.ProblemsStatusCounter;
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
@@ -9542,6 +9548,7 @@ begin
     ASettings.ProblemsCompilerMerge := CompilerMergeValues[FProblemsCompilerMerge.Choice];
   ASettings.ProblemsShowCompilerCode := FProblemsShowCompilerCode.Checked;
   ASettings.ProblemsLive := FProblemsLive.Checked;
+  ASettings.FixBulk := FFixBulk.Checked;
   ASettings.ProblemsStatusCounter := FProblemsStatusCounter.Checked;
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;

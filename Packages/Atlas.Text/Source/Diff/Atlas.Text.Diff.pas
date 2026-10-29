@@ -5,6 +5,9 @@
 // und eine lesbare Ausgabe „Zeile n:“ bzw. „ab Zeile n:“ mit "- " alt und
 // "+ " neu. Wer die Zeilen wie trennt, entscheidet der Aufrufer
 // (TTextLines.SplitLines oder SplitKeepingBreaks).
+// Unified liefert den vereinigten Diff (#1352, „--fix-dry-run“): Kopf "--- alt"
+// und "+++ neu", je Block "@@ -a,b +c,d @@" mit Kontextzeilen; nahe Blöcke
+// verschmelzen wie bei diff -u.
 
 interface
 
@@ -34,6 +37,11 @@ type
       overload; static;
     /// <summary>Wie oben, ohne Begrenzung.</summary>
     class function ChangedLines(const AOld, ANew: TArray<string>): TArray<string>; overload; static;
+    /// <summary>Vereinigter Diff (#1352) von AOld nach ANew mit AContext Kontextzeilen je Block: "--- AOldName",
+    /// "+++ ANewName", dann je Block "@@ -a,b +c,d @@" und die Zeilen mit " ", "-" oder "+" davor. Leer, wenn
+    /// gleich.</summary>
+    class function Unified(const AOldName, ANewName: string; const AOld, ANew: TArray<string>;
+      AContext: Integer): TArray<string>; static;
   end;
 
 implementation
@@ -193,6 +201,71 @@ end;
 class function TTextDiff.ChangedLines(const AOld, ANew: TArray<string>): TArray<string>;
 begin
   Result := ChangedLines(AOld, ANew, -1);
+end;
+
+/// <summary>Kopfzahl eines Blocks: 1-basierter Anfang und Länge, bei leerem Block die Zeile davor (wie diff -u).
+/// </summary>
+function RangeText(AStart, ACount: Integer): string;
+begin
+  if ACount = 0 then
+    Result := Format('%d,0', [AStart])
+  else if ACount = 1 then
+    Result := IntToStr(AStart + 1)
+  else
+    Result := Format('%d,%d', [AStart + 1, ACount]);
+end;
+
+class function TTextDiff.Unified(const AOldName, ANewName: string; const AOld, ANew: TArray<string>;
+  AContext: Integer): TArray<string>;
+var
+  mHunks: TArray<TTextLineHunk>;
+  mFirst, mLast, mIndex, mOldFrom, mOldTo, mNewFrom, mNewCount, mLine, mAdded: Integer;
+  mBody: TArray<string>;
+begin
+  Result := nil;
+  mHunks := Hunks(AOld, ANew);
+  if Length(mHunks) = 0 then
+    Exit;
+  Result := TArray<string>.Create('--- ' + AOldName, '+++ ' + ANewName);
+  mFirst := 0;
+  while mFirst <= High(mHunks) do
+  begin
+    // Blöcke, deren Abstand höchstens zweimal den Kontext beträgt, gehören zusammen.
+    mLast := mFirst;
+    while (mLast < High(mHunks)) and (mHunks[mLast + 1].OldStart - (mHunks[mLast].OldStart + mHunks[mLast].OldCount)
+      <= 2 * AContext) do
+      Inc(mLast);
+    mOldFrom := Max(0, mHunks[mFirst].OldStart - AContext);
+    mNewFrom := mHunks[mFirst].NewStart - (mHunks[mFirst].OldStart - mOldFrom);
+    mOldTo := Min(Length(AOld), mHunks[mLast].OldStart + mHunks[mLast].OldCount + AContext);
+    mNewCount := mOldTo - mOldFrom;
+    mBody := nil;
+    mLine := mOldFrom;
+    for mIndex := mFirst to mLast do
+    begin
+      while mLine < mHunks[mIndex].OldStart do
+      begin
+        mBody := mBody + [' ' + AOld[mLine]];
+        Inc(mLine);
+      end;
+      while mLine < mHunks[mIndex].OldStart + mHunks[mIndex].OldCount do
+      begin
+        mBody := mBody + ['-' + AOld[mLine]];
+        Inc(mLine);
+      end;
+      for mAdded := mHunks[mIndex].NewStart to mHunks[mIndex].NewStart + mHunks[mIndex].NewCount - 1 do
+        mBody := mBody + ['+' + ANew[mAdded]];
+      mNewCount := mNewCount + mHunks[mIndex].NewCount - mHunks[mIndex].OldCount;
+    end;
+    while mLine < mOldTo do
+    begin
+      mBody := mBody + [' ' + AOld[mLine]];
+      Inc(mLine);
+    end;
+    Result := Result + ['@@ -' + RangeText(mOldFrom, mOldTo - mOldFrom) + ' +' + RangeText(mNewFrom, mNewCount) +
+      ' @@'] + mBody;
+    mFirst := mLast + 1;
+  end;
 end;
 
 end.

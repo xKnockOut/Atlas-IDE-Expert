@@ -344,6 +344,11 @@ type
     /// TRuleEngine.Run.</summary>
     SortUses: Boolean;
     SortUsesByNamespace: Boolean;
+    /// <summary>usesKeep (#621): Units, die unused-uses nie meldet; setzt TRuleEngine.Run.</summary>
+    UsesKeep: TArray<string>;
+    /// <summary>Inaktive Zweige der bedingten Kompilierung in Text (#1352), z. B. für unused-uses; setzt
+    /// TFileChecker.CheckText. nil = keine bekannt.</summary>
+    InactiveRanges: TArray<TTextRange>;
   end;
 
   /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,

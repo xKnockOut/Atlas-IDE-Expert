@@ -560,6 +560,8 @@ type
     MinConfidence: TRuleConfidence;
     /// <summary>"minConfidence" steht ausdrücklich in der Konfiguration und geht dem Profil vor (#146).</summary>
     MinConfidenceGiven: Boolean;
+    /// <summary>fix.minConfidence (#1352): Untergrenze der Konfidenz für Sammelkorrekturen; Vorgabe High.</summary>
+    FixMinConfidence: TRuleConfidence;
     /// <summary>Glob-Muster relativ zum Ordner der Konfiguration (*, **, ?).</summary>
     Exclude: TArray<string>;
     /// <summary>MCP-Werkzeuge, die der Server nicht anbietet (mcp.disabledTools, #99).</summary>
@@ -1143,6 +1145,7 @@ begin
   Result.TestProfile := '';
   Result.MinConfidenceGiven := False;
   Result.MinConfidence := TRuleConfidence.Medium;
+  Result.FixMinConfidence := TRuleConfidence.High;
   Result.Exclude := nil;
   Result.Format := '';
   Result.Formatting := TFormatStyle.Default;

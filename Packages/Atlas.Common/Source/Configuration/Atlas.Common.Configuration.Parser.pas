@@ -90,6 +90,7 @@ type
     procedure ReadOverrides(ANode: TJsonNode);
     procedure ReadExclude(ANode: TJsonNode);
     procedure ReadMcp(ANode: TJsonNode);
+    procedure ReadFix(ANode: TJsonNode);
     procedure ReadUsesKeep(ANode: TJsonNode);
     procedure ReadDeadCode(ANode: TJsonNode);
     procedure ReadSlashCommands(ANode: TJsonNode);
@@ -775,6 +776,31 @@ begin
       ExpectBoolean(ANode[Index], 'globalSettings', FSettings.McpGlobalSettings)
     else
       ReportNode(ANode[Index], Format('Unbekannte Einstellung "mcp.%s"', [ANode.Keys[Index]]));
+end;
+
+procedure TValidator.ReadFix(ANode: TJsonNode);
+var
+  mIndex: Integer;
+  mText: string;
+  mConfidence: TRuleConfidence;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"fix" muss ein Objekt sein');
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+    if ANode.Keys[mIndex] = 'minConfidence' then
+    begin
+      // Sammelkorrekturen (#1352) nie unter mittlerer Konfidenz.
+      if ExpectString(ANode[mIndex], 'fix.minConfidence', mText) then
+        if TConfigurationParser.TryParseConfidence(mText, mConfidence) and (mConfidence <> TRuleConfidence.Low) then
+          FSettings.FixMinConfidence := mConfidence
+        else
+          ReportNode(ANode[mIndex], 'Erlaubt sind "medium" und "high"');
+    end
+    else
+      ReportNode(ANode[mIndex], Format('Unbekannte Einstellung "fix.%s"', [ANode.Keys[mIndex]]));
 end;
 
 function TValidator.ExpectBoolean(ANode: TJsonNode; const AName: string; var AValue: Boolean): Boolean;
@@ -2813,6 +2839,8 @@ begin
         ReadExclude(Value)
       else if Key = 'mcp' then
         ReadMcp(Value)
+      else if Key = 'fix' then
+        ReadFix(Value)
       else if Key = 'minConfidence' then
       begin
         if ExpectString(Value, Key, Text) then
@@ -3178,6 +3206,8 @@ begin
       Result.MinConfidence := FileSettings.MinConfidence;
       Result.MinConfidenceGiven := FileSettings.MinConfidenceGiven;
     end
+    else if Key = 'fix' then
+      Result.FixMinConfidence := FileSettings.FixMinConfidence
     else if Key = 'tasks' then
       Result.Tasks := FileSettings.Tasks
     else if Key = 'issues' then

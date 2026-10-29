@@ -25,6 +25,16 @@ type
     procedure ChangedLinesLimit;
     [Test]
     procedure ChangedLinesEqualIsEmpty;
+    [Test]
+    procedure UnifiedHeaderAndContext;
+    [Test]
+    procedure UnifiedMergesNearHunks;
+    [Test]
+    procedure UnifiedSeparateHunks;
+    [Test]
+    procedure UnifiedRemovedLine;
+    [Test]
+    procedure UnifiedEqualIsEmpty;
   end;
 
 implementation
@@ -126,6 +136,44 @@ procedure TTextDiffTests.ChangedLinesEqualIsEmpty;
 begin
   Assert.AreEqual<Integer>(0, Length(TTextDiff.ChangedLines(['a', ''], ['a', ''])));
   Assert.AreEqual<Integer>(0, Length(TTextDiff.ChangedLines(nil, nil)));
+end;
+
+procedure TTextDiffTests.UnifiedHeaderAndContext;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TTextDiff.Unified('a/U.pas', 'b/U.pas', ['1', '2', '3', '4', '5', '6'], ['1', '2', '3', 'x', '5', '6'], 1);
+  Assert.AreEqual('--- a/U.pas|+++ b/U.pas|@@ -3,3 +3,3 @@| 3|-4|+x| 5', string.Join('|', mLines));
+end;
+
+procedure TTextDiffTests.UnifiedMergesNearHunks;
+var
+  mLines: TArray<string>;
+begin
+  // Abstand 2 Zeilen bei Kontext 1: ein Block.
+  mLines := TTextDiff.Unified('a', 'b', ['1', '2', '3', '4', '5'], ['x', '2', '3', 'y', '5'], 1);
+  Assert.AreEqual('--- a|+++ b|@@ -1,5 +1,5 @@|-1|+x| 2| 3|-4|+y| 5', string.Join('|', mLines));
+end;
+
+procedure TTextDiffTests.UnifiedSeparateHunks;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TTextDiff.Unified('a', 'b', ['1', '2', '3', '4', '5', '6', '7'], ['x', '2', '3', '4', '5', '6', 'y'], 1);
+  Assert.AreEqual('--- a|+++ b|@@ -1,2 +1,2 @@|-1|+x| 2|@@ -6,2 +6,2 @@| 6|-7|+y', string.Join('|', mLines));
+end;
+
+procedure TTextDiffTests.UnifiedRemovedLine;
+var
+  mLines: TArray<string>;
+begin
+  mLines := TTextDiff.Unified('a', 'b', ['uses', '  A,', '  B;'], ['uses', '  B;'], 0);
+  Assert.AreEqual('--- a|+++ b|@@ -2 +1,0 @@|-  A,', string.Join('|', mLines));
+end;
+
+procedure TTextDiffTests.UnifiedEqualIsEmpty;
+begin
+  Assert.AreEqual<Integer>(0, Length(TTextDiff.Unified('a', 'b', ['x'], ['x'], 3)));
 end;
 
 initialization

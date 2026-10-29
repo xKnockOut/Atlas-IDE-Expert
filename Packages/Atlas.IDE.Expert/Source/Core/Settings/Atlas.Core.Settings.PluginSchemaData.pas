@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..6134] of string = (
+  Lines: array[0..6146] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -2456,6 +2456,19 @@ const
     '      "x-parent": "problems.enabled",',
     '      "x-node": "rules.window",',
     '      "x-issue": "#909"',
+    '    },',
+    '    "FixBulk": {',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "description": "Kontextmenü „Alle sicheren Treffer von … korrigieren …“ im Fenster „Atlas-Prüfung“: korrigiert alle sicheren Treffer einer Regel mit Vorschau (Dateien mit Diff, abwählbar), ein R' +
+      'ückgängig-Schritt je Datei; aus = kein Eintrag.",',
+    '      "x-key": "fix.bulk",',
+    '      "x-area": "rules",',
+    '      "x-page": "Prüfregeln",',
+    '      "x-parent": "problems.window",',
+    '      "x-node": "rules.window",',
+    '      "x-control": "Schalter „Sammelkorrektur im Fenster Atlas-Prüfung“",',
+    '      "x-issue": "#1352"',
     '    },',
     '    "HoverProblemActions": {',
     '      "type": "boolean",',
