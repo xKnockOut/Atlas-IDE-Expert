@@ -18,6 +18,8 @@ type
     function GetFlag(AArt: TArt): Boolean;
     procedure SetFlag(AArt: TArt; const AWert: Boolean);
     function GetText: string; overload;
+  protected
+    // protected statt private: sonst H2219, weil nur die andere Überladung benutzt wird.
     function GetText(AArt: TArt): string; overload;
   public
     class function GetVersion: string; virtual;
