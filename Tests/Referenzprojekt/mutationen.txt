@@ -118,6 +118,7 @@ hresult-integer-mix | Ref.Sprache.Merkmale.pas | ['{6F1C2B9E-4A37-4D2B-9E61-3C5A
 invalid-var-argument | Ref.Pruefung.Verstoesse.pas | procedure NameUebernehmen(var AName: string); // ERWARTET: unused-declaration\nbegin\n | procedure NameUebernehmen(var AName: string); // ERWARTET: unused-declaration\nbegin\n  if AName = '' then\n    NameUebernehmen('Unbekannt');\n
 condition-not-boolean | Ref.Pruefung.Verstoesse.pas | for I := High(AWerte) to Low(AWerte) do | if Result then\n    Exit;\n  for I := High(AWerte) to Low(AWerte) do
 for-in-not-enumerable | Ref.Sprache.Merkmale.pas | for var Wert in AWerte do | for var Wert in Result do
+type-kind-required | Ref.Pruefung.Verstoesse.pas |   I: Integer;\nbegin\n  Result := 0; |   I: Integer;\nbegin\n  Result := 0;\n  I^ := 1;
 constant-expression-error | Ref.Komponenten.Anzeige.pas | TextAbstand = 4; | TextAbstand = 4 div (StandardHoehe - 32);
 default-parameter-invalid | Ref.Daten.Kunden.pas | procedure Speichern(AId: Integer; const AName: string); | procedure Speichern(AId: Integer = 0; const AName: string);
 signed-unsigned-mix | Ref.Pruefung.Verstoesse.pas |   I: Integer;\nbegin\n  Result := 0; |   I: Integer;\n  Grenze: Cardinal;\nbegin\n  Result := 0;\n  Grenze := 10;\n  if Length(AWerte) > 0 then\n    I := 0;\n  if I > Grenze then\n    Exit;
