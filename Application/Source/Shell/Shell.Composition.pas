@@ -149,6 +149,8 @@ type
     FTextDocumentSync: TLspTextDocumentSync;
     FSyntaxDiagnostics: TLspSyntaxDiagnostics;
     FPullDiagnostics: TLspPullDiagnostics;
+    // Projektprüfung je Indexaufbau nur einmal neu starten (29.10.2026).
+    FIndexRecheck: TWorkspaceCheckIndexGate;
     FDocumentSymbols: TLspDocumentSymbols;
     FFoldingRanges: TLspFoldingRanges;
     FLinkedEditing: TLspLinkedEditing;
@@ -368,9 +370,13 @@ type
     function EnsureUnit(const AUnitName: string): Boolean;
     /// <summary>Fortschritt des Indexaufbaus in Prozent über alle Projekte; -1, wenn keiner läuft.</summary>
     function IndexLoading: Integer;
-    /// <summary>Ein Indexaufbau ist fertig: Befunde mit dem vollständigen Index neu prüfen (#647).
+    /// <summary>Ein Indexaufbau ist fertig: Befunde neu prüfen, falls die Projektstufe das nicht schon getan hat.
     /// Index-Thread.</summary>
     procedure IndexFinished;
+    /// <summary>Projektstufe eines Aufbaus fertig: Befunde mit dem Index neu prüfen (#647). Index-Thread.</summary>
+    procedure ProjectReady;
+    /// <summary>Gemeinsamer Teil von ProjectReady und IndexFinished.</summary>
+    procedure IndexStageDone(AProjectStage: Boolean);
     /// <summary>True, solange ein Projekt seine Projektstufe noch nicht indiziert hat.</summary>
     function ProjectIndexPending: Boolean;
     /// <summary>Text einer Quelldatei; geöffnete Dokumente haben Vorrang vor der Platte.</summary>
@@ -874,6 +880,7 @@ begin
       end;
     end);
   FSyntaxDiagnostics.Attach;
+  FIndexRecheck := TWorkspaceCheckIndexGate.Create;
   FPullDiagnostics := TLspPullDiagnostics.Create(FDocuments, FSyntaxDiagnostics, FTransport, ProjectSourceFiles,
     function(const AFileName: string; out AStamp: Int64): Boolean
     begin
@@ -2508,6 +2515,8 @@ begin
   FSyntaxDiagnostics.Free;
   // Ordner vor dem Index: ihre Index-Threads laufen noch.
   FWorkspaces.Free;
+  // Nach den Ordnern: Ihre Index-Threads melden Projektstufe und Ende.
+  FIndexRecheck.Free;
   FWorkspaceUsers.Free;
   FWorkspacesLock.Free;
   // Nach den Ordnern: Ihre Index-Threads sind beendet und abgemeldet.
@@ -2695,7 +2704,7 @@ begin
   Workspace.LoopThreadId := TThread.Current.ThreadID;
   Workspace.OnProjectLoaded := ProjectLoaded;
   Workspace.OnIndexFinished := IndexFinished;
-  Workspace.OnProjectReady := IndexFinished;
+  Workspace.OnProjectReady := ProjectReady;
   // Projekt- und Unit-Namen erscheinen im Server-Log nicht im Klartext (#647).
   Workspace.OnNames :=
     procedure(ANames: TArray<string>)
@@ -3046,6 +3055,16 @@ begin
 end;
 
 procedure TServerComposition.IndexFinished;
+begin
+  IndexStageDone(False);
+end;
+
+procedure TServerComposition.ProjectReady;
+begin
+  IndexStageDone(True);
+end;
+
+procedure TServerComposition.IndexStageDone(AProjectStage: Boolean);
 var
   UnitIndex: TUnitIndex;
 begin
@@ -3060,7 +3079,10 @@ begin
   // Projekt alle Dateien neu (CPU-Last beim Start).
   if not ProjectIndexPending then
   begin
-    FSyntaxDiagnostics.RefreshLater;
+    // Nach der Projektstufe kennt der Index alles, was das Projekt über uses erreicht. Das Ende des Aufbaus
+    // (Suchpfade, Bibliothek) startet die Prüfung nicht noch einmal von vorn (Diagnose-Log 29.10.2026).
+    if FIndexRecheck.Recheck(AProjectStage) then
+      FSyntaxDiagnostics.RefreshLater;
     // Meldungen in atlas.json, die den Index brauchen (#309); Publish nur in der Nachrichtenschleife.
     if FConnection <> nil then
       FConnection.Queue(
@@ -5991,6 +6013,8 @@ var
   LibraryRoots: TArray<string>;
   GraphOptions: TUsesGraphOptions;
 begin
+  // Neuer Indexaufbau: Seine Projektstufe oder, falls die ausbleibt, sein Ende startet die Projektprüfung.
+  FIndexRecheck.IndexStarted;
   // Neues Projekt oder neue Installation: Der Compiler bekommt eine neue Chance (#40).
   if FCompileLock <> nil then
   begin
