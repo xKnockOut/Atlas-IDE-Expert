@@ -1482,6 +1482,25 @@ Voraussetzung wie oben (#1118); ein Projekt mit einer Logging-Unit, die von mehr
 | AFU10 | Stand mit `group` speichern, auf `separate` umstellen, „Vergleichen mit …“; einen alten Stand ohne `foundation` laden | Teilsystemwechsel der Fundament-Units; der alte Stand lädt ohne Fehler |
 | AFU11 | Hell und dunkel, englische IDE-Sprache | Fundament gut erkennbar; „shared foundations“, „Edges to the foundation“ |
 
+## Zuordnung erklären (#1368)
+
+Voraussetzung wie oben (#1118); `architecture.explainAssignment` nicht gesetzt (Vorgabe an).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AZ1 | Fenster „Atlas-Architektur“, Maus über eine Unit auf der Karte halten | Hinweis neben der Unit: Name, „Teilsystem X, weil die meisten Kanten dorthin gehen:“, je Teilsystem Farbpunkt, `n × interface`, `n × impl.`, `= Summe`, absteigend (**Abnahme**) |
+| AZ2 | Maus von der Unit weg und aus der Karte heraus bewegen | Hinweis verschwindet; beim Ziehen der Karte steht kein Hinweis |
+| AZ3 | Unit anklicken | Unter der Karte derselbe Steckbrief; ohne gewählte Unit oder mit Weg (Umschalt+Klick) verschwindet er |
+| AZ4 | Eine Unit, die viele Kanten in ein zweites Teilsystem hat (Reiter *Teilsysteme* nach „knapp“ durchsuchen) | Zusatz „knapp, n Kanten fehlen zu Y“ hinter der Unit; Steckbrief mit Zeile in Warnfarbe „Knapp: Mit n weiteren Kanten zu Y läge sie dort.“ |
+| AZ5 | Unit mit Kante zu Logging (Teilsystem „Fundament“, #1365) | Zeile „Fundament“ mit „zählt nicht“ statt Summe, gedämpft |
+| AZ6 | Reiter *Teilsysteme*, Fragezeichen links oben, nochmals | Drei Sätze zu uses-Kanten, Gewichten und Louvain, dazu „Einstellungen: Feinheit 1,0 · nachteilen nach Größe ab 25 Prozent der Units · nach Zusammenhalt unter 0,3 · Fundamente getrennt.“; zweiter Klick zeigt wieder den kurzen Hinweis |
+| AZ7 | Feinheit auf 2,0 und `foundations` auf `attach` stellen, neu berechnen, Fragezeichen | Erklärung nennt die neuen Werte |
+| AZ8 | „Bericht speichern …“ als HTML, eine Unit anklicken | Steckbrief mit derselben Tabelle und Knapp-Zeile; unter „Teilsysteme“ zuerst die Erklärung, bei knappen Units „knapp → Y“ |
+| AZ9 | „Bericht speichern …“ als Markdown | Erklärung als Absatz unter der Tabelle „Teilsysteme“; je Teilsystem „Knapp zugeordnet:“ mit „Unit: Y erreicht 6 von 8, 3 Kanten fehlen zum Wechsel“ |
+| AZ10 | Claude Code: `get_architecture` mit `unit` | Block „Zuordnung“ mit den Spalten Teilsystem, interface, impl. und Summe, eigenes Teilsystem mit „(eigenes)“, bei knapper Zuordnung „knapp: …“ |
+| AZ11 | In `settings.json` `"architecture": {"explainAssignment": false}`, neu berechnen | Kein Hinweis, kein Steckbrief, kein „knapp“, kein Fragezeichen; Bericht und `get_architecture` ohne Tabelle und Block; Teilsysteme und Ausreißer unverändert |
+| AZ12 | Hell und dunkel, englische IDE-Sprache | Hinweis und Steckbrief gut lesbar, Farbpunkte wie auf der Karte; „Subsystem X, because most edges lead there:“, „does not count“, „Close: with 3 more edges …“ |
+
 ## Minimap neben der Scrollleiste (#873, experimentell)
 
 Vorher: „Experimentelle Funktionen erlauben“ an, auf der Seite Editor „Minimap neben der Scrollleiste“ an. Eine Unit mit mehreren Klassen und Methoden, eine lange Unit (10 000 Zeilen).
