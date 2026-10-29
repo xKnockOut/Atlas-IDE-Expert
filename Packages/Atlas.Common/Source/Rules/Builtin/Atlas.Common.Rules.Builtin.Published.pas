@@ -2,8 +2,10 @@
 
 // Mitglieder im published-Abschnitt einer Klasse (#909, Gruppe Compiler vorab):
 //   published-type-invalid  Was das Streaming nicht veröffentlichen kann
-//                           (#1004): Property vom Typ Record, Array, Zeiger
-//                           oder Prozedurtyp ohne "of object" (E2188), Real48
+//                           (#1004): Property vom Typ statisches Array,
+//                           Zeiger oder Prozedurtyp ohne "of object" (E2188;
+//                           Records und dynamische Arrays übersetzt dcc,
+//                           PU1-PU3 im dcc-Lauf vom 29.10.2026, #1328), Real48
 //                           (E2186), Menge über 4 Byte (E2187), Feld, das
 //                           keine Klasse und kein Interface ist (E2217), mehr
 //                           als eine published-Überladung (E2266),
@@ -65,7 +67,11 @@ type
     ClassOrInterface,
     /// <summary>Ordinal, String, Gleitkomma, Variant, Methodenzeiger, kleine Menge: nur als Property.</summary>
     Simple,
+    /// <summary>Record: als Property erlaubt, als Feld nicht.</summary>
     RecordKind,
+    /// <summary>Dynamisches Array (array of, TArray&lt;T&gt;): als Property erlaubt, als Feld nicht.</summary>
+    DynArrayKind,
+    /// <summary>Statisches Array.</summary>
     ArrayKind,
     PointerKind,
     ProcedureKind,
@@ -263,7 +269,7 @@ var
       else if (Lower = 'tguid') or (UsesTypes and MatchText(Lower, TypesRecords)) then
         Result := TPublishKind.RecordKind
       else if (Lower = 'tarray') and (Pos('<', AName) > 0) then
-        Result := TPublishKind.ArrayKind;
+        Result := TPublishKind.DynArrayKind;
       Exit;
     end;
     if Location.Symbol.Unavailable then
@@ -284,7 +290,12 @@ var
             Result := TPublishKind.PointerKind
           else if StartsText('array', Target) and ((Length(Target) = 5) or not CharInSet(Target[6], ['A'..'Z',
             'a'..'z', '0'..'9', '_'])) then
-            Result := TPublishKind.ArrayKind
+          begin
+            if StartsText('of ', Trim(Copy(Target, 6, MaxInt))) then
+              Result := TPublishKind.DynArrayKind
+            else
+              Result := TPublishKind.ArrayKind;
+          end
           else if StartsText('set ', Target) and StartsText('of ', Trim(Copy(Target, 5, MaxInt))) then
             Result := SetKind(Trim(Copy(Trim(Copy(Target, 5, MaxInt)), 4, MaxInt)), ADepth + 1)
           else if StartsText('reference ', Target) or Location.Symbol.HasDirective('reference to') then
@@ -498,9 +509,6 @@ var
             Kind := TypeKind(TypeNode, Wildcards);
             TypeText := SourceOf(TypeNode);
             case Kind of
-              TPublishKind.RecordKind:
-                AReport.Add(NodeRange(TypeNode), Format('%s (Record) kann nicht published sein (wie E2188).',
-                  [TypeText]), TRuleConfidence.High, Fixes);
               TPublishKind.ArrayKind:
                 AReport.Add(NodeRange(TypeNode), Format('%s (Array) kann nicht published sein (wie E2188).',
                   [TypeText]), TRuleConfidence.High, Fixes);
@@ -519,6 +527,9 @@ var
               TPublishKind.Unknown: ;
               TPublishKind.ClassOrInterface: ;
               TPublishKind.Simple: ;
+              // Records und dynamische Arrays übersetzt dcc als published-Property (PU1-PU3).
+              TPublishKind.RecordKind: ;
+              TPublishKind.DynArrayKind: ;
             end;
           end;
         TSyntaxKind.Field:
