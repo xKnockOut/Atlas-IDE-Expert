@@ -8669,3 +8669,13 @@ Vorbereitung: Prep-v1.2.0 mit `feature/1379-compileranweisungen`, Delphi 12 und 
 | IR8 | `.dpr` ohne `.dproj` mit `uses X in 'Fehlt.pas'` öffnen bzw. mit `AtlasServer --check` prüfen | „Datei Fehlt.pas für X nicht gefunden (wie F1026).“ |
 | IR9 | `{$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR}` vor einem unbekannten Attribut | `unresolved-attribute` nennt E1074 statt W1074 |
 | IR10 | `"compiler-directive-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+## Umwandlungen zwischen Unicode- und ANSI-Strings (#1377)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| UW1 | `pwsh Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -Cases 'Cm.W105*','Cm.W106*' -AtlasServer <AtlasServer.exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1050, W1057, W1058, W1059, W1060, W1062 und W1068 stehen auf „erkannt“, auch in den neuen Fällen `Cm.W1050b`, `Cm.W1057b`, `Cm.W1058b`, `Cm.W1062b`; keine neuen Treffer unter „zusätzlich“ |
+| UW2 | Gegenfall `Cm.W1057c` im selben Lauf | dcc meldet nichts (sonst den Fall und die Regel anpassen); Atlas meldet nichts |
+| UW3 | In der IDE: `function IstZiffer(C: Char): Boolean; begin Result := C in ['0'..'9']; end;` in einer Unit ohne System.SysUtils, Alt+Enter „CharInSet verwenden“ | Befund „C ist Char; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt (wie W1050).“; danach `CharInSet(C, ['0'..'9'])` und System.SysUtils im uses, der Befund ist weg; der nächste Build meldet kein W1050 |
+| UW4 | `S := A;` mit `S: string; A: AnsiString`, Alt+Enter „Ausdrücklich in string umwandeln“ | Befund wie W1057, nach der Korrektur `S := string(A);` ohne Befund und ohne W1059 im Build |
+| UW5 | Vor der Zeile `{$WARN IMPLICIT_STRING_CAST OFF}`, danach `{$WARN IMPLICIT_STRING_CAST ERROR}` | Erst kein Befund, dann ein Fehler; der Build meldet wie Atlas nichts bzw. einen Fehler |
+| UW6 | `A := 'Schnee '#$2603;` mit `A: AnsiString` (deutsches Windows, Codepage 1252), dann in atlas.json `"string-conversion": {"ansiCodePage": 0}` | Befund „… (wie W1058 und W1062).“ wie im Build; mit 0 kein Befund |

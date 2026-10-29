@@ -451,6 +451,7 @@ contains
   Atlas.Common.Rules.Builtin.Visibility in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Visibility.pas',
   Atlas.Common.Rules.Builtin.TypeDeclarations in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.pas',
   Atlas.Common.Rules.Builtin.TypedExpressions in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypedExpressions.pas',
+  Atlas.Common.Rules.Builtin.StringConversions in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.StringConversions.pas',
   Atlas.Common.Rules.Builtin.TypeRestrictions in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.pas',
   Atlas.Common.Rules.Builtin.PublicMembers in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.PublicMembers.pas',
   Atlas.Common.Rules.Builtin.DeadCode in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DeadCode.pas',
