@@ -18,6 +18,9 @@ type
     procedure StopsTracingAfterWriteFailure;
     [Test]
     procedure ReportsWriteFailureOnce;
+    /// <summary>#1356: die letzten Zeilen im Speicher für das Diagnosepaket.</summary>
+    [Test]
+    procedure KeepsRecentLines;
   end;
 
 implementation
@@ -214,6 +217,45 @@ begin
     Assert.Contains(Reason, 'EWriteError');
   finally
     Failing.Free;
+  end;
+end;
+
+procedure TJsonRpcTracingTransportTests.KeepsRecentLines;
+var
+  mInput, mOutput, mTrace: TBytesStream;
+  mTracing: TJsonRpcTracingTransport;
+  mTransport: IJsonRpcTransport;
+  mMessage: TJSONObject;
+  mLines: TArray<string>;
+begin
+  mInput := TJsonRpcTestSupport.InputOf(['{"jsonrpc":"2.0","id":1,"method":"initialize"}']);
+  mOutput := TBytesStream.Create;
+  mTrace := TBytesStream.Create;
+  try
+    mTracing := TJsonRpcTracingTransport.Create(TJsonRpcStreamTransport.Create(mInput, mOutput, False), mTrace,
+      False);
+    mTransport := mTracing;
+    mMessage := mTransport.ReadMessage;
+    mMessage.Free;
+    mMessage := TJsonRpcTestSupport.Parse('{"jsonrpc":"2.0","id":1,"result":null}');
+    try
+      mTransport.WriteMessage(mMessage);
+    finally
+      mMessage.Free;
+    end;
+    mLines := mTracing.RecentLines(5, Now);
+    Assert.AreEqual(2, Integer(Length(mLines)));
+    Assert.IsTrue(mLines[0].Contains(TJsonRpcTracingTransport.IncomingMarker + ' {'), mLines[0]);
+    Assert.IsTrue(mLines[0].Contains('"initialize"'), mLines[0]);
+    Assert.IsFalse(mLines[1].EndsWith(sLineBreak), 'ohne Zeilenende');
+    // Älter als die Frage: nichts.
+    Assert.AreEqual(0, Integer(Length(mTracing.RecentLines(1, Now + 2 / MinsPerDay))));
+    mLines := nil;
+    mTransport := nil;
+  finally
+    mTrace.Free;
+    mOutput.Free;
+    mInput.Free;
   end;
 end;
 
