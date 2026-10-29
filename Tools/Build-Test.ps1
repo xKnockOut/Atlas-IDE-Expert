@@ -37,7 +37,8 @@ param(
     [string] $CcScript = $(if ($env:CC_SCRIPT) { $env:CC_SCRIPT } else { 'C:\Projekte\IDE-Plugins\Claude-Compile\cc.ps1' }),
     [string] $Config = 'Debug',
     [switch] $Win32,
-    [string] $ResultFile = 'dunitx-ergebnisse.xml',
+    # Leer: Output/dunitx-ergebnisse.xml unter $Root.
+    [string] $ResultFile = '',
     [switch] $SkipTests,
     [switch] $Benchmarks,
     [int] $QuitAttempts = 10,
@@ -47,6 +48,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 if (-not $Root) { $Root = Split-Path -Parent $PSScriptRoot }
+# Der XML-Logger von DUnitX legt den Ordner der Datei an und scheitert bei einem Namen ohne Ordner
+# (EInOutError "Verzeichnis kann nicht erstellt werden"): immer einen vollen Pfad übergeben.
+if (-not $ResultFile) { $ResultFile = Join-Path $Root 'Output/dunitx-ergebnisse.xml' }
+if (-not [System.IO.Path]::IsPathRooted($ResultFile)) { $ResultFile = Join-Path (Get-Location).Path $ResultFile }
 
 $GroupProject = Join-Path $Root 'Atlas.groupproj'
 $TestExe = Join-Path $Root (Join-Path "Output/Win64/$Config/Bin" 'Atlas.Tests.exe')
