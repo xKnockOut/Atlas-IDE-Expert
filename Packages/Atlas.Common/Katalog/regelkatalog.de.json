@@ -381,7 +381,7 @@
     {
       "id": "interface-guid",
       "name": "Interface ohne GUID",
-      "description": "Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst niedrig. Die Schnellkorrektur fügt eine neue GUID ein."
+      "description": "Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst niedrig. Die Schnellkorrektur fügt eine neue GUID ein. Ein dispinterface ohne GUID übersetzt nicht; das meldet dispinterface-invalid."
     },
     {
       "id": "duplicate-interface-guid",
@@ -1781,6 +1781,11 @@
       "id": "automation-invalid",
       "name": "OLE-Automation falsch deklariert oder aufgerufen",
       "description": "Deklarationen, die der Compiler im Abschnitt automated einer Klasse ablehnt: Felder (wie E2175), Konstruktoren und Destruktoren (wie E2177), dynamic- und message-Methoden (wie E2178), andere Aufrufkonventionen als register (wie E2179), dieselbe dispid zweimal in einer Klasse (wie E2180), eine Property, die ohne Typ neu deklariert wird (wie E2181), index, stored, default und nodefault an Properties (wie E2182), read oder write auf ein Feld der Klasse (wie E2096), eine dispid an einer override-Methode (wie E2185) sowie Records, Zeiger und Mengen als Typ von Parametern, Ergebnissen und Properties (wie E2176). Eine dispid an einer Methode außerhalb von automated meldet die Regel wie Delphi 13 als E2185 (dokumentiert ist E2183). Aufrufe über Variant oder OleVariant (V.Oeffnen(...), auch V.Dokument.Oeffnen(...)): ein Record ohne Operatoren oder ein Zeiger als Argument (wie E2160 bei OleVariant, wie E2281 bei Variant) und ein unbenanntes Argument nach einem benannten (wie E2166). Mitglieder in bedingten Zweigen und Typen, die die Namensauflösung nicht sicher kennt, bleiben still. Dass automated selbst veraltet ist, meldet deprecated-symbol."
+    },
+    {
+      "id": "dispinterface-invalid",
+      "name": "dispinterface-Deklaration unzulässig",
+      "description": "Ein dispinterface verletzt eine seiner festen Regeln: kein Vorfahr in Klammern (wie E2228), eine GUID ist Pflicht (wie E2229), Methoden tragen keine Direktiven außer dispid und den Hinweisen deprecated, platform, library und experimental (wie E2230; gemeldet werden Aufrufkonventionen und Bindungsdirektiven wie virtual, overload bleibt still) und Properties kein read oder write (wie E2231; stattdessen readonly, writeonly oder dispid). Vorwärtsdeklarationen und Deklarationen in bedingten Zweigen bleiben still. Korrekturen: Vorfahren entfernen, GUID einfügen, Direktive entfernen."
     },
     {
       "id": "abstract-declaration-invalid",
