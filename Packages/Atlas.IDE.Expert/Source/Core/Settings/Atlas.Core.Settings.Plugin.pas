@@ -68,6 +68,9 @@ type
     /// <summary>Grenzen für navigation.impactDepth (#1120).</summary>
     MinImpactDepth = 1;
     MaxImpactDepth = 5;
+    /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
+    MinTestsAffectedDepth = 1;
+    MaxTestsAffectedDepth = 5;
     /// <summary>Grenzen für navigation.dataFlow.maxDepth (#690).</summary>
     MinDataFlowDepth = 1;
     MaxDataFlowDepth = 20;
@@ -504,6 +507,15 @@ type
     TestsAfterBuild: Boolean;
     /// <summary>Vor „Tests ausführen“ das Testprojekt bauen (make); aus = die vorhandene Test-EXE läuft.</summary>
     TestsBuildFirst: Boolean;
+    /// <summary>Befehl „Betroffene Tests ausführen“ (#1353, Atlas.RunAffectedTests); tests.affected in settings.json,
+    /// der Server liest denselben Wert (--affected-tests, get_affected_tests).</summary>
+    TestsAffected: Boolean;
+    /// <summary>Ebenen von der Änderung bis zum Test (#1353, tests.affectedDepth), MinTestsAffectedDepth bis
+    /// MaxTestsAffectedDepth.</summary>
+    TestsAffectedDepth: Integer;
+    /// <summary>Vor jedem git commit die betroffenen Tests anbieten (#1353): Atlas legt dafür einen
+    /// pre-commit-Hook an (Atlas.Core.Tests.AffectedHook).</summary>
+    TestsAffectedBeforeCommit: Boolean;
     /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
     /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
     BuildZeroHints: Boolean;
@@ -1945,6 +1957,9 @@ begin
   Result.TestRun := True;
   Result.TestsAfterBuild := False;
   Result.TestsBuildFirst := True;
+  Result.TestsAffected := True;
+  Result.TestsAffectedDepth := 3;
+  Result.TestsAffectedBeforeCommit := False;
   Result.BuildZeroHints := False;
   Result.ShowInterfaceCost := True;
   Result.BuildSummary := True;
@@ -2552,6 +2567,7 @@ begin
   LastEditKey := EnsureRange(LastEditKey, 0, $FFFF);
   PeekHeightLines := EnsureRange(PeekHeightLines, MinPeekLines, MaxPeekLines);
   ImpactDepth := EnsureRange(ImpactDepth, MinImpactDepth, MaxImpactDepth);
+  TestsAffectedDepth := EnsureRange(TestsAffectedDepth, MinTestsAffectedDepth, MaxTestsAffectedDepth);
   DataFlowMaxDepth := EnsureRange(DataFlowMaxDepth, MinDataFlowDepth, MaxDataFlowDepth);
   StickyScrollMaxLines := EnsureRange(StickyScrollMaxLines, MinStickyLines, MaxStickyLines);
   StickyScrollBlockMinLines := EnsureRange(StickyScrollBlockMinLines, MinStickyBlockLines, MaxStickyBlockLines);
@@ -2805,6 +2821,10 @@ begin
   TestRun := AStore.ReadInteger('TestRun', BoolValue(Default.TestRun)) <> 0;
   TestsAfterBuild := AStore.ReadInteger('TestsAfterBuild', BoolValue(Default.TestsAfterBuild)) <> 0;
   TestsBuildFirst := AStore.ReadInteger('TestsBuildFirst', BoolValue(Default.TestsBuildFirst)) <> 0;
+  TestsAffected := AStore.ReadInteger('TestsAffected', BoolValue(Default.TestsAffected)) <> 0;
+  TestsAffectedDepth := AStore.ReadInteger('TestsAffectedDepth', Default.TestsAffectedDepth);
+  TestsAffectedBeforeCommit := AStore.ReadInteger('TestsAffectedBeforeCommit',
+    BoolValue(Default.TestsAffectedBeforeCommit)) <> 0;
   BuildZeroHints := AStore.ReadInteger('BuildZeroHints', BoolValue(Default.BuildZeroHints)) <> 0;
   ShowInterfaceCost := AStore.ReadInteger('ShowInterfaceCost', BoolValue(Default.ShowInterfaceCost)) <> 0;
   BuildSummary := AStore.ReadInteger('BuildSummary', BoolValue(Default.BuildSummary)) <> 0;
@@ -3425,6 +3445,9 @@ begin
   AStore.WriteInteger('TestRun', BoolValue(TestRun));
   AStore.WriteInteger('TestsAfterBuild', BoolValue(TestsAfterBuild));
   AStore.WriteInteger('TestsBuildFirst', BoolValue(TestsBuildFirst));
+  AStore.WriteInteger('TestsAffected', BoolValue(TestsAffected));
+  AStore.WriteInteger('TestsAffectedDepth', TestsAffectedDepth);
+  AStore.WriteInteger('TestsAffectedBeforeCommit', BoolValue(TestsAffectedBeforeCommit));
   AStore.WriteInteger('BuildZeroHints', BoolValue(BuildZeroHints));
   AStore.WriteInteger('ShowInterfaceCost', BoolValue(ShowInterfaceCost));
   AStore.WriteInteger('BuildSummary', BoolValue(BuildSummary));
