@@ -2676,7 +2676,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A unit in uses or contains is found neither in the project nor in the folders the compiler searches: folder of the using file, project folder, search paths and DCU output folder of the .dproj, library paths of the installation, each as .pas or .dcu and with every unit scope name in front (SysUtils → System.SysUtils); in packages also the units of the required packages (like F2613). Also reported: a file from in '…' that does not exist (F1026), a package from requires found neither as .dpk nor as .dcp (E2202), a unit that uses itself (F2092), and once a missing unit System, i.e. a missing library path, instead of one finding per unit (F1027). Entries inside {$IF} blocks are skipped; without a known installation, with an open macro in a search path or with a required package of unknown content the rule stays silent. The message names similar units. Quick fixes: use the unit with its namespace (Forms → Vcl.Forms) or a similarly written unit, or add the folder below the project that holds the unit to DCC_UnitSearchPath of the base configuration in the .dproj.",
+      "description": "A unit in uses or contains is found neither in the project nor in the folders the compiler searches: folder of the using file, project folder, search paths and DCU output folder of the .dproj, library paths of the installation, each as .pas or .dcu and with every unit scope name in front (SysUtils → System.SysUtils); in packages also the units of the required packages (like F2613). Also reported: a file from in '…' that does not exist (F1026, also without a project, since only the path relative to the using file counts), a package from requires found neither as .dpk nor as .dcp (E2202), a unit that uses itself (F2092), and once a missing unit System, i.e. a missing library path, instead of one finding per unit (F1027). Entries inside {$IF} blocks are skipped; without a known installation, with an open macro in a search path or with a required package of unknown content the rule stays silent. The message names similar units. Quick fixes: use the unit with its namespace (Forms → Vcl.Forms) or a similarly written unit, or add the folder below the project that holds the unit to DCC_UnitSearchPath of the base configuration in the .dproj.",
       "bad": "uses\n  System.SysUtils, Vcl.Forms, Kunden.Daten, Rechnungs.Druck;",
       "good": "uses\n  System.SysUtils, Vcl.Forms, Kunden.Daten, Rechnung.Druck;",
       "compilerCodes": [
@@ -2702,12 +2702,13 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "An attribute [Name] resolves neither to a class NameAttribute nor to Name, usually because a unit is missing in uses. Delphi only warns (W1074) and skips the attribute: DUnitX tests do not run, JSON or ORM mappings are missing. The message names the unit that declares the attribute in the index; a facade unit that passes the type on from another candidate (DUnitX.TestFramework instead of DUnitX.Attributes) comes first, and the DUnitX attributes are known even without DUnitX in the index. Compiler attributes such as Weak, Unsafe, Ref and Volatile always count. Silent without the unit System in the index, when a unit from uses is not in the index (it could declare the attribute), inside {$IF} blocks and when an ancestor of the surrounding class is unknown; with include files the confidence is medium. Quick fix: add the unit to uses.",
+      "description": "An attribute [Name] resolves neither to a class NameAttribute nor to Name, usually because a unit is missing in uses. Delphi only warns (W1074, E1074 after {$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR}) and skips the attribute: DUnitX tests do not run, JSON or ORM mappings are missing. The message names the unit that declares the attribute in the index; a facade unit that passes the type on from another candidate (DUnitX.TestFramework instead of DUnitX.Attributes) comes first, and the DUnitX attributes are known even without DUnitX in the index. Compiler attributes such as Weak, Unsafe, Ref and Volatile always count. Silent without the unit System in the index, when a unit from uses is not in the index (it could declare the attribute), inside {$IF} blocks and when an ancestor of the surrounding class is unknown; with include files the confidence is medium. Quick fix: add the unit to uses.",
       "bad": "uses\n  System.SysUtils;\ntype\n  [TestFixture]\n  TKundeTests = class",
       "good": "uses\n  System.SysUtils, DUnitX.TestFramework;\ntype\n  [TestFixture]\n  TKundeTests = class",
       "compilerCodes": [
         "W1074",
-        "E2289"
+        "E2289",
+        "E1074"
       ],
       "level": "B"
     },
@@ -2811,6 +2812,28 @@
         "W1078",
         "W1079",
         "E2573"
+      ],
+      "level": "A"
+    },
+    {
+      "id": "compiler-directive-invalid",
+      "name": "Compiler directive invalid or file from {$I}/{$R} missing",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A compiler directive outside conditional branches that dcc rejects or reports itself: {$MESSAGE WARN 'Text'} and {$MESSAGE HINT 'Text'} show their text as a warning or hint (like W1054, H1054); {$WEAKPACKAGEUNIT ON} together with {$DENYPACKAGEUNIT ON} (like E2222); {$DESIGNONLY} or {$RUNONLY} in a unit instead of a package (like E2224); {$OBJTYPENAME} for a plain alias such as TZahl = Integer (like E2560); {$CODEPAGE} with a number above 65535 (like E1030); a file from {$I} or {$INCLUDE} that exists neither next to the unit nor in the search paths of the project (like F1026); an include file that includes itself through unconditional {$I}, directly or via other include files (like E2245); a resource file from {$R} or {$RESOURCE} that cannot be found (like E1026). Files are searched like dcc does: next to the unit, in the project folder, the search paths, DCC_IncludePath, DCC_ResourcePath and the library paths of the installation; without a project, with an unknown installation or an open macro in a path the rule stays silent. Not checked: {$R Name.res Name.rc} and a .res next to a .rc of the same name (the IDE compiles it before the compiler), forms ({$R *.dfm}, form-resource-missing), masks such as {$R *.res}, switches such as {$I+} and {$R-}, and {$MESSAGE} without a kind or with ERROR or FATAL. Directives in conditional branches are skipped, because dcc only reports those it compiles.",
+      "bad": "unit Kunden;\n\n{$I Gemeinsam.inc}\n{$DESIGNONLY}\n\ninterface",
+      "good": "unit Kunden;\n\n{$I Gemeinsam.inc}\n\ninterface",
+      "compilerCodes": [
+        "W1054",
+        "H1054",
+        "E2222",
+        "E2224",
+        "E2560",
+        "E1030",
+        "F1026",
+        "E2245",
+        "E1026"
       ],
       "level": "A"
     },
