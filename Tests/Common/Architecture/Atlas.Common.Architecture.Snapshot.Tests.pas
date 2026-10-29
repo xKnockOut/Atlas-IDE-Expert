@@ -260,20 +260,26 @@ begin
   mOverview := ArchitectureOverviewOf(ArchitectureSampleUnits);
   mText := TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mOverview));
   Assert.IsFalse(Pos('"parent"', mText) > 0, 'ohne Nachteilung wie vor #1364');
+  Assert.IsFalse(Pos('"foundation": true', mText) > 0, 'ohne Fundament wie vor #1365');
   mName := mOverview.Subsystems[1].Name;
   mOverview.Subsystems[1].Parent := 'App';
+  mOverview.Subsystems[1].Foundation := True;
   mText := TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mOverview));
-  Assert.Contains(mText, '"isolated": false, "parent": "App"}');
+  Assert.Contains(mText, '"isolated": false, "foundation": true, "parent": "App"}');
   Assert.IsTrue(TArchitectureSnapshots.Parse(mText, mRead, mError), mError);
   mFound := False;
   for mSubsystem in mRead.Subsystems do
     if mSubsystem.Name = mName then
     begin
       Assert.AreEqual('App', mSubsystem.Parent);
+      Assert.IsTrue(mSubsystem.Foundation);
       mFound := True;
     end
     else
+    begin
       Assert.AreEqual('', mSubsystem.Parent);
+      Assert.IsFalse(mSubsystem.Foundation);
+    end;
   Assert.IsTrue(mFound);
 end;
 

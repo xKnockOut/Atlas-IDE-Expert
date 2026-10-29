@@ -39,6 +39,11 @@
 - dcc-Minimalfälle: `Tests/DccFaelle/DccDeklarationen` (DK1–DK11, still) und `DccDeklarationenGegen` (DG1–DG7). Noch nicht mit dcc gebaut.
 
 
+## Fundament-Units (#1365, AG2, 29.10.2026, Branch `feature/1365-fundament` auf `feature/1364-nachteilen`)
+- `TAnalysis.SeparateFoundations` nach dem ersten Lauf: Kandidaten = Rolle Fundament; ihre Verteilung zählt in einem Lauf **ohne** die Kandidaten (im ersten Lauf ziehen sie ihre Abhängigen ja zusammen, die Regel „nach dem ersten Lauf“ aus dem Issue hätte den Testgraphen nie erkannt); übergreifend bei Abhängigen in mindestens 3 Gemeinschaften oder höchstens 60 % in der größten (ganzzahlig verglichen: FPC rechnet 0,6·10 in Extended knapp unter 6).
+- `separate`: Fundamente und Units, die nur an ihnen hängen (`Follower`), bilden ein Teilsystem mit `Foundation`, zuerst sortiert, ColorSlot −1, ohne Zusammenhalt, ohne Querverbindungen und Ausreißer; Nachteilung lässt es ganz. `attach`: Mehrheit der Abhängigen, gewichtet. Testgraph `FoundationProject` (Overview.Tests) mit ausgeschalteter Nachteilung, sonst trennt schon #1364 die Gruppen.
+- Plugin: `Foundation` im Modell, `TouchesFoundation`, Map `ShowFoundationEdges` (Menü „Kanten zum Fundament“), Frame `SubsystemCaption`. VCL-Tests nur mit Delphi. Handtests AFU1–AFU11.
+
 ## Nachteilung großer und loser Teilsysteme (#1364, AG1, 29.10.2026, Branch `feature/1364-nachteilen` auf `feature/1366-aufloesung`)
 - `TAnalysis.Split` nach dem ersten Louvain-Lauf: `TArchitectureAnalyzer.SplitGroups` (allgemein, mit Tiefe, getestet mit Halbieren) ruft `SplitGroup` = `NeedsSplit` (Schwellen in `TArchitectureGrouping.NeedsSplit`) und `SplitMembers` (Louvain auf dem Teilgraphen, Units ohne Kante zum größten Teil). `FFamily` je Teilsystem = Nummer des ersten Teils; `NameSubsystems` benennt Teile gegen die Units der Familie, `Parent` gegen das ganze Projekt; `AssignColors` gibt `ColorSlot`/`Shade` (ohne Nachteilung Farbe = Nummer wie vorher).
 - Testgraph `BigProject` (Overview.Tests): drei 12er-Gruppen neben einem 80er-interface-Block verschmelzen bei γ = 1 zu einem Teilsystem (Auflösungsgrenze), die Nachteilung trennt sie wieder.
