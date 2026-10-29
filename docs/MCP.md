@@ -51,6 +51,60 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
 | URI | Inhalt |
 |---|---|
 | `delphi://conventions` | Projektkonventionen als Markdown (#272): Regelprofil, Formatstil, Benennungsregeln und jede aktive Prüfregel mit Schweregrad und Kurztext aus dem Regelkatalog. Vor dem Schreiben lesen, danach mit `check_code` prüfen |
+| `delphi://build/last` | Ergebnis und Compilermeldungen des letzten Builds in der IDE wie `get_last_build` (#1357, mit `mcp.prompts`) |
+
+Ressourcen mit Vorlage (#1357, `resources/templates/list`) hängt man in Claude Code mit `@` an eine Frage, z. B. `@delphi:delphi://unit/UI.Auftrag`. Der Wert in `{…}` darf %-kodiert sein (`Source%2FA.pas`). Units und Pfade gelten wie Pfadparameter (#99): außerhalb des Arbeitsordners und seiner Such- und Bibliothekspfade ergibt das Lesen einen Fehler mit Begründung. Der Inhalt ist Markdown, höchstens 64 KB; darüber gekürzt mit Hinweis auf das Werkzeug für alles.
+
+| Vorlage | Inhalt |
+|---|---|
+| `delphi://unit/{name}` | Gliederung (`get_unit_outline`) und interface-Teil einer Unit; `name` ist ein Unit-Name oder ein Pfad |
+| `delphi://form/{file}` | Komponentenbaum eines Formulars (`get_dfm_info`); `file` ist die .dfm/.fmx oder die .pas dazu |
+| `delphi://findings/{file}` | Syntaxfehler und Befunde der Prüfregeln einer Datei (`get_diagnostics`) |
+
+## Prompts
+
+Prompts (#1357) sind fertige Arbeitsabläufe. Claude Code zeigt sie nach `/` als Befehle `/mcp__delphi__<name>` mit Beschreibung und Argumenten. `prompts/get` liefert eine Nachricht mit Anleitung und den Ergebnissen der nötigen Werkzeuge; Claude muss nicht erst einzeln nachfragen, und jeder Ablauf ist jedes Mal gleich gründlich. Die Werkzeuge laufen dabei mit denselben Regeln wie `tools/call`: Abgeschaltete (`mcp.disabledTools`) fehlen im Text mit Begründung, mit `--restricted` bieten die Anleitungen keine schreibenden Schritte an (keine Korrekturen, kein `run_tests`, kein Commit; Vorschläge als Diff).
+
+| Prompt | Argumente | Was die Nachricht enthält |
+|---|---|---|
+| `unit_review` | `unit` | Gliederung, Befunde (`get_diagnostics`), Metriken über Grenzwert (`get_metrics`), ungenutzter Code (`find_unused_code`), `delphi://conventions`; Anleitung für ein Review nach Schweregrad mit Vorschlägen und `check_code` vor jeder Änderung |
+| `explain_form` | `file` | Komponentenbaum (`get_dfm_info`), Ereignis-Handler mit Rümpfen aus der Unit (gemeinsame Handler einmal mit allen Komponenten), Datenbindungen (`DataSource`, `DataField`, `Connection`, LiveBindings …); Anleitung für eine Erklärung des Formulars |
+| `write_tests` | `name` | Deklaration (`get_declaration`), Aufrufer (`get_call_hierarchy`), Auswirkungen mit den vorhandenen Tests (`get_impact`), DUnitX-Konventionen des Projekts (`testUnits.pattern`, `.folder`, `.project`); Anleitung für neue Testmethoden in der passenden Testunit und Lauf mit `run_tests` |
+| `fix_finding` | `file`, `line`, optional `rule` | Erklärung (`explain_finding`), Codeausschnitt ±8 Zeilen mit markierter Zeile, verfügbare Korrekturen (`apply_code_action` ohne `title`); Anleitung: erst die Ursache, dann die Korrektur, dann `check_code` |
+| `prepare_commit` | optional `base` | geänderte Dateien laut Git oder SVN (ohne `base` die nicht eingecheckten gegenüber HEAD, sonst seit der Abzweigung von `base`), neue Befunde nur in geänderten Zeilen (wie `--changed-lines`), betroffene Tests (mit `get_affected_tests` aus #1353, sonst der Hinweis auf `get_impact`), Commit-Präfix des aktuellen Issues (`issues.commitPattern`, vom Plugin in `<gitdir>/atlas-commit-prefix`); Anleitung für Prüfung und Commit-Nachricht |
+
+Beispiele in Claude Code:
+
+```
+/mcp__delphi__unit_review UI.Auftrag
+/mcp__delphi__explain_form Source\UI.Auftrag.dfm
+/mcp__delphi__write_tests TAuftrag.Speichern
+/mcp__delphi__fix_finding Source\UI.Auftrag.pas 42 empty-except
+/mcp__delphi__prepare_commit main
+@delphi:delphi://unit/UI.Auftrag Wo wird hier die Mehrwertsteuer berechnet?
+```
+
+Die Anleitungen sind deutsch, mit `"mcp": { "promptLanguage": "en" }` englisch. `"mcp": { "prompts": false }` schaltet Prompts und Vorlagen ab: `prompts/list` und `resources/templates/list` sind dann leer, `delphi://build/last` fehlt; die Werkzeuge bleiben. Beide Schlüssel stehen in der globalen `settings.json` (Seite *MCP*).
+
+Eigene Prompts des Projekts stehen in `atlas.json` unter `mcp.customPrompts`. Platzhalter `{argument}` im Text werden ersetzt (unbekannte bleiben stehen), `include` hängt Ergebnisse an: `outline`, `diagnostics`, `metrics`, `unused`, `todos`, `form`, `impact`, `dependencies`, `conventions`, `lastBuild`. Die Inhalte nehmen das Argument `file`, `unit` oder (bei `impact`) `name`; eine Unit wird für Datei-Inhalte wie bei `unit_review` aufgelöst. Die Namen der eingebauten Prompts sind vergeben: Ein eigener mit gleichem Namen fehlt in der Liste.
+
+```json
+{
+  "mcp": {
+    "customPrompts": [
+      {
+        "name": "check_unit",
+        "description": "Unit vor dem Review prüfen",
+        "arguments": [{ "name": "unit", "description": "Unit-Name", "required": true }],
+        "text": "Prüfe {unit}: Befunde zuerst, dann Methoden über den Grenzwerten.",
+        "include": ["diagnostics", "metrics"]
+      }
+    ]
+  }
+}
+```
+
+Prompts gegenüber den Befehlen des Claude-Code-Plugins (`/atlas:bauen`): Die Plugin-Befehle sind Abläufe mit Hooks und Werkzeugen auf dem Rechner (bauen, Tests laufen lassen); Prompts sind alles, was die Daten vom Server bekommt, und funktionieren in jedem MCP-Programm. Im IDE-Plugin wirken sie nicht.
 
 ## Werkzeuge
 
@@ -70,7 +124,7 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
 | `get_metrics` | `file` (optional), `format` (`markdown` oder `json`) | Code-Metriken je Methode (#66): Länge in Codezeilen, Verschachtelungstiefe, zyklomatische und kognitive Komplexität, Parameteranzahl; Bericht mit den Methoden über einem Grenzwert aus `atlas.json` (Regeln `metric-*`, Option `max`) oder die Metrikdaten als JSON |
 | `get_todos` | `file`, `unit`, `category`, `owner`, `keyword`, `includeDone` (alle optional), `format` (`markdown` oder `json`) | TODO-Übersicht (#68) aller Dateien, die das Projektmodell dem Projekt zuordnet: `// TODO`, `// FIXME` und das Format der IDE-To-Do-Liste `{ TODO 1 -oPerson -cKategorie : Text }` mit Priorität, Person und Kategorie, gefiltert nach Unit, Kategorie, Person oder Marke; erledigte Einträge (`{ DONE … }`) nur mit `includeDone`. Weitere Marken über die Option `keywords` der Regel `todo-comment`. Markdown mit Zählung nach Kategorie und Person und je Unit einer Tabelle, oder JSON (`format` 1, Zeilen ab 1) |
 | `get_rationale` | `unit` oder `name` | Begründungen (#1123) einer Unit (Kommentare im interface vor dem ersten Typ und alle Symbole mit Fundstelle) oder eines Symbols (über der Deklaration und im Rumpf der Implementierung), je Eintrag Marke, Zeile ab 1 und Text. Marken aus `hints.rationaleMarkers` (Vorgabe `NOTE`, `WHY`, `HACK`, `IMPORTANT`, `RATIONALE`); Marken der TODO-Übersicht erscheinen nie. Gilt auch bei `hints.rationale` aus; abschaltbar über `mcp.disabledTools` |
-| `get_architecture` | `section` (`overview`, `central`, `subsystems`, `cycles`, `crossLinks`; Vorgabe `overview`), `unit` (optional), `compareWith` (optional, Pfad relativ zum Projekt) | Architekturübersicht (#1118) aus dem uses-Graphen: Teilsysteme (Louvain-Gruppen eng verbundener Units) mit Namen, zentrale Units, Zyklen und Querverbindungen zwischen Teilsystemen, je mit Datei:Zeile der uses-Einträge; mit `unit` der Steckbrief einer Unit; mit `compareWith` (gespeicherter Stand aus `AtlasServer --architecture <Datei.json>` oder „Stand speichern …“, #1121) die Abschnitte des Vergleichs: neue und entfernte Zyklen, Querverbindungen und uses-Kanten zwischen Teilsystemen, Teilsystemwechsel, gewachsene zentrale Units, neue und entfernte Units und welche Arten aus `architecture.failOn` vorkommen. Umfang (`architecture.scope`), Bibliotheks-Units und Ausschlüsse aus `atlas.json`; dieselben Zahlen wie das Fenster „Atlas-Architektur“ und `--architecture`. Mit `architecture.enabled` = false nicht angeboten |
+| `get_architecture` | `section` (`overview`, `central`, `subsystems`, `cycles`, `crossLinks`; Vorgabe `overview`), `unit` (optional), `compareWith` (optional, Pfad relativ zum Projekt), `resolution` (optional, 0,2 bis 5,0; Feinheit der Teilsysteme für diesen Aufruf, sonst `architecture.grouping.resolution`, #1366) | Architekturübersicht (#1118) aus dem uses-Graphen: Teilsysteme (Louvain-Gruppen eng verbundener Units, übergroße und lose nachgeteilt und als „Teil von …“ gekennzeichnet, #1364) mit Namen, zentrale Units, Zyklen und Querverbindungen zwischen Teilsystemen, je mit Datei:Zeile der uses-Einträge; mit `unit` der Steckbrief einer Unit; mit `compareWith` (gespeicherter Stand aus `AtlasServer --architecture <Datei.json>` oder „Stand speichern …“, #1121) die Abschnitte des Vergleichs: neue und entfernte Zyklen, Querverbindungen und uses-Kanten zwischen Teilsystemen, Teilsystemwechsel, gewachsene zentrale Units, neue und entfernte Units und welche Arten aus `architecture.failOn` vorkommen. Umfang (`architecture.scope`), Bibliotheks-Units und Ausschlüsse aus `atlas.json`; dieselben Zahlen wie das Fenster „Atlas-Architektur“ und `--architecture`. Mit `architecture.enabled` = false nicht angeboten |
 | `query_code` | `query` (Abfrage oder `@name`; leer = Kurzhilfe mit allen Mengen, Feldern und Prädikaten), `format` (`markdown` oder `json`), `limit` (Vorgabe 200) | Code-Abfragen über den Index (#1351): `<Menge> where <Bedingung> [order by <Feld> [asc\|desc]] [limit n]` über `units`, `classes`, `records`, `interfaces`, `methods`, `routines`, `fields`, `properties`, `forms`; Felder wie `name`, `unit`, `visibility`, `methods`, `lines`, `complexity`, `cognitive`, `nesting`, `params`, `callers`, `callees`, `overrides`, `uses`, `usedBy`, `ancestor`, `components`; Prädikate `inherits` (transitiv), `implements`, `uses`, `calls`, `has attribute`, Vergleiche, `like` mit `*`/`?`, `and`, `or`, `not`, Klammern. Zahlen wie `get_metrics` und `find_unused_code`; erschlossene Aufrufe (#1119) zählen mit und sind markiert. Ein Fehler kommt deutsch mit Spalte und Vorschlag. Gespeicherte Abfragen aus `queries` in `atlas.json` über `@name`. Lesend; fehlt mit `query.enabled` aus |
 | `find_unused_code` | `file` (optional), `format` (`markdown` oder `json`) | Ungenutzter Code (#64) einer Datei oder aller Projektdateien mit dem Index aller Projekte der Gruppe wie im Editor: die Befunde von `unused-private-member`, `unused-public-member`, `unused-declaration` und `unused-unit` mit Zeile, Spalte, Regel und Konfidenz, je Datei ein Abschnitt (höchstens 200 Befunde). Schweregrad, `off`, Optionen und `deadCode.keepAttributes`/`keepPatterns` aus `atlas.json` gelten. Solange Projekte laden oder der Index läuft, schweigen die projektweiten Regeln; der Bericht sagt das (JSON: `incomplete`) |
 | `get_unit_dependencies` | `unit` (Name oder Pfad), `direction` (`uses`, `usedBy`, `both`; Vorgabe `both`), `transitive` (optional), `format` (`markdown` oder `json`) | Abhängigkeiten einer Unit aus dem Uses-Graphen (#64, #268): direkte uses und die Units, die sie verwenden, je mit Abschnitt (`interface`/`implementation`), mit `transitive` die Hüllen in beide Richtungen, dazu die Zyklen durch die Unit mit vollständigem Pfad (reine interface-Zyklen als Compilerfehler wie F2047). Nur Units der Projekte, ohne RTL/VCL |
@@ -83,6 +137,7 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
 | `explain_finding` | `file`, `line`, `rule` (optional) | Befunde einer Zeile als Markdown (#158): Regel mit Beschreibung, Codeausschnitt mit markierter Zeile, Vorher/Nachher-Beispiel aus dem Regelkatalog. |
 | `rename_symbol` | `file`, `line`, `column`, `newName`, `dryRun` (Vorgabe `true`) | Schreibend (#61): benennt das Symbol an der Stelle projektweit um, samt `.dfm`/`.fmx` und automatisch benannter Ereignis-Handler; liefert den Diff aller Dateien. Erschlossene Stellen (über Interface, überschrieben, unbekannter Typ, Text) bleiben unverändert und stehen unter „Nicht geändert, bitte prüfen“ (#1119) |
 | `apply_code_action` | `file`, `line`, `title` (optional), `dryRun` (Vorgabe `true`) | Schreibend (#61): ohne `title` die Korrekturen der Zeile auflisten, mit `title` (Titel oder Regelkennung) die Korrektur anwenden; liefert den Diff |
+| `format_code` | `file`, `text` (optional), `startLine`/`endLine` (optional, ab 1), `dryRun` (Vorgabe `true`) | Schreibend (#1358): formatiert die Unit nach den Formatregeln des Projekts (`format.*` in `atlas.json`, `.editorconfig`) wie *Dokument formatieren* in der IDE, ganz oder nur `startLine`..`endLine` (ohne `endLine` eine Zeile). Mit `text` (geplanter Inhalt der ganzen Unit, wie bei `check_code`) liefert es die Abweichungen und den formatierten Text und schreibt nie; sonst zeigt es die Abweichungen (Zeile und Art) und den Diff, mit `dryRun: false` schreibt es wie `apply_code_action` (in der IDE offene Dateien über das Plugin als ein Rückgängig-Schritt, #397). Dateien mit Syntaxfehlern formatiert es nicht (Werkzeugfehler mit Zeile); `// atlas-format: off` … `on` bleibt unverändert. Die Zeilenenden der Datei bleiben; `format.endOfLine` setzt `AtlasServer --check <Datei> --format-write` um |
 
 ## Werkzeuge entwickeln und prüfen
 
@@ -108,6 +163,8 @@ pwsh Tools/Start-McpInspector.ps1 -Tui
 pwsh Tools/Start-McpInspector.ps1 -Method tools/list -Strict
 pwsh Tools/Start-McpInspector.ps1 -Method tools/call -Tool qualified_name -Arguments @{ file = 'Application/AtlasServer.dpr'; line = 1; column = 9; withParameters = $true }
 pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://conventions -Output konventionen.json
+pwsh Tools/Start-McpInspector.ps1 -Method prompts/get -Prompt unit_review -Arguments @{ unit = 'Shell.Mcp' }
+pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://unit/Shell.Mcp
 ```
 
 - `-Strict` gibt bei `tools/list` die Schema-Prüfung des Inspectors aus (Pfad, Problem, Vorschlag) und endet mit Exit-Code 6, wenn ein Schema bei Clients nicht portabel ist.
@@ -131,10 +188,11 @@ pwsh Tools/Test-McpTools.ps1 -Tool run_tests -WithProcessTools -Arguments @{ tes
 
 Das Skript spricht den Server direkt über stdio an. Der Index entsteht nur einmal, der ganze Lauf dauert wenige Sekunden (der Inspector startet den Server je Kommandozeilenaufruf neu). Geprüft wird:
 
-- `initialize`, `tools/list`, `resources/list` und `resources/templates/list` antworten ohne Fehler.
+- `initialize`, `tools/list`, `resources/list`, `resources/templates/list` und `prompts/list` antworten ohne Fehler.
 - Jedes Werkzeug hat eine Beschreibung, `inputSchema` vom Typ `object`, jeder Pflichtparameter steht in `properties`, jeder Parameter hat eine Beschreibung.
 - Jedes Werkzeug antwortet auf sein Beispiel ohne JSON-RPC-Fehler, ohne `isError` und nicht leer, und die Antwort enthält den erwarteten Text.
 - Jede Ressource lässt sich lesen.
+- Jeder Prompt hat eine Beschreibung, jedes Argument eine Beschreibung, und `prompts/get` liefert mit dem Beispiel unter `prompts` eine nicht leere Nachricht mit dem erwarteten Text; jede Vorlage liest sich mit der Beispiel-URI unter `templates` (#1357). Ein Prompt oder eine Vorlage ohne Beispiel lässt den Lauf scheitern.
 
 Die Beispiele stehen in `Tools/Mcp/Werkzeug-Beispiele.json` und beziehen sich auf das Referenzprojekt (`Tests/Referenzprojekt`). Zeilen und Spalten stehen dort als Platzhalter (`{{zeile:procedure TRefAnzeige.SetStil}}`, `{{spalte:SetStil}}`), damit verschobene Zeilen die Beispiele nicht brechen. Werkzeuge mit `"process": true` (`build_project`, `run_tests`) brauchen die IDE oder ein Testprojekt und laufen nur mit `-WithProcessTools`. Mit `-Tool` und `-Arguments` ruft das Skript ein Werkzeug mit eigenen Argumenten auf, auch mit Listen und Objekten, und gibt die Antwort aus.
 

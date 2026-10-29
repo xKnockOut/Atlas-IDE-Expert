@@ -104,6 +104,8 @@ type
 
   /// <summary>Liest eine Datei neben der Unit, z. B. die .dcr aus {$R *.dcr} (#114).</summary>
   TRuleFileReader = reference to function(const AFileName: string; out AData: TBytes): Boolean;
+  /// <summary>Gibt es die Datei AFileName, relativ zum Ordner der Unit oder absolut (#1379)? Liest nichts.</summary>
+  TRuleFileExists = reference to function(const AFileName: string): Boolean;
   /// <summary>Gehört eine Unit zu einem Package (#46)? Unknown, wenn das Package nicht gefunden wird.</summary>
 {$SCOPEDENUMS ON}
   TRulePackageAnswer = (No, Yes, Unknown);
@@ -129,6 +131,10 @@ type
     function Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
     /// <summary>Package aus requires als .dpk oder .dcp (E2202).</summary>
     function FindPackage(const APackage: string): TRuleUnitAnswer;
+    /// <summary>Datei aus {$I} bzw. {$R} (AFileName so, wie sie dort steht) wie beim Compiler (#1379): Ordner
+    /// von AFromFile (absolut), Projektordner, Suchpfade der .dproj (auch DCC_IncludePath und DCC_ResourcePath),
+    /// Bibliothekspfade der Installation. Missing nur mit bekannter Installation und ohne offenes Makro.</summary>
+    function FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
     /// <summary>Namen aller Units, die die Suche findet, für Vorschläge.</summary>
     function KnownUnits(ASources: TRuleUnitSources): TArray<string>;
     /// <summary>Ordner unter dem Projektordner, der AUnitName.pas enthält, aber in keinem Suchpfad steht;
@@ -261,6 +267,9 @@ type
     DelphiVersion: string;
     /// <summary>Dateien relativ zum Ordner der Unit lesen (#114); nil = keine Dateien, die Regel schweigt.</summary>
     ReadFile: TRuleFileReader;
+    /// <summary>Gibt es eine Datei relativ zum Ordner der Unit (#1379)? nil = unbekannt, die Regel schweigt.
+    /// </summary>
+    FileExists: TRuleFileExists;
     /// <summary>Eigenschaftsregeln für Formulardateien aus atlas.json (#309); setzt TRuleEngine.Run.</summary>
     DfmPropertyRules: TArray<TDfmPropertyRule>;
     /// <summary>Keine Aktionen, die Deklaration und Rumpf angleichen (refactoring.syncSignatures aus, #100);
@@ -345,6 +354,10 @@ type
     /// TRuleEngine.Run.</summary>
     SortUses: Boolean;
     SortUsesByNamespace: Boolean;
+    /// <summary>Warnungen der .dproj (aktive Konfiguration und Plattform) als "Bezeichner=Wert", z. B.
+    /// "SYMBOL_PLATFORM=false", "UNSAFE_CODE=true", "WARNINGS=false" (#1378); leer ohne Projekt. Regeln lesen sie
+    /// über TRuleWarnSwitches.</summary>
+    ProjectWarnings: TArray<string>;
     /// <summary>Code-Abfragen des Arbeitsbereichs (#1351) für die Regeln query:<name>; nil = keine, gespeicherte
     /// Abfragen mit failIfAny laufen dann nicht.</summary>
     Queries: ICodeQueries;
@@ -369,6 +382,8 @@ type
     ProjectFiles: IRuleProjectFiles;
     /// <summary>Präfixe der Projektdatei .atlas (#1111); leer = unbekannt.</summary>
     Naming: TRuleNaming;
+    /// <summary>Warnungen der .dproj als "Bezeichner=Wert" (#1378); leer = ohne Projekt.</summary>
+    ProjectWarnings: TArray<string>;
     /// <summary>Code-Abfragen des Arbeitsbereichs (#1351); nil = keine.</summary>
     Queries: ICodeQueries;
     /// <summary>Trägt die Dienste in AContext ein.</summary>
@@ -472,6 +487,7 @@ begin
   AContext.PackageProvides := PackageProvides;
   AContext.ProjectFiles := ProjectFiles;
   AContext.Naming := Naming;
+  AContext.ProjectWarnings := ProjectWarnings;
   AContext.Queries := Queries;
 end;
 
