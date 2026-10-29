@@ -1151,6 +1151,7 @@ uses
   Atlas.Common.Mcp.IdeBuilds.Tests in 'Common\Mcp\Atlas.Common.Mcp.IdeBuilds.Tests.pas',
   Atlas.Common.Mcp.TestTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.TestTools.Tests.pas',
   Atlas.Common.Mcp.DeadCodeTools.Tests in 'Common\Mcp\Atlas.Common.Mcp.DeadCodeTools.Tests.pas',
+  Atlas.Common.Mcp.Prompts.Tests in 'Common\Mcp\Atlas.Common.Mcp.Prompts.Tests.pas',
   Shell.Mcp.Tests in 'Application\Shell\Shell.Mcp.Tests.pas',
   Shell.Diagnostics.Tests in 'Application\Shell\Shell.Diagnostics.Tests.pas',
   Shell.SlashHost.Tests in 'Application\Shell\Shell.SlashHost.Tests.pas',

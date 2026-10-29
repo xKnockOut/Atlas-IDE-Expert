@@ -34,6 +34,7 @@ uses
   Atlas.Core.Vcs.Detection in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Detection.pas',
   Atlas.Core.Vcs.Composition in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Composition.pas',
   Atlas.Core.Vcs.Adapters.ProcessRunner in '..\Packages\Atlas.IDE.Expert\Source\Core\Vcs\Atlas.Core.Vcs.Adapters.ProcessRunner.pas',
+  Atlas.Core.Tracker.CommitHook in '..\Packages\Atlas.IDE.Expert\Source\Core\Tracker\Atlas.Core.Tracker.CommitHook.pas',
   Shell.Mcp in 'Source\Shell\Shell.Mcp.pas',
   Shell.Diagnostics in 'Source\Shell\Shell.Diagnostics.pas',
   Shell.Bootstrap in 'Source\Shell\Shell.Bootstrap.pas',
