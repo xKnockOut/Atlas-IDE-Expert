@@ -51,6 +51,60 @@ ergibt einen Werkzeugfehler mit Begründung. Geschrieben wird nur im Arbeitsordn
 | URI | Inhalt |
 |---|---|
 | `delphi://conventions` | Projektkonventionen als Markdown (#272): Regelprofil, Formatstil, Benennungsregeln und jede aktive Prüfregel mit Schweregrad und Kurztext aus dem Regelkatalog. Vor dem Schreiben lesen, danach mit `check_code` prüfen |
+| `delphi://build/last` | Ergebnis und Compilermeldungen des letzten Builds in der IDE wie `get_last_build` (#1357, mit `mcp.prompts`) |
+
+Ressourcen mit Vorlage (#1357, `resources/templates/list`) hängt man in Claude Code mit `@` an eine Frage, z. B. `@delphi:delphi://unit/UI.Auftrag`. Der Wert in `{…}` darf %-kodiert sein (`Source%2FA.pas`). Units und Pfade gelten wie Pfadparameter (#99): außerhalb des Arbeitsordners und seiner Such- und Bibliothekspfade ergibt das Lesen einen Fehler mit Begründung. Der Inhalt ist Markdown, höchstens 64 KB; darüber gekürzt mit Hinweis auf das Werkzeug für alles.
+
+| Vorlage | Inhalt |
+|---|---|
+| `delphi://unit/{name}` | Gliederung (`get_unit_outline`) und interface-Teil einer Unit; `name` ist ein Unit-Name oder ein Pfad |
+| `delphi://form/{file}` | Komponentenbaum eines Formulars (`get_dfm_info`); `file` ist die .dfm/.fmx oder die .pas dazu |
+| `delphi://findings/{file}` | Syntaxfehler und Befunde der Prüfregeln einer Datei (`get_diagnostics`) |
+
+## Prompts
+
+Prompts (#1357) sind fertige Arbeitsabläufe. Claude Code zeigt sie nach `/` als Befehle `/mcp__delphi__<name>` mit Beschreibung und Argumenten. `prompts/get` liefert eine Nachricht mit Anleitung und den Ergebnissen der nötigen Werkzeuge; Claude muss nicht erst einzeln nachfragen, und jeder Ablauf ist jedes Mal gleich gründlich. Die Werkzeuge laufen dabei mit denselben Regeln wie `tools/call`: Abgeschaltete (`mcp.disabledTools`) fehlen im Text mit Begründung, mit `--restricted` bieten die Anleitungen keine schreibenden Schritte an (keine Korrekturen, kein `run_tests`, kein Commit; Vorschläge als Diff).
+
+| Prompt | Argumente | Was die Nachricht enthält |
+|---|---|---|
+| `unit_review` | `unit` | Gliederung, Befunde (`get_diagnostics`), Metriken über Grenzwert (`get_metrics`), ungenutzter Code (`find_unused_code`), `delphi://conventions`; Anleitung für ein Review nach Schweregrad mit Vorschlägen und `check_code` vor jeder Änderung |
+| `explain_form` | `file` | Komponentenbaum (`get_dfm_info`), Ereignis-Handler mit Rümpfen aus der Unit (gemeinsame Handler einmal mit allen Komponenten), Datenbindungen (`DataSource`, `DataField`, `Connection`, LiveBindings …); Anleitung für eine Erklärung des Formulars |
+| `write_tests` | `name` | Deklaration (`get_declaration`), Aufrufer (`get_call_hierarchy`), Auswirkungen mit den vorhandenen Tests (`get_impact`), DUnitX-Konventionen des Projekts (`testUnits.pattern`, `.folder`, `.project`); Anleitung für neue Testmethoden in der passenden Testunit und Lauf mit `run_tests` |
+| `fix_finding` | `file`, `line`, optional `rule` | Erklärung (`explain_finding`), Codeausschnitt ±8 Zeilen mit markierter Zeile, verfügbare Korrekturen (`apply_code_action` ohne `title`); Anleitung: erst die Ursache, dann die Korrektur, dann `check_code` |
+| `prepare_commit` | optional `base` | geänderte Dateien laut Git oder SVN (ohne `base` die nicht eingecheckten gegenüber HEAD, sonst seit der Abzweigung von `base`), neue Befunde nur in geänderten Zeilen (wie `--changed-lines`), betroffene Tests (mit `get_affected_tests` aus #1353, sonst der Hinweis auf `get_impact`), Commit-Präfix des aktuellen Issues (`issues.commitPattern`, vom Plugin in `<gitdir>/atlas-commit-prefix`); Anleitung für Prüfung und Commit-Nachricht |
+
+Beispiele in Claude Code:
+
+```
+/mcp__delphi__unit_review UI.Auftrag
+/mcp__delphi__explain_form Source\UI.Auftrag.dfm
+/mcp__delphi__write_tests TAuftrag.Speichern
+/mcp__delphi__fix_finding Source\UI.Auftrag.pas 42 empty-except
+/mcp__delphi__prepare_commit main
+@delphi:delphi://unit/UI.Auftrag Wo wird hier die Mehrwertsteuer berechnet?
+```
+
+Die Anleitungen sind deutsch, mit `"mcp": { "promptLanguage": "en" }` englisch. `"mcp": { "prompts": false }` schaltet Prompts und Vorlagen ab: `prompts/list` und `resources/templates/list` sind dann leer, `delphi://build/last` fehlt; die Werkzeuge bleiben. Beide Schlüssel stehen in der globalen `settings.json` (Seite *MCP*).
+
+Eigene Prompts des Projekts stehen in `atlas.json` unter `mcp.customPrompts`. Platzhalter `{argument}` im Text werden ersetzt (unbekannte bleiben stehen), `include` hängt Ergebnisse an: `outline`, `diagnostics`, `metrics`, `unused`, `todos`, `form`, `impact`, `dependencies`, `conventions`, `lastBuild`. Die Inhalte nehmen das Argument `file`, `unit` oder (bei `impact`) `name`; eine Unit wird für Datei-Inhalte wie bei `unit_review` aufgelöst. Die Namen der eingebauten Prompts sind vergeben: Ein eigener mit gleichem Namen fehlt in der Liste.
+
+```json
+{
+  "mcp": {
+    "customPrompts": [
+      {
+        "name": "check_unit",
+        "description": "Unit vor dem Review prüfen",
+        "arguments": [{ "name": "unit", "description": "Unit-Name", "required": true }],
+        "text": "Prüfe {unit}: Befunde zuerst, dann Methoden über den Grenzwerten.",
+        "include": ["diagnostics", "metrics"]
+      }
+    ]
+  }
+}
+```
+
+Prompts gegenüber den Befehlen des Claude-Code-Plugins (`/atlas:bauen`): Die Plugin-Befehle sind Abläufe mit Hooks und Werkzeugen auf dem Rechner (bauen, Tests laufen lassen); Prompts sind alles, was die Daten vom Server bekommt, und funktionieren in jedem MCP-Programm. Im IDE-Plugin wirken sie nicht.
 
 ## Werkzeuge
 
@@ -107,6 +161,8 @@ pwsh Tools/Start-McpInspector.ps1 -Tui
 pwsh Tools/Start-McpInspector.ps1 -Method tools/list -Strict
 pwsh Tools/Start-McpInspector.ps1 -Method tools/call -Tool qualified_name -Arguments @{ file = 'Application/AtlasServer.dpr'; line = 1; column = 9; withParameters = $true }
 pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://conventions -Output konventionen.json
+pwsh Tools/Start-McpInspector.ps1 -Method prompts/get -Prompt unit_review -Arguments @{ unit = 'Shell.Mcp' }
+pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://unit/Shell.Mcp
 ```
 
 - `-Strict` gibt bei `tools/list` die Schema-Prüfung des Inspectors aus (Pfad, Problem, Vorschlag) und endet mit Exit-Code 6, wenn ein Schema bei Clients nicht portabel ist.
@@ -130,10 +186,11 @@ pwsh Tools/Test-McpTools.ps1 -Tool run_tests -WithProcessTools -Arguments @{ tes
 
 Das Skript spricht den Server direkt über stdio an. Der Index entsteht nur einmal, der ganze Lauf dauert wenige Sekunden (der Inspector startet den Server je Kommandozeilenaufruf neu). Geprüft wird:
 
-- `initialize`, `tools/list`, `resources/list` und `resources/templates/list` antworten ohne Fehler.
+- `initialize`, `tools/list`, `resources/list`, `resources/templates/list` und `prompts/list` antworten ohne Fehler.
 - Jedes Werkzeug hat eine Beschreibung, `inputSchema` vom Typ `object`, jeder Pflichtparameter steht in `properties`, jeder Parameter hat eine Beschreibung.
 - Jedes Werkzeug antwortet auf sein Beispiel ohne JSON-RPC-Fehler, ohne `isError` und nicht leer, und die Antwort enthält den erwarteten Text.
 - Jede Ressource lässt sich lesen.
+- Jeder Prompt hat eine Beschreibung, jedes Argument eine Beschreibung, und `prompts/get` liefert mit dem Beispiel unter `prompts` eine nicht leere Nachricht mit dem erwarteten Text; jede Vorlage liest sich mit der Beispiel-URI unter `templates` (#1357). Ein Prompt oder eine Vorlage ohne Beispiel lässt den Lauf scheitern.
 
 Die Beispiele stehen in `Tools/Mcp/Werkzeug-Beispiele.json` und beziehen sich auf das Referenzprojekt (`Tests/Referenzprojekt`). Zeilen und Spalten stehen dort als Platzhalter (`{{zeile:procedure TRefAnzeige.SetStil}}`, `{{spalte:SetStil}}`), damit verschobene Zeilen die Beispiele nicht brechen. Werkzeuge mit `"process": true` (`build_project`, `run_tests`) brauchen die IDE oder ein Testprojekt und laufen nur mit `-WithProcessTools`. Mit `-Tool` und `-Arguments` ruft das Skript ein Werkzeug mit eigenen Argumenten auf, auch mit Listen und Objekten, und gibt die Antwort aus.
 
