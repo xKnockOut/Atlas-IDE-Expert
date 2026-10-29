@@ -495,6 +495,8 @@ type
     FSearchMessages: TCheckBox;
     FSearchFromFirst: TCheckBox;
     FWelcomeEnabled: TCheckBox;
+    FWelcomeIdePage: TCheckBox;
+    FWelcomeLayout: TCheckBox;
     FWelcomeOpenOnStart: TCheckBox;
     FWelcomeOpenWhenNoProject: TCheckBox;
     // Freies Layout (#767): Schalter, Spalten, aktives Layout und dessen Verwaltung. FPageLayouts ist das
@@ -945,6 +947,8 @@ type
     property BugReportAnonymize: TCheckBox read FBugReportAnonymize;
     /// <summary>Zum Testen: Willkommensseite (#753).</summary>
     property WelcomeEnabled: TCheckBox read FWelcomeEnabled;
+    property WelcomeIdePage: TCheckBox read FWelcomeIdePage;
+    property WelcomeLayout: TCheckBox read FWelcomeLayout;
     property WelcomeOpenOnStart: TCheckBox read FWelcomeOpenOnStart;
     property WelcomeOpenWhenNoProject: TCheckBox read FWelcomeOpenWhenNoProject;
     /// <summary>Zum Testen: freies Layout (#767).</summary>
@@ -2143,8 +2147,11 @@ var
   mAction: TAtlasQuickAction;
   Panel: TWinControl;
 begin
-  // Atlas-Willkommensseite im Fenster „Atlas-Start“ (#753, #1114).
+  // Atlas-Willkommensseite (#753): auf der Willkommensseite der IDE und im Fenster „Atlas-Start“, beides
+  // unabhängig (#761).
   FWelcomeEnabled := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeEnabled));
+  FWelcomeIdePage := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeIdePage));
+  FWelcomeLayout := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeLayout));
   FWelcomeOpenOnStart := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeOpenOnStart));
   FWelcomeOpenWhenNoProject := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsWelcomeOpenWhenNoProject));
   // Freies Layout (#767): Bearbeitungsmodus „Seite anpassen“, Spalten, benannte Layouts.
@@ -2972,6 +2979,8 @@ begin
   FMarks.Bind(FSearchMessages, ['SearchResultsInMessages']);
   FMarks.Bind(FSearchFromFirst, ['SearchFromFirstHit']);
   FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
+  FMarks.Bind(FWelcomeIdePage, ['WelcomePageIdePage']);
+  FMarks.Bind(FWelcomeLayout, ['WelcomePageLayout']);
   FMarks.Bind(FWelcomeOpenOnStart, ['WelcomePageOpenOnStart']);
   FMarks.Bind(FWelcomeOpenWhenNoProject, ['WelcomePageOpenWhenNoProject']);
   FMarks.Bind(FWelcomeCustomLayout, ['WelcomePageCustomLayout']);
@@ -5129,6 +5138,8 @@ begin
   FSearchMessages.Checked := ASettings.SearchResultsInMessages;
   FSearchFromFirst.Checked := ASettings.SearchFromFirstHit;
   FWelcomeEnabled.Checked := ASettings.WelcomePage;
+  FWelcomeIdePage.Checked := ASettings.WelcomePageIdePage;
+  FWelcomeLayout.Checked := ASettings.WelcomePageLayout = 'atlas';
   FWelcomeOpenOnStart.Checked := ASettings.WelcomePageOpenOnStart;
   FWelcomeOpenWhenNoProject.Checked := ASettings.WelcomePageOpenWhenNoProject;
   FWelcomeHeader.Checked := ASettings.WelcomePageHeader;
@@ -5580,6 +5591,10 @@ begin
   ASettings.SearchResultsInMessages := FSearchMessages.Checked;
   ASettings.SearchFromFirstHit := FSearchFromFirst.Checked;
   ASettings.WelcomePage := FWelcomeEnabled.Checked;
+  ASettings.WelcomePageIdePage := FWelcomeIdePage.Checked;
+  ASettings.WelcomePageLayout := 'off';
+  if FWelcomeLayout.Checked then
+    ASettings.WelcomePageLayout := 'atlas';
   ASettings.WelcomePageOpenOnStart := FWelcomeOpenOnStart.Checked;
   ASettings.WelcomePageOpenWhenNoProject := FWelcomeOpenWhenNoProject.Checked;
   ASettings.WelcomePageHeader := FWelcomeHeader.Checked;

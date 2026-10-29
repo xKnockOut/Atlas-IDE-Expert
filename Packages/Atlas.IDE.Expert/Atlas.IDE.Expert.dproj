@@ -512,6 +512,7 @@
         <DCCReference Include="Source\UI\Welcome\Atlas.UI.Welcome.Push.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Registry.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Window.pas"/>
+        <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Page.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Search.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.WhatsNew.pas"/>
         <DCCReference Include="Source\IDE\Welcome\Atlas.IDE.Welcome.Projects.pas"/>

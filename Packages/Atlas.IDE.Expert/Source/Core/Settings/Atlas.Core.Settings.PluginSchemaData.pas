@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4197] of string = (
+  Lines: array[0..4219] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -3703,6 +3703,30 @@ const
     '      "x-parent": "editor.overviewRuler",',
     '      "x-control": "Kontrollkästchen je Art",',
     '      "x-issue": "#519"',
+    '    },',
+    '    "WelcomePageIdePage": {',
+    '      "description": "Atlas-Bereiche auf der Willkommensseite der IDE zeigen (einzeln oder mit „Atlas-Layout verwenden“ als ein Bereich „Atlas“). Unabhängig vom Fenster „Atlas-Start“; aus = Atlas nimm' +
+      't seine Bereiche von der Willkommensseite der IDE und stellt deren Layout wieder her.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "welcomePage.ideWelcomePage",',
+    '      "x-area": "welcome",',
+    '      "x-page": "Willkommensseite",',
+    '      "x-issue": "#761"',
+    '    },',
+    '    "WelcomePageLayout": {',
+    '      "description": "Atlas-Layout auf der Willkommensseite der IDE: off = einzelne Atlas-Bereiche, die die IDE anordnet; atlas = ein Bereich „Atlas“ mit Kopf und allen Bereichen oben über alle Spalte' +
+      'n (Befehle „Atlas-Layout anwenden“ und „Atlas-Layout zurücksetzen“).",',
+    '      "type": "string",',
+    '      "enum": [',
+    '        "off",',
+    '        "atlas"',
+    '      ],',
+    '      "default": "off",',
+    '      "x-key": "welcomePage.layout",',
+    '      "x-area": "welcome",',
+    '      "x-page": "Willkommensseite",',
+    '      "x-issue": "#761"',
     '    },',
     '    "WelcomePageOpenOnStart": {',
     '      "description": "Fenster „Atlas-Start“ beim Start der IDE öffnen; sonst nur über Ansicht › Atlas-Start, das Atlas-Menü, die Befehlspalette und den Desktop der IDE.",',

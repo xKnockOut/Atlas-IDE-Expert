@@ -364,6 +364,20 @@
       "image": "Tipps\\schnellaktionen.png"
     },
     {
+      "id": "welcomeLayout",
+      "command": "Atlas.WelcomeApply",
+      "usage": [
+        "Atlas.WelcomeApply",
+        "Atlas.WelcomeReset"
+      ],
+      "setting": "WelcomePageIdePage",
+      "title": "Atlas-Layout anwenden",
+      "titleEn": "Apply Atlas layout",
+      "text": "Setzt den Bereich „Atlas“ oben über die ganze Breite der Willkommensseite der IDE. „Atlas-Layout zurücksetzen“ stellt das vorige Layout exakt wieder her.",
+      "textEn": "Places the \"Atlas\" area across the full width at the top of the IDE welcome page. \"Reset Atlas layout\" restores the previous layout exactly.",
+      "image": "Tipps\\atlas-layout.png"
+    },
+    {
       "id": "welcomeStart",
       "command": "Atlas.WelcomeStart",
       "setting": "WelcomePage",
