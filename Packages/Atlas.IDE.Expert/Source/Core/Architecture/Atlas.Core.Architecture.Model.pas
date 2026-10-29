@@ -10,7 +10,9 @@
 //   filtert nach Teilen des Unit-Namens, ShortestPath sucht den kürzesten Weg
 //   über uses wie die HTML-Karte.
 // - TAtlasArchitecturePalette: Farben der Teilsysteme wie in der HTML-Karte,
-//   je für helle und dunkle Themen.
+//   je für helle und dunkle Themen; die Teile eines nachgeteilten
+//   Teilsystems (#1364, "parent") teilen eine Farbe ("color") in helleren und
+//   dunkleren Tönen ("shade").
 // - Comparison: Vergleich mit einem gespeicherten Stand (#1121) aus
 //   "comparison" (Daten aus TArchitectureComparer.Json), "baseline" und
 //   "comparisonError" der Antwort: Abschnitte mit Einträgen (Namen statt
@@ -20,6 +22,11 @@
 // - TAtlasArchitectureCommands baut die Argumente der Befehle
 //   atlas.architecture (mit "compareWith" bzw. "compare": false) und
 //   atlas.architecture.saveReport (.json: Stand speichern).
+// - Feinheit der Teilsysteme (#1366): Resolution aus "grouping" der Daten,
+//   TAtlasArchResolution rechnet zwischen Reglerstellung (logarithmisch über
+//   0,2–5,0, Mitte = 1,0) und Wert, TAtlasArchitectureGroupingSettings liest
+//   und schreibt architecture.grouping in settings.json. Die Befehle nehmen
+//   "resolution" über TAtlasArchitectureOptions mit.
 // - TAtlasArchitectureView rechnet die Karte zwischen Lage (Koordinaten des
 //   Servers) und Bildpunkten um: Einpassen, Zoomen um einen Punkt,
 //   Verschieben, Treffer einer Unit.
@@ -63,6 +70,11 @@ type
     Cohesion: Double;
     /// <summary>Sammelgruppe der Units ohne uses-Beziehung.</summary>
     Isolated: Boolean;
+    /// <summary>Ursprüngliches Teilsystem, wenn dieses nachgeteilt wurde (#1364); '' sonst.</summary>
+    Parent: string;
+    /// <summary>Farbe in der Palette (ältere Daten: Nummer des Teilsystems) und Ton (0, heller +, dunkler −).</summary>
+    ColorSlot: Integer;
+    Shade: Integer;
     X: Double;
     Y: Double;
     R: Double;
@@ -145,6 +157,9 @@ type
     BaselineTitle: string;
     BaselineUnits: Integer;
     BaselineEdges: Integer;
+    /// <summary>Feinheit γ des gespeicherten bzw. des aktuellen Stands (#1366).</summary>
+    BaselineResolution: Double;
+    Resolution: Double;
     /// <summary>Arten aus architecture.failOn, die vorkommen ("newCycle", "newCrossLink", …).</summary>
     Failed: TArray<string>;
     /// <summary>Alle Abschnitte in der Reihenfolge von TAtlasArchChangeKind, auch leere.</summary>
@@ -158,6 +173,8 @@ type
     /// <summary>Einträge aller Abschnitte.</summary>
     function Count: Integer;
     function Section(AKind: TAtlasArchChangeKind): TArray<TAtlasArchChange>;
+    /// <summary>Beide Stände mit verschiedener Feinheit gerechnet (#1366).</summary>
+    function ResolutionDiffers: Boolean;
   end;
 
   TAtlasArchitectureModel = record
@@ -176,6 +193,8 @@ type
     InterfaceCycles: Integer;
     /// <summary>Muster aus architecture.exclude (für die Statuszeile).</summary>
     Excludes: TArray<string>;
+    /// <summary>Feinheit γ, mit der der Server gruppiert hat (#1366); 1 ohne Angabe.</summary>
+    Resolution: Double;
     Units: TArray<TAtlasArchUnit>;
     Edges: TArray<TAtlasArchEdge>;
     /// <summary>Zentrale Units, die zentralste zuerst.</summary>
@@ -223,6 +242,59 @@ type
     function RouteText(const AUnits: TArray<Integer>): string;
     /// <summary>Die Unit gehört zu einem Teilsystem, das AHidden ausblendet.</summary>
     function IsHidden(AUnit: Integer; const AHidden: TArray<Boolean>): Boolean;
+    /// <summary>Teilsysteme ohne die Sammelgruppe der Units ohne uses-Beziehung (Regler „Feinheit“).</summary>
+    function SubsystemCount: Integer;
+    /// <summary>Farbe des Teilsystems in Karte und Legende (Farbfamilie bei Nachteilung, #1364).</summary>
+    function SubsystemColor(ASubsystem: Integer; ADark: Boolean): Cardinal;
+    /// <summary>Reihenfolge der Legende: wie Subsystems, die Teile eines nachgeteilten Teilsystems (gleicher
+    /// Parent) zusammen an der Stelle des ersten Teils.</summary>
+    function LegendOrder: TArray<Integer>;
+  end;
+
+  /// <summary>Optionen der Befehle atlas.architecture und atlas.architecture.saveReport.</summary>
+  TAtlasArchitectureOptions = record
+    /// <summary>"projectGroup" oder "project".</summary>
+    Scope: string;
+    IncludeLibrary: Boolean;
+    /// <summary>Pfad eines gespeicherten Stands (#1121); '' = architecture.baseline bzw. keiner.</summary>
+    CompareWith: string;
+    /// <summary>False: auch nicht mit architecture.baseline vergleichen.</summary>
+    Compare: Boolean;
+    /// <summary>Feinheit γ für diesen Aufruf (#1366); 0 = architecture.grouping.resolution des Servers.</summary>
+    Resolution: Double;
+    /// <summary>Umfang und Bibliotheks-Units, Vergleich mit architecture.baseline, Feinheit des Servers.</summary>
+    class function Create(const AScope: string; AIncludeLibrary: Boolean): TAtlasArchitectureOptions; static;
+  end;
+
+  /// <summary>Regler „Feinheit“ (#1366): Stellung 0..Steps, logarithmisch über 0,2–5,0, Mitte = 1,0.</summary>
+  TAtlasArchResolution = class
+  public const
+    MinValue = 0.2;
+    MaxValue = 5.0;
+    Steps = 100;
+  public
+    /// <summary>Wert zur Stellung, auf zwei Nachkommastellen gerundet.</summary>
+    class function ValueAt(APosition: Integer): Double; static;
+    /// <summary>Nächste Stellung zum Wert (Werte außerhalb werden begrenzt).</summary>
+    class function PositionOf(AValue: Double): Integer; static;
+    /// <summary>Wert in den Grenzen; ungültig (≤ 0, NaN) = 1.</summary>
+    class function Clamp(AValue: Double): Double; static;
+    /// <summary>"1,0" bzw. "1.0" nach AFormat, höchstens zwei Nachkommastellen.</summary>
+    class function Text(AValue: Double; const AFormat: TFormatSettings): string; static;
+    /// <summary>Gleich auf zwei Nachkommastellen.</summary>
+    class function Same(ALeft, ARight: Double): Boolean; static;
+  end;
+
+  /// <summary>architecture.grouping in settings.json (#1366): der Server liest denselben Wert.</summary>
+  TAtlasArchitectureGroupingSettings = class
+  public const
+    ResolutionPath = 'architecture.grouping.resolution';
+    SliderPath = 'architecture.grouping.showResolutionSlider';
+  public
+    /// <summary>Werte aus dem Text von settings.json; fehlende oder ungültige: 1 bzw. True.</summary>
+    class procedure Read(const AGlobalText: string; out AResolution: Double; out AShowSlider: Boolean); static;
+    /// <summary>Text von settings.json mit neuer Feinheit; übriger Text bleibt.</summary>
+    class function WithResolution(const AGlobalText: string; AValue: Double): string; static;
   end;
 
   TAtlasArchitectureCommands = class
@@ -236,6 +308,13 @@ type
     /// leer und ohne ACompare "compare": false (auch nicht mit architecture.baseline vergleichen).</summary>
     class function Arguments(const AProjectUri, AScope: string; AIncludeLibrary: Boolean; const ACompareWith: string;
       ACompare: Boolean): string; overload; static;
+    /// <summary>[uri, {"scope", "includeLibraryUnits", "format": "json", Vergleich, "resolution"}] (#1366).
+    /// </summary>
+    class function Arguments(const AProjectUri: string; const AOptions: TAtlasArchitectureOptions): string;
+      overload; static;
+    /// <summary>[uri, Datei, Optionen wie Arguments ohne "format"] für atlas.architecture.saveReport.</summary>
+    class function SaveArguments(const AProjectUri, AFileName: string;
+      const AOptions: TAtlasArchitectureOptions): string; overload; static;
     /// <summary>[uri, Datei, {"scope", "includeLibraryUnits"}] für atlas.architecture.saveReport; Datei .json
     /// speichert den Stand für den Vergleich.</summary>
     class function SaveArguments(const AProjectUri, AFileName, AScope: string;
@@ -250,9 +329,16 @@ type
   TAtlasArchitecturePalette = class
   public const
     Count = 10;
+    /// <summary>Höchstens so weit wird ein Ton zu Weiß bzw. Schwarz gemischt.</summary>
+    MaxShadeMix = 0.6;
+    /// <summary>Mischanteil je Tonstufe.</summary>
+    ShadeStep = 0.22;
   public
     /// <summary>Farbe des Teilsystems ASubsystem als $00BBGGRR (wie TColor).</summary>
-    class function Color(ASubsystem: Integer; ADark: Boolean): Cardinal; static;
+    class function Color(ASubsystem: Integer; ADark: Boolean): Cardinal; overload; static;
+    /// <summary>Farbe ASlot im Ton AShade (#1364): positiv heller, negativ dunkler, wie color-mix der HTML-Karte.
+    /// </summary>
+    class function Color(ASlot, AShade: Integer; ADark: Boolean): Cardinal; overload; static;
     /// <summary>Hintergrund ($00BBGGRR) ist dunkel: Helligkeit unter der Hälfte.</summary>
     class function IsDark(ABackground: Cardinal): Boolean; static;
   end;
@@ -288,7 +374,8 @@ implementation
 uses
   System.Math,
   System.Generics.Defaults,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Core.Settings.JsonText;
 
 const
   // Wie --c0 … --c9 der HTML-Karte (#RRGGBB), hell bzw. dunkel.
@@ -559,6 +646,14 @@ begin
   end;
 end;
 
+/// <summary>"resolution" einer Angabe; 1 ohne oder bei ungültigem Wert (Server vor #1366).</summary>
+function ResolutionOf(const AObject: TJSONObject): Double;
+begin
+  Result := 1;
+  if (AObject <> nil) and (AObject.GetValue('resolution') is TJSONNumber) then
+    Result := TAtlasArchResolution.Clamp(FloatOf(AObject, 'resolution'));
+end;
+
 function ComparisonOf(const AModel: TAtlasArchitectureModel; const AAnswer: TJSONObject): TAtlasArchComparison;
 var
   Data, Baseline: TJSONObject;
@@ -579,7 +674,11 @@ begin
     Result.BaselineTitle := TextOf(Baseline, 'title');
     Result.BaselineUnits := IntOf(Baseline, 'units', 0);
     Result.BaselineEdges := IntOf(Baseline, 'edges', 0);
-  end;
+    Result.BaselineResolution := ResolutionOf(Baseline);
+  end
+  else
+    Result.BaselineResolution := 1;
+  Result.Resolution := ResolutionOf(Data);
   Result.Failed := NamesOf(ArrayOf(Data, 'failed'));
   for Kind := Low(TAtlasArchChangeKind) to High(TAtlasArchChangeKind) do
   begin
@@ -657,6 +756,9 @@ begin
     AModel.IncludeLibrary := FlagOf(Data, 'includeLibrary');
     AModel.DurationMs := IntOf(Data, 'durationMs', 0);
     AModel.Generation := Int64Of(Data, 'generation');
+    AModel.Resolution := 1;
+    if Data.GetValue('grouping') is TJSONObject then
+      AModel.Resolution := ResolutionOf(TJSONObject(Data.GetValue('grouping')));
     if Data.GetValue('summary') is TJSONObject then
     begin
       Summary := TJSONObject(Data.GetValue('summary'));
@@ -724,6 +826,9 @@ begin
         AModel.Subsystems[Index].Outer := IntOf(Item, 'outer', 0);
         AModel.Subsystems[Index].Cohesion := FloatOf(Item, 'cohesion');
         AModel.Subsystems[Index].Isolated := FlagOf(Item, 'isolated');
+        AModel.Subsystems[Index].Parent := TextOf(Item, 'parent');
+        AModel.Subsystems[Index].ColorSlot := IntOf(Item, 'color', Index);
+        AModel.Subsystems[Index].Shade := IntOf(Item, 'shade', 0);
         AModel.Subsystems[Index].X := FloatOf(Item, 'x');
         AModel.Subsystems[Index].Y := FloatOf(Item, 'y');
         AModel.Subsystems[Index].R := FloatOf(Item, 'r');
@@ -1044,31 +1149,167 @@ begin
     end;
 end;
 
-{ TAtlasArchitectureCommands }
-
-function Options(const AScope: string; AIncludeLibrary: Boolean): TJSONObject;
+function TAtlasArchitectureModel.SubsystemCount: Integer;
+var
+  mSubsystem: TAtlasArchSubsystem;
 begin
-  Result := TJSONObject.Create;
-  Result.AddPair('scope', AScope);
-  Result.AddPair('includeLibraryUnits', TJSONBool.Create(AIncludeLibrary));
+  Result := 0;
+  for mSubsystem in Subsystems do
+    if not mSubsystem.Isolated then
+      Inc(Result);
 end;
 
-procedure AddComparison(AOptions: TJSONObject; const ACompareWith: string; ACompare: Boolean);
+function TAtlasArchitectureModel.SubsystemColor(ASubsystem: Integer; ADark: Boolean): Cardinal;
 begin
-  if ACompareWith <> '' then
-    AOptions.AddPair('compareWith', ACompareWith)
-  else if not ACompare then
-    AOptions.AddPair('compare', TJSONBool.Create(False));
+  if (ASubsystem >= 0) and (ASubsystem < Length(Subsystems)) then
+    Result := TAtlasArchitecturePalette.Color(Subsystems[ASubsystem].ColorSlot, Subsystems[ASubsystem].Shade, ADark)
+  else
+    Result := TAtlasArchitecturePalette.Color(ASubsystem, ADark);
+end;
+
+function TAtlasArchitectureModel.LegendOrder: TArray<Integer>;
+var
+  mIndex, mOther: Integer;
+  mDone: TArray<Boolean>;
+begin
+  Result := nil;
+  SetLength(mDone, Length(Subsystems));
+  for mIndex := 0 to High(Subsystems) do
+  begin
+    if mDone[mIndex] then
+      Continue;
+    Result := Result + [mIndex];
+    mDone[mIndex] := True;
+    if Subsystems[mIndex].Parent = '' then
+      Continue;
+    for mOther := mIndex + 1 to High(Subsystems) do
+      if not mDone[mOther] and SameText(Subsystems[mOther].Parent, Subsystems[mIndex].Parent) then
+      begin
+        Result := Result + [mOther];
+        mDone[mOther] := True;
+      end;
+  end;
+end;
+
+function TAtlasArchComparison.ResolutionDiffers: Boolean;
+begin
+  Result := Present and not TAtlasArchResolution.Same(BaselineResolution, Resolution);
+end;
+
+{ TAtlasArchitectureOptions }
+
+class function TAtlasArchitectureOptions.Create(const AScope: string;
+  AIncludeLibrary: Boolean): TAtlasArchitectureOptions;
+begin
+  Result.Scope := AScope;
+  Result.IncludeLibrary := AIncludeLibrary;
+  Result.CompareWith := '';
+  Result.Compare := True;
+  Result.Resolution := 0;
+end;
+
+{ TAtlasArchResolution }
+
+class function TAtlasArchResolution.Clamp(AValue: Double): Double;
+begin
+  if IsNan(AValue) or (AValue <= 0) then
+    Exit(1);
+  Result := EnsureRange(AValue, MinValue, MaxValue);
+end;
+
+class function TAtlasArchResolution.ValueAt(APosition: Integer): Double;
+begin
+  // 0,2 · 25^(p/Steps): Mitte 0,2 · 5 = 1,0.
+  Result := MinValue * Power(MaxValue / MinValue, EnsureRange(APosition, 0, Steps) / Steps);
+  Result := Round(Result * 100) / 100;
+end;
+
+class function TAtlasArchResolution.PositionOf(AValue: Double): Integer;
+begin
+  Result := Round(Ln(Clamp(AValue) / MinValue) / Ln(MaxValue / MinValue) * Steps);
+  Result := EnsureRange(Result, 0, Steps);
+end;
+
+class function TAtlasArchResolution.Text(AValue: Double; const AFormat: TFormatSettings): string;
+begin
+  Result := FormatFloat('0.0#', AValue, AFormat);
+end;
+
+class function TAtlasArchResolution.Same(ALeft, ARight: Double): Boolean;
+begin
+  Result := Abs(ALeft - ARight) < 0.005;
+end;
+
+{ TAtlasArchitectureGroupingSettings }
+
+class procedure TAtlasArchitectureGroupingSettings.Read(const AGlobalText: string; out AResolution: Double;
+  out AShowSlider: Boolean);
+var
+  mRoot: TJSONObject;
+  mValue: TJSONValue;
+begin
+  AResolution := 1;
+  AShowSlider := True;
+  mRoot := TAtlasJsonText.Parse(AGlobalText);
+  try
+    if mRoot = nil then
+      Exit;
+    mValue := TJSONObject.ParseJSONValue(TAtlasJsonText.ValueAt(mRoot, ResolutionPath));
+    try
+      if mValue is TJSONNumber then
+        AResolution := TAtlasArchResolution.Clamp(TJSONNumber(mValue).AsDouble);
+    finally
+      mValue.Free;
+    end;
+    AShowSlider := TAtlasJsonText.ValueAt(mRoot, SliderPath) <> 'false';
+  finally
+    mRoot.Free;
+  end;
+end;
+
+class function TAtlasArchitectureGroupingSettings.WithResolution(const AGlobalText: string; AValue: Double): string;
+begin
+  Result := TAtlasJsonText.SetValue(AGlobalText, ResolutionPath,
+    TAtlasArchResolution.Text(TAtlasArchResolution.Clamp(AValue), TFormatSettings.Invariant));
+end;
+
+{ TAtlasArchitectureCommands }
+
+function Options(const AOptions: TAtlasArchitectureOptions): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('scope', AOptions.Scope);
+  Result.AddPair('includeLibraryUnits', TJSONBool.Create(AOptions.IncludeLibrary));
+  if AOptions.CompareWith <> '' then
+    Result.AddPair('compareWith', AOptions.CompareWith)
+  else if not AOptions.Compare then
+    Result.AddPair('compare', TJSONBool.Create(False));
+  if AOptions.Resolution > 0 then
+    Result.AddPair('resolution', TJSONNumber.Create(TAtlasArchResolution.Clamp(AOptions.Resolution)));
+end;
+
+function ComparedOptions(const AScope: string; AIncludeLibrary: Boolean; const ACompareWith: string;
+  ACompare: Boolean): TAtlasArchitectureOptions;
+begin
+  Result := TAtlasArchitectureOptions.Create(AScope, AIncludeLibrary);
+  Result.CompareWith := ACompareWith;
+  Result.Compare := ACompare;
 end;
 
 class function TAtlasArchitectureCommands.Arguments(const AProjectUri, AScope: string;
   AIncludeLibrary: Boolean): string;
 begin
-  Result := Arguments(AProjectUri, AScope, AIncludeLibrary, '', True);
+  Result := Arguments(AProjectUri, TAtlasArchitectureOptions.Create(AScope, AIncludeLibrary));
 end;
 
 class function TAtlasArchitectureCommands.Arguments(const AProjectUri, AScope: string; AIncludeLibrary: Boolean;
   const ACompareWith: string; ACompare: Boolean): string;
+begin
+  Result := Arguments(AProjectUri, ComparedOptions(AScope, AIncludeLibrary, ACompareWith, ACompare));
+end;
+
+class function TAtlasArchitectureCommands.Arguments(const AProjectUri: string;
+  const AOptions: TAtlasArchitectureOptions): string;
 var
   Items: TJSONArray;
   Option: TJSONObject;
@@ -1076,9 +1317,8 @@ begin
   Items := TJSONArray.Create;
   try
     Items.Add(AProjectUri);
-    Option := Options(AScope, AIncludeLibrary);
+    Option := Options(AOptions);
     Option.AddPair('format', 'json');
-    AddComparison(Option, ACompareWith, ACompare);
     Items.AddElement(Option);
     Result := Items.ToJSON;
   finally
@@ -1089,22 +1329,25 @@ end;
 class function TAtlasArchitectureCommands.SaveArguments(const AProjectUri, AFileName, AScope: string;
   AIncludeLibrary: Boolean): string;
 begin
-  Result := SaveArguments(AProjectUri, AFileName, AScope, AIncludeLibrary, '', True);
+  Result := SaveArguments(AProjectUri, AFileName, TAtlasArchitectureOptions.Create(AScope, AIncludeLibrary));
 end;
 
 class function TAtlasArchitectureCommands.SaveArguments(const AProjectUri, AFileName, AScope: string;
   AIncludeLibrary: Boolean; const ACompareWith: string; ACompare: Boolean): string;
+begin
+  Result := SaveArguments(AProjectUri, AFileName, ComparedOptions(AScope, AIncludeLibrary, ACompareWith, ACompare));
+end;
+
+class function TAtlasArchitectureCommands.SaveArguments(const AProjectUri, AFileName: string;
+  const AOptions: TAtlasArchitectureOptions): string;
 var
   Items: TJSONArray;
-  Option: TJSONObject;
 begin
   Items := TJSONArray.Create;
   try
     Items.Add(AProjectUri);
     Items.Add(AFileName);
-    Option := Options(AScope, AIncludeLibrary);
-    AddComparison(Option, ACompareWith, ACompare);
-    Items.AddElement(Option);
+    Items.AddElement(Options(AOptions));
     Result := Items.ToJSON;
   finally
     Items.Free;
@@ -1139,6 +1382,30 @@ begin
     Rgb := LightColors[Slot];
   // #RRGGBB → $00BBGGRR.
   Result := ((Rgb and $FF) shl 16) or (Rgb and $FF00) or ((Rgb shr 16) and $FF);
+end;
+
+class function TAtlasArchitecturePalette.Color(ASlot, AShade: Integer; ADark: Boolean): Cardinal;
+var
+  mBase: Cardinal;
+  mMix: Double;
+  mShift, mChannel: Integer;
+begin
+  mBase := Color(ASlot, ADark);
+  if AShade = 0 then
+    Exit(mBase);
+  mMix := Min(MaxShadeMix, ShadeStep * Abs(AShade));
+  Result := 0;
+  mShift := 0;
+  while mShift <= 16 do
+  begin
+    mChannel := (mBase shr mShift) and $FF;
+    if AShade > 0 then
+      mChannel := Round(mChannel + (255 - mChannel) * mMix)
+    else
+      mChannel := Round(mChannel * (1 - mMix));
+    Result := Result or (Cardinal(EnsureRange(mChannel, 0, 255)) shl mShift);
+    Inc(mShift, 8);
+  end;
 end;
 
 class function TAtlasArchitecturePalette.IsDark(ABackground: Cardinal): Boolean;

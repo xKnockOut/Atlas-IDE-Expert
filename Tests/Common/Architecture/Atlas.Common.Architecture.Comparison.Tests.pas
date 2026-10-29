@@ -39,6 +39,9 @@ type
     procedure JsonIsValid;
     [Test]
     procedure ParsesKinds;
+    /// <summary>Verschiedene Feinheit γ (#1366): Hinweis in Text, Markdown und JSON.</summary>
+    [Test]
+    procedure NotesDifferentResolution;
   end;
 
 implementation
@@ -387,6 +390,28 @@ begin
   Assert.AreEqual('newCycle,centralGrowth', string.Join(',', TArchitectureComparer.KindNames(
     [TArchitectureFailKind.CentralGrowth, TArchitectureFailKind.NewCycle])));
   Assert.IsTrue(TArchitectureComparer.DefaultFailOn = [TArchitectureFailKind.NewCycle]);
+end;
+
+procedure TArchitectureComparisonTests.NotesDifferentResolution;
+var
+  mOlder, mNewer: TArchitectureSnapshot;
+  mComparison: TArchitectureComparison;
+begin
+  mOlder := TwoGroups('Kern', 'Ui');
+  mNewer := TwoGroups('Kern', 'Ui');
+  mComparison := TArchitectureComparer.Compare(mOlder, mNewer);
+  Assert.IsFalse(mComparison.ResolutionDiffers, 'Stände ohne Angabe: beide 1,0');
+  Assert.AreEqual('', mComparison.GroupingNote);
+  mNewer.Grouping := TArchitectureGrouping.Default;
+  mNewer.Grouping.Resolution := 2;
+  mComparison := TArchitectureComparer.Compare(mOlder, mNewer);
+  Assert.IsTrue(mComparison.ResolutionDiffers);
+  Assert.Contains(mComparison.GroupingNote, 'Feinheit γ = 1,0', False);
+  Assert.Contains(mComparison.GroupingNote, 'γ = 2,0', False);
+  Assert.Contains(TArchitectureComparer.Text(mComparison, [], 0), mComparison.GroupingNote, False);
+  Assert.Contains(TArchitectureComparer.Markdown(mComparison), mComparison.GroupingNote, False);
+  Assert.Contains(TArchitectureComparer.Json(mComparison, []), '"edges":0,"resolution":1}');
+  Assert.Contains(TArchitectureComparer.Json(mComparison, []), ',"resolution":2');
 end;
 
 initialization
