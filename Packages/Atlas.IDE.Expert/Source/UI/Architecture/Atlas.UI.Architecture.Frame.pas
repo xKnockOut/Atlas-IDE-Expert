@@ -3,7 +3,10 @@
 // Inhalt des Seitenfensters „Atlas-Architektur“ (#1118), reine VCL: oben
 // „Neu berechnen“, „Bericht speichern …“, „Stand speichern …“ und
 // „Vergleichen mit …“ (#1121, Datei .json), Umfang (Projektgruppe, Projekt),
-// „Bibliotheks-Units“ und ein Filter nach Unit-Namen; darunter sechs Reiter:
+// „Bibliotheks-Units“, der Regler „Feinheit“ (#1366, TAtlasResolutionSlider,
+// daneben „γ = 1,0 · 6 Teilsysteme“; OnResolutionChanged beim Loslassen,
+// ShowResolution blendet ihn aus) und ein Filter nach Unit-Namen; darunter
+// sechs Reiter:
 // - Übersicht: „Einpassen“, „Namen“, „implementation-uses“, „Zyklen
 //   markieren“, „Änderungen zum Stand“ (nur mit Vergleich) und „Teilsysteme ▾“
 //   (ein- und ausblenden), die Karte (TAtlasArchitectureMap), darunter Angaben
@@ -44,7 +47,8 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Atlas.Core.Architecture.Model,
-  Atlas.UI.Architecture.Map;
+  Atlas.UI.Architecture.Map,
+  Atlas.UI.Architecture.Slider;
 
 type
   TAtlasArchitectureFrame = class(TFrame)
@@ -56,6 +60,9 @@ type
     FCompare: TButton;
     FScope: TComboBox;
     FLibrary: TCheckBox;
+    FResolutionCaption: TLabel;
+    FResolution: TAtlasResolutionSlider;
+    FResolutionInfo: TLabel;
     FFilter: TEdit;
     FPages: TPageControl;
     /// <summary>Reiter in Reihenfolge; CreateWnd hängt sie ein (das braucht das Fenster des PageControls).</summary>
@@ -99,6 +106,7 @@ type
     FOnClearComparison: TProc;
     FOnScopeChanged: TProc<string>;
     FOnLibraryChanged: TProc<Boolean>;
+    FOnResolutionChanged: TProc<Double>;
     FOnOpenUnit: TProc<string>;
     FOnOpenLocation: TProc<string, Integer, Integer>;
     FOnUnitRelations: TProc<string>;
@@ -137,6 +145,7 @@ type
     procedure MarkCyclesClick(Sender: TObject);
     procedure SubsystemsClick(Sender: TObject);
     procedure SubsystemItemClick(Sender: TObject);
+    procedure FoundationEdgesClick(Sender: TObject);
     procedure ShowAllClick(Sender: TObject);
     procedure CentralColumnClick(Sender: TObject; Column: TListColumn);
     procedure CentralDblClick(Sender: TObject);
@@ -149,6 +158,12 @@ type
     procedure SetScopeValue(const AValue: string);
     function GetIncludeLibrary: Boolean;
     procedure SetIncludeLibrary(AValue: Boolean);
+    function GetResolutionValue: Double;
+    procedure SetResolutionValue(AValue: Double);
+    function GetShowResolution: Boolean;
+    procedure SetShowResolution(AValue: Boolean);
+    /// <summary>„γ = 1,0 · 6 Teilsysteme“; die Zahl nur, wenn die Karte mit diesem Wert gerechnet ist.</summary>
+    procedure UpdateResolutionInfo(AValue: Double);
   protected
     procedure CreateWnd; override;
   public
@@ -166,6 +181,9 @@ type
     procedure OpenLink(const ALink: TAtlasArchLink);
     /// <summary>Menü „Teilsysteme ▾“ neu aufbauen: je Teilsystem ein Haken, dazu „Alle einblenden“.</summary>
     procedure FillSubsystemsMenu;
+    /// <summary>Zeile eines Teilsystems in Menü und Reiter: Name, Units, Zusammenhalt (Fundament ohne, #1365).
+    /// </summary>
+    function SubsystemCaption(ASubsystem: Integer): string;
     /// <summary>Zeile für Zeile der Text einer Liste bzw. eines Baums (für Tests und Bildschirmleser).</summary>
     function CentralText: TArray<string>;
     function SubsystemText: TArray<string>;
@@ -199,6 +217,12 @@ type
     property SubsystemsMenu: TPopupMenu read FSubsystemsMenu;
     property ScopeValue: string read FScopeValue write SetScopeValue;
     property IncludeLibrary: Boolean read GetIncludeLibrary write SetIncludeLibrary;
+    /// <summary>Feinheit γ des Reglers (#1366); Setzen meldet nichts.</summary>
+    property ResolutionValue: Double read GetResolutionValue write SetResolutionValue;
+    /// <summary>Regler „Feinheit“ zeigen (architecture.grouping.showResolutionSlider).</summary>
+    property ShowResolution: Boolean read GetShowResolution write SetShowResolution;
+    property ResolutionSlider: TAtlasResolutionSlider read FResolution;
+    property ResolutionInfo: TLabel read FResolutionInfo;
     property SortColumn: TAtlasArchColumn read FSortColumn;
     property SortDescending: Boolean read FSortDescending;
     property OnRefresh: TProc read FOnRefresh write FOnRefresh;
@@ -212,6 +236,8 @@ type
     property OnClearComparison: TProc read FOnClearComparison write FOnClearComparison;
     property OnScopeChanged: TProc<string> read FOnScopeChanged write FOnScopeChanged;
     property OnLibraryChanged: TProc<Boolean> read FOnLibraryChanged write FOnLibraryChanged;
+    /// <summary>Regler losgelassen, Doppelklick oder Taste: neue Feinheit (#1366).</summary>
+    property OnResolutionChanged: TProc<Double> read FOnResolutionChanged write FOnResolutionChanged;
     property OnOpenUnit: TProc<string> read FOnOpenUnit write FOnOpenUnit;
     /// <summary>Absoluter Pfad, Zeile und Spalte ab 1.</summary>
     property OnOpenLocation: TProc<string, Integer, Integer> read FOnOpenLocation write FOnOpenLocation;
@@ -310,6 +336,45 @@ begin
   FLibrary.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureLibrary);
   FLibrary.Width := 120;
   FLibrary.OnClick := LibraryClick;
+
+  FResolutionCaption := TLabel.Create(Self);
+  FResolutionCaption.Parent := FTop;
+  FResolutionCaption.Align := alLeft;
+  FResolutionCaption.AlignWithMargins := True;
+  FResolutionCaption.Left := FLibrary.Left + FLibrary.Width + 1;
+  FResolutionCaption.Layout := tlCenter;
+  FResolutionCaption.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureResolutionCaption);
+  FResolutionCaption.ShowAccelChar := False;
+
+  FResolution := TAtlasResolutionSlider.Create(Self);
+  FResolution.Parent := FTop;
+  FResolution.Align := alLeft;
+  FResolution.AlignWithMargins := True;
+  FResolution.Left := FResolutionCaption.Left + FResolutionCaption.Width + 1;
+  FResolution.Width := 140;
+  FResolution.Hint := TAtlasStrings.Text(TAtlasTextId.ArchitectureResolutionHint);
+  FResolution.ShowHint := True;
+  FResolution.OnTracking :=
+    procedure(AValue: Double)
+    begin
+      UpdateResolutionInfo(AValue);
+    end;
+  FResolution.OnChange :=
+    procedure(AValue: Double)
+    begin
+      UpdateResolutionInfo(AValue);
+      if Assigned(FOnResolutionChanged) then
+        FOnResolutionChanged(AValue);
+    end;
+
+  FResolutionInfo := TLabel.Create(Self);
+  FResolutionInfo.Parent := FTop;
+  FResolutionInfo.Align := alLeft;
+  FResolutionInfo.AlignWithMargins := True;
+  FResolutionInfo.Left := FResolution.Left + FResolution.Width + 1;
+  FResolutionInfo.Layout := tlCenter;
+  FResolutionInfo.ShowAccelChar := False;
+  UpdateResolutionInfo(FResolution.Value);
 
   FFilter := TEdit.Create(Self);
   FFilter.Parent := FTop;
@@ -577,6 +642,41 @@ begin
   end;
 end;
 
+function TAtlasArchitectureFrame.GetResolutionValue: Double;
+begin
+  Result := FResolution.Value;
+end;
+
+procedure TAtlasArchitectureFrame.SetResolutionValue(AValue: Double);
+begin
+  FResolution.Value := AValue;
+  UpdateResolutionInfo(FResolution.Value);
+end;
+
+function TAtlasArchitectureFrame.GetShowResolution: Boolean;
+begin
+  Result := FResolution.Visible;
+end;
+
+procedure TAtlasArchitectureFrame.SetShowResolution(AValue: Boolean);
+begin
+  FResolutionCaption.Visible := AValue;
+  FResolution.Visible := AValue;
+  FResolutionInfo.Visible := AValue;
+end;
+
+procedure TAtlasArchitectureFrame.UpdateResolutionInfo(AValue: Double);
+var
+  mText: string;
+begin
+  mText := TAtlasArchResolution.Text(AValue, FormatSettings);
+  if FHasModel and TAtlasArchResolution.Same(FModel.Resolution, AValue) then
+    FResolutionInfo.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionInfo, [mText,
+      FModel.SubsystemCount])
+  else
+    FResolutionInfo.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionValue, [mText]);
+end;
+
 procedure TAtlasArchitectureFrame.SetModel(const AModel: TAtlasArchitectureModel);
 begin
   FModel := AModel;
@@ -585,6 +685,7 @@ begin
   FMap.SetModel(FModel);
   FMap.Filter := FFilter.Text;
   FillAll;
+  UpdateResolutionInfo(FResolution.Value);
 end;
 
 procedure TAtlasArchitectureFrame.SetMessage(const AText: string; AKeep: Boolean);
@@ -596,6 +697,7 @@ begin
     FHasModel := False;
     FMap.SetModel(FModel);
     FillAll;
+    UpdateResolutionInfo(FResolution.Value);
   end;
   UpdateStatus;
 end;
@@ -703,7 +805,8 @@ begin
   FSubsystems.Items.BeginUpdate;
   try
     FSubsystems.Items.Clear;
-    for Index := 0 to High(FModel.Subsystems) do
+    // Teile eines nachgeteilten Teilsystems (#1364) beieinander.
+    for Index in FModel.LegendOrder do
     begin
       Subsystem := FModel.Subsystems[Index];
       Members := nil;
@@ -712,9 +815,14 @@ begin
           Members := Members + [Member];
       if Length(Members) = 0 then
         Continue;
-      Group := FSubsystems.Items.Add(nil, TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine,
-        [Subsystem.Name, Length(Subsystem.Units), Round(Subsystem.Cohesion * 100)]));
+      Line := SubsystemCaption(Index);
+      if Subsystem.Parent <> '' then
+        Line := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemPart, [Line, Subsystem.Parent]);
+      Group := FSubsystems.Items.Add(nil, Line);
       Group.Data := nil;
+      // Regel des Fundaments (#1365) als erste Zeile.
+      if Subsystem.Foundation then
+        FSubsystems.Items.AddChild(Group, TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationRule)).Data := nil;
       for Member in FModel.Sorted(Members, TAtlasArchColumn.Total, True) do
       begin
         Line := FModel.Units[Member].Name;
@@ -870,6 +978,11 @@ begin
     if Length(Comparison.Failed) > 0 then
       Info := Info + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonFailed,
         [string.Join(', ', Comparison.Failed)]);
+    // Verschiedene Feinheit (#1366): Teilsystemwechsel können allein daher kommen.
+    if Comparison.ResolutionDiffers then
+      Info := Info + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonResolution,
+        [TAtlasArchResolution.Text(Comparison.BaselineResolution, FormatSettings),
+        TAtlasArchResolution.Text(Comparison.Resolution, FormatSettings)]);
   end
   else
     Info := TAtlasStrings.Text(TAtlasTextId.ArchitectureNoComparison);
@@ -1120,15 +1233,38 @@ end;
 
 procedure TAtlasArchitectureFrame.FillSubsystemsMenu;
 var
-  Index: Integer;
+  Index, mOther, mParts: Integer;
   Item: TMenuItem;
+  mFamily, mCaption: string;
 begin
   FSubsystemsMenu.Items.Clear;
-  for Index := 0 to High(FModel.Subsystems) do
+  // Wie die Legende der HTML-Karte: die Teile eines nachgeteilten Teilsystems (#1364) eingerückt unter seinem
+  // Namen.
+  mFamily := '';
+  for Index in FModel.LegendOrder do
   begin
+    mCaption := SubsystemCaption(Index);
+    if FModel.Subsystems[Index].Parent = '' then
+      mFamily := ''
+    else
+    begin
+      if not SameText(FModel.Subsystems[Index].Parent, mFamily) then
+      begin
+        mFamily := FModel.Subsystems[Index].Parent;
+        mParts := 0;
+        for mOther := 0 to High(FModel.Subsystems) do
+          if SameText(FModel.Subsystems[mOther].Parent, mFamily) then
+            Inc(mParts);
+        Item := TMenuItem.Create(FSubsystemsMenu);
+        Item.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemFamily, [mFamily, mParts]);
+        Item.Enabled := False;
+        Item.Tag := -1;
+        FSubsystemsMenu.Items.Add(Item);
+      end;
+      mCaption := '      ' + mCaption;
+    end;
     Item := TMenuItem.Create(FSubsystemsMenu);
-    Item.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine, [FModel.Subsystems[Index].Name,
-      Length(FModel.Subsystems[Index].Units), Round(FModel.Subsystems[Index].Cohesion * 100)]);
+    Item.Caption := mCaption;
     Item.Tag := Index;
     Item.Checked := FMap.SubsystemVisible[Index];
     Item.OnClick := SubsystemItemClick;
@@ -1137,6 +1273,16 @@ begin
   if FSubsystemsMenu.Items.Count = 0 then
     Exit;
   FSubsystemsMenu.Items.NewBottomLine;
+  // Kanten zum Fundament (#1365) ein- und ausblenden.
+  if FModel.HasFoundation then
+  begin
+    Item := TMenuItem.Create(FSubsystemsMenu);
+    Item.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationEdges);
+    Item.Checked := FMap.ShowFoundationEdges;
+    Item.Tag := -1;
+    Item.OnClick := FoundationEdgesClick;
+    FSubsystemsMenu.Items.Add(Item);
+  end;
   Item := TMenuItem.Create(FSubsystemsMenu);
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureShowAll);
   Item.OnClick := ShowAllClick;
@@ -1150,6 +1296,25 @@ begin
   FillSubsystemsMenu;
   Point := FSubsystemsButton.ClientToScreen(System.Types.Point(0, FSubsystemsButton.Height));
   FSubsystemsMenu.Popup(Point.X, Point.Y);
+end;
+
+procedure TAtlasArchitectureFrame.FoundationEdgesClick(Sender: TObject);
+var
+  mItem: TMenuItem;
+begin
+  mItem := Sender as TMenuItem;
+  FMap.ShowFoundationEdges := not FMap.ShowFoundationEdges;
+  mItem.Checked := FMap.ShowFoundationEdges;
+end;
+
+function TAtlasArchitectureFrame.SubsystemCaption(ASubsystem: Integer): string;
+begin
+  if FModel.Subsystems[ASubsystem].Foundation then
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureFoundationLine, [FModel.Subsystems[ASubsystem].Name,
+      Length(FModel.Subsystems[ASubsystem].Units)])
+  else
+    Result := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemLine, [FModel.Subsystems[ASubsystem].Name,
+      Length(FModel.Subsystems[ASubsystem].Units), Round(FModel.Subsystems[ASubsystem].Cohesion * 100)]);
 end;
 
 procedure TAtlasArchitectureFrame.SubsystemItemClick(Sender: TObject);

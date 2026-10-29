@@ -1447,6 +1447,41 @@ Vorher: „Experimentelle Funktionen erlauben“ an, in `atlas.json` `"completio
 | AF9 | Code-Vorlagen aus (Seite Vervollständigung) | Zeilen ohne Platzhalter |
 | AF10 | `"assignAllFields": false` bzw. Hauptschalter aus | Kein Eintrag |
 
+## Nachteilung großer und loser Teilsysteme (#1364)
+
+Voraussetzung wie oben (#1118); ein großes Projekt, in dem ein Teilsystem mehr als ein Viertel aller Units hat (z. B. Atlas selbst: „Common“).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AN1 | Fenster „Atlas-Architektur“ öffnen | Kein Teilsystem mit mehr als einem Viertel aller Units (außer es ist in sich dicht); das frühere große Teilsystem erscheint als mehrere Teile mit unterscheidenden Namen (z. B. „Lsp“, „Rules“, „Index“) (**Abnahme**) |
+| AN2 | Karte ansehen | Die Teile liegen nebeneinander, in helleren und dunkleren Tönen derselben Farbe; hell und dunkel gut unterscheidbar |
+| AN3 | „Teilsysteme“ (Menü zum Aus- und Einblenden) öffnen | Überschrift „Common (nachgeteilt in n Teile)“ (nicht wählbar), darunter die Teile eingerückt; Klick auf ein Teil blendet nur dieses aus |
+| AN4 | Reiter *Teilsysteme* | Die Teile stehen beieinander mit „· Teil von Common“ |
+| AN5 | „Bericht speichern …“ als HTML und Markdown | HTML: Legende mit „Common (nachgeteilt)“ und eingerückten Teilen, Tabelle mit „(Teil von Common)“; Markdown: Überschriften „### Lsp (Teil von Common)“ |
+| AN6 | Claude Code: `get_architecture` mit `section: "subsystems"` | Zeilen wie „Lsp (Teil von Common): 40 Units, Zusammenhalt …“ |
+| AN7 | In `settings.json` unter `architecture.grouping` `"maxShare": 0, "minCohesion": 0`, „Neu berechnen“ | Ergebnis wie vor #1364 (ein großes Teilsystem, Farben wie bisher); danach Einträge wieder entfernen |
+| AN8 | „Stand speichern …“ mit ausgeschalteter Nachteilung (AN7), dann wieder an, „Vergleichen mit …“ | Teilsystemwechsel nur für die Units der übrigen Teile; ein alter Stand ohne `parent` lädt ohne Fehler |
+| AN9 | `"maxShare": 1` in settings.json | Problemmeldung „… muss eine Zahl von 0 bis 0,9 sein“, Vorgabe 0,25 gilt |
+| AN10 | Großes Projekt (≈ 2000 Units): Fenster öffnen | Rechendauer in der Statuszeile unter 2 s |
+
+## Fundament-Units (#1365)
+
+Voraussetzung wie oben (#1118); ein Projekt mit einer Logging-Unit, die von mehreren fachlich getrennten Teilen verwendet wird (z. B. Atlas: `Atlas.Common.Logging`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AFU1 | Fenster „Atlas-Architektur“ öffnen (Vorgabe `separate`) | Teilsystem „Fundament“ in der Mitte der Karte, neutral grau und gestrichelt, mit den übergreifenden Units (Logging, Json-Helfer …); Teilsysteme, die vorher nur über diese Units zusammenhingen, stehen getrennt (**Abnahme**) |
+| AFU2 | Kanten auf der Karte ansehen; Menü „Teilsysteme“ › „Kanten zum Fundament“ ab- und wieder anhaken | Kanten zum Fundament blass gepunktet; abgehakt verschwinden sie, die übrigen bleiben |
+| AFU3 | Reiter *Teilsysteme* und *Querverbindungen* | „Fundament (n Units, übergreifende Fundamente)“ ohne Zusammenhalt, darunter die Regel; keine Querverbindung von oder zum Fundament |
+| AFU4 | Eine Unit mit Rolle Fundament, die nur in ihrem Teilsystem verwendet wird (z. B. `Atlas.Common.Index.Types`) | Bleibt in ihrem Teilsystem |
+| AFU5 | „Bericht speichern …“ als HTML und Markdown | HTML: Fundament in der Legende mit Schalter „Kanten zum Fundament“ und der Regel darunter, Tabelle mit „–“ als Zusammenhalt; Markdown: Zeile „Fundament“ mit „–“ und Hinweis unter der Tabelle |
+| AFU6 | Claude Code: `get_architecture` mit `section: "subsystems"` | „Fundament: n Units, Zusammenhalt –“ und die Regel |
+| AFU7 | In `settings.json` unter `architecture.grouping` `"foundations": "attach"`, „Neu berechnen“ | Kein Teilsystem „Fundament“; Logging steht in dem Teilsystem mit den meisten Abhängigen |
+| AFU8 | `"foundations": "group"` | Ergebnis wie vor #1365 |
+| AFU9 | `"foundations": "Separate"` (falsche Schreibweise) | Problemmeldung „… muss "group", "attach" oder "separate" sein“, Vorgabe gilt |
+| AFU10 | Stand mit `group` speichern, auf `separate` umstellen, „Vergleichen mit …“; einen alten Stand ohne `foundation` laden | Teilsystemwechsel der Fundament-Units; der alte Stand lädt ohne Fehler |
+| AFU11 | Hell und dunkel, englische IDE-Sprache | Fundament gut erkennbar; „shared foundations“, „Edges to the foundation“ |
+
 ## Minimap neben der Scrollleiste (#873, experimentell)
 
 Vorher: „Experimentelle Funktionen erlauben“ an, auf der Seite Editor „Minimap neben der Scrollleiste“ an. Eine Unit mit mehreren Klassen und Methoden, eine lange Unit (10 000 Zeilen).
@@ -7555,6 +7590,23 @@ Voraussetzung wie oben (#1118); Projekt unter Versionsverwaltung.
 | ARV10 | Claude Code: `get_architecture` mit `compareWith: "architektur.json"` | Die Abschnitte des Vergleichs; Pfad außerhalb des Projekts wird abgelehnt |
 | ARV11 | Hell und dunkel | Grün und Rot auf der Karte und im Reiter gut lesbar |
 
+## Feinheit der Teilsysteme (#1366)
+
+Voraussetzung wie oben (#1118); ein größeres Projekt (z. B. Atlas selbst) mit Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AF1 | Fenster „Atlas-Architektur“ öffnen | In der Werkzeugleiste nach „Bibliotheks-Units“ der Regler „Feinheit“ in der Mitte (1,0) und daneben „γ = 1,0 · n Teilsysteme“; Karte wie vor #1366 |
+| AF2 | Regler nach rechts ziehen und loslassen | Beim Ziehen zeigt die Beschriftung den Wert, die Karte bleibt; erst nach dem Loslassen rechnet der Server, die IDE bleibt bedienbar; danach mehr und kleinere Teilsysteme und „γ = … · n Teilsysteme“ mit größerem n (**Abnahme**) |
+| AF3 | Regler ganz nach links | Weniger und größere Teilsysteme |
+| AF4 | Doppelklick auf den Regler; dann Fokus auf den Regler und Pfeil rechts, Bild auf, Pos1 | Doppelklick: zurück auf 1,0 mit Neuberechnung; Tasten verschieben schrittweise, Pos1 an den Anfang |
+| AF5 | Regler auf 2,0 stellen, IDE neu starten, Fenster öffnen | Regler steht auf 2,0; in `%APPDATA%\Atlas\settings.json` steht `"architecture": {"grouping": {"resolution": 2}}` |
+| AF6 | „Bericht speichern …“ als HTML und Markdown mit γ = 2,0, dann mit 1,0 | Kopf mit „…, Feinheit γ = 2,0“; mit 1,0 kein Zusatz |
+| AF7 | „Stand speichern …“ mit γ = 1,0, Regler auf 2,0, „Vergleichen mit …“ den Stand | Reiter *Vergleich* und Infozeile weisen darauf hin, dass der Stand mit γ = 1,0 gerechnet wurde; in der HTML-Karte steht der Hinweis im Vergleichskasten |
+| AF8 | In `settings.json` `"showResolutionSlider": false` unter `architecture.grouping`, Fenster neu öffnen | Kein Regler und keine Beschriftung; die Teilsysteme folgen weiter `resolution` |
+| AF9 | Claude Code: `get_architecture` mit `resolution: 3`, dann `resolution: 9` | Text mit „Feinheit γ = 3,0“ im Kopf, Fenster unverändert; 9 wird abgelehnt („0,2 bis 5,0“) |
+| AF10 | Hell und dunkel, englische IDE-Sprache | Regler mit Mittelmarke gut lesbar; englisch „Granularity“ und „γ = … · n subsystems“ |
+
 ## Treffersicherheit der Verwendungen (#1119)
 
 Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `IKunde` mit `Speichern`, `TKunde = class(TBasis, IKunde)` überschreibt `TBasis.Speichern` (virtual); Aufrufe über `S: IKunde`, `B: TBasis`, `K: TKunde`, einer in `{$IFDEF DEBUG}` bei Release-Konfiguration, und `MethodAddress('Speichern')`.
@@ -8721,6 +8773,22 @@ Vorbereitung: Prep-v1.2.0 mit `feature/1379-compileranweisungen`, Delphi 12 und 
 | UW4 | `S := A;` mit `S: string; A: AnsiString`, Alt+Enter „Ausdrücklich in string umwandeln“ | Befund wie W1057, nach der Korrektur `S := string(A);` ohne Befund und ohne W1059 im Build |
 | UW5 | Vor der Zeile `{$WARN IMPLICIT_STRING_CAST OFF}`, danach `{$WARN IMPLICIT_STRING_CAST ERROR}` | Erst kein Befund, dann ein Fehler; der Build meldet wie Atlas nichts bzw. einen Fehler |
 | UW6 | `A := 'Schnee '#$2603;` mit `A: AnsiString` (deutsches Windows, Codepage 1252), dann in atlas.json `"string-conversion": {"ansiCodePage": 0}` | Befund „… (wie W1058 und W1062).“ wie im Build; mit 0 kein Befund |
+
+
+## Compilerhinweise zu RTTI, Initialize und Inline (#1381)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CR1 | `TOhneRtti = class` mit `published procedure Machen;` (wie `Cm.W1055`) | Hinweis `compiler-hints` an `Machen`: „published schaltet für TOhneRtti RTTI ein ($M+) … (wie W1055).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CR2 | Dieselbe Klasse als `class(TPersistent)`, als `TForm`-Nachfahr, mit `{$M+}` davor, mit `{$WARN TYPEINFO_IMPLICITLY_ADDED OFF}` davor | Keine Meldung; der Build meldet ebenfalls kein W1055 |
+| CR3 | Vorfahr in einer anderen Unit des Projekts unter `{$M+}`, Nachfahr mit published-Methode | Keine Meldung; ohne `{$M+}` am Vorfahren meldet der Nachfahr |
+| CR4 | `var Zahl: Integer; … Finalize(Zahl);` (wie `Cm.E2243`) | „Finalize(Zahl) hat keine Wirkung: Integer braucht kein Initialize/Finalize (wie H2243).“ |
+| CR5 | `procedure P(AZeiger: PString); begin Finalize(AZeiger); end;` (wie `Cm.H2244`), danach `Finalize(AZeiger^)` | Erst „… gemeint ist wohl AZeiger^ (wie H2244).“, danach keine Meldung |
+| CR6 | Eigene inline-Funktion `Rechne`, die `Doppelt` aus einer Unit im implementation-uses ruft; `Doppelt` verweist auf nichts außerhalb seiner Unit (wie `Cm.H2445`) | Hinweis `inline-not-expanded` „… steht nur im uses des implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).“ (**Abnahme**) |
+| CR7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 30 in Server und Plugin, Datei `index-30.atlasidx`) |
+| CR8 | Abgleich mit Delphi 12 und 13: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.W1055','Cm.E2243','Cm.H2244','Cm.H2445','Cm.W1055b','Cm.H2243b' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1055, H2243, H2244 und H2445 „erkannt“, keine neuen Einträge unter „zusätzlich“ |
 
 ## Hotspots (#1354)
 

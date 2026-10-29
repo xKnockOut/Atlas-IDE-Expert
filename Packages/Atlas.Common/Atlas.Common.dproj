@@ -433,7 +433,7 @@
         <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.Attributes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Definition.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.PublishedMembers.pas"/>
-        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.TypeInfoClasses.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeInfoClasses.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hover.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.HoverTypes.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Documentation.pas"/>
@@ -485,7 +485,9 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Platform.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Idioms.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Inlining.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.CompilerHints.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.MethodDirectives.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.InvalidDeclarations.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Published.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Collections.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Visibility.pas"/>
