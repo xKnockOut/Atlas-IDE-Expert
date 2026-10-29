@@ -33,10 +33,14 @@
     Oberfläche im Terminal statt im Browser.
 
 .PARAMETER Method
-    tools/list, tools/call, resources/list, resources/read, prompts/list (Kommandozeile).
+    tools/list, tools/call, resources/list, resources/read, resources/templates/list, prompts/list,
+    prompts/get (Kommandozeile).
 
 .PARAMETER Tool
     Werkzeug bei tools/call, z. B. get_diagnostics.
+
+.PARAMETER Prompt
+    Prompt bei prompts/get, z. B. unit_review (#1357); die Argumente kommen aus -Arguments.
 
 .PARAMETER Arguments
     Argumente bei tools/call als Hashtable, z. B. @{ file = 'Application/AtlasServer.dpr' }.
@@ -45,7 +49,8 @@
     Tools/Test-McpTools.ps1 -Tool … -Arguments … nehmen.
 
 .PARAMETER Uri
-    Ressource bei resources/read, z. B. delphi://conventions.
+    Ressource bei resources/read, z. B. delphi://conventions oder eine aufgelöste Vorlage wie
+    delphi://unit/Ref.Komponenten.Anzeige.
 
 .PARAMETER Strict
     Bei tools/list die Schema-Prüfung des Inspectors ausführlich auf stderr ausgeben
@@ -72,15 +77,20 @@
 
 .EXAMPLE
     pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://conventions
+
+.EXAMPLE
+    pwsh Tools/Start-McpInspector.ps1 -ProjectRoot Tests/Referenzprojekt -Method prompts/get -Prompt unit_review -Arguments @{ unit = 'Ref.Komponenten.Anzeige' }
 #>
 [CmdletBinding()]
 param(
     [string] $Server,
     [string] $ProjectRoot = (Split-Path -Parent $PSScriptRoot),
     [switch] $Tui,
-    [ValidateSet('', 'tools/list', 'tools/call', 'resources/list', 'resources/read', 'prompts/list')]
+    [ValidateSet('', 'tools/list', 'tools/call', 'resources/list', 'resources/read', 'resources/templates/list',
+        'prompts/list', 'prompts/get')]
     [string] $Method = '',
     [string] $Tool,
+    [string] $Prompt,
     [hashtable] $Arguments = @{},
     [string] $Uri,
     [switch] $Strict,
@@ -157,6 +167,11 @@ if ($Method) {
                 }
                 $inspectorArgs += @('--tool-arg', "$key=$value")
             }
+        }
+        'prompts/get' {
+            if (-not $Prompt) { throw '-Prompt fehlt für prompts/get.' }
+            $inspectorArgs += @('--prompt-name', $Prompt)
+            foreach ($key in $Arguments.Keys) { $inspectorArgs += @('--prompt-args', "$key=$($Arguments[$key])") }
         }
         'resources/read' {
             if (-not $Uri) { throw '-Uri fehlt für resources/read.' }

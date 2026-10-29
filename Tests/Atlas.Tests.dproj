@@ -1233,6 +1233,7 @@
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.IdeBuilds.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.TestTools.Tests.pas"/>
         <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.DeadCodeTools.Tests.pas"/>
+        <DCCReference Include="Common\Mcp\Atlas.Common.Mcp.Prompts.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Mcp.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.Diagnostics.Tests.pas"/>
         <DCCReference Include="Application\Shell\Shell.SlashHost.Tests.pas"/>
