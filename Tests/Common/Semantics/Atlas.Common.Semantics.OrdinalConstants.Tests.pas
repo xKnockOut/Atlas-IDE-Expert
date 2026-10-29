@@ -171,6 +171,7 @@ end;
 procedure TOrdinalConstantsTests.CheckGivesReason;
 var
   Value: Int64;
+  mLookup: TOrdinalNameLookup;
 begin
   Assert.AreEqual(Ord(TOrdinalStatus.Value), Ord(TOrdinalConstants.Check('6 div 2', nil, Value)));
   Assert.AreEqual(Int64(3), Value);
@@ -179,9 +180,22 @@ begin
   Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('1000000 * 1000000 * 1000000 * 1000',
     nil, Value)));
   Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('Low(Int64) - 10', nil, Value)));
-  // Passt noch in UInt64: Delphi rechnet es vorzeichenlos, Atlas weiß es nicht sicher.
-  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('High(Int64) + 1', nil, Value)));
-  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('$7FFFFFFFFFFFFFFF * 2', nil, Value)));
+  // Lauter Operanden mit Vorzeichen: dcc rechnet in Int64 und meldet E2099 (Fall Cm.E2099, #1372).
+  Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('High(Int64) + 1', nil, Value)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Overflow), Ord(TOrdinalConstants.Check('$7FFFFFFFFFFFFFFF * 2', nil, Value)));
+  // Mit einem möglichen UInt64-Operanden rechnet Delphi vorzeichenlos weiter: nicht sicher.
+  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('UInt64(High(Int64)) + 1', nil,
+    Value)));
+  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('Low(UInt64) + High(Int64) + 1', nil,
+    Value)));
+  // Der Typ einer Konstanten ist unbekannt.
+  mLookup :=
+    function(const ANames: TArray<string>; ATokenIndex: Integer; out AValue: Int64): Boolean
+    begin
+      AValue := High(Int64);
+      Result := True;
+    end;
+  Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('Grenze + 1', mLookup, Value)));
   // Unbekannter linker Teil: kein Grund.
   Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('Foo div 0', nil, Value)));
   Assert.AreEqual(Ord(TOrdinalStatus.Unknown), Ord(TOrdinalConstants.Check('1.5', nil, Value)));

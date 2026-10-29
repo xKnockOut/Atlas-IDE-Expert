@@ -3432,7 +3432,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "compiler",
-      "description": "A comparison of a variable, field, property or function result of a built-in integer type with a constant outside or at the edge of its value range (like W1021, W1022): Cardinal >= 0 is always true, Byte > 255 always false. Case labels outside the range of the case expression are reported as well (like W1018). The rule only reports when the type is known for sure and its declaration is always compiled together with the comparison. NativeInt, LongInt and their unsigned counterparts count with the widest range of all platforms; subrange types are not reported. Length(...) < 0 and Length(...) >= 0 are reported as well, although dcc does not warn there; the message says so.",
+      "description": "A comparison of a variable, field, property or function result of a built-in integer type with a constant outside or at the edge of its value range (like W1021, W1022): Cardinal >= 0 is always true, Byte > 255 always false. Case labels outside the range of the case expression are reported as well (like W1018); single labels that do not fit the width of the type even with the other sign are an error for dcc and are reported by constant-expression-error (like E1012). The rule only reports when the type is known for sure and its declaration is always compiled together with the comparison. NativeInt, LongInt and their unsigned counterparts count with the widest range of all platforms; subrange types are not reported. Length(...) < 0 and Length(...) >= 0 are reported as well, although dcc does not warn there; the message says so.",
       "bad": "while Rest >= 0 do  // Rest: Cardinal",
       "good": "while Rest > 0 do",
       "compilerCodes": [
@@ -4176,7 +4176,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A constant expression divides by zero (like E2098), overflows beyond the range of Int64 and UInt64 (like E2099), a range has its low bound above its high bound (array[5..1], like E2011), a constant violates an integer type of fixed size or a subrange type (like W1012, reported as a warning; assignments only from values outside 0..127) or a hex, binary or octal literal needs more than 64 bits (like E2102). Atlas evaluates literals, constants (also from other units) and SizeOf/High/Low of types with a fixed size; a constant from an {$IF} branch only counts where the checked place is compiled together with it. Expressions with unknown parts stay silent.",
+      "description": "A constant expression divides by zero (like E2098) or overflows (like E2099: beyond Int64 when all operands are signed, such as High(Int64) + 1, otherwise beyond UInt64), a range has its low bound above its high bound (array[5..1], like E2011), a constant violates an integer type of fixed size or a subrange type (like E1012; values that only fit the same width with the other sign, such as $FFFFFFFF for Integer or -1 for Cardinal, like W1012 as a warning; assignments only from values outside 0..127), a constant index lies outside a static array of the file or a single case label outside the integer type of the case expression (like E1012), a hex, binary or octal literal needs more than 64 bits (like E2102; assigned to Int64 additionally like W1012), a set has more than 256 elements (set of 0..300, set of Word, like E2028) or a {$RTTI} visibility set contains numbers or strings instead of vcPrivate, vcProtected, vcPublic and vcPublished (like E2572). Atlas evaluates literals, constants (also from other units) and SizeOf/High/Low of types with a fixed size; a constant from an {$IF} branch only counts where the checked place is compiled together with it. Expressions with unknown parts stay silent.",
       "bad": "const\n  Seiten = 0;\n  ProSeite = 100 div Seiten;",
       "good": "const\n  Seiten = 5;\n  ProSeite = 100 div Seiten;",
       "compilerCodes": [
@@ -4184,7 +4184,10 @@
         "E2099",
         "E2011",
         "W1012",
-        "E2102"
+        "E2102",
+        "E1012",
+        "E2028",
+        "E2572"
       ],
       "level": "B"
     },
