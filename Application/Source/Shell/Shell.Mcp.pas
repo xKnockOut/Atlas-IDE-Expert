@@ -1022,7 +1022,6 @@ begin
     end, TMcpToolKind.Write);
 end;
 
-/// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei den Prüfregeln (#1112).</summary>
 /// <summary>Status dieses MCP-Prozesses für get_server_status, wenn kein Server der IDE läuft (#1356).</summary>
 function OwnStatus(const AIndex: ISymbolIndex; AStarted: TDateTime): TServerStatus;
 var
@@ -1057,6 +1056,8 @@ begin
   Result.Memory.Budget := Result.BudgetBytes;
 end;
 
+/// <summary>get_server_status (#1356): Status des Servers der IDE aus der Statusdatei, sonst dieses Prozesses.
+/// </summary>
 procedure RegisterStatusTools(AServer: TMcpServer; const AIndex: ISymbolIndex; const ARoot: string);
 var
   mStarted: TDateTime;
@@ -1084,6 +1085,7 @@ begin
     end);
 end;
 
+/// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei den Prüfregeln (#1112).</summary>
 procedure RegisterDeadCodeTools(AServer: TMcpServer; AGroup: TShellWorkspaceGroup; const AIndex: ISymbolIndex;
   const ARoot: string; AGuard: TMcpPathGuard);
 begin

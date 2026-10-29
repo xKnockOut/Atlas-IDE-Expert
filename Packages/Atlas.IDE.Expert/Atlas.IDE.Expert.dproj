@@ -335,6 +335,8 @@
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Export.pas"/>
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.ExportDialog.pas"/>
         <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.Package.pas"/>
+        <DCCReference Include="Source\Core\Diagnostics\Atlas.Core.Diagnostics.ServerPackage.pas"/>
+        <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.ServerPackage.pas"/>
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.ReportDialog.pas"/>
         <DCCReference Include="Source\UI\Diagnostics\Atlas.UI.Diagnostics.ProcessesDialog.pas"/>
         <DCCReference Include="Source\IDE\Diagnostics\Atlas.IDE.Diagnostics.Export.pas"/>
@@ -421,6 +423,7 @@
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Registry.pas"/>
         <DCCReference Include="Source\Core\Files\Atlas.Core.Files.Format.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Lines.pas"/>
+        <DCCReference Include="Source\Core\Status\Atlas.Core.Status.Server.pas"/>
         <DCCReference Include="Source\Core\Status\Atlas.Core.Status.IndexStore.pas"/>
         <DCCReference Include="Source\UI\Status\Atlas.UI.Status.Window.pas"/>
         <DCCReference Include="Source\Core\Settings\Atlas.Core.Settings.QuickToggles.pas"/>
@@ -537,6 +540,12 @@
         <DCCReference Include="Source\UI\Updates\Atlas.UI.Updates.Consent.pas"/>
         <DCCReference Include="Source\IDE\Updates\Atlas.IDE.Updates.Check.pas"/>
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.Lines.pas"/>
+        <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.ServerWindow.pas"/>
+        <DCCReference Include="Source\UI\Status\Atlas.UI.Status.ServerFrame.pas">
+            <Form>AtlasServerFrame</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TFrame</DesignClass>
+        </DCCReference>
         <DCCReference Include="Source\IDE\Status\Atlas.IDE.Status.Field.pas"/>
         <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.DirtyExport.pas"/>
         <DCCReference Include="Source\IDE\Files\Atlas.IDE.Files.EditInbox.pas"/>
