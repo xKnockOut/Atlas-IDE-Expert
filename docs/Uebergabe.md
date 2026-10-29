@@ -31,6 +31,14 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## #1378 Compilerregeln für platform, library und unsicheren Code (29.10.2026, Branch `claude/project-thread-g4qosp`)
+- **Ursache W1002/W1004/W1005:** `deprecated-symbol` kannte platform und library längst, hatte sie aber über die Vorgabe der Option `kinds` („wie meist in Projekten“) abgeschaltet. dcc warnt ab Werk. Jetzt sind alle vier Arten Vorgabe; ob gemeldet wird, entscheidet wie bei dcc der Stand der Warnung.
+- **Neu `Atlas.Common.Rules.WarnSwitches` (`TRuleWarnSwitches`):** Stand einer Warnung an einer Stelle = Vorgabe von dcc, dann Projektoption (`TRuleContext.ProjectWarnings`, gefüllt in `TShellWorkspace.RuleServices` aus den `DCC_<Bezeichner>`-Eigenschaften der .dproj und `DCC_Warnings`), dann `{$WARN}`/`{$WARNINGS}` der Datei mit {$IF}-Zweigen. `deprecated-symbol` nutzt ihn statt eigener Kopie. `Units.pas` (`WarningEnabled` für UNIT_NAME_MISMATCH, IMPLICIT_VARIANTS) hat noch eine einfache eigene Fassung ohne Projektoption: Kandidat zum Umstellen.
+- **W1002 bei `{$UNSAFECODE}`:** dcc für Windows meldet die .NET-Direktive als plattformspezifisches Symbol (Fall `CmE2406`); `deprecated-symbol` meldet sie samt Korrektur „entfernen“.
+- **Neue Regel `unsafe-code`** (Unit `Builtin.UnsafeCode`, Stufe B): `@` auf Variable, Feld, Parameter mit bekanntem Typ (W1047, UNSAFE_CODE) und untypisierter `Pointer` nach Klasse (W1048, UNSAFE_CAST); beide nur mit eingeschalteter Warnung. TObject gilt ohne System im Index, wenn der Name nichts anderes meint. W1048 aus `suspicious-string-pointer-cast` (#1080) im Katalog entfernt: Das Issue schlug die Erweiterung dort vor, die Regel prüft aber Zeichenbreiten, nicht .NET-unsichere Umwandlungen.
+- **Geprüft in der Cloud:** AtlasServer mit FPC trunk gebaut (`Tools/Linux/Build-AtlasServer.sh`), `--check` auf Tests/Compilermeldungen vorher/nachher, `Compare-Compilermeldungen.py`; DUnitX-Tests der berührten Units unter FPC grün. Katalog-Unit und Regeln.md mit einem Python-Nachbau von `Update-RuleCatalog.ps1` erzeugt (pwsh fehlte), Ausgabe für den alten Stand bytegleich.
+- **Offen:** Delphi-Bau (Handtest PU1), dcc-Lauf über die neuen Fälle `Cm.W1047b`, `Cm.W1048b` und die Gegenfälle `Cm.W1002b`, `Cm.W1004b`, `Cm.W1005b`, `Cm.W1047c`, `Cm.W1048c` (PU2). Nicht mit dcc bestätigt sind @ auf Feld/lokale/globale Variable und Pointer nach eigener Klasse.
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.

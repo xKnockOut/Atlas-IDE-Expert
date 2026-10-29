@@ -344,6 +344,10 @@ type
     /// TRuleEngine.Run.</summary>
     SortUses: Boolean;
     SortUsesByNamespace: Boolean;
+    /// <summary>Warnungen der .dproj (aktive Konfiguration und Plattform) als "Bezeichner=Wert", z. B.
+    /// "SYMBOL_PLATFORM=false", "UNSAFE_CODE=true", "WARNINGS=false" (#1378); leer ohne Projekt. Regeln lesen sie
+    /// über TRuleWarnSwitches.</summary>
+    ProjectWarnings: TArray<string>;
   end;
 
   /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,
@@ -365,6 +369,8 @@ type
     ProjectFiles: IRuleProjectFiles;
     /// <summary>Präfixe der Projektdatei .atlas (#1111); leer = unbekannt.</summary>
     Naming: TRuleNaming;
+    /// <summary>Warnungen der .dproj als "Bezeichner=Wert" (#1378); leer = ohne Projekt.</summary>
+    ProjectWarnings: TArray<string>;
     /// <summary>Trägt die Dienste in AContext ein.</summary>
     procedure ApplyTo(var AContext: TRuleContext);
   end;
@@ -466,6 +472,7 @@ begin
   AContext.PackageProvides := PackageProvides;
   AContext.ProjectFiles := ProjectFiles;
   AContext.Naming := Naming;
+  AContext.ProjectWarnings := ProjectWarnings;
 end;
 
 { TRuleDescriptor }
