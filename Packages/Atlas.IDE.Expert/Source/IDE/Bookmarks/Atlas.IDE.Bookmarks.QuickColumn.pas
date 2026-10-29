@@ -204,14 +204,15 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.GutterColumns,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Bookmarks.Service;
+  Atlas.IDE.Bookmarks.Service,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 procedure InvalidateTop;
 var
   Editors: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Editors) then
-    Editors.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Editors);
 end;
 
 function SampleBack(ACanvas: TCanvas; const ARect: TRect): TAtlasColor;
@@ -361,7 +362,7 @@ begin
   FLoggedNotPainted := False;
   TAtlasGuard.Log(Format('Schnelle Lesezeichen: Spalte angefordert (Spalte %d, Breite %d)', [FColumn, FWidth]));
   FPaintedRows.Clear;
-  Editors.InvalidateTopEditor;
+  TAtlasIdeEditorRefresh.InvalidateTop(Editors);
 end;
 
 procedure TAtlasIdeQuickColumn.DropColumn;
@@ -374,7 +375,7 @@ begin
   if Editors <> nil then
   begin
     Editors.RemoveGutterColumn(FColumn);
-    Editors.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Editors);
   end;
   FColumn := -1;
   FPaintedRows.Clear;

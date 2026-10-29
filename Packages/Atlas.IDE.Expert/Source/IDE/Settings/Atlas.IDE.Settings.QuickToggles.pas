@@ -78,7 +78,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Foundation.StructureSwitch,
-  Atlas.IDE.Foundation.EditorStyle;
+  Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 const
   AnswerSession = 100;
@@ -256,7 +257,7 @@ begin
   // Wie beim Schließen der Optionsseite: Strukturhervorhebung der IDE abgleichen, dann neu zeichnen.
   TAtlasIdeStructureSwitch.Sync;
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
   if FInstance <> nil then
     FInstance.Refresh;
 end;

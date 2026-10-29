@@ -85,7 +85,8 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.Hide,
   Atlas.Core.Editor.LineTail,
-  Atlas.Core.Problems.InlineHints;
+  Atlas.Core.Problems.InlineHints,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 { TAtlasProblemsPainter.TEvents }
 
@@ -181,7 +182,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 /// <summary>Editorspalte (1-basiert) zum Zeichenindex (0-basiert) in ALine; Tabs aufgelöst.</summary>

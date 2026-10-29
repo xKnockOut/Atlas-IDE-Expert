@@ -143,7 +143,8 @@ uses
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Editor.Elements,
   Atlas.Core.Editor.LineTail,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 /// <summary>Zeichnet ALabels als Pillen ab AX (Höhe AHeight ab ATop) und rückt AX hinter die letzte; liefert die
 /// Fläche aller Pillen, leer ohne.</summary>
@@ -228,7 +229,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 function IsSource(const AFileName: string): Boolean;

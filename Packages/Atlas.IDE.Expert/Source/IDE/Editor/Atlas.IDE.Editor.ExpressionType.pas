@@ -113,7 +113,8 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Foundation.Navigation;
+  Atlas.IDE.Foundation.Navigation,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 function IsEditorWindow(AWnd: HWND): Boolean;
 var
@@ -263,7 +264,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 class function TAtlasIdeExpressionType.KeyText: string;

@@ -108,7 +108,8 @@ uses
   Atlas.Core.Editor.Elements,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Foundation.Elements;
+  Atlas.IDE.Foundation.Elements,
+  Atlas.IDE.Foundation.EditorRefresh;
 
 const
   MetricsCommand = 'atlas.server.metrics';
@@ -166,7 +167,7 @@ var
   Services: INTACodeEditorServices;
 begin
   if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
-    Services.InvalidateTopEditor;
+    TAtlasIdeEditorRefresh.InvalidateTop(Services);
 end;
 
 class function TAtlasEditorMetricsLens.Formats: TAtlasMetricFormats;
