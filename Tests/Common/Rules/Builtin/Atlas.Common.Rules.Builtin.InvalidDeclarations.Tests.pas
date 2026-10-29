@@ -46,6 +46,7 @@ type
     constructor Create(const AText: string);
     function Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
     function FindPackage(const APackage: string): TRuleUnitAnswer;
+    function FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
     function KnownUnits(ASources: TRuleUnitSources): TArray<string>;
     function FolderOutsidePaths(const AUnitName: string): string;
     function ReadProject(out AFileName, AText: string): Boolean;
@@ -63,6 +64,11 @@ begin
 end;
 
 function TProjectOnly.FindPackage(const APackage: string): TRuleUnitAnswer;
+begin
+  Result := TRuleUnitAnswer.Unknown;
+end;
+
+function TProjectOnly.FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
 begin
   Result := TRuleUnitAnswer.Unknown;
 end;
