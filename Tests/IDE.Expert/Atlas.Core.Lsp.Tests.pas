@@ -17,6 +17,10 @@ type
     procedure AnswersServerRequestWithNull;
     [Test]
     procedure RejectsRequestsAfterClose;
+    /// <summary>RequestCancellable (#1351): Abbruch schickt $/cancelRequest und wartet nicht bis zum Zeitlimit;
+    /// ohne Abbruch kommt die Antwort.</summary>
+    [Test]
+    procedure CancellableRequestSendsCancel;
     /// <summary>Ende der Verbindung mit letzter und offenen Anfragen und den Angaben des Transports (Bericht H5).
     /// </summary>
     [Test]
@@ -410,6 +414,48 @@ begin
     Client.Free;
     Seen.Free;
     Partials.Free;
+  end;
+end;
+
+procedure TLspClientTests.CancellableRequestSendsCancel;
+var
+  Client: TLspClient;
+  Sent: TList<string>;
+  Watch: TStopwatch;
+  Calls: Integer;
+begin
+  Sent := TList<string>.Create;
+  Client := nil;
+  try
+    Client := TLspClient.Create(
+      procedure(const ABytes: TBytes)
+      var
+        Request: TJSONObject;
+      begin
+        Request := Unframe(ABytes);
+        try
+          Sent.Add(Request.GetValue<string>('method'));
+        finally
+          Request.Free;
+        end;
+      end);
+    Calls := 0;
+    Watch := TStopwatch.StartNew;
+    Assert.WillRaise(
+      procedure
+      begin
+        Client.RequestCancellable('atlas/query', nil, 10000,
+          function: Boolean
+          begin
+            Inc(Calls);
+            Result := Calls >= 2;
+          end).Free;
+      end, ELspClientError);
+    Assert.IsTrue(Watch.ElapsedMilliseconds < 5000, 'wartet bis zum Zeitlimit');
+    Assert.AreEqual('atlas/query,$/cancelRequest', string.Join(',', Sent.ToArray));
+  finally
+    Client.Free;
+    Sent.Free;
   end;
 end;
 

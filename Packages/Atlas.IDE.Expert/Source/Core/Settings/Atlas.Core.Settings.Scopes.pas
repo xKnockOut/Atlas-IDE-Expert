@@ -133,6 +133,8 @@ begin
     TextSetting('ArchitectureScope', 'architecture.scope'),
     Setting('ArchitectureIncludeLibraryUnits', 'architecture.includeLibraryUnits', True),
     Setting('ArchitectureCentralUnits', 'architecture.centralUnits', False),
+    // Code-Abfragen (#1351): Server (query_code, --query, Regeln query:<name>) und Plugin lesen denselben Wert.
+    Setting('QueryEnabled', 'query.enabled', True),
     // Treffersicherheit der Verwendungen (#1119).
     Setting('ReferencesInferred', 'references.inferred', True),
     Setting('ReferencesTextMatches', 'references.textMatches', True),

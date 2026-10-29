@@ -124,6 +124,8 @@ type
     /// <summary>„Architekturübersicht“ (#1118) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FArchitectureItem: TMenuItem;
     FViewArchitecture: TMenuItem;
+    FQueryItem: TMenuItem;
+    FViewQuery: TMenuItem;
     /// <summary>Fenster „Unit-Beziehungen“ (#593) im Atlas-Menü und unter Ansicht › Atlas.</summary>
     FUnitRelationsItem: TMenuItem;
     FViewUnitRelations: TMenuItem;
@@ -147,6 +149,7 @@ type
     procedure OutlineClick(Sender: TObject);
     procedure ProblemsClick(Sender: TObject);
     procedure ArchitectureClick(Sender: TObject);
+    procedure QueryClick(Sender: TObject);
     procedure UnitRelationsClick(Sender: TObject);
     procedure BoardClick(Sender: TObject);
     procedure SymbolPathClick(Sender: TObject);
@@ -222,6 +225,7 @@ uses
   Atlas.IDE.Bookmarks.Service,
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Architecture.Service,
+  Atlas.IDE.Query.Service,
   Atlas.IDE.UnitRelations.Service,
   Atlas.IDE.SymbolPath.Service,
   Atlas.IDE.EditorToolbar.Service,
@@ -324,6 +328,8 @@ begin
   AddItem(TAtlasTextId.MenuSymbolSearch, 2, ResultsClick);
   FProblemsItem := AddItem(TAtlasTextId.ProblemsWindowCaption, 0, ProblemsClick);
   FArchitectureItem := AddItem(TAtlasTextId.ArchitectureCommand, 0, ArchitectureClick);
+  // Code-Abfragen (#1351).
+  FQueryItem := AddItem(TAtlasTextId.QueryCommand, 0, QueryClick);
   FUnitRelationsItem := AddItem(TAtlasTextId.UnitRelationsCommand, 0, UnitRelationsClick);
   // Weg zwischen Symbolen (#1117).
   FSymbolPathItem := AddItem(TAtlasTextId.SymbolPathCommand, 0, SymbolPathClick);
@@ -453,6 +459,10 @@ begin
       FViewArchitecture.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureViewMenu);
       FViewArchitecture.OnClick := ArchitectureClick;
       FViewAtlas.Add(FViewArchitecture);
+      FViewQuery := TMenuItem.Create(FViewAtlas);
+      FViewQuery.Caption := TAtlasStrings.Text(TAtlasTextId.QueryViewMenu);
+      FViewQuery.OnClick := QueryClick;
+      FViewAtlas.Add(FViewQuery);
       FViewUnitRelations := TMenuItem.Create(FViewAtlas);
       FViewUnitRelations.Caption := TAtlasStrings.Text(TAtlasTextId.UnitRelationsViewMenu);
       FViewUnitRelations.OnClick := UnitRelationsClick;
@@ -778,6 +788,11 @@ begin
     FArchitectureItem.Visible := TAtlasIdeArchitecture.Enabled;
   if FViewArchitecture <> nil then
     FViewArchitecture.Visible := TAtlasIdeArchitecture.Enabled;
+  // Code-Abfragen (#1351) nach query.enabled.
+  if FQueryItem <> nil then
+    FQueryItem.Visible := TAtlasIdeCodeQuery.Enabled;
+  if FViewQuery <> nil then
+    FViewQuery.Visible := TAtlasIdeCodeQuery.Enabled;
   // Unit-Beziehungen (#593) am selben Schalter.
   if FUnitRelationsItem <> nil then
     FUnitRelationsItem.Visible := TAtlasIdeUnitRelations.Enabled;
@@ -788,7 +803,7 @@ begin
     FViewBoard.Visible := TAtlasIdeSettings.Current.IssuesBoard;
   if FViewAtlas <> nil then
     FViewAtlas.Visible := TAtlasIdeProblems.Enabled or TAtlasIdeArchitecture.Enabled or
-      TAtlasIdeUnitRelations.Enabled or TAtlasIdeSettings.Current.IssuesBoard;
+      TAtlasIdeUnitRelations.Enabled or TAtlasIdeSettings.Current.IssuesBoard or TAtlasIdeCodeQuery.Enabled;
   // Weg zwischen Symbolen (#1117) nach navigation.symbolPath.
   if FSymbolPathItem <> nil then
     FSymbolPathItem.Visible := TAtlasIdeSymbolPath.Enabled;
@@ -1015,6 +1030,16 @@ begin
     procedure
     begin
       TAtlasIdeArchitecture.ShowWindow;
+    end);
+end;
+
+procedure TAtlasMainMenu.QueryClick(Sender: TObject);
+begin
+  TAtlasIdeShortcutTips.Invoked('Atlas.Query');
+  TAtlasGuard.Run(TAtlasFeature.Query,
+    procedure
+    begin
+      TAtlasIdeCodeQuery.ShowWindow;
     end);
 end;
 

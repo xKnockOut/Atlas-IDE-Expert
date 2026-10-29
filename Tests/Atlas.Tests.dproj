@@ -1000,6 +1000,10 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Map.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Frame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Architecture.Frame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Query\Atlas.Core.Query.Model.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Query.Model.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Query\Atlas.UI.Query.Frame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Query.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.UnitRelations.Model.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas"/>

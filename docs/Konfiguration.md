@@ -41,6 +41,8 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `memoryBudgetMb` | global (settings.json) | integer | `768` | 0… | Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt. |
 | `index` | gemischt, siehe unten | object | – |  | Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. |
 | `architecture` | gemischt, siehe unten | object | – |  | Architekturübersicht aus dem Index: zentrale Units, Teilsysteme, Zyklen und Querverbindungen im Fenster „Atlas-Architektur“, als Bericht (Markdown oder HTML, auch AtlasServer --architecture) und im MCP-Werkzeug get_architecture. |
+| `query` | global (settings.json) | object | – |  | Code-Abfragen über den Index (#1351): eine kleine Sprache wie „classes where inherits TForm and methods > 40 order by methods desc“ im Fenster „Atlas-Abfrage“, im MCP-Werkzeug query_code und mit AtlasServer --check <Ziel> --query. Felder und Zahlen stammen aus Index, Metriken, Uses-Graph, Formulardateien und Aufrufhierarchie (dieselben wie get_metrics und find_unused_code). |
+| `queries` | Projekt (atlas.json) | array<object> | `` | z. B. `{"name":"grosse-formulare","query":"classes where inherits TForm and methods > 40","failIfAny":true,"severity":"warning","message":"{name} hat {methods} Methoden"}` | Gespeicherte Code-Abfragen (#1351) für das Fenster „Atlas-Abfrage“, query_code und AtlasServer --query @name. Mit failIfAny wird jeder Treffer ein Befund der Regel query:<name> im Editor, bei --check und in SARIF; Baseline, Unterdrückungen und rules wirken wie bei anderen Regeln. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
 | `diagnostics` | gemischt, siehe unten | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
 | `highlight` | global (settings.json) | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
@@ -241,6 +243,12 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `architecture.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["Tests/**","*.Tests"]` | Units, die nicht in die Auswertung eingehen: Glob-Muster auf den Unit-Namen oder den Pfad relativ zum Projekt (*, **, ?). |
 | `architecture.baseline` | Projekt (atlas.json) | string | `""` | z. B. `"architektur-main.json"` | Gespeicherter Architekturstand (JSON aus AtlasServer --architecture <Datei.json> oder „Stand speichern …“), Pfad relativ zum Projekt: Fenster, Bericht und get_architecture vergleichen automatisch damit. Leer = kein Vergleich. |
 | `architecture.failOn` | Projekt (atlas.json) | array<string> | `"newCycle"` |  | Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Units mit stark gewachsener Abhängigkeit. |
+
+## query
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `query.enabled` | global (settings.json) | boolean | `true` |  | Hauptschalter: false = kein Fenster, kein Menü- und Palettenbefehl, kein query_code; --query endet mit Exitcode 3 und Hinweis. Gespeicherte Abfragen mit failIfAny melden dann nichts. |
 
 ## diagnostics
 

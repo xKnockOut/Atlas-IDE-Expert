@@ -103,6 +103,11 @@ type
     /// <summary>$/progress zu einem Token aus Request mit Teilergebnissen; False, wenn es keines ist.</summary>
     function HandlePartial(AMessage: TJSONObject): Boolean;
     function TakeMessage(out AText: string): Boolean;
+    function DoRequest(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
+      const ACancelled: TFunc<Boolean>): TJSONValue;
+  public const
+    /// <summary>So oft fragt Request mit Abbruch nach, ob abgebrochen wurde.</summary>
+    CancelPollMs = 100;
   public
     constructor Create(const ASend: TLspSendProc);
     destructor Destroy; override;
@@ -114,6 +119,10 @@ type
     /// Löst ELspClientError bei Fehlerantwort, Zeitüberschreitung oder beendeter Verbindung aus.
     /// </summary>
     function Request(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal): TJSONValue; overload;
+    /// <summary>Wie oben, abbrechbar (#1351): Meldet ACancelled True, schickt der Client $/cancelRequest und löst
+    /// ELspClientError aus, ohne auf die Antwort zu warten.</summary>
+    function RequestCancellable(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
+      const ACancelled: TFunc<Boolean>): TJSONValue;
     /// <summary>Wie oben mit Teilergebnissen (#616): AParams muss ein Objekt sein; es bekommt einen
     /// partialResultToken. AOnPartial läuft im Lese-Thread für jedes Teilergebnis vor der Antwort.</summary>
     function Request(const AMethod: string; AParams: TJSONObject; ATimeoutMs: Cardinal;
@@ -216,12 +225,26 @@ begin
 end;
 
 function TLspClient.Request(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal): TJSONValue;
+begin
+  Result := DoRequest(AMethod, AParams, ATimeoutMs, nil);
+end;
+
+function TLspClient.RequestCancellable(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
+  const ACancelled: TFunc<Boolean>): TJSONValue;
+begin
+  Result := DoRequest(AMethod, AParams, ATimeoutMs, ACancelled);
+end;
+
+function TLspClient.DoRequest(const AMethod: string; AParams: TJSONValue; ATimeoutMs: Cardinal;
+  const ACancelled: TFunc<Boolean>): TJSONValue;
 var
   Message: TJSONObject;
   Pending: TPending;
   Id: Integer;
   Text: string;
   Watch: TStopwatch;
+  mWait: TWaitResult;
+  mSlice, mWaited: Cardinal;
 begin
   Pending := TPending.Create;
   try
@@ -255,7 +278,26 @@ begin
     try
       Watch := TStopwatch.StartNew;
       SendText(Text);
-      case TAtlasShutdown.WaitFor(Pending.Done, ATimeoutMs) of
+      if Assigned(ACancelled) then
+      begin
+        // In Scheiben warten, damit „Abbrechen“ nicht bis zum Zeitlimit hängt.
+        mWaited := 0;
+        repeat
+          mSlice := CancelPollMs;
+          if ATimeoutMs - mWaited < mSlice then
+            mSlice := ATimeoutMs - mWaited;
+          mWait := TAtlasShutdown.WaitFor(Pending.Done, mSlice);
+          Inc(mWaited, mSlice);
+          if (mWait = wrTimeout) and ACancelled() then
+          begin
+            CancelOnServer(Id);
+            raise ELspClientError.CreateFmt('%s abgebrochen', [AMethod]);
+          end;
+        until (mWait <> wrTimeout) or (mWaited >= ATimeoutMs);
+      end
+      else
+        mWait := TAtlasShutdown.WaitFor(Pending.Done, ATimeoutMs);
+      case mWait of
         wrSignaled:
           // Beendete Verbindung ist keine Antwort und zählt nicht.
           if not FClosed and CountsResponseTime(AMethod) then
