@@ -1447,6 +1447,23 @@ Vorher: „Experimentelle Funktionen erlauben“ an, in `atlas.json` `"completio
 | AF9 | Code-Vorlagen aus (Seite Vervollständigung) | Zeilen ohne Platzhalter |
 | AF10 | `"assignAllFields": false` bzw. Hauptschalter aus | Kein Eintrag |
 
+## Nachteilung großer und loser Teilsysteme (#1364)
+
+Voraussetzung wie oben (#1118); ein großes Projekt, in dem ein Teilsystem mehr als ein Viertel aller Units hat (z. B. Atlas selbst: „Common“).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AN1 | Fenster „Atlas-Architektur“ öffnen | Kein Teilsystem mit mehr als einem Viertel aller Units (außer es ist in sich dicht); das frühere große Teilsystem erscheint als mehrere Teile mit unterscheidenden Namen (z. B. „Lsp“, „Rules“, „Index“) (**Abnahme**) |
+| AN2 | Karte ansehen | Die Teile liegen nebeneinander, in helleren und dunkleren Tönen derselben Farbe; hell und dunkel gut unterscheidbar |
+| AN3 | „Teilsysteme“ (Menü zum Aus- und Einblenden) öffnen | Überschrift „Common (nachgeteilt in n Teile)“ (nicht wählbar), darunter die Teile eingerückt; Klick auf ein Teil blendet nur dieses aus |
+| AN4 | Reiter *Teilsysteme* | Die Teile stehen beieinander mit „· Teil von Common“ |
+| AN5 | „Bericht speichern …“ als HTML und Markdown | HTML: Legende mit „Common (nachgeteilt)“ und eingerückten Teilen, Tabelle mit „(Teil von Common)“; Markdown: Überschriften „### Lsp (Teil von Common)“ |
+| AN6 | Claude Code: `get_architecture` mit `section: "subsystems"` | Zeilen wie „Lsp (Teil von Common): 40 Units, Zusammenhalt …“ |
+| AN7 | In `settings.json` unter `architecture.grouping` `"maxShare": 0, "minCohesion": 0`, „Neu berechnen“ | Ergebnis wie vor #1364 (ein großes Teilsystem, Farben wie bisher); danach Einträge wieder entfernen |
+| AN8 | „Stand speichern …“ mit ausgeschalteter Nachteilung (AN7), dann wieder an, „Vergleichen mit …“ | Teilsystemwechsel nur für die Units der übrigen Teile; ein alter Stand ohne `parent` lädt ohne Fehler |
+| AN9 | `"maxShare": 1` in settings.json | Problemmeldung „… muss eine Zahl von 0 bis 0,9 sein“, Vorgabe 0,25 gilt |
+| AN10 | Großes Projekt (≈ 2000 Units): Fenster öffnen | Rechendauer in der Statuszeile unter 2 s |
+
 ## Minimap neben der Scrollleiste (#873, experimentell)
 
 Vorher: „Experimentelle Funktionen erlauben“ an, auf der Seite Editor „Minimap neben der Scrollleiste“ an. Eine Unit mit mehreren Klassen und Methoden, eine lange Unit (10 000 Zeilen).

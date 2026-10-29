@@ -234,6 +234,24 @@ begin
   mSettings := Parse('{}', mIssues);
   Assert.AreEqual(Double(1), mSettings.ArchitectureGroupingResolution, 1E-9);
   Assert.IsTrue(mSettings.ArchitectureGroupingShowResolutionSlider);
+  Assert.AreEqual(Double(0.25), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(0.3), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  // Nachteilung (#1364): 0 schaltet ab, Grenzen 0,9 bzw. 1.
+  mSettings := Parse('{"architecture": {"grouping": {"maxShare": 0, "minCohesion": 1}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(0), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(1), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  mSettings := Parse('{"architecture": {"grouping": {"maxShare": 0.9, "minCohesion": 0.05}}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual(Double(0.9), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(0.05), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  mSettings := Parse('{"architecture": {"grouping": {"maxShare": 0.95, "minCohesion": -0.1}}}', mIssues);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].IsError);
+  Assert.AreEqual(Double(0.25), mSettings.ArchitectureGroupingMaxShare, 1E-9);
+  Assert.AreEqual(Double(0.3), mSettings.ArchitectureGroupingMinCohesion, 1E-9);
+  Parse('{"architecture": {"grouping": {"maxShare": "viel"}}}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
   mSettings := Parse('{"architecture": {"grouping": {"resolution": 2.5, "showResolutionSlider": false}}}', mIssues);
   Assert.AreEqual(0, Integer(Length(mIssues)));
   Assert.AreEqual(Double(2.5), mSettings.ArchitectureGroupingResolution, 1E-9);
