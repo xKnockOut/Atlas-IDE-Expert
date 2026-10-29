@@ -2478,6 +2478,103 @@
           "x-scope": "project",
           "x-page": "MCP",
           "x-control": "Kontrollkästchen in den Projekt-Einstellungen (Seite MCP)"
+        },
+        "prompts": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prompts (in Claude Code Schrägstrich-Befehle wie /mcp__delphi__unit_review) und Ressourcenvorlagen (delphi://unit/{name}, delphi://form/{file}, delphi://findings/{file}, delphi://build/last) anbieten. false: prompts/list und resources/templates/list sind leer, die Werkzeuge bleiben.",
+          "x-page": "MCP",
+          "x-control": "Kontrollkästchen",
+          "x-issue": "#1357"
+        },
+        "promptLanguage": {
+          "type": "string",
+          "enum": [
+            "de",
+            "en"
+          ],
+          "default": "de",
+          "description": "Sprache der Anleitungen in den Prompts.",
+          "x-page": "MCP",
+          "x-control": "Auswahl",
+          "x-issue": "#1357"
+        },
+        "customPrompts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "text"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                "description": "Name des Prompts; in Claude Code /mcp__delphi__<name>. Eingebaute Namen (unit_review, explain_form, write_tests, fix_finding, prepare_commit) gehen vor."
+              },
+              "description": {
+                "type": "string",
+                "description": "Kurzbeschreibung in der Liste der Befehle."
+              },
+              "arguments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "name"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                      "description": "Name des Arguments, im Text als {name}. file, unit und name nutzen auch die Inhalte aus include."
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Beschreibung des Arguments."
+                    },
+                    "required": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Pflichtargument."
+                    }
+                  }
+                }
+              },
+              "text": {
+                "type": "string",
+                "description": "Anleitung mit Platzhaltern {argument}."
+              },
+              "include": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "outline",
+                    "diagnostics",
+                    "metrics",
+                    "unused",
+                    "todos",
+                    "form",
+                    "impact",
+                    "dependencies",
+                    "conventions",
+                    "lastBuild"
+                  ]
+                },
+                "description": "Eingebettete Inhalte: Ergebnisse der Werkzeuge für die Argumente file, unit oder name."
+              }
+            }
+          },
+          "default": [],
+          "description": "Eigene Prompts des Projekts mit Platzhaltern {argument} im Text und eingebetteten Inhalten aus include (z. B. diagnostics, metrics).",
+          "x-scope": "project",
+          "x-page": "MCP",
+          "x-control": "JSON in atlas.json (Liste der Prompts)",
+          "x-issue": "#1357"
         }
       },
       "examples": [
@@ -2489,13 +2586,17 @@
         },
         {
           "globalSettings": false
+        },
+        {
+          "prompts": true,
+          "promptLanguage": "en"
         }
       ],
       "x-scope": "global",
       "x-area": "build",
       "x-page": "MCP",
-      "x-control": "Liste mit Hinzufügen/Entfernen; globalSettings: Kontrollkästchen",
-      "x-issue": "#99"
+      "x-control": "Liste mit Hinzufügen/Entfernen; globalSettings, prompts: Kontrollkästchen; promptLanguage: Auswahl; customPrompts: JSON",
+      "x-issue": "#99, #1357"
     },
     "format": {
       "type": "object",

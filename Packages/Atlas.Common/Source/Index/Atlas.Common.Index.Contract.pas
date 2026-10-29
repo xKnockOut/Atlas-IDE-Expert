@@ -80,8 +80,10 @@ type
     /// <summary>Nur bei inline-Routinen (#1017): was der Rumpf aus anderen Units braucht, aufgelöst im Bereich
     /// der deklarierenden Unit. "Name" = Bezeichner, der nicht in dieser Unit deklariert ist; ":Typ" = Typ eines
     /// Felds oder einer Variablen, dessen Mitglieder der Rumpf benutzt (FListe.Count), bzw. ein Typverweis;
-    /// "!Name" = Zugriff auf ein strict private-Mitglied der eigenen Klasse. nil = keine inline-Routine, nicht
-    /// einbettbar (asm, with, verschachtelte Routinen) oder ohne solche Verweise.</summary>
+    /// "!Name" = Zugriff auf ein strict private-Mitglied der eigenen Klasse. Eine einbettbare inline-Routine ohne
+    /// solche Verweise trägt genau den Eintrag InlineWithoutRefs (#1381: sonst sah die Regel inline-not-expanded
+    /// sie nicht, H2445, H2456 und H2457 hängen nicht am Rumpf). nil = keine inline-Routine oder nicht einbettbar
+    /// (asm, with, verschachtelte Routinen, virtual).</summary>
     InlineRefs: TArray<string>;
     /// <summary>Nur bei Klassen und Records: Methodenzuordnungen im Rumpf als "IFoo.Bar=Baz" in Reihenfolge der
     /// Deklaration. Sie sind keine eigenen Mitglieder (#849), zählen aber als Implementierung der
@@ -99,6 +101,8 @@ type
   public const
     MaxSignature = 300;
     MaxSummary = 200;
+    /// <summary>Einziger Eintrag in InlineRefs einer einbettbaren inline-Routine ohne Verweise (#1381).</summary>
+    InlineWithoutRefs = '';
   end;
 
   /// <summary>Verwendungen eines Bezeichners in einer Unit (#492, für #470): alle Stellen außer der
