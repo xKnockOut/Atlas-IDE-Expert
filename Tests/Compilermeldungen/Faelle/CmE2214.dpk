@@ -1,0 +1,10 @@
+﻿package CmE2214;
+
+// E2214 Package '%s' is recursively required
+// Erwartet: E2214
+
+requires
+  rtl,
+  CmE2214; // <- E2214
+
+end.

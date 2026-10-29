@@ -12,3 +12,5 @@
 *.bat      text eol=crlf
 EULA.txt   text eol=crlf
 *.sh       text eol=lf
+# UTF-32 mit BOM: Fall F2438, darf nicht umkodiert werden
+Tests/Compilermeldungen/Faelle/Cm.F2438.pas binary
