@@ -72,6 +72,8 @@ type
     FormFile: string;
     /// <summary>Dateien neben der Unit, z. B. .dcr (#114); nil = keine.</summary>
     ReadFile: TRuleFileReader;
+    /// <summary>Gibt es eine Datei neben der Unit (#1379)? nil = unbekannt.</summary>
+    FileExists: TRuleFileExists;
     /// <summary>Absoluter Pfad der Datei (#46).</summary>
     FileName: string;
     /// <summary>Anwendungsart des Projekts der Datei (#926); Unknown ohne Projekt.</summary>
@@ -916,6 +918,7 @@ begin
   Context.FormText := ARules.FormText;
   Context.FormFile := ARules.FormFile;
   Context.ReadFile := ARules.ReadFile;
+  Context.FileExists := ARules.FileExists;
   Context.FileName := ARules.FileName;
   Context.Application := ARules.Application;
   Context.ProjectName := ARules.ProjectName;

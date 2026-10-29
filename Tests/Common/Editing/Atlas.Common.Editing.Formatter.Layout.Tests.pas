@@ -23,6 +23,10 @@ type
     procedure MovesElseToNewLine;
     [Test]
     procedure PullsElseToSameLine;
+    /// <summary>#1358: "end", "else" und "begin" auf drei Zeilen werden in einem Lauf eine Zeile (stabil).
+    /// </summary>
+    [Test]
+    procedure PullsElseAndBeginInOnePass;
     [Test]
     procedure AlignsAssignments;
     [Test]
@@ -179,6 +183,38 @@ begin
     '  else' + LF +
     '    C;' + LF +
     'end;', Settings));
+end;
+
+procedure TFormatLayoutTests.PullsElseAndBeginInOnePass;
+var
+  mSettings: TFormatStyle;
+  mOnce: string;
+begin
+  mSettings := TFormatStyle.Default;
+  mSettings.BeginPlacement := TBlockPlacement.SameLine;
+  mSettings.ElsePlacement := TBlockPlacement.SameLine;
+  mOnce := Formatted(
+    'procedure P;' + LF +
+    'begin' + LF +
+    '  if A then' + LF +
+    '  begin' + LF +
+    '    B;' + LF +
+    '  end' + LF +
+    '  else' + LF +
+    '  begin' + LF +
+    '    C;' + LF +
+    '  end;' + LF +
+    'end;', mSettings);
+  Assert.AreEqual(
+    'procedure P;' + LF +
+    'begin' + LF +
+    '  if A then begin' + LF +
+    '    B;' + LF +
+    '  end else begin' + LF +
+    '    C;' + LF +
+    '  end;' + LF +
+    'end;', mOnce);
+  Assert.AreEqual(mOnce, Formatted(mOnce, mSettings));
 end;
 
 procedure TFormatLayoutTests.AlignsAssignments;

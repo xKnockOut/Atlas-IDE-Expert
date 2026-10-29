@@ -46,6 +46,9 @@ type
     /// <summary>Alle Text- und Schalterparameter der Tabelle (S-02), auch mit Großbuchstaben.</summary>
     [Test]
     procedure ReadsTableOptions;
+    /// <summary>#1358: --format-check, --format-write und --format diff.</summary>
+    [Test]
+    procedure ReadsFormatterArguments;
   end;
 
 implementation
@@ -308,6 +311,23 @@ begin
   Assert.IsFalse(Options.Mcp or Options.Restricted);
   // --include-uncommitted ohne Ref: Standardbasis.
   Assert.AreEqual(TCommandLineOptions.DefaultChangedBase, Options.ChangedRef);
+end;
+
+procedure TCommandLineOptionsTests.ReadsFormatterArguments;
+var
+  mOptions: TCommandLineOptions;
+begin
+  mOptions := TCommandLineOptions.Parse(['--check', 'Src', '--format-check', '--format', 'diff', '--changed-lines']);
+  Assert.AreEqual(0, Integer(Length(mOptions.Warnings)));
+  Assert.IsTrue(mOptions.FormatCheck);
+  Assert.IsFalse(mOptions.FormatWrite);
+  Assert.IsTrue(mOptions.FormatDiff);
+  Assert.IsTrue(mOptions.ChangedLines);
+  mOptions := TCommandLineOptions.Parse(['--check', 'Src', '--format-write', '--format=DIFF', '--format', 'json']);
+  Assert.IsTrue(mOptions.FormatWrite);
+  Assert.IsFalse(mOptions.FormatDiff);
+  Assert.IsTrue(mOptions.CheckFormat = TFindingsFormat.Json);
+  Assert.IsFalse(TCommandLineOptions.Parse([]).FormatCheck);
 end;
 
 initialization
