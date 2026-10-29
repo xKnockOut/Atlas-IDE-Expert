@@ -2,7 +2,8 @@
 
 // Tests für die Unit-Suche wie beim Compiler (#1016): .pas und .dcu, Unit-
 // Namespaces, Units des Projekts, "in 'Pfad'", requires-Packages, unsichere
-// Pfade, Quelle Atlas, Ordner außerhalb der Suchpfade und Vorschlagsliste.
+// Pfade, Quelle Atlas, Ordner außerhalb der Suchpfade und Vorschlagsliste;
+// Dateien aus {$I} und {$R} (#1379).
 
 interface
 
@@ -31,6 +32,8 @@ type
     procedure KnownUnitsAndPackages;
     [Test]
     procedure RepeatedQuestionsGiveSameAnswers;
+    [Test]
+    procedure FindFileLikeCompiler;
   end;
 
 implementation
@@ -38,6 +41,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Rules.Contract,
@@ -116,6 +120,41 @@ begin
   Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(Lookup, 'Rechnung.Druck')), 'Suchpfad, .pas');
   Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(Lookup, 'Rechnungs.Druck')));
   Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(Lookup, 'Winapi.Windows')));
+end;
+
+procedure TUnitLookupTests.FindFileLikeCompiler;
+var
+  mData: TUnitLookupSetup;
+  mLookup: IRuleUnitLookup;
+begin
+  mData := Setup(LibraryFiles + ['C:\P\Main.inc', 'C:\P\Src\Gemeinsam.inc', 'C:\P\Inc\Version.inc',
+    'C:\P\Res\Bilder.res', 'C:\BDS\lib\Bibliothek.inc', 'C:\Abs\Absolut.inc']);
+  mData.Project.Properties := [TPair<string, string>.Create('DCC_IncludePath', 'Inc'),
+    TPair<string, string>.Create('DCC_ResourcePath', 'C:\P\Res')];
+  mLookup := TUnitLookup.Create(mData);
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Main.inc', 'C:\P\Main.pas')), 'neben der Datei');
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Gemeinsam.inc', 'C:\P\Main.pas')), 'Suchpfad');
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Version.inc', 'C:\P\Main.pas')),
+    'DCC_IncludePath relativ zur .dproj');
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Bilder.res', 'C:\P\Main.pas')),
+    'DCC_ResourcePath');
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Bibliothek.inc', 'C:\P\Main.pas')),
+    'Bibliothekspfad');
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('C:\Abs\Absolut.inc', 'C:\P\Main.pas')));
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(mLookup.FindFile('Fehlt.inc', 'C:\P\Main.pas')));
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(mLookup.FindFile('C:\Abs\Fehlt.inc', 'C:\P\Main.pas')));
+  // Ohne Installation, mit offenem Makro oder ohne Dateizugriff keine sichere Aussage.
+  mData.LibraryKnown := False;
+  mLookup := TUnitLookup.Create(mData);
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(mLookup.FindFile('Fehlt.inc', 'C:\P\Main.pas')));
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(mLookup.FindFile('Main.inc', 'C:\P\Main.pas')));
+  mData.LibraryKnown := True;
+  mData.Project.Properties := [TPair<string, string>.Create('DCC_IncludePath', '$(MEINE_INC)')];
+  mLookup := TUnitLookup.Create(mData);
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(mLookup.FindFile('Fehlt.inc', 'C:\P\Main.pas')));
+  mData.FileExists := nil;
+  mLookup := TUnitLookup.Create(mData);
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(mLookup.FindFile('Main.inc', 'C:\P\Main.pas')));
 end;
 
 procedure TUnitLookupTests.RepeatedQuestionsGiveSameAnswers;
