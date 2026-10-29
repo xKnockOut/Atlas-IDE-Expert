@@ -121,8 +121,8 @@ type
     /// <summary>JSON-Text (auch mit Kommentaren) ohne Zugangsdaten, kompakt; '' wenn er nicht lesbar ist.
     /// </summary>
     class function Redact(const AJsonText: string): string; static;
-    /// <summary>JSON aus AText; nil, wenn es nicht lesbar ist. Mit Ausnahme statt nil im Parser: Der Parser von
-    /// FPC liefert bei Fehlern sonst einen unbestimmten Wert.</summary>
+    /// <summary>JSON aus AText; nil, wenn es nicht lesbar ist. Unter FPC leitet Convert-ForFpc den Aufruf auf
+    /// AtlasJsonCompat um, das ebenfalls nil liefert (#1356).</summary>
     class function ParseOrNil(const AText: string): TJSONValue; static;
     /// <summary>Entfernt Zugangsdaten in AValue selbst.</summary>
     class procedure RedactValue(const AValue: TJSONValue); static;
@@ -242,12 +242,7 @@ end;
 
 class function TCrashCases.ParseOrNil(const AText: string): TJSONValue;
 begin
-  try
-    Result := TJSONValue.ParseJSONValue(AText, False, True);
-  except
-    on Exception do
-      Result := nil;
-  end;
+  Result := TJSONValue.ParseJSONValue(AText);
 end;
 
 class procedure TCrashCases.RedactValue(const AValue: TJSONValue);
