@@ -49,6 +49,8 @@ type
     function ProjectState(const AName: string; ADefaultOn: Boolean): TRuleWarnState;
     /// <summary>Stand der Warnung AName am Token ATokenIndex des Baums.</summary>
     function StateAt(const AName: string; ADefaultOn: Boolean; ATokenIndex: Integer): TRuleWarnState;
+    /// <summary>Wie StateAt, für das Token, das an AOffset (0-basiert im Text) oder dahinter beginnt.</summary>
+    function StateAtOffset(const AName: string; ADefaultOn: Boolean; AOffset: Integer): TRuleWarnState;
     /// <summary>Steht in der Datei ein {$WARN} für einen der Bezeichner ANames?</summary>
     function MentionsAny(const ANames: array of string): Boolean;
     /// <summary>Meldet dcc die Warnung in diesem Stand (an oder als Fehler)?</summary>
@@ -190,6 +192,24 @@ begin
     Result := TRuleWarnState.Enabled
   else
     Result := TRuleWarnState.Disabled;
+end;
+
+function TRuleWarnSwitches.StateAtOffset(const AName: string; ADefaultOn: Boolean;
+  AOffset: Integer): TRuleWarnState;
+var
+  mLow, mHigh, mMiddle: Integer;
+begin
+  mLow := 0;
+  mHigh := Length(FTokens);
+  while mLow < mHigh do
+  begin
+    mMiddle := (mLow + mHigh) div 2;
+    if FTokens[mMiddle].Offset < AOffset then
+      mLow := mMiddle + 1
+    else
+      mHigh := mMiddle;
+  end;
+  Result := StateAt(AName, ADefaultOn, mLow);
 end;
 
 function TRuleWarnSwitches.StateAt(const AName: string; ADefaultOn: Boolean; ATokenIndex: Integer): TRuleWarnState;
