@@ -600,7 +600,7 @@ class function TAffectedTests.Collapse(const ATests: TArray<TAffectedTest>;
   const ATotal: TFunc<TAffectedTest, Integer>; const AFixtureRun: TFunc<TAffectedTest, TArray<string>>):
   TArray<TAffectedTest>;
 var
-  mGroups: TDictionary<string, TList<Integer>>;
+  mGroups: TObjectDictionary<string, TList<Integer>>;
   mOrder: TList<string>;
   mKey: string;
   mIndex, mTotal: Integer;
