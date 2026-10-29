@@ -8557,3 +8557,54 @@ Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DC
 | DY4 | `AtlasServer.exe --check` über Spring4D, DUnitX, Skia4Delphi, mORMot2 | Keine Befunde mehr zu Slice an var-Open-Arrays, protected über generische Typen, Vergleichsoperatoren ohne Boolean, Klassenkonstruktor im Class-Helfer, geerbten Accessoren generischer Interfaces (**Abnahme**: mindestens 80 % weniger Befunde der acht Regeln als im Bericht vom 28.10.2026) |
 | DY5 | Nach dem Nachzug auf den dcc-Lauf vom 29.10.2026: `pwsh Tools/Build-DccFaelle.ps1` erneut | Alle Projekte ohne „Gegen“ übersetzen ohne Fehler und ohne Hinweis (auch die verschobenen Fälle IV4, TR8, TR9, ID3); die Gegen-Projekte melden SG3 (E2362) und TG4 (E2441) zusätzlich. Meldet dcc ID3 doch (E2370), Bescheid geben |
 | DY6 | In der IDE: `property Mitte: TPointF` und `property Liste: TArray<Integer>` unter published, `Inc(Zaehler)` einer typisierten Konstante nach `{$J+}`, `Slice(Feld, 2)` an einen out-Parameter, `TKnoten<Integer>.FNaechster` (protected) aus einer gewöhnlichen Funktion einer anderen Unit | Keine Meldung bei den ersten vier; beim letzten „… ist protected und hier nicht sichtbar (wie E2362).“ |
+
+## Seite „Versionsverwaltung“ (#1285)
+
+Nachgetragen aus PR #1299 (Inhalt über die VCS-Kette in Prep-v1.2.0).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VW1 | *Tools › Optionen › Atlas › Versionsverwaltung* öffnen | Fundort von git und svn ohne gestarteten Prozess; „Aktuelles Projekt“ zeigt Arbeitskopie, Branch bzw. Pfad, Revision und Herkunft der Einstellung |
+| VW2 | Falschen Pfad bei `vcs.git.path` eintragen und speichern | Seite zeigt „nicht gefunden unter …“; Meldungsansicht nennt den Pfad; Atlas nimmt kein anderes git aus PATH (**Abnahme**) |
+| VW3 | Gültigen Pfad eintragen, „Prüfen“ | Version und Fundort; der Knopf ist während der Prüfung gesperrt |
+| VW4 | `AtlasServer.exe --changed` mit falschem `vcs.git.path` in settings.json | Abbruch mit Ursache statt still ohne Änderungen |
+| VW5 | Zeitlimit `vcs.timeoutSeconds` ansehen und ändern | Vorgabe 15; das Feld nimmt nur 1 bis 300 Sekunden an |
+
+## Typen in Prüfregeln wie der Compiler (#1324)
+
+Vorbereitung: Minimalfall F05 aus `berichte/fp-korpus-2026-10-28/faelle` (Projektordner) und eine Unit mit `LongInt`/`Integer`, `IUnknown`/`IInterface`, `Classes.TCollection` und `{$IFDEF}` im Methodenkopf.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| TI1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `Semantics.TypeIdentity.Tests` und die ergänzten Tests von Declarations, OrdinalConstants und TypedExpressions grün (**Abnahme**) |
+| TI2 | F05 öffnen (Deklaration mit Alias, Rumpf mit Originaltyp) | Kein `signature-mismatch` |
+| TI3 | Deklaration `Integer`, Rumpf `Int64` | `signature-mismatch` bleibt |
+| TI4 | `type TMyInt = type Integer;` in der Deklaration, `Integer` im Rumpf | `signature-mismatch` bleibt (eigener Typ) |
+| TI5 | `const C = Cardinal(-1);` und `if X > C then` mit `X: Cardinal` | Kein `constant-expression-error`; `comparison-always-constant` nur, wo der Vergleich wirklich fest steht |
+
+## Sonderformen der Deklaration (#1325)
+
+Vorbereitung: Minimalfälle F02, F03, F06, F07, F13 und F18 aus `berichte/fp-korpus-2026-10-28/faelle`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SD1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; Tests je Minimalfall samt Gegentests grün (**Abnahme**) |
+| SD2 | F02: `class constructor Create` neben `constructor Create` | Kein `overload-directive-missing` |
+| SD3 | F13: Kurzform `function Foo;` im Rumpf | Kein `declared-not-implemented`, kein `implemented-not-declared` |
+| SD4 | F06 und F07: Constraints mit `;` und leere Klammern `()` | Kein `signature-mismatch` |
+| SD5 | F03 und F18: Methodenzuordnung und Überladung mit offenem Array | Kein `directive-typo`, kein `generic-declaration-invalid`, kein `overload-directive-missing` |
+| SD6 | Gegenprobe: echte fehlende Implementierung, echter abweichender Kopf | Befund bleibt |
+
+## Vorfahren und Überladungen über Units hinweg (#1326)
+
+Vorbereitung: Minimalfall F01 aus `berichte/fp-korpus-2026-10-28/faelle`; ein eigenes Projekt mit einem Vorfahren in einer anderen Unit.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| VU1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `Published.MultilineProcedureTypes`, `Calls.AncestorOverloads`, `Calls.UnknownAncestorMayHideName`, `Inheritance.OverrideTargetGenericAndPlainNamesakes`, `Welcome.Search.ReadsCacheOfServer` u. a. grün (**Abnahme**) |
+| VU2 | F01: published-Property mit Prozedurtyp über mehrere Zeilen (`of object`) | Kein `published-type-invalid` |
+| VU3 | Aufruf einer Überladung, die nur der Vorfahr in einer anderen Unit deklariert | Kein `argument-count-mismatch` |
+| VU4 | `TFoo` und `TFoo<T>` in derselben Unit, `override` in einem Nachfahren von `TFoo` | Kein `override-target-missing` |
+| VU5 | `property Capacity write SetCapacity;` ohne Typ im Nachfahren, danach `Capacity := 10` | Kein `readonly-property-assigned` |
+| VU6 | `X.Edit` ohne `Post` auf einem Record bzw. einer Klasse ohne TDataSet-Vorfahr; Gegenprobe auf `TFDQuery` | Nur die Gegenprobe meldet `dataset-edit-without-post` |
+| VU7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 29 in Server und Plugin) |
