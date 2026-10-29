@@ -758,13 +758,8 @@ begin
       mOutput := TAffectedTests.Render(mFound, mFormat);
       if mFormat = TAffectedFormat.DUnitX then
       begin
-        // Auf stdout nur das Argument; Gründe und „alle“ für Menschen auf stderr.
-        if mFound.All then
-          WriteError('Alle Tests nötig: ' + mFound.AllReason)
-        else if Length(mFound.Tests) = 0 then
-          WriteError(Format('Keine betroffenen Tests gegenüber %s', [mFound.Base]))
-        else
-          WriteError(Format('%d betroffene Tests gegenüber %s', [Length(mFound.Tests), mFound.Base]));
+        // Auf stdout nur das Argument; der Bericht mit Gründen für Menschen auf stderr (pre-commit-Hook, CI-Protokoll).
+        WriteError(TrimRight(TAffectedTests.ToText(mFound)));
         if mOutput <> '' then
           mOutput := mOutput + sLineBreak;
       end;

@@ -5594,6 +5594,7 @@ var
   mResolver: TNameResolver;
   mEnsureUnit: TEnsureUnitFunc;
   mReadDisk: TReferenceReadText;
+  mProcess: ICompilerProcess;
   mFound: TAffectedResult;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
@@ -5639,9 +5640,11 @@ begin
   try
     mResolver.Namespaces := FImpact.Namespaces;
     try
-      // Eigener Prozessstarter: git/svn laufen neben einem Compilerlauf.
-      mFound := TShellAffectedTests.Run(TProcessRunner.Create, mSettings, mQuery, mResolver, FIndex, mRequest,
-        mReadDisk, ACancellation);
+      // Eigener Prozessstarter: git/svn laufen neben einem Compilerlauf. Über eine Variable: nie ein frisches
+      // Objekt an einen const-Interface-Parameter.
+      mProcess := TProcessRunner.Create;
+      mFound := TShellAffectedTests.Run(mProcess, mSettings, mQuery, mResolver, FIndex, mRequest, mReadDisk,
+        ACancellation);
     except
       on E: EAffectedTestsOff do
         raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, E.Message);

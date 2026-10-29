@@ -65,6 +65,8 @@ type
     [Test]
     procedure McpJsonLikeAtlasImpact;
     [Test]
+    procedure AnalyzeEachMatchesSingleRuns;
+    [Test]
     [Category('Benchmark')]
     procedure LongChainStaysFast;
   end;
@@ -672,6 +674,28 @@ begin
   finally
     Tools.Free;
   end;
+end;
+
+procedure TImpactAnalysisTests.AnalyzeEachMatchesSingleRuns;
+var
+  mStarts: TArray<THierarchyItem>;
+  mEach: TArray<TImpactResult>;
+  mIndex: Integer;
+begin
+  // #1353: mehrere Startpunkte mit gemeinsamen Bäumen und Units, je Ergebnis wie eine eigene Analyse.
+  mStarts := TArray<THierarchyItem>.Create(ItemAt(WerkzeugFile, 'procedure Ziel;', 'Ziel'),
+    ItemAt(WerkzeugFile, 'procedure Oben;', 'Oben'));
+  mEach := TImpactAnalysis.AnalyzeEach(FResolver, FIndex, mStarts, ProjectFiles,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadFile(AFileName, AText);
+    end, Options(3), nil);
+  Assert.AreEqual(2, Integer(Length(mEach)));
+  for mIndex := 0 to High(mStarts) do
+    Assert.AreEqual(Describe(Analyze(mStarts[mIndex], 3)), Describe(mEach[mIndex]), mStarts[mIndex].Name);
+  Assert.AreEqual(1, Integer(Length(mEach[0].Tests)));
+  Assert.AreEqual(0, Integer(Length(TImpactAnalysis.AnalyzeEach(FResolver, FIndex, nil, ProjectFiles, nil, Options(3),
+    nil))));
 end;
 
 procedure TImpactAnalysisTests.LongChainStaysFast;

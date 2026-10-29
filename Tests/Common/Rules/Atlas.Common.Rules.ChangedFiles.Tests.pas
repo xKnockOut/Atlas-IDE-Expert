@@ -31,6 +31,8 @@ type
     procedure SvnStatusAndSummarize;
     [Test]
     procedure SvnDiffCountsOnlyAddedLines;
+    [Test]
+    procedure GitAndSvnAgreeOnGaps;
   end;
 
 implementation
@@ -180,6 +182,34 @@ begin
   Assert.IsFalse(Changes[0].Contains(20));
   Assert.IsTrue(Changes[0].Contains(21));
   Assert.AreEqual(2, Integer(Length(Changes[0].Spans)));
+end;
+
+procedure TChangedFilesTests.GitAndSvnAgreeOnGaps;
+var
+  mGit, mSvn: TArray<TChangedLines>;
+begin
+  // Dieselbe Änderung (#1353): alte Zeilen 5 und 6 entfernt, alte Zeile 9 ersetzt; Git mit -U0, SVN mit Kontext.
+  mGit := TChangedFiles.ParseHunks(['+++ b/Src/A.pas', '@@ -5,2 +4,0 @@', '@@ -9 +7 @@']);
+  mSvn := TChangedFiles.ParseSvnDiff(['Index: Src/A.pas', '--- Src/A.pas'#9'(revision 12)',
+    '+++ Src/A.pas'#9'(working copy)', '@@ -3,8 +3,6 @@', ' z3', ' z4', '-z5', '-z6', ' z7', ' z8', '-z9', '+neu9',
+    ' z10']);
+  Assert.AreEqual(1, Integer(Length(mGit)));
+  Assert.AreEqual(1, Integer(Length(mSvn)));
+  Assert.AreEqual(1, Integer(Length(mGit[0].Gaps)));
+  Assert.AreEqual(1, Integer(Length(mSvn[0].Gaps)));
+  // Vor der 0-basierten Zeile 4 der neuen Fassung (z7) fehlen sie.
+  Assert.AreEqual(4, mGit[0].Gaps[0]);
+  Assert.AreEqual(mGit[0].Gaps[0], mSvn[0].Gaps[0]);
+  Assert.AreEqual(1, Integer(Length(mGit[0].Spans)));
+  Assert.AreEqual(1, Integer(Length(mSvn[0].Spans)));
+  Assert.AreEqual(6, mGit[0].Spans[0].First);
+  Assert.AreEqual(mGit[0].Spans[0].First, mSvn[0].Spans[0].First);
+  Assert.AreEqual(mGit[0].Spans[0].Last, mSvn[0].Spans[0].Last);
+  // Am Dateiende entfernt (SVN: kein "+" mehr danach).
+  mSvn := TChangedFiles.ParseSvnDiff(['+++ Src/A.pas', '@@ -1,3 +1,1 @@', ' z1', '-z2', '-z3']);
+  Assert.AreEqual(1, Integer(Length(mSvn[0].Gaps)));
+  Assert.AreEqual(1, mSvn[0].Gaps[0]);
+  Assert.AreEqual(1, TChangedFiles.ParseHunks(['+++ b/Src/A.pas', '@@ -2,2 +1,0 @@'])[0].Gaps[0]);
 end;
 
 initialization

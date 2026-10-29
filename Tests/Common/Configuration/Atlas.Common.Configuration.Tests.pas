@@ -41,6 +41,8 @@ type
     [Test]
     procedure ReadsNavigationImpact;
     [Test]
+    procedure ReadsAffectedTests;
+    [Test]
     procedure MetricsSwitchesOffMetricRules;
     [Test]
     procedure ChecksMetricLimitOption;
@@ -1428,6 +1430,31 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   Settings := TConfigurationParser.ParseLayered('{"navigation": {"impactDepth": 5}}', '{"navigation": {}}', Issues);
   Assert.AreEqual(2, Settings.Navigation.ImpactDepth);
+end;
+
+procedure TConfigurationParserTests.ReadsAffectedTests;
+var
+  mSettings: TServerSettings;
+  mIssues: TArray<TConfigurationIssue>;
+begin
+  // Betroffene Tests (#1353): Vorgabe an, Tiefe 3.
+  mSettings := Parse('{}', mIssues);
+  Assert.IsTrue(mSettings.Tests.Affected);
+  Assert.AreEqual(3, mSettings.Tests.AffectedDepth);
+  mSettings := Parse('{"tests": {"affected": false, "affectedDepth": 5}}', mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.IsFalse(mSettings.Tests.Affected);
+  Assert.AreEqual(5, mSettings.Tests.AffectedDepth);
+  // Außerhalb von 1 bis 5 bleibt die Vorgabe; unbekannte Schlüssel sind Warnungen.
+  mSettings := Parse('{"tests": {"affectedDepth": 0, "x": 1}}', mIssues);
+  Assert.AreEqual(3, mSettings.Tests.AffectedDepth);
+  Assert.AreEqual(2, Integer(Length(mIssues)));
+  Assert.IsTrue(mIssues[0].IsError);
+  Assert.IsFalse(mIssues[1].IsError);
+  Parse('{"tests": []}', mIssues);
+  Assert.AreEqual(1, Integer(Length(mIssues)));
+  mSettings := TConfigurationParser.ParseLayered('{"tests": {"affected": false}}', '{}', mIssues);
+  Assert.IsFalse(mSettings.Tests.Affected);
 end;
 
 procedure TConfigurationParserTests.MetricsSwitchesOffMetricRules;
