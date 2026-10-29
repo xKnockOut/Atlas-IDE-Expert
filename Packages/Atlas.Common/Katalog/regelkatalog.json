@@ -1396,7 +1396,7 @@
       "category": "code-smell",
       "severity": "warning",
       "group": "compiler",
-      "description": "A routine, type, constant or member marked deprecated, experimental, platform or library is used (like W1000, W1003, W1002, W1001), or a unit whose header carries one of these hints is listed in uses (like W1006, W1007, W1005, W1004). Reported only when the name resolves for sure. The editor strikes deprecated names through; the message carries the reason from deprecated 'reason'. The declaration and the head of its implementation are not reported. Which kinds are reported is set by the option kinds (deprecated and experimental by default, as in most projects); the switches {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} apply from their position like in the compiler; a switch in an {$IF} branch that is not surely compiled with the position keeps it silent. Quick fix: replace with the name the reason gives (or, for IncludeTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exactly one name fits, is visible at that position and is of the same kind. Without a project index only the symbols of the file itself are checked.",
+      "description": "A routine, type, constant or member marked deprecated, experimental, platform or library is used (like W1000, W1003, W1002, W1001), or a unit whose header carries one of these hints is listed in uses (like W1006, W1007, W1005, W1004). Reported only when the name resolves for sure. The editor strikes deprecated names through; the message carries the reason from deprecated 'reason'. The declaration and the head of its implementation are not reported. Whether a kind is reported follows the state of the warning as in dcc: all eight are on by default, then the project option of the .dproj (DCC_SYMBOL_PLATFORM = false and so on), then the switches {$WARN SYMBOL_DEPRECATED OFF|ON|ERROR|DEFAULT}, {$WARN UNIT_PLATFORM …} and so on and {$WARNINGS OFF} from their position; a switch in an {$IF} branch that is not surely compiled with the position keeps it silent. The option kinds narrows the kinds further. The .NET directive {$UNSAFECODE ON|OFF} is reported like a platform symbol (like W1002), as dcc for Windows does. Quick fix: replace with the name the reason gives (or, for IncludeTrailingBackslash and ExcludeTrailingBackslash, the platform-independent routine) when exactly one name fits, is visible at that position and is of the same kind. Without a project index only the symbols of the file itself are checked.",
       "bad": "Pfad := IncludeTrailingBackslash(Basis) + Name;",
       "good": "Pfad := IncludeTrailingPathDelimiter(Basis) + Name;",
       "level": "B",
@@ -1416,9 +1416,11 @@
           "type": "string-list",
           "default": [
             "deprecated",
-            "experimental"
+            "experimental",
+            "platform",
+            "library"
           ],
-          "description": "Reported kinds: deprecated, experimental, platform, library (platform and library are off by default)."
+          "description": "Reported kinds: deprecated, experimental, platform, library (all four by default; a warning switched off in the project or file stays silent anyway)."
         }
       ]
     },
@@ -3483,10 +3485,24 @@
       "bad": "var Pfad: AnsiString; ... DeleteFile(PChar(Pfad));",
       "good": "var Pfad: string; ... DeleteFile(PChar(Pfad));",
       "compilerCodes": [
-        "W1044",
-        "W1048"
+        "W1044"
       ],
       "level": "T"
+    },
+    {
+      "id": "unsafe-code",
+      "name": "Unsafe code",
+      "category": "code-smell",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "Code that dcc reports as unsafe since Delphi for .NET: the @ operator on a variable, field or parameter (like W1047) and a cast of an untyped Pointer to a class, TObject(P) or TCustomer(P) (like W1048). dcc switches these warnings off by default; the rule only reports where they are on as in dcc: {$WARN UNSAFE_CODE ON} or {$WARN UNSAFE_CAST ON} before the position, or DCC_UNSAFE_CODE or DCC_UNSAFE_CAST = true in the .dproj; ERROR turns the finding into an error, OFF and {$WARNINGS OFF} silence it. @ on routines and methods, typed pointers, casts as the argument (TObject(Pointer(I))) and interfaces stay silent. The rule only reports when the type is known for sure and its declaration is always compiled together with the position.",
+      "bad": "{$WARN UNSAFE_CAST ON}\n...\nKunde := TKunde(Zeiger);",
+      "good": "{$WARN UNSAFE_CAST ON}\n...\nKunde := Kunden[I]; // TObjectList<TKunde> statt TList mit Zeigern",
+      "level": "B",
+      "compilerCodes": [
+        "W1047",
+        "W1048"
+      ]
     },
     {
       "id": "inaccessible-member",
