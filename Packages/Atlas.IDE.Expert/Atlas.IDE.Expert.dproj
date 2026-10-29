@@ -401,6 +401,7 @@
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Adapters.Process.pas"/>
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.Reports.pas"/>
         <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.PreBuild.pas"/>
+        <DCCReference Include="Source\Core\Tasks\Atlas.Core.Tasks.OutputGroup.pas"/>
         <DCCReference Include="Source\UI\Tasks\Atlas.UI.Tasks.Texts.pas"/>
         <DCCReference Include="Source\IDE\Tasks\Atlas.IDE.Tasks.Output.pas"/>
         <DCCReference Include="Source\IDE\Tasks\Atlas.IDE.Tasks.Runner.pas"/>
