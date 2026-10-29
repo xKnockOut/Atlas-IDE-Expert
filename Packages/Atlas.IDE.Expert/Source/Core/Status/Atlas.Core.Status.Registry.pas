@@ -60,11 +60,16 @@ type
     FDetail: string;
     FState: TAtlasStatusState;
     FAction: TProc;
+    FEnabled: TFunc<Boolean>;
     FRegistry: Pointer;
   public
     constructor Create(const ARegistry: IAtlasStatusRegistry; const AId: string; AOrder: Integer); overload;
     constructor Create(const ARegistry: IAtlasStatusRegistry; const AId: string; AOrder: Integer;
       const AAction: TProc); overload;
+    /// <summary>Mit Aktion, die nur gilt, solange AEnabled True liefert (Einstellung, z. B. server.statusWindow
+    /// #1356); sonst ist die Zeile nicht anklickbar.</summary>
+    constructor Create(const ARegistry: IAtlasStatusRegistry; const AId: string; AOrder: Integer;
+      const AAction: TProc; const AEnabled: TFunc<Boolean>); overload;
     destructor Destroy; override;
     function Id: string;
     function Text: string;
@@ -299,12 +304,19 @@ end;
 constructor TAtlasStatusLine.Create(const ARegistry: IAtlasStatusRegistry; const AId: string; AOrder: Integer;
   const AAction: TProc);
 begin
+  Create(ARegistry, AId, AOrder, AAction, nil);
+end;
+
+constructor TAtlasStatusLine.Create(const ARegistry: IAtlasStatusRegistry; const AId: string; AOrder: Integer;
+  const AAction: TProc; const AEnabled: TFunc<Boolean>);
+begin
   inherited Create;
   FLock := TCriticalSection.Create;
   FRegistry := Pointer(ARegistry);
   FId := AId;
   FOrder := AOrder;
   FAction := AAction;
+  FEnabled := AEnabled;
   FState := TAtlasStatusState.Neutral;
 end;
 
@@ -356,12 +368,12 @@ end;
 
 function TAtlasStatusLine.HasAction: Boolean;
 begin
-  Result := Assigned(FAction);
+  Result := Assigned(FAction) and (not Assigned(FEnabled) or FEnabled());
 end;
 
 procedure TAtlasStatusLine.Execute;
 begin
-  if Assigned(FAction) then
+  if HasAction then
     FAction();
 end;
 

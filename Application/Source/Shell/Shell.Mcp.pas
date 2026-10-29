@@ -14,6 +14,8 @@
 // Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action)
 // bekommen den Symbolindex und die Projektdienste über TShellWorkspaceGroup wie
 // im Server (#1112); solange der Index lädt, sagt get_diagnostics das dazu.
+// get_server_status (#1356) zeigt den Status des Atlas-Servers der IDE für den
+// Ordner (aus dessen Statusdatei), sonst den dieses Prozesses.
 // Prompts und Ressourcenvorlagen (#1357) kommen aus TMcpPrompts; hier nur die
 // Auflösung von Units und Pfaden (#99) und die Änderungen für prepare_commit.
 
@@ -43,6 +45,7 @@ uses
   System.SyncObjs,
   System.IOUtils,
   System.StrUtils,
+  System.DateUtils,
   System.JSON,
   Atlas.Common.Product.Version,
   Atlas.Common.Logging.Contract,
@@ -97,6 +100,10 @@ uses
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Index.Adapters.CacheDirectory,
+  Atlas.Common.Lsp.Status,
+  Atlas.Common.Mcp.StatusTools,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Index.Processes,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Architecture.Overview,
@@ -1088,6 +1095,69 @@ begin
     end, TMcpToolKind.Write);
 end;
 
+/// <summary>Status dieses MCP-Prozesses für get_server_status, wenn kein Server der IDE läuft (#1356).</summary>
+function OwnStatus(const AIndex: ISymbolIndex; AStarted: TDateTime): TServerStatus;
+var
+  mParts: TIndexMemoryParts;
+  mTrees: TSyntaxTreeCacheStats;
+begin
+  Result := Default(TServerStatus);
+  Result.ProcessId := TShellPlatform.CurrentProcessId;
+  Result.Version := TProductVersion.Version;
+  Result.Started := AStarted;
+  Result.UptimeMs := MilliSecondsBetween(Now, AStarted);
+  Result.State := TServerStatus.StateReady;
+  Result.MemoryBytes := TShutdownLeaks.AllocatedBytes;
+  Result.IndexCacheHitPercent := -1;
+  mTrees := TSyntaxTreeCache.Stats;
+  Result.TreeCacheHitPercent := mTrees.HitPercent;
+  Result.TreeCacheTrees := mTrees.Trees;
+  Result.Memory.TreeCache := mTrees.Bytes;
+  Result.Memory.Total := Result.MemoryBytes;
+  if AIndex = nil then
+    Exit;
+  Result.Units := AIndex.UnitCount;
+  Result.Symbols := AIndex.SymbolCount;
+  Result.IndexBytes := AIndex.MemoryBytes;
+  Result.CompactUnits := AIndex.CompactCount;
+  Result.OffloadedUnits := AIndex.OffloadedCount;
+  Result.BudgetBytes := AIndex.Budget;
+  mParts := AIndex.MemoryParts;
+  Result.Memory.Symbols := mParts.ProjectBytes;
+  Result.Memory.LibraryUnits := mParts.LibraryBytes;
+  Result.Memory.Usages := mParts.UsageBytes;
+  Result.Memory.Budget := Result.BudgetBytes;
+end;
+
+/// <summary>get_server_status (#1356): Status des Servers der IDE aus der Statusdatei, sonst dieses Prozesses.
+/// </summary>
+procedure RegisterStatusTools(AServer: TMcpServer; const AIndex: ISymbolIndex; const ARoot: string);
+var
+  mStarted: TDateTime;
+begin
+  mStarted := Now;
+  AServer.AddTool(TMcpStatusTools.ToolName,
+    'Status des Atlas-Servers (#1356) wie im Fenster „Atlas-Server“ der IDE: Speicher je Bereich gegen das ' +
+    'Budget, die langsamsten Units und Regeln des letzten Prüflaufs, Warteschlange, Cache-Treffer und die ' +
+    'langsamsten Anfragen. Läuft für den Projektordner kein Server der IDE, der Status dieses MCP-Prozesses. ' +
+    'Nur lesend; hilfreich, wenn Atlas oder die IDE langsam ist oder viel Speicher braucht.',
+    '{"type":"object","properties":{' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":"markdown (Vorgabe) oder json"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      mFormat: string;
+    begin
+      mFormat := TMcpServer.OptionalString(AArguments, 'format');
+      if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
+        raise EMcpToolError.Create('"format" ist markdown oder json');
+      Result := TMcpStatusTools.ServerStatus(TIndexCacheDirectory.DefaultRoot, ARoot, SameText(mFormat, 'json'), Now,
+        function: TServerStatus
+        begin
+          Result := OwnStatus(AIndex, mStarted);
+        end);
+    end);
+end;
+
 /// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei den Prüfregeln (#1112).</summary>
 procedure RegisterDeadCodeTools(AServer: TMcpServer; AGroup: TShellWorkspaceGroup; const AIndex: ISymbolIndex;
   const ARoot: string; AGuard: TMcpPathGuard);
@@ -1333,6 +1403,7 @@ begin
     RegisterTools(Server, nil, nil, nil, '', nil, nil, nil, nil);
     RegisterDeadCodeTools(Server, nil, nil, '', nil);
     RegisterHotspotTools(Server, nil, nil, '');
+    RegisterStatusTools(Server, nil, '');
     Listed := Server.ListTools;
     try
       for Tool in Listed.GetValue<TJSONArray>('tools') do
@@ -1603,6 +1674,7 @@ begin
       end, FindPathOf(Index, PathGraphs, PathLocator, Workspace, EnsureAny, Root));
     RegisterDeadCodeTools(Server, Group, Index, Root, Guard);
     RegisterHotspotTools(Server, Group, Hotspots, Root);
+    RegisterStatusTools(Server, Index, Root);
     // Sicherheit (#99).
     Server.Restricted := AOptions.Restricted;
     Server.OnDisabledTools :=
