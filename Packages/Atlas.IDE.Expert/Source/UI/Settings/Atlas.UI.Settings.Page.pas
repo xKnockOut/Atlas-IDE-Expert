@@ -297,6 +297,8 @@ type
     FDiagnosticMode: TCheckBox;
     /// <summary>„Prozesse am Projekt…“ (#62).</summary>
     FDiagnosticsProcesses: TCheckBox;
+    /// <summary>Fenster „Atlas-Server“ (#1356).</summary>
+    FServerStatusWindow: TCheckBox;
     // Architekturübersicht (#1118).
     FArchitecture: TCheckBox;
     FArchitectureScope: TAtlasChoiceBox;
@@ -1353,6 +1355,7 @@ type
     /// <summary>Zum Testen: Einstellungen des Statusfelds (#591).</summary>
     property StatusField: TCheckBox read FStatusField;
     property DiagnosticMode: TCheckBox read FDiagnosticMode;
+    property ServerStatusWindow: TCheckBox read FServerStatusWindow;
     property ExperimentalEnabled: TCheckBox read FExperimentalEnabled;
     property ExperimentalBanner: TWinControl read FExperimentalBanner;
     property Filter: TAtlasChoiceBox read FFilter;
@@ -2281,6 +2284,8 @@ begin
   FDiagnosticMode := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticMode));
   // Menüeintrag „Prozesse am Projekt…“ (#62).
   FDiagnosticsProcesses := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticsProcesses));
+  // Fenster „Atlas-Server“ (#1356).
+  FServerStatusWindow := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsServerStatusWindow));
   // Architekturübersicht (#1118): Unterpunkt „Architektur“ über x-node; Reihenfolge wie die Werte von
   // architecture.scope (projectGroup, project).
   FArchitecture := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitecture));
@@ -6589,6 +6594,7 @@ begin
   FMarks.Bind(FStatusField, ['StatusField']);
   FMarks.Bind(FDiagnosticMode, ['DiagnosticMode']);
   FMarks.Bind(FDiagnosticsProcesses, ['DiagnosticsProcesses']);
+  FMarks.Bind(FServerStatusWindow, ['ServerStatusWindow']);
   FMarks.Bind(FArchitecture, ['ArchitectureEnabled']);
   FMarks.Bind(FArchitectureScope, ['ArchitectureScope']);
   FMarks.Bind(FArchitectureLibrary, ['ArchitectureIncludeLibraryUnits']);
@@ -8907,6 +8913,7 @@ begin
   FStatusField.Checked := ASettings.StatusField;
   FDiagnosticMode.Checked := ASettings.DiagnosticMode;
   FDiagnosticsProcesses.Checked := ASettings.DiagnosticsProcesses;
+  FServerStatusWindow.Checked := ASettings.ServerStatusWindow;
   FArchitecture.Checked := ASettings.ArchitectureEnabled;
   FArchitectureScope.Choice := Max(0, IndexText(ASettings.ArchitectureScope, ['projectGroup', 'project']));
   FArchitectureLibrary.Checked := ASettings.ArchitectureIncludeLibraryUnits;
@@ -9553,6 +9560,7 @@ begin
   ASettings.StatusField := FStatusField.Checked;
   ASettings.DiagnosticMode := FDiagnosticMode.Checked;
   ASettings.DiagnosticsProcesses := FDiagnosticsProcesses.Checked;
+  ASettings.ServerStatusWindow := FServerStatusWindow.Checked;
   ASettings.ArchitectureEnabled := FArchitecture.Checked;
   if FArchitectureScope.Choice = 1 then
     ASettings.ArchitectureScope := 'project'

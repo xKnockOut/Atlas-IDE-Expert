@@ -55,6 +55,7 @@ uses
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.Export,
   Atlas.IDE.Diagnostics.BugReport,
+  Atlas.IDE.Diagnostics.ServerPackage,
   Atlas.IDE.Diagnostics.Timing,
   Atlas.IDE.Setup.Checklist,
   Atlas.IDE.Files.Reloader,
@@ -123,8 +124,10 @@ uses
   Atlas.IDE.Forms.Designer,
   Atlas.Core.Status.Registry,
   Atlas.Core.Status.Lines,
+  Atlas.Core.Status.Server,
   Atlas.IDE.Status.Field,
   Atlas.IDE.Status.Lines,
+  Atlas.IDE.Status.ServerWindow,
   Atlas.IDE.Settings.QuickToggles,
   Atlas.IDE.Settings.Transfer,
   Atlas.IDE.Settings.Experimental,
@@ -571,6 +574,12 @@ begin
     begin
       GuardWarning(AText);
     end);
+end;
+
+/// <summary>Fenster „Atlas-Server“ (#1356) zeigen; abgeschaltet nichts.</summary>
+procedure ShowServerWindow;
+begin
+  TAtlasIdeServerWindow.Show;
 end;
 
 const
@@ -1901,6 +1910,12 @@ begin
         end);
     end);
   Add('Atlas.BugReport', TAtlasTextId.BugReportMenu, CreateBugReport);
+  // Fenster „Atlas-Server“ (#1356); nur sichtbar mit server.statusWindow.
+  Add('Atlas.ServerStatus', TAtlasTextId.ServerWindowCommand, ShowServerWindow,
+    function: Boolean
+    begin
+      Result := TAtlasIdeServerWindow.Enabled;
+    end);
   Add('Atlas.ProjectSettings', TAtlasTextId.ProjectSettingsTitle, TAtlasProjectSettings.Execute);
   Add('Atlas.WelcomeStart', TAtlasTextId.MenuWelcomeStart,
     procedure
@@ -2294,6 +2309,88 @@ const
   /// <summary>Kosten einer interface-Änderung (#554).</summary>
   InterfaceCostExtra = 'interfaceCost';
 
+/// <summary>Diagnosepaket des Fensters „Atlas-Server“ (#1356): Bericht und Dateien des laufenden Servers im
+/// Hintergrund.</summary>
+procedure CreateServerPackage;
+begin
+  TAtlasIdeServerPackage.Execute(
+    procedure(const ACommand, AArgumentsJson: string; const ADone: TProc<TJSONValue>)
+    begin
+      if Manager <> nil then
+        Manager.RunServerCommandAsync(ACommand, AArgumentsJson, 30000, ADone)
+      else
+        ADone(nil);
+    end,
+    procedure(AText: string)
+    begin
+      GuardWarning(AText);
+    end);
+end;
+
+/// <summary>Fenster „Atlas-Server“ (#1356): liest die Antwort der Statuszeilen, fragt selbst nicht ab.</summary>
+procedure InstallServerWindow;
+var
+  mHooks: TAtlasIdeServerWindow.THooks;
+begin
+  mHooks := Default(TAtlasIdeServerWindow.THooks);
+  mHooks.StatusJson :=
+    function: string
+    begin
+      Result := '';
+      if StatusLines <> nil then
+        Result := StatusLines.StatusJson;
+    end;
+  mHooks.Running :=
+    function: Boolean
+    begin
+      Result := (Manager <> nil) and (Manager.ServerInfo.Phase = TAtlasServerPhase.Running);
+    end;
+  mHooks.Restarts :=
+    function: Integer
+    begin
+      Result := 0;
+      if Manager <> nil then
+        Result := Manager.ServerRestarts;
+    end;
+  mHooks.QueryNow :=
+    function(ADone: TProc): Boolean
+    begin
+      Result := (StatusLines <> nil) and StatusLines.QueryNow(ADone);
+    end;
+  mHooks.Rebuild :=
+    procedure
+    begin
+      if Manager = nil then
+        Exit;
+      Manager.ExecuteServerCommandAsync('atlas.server.rebuildIndex', 30000,
+        procedure(AAnswer: TJSONValue)
+        begin
+          if AAnswer = nil then
+            GuardWarning(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer))
+          else
+            GuardWarning(TAtlasStrings.Text(TAtlasTextId.MenuIndexRebuilding));
+        end);
+    end;
+  mHooks.Package := CreateServerPackage;
+  mHooks.OpenUnit :=
+    procedure(AUnit: TAtlasServerSlowUnit)
+    var
+      mActions: IOTAActionServices;
+    begin
+      // Ohne Pfad (ältere Antwort) oder gelöscht: nichts zu öffnen.
+      if (AUnit.FileName = '') or not FileExists(AUnit.FileName) then
+        Exit;
+      if Supports(BorlandIDEServices, IOTAActionServices, mActions) then
+        mActions.OpenFile(AUnit.FileName);
+    end;
+  mHooks.OpenRule :=
+    procedure(ARule: string)
+    begin
+      TAtlasOptionsRegistration.ShowRule(ARule);
+    end;
+  TAtlasIdeServerWindow.Install(mHooks);
+end;
+
 procedure RegisterStatusField;
 begin
   StatusLines := TAtlasIdeStatusLines.Create(TAtlasStatusRegistry.Default,
@@ -2316,7 +2413,14 @@ begin
     procedure(AText: string)
     begin
       GuardWarning(AText);
+    end,
+    // Klick auf die Zeile „Server“: Fenster „Atlas-Server“ (#1356), nur mit server.statusWindow.
+    ShowServerWindow,
+    function: Boolean
+    begin
+      Result := TAtlasIdeServerWindow.Enabled;
     end);
+  InstallServerWindow;
   StatusField := TAtlasStatusField.Create(TAtlasStatusRegistry.Default);
   StatusField.OnRefresh :=
     procedure
@@ -2407,6 +2511,7 @@ end;
 
 procedure UnregisterStatusField;
 begin
+  TAtlasIdeServerWindow.Release;
   TAtlasProblemsController.OnCounts := nil;
   if Manager <> nil then
     Manager.OnServerChanged := nil;
@@ -2654,6 +2759,7 @@ begin
       GuardWarning(AText);
     end);
   MainMenu.OnBugReport := CreateBugReport;
+  MainMenu.OnServerStatus := ShowServerWindow;
 end;
 
 /// <summary>Einrichtung mit Prüfliste (#625); Zustand des Servers über den Manager und das Statusfeld.</summary>
@@ -5700,6 +5806,7 @@ begin
       if StatusField <> nil then
         StatusField.RequestRefresh;
       TAtlasIdeResultsWindow.ApplyTheme;
+      TAtlasIdeServerWindow.ApplyTheme;
       if Welcome <> nil then
         Welcome.ThemeChanged;
       if DiagnosticMode <> nil then
@@ -5775,6 +5882,8 @@ begin
       TAtlasIdeUnitRelations.ApplySettings;
       // callHierarchy.diagram (#1122).
       TAtlasIdeResultsWindow.ApplySettings;
+      // server.statusWindow (#1356).
+      TAtlasIdeServerWindow.ApplySettings;
       // navigation.symbolPath (#1117): Kontextmenü „Weg von hier nach …“.
       TAtlasIdeEditorCommands.ApplySettings;
       // editor.breadcrumbs* (#590).

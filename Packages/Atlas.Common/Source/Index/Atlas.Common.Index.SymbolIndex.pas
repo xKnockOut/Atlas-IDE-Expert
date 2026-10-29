@@ -16,7 +16,9 @@
 // Speicherbudget (#185): Zeichenketten kommen in einen Pool. Übersteigt der
 // geschätzte Bedarf das Budget, werden zuerst die Verwendungen ausgelagert
 // (#492; sie bleiben im Cache auf der Platte), dann Bibliotheks-Units, danach
-// Projekt-Units kompakt gehalten (nur interface-Symbole).
+// Projekt-Units kompakt gehalten (nur interface-Symbole). MemoryParts teilt
+// die Schätzung für das Fenster „Atlas-Server“ (#1356) in Projekt, Bibliothek
+// und Verwendungen; die Anteile laufen beim Hinzufügen und Entfernen mit.
 //
 // Heißer Pfad (Code-Review P-13): Units liefert einen Schnappschuss, der bis zur nächsten Änderung gilt,
 // statt bei jedem Aufruf alle Units zu kopieren; UnavailableUnits nur die Units mit nicht geltenden
@@ -61,6 +63,9 @@ type
     FSymbolCount: Integer;
     FPool: TStringPool;
     FBytes: Int64;
+    // Anteile an FBytes (#1356): Verwendungen aller Units, Bibliotheks-Units ohne Verwendungen.
+    FUsageBytes: Int64;
+    FLibraryBytes: Int64;
     FBudget: Int64;
     FCompactCount: Integer;
     FOffloadedCount: Integer;
@@ -102,6 +107,7 @@ type
     function UnitCount: Integer;
     function SymbolCount: Integer;
     function MemoryBytes: Int64;
+    function MemoryParts: TIndexMemoryParts;
     function CompactCount: Integer;
     function OffloadedCount: Integer;
     procedure SetBudget(ABytes: Int64);
@@ -182,6 +188,9 @@ begin
     Exit;
   Dec(FSymbolCount, Length(Existing.Symbols));
   Dec(FBytes, TIndexMemory.UnitBytes(Existing));
+  Dec(FUsageBytes, TIndexMemory.UsageBytes(Existing));
+  if Existing.Library_ then
+    Dec(FLibraryBytes, TIndexMemory.UnitBytes(Existing) - TIndexMemory.UsageBytes(Existing));
   if Existing.Compact then
     Dec(FCompactCount);
   if Existing.UsagesOffloaded then
@@ -212,6 +221,9 @@ begin
   FUnitFiles.AddOrSetValue(UpperCase(AUnit.UnitName), AKey);
   Inc(FSymbolCount, Length(AUnit.Symbols));
   Inc(FBytes, TIndexMemory.UnitBytes(AUnit));
+  Inc(FUsageBytes, TIndexMemory.UsageBytes(AUnit));
+  if AUnit.Library_ then
+    Inc(FLibraryBytes, TIndexMemory.UnitBytes(AUnit) - TIndexMemory.UsageBytes(AUnit));
   if AUnit.Compact then
     Inc(FCompactCount);
   if AUnit.UsagesOffloaded then
@@ -559,6 +571,18 @@ begin
   FLock.Enter;
   try
     Result := FBytes;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+function TSymbolIndex.MemoryParts: TIndexMemoryParts;
+begin
+  FLock.Enter;
+  try
+    Result.UsageBytes := FUsageBytes;
+    Result.LibraryBytes := FLibraryBytes;
+    Result.ProjectBytes := FBytes - FUsageBytes - FLibraryBytes;
   finally
     FLock.Leave;
   end;
