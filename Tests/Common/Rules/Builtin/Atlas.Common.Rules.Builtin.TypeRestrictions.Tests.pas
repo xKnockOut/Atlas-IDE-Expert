@@ -694,12 +694,18 @@ begin
     'function TA.Rechnen: Integer;'#10'begin'#10'  Result := Quadrat(Grenze) + Ord(fBlau);'#10'end;'#10 +
     'function TA.Hinten: Integer;'#10'  inline;'#10'var'#10'  mFarbe: TFarbe;'#10'begin'#10 +
     '  mFarbe := fRot;'#10'  Result := Ord(mFarbe);'#10'end;'#10 +
-    'function Frei: Integer;'#10'begin'#10'  Result := Quadrat(Grenze);'#10'end;'#10))));
-  // Gegentest: Variable und Typ des implementation-Teils bleiben E2441 (TG1, TG2).
+    'function Frei: Integer;'#10'var'#10'  mFarbe: TFarbe;'#10'begin'#10'  mFarbe := fBlau;'#10 +
+    '  Result := Quadrat(Grenze) + Ord(mFarbe);'#10'end;'#10))));
+  // Gegentest: eine Variable des implementation-Teils bleibt E2441 (TG1); Typen übersetzt dcc (TR8).
   Assert.AreEqual('12: Die Inline-Routine Frei aus dem interface-Teil darf Zaehler aus dem implementation-Teil ' +
     'nicht verwenden (wie E2441).',
     Messages(RestrictionFindings(GenericUnit('  TLeer = class'#10'  end;'#10'function Frei: Integer; inline;'#10,
     'var'#10'  Zaehler: Integer;'#10'function Frei: Integer;'#10'begin'#10'  Result := Zaehler;'#10'end;'#10))));
+  // Gegentest: eine typisierte Konstante des implementation-Teils meldet dcc ebenfalls (TG4).
+  Assert.AreEqual('12: Die Inline-Routine Frei aus dem interface-Teil darf Start aus dem implementation-Teil ' +
+    'nicht verwenden (wie E2441).',
+    Messages(RestrictionFindings(GenericUnit('  TLeer = class'#10'  end;'#10'function Frei: Integer; inline;'#10,
+    'const'#10'  Start: Integer = 2;'#10'function Frei: Integer;'#10'begin'#10'  Result := Start;'#10'end;'#10))));
 end;
 
 procedure TTypeRestrictionViolatedTests.ThreadVars;

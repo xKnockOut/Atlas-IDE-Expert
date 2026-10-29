@@ -23,9 +23,7 @@
 //                        E2207), Properties, die ein Vorfahr-Interface schon
 //                        deklariert und hier ohne Typ nur neu aufführen (wie
 //                        E2206; mit Typ übersetzt dcc die Neudeklaration, so
-//                        in DUnitX, JCL und Spring4D, #1328), Accessoren, die nur im
-//                        Vorfahr-Interface stehen (wie E2370, nicht bei
-//                        generischen Interfaces, DUnitX), Klassen,
+//                        in DUnitX, JCL und Spring4D, #1328), Klassen,
 //                        Records und Aufzählungen als Vorfahr eines Interfaces
 //                        oder in der Interface-Liste einer Klasse (wie E2205)
 //                        und doppelte Einträge dieser Liste (wie E2208).
@@ -797,36 +795,18 @@ var
     end;
   end;
 
-  /// <summary>read- und write-Accessor der Property.</summary>
-  function Accessors(AProperty: TSyntaxNode): TArray<Integer>;
-  var
-    Index, Argument: Integer;
-  begin
-    Result := nil;
-    for Index in Scan.ClauseWords(AProperty) do
-      if MatchText(Scan.Tokens[Index].Text, ['read', 'write']) then
-      begin
-        Argument := Scan.ClauseArgument(AProperty, Index);
-        if (Argument < Scan.ClauseEnd(AProperty)) and
-          (Scan.Tokens[Argument].Kind = TPascalTokenKind.Identifier) then
-          Result := Result + [Argument];
-      end;
-  end;
-
+  // Geerbte Accessoren (property X read GetX mit GetX aus dem Vorfahr-Interface) übersetzt dcc, generisch wie
+  // nicht generisch (DUnitX IList<T>; ID1, ID2, ID3; dcc-Lauf vom 29.10.2026, #1328): Die frühere Prüfung auf
+  // E2370 ist entfallen.
   procedure CheckInheritedMembers(AType: TSyntaxNode; const AName: string);
   var
     Own, Ancestor, Member: TResolvedSymbol;
-    Index, Accessor: Integer;
-    Methods: TArray<string>;
+    Index: Integer;
     Child: TSyntaxNode;
   begin
     if not Scan.Resolver.ResolveTypeFrom(Scan.OwnUnit, AName, Own) or not Own.Found or
       (Own.SymbolKind <> TIndexSymbolKind.InterfaceType) or not Scan.Resolver.AncestorOf(Own, Ancestor) then
       Exit;
-    Methods := nil;
-    for Index := 0 to AType.ChildCount - 1 do
-      if AType[Index].Kind = TSyntaxKind.RoutineHeader then
-        Methods := Methods + [AType[Index].Name];
     for Index := 0 to AType.ChildCount - 1 do
     begin
       Child := AType[Index];
@@ -837,19 +817,6 @@ var
         AReport.Add(Scan.PropertyRange(Child), Format('Die Property %s ist schon in %s ' +
           'deklariert; Interfaces dürfen Properties nicht ohne Typ neu aufführen (wie E2206).', [Child.Name,
           Member.Container]), TRuleConfidence.High);
-      for Accessor in Accessors(Child) do
-      begin
-        // Geerbte Accessoren in generischen Interfaces übersetzt dcc (DUnitX IList<T> mit GetCapacity aus
-        // IReadOnlyList<T>; ID2, #1328). Für nicht generische (ID1, IG2) steht der dcc-Lauf aus.
-        if MatchText(Scan.Tokens[Accessor].Text, Methods) or (Own.TypeParams <> '') or
-          (Ancestor.TypeParams <> '') then
-          Continue;
-        if Scan.Resolver.DeclaredMember(Ancestor, Scan.Tokens[Accessor].Text, Member) and
-          (Member.SymbolKind = TIndexSymbolKind.Method) then
-          AReport.Add(Scan.TokenRange(Accessor), Format('%s stammt aus %s; Accessoren einer Interface-Property ' +
-            'müssen im Interface selbst stehen (wie E2370).', [Scan.Tokens[Accessor].Text, Member.Container]),
-            TRuleConfidence.High);
-      end;
     end;
   end;
 
