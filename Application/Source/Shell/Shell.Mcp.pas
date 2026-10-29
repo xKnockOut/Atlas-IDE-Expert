@@ -1500,6 +1500,9 @@ begin
           Request.Files := AllFiles();
         if Length(Request.Files) = 0 then
           raise EMcpToolError.Create('Kein Projekt geladen');
+        // Derselbe zuletzt berechnete Stand wie im LSP-Prozess (#1367).
+        Request.PreviousFile := TIndexCacheDirectory.ArchitectureFileFor(TIndexCacheDirectory.DefaultRoot,
+          Request.ScopeKey);
         Overview := Architecture.Overview(Request);
         if ACompareWith <> '' then
         begin

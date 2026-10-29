@@ -731,6 +731,9 @@ type
     /// <summary>Übergreifende Fundament-Units (#1365): "group" (mitgruppieren), "attach" (anhängen) oder
     /// "separate" (eigenes Teilsystem „Fundament“, Vorgabe).</summary>
     ArchitectureGroupingFoundations: string;
+    /// <summary>Farben und Namen der Teilsysteme an den vorigen Stand angleichen (#1367): architecture.baseline,
+    /// sonst den zuletzt berechneten (architecture.grouping.keepPrevious, Vorgabe an).</summary>
+    ArchitectureGroupingKeepPrevious: Boolean;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -1276,6 +1279,7 @@ begin
   Result.ArchitectureGroupingMaxShare := 0.25;
   Result.ArchitectureGroupingMinCohesion := 0.3;
   Result.ArchitectureGroupingFoundations := 'separate';
+  Result.ArchitectureGroupingKeepPrevious := True;
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';

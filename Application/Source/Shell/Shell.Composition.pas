@@ -5701,6 +5701,9 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+  // Zuletzt berechneter Stand je Projekt bzw. Projektgruppe für die Angleichung (#1367).
+  ARequest.PreviousFile := TIndexCacheDirectory.ArchitectureFileFor(TIndexCacheDirectory.DefaultRoot,
+    ARequest.ScopeKey);
 end;
 
 function TServerComposition.UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;

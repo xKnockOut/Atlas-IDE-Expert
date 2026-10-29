@@ -31,6 +31,9 @@
 // - Zuordnung (#1368): je Unit "assignment" (Kanten je Teilsystem) und
 //   "close" (knapp, fehlende Kanten), dazu "explanation"; fehlen mit
 //   architecture.explainAssignment = false, dann HasAssignment False.
+// - Angleichung (#1367): "aligned" (Herkunft, Zeitpunkt, behaltene
+//   Teilsysteme) für die Statuszeile; RenameSubsystems in den Optionen
+//   schickt "renameSubsystems" (einmal ohne Angleichung rechnen).
 // - TAtlasArchitectureView rechnet die Karte zwischen Lage (Koordinaten des
 //   Servers) und Bildpunkten um: Einpassen, Zoomen um einen Punkt,
 //   Verschieben, Treffer einer Unit.
@@ -227,6 +230,11 @@ type
     MinCohesion: Double;
     /// <summary>"group", "attach" oder "separate".</summary>
     Foundations: string;
+    /// <summary>Angleichung an einen vorigen Stand (#1367, "aligned"): "baseline", "last" oder '' ohne; Zeitpunkt
+    /// des Stands wie "created" und Zahl der Teilsysteme, die Farbe und Namen behielten.</summary>
+    AlignedSource: string;
+    AlignedAt: string;
+    AlignedKept: Integer;
     Units: TArray<TAtlasArchUnit>;
     Edges: TArray<TAtlasArchEdge>;
     /// <summary>Zentrale Units, die zentralste zuerst.</summary>
@@ -284,6 +292,8 @@ type
     function HasFoundation: Boolean;
     /// <summary>Der Server hat die Zuordnung mitgeschickt (architecture.explainAssignment, #1368).</summary>
     function HasAssignment: Boolean;
+    /// <summary>Zeitpunkt der Angleichung (#1367) als „2026-10-29 14:23“; '' ohne.</summary>
+    function AlignedText: string;
     /// <summary>Zeile des eigenen bzw. des stärksten anderen zählenden Teilsystems in Units[AUnit].Assignment;
     /// -1 ohne.</summary>
     function OwnRow(AUnit: Integer): Integer;
@@ -304,6 +314,8 @@ type
     Compare: Boolean;
     /// <summary>Feinheit γ für diesen Aufruf (#1366); 0 = architecture.grouping.resolution des Servers.</summary>
     Resolution: Double;
+    /// <summary>Einmal ohne Angleichung an den vorigen Stand rechnen (#1367, „Teilsysteme neu benennen“).</summary>
+    RenameSubsystems: Boolean;
     /// <summary>Umfang und Bibliotheks-Units, Vergleich mit architecture.baseline, Feinheit des Servers.</summary>
     class function Create(const AScope: string; AIncludeLibrary: Boolean): TAtlasArchitectureOptions; static;
   end;
@@ -866,6 +878,13 @@ begin
       if TextOf(Item, 'foundations') <> '' then
         AModel.Foundations := TextOf(Item, 'foundations');
     end;
+    if Data.GetValue('aligned') is TJSONObject then
+    begin
+      Item := TJSONObject(Data.GetValue('aligned'));
+      AModel.AlignedSource := TextOf(Item, 'source');
+      AModel.AlignedAt := TextOf(Item, 'at');
+      AModel.AlignedKept := IntOf(Item, 'kept', 0);
+    end;
     if Data.GetValue('summary') is TJSONObject then
     begin
       Summary := TJSONObject(Data.GetValue('summary'));
@@ -1301,6 +1320,13 @@ begin
       Exit(True);
 end;
 
+function TAtlasArchitectureModel.AlignedText: string;
+begin
+  Result := '';
+  if AlignedSource <> '' then
+    Result := Copy(StringReplace(AlignedAt, 'T', ' ', []), 1, 16);
+end;
+
 function TAtlasArchitectureModel.HasAssignment: Boolean;
 var
   mUnit: TAtlasArchUnit;
@@ -1375,6 +1401,7 @@ begin
   Result.CompareWith := '';
   Result.Compare := True;
   Result.Resolution := 0;
+  Result.RenameSubsystems := False;
 end;
 
 { TAtlasArchResolution }
@@ -1455,6 +1482,8 @@ begin
     Result.AddPair('compare', TJSONBool.Create(False));
   if AOptions.Resolution > 0 then
     Result.AddPair('resolution', TJSONNumber.Create(TAtlasArchResolution.Clamp(AOptions.Resolution)));
+  if AOptions.RenameSubsystems then
+    Result.AddPair('renameSubsystems', TJSONBool.Create(True));
 end;
 
 function ComparedOptions(const AScope: string; AIncludeLibrary: Boolean; const ACompareWith: string;
