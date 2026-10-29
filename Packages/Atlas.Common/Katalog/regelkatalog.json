@@ -3515,6 +3515,34 @@
       "level": "T"
     },
     {
+      "id": "string-conversion",
+      "name": "Conversion between Unicode and ANSI strings",
+      "category": "bug",
+      "severity": "warning",
+      "group": "compiler",
+      "description": "Implicit and explicit conversions between string, UnicodeString or WideString on one side and AnsiString, RawByteString or UTF8String on the other, like the compiler warnings: implicit to string (like W1057) or to AnsiString with possible data loss (like W1058) in assignments, inline variables with a type and arguments for value and const parameters of routines without overloads; explicit casts string(A) (like W1059) and AnsiString(S) (like W1060); a string constant with characters the ANSI code page does not know assigned to an AnsiString (like W1058 and W1062); a WideChar in a set expression of character literals such as C in ['0'..'9'] (like W1050); changing a character of a string directly (S[1] := 'x', like W1068). Like dcc, W1059, W1060 and W1068 are only reported after {$WARN EXPLICIT_STRING_CAST ON}, {$WARN EXPLICIT_STRING_CAST_LOSS ON} or {$WARN IMMUTABLE_STRINGS ON}; {$WARN ... OFF} and {$WARNINGS OFF} silence the rule from their position, {$WARN ... ERROR} reports an error. Only reported when both types are known for sure (variables, fields, properties, function results and typed constants of the built-in string types from System, also via a plain alias) and their declarations are always compiled with the statement. Silent: concatenations, casts as source, conversions between two ANSI types (AnsiString, RawByteString, UTF8String; dcc converts by code page), own string types such as type AnsiString(28591), {$H-} and Delphi before 2009. W1062 depends on the ANSI code page of the compiling machine (option ansiCodePage, default 1252; 0 turns this check off); only characters Windows does not map to a best-fit replacement are reported: Hebrew to Thai, Hangul, kana and CJK, symbols and dingbats U+2600-U+27BF and characters outside the BMP (emoji). Project options of the .dproj (DCC_IMPLICIT_STRING_CAST = false, true or error and the like) count as with dcc. Quick fixes: convert explicitly (string(A), AnsiString(S)); use CharInSet and add System.SysUtils to uses.",
+      "bad": "function IstZiffer(const Zeichen: Char): Boolean;\nbegin\n  Result := Zeichen in ['0'..'9'];\nend;",
+      "good": "function IstZiffer(const Zeichen: Char): Boolean;\nbegin\n  Result := CharInSet(Zeichen, ['0'..'9']);\nend;",
+      "compilerCodes": [
+        "W1050",
+        "W1057",
+        "W1058",
+        "W1059",
+        "W1060",
+        "W1062",
+        "W1068"
+      ],
+      "options": [
+        {
+          "name": "ansiCodePage",
+          "type": "integer",
+          "default": 1252,
+          "description": "ANSI code page of the machine that compiles; characters it surely lacks are reported like W1062 when assigned to an AnsiString. Only 1252 is known; 0 or another value turns this check off."
+        }
+      ],
+      "level": "T"
+    },
+    {
       "id": "unsafe-code",
       "name": "Unsafe code",
       "category": "code-smell",
