@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..2873] of string = (
+  Lines: array[0..2897] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2629,6 +2629,31 @@ const
     '      "x-page": "Projekt",',
     '      "x-control": "Textfeld, Dateiauswahl",',
     '      "x-issue": "#274"',
+    '    },',
+    '    "tests": {',
+    '      "type": "object",',
+    '      "description": "Betroffene Tests einer Änderung: aus dem Unterschied zur Basis (Git oder SVN) die geänderten Routinen, Typen und Konstanten bestimmen, ihre Auswirkungen verfolgen und nur die DUn' +
+      'itX-Tests nennen, die sie erreichen (Kommandozeile --affected-tests, MCP-Werkzeug get_affected_tests, Plugin-Befehl „Betroffene Tests ausführen“).",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "affected": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Betroffene Tests ermitteln; aus: Plugin-Befehl und MCP-Werkzeug fehlen, --affected-tests endet mit Exitcode 3."',
+    '        },',
+    '        "affectedDepth": {',
+    '          "type": "integer",',
+    '          "default": 3,',
+    '          "minimum": 1,',
+    '          "maximum": 5,',
+    '          "description": "Ebenen der Auswirkungsanalyse von der Änderung bis zum Test: 1 = nur Tests, die das geänderte Symbol direkt verwenden."',
+    '        }',
+    '      },',
+    '      "x-scope": "global",',
+    '      "x-area": "build",',
+    '      "x-page": "Compiler",',
+    '      "x-control": "Kontrollkästchen, Zahlenfeld",',
+    '      "x-issue": "#1353"',
     '    },',
     '    "minConfidence": {',
     '      "type": "string",',

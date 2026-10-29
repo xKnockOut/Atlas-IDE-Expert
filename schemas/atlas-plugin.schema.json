@@ -1000,6 +1000,42 @@
       "x-captionEn": "Tests after the build",
       "x-issue": "#69"
     },
+    "TestsAffected": {
+      "description": "Befehl „Betroffene Tests ausführen“ im Menü Atlas und in der Befehlspalette: aus dem Unterschied zur Basis (Git oder SVN) die geänderten Routinen bestimmen und nur die DUnitX-Tests ausführen, die sie erreichen. Aus = Befehl fehlt, das MCP-Werkzeug get_affected_tests ebenso.",
+      "type": "boolean",
+      "default": true,
+      "x-key": "tests.affected",
+      "x-area": "build",
+      "x-feature": "Build",
+      "x-page": "Compiler",
+      "x-parent": "tests.run",
+      "x-quickToggle": true,
+      "x-caption": "Betroffene Tests ausführen",
+      "x-captionEn": "Run affected tests",
+      "x-issue": "#1353"
+    },
+    "TestsAffectedDepth": {
+      "description": "Ebenen der Auswirkungsanalyse von der Änderung bis zum Test (1 bis 5); 1 = nur Tests, die das geänderte Symbol direkt verwenden.",
+      "type": "integer",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 5,
+      "x-key": "tests.affectedDepth",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.affected",
+      "x-issue": "#1353"
+    },
+    "TestsAffectedBeforeCommit": {
+      "description": "Vor jedem git commit die betroffenen Tests anbieten: Atlas legt einen pre-commit-Hook an, der sie nennt und auf Wunsch ausführt (nur Git; ein fremder Hook bleibt unberührt).",
+      "type": "boolean",
+      "default": false,
+      "x-key": "tests.affectedBeforeCommit",
+      "x-area": "build",
+      "x-page": "Compiler",
+      "x-parent": "tests.affected",
+      "x-issue": "#1353"
+    },
     "TestDebug": {
       "type": "boolean",
       "default": true,
