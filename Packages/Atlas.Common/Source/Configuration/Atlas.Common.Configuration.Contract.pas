@@ -224,6 +224,24 @@ type
   TDfmFixMode = (Prompt, Auto, None);
   {$SCOPEDENUMS OFF}
 
+  /// <summary>Gespeicherte Code-Abfrage aus queries (#1351): Name, Abfrage, Beschreibung und, mit FailIfAny, die
+  /// Regel query:&lt;Name&gt; mit Schweregrad und Meldung. In Message stehen Felder der Abfrage in geschweiften
+  /// Klammern ({name}, {methods}).</summary>
+  TSavedQuery = record
+    Name: string;
+    Query: string;
+    Description: string;
+    FailIfAny: Boolean;
+    Severity: TRuleSeverity;
+    /// <summary>Meldung je Treffer; '' = "{name}: Treffer der Abfrage {query}".</summary>
+    Message: string;
+    /// <summary>Stelle des Eintrags in atlas.json für Meldungen (#1351).</summary>
+    Range: TTextRange;
+    /// <summary>Stelle des Abfragetexts in atlas.json ab seinem ersten Zeichen ohne Leerraum: Spalte 1 der Abfrage
+    /// liegt bei QueryRange.StartPos.</summary>
+    QueryRange: TTextRange;
+  end;
+
   /// <summary>Eigenschaftsregel aus dfmPropertyRules (#309).</summary>
   TDfmPropertyRule = record
     ClassName: string;
@@ -689,6 +707,11 @@ type
     /// (newCycle, newCrossLink, subsystemChange, centralGrowth; Vorgabe newCycle).</summary>
     ArchitectureBaseline: string;
     ArchitectureFailOn: TArray<string>;
+    /// <summary>Code-Abfragen (#1351, query.enabled): Fenster „Atlas-Abfrage“, MCP query_code, --query und die
+    /// Regeln aus Queries; aus = nichts davon.</summary>
+    QueryEnabled: Boolean;
+    /// <summary>Gespeicherte Abfragen (queries, #1351), optional als Regel query:&lt;Name&gt;.</summary>
+    Queries: TArray<TSavedQuery>;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -1207,6 +1230,8 @@ begin
   Result.ArchitectureExclude := nil;
   Result.ArchitectureBaseline := '';
   Result.ArchitectureFailOn := ['newCycle'];
+  Result.QueryEnabled := True;
+  Result.Queries := nil;
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';

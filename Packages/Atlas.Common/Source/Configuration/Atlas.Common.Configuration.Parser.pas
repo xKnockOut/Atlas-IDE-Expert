@@ -117,6 +117,9 @@ type
     procedure ReadDiagnostics(ANode: TJsonNode);
     procedure ReadIndex(ANode: TJsonNode);
     procedure ReadArchitecture(ANode: TJsonNode);
+    procedure ReadQuery(ANode: TJsonNode);
+    procedure ReadQueries(ANode: TJsonNode);
+    function ReadSavedQuery(ANode: TJsonNode; out AQuery: TSavedQuery): Boolean;
     procedure ReadFormat(ANode: TJsonNode);
     procedure ReadTasks(ANode: TJsonNode);
     procedure ReadIssues(ANode: TJsonNode);
@@ -2111,6 +2114,122 @@ begin
   end;
 end;
 
+procedure TValidator.ReadQuery(ANode: TJsonNode);
+var
+  mIndex: Integer;
+  mKey: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"query" muss ein Objekt sein');
+    Exit;
+  end;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    mKey := ANode.Keys[mIndex];
+    if mKey = 'enabled' then
+      ExpectBoolean(ANode[mIndex], mKey, FSettings.QueryEnabled)
+    else
+      Report(ANode.KeyStarts[mIndex], ANode.KeyStarts[mIndex] + Length(mKey) + 2,
+        Format('Unbekannte Einstellung "query.%s"', [mKey]), False);
+  end;
+end;
+
+procedure TValidator.ReadQueries(ANode: TJsonNode);
+var
+  mIndex, mOther: Integer;
+  mQuery: TSavedQuery;
+  mDuplicate: Boolean;
+begin
+  if ANode.Kind <> TJsonKind.Array_ then
+  begin
+    ReportNode(ANode, '"queries" muss eine Liste von Abfragen sein');
+    Exit;
+  end;
+  FSettings.Queries := nil;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    if not ReadSavedQuery(ANode[mIndex], mQuery) then
+      Continue;
+    // Der Name ist die Kennung der Regel query:<name> und von --query @<name>: zweimal derselbe wäre mehrdeutig.
+    mDuplicate := False;
+    for mOther := 0 to High(FSettings.Queries) do
+      if SameText(FSettings.Queries[mOther].Name, mQuery.Name) then
+        mDuplicate := True;
+    if mDuplicate then
+      ReportNode(ANode[mIndex], Format('Abfrage "%s" ist doppelt; es gilt die erste', [mQuery.Name]))
+    else
+      FSettings.Queries := FSettings.Queries + [mQuery];
+  end;
+end;
+
+function TValidator.ReadSavedQuery(ANode: TJsonNode; out AQuery: TSavedQuery): Boolean;
+var
+  mIndex, mChar: Integer;
+  mKey, mText: string;
+  mValue: TJsonNode;
+begin
+  AQuery := Default(TSavedQuery);
+  AQuery.Severity := TRuleSeverity.Warning;
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, 'Eine gespeicherte Abfrage muss ein Objekt sein: { "name": …, "query": … }');
+    Exit(False);
+  end;
+  AQuery.Range := TTextRange.Create(PositionAt(ANode.Start), PositionAt(ANode.Start + 1));
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    mKey := ANode.Keys[mIndex];
+    mValue := ANode[mIndex];
+    if mKey = 'name' then
+    begin
+      if ExpectString(mValue, mKey, mText) then
+      begin
+        AQuery.Name := Trim(mText);
+        for mChar := 1 to Length(AQuery.Name) do
+          if not CharInSet(AQuery.Name[mChar], ['A'..'Z', 'a'..'z', '0'..'9', '-', '_', '.']) then
+          begin
+            ReportNode(mValue, 'Der Name einer Abfrage besteht aus Buchstaben, Ziffern, "-", "_" und "."');
+            AQuery.Name := '';
+            Break;
+          end;
+      end;
+    end
+    else if mKey = 'query' then
+    begin
+      if ExpectString(mValue, mKey, mText) then
+      begin
+        AQuery.Query := Trim(mText);
+        AQuery.QueryRange := TTextRange.Create(PositionAt(mValue.Start + 1 + Length(mText) - Length(TrimLeft(mText))),
+          PositionAt(mValue.Stop));
+      end;
+    end
+    else if mKey = 'description' then
+      ExpectString(mValue, mKey, AQuery.Description)
+    else if mKey = 'failIfAny' then
+      ExpectBoolean(mValue, mKey, AQuery.FailIfAny)
+    else if mKey = 'severity' then
+    begin
+      if ExpectString(mValue, mKey, mText) and (not TConfigurationParser.TryParseSeverity(mText, AQuery.Severity) or
+        (AQuery.Severity = TRuleSeverity.Default)) then
+      begin
+        ReportNode(mValue, Format('Unbekannter Schweregrad "%s"; erlaubt: off, hint, info, warning, error', [mText]));
+        AQuery.Severity := TRuleSeverity.Warning;
+      end;
+    end
+    else if mKey = 'message' then
+      ExpectString(mValue, mKey, AQuery.Message)
+    else
+      Report(ANode.KeyStarts[mIndex], ANode.KeyStarts[mIndex] + Length(mKey) + 2,
+        Format('Unbekannte Angabe "%s" in einer gespeicherten Abfrage', [mKey]), False);
+  end;
+  if AQuery.Name = '' then
+    ReportNode(ANode, 'Eine gespeicherte Abfrage braucht "name"')
+  else if AQuery.Query = '' then
+    ReportNode(ANode, Format('Abfrage "%s" braucht "query"', [AQuery.Name]));
+  Result := (AQuery.Name <> '') and (AQuery.Query <> '');
+end;
+
 procedure TValidator.ReadFormat(ANode: TJsonNode);
 var
   Index, Size: Integer;
@@ -2857,6 +2976,10 @@ begin
         ReadIndex(Value)
       else if Key = 'architecture' then
         ReadArchitecture(Value)
+      else if Key = 'query' then
+        ReadQuery(Value)
+      else if Key = 'queries' then
+        ReadQueries(Value)
       else if Key = 'usesCommand' then
         ExpectBoolean(Value, Key, FSettings.UsesCommand)
       else if Key = 'completeBlocks' then
@@ -3256,6 +3379,10 @@ begin
       Result.ArchitectureBaseline := FileSettings.ArchitectureBaseline;
       Result.ArchitectureFailOn := FileSettings.ArchitectureFailOn;
     end
+    else if Key = 'query' then
+      Result.QueryEnabled := FileSettings.QueryEnabled
+    else if Key = 'queries' then
+      Result.Queries := FileSettings.Queries
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand
     else if Key = 'completeBlocks' then
