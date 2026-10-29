@@ -47,6 +47,11 @@
 // --units, --changed, --diff, --changed-lines (nur Treffer in geänderten Zeilen),
 // --baseline (deren Treffer bleiben) und --profile. Die Zusammenfassung (Regeln,
 // Dateien, Korrekturen je Regel, übersprungene Treffer) steht auf stderr.
+//
+// Mit --timings (#1356) misst der Lauf die Prüfung je Unit und, über die
+// Messung der Regel-Engine, je Regel (TCheckProfiler) und schreibt danach
+// das Zeitprofil mit Indexzeit und Speicher als Markdown bzw. JSON in die
+// Datei oder ohne Datei auf stderr. stdout und --output bleiben unverändert.
 // Exit-Code: 1, wenn ein Treffer --fail-on erreicht (Standard error: mindestens
 // ein Fehler; Baseline-Treffer zählen nie), sonst 0; 3 Aufruf- oder Lesefehler.
 // Mit --fix zählen die Treffer, die nach der Korrektur bleiben.
@@ -89,6 +94,7 @@ uses
   System.Classes,
   System.IOUtils,
   System.Diagnostics,
+  System.JSON,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
@@ -138,6 +144,8 @@ uses
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
+  Atlas.Common.Diagnostics.CheckProfile,
+  Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Rules.FormatOutput,
   Atlas.Common.Lsp.Formatting,
@@ -476,13 +484,47 @@ begin
   end;
 end;
 
+/// <summary>--timings (#1356): Zeitprofil in die Datei (Markdown, mit .json als JSON) oder auf stderr.</summary>
+procedure WriteTimings(const AOptions: TCommandLineOptions; const ATimings: TCheckTimings);
+var
+  mJson: TJSONObject;
+  mText: string;
+  mEncoding: TEncoding;
+begin
+  if TCheckTimings.IsJsonFile(AOptions.TimingsFile) then
+  begin
+    mJson := ATimings.ToJson;
+    try
+      mText := mJson.Format(2);
+    finally
+      mJson.Free;
+    end;
+  end
+  else
+    mText := ATimings.ToMarkdown;
+  if AOptions.TimingsFile = '' then
+  begin
+    WriteError(mText);
+    Exit;
+  end;
+  ForceDirectories(ExtractFileDir(TPath.GetFullPath(AOptions.TimingsFile)));
+  mEncoding := TUTF8Encoding.Create(False);
+  try
+    TFile.WriteAllText(AOptions.TimingsFile, mText, mEncoding);
+  finally
+    mEncoding.Free;
+  end;
+  WriteError(Format('Zeitprofil geschrieben: %s', [AOptions.TimingsFile]));
+end;
+
 const
   /// <summary>Höchstens so lange auf den Index warten; danach mit dem bis dahin aufgebauten prüfen.</summary>
   IndexTimeoutMs = 30 * 60 * 1000;
 
 /// <summary>Arbeitsbereiche mit Symbolindex für --check (#1112), wie im MCP-Modus; wartet auf den Index.
 /// </summary>
-function LoadIndex(const AOptions: TCommandLineOptions; const AConfigRoot: string): TShellWorkspaceGroup;
+function LoadIndex(const AOptions: TCommandLineOptions; const AConfigRoot: string;
+  var ATimings: TCheckTimings): TShellWorkspaceGroup;
 var
   LoggerImpl: TLogger;
   Logger: ILogger;
@@ -531,6 +573,12 @@ begin
       // Anzeige für Menschen auf stderr: Dezimaltrenner des Gebietsschemas.
       WriteError(Format('Symbolindex: %d Units in %.1f s', [Index.UnitCount, Watch.ElapsedMilliseconds / 1000],
         FormatSettings));
+    // Zeitprofil (#1356): Aufbau und Speicher des Index.
+    ATimings.IndexMs := Watch.ElapsedMilliseconds;
+    ATimings.IndexUnits := Index.UnitCount;
+    ATimings.ProjectBytes := Index.MemoryParts.ProjectBytes;
+    ATimings.LibraryBytes := Index.MemoryParts.LibraryBytes;
+    ATimings.UsageBytes := Index.MemoryParts.UsageBytes;
   except
     Result.Free;
     raise;
@@ -892,6 +940,10 @@ var
   Project: TCheckProject;
   CheckSources: TCheckSourceFunc;
   Group: TShellWorkspaceGroup;
+  mTimings: TCheckTimings;
+  mProfiler: TCheckProfiler;
+  mRunWatch, mUnitWatch: TStopwatch;
+  mPrevious: TCheckProfiler;
 begin
   if AOptions.FixRules <> nil then
     Exit(Fix(AOptions));
@@ -986,12 +1038,21 @@ begin
     Todos := nil;
     Git := nil;
     Group := nil;
+    mTimings := Default(TCheckTimings);
+    mTimings.IndexMs := -1;
+    mProfiler := nil;
     Stats := TSuppressionStats.Create;
     CheckedPaths := TList<string>.Create;
     try
       // Metriken und TODOs brauchen keinen Index.
       if not (AOptions.NoIndex or AOptions.Metrics or AOptions.Todos) then
-        Group := LoadIndex(AOptions, ConfigRoot);
+        Group := LoadIndex(AOptions, ConfigRoot, mTimings);
+      if AOptions.Timings then
+      begin
+        mProfiler := TCheckProfiler.Create;
+        mProfiler.BeginRun(Now);
+      end;
+      mRunWatch := TStopwatch.StartNew;
       Candidates := CollectFiles(AOptions.CheckTarget, Settings, Root, CheckSources);
       Packages := ReadPackages(Candidates);
       Programs := ReadPrograms(Candidates);
@@ -1035,8 +1096,18 @@ begin
           Continue;
         end;
         Project := CheckProjectOf(FileName, Packages, Programs, Group);
-        Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, Project, CheckSources(FileName),
-          Scopes);
+        // Zeitprofil (#1356): Die Engine meldet ihre Regelzeiten an den angehängten Profiler.
+        mPrevious := TCheckProfiler.Attach(mProfiler);
+        mUnitWatch := TStopwatch.StartNew;
+        try
+          Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, Project, CheckSources(FileName),
+            Scopes);
+        finally
+          TCheckProfiler.Attach(mPrevious);
+          if mProfiler <> nil then
+            mProfiler.AddUnit(FileName, TCheckProfiler.TicksToMicroseconds(mUnitWatch.ElapsedTicks,
+              TStopwatch.Frequency));
+        end;
         if AOptions.SuppressionStats then
           Stats.Add(Text, Findings);
         if AOptions.UpdateBaseline then
@@ -1118,7 +1189,15 @@ begin
       else
         Output := TFindingsOutput.Render(Files, AOptions.CheckFormat, Descriptors,
           SourceRootOf(AOptions, ConfigRoot));
+      if mProfiler <> nil then
+      begin
+        mProfiler.FinishRun(mRunWatch.ElapsedMilliseconds);
+        mTimings.Profile := mProfiler.Snapshot(TCheckRunProfile.cTop);
+        mTimings.TotalBytes := TShutdownLeaks.AllocatedBytes;
+        WriteTimings(AOptions, mTimings);
+      end;
     finally
+      mProfiler.Free;
       if Group <> nil then
         Group.Stop;
       Group.Free;
@@ -1204,6 +1283,7 @@ var
   mRemaining: TArray<TCheckedFile>;
   mChecked: TCheckedFile;
   mRemainingCheck: TBulkFixCheck;
+  mTimings: TCheckTimings;
 begin
   for mWarning in AOptions.Warnings do
     WriteError(mWarning);
@@ -1255,8 +1335,10 @@ begin
     mFormats := TDictionary<string, TFileFormat>.Create;
     mRelative := TDictionary<string, string>.Create;
     try
+      // Die Sammelkorrektur misst nicht (--timings gilt nur für die Prüfung).
+      mTimings := Default(TCheckTimings);
       if not AOptions.NoIndex then
-        mGroup := LoadIndex(AOptions, mConfigRoot);
+        mGroup := LoadIndex(AOptions, mConfigRoot, mTimings);
       mCandidates := CollectFiles(AOptions.CheckTarget, mSettings, mRoot, mSources);
       mPackages := ReadPackages(mCandidates);
       mPrograms := ReadPrograms(mCandidates);
