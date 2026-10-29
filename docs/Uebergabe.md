@@ -31,6 +31,13 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Träge IDE mit offenem Fenster „Atlas-Prüfung“ (29.10.2026, Branch `claude/project-thread-rt0wy5`)
+- **Befund:** Delphi 12 mit Prep-v1.2.0 dauerhaft zäh (Tippen, Scrollen, Menüs), bds.exe 8 % = ein voller Kern. Hänger-Wächter in `atlas.log`: 198 Hänger in gut 10 Minuten, 142 mit Atlas, davon fast alle in `Problems.Service.Refresh` (Takt 250 ms) → `TAtlasFindings.FromStore` → `DiskLine`, dazu `TAtlasFindingsView.Counts`/`Rebuild`.
+- **Ursache:** Jede neue Version des Problemspeichers (also jede Datei, die der Server bei der Projektprüfung liefert) baute alle Befunde neu: je Zeile eines Befunds in ungeöffneten Dateien `TFile.Exists` + `GetLastWriteTime`, Arrays per `Result + [x]` quadratisch, drei `Rebuild` der Ansicht je Takt (Filter, Befunde, offene Dateien). `Counts` lief in jedem Takt über alle Befunde (`AnsiLowerCase` je Befund), auch ohne Änderung.
+- **Behebung:** `TAtlasProblemStore.Stamp` je Datei (fortlaufend über alle Speicher); `TAtlasFindingsCache` baut nur Dateien mit neuem Stand und meldet, ob sich die gezeigte Auswahl geändert hat; Platte einmal je Datei (`TFunc<string, TArray<string>>`); `BeginUpdate`/`EndUpdate` in der Ansicht und `TAtlasProblemsFrame.SetFindings` mit offenen Dateien (ein Neuaufbau); `Counts` gemerkt bis zum nächsten `Rebuild`; Zeilen und Stufen linear.
+- **Stand:** Draft-PR, mit FPC getestet (Findings 44, Problems 29 Tests grün), **mit Delphi nicht gebaut**. Handtests AP29–AP31.
+- **Nebenbefund:** Das Server-Diagnose-Log zeigt bei jedem Start „index cache rejected“ für alle Projekte (Index wird jedes Mal neu aufgebaut). Ursache noch nicht untersucht.
+
 ## Delphi 12: E2010 bei gleich aufgebauten Methodenreferenztypen (29.10.2026, PR 1348)
 - Delphi 12 meldete `Atlas.Common.Lsp.MethodWithoutSelf.pas(81): E2010 Inkompatible Typen: 'TMethodInFormFunc' und 'TPromoteInFormFunc'`; Delphi 13 und FPC übersetzen das.
 - Ursache: zwei getrennt deklarierte, gleich aufgebaute `reference to`-Typen. `TMethodLookup.InForm` nutzt jetzt `TPromoteInFormFunc`, `TMethodInFormFunc` entfällt. Falle in `CLAUDE.md`.

@@ -4485,6 +4485,9 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Bef
 | AP28 | Wie AP27, in einer Option einen ungültigen Wert tippen und wieder korrigieren (#1296) | Rote Meldung direkt unter den Optionen, verschwindet wieder; nichts überlappt |
 | AP25 | *Tools › Optionen › Atlas › Prüfregeln* | Keine Regeltabelle; Hinweis auf atlas.json und settings.json, „Projekt-Prüfregeln bearbeiten …“ und „Globale Prüfregeln bearbeiten …“ öffnen die Dialoge; Knoten „Profile und Baseline“: Baseline-Stand, „Aktualisieren“ und „Löschen“ arbeiten |
 | AP26 | Oberfläche auf Englisch | Fenster, Tooltip und Seite englisch, Katalogtexte englisch |
+| AP29 | Großes Projekt (z. B. Atlas.groupproj), Fenster „Atlas-Prüfung“ offen, Bereich „Projektgruppe“, Projektprüfung läuft; tippen, scrollen, Menüs öffnen | IDE bleibt flüssig; `atlas.log` zeigt keine „Hänger“-Blöcke mit `Problems.Service`; bds.exe im Leerlauf ohne Dauerlast eines Kerns |
+| AP30 | Wie AP29, Datei ändern, die nicht im Editor offen ist (außerhalb der IDE speichern) | Spalte „Zeile“ zeigt nach der neuen Prüfung den neuen Zeilentext |
+| AP31 | Wie AP29, Unit öffnen und schließen, Bereich wechseln, Filtertext tippen | Stufen (aktive/geöffnete Units), Zähler an den Umschaltern und Statuszeile stimmen sofort |
 
 ## Atlas-Prüfung: offene Units zuerst (#1108)
 
