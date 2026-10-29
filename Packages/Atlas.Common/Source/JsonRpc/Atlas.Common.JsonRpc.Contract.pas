@@ -124,6 +124,11 @@ type
   /// </summary>
   TJsonRpcGuard = reference to procedure(const AMethod: string; AIsRequest: Boolean);
 
+  /// <summary>Wird vor jeder Anfrage (nicht Benachrichtigung) mit ihren Parametern aufgerufen, nach dem Guard.
+  /// Löst die Prüfung EJsonRpcError aus, wird die Anfrage mit diesem Fehler beantwortet, ohne Handler (#1355:
+  /// übersprungen nach Absturz).</summary>
+  TJsonRpcRequestGuard = reference to procedure(const AMethod: string; const AParams: TJSONValue);
+
   /// <summary>Unerwarteter Fehler eines Anfrage-Handlers, mit Methode und Parametern der Anfrage.</summary>
   TJsonRpcRequestFailedEvent = reference to procedure(const AMethod: string; const AParams: TJSONValue;
     const AError: Exception);

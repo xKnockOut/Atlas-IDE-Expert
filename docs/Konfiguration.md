@@ -42,6 +42,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `index` | gemischt, siehe unten | object | – |  | Umfang des Symbolindex. Standard: alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und alle Units der Bibliotheks- und Suchpfade der Delphi-Installation, auch wenn keine Unit sie einbindet. Reihenfolge: aktives Projekt, übrige Projekte, Suchpfade, Bibliothek; alles im Hintergrund, die Bibliothek aus dem gemeinsamen Cache. |
 | `architecture` | gemischt, siehe unten | object | – |  | Architekturübersicht aus dem Index: zentrale Units, Teilsysteme, Zyklen und Querverbindungen im Fenster „Atlas-Architektur“, als Bericht (Markdown oder HTML, auch AtlasServer --architecture) und im MCP-Werkzeug get_architecture. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
+| `server` | global (settings.json) | object | – |  | Absturzfälle des Servers: Stürzt eine Anfrage mit einer unerwarteten Ausnahme ab oder bricht der Watchdog sie ab, sichert der Server einen nachstellbaren Fall unter %LOCALAPPDATA%\Atlas\crash (Anfrage, Schnappschuss der Datei, Einstellungen ohne Zugangsdaten, Aufrufstapel, wiederholen.cmd; höchstens 20). Kein Netzzugriff. |
 | `diagnostics` | gemischt, siehe unten | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
 | `highlight` | global (settings.json) | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
@@ -241,6 +242,13 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `architecture.exclude` | Projekt (atlas.json) | array<string> | `` | z. B. `["Tests/**","*.Tests"]` | Units, die nicht in die Auswertung eingehen: Glob-Muster auf den Unit-Namen oder den Pfad relativ zum Projekt (*, **, ?). |
 | `architecture.baseline` | Projekt (atlas.json) | string | `""` | z. B. `"architektur-main.json"` | Gespeicherter Architekturstand (JSON aus AtlasServer --architecture <Datei.json> oder „Stand speichern …“), Pfad relativ zum Projekt: Fenster, Bericht und get_architecture vergleichen automatisch damit. Leer = kein Vergleich. |
 | `architecture.failOn` | Projekt (atlas.json) | array<string> | `"newCycle"` |  | Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Units mit stark gewachsener Abhängigkeit. |
+
+## server
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `server.crashCases` | global (settings.json) | boolean | `true` |  | Absturzfälle sichern und im Plugin melden (Fall öffnen, Issue anlegen). AtlasServer --replay <anfrage.json> stellt einen Fall nach. |
+| `server.crashSkip` | global (settings.json) | boolean | `true` |  | Sicherheitsnetz, zusätzlich zur Behebung: Eine Anfrage, die an derselben unveränderten Datei zweimal abgestürzt ist, beantwortet der Server mit „Übersprungen nach Absturz“, bis sich die Datei ändert oder „Erneut versuchen“ gewählt wird. Statusleiste und Prüffenster zeigen das an. |
 
 ## diagnostics
 
