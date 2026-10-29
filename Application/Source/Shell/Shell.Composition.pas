@@ -89,6 +89,7 @@ uses
   Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Lsp.Baseline,
+  Atlas.Common.Lsp.BulkFix,
   Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.CompilerFixes,
@@ -213,6 +214,7 @@ type
     FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
+    FBulkFix: TLspBulkFix;
     /// <summary>Compilermeldungen in der Baseline (#530).</summary>
     FCompilerBaseline: TLspCompilerBaseline;
     FSemanticTokens: TLspSemanticTokens;
@@ -1487,6 +1489,36 @@ begin
       // Der Arbeitsbereich liest die Datei beim nächsten Prüfen neu; offene Dokumente gleich neu prüfen.
       FSyntaxDiagnostics.RefreshLater;
     end;
+  // Sammelkorrektur für das Plugin (#1352): Text, Regeln, Projekt, Index und Baseline wie die Editor-Prüfung, aber
+  // nicht Live (unused-uses meldet sich nur außerhalb des Editors) und mit den Symbolen des Projekts wie der Linter.
+  FBulkFix := TLspBulkFix.Create(
+    function(const AFileName: string; out AInput: TLspBulkFixInput): Boolean
+    var
+      mContext: TRuleCheckContext;
+      mDefines: TArray<string>;
+      mUri: string;
+    begin
+      AInput := Default(TLspBulkFixInput);
+      mUri := TDocumentUris.FromPath(AFileName);
+      Result := ReadSourceText(AFileName, AInput.Text) and RuleContextFor(mUri, mContext);
+      if not Result then
+        Exit;
+      AInput.Rules := mContext.Rules;
+      AInput.Settings := mContext.Settings;
+      AInput.RelativePath := mContext.RelativePath;
+      if AInput.RelativePath = '' then
+        AInput.RelativePath := ExtractFileName(AFileName);
+      AInput.Baseline := mContext.Baseline;
+      AInput.Project.Application := mContext.Application;
+      AInput.Project.Name := mContext.ProjectName;
+      AInput.Project.AutoCreateForms := mContext.AutoCreateForms;
+      AInput.Project.ProjectMainSource := mContext.ProjectMainSource;
+      AInput.Project.FileName := AFileName;
+      AInput.Project.Services := mContext.Services;
+      if not DefinesFor(mUri, mDefines) then
+        mDefines := nil;
+      AInput.Source := TCheckSource.Create(AFileName, mDefines, IncludeResolverFor(mUri));
+    end);
   // Compilermeldungen in derselben Baseline (#530): Text wie im Editor, offene Dokumente vor der Platte.
   FCompilerBaseline := TLspCompilerBaseline.Create(MetricsSourceFor,
     function(const AFileName: string; out AText: string): Boolean
@@ -1955,6 +1987,22 @@ begin
           TJSONObject(Result).GetValue<Integer>('files', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
           TJSONObject(Result).GetValue<Integer>('removed', -1),
           TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
+    end);
+  FCommands.Register(TLspBulkFix.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Watch: TStopwatch;
+      Summary: string;
+    begin
+      // Nur die Vorschau; geschrieben wird im Plugin. Ins Log nur Zahlen und Regeln, keine Pfade.
+      Watch := TStopwatch.StartNew;
+      Result := FBulkFix.Execute(AArguments);
+      if not (Result is TJSONObject) then
+        Exit;
+      Summary := TJSONObject(Result).GetValue<string>('summary', '');
+      if Pos(sLineBreak, Summary) > 0 then
+        Summary := Copy(Summary, 1, Pos(sLineBreak, Summary) - 1);
+      FLogger.Info(Format('Sammelkorrektur berechnet (%s), %d ms', [Summary, Watch.ElapsedMilliseconds]));
     end);
   FCommands.Register(TLspCompilerBaseline.AddCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2554,6 +2602,7 @@ begin
   FRecursion.Free;
   FCompilerBaseline.Free;
   FBaseline.Free;
+  FBulkFix.Free;
   FInlayHints.Free;
   FImplementations.Free;
   FImpact.Free;

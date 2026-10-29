@@ -47,4 +47,6 @@ sind schneller und genauer als Textsuche und das Lesen ganzer Dateien.
   Es ändert auch .dfm/.fmx und automatisch benannte Ereignis-Handler.
   Erst mit `dryRun: true` (Vorgabe) den Diff ansehen, dann mit `dryRun: false` schreiben.
 - Korrekturen von Prüfregeln mit `apply_code_action`: ohne `title` auflisten, dann anwenden.
+- Viele gleiche Befunde auf einmal mit `fix_findings` (z. B. `rules: ["unused-uses"]`):
+  nur sichere Korrekturen, erst mit `dryRun: true` (Vorgabe) den Diff ansehen.
 - Ist eine Datei in der IDE ungespeichert geändert, schreibt Atlas nicht; erst speichern lassen.

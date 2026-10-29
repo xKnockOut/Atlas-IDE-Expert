@@ -174,6 +174,7 @@ uses
   Atlas.IDE.Welcome.NewIssue,
   Atlas.Core.Tracker.NewIssue,
   Atlas.Core.Problems.Findings,
+  Atlas.Core.Problems.BulkFix,
   Atlas.IDE.Tracker.IssuePreview,
   Atlas.IDE.Tracker.CodeLinks,
   Atlas.IDE.Tracker.BlameLinks,
@@ -232,6 +233,8 @@ uses
   Atlas.IDE.Debug.Trace,
   Atlas.IDE.Debug.StepFilter,
   Atlas.Core.Editor.WorkspacePlan,
+  Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.IDE.Editor.WorkspaceEdit,
   Atlas.IDE.Editor.TestUnitLens,
   Atlas.IDE.Hover.Editor,
   Atlas.IDE.Hover.DebugValue,
@@ -4134,6 +4137,21 @@ begin
     function: Boolean
     begin
       Result := TAtlasIdeNewIssue.Enabled;
+    end;
+  // Sammelkorrektur (#1352): Der Server prüft alle Dateien der Regel; das dauert länger als ein Befehl sonst.
+  Hooks.FixFindings :=
+    procedure(const AArgumentsJson: string; const ADone: TProc<TJSONValue>)
+    begin
+      if Manager <> nil then
+        Manager.RunServerCommandAsync(TAtlasBulkFixPreview.Command, AArgumentsJson, 300000, ADone)
+      else
+        ADone(nil);
+    end;
+  Hooks.ApplyEdit :=
+    function(const AEdit: TLspWorkspaceEdit; const AAction: string): string
+    begin
+      Result := TAtlasIdeWorkspaceEdit.Apply(AEdit, TAtlasUnopenedPolicies.FromSetting(
+        TAtlasIdeSettings.Current.OpenForEdits), AAction).Error;
     end;
   TAtlasIdeProblems.Start(Hooks);
   TAtlasIdeEditorCommands.OnStepList :=

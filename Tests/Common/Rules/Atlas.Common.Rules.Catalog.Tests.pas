@@ -56,6 +56,9 @@ type
     procedure ReadsCompilerCodes;
     [Test]
     procedure ReadsOverriddenBy;
+    /// <summary>#1352: sichere Sammelkorrektur.</summary>
+    [Test]
+    procedure ReadsSafeFix;
   end;
 
 implementation
@@ -368,6 +371,29 @@ begin
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","overriddenBy":"y"}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","overriddenBy":[1]}]}');
   ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","overriddenBy":[""]}]}');
+end;
+
+procedure TRuleCatalogTests.ReadsSafeFix;
+var
+  Catalog: TRuleCatalog;
+  Entry: TRuleCatalogEntry;
+begin
+  Catalog := TRuleCatalog.Create('{"rules":[{"id":"x","category":"code-smell","severity":"hint","safeFix":true},' +
+    '{"id":"y","category":"code-smell","severity":"hint"}]}');
+  try
+    Assert.IsTrue(Catalog.TryFind('x', Entry));
+    Assert.IsTrue(Entry.SafeFix);
+    Assert.IsTrue(Catalog.TryFind('y', Entry));
+    Assert.IsFalse(Entry.SafeFix);
+  finally
+    Catalog.Free;
+  end;
+  // Eingebauter Katalog: Umwandlung entfernen ist sicher, leeres except nicht.
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('redundant-cast', Entry));
+  Assert.IsTrue(Entry.SafeFix);
+  Assert.IsTrue(TRuleCatalog.Shared.TryFind('empty-except', Entry));
+  Assert.IsFalse(Entry.SafeFix);
+  ExpectCatalogError('{"rules":[{"id":"x","category":"bug","severity":"error","safeFix":"ja"}]}');
 end;
 
 procedure TRuleCatalogTests.RejectsOptionWithUnknownType;

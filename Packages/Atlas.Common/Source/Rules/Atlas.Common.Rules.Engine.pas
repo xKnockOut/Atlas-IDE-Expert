@@ -601,6 +601,7 @@ begin
       Context.UsesCycleImplementation := Settings.DiagnosticsUsesCycleImplementation;
       Context.SortUses := Settings.SortUses;
       Context.SortUsesByNamespace := Settings.SortUsesByNamespace;
+      Context.UsesKeep := Settings.UsesKeep;
       if IsExceptedByOptions(Context.Options, Context.RelativePath, Context.UnitName) then
         Continue;
       // Erst in einer Interface-Variablen halten: Check nimmt den Report als
