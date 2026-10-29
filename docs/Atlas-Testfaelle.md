@@ -6690,6 +6690,21 @@ Voraussetzung: Server läuft in der IDE mit Projekt. Fälle wie in `Tests/Compil
 | OA10 | `"automation-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude`; `{$WARN SYMBOL_DEPRECATED OFF}` vor `automated` | Keine Meldung von `automation-invalid` bzw. keine W1000 |
 | OA11 | Abgleich mit Delphi: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.E21*','Cm.E2281*','Cm.E2096*' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py`; `pwsh Tools/Build-DccFaelle.ps1` | Alle Codes aus #1373 und W1000 „erkannt“, keine neuen Treffer unter „zusätzlich“; DccAutomation übersetzt ohne Fehler, DccAutomationGegen meldet je Marke den erwarteten Fehler |
 
+## dispinterface-Deklaration unzulässig (#1374)
+
+Voraussetzung: Server läuft in der IDE mit Projekt. Vorlagen: `Tests/Compilermeldungen/Faelle/Cm.E2228.pas` bis `Cm.E2231b.pas`, Gegenfall `Cm.E2228b.pas`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DS1 | `DAnzeige = dispinterface(IBasis)` mit GUID (wie `Cm.E2228`) | Fehler `dispinterface-invalid` an `(IBasis)`: „Ein dispinterface kann keinen Vorfahren haben (wie E2228).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| DS2 | Schnellkorrektur „Vorfahren entfernen“, danach Strg+Z | `(IBasis)` verschwindet; ein Undo-Schritt |
+| DS3 | `DAnzeige = dispinterface` ohne GUID (wie `Cm.E2229`), Schnellkorrektur „GUID einfügen“ | „Das dispinterface DAnzeige braucht eine GUID (wie E2229).“ am Namen; die Korrektur fügt unter `dispinterface` eine neue GUID-Zeile ein; keine Warnung `interface-guid` mehr |
+| DS4 | `procedure Machen; stdcall; dispid 1;` im dispinterface (wie `Cm.E2230`, `Cm.E2230b`), Schnellkorrektur „stdcall entfernen“ | „Methoden eines dispinterface dürfen keine Direktive stdcall haben (wie E2230).“; ebenso für `safecall` und `virtual`; die Korrektur entfernt `stdcall;` |
+| DS5 | `property Wert: Integer read GetWert;` bzw. `write SetWert` im dispinterface (wie `Cm.E2231`, `Cm.E2231b`) | „Die Direktive read ist in einem dispinterface nicht erlaubt (wie E2231).“ bzw. write; keine Schnellkorrektur |
+| DS6 | Gegenfall `Cm.E2228b`: Vorwärtsdeklaration, GUID über Konstante, `dispid`, `readonly`, `writeonly`, `default` an einer Array-Property; dazu `overload`, `deprecated` und Deklarationen in `{$IFDEF}` | Keine Meldung |
+| DS7 | `"dispinterface-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
+| DS8 | Abgleich mit Delphi 12 und 13: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.E222*','Cm.E223*' -AtlasServer <exe>`, danach `python3 Tools/Compare-Compilermeldungen.py` | E2228 bis E2231 stehen auf „erkannt“, keine neuen Treffer unter „zusätzlich“; `Cm.E2228b` baut ohne Meldung (sonst den Gegenfall bzw. die Regel anpassen); `Cm.E2230b` und `Cm.E2231b` greifen |
+
 ## Vergleich immer wahr oder immer falsch (#1011)
 
 Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.

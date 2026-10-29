@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4603] of string = (
+  BaseLines: array[0..4620] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -854,7 +854,7 @@ const
     '      "severity": "warning",',
     '      "group": "find-bugs",',
     '      "description": "An interface declares no GUID. Supports, as and QueryInterface need one. The confidence is high when the interface is used with them in the same file, otherwise low. The quick fi' +
-    'x inserts a new GUID.",',
+    'x inserts a new GUID. A dispinterface without GUID does not compile; dispinterface-invalid reports it.",',
     '      "bad": "type\n  ISaver = interface\n    procedure Save;\n  end;",',
     '      "good": "type\n  ISaver = interface\n    [''{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}'']\n    procedure Save;\n  end;"',
     '    },',
@@ -4332,6 +4332,25 @@ const
     '      "level": "A"',
     '    },',
     '    {',
+    '      "id": "dispinterface-invalid",',
+    '      "name": "Invalid dispinterface declaration",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "A dispinterface breaks one of its fixed rules: no ancestor in parentheses (like E2228), a GUID is required (like E2229), methods take no directives except dispid and the hints de' +
+    'precated, platform, library and experimental (like E2230; reported are calling conventions and binding directives such as virtual, overload stays silent) and properties take no read or write (like E22' +
+    '31; use readonly, writeonly or dispid). Forward declarations and declarations in conditional branches stay silent. Quick fixes: remove the ancestor, insert a GUID, remove the directive.",',
+    '      "bad": "DAnzeige = dispinterface(IBasis) [''{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A2228}''] procedure Machen; stdcall; dispid 1; end;",',
+    '      "good": "DAnzeige = dispinterface [''{6A0F0D5E-1C11-4B8E-9A43-3F1D4C2A2228}''] procedure Machen; dispid 1; end;",',
+    '      "compilerCodes": [',
+    '        "E2228",',
+    '        "E2229",',
+    '        "E2230",',
+    '        "E2231"',
+    '      ],',
+    '      "level": "A"',
+    '    },',
+    '    {',
     '      "id": "abstract-declaration-invalid",',
     '      "name": "abstract, final or static combined wrongly",',
     '      "category": "bug",',
@@ -5365,7 +5384,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2130] of string = (
+  OverlayLines_de: array[0..2135] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -5813,7 +5832,7 @@ const
     '      "id": "interface-guid",',
     '      "name": "Interface ohne GUID",',
     '      "description": "Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst nied' +
-    'rig. Die Schnellkorrektur fügt eine neue GUID ein."',
+    'rig. Die Schnellkorrektur fügt eine neue GUID ein. Ein dispinterface ohne GUID übersetzt nicht; das meldet dispinterface-invalid."',
     '    },',
     '    {',
     '      "id": "duplicate-interface-guid",',
@@ -7756,6 +7775,14 @@ const
     'bnissen und Properties (wie E2176). Eine dispid an einer Methode außerhalb von automated meldet die Regel wie Delphi 13 als E2185 (dokumentiert ist E2183). Aufrufe über Variant oder OleVariant (V.Oeff' +
     'nen(...), auch V.Dokument.Oeffnen(...)): ein Record ohne Operatoren oder ein Zeiger als Argument (wie E2160 bei OleVariant, wie E2281 bei Variant) und ein unbenanntes Argument nach einem benannten (wi' +
     'e E2166). Mitglieder in bedingten Zweigen und Typen, die die Namensauflösung nicht sicher kennt, bleiben still. Dass automated selbst veraltet ist, meldet deprecated-symbol."',
+    '    },',
+    '    {',
+    '      "id": "dispinterface-invalid",',
+    '      "name": "dispinterface-Deklaration unzulässig",',
+    '      "description": "Ein dispinterface verletzt eine seiner festen Regeln: kein Vorfahr in Klammern (wie E2228), eine GUID ist Pflicht (wie E2229), Methoden tragen keine Direktiven außer dispid und d' +
+    'en Hinweisen deprecated, platform, library und experimental (wie E2230; gemeldet werden Aufrufkonventionen und Bindungsdirektiven wie virtual, overload bleibt still) und Properties kein read oder writ' +
+    'e (wie E2231; stattdessen readonly, writeonly oder dispid). Vorwärtsdeklarationen und Deklarationen in bedingten Zweigen bleiben still. Korrekturen: Vorfahren entfernen, GUID einfügen, Direktive entfe' +
+    'rnen."',
     '    },',
     '    {',
     '      "id": "abstract-declaration-invalid",',

@@ -200,9 +200,12 @@
         <DCCReference Include="Faelle\Cm.E2222.pas"/>
         <DCCReference Include="Faelle\Cm.E2224.pas"/>
         <DCCReference Include="Faelle\Cm.E2228.pas"/>
+        <DCCReference Include="Faelle\Cm.E2228b.pas"/>
         <DCCReference Include="Faelle\Cm.E2229.pas"/>
         <DCCReference Include="Faelle\Cm.E2230.pas"/>
+        <DCCReference Include="Faelle\Cm.E2230b.pas"/>
         <DCCReference Include="Faelle\Cm.E2231.pas"/>
+        <DCCReference Include="Faelle\Cm.E2231b.pas"/>
         <DCCReference Include="Faelle\Cm.E2232.pas"/>
         <DCCReference Include="Faelle\Cm.E2233.pas"/>
         <DCCReference Include="Faelle\Cm.E2234.pas"/>
