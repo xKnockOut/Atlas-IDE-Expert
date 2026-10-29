@@ -22,6 +22,13 @@
 //   Richtung laufen; mit Fundstelle.
 // - Gruppierung einstellbar (architecture.grouping, TArchitectureGrouping):
 //   Auflösung γ des Louvain-Verfahrens (#1366), 1 = klassisch.
+// - Nachteilung (#1364): Ein Teilsystem mit mehr als MaxShare aller Units
+//   (ab 10 Units) oder mit Zusammenhalt unter MinCohesion (ab 30 Units)
+//   wird mit einem zweiten Louvain-Lauf nur auf seinen Units und Kanten
+//   geteilt, höchstens zwei Stufen tief. Units ohne Kante im Teilgraphen
+//   bleiben beim größten Teil. Die Teile heißen nach dem Abschnitt, der sie
+//   innerhalb des ursprünglichen Teilsystems unterscheidet, tragen dessen
+//   Namen in Parent und eine gemeinsame Farbfamilie (ColorSlot, Shade).
 // - Alles deterministisch: Units nach Name, Teilsysteme nach Größe und Name.
 
 interface
@@ -41,13 +48,29 @@ type
   public const
     MinResolution = 0.2;
     MaxResolution = 5.0;
+    DefaultMaxShare = 0.25;
+    MaxMaxShare = 0.9;
+    DefaultMinCohesion = 0.3;
+    /// <summary>Nachteilen nach Größe erst ab so vielen Units (#1364).</summary>
+    SplitMinUnits = 10;
+    /// <summary>Nachteilen nach Zusammenhalt erst ab so vielen Units.</summary>
+    LooseMinUnits = 30;
+    /// <summary>Höchstens so viele Stufen Nachteilung.</summary>
+    SplitDepth = 2;
   public
     /// <summary>Auflösung γ des Louvain-Verfahrens (#1366): größer = mehr und kleinere Teilsysteme.</summary>
     Resolution: Double;
-    /// <summary>Vorgaben: Auflösung 1 (Verhalten wie vor #1366).</summary>
+    /// <summary>Ab diesem Anteil aller Units wird ein Teilsystem nachgeteilt (#1364); 0 = nie nach Größe.</summary>
+    MaxShare: Double;
+    /// <summary>Teilsysteme ab LooseMinUnits mit geringerem Zusammenhalt werden nachgeteilt; 0 = nie.</summary>
+    MinCohesion: Double;
+    /// <summary>Vorgaben: Auflösung 1 (Verhalten wie vor #1366), MaxShare 0,25, MinCohesion 0,3.</summary>
     class function Default: TArchitectureGrouping; static;
-    /// <summary>Werte in ihren Grenzen (Resolution 0,2–5,0).</summary>
+    /// <summary>Werte in ihren Grenzen (Resolution 0,2–5,0, MaxShare 0–0,9, MinCohesion 0–1).</summary>
     function Clamped: TArchitectureGrouping;
+    /// <summary>Ein Teilsystem mit ASize von ATotal Units und Zusammenhalt ACohesion wird nachgeteilt (#1364).
+    /// </summary>
+    function NeedsSplit(ASize, ATotal: Integer; ACohesion: Double): Boolean;
     /// <summary>Text, der die Einstellungen eindeutig beschreibt (Schlüssel des Zwischenspeichers).</summary>
     function Key: string;
     /// <summary>Auflösung weicht von 1 ab (Kopf des Berichts, Hinweis im Vergleich).</summary>
@@ -98,6 +121,12 @@ type
     Cohesion: Double;
     /// <summary>Sammelgruppe der Units ohne uses-Beziehung im Umfang (Name TArchitectureAnalyzer.IsolatedName).</summary>
     Isolated: Boolean;
+    /// <summary>Name des ursprünglichen Teilsystems, wenn dieses nachgeteilt wurde (#1364); '' sonst.</summary>
+    Parent: string;
+    /// <summary>Farbe der Karte (Nummer in der Palette); die Teile eines Teilsystems teilen sie.</summary>
+    ColorSlot: Integer;
+    /// <summary>Farbton innerhalb der Farbfamilie: 0 = Grundfarbe, positiv heller, negativ dunkler.</summary>
+    Shade: Integer;
   end;
 
   TOverviewOutlierReason = (Namespace, Edges);
@@ -173,6 +202,10 @@ type
     function EdgeCount: Integer;
   end;
 
+  /// <summary>Teilt die Gruppe AMembers in AParts (mindestens zwei); False = bleibt, wie sie ist.</summary>
+  TArchitectureSplitFunc = reference to function(const AMembers: TArray<Integer>;
+    out AParts: TArray<TArray<Integer>>): Boolean;
+
   TArchitectureAnalyzer = class
   public const
     InterfaceWeight = 2;
@@ -193,6 +226,11 @@ type
     class function NamespaceParts(const AUnitName: string): TArray<string>; static;
     /// <summary>Text der Rolle: "Fundament", "Drehscheibe" oder ''.</summary>
     class function RoleCaption(ARole: TOverviewUnitRole): string; static;
+    /// <summary>Nachteilung (#1364): teilt jede Gruppe außer ASkip mit ASplit, ein Teil höchstens ADepth Stufen
+    /// tief. Das erste Teil nimmt den Platz der Gruppe ein, die übrigen kommen hinten dazu. AFamilies: je
+    /// Ergebnis die Nummer der Ausgangsgruppe.</summary>
+    class function SplitGroups(const AGroups: TArray<TArray<Integer>>; ASkip, ADepth: Integer;
+      const ASplit: TArchitectureSplitFunc; out AFamilies: TArray<Integer>): TArray<TArray<Integer>>; static;
   end;
 
 implementation
@@ -220,6 +258,8 @@ end;
 class function TArchitectureGrouping.Default: TArchitectureGrouping;
 begin
   Result.Resolution := 1;
+  Result.MaxShare := DefaultMaxShare;
+  Result.MinCohesion := DefaultMinCohesion;
 end;
 
 function TArchitectureGrouping.Clamped: TArchitectureGrouping;
@@ -228,11 +268,28 @@ begin
   if IsNan(Result.Resolution) or (Result.Resolution <= 0) then
     Result.Resolution := 1;
   Result.Resolution := EnsureRange(Result.Resolution, MinResolution, MaxResolution);
+  if IsNan(Result.MaxShare) then
+    Result.MaxShare := DefaultMaxShare;
+  Result.MaxShare := EnsureRange(Result.MaxShare, 0, MaxMaxShare);
+  if IsNan(Result.MinCohesion) then
+    Result.MinCohesion := DefaultMinCohesion;
+  Result.MinCohesion := EnsureRange(Result.MinCohesion, 0, 1);
+end;
+
+function TArchitectureGrouping.NeedsSplit(ASize, ATotal: Integer; ACohesion: Double): Boolean;
+begin
+  Result := ((MaxShare > 0) and (ASize >= SplitMinUnits) and (ASize > MaxShare * ATotal)) or
+    ((MinCohesion > 0) and (ASize >= LooseMinUnits) and (ACohesion < MinCohesion));
 end;
 
 function TArchitectureGrouping.Key: string;
+var
+  mGrouping: TArchitectureGrouping;
 begin
-  Result := 'r' + FormatFloat('0.####', Clamped.Resolution, TFormatSettings.Invariant);
+  mGrouping := Clamped;
+  Result := 'r' + FormatFloat('0.####', mGrouping.Resolution, TFormatSettings.Invariant) + ';s' +
+    FormatFloat('0.####', mGrouping.MaxShare, TFormatSettings.Invariant) + ';c' +
+    FormatFloat('0.####', mGrouping.MinCohesion, TFormatSettings.Invariant);
 end;
 
 function TArchitectureGrouping.ResolutionChanged: Boolean;
@@ -376,11 +433,22 @@ type
     FNamedByPart: TArray<Boolean>;
     /// <summary>Je Teilsystem der Namensraum-Abschnitt seines Namens (klein, ohne Zähler " 2"); '' ohne.</summary>
     FPartKey: TArray<string>;
+    /// <summary>Je Teilsystem seine Familie: Nummer des ersten Teils des ursprünglichen Teilsystems (#1364).</summary>
+    FFamily: TArray<Integer>;
+    /// <summary>Je Unit die Nummern ihrer Kanten in FResult.Edges (beide Richtungen, ohne Schleifen).</summary>
+    FIncident: TArray<TArray<Integer>>;
+    /// <summary>Je Unit die Stelle im gerade untersuchten Teilsystem; -1 außerhalb.</summary>
+    FLocal: TArray<Integer>;
     procedure CollectUnits;
     procedure CollectEdges;
     procedure Measure;
     procedure Group;
+    procedure Split(var ACommunities: TArray<Integer>; AIsolated: Integer);
+    function NeedsSplit(const AMembers: TArray<Integer>): Boolean;
+    function SplitMembers(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
+    function SplitGroup(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
     procedure NameSubsystems;
+    procedure AssignColors;
     procedure FindOutliers;
     procedure CollectCycles;
     procedure CollectCrossLinks;
@@ -549,6 +617,7 @@ begin
         Isolated := Communities[Index];
         Break;
       end;
+  Split(Communities, Isolated);
   Count := 0;
   for Member in Communities do
     Count := Max(Count, Member + 1);
@@ -596,37 +665,272 @@ begin
   end;
 end;
 
-/// <summary>Bester Namensraum-Abschnitt einer Gruppe: Häufigkeit in der Gruppe mal log(Units / Häufigkeit im
-/// Projekt); '' ohne Abschnitt mit Gewinn.</summary>
+class function TArchitectureAnalyzer.SplitGroups(const AGroups: TArray<TArray<Integer>>; ASkip, ADepth: Integer;
+  const ASplit: TArchitectureSplitFunc; out AFamilies: TArray<Integer>): TArray<TArray<Integer>>;
+var
+  Groups: TList<TArray<Integer>>;
+  Levels, Families: TList<Integer>;
+  Index, Part: Integer;
+  Parts: TArray<TArray<Integer>>;
+begin
+  Groups := TList<TArray<Integer>>.Create;
+  Levels := TList<Integer>.Create;
+  Families := TList<Integer>.Create;
+  try
+    for Index := 0 to High(AGroups) do
+    begin
+      Groups.Add(AGroups[Index]);
+      Levels.Add(0);
+      Families.Add(Index);
+    end;
+    Index := 0;
+    while Index < Groups.Count do
+    begin
+      if (Index <> ASkip) and (Levels[Index] < ADepth) and ASplit(Groups[Index], Parts) and (Length(Parts) > 1) then
+      begin
+        Groups[Index] := Parts[0];
+        Levels[Index] := Levels[Index] + 1;
+        for Part := 1 to High(Parts) do
+        begin
+          Groups.Add(Parts[Part]);
+          Levels.Add(Levels[Index]);
+          Families.Add(Families[Index]);
+        end;
+        // Das erste Teil gleich noch einmal prüfen (nächste Stufe); die übrigen kommen der Reihe nach.
+        Continue;
+      end;
+      Inc(Index);
+    end;
+    Result := Groups.ToArray;
+    AFamilies := Families.ToArray;
+  finally
+    Families.Free;
+    Levels.Free;
+    Groups.Free;
+  end;
+end;
+
+procedure TAnalysis.Split(var ACommunities: TArray<Integer>; AIsolated: Integer);
+var
+  Groups: TArray<TArray<Integer>>;
+  Sizes: TArray<Integer>;
+  Count, Index, Member: Integer;
+  Edge: TOverviewEdge;
+begin
+  Count := 0;
+  for Member in ACommunities do
+    Count := Max(Count, Member + 1);
+  // Kanten je Unit für Zusammenhalt und Teilgraphen.
+  SetLength(Sizes, Length(FResult.Units));
+  for Edge in FResult.Edges do
+    if Edge.Source <> Edge.Target then
+    begin
+      Inc(Sizes[Edge.Source]);
+      Inc(Sizes[Edge.Target]);
+    end;
+  SetLength(FIncident, Length(FResult.Units));
+  for Index := 0 to High(FIncident) do
+  begin
+    SetLength(FIncident[Index], Sizes[Index]);
+    Sizes[Index] := 0;
+  end;
+  for Index := 0 to High(FResult.Edges) do
+  begin
+    Edge := FResult.Edges[Index];
+    if Edge.Source = Edge.Target then
+      Continue;
+    FIncident[Edge.Source][Sizes[Edge.Source]] := Index;
+    Inc(Sizes[Edge.Source]);
+    FIncident[Edge.Target][Sizes[Edge.Target]] := Index;
+    Inc(Sizes[Edge.Target]);
+  end;
+  SetLength(FLocal, Length(FResult.Units));
+  for Index := 0 to High(FLocal) do
+    FLocal[Index] := -1;
+  // Units nach Nummer (= nach Name): dieselbe Startreihenfolge wie im ersten Lauf.
+  SetLength(Sizes, Count);
+  for Index := 0 to Count - 1 do
+    Sizes[Index] := 0;
+  for Member in ACommunities do
+    Inc(Sizes[Member]);
+  SetLength(Groups, Count);
+  for Index := 0 to Count - 1 do
+  begin
+    SetLength(Groups[Index], Sizes[Index]);
+    Sizes[Index] := 0;
+  end;
+  for Index := 0 to High(ACommunities) do
+  begin
+    Groups[ACommunities[Index]][Sizes[ACommunities[Index]]] := Index;
+    Inc(Sizes[ACommunities[Index]]);
+  end;
+  Groups := TArchitectureAnalyzer.SplitGroups(Groups, AIsolated, TArchitectureGrouping.SplitDepth, SplitGroup,
+    FFamily);
+  for Index := 0 to High(Groups) do
+    for Member in Groups[Index] do
+      ACommunities[Member] := Index;
+end;
+
+function TAnalysis.SplitGroup(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
+begin
+  AParts := nil;
+  Result := NeedsSplit(AMembers) and SplitMembers(AMembers, AParts);
+end;
+
+function TAnalysis.NeedsSplit(const AMembers: TArray<Integer>): Boolean;
+var
+  Inner, Outer, Member, EdgeIndex, Other: Integer;
+  Edge: TOverviewEdge;
+  Cohesion: Double;
+begin
+  // Zusammenhalt wie in Group: Kanten innen / (innen + nach außen); erst rechnen, wenn er zählt.
+  Cohesion := 1;
+  if (FGrouping.MinCohesion > 0) and (Length(AMembers) >= TArchitectureGrouping.LooseMinUnits) then
+  begin
+    for Member in AMembers do
+      FLocal[Member] := 0;
+    Inner := 0;
+    Outer := 0;
+    for Member in AMembers do
+      for EdgeIndex in FIncident[Member] do
+      begin
+        Edge := FResult.Edges[EdgeIndex];
+        if Edge.Source = Member then
+          Other := Edge.Target
+        else
+          Other := Edge.Source;
+        if FLocal[Other] >= 0 then
+          Inc(Inner)
+        else
+          Inc(Outer);
+      end;
+    for Member in AMembers do
+      FLocal[Member] := -1;
+    // Innere Kanten stehen bei beiden Enden.
+    Inner := Inner div 2;
+    if Inner + Outer > 0 then
+      Cohesion := Inner / (Inner + Outer);
+  end;
+  Result := FGrouping.NeedsSplit(Length(AMembers), Length(FResult.Units), Cohesion);
+end;
+
+function TAnalysis.SplitMembers(const AMembers: TArray<Integer>; out AParts: TArray<TArray<Integer>>): Boolean;
+var
+  Edges: TList<TLouvainEdge>;
+  Item: TLouvainEdge;
+  Degree, Local, Sizes: TArray<Integer>;
+  Numbers: TDictionary<Integer, Integer>;
+  Position, EdgeIndex, Number, Largest: Integer;
+  Edge: TOverviewEdge;
+begin
+  AParts := nil;
+  SetLength(Degree, Length(AMembers));
+  for Position := 0 to High(AMembers) do
+    FLocal[AMembers[Position]] := Position;
+  Edges := TList<TLouvainEdge>.Create;
+  try
+    for Position := 0 to High(AMembers) do
+      for EdgeIndex in FIncident[AMembers[Position]] do
+      begin
+        Edge := FResult.Edges[EdgeIndex];
+        // Jede Kante einmal, bei ihrer Quelle; nur Kanten innerhalb des Teilsystems.
+        if (Edge.Source <> AMembers[Position]) or (FLocal[Edge.Target] < 0) then
+          Continue;
+        Item.A := Position;
+        Item.B := FLocal[Edge.Target];
+        Item.Weight := Weight(Edge);
+        Edges.Add(Item);
+        Inc(Degree[Item.A]);
+        Inc(Degree[Item.B]);
+      end;
+    Local := TLouvain.Communities(Length(AMembers), Edges.ToArray, FGrouping.Resolution);
+  finally
+    Edges.Free;
+    for Position := 0 to High(AMembers) do
+      FLocal[AMembers[Position]] := -1;
+  end;
+  // Teile fortlaufend in der Reihenfolge der Units; Units ohne Kante im Teilgraphen zählen nicht mit.
+  Numbers := TDictionary<Integer, Integer>.Create;
+  try
+    for Position := 0 to High(Local) do
+    begin
+      if Degree[Position] = 0 then
+      begin
+        Local[Position] := -1;
+        Continue;
+      end;
+      if not Numbers.TryGetValue(Local[Position], Number) then
+      begin
+        Number := Numbers.Count;
+        Numbers.Add(Local[Position], Number);
+      end;
+      Local[Position] := Number;
+    end;
+    Result := Numbers.Count > 1;
+    if not Result then
+      Exit;
+    SetLength(Sizes, Numbers.Count);
+  finally
+    Numbers.Free;
+  end;
+  for Number in Local do
+    if Number >= 0 then
+      Inc(Sizes[Number]);
+  // Units ohne Kante im Teilgraphen bleiben beim größten Teil (keine Teile aus einer einzelnen Unit).
+  Largest := 0;
+  for Number := 1 to High(Sizes) do
+    if Sizes[Number] > Sizes[Largest] then
+      Largest := Number;
+  SetLength(AParts, Length(Sizes));
+  for Position := 0 to High(Local) do
+  begin
+    if Local[Position] < 0 then
+      Local[Position] := Largest;
+    AParts[Local[Position]] := AParts[Local[Position]] + [AMembers[Position]];
+  end;
+end;
+
+/// <summary>Je Namensraum-Abschnitt (klein) die Zahl der Units aus AMembers, die ihn tragen (je Unit einmal).
+/// </summary>
+function PartCounts(const AParts: TArray<TArray<string>>; const AMembers: TArray<Integer>): TDictionary<string, Integer>;
+var
+  Member, Count: Integer;
+  Part, Key: string;
+  Seen: TArray<string>;
+begin
+  Result := TDictionary<string, Integer>.Create;
+  for Member in AMembers do
+  begin
+    Seen := nil;
+    for Part in AParts[Member] do
+    begin
+      Key := LowerCase(Part);
+      if IndexStr(Key, Seen) >= 0 then
+        Continue;
+      Seen := Seen + [Key];
+      if not Result.TryGetValue(Key, Count) then
+        Count := 0;
+      Result.AddOrSetValue(Key, Count + 1);
+    end;
+  end;
+end;
+
+/// <summary>Bester Namensraum-Abschnitt einer Gruppe: Häufigkeit in der Gruppe mal log(ATotal / Häufigkeit in
+/// AGlobal); '' ohne Abschnitt mit Gewinn. AGlobal zählt über das ganze Projekt bzw. bei Teilen eines
+/// nachgeteilten Teilsystems über dessen Units (#1364).</summary>
 function BestPart(const AParts: TArray<TArray<string>>; const AMembers: TArray<Integer>; const AGlobal:
   TDictionary<string, Integer>; ATotal: Integer; out AScore: Double): string;
 var
   Local: TDictionary<string, Integer>;
-  Member, Count, Global_: Integer;
-  Part, Key: string;
-  Seen: TArray<string>;
+  Global_: Integer;
+  Key: string;
   Keys: TArray<string>;
   Score: Double;
 begin
   Result := '';
   AScore := 0;
-  Local := TDictionary<string, Integer>.Create;
+  Local := PartCounts(AParts, AMembers);
   try
-    for Member in AMembers do
-    begin
-      // Jeder Abschnitt zählt je Unit einmal.
-      Seen := nil;
-      for Part in AParts[Member] do
-      begin
-        Key := LowerCase(Part);
-        if IndexStr(Key, Seen) >= 0 then
-          Continue;
-        Seen := Seen + [Key];
-        if not Local.TryGetValue(Key, Count) then
-          Count := 0;
-        Local.AddOrSetValue(Key, Count + 1);
-      end;
-    end;
     Keys := Local.Keys.ToArray;
     TArray.Sort<string>(Keys);
     for Key in Keys do
@@ -661,49 +965,78 @@ end;
 procedure TAnalysis.NameSubsystems;
 var
   Parts: TArray<TArray<string>>;
-  Global_: TDictionary<string, Integer>;
-  Index, Count, Suffix, Other: Integer;
-  Part, Key, Name: string;
-  Seen: TArray<string>;
+  Global_, Family: TDictionary<string, Integer>;
+  Index, Suffix, Other: Integer;
+  Key, ParentKey, Name: string;
+  All: TArray<Integer>;
+  FamilyUnits: TArray<TArray<Integer>>;
+  FamilySize: TArray<Integer>;
   Score: Double;
   Taken: Boolean;
+
+  /// <summary>Name aus dem besten Abschnitt von AMembers gegen ACounts, sonst die zentralste Unit.</summary>
+  function NameOf(const AMembers: TArray<Integer>; const ACounts: TDictionary<string, Integer>; ATotal: Integer;
+    out AKey: string): string;
+  var
+    mMember, mCentral: Integer;
+  begin
+    AKey := BestPart(Parts, AMembers, ACounts, ATotal, Score);
+    if AKey <> '' then
+      Exit(PartCaption(Parts, AMembers, AKey));
+    mCentral := -1;
+    for mMember in AMembers do
+      if (mCentral < 0) or (FResult.Units[mMember].Total > FResult.Units[mCentral].Total) or
+        ((FResult.Units[mMember].Total = FResult.Units[mCentral].Total) and
+        ((FResult.Units[mMember].Direct > FResult.Units[mCentral].Direct) or
+        ((FResult.Units[mMember].Direct = FResult.Units[mCentral].Direct) and (mMember < mCentral)))) then
+        mCentral := mMember;
+    if mCentral >= 0 then
+      Result := FResult.Units[mCentral].Name
+    else
+      Result := '';
+  end;
+
 begin
   SetLength(FNamedByPart, Length(FResult.Subsystems));
   SetLength(FPartKey, Length(FResult.Subsystems));
   SetLength(Parts, Length(FResult.Units));
-  Global_ := TDictionary<string, Integer>.Create;
+  SetLength(All, Length(FResult.Units));
+  for Index := 0 to High(FResult.Units) do
+  begin
+    Parts[Index] := TArchitectureAnalyzer.NamespaceParts(FResult.Units[Index].Name);
+    All[Index] := Index;
+  end;
+  // Units je Familie (ursprüngliches Teilsystem vor der Nachteilung, #1364).
+  SetLength(FamilyUnits, Length(FResult.Subsystems));
+  SetLength(FamilySize, Length(FResult.Subsystems));
+  for Index := 0 to High(FResult.Subsystems) do
+  begin
+    FamilyUnits[FFamily[Index]] := FamilyUnits[FFamily[Index]] + FResult.Subsystems[Index].Units;
+    Inc(FamilySize[FFamily[Index]]);
+  end;
+  Global_ := PartCounts(Parts, All);
   try
-    for Index := 0 to High(FResult.Units) do
-    begin
-      Parts[Index] := TArchitectureAnalyzer.NamespaceParts(FResult.Units[Index].Name);
-      Seen := nil;
-      for Part in Parts[Index] do
-      begin
-        Key := LowerCase(Part);
-        if IndexStr(Key, Seen) >= 0 then
-          Continue;
-        Seen := Seen + [Key];
-        if not Global_.TryGetValue(Key, Count) then
-          Count := 0;
-        Global_.AddOrSetValue(Key, Count + 1);
-      end;
-    end;
     for Index := 0 to High(FResult.Subsystems) do
     begin
-      if FResult.Subsystems[Index].Isolated then
-        Key := ''
-      else
-        Key := BestPart(Parts, FResult.Subsystems[Index].Units, Global_, Length(FResult.Units), Score);
-      FNamedByPart[Index] := Key <> '';
-      FPartKey[Index] := Key;
+      Key := '';
       if FResult.Subsystems[Index].Isolated then
         Name := TArchitectureAnalyzer.IsolatedName
-      else if Key <> '' then
-        Name := PartCaption(Parts, FResult.Subsystems[Index].Units, Key)
-      else if FResult.Subsystems[Index].Central >= 0 then
-        Name := FResult.Units[FResult.Subsystems[Index].Central].Name
+      else if FamilySize[FFamily[Index]] > 1 then
+      begin
+        // Teil eines nachgeteilten Teilsystems: Abschnitt, der es innerhalb des ursprünglichen unterscheidet.
+        Family := PartCounts(Parts, FamilyUnits[FFamily[Index]]);
+        try
+          Name := NameOf(FResult.Subsystems[Index].Units, Family, Length(FamilyUnits[FFamily[Index]]), Key);
+        finally
+          Family.Free;
+        end;
+        FResult.Subsystems[Index].Parent := NameOf(FamilyUnits[FFamily[Index]], Global_, Length(FResult.Units),
+          ParentKey);
+      end
       else
-        Name := '';
+        Name := NameOf(FResult.Subsystems[Index].Units, Global_, Length(FResult.Units), Key);
+      FNamedByPart[Index] := Key <> '';
+      FPartKey[Index] := Key;
       FResult.Subsystems[Index].Name := Name;
     end;
   finally
@@ -885,7 +1218,7 @@ end;
 
 procedure TAnalysis.SortSubsystems;
 var
-  Order, Map: TArray<Integer>;
+  Order, Map, Family: TArray<Integer>;
   Sorted: TArray<TOverviewSubsystem>;
   Index: Integer;
 begin
@@ -916,6 +1249,44 @@ begin
   FResult.Subsystems := Sorted;
   for Index := 0 to High(FResult.Units) do
     FResult.Units[Index].Subsystem := Map[FResult.Units[Index].Subsystem];
+  SetLength(Family, Length(FFamily));
+  for Index := 0 to High(FFamily) do
+    Family[Map[Index]] := Map[FFamily[Index]];
+  FFamily := Family;
+end;
+
+procedure TAnalysis.AssignColors;
+var
+  Slots, Ranks: TDictionary<Integer, Integer>;
+  Index, Slot, Rank: Integer;
+begin
+  // Eine Farbe je Familie in der Reihenfolge der Teilsysteme (ohne Nachteilung: Farbe = Nummer wie vor #1364);
+  // die Teile abwechselnd heller und dunkler: 0, +1, -1, +2, …
+  Slots := TDictionary<Integer, Integer>.Create;
+  Ranks := TDictionary<Integer, Integer>.Create;
+  try
+    for Index := 0 to High(FResult.Subsystems) do
+    begin
+      if not Slots.TryGetValue(FFamily[Index], Slot) then
+      begin
+        Slot := Slots.Count;
+        Slots.Add(FFamily[Index], Slot);
+      end;
+      if not Ranks.TryGetValue(FFamily[Index], Rank) then
+        Rank := 0;
+      Ranks.AddOrSetValue(FFamily[Index], Rank + 1);
+      FResult.Subsystems[Index].ColorSlot := Slot;
+      if Rank = 0 then
+        FResult.Subsystems[Index].Shade := 0
+      else if Odd(Rank) then
+        FResult.Subsystems[Index].Shade := (Rank + 1) div 2
+      else
+        FResult.Subsystems[Index].Shade := -(Rank div 2);
+    end;
+  finally
+    Ranks.Free;
+    Slots.Free;
+  end;
 end;
 
 function TAnalysis.Run(ACentralCount: Integer): TArchitectureOverview;
@@ -928,6 +1299,7 @@ begin
   Group;
   SortSubsystems;
   NameSubsystems;
+  AssignColors;
   FindOutliers;
   CollectCycles;
   CollectCrossLinks;

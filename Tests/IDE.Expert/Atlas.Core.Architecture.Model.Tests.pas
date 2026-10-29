@@ -47,6 +47,10 @@ type
     procedure ParsesResolution;
     [Test]
     procedure CommandArgumentsWithResolution;
+    [Test]
+    procedure ParsesSplitSubsystems;
+    [Test]
+    procedure PaletteShades;
   end;
 
 /// <summary>Antwort von atlas.architecture zu einem kleinen Projekt mit Zyklus (für Kern- und UI-Tests).</summary>
@@ -56,6 +60,9 @@ function SampleAnswer: string;
 function SampleComparisonAnswer: string;
 /// <summary>Wie SampleComparisonAnswer, der aktuelle Stand aber mit Feinheit γ = 2 gerechnet (#1366).</summary>
 function SampleResolutionAnswer: string;
+/// <summary>Drei Teilsysteme Core, Data, Ui; das erste und das letzte als Teile des nachgeteilten „App“ (#1364).
+/// </summary>
+function SampleSplitAnswer: string;
 
 implementation
 
@@ -73,6 +80,7 @@ uses
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
   Atlas.Common.Architecture.UsesGraph.Tests,
+  Atlas.Common.Architecture.Snapshot.Tests,
   Atlas.Core.Architecture.Model;
 
 /// <summary>Kleines Projekt; AOlder: der frühere Stand (siehe SampleComparisonAnswer).</summary>
@@ -166,6 +174,20 @@ begin
     TArchitectureSnapshots.FromOverview(mCurrent));
   Result := AnswerOf(mCurrent, ',"baseline":"C:\\Projekt\\stand.json","comparison":' +
     TArchitectureComparer.Json(mComparison, TArchitectureComparer.DefaultFailOn));
+end;
+
+function SampleSplitAnswer: string;
+var
+  mOverview: TArchitectureOverview;
+  mLast: Integer;
+begin
+  mOverview := ArchitectureOverviewOf(ArchitectureSampleUnits);
+  mLast := High(mOverview.Subsystems);
+  mOverview.Subsystems[0].Parent := 'App';
+  mOverview.Subsystems[mLast].Parent := 'App';
+  mOverview.Subsystems[mLast].ColorSlot := 0;
+  mOverview.Subsystems[mLast].Shade := 1;
+  Result := AnswerOf(mOverview, '');
 end;
 
 { TAtlasArchitectureModelTests }
@@ -586,6 +608,55 @@ begin
   Assert.IsTrue(mModel.Comparison.ResolutionDiffers);
   Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleComparisonAnswer, mModel, mEnabled));
   Assert.IsFalse(mModel.Comparison.ResolutionDiffers);
+end;
+
+procedure TAtlasArchitectureModelTests.ParsesSplitSubsystems;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mLast, mIndex: Integer;
+  mOrder: TArray<Integer>;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleSplitAnswer, mModel, mEnabled));
+  mLast := High(mModel.Subsystems);
+  Assert.IsTrue(mLast >= 2, 'mindestens drei Teilsysteme');
+  Assert.AreEqual('App', mModel.Subsystems[0].Parent);
+  Assert.AreEqual('App', mModel.Subsystems[mLast].Parent);
+  Assert.AreEqual('', mModel.Subsystems[1].Parent);
+  Assert.AreEqual(0, mModel.Subsystems[mLast].ColorSlot);
+  Assert.AreEqual(1, mModel.Subsystems[mLast].Shade);
+  Assert.AreEqual(1, mModel.Subsystems[1].ColorSlot);
+  Assert.AreEqual(TAtlasArchitecturePalette.Color(0, 1, False), mModel.SubsystemColor(mLast, False));
+  Assert.AreEqual(TAtlasArchitecturePalette.Color(1, True), mModel.SubsystemColor(1, True));
+  // Legende: die Teile von „App“ zusammen an der Stelle des ersten.
+  mOrder := mModel.LegendOrder;
+  Assert.AreEqual(Integer(Length(mModel.Subsystems)), Integer(Length(mOrder)));
+  Assert.AreEqual(0, mOrder[0]);
+  Assert.AreEqual(mLast, mOrder[1]);
+  Assert.AreEqual(1, mOrder[2]);
+  // Ohne Nachteilung: Reihenfolge und Farben wie vor #1364.
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  mOrder := mModel.LegendOrder;
+  for mIndex := 0 to High(mOrder) do
+  begin
+    Assert.AreEqual(mIndex, mOrder[mIndex]);
+    Assert.AreEqual(TAtlasArchitecturePalette.Color(mIndex, False), mModel.SubsystemColor(mIndex, False));
+  end;
+end;
+
+procedure TAtlasArchitectureModelTests.PaletteShades;
+var
+  mBase, mLight, mDark: Cardinal;
+begin
+  mBase := TAtlasArchitecturePalette.Color(0, False);
+  Assert.AreEqual(mBase, TAtlasArchitecturePalette.Color(0, 0, False));
+  mLight := TAtlasArchitecturePalette.Color(0, 1, False);
+  mDark := TAtlasArchitecturePalette.Color(0, -1, False);
+  // #2F6FB3 mit 22 % Weiß: 2F → 5D, 6F → 8F, B3 → C4; mit 22 % Schwarz: 25, 57, 8C.
+  Assert.AreEqual(Cardinal($C48F5D), mLight);
+  Assert.AreEqual(Cardinal($8C5725), mDark);
+  // Höchstens 60 %.
+  Assert.AreEqual(TAtlasArchitecturePalette.Color(0, 3, False), TAtlasArchitecturePalette.Color(0, 5, False));
 end;
 
 procedure TAtlasArchitectureModelTests.CommandArgumentsWithResolution;

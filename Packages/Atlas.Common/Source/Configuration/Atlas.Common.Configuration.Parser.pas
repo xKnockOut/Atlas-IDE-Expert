@@ -2215,12 +2215,23 @@ end;
 
 procedure TValidator.ReadArchitecture(ANode: TJsonNode);
 
-  // architecture.grouping: Gruppierung der Teilsysteme (#1366).
+  // Zahl von AMin bis AMax; sonst Fehler mit ARange ("0,2 bis 5,0").
+  procedure ReadNumber(AValueNode: TJsonNode; const AName, ARange: string; AMin, AMax: Double; var AValue: Double);
+  var
+    mNumber: Double;
+  begin
+    if (AValueNode.Kind = TJsonKind.Number) and TryStrToFloat(AValueNode.Value, mNumber, TFormatSettings.Invariant) and
+      (mNumber >= AMin) and (mNumber <= AMax) then
+      AValue := mNumber
+    else
+      ReportNode(AValueNode, Format('"architecture.grouping.%s" muss eine Zahl von %s sein', [AName, ARange]));
+  end;
+
+  // architecture.grouping: Gruppierung der Teilsysteme (#1366, #1364).
   procedure ReadGrouping(AGroupNode: TJsonNode);
   var
     mIndex: Integer;
     mKey: string;
-    mNumber: Double;
   begin
     if AGroupNode.Kind <> TJsonKind.Object_ then
     begin
@@ -2231,14 +2242,11 @@ procedure TValidator.ReadArchitecture(ANode: TJsonNode);
     begin
       mKey := AGroupNode.Keys[mIndex];
       if mKey = 'resolution' then
-      begin
-        if (AGroupNode[mIndex].Kind = TJsonKind.Number) and
-          TryStrToFloat(AGroupNode[mIndex].Value, mNumber, TFormatSettings.Invariant) and (mNumber >= 0.2) and
-          (mNumber <= 5) then
-          FSettings.ArchitectureGroupingResolution := mNumber
-        else
-          ReportNode(AGroupNode[mIndex], '"architecture.grouping.resolution" muss eine Zahl von 0,2 bis 5,0 sein');
-      end
+        ReadNumber(AGroupNode[mIndex], mKey, '0,2 bis 5,0', 0.2, 5, FSettings.ArchitectureGroupingResolution)
+      else if mKey = 'maxShare' then
+        ReadNumber(AGroupNode[mIndex], mKey, '0 bis 0,9', 0, 0.9, FSettings.ArchitectureGroupingMaxShare)
+      else if mKey = 'minCohesion' then
+        ReadNumber(AGroupNode[mIndex], mKey, '0 bis 1', 0, 1, FSettings.ArchitectureGroupingMinCohesion)
       else if mKey = 'showResolutionSlider' then
         ExpectBoolean(AGroupNode[mIndex], mKey, FSettings.ArchitectureGroupingShowResolutionSlider)
       else
@@ -3505,6 +3513,8 @@ begin
       Result.ArchitectureFailOn := FileSettings.ArchitectureFailOn;
       Result.ArchitectureGroupingResolution := FileSettings.ArchitectureGroupingResolution;
       Result.ArchitectureGroupingShowResolutionSlider := FileSettings.ArchitectureGroupingShowResolutionSlider;
+      Result.ArchitectureGroupingMaxShare := FileSettings.ArchitectureGroupingMaxShare;
+      Result.ArchitectureGroupingMinCohesion := FileSettings.ArchitectureGroupingMinCohesion;
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand

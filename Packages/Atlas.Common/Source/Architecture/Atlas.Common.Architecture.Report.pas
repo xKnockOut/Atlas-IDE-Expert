@@ -19,7 +19,8 @@
 //    "central": [0, 1],
 //    "subsystems": [{"name": "Kern", "units": [0, 1], "central": 0,
 //                    "inner": 2, "outer": 0, "cohesion": 1, "isolated": false,
-//                    "x": 0, "y": 0, "r": 70}],
+//                    "color": 0, "shade": 0, "parent": "Common",
+//                    "x": 0, "y": 0, "r": 70}],         ("parent" nur bei nachgeteilten, #1364)
 //    "outliers": [{"unit": 3, "suggested": 1, "reason": "namespace",
 //                  "inside": 2, "toward": 0}],
 //    "cycles": [{"interfaceOnly": true, "units": [0, 1], "component": [0, 1],
@@ -175,6 +176,15 @@ begin
     Result := AOverview.Subsystems[ASubsystem].Name
   else
     Result := '';
+end;
+
+/// <summary>Name mit dem ursprünglichen Teilsystem, wenn es nachgeteilt wurde (#1364): "Lsp (Teil von Common)".
+/// </summary>
+function SubsystemCaption(const ASubsystem: TOverviewSubsystem): string;
+begin
+  Result := ASubsystem.Name;
+  if ASubsystem.Parent <> '' then
+    Result := Result + ' (Teil von ' + ASubsystem.Parent + ')';
 end;
 
 function CreatedText(const AOverview: TArchitectureOverview): string;
@@ -427,7 +437,11 @@ begin
         .Append(',"inner":').Append(Subsystem.InnerEdges)
         .Append(',"outer":').Append(Subsystem.OuterEdges)
         .Append(',"cohesion":').Append(JsonNumber(Subsystem.Cohesion))
-        .Append(',"isolated":').Append(JsonBool(Subsystem.Isolated));
+        .Append(',"isolated":').Append(JsonBool(Subsystem.Isolated))
+        .Append(',"color":').Append(Subsystem.ColorSlot)
+        .Append(',"shade":').Append(Subsystem.Shade);
+      if Subsystem.Parent <> '' then
+        Builder.Append(',"parent":').Append(JsonText(Subsystem.Parent));
       if Index < Length(ALayout.Subsystems) then
         Builder.Append(',"x":').Append(JsonNumber(ALayout.Subsystems[Index].X))
           .Append(',"y":').Append(JsonNumber(ALayout.Subsystems[Index].Y))
@@ -552,7 +566,8 @@ begin
     Builder.Append('|---|---|---|---|---|---|').Append(LineBreak);
     for Subsystem in AOverview.Subsystems do
     begin
-      Builder.Append('| ').Append(Cell(Subsystem.Name)).Append(' | ').Append(Length(Subsystem.Units)).Append(' | ');
+      Builder.Append('| ').Append(Cell(SubsystemCaption(Subsystem))).Append(' | ').Append(Length(Subsystem.Units))
+        .Append(' | ');
       if Subsystem.Central >= 0 then
         Builder.Append(Cell(AOverview.Units[Subsystem.Central].Name));
       Builder.Append(' | ').Append(Percent(Subsystem.Cohesion)).Append(' | ').Append(Subsystem.InnerEdges)
@@ -562,7 +577,7 @@ begin
     for Index := 0 to High(AOverview.Subsystems) do
     begin
       Subsystem := AOverview.Subsystems[Index];
-      Builder.Append('### ').Append(Subsystem.Name).Append(LineBreak).Append(LineBreak);
+      Builder.Append('### ').Append(SubsystemCaption(Subsystem)).Append(LineBreak).Append(LineBreak);
       Names := '';
       for Member in Subsystem.Units do
       begin
@@ -727,8 +742,8 @@ begin
         for Index := 0 to Min(High(AOverview.Subsystems), ALimit - 1) do
         begin
           Subsystem := AOverview.Subsystems[Index];
-          Result := Result + '  ' + Subsystem.Name + ': ' + IntToStr(Length(Subsystem.Units)) + ' Units, Zusammenhalt ' +
-            Percent(Subsystem.Cohesion) + LineBreak;
+          Result := Result + '  ' + SubsystemCaption(Subsystem) + ': ' + IntToStr(Length(Subsystem.Units)) +
+            ' Units, Zusammenhalt ' + Percent(Subsystem.Cohesion) + LineBreak;
         end;
         Result := Limited(Result, Length(AOverview.Subsystems), ALimit);
         Result := Result + 'Weitere Abschnitte: central, subsystems, cycles, crossLinks; unit für einen Steckbrief.';
@@ -762,8 +777,8 @@ begin
           end;
           if Length(Subsystem.Units) > 10 then
             Names := Names + ' … (' + IntToStr(Length(Subsystem.Units)) + ')';
-          Result := Result + Subsystem.Name + ': ' + IntToStr(Length(Subsystem.Units)) + ' Units, Zusammenhalt ' +
-            Percent(Subsystem.Cohesion) + LineBreak + '  ' + Names + LineBreak;
+          Result := Result + SubsystemCaption(Subsystem) + ': ' + IntToStr(Length(Subsystem.Units)) +
+            ' Units, Zusammenhalt ' + Percent(Subsystem.Cohesion) + LineBreak + '  ' + Names + LineBreak;
         end;
         Result := Limited(Result, Length(AOverview.Subsystems), ALimit);
         if Length(AOverview.Outliers) > 0 then

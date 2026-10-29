@@ -10,7 +10,9 @@
 //   filtert nach Teilen des Unit-Namens, ShortestPath sucht den kürzesten Weg
 //   über uses wie die HTML-Karte.
 // - TAtlasArchitecturePalette: Farben der Teilsysteme wie in der HTML-Karte,
-//   je für helle und dunkle Themen.
+//   je für helle und dunkle Themen; die Teile eines nachgeteilten
+//   Teilsystems (#1364, "parent") teilen eine Farbe ("color") in helleren und
+//   dunkleren Tönen ("shade").
 // - Comparison: Vergleich mit einem gespeicherten Stand (#1121) aus
 //   "comparison" (Daten aus TArchitectureComparer.Json), "baseline" und
 //   "comparisonError" der Antwort: Abschnitte mit Einträgen (Namen statt
@@ -68,6 +70,11 @@ type
     Cohesion: Double;
     /// <summary>Sammelgruppe der Units ohne uses-Beziehung.</summary>
     Isolated: Boolean;
+    /// <summary>Ursprüngliches Teilsystem, wenn dieses nachgeteilt wurde (#1364); '' sonst.</summary>
+    Parent: string;
+    /// <summary>Farbe in der Palette (ältere Daten: Nummer des Teilsystems) und Ton (0, heller +, dunkler −).</summary>
+    ColorSlot: Integer;
+    Shade: Integer;
     X: Double;
     Y: Double;
     R: Double;
@@ -237,6 +244,11 @@ type
     function IsHidden(AUnit: Integer; const AHidden: TArray<Boolean>): Boolean;
     /// <summary>Teilsysteme ohne die Sammelgruppe der Units ohne uses-Beziehung (Regler „Feinheit“).</summary>
     function SubsystemCount: Integer;
+    /// <summary>Farbe des Teilsystems in Karte und Legende (Farbfamilie bei Nachteilung, #1364).</summary>
+    function SubsystemColor(ASubsystem: Integer; ADark: Boolean): Cardinal;
+    /// <summary>Reihenfolge der Legende: wie Subsystems, die Teile eines nachgeteilten Teilsystems (gleicher
+    /// Parent) zusammen an der Stelle des ersten Teils.</summary>
+    function LegendOrder: TArray<Integer>;
   end;
 
   /// <summary>Optionen der Befehle atlas.architecture und atlas.architecture.saveReport.</summary>
@@ -317,9 +329,16 @@ type
   TAtlasArchitecturePalette = class
   public const
     Count = 10;
+    /// <summary>Höchstens so weit wird ein Ton zu Weiß bzw. Schwarz gemischt.</summary>
+    MaxShadeMix = 0.6;
+    /// <summary>Mischanteil je Tonstufe.</summary>
+    ShadeStep = 0.22;
   public
     /// <summary>Farbe des Teilsystems ASubsystem als $00BBGGRR (wie TColor).</summary>
-    class function Color(ASubsystem: Integer; ADark: Boolean): Cardinal; static;
+    class function Color(ASubsystem: Integer; ADark: Boolean): Cardinal; overload; static;
+    /// <summary>Farbe ASlot im Ton AShade (#1364): positiv heller, negativ dunkler, wie color-mix der HTML-Karte.
+    /// </summary>
+    class function Color(ASlot, AShade: Integer; ADark: Boolean): Cardinal; overload; static;
     /// <summary>Hintergrund ($00BBGGRR) ist dunkel: Helligkeit unter der Hälfte.</summary>
     class function IsDark(ABackground: Cardinal): Boolean; static;
   end;
@@ -807,6 +826,9 @@ begin
         AModel.Subsystems[Index].Outer := IntOf(Item, 'outer', 0);
         AModel.Subsystems[Index].Cohesion := FloatOf(Item, 'cohesion');
         AModel.Subsystems[Index].Isolated := FlagOf(Item, 'isolated');
+        AModel.Subsystems[Index].Parent := TextOf(Item, 'parent');
+        AModel.Subsystems[Index].ColorSlot := IntOf(Item, 'color', Index);
+        AModel.Subsystems[Index].Shade := IntOf(Item, 'shade', 0);
         AModel.Subsystems[Index].X := FloatOf(Item, 'x');
         AModel.Subsystems[Index].Y := FloatOf(Item, 'y');
         AModel.Subsystems[Index].R := FloatOf(Item, 'r');
@@ -1137,6 +1159,38 @@ begin
       Inc(Result);
 end;
 
+function TAtlasArchitectureModel.SubsystemColor(ASubsystem: Integer; ADark: Boolean): Cardinal;
+begin
+  if (ASubsystem >= 0) and (ASubsystem < Length(Subsystems)) then
+    Result := TAtlasArchitecturePalette.Color(Subsystems[ASubsystem].ColorSlot, Subsystems[ASubsystem].Shade, ADark)
+  else
+    Result := TAtlasArchitecturePalette.Color(ASubsystem, ADark);
+end;
+
+function TAtlasArchitectureModel.LegendOrder: TArray<Integer>;
+var
+  mIndex, mOther: Integer;
+  mDone: TArray<Boolean>;
+begin
+  Result := nil;
+  SetLength(mDone, Length(Subsystems));
+  for mIndex := 0 to High(Subsystems) do
+  begin
+    if mDone[mIndex] then
+      Continue;
+    Result := Result + [mIndex];
+    mDone[mIndex] := True;
+    if Subsystems[mIndex].Parent = '' then
+      Continue;
+    for mOther := mIndex + 1 to High(Subsystems) do
+      if not mDone[mOther] and SameText(Subsystems[mOther].Parent, Subsystems[mIndex].Parent) then
+      begin
+        Result := Result + [mOther];
+        mDone[mOther] := True;
+      end;
+  end;
+end;
+
 function TAtlasArchComparison.ResolutionDiffers: Boolean;
 begin
   Result := Present and not TAtlasArchResolution.Same(BaselineResolution, Resolution);
@@ -1328,6 +1382,30 @@ begin
     Rgb := LightColors[Slot];
   // #RRGGBB → $00BBGGRR.
   Result := ((Rgb and $FF) shl 16) or (Rgb and $FF00) or ((Rgb shr 16) and $FF);
+end;
+
+class function TAtlasArchitecturePalette.Color(ASlot, AShade: Integer; ADark: Boolean): Cardinal;
+var
+  mBase: Cardinal;
+  mMix: Double;
+  mShift, mChannel: Integer;
+begin
+  mBase := Color(ASlot, ADark);
+  if AShade = 0 then
+    Exit(mBase);
+  mMix := Min(MaxShadeMix, ShadeStep * Abs(AShade));
+  Result := 0;
+  mShift := 0;
+  while mShift <= 16 do
+  begin
+    mChannel := (mBase shr mShift) and $FF;
+    if AShade > 0 then
+      mChannel := Round(mChannel + (255 - mChannel) * mMix)
+    else
+      mChannel := Round(mChannel * (1 - mMix));
+    Result := Result or (Cardinal(EnsureRange(mChannel, 0, 255)) shl mShift);
+    Inc(mShift, 8);
+  end;
 end;
 
 class function TAtlasArchitecturePalette.IsDark(ABackground: Cardinal): Boolean;
