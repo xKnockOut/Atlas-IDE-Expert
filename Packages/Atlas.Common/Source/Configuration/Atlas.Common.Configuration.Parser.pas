@@ -2413,6 +2413,8 @@ begin
               'newCycle, newCrossLink, subsystemChange, centralGrowth)', [Value]));
         end;
     end
+    else if Key = 'explainAssignment' then
+      ExpectBoolean(ANode[Index], Key, FSettings.ArchitectureExplainAssignment)
     else if Key = 'grouping' then
       ReadGrouping(ANode[Index])
     else
@@ -3606,6 +3608,7 @@ begin
       Result.ArchitectureExclude := FileSettings.ArchitectureExclude;
       Result.ArchitectureBaseline := FileSettings.ArchitectureBaseline;
       Result.ArchitectureFailOn := FileSettings.ArchitectureFailOn;
+      Result.ArchitectureExplainAssignment := FileSettings.ArchitectureExplainAssignment;
       Result.ArchitectureGroupingResolution := FileSettings.ArchitectureGroupingResolution;
       Result.ArchitectureGroupingShowResolutionSlider := FileSettings.ArchitectureGroupingShowResolutionSlider;
       Result.ArchitectureGroupingMaxShare := FileSettings.ArchitectureGroupingMaxShare;

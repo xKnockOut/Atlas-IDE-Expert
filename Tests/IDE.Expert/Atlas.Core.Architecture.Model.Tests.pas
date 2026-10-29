@@ -4,7 +4,8 @@
 // (dieselben Daten wie TArchitectureReport.Json), Sortieren, Filter, Pfade,
 // Farben und Umrechnung der Karte; Vergleich mit einem gespeicherten Stand
 // (#1121) und die Argumente dazu; Feinheit der Teilsysteme (#1366): Regler,
-// settings.json, Argumente und Hinweis im Vergleich.
+// settings.json, Argumente und Hinweis im Vergleich; Zuordnung der Units
+// (#1368).
 
 interface
 
@@ -53,6 +54,10 @@ type
     procedure PaletteShades;
     [Test]
     procedure ParsesFoundation;
+    [Test]
+    procedure ParsesAssignment;
+    [Test]
+    procedure AssignmentWithFoundationAndBrokenRows;
   end;
 
 /// <summary>Antwort von atlas.architecture zu einem kleinen Projekt mit Zyklus (für Kern- und UI-Tests).</summary>
@@ -67,6 +72,10 @@ function SampleResolutionAnswer: string;
 function SampleSplitAnswer: string;
 /// <summary>Wie SampleSplitAnswer ohne Teile; das erste Teilsystem ist das „Fundament“ (#1365).</summary>
 function SampleFoundationAnswer: string;
+/// <summary>Zuordnung (#1368): Z.Own.Mid mit 8 gewichteten Kanten zu Own und 6 zu Oth, knapp.</summary>
+function SampleAssignmentAnswer: string;
+/// <summary>Zuordnung mit Teilsystem „Fundament“ (#1365, #1368), ohne Nachteilung.</summary>
+function SampleAssignmentFoundationAnswer: string;
 
 implementation
 
@@ -83,8 +92,10 @@ uses
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
+  Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesGraph.Tests,
   Atlas.Common.Architecture.Snapshot.Tests,
+  Atlas.Common.Architecture.Overview.Tests,
   Atlas.Core.Architecture.Model;
 
 /// <summary>Kleines Projekt; AOlder: der frühere Stand (siehe SampleComparisonAnswer).</summary>
@@ -205,7 +216,103 @@ begin
   Result := AnswerOf(mOverview, '');
 end;
 
+function AssignmentAnswerOf(const AUnits: TArray<TUnitIndex>; const AGrouping: TArchitectureGrouping): string;
+var
+  mGraph: TUsesGraph;
+  mOverview: TArchitectureOverview;
+begin
+  mGraph := TUsesGraph.Create(AUnits, TUsesGraphOptions.Default);
+  try
+    mOverview := TArchitectureAnalyzer.Analyze(mGraph, nil, 5, AGrouping);
+  finally
+    mGraph.Free;
+  end;
+  mOverview.Title := 'Zuordnung';
+  Result := AnswerOf(mOverview, '');
+end;
+
+function SampleAssignmentAnswer: string;
+begin
+  Result := AssignmentAnswerOf(AssignmentProject, TArchitectureGrouping.Default);
+end;
+
+function SampleAssignmentFoundationAnswer: string;
+var
+  mGrouping: TArchitectureGrouping;
+begin
+  mGrouping := TArchitectureGrouping.Default;
+  mGrouping.MaxShare := 0;
+  mGrouping.MinCohesion := 0;
+  Result := AssignmentAnswerOf(FoundationProject, mGrouping);
+end;
+
 { TAtlasArchitectureModelTests }
+
+procedure TAtlasArchitectureModelTests.ParsesAssignment;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mMid: Integer;
+  mUnit: TAtlasArchUnit;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAssignmentAnswer, mModel, mEnabled));
+  Assert.IsTrue(mModel.HasAssignment);
+  Assert.StartsWith('Atlas bildet die Teilsysteme', mModel.Explanation);
+  Assert.AreEqual(Double(0.25), mModel.MaxShare, 1E-9);
+  Assert.AreEqual(Double(0.3), mModel.MinCohesion, 1E-9);
+  Assert.AreEqual('separate', mModel.Foundations);
+  mMid := mModel.IndexOf('Z.Own.Mid');
+  mUnit := mModel.Units[mMid];
+  Assert.AreEqual(2, Integer(Length(mUnit.Assignment)));
+  Assert.AreEqual(0, mModel.OwnRow(mMid));
+  Assert.AreEqual(1, mModel.RivalRow(mMid));
+  Assert.AreEqual(mUnit.Subsystem, mUnit.Assignment[0].Subsystem);
+  Assert.AreEqual(3, mUnit.Assignment[0].Interfaces);
+  Assert.AreEqual(2, mUnit.Assignment[0].Implementations);
+  Assert.AreEqual(8, mUnit.Assignment[0].Sum);
+  Assert.AreEqual('Oth', mModel.SubsystemName(mUnit.Assignment[1].Subsystem));
+  Assert.AreEqual(6, mUnit.Assignment[1].Sum);
+  Assert.IsTrue(mUnit.Assignment[1].Counts);
+  Assert.IsTrue(mUnit.Close);
+  Assert.AreEqual(3, mUnit.Missing);
+  Assert.IsFalse(mModel.Units[mModel.IndexOf('Z.Own.U1')].Close);
+  Assert.AreEqual(-1, mModel.RivalRow(mModel.IndexOf('Z.Own.U1')));
+  Assert.AreEqual(-1, mModel.OwnRow(-1));
+  // Ohne explainAssignment (wie SampleAnswer aus einer Anfrage ohne den Schalter): nichts.
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  Assert.IsFalse(mModel.HasAssignment);
+  Assert.AreEqual('', mModel.Explanation);
+end;
+
+procedure TAtlasArchitectureModelTests.AssignmentWithFoundationAndBrokenRows;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mU2: Integer;
+  mRow: TAtlasArchAssignmentRow;
+  mFound: Boolean;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAssignmentFoundationAnswer, mModel, mEnabled));
+  Assert.AreEqual(Double(0), mModel.MaxShare, 1E-9);
+  Assert.AreEqual(Double(0), mModel.MinCohesion, 1E-9);
+  mU2 := mModel.IndexOf('App.Ui.U2');
+  mFound := False;
+  for mRow in mModel.Units[mU2].Assignment do
+    if mModel.Subsystems[mRow.Subsystem].Foundation then
+    begin
+      mFound := True;
+      Assert.IsFalse(mRow.Counts);
+    end;
+  Assert.IsTrue(mFound);
+  Assert.AreEqual(-1, mModel.RivalRow(mU2));
+  // Teilsystem außerhalb und falscher Aufbau: Antwort ungültig.
+  Assert.IsFalse(TAtlasArchitectureModel.Parse(StringReplace(SampleAssignmentAnswer, '"assignment":[[',
+    '"assignment":[[99,0,0],[', []), mModel, mEnabled));
+  Assert.IsFalse(TAtlasArchitectureModel.Parse(StringReplace(SampleAssignmentAnswer, '"assignment":[[',
+    '"assignment":[["a",0,0],[', []), mModel, mEnabled));
+  Assert.IsFalse(TAtlasArchitectureModel.Parse(StringReplace(SampleAssignmentAnswer, '"assignment":[[',
+    '"assignment":[[0,0],[', []), mModel, mEnabled));
+end;
 
 procedure TAtlasArchitectureModelTests.ParsesServerAnswer;
 var

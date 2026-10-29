@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3084] of string = (
+  Lines: array[0..3092] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2212,6 +2212,15 @@ const
     '          ],',
     '          "description": "Welche Abweichungen AtlasServer --compare als Fehler meldet (Exitcode 1), wenn --fail-on fehlt: neue Zyklen, neue Querverbindungen, Units mit Teilsystemwechsel, zentrale Unit' +
       's mit stark gewachsener Abhängigkeit."',
+    '        },',
+    '        "explainAssignment": {',
+    '          "x-page": "Architektur",',
+    '          "x-control": "Kontrollkästchen",',
+    '          "x-issue": "#1368",',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Zuordnung jeder Unit erklären: Tabelle der Kanten je Teilsystem (interface, implementation, gewichtete Summe) im Hinweis und Steckbrief des Fensters, im Bericht und in get_ar' +
+      'chitecture mit unit, dazu die Spalte „knapp“ für Units, bei denen ein anderes Teilsystem mindestens 75 % der Summe erreicht."',
     '        },',
     '        "grouping": {',
     '          "type": "object",',
