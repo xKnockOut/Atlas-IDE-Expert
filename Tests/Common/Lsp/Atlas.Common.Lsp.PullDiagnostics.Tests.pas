@@ -65,6 +65,10 @@ type
     procedure ClientPausesRun;
     [Test]
     procedure WorkspaceReportCarriesRun;
+    /// <summary>Während eines Laufs bündelt eine Anfrage die Befunde mehrerer Units, statt je Unit zu antworten
+    /// (Diagnoselog 29.10.2026: 970 Anfragen mit je einem Befund).</summary>
+    [Test]
+    procedure WorkspaceBundlesReportsDuringRun;
   end;
 
 implementation
@@ -893,6 +897,72 @@ begin
     end;
   finally
     Fixture.Done;
+  end;
+end;
+
+procedure TLspPullDiagnosticsTests.WorkspaceBundlesReportsDuringRun;
+const
+  cFileCount = 12;
+var
+  mStore: IDocumentStore;
+  mProviders: TSyntaxDiagnosticsProviders;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mPull: TLspPullDiagnostics;
+  mFiles: TArray<string>;
+  mIndex: Integer;
+  mAnswer: TJSONValue;
+begin
+  mFiles := nil;
+  for mIndex := 1 to cFileCount do
+    mFiles := mFiles + [Format('C:\P\U%d.pas', [mIndex])];
+  mStore := TDocumentStore.Create;
+  mProviders := Default(TSyntaxDiagnosticsProviders);
+  // Jede Unit braucht etwas Zeit, wie im echten Lauf.
+  mProviders.Rules :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    begin
+      AContext := Default(TRuleCheckContext);
+      AContext.Settings := TServerSettings.Default;
+      AContext.Rules := [
+        TCallbackRule.Create('langsam',
+          procedure
+          begin
+            Sleep(30);
+          end)];
+      Result := True;
+    end;
+  mDiagnostics := TLspSyntaxDiagnostics.Create(mStore, nil, mProviders, 0);
+  try
+    mDiagnostics.PullMode := True;
+    mPull := TLspPullDiagnostics.Create(mStore, mDiagnostics, nil,
+      function: TArray<string>
+      begin
+        Result := mFiles;
+      end,
+      function(const AFileName: string; out AStamp: Int64): Boolean
+      begin
+        AStamp := 42;
+        Result := True;
+      end,
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        AText := Broken;
+        Result := True;
+      end);
+    try
+      mPull.WaitMs := 5000;
+      mAnswer := mPull.WorkspaceReport(nil, Token);
+      try
+        Assert.IsTrue(TJSONObject(mAnswer).GetValue<TJSONArray>('items').Count > 1,
+          IntToStr(TJSONObject(mAnswer).GetValue<TJSONArray>('items').Count));
+      finally
+        mAnswer.Free;
+      end;
+    finally
+      mPull.Free;
+    end;
+  finally
+    mDiagnostics.Free;
   end;
 end;
 

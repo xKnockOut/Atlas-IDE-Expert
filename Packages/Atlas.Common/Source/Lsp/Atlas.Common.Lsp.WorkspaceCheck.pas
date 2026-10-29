@@ -216,9 +216,27 @@ type
     property Skipped: Integer read FSkipped;
   end;
 
+  /// <summary>Entscheidet, wann ein Indexaufbau die Projektprüfung neu startet. Nach der Projektstufe sind alle
+  /// Units indiziert, die das Projekt über uses erreicht; die Prüfung läuft ab da. Das Ende des Aufbaus
+  /// (Suchpfade, Bibliothek) startet sie nur, wenn die Projektstufe es nicht schon getan hat. Früher begann
+  /// der Lauf am Ende erzwungen von vorn und warf alles weg, was er während der Bibliotheksstufe geprüft
+  /// hatte (Diagnose-Log 29.10.2026: 630 Units in 3 Minuten verworfen). Threadsicher.</summary>
+  TWorkspaceCheckIndexGate = class
+  private
+    // 1, sobald dieser Aufbau die Prüfung neu gestartet hat.
+    FStarted: Integer;
+  public
+    /// <summary>Ein neuer Indexaufbau beginnt.</summary>
+    procedure IndexStarted;
+    /// <summary>True, wenn die Prüfung jetzt neu starten soll: immer nach der Projektstufe, am Ende des
+    /// Aufbaus nur, wenn die Projektstufe sie nicht gestartet hat.</summary>
+    function Recheck(AProjectStage: Boolean): Boolean;
+  end;
+
 implementation
 
 uses
+  System.SyncObjs,
   Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Documents.TextDocument,
@@ -1009,6 +1027,23 @@ begin
         Break;
       end;
   end;
+end;
+
+{ TWorkspaceCheckIndexGate }
+
+procedure TWorkspaceCheckIndexGate.IndexStarted;
+begin
+  TInterlocked.Exchange(FStarted, 0);
+end;
+
+function TWorkspaceCheckIndexGate.Recheck(AProjectStage: Boolean): Boolean;
+begin
+  if AProjectStage then
+  begin
+    TInterlocked.Exchange(FStarted, 1);
+    Exit(True);
+  end;
+  Result := TInterlocked.Exchange(FStarted, 1) = 0;
 end;
 
 end.
