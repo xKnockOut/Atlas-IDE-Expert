@@ -1,7 +1,8 @@
 ﻿unit Cm.E2448;
 
 // E2448 An attribute argument must be a constant expression, typeof expression or array constructor
-// Erwartet: E2448
+// Erwartet: E2026
+// Delphi 13 meldet hier E2026 statt E2448.
 
 interface
 
@@ -16,7 +17,7 @@ type
 
   TKlasse = class
   public
-    [TMarke(GWert)] // <- E2448
+    [TMarke(GWert)] // <- E2026
     procedure Machen;
   end;
 

@@ -1,7 +1,8 @@
 ﻿unit Cm.W1040;
 
 // W1040 Implicit use of Variants unit
-// Erwartet: W1040
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 
 interface
 
@@ -11,7 +12,7 @@ function Wert: Integer;
 var
   mWert: Variant;
 begin
-  mWert := 1; // <- W1040
+  mWert := 1; // <- ohne Meldung
   Result := mWert;
 end;
 

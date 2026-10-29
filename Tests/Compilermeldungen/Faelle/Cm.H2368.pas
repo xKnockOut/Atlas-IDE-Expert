@@ -1,7 +1,8 @@
 ﻿unit Cm.H2368;
 
 // H2368 Visibility of property accessor method should match property
-// Erwartet: H2368
+// Erwartet: W1055
+// Delphi 13 meldet hier W1055 statt H2368.
 // Vermutung; aus der .NET-Zeit (CLS).
 
 interface
@@ -11,7 +12,7 @@ type
   public
     function GetWert: Integer;
   published
-    property Wert: Integer read GetWert; // <- H2368
+    property Wert: Integer read GetWert; // <- W1055
   end;
 
 implementation

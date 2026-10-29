@@ -1,7 +1,8 @@
 ﻿unit Cm.E2211;
 
 // E2211 Declaration of '%s' differs from declaration in interface '%s'
-// Erwartet: E2211
+// Erwartet: E2291
+// Delphi 13 meldet hier E2291 statt E2211.
 
 interface
 
@@ -12,7 +13,7 @@ type
 
   TKlasse = class(TInterfacedObject, IEins)
   public
-    procedure Machen(AWert: string); // <- E2211
+    procedure Machen(AWert: string); // <- E2291
   end;
 
 implementation

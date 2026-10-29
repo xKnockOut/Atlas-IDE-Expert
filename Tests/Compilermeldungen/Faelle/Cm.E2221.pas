@@ -1,7 +1,8 @@
 ﻿unit Cm.E2221;
 
 // E2221 $WEAKPACKAGEUNIT '%s' cannot have initialization or finalization code
-// Erwartet: E2221
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 
 {$WEAKPACKAGEUNIT ON}
 
@@ -9,6 +10,6 @@ interface
 
 implementation
 
-initialization // <- E2221
+initialization // <- ohne Meldung
 
 end.

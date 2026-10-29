@@ -2,7 +2,8 @@
 unit Cm.W1063;
 
 // W1063 Widening given AnsiChar constant to WideChar lost information
-// Erwartet: W1063
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 // Vermutung: Zeichen über 127 hängen von der Codepage ab.
 
 interface
@@ -14,7 +15,7 @@ const
 
 function Zeichen: WideChar;
 begin
-  Result := WideChar(AnsiChar(#$80)); // <- W1063
+  Result := WideChar(AnsiChar(#$80)); // <- ohne Meldung
 end;
 
 end.

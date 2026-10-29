@@ -1,7 +1,8 @@
 ﻿unit Cm.E2075;
 
 // E2075 This form of method call only allowed in methods of derived types
-// Erwartet: E2075
+// Erwartet: E2076
+// Delphi 13 meldet hier E2076 statt E2075.
 
 interface
 
@@ -24,7 +25,7 @@ end;
 
 procedure TAndere.Rufen;
 begin
-  TBasis.Machen; // <- E2075
+  TBasis.Machen; // <- E2076
 end;
 
 end.

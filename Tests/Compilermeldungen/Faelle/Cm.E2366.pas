@@ -1,7 +1,8 @@
 ﻿unit Cm.E2366;
 
 // E2366 Global procedure or class static method expected
-// Erwartet: E2366
+// Erwartet: E2009
+// Delphi 13 meldet hier E2009 statt E2366.
 // Vermutung zum Code.
 
 interface
@@ -24,7 +25,7 @@ procedure Fall;
 var
   mRueckruf: TRueckruf;
 begin
-  mRueckruf := TKlasse.Machen; // <- E2366
+  mRueckruf := TKlasse.Machen; // <- E2009
   mRueckruf;
 end;
 

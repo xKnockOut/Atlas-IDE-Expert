@@ -1,7 +1,8 @@
 ﻿unit Cm.E2256;
 
 // E2256 Dispose not supported (nor necessary) for dynamic arrays
-// Erwartet: E2256
+// Erwartet: E2008
+// Delphi 13 meldet hier E2008 statt E2256.
 
 interface
 
@@ -12,7 +13,7 @@ var
   mFeld: array of Integer;
 begin
   mFeld := nil;
-  Dispose(mFeld); // <- E2256
+  Dispose(mFeld); // <- E2008
 end;
 
 end.

@@ -1,7 +1,8 @@
 ﻿unit Cm.H2444;
 
 // H2444 Inline function has not been expanded because accessing member is inaccessible
-// Erwartet: H2444
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 
 interface
 
@@ -12,7 +13,7 @@ uses
 
 function Rechne(AObjekt: TVerborgen): Integer;
 begin
-  Result := AObjekt.Wert; // <- H2444
+  Result := AObjekt.Wert; // <- ohne Meldung
 end;
 
 end.

@@ -430,8 +430,16 @@ $targets
     $lines = @($header) + @($rows | ForEach-Object {
         @($_.Fall, $_.Plattform, $_.Ok, $_.Datei, $_.Zeile, $_.Code, $_.Art, ($_.Text -replace "`t", ' ')) -join "`t"
     })
+    # Nachlauf einzelner Fälle (-Cases): die Zeilen der übrigen Fälle aus dem letzten Lauf behalten.
+    if (($Cases -join ',') -ne '*' -and (Test-Path $ResultFile)) {
+        $built = @{}
+        foreach ($case in $caseFiles) { $built[$case.Stem] = $true }
+        $kept = @(Get-Content -Path $ResultFile -Encoding UTF8 | Select-Object -Skip 1 |
+            Where-Object { -not $built.ContainsKey(($_ -split "`t")[0]) })
+        $lines = @($header) + $kept + @($lines | Select-Object -Skip 1)
+    }
     Set-Content -Path $ResultFile -Value $lines -Encoding UTF8
-    Write-Step "dcc-Ergebnis in $ResultFile ($($rows.Count) Zeilen)"
+    Write-Step "dcc-Ergebnis in $ResultFile ($($rows.Count) neue Zeilen)"
 }
 
 if ($AtlasServer) {

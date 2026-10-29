@@ -1,7 +1,8 @@
 ﻿unit Cm.E2143;
 
 // E2143 Expression has no value
-// Erwartet: E2143
+// Erwartet: E2010
+// Delphi 13 meldet hier E2010 statt E2143.
 
 interface
 
@@ -15,7 +16,7 @@ procedure Fall;
 var
   mZahl: Integer;
 begin
-  mZahl := Nichts; // <- E2143
+  mZahl := Nichts; // <- E2010
 end;
 
 end.

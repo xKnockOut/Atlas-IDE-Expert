@@ -2,7 +2,8 @@
 unit Cm.W1064;
 
 // W1064 Widening given AnsiString constant lost information
-// Erwartet: W1064
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 // Vermutung.
 
 interface
@@ -11,7 +12,7 @@ implementation
 
 function Text: string;
 begin
-  Result := string(AnsiString(#$80#$81)); // <- W1064
+  Result := string(AnsiString(#$80#$81)); // <- ohne Meldung
 end;
 
 end.

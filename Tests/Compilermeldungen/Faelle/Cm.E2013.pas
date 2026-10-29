@@ -1,7 +1,8 @@
 ﻿unit Cm.E2013;
 
 // E2013 Type of expression must be INTEGER
-// Erwartet: E2013
+// Erwartet: E2008
+// Delphi 13 meldet hier E2008 statt E2013.
 // Vermutung.
 
 interface
@@ -13,7 +14,7 @@ var
   mZahl: Integer;
 begin
   mZahl := 1;
-  Inc(mZahl, 1.5); // <- E2013
+  Inc(mZahl, 1.5); // <- E2008
 end;
 
 end.

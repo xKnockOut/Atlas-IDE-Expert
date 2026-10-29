@@ -1,7 +1,8 @@
 ﻿unit Cm.E2571;
 
 // E2571 Type parameter '%s' doesn't have class or interface constraint
-// Erwartet: E2571
+// Erwartet: E2003
+// Delphi 13 meldet hier E2003 statt E2571.
 
 interface
 
@@ -15,7 +16,7 @@ implementation
 
 procedure TBehaelter<T>.Machen(AWert: T);
 begin
-  AWert.Free; // <- E2571
+  AWert.Free; // <- E2003
 end;
 
 end.

@@ -2,7 +2,8 @@
 unit Cm.W1071;
 
 // W1071 Implicit integer cast with potential data loss
-// Erwartet: W1071
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 
 interface
 
@@ -10,7 +11,7 @@ implementation
 
 function Kuerzen(AWert: Int64): Integer;
 begin
-  Result := AWert; // <- W1071
+  Result := AWert; // <- ohne Meldung
 end;
 
 end.

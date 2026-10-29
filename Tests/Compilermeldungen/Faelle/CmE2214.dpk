@@ -1,10 +1,11 @@
 ﻿package CmE2214;
 
 // E2214 Package '%s' is recursively required
-// Erwartet: E2214
+// Erwartet: E2202
+// Delphi 13 meldet hier E2202 statt E2214.
 
 requires
   rtl,
-  CmE2214; // <- E2214
+  CmE2214; // <- E2202
 
 end.

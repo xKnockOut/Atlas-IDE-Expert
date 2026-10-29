@@ -1,7 +1,8 @@
 ﻿unit Cm.E2389;
 
 // E2389 Protected member '%s' is inaccessible here
-// Erwartet: E2389
+// Erwartet: E2362
+// Delphi 13 meldet hier E2362 statt E2389.
 // Vermutung; Delphi meldet hier vermutlich E2362.
 
 interface
@@ -19,7 +20,7 @@ implementation
 
 procedure TKind.Rufen(AAndere: TBasis);
 begin
-  AAndere.Geschuetzt; // <- E2389
+  AAndere.Geschuetzt; // <- E2362
 end;
 
 end.

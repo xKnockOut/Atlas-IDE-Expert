@@ -1,7 +1,8 @@
 ﻿unit Cm.E2325;
 
 // E2325 Attribute '%s' is not valid on this target
-// Erwartet: E2325
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 // Vermutung: [Volatile] ist nur an Feldern und Variablen erlaubt.
 
 interface
@@ -9,7 +10,7 @@ interface
 type
   TKlasse = class
   public
-    [Volatile] // <- E2325
+    [Volatile] // <- ohne Meldung
     procedure Machen;
   end;
 

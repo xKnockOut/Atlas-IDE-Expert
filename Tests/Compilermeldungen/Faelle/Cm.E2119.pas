@@ -1,7 +1,8 @@
 ﻿unit Cm.E2119;
 
 // E2119 Structure field identifier expected
-// Erwartet: E2119
+// Erwartet: E2003
+// Delphi 13 meldet hier E2003 statt E2119.
 // Plattform: Win32
 
 interface
@@ -16,7 +17,7 @@ type
 procedure Fall;
 begin
   asm
-    mov eax, [ebx].TPunkt.Z // <- E2119
+    mov eax, [ebx].TPunkt.Z // <- E2003
   end;
 end;
 

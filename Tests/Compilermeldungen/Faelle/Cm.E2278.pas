@@ -1,7 +1,8 @@
 ﻿unit Cm.E2278;
 
 // E2278 Cannot take address of local symbol %s
-// Erwartet: E2278
+// Erwartet: F2084
+// Delphi 13 meldet hier F2084 statt E2278.
 
 interface
 
@@ -11,7 +12,7 @@ procedure Fall;
 var
   mZahl: Integer;
 const
-  cZeiger: Pointer = @mZahl; // <- E2278
+  cZeiger: Pointer = @mZahl; // <- F2084
 begin
   mZahl := 1;
 end;

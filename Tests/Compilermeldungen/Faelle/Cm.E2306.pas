@@ -1,7 +1,8 @@
 ﻿unit Cm.E2306;
 
 // E2306 'Self' is initialized more than once
-// Erwartet: E2306
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 // Vermutung; vermutlich nur bei Records mit Konstruktoren.
 
 interface
@@ -26,7 +27,7 @@ end;
 constructor TKind.Create;
 begin
   inherited Create;
-  inherited Create; // <- E2306
+  inherited Create; // <- ohne Meldung
 end;
 
 end.

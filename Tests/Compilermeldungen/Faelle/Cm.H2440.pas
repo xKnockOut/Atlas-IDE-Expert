@@ -1,7 +1,8 @@
 ﻿unit Cm.H2440;
 
 // H2440 Inline method visibility is not lower or same visibility of accessing member
-// Erwartet: H2440
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 // Vermutung; Delphi meldet es womöglich nur in anderen Konstellationen.
 
 interface
@@ -18,7 +19,7 @@ implementation
 
 function TMitInline.Wert: Integer;
 begin
-  Result := FWert; // <- H2440
+  Result := FWert; // <- ohne Meldung
 end;
 
 end.

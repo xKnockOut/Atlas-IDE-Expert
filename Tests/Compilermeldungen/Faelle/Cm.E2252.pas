@@ -1,7 +1,8 @@
 ﻿unit Cm.E2252;
 
 // E2252 Method '%s' with identical parameters already exists
-// Erwartet: E2252
+// Erwartet: E2004
+// Delphi 13 meldet hier E2004 statt E2252.
 
 interface
 
@@ -11,7 +12,7 @@ procedure Nimm(AWert: Integer); overload;
 begin
 end;
 
-procedure Nimm(AZahl: Integer); overload; // <- E2252
+procedure Nimm(AZahl: Integer); overload; // <- E2004
 begin
 end;
 

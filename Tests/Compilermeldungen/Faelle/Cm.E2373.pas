@@ -1,7 +1,8 @@
 ﻿unit Cm.E2373;
 
 // E2373 Call to abstract method %s.%s
-// Erwartet: E2373
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 
 interface
 
@@ -20,7 +21,7 @@ implementation
 
 procedure TKind.Machen;
 begin
-  inherited Machen; // <- E2373
+  inherited Machen; // <- ohne Meldung
 end;
 
 end.

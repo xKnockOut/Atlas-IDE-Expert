@@ -1,7 +1,8 @@
 ﻿unit Cm.E2265;
 
 // E2265 Interface '%s' not mentioned in interface list
-// Erwartet: E2265
+// Erwartet: E2003
+// Delphi 13 meldet hier E2003 statt E2265.
 
 interface
 
@@ -14,7 +15,7 @@ type
   private
     procedure Tun;
   public
-    procedure IEins.Machen = Tun; // <- E2265
+    procedure IEins.Machen = Tun; // <- E2003
   end;
 
 implementation

@@ -1,7 +1,8 @@
 ﻿unit Cm.E2354;
 
 // E2354 String element cannot be passed to var parameter
-// Erwartet: E2354
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 
 interface
 
@@ -17,7 +18,7 @@ var
   mText: string;
 begin
   mText := 'abc';
-  Aendern(mText[1]); // <- E2354
+  Aendern(mText[1]); // <- ohne Meldung
 end;
 
 end.

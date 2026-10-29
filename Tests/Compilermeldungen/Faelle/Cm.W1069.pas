@@ -2,14 +2,15 @@
 unit Cm.W1069;
 
 // W1069 Feature will not be available in mobile Delphi compiler
-// Erwartet: W1069
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64).
 // Vermutung; in neueren Versionen womöglich entfallen.
 
 interface
 
 implementation
 
-function Text: AnsiString; // <- W1069
+function Text: AnsiString; // <- ohne Meldung
 begin
   Result := 'a';
 end;
