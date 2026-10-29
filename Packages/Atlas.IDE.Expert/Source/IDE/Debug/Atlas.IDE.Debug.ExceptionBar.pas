@@ -135,8 +135,8 @@ uses
   Winapi.Windows,
   Vcl.Forms,
   Vcl.Clipbrd,
-  ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
@@ -394,19 +394,12 @@ end;
 
 class function TAtlasIdeDebugExceptionBar.HostOfTopEditor: TWinControl;
 var
-  Services: INTAEditorServices;
-  Window: INTAEditWindow;
-  Editor: TComponent;
+  Editor: TWinControl;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
-    Exit;
-  Window := Services.TopEditWindow;
-  if (Window = nil) or (Window.Form = nil) then
-    Exit;
-  Editor := Window.Form.FindComponent('Editor');
-  if (Editor is TWinControl) and (TWinControl(Editor).Parent <> nil) then
-    Result := TWinControl(Editor).Parent;
+  Editor := TAtlasEditorBarHost.TopEditor;
+  if (Editor <> nil) and (Editor.Parent <> nil) then
+    Result := Editor.Parent;
 end;
 
 class procedure TAtlasIdeDebugExceptionBar.ShowBar;

@@ -10,6 +10,7 @@ interface
 
 uses
   DUnitX.TestFramework,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Core.Editor.ClassExtraction;
 

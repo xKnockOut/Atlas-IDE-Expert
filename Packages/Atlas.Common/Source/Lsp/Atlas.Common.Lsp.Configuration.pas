@@ -127,6 +127,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,

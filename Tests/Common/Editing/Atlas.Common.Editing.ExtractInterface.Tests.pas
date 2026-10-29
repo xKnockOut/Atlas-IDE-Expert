@@ -153,7 +153,7 @@ var
 begin
   Tree := TPascalParser.Parse(AText);
   try
-    Assert.IsTrue(TExtractInterface.Prepare(Tree, AText, ALine, NoLookup, nil, Result, Reason), Reason);
+    Assert.IsTrue(TExtractInterface.Prepare(Tree, AText, ALine, NoLookup(), nil, Result, Reason), Reason);
   finally
     Tree.Free;
   end;
@@ -234,7 +234,7 @@ function Extract(const AText: string; ALine: Integer; const AMembers: TArray<Int
 var
   Plan: TExtractInterfacePlan;
 begin
-  Result := Extract(AText, ALine, AMembers, NoLookup, Plan);
+  Result := Extract(AText, ALine, AMembers, NoLookup(), Plan);
 end;
 
 { TExtractInterfaceTests }
@@ -319,7 +319,7 @@ var
   Plan: TExtractInterfacePlan;
 begin
   Data := Info(Repository, 3);
-  Text := Extract(Repository, 3, Ids(Data, ['Items']), NoLookup, Plan);
+  Text := Extract(Repository, 3, Ids(Data, ['Items']), NoLookup(), Plan);
   Assert.IsTrue(Text.Contains(
     '    function GetItem(AIndex: Integer): string;'#10 +
     '    procedure SetItem(AIndex: Integer; const AValue: string);'#10 +
@@ -372,7 +372,7 @@ var
   Plan: TExtractInterfacePlan;
 begin
   Text := StringReplace(Repository, '= class'#10, '= class(TInterfacedObject)'#10, []);
-  Text := Extract(Text, 3, Ids(Info(Text, 3), ['Save']), NoLookup, Plan);
+  Text := Extract(Text, 3, Ids(Info(Text, 3), ['Save']), NoLookup(), Plan);
   Assert.IsTrue(Text.Contains('= class(TInterfacedObject, ICustomerRepository)'), Text);
   Assert.AreEqual(0, Integer(Length(Plan.Warnings)));
   // TMyControl → TCustomControl → TWinControl → TControl → TComponent: implementiert IInterface.
@@ -383,7 +383,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Plan.Warnings)));
   // Schon mit Interface: kein Hinweis.
   Text := StringReplace(Repository, '= class'#10, '= class(TBase, IOther)'#10, []);
-  Text := Extract(Text, 3, Ids(Info(Text, 3), ['Save']), NoLookup, Plan);
+  Text := Extract(Text, 3, Ids(Info(Text, 3), ['Save']), NoLookup(), Plan);
   Assert.IsTrue(Text.Contains('= class(TBase, IOther, ICustomerRepository)'), Text);
   Assert.AreEqual(0, Integer(Length(Plan.Warnings)));
 end;
@@ -413,14 +413,14 @@ var
   Data: TExtractInterfaceInfo;
 begin
   Data := Info(Repository, 3);
-  Assert.IsFalse(TryPlan(Repository, 3, DefaultIds(Data), '1Falsch', True, NoLookup, Plan, Reason));
-  Assert.IsFalse(TryPlan(Repository, 3, DefaultIds(Data), 'IVergeben', True, NoLookup, Plan, Reason));
+  Assert.IsFalse(TryPlan(Repository, 3, DefaultIds(Data), '1Falsch', True, NoLookup(), Plan, Reason));
+  Assert.IsFalse(TryPlan(Repository, 3, DefaultIds(Data), 'IVergeben', True, NoLookup(), Plan, Reason));
   Assert.IsTrue(Reason.Contains('vergeben'), Reason);
-  Assert.IsFalse(TryPlan(Repository, 3, DefaultIds(Data), 'TCustomerRepository', True, NoLookup, Plan, Reason));
-  Assert.IsFalse(TryPlan(Repository, 3, nil, 'IFoo', True, NoLookup, Plan, Reason));
-  Assert.IsFalse(TryPlan(Repository, 3, Ids(Data, ['Convert']), 'IFoo', True, NoLookup, Plan, Reason));
+  Assert.IsFalse(TryPlan(Repository, 3, DefaultIds(Data), 'TCustomerRepository', True, NoLookup(), Plan, Reason));
+  Assert.IsFalse(TryPlan(Repository, 3, nil, 'IFoo', True, NoLookup(), Plan, Reason));
+  Assert.IsFalse(TryPlan(Repository, 3, Ids(Data, ['Convert']), 'IFoo', True, NoLookup(), Plan, Reason));
   Assert.IsTrue(Reason.Contains('generisch'), Reason);
-  Assert.IsFalse(TryPlan(Repository, 4, DefaultIds(Data), 'IFoo', True, NoLookup, Plan, Reason), 'keine Kopfzeile');
+  Assert.IsFalse(TryPlan(Repository, 4, DefaultIds(Data), 'IFoo', True, NoLookup(), Plan, Reason), 'keine Kopfzeile');
 end;
 
 procedure TExtractInterfaceTests.OtherUnit;
@@ -434,7 +434,7 @@ var
   Edit: TTextEdit;
 begin
   Data := Info(Repository, 3);
-  Assert.IsTrue(TryPlan(Repository, 3, DefaultIds(Data), 'ICustomerRepository', False, NoLookup, Plan, Reason),
+  Assert.IsTrue(TryPlan(Repository, 3, DefaultIds(Data), 'ICustomerRepository', False, NoLookup(), Plan, Reason),
     Reason);
   Origin := TTextChanges.Apply(Repository, Plan.Edits);
   Assert.IsFalse(Origin.Contains('= interface'), 'nicht in der Unit der Klasse');
@@ -460,7 +460,7 @@ var
   Reason, Text: string;
 begin
   Data := Info(Repository, 3);
-  Assert.IsTrue(TryPlan(Repository, 3, DefaultIds(Data), 'ICustomerRepository', False, NoLookup, Plan, Reason),
+  Assert.IsTrue(TryPlan(Repository, 3, DefaultIds(Data), 'ICustomerRepository', False, NoLookup(), Plan, Reason),
     Reason);
   Text := TExtractInterface.NewUnitText('CustomerRepositoryIntf', Plan.Declaration, ['System.SysUtils'], #13#10);
   Assert.IsTrue(Parses(Text), Text);

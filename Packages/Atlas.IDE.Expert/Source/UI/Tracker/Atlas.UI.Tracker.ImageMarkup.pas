@@ -12,6 +12,7 @@
 interface
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   System.Types,
@@ -93,7 +94,6 @@ implementation
 uses
   System.Math,
   System.UITypes,
-  Winapi.Windows,
   Atlas.UI.Strings;
 
 const

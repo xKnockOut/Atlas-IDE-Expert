@@ -91,6 +91,7 @@ type
 implementation
 
 uses
+  System.UITypes,
   Winapi.Windows,
   System.Math,
   Vcl.Forms,

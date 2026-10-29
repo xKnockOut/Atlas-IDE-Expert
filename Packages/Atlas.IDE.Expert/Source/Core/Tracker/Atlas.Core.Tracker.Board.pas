@@ -441,7 +441,6 @@ class function TAtlasTrackerBoard.CurrentSprint(const ASprints: TArray<TAtlasBoa
 var
   mIndex, mNext: Integer;
 begin
-  Result := -1;
   mNext := -1;
   for mIndex := 0 to High(ASprints) do
   begin

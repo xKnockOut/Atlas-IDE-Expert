@@ -140,6 +140,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON,
   System.Diagnostics,
   Atlas.Core.Tracker.Templates,
@@ -383,7 +384,7 @@ begin
   end;
 end;
 
-"class function TAtlasTrackerConnections.LanguageOf(const AItems: TArray<TAtlasTrackerConnection>;
+class function TAtlasTrackerConnections.LanguageOf(const AItems: TArray<TAtlasTrackerConnection>;
   const ATarget: TAtlasTrackerTarget): string;
 var
   mItem: TAtlasTrackerConnection;

@@ -33,6 +33,10 @@ type
     procedure RanksOpenThenActiveProject;
     [Test]
     procedure MatchesCamelCaseAndLastSegment;
+    /// <summary>#1310: Suchwörter passen auch als Teiltext der Caption eines Formulars, schwächer als der Name.
+    /// </summary>
+    [Test]
+    procedure FindsFormsByCaption;
     [Test]
     procedure GroupsByProjectWithCounts;
     [Test]
@@ -234,6 +238,44 @@ begin
     TAtlasUnitSearch.Score('BinaryForm', 'Atlas.Common.Dfm.BinaryForm.Tests'), 'letzter Teil genau');
   Assert.AreEqual(TAtlasUnitSearch.ScoreSubsequence, TAtlasUnitSearch.Score('acmbf', 'Atlas.Common.Dfm.BinaryForm'));
   Assert.IsTrue(TAtlasUnitSearch.Score('xyz', 'Atlas.Common.Dfm.BinaryForm') < 0);
+end;
+
+procedure TAtlasUnitSearchTests.FindsFormsByCaption;
+const
+  CaptionAnswer =
+    '{"units":[' +
+    '{"name":"uKundeEdit","uri":"C:\\P\\uKundeEdit.pas","origin":"project","kind":"form","projects":["App"],' +
+    '"caption":"Kunden bearbeiten"},' +
+    '{"name":"Kunden.Liste","uri":"C:\\P\\Kunden.Liste.pas","origin":"project","kind":"unit","projects":["App"]},' +
+    '{"name":"uHaupt","uri":"C:\\P\\uHaupt.pas","origin":"project","kind":"form","projects":["App"]}' +
+    '],"projects":[{"name":"App"}],"count":3}';
+var
+  Value: TJSONValue;
+  List: TAtlasUnitEntries;
+  All: TAtlasUnitOrigins;
+begin
+  Value := TJSONObject.ParseJSONValue(CaptionAnswer);
+  try
+    List := TAtlasUnitSearch.FromJson(Value, 'App', Path);
+  finally
+    Value.Free;
+  end;
+  TAtlasUnitSearch.SortByName(List);
+  All := TAtlasUnitSearch.OriginsForScope('library');
+  Assert.AreEqual('Kunden bearbeiten', List[2].Caption);
+  // Nur über die Caption, ohne Rücksicht auf Groß- und Kleinschreibung.
+  Assert.AreEqual('uKundeEdit', Names(List, TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('BEARBEITEN', True),
+    All, [])));
+  // Jedes Wort muss passen, gleich ob über Name oder Caption.
+  Assert.AreEqual('uKundeEdit', Names(List, TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('edit bearb', True),
+    All, [])));
+  // Treffer im Namen vor Treffern nur über die Caption.
+  Assert.AreEqual('Kunden.Liste,uKundeEdit', Names(List, TAtlasUnitSearch.Order(List,
+    TAtlasUnitQuery.Parse('kunden', True), All, [])));
+  Assert.AreEqual('', Names(List, TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('rechnung', True), All, [])));
+  // Ohne Captions in der Antwort (Einstellung aus) fragt die Suche sie gar nicht ab.
+  Assert.AreEqual('[]', TAtlasUnitSearch.UnitsArguments(False));
+  Assert.AreEqual('[{"captions":true}]', TAtlasUnitSearch.UnitsArguments(True));
 end;
 
 procedure TAtlasUnitSearchTests.GroupsByProjectWithCounts;

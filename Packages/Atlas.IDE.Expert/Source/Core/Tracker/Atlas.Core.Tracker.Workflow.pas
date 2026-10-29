@@ -10,7 +10,7 @@
 //   Betreff der Commits mit der Kennung, älteste zuerst), {pr} (Adresse des
 //   Pull Requests), {time} (erfasste Zeit, #1267) und {kennung}; "\n" in
 //   der Vorlage wird ein Zeilenumbruch (die Einstellung ist einzeilig).
-// - StartChange bzw. EndChange bauen die Änderung (TAtlasTrackerChange), die
+// - StartChange bzw. EndChange bauen die Änderung (TAtlasTrackerWrite), die
 //   der Anbieter (IAtlasTrackerWriter) schreibt. Geschrieben wird nur nach
 //   „Beginnen“ bzw. dem Klick auf „Senden“ im Beenden-Dialog.
 // - LoadValues holt Zustände und Felder für die Klapplisten (bricht beim
@@ -115,11 +115,11 @@ type
       static;
     /// <summary>Änderung beim Beginnen; leer ohne issues.syncState.</summary>
     class function StartChange(const AOptions: TAtlasTrackerSyncOptions;
-      const AValues: TAtlasTrackerPlaceholders): TAtlasTrackerChange; static;
+      const AValues: TAtlasTrackerPlaceholders): TAtlasTrackerWrite; static;
     /// <summary>Änderung beim Beenden: AState '' = Zustand nicht ändern; AHandOver mit AAssignee übergibt die
     /// Zuständigkeit.</summary>
     class function EndChange(const AOptions: TAtlasTrackerSyncOptions; const AState, AComment: string;
-      AHandOver: Boolean; const AAssignee: string): TAtlasTrackerChange; static;
+      AHandOver: Boolean; const AAssignee: string): TAtlasTrackerWrite; static;
     /// <summary>Betreffe aus {commits} ohne Kurz-Hash, eine Zeile je Commit (Vorlage der Beschreibung einer
     /// Zeitbuchung, #1267).</summary>
     class function CommitSubjects(const ACommits: string): string; static;
@@ -334,9 +334,9 @@ begin
 end;
 
 class function TAtlasTrackerWorkflow.StartChange(const AOptions: TAtlasTrackerSyncOptions;
-  const AValues: TAtlasTrackerPlaceholders): TAtlasTrackerChange;
+  const AValues: TAtlasTrackerPlaceholders): TAtlasTrackerWrite;
 begin
-  Result := TAtlasTrackerChange.Empty;
+  Result := TAtlasTrackerWrite.Empty;
   if not AOptions.SyncState then
     Exit;
   Result.StateField := AOptions.StateField;
@@ -349,9 +349,9 @@ begin
 end;
 
 class function TAtlasTrackerWorkflow.EndChange(const AOptions: TAtlasTrackerSyncOptions; const AState,
-  AComment: string; AHandOver: Boolean; const AAssignee: string): TAtlasTrackerChange;
+  AComment: string; AHandOver: Boolean; const AAssignee: string): TAtlasTrackerWrite;
 begin
-  Result := TAtlasTrackerChange.Empty;
+  Result := TAtlasTrackerWrite.Empty;
   Result.StateField := AOptions.StateField;
   Result.AssigneeField := AOptions.AssigneeField;
   Result.State := Trim(AState);

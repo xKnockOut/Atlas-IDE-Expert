@@ -253,6 +253,9 @@ var
   Options: TUsesGraphOptions;
   Files: TDictionary<string, string>;
 begin
+  // Neu aufbauen (z. B. nach Find): den bisherigen Graphen und Locator freigeben.
+  FreeAndNil(FLocator);
+  FreeAndNil(FGraph);
   Options := TUsesGraphOptions.Default;
   Options.IncludeLibrary := True;
   FGraph := TUsesGraph.Create(FIndex.Units, Options);

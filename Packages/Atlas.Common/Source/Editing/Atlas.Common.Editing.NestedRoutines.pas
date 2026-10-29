@@ -258,7 +258,6 @@ var
 begin
   AAction := Default(TCodeAction);
   AReason := '';
-  Result := False;
   if (ATree = nil) or (ATree.Root = nil) then
     Exit(Fail('kein Baum', AReason));
   Lines := TLineTable.Build(AText);
@@ -529,7 +528,6 @@ var
 begin
   AAction := Default(TCodeAction);
   AReason := '';
-  Result := False;
   if (ATree = nil) or (ATree.Root = nil) then
     Exit(Fail('kein Baum', AReason));
   Lines := TLineTable.Build(AText);
@@ -547,7 +545,6 @@ begin
   if TRoutineParts.HasWord(Tokens, Header, ['overload', 'forward', 'external', 'export', 'assembler']) or (Pos('<', ClassName) > 0) or
     (Pos('.', ClassName) > 0) then
     Exit(Fail('nicht unterstützte Form', AReason));
-  TypeBody := nil;
   if IsMethod then
   begin
     TypeBody := TRoutineBody.TypeBody(ATree.Root, ClassName);

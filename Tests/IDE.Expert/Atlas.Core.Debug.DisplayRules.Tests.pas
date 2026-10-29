@@ -228,11 +228,11 @@ end;
 procedure TAtlasDisplayRulesTests.RenderTemplate;
 begin
   Assert.AreEqual('Meier, Berlin (Nr 4711)', TAtlasDisplayRender.Render(Rule('{Name}, {Ort} (Nr {Nr})'), 'Kunde',
-    Options(False), Eval));
+    Options(False), Eval()));
   Assert.AreEqual('Saldo 1234,50 {fest}', TAtlasDisplayRender.Render(Rule('Saldo {Saldo:0.00} {{fest}}'), 'Kunde',
-    Options(False), Eval).Replace('1234.50', '1234,50'));
-  Assert.AreEqual('', TAtlasDisplayRender.Render(Rule('{Name'), 'Kunde', Options(False), Eval));
-  Assert.AreEqual('', TAtlasDisplayRender.Render(Rule(''), 'Kunde', Options(False), Eval));
+    Options(False), Eval()).Replace('1234.50', '1234,50'));
+  Assert.AreEqual('', TAtlasDisplayRender.Render(Rule('{Name'), 'Kunde', Options(False), Eval()));
+  Assert.AreEqual('', TAtlasDisplayRender.Render(Rule(''), 'Kunde', Options(False), Eval()));
 end;
 
 procedure TAtlasDisplayRulesTests.RenderMissingAndCalls;
@@ -240,17 +240,17 @@ var
   Short: TAtlasDisplayRuleOptions;
 begin
   Assert.AreEqual('Meier {?Stadt} {?GetName()}', TAtlasDisplayRender.Render(Rule('{Name} {Stadt} {GetName()}'),
-    'Kunde', Options(False), Eval));
+    'Kunde', Options(False), Eval()));
   Assert.AreEqual('{?Name}', TAtlasDisplayRender.Render(Rule('{Name}'), 'Kunde', Options(False), nil));
   Short := Options(False);
   Short.MaxLength := 20;
   Assert.AreEqual(20, Length(TAtlasDisplayRender.Render(Rule('{Name}, {Ort}, {Name}, {Ort}'), 'Kunde', Short,
-    Eval)));
+    Eval())));
 end;
 
 procedure TAtlasDisplayRulesTests.RenderWithCallsAllowed;
 begin
-  Assert.AreEqual('MEIER', TAtlasDisplayRender.Render(Rule('{GetName()}'), 'Kunde', Options(True), Eval));
+  Assert.AreEqual('MEIER', TAtlasDisplayRender.Render(Rule('{GetName()}'), 'Kunde', Options(True), Eval()));
 end;
 
 procedure TAtlasDisplayRulesTests.FormatValue;
@@ -274,7 +274,7 @@ var
 begin
   Children := Rule('{Name}');
   Children.Children := TArray<string>.Create('Name', 'Fehlt');
-  View := TAtlasDisplayRender.View(Children, 'Kunde', '($0A3F1C20)', Options(False), Eval);
+  View := TAtlasDisplayRender.View(Children, 'Kunde', '($0A3F1C20)', Options(False), Eval());
   Assert.AreEqual(Ord(TAtlasVisualizerViewMode.Table), Ord(View.Mode));
   Assert.AreEqual('Meier', View.Summary);
   Assert.AreEqual(2, Integer(Length(View.Rows)));
@@ -290,11 +290,11 @@ procedure TAtlasDisplayRulesTests.ViewWithoutChildren;
 var
   View: TAtlasVisualizerView;
 begin
-  View := TAtlasDisplayRender.View(Rule('{Name}'), 'Kunde', '', Options(False), Eval);
+  View := TAtlasDisplayRender.View(Rule('{Name}'), 'Kunde', '', Options(False), Eval());
   Assert.AreEqual(4, Integer(Length(View.Rows)));
   Assert.AreEqual(0, Integer(Length(View.AllRows)));
   // Ohne Feldliste vom Debugger: der Text der IDE.
-  View := TAtlasDisplayRender.View(Rule('{Name}'), 'Anders', '(A:1; B:2)', Options(False), Eval);
+  View := TAtlasDisplayRender.View(Rule('{Name}'), 'Anders', '(A:1; B:2)', Options(False), Eval());
   Assert.AreEqual('{?Name}', View.Summary);
   Assert.AreEqual(2, Integer(Length(View.Rows)));
 end;

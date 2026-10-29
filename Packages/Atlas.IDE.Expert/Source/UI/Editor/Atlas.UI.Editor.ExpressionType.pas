@@ -60,6 +60,7 @@ type
 implementation
 
 uses
+  System.UITypes,
   System.Math,
   Atlas.Core.Diagnostics.Guard,
   Atlas.UI.Strings,

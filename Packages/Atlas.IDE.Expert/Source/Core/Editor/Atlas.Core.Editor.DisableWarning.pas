@@ -45,6 +45,7 @@ const
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON;
 
 function ArgumentsOf(const AJson: string): TJSONArray;

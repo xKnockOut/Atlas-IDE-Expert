@@ -119,7 +119,7 @@ end;
 procedure TAtlasTrackerEndDialogTests.ChangeFromFields;
 var
   mDialog: TAtlasTrackerEndDialog;
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
 begin
   mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, 'ATL-123', Options('Erledigt'), 'Erledigt in x.'#10'abc1234 y');
   try
@@ -156,7 +156,7 @@ begin
   mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, 'ATL-1', Options(''), '');
   try
     mDialog.OnSend :=
-      procedure(const AChange: TAtlasTrackerChange; const ADone: TAtlasTrackerSendDone)
+      procedure(const AChange: TAtlasTrackerWrite; const ADone: TAtlasTrackerSendDone)
       begin
         Inc(mCalls);
       end;
@@ -180,7 +180,7 @@ begin
   mDialog := TAtlasTrackerEndDialog.CreateDialog(nil, 'ATL-123', Options('Erledigt'), 'Fertig');
   try
     mDialog.OnSend :=
-      procedure(const AChange: TAtlasTrackerChange; const ADone: TAtlasTrackerSendDone)
+      procedure(const AChange: TAtlasTrackerWrite; const ADone: TAtlasTrackerSendDone)
       begin
         Inc(mCalls);
         mPending := ADone;
@@ -232,15 +232,15 @@ end;
 
 procedure TAtlasTrackerEndDialogTests.SummaryText;
 var
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
 begin
-  mChange := TAtlasTrackerChange.Empty;
+  mChange := TAtlasTrackerWrite.Empty;
   Assert.AreEqual('', TAtlasTrackerEndDialog.SummaryText(mChange));
   mChange.State := 'In Arbeit';
   mChange.Assign := TAtlasTrackerAssign.Me;
   mChange.Comment := 'x';
   Assert.AreEqual('Zustand „In Arbeit“, mir zugewiesen, Kommentar', TAtlasTrackerEndDialog.SummaryText(mChange));
-  mChange := TAtlasTrackerChange.Empty;
+  mChange := TAtlasTrackerWrite.Empty;
   mChange.Assign := TAtlasTrackerAssign.User;
   mChange.Assignee := 'anna';
   Assert.AreEqual('an anna übergeben', TAtlasTrackerEndDialog.SummaryText(mChange));

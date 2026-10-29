@@ -122,6 +122,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.TreeCache,
   System.StrUtils,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.Files,
@@ -246,7 +247,7 @@ begin
     Exit;
   Result := nil;
   if Assigned(FReadText) and FReadText(AFileName, Text) then
-    Result := TPascalParser.Parse(Text, nil);
+    Result := TSyntaxTreeCache.Parse(Text, nil);
   FTrees.Add(LowerCase(AFileName), Result);
 end;
 

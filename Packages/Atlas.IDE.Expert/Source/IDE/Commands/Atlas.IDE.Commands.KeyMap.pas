@@ -150,6 +150,8 @@ const
     // Typ des markierten Ausdrucks (#689): Editorbefehl.
     3,
     // Sicher löschen (#716): Editorbefehl.
+    3,
+    // Issue anlegen (#1268): Editorbefehl.
     3);
 
 type

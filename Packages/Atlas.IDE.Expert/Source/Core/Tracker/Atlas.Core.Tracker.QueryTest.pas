@@ -82,6 +82,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON,
   System.Diagnostics,
   Atlas.Core.Tracker.Templates;

@@ -55,6 +55,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.StrUtils;
 
 class function TLspMissingUnit.Handles(const ACode: string): Boolean;

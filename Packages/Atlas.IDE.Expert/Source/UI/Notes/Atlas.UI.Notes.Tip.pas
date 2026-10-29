@@ -31,8 +31,11 @@ type
     FLinks: TArray<string>;
     FLinkRects: TArray<TRect>;
     FOnLink: TProc<Integer>;
+    FBodyHeight: Integer;
     function TextFlags: Cardinal;
     function MeasureText(AWidth: Integer): TRect;
+    /// <summary>Zeile der Überschrift; dieselbe Lage beim Messen und Zeichnen.</summary>
+    function TitleArea(AClientWidth: Integer): TRect;
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -48,6 +51,11 @@ type
     function Measure(const ATitle, AText: string; const ALinks: TArray<string>): TSize; overload;
     /// <summary>Nummer des Links unter X/Y (Client-Koordinaten nach dem Zeichnen); -1 ohne.</summary>
     function LinkAt(X, Y: Integer): Integer;
+    /// <summary>Bereich des Textes in einem Tooltip der Größe ASize (#1281: Messen und Zeichnen teilen die Lage,
+    /// sonst fehlten unten zwei Pixel und die letzte Zeile wurde abgeschnitten).</summary>
+    function BodyArea(const ASize: TSize): TRect;
+    /// <summary>Höhe des umbrochenen Textes aus dem letzten Measure.</summary>
+    property BodyHeight: Integer read FBodyHeight;
     property Title: string read FTitle;
     property Text: string read FText;
     property Links: TArray<string> read FLinks;
@@ -87,6 +95,19 @@ begin
   DrawText(Canvas.Handle, PChar(Shown), -1, Result, TextFlags or DT_CALCRECT);
 end;
 
+function TAtlasNoteTip.TitleArea(AClientWidth: Integer): TRect;
+begin
+  Canvas.Font := UIFont;
+  Result := Rect(Scale(Padding), Scale(Padding) - Scale(2), AClientWidth - Scale(Padding),
+    Scale(Padding) - Scale(2) + Canvas.TextHeight('Wg'));
+end;
+
+function TAtlasNoteTip.BodyArea(const ASize: TSize): TRect;
+begin
+  Result := Rect(Scale(Padding), TitleArea(ASize.cx).Bottom + Scale(4), ASize.cx - Scale(Padding),
+    ASize.cy - Scale(Padding));
+end;
+
 function TAtlasNoteTip.Measure(const ATitle, AText: string): TSize;
 begin
   Result := Measure(ATitle, AText, nil);
@@ -106,6 +127,7 @@ begin
   Canvas.Font := UIFont;
   TitleWidth := Canvas.TextWidth(FTitle);
   Body := MeasureText(Scale(MaxWidth));
+  FBodyHeight := Body.Height;
   mWidth := Max(TitleWidth, Body.Width);
   LineHeight := Canvas.TextHeight('Wg');
   for Link in FLinks do
@@ -115,7 +137,8 @@ begin
       mWidth := LinkWidth;
   end;
   Result.cx := Min(mWidth, Scale(MaxWidth)) + 2 * Scale(Padding);
-  Result.cy := LineHeight + Scale(4) + Body.Height + 2 * Scale(Padding) - Scale(2);
+  // Wie TitleArea und BodyArea: Überschrift ab Padding - 2, Abstand 4, Text, Padding unten.
+  Result.cy := TitleArea(Result.cx).Bottom + Scale(4) + Body.Height + Scale(Padding);
   if Length(FLinks) > 0 then
     Inc(Result.cy, Scale(6) + Length(FLinks) * (LineHeight + Scale(2)));
 end;
@@ -192,11 +215,10 @@ begin
   Canvas.Font := UIFont;
   Canvas.Brush.Style := bsClear;
   TitleHeight := Canvas.TextHeight('Wg');
+  Area := TitleArea(ClientWidth);
   Canvas.Font.Color := ToColor(Colors.Muted);
-  Area := Rect(Scale(Padding), Scale(Padding) - Scale(2), ClientWidth - Scale(Padding), Scale(Padding) +
-    TitleHeight);
   DrawText(Canvas.Handle, PChar(FTitle), -1, Area, DT_LEFT or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
-  Area := Rect(Scale(Padding), Area.Bottom + Scale(4), ClientWidth - Scale(Padding), ClientHeight - Scale(Padding));
+  Area := BodyArea(TSize.Create(ClientWidth, ClientHeight));
   // MeasureText setzt die Schrift neu: vor der Farbe messen.
   if Length(FLinks) > 0 then
     Area.Bottom := Area.Top + MeasureText(Area.Width).Height;

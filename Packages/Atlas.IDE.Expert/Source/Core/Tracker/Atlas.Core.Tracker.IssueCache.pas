@@ -235,7 +235,6 @@ var
 begin
   ADetails := TAtlasTrackerDetails.Empty;
   Result := False;
-  mValue := nil;
   try
     mValue := TJSONObject.ParseJSONValue(AJson);
   except
@@ -416,11 +415,13 @@ begin
       begin
         mFresh := False;
         try
-          mFresh := FromJson(TFile.ReadAllText(mFile, TEncoding.UTF8), mDetails) and (mDetails.Fetched > 0) and
-            (ANow - mDetails.Fetched <= MaxAgeDays);
+          if FromJson(TFile.ReadAllText(mFile, TEncoding.UTF8), mDetails) and (mDetails.Fetched > 0) and
+            (ANow - mDetails.Fetched <= MaxAgeDays) then
+            mFresh := True;
         except
+          // Kaputte Datei: bleibt nicht frisch.
           on Exception do
-            mFresh := False;
+            ;
         end;
         if not mFresh then
           System.SysUtils.DeleteFile(mFile);

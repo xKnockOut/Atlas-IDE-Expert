@@ -529,7 +529,7 @@ begin
     Settings := LoadSettings(ConfigRoot);
     if not Settings.ArchitectureEnabled then
     begin
-      WriteError('Architekturübersicht ist ausgeschaltet (architecture.enabled in atlas.json oder settings.json)');
+      WriteError('Architekturübersicht ist ausgeschaltet (architecture.enabled in settings.json)');
       Exit(TFindingsOutput.ExitFailure);
     end;
     TFileEncodingDefaults.SetFolder(ConfigRoot, Settings.DefaultEncoding);

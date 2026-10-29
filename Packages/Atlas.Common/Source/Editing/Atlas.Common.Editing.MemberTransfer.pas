@@ -134,6 +134,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.TreeCache,
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
@@ -504,7 +505,7 @@ class function TMemberTransfer.ParseLayout(const AText, AName: string; out ATree
 var
   Decl: TSyntaxNode;
 begin
-  ATree := TPascalParser.Parse(AText);
+  ATree := TSyntaxTreeCache.Parse(AText);
   Decl := TClassLayout.DeclNamed(ATree, AName);
   if Decl = nil then
   begin
@@ -634,7 +635,7 @@ begin
   end;
   if ABodies <> nil then
   begin
-    Tree := TPascalParser.Parse(AText);
+    Tree := TSyntaxTreeCache.Parse(AText);
     try
       Line := TClassEdits.BodiesEnd(Tree, AText, AClassName);
       if Line < 0 then

@@ -121,6 +121,7 @@ procedure RegisterArchitectureRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  System.Generics.Collections,
   System.JSON,
   System.StrUtils,
   Atlas.Common.Documents.Contract,

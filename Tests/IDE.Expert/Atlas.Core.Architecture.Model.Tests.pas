@@ -51,6 +51,7 @@ implementation
 uses
   System.SysUtils,
   System.Math,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,

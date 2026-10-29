@@ -4,7 +4,8 @@
 // Statuszeile der IDE. Die Höhe hängt nur von der DPI ab, nie vom Inhalt.
 // - SetView setzt den Inhalt (TAtlasStatusBarView); gleicher Inhalt zeichnet
 //   nicht neu. Elemente in der Reihenfolge von View.Items:
-//   status: Punkt in Zustandsfarbe und Text („Atlas · bereit“);
+//   status: Punkt in Zustandsfarbe und Text („Atlas · bereit“), dahinter mit
+//   ungelesenen Benachrichtigungen deren Plakette (#1234, Klick: OnBadge);
 //   findings: Zähler je Art mit den Symbolen aus „Atlas-Prüfung“;
 //   liveCheck: „live · geprüft vor 2 s“, „prüft …“, „beim Speichern“;
 //   method: „ƒ TFoo.Bar · 4 Zeilen · CC 2“, über der Grenze in Warnfarbe.
@@ -14,14 +15,18 @@
 //   um.
 // - Klick (beim Loslassen über dem Element; das Verlassen der Leiste zwischen
 //   Drücken und Loslassen bricht nicht ab, siehe Editorleiste #1101): Status
-//   meldet OnStatus, ein Zähler OnFinding mit seiner Art, die Methode
-//   OnMethod, das Zahnrad öffnet das Menü „Leiste anpassen“. Doppelklick auf
+//   meldet OnStatus, ein Zähler OnFinding mit seiner Art, die Live-Prüfung
+//   OnLiveCheck (alle Units neu prüfen, #1231), die Methode OnMethod, das
+//   Zahnrad öffnet das Menü „Leiste anpassen“. Doppelklick auf
 //   die Zähler meldet OnFindingsOpen. Rechtsklick auf den Status meldet
 //   OnStatusContext, sonst öffnet er das Menü. WM_CONTEXTMENU behandelt die
 //   Leiste selbst; es geht nicht an das Editorfenster der IDE weiter.
 // - Menü „Leiste anpassen“: jedes Element mit Haken (OnToggleItem), darunter
 //   „Statusleiste ausblenden“ (OnHide).
 // - Tooltip je Element (View); das Zahnrad nennt „Leiste anpassen …“.
+// - Höhe, Farben, Hervorhebung, Klick beim Loslassen, Kontextmenü und
+//   OnDisabled kommen vom Vorfahr TAtlasEditorBar (#1248). Teil im Vorfahr:
+//   Ord(Element) * KindSlots + Zähler + 1 (Zähler -1 außerhalb der Zähler).
 
 interface
 
@@ -36,13 +41,16 @@ uses
   Vcl.Menus,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
+  Atlas.Core.Style.Signal,
+  Atlas.Core.Status.Contract,
   Atlas.Core.Problems.Findings,
   Atlas.Core.StatusBar.Content,
-  Atlas.Core.StatusBar.Layout;
+  Atlas.Core.StatusBar.Layout,
+  Atlas.UI.Editor.Bar;
 
 type
 {$SCOPEDENUMS ON}
-  TAtlasStatusBarPart = (None, Status, Findings, LiveCheck, Method, Gear);
+  TAtlasStatusBarPart = (None, Status, Badge, Findings, LiveCheck, Method, Gear);
 {$SCOPEDENUMS OFF}
 
   TAtlasStatusBarView = record
@@ -50,7 +58,12 @@ type
     Items: TArray<string>;
     StatusText: string;
     StatusHint: string;
-    StatusColor: TAtlasColor;
+    /// <summary>Zustand des Punkts; die Farbe wählt die Leiste aus ihrer Palette (#1255).</summary>
+    StatusState: TAtlasStatusState;
+    /// <summary>Ungelesene Benachrichtigungen (#1234); 0 = keine Plakette. Zustand des schwersten Eintrags.</summary>
+    BadgeCount: Integer;
+    BadgeState: TAtlasStatusState;
+    BadgeHint: string;
     /// <summary>Probleme an: Zähler zeigen; sonst fällt das Element weg.</summary>
     FindingsShown: Boolean;
     Counts: TAtlasStatusCounts;
@@ -72,19 +85,17 @@ type
   TAtlasStatusBarKindEvent = reference to procedure(AKind: TAtlasFindingKind);
   TAtlasStatusBarItemEvent = reference to procedure(const AId: string);
 
-  TAtlasEditorStatusBar = class(TCustomControl)
+  TAtlasEditorStatusBar = class(TAtlasEditorBar)
+  private const
+    /// <summary>Teile je Element im Vorfahr: ohne Zähler und je Zähler einer.</summary>
+    KindSlots = 4;
   private
     FView: TAtlasStatusBarView;
-    FColors: TAtlasColors;
     FParts: TArray<TAtlasStatusBarPart>;
     FSpans: TArray<TAtlasStatusSpan>;
     FKindSpans: TArray<TAtlasStatusSpan>;
     FGearRect: TRect;
     FLaidOut: Boolean;
-    FHot: TAtlasStatusBarPart;
-    FHotKind: Integer;
-    FDown: TAtlasStatusBarPart;
-    FSkipUp: Boolean;
     FMenu: TPopupMenu;
     FMenuIds: TArray<string>;
     FItemCaptions: TArray<string>;
@@ -92,12 +103,13 @@ type
     FHideCaption: string;
     FOnStatus: TProc<TPoint>;
     FOnStatusContext: TProc<TPoint>;
+    FOnBadge: TProc<TPoint>;
     FOnFinding: TAtlasStatusBarKindEvent;
     FOnFindingsOpen: TProc;
+    FOnLiveCheck: TProc;
     FOnMethod: TProc;
     FOnToggleItem: TAtlasStatusBarItemEvent;
     FOnHide: TProc;
-    function Scale(AValue: Integer): Integer;
     function Gap: Integer;
     function DotSize: Integer;
     function IconSize: Integer;
@@ -106,10 +118,15 @@ type
     function SlotOf(APart: TAtlasStatusBarPart): TAtlasStatusSlot;
     function PartsOfView: TArray<TAtlasStatusBarPart>;
     procedure Layout;
-    function PartAt(X, Y: Integer): TAtlasStatusBarPart;
+    function ElementAt(X, Y: Integer): TAtlasStatusBarPart;
     function KindAt(X, Y: Integer): Integer;
-    function PartHint(APart: TAtlasStatusBarPart): string;
+    function ElementHint(APart: TAtlasStatusBarPart): string;
+    /// <summary>Element und Zähler unter der Maus (aus Hot des Vorfahrs).</summary>
+    function HotElement: TAtlasStatusBarPart;
+    function HotKind: Integer;
     procedure DrawStatus(const ARect: TRect);
+    procedure DrawBadge(const ARect: TRect);
+    function BadgeText: string;
     procedure DrawFindings(const ARect: TRect);
     procedure DrawCycle(const ARect: TRect; AColor: TColor);
     procedure DrawLive(const ARect: TRect);
@@ -119,24 +136,23 @@ type
     procedure Fire(APart: TAtlasStatusBarPart; X, Y: Integer);
     procedure ToggleClick(Sender: TObject);
     procedure HideClick(Sender: TObject);
-    procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
-    procedure WMContextMenu(var Message: TWMContextMenu); message WM_CONTEXTMENU;
   protected
+    function PartAt(X, Y: Integer): Integer; override;
+    function PartHint(APart: Integer): string; override;
+    function PartEnabled(APart: Integer): Boolean; override;
+    procedure PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer); override;
+    /// <summary>Rechtsklick auf den Status meldet OnStatusContext, sonst das Menü „Leiste anpassen“.</summary>
+    procedure ContextMenu(const APoint: TPoint; APart: Integer); override;
+    function KeyboardMenuPoint: TPoint; override;
     procedure Paint; override;
     procedure Resize; override;
-    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure DblClick; override;
     procedure ChangeScale(M, D: Integer; isDpiChange: Boolean); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure SetView(const AView: TAtlasStatusBarView);
-    procedure SetColors(const AColors: TAtlasColors);
-    /// <summary>Höhe der Leiste bei APPI (eine Zeile, 22 px bei 96 DPI).</summary>
-    class function BarHeight(APPI: Integer): Integer; static;
     /// <summary>Fläche des Elements (Client); leer, wenn es nicht in der Leiste steht.</summary>
     function PartRect(APart: TAtlasStatusBarPart): TRect;
     /// <summary>Fläche des Zählers der Art AKind (Client); leer ohne.</summary>
@@ -156,8 +172,12 @@ type
     property HideCaption: string read FHideCaption write FHideCaption;
     property OnStatus: TProc<TPoint> read FOnStatus write FOnStatus;
     property OnStatusContext: TProc<TPoint> read FOnStatusContext write FOnStatusContext;
+    /// <summary>Klick auf die Plakette (#1234): linke Oberkante der Plakette (Bildschirm).</summary>
+    property OnBadge: TProc<TPoint> read FOnBadge write FOnBadge;
     property OnFinding: TAtlasStatusBarKindEvent read FOnFinding write FOnFinding;
     property OnFindingsOpen: TProc read FOnFindingsOpen write FOnFindingsOpen;
+    /// <summary>Klick auf die Live-Prüfung: alle Units neu prüfen (#1231).</summary>
+    property OnLiveCheck: TProc read FOnLiveCheck write FOnLiveCheck;
     property OnMethod: TProc read FOnMethod write FOnMethod;
     property OnToggleItem: TAtlasStatusBarItemEvent read FOnToggleItem write FOnToggleItem;
     property OnHide: TProc read FOnHide write FOnHide;
@@ -179,8 +199,6 @@ const
     TAtlasFindingKind.Info);
 
 const
-  /// <summary>Höhe bei 96 DPI.</summary>
-  BaseHeight = 22;
   BaseGap = 13;
   BaseGear = 22;
   Margin = 4;
@@ -206,7 +224,8 @@ var
   Kind: TAtlasFindingKind;
 begin
   Result := (string.Join(',', Items) = string.Join(',', AOther.Items)) and (StatusText = AOther.StatusText) and
-    (StatusHint = AOther.StatusHint) and (StatusColor = AOther.StatusColor) and
+    (StatusHint = AOther.StatusHint) and (StatusState = AOther.StatusState) and
+    (BadgeCount = AOther.BadgeCount) and (BadgeState = AOther.BadgeState) and (BadgeHint = AOther.BadgeHint) and
     (FindingsShown = AOther.FindingsShown) and (FindingsHint = AOther.FindingsHint) and
     (LiveText = AOther.LiveText) and (LiveHint = AOther.LiveHint) and (LiveBusy = AOther.LiveBusy) and
     (MethodFound = AOther.MethodFound) and (MethodName = AOther.MethodName) and
@@ -223,19 +242,8 @@ end;
 constructor TAtlasEditorStatusBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  ControlStyle := ControlStyle + [csOpaque] - [csSetCaption];
-  DoubleBuffered := True;
-  TabStop := False;
-  ShowHint := True;
-  FColors := TAtlasColors.Light;
-  FHot := TAtlasStatusBarPart.None;
-  FHotKind := -1;
-  FDown := TAtlasStatusBarPart.None;
   FCustomizeCaption := '';
   FHideCaption := '';
-  Height := BarHeight(96);
-  Constraints.MinHeight := Height;
-  Constraints.MaxHeight := Height;
 end;
 
 destructor TAtlasEditorStatusBar.Destroy;
@@ -244,25 +252,10 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasEditorStatusBar.BarHeight(APPI: Integer): Integer;
-begin
-  Result := MulDiv(BaseHeight, Max(APPI, 96), 96);
-end;
-
 procedure TAtlasEditorStatusBar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
 begin
-  Constraints.MinHeight := 0;
-  Constraints.MaxHeight := 0;
   inherited ChangeScale(M, D, isDpiChange);
-  Height := BarHeight(CurrentPPI);
-  Constraints.MinHeight := Height;
-  Constraints.MaxHeight := Height;
   FLaidOut := False;
-end;
-
-function TAtlasEditorStatusBar.Scale(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Max(CurrentPPI, 96), 96);
 end;
 
 function TAtlasEditorStatusBar.Gap: Integer;
@@ -286,12 +279,6 @@ begin
     Exit;
   FView := AView;
   FLaidOut := False;
-  Invalidate;
-end;
-
-procedure TAtlasEditorStatusBar.SetColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
   Invalidate;
 end;
 
@@ -334,6 +321,11 @@ begin
         Minimum := Scale(SlotPadding) + DotSize + Scale(5) + TextWidthOf(Ellipsis, False) + Scale(SlotPadding);
         Result := TAtlasStatusSlot.Create(Width_, Minimum, ShrinkStatus);
       end;
+    TAtlasStatusBarPart.Badge:
+      begin
+        Width_ := 2 * Scale(SlotPadding) + Max(Scale(18), TextWidthOf(BadgeText, True) + Scale(10));
+        Result := TAtlasStatusSlot.Create(Width_, Width_, ShrinkFindings);
+      end;
     TAtlasStatusBarPart.Findings:
       begin
         Width_ := Scale(SlotPadding);
@@ -371,7 +363,12 @@ begin
   Result := nil;
   for Id in FView.Items do
     if SameText(Id, TAtlasStatusBarItems.Status) then
-      Result := Result + [TAtlasStatusBarPart.Status]
+    begin
+      Result := Result + [TAtlasStatusBarPart.Status];
+      // Plakette der Benachrichtigungen (#1234) direkt hinter dem Status; das Atlas-Feld ist dann 0 breit.
+      if FView.BadgeCount > 0 then
+        Result := Result + [TAtlasStatusBarPart.Badge];
+    end
     else if SameText(Id, TAtlasStatusBarItems.Findings) then
     begin
       if FView.FindingsShown then
@@ -436,7 +433,7 @@ begin
   Result := TRect.Empty;
 end;
 
-function TAtlasEditorStatusBar.PartAt(X, Y: Integer): TAtlasStatusBarPart;
+function TAtlasEditorStatusBar.ElementAt(X, Y: Integer): TAtlasStatusBarPart;
 var
   Index: Integer;
 begin
@@ -454,15 +451,17 @@ end;
 function TAtlasEditorStatusBar.KindAt(X, Y: Integer): Integer;
 begin
   Result := -1;
-  if PartAt(X, Y) = TAtlasStatusBarPart.Findings then
+  if ElementAt(X, Y) = TAtlasStatusBarPart.Findings then
     Result := TAtlasStatusBarLayout.IndexAt(FKindSpans, X);
 end;
 
-function TAtlasEditorStatusBar.PartHint(APart: TAtlasStatusBarPart): string;
+function TAtlasEditorStatusBar.ElementHint(APart: TAtlasStatusBarPart): string;
 begin
   case APart of
     TAtlasStatusBarPart.Status:
       Result := FView.StatusHint;
+    TAtlasStatusBarPart.Badge:
+      Result := FView.BadgeHint;
     TAtlasStatusBarPart.Findings:
       Result := FView.FindingsHint;
     TAtlasStatusBarPart.LiveCheck:
@@ -478,14 +477,55 @@ end;
 
 function TAtlasEditorStatusBar.HintAt(X, Y: Integer): string;
 begin
-  Result := PartHint(PartAt(X, Y));
+  Result := ElementHint(ElementAt(X, Y));
+end;
+
+function TAtlasEditorStatusBar.PartAt(X, Y: Integer): Integer;
+var
+  mElement: TAtlasStatusBarPart;
+begin
+  mElement := ElementAt(X, Y);
+  if mElement = TAtlasStatusBarPart.None then
+    Exit(PartNone);
+  Result := Ord(mElement) * KindSlots + KindAt(X, Y) + 1;
+end;
+
+function TAtlasEditorStatusBar.HotElement: TAtlasStatusBarPart;
+begin
+  if Hot = PartNone then
+    Exit(TAtlasStatusBarPart.None);
+  Result := TAtlasStatusBarPart(Hot div KindSlots);
+end;
+
+function TAtlasEditorStatusBar.HotKind: Integer;
+begin
+  if Hot = PartNone then
+    Exit(-1);
+  Result := Hot mod KindSlots - 1;
+end;
+
+function TAtlasEditorStatusBar.PartHint(APart: Integer): string;
+begin
+  if APart = PartNone then
+    Exit('');
+  Result := ElementHint(TAtlasStatusBarPart(APart div KindSlots));
+end;
+
+function TAtlasEditorStatusBar.PartEnabled(APart: Integer): Boolean;
+var
+  mElement: TAtlasStatusBarPart;
+begin
+  if APart = PartNone then
+    Exit(False);
+  mElement := TAtlasStatusBarPart(APart div KindSlots);
+  Result := not ((mElement = TAtlasStatusBarPart.Method) and not FView.MethodFound);
 end;
 
 procedure TAtlasEditorStatusBar.DrawHot(const ARect: TRect);
 begin
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FColors.Selection);
-  Canvas.Pen.Color := ToColor(FColors.Line);
+  Canvas.Brush.Color := ToColor(Colors.Selection);
+  Canvas.Pen.Color := ToColor(Colors.Line);
   Canvas.RoundRect(ARect.Left, ARect.Top + Scale(2), ARect.Right, ARect.Bottom - Scale(2), Scale(4), Scale(4));
 end;
 
@@ -497,11 +537,12 @@ begin
   Center := (ARect.Top + ARect.Bottom) div 2;
   Left_ := ARect.Left + Scale(SlotPadding);
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FView.StatusColor);
-  Canvas.Pen.Color := ToColor(FView.StatusColor);
+  // Signalfarbe der Leistenfläche mit Rand (#1255).
+  Canvas.Brush.Color := ToColor(Colors.Signals.ForStatus(FView.StatusState).Fill);
+  Canvas.Pen.Color := ToColor(Colors.Signals.ForStatus(FView.StatusState).Ring);
   Canvas.Ellipse(Left_, Center - DotSize div 2, Left_ + DotSize, Center - DotSize div 2 + DotSize);
   Canvas.Font := Font;
-  Canvas.Font.Color := ToColor(FColors.Text);
+  Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
   Part := Rect(Left_ + DotSize + Scale(5), ARect.Top, ARect.Right - Scale(SlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(FView.StatusText), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
@@ -519,18 +560,18 @@ begin
   begin
     if FKindSpans[Index].IsEmpty then
       Continue;
-    if (FHot = TAtlasStatusBarPart.Findings) and (FHotKind = Index) then
+    if (HotElement = TAtlasStatusBarPart.Findings) and (HotKind = Index) then
       DrawHot(Rect(FKindSpans[Index].Left - Scale(2), ARect.Top, FKindSpans[Index].Right - Scale(2),
         ARect.Bottom));
     Icon := Rect(FKindSpans[Index].Left, Top_, FKindSpans[Index].Left + IconSize, Top_ + IconSize);
-    TAtlasFindingIcon.Draw(Canvas, Icon, Kinds[Index], TAtlasFindingIcon.KindColor(Kinds[Index]), clWhite, clBlack);
+    TAtlasFindingIcon.Draw(Canvas, Icon, Kinds[Index], Colors.Signals.Get(TAtlasFindingIcon.SignalOf(Kinds[Index])));
     Count := FView.Counts[Kinds[Index]];
     Canvas.Font := Font;
     // Null gedämpft: Nichts zu tun.
     if Count = 0 then
-      Canvas.Font.Color := ToColor(FColors.Muted)
+      Canvas.Font.Color := ToColor(Colors.Muted)
     else
-      Canvas.Font.Color := ToColor(FColors.Text);
+      Canvas.Font.Color := ToColor(Colors.Text);
     Canvas.Brush.Style := bsClear;
     Part := Rect(Icon.Right + Scale(3), ARect.Top, FKindSpans[Index].Right, ARect.Bottom);
     DrawText(Canvas.Handle, PChar(IntToStr(Count)), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
@@ -562,6 +603,37 @@ begin
   Canvas.Polygon(Points);
 end;
 
+function TAtlasEditorStatusBar.BadgeText: string;
+begin
+  if FView.BadgeCount > 99 then
+    Result := '99+'
+  else
+    Result := IntToStr(FView.BadgeCount);
+end;
+
+procedure TAtlasEditorStatusBar.DrawBadge(const ARect: TRect);
+var
+  Pill: TRect;
+  Width_, Height_: Integer;
+begin
+  // Runde Plakette in der Farbe des schwersten ungelesenen Eintrags, Zahl hell darauf.
+  Height_ := Scale(16);
+  Width_ := Max(Height_, TextWidthOf(BadgeText, True) + Scale(10));
+  Pill := Rect(ARect.Left + Scale(SlotPadding), ARect.Top + (ARect.Height - Height_) div 2,
+    ARect.Left + Scale(SlotPadding) + Width_, ARect.Top + (ARect.Height - Height_) div 2 + Height_);
+  Canvas.Brush.Style := bsSolid;
+  // Plakettenfarbe mit lesbarer Zahl darauf (#1255): hell dunkle Fläche mit Weiß, dunkel helle Fläche mit Dunkel.
+  Canvas.Brush.Color := ToColor(Colors.Signals.ForStatus(FView.BadgeState).Solid);
+  Canvas.Pen.Color := ToColor(Colors.Signals.ForStatus(FView.BadgeState).Solid);
+  Canvas.RoundRect(Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, Height_, Height_);
+  Canvas.Font := Font;
+  Canvas.Font.Style := [fsBold];
+  Canvas.Font.Color := ToColor(Colors.Signals.ForStatus(FView.BadgeState).OnSolid);
+  Canvas.Brush.Style := bsClear;
+  DrawText(Canvas.Handle, PChar(BadgeText), -1, Pill, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  Canvas.Font := Font;
+end;
+
 procedure TAtlasEditorStatusBar.DrawLive(const ARect: TRect);
 var
   Icon, Part: TRect;
@@ -571,12 +643,12 @@ begin
   Top_ := ARect.Top + (ARect.Height - IconSize) div 2;
   Icon := Rect(ARect.Left + Scale(SlotPadding), Top_, ARect.Left + Scale(SlotPadding) + IconSize, Top_ + IconSize);
   if FView.LiveBusy then
-    Tone := ToColor(FColors.Accent)
+    Tone := ToColor(Colors.Accent)
   else
-    Tone := ToColor(FColors.Muted);
+    Tone := ToColor(Colors.Muted);
   DrawCycle(Icon, Tone);
   Canvas.Font := Font;
-  Canvas.Font.Color := ToColor(FColors.Text);
+  Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
   Part := Rect(Icon.Right + Scale(4), ARect.Top, ARect.Right - Scale(SlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(FView.LiveText), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
@@ -590,11 +662,11 @@ var
   Tone: TColor;
 begin
   if FView.MethodOver then
-    Tone := ToColor(FColors.Warn)
+    Tone := ToColor(Colors.Warn)
   else if FView.MethodFound then
-    Tone := ToColor(FColors.Text)
+    Tone := ToColor(Colors.Text)
   else
-    Tone := ToColor(FColors.Muted);
+    Tone := ToColor(Colors.Muted);
   Left_ := ARect.Left + Scale(SlotPadding);
   Canvas.Brush.Style := bsClear;
   Canvas.Font := Font;
@@ -616,7 +688,7 @@ begin
     Exit;
   Canvas.Font.Color := Tone;
   if not FView.MethodOver then
-    Canvas.Font.Color := ToColor(FColors.Muted);
+    Canvas.Font.Color := ToColor(Colors.Muted);
   Part := Rect(Min(Left_ + TextWidthOf(FView.MethodName, False), Part.Right) + Scale(6), ARect.Top,
     ARect.Right - Scale(SlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(FView.MethodDetail), -1, Part, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
@@ -628,12 +700,12 @@ var
   Icon: TRect;
   Size: Integer;
 begin
-  if FHot = TAtlasStatusBarPart.Gear then
+  if HotElement = TAtlasStatusBarPart.Gear then
     DrawHot(ARect);
   Size := Scale(16);
   Icon := Rect(ARect.Left + (ARect.Width - Size) div 2, ARect.Top + (ARect.Height - Size) div 2,
     ARect.Left + (ARect.Width - Size) div 2 + Size, ARect.Top + (ARect.Height - Size) div 2 + Size);
-  TAtlasGlyphPainter.Draw(Canvas, TAtlasToolbarIcon.Gear, Icon, ToColor(FColors.Text), ToColor(FColors.Gutter), '');
+  TAtlasGlyphPainter.Draw(Canvas, TAtlasToolbarIcon.Gear, Icon, ToColor(Colors.Text), ToColor(Colors.Gutter), '');
 end;
 
 procedure TAtlasEditorStatusBar.Paint;
@@ -643,13 +715,8 @@ var
   Started: Boolean;
 begin
   Layout;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FColors.Gutter);
-  Canvas.FillRect(ClientRect);
   // Obere Linie: Abschluss zum Editor.
-  Canvas.Pen.Color := ToColor(FColors.Line);
-  Canvas.MoveTo(0, 0);
-  Canvas.LineTo(ClientWidth, 0);
+  PaintChrome(True);
   Started := False;
   for Index := 0 to High(FParts) do
   begin
@@ -660,16 +727,19 @@ begin
     begin
       // Trennstrich mitten im Abstand davor.
       Middle := Area.Left - Gap div 2;
-      Canvas.Pen.Color := ToColor(FColors.Line);
+      Canvas.Pen.Color := ToColor(Colors.Line);
       Canvas.MoveTo(Middle, Scale(5));
       Canvas.LineTo(Middle, ClientHeight - Scale(4));
     end;
     Started := True;
-    if (FHot = FParts[Index]) and (FParts[Index] in [TAtlasStatusBarPart.Status, TAtlasStatusBarPart.Method]) then
+    if (HotElement = FParts[Index]) and (FParts[Index] in [TAtlasStatusBarPart.Status, TAtlasStatusBarPart.Badge,
+      TAtlasStatusBarPart.LiveCheck, TAtlasStatusBarPart.Method]) then
       DrawHot(Area);
     case FParts[Index] of
       TAtlasStatusBarPart.Status:
         DrawStatus(Area);
+      TAtlasStatusBarPart.Badge:
+        DrawBadge(Area);
       TAtlasStatusBarPart.Findings:
         DrawFindings(Area);
       TAtlasStatusBarPart.LiveCheck:
@@ -681,92 +751,30 @@ begin
   DrawGear(FGearRect);
 end;
 
-procedure TAtlasEditorStatusBar.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  Hot: TAtlasStatusBarPart;
-  HotKind: Integer;
-begin
-  inherited MouseMove(Shift, X, Y);
-  Hot := PartAt(X, Y);
-  HotKind := KindAt(X, Y);
-  if (Hot = FHot) and (HotKind = FHotKind) then
-    Exit;
-  FHot := Hot;
-  FHotKind := HotKind;
-  if (Hot = TAtlasStatusBarPart.None) or (Hot = TAtlasStatusBarPart.LiveCheck) or
-    ((Hot = TAtlasStatusBarPart.Method) and not FView.MethodFound) then
-    Cursor := crDefault
-  else
-    Cursor := crHandPoint;
-  Application.CancelHint;
-  Hint := PartHint(Hot);
-  Invalidate;
-end;
-
-procedure TAtlasEditorStatusBar.CMMouseLeave(var Message: TMessage);
-begin
-  inherited;
-  // FDown bleibt: Das Verlassen kommt in der IDE zwischen Drücken und Loslassen jedes Klicks (#1101).
-  if (FHot = TAtlasStatusBarPart.None) and (FHotKind < 0) then
-    Exit;
-  FHot := TAtlasStatusBarPart.None;
-  FHotKind := -1;
-  Invalidate;
-end;
-
-procedure TAtlasEditorStatusBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited MouseDown(Button, Shift, X, Y);
-  if Button <> mbLeft then
-    Exit;
-  // Das Loslassen nach einem Doppelklick ist kein zweiter Klick.
-  FSkipUp := ssDouble in Shift;
-  FDown := PartAt(X, Y);
-end;
-
-procedure TAtlasEditorStatusBar.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  Released: TAtlasStatusBarPart;
-begin
-  inherited MouseUp(Button, Shift, X, Y);
-  if Button <> mbLeft then
-    Exit;
-  if FSkipUp then
-  begin
-    FSkipUp := False;
-    FDown := TAtlasStatusBarPart.None;
-    Exit;
-  end;
-  // Erst beim Loslassen; nur ein Drücken auf einem anderen Element bricht ab (#1101).
-  Released := PartAt(X, Y);
-  if (Released <> TAtlasStatusBarPart.None) and ((FDown = TAtlasStatusBarPart.None) or (FDown = Released)) then
-    Fire(Released, X, Y);
-  FDown := TAtlasStatusBarPart.None;
-end;
-
 procedure TAtlasEditorStatusBar.DblClick;
 var
   Position: TPoint;
 begin
   inherited DblClick;
   Position := ScreenToClient(Mouse.CursorPos);
-  if (PartAt(Position.X, Position.Y) = TAtlasStatusBarPart.Findings) and Assigned(FOnFindingsOpen) then
+  if (ElementAt(Position.X, Position.Y) = TAtlasStatusBarPart.Findings) and Assigned(FOnFindingsOpen) then
     FOnFindingsOpen();
 end;
 
-procedure TAtlasEditorStatusBar.WMContextMenu(var Message: TWMContextMenu);
+function TAtlasEditorStatusBar.KeyboardMenuPoint: TPoint;
+begin
+  // Von der Tastatur: am Zahnrad.
+  Layout;
+  Result := Point(FGearRect.Left, FGearRect.Top);
+end;
+
+procedure TAtlasEditorStatusBar.ContextMenu(const APoint: TPoint; APart: Integer);
 var
   Position, Corner: TPoint;
   Area: TRect;
 begin
-  // Nicht inherited: Sonst ginge das Kontextmenü an das Editorfenster der IDE weiter.
-  Message.Result := 1;
-  if (Message.XPos = -1) and (Message.YPos = -1) then
-    // Von der Tastatur: am Zahnrad.
-    Position := Point(FGearRect.Left, FGearRect.Top)
-  else
-    Position := ScreenToClient(SmallPointToPoint(Message.Pos));
-  if PartAt(Position.X, Position.Y) = TAtlasStatusBarPart.Status then
+  Position := APoint;
+  if ElementAt(Position.X, Position.Y) = TAtlasStatusBarPart.Status then
   begin
     Area := PartRect(TAtlasStatusBarPart.Status);
     Corner := ClientToScreen(Point(Area.Left, Area.Top));
@@ -779,12 +787,17 @@ end;
 
 procedure TAtlasEditorStatusBar.ClickAt(X, Y: Integer);
 begin
-  Fire(PartAt(X, Y), X, Y);
+  Fire(ElementAt(X, Y), X, Y);
+end;
+
+procedure TAtlasEditorStatusBar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
+begin
+  Fire(ElementAt(X, Y), X, Y);
 end;
 
 procedure TAtlasEditorStatusBar.DoubleClickAt(X, Y: Integer);
 begin
-  if (PartAt(X, Y) = TAtlasStatusBarPart.Findings) and Assigned(FOnFindingsOpen) then
+  if (ElementAt(X, Y) = TAtlasStatusBarPart.Findings) and Assigned(FOnFindingsOpen) then
     FOnFindingsOpen();
 end;
 
@@ -806,6 +819,15 @@ begin
         if (Kind >= 0) and Assigned(FOnFinding) then
           FOnFinding(Kinds[Kind]);
       end;
+    TAtlasStatusBarPart.Badge:
+      if Assigned(FOnBadge) then
+      begin
+        Area := PartRect(TAtlasStatusBarPart.Badge);
+        FOnBadge(ClientToScreen(Point(Area.Left, Area.Top)));
+      end;
+    TAtlasStatusBarPart.LiveCheck:
+      if Assigned(FOnLiveCheck) then
+        FOnLiveCheck();
     TAtlasStatusBarPart.Method:
       if FView.MethodFound and Assigned(FOnMethod) then
         FOnMethod();

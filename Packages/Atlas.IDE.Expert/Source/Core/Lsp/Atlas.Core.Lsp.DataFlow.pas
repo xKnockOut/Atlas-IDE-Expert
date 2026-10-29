@@ -88,6 +88,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Text.Uris;
 
 function UriToPath(const AUri: string): string;

@@ -380,6 +380,8 @@ begin
       Result := 'Atlas.ExpressionType';
     TAtlasKeyFunction.SafeDelete:
       Result := 'Atlas.SafeDelete';
+    TAtlasKeyFunction.CreateIssue:
+      Result := 'Atlas.CreateIssue';
   else
     Result := '';
   end;

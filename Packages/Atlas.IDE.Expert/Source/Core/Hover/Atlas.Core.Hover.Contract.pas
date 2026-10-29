@@ -132,6 +132,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.StrUtils,
   System.Math;

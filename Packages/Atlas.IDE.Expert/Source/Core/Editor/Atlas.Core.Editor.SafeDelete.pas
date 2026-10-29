@@ -13,6 +13,7 @@
 interface
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.JSON;
 

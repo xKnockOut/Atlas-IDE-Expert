@@ -511,11 +511,12 @@ begin
       mPath := Trim(Expand(Trim(mEntry), AProjectFile));
       if mPath = '' then
         Continue;
-      if not TPath.IsPathRooted(mPath) then
+      // Ohne TPath: IsPathRooted und Combine lehnen * und ? als ungültige Zeichen ab.
+      if (ExtractFileDrive(mPath) = '') and not mPath.StartsWith(PathDelim) then
       begin
         if mFolder = '' then
           Continue;
-        mPath := TPath.Combine(mFolder, mPath);
+        mPath := IncludeTrailingPathDelimiter(mFolder) + mPath;
       end;
       if (Pos('*', mPath) > 0) or (Pos('?', mPath) > 0) then
         mPath := NewestMatch(mPath)

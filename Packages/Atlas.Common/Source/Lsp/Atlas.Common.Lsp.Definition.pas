@@ -87,6 +87,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Lsp.Internals.Namespaces,
   Atlas.Common.Index.Files,
   Atlas.Common.Documents.Uris,

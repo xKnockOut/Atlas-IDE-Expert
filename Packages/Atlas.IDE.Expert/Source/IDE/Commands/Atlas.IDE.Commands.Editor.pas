@@ -203,6 +203,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Core.Diagnostics.MainThread,
   System.Types,
   System.JSON,

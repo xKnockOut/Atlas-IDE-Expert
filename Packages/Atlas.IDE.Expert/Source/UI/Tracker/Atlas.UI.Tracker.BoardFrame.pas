@@ -185,6 +185,8 @@ type
     FOnHidden: TProc;
     function AddMenu(const ACaption: string; AHandler: TNotifyEvent): TMenuItem;
     procedure UpdateView;
+    /// <summary>Innenbreite der Scrollbox; ohne Fenster ihre Breite (ClientWidth bräuchte ein Handle).</summary>
+    function ScrollWidth: Integer;
     procedure FillChoices;
     procedure BoardChange(Sender: TObject);
     procedure SprintChange(Sender: TObject);
@@ -938,6 +940,14 @@ begin
     Result := FSnapshot.Cards[AIndex];
 end;
 
+function TAtlasBoardFrame.ScrollWidth: Integer;
+begin
+  if FScroll.HandleAllocated then
+    Result := FScroll.ClientWidth
+  else
+    Result := FScroll.Width;
+end;
+
 procedure TAtlasBoardFrame.UpdateView;
 var
   mVisible: TArray<Integer>;
@@ -945,7 +955,7 @@ begin
   mVisible := VisibleCards;
   FView.SetData(FSnapshot, mVisible);
   FView.Visible := FHasSnapshot;
-  FView.Relayout(FScroll.ClientWidth);
+  FView.Relayout(ScrollWidth);
   if FHasSnapshot and (Length(mVisible) = 0) then
   begin
     if FOnlyMine and (Length(FSnapshot.Cards) > 0) then
@@ -957,7 +967,7 @@ begin
   end
   else if FHasSnapshot then
     FEmpty.Visible := False;
-  FEmpty.Width := Max(FScroll.ClientWidth, ScaleValue(100));
+  FEmpty.Width := Max(ScrollWidth, ScaleValue(100));
 end;
 
 procedure TAtlasBoardFrame.FillChoices;
@@ -1031,7 +1041,7 @@ begin
   FView.Visible := False;
   FEmpty.Caption := AText;
   FEmpty.Top := ScaleValue(40);
-  FEmpty.Width := Max(FScroll.ClientWidth, ScaleValue(100));
+  FEmpty.Width := Max(ScrollWidth, ScaleValue(100));
   FEmpty.Visible := AText <> '';
 end;
 
@@ -1137,8 +1147,8 @@ end;
 procedure TAtlasBoardFrame.ScrollResize(Sender: TObject);
 begin
   if FHasSnapshot then
-    FView.Relayout(FScroll.ClientWidth);
-  FEmpty.Width := Max(FScroll.ClientWidth, ScaleValue(100));
+    FView.Relayout(ScrollWidth);
+  FEmpty.Width := Max(ScrollWidth, ScaleValue(100));
 end;
 
 procedure TAtlasBoardFrame.MenuStart(Sender: TObject);

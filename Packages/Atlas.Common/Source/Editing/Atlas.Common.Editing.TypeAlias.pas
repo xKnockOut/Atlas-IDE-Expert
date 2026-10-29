@@ -139,6 +139,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.TreeCache,
   System.SysUtils,
   System.StrUtils,
   Atlas.Text.Lines,
@@ -808,12 +809,11 @@ var
   Item: TTypeAliasFileEdits;
   Tree: TSyntaxTree;
 begin
-  Result := False;
   for Change in AChanges do
   begin
     if Change.Edits = nil then
       Continue;
-    Tree := TPascalParser.Parse(TChangeSignature.ApplyEdits(Change.Text, Change.Edits));
+    Tree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(Change.Text, Change.Edits));
     try
       if Length(Tree.Diagnostics) > Length(Change.Tree.Diagnostics) then
         Exit(Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s)',

@@ -80,7 +80,7 @@ uses
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Board,
-  Atlas.Core.Tracker.Sprint;
+  Atlas.Core.Tracker.Sprint,
   Atlas.Core.Tracker.Attach;
 
 type
@@ -141,7 +141,7 @@ type
     /// <summary>Name bzw. Wert für einen Befehl: mit Leerzeichen oder Klammern in geschweiften Klammern.</summary>
     class function CommandWord(const AText: string): string; static;
     /// <summary>Befehl zu AChange ohne Kommentar ("State {In Arbeit} Assignee me"); '' = nur Kommentar.</summary>
-    class function CommandQuery(const AChange: TAtlasTrackerChange): string; static;
+    class function CommandQuery(const AChange: TAtlasTrackerWrite): string; static;
     /// <summary>Inhalt für /api/commands.</summary>
     class function CommandJson(const AKey, AQuery, AComment: string): string; static;
     /// <summary>Inhalt für …/comments: {"text": AText}.</summary>
@@ -236,7 +236,7 @@ type
       out AError: TAtlasCiFetchError): Boolean;
     { IAtlasTrackerWriter }
     function Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
-      const AChange: TAtlasTrackerChange; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+      const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
     function Values(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
       AKind: TAtlasTrackerValueKind; const AField: string; ATimeoutMs: Integer;
       out AValues: TArray<string>): TAtlasTrackerWriteResult;
@@ -268,6 +268,24 @@ type
     { IAtlasTrackerWorkDays (#1277): über TAtlasYouTrackBoards }
     function WorkDays(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
       out ADays: TArray<Integer>): Boolean;
+    function Search(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
+      ATimeoutMs, AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
+    function Lookup(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out AIssue: TAtlasTrackerIssue; out AError: TAtlasCiFetchError): Boolean;
+    { IAtlasTrackerPeople }
+    function Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
+      ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
+    function Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
+      ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment; out AError: TAtlasCiFetchError): Boolean;
+    function Changes(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
+      var APoll: TAtlasTrackerPoll; out AChanges: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
+    { IAtlasTrackerAttach }
+    function CanUpload: Boolean;
+    function Upload(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost; const AKey: string;
+      const AFiles: TAtlasAttachFiles; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+    function Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost; const AKey, AMarkdown: string;
+      ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
+    function CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
   end;
 
   // Agile Boards von YouTrack (#1272), ohne VCL und Open Tools API.
@@ -330,24 +348,6 @@ type
     { IAtlasTrackerWorkDays }
     function WorkDays(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
       out ADays: TArray<Integer>): Boolean;
-    function Search(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
-      ATimeoutMs, AMax: Integer; out AIssues: TArray<TAtlasTrackerIssue>; out AError: TAtlasCiFetchError): Boolean;
-    function Lookup(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
-      ATimeoutMs: Integer; out AIssue: TAtlasTrackerIssue; out AError: TAtlasCiFetchError): Boolean;
-    { IAtlasTrackerPeople }
-    function Users(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AText: string;
-      ATimeoutMs, AMax: Integer; out AUsers: TArray<TAtlasTrackerUser>; out AError: TAtlasCiFetchError): Boolean;
-    function Development(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; const AKey: string;
-      ATimeoutMs: Integer; out ADevelopment: TAtlasTrackerDevelopment; out AError: TAtlasCiFetchError): Boolean;
-    function Changes(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport; ATimeoutMs: Integer;
-      var APoll: TAtlasTrackerPoll; out AChanges: TArray<TAtlasTrackerChange>; out AError: TAtlasCiFetchError): Boolean;
-    { IAtlasTrackerAttach }
-    function CanUpload: Boolean;
-    function Upload(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost; const AKey: string;
-      const AFiles: TAtlasAttachFiles; ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
-    function Comment(const ATarget: TAtlasTrackerTarget; const ASend: IAtlasCiPost; const AKey, AMarkdown: string;
-      ATimeoutMs: Integer; out AError: TAtlasCiFetchError): Boolean;
-    function CommentText(const AComment: string; const AFiles: TAtlasAttachFiles): string;
   end;
 
 implementation
@@ -361,7 +361,6 @@ uses
   System.JSON,
   System.Math,
   System.StrUtils,
-  System.Diagnostics,
   Atlas.Core.Tracker.TimeLog,
   Atlas.Text.Uris,
   Atlas.Core.Tracker.Templates,
@@ -957,7 +956,7 @@ begin
     Result := '{' + StringReplace(StringReplace(Result, '{', '', [rfReplaceAll]), '}', '', [rfReplaceAll]) + '}';
 end;
 
-class function TAtlasYouTrackTracker.CommandQuery(const AChange: TAtlasTrackerChange): string;
+class function TAtlasYouTrackTracker.CommandQuery(const AChange: TAtlasTrackerWrite): string;
 var
   mField: string;
 begin
@@ -1196,7 +1195,7 @@ begin
 end;
 
 function TAtlasYouTrackTracker.Apply(const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
-  const AKey: string; const AChange: TAtlasTrackerChange; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
+  const AKey: string; const AChange: TAtlasTrackerWrite; ATimeoutMs: Integer): TAtlasTrackerWriteResult;
 var
   mSend: IAtlasCiSend;
   mQuery, mUrl, mBody, mAnswer: string;
@@ -2150,13 +2149,13 @@ function TAtlasYouTrackBoards.MoveCard(const ATarget: TAtlasTrackerTarget; const
   const ASnapshot: TAtlasBoardSnapshot; const ACard: TAtlasBoardCard; AColumn: Integer; const AComment: string;
   ATimeoutMs: Integer): TAtlasTrackerWriteResult;
 var
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
   mWriter: IAtlasTrackerWriter;
 begin
   if (AColumn < 0) or (AColumn > High(ASnapshot.Columns)) or (Length(ASnapshot.Columns[AColumn].Values) = 0) then
     Exit(TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.Invalid, 0, ''));
   // Derselbe Schreibweg wie „Beginnen“ und „Beenden“ (#1266): ein Befehl mit Feld, Wert und Kommentar.
-  mChange := TAtlasTrackerChange.Empty;
+  mChange := TAtlasTrackerWrite.Empty;
   mChange.StateField := ASnapshot.Field;
   mChange.State := ASnapshot.Columns[AColumn].Values[0];
   mChange.Comment := AComment;

@@ -93,6 +93,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Output;

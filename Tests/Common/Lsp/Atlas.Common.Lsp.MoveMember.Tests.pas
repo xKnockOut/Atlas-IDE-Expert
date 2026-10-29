@@ -41,6 +41,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,

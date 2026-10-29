@@ -86,7 +86,7 @@ var
 begin
   Run := FRun;
   try
-    Summary := TAtlasFileSearch.Run(FSources, FQuery, TAtlasFileSearch.DiskLoader,
+    Summary := TAtlasFileSearch.Run(FSources, FQuery, TAtlasFileSearch.DiskLoader(),
       function: Boolean
       begin
         Result := Terminated;

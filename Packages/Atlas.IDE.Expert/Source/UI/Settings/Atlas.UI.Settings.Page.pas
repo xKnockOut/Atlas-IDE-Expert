@@ -337,7 +337,8 @@ type
     FCheckMax: TEdit;
     FMcpBuild: TCheckBox;
     /// <summary>Beim Öffnen bauen (build.onOpen*): eine Auswahl „nicht bauen / Syntaxprüfung / Compilieren /
-    /// Erzeugen“, Umfang in einer Gruppe, Wartezeit und ausgeschlossene Projekte.</summary>
+    /// Erzeugen“, Umfang in einer Gruppe, Wartezeit, ausgeschlossene Projekte, Konfiguration und Plattform
+    /// (#1293).</summary>
     FOpenBuild: TAtlasChoiceBox;
     FOpenBuildScope: TAtlasChoiceBox;
     FOpenBuildDelay: TEdit;
@@ -350,6 +351,8 @@ type
     FTasksSaveBeforeRun: TCheckBox;
     FTasksRunChecksParallel: TCheckBox;
     FTasksOnlyFindings: TCheckBox;
+    FOpenBuildConfig: TEdit;
+    FOpenBuildPlatform: TAtlasChoiceBox;
     /// <summary>DUnitX-Tests ausführen (#69): Befehle, vorher bauen, nach dem Build; Build ohne Hinweise (#530).
     /// </summary>
     FTestRun: TCheckBox;
@@ -453,6 +456,15 @@ type
     // Mitlaufender Kopf (#506).
     FStickyScroll: TCheckBox;
     FStickyScrollMaxLines: TEdit;
+    // Was der Kopf zeigt: Typen, Routinen, große Anweisungsblöcke (#1230).
+    FStickyScrollTypes: TCheckBox;
+    FStickyScrollRoutines: TCheckBox;
+    FStickyScrollBlocks: TCheckBox;
+    FStickyScrollLoops: TCheckBox;
+    FStickyScrollTry: TCheckBox;
+    FStickyScrollCase: TCheckBox;
+    FStickyScrollWith: TCheckBox;
+    FStickyScrollBlockMinLines: TEdit;
     FMinimap: TCheckBox;
     FMinimapRender: TAtlasChoiceBox;
     FMinimapWidth: TEdit;
@@ -630,6 +642,7 @@ type
     FUnitSearchFilters: TCheckBox;
     FUnitSearchDefaultScope: TAtlasChoiceBox;
     FUnitSearchFilterSyntax: TCheckBox;
+    FUnitSearchFormCaptions: TCheckBox;
     FUnitSearchPreview: TCheckBox;
     FUnitSearchPreviewForm: TCheckBox;
     FUnitSearchPreviewUsedBy: TCheckBox;
@@ -647,6 +660,7 @@ type
     FSearchRegex: TCheckBox;
     FSearchHistory: TEdit;
     FSearchMultiFile: TCheckBox;
+    FSearchFromFirst: TCheckBox;
     FWelcomeEnabled: TCheckBox;
     FWelcomeOpenOnStart: TCheckBox;
     FWelcomeOpenWhenNoProject: TCheckBox;
@@ -995,6 +1009,9 @@ type
     function PageShown(AIndex: Integer): Boolean;
     procedure FillTree;
     procedure RefreshTree;
+    /// <summary>AControl hat ein Fenster bzw. bekommt eines, sobald die Seite eines hat (Einträge von Listen und
+    /// Bäumen leben im Fenster; auf noch nicht gezeigten Reitern fehlt es sonst).</summary>
+    function ListReady(AControl: TWinControl): Boolean;
     function IsOn(const AName: string): Boolean;
     function LockOfName(const AName: string): TAtlasSettingsLock;
     function LockText(const ALock: TAtlasSettingsLock): string;
@@ -1216,6 +1233,7 @@ type
     /// <summary>Abschnitt „Zustand im Tracker“ (#1266) der Seite Issue-Tracker.</summary>
     procedure AddIssuesWorkflowSection;
     procedure AddIssuesTimeSection;
+    function AddLabelled(AId: TAtlasTextId; AControl: TWinControl; AHeight: Integer): TWinControl;
     procedure AddIssuesSnippetsSection;
     procedure RefreshSnippets;
     procedure SnippetFillFields;
@@ -1410,6 +1428,14 @@ type
     property MultiCursor: TCheckBox read FMultiCursor;
     property StickyScroll: TCheckBox read FStickyScroll;
     property StickyScrollMaxLines: TEdit read FStickyScrollMaxLines;
+    property StickyScrollTypes: TCheckBox read FStickyScrollTypes;
+    property StickyScrollRoutines: TCheckBox read FStickyScrollRoutines;
+    property StickyScrollBlocks: TCheckBox read FStickyScrollBlocks;
+    property StickyScrollLoops: TCheckBox read FStickyScrollLoops;
+    property StickyScrollTry: TCheckBox read FStickyScrollTry;
+    property StickyScrollCase: TCheckBox read FStickyScrollCase;
+    property StickyScrollWith: TCheckBox read FStickyScrollWith;
+    property StickyScrollBlockMinLines: TEdit read FStickyScrollBlockMinLines;
     property Minimap: TCheckBox read FMinimap;
     property MinimapRender: TAtlasChoiceBox read FMinimapRender;
     property MinimapWidth: TEdit read FMinimapWidth;
@@ -1625,6 +1651,8 @@ type
     property TasksSaveBeforeRunCheck: TCheckBox read FTasksSaveBeforeRun;
     property TasksRunChecksParallelCheck: TCheckBox read FTasksRunChecksParallel;
     property TasksOnlyFindingsCheck: TCheckBox read FTasksOnlyFindings;
+    property OpenBuildConfigEdit: TEdit read FOpenBuildConfig;
+    property OpenBuildPlatformChoice: TAtlasChoiceBox read FOpenBuildPlatform;
     /// <summary>Zum Testen: Tests ausführen (#69).</summary>
     property CodeLensTestsCheck: TCheckBox read FCodeLensTests;
     property TestRunCheck: TCheckBox read FTestRun;
@@ -1912,7 +1940,7 @@ type
     property VcsProjectMainBranch: TEdit read FVcsProjectMainBranch;
     property VcsProjectNote: TLabel read FVcsProjectNote;
     property VcsProjectAddCurrent: TButton read FVcsProjectAddCurrent;
-    property VcsProjectAdd: TButton read FVcsProjectAdd;
+    property VcsProjectAddButton: TButton read FVcsProjectAdd;
     property VcsProjectRemove: TButton read FVcsProjectRemove;
     property VcsProjectAddMenu: TPopupMenu read FVcsProjectAddMenu;
     /// <summary>Persönliche Zeilen, wie die Seite sie gerade zeigt.</summary>
@@ -2399,6 +2427,14 @@ begin
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
   FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
+  FStickyScrollTypes := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollTypes));
+  FStickyScrollRoutines := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollRoutines));
+  FStickyScrollBlocks := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollBlocks));
+  FStickyScrollLoops := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollLoops));
+  FStickyScrollTry := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollTry));
+  FStickyScrollCase := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollCase));
+  FStickyScrollWith := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollWith));
+  FStickyScrollBlockMinLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollBlockMinLines));
   // Minimap neben der Scrollleiste (#873, experimentell).
   FMinimap := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsMinimap));
   FMinimapRender := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMinimapRender),
@@ -3005,7 +3041,7 @@ begin
   if (FFilter.Choice >= Ord(Low(TAtlasSettingsFilter))) and (FFilter.Choice <= Ord(High(TAtlasSettingsFilter))) then
     FMarks.ApplyFilter(TAtlasSettingsFilter(FFilter.Choice));
   // Knoten ohne Treffer fallen aus dem Baum (#890).
-  if FTree.HandleAllocated then
+  if ListReady(FTree) then
     FillTree;
 end;
 
@@ -3274,25 +3310,27 @@ begin
   AddIssuesSnippetsSection;
 end;
 
-procedure TAtlasSettingsPage.AddIssuesSnippetsSection;
+/// <summary>Zeile mit Beschriftung links und AControl rechts (Höhe AHeight); auch für die Verbindungen (#1266).
+/// </summary>
+function TAtlasSettingsPage.AddLabelled(AId: TAtlasTextId; AControl: TWinControl; AHeight: Integer): TWinControl;
+var
+  mCaption: TLabel;
+begin
+  Result := AddPanel(AHeight);
+  mCaption := TLabel.Create(Self);
+  mCaption.Parent := Result;
+  mCaption.Caption := TAtlasStrings.Text(AId) + ':';
+  mCaption.Left := 0;
+  mCaption.Top := 5;
+  AControl.Parent := Result;
+  AControl.Left := 90;
+  AControl.Top := 1;
+  AControl.Width := 376;
+  AControl.Height := AHeight - 2;
+  AControl.Anchors := [akLeft, akTop, akRight];
+end;
 
-  function AddLabelled(AId: TAtlasTextId; AControl: TWinControl; AHeight: Integer): TWinControl;
-  var
-    mCaption: TLabel;
-  begin
-    Result := AddPanel(AHeight);
-    mCaption := TLabel.Create(Self);
-    mCaption.Parent := Result;
-    mCaption.Caption := TAtlasStrings.Text(AId) + ':';
-    mCaption.Left := 0;
-    mCaption.Top := 5;
-    AControl.Parent := Result;
-    AControl.Left := 90;
-    AControl.Top := 1;
-    AControl.Width := 376;
-    AControl.Height := AHeight - 2;
-    AControl.Anchors := [akLeft, akTop, akRight];
-  end;
+procedure TAtlasSettingsPage.AddIssuesSnippetsSection;
 
   function AddButton(AParent: TWinControl; ALeft: Integer; AId: TAtlasTextId; AClick: TNotifyEvent): TButton;
   begin
@@ -3372,7 +3410,7 @@ begin
     Exit;
   if FSnippetSelected > High(FCommentSnippets) then
     FSnippetSelected := High(FCommentSnippets);
-  if FIssuesSnippets.HandleAllocated then
+  if ListReady(FIssuesSnippets) then
   begin
     FSnippetFilling := True;
     FIssuesSnippets.Items.BeginUpdate;
@@ -3414,10 +3452,11 @@ begin
   finally
     FSnippetFilling := False;
   end;
-  FIssuesSnippetName.Enabled := mEditable;
-  FIssuesSnippetText.Enabled := mEditable;
-  FIssuesSnippetRemove.Enabled := mEditable;
-  FIssuesSnippetAdd.Enabled := Length(FCommentSnippets) < TAtlasCommentSnippets.MaxSnippets;
+  // Über Allow: Sonst schaltet UpdateLocks (Hauptschalter) die Felder wieder frei.
+  Allow(FIssuesSnippetName, mEditable);
+  Allow(FIssuesSnippetText, mEditable);
+  Allow(FIssuesSnippetRemove, mEditable);
+  Allow(FIssuesSnippetAdd, Length(FCommentSnippets) < TAtlasCommentSnippets.MaxSnippets);
 end;
 
 procedure TAtlasSettingsPage.SnippetSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -3433,7 +3472,7 @@ begin
   if FSnippetFilling or (FSnippetSelected < 0) or (FSnippetSelected > High(FCommentSnippets)) then
     Exit;
   FCommentSnippets[FSnippetSelected].Name := FIssuesSnippetName.Text;
-  if FIssuesSnippets.HandleAllocated and (FSnippetSelected < FIssuesSnippets.Items.Count) then
+  if ListReady(FIssuesSnippets) and (FSnippetSelected < FIssuesSnippets.Items.Count) then
     FIssuesSnippets.Items[FSnippetSelected].Caption := FIssuesSnippetName.Text;
 end;
 
@@ -3443,7 +3482,7 @@ begin
     Exit;
   // Wie im Kommentar: Zeilen mit #10.
   FCommentSnippets[FSnippetSelected].Text := StringReplace(FIssuesSnippetText.Text, #13#10, #10, [rfReplaceAll]);
-  if FIssuesSnippets.HandleAllocated and (FSnippetSelected < FIssuesSnippets.Items.Count) and
+  if ListReady(FIssuesSnippets) and (FSnippetSelected < FIssuesSnippets.Items.Count) and
     (FIssuesSnippets.Items[FSnippetSelected].SubItems.Count > 0) then
     FIssuesSnippets.Items[FSnippetSelected].SubItems[0] := SnippetLine(FCommentSnippets[FSnippetSelected].Text);
 end;
@@ -3456,7 +3495,7 @@ begin
   FCommentSnippets := FCommentSnippets + [TAtlasCommentSnippet.Create(TAtlasStrings.Text(TAtlasTextId.SettingsIssuesSnippetNew), '')];
   FSnippetSelected := High(FCommentSnippets);
   RefreshSnippets;
-  if FIssuesSnippetName.CanFocus then
+  if FIssuesSnippetName.CanFocus and FIssuesSnippetName.Showing then
     FIssuesSnippetName.SetFocus;
 end;
 
@@ -3616,19 +3655,6 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsUpdateWithout),
     TAtlasStrings.Text(TAtlasTextId.SettingsVcsExternalsUpdateAsk)]);
   FVcsExternalsUpdate.Width := 260;
-end;
-
-procedure TAtlasSettingsPage.VcsExternalsRulesChange(Sender: TObject);
-var
-  mRules: TArray<TAtlasVcsExternalRule>;
-  mInvalid: string;
-begin
-  // Ungültige Zeile: Hinweis; gespeichert bleiben dann die bisherigen Regeln (SaveTo).
-  if TAtlasVcsBranchPlan.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
-    FVcsExternalsRulesError.Caption := ''
-  else
-    FVcsExternalsRulesError.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsExternalsRulesInvalid, [mInvalid]);
-  RefreshMarks;
   // Gruppe „Git“ (#1289): Vorgaben im Dialog und für „Beginnen“ ohne Dialog; Reihenfolge wie die Werte.
   AddTitle(TAtlasTextId.SettingsVcsBranchGitTitle);
   FVcsBranchGitBase := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitBase),
@@ -3648,6 +3674,19 @@ begin
   FVcsBranchGitWorktree := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitWorktree));
   FVcsBranchGitWorktreeFolder := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitWorktreeFolder));
   AddWrappedLabel(52, TAtlasStrings.Text(TAtlasTextId.SettingsVcsBranchGitHint)).Font.Color := clGrayText;
+end;
+
+procedure TAtlasSettingsPage.VcsExternalsRulesChange(Sender: TObject);
+var
+  mRules: TArray<TAtlasVcsExternalRule>;
+  mInvalid: string;
+begin
+  // Ungültige Zeile: Hinweis; gespeichert bleiben dann die bisherigen Regeln (SaveTo).
+  if TAtlasVcsBranchPlan.RulesOfText(FVcsExternalsRules.Text, mRules, mInvalid) then
+    FVcsExternalsRulesError.Caption := ''
+  else
+    FVcsExternalsRulesError.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsVcsExternalsRulesInvalid, [mInvalid]);
+  RefreshMarks;
 end;
 
 procedure TAtlasSettingsPage.AddVcsTool(AKind: TAtlasVcsKind; ACaption: TAtlasTextId);
@@ -3969,32 +4008,6 @@ begin
   FVcsProjectNote.Top := 1;
   FVcsProjectNote.Font.Color := clRed;
   Attach(mPanel, FVcsProjectList);
-  // Zustand und Zuständigkeit je Verbindung (#1266); leer gilt „Zustand im Tracker“ weiter unten.
-  FIssuesConnectionStateField := TAtlasValueBox.Create(Self);
-  FIssuesConnectionStateField.OnChange := TrackerWorkflowChange;
-  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionStateField, FIssuesConnectionStateField, 180),
-    FIssuesConnections);
-  FIssuesConnectionAssigneeField := TAtlasValueBox.Create(Self);
-  FIssuesConnectionAssigneeField.OnChange := TrackerWorkflowChange;
-  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionAssigneeField, FIssuesConnectionAssigneeField, 180),
-    FIssuesConnections);
-  FIssuesConnectionStartState := TAtlasValueBox.Create(Self);
-  FIssuesConnectionStartState.OnChange := TrackerWorkflowChange;
-  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionStartState, FIssuesConnectionStartState, 180),
-    FIssuesConnections);
-  FIssuesConnectionEndStates := TEdit.Create(Self);
-  FIssuesConnectionEndStates.OnChange := TrackerWorkflowChange;
-  mPanel := AddLabelled(TAtlasTextId.SettingsIssuesConnectionEndStates, FIssuesConnectionEndStates, 376);
-  FIssuesConnectionEndStates.Anchors := [akLeft, akTop, akRight];
-  Attach(mPanel, FIssuesConnections);
-  mPanel := AddPanel(18);
-  mHint := TLabel.Create(Self);
-  mHint.Parent := mPanel;
-  mHint.Left := 90;
-  mHint.Top := 1;
-  mHint.Font.Color := clGrayText;
-  mHint.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionStatesHint);
-  Attach(mPanel, FIssuesConnections);
   mPanel := AddPanel(32);
   FVcsProjectAddCurrent := AddTrackerButton(mPanel, 0, 180, TAtlasTextId.SettingsIssuesProjectAddCurrent,
     VcsProjectAddCurrentClick);
@@ -4058,7 +4071,7 @@ var
   mBranch: string;
 begin
   mRows := VcsProjectRows;
-  if (AIndex < 0) or (AIndex > High(mRows)) or not FVcsProjectList.HandleAllocated or
+  if (AIndex < 0) or (AIndex > High(mRows)) or not ListReady(FVcsProjectList) or
     (AIndex >= FVcsProjectList.Items.Count) then
     Exit;
   mItem := FVcsProjectList.Items[AIndex];
@@ -4085,7 +4098,7 @@ begin
   mRows := VcsProjectRows;
   if FVcsProjectSelected > High(mRows) then
     FVcsProjectSelected := High(mRows);
-  if FVcsProjectList.HandleAllocated then
+  if ListReady(FVcsProjectList) then
   begin
     FVcsProjectFilling := True;
     FVcsProjectList.Items.BeginUpdate;
@@ -4246,7 +4259,7 @@ begin
   end;
   FVcsProjectSelected := mIndex;
   RefreshVcsProjects;
-  if FVcsProjectMainBranch.CanFocus then
+  if FVcsProjectMainBranch.CanFocus and FVcsProjectMainBranch.Showing then
     FVcsProjectMainBranch.SetFocus;
 end;
 
@@ -4430,7 +4443,7 @@ begin
     FVcsServerSelected := High(FVcsServerRows);
   if (FVcsServerSelected < 0) and (Length(FVcsServerRows) > 0) then
     FVcsServerSelected := 0;
-  if FVcsServerList.HandleAllocated then
+  if ListReady(FVcsServerList) then
   begin
     FVcsServerList.Items.BeginUpdate;
     try
@@ -4454,7 +4467,7 @@ var
   mItem: TListItem;
   mServer: string;
 begin
-  if (AIndex < 0) or (AIndex > High(FVcsServerRows)) or not FVcsServerList.HandleAllocated or
+  if (AIndex < 0) or (AIndex > High(FVcsServerRows)) or not ListReady(FVcsServerList) or
     (AIndex >= FVcsServerList.Items.Count) then
     Exit;
   mItem := FVcsServerList.Items[AIndex];
@@ -4502,7 +4515,7 @@ begin
     if SameText(FVcsServerRows[mIndex].Folder, FVcsServerExtra) then
     begin
       FVcsServerSelected := mIndex;
-      if FVcsServerList.HandleAllocated and (mIndex < FVcsServerList.Items.Count) then
+      if ListReady(FVcsServerList) and (mIndex < FVcsServerList.Items.Count) then
         FVcsServerList.Items[mIndex].Selected := True;
       SelectPage(PageOf(FVcsServerList));
       VcsServerStart(mIndex);
@@ -4577,6 +4590,7 @@ end;
 procedure TAtlasSettingsPage.AddTrackerConnectionsSection;
 var
   mPanel: TWinControl;
+  mHint: TLabel;
 begin
   FTrackerSelected := -1;
   FTrackerProviderNames := TArray<string>.Create('youtrack', 'github');
@@ -4617,6 +4631,32 @@ begin
   FIssuesConnectionNote.Left := 90;
   FIssuesConnectionNote.Top := 1;
   FIssuesConnectionNote.Font.Color := clRed;
+  Attach(mPanel, FIssuesConnections);
+  // Zustand und Zuständigkeit je Verbindung (#1266); leer gilt „Zustand im Tracker“ weiter unten.
+  FIssuesConnectionStateField := TAtlasValueBox.Create(Self);
+  FIssuesConnectionStateField.OnChange := TrackerWorkflowChange;
+  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionStateField, FIssuesConnectionStateField, 180),
+    FIssuesConnections);
+  FIssuesConnectionAssigneeField := TAtlasValueBox.Create(Self);
+  FIssuesConnectionAssigneeField.OnChange := TrackerWorkflowChange;
+  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionAssigneeField, FIssuesConnectionAssigneeField, 180),
+    FIssuesConnections);
+  FIssuesConnectionStartState := TAtlasValueBox.Create(Self);
+  FIssuesConnectionStartState.OnChange := TrackerWorkflowChange;
+  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionStartState, FIssuesConnectionStartState, 180),
+    FIssuesConnections);
+  FIssuesConnectionEndStates := TEdit.Create(Self);
+  FIssuesConnectionEndStates.OnChange := TrackerWorkflowChange;
+  mPanel := AddLabelled(TAtlasTextId.SettingsIssuesConnectionEndStates, FIssuesConnectionEndStates, 376);
+  FIssuesConnectionEndStates.Anchors := [akLeft, akTop, akRight];
+  Attach(mPanel, FIssuesConnections);
+  mPanel := AddPanel(18);
+  mHint := TLabel.Create(Self);
+  mHint.Parent := mPanel;
+  mHint.Left := 90;
+  mHint.Top := 1;
+  mHint.Font.Color := clGrayText;
+  mHint.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesConnectionStatesHint);
   Attach(mPanel, FIssuesConnections);
   mPanel := AddPanel(32);
   FIssuesConnectionAdd := AddTrackerButton(mPanel, 0, 100, TAtlasTextId.SettingsIssuesConnectionAdd,
@@ -4757,7 +4797,7 @@ begin
   if FTrackerSelected > High(mRows) then
     FTrackerSelected := High(mRows);
   // Wie die Liste der Favoriten: ohne Fenster folgt das in CreateWnd.
-  if FIssuesConnections.HandleAllocated then
+  if ListReady(FIssuesConnections) then
   begin
     FTrackerFilling := True;
     FIssuesConnections.Items.BeginUpdate;
@@ -4807,12 +4847,21 @@ begin
       for mIndex := 0 to High(FTrackerProviderNames) do
         if SameText(FTrackerProviderNames[mIndex], mRow.Provider) then
           FIssuesConnectionProvider.Choice := mIndex;
+      // Zustand und Zuständigkeit je Verbindung (#1266).
+      FIssuesConnectionStateField.Value := mRow.StateField;
+      FIssuesConnectionAssigneeField.Value := mRow.AssigneeField;
+      FIssuesConnectionStartState.Value := mRow.StartState;
+      FIssuesConnectionEndStates.Text := TAtlasTrackerWorkflow.ListText(mRow.EndStates);
     end
     else
     begin
       FIssuesConnectionName.Text := '';
       FIssuesConnectionUrl.Text := '';
       FIssuesConnectionProvider.Choice := -1;
+      FIssuesConnectionStateField.Value := '';
+      FIssuesConnectionAssigneeField.Value := '';
+      FIssuesConnectionStartState.Value := '';
+      FIssuesConnectionEndStates.Text := '';
     end;
   finally
     FTrackerFilling := False;
@@ -4867,7 +4916,7 @@ begin
   // Ebenso die Abfragen mit dieser Verbindung (#1262).
   TAtlasTrackerQueries.RenameConnection(FTrackerQueries, mOld, mName);
   FTrackerConnections[FTrackerSelected].Name := mName;
-  if FIssuesConnections.HandleAllocated and (FTrackerSelected < FIssuesConnections.Items.Count) then
+  if ListReady(FIssuesConnections) and (FTrackerSelected < FIssuesConnections.Items.Count) then
     FIssuesConnections.Items[FTrackerSelected].Caption := mName;
   RefreshTrackerProjects;
 end;
@@ -4880,7 +4929,7 @@ begin
   if FTrackerFilling or not TrackerEditable or (mChoice < 0) or (mChoice > High(FTrackerProviderNames)) then
     Exit;
   FTrackerConnections[FTrackerSelected].Provider := FTrackerProviderNames[mChoice];
-  if FIssuesConnections.HandleAllocated and (FTrackerSelected < FIssuesConnections.Items.Count) then
+  if ListReady(FIssuesConnections) and (FTrackerSelected < FIssuesConnections.Items.Count) then
     FIssuesConnections.Items[FTrackerSelected].SubItems[0] := FTrackerProviderCaptions[mChoice];
 end;
 
@@ -4906,7 +4955,7 @@ begin
       // WithUrl behält Zustandsfeld, Zielzustände usw. (#1266).
       mConnection := FTrackerConnections[FTrackerSelected].WithUrl(FIssuesConnectionUrl.Text);
       FTrackerConnections[FTrackerSelected] := mConnection;
-      if FIssuesConnections.HandleAllocated and (FTrackerSelected < FIssuesConnections.Items.Count) then
+      if ListReady(FIssuesConnections) and (FTrackerSelected < FIssuesConnections.Items.Count) then
       begin
         FIssuesConnections.Items[FTrackerSelected].SubItems[1] := mConnection.Url;
         FIssuesConnections.Items[FTrackerSelected].SubItems[2] := TrackerStateText(mConnection);
@@ -4925,7 +4974,7 @@ begin
     FTrackerProviderNames[0], '')];
   FTrackerSelected := High(FTrackerConnections);
   RefreshTrackerConnections;
-  if FIssuesConnectionName.CanFocus then
+  if FIssuesConnectionName.CanFocus and FIssuesConnectionName.Showing then
     FIssuesConnectionName.SetFocus;
 end;
 
@@ -5126,7 +5175,7 @@ begin
   mRows := TrackerProjectRows;
   if FTrackerProjectSelected > High(mRows) then
     FTrackerProjectSelected := High(mRows);
-  if FIssuesProjects.HandleAllocated then
+  if ListReady(FIssuesProjects) then
   begin
     FTrackerProjectFilling := True;
     FIssuesProjects.Items.BeginUpdate;
@@ -5244,7 +5293,7 @@ begin
   end;
   FTrackerProjects[FTrackerProjectSelected].Match := mMatch;
   TrackerProjectNoteFor(FTrackerProjects[FTrackerProjectSelected]);
-  if FIssuesProjects.HandleAllocated and (FTrackerProjectSelected < FIssuesProjects.Items.Count) then
+  if ListReady(FIssuesProjects) and (FTrackerProjectSelected < FIssuesProjects.Items.Count) then
   begin
     FIssuesProjects.Items[FTrackerProjectSelected].Caption := mMatch;
     FIssuesProjects.Items[FTrackerProjectSelected].SubItems[2] :=
@@ -5262,7 +5311,7 @@ begin
     Exit;
   FTrackerProjects[FTrackerProjectSelected].Connection := FTrackerProjectChoices[mChoice];
   TrackerProjectNoteFor(FTrackerProjects[FTrackerProjectSelected]);
-  if FIssuesProjects.HandleAllocated and (FTrackerProjectSelected < FIssuesProjects.Items.Count) then
+  if ListReady(FIssuesProjects) and (FTrackerProjectSelected < FIssuesProjects.Items.Count) then
     FIssuesProjects.Items[FTrackerProjectSelected].SubItems[0] := FTrackerProjectChoices[mChoice];
 end;
 
@@ -5271,7 +5320,7 @@ begin
   if FTrackerProjectFilling or not TrackerProjectEditable then
     Exit;
   FTrackerProjects[FTrackerProjectSelected].Project := Trim(FIssuesProjectProject.Text);
-  if FIssuesProjects.HandleAllocated and (FTrackerProjectSelected < FIssuesProjects.Items.Count) then
+  if ListReady(FIssuesProjects) and (FTrackerProjectSelected < FIssuesProjects.Items.Count) then
     FIssuesProjects.Items[FTrackerProjectSelected].SubItems[1] := FTrackerProjects[FTrackerProjectSelected].Project;
 end;
 
@@ -5294,7 +5343,7 @@ begin
   end;
   FTrackerProjectSelected := mIndex;
   RefreshTrackerProjects;
-  if FIssuesProjectProject.CanFocus then
+  if FIssuesProjectProject.CanFocus and FIssuesProjectProject.Showing then
     FIssuesProjectProject.SetFocus;
 end;
 
@@ -5489,7 +5538,7 @@ begin
   end;
   if FTrackerQuerySelected > High(FTrackerQueries) then
     FTrackerQuerySelected := High(FTrackerQueries);
-  if FIssuesQueries.HandleAllocated then
+  if ListReady(FIssuesQueries) then
   begin
     FTrackerQueryFilling := True;
     FIssuesQueries.Items.BeginUpdate;
@@ -5539,10 +5588,6 @@ begin
       FIssuesQueryConnection.Choice :=
         TrackerQueryConnectionChoice(FTrackerQueries[FTrackerQuerySelected].Connection);
       TrackerQueryNoteFor(FTrackerQueries[FTrackerQuerySelected]);
-      FIssuesConnectionStateField.Value := mRow.StateField;
-      FIssuesConnectionAssigneeField.Value := mRow.AssigneeField;
-      FIssuesConnectionStartState.Value := mRow.StartState;
-      FIssuesConnectionEndStates.Text := TAtlasTrackerWorkflow.ListText(mRow.EndStates);
     end
     else
     begin
@@ -5554,10 +5599,6 @@ begin
       // Ohne eigene Zeilen gilt die Vorgabe je Anbieter.
       if Length(FTrackerQueries) = 0 then
         FIssuesQueryNote.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsIssuesQueriesNone);
-      FIssuesConnectionStateField.Value := '';
-      FIssuesConnectionAssigneeField.Value := '';
-      FIssuesConnectionStartState.Value := '';
-      FIssuesConnectionEndStates.Text := '';
     end;
   finally
     FTrackerQueryFilling := False;
@@ -5585,7 +5626,7 @@ var
 begin
   mQuery := FTrackerQueries[FTrackerQuerySelected];
   TrackerQueryNoteFor(mQuery);
-  if not FIssuesQueries.HandleAllocated or (FTrackerQuerySelected >= FIssuesQueries.Items.Count) then
+  if not ListReady(FIssuesQueries) or (FTrackerQuerySelected >= FIssuesQueries.Items.Count) then
     Exit;
   mItem := FIssuesQueries.Items[FTrackerQuerySelected];
   mItem.Caption := mQuery.Name;
@@ -5666,7 +5707,7 @@ begin
   FTrackerQueries := FTrackerQueries + [TAtlasTrackerQuery.Create(mName, '', '', '')];
   FTrackerQuerySelected := High(FTrackerQueries);
   RefreshTrackerQueries;
-  if FIssuesQueryText.CanFocus then
+  if FIssuesQueryText.CanFocus and FIssuesQueryText.Showing then
     FIssuesQueryText.SetFocus;
 end;
 
@@ -6049,6 +6090,12 @@ begin
   end;
 end;
 
+const
+  /// <summary>Zielplattformen für Bauen beim Öffnen (#1293), Namen wie in der IDE; Eintrag 0 = wie im Projekt.
+  /// </summary>
+  OpenBuildPlatforms: array[0..7] of string = ('', 'Win32', 'Win64', 'Win64x', 'Linux64', 'OSXARM64', 'Android64',
+    'iOSDevice64');
+
 procedure TAtlasSettingsPage.AddOpenBuildSection;
 begin
   AddTitle(TAtlasTextId.SettingsOpenBuildTitle);
@@ -6062,6 +6109,9 @@ begin
     TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildScopeActive)]);
   FOpenBuildDelay := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildDelay));
   FOpenBuildExclude := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildExclude));
+  FOpenBuildConfig := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildConfig));
+  // Auswahl statt Freitext (#1293): Tippfehler griffen still nicht; der leere Eintrag heißt wie im Projekt.
+  FOpenBuildPlatform := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsOpenBuildPlatform), OpenBuildPlatforms);
 end;
 
 procedure TAtlasSettingsPage.LoadOpenBuild(const ASettings: TAtlasPluginSettings);
@@ -6077,6 +6127,11 @@ begin
   FOpenBuildScope.Choice := Ord(TAtlasOpenBuild.ScopeOf(ASettings.BuildOnOpenScope));
   FOpenBuildDelay.Text := IntToStr(ASettings.BuildOnOpenDelayMs);
   FOpenBuildExclude.Text := TAtlasOpenBuild.NormalizedExclude(ASettings.BuildOnOpenExclude);
+  FOpenBuildConfig.Text := ASettings.BuildOnOpenConfig;
+  FOpenBuildPlatform.Choice := 0;
+  for Index := 1 to High(OpenBuildPlatforms) do
+    if TAtlasOpenBuild.PickTarget(ASettings.BuildOnOpenPlatform, [OpenBuildPlatforms[Index]]) <> '' then
+      FOpenBuildPlatform.Choice := Index;
 end;
 
 procedure TAtlasSettingsPage.SaveOpenBuild(var ASettings: TAtlasPluginSettings);
@@ -6090,6 +6145,10 @@ begin
     ASettings.BuildOnOpenScope := TAtlasOpenBuild.ScopeNames[TAtlasOpenBuildScope(FOpenBuildScope.Choice)];
   ASettings.BuildOnOpenDelayMs := StrToIntDef(FOpenBuildDelay.Text, ASettings.BuildOnOpenDelayMs);
   ASettings.BuildOnOpenExclude := TAtlasOpenBuild.NormalizedExclude(FOpenBuildExclude.Text);
+  ASettings.BuildOnOpenConfig := Trim(FOpenBuildConfig.Text);
+  ASettings.BuildOnOpenPlatform := '';
+  if (FOpenBuildPlatform.Choice > 0) and (FOpenBuildPlatform.Choice <= High(OpenBuildPlatforms)) then
+    ASettings.BuildOnOpenPlatform := OpenBuildPlatforms[FOpenBuildPlatform.Choice];
 end;
 
 procedure TAtlasSettingsPage.AddTasksSection;
@@ -6316,6 +6375,14 @@ begin
   FMarks.Bind(FEditorStatusBarItems, ['EditorStatusBarItems']);
   FMarks.Bind(FStickyScroll, ['StickyScroll']);
   FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
+  FMarks.Bind(FStickyScrollTypes, ['StickyScrollTypes']);
+  FMarks.Bind(FStickyScrollRoutines, ['StickyScrollRoutines']);
+  FMarks.Bind(FStickyScrollBlocks, ['StickyScrollBlocks']);
+  FMarks.Bind(FStickyScrollLoops, ['StickyScrollLoops']);
+  FMarks.Bind(FStickyScrollTry, ['StickyScrollTry']);
+  FMarks.Bind(FStickyScrollCase, ['StickyScrollCase']);
+  FMarks.Bind(FStickyScrollWith, ['StickyScrollWith']);
+  FMarks.Bind(FStickyScrollBlockMinLines, ['StickyScrollBlockMinLines']);
   FMarks.Bind(FMinimap, ['Minimap']);
   FMarks.Bind(FMinimapRender, ['MinimapRender']);
   FMarks.Bind(FMinimapWidth, ['MinimapWidth']);
@@ -6602,6 +6669,7 @@ begin
   FMarks.Bind(FUnitSearchFilters, ['UnitSearchFilters']);
   FMarks.Bind(FUnitSearchDefaultScope, ['UnitSearchDefaultScope']);
   FMarks.Bind(FUnitSearchFilterSyntax, ['UnitSearchFilterSyntax']);
+  FMarks.Bind(FUnitSearchFormCaptions, ['UnitSearchFormCaptions']);
   FMarks.Bind(FUnitSearchPreview, ['UnitSearchPreview']);
   FMarks.Bind(FUnitSearchPreviewForm, ['UnitSearchPreviewForm']);
   FMarks.Bind(FUnitSearchPreviewUsedBy, ['UnitSearchPreviewUsedBy']);
@@ -6618,6 +6686,7 @@ begin
   FMarks.Bind(FSearchRegex, ['SearchRegex']);
   FMarks.Bind(FSearchHistory, ['SearchHistory']);
   FMarks.Bind(FSearchMultiFile, ['SearchMultiFile']);
+  FMarks.Bind(FSearchFromFirst, ['SearchFromFirstHit']);
   FMarks.Bind(FWelcomeEnabled, ['WelcomePage']);
   FMarks.Bind(FWelcomeOpenOnStart, ['WelcomePageOpenOnStart']);
   FMarks.Bind(FWelcomeOpenWhenNoProject, ['WelcomePageOpenWhenNoProject']);
@@ -6744,6 +6813,8 @@ begin
   FMarks.Bind(FTasksSaveBeforeRun, ['TasksSaveBeforeRun']);
   FMarks.Bind(FTasksRunChecksParallel, ['TasksRunChecksParallel']);
   FMarks.Bind(FTasksOnlyFindings, ['TasksOnlyFindings']);
+  FMarks.Bind(FOpenBuildConfig, ['BuildOnOpenConfig']);
+  FMarks.Bind(FOpenBuildPlatform, ['BuildOnOpenPlatform']);
   FMarks.Bind(FReleaseGuard, ['ReleaseGuard']);
   FMarks.Bind(FBuildGate, ['BuildGate']);
   FMarks.Bind(FReleaseConfigs, ['ReleaseConfigs']);
@@ -6800,7 +6871,7 @@ begin
   if FMarks.Filter = sfModified then
   begin
     FMarks.ApplyFilter(sfModified);
-    if FTree.HandleAllocated then
+    if ListReady(FTree) then
       FillTree;
   end;
 end;
@@ -7479,7 +7550,7 @@ begin
     Exit;
   FPages.ActivePage := FNodePages[AIndex].Sheet;
   SheetShown(FNodePages[AIndex].Sheet);
-  if not FTree.HandleAllocated then
+  if not ListReady(FTree) then
     Exit;
   for Index := 0 to FTree.Items.Count - 1 do
     if PageIndexOf(FTree.Items[Index]) = AIndex then
@@ -7562,13 +7633,20 @@ begin
   RefreshTree;
 end;
 
+function TAtlasSettingsPage.ListReady(AControl: TWinControl): Boolean;
+begin
+  if not AControl.HandleAllocated and HandleAllocated then
+    AControl.HandleNeeded;
+  Result := AControl.HandleAllocated;
+end;
+
 procedure TAtlasSettingsPage.RefreshTree;
 var
   Index, Page: Integer;
   Node: TTreeNode;
   mText: string;
 begin
-  if not FTree.HandleAllocated then
+  if not ListReady(FTree) then
     Exit;
   for Index := 0 to FTree.Items.Count - 1 do
   begin
@@ -8225,6 +8303,7 @@ begin
     TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginSearchPath),
     TAtlasStrings.Text(TAtlasTextId.UnitSearchOriginLibrary)]);
   FUnitSearchFilterSyntax := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFilterSyntax));
+  FUnitSearchFormCaptions := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchFormCaptions));
   FUnitSearchPreview := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreview));
   FUnitSearchPreviewForm := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewForm));
   FUnitSearchPreviewUsedBy := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsUnitSearchPreviewUsedBy));
@@ -8246,6 +8325,7 @@ begin
   FSearchRegex := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchRegex));
   FSearchHistory := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsSearchHistory));
   FSearchMultiFile := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchMultiFile));
+  FSearchFromFirst := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsSearchFromFirst));
 end;
 
 procedure TAtlasSettingsPage.AddUndoSection;
@@ -8594,6 +8674,14 @@ begin
   FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
   FStickyScroll.Checked := ASettings.StickyScroll;
   FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
+  FStickyScrollTypes.Checked := ASettings.StickyScrollTypes;
+  FStickyScrollRoutines.Checked := ASettings.StickyScrollRoutines;
+  FStickyScrollBlocks.Checked := ASettings.StickyScrollBlocks;
+  FStickyScrollLoops.Checked := ASettings.StickyScrollLoops;
+  FStickyScrollTry.Checked := ASettings.StickyScrollTry;
+  FStickyScrollCase.Checked := ASettings.StickyScrollCase;
+  FStickyScrollWith.Checked := ASettings.StickyScrollWith;
+  FStickyScrollBlockMinLines.Text := IntToStr(ASettings.StickyScrollBlockMinLines);
   FMinimap.Checked := ASettings.Minimap;
   FMinimapRender.Choice := Max(0, IndexText(ASettings.MinimapRender, ['blocks', 'characters']));
   FMinimapWidth.Text := IntToStr(ASettings.MinimapWidth);
@@ -8930,6 +9018,7 @@ begin
   FUnitSearchFilters.Checked := ASettings.UnitSearchFilters;
   FUnitSearchDefaultScope.Choice := ChoiceOf(ASettings.UnitSearchDefaultScope, UnitSearchScopes);
   FUnitSearchFilterSyntax.Checked := ASettings.UnitSearchFilterSyntax;
+  FUnitSearchFormCaptions.Checked := ASettings.UnitSearchFormCaptions;
   FUnitSearchPreview.Checked := ASettings.UnitSearchPreview;
   FUnitSearchPreviewForm.Checked := ASettings.UnitSearchPreviewForm;
   FUnitSearchPreviewUsedBy.Checked := ASettings.UnitSearchPreviewUsedBy;
@@ -8946,6 +9035,7 @@ begin
   FSearchRegex.Checked := ASettings.SearchRegex;
   FSearchHistory.Text := IntToStr(ASettings.SearchHistory);
   FSearchMultiFile.Checked := ASettings.SearchMultiFile;
+  FSearchFromFirst.Checked := ASettings.SearchFromFirstHit;
   FWelcomeEnabled.Checked := ASettings.WelcomePage;
   FWelcomeOpenOnStart.Checked := ASettings.WelcomePageOpenOnStart;
   FWelcomeOpenWhenNoProject.Checked := ASettings.WelcomePageOpenWhenNoProject;
@@ -9186,6 +9276,15 @@ begin
   ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
   ASettings.StickyScroll := FStickyScroll.Checked;
   ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);
+  ASettings.StickyScrollTypes := FStickyScrollTypes.Checked;
+  ASettings.StickyScrollRoutines := FStickyScrollRoutines.Checked;
+  ASettings.StickyScrollBlocks := FStickyScrollBlocks.Checked;
+  ASettings.StickyScrollLoops := FStickyScrollLoops.Checked;
+  ASettings.StickyScrollTry := FStickyScrollTry.Checked;
+  ASettings.StickyScrollCase := FStickyScrollCase.Checked;
+  ASettings.StickyScrollWith := FStickyScrollWith.Checked;
+  ASettings.StickyScrollBlockMinLines := StrToIntDef(FStickyScrollBlockMinLines.Text,
+    ASettings.StickyScrollBlockMinLines);
   ASettings.Minimap := FMinimap.Checked;
   ASettings.MinimapRender := 'blocks';
   if FMinimapRender.Choice = 1 then
@@ -9573,6 +9672,7 @@ begin
   ASettings.UnitSearchFilters := FUnitSearchFilters.Checked;
   ASettings.UnitSearchDefaultScope := UnitSearchScopes[EnsureRange(FUnitSearchDefaultScope.Choice, 0, 3)];
   ASettings.UnitSearchFilterSyntax := FUnitSearchFilterSyntax.Checked;
+  ASettings.UnitSearchFormCaptions := FUnitSearchFormCaptions.Checked;
   ASettings.UnitSearchPreview := FUnitSearchPreview.Checked;
   ASettings.UnitSearchPreviewForm := FUnitSearchPreviewForm.Checked;
   ASettings.UnitSearchPreviewUsedBy := FUnitSearchPreviewUsedBy.Checked;
@@ -9589,6 +9689,7 @@ begin
   ASettings.SearchRegex := FSearchRegex.Checked;
   ASettings.SearchHistory := StrToIntDef(FSearchHistory.Text, ASettings.SearchHistory);
   ASettings.SearchMultiFile := FSearchMultiFile.Checked;
+  ASettings.SearchFromFirstHit := FSearchFromFirst.Checked;
   ASettings.WelcomePage := FWelcomeEnabled.Checked;
   ASettings.WelcomePageOpenOnStart := FWelcomeOpenOnStart.Checked;
   ASettings.WelcomePageOpenWhenNoProject := FWelcomeOpenWhenNoProject.Checked;

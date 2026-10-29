@@ -95,7 +95,8 @@ uses
   Atlas.Core.Files.DataFile,
   Atlas.Core.Completion.Controller,
   Atlas.Core.Completion.Providers.Fixed,
-  Atlas.Core.Completion.Providers.Server;
+  Atlas.Core.Completion.Providers.Server,
+  Atlas.Core.Style.Palette;
 
 type
   TRecordingView = class(TInterfacedObject, IAtlasCompletionView)

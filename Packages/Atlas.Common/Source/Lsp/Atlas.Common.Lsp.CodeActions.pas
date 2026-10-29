@@ -116,6 +116,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Checker,

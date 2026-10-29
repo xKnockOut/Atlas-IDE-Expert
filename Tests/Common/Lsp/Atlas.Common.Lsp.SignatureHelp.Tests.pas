@@ -264,6 +264,8 @@ var
   Help: TSignatureHelp;
   Json: TJSONValue;
 begin
+  // Ohne Default stünde in Format.Problem (Aufzählung, nicht verwaltet) ein zufälliger Wert.
+  Help := Default(TSignatureHelp);
   SetLength(Help.Signatures, 1);
   Help.Signatures[0].Text := 'procedure P(A: Integer)';
   Help.Signatures[0].Documentation := '';

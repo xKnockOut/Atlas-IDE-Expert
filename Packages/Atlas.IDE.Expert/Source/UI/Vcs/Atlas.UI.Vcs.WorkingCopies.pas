@@ -288,8 +288,13 @@ procedure TAtlasWorkingCopiesDialog.Fill;
 var
   mIndex: Integer;
 begin
+  // Die Liste braucht ein Fenster; hat der Dialog schon eines, auch die Liste anlegen.
   if not FView.HandleAllocated then
-    Exit;
+  begin
+    if not HandleAllocated then
+      Exit;
+    FView.HandleNeeded;
+  end;
   FView.Items.BeginUpdate;
   try
     FView.Items.Clear;

@@ -325,8 +325,6 @@ begin
         // Anonyme Methoden haben eigene Lebensdauern.
         Result := ANode.Kind <> TSyntaxKind.AnonymousMethod;
       end);
-    FirstLine := -1;
-    LastLine := -1;
     Resolved := False;
     if AResolver <> nil then
       AResolver.PinTree(ATree, AFileName);

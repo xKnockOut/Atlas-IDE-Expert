@@ -11,8 +11,6 @@
     - Atlas.IDE.Expert: eigenständig; darin Schichten (#406):
         Atlas.Core.* ohne VCL, Open Tools API, Atlas.UI.* und Atlas.IDE.*
         Atlas.UI.*   ohne Open Tools API und Atlas.IDE.*
-    - Setup (Installer, #495): ohne Atlas.Common und Atlas.Windows; darin
-        Setup.Core.* frei von Windows, VCL, Setup.Adapters und Setup.Shell
     - Atlas.Core.Vcs.* (Versionsverwaltung, #571): übersetzt auch der Server
         mit; darum nur RTL, Winapi und eigene Atlas.Core.Vcs.*-Units
 
@@ -128,15 +126,6 @@ $Packages = @(
         ForbiddenPrefix  = @('Atlas.Common', 'Atlas.Windows', 'FMX.')
         ForbiddenUnits   = @()
         Reason           = 'eigenständig ohne Atlas.Common und Atlas.Windows'
-    },
-    @{
-        # Installer (#495, ADR 0009): eigene VCL-Anwendung, teilt mit dem Plugin nur die Versionsangabe.
-        Name             = 'AtlasSetup'
-        Path             = 'Setup'
-        AllowedRequires  = @()
-        ForbiddenPrefix  = @('Atlas.Common', 'Atlas.Windows', 'FMX.')
-        ForbiddenUnits   = @()
-        Reason           = 'ohne Atlas.Common und Atlas.Windows'
     }
 )
 
@@ -156,13 +145,6 @@ $Layers = @(
         ForbiddenPrefix = @('Atlas.IDE.') + $OpenToolsPrefix
         ForbiddenUnits  = @()
         Reason          = 'frei von Open Tools API und Atlas.IDE'
-    },
-    @{
-        # Kern des Installers: nur über ISetupSystem, damit er mit einer Attrappe testbar ist.
-        UnitPrefix      = 'Setup.Core.'
-        ForbiddenPrefix = @('Winapi.', 'System.Win.', 'Vcl.', 'FMX.', 'Setup.Adapters.', 'Setup.Shell.')
-        ForbiddenUnits  = $LegacyVclUnits + $LegacyWindowsUnits
-        Reason          = 'frei von Windows, VCL, Setup.Adapters und Setup.Shell'
     }
 )
 

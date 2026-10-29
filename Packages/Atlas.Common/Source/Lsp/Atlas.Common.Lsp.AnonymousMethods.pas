@@ -55,6 +55,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.StrUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Index.Contract,

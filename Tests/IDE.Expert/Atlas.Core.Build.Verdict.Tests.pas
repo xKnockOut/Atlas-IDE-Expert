@@ -46,6 +46,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Core.Build.Messages,
   Atlas.Core.Build.Verdict;

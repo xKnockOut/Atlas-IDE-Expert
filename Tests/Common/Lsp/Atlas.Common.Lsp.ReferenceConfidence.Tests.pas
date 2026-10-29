@@ -80,6 +80,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   System.Diagnostics,
   Atlas.Common.JsonRpc.Dispatcher,

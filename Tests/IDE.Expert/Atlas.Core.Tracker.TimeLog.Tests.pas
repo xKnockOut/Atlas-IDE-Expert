@@ -112,6 +112,7 @@ uses
   System.Classes,
   System.DateUtils,
   System.IOUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Tracker.Contract,

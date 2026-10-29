@@ -280,7 +280,7 @@ begin
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchBaseHead, ['trunk']), mDialog.BaseBox.Items[0]);
     mFacts.ServerChecked := True;
     mFacts.HeadRevision := '48230';
-    mDialog.Loaded(mFacts);
+    mDialog.ServerLoaded(mFacts);
     Assert.IsFalse(mDialog.InfoLabel.Visible);
     Assert.IsTrue(mDialog.CreateButton.Enabled);
     Assert.AreEqual(0, Integer(mDialog.BaseBox.ItemIndex));
@@ -299,7 +299,7 @@ begin
     // Server nicht erreichbar: Hinweis, Kopie von HEAD zum Zeitpunkt des Kopierens bleibt möglich.
     mFacts.HeadRevision := '';
     mFacts.ServerOutcome := TAtlasVcsOutcome.LoginNeeded;
-    mDialog.Loaded(mFacts);
+    mDialog.ServerLoaded(mFacts);
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchHeadUnknown,
       [AtlasVcsOutcomeName(TAtlasVcsOutcome.LoginNeeded)]), mDialog.InfoLabel.Caption);
     Assert.IsTrue(mDialog.CreateButton.Enabled);

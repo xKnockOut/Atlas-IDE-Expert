@@ -45,6 +45,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.Overview,

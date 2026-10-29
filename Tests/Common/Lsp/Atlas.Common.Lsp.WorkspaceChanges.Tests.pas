@@ -10,6 +10,7 @@ interface
 uses
   DUnitX.TestFramework,
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,

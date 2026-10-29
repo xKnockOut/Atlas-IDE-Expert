@@ -272,9 +272,9 @@ begin
   Calls := Calls + ['run ' + string.Join(' ', mArgs)];
   if mArgs[0] = FailOn then
     Exit(TAtlasVcsOutcome.Failed);
-  if mArgs[0] = 'checkout' then
+  // Git: checkout --quiet --no-track -b <Name> <Start> --; SVN checkout <Ort> <Ordner> (#1290) ändert hier nichts.
+  if (mArgs[0] = 'checkout') and (SvnUrl = '') and (Length(mArgs) > 4) then
   begin
-    // checkout --quiet --no-track -b <Name> <Start> --
     mName := mArgs[4];
     Branches := Branches + [mName];
     Current := mName;

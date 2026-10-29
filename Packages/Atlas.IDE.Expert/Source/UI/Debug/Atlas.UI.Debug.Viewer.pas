@@ -21,6 +21,7 @@
 interface
 
 uses
+  Winapi.Windows,
   System.SysUtils,
   System.Classes,
   Vcl.Controls,
@@ -86,7 +87,6 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.Types,
   System.Math,
   Vcl.Clipbrd,

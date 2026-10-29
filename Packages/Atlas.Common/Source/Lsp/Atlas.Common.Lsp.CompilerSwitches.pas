@@ -60,6 +60,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Lsp.Positions;
 
 const

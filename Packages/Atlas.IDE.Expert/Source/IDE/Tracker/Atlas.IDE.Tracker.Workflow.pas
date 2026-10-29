@@ -70,7 +70,7 @@ type
     procedure Report(const AText: string);
     procedure ShowEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AInput: TAtlasIdeTrackerEnd; const AOptions: TAtlasTrackerSyncOptions; const ACommits: string;
-      const AEnded: TProc<TAtlasTrackerChange>);
+      const AEnded: TProc<TAtlasTrackerWrite>);
     function SendHandler(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AKey: string): TAtlasTrackerSendEvent;
     function PrepareHandler(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
@@ -99,11 +99,11 @@ type
     /// <summary>„Beenden“ mit Dialog; AEnded nach erfolgreichem „Senden“ (bzw. ohne etwas zu schreiben) mit der
     /// geschriebenen Änderung. Abbrechen ändert nichts.</summary>
     procedure EndIssue(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-      const AInput: TAtlasIdeTrackerEnd; const AEnded: TProc<TAtlasTrackerChange>);
+      const AInput: TAtlasIdeTrackerEnd; const AEnded: TProc<TAtlasTrackerWrite>);
     /// <summary>AChange auf AKey schreiben (Hintergrund); ADone im Hauptthread, genau einmal (nach Stop nie).
     /// </summary>
     procedure Apply(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget; const AKey: string;
-      const AChange: TAtlasTrackerChange; const ADone: TAtlasTrackerSendDone);
+      const AChange: TAtlasTrackerWrite; const ADone: TAtlasTrackerSendDone);
     /// <summary>Kommentar aus der Vorschau; ADone wie bei Apply.</summary>
     procedure SendComment(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
       const AKey, AText: string; const ADone: TAtlasTrackerSendDone);
@@ -249,14 +249,14 @@ begin
 end;
 
 procedure TAtlasIdeTrackerSync.Apply(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-  const AKey: string; const AChange: TAtlasTrackerChange; const ADone: TAtlasTrackerSendDone);
+  const AKey: string; const AChange: TAtlasTrackerWrite; const ADone: TAtlasTrackerSendDone);
 var
   mWriter: IAtlasTrackerWriter;
   mProvider: IAtlasTrackerProvider;
   mTransports: TAtlasIdeTrackerTransport;
   mTarget: TAtlasTrackerTarget;
   mKey: string;
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
   mDone: TAtlasTrackerSendDone;
   mResult: TAtlasTrackerWriteResult;
 begin
@@ -304,7 +304,7 @@ procedure TAtlasIdeTrackerSync.Started(const AProvider: IAtlasTrackerProvider; c
   const AKey, ABranch: string);
 var
   mOptions: TAtlasTrackerSyncOptions;
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
   mOwner: TAtlasIdeTrackerSync;
   mProvider: IAtlasTrackerProvider;
   mKey: string;
@@ -332,14 +332,14 @@ begin
 end;
 
 procedure TAtlasIdeTrackerSync.EndIssue(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
-  const AInput: TAtlasIdeTrackerEnd; const AEnded: TProc<TAtlasTrackerChange>);
+  const AInput: TAtlasIdeTrackerEnd; const AEnded: TProc<TAtlasTrackerWrite>);
 var
   mOwner: TAtlasIdeTrackerSync;
   mProvider: IAtlasTrackerProvider;
   mTarget: TAtlasTrackerTarget;
   mInput: TAtlasIdeTrackerEnd;
   mOptions: TAtlasTrackerSyncOptions;
-  mEnded: TProc<TAtlasTrackerChange>;
+  mEnded: TProc<TAtlasTrackerWrite>;
   mCommits: string;
 begin
   if not Enabled(AProvider, ATarget) then
@@ -376,11 +376,11 @@ end;
 
 procedure TAtlasIdeTrackerSync.ShowEnd(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget;
   const AInput: TAtlasIdeTrackerEnd; const AOptions: TAtlasTrackerSyncOptions; const ACommits: string;
-  const AEnded: TProc<TAtlasTrackerChange>);
+  const AEnded: TProc<TAtlasTrackerWrite>);
 var
   mValues: TAtlasTrackerPlaceholders;
   mSession: IAtlasTrackerEndSession;
-  mChange: TAtlasTrackerChange;
+  mChange: TAtlasTrackerWrite;
   mDone: Boolean;
 begin
   mValues := TAtlasTrackerPlaceholders.Create(AInput.Key, AInput.Branch);
@@ -418,7 +418,7 @@ begin
   mTarget := ATarget;
   mKey := AKey;
   Result :=
-    procedure(const AChange: TAtlasTrackerChange; const ADone: TAtlasTrackerSendDone)
+    procedure(const AChange: TAtlasTrackerWrite; const ADone: TAtlasTrackerSendDone)
     var
       mDone: TAtlasTrackerSendDone;
     begin
@@ -644,7 +644,7 @@ begin
   mProvider := AProvider;
   mKey := AKey;
   mDone := ADone;
-  Apply(AProvider, ATarget, AKey, TAtlasTrackerChange.CommentOnly(AText),
+  Apply(AProvider, ATarget, AKey, TAtlasTrackerWrite.CommentOnly(AText),
     procedure(const AResult: TAtlasTrackerWriteResult)
     begin
       Logged(mProvider, 'Kommentar', AResult);

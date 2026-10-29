@@ -36,6 +36,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Core.Lsp.TextChanges;
 

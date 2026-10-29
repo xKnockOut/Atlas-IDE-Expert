@@ -68,6 +68,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.StrUtils,
   Atlas.Text.Lines,
   Atlas.Common.JsonRpc.Contract,

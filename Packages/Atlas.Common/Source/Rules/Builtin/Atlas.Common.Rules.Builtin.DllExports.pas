@@ -32,6 +32,7 @@ procedure RegisterDllExportRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  System.Generics.Collections,
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Configuration.Contract,

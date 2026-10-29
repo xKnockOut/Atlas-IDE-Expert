@@ -131,6 +131,8 @@ begin
   Assert.AreEqual(4, Chain.Selected);
   Key := VK_UP;
   TAtlasSymbolPathChainAccess(Chain).KeyDown(Key, []);
+  // KeyDown setzt Key auf 0 (verarbeitet).
+  Key := VK_UP;
   TAtlasSymbolPathChainAccess(Chain).KeyDown(Key, []);
   Assert.AreEqual(2, Chain.Selected);
 end;

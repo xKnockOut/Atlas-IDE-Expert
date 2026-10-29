@@ -445,7 +445,6 @@ var
   Index, Found: Integer;
   Written: Boolean;
 begin
-  Result := False;
   Captured := nil;
   ConstLines := nil;
   OuterLocals := Cache.Locals(Outer);
@@ -537,7 +536,6 @@ var
   Index: Integer;
   Written: Boolean;
 begin
-  Result := False;
   FieldsReason := '';
   if Captured = nil then
   begin
@@ -670,7 +668,6 @@ var
   LineBreak, Indent, IndentUnit, Head, Body, Before, Inner, Line: string;
   Qualified: string;
 begin
-  Result := False;
   AReason := '';
   LineBreak := TTextLines.LineBreakOf(Text);
   Indent := TTextLines.IndentOf(Text, Outer.StartPos.Line);
@@ -782,7 +779,6 @@ var
   Host: TSyntaxNode;
   FieldTaken: TArray<string>;
 begin
-  Result := False;
   AResult := Default(TAnonymousResult);
   AReason := '';
   if ACheckName then
@@ -957,7 +953,6 @@ var
 begin
   AAction := Default(TCodeAction);
   AReason := '';
-  Result := False;
   if (ATree = nil) or (ATree.Root = nil) then
     Exit(Fail('kein Baum', AReason));
   Lines := TLineTable.Build(AText);

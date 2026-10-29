@@ -33,6 +33,8 @@ type
     [Test]
     procedure ClickSetsAndRemoves;
     [Test]
+    procedure ClickTakesFreeNumberOrNone;
+    [Test]
     procedure ClickOnNamedNumberKeepsNamedBookmark;
     [Test]
     procedure ToggleUnnumbered;
@@ -157,12 +159,28 @@ procedure TAtlasQuickBookmarkTests.ClickSetsAndRemoves;
 begin
   Assert.AreEqual(Ord(TAtlasQuickChange.Added), Ord(TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 23, 0)));
   Assert.AreEqual(1, Integer(Length(TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 23))));
-  Assert.AreEqual(0, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 23)[0].Number);
+  Assert.AreEqual(1, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 23)[0].Number, 'kleinste freie Nummer');
   TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 23, 4, 0);
   // Klick auf den Marker: alle Marker der Zeile weg.
   Assert.AreEqual(Ord(TAtlasQuickChange.Removed), Ord(TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 23, 0)));
   Assert.AreEqual(0, Integer(FList.Count));
   Assert.AreEqual(Ord(TAtlasQuickChange.None), Ord(TAtlasQuickBookmarks.Click(FList, KundeFile, Text, -1, 0)));
+end;
+
+procedure TAtlasQuickBookmarkTests.ClickTakesFreeNumberOrNone;
+var
+  Number: Integer;
+begin
+  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 3, 1, 0);
+  TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 4, 3, 0);
+  Assert.AreEqual(2, TAtlasQuickBookmarks.FreeNumber(FList), 'Lücke zuerst');
+  TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 10, 0);
+  Assert.AreEqual(2, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 10)[0].Number);
+  for Number := 1 to 9 do
+    TAtlasQuickBookmarks.SetNumber(FList, KundeFile, Text, 20 + Number, Number, 0);
+  Assert.AreEqual(0, TAtlasQuickBookmarks.FreeNumber(FList), 'alle belegt');
+  TAtlasQuickBookmarks.Click(FList, KundeFile, Text, 40, 0);
+  Assert.AreEqual(0, TAtlasQuickBookmarks.ColumnMarks(FList, KundeFile, 40)[0].Number, 'dann ohne Nummer');
 end;
 
 procedure TAtlasQuickBookmarkTests.ClickOnNamedNumberKeepsNamedBookmark;

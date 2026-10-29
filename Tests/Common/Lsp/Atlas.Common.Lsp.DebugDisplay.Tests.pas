@@ -35,6 +35,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Text.DebugDisplay,
   Atlas.Common.Documents.Uris,

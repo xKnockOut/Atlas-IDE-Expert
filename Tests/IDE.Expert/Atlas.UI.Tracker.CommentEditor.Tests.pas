@@ -391,7 +391,7 @@ begin
     Assert.AreEqual('Zeile 1'#13#10'Zeile 2', mEditor.Memo.Text, 'leeres Feld: gleich eingesetzt');
     Assert.IsTrue(mEditor.DraftButton.Visible);
     Assert.AreEqual('Verwerfen', mEditor.DraftButton.Caption);
-    Assert.IsTrue(mEditor.DraftNote.Caption.StartsWith('Entwurf vom 28.10.'));
+    Assert.IsTrue(string(mEditor.DraftNote.Caption).StartsWith('Entwurf vom 28.10.'));
     mEditor.DraftButton.Click;
     Assert.AreEqual('', mEditor.Memo.Text);
     Assert.AreEqual(1, mAssist.Deleted);

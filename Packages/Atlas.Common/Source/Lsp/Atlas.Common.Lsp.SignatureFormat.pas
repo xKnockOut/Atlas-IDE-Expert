@@ -78,6 +78,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.Math,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Index.Contract,

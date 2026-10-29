@@ -183,6 +183,10 @@ type
     /// </summary>
     [Test]
     procedure DialogRulesByGroupNodes;
+    /// <summary>#1296: Wächst der Regel-Editor mit der markierten Regel, rücken die Felder darunter nach statt
+    /// überdeckt zu werden.</summary>
+    [Test]
+    procedure DialogRuleEditorPushesFieldsDown;
     [Test]
     procedure DialogValidatesBeforeSaving;
     [Test]
@@ -268,6 +272,8 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.Core.Vcs.Tools,
   Atlas.Core.Vcs.ToolCheck,
+  Atlas.Core.Vcs.ServerCheck,
+  Atlas.Core.Vcs.ServerAccess,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.CommentEditor,
   Atlas.Core.Style.Symbol,
@@ -277,6 +283,7 @@ uses
   System.JSON,
   System.Generics.Collections,
   System.StrUtils,
+  System.Math,
   Vcl.Controls,
   Vcl.Menus,
   Vcl.Forms,
@@ -627,8 +634,8 @@ begin
     Assert.IsNull(TreeNodeOf(Page, Page.NodeSheet('welcome.header')), 'Kopf der Willkommensseite ohne Treffer');
     Page.Filter.Choice := 0;
     Page.Filter.OnChange(Page.Filter);
-    // 16 Bereiche und „Prüfregeln“ (#909).
-    Assert.AreEqual(17, Integer(Length(TopLevelNodes(Page))));
+    // 16 Bereiche, „Prüfregeln“ (#909), Issue-Tracker (#1280) und Versionsverwaltung (#1285).
+    Assert.AreEqual(19, Integer(Length(TopLevelNodes(Page))));
     // Zurücksetzen auf dem Unterpunkt: nur die Minikarte.
     Page.MinimapWidth.Text := '90';
     Page.StickyScrollMaxLines.Text := '7';
@@ -1435,11 +1442,15 @@ begin
     Assert.AreEqual(0, Page.OpenBuildScopeChoice.Choice, 'alle Projekte');
     Assert.AreEqual('3000', Page.OpenBuildDelayEdit.Text);
     Assert.AreEqual('', Page.OpenBuildExcludeEdit.Text);
+    Assert.AreEqual('', Page.OpenBuildConfigEdit.Text);
+    Assert.AreEqual(0, Page.OpenBuildPlatformChoice.Choice, 'wie im Projekt');
     // Erzeugen, nur das aktive Projekt, 5 s, ein Package ausgeschlossen.
     Page.OpenBuildChoice.Choice := 3;
     Page.OpenBuildScopeChoice.Choice := 1;
     Page.OpenBuildDelayEdit.Text := '5000';
     Page.OpenBuildExcludeEdit.Text := 'Atlas.IDE.Expert.dproj';
+    Page.OpenBuildConfigEdit.Text := ' Debug ';
+    Page.OpenBuildPlatformChoice.Choice := 2;
     Saved := TAtlasPluginSettings.Defaults;
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.BuildOnOpen);
@@ -1447,7 +1458,10 @@ begin
     Assert.AreEqual('active', Saved.BuildOnOpenScope);
     Assert.AreEqual(5000, Saved.BuildOnOpenDelayMs);
     Assert.AreEqual('Atlas.IDE.Expert', Saved.BuildOnOpenExclude);
+    Assert.AreEqual('Debug', Saved.BuildOnOpenConfig);
+    Assert.AreEqual('Win64', Saved.BuildOnOpenPlatform);
     Page.LoadFrom(Saved);
+    Assert.AreEqual('Debug', Page.OpenBuildConfigEdit.Text);
     Assert.AreEqual(3, Page.OpenBuildChoice.Choice);
     Assert.AreEqual(1, Page.OpenBuildScopeChoice.Choice);
     // Syntaxprüfung; „nicht bauen“ schaltet ab und behält die Art.
@@ -1999,8 +2013,8 @@ begin
     Assert.IsTrue(SheetOf(Page.IssuesBoardOnlyMine) = Tracker);
     Assert.IsTrue(SheetOf(Page.IssuesSprintBurndown) = Tracker);
     Assert.IsTrue(SheetOf(Page.IssuesSprintCompare) = Tracker);
-    // Sprint-Kachel (#1277): der Bereich auf der Willkommensseite, neben „Meine Issues“.
-    Assert.IsTrue(SheetOf(Page.WelcomeSprint) = SheetOf(Page.WelcomeIssues));
+    // Sprint-Kachel (#1277): der Bereich auf der Willkommensseite, eigener Knoten welcome.sprint (Schema).
+    Assert.IsTrue(SheetOf(Page.WelcomeSprint) = Page.NodeSheet('welcome.sprint'));
     Assert.IsTrue(SheetOf(Page.IssuesPaletteSearch) = Tracker, 'Palettensuche (#1270)');
     Assert.IsTrue(SheetOf(Page.IssuesPreviewDevelopment) = Tracker);
     Assert.IsTrue(SheetOf(Page.IssuesNotify) = Tracker, 'Meldungen (#1271)');
@@ -2077,7 +2091,9 @@ begin
     mVcs := SheetOf(mPage.VcsProviderChoice);
     Assert.IsNotNull(mVcs);
     mAreas := TopLevelNodes(mPage);
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), mAreas[17].Text, 'eigener Bereich');
+    // Mit Punkt: svn, Pfad und Zeitlimit weichen von der Vorgabe ab.
+    Assert.AreEqual(TAtlasSettingsMarks.Dot + TAtlasStrings.Text(TAtlasTextId.SettingsTabVcs), mAreas[17].Text,
+      'eigener Bereich');
     Assert.IsTrue(SheetOf(mPage.VcsPath(TAtlasVcsKind.Git)) = mVcs);
     Assert.IsTrue(SheetOf(mPage.VcsPath(TAtlasVcsKind.Svn)) = mVcs);
     Assert.IsTrue(SheetOf(mPage.VcsTimeout) = mVcs);
@@ -2085,18 +2101,18 @@ begin
     Assert.AreEqual(2, mPage.VcsProviderChoice.Choice, 'svn');
     Assert.AreEqual('D:\Tools\svn.exe', mPage.VcsPath(TAtlasVcsKind.Svn).Text);
     Assert.AreEqual('45', mPage.VcsTimeout.Text);
-    // #1288: Dialog „Branch anlegen“ bei „Beginnen“, auf derselben Seite.
-    Assert.IsTrue(SheetOf(mPage.VcsBranchConfirm) = mVcs);
+    // #1288: Dialog „Branch anlegen“ bei „Beginnen“, Unterknoten vcs.branches (Schema).
+    Assert.IsTrue(SheetOf(mPage.VcsBranchConfirm) = mPage.NodeSheet('vcs.branches'));
     Assert.IsTrue(mPage.VcsBranchConfirm.Checked);
     // #1290: SVN-Gruppe auf derselben Seite, Vorgaben aus den Einstellungen.
-    Assert.IsTrue(SheetOf(mPage.VcsBranchSvnLocation) = mVcs);
-    Assert.IsTrue(SheetOf(mPage.VcsBranchSvnMessage) = mVcs);
+    Assert.IsTrue(SheetOf(mPage.VcsBranchSvnLocation) = mPage.NodeSheet('vcs.branches'));
+    Assert.IsTrue(SheetOf(mPage.VcsBranchSvnMessage) = mPage.NodeSheet('vcs.branches'));
     Assert.AreEqual('{projektwurzel}/branches/{name}', mPage.VcsBranchSvnLocation.Text);
     Assert.AreEqual(0, mPage.VcsBranchSvnSource.Choice, 'head');
     Assert.AreEqual(0, mPage.VcsBranchSvnAfter.Choice, 'switch');
     Assert.AreEqual('..\{projekt}-{kennung}', mPage.VcsBranchSvnFolder.Text);
     // #1291: Gruppe „Externals“ auf derselben Seite, Regeln als Zeilen; ungültige Zeile mit Hinweis.
-    Assert.IsTrue(SheetOf(mPage.VcsExternalsRules) = mVcs);
+    Assert.IsTrue(SheetOf(mPage.VcsExternalsRules) = mPage.NodeSheet('vcs.externals'));
     Assert.AreEqual(0, mPage.VcsExternalsOnBranch.Choice, 'pin');
     Assert.AreEqual(0, mPage.VcsExternalsSuggest.Choice, 'modified');
     Assert.AreEqual('', mPage.VcsExternalsRules.Text);
@@ -2107,7 +2123,7 @@ begin
     mPage.VcsExternalsRules.OnChange(mPage.VcsExternalsRules);
     Assert.AreEqual('', mPage.VcsExternalsRulesError.Caption);
     // #1292: Arbeitskopien und Aktualisieren auf derselben Seite.
-    Assert.IsTrue(SheetOf(mPage.VcsExternalsShow) = mVcs);
+    Assert.IsTrue(SheetOf(mPage.VcsExternalsShow) = mPage.NodeSheet('vcs.externals'));
     Assert.IsTrue(mPage.VcsExternalsShow.Checked);
     Assert.AreEqual(0, mPage.VcsExternalsUpdate.Choice, 'with');
     Assert.AreEqual(0, mProjectCalls, 'kein Prozess, solange die Seite nicht gezeigt wurde');
@@ -2718,7 +2734,9 @@ begin
     Assert.AreEqual(3, Integer(Length(mPage.VcsProjects)));
     Assert.AreEqual('C:\Projekte\Kasse\Pakete\Basis', mPage.VcsProjects[2].Match);
     Assert.AreEqual('auto', mPage.VcsProjects[2].Provider);
+    // Zuweisen löst kein OnChange aus (wie bei der Auswahl mit der Maus erst über das Ereignis).
     mPage.VcsProjectProvider.Choice := 1;
+    mPage.VcsProjectProvider.OnChange(mPage.VcsProjectProvider);
     Assert.AreEqual('git', mPage.VcsProjects[2].Provider);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SettingsVcsProviderGit), mList.Items[2].SubItems[0]);
     // Entfernen, dann speichern: nur persönliche Zeilen landen in vcs.projects.
@@ -3652,6 +3670,20 @@ begin
     Page.SaveTo(Saved);
     Assert.IsTrue(Saved.StickyScroll);
     Assert.AreEqual(2, Saved.StickyScrollMaxLines);
+    // Was der Kopf zeigt: je Art ein Schalter.
+    Assert.IsTrue(Page.StickyScrollTypes.Checked and Page.StickyScrollRoutines.Checked);
+    Assert.IsFalse(Page.StickyScrollTry.Checked);
+    Page.StickyScrollRoutines.Checked := False;
+    Page.StickyScrollTry.Checked := True;
+    Page.StickyScrollWith.Checked := True;
+    Saved := TAtlasPluginSettings.Defaults;
+    Page.SaveTo(Saved);
+    Assert.IsTrue(Saved.StickyScrollTypes);
+    Assert.IsFalse(Saved.StickyScrollRoutines);
+    Assert.IsFalse(Saved.StickyScrollLoops);
+    Assert.IsTrue(Saved.StickyScrollTry);
+    Assert.IsFalse(Saved.StickyScrollCase);
+    Assert.IsTrue(Saved.StickyScrollWith);
   finally
     Page.Free;
   end;
@@ -4045,6 +4077,72 @@ begin
       Assert.IsNotNull(Dialog.RuleList.Selected);
       Assert.AreEqual('magic-number', Dialog.RuleList.Selected.Caption);
       Assert.IsFalse(Dialog.SelectRule('unbekannt'));
+    finally
+      Dialog.Free;
+    end;
+  finally
+    Model.Free;
+    Catalog.Free;
+  end;
+end;
+
+procedure TAtlasSettingsPageTests.DialogRuleEditorPushesFieldsDown;
+const
+  CatalogText = '{"rules": [{"id": "magic-number", "name": "Magische Zahl", "category": "code-smell",' +
+    ' "severity": "hint", "group": "style", "description": "Zahl ohne Namen", "bad": "X := 42;",' +
+    ' "good": "X := Answer;", "options": [{"name": "ignore", "type": "string-list", "default": ["0"]},' +
+    ' {"name": "maxDigits", "type": "integer", "default": 3}], "experimental": true},' +
+    ' {"id": "no-with", "name": "Kein with", "category": "code-smell", "severity": "warning"}]}';
+var
+  Model: TAtlasSettingsModel;
+  Dialog: TAtlasProjectSettingsDialog;
+  Catalog: TJSONValue;
+  Editor: TAtlasRulesEditor;
+  Box: TWinControl;
+  Index, Before, Spacing, Below: Integer;
+  Control: TControl;
+begin
+  Catalog := TJSONObject.ParseJSONValue(CatalogText);
+  Model := TAtlasSettingsModel.Create(TAtlasSettingsSchema.Fields(AtlasSchemaJson), '{}', '', False);
+  try
+    Dialog := TAtlasProjectSettingsDialog.CreateDialog(nil, Model, 'C:\Ptlas.json');
+    try
+      Dialog.Catalog := Catalog;
+      Dialog.HandleNeeded;
+      Assert.IsTrue(Dialog.SelectPage(Model.Fields[Model.IndexOf('rules')].Page));
+      Editor := Dialog.RuleEditor;
+      Box := Editor.Parent;
+      // Abstand des ersten Steuerelements unter dem Editor zu seiner Unterkante beim Aufbau.
+      Spacing := MaxInt;
+      for Index := 0 to Box.ControlCount - 1 do
+      begin
+        Control := Box.Controls[Index];
+        if (Control <> Editor) and (Control.Top > Editor.Top) then
+          Spacing := Min(Spacing, Control.Top - (Editor.Top + Editor.Height));
+      end;
+      Assert.IsTrue(Spacing < MaxInt, 'Zustand und Zurücksetzen von "rules" stehen unter dem Editor');
+      Assert.IsTrue(Spacing >= 0);
+      Before := Editor.Height;
+      Assert.IsTrue(Editor.SelectRule('magic-number'));
+      Assert.IsTrue(Editor.Height > Before, 'Optionen und Beispiele lassen den Editor wachsen');
+      Below := MaxInt;
+      for Index := 0 to Box.ControlCount - 1 do
+      begin
+        Control := Box.Controls[Index];
+        if (Control <> Editor) and (Control.Top > Editor.Top) then
+          Below := Min(Below, Control.Top - (Editor.Top + Editor.Height));
+      end;
+      Assert.AreEqual(Spacing, Below, 'Felder darunter rücken mit dem Editor nach unten');
+      // Zurück zu einer Regel ohne Optionen: Die Felder rücken wieder hoch.
+      Assert.IsTrue(Editor.SelectRule('no-with'));
+      Below := MaxInt;
+      for Index := 0 to Box.ControlCount - 1 do
+      begin
+        Control := Box.Controls[Index];
+        if (Control <> Editor) and (Control.Top > Editor.Top) then
+          Below := Min(Below, Control.Top - (Editor.Top + Editor.Height));
+      end;
+      Assert.AreEqual(Spacing, Below, 'Felder darunter rücken mit dem Editor wieder hoch');
     finally
       Dialog.Free;
     end;

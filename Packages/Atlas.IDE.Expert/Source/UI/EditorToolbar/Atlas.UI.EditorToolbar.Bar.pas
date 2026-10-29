@@ -24,6 +24,8 @@
 //   Aufrufer. Die Knöpfe sperrt die Leiste selbst; ein Klick auf einen
 //   gesperrten Knopf steht samt Grund im Protokoll.
 // - Tooltip je Knopf: Name und Taste.
+// - Höhe, Farben, Hervorhebung, Klick beim Loslassen, Kontextmenü (geht nie
+//   an den Editor) und OnDisabled kommen vom Vorfahr TAtlasEditorBar (#1248).
 // - PreferredWidth: Breite ohne Überlauf (Inline: so breit, wie nötig).
 
 interface
@@ -41,7 +43,8 @@ uses
   Atlas.Core.Style.Palette,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.EditorToolbar.Icons,
-  Atlas.Core.EditorToolbar.Layout;
+  Atlas.Core.EditorToolbar.Layout,
+  Atlas.UI.Editor.Bar;
 
 type
   TAtlasToolbarButton = record
@@ -67,10 +70,9 @@ type
 
   TAtlasToolbarCommandEvent = reference to procedure(const AId: string);
 
-  TAtlasEditorToolbar = class(TCustomControl)
+  TAtlasEditorToolbar = class(TAtlasEditorBar)
   private const
-    /// <summary>Teile ohne Index in FButtons.</summary>
-    PartNone = -1;
+    /// <summary>Teile ohne Index in FButtons (PartNone vom Vorfahr).</summary>
     PartReturn = -2;
     PartMore = -3;
     PartGear = -4;
@@ -81,15 +83,12 @@ type
     FReturnHint: string;
     FLabels: Boolean;
     FInline: Boolean;
-    FColors: TAtlasColors;
     FRects: TArray<TRect>;
     FReturnRect: TRect;
     FMoreRect: TRect;
     FGearRect: TRect;
     FOverflow: TArray<Integer>;
     FLaidOut: Boolean;
-    FHot: Integer;
-    FDown: Integer;
     FMoreHint: string;
     FGearHint: string;
     FCustomizeCaption: string;
@@ -99,8 +98,6 @@ type
     FOnCommand: TAtlasToolbarCommandEvent;
     FOnReturn: TProc;
     FOnCustomize: TProc;
-    FOnDisabled: TProc<TObject>;
-    function Scale(AValue: Integer): Integer;
     function IconSize: Integer;
     function ButtonWidth(const AButton: TAtlasToolbarButton): Integer;
     function ReturnWidth: Integer;
@@ -108,10 +105,7 @@ type
     /// <summary>Einträge in Reihenfolge der Leiste: Index in FButtons, PartReturn für den Rücksprung.</summary>
     function Entries: TArray<Integer>;
     procedure Layout;
-    function PartAt(X, Y: Integer): Integer;
     function PartRect(APart: Integer): TRect;
-    function PartHint(APart: Integer): string;
-    function PartEnabled(APart: Integer): Boolean;
     procedure DrawButton(const ARect: TRect; AIcon: TAtlasToolbarIcon; const ACaption: string; AEnabled, APressed,
       AHot, ADot: Boolean; const AText: string);
     procedure ShowMenu(const APoint: TPoint; AOverflow: Boolean);
@@ -120,15 +114,18 @@ type
     procedure Fire(APart: Integer);
     procedure SetLabels(AValue: Boolean);
     procedure SetInline(AValue: Boolean);
-    procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
   protected
-    procedure SetEnabled(Value: Boolean); override;
+    class function BaseHeight: Integer; override;
+    function PartAt(X, Y: Integer): Integer; override;
+    function PartHint(APart: Integer): string; override;
+    function PartEnabled(APart: Integer): Boolean; override;
+    procedure PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer); override;
+    /// <summary>Rechtsklick: „Leiste anpassen …“.</summary>
+    procedure ContextMenu(const APoint: TPoint; APart: Integer); override;
+    function KeyboardMenuPoint: TPoint; override;
     procedure Paint; override;
     procedure Resize; override;
-    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure ChangeScale(M, D: Integer; isDpiChange: Boolean); override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -137,9 +134,6 @@ type
     procedure SetButtons(const AButtons: TArray<TAtlasToolbarButton>);
     /// <summary>Rücksprung zeigen (AShown) mit Text (Zeilennummer) und Tooltip.</summary>
     procedure SetReturn(AShown: Boolean; const AText, AHint: string);
-    procedure SetColors(const AColors: TAtlasColors);
-    /// <summary>Höhe der Leiste bei APPI (eine Zeile, 24 px bei 96 DPI).</summary>
-    class function BarHeight(APPI: Integer): Integer; static;
     /// <summary>Breite, mit der alles ohne Überlauf passt (samt Zahnrad).</summary>
     function PreferredWidth: Integer;
     /// <summary>Fläche des Knopfs mit Kennung AId (Client); leer, wenn er nicht in der Leiste steht.</summary>
@@ -165,8 +159,6 @@ type
     property OnCommand: TAtlasToolbarCommandEvent read FOnCommand write FOnCommand;
     property OnReturn: TProc read FOnReturn write FOnReturn;
     property OnCustomize: TProc read FOnCustomize write FOnCustomize;
-    /// <summary>Jemand sperrt die Leiste (Enabled := False); gerufen, bevor sie gesperrt ist.</summary>
-    property OnDisabled: TProc<TObject> read FOnDisabled write FOnDisabled;
   end;
 
 implementation
@@ -178,8 +170,6 @@ uses
   Atlas.UI.EditorToolbar.Glyphs;
 
 const
-  /// <summary>Höhe bei 96 DPI.</summary>
-  BaseHeight = 24;
   BaseButton = 24;
   BaseSeparator = 9;
   Margin = 4;
@@ -224,19 +214,9 @@ end;
 constructor TAtlasEditorToolbar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  ControlStyle := ControlStyle + [csOpaque] - [csSetCaption];
-  DoubleBuffered := True;
-  TabStop := False;
-  ShowHint := True;
-  FColors := TAtlasColors.Light;
-  FHot := PartNone;
-  FDown := PartNone;
   FMoreHint := '»';
   FGearHint := '';
   FCustomizeCaption := '';
-  Height := BarHeight(96);
-  Constraints.MinHeight := Height;
-  Constraints.MaxHeight := Height;
 end;
 
 destructor TAtlasEditorToolbar.Destroy;
@@ -245,28 +225,15 @@ begin
   inherited Destroy;
 end;
 
-class function TAtlasEditorToolbar.BarHeight(APPI: Integer): Integer;
+class function TAtlasEditorToolbar.BaseHeight: Integer;
 begin
-  Result := MulDiv(BaseHeight, Max(APPI, 96), 96);
+  Result := 24;
 end;
 
 procedure TAtlasEditorToolbar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
 begin
-  Constraints.MinHeight := 0;
-  Constraints.MaxHeight := 0;
   inherited ChangeScale(M, D, isDpiChange);
-  if not FInline then
-  begin
-    Height := BarHeight(CurrentPPI);
-    Constraints.MinHeight := Height;
-    Constraints.MaxHeight := Height;
-  end;
   FLaidOut := False;
-end;
-
-function TAtlasEditorToolbar.Scale(AValue: Integer): Integer;
-begin
-  Result := MulDiv(AValue, Max(CurrentPPI, 96), 96);
 end;
 
 function TAtlasEditorToolbar.IconSize: Integer;
@@ -304,12 +271,6 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasEditorToolbar.SetColors(const AColors: TAtlasColors);
-begin
-  FColors := AColors;
-  Invalidate;
-end;
-
 procedure TAtlasEditorToolbar.SetLabels(AValue: Boolean);
 begin
   if AValue = FLabels then
@@ -325,14 +286,7 @@ begin
     Exit;
   FInline := AValue;
   // In der Brotkrumenzeile bestimmt deren Höhe die Höhe (alRight).
-  Constraints.MinHeight := 0;
-  Constraints.MaxHeight := 0;
-  if not FInline then
-  begin
-    Height := BarHeight(CurrentPPI);
-    Constraints.MinHeight := Height;
-    Constraints.MaxHeight := Height;
-  end;
+  FixedHeight := not FInline;
   FLaidOut := False;
   Invalidate;
 end;
@@ -579,29 +533,29 @@ var
   Icon, Part: TRect;
   Radius, DotSize: Integer;
 begin
-  Back := ToColor(FColors.Gutter);
-  Fore := ToColor(FColors.Text);
+  Back := ToColor(Colors.Gutter);
+  Fore := ToColor(Colors.Text);
   Radius := Scale(4);
   Canvas.Brush.Style := bsSolid;
   if APressed then
   begin
-    Back := ToColor(FColors.AccentSoft);
-    Fore := ToColor(FColors.Accent);
+    Back := ToColor(Colors.AccentSoft);
+    Fore := ToColor(Colors.Accent);
     Canvas.Brush.Color := Back;
-    Canvas.Pen.Color := ToColor(FColors.Accent);
+    Canvas.Pen.Color := ToColor(Colors.Accent);
     Canvas.RoundRect(ARect.Left + Scale(1), ARect.Top + Scale(1), ARect.Right - Scale(1), ARect.Bottom - Scale(1),
       Radius, Radius);
   end
   else if AHot and AEnabled then
   begin
-    Back := ToColor(FColors.Selection);
+    Back := ToColor(Colors.Selection);
     Canvas.Brush.Color := Back;
-    Canvas.Pen.Color := ToColor(FColors.Line);
+    Canvas.Pen.Color := ToColor(Colors.Line);
     Canvas.RoundRect(ARect.Left + Scale(1), ARect.Top + Scale(1), ARect.Right - Scale(1), ARect.Bottom - Scale(1),
       Radius, Radius);
   end;
   if not AEnabled then
-    Fore := ToColor(FColors.Muted);
+    Fore := ToColor(Colors.Muted);
   Icon := Rect(ARect.Left + Scale(4), ARect.Top + (ARect.Height - IconSize) div 2, ARect.Left + Scale(4) + IconSize,
     ARect.Top + (ARect.Height - IconSize) div 2 + IconSize);
   Canvas.Font := Font;
@@ -619,8 +573,8 @@ begin
   begin
     DotSize := Scale(6);
     Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(FColors.Warn);
-    Canvas.Pen.Color := ToColor(FColors.Warn);
+    Canvas.Brush.Color := ToColor(Colors.Warn);
+    Canvas.Pen.Color := ToColor(Colors.Warn);
     Canvas.Ellipse(ARect.Right - Scale(3) - DotSize, ARect.Top + Scale(2), ARect.Right - Scale(3),
       ARect.Top + Scale(2) + DotSize);
   end;
@@ -634,13 +588,8 @@ var
   mText: string;
 begin
   Layout;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(FColors.Gutter);
-  Canvas.FillRect(ClientRect);
-  Canvas.Pen.Color := ToColor(FColors.Line);
   // Untere Linie wie die Brotkrumenleiste, Inline dazu ein Trennstrich links.
-  Canvas.MoveTo(0, ClientHeight - 1);
-  Canvas.LineTo(ClientWidth, ClientHeight - 1);
+  PaintChrome(False);
   if FInline then
   begin
     Canvas.MoveTo(0, Scale(4));
@@ -655,7 +604,7 @@ begin
     if Button.IsSeparator then
     begin
       Middle := (Area.Left + Area.Right) div 2;
-      Canvas.Pen.Color := ToColor(FColors.Line);
+      Canvas.Pen.Color := ToColor(Colors.Line);
       Canvas.MoveTo(Middle, Area.Top + Scale(4));
       Canvas.LineTo(Middle, Area.Bottom - Scale(4));
       Continue;
@@ -663,22 +612,22 @@ begin
     mText := '';
     if FLabels then
       mText := Button.Caption;
-    DrawButton(Area, Button.Icon, Button.Caption, Button.Enabled, Button.Pressed, FHot = Index, Button.Dot, mText);
+    DrawButton(Area, Button.Icon, Button.Caption, Button.Enabled, Button.Pressed, Hot = Index, Button.Dot, mText);
   end;
   if not FReturnRect.IsEmpty then
   begin
     // Rücksprung: Akzentfarbe, Zeilennummer fett daneben.
     Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := ToColor(FColors.AccentSoft);
-    Canvas.Pen.Color := ToColor(FColors.Accent);
+    Canvas.Brush.Color := ToColor(Colors.AccentSoft);
+    Canvas.Pen.Color := ToColor(Colors.Accent);
     Canvas.RoundRect(FReturnRect.Left + Scale(1), FReturnRect.Top + Scale(1), FReturnRect.Right - Scale(1),
       FReturnRect.Bottom - Scale(1), Scale(4), Scale(4));
     TAtlasGlyphPainter.Draw(Canvas, TAtlasToolbarIcon.Return, Rect(FReturnRect.Left + Scale(4), FReturnRect.Top +
       (FReturnRect.Height - IconSize) div 2, FReturnRect.Left + Scale(4) + IconSize, FReturnRect.Top +
-      (FReturnRect.Height - IconSize) div 2 + IconSize), ToColor(FColors.Accent), ToColor(FColors.AccentSoft), '');
+      (FReturnRect.Height - IconSize) div 2 + IconSize), ToColor(Colors.Accent), ToColor(Colors.AccentSoft), '');
     Canvas.Font := Font;
     Canvas.Font.Style := [fsBold];
-    Canvas.Font.Color := ToColor(FColors.Accent);
+    Canvas.Font.Color := ToColor(Colors.Accent);
     Canvas.Brush.Style := bsClear;
     Area := Rect(FReturnRect.Left + Scale(8) + IconSize, FReturnRect.Top, FReturnRect.Right - Scale(2),
       FReturnRect.Bottom);
@@ -686,79 +635,29 @@ begin
     Canvas.Font := Font;
   end;
   if not FMoreRect.IsEmpty then
-    DrawButton(FMoreRect, TAtlasToolbarIcon.More, '', True, False, FHot = PartMore, False, '');
-  DrawButton(FGearRect, TAtlasToolbarIcon.Gear, '', True, False, FHot = PartGear, False, '');
-end;
-
-procedure TAtlasEditorToolbar.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  Hot: Integer;
-begin
-  inherited MouseMove(Shift, X, Y);
-  Hot := PartAt(X, Y);
-  if Hot = FHot then
-    Exit;
-  FHot := Hot;
-  if (Hot <> PartNone) and PartEnabled(Hot) then
-    Cursor := crHandPoint
-  else
-    Cursor := crDefault;
-  Application.CancelHint;
-  Hint := PartHint(Hot);
-  Invalidate;
-end;
-
-procedure TAtlasEditorToolbar.CMMouseLeave(var Message: TMessage);
-begin
-  inherited;
-  // FDown bleibt: Das Verlassen kommt in der IDE zwischen Drücken und Loslassen jedes Klicks (siehe oben).
-  if FHot = PartNone then
-    Exit;
-  FHot := PartNone;
-  Invalidate;
-end;
-
-procedure TAtlasEditorToolbar.SetEnabled(Value: Boolean);
-begin
-  // Vor dem Sperren melden: Der Aufrufer steht dann noch auf dem Stapel (siehe oben).
-  if not Value and Enabled and Assigned(FOnDisabled) then
-    FOnDisabled(Self);
-  inherited SetEnabled(Value);
-end;
-
-procedure TAtlasEditorToolbar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited MouseDown(Button, Shift, X, Y);
-  if Button = mbLeft then
-    FDown := PartAt(X, Y);
-end;
-
-procedure TAtlasEditorToolbar.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  Part: TPoint;
-  Released: Integer;
-begin
-  inherited MouseUp(Button, Shift, X, Y);
-  if Button = mbRight then
-  begin
-    // Rechtsklick: „Leiste anpassen …“.
-    Part := ClientToScreen(Point(X, Y));
-    ShowMenu(Part, False);
-    Exit;
-  end;
-  if Button <> mbLeft then
-    Exit;
-  // Erst beim Loslassen, wie in der Brotkrumenleiste: Die IDE holt beim Drücken den Fokus in den Editor. Ein
-  // Drücken muss die Leiste dafür nicht gesehen haben; nur ein Drücken auf einem anderen Knopf bricht ab.
-  Released := PartAt(X, Y);
-  if (Released <> PartNone) and ((FDown = PartNone) or (FDown = Released)) then
-    Fire(Released);
-  FDown := PartNone;
+    DrawButton(FMoreRect, TAtlasToolbarIcon.More, '', True, False, Hot = PartMore, False, '');
+  DrawButton(FGearRect, TAtlasToolbarIcon.Gear, '', True, False, Hot = PartGear, False, '');
 end;
 
 procedure TAtlasEditorToolbar.ClickAt(X, Y: Integer);
 begin
   Fire(PartAt(X, Y));
+end;
+
+procedure TAtlasEditorToolbar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
+begin
+  Fire(APart);
+end;
+
+procedure TAtlasEditorToolbar.ContextMenu(const APoint: TPoint; APart: Integer);
+begin
+  ShowMenu(ClientToScreen(APoint), False);
+end;
+
+function TAtlasEditorToolbar.KeyboardMenuPoint: TPoint;
+begin
+  Layout;
+  Result := Point(FGearRect.Left, FGearRect.Bottom);
 end;
 
 procedure TAtlasEditorToolbar.Fire(APart: Integer);

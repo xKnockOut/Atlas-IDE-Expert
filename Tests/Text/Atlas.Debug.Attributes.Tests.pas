@@ -12,6 +12,9 @@ type
   [TestFixture]
   TAtlasDebugAttributesTests = class
   public
+    /// <summary>RTTI-Pool und Attributinstanzen einmal vor dem Leckmonitor anlegen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure AttributesCarryTheirText;
   end;
@@ -29,6 +32,11 @@ type
   public
     Name, Ort: string;
   end;
+
+procedure TAtlasDebugAttributesTests.WarmUpFirstUse;
+begin
+  AttributesCarryTheirText;
+end;
 
 procedure TAtlasDebugAttributesTests.AttributesCarryTheirText;
 var

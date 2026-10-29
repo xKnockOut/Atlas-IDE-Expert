@@ -104,10 +104,15 @@ type
     FSend: TButton;
     FUpdating: Boolean;
     FFilled: Boolean;
+    /// <summary>BuildControls ist durch; vorher kann CreateWnd schon laufen (ClientWidth im Konstruktor).</summary>
+    FBuilt: Boolean;
     function AddCheck(AParent: TWinControl; ATop: Integer; const ACaption: string): TCheckBox;
     function AddButton(AParent: TWinControl; ALeft, ATop, AWidth: Integer; const ACaption: string;
       AClick: TNotifyEvent): TButton;
     procedure BuildControls;
+    /// <summary>Einträge der Auswahllisten (brauchen das Fenster); einmal, sobald Fenster und Steuerelemente da sind.
+    /// </summary>
+    procedure FillLists;
     procedure Changed(Sender: TObject);
     procedure TextChanged(Sender: TObject);
     procedure WindowChanged(Sender: TObject);
@@ -403,15 +408,24 @@ begin
     FWindows := TAtlasWindowCapture.WindowsOf(FInput.ProcessId);
   FWindowBox.Enabled := Length(FWindows) > 0;
   FPick.Enabled := True;
+  FBuilt := True;
+  // ClientWidth im Konstruktor legt das Fenster schon vor BuildControls an: dann hier füllen.
+  if HandleAllocated then
+    FillLists;
 end;
 
 procedure TAtlasAttachDialog.CreateWnd;
+begin
+  inherited;
+  FillLists;
+end;
+
+procedure TAtlasAttachDialog.FillLists;
 var
   mInfo: TAtlasWindowInfo;
   mText: string;
 begin
-  inherited;
-  if FFilled then
+  if FFilled or not FBuilt then
     Exit;
   FFilled := True;
   // Einträge von Auswahllisten brauchen das Fenster: nicht im Konstruktor.

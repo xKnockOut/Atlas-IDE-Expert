@@ -554,7 +554,7 @@ begin
   Options_.Kinds := [TAtlasVisualizerKind.Lists];
   Assert.AreEqual('', TAtlasVisualizers.Replacement(TAtlasVisualizerKind.Colors, 'C', 'TColor', '255', Options_,
     Context));
-  Assert.AreEqual(0, FAsked.Count, 'Abgeschaltet: keine Auswertung');
+  Assert.AreEqual(0, Integer(FAsked.Count), 'Abgeschaltet: keine Auswertung');
 end;
 procedure TVisualizerTests.DeclaredTypeFromHover;
 var

@@ -295,7 +295,7 @@ begin
   if FCatalog = nil then
     Exit;
   FillList(FCatalog.AddNew);
-  if FPrefix.CanFocus then
+  if FPrefix.CanFocus and FPrefix.Showing then
     FPrefix.SetFocus;
 end;
 

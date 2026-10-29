@@ -36,6 +36,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,

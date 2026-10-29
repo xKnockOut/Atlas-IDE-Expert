@@ -48,6 +48,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,

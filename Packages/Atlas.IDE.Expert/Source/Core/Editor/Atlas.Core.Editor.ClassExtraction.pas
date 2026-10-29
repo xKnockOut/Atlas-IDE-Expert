@@ -141,6 +141,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Core.Editor.LinkedEditing;
 
 function IsName(const AName: string): Boolean;

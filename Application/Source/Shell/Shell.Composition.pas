@@ -28,6 +28,7 @@ uses
   Atlas.Common.Lsp.TextDocumentSync,
   Atlas.Common.Lsp.SyntaxDiagnostics,
   Atlas.Common.Lsp.PullDiagnostics,
+  Atlas.Common.Lsp.WorkspaceCheck,
   Atlas.Common.Lsp.DocumentSymbols,
   Atlas.Common.Lsp.FoldingRanges,
   Atlas.Common.Lsp.LinkedEditing,
@@ -223,6 +224,11 @@ type
     FDocumentLinks: TLspDocumentLinks;
     FColors: TLspColors;
     FCommands: TLspCommands;
+    // Methodenreferenzen für die Befehle, vorab gebildet (Free Pascal). Je Empfänger der eigene Typ: Delphi 12 nimmt
+    // TCompletionReadText nicht als TResourceStringRead an, obwohl die Signatur gleich ist.
+    FEnsureUnitRef: TEnsureUnitFunc;
+    FReadSourceTextRef: TCompletionReadText;
+    FReadResourceRef: TResourceStringRead;
     /// <summary>Schreibt einen resourcestring in eine andere Unit (#473); über den Host der Schnellbefehle.</summary>
     FResourceStringWrite: TResourceStringWrite;
     FStatistics: IJsonRpcStatistics;
@@ -715,6 +721,8 @@ uses
 const
   /// <summary>Ohne Zeitlimit warten (INFINITE, ohne Winapi.Windows).</summary>
   WaitForever = Cardinal($FFFFFFFF);
+  /// <summary>Längste Pause der Projektprüfung für einen Compile, falls sein Ende nie ankommt (#1247).</summary>
+  CompilePauseLimitMs = 10 * 60 * 1000;
 
 // PowerShell für cc.ps1 (#261): pwsh aus PATH, sonst Windows PowerShell. Der Prozessläufer
 // durchsucht PATH nicht selbst.
@@ -911,6 +919,25 @@ begin
     procedure
     begin
       FPullDiagnostics.Changed;
+    end;
+  // Neue Compilermeldungen (#1247): nur ihre Dateien neu prüfen, nicht alle Units.
+  FSyntaxDiagnostics.OnPullFilesChanged :=
+    procedure(AFiles: TArray<string>)
+    begin
+      FPullDiagnostics.FilesChanged(AFiles);
+    end;
+  // Nach dem Speichern prüft die Projektprüfung auch die Units, die die Datei in uses haben (#1247).
+  FPullDiagnostics.Check.Dependents :=
+    function(const AFileName: string): TArray<string>
+    begin
+      Result := nil;
+      if FIndex <> nil then
+        Result := TLspWorkspaceCheck.DependentsOf(FIndex.Units, AFileName);
+    end;
+  FPullDiagnostics.Check.OnLog :=
+    procedure(const AMessage: string)
+    begin
+      FLogger.Info(AMessage);
     end;
 end;
 
@@ -1644,14 +1671,12 @@ begin
 end;
 
 procedure TServerComposition.WireCommands;
-var
-  ReadSourceTextRef: TCompletionReadText;
-  EnsureUnitRef: TEnsureUnitFunc;
 begin
   // Methodenreferenz vorab: Free Pascal (Linux-Bau) bricht ab, wenn eine anonyme Methode die Methode selbst
   // als Referenz weitergibt.
-  EnsureUnitRef := EnsureUnit;
-  ReadSourceTextRef := ReadSourceText;
+  FEnsureUnitRef := EnsureUnit;
+  FReadSourceTextRef := ReadSourceText;
+  FReadResourceRef := ReadSourceText;
   FCommands := TLspCommands.Create;
   FCommands.Register(TLspFormFiles.ConvertCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1882,20 +1907,20 @@ begin
   FCommands.Register(TLspExitPoints.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TLspExitPoints.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, ReadSourceTextRef,
+      Result := TLspExitPoints.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, FReadSourceTextRef,
         FDocumentHighlights.SettingsFor, AArguments);
     end);
   // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712).
   FCommands.Register(TLspReassigned.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TLspReassigned.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, AArguments);
+      Result := TLspReassigned.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
     end);
   // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
   FCommands.Register(TLspExpressionType.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TLspExpressionType.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, AArguments);
+      Result := TLspExpressionType.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
     end);
   // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
   FCommands.Register(TLspMethodOrder.Command,
@@ -1907,7 +1932,7 @@ begin
   FCommands.Register(TLspOverrideMarks.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TLspOverrideMarks.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, AArguments);
+      Result := TLspOverrideMarks.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces, AArguments);
     end);
   FCommands.Register(TLspBaseline.Command,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1962,7 +1987,7 @@ begin
   FCommands.Register(TUnitSearch.UnitsCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := FUnitSearch.ExecuteUnits;
+      Result := FUnitSearch.ExecuteUnits(AArguments);
     end);
   FCommands.Register(TUnitSearch.PreviewCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -1978,18 +2003,18 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := TQualifiedNames.Execute(FDocuments, FIndex,
-        EnsureUnitRef, FDefinition.Namespaces, AArguments);
+        FEnsureUnitRef, FDefinition.Namespaces, AArguments);
     end);
   FCommands.Register(TEnumValueCommands.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TEnumValueCommands.Execute(FDocuments, FIndex, EnsureUnitRef, FDefinition.Namespaces, ReadSourceTextRef,
-        AArguments);
+      Result := TEnumValueCommands.Execute(FDocuments, FIndex, FEnsureUnitRef, FDefinition.Namespaces,
+        FReadSourceTextRef, AArguments);
     end);
   FCommands.Register(TResourceStringCommands.AddCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
-      Result := TResourceStringCommands.ExecuteAdd(ReadSourceTextRef, FResourceStringWrite, AArguments);
+      Result := TResourceStringCommands.ExecuteAdd(FReadResourceRef, FResourceStringWrite, AArguments);
     end);
   FCommands.Register(TStringLiteralCommands.PlainTextCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2119,6 +2144,15 @@ begin
       for Workspace in Targets do
         Workspace.Rebuild;
       Result := TIndexCommands.Answer(Removed, Freed);
+    end);
+  FCommands.Register(TLspPullDiagnostics.RecheckCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      // Neue Generation (#1231): Alle Ergebnis-Ids veralten, auch die übersprungener Dateien (#1094); geöffnete
+      // Dateien holt der Client nach dem refresh, die übrigen liefert workspace/diagnostic nach.
+      FPullDiagnostics.Changed;
+      FLogger.Info('Alle Dateien werden neu geprüft');
+      Result := TJSONNull.Create;
     end);
   FCommands.Register(SelectBuildCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2281,6 +2315,13 @@ begin
         on E: Exception do
           FLogger.Warning(Format('Letzter Build nicht gespeichert: %s', [E.Message]));
       end;
+    end;
+  // Während die IDE kompiliert, ruht die Projektprüfung (#1247). Die Frist ist ein Sicherheitsnetz für ein
+  // verlorenes Ende, keine Steuerung.
+  FIdeBuild.OnCompiling :=
+    procedure(ARunning: Boolean)
+    begin
+      FPullDiagnostics.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, CompilePauseLimitMs);
     end;
   FIdeBuild.Attach(FDispatcher);
   // Projektwahl je Benutzer über Neustarts (#46).
@@ -4338,7 +4379,7 @@ begin
     mFileName := TDocumentUris.ToPath(mUri);
     if not ReadSourceText(mFileName, mText) then
       raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Die Datei ist nicht lesbar.');
-    mTree := TPascalParser.Parse(mText);
+    mTree := TSyntaxTreeCache.Parse(mText);
     try
       mAnswer := TLspStepFilter.Execute(mTree, mText, mLine);
     finally
@@ -4372,7 +4413,7 @@ begin
     end;
     if not ReadSourceText(mUnit.FileName, mText) then
       Continue;
-    mTree := TPascalParser.Parse(mText);
+    mTree := TSyntaxTreeCache.Parse(mText);
     try
       TLspStepFilter.AddCounts(mTree, mText, mPatterns, mCounts);
     finally
@@ -6021,7 +6062,12 @@ begin
   if (FIndexRefresh <> nil) and StartsText('file:', ADocument.Uri) then
     case AKind of
       TDocumentEventKind.Changed:
-        FIndexRefresh.Changed(TDocumentUris.ToPath(ADocument.Uri), ADocument.Text);
+        begin
+          FIndexRefresh.Changed(TDocumentUris.ToPath(ADocument.Uri), ADocument.Text);
+          // Beim Tippen macht die Projektprüfung Platz (#1247).
+          if FPullDiagnostics <> nil then
+            FPullDiagnostics.Typed;
+        end;
       TDocumentEventKind.Closed:
         if TLspIndexRefresh.Applies(TDocumentUris.ToPath(ADocument.Uri)) then
         begin
@@ -6499,6 +6545,7 @@ var
   Workspace: TShellWorkspace;
   Reload: TList<TShellWorkspace>;
   Updated: Integer;
+  Names: TArray<string>;
 begin
   Sources := nil;
   Reload := TList<TShellWorkspace>.Create;
@@ -6551,6 +6598,14 @@ begin
   for Workspace in FWorkspaces.ToArray do
     Inc(Updated, Workspace.ApplyChanges(Sources));
   FLogger.Debug(Format('%d Dateiänderungen von außen, %d Units im Index aktualisiert', [Length(Sources), Updated]));
+  // Gespeichert oder von außen geändert (#1247): die Datei und die Units, die sie in uses haben bzw. einbinden.
+  if FPullDiagnostics <> nil then
+  begin
+    Names := nil;
+    for Change in Sources do
+      Names := Names + [Change.FileName];
+    FPullDiagnostics.Check.Affected(Names, True);
+  end;
 end;
 
 class function TServerComposition.CreateForStdio(const AOptions: TCommandLineOptions): TServerComposition;
@@ -6702,6 +6757,7 @@ begin
   Commands.Add(SelectProjectCommand);
   Commands.Add(RebuildIndexCommand);
   Commands.Add(ClearIndexCommand);
+  Commands.Add(TLspPullDiagnostics.RecheckCommand);
   Commands.Add(TBugReport.Command);
   Commands.Add(TQualifiedNames.Command);
   Commands.Add(TEnumValueCommands.Command);

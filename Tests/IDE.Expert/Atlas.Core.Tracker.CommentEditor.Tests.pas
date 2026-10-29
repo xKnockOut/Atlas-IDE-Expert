@@ -358,7 +358,7 @@ var
   mSetting, mDefaults: TArray<TAtlasCommentSnippet>;
   mIndex: Integer;
 begin
-  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasPluginSettings.Default.IssuesCommentSnippets, mSetting));
+  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasPluginSettings.DefaultIssuesCommentSnippets, mSetting));
   mDefaults := TAtlasCommentSnippets.Defaults;
   Assert.AreEqual(Integer(Length(mDefaults)), Integer(Length(mSetting)));
   for mIndex := 0 to High(mDefaults) do

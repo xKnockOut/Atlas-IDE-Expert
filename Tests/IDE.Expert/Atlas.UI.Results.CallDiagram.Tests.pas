@@ -184,6 +184,8 @@ begin
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
     Frame.OnExpand := Children;
+    // Wie in NewView: ohne Projektfilter stünde IntToStr aus der RTL als vierte Box da.
+    Frame.IsProjectFile := IsProject;
     Roots := TArray<TAtlasHierarchyItem>.Create(Item('Start', 'C:\P\Haupt.pas', 1));
     // Ohne callHierarchy.diagram: kein Umschalter, auch nicht auf Wunsch.
     Frame.DiagramAllowed := False;

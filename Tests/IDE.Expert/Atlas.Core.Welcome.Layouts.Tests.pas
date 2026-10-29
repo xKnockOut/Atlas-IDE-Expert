@@ -210,11 +210,11 @@ begin
   Assert.IsTrue(Layout.MovedBy(TAtlasWelcomeIds.State, TAtlasWelcomeMove.Right, AtlasSections, Moved));
   Columns := Moved.Arrange(AtlasSections, 2);
   Assert.AreEqual(TAtlasWelcomeIds.State, Columns[1][0]);
-  // Runter bis ans Ende der Spalte.
+  // Runter bis ans Ende der Spalte: die vorletzte Kachel (Sprint, #1277) hinter die Hilfe.
   Layout := TAtlasWelcomeLayout.Atlas;
-  Assert.IsTrue(Layout.MovedBy(TAtlasWelcomeIds.Issues, TAtlasWelcomeMove.Down, AtlasSections, Moved));
+  Assert.IsTrue(Layout.MovedBy(TAtlasWelcomeIds.Sprint, TAtlasWelcomeMove.Down, AtlasSections, Moved));
   Columns := Moved.Arrange(AtlasSections, 2);
-  Assert.AreEqual(TAtlasWelcomeIds.Issues, Columns[1][High(Columns[1])]);
+  Assert.AreEqual(TAtlasWelcomeIds.Sprint, Columns[1][High(Columns[1])]);
 end;
 
 procedure TAtlasWelcomeArrangeTests.CtrlArrowsStopAtTheEdge;

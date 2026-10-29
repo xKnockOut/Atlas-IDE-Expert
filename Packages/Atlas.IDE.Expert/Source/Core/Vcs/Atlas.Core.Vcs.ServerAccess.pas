@@ -142,8 +142,10 @@ class function TAtlasVcsServerAccess.VariableName(const AEntry: string): string;
 var
   mAt: Integer;
 begin
-  // Ab Zeichen 2 suchen: Einträge der Laufwerke beginnen mit „=“.
-  mAt := Pos('=', AEntry, 2);
+  // Einträge der Laufwerke („=C:=C:\…“) sind keine Variablen.
+  if AEntry.StartsWith('=') then
+    Exit('');
+  mAt := Pos('=', AEntry);
   if mAt <= 1 then
     Exit('');
   Result := Copy(AEntry, 1, mAt - 1);

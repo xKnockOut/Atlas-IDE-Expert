@@ -13,6 +13,9 @@ type
     procedure ParsesObjectTree;
     [Test]
     procedure ParsesValuesOfAllKinds;
+    /// <summary>#1235: Langen String schreibt Delphi ab der Zeile nach "=" ('Bla'#123 + …); kein Fehler.</summary>
+    [Test]
+    procedure ReadsValueOnNextLine;
     [Test]
     procedure MarksEvents;
     [Test]
@@ -184,6 +187,30 @@ begin
     for Item in Document.Root.Children[1].Properties do
       Names := Names + Item.Name + ';';
     Assert.AreEqual('Columns;Data;', Names);
+  finally
+    Document.Free;
+  end;
+end;
+
+procedure TDfmTests.ReadsValueOnNextLine;
+var
+  Document: TDfmDocument;
+begin
+  Document := TDfmParser.Parse(
+    'object Form1: TForm1'#13#10 +
+    '  Hint = '#13#10 +
+    '    ''Bla''#123''Bla'' +'#13#10 +
+    '    ''weiter'''#13#10 +
+    '  Caption = ''Bla''#123''Bla'''#13#10 +
+    '  Left = 0'#13#10 +
+    'end'#13#10);
+  try
+    Assert.AreEqual(0, Integer(Length(Document.Errors)), 'kein „Property oder end erwartet“');
+    Assert.AreEqual(3, Integer(Length(Document.Root.Properties)));
+    Assert.AreEqual('''Bla''#123''Bla'' +'#13#10'    ''weiter''', Document.Root.Properties[0].Value);
+    Assert.AreEqual(2, Document.Root.Properties[0].ValueRange.StartPos.Line, 'Wert beginnt in der nächsten Zeile');
+    Assert.AreEqual('''Bla''#123''Bla''', Document.Root.Properties[1].Value);
+    Assert.AreEqual('Left', Document.Root.Properties[2].Name);
   finally
     Document.Free;
   end;

@@ -192,9 +192,9 @@ begin
   Assert.AreEqual(5, mCalendar.DaysLeft(EncodeDateTime(2025, 11, 1, 10, 0, 0, 0), mStart, mFinish));
   Assert.AreEqual(1, mCalendar.DaysLeft(EncodeDateTime(2025, 11, 7, 18, 0, 0, 0), mStart, mFinish));
   Assert.AreEqual(0, mCalendar.DaysLeft(EncodeDateTime(2025, 11, 10, 9, 0, 0, 0), mStart, mFinish));
-  // Mit Samstag als Arbeitstag.
+  // Mit Samstag als Arbeitstag: Sa 1.11., Mo–Fr und Sa 8.11.
   mCalendar := TAtlasSprintCalendar.Create(TArray<Integer>.Create(1, 2, 3, 4, 5, 6));
-  Assert.AreEqual(6, mCalendar.DaysLeft(EncodeDateTime(2025, 11, 1, 10, 0, 0, 0), mStart, mFinish));
+  Assert.AreEqual(7, mCalendar.DaysLeft(EncodeDateTime(2025, 11, 1, 10, 0, 0, 0), mStart, mFinish));
 end;
 
 procedure TAtlasTrackerSprintTests.CalendarText;

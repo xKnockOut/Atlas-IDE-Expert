@@ -50,6 +50,7 @@ uses
   System.SysUtils,
   System.Classes,
   System.Types,
+  System.Actions,
   System.Generics.Collections,
   Winapi.Messages,
   Vcl.Controls,
@@ -67,7 +68,7 @@ uses
   Atlas.Core.Tracker.Markdown,
   Atlas.Core.Tracker.Preview,
   Atlas.UI.Documentation.View,
-  Atlas.UI.Tracker.CommentEditor;
+  Atlas.UI.Tracker.CommentEditor,
   Atlas.UI.Tracker.DevelopmentView;
 
 const
@@ -189,6 +190,8 @@ type
     FPages: TPageControl;
     FDetailsSheet: TTabSheet;
     FDevelopmentSheet: TTabSheet;
+    /// <summary>Reiter „Entwicklung“ gewünscht; ApplyTabs setzt ihn, sobald es ein Fenster gibt.</summary>
+    FShowDevelopment: Boolean;
     FDevelopment: TAtlasIssueDevelopmentView;
     FScroll: TScrollBox;
     FEmpty: TLabel;
@@ -311,6 +314,9 @@ type
     procedure PagesChange(Sender: TObject);
     function GetDevelopmentVisible: Boolean;
     procedure SetDevelopmentVisible(AValue: Boolean);
+    procedure ApplyTabs;
+  protected
+    procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -985,13 +991,16 @@ begin
   FPages := TPageControl.Create(Self);
   FPages.Parent := Self;
   FPages.Align := alClient;
+  // Ohne Reiter einhängen: Ein sichtbarer Reiter braucht das Fenster des PageControls (ApplyTabs in CreateWnd).
+  FShowDevelopment := True;
   FDetailsSheet := TTabSheet.Create(Self);
+  FDetailsSheet.TabVisible := False;
   FDetailsSheet.PageControl := FPages;
   FDetailsSheet.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewTabDetails);
   FDevelopmentSheet := TTabSheet.Create(Self);
+  FDevelopmentSheet.TabVisible := False;
   FDevelopmentSheet.PageControl := FPages;
   FDevelopmentSheet.Caption := TAtlasStrings.Text(TAtlasTextId.IssuePreviewTabDevelopment);
-  FPages.ActivePage := FDetailsSheet;
   FPages.OnChange := PagesChange;
   FDevelopment := TAtlasIssueDevelopmentView.Create(Self);
   FDevelopment.Parent := FDevelopmentSheet;
@@ -1072,7 +1081,12 @@ begin
   Result := TAtlasIssueDocBox.Create(Self);
   Place(Result);
   Result.SetDoc(ADoc, FColors, FMono);
-  Result.OnLink := LinkOpened;
+  // Anonym: TProc<string> hat keinen const-Parameter, LinkOpened schon (E2010).
+  Result.OnLink :=
+    procedure(AUrl: string)
+    begin
+      LinkOpened(AUrl);
+    end;
   FParts.Add(Result);
   FDocs.Add(Result);
 end;
@@ -1904,31 +1918,46 @@ begin
   Result := FDocs.Count;
 end;
 
+procedure TAtlasIssueFrame.CreateWnd;
+begin
+  inherited CreateWnd;
+  ApplyTabs;
+end;
+
+procedure TAtlasIssueFrame.ApplyTabs;
+begin
+  // Sichtbare Reiter brauchen das Fenster des PageControls; ohne bleibt es beim Wunsch in FShowDevelopment.
+  if not HandleAllocated then
+    Exit;
+  if not FShowDevelopment and (FPages.ActivePage = FDevelopmentSheet) then
+    FPages.ActivePage := FDetailsSheet;
+  FDevelopmentSheet.TabVisible := FShowDevelopment;
+  // Mit nur einem Reiter keine Reiterleiste.
+  FDetailsSheet.TabVisible := FShowDevelopment;
+  FPages.ActivePage := FDetailsSheet;
+end;
+
 function TAtlasIssueFrame.GetDevelopmentVisible: Boolean;
 begin
-  Result := FDevelopmentSheet.TabVisible;
+  Result := FShowDevelopment;
 end;
 
 procedure TAtlasIssueFrame.SetDevelopmentVisible(AValue: Boolean);
 begin
-  if FDevelopmentSheet.TabVisible = AValue then
+  if FShowDevelopment = AValue then
     Exit;
-  if not AValue and (FPages.ActivePage = FDevelopmentSheet) then
-    FPages.ActivePage := FDetailsSheet;
-  FDevelopmentSheet.TabVisible := AValue;
-  // Mit nur einem Reiter keine Reiterleiste.
-  FDetailsSheet.TabVisible := AValue;
-  FPages.ActivePage := FDetailsSheet;
+  FShowDevelopment := AValue;
+  ApplyTabs;
 end;
 
 function TAtlasIssueFrame.DevelopmentActive: Boolean;
 begin
-  Result := FDevelopmentSheet.TabVisible and (FPages.ActivePage = FDevelopmentSheet);
+  Result := FShowDevelopment and (FPages.ActivePage = FDevelopmentSheet);
 end;
 
 procedure TAtlasIssueFrame.SelectDevelopment;
 begin
-  if not FDevelopmentSheet.TabVisible or (FPages.ActivePage = FDevelopmentSheet) then
+  if not FShowDevelopment or (FPages.ActivePage = FDevelopmentSheet) then
     Exit;
   FPages.ActivePage := FDevelopmentSheet;
   PagesChange(FPages);

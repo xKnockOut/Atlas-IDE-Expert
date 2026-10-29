@@ -206,7 +206,7 @@ var
 begin
   AText := '';
   APollSeconds := 0;
-  Result := Request('GET', AUrl, 'application/json', AIfModifiedSince, nil, ATimeoutMs, MaxBytes, AStatus, mBytes,
+  Result := Request('GET', AUrl, 'application/json', '', AIfModifiedSince, nil, ATimeoutMs, MaxBytes, AStatus, mBytes,
     ALastModified, mPoll, AError);
   if not Result then
     Exit;

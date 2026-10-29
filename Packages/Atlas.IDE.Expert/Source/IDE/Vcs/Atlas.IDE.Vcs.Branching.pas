@@ -245,12 +245,12 @@ begin
         procedure
         begin
           if mOpen then
-            mDialog.Loaded(mFacts);
+            mDialog.ServerLoaded(mFacts);
         end) then
       begin
         mFacts.ServerChecked := True;
         mFacts.ServerOutcome := TAtlasVcsOutcome.Failed;
-        mDialog.Loaded(mFacts);
+        mDialog.ServerLoaded(mFacts);
       end;
     end;
     Result := mDialog.ShowModal = mrOk;
@@ -329,7 +329,6 @@ var
   mAnswer: Integer;
 begin
   AStash := False;
-  mAnswer := mrCancel;
   mDialog := CreateMessageDialog(TAtlasStrings.Fmt(TAtlasTextId.VcsBranchUncommittedAsk, [AChanges, AName, AName]),
     mtConfirmation, [mbYes, mbNo, mbCancel], mbYes);
   try

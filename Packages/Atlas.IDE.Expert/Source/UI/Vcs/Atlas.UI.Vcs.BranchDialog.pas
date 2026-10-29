@@ -7,7 +7,7 @@
 // Name (TAtlasTrackerNaming.ValidBranchName) sperrt „Anlegen“ mit Hinweis
 // unter dem Feld. Braucht der Plan Werte vom Server (SVN: HEAD-Revision),
 // steht „wird ermittelt …“ und „Anlegen“ bleibt gesperrt, bis die IDE-Schicht
-// Loaded aufruft. „Nicht mehr fragen, Vorgaben verwenden“ nur bei „Beginnen“
+// ServerLoaded aufruft. „Nicht mehr fragen, Vorgaben verwenden“ nur bei „Beginnen“
 // (vcs.branch.confirm). Ausgeführt wird nicht hier: Der Aufrufer nimmt Request.
 // SVN (#1290): Ablageort (vorbelegt aus vcs.branch.svn.location, folgt dem
 // Namen, bis man ihn selbst ändert; ohne erkennbares Layout leer mit
@@ -141,7 +141,7 @@ type
     class function LocationOf(const AText: string): string; static;
     /// <summary>Werte vom Server sind da (InspectServer): Basen neu, „Anlegen“ frei, wenn der Rest stimmt.
     /// </summary>
-    procedure Loaded(const AFacts: TAtlasVcsBranchFacts);
+    procedure ServerLoaded(const AFacts: TAtlasVcsBranchFacts);
     /// <summary>Gewählte Werte.</summary>
     function Request: TAtlasVcsBranchRequest;
     /// <summary>Name gültig, Basis gewählt, nichts mehr zu ermitteln.</summary>
@@ -701,7 +701,7 @@ begin
     mRow.Align := alTop;
     AddLabel(mRow, cGap, cFolderWidth, mExternal.Path);
     mLabel := AddLabel(mRow, cGap + cFolderWidth + cGap, mRow.Width - cFolderWidth - cChoiceWidth - 4 * cGap,
-      mExternal.Line);
+      '');
     mLabel.Anchors := [akLeft, akTop, akRight];
     if mExternal.Source <> '' then
       mLabel.Caption := '^/' + mExternal.Source
@@ -950,7 +950,7 @@ begin
   Changed(nil);
 end;
 
-procedure TAtlasBranchDialog.Loaded(const AFacts: TAtlasVcsBranchFacts);
+procedure TAtlasBranchDialog.ServerLoaded(const AFacts: TAtlasVcsBranchFacts);
 var
   mKind: TAtlasVcsBranchBaseKind;
 begin

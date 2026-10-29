@@ -70,6 +70,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Pascal.TreeCache,
   System.Generics.Collections,
   Atlas.Common.Pascal.Parser;
 
@@ -327,7 +328,7 @@ begin
   if (Scope.Kind = TCompletionScopeKind.None) or (Scope.FirstLine < 1) then
     Exit;
   Limit := WordStart(AText, APosition);
-  Tree := TPascalParser.Parse(ScopeText(AText, Scope));
+  Tree := TSyntaxTreeCache.Parse(ScopeText(AText, Scope));
   try
     for Diagnostic in Tree.Diagnostics do
       if not Diagnostic.TreeIntact and (Diagnostic.StartPos.Line >= Scope.FirstLine) and

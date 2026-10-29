@@ -86,7 +86,10 @@ type
     /// <summary>Unnummeriertes schnelles Lesezeichen an ALine setzen bzw. entfernen.</summary>
     class function Toggle(var AList: TAtlasBookmarkList; const AFileName, AText: string; ALine: Integer;
       ANowUtc: TDateTime): TAtlasQuickChange; static;
-    /// <summary>Klick in die Spalte: Marker der Zeile entfernen bzw. ein unnummeriertes Lesezeichen setzen.</summary>
+    /// <summary>Kleinste freie Nummer 1–9; 0, wenn alle belegt sind.</summary>
+    class function FreeNumber(const AList: TAtlasBookmarkList): Integer; static;
+    /// <summary>Klick in die Spalte: Marker der Zeile entfernen bzw. ein Lesezeichen mit der kleinsten freien
+    /// Nummer setzen (ohne, wenn alle belegt sind).</summary>
     class function Click(var AList: TAtlasBookmarkList; const AFileName, AText: string; ALine: Integer;
       ANowUtc: TDateTime): TAtlasQuickChange; static;
     /// <summary>Marker der Zeile entfernen: schnelle ganz, benannte verlieren ihre Nummer. Anzahl.</summary>
@@ -268,6 +271,15 @@ begin
   Result := TAtlasQuickChange.Added;
 end;
 
+class function TAtlasQuickBookmarks.FreeNumber(const AList: TAtlasBookmarkList): Integer;
+begin
+  Result := 1;
+  while (Result <= MaxNumber) and (AList.IndexOfNumber(Result) >= 0) do
+    Inc(Result);
+  if Result > MaxNumber then
+    Result := 0;
+end;
+
 class function TAtlasQuickBookmarks.Click(var AList: TAtlasBookmarkList; const AFileName, AText: string;
   ALine: Integer; ANowUtc: TDateTime): TAtlasQuickChange;
 begin
@@ -276,7 +288,8 @@ begin
     Exit;
   if RemoveAt(AList, AFileName, ALine) > 0 then
     Exit(TAtlasQuickChange.Removed);
-  AddQuick(AList, AFileName, AText, ALine, 0, ANowUtc);
+  // Die kleinste freie Nummer 1–9 gleich mit (Marco 28.10.2026); sind alle belegt, ohne Nummer.
+  AddQuick(AList, AFileName, AText, ALine, FreeNumber(AList), ANowUtc);
   Result := TAtlasQuickChange.Added;
 end;
 

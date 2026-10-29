@@ -88,6 +88,8 @@ type
     /// <summary>Im Projektmodus: "rules" der globalen Einstellungen, für die Anzeige „(global: …)“.</summary>
     FGlobalRulesJson: string;
     FRuleEditor: TAtlasRulesEditor;
+    /// <summary>Höhe des Regel-Editors, mit der die Felder darunter stehen (#1296).</summary>
+    FRuleHeight: Integer;
     function ChoicesOf(AIndex: Integer): TArray<TAtlasSettingChoice>;
     function ResetCaption: string;
     function AddLabel(const AText: string; ATop: Integer): TLabel;
@@ -100,6 +102,7 @@ type
     procedure UpdateHint;
     function AddRuleTable(ATop: Integer; const AGroup: string): Integer;
     procedure RuleEditorChange(Sender: TObject);
+    procedure RuleEditorResize(Sender: TObject);
     function GetRuleList: TListView;
     procedure PageTreeChange(Sender: TObject; Node: TTreeNode);
     procedure CheckClick(Sender: TObject);
@@ -736,7 +739,36 @@ begin
   FRuleEditor.SetRules(FCatalog, FRulesJson, FGlobalRulesJson);
   FRuleEditor.OnChange := RuleEditorChange;
   FRuleEditor.HandleNeeded;
-  Result := ATop + FRuleEditor.Height + Gap;
+  FRuleHeight := FRuleEditor.Height;
+  FRuleEditor.OnResize := RuleEditorResize;
+  Result := ATop + FRuleHeight + Gap;
+end;
+
+procedure TAtlasProjectSettingsDialog.RuleEditorResize(Sender: TObject);
+var
+  Index, Shift, Bottom: Integer;
+  Control: TControl;
+begin
+  // Die Seite steht mit festen Positionen; der Editor wächst mit der markierten Regel (Optionen, Beispiele) und
+  // überdeckte sonst die Felder darunter (#1296). Alles unter seiner alten Unterkante rückt um die Differenz.
+  if (FRuleEditor = nil) or (csDestroying in FRuleEditor.ComponentState) then
+    Exit;
+  Shift := FRuleEditor.Height - FRuleHeight;
+  if Shift = 0 then
+    Exit;
+  Bottom := FRuleEditor.Top + FRuleHeight;
+  FRuleHeight := FRuleEditor.Height;
+  FBox.DisableAlign;
+  try
+    for Index := 0 to FBox.ControlCount - 1 do
+    begin
+      Control := FBox.Controls[Index];
+      if (Control <> FRuleEditor) and (Control.Top >= Bottom) then
+        Control.Top := Control.Top + Shift;
+    end;
+  finally
+    FBox.EnableAlign;
+  end;
 end;
 
 function TAtlasProjectSettingsDialog.GetRuleList: TListView;

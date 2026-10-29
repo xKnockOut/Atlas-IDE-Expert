@@ -22,6 +22,7 @@ type
     FLocked: TDictionary<string, Boolean>;
     FAfterRead: TProc<string>;
     FBeforeWrite: TProc;
+    FBeforeReadText: TProc<string>;
   public
     constructor Create;
     destructor Destroy; override;
@@ -47,6 +48,8 @@ type
     property AfterRead: TProc<string> read FAfterRead write FAfterRead;
     /// <summary>Läuft vor jedem WriteBytes außerhalb der Sperre, z. B. um ein Schreiben aufzuhalten.</summary>
     property BeforeWrite: TProc read FBeforeWrite write FBeforeWrite;
+    /// <summary>Läuft vor jedem ReadText außerhalb der Sperre, z. B. um das Lesen aufzuhalten.</summary>
+    property BeforeReadText: TProc<string> read FBeforeReadText write FBeforeReadText;
   end;
 
   [TestFixture]
@@ -177,6 +180,9 @@ type
     procedure ServiceBuildsInBackgroundAndWritesCache;
     [Test]
     procedure EnsureUnitDoesNotWaitForOtherRequests;
+    /// <summary>#1236: Fragen mehrere Threads dieselbe Unit gleichzeitig an, liest und parst sie nur einer.</summary>
+    [Test]
+    procedure ConcurrentEnsureUnitParsesOnce;
     [Test]
     procedure ReadOnlyServiceWaitsForOtherWriter;
     [Test]
@@ -383,6 +389,8 @@ end;
 
 function TMemoryIndexFileSystem.ReadText(const AFileName: string; out AText: string): Boolean;
 begin
+  if Assigned(FBeforeReadText) then
+    FBeforeReadText(AFileName);
   TMonitor.Enter(Self);
   try
     Inc(FReads);
@@ -1941,6 +1949,56 @@ begin
     Release.Free;
     Entered.Free;
   end;
+end;
+
+procedure TIndexBuilderTests.ConcurrentEnsureUnitParsesOnce;
+const
+  cThreads = 4;
+var
+  Builder: TIndexBuilder;
+  Threads: array[0..cThreads - 1] of TThread;
+  Index: Integer;
+  ReadsOfF, Found: Integer;
+  U: TUnitIndex;
+begin
+  ReadsOfF := 0;
+  Found := 0;
+  FFiles.BeforeReadText :=
+    procedure(AFileName: string)
+    begin
+      if SameText(ExtractFileName(AFileName), 'F.pas') then
+      begin
+        TInterlocked.Increment(ReadsOfF);
+        // Lange genug, dass die übrigen Threads währenddessen ankommen.
+        Sleep(200);
+      end;
+    end;
+  Builder := TIndexBuilder.Create(FIndex, FFileSystem, nil, Resolve);
+  try
+    for Index := 0 to cThreads - 1 do
+    begin
+      Threads[Index] := TThread.CreateAnonymousThread(
+        procedure
+        begin
+          if Builder.EnsureUnit('F') then
+            TInterlocked.Increment(Found);
+        end);
+      Threads[Index].FreeOnTerminate := False;
+    end;
+    for Index := 0 to cThreads - 1 do
+      Threads[Index].Start;
+    for Index := 0 to cThreads - 1 do
+    begin
+      Threads[Index].WaitFor;
+      Threads[Index].Free;
+    end;
+  finally
+    Builder.Free;
+    FFiles.BeforeReadText := nil;
+  end;
+  Assert.AreEqual(1, ReadsOfF, 'F nur einmal gelesen');
+  Assert.AreEqual(cThreads, Found, 'alle finden F');
+  Assert.IsTrue(FIndex.FindUnit('F', U));
 end;
 
 procedure TIndexBuilderTests.RestartDoesNotWaitForRunningBuild;

@@ -288,8 +288,13 @@ var
   mIndex: Integer;
   mItem: TListItem;
 begin
+  // Die Liste braucht ein Fenster; hat der Rahmen schon eines, auch die Liste anlegen (sonst füllt CreateWnd).
   if not FPatterns.HandleAllocated then
-    Exit;
+  begin
+    if not HandleAllocated then
+      Exit;
+    FPatterns.HandleNeeded;
+  end;
   FPatterns.Items.BeginUpdate;
   try
     FPatterns.Items.Clear;

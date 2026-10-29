@@ -25,6 +25,8 @@
 //   MinimapNoticeShown) der Hinweis „Zwei Minimaps sichtbar“ mit „IDE-Minimap
 //   ausblenden“ (für diese Sitzung) und „Atlas-Minimap aus“. Eine Schnittstelle
 //   zum Abfragen oder Abschalten bietet die Open Tools API nicht.
+// - Anlegen je Editorfenster, Wächter, Freigabe nach der Sperre durch die
+//   IDE und Abbau übernimmt TAtlasEditorBarHost (#1248).
 // editor.minimap oder experimental.enabled aus: alle Streifen weg, kein
 // Zeichen-Ereignis. Nur im Hauptthread.
 
@@ -51,7 +53,6 @@ uses
   System.Classes,
   System.Types,
   System.Math,
-  System.Generics.Collections,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.ExtCtrls,
@@ -71,6 +72,7 @@ uses
   Atlas.UI.Popup.Window,
   Atlas.UI.Notifications.Notice,
   Atlas.UI.Editor.Minimap,
+  Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
@@ -87,16 +89,6 @@ const
   MaxSearchDepth = 6;
 
 type
-  TMinimapState = class;
-
-  /// <summary>Erfährt, wenn die IDE einen Streifen mit seinem Fenster freigibt.</summary>
-  TViewWatcher = class(TComponent)
-  private
-    FState: TMinimapState;
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  end;
-
   TEvents = class(TNTACodeEditorNotifier)
   protected
     function AllowedEvents: TCodeEditorEvents; override;
@@ -106,8 +98,7 @@ type
   TMinimapState = class
   private
     FTimer: TTimer;
-    FWatcher: TViewWatcher;
-    FViews: TList<TAtlasMinimapView>;
+    FHost: TAtlasEditorBarHost;
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
     FIndex: Integer;
@@ -144,11 +135,9 @@ type
     FNotice: TAtlasNoticeWindow;
     FHideIde: Boolean;
     procedure Tick(Sender: TObject);
-    function EditorOf(const AWindow: INTAEditWindow): TWinControl;
-    function ViewOf(AParent: TWinControl): TAtlasMinimapView;
     function ActiveMinimap: TAtlasMinimapView;
-    procedure EnsureViews;
-    procedure CreateView(AParent: TWinControl);
+    function CreateView(AParent: TWinControl): TAtlasMinimapView;
+    procedure Place(AView: TAtlasMinimapView; AParent: TWinControl);
     procedure PlaceView(AView: TAtlasMinimapView);
     procedure Update;
     procedure UpdateContent(const AView: IOTAEditView; AMinimap: TAtlasMinimapView);
@@ -168,7 +157,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Removed(AView: TAtlasMinimapView);
+    procedure Removed(AView: TControl);
     procedure ApplySettings;
     procedure ApplyTheme;
   end;
@@ -188,15 +177,6 @@ begin
   Result := (A.Render = B.Render) and (A.Width = B.Width) and (A.Scale = B.Scale) and (A.MaxColumn = B.MaxColumn) and
     (A.Side = B.Side) and (A.Slider = B.Slider) and (A.SectionHeaders = B.SectionHeaders) and
     (A.HighlightMethod = B.HighlightMethod) and (A.Markers = B.Markers) and (A.ClickJumps = B.ClickJumps);
-end;
-
-{ TViewWatcher }
-
-procedure TViewWatcher.Notification(AComponent: TComponent; Operation: TOperation);
-begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent is TAtlasMinimapView) and (FState <> nil) then
-    FState.Removed(TAtlasMinimapView(AComponent));
 end;
 
 { TEvents }
@@ -221,9 +201,20 @@ begin
   FIndex := -1;
   FPaintedTop := -1;
   FTabWidth := 4;
-  FViews := TList<TAtlasMinimapView>.Create;
-  FWatcher := TViewWatcher.Create(nil);
-  FWatcher.FState := Self;
+  FHost := TAtlasEditorBarHost.Create('Minimap', TAtlasFeature.Minimap,
+    function(AEditorParent: TWinControl): TControl
+    begin
+      Result := CreateView(AEditorParent);
+    end,
+    procedure(ABar: TControl; AEditorParent: TWinControl)
+    begin
+      Place(TAtlasMinimapView(ABar), AEditorParent);
+    end);
+  FHost.OnRemoved :=
+    procedure(ABar: TControl)
+    begin
+      Removed(ABar);
+    end;
   FOptions := CurrentOptions;
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
@@ -239,7 +230,6 @@ end;
 destructor TMinimapState.Destroy;
 var
   Services: INTACodeEditorServices;
-  View: TAtlasMinimapView;
 begin
   FTimer.Free;
   // Erst abmelden, dann freigeben (#493).
@@ -255,20 +245,12 @@ begin
     FreeAndNil(FWorker);
   end;
   FreeAndNil(FNotice);
-  FWatcher.FState := nil;
-  for View in FViews.ToArray do
-  begin
-    View.RemoveFreeNotification(FWatcher);
-    View.Free;
-  end;
-  FViews.Free;
-  FWatcher.Free;
+  FHost.Free;
   inherited Destroy;
 end;
 
-procedure TMinimapState.Removed(AView: TAtlasMinimapView);
+procedure TMinimapState.Removed(AView: TControl);
 begin
-  FViews.Remove(AView);
   if FContentView = AView then
     FContentView := nil;
 end;
@@ -276,7 +258,6 @@ end;
 procedure TMinimapState.ApplySettings;
 var
   Options: TAtlasMinimapOptions;
-  View: TAtlasMinimapView;
 begin
   Options := CurrentOptions;
   if SameOptions(Options, FOptions) then
@@ -285,70 +266,34 @@ begin
   if Options.MaxColumn <> FOptions.MaxColumn then
     FHasContent := False;
   FOptions := Options;
-  for View in FViews do
-  begin
-    View.SetOptions(FOptions);
-    PlaceView(View);
-  end;
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasMinimapView(ABar).SetOptions(FOptions);
+      PlaceView(TAtlasMinimapView(ABar));
+    end);
 end;
 
 procedure TMinimapState.ApplyTheme;
-var
-  View: TAtlasMinimapView;
 begin
-  for View in FViews do
-    View.SetColors(TAtlasIdeStyle.Colors);
-end;
-
-function TMinimapState.EditorOf(const AWindow: INTAEditWindow): TWinControl;
-var
-  Editor: TComponent;
-begin
-  Result := nil;
-  if (AWindow = nil) or (AWindow.Form = nil) then
-    Exit;
-  Editor := AWindow.Form.FindComponent('Editor');
-  if (Editor is TWinControl) and (TWinControl(Editor).Parent <> nil) then
-    Result := TWinControl(Editor);
-end;
-
-function TMinimapState.ViewOf(AParent: TWinControl): TAtlasMinimapView;
-var
-  View: TAtlasMinimapView;
-begin
-  for View in FViews do
-    if View.Parent = AParent then
-      Exit(View);
-  Result := nil;
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    begin
+      TAtlasMinimapView(ABar).SetColors(TAtlasIdeStyle.Colors);
+    end);
 end;
 
 function TMinimapState.ActiveMinimap: TAtlasMinimapView;
-var
-  Services: INTAEditorServices;
-  Editor: TWinControl;
 begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
-    Exit;
-  Editor := EditorOf(Services.TopEditWindow);
-  if Editor <> nil then
-    Result := ViewOf(Editor.Parent);
+  Result := TAtlasMinimapView(FHost.ActiveBar);
 end;
 
-procedure TMinimapState.EnsureViews;
-var
-  Services: INTAEditorServices;
-  Index: Integer;
-  Editor: TWinControl;
+procedure TMinimapState.Place(AView: TAtlasMinimapView; AParent: TWinControl);
 begin
-  if not Supports(BorlandIDEServices, INTAEditorServices, Services) then
+  if AView.Parent = AParent then
     Exit;
-  for Index := 0 to Services.EditWindowCount - 1 do
-  begin
-    Editor := EditorOf(Services.EditWindow[Index]);
-    if (Editor <> nil) and (ViewOf(Editor.Parent) = nil) then
-      CreateView(Editor.Parent);
-  end;
+  AView.Parent := AParent;
+  PlaceView(AView);
 end;
 
 procedure TMinimapState.PlaceView(AView: TAtlasMinimapView);
@@ -373,13 +318,12 @@ begin
 end;
 
 /// <summary>Eigene Methode: Jeder Streifen braucht seine eigene gefangene Variable.</summary>
-procedure TMinimapState.CreateView(AParent: TWinControl);
+function TMinimapState.CreateView(AParent: TWinControl): TAtlasMinimapView;
 var
   View: TAtlasMinimapView;
 begin
   View := TAtlasMinimapView.Create(nil);
-  View.FreeNotification(FWatcher);
-  FViews.Add(View);
+  Result := View;
   View.SetOptions(FOptions);
   View.SetColors(TAtlasIdeStyle.Colors);
   View.OnScroll :=
@@ -400,8 +344,6 @@ begin
           Jump(View, ALine);
         end);
     end;
-  View.Parent := AParent;
-  PlaceView(View);
 end;
 
 procedure TMinimapState.StartWorker(const AText: string; AVersion: Cardinal; AMaxColumn, ATabWidth: Integer);
@@ -557,7 +499,7 @@ var
   LineCount: Integer;
 begin
   ApplySettings;
-  EnsureViews;
+  FHost.Ensure;
   Minimap := ActiveMinimap;
   View := TAtlasEditorBuffer.ActiveView;
   if (Minimap = nil) or (View = nil) or (View.Buffer = nil) then
@@ -761,18 +703,18 @@ begin
 end;
 
 procedure TMinimapState.HideIdeMinimap;
-var
-  View: TAtlasMinimapView;
-  Ide: TControl;
 begin
   // Für diese Sitzung; die Einstellung der IDE bleibt.
   FHideIde := True;
-  for View in FViews do
-  begin
-    Ide := IdeMinimap(View.Parent);
-    if Ide <> nil then
-      Ide.Visible := False;
-  end;
+  FHost.ForEach(
+    procedure(ABar: TControl)
+    var
+      Ide: TControl;
+    begin
+      Ide := IdeMinimap(ABar.Parent);
+      if Ide <> nil then
+        Ide.Visible := False;
+    end);
 end;
 
 procedure TMinimapState.TurnOff;
