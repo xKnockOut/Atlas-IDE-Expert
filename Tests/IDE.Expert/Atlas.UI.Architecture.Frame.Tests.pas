@@ -3,7 +3,8 @@
 // Fenster „Atlas-Architektur“ (#1118), Fensterinhalt: Tabellen und Bäume aus
 // den Daten des Servers, Sortieren per Spaltenklick, Filter, Öffnen von Unit
 // und uses-Eintrag, Hinweise, Umfang und Bibliotheks-Units, Treffer der
-// Karte; Reiter „Vergleich“ und Änderungen auf der Karte (#1121).
+// Karte; Reiter „Vergleich“ und Änderungen auf der Karte (#1121); Regler
+// „Feinheit“ mit Wert und Zahl der Teilsysteme (#1366).
 
 interface
 
@@ -50,6 +51,12 @@ type
     procedure WithoutComparisonShowsHint;
     [Test]
     procedure RouteFromSymbolPath;
+    [Test]
+    procedure ResolutionSliderReportsOnRelease;
+    [Test]
+    procedure ResolutionSliderCanBeHidden;
+    [Test]
+    procedure ComparisonNamesDifferentResolution;
   end;
 
 implementation
@@ -399,6 +406,70 @@ begin
   // Ungültige Nummern: kein Weg.
   FFrame.Map.ShowRoute(TArray<Integer>.Create(999), nil);
   Assert.AreEqual(-1, FFrame.Map.PathFrom);
+end;
+
+procedure TAtlasArchitectureFrameTests.ResolutionSliderReportsOnRelease;
+var
+  mReported: Double;
+  mCount: Integer;
+begin
+  mReported := 0;
+  mCount := 0;
+  FFrame.OnResolutionChanged :=
+    procedure(AValue: Double)
+    begin
+      mReported := AValue;
+      Inc(mCount);
+    end;
+  Assert.AreEqual(Double(1), FFrame.ResolutionValue, 1E-9);
+  // Mit dem Wert der Karte steht die Zahl der Teilsysteme daneben.
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionInfo,
+    [TAtlasArchResolution.Text(1, FormatSettings), FFrame.Model.SubsystemCount]), FFrame.ResolutionInfo.Caption);
+  // Ziehen zeigt nur den Wert, meldet aber noch nichts.
+  FFrame.ResolutionSlider.MoveTo(75, False);
+  Assert.AreEqual(0, mCount);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionValue,
+    [TAtlasArchResolution.Text(2.24, FormatSettings)]), FFrame.ResolutionInfo.Caption);
+  // Loslassen meldet den Wert einmal.
+  FFrame.ResolutionSlider.MoveTo(75, True);
+  Assert.AreEqual(1, mCount);
+  Assert.AreEqual(Double(2.24), mReported, 1E-9);
+  FFrame.ResolutionSlider.MoveTo(75, True);
+  Assert.AreEqual(1, mCount, 'gleiche Stellung meldet nicht erneut');
+  // Doppelklick setzt 1,0.
+  FFrame.ResolutionSlider.Reset;
+  Assert.AreEqual(2, mCount);
+  Assert.AreEqual(Double(1), mReported, 1E-9);
+  // Setzen aus den Einstellungen meldet nichts.
+  FFrame.ResolutionValue := 0.5;
+  Assert.AreEqual(2, mCount);
+  Assert.AreEqual(Double(0.5), FFrame.ResolutionValue, 0.01);
+end;
+
+procedure TAtlasArchitectureFrameTests.ResolutionSliderCanBeHidden;
+begin
+  Assert.IsTrue(FFrame.ShowResolution);
+  FFrame.ShowResolution := False;
+  Assert.IsFalse(FFrame.ResolutionSlider.Visible);
+  Assert.IsFalse(FFrame.ResolutionInfo.Visible);
+  FFrame.ShowResolution := True;
+  Assert.IsTrue(FFrame.ResolutionSlider.Visible);
+end;
+
+procedure TAtlasArchitectureFrameTests.ComparisonNamesDifferentResolution;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mNote: string;
+begin
+  mNote := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonResolution,
+    [TAtlasArchResolution.Text(1, FormatSettings), TAtlasArchResolution.Text(2, FormatSettings)]);
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleResolutionAnswer, mModel, mEnabled));
+  FFrame.SetModel(mModel);
+  Assert.IsTrue(ContainsStr(FFrame.ComparisonInfo.Caption, mNote), FFrame.ComparisonInfo.Caption);
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleComparisonAnswer, mModel, mEnabled));
+  FFrame.SetModel(mModel);
+  Assert.IsFalse(ContainsStr(FFrame.ComparisonInfo.Caption, mNote), FFrame.ComparisonInfo.Caption);
 end;
 
 initialization

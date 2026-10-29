@@ -2036,6 +2036,39 @@ begin
 end;
 
 procedure TValidator.ReadArchitecture(ANode: TJsonNode);
+
+  // architecture.grouping: Gruppierung der Teilsysteme (#1366).
+  procedure ReadGrouping(AGroupNode: TJsonNode);
+  var
+    mIndex: Integer;
+    mKey: string;
+    mNumber: Double;
+  begin
+    if AGroupNode.Kind <> TJsonKind.Object_ then
+    begin
+      ReportNode(AGroupNode, '"architecture.grouping" muss ein Objekt sein');
+      Exit;
+    end;
+    for mIndex := 0 to AGroupNode.Count - 1 do
+    begin
+      mKey := AGroupNode.Keys[mIndex];
+      if mKey = 'resolution' then
+      begin
+        if (AGroupNode[mIndex].Kind = TJsonKind.Number) and
+          TryStrToFloat(AGroupNode[mIndex].Value, mNumber, TFormatSettings.Invariant) and (mNumber >= 0.2) and
+          (mNumber <= 5) then
+          FSettings.ArchitectureGroupingResolution := mNumber
+        else
+          ReportNode(AGroupNode[mIndex], '"architecture.grouping.resolution" muss eine Zahl von 0,2 bis 5,0 sein');
+      end
+      else if mKey = 'showResolutionSlider' then
+        ExpectBoolean(AGroupNode[mIndex], mKey, FSettings.ArchitectureGroupingShowResolutionSlider)
+      else
+        Report(AGroupNode.KeyStarts[mIndex], AGroupNode.KeyStarts[mIndex] + Length(mKey) + 2,
+          Format('Unbekannte Einstellung "architecture.grouping.%s"', [mKey]), False);
+    end;
+  end;
+
 var
   Index, Item, Number: Integer;
   Key, Value: string;
@@ -2105,6 +2138,8 @@ begin
               'newCycle, newCrossLink, subsystemChange, centralGrowth)', [Value]));
         end;
     end
+    else if Key = 'grouping' then
+      ReadGrouping(ANode[Index])
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "architecture.%s"', [Key]), False);
@@ -3255,6 +3290,8 @@ begin
       Result.ArchitectureExclude := FileSettings.ArchitectureExclude;
       Result.ArchitectureBaseline := FileSettings.ArchitectureBaseline;
       Result.ArchitectureFailOn := FileSettings.ArchitectureFailOn;
+      Result.ArchitectureGroupingResolution := FileSettings.ArchitectureGroupingResolution;
+      Result.ArchitectureGroupingShowResolutionSlider := FileSettings.ArchitectureGroupingShowResolutionSlider;
     end
     else if Key = 'usesCommand' then
       Result.UsesCommand := FileSettings.UsesCommand

@@ -3,7 +3,8 @@
 // Fenster „Atlas-Architektur“ (#1118), Kern: Antwort des Servers lesen
 // (dieselben Daten wie TArchitectureReport.Json), Sortieren, Filter, Pfade,
 // Farben und Umrechnung der Karte; Vergleich mit einem gespeicherten Stand
-// (#1121) und die Argumente dazu.
+// (#1121) und die Argumente dazu; Feinheit der Teilsysteme (#1366): Regler,
+// settings.json, Argumente und Hinweis im Vergleich.
 
 interface
 
@@ -38,6 +39,14 @@ type
     procedure CommandArgumentsWithComparison;
     [Test]
     procedure RouteOfSymbolPath;
+    [Test]
+    procedure ResolutionScaleIsLogarithmic;
+    [Test]
+    procedure GroupingSettingsReadAndWrite;
+    [Test]
+    procedure ParsesResolution;
+    [Test]
+    procedure CommandArgumentsWithResolution;
   end;
 
 /// <summary>Antwort von atlas.architecture zu einem kleinen Projekt mit Zyklus (für Kern- und UI-Tests).</summary>
@@ -45,6 +54,8 @@ function SampleAnswer: string;
 /// <summary>Wie SampleAnswer mit Vergleich (#1121): Im alten Stand gab es App.Old, aber weder den Zyklus
 /// Db ↔ Cache noch App.Ui.Grid → App.Data.</summary>
 function SampleComparisonAnswer: string;
+/// <summary>Wie SampleComparisonAnswer, der aktuelle Stand aber mit Feinheit γ = 2 gerechnet (#1366).</summary>
+function SampleResolutionAnswer: string;
 
 implementation
 
@@ -65,6 +76,18 @@ uses
   Atlas.Core.Architecture.Model;
 
 /// <summary>Kleines Projekt; AOlder: der frühere Stand (siehe SampleComparisonAnswer).</summary>
+function SampleOverview(AOlder: Boolean): TArchitectureOverview; overload; forward;
+
+/// <summary>Wie oben mit Feinheit AResolution (#1366).</summary>
+function SampleOverview(AOlder: Boolean; AResolution: Double): TArchitectureOverview; overload;
+var
+  mOverview: TArchitectureOverview;
+begin
+  mOverview := SampleOverview(AOlder);
+  mOverview.Grouping.Resolution := AResolution;
+  Result := mOverview;
+end;
+
 function SampleOverview(AOlder: Boolean): TArchitectureOverview;
 var
   Index: ISymbolIndex;
@@ -131,6 +154,18 @@ begin
     TArchitectureSnapshots.FromOverview(Current));
   Result := AnswerOf(Current, ',"baseline":"C:\\Projekt\\stand.json","comparison":' +
     TArchitectureComparer.Json(Comparison, TArchitectureComparer.DefaultFailOn));
+end;
+
+function SampleResolutionAnswer: string;
+var
+  mCurrent: TArchitectureOverview;
+  mComparison: TArchitectureComparison;
+begin
+  mCurrent := SampleOverview(False, 2);
+  mComparison := TArchitectureComparer.Compare(TArchitectureSnapshots.FromOverview(SampleOverview(True)),
+    TArchitectureSnapshots.FromOverview(mCurrent));
+  Result := AnswerOf(mCurrent, ',"baseline":"C:\\Projekt\\stand.json","comparison":' +
+    TArchitectureComparer.Json(mComparison, TArchitectureComparer.DefaultFailOn));
 end;
 
 { TAtlasArchitectureModelTests }
@@ -477,6 +512,119 @@ begin
   Assert.AreEqual(0, Integer(Length(Edges)));
   Assert.IsFalse(Model.RouteOf(TArray<string>.Create('System.SysUtils'), Units, Edges));
   Assert.AreEqual(0, Integer(Length(Units)));
+end;
+
+procedure TAtlasArchitectureModelTests.ResolutionScaleIsLogarithmic;
+var
+  mFormat: TFormatSettings;
+begin
+  Assert.AreEqual(Double(0.2), TAtlasArchResolution.ValueAt(0), 1E-9);
+  Assert.AreEqual(Double(1), TAtlasArchResolution.ValueAt(TAtlasArchResolution.Steps div 2), 1E-9);
+  Assert.AreEqual(Double(5), TAtlasArchResolution.ValueAt(TAtlasArchResolution.Steps), 1E-9);
+  // Logarithmisch: ein Viertel des Wegs ist √5 · 0,2 ≈ 0,45, drei Viertel ≈ 2,24.
+  Assert.AreEqual(Double(0.45), TAtlasArchResolution.ValueAt(25), 1E-9);
+  Assert.AreEqual(Double(2.24), TAtlasArchResolution.ValueAt(75), 1E-9);
+  Assert.AreEqual(50, TAtlasArchResolution.PositionOf(1));
+  Assert.AreEqual(0, TAtlasArchResolution.PositionOf(0.2));
+  Assert.AreEqual(100, TAtlasArchResolution.PositionOf(5));
+  // Außerhalb begrenzt, ungültig = 1.
+  Assert.AreEqual(0, TAtlasArchResolution.PositionOf(0.01));
+  Assert.AreEqual(100, TAtlasArchResolution.PositionOf(80));
+  Assert.AreEqual(50, TAtlasArchResolution.PositionOf(0));
+  Assert.AreEqual(Double(1), TAtlasArchResolution.Clamp(-3), 1E-9);
+  mFormat := TFormatSettings.Invariant;
+  mFormat.DecimalSeparator := ',';
+  Assert.AreEqual('1,0', TAtlasArchResolution.Text(1, mFormat));
+  Assert.AreEqual('2,24', TAtlasArchResolution.Text(2.24, mFormat));
+  Assert.AreEqual('0.5', TAtlasArchResolution.Text(0.5, TFormatSettings.Invariant));
+end;
+
+procedure TAtlasArchitectureModelTests.GroupingSettingsReadAndWrite;
+var
+  mResolution: Double;
+  mSlider: Boolean;
+  mText: string;
+begin
+  TAtlasArchitectureGroupingSettings.Read('', mResolution, mSlider);
+  Assert.AreEqual(Double(1), mResolution, 1E-9);
+  Assert.IsTrue(mSlider);
+  TAtlasArchitectureGroupingSettings.Read('{"architecture": {"grouping": {"resolution": 2.5, ' +
+    '"showResolutionSlider": false}}}', mResolution, mSlider);
+  Assert.AreEqual(Double(2.5), mResolution, 1E-9);
+  Assert.IsFalse(mSlider);
+  // Ungültiges wie die Vorgabe.
+  TAtlasArchitectureGroupingSettings.Read('{"architecture": {"grouping": {"resolution": "fein"}}}', mResolution,
+    mSlider);
+  Assert.AreEqual(Double(1), mResolution, 1E-9);
+  // Schreiben lässt den übrigen Text stehen und legt fehlende Objekte an.
+  mText := TAtlasArchitectureGroupingSettings.WithResolution('{' + sLineBreak + '  "language": "de"' + sLineBreak +
+    '}' + sLineBreak, 1.75);
+  Assert.Contains(mText, '"language": "de"');
+  TAtlasArchitectureGroupingSettings.Read(mText, mResolution, mSlider);
+  Assert.AreEqual(Double(1.75), mResolution, 1E-9);
+  mText := TAtlasArchitectureGroupingSettings.WithResolution(mText, 0.5);
+  TAtlasArchitectureGroupingSettings.Read(mText, mResolution, mSlider);
+  Assert.AreEqual(Double(0.5), mResolution, 1E-9);
+  Assert.IsTrue(mSlider);
+end;
+
+procedure TAtlasArchitectureModelTests.ParsesResolution;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mAnswer: string;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  Assert.AreEqual(Double(1), mModel.Resolution, 1E-9);
+  Assert.AreEqual(Integer(Length(mModel.Subsystems)), mModel.SubsystemCount);
+  // Stand mit γ 1,0, aktueller mit 2,0: Hinweis im Vergleich.
+  mAnswer := SampleResolutionAnswer;
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(mAnswer, mModel, mEnabled));
+  Assert.AreEqual(Double(2), mModel.Resolution, 1E-9);
+  Assert.AreEqual(Double(1), mModel.Comparison.BaselineResolution, 1E-9);
+  Assert.AreEqual(Double(2), mModel.Comparison.Resolution, 1E-9);
+  Assert.IsTrue(mModel.Comparison.ResolutionDiffers);
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleComparisonAnswer, mModel, mEnabled));
+  Assert.IsFalse(mModel.Comparison.ResolutionDiffers);
+end;
+
+procedure TAtlasArchitectureModelTests.CommandArgumentsWithResolution;
+var
+  mValue: TJSONValue;
+  mOptions: TAtlasArchitectureOptions;
+  mItem: TJSONObject;
+  mNumber: Double;
+begin
+  mOptions := TAtlasArchitectureOptions.Create('project', True);
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', mOptions));
+  try
+    mItem := (mValue as TJSONArray).Items[1] as TJSONObject;
+    Assert.IsNull(mItem.GetValue('resolution'));
+    Assert.AreEqual('json', mItem.GetValue<string>('format'));
+  finally
+    mValue.Free;
+  end;
+  mOptions.Resolution := 1.5;
+  mOptions.CompareWith := 'C:\P\stand.json';
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', mOptions));
+  try
+    mItem := (mValue as TJSONArray).Items[1] as TJSONObject;
+    mNumber := mItem.GetValue<Double>('resolution');
+    Assert.AreEqual(Double(1.5), mNumber, 1E-9);
+    Assert.AreEqual('C:\P\stand.json', mItem.GetValue<string>('compareWith'));
+  finally
+    mValue.Free;
+  end;
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.SaveArguments('file:///C:/P/App.dproj',
+    'C:\Pericht.html', mOptions));
+  try
+    mItem := (mValue as TJSONArray).Items[2] as TJSONObject;
+    mNumber := mItem.GetValue<Double>('resolution');
+    Assert.AreEqual(Double(1.5), mNumber, 1E-9);
+    Assert.IsNull(mItem.GetValue('format'));
+  finally
+    mValue.Free;
+  end;
 end;
 
 initialization
