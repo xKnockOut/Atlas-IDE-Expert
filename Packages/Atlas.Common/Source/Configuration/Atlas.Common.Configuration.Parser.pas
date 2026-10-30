@@ -2177,6 +2177,8 @@ begin
       ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsUsesCycleLive)
     else if Key = 'usesCycleImplementation' then
       ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsUsesCycleImplementation)
+    else if Key = 'librarySources' then
+      ExpectBoolean(ANode[Index], Key, FSettings.DiagnosticsLibrarySources)
     else
       Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
         Format('Unbekannte Einstellung "diagnostics.%s"', [Key]), False);
@@ -3589,6 +3591,7 @@ begin
       Result.DiagnosticsLogMapFile := FileSettings.DiagnosticsLogMapFile;
       Result.DiagnosticsUsesCycleLive := FileSettings.DiagnosticsUsesCycleLive;
       Result.DiagnosticsUsesCycleImplementation := FileSettings.DiagnosticsUsesCycleImplementation;
+      Result.DiagnosticsLibrarySources := FileSettings.DiagnosticsLibrarySources;
     end
     else if Key = 'index' then
     begin
