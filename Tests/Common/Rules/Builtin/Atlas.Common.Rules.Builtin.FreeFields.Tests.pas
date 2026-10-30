@@ -48,6 +48,8 @@ type
     procedure VisibleVariableUsedElsewhereIsSilent;
     [Test]
     procedure InitializationRuleOffAndExclude;
+    [Test]
+    procedure IndexedOwnerAndDynamicArrayAreSilent;
   end;
 
 implementation
@@ -365,6 +367,60 @@ begin
   // Eine Variable im implementation-Abschnitt sieht keine andere Unit.
   Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TInitializationNotFinalizedRule.Create, Protokoll,
     Index, '', 'U.pas'))));
+end;
+
+procedure TFreeFieldRulesTests.IndexedOwnerAndDynamicArrayAreSilent;
+const
+  // Wie Atlas.IDE.Build.CheckOnSave: Der Dienst aus einer anderen Unit hält seine Teilnehmer in einer
+  // TObjectList; dazu ein TArray<string>, das der Index neben der Klasse TArray kennt.
+  Source = 'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'  private type'#10 +
+    '    TWatcher = class(TParticipant)'#10'    end;'#10'  private'#10'    FEvents: TEvents;'#10 +
+    '    FWatcher: TWatcher;'#10'    FNames: TArray<string>;'#10'  public'#10 +
+    '    constructor Create(AEvents: TEvents);'#10'    function Names: TArray<string>;'#10'  end;'#10 +
+    'implementation'#10'constructor TFoo.Create(AEvents: TEvents);'#10'begin'#10'  FEvents := AEvents;'#10 +
+    '  FWatcher := TWatcher.Create;'#10'  FEvents.Add(FWatcher);'#10 +
+    '  FNames := TArray<string>.Create(''a'');'#10'end;'#10'function TFoo.Names: TArray<string>;'#10 +
+    'begin'#10'  Result := FNames;'#10'end;'#10'end.';
+
+  function Symbol(const AName, AContainer: string; AKind: TIndexSymbolKind; const ATypeName,
+    ATypeArgs: string): TIndexSymbol;
+  begin
+    Result := Default(TIndexSymbol);
+    Result.Name := AName;
+    Result.Container := AContainer;
+    Result.Kind := AKind;
+    Result.TypeName := ATypeName;
+    Result.TypeArgs := ATypeArgs;
+  end;
+
+  function Unclear(const AIndex: ISymbolIndex): Integer;
+  begin
+    Result := Length(TRuleAssert.IndexFindings(TOwnedFieldFreeUnclearRule.Create, Source, AIndex, '', 'U.pas')) +
+      Length(TRuleAssert.IndexFindings(TOwnedFieldNotFreedRule.Create, Source, AIndex, '', 'U.pas'));
+  end;
+
+var
+  Index: ISymbolIndex;
+  Events, Collections: TUnitIndex;
+begin
+  Index := TSymbolIndex.Create;
+  Collections := Default(TUnitIndex);
+  Collections.UnitName := 'System.Generics.Collections';
+  Collections.FileName := 'System.Generics.Collections.pas';
+  Collections.Symbols := [Symbol('TArray', '', TIndexSymbolKind.ClassType, '', '')];
+  Index.AddUnit(Collections);
+  Events := Default(TUnitIndex);
+  Events.UnitName := 'Events';
+  Events.FileName := 'Events.pas';
+  Events.Symbols := [Symbol('TEvents', '', TIndexSymbolKind.ClassType, '', ''),
+    Symbol('FItems', 'TEvents', TIndexSymbolKind.Field, 'TObjectList', 'TParticipant')];
+  Index.AddUnit(Events);
+  Assert.AreEqual(0, Unclear(Index));
+  // Ohne besitzende Liste bleibt die Übergabe unklar.
+  Events.Symbols := [Symbol('TEvents', '', TIndexSymbolKind.ClassType, '', ''),
+    Symbol('FItems', 'TEvents', TIndexSymbolKind.Field, 'TList', 'TParticipant')];
+  Index.AddUnit(Events);
+  Assert.AreEqual(1, Unclear(Index));
 end;
 
 procedure TFreeFieldRulesTests.InitializationRuleOffAndExclude;

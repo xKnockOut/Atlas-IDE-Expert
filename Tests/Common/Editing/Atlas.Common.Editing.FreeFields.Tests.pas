@@ -56,6 +56,10 @@ type
     [Test]
     procedure ObjectCreationOutsideClasses;
     [Test]
+    procedure HandOverToOwningListIsSilent;
+    [Test]
+    procedure DynamicArrayIsNoObject;
+    [Test]
     procedure ClassDestructorIsCreatedOrFilled;
   end;
 
@@ -405,6 +409,103 @@ begin
   Assert.AreEqual('wird in TFoo.Create an AEvents.Add übergeben', Fields[0].Reason);
   Assert.AreEqual('FTemp', Fields[1].Name);
   Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(Fields[1].State));
+end;
+
+procedure TFreeFieldsTests.HandOverToOwningListIsSilent;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TParticipant = class'#10 +
+    '  end;'#10 +
+    '  TEvents = class'#10 +
+    '  private'#10 +
+    '    FItems: TObjectList<TParticipant>;'#10 +
+    '  public'#10 +
+    '    procedure Add(AItem: TParticipant);'#10 +
+    '  end;'#10 +
+    '  TPlain = class'#10 +
+    '  public'#10 +
+    '    procedure Add(AItem: TParticipant);'#10 +
+    '  end;'#10 +
+    '  TFoo = class'#10 +
+    '  private type'#10 +
+    '    TWatcher = class(TParticipant)'#10 +
+    '    end;'#10 +
+    '  private'#10 +
+    '    FEvents: TEvents;'#10 +
+    '    FPlain: TPlain;'#10 +
+    '    FOwning: TObjectList<TWatcher>;'#10 +
+    '    FLoose: TObjectList<TWatcher>;'#10 +
+    '    FWatcher, FListed, FLoosely, FPlainly: TWatcher;'#10 +
+    '  public'#10 +
+    '    constructor Create(AEvents: TEvents; APlain: TPlain);'#10 +
+    '    destructor Destroy; override;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create(AEvents: TEvents; APlain: TPlain);'#10 +
+    'begin'#10 +
+    '  FEvents := AEvents;'#10 +
+    '  FPlain := APlain;'#10 +
+    '  FOwning := TObjectList<TWatcher>.Create;'#10 +
+    '  FLoose := TObjectList<TWatcher>.Create(False);'#10 +
+    '  FWatcher := TWatcher.Create;'#10 +
+    '  FEvents.Add(FWatcher);'#10 +
+    '  FListed := TWatcher.Create;'#10 +
+    '  FOwning.Add(FListed);'#10 +
+    '  FLoosely := TWatcher.Create;'#10 +
+    '  FLoose.Add(FLoosely);'#10 +
+    '  FPlainly := TWatcher.Create;'#10 +
+    '  FPlain.Add(FPlainly);'#10 +
+    'end;'#10 +
+    'destructor TFoo.Destroy;'#10 +
+    'begin'#10 +
+    '  FOwning.Free;'#10 +
+    '  FLoose.Free;'#10 +
+    '  inherited;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Fields: TArray<TOwnedField>;
+begin
+  // TEvents hält seine Teilnehmer in einer TObjectList, FOwning besitzt seine Elemente: beide übernehmen.
+  // Eine mit False erzeugte Liste und eine Klasse ohne besitzende Liste bleiben unklar.
+  Fields := Analyze(Text);
+  Assert.AreEqual(2, Integer(Length(Fields)));
+  Assert.AreEqual('FLoosely', Fields[0].Name);
+  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(Fields[0].State));
+  Assert.AreEqual('wird in TFoo.Create an FLoose.Add übergeben', Fields[0].Reason);
+  Assert.AreEqual('FPlainly', Fields[1].Name);
+  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(Fields[1].State));
+end;
+
+procedure TFreeFieldsTests.DynamicArrayIsNoObject;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FNames: TArray<string>;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    function Names: TArray<string>;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FNames := TArray<string>.Create(''a'', ''b'');'#10 +
+    'end;'#10 +
+    'function TFoo.Names: TArray<string>;'#10 +
+    'begin'#10 +
+    '  Result := FNames;'#10 +
+    'end;'#10 +
+    'end.';
+begin
+  // TArray<T> ist ein dynamisches Array: Referenzzählung, keine Freigabe.
+  Assert.AreEqual(0, Integer(Length(Analyze(Text))));
 end;
 
 procedure TFreeFieldsTests.CreationInPrivateHelper;
