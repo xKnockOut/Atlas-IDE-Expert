@@ -33,7 +33,7 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Lsp.TypeInfoClasses;
+  Atlas.Common.Semantics.TypeInfoClasses;
 
 type
   /// <summary>Werte für SymbolKind des LSP (Auswahl).</summary>

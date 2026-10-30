@@ -2,7 +2,7 @@
 
 // Tests der Sprachregeln für Typdeklarationen: operator-declaration-invalid
 // (#1030) mit dem Beispiel samt Korrektur in Deklaration und Rumpf, allen
-// Codes (E2393, E2517, E2518, E2519, E2521, E2522, E2464), stillen
+// Codes (E2393, E2517, E2518, E2519, E2521, E2522, E2617), stillen
 // Fällen (richtige Operatoren, Aliase, unbekannte Typen) und Abschalten;
 // generic-declaration-invalid (#1029) mit dem Beispiel und je Gruppe von
 // Codes ein gemeldeter und ein stiller Fall, still bei Methodenzuordnungen
@@ -180,12 +180,17 @@ begin
   Source := Geld('    class operator Addition(const A, B: TGeld): TGeld;'#10,
     'class operator TGeld.Addition(const A, B: TGeld): TGeld;'#10'begin'#10'end;'#10);
   Found := OperatorFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
+  // Zum Rumpf meldet dcc E2037 (Cm.E2393, #1380).
+  Assert.AreEqual(2, Integer(Length(Found)));
   Assert.AreEqual('Unbekannter Operator Addition (wie E2393).', Found[0].Message);
+  Assert.AreEqual('Zu TGeld.Addition gibt es keine gültige Deklaration; der Rumpf passt zu nichts (wie E2037).',
+    Found[1].Message);
+  Assert.AreEqual(8, Found[1].Range.StartPos.Line);
+  Assert.AreEqual(21, Found[1].Range.StartPos.Character);
   Source := Geld('    class operator Substract(const A, B: TGeld): TGeld;'#10,
     'class operator TGeld.Substract(const A, B: TGeld): TGeld;'#10'begin'#10'end;'#10);
   Found := OperatorFindings(Source);
-  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual(2, Integer(Length(Found)));
   Assert.AreEqual('Unbekannter Operator Substract; gemeint ist wohl Subtract (wie E2393).', Found[0].Message);
   Assert.AreEqual('In Subtract umbenennen', Found[0].Fixes[0].Title);
   Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
@@ -248,6 +253,13 @@ begin
     '  THund = class(TTier)'#10'    class operator Implicit(A: THund): TTier;'#10'  end;'#10'implementation'#10'end.');
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('Implicit darf nicht in den Vorfahren TTier oder aus ihm umwandeln (wie E2522).', Found[0].Message);
+  // Klassenoperatoren gibt es nur in Records: Der Rumpf passt zu nichts (Cm.E2522, #1380).
+  Found := OperatorFindings('unit Tiere;'#10'interface'#10'type'#10'  TTier = class'#10'  end;'#10 +
+    '  THund = class(TTier)'#10'    class operator Implicit(A: THund): TTier;'#10'  end;'#10'implementation'#10#10 +
+    'class operator THund.Implicit(A: THund): TTier;'#10'begin'#10'  Result := A;'#10'end;'#10#10'end.');
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Zu THund.Implicit gibt es keine gültige Deklaration; der Rumpf passt zu nichts (wie E2037).',
+    Found[1].Message);
 end;
 
 procedure TOperatorDeclarationInvalidTests.AssignNeedsVar;
@@ -258,7 +270,7 @@ begin
   Source := Geld('    class operator Assign(const Dest: TGeld; const [ref] Src: TGeld);'#10);
   Found := OperatorFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Der erste Parameter von Assign muss ein var-Parameter sein (wie E2464).', Found[0].Message);
+  Assert.AreEqual('Der erste Parameter von Assign muss ein var-Parameter des eigenen Typs sein (wie E2617).', Found[0].Message);
   Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
   Assert.AreEqual(Geld('    class operator Assign(var Dest: TGeld; const [ref] Src: TGeld);'#10), Fixed);
   Source := Geld('    class operator Assign(Dest: TGeld; const [ref] Src: TGeld);'#10);

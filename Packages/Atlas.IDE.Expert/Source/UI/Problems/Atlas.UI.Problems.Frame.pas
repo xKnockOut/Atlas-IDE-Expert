@@ -16,8 +16,9 @@
 // klappen per Klick, Leertaste oder ←/→. Unten die Statuszeile.
 // Bedienung: Doppelklick oder Enter springt (OnOpen), Alt+Enter wendet die
 // Schnellkorrektur an (OnFix), Strg+C kopiert die Auswahl. Kontextmenü:
-// Gehe zu, Schnellkorrektur, „Für diese Zeile unterdrücken“, „Regel
-// einstellen…“, „Regel abschalten“, „Regel erklären“, Kopieren, Spalten,
+// Gehe zu, Schnellkorrektur, „Alle sicheren Treffer von <Regel> korrigieren …“
+// (#1352, OnFixAll; nur mit CanFixAll, fix.bulk), „Für diese Zeile
+// unterdrücken“, „Regel einstellen…“, „Regel abschalten“, „Regel erklären“, Kopieren, Spalten,
 // Sortierung zurücksetzen. Neue Einträge werden kurz hervorgehoben.
 // Den Inhalt (SetFindings) und die Statuszeile setzt die IDE-Schicht; Auswahl,
 // Aufklappzustand und Bildlauf bleiben dabei erhalten (TAtlasFindingsView).
@@ -74,6 +75,7 @@ type
     FMenu: TPopupMenu;
     FOpenItem: TMenuItem;
     FFixItem: TMenuItem;
+    FFixAllItem: TMenuItem;
     FSuppressItem: TMenuItem;
     FConfigureItem: TMenuItem;
     FDisableItem: TMenuItem;
@@ -101,6 +103,8 @@ type
     FImagesBack: TColor;
     FOnOpen: TAtlasFindingEvent;
     FOnFix: TAtlasFindingEvent;
+    FOnFixAll: TAtlasFindingEvent;
+    FCanFixAll: TFunc<Boolean>;
     FOnSuppress: TAtlasFindingEvent;
     FOnConfigure: TAtlasFindingEvent;
     FOnDisable: TAtlasFindingEvent;
@@ -158,6 +162,7 @@ type
     procedure MenuPopup(Sender: TObject);
     procedure OpenClick(Sender: TObject);
     procedure FixClick(Sender: TObject);
+    procedure FixAllClick(Sender: TObject);
     procedure SuppressClick(Sender: TObject);
     procedure ConfigureClick(Sender: TObject);
     procedure DisableClick(Sender: TObject);
@@ -222,6 +227,10 @@ type
     property Menu: TPopupMenu read FMenu;
     property OnOpen: TAtlasFindingEvent read FOnOpen write FOnOpen;
     property OnFix: TAtlasFindingEvent read FOnFix write FOnFix;
+    /// <summary>„Alle sicheren Treffer von … korrigieren …“ (#1352) mit dem Befund unter dem Cursor.</summary>
+    property OnFixAll: TAtlasFindingEvent read FOnFixAll write FOnFixAll;
+    /// <summary>Eintrag sichtbar (fix.bulk); nil = unsichtbar.</summary>
+    property CanFixAll: TFunc<Boolean> read FCanFixAll write FCanFixAll;
     property OnSuppress: TAtlasFindingEvent read FOnSuppress write FOnSuppress;
     property OnConfigure: TAtlasFindingEvent read FOnConfigure write FOnConfigure;
     property OnDisable: TAtlasFindingEvent read FOnDisable write FOnDisable;
@@ -370,6 +379,8 @@ begin
   FOpenItem.Default := True;
   FFixItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuFixNone), FixClick);
   FFixItem.ShortCut := ShortCut(VK_RETURN, [ssAlt]);
+  FFixAllItem := AddMenuItem(nil, TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFixAll, ['…']), FixAllClick);
+  FFixAllItem.Visible := False;
   FSuppressItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuSuppress), SuppressClick);
   FMenu.Items.Add(NewLine);
   FConfigureItem := AddMenuItem(nil, TAtlasStrings.Text(TAtlasTextId.ProblemsMenuConfigure), ConfigureClick);
@@ -1395,6 +1406,13 @@ begin
   else
     FFixItem.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuFixNone);
   FFixItem.Enabled := Has and (Finding.Problem.FixTitle <> '');
+  // Sammelkorrektur (#1352): je Regel; welche Treffer sicher sind, entscheidet der Server.
+  FFixAllItem.Visible := Assigned(FOnFixAll) and Assigned(FCanFixAll) and FCanFixAll();
+  FFixAllItem.Enabled := Rule;
+  if Rule then
+    FFixAllItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFixAll, [Finding.Rule])
+  else
+    FFixAllItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFixAll, ['…']);
   // Syntaxfehler (#1022) lassen sich nicht per Kommentar unterdrücken.
   FSuppressItem.Enabled := Rule and Finding.Problem.CanSuppress;
   FConfigureItem.Enabled := Rule;
@@ -1420,6 +1438,11 @@ end;
 procedure TAtlasProblemsFrame.FixClick(Sender: TObject);
 begin
   Fire(FOnFix);
+end;
+
+procedure TAtlasProblemsFrame.FixAllClick(Sender: TObject);
+begin
+  Fire(FOnFixAll);
 end;
 
 procedure TAtlasProblemsFrame.SuppressClick(Sender: TObject);
