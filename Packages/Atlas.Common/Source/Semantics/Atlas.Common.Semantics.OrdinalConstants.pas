@@ -11,8 +11,13 @@
 // der Aufrufer über ALookup auf. Alles andere, auch Gleitkomma, Strings und
 // Überläufe, gilt als nicht auswertbar. Check sagt zusätzlich, ob der Ausdruck
 // sicher durch null teilt oder sicher überläuft (#992, wie E2098 und E2099):
-// Überlauf heißt, das Ergebnis liegt auch außerhalb von UInt64, denn Delphi
-// rechnet Konstanten bis High(UInt64).
+// Überlauf heißt, das Ergebnis liegt auch außerhalb von UInt64, denn mit einem
+// UInt64-Operanden rechnet Delphi Konstanten bis High(UInt64). Sind alle
+// Operanden sicher vorzeichenbehaftet (Literale bis High(Int64), High/Low von
+// Typen mit Vorzeichen), rechnet dcc in Int64: High(Int64) + 1 ist dann schon
+// ein Überlauf (#1372, im Testprojekt Compilermeldungen mit Delphi 13 belegt).
+// Namen und Umwandlungen in vorzeichenlose 64-Bit-Typen machen den Typ des
+// Ausdrucks unsicher; ein Überlauf nur über High(Int64) bleibt dann unbekannt.
 
 interface
 
@@ -73,6 +78,13 @@ const
   OverflowBelow = -9.2233720368547758e18;
   OverflowAbove = 1.85e19;
 
+/// <summary>Vorzeichenloser Typ, der auf einer Plattform 64 Bit breit ist (UInt64, NativeUInt, LongWord).</summary>
+function UnsignedWide(const ATypeName: string): Boolean;
+begin
+  Result := MatchText(ATypeName, ['UInt64', 'NativeUInt', 'LongWord', 'System.UInt64', 'System.NativeUInt',
+    'System.LongWord']);
+end;
+
 type
   TEvaluator = class
   private
@@ -83,6 +95,9 @@ type
     FFailed: Boolean;
     FStatus: TOrdinalStatus;
     FDepth: Integer;
+    // Ein Operand könnte UInt64 sein (Name, Umwandlung, Low/High eines vorzeichenlosen 64-Bit-Typs): Dann rechnet
+    // Delphi bis High(UInt64), ein Überlauf über High(Int64) ist kein sicherer Fehler (#1372).
+    FMaybeUnsigned: Boolean;
     procedure SkipTrivia;
     function AtEnd: Boolean;
     function Current: TPascalToken;
@@ -198,13 +213,25 @@ begin
     FailWith(TOrdinalStatus.Overflow);
     Exit;
   end;
-  // Knapp an den Grenzen meldet die Überlaufprüfung EIntOverflow; Run macht daraus "unbekannt".
-  if AOperation = '+' then
-    Result := ALeft + ARight
-  else if AOperation = '-' then
-    Result := ALeft - ARight
-  else
-    Result := ALeft * ARight;
+  // Knapp an den Grenzen meldet die Überlaufprüfung EIntOverflow. Mit lauter vorzeichenbehafteten Operanden
+  // rechnet dcc in Int64 und meldet E2099 (#1372); mit einem möglichen UInt64-Operanden bleibt es unbekannt.
+  try
+    if AOperation = '+' then
+      Result := ALeft + ARight
+    else if AOperation = '-' then
+      Result := ALeft - ARight
+    else
+      Result := ALeft * ARight;
+  except
+    on EIntOverflow do
+    begin
+      Result := 0;
+      if FMaybeUnsigned then
+        Fail
+      else
+        FailWith(TOrdinalStatus.Overflow);
+    end;
+  end;
 end;
 
 function TEvaluator.Run(out AValue: Int64): TOrdinalStatus;
@@ -360,6 +387,8 @@ begin
   Result := AValue;
   if SameText(ATypeName, 'Ord') then
     Exit;
+  if UnsignedWide(ATypeName) then
+    FMaybeUnsigned := True;
   if not TOrdinalConstants.FixedType(ATypeName, mLow, mHigh, mHighKnown, mSize) then
   begin
     // NativeInt, LongInt, NativeUInt, LongWord: 32 oder 64 Bit je Plattform. Werte, die in 32 Bit passen,
@@ -515,6 +544,8 @@ begin
             if (SameText(Name, 'SizeOf') or SameText(Name, 'High') or SameText(Name, 'Low')) and
               TypeArgument(TypeName) then
             begin
+              if not SameText(Name, 'SizeOf') and UnsignedWide(TypeName) then
+                FMaybeUnsigned := True;
               if not TOrdinalConstants.FixedType(TypeName, Lowest, Highest, HighKnown, Size) or
                 (SameText(Name, 'High') and not HighKnown) then
                 Fail
@@ -552,7 +583,11 @@ begin
             Advance;
           end;
           if Assigned(FLookup) and FLookup(Names, Start, Result) then
+          begin
+            // Der Typ einer Konstanten ist unbekannt; sie könnte UInt64 sein.
+            FMaybeUnsigned := True;
             Exit;
+          end;
           if (Length(Names) = 1) and SameText(Name, 'True') then
             Result := 1
           else if (Length(Names) = 1) and SameText(Name, 'False') then
