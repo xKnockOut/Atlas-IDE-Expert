@@ -39,8 +39,8 @@ type
     FSymbols: TList<TIndexSymbol>;
     FInInterface: Boolean;
     FVisibility: TIndexVisibility;
-    // Typargumente des Vorfahren für den nächsten Add aus AddType.
-    FAncestorArgs: string;
+    // Typargumente der Vorfahren für den nächsten Add aus AddType.
+    FAncestorArgs: TArray<string>;
     // Der nächste Add aus AddType ist eine Vorwärtsdeklaration; FForwards hält deren Nummern in FSymbols.
     FForward: Boolean;
     /// <summary>Zweig des varianten Record-Teils, in dem AddMembers gerade steht (#846).</summary>
@@ -951,12 +951,15 @@ var
   Index: Integer;
   Kind: TIndexSymbolKind;
   Ancestors: TList<string>;
-  Qualified, AncestorArgs: string;
+  Qualified, Args: string;
+  AncestorArgs: TArray<string>;
+  WithArgs: Boolean;
   Visibility: TIndexVisibility;
   Owner, Count: Integer;
 begin
   Body := nil;
-  AncestorArgs := '';
+  AncestorArgs := nil;
+  WithArgs := False;
   for Index := 0 to ADecl.ChildCount - 1 do
     if not (ADecl[Index].Kind in [TSyntaxKind.GenericParams, TSyntaxKind.Attribute]) then
     begin
@@ -990,11 +993,16 @@ begin
         for Index := 0 to Body.ChildCount - 1 do
           if (Body[Index].Kind = TSyntaxKind.TypeReference) and (Body[Index].Name <> '') then
           begin
-            if Ancestors.Count = 0 then
-              AncestorArgs := GenericArgsText(Body[Index]);
+            // Typargumente jedes Vorfahren: IComparer<TKunde> an zweiter Stelle braucht sie für den
+            // Vergleich der Signaturen genauso wie der erste.
+            Args := GenericArgsText(Body[Index]);
+            WithArgs := WithArgs or (Args <> '');
+            AncestorArgs := AncestorArgs + [Args];
             Ancestors.Add(Body[Index].Name);
           end;
     end;
+    if not WithArgs then
+      AncestorArgs := nil;
     FAncestorArgs := AncestorArgs;
     FForward := (Body <> nil) and (Body.Kind = TSyntaxKind.ForwardType);
     FScoped := (Kind = TIndexSymbolKind.EnumType) and ScopedAt(ADecl.StartOffset);
@@ -1002,7 +1010,7 @@ begin
     try
       Add(ADecl, ADecl.Name, AContainer, Kind, Ancestors.ToArray);
     finally
-      FAncestorArgs := '';
+      FAncestorArgs := nil;
       FForward := False;
     end;
   finally
