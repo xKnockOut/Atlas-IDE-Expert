@@ -503,15 +503,18 @@ function GroupOutputsFor(const AOwnFile: string; const AFiles: TArray<string>; c
   const ALogger: ILogger): TArray<TUnitLookupGroupOutput>;
 var
   mFile: string;
+  mSeen: TArray<string>;
   mProject: TProjectInfo;
   mOutput: TUnitLookupGroupOutput;
   mUnit: TProjectUnit;
 begin
   Result := nil;
+  mSeen := nil;
   for mFile in AFiles do
   begin
-    if SameText(mFile, AOwnFile) then
+    if SameText(mFile, AOwnFile) or (IndexText(mFile, mSeen) >= 0) then
       Continue;
+    mSeen := mSeen + [mFile];
     try
       mProject := TDprojReader.Load(mFile, AOptions);
     except

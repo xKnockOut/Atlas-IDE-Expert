@@ -275,6 +275,9 @@ type
     // unter FWorkspacesLock, weil Anfrage-Threads lesen.
     FWorkspaces: TObjectList<TShellWorkspace>;
     FWorkspacesLock: TObject;
+    // Projekte aller gemeldeten Projektgruppen, schon bevor ihre Arbeitsbereiche geladen sind. Unter
+    // FWorkspacesLock.
+    FGroupProjectFiles: TArray<string>;
     /// <summary>Je Arbeitsbereich die Anfragen, die ihn außerhalb von FWorkspacesLock nutzen (EnsureUnit);
     /// ein entfernter wird erst freigegeben, wenn er hier fehlt. Nur unter FWorkspacesLock.</summary>
     FWorkspaceUsers: TDictionary<TShellWorkspace, Integer>;
@@ -2752,6 +2755,7 @@ begin
   TMonitor.Enter(FWorkspacesLock);
   try
     HasOthers := FWorkspaces.Count > 0;
+    FGroupProjectFiles := FGroupProjectFiles + Projects;
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -2804,9 +2808,10 @@ begin
     var
       Other: TShellWorkspace;
     begin
-      Result := nil;
       TMonitor.Enter(FWorkspacesLock);
       try
+        // Auch Projekte, deren Arbeitsbereich erst nach diesem entsteht: Die Unit-Suche wird beim Laden gebaut.
+        Result := FGroupProjectFiles;
         for Other in FWorkspaces do
           if Other.ProjectFile <> '' then
             Result := Result + [Other.ProjectFile];
