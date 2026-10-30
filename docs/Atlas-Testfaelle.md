@@ -4919,11 +4919,17 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; VCL-Formular `TfrmKunde
 |---|---|---|
 | SN1 | Unit öffnen | Hinweis `shadowed-name` am Parameter `Caption` im Methodenkopf: „Parameter Caption verdeckt die Property TfrmKunde.Caption; die Zuweisung ändert nur den Parameter.“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
 | SN2 | Glühbirne, „In ACaption umbenennen“ | Parameter in Deklaration und Rumpf heißt `ACaption`, `Caption := ACaption + …` bleibt; ein Strg+Z macht alles rückgängig; kompiliert |
-| SN3 | Lokale Variable `Left: Integer` in einer Formularmethode | Hinweis „Lokale Variable Left verdeckt die Property …“; Korrektur „In LLeft umbenennen“ |
+| SN3 | Lokale Variable `Left: Integer` in einer Formularmethode, nur zugewiesen (`Left := 10;`) | Hinweis „Lokale Variable Left verdeckt die Property …; die Zuweisung ändert nur die lokale Variable.“; Korrektur „In LLeft umbenennen“ |
 | SN4 | Feld `FStand` in der Klasse und lokale Variable `FStand` bzw. globale Variable `Protokoll` und lokale `var Protokoll := 1;` | Hinweis „… verdeckt das Feld …“ bzw. „… verdeckt die globale Variable Protokoll.“ |
 | SN5 | `FormClose(Sender: TObject; var Action: TCloseAction)` bzw. Setter mit `Value` | Keine Meldung |
 | SN6 | `"shadowed-name": {"ignore": ["Cap*"]}` | Keine Meldung zu `Caption` |
 | SN7 | `"shadowed-name": "off"` bzw. `exclude` mit dem Pfad der Datei | Keine Meldung |
+| SN8 | Formularmethode mit `Left, Top: Integer;`, `Left := 1; Top := Left + 2; Canvas.TextOut(Left, Top, 'x');` | Keine Meldung (Hilfsvariablen über VCL-Properties) |
+| SN9 | Lokale Variable `Width: Integer`, nur gelesen (`Mitte := Width div 2;`) | Hinweis „… gelesen wird die lokale Variable, der nichts zugewiesen wird.“ |
+| SN10 | Wie SN8 mit `"shadowed-name": {"frameworkMembers": true}` | Hinweise zu `Left` und `Top` wie früher |
+| SN11 | `procedure DoClose(var Action: TCloseAction); override;` in einem Formular bzw. eine `message`-Methode | Keine Meldung |
+| SN12 | `class function` mit lokaler Variable, die wie ein Instanzfeld heißt; dann wie eine `class var` | Keine Meldung bzw. Hinweis „… verdeckt das Feld …“ |
+| SN13 | Formular, das von einer eigenen Basisklasse mit Property `Position` erbt, lokale Variable `Position` gelesen und geschrieben | Hinweis wie bisher (eigene Klasse, nicht VCL) |
 
 ## if, das nur True oder False zuweist (#935)
 
