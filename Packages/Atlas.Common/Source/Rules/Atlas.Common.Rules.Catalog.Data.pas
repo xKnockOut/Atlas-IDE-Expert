@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4818] of string = (
+  BaseLines: array[0..4844] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -5379,6 +5379,38 @@ const
     '      "level": "T"',
     '    },',
     '    {',
+    '      "id": "type-kind-required",',
+    '      "name": "Expression or declaration lacks the required kind of type",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "An operation needs a certain kind of type that the operand surely does not have: an index on a number, Boolean, character or enumeration (like E2016); ^ on such a value, a class,' +
+    ' a record or an interface (like E2017); a dot or with on such a value (like E2018); an object type whose ancestor is not an object type, TypeOf on a simple value and Dispose with destructor on a point' +
+    'er to a simple type (like E2019); a class whose ancestor is a record, class reference, enumeration or simple type (like E2021); a class helper whose ancestor is not a helper (like E2022); New with con' +
+    'structor on a pointer to a simple type (like E2467); a record helper for a class or interface (like E2474); a method without class called through the class type outside methods of that class and its d' +
+    'escendants (like E2076); Slice outside an open array argument (like E2193); a record inside an array passed to array of const (like E2150); Write/Writeln or Read/Readln with a class, record or interfa' +
+    'ce (like E2054, E2055). Reported only when the type is certain: unknown types, conditional declarations, visible helpers, units missing from the index, records with an Implicit operator and unknown an' +
+    'cestors stay silent. Quick fixes: remove ^ before a dot for classes, records and interfaces; write Object.ToString in Write/Writeln.",',
+    '      "bad": "Kunde^.Name := ''A'';\nWriteln(ErrOutput, Kunde);",',
+    '      "good": "Kunde.Name := ''A'';\nWriteln(ErrOutput, Kunde.ToString);",',
+    '      "compilerCodes": [',
+    '        "E2016",',
+    '        "E2017",',
+    '        "E2018",',
+    '        "E2019",',
+    '        "E2021",',
+    '        "E2022",',
+    '        "E2467",',
+    '        "E2474",',
+    '        "E2076",',
+    '        "E2193",',
+    '        "E2150",',
+    '        "E2054",',
+    '        "E2055"',
+    '      ],',
+    '      "level": "T"',
+    '    },',
+    '    {',
     '      "id": "inherited-abstract-call",',
     '      "name": "inherited calls an abstract method",',
     '      "category": "bug",',
@@ -5660,7 +5692,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2190] of string = (
+  OverlayLines_de: array[0..2195] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -8583,6 +8615,18 @@ const
     '      "description": "Eine for-in-Schleife läuft über einen Typ, der sich nicht aufzählen lässt: Zahl, Zeiger, Zeichen oder Boolean, oder eine Klasse, ein Record bzw. Interface ohne öffentliches GetEn' +
     'umerator, auch nicht geerbt oder aus einem Helper (wie E2430); oder der Enumerator aus GetEnumerator hat kein öffentliches MoveNext bzw. Current (wie E2431). Strings, Arrays und Mengen gehen. Gemeldet' +
     ' nur, wenn der Typ und alle Vorfahren bekannt sind; generische und unbekannte Typen bleiben still. Keine Korrektur; hat der Typ Count, nennt die Meldung eine Schleife mit Index."',
+    '    },',
+    '    {',
+    '      "id": "type-kind-required",',
+    '      "name": "Ausdruck oder Deklaration hat nicht die geforderte Typart",',
+    '      "description": "Eine Operation verlangt eine Typart, die der Operand sicher nicht hat: ein Index auf einer Zahl, einem Boolean, Zeichen oder Aufzählungswert (wie E2016); ^ auf einem solchen Wert' +
+    ', einer Klasse, einem Record oder Interface (wie E2017); Punkt oder with auf einem solchen Wert (wie E2018); ein object-Typ mit einem Vorfahr, der kein object-Typ ist, TypeOf auf einem einfachen Wert ' +
+    'und Dispose mit Destruktor auf einem Zeiger auf einen einfachen Typ (wie E2019); eine Klasse mit einem Record, einer Klassenreferenz, Aufzählung oder einem einfachen Typ als Vorfahr (wie E2021); ein C' +
+    'lass-Helper, dessen Vorfahr kein Helper ist (wie E2022); New mit Konstruktor auf einem Zeiger auf einen einfachen Typ (wie E2467); ein Record-Helper für eine Klasse oder ein Interface (wie E2474); ein' +
+    'e Methode ohne class über den Klassentyp aufgerufen, außerhalb von Methoden der Klasse und ihrer Nachfahren (wie E2076); Slice außerhalb eines Arguments für ein offenes Array (wie E2193); ein Record i' +
+    'n einem Array an array of const (wie E2150); Write/Writeln bzw. Read/Readln mit einer Klasse, einem Record oder Interface (wie E2054, E2055). Gemeldet nur bei sicher bekanntem Typ: unbekannte Typen, b' +
+    'edingte Deklarationen, sichtbare Helper, Units außerhalb des Index, Records mit Implicit-Operator und unbekannte Vorfahren bleiben still. Korrekturen: ^ vor einem Punkt bei Klassen, Records und Interf' +
+    'aces entfernen; in Write/Writeln Objekt.ToString schreiben."',
     '    },',
     '    {',
     '      "id": "inherited-abstract-call",',

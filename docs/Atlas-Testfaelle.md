@@ -9096,3 +9096,22 @@ Vorbereitung: Atlas-Repository auf Prep-v1.2.0 in der IDE, `naming-prefix` einge
 | GE1 | `TScoredItemComparer = class(TInterfacedObject, IComparer<TScoredItem>)` mit `function Compare(const Left, Right: TScoredItem): Integer;` (System.Generics.Defaults) | Keine Meldung „Compare weicht von der Deklaration in IComparer ab (wie E2211)“; mit `Integer` statt `TScoredItem` erscheint sie (wie dcc) |
 | GE2 | `System.Generics.Defaults.pas` öffnen, zu `class function TComparer<T>.TryUseRecEqualityOperator` und `TComparer<T>._Default` | Kein „"T" ist nicht deklariert“ an `TypeInfo(T)`, `SizeOf(T)`, `GetTypeKind(T)` |
 | GE3 | Projekt mit altem Index öffnen | Index wird einmal neu aufgebaut (Format 31, `index-31.atlasidx`), danach wieder aus dem Cache |
+
+## Ausdruck hat nicht die geforderte Typart (#1370)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| YK1 | `Zahl[1] := 0;`, `Zahl^ := 0;`, `Zahl.Wert := 0;` und `with Zahl do ;` mit `Zahl: Integer` in einer Unit ohne uses | Je ein Fehler `type-kind-required` „… ist eine Ganzzahl (Integer), kein Array …“ (wie E2016), „… kein Zeiger …“ (wie E2017), „… kein Record, keine Klasse und kein object-Typ; .Wert …“ (wie E2018) und „with braucht einen Record …“ (wie E2018); im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| YK2 | `Kunde^.Name := 'A';` mit `Kunde: TKunde`, Schnellkorrektur „^ entfernen“, danach Strg+Z | Meldung wie E2017; nach der Korrektur `Kunde.Name := 'A';` ohne Meldung, kompiliert; ein Undo-Schritt nimmt es zurück |
+| YK3 | Mit `uses System.SysUtils`: `Zahl.ToString`, `Zahl.Wert` | Keine Meldung von `type-kind-required` (Helper für Integer sichtbar; dcc meldet bei `Wert` E2003) |
+| YK4 | `TAlt = object(TObject)`, `TKlasse = class(TRec)` mit Record, `TMeta = class(TClass)`, `THelfer = class helper(TObject) for TObject`, `TRecHelfer = record helper for TObject` | Meldungen wie E2019, E2021, E2021, E2022 und E2474 jeweils am Typnamen |
+| YK5 | `New(P, Init)` und `Dispose(P, Done)` mit `P: PInteger`, `TypeOf(Zahl)` | Meldungen wie E2467, E2019 und E2019; `New(P)`, `Dispose(P)` und `TypeOf(Objekt)` bleiben still |
+| YK6 | `TBasis.Machen;` mit Instanzmethode `Machen` in einer freien Routine und in einer Methode einer fremden Klasse; dasselbe in einer Methode von `TBasis` bzw. eines Nachfahren, `TBasis.Klassenmethode`, `TBasis.Create`, `@TBasis.Machen` | Nur die ersten beiden melden (wie E2076) |
+| YK7 | `Ziel := Slice(Quelle, 2);`, `Zahl(Slice(Quelle, 2))` mit `Zahl(A: Integer)`; Gegenprobe `Offen(Slice(Quelle, 2))` mit `const A: array of Integer` | Die ersten beiden melden wie E2193, die Gegenprobe nicht |
+| YK8 | `Format('%d', [Punkt])` mit Record `TPunkt`; `Format('%d %s', [Zahl, Text])` | Nur das erste meldet an `Punkt` (wie E2150) |
+| YK9 | `Writeln(ErrOutput, Objekt)`, `Readln(Objekt)`, `Writeln(Punkt)`; Schnellkorrektur am ersten | Meldungen wie E2054, E2055, E2054; die Korrektur schreibt `Objekt.ToString` |
+| YK10 | `Write(Datei, Punkt)` mit `Datei: file of TPunkt`, `Writeln(Zahl:4)`, `Writeln(Text, Zahl)` mit `Text: TextFile` | Keine Meldung |
+| YK11 | `"type-kind-required": "off"`, `"group:compiler": "off"`, `"group:compiler": {"typeLevel": "off"}` bzw. `exclude` | Keine Meldung |
+| YK12 | Abgleich mit Delphi: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.E2016*','Cm.E2017*','Cm.E2018*','Cm.E2019','Cm.E2021*','Cm.E2022','Cm.E2054*','Cm.E2055','Cm.E2075','Cm.E2076*','Cm.E2079','Cm.E2080','Cm.E2082','Cm.E2150','Cm.E2193*','Cm.E2460','Cm.E2467','Cm.E2474*' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | Alle genannten Codes „erkannt“, keine neuen Einträge unter „zusätzlich“; `Cm.E2018b` und `Cm.E2076b` übersetzt dcc ohne Meldung, die übrigen neuen Fälle (`…b`) melden den erwarteten Code |
