@@ -4,7 +4,8 @@
 // Zeilenumbrüche erzeugen keine Token.
 //
 // Der Lexer bricht nie ab: Unvollständige Strings, Kommentare und Direktiven
-// werden als Token mit Terminated = False geliefert, unbekannte Zeichen als
+// werden als Token mit Terminated = False geliefert, ebenso eine Zahl mit
+// leerem Exponenten wie 1.5e (E2053, #1382), unbekannte Zeichen als
 // Unknown. So bleibt er im Editor auch bei halb getipptem Code brauchbar.
 
 interface
@@ -71,7 +72,8 @@ type
     function ScanString: Boolean;
     function TryScanMultilineString(out ATerminated: Boolean): Boolean;
     procedure ScanDigits(const AAllowed: TSysCharSet);
-    procedure ScanDecimal;
+    /// <summary>False bei einem Exponenten ohne Ziffern (1.5e;): Delphi meldet E2053.</summary>
+    function ScanDecimal: Boolean;
     procedure ScanIdentifier;
     function ScanSymbol: Boolean;
   public
@@ -209,8 +211,9 @@ begin
     Inc(FPos);
 end;
 
-procedure TScanner.ScanDecimal;
+function TScanner.ScanDecimal: Boolean;
 begin
+  Result := True;
   ScanDigits(['0'..'9', '_']);
   // Nachkommastellen, aber nicht bei 1..2 (Bereich).
   if (Peek = '.') and CharInSet(Peek(1), ['0'..'9']) then
@@ -223,6 +226,13 @@ begin
   begin
     Inc(FPos, 2);
     ScanDigits(['0'..'9']);
+  end
+  else if CharInSet(Peek, ['e', 'E']) and not IsIdentifierPart(Peek(1)) and not CharInSet(Peek(1), ['+', '-']) then
+  begin
+    // 1.5e: Delphi liest das e als Teil der Zahl. Mit Buchstaben dahinter (1Eh im asm-Block) bleibt es beim
+    // Bezeichner.
+    Inc(FPos);
+    Result := False;
   end;
 end;
 
@@ -321,7 +331,7 @@ begin
   else if CharInSet(C, ['0'..'9']) then
   begin
     Kind := TPascalTokenKind.Number;
-    ScanDecimal;
+    Terminated := ScanDecimal;
   end
   else if (C = '&') and IsIdentifierStart(Peek(1)) then
   begin

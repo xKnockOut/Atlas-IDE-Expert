@@ -175,7 +175,8 @@ type
     procedure AddDiagnostic(const ADiagnostic: TSyntaxDiagnostic);
     procedure DiagnoseUnexpected(const AExpected: string); overload;
     procedure DiagnoseUnexpected(const ACode, AExpected: string); overload;
-    /// <summary>Nicht geschlossene Strings und Kommentare (E2052, E2057) und die Prüfungen am Baum.</summary>
+    /// <summary>Nicht geschlossene Strings und Kommentare (E2052, E2057), Zahlen mit leerem Exponenten (E2053)
+    /// und die Prüfungen am Baum.</summary>
     procedure CheckTokensAndTree(ARoot: TSyntaxNode);
     function StartNode(AKind: TSyntaxKind): TSyntaxNode;
     procedure FinishNode(ANode: TSyntaxNode; AStartIndex: Integer);
@@ -527,6 +528,9 @@ begin
       else
         DiagnoseCode('E2052', 'Unvollständiger String', Token.StartPos, Token.StartPos);
     end
+    else if Token.Kind = TPascalTokenKind.Number then
+      // 1.5e: Exponent ohne Ziffern (#1382).
+      DiagnoseCode('E2053', 'Syntaxfehler in Gleitkommazahl', Token.StartPos, Token.EndPos)
     else if Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
     begin
       First := Token.StartPos;
@@ -1224,7 +1228,16 @@ begin
   if IsIdentText('absolute') then
   begin
     Advance;
-    ParseExpression(Node);
+    if IsIdent then
+      ParseExpression(Node)
+    else
+    begin
+      // absolute $40:$17: Adressen kennt Delphi nicht mehr, nur Variablen (wie E2088, #1382). Bis zum ';'
+      // überspringen, sonst folgen Fehler zum ':'.
+      DiagnoseUnexpected('E2088', 'Variable');
+      while not AtEnd and not IsSym(';') do
+        Advance;
+    end;
   end
   else if AcceptSym('=') then
     ParseInitializer(Node);
@@ -1894,9 +1907,9 @@ begin
       ParseFieldDecl(AParent)
     else if IsKw('class') then
     begin
-      // class vor etwas anderem als Routine, var, property.
+      // class vor etwas anderem als Routine, var, property; Delphi 13 meldet E2123 (#1382).
       Advance;
-      DiagnoseUnexpected('E2357', '"procedure", "function" oder "constructor"');
+      DiagnoseUnexpected('E2123', '"procedure", "function", "property" oder "var"');
     end
     else if IsKw(['begin', 'implementation', 'initialization', 'finalization']) or
       (IsKw(['type', 'var', 'const']) and FInImplementation) then

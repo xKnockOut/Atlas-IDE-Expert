@@ -5,7 +5,7 @@
 //   empty-finally             finally-Block ohne Anweisung, Kommentar und Direktive (#1065); nennt X.Free, wenn
 //                             direkt davor X := T….Create steht. Korrektur: try/finally/end entfernen, Rumpf ausrücken
 //                             (als einzige Anweisung eines if/while … mit mehreren Anweisungen: begin … end)
-//   interface-guid            Interface ohne GUID; mit Supports/as/QueryInterface hohe Konfidenz
+//   interface-guid            Interface ohne GUID; mit Supports/as/QueryInterface hohe Konfidenz (wie E2232)
 //                             (dispinterface ohne GUID meldet dispinterface-invalid)
 //   duplicate-interface-guid  zwei Interfaces der Datei mit derselben GUID
 //   guid-syntax-invalid       GUID-Literal eines Interfaces oder einer TGUID-Konstante nicht in der Form
@@ -467,7 +467,7 @@ var
   Tokens: TArray<TPascalToken>;
   Declaration: TInterfaceDeclaration;
   Confidence: TRuleConfidence;
-  Indent: string;
+  Indent, mCode: string;
 begin
   if AContext.Tree = nil then
     Exit;
@@ -477,13 +477,18 @@ begin
     // Ein dispinterface ohne GUID übersetzt nicht; das meldet dispinterface-invalid als Fehler (wie E2229, #1374).
     if (Declaration.GuidToken >= 0) or Declaration.IsDispinterface then
       Continue;
+    // Nur die Abfrage meldet dcc, an ihrer Stelle (E2232, #1382).
+    mCode := '';
     if IsQueried(Tokens, Declaration.Name) then
-      Confidence := TRuleConfidence.High
+    begin
+      Confidence := TRuleConfidence.High;
+      mCode := ' (wie E2232).';
+    end
     else
       Confidence := TRuleConfidence.Low;
     Indent := LineIndent(AContext.Text, Tokens[Declaration.NameToken].StartPos.Line);
     AReport.Add(TokenRange(Tokens[Declaration.NameToken]), Format('Interface %s hat keine GUID; Supports, as ' +
-      'und QueryInterface brauchen eine', [Declaration.Name]), Confidence,
+      'und QueryInterface brauchen eine%s', [Declaration.Name, mCode]), Confidence,
       [TRuleFix.Create('GUID einfügen', [TRuleEdit.Create(TTextRange.Create(Tokens[Declaration.HeaderEnd].EndPos,
         Tokens[Declaration.HeaderEnd].EndPos),
         TTextLines.LineBreakOf(AContext.Text) + Indent + '  ' + GuidLine)], True)]);

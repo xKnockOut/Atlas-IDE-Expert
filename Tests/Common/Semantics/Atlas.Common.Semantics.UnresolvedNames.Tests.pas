@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Semantics.UnresolvedNames.Tests;
 
-// Tests für nicht auflösbare Bezeichner (#178, MCP check_code).
+// Tests für nicht auflösbare Bezeichner (#178, MCP check_code); TextFile und
+// die alte object-Syntax mit New/Dispose/Fail (#1382).
 
 interface
 
@@ -16,6 +17,8 @@ type
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
     function Names(const AText: string): string;
+    /// <summary>Wie Names, je Eintrag mit Code und object-Typ: "Anlegen=E2601/TAltObjekt;".</summary>
+    function Coded(const AText: string): string;
   public
     [Setup]
     procedure Setup;
@@ -46,6 +49,16 @@ type
     procedure SkipsNamesWithUnknownAncestor;
     [Test]
     procedure UsesKnownNeedsEveryUnit;
+    [Test]
+    procedure KnowsTextFile;
+    [Test]
+    procedure KnowsFileRoutines;
+    [Test]
+    procedure KnowsOldObjectSyntax;
+    [Test]
+    procedure ReportsMissingConstructorAndDestructor;
+    [Test]
+    procedure ReportsFailOutsideConstructor;
   end;
 
 implementation
@@ -111,6 +124,138 @@ begin
       Result := Result + Name.Name + Format('@%d:%d;', [Name.Range.StartPos.Line, Name.Range.StartPos.Character]);
   finally
     Tree.Free;
+  end;
+end;
+
+function TUnresolvedNamesTests.Coded(const AText: string): string;
+var
+  mTree: TSyntaxTree;
+  mName: TUnresolvedName;
+begin
+  Result := '';
+  mTree := TPascalParser.Parse(AText);
+  try
+    for mName in TUnresolvedNames.Find(FResolver, mTree, 'C:\P\Haupt.pas') do
+      Result := Result + Format('%s=%s/%s;', [mName.Name, mName.Code, mName.Owner]);
+  finally
+    mTree.Free;
+  end;
+end;
+
+/// <summary>Unit mit object-Typ wie in den Fällen Cm.E2601/Cm.E2602; ABody steht in der Routine Fall.</summary>
+function ObjectUnit(const ABody: string): string;
+begin
+  Result := 'unit Haupt;'#10'interface'#10'type'#10'  TAltObjekt = object'#10'    Wert: Integer;'#10 +
+    '    constructor Init;'#10'    destructor Done;'#10'  end;'#10'  PAltObjekt = ^TAltObjekt;'#10 +
+    '  PZahl = ^Integer;'#10'implementation'#10'constructor TAltObjekt.Init;'#10'begin'#10'end;'#10 +
+    'destructor TAltObjekt.Done;'#10'begin'#10'end;'#10'procedure Fall;'#10'var'#10'  mObjekt: PAltObjekt;'#10 +
+    '  mZahl: PZahl;'#10'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+procedure TUnresolvedNamesTests.KnowsTextFile;
+begin
+  // Fälle Cm.E2002, Cm.E2071, Cm.E2538: TextFile kommt vom Compiler, nicht aus System.pas.
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure P;'#10 +
+    'var'#10 +
+    '  mDatei: TextFile;'#10 +
+    'begin'#10 +
+    '  mDatei := Default(TextFile);'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsFileRoutines;
+begin
+  // AssignFile, Append, CloseFile & Co. kommen wie TextFile vom Compiler, nicht aus System.pas (#1382).
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure AppendToLog(const AText: string);'#10 +
+    'var'#10 +
+    '  FileName: string;'#10 +
+    '  Log: TextFile;'#10 +
+    '  Daten: file;'#10 +
+    'begin'#10 +
+    '  AssignFile(Log, FileName);'#10 +
+    '  {$I-}'#10 +
+    '  Append(Log);'#10 +
+    '  {$I+}'#10 +
+    '  if IOResult <> 0 then'#10 +
+    '    Exit;'#10 +
+    '  try'#10 +
+    '    Writeln(Log, AText);'#10 +
+    '    Flush(Log);'#10 +
+    '  finally'#10 +
+    '    CloseFile(Log);'#10 +
+    '  end;'#10 +
+    '  Assign(Daten, FileName);'#10 +
+    '  Reset(Daten, 1);'#10 +
+    '  Seek(Daten, FileSize(Daten) - FilePos(Daten));'#10 +
+    '  Truncate(Daten);'#10 +
+    '  Close(Daten);'#10 +
+    '  Rewrite(Log);'#10 +
+    '  if Eof(Log) or Eoln(Log) or SeekEof(Log) or SeekEoln(Log) then'#10 +
+    '    Erase(Daten);'#10 +
+    '  Rename(Daten, AText);'#10 +
+    'end;'#10 +
+    'procedure Speicher;'#10 +
+    'var'#10 +
+    '  P: Pointer;'#10 +
+    '  V: OleVariant;'#10 +
+    'begin'#10 +
+    '  GetMem(P, 16);'#10 +
+    '  ReallocMem(P, 32);'#10 +
+    '  FreeMem(P);'#10 +
+    '  if Sqrt(Int(2.5)) + Frac(1.5) + Sin(0) + Cos(0) + ArcTan(1) + Ln(1) + Exp(0) < 0 then'#10 +
+    '    RunError(1);'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsOldObjectSyntax;
+begin
+  // New(P, Init) und Dispose(P, Done): Konstruktor und Destruktor sind keine eigenen Bezeichner (Cm.E2602).
+  Assert.AreEqual('', Coded(ObjectUnit('  New(mObjekt, Init);'#10'  Dispose(mObjekt, Done);'#10 +
+    '  mObjekt := New(PAltObjekt, Init);'#10)));
+  // Kein object-Typ hinter dem Zeiger (Cm.E2079, Cm.E2080): das melden andere Regeln (E2467, E2019).
+  Assert.AreEqual('', Coded(ObjectUnit('  New(mZahl, Init);'#10'  Dispose(mZahl, Done);'#10)));
+  // Fail im Konstruktor.
+  Assert.AreEqual('', Coded('unit Haupt;'#10'interface'#10'type'#10'  TAltObjekt = object'#10 +
+    '    constructor Init;'#10'  end;'#10'implementation'#10'constructor TAltObjekt.Init;'#10'begin'#10'  Fail;'#10 +
+    'end;'#10'end.'));
+end;
+
+procedure TUnresolvedNamesTests.ReportsMissingConstructorAndDestructor;
+begin
+  // Fälle Cm.E2601 und Cm.E2602: Delphi 13 meldet E2601 bzw. E2602, nicht E2003.
+  Assert.AreEqual('Anlegen=E2601/TAltObjekt;', Coded(ObjectUnit('  New(mObjekt, Anlegen);'#10)));
+  Assert.AreEqual('Abbauen=E2602/TAltObjekt;', Coded(ObjectUnit('  New(mObjekt, Init);'#10 +
+    '  Dispose(mObjekt, Abbauen);'#10)));
+end;
+
+procedure TUnresolvedNamesTests.ReportsFailOutsideConstructor;
+var
+  mTree: TSyntaxTree;
+  mFound: TArray<TUnresolvedName>;
+begin
+  // Fall Cm.E2078.
+  mTree := TPascalParser.Parse('unit Haupt;'#10'interface'#10'implementation'#10'procedure Fall;'#10'begin'#10 +
+    '  Fail;'#10'end;'#10'end.');
+  try
+    mFound := TUnresolvedNames.Find(FResolver, mTree, 'C:\P\Haupt.pas');
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.AreEqual('E2078', mFound[0].Code);
+    Assert.AreEqual('Fail ist nur im Konstruktor eines object-Typs erlaubt (wie E2078).',
+      TUnresolvedNames.Describe(mFound[0]));
+    Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
+  finally
+    mTree.Free;
+    mFound := nil;
   end;
 end;
 

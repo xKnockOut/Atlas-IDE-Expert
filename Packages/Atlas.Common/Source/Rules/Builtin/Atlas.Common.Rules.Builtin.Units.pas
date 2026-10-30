@@ -4,6 +4,9 @@
 //   unit-name-mismatch  Der Name hinter unit weicht vom Dateinamen ab (#990,
 //                       wie E1038, W1038), oder die Datei aus "uses X in
 //                       '…'" deklariert eine andere Unit als X (wie E2085).
+//                       Passt dort auch der Name der Unit nicht zu ihrer
+//                       Datei, meldet Delphi 13 nur E1038 in der Unit
+//                       (#1382); dann schweigt die Regel in der uses-Klausel.
 //   text-after-final-end  Code nach dem abschließenden end. (#991, wie W1011);
 //                       Kommentare und Direktiven nur mit allowComments =
 //                       false.
@@ -340,6 +343,9 @@ begin
       Continue;
     Used := TModuleHeader.Read(TPascalLexer.Tokenize(Text));
     if (Used.Kind <> TModuleKind.UnitModule) or (Used.Name = '') or SameText(Used.Name, Entry.Name) then
+      Continue;
+    // Ursache in der Unit selbst: Dort meldet dcc E1038 (bzw. diese Regel, wenn die Datei geprüft wird).
+    if (ExpectedName(Entry.InPath) <> '') and not SameText(Used.Name, ExpectedName(Entry.InPath)) then
       Continue;
     AReport.Add(Entry.Range, Format('%s in ''%s'': die Datei deklariert die Unit %s (wie E2085).',
       [Entry.Name, Entry.InPath, Used.Name]), TRuleConfidence.High,

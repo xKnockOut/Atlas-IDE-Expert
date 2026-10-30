@@ -2,7 +2,10 @@
 
 // Tests für generic-constraint-violated (#1028): Beispiel aus dem Issue mit
 // Korrektur, Typargumente gegen class, record, constructor, Interface und
-// Basisklasse, Methoden auf unbeschränktem T, stille Fälle, Index, Abschalten.
+// Basisklasse, Methoden auf unbeschränktem T, stille Fälle, Index, Abschalten;
+// generic-inference-failed (#1376): die Fälle Cm.E2531 und Cm.E2532 aus dem
+// Testprojekt Compilermeldungen, Gegenfälle, die dcc übersetzt, Index,
+// Abschalten samt typeLevel.
 
 interface
 
@@ -25,6 +28,23 @@ type
     procedure GenericFromIndex;
     [Test]
     procedure ParseParams;
+    [Test]
+    procedure OffAndExclude;
+  end;
+
+  [TestFixture]
+  TGenericInferenceFailedTests = class
+  public
+    [Test]
+    procedure MissingTypeArguments;
+    [Test]
+    procedure MixedArgumentTypes;
+    [Test]
+    procedure SilentCases;
+    [Test]
+    procedure GenericFromIndex;
+    [Test]
+    procedure OwnTypeParams;
     [Test]
     procedure OffAndExclude;
   end;
@@ -228,7 +248,149 @@ begin
     '{"rules": {"generic-constraint-violated": {"exclude": ["Source/*.pas"]}}}', 'Source/Fabriken.pas'))));
 end;
 
+function InferenceFindings(const ASource: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TGenericInferenceFailedRule.Create, ASource);
+end;
+
+function InferenceFindings(const ASource, AConfig, APath: string): TArray<TRuleFinding>; overload;
+begin
+  Result := TRuleAssert.Findings(TGenericInferenceFailedRule.Create, ASource, AConfig, APath);
+end;
+
+/// <summary>Meldungen von AFound mit Zeile (ab 1), getrennt durch |.</summary>
+function InferenceMessages(const AFound: TArray<TRuleFinding>): string;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  for mFinding in AFound do
+  begin
+    if Result <> '' then
+      Result := Result + '|';
+    Result := Result + IntToStr(mFinding.Range.StartPos.Line + 1) + ': ' + mFinding.Message;
+  end;
+end;
+
+/// <summary>Unit mit TKlasse (Neu&lt;T&gt;: T, Paar&lt;T&gt;(A, B: T), Liste&lt;T&gt;(const A: array of T))
+/// und der Routine Fall mit den Variablen AVars und den Anweisungen ABody.</summary>
+function Werkzeug(const AVars, ABody: string): string;
+begin
+  Result := 'unit W;'#10'interface'#10'type'#10'  TKlasse = class'#10'  public'#10 +
+    '    class function Neu<T>: T;'#10'    class procedure Paar<T>(A, B: T);'#10 +
+    '    class procedure Liste<T>(const A: array of T);'#10'  end;'#10 +
+    'implementation'#10'class function TKlasse.Neu<T>: T;'#10'begin'#10'  Result := Default(T);'#10'end;'#10 +
+    'class procedure TKlasse.Paar<T>(A, B: T);'#10'begin'#10'end;'#10 +
+    'class procedure TKlasse.Liste<T>(const A: array of T);'#10'begin'#10'end;'#10 +
+    'procedure Fall;'#10'var'#10'  mZahl: Integer;'#10 + AVars + 'begin'#10 + ABody + 'end;'#10'end.';
+end;
+
+const
+  cNeu = 'Neu braucht ausdrückliche Typargumente (Neu<…>): T kommt in keinem Parameter vor und lässt sich nicht ' +
+    'ableiten (wie E2531).';
+
+procedure TGenericInferenceFailedTests.MissingTypeArguments;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fall Cm.E2531: Zuweisung ohne Klammern; dazu Aufruf mit Klammern und als Anweisung.
+  mFound := InferenceFindings(Werkzeug('', '  mZahl := TKlasse.Neu;'#10'  mZahl := TKlasse.Neu();'#10 +
+    '  TKlasse.Neu;'#10));
+  Assert.AreEqual('25: ' + cNeu + '|26: ' + cNeu + '|27: ' + cNeu, InferenceMessages(mFound));
+  Assert.AreEqual(11, mFound[0].Range.StartPos.Character);
+  Assert.AreEqual(22, mFound[0].Range.EndPos.Character);
+  // Unqualifiziert in einer Methode der Klasse.
+  Assert.AreEqual('15: ' + cNeu, InferenceMessages(InferenceFindings('unit W;'#10'interface'#10'type'#10 +
+    '  TKlasse = class'#10'    function Neu<T>: T;'#10'    procedure Lauf;'#10'  end;'#10'implementation'#10 +
+    'function TKlasse.Neu<T>: T;'#10'begin'#10'  Result := Default(T);'#10'end;'#10 +
+    'procedure TKlasse.Lauf;'#10'begin'#10'  Neu;'#10'end;'#10'end.')));
+end;
+
+procedure TGenericInferenceFailedTests.MixedArgumentTypes;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Fall Cm.E2532: Zahl und Zeichenkette.
+  mFound := InferenceFindings(Werkzeug('', '  TKlasse.Paar(1, ''a'');'#10));
+  Assert.AreEqual('25: T von Paar lässt sich nicht ableiten: Die Argumente sind verschiedener Art (Zahl und ' +
+    'Zeichenkette); Typargument ausdrücklich angeben, z. B. Paar<…> (wie E2532).', InferenceMessages(mFound));
+  Assert.AreEqual(18, mFound[0].Range.StartPos.Character);
+  // Variablen bekannten Typs, Boolean und negative Zahl.
+  Assert.AreEqual('26: T von Paar lässt sich nicht ableiten: Die Argumente sind verschiedener Art (Zahl und ' +
+    'Zeichenkette); Typargument ausdrücklich angeben, z. B. Paar<…> (wie E2532).|27: T von Paar lässt sich nicht ' +
+    'ableiten: Die Argumente sind verschiedener Art (Boolean und Zahl); Typargument ausdrücklich angeben, z. B. ' +
+    'Paar<…> (wie E2532).', InferenceMessages(InferenceFindings(Werkzeug('  mText: string;'#10,
+    '  TKlasse.Paar(mZahl, mText);'#10'  TKlasse.Paar(True, -1);'#10))));
+end;
+
+procedure TGenericInferenceFailedTests.SilentCases;
+begin
+  // Gegenfälle, die dcc übersetzt: ausdrückliche Typargumente, ableitbare und gleichartige Argumente, Zahlen
+  // verschiedener Breite, offenes Array.
+  TRuleAssert.Silent(TGenericInferenceFailedRule.Create, Werkzeug('  mText: string;'#10'  mWert: Double;'#10,
+    '  mZahl := TKlasse.Neu<Integer>;'#10'  mZahl := TKlasse.Neu<Integer>();'#10'  TKlasse.Neu<string>;'#10 +
+    '  TKlasse.Paar(1, 2);'#10'  TKlasse.Paar(mText, ''b'');'#10'  TKlasse.Paar(mZahl, mWert);'#10 +
+    '  TKlasse.Paar<string>(''a'', ''b'');'#10'  TKlasse.Liste([1, 2]);'#10));
+  // Unbekannte Argumenttypen (Variant, Klassen, Ausdrücke) und Ziele prozeduralen oder unbekannten Typs.
+  TRuleAssert.Silent(TGenericInferenceFailedRule.Create, Werkzeug('  mVariant: Variant;'#10 +
+    '  mObjekt: TObject;'#10'  mFunktion: TFunc<Integer>;'#10'  mFremd: TFremd;'#10,
+    '  TKlasse.Paar(mVariant, 1);'#10'  TKlasse.Paar(mObjekt, 1 + 2);'#10'  mFunktion := TKlasse.Neu;'#10 +
+    '  mFremd := TKlasse.Neu;'#10));
+  // Nicht generische Überladung und Typparameter, der in einem Parameter vorkommt.
+  TRuleAssert.Silent(TGenericInferenceFailedRule.Create, 'unit W;'#10'interface'#10'type'#10 +
+    '  TKlasse = class'#10'    class function Neu<T>: T; overload;'#10'    class function Neu: Integer; overload;'#10 +
+    '    class function Aus<T>(A: T): T;'#10'  end;'#10'implementation'#10 +
+    'procedure Fall;'#10'var'#10'  mZahl: Integer;'#10'begin'#10'  mZahl := TKlasse.Neu;'#10 +
+    '  mZahl := TKlasse.Aus(1);'#10'end;'#10'end.');
+end;
+
+procedure TGenericInferenceFailedTests.GenericFromIndex;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Fabrik;'#10'interface'#10'type'#10 +
+    '  TFabrik = class'#10'    class function Neu<T>: T; static;'#10'    class procedure Paar<T>(A, B: T); static;'#10 +
+    '  end;'#10'implementation'#10'end.', 'C:\Quellen\Fabrik.pas', nil));
+  mFound := TRuleAssert.IndexFindings(TGenericInferenceFailedRule.Create, 'unit U;'#10'interface'#10 +
+    'implementation'#10'uses Fabrik;'#10'procedure Fall;'#10'var'#10'  mZahl: Integer;'#10'begin'#10 +
+    '  mZahl := TFabrik.Neu;'#10'  TFabrik.Paar(''x'', 2);'#10'  TFabrik.Paar(3, 4);'#10'end;'#10'end.', mIndex, '',
+    'U.pas');
+  Assert.AreEqual('9: ' + cNeu + '|10: T von Paar lässt sich nicht ableiten: Die Argumente sind verschiedener Art ' +
+    '(Zeichenkette und Zahl); Typargument ausdrücklich angeben, z. B. Paar<…> (wie E2532).',
+    InferenceMessages(mFound));
+end;
+
+procedure TGenericInferenceFailedTests.OwnTypeParams;
+begin
+  Assert.AreEqual('T', string.Join(',', TGenericInferenceFailedRule.OwnTypeParams('class function Neu<T>: T; static',
+    'Neu')));
+  Assert.AreEqual('K,V', string.Join(',', TGenericInferenceFailedRule.OwnTypeParams(
+    'function TListe<T>.Neu<K: class; V>(A: K): V', 'Neu')));
+  Assert.AreEqual('', string.Join(',', TGenericInferenceFailedRule.OwnTypeParams('procedure TListe<T>.Add(A: T)',
+    'Add')));
+  Assert.AreEqual('', string.Join(',', TGenericInferenceFailedRule.OwnTypeParams('procedure TNeu<T>.Lauf', 'Neu')));
+end;
+
+procedure TGenericInferenceFailedTests.OffAndExclude;
+var
+  mSource: string;
+begin
+  mSource := Werkzeug('', '  mZahl := TKlasse.Neu;'#10);
+  Assert.AreEqual(1, Integer(Length(InferenceFindings(mSource, '', 'Source/W.pas'))));
+  Assert.AreEqual(0, Integer(Length(InferenceFindings(mSource, '{"rules": {"generic-inference-failed": "off"}}',
+    'Source/W.pas'))));
+  Assert.AreEqual(0, Integer(Length(InferenceFindings(mSource, '{"rules": {"group:compiler": "off"}}',
+    'Source/W.pas'))));
+  Assert.AreEqual(0, Integer(Length(InferenceFindings(mSource,
+    '{"rules": {"group:compiler": {"typeLevel": "off"}}}', 'Source/W.pas'))));
+  Assert.AreEqual(0, Integer(Length(InferenceFindings(mSource,
+    '{"rules": {"generic-inference-failed": {"exclude": ["Source/*.pas"]}}}', 'Source/W.pas'))));
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TGenericConstraintViolatedTests);
+  TDUnitX.RegisterTestFixture(TGenericInferenceFailedTests);
 
 end.
