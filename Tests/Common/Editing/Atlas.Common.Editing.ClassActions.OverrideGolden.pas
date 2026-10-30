@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ClassActions.OverrideGolden;
+﻿unit Atlas.Common.Editing.ClassActions.OverrideGolden; // lsp-ignore-file: override-only-inherited -- Die Aktion erzeugt absichtlich Rümpfe nur mit inherited.
 
 // Golden-Datei für die Code-Aktion „Name überschreiben“ (#42): genau das,
 // was die Aktion für zwei virtuelle Methoden des Vorfahren erzeugt. Der Test
