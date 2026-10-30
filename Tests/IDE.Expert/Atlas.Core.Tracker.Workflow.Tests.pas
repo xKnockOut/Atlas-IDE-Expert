@@ -39,6 +39,9 @@ type
     procedure CommitSubjects;
     [Test]
     procedure ConnectionKeepsWorkflowFields;
+    /// <summary>Zustandsfeld und Benutzerfeld nur bei Anbietern mit Feldern (YouTrack), nicht bei GitHub.</summary>
+    [Test]
+    procedure UsesFieldsOnlyWithoutGitHub;
   end;
 
   [TestFixture]
@@ -287,6 +290,14 @@ begin
   Assert.AreEqual('Fertig', mItems[2]);
   Assert.AreEqual('Zur Prüfung, Erledigt, Fertig', TAtlasTrackerWorkflow.ListText(mItems));
   Assert.AreEqual(0, Integer(Length(TAtlasTrackerWorkflow.ParseList(' , ; '))));
+end;
+
+procedure TAtlasTrackerWorkflowTests.UsesFieldsOnlyWithoutGitHub;
+begin
+  Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.YouTrack), 'YouTrack');
+  Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.GitHub), 'GitHub');
+  Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(' GitHub '), 'Schreibweise und Leerraum');
+  Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(''), 'ohne Anbieter');
 end;
 
 procedure TAtlasTrackerWorkflowTests.FillReplacesPlaceholders;
