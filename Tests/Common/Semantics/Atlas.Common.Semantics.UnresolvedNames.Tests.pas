@@ -30,6 +30,10 @@ type
     procedure KnowsForInVariableInBlock;
     [Test]
     procedure SkipsWithAndExceptionVariables;
+    /// <summary>Typparameter der Klasse gelten in den Rümpfen ihrer Methoden, auch in class function und als
+    /// Argument von TypeInfo, SizeOf und GetTypeKind (TComparer&lt;T&gt; aus System.Generics.Defaults).</summary>
+    [Test]
+    procedure KnowsTypeParametersInGenericMethodBodies;
     [Test]
     procedure NeedsSystemUnit;
     [Test]
@@ -214,6 +218,67 @@ begin
     '    on E: Exception do'#10 +
     '      raise E;'#10 +
     '  end;'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsTypeParametersInGenericMethodBodies;
+begin
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  IComparer<T> = interface'#10 +
+    '    function Compare(const Left, Right: T): Integer;'#10 +
+    '  end;'#10 +
+    '  TComparer<T> = class(TObject, IComparer<T>)'#10 +
+    '  protected'#10 +
+    '    class function TryUseRecEqualityOperator: Pointer;'#10 +
+    '    class function _Default: Pointer;'#10 +
+    '  public'#10 +
+    '    function Compare(const Left, Right: T): Integer; virtual; abstract;'#10 +
+    '  end;'#10 +
+    '  TPaar<TKey, TValue> = class'#10 +
+    '    procedure Lauf;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'class function TComparer<T>.TryUseRecEqualityOperator: Pointer;'#10 +
+    'var'#10 +
+    '  pEQ: Pointer;'#10 +
+    'begin'#10 +
+    '  pEQ := TypeInfo(T);'#10 +
+    '  if pEQ <> nil then'#10 +
+    '    Result := Pointer(SizeOf(T))'#10 +
+    '  else'#10 +
+    '    Result := nil;'#10 +
+    'end;'#10 +
+    'class function TComparer<T>._Default: Pointer;'#10 +
+    'begin'#10 +
+    '  if (GetTypeKind(T) = GetTypeKind(Integer)) and (TypeInfo(T) <> nil) then'#10 +
+    '    Exit(TryUseRecEqualityOperator);'#10 +
+    '  Result := Pointer(SizeOf(T));'#10 +
+    'end;'#10 +
+    'procedure TPaar<TKey, TValue>.Lauf;'#10 +
+    'var'#10 +
+    '  mSchluessel: TKey;'#10 +
+    'begin'#10 +
+    '  mSchluessel := Default(TKey);'#10 +
+    '  if SizeOf(TValue) = SizeOf(TKey) then'#10 +
+    '    mSchluessel := TKey(nil);'#10 +
+    'end;'#10 +
+    'end.'));
+  // Ein Name, der kein Typparameter ist, bleibt unbekannt.
+  Assert.AreEqual('U@9:19;', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TBox<T> = class'#10 +
+    '    class function Groesse: Integer;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'class function TBox<T>.Groesse: Integer;'#10 +
+    'begin'#10 +
+    '  Result := SizeOf(U);'#10 +
     'end;'#10 +
     'end.'));
 end;
