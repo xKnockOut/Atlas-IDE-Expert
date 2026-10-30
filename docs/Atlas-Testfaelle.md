@@ -351,7 +351,7 @@ Vorbereitung: RAD Studio mit Atlas-Plugin, Projekt offen; Claude Code mit dem At
 
 Help Insight der IDE (#442, #1246): Solange der Atlas-Tooltip an ist, schaltet Atlas Help Insight in der Registry ab (Wert `Help Insight` unter `Code Insight\Borland.EditOptions.Borland.CodeInsight.LSP.Pascal` für Delphi 13, `Code Insight\Borland.EditOptions.Pascal` für Delphi 12 und älter, dazu jeder Unterschlüssel von `Code Insight`, der den Wert schon trägt), ab dem nächsten Start zeigt die IDE keinen zweiten Tooltip; mit Atlas-Tooltip aus wieder an (nur wenn Atlas abgeschaltet hatte). Die Merker unter `HKCU\Software\Atlas\IdePlugin` heißen je Version und Ort, z. B. `IdeHelpInsightDisabled 23.0 Borland.EditOptions.Pascal`.
 
-| Nr. | Schritt | Erwartet |
+| Nr. | Schritte | Erwartet |
 |---|---|---|
 | HI1 | Atlas-Tooltip an, Maus auf einem Typ (z. B. `TMyClass = class`) | Nur der Atlas-Tooltip, kein Help Insight der IDE darüber, auch in der ersten Sitzung |
 | HI2 | Tools › Optionen › OK (beliebige Seite), Delphi neu starten, wie HI1 | Weiterhin nur der Atlas-Tooltip; Registry `Help Insight` = `False` |
@@ -2411,7 +2411,7 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 
 ## Dokumentationskommentar-Gerüst (#88)
 
-| Nr. | Schritt | Erwartet |
+| Nr. | Schritte | Erwartet |
 |---|---|---|
 | DC1 | Über `function CalcDiscount(Customer: TCustomer; Rate: Double): Currency;` eine leere Zeile, `///` tippen | `summary`, zwei `param` und `returns`; Tab springt in die Beschreibungen (**Abnahme**) |
 | DC2 | Kommentar vorhanden, Parameter `Discount: Double` ergänzen, Alt+Enter auf der Deklaration | „Fehlende <param> ergänzen“ fügt genau `<param name="Discount">` ein (**Abnahme**) |
@@ -2426,7 +2426,7 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 
 ## Hover: Mengen, Resourcestrings, veraltete Symbole (#38)
 
-| Nr. | Schritt | Erwartet |
+| Nr. | Schritte | Erwartet |
 |---|---|---|
 | HV1 | `const Stile: TFontStyles = [fsBold, fsItalic];`, Maus über `Stile` an einer Verwendung | „Wert: [fsBold, fsItalic] · 2 Elemente“ (**Abnahme**) |
 | HV2 | Maus über `TFontStyles` | „Wert: set of TFontStyle · 4 mögliche Elemente“ |
@@ -2438,7 +2438,7 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 
 ## Barrierefreiheit (#447)
 
-| Nr. | Schritt | Erwartet |
+| Nr. | Schritte | Erwartet |
 |---|---|---|
 | BF1 | Windows-Sprachausgabe an (Strg+Win+Enter), `List.Ad` tippen, mit ↑↓ wählen | Bei jedem Wechsel „Add, Funktion, 1 von 5. …“ (**Abnahme**) |
 | BF2 | Wie BF1, Inspect.exe (Windows SDK) auf das Popup | Baum: Fenster „Atlas-Vervollständigung“ (Liste) mit Listeneinträgen; der gewählte hat „ausgewählt“, Position und Anzahl stimmen; Überschriften wie „Weitere Einträge“ sind Text (**Abnahme**) |
@@ -2450,7 +2450,7 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 
 ## Helper-Methoden in der Vervollständigung (#456)
 
-| Nr. | Schritt | Erwartet |
+| Nr. | Schritte | Erwartet |
 |---|---|---|
 | HM1 | `uses System.SysUtils;`, `var S: string;`, `S.` tippen | `Length`, `ToUpper` usw. mit Tag „Helper“ in Akzentfarbe; Detail-Panel rechts „Helper · System.SysUtils“ (**Abnahme**) |
 | HM2 | `Button1.` auf einem Formular, Unit mit `TButtonHelper = class helper for TButton` eingebunden | Eigene Methoden des Helpers mit Tag „Helper“ zwischen den Membern von `TButton`, geerbte ohne Tag |
@@ -2461,7 +2461,7 @@ Voraussetzung: VCL-Quellen über die Bibliothekspfade im Index.
 
 ## Symbole in Direktiven (#102)
 
-| Nr. | Schritt | Erwartet |
+| Nr. | Schritte | Erwartet |
 |---|---|---|
 | CD1 | Projekt mit `DEBUG` in der Debug-Konfiguration, Konfiguration Debug, Maus über `DEBUG` in `{$IFDEF DEBUG}` | „**DEBUG**: aktiv, definiert in Konfiguration Debug (.dproj)“, darunter die Erklärung der Direktive (**Abnahme**) |
 | CD2 | Konfiguration Release, Maus über `{$IFDEF DEBUG}` | „**DEBUG**: nicht definiert, weder im Projekt noch vom Compiler noch mit {$DEFINE} davor gesetzt“ |
@@ -3547,7 +3547,7 @@ Vorher: Projekt mit Index geladen, eine Unit mit `uses System.SysUtils, System.C
 
 ## Formatieren (#43)
 
-| Nr. | Schritt | Erwartet |
+| Nr. | Schritte | Erwartet |
 |---|---|---|
 | FO1 | Unit mit falsch eingerückten Zeilen (begin/end, if/else ohne begin, try/finally, case, repeat, Klassenrumpf), Strg+Umschalt+Alt+L | Jede Ebene um `indentSize` eingerückt; Folgezeilen einer Anweisung behalten ihren Abstand; ein Rückgängig stellt alles wieder her |
 | FO2 | FO1 ein zweites Mal | Meldung „Atlas: Nichts zu formatieren.“, keine Änderung |
@@ -8929,3 +8929,11 @@ Vorbereitung: ein Projekt in einem Git-Repository mit mindestens einigen Dutzend
 | HS14 | `hotspots.months` auf 3 und `hotspots.coupling.minCommits` auf 2 setzen | Fenster rechnet neu; Kopfzeile nennt 3 Monate; mehr Kopplungen |
 | HS15 | `AtlasServer.exe --check <Projekt> --hotspots h.html` in einem Repository bzw. in einem Ordner ohne Versionsverwaltung | Exit-Code 0 und Bericht bzw. Exit-Code 3 mit Ursache |
 | HS16 | Claude Code: „Wo sind die Hotspots im Projekt?“ | Claude ruft `get_hotspots` und nennt dieselben Zahlen wie das Fenster |
+
+## Generische Interfaces und Typparameter
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GE1 | `TScoredItemComparer = class(TInterfacedObject, IComparer<TScoredItem>)` mit `function Compare(const Left, Right: TScoredItem): Integer;` (System.Generics.Defaults) | Keine Meldung „Compare weicht von der Deklaration in IComparer ab (wie E2211)“; mit `Integer` statt `TScoredItem` erscheint sie (wie dcc) |
+| GE2 | `System.Generics.Defaults.pas` öffnen, zu `class function TComparer<T>.TryUseRecEqualityOperator` und `TComparer<T>._Default` | Kein „"T" ist nicht deklariert“ an `TypeInfo(T)`, `SizeOf(T)`, `GetTypeKind(T)` |
+| GE3 | Projekt mit altem Index öffnen | Index wird einmal neu aufgebaut (Format 31, `index-31.atlasidx`), danach wieder aus dem Cache |
