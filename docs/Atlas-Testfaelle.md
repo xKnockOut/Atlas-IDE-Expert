@@ -8888,6 +8888,19 @@ Vorbereitung: Branch `feature/1383-ohne-dcc-befund`; Fälle aus `Tests/Compilerm
 | OD11 | Delphi 13: `pwsh Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -Cases 'CmE2287b','CmE2276b'` | dcc meldet E2287 bzw. E2276 wie markiert; sonst Kopf auf „Erwartet: -“ und Regel anpassen |
 | OD12 | Community Edition: `pwsh Tools/Build-Compilermeldungen.ps1 -Dcc -Cases 'Cm.W1009b'` | Abbruch mit Exit-Code 3 und „übersetzt nicht auf der Kommandozeile“, keine Tabelle mit lauter stillen Fällen |
 
+## Überladung nicht auflösbar oder mehrdeutig (#1371)
+
+Vorbereitung: Projekt `Tests/DccFaelle/DccUeberladungen.dproj` bzw. `DccUeberladungenGegen.dproj` öffnen; der Index muss System kennen (Delphi-Quellen im Bibliothekspfad).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OR1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TOverloadResolutionTests` grün |
+| OR2 | `pwsh Tools/Build-DccFaelle.ps1` | `DccUeberladungen` übersetzt ohne Meldung (UL1–UL11); `DccUeberladungenGegen` meldet E2250 an UG1–UG6, UG9, UG11 und E2251 an UG7, UG8, UG10 (UG5 darf auch E2035 sein) (**Abnahme**) |
+| OR3 | `Dcc.Ueberladungen.Gegen.pas` im Editor öffnen | Fehler `overload-resolution` an UG1–UG11, z. B. „Keine der 2 Überladungen von Nimm passt zu den Argumenten (Extended) (wie E2250).“ und „Aufruf von Zwei ist mehrdeutig: (AWert: Integer; AText: string = '') und (AWert: Integer; AZahl: Integer = 0) passen gleich gut (wie E2251).“ |
+| OR4 | `Dcc.Ueberladungen.pas` im Editor öffnen | Keine Meldung von `overload-resolution` |
+| OR5 | Strg+F9 auf `DccUeberladungenGegen` | Je Zeile ein Eintrag „Atlas + dcc“ (E2250 bzw. E2251), keine zweite Zeile von dcc |
+| OR6 | `pwsh Tools/Build-Compilermeldungen.ps1 -Cases Cm.E2250,Cm.E2251 -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | Beide Codes „erkannt“, keine neuen Treffer unter „zusätzlich“ (**Abnahme**) |
+| OR7 | `"overload-resolution": "off"`, `"group:compiler": "off"` bzw. `{"typeLevel": "off"}` | Keine Meldung |
 ## Sammelkorrektur (#1352)
 
 Vorbereitung: Kopie von `Tests/Referenzprojekt`; ein eigenes Projekt mit drei Units in UTF-8 mit BOM, UTF-8 ohne BOM und ANSI (CRLF) und je einem ungenutzten uses-Eintrag.

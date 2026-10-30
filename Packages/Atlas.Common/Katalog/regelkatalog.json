@@ -4790,6 +4790,21 @@
       "level": "T"
     },
     {
+      "id": "overload-resolution",
+      "name": "Overload not resolvable or ambiguous",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A call of an overloaded routine or method matches no overload (like E2250), for example a floating-point value where only Integer and string are offered, or is ambiguous (like E2251) because the matching overloads only differ in parameters with default values. Checked only when the list of overloads is certainly complete: System and all units in uses are indexed, no other unit declares a free routine of the same name, ancestors are known, no conditional, generic, nested or varargs declarations, no with. Only built-in type families without implicit conversion count as mismatching (float to integer, string to Char, Boolean to number …), aliases like their base type; records with an Implicit operator, classes, pointers, open arrays, Variant and overloaded calls inside the argument are left to the compiler. Ambiguous means: all matching overloads of the same class or unit have exactly the argument types for the passed arguments. Quick fix: Signature help shows all overloads.",
+      "bad": "procedure Nimm(AWert: Integer); overload;\nprocedure Nimm(const AWert: string); overload;\n\nNimm(1.5);  // no overload takes a float",
+      "good": "Nimm(Round(1.5));",
+      "compilerCodes": [
+        "E2250",
+        "E2251"
+      ],
+      "level": "T"
+    },
+    {
       "id": "method-without-self",
       "name": "Method does not need Self",
       "category": "code-smell",
