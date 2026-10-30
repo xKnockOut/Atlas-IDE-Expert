@@ -26,7 +26,9 @@
 // Doppelklick und „Öffnen“ öffnen); frei anordnen (#767): Leiste,
 // Bearbeitungsmodus mit Griff, Strg+Pfeiltasten, Breite und Auge, Menüs
 // „Layout“ und „Bereich hinzufügen“, Leiste „Ausgeblendet“ und Rechtsklick
-// „Ausblenden“; ohne welcomePage.customLayout kein Bearbeitungsmodus.
+// „Ausblenden“; ohne welcomePage.customLayout kein Bearbeitungsmodus;
+// Scrollen der Tafel (#1440): Mausrad über Bereich und Kopf, innere Liste
+// zuerst, Tasten und welche Steuerelemente ihre Tasten behalten.
 
 interface
 
@@ -61,6 +63,14 @@ type
     procedure BoardPlacesSectionsInColumns;
     [Test]
     procedure BoardKeepsAndDropsFrames;
+    [Test]
+    procedure WheelScrollsPageFromSectionAndHeader;
+    [Test]
+    procedure WheelScrollsInnerListFirst;
+    [Test]
+    procedure KeysScrollPage;
+    [Test]
+    procedure ScrollKeysAndOwnersFollowControl;
   end;
 
   [TestFixture]
@@ -280,6 +290,9 @@ uses
   System.Classes,
   Vcl.Controls,
   Vcl.Forms,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
+  Atlas.Core.Welcome.Scroll,
   Atlas.Core.Status.Lines,
   Atlas.Core.Welcome.Sections,
   Atlas.Core.Welcome.Layout,
@@ -930,6 +943,146 @@ begin
     Board.Free;
     Host.Free;
     TAtlasWelcomeViews.Release;
+  end;
+end;
+
+/// <summary>Tafel mit drei Bereichen untereinander in einem niedrigen Fenster: Der Inhalt ist höher als der Platz.</summary>
+function TallBoard(AHost: TForm): TAtlasWelcomeBoardFrame;
+begin
+  RegisterViews([TAtlasWelcomeIds.Continue, TAtlasWelcomeIds.Projects, TAtlasWelcomeIds.State]);
+  AHost.ClientWidth := 400;
+  AHost.ClientHeight := 160;
+  Result := TAtlasWelcomeBoardFrame.Create(AHost);
+  Result.Parent := AHost;
+  Result.Align := alClient;
+  Result.Rebuild([Section(TAtlasWelcomeIds.Continue, 10, TAtlasWelcomeColumn.Left),
+    Section(TAtlasWelcomeIds.Projects, 20, TAtlasWelcomeColumn.Left),
+    Section(TAtlasWelcomeIds.State, 30, TAtlasWelcomeColumn.Left)], TAtlasWelcomeLayout.Atlas, 1);
+  // Ohne gezeigtes Fenster: Bereich der Leiste mit Fenster rechnen lassen.
+  Result.ScrollBox.HandleNeeded;
+  Result.ScrollBox.Realign;
+end;
+
+procedure TAtlasWelcomeBoardTests.WheelScrollsPageFromSectionAndHeader;
+var
+  Host: TForm;
+  Board: TAtlasWelcomeBoardFrame;
+  mOther: TPanel;
+begin
+  Host := TForm.CreateNew(nil);
+  try
+    Board := TallBoard(Host);
+    Assert.IsTrue(Board.ScrollBox.VertScrollBar.IsScrollBarVisible, 'Überlänge zeigt die Leiste');
+    Assert.AreEqual(0, Board.ScrollBox.VertScrollBar.Position);
+    Assert.IsFalse(Board.ScrollWheel(Board.View(TAtlasWelcomeIds.Continue), 120), 'oben geht es nicht weiter');
+    Assert.IsTrue(Board.ScrollWheel(Board.View(TAtlasWelcomeIds.Continue).TitleLabel, -120),
+      'über einem Bereich scrollt die Seite');
+    Assert.IsTrue(Board.ScrollBox.VertScrollBar.Position > 0);
+    Assert.IsTrue(Board.ScrollWheel(Board.Header, 3 * 120), 'über dem Kopf auch');
+    Assert.AreEqual(0, Board.ScrollBox.VertScrollBar.Position);
+    mOther := TPanel.Create(Host);
+    mOther.Parent := Host;
+    Assert.IsFalse(Board.Contains(mOther));
+    Assert.IsFalse(Board.ScrollWheel(mOther, -120), 'außerhalb der Tafel nicht');
+    Assert.IsFalse(Board.ScrollWheel(nil, -120));
+  finally
+    Host.Free;
+    TAtlasWelcomeViews.Release;
+  end;
+end;
+
+procedure TAtlasWelcomeBoardTests.WheelScrollsInnerListFirst;
+var
+  Host: TForm;
+  Board: TAtlasWelcomeBoardFrame;
+  mInner: TScrollBox;
+  mContent: TPanel;
+  mBar: TControlScrollBar;
+begin
+  Host := TForm.CreateNew(nil);
+  try
+    Board := TallBoard(Host);
+    // Wie „Neu in Atlas“: eine eigene Scrollbox im Bereich.
+    mInner := TScrollBox.Create(Host);
+    mInner.Parent := Board.View(TAtlasWelcomeIds.Continue);
+    mInner.BorderStyle := bsNone;
+    mInner.SetBounds(0, 0, 200, 40);
+    mContent := TPanel.Create(Host);
+    mContent.Parent := mInner;
+    mContent.SetBounds(0, 0, 180, 400);
+    mInner.HandleNeeded;
+    mInner.Realign;
+    mBar := mInner.VertScrollBar;
+    Assert.IsTrue(mBar.IsScrollBarVisible, 'innere Liste mit Überlänge');
+    Assert.IsTrue(Board.ScrollWheel(mContent, -120));
+    Assert.IsTrue(mBar.Position > 0, 'die innere Liste scrollt zuerst');
+    Assert.AreEqual(0, Board.ScrollBox.VertScrollBar.Position, 'die Seite bleibt stehen');
+    // Am Ende der Liste geht das Rad an die Seite.
+    mBar.Position := mBar.Range;
+    Assert.IsTrue(Board.ScrollWheel(mContent, -120));
+    Assert.IsTrue(Board.ScrollBox.VertScrollBar.Position > 0, 'danach die Seite');
+  finally
+    Host.Free;
+    TAtlasWelcomeViews.Release;
+  end;
+end;
+
+procedure TAtlasWelcomeBoardTests.KeysScrollPage;
+var
+  Host: TForm;
+  Board: TAtlasWelcomeBoardFrame;
+  mBar: TControlScrollBar;
+  mPage: Integer;
+begin
+  Host := TForm.CreateNew(nil);
+  try
+    Board := TallBoard(Host);
+    mBar := Board.ScrollBox.VertScrollBar;
+    Assert.IsFalse(Board.ScrollKey(TAtlasWelcomeScrollKey.PageUp), 'oben bleibt Bild auf ohne Wirkung');
+    Assert.IsTrue(Board.ScrollKey(TAtlasWelcomeScrollKey.PageDown));
+    mPage := mBar.Position;
+    Assert.IsTrue(mPage > 0);
+    Assert.IsTrue(Board.ScrollKey(TAtlasWelcomeScrollKey.Bottom));
+    Assert.IsTrue(mBar.Position >= mPage);
+    Assert.IsFalse(Board.ScrollKey(TAtlasWelcomeScrollKey.Bottom), 'am Ende bleibt es stehen');
+    Assert.IsFalse(Board.ScrollKey(TAtlasWelcomeScrollKey.PageDown));
+    Assert.IsTrue(Board.ScrollKey(TAtlasWelcomeScrollKey.Top));
+    Assert.AreEqual(0, mBar.Position);
+  finally
+    Host.Free;
+    TAtlasWelcomeViews.Release;
+  end;
+end;
+
+procedure TAtlasWelcomeBoardTests.ScrollKeysAndOwnersFollowControl;
+var
+  mEdit: TEdit;
+  mList: TListBox;
+  mCombo: TComboBox;
+  mPanel: TPanel;
+begin
+  Assert.AreEqual(Ord(TAtlasWelcomeScrollKey.PageUp), Ord(TAtlasWelcomeBoardFrame.ScrollKeyOf(VK_PRIOR, [])));
+  Assert.AreEqual(Ord(TAtlasWelcomeScrollKey.PageDown), Ord(TAtlasWelcomeBoardFrame.ScrollKeyOf(VK_NEXT, [])));
+  Assert.AreEqual(Ord(TAtlasWelcomeScrollKey.Top), Ord(TAtlasWelcomeBoardFrame.ScrollKeyOf(VK_HOME, [ssCtrl])));
+  Assert.AreEqual(Ord(TAtlasWelcomeScrollKey.Bottom), Ord(TAtlasWelcomeBoardFrame.ScrollKeyOf(VK_END, [])));
+  Assert.AreEqual(Ord(TAtlasWelcomeScrollKey.None), Ord(TAtlasWelcomeBoardFrame.ScrollKeyOf(VK_NEXT, [ssAlt])),
+    'Alt bleibt bei der IDE');
+  Assert.AreEqual(Ord(TAtlasWelcomeScrollKey.None), Ord(TAtlasWelcomeBoardFrame.ScrollKeyOf(Ord('A'), [])));
+  mEdit := TEdit.Create(nil);
+  mList := TListBox.Create(nil);
+  mCombo := TComboBox.Create(nil);
+  mPanel := TPanel.Create(nil);
+  try
+    Assert.IsTrue(TAtlasWelcomeBoardFrame.OwnsScrollKeys(mEdit), 'Eingabefeld');
+    Assert.IsTrue(TAtlasWelcomeBoardFrame.OwnsScrollKeys(mList), 'Liste');
+    Assert.IsTrue(TAtlasWelcomeBoardFrame.OwnsScrollKeys(mCombo), 'Auswahlfeld');
+    Assert.IsFalse(TAtlasWelcomeBoardFrame.OwnsScrollKeys(mPanel));
+    Assert.IsFalse(TAtlasWelcomeBoardFrame.OwnsScrollKeys(nil));
+  finally
+    mPanel.Free;
+    mCombo.Free;
+    mList.Free;
+    mEdit.Free;
   end;
 end;
 

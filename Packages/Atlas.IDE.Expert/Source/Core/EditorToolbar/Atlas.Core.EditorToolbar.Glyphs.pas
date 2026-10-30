@@ -95,6 +95,37 @@ begin
   Result.Filled := AFilled;
 end;
 
+/// <summary>Umriss eines Auges wie im Mockup (Pfad "M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5
+/// 8Z"): vier kubische Bögen, je acht Strecken.</summary>
+function EyeOutline: TAtlasGlyphShape;
+const
+  // Je Bogen Start, zwei Stützpunkte, Ende.
+  Arcs: array[0..3, 0..3, 0..1] of Single = (
+    ((1.5, 8), (1.5, 8), (3.9, 3.5), (8, 3.5)),
+    ((8, 3.5), (12.1, 3.5), (14.5, 8), (14.5, 8)),
+    ((14.5, 8), (14.5, 8), (12.1, 12.5), (8, 12.5)),
+    ((8, 12.5), (3.9, 12.5), (1.5, 8), (1.5, 8)));
+  Steps = 8;
+var
+  Points: TArray<TAtlasGlyphPoint>;
+  Arc, Step: Integer;
+  T, U: Single;
+begin
+  Points := nil;
+  for Arc := 0 to High(Arcs) do
+    for Step := 0 to Steps - 1 do
+    begin
+      T := Step / Steps;
+      U := 1 - T;
+      Points := Points + [P(U * U * U * Arcs[Arc, 0, 0] + 3 * U * U * T * Arcs[Arc, 1, 0] + 3 * U * T * T * Arcs[Arc, 2, 0] +
+        T * T * T * Arcs[Arc, 3, 0], U * U * U * Arcs[Arc, 0, 1] + 3 * U * U * T * Arcs[Arc, 1, 1] +
+        3 * U * T * T * Arcs[Arc, 2, 1] + T * T * T * Arcs[Arc, 3, 1])];
+    end;
+  Result.Points := Points;
+  Result.Closed := True;
+  Result.Filled := False;
+end;
+
 /// <summary>Umriss eines Zahnrads um CX/CY mit ATeeth Zähnen: Kopf auf AOuter, Fuß auf AInner, Zahn und Lücke etwa
 /// gleich breit. Je Zahn vier Punkte (Fuß, Flanke hinauf, Kopf, Flanke hinab).</summary>
 function GearOutline(CX, CY, AOuter, AInner: Single; ATeeth: Integer): TAtlasGlyphShape;
@@ -211,6 +242,27 @@ begin
     TAtlasToolbarIcon.Gear:
       // Zahnkranz mit Loch; früher Kreis mit acht Strahlen, das sah aus wie eine Sonne.
       Result := [GearOutline(8, 8, 6.8, 5, 8), Circle(8, 8, 2.2, False)];
+    // Designer-Leiste (#1442): Formen wie in den Mockups (Strichsymbole, viewBox 0 0 16 16).
+    TAtlasToolbarIcon.ComponentSearch:
+      // Lupe.
+      Result := [Circle(7, 7, 4.5, False), Stroke([P(10.5, 10.5), P(14, 14)])];
+    TAtlasToolbarIcon.NonVisual:
+      // Auge.
+      Result := [EyeOutline, Circle(8, 8, 2, False)];
+    TAtlasToolbarIcon.NonVisualHidden:
+      // Durchgestrichenes Auge: Die IDE blendet die nichtvisuellen Komponenten aus.
+      Result := [EyeOutline, Circle(8, 8, 2, False), Stroke([P(2.5, 13.5), P(13.5, 2.5)])];
+    TAtlasToolbarIcon.SelectParent:
+      // Pfeil nach oben.
+      Result := [Stroke([P(8, 13), P(8, 4)]), Stroke([P(4.5, 7.5), P(8, 4), P(11.5, 7.5)])];
+    TAtlasToolbarIcon.TabOrder:
+      // Pfeil nach rechts oben, nach links unten.
+      Result := [Stroke([P(2, 5), P(11, 5)]), Stroke([P(8, 2), P(11, 5), P(8, 8)]), Stroke([P(14, 11), P(5, 11)]),
+        Stroke([P(8, 8), P(5, 11), P(8, 14)])];
+    TAtlasToolbarIcon.AlignControls:
+      // Linke Kante mit zwei bündigen Balken.
+      Result := [Stroke([P(2, 2), P(2, 14)]), Outline([P(5, 4), P(13, 4), P(13, 7), P(5, 7)]),
+        Outline([P(5, 9), P(10, 9), P(10, 12), P(5, 12)])];
   else
     Result := nil;
   end;

@@ -62,7 +62,6 @@
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
-        <!-- Begrenzte Debug-Informationen: Zeilennummern in der .map des Servers (#282). -->
         <DCC_DebugInformation>1</DCC_DebugInformation>
         <DCC_SymbolReferenceInfo>0</DCC_SymbolReferenceInfo>
     </PropertyGroup>
@@ -82,8 +81,8 @@
         <DCCReference Include="Source\Projects\Atlas.Windows.Projects.DelphiInstallation.pas"/>
         <DCCReference Include="Source\Compiler\Atlas.Windows.Compiler.Adapters.ProcessRunner.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Windows.Documents.PathCanonicalizer.pas"/>
-        <DCCReference Include="Source\Documents\Atlas.Windows.Documents.SharedRead.pas"/>
         <DCCReference Include="Source\Documents\Atlas.Windows.Documents.FileWatcher.pas"/>
+        <DCCReference Include="Source\Documents\Atlas.Windows.Documents.SharedRead.pas"/>
         <DCCReference Include="Source\Console\Atlas.Windows.Console.StdStreams.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Windows.Editing.SystemColors.pas"/>
         <BuildConfiguration Include="Base">

@@ -837,6 +837,20 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | WP26 | Fokus auf die Willkommensseite der IDE (Reiter „Willkommen“), Strg+E; dann in einer Unit im Editor Strg+E; dann „Atlas-Start“ angedockt neben dem Editor, Fokus im Editor, Strg+E | Erst Fokus im Suchfeld der Willkommensseite; im Editor beide Male die inkrementelle Suche der IDE |
 | WP27 | Atlas-Bereiche auf der Willkommensseite und „Atlas-Start“ zugleich offen, IDE mit `cc quit` und über das Fenster beenden (auch mit Beyond-Compare-Experte) | Kein „Anwendungsfehler“, keine Zugriffsverletzung (#1233, #1091), kein Eintrag „Welcome:“ im atlas.log; beide Orte zeigen dieselben Daten, Thema hell/dunkel an beiden Orten |
 
+### Scrollen (#1440)
+
+Auf release/1.1 gibt es Atlas nur im Fenster „Atlas-Start“; WS-SC2 gilt erst mit der Willkommensseite der IDE (#1347, ab v1.2).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WS-SC1 | „Atlas-Start“ niedrig ziehen, Fokus im Code-Editor lassen. Mausrad über leerer Fläche, über einer Liste (z. B. „Projekte“), über einem Link bzw. einer Schaltfläche und über dem Kopf | Die Seite scrollt jedes Mal; der Code-Editor scrollt nicht mit. Strg+Rad und Umschalt+Rad scrollen die Seite nicht |
+| WS-SC2 | Dasselbe auf der Willkommensseite der IDE mit Bereich „Atlas“ und einzelnen Atlas-Bereichen (nur ab v1.2) | Wie WS-SC1 |
+| WS-SC3 | Fenster höher und niedriger ziehen | Senkrechte Scrollleiste nur bei Überlänge; Ziehen am Schieber scrollt mit |
+| WS-SC4 | „Neu in Atlas“ mit vielen Einträgen: Mausrad darüber nach unten, bis die Liste am Ende ist, weiterdrehen; dann nach oben | Erst scrollt die Liste, an ihrem Ende die Seite; nach oben ebenso erst die Liste bis zum Anfang |
+| WS-SC5 | Auf freie Fläche klicken, dann Bild ab, Bild auf, Ende, Pos1; danach ins Suchfeld klicken und Pos1/Ende drücken | Die Seite scrollt um eine Seite bzw. an Anfang und Ende; im Suchfeld bewegen die Tasten nur den Cursor |
+| WS-SC6 | „Seite anpassen“, Seite etwas nach unten scrollen, einen Bereich am Griff ziehen; mit dem Zeiger am unteren bzw. oberen Rand der Seite stehen bleiben; loslassen | Die Seite scrollt am Rand von selbst, umso schneller, je näher am Rand; Einfügelinie und Ziel stimmen dabei; der Bereich landet an der Linie. Zug aus der Leiste „Ausgeblendet“ startet kein Scrollen |
+| WS-SC7 | WS-SC1 bis WS-SC6 in Delphi 12 und 13, jeweils helles und dunkles Thema | Gleiches Verhalten |
+
 ### Suchfeld (#760)
 
 | Nr. | Schritte | Erwartet |
@@ -1198,6 +1212,36 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | MI22 | Englische IDE; helles und dunkles Thema; 150 % Skalierung; Fenster *Atlas-Start* | „My issues“, „Start“, Chips und Marken lesbar, nichts abgeschnitten |
 | MI23 | Karte „Atlas entdecken“ und „Neu in Atlas“ | Tipp „Issues aus dem Tracker beginnen“ mit Bild, „Ausprobieren“ öffnet den Zugangsdialog; „Neu in Atlas“ nennt die Funktion mit Schalter |
 | MI24 | IDE während einer laufenden Abfrage schließen (Server antwortet langsam) | IDE schließt ohne Hänger |
+
+## Designer-Leiste (#1442)
+
+Vorbereitung: Formular mit `pnlTop` (TPanel, Align = alTop) und darin `btnOK` (TButton, Caption „OK“, OnClick belegt), `btnCancel`; direkt auf dem Formular `lblName` (TLabel), `edtName` und `edtOrt` (TEdit, `edtOrt` oberhalb von `edtName`, aber mit höherer TabOrder), `ActionList1` mit `OKAction`, `qryKunden` (TFDQuery oder TDataSource). Eingebetteter Designer an (Standard). Für DL13 bis DL17 unter Einstellungen „Experimentelle Funktionen“ an.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DL1 | Unit öffnen, F12 drücken, dann wieder F12 | Im Designer verschwinden Brotkrumen und Editorleiste, oben steht die Designer-Leiste mit Symbolen (Lupe, Auge, Trennstrich, Elternelement, Tab-Reihenfolge); zurück im Code ist es umgekehrt, ohne Flackern oder Springen des Editors |
+| DL2 | Reiter „Design“/„Code“ unten im Editorfenster statt F12; zweites Editorfenster mit einer anderen Unit im Code daneben | Wie DL1; das zweite Fenster behält Brotkrumen und Editorleiste |
+| DL3 | Willkommensseite der IDE zeigen (Datei › Willkommensseite bzw. Reiter „Welcome Page“) | Weder Brotkrumen noch Editorleiste noch Designer-Leiste über der Willkommensseite; zurück in einer Unit sind die Code-Leisten wieder da |
+| DL4 | Über die Symbole fahren | Tooltips: „Komponenten suchen (Alt+^)“, „Nichtvisuelle Komponenten ein- und ausblenden (Strg+H der IDE)“, „Elternelement auswählen“, „Tab-Reihenfolge anzeigen“ |
+| DL5 | Auge klicken; nochmals klicken; danach Strg+H im Designer | Symbole von `ActionList1` und `qryKunden` verschwinden bzw. erscheinen wie mit Strg+H; das Auge ist gedrückt, solange sie ausgeblendet sind, auch wenn mit Strg+H umgeschaltet wurde |
+| DL6 | `btnOK` wählen, „Elternelement auswählen“; nochmals | Erst `pnlTop`, dann das Formular ist gewählt (Objektinspektor folgt); bei `qryKunden` bzw. ohne Auswahl eine Zeile in der Meldungsansicht, nichts geändert |
+| DL7 | Im Designer Alt+^ drücken; im Code-Editor Alt+^ drücken | Im Designer öffnet sich das große Fenster „Komponenten suchen“ mittig auf dem Monitor des Formulars; im Code-Editor passiert nichts von Atlas (die Taste bleibt der IDE). Nach Alt+^ springt der Fokus nicht ins Hauptmenü der IDE |
+| DL8 | Im Fenster „ok“ tippen | `btnOK` (Name und Caption „OK“ hervorgehoben) zuerst, gruppiert unter `pnlTop`; Fußzeile „1 von n“; rechts die Vorschau: Karte des Formulars mit hervorgehobenem `btnOK`, Position und Größe, Eigenschaften (Caption, TabOrder …), Ereignis `OnClick = …` |
+| DL9 | Chips „Nichtvisuelle“, „Container“, „Alle“; Chip „Name“ und „Caption“ abwählen (nur „Klasse“), „button“ tippen | Liste zeigt jeweils nur diese Art; mit nur „Klasse“ finden sich `btnOK` und `btnCancel` über TButton; das letzte Feld lässt sich nicht abwählen |
+| DL10 | Hierarchie / Klasse / Flach umschalten (Klick und Strg+G), F4 | Gruppen nach Elternelement bzw. Klasse bzw. ohne Köpfe; die gewählte Komponente bleibt gewählt; F4 blendet die Vorschau aus und ein |
+| DL11 | ↑/↓, Bild auf/ab; Enter; Fenster erneut öffnen und Strg+Enter auf `btnOK`; erneut öffnen und Strg+C | Köpfe werden übersprungen; Enter schließt und wählt die Komponente im Designer und Objektinspektor; Strg+Enter springt in den Code zu `btnOKClick`; Strg+C legt den Namen in die Zwischenablage, das Fenster bleibt offen |
+| DL12 | Fenster verschieben und vergrößern, schließen, wieder öffnen | Gleiche Lage, Größe, Chips und Gruppierung wie zuletzt (bis zum Neustart der IDE) |
+| DL13 | Einstellungen › Editor › „Fenster ‚Komponenten suchen‘“ auf „Klein wie Strg+P“; Alt+^ | Kleines Fenster oben mittig, nur Suchfeld und einzeilige Liste; Enter wählt aus; ein Klick daneben schließt es |
+| DL14 | Taste unter Einstellungen auf Strg+Umschalt+K ändern bzw. leeren | Neue Taste wirkt im Designer, Tooltip zeigt sie; leer: keine Taste, die Lupe öffnet das Fenster weiter |
+| DL15 | „Tab-Reihenfolge“ klicken | Auf jedem fokussierbaren Steuerelement und Container eine Marke mit der TabOrder; die Marke von `edtName` steht in Warnfarbe (Sprung zurück gegen die Lesereihenfolge); Klicks auf die Marken gehen an den Designer (Auswahl); Formular verschieben, scrollen, anderes Fenster der IDE in den Vordergrund, andere Anwendung: die Marken folgen bzw. verschwinden; nochmals klicken: Marken weg |
+| DL16 | „Tab-Reihenfolge per Klick neu vergeben“ an (experimentell), Tab-Reihenfolge an, nacheinander `edtOrt`, `edtName`, `pnlTop` anklicken | Marken zeigen 0, 1, 2; Meldungsansicht „edtOrt: TabOrder 0“ …; Formular ist geändert (*); in `pnlTop` beginnt ein Klick auf `btnCancel` wieder bei 0; Strg+S und .dfm prüfen |
+| DL17 | „Knopf ‚Ausrichten‘“ an (experimentell); `btnOK`, dann `btnCancel` wählen; Pfeil am Knopf → „Obere Kanten“; danach Symbol klicken nach anderer Auswahl; „Abstände waagrecht verteilen“ mit nur zwei Steuerelementen | Menü mit Kanten, Mitten, im Elternelement zentrieren, Größe, Abständen; nicht passende Befehle grau; `btnCancel` steht auf der Höhe von `btnOK` (Bezug = zuerst gewählt); das Symbol wiederholt den letzten Befehl, Tooltip nennt ihn; zu wenige gewählt: Meldung, nichts geändert |
+| DL18 | Experimentelle Funktionen aus | Kein Knopf „Ausrichten“; Marken der Tab-Reihenfolge nehmen keine Klicks an |
+| DL19 | Datenmodul im Designer öffnen | Designer-Leiste erscheint; Suche listet die Komponenten (Vorschau ohne Karte); Auge wie Strg+H |
+| DL20 | Einstellungen › Editor „Designer-Leiste“ aus; Schnellschalter „Designer-Leiste“ | Leiste, Marken, offenes Suchfenster und Taste Alt+^ weg; eingeschaltet kommt alles zurück |
+| DL21 | Mit offenem Suchfenster und eingeblendeter Tab-Reihenfolge Projekt schließen, Atlas-Package deinstallieren bzw. IDE beenden | Kein Fehler, keine Zugriffsverletzung |
+| DL22 | Eingebetteten Designer ausschalten (Optionen → Formular-Designer), Formular öffnen | Das Editorfenster zeigt weiter Brotkrumen und Editorleiste; keine Designer-Leiste im Code |
+| DL23 | DL1 bis DL22 in Delphi 12 und 13, helles und dunkles Thema, 100 % und 150 % DPI | Gleiches Verhalten; Leiste in den Farben der Brotkrumen, Marken und Fenster gut lesbar |
 
 ## Atlas-Symbol (#751)
 

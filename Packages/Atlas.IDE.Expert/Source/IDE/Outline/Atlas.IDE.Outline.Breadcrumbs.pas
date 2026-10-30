@@ -165,6 +165,8 @@ begin
       Place(TAtlasBreadcrumbBar(ABar), AEditorParent);
     end);
   FHost.OnRemoved := Removed;
+  // Im Formular-Designer hat der Pfad des Carets keinen Nutzen; dort steht die Designer-Leiste (#1442).
+  FHost.ShowIn := TAtlasEditorBarView.Code;
   FToolbars := TAtlasNavigationToolbar.Create(nil);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;

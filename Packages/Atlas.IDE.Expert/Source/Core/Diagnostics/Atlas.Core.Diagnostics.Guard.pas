@@ -57,7 +57,8 @@ type
     SmartPaste, WrapSelection, Unwrap, Hide, Search, UnitSearch, Generate, ContinueLines, SlashCommands,
     GoToDefinition, EditorToolbar, QuickBookmarks, StatusBar, Architecture, UnitRelations, SymbolPath, Tasks, Debugger,
     ExitPoints, Reassigned, ExpressionType, MethodPlacement, IssueLinks,
-    BlameIssues, Hotspots);
+    BlameIssues, Hotspots,
+    DesignerBar);
 {$SCOPEDENUMS OFF}
 
   TAtlasFeatures = set of TAtlasFeature;
@@ -633,7 +634,8 @@ const
     'Schnelle Lesezeichen', 'Atlas-Statusleiste', 'Architekturübersicht', 'Unit-Beziehungen',
     'Weg zwischen Symbolen', 'Projektaufgaben', 'Debuggen',
     'Austrittspunkte', 'Neu zugewiesene Variablen', 'Typ des Ausdrucks', 'Methodenreihenfolge',
-    'Issue-Kennungen', 'Issues in der Zeilenhistorie', 'Hotspots');
+    'Issue-Kennungen', 'Issues in der Zeilenhistorie', 'Hotspots',
+    'Designer-Leiste');
 begin
   Result := Names[AFeature];
 end;

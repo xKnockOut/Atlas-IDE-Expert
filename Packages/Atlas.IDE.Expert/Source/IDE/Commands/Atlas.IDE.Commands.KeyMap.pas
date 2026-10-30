@@ -152,7 +152,9 @@ const
     // Sicher löschen (#716): Editorbefehl.
     3,
     // Issue anlegen (#1268): Editorbefehl.
-    3);
+    3,
+    // Komponenten suchen (#1442): keine Bindung, TAtlasKeyHook nur im Designer.
+    0);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

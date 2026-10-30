@@ -58,7 +58,8 @@ type
     MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
-    PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue);
+    PreviousBookmark, SearchReplace, StepIntoTarget, ExpressionType, SafeDelete, CreateIssue,
+    DesignerSearch);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -284,7 +285,10 @@ begin
     Create(TAtlasKeyFunction.SafeDelete, Word(ASettings.SafeDeleteKey), Shared, ASettings.SafeDelete),
     // Issue anlegen (#1268): frei belegbar, ohne Vorgabe.
     Create(TAtlasKeyFunction.CreateIssue, Word(ASettings.CreateIssueKey), Shared,
-      ASettings.WelcomePage and ASettings.IssuesCreate)];
+      ASettings.WelcomePage and ASettings.IssuesCreate),
+    // Komponenten suchen (#1442): nur solange ein Designer gezeigt wird, dort mit Vorrang (wie das Suchfeld der
+    // Willkommensseite).
+    Create(TAtlasKeyFunction.DesignerSearch, Word(ASettings.DesignerSearchKey), True, ASettings.EditorDesignerBar)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -463,6 +467,8 @@ begin
         ASettings.SafeDeleteKey := Entry.Key;
       TAtlasKeyFunction.CreateIssue:
         ASettings.CreateIssueKey := Entry.Key;
+      TAtlasKeyFunction.DesignerSearch:
+        ASettings.DesignerSearchKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;
