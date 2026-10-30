@@ -469,6 +469,9 @@ begin
     begin
       mButton.Enabled := TCustomAction(mAction).Enabled;
       mButton.Pressed := TCustomAction(mAction).Checked;
+      // Wie im Mockup: ausgeblendet = durchgestrichenes Auge.
+      if mButton.Pressed then
+        mButton.Icon := TAtlasToolbarIcon.NonVisualHidden;
     end;
   end;
   Result := Result + [mButton];

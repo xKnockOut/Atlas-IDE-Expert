@@ -95,6 +95,37 @@ begin
   Result.Filled := AFilled;
 end;
 
+/// <summary>Umriss eines Auges wie im Mockup (Pfad "M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5
+/// 8Z"): vier kubische Bögen, je acht Strecken.</summary>
+function EyeOutline: TAtlasGlyphShape;
+const
+  // Je Bogen Start, zwei Stützpunkte, Ende.
+  Arcs: array[0..3, 0..3, 0..1] of Single = (
+    ((1.5, 8), (1.5, 8), (3.9, 3.5), (8, 3.5)),
+    ((8, 3.5), (12.1, 3.5), (14.5, 8), (14.5, 8)),
+    ((14.5, 8), (14.5, 8), (12.1, 12.5), (8, 12.5)),
+    ((8, 12.5), (3.9, 12.5), (1.5, 8), (1.5, 8)));
+  Steps = 8;
+var
+  Points: TArray<TAtlasGlyphPoint>;
+  Arc, Step: Integer;
+  T, U: Single;
+begin
+  Points := nil;
+  for Arc := 0 to High(Arcs) do
+    for Step := 0 to Steps - 1 do
+    begin
+      T := Step / Steps;
+      U := 1 - T;
+      Points := Points + [P(U * U * U * Arcs[Arc, 0, 0] + 3 * U * U * T * Arcs[Arc, 1, 0] + 3 * U * T * T * Arcs[Arc, 2, 0] +
+        T * T * T * Arcs[Arc, 3, 0], U * U * U * Arcs[Arc, 0, 1] + 3 * U * U * T * Arcs[Arc, 1, 1] +
+        3 * U * T * T * Arcs[Arc, 2, 1] + T * T * T * Arcs[Arc, 3, 1])];
+    end;
+  Result.Points := Points;
+  Result.Closed := True;
+  Result.Filled := False;
+end;
+
 /// <summary>Umriss eines Zahnrads um CX/CY mit ATeeth Zähnen: Kopf auf AOuter, Fuß auf AInner, Zahn und Lücke etwa
 /// gleich breit. Je Zahn vier Punkte (Fuß, Flanke hinauf, Kopf, Flanke hinab).</summary>
 function GearOutline(CX, CY, AOuter, AInner: Single; ATeeth: Integer): TAtlasGlyphShape;
@@ -211,29 +242,27 @@ begin
     TAtlasToolbarIcon.Gear:
       // Zahnkranz mit Loch; früher Kreis mit acht Strahlen, das sah aus wie eine Sonne.
       Result := [GearOutline(8, 8, 6.8, 5, 8), Circle(8, 8, 2.2, False)];
+    // Designer-Leiste (#1442): Formen wie in den Mockups (Strichsymbole, viewBox 0 0 16 16).
     TAtlasToolbarIcon.ComponentSearch:
-      // Lupe über einem kleinen Rahmen (Komponente).
-      Result := [Outline([P(1.5, 9.5), P(6.5, 9.5), P(6.5, 14.5), P(1.5, 14.5)]), Circle(10, 6, 4, False),
-        Stroke([P(7.2, 8.8), P(5, 11)])];
+      // Lupe.
+      Result := [Circle(7, 7, 4.5, False), Stroke([P(10.5, 10.5), P(14, 14)])];
     TAtlasToolbarIcon.NonVisual:
-      // Kleines Symbolfeld (nichtvisuelle Komponente) mit Auge darin.
-      Result := [Outline([P(1.5, 2.5), P(14.5, 2.5), P(14.5, 13.5), P(1.5, 13.5)]),
-        Outline([P(3, 8), P(5.5, 5.6), P(8, 4.9), P(10.5, 5.6), P(13, 8), P(10.5, 10.4), P(8, 11.1), P(5.5, 10.4)]),
-        Circle(8, 8, 1.4, True)];
+      // Auge.
+      Result := [EyeOutline, Circle(8, 8, 2, False)];
+    TAtlasToolbarIcon.NonVisualHidden:
+      // Durchgestrichenes Auge: Die IDE blendet die nichtvisuellen Komponenten aus.
+      Result := [EyeOutline, Circle(8, 8, 2, False), Stroke([P(2.5, 13.5), P(13.5, 2.5)])];
     TAtlasToolbarIcon.SelectParent:
-      // Pfeil aus dem inneren Rahmen nach oben in den äußeren.
-      Result := [Outline([P(1.5, 1.5), P(14.5, 1.5), P(14.5, 14.5), P(1.5, 14.5)]),
-        Outline([P(5, 9), P(11, 9), P(11, 12.5), P(5, 12.5)]), Stroke([P(8, 9), P(8, 4)]),
-        Stroke([P(5.8, 6.2), P(8, 4), P(10.2, 6.2)])];
+      // Pfeil nach oben.
+      Result := [Stroke([P(8, 13), P(8, 4)]), Stroke([P(4.5, 7.5), P(8, 4), P(11.5, 7.5)])];
     TAtlasToolbarIcon.TabOrder:
-      // Zwei nummerierte Felder mit Pfeil dazwischen.
-      Result := [Outline([P(1.5, 2), P(6.5, 2), P(6.5, 7), P(1.5, 7)]),
-        Outline([P(9.5, 9), P(14.5, 9), P(14.5, 14), P(9.5, 14)]), Stroke([P(4, 7), P(4, 11.5), P(9.5, 11.5)]),
-        Stroke([P(7.8, 9.8), P(9.5, 11.5), P(7.8, 13.2)])];
+      // Pfeil nach rechts oben, nach links unten.
+      Result := [Stroke([P(2, 5), P(11, 5)]), Stroke([P(8, 2), P(11, 5), P(8, 8)]), Stroke([P(14, 11), P(5, 11)]),
+        Stroke([P(8, 8), P(5, 11), P(8, 14)])];
     TAtlasToolbarIcon.AlignControls:
       // Linke Kante mit zwei bündigen Balken.
-      Result := [Stroke([P(2, 1.5), P(2, 14.5)]), Outline([P(4.5, 3.5), P(13.5, 3.5), P(13.5, 6.5), P(4.5, 6.5)]),
-        Outline([P(4.5, 9.5), P(10, 9.5), P(10, 12.5), P(4.5, 12.5)])];
+      Result := [Stroke([P(2, 2), P(2, 14)]), Outline([P(5, 4), P(13, 4), P(13, 7), P(5, 7)]),
+        Outline([P(5, 9), P(10, 9), P(10, 12), P(5, 12)])];
   else
     Result := nil;
   end;
