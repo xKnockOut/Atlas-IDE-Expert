@@ -31,6 +31,11 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Fehlalarme von filename-compare-case (30.10.2026, Branch `claude/project-thread-nqxc2o`)
+- Marco meldete 12 Treffer in Atlas selbst. `TFilenameCompareCaseRule.ComparedIgnoringCase`: still, wenn dieselbe Anweisung (Ausdruck, Zuweisung, Aufruf, `if`/`case` samt begin-end der Zweige, nicht Routinen- oder Schleifenrumpf) dieselben beiden Seiten mit `SameText`, `AnsiSameText`, `CompareText`, `AnsiCompareText`, `SameFileName` oder `AnsiCompareFileName` vergleicht (unqualifiziert oder `SysUtils`). Deckt `(PathDelim = '\') and SameText(A, B) or (A = B)` in `Atlas.Core.Vcs.Internals.Text` ab.
+- Test-Units (`TRuleProfiles.IsTestUnit`) prüft die Regel nicht mehr, wie `hardcoded-path`: Die 11 übrigen Treffer waren Testdoubles mit selbst vergebenen Namen, teils gegen Felder oder `Copy(…)` statt Literale, ein Literal-Kriterium hätte nicht gereicht. Katalog, `Catalog.Data.pas` und `Regeln.md` von Hand nach `Update-RuleCatalog.ps1` (kein pwsh in der Cloud); auf Windows `pwsh Tools/Update-RuleCatalog.ps1 -Check`.
+- Getestet: FPC (Convert-ForFpc) alle Tests von `Builtin.Files.Tests`, AtlasServer --check: die gemeldeten Dateien still, `Packages` ohne Treffer. Offen: Delphi-Build 12/13, Handtests FC8, FC9.
+
 ## Weitere Generics-Fehler (#1376, 29.10.2026, Branch `feature/1376-generics-fehler`)
 - `generic-declaration-invalid` (jetzt Stufe B): E2528 auch für Konstruktoren von Klassen (dcc 13 meldet `constructor Create<T>;`, GD10 nannte den generischen Konstruktor fälschlich erlaubt; Records und `object` bleiben ungeprüft still), E2552/E2553 mit Klassen aus dem Index (`TNameResolver.ResolveTypeTextFrom`, nur wenn der Name weder Typparameter noch in der Datei deklariert ist), E2570 (lokale Routine in Methoden generischer Typen und generischen Methoden; Kopf mit Punkt und GenericParams; spring4d hat in 1207 generischen Methoden keine einzige lokale Routine), E2574 (`type` vor `TypeReference` mit GenericArgs außerhalb generischer Typen, Korrektur entfernt `type`).
 - Neue Regel `generic-inference-failed` (Stufe T, Unit `Builtin.Generics`): E2531 und E2532 über `CallCandidates`; eigene Typparameter liest `TGenericInferenceFailedRule.OwnTypeParams` aus der Signatur. Vorfilter: Name hat einen generischen Kopf in der Datei oder `Index.HasSymbol` mit TypeParams.

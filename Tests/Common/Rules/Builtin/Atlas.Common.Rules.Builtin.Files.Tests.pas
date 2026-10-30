@@ -11,7 +11,8 @@
 // filename-compare-case (#970): Beispiel aus dem Issue mit Korrektur, <>,
 // TPath, FileName-Eigenschaften, ExeName, uses-Ergänzung, Fälle ohne Meldung
 // (Leertext, Literal ohne Buchstaben, SameFileName, ExtractFileDir(X) = X),
-// Abschalten.
+// Abschalten; plattformabhängiger Vergleich mit SameText in derselben
+// Anweisung und Test-Units bleiben still.
 
 interface
 
@@ -44,6 +45,10 @@ type
     procedure FilenameCompareVariants;
     [Test]
     procedure FilenameCompareSilentCases;
+    [Test]
+    procedure FilenameComparePlatformDependent;
+    [Test]
+    procedure FilenameCompareTestUnits;
     [Test]
     procedure RulesAreRegistered;
   end;
@@ -337,6 +342,52 @@ begin
   Assert.AreEqual(0, CompareCount('Length(ExtractFileName(Datei)) = 3'));
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TFilenameCompareCaseRule.Create,
     CompareUnit('ExtractFileName(Datei) = ''Config.ini'''), '{"rules": {"filename-compare-case": "off"}}'))));
+end;
+
+function StatementUnit(const AStatement: string): string;
+begin
+  Result := 'unit Dateien;'#10'interface'#10'implementation'#10'uses'#10'  System.SysUtils;'#10 +
+    'function Gleich(const Root, FileName: string): Boolean;'#10'var'#10'  I: Integer;'#10'begin'#10'  Result := False;'#10 +
+    AStatement + #10'end;'#10'end.';
+end;
+
+function StatementCount(const AStatement: string): Integer;
+begin
+  Result := Length(CompareFindings(StatementUnit(AStatement)));
+end;
+
+procedure TFileRulesTests.FilenameComparePlatformDependent;
+begin
+  // Atlas.Core.Vcs.Internals.Text: unter Windows SameText, sonst genau.
+  Assert.AreEqual(0, StatementCount('  if (Root <> '''') and ((PathDelim = ''\'') and SameText(Root, FileName) or ' +
+    '(Root = FileName)) then'#10'    Exit(True);'));
+  Assert.AreEqual(0, StatementCount('  Result := ((PathDelim = ''\'') and AnsiSameText(FileName, Root)) or ' +
+    '(FileName = Root);'));
+  Assert.AreEqual(0, StatementCount('  Result := (PathDelim = ''\'') and (CompareText(Root, FileName) = 0) or ' +
+    '(Root = FileName);'));
+  Assert.AreEqual(0, StatementCount('  if PathDelim = ''\'' then'#10'    Result := SameFileName(Root, FileName)'#10 +
+    '  else'#10'    Result := Root = FileName;'));
+  Assert.AreEqual(0, StatementCount('  if PathDelim = ''\'' then'#10'  begin'#10 +
+    '    Result := System.SysUtils.SameText((Root), FileName);'#10'  end'#10'  else'#10'  begin'#10 +
+    '    Result := Root = FileName;'#10'  end;'));
+  // Andere Seiten, andere Anweisung oder eigene Funktion gleichen Namens: weiter melden.
+  Assert.AreEqual(1, StatementCount('  Result := SameText(Root, ''x'') or (Root = FileName);'));
+  Assert.AreEqual(1, StatementCount('  Result := SameText(Root, FileName);'#10'  Result := Root = FileName;'));
+  Assert.AreEqual(1, StatementCount('  for I := 0 to 1 do'#10'    if SameText(Root, FileName) then'#10 +
+    '      Exit;'#10'  for I := 0 to 1 do'#10'    Result := Root = FileName;'));
+  Assert.AreEqual(1, StatementCount('  Result := Helfer.SameText(Root, FileName) or (Root = FileName);'));
+end;
+
+procedure TFileRulesTests.FilenameCompareTestUnits;
+const
+  Body = 'implementation'#10'function Gibt(const AFileName: string): Boolean;'#10'begin'#10 +
+    '  Result := (AFileName = ''A.dfm'') or (AFileName = ''C.fmx'');'#10'end;'#10'end.';
+begin
+  // Testdoubles vergleichen mit selbst vergebenen Namen.
+  Assert.AreEqual(0, Integer(Length(CompareFindings('unit Doubles.Tests;'#10'interface'#10'uses'#10 +
+    '  DUnitX.TestFramework;'#10 + Body))));
+  Assert.AreEqual(2, Integer(Length(CompareFindings('unit Doubles;'#10'interface'#10'uses'#10 +
+    '  System.SysUtils;'#10 + Body))));
 end;
 
 procedure TFileRulesTests.RulesAreRegistered;
