@@ -29,6 +29,11 @@ type
     procedure SavesAndLoadsFile;
     [Test]
     procedure CycleKeyIgnoresStart;
+    /// <summary>Feinheit γ (#1366) im Stand; Stände ohne "grouping" gelten als 1,0.</summary>
+    [Test]
+    procedure KeepsGroupingAndReadsOlderStates;
+    [Test]
+    procedure KeepsParentOfSplitSubsystem;
   end;
 
 /// <summary>Units der Berichtstests: drei Namensräume, ein Zyklus über implementation in Data.</summary>
@@ -223,6 +228,61 @@ begin
   Second := Default(TSnapshotCycle);
   Second.Units := TArray<string>.Create('a', 'B', 'C');
   Assert.AreEqual(First.Key, Second.Key);
+end;
+
+procedure TArchitectureSnapshotTests.KeepsGroupingAndReadsOlderStates;
+var
+  mOverview: TArchitectureOverview;
+  mSnapshot, mRead: TArchitectureSnapshot;
+  mText, mError: string;
+begin
+  mOverview := ArchitectureOverviewOf(ArchitectureSampleUnits);
+  mOverview.Grouping.Resolution := 0.5;
+  mSnapshot := TArchitectureSnapshots.FromOverview(mOverview);
+  mText := TArchitectureSnapshots.Json(mSnapshot);
+  Assert.Contains(mText, '"grouping": {"resolution": 0.5},');
+  Assert.IsTrue(TArchitectureSnapshots.Parse(mText, mRead, mError), mError);
+  Assert.AreEqual(Double(0.5), mRead.Grouping.Resolution, 1E-9);
+  // Älterer Stand ohne "grouping".
+  mText := StringReplace(mText, '"grouping": {"resolution": 0.5},', '', []);
+  Assert.IsTrue(TArchitectureSnapshots.Parse(mText, mRead, mError), mError);
+  Assert.AreEqual(Double(1), mRead.Grouping.Resolution, 1E-9);
+end;
+
+procedure TArchitectureSnapshotTests.KeepsParentOfSplitSubsystem;
+var
+  mOverview: TArchitectureOverview;
+  mRead: TArchitectureSnapshot;
+  mText, mError, mName: string;
+  mSubsystem: TSnapshotSubsystem;
+  mFound: Boolean;
+begin
+  mOverview := ArchitectureOverviewOf(ArchitectureSampleUnits);
+  mText := TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mOverview));
+  Assert.IsFalse(Pos('"parent"', mText) > 0, 'ohne Nachteilung wie vor #1364');
+  Assert.IsFalse(Pos('"foundation": true', mText) > 0, 'ohne Fundament wie vor #1365');
+  mName := mOverview.Subsystems[1].Name;
+  mOverview.Subsystems[1].Parent := 'App';
+  mOverview.Subsystems[1].Foundation := True;
+  mText := TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mOverview));
+  // Farbe dahinter (#1367).
+  Assert.Contains(mText, '"isolated": false, "foundation": true, "parent": "App", "color": ' +
+    IntToStr(mOverview.Subsystems[1].ColorSlot) + ', "shade": 0}');
+  Assert.IsTrue(TArchitectureSnapshots.Parse(mText, mRead, mError), mError);
+  mFound := False;
+  for mSubsystem in mRead.Subsystems do
+    if mSubsystem.Name = mName then
+    begin
+      Assert.AreEqual('App', mSubsystem.Parent);
+      Assert.IsTrue(mSubsystem.Foundation);
+      mFound := True;
+    end
+    else
+    begin
+      Assert.AreEqual('', mSubsystem.Parent);
+      Assert.IsFalse(mSubsystem.Foundation);
+    end;
+  Assert.IsTrue(mFound);
 end;
 
 initialization

@@ -63,6 +63,8 @@ type
     [Test]
     procedure OpenArraysSliceAndExpressions;
     [Test]
+    procedure AddressOfExpression;
+    [Test]
     procedure PropertyFixWritesBack;
     [Test]
     procedure VariablesAndUntypedParametersAreSilent;
@@ -625,6 +627,20 @@ begin
     'übergeben werden (wie E2197).', Found[1].Message);
   // Slice an ein var-Open-Array übersetzt dcc (Spring4D, IV1-IV3, #1328).
   Assert.AreEqual(0, Integer(Length(VarFindings(Zeilen('  Fuellen(Slice(Feld, 2));'#10)))));
+end;
+
+procedure TInvalidVarArgumentTests.AddressOfExpression;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Cm.E2036: @ vor einem Rechenausdruck (#1380).
+  mFound := VarFindings(Zeilen('  Puffer(Pointer(@(Zahl + 1))^);'#10'  if @(Zahl * 2) = nil then;'#10));
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('@ braucht eine Variable; (Zahl + 1) ist ein Ausdruck ohne Adresse (wie E2036).', mFound[0].Message);
+  Assert.AreEqual('@ braucht eine Variable; (Zahl * 2) ist ein Ausdruck ohne Adresse (wie E2036).', mFound[1].Message);
+  // Variablen, Elemente, Felder, Routinen und Dereferenzierung haben eine Adresse.
+  Assert.AreEqual(0, Integer(Length(VarFindings(Zeilen('  if (@Zahl = nil) or (@(Zahl) = nil) or (@Feld[1] = nil) ' +
+    'or (@Doppelt = nil) or (@S[1] = nil) or (@Zeile.FText = nil) then;'#10)))));
 end;
 
 procedure TInvalidVarArgumentTests.PropertyFixWritesBack;

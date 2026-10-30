@@ -23,6 +23,10 @@ type
     procedure DerivedWithoutValueIsNotStored;
     [Test]
     procedure NoParserCallsOutsideCache;
+    /// <summary>#1356: Zugriffe, Trefferquote und Speicher der lebenden Bäume für das Fenster „Atlas-Server“.
+    /// </summary>
+    [Test]
+    procedure StatsCountHitsAndLiveBytes;
   end;
 
 implementation
@@ -76,6 +80,35 @@ begin
   Assert.AreEqual(1, TSyntaxTreeCache.ParseCount - Before);
   Assert.IsTrue(First.Tree = Second.Tree);
   Assert.AreEqual('A', First.Tree.Root.Name);
+end;
+
+procedure TSyntaxTreeCacheTests.StatsCountHitsAndLiveBytes;
+var
+  mDocument: ITextDocument;
+  mBefore, mHeld, mAfter: TSyntaxTreeCacheStats;
+  mFirst, mSecond: ISharedSyntaxTree;
+begin
+  mDocument := NewDocument(7);
+  mBefore := TSyntaxTreeCache.Stats;
+  mFirst := TSyntaxTreeCache.Get(mDocument);
+  mSecond := TSyntaxTreeCache.Get(mDocument);
+  mHeld := TSyntaxTreeCache.Stats;
+  Assert.AreEqual<Int64>(2, mHeld.Lookups - mBefore.Lookups);
+  Assert.AreEqual<Int64>(1, mHeld.Parses - mBefore.Parses);
+  Assert.AreEqual(1, mHeld.Trees - mBefore.Trees);
+  Assert.AreEqual<Int64>(TSyntaxTreeCache.EstimatedBytes(mFirst.Tree), mHeld.Bytes - mBefore.Bytes);
+  Assert.IsTrue(TSyntaxTreeCache.EstimatedBytes(mFirst.Tree) > Length(Source) * SizeOf(Char));
+  mFirst := nil;
+  mSecond := nil;
+  mDocument := nil;
+  mAfter := TSyntaxTreeCache.Stats;
+  Assert.AreEqual(mBefore.Trees, mAfter.Trees, 'mit dem Dokument frei');
+  Assert.AreEqual<Int64>(mBefore.Bytes, mAfter.Bytes);
+  mHeld.Lookups := 4;
+  mHeld.Parses := 1;
+  Assert.AreEqual(75, mHeld.HitPercent);
+  Assert.AreEqual(-1, Default(TSyntaxTreeCacheStats).HitPercent);
+  Assert.AreEqual<Int64>(0, TSyntaxTreeCache.EstimatedBytes(nil));
 end;
 
 procedure TSyntaxTreeCacheTests.NewVersionGetsNewTree;

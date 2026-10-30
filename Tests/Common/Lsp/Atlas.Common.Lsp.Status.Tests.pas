@@ -36,6 +36,16 @@ type
     /// <summary>#261: Weg zum Compiler mit Grund und Ausweg im Status.</summary>
     [Test]
     procedure StatusShowsCompiler;
+    /// <summary>#1356: Prozess, Speicher je Bereich, Prüflauf, Warteschlange und Cache-Treffer.</summary>
+    [Test]
+    procedure StatusShowsDiagnostics;
+    /// <summary>#1356: Ohne die neuen Angaben bleibt die Ausgabe wie bisher (ältere Clients).</summary>
+    [Test]
+    procedure StatusWithoutDiagnosticsKeepsOldKeys;
+    [Test]
+    procedure MemoryRestAndBudget;
+    [Test]
+    procedure CacheHitPercentOverWorkspaces;
   end;
 
 implementation
@@ -48,7 +58,8 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.JsonRpc.Statistics,
   Atlas.Common.Lsp.Commands,
-  Atlas.Common.Lsp.Status;
+  Atlas.Common.Lsp.Status,
+  Atlas.Common.Diagnostics.CheckProfile;
 
 procedure TLspStatusTests.StatisticsSumUpPerMethod;
 var
@@ -403,6 +414,130 @@ begin
   finally
     Json.Free;
   end;
+end;
+
+procedure TLspStatusTests.StatusShowsDiagnostics;
+var
+  mStatus: TServerStatus;
+  mProfiler: TCheckProfiler;
+  mJson, mPart: TJSONObject;
+  mMarkdown: string;
+begin
+  mStatus := Default(TServerStatus);
+  mStatus.ProcessId := 4711;
+  mStatus.Version := '1.2.0';
+  mStatus.UptimeMs := 65000;
+  mStatus.State := TServerStatus.StateChecking;
+  mStatus.Memory.Symbols := 10 * 1024 * 1024;
+  mStatus.Memory.Usages := 20 * 1024 * 1024;
+  mStatus.Memory.LibraryUnits := 30 * 1024 * 1024;
+  mStatus.Memory.TreeCache := 4 * 1024 * 1024;
+  mStatus.Memory.Documents := 1024 * 1024;
+  mStatus.Memory.Total := 100 * 1024 * 1024;
+  mStatus.Memory.Budget := 50 * 1024 * 1024;
+  mStatus.Queue.IndexWaiting := 1;
+  mStatus.Queue.CheckWaiting := 12;
+  mStatus.Queue.CheckRunning := 1;
+  mStatus.Queue.OldestWaitMs := 900;
+  mStatus.IndexCacheHitPercent := 95;
+  mStatus.TreeCacheHitPercent := 80;
+  mStatus.TreeCacheTrees := 3;
+  mProfiler := TCheckProfiler.Create;
+  try
+    mProfiler.BeginRun(Now);
+    mProfiler.AddUnit('C:\P\Haupt.pas', 5000);
+    mProfiler.AddRule('format-args', 2000);
+    mProfiler.FinishRun(6);
+    mStatus.CheckRun := mProfiler.Snapshot(TCheckRunProfile.cTop);
+  finally
+    mProfiler.Free;
+  end;
+  mMarkdown := mStatus.ToMarkdown;
+  Assert.IsTrue(mMarkdown.Contains('Prozess 4711, Version 1.2.0, läuft seit 65 s, prüft'), mMarkdown);
+  Assert.IsTrue(mMarkdown.Contains('| Verwendungen | 20.0 MB |'), mMarkdown);
+  Assert.IsTrue(mMarkdown.Contains('| Rest | 35.0 MB |'), mMarkdown);
+  Assert.IsTrue(mMarkdown.Contains('Budget überschritten: Verwendungen werden ausgelagert.'), mMarkdown);
+  Assert.IsTrue(mMarkdown.Contains('Prüfung 12 wartend, 1 laufend'), mMarkdown);
+  Assert.IsTrue(mMarkdown.Contains('Index 95 %, Syntaxbäume 80 % (3 im Speicher)'), mMarkdown);
+  Assert.IsTrue(mMarkdown.Contains('| Haupt | 5.0 |'), mMarkdown);
+  mJson := mStatus.ToJson;
+  try
+    mPart := mJson.GetValue('process') as TJSONObject;
+    Assert.AreEqual(4711, mPart.GetValue<Integer>('pid'));
+    Assert.AreEqual('checking', mPart.GetValue<string>('state'));
+    mPart := mJson.GetValue('memory') as TJSONObject;
+    Assert.AreEqual<Int64>(20 * 1024 * 1024, mPart.GetValue<Int64>('usages'));
+    Assert.AreEqual<Int64>(35 * 1024 * 1024, mPart.GetValue<Int64>('rest'));
+    Assert.IsTrue(mPart.GetValue<Boolean>('overBudget'));
+    mPart := mJson.GetValue('queue') as TJSONObject;
+    Assert.AreEqual(12, mPart.GetValue<Integer>('checkWaiting'));
+    mPart := mJson.GetValue('cacheHits') as TJSONObject;
+    Assert.AreEqual(95, mPart.GetValue<Integer>('index'));
+    mPart := mJson.GetValue('checkRun') as TJSONObject;
+    Assert.AreEqual(1, mPart.GetValue<Integer>('units'));
+  finally
+    mJson.Free;
+  end;
+end;
+
+procedure TLspStatusTests.StatusWithoutDiagnosticsKeepsOldKeys;
+var
+  mStatus: TServerStatus;
+  mJson: TJSONObject;
+begin
+  mStatus := Default(TServerStatus);
+  mStatus.Units := 3;
+  mJson := mStatus.ToJson;
+  try
+    Assert.AreEqual(3, mJson.GetValue<Integer>('units'));
+    Assert.IsTrue(mJson.GetValue('requests') is TJSONArray);
+    Assert.IsTrue(mJson.GetValue('markdown') is TJSONString);
+    Assert.IsNull(mJson.GetValue('process'));
+    Assert.IsNull(mJson.GetValue('memory'));
+  finally
+    mJson.Free;
+  end;
+  Assert.IsFalse(mStatus.ToMarkdown.Contains('Prozess'), mStatus.ToMarkdown);
+end;
+
+procedure TLspStatusTests.MemoryRestAndBudget;
+var
+  mMemory: TServerMemory;
+begin
+  mMemory := Default(TServerMemory);
+  mMemory.Symbols := 60;
+  mMemory.Total := 50;
+  // Schätzung über dem gemessenen Speicher: kein negativer Rest.
+  Assert.AreEqual<Int64>(0, mMemory.Rest);
+  mMemory.Total := -1;
+  Assert.AreEqual<Int64>(0, mMemory.Rest);
+  Assert.IsFalse(mMemory.OverBudget(0, 0), 'ohne Budget');
+  mMemory.Budget := 100;
+  Assert.IsFalse(mMemory.OverBudget(0, 0));
+  Assert.IsTrue(mMemory.OverBudget(0, 1), 'schon ausgelagert');
+  mMemory.Usages := 50;
+  Assert.IsTrue(mMemory.OverBudget(0, 0));
+end;
+
+procedure TLspStatusTests.CacheHitPercentOverWorkspaces;
+var
+  mWorkspaces: TArray<TWorkspaceStatus>;
+begin
+  SetLength(mWorkspaces, 3);
+  mWorkspaces[0] := Default(TWorkspaceStatus);
+  mWorkspaces[0].LastIndexMs := 10;
+  mWorkspaces[0].Parsed := 10;
+  mWorkspaces[0].FromCache := 30;
+  mWorkspaces[1] := Default(TWorkspaceStatus);
+  mWorkspaces[1].LastIndexMs := 10;
+  mWorkspaces[1].FromCache := 60;
+  // Noch im Aufbau: zählt nicht.
+  mWorkspaces[2] := Default(TWorkspaceStatus);
+  mWorkspaces[2].LastIndexMs := -1;
+  mWorkspaces[2].Parsed := 1000;
+  Assert.AreEqual(90, TServerStatus.CacheHitPercent(mWorkspaces));
+  Assert.AreEqual(-1, TServerStatus.CacheHitPercent(nil));
+  mWorkspaces := nil;
 end;
 
 initialization

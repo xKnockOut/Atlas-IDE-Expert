@@ -9,12 +9,16 @@
 //                                 Ergebnis (E2521), Inc/Dec mit anderem
 //                                 Ergebnis als dem ersten Parameter (E2519)
 //                                 oder Assign ohne var vor dem ersten
-//                                 Parameter (E2464). Nur in Records: In
-//                                 Klassen, Interfaces und object-Typen meldet
-//                                 Delphi 13 jeden class operator als E2123
-//                                 (Regel syntax, #1382); damit entfällt auch
-//                                 E2522 (Umwandlung in einen Vorfahren), das
-//                                 nur ARC-Compiler kannten.
+//                                 Parameter (Delphi 13 meldet E2617 statt
+//                                 E2464, Cm.E2464, #1380). Geprüft werden nur
+//                                 Records: Einen class operator in einer
+//                                 Klasse meldet Delphi 13 als E2123 (Regel
+//                                 syntax, #1382), damit entfällt E2522
+//                                 (Umwandlung in einen Vorfahren). Zum Rumpf
+//                                 eines unbekannten Operators bzw. eines class
+//                                 operator in einer Klasse gibt es keine
+//                                 gültige Deklaration (wie E2037, Cm.E2393,
+//                                 Cm.E2522, #1380).
 //   generic-declaration-invalid   Generics, die Delphi ablehnt (#1029):
 //                                 Einschränkungen class und record zugleich
 //                                 (E2507), doppelt (E2603), widersprüchlich
@@ -103,7 +107,7 @@
 // sicher ablehnt (True, False, OnesComplement), gelten als bekannt.
 //
 // Korrekturen: Name des nächstliegenden Operators (E2393), Ergebnis wie der
-// erste Parameter (E2519), var vor dem ersten Parameter (E2464),
+// erste Parameter (E2519), var vor dem ersten Parameter (E2617),
 // Parameterliste nach Vorlage (E2517); jeweils in Deklaration und Rumpf.
 
 interface
@@ -670,6 +674,22 @@ var
     AReport.Add(ARange, AMessage, TRuleConfidence.High, AFixes);
   end;
 
+  /// <summary>E2037 (#1380): Die Deklaration lehnt dcc ab, ihre Rümpfe passen deshalb zu nichts.</summary>
+  procedure ReportBodies(const AOwn: string; const AHead: TRoutineHead);
+  var
+    mBody: TRoutineHead;
+    mName: Integer;
+  begin
+    for mBody in ImplementationHeads(AContext.Text, Tokens, AContext.Tree.Root, AOwn + '.' + AHead.Header.Name,
+      AHead) do
+    begin
+      mName := NameToken(Tokens, mBody.Header);
+      if mName >= 0 then
+        Report(TokenRange(Tokens[mName]), Format('Zu %s.%s gibt es keine gültige Deklaration; der Rumpf passt zu ' +
+          'nichts (wie E2037).', [AOwn, AHead.Header.Name]), nil);
+    end;
+  end;
+
   procedure CheckOperator(AHeader: TSyntaxNode);
   var
     Head: TRoutineHead;
@@ -689,6 +709,13 @@ var
     Index := NameToken(Tokens, AHeader);
     if (Own = '') or (Name = '') or (Index < 0) or not IsValidIdent(Name) then
       Exit;
+    // Klassenoperatoren gibt es unter Win32 und Win64 nur in Records: In einer Klasse meldet syntax die
+    // Deklaration (E2123, #1382), hier bleibt nur der Rumpf, der zu nichts passt (Cm.E2522, #1380).
+    if AHeader.Parent.Kind = TSyntaxKind.ClassType then
+    begin
+      ReportBodies(Own, Head);
+      Exit;
+    end;
     Range := TokenRange(Tokens[Index]);
     Shape := OperatorShape(Name);
     if Shape = TOperatorShape.Unknown then
@@ -699,6 +726,7 @@ var
           [RenameFix(Own, Head, Closest)])
       else
         Report(Range, Format('Unbekannter Operator %s (wie E2393).', [Name]), nil);
+      ReportBodies(Own, Head);
       Exit;
     end;
     if Shape = TOperatorShape.Tolerated then
@@ -779,10 +807,10 @@ var
         [Name, ParamTypes[0]]), [ResultFix(Own, Head, ParamTypes[0], ParamTypes[0] + ' als Ergebnis')]);
       Exit;
     end;
-    // Assign eines Managed Records: erster Parameter var (E2464).
+    // Assign eines Managed Records: erster Parameter var; Delphi 13 meldet E2617 (Cm.E2464, #1380).
     if (Shape = TOperatorShape.Assign) and (Head.Parameters <> nil) and
       (Head.Parameters[0].Modifier <> TParameterModifier.VarParam) then
-      Report(Range, 'Der erste Parameter von Assign muss ein var-Parameter sein (wie E2464).',
+      Report(Range, 'Der erste Parameter von Assign muss ein var-Parameter des eigenen Typs sein (wie E2617).',
         [VarFix(Own, Head)]);
   end;
 
@@ -797,9 +825,9 @@ begin
       function(ANode: TSyntaxNode): Boolean
       begin
         Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
-        // Operatoren gibt es nur in Records; in Klassen meldet syntax E2123 wie Delphi 13 (#1382).
+        // Operatoren gibt es nur in Records; Köpfe in Klassen nur für die Rümpfe (E2037, #1380).
         if (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
-          (ANode.Parent.Kind = TSyntaxKind.RecordType) then
+          (ANode.Parent.Kind in [TSyntaxKind.RecordType, TSyntaxKind.ClassType]) then
           Headers.Add(ANode);
       end);
     for Header in Headers do
