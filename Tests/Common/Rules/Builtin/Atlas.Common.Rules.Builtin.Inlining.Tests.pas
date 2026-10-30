@@ -7,6 +7,9 @@
 // (H2456, H2457); Schnellkorrektur; abschaltbar; die Verweise im Index;
 // Laufzeit bei vielen Aufrufen und langer uses-Kette (#1220); H2445 auch
 // bei inline-Routinen, deren Rumpf auf nichts außerhalb verweist (#1381).
+// Fehlalarme aus der Prüfung von Atlas und der RTL: Alias einer Deklaration
+// aus System (tkRecord in System.TypInfo, TList<T>.Add), Zyklus bei Rümpfen
+// nur mit eingebauten Typen und Intrinsics (THashFNV1a32.GetHashValue).
 
 interface
 
@@ -41,6 +44,14 @@ type
     /// verweist (abhängig von der Reihenfolge der Übersetzung, #1383).</summary>
     [Test]
     procedure CycleWithoutBodyReferencesIsSilent;
+    /// <summary>Wie System.TypInfo (tkRecord = System.TTypeKind.tkRecord): Ein Alias aus System braucht die
+    /// Unit des Alias nicht; ein eigener Wert schon.</summary>
+    [Test]
+    procedure AliasOfSystemNeedsNoUnit;
+    /// <summary>Wie THashFNV1a32.GetHashValue in System.Generics.Defaults: Der Rumpf benutzt nur eingebaute Typen
+    /// und Intrinsics, der Zyklus bleibt stumm; ein Verweis auf eine andere Unit meldet ihn weiter.</summary>
+    [Test]
+    procedure CycleWithBuiltinsOnlyIsSilent;
     [Test]
     procedure CircularUnits;
     [Test]
@@ -392,6 +403,103 @@ begin
   mIndex := NewIndex;
   mIndex.AddUnit(TIndexExtractor.ExtractText(cZirkel, 'C:\P\Werk.Zirkel.pas', nil));
   Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+    'Haupt.pas')));
+end;
+
+procedure TInliningRulesTests.AliasOfSystemNeedsNoUnit;
+const
+  cArten =
+    'unit Werk.Arten;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TArt = System.TTypeKind;'#10 +
+    'const'#10 +
+    '  akRecord = System.TTypeKind.tkRecord;'#10 +
+    '  akEigen = 7;'#10 +
+    'implementation'#10 +
+    'end.';
+  cStapel =
+    'unit Werk.Stapel;'#10 +
+    'interface'#10 +
+    'uses Werk.Arten;'#10 +
+    'type'#10 +
+    '  TStapel<T> = class'#10 +
+    '  public'#10 +
+    '    function Art: Boolean; inline;'#10 +
+    '    function Eigen: Integer; inline;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function TStapel<T>.Art: Boolean;'#10 +
+    'var'#10 +
+    '  A: TArt;'#10 +
+    'begin'#10 +
+    '  A := GetTypeKind(T);'#10 +
+    '  Result := A in [akRecord];'#10 +
+    'end;'#10 +
+    'function TStapel<T>.Eigen: Integer;'#10 +
+    'begin'#10 +
+    '  Result := akEigen;'#10 +
+    'end;'#10 +
+    'end.';
+  cSource =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'uses Werk.Stapel;'#10 +
+    'procedure Lauf(S: TStapel<Integer>);'#10 +
+    'var'#10 +
+    '  X: Integer;'#10 +
+    'begin'#10 +
+    '  if S.Art then'#10 +
+    '    X := S.Eigen;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mIndex: ISymbolIndex;
+begin
+  mIndex := NewIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cArten, 'C:\P\Werk.Arten.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cStapel, 'C:\P\Werk.Stapel.pas', nil));
+  Assert.AreEqual('9:11 Inline-Funktion TStapel.Eigen wird nicht eingebettet: Werk.Arten fehlt in uses ' +
+    '(wie H2443).|', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
+    'Haupt.pas')));
+end;
+
+procedure TInliningRulesTests.CycleWithBuiltinsOnlyIsSilent;
+const
+  cZirkel =
+    'unit Werk.Zirkel;'#10 +
+    'interface'#10 +
+    'function Drei: Integer; inline;'#10 +
+    'function Vier: Integer; inline;'#10 +
+    'implementation'#10 +
+    'uses Haupt, Werk.Mathe;'#10 +
+    'function Drei: Integer;'#10 +
+    'begin'#10 +
+    '  Result := Integer(SizeOf(Cardinal)) + Length(''abc'');'#10 +
+    'end;'#10 +
+    'function Vier: Integer;'#10 +
+    'begin'#10 +
+    '  Result := Mal2(2);'#10 +
+    'end;'#10 +
+    'end.';
+  cSource =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'uses Werk.Zirkel;'#10 +
+    'function Rechne: Integer;'#10 +
+    'begin'#10 +
+    '  Result := Drei + Vier;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mIndex: ISymbolIndex;
+begin
+  mIndex := NewIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cZirkel, 'C:\P\Werk.Zirkel.pas', nil));
+  Assert.AreEqual('6:19 Inline-Funktion Vier wird nicht eingebettet: Werk.Zirkel verwendet die übersetzte Unit ' +
+    'Haupt (wie H2456).|', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
     'Haupt.pas')));
 end;
 
