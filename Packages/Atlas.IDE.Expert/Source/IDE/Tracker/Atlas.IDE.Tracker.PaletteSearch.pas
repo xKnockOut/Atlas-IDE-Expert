@@ -25,6 +25,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.Generics.Collections,
   Vcl.ExtCtrls,
   Atlas.Core.Ci.Contract,
   Atlas.Core.Commands.Palette,
@@ -72,7 +73,7 @@ type
     FIssues: TArray<TAtlasTrackerIssue>;
     FCancel: IAtlasCiCancel;
     FGeneration: Integer;
-    FWorkers: TList;
+    FWorkers: TList<TThread>;
     procedure TimerTick(Sender: TObject);
     procedure Schedule;
     procedure Request(const AQuery: TAtlasIssueSearchQuery);
@@ -128,7 +129,7 @@ begin
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
   FTimer.OnTimer := TimerTick;
-  FWorkers := TList.Create;
+  FWorkers := TList<TThread>.Create;
   FQuery := TAtlasIssueSearchQuery.None;
   FLastQuery := TAtlasIssueSearchQuery.None;
 end;
@@ -179,13 +180,13 @@ begin
   begin
     mWait := nil;
     for mIndex := 0 to FWorkers.Count - 1 do
-      mWait := mWait + [TThread(FWorkers[mIndex])];
+      mWait := mWait + [FWorkers[mIndex]];
     if Length(mWait) > 0 then
       TAtlasShutdown.WaitForThreads(mWait);
   end;
   for mIndex := FWorkers.Count - 1 downto 0 do
   begin
-    mThread := TThread(FWorkers[mIndex]);
+    mThread := FWorkers[mIndex];
     if mThread.Finished then
     begin
       mThread.Free;
