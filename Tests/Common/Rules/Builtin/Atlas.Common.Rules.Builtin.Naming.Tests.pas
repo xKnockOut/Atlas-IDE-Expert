@@ -22,6 +22,10 @@ type
     procedure InlineVariablesAndConstants;
     [Test]
     procedure FieldRenamedInClassAndMethods;
+    /// <summary>Öffentliche Felder (public, published, Record ohne Abschnitt) tragen kein F, z. B. TPoint.X.
+    /// </summary>
+    [Test]
+    procedure PublicFieldsKeepNames;
     [Test]
     procedure ParameterRenamedInDeclarationAndImplementation;
     [Test]
@@ -189,7 +193,7 @@ var
   Source, Fixed: string;
   Found: TArray<TRuleFinding>;
 begin
-  Source := UnitOf('type'#10'  TKunde = class'#10'  private'#10'    Name: string;'#10'  public'#10 +
+  Source := UnitOf('type'#10'  TKunde = class'#10'  private'#10'    Name: string;'#10'  protected'#10 +
     '    Alter: Integer;'#10'    property Titel: string read Name write Name;'#10'    procedure Setzen;'#10 +
     '  end;'#10, 'procedure TKunde.Setzen;'#10'begin'#10'  Name := ''x'';'#10'  Self.Name := Name;'#10'end;'#10);
   Found := Findings(Source);
@@ -197,8 +201,27 @@ begin
     Messages(Found));
   Fixed := ApplyFix(Source, Found[0].Fixes[0]);
   Assert.AreEqual(StringReplace(Source, 'Name', 'FName', [rfReplaceAll]), Fixed);
-  // Öffentliche Felder können andere Units verwenden: keine Korrektur.
+  // Geschützte Felder können Nachfahren in anderen Units verwenden: keine Korrektur.
   Assert.AreEqual(0, Integer(Length(Found[1].Fixes)));
+end;
+
+procedure TNamingRulesTests.PublicFieldsKeepNames;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // Wie TAtlasResultEntry: Felder eines Records ohne Abschnitt, public- und published-Felder.
+  Found := Findings(UnitOf('type'#10'  TEintrag = record'#10'    FileName: string;'#10'    Line: Integer;'#10 +
+    '    class function Create(ALine: Integer): TEintrag; static;'#10'  end;'#10 +
+    '  TPunkt = record'#10'  public'#10'    X, Y: Integer;'#10'  end;'#10 +
+    '  TKunde = class'#10'  public'#10'    Alter: Integer;'#10'    class var Anzahl: Integer;'#10 +
+    '  published'#10'    Titel: string;'#10'  end;'#10, ''));
+  Assert.AreEqual('', Messages(Found));
+  // Private Felder eines Records und Felder einer Klasse ohne Abschnitt bleiben gemeldet.
+  Found := Findings(UnitOf('type'#10'  TZaehler = record'#10'  private'#10'    Wert: Integer;'#10'  public'#10 +
+    '    property Stand: Integer read Wert;'#10'  end;'#10'  TListe = class'#10'    Anzahl: Integer;'#10'  end;'#10,
+    ''));
+  Assert.AreEqual('Feld Wert ohne Präfix F (erwartet: FWert)|Feld Anzahl ohne Präfix F (erwartet: FAnzahl)|',
+    Messages(Found));
 end;
 
 procedure TNamingRulesTests.ParameterRenamedInDeclarationAndImplementation;
@@ -288,7 +311,8 @@ begin
   Found := Findings(Source);
   Assert.AreEqual('', Messages(Found), 'Ausnahmen');
   // ignore: Muster.
-  Source := UnitOf('type'#10'  TApi = record'#10'    cbSize: Cardinal;'#10'    dwFlags: Cardinal;'#10'  end;'#10, '');
+  Source := UnitOf('type'#10'  TApi = record'#10'  private'#10'    cbSize: Cardinal;'#10'    dwFlags: Cardinal;'#10 +
+    '  end;'#10, '');
   Found := Findings(Source, '{"rules": {"naming-prefix": {"severity": "hint", "ignore": ["cb*", "dw*"]}}}');
   Assert.AreEqual('', Messages(Found));
 end;
