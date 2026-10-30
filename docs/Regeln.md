@@ -1361,7 +1361,7 @@ for S in List do
 
 **Komponentenmethode ohne inherited** · Bug · Warnung · Gruppe Komponenten
 
-Ein überschriebenes Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy oder Paint einer Komponente ruft inherited nicht auf; die VCL überspringt dann ihre eigene Arbeit. Bei Paint ist die Konfidenz niedrig, weil TCustomControl.Paint nur den Rahmen im Designer zeichnet.
+Ein überschriebenes Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy oder Paint einer Komponente ruft inherited nicht auf; die VCL überspringt dann ihre eigene Arbeit. Paint wird nur gemeldet, wenn das Paint eines Vorfahren selbst zeichnet (TCustomPanel, TCustomForm, TPaintBox, TImage, ein Grid oder eine Klasse aus Datei oder Index, die Paint deklariert), mit mittlerer Konfidenz; TCustomControl.Paint und TGraphicControl.Paint sind leer, dort ist ein Paint ohne inherited üblich.
 
 Mit Treffer:
 

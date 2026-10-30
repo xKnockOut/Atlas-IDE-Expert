@@ -162,6 +162,15 @@ const
   // Methoden, die im Nachfahren inherited aufrufen müssen.
   InheritedMethods: array[0..6] of string = ('Loaded', 'CreateParams', 'CreateWnd', 'Notification',
     'SetParent', 'Destroy', 'Paint');
+  // Vorfahren, deren Paint leer ist oder die gar kein Paint haben: TCustomControl.Paint und TGraphicControl.Paint
+  // tun nichts, ein Paint ohne inherited ist dort das übliche Muster.
+  EmptyPaintBases: array[0..9] of string = ('TCustomControl', 'TGraphicControl', 'TWinControl', 'TControl',
+    'TComponent', 'TPersistent', 'TObject', 'TScrollingWinControl', 'TCustomFrame', 'TFrame');
+  // VCL-Vorfahren, deren Paint selbst zeichnet (Rahmen, Hintergrund, Text, Bild) oder OnPaint auslöst.
+  DrawingPaintBases: array[0..20] of string = ('TCustomPanel', 'TPanel', 'TCustomGridPanel', 'TGridPanel',
+    'TCustomFlowPanel', 'TFlowPanel', 'TCustomForm', 'TForm', 'TPaintBox', 'TImage', 'TShape', 'TBevel',
+    'TCustomLabel', 'TLabel', 'TSpeedButton', 'TSplitter', 'TCustomGrid', 'TCustomDrawGrid', 'TDrawGrid',
+    'TStringGrid', 'TCustomStaticText');
   // RTL- und VCL-Klassen mit eigenem Konstruktor, auch wenn sie nicht im Index stehen (#919).
   ConstructorBases: array[0..13] of string = ('TThread', 'TStrings', 'TStringList', 'TList', 'TObjectList',
     'TDictionary', 'TObjectDictionary', 'TQueue', 'TStack', 'TStream', 'TFileStream', 'TMemoryStream',
@@ -222,6 +231,10 @@ type
     constructor Create(const AContext: TRuleContext; const ALocal: TUnitIndex);
     destructor Destroy; override;
     function IsComponent(const AClassName: string): Boolean;
+    /// <summary>Nächster Vorfahr von AClassName, dessen Paint selbst zeichnet: bekannte VCL-Klasse aus
+    /// DrawingPaintBases oder eine Klasse aus Datei oder Index, die Paint selbst deklariert. False, wenn zuerst ein
+    /// Vorfahr mit leerem Paint (TCustomControl, TGraphicControl) kommt oder die Kette abbricht.</summary>
+    function PaintingAncestor(const AClassName: string; out AAncestor: string): Boolean;
     function FindMethod(const AClassName, AMethodName: string; out AMethod: TMethodImpl): Boolean;
     function DeclaredWith(const AClass: TClassInfo; const AMethodName, ADirective: string): Boolean;
     function Properties(const AClass: TClassInfo): TArray<TPropertyInfo>;
@@ -319,6 +332,39 @@ begin
       Break;
     Name := FAncestry.ParentOf(Name);
     Inc(Depth);
+  end;
+  Result := False;
+end;
+
+function TComponentModel.PaintingAncestor(const AClassName: string; out AAncestor: string): Boolean;
+var
+  mName: string;
+  mDepth: Integer;
+  mType: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+begin
+  AAncestor := '';
+  mName := FAncestry.ParentOf(AClassName);
+  mDepth := 0;
+  while (mName <> '') and (mDepth < 64) do
+  begin
+    // Bekannte VCL-Klassen zuerst: Steht die VCL im Index, deklariert auch TCustomControl ein (leeres) Paint.
+    if IsIn(mName, EmptyPaintBases) then
+      Exit(False);
+    if IsIn(mName, DrawingPaintBases) then
+    begin
+      AAncestor := mName;
+      Exit(True);
+    end;
+    if FAncestry.FindClass(mName, mType) then
+      for mSymbol in FAncestry.Methods(mType) do
+        if SameText(mSymbol.Name, 'Paint') then
+        begin
+          AAncestor := mName;
+          Exit(True);
+        end;
+    mName := FAncestry.ParentOf(mName);
+    Inc(mDepth);
   end;
   Result := False;
 end;
@@ -581,6 +627,7 @@ var
   Inserted: Boolean;
   Confidence: TRuleConfidence;
   Message: string;
+  Ancestor: string;
 begin
   Cache := TRuleDerived.Open(AContext);
   if not Prepare(Cache, AContext, Model) then
@@ -595,18 +642,26 @@ begin
         not Model.DeclaredWith(Info, Method.MethodName, 'override') or
         Model.HasToken(Method.Block, ['inherited']) or not Model.NameToken(Method, Token) then
         Continue;
-      // TCustomControl.Paint zeichnet nur den Rahmen im Designer; oft bewusst weggelassen.
+      // TCustomControl.Paint und TGraphicControl.Paint sind leer: Paint nur melden, wenn ein Vorfahr selbst
+      // zeichnet. Die übrigen Methoden tun in jedem VCL-Vorfahren eigene Arbeit.
       if SameText(Method.MethodName, 'Paint') then
-        Confidence := TRuleConfidence.Low
+      begin
+        if not Model.PaintingAncestor(Info.Name, Ancestor) then
+          Continue;
+        Confidence := TRuleConfidence.Medium;
+        Message := Format('%s.Paint ruft inherited nicht auf; %s.Paint zeichnet dort selbst', [Info.Name, Ancestor]);
+      end
       else
+      begin
         Confidence := TRuleConfidence.High;
+        Message := Format('%s.%s ruft inherited nicht auf; die VCL erledigt dort eigene Arbeit',
+          [Info.Name, Method.MethodName]);
+      end;
       // Im Destruktor zuletzt, sonst zuerst.
       if SameText(Method.MethodName, 'Destroy') then
         Inserted := Model.InsertBeforeEnd(Method.Block, 'inherited;', Edit)
       else
         Inserted := Model.InsertAfterBegin(Method.Block, 'inherited;', Edit);
-      Message := Format('%s.%s ruft inherited nicht auf; die VCL erledigt dort eigene Arbeit',
-        [Info.Name, Method.MethodName]);
       if Inserted then
         AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, Confidence,
           [TRuleFix.Create('"inherited;" einfügen', [Edit])])

@@ -22,7 +22,9 @@ type
     [Test]
     procedure LoadedWithoutInheritedIsHigh;
     [Test]
-    procedure PaintWithoutInheritedIsLow;
+    procedure PaintOnEmptyAncestorIsSilent;
+    [Test]
+    procedure PaintOnDrawingAncestorReports;
     [Test]
     procedure DestroyGetsInheritedAtEnd;
     [Test]
@@ -201,18 +203,61 @@ begin
     'procedure TFoo.Loaded;'#10'begin'#10'  inherited;'#10'  Layout;'#10'end;'), ApplyFix(Source, Findings[0].Fixes[0]));
 end;
 
-procedure TComponentRulesTests.PaintWithoutInheritedIsLow;
+const
+  PaintMember = '  protected'#10'    procedure Paint; override;';
+  PaintImpl = 'procedure TFoo.Paint;'#10'begin'#10'  Draw;'#10'end;';
+
+/// <summary>Unit mit TBase = class(AParent) (Mitglieder ABaseMembers) und TFoo = class(TBase) mit Paint ohne
+/// inherited.</summary>
+function TwoLevelUnit(const AParent, ABaseMembers, ABaseImpl: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TBase = class(' + AParent + ')'#10 + ABaseMembers + #10'  end;'#10 +
+    '  TFoo = class(TBase)'#10 + PaintMember + #10'  end;'#10'implementation'#10 + ABaseImpl + PaintImpl +
+    #10'end.';
+end;
+
+/// <summary>Kein Treffer, auch nicht unter minConfidence low.</summary>
+procedure AssertSilentAtLow(const ASource: string);
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TComponentMissingInheritedRule.Create, ASource,
+    LowConfidence))));
+end;
+
+procedure TComponentRulesTests.PaintOnEmptyAncestorIsSilent;
+begin
+  // TCustomControl.Paint und TGraphicControl.Paint sind leer: Paint ohne inherited ist dort üblich.
+  AssertSilentAtLow(ControlUnit(PaintMember, PaintImpl));
+  AssertSilentAtLow(ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TGraphicControl)'));
+  // Eigener Zwischenvorfahr ohne Paint (wie TAtlasPopupWindow, TAtlasEditorBar).
+  AssertSilentAtLow(TwoLevelUnit('TCustomControl', '  protected'#10'    procedure PaintBorder;',
+    'procedure TBase.PaintBorder;'#10'begin'#10'end;'#10));
+  // Unbekannter Vorfahr: nicht zu entscheiden, also still.
+  AssertSilentAtLow(ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TFremdControl)'));
+end;
+
+procedure TComponentRulesTests.PaintOnDrawingAncestorReports;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
 begin
-  Source := ControlUnit('  protected'#10'    procedure Paint; override;',
-    'procedure TFoo.Paint;'#10'begin'#10'  Draw;'#10'end;');
-  // Unter der Vorgabe minConfidence medium fällt der Treffer weg.
-  TRuleAssert.Silent(TComponentMissingInheritedRule.Create, Source);
-  Findings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create, Source, LowConfidence);
+  Source := ControlUnit(PaintMember, PaintImpl, 'TFoo = class(TCustomPanel)');
+  Findings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create, Source);
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(Ord(TRuleConfidence.Low), Ord(Findings[0].Confidence));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
+  Assert.AreEqual('TFoo.Paint ruft inherited nicht auf; TCustomPanel.Paint zeichnet dort selbst',
+    Findings[0].Message);
+  Assert.AreEqual(ControlUnit(PaintMember, 'procedure TFoo.Paint;'#10'begin'#10'  inherited;'#10'  Draw;'#10'end;',
+    'TFoo = class(TCustomPanel)'), ApplyFix(Source, Findings[0].Fixes[0]));
+  // Eigener Vorfahr, der selbst zeichnet.
+  Findings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create,
+    TwoLevelUnit('TCustomControl', PaintMember, 'procedure TBase.Paint;'#10'begin'#10'  Fill;'#10'end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TFoo.Paint ruft inherited nicht auf; TBase.Paint zeichnet dort selbst', Findings[0].Message);
+  // Zwischenvorfahr ohne Paint über TCustomForm.
+  Findings := TRuleAssert.Findings(TComponentMissingInheritedRule.Create,
+    TwoLevelUnit('TForm', '  protected'#10'    procedure Layout;', 'procedure TBase.Layout;'#10'begin'#10'end;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('TFoo.Paint ruft inherited nicht auf; TForm.Paint zeichnet dort selbst', Findings[0].Message);
 end;
 
 procedure TComponentRulesTests.DestroyGetsInheritedAtEnd;
