@@ -29,6 +29,8 @@
 //   --no-index            ohne Symbolindex prüfen (#1112); Regeln, die Typen anderer Units
 //                         oder der RTL brauchen, schweigen dann
 //   --index-cache <Ordner> Ordner der Index-Caches (Standard wie der Server, %LOCALAPPDATA%\Atlas)
+//   --fix <a,b|all>       Sammelkorrektur (#1352): sichere Korrekturen dieser Regeln anwenden (fix.minConfidence)
+//   --fix-dry-run         mit --fix nur den vereinigten Diff ausgeben (stdout bzw. --output), nichts schreiben
 //   --timings [<Datei>]   nach dem Lauf das Zeitprofil (#1356): langsamste Units und Regeln,
 //                         Indexzeit, Speicher; als Markdown, mit Endung .json als JSON; ohne
 //                         Datei auf stderr. Die Treffer bleiben unverändert auf stdout bzw. --output.
@@ -146,6 +148,10 @@ type
     McpRoot: string;
     /// <summary>Prozess-ID des Editors aus --clientProcessId; 0 = unbekannt.</summary>
     ClientProcessId: Cardinal;
+    /// <summary>--fix (#1352): Regeln der Sammelkorrektur, "all" = alle; nil = keine Sammelkorrektur.</summary>
+    FixRules: TArray<string>;
+    /// <summary>--fix-dry-run: nur den Diff ausgeben.</summary>
+    FixDryRun: Boolean;
     /// <summary>Hinweise zu ungültigen oder unbekannten Parametern, für das Log.</summary>
     Warnings: TArray<string>;
     class function Parse(const AArgs: TArray<string>): TCommandLineOptions; static;
@@ -278,6 +284,7 @@ begin
     FlagOption('--changed-lines', @Result.ChangedLines), FlagOption('--update-baseline', @Result.UpdateBaseline),
     FlagOption('--suppression-stats', @Result.SuppressionStats), FlagOption('--metrics', @Result.Metrics),
     FlagOption('--todos', @Result.Todos), FlagOption('--no-index', @Result.NoIndex),
+    FlagOption('--fix-dry-run', @Result.FixDryRun),
     FlagOption('--format-check', @Result.FormatCheck), FlagOption('--format-write', @Result.FormatWrite)];
 
   Index := Low(AArgs);
@@ -348,6 +355,15 @@ begin
     begin
       if TakeValue then
         Result.UnitFilter := TFindingFilter.SplitList(Value);
+    end
+    else if Name = '--fix' then
+    begin
+      if TakeValue then
+      begin
+        Result.FixRules := TFindingFilter.SplitList(Value);
+        if Result.FixRules = nil then
+          AddWarning('--fix erwartet Regeln, z. B. --fix redundant-cast oder --fix all');
+      end;
     end
     else if Name = '--min-severity' then
     begin

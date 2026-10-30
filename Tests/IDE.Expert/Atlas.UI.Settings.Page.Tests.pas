@@ -4323,6 +4323,7 @@ begin
     // Einstellungsdateien.
     Assert.IsTrue(SheetOf(Page.ProblemsWindowCheck) = Page.NodeSheet('rules.window'));
     Assert.IsTrue(SheetOf(Page.ProblemsLiveCheck) = Page.NodeSheet('rules.window'));
+    Assert.IsTrue(SheetOf(Page.FixBulkCheck) = Page.NodeSheet('rules.window'));
     Assert.IsNotNull(Page.NodeSheet('rules.profiles'));
     Assert.IsTrue(SheetOf(Page.BaselineInfoLabel) = Page.NodeSheet('rules.profiles'));
     Assert.IsNull(Page.NodeSheet('rules.group.threads'), 'keine Regelgruppen in Tools › Optionen');
@@ -4349,11 +4350,13 @@ begin
     Settings.ProblemsWindowScope := 'project';
     Settings.ProblemsWindowGroupBy := 'rule';
     Settings.ProblemsLive := False;
+    Settings.FixBulk := False;
     Settings.HoverProblemActions := False;
     Page.LoadFrom(Settings);
     Assert.AreEqual(1, Page.ProblemsWindowScopeChoice.Choice);
     Assert.AreEqual(2, Page.ProblemsWindowGroupByChoice.Choice);
     Assert.IsFalse(Page.ProblemsLiveCheck.Checked, 'Live geladen');
+    Assert.IsFalse(Page.FixBulkCheck.Checked, 'Sammelkorrektur geladen');
     Assert.IsFalse(Page.HoverProblemActionsCheck.Checked, 'Hover-Aktionen geladen');
     Page.ProblemsWindowScopeChoice.Choice := 0;
     Page.ProblemsWindowCompilerCheck.Checked := True;
@@ -4371,6 +4374,7 @@ begin
     Assert.AreEqual('rule', Settings.ProblemsWindowGroupBy);
     Assert.IsTrue(Settings.ProblemsWindowCompiler);
     Assert.IsFalse(Settings.ProblemsLive, 'Live gespeichert');
+    Assert.IsFalse(Settings.FixBulk, 'Sammelkorrektur gespeichert');
     Assert.IsFalse(Settings.HoverProblemActions, 'Hover-Aktionen gespeichert');
   finally
     Host.Free;

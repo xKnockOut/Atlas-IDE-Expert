@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3079] of string = (
+  Lines: array[0..3099] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2758,6 +2758,27 @@ const
     '      "x-page": "Prüfregeln",',
     '      "x-control": "Auswahl",',
     '      "x-issue": "#144"',
+    '    },',
+    '    "fix": {',
+    '      "type": "object",',
+    '      "description": "Sammelkorrektur (--fix, MCP fix_findings, „Alle sicheren Treffer korrigieren …“ im Fenster „Atlas-Prüfung“): wendet nur sichere Korrekturen von Regeln mit safeFix im Katalog an."' +
+      ',',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "minConfidence": {',
+    '          "type": "string",',
+    '          "enum": [',
+    '            "medium",',
+    '            "high"',
+    '          ],',
+    '          "default": "high",',
+    '          "description": "Untergrenze der Konfidenz für Sammelkorrekturen: Treffer darunter werden übersprungen und gezählt. fix_findings darf sie mit minConfidence nur anheben."',
+    '        }',
+    '      },',
+    '      "x-scope": "project",',
+    '      "x-page": "Prüfregeln",',
+    '      "x-control": "Auswahl",',
+    '      "x-issue": "#1352"',
     '    },',
     '    "exclude": {',
     '      "type": "array",',

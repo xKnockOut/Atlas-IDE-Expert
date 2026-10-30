@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4697] of string = (
+  BaseLines: array[0..4719] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -61,7 +61,8 @@ const
     '        "E2357",',
     '        "E2372",',
     '        "E2375"',
-    '      ]',
+    '      ],',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "language-feature",',
@@ -86,7 +87,8 @@ const
     '      "group": "internal",',
     '      "description": "An lsp-ignore comment suppresses no finding and can be removed.",',
     '      "bad": "// lsp-ignore: empty-except\nX := 1;",',
-    '      "good": "X := 1;"',
+    '      "good": "X := 1;",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "unknown-rule-id",',
@@ -97,7 +99,8 @@ const
     '      "description": "An lsp-ignore comment names a rule id that does not exist, so it suppresses nothing. The message suggests the most similar known id (typo); such a comment is not also reported as' +
     ' unused-suppression.",',
     '      "bad": "// lsp-ignore: empty-exept\ntry X; except end;",',
-    '      "good": "// lsp-ignore: empty-except\ntry X; except end;"',
+    '      "good": "// lsp-ignore: empty-except\ntry X; except end;",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "unit-too-deep",',
@@ -379,7 +382,8 @@ const
     '      "group": "threads",',
     '      "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead.",',
     '      "bad": "FWorker.Resume;",',
-    '      "good": "FWorker.Start;"',
+    '      "good": "FWorker.Start;",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "result-not-set",',
@@ -1240,7 +1244,8 @@ const
     '      "group": "style",',
     '      "description": "Free already checks for nil, so testing Assigned before Free or FreeAndNil is redundant.",',
     '      "bad": "if Assigned(List) then\n  List.Free;",',
-    '      "good": "List.Free;"',
+    '      "good": "List.Free;",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "raise-in-finally",',
@@ -1281,7 +1286,8 @@ const
     '          "default": true,',
     '          "description": "Also report a class cast that only precedes Free (CastAndFree)."',
     '        }',
-    '      ]',
+    '      ],',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "redundant-begin-end",',
@@ -1855,7 +1861,8 @@ const
     '      "description": "Obj.Destroy is called directly as a statement. If Obj is nil, the call crashes; Free checks for nil first and is the usual way to release an object. inherited Destroy and calls o' +
     'f a destructor with arguments are exempt. High confidence. Quick fix: Destroy becomes Free.",',
     '      "bad": "Verbindung.Destroy;",',
-    '      "good": "Verbindung.Free;"',
+    '      "good": "Verbindung.Free;",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "managed-type-raw-memory",',
@@ -3113,7 +3120,8 @@ const
     '      "compilerCodes": [',
     '        "E2014"',
     '      ],',
-    '      "level": "A"',
+    '      "level": "A",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "duplicate-case-label",',
@@ -3193,7 +3201,8 @@ const
     '          "description": "Report duplicate entries in uses clauses."',
     '        }',
     '      ],',
-    '      "level": "A"',
+    '      "level": "A",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "conditional-directive-unbalanced",',
@@ -3668,7 +3677,8 @@ const
     '      "compilerCodes": [',
     '        "W1040"',
     '      ],',
-    '      "level": "B"',
+    '      "level": "B",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "file-encoding-unsupported",',
@@ -4308,6 +4318,20 @@ const
     '      ]',
     '    },',
     '    {',
+    '      "id": "unused-uses",',
+    '      "name": "Unused unit in uses",',
+    '      "category": "code-smell",',
+    '      "severity": "hint",',
+    '      "group": "style",',
+    '      "description": "Nothing from the unit of a uses entry is used: no identifier outside the uses clauses matches one of its interface symbols (including members) or the last part of its name. Same ' +
+    'analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep and entries in inactive {$IFDEF} bran' +
+    'ches stay. High confidence. Safe quick fix: remove the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where th' +
+    'e same entries are dimmed, without a symbol index (--no-index) and with syntax errors.",',
+    '      "bad": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils,\n  System.Classes;  // nothing from System.Classes is used\n\nfunction Titel(const AName: string): string;",',
+    '      "good": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils;\n\nfunction Titel(const AName: string): string;",',
+    '      "safeFix": true',
+    '    },',
+    '    {',
     '      "id": "message-method-invalid",',
     '      "name": "Message method declared incorrectly",',
     '      "category": "bug",',
@@ -4604,7 +4628,8 @@ const
     '        "H2456",',
     '        "H2457"',
     '      ],',
-    '      "level": "B"',
+    '      "level": "B",',
+    '      "safeFix": true',
     '    },',
     '    {',
     '      "id": "compiler-hints",',
@@ -5491,7 +5516,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2161] of string = (
+  OverlayLines_de: array[0..2166] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -7885,6 +7910,14 @@ const
     '          "description": "Projektarten, deren Units geprüft werden: application, package, library."',
     '        }',
     '      ]',
+    '    },',
+    '    {',
+    '      "id": "unused-uses",',
+    '      "name": "Ungenutzte Unit im uses",',
+    '      "description": "Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil i' +
+    'hres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep und Eint' +
+    'räge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix' +
+    ' unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern."',
     '    },',
     '    {',
     '      "id": "message-method-invalid",',

@@ -11,7 +11,7 @@
 // schreibende Werkzeuge ab, schreibende Aufrufe stehen im Log. Ungespeicherte
 // Dateien der IDE meldet das Plugin in %LOCALAPPDATA%\Atlas\editor-dirty-<pid>.json.
 // Formatieren (format_code, #1358) mit den Formatregeln des Projekts, zu dem die Datei gehört.
-// Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action)
+// Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action, fix_findings)
 // bekommen den Symbolindex und die Projektdienste über TShellWorkspaceGroup wie
 // im Server (#1112); solange der Index lädt, sagt get_diagnostics das dazu.
 // get_server_status (#1356) zeigt den Status des Atlas-Servers der IDE für den
@@ -1051,6 +1051,43 @@ begin
         raise EMcpToolError.Create('Argument "line" fehlt');
       Result := AEdit.ApplyCodeAction(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, FileName, Line,
         TMcpServer.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
+    end, TMcpToolKind.Write);
+  AServer.AddTool('fix_findings',
+    'Sammelkorrektur (#1352): wendet die sicheren Korrekturen der genannten Regeln (oder "all") in einer Datei ' +
+    'oder im ganzen Projekt an, nur Treffer ab fix.minConfidence (Vorgabe hoch) und nur Regeln mit safeFix im ' +
+    'Katalog; bis zu drei Durchgänge, keine neuen Syntaxfehler. dryRun (Vorgabe true) zeigt nur Zusammenfassung ' +
+    'und Diff; dryRun=false schreibt alle Dateien oder keine. In der IDE offene Dateien ändert das Plugin als ' +
+    'einen Rückgängig-Schritt je Datei, ungespeicherte bleiben unberührt.',
+    '{"type":"object","properties":{' +
+      '"rules":{"type":"array","items":{"type":"string"},"description":"Regelkennungen, z. B. [\"redundant-cast\"]; [\"all\"] = alle"},' +
+      '"file":{"type":"string","description":"Pfad einer Unit; leer = alle Projektdateien"},' +
+      '"minConfidence":{"type":"string","enum":["medium","high"],"description":"Untergrenze der Konfidenz; nicht unter fix.minConfidence"},' +
+      '"dryRun":{"type":"boolean","default":true,"description":"Nur Vorschau, nichts schreiben"}},' +
+      '"required":["rules"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      mFiles, mRules: TArray<string>;
+      mItems: TJSONArray;
+      mItem: TJSONValue;
+      mFile: string;
+    begin
+      mRules := nil;
+      if (AArguments <> nil) and (AArguments.GetValue('rules') is TJSONArray) then
+      begin
+        mItems := TJSONArray(AArguments.GetValue('rules'));
+        for mItem in mItems do
+          if (mItem is TJSONString) and (Trim(mItem.Value) <> '') then
+            mRules := mRules + [Trim(mItem.Value)];
+      end;
+      mFile := TMcpServer.OptionalString(AArguments, 'file');
+      if mFile <> '' then
+        mFiles := TArray<string>.Create(AGuard.Resolve(mFile))
+      else
+        mFiles := AGroup.Main.ProjectFiles;
+      if Length(mFiles) = 0 then
+        raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      Result := AEdit.FixFindings(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, mFiles, mRules,
+        TMcpServer.OptionalString(AArguments, 'minConfidence'), DryRunOf(AArguments));
     end, TMcpToolKind.Write);
   AServer.AddTool('format_code',
     'Formatiert eine Unit nach den Formatregeln des Projekts (#1358; format.* in atlas.json, .editorconfig) wie ' +

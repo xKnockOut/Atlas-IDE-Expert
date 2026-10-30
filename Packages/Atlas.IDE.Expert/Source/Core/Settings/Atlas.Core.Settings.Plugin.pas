@@ -424,6 +424,8 @@ type
     GotoImplementationKey: Integer;
     /// <summary>Laufende Prüfung beim Tippen (#909); aus = Prüfung der offenen Datei nur beim Speichern.</summary>
     ProblemsLive: Boolean;
+    /// <summary>„Alle sicheren Treffer korrigieren …“ im Fenster Atlas-Prüfung (#1352, fix.bulk).</summary>
+    FixBulk: Boolean;
     /// <summary>Aktionszeile im Befund-Hover (#909): Schnellkorrektur, für diese Zeile unterdrücken, Regel einstellen.
     /// </summary>
     HoverProblemActions: Boolean;
@@ -1926,6 +1928,7 @@ begin
   Result.GotoInterfaceKey := 0;
   Result.GotoImplementationKey := 0;
   Result.ProblemsLive := True;
+  Result.FixBulk := True;
   Result.HoverProblemActions := True;
   Result.InlineDiagnostics := 'errors';
   Result.ProblemsStatusCounter := True;
@@ -2795,6 +2798,7 @@ begin
   GotoInterfaceKey := AStore.ReadInteger('GotoInterfaceKey', Default.GotoInterfaceKey);
   GotoImplementationKey := AStore.ReadInteger('GotoImplementationKey', Default.GotoImplementationKey);
   ProblemsLive := AStore.ReadInteger('ProblemsLive', BoolValue(Default.ProblemsLive)) <> 0;
+  FixBulk := AStore.ReadInteger('FixBulk', BoolValue(Default.FixBulk)) <> 0;
   HoverProblemActions := AStore.ReadInteger('HoverProblemActions', BoolValue(Default.HoverProblemActions)) <> 0;
   InlineDiagnostics := AStore.ReadString('InlineDiagnostics', Default.InlineDiagnostics);
   ProblemsStatusCounter := AStore.ReadInteger('ProblemsStatusCounter', BoolValue(Default.ProblemsStatusCounter)) <> 0;
@@ -3421,6 +3425,7 @@ begin
   AStore.WriteInteger('GotoInterfaceKey', GotoInterfaceKey);
   AStore.WriteInteger('GotoImplementationKey', GotoImplementationKey);
   AStore.WriteInteger('ProblemsLive', BoolValue(ProblemsLive));
+  AStore.WriteInteger('FixBulk', BoolValue(FixBulk));
   AStore.WriteInteger('HoverProblemActions', BoolValue(HoverProblemActions));
   AStore.WriteString('InlineDiagnostics', InlineDiagnostics);
   AStore.WriteInteger('ProblemsStatusCounter', BoolValue(ProblemsStatusCounter));
