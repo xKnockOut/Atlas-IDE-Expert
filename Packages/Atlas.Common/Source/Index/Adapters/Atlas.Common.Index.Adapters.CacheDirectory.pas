@@ -49,6 +49,10 @@ type
     /// <summary>Herkunft eines Projekt-Caches (Projektdatei oder Arbeitsordner), neben der Cache-Datei.</summary>
     OriginFileName = 'projekt.txt';
     BuildPattern = 'build-*.json';
+    /// <summary>Zuletzt berechnete Architekturstände (#1367): <Wurzel>\Architektur\<Hash>\architecture-last.json.
+    /// </summary>
+    ArchitectureFolder = 'Architektur';
+    ArchitectureFileName = 'architecture-last.json';
     /// <summary>Marke der letzten Benutzung neben jedem Cache.</summary>
     UseMarkerFileName = 'benutzt.stamp';
   public
@@ -69,6 +73,10 @@ type
     /// <summary>Datei des letzten IDE-Builds für den Arbeitsordner AWorkspace (#556), gleich für LSP- und
     /// MCP-Prozess; bewusst kein Index-Cache, damit das Aufräumen sie nicht erfasst.</summary>
     class function BuildFileFor(const ARoot, AWorkspace: string): string; static;
+    /// <summary>Zuletzt berechneter Architekturstand (#1367) zum Umfang AScopeKey (Projekt bzw. Projektgruppe,
+    /// TArchitectureRequest.ScopeKey), gleich für LSP- und MCP-Prozess; außerhalb von Index, damit das Aufräumen
+    /// der Index-Caches ihn nicht erfasst.</summary>
+    class function ArchitectureFileFor(const ARoot, AScopeKey: string): string; static;
     /// <summary>Sperrt ACacheFile; nil, wenn eine andere Instanz sie hält. Freigeben hebt die Sperre auf.</summary>
     class function TryLock(const ACacheFile: string): TStream; static;
     /// <summary>True, wenn eine andere Instanz ACacheFile gesperrt hat.</summary>
@@ -185,6 +193,12 @@ var
 begin
   Key := AnsiUpperCase(ExcludeTrailingPathDelimiter(AWorkspace.Replace('/', '\')));
   Result := TPath.Combine(ARoot, Format('build-%.8x.json', [Cardinal(Key.GetHashCode)]));
+end;
+
+class function TIndexCacheDirectory.ArchitectureFileFor(const ARoot, AScopeKey: string): string;
+begin
+  Result := TPath.Combine(TPath.Combine(TPath.Combine(ARoot, ArchitectureFolder), KeyHash(AScopeKey)),
+    ArchitectureFileName);
 end;
 
 class function TIndexCacheDirectory.TryLock(const ACacheFile: string): TStream;

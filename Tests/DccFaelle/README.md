@@ -41,6 +41,8 @@ Plattform.
 | `DccPublishedGegen` | `published-type-invalid` | PV1 statisches Array, PV2 Zeiger (E2188) |
 | `DccOperatoren` | `operator-declaration-invalid` | OP1–OP4 Vergleichsoperatoren ohne Boolean-Ergebnis, OP5 Benutzung |
 | `DccOperatorenGegen` | `operator-declaration-invalid` | OG1/OG2 falsche Parameterzahl |
+| `DccDeklarationen` | `declaration-invalid` und weitere (#1380) | DK1/DK2 packed vor array und record, DK3 Zeiger auf den eigenen Record, DK4 Vorfahr erst vorwärts und dann vollständig, DK5 sealed ohne offene abstrakte Methoden, DK6 überladene default-Property, DK7 Klassen-Property an class var, DK8 Konstruktoren mit gleichen Parametern ohne C++-Ausgabe, DK9 dispinterface-Property ohne read/write, DK10 external cdecl varargs, DK11 @ vor Array-Element |
+| `DccDeklarationenGegen` | `declaration-invalid` und weitere (#1380) | DG1/DG2 packed vor Byte und Klasse (E2006), DG3 Vorfahr nur vorwärts (E2086), DG4/DG5 Property ohne read/write in Interface und automated (E2128), DG6 stdcall varargs ohne external (E2277, Win32), DG7 @ vor Ausdruck (E2036) |
 | `DccKonstanten` | `typed-constant-modified` | TC1 `{$J+}`, TC2 `{$WRITEABLECONST ON}`, TC3 `{$J+}` aus einer Include-Datei |
 | `DccKonstantenGegen` | `typed-constant-modified` | KG1 `{$J-}` |
 | `DccUeberladungen` | `overload-resolution` | UL1–UL3 Ganzzahl, string und Char an Integer/string, UL4 Ganzzahl an Double, UL5 untypisierte Konstante `'a'` an Char/Integer, UL6 Record mit Implicit-Operator, UL7 Alias auf Integer, UL8 weiteres Argument entscheidet, UL9 Integer passt genauer als Double, UL10 Überladung erst hinter dem Aufruf, UL11 Überladung aus dem Vorfahren (#1371) |

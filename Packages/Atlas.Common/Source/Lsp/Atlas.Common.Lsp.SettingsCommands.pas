@@ -12,7 +12,9 @@
 //                                           Kategorie, Vorgabe, Gruppe,
 //                                           Beschreibung, Beispielen,
 //                                           Optionen und Kennzeichen
-//                                           „experimentell“ (#909) sowie Pfad
+//                                           „experimentell“ (#909) und
+//                                           „Sammelkorrektur“ (safeFix, #1352)
+//                                           sowie Pfad
 //                                           der globalen Datei und Version
 //                                           des Servers
 
@@ -33,7 +35,8 @@ type
     /// = "global" prüft den Text als globale Datei, sonst als atlas.json.</summary>
     class function Check(const AArguments: TJSONArray): TJSONObject; static;
     /// <summary>{"rules": [{"id", "name", "category", "severity", "group", "description", "bad", "good",
-    /// "options": [{"name", "type", "columns" (nur object-list), "default", "description"}], "experimental"}],
+    /// "options": [{"name", "type", "columns" (nur object-list), "default", "description"}], "experimental",
+    /// "safeFix" (#1352)}],
     /// "globalFile", "version"}.
     /// </summary>
     class function Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string): TJSONObject;
@@ -185,6 +188,9 @@ begin
         Experimental := True;
     if Experimental then
       Rule.AddPair('experimental', TJSONBool.Create(True));
+    // Sammelkorrektur (#1352): Das Plugin bietet „Alle sicheren Treffer korrigieren …“ nur dafür an.
+    if Entry.SafeFix then
+      Rule.AddPair('safeFix', TJSONBool.Create(True));
     Rules.AddElement(Rule);
   end;
   Result := TJSONObject.Create;

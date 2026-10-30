@@ -172,7 +172,9 @@ begin
       end
       else if (AStyle.BeginPlacement = TBlockPlacement.SameLine) and (Before.EndPos.Line = Line - 1) and
         FirstOnLine(Code[K]) and LastOnLine(Code[K - 1]) and InRange(Line) and InRange(Line - 1) and
-        (Splits[Line] = nil) and not AJoined[Line - 1] then
+        (Splits[Line] = nil) then
+        // Auch an eine schon angehängte Zeile: "end" + "else" + "begin" werden in einem Lauf eine Zeile, sonst
+        // erst im zweiten (#1358, Stabilität).
         AJoined[Line] := True;
     end
     else if (Word = 'else') and (Previous = 'end') and (Before.Kind = TPascalTokenKind.Keyword) then
@@ -182,7 +184,7 @@ begin
         AddSplit(Line, Token.StartPos.Character, False)
       else if (AStyle.ElsePlacement = TBlockPlacement.SameLine) and (Before.EndPos.Line = Line - 1) and
         FirstOnLine(Code[K]) and LastOnLine(Code[K - 1]) and InRange(Line) and InRange(Line - 1) and
-        (Splits[Line] = nil) and not AJoined[Line - 1] then
+        (Splits[Line] = nil) then
         AJoined[Line] := True;
     end;
   end;

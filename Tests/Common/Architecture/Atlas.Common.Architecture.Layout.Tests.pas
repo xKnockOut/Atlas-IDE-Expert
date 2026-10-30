@@ -20,6 +20,8 @@ type
     procedure EmptyOverviewGivesEmptyLayout;
     [Test]
     procedure SameInputSameLayout;
+    [Test]
+    procedure PartsOfSplitSubsystemSitSideBySide;
   end;
 
 implementation
@@ -88,6 +90,23 @@ begin
         Layout.Subsystems[B].Radius - 1E-6, Format('%d/%d', [A, B]));
   Assert.IsTrue(Layout.Right > Layout.Left);
   Assert.IsTrue(Layout.Bottom > Layout.Top);
+end;
+
+procedure TLayoutTests.PartsOfSplitSubsystemSitSideBySide;
+var
+  mData: TArchitectureOverview;
+  mLayout: TArchitectureLayout;
+  mDistance: Double;
+begin
+  // Teilsystem 3 als Teil desselben ursprünglichen Teilsystems wie 0 (#1364): es legt sich an 0 an.
+  mData := Overview;
+  mData.Subsystems[0].Parent := 'N';
+  mData.Subsystems[3].Parent := 'N';
+  mLayout := TArchitectureLayouter.Compute(mData);
+  mDistance := Sqrt(Sqr(mLayout.Subsystems[3].X - mLayout.Subsystems[0].X) +
+    Sqr(mLayout.Subsystems[3].Y - mLayout.Subsystems[0].Y));
+  Assert.AreEqual(mLayout.Subsystems[0].Radius + mLayout.Subsystems[3].Radius + TArchitectureLayouter.Gap, mDistance,
+    1E-3);
 end;
 
 procedure TLayoutTests.EmptyOverviewGivesEmptyLayout;
