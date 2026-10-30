@@ -562,6 +562,8 @@ contains
   Atlas.Core.Designer.Components in 'Source\Core\Designer\Atlas.Core.Designer.Components.pas',
   Atlas.IDE.Foundation.DesignerView in 'Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas',
   Atlas.UI.Designer.Bar in 'Source\UI\Designer\Atlas.UI.Designer.Bar.pas',
+  Atlas.UI.Designer.Search in 'Source\UI\Designer\Atlas.UI.Designer.Search.pas',
+  Atlas.UI.Designer.TabOverlay in 'Source\UI\Designer\Atlas.UI.Designer.TabOverlay.pas',
   Atlas.IDE.Designer.Bar in 'Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas';
 
 end.

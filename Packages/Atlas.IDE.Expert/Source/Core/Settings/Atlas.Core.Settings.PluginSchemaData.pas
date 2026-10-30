@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4313] of string = (
+  Lines: array[0..4364] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -3304,9 +3304,9 @@ const
     '      "x-issue": "#1155"',
     '    },',
     '    "EditorDesignerBar": {',
-    '      "description": "Designer-Leiste im Formular-Designer an Stelle von Brotkrumen und Editorleiste: Komponenten nach Teilen des Namens suchen und auswählen (Enter: nächster Treffer), einzelne Kompon' +
-      'enten, alle einer Klasse oder alle nichtvisuellen nur in der Anzeige aus- und wieder einblenden; die .dfm bleibt unverändert. Brotkrumen und Editorleiste stehen nur im Code-Editor, auch wenn diese Lei' +
-      'ste aus ist.",',
+    '      "description": "Symbolleiste im Formular-Designer an Stelle von Brotkrumen und Editorleiste: Komponenten suchen (eigenes Fenster), Nichtvisuelle ein- und ausblenden (löst Strg+H der IDE aus und ' +
+      'zeigt deren Zustand), Elternelement auswählen, Tab-Reihenfolge als Nummern auf den Steuerelementen (Sprünge gegen die Lesereihenfolge hervorgehoben) und, experimentell, Ausrichten. Brotkrumen und Edit' +
+      'orleiste stehen nur im Code-Editor, nicht auf der Willkommensseite, auch wenn diese Leiste aus ist.",',
     '      "type": "boolean",',
     '      "default": true,',
     '      "x-key": "editor.designerBar",',
@@ -3317,6 +3317,61 @@ const
     '      "x-quickToggle": true,',
     '      "x-caption": "Designer-Leiste",',
     '      "x-captionEn": "Designer bar",',
+    '      "x-issue": "#1442"',
+    '    },',
+    '    "DesignerSearchKey": {',
+    '      "description": "Taste für das Fenster „Komponenten suchen“; wirkt nur, solange der Formular-Designer den Fokus hat, nicht im Code-Editor. 0 = keine Taste (nur der Knopf in der Designer-Leiste). ' +
+      'Vorgabe Alt+^.",',
+    '      "type": "integer",',
+    '      "default": 32988,',
+    '      "x-key": "editor.designerBar.searchKey",',
+    '      "x-area": "editor",',
+    '      "x-format": "shortcut",',
+    '      "x-page": "Editor",',
+    '      "x-parent": "editor.designerBar",',
+    '      "x-node": "editor.designerBar",',
+    '      "x-issue": "#1442"',
+    '    },',
+    '    "DesignerSearchStyle": {',
+    '      "description": "Fenster „Komponenten suchen“: groß mit Filtern, Gruppierung, Vorschau (Lage im Formular, Eigenschaften, Ereignisse) und Aktionen (window) oder klein wie Strg+P nur mit Suchfeld u' +
+      'nd Liste (popup).",',
+    '      "type": "string",',
+    '      "enum": [',
+    '        "window",',
+    '        "popup"',
+    '      ],',
+    '      "default": "window",',
+    '      "x-key": "editor.designerBar.searchStyle",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-parent": "editor.designerBar",',
+    '      "x-node": "editor.designerBar",',
+    '      "x-issue": "#1442"',
+    '    },',
+    '    "DesignerTabOrderClick": {',
+    '      "description": "Bei eingeblendeter Tab-Reihenfolge vergibt ein Klick auf die Nummern die Reihenfolge neu: der erste Klick unter einem Elternelement setzt 0, der nächste 1 und so weiter. Ändert d' +
+      'ie .dfm. Aus = die Nummern sind nur Anzeige, Klicks gehen an den Designer.",',
+    '      "type": "boolean",',
+    '      "default": false,',
+    '      "x-key": "editor.designerBar.tabOrderClick",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-parent": "editor.designerBar",',
+    '      "x-node": "editor.designerBar",',
+    '      "x-experimental": true,',
+    '      "x-issue": "#1442"',
+    '    },',
+    '    "DesignerAlign": {',
+    '      "description": "Knopf „Ausrichten“ in der Designer-Leiste: Menü mit linken, rechten, oberen und unteren Kanten, Mitten, im Elternelement zentrieren, gleicher Breite und Höhe und gleichmäßigen Ab' +
+      'ständen; Bezug ist die zuerst gewählte Komponente. Ein Klick auf das Symbol wiederholt den letzten Befehl. Ändert die .dfm.",',
+    '      "type": "boolean",',
+    '      "default": false,',
+    '      "x-key": "editor.designerBar.align",',
+    '      "x-area": "editor",',
+    '      "x-page": "Editor",',
+    '      "x-parent": "editor.designerBar",',
+    '      "x-node": "editor.designerBar",',
+    '      "x-experimental": true,',
     '      "x-issue": "#1442"',
     '    },',
     '    "EditorStatusBarItems": {',

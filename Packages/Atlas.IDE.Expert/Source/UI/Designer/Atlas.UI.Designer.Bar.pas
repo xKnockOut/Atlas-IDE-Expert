@@ -1,234 +1,308 @@
 ﻿unit Atlas.UI.Designer.Bar;
 
-// Designer-Leiste (#1442), Darstellung: eine Zeile über dem Formular-Designer
-// an Stelle von Brotkrumen und Editorleiste. Von links:
-// - Suchfeld (TAtlasSearchEdit, behält Bearbeitungstasten wie Entf und Strg+V,
-//   sonst löschte der Designer die gewählte Komponente). Jede Änderung meldet
-//   OnSearch; Enter bzw. ↓ den nächsten Treffer (OnStep +1), Umschalt+Enter
-//   bzw. ↑ den vorigen, Esc leert das Feld.
-// - „‹ 2/5 ›“: voriger und nächster Treffer, dazwischen der Zähler bzw.
-//   „kein Treffer“. Nur mit Suchwort.
-// - „Ausblenden ▾“ öffnet das Menü des Aufrufers (OnHideMenu, Punkt unter dem
-//   Knopf), „Alle einblenden (3)“ nur, solange etwas ausgeblendet ist
-//   (OnShowAll).
+// Designer-Leiste (#1442), Darstellung: eine Zeile mit 16-px-Symbolen über dem
+// Formular-Designer an Stelle von Brotkrumen und Editorleiste, im Stil der
+// Editorleiste (#1101). Die Knöpfe setzt der Aufrufer (SetButtons):
+// Komponenten suchen, Nichtvisuelle (Strg+H der IDE), Elternelement,
+// Tab-Reihenfolge, Ausrichten.
+// - Gedrückt (Pressed): Akzentfläche wie der aktuelle Abschnitt der
+//   Editorleiste (Nichtvisuelle ausgeblendet, Tab-Reihenfolge an).
+// - Knopf mit Menü (Menu): rechts ein kleiner Pfeil. Ein Klick auf den Pfeil
+//   meldet OnMenu mit dem Bildschirmpunkt unter dem Knopf, ein Klick auf das
+//   Symbol OnCommand (Ausrichten wiederholt den letzten Befehl).
+// - Tooltip je Knopf: Name und Taste.
 // Höhe, Farben, Hervorhebung, Klick beim Loslassen, Kontextmenü (geht nie an
 // den Editor) und OnDisabled kommen vom Vorfahr TAtlasEditorBar (#1248).
-// Reine VCL; gesucht, ausgewählt und ausgeblendet wird vom Aufrufer
-// (Atlas.IDE.Designer.Bar).
+// Reine VCL; was die Knöpfe tun, entscheidet Atlas.IDE.Designer.Bar.
 
 interface
 
 uses
   Winapi.Windows,
-  Winapi.Messages,
   System.SysUtils,
   System.Classes,
   System.Types,
   Vcl.Controls,
   Vcl.Graphics,
   Atlas.Core.Style.Palette,
-  Atlas.UI.Editor.Bar,
-  Atlas.UI.Search.Bar;
+  Atlas.Core.EditorToolbar.Icons,
+  Atlas.UI.Editor.Bar;
 
 type
+  TAtlasDesignerButton = record
+    Id: string;
+    Icon: TAtlasToolbarIcon;
+    /// <summary>Tooltip: Name und Taste.</summary>
+    Hint: string;
+    Enabled: Boolean;
+    Pressed: Boolean;
+    /// <summary>Mit Pfeil für ein Menü.</summary>
+    Menu: Boolean;
+    /// <summary>Trennstrich davor.</summary>
+    GapBefore: Boolean;
+    class function Create(const AId: string; AIcon: TAtlasToolbarIcon; const AHint: string): TAtlasDesignerButton;
+      static;
+    function SameAs(const AOther: TAtlasDesignerButton): Boolean;
+  end;
+
   TAtlasDesignerBar = class(TAtlasEditorBar)
-  public const
-    PartPrevious = 1;
-    PartNext = 2;
-    PartHide = 3;
-    PartShowAll = 4;
-    /// <summary>Breite des Suchfelds bei 96 DPI.</summary>
-    SearchWidth = 180;
   private
-    FSearch: TAtlasSearchEdit;
-    FHitIndex: Integer;
-    FHitCount: Integer;
-    FHiddenCount: Integer;
-    FHitsText: string;
-    FNoHitText: string;
-    FHideText: string;
-    FShowAllText: string;
-    FPreviousHint: string;
-    FNextHint: string;
-    FHiddenHint: string;
-    FRects: array[PartPrevious..PartShowAll] of TRect;
-    FCounterRect: TRect;
-    FOnSearch: TProc<string>;
-    FOnStep: TProc<Integer>;
-    FOnHideMenu: TProc<TPoint>;
-    FOnShowAll: TProc;
-    procedure SearchChange(Sender: TObject);
-    procedure SearchKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure SearchKeyPress(Sender: TObject; var Key: Char);
+    FButtons: TArray<TAtlasDesignerButton>;
+    FRects: TArray<TRect>;
+    FArrows: TArray<TRect>;
+    FOnCommand: TProc<string>;
+    FOnMenu: TProc<string, TPoint>;
     procedure Layout;
-    function TextWidth(const AText: string): Integer;
-    function CounterText: string;
-    function ShowAllCaption: string;
-    procedure DrawPart(APart: Integer; const AText: string; AEnabled: Boolean);
-    procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
+    function IconSize: Integer;
+    /// <summary>Teil APart: Knopf 2·i, sein Pfeil 2·i + 1.</summary>
+    function ButtonOf(APart: Integer): Integer;
+    procedure DrawButton(AIndex: Integer);
   protected
+    class function BaseHeight: Integer; override;
     function PartAt(X, Y: Integer): Integer; override;
     function PartHint(APart: Integer): string; override;
     function PartEnabled(APart: Integer): Boolean; override;
     procedure PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer); override;
     procedure Paint; override;
     procedure Resize; override;
+    procedure ChangeScale(M, D: Integer; isDpiChange: Boolean); override;
   public
-    constructor Create(AOwner: TComponent); override;
-    /// <summary>Farben der Leiste und des Suchfelds.</summary>
     procedure ApplyColors(const AColors: TAtlasColors);
-    /// <summary>Treffer der Suche: AIndex 0-basiert (-1 = keiner gewählt), ACount Zahl der Treffer.</summary>
-    procedure SetHits(AIndex, ACount: Integer);
-    /// <summary>Zahl der ausgeblendeten Komponenten; 0 = Knopf „Alle einblenden“ fehlt.</summary>
-    procedure SetHiddenCount(ACount: Integer);
-    /// <summary>Texte in der Sprache der Oberfläche; AHits mit zwei %d (Nummer, Zahl), AShowAll mit einem.</summary>
-    procedure SetTexts(const ASearchHint, AHits, ANoHit, AHide, AShowAll, APreviousHint, ANextHint,
-      AHiddenHint: string);
-    /// <summary>Fläche eines Teils (Client); leer, wenn er gerade fehlt.</summary>
-    function PartRect(APart: Integer): TRect;
-    /// <summary>Suchfeld fokussieren und den Text markieren.</summary>
-    procedure FocusSearch;
+    /// <summary>Knöpfe setzen; gleiche Knöpfe zeichnen nicht neu.</summary>
+    procedure SetButtons(const AButtons: TArray<TAtlasDesignerButton>);
+    /// <summary>Fläche des Knopfs AId (Client, ohne Pfeil); leer ohne ihn.</summary>
+    function ButtonRect(const AId: string): TRect;
+    /// <summary>Fläche des Pfeils am Knopf AId; leer ohne Menü.</summary>
+    function ArrowRect(const AId: string): TRect;
+    /// <summary>Tooltip über dem Punkt (Client); '' = keiner.</summary>
+    function HintAt(X, Y: Integer): string;
     /// <summary>Klick wie mit der linken Maustaste (Tests).</summary>
     procedure ClickAt(X, Y: Integer);
-    property Search: TAtlasSearchEdit read FSearch;
-    property HitIndex: Integer read FHitIndex;
-    property HitCount: Integer read FHitCount;
-    property HiddenCount: Integer read FHiddenCount;
-    property OnSearch: TProc<string> read FOnSearch write FOnSearch;
-    /// <summary>+1 nächster, -1 voriger Treffer.</summary>
-    property OnStep: TProc<Integer> read FOnStep write FOnStep;
-    /// <summary>Menü „Ausblenden“ an diesem Bildschirmpunkt öffnen.</summary>
-    property OnHideMenu: TProc<TPoint> read FOnHideMenu write FOnHideMenu;
-    property OnShowAll: TProc read FOnShowAll write FOnShowAll;
+    property Buttons: TArray<TAtlasDesignerButton> read FButtons;
+    /// <summary>Klick auf einen Knopf (Kennung).</summary>
+    property OnCommand: TProc<string> read FOnCommand write FOnCommand;
+    /// <summary>Klick auf den Pfeil: Menü des Knopfs an diesem Bildschirmpunkt.</summary>
+    property OnMenu: TProc<string, TPoint> read FOnMenu write FOnMenu;
   end;
 
 implementation
 
 uses
-  System.Math,
-  Vcl.StdCtrls,
-  Vcl.Forms;
+  Atlas.UI.EditorToolbar.Glyphs;
+
+{ TAtlasDesignerButton }
+
+class function TAtlasDesignerButton.Create(const AId: string; AIcon: TAtlasToolbarIcon;
+  const AHint: string): TAtlasDesignerButton;
+begin
+  Result := Default(TAtlasDesignerButton);
+  Result.Id := AId;
+  Result.Icon := AIcon;
+  Result.Hint := AHint;
+  Result.Enabled := True;
+end;
+
+function TAtlasDesignerButton.SameAs(const AOther: TAtlasDesignerButton): Boolean;
+begin
+  Result := (Id = AOther.Id) and (Icon = AOther.Icon) and (Hint = AOther.Hint) and (Enabled = AOther.Enabled) and
+    (Pressed = AOther.Pressed) and (Menu = AOther.Menu) and (GapBefore = AOther.GapBefore);
+end;
 
 { TAtlasDesignerBar }
 
-constructor TAtlasDesignerBar.Create(AOwner: TComponent);
+class function TAtlasDesignerBar.BaseHeight: Integer;
 begin
-  inherited Create(AOwner);
-  FHitIndex := -1;
-  FHitsText := '%d/%d';
-  FNoHitText := '–';
-  FHideText := '▾';
-  FShowAllText := '(%d)';
-  FSearch := TAtlasSearchEdit.Create(Self);
-  FSearch.Parent := Self;
-  FSearch.AutoSize := False;
-  FSearch.BorderStyle := bsNone;
-  FSearch.OnChange := SearchChange;
-  FSearch.OnKeyDown := SearchKeyDown;
-  FSearch.OnKeyPress := SearchKeyPress;
-  Layout;
+  Result := 24;
+end;
+
+function TAtlasDesignerBar.IconSize: Integer;
+begin
+  Result := Scale(16);
 end;
 
 procedure TAtlasDesignerBar.ApplyColors(const AColors: TAtlasColors);
 begin
   SetColors(AColors);
-  FSearch.Color := TColor(AColors.Surface);
-  FSearch.Font.Color := TColor(AColors.Text);
 end;
 
-procedure TAtlasDesignerBar.SetTexts(const ASearchHint, AHits, ANoHit, AHide, AShowAll, APreviousHint, ANextHint,
-  AHiddenHint: string);
+procedure TAtlasDesignerBar.SetButtons(const AButtons: TArray<TAtlasDesignerButton>);
+var
+  mIndex: Integer;
+  mSame: Boolean;
 begin
-  FSearch.TextHint := ASearchHint;
-  FHitsText := AHits;
-  FNoHitText := ANoHit;
-  FHideText := AHide;
-  FShowAllText := AShowAll;
-  FPreviousHint := APreviousHint;
-  FNextHint := ANextHint;
-  FHiddenHint := AHiddenHint;
-  Layout;
-  Invalidate;
-end;
-
-procedure TAtlasDesignerBar.SetHits(AIndex, ACount: Integer);
-begin
-  if (AIndex = FHitIndex) and (ACount = FHitCount) then
+  mSame := Length(AButtons) = Length(FButtons);
+  if mSame then
+    for mIndex := 0 to High(AButtons) do
+      if not AButtons[mIndex].SameAs(FButtons[mIndex]) then
+      begin
+        mSame := False;
+        Break;
+      end;
+  if mSame then
     Exit;
-  FHitIndex := AIndex;
-  FHitCount := ACount;
+  FButtons := Copy(AButtons);
   Layout;
+  SetHot(PartNone);
   Invalidate;
-end;
-
-procedure TAtlasDesignerBar.SetHiddenCount(ACount: Integer);
-begin
-  if ACount = FHiddenCount then
-    Exit;
-  FHiddenCount := ACount;
-  Layout;
-  Invalidate;
-end;
-
-function TAtlasDesignerBar.CounterText: string;
-begin
-  if FHitCount = 0 then
-    Result := FNoHitText
-  else
-    Result := Format(FHitsText, [FHitIndex + 1, FHitCount]);
-end;
-
-function TAtlasDesignerBar.ShowAllCaption: string;
-begin
-  Result := Format(FShowAllText, [FHiddenCount]);
-end;
-
-function TAtlasDesignerBar.TextWidth(const AText: string): Integer;
-begin
-  // Ohne Fenster kein Canvas: grob schätzen, gezeichnet wird ohnehin erst mit Fenster.
-  if not HandleAllocated then
-    Exit(Length(AText) * Scale(7));
-  Canvas.Font := Font;
-  Result := Canvas.TextWidth(AText);
 end;
 
 procedure TAtlasDesignerBar.Layout;
 var
-  mLeft, mGap, mPad, mIndex, mHeight: Integer;
+  mIndex, mX, mSize, mArrow: Integer;
 begin
-  // ClientHeight legte ohne Fenster eines an und scheitert im Konstruktor ohne Elternteil.
-  if HandleAllocated then
-    mHeight := ClientHeight
-  else
-    mHeight := Height;
-  mGap := Scale(6);
-  mPad := Scale(6);
-  mLeft := Scale(4);
-  FSearch.SetBounds(mLeft, Scale(3), Scale(SearchWidth), Max(mHeight - Scale(6), Scale(14)));
-  mLeft := mLeft + FSearch.Width + mGap;
-  for mIndex := Low(FRects) to High(FRects) do
-    FRects[mIndex] := TRect.Empty;
-  FCounterRect := TRect.Empty;
-  if Trim(FSearch.Text) <> '' then
+  SetLength(FRects, Length(FButtons));
+  SetLength(FArrows, Length(FButtons));
+  mSize := ClientHeight;
+  if not HandleAllocated then
+    mSize := Height;
+  mSize := mSize - Scale(2);
+  mArrow := Scale(10);
+  mX := Scale(4);
+  for mIndex := 0 to High(FButtons) do
   begin
-    FRects[PartPrevious] := Rect(mLeft, 0, mLeft + TextWidth('‹') + 2 * mPad, mHeight);
-    mLeft := FRects[PartPrevious].Right;
-    FCounterRect := Rect(mLeft, 0, mLeft + TextWidth(CounterText) + mPad, mHeight);
-    mLeft := FCounterRect.Right;
-    FRects[PartNext] := Rect(mLeft, 0, mLeft + TextWidth('›') + 2 * mPad, mHeight);
-    mLeft := FRects[PartNext].Right + mGap;
+    if FButtons[mIndex].GapBefore then
+      Inc(mX, Scale(9));
+    FRects[mIndex] := Rect(mX, Scale(1), mX + IconSize + Scale(8), Scale(1) + mSize);
+    mX := FRects[mIndex].Right;
+    if FButtons[mIndex].Menu then
+    begin
+      FArrows[mIndex] := Rect(mX, Scale(1), mX + mArrow, Scale(1) + mSize);
+      mX := FArrows[mIndex].Right;
+    end
+    else
+      FArrows[mIndex] := TRect.Empty;
+    Inc(mX, Scale(2));
   end;
-  FRects[PartHide] := Rect(mLeft, 0, mLeft + TextWidth(FHideText) + 2 * mPad, mHeight);
-  mLeft := FRects[PartHide].Right + mGap;
-  if FHiddenCount > 0 then
-    FRects[PartShowAll] := Rect(mLeft, 0, mLeft + TextWidth(ShowAllCaption) + 2 * mPad, mHeight);
 end;
 
-function TAtlasDesignerBar.PartRect(APart: Integer): TRect;
+function TAtlasDesignerBar.ButtonOf(APart: Integer): Integer;
 begin
-  if (APart < Low(FRects)) or (APart > High(FRects)) then
-    Exit(TRect.Empty);
-  Result := FRects[APart];
+  Result := -1;
+  if (APart >= 0) and (APart div 2 <= High(FButtons)) then
+    Result := APart div 2;
+end;
+
+function TAtlasDesignerBar.PartAt(X, Y: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FButtons) do
+  begin
+    if FRects[mIndex].Contains(Point(X, Y)) then
+      Exit(2 * mIndex);
+    if FButtons[mIndex].Menu and FArrows[mIndex].Contains(Point(X, Y)) then
+      Exit(2 * mIndex + 1);
+  end;
+  Result := PartNone;
+end;
+
+function TAtlasDesignerBar.PartHint(APart: Integer): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  mIndex := ButtonOf(APart);
+  if mIndex >= 0 then
+    Result := FButtons[mIndex].Hint;
+end;
+
+function TAtlasDesignerBar.PartEnabled(APart: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := ButtonOf(APart);
+  Result := (mIndex >= 0) and FButtons[mIndex].Enabled;
+end;
+
+procedure TAtlasDesignerBar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
+var
+  mIndex: Integer;
+  mId: string;
+begin
+  mIndex := ButtonOf(APart);
+  if (mIndex < 0) or not FButtons[mIndex].Enabled then
+    Exit;
+  // Kennung vorher merken: Der Aufrufer setzt im Ereignis oft neue Knöpfe.
+  mId := FButtons[mIndex].Id;
+  if Odd(APart) then
+  begin
+    if Assigned(FOnMenu) then
+      FOnMenu(mId, ClientToScreen(Point(FRects[mIndex].Left, FRects[mIndex].Bottom)));
+  end
+  else if Assigned(FOnCommand) then
+    FOnCommand(mId);
+end;
+
+procedure TAtlasDesignerBar.DrawButton(AIndex: Integer);
+var
+  mButton: TAtlasDesignerButton;
+  mArea, mIcon: TRect;
+  mBack, mFore: TColor;
+  mRadius, mMid, mHalf: Integer;
+  mHot: Boolean;
+begin
+  mButton := FButtons[AIndex];
+  mArea := FRects[AIndex];
+  if mButton.Menu then
+    mArea.Right := FArrows[AIndex].Right;
+  mHot := (Hot = 2 * AIndex) or (Hot = 2 * AIndex + 1);
+  mBack := TColor(Colors.Gutter);
+  mFore := TColor(Colors.Text);
+  mRadius := Scale(4);
+  Canvas.Brush.Style := bsSolid;
+  if mButton.Pressed then
+  begin
+    mBack := TColor(Colors.AccentSoft);
+    mFore := TColor(Colors.Accent);
+    Canvas.Brush.Color := mBack;
+    Canvas.Pen.Color := TColor(Colors.Accent);
+    Canvas.RoundRect(mArea.Left + Scale(1), mArea.Top + Scale(1), mArea.Right - Scale(1), mArea.Bottom - Scale(1),
+      mRadius, mRadius);
+  end
+  else if mHot and mButton.Enabled then
+  begin
+    mBack := TColor(Colors.Selection);
+    Canvas.Brush.Color := mBack;
+    Canvas.Pen.Color := TColor(Colors.Line);
+    Canvas.RoundRect(mArea.Left + Scale(1), mArea.Top + Scale(1), mArea.Right - Scale(1), mArea.Bottom - Scale(1),
+      mRadius, mRadius);
+  end;
+  if not mButton.Enabled then
+    mFore := TColor(Colors.Muted);
+  mIcon := FRects[AIndex];
+  mIcon := Rect(mIcon.Left + Scale(4), mIcon.Top + (mIcon.Height - IconSize) div 2, mIcon.Left + Scale(4) + IconSize,
+    mIcon.Top + (mIcon.Height - IconSize) div 2 + IconSize);
+  TAtlasGlyphPainter.Draw(Canvas, mButton.Icon, mIcon, mFore, mBack, mButton.Id);
+  if mButton.Menu then
+  begin
+    // Kleines Dreieck nach unten.
+    mMid := (FArrows[AIndex].Left + FArrows[AIndex].Right) div 2;
+    mHalf := Scale(3);
+    Canvas.Brush.Color := mFore;
+    Canvas.Pen.Color := mFore;
+    Canvas.Polygon([Point(mMid - mHalf, FArrows[AIndex].CenterPoint.Y - Scale(1)),
+      Point(mMid + mHalf, FArrows[AIndex].CenterPoint.Y - Scale(1)),
+      Point(mMid, FArrows[AIndex].CenterPoint.Y + Scale(2))]);
+  end;
+end;
+
+procedure TAtlasDesignerBar.Paint;
+var
+  mIndex, mX: Integer;
+begin
+  Layout;
+  PaintChrome(False);
+  for mIndex := 0 to High(FButtons) do
+  begin
+    if FButtons[mIndex].GapBefore then
+    begin
+      mX := FRects[mIndex].Left - Scale(5);
+      Canvas.Pen.Color := TColor(Colors.Line);
+      Canvas.MoveTo(mX, Scale(5));
+      Canvas.LineTo(mX, ClientHeight - Scale(5));
+    end;
+    DrawButton(mIndex);
+  end;
 end;
 
 procedure TAtlasDesignerBar.Resize;
@@ -237,179 +311,44 @@ begin
   Layout;
 end;
 
-procedure TAtlasDesignerBar.CMFontChanged(var Message: TMessage);
+procedure TAtlasDesignerBar.ChangeScale(M, D: Integer; isDpiChange: Boolean);
 begin
-  inherited;
+  inherited ChangeScale(M, D, isDpiChange);
   Layout;
-  Invalidate;
 end;
 
-procedure TAtlasDesignerBar.DrawPart(APart: Integer; const AText: string; AEnabled: Boolean);
-var
-  mRect: TRect;
-begin
-  mRect := FRects[APart];
-  if mRect.IsEmpty then
-    Exit;
-  if AEnabled and (Hot = APart) then
-  begin
-    Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := TColor(Colors.Selection);
-    Canvas.FillRect(Rect(mRect.Left, Scale(2), mRect.Right, ClientHeight - Scale(2)));
-  end;
-  Canvas.Brush.Style := bsClear;
-  if AEnabled then
-    Canvas.Font.Color := TColor(Colors.Text)
-  else
-    Canvas.Font.Color := TColor(Colors.Muted);
-  DrawText(Canvas.Handle, PChar(AText), -1, mRect, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-end;
-
-procedure TAtlasDesignerBar.Paint;
-var
-  mRect: TRect;
-begin
-  Layout;
-  PaintChrome(False);
-  Canvas.Font := Font;
-  DrawPart(PartPrevious, '‹', FHitCount > 1);
-  if not FCounterRect.IsEmpty then
-  begin
-    mRect := FCounterRect;
-    Canvas.Brush.Style := bsClear;
-    Canvas.Font.Color := TColor(Colors.Muted);
-    DrawText(Canvas.Handle, PChar(CounterText), -1, mRect, DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-  end;
-  DrawPart(PartNext, '›', FHitCount > 1);
-  DrawPart(PartHide, FHideText, True);
-  DrawPart(PartShowAll, ShowAllCaption, True);
-end;
-
-function TAtlasDesignerBar.PartAt(X, Y: Integer): Integer;
+function TAtlasDesignerBar.ButtonRect(const AId: string): TRect;
 var
   mIndex: Integer;
 begin
-  for mIndex := Low(FRects) to High(FRects) do
-    if not FRects[mIndex].IsEmpty and PtInRect(FRects[mIndex], Point(X, Y)) then
-      Exit(mIndex);
-  Result := PartNone;
+  Layout;
+  for mIndex := 0 to High(FButtons) do
+    if SameText(FButtons[mIndex].Id, AId) then
+      Exit(FRects[mIndex]);
+  Result := TRect.Empty;
 end;
 
-function TAtlasDesignerBar.PartHint(APart: Integer): string;
-begin
-  case APart of
-    PartPrevious:
-      Result := FPreviousHint;
-    PartNext:
-      Result := FNextHint;
-    PartHide, PartShowAll:
-      Result := FHiddenHint;
-  else
-    Result := '';
-  end;
-end;
-
-function TAtlasDesignerBar.PartEnabled(APart: Integer): Boolean;
-begin
-  case APart of
-    PartPrevious, PartNext:
-      Result := FHitCount > 1;
-    PartHide:
-      Result := True;
-    PartShowAll:
-      Result := FHiddenCount > 0;
-  else
-    Result := False;
-  end;
-end;
-
-procedure TAtlasDesignerBar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
+function TAtlasDesignerBar.ArrowRect(const AId: string): TRect;
 var
-  mPoint: TPoint;
-begin
-  if not PartEnabled(APart) then
-    Exit;
-  case APart of
-    PartPrevious:
-      if Assigned(FOnStep) then
-        FOnStep(-1);
-    PartNext:
-      if Assigned(FOnStep) then
-        FOnStep(1);
-    PartHide:
-      if Assigned(FOnHideMenu) then
-      begin
-        mPoint := ClientToScreen(Point(FRects[PartHide].Left, ClientHeight));
-        FOnHideMenu(mPoint);
-      end;
-    PartShowAll:
-      if Assigned(FOnShowAll) then
-        FOnShowAll();
-  else
-    // Übrige Teile bewusst ohne Wirkung.
-  end;
-end;
-
-procedure TAtlasDesignerBar.SearchChange(Sender: TObject);
+  mIndex: Integer;
 begin
   Layout;
-  Invalidate;
-  if Assigned(FOnSearch) then
-    FOnSearch(Trim(FSearch.Text));
+  for mIndex := 0 to High(FButtons) do
+    if SameText(FButtons[mIndex].Id, AId) then
+      Exit(FArrows[mIndex]);
+  Result := TRect.Empty;
 end;
 
-procedure TAtlasDesignerBar.SearchKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-var
-  mDelta: Integer;
+function TAtlasDesignerBar.HintAt(X, Y: Integer): string;
 begin
-  case Key of
-    VK_RETURN:
-      if ssShift in Shift then
-        mDelta := -1
-      else
-        mDelta := 1;
-    VK_DOWN:
-      mDelta := 1;
-    VK_UP:
-      mDelta := -1;
-    VK_ESCAPE:
-      begin
-        Key := 0;
-        FSearch.Text := '';
-        Exit;
-      end;
-  else
-    Exit;
-  end;
-  Key := 0;
-  if Assigned(FOnStep) then
-    FOnStep(mDelta);
-end;
-
-procedure TAtlasDesignerBar.SearchKeyPress(Sender: TObject; var Key: Char);
-begin
-  // Kein Signalton bei Enter und Esc.
-  if (Key = #13) or (Key = #27) then
-    Key := #0;
+  Layout;
+  Result := PartHint(PartAt(X, Y));
 end;
 
 procedure TAtlasDesignerBar.ClickAt(X, Y: Integer);
 begin
-  MouseDown(mbLeft, [], X, Y);
-  MouseUp(mbLeft, [], X, Y);
-end;
-
-procedure TAtlasDesignerBar.FocusSearch;
-var
-  mForm: TCustomForm;
-begin
-  mForm := GetParentForm(Self);
-  // Nur mit sichtbarer Form: CanFocus allein lässt eine verborgene durch.
-  if FSearch.CanFocus and FSearch.Showing and (mForm <> nil) and mForm.Visible then
-  begin
-    FSearch.SetFocus;
-    FSearch.SelectAll;
-  end;
+  Layout;
+  PartClicked(PartAt(X, Y), [], X, Y);
 end;
 
 end.

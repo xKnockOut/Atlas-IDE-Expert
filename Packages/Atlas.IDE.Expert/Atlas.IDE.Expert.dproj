@@ -644,6 +644,8 @@
         <DCCReference Include="Source\Core\Designer\Atlas.Core.Designer.Components.pas"/>
         <DCCReference Include="Source\IDE\Foundation\Atlas.IDE.Foundation.DesignerView.pas"/>
         <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Bar.pas"/>
+        <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.Search.pas"/>
+        <DCCReference Include="Source\UI\Designer\Atlas.UI.Designer.TabOverlay.pas"/>
         <DCCReference Include="Source\IDE\Designer\Atlas.IDE.Designer.Bar.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

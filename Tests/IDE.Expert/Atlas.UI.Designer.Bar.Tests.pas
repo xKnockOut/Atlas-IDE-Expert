@@ -1,8 +1,9 @@
 ﻿unit Atlas.UI.Designer.Bar.Tests;
 
-// Designer-Leiste (#1442), Darstellung: feste Höhe, Suchfeld links, Zähler und
-// Pfeile nur mit Suchwort, „Alle einblenden“ nur mit Ausgeblendeten, Klicks
-// und Tasten im Suchfeld erreichen ihre Ereignisse.
+// Designer-Leiste (#1442), Darstellung: feste Höhe, Knöpfe von links in ihrer
+// Reihenfolge, Trennstrich vor einer Gruppe, Pfeil nur bei Knöpfen mit Menü,
+// Tooltips, Klicks auf Symbol und Pfeil erreichen ihre Ereignisse, gesperrte
+// Knöpfe nicht.
 
 interface
 
@@ -23,9 +24,9 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
-    procedure PartsFollowSearchAndHidden;
+    procedure ButtonsInOrder;
     [Test]
-    procedure SearchAndKeysReachEvents;
+    procedure HintsPerButton;
     [Test]
     procedure ClicksReachEvents;
   end;
@@ -33,11 +34,10 @@ type
 implementation
 
 uses
-  Winapi.Windows,
   System.SysUtils,
-  System.Classes,
   System.Types,
-  Vcl.Controls;
+  Vcl.Controls,
+  Atlas.Core.EditorToolbar.Icons;
 
 function Middle(const ARect: TRect): TPoint;
 begin
@@ -45,6 +45,9 @@ begin
 end;
 
 procedure TAtlasDesignerBarTests.SetUp;
+var
+  mButtons: TArray<TAtlasDesignerButton>;
+  mButton: TAtlasDesignerButton;
 begin
   FForm := TForm.CreateNew(nil);
   FForm.Width := 900;
@@ -53,8 +56,19 @@ begin
   FBar.Parent := FForm;
   FBar.Align := alTop;
   FBar.HandleNeeded;
-  FBar.SetTexts('Komponente suchen …', '%d/%d', 'kein Treffer', 'Ausblenden ▾', 'Alle einblenden (%d)',
-    'Voriger Treffer', 'Nächster Treffer', 'Nur im Designer');
+  mButtons := TArray<TAtlasDesignerButton>.Create(TAtlasDesignerButton.Create('search',
+    TAtlasToolbarIcon.ComponentSearch, 'Komponenten suchen (Alt+^)'));
+  mButton := TAtlasDesignerButton.Create('nonVisual', TAtlasToolbarIcon.NonVisual, 'Nichtvisuelle');
+  mButton.Pressed := True;
+  mButtons := mButtons + [mButton];
+  mButton := TAtlasDesignerButton.Create('parent', TAtlasToolbarIcon.SelectParent, 'Elternelement');
+  mButton.GapBefore := True;
+  mButton.Enabled := False;
+  mButtons := mButtons + [mButton];
+  mButton := TAtlasDesignerButton.Create('align', TAtlasToolbarIcon.AlignControls, 'Ausrichten');
+  mButton.Menu := True;
+  mButtons := mButtons + [mButton];
+  FBar.SetButtons(mButtons);
 end;
 
 procedure TAtlasDesignerBarTests.TearDown;
@@ -64,121 +78,78 @@ begin
   FBar := nil;
 end;
 
-procedure TAtlasDesignerBarTests.PartsFollowSearchAndHidden;
+procedure TAtlasDesignerBarTests.ButtonsInOrder;
 var
   mHeight: Integer;
+  mSearch, mNonVisual, mParent, mAlign, mArrow: TRect;
 begin
   mHeight := FBar.Height;
   Assert.AreEqual(TAtlasDesignerBar.BarHeight(FBar.CurrentPPI), mHeight, 'eine Zeile');
-  Assert.IsTrue(FBar.PartRect(TAtlasDesignerBar.PartPrevious).IsEmpty, 'ohne Suchwort keine Pfeile');
-  Assert.IsTrue(FBar.PartRect(TAtlasDesignerBar.PartNext).IsEmpty);
-  Assert.IsFalse(FBar.PartRect(TAtlasDesignerBar.PartHide).IsEmpty, 'Ausblenden immer');
-  Assert.IsTrue(FBar.PartRect(TAtlasDesignerBar.PartShowAll).IsEmpty, 'nichts ausgeblendet');
-  Assert.IsTrue(FBar.Search.Left + FBar.Search.Width <= FBar.PartRect(TAtlasDesignerBar.PartHide).Left,
-    'Suchfeld links');
-  FBar.Search.Text := 'btn';
-  Assert.IsFalse(FBar.PartRect(TAtlasDesignerBar.PartPrevious).IsEmpty, 'mit Suchwort Pfeile');
-  Assert.IsTrue(FBar.PartRect(TAtlasDesignerBar.PartPrevious).Right <= FBar.PartRect(TAtlasDesignerBar.PartNext).Left);
-  Assert.IsTrue(FBar.PartRect(TAtlasDesignerBar.PartNext).Right <= FBar.PartRect(TAtlasDesignerBar.PartHide).Left);
-  FBar.SetHiddenCount(3);
-  Assert.IsFalse(FBar.PartRect(TAtlasDesignerBar.PartShowAll).IsEmpty, 'mit Ausgeblendeten');
-  Assert.IsTrue(FBar.PartRect(TAtlasDesignerBar.PartHide).Right <= FBar.PartRect(TAtlasDesignerBar.PartShowAll).Left);
-  FBar.SetHiddenCount(0);
-  Assert.IsTrue(FBar.PartRect(TAtlasDesignerBar.PartShowAll).IsEmpty);
+  mSearch := FBar.ButtonRect('search');
+  mNonVisual := FBar.ButtonRect('nonVisual');
+  mParent := FBar.ButtonRect('parent');
+  mAlign := FBar.ButtonRect('align');
+  Assert.IsFalse(mSearch.IsEmpty, 'Suchen');
+  Assert.IsTrue(mSearch.Right <= mNonVisual.Left, 'Nichtvisuelle rechts von Suchen');
+  Assert.IsTrue(mParent.Left - mNonVisual.Right > mNonVisual.Left - mSearch.Right, 'Lücke vor der Gruppe');
+  Assert.IsTrue(mParent.Right <= mAlign.Left);
+  Assert.IsTrue(FBar.ArrowRect('search').IsEmpty, 'ohne Menü kein Pfeil');
+  mArrow := FBar.ArrowRect('align');
+  Assert.IsFalse(mArrow.IsEmpty, 'Pfeil am Menüknopf');
+  Assert.AreEqual(mAlign.Right, mArrow.Left, 'Pfeil direkt rechts');
+  Assert.IsTrue(FBar.ButtonRect('fehlt').IsEmpty);
+  Assert.IsTrue(FBar.Buttons[1].Pressed, 'Zustand bleibt');
   FBar.Height := mHeight * 2;
   Assert.AreEqual(mHeight, FBar.Height, 'nie höher');
 end;
 
-procedure TAtlasDesignerBarTests.SearchAndKeysReachEvents;
+procedure TAtlasDesignerBarTests.HintsPerButton;
 var
-  mSearched: string;
-  mSteps: TArray<Integer>;
-  mKey: Word;
-  mChar: Char;
+  mPoint: TPoint;
 begin
-  mSearched := '#';
-  mSteps := nil;
-  FBar.OnSearch :=
-    procedure(AText: string)
-    begin
-      mSearched := AText;
-    end;
-  FBar.OnStep :=
-    procedure(ADelta: Integer)
-    begin
-      mSteps := mSteps + [ADelta];
-    end;
-  FBar.Search.Text := ' lbl ';
-  Assert.AreEqual('lbl', mSearched, 'ohne Leerzeichen am Rand');
-  mKey := VK_RETURN;
-  FBar.Search.OnKeyDown(FBar.Search, mKey, []);
-  Assert.AreEqual(0, Integer(mKey), 'Enter verbraucht');
-  mKey := VK_RETURN;
-  FBar.Search.OnKeyDown(FBar.Search, mKey, [ssShift]);
-  mKey := VK_DOWN;
-  FBar.Search.OnKeyDown(FBar.Search, mKey, []);
-  mKey := VK_UP;
-  FBar.Search.OnKeyDown(FBar.Search, mKey, []);
-  Assert.AreEqual(4, Integer(Length(mSteps)));
-  Assert.AreEqual(1, mSteps[0]);
-  Assert.AreEqual(-1, mSteps[1]);
-  Assert.AreEqual(1, mSteps[2]);
-  Assert.AreEqual(-1, mSteps[3]);
-  mKey := Ord('A');
-  FBar.Search.OnKeyDown(FBar.Search, mKey, []);
-  Assert.AreEqual(Ord('A'), Integer(mKey), 'andere Tasten bleiben im Feld');
-  mKey := VK_ESCAPE;
-  FBar.Search.OnKeyDown(FBar.Search, mKey, []);
-  Assert.AreEqual('', FBar.Search.Text, 'Esc leert das Feld');
-  Assert.AreEqual('', mSearched);
-  mChar := #13;
-  FBar.Search.OnKeyPress(FBar.Search, mChar);
-  Assert.AreEqual(Ord(#0), Ord(mChar), 'kein Signalton');
+  mPoint := Middle(FBar.ButtonRect('search'));
+  Assert.AreEqual('Komponenten suchen (Alt+^)', FBar.HintAt(mPoint.X, mPoint.Y));
+  mPoint := Middle(FBar.ArrowRect('align'));
+  Assert.AreEqual('Ausrichten', FBar.HintAt(mPoint.X, mPoint.Y), 'Pfeil mit dem Tooltip des Knopfs');
+  Assert.AreEqual('', FBar.HintAt(FBar.ClientWidth - 2, 2), 'rechts frei');
 end;
 
 procedure TAtlasDesignerBarTests.ClicksReachEvents;
 var
-  mSteps, mShowAll: Integer;
-  mMenuAt: TPoint;
-  mPoint: TPoint;
+  mCommands: string;
+  mMenuId: string;
+  mMenuAt, mPoint: TPoint;
 begin
-  mSteps := 0;
-  mShowAll := 0;
+  mCommands := '';
+  mMenuId := '';
   mMenuAt := Point(-1, -1);
-  FBar.OnStep :=
-    procedure(ADelta: Integer)
+  FBar.OnCommand :=
+    procedure(AId: string)
     begin
-      Inc(mSteps, ADelta);
+      mCommands := mCommands + AId + ';';
     end;
-  FBar.OnHideMenu :=
-    procedure(APoint: TPoint)
+  FBar.OnMenu :=
+    procedure(AId: string; APoint: TPoint)
     begin
+      mMenuId := AId;
       mMenuAt := APoint;
     end;
-  FBar.OnShowAll :=
-    procedure
-    begin
-      Inc(mShowAll);
-    end;
-  FBar.Search.Text := 'btn';
-  FBar.SetHits(0, 1);
-  mPoint := Middle(FBar.PartRect(TAtlasDesignerBar.PartNext));
+  mPoint := Middle(FBar.ButtonRect('search'));
   FBar.ClickAt(mPoint.X, mPoint.Y);
-  Assert.AreEqual(0, mSteps, 'ein Treffer: nichts weiterzuschalten');
-  FBar.SetHits(1, 3);
+  mPoint := Middle(FBar.ButtonRect('parent'));
   FBar.ClickAt(mPoint.X, mPoint.Y);
-  Assert.AreEqual(1, mSteps);
-  mPoint := Middle(FBar.PartRect(TAtlasDesignerBar.PartPrevious));
+  mPoint := Middle(FBar.ButtonRect('align'));
   FBar.ClickAt(mPoint.X, mPoint.Y);
-  Assert.AreEqual(0, mSteps, 'zurück');
-  mPoint := Middle(FBar.PartRect(TAtlasDesignerBar.PartHide));
+  Assert.AreEqual('search;align;', mCommands, 'gesperrter Knopf meldet nichts');
+  Assert.AreEqual('', mMenuId, 'Symbol öffnet kein Menü');
+  mPoint := Middle(FBar.ArrowRect('align'));
   FBar.ClickAt(mPoint.X, mPoint.Y);
-  Assert.AreEqual(FBar.ClientToScreen(Point(FBar.PartRect(TAtlasDesignerBar.PartHide).Left, FBar.ClientHeight)).X,
-    mMenuAt.X, 'Menü unter dem Knopf');
-  FBar.SetHiddenCount(2);
-  mPoint := Middle(FBar.PartRect(TAtlasDesignerBar.PartShowAll));
-  FBar.ClickAt(mPoint.X, mPoint.Y);
-  Assert.AreEqual(1, mShowAll);
+  Assert.AreEqual('align', mMenuId);
+  Assert.AreEqual(FBar.ClientToScreen(Point(FBar.ButtonRect('align').Left, 0)).X, mMenuAt.X, 'Menü unter dem Knopf');
+  Assert.AreEqual('search;align;', mCommands, 'Pfeil führt nichts aus');
 end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TAtlasDesignerBarTests);
 
 end.
