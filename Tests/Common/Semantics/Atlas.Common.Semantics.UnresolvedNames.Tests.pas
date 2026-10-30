@@ -48,6 +48,8 @@ type
     [Test]
     procedure KnowsTextFile;
     [Test]
+    procedure KnowsFileRoutines;
+    [Test]
     procedure KnowsOldObjectSyntax;
     [Test]
     procedure ReportsMissingConstructorAndDestructor;
@@ -158,6 +160,44 @@ begin
     '  mDatei: TextFile;'#10 +
     'begin'#10 +
     '  mDatei := Default(TextFile);'#10 +
+    'end;'#10 +
+    'end.'));
+end;
+
+procedure TUnresolvedNamesTests.KnowsFileRoutines;
+begin
+  // AssignFile, Append, CloseFile & Co. kommen wie TextFile vom Compiler, nicht aus System.pas (#1382).
+  Assert.AreEqual('', Names(
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'implementation'#10 +
+    'procedure AppendToLog(const AText: string);'#10 +
+    'var'#10 +
+    '  FileName: string;'#10 +
+    '  Log: TextFile;'#10 +
+    '  Daten: file;'#10 +
+    'begin'#10 +
+    '  AssignFile(Log, FileName);'#10 +
+    '  {$I-}'#10 +
+    '  Append(Log);'#10 +
+    '  {$I+}'#10 +
+    '  if IOResult <> 0 then'#10 +
+    '    Exit;'#10 +
+    '  try'#10 +
+    '    Writeln(Log, AText);'#10 +
+    '    Flush(Log);'#10 +
+    '  finally'#10 +
+    '    CloseFile(Log);'#10 +
+    '  end;'#10 +
+    '  Assign(Daten, FileName);'#10 +
+    '  Reset(Daten, 1);'#10 +
+    '  Seek(Daten, FileSize(Daten) - FilePos(Daten));'#10 +
+    '  Truncate(Daten);'#10 +
+    '  Close(Daten);'#10 +
+    '  Rewrite(Log);'#10 +
+    '  if Eof(Log) or Eoln(Log) or SeekEof(Log) or SeekEoln(Log) then'#10 +
+    '    Erase(Daten);'#10 +
+    '  Rename(Daten, AText);'#10 +
     'end;'#10 +
     'end.'));
 end;
