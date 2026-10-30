@@ -570,6 +570,13 @@ begin
       begin
         Result := AHold.Locator.Provides(APackage, APackage, Contains);
       end;
+    // dcc sieht auch die Units der Packages, die ein requires-Package verlangt (Atlas.Windows → Atlas.Common →
+    // Atlas.Text).
+    Setup.PackageRequires :=
+      function(APackage: string): TArray<string>
+      begin
+        Result := AHold.Locator.Requires(APackage);
+      end;
   end;
   if AIndex <> nil then
   begin
