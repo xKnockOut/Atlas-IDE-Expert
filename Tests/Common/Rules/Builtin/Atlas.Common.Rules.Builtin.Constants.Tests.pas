@@ -3,9 +3,14 @@
 // Tests der Regeln für Konstanten und Zahlen.
 // constant-expression-error (#992): Beispiel aus dem Issue, korrigierte Form,
 // Überlauf, Bereich mit Untergrenze über der Obergrenze, Wert außerhalb des
-// Typs (W1012 als Warnung), zu große Hex-Literale, Konstanten aus anderen
-// Units und aus {$IF}-Zweigen, stille Fälle, Abschalten; Konstanten mit
-// Typumwandlung wie Cardinal(-1) und Integer($80000000) (#1324).
+// Typs (E1012, W1012 als Warnung bei anderem Vorzeichen), zu große
+// Hex-Literale, Konstanten aus anderen Units und aus {$IF}-Zweigen, stille
+// Fälle, Abschalten; Konstanten mit Typumwandlung wie Cardinal(-1) und
+// Integer($80000000) (#1324). #1372 (Fälle aus Tests/Compilermeldungen):
+// Überlauf über High(Int64) (E2099), Index außerhalb eines statischen Arrays
+// und case-Marke außerhalb des Typs (E1012), zu großes Literal an Int64
+// (W1012), Menge über 256 Werte (E2028), {$RTTI} mit Zahlen (E2572), je mit
+// Gegenfällen.
 // default-parameter-invalid (#993): Beispiel mit Korrektur samt Implementierung,
 // mehrere Namen mit einem Standardwert, var/out, Record, statisches Array und
 // Mengen über 4 Byte,
@@ -42,9 +47,25 @@ type
     [Test]
     procedure OverflowBeyondUInt64;
     [Test]
+    procedure OverflowAboveInt64WithSignedOperands;
+    [Test]
     procedure LowBoundAboveHighBound;
     [Test]
-    procedure ValueOutsideTypeIsWarning;
+    procedure ValueOutsideType;
+    [Test]
+    procedure OutsideIsErrorBySignedness;
+    [Test]
+    procedure ConstantIndexOutsideArray;
+    [Test]
+    procedure IndexInsideAndOtherArraysAreSilent;
+    [Test]
+    procedure CaseLabelOutsideType;
+    [Test]
+    procedure TruncatedLiteralForInt64;
+    [Test]
+    procedure SetWithMoreThan256Values;
+    [Test]
+    procedure RttiVisibilityWithNumbers;
     [Test]
     procedure CastConstantsFitTheirType;
     [Test]
@@ -225,7 +246,7 @@ begin
     ''));
   // Linke Seite unbekannt, Teiler unbekannt, Gleitkomma.
   Silent(Werte('', '  I := I div 1;'#10'  I := I div C;'#10'  I := Round(1 / 2);'#10));
-  Silent(Werte('const'#10'  Gross = High(Int64) + 1;'#10'  Klein = Low(Int64);'#10'  Mitte = 1000 * 1000;'#10,
+  Silent(Werte('const'#10'  Klein = Low(Int64);'#10'  Mitte = 1000 * 1000;'#10'  Rand = High(Int64) - 1 + 1;'#10,
     ''));
 end;
 
@@ -243,6 +264,19 @@ begin
     '')))));
 end;
 
+procedure TConstantExpressionErrorTests.OverflowAboveInt64WithSignedOperands;
+const
+  cMessage = 'Überlauf in einem konstanten Ausdruck: Das Ergebnis passt in keinen Ganzzahltyp (wie E2099).';
+begin
+  // Fall Cm.E2099 (#1372): Mit lauter Operanden mit Vorzeichen rechnet dcc in Int64.
+  Assert.AreEqual(cMessage, OnlyMessage(Werte('const'#10'  Gross = High(Int64) + 1;'#10, '')));
+  Assert.AreEqual(cMessage, OnlyMessage(Werte('const'#10'  Doppelt = High(Int64) * 2;'#10, '')));
+  Assert.AreEqual(cMessage, OnlyMessage(Werte('', '  I := 9223372036854775807 + 1;'#10)));
+  // Mit einem möglichen UInt64-Operanden rechnet Delphi bis High(UInt64); der Typ einer Konstanten ist unbekannt.
+  Silent(Werte('const'#10'  Grenze = High(Int64);'#10'  Darueber = UInt64(High(Int64)) + 1;'#10 +
+    '  Weiter = Grenze + High(Byte);'#10'  Unten = Low(UInt64) + High(Int64) + 1;'#10, ''));
+end;
+
 procedure TConstantExpressionErrorTests.LowBoundAboveHighBound;
 begin
   Assert.AreEqual('Die Untergrenze 5 liegt über der Obergrenze 1 (wie E2011).',
@@ -253,24 +287,173 @@ begin
     '  TFarbe = (Rot, Gruen);'#10'  TTeil = Rot..Gruen;'#10, ''));
 end;
 
-procedure TConstantExpressionErrorTests.ValueOutsideTypeIsWarning;
+procedure TConstantExpressionErrorTests.ValueOutsideType;
 var
   Found: TArray<TRuleFinding>;
 begin
+  // Delphi 13 meldet Werte, die auch als Zahl mit anderem Vorzeichen nicht passen, und Teilbereichstypen als
+  // Fehler E1012 (Fall Cm.W1012, #1372).
   Found := ConstantFindings(Werte('const'#10'  Grenze: Byte = 300;'#10, ''));
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('300 liegt außerhalb des Bereichs von Byte (0..255, wie W1012).', Found[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
-  Assert.AreEqual('300 liegt außerhalb des Bereichs von Byte (0..255, wie W1012).',
+  Assert.AreEqual('300 liegt außerhalb des Bereichs von Byte (0..255, wie E1012).', Found[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  Assert.AreEqual('300 liegt außerhalb des Bereichs von Byte (0..255, wie E1012).',
     OnlyMessage(Werte('', '  B := 300;'#10)));
-  Assert.AreEqual('-1 liegt außerhalb des Bereichs von Cardinal (0..4294967295, wie W1012).',
-    OnlyMessage(Werte('', '  C := -1;'#10)));
-  Assert.AreEqual('150 liegt außerhalb des Bereichs von TProzent (0..100, wie W1012).',
+  Assert.AreEqual('-129 liegt außerhalb des Bereichs von Byte (0..255, wie E1012).',
+    OnlyMessage(Werte('', '  B := -129;'#10)));
+  Assert.AreEqual('150 liegt außerhalb des Bereichs von TProzent (0..100, wie E1012).',
     OnlyMessage(Werte('type'#10'  TProzent = 0..100;'#10'var'#10'  Anteil: TProzent;'#10, '  Anteil := 150;'#10)));
-  Assert.AreEqual('256 liegt außerhalb des Bereichs von Byte (0..255, wie W1012).',
+  Assert.AreEqual('256 liegt außerhalb des Bereichs von Byte (0..255, wie E1012).',
     OnlyMessage(Werte('const'#10'  Basis = 255;'#10'var'#10'  Zaehler: Byte = Basis + 1;'#10, '')));
+  // Gleich breit mit anderem Vorzeichen: dcc legt die Bits nur anders aus und warnt.
+  Found := ConstantFindings(Werte('', '  C := -1;'#10));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('-1 liegt außerhalb des Bereichs von Cardinal (0..4294967295, wie W1012).', Found[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
+  Assert.AreEqual('4294967295 liegt außerhalb des Bereichs von Integer (-2147483648..2147483647, wie W1012).',
+    OnlyMessage(Werte('', '  I := $FFFFFFFF;'#10)));
   Silent(Werte('const'#10'  Grenze: Byte = 255;'#10'  Wort: Word = 300;'#10, '  B := 200;'#10'  I := -1;'#10 +
     '  C := 4000000000;'#10));
+end;
+
+procedure TConstantExpressionErrorTests.OutsideIsErrorBySignedness;
+begin
+  Assert.IsTrue(TConstantExpressionErrorRule.OutsideIsError(300, 'Byte'));
+  Assert.IsTrue(TConstantExpressionErrorRule.OutsideIsError(-129, 'Byte'));
+  Assert.IsFalse(TConstantExpressionErrorRule.OutsideIsError(-1, 'Byte'));
+  Assert.IsFalse(TConstantExpressionErrorRule.OutsideIsError(-128, 'System.Byte'));
+  Assert.IsFalse(TConstantExpressionErrorRule.OutsideIsError(255, 'ShortInt'));
+  Assert.IsTrue(TConstantExpressionErrorRule.OutsideIsError(256, 'ShortInt'));
+  Assert.IsTrue(TConstantExpressionErrorRule.OutsideIsError(-129, 'ShortInt'));
+  Assert.IsFalse(TConstantExpressionErrorRule.OutsideIsError(4294967295, 'Integer'));
+  Assert.IsTrue(TConstantExpressionErrorRule.OutsideIsError(4294967296, 'Integer'));
+  Assert.IsFalse(TConstantExpressionErrorRule.OutsideIsError(-2147483648, 'Cardinal'));
+  Assert.IsTrue(TConstantExpressionErrorRule.OutsideIsError(-2147483649, 'Cardinal'));
+  // Im Bereich und andere Typen: kein Fehler.
+  Assert.IsFalse(TConstantExpressionErrorRule.OutsideIsError(100, 'Byte'));
+  Assert.IsFalse(TConstantExpressionErrorRule.OutsideIsError(300, 'TProzent'));
+  Assert.IsFalse(TConstantExpressionErrorRule.OutsideIsError(300, 'Char'));
+end;
+
+procedure TConstantExpressionErrorTests.ConstantIndexOutsideArray;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // Fall Cm.E1012 (#1372).
+  Found := ConstantFindings('unit Felder;'#10'interface'#10'implementation'#10'procedure Fall;'#10'var'#10 +
+    '  Feld: array[0..2] of Integer;'#10'begin'#10'  Feld[5] := 0;'#10'end;'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Index 5 liegt außerhalb der Grenzen von Feld (0..2, wie E1012).', Found[0].Message);
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(7, Found[0].Range.StartPos.Character);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  // Benannter Typ, Konstante als Index, zweite Dimension, lesend, typisierte Konstante und Feld der Klasse.
+  Found := ConstantFindings('unit Felder;'#10'interface'#10'type'#10'  TTabelle = array[1..3, 0..1] of Integer;'#10 +
+    '  TListe = class'#10'    FWerte: array[''a''..''c''] of Integer;'#10'    procedure Lesen;'#10'  end;'#10 +
+    'const'#10'  Letzte = 4;'#10'  Primzahlen: array[0..2] of Integer = (2, 3, 5);'#10'implementation'#10 +
+    'procedure TListe.Lesen;'#10'var'#10'  Tabelle: TTabelle;'#10'  Summe: Integer;'#10'begin'#10 +
+    '  Summe := Tabelle[Letzte, 0] + Tabelle[1, 2] + Primzahlen[3] + FWerte[''d''];'#10'end;'#10'end.');
+  Assert.AreEqual(4, Integer(Length(Found)));
+  Assert.AreEqual('Index 4 liegt außerhalb der Grenzen von Tabelle (1..3, wie E1012).', Found[0].Message);
+  Assert.AreEqual('Index 2 liegt außerhalb der Grenzen von Tabelle (0..1, wie E1012).', Found[1].Message);
+  Assert.AreEqual('Index 3 liegt außerhalb der Grenzen von Primzahlen (0..2, wie E1012).', Found[2].Message);
+  Assert.AreEqual('Index 100 liegt außerhalb der Grenzen von FWerte (97..99, wie E1012).', Found[3].Message);
+end;
+
+procedure TConstantExpressionErrorTests.IndexInsideAndOtherArraysAreSilent;
+begin
+  // Im Bereich, dynamische und offene Arrays, Strings, with (der Name kann ein Feld des Objekts sein),
+  // Indextyp ohne Teilbereich.
+  Silent('unit Felder;'#10'interface'#10'implementation'#10'type'#10'  TZeile = record'#10 +
+    '    Werte: array[0..2] of Integer;'#10'  end;'#10'  TFarbe = (Rot, Gruen);'#10 +
+    'procedure Fall(const AOffen: array of Integer);'#10'var'#10'  Feld: array[0..2] of Integer;'#10 +
+    '  Dynamisch: array of Integer;'#10'  Zeile: TZeile;'#10'  Text: string;'#10'  Wert: Integer;'#10 +
+    '  Werte: array[0..9] of Integer;'#10'  Farben: array[TFarbe] of Integer;'#10'begin'#10'  Feld[2] := 0;'#10 +
+    '  Feld[0] := Feld[1];'#10'  Dynamisch[5] := 0;'#10'  Wert := AOffen[5];'#10'  Text[300] := ''a'';'#10 +
+    '  with Zeile do'#10'    Werte[5] := 0;'#10'  Farben[Gruen] := Wert;'#10'end;'#10'end.');
+  // Deklarationen in Zweigen von {$IFDEF}: Mit GROSS hat das Feld zehn Elemente.
+  Silent('unit Felder;'#10'interface'#10'implementation'#10'procedure Fall;'#10'var'#10'{$IFDEF GROSS}'#10 +
+    '  Feld: array[0..9] of Integer;'#10'{$ELSE}'#10'  Feld: array[0..2] of Integer;'#10'{$ENDIF}'#10'begin'#10 +
+    '  Feld[5] := 0;'#10'end;'#10'end.');
+end;
+
+procedure TConstantExpressionErrorTests.CaseLabelOutsideType;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // Fall Cm.W1018 (#1372): Delphi 13 meldet die Marke als Fehler E1012, nicht als W1018.
+  Found := ConstantFindings('unit Marken;'#10'interface'#10'implementation'#10 +
+    'function Bewerte(AWert: Byte): Integer;'#10'begin'#10'  case AWert of'#10'    1: Result := 1;'#10 +
+    '    300: Result := 2;'#10'    -1, 200..400: Result := 3;'#10'  else'#10'    Result := 0;'#10'  end;'#10'end;'#10 +
+    'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('300 liegt außerhalb des Bereichs von Byte (0..255, wie E1012).', Found[0].Message);
+  Assert.AreEqual(7, Found[0].Range.StartPos.Line);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  // Integer und unbekannte Typen bleiben still.
+  Silent('unit Marken;'#10'interface'#10'implementation'#10'procedure Fall(AWert: Integer; AFremd: TFremd);'#10 +
+    'begin'#10'  case AWert of'#10'    300: Exit;'#10'  end;'#10'  case AFremd of'#10'    300: Exit;'#10'  end;'#10 +
+    'end;'#10'end.');
+end;
+
+procedure TConstantExpressionErrorTests.TruncatedLiteralForInt64;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // Fall Cm.E2102: dcc meldet E2102 und kürzt das Literal auf 64 Bit; an Int64 warnt es zusätzlich (W1012).
+  Found := ConstantFindings(Werte('', '  mZahl := $1FFFFFFFFFFFFFFFF;'#10).Replace('  I: Integer;',
+    '  I: Integer;'#10'  mZahl: Int64;'));
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Ganzzahlkonstante zu groß: $1FFFFFFFFFFFFFFFF passt nicht in 64 Bit (wie E2102).',
+    Found[0].Message);
+  Assert.AreEqual('$1FFFFFFFFFFFFFFFF passt auf 64 Bit gekürzt nicht in Int64 (wie W1012).', Found[1].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[1].Severity));
+  Assert.AreEqual(2, Integer(Length(ConstantFindings(Werte('const'#10'  Maske: Int64 = $1FFFFFFFFFFFFFFFF;'#10,
+    '')))));
+  // Untere 64 Bit passen in Int64, Ziel ohne Vorzeichen bzw. ohne Typ: nur E2102.
+  Assert.AreEqual(2, Integer(Length(ConstantFindings(Werte('const'#10'  Maske: Int64 = $10000000000000000;'#10 +
+    '  Ohne: UInt64 = $1FFFFFFFFFFFFFFFF;'#10, '')))));
+  Assert.AreEqual(1, Integer(Length(ConstantFindings(Werte('const'#10'  Maske = $1FFFFFFFFFFFFFFFF;'#10, '')))));
+end;
+
+procedure TConstantExpressionErrorTests.SetWithMoreThan256Values;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // Fall Cm.E2028 (#1372).
+  Found := ConstantFindings(Werte('type'#10'  TGrosseMenge = set of 0..300;'#10, ''));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('set of 0..300 hat 301 Werte; eine Menge darf höchstens 256 Elemente haben (wie E2028).',
+    Found[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
+  Assert.AreEqual('set of Word hat 65536 Werte; eine Menge darf höchstens 256 Elemente haben (wie E2028).',
+    OnlyMessage(Werte('type'#10'  TWorte = set of Word;'#10, '')));
+  Assert.AreEqual('set of TBereich hat 1000 Werte; eine Menge darf höchstens 256 Elemente haben (wie E2028).',
+    OnlyMessage(Werte('type'#10'  TBereich = 1..1000;'#10'  TMenge = set of TBereich;'#10, '')));
+  // Bis 256 Werte, Byte, Char (dcc warnt dort nur), Aufzählungen.
+  Silent(Werte('type'#10'  TBytes8 = set of 0..255;'#10'  TZahlen = set of Byte;'#10'  TZeichen = set of Char;'#10 +
+    '  TFarbe = (Rot, Gruen);'#10'  TFarben = set of TFarbe;'#10'  TKlein = set of 1..256;'#10, ''));
+end;
+
+procedure TConstantExpressionErrorTests.RttiVisibilityWithNumbers;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // Fall Cm.E2572 (#1372).
+  Found := ConstantFindings('unit Sicht;'#10'interface'#10'{$RTTI EXPLICIT METHODS([1])}'#10'implementation'#10 +
+    'end.');
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('METHODS([1]) in {$RTTI} ist keine Menge aus vcPrivate, vcProtected, vcPublic und vcPublished ' +
+    '(wie E2572).', Found[0].Message);
+  Assert.AreEqual(2, Found[0].Range.StartPos.Line);
+  Assert.AreEqual('METHODS([1])',
+    TConstantExpressionErrorRule.InvalidRttiVisibility('{$RTTI EXPLICIT METHODS([1])}'));
+  Assert.AreEqual('PROPERTIES ([vcPublic, ''x''])',
+    TConstantExpressionErrorRule.InvalidRttiVisibility('{$RTTI INHERIT FIELDS([]) PROPERTIES ([vcPublic, ''x''])}'));
+  // Sichtbarkeiten, leere Mengen, Konstanten und Bereiche; Zweige von {$IFDEF} prüft dcc nur, wenn sie gelten.
+  Silent('unit Sicht;'#10'interface'#10'{$RTTI EXPLICIT METHODS([vcPublic, vcPublished]) FIELDS([])' +
+    ' PROPERTIES(DefaultPropertyRttiVisibility)}'#10'{$RTTI INHERIT METHODS([vcPrivate..vcPublic])}'#10 +
+    '{$IFDEF ALT}'#10'{$RTTI EXPLICIT METHODS([1])}'#10'{$ENDIF}'#10'implementation'#10'end.');
 end;
 
 procedure TConstantExpressionErrorTests.CastConstantsFitTheirType;
