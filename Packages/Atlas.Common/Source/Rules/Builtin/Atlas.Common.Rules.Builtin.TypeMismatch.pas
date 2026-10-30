@@ -411,8 +411,15 @@ begin
   // Überladungen mit verschiedenen Ergebnistypen: Welche gilt, entscheiden die Argumente.
   mCandidates := FScope.Resolver.CallCandidates(Tree, FScope.FileName, ACallee);
   for mCandidate in mCandidates do
+  begin
     if not TTypeIdentity.Same(mCandidate.TypeName, mCandidates[0].TypeName) then
       Exit(False);
+    // Freie Routinen mit overload führt dcc über alle eingebundenen Units zusammen (IfThen aus System.Math und
+    // System.StrUtils); die Kandidaten kommen nur aus einer Unit, der Ergebnistyp ist also offen.
+    if (mCandidate.Container = '') and (MatchText('overload', mCandidate.Directives) or
+      ContainsText(mCandidate.Signature, 'overload')) then
+      Exit(False);
+  end;
   Result := True;
 end;
 

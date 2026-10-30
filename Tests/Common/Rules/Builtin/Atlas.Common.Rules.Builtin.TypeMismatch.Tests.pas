@@ -49,6 +49,11 @@ type
     procedure OffAndGroupSwitches;
     [Test]
     procedure RuleIsRegistered;
+    /// <summary>IfThen aus System.Math (Integer) und System.StrUtils (string): dcc führt die Überladungen beider Units
+    /// zusammen; der Ergebnistyp entscheidet sich an den Argumenten (Fehlalarm in Atlas.Common.Lsp.CompletionCollector).
+    /// </summary>
+    [Test]
+    procedure OverloadsFromSeveralUnitsAreSilent;
   end;
 
 implementation
@@ -387,8 +392,28 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings(mSource, '{"rules": {"type-mismatch": {"exclude": ["Source/*.pas"]}}}'))));
 end;
 
-procedure TTypeMismatchTests.RuleIsRegistered;
+procedure TTypeMismatchTests.OverloadsFromSeveralUnitsAreSilent;
 var
+  mIndex: ISymbolIndex;
+  mSource: string;
+begin
+  mIndex := SystemIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Mathe;'#10'interface'#10 +
+    'function IfThen(ACond: Boolean; ATrue, AFalse: Integer): Integer; overload;'#10'implementation'#10 +
+    'function IfThen(ACond: Boolean; ATrue, AFalse: Integer): Integer;'#10'begin'#10'  Result := ATrue;'#10 +
+    'end;'#10'end.', 'C:\P\Mathe.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Texte;'#10'interface'#10 +
+    'function IfThen(ACond: Boolean; const ATrue, AFalse: string): string; overload;'#10'implementation'#10 +
+    'function IfThen(ACond: Boolean; const ATrue, AFalse: string): string;'#10'begin'#10'  Result := ATrue;'#10 +
+    'end;'#10'end.', 'C:\P\Texte.pas', nil));
+  mSource := 'unit Fall;'#10'interface'#10'implementation'#10'uses'#10'  Mathe,'#10'  Texte;'#10 +
+    'procedure Fall(AFlag: Boolean; AZahl: Integer);'#10'var'#10'  mOrder: Integer;'#10'begin'#10 +
+    '  mOrder := AZahl + IfThen(AFlag, 0, AZahl);'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TTypeMismatchRule.Create, mSource, mIndex, '',
+    'Fall.pas'))));
+end;
+
+procedure TTypeMismatchTests.RuleIsRegistered;var
   mRule: IRule;
   mFound: Boolean;
 begin
