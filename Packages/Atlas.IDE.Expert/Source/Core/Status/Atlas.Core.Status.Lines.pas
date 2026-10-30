@@ -44,6 +44,9 @@ type
     Since: TDateTime;
     /// <summary>Stopped: von Atlas beendet (Neustart, Abschalten), nicht abgestürzt (#754).</summary>
     Ended: Boolean;
+    /// <summary>Anfragen, die der Server nach zwei Abstürzen an derselben Datei überspringt (Sicherheitsnetz,
+    /// #1355); bei Running gelb.</summary>
+    Skipped: Integer;
   end;
 
   TAtlasIndexInfo = record
@@ -152,6 +155,16 @@ begin
   Result := (AInfo.Samples > 0) and (AInfo.AverageMs >= TAtlasStatusLines.SlowMs);
 end;
 
+/// <summary>„1 Anfrage übersprungen nach Absturz“ (#1355); '' ohne.</summary>
+function SkippedText(const AInfo: TAtlasServerInfo): string;
+begin
+  Result := '';
+  if AInfo.Skipped = 1 then
+    Result := '1 Anfrage übersprungen nach Absturz'
+  else if AInfo.Skipped > 1 then
+    Result := Format('%d Anfragen übersprungen nach Absturz', [AInfo.Skipped]);
+end;
+
 { TAtlasStatusLines }
 
 class function TAtlasStatusLines.When(AValue, ANow: TDateTime): string;
@@ -186,6 +199,8 @@ begin
           if AInfo.AverageMs >= SlowMs then
             Result := Result + ' (langsam)';
         end;
+        if AInfo.Skipped > 0 then
+          Result := Result + ', ' + SkippedText(AInfo);
       end;
     TAtlasServerPhase.Stopped:
       begin
@@ -217,7 +232,8 @@ begin
     TAtlasServerPhase.Starting:
       Result := TAtlasStatusState.Yellow;
     TAtlasServerPhase.Running:
-      if IsSlow(AInfo) then
+      // Übersprungene Anfragen (#1355) sichtbar wie ein langsamer Server.
+      if IsSlow(AInfo) or (AInfo.Skipped > 0) then
         Result := TAtlasStatusState.Yellow
       else
         Result := TAtlasStatusState.Green;
@@ -240,7 +256,9 @@ begin
     TAtlasServerPhase.Starting:
       Result := 'startet';
     TAtlasServerPhase.Running:
-      if IsSlow(AInfo) then
+      if AInfo.Skipped > 0 then
+        Result := 'übersprungen nach Absturz'
+      else if IsSlow(AInfo) then
         Result := 'Server langsam'
       else
         Result := '';
@@ -262,7 +280,9 @@ begin
     TAtlasServerPhase.Starting:
       Result := 'Server startet';
     TAtlasServerPhase.Running:
-      if IsSlow(AInfo) then
+      if AInfo.Skipped > 0 then
+        Result := 'Server läuft, ' + SkippedText(AInfo)
+      else if IsSlow(AInfo) then
         Result := 'Server läuft langsam'
       else
         Result := 'Server läuft';
@@ -288,8 +308,14 @@ begin
   Result := '';
   case AInfo.Phase of
     TAtlasServerPhase.Running:
-      if AInfo.Since > 0 then
-        Result := 'seit ' + When(AInfo.Since, ANow);
+      begin
+        if AInfo.Since > 0 then
+          Result := 'seit ' + When(AInfo.Since, ANow);
+        if (AInfo.Skipped > 0) and (Result <> '') then
+          Result := Result + ', ' + SkippedText(AInfo)
+        else if AInfo.Skipped > 0 then
+          Result := SkippedText(AInfo);
+      end;
     TAtlasServerPhase.Stopped:
       begin
         if AInfo.Since > 0 then

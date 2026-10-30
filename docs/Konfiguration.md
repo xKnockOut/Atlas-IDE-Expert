@@ -43,6 +43,7 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `architecture` | gemischt, siehe unten | object | – |  | Architekturübersicht aus dem Index: zentrale Units, Teilsysteme, Zyklen und Querverbindungen im Fenster „Atlas-Architektur“, als Bericht (Markdown oder HTML, auch AtlasServer --architecture) und im MCP-Werkzeug get_architecture. |
 | `hotspots` | global (settings.json) | object | – |  | Hotspots: Units und Methoden, die oft geändert werden und zugleich komplex sind (Änderungen aus Git oder SVN im Zeitraum × kognitive Komplexität), mit Trend gegenüber vor drei Monaten und Änderungskopplung (Units ohne uses-Kante, die oft zusammen geändert werden). Fenster „Atlas-Hotspots“, Bericht (AtlasServer --hotspots <Datei.html\|.md\|.json>) und MCP-Werkzeug get_hotspots. Bibliotheks-Units und architecture.exclude zählen nicht; die Versionsverwaltung kommt aus vcs.provider. |
 | `requestTimeoutMs` | global (settings.json) | integer | `10000` | 1000… | Zeitlimit für Anfragen in Millisekunden. Länger laufende Anfragen werden abgebrochen und im Log gemeldet. |
+| `server` | global (settings.json) | object | – |  | Absturzfälle des Servers: Stürzt eine Anfrage mit einer unerwarteten Ausnahme ab oder bricht der Watchdog sie ab, sichert der Server einen nachstellbaren Fall unter %LOCALAPPDATA%\Atlas\crash (Anfrage, Schnappschuss der Datei, Einstellungen ohne Zugangsdaten, Aufrufstapel, wiederholen.cmd; höchstens 20). Kein Netzzugriff. |
 | `diagnostics` | gemischt, siehe unten | object | – |  | Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben. |
 | `highlight` | global (settings.json) | object | – |  | Zusammengehörige Schlüsselwörter hervorheben, wenn der Cursor auf einem steht. |
 | `inlayHints` | global (settings.json) | object | – |  | Inlay Hints im Editor. |
@@ -254,6 +255,13 @@ Jeder Schlüssel hat genau einen Ort (Spalte „Ort“): Projekt-Schlüssel steh
 | `hotspots.enabled` | global (settings.json) | boolean | `true` |  | Hauptschalter: false = kein Fenster, kein Menüeintrag, kein get_hotspots; AtlasServer --hotspots endet mit Exitcode 3. |
 | `hotspots.months` | global (settings.json) | integer | `12` | 1…60 | Ausgewerteter Zeitraum in Monaten (Commits seit heute minus months). |
 | `hotspots.coupling` | global (settings.json) | object | – |  | Änderungskopplung: Paare mit mindestens minCommits gemeinsamen Commits und einem Anteil von mindestens 70 % ohne uses-Kante zwischen ihnen; .pas/.dfm derselben Unit und Commits mit mehr als 50 Dateien zählen nicht. |
+
+## server
+
+| Schlüssel | Ort | Typ | Standard | Werte | Bedeutung |
+|---|---|---|---|---|---|
+| `server.crashCases` | global (settings.json) | boolean | `true` |  | Absturzfälle sichern und im Plugin melden (Fall öffnen, Issue anlegen). AtlasServer --replay <anfrage.json> stellt einen Fall nach. |
+| `server.crashSkip` | global (settings.json) | boolean | `true` |  | Sicherheitsnetz, zusätzlich zur Behebung: Eine Anfrage, die an derselben unveränderten Datei zweimal abgestürzt ist, beantwortet der Server mit „Übersprungen nach Absturz“, bis sich die Datei ändert oder „Erneut versuchen“ gewählt wird. Statusleiste und Prüffenster zeigen das an. |
 
 ## diagnostics
 

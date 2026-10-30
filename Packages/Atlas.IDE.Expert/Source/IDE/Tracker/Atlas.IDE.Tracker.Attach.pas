@@ -76,7 +76,10 @@ type
     procedure Stop;
     /// <summary>Dialog für ATarget zeigen, AKey vorgewählt ('' = keins); nach „Senden“ im Hintergrund senden.
     /// </summary>
-    procedure Execute(const ATarget: TAtlasTrackerTarget; const AKey: string);
+    procedure Execute(const ATarget: TAtlasTrackerTarget; const AKey: string); overload;
+    /// <summary>Wie oben, mit weiteren Dateien, vorgewählt (etwa die eines Absturzfalls, #1355).</summary>
+    procedure Execute(const ATarget: TAtlasTrackerTarget; const AKey: string;
+      const AExtra: TArray<TAtlasAttachFile>); overload;
     /// <summary>Läuft eine Sendung?</summary>
     function Busy: Boolean;
     /// <summary>issues.attach an?</summary>
@@ -355,12 +358,20 @@ begin
 end;
 
 procedure TAtlasIdeIssueAttach.Execute(const ATarget: TAtlasTrackerTarget; const AKey: string);
+begin
+  Execute(ATarget, AKey, nil);
+end;
+
+procedure TAtlasIdeIssueAttach.Execute(const ATarget: TAtlasTrackerTarget; const AKey: string;
+  const AExtra: TArray<TAtlasAttachFile>);
 var
   mTarget: TAtlasTrackerTarget;
   mKey: string;
+  mExtra: TArray<TAtlasAttachFile>;
 begin
   mTarget := ATarget;
   mKey := AKey;
+  mExtra := AExtra;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     var
@@ -404,6 +415,7 @@ begin
       mInput.DebugNoteName := TAtlasDebugNote.FileName(Now);
       mInput.ExceptionsText := ExceptionsText(mInput.ExceptionCount);
       mInput.MaxImageWidth := TAtlasIdeSettings.Current.IssuesAttachMaxImageWidth;
+      mInput.Extra := mExtra;
       DropTemp;
       FTemp := TAtlasAttachTemp.Create(TAtlasAttachTemp.DefaultRoot);
       try

@@ -10,6 +10,9 @@
 // nicht geantwortet hat; dessen spätere Antwort verwirft der Worker
 // (IJsonRpcPendingRequests.TryAnswer, Code-Review A-06). Anfragen im Thread
 // der Schleife erhalten nur den Abbruch.
+//
+// OnExpired meldet zusätzlich die id der Anfrage (JSON-Text), damit der
+// Absturzfall (#1355) ihre Parameter findet.
 
 interface
 
@@ -25,6 +28,9 @@ type
   /// <summary>Meldet eine Anfrage, deren Zeitlimit abgelaufen ist. AAnswered: Der Watchdog hat sie mit
   /// RequestCancelled beantwortet (nebenläufige Anfragen); sonst wurde nur der Abbruch angefordert.</summary>
   TJsonRpcTimeoutEvent = reference to procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean);
+  /// <summary>Wie TJsonRpcTimeoutEvent, mit der id der Anfrage als JSON-Text (#1355); läuft im Thread des
+  /// Watchdogs nach dem Abbruch.</summary>
+  TJsonRpcExpiredEvent = reference to procedure(const AId, AMethod: string; ATimeoutMs: Cardinal);
 
   IJsonRpcWatchdog = interface
     ['{7E3C5A91-2D4F-4B86-A0E7-1F9B6C3D8E52}']
@@ -55,6 +61,7 @@ type
     FPending: IJsonRpcPendingRequests;
     FTimeout: Cardinal;
     FOnTimeout: TJsonRpcTimeoutEvent;
+    FOnExpired: TJsonRpcExpiredEvent;
     FEntries: TDictionary<Int64, TEntry>;
     FNextTicket: Int64;
     FStopping: Boolean;
@@ -72,6 +79,8 @@ type
     procedure Unwatch(ATicket: Int64);
     procedure SetTimeout(ATimeoutMs: Cardinal);
     function Timeout: Cardinal;
+    /// <summary>Optional, vor der ersten Anfrage setzen (#1355).</summary>
+    property OnExpired: TJsonRpcExpiredEvent read FOnExpired write FOnExpired;
   end;
 
 implementation
@@ -218,6 +227,8 @@ begin
       FPending.Cancel(AEntry.Id);
     if Assigned(FOnTimeout) then
       FOnTimeout(AEntry.Method, Limit, Answered);
+    if Assigned(FOnExpired) then
+      FOnExpired(AEntry.Id.ToJSON, AEntry.Method, Limit);
   finally
     AEntry.Id.Free;
   end;

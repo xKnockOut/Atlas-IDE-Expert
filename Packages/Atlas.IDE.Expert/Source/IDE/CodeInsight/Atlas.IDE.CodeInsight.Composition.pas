@@ -45,6 +45,7 @@ uses
   Atlas.Core.Build.Messages,
   Atlas.IDE.CodeInsight.Manager,
   Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.CrashCases,
   Atlas.IDE.Settings.Options,
   Atlas.IDE.Completion.History,
   Atlas.IDE.Completion.Favorites,
@@ -171,6 +172,7 @@ uses
   Atlas.Core.Ci.Providers.Jenkins,
   Atlas.Core.Ci.Adapters.Http,
   Atlas.Core.Ci.Adapters.Credentials,
+  Atlas.Core.Tracker.Attach,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Providers.GitHub,
@@ -576,6 +578,23 @@ begin
     begin
       GuardWarning(AText);
     end);
+end;
+
+/// <summary>„Issue anlegen“ zu einem Absturzfall des Servers (#1355): Dialog aus #1268, danach die Dateien des
+/// Falls über „An Issue anhängen“ (#1276). Ohne Tracker bzw. mit issues.create aus öffnet der Ordner des Falls.
+/// </summary>
+procedure CreateCrashIssue(ACase: TAtlasCrashCase);
+var
+  Files: TArray<TAtlasAttachFile>;
+  CaseFile: TAtlasCrashCaseFile;
+begin
+  Files := nil;
+  for CaseFile in TAtlasCrashCases.AttachFiles(ACase.Folder) do
+    Files := Files + [TAtlasAttachFile.CreateText(TAtlasAttachKind.LogFile, CaseFile.Name, CaseFile.Text)];
+  if TAtlasIdeNewIssue.Enabled then
+    TAtlasIdeNewIssue.FromCrash(TAtlasCrashCases.IssueTitle(ACase), TAtlasCrashCases.IssueDescription(ACase), Files)
+  else
+    MessageLine(TAtlasStrings.Text(TAtlasTextId.CrashCaseTitle) + ': ' + ACase.Folder);
 end;
 
 /// <summary>Fenster „Atlas-Server“ (#1356) zeigen; abgeschaltet nichts.</summary>
@@ -3051,6 +3070,8 @@ begin
     Manager.OnOpenLog := OpenLog;
     // Nach zwei gleichen Abstürzen des Servers bietet die Meldung den Fehlerbericht an (Bericht H5).
     Manager.OnBugReport := CreateBugReport;
+    // Absturzfälle des Servers (#1355): „Issue anlegen“ in der Meldung.
+    Manager.OnCrashIssue := CreateCrashIssue;
     ManagerIndex := Services.AddCodeInsightManager(Manager);
   end;
 end;

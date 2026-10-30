@@ -18,6 +18,14 @@
 // Antworten der Gegenseite auf eigene Anfragen (etwa workspace/applyEdit an
 // den Client, #397) gehen an den mit ExpectResponse gemeldeten Handler; ohne
 // Handler werden sie verworfen.
+//
+// Absturzfälle (#1355): Recent bekommt jede eingehende Nachricht, damit ein
+// Fall die letzten Nachrichten nennt; RequestGuard kann eine Anfrage anhand
+// ihrer Parameter abweisen (Überspringen nach Absturz). Fängt ein Handler
+// einen Stapelüberlauf, stellt der Dispatcher die Schutzseite des Threads
+// wieder her (TStackGuard.AfterError), bevor er antwortet; sonst beendete der
+// nächste Überlauf im selben Thread den Prozess hart, statt wieder als
+// Ausnahme zu kommen.
 
 interface
 
@@ -28,6 +36,7 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.PendingRequests,
   Atlas.Common.JsonRpc.Watchdog,
+  Atlas.Common.JsonRpc.RecentMessages,
   Atlas.Common.JsonRpc.Statistics;
 
 type
@@ -58,6 +67,8 @@ type
     FConcurrentWhen: TDictionary<string, TJsonRpcConcurrentWhen>;
     FNotificationHandlers: TDictionary<string, TJsonRpcNotificationHandler>;
     FGuard: TJsonRpcGuard;
+    FRequestGuard: TJsonRpcRequestGuard;
+    FRecent: IJsonRpcRecentMessages;
     FScheduler: TJsonRpcScheduler;
     FResponder: TJsonRpcResponder;
     FPending: IJsonRpcPendingRequests;
@@ -108,6 +119,10 @@ type
     procedure ForgetResponse(const AId: string);
     /// <summary>Optionale Prüfung vor jeder Verteilung, z. B. für den Lebenszyklus des Servers.</summary>
     property Guard: TJsonRpcGuard read FGuard write FGuard;
+    /// <summary>Optionale Prüfung jeder Anfrage mit Parametern (#1355), nach Guard.</summary>
+    property RequestGuard: TJsonRpcRequestGuard read FRequestGuard write FRequestGuard;
+    /// <summary>Optional: die letzten Nachrichten für Absturzfälle (#1355).</summary>
+    property Recent: IJsonRpcRecentMessages read FRecent write FRecent;
     /// <summary>Führt nebenläufige Anfragen aus. Wirkt nur zusammen mit Responder.</summary>
     property Scheduler: TJsonRpcScheduler read FScheduler write FScheduler;
     /// <summary>Sendet Antworten nebenläufiger Anfragen.</summary>
@@ -133,6 +148,7 @@ implementation
 
 uses
   System.Diagnostics,
+  Atlas.Common.Diagnostics.StackGuard,
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.JsonRpc.CurrentRequest;
 
@@ -204,6 +220,8 @@ begin
   except
     on E: Exception do
     begin
+      // Zuerst die Schutzseite nach einem Stapelüberlauf; alles danach darf wieder tief rufen (#1355).
+      TStackGuard.AfterError(E);
       Failed := True;
       ObserveFinished(AObserver, AMethod, AParams, nil, E, AQueueMs, Watch.ElapsedMilliseconds);
       NotifyFailed(AOnFailed, AMethod, AParams, E);
@@ -381,6 +399,14 @@ begin
   Id := AMessage.GetValue('id');
   MethodValue := AMessage.GetValue('method');
   Params := AMessage.GetValue('params');
+  if FRecent <> nil then
+    try
+      FRecent.Add(AMessage);
+    except
+      // Das Mitschreiben für Absturzfälle darf keine Nachricht verhindern.
+      on Exception do
+        ;
+    end;
 
   if MethodValue = nil then
   begin
@@ -490,6 +516,8 @@ begin
     try
       if Assigned(FGuard) then
         FGuard(AMethod, True);
+      if Assigned(FRequestGuard) then
+        FRequestGuard(AMethod, AParams);
       if ConcurrentFor(AMethod, AParams, ConcurrentHandler) then
       begin
         if Assigned(FScheduler) and Assigned(FResponder) then
@@ -526,6 +554,8 @@ begin
     except
       on E: Exception do
       begin
+        // Zuerst die Schutzseite nach einem Stapelüberlauf; alles danach darf wieder tief rufen (#1355).
+        TStackGuard.AfterError(E);
         if Measured then
           ObserveFinished(FObserver, AMethod, AParams, nil, E, AQueueMs, Watch.ElapsedMilliseconds);
         if Measured and (FStatistics <> nil) then

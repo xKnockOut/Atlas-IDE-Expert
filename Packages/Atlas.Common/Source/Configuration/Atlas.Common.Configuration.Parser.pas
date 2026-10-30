@@ -116,6 +116,7 @@ type
     procedure ReadVcs(ANode: TJsonNode);
     procedure ReadCompletion(ANode: TJsonNode);
     procedure ReadDiagnostics(ANode: TJsonNode);
+    procedure ReadServer(ANode: TJsonNode);
     procedure ReadIndex(ANode: TJsonNode);
     procedure ReadArchitecture(ANode: TJsonNode);
     procedure ReadHotspots(ANode: TJsonNode);
@@ -2150,6 +2151,29 @@ begin
   end;
 end;
 
+procedure TValidator.ReadServer(ANode: TJsonNode);
+var
+  Index: Integer;
+  Key: string;
+begin
+  if ANode.Kind <> TJsonKind.Object_ then
+  begin
+    ReportNode(ANode, '"server" muss ein Objekt sein');
+    Exit;
+  end;
+  for Index := 0 to ANode.Count - 1 do
+  begin
+    Key := ANode.Keys[Index];
+    if Key = 'crashCases' then
+      ExpectBoolean(ANode[Index], Key, FSettings.ServerCrashCases)
+    else if Key = 'crashSkip' then
+      ExpectBoolean(ANode[Index], Key, FSettings.ServerCrashSkip)
+    else
+      Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2,
+        Format('Unbekannte Einstellung "server.%s"', [Key]), False);
+  end;
+end;
+
 procedure TValidator.ReadDiagnostics(ANode: TJsonNode);
 var
   Index, Days: Integer;
@@ -3173,6 +3197,8 @@ begin
         ReadRefactoring(Value)
       else if Key = 'diagnostics' then
         ReadDiagnostics(Value)
+      else if Key = 'server' then
+        ReadServer(Value)
       else if Key = 'index' then
         ReadIndex(Value)
       else if Key = 'architecture' then
@@ -3666,6 +3692,11 @@ begin
       Result.MemoryBudgetMb := FileSettings.MemoryBudgetMb
     else if Key = 'requestTimeoutMs' then
       Result.RequestTimeoutMs := FileSettings.RequestTimeoutMs
+    else if Key = 'server' then
+    begin
+      Result.ServerCrashCases := FileSettings.ServerCrashCases;
+      Result.ServerCrashSkip := FileSettings.ServerCrashSkip;
+    end
     else if Key = 'logLevel' then
       Result.LogLevel := FileSettings.LogLevel
     else if Key = 'logFile' then

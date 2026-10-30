@@ -49,6 +49,9 @@ type
     /// <summary>Alle Text- und Schalterparameter der Tabelle (S-02), auch mit Großbuchstaben.</summary>
     [Test]
     procedure ReadsTableOptions;
+    /// <summary>#1355: --replay nennt anfrage.json eines Absturzfalls.</summary>
+    [Test]
+    procedure ReadsReplayFile;
     /// <summary>#1352: Sammelkorrektur.</summary>
     [Test]
     procedure ReadsFixArguments;
@@ -345,6 +348,17 @@ begin
   Assert.IsFalse(Options.Mcp or Options.Restricted);
   // --include-uncommitted ohne Ref: Standardbasis.
   Assert.AreEqual(TCommandLineOptions.DefaultChangedBase, Options.ChangedRef);
+end;
+
+procedure TCommandLineOptionsTests.ReadsReplayFile;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--replay', 'C:\Fall\anfrage.json']);
+  Assert.AreEqual('C:\Fall\anfrage.json', Options.ReplayFile);
+  Assert.AreEqual<NativeInt>(0, Length(Options.Warnings));
+  Options := TCommandLineOptions.Parse(['--stdio']);
+  Assert.AreEqual('', Options.ReplayFile);
 end;
 
 procedure TCommandLineOptionsTests.ReadsFixArguments;

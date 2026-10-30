@@ -3,7 +3,8 @@
 // Host-Rolle Shell: Komposition des Servers von Hand (DI-Strategie ohne Container).
 // Verbindet stdin/stdout, Transport, Dispatcher, Lebenszyklus, Dokumentverwaltung,
 // Syntaxdiagnosen, Nachrichtenschleife, Logging, Zeitlimit für Anfragen und
-// Absturzprotokoll mit Stacktrace. Jeder Ordner des Arbeitsbereichs hat
+// Absturzprotokoll mit Stacktrace, Absturzfällen und Sicherheitsnetz
+// (Shell.CrashCases, #1355). Jeder Ordner des Arbeitsbereichs hat
 // eigene Konfiguration, eigenes Projekt und eigenen Indexaufbau
 // (TShellWorkspace); der Symbolindex ist gemeinsam.
 
@@ -137,6 +138,8 @@ uses
   Atlas.Common.Index.Scheduler,
   Shell.Platform,
   Shell.Workspace,
+  Shell.CrashCases,
+  Atlas.Common.JsonRpc.RecentMessages,
   Shell.Diagnostics;
 
 type
@@ -153,6 +156,13 @@ type
     FStartedAt: TDateTime;
     FUptime: TStopwatch;
     FDispatcher: TJsonRpcDispatcher;
+    /// <summary>Die letzten Nachrichten des Clients für Absturzfälle (#1355).</summary>
+    FRecent: IJsonRpcRecentMessages;
+    /// <summary>Absturzfälle und Sicherheitsnetz (#1355); nach WireDocuments angelegt.</summary>
+    FCrashCases: TShellCrashCases;
+    /// <summary>--replay (#1355): Einstellungen aus dem Fall, keine eigenen Fälle.</summary>
+    FReplaySettingsFile: string;
+    FReplay: Boolean;
     FLifecycle: TLspLifecycle;
     FDocuments: IDocumentStore;
     FTextDocumentSync: TLspTextDocumentSync;
@@ -343,6 +353,9 @@ type
     procedure WireProtocol;
     /// <summary>Teil von Create (S-02): Dokumentspeicher, Synchronisation, Syntax- und Pull-Diagnosen, Compilerergebnisse.</summary>
     procedure WireDocuments;
+    /// <summary>Teil von WireDocuments (#1355): Absturzfälle und Sicherheitsnetz mit Dokumenten, Einstellungen
+    /// und Benachrichtigung an den Client.</summary>
+    procedure WireCrashCases;
     /// <summary>Teil von Create (S-02): Dokumentbezogene Funktionen ohne Index: Symbole, Faltung, Formatierung, Schnellbefehle.</summary>
     procedure WireEditing;
     /// <summary>Teil von Create (S-02): Arbeitsbereiche, Indexplanung und Konfiguration ohne Ordner; Pfade für die Syntaxprüfung.</summary>
@@ -670,6 +683,11 @@ type
     class function GlobalSettingsPath: string; static;
     /// <summary>Verarbeitet Nachrichten bis exit oder Ende der Eingabe und liefert den Exit-Code.</summary>
     function Run: Integer;
+    /// <summary>Nachstellen eines Absturzfalls (--replay, #1355), vor Run: settings.json aus ASettingsFile ('' =
+    /// keine) statt der des Benutzers; der Server sichert dabei keine Fälle und überspringt nichts.</summary>
+    procedure PrepareReplay(const ASettingsFile: string);
+    /// <summary>Absturzfälle und Sicherheitsnetz (#1355).</summary>
+    property CrashCases: TShellCrashCases read FCrashCases;
     /// <summary>Geöffnete Dokumente, für Features, die Dateien auswerten.</summary>
     property Documents: IDocumentStore read FDocuments;
     property Index: ISymbolIndex read FIndex;
@@ -839,11 +857,15 @@ begin
 end;
 
 procedure TServerComposition.WireProtocol;
+var
+  mWatchdog: TJsonRpcWatchdog;
 begin
   FDispatcher := TJsonRpcDispatcher.Create;
   FStatistics := TJsonRpcStatistics.Create;
   FDispatcher.Statistics := FStatistics;
-  FDispatcher.Watchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, RequestTimeoutMs,
+  FRecent := TJsonRpcRecentMessages.Create;
+  FDispatcher.Recent := FRecent;
+  mWatchdog := TJsonRpcWatchdog.Create(FDispatcher.PendingRequests, RequestTimeoutMs,
     procedure(const AMethod: string; ATimeoutMs: Cardinal; AAnswered: Boolean)
     begin
       // Code-Review A-06: Nebenläufige Anfragen beantwortet der Watchdog selbst, die übrigen brechen nur ab.
@@ -854,6 +876,21 @@ begin
         FLogger.Warning(Format('Anfrage %s hat das Zeitlimit von %d ms überschritten; Abbruch angefordert',
           [AMethod, ATimeoutMs]));
     end);
+  // Absturzfall auch beim Abbruch durch den Watchdog (#1355); läuft im Thread des Watchdogs.
+  mWatchdog.OnExpired :=
+    procedure(const AId, AMethod: string; ATimeoutMs: Cardinal)
+    begin
+      if FCrashCases <> nil then
+        FCrashCases.TimedOut(AId, AMethod, ATimeoutMs);
+    end;
+  FDispatcher.Watchdog := mWatchdog;
+  // Sicherheitsnetz (#1355): eine Anfrage, die an derselben unveränderten Datei zweimal abstürzte, überspringen.
+  FDispatcher.RequestGuard :=
+    procedure(const AMethod: string; const AParams: TJSONValue)
+    begin
+      if FCrashCases <> nil then
+        FCrashCases.Guard(AMethod, AParams);
+    end;
   FDispatcher.OnRequestFailed :=
     procedure(const AMethod: string; const AParams: TJSONValue; const AError: Exception)
     var
@@ -866,6 +903,9 @@ begin
         Params := Copy(Params, 1, 500) + '…';
       FLogger.Error(Format('Anfrage %s fehlgeschlagen: %s: %s%sParameter: %s%s%s',
         [AMethod, AError.ClassName, AError.Message, sLineBreak, Params, sLineBreak, TShellPlatform.StackTraceOf(AError)]));
+      // Nachstellbarer Fall (#1355): Anfrage, Datei, Stapel; danach Meldung an den Client.
+      if FCrashCases <> nil then
+        FCrashCases.RequestFailed(AMethod, AParams, AError, TShellPlatform.StackTraceOf(AError));
     end;
   FLifecycle := TLspLifecycle.Create(TProductVersion.Name, TProductVersion.Version,
     function: TJSONObject
@@ -884,6 +924,60 @@ begin
   FDispatcher.PendingRequests.AddContentChangeMethod('textDocument/didChange');
 end;
 
+procedure TServerComposition.WireCrashCases;
+begin
+  FCrashCases := TShellCrashCases.Create('', FLogger, FDocuments, FRecent);
+  FCrashCases.AtlasVersion := TProductVersion.Version;
+  FCrashCases.ServerPath := ParamStr(0);
+  FCrashCases.Initialize :=
+    function: string
+    begin
+      Result := '';
+      if (FLifecycle <> nil) and (FLifecycle.InitializeParams <> nil) then
+        Result := FLifecycle.InitializeParams.ToJSON;
+    end;
+  FCrashCases.SettingsFiles :=
+    function(const AUri: string): TArray<string>
+    var
+      mWorkspace: TShellWorkspace;
+    begin
+      Result := nil;
+      if FGlobalSettingsFile <> '' then
+        Result := Result + [FGlobalSettingsFile];
+      if not StartsText('file:', AUri) or (FWorkspacesLock = nil) then
+        Exit;
+      System.TMonitor.Enter(FWorkspacesLock);
+      try
+        mWorkspace := WorkspaceOf(TDocumentUris.ToPath(AUri));
+        if mWorkspace <> nil then
+          Result := Result + [ExistingOrLegacyFile(mWorkspace.Root, ConfigurationFileName,
+            LegacyConfigurationFileName)];
+      finally
+        System.TMonitor.Exit(FWorkspacesLock);
+      end;
+    end;
+  FCrashCases.Notify :=
+    procedure(const AMethod: string; AParams: TJSONObject)
+    var
+      mNotification: TJSONObject;
+    begin
+      mNotification := TJsonRpcMessages.Notification(AMethod, AParams);
+      try
+        FTransport.WriteMessage(mNotification);
+      finally
+        mNotification.Free;
+      end;
+    end;
+end;
+
+procedure TServerComposition.PrepareReplay(const ASettingsFile: string);
+begin
+  FReplay := True;
+  FReplaySettingsFile := ASettingsFile;
+  FCrashCases.Enabled := False;
+  FCrashCases.SkipEnabled := False;
+end;
+
 procedure TServerComposition.WireDocuments;
 begin
   FDocuments := TDocumentStore.Create(
@@ -893,6 +987,7 @@ begin
     end);
   FTextDocumentSync := TLspTextDocumentSync.Create(FDocuments);
   FTextDocumentSync.Attach(FDispatcher);
+  WireCrashCases;
   FSyntaxDiagnostics := TLspSyntaxDiagnostics.Create(FDocuments, FTransport, SyntaxDiagnosticsProviders);
   FSyntaxDiagnostics.OnError :=
     procedure(AError: Exception)
@@ -2276,6 +2371,17 @@ begin
         Workspace.Rebuild;
       Result := TIndexCommands.Answer(Removed, Freed);
     end);
+  // „Erneut versuchen“ nach dem Überspringen (#1355): Argument Uri der Datei, ohne alle.
+  FCommands.Register(TShellCrashCases.RetryCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      mUri: string;
+    begin
+      mUri := '';
+      if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+        mUri := AArguments.Items[0].Value;
+      Result := TJSONNumber.Create(FCrashCases.Retry(mUri));
+    end);
   FCommands.Register(TLspPullDiagnostics.RecheckCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
@@ -2516,6 +2622,11 @@ begin
       // Name des Clients für die Anmeldung am Index-Cache (#62); vor dem Anlegen der Arbeitsbereiche.
       if FLifecycle.InitializeParams <> nil then
         FClientName := FLifecycle.InitializeParams.GetValue<string>('clientInfo.name', '');
+      // Absturzfälle nennen den Client (#1355); der neue Client erfährt, was nach Abstürzen übersprungen wird.
+      if FLifecycle.InitializeParams <> nil then
+        FCrashCases.Client := Trim(FClientName + ' ' +
+          FLifecycle.InitializeParams.GetValue<string>('clientInfo.version', ''));
+      FCrashCases.Announce;
       // Editor-Ebene: initializationOptions.settings.atlas wie bei didChangeConfiguration, schon vor dem
       // ersten Indexaufbau; sie zählt wie global (TConfigurationScopes). Das IDE-Plugin schickt keine
       // Einstellungen mehr: Es schreibt settings.json, die der Server selbst liest und beobachtet.
@@ -2540,7 +2651,10 @@ begin
         FLogger.Info('Kein Arbeitsbereichsordner gemeldet; Ordner werden aus den geöffneten Dateien abgeleitet');
       // Globale Benutzerdatei (#227) vor dem ersten Ordner; der Server beobachtet sie und die atlas.json
       // selbst, weil die RAD-Studio-IDE keine Dateiänderungen meldet.
-      FGlobalSettingsFile := GlobalSettingsPath;
+      if FReplay then
+        FGlobalSettingsFile := FReplaySettingsFile
+      else
+        FGlobalSettingsFile := GlobalSettingsPath;
       LoadGlobalSettings;
       FFileWatcher := TFileWatcher.Create(
         procedure(const AFiles: TArray<string>)
@@ -2712,6 +2826,8 @@ begin
   FProjectChoices.Free;
   FProjectSelection.Free;
   FTextDocumentSync.Free;
+  // Nach der Verbindung und dem Watchdog: Niemand meldet mehr einen Absturz.
+  FreeAndNil(FCrashCases);
   FDocuments := nil;
   FLifecycle.Free;
   FDispatcher.Free;
@@ -2873,6 +2989,12 @@ begin
       FDispatcher.Watchdog.SetTimeout(ASettings.RequestTimeoutMs);
       FRequestTimeout := ASettings.RequestTimeoutMs;
       FDiagnostics.ApplySettings(ASettings);
+      // server.crashCases und server.crashSkip (#1355) gelten serverweit; beim Nachstellen bleiben beide aus.
+      if not FReplay then
+      begin
+        FCrashCases.Enabled := ASettings.ServerCrashCases;
+        FCrashCases.SkipEnabled := ASettings.ServerCrashSkip;
+      end;
     end;
   // Eigenschaftsregeln mit unbekannter Klasse oder Property (#309): erst mit fertigem Index, sonst
   // fehlten die Klassen nur, weil sie noch nicht gelesen sind; IndexFinished prüft dann neu.
@@ -6475,6 +6597,9 @@ var
   OnSave: Boolean;
   Choice: TCompilerBackendChoice;
 begin
+  // Sicherheitsnetz (#1355): Ein geänderter Inhalt beendet das Überspringen für diese Datei.
+  if (FCrashCases <> nil) and (AKind = TDocumentEventKind.Changed) then
+    FCrashCases.DocumentChanged(ADocument.Uri, ADocument.Text);
   // Tipp-Pause (#492): ungespeicherten Stand in den Index; beim Schließen wieder den der Platte.
   if (FIndexRefresh <> nil) and StartsText('file:', ADocument.Uri) then
     case AKind of
@@ -7173,6 +7298,7 @@ begin
   Result.AddPair('colorProvider', TJSONBool.Create(True));
   Commands := TJSONArray.Create;
   Commands.Add(StatusCommand);
+  Commands.Add(TShellCrashCases.RetryCommand);
   Commands.Add(ProcessesCommand);
   Commands.Add(CompileCommand);
   Commands.Add(SelectBuildCommand);

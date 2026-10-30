@@ -78,6 +78,9 @@
         <DCCReference Include="Source\Shell\Shell.Mcp.pas"/>
         <DCCReference Include="Source\Shell\Shell.Diagnostics.pas"/>
         <DCCReference Include="Source\Shell\Shell.Bootstrap.pas"/>
+        <DCCReference Include="Source\Shell\Shell.CrashCases.pas"/>
+        <DCCReference Include="Source\Shell\Shell.Replay.pas"/>
+        <DCCReference Include="Source\Shell\Shell.ReplayServer.pas"/>
         <DCCReference Include="Source\Shell\Shell.Commands.Build.pas"/>
         <DCCReference Include="Source\Shell\Shell.Commands.Index.pas"/>
         <DCCReference Include="Source\Shell\Shell.Compiler.pas"/>

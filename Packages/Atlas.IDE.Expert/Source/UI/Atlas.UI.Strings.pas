@@ -1256,6 +1256,9 @@ type
     DesignerSearchCount, DesignerSearchKeys, DesignerSearchKeysPopup, DesignerSearchPosition,
     DesignerSearchProperties, DesignerSearchEvents, DesignerSearchNoEvents, DesignerSearchNonVisual,
     DesignerSearchNoForm);
+    // Absturzfälle des Servers (#1355).
+    CrashRestartedTitle, CrashCaseTitle, CrashCaseText, CrashOpenCase, CrashCreateIssue, CrashHide,
+    CrashSkipTitle, CrashSkipText, CrashSkipEnded, CrashRetry, CrashSkipProblem, AttachCrashCase);
 
   TAtlasStrings = class
   private class var
@@ -4450,7 +4453,14 @@ const
      '%d von %d',
      '↑↓ wählen · Enter auswählen · Strg+Enter zum Ereignis · Strg+C Name kopieren · F4 Vorschau · Esc schließen',
      '↑↓ wählen · Enter auswählen · Esc schließen', 'Lage', 'Eigenschaften', 'Ereignisse', 'keine', 'nichtvisuell',
-     'Kein Formular im Designer.'),
+     'Kein Formular im Designer.',
+     'Atlas-Server neu gestartet', 'Absturzfall gesichert', 'Der Server hat die Anfrage abgebrochen: %s',
+     'Fall öffnen', 'Issue anlegen', 'Ausblenden',
+     'Übersprungen nach Absturz',
+     '%s an %s wird bis zur nächsten Änderung übersprungen (%d Abstürze, %s).',
+     '%s an %s wird wieder beantwortet.', 'Erneut versuchen',
+     'Übersprungen nach Absturz: %s (%d Abstürze, %s); Fall %s',
+     'Absturzfall (%d Dateien)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -7512,7 +7522,14 @@ const
      'Select in designer', 'Go to event', 'Copy name', '%d of %d',
      '↑↓ move · Enter select · Ctrl+Enter go to event · Ctrl+C copy name · F4 preview · Esc close',
      '↑↓ move · Enter select · Esc close', 'Position', 'Properties', 'Events', 'none', 'non-visual',
-     'No form in the designer.'));
+     'No form in the designer.',
+     'Atlas server restarted', 'Crash case saved', 'The server aborted the request: %s',
+     'Open case', 'Create issue', 'Dismiss',
+     'Skipped after crash',
+     '%s on %s is skipped until the next change (%d crashes, %s).',
+     '%s on %s is answered again.', 'Retry',
+     'Skipped after crash: %s (%d crashes, %s); case %s',
+     'Crash case (%d files)'));
 
 { TAtlasStrings }
 

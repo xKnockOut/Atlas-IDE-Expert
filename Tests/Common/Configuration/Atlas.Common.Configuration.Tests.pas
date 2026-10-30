@@ -1118,6 +1118,15 @@ begin
   Assert.AreEqual(0, Integer(Length(Issues)));
   Assert.AreEqual(10000, Parse('{"requestTimeoutMs": 10}', Issues).RequestTimeoutMs);
   Assert.AreEqual(1, Integer(Length(Issues)));
+  // Absturzfälle und Sicherheitsnetz (#1355)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.ServerCrashCases and Settings.ServerCrashSkip);
+  Settings := Parse('{"server": {"crashCases": false, "crashSkip": false}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.ServerCrashCases or Settings.ServerCrashSkip);
+  Settings := Parse('{"server": {"crashSkip": 1, "gibts": true}}', Issues);
+  Assert.IsTrue(Settings.ServerCrashSkip);
+  Assert.AreEqual(2, Integer(Length(Issues)), 'kein Wahrheitswert und unbekannter Schlüssel');
   // Diagnoselog (#647)
   Settings := Parse('{}', Issues);
   Assert.IsTrue(Settings.DiagnosticsLog);

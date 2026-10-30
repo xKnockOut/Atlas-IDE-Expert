@@ -22,6 +22,7 @@ uses
   Shell.CommandLine,
   Shell.Composition,
   Shell.Mcp,
+  Shell.ReplayServer,
   Shell.Linter;
 
 class function TApplicationShell.Run: Integer;
@@ -34,6 +35,9 @@ begin
     TShutdownLeaks.SetLogFile(Options.LogFile);
     if Options.ClearCache then
       Exit(TLinterShell.ClearCache);
+    // Absturzfall nachstellen (#1355): eigener Server im Prozess, Ergebnis auf stderr.
+    if Options.ReplayFile <> '' then
+      Exit(TShellReplayServer.Main(Options.ReplayFile));
     // Vor --check: Das Ziel aus --check ist hier nur das Projekt des Berichts.
     if Options.ArchitectureFile <> '' then
       Exit(TLinterShell.Architecture(Options));
