@@ -39,7 +39,7 @@
 ## Willkommensseite scrollt (#1440, 30.10.2026, release/1.1, Branch `feature/1440-willkommen-scrollen`)
 - Ursache: `TScrollBox` scrollt in der VCL nicht selbst mit dem Mausrad, und `WM_MOUSEWHEEL` geht über `MouseWheelHandler` an das fokussierte Steuerelement des Formulars (in der IDE meist der Editor). Fix an einer Stelle: `TAtlasWelcomeBoardFrame` hat ein eigenes `TApplicationEvents` und nimmt das Rad ab, solange der Zeiger über der Tafel steht (`ScrollWheel`: innerste Fläche, die in die Richtung noch kann, sonst die Seite; Listen mit eigener Leiste über `WM_VSCROLL` zeilenweise). Tasten Bild auf/ab, Pos1/Ende über `ScrollKey`, nicht in Eingabefeldern und Listen (`OwnsScrollKeys`). Randscrollen beim Ziehen über `EdgeTimer`. Schritte in `Atlas.Core.Welcome.Scroll` (Tests ohne VCL, unter FPC grün).
 - Auf release/1.1 gibt es Atlas nur im Fenster „Atlas-Start“ (#1114); die Willkommensseite der IDE (#1347) kommt erst mit v1.2 und bekommt den Fix beim Zusammenführen mit, weil sie dieselbe Tafel zeigt.
-- Offen für Marco: Delphi-Build (Win32-Plugin, Win64-Tests, besonders die neuen UI-Tests `WheelScrolls*`/`KeysScrollPage` ohne gezeigtes Fenster) und Handtests WS-SC1 bis WS-SC7.
+- Mit Delphi 13 gebaut (30.10.2026, Win64 und Win32 0/0/0, 7085 Tests grün), PR #1444 gemergt. Offen für Marco: Handtests WS-SC1 bis WS-SC7.
 
 ## release/1.1: v1.1.1-Issues gemergt (28.10.2026)
 - Gemergt in `release/1.1`: #1220, #1236, #1237, #1246, #1247, #1248, #1255, #1281, #1293, #1296, #1310 und PR 1258 (#1230). `claude/project-thread-iu1p9d` gehört zu v1.2 (auf main), `fix/parser-leeres-then` war schon enthalten und ist gelöscht.
