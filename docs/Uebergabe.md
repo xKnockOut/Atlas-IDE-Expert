@@ -31,6 +31,10 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## unused-declaration-Befunde im eigenen Code (30.10.2026, Branch `claude/project-thread-3dbpsd`, PR #1424)
+- Sieben Befunde geprüft (andere Units, Include-Dateien, `{$IFDEF}`-Zweige, Konstantenausdrücke, RTTI, Tests): alle echt, kein False-Positive, Regel unverändert. Laut Historie nie benutzt.
+- Entfernt: `ChildOn` (MethodWithoutSelf), `BuiltinNames` (TypeAlias), lokales `IsKeyword` (Core.Editor.Pairs), `EventLine` (Core.Forms.Changes), `PositionBelow` (EditorToolbar.Service, unten ist der Fallback in `Place`), `SearchTimeoutMs` (Results.Commands), `Minute` (TimeLog-Test). Delphi-Build offen.
+
 ## #1383 Meldungen, wo Delphi 13 schweigt (29.10.2026, Branch `feature/1383-ohne-dcc-befund`, Entwurfs-PR #1397)
 - Versionsunabhängig behoben: `class abstract` (E2402) und `S[1]` an var (E2354) gibt es nur unter .NET; überladene Array-Properties (W1075); `{$WARN MOBILE_DELPHI}`/`UNSAFE_VOID_POINTER` bekannt. Stilregeln nennen den Code nur, wo dcc meldet: `unused-assignment` H2077 nur bei nicht verwalteten Typen, `uses-cycle` F2047 nur bei reinen interface-Zyklen (Selbstverweis F2092), `xmldoc-mismatch` nur im interface-Teil und nur W1205 (fremdes Zeichen hinter dem Tagnamen). `Compare-Compilermeldungen.py` zählt diese vier Regeln nur über den Code in der Meldung (`NUR_MELDUNG`).
 - Delphi-12-Lauf vorbereitet: `Build-Compilermeldungen.ps1 -Dcc -BdsVersion 23.0 -ResultFile …` (ohne IDE mit dcc32/dcc64), Anleitung im Projektordner `anleitungen/1383-delphi12-faelle-bauen.md`; zwölf Zusatzfälle (F2069b–d, H2367b, H2440b, W1009c/d, W1071b/c, E2373b, CmE2121c), auch mit Delphi 13 zu bauen.
