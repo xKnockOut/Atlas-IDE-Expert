@@ -352,7 +352,7 @@ begin
   TAtlasSearchResults.FollowSelection(Last, 'open', Changed);
   Assert.IsTrue(Changed);
   // Leer oder mehrzeilig: nichts.
-  Query := TAtlasSearchResults.FollowSelection(Last, '', Changed);
+  TAtlasSearchResults.FollowSelection(Last, '', Changed);
   Assert.IsFalse(Changed);
   Query := TAtlasSearchResults.FollowSelection(Last, 'a'#13#10'b', Changed);
   Assert.IsFalse(Changed);

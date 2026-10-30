@@ -253,13 +253,12 @@ end;
 class function TAtlasVcsWorkingCopies.StatusExternals(const AStatusXml: string): TArray<string>;
 var
   mReader: TAtlasVcsXmlReader;
-  mPath, mTarget: string;
+  mPath: string;
   mInEntry: Boolean;
 begin
   Result := nil;
   if Trim(AStatusXml) = '' then
     Exit;
-  mTarget := '';
   mPath := '';
   mInEntry := False;
   mReader := TAtlasVcsXmlReader.Create(AStatusXml);
@@ -267,9 +266,7 @@ begin
     while mReader.Next do
       if mReader.Node = TAtlasVcsXmlNode.StartTag then
       begin
-        if mReader.Name = 'target' then
-          mTarget := Slashed(mReader.Attr('path'))
-        else if mReader.Name = 'entry' then
+        if mReader.Name = 'entry' then
         begin
           mInEntry := True;
           mPath := Slashed(mReader.Attr('path'));
