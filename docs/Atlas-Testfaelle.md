@@ -8372,6 +8372,7 @@ Vorbereitung: Verbindungen zu YouTrack und GitHub mit Token (#1260), Projekt mit
 | ZS12 | Felder „Zustandsfeld“, „Startzustand“ und „Zielzustände“ der Verbindung setzen, globale Werte anders | Die Werte der Verbindung gelten; Adresse der Verbindung ändern verliert die Felder nicht |
 | ZS13 | Netz während des Sendens trennen, Dialog schließen versuchen | Schließen wartet bis zur Antwort; danach „Tracker nicht erreichbar.“ |
 | ZS14 | Plugin entladen, während eine Änderung gesendet wird | Keine Zugriffsverletzung, keine späte Meldung |
+| ZS15 | Optionen › Issue-Tracker › Verbindungen: Verbindung YouTrack wählen, dann GitHub, dann bei GitHub den Anbieter auf YouTrack und zurück stellen | Alle Felder einzeilig ohne Leerraum dazwischen; bei YouTrack Zustandsfeld und Benutzerfeld sichtbar, bei GitHub ausgeblendet, „Beim Beginnen“ und „Zielzustände“ rücken direkt unter die Adresse; Hell und Dunkel |
 
 ## Zeit je Issue erfassen und buchen (#1267)
 

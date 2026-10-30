@@ -95,6 +95,9 @@ type
     class function ParseList(const AText: string): TArray<string>; static;
     /// <summary>Umkehrung von ParseList mit ", ".</summary>
     class function ListText(const AItems: TArray<string>): string; static;
+    /// <summary>Der Anbieter führt Zustand und Zuständigkeit in benannten Feldern (YouTrack), so dass Zustandsfeld
+    /// und Benutzerfeld etwas bedeuten. GitHub hat keine: Zustände sind Labels, zuständig sind Benutzer.</summary>
+    class function UsesFields(const AProvider: string): Boolean; static;
     /// <summary>AOptions mit den Werten der Verbindung zum Server von ATarget (persönliche zuerst); leere Werte der
     /// Verbindung lassen die globalen.</summary>
     class function ForConnection(const AOptions: TAtlasTrackerSyncOptions;
@@ -198,6 +201,11 @@ end;
 class function TAtlasTrackerWorkflow.ListText(const AItems: TArray<string>): string;
 begin
   Result := string.Join(', ', AItems);
+end;
+
+class function TAtlasTrackerWorkflow.UsesFields(const AProvider: string): Boolean;
+begin
+  Result := not SameText(Trim(AProvider), TAtlasTrackerTarget.GitHub);
 end;
 
 class function TAtlasTrackerWorkflow.ForConnection(const AOptions: TAtlasTrackerSyncOptions;
