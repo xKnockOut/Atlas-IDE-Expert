@@ -58,6 +58,9 @@ type
     procedure ParsesAssignment;
     [Test]
     procedure AssignmentWithFoundationAndBrokenRows;
+    /// <summary>Angleichung (#1367): "aligned" lesen, "renameSubsystems" schicken.</summary>
+    [Test]
+    procedure ParsesAlignmentAndSendsRename;
   end;
 
 /// <summary>Antwort von atlas.architecture zu einem kleinen Projekt mit Zyklus (für Kern- und UI-Tests).</summary>
@@ -76,6 +79,9 @@ function SampleFoundationAnswer: string;
 function SampleAssignmentAnswer: string;
 /// <summary>Zuordnung mit Teilsystem „Fundament“ (#1365, #1368), ohne Nachteilung.</summary>
 function SampleAssignmentFoundationAnswer: string;
+/// <summary>Angleichung (#1367): Index.A*, Index.B* (vier Units) und Ui.X*, angeglichen an den Stand vom
+/// 29.10.2026 14:23 aus architecture.baseline.</summary>
+function SampleAlignedAnswer: string;
 
 implementation
 
@@ -96,6 +102,8 @@ uses
   Atlas.Common.Architecture.UsesGraph.Tests,
   Atlas.Common.Architecture.Snapshot.Tests,
   Atlas.Common.Architecture.Overview.Tests,
+  Atlas.Common.Architecture.Alignment,
+  Atlas.Common.Architecture.Alignment.Tests,
   Atlas.Core.Architecture.Model;
 
 /// <summary>Kleines Projekt; AOlder: der frühere Stand (siehe SampleComparisonAnswer).</summary>
@@ -812,6 +820,54 @@ begin
       mOutside := True;
     end;
   Assert.IsTrue(mInside and mOutside);
+end;
+
+function SampleAlignedAnswer: string;
+var
+  mOverview: TArchitectureOverview;
+begin
+  mOverview := AlignmentOverview(True);
+  TArchitectureAlignment.Align(mOverview, TArchitectureSnapshots.FromOverview(AlignmentOverview(False)),
+    TArchitectureAnalyzer.AlignedBaseline, EncodeDate(2026, 10, 29) + EncodeTime(14, 23, 0, 0));
+  Result := AnswerOf(mOverview, '');
+end;
+
+procedure TAtlasArchitectureModelTests.ParsesAlignmentAndSendsRename;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mValue: TJSONValue;
+  mOptions: TAtlasArchitectureOptions;
+  mItem: TJSONObject;
+  mIndex: Integer;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAlignedAnswer, mModel, mEnabled));
+  Assert.AreEqual('baseline', mModel.AlignedSource);
+  Assert.AreEqual('2026-10-29 14:23', mModel.AlignedText);
+  Assert.AreEqual(3, mModel.AlignedKept);
+  // Farben aus "color": Index.B* behält die 1, obwohl es jetzt vorn steht.
+  mIndex := mModel.Subsystems[mModel.Units[mModel.IndexOf('Index.B1')].Subsystem].ColorSlot;
+  Assert.AreEqual(1, mIndex);
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAnswer, mModel, mEnabled));
+  Assert.AreEqual('', mModel.AlignedSource);
+  Assert.AreEqual('', mModel.AlignedText);
+  mOptions := TAtlasArchitectureOptions.Create('project', True);
+  Assert.IsFalse(mOptions.RenameSubsystems);
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', mOptions));
+  try
+    mItem := (mValue as TJSONArray).Items[1] as TJSONObject;
+    Assert.IsNull(mItem.GetValue('renameSubsystems'));
+  finally
+    mValue.Free;
+  end;
+  mOptions.RenameSubsystems := True;
+  mValue := TJSONObject.ParseJSONValue(TAtlasArchitectureCommands.Arguments('file:///C:/P/App.dproj', mOptions));
+  try
+    mItem := (mValue as TJSONArray).Items[1] as TJSONObject;
+    Assert.IsTrue(mItem.GetValue<Boolean>('renameSubsystems'));
+  finally
+    mValue.Free;
+  end;
 end;
 
 procedure TAtlasArchitectureModelTests.CommandArgumentsWithResolution;
