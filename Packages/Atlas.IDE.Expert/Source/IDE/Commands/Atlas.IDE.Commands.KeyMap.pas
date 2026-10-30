@@ -142,7 +142,9 @@ const
     // Abschnittsknöpfe der Editorleiste (#1101): Editorbefehle.
     3, 3,
     // Schnelle Lesezeichen (#1104): Editorbefehle.
-    3, 3, 3, 3, 3);
+    3, 3, 3, 3, 3,
+    // Komponenten suchen (#1442): keine Bindung, TAtlasKeyHook nur im Designer.
+    0);
 
 type
   /// <summary>Herkunft je Modul, einmal ermittelt.</summary>

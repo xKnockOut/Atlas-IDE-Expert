@@ -57,7 +57,7 @@ type
     MultiCursorAbove, MultiCursorBelow, Search, SearchNext, SearchPrevious,
     SearchMethod, FormatCode, ToggleBlockComment, NewLineBelow, NewLineAbove, Unwrap, ProblemsWindow,
     SectionInterface, SectionImplementation, QuickBookmark, QuickBookmarkSet, QuickBookmarkJump, NextBookmark,
-    PreviousBookmark);
+    PreviousBookmark, DesignerSearch);
   TAtlasKeyChoice = (UseAtlas, LeaveOther, OtherKey);
   /// <summary>NoKey: keine Taste; IdeKey: Taste der IDE über Code Insight, Atlas belegt nichts selbst;
   /// Free: Atlas belegt die freie Taste; AtlasWins: belegt, Atlas hat Vorrang; Left: belegt, Atlas
@@ -269,7 +269,10 @@ begin
     Create(TAtlasKeyFunction.SectionImplementation, Word(ASettings.GotoImplementationKey), Shared),
     // Nächstes/voriges Lesezeichen (#1104): Vorgabe ohne Taste.
     Create(TAtlasKeyFunction.NextBookmark, Word(ASettings.NextBookmarkKey), Shared, ASettings.QuickBookmarks),
-    Create(TAtlasKeyFunction.PreviousBookmark, Word(ASettings.PreviousBookmarkKey), Shared, ASettings.QuickBookmarks)];
+    Create(TAtlasKeyFunction.PreviousBookmark, Word(ASettings.PreviousBookmarkKey), Shared, ASettings.QuickBookmarks),
+    // Komponenten suchen (#1442): nur solange ein Designer gezeigt wird, dort mit Vorrang (wie das Suchfeld der
+    // Willkommensseite).
+    Create(TAtlasKeyFunction.DesignerSearch, Word(ASettings.DesignerSearchKey), True, ASettings.EditorDesignerBar)];
 end;
 
 class procedure TAtlasKeyEntry.ToSettings(const AEntries: TArray<TAtlasKeyEntry>;
@@ -438,6 +441,8 @@ begin
         ASettings.NextBookmarkKey := Entry.Key;
       TAtlasKeyFunction.PreviousBookmark:
         ASettings.PreviousBookmarkKey := Entry.Key;
+      TAtlasKeyFunction.DesignerSearch:
+        ASettings.DesignerSearchKey := Entry.Key;
       // Strg+F12 ist fest; ein- und ausgeschaltet wird über unitSearch.replaceIdeDialog.
       TAtlasKeyFunction.UnitSearchIde:
         ;
