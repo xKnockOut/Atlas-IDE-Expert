@@ -221,6 +221,7 @@ begin
         FCodeGroup := GroupNumber(AMatcher.Regex, 'code');
         FMessageGroup := GroupNumber(AMatcher.Regex, 'message');
       end;
+    TAtlasTaskMatcherKind.None: ;
   end;
 end;
 

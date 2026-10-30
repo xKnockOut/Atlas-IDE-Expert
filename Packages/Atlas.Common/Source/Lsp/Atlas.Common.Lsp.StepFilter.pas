@@ -291,6 +291,8 @@ begin
     TSyntaxKind.MemberAccess:
       Result := (ATarget.ChildCount = 1) and (ATarget[0].Kind = TSyntaxKind.Identifier) and
         SameText(ATarget[0].Name, 'Self');
+  else
+    // Übrige Arten: nichts zu tun.
   end;
 end;
 

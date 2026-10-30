@@ -187,6 +187,7 @@ begin
       Messages.AddTitleMessage(TAtlasStrings.Text(TAtlasTextId.GateBlocked), Group);
     TAtlasGateOutcome.Overridden:
       Messages.AddTitleMessage(TAtlasStrings.Text(TAtlasTextId.GateOverridden), Group);
+    TAtlasGateOutcome.Passed, TAtlasGateOutcome.Reported, TAtlasGateOutcome.TimedOut: ;
   end;
   if ANotifyTimeout then
     Messages.AddTitleMessage(TAtlasStrings.Fmt(TAtlasTextId.GateTimedOut, [ATimeoutMs]), Group);

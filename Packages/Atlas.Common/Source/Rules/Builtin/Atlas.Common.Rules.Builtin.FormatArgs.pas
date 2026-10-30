@@ -151,6 +151,8 @@ var
           else
             Result := TFormatString.ConstantValue(mSymbol.Signature, AValue);
         end;
+    else
+      // Übrige Arten: nichts zu tun.
     end;
   end;
 

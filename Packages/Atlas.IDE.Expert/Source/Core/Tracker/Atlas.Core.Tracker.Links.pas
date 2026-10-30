@@ -169,6 +169,7 @@ begin
       mReversed := IsOneOf(ASourceToTarget, SubtaskTarget) and not IsOneOf(ASourceToTarget, SubtaskSource);
     TFamily.Duplicate:
       mReversed := IsOneOf(ASourceToTarget, DuplicateTarget) and not IsOneOf(ASourceToTarget, DuplicateSource);
+    TFamily.None, TFamily.Relates: ;
   end;
   mDirection := UpperCase(Trim(ADirection));
   if mReversed then
@@ -203,6 +204,7 @@ begin
         Result := TAtlasTrackerLinkKind.Relates;
     TFamily.Relates:
       Result := TAtlasTrackerLinkKind.Relates;
+    TFamily.None: ;
   end;
 end;
 

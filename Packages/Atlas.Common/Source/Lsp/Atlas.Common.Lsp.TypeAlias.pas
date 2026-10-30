@@ -148,6 +148,7 @@ begin
         // Typen in Routinen sieht keine andere Unit.
         TResolvedKind.Local:
           AImplementation := True;
+        TResolvedKind.None, TResolvedKind.UnitName: ;
       end;
     end;
 end;

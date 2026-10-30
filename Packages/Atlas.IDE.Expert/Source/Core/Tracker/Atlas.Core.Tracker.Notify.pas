@@ -466,6 +466,7 @@ begin
         end;
       TAtlasTrackerChangeKind.State:
         mAll[mFound].State := mChange.Value;
+      TAtlasTrackerChangeKind.Other: ;
     end;
   end;
   // Neueste Meldung zuerst; bei Gleichstand nach Kennung.

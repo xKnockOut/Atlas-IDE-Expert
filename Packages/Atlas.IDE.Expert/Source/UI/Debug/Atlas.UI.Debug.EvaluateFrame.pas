@@ -502,6 +502,7 @@ begin
       Exit(TAtlasStrings.Text(TAtlasTextId.DebugEvaluateNotStopped));
     TAtlasEvalState.Error:
       Exit(ANode.Value);
+    TAtlasEvalState.Value: ;
   end;
   Source := ANode.Value;
   if AView = TAtlasEvalView.Lines then

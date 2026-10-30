@@ -1010,6 +1010,7 @@ begin
           Detail := Detail + ', ' + TAtlasStrings.Text(TAtlasTextId.ArchitectureReasonAgainst);
         Result := Result + ' (' + Detail + ')';
       end;
+    TAtlasArchChangeKind.NewUnits, TAtlasArchChangeKind.RemovedUnits: ;
   end;
 end;
 

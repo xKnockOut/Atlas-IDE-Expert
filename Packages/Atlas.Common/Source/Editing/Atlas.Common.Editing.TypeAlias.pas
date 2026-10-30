@@ -345,6 +345,8 @@ begin
       for Index := ANode.ChildCount - 1 downto 0 do
         if IsTypeNode(ANode[Index]) and (ANode[Index].Kind <> TSyntaxKind.SubrangeType) then
           Exit(ElementName(ANode[Index]));
+  else
+    // Übrige Arten: nichts zu tun.
   end;
 end;
 

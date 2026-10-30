@@ -444,6 +444,8 @@ begin
     TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.ObjectType:
       Result := TCaseSelectorKind.NotOrdinal;
+  else
+    // Übrige Arten: nichts zu tun.
   end;
 end;
 
