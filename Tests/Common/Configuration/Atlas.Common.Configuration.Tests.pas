@@ -21,6 +21,8 @@ type
     [Test]
     procedure ReadsArchitectureGrouping;
     [Test]
+    procedure ReadsQuerySettings;
+    [Test]
     procedure ReadsNavigationSymbolPath;
     [Test]
     procedure ReadsAllSettings;
@@ -212,6 +214,47 @@ begin
   Assert.AreEqual(1252, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{"encoding": "cp1252"}',
     Issues).DefaultEncoding);
   Assert.AreEqual(1250, TConfigurationParser.ParseLayered('{"encoding": "1250"}', '{}', Issues).DefaultEncoding);
+end;
+
+procedure TConfigurationParserTests.ReadsQuerySettings;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  // Code-Abfragen (#1351)
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.QueryEnabled);
+  Assert.AreEqual(0, Integer(Length(Settings.Queries)));
+  Settings := Parse('{"query": {"enabled": false}, "queries": [{"name": "grosse-klassen", ' +
+    '"query": " classes where methods > 40 ", "description": "Zu groß", "failIfAny": true, "severity": "error", ' +
+    '"message": "{name} hat {methods} Methoden"}, {"name": "b", "query": "units where usedBy = 0"}]}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.QueryEnabled);
+  Assert.AreEqual(2, Integer(Length(Settings.Queries)));
+  Assert.AreEqual('grosse-klassen', Settings.Queries[0].Name);
+  Assert.AreEqual('classes where methods > 40', Settings.Queries[0].Query);
+  Assert.AreEqual('Zu groß', Settings.Queries[0].Description);
+  Assert.IsTrue(Settings.Queries[0].FailIfAny);
+  Assert.IsTrue(Settings.Queries[0].Severity = TRuleSeverity.Error);
+  Assert.AreEqual('{name} hat {methods} Methoden', Settings.Queries[0].Message);
+  Assert.IsFalse(Settings.Queries[1].FailIfAny);
+  Assert.IsTrue(Settings.Queries[1].Severity = TRuleSeverity.Warning);
+  // Fehlender Name oder Abfrage, ungültiger Name, doppelter Name, falscher Schweregrad, unbekannte Angabe.
+  Settings := Parse('{"queries": [{"query": "units where name = A"}, {"name": "x"}, {"name": "a b", "query": "q"}, ' +
+    '{"name": "d", "query": "q1"}, {"name": "D", "query": "q2"}, {"name": "s", "query": "q", "severity": "laut"}, ' +
+    '{"name": "u", "query": "q", "farbe": 1}]}', Issues);
+  Assert.AreEqual('d,s,u', Settings.Queries[0].Name + ',' + Settings.Queries[1].Name + ',' + Settings.Queries[2].Name);
+  Assert.AreEqual('q1', Settings.Queries[0].Query);
+  Assert.IsTrue(Settings.Queries[1].Severity = TRuleSeverity.Warning);
+  Assert.IsTrue(Length(Issues) >= 6);
+  Parse('{"queries": {}, "query": {"enabled": 1, "x": 2}}', Issues);
+  Assert.AreEqual(3, Integer(Length(Issues)));
+  // Projektdatei vor Editor: queries gilt als Ganzes.
+  Settings := TConfigurationParser.ParseLayered('{"queries": [{"name": "a", "query": "q"}]}',
+    '{"queries": [{"name": "b", "query": "r"}], "query": {"enabled": false}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Settings.Queries)));
+  Assert.AreEqual('b', Settings.Queries[0].Name);
+  Assert.IsFalse(Settings.QueryEnabled);
 end;
 
 procedure TConfigurationParserTests.ReadsArchitectureComparisonSettings;

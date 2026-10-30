@@ -72,6 +72,8 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
   Atlas.Common.Lsp.Architecture,
+  Atlas.Common.Query.Contract,
+  Atlas.Common.Lsp.Query,
   Atlas.Common.Lsp.Hotspots,
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Service,
@@ -221,6 +223,10 @@ type
     /// atlas/architecture und Befehl atlas.architecture.saveReport.</summary>
     FArchitectureService: TArchitectureService;
     FArchitecture: TLspArchitecture;
+    /// <summary>Code-Abfragen (#1351): Dienst mit Zwischenspeicher je Index-Stand für atlas/query, das Fenster
+    /// „Atlas-Abfrage“ und die Regeln query:<name>.</summary>
+    FQueries: ICodeQueries;
+    FQuery: TLspQuery;
     /// <summary>Hotspots (#1354): Dienst mit Zwischenspeicher je Stand der Versionsverwaltung und Index-Generation,
     /// Anfrage atlas/hotspots und Befehle atlas.hotspots und atlas.hotspots.saveReport.</summary>
     FHotspotService: THotspotService;
@@ -580,6 +586,11 @@ type
     /// architecture.scope).</summary>
     function ArchitectureSourceFor(const AFileName, AScope: string; out ARequest: TArchitectureRequest;
       out ASettings: TServerSettings): Boolean;
+    /// <summary>Datenquelle der Code-Abfragen (#1351): alle Projekte der Gruppe wie die Architekturübersicht,
+    /// Wurzel und Namensräume des gewählten Arbeitsbereichs; False ohne Arbeitsbereich.</summary>
+    function QuerySource(out ASource: TQuerySource): Boolean;
+    /// <summary>Einstellungen und Projektordner für atlas/query zum Arbeitsbereich von AFileName.</summary>
+    function QuerySettingsFor(const AFileName: string; out ASettings: TServerSettings; out ARoot: string): Boolean;
     /// <summary>Anfrage, Einstellungen und Versionsverwaltung für die Hotspots (#1354): Umfang wie die
     /// Architekturübersicht mit architecture.scope.</summary>
     function HotspotSourceFor(const AFileName: string; out ARequest: THotspotRequest; out ASettings: TServerSettings;
@@ -704,6 +715,8 @@ uses
   System.StrUtils,
   Atlas.Common.Index.Adapters.DiskFileSystem,
   Atlas.Common.Product.Version,
+  Atlas.Common.Query.Service,
+  Atlas.Common.Query.Language,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
   Atlas.Common.Logging.Providers.Logger,
@@ -1562,6 +1575,10 @@ begin
     end);
   FArchitecture := TLspArchitecture.Create(FArchitectureService, ArchitectureSourceFor);
   FArchitecture.Attach(FDispatcher);
+  // Code-Abfragen (#1351): ein Dienst für Fenster, Befehl und die Regeln query:<name>.
+  FQueries := TCodeQueryService.Create(QuerySource);
+  FQuery := TLspQuery.Create(FQueries, QuerySettingsFor);
+  FQuery.Attach(FDispatcher);
   // Hotspots (#1354): Komplexität aus geöffneten Dokumenten bzw. der Platte, Verlauf über Shell.Hotspots.
   FHotspotService := THotspotService.Create(FIndex,
     function(const AFileName: string; out AText: string): Boolean
@@ -2055,6 +2072,11 @@ begin
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FArchitecture.SaveReport(AArguments);
+    end);
+  FCommands.Register(TLspQuery.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FQuery.Execute(AArguments);
     end);
   // Hotspots (#1354): nebenläufig; gerechnet wird im Hintergrund, die Antwort kommt sofort (sonst "pending").
   FCommands.RegisterConcurrent(TLspHotspots.Command,
@@ -2793,6 +2815,8 @@ begin
   FSymbolPath.Free;
   FArchitecture.Free;
   FArchitectureService.Free;
+  FQuery.Free;
+  FQueries := nil;
   FHotspots.Free;
   FHotspotService.Free;
   FUnitRelations.Free;
@@ -3007,10 +3031,11 @@ begin
   Workspace.Configuration.ExtraIssues :=
     function(const ASettings: TServerSettings): TArray<TConfigurationIssue>
     begin
-      Result := nil;
+      // Gespeicherte Abfragen mit Fehler (#1351) an der Stelle in atlas.json, unabhängig vom Index.
+      Result := TQueryParser.ConfigurationIssues(ASettings.Queries);
       if (Length(ASettings.DfmPropertyRules) = 0) or ProjectIndexPending or (Length(FIndex.Units) = 0) then
         Exit;
-      Result := TDfmPropertyCheckRule.ConfigurationIssues(ASettings.DfmPropertyRules, FIndex,
+      Result := Result + TDfmPropertyCheckRule.ConfigurationIssues(ASettings.DfmPropertyRules, FIndex,
         function(const AFileName: string; out AData: TBytes): Boolean
         var
           Text: string;
@@ -6285,6 +6310,53 @@ begin
     TShellHotspotVcs.Detect(mArchitecture.Root, ASettings, AVcs, AError);
 end;
 
+function TServerComposition.QuerySource(out ASource: TQuerySource): Boolean;
+var
+  mWorkspace: TShellWorkspace;
+  mFiles, mNamespaces: TArray<string>;
+  mRoot: string;
+  mReferences: TReferenceSettings;
+begin
+  ASource := Default(TQuerySource);
+  mFiles := nil;
+  TMonitor.Enter(FWorkspacesLock);
+  try
+    mWorkspace := TShellWorkspace.Choose(nil, FWorkspaces);
+    if mWorkspace = nil then
+      Exit(False);
+    mRoot := mWorkspace.Root;
+    mNamespaces := mWorkspace.Namespaces;
+    mReferences := mWorkspace.Configuration.Settings.References;
+    // Projektgruppe (#648): die Dateien aller geladenen Projekte.
+    for mWorkspace in FWorkspaces do
+      mFiles := mFiles + mWorkspace.ProjectFiles;
+  finally
+    TMonitor.Exit(FWorkspacesLock);
+  end;
+  ASource := TLspQuery.Source(FIndex,
+    function(const AUnitName: string): Boolean
+    begin
+      Result := EnsureUnit(AUnitName);
+    end,
+    mRoot, mFiles, mNamespaces,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end,
+    mReferences);
+  Result := True;
+end;
+
+function TServerComposition.QuerySettingsFor(const AFileName: string; out ASettings: TServerSettings;
+  out ARoot: string): Boolean;
+var
+  mSource: TLspMetricsSource;
+begin
+  Result := MetricsSourceFor(AFileName, False, mSource);
+  ASettings := mSource.Settings;
+  ARoot := mSource.Root;
+end;
+
 function TServerComposition.UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;
 var
   Workspace: TShellWorkspace;
@@ -6519,6 +6591,8 @@ begin
       // Index, Namespaces, Unit-Suche, Packages und Namenskonvention auf demselben Weg wie MCP und Linter
       // (#1112).
       AContext.Services := Workspace.RuleServices;
+      // Gespeicherte Abfragen mit failIfAny als Regeln query:<name> (#1351).
+      AContext.Services.Queries := FQueries;
       if Workspace.Project(Project) then
         Projects := Projects + [Project];
       // Weitere Projekte mit der Datei (#1112): Eine Unit im Testprogramm und im Package hat keine

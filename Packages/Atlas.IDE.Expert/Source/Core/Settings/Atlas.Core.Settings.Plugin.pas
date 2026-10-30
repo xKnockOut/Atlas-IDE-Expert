@@ -791,6 +791,9 @@ type
     /// <summary>Architekturübersicht (#1118, architecture.enabled in settings.json): Fenster „Atlas-Architektur“,
     /// Bericht und get_architecture; Vorgabe an.</summary>
     ArchitectureEnabled: Boolean;
+    /// <summary>Code-Abfragen (#1351, query.enabled in settings.json): Fenster „Atlas-Abfrage“, Befehl und
+    /// query_code; Vorgabe an.</summary>
+    QueryEnabled: Boolean;
     /// <summary>Umfang der Übersicht (architecture.scope): 'project' oder 'projectGroup' (Vorgabe).</summary>
     ArchitectureScope: string;
     /// <summary>Bibliotheks-Units (RTL, VCL, Fremdbibliotheken) mitzählen (architecture.includeLibraryUnits).
@@ -2084,6 +2087,7 @@ begin
   Result.ServerStatusWindow := True;
   // Wie die Vorgaben im Schema (atlas.schema.json, architecture).
   Result.ArchitectureEnabled := True;
+  Result.QueryEnabled := True;
   Result.ArchitectureScope := 'projectGroup';
   Result.ArchitectureIncludeLibraryUnits := False;
   Result.ArchitectureCentralUnits := 15;
@@ -2985,6 +2989,7 @@ begin
     AStore.ReadInteger('DiagnosticsProcesses', BoolValue(Default.DiagnosticsProcesses)) <> 0;
   ServerStatusWindow := AStore.ReadInteger('ServerStatusWindow', BoolValue(Default.ServerStatusWindow)) <> 0;
   ArchitectureEnabled := AStore.ReadInteger('ArchitectureEnabled', BoolValue(Default.ArchitectureEnabled)) <> 0;
+  QueryEnabled := AStore.ReadInteger('QueryEnabled', BoolValue(Default.QueryEnabled)) <> 0;
   ArchitectureScope := AStore.ReadString('ArchitectureScope', Default.ArchitectureScope);
   ArchitectureIncludeLibraryUnits := AStore.ReadInteger('ArchitectureIncludeLibraryUnits',
     BoolValue(Default.ArchitectureIncludeLibraryUnits)) <> 0;
@@ -3599,6 +3604,7 @@ begin
   AStore.WriteInteger('DiagnosticsProcesses', BoolValue(DiagnosticsProcesses));
   AStore.WriteInteger('ServerStatusWindow', BoolValue(ServerStatusWindow));
   AStore.WriteInteger('ArchitectureEnabled', BoolValue(ArchitectureEnabled));
+  AStore.WriteInteger('QueryEnabled', BoolValue(QueryEnabled));
   AStore.WriteString('ArchitectureScope', ArchitectureScope);
   AStore.WriteInteger('ArchitectureIncludeLibraryUnits', BoolValue(ArchitectureIncludeLibraryUnits));
   AStore.WriteInteger('ArchitectureCentralUnits', ArchitectureCentralUnits);

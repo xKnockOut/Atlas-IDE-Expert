@@ -116,6 +116,9 @@ uses
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.SymbolPath,
   Atlas.Common.Lsp.SymbolPath,
+  Atlas.Common.Query.Contract,
+  Atlas.Common.Query.Catalog,
+  Atlas.Common.Query.Output,
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Analysis,
   Atlas.Common.Hotspots.Service,
@@ -1202,6 +1205,65 @@ begin
 end;
 
 /// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei den Prüfregeln (#1112).</summary>
+/// <summary>query_code (#1351): Code-Abfragen über den Index der Gruppe; nur lesend.</summary>
+procedure RegisterQueryTools(AServer: TMcpServer; AGroup: TShellWorkspaceGroup);
+begin
+  AServer.AddTool('query_code',
+    'Code-Abfragen über den Index (#1351) in einer kleinen Sprache: <Menge> where <Bedingung> [order by <Feld> ' +
+    '[asc|desc]] [limit n]. Mengen: units, classes, records, interfaces, methods, routines, fields, properties, ' +
+    'forms. Felder z. B. name, unit, visibility, methods, lines, complexity, cognitive, params, callers, callees, ' +
+    'uses, usedBy, ancestor, components; Prädikate inherits, implements, uses, calls, has attribute; and, or, not, ' +
+    'Klammern, like mit * und ?. Beispiel: classes where inherits TForm and methods > 40 order by methods desc. ' +
+    'Zahlen wie get_metrics und find_unused_code; erschlossene Aufrufe (#1119) sind als „erschlossen“ markiert. ' +
+    'Ohne query die Kurzhilfe mit allen Feldern. Gespeicherte Abfragen aus atlas.json über @name.',
+    '{"type":"object","properties":{' +
+      '"query":{"type":"string","description":"Abfrage oder @name einer gespeicherten Abfrage; leer = Kurzhilfe"},' +
+      '"format":{"type":"string","enum":["markdown","json"],"description":"markdown (Vorgabe) oder json"},' +
+      '"limit":{"type":"integer","minimum":1,"default":200,"description":"Höchstzahl der Zeilen; Vorgabe 200"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      mText, mFormat: string;
+      mSettings: TServerSettings;
+      mSaved: TSavedQuery;
+      mFound: Boolean;
+      mLimit: Integer;
+      mResult: TQueryResult;
+    begin
+      mSettings := AGroup.Main.Configuration.Settings;
+      if not mSettings.QueryEnabled then
+        raise EMcpToolError.Create('Code-Abfragen sind ausgeschaltet (query.enabled)');
+      mFormat := TMcpServer.OptionalString(AArguments, 'format');
+      if (mFormat <> '') and not SameText(mFormat, 'markdown') and not SameText(mFormat, 'json') then
+        raise EMcpToolError.Create('"format" ist markdown oder json');
+      mText := Trim(TMcpServer.OptionalString(AArguments, 'query'));
+      if mText = '' then
+        Exit(TQueryCatalog.Help);
+      if mText.StartsWith('@') then
+      begin
+        mFound := False;
+        for mSaved in mSettings.Queries do
+          if SameText(mSaved.Name, Copy(mText, 2, MaxInt)) then
+          begin
+            mText := mSaved.Query;
+            mFound := True;
+            Break;
+          end;
+        if not mFound then
+          raise EMcpToolError.Create(Format('Keine gespeicherte Abfrage "%s" in atlas.json (queries)',
+            [Copy(mText, 2, MaxInt)]));
+      end;
+      if not AArguments.TryGetValue<Integer>('limit', mLimit) or (mLimit < 1) then
+        mLimit := 200;
+      mResult := AGroup.Queries.Execute(TQueryRequest.Create(mText, mLimit));
+      if mResult.Failed then
+        raise EMcpToolError.Create(TQueryOutput.ErrorText(mResult));
+      if SameText(mFormat, 'json') then
+        Result := TQueryOutput.Json(mResult)
+      else
+        Result := TQueryOutput.Markdown(mResult);
+    end);
+end;
+
 procedure RegisterDeadCodeTools(AServer: TMcpServer; AGroup: TShellWorkspaceGroup; const AIndex: ISymbolIndex;
   const ARoot: string; AGuard: TMcpPathGuard);
 begin
@@ -1536,7 +1598,8 @@ begin
   try
     RegisterTools(Server, nil, nil, nil, '', nil, nil, nil, nil);
     RegisterDeadCodeTools(Server, nil, nil, '', nil);
-    RegisterAffectedTestsTool(Server, nil, '', nil);
+    RegisterAffectedTestsTool(Server, nil, '', nil,
+    RegisterQueryTools(Server, nil);
     RegisterHotspotTools(Server, nil, nil, '');
     RegisterStatusTools(Server, nil, '');
     Listed := Server.ListTools;
@@ -1834,7 +1897,8 @@ begin
           Result := TArchitectureReport.Text(Overview, ASection, TArchitectureReport.TextLimit);
       end, FindPathOf(Index, PathGraphs, PathLocator, Workspace, EnsureAny, Root));
     RegisterDeadCodeTools(Server, Group, Index, Root, Guard);
-    RegisterAffectedTestsTool(Server, Group, Root, Code.ImpactOptionsFor);
+    RegisterAffectedTestsTool(Server, Group, Root, Code.ImpactOptionsFor,
+    RegisterQueryTools(Server, Group);
     RegisterHotspotTools(Server, Group, Hotspots, Root);
     RegisterStatusTools(Server, Index, Root);
     // Sicherheit (#99).
@@ -1853,6 +1917,8 @@ begin
         // Betroffene Tests (#1353).
         if not Workspace.Configuration.Settings.Tests.Affected then
           Result := Result + ['get_affected_tests'];
+        if not Workspace.Configuration.Settings.QueryEnabled then
+          Result := Result + ['query_code'];
       end;
     Server.OnAudit :=
       procedure(AText: string)

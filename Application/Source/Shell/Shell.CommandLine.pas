@@ -64,6 +64,12 @@
 // Absturzfall nachstellen (#1355):
 //   --replay <anfrage.json> Fall aus %LOCALAPPDATA%\Atlas\crash nachspielen: Exit-Code 1 =
 //                         reproduziert, 0 = nicht reproduziert, 2 = Fall nicht lesbar
+// Code-Abfragen (#1351):
+//   --query "<Abfrage>"   statt der Treffer das Ergebnis einer Abfrage über das Ziel aus --check,
+//                         z. B. "classes where methods > 40"; "@name" führt eine gespeicherte Abfrage
+//                         aus atlas.json (queries) aus. --format text (Standard), json oder csv;
+//                         Exit-Code 0, Fehler in der Abfrage 3, query.enabled aus 3
+//   --fail-on-match       mit --query Exit-Code 1, sobald die Abfrage etwas findet
 // Hotspots (#1354):
 //   --hotspots <Datei>    Hotspots des Ziels aus --check (Standard: aktueller Ordner) aus
 //                         Änderungshäufigkeit und Komplexität samt Methoden und
@@ -137,6 +143,13 @@ type
     CompareFile: string;
     /// <summary>--replay: anfrage.json eines Absturzfalls (#1355); '' = kein Nachstellen.</summary>
     ReplayFile: string;
+    /// <summary>--query: Code-Abfrage oder @name einer gespeicherten (#1351); '' = keine.</summary>
+    QueryText: string;
+    /// <summary>--fail-on-match: Exit-Code 1, wenn --query etwas findet (#1351).</summary>
+    FailOnMatch: Boolean;
+    /// <summary>Wert von --format wie angegeben, für Ausgaben mit eigenen Formaten (--query csv, #1351); '' = keiner.
+    /// </summary>
+    FormatText: string;
     /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
@@ -299,14 +312,15 @@ begin
     StringOption('--index-cache', @Result.IndexCacheFolder),
     StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile),
     StringOption('--replay', @Result.ReplayFile),
-    StringOption('--hotspots', @Result.HotspotsFile)];
+    StringOption('--hotspots', @Result.HotspotsFile),
+    StringOption('--query', @Result.QueryText), StringOption('--hotspots', @Result.HotspotsFile)];
   Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
     FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),
     FlagOption('--include-uncommitted', @Result.IncludeUncommitted),
     FlagOption('--changed-lines', @Result.ChangedLines), FlagOption('--update-baseline', @Result.UpdateBaseline),
     FlagOption('--suppression-stats', @Result.SuppressionStats), FlagOption('--metrics', @Result.Metrics),
     FlagOption('--todos', @Result.Todos), FlagOption('--no-index', @Result.NoIndex),
-    FlagOption('--fix-dry-run', @Result.FixDryRun),
+    FlagOption('--fix-dry-run', @Result.FixDryRun), FlagOption('--fail-on-match', @Result.FailOnMatch),
     FlagOption('--format-check', @Result.FormatCheck), FlagOption('--format-write', @Result.FormatWrite)];
 
   Index := Low(AArgs);
@@ -369,6 +383,8 @@ begin
         end
         // dunitx gibt es nur für --affected-tests (#1353); dort wird der Wert geprüft.
         else if not SameText(Value, 'dunitx') then
+        // csv gibt es nur für --query (#1351); dort prüft der Linter das Format.
+        else if not SameText(Value, 'csv') then
           AddWarning(Format('Unbekanntes Format "%s", verwendet wird text', [Value]));
       end;
     end

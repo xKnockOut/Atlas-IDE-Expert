@@ -16,6 +16,7 @@ uses
   // Datengrundlage jeder Regel und hängt selbst nur an Contracts.
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Query.Contract,
   Atlas.Common.Semantics.Contract;
 
 type
@@ -362,6 +363,9 @@ type
     /// "SYMBOL_PLATFORM=false", "UNSAFE_CODE=true", "WARNINGS=false" (#1378); leer ohne Projekt. Regeln lesen sie
     /// über TRuleWarnSwitches.</summary>
     ProjectWarnings: TArray<string>;
+    /// <summary>Code-Abfragen des Arbeitsbereichs (#1351) für die Regeln query:<name>; nil = keine, gespeicherte
+    /// Abfragen mit failIfAny laufen dann nicht.</summary>
+    Queries: ICodeQueries;
   end;
 
   /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,
@@ -385,6 +389,8 @@ type
     Naming: TRuleNaming;
     /// <summary>Warnungen der .dproj als "Bezeichner=Wert" (#1378); leer = ohne Projekt.</summary>
     ProjectWarnings: TArray<string>;
+    /// <summary>Code-Abfragen des Arbeitsbereichs (#1351); nil = keine.</summary>
+    Queries: ICodeQueries;
     /// <summary>Trägt die Dienste in AContext ein.</summary>
     procedure ApplyTo(var AContext: TRuleContext);
   end;
@@ -487,6 +493,7 @@ begin
   AContext.ProjectFiles := ProjectFiles;
   AContext.Naming := Naming;
   AContext.ProjectWarnings := ProjectWarnings;
+  AContext.Queries := Queries;
 end;
 
 { TRuleDescriptor }

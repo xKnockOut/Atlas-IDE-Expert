@@ -226,6 +226,9 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.OverrideMarks.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Calculator.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Report.Tests.pas"/>
+        <DCCReference Include="Common\Query\Atlas.Common.Query.Language.Tests.pas"/>
+        <DCCReference Include="Common\Query\Atlas.Common.Query.Engine.Tests.pas"/>
+        <DCCReference Include="Common\Query\Atlas.Common.Query.Output.Tests.pas"/>
         <DCCReference Include="Common\Metrics\Atlas.Common.Metrics.Collector.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Metrics.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Metrics.Tests.pas"/>
@@ -257,6 +260,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DebugDisplay.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Todos.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Architecture.Tests.pas"/>
+        <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Query.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Hotspots.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.DebugDisplay.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.EventHandlers.Tests.pas"/>
@@ -514,6 +518,7 @@
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ContextSnippets.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DataBinding.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.DfmProperties.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.SavedQueries.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassCompletion.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.Tests.pas"/>
         <DCCReference Include="Common\Dfm\Atlas.Common.Dfm.ComponentRename.Tests.pas"/>
@@ -1047,6 +1052,10 @@
         <DCCReference Include="IDE.Expert\Atlas.UI.Architecture.Assignment.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Architecture\Atlas.UI.Architecture.Frame.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.UI.Architecture.Frame.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Query\Atlas.Core.Query.Model.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Query.Model.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Query\Atlas.UI.Query.Frame.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.UI.Query.Frame.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Hotspots\Atlas.Core.Hotspots.Model.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hotspots.Model.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\UI\Hotspots\Atlas.UI.Hotspots.Chart.pas"/>

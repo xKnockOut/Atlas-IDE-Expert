@@ -82,6 +82,10 @@
       "caption": "Architektur",
       "captionEn": "Architecture"
     },
+    "general.query": {
+      "caption": "Code-Abfragen",
+      "captionEn": "Code queries"
+    },
     "general.hotspots": {
       "caption": "Hotspots",
       "captionEn": "Hotspots"
@@ -430,6 +434,20 @@
       "x-page": "Allgemein",
       "x-parent": "architecture.enabled",
       "x-issue": "#1118"
+    },
+    "QueryEnabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Code-Abfragen über den Index: Fenster „Atlas-Abfrage“, Befehl „Code abfragen“ und Menüeintrag Ansicht › Atlas › Abfrage; aus = kein Menüeintrag, kein Fenster, kein Befehl; derselbe Schlüssel in settings.json schaltet auch MCP query_code und --query ab.",
+      "x-key": "query.enabled",
+      "x-area": "general",
+      "x-page": "Allgemein",
+      "x-node": "general.query",
+      "x-feature": "Query",
+      "x-quickToggle": true,
+      "x-caption": "Code-Abfragen",
+      "x-captionEn": "Code queries",
+      "x-issue": "#1351"
     },
     "ArchitectureWindowPlaced": {
       "type": "boolean",

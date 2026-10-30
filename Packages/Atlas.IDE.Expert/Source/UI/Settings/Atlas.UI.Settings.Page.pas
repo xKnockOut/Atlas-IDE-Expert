@@ -304,6 +304,7 @@ type
     FArchitectureScope: TAtlasChoiceBox;
     FArchitectureLibrary: TCheckBox;
     FArchitectureCentral: TEdit;
+    FQuery: TCheckBox;
     // Hotspots (#1354).
     FHotspots: TCheckBox;
     FHotspotsMonths: TEdit;
@@ -1814,6 +1815,7 @@ type
     property ArchitectureCheck: TCheckBox read FArchitecture;
     property ArchitectureScopeChoice: TAtlasChoiceBox read FArchitectureScope;
     property ArchitectureCentralEdit: TEdit read FArchitectureCentral;
+    property QueryCheck: TCheckBox read FQuery;
     property HotspotsCheck: TCheckBox read FHotspots;
     property HotspotsMonthsEdit: TEdit read FHotspotsMonths;
     property HotspotsMinCommitsEdit: TEdit read FHotspotsMinCommits;
@@ -2319,6 +2321,8 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeGroup), TAtlasStrings.Text(TAtlasTextId.ArchitectureScopeProject)]);
   FArchitectureLibrary := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureLibrary));
   FArchitectureCentral := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsArchitectureCentral));
+  // Code-Abfragen (#1351): Fenster „Atlas-Abfrage“, Befehl und Menüeintrag; Unterpunkt über x-node.
+  FQuery := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsQuery));
   // Hotspots (#1354): Unterpunkt „Hotspots“ über x-node.
   FHotspots := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHotspots));
   FHotspotsMonths := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHotspotsMonths));
@@ -2994,6 +2998,7 @@ begin
   Bind('Problems', FProblems);
   Bind('ProblemsWindow', FProblemsWindow);
   Bind('ArchitectureEnabled', FArchitecture);
+  Bind('QueryEnabled', FQuery);
   Bind('HotspotsEnabled', FHotspots);
   Bind('ProblemsLive', FProblemsLive);
   Bind('HoverProblemActions', FHoverProblemActions);
@@ -6676,6 +6681,7 @@ begin
   FMarks.Bind(FArchitectureScope, ['ArchitectureScope']);
   FMarks.Bind(FArchitectureLibrary, ['ArchitectureIncludeLibraryUnits']);
   FMarks.Bind(FArchitectureCentral, ['ArchitectureCentralUnits']);
+  FMarks.Bind(FQuery, ['QueryEnabled']);
   FMarks.Bind(FHotspots, ['HotspotsEnabled']);
   FMarks.Bind(FHotspotsMonths, ['HotspotsMonths']);
   FMarks.Bind(FHotspotsMinCommits, ['HotspotsCouplingMinCommits']);
@@ -9007,6 +9013,7 @@ begin
   FArchitectureScope.Choice := Max(0, IndexText(ASettings.ArchitectureScope, ['projectGroup', 'project']));
   FArchitectureLibrary.Checked := ASettings.ArchitectureIncludeLibraryUnits;
   FArchitectureCentral.Text := IntToStr(ASettings.ArchitectureCentralUnits);
+  FQuery.Checked := ASettings.QueryEnabled;
   FHotspots.Checked := ASettings.HotspotsEnabled;
   FHotspotsMonths.Text := IntToStr(ASettings.HotspotsMonths);
   FHotspotsMinCommits.Text := IntToStr(ASettings.HotspotsCouplingMinCommits);
@@ -9671,6 +9678,7 @@ begin
     ASettings.ArchitectureScope := 'projectGroup';
   ASettings.ArchitectureIncludeLibraryUnits := FArchitectureLibrary.Checked;
   ASettings.ArchitectureCentralUnits := StrToIntDef(FArchitectureCentral.Text, ASettings.ArchitectureCentralUnits);
+  ASettings.QueryEnabled := FQuery.Checked;
   ASettings.HotspotsEnabled := FHotspots.Checked;
   ASettings.HotspotsMonths := StrToIntDef(FHotspotsMonths.Text, ASettings.HotspotsMonths);
   ASettings.HotspotsCouplingMinCommits := StrToIntDef(FHotspotsMinCommits.Text, ASettings.HotspotsCouplingMinCommits);

@@ -250,6 +250,11 @@ type
     /// den Wert gibt der Manager nach ADone frei. Startet keinen Server.</summary>
     procedure RunServerCommandAsync(const ACommand, AArgumentsJson: string; ATimeoutMs: Cardinal;
       const ADone: TProc<TJSONValue>);
+    /// <summary>Anfrage AMethod (Parameter als JSON-Objekt) im Hintergrund an den laufenden Server (#1351), abbrechbar
+    /// über ACancelled (aus dem Hintergrund-Thread gefragt); ADone bekommt die Antwort im Hauptthread (nil bei
+    /// Fehler, Abbruch oder Zeitlimit). Startet keinen Server.</summary>
+    procedure RunServerRequestAsync(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
+      const ACancelled: TFunc<Boolean>; const ADone: TProc<TJSONValue>);
     /// <summary>Laufende Sitzung, Server bei Bedarf gestartet; nil, wenn er nicht startet (Hauptthread).</summary>
     function ActiveSession: TLspSession;
     /// <summary>Laufende, initialisierte Sitzung oder nil; startet keinen Server (#402).</summary>
@@ -1511,6 +1516,24 @@ begin
     function(ASession: TLspSession): TJSONValue
     begin
       Result := ASession.RunCommand(Command, Arguments, Timeout);
+    end, ADone);
+end;
+
+procedure TAtlasCodeInsightManager.RunServerRequestAsync(const AMethod, AParamsJson: string; ATimeoutMs: Cardinal;
+  const ACancelled: TFunc<Boolean>; const ADone: TProc<TJSONValue>);
+var
+  mMethod, mParams: string;
+  mTimeout: Cardinal;
+  mCancelled: TFunc<Boolean>;
+begin
+  mMethod := AMethod;
+  mParams := AParamsJson;
+  mTimeout := ATimeoutMs;
+  mCancelled := ACancelled;
+  RunInBackground(RunningSession,
+    function(ASession: TLspSession): TJSONValue
+    begin
+      Result := ASession.RunRequest(mMethod, mParams, mTimeout, mCancelled);
     end, ADone);
 end;
 
