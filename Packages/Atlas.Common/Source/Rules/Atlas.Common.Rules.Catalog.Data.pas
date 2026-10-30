@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4750] of string = (
+  BaseLines: array[0..4756] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -2130,9 +2130,11 @@ const
     '      "group": "style",',
     '      "description": "A parameter, local or inline variable has the same name as a field or property of the class (also inherited and visible there, resolved through the file and the symbol index) or ' +
     'as a global variable of the unit declared before the routine. Especially treacherous in form methods: Caption, Name, Tag, Left. If VCL is not in the index, the members of TComponent and TControl are k' +
-    'nown when the ancestor chain ends at a VCL base class. Parameters of event handlers (with Sender) are skipped because the event type dictates the signature. High confidence. Quick fix: rename to AName' +
-    ' (parameter, also in the declaration) or LName (local variable) within the routine; with prefixes in the project file .atlas (naming) these are used instead, e.g. mName. Option ignore lists name patte' +
-    'rns that are never reported (default Sender, Value).",',
+    'nown when the ancestor chain ends at a VCL base class. Members inherited from RTL, VCL or another library (unit from the library path) are only reported where they could be meant: a local variable tha' +
+    't is only assigned or only read, a value parameter that is assigned. Helper variables such as Left, Text or Name that are read and written stay silent; option frameworkMembers reports them as before. ' +
+    'Parameters of event handlers (with Sender) and of methods with override or message are skipped because the event type, the ancestor or the message dictates the signature. High confidence. Quick fix: r' +
+    'ename to AName (parameter, also in the declaration) or LName (local variable) within the routine; with prefixes in the project file .atlas (naming) these are used instead, e.g. mName. Option ignore li' +
+    'sts name patterns that are never reported (default Sender, Value).",',
     '      "bad": "procedure TfrmKunde.Laden(const Caption: string);\nbegin\n  Caption := Caption + '' (geladen)'';\nend;",',
     '      "good": "procedure TfrmKunde.Laden(const ACaption: string);\nbegin\n  Caption := ACaption + '' (geladen)'';\nend;",',
     '      "options": [',
@@ -2144,6 +2146,12 @@ const
     '            "Value"',
     '          ],',
     '          "description": "Name patterns (* and ?) that are never reported."',
+    '        },',
+    '        {',
+    '          "name": "frameworkMembers",',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Report every local name that shadows a member inherited from RTL, VCL or another library, not only suspicious ones."',
     '        }',
     '      ]',
     '    },',
@@ -5575,7 +5583,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2171] of string = (
+  OverlayLines_de: array[0..2175] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -6764,13 +6772,19 @@ const
     '      "name": "Lokaler Name verdeckt Feld oder Property",',
     '      "description": "Ein Parameter, eine lokale oder Inline-Variable heißt wie ein Feld oder eine Property der Klasse (auch geerbt und dort sichtbar, aufgelöst über die Datei und den Symbolindex) ode' +
     'r wie eine globale Variable der Unit, die vor der Routine deklariert ist. In Formularmethoden besonders tückisch: Caption, Name, Tag, Left. Steht die VCL nicht im Index, kennt die Regel die Mitglieder' +
-    ' von TComponent und TControl, wenn die Vorfahrenkette an einer VCL-Grundklasse endet. Parameter von Ereignis-Handlern (mit Sender) bleiben außen vor, weil der Ereignistyp die Signatur vorgibt. Konfide' +
-    'nz hoch. Schnellkorrektur: in der Routine in AName (Parameter, auch in der Deklaration) bzw. LName (lokale Variable) umbenennen; setzt die Projektdatei .atlas Präfixe (naming), gelten diese, z. B. mNa' +
-    'me. Die Option ignore nennt Namensmuster, die nie gemeldet werden (Vorgabe Sender, Value).",',
+    ' von TComponent und TControl, wenn die Vorfahrenkette an einer VCL-Grundklasse endet. Mitglieder, die aus RTL, VCL oder einer anderen Bibliothek geerbt sind (Unit aus dem Bibliothekspfad), meldet die ' +
+    'Regel nur, wo sie gemeint sein könnten: eine lokale Variable, die nur zugewiesen oder nur gelesen wird, ein Werteparameter, dem etwas zugewiesen wird. Hilfsvariablen wie Left, Text oder Name, die gele' +
+    'sen und geschrieben werden, bleiben still; die Option frameworkMembers meldet sie wie früher. Parameter von Ereignis-Handlern (mit Sender) und von Methoden mit override oder message bleiben außen vor,' +
+    ' weil der Ereignistyp, der Vorfahr bzw. die Botschaft die Signatur vorgibt. Konfidenz hoch. Schnellkorrektur: in der Routine in AName (Parameter, auch in der Deklaration) bzw. LName (lokale Variable) ' +
+    'umbenennen; setzt die Projektdatei .atlas Präfixe (naming), gelten diese, z. B. mName. Die Option ignore nennt Namensmuster, die nie gemeldet werden (Vorgabe Sender, Value).",',
     '      "options": [',
     '        {',
     '          "name": "ignore",',
     '          "description": "Namensmuster (* und ?), die nie gemeldet werden."',
+    '        },',
+    '        {',
+    '          "name": "frameworkMembers",',
+    '          "description": "Jeden lokalen Namen melden, der ein aus RTL, VCL oder einer Bibliothek geerbtes Mitglied verdeckt, nicht nur verdächtige."',
     '        }',
     '      ]',
     '    },',

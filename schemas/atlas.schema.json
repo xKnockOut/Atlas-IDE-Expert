@@ -541,6 +541,11 @@
                 "default": false,
                 "description": "Nur global-variable: auch die Formularvariablen des Designers melden (#941)."
               },
+              "frameworkMembers": {
+                "type": "boolean",
+                "default": false,
+                "description": "Nur shadowed-name: jeden lokalen Namen melden, der ein aus RTL, VCL oder einer Bibliothek geerbtes Mitglied verdeckt (Left, Text, Name …), nicht nur, wo das Mitglied gemeint sein könnte."
+              },
               "includeFields": {
                 "type": "boolean",
                 "default": true,

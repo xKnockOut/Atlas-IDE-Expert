@@ -198,7 +198,7 @@ var
   Creation, Options, Annotation, Annotations: TJSONObject;
   NewFile: TWorkspaceNewFile;
   FileEdits: TWorkspaceFileEdits;
-  Uri, Deleted: string;
+  Uri, mDeleted: string;
 begin
   Changes := TJSONArray.Create;
   for NewFile in FCreated do
@@ -219,11 +219,11 @@ begin
   for FileEdits in FFiles do
     Changes.AddElement(DocumentEdit(TDocumentUris.FromPath(FileEdits.FileName), FileEdits.Edits, AAnnotationId));
   // Gelöschte Dateien zuletzt: Änderungen an anderen Dateien (uses) stehen davor.
-  for Deleted in FDeleted do
+  for mDeleted in FDeleted do
   begin
     Creation := TJSONObject.Create;
     Creation.AddPair('kind', 'delete');
-    Creation.AddPair('uri', TDocumentUris.FromPath(Deleted));
+    Creation.AddPair('uri', TDocumentUris.FromPath(mDeleted));
     Options := TJSONObject.Create;
     Options.AddPair('ignoreIfNotExists', TJSONBool.Create(True));
     Creation.AddPair('options', Options);

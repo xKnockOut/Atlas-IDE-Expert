@@ -49,6 +49,17 @@ type
     procedure ShadowedNameSilentCases;
     [Test]
     procedure ShadowedNameOptions;
+    /// <summary>Geerbte Mitglieder aus RTL, VCL oder Bibliotheken: nur, wo sie gemeint sein könnten.</summary>
+    [Test]
+    procedure ShadowedNameFrameworkMembers;
+    [Test]
+    procedure ShadowedNameFrameworkMembersFromIndex;
+    /// <summary>Parameter von override- und message-Methoden: Die Signatur ist vorgegeben.</summary>
+    [Test]
+    procedure ShadowedNameOverrideParameters;
+    /// <summary>In class-Methoden zählen nur class var und class property.</summary>
+    [Test]
+    procedure ShadowedNameClassMethods;
     [Test]
     procedure OverrideTargetIssueExample;
     [Test]
@@ -495,6 +506,116 @@ begin
     '{"rules": {"shadowed-name": {"ignore": []}}}', 'U.pas'))));
   TConfigurationParser.Parse('{"rules": {"shadowed-name": {"ignore": "Value"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
+end;
+
+function Formular(const AVars, ABody: string): string;
+begin
+  Result := 'unit U;'#10'interface'#10'type'#10'  TForm1 = class(TForm)'#10'  public'#10 +
+    '    procedure Zeichnen;'#10'  end;'#10'implementation'#10'procedure TForm1.Zeichnen;'#10'var'#10 + AVars + #10 +
+    'begin'#10 + ABody + #10'end;'#10'end.';
+end;
+
+procedure TInheritanceRulesTests.ShadowedNameFrameworkMembers;
+var
+  Source: string;
+  Findings: TArray<TRuleFinding>;
+begin
+  // Hilfsvariablen, die gelesen und zugewiesen werden oder als Argument dienen, bleiben still.
+  Source := Formular('  Left, Top: Integer;'#10'  Text: string;',
+    '  Left := 1;'#10'  Top := Left + 2;'#10'  Text := IntToStr(Top);'#10'  Canvas.TextOut(Left, Top, Text);');
+  TRuleAssert.Silent(TShadowedNameRule.Create, Source);
+  Source := Formular('  Width: Integer;'#10'  Rect: TRect;'#10'  Name: string;',
+    '  Rect.Left := 0;'#10'  Lesen(Name);'#10'  Name := Name + ''x'';');
+  TRuleAssert.Silent(TShadowedNameRule.Create, Source);
+  // Nur zugewiesen: gemeint war wohl die Property.
+  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, Formular('  Caption: string;',
+    '  Caption := ''Kunde'';'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Lokale Variable Caption verdeckt die Property TForm1.Caption; die Zuweisung ändert nur die ' +
+    'lokale Variable.', Findings[0].Message);
+  // Nur gelesen, nie zugewiesen: ebenso.
+  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, Formular('  Width, Mitte: Integer;',
+    '  Mitte := Width div 2;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Lokale Variable Width verdeckt die Property TForm1.Width; gelesen wird die lokale Variable, der ' +
+    'nichts zugewiesen wird.', Findings[0].Message);
+  Assert.AreEqual('In LWidth umbenennen', Findings[0].Fixes[0].Title);
+  // Schleifenvariable einer for-in-Schleife: zugewiesen und gelesen.
+  TRuleAssert.Silent(TShadowedNameRule.Create, Formular('  Left, Summe: Integer;',
+    '  Summe := 0;'#10'  for Left in Werte do'#10'    Summe := Summe + Left;'));
+  // Inline-Variable mit Vorbelegung, danach gelesen: still.
+  TRuleAssert.Silent(TShadowedNameRule.Create, Formular('  Mitte: Integer;',
+    '  var Top := 5;'#10'  Mitte := Top;'));
+  // Parameter: var/out und nur gelesene still, zugewiesene Werteparameter gemeldet.
+  Source := 'unit U;'#10'interface'#10'type'#10'  TForm1 = class(TForm)'#10'  public'#10 +
+    '    procedure Holen(var Text: string; out Tag: Integer; Left: Integer);'#10'  end;'#10'implementation'#10 +
+    'procedure TForm1.Holen(var Text: string; out Tag: Integer; Left: Integer);'#10'begin'#10 +
+    '  Text := IntToStr(Left);'#10'  Tag := 0;'#10'end;'#10'end.';
+  TRuleAssert.Silent(TShadowedNameRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create,
+    StringReplace(Source, '  Tag := 0;', '  Left := 0;', [])))));
+  // frameworkMembers: true meldet wie bisher jeden Namen.
+  Source := Formular('  Left, Top: Integer;'#10'  Text: string;',
+    '  Left := 1;'#10'  Top := Left + 2;'#10'  Text := IntToStr(Top);'#10'  Canvas.TextOut(Left, Top, Text);');
+  Assert.AreEqual(3, Integer(Length(TRuleAssert.Findings(TShadowedNameRule.Create, Source,
+    '{"rules": {"shadowed-name": {"frameworkMembers": true}}}', 'U.pas'))));
+end;
+
+procedure TInheritanceRulesTests.ShadowedNameFrameworkMembersFromIndex;
+const
+  VclSource = 'unit Vcl.Forms;'#10'interface'#10'type'#10'  TCustomForm = class'#10'  public'#10 +
+    '    property Position: Integer read FPosition;'#10'  end;'#10'implementation'#10'end.';
+  OwnSource = 'unit Basis;'#10'interface'#10'type'#10'  TBasis = class'#10'  public'#10 +
+    '    property Position: Integer read FPosition;'#10'  end;'#10'implementation'#10'end.';
+  Body = 'implementation'#10'procedure TFenster.Suchen;'#10'var'#10'  Position: Integer;'#10'begin'#10 +
+    '  Position := 1;'#10'  Inc(Position);'#10'end;'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Aus einer Bibliotheks-Unit geerbt: die Hilfsvariable Position bleibt still.
+  Assert.AreEqual(0, Integer(Length(Run(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TFenster = class(TCustomForm)'#10'    procedure Suchen;'#10'  end;'#10 + Body, IndexWith([VclSource])))));
+  // Aus einer eigenen Unit geerbt: gemeldet wie bisher.
+  Findings := Run(TShadowedNameRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TFenster = class(TBasis)'#10'    procedure Suchen;'#10'  end;'#10 + Body, IndexWith([OwnSource]));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Lokale Variable Position verdeckt die Property TFenster.Position; die Zuweisung ändert nur die ' +
+    'lokale Variable.', Findings[0].Message);
+end;
+
+procedure TInheritanceRulesTests.ShadowedNameOverrideParameters;
+const
+  Source = 'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  protected'#10'    FAction: Integer;'#10 +
+    '    property Action: Integer read FAction;'#10'    procedure Schliessen(var Action: Integer); virtual;'#10 +
+    '    procedure Melden(var Action: Integer); message 1024;'#10'  end;'#10'  TKind = class(TBasis)'#10 +
+    '  protected'#10'    procedure Schliessen(var Action: Integer); override;'#10'  end;'#10'implementation'#10 +
+    'procedure TBasis.Schliessen(var Action: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TBasis.Melden(var Action: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TKind.Schliessen(var Action: Integer);'#10'begin'#10'  Action := 0;'#10'end;'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Gemeldet wird nur die virtuelle Methode, die die Signatur selbst festlegt.
+  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(15, Findings[0].Range.StartPos.Line);
+end;
+
+procedure TInheritanceRulesTests.ShadowedNameClassMethods;
+const
+  Source = 'unit U;'#10'interface'#10'type'#10'  TLayout = class'#10'  public'#10'    Decl: Integer;'#10 +
+    '    class var Zaehler: Integer;'#10'    class function Suchen: Integer; static;'#10'  end;'#10 +
+    '  TForm1 = class(TForm)'#10'    class procedure Zeigen;'#10'  end;'#10'implementation'#10 +
+    'class function TLayout.Suchen: Integer;'#10'var'#10'  Decl, Zaehler: Integer;'#10'begin'#10 +
+    '  Decl := 1;'#10'  Zaehler := Decl;'#10'  Result := Zaehler;'#10'end;'#10 +
+    'class procedure TForm1.Zeigen;'#10'var'#10'  Caption: string;'#10'begin'#10'  Caption := ''x'';'#10'end;'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TShadowedNameRule.Create, Source);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Lokale Variable Zaehler verdeckt das Feld TLayout.Zaehler; die Zuweisung ändert nur die lokale ' +
+    'Variable.', Findings[0].Message);
 end;
 
 function Dienste(const ABase, AMembers, AImplementation: string): string;

@@ -810,7 +810,7 @@ var
   Target: TRect;
   Signals: TAtlasSignals;
   Part, Badge: TRect;
-  Text: string;
+  mText: string;
   Inset: Integer;
 begin
   Hook := HookOf(StatusBar);
@@ -863,13 +863,13 @@ begin
       Canvas.RoundRect(Badge.Left, Badge.Top, Badge.Right, Badge.Bottom, Badge.Height, Badge.Height);
       Canvas.Brush.Style := bsClear;
       Canvas.Font.Color := TColor(Signals.ForStatus(FBadgeState).OnSolid);
-      Text := BadgeText;
-      DrawText(Canvas.Handle, PChar(Text), -1, Badge, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
+      mText := BadgeText;
+      DrawText(Canvas.Handle, PChar(mText), -1, Badge, DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
       Canvas.Font.Color := StyleServices.GetSystemColor(clBtnText);
     end;
-    Text := FText;
+    mText := FText;
     Canvas.Brush.Style := bsClear;
-    DrawText(Canvas.Handle, PChar(Text), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+    DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
     Canvas.Brush.Style := bsSolid;
   except
     on E: Exception do
