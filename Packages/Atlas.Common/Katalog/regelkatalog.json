@@ -6,7 +6,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "The source code does not parse. The message says, like the compiler, what was expected and what was found (\"';' expected but 'end' found (like E2029).\") and carries the compiler code: missing ';' (E2066 between statements, E2029 in declarations), ';' before else (E2153), unterminated string (E2052) or comment with its start line (E2057), statements in the interface part (E2050), identifier after a trailing dot (E2372), strict without private or protected (E2375), class before something other than a routine (E2357), try without except or finally (E2125), for without a variable (E2088). Checks on the finished tree: procedure with a result type (E2025), function declaration without one (E2023; the short form of an implementation is fine), value parameter without a type (E2067), initialised local variable (E2195) or several variables with one initial value (E2196), class, interface or object type in a var section (E2060, E2058) or local to a routine (E2061, E2059), label in the interface part (E2049) and goto to an undeclared label (E2031; a label of a surrounding routine is reported by label-misuse as E2093). After an unterminated string or comment the follow-up errors are dropped, as the compiler stops there. Inactive {$IFDEF} branches are not reported. Quick fixes: remove ';' before else (safe, also on save), add ';', close the string, close the comment at the end of its first line.",
+      "description": "The source code does not parse. The message says, like the compiler, what was expected and what was found (\"';' expected but 'end' found (like E2029).\") and carries the compiler code: missing ';' (E2066 between statements, E2029 in declarations), ';' before else (E2153), unterminated string (E2052) or comment with its start line (E2057), statements in the interface part (E2050), identifier after a trailing dot (E2372), strict without private or protected (E2375), class before something other than a routine, var or property (E2123), a number with an empty exponent such as 1.5e (E2053), absolute with an address instead of a variable (E2088), try without except or finally (E2125), for without a variable (E2088). Checks on the finished tree: procedure with a result type (E2025), function declaration without one (E2023; the short form of an implementation is fine), value parameter without a type (E2067), initialised local variable (E2195) or several variables with one initial value (E2196), class, interface or object type in a var section (E2058, in a routine also E2059) or local to a routine (E2059), class operator in a class, interface or object type (E2123; operators exist only in records). The codes follow Delphi 13; older versions reported E2357, E2060 and E2061 instead, label in the interface part (E2049) and goto to an undeclared label (E2031; a label of a surrounding routine is reported by label-misuse as E2093). After an unterminated string or comment the follow-up errors are dropped, as the compiler stops there. Inactive {$IFDEF} branches are not reported. Quick fixes: remove ';' before else (safe, also on save), add ';', close the string, close the comment at the end of its first line.",
       "bad": "if Gueltig then\n  Speichern;\nelse\n  Verwerfen;",
       "good": "if Gueltig then\n  Speichern\nelse\n  Verwerfen;",
       "level": "A",
@@ -32,7 +32,9 @@
         "E2196",
         "E2357",
         "E2372",
-        "E2375"
+        "E2375",
+        "E2053",
+        "E2123"
       ],
       "safeFix": true
     },
@@ -143,11 +145,12 @@
       "category": "code-smell",
       "severity": "warning",
       "group": "architecture",
-      "description": "A uses entry leads, through the uses clauses of other units, back to the unit itself. If every edge of the cycle is in an interface section, the compiler rejects it (like F2047) and the finding is an error; cycles with at least one implementation edge are allowed by Delphi but couple the units tightly (initialization order, recompiling, testing) and are reported with the rule's severity (option implementation). The message shows the complete shortest path (A → B → C → A), the finding hover each edge with its section. Based on the shared uses graph over the symbol index (#268), with inactive conditional branches hidden; the checked unit counts with its editor text. Silent without projects (linter, file without project), while projects are loading or the index is incomplete, and for units the uses graph does not know.",
+      "description": "A uses entry leads, through the uses clauses of other units, back to the unit itself. If every edge of the cycle is in an interface section, the compiler rejects it (like F2047; a unit naming itself like F2092) and the finding is an error; only then does the message name the code (#1383); cycles with at least one implementation edge are allowed by Delphi but couple the units tightly (initialization order, recompiling, testing) and are reported with the rule's severity (option implementation). The message shows the complete shortest path (A → B → C → A), the finding hover each edge with its section. Based on the shared uses graph over the symbol index (#268), with inactive conditional branches hidden; the checked unit counts with its editor text. Silent without projects (linter, file without project), while projects are loading or the index is incomplete, and for units the uses graph does not know.",
       "bad": "unit uKunde;\ninterface\nuses uAuftrag;   // uAuftrag uses uKunde in its interface\n",
       "good": "unit uKunde;\ninterface\n// common types moved to uTypen, used by both\nuses uTypen;",
       "compilerCodes": [
-        "F2047"
+        "F2047",
+        "F2092"
       ],
       "options": [
         {
@@ -406,7 +409,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077. Variables of an interface type are exempt: assigning them holds or releases a reference (scope guards, Writer := nil).",
+      "description": "A value assigned to a local variable is overwritten or the routine ends before it is read. Like compiler hint H2077, which dcc gives only for unmanaged types: for strings, dynamic arrays, variants and records with such fields, and for variables without a declared type, the message names no code (#1383). Variables of an interface type are exempt: assigning them holds or releases a reference (scope guards, Writer := nil).",
       "bad": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := 0;\n  I := Calc;\n  Bar(I);\nend;",
       "good": "procedure Foo;\nvar\n  I: Integer;\nbegin\n  I := Calc;\n  Bar(I);\nend;",
       "options": [
@@ -783,9 +786,12 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "An interface declares no GUID. Supports, as and QueryInterface need one. The confidence is high when the interface is used with them in the same file, otherwise low. The quick fix inserts a new GUID. A dispinterface without GUID does not compile; dispinterface-invalid reports it.",
+      "description": "An interface declares no GUID. Supports, as and QueryInterface need one. The confidence is high when the interface is used with them in the same file, otherwise low; with such a use Delphi reports E2232 there (like E2232). The quick fix inserts a new GUID. A dispinterface without GUID does not compile; dispinterface-invalid reports it.",
       "bad": "type\n  ISaver = interface\n    procedure Save;\n  end;",
-      "good": "type\n  ISaver = interface\n    ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\n    procedure Save;\n  end;"
+      "good": "type\n  ISaver = interface\n    ['{6C1D2A57-0E3B-4F8A-9B2D-5A7E4C3F1D08}']\n    procedure Save;\n  end;",
+      "compilerCodes": [
+        "E2232"
+      ]
     },
     {
       "id": "duplicate-interface-guid",
@@ -1392,9 +1398,15 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks, asm and anonymous methods are skipped.",
+      "description": "An identifier in a statement is declared neither in the unit nor in the units it uses (like compiler error E2003). Checked while typing, without the compiler; with blocks, asm and anonymous methods are skipped. Old object syntax: in New(P, Init) and Dispose(P, Done) the second argument is a constructor or destructor of the object type behind P; if that type lacks it, the rule reports like E2601 or E2602, and Fail outside a constructor like E2078.",
       "bad": "procedure Foo;\nbegin\n  Lst.Add('x');\nend;",
-      "good": "procedure Foo;\nvar\n  Lst: TStringList;\nbegin\n  Lst := TStringList.Create;\n  Lst.Add('x');\nend;"
+      "good": "procedure Foo;\nvar\n  Lst: TStringList;\nbegin\n  Lst := TStringList.Create;\n  Lst.Add('x');\nend;",
+      "compilerCodes": [
+        "E2003",
+        "E2601",
+        "E2602",
+        "E2078"
+      ]
     },
     {
       "id": "deprecated-symbol",
@@ -1446,7 +1458,7 @@
       "category": "bug",
       "severity": "error",
       "group": "find-bugs",
-      "description": "A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that). Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.",
+      "description": "A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that) or a name that appears further down only as an alias of the same-named type of another unit (TX = UnitY.TX: before it, UnitY.TX from uses applies). Quick fixes: add a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.",
       "bad": "type\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;",
       "good": "type\n  TNode = class;\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;"
     },
@@ -1522,7 +1534,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "for I := 0 to List.Count or to Length(A) over zero-based lists and arrays reads one element past the end when the body indexes List[I] or A[I]. With one-based strings it is the other way round: S[0] and for I := 0 to Length(S) read before the first character; {$ZEROBASEDSTRINGS ON} is taken into account. Quick fix: add - 1 or use High(A); for strings Low(S) and High(S). The option countNames lists the names that return a count.",
+      "description": "for I := 0 to List.Count or to Length(A) over zero-based lists and arrays reads one element past the end when the body indexes List[I] or A[I]. With one-based strings it is the other way round: S[0] (Delphi reports E2157) and for I := 0 to Length(S) read before the first character; {$ZEROBASEDSTRINGS ON} is taken into account. Quick fix: add - 1 or use High(A); for strings Low(S) and High(S). The option countNames lists the names that return a count.",
       "bad": "for I := 0 to Kunden.Count do\n  Ausgabe(Kunden[I].Name);",
       "good": "for I := 0 to Kunden.Count - 1 do\n  Ausgabe(Kunden[I].Name);",
       "options": [
@@ -1535,6 +1547,9 @@
           ],
           "description": "Names that return a count (property like Count or function like Length)."
         }
+      ],
+      "compilerCodes": [
+        "E2157"
       ]
     },
     {
@@ -1917,7 +1932,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A local variable (also inline and for var), field (also class var), parameter or constant (const, also local, in classes and inline; not resourcestring) lacks the prefix of its kind. Defaults: local m, field F, parameter A, constant c; after a prefix ending in a letter an upper-case letter or digit must follow (mIndex, not menu). Global variables are not checked. Per kind the prefix comes from the option in atlas.json, else from the project file .atlas (naming, also constant), else the default; an empty value switches the kind off. Off by default: the rule runs only when atlas.json switches it on. Exceptions: one-letter loop counters, Sender, Self and Result, names matching ignore, published fields and fields before the first visibility section of a form, frame or data module (components), parameters of methods with override or message, of published methods, of event handlers (a parameter named Sender) and of methods implementing an interface method (in the file or the symbol index; unknown interface: silent). Parameters are reported at the declaration only. Quick fix: rename to the expected name in the routine or the block after an inline declaration, for parameters also in declaration and implementation, for private fields and class constants in the class and its methods (also Self.Name and TType.Name), for implementation constants in the whole unit. No fix when the new name already occurs where the rename applies (the routine with its parameter list, for fields the class and its methods, for implementation constants the file), the scope contains with, a nested routine redeclares the name, or the name is visible outside the file. While the rule runs, other quick fixes and refactorings build new names with these prefixes (introduce constant → cNewConstant, introduce variable and resolve with → mValue, parameters of “create method” → APreis), so the rule does not report them right away.",
+      "description": "A local variable (also inline and for var), field (also class var), parameter or constant (const, also local, in classes and inline; not resourcestring) lacks the prefix of its kind. Defaults: local m, field F, parameter A, constant c; after a prefix ending in a letter an upper-case letter or digit must follow (mIndex, not menu). Global variables are not checked. Per kind the prefix comes from the option in atlas.json, else from the project file .atlas (naming, also constant), else the default; an empty value switches the kind off. Off by default: the rule runs only when atlas.json switches it on. Exceptions: one-letter loop counters, Sender, Self and Result, names matching ignore, public fields (public, published and fields of a record before its first visibility section: the F belongs to fields behind properties, not to TPoint.X), fields before the first visibility section of a form, frame or data module (components), parameters of methods with override or message, of published methods, of event handlers (a parameter named Sender) and of methods implementing an interface method (in the file or the symbol index; unknown interface: silent). Parameters are reported at the declaration only. Quick fix: rename to the expected name in the routine or the block after an inline declaration, for parameters also in declaration and implementation, for private fields and class constants in the class and its methods (also Self.Name and TType.Name), for implementation constants in the whole unit. No fix when the new name already occurs where the rename applies (the routine with its parameter list, for fields the class and its methods, for implementation constants the file), the scope contains with, a nested routine redeclares the name, or the name is visible outside the file. While the rule runs, other quick fixes and refactorings build new names with these prefixes (introduce constant → cNewConstant, introduce variable and resolve with → mValue, parameters of “create method” → APreis), so the rule does not report them right away.",
       "bad": "procedure TKunde.Laden(const Datei: string);\nvar\n  Zeilen: TStringList;\nbegin\nend;",
       "good": "procedure TKunde.Laden(const ADatei: string);\nvar\n  mZeilen: TStringList;\nbegin\nend;",
       "options": [
@@ -2004,7 +2019,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "Lines longer than the limit max (default 120 characters, matching the rulers from #710). Tabs count up to the next tab stop of format.indentSize. Lines that are only too long because of a string or, with ignoreComments, a comment are not reported. Lines over 1023 characters are always reported as an error regardless of max, because the compiler stops there (F2069). Off by default. Quick fix: Wrap line after commas or before binary operators, where the pieces then fit.",
+      "description": "Lines longer than the limit max (default 120 characters, matching the rulers from #710). Tabs count up to the next tab stop of format.indentSize. Lines that are only too long because of a string or, with ignoreComments, a comment are not reported. Lines over 1023 characters are always reported as a warning regardless of max, because depending on the Delphi version the compiler stops there; lines over 4095 characters as an error, because Delphi 13 stops there too (F2069). Off by default. Quick fix: Wrap line after commas or before binary operators, where the pieces then fit.",
       "bad": "Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel), Steuer.Satz(Land));",
       "good": "Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel),\n  Steuer.Satz(Land));",
       "compilerCodes": [
@@ -2231,7 +2246,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A /// comment does not match its declaration or is not well-formed XML, like the compiler warnings W1201 to W1208 with XML documentation enabled. Reported: <param> for a parameter that does not exist; missing <param> when the block describes parameters at all (like W1208, 'but other parameters do'); with checkReturns, <returns> on a routine without a result and missing <returns> on a function whose block describes parameters. <inheritdoc/> fills in what is missing. Also '<' and '&' outside tags and entities, unknown entities, attribute values without quotes, unclosed and stray end tags, and cref targets that do not exist (W1206, only with an index and when every unit in uses is known; generic targets, unit names and types with unknown ancestors stay silent). With requirePublic, public and published methods and properties of types in the interface section without a /// comment are reported too (not override, not properties without a type). Quick fixes: rename unknown <param> in order to the missing ones, add the rest as empty lines in signature order, remove surplus <param> and stray <returns>; escape the character, add quotes, add or remove the end tag, write an unknown empty tag like TList<T> as text; set cref to the most similar symbol; generate the comment skeleton.",
+      "description": "A /// comment does not match its declaration or is not well-formed XML, like the compiler warnings W1201 to W1208 with XML documentation enabled. The message names a code only where dcc reports it (#1383): for comments in the interface section of a unit (dcc documents nothing else), and among the XML errors only a stray character after a tag name (W1205); Delphi 13 compiles '<' followed by a space, unknown entities, empty attribute values and unclosed tags without a warning. Reported: <param> for a parameter that does not exist; missing <param> when the block describes parameters at all (like W1208, 'but other parameters do'); with checkReturns, <returns> on a routine without a result and missing <returns> on a function whose block describes parameters. <inheritdoc/> fills in what is missing. Also '<' and '&' outside tags and entities, unknown entities, attribute values without quotes, unclosed and stray end tags, and cref targets that do not exist (W1206, only with an index and when every unit in uses is known; generic targets, unit names and types with unknown ancestors stay silent). With requirePublic, public and published methods and properties of types in the interface section without a /// comment are reported too (not override, not properties without a type). Quick fixes: rename unknown <param> in order to the missing ones, add the rest as empty lines in signature order, remove surplus <param> and stray <returns>; escape the character, add quotes, add or remove the end tag, write an unknown empty tag like TList<T> as text; set cref to the most similar symbol; generate the comment skeleton.",
       "bad": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Nummer\">Kundennummer</param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde;",
       "good": "/// <summary>Sucht einen Kunden.</summary>\n/// <param name=\"Id\">Kundennummer</param>\n/// <param name=\"Aktive\"></param>\nfunction Suchen(const Id: Integer; Aktive: Boolean): TKunde;",
       "compilerCodes": [
@@ -2809,7 +2824,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "An {$IFDEF}, {$IFNDEF}, {$IFOPT} or {$IF} that is never closed, so the rest of the file depends on its condition (like E2095, E2280 for {$IF}); {$ELSE}, {$ELSEIF}, {$ENDIF} or {$IFEND} without a matching {$IF…}, or after {$ELSE} (like E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} or {$UNDEF} without a valid symbol (like E2173); an unknown directive or {$WARN} identifier (like W1030), with the closest known name as quick fix; {$POPOPT} without {$PUSHOPT} (like W1078) or {$PUSHOPT} without {$POPOPT} (like W1079); an invalid value for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC, {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: add {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct the typo.",
+      "description": "An {$IFDEF}, {$IFNDEF}, {$IFOPT} or {$IF} that is never closed, so the rest of the file depends on its condition (like E2095, E2280 for {$IF}); {$ELSE}, {$ELSEIF}, {$ENDIF} or {$IFEND} without a matching {$IF…}, or after {$ELSE} (like E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} or {$UNDEF} without a valid symbol (like E2173); an unknown directive or {$WARN} identifier (like E1030, before Delphi 13 W1030; the code follows delphiVersion), with the closest known name as quick fix; {$POPOPT} without {$PUSHOPT} (like W1078) or {$PUSHOPT} without {$POPOPT} (like W1079); an invalid value for {$ALIGN} or {$A} (like E2573). Unknown names are not checked in branches whose condition tests FPC, {$PUSHOPT}/{$POPOPT} only when none of them is inside a conditional branch. Quick fixes: add {$ENDIF} before the first blank line after the open block, remove a surplus directive, correct the typo.",
       "bad": "{$IFDEF DEBUG}\n  Protokoll.Ausfuehrlich := True;\n\nprocedure TDienst.Starten;",
       "good": "{$IFDEF DEBUG}\n  Protokoll.Ausfuehrlich := True;\n{$ENDIF}\n\nprocedure TDienst.Starten;",
       "compilerCodes": [
@@ -2820,7 +2835,8 @@
         "W1030",
         "W1078",
         "W1079",
-        "E2573"
+        "E2573",
+        "E1030"
       ],
       "level": "A"
     },
@@ -2869,12 +2885,11 @@
       "category": "bug",
       "severity": "warning",
       "group": "compiler",
-      "description": "Create on a class that declares or inherits abstract methods without overriding them (like W1020), or on a class declared abstract (like E2402). Calling an abstract method raises EAbstractError at run time; the message names the open methods. Classes are looked up in the file and in the symbol index; overloads with the same number of parameters count as one method. Calls on class references, inherited Create and constructor bodies are not checked. Quick fix for a class of this file that inherits the abstract methods: override them there (like the code action \"override\").",
+      "description": "Create on a class that declares or inherits abstract methods without overriding them (like W1020). A class declared abstract without abstract methods can be created; dcc does not enforce \"class abstract\" (E2402 exists only for .NET, #1383). Calling an abstract method raises EAbstractError at run time; the message names the open methods. Classes are looked up in the file and in the symbol index; overloads with the same number of parameters count as one method. Calls on class references, inherited Create and constructor bodies are not checked. Quick fix for a class of this file that inherits the abstract methods: override them there (like the code action \"override\").",
       "bad": "Form := TForm.Create;\nGesamt := Gesamt + Form.Flaeche;",
       "good": "Form := TKreis.Create;\nGesamt := Gesamt + Form.Flaeche;",
       "compilerCodes": [
-        "W1020",
-        "E2402"
+        "W1020"
       ],
       "level": "B"
     },
@@ -2884,7 +2899,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "The name after read or write of a property does not fit: it is declared neither in the class nor in its ancestors, or it is a property (like E2168); the getter or setter has the wrong kind, parameters or types (like E2234); the setter takes a var or out parameter (like E2282); the accessor is overloaded and no overload fits (like E2271); a class property uses an instance member or a class method without static (like E2355), or an instance property uses a class var or a static class method (like E2356); an array property uses a field (like E2174, index with a field compiles); a field selector goes through a field that is no record or stands behind a class property (like E2459), names a member that is no field (like E2461) or a field the record lacks (like E2562). Names are looked up in the file and, for ancestors, in the symbol index; the rule stays silent when the ancestor chain breaks, the name only exists in an inactive branch, the class cannot see it or the class includes files. Types are compared only when both are built in or declared as types of their own. Quick fix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/write, completion.accessorSection).",
+      "description": "The name after read or write of a property does not fit: it is declared neither in the class nor in its ancestors, or it is a property (like E2168); the getter or setter has the wrong kind, parameters or types (like E2008, older Delphi versions E2234); the setter takes a var or out parameter (like E2282); the accessor is overloaded and no overload fits (like E2250, older Delphi versions E2271); a class property uses an instance member or a class method without static (like E2355), or an instance property uses a class var or a static class method (like E2356); an array property uses a field (like E2174, index with a field compiles); a field selector goes through a field that is no record or stands behind a class property (like E2459), names a member that is no field (like E2461) or a field the record lacks (like E2562). Names are looked up in the file and, for ancestors, in the symbol index; the rule stays silent when the ancestor chain breaks, the name only exists in an inactive branch, the class cannot see it or the class includes files. Types are compared only when both are built in or declared as types of their own. Quick fix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/write, completion.accessorSection).",
       "bad": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write SetName;\nend;",
       "good": "TKunde = class\nprivate\n  FName: string;\n  procedure SetName(const Value: string);\npublic\n  property Name: string read FName write SetName;\nend;",
       "compilerCodes": [
@@ -2897,7 +2912,9 @@
         "E2174",
         "E2459",
         "E2461",
-        "E2562"
+        "E2562",
+        "E2008",
+        "E2250"
       ],
       "level": "B"
     },
@@ -3105,7 +3122,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "The name after unit differs from the file name, usually after renaming the file outside the IDE (like E1038, W1038). Case does not matter, dots in the name do. In a program, library or package, an entry uses X in 'File.pas' whose file declares a different unit is reported too (like E2085); the rule reads that file. Programs, libraries and packages themselves are not compared with their file name, because the compiler does not either. {$WARN UNIT_NAME_MISMATCH OFF} or {$WARNINGS OFF} before the unit name silences the rule like the compiler. Quick fixes: change the unit name to the file name (renaming the file is up to the IDE), or change the uses entry to the unit the file declares.",
+      "description": "The name after unit differs from the file name, usually after renaming the file outside the IDE (like E1038, W1038). Case does not matter, dots in the name do. In a program, library or package, an entry uses X in 'File.pas' whose file declares a different unit is reported too (like E2085); the rule reads that file. If the unit's own name does not match its file either, Delphi 13 only reports E1038 in the unit, and the uses entry stays silent. Programs, libraries and packages themselves are not compared with their file name, because the compiler does not either. {$WARN UNIT_NAME_MISMATCH OFF} or {$WARNINGS OFF} before the unit name silences the rule like the compiler. Quick fixes: change the unit name to the file name (renaming the file is up to the IDE), or change the uses entry to the unit the file declares.",
       "bad": "// File: Kunden.Daten.pas\nunit Kunden.Model;\n\ninterface",
       "good": "// File: Kunden.Daten.pas\nunit Kunden.Daten;\n\ninterface",
       "compilerCodes": [
@@ -3143,13 +3160,12 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "An exports clause inside a routine (like E2191), the export of a threadvar or of a routine declared local (like E2276), of a variable, constant or type (like E2121), or the same entry or export name twice (like E2287). Names are only resolved against global declarations of the file; names from other units and names with a dot stay silent, as do two entries in mutually exclusive {$IF…} branches. Overloaded routines with different parameter lists or export names count as different entries. Complements dll-export-unsafe (#973). Quick fix: remove the duplicate entry.",
-      "bad": "exports\n  Initialisieren,\n  Berechnen,\n  Initialisieren;",
-      "good": "exports\n  Initialisieren,\n  Berechnen;",
+      "description": "An exports clause inside a routine (like E2191), the export of a threadvar, of a routine declared local, of a constant or of a type (like E2276), or the same export name twice via name '…' (like E2287). Variables and the same entry twice without name compile in Delphi 13 and are not reported. Names are only resolved against global declarations of the file; names from other units and names with a dot stay silent, as do two entries in mutually exclusive {$IF…} branches. Overloaded routines with different parameter lists or export names count as different entries. Complements dll-export-unsafe (#973). Quick fix: remove the duplicate entry.",
+      "bad": "exports\n  Initialisieren name 'Start',\n  Berechnen,\n  Berechnen name 'Start';",
+      "good": "exports\n  Initialisieren name 'Start',\n  Berechnen;",
       "compilerCodes": [
         "E2191",
         "E2276",
-        "E2121",
         "E2287"
       ],
       "level": "A"
@@ -3219,7 +3235,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A class operator in a record or class is declared in a way Delphi rejects: unknown operator name (like E2393), wrong number of parameters (E2517), own type missing from the parameters (E2518) or from parameters and result for Implicit/Explicit (E2521), Inc/Dec with a result type other than the first parameter (E2519), conversion to or from an ancestor (E2522, chain within the file) or Assign whose first parameter is not a var parameter of the own type (E2464, E2617). Bodies of an unknown operator or of a class operator in a class match no declaration (E2037). Types count as equal when their names match without unit prefix and type arguments; aliases of the own type declared in the file keep the rule silent, and True, False and OnesComplement are accepted. Comparison operators with a result other than Boolean compile (Spring4D criteria) and stay silent. Quick fixes: nearest operator name, result like the first parameter, var before the first parameter, parameter list from the template; each in the declaration and the implementation.",
+      "description": "A class operator in a record is declared in a way Delphi rejects: unknown operator name (like E2393), wrong number of parameters (E2517), own type missing from the parameters (E2518) or from parameters and result for Implicit/Explicit (E2521), Inc/Dec with a result type other than the first parameter (E2519) or Assign whose first parameter is not a var parameter of the own type (E2464, E2617). Bodies of an unknown operator or of a class operator in a class match no declaration (E2037). In classes, interfaces and object types Delphi 13 rejects every class operator; the rule syntax reports that (E2123). Types count as equal when their names match without unit prefix and type arguments; aliases of the own type declared in the file keep the rule silent, and True, False and OnesComplement are accepted. Comparison operators with a result other than Boolean compile (Spring4D criteria) and stay silent. Quick fixes: nearest operator name, result like the first parameter, var before the first parameter, parameter list from the template; each in the declaration and the implementation.",
       "bad": "TGeld = record\n  class operator Inc(const A: TGeld): Integer;\nend;",
       "good": "TGeld = record\n  class operator Inc(const A: TGeld): TGeld;\nend;",
       "compilerCodes": [
@@ -3229,7 +3245,6 @@
         "E2518",
         "E2519",
         "E2521",
-        "E2522",
         "E2617",
         "E2037"
       ],
@@ -3241,7 +3256,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A generic declaration that Delphi rejects: class and record constraints together (like E2507), a constraint twice (E2603), record together with constructor (E2516), a class type next to class or record (E2552), two class types (E2553), a constraint type that is neither class nor interface (E2510); type parameters on an enumeration, set, subrange, pointer, class reference, alias or helper (E2508), on a destructor or class constructor (E2528), an operator (E2529), a global routine (E2530), a virtual, dynamic, message or override method (E2533) or an interface method (E2535); class of a parameterized type (E2548), a generic class derived from TCustomAttribute (E2549), a parameterized type as attribute (E2565); a type parameter that hides one of the enclosing type (H2509); a call with a number of type arguments no overload has (E2551, classes and records of the file with their ancestors in the file); a method of a generic type or a generic method declared in the interface section that uses a symbol of the implementation section (E2506; silent inside with and when the ancestor chain is not known). Types count only when they are built in or declared in the file; unknown types keep the rule silent. Local procedures in generic methods (E2570) are not reported until a check against Delphi 12/13 confirms that they are still rejected.",
+      "description": "A generic declaration that Delphi rejects: class and record constraints together (like E2507), a constraint twice (E2603), record together with constructor (E2516), a class type next to class or record (E2552), two class types (E2553), a constraint type that is neither class nor interface (E2510); type parameters on an enumeration, set, subrange, pointer, class reference, alias or helper (E2508), on a constructor of a class, a destructor or a class constructor (E2528), an operator (E2529), a global routine (E2530), a virtual, dynamic, message or override method (E2533) or an interface method (E2535); class of a parameterized type (E2548), a generic class derived from TCustomAttribute (E2549), a parameterized type as attribute (E2565); a type parameter that hides one of the enclosing type (H2509); a call with a number of type arguments no overload has (E2551, classes and records of the file with their ancestors in the file); a method of a generic type or a generic method declared in the interface section that uses a symbol of the implementation section (E2506; silent inside with and when the ancestor chain is not known); a local routine in a generic method or a method of a generic type (E2570); type before an instantiated type such as type TList<Integer> (E2574, quick fix: remove type and declare an alias). Types count when they are built in, declared in the file or, for class constraints (E2552, E2553), found in the symbol index; unknown types keep the rule silent.",
       "bad": "procedure Swap<T>(var A, B: T);",
       "good": "type\n  TSwap = record\n    class procedure Swap<T>(var A, B: T); static;\n  end;",
       "compilerCodes": [
@@ -3261,10 +3276,12 @@
         "E2552",
         "E2553",
         "E2565",
+        "E2570",
+        "E2574",
         "E2603",
         "H2509"
       ],
-      "level": "A"
+      "level": "B"
     },
     {
       "id": "type-restriction-violated",
@@ -3341,14 +3358,15 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "TypeInfo or Default receives a variable instead of a type (like E2133, E2537: parameters, local, inline and unit variables, fields, properties, Result, for and exception variables), TypeInfo receives a type without RTTI (enumeration with explicit values, file type, Text/TextFile; E2134), or Default receives a file type (E2538). Names are resolved from the inside out; inside with, in helpers, in methods of types outside the file, for declarations in other conditional branches and when the file or the index declares its own TypeInfo or Default the rule stays silent. Quick fix: insert the variable's declared type.",
+      "description": "TypeInfo or Default receives a variable instead of a type (like E2133, E2537: parameters, local, inline and unit variables, fields, properties, Result, for and exception variables), TypeInfo receives a type without RTTI (enumeration with explicit values, file type, Text/TextFile; E2134), or Default receives a file type (E2538; Delphi 13 also reports E2015 for the assignment). Names are resolved from the inside out; inside with, in helpers, in methods of types outside the file, for declarations in other conditional branches and when the file or the index declares its own TypeInfo or Default the rule stays silent. Quick fix: insert the variable's declared type.",
       "bad": "Name := GetEnumName(TypeInfo(Status), Ord(Status));",
       "good": "Name := GetEnumName(TypeInfo(TStatus), Ord(Status));",
       "compilerCodes": [
         "E2133",
         "E2134",
         "E2537",
-        "E2538"
+        "E2538",
+        "E2015"
       ],
       "level": "B"
     },
@@ -3775,7 +3793,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "Delegation with implements breaks one of its fixed rules: implements only in classes (like E2258), only on properties of class or interface type (like E2259; reported for built-in types, records and enumerations), not together with index (like E2260), only on readable properties (like E2261), the getter without a calling convention other than register (like E2262) and not dynamic or message (like E2263), each interface implemented by one property only (like E2257) and no method resolution clause for an interface implemented that way (like E2264). Types are resolved through the uses clauses; unknown types, aliases and properties in conditional branches stay silent.",
+      "description": "Delegation with implements breaks one of its fixed rules: implements only in classes (like E2258), only on properties of class or interface type (like E2259; reported for built-in types, records and enumerations), not together with index (like E2260), only on readable properties (like E2261), the getter without a calling convention other than register (like E2262) and not dynamic or message (like E2263; Delphi 13 also reports E2148), each interface implemented by one property only (like E2257) and no method resolution clause for an interface implemented that way (like E2264). Types are resolved through the uses clauses; unknown types, aliases and properties in conditional branches stay silent.",
       "bad": "property Logger: ILogger write FLogger implements ILogger;",
       "good": "property Logger: ILogger read FLogger write FLogger implements ILogger;",
       "compilerCodes": [
@@ -3786,7 +3804,8 @@
         "E2261",
         "E2262",
         "E2263",
-        "E2264"
+        "E2264",
+        "E2148"
       ],
       "level": "B"
     },
@@ -3885,7 +3904,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "compiler",
-      "description": "A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of a non-virtual method of an ancestor. Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Republished properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors and class methods are not reported. Members the descendant cannot see (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class declaration and the bodies of its methods in this unit (FName becomes FKundeName).",
+      "description": "A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of a non-virtual method of an ancestor (the last two without a code: Delphi 13 compiles them silently). Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Republished properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors and class methods are not reported. Members the descendant cannot see (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class declaration and the bodies of its methods in this unit (FName becomes FKundeName).",
       "bad": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FName: string;\nend;",
       "good": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FKundeName: string;\nend;",
       "compilerCodes": [
@@ -3927,14 +3946,12 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "compiler",
-      "description": "An overriding method spells its name differently from the ancestor (destructor destroy, like H2365) or has a lower visibility than the overridden method (like H2269, only for classes in the interface section; visibilities are compared in tiers private, protected, public), a getter or setter is named Get<Property> or Set<Property> but spelled differently (like H2367), or an inline method accesses a member that is less visible than the method itself, so the compiler cannot expand it outside the class (like H2440). Matters for C++Builder users of the units and for consistent code. The docwiki lists H2269 and H2367 as X2269 and X2367 because their level can be changed; dcc reports them as hints by default. H2368 and H2369 are not covered, since it is not documented when dcc reports them. Off by default; switch it on in atlas.json. Quick fixes: adopt the ancestor's spelling, rename the accessor.",
+      "description": "An overriding method spells its name differently from the ancestor (destructor destroy, like H2365) or has a lower visibility than the overridden method (like H2269, only for classes in the interface section; visibilities are compared in tiers private, protected, public), a getter or setter is named Get<Property> or Set<Property> but spelled differently, or an inline method accesses a member that is less visible than the method itself (these two without a code: Delphi 13 reports neither H2367 nor H2440 there). Matters for C++Builder users of the units and for consistent code. The docwiki lists H2269 and H2367 as X2269 and X2367 because their level can be changed; dcc reports them as hints by default. H2368 and H2369 are not covered, since it is not documented when dcc reports them. Off by default; switch it on in atlas.json. Quick fixes: adopt the ancestor's spelling, rename the accessor.",
       "bad": "TKunde = class\n  destructor destroy; override;\nend;",
       "good": "TKunde = class\n  destructor Destroy; override;\nend;",
       "compilerCodes": [
         "H2365",
-        "H2440",
-        "H2269",
-        "H2367"
+        "H2269"
       ],
       "level": "B"
     },
@@ -3975,12 +3992,11 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "compiler",
-      "description": "A call of an inline routine from another unit that the compiler does not expand: its body needs a unit that is missing from uses here (like H2443, typically System.Generics.Collections for TJSONObject.Count), it accesses a strict private member and the call is not inside a method of that class (like H2444), the calling routine is inline itself and the unit of the callee is only in the implementation uses (like H2445), or the unit of the callee uses this unit directly (like H2456) or through other units (like H2457). Calls, properties with an inline getter or setter and for-in loops (GetEnumerator, MoveNext, Current) are checked. The index records what each inline body refers to; the rule only reports what it resolves for sure (unknown references and members inherited from other units stay silent). Silent with {$INLINE OFF} in the file. Quick fix: add the missing units to the uses clause of the section.",
+      "description": "A call of an inline routine from another unit that the compiler does not expand: its body needs a unit that is missing from uses here (like H2443, typically System.Generics.Collections for TJSONObject.Count), the calling routine is inline itself and the unit of the callee is only in the implementation uses (like H2445), or the unit of the callee uses this unit directly (like H2456) or through other units (like H2457). Calls, properties with an inline getter or setter and for-in loops (GetEnumerator, MoveNext, Current) are checked. The index records what each inline body refers to; the rule only reports what it resolves for sure (unknown references and members inherited from other units stay silent). Access to private or strict private members is not reported: Delphi 13 expands such calls. Silent with {$INLINE OFF} in the file. Quick fix: add the missing units to the uses clause of the section.",
       "bad": "uses\n  System.JSON;\n...\nfor Wert in Feld as TJSONArray do",
       "good": "uses\n  System.JSON, System.Generics.Collections;\n...\nfor Wert in Feld as TJSONArray do",
       "compilerCodes": [
         "H2443",
-        "H2444",
         "H2445",
         "H2456",
         "H2457"
@@ -4374,11 +4390,10 @@
       "category": "bug",
       "severity": "warning",
       "group": "compiler",
-      "description": "An assignment or an inline variable with a value whose type is wider than the target, without an explicit conversion: Int64 to Integer, NativeInt to Integer (Win64) and, via the option types, e.g. Double to Single or Extended to Double. Like W1071 (integers), W1072 (floating point) and W1066 (Extended to Double); the compiler shows W1071 only when switched on. Only reported when both types are known for certain (variables, fields, properties, function results, own aliases and integer arithmetic built from them); literals and explicit conversions stay silent. Off by default; medium confidence. Quick fixes: convert explicitly; widen the type of the target's declaration (single variable declared in the same file).",
+      "description": "An assignment or an inline variable with a value whose type is wider than the target, without an explicit conversion: Int64 to Integer, NativeInt to Integer (Win64) and, via the option types, e.g. Double to Single or Extended to Double. Like W1072 (floating point) and W1066 (Extended to Double); integers without a code, because Delphi 13 does not report W1071 even with {$WARN IMPLICIT_INTEGER_CAST_LOSS ON}. Only reported when both types are known for certain (variables, fields, properties, function results, own aliases and integer arithmetic built from them); literals and explicit conversions stay silent. Off by default; medium confidence. Quick fixes: convert explicitly; widen the type of the target's declaration (single variable declared in the same file).",
       "bad": "Anzahl := Strom.Size;  // Anzahl: Integer",
       "good": "Anzahl := Integer(Strom.Size);",
       "compilerCodes": [
-        "W1071",
         "W1072",
         "W1066"
       ],
@@ -4468,11 +4483,11 @@
       "category": "bug",
       "severity": "warning",
       "group": "compiler",
-      "description": "A class implements an interface method with an HRESULT result through a method with an Integer (or LongInt) result, or the other way round (like X1008). Both are 32 bits wide, so it goes unnoticed, but the meaning of the values (S_FALSE as success) is lost; important for COM and Open Tools API code. Methods are matched by name and parameter types, including resolution clauses such as function IFoo.Bar = Baz; interfaces and their ancestors come from the file or the index. If variants stand in conditional branches, the rule only reports when every variant differs. Quick fix: align the result type in declaration and implementation with the interface.",
+      "description": "A class implements an interface method with an HRESULT result through a method with an Integer (or LongInt) result, or the other way round (like W1008; the Delphi help calls it X1008). Both are 32 bits wide, so it goes unnoticed, but the meaning of the values (S_FALSE as success) is lost; important for COM and Open Tools API code. Methods are matched by name and parameter types, including resolution clauses such as function IFoo.Bar = Baz; interfaces and their ancestors come from the file or the index. If variants stand in conditional branches, the rule only reports when every variant differs. Quick fix: align the result type in declaration and implementation with the interface.",
       "bad": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: Integer; stdcall;",
       "good": "IExport = interface\n  function Schreiben: HRESULT; stdcall;\nend;\n…\n  function Schreiben: HRESULT; stdcall;",
       "compilerCodes": [
-        "X1008"
+        "W1008"
       ],
       "level": "B"
     },
@@ -4482,11 +4497,10 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function result (like E2197), a constant for an open array (like E2192) or an expression (like E2036); @ before an arithmetic or logical expression is reported as well (like E2036). Reported only for routines without overloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and write it back for string elements and properties with write.",
-      "bad": "procedure Erhoehen(var Zeichen: Char);\n…\nErhoehen(Zeile[1]);",
-      "good": "Zeichen := Zeile[1];\nErhoehen(Zeichen);\nZeile[1] := Zeichen;",
+      "description": "A var or out parameter receives something that is not a variable: a constant, a constant expression such as cMax + 1, a const parameter, a property or a function result (like E2197), a constant for an open array (like E2192) or an expression (like E2036); @ before an arithmetic or logical expression is reported as well (like E2036). A string element for a character parameter (S[1]) is a variable for dcc and stays silent (E2354 exists only for .NET, #1383). Reported only for routines without overloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and write it back for properties with write.",
+      "bad": "procedure Zaehlen(var Wert: Integer);\n…\nZaehlen(Liste.Count);",
+      "good": "Anzahl := Liste.Count;\nZaehlen(Anzahl);",
       "compilerCodes": [
-        "E2354",
         "E2197",
         "E2192",
         "E2036"
@@ -4526,14 +4540,11 @@
       "id": "inherited-abstract-call",
       "name": "inherited calls an abstract method",
       "category": "bug",
-      "severity": "error",
+      "severity": "warning",
       "group": "compiler",
-      "description": "inherited with an explicit method name, such as inherited Zeichnen(C), although the method is abstract in the ancestor (like E2373). A bare inherited; is skipped silently by the compiler for abstract methods and is not reported. The method is resolved by name resolution including overloads; the rule only reports when every matching overload is abstract. Quick fix: remove the call when it is a statement of its own in a begin…end block.",
+      "description": "inherited with an explicit method name, such as inherited Zeichnen(C), although the method is abstract in the ancestor: the call raises EAbstractError at runtime. The compiler accepts it without an error. A bare inherited; is skipped silently by the compiler for abstract methods and is not reported. The method is resolved by name resolution including overloads; the rule only reports when every matching overload is abstract. Quick fix: remove the call when it is a statement of its own in a begin…end block.",
       "bad": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  inherited Zeichnen(C);\n  C.Ellipse(FRahmen);\nend;",
       "good": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  C.Ellipse(FRahmen);\nend;",
-      "compilerCodes": [
-        "E2373"
-      ],
       "level": "B"
     },
     {
@@ -4587,19 +4598,35 @@
       "level": "B"
     },
     {
+      "id": "generic-inference-failed",
+      "name": "Type arguments cannot be inferred",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A call of a generic method without type arguments whose type parameters cannot be inferred from the arguments: a type parameter that occurs in no parameter, for example only in the result (like E2531), or arguments of different kinds (number, string, Boolean) for parameters whose type is the same type parameter (like E2532). E2531 is reported as a statement, as a call with parentheses and on the right side of an assignment to a value of known, non-procedural type, and only when every overload has such a type parameter. E2532 is reported only for exactly one routine without overload; arguments of unknown type (Variant, classes, expressions) and numbers of different size keep the rule silent. Like argument-count-mismatch it is silent for declarations in conditional branches and names that an unknown ancestor can hide.",
+      "bad": "Zahl := TFabrik.Neu;\nTFabrik.Paar(1, 'a');",
+      "good": "Zahl := TFabrik.Neu<Integer>;\nTFabrik.Paar<string>('1', 'a');",
+      "compilerCodes": [
+        "E2531",
+        "E2532"
+      ],
+      "level": "T"
+    },
+    {
       "id": "unresolved-type",
       "name": "Type in a declaration not found",
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A type name in a declaration (field, parameter, result, ancestor, interface list, variable, type argument) is not declared (like E2003, for the target of a pointer type like E2564) or is not a type (like E2005). Complements unresolved-identifier, which only checks statements. Same preconditions as unresolved-attribute: System in the symbol index, every unit from uses known, not inside {$IF…} blocks. Type parameters, names the file declares as a type anywhere (also nested) and names the index knows as a nested type (inherited inner types) are not reported. Quick fix: add the unit that declares the type (with the same number of type parameters) to uses.",
+      "description": "A type name in a declaration (field, parameter, result, ancestor, interface list, variable, type argument) is not declared (like E2003, for the target of a pointer type like E2564) or is not a type: a variable or a member after a dot like E2005, a routine like E2007, a constant like E2029 (Delphi reads it as the start of a subrange and expects '..'). Types the compiler knows without a declaration in System.pas (Text, TextFile, Real48, OpenString …) count as declared. Complements unresolved-identifier, which only checks statements. Same preconditions as unresolved-attribute: System in the symbol index, every unit from uses known, not inside {$IF…} blocks. Type parameters, names the file declares as a type anywhere (also nested) and names the index knows as a nested type (inherited inner types) are not reported. Quick fix: add the unit that declares the type (with the same number of type parameters) to uses.",
       "bad": "uses\n  System.SysUtils;\ntype\n  TKunden = TObjectList<TKunde>;",
       "good": "uses\n  System.SysUtils, System.Generics.Collections;\ntype\n  TKunden = TObjectList<TKunde>;",
       "compilerCodes": [
         "E2564",
         "E2563",
         "E2005",
-        "E2003"
+        "E2003",
+        "E2007"
       ],
       "level": "B"
     },
@@ -4669,13 +4696,14 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "The variable of a for loop is assigned in the body or changed with Inc/Dec (like E2081), passed as a var or out parameter to a routine of this file (like W1015), or is not a simple local variable: a field of the own class, a global variable of the unit or a local variable of the enclosing routine (like E1019). Delphi only reports these when compiling. Parameters, unknown names and loops inside with statements stay silent, as do anonymous methods in the body and routines with parser errors. Quick fixes: convert to a while loop (not when the body uses Continue), or use for var when the routine does not use the name otherwise.",
+      "description": "The variable of a for loop is assigned in the body or changed with Inc/Dec (like E2081), passed as a var or out parameter to a routine of this file (like W1015), or is not a simple local variable: a field of the own class or a local variable of the enclosing routine (like E1019), or a global variable of the unit (like W1019, Delphi only warns). Delphi only reports these when compiling. Parameters, unknown names and loops inside with statements stay silent, as do anonymous methods in the body and routines with parser errors. Quick fixes: convert to a while loop (not when the body uses Continue), or use for var when the routine does not use the name otherwise.",
       "bad": "for I := 0 to Zeilen.Count - 1 do\nbegin\n  if Zeilen[I] = '' then\n    Inc(I);\nend;",
       "good": "I := 0;\nwhile I <= Zeilen.Count - 1 do\nbegin\n  if Zeilen[I] = '' then\n    Inc(I);\n  Inc(I);\nend;",
       "compilerCodes": [
         "E2081",
         "W1015",
-        "E1019"
+        "E1019",
+        "W1019"
       ],
       "level": "A"
     },

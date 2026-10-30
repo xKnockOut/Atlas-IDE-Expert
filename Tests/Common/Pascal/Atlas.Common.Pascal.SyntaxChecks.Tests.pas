@@ -33,13 +33,19 @@ type
     [Test]
     procedure UnterminatedCommentReportsE2057Only;
     [Test]
+    procedure RealWithoutExponentReportsE2053;
+    [Test]
+    procedure AbsoluteAddressReportsE2088;
+    [Test]
     procedure TrailingDotReportsE2372;
     [Test]
     procedure StatementsInInterfaceReportE2050;
     [Test]
     procedure StrictWithoutVisibilityReportsE2375;
     [Test]
-    procedure ClassBeforeFieldReportsE2357;
+    procedure ClassBeforeFieldReportsE2123;
+    [Test]
+    procedure ClassOperatorInClassReportsE2123;
     [Test]
     procedure TryWithoutHandlerReportsE2125;
     [Test]
@@ -61,9 +67,9 @@ type
     [Test]
     procedure MultipleVariablesInitReportE2196;
     [Test]
-    procedure ClassTypeInVarReportsE2060;
+    procedure ClassTypeInVarReportsE2058;
     [Test]
-    procedure LocalClassTypeReportsE2061;
+    procedure LocalClassTypeReportsE2059;
     [Test]
     procedure LocalObjectTypeReportsE2059;
     [Test]
@@ -88,6 +94,8 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Contract,
@@ -294,6 +302,37 @@ begin
   Assert.AreEqual(InProgram(['  { offen}', '  B := 1;']), ApplyEdits(Text, Found[0].FixEdits));
 end;
 
+procedure TSyntaxChecksTests.RealWithoutExponentReportsE2053;
+var
+  Found: TArray<TSyntaxDiagnostic>;
+  Tokens: TArray<TPascalToken>;
+begin
+  // Fall Cm.E2053 (#1382): nur E2053, kein ';' fehlt und kein Bezeichner e.
+  Found := Diagnostics(InProgram(['  B := 1.5e;']));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('E2053', Found[0].Code);
+  Assert.AreEqual('Syntaxfehler in Gleitkommazahl (wie E2053).', Found[0].Message);
+  Assert.AreEqual('', Codes(InProgram(['  B := Round(1.5e3 + 2E-1 + 3e+2);'])));
+  // 1Eh (Hexadezimalzahl im asm-Block) bleibt Zahl und Bezeichner.
+  Tokens := TPascalLexer.Tokenize('1Eh');
+  Assert.AreEqual(2, Integer(Length(Tokens)));
+  Assert.AreEqual('1', Tokens[0].Text);
+  Assert.IsTrue(Tokens[0].Terminated);
+end;
+
+procedure TSyntaxChecksTests.AbsoluteAddressReportsE2088;
+var
+  Found: TArray<TSyntaxDiagnostic>;
+begin
+  // Fall Cm.E2091 (#1382): Delphi 13 meldet E2088, nicht E2029 zum ':'.
+  Found := Diagnostics(InUnit(['var', '  GTastatur: Byte absolute $40:$17;'], []));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('E2088', Found[0].Code);
+  Assert.AreEqual('Variable erwartet, aber ''$40'' gefunden (wie E2088).', Found[0].Message);
+  Assert.AreEqual('', Codes(InUnit(['var', '  GWert: Integer;', '  GBytes: array[0..3] of Byte absolute GWert;'],
+    [])));
+end;
+
 procedure TSyntaxChecksTests.TrailingDotReportsE2372;
 begin
   Assert.AreEqual('E2372', Codes(InUnit(['uses', '  System.;'], [])));
@@ -310,15 +349,34 @@ begin
     '  end;'], [])));
 end;
 
-procedure TSyntaxChecksTests.ClassBeforeFieldReportsE2357;
+procedure TSyntaxChecksTests.ClassBeforeFieldReportsE2123;
 var
   Found: TArray<TSyntaxDiagnostic>;
 begin
+  // Delphi 13 meldet E2123 (Fall Cm.E2123, #1382).
   Found := Diagnostics(InUnit(['type', '  TFoo = class', '    class FWert: Integer;', '  end;'], []));
   Assert.IsTrue(Length(Found) > 0);
-  Assert.AreEqual('E2357', Found[0].Code);
-  Assert.AreEqual('''procedure'', ''function'' oder ''constructor'' erwartet, aber ''FWert'' gefunden (wie E2357).',
-    Found[0].Message);
+  Assert.AreEqual('E2123', Found[0].Code);
+  Assert.AreEqual('''procedure'', ''function'', ''property'' oder ''var'' erwartet, aber ''FWert'' gefunden ' +
+    '(wie E2123).', Found[0].Message);
+end;
+
+procedure TSyntaxChecksTests.ClassOperatorInClassReportsE2123;
+var
+  Found: TArray<TSyntaxDiagnostic>;
+begin
+  // Operatoren gibt es nur in Records; in Klassen meldet Delphi 13 E2123 (Fall Cm.E2522, #1382).
+  Found := Diagnostics(InUnit(['type', '  TBasis = class', '  end;', '  TKind = class(TBasis)', '  public',
+    '    class operator Implicit(A: TKind): TBasis;', '  end;'], []));
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('E2123', Found[0].Code);
+  Assert.AreEqual('''procedure'', ''function'', ''property'' oder ''var'' erwartet, aber ''operator'' gefunden ' +
+    '(wie E2123).', Found[0].Message);
+  Assert.AreEqual(9, Found[0].StartPos.Line);
+  Assert.AreEqual(10, Found[0].StartPos.Character);
+  // Im Record still.
+  Assert.AreEqual('', Codes(InUnit(['type', '  TGeld = record', '    class operator Add(const A, B: TGeld): TGeld;',
+    '  end;'], [])));
 end;
 
 procedure TSyntaxChecksTests.TryWithoutHandlerReportsE2125;
@@ -399,15 +457,24 @@ begin
   Assert.AreEqual('E2196', Codes(InUnit(['var', '  I, J: Integer = 0;'], [])));
 end;
 
-procedure TSyntaxChecksTests.ClassTypeInVarReportsE2060;
+procedure TSyntaxChecksTests.ClassTypeInVarReportsE2058;
 begin
-  Assert.AreEqual('E2060', Codes(InUnit(['var', '  X: class', '  end;'], [])));
+  // Delphi 13 meldet E2058 statt E2060, in einer Routine dazu E2059 am Namen (Fälle Cm.E2058, Cm.E2060, #1382).
+  Assert.AreEqual('E2058', Codes(InUnit(['var', '  X: class', '  end;'], [])));
+  Assert.AreEqual('E2058', Codes(InUnit(['var', '  X: interface', '  end;'], [])));
+  Assert.AreEqual('E2059,E2058', Codes(InUnit([], ['procedure Rechne;', 'var', '  X: class', '  end;', 'begin',
+    'end;'])));
+  Assert.AreEqual('E2059,E2058', Codes(InUnit([], ['procedure Rechne;', 'var', '  X: object', '    Wert: Integer;',
+    '  end;', 'begin', 'end;'])));
 end;
 
-procedure TSyntaxChecksTests.LocalClassTypeReportsE2061;
+procedure TSyntaxChecksTests.LocalClassTypeReportsE2059;
 begin
-  Assert.AreEqual('E2061', Codes(InUnit([], ['procedure Rechne;', 'type', '  TLokal = class', '  end;', 'begin',
+  // Delphi 13 meldet E2059 statt E2061 (Fälle Cm.E2059, Cm.E2061, #1382).
+  Assert.AreEqual('E2059', Codes(InUnit([], ['procedure Rechne;', 'type', '  TLokal = class', '  end;', 'begin',
     'end;'])));
+  Assert.AreEqual('E2059', Codes(InUnit([], ['procedure Rechne;', 'type', '  ILokal = interface', '  end;',
+    'begin', 'end;'])));
 end;
 
 procedure TSyntaxChecksTests.LocalObjectTypeReportsE2059;

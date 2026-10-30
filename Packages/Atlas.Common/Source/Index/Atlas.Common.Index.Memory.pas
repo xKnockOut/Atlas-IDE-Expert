@@ -108,7 +108,9 @@ begin
     AUnit.Symbols[Index].Container := Intern(AUnit.Symbols[Index].Container);
     AUnit.Symbols[Index].TypeName := Intern(AUnit.Symbols[Index].TypeName);
     AUnit.Symbols[Index].TypeArgs := Intern(AUnit.Symbols[Index].TypeArgs);
-    AUnit.Symbols[Index].AncestorArgs := Intern(AUnit.Symbols[Index].AncestorArgs);
+    AUnit.Symbols[Index].AncestorArgs := Copy(AUnit.Symbols[Index].AncestorArgs);
+    for Inner := 0 to High(AUnit.Symbols[Index].AncestorArgs) do
+      AUnit.Symbols[Index].AncestorArgs[Inner] := Intern(AUnit.Symbols[Index].AncestorArgs[Inner]);
     AUnit.Symbols[Index].TypeParams := Intern(AUnit.Symbols[Index].TypeParams);
     AUnit.Symbols[Index].FileName := Intern(AUnit.Symbols[Index].FileName);
     AUnit.Symbols[Index].Directives := Copy(AUnit.Symbols[Index].Directives);

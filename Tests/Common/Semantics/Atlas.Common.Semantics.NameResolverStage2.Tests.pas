@@ -526,7 +526,8 @@ begin
     if Symbol.Name = 'TKundenListe' then
     begin
       Assert.AreEqual('TObjectList', Symbol.Ancestors[0]);
-      Assert.AreEqual('TKunde', Symbol.AncestorArgs);
+      Assert.AreEqual(1, Integer(Length(Symbol.AncestorArgs)));
+      Assert.AreEqual('TKunde', Symbol.AncestorArgs[0]);
       Inc(Checked);
     end;
   Assert.AreEqual(4, Checked);

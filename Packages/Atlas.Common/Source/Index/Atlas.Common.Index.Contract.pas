@@ -42,8 +42,9 @@ type
     TypeName: string;
     /// <summary>Typargumente zu TypeName, z. B. 'TKunde' bei TList&lt;TKunde&gt; (#263); sonst ''.</summary>
     TypeArgs: string;
-    /// <summary>Typargumente des ersten Vorfahren (class(TObjectList&lt;TKunde&gt;)); sonst ''.</summary>
-    AncestorArgs: string;
+    /// <summary>Typargumente je Vorfahr in der Reihenfolge von Ancestors, '' bei Vorfahren ohne
+    /// (class(TInterfacedObject, IComparer&lt;TKunde&gt;) → ['', 'TKunde']); nil, wenn keiner welche hat.</summary>
+    AncestorArgs: TArray<string>;
     /// <summary>Typparameter generischer Typen und Methoden, kommagetrennt (TDictionary&lt;TKey,TValue&gt;).</summary>
     TypeParams: string;
     Visibility: TIndexVisibility;

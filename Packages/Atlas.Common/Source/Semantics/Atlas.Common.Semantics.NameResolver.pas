@@ -87,6 +87,9 @@ type
     TypeName: string;
     Ancestors: TArray<string>;
     IsParameter: Boolean;
+    /// <summary>Typparameter einer generischen Routine oder ihres Typs im Rumpf (T in TFoo&lt;T&gt;.Bar). Sein Aufbau
+    /// ist unbekannt: TypeOf liefert False.</summary>
+    IsTypeParameter: Boolean;
     /// <summary>Gleichnamige Deklarationen weiter außen, die dieser Eintrag verdeckt (#488), als Text wie
     /// "Feld TKunde.Total"; nur bei Kandidaten für die Vervollständigung.</summary>
     Hides: TArray<string>;
@@ -98,7 +101,7 @@ type
     WithShadows: TArray<string>;
     /// <summary>Wie im Index (#263).</summary>
     TypeArgs: string;
-    AncestorArgs: string;
+    AncestorArgs: TArray<string>;
     TypeParams: string;
     Visibility: TIndexVisibility;
     MinArgs: Integer;
@@ -121,6 +124,8 @@ type
     function Found: Boolean;
     function IsType: Boolean;
     function QualifiedName: string;
+    /// <summary>Vorfahr AIndex samt seinen Typargumenten wie in der Deklaration (IComparer&lt;TKunde&gt;).</summary>
+    function AncestorText(AIndex: Integer): string;
   end;
 
   /// <summary>Alias für Bestandsnutzer; die Deklaration steht in Atlas.Common.Index.Contract.</summary>
@@ -793,6 +798,13 @@ begin
     Result := Container + '.' + Name;
 end;
 
+function TResolvedSymbol.AncestorText(AIndex: Integer): string;
+begin
+  Result := Ancestors[AIndex];
+  if AIndex <= High(AncestorArgs) then
+    Result := FullType(Result, AncestorArgs[AIndex]);
+end;
+
 { TNameResolver }
 
 constructor TNameResolver.Create(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc);
@@ -1299,6 +1311,8 @@ var
   SavedOffset: Integer;
 begin
   Result := False;
+  if AResolved.IsTypeParameter then
+    Exit;
   // Typen sind ihr eigener Typ; Aliase werden verfolgt.
   if AResolved.IsType then
     Current := AResolved
@@ -1364,7 +1378,7 @@ begin
   if AType.Builtin or not UnitOf(AType, FromUnit) then
     Exit;
   if Length(AType.Ancestors) > 0 then
-    Name := Substitute(FullType(AType.Ancestors[0], AType.AncestorArgs), AType.Bindings)
+    Name := Substitute(AType.AncestorText(0), AType.Bindings)
   else if (AType.SymbolKind = TIndexSymbolKind.ClassType) and not SameText(AType.Name, 'TObject') then
     Name := 'TObject'
   else if (AType.SymbolKind = TIndexSymbolKind.InterfaceType) and not SameText(AType.Name, 'IInterface') then
@@ -2092,7 +2106,7 @@ end;
 function TNameResolver.LookupLocal(const AName: string; out AResult: TResolvedSymbol): Boolean;
 var
   Routine, Header, Params, Param: TSyntaxNode;
-  Index: Integer;
+  Index, Group: Integer;
   Name: string;
 begin
   for Routine in EnclosingRoutines do
@@ -2116,6 +2130,19 @@ begin
               Exit(True);
             end;
         end;
+      // Typparameter aus dem Kopf: die des Typs (TFoo<K, V>.Bar) und die der Methode (Bar<T>).
+      for Group := 0 to Header.ChildCount - 1 do
+        if Header[Group].Kind = TSyntaxKind.GenericParams then
+          for Index := 0 to Header[Group].ChildCount - 1 do
+          begin
+            Param := Header[Group][Index];
+            if SameText(Param.Name, AName) then
+            begin
+              AResult := FromNode(Param, Param.Name, TIndexSymbolKind.TypeAlias, False);
+              AResult.IsTypeParameter := True;
+              Exit(True);
+            end;
+          end;
       if SameText(AName, 'Result') and (Header.FindChild(TSyntaxKind.TypeReference) <> nil) then
       begin
         AResult := FromNode(Header, 'Result', TIndexSymbolKind.Variable, False);
@@ -4074,10 +4101,12 @@ begin
     end;
     for Name in ADelegated do
       AddDelegated(Name, OwnerUnit, Delegated);
-    // Interfaces der Vorfahrenliste, jeweils mit ihren Vorfahren.
+    // Interfaces der Vorfahrenliste, jeweils mit ihren Vorfahren. Mit Typargumenten: Erst sie binden die
+    // Typparameter des Interfaces (IComparer<TKunde>: T=TKunde), sonst weichen alle Köpfe mit T ab.
     Names := AAncestors;
     if Length(Names) = 0 then
-      Names := Own.Ancestors;
+      for Depth := 0 to High(Own.Ancestors) do
+        Names := Names + [Substitute(Own.AncestorText(Depth), Own.Bindings)];
     for Name in Names do
     begin
       if not ResolveTypeText(Name, OwnerUnit, True, Intf) or (Intf.SymbolKind <> TIndexSymbolKind.InterfaceType) then
