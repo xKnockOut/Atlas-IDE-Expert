@@ -22,6 +22,9 @@
 //   architecture.baseline; „Vergleichen mit …“ setzt den Stand für diese
 //   Sitzung ("compareWith"), „Vergleich aufheben“ schaltet ihn ab ("compare":
 //   false). Beides gilt auch für gespeicherte Berichte.
+// - „Teilsysteme neu benennen“ (#1367, Menü „Teilsysteme ▾“) schickt einmal
+//   "renameSubsystems": Der Server rechnet ohne Angleichung an den vorigen
+//   Stand.
 // - Doppelklick öffnet die Unit bzw. springt zum uses-Eintrag; Strg+Doppelklick
 //   auf eine Unit zeigt sie im Fenster „Unit-Beziehungen“ (#593) über
 //   OnUnitRelations, das die Zusammensetzung setzt.
@@ -106,6 +109,9 @@ type
     FCompare: Boolean;
     /// <summary>Weg (#1117), der nach der nächsten Antwort markiert wird; nil = keiner.</summary>
     FRoute: TArray<string>;
+    /// <summary>Nächste Anfrage ohne Angleichung an den vorigen Stand („Teilsysteme neu benennen“, #1367).
+    /// </summary>
+    FRename: Boolean;
     procedure Wire(AFrame: TAtlasArchitectureFrame);
     function ProjectUri(out AUri: string): Boolean;
     procedure ChangeScope(const AScope: string);
@@ -116,6 +122,7 @@ type
     function Options: TAtlasArchitectureOptions;
     procedure CompareWith(const AFileName: string);
     procedure ClearComparison;
+    procedure RenameSubsystems;
   public
     constructor Create(const ARun: TAtlasArchitectureRun);
     destructor Destroy; override;
@@ -175,6 +182,7 @@ begin
     Frame.OnScopeChanged := nil;
     Frame.OnLibraryChanged := nil;
     Frame.OnResolutionChanged := nil;
+    Frame.OnRenameSubsystems := nil;
     Frame.OnOpenUnit := nil;
     Frame.OnOpenLocation := nil;
     Frame.OnUnitRelations := nil;
@@ -243,6 +251,15 @@ begin
         procedure
         begin
           ChangeResolution(AValue);
+        end);
+    end;
+  AFrame.OnRenameSubsystems :=
+    procedure
+    begin
+      TAtlasGuard.Run(TAtlasFeature.Architecture,
+        procedure
+        begin
+          RenameSubsystems;
         end);
     end;
   AFrame.OnOpenUnit :=
@@ -339,6 +356,7 @@ begin
   Result.CompareWith := FCompareWith;
   Result.Compare := FCompare;
   Result.Resolution := FResolution;
+  Result.RenameSubsystems := FRename;
 end;
 
 procedure TArchitectureState.CompareWith(const AFileName: string);
@@ -347,6 +365,12 @@ begin
     Exit;
   FCompareWith := AFileName;
   FCompare := True;
+  Refresh;
+end;
+
+procedure TArchitectureState.RenameSubsystems;
+begin
+  FRename := True;
   Refresh;
 end;
 
@@ -360,7 +384,7 @@ end;
 procedure TArchitectureState.Refresh;
 var
   Frame: TAtlasArchitectureFrame;
-  Uri: string;
+  Uri, mArguments: string;
   Request: Integer;
 begin
   Frame := TAtlasIdeArchitectureWindow.ExistingFrame;
@@ -375,8 +399,10 @@ begin
   Request := FRequest;
   FPending := True;
   Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.ArchitectureLoading), True);
-  if not FRun(TAtlasArchitectureCommands.Command,
-    TAtlasArchitectureCommands.Arguments(Uri, Options), TimeoutMs,
+  mArguments := TAtlasArchitectureCommands.Arguments(Uri, Options);
+  // Neu benennen gilt einmal; der Server legt das Ergebnis als vorigen Stand ab (#1367).
+  FRename := False;
+  if not FRun(TAtlasArchitectureCommands.Command, mArguments, TimeoutMs,
     procedure(AAnswer: string)
     var
       Model: TAtlasArchitectureModel;

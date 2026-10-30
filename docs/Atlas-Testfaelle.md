@@ -1501,6 +1501,23 @@ Voraussetzung wie oben (#1118); `architecture.explainAssignment` nicht gesetzt (
 | AZ11 | In `settings.json` `"architecture": {"explainAssignment": false}`, neu berechnen | Kein Hinweis, kein Steckbrief, kein „knapp“, kein Fragezeichen; Bericht und `get_architecture` ohne Tabelle und Block; Teilsysteme und Ausreißer unverändert |
 | AZ12 | Hell und dunkel, englische IDE-Sprache | Hinweis und Steckbrief gut lesbar, Farbpunkte wie auf der Karte; „Subsystem X, because most edges lead there:“, „does not count“, „Close: with 3 more edges …“ |
 
+## Farben und Namen der Teilsysteme halten (#1367)
+
+Voraussetzung wie oben (#1118); `architecture.grouping.keepPrevious` nicht gesetzt (Vorgabe an), kein `architecture.baseline`. Ein Projekt mit mehreren Teilsystemen, darunter zwei etwa gleich große.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AN1 | Fenster „Atlas-Architektur“ öffnen, Farben und Namen der Teilsysteme merken | Statuszeile ohne „angeglichen“ beim allerersten Lauf; danach liegt `%LOCALAPPDATA%\Atlas\Architektur\<Hash>\architecture-last.json` |
+| AN2 | In das kleinere der beiden gleich großen Teilsysteme eine neue Unit aufnehmen (uses auf zwei seiner Units), speichern, neu berechnen | Beide behalten Farbe und Namen, obwohl sich ihre Reihenfolge in den Tabellen tauscht; Statuszeile „Teilsysteme an Stand vom … angeglichen“ |
+| AN3 | IDE neu starten, Fenster öffnen | Farben und Namen wie vor dem Neustart (Stand aus dem Cache-Ordner) |
+| AN4 | Ein Teilsystem durch Entfernen von uses in zwei Teile zerfallen lassen, neu berechnen | Der größere Teil (mehr als die Hälfte) behält Farbe und Namen, der andere bekommt eine neue Farbe und einen neuen Namen (bei gleichem Namen mit Zusatz „2“) |
+| AN5 | *Teilsysteme ▾ › Teilsysteme neu benennen* | Rechnet einmal ohne Angleichung: Farben nach Reihenfolge, Namen wie ohne vorigen Stand, Statuszeile ohne „angeglichen“; der nächste Lauf gleicht an dieses Ergebnis an |
+| AN6 | „Stand speichern …“ als `stand.json`, in `atlas.json` `"architecture": {"baseline": "stand.json"}`, Teilsysteme verändern, neu berechnen | Angeglichen an den gespeicherten Stand; Statuszeile mit „(architecture.baseline)“; der Vergleich zeigt keine reinen Umbenennungen als Teilsystemwechsel |
+| AN7 | „Bericht speichern …“ als HTML und als Markdown | Kopf mit „Teilsysteme an Stand vom … angeglichen (…; n Teilsysteme behalten Farbe und Namen)“; die HTML-Karte färbt wie das Fenster, hell und dunkel |
+| AN8 | Claude Code: `get_architecture` | Zeile „Teilsysteme an Stand vom … angeglichen“ unter den Zahlen |
+| AN9 | `AtlasServer --architecture bericht.html` ohne Baseline, zweimal | Unter `Architektur` wird nichts geschrieben, beide Berichte bis auf Zeit und Dauer gleich, ohne „angeglichen“ |
+| AN10 | In `settings.json` `"architecture": {"grouping": {"keepPrevious": false}}`, Schritt AN2 wiederholen | Farben und Namen nach Reihenfolge wie vor #1367, Statuszeile ohne „angeglichen“; „Teilsysteme neu benennen“ ändert nichts |
+
 ## Minimap neben der Scrollleiste (#873, experimentell)
 
 Vorher: „Experimentelle Funktionen erlauben“ an, auf der Seite Editor „Minimap neben der Scrollleiste“ an. Eine Unit mit mehreren Klassen und Methoden, eine lange Unit (10 000 Zeilen).

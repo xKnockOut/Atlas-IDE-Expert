@@ -11,7 +11,7 @@ function ArchitectureMapHtml: string;
 implementation
 
 const
-  Lines: array[0..597] of string = (
+  Lines: array[0..605] of string = (
     '<!doctype html>',
     '<html lang="de">',
     '<head>',
@@ -116,6 +116,7 @@ const
     '    <div class="muted" id="stamp"></div>',
     '    <div id="counts"></div>',
     '    <div class="muted" id="scope"></div>',
+    '    <div class="muted" id="aligned" hidden></div>',
     '  </header>',
     '  <nav class="toc">',
     '    <a href="#karte">Architekturkarte</a><a href="#zentrale-units">Zentrale Units</a><a href="#teilsysteme">Teilsysteme</a>',
@@ -229,6 +230,13 @@ const
     '    (sm.interfaceCycles ? '' (davon nur interface: '' + sm.interfaceCycles + '')'' : '''') + '' · Querverbindungen: '' + sm.crossLinks + '' · Ausreißer: '' + sm.outliers;',
     '  $(''scope'').textContent = ''Umfang: '' + (D.scope === ''project'' ? ''Projekt'' : ''Projektgruppe'') + (D.includeLibrary ? '', mit'' : '', ohne'') + '' Bibliotheks-Units'' +',
     '    (D.excludes.length ? '', ausgeschlossen: '' + D.excludes.join('', '') : '''') + resolutionText();',
+    '  // Angleichung an einen vorigen Stand (#1367).',
+    '  if (D.aligned) {',
+    '    $(''aligned'').textContent = ''Teilsysteme an Stand vom '' + D.aligned.at.replace(''T'', '' '').substring(0, 16) + '' angeglichen ('' +',
+    '      (D.aligned.source === ''baseline'' ? ''architecture.baseline'' : ''zuletzt berechneter Stand'') + ''; '' + D.aligned.kept +',
+    '      (D.aligned.kept === 1 ? '' Teilsystem behält'' : '' Teilsysteme behalten'') + '' Farbe und Namen)'';',
+    '    $(''aligned'').hidden = false;',
+    '  }',
     '',
     '  // Graph',
     '  var out = U.map(function () { return []; }), inn = U.map(function () { return []; });',

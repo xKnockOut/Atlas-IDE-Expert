@@ -238,6 +238,8 @@
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Layout.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Snapshot.Tests.pas"/>
         <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Comparison.Tests.pas"/>
+        <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Matching.Tests.pas"/>
+        <DCCReference Include="Common\Architecture\Atlas.Common.Architecture.Alignment.Tests.pas"/>
         <DCCReference Include="Common\Hotspots\Atlas.Common.Hotspots.History.Tests.pas"/>
         <DCCReference Include="Common\Hotspots\Atlas.Common.Hotspots.Analysis.Tests.pas"/>
         <DCCReference Include="Common\Hotspots\Atlas.Common.Hotspots.Service.Tests.pas"/>
