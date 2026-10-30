@@ -1030,6 +1030,10 @@ begin
   Assert.IsTrue(Parse('{"refactoring": {"enumTablesResourceStrings": true}}',
     Issues).Refactoring.EnumTablesResourceStrings);
   Assert.AreEqual(0, Integer(Length(Issues)));
+  // #674: Überladung anlegen.
+  Assert.IsTrue(Parse('{}', Issues).Refactoring.Overloads);
+  Assert.IsFalse(Parse('{"refactoring": {"overloads": false}}', Issues).Refactoring.Overloads);
+  Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{}', Issues);
   Assert.AreEqual(0, Integer(Length(Issues)));
   Parse('{"refactoring": {"propertyFromAccessorsPrefixes": "Get", "propertyFromAccessorsReplaceCalls": "ja", ' +
