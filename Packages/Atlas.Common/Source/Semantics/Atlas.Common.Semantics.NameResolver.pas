@@ -554,10 +554,11 @@ const
   // AArity für LookupInUnit/LookupGlobal: nur Typen ohne Typparameter (-1 = beliebig, 0 = ohne Typargumente).
   NonGenericArity = -2;
   // Eingebaute Typen, die nicht als Symbol im Index stehen.
-  BuiltinTypes: array[0..27] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'ShortString',
+  // OleVariant wie Variant: Ohne Eintrag hatte eine Variable vom Typ OleVariant keinen Typ (#1373).
+  BuiltinTypes: array[0..28] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'ShortString',
     'Char', 'WideChar', 'AnsiChar', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
     'Byte', 'Word', 'ShortInt', 'SmallInt', 'LongInt', 'LongWord', 'Boolean', 'Double', 'Single', 'Extended',
-    'Currency', 'Real', 'Pointer', 'Variant');
+    'Currency', 'Real', 'Pointer', 'Variant', 'OleVariant');
   IntegerTypes: array[0..13] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
     'Byte', 'Word', 'ShortInt', 'SmallInt', 'LongInt', 'LongWord', 'Int8', 'UInt8');
   FloatTypes: array[0..4] of string = ('Double', 'Single', 'Extended', 'Currency', 'Real');
@@ -2282,7 +2283,7 @@ end;
 
 class function TNameResolver.IsBuiltinTypeName(const AName: string): Boolean;
 begin
-  Result := IsBuiltinName(AName) or MatchText(AName, ['PChar', 'PAnsiChar', 'PWideChar', 'OleVariant']);
+  Result := IsBuiltinName(AName) or MatchText(AName, ['PChar', 'PAnsiChar', 'PWideChar']);
 end;
 
 function TNameResolver.HasUnknownAncestor: Boolean;

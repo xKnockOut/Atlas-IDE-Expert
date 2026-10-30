@@ -6,7 +6,7 @@
 // Hinweise im Unit-Kopf (W1004–W1007), Ersatz aus dem Grund bzw. für
 // IncludeTrailingBackslash, keine Meldung an Deklaration und Implementierung,
 // Symbole der eigenen Datei ohne Index, abschaltbar, Tag Deprecated im
-// LSP-Ergebnis nur für deprecated.
+// LSP-Ergebnis nur für deprecated, der Abschnitt automated (W1000, #1373).
 
 interface
 
@@ -39,6 +39,8 @@ type
     procedure DeclarationAndImplementationAreSilent;
     [Test]
     procedure OwnUnitWithoutIndex;
+    [Test]
+    procedure AutomatedSection;
     [Test]
     procedure SilentWithoutIndex;
     [Test]
@@ -451,6 +453,41 @@ begin
   Findings := Run(Source, '', False);
   Assert.AreEqual('10:2 Alt ist deprecated: Nutze Neu (wie W1000).|', Messages(Findings));
   Assert.AreEqual('Neu', Findings[0].Fixes[0].Edits[0].NewText);
+end;
+
+procedure TDeprecatedRulesTests.AutomatedSection;
+const
+  cSource =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TAuto = class'#10 +
+    '  automated'#10 +
+    '    procedure Machen;'#10 +
+    '  end;'#10 +
+    '  {$WARN SYMBOL_DEPRECATED OFF}'#10 +
+    '  TStill = class'#10 +
+    '  automated'#10 +
+    '  end;'#10 +
+    '  {$WARN SYMBOL_DEPRECATED ON}'#10 +
+    '  TRecord = record'#10 +
+    '    automated: Integer;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TAuto.Machen;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'end.';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Wie dcc: „Symbol 'AUTOMATED' ist veraltet“ (Fälle Cm.E2175 … Cm.E2185), auch ohne Projektindex.
+  mFindings := Run(cSource, '', False);
+  Assert.AreEqual('4:2 automated ist deprecated (wie W1000).|', Messages(mFindings));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFindings[0].Severity));
+  Assert.AreEqual(4, mFindings[0].Range.EndPos.Line);
+  Assert.AreEqual(11, mFindings[0].Range.EndPos.Character);
+  Assert.AreEqual(0, Integer(Length(Run(cSource, KindsConfig('"platform"'), False))));
 end;
 
 procedure TDeprecatedRulesTests.SilentWithoutIndex;

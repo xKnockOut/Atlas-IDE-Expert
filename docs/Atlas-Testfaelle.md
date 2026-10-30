@@ -6822,6 +6822,24 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | AK7 | `"calling-convention-required": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | AK8 | Abgleich mit Delphi: AK1, AK3, AK4, AK5 übersetzen | dcc meldet E2277, E2591, E2236 und E2270 an denselben Stellen; für AK6 nichts |
 
+## OLE-Automation (#1373)
+
+Voraussetzung: Server läuft in der IDE mit Projekt. Fälle wie in `Tests/Compilermeldungen/Faelle/Cm.E2160.pas` … `Cm.E2281.pas` und `Tests/DccFaelle` (DccAutomation, DccAutomationGegen).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| OA1 | Klasse mit `automated` und darin `FWert: Integer;` | Warnung `deprecated-symbol` an `automated`: „automated ist deprecated (wie W1000).“; Fehler `automation-invalid` an `FWert`: „Felder sind im Abschnitt automated nicht erlaubt (wie E2175).“ |
+| OA2 | Im Abschnitt `automated`: `constructor Create;`, `procedure A; dynamic;`, `procedure B(var M); message 1;`, `procedure C; stdcall;` | „… (wie E2177).“, „dynamic … (wie E2178).“, „message … (wie E2178).“, „Im Abschnitt automated ist nur register erlaubt, nicht stdcall (wie E2179).“ |
+| OA3 | `procedure Erste; dispid 1;` und `procedure Zweite; dispid 1;` | „dispid 1 ist schon an Erste vergeben (wie E2180).“ an der zweiten |
+| OA4 | `procedure Machen; override; dispid 2;` in einer abgeleiteten Klasse; `procedure Machen; dispid 1;` unter `public` | „Die überschriebene Methode Machen … (wie E2185).“ bzw. „dispid ist nur im Abschnitt automated erlaubt (wie E2185).“ |
+| OA5 | `property Wert: Integer read FWert;`, `property Wert;` in der Ableitung, `property Wert: Integer index 1 read GetWert;` | „… FWert ist ein Feld (wie E2096).“, „Die Property Wert darf … nicht ohne Typ neu deklariert werden (wie E2181).“, „index ist an Properties … nicht erlaubt (wie E2182).“ |
+| OA6 | `procedure Machen(APunkt: TPunkt);` mit einem Record TPunkt, ebenso `Pointer`, `^TPunkt`, `set of …` | „Der Typ TPunkt ist im Abschnitt automated nicht erlaubt (wie E2176).“ |
+| OA7 | `mObjekt: OleVariant;` … `mObjekt.Machen(mPunkt);` mit Record; `mVar: Variant;` … `mVar.Machen(mZeiger);` mit Pointer | „… in einem OLE-Automation-Aufruf nicht erlaubt (wie E2160).“ bzw. „… in einem Variant-Dispatch-Aufruf nicht erlaubt (wie E2281).“ |
+| OA8 | `mObjekt.Machen(Wert := 1, 2);` | „Unbenannte Argumente müssen vor den benannten stehen (wie E2166).“; `mObjekt.Machen(1, Wert := 2)` meldet nichts |
+| OA9 | Erlaubtes: `register`, eindeutige dispids, Getter und Setter als Methoden, `override` ohne dispid, Integer/WideString/OleVariant/IDispatch als Typ, dispinterface mit dispid, Record mit `class operator Implicit` an einen Variant-Aufruf | Keine Meldung |
+| OA10 | `"automation-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude`; `{$WARN SYMBOL_DEPRECATED OFF}` vor `automated` | Keine Meldung von `automation-invalid` bzw. keine W1000 |
+| OA11 | Abgleich mit Delphi: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.E21*','Cm.E2281*','Cm.E2096*' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py`; `pwsh Tools/Build-DccFaelle.ps1` | Alle Codes aus #1373 und W1000 „erkannt“, keine neuen Treffer unter „zusätzlich“; DccAutomation übersetzt ohne Fehler, DccAutomationGegen meldet je Marke den erwarteten Fehler |
+
 ## dispinterface-Deklaration unzulässig (#1374)
 
 Voraussetzung: Server läuft in der IDE mit Projekt. Vorlagen: `Tests/Compilermeldungen/Faelle/Cm.E2228.pas` bis `Cm.E2231b.pas`, Gegenfall `Cm.E2228b.pas`.
