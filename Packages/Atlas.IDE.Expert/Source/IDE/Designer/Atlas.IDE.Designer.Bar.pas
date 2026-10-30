@@ -111,6 +111,7 @@ type
     procedure Apply(ARoot: TComponent; AState: TFormState);
     procedure Restore(ARoot: TComponent; AState: TFormState);
     procedure RestoreAll;
+    function Restorable: Boolean;
     procedure SetControlHidden(AControl: TControl; AHidden: Boolean);
     function IconWindow(ARoot: TWinControl; AComponent: TComponent): HWND;
     procedure Search(const APattern: string);
@@ -486,6 +487,15 @@ var
   mModuleIndex, mFileIndex: Integer;
   mState: TFormState;
 begin
+  // Nichts ausgeblendet: die Module nicht anfassen. Beim Beenden der IDE sind sie schon im Abbau, und
+  // ModuleFileEditors löste in coreide eine Zugriffsverletzung aus.
+  if not Restorable then
+  begin
+    FPattern := '';
+    FHits := nil;
+    FHitIndex := -1;
+    Exit;
+  end;
   if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
     for mModuleIndex := 0 to mModules.ModuleCount - 1 do
     begin
@@ -501,16 +511,29 @@ begin
   FHitIndex := -1;
 end;
 
+/// <summary>Hat Atlas in einem Formular etwas ausgeblendet oder gesetzt, das zurück muss?</summary>
+function TDesignerBarState.Restorable: Boolean;
+var
+  mState: TFormState;
+begin
+  for mState in FForms.Values do
+    if mState.Hidden.Any or (mState.Applied.Count > 0) or (mState.Icons.Count > 0) then
+      Exit(True);
+  Result := False;
+end;
+
 procedure TDesignerBarState.UpdateBars;
 var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
   mHidden: Integer;
   mIndex, mCount: Integer;
+  mState: TFormState;
 begin
   mHidden := 0;
-  if Current(mEditor, mRoot) then
-    mHidden := StateOf(mEditor.FileName).Hidden.CountIn(ItemsOf(mRoot));
+  // TryGetValue statt StateOf: Anzeigen legt keinen Zustand an.
+  if Current(mEditor, mRoot) and FForms.TryGetValue(Key(mEditor.FileName), mState) then
+    mHidden := mState.Hidden.CountIn(ItemsOf(mRoot));
   mIndex := FHitIndex;
   mCount := Length(FHits);
   FHost.ForEach(
@@ -526,13 +549,13 @@ begin
   // Sicherung ausgelöst: Leisten weg und alles wieder sichtbar, bis die Funktion wieder eingeschaltet ist.
   if not FHost.Guard then
   begin
-    if FForms.Count > 0 then
+    if Restorable then
       RestoreAll;
     Exit;
   end;
   if not TAtlasIdeSettings.Current.EditorDesignerBar then
   begin
-    if FForms.Count > 0 then
+    if Restorable then
       RestoreAll;
     if FHost.Count > 0 then
       FHost.Clear;
