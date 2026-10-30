@@ -19,6 +19,7 @@ interface
 uses
   System.SysUtils,
   System.Classes,
+  System.Generics.Collections,
   System.Types,
   Vcl.Controls,
   Vcl.StdCtrls,
@@ -33,7 +34,7 @@ uses
 type
   TAtlasIssueDevelopmentView = class(TScrollBox)
   private
-    FParts: TList;
+    FParts: TList<TControl>;
     FNextTop: Integer;
     FColors: TAtlasColors;
     FDevelopment: TAtlasIssueDevelopment;
@@ -137,7 +138,7 @@ end;
 constructor TAtlasIssueDevelopmentView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FParts := TList.Create;
+  FParts := TList<TControl>.Create;
   FColors := TAtlasColors.Light;
   FDevelopment := TAtlasIssueDevelopment.Empty;
   FPendingCommit := -1;
@@ -223,7 +224,7 @@ begin
   DisableAlign;
   try
     for mIndex := FParts.Count - 1 downto 0 do
-      TControl(FParts[mIndex]).Free;
+      FParts[mIndex].Free;
     FParts.Clear;
     FStatus := nil;
     FBranches := nil;

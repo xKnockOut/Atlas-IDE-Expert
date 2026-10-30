@@ -1759,3 +1759,25 @@ Cm.F2092	Win32	False	Cm.F2092.pas	9	F2092	Fataler Fehler	Das Programm oder die U
 Cm.F2092	Win64	False	Cm.F2092.pas	9	F2092	Fataler Fehler	Das Programm oder die Unit 'Cm.F2092' ruft sich selbst wieder auf
 Cm.F2613	Win32	False	Cm.F2613.pas	11	F2613	Fataler Fehler	Unit 'Cm.GibtEsNicht' nicht gefunden.
 Cm.F2613	Win64	False	Cm.F2613.pas	11	F2613	Fataler Fehler	Unit 'Cm.GibtEsNicht' nicht gefunden.
+Cm.E2373b	Win32	True					
+Cm.E2373b	Win64	True					
+Cm.F2069b	Win32	True					
+Cm.F2069b	Win64	True					
+Cm.F2069d	Win32	True					
+Cm.F2069d	Win64	True					
+Cm.H2367b	Win32	True			W1031	Warnung	Package 'PCmH2367b' wird nicht auf Festplatte geschrieben, da die Option -J aktiviert ist
+Cm.H2367b	Win64	True			W1031	Warnung	Package 'PCmH2367b' wird nicht auf Festplatte geschrieben, da die Option -J aktiviert ist
+Cm.H2440b	Win32	True					
+Cm.H2440b	Win64	True					
+Cm.W1009c	Win32	True					
+Cm.W1009c	Win64	True					
+Cm.W1009d	Win32	True					
+Cm.W1009d	Win64	True					
+Cm.W1071b	Win32	True					
+Cm.W1071b	Win64	True					
+Cm.W1071c	Win32	True					
+Cm.W1071c	Win64	True					
+CmE2121c	Win32	True					
+CmE2121c	Win64	True					
+Cm.F2069c	Win32	False	Cm.F2069c.pas	12	F2069	Fataler Fehler	Zeile zu lang (mehr als 1023 Zeichen)
+Cm.F2069c	Win64	False	Cm.F2069c.pas	12	F2069	Fataler Fehler	Zeile zu lang (mehr als 1023 Zeichen)

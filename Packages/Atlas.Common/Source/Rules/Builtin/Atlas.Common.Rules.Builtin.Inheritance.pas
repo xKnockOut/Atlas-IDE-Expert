@@ -13,21 +13,25 @@
 //                                       auf eine statische (E2170) oder finale (E2352), Ableiten von
 //                                       einer sealed-Klasse (E2353) (#997)
 //   abstract-class-instantiated         Create auf einer Klasse mit offenen abstrakten Methoden (W1020)
-//                                       oder einer abstract-Klasse (E2402) (#999)
-//   inherited-abstract-call             inherited Name(…) auf eine im Vorfahren abstrakte Methode (E2373,
-//                                       #1026); die Methode löst TNameResolver samt Überladungen auf
+//                                       (#999); "class abstract" allein erzwingt dcc nicht (E2402 gibt es
+//                                       nur unter .NET, #1383)
+//   inherited-abstract-call             inherited Name(…) auf eine im Vorfahren abstrakte Methode (#1026):
+//                                       läuft in EAbstractError; Delphi 13 übersetzt das ohne E2373
+//                                       (#1383). Die Methode löst TNameResolver samt Überladungen auf
 //   class-reference-nonvirtual-constructor  Create über eine Klassenreferenz (class of TBasis), deren
 //                                       Konstruktor nicht virtuell ist (E2391, #1032); läuft immer der
 //                                       Konstruktor der Basisklasse
 //   member-hides-ancestor               Property heißt wie ein Feld des Vorfahren (W1009), Feld wie ein
 //                                       Feld oder eine Property, nicht virtuelle Methode wie eine gleich
-//                                       aufgebaute nicht virtuelle des Vorfahren (#1003); strict private
-//                                       des Vorfahren nur mit ignoreStrictPrivate = false
+//                                       aufgebaute nicht virtuelle des Vorfahren (#1003, ohne Code: dcc
+//                                       schweigt dort, #1383); strict private des Vorfahren nur mit
+//                                       ignoreStrictPrivate = false
 //   override-case-mismatch              Schreibweise oder Sichtbarkeit weicht ab (#1021, aus): override
 //                                       anders geschrieben als der Vorfahr (H2365) oder weniger sichtbar
 //                                       (H2269, nur Klassen im interface-Teil), Getter/Setter Get<Name>
-//                                       bzw. Set<Name> anders geschrieben (H2367), inline-Methode greift
-//                                       auf ein weniger sichtbares Mitglied zu (H2440)
+//                                       bzw. Set<Name> anders geschrieben, inline-Methode greift auf ein
+//                                       weniger sichtbares Mitglied zu (beide ohne Code: H2367 und H2440
+//                                       meldet Delphi 13 dort nicht, #1383)
 //   override-only-inherited             override, dessen Rumpf nur inherited mit unveränderten Parametern
 //                                       aufruft (#1143); still bei geänderter Sichtbarkeit, Attributen,
 //                                       Kommentaren oder Direktiven im Rumpf, final, deprecated, Standardwerten
@@ -2028,19 +2032,6 @@ begin
     'Instanz einer Klasse mit abstrakten Methoden');
 end;
 
-/// <summary>Steht abstract in der Signatur einer Klasse ("TForm = class abstract(TBasis)")?</summary>
-function IsAbstractClass(const ASymbol: TIndexSymbol): Boolean;
-var
-  Words: TArray<string>;
-  Index: Integer;
-begin
-  Words := LowerCase(ASymbol.Signature).Split([' ', '(', ')', '<', '>', '=', ';'], TStringSplitOptions.ExcludeEmpty);
-  for Index := 0 to High(Words) - 1 do
-    if (Words[Index] = 'class') and (Words[Index + 1] = 'abstract') then
-      Exit(True);
-  Result := False;
-end;
-
 procedure TAbstractClassInstantiatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 const
   MaxNamed = 5;
@@ -2098,12 +2089,6 @@ var
     if not Ancestry.FindClass(Tokens[AName].Text, Location) then
       Exit;
     Range := TTextRange.Create(Tokens[AName].StartPos, Tokens[ACreate].EndPos);
-    if IsAbstractClass(Location.Symbol) then
-    begin
-      AReport.Add(Range, Format('%s ist als abstract deklariert; davon lässt sich keine Instanz erzeugen ' +
-        '(wie E2402).', [Location.Symbol.Name]), TRuleConfidence.High);
-      Exit;
-    end;
     Open := Ancestry.OpenAbstractMethods(Location, Owners);
     if Open = nil then
       Exit;
@@ -2167,7 +2152,7 @@ end;
 
 function TInheritedAbstractCallRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('inherited-abstract-call', TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create('inherited-abstract-call', TRuleSeverity.Warning,
     'inherited ruft eine abstrakte Methode auf');
 end;
 
@@ -2238,7 +2223,7 @@ var
     if Statement <> nil then
       Fixes := [RemoveStatementFix(Cache, AContext, Statement, 'Aufruf entfernen')];
     AReport.Add(TTextRange.Create(AExpr.StartPos, AExpr.EndPos), Format('%s.%s ist abstrakt; der Aufruf über ' +
-      'inherited ist nicht erlaubt (wie E2373).', [Candidates[0].Container, Candidates[0].Name]),
+      'inherited löst zur Laufzeit EAbstractError aus.', [Candidates[0].Container, Candidates[0].Name]),
       TRuleConfidence.High, Fixes);
   end;
 
@@ -2646,6 +2631,7 @@ var
     Symbol, Hidden: TIndexSymbol;
     Any, Found: Boolean;
     Confidence: TRuleConfidence;
+    Message: string;
   begin
     for Level := 0 to High(AChain) do
     begin
@@ -2684,12 +2670,15 @@ var
         Confidence := TRuleConfidence.High;
         if AOwn.Kind = TIndexSymbolKind.Method then
           Confidence := TRuleConfidence.Medium;
+        // dcc meldet W1009 nur, wenn eine Property ein Feld verdeckt; Feld über Feld oder Property und
+        // statische Methode über statische Methode übersetzt Delphi 13 still (#1383).
+        Message := Format('%s verdeckt %s.%s', [AOwn.Name, AChain[Level].Symbol.Name, Hidden.Name]);
+        if AOwn.Kind = TIndexSymbolKind.Property_ then
+          Message := Message + ' (wie W1009)';
         if AOwn.Kind = TIndexSymbolKind.Method then
-          AReport.Add(AOwn.SelectionRange, Format('%s verdeckt %s.%s (wie W1009).', [AOwn.Name,
-            AChain[Level].Symbol.Name, Hidden.Name]), Confidence)
+          AReport.Add(AOwn.SelectionRange, Message + '.', Confidence)
         else
-          AReport.Add(AOwn.SelectionRange, Format('%s verdeckt %s.%s (wie W1009).', [AOwn.Name,
-            AChain[Level].Symbol.Name, Hidden.Name]), Confidence, RenameFix(AClass, AOwn));
+          AReport.Add(AOwn.SelectionRange, Message + '.', Confidence, RenameFix(AClass, AOwn));
         Exit;
       end;
       // Die nächste Stufe mit gleichnamigem Member entscheidet.
@@ -2940,7 +2929,7 @@ var
         VisibilityName(Target.Visibility)]), TRuleConfidence.High);
   end;
 
-  /// <summary>H2367: Getter oder Setter heißt Get&lt;Property&gt; bzw. Set&lt;Property&gt;, nur anders geschrieben.
+  /// <summary>Getter oder Setter heißt Get&lt;Property&gt; bzw. Set&lt;Property&gt;, nur anders geschrieben.
   /// </summary>
   procedure CheckAccessors(const AClass, AProperty: TIndexSymbol; const AOwnMembers: TArray<TIndexSymbol>);
   var
@@ -2983,8 +2972,8 @@ var
             if Member.Kind = TIndexSymbolKind.Property_ then
               Edits := Edits + AccessorEdits(Member, Name, Expected);
           Edits := Edits + BodyHeadEdits(AClass.Name, Name, Expected);
-          AReport.Add(TokenRange(Index + 1), Format('Die Zugriffsmethode %s.%s sollte %s.%s geschrieben werden ' +
-            '(wie H2367).', [AClass.Name, Method.Name, AClass.Name, Expected]), TRuleConfidence.High,
+          AReport.Add(TokenRange(Index + 1), Format('Die Zugriffsmethode %s.%s sollte %s.%s geschrieben werden.',
+            [AClass.Name, Method.Name, AClass.Name, Expected]), TRuleConfidence.High,
             [TRuleFix.Create(Format('In %s umbenennen', [Expected]), Edits)]);
         end;
       end;
@@ -2992,7 +2981,7 @@ var
     end;
   end;
 
-  /// <summary>H2440: Die inline-Methode AMethod greift im Rumpf auf ein weniger sichtbares Mitglied zu.</summary>
+  /// <summary>Die inline-Methode AMethod greift im Rumpf auf ein weniger sichtbares Mitglied zu.</summary>
   procedure CheckInline(const AType, AMethod: TIndexSymbol; const AOwnMembers: TArray<TIndexSymbol>;
     const AChain: TArray<TSymbolLocation>);
   var
@@ -3056,8 +3045,8 @@ var
         if VisibilityTier(Hit.Visibility) >= VisibilityTier(AMethod.Visibility) then
           Continue;
         Reported := Reported + [Tokens[Level].Text];
-        AReport.Add(TokenRange(Level), Format('Die inline-Methode %s.%s ist %s, greift aber auf %s (%s) zu; ' +
-          'außerhalb der Klasse setzt der Compiler sie nicht ein (wie H2440).', [AType.Name, AMethod.Name,
+        AReport.Add(TokenRange(Level), Format('Die inline-Methode %s.%s ist %s, greift aber auf %s (%s) zu.',
+          [AType.Name, AMethod.Name,
           VisibilityName(AMethod.Visibility), Hit.Name, VisibilityName(Hit.Visibility)]), TRuleConfidence.High);
       end;
     end;

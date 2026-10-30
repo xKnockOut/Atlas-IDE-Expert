@@ -4,9 +4,9 @@
 // inline-Routine, die der Compiler hier nicht einbettet.
 //   H2443  Der Rumpf braucht eine Unit, die hier nicht in uses steht (typisch
 //          System.Generics.Collections bei TJSONObject.Count).
-//   H2444  Der Rumpf greift auf ein strict private-Mitglied seiner Klasse zu,
-//          und der Aufruf steht nicht in einer Methode dieser Klasse; auch
-//          in derselben Unit. Alle anderen Fälle gibt es nur unitübergreifend.
+//   (H2444 nicht: Auf strict private- und private-Mitglieder aus einer
+//          anderen Unit bettet Delphi 13 ohne Meldung ein, #1383.)
+//   Alle Fälle gibt es nur unitübergreifend.
 //   H2445  Die aufrufende Routine ist selbst inline, und die Unit der
 //          gerufenen steht nur im uses des implementation-Teils.
 //   H2456  Die Unit der Routine verwendet die übersetzte Unit (Zyklus).
@@ -21,8 +21,8 @@
 // Verweise, die der Index nicht kennt, und geerbte Mitglieder aus fremden
 // Units bleiben stumm. Erfasst werden Aufrufe, Properties mit inline-Getter
 // bzw. -Setter und for-in über einen Typ mit inline-GetEnumerator, MoveNext
-// oder Current. Mit {$INLINE OFF} in der Datei schweigt die Regel. Ohne
-// Projektindex prüft sie nur die inline-Routinen der Datei selbst.
+// oder Current. Mit {$INLINE OFF} in der Datei schweigt die Regel, ebenso
+// ohne Projektindex (inline-Routinen der Datei selbst meldet sie nicht).
 
 interface
 
@@ -63,8 +63,6 @@ type
   TInlineNeeds = record
     /// <summary>Units, die der Rumpf benutzt (ohne System und die eigene Unit).</summary>
     Units: TArray<string>;
-    /// <summary>strict private-Mitglieder der eigenen Klasse, die der Rumpf benutzt.</summary>
-    StrictPrivate: TArray<string>;
   end;
 
   /// <summary>Gerufene inline-Routine samt ihrer Unit.</summary>
@@ -107,7 +105,6 @@ type
     function Accessor(const ACallee: TInlineCallee; AWrite: Boolean; out AResult: TInlineCallee): Boolean;
     function EnclosingRoutines(AOffset: Integer): TArray<TSyntaxNode>;
     function CallerIsInline(const ARoutines: TArray<TSyntaxNode>): Boolean;
-    function CallerClass(const ARoutines: TArray<TSyntaxNode>): string;
     function OnlyInImplementationUses(const AUnitName: string): Boolean;
     /// <summary>Meldung zu ACallee an ARange, wenn der Compiler ihn nicht einbettet; True bei Treffer.</summary>
     function Report(const ACallee: TInlineCallee; const ARange: TTextRange; AOffset: Integer): Boolean;
@@ -310,11 +307,9 @@ begin
       if Ref = '' then
         Continue;
       UnitName := '';
+      // strict private-Mitglied der eigenen Klasse: Delphi 13 bettet trotzdem ein (#1383, Cm.H2440b).
       if Ref[1] = '!' then
-      begin
-        Result.StrictPrivate := Result.StrictPrivate + [Copy(Ref, 2, MaxInt)];
         Continue;
-      end;
       if Ref[1] = ':' then
       begin
         if FCallee.ResolveTypeTextFrom(ACallee.OwnerUnit, Copy(Ref, 2, MaxInt), Resolved) and
@@ -485,13 +480,6 @@ begin
       Exit(True);
 end;
 
-function TInlineCheck.CallerClass(const ARoutines: TArray<TSyntaxNode>): string;
-begin
-  Result := '';
-  if Length(ARoutines) > 0 then
-    SplitName(ARoutines[0].Name, Result);
-end;
-
 function TInlineCheck.OnlyInImplementationUses(const AUnitName: string): Boolean;
 begin
   Result := TUsesClauses.IsUsed(FOwn.ImplementationUses, AUnitName, FContext.Namespaces) and
@@ -511,7 +499,7 @@ end;
 function TInlineCheck.Explain(const ACallee: TInlineCallee; const ARange: TTextRange; AOffset: Integer): Boolean;
 var
   Needs: TInlineNeeds;
-  Name, Cycle, Member, Missing: string;
+  Name, Cycle, Missing: string;
   Routines: TArray<TSyntaxNode>;
   Missings: TArray<string>;
   UnitName: string;
@@ -522,17 +510,9 @@ begin
   Name := ACallee.Symbol.QualifiedName;
   Routines := EnclosingRoutines(AOffset);
   Needs := NeedsOf(ACallee);
-  // In derselben Unit bleibt nur H2444: uses, Zyklen und der implementation-Teil sind dort dieselben.
+  // In derselben Unit sind uses, Zyklen und der implementation-Teil dieselben.
   if IsOwnUnit(ACallee.OwnerUnit.UnitName) then
-  begin
-    if (Length(Needs.StrictPrivate) > 0) and not SameText(CallerClass(Routines), ACallee.Symbol.Container) then
-    begin
-      FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: Zugriff auf %s.%s (strict private) ' +
-        'ist hier nicht möglich (wie H2444).', [Name, ACallee.Symbol.Container, Needs.StrictPrivate[0]]));
-      Exit(True);
-    end;
     Exit;
-  end;
   // Zyklen zuerst: Dann bettet der Compiler gar nicht ein, gleich was in uses steht. Nur bei Rümpfen mit
   // Verweisen wie vor #1381: Ob dcc H2456/H2457 meldet, hängt von der Reihenfolge der Übersetzung ab; bei
   // Cm.H2456 und Cm.H2457 (Rumpf ohne Verweise, die Unit des Falls zuerst übersetzt) schweigt Delphi 13 (#1383).
@@ -557,13 +537,6 @@ begin
     FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: %s steht nur im uses des ' +
       'implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).',
       [Name, ACallee.OwnerUnit.UnitName]));
-    Exit(True);
-  end;
-  if (Length(Needs.StrictPrivate) > 0) and not SameText(CallerClass(Routines), ACallee.Symbol.Container) then
-  begin
-    Member := Needs.StrictPrivate[0];
-    FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: Zugriff auf %s.%s (strict private) ' +
-      'ist hier nicht möglich (wie H2444).', [Name, ACallee.Symbol.Container, Member]));
     Exit(True);
   end;
   Missings := nil;
@@ -703,7 +676,7 @@ end;
 function TInlineNotExpandedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(InlineNotExpandedRuleId, TRuleSeverity.Hint,
-    'Inline-Funktion wird nicht eingebettet (wie H2443, H2444, H2445, H2456, H2457)');
+    'Inline-Funktion wird nicht eingebettet (wie H2443, H2445, H2456, H2457)');
 end;
 
 procedure TInlineNotExpandedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

@@ -1162,6 +1162,15 @@ begin
   Assert.AreEqual('Ort ist schon als Methode deklariert (wie E2004).', Findings[1].Message);
   Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
   Assert.AreEqual('Art ist schon als Feld deklariert (wie E2004).', Findings[2].Message);
+  // Überladene Array-Properties übersetzt dcc (#1383, Cm.W1075); eine einfache Property gleichen Namens nicht.
+  Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'type'#10 +
+    '  TListe = class'#10'    function NachZahl(I: Integer): string;'#10'    function NachByte(I: Byte): string;'#10 +
+    '    property Eintrag[I: Integer]: string read NachZahl; default;'#10 +
+    '    property Eintrag[I: Byte]: string read NachByte; default;'#10 +
+    '    property Eintrag: string read NachZahl;'#10'  end;'#10'implementation'#10'end.');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Eintrag ist schon als Property deklariert (wie E2004).', Findings[0].Message);
+  Assert.AreEqual(8, Findings[0].Range.StartPos.Line);
   // Unit: interface und implementation sind ein Bereich.
   Findings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, 'unit U;'#10'interface'#10'var'#10 +
     '  Zaehler: Integer;'#10'implementation'#10'type'#10'  Zaehler = Integer;'#10'procedure Zaehler;'#10'begin'#10 +
