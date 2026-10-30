@@ -8681,7 +8681,7 @@ Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DC
 | Nr. | Schritt | Erwartung |
 |---|---|---|
 | MK1 | Delphi 13: Tests/Compilermeldungen öffnen, Fälle Cm.E2058, Cm.E2060, Cm.E2522, Cm.E2053, Cm.E2091, Cm.W1008, Cm.W1019, Cm.W1030 ansehen | Die Befunde nennen denselben Code wie dcc 13 (E2058 und E2059, E2123, E2053, E2088, W1008, W1019, E1030) |
-| MK2 | Unit mit `var F: TextFile; T: Text;`, `AssignFile(F, 'a.txt'); Reset(F); CloseFile(F);` | Kein „unbekannter Bezeichner“ (kein E2003) für TextFile und Text |
+| MK2 | Prozedur mit lokalem `Log: TextFile;`, `AssignFile(Log, Name); {$I-} Append(Log); {$I+} if IOResult <> 0 then Exit; Writeln(Log, …); CloseFile(Log);` | Kein E2003 und kein „ist nicht deklariert“ für TextFile, AssignFile, Append, IOResult, CloseFile |
 | MK3 | `type TAlt = object constructor Init; destructor Done; end; PAlt = ^TAlt;`, im Rumpf `New(P, Init); Dispose(P, Done);` | Keine Meldung; mit `New(P, Anlegen)` „"Anlegen" ist kein Konstruktor von TAlt …“ (wie E2601), mit `Dispose(P, Weg)` E2602 |
 | MK4 | `Fail;` in einer gewöhnlichen Prozedur, dann im Konstruktor `Init` von MK3 | Erst „Fail ist nur im Konstruktor eines object-Typs erlaubt (wie E2078).“, im Konstruktor keine Meldung |
 | MK5 | atlas.json `"delphiVersion": "23.0"`, `{$FOOBAR}` in einer Unit | „Unbekannte Direktive {$FOOBAR} (wie W1030).“; ohne den Eintrag in Delphi 13 „(wie E1030)“ |
