@@ -6,9 +6,9 @@
 //                     oder mit Inc/Dec verändert (#1009, wie E2081), als
 //                     var- bzw. out-Parameter an eine Routine dieser Datei
 //                     übergeben (wie W1015) oder ist keine einfache lokale
-//                     Variable: Feld der eigenen Klasse, globale Variable der
-//                     Unit oder lokale Variable der umgebenden Routine (wie
-//                     E1019). Parameter, unbekannte Namen und Schleifen in
+//                     Variable: Feld der eigenen Klasse oder lokale Variable der
+//                     umgebenden Routine (wie E1019), globale Variable der
+//                     Unit (wie W1019). Parameter, unbekannte Namen und Schleifen in
 //                     with-Anweisungen bleiben still, ebenso anonyme Methoden
 //                     im Rumpf und Routinen mit Parserfehlern.
 //                     Korrekturen: auf eine while-Schleife umstellen (nicht
@@ -456,7 +456,7 @@ var
     procedure VisitLoops(ARoot: TSyntaxNode);
     var
       Child, ForToken: Integer;
-      Name, Key, Kind: string;
+      Name, Key, Kind, mCode: string;
       IsInline, InWith: Boolean;
       Fixes: TArray<TRuleFix>;
       Node: TSyntaxNode;
@@ -487,13 +487,18 @@ var
             if not IsInline and not Locals.ContainsKey(Key) then
             begin
               // Nicht lokal: lokale Variable einer umgebenden Routine, Feld der eigenen Klasse oder globale Variable.
+              // Eine globale Variable übersetzt Delphi 13 mit Warnung W1019, die anderen Fälle sind Fehler E1019.
               Kind := '';
+              mCode := 'E1019';
               if AOuterLocals.ContainsKey(Key) then
                 Kind := 'eine Variable der umgebenden Routine'
               else if (AClass <> '') and Fields.ContainsKey(AClass + '.' + Key) then
                 Kind := 'ein Feld'
               else if Globals.ContainsKey(Key) then
+              begin
                 Kind := 'eine globale Variable';
+                mCode := 'W1019';
+              end;
               if Kind <> '' then
               begin
                 Fixes := nil;
@@ -502,7 +507,7 @@ var
                     [TRuleEdit.Create(TTextRange.Create(Tokens[ForToken].StartPos, Tokens[ForToken].StartPos),
                     'var ')])];
                 AReport.Add(TTextRange.Create(Tokens[ForToken].StartPos, Tokens[ForToken].EndPos),
-                  Format('Schleifenvariable %s ist %s, keine einfache lokale Variable (wie E1019).', [Name, Kind]),
+                  Format('Schleifenvariable %s ist %s, keine einfache lokale Variable (wie %s).', [Name, Kind, mCode]),
                   TRuleConfidence.High, Fixes);
               end;
             end;

@@ -400,7 +400,7 @@ begin
   Assert.AreEqual('Low(FText) to High(FText)', Findings[0].Fixes[0].Edits[0].NewText);
   Assert.AreEqual('Strings beginnen bei 1: der erste Durchlauf greift auf FText[0].', Findings[1].Message);
   Assert.AreEqual('Low(FText) to High(FText)', Findings[1].Fixes[0].Edits[0].NewText);
-  Assert.AreEqual('Strings beginnen bei 1: FText[0] liegt vor dem ersten Zeichen.', Findings[2].Message);
+  Assert.AreEqual('Strings beginnen bei 1: FText[0] liegt vor dem ersten Zeichen (wie E2157).', Findings[2].Message);
   Assert.AreEqual('Low(FText)', Findings[2].Fixes[0].Edits[0].NewText);
 end;
 
