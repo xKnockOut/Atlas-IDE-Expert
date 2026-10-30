@@ -1204,7 +1204,6 @@ begin
     end);
 end;
 
-/// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei den Prüfregeln (#1112).</summary>
 /// <summary>query_code (#1351): Code-Abfragen über den Index der Gruppe; nur lesend.</summary>
 procedure RegisterQueryTools(AServer: TMcpServer; AGroup: TShellWorkspaceGroup);
 begin
@@ -1264,6 +1263,7 @@ begin
     end);
 end;
 
+/// <summary>Werkzeuge für toten Code und Unit-Abhängigkeiten (#64): Projekte, Index und Uses-Graph der Gruppe wie bei den Prüfregeln (#1112).</summary>
 procedure RegisterDeadCodeTools(AServer: TMcpServer; AGroup: TShellWorkspaceGroup; const AIndex: ISymbolIndex;
   const ARoot: string; AGuard: TMcpPathGuard);
 begin
