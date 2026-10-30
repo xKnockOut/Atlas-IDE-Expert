@@ -250,11 +250,13 @@ procedure TComparisonAlwaysConstantTests.CaseLabelsOutsideRange;
 var
   Found: TArray<TRuleFinding>;
 begin
+  // 300 passt auch als Zahl mit Vorzeichen nicht in 8 Bit: Das meldet dcc als Fehler, hier
+  // constant-expression-error (wie E1012, #1372); -1 bleibt hier.
   Found := ComparisonFindings(Routine('  B: Byte;'#10,
-    '  case B of'#10'    1, 300:'#10'      Exit;'#10'    250..400:'#10'      Exit;'#10'    256..300:'#10 +
+    '  case B of'#10'    1, 300, -1:'#10'      Exit;'#10'    250..400:'#10'      Exit;'#10'    256..300:'#10 +
     '      Exit;'#10'    -5..-1:'#10'      Exit;'#10'  end;'#10));
   Assert.AreEqual(3, Integer(Length(Found)));
-  Assert.AreEqual('300 liegt außerhalb des Bereichs von Byte; der Zweig wird nie ausgeführt (wie W1018).',
+  Assert.AreEqual('-1 liegt außerhalb des Bereichs von Byte; der Zweig wird nie ausgeführt (wie W1018).',
     Found[0].Message);
   Assert.AreEqual(8, Found[0].Range.StartPos.Line);
   Assert.AreEqual('256..300 liegt außerhalb des Bereichs von Byte; der Zweig wird nie ausgeführt (wie W1018).',

@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4736] of string = (
+  BaseLines: array[0..4739] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -4016,9 +4016,10 @@ const
     '      "severity": "warning",',
     '      "group": "compiler",',
     '      "description": "A comparison of a variable, field, property or function result of a built-in integer type with a constant outside or at the edge of its value range (like W1021, W1022): Cardinal ' +
-    '>= 0 is always true, Byte > 255 always false. Case labels outside the range of the case expression are reported as well (like W1018). The rule only reports when the type is known for sure and its decl' +
-    'aration is always compiled together with the comparison. NativeInt, LongInt and their unsigned counterparts count with the widest range of all platforms; subrange types are not reported. Length(...) <' +
-    ' 0 and Length(...) >= 0 are reported as well, although dcc does not warn there; the message says so.",',
+    '>= 0 is always true, Byte > 255 always false. Case labels outside the range of the case expression are reported as well (like W1018); single labels that do not fit the width of the type even with the ' +
+    'other sign are an error for dcc and are reported by constant-expression-error (like E1012). The rule only reports when the type is known for sure and its declaration is always compiled together with t' +
+    'he comparison. NativeInt, LongInt and their unsigned counterparts count with the widest range of all platforms; subrange types are not reported. Length(...) < 0 and Length(...) >= 0 are reported as we' +
+    'll, although dcc does not warn there; the message says so.",',
     '      "bad": "while Rest >= 0 do  // Rest: Cardinal",',
     '      "good": "while Rest > 0 do",',
     '      "compilerCodes": [',
@@ -5041,10 +5042,13 @@ const
     '      "category": "bug",',
     '      "severity": "error",',
     '      "group": "compiler",',
-    '      "description": "A constant expression divides by zero (like E2098), overflows beyond the range of Int64 and UInt64 (like E2099), a range has its low bound above its high bound (array[5..1], like' +
-    ' E2011), a constant violates an integer type of fixed size or a subrange type (like W1012, reported as a warning; assignments only from values outside 0..127) or a hex, binary or octal literal needs m' +
-    'ore than 64 bits (like E2102). Atlas evaluates literals, constants (also from other units) and SizeOf/High/Low of types with a fixed size; a constant from an {$IF} branch only counts where the checked' +
-    ' place is compiled together with it. Expressions with unknown parts stay silent.",',
+    '      "description": "A constant expression divides by zero (like E2098) or overflows (like E2099: beyond Int64 when all operands are signed, such as High(Int64) + 1, otherwise beyond UInt64), a range' +
+    ' has its low bound above its high bound (array[5..1], like E2011), a constant violates an integer type of fixed size or a subrange type (like E1012; values that only fit the same width with the other ' +
+    'sign, such as $FFFFFFFF for Integer or -1 for Cardinal, like W1012 as a warning; assignments only from values outside 0..127), a constant index lies outside a static array of the file or a single case' +
+    ' label outside the integer type of the case expression (like E1012), a hex, binary or octal literal needs more than 64 bits (like E2102; assigned to Int64 additionally like W1012), a set has more than' +
+    ' 256 elements (set of 0..300, set of Word, like E2028) or a {$RTTI} visibility set contains numbers or strings instead of vcPrivate, vcProtected, vcPublic and vcPublished (like E2572). Atlas evaluates' +
+    ' literals, constants (also from other units) and SizeOf/High/Low of types with a fixed size; a constant from an {$IF} branch only counts where the checked place is compiled together with it. Expressio' +
+    'ns with unknown parts stay silent.",',
     '      "bad": "const\n  Seiten = 0;\n  ProSeite = 100 div Seiten;",',
     '      "good": "const\n  Seiten = 5;\n  ProSeite = 100 div Seiten;",',
     '      "compilerCodes": [',
@@ -5052,7 +5056,10 @@ const
     '        "E2099",',
     '        "E2011",',
     '        "W1012",',
-    '        "E2102"',
+    '        "E2102",',
+    '        "E1012",',
+    '        "E2028",',
+    '        "E2572"',
     '      ],',
     '      "level": "B"',
     '    },',
@@ -7768,9 +7775,10 @@ const
     '      "id": "comparison-always-constant",',
     '      "name": "Vergleich immer wahr oder immer falsch",',
     '      "description": "Vergleich einer Variablen, eines Feldes, einer Property oder eines Funktionsergebnisses vom eingebauten Ganzzahltyp mit einer Konstanten außerhalb bzw. am Rand des Wertebereichs ' +
-    '(wie W1021, W1022): Cardinal >= 0 ist immer wahr, Byte > 255 immer falsch. Ebenso case-Marken außerhalb des Bereichs des case-Ausdrucks (wie W1018). Gemeldet wird nur bei sicher bekanntem Typ, dessen ' +
-    'Deklaration immer mit dem Vergleich übersetzt wird. NativeInt, LongInt und ihre vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich aller Plattformen; Teilbereichstypen meldet die Regel nicht' +
-    '. Length(…) < 0 und Length(…) >= 0 meldet sie ebenfalls, obwohl dcc dort nicht warnt; die Meldung sagt das dazu."',
+    '(wie W1021, W1022): Cardinal >= 0 ist immer wahr, Byte > 255 immer falsch. Ebenso case-Marken außerhalb des Bereichs des case-Ausdrucks (wie W1018); einzelne Marken, die auch mit anderem Vorzeichen ni' +
+    'cht in die Breite des Typs passen, sind für dcc ein Fehler und meldet constant-expression-error (wie E1012). Gemeldet wird nur bei sicher bekanntem Typ, dessen Deklaration immer mit dem Vergleich über' +
+    'setzt wird. NativeInt, LongInt und ihre vorzeichenlosen Gegenstücke gelten mit dem weitesten Bereich aller Plattformen; Teilbereichstypen meldet die Regel nicht. Length(…) < 0 und Length(…) >= 0 melde' +
+    't sie ebenfalls, obwohl dcc dort nicht warnt; die Meldung sagt das dazu."',
     '    },',
     '    {',
     '      "id": "constant-initializer-mismatch",',
@@ -8320,10 +8328,13 @@ const
     '    {',
     '      "id": "constant-expression-error",',
     '      "name": "Fehler in einem konstanten Ausdruck",',
-    '      "description": "Ein konstanter Ausdruck teilt durch null (wie E2098), läuft über den Bereich von Int64 und UInt64 hinaus (wie E2099), ein Bereich hat die Untergrenze über der Obergrenze (array[5' +
-    '..1], wie E2011), eine Konstante verletzt einen ganzzahligen Typ fester Größe oder einen Teilbereichstyp (wie W1012, als Warnung; bei Zuweisungen nur Werte außerhalb von 0..127) oder ein Hex-, Binär- ' +
-    'oder Oktalliteral braucht mehr als 64 Bit (wie E2102). Atlas wertet Literale, Konstanten (auch aus anderen Units) und SizeOf/High/Low von Typen fester Größe aus; eine Konstante aus einem {$IF}-Zweig z' +
-    'ählt nur, wo die geprüfte Stelle mit ihr zusammen übersetzt wird. Ausdrücke mit unbekannten Teilen bleiben still."',
+    '      "description": "Ein konstanter Ausdruck teilt durch null (wie E2098) oder läuft über (wie E2099: über Int64 hinaus, wenn alle Operanden ein Vorzeichen haben, etwa High(Int64) + 1, sonst über UIn' +
+    't64 hinaus), ein Bereich hat die Untergrenze über der Obergrenze (array[5..1], wie E2011), eine Konstante verletzt einen ganzzahligen Typ fester Größe oder einen Teilbereichstyp (wie E1012; Werte, die' +
+    ' nur als gleich breite Zahl mit anderem Vorzeichen passen, etwa $FFFFFFFF für Integer oder -1 für Cardinal, wie W1012 als Warnung; bei Zuweisungen nur Werte außerhalb von 0..127), ein konstanter Index' +
+    ' liegt außerhalb eines statischen Arrays der Datei oder eine einzelne case-Marke außerhalb des Ganzzahltyps des case-Ausdrucks (wie E1012), ein Hex-, Binär- oder Oktalliteral braucht mehr als 64 Bit (' +
+    'wie E2102; an Int64 zugewiesen zusätzlich wie W1012), eine Menge hat mehr als 256 Elemente (set of 0..300, set of Word, wie E2028) oder eine Sichtbarkeitsmenge in {$RTTI} enthält Zahlen oder Strings s' +
+    'tatt vcPrivate, vcProtected, vcPublic und vcPublished (wie E2572). Atlas wertet Literale, Konstanten (auch aus anderen Units) und SizeOf/High/Low von Typen fester Größe aus; eine Konstante aus einem {' +
+    '$IF}-Zweig zählt nur, wo die geprüfte Stelle mit ihr zusammen übersetzt wird. Ausdrücke mit unbekannten Teilen bleiben still."',
     '    },',
     '    {',
     '      "id": "default-parameter-invalid",',
