@@ -573,14 +573,22 @@ var
 begin
   Source := 'unit U;'#10'interface'#10'const'#10'  Logo = ''' + StringOfChar('i', 1400) + ''';'#10 +
     'implementation'#10'end.';
-  // Unabhängig von max und ignoreStrings immer ein Error.
+  // Unabhängig von max und ignoreStrings immer eine Warnung, ohne Code: Delphi 13 übersetzt solche Zeilen in
+  // der IDE noch (#1383, Cm.F2069).
   Findings := TRuleAssert.Findings(TLineLengthRule.Create, Source,
     '{ "rules": { "line-length": { "severity": "hint", "max": 5000 } } }');
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('Zeile mit 1412 Zeichen; der Compiler bricht über 1023 Zeichen ab (wie F2069).',
+  Assert.AreEqual('Zeile mit 1412 Zeichen; je nach Delphi-Version bricht der Compiler über 1023 Zeichen ab.',
+    Findings[0].Message);
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
+  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
+  // Über 4095 Zeichen bricht auch Delphi 13 ab (Cm.F2069c): Error mit Code.
+  Findings := TRuleAssert.Findings(TLineLengthRule.Create, StringReplace(Source, StringOfChar('i', 1400),
+    StringOfChar('i', 4084), []), '{ "rules": { "line-length": { "severity": "hint", "max": 5000 } } }');
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Zeile mit 4096 Zeichen; der Compiler bricht über 4095 Zeichen ab (wie F2069).',
     Findings[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
-  Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
   // Genau 1023 Zeichen übersetzt der Compiler noch.
   Source := 'unit U;'#10'interface'#10'const'#10'  Logo = ''' + StringOfChar('i', 1011) + ''';'#10 +
     'implementation'#10'end.';
