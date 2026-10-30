@@ -142,7 +142,9 @@ end;
 
 procedure TShellLinterTests.Setup;
 begin
-  FFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-ShellLinter-' + IntToStr(Random(MaxInt)));
+  // Eindeutig je Lauf: Die Architekturübersicht merkt sich den letzten Stand je Ordner (#1367); Random ohne
+  // Randomize gäbe jedes Mal denselben Ordner und damit den Stand des vorigen Laufs.
+  FFolder := TPath.Combine(TPath.GetTempPath, 'Atlas-ShellLinter-' + TGUID.NewGuid.ToString.Substring(1, 8));
   ForceDirectories(TPath.Combine(FFolder, 'Src'));
   FOutput := TPath.Combine(FFolder, 'ergebnis.txt');
   TFile.WriteAllText(Path('Src/Gut.pas'), CleanUnit);
@@ -348,8 +350,10 @@ begin
     Newer, '--compare', Older, '--fail-on', 'error'])), 'unbekannte Abweichung');
   Assert.AreEqual(3, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
     Newer, '--compare', Path('fehlt.json')])), 'Stand fehlt');
-  // architecture.failOn aus atlas.json; Bericht mit architecture.baseline bekommt den Abschnitt „Vergleich“.
-  TFile.WriteAllText(Path('Src/atlas.json'), '{"architecture": {"failOn": ["newCrossLink"], "baseline": "' +
+  // architecture.failOn aus atlas.json ersetzt die Vorgabe newCycle. A und B liegen in eigenen Teilsystemen, der
+  // Zyklus ist also zugleich eine neue Querverbindung: darum centralGrowth. Bericht mit architecture.baseline
+  // bekommt den Abschnitt „Vergleich“.
+  TFile.WriteAllText(Path('Src/atlas.json'), '{"architecture": {"failOn": ["centralGrowth"], "baseline": "' +
     StringReplace(Older, '\', '/', [rfReplaceAll]) + '"}}');
   Assert.AreEqual(0, TLinterShell.Architecture(TCommandLineOptions.Parse(['--check', Source, '--architecture',
     Newer, '--compare', Older, '--output', FOutput])));
