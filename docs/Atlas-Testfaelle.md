@@ -5570,9 +5570,9 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
 |---|---|---|
 | ZG1 | Das Beispiel aus #1001: `TKunde = class` mit `FName: string;` und `property Name: string read FName write SetName;` | Fehler `property-accessor-invalid` an `SetName`: „SetName ist in TKunde nicht deklariert (wie E2168).“; im Fenster „Atlas-Prüfung“ (Gruppe Compiler vorab) und im Befund-Hover (**Abnahme**) |
 | ZG2 | Schnellkorrektur „SetName anlegen“, danach Strg+Z | Deklaration `procedure SetName(const Value: string);` vor der Property und Rumpf mit Änderungsprüfung; danach keine Meldung; ein Undo-Schritt nimmt es zurück. Mit `completion.accessorSection` = `protected` landet der Setter in protected |
-| ZG3 | `read GetName` mit `procedure GetName;` bzw. `function GetName: Integer;`, `property Items[Index: Integer]: string read GetItem` mit `function GetItem: string;` | „… passt nicht als Getter von …; erwartet wird function …“ (wie E2234) |
+| ZG3 | `read GetName` mit `procedure GetName;` bzw. `function GetName: Integer;`, `property Items[Index: Integer]: string read GetItem` mit `function GetItem: string;` | „… passt nicht als Getter von …; erwartet wird function …“ (wie E2008; bis #1382 E2234) |
 | ZG4 | Setter `procedure SetName(var Value: string);` | „Der Setter SetName nimmt den Wert als var-Parameter …“ (wie E2282) |
-| ZG5 | `GetName` zweimal mit `overload` | „GetName ist überladen …“ (wie E2271) |
+| ZG5 | `GetName` zweimal mit `overload` | „GetName ist überladen …“ (wie E2250; bis #1382 E2271) |
 | ZG6 | `class property Anzahl: Integer read FAnzahl` mit Instanzfeld, mit `class function GetAnzahl` ohne `static`; `property Anzahl read FAnzahl` mit `class var FAnzahl` | Meldungen wie E2355 bzw. E2356 |
 | ZG7 | `property Items[I: Integer]: string read FItems;`, `property Rot: Integer index 1 read FRot;`, `read Basis` auf eine andere Property | Meldungen wie E2174 bzw. E2168 |
 | ZG8 | Feldselektoren: `read FAdresse.Ort` (Klasse), `read FPunkt.Z` (fehlt im Record), `read FPunkt.Laenge` (Methode des Records); `read FPunkt.X` | Meldungen wie E2459, E2562, E2461; `FPunkt.X` still |
@@ -5849,7 +5849,7 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | SV2 | Schnellkorrektur „Auf while-Schleife umstellen“, danach Strg+Z | `I := 0; while I <= Zeilen.Count - 1 do begin … Inc(I); end;`, keine Meldung mehr; ein Undo-Schritt |
 | SV3 | `I := 5;` im Rumpf; `downto` mit `Dec(I)`; Rumpf mit `Continue` | Meldung „… darf im Rumpf nicht zugewiesen werden (wie E2081).“; Korrektur mit `>=` und `Dec`; mit Continue keine Korrektur |
 | SV4 | Eigene `procedure Weiter(var N: Integer)` und `Weiter(I)` im Rumpf | „Schleifenvariable I wird als var-Parameter an Weiter übergeben (wie W1015).“ |
-| SV5 | `for FIndex := …` mit einem Feld, `for GZaehler := …` mit einer globalen Variablen, lokale Prozedur mit der Variablen der äußeren Routine | „Schleifenvariable FIndex ist ein Feld, keine einfache lokale Variable (wie E1019).“ usw.; Korrektur „for var FIndex verwenden“ nur, wenn die Routine den Namen sonst nicht benutzt |
+| SV5 | `for FIndex := …` mit einem Feld, `for GZaehler := …` mit einer globalen Variablen, lokale Prozedur mit der Variablen der äußeren Routine | „Schleifenvariable FIndex ist ein Feld, keine einfache lokale Variable (wie E1019).“, für GZaehler W1019 (#1382) usw.; Korrektur „for var FIndex verwenden“ nur, wenn die Routine den Namen sonst nicht benutzt |
 | SV6 | Lesen der Variablen, `Zeilen[I] := …`, `Zeilen.Delete(I)`, anonyme Methode im Rumpf, Schleife in `with`, Parameter als Schleifenvariable | Keine Meldung |
 | SV7 | `"for-variable-misuse": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
 | SV8 | Abgleich mit Delphi: SV1, SV3, SV4, SV5 übersetzen | dcc meldet E2081, W1015 bzw. E1019 an denselben Stellen, für SV6 nichts; abweichende Codes in der Regel nachtragen |
@@ -5981,7 +5981,7 @@ Voraussetzung: Server läuft in der IDE mit Projekt; RTL im Index.
 | YH5 | Interface aus einer anderen Unit (Index), auch über einen Interface-Vorfahren | Meldung wie YH1 |
 | YH6 | Passende Typen, gleichnamige Überladungen mit anderen Parametern, Varianten in `{$IFDEF}`-Zweigen, von denen eine passt | Keine Meldung |
 | YH7 | `"hresult-integer-mix": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| YH8 | Abgleich mit Delphi: YH1, YH3, YH4 übersetzen | dcc meldet X1008 (bzw. die Warnung „Integer and HRESULT interchanged“) an denselben Stellen; in der Meldungsliste von Atlas erscheint der Code X1008 als Warnung |
+| YH8 | Abgleich mit Delphi: YH1, YH3, YH4 übersetzen | dcc meldet X1008 (bzw. die Warnung „Integer and HRESULT interchanged“) an denselben Stellen; in der Meldungsliste von Atlas erscheint der Code X1008 als Warnung; Delphi 13 meldet W1008, die Meldung der Regel nennt seit #1382 W1008 |
 
 ## Ungültiges Argument für var- und out-Parameter (#1037)
 
@@ -6941,11 +6941,11 @@ Voraussetzung: Server läuft in der IDE mit Projekt; Unit mit `TGeld = record Be
 | OD3 | `class operator Substract(const A, B: TGeld): TGeld;` | „Unbekannter Operator Substract; gemeint ist wohl Subtract (wie E2393).“, Korrektur „In Subtract umbenennen“ ändert Deklaration und Rumpf |
 | OD4 | `class operator Negative(const A, B: TGeld): TGeld;` und `class operator Add(const A: TGeld): TGeld;` | „Der Operator Negative muss 1 Parameter haben (wie E2517).“ mit Korrektur „Parameter nach Vorlage: (const A: TGeld)“; für Add 2 Parameter |
 | OD5 | `class operator Add(A, B: Integer): TGeld;` und `class operator Implicit(A: Integer): string;` | „… muss TGeld in mindestens einem Parameter haben (wie E2518).“ bzw. „Implicit muss TGeld als Parameter oder Ergebnis haben (wie E2521).“ |
-| OD6 | `class operator Inc(const A: TGeld): Integer;`; in einer Klasse `TKind = class(TBasis)` ein `class operator Implicit(A: TKind): TBasis;` | „Inc muss denselben Typ liefern wie den ersten Parameter, hier TGeld (wie E2519).“ mit Korrektur „TGeld als Ergebnis“; „Implicit darf nicht in den Vorfahren TBasis oder aus ihm umwandeln (wie E2522).“ |
+| OD6 | `class operator Inc(const A: TGeld): Integer;`; in einer Klasse `TKind = class(TBasis)` ein `class operator Implicit(A: TKind): TBasis;` | „Inc muss denselben Typ liefern wie den ersten Parameter, hier TGeld (wie E2519).“ mit Korrektur „TGeld als Ergebnis“; für den `class operator` in der Klasse meldet seit #1382 die Regel `syntax` „'procedure', 'function', 'property' oder 'var' erwartet, aber 'operator' gefunden (wie E2123).“ |
 | OD7 | `class operator Assign(const Dest: TGeld; const [ref] Src: TGeld);` | „Der erste Parameter von Assign muss ein var-Parameter sein (wie E2464).“, Korrektur „var vor den ersten Parameter setzen“ |
 | OD8 | Richtige Operatoren (Add, Equal mit Boolean, Implicit nach Integer, Initialize/Finalize, True/False), Parametertyp aus fremder Unit, Alias `TMoney = TGeld` | Keine Meldung |
 | OD9 | `"operator-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| OD10 | Abgleich mit Delphi: OD1 bis OD7 übersetzen | dcc meldet für OD1 nichts, sonst E2393, E2517, E2518, E2521, E2519, E2522, E2464 an denselben Stellen, für OD8 nichts |
+| OD10 | Abgleich mit Delphi: OD1 bis OD7 übersetzen | dcc meldet für OD1 nichts, sonst E2393, E2517, E2518, E2521, E2519, E2123 (Delphi 13; die Hilfe nennt E2522), E2464 an denselben Stellen, für OD8 nichts |
 
 ## Generische Deklaration unzulässig (#1029)
 
@@ -8700,6 +8700,17 @@ Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DC
 | KM3 | Teillauf mit `-Cases 'Cm.E2399'` nach einem vollen Lauf | dcc.tsv enthält weiter alle Fälle; nur die Zeilen von Cm.E2399 sind neu |
 | KM4 | `python3 Tools/Compare-Compilermeldungen.py --input Tests/Compilermeldungen/Ergebnisse --output <Ordner>` | `vergleich.md` und `vergleich.json` entstehen; Kennzahlen wie im Bericht (482 Meldungen, 228 erkannt) |
 | KM5 | `Tests/Compilermeldungen/Compilermeldungen.dproj` in der IDE öffnen | Atlas indiziert das Projekt; Fehler der Fälle erscheinen als Befunde, die IDE baut das Projekt nicht (nur für den Index) |
+
+## Meldungscodes wie dcc (#1382)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| MK1 | Delphi 13: Tests/Compilermeldungen öffnen, Fälle Cm.E2058, Cm.E2060, Cm.E2522, Cm.E2053, Cm.E2091, Cm.W1008, Cm.W1019, Cm.W1030 ansehen | Die Befunde nennen denselben Code wie dcc 13 (E2058 und E2059, E2123, E2053, E2088, W1008, W1019, E1030) |
+| MK2 | Prozedur mit lokalem `Log: TextFile;`, `AssignFile(Log, Name); {$I-} Append(Log); {$I+} if IOResult <> 0 then Exit; Writeln(Log, …); CloseFile(Log);` | Kein E2003 und kein „ist nicht deklariert“ für TextFile, AssignFile, Append, IOResult, CloseFile |
+| MK3 | `type TAlt = object constructor Init; destructor Done; end; PAlt = ^TAlt;`, im Rumpf `New(P, Init); Dispose(P, Done);` | Keine Meldung; mit `New(P, Anlegen)` „"Anlegen" ist kein Konstruktor von TAlt …“ (wie E2601), mit `Dispose(P, Weg)` E2602 |
+| MK4 | `Fail;` in einer gewöhnlichen Prozedur, dann im Konstruktor `Init` von MK3 | Erst „Fail ist nur im Konstruktor eines object-Typs erlaubt (wie E2078).“, im Konstruktor keine Meldung |
+| MK5 | atlas.json `"delphiVersion": "23.0"`, `{$FOOBAR}` in einer Unit | „Unbekannte Direktive {$FOOBAR} (wie W1030).“; ohne den Eintrag in Delphi 13 „(wie E1030)“ |
+| MK6 | `pwsh Tools/Build-Compilermeldungen.ps1` voll (Delphi 13), dann Compare-Compilermeldungen.py; dasselbe mit Delphi 12 | Delphi 13: keine Zeile „anderer Code“ für die Codes aus #1382, kein falsches E2003 bei Cm.E2002/E2071/E2078/E2601/E2602; Delphi 12: abweichende Codes notieren (Meldung folgt `delphiVersion`); beide Builds 0/0/0 |
 
 ## Seite „Versionsverwaltung“ (#1285)
 

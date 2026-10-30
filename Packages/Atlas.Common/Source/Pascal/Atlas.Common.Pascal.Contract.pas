@@ -46,7 +46,8 @@ type
     StartPos: TTextPosition;
     /// <summary>Position hinter dem letzten Zeichen.</summary>
     EndPos: TTextPosition;
-    /// <summary>False bei String, Kommentar oder Direktive ohne Abschluss (unvollständiger Code).</summary>
+    /// <summary>False bei String, Kommentar oder Direktive ohne Abschluss (unvollständiger Code) und bei einer
+    /// Zahl mit leerem Exponenten wie 1.5e (E2053).</summary>
     Terminated: Boolean;
     /// <summary>Für Keyword: Wort in Kleinbuchstaben vergleichen, z. B. IsKeyword('begin').</summary>
     function IsKeyword(const AWord: string): Boolean;

@@ -7,12 +7,15 @@
 //                                 (E2517), ohne den eigenen Typ in den
 //                                 Parametern (E2518) bzw. in Parameter oder
 //                                 Ergebnis (E2521), Inc/Dec mit anderem
-//                                 Ergebnis als dem ersten Parameter (E2519),
-//                                 Umwandlung in einen Vorfahren (E2522) oder
-//                                 Assign ohne var vor dem ersten Parameter
-//                                 (Delphi 13 meldet E2617 statt E2464,
-//                                 Cm.E2464, #1380). Zum Rumpf eines
-//                                 unbekannten Operators bzw. eines class
+//                                 Ergebnis als dem ersten Parameter (E2519)
+//                                 oder Assign ohne var vor dem ersten
+//                                 Parameter (Delphi 13 meldet E2617 statt
+//                                 E2464, Cm.E2464, #1380). Geprüft werden nur
+//                                 Records: Einen class operator in einer
+//                                 Klasse meldet Delphi 13 als E2123 (Regel
+//                                 syntax, #1382), damit entfällt E2522
+//                                 (Umwandlung in einen Vorfahren). Zum Rumpf
+//                                 eines unbekannten Operators bzw. eines class
 //                                 operator in einer Klasse gibt es keine
 //                                 gültige Deklaration (wie E2037, Cm.E2393,
 //                                 Cm.E2522, #1380).
@@ -698,11 +701,11 @@ var
   procedure CheckOperator(AHeader: TSyntaxNode);
   var
     Head: TRoutineHead;
-    Own, Name, Closest, Other, Template, Ancestor: string;
+    Own, Name, Closest, Other, Template: string;
     OwnNames, ParamTypes: TArray<string>;
     Shape: TOperatorShape;
     Range: TTextRange;
-    Index, Count, Expected, Depth: Integer;
+    Index, Count, Expected: Integer;
     Param: TSyntaxNode;
     HasOwn, Certain: Boolean;
   begin
@@ -714,6 +717,13 @@ var
     Index := NameToken(Tokens, AHeader);
     if (Own = '') or (Name = '') or (Index < 0) or not IsValidIdent(Name) then
       Exit;
+    // Klassenoperatoren gibt es unter Win32 und Win64 nur in Records: In einer Klasse meldet syntax die
+    // Deklaration (E2123, #1382), hier bleibt nur der Rumpf, der zu nichts passt (Cm.E2522, #1380).
+    if AHeader.Parent.Kind = TSyntaxKind.ClassType then
+    begin
+      ReportBodies(Own, Head);
+      Exit;
+    end;
     Range := TokenRange(Tokens[Index]);
     Shape := OperatorShape(Name);
     if Shape = TOperatorShape.Unknown then
@@ -727,9 +737,6 @@ var
       ReportBodies(Own, Head);
       Exit;
     end;
-    // Klassenoperatoren gibt es unter Win32 und Win64 nur in Records (Cm.E2522: dcc lehnt die Deklaration ab).
-    if AHeader.Parent.Kind = TSyntaxKind.ClassType then
-      ReportBodies(Own, Head);
     if Shape = TOperatorShape.Tolerated then
       Exit;
     OwnNames := Types.SameNames(Own);
@@ -789,24 +796,6 @@ var
         Report(Range, Format('%s muss %s als Parameter oder Ergebnis haben (wie E2521).', [Name, Own]), nil);
         Exit;
       end;
-      // Umwandlung in bzw. aus einem Vorfahren (E2522), Kette aus der Datei.
-      if HasOwn then
-      begin
-        Ancestor := Types.ParentOf(Own);
-        Depth := 0;
-        while (Ancestor <> '') and (Depth < 32) do
-        begin
-          if MatchText(Ancestor, ParamTypes) or ((Head.ResultType <> nil) and
-            SameText(BareTypeName(Head.ResultType.Name), Ancestor)) then
-          begin
-            Report(Range, Format('%s darf nicht in den Vorfahren %s oder aus ihm umwandeln (wie E2522).',
-              [Name, Ancestor]), nil);
-            Exit;
-          end;
-          Ancestor := Types.ParentOf(Ancestor);
-          Inc(Depth);
-        end;
-      end;
     end
     else if not HasOwn and Certain and (Shape <> TOperatorShape.Managed) then
     begin
@@ -844,6 +833,7 @@ begin
       function(ANode: TSyntaxNode): Boolean
       begin
         Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
+        // Operatoren gibt es nur in Records; Köpfe in Klassen nur für die Rümpfe (E2037, #1380).
         if (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
           (ANode.Parent.Kind in [TSyntaxKind.RecordType, TSyntaxKind.ClassType]) then
           Headers.Add(ANode);
@@ -3508,6 +3498,12 @@ var
             if IsTypeInfo then
               AReport.Add(NodeRange(Argument), Format('%s hat keine Typinformation: Dateitypen erzeugen keine ' +
                 'RTTI (wie E2134).', [Name]), TRuleConfidence.High, nil)
+            else if (ACall.Parent <> nil) and (ACall.Parent.Kind = TSyntaxKind.AssignStatement) and
+              (ACall.Parent.ChildCount > 1) and (ACall.Parent[1] = ACall) then
+              // Die Zuweisung an eine Dateivariable meldet dcc zusätzlich als E2015.
+              AReport.Add(NodeRange(Argument), Format('Default ist für den Dateityp %s nicht erlaubt, und ' +
+                'Dateivariablen lassen sich nicht zuweisen (wie E2538 und E2015).', [Name]),
+                TRuleConfidence.High, nil)
             else
               AReport.Add(NodeRange(Argument), Format('Default ist für den Dateityp %s nicht erlaubt (wie E2538).',
                 [Name]), TRuleConfidence.High, nil);

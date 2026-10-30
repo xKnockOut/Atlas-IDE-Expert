@@ -28,6 +28,8 @@ type
     [Test]
     procedure UnbalancedUnknownDirectives;
     [Test]
+    procedure UnknownDirectiveCodeFollowsDelphiVersion;
+    [Test]
     procedure UnbalancedOptionStack;
     [Test]
     procedure UnbalancedAlign;
@@ -184,7 +186,7 @@ begin
     '{$IFNDEF FPC}'#10'{$ELSE}'#10'{$MODESWITCH ADVANCEDRECORDS}'#10'{$ENDIF}'#10 +
     '{$IF Defined(FPC_FULLVERSION)}'#10'{$WARN 5024 OFF}'#10'{$WARN UNKNOWN_FPC OFF}'#10'{$ENDIF}'#10, ''));
   // Außerhalb eines FPC-Zweigs meldet {$MODE}.
-  Assert.AreEqual('Unbekannte Direktive {$MODE} (wie W1030).', OnlyMessage(Dienst('{$MODE DELPHI}'#10, '')));
+  Assert.AreEqual('Unbekannte Direktive {$MODE} (wie E1030).', OnlyMessage(Dienst('{$MODE DELPHI}'#10, '')));
 end;
 
 procedure TDirectiveRulesTests.UnbalancedStrayDirectives;
@@ -227,26 +229,41 @@ begin
   Source := Dienst('', '  {$OPTIMISATION ON}'#10);
   Found := Findings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Unbekannte Direktive {$OPTIMISATION}; gemeint ist wohl {$OPTIMIZATION} (wie W1030).',
+  Assert.AreEqual('Unbekannte Direktive {$OPTIMISATION}; gemeint ist wohl {$OPTIMIZATION} (wie E1030).',
     Found[0].Message);
   Assert.AreEqual('Tippfehler korrigieren: {$OPTIMIZATION}', Found[0].Fixes[0].Title);
   Assert.AreEqual(Dienst('', '  {$OPTIMIZATION ON}'#10), ApplyFix(Source, Found[0].Fixes[0]));
   // Kleinschreibung bleibt.
   Source := Dienst('', '  {$optimisation on}'#10);
   Assert.AreEqual(Dienst('', '  {$optimization on}'#10), ApplyFix(Source, Findings(Source)[0].Fixes[0]));
-  Assert.AreEqual('Unbekannte Direktive {$FOOBAR} (wie W1030).', OnlyMessage(Dienst('{$FOOBAR}'#10, '')));
+  Assert.AreEqual('Unbekannte Direktive {$FOOBAR} (wie E1030).', OnlyMessage(Dienst('{$FOOBAR}'#10, '')));
   // {$WARN} mit unbekanntem Bezeichner.
-  Assert.AreEqual('Unbekannte Warnung UNKOWN in {$WARN} (wie W1030).',
+  Assert.AreEqual('Unbekannte Warnung UNKOWN in {$WARN} (wie E1030).',
     OnlyMessage(Dienst('{$WARN UNKOWN OFF}'#10, '')));
   Source := Dienst('{$WARN SYMBOL_PLATFROM OFF}'#10, '');
   Found := Findings(Source);
-  Assert.AreEqual('Unbekannte Warnung SYMBOL_PLATFROM in {$WARN}; gemeint ist wohl SYMBOL_PLATFORM (wie W1030).',
+  Assert.AreEqual('Unbekannte Warnung SYMBOL_PLATFROM in {$WARN}; gemeint ist wohl SYMBOL_PLATFORM (wie E1030).',
     Found[0].Message);
   Assert.AreEqual(Dienst('{$WARN SYMBOL_PLATFORM OFF}'#10, ''), ApplyFix(Source, Found[0].Fixes[0]));
   // Ein Tippfehler in {$IFDEF} lässt das {$ENDIF} ohne Gegenstück.
   Found := Findings(Dienst('{$IFDEFF DEBUG}'#10'{$ENDIF}'#10, ''));
   Assert.AreEqual(2, Integer(Length(Found)));
-  Assert.AreEqual('Unbekannte Direktive {$IFDEFF}; gemeint ist wohl {$IFDEF} (wie W1030).', Found[0].Message);
+  Assert.AreEqual('Unbekannte Direktive {$IFDEFF}; gemeint ist wohl {$IFDEF} (wie E1030).', Found[0].Message);
+end;
+
+procedure TDirectiveRulesTests.UnknownDirectiveCodeFollowsDelphiVersion;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Delphi 13 meldet E1030 (Fall Cm.W1030), ältere Versionen W1030 (#1382).
+  mFound := Findings(Dienst('{$FOOBAR}'#10'{$WARN UNKOWN OFF}'#10, ''), '{"delphiVersion": "23.0"}', 'Dienst.pas');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Unbekannte Direktive {$FOOBAR} (wie W1030).', mFound[0].Message);
+  Assert.AreEqual('Unbekannte Warnung UNKOWN in {$WARN} (wie W1030).', mFound[1].Message);
+  mFound := Findings(Dienst('{$FOOBAR}'#10, ''), '{"delphiVersion": "37.0"}', 'Dienst.pas');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Unbekannte Direktive {$FOOBAR} (wie E1030).', mFound[0].Message);
+  mFound := nil;
 end;
 
 procedure TDirectiveRulesTests.UnbalancedOptionStack;

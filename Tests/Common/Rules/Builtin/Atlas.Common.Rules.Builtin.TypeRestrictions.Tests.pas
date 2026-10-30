@@ -2,8 +2,8 @@
 
 // Tests der Sprachregeln für Typdeklarationen: operator-declaration-invalid
 // (#1030) mit dem Beispiel samt Korrektur in Deklaration und Rumpf, allen
-// Codes (E2393, E2517, E2518, E2519, E2521, E2522, E2617), stillen
-// Fällen (richtige Operatoren, Aliase, unbekannte Typen) und Abschalten;
+// Codes (E2393, E2517, E2518, E2519, E2521, E2617, E2037), stillen
+// Fällen (richtige Operatoren, Aliase, unbekannte Typen, Klassen) und Abschalten;
 // generic-declaration-invalid (#1029) mit dem Beispiel und je Gruppe von
 // Codes ein gemeldeter und ein stiller Fall, still bei Methodenzuordnungen
 // (#1325), Klassen als Einschränkung aus dem Index, lokale Routinen in
@@ -248,18 +248,18 @@ begin
     Found[0].Message);
   Fixed := TChangeSignature.ApplyEdits(Source, Found[0].Fixes[0].Edits);
   Assert.AreEqual(Geld('    class operator Inc(const A: TGeld): TGeld;'#10), Fixed);
-  // Klasse mit Umwandlung in den Vorfahren.
+  // Klasse mit Umwandlung in den Vorfahren: Delphi 13 lehnt den Operator in einer Klasse schon als E2123 ab
+  // (Regel syntax), E2522 gibt es nicht mehr (#1382).
   Found := OperatorFindings('unit Tiere;'#10'interface'#10'type'#10'  TTier = class'#10'  end;'#10 +
     '  THund = class(TTier)'#10'    class operator Implicit(A: THund): TTier;'#10'  end;'#10'implementation'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Implicit darf nicht in den Vorfahren TTier oder aus ihm umwandeln (wie E2522).', Found[0].Message);
+  Assert.AreEqual(0, Integer(Length(Found)));
   // Klassenoperatoren gibt es nur in Records: Der Rumpf passt zu nichts (Cm.E2522, #1380).
   Found := OperatorFindings('unit Tiere;'#10'interface'#10'type'#10'  TTier = class'#10'  end;'#10 +
     '  THund = class(TTier)'#10'    class operator Implicit(A: THund): TTier;'#10'  end;'#10'implementation'#10#10 +
     'class operator THund.Implicit(A: THund): TTier;'#10'begin'#10'  Result := A;'#10'end;'#10#10'end.');
-  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual('Zu THund.Implicit gibt es keine gültige Deklaration; der Rumpf passt zu nichts (wie E2037).',
-    Found[1].Message);
+    Found[0].Message);
 end;
 
 procedure TOperatorDeclarationInvalidTests.AssignNeedsVar;
@@ -1041,12 +1041,13 @@ begin
     '14: TDatei hat keine Typinformation: Dateitypen erzeugen keine RTTI (wie E2134).|' +
     '15: Default ist für den Dateityp Text nicht erlaubt (wie E2538).|' +
     '16: Default ist für den Dateityp File nicht erlaubt (wie E2538).|' +
-    '17: Default ist für den Dateityp TDatei nicht erlaubt (wie E2538).',
+    '17: Default ist für den Dateityp TDatei nicht erlaubt, und Dateivariablen lassen sich nicht zuweisen ' +
+    '(wie E2538 und E2015).',
     Messages(TypeInfoFindings('unit G;'#10'interface'#10'type'#10'  TStatus = (Aus = 1, An = 5);'#10 +
     '  TAlias = TStatus;'#10'  TDatei = file of Integer;'#10'  TFarbe = (Rot, Gruen);'#10'implementation'#10 +
     'procedure P;'#10'begin'#10'  X := TypeInfo(TStatus);'#10'  X := TypeInfo(TAlias);'#10 +
     '  X := TypeInfo(TextFile);'#10'  X := TypeInfo(TDatei);'#10'  Default(Text);'#10'  Default(File);'#10 +
-    '  Default(TDatei);'#10'  X := TypeInfo(TFarbe); Y := Default(TFarbe); Z := TypeInfo(TList<Integer>);'#10 +
+    '  D := Default(TDatei);'#10'  X := TypeInfo(TFarbe); Y := Default(TFarbe); Z := TypeInfo(TList<Integer>);'#10 +
     'end;'#10'end.')));
 end;
 
