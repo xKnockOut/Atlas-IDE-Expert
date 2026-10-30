@@ -104,6 +104,10 @@ begin
   TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, TestUnit('  TRuleAssert.Silent(TRegel.Create, X);'#10));
   // Nur im Kommentar: gemeldet.
   TRuleAssert.Reports(TDUnitXTestWithoutAssertRule.Create, TestUnit('  // Assert.IsTrue(X);'#10'  Laden;'#10));
+  // Prüfung in einer lokalen Routine des Tests.
+  TRuleAssert.Silent(TDUnitXTestWithoutAssertRule.Create, StringReplace(TestUnit('  Pruefe(1);'#10),
+    'LeereDateiWirdGelesen;'#10'begin', 'LeereDateiWirdGelesen;'#10'  procedure Pruefe(A: Integer);'#10'  begin'#10 +
+    '    Assert.IsTrue(A > 0);'#10'  end;'#10'begin', []));
 end;
 
 procedure TTestingRulesTests.HelperMethodsAreFollowed;

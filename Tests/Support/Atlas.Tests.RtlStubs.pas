@@ -1,4 +1,5 @@
-﻿unit Atlas.Tests.RtlStubs;
+﻿// lsp-ignore-file: hardcoded-path -- Stub-Dateinamen für den Symbolindex, kein Zugriff auf die Platte.
+unit Atlas.Tests.RtlStubs;
 
 // Testhilfe: kleine Stubs der RTL für Prüfungen mit Symbolindex (#1106, #1112):
 // System, System.Classes, System.Contnrs und System.Generics.Collections mit

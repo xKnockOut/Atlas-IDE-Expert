@@ -33,7 +33,7 @@ uses
 
 /// <summary>Verbraucht Stapel, bis er überläuft; ADepth verhindert, dass der Compiler die Rekursion
 /// wegoptimiert.</summary>
-function Exhaust(ADepth: Integer): Integer;
+function Exhaust(ADepth: Integer): Integer; // lsp-ignore: unconditional-recursion -- läuft absichtlich in den Stapelüberlauf
 var
   Filler: array[0..255] of Integer;
 begin

@@ -83,7 +83,7 @@ begin
   Assert.IsTrue(TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Missing);
   Assert.IsTrue(TAtlasAffectedHook.Install(mHooks, FDir, Config), 'legt Ordner, Hook und Angaben an');
   Assert.IsTrue(TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Own);
-  Assert.AreEqual(TAtlasAffectedHook.ConfigText(Config), TFile.ReadAllText(TAtlasAffectedHook.ConfigFileOf(FDir)));
+  Assert.AreEqual(TAtlasAffectedHook.ConfigText(Config), TFile.ReadAllText(TAtlasAffectedHook.ConfigFileOf(FDir), TEncoding.UTF8));
   Assert.IsTrue(TAtlasAffectedHook.Install(mHooks, FDir, Config), 'eigener wird ersetzt');
   Assert.IsTrue(TAtlasAffectedHook.Uninstall(mHooks, FDir));
   Assert.IsTrue(TAtlasAffectedHook.State(mHooks) = TAtlasAffectedHookState.Missing);
@@ -93,7 +93,7 @@ begin
   Assert.IsFalse(TAtlasAffectedHook.Install(mHooks, FDir, Config), 'fremder Hook bleibt');
   Assert.IsFalse(FileExists(TAtlasAffectedHook.ConfigFileOf(FDir)), 'ohne eigenen Hook keine Angaben');
   Assert.IsTrue(TAtlasAffectedHook.Uninstall(mHooks, FDir));
-  Assert.IsTrue(Pos('echo fremd', TFile.ReadAllText(TAtlasAffectedHook.HookFile(mHooks))) > 0);
+  Assert.IsTrue(Pos('echo fremd', TFile.ReadAllText(TAtlasAffectedHook.HookFile(mHooks), TEncoding.UTF8)) > 0);
   Assert.IsFalse(TAtlasAffectedHook.Install('', FDir, Config));
 end;
 

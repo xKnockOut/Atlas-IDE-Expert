@@ -662,12 +662,18 @@ end;
 
 function TMcpPrompts.WriteTests(const AArguments: TDictionary<string, string>): string;
 var
-  mName, mSteps, mConventions: string;
+  mName, mSteps, mConventions, mFolder, mProject: string;
   mSettings: TServerSettings;
 begin
   UseLanguage;
   mName := Argument(AArguments, 'name');
   mSettings := FSettings();
+  mFolder := mSettings.TestUnits.Folder;
+  if mFolder = '' then
+    mFolder := Say('Ordner des Testprojekts', 'folder of the test project');
+  mProject := mSettings.TestUnits.Project;
+  if mProject = '' then
+    mProject := Say('automatisch erkannt', 'detected automatically');
   mConventions := Format(Say(
     'Name der Testunit: %s ({unit} = getestete Unit). Ordner neuer Testunits: %s. Testprojekt: %s.' + sLineBreak +
     'DUnitX: [TestFixture] je Klasse, [Test] je Methode, Assert.AreEqual(Erwartet, Ist), Fixture in initialization ' +
@@ -675,10 +681,7 @@ begin
     'Test unit name: %s ({unit} = unit under test). Folder for new test units: %s. Test project: %s.' + sLineBreak +
     'DUnitX: [TestFixture] per class, [Test] per method, Assert.AreEqual(Expected, Actual), register the fixture ' +
     'with TDUnitX.RegisterTestFixture in initialization; a new test unit also goes into the test project (.dpr ' +
-    'and .dproj).'), [mSettings.TestUnits.Pattern,
-    IfThen(mSettings.TestUnits.Folder <> '', mSettings.TestUnits.Folder, Say('Ordner des Testprojekts',
-    'folder of the test project')), IfThen(mSettings.TestUnits.Project <> '', mSettings.TestUnits.Project,
-    Say('automatisch erkannt', 'detected automatically'))]);
+    'and .dproj).'), [mSettings.TestUnits.Pattern, mFolder, mProject]);
   mSteps := Say(
     '1. Lege Testmethoden für normale Fälle, Grenzfälle und Fehlerfälle an; vorhandene Tests (unten) nicht doppeln.' +
     sLineBreak + '2. Schreibe sie in die passende Testunit nach den Konventionen unten.' + sLineBreak,

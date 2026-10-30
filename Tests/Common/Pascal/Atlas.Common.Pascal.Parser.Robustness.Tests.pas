@@ -225,7 +225,7 @@ begin
   try
     TFile.WriteAllText(TPath.Combine(Folder, 'Probe.pas'), Samples[0], TEncoding.UTF8);
     for FileName in TDirectory.GetFiles(Folder, '*.pas', TSearchOption.soAllDirectories) do
-      ParseAndFree(TFile.ReadAllText(FileName));
+      ParseAndFree(TFile.ReadAllText(FileName, TEncoding.UTF8));
   finally
     TDirectory.Delete(Folder, True);
   end;
@@ -514,7 +514,7 @@ begin
   for Directory in Directories do
     for FileName in TDirectory.GetFiles(Directory, '*.pas', TSearchOption.soAllDirectories) do
     begin
-      Text := TFile.ReadAllText(FileName);
+      Text := TFile.ReadAllText(FileName, TEncoding.UTF8);
       Watch := TStopwatch.StartNew;
       try
         ParseAndFree(Text);

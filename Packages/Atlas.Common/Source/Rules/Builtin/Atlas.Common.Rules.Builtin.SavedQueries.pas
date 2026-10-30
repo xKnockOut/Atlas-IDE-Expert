@@ -25,7 +25,7 @@ type
     constructor Create(const AQuery: TSavedQuery);
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
-    /// <summary>Kennung der Regel zur Abfrage AName: query:<name>.</summary>
+    /// <summary>Kennung der Regel zur Abfrage AName: query:&lt;name&gt;.</summary>
     class function RuleId(const AName: string): string; static;
     /// <summary>Eine Regel je gespeicherter Abfrage mit failIfAny; keine, wenn query.enabled aus ist.</summary>
     class function RulesOf(const ASettings: TServerSettings): TArray<IRule>; static;

@@ -795,7 +795,7 @@ begin
   Assert.AreEqual(Project, List.Project);
   List.Add(UnitFile, Join(Code), 18, 'Rundung', 0);
   Assert.IsFalse(TAtlasBookmarks.Save(List, False));
-  Assert.AreEqual(3, TAtlasBookmarks.FormatOf(TFile.ReadAllText(FileName)));
+  Assert.AreEqual(3, TAtlasBookmarks.FormatOf(TFile.ReadAllText(FileName, TEncoding.UTF8)));
 end;
 
 procedure TAtlasBookmarkStorageTests.LoadWithoutFileIsEmpty;
@@ -824,12 +824,12 @@ begin
   List := TAtlasBookmarkList.Create(TPath.Combine(Sub, 'App.dproj'));
   List.Add(UnitFile, Join(Code), 18, 'Rundung', 0);
   Assert.IsTrue(TAtlasBookmarks.Save(List, False));
-  Text := TFile.ReadAllText(Exclude);
+  Text := TFile.ReadAllText(Exclude, TEncoding.UTF8);
   Assert.IsTrue(Text.StartsWith('# vorhanden' + #10 + '*.bak' + #10), Text);
   Assert.IsTrue(Text.Contains(#10 + '/App/.atlas-bookmarks.json' + #10), Text);
   // Zweites Speichern trägt nicht noch einmal ein.
   Assert.IsTrue(TAtlasBookmarks.Save(List, False));
-  Assert.AreEqual(Text, TFile.ReadAllText(Exclude));
+  Assert.AreEqual(Text, TFile.ReadAllText(Exclude, TEncoding.UTF8));
   Assert.IsTrue(TAtlasBookmarks.ExcludeFromGit(TAtlasBookmarks.FileFor(List.Project, False)));
 end;
 
@@ -848,7 +848,7 @@ begin
   Assert.IsTrue(TAtlasBookmarks.ExcludeFromGit(TPath.Combine(Tree, '.atlas-bookmarks.json')));
   Exclude := TPath.Combine(TPath.Combine(TPath.Combine(Main, '.git'), 'info'), 'exclude');
   Assert.IsTrue(FileExists(Exclude));
-  Assert.IsTrue(TFile.ReadAllText(Exclude).Contains('/.atlas-bookmarks.json' + #10));
+  Assert.IsTrue(TFile.ReadAllText(Exclude, TEncoding.UTF8).Contains('/.atlas-bookmarks.json' + #10));
 end;
 
 procedure TAtlasBookmarkStorageTests.SharedFileIsNotExcluded;
@@ -907,8 +907,8 @@ begin
   Assert.AreEqual(FileName, List.KeptFile);
   List.Add(UnitFile, Join(Code), 18, 'Ersatz', 0);
   Assert.IsFalse(TAtlasBookmarks.Save(List, False), 'beim Laden gesperrt: nicht überschreiben');
-  Assert.Contains(TFile.ReadAllText(FileName), 'Rundung');
-  Assert.DoesNotContain(TFile.ReadAllText(FileName), 'Ersatz');
+  Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), 'Rundung');
+  Assert.DoesNotContain(TFile.ReadAllText(FileName, TEncoding.UTF8), 'Ersatz');
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;
 end;

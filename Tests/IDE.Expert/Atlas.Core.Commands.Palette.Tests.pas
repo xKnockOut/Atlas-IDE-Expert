@@ -240,8 +240,8 @@ begin
     Assert.AreEqual(0, History.Boost('A'));
     History.Executed('B');
     Assert.IsFalse(History.SaveToFile(FileName), 'beim Lesen gesperrt: nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(FileName), '"A"');
-    Assert.DoesNotContain(TFile.ReadAllText(FileName), '"B"');
+    Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), '"A"');
+    Assert.DoesNotContain(TFile.ReadAllText(FileName, TEncoding.UTF8), '"B"');
   finally
     History.Free;
     System.SysUtils.DeleteFile(FileName);

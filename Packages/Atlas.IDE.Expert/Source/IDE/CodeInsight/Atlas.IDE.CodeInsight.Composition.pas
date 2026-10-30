@@ -4762,43 +4762,6 @@ end;
 
 const
   IssueTimeExtra = 'issueTime';
-/// <summary>Token für den Issue-Tracker ATarget abfragen und im Anmeldespeicher von Windows ablegen (#765); leer
-/// entfernt es. Ziel "Atlas:tracker:&lt;Server&gt;", Benutzer = Anbieter. True, wenn sich etwas geändert hat.</summary>
-function EnterTrackerCredentials(const AProvider: IAtlasTrackerProvider; const ATarget: TAtlasTrackerTarget): Boolean;
-var
-  Token: string;
-  Ok: Boolean;
-begin
-  Result := False;
-  // Das Token geht nur über https an den eingetragenen Server; ohne https gar nicht erst speichern.
-  if not ATarget.Secure then
-  begin
-    LoginNotice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginInsecure));
-    Exit;
-  end;
-  Token := '';
-  if not TAtlasCiLoginPrompt.AskToken(TAtlasStrings.Fmt(TAtlasTextId.TrackerLoginTitle, [AProvider.Caption,
-    ATarget.Server]), TAtlasStrings.Text(TAtlasTextId.TrackerLoginToken), Token) then
-    Exit;
-  if Token = '' then
-  begin
-    Ok := TAtlasCiCredentials.Delete(ATarget.CredentialTarget);
-    if Ok then
-      LoginNotice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginRemoved))
-    else
-      LoginNotice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
-    Exit(Ok);
-  end;
-  Ok := TAtlasCiCredentials.Write(ATarget.CredentialTarget, AProvider.Name, Token, 'Atlas: Issue-Tracker');
-  UniqueString(Token);
-  FillChar(PChar(Token)^, Length(Token) * SizeOf(Char), 0);
-  // Anonym: weder Server noch Projekt.
-  if Ok then
-    LoginNotice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginSaved))
-  else
-    LoginNotice(TAtlasStrings.Text(TAtlasTextId.TrackerLoginFailed));
-  Result := Ok;
-end;
 
 function CreateWelcomeIssues(AProjects: TAtlasIdeProjects): TAtlasIdeIssues;
 begin

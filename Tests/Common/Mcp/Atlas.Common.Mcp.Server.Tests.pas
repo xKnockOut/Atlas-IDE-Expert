@@ -422,7 +422,7 @@ begin
     mServer.OnPromptsEnabled :=
       function: Boolean
       begin
-        Result := mEnabled;
+        Result := mEnabled; // lsp-ignore: captured-loop-variable -- Absicht: liest den jeweils aktuellen Wert
       end;
     mServer.AddPrompt(EchoPrompt);
     mServer.AddResource('delphi://conventions', 'Konventionen', '', 'text/markdown',

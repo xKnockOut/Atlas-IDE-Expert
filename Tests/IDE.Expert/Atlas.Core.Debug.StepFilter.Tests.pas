@@ -181,7 +181,7 @@ var
   mRun: TAtlasStepFilterRun;
 begin
   // F7 auf Speichere(Kunde.Name) in einer Routine mit 5 Rahmen: erst GetName (6), zurück (5), dann Speichere (6).
-  mRun.Cancel;
+  mRun := Default(TAtlasStepFilterRun);
   mRun.Start(5);
   Assert.IsTrue(mRun.Entered(6));
   Assert.AreEqual(Ord(TAtlasStepFilterAction.Return), Ord(mRun.AfterStep(6, True)));
@@ -197,7 +197,7 @@ procedure TAtlasStepFilterTests.SameDepthIsNoNewRoutine;
 var
   mRun: TAtlasStepFilterRun;
 begin
-  mRun.Cancel;
+  mRun := Default(TAtlasStepFilterRun);
   mRun.Start(5);
   Assert.IsFalse(mRun.Entered(5), 'nächste Zeile derselben Routine');
   Assert.AreEqual(Ord(TAtlasStepFilterAction.Keep), Ord(mRun.AfterStep(5, True)));
@@ -210,7 +210,7 @@ procedure TAtlasStepFilterTests.BreakpointInsideSkippedRoutineKeepsStop;
 var
   mRun: TAtlasStepFilterRun;
 begin
-  mRun.Cancel;
+  mRun := Default(TAtlasStepFilterRun);
   mRun.Start(5);
   mRun.AfterStep(6, True);
   Assert.AreEqual(Ord(TAtlasStepFilterAction.Keep), Ord(mRun.AfterReturn(7)), 'Haltepunkt in LogInfo greift');
@@ -224,7 +224,7 @@ procedure TAtlasStepFilterTests.RoutineEndsDuringReturn;
 var
   mRun: TAtlasStepFilterRun;
 begin
-  mRun.Cancel;
+  mRun := Default(TAtlasStepFilterRun);
   mRun.Start(5);
   mRun.AfterStep(6, True);
   Assert.AreEqual(Ord(TAtlasStepFilterAction.Keep), Ord(mRun.AfterReturn(4)));
@@ -235,7 +235,7 @@ procedure TAtlasStepFilterTests.NotFilteredKeepsStop;
 var
   mRun: TAtlasStepFilterRun;
 begin
-  mRun.Cancel;
+  mRun := Default(TAtlasStepFilterRun);
   mRun.Start(3);
   Assert.AreEqual(Ord(TAtlasStepFilterAction.Keep), Ord(mRun.AfterStep(4, False)));
   Assert.IsFalse(mRun.Entered(4));
@@ -246,7 +246,7 @@ var
   mRun: TAtlasStepFilterRun;
   mIndex: Integer;
 begin
-  mRun.Cancel;
+  mRun := Default(TAtlasStepFilterRun);
   mRun.Start(2);
   for mIndex := 1 to TAtlasStepFilter.MaxSkips do
   begin

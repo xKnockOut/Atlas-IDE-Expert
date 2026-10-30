@@ -280,8 +280,8 @@ begin
   Assert.IsTrue(TFile.Exists(TPath.Combine(mFolders[0], 'settings.json')));
   for mFile in mFiles do
   begin
-    Assert.IsFalse(TFile.ReadAllText(mFile).Contains('geheim-123'), mFile);
-    Assert.IsFalse(TFile.ReadAllText(mFile).Contains('kennwort'), mFile);
+    Assert.IsFalse(TFile.ReadAllText(mFile, TEncoding.UTF8).Contains('geheim-123'), mFile);
+    Assert.IsFalse(TFile.ReadAllText(mFile, TEncoding.UTF8).Contains('kennwort'), mFile);
   end;
 end;
 
