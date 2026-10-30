@@ -50,6 +50,7 @@ type
 implementation
 
 uses
+  System.Classes,
   System.SysUtils,
   Vcl.Controls,
   Atlas.UI.Strings,

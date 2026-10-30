@@ -147,7 +147,7 @@ begin
     RegisterLoopRules(Registry);
     RegisterGenericRules(Registry);
     RegisterTypeCheckRules(Registry);
-    RegisterTypeKindRules(Registry,
+    RegisterTypeKindRules(Registry);
     RegisterTypeMismatchRules(Registry);
     RegisterConstantRules(Registry);
     RegisterFormRules(Registry);

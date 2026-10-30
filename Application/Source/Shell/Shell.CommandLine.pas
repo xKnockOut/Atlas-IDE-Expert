@@ -147,9 +147,6 @@ type
     QueryText: string;
     /// <summary>--fail-on-match: Exit-Code 1, wenn --query etwas findet (#1351).</summary>
     FailOnMatch: Boolean;
-    /// <summary>Wert von --format wie angegeben, für Ausgaben mit eigenen Formaten (--query csv, #1351); '' = keiner.
-    /// </summary>
-    FormatText: string;
     /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>

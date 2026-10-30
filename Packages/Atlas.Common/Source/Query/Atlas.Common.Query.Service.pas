@@ -58,8 +58,10 @@ uses
 /// Rahmen von Execute festhält.</summary>
 function CombinedCancel(const AFirst, ASecond: TQueryCancelled): TQueryCancelled;
 begin
+  // Result zuweisen statt Exit(ASecond): Delphi riefe die Methodenreferenz dort auf (E2010).
+  Result := ASecond;
   if not Assigned(AFirst) then
-    Exit(ASecond);
+    Exit;
   Result :=
     function: Boolean
     begin
