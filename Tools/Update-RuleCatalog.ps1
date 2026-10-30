@@ -14,6 +14,8 @@
     und die RuleId-Konstanten) im Katalog steht, jede Katalogregel implementiert ist
     und jede Regel Name, Beschreibung, beide Beispiele und eine bekannte Gruppe
     (#909) hat. Optionen (options) brauchen Name, bekannten Typ und Beschreibung.
+    "safeFix" (#1352) muss ein Wahrheitswert sein; Regeln.md nennt die Regeln
+    mit Sammelkorrektur.
     Regeln.md listet die Regeln nach Gruppen und je Regel ihre Optionen.
 
     Mit -Check wird nichts geschrieben; Exit-Code 1, wenn die erzeugten Dateien
@@ -105,6 +107,10 @@ foreach ($Rule in $Base.rules) {
     # Stufe der Compilerregeln (#1024): A Parser, B Namensauflösung, T Ausdruckstypen.
     if (($Rule.PSObject.Properties.Name -contains 'level') -and (@('A', 'B', 'T') -cnotcontains [string]$Rule.level)) {
         $Problems.Add("Regel '$($Rule.id)': ungültige Stufe '$($Rule.level)' (erlaubt A, B, T)")
+    }
+    # Sammelkorrektur (#1352): "safeFix" ist ein Wahrheitswert.
+    if (($Rule.PSObject.Properties.Name -contains 'safeFix') -and -not ($Rule.safeFix -is [bool])) {
+        $Problems.Add("Regel '$($Rule.id)': 'safeFix' muss true oder false sein")
     }
     # Gegenregeln (#1025): Ist eine davon an, meldet die Regel nichts.
     if ($Rule.PSObject.Properties.Name -contains 'overriddenBy') {
@@ -230,6 +236,9 @@ foreach ($Row in $Rows) {
     }
     if ($Row.Rule.PSObject.Properties.Name -contains 'level') {
         [void]$Doc.Append("Stufe $($LevelNames[[string]$Row.Rule.level]).`r`n`r`n")
+    }
+    if (($Row.Rule.PSObject.Properties.Name -contains 'safeFix') -and $Row.Rule.safeFix) {
+        [void]$Doc.Append('Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix ' + $Row.Rule.id + '`, MCP `fix_findings`, Befehl ' + [char]0x201E + 'Alle sicheren Treffer korrigieren ' + [char]0x2026 + [char]0x201C + ').' + "`r`n`r`n")
     }
     if ($Row.Rule.PSObject.Properties.Name -contains 'overriddenBy') {
         [void]$Doc.Append("Schweigt, solange $((@($Row.Rule.overriddenBy) | ForEach-Object { '[`' + $_ + '`](#' + $_ + ')' }) -join ' oder ') an ist.`r`n`r`n")

@@ -182,6 +182,12 @@ begin
           Result := False;
       end;
     end;
+  // Fehlende Dateien aus {$I} und {$R} (#1379).
+  AContext.FileExists :=
+    function(const AName: string): Boolean
+    begin
+      Result := TFile.Exists(TPath.Combine(Folder, AName));
+    end;
 end;
 
 { TCheckSource }
@@ -379,6 +385,8 @@ begin
     Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARelativePath, '/', '\', [rfReplaceAll])), '');
     Context.Text := AText;
     Context.Tree := Tree;
+    // Inaktive Zweige für Regeln, die selbst über die Token gehen (unused-uses, #1352).
+    Context.InactiveRanges := TPascalPreprocessor.MainInactive(Processed);
     Context.Application := AProject.Application;
     Context.ProjectName := AProject.Name;
     Context.AutoCreateForms := AProject.AutoCreateForms;

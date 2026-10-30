@@ -42,6 +42,18 @@
 //                       initialization- oder finalization-Teil (Registrierung)
 //                       gelten als verwendet, Packages und DLLs haben Nutzer
 //                       außerhalb der Gruppe (Option projectKinds).
+//   unused-uses         uses-Eintrag, aus dessen Unit nichts verwendet wird
+//                       (#1352), mit derselben Analyse wie die Hinweise im
+//                       Editor (#621, TUsesActions.Entries): Units, die der
+//                       Index nicht kennt, mit initialization/finalization
+//                       oder aus usesKeep bleiben; inaktive Zweige zählen
+//                       nicht; nur in Units, denn das uses eines Programms
+//                       oder Packages zählt die Units des Projekts auf.
+//                       Sichere Korrektur „Eintrag entfernen“ für die
+//                       Sammelkorrektur (--fix unused-uses). Im Editor
+//                       (TRuleContext.Live) schweigt die Regel, dort zeigt
+//                       der Server dieselben Einträge abgeblendet; ohne Index
+//                       und bei Syntaxfehlern ebenso.
 //
 // uses-cycle und unused-unit schweigen ohne Projekte (Linter, Datei ohne
 // Projekt), solange Projekte laden oder der Index läuft, und für Units, die der
@@ -57,6 +69,7 @@ const
   UsesCycleRuleId = 'uses-cycle';
   UnusedDeclarationRuleId = 'unused-declaration';
   UnusedUnitRuleId = 'unused-unit';
+  UnusedUsesRuleId = 'unused-uses';
 
 type
   TUsesCycleRule = class(TInterfacedObject, IRule)
@@ -72,6 +85,12 @@ type
   end;
 
   TUnusedUnitRule = class(TInterfacedObject, IRule)
+  public
+    function Descriptor: TRuleDescriptor;
+    procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+  end;
+
+  TUnusedUsesRule = class(TInterfacedObject, IRule)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -99,6 +118,7 @@ uses
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.ConsideredUsed,
+  Atlas.Common.Rules.Builtin.Units,
   Atlas.Text.Lines;
 
 function CleanName(const AText: string): string;
@@ -747,11 +767,64 @@ begin
       [OwnName, Programs]), TRuleConfidence.Medium);
 end;
 
+{ TUnusedUsesRule }
+
+function TUnusedUsesRule.Descriptor: TRuleDescriptor;
+begin
+  Result := TRuleDescriptor.Create(UnusedUsesRuleId, TRuleSeverity.Hint, 'Aus der Unit im uses wird nichts verwendet');
+end;
+
+procedure TUnusedUsesRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mIndex: ISymbolIndex;
+  mEnsure: TEnsureUnitFunc;
+  mEntry: TUsesEntry;
+  mEdit: TTextEdit;
+  mFixes: TArray<TRuleFix>;
+begin
+  // Im Editor zeigt der Server dieselben Einträge abgeblendet (#621); ohne Index ist nichts sicher, und bei
+  // Syntaxfehlern fehlen Bezeichner.
+  if AContext.Live or (AContext.Index = nil) or (AContext.Tree = nil) or (Length(AContext.Tree.Diagnostics) > 0) then
+    Exit;
+  // Das uses eines Programms, einer Bibliothek oder eines Packages zählt die Units des Projekts auf (Formulare,
+  // "in"-Pfade, DCCReference): Ein Eintrag dort ist Mitgliedschaft, nicht Abhängigkeit.
+  if TModuleHeader.Read(AContext.Tree.Tokens).Kind <> TModuleKind.UnitModule then
+    Exit;
+  mIndex := AContext.Index;
+  mEnsure := AContext.EnsureUnit;
+  for mEntry in TUsesActions.Entries(AContext.Tree.Tokens, AContext.InactiveRanges,
+    function(const AUnitName: string): TUsesUnitInfo
+    var
+      mUnit: TUnitIndex;
+      mSymbol: TIndexSymbol;
+    begin
+      Result := Default(TUsesUnitInfo);
+      if Assigned(mEnsure) then
+        mEnsure(AUnitName);
+      if not mIndex.FindUnit(AUnitName, mUnit) then
+        Exit;
+      Result.Known := True;
+      Result.HasInitialization := mUnit.HasInitialization;
+      for mSymbol in mUnit.Symbols do
+        if mSymbol.InInterface then
+          Result.Names := Result.Names + [mSymbol.Name];
+    end, AContext.UsesKeep) do
+  begin
+    if mEntry.State <> TUsesEntryState.Unused then
+      Continue;
+    mFixes := nil;
+    if TUsesActions.RemoveEntries(AContext.Text, TArray<TTextRange>.Create(mEntry.Range), mEdit) then
+      mFixes := TArray<TRuleFix>.Create(TRuleFix.Create('Eintrag entfernen', TArray<TTextEdit>.Create(mEdit), True));
+    AReport.Add(mEntry.Range, Format('Aus %s wird nichts verwendet', [mEntry.Name]), TRuleConfidence.High, mFixes);
+  end;
+end;
+
 procedure RegisterDeadCodeRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TUsesCycleRule.Create);
   ARegistry.Register(TUnusedDeclarationRule.Create);
   ARegistry.Register(TUnusedUnitRule.Create);
+  ARegistry.Register(TUnusedUsesRule.Create);
 end;
 
 end.

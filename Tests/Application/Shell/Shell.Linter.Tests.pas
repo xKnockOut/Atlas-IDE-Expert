@@ -5,7 +5,9 @@
 // Exit-Codes (0 sauber, 1 Treffer, 3 Aufruf- oder Lesefehler), Formate,
 // Metriken (#66), TODOs (#68), Unterdrückungen (#147) und Baseline (#97),
 // dazu der Lauf mit und ohne Symbolindex (#1112). Index-Caches liegen neben
-// dem Testprogramm (--index-cache), nie bei denen des Benutzers. Der Ordner
+// dem Testprogramm (--index-cache), nie bei denen des Benutzers. Dazu
+// --format-check und --format-write (#1358): Exit-Codes, Formate, Kodierung
+// und Zeilenenden beim Schreiben, Syntaxfehler, format.* aus atlas.json. Der Ordner
 // bleibt zwischen den Läufen: Der Index der erreichbaren RTL (rund 1500 Units)
 // kostete in einem leeren Cache je Aufbau gut drei Minuten, im Testlauf zweimal
 // (Aufwärmen und Test). Ein neues Cache-Format verwirft er selbst.
@@ -61,6 +63,9 @@ type
     procedure ArchitectureAsMarkdownAndHtml;
     [Test]
     procedure ArchitectureCompareFailsOnNewCycle;
+    /// <summary>--hotspots (#1354): ohne Versionsverwaltung Exit-Code 3, mit Git-Repository der Bericht.</summary>
+    [Test]
+    procedure HotspotsNeedVersionControl;
     [Test]
     procedure SuppressionStatsGiveZero;
     [Test]
@@ -75,6 +80,22 @@ type
     /// ohne installiertes Delphi (Version aus ProjectVersion) und ohne .dproj.</summary>
     [Test]
     procedure InlineCompilerVersionWithoutInstallation;
+    /// <summary>#1358: formatierte Datei 0, falsche Einrückung 1 mit Zeile und Art; Diff und JSON.</summary>
+    [Test]
+    procedure FormatCheckReportsDeviations;
+    /// <summary>#1358: Schreiben behält UTF-8 mit/ohne BOM, ANSI und die Zeilenenden; danach ist die Prüfung sauber.
+    /// </summary>
+    [Test]
+    procedure FormatWriteKeepsEncoding;
+    /// <summary>#1358: Eine Datei mit Syntaxfehler bleibt Byte für Byte und wird gemeldet.</summary>
+    [Test]
+    procedure FormatWriteSkipsSyntaxErrors;
+    /// <summary>#1358: format.indentSize aus atlas.json gilt; --units wählt aus.</summary>
+    [Test]
+    procedure FormatUsesProjectSettings;
+    /// <summary>#1358: ungültige Kombinationen ergeben 3.</summary>
+    [Test]
+    procedure FormatOptionsConflict;
   end;
 
 implementation
@@ -83,6 +104,11 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Common.Documents.FileEncoding,
+  Atlas.Core.Vcs.Contract,
+  Shell.Platform,
+  Shell.VcsChanges,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Editing.FormatCheck,
   Shell.CommandLine,
   Shell.Linter,
   Shell.Workspace;
@@ -91,6 +117,8 @@ const
   CleanUnit = 'unit Gut;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10;
   BrokenUnit = 'unit Kaputt;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10 +
     '  if then;'#13#10'end;'#13#10'end.'#13#10;
+  cIndentedUnit = 'unit Schief;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10 +
+    '   P;'#13#10'end;'#13#10'end.'#13#10;
   TodoUnit = 'unit Offen;'#13#10'interface'#13#10'implementation'#13#10'// TODO: Aufräumen'#13#10'end.'#13#10;
 
 { TShellLinterTests }
@@ -260,6 +288,36 @@ begin
     '--architecture', Report])), 'atlas.json schaltet nicht ab');
 end;
 
+procedure TShellLinterTests.HotspotsNeedVersionControl;
+var
+  mReport, mGit, mText: string;
+  mRunner: IAtlasVcsRunner;
+  mCommands: TArray<string>;
+  mCommand: string;
+begin
+  mReport := Path('hotspots.md');
+  // Der Temp-Ordner liegt in keiner Arbeitskopie: Grund auf stderr, Exit-Code 3.
+  Assert.AreEqual(3, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--hotspots', mReport])));
+  Assert.IsFalse(TFile.Exists(mReport));
+  Assert.AreEqual(3, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--hotspots', Path('hotspots.pdf')])));
+  mGit := TVcsChanges.ToolFor(TAtlasVcsKind.Git, '');
+  if mGit = '' then
+    Exit;
+  mRunner := TShellPlatform.CreateVcsRunner(True, nil);
+  mCommands := TArray<string>.Create('init -q', 'config user.name Atlas', 'config user.email test@example.org',
+    'config commit.gpgsign false', 'add Src', 'commit -q -m Start');
+  for mCommand in mCommands do
+    Assert.AreEqual(0, mRunner.Run(mGit, mCommand.Split([' ']), FFolder, 60000).ExitCode, mCommand);
+  Assert.AreEqual(0, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
+    '--hotspots', mReport])));
+  mText := TFile.ReadAllText(mReport, TEncoding.UTF8);
+  Assert.IsTrue(mText.StartsWith('# Hotspots'), mText);
+  Assert.IsTrue(mText.Contains('1 Commits'), mText);
+  Assert.IsTrue(mText.Contains('Kaputt'), 'geänderte Unit im Bericht');
+end;
+
 procedure TShellLinterTests.ArchitectureCompareFailsOnNewCycle;
 var
   Source, Older, Newer, Second: string;
@@ -389,6 +447,99 @@ begin
   // Ohne .dproj gilt die neueste bekannte Version.
   Assert.AreEqual(0, Run(['--check', Path('Cv/T1.pas'), '--format', 'json', '--fail-on', 'never', '--no-index']));
   Assert.IsFalse(Pos('"syntax"', OutputText) > 0, OutputText);
+end;
+
+procedure TShellLinterTests.FormatCheckReportsDeviations;
+var
+  mText: string;
+begin
+  Assert.AreEqual(0, Run(['--check', Path('Src/Gut.pas'), '--format-check']));
+  TFile.WriteAllText(Path('Src/Schief.pas'), cIndentedUnit);
+  Assert.AreEqual(1, Run(['--check', Path('Src/Schief.pas'), '--format-check']));
+  mText := OutputText;
+  Assert.Contains(mText, 'Schief.pas: 1 Abweichungen');
+  Assert.Contains(mText, 'Zeile 6: Einrückung 3 statt 2');
+  Assert.AreEqual(1, Run(['--check', Path('Src/Schief.pas'), '--format-check', '--format', 'diff']));
+  mText := OutputText;
+  Assert.Contains(mText, '--- a/Schief.pas');
+  Assert.Contains(mText, '-   P;');
+  Assert.Contains(mText, '+  P;');
+  Assert.AreEqual(1, Run(['--check', Path('Src/Schief.pas'), '--format-check', '--format', 'json']));
+  Assert.Contains(OutputText, '"kind":"indent"');
+  // Geprüft wird nur im Speicher.
+  Assert.AreEqual(cIndentedUnit, TFile.ReadAllText(Path('Src/Schief.pas')));
+end;
+
+procedure TShellLinterTests.FormatWriteKeepsEncoding;
+const
+  cUmlautUnit = 'unit Umlaut;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10 +
+    '   P; // Größe'#13#10'end;'#13#10'end.'#13#10;
+var
+  mAnsi, mBytes: TBytes;
+  mFormat: TFileFormat;
+  mText: string;
+begin
+  TDirectory.Delete(Path('Src'), True);
+  ForceDirectories(Path('Src'));
+  // UTF-8 mit BOM, UTF-8 ohne BOM mit LF, ANSI (Windows-1252: ö = $F6).
+  TFile.WriteAllBytes(Path('Src/MitBom.pas'), TFileEncoding.Encode(cUmlautUnit,
+    TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF)));
+  TFile.WriteAllBytes(Path('Src/OhneBom.pas'), TFileEncoding.Encode(cUmlautUnit,
+    TFileFormat.Create(TFileEncodingKind.Utf8, TLineBreakStyle.LF)));
+  mAnsi := TFileEncoding.Encode(cUmlautUnit, TFileFormat.Create(TFileEncodingKind.Ansi1252, TLineBreakStyle.CRLF));
+  TFile.WriteAllBytes(Path('Src/Ansi.pas'), mAnsi);
+  Assert.AreEqual(0, Run(['--check', Path('Src'), '--format-write']));
+  Assert.Contains(OutputText, 'MitBom.pas: formatiert');
+  mBytes := TFile.ReadAllBytes(Path('Src/MitBom.pas'));
+  mText := TFileEncoding.Decode(mBytes, mFormat);
+  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Utf8Bom);
+  Assert.IsTrue(mFormat.LineBreak = TLineBreakStyle.CRLF);
+  Assert.Contains(mText, #13#10'  P; // Größe'#13#10);
+  mText := TFileEncoding.Decode(TFile.ReadAllBytes(Path('Src/OhneBom.pas')), mFormat);
+  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Utf8);
+  Assert.IsFalse(mText.Contains(#13));
+  Assert.Contains(mText, #10'  P; // Größe'#10);
+  mBytes := TFile.ReadAllBytes(Path('Src/Ansi.pas'));
+  // Eine Spalte weniger Einrückung, sonst Byte für Byte gleich: das ö bleibt ein Byte.
+  Assert.AreEqual(Integer(Length(mAnsi)) - 1, Integer(Length(mBytes)));
+  mText := TFileEncoding.Decode(mBytes, mFormat);
+  Assert.IsTrue(mFormat.Encoding = TFileEncodingKind.Ansi1252);
+  Assert.Contains(mText, 'Größe');
+  // Stabil: danach weicht nichts mehr ab, und keine Nachbardatei bleibt liegen.
+  Assert.AreEqual(0, Run(['--check', Path('Src'), '--format-check']));
+  Assert.AreEqual(0, Integer(Length(TDirectory.GetFiles(Path('Src'), '*.tmp'))));
+end;
+
+procedure TShellLinterTests.FormatWriteSkipsSyntaxErrors;
+begin
+  TFile.WriteAllText(Path('Src/Kaputt.pas'), StringReplace(BrokenUnit, '  if then;', '     if then;', []));
+  Assert.AreEqual(1, Run(['--check', Path('Src/Kaputt.pas'), '--format-write']));
+  Assert.Contains(OutputText, 'Syntaxfehler, nicht formatiert');
+  Assert.AreEqual(StringReplace(BrokenUnit, '  if then;', '     if then;', []),
+    TFile.ReadAllText(Path('Src/Kaputt.pas')));
+  Assert.AreEqual(1, Run(['--check', Path('Src/Kaputt.pas'), '--format-check']));
+end;
+
+procedure TShellLinterTests.FormatUsesProjectSettings;
+begin
+  TFile.Delete(Path('Src/Kaputt.pas'));
+  TFile.WriteAllText(Path('Src/Schief.pas'), StringReplace(cIndentedUnit, '   P;', '    P;', []));
+  // Mit Einrückung 2 weicht Schief.pas (4 Leerzeichen) ab, mit 4 aus atlas.json nicht mehr.
+  Assert.AreEqual(1, Run(['--check', Path('Src'), '--format-check']));
+  TFile.WriteAllText(Path('Src/atlas.json'), '{"format":{"indentSize":4}}');
+  Assert.AreEqual(0, Run(['--check', Path('Src'), '--format-check']));
+  // --units nimmt Schief.pas aus.
+  TFile.WriteAllText(Path('Src/atlas.json'), '{}');
+  Assert.AreEqual(0, Run(['--check', Path('Src'), '--format-check', '--units', 'Gut']));
+end;
+
+procedure TShellLinterTests.FormatOptionsConflict;
+begin
+  Assert.AreEqual(3, Run(['--check', Path('Src/Gut.pas'), '--format-check', '--format-write']));
+  Assert.AreEqual(3, Run(['--check', Path('Src/Gut.pas'), '--format-check', '--format', 'sarif']));
+  Assert.AreEqual(3, Run(['--check', Path('Src/Gut.pas'), '--format-check', '--metrics']));
+  Assert.AreEqual(3, Run(['--check', Path('Src/Gut.pas'), '--format', 'diff']));
+  Assert.AreEqual(3, Run(['--check', Path('Src/Fehlt.pas'), '--format-check']));
 end;
 
 initialization

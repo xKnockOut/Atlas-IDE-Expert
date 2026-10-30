@@ -16,7 +16,7 @@ sind nur das Ziel; ob ein Fall greift, zeigt erst der Bau.
 | `Faelle/Cm<Code>.dpr`, `.dpk` | Fälle, die ein Programm oder Paket brauchen (Imagebase, exports, requires …) |
 | `Faelle/Cm.Hilfe.*.pas`, `CmNs*.pas` | Hilfsunits ohne eigene Meldung |
 | `ohne-fall.txt` | Codes ohne Fall, mit Grund (.NET, Umgebungsfehler, defekte Dateien) |
-| `Compilermeldungen.dproj` | nur für den Symbolindex von Atlas: bindet alle Units ein; dcc übersetzt es nicht |
+| `Compilermeldungen.dproj` | nur für den Symbolindex von Atlas: bindet alle Units ein; dcc übersetzt es nicht. Der Schalter `-JPHNE` in `DCC_AdditionalSwitches` sagt Atlas, dass C++-Ausgaben entstehen (für W1029, #1380) |
 | `atlas.json` | Delphi 13 als Mindestversion, `unused-unit` aus |
 
 Jeder Fall beginnt mit einem Kopf:
