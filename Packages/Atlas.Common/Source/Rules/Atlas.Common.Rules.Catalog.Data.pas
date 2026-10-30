@@ -1189,7 +1189,8 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "performance",',
-    '      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Off by default.",',
+    '      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no B' +
+    'eginUpdate) and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",',
     '      "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",',
     '      "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"',
     '    },',
@@ -1595,9 +1596,9 @@ const
     '      "severity": "error",',
     '      "group": "find-bugs",',
     '      "description": "A class, interface, record or other type is used in a type declaration (field, parameter, result, property, generic argument, class of) but declared only further down in the same' +
-    ' scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that). Quick fixes: add ' +
-    'a forward declaration at the start of the type block, merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; with' +
-    'out a safe fix the message gives the reason.",',
+    ' scope (like compiler error E2003). Ancestors, aliases and pointer types are not reported, nor is class of to a class declared further down in the same type block (dcc accepts that) or a name that app' +
+    'ears further down only as an alias of the same-named type of another unit (TX = UnitY.TX: before it, UnitY.TX from uses applies). Quick fixes: add a forward declaration at the start of the type block,' +
+    ' merge type blocks (const, var and label sections in between move in front of the first block) or move a record up in front of its first user; without a safe fix the message gives the reason.",',
     '      "bad": "type\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;",',
     '      "good": "type\n  TNode = class;\n  TTree = class\n    FRoot: TNode;\n  end;\n  TNode = class\n  end;"',
     '    },',
@@ -2153,13 +2154,14 @@ const
     '      "description": "A local variable (also inline and for var), field (also class var), parameter or constant (const, also local, in classes and inline; not resourcestring) lacks the prefix of its k' +
     'ind. Defaults: local m, field F, parameter A, constant c; after a prefix ending in a letter an upper-case letter or digit must follow (mIndex, not menu). Global variables are not checked. Per kind the' +
     ' prefix comes from the option in atlas.json, else from the project file .atlas (naming, also constant), else the default; an empty value switches the kind off. Off by default: the rule runs only when ' +
-    'atlas.json switches it on. Exceptions: one-letter loop counters, Sender, Self and Result, names matching ignore, published fields and fields before the first visibility section of a form, frame or dat' +
-    'a module (components), parameters of methods with override or message, of published methods, of event handlers (a parameter named Sender) and of methods implementing an interface method (in the file o' +
-    'r the symbol index; unknown interface: silent). Parameters are reported at the declaration only. Quick fix: rename to the expected name in the routine or the block after an inline declaration, for par' +
-    'ameters also in declaration and implementation, for private fields and class constants in the class and its methods (also Self.Name and TType.Name), for implementation constants in the whole unit. No ' +
-    'fix when the new name already occurs where the rename applies (the routine with its parameter list, for fields the class and its methods, for implementation constants the file), the scope contains wit' +
-    'h, a nested routine redeclares the name, or the name is visible outside the file. While the rule runs, other quick fixes and refactorings build new names with these prefixes (introduce constant → cNew' +
-    'Constant, introduce variable and resolve with → mValue, parameters of “create method” → APreis), so the rule does not report them right away.",',
+    'atlas.json switches it on. Exceptions: one-letter loop counters, Sender, Self and Result, names matching ignore, public fields (public, published and fields of a record before its first visibility sec' +
+    'tion: the F belongs to fields behind properties, not to TPoint.X), fields before the first visibility section of a form, frame or data module (components), parameters of methods with override or messa' +
+    'ge, of published methods, of event handlers (a parameter named Sender) and of methods implementing an interface method (in the file or the symbol index; unknown interface: silent). Parameters are repo' +
+    'rted at the declaration only. Quick fix: rename to the expected name in the routine or the block after an inline declaration, for parameters also in declaration and implementation, for private fields ' +
+    'and class constants in the class and its methods (also Self.Name and TType.Name), for implementation constants in the whole unit. No fix when the new name already occurs where the rename applies (the ' +
+    'routine with its parameter list, for fields the class and its methods, for implementation constants the file), the scope contains with, a nested routine redeclares the name, or the name is visible out' +
+    'side the file. While the rule runs, other quick fixes and refactorings build new names with these prefixes (introduce constant → cNewConstant, introduce variable and resolve with → mValue, parameters ' +
+    'of “create method” → APreis), so the rule does not report them right away.",',
     '      "bad": "procedure TKunde.Laden(const Datei: string);\nvar\n  Zeilen: TStringList;\nbegin\nend;",',
     '      "good": "procedure TKunde.Laden(const ADatei: string);\nvar\n  mZeilen: TStringList;\nbegin\nend;",',
     '      "options": [',
@@ -6196,7 +6198,7 @@ const
     '      "id": "missing-begin-update",',
     '      "name": "Hinzufügen in einer Schleife ohne BeginUpdate",',
     '      "description": "Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen.' +
-    ' Standardmäßig aus."',
+    ' Still bei Menüs (TMenuItem hat kein BeginUpdate) und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder ein statisches Array derselben Datei). Standardmäßig aus."',
     '    },',
     '    {',
     '      "id": "setlength-in-loop",',
@@ -6430,8 +6432,9 @@ const
     '      "name": "Typ vor seiner Deklaration benutzt",',
     '      "description": "Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber e' +
     'rst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet, ebenso wenig class of auf eine Klasse weiter unten im selb' +
-    'en type-Block (das übersetzt dcc). Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den e' +
-    'rsten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund."',
+    'en type-Block (das übersetzt dcc) und ein Name, der weiter unten nur als Alias des gleichnamigen Typs einer anderen Unit steht (TX = UnitY.TX: davor gilt UnitY.TX aus uses). Schnellkorrekturen: Forwar' +
+    'd-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender ve' +
+    'rschieben; ohne sichere Korrektur nennt die Meldung den Grund."',
     '    },',
     '    {',
     '      "id": "unneeded-forward-declaration",',
@@ -6770,14 +6773,15 @@ const
     '      "description": "Einer lokalen Variable (auch Inline und for var), einem Feld (auch class var), einem Parameter oder einer Konstante (const, auch lokal, in Klassen und Inline; nicht resourcestrin' +
     'g) fehlt das Präfix ihrer Art. Standard: lokal m, Feld F, Parameter A, Konstante c; hinter einem Präfix, das auf einen Buchstaben endet, folgt ein Großbuchstabe oder eine Ziffer (mIndex, nicht menu). ' +
     'Globale Variablen prüft die Regel nicht. Je Art kommt das Präfix aus der Option in atlas.json, sonst aus der Projektdatei .atlas (naming, auch constant), sonst der Standard; ein leerer Wert schaltet d' +
-    'ie Art ab. Standardmäßig aus: Die Regel läuft nur, wenn atlas.json sie einschaltet. Ausnahmen: Schleifenzähler aus einem Buchstaben, Sender, Self und Result, Namen nach ignore, published-Felder und Fe' +
-    'lder vor dem ersten Sichtbarkeitsabschnitt eines Formulars, Frames oder Datenmoduls (Komponenten), Parameter von Methoden mit override oder message, von published-Methoden, von Ereignis-Handlern (ein ' +
-    'Parameter heißt Sender) und von Methoden, die eine Interface-Methode erfüllen (in der Datei oder im Symbolindex; unbekanntes Interface: still). Parameter werden nur an der Deklaration gemeldet. Schnel' +
-    'lkorrektur: in den erwarteten Namen umbenennen, in der Routine bzw. im Block ab einer Inline-Deklaration, bei Parametern auch in Deklaration und Implementierung, bei privaten Feldern und Klassenkonsta' +
-    'nten in der Klasse und ihren Methoden (auch Self.Name und TTyp.Name), bei Konstanten der implementation in der ganzen Unit. Keine Korrektur, wenn der neue Name dort schon vorkommt, wo umbenannt wird (' +
-    'Routine samt Parameterliste, bei Feldern die Klasse und ihre Methoden, bei Konstanten der implementation die Datei), der Bereich with enthält, eine verschachtelte Routine den Namen neu deklariert oder' +
-    ' der Name außerhalb der Datei sichtbar ist. Läuft die Regel, bilden andere Korrekturen und Refactorings neue Namen mit diesen Präfixen (Konstante einführen → cNewConstant, Variable einführen und with ' +
-    'auflösen → mValue, Parameter von „Methode anlegen“ → APreis), damit die Regel sie nicht gleich wieder meldet.",',
+    'ie Art ab. Standardmäßig aus: Die Regel läuft nur, wenn atlas.json sie einschaltet. Ausnahmen: Schleifenzähler aus einem Buchstaben, Sender, Self und Result, Namen nach ignore, öffentliche Felder (pub' +
+    'lic, published und Felder eines Records vor seinem ersten Sichtbarkeitsabschnitt: Das F gilt nur für Felder hinter Properties, nicht für TPoint.X), Felder vor dem ersten Sichtbarkeitsabschnitt eines F' +
+    'ormulars, Frames oder Datenmoduls (Komponenten), Parameter von Methoden mit override oder message, von published-Methoden, von Ereignis-Handlern (ein Parameter heißt Sender) und von Methoden, die eine' +
+    ' Interface-Methode erfüllen (in der Datei oder im Symbolindex; unbekanntes Interface: still). Parameter werden nur an der Deklaration gemeldet. Schnellkorrektur: in den erwarteten Namen umbenennen, in' +
+    ' der Routine bzw. im Block ab einer Inline-Deklaration, bei Parametern auch in Deklaration und Implementierung, bei privaten Feldern und Klassenkonstanten in der Klasse und ihren Methoden (auch Self.N' +
+    'ame und TTyp.Name), bei Konstanten der implementation in der ganzen Unit. Keine Korrektur, wenn der neue Name dort schon vorkommt, wo umbenannt wird (Routine samt Parameterliste, bei Feldern die Klass' +
+    'e und ihre Methoden, bei Konstanten der implementation die Datei), der Bereich with enthält, eine verschachtelte Routine den Namen neu deklariert oder der Name außerhalb der Datei sichtbar ist. Läuft ' +
+    'die Regel, bilden andere Korrekturen und Refactorings neue Namen mit diesen Präfixen (Konstante einführen → cNewConstant, Variable einführen und with auflösen → mValue, Parameter von „Methode anlegen“' +
+    ' → APreis), damit die Regel sie nicht gleich wieder meldet.",',
     '      "options": [',
     '        {',
     '          "name": "local",',

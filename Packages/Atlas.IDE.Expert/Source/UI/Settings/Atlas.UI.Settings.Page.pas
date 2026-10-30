@@ -782,6 +782,9 @@ type
     FIssuesConnectionAssigneeField: TAtlasValueBox;
     FIssuesConnectionStartState: TAtlasValueBox;
     FIssuesConnectionEndStates: TEdit;
+    // Zeilen von Zustandsfeld und Benutzerfeld: nur bei Anbietern mit Feldern sichtbar (YouTrack, nicht GitHub).
+    FIssuesConnectionStateRow: TWinControl;
+    FIssuesConnectionAssigneeRow: TWinControl;
     FOnTrackerValues: TAtlasTrackerValuesEvent;
     /// <summary>Persönliche Verbindungen, wie die Seite sie zeigt; gespeichert werden die mit Adresse.</summary>
     FTrackerConnections: TArray<TAtlasTrackerConnection>;
@@ -1093,6 +1096,9 @@ type
     procedure TrackerCheckClick(Sender: TObject);
     /// <summary>Zeile mit Beschriftung links und AControl rechts daneben (Verbindungen, Projekte).</summary>
     function AddTrackerLabelled(AId: TAtlasTextId; AControl: TWinControl; AWidth: Integer): TWinControl;
+    /// <summary>Zustandsfeld und Benutzerfeld nur zeigen, wenn der Anbieter der gewählten Verbindung Felder kennt
+    /// (TAtlasTrackerWorkflow.UsesFields); ausgeblendete Zeilen belegen keinen Platz.</summary>
+    procedure TrackerShowFields;
     function AddTrackerButton(AParent: TWinControl; ALeft, AWidth: Integer; AId: TAtlasTextId;
       AClick: TNotifyEvent): TButton;
     procedure AddTrackerColumn(AList: TListView; AId: TAtlasTextId; AWidth: Integer);
@@ -1535,6 +1541,8 @@ type
     property IssuesConnectionAssigneeField: TAtlasValueBox read FIssuesConnectionAssigneeField;
     property IssuesConnectionStartState: TAtlasValueBox read FIssuesConnectionStartState;
     property IssuesConnectionEndStates: TEdit read FIssuesConnectionEndStates;
+    property IssuesConnectionStateRow: TWinControl read FIssuesConnectionStateRow;
+    property IssuesConnectionAssigneeRow: TWinControl read FIssuesConnectionAssigneeRow;
     property IssuesPreviewChecklists: TCheckBox read FIssuesPreviewChecklists;
     property IssuesChecklistStatus: TCheckBox read FIssuesChecklistStatus;
     property IssuesPreviewLinks: TCheckBox read FIssuesPreviewLinks;
@@ -4660,22 +4668,25 @@ begin
   FIssuesConnectionNote.Top := 1;
   FIssuesConnectionNote.Font.Color := clRed;
   Attach(mPanel, FIssuesConnections);
-  // Zustand und Zuständigkeit je Verbindung (#1266); leer gilt „Zustand im Tracker“ weiter unten.
+  // Zustand und Zuständigkeit je Verbindung (#1266); leer gilt „Zustand im Tracker“ weiter unten. Einzeilig wie
+  // Name und Adresse: AddLabelled nimmt eine Höhe, 180 bzw. 376 waren als Breite gemeint (Leerraum).
   FIssuesConnectionStateField := TAtlasValueBox.Create(Self);
   FIssuesConnectionStateField.OnChange := TrackerWorkflowChange;
-  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionStateField, FIssuesConnectionStateField, 180),
-    FIssuesConnections);
+  FIssuesConnectionStateRow := AddTrackerLabelled(TAtlasTextId.SettingsIssuesConnectionStateField,
+    FIssuesConnectionStateField, 180);
+  Attach(FIssuesConnectionStateRow, FIssuesConnections);
   FIssuesConnectionAssigneeField := TAtlasValueBox.Create(Self);
   FIssuesConnectionAssigneeField.OnChange := TrackerWorkflowChange;
-  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionAssigneeField, FIssuesConnectionAssigneeField, 180),
-    FIssuesConnections);
+  FIssuesConnectionAssigneeRow := AddTrackerLabelled(TAtlasTextId.SettingsIssuesConnectionAssigneeField,
+    FIssuesConnectionAssigneeField, 180);
+  Attach(FIssuesConnectionAssigneeRow, FIssuesConnections);
   FIssuesConnectionStartState := TAtlasValueBox.Create(Self);
   FIssuesConnectionStartState.OnChange := TrackerWorkflowChange;
-  Attach(AddLabelled(TAtlasTextId.SettingsIssuesConnectionStartState, FIssuesConnectionStartState, 180),
+  Attach(AddTrackerLabelled(TAtlasTextId.SettingsIssuesConnectionStartState, FIssuesConnectionStartState, 180),
     FIssuesConnections);
   FIssuesConnectionEndStates := TEdit.Create(Self);
   FIssuesConnectionEndStates.OnChange := TrackerWorkflowChange;
-  mPanel := AddLabelled(TAtlasTextId.SettingsIssuesConnectionEndStates, FIssuesConnectionEndStates, 376);
+  mPanel := AddTrackerLabelled(TAtlasTextId.SettingsIssuesConnectionEndStates, FIssuesConnectionEndStates, 376);
   FIssuesConnectionEndStates.Anchors := [akLeft, akTop, akRight];
   Attach(mPanel, FIssuesConnections);
   mPanel := AddPanel(18);
@@ -4909,9 +4920,33 @@ begin
   Allow(FIssuesConnectionStartState, mEditable);
   Allow(FIssuesConnectionEndStates, mEditable);
   Allow(FIssuesConnectionRemove, mEditable);
+  TrackerShowFields;
   // Token und Prüfung auch für die Verbindung aus der .atlas, nicht ohne gültige Adresse.
   Allow(FIssuesConnectionToken, mHasUrl and Assigned(FOnTrackerToken));
   Allow(FIssuesConnectionCheck, mHasUrl and Assigned(FOnTrackerCheck));
+end;
+
+procedure TAtlasSettingsPage.TrackerShowFields;
+var
+  mRows: TArray<TAtlasTrackerConnection>;
+  mShown: Boolean;
+
+  // alTop ordnet eine wieder gezeigte Zeile nach ihrem alten Top ein: knapp über „Beim Beginnen“ stellen, damit
+  // die Reihenfolge Zustandsfeld, Benutzerfeld, Beim Beginnen bleibt.
+  procedure ShowAbove(ARow: TWinControl; AShown: Boolean);
+  begin
+    if AShown and not ARow.Visible then
+      ARow.Top := FIssuesConnectionStartState.Parent.Top - 1;
+    ARow.Visible := AShown;
+  end;
+
+begin
+  mRows := TrackerRows;
+  mShown := True;
+  if (FTrackerSelected >= 0) and (FTrackerSelected <= High(mRows)) then
+    mShown := TAtlasTrackerWorkflow.UsesFields(mRows[FTrackerSelected].Provider);
+  ShowAbove(FIssuesConnectionStateRow, mShown);
+  ShowAbove(FIssuesConnectionAssigneeRow, mShown);
 end;
 
 procedure TAtlasSettingsPage.TrackerSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -4957,6 +4992,7 @@ begin
   if FTrackerFilling or not TrackerEditable or (mChoice < 0) or (mChoice > High(FTrackerProviderNames)) then
     Exit;
   FTrackerConnections[FTrackerSelected].Provider := FTrackerProviderNames[mChoice];
+  TrackerShowFields;
   if ListReady(FIssuesConnections) and (FTrackerSelected < FIssuesConnections.Items.Count) then
     FIssuesConnections.Items[FTrackerSelected].SubItems[0] := FTrackerProviderCaptions[mChoice];
 end;

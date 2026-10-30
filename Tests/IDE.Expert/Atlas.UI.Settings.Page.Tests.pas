@@ -158,6 +158,10 @@ type
     /// Vorschläge; eine andere Adresse behält die Werte der Verbindung.</summary>
     [Test]
     procedure TrackerWorkflowSettings;
+    /// <summary>Felder einer Verbindung sind einzeilig (kein Leerraum darunter); Zustandsfeld und Benutzerfeld
+    /// nur bei YouTrack, bei GitHub ausgeblendet ohne Platz, auch nach Wechsel des Anbieters.</summary>
+    [Test]
+    procedure TrackerConnectionFieldsByProvider;
     /// <summary>#1278: Kommentar-Editor und Tabelle der Textbausteine auf der Seite Issue-Tracker; Hinzufügen,
     /// Bearbeiten, Entfernen, Vorgaben, Laden und Speichern.</summary>
     [Test]
@@ -2959,6 +2963,53 @@ begin
   end;
   mAsked := '';
   mField := '';
+end;
+
+procedure TAtlasSettingsPageTests.TrackerConnectionFieldsByProvider;
+var
+  mHost: TForm;
+  mPage: TAtlasSettingsPage;
+  mSettings: TAtlasPluginSettings;
+  mList: TListView;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mPage := TAtlasSettingsPage.Create(mHost);
+    mPage.Parent := mHost;
+    mPage.HandleNeeded;
+    // Zeilen so hoch wie Name und Adresse: vorher 180 bzw. 376 Pixel hoch.
+    Assert.AreEqual(mPage.IssuesConnectionName.Parent.Height, mPage.IssuesConnectionStateRow.Height);
+    Assert.AreEqual(mPage.IssuesConnectionName.Parent.Height, mPage.IssuesConnectionAssigneeRow.Height);
+    Assert.AreEqual(mPage.IssuesConnectionName.Parent.Height, mPage.IssuesConnectionStartState.Parent.Height);
+    Assert.AreEqual(mPage.IssuesConnectionName.Parent.Height, mPage.IssuesConnectionEndStates.Parent.Height);
+    mSettings := TAtlasPluginSettings.Defaults;
+    mSettings.IssuesConnections := '[{"name": "Firma", "provider": "youtrack", "url": "https://youtrack.firma.local"},' +
+      ' {"name": "GitHub", "provider": "github", "url": "https://github.com"}]';
+    mPage.LoadFrom(mSettings);
+    mList := mPage.IssuesConnections;
+    // YouTrack: Felder sichtbar.
+    Assert.AreEqual('Firma', mPage.IssuesConnectionName.Text);
+    Assert.IsTrue(mPage.IssuesConnectionStateRow.Visible, 'YouTrack Zustandsfeld');
+    Assert.IsTrue(mPage.IssuesConnectionAssigneeRow.Visible, 'YouTrack Benutzerfeld');
+    // GitHub kennt keine Felder; Zustand beim Beginnen und Zielzustände (Labels) bleiben.
+    mList.Items[1].Selected := True;
+    Assert.AreEqual('GitHub', mPage.IssuesConnectionName.Text);
+    Assert.IsFalse(mPage.IssuesConnectionStateRow.Visible, 'GitHub Zustandsfeld');
+    Assert.IsFalse(mPage.IssuesConnectionAssigneeRow.Visible, 'GitHub Benutzerfeld');
+    Assert.IsTrue(mPage.IssuesConnectionStartState.Parent.Visible);
+    Assert.IsTrue(mPage.IssuesConnectionEndStates.Parent.Visible);
+    // Anbieter wechseln (wie eine Auswahl in der Klappliste): GitHub nach YouTrack und zurück.
+    mPage.IssuesConnectionProvider.Choice := 0;
+    mPage.IssuesConnectionProvider.OnChange(mPage.IssuesConnectionProvider);
+    Assert.AreEqual('youtrack', mPage.TrackerConnections[1].Provider);
+    Assert.IsTrue(mPage.IssuesConnectionStateRow.Visible, 'nach Wechsel zu YouTrack');
+    mPage.IssuesConnectionProvider.Choice := 1;
+    mPage.IssuesConnectionProvider.OnChange(mPage.IssuesConnectionProvider);
+    Assert.AreEqual('github', mPage.TrackerConnections[1].Provider);
+    Assert.IsFalse(mPage.IssuesConnectionAssigneeRow.Visible, 'nach Wechsel zu GitHub');
+  finally
+    mHost.Free;
+  end;
 end;
 
 procedure TAtlasSettingsPageTests.CommentEditorSettings;
