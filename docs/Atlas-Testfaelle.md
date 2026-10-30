@@ -1205,29 +1205,33 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 
 ## Designer-Leiste (#1442)
 
-Vorbereitung: Formular mit `btnOK`, `btnCancel` (TButton), `pnlTop` (TPanel, Align = alTop), `lblName` (TLabel), `edtName` (TEdit), `OKAction` (TAction in `ActionList1`), `qryKunden` (TFDQuery oder TDataSource) und einem Frame mit `pnl_ok`. Eingebetteter Designer an (Standard).
+Vorbereitung: Formular mit `pnlTop` (TPanel, Align = alTop) und darin `btnOK` (TButton, Caption „OK“, OnClick belegt), `btnCancel`; direkt auf dem Formular `lblName` (TLabel), `edtName` und `edtOrt` (TEdit, `edtOrt` oberhalb von `edtName`, aber mit höherer TabOrder), `ActionList1` mit `OKAction`, `qryKunden` (TFDQuery oder TDataSource). Eingebetteter Designer an (Standard). Für DL13 bis DL17 unter Einstellungen „Experimentelle Funktionen“ an.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| DL1 | Unit öffnen, F12 drücken, dann wieder F12 | Im Designer verschwinden Brotkrumen und Editorleiste, oben steht die Designer-Leiste; zurück im Code ist es umgekehrt, ohne Flackern oder Springen des Editors |
+| DL1 | Unit öffnen, F12 drücken, dann wieder F12 | Im Designer verschwinden Brotkrumen und Editorleiste, oben steht die Designer-Leiste mit Symbolen (Lupe, Auge, Trennstrich, Elternelement, Tab-Reihenfolge); zurück im Code ist es umgekehrt, ohne Flackern oder Springen des Editors |
 | DL2 | Reiter „Design“/„Code“ unten im Editorfenster statt F12; zweites Editorfenster mit einer anderen Unit im Code daneben | Wie DL1; das zweite Fenster behält Brotkrumen und Editorleiste |
-| DL3 | Im Suchfeld „ok“ tippen | `OKAction` ist im Designer und im Objektinspektor ausgewählt (gleicher Name zuerst, dann Name beginnt mit „ok“, dann `btnOK`, `pnl_ok`); Zähler „1/n“ |
-| DL4 | Enter, ↓ und „›“ drücken bzw. klicken; dann Umschalt+Enter, ↑ und „‹“ | Auswahl wandert durch die Treffer und läuft am Ende zum ersten zurück; rückwärts ebenso; der Objektinspektor folgt |
-| DL5 | „xyz“ tippen; dann Esc bzw. Suchfeld leeren | „kein Treffer“, keine Auswahl geändert; leer: Zähler und Pfeile verschwinden |
-| DL6 | `btnOK` und `lblName` wählen, „Ausblenden ▾“ → „Auswahl ausblenden“ | Beide verschwinden im Designer; „Alle einblenden (2)“ erscheint; das Formular ist nicht als geändert markiert (kein *) |
-| DL7 | `btnCancel` wählen, „Alle TButton ausblenden“; danach einen neuen TButton aufs Formular setzen | Alle Buttons weg; der neue Button verschwindet nach kurzer Zeit ebenfalls; im Menü steht „TButton wieder einblenden“ |
-| DL8 | „Nichtvisuelle ausblenden“ | Symbole von `ActionList1` und `qryKunden` verschwinden; nochmals klicken: sie erscheinen wieder. In `atlas.log` steht einmal die Fensterklasse eines Symbols |
-| DL9 | `pnlTop` (Align = alTop) wählen und ausblenden | `pnlTop` bleibt sichtbar; Meldungsansicht: „1 ausgerichtete Steuerelemente bleiben sichtbar …“ |
-| DL10 | Bei ausgeblendetem `btnOK` „btnok“ suchen | `btnOK` erscheint wieder und ist ausgewählt; der Zähler „Alle einblenden“ sinkt |
-| DL11 | Speichern (Strg+S) mit ausgeblendeten Komponenten, .dfm im Texteditor ansehen; Formular schließen und wieder öffnen | .dfm unverändert gegenüber vorher (gleiche Position, Visible, Reihenfolge); nach dem Öffnen ist wieder alles sichtbar oder wie zuvor ausgeblendet, aber nie verloren |
-| DL12 | „Alle einblenden (n)“ | Alles ist wieder sichtbar, Leiste ohne „Alle einblenden“ |
-| DL13 | Mit ausgeblendeten Komponenten unter Einstellungen → *Editor* „Designer-Leiste“ ausschalten; wieder einschalten | Leiste weg und alles wieder sichtbar; eingeschaltet kommt die Leiste zurück, nichts ist ausgeblendet |
-| DL14 | Schnellschalter „Designer-Leiste“ | Wie DL13 |
-| DL15 | Mit ausgeblendeten Komponenten Projekt schließen, Atlas-Package deinstallieren bzw. IDE beenden | Kein Fehler, keine Zugriffsverletzung; beim nächsten Öffnen ist alles sichtbar |
-| DL16 | Datenmodul im Designer öffnen | Designer-Leiste erscheint; Suche wählt Komponenten aus; Ausblenden nichtvisueller Komponenten wirkt auf ihre Symbole |
-| DL17 | Eingebetteten Designer ausschalten (Optionen → Formular-Designer), Formular öffnen | Das Editorfenster zeigt weiter Brotkrumen und Editorleiste; keine Designer-Leiste im Code |
-| DL18 | TPageControl mit einem TTabSheet, TabVisible = False; Designer-Leiste: „Alle einblenden“ | Das unsichtbare TabSheet bleibt so, wie die IDE es zeigt (Atlas setzt nur zurück, was es selbst gesetzt hat) |
-| DL19 | DL1 bis DL18 in Delphi 12 und 13, helles und dunkles Thema, 100 % und 150 % DPI | Gleiches Verhalten; Leiste in den Farben der Brotkrumen |
+| DL3 | Willkommensseite der IDE zeigen (Datei › Willkommensseite bzw. Reiter „Welcome Page“) | Weder Brotkrumen noch Editorleiste noch Designer-Leiste über der Willkommensseite; zurück in einer Unit sind die Code-Leisten wieder da |
+| DL4 | Über die Symbole fahren | Tooltips: „Komponenten suchen (Alt+^)“, „Nichtvisuelle Komponenten ein- und ausblenden (Strg+H der IDE)“, „Elternelement auswählen“, „Tab-Reihenfolge anzeigen“ |
+| DL5 | Auge klicken; nochmals klicken; danach Strg+H im Designer | Symbole von `ActionList1` und `qryKunden` verschwinden bzw. erscheinen wie mit Strg+H; das Auge ist gedrückt, solange sie ausgeblendet sind, auch wenn mit Strg+H umgeschaltet wurde |
+| DL6 | `btnOK` wählen, „Elternelement auswählen“; nochmals | Erst `pnlTop`, dann das Formular ist gewählt (Objektinspektor folgt); bei `qryKunden` bzw. ohne Auswahl eine Zeile in der Meldungsansicht, nichts geändert |
+| DL7 | Im Designer Alt+^ drücken; im Code-Editor Alt+^ drücken | Im Designer öffnet sich das große Fenster „Komponenten suchen“ mittig auf dem Monitor des Formulars; im Code-Editor passiert nichts von Atlas (die Taste bleibt der IDE). Nach Alt+^ springt der Fokus nicht ins Hauptmenü der IDE |
+| DL8 | Im Fenster „ok“ tippen | `btnOK` (Name und Caption „OK“ hervorgehoben) zuerst, gruppiert unter `pnlTop`; Fußzeile „1 von n“; rechts die Vorschau: Karte des Formulars mit hervorgehobenem `btnOK`, Position und Größe, Eigenschaften (Caption, TabOrder …), Ereignis `OnClick = …` |
+| DL9 | Chips „Nichtvisuelle“, „Container“, „Alle“; Chip „Name“ und „Caption“ abwählen (nur „Klasse“), „button“ tippen | Liste zeigt jeweils nur diese Art; mit nur „Klasse“ finden sich `btnOK` und `btnCancel` über TButton; das letzte Feld lässt sich nicht abwählen |
+| DL10 | Hierarchie / Klasse / Flach umschalten (Klick und Strg+G), F4 | Gruppen nach Elternelement bzw. Klasse bzw. ohne Köpfe; die gewählte Komponente bleibt gewählt; F4 blendet die Vorschau aus und ein |
+| DL11 | ↑/↓, Bild auf/ab; Enter; Fenster erneut öffnen und Strg+Enter auf `btnOK`; erneut öffnen und Strg+C | Köpfe werden übersprungen; Enter schließt und wählt die Komponente im Designer und Objektinspektor; Strg+Enter springt in den Code zu `btnOKClick`; Strg+C legt den Namen in die Zwischenablage, das Fenster bleibt offen |
+| DL12 | Fenster verschieben und vergrößern, schließen, wieder öffnen | Gleiche Lage, Größe, Chips und Gruppierung wie zuletzt (bis zum Neustart der IDE) |
+| DL13 | Einstellungen › Editor › „Fenster ‚Komponenten suchen‘“ auf „Klein wie Strg+P“; Alt+^ | Kleines Fenster oben mittig, nur Suchfeld und einzeilige Liste; Enter wählt aus; ein Klick daneben schließt es |
+| DL14 | Taste unter Einstellungen auf Strg+Umschalt+K ändern bzw. leeren | Neue Taste wirkt im Designer, Tooltip zeigt sie; leer: keine Taste, die Lupe öffnet das Fenster weiter |
+| DL15 | „Tab-Reihenfolge“ klicken | Auf jedem fokussierbaren Steuerelement und Container eine Marke mit der TabOrder; die Marke von `edtName` steht in Warnfarbe (Sprung zurück gegen die Lesereihenfolge); Klicks auf die Marken gehen an den Designer (Auswahl); Formular verschieben, scrollen, anderes Fenster der IDE in den Vordergrund, andere Anwendung: die Marken folgen bzw. verschwinden; nochmals klicken: Marken weg |
+| DL16 | „Tab-Reihenfolge per Klick neu vergeben“ an (experimentell), Tab-Reihenfolge an, nacheinander `edtOrt`, `edtName`, `pnlTop` anklicken | Marken zeigen 0, 1, 2; Meldungsansicht „edtOrt: TabOrder 0“ …; Formular ist geändert (*); in `pnlTop` beginnt ein Klick auf `btnCancel` wieder bei 0; Strg+S und .dfm prüfen |
+| DL17 | „Knopf ‚Ausrichten‘“ an (experimentell); `btnOK`, dann `btnCancel` wählen; Pfeil am Knopf → „Obere Kanten“; danach Symbol klicken nach anderer Auswahl; „Abstände waagrecht verteilen“ mit nur zwei Steuerelementen | Menü mit Kanten, Mitten, im Elternelement zentrieren, Größe, Abständen; nicht passende Befehle grau; `btnCancel` steht auf der Höhe von `btnOK` (Bezug = zuerst gewählt); das Symbol wiederholt den letzten Befehl, Tooltip nennt ihn; zu wenige gewählt: Meldung, nichts geändert |
+| DL18 | Experimentelle Funktionen aus | Kein Knopf „Ausrichten“; Marken der Tab-Reihenfolge nehmen keine Klicks an |
+| DL19 | Datenmodul im Designer öffnen | Designer-Leiste erscheint; Suche listet die Komponenten (Vorschau ohne Karte); Auge wie Strg+H |
+| DL20 | Einstellungen › Editor „Designer-Leiste“ aus; Schnellschalter „Designer-Leiste“ | Leiste, Marken, offenes Suchfenster und Taste Alt+^ weg; eingeschaltet kommt alles zurück |
+| DL21 | Mit offenem Suchfenster und eingeblendeter Tab-Reihenfolge Projekt schließen, Atlas-Package deinstallieren bzw. IDE beenden | Kein Fehler, keine Zugriffsverletzung |
+| DL22 | Eingebetteten Designer ausschalten (Optionen → Formular-Designer), Formular öffnen | Das Editorfenster zeigt weiter Brotkrumen und Editorleiste; keine Designer-Leiste im Code |
+| DL23 | DL1 bis DL22 in Delphi 12 und 13, helles und dunkles Thema, 100 % und 150 % DPI | Gleiches Verhalten; Leiste in den Farben der Brotkrumen, Marken und Fenster gut lesbar |
 
 ## Atlas-Symbol (#751)
 

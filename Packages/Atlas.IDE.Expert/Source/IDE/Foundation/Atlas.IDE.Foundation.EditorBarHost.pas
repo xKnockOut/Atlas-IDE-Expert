@@ -95,6 +95,8 @@ type
     destructor Destroy; override;
     /// <summary>Editor-Steuerelement eines Editorfensters; nil, wenn es (noch) keins hat.</summary>
     class function EditorOf(const AWindow: INTAEditWindow): TWinControl; static;
+    /// <summary>Editor-Steuerelement des Editorfensters, in dem AControl liegt; nil ohne.</summary>
+    class function EditorIn(AControl: TControl): TWinControl; static;
     /// <summary>Editor des vordersten Editorfensters; nil ohne.</summary>
     class function TopEditor: TWinControl; static;
     /// <summary>Fokus an den Editor des Fensters, in dem AControl liegt (Leiste schließen, Esc).</summary>
@@ -233,6 +235,22 @@ begin
     Exit;
   mEditor := AWindow.Form.FindComponent('Editor');
   if (mEditor is TWinControl) and (TWinControl(mEditor).Parent <> nil) then
+    Result := TWinControl(mEditor);
+end;
+
+class function TAtlasEditorBarHost.EditorIn(AControl: TControl): TWinControl;
+var
+  mForm: TCustomForm;
+  mEditor: TComponent;
+begin
+  Result := nil;
+  if AControl = nil then
+    Exit;
+  mForm := GetParentForm(AControl, False);
+  if mForm = nil then
+    Exit;
+  mEditor := mForm.FindComponent('Editor');
+  if mEditor is TWinControl then
     Result := TWinControl(mEditor);
 end;
 
@@ -490,7 +508,8 @@ begin
     Exit;
   case FShowIn of
     TAtlasEditorBarView.Code:
-      Result := not TAtlasIdeDesignerView.Shown(AEditorParent);
+      // Nicht im Designer und nicht auf der Willkommensseite (#1442).
+      Result := TAtlasIdeDesignerView.CodeShown(EditorIn(AEditorParent)) and not TAtlasIdeDesignerView.Shown(AEditorParent);
     TAtlasEditorBarView.Designer:
       Result := TAtlasIdeDesignerView.Shown(AEditorParent);
   else

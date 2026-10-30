@@ -15,6 +15,12 @@
 // - Datenmodul (Wurzel ohne Fenster): Der aktuelle Editor des aktuellen
 //   Moduls (IOTAModuleServices.CurrentModule.CurrentEditor) ist der
 //   Formular-Editor, und das Editorfenster ist das vorderste.
+// - Code (CodeShown): Das Steuerelement des Editors ist sichtbar und nicht
+//   verdeckt. Die Willkommensseite der IDE und der Designer liegen im selben
+//   Editorfenster über bzw. statt dem Editor; dort sind Brotkrumen und
+//   Editorleiste fehl am Platz (#1442). Verdeckt heißt: Geht man von der Mitte
+//   des Editors aus durch die Kindfenster des Editorfensters (Z-Reihenfolge),
+//   landet man nicht beim Editor.
 // - Ein frei schwebender Designer (eingebetteter Designer aus) liegt in einem
 //   eigenen Fenster; das Editorfenster zeigt dann weiter Code.
 // Nur im Hauptthread.
@@ -30,6 +36,7 @@ type
   TAtlasIdeDesignerView = class
   private class var
     FForeignLogged: Boolean;
+    FCoveredLogged: Boolean;
   private
     class function RootWindowShown(ARoot: TComponent; AWindow: THandle): Boolean; static;
     class function FormEditorShownIn(const AModule: IOTAModule; AWindow: THandle): IOTAFormEditor; static;
@@ -40,6 +47,9 @@ type
     class function RootOf(const AEditor: IOTAFormEditor): TComponent; static;
     /// <summary>Zeigt das Editorfenster mit dem Eltern-Steuerelement AEditorParent gerade den Designer?</summary>
     class function Shown(AEditorParent: TWinControl): Boolean; static;
+    /// <summary>Zeigt das Editorfenster mit dem Editor-Steuerelement AEditor (TAtlasEditorBarHost.EditorIn) gerade
+    /// den Code-Editor (sichtbar, nicht von Willkommensseite oder Designer verdeckt)?</summary>
+    class function CodeShown(AEditor: TWinControl): Boolean; static;
   end;
 
 implementation
@@ -47,6 +57,7 @@ implementation
 uses
   Winapi.Windows,
   System.SysUtils,
+  System.Types,
   Vcl.Forms,
   Atlas.Core.Diagnostics.Guard;
 
@@ -176,6 +187,55 @@ begin
     Exit;
   mEditor := CurrentFormEditor;
   Result := (mEditor <> nil) and not (RootOf(mEditor) is TWinControl);
+end;
+
+class function TAtlasIdeDesignerView.CodeShown(AEditor: TWinControl): Boolean;
+var
+  mForm: TCustomForm;
+  mHandle, mWindow, mChild: THandle;
+  mRect: TRect;
+  mPoint: TPoint;
+  mClass: array[0..127] of Char;
+  mControl: TWinControl;
+begin
+  Result := False;
+  if (AEditor = nil) or not AEditor.HandleAllocated then
+    Exit;
+  mForm := GetParentForm(AEditor, False);
+  if (mForm = nil) or not mForm.HandleAllocated then
+    Exit;
+  mHandle := AEditor.Handle;
+  if not IsWindowVisible(mHandle) or not GetWindowRect(mHandle, mRect) or (mRect.Width <= 0) or
+    (mRect.Height <= 0) then
+    Exit;
+  // Von der Mitte des Editors aus abwärts durch die Kindfenster: Liegt etwas darüber, endet der Weg dort.
+  mPoint := mRect.CenterPoint;
+  mWindow := mForm.Handle;
+  while True do
+  begin
+    if (mWindow = mHandle) or IsChild(mHandle, mWindow) then
+      Exit(True);
+    // Eigene Fenster von Atlas über dem Editor (Definition einblenden, Minimap …) verdecken ihn nicht.
+    mControl := FindControl(mWindow);
+    if (mControl <> nil) and mControl.ClassName.StartsWith('TAtlas') then
+      Exit(True);
+    if (mWindow <> mForm.Handle) and not IsChild(mWindow, mHandle) then
+      Break;
+    mPoint := mRect.CenterPoint;
+    ScreenToClient(mWindow, mPoint);
+    mChild := ChildWindowFromPointEx(mWindow, mPoint, CWP_SKIPINVISIBLE or CWP_SKIPTRANSPARENT);
+    if (mChild = 0) or (mChild = mWindow) then
+      Break;
+    mWindow := mChild;
+  end;
+  if not FCoveredLogged then
+  begin
+    FCoveredLogged := True;
+    mClass[0] := #0;
+    GetClassName(mWindow, mClass, Length(mClass));
+    TAtlasGuard.Log(Format('Code-Ansicht: Editor ist verdeckt (Fenster der Klasse %s), Code-Leisten aus',
+      [string(mClass)]));
+  end;
 end;
 
 end.

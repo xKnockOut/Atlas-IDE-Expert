@@ -1,28 +1,29 @@
 ﻿unit Atlas.IDE.Designer.Bar;
 
 // Designer-Leiste (#1442) in der IDE:
-// - Zeigt ein Editorfenster den Formular-Designer, steht über ihm eine Leiste
-//   (TAtlasDesignerBar) an Stelle von Brotkrumen und Editorleiste; zurück im
-//   Code ist es umgekehrt. Ein- und ausgeblendet wird über den Leisten-Host
-//   (ShowIn, TAtlasIdeDesignerView), angelegt je Editorfenster wie die
-//   übrigen Leisten (#1248).
-// - Suche: Teilwortsuche über die Komponentennamen des Formulars
-//   (TAtlasDesignerSearch). Der beste Treffer wird im Designer ausgewählt und
-//   damit im Objektinspektor gezeigt; Enter, ↓ und „›“ schalten weiter,
-//   Umschalt+Enter, ↑ und „‹“ zurück. Eine ausgeblendete Komponente wird
-//   beim Auswählen wieder eingeblendet.
-// - Ausblenden nur in der Anzeige (TAtlasDesignerHidden, je Formulardatei):
-//   Steuerelemente über csNoDesignVisible, das nicht gespeichert wird;
-//   Symbole nichtvisueller Komponenten über ihr Fenster im Designer.
-//   Ausgerichtete Steuerelemente (Align), Kinder eines Elternteils mit
-//   AutoSize und Kinder von Flow- und Grid-Panel bleiben sichtbar: Ohne sie
-//   ordnete die VCL die Nachbarn neu an, und die .dfm änderte sich.
-//   Atlas setzt csNoDesignVisible nur zurück, wo es selbst es gesetzt hat
-//   (TTabSheet mit TabVisible = False setzt es auch).
-// - Leiste aus (editor.designerBar), Sicherung ausgelöst oder Abbau: alles
-//   wieder einblenden.
-// - Eigene Sicherung TAtlasFeature.DesignerBar.
-// Nur im Hauptthread.
+// - Zeigt ein Editorfenster den Formular-Designer, steht über ihm eine
+//   Symbolleiste (TAtlasDesignerBar) an Stelle von Brotkrumen und
+//   Editorleiste; zurück im Code ist es umgekehrt. Ein- und ausgeblendet wird
+//   über den Leisten-Host (ShowIn, TAtlasIdeDesignerView), angelegt je
+//   Editorfenster wie die übrigen Leisten (#1248).
+// - Komponenten suchen: Fenster TAtlasComponentSearchWindow über die
+//   Komponenten des Formulars im Designer, groß oder klein
+//   (editor.designerBar.searchStyle). Taste editor.designerBar.searchKey
+//   (Vorgabe Alt+^) nur, solange der Designer den Fokus hat: Tastaturbindungen
+//   der IDE wirken nur im Code-Editor, darum über TAtlasKeyHook, angemeldet nur
+//   solange ein Designer gezeigt wird.
+// - Nichtvisuelle: führt die Aktion der IDE hinter Strg+H aus und zeigt ihren
+//   Zustand (gedrückt = ausgeblendet). Atlas blendet nichts selbst aus.
+// - Elternelement auswählen: Parent der ersten Auswahl, auf dem Formular das
+//   Formular selbst.
+// - Tab-Reihenfolge: Marken mit der TabOrder über jedem fokussierbaren
+//   Steuerelement (TAtlasTabOrderOverlay), Sprünge gegen die
+//   Lesereihenfolge in Warnfarbe (TAtlasTabOrder). Experimentell
+//   (editor.designerBar.tabOrderClick): Klick auf eine Marke vergibt die
+//   Reihenfolge je Elternelement neu ab 0 (TAtlasTabClicks).
+// - Ausrichten (experimentell, editor.designerBar.align): Menü am Pfeil,
+//   Klick auf das Symbol wiederholt den letzten Befehl (TAtlasDesignerAlign).
+// - Eigene Sicherung TAtlasFeature.DesignerBar. Nur im Hauptthread.
 
 interface
 
@@ -52,7 +53,10 @@ uses
   Winapi.Windows,
   System.Classes,
   System.Types,
-  System.Generics.Collections,
+  System.TypInfo,
+  System.Variants,
+  System.Actions,
+  Vcl.ActnList,
   Vcl.Controls,
   Vcl.Forms,
   Vcl.ExtCtrls,
@@ -62,78 +66,93 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Designer.Components,
+  Atlas.Core.EditorToolbar.Icons,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Palette,
   Atlas.UI.Strings,
   Atlas.UI.Designer.Bar,
+  Atlas.UI.Designer.Search,
+  Atlas.UI.Designer.TabOverlay,
   Atlas.IDE.Foundation.DesignerView,
   Atlas.IDE.Foundation.EditorBarHost,
   Atlas.IDE.Foundation.EditorStyle,
+  Atlas.IDE.Foundation.KeyHook,
   Atlas.IDE.Foundation.Settings;
 
 const
   TickMs = 200;
-  /// <summary>Größer ist kein Symbol einer nichtvisuellen Komponente (logische Pixel, mit Beschriftung).</summary>
-  MaxIconSize = 160;
+  KeyPriority = 50;
+  IdSearch = 'search';
+  IdNonVisual = 'nonVisual';
+  IdParent = 'parent';
+  IdTabOrder = 'tabOrder';
+  IdAlign = 'align';
+  /// <summary>Aktion der IDE hinter Strg+H im Designer.</summary>
+  NonVisualAction = 'ToggleNonVisualComponentVisibilityCommand';
+  /// <summary>Eigenschaften für die Vorschau im Suchfenster, sofern gesetzt.</summary>
+  PreviewProperties: array[0..9] of string = ('Caption', 'Text', 'Align', 'Visible', 'Enabled', 'TabOrder', 'Hint',
+    'Action', 'DataSource', 'DataField');
 
 type
-  TControlAccess = class(TControl);
+  TDesignerBarState = class;
 
-  /// <summary>Was in einem Formular ausgeblendet ist und was Atlas dafür gesetzt hat.</summary>
-  TFormState = class
-  public
-    Hidden: TAtlasDesignerHidden;
-    /// <summary>Steuerelemente, an denen Atlas csNoDesignVisible gesetzt hat (Namen klein).</summary>
-    Applied: TDictionary<string, Boolean>;
-    /// <summary>Ausgeblendete Symbolfenster nichtvisueller Komponenten (Namen klein).</summary>
-    Icons: TDictionary<string, HWND>;
-    constructor Create;
-    destructor Destroy; override;
+  /// <summary>Taste für „Komponenten suchen“, solange der Designer den Fokus hat.</summary>
+  TSearchKeyClient = class(TAtlasKeyClient)
+  protected
+    function WantsKey(AKey: Word; AShift: TShiftState): Boolean; override;
+    procedure HandleKey(AKey: Word; AShift: TShiftState); override;
   end;
 
   TDesignerBarState = class
   private
     FTimer: TTimer;
     FHost: TAtlasEditorBarHost;
-    FForms: TObjectDictionary<string, TFormState>;
-    FMenu: TPopupMenu;
-    FFile: string;
-    FPattern: string;
-    FHits: TArray<string>;
-    FHitIndex: Integer;
-    FKept: Integer;
-    FIconLogged: Boolean;
+    FKeyClient: TSearchKeyClient;
+    FSearch: TAtlasComponentSearchWindow;
+    FSearchKind: TAtlasDesignerKind;
+    FSearchFields: TAtlasDesignerFields;
+    FSearchGrouping: TAtlasDesignerGrouping;
+    FSearchPreview: Boolean;
+    FSearchBounds: TRect;
+    FOverlay: TAtlasTabOrderOverlay;
+    FTabOrder: Boolean;
+    FTabFile: string;
+    FTabClicks: TAtlasTabClicks;
+    FAlignMenu: TPopupMenu;
+    FLastAlign: TAtlasAlignKind;
+    FActionIndex: Integer;
+    FActionLogged: Boolean;
     procedure Tick(Sender: TObject);
     function CreateBar(AEditorParent: TWinControl): TAtlasDesignerBar;
     procedure Place(ABar: TAtlasDesignerBar; AEditorParent: TWinControl);
     function Current(out AEditor: IOTAFormEditor; out ARoot: TComponent): Boolean;
-    function StateOf(const AFileName: string): TFormState;
-    function ItemsOf(ARoot: TComponent): TArray<TAtlasDesignerItem>;
-    procedure Apply(ARoot: TComponent; AState: TFormState);
-    procedure Restore(ARoot: TComponent; AState: TFormState);
-    procedure RestoreAll;
-    function Restorable: Boolean;
-    procedure SetControlHidden(AControl: TControl; AHidden: Boolean);
-    function IconWindow(ARoot: TWinControl; AComponent: TComponent): HWND;
-    procedure Search(const APattern: string);
-    procedure Step(ADelta: Integer);
-    procedure Select(const AName: string);
-    procedure ShowMenu(const APoint: TPoint);
-    procedure ShowAll;
-    procedure Change(const AAction: TProc<TFormState, TArray<TComponent>>);
-    function Selection(const AEditor: IOTAFormEditor; ARoot: TComponent): TArray<TComponent>;
+    function Buttons: TArray<TAtlasDesignerButton>;
     procedure UpdateBars;
+    procedure UpdateKeyClient;
+    procedure Command(const AId: string);
+    procedure ShowMenu(const AId: string; const APoint: TPoint);
+    function FindNonVisualAction: TContainedAction;
+    procedure ToggleNonVisual;
+    procedure SelectParent;
+    function Selection(const AEditor: IOTAFormEditor; ARoot: TComponent): TArray<TComponent>;
+    procedure ToggleTabOrder;
+    procedure UpdateOverlay;
+    procedure HideOverlay;
+    procedure TabBadgeClicked(const AName: string);
+    procedure AlignSelection(AKind: TAtlasAlignKind);
+    function AlignCaption(AKind: TAtlasAlignKind): string;
+    procedure AlignMenuClick(Sender: TObject);
+    function ItemsOf(ARoot: TComponent; const ADesigner: IDesigner): TArray<TAtlasDesignerItem>;
+    procedure SearchAction(AAction: TAtlasComponentSearchAction; const AItem: TAtlasDesignerItem);
+    procedure CloseSearch;
     procedure Later(const AAction: TProc);
     procedure Say(const AText: string);
-    procedure MenuHideSelection(Sender: TObject);
-    procedure MenuHideClass(Sender: TObject);
-    procedure MenuNonVisual(Sender: TObject);
-    procedure MenuShowClass(Sender: TObject);
-    procedure MenuShowAll(Sender: TObject);
   public
     constructor Create;
     destructor Destroy; override;
     procedure Reset;
     procedure ApplyTheme;
+    procedure OpenSearch;
   end;
 
 function State: TDesignerBarState;
@@ -149,11 +168,6 @@ begin
     Result := TAtlasIdeStyle.Colors;
 end;
 
-function Key(const AText: string): string;
-begin
-  Result := LowerCase(AText);
-end;
-
 function DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
 var
   mNative: INTAFormEditor;
@@ -163,36 +177,90 @@ begin
     Result := mNative.FormDesigner;
 end;
 
-/// <summary>Bliebe die .dfm unverändert, wenn AControl im Designer fehlt? '' = ja, sonst der Grund.</summary>
-function KeepReason(AControl: TControl): string;
+/// <summary>Hat der Formular-Designer den Fokus (ein Steuerelement im Entwurf oder das Formular selbst)?</summary>
+function DesignerFocused: Boolean;
+var
+  mControl: TControl;
+begin
+  mControl := FindControl(GetFocus);
+  while mControl <> nil do
+  begin
+    if csDesigning in mControl.ComponentState then
+      Exit(True);
+    mControl := mControl.Parent;
+  end;
+  Result := False;
+end;
+
+/// <summary>Lage von AControl im Client von ARoot; leer, wenn ARoot kein Vorfahr ist.</summary>
+function BoundsInRoot(AControl: TControl; ARoot: TWinControl): TRect;
+var
+  mParent: TWinControl;
+  mTopLeft: TPoint;
+begin
+  Result := TRect.Empty;
+  mParent := AControl.Parent;
+  if mParent = nil then
+    Exit;
+  mTopLeft := AControl.BoundsRect.TopLeft;
+  if mParent <> ARoot then
+  begin
+    if not ARoot.ContainsControl(mParent) then
+      Exit;
+    mTopLeft := mParent.ClientToParent(mTopLeft, ARoot);
+  end;
+  Result := Rect(mTopLeft.X, mTopLeft.Y, mTopLeft.X + AControl.Width, mTopLeft.Y + AControl.Height);
+end;
+
+function ParentNameOf(AControl: TControl; ARoot: TComponent): string;
 begin
   Result := '';
-  if AControl.Align <> alNone then
-    Result := 'Align'
-  else if AControl.Parent = nil then
-    Result := 'ohne Elternteil'
-  else if TControlAccess(AControl.Parent).AutoSize then
-    Result := 'AutoSize des Elternteils'
-  else if (AControl.Parent is TCustomFlowPanel) or (AControl.Parent is TCustomGridPanel) then
-    Result := 'Flow-/Grid-Panel';
+  if (AControl.Parent <> nil) and (AControl.Parent <> ARoot) then
+    Result := AControl.Parent.Name;
 end;
 
-{ TFormState }
-
-constructor TFormState.Create;
+/// <summary>Wert der Eigenschaft als Text für die Vorschau; False ohne sie oder ohne Wert.</summary>
+function PropText(AComponent: TComponent; const AName: string; out AText: string): Boolean;
+var
+  mInfo: PPropInfo;
+  mObject: TObject;
 begin
-  inherited Create;
-  Hidden := TAtlasDesignerHidden.Create;
-  Applied := TDictionary<string, Boolean>.Create;
-  Icons := TDictionary<string, HWND>.Create;
+  AText := '';
+  mInfo := GetPropInfo(AComponent, AName);
+  if mInfo = nil then
+    Exit(False);
+  case mInfo^.PropType^.Kind of
+    tkClass:
+      begin
+        mObject := GetObjectProp(AComponent, mInfo);
+        if mObject is TComponent then
+          AText := TComponent(mObject).Name;
+      end;
+    tkInteger, tkInt64, tkEnumeration, tkFloat, tkSet, tkChar, tkWChar, tkString, tkLString, tkUString, tkWString:
+      AText := VarToStr(GetPropValue(AComponent, mInfo, True));
+  end;
+  Result := AText <> '';
 end;
 
-destructor TFormState.Destroy;
+{ TSearchKeyClient }
+
+function TSearchKeyClient.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
+var
+  mKey: Integer;
 begin
-  Icons.Free;
-  Applied.Free;
-  Hidden.Free;
-  inherited Destroy;
+  mKey := TAtlasIdeSettings.Current.DesignerSearchKey;
+  Result := (mKey <> 0) and (ShortCut(AKey, AShift) = TShortCut(mKey)) and DesignerFocused;
+end;
+
+procedure TSearchKeyClient.HandleKey(AKey: Word; AShift: TShiftState);
+begin
+  if TAtlasIdeDesignerBar.FState = nil then
+    Exit;
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+    procedure
+    begin
+      State.OpenSearch;
+    end);
 end;
 
 { TDesignerBarState }
@@ -200,8 +268,13 @@ end;
 constructor TDesignerBarState.Create;
 begin
   inherited Create;
-  FForms := TObjectDictionary<string, TFormState>.Create([doOwnsValues]);
-  FHitIndex := -1;
+  FTabClicks := TAtlasTabClicks.Create;
+  FActionIndex := -1;
+  FSearchKind := TAtlasDesignerKind.All;
+  FSearchFields := [TAtlasDesignerField.Name, TAtlasDesignerField.Caption, TAtlasDesignerField.ClassName];
+  FSearchGrouping := TAtlasDesignerGrouping.Hierarchy;
+  FSearchPreview := True;
+  FLastAlign := TAtlasAlignKind.Lefts;
   FHost := TAtlasEditorBarHost.Create('Designer-Leiste', TAtlasFeature.DesignerBar,
     function(AEditorParent: TWinControl): TControl
     begin
@@ -212,7 +285,8 @@ begin
       Place(TAtlasDesignerBar(ABar), AEditorParent);
     end);
   FHost.ShowIn := TAtlasEditorBarView.Designer;
-  FMenu := TPopupMenu.Create(nil);
+  FAlignMenu := TPopupMenu.Create(nil);
+  FKeyClient := TSearchKeyClient.Create(KeyPriority);
   FTimer := TTimer.Create(nil);
   FTimer.Interval := TickMs;
   FTimer.OnTimer := Tick;
@@ -222,16 +296,13 @@ end;
 destructor TDesignerBarState.Destroy;
 begin
   FTimer.Free;
-  // Nichts bleibt ausgeblendet, wenn Atlas geht.
-  try
-    RestoreAll;
-  except
-    on E: Exception do
-      TAtlasGuard.Log('Designer-Leiste: beim Abbau nicht alles eingeblendet: ' + TAtlasGuard.SafeMessage(E.Message));
-  end;
-  FMenu.Free;
+  TAtlasKeyHook.Remove(FKeyClient);
+  FKeyClient.Free;
+  CloseSearch;
+  FOverlay.Free;
+  FAlignMenu.Free;
   FHost.Free;
-  FForms.Free;
+  FTabClicks.Free;
   inherited Destroy;
 end;
 
@@ -239,9 +310,11 @@ procedure TDesignerBarState.Reset;
 begin
   if not TAtlasIdeSettings.Current.EditorDesignerBar then
   begin
-    RestoreAll;
     FHost.Clear;
+    HideOverlay;
+    CloseSearch;
   end;
+  UpdateKeyClient;
   ApplyTheme;
 end;
 
@@ -255,6 +328,8 @@ begin
     begin
       TAtlasDesignerBar(ABar).ApplyColors(mColors);
     end);
+  if FOverlay <> nil then
+    FOverlay.ApplyColors(TAtlasIdeStyle.Colors);
 end;
 
 /// <summary>Eigene Methode: Jede Leiste braucht ihre eigene gefangene Variable. Einordnen und Wächter: Host.</summary>
@@ -266,54 +341,37 @@ begin
   mBar := TAtlasDesignerBar.Create(nil);
   mHost := FHost;
   mBar.ApplyColors(BarColors);
-  mBar.SetTexts(TAtlasStrings.Text(TAtlasTextId.DesignerBarSearchHint),
-    TAtlasStrings.Text(TAtlasTextId.DesignerBarHits), TAtlasStrings.Text(TAtlasTextId.DesignerBarNoHit),
-    TAtlasStrings.Text(TAtlasTextId.DesignerBarHide), TAtlasStrings.Text(TAtlasTextId.DesignerBarShowAll),
-    TAtlasStrings.Text(TAtlasTextId.DesignerBarPrevHint), TAtlasStrings.Text(TAtlasTextId.DesignerBarNextHint),
-    TAtlasStrings.Text(TAtlasTextId.DesignerBarHiddenHint));
+  mBar.SetButtons(Buttons);
   mBar.OnDisabled :=
     procedure(ASender: TObject)
     begin
       mHost.Disabled(ASender);
     end;
-  mBar.OnSearch :=
-    procedure(AText: string)
-    begin
-      TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-        procedure
-        begin
-          Search(AText);
-        end);
-    end;
-  mBar.OnStep :=
-    procedure(ADelta: Integer)
-    begin
-      TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-        procedure
-        begin
-          Step(ADelta);
-        end);
-    end;
-  mBar.OnHideMenu :=
-    procedure(APoint: TPoint)
+  mBar.OnCommand :=
+    procedure(AId: string)
     var
+      mId: string;
+    begin
+      mId := AId;
+      // Nach dem Klick: Die IDE holt den Fokus in den Designer; erst danach wirken.
+      Later(
+        procedure
+        begin
+          Command(mId);
+        end);
+    end;
+  mBar.OnMenu :=
+    procedure(AId: string; APoint: TPoint)
+    var
+      mId: string;
       mPoint: TPoint;
     begin
+      mId := AId;
       mPoint := APoint;
-      // Nach dem Klick: Die IDE holt den Fokus in den Designer; das Menü erst danach.
       Later(
         procedure
         begin
-          ShowMenu(mPoint);
-        end);
-    end;
-  mBar.OnShowAll :=
-    procedure
-    begin
-      Later(
-        procedure
-        begin
-          ShowAll;
+          ShowMenu(mId, mPoint);
         end);
     end;
   Result := mBar;
@@ -336,313 +394,234 @@ begin
   Result := (AEditor <> nil) and (ARoot <> nil);
 end;
 
-function TDesignerBarState.StateOf(const AFileName: string): TFormState;
-begin
-  if not FForms.TryGetValue(Key(AFileName), Result) then
-  begin
-    Result := TFormState.Create;
-    FForms.Add(Key(AFileName), Result);
-  end;
-end;
-
-function TDesignerBarState.ItemsOf(ARoot: TComponent): TArray<TAtlasDesignerItem>;
+function TDesignerBarState.FindNonVisualAction: TContainedAction;
 var
+  mServices: INTAServices;
+  mList: TCustomActionList;
   mIndex: Integer;
-  mComponent: TComponent;
 begin
   Result := nil;
-  for mIndex := 0 to ARoot.ComponentCount - 1 do
+  if not Supports(BorlandIDEServices, INTAServices, mServices) or (mServices.ActionList = nil) then
+    Exit;
+  mList := mServices.ActionList;
+  // Gemerkter Index: Die Liste hat Tausende Einträge, der Takt fragt fünfmal je Sekunde.
+  if (FActionIndex >= 0) and (FActionIndex < mList.ActionCount) and
+    SameText(mList.Actions[FActionIndex].Name, NonVisualAction) then
+    Exit(mList.Actions[FActionIndex]);
+  FActionIndex := -1;
+  for mIndex := 0 to mList.ActionCount - 1 do
+    if SameText(mList.Actions[mIndex].Name, NonVisualAction) then
+    begin
+      FActionIndex := mIndex;
+      Exit(mList.Actions[mIndex]);
+    end;
+  if not FActionLogged then
   begin
-    mComponent := ARoot.Components[mIndex];
-    if mComponent.Name <> '' then
-      Result := Result + [TAtlasDesignerItem.Create(mComponent.Name, mComponent.ClassName, mComponent is TControl)];
+    FActionLogged := True;
+    TAtlasGuard.Log('Designer-Leiste: IDE-Aktion ' + NonVisualAction + ' nicht gefunden');
   end;
 end;
 
-procedure TDesignerBarState.SetControlHidden(AControl: TControl; AHidden: Boolean);
+function TDesignerBarState.AlignCaption(AKind: TAtlasAlignKind): string;
 begin
-  if AHidden = (csNoDesignVisible in AControl.ControlStyle) then
-    Exit;
-  if AHidden then
-    AControl.ControlStyle := AControl.ControlStyle + [csNoDesignVisible]
+  case AKind of
+    TAtlasAlignKind.Rights: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignRights);
+    TAtlasAlignKind.Tops: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignTops);
+    TAtlasAlignKind.Bottoms: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignBottoms);
+    TAtlasAlignKind.CentersH: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignCentersH);
+    TAtlasAlignKind.CentersV: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignCentersV);
+    TAtlasAlignKind.CenterInParentH: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignCenterInParentH);
+    TAtlasAlignKind.CenterInParentV: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignCenterInParentV);
+    TAtlasAlignKind.SameWidth: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignSameWidth);
+    TAtlasAlignKind.SameHeight: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignSameHeight);
+    TAtlasAlignKind.SpaceH: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignSpaceH);
+    TAtlasAlignKind.SpaceV: Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignSpaceV);
   else
-    AControl.ControlStyle := AControl.ControlStyle - [csNoDesignVisible];
-  // Fenster zeigen bzw. verbergen; gezeichnete Steuerelemente zeichnet das Elternteil.
-  if AControl is TWinControl then
-    TWinControl(AControl).UpdateControlState;
-  if AControl.Parent <> nil then
-    AControl.Parent.Invalidate;
-end;
-
-function TDesignerBarState.IconWindow(ARoot: TWinControl; AComponent: TComponent): HWND;
-var
-  mPoint: TPoint;
-  mControl: TWinControl;
-  mRect: TRect;
-  mClass: array[0..127] of Char;
-  mLimit: Integer;
-begin
-  Result := 0;
-  if not ARoot.HandleAllocated then
-    Exit;
-  // DesignInfo: links oben des Symbols im Formular (LoWord x, HiWord y).
-  mPoint := Point(SmallInt(LongRec(AComponent.DesignInfo).Lo) + 2, SmallInt(LongRec(AComponent.DesignInfo).Hi) + 2);
-  Result := ChildWindowFromPointEx(ARoot.Handle, mPoint, CWP_SKIPINVISIBLE);
-  if (Result = 0) or (Result = ARoot.Handle) then
-    Exit(0);
-  // Ein Steuerelement des Formulars ist kein Symbol.
-  mControl := FindControl(Result);
-  if (mControl <> nil) and (mControl.Owner = ARoot) then
-    Exit(0);
-  mLimit := MulDiv(MaxIconSize, ARoot.CurrentPPI, 96);
-  if not GetWindowRect(Result, mRect) or (mRect.Width > mLimit) or (mRect.Height > mLimit) then
-    Exit(0);
-  if not FIconLogged then
-  begin
-    FIconLogged := True;
-    mClass[0] := #0;
-    GetClassName(Result, mClass, Length(mClass));
-    TAtlasGuard.Log(Format('Designer-Leiste: Symbol von %s ist ein Fenster der Klasse %s (%d × %d)',
-      [AComponent.Name, string(mClass), mRect.Width, mRect.Height]));
+    Result := TAtlasStrings.Text(TAtlasTextId.DesignerAlignLefts);
   end;
 end;
 
-procedure TDesignerBarState.Apply(ARoot: TComponent; AState: TFormState);
+function TDesignerBarState.Buttons: TArray<TAtlasDesignerButton>;
 var
-  mIndex: Integer;
-  mComponent: TComponent;
-  mName: string;
-  mWanted: Boolean;
-  mWindow: HWND;
+  mSettings: TAtlasPluginSettings;
+  mButton: TAtlasDesignerButton;
+  mAction: TContainedAction;
+  mHint: string;
 begin
-  FKept := 0;
-  for mIndex := 0 to ARoot.ComponentCount - 1 do
+  mSettings := TAtlasIdeSettings.Current;
+  mHint := TAtlasStrings.Text(TAtlasTextId.DesignerBarSearchHint);
+  if mSettings.DesignerSearchKey <> 0 then
+    mHint := mHint + ' (' + ShortCutToText(TShortCut(mSettings.DesignerSearchKey)) + ')';
+  Result := TArray<TAtlasDesignerButton>.Create(TAtlasDesignerButton.Create(IdSearch,
+    TAtlasToolbarIcon.ComponentSearch, mHint));
+  mButton := TAtlasDesignerButton.Create(IdNonVisual, TAtlasToolbarIcon.NonVisual,
+    TAtlasStrings.Text(TAtlasTextId.DesignerBarNonVisualHint));
+  mAction := FindNonVisualAction;
+  if mAction = nil then
   begin
-    mComponent := ARoot.Components[mIndex];
-    if mComponent.Name = '' then
-      Continue;
-    mName := Key(mComponent.Name);
-    mWanted := AState.Hidden.IsHidden(TAtlasDesignerItem.Create(mComponent.Name, mComponent.ClassName,
-      mComponent is TControl));
-    if mComponent is TControl then
+    mButton.Enabled := False;
+    mButton.Hint := TAtlasStrings.Text(TAtlasTextId.DesignerBarNonVisualMissing);
+  end
+  else
+  begin
+    mAction.Update;
+    if mAction is TCustomAction then
     begin
-      if mWanted and (KeepReason(TControl(mComponent)) <> '') then
-      begin
-        Inc(FKept);
-        mWanted := False;
-      end;
-      if mWanted then
-      begin
-        if not AState.Applied.ContainsKey(mName) and (csNoDesignVisible in TControl(mComponent).ControlStyle) then
-          Continue;
-        SetControlHidden(TControl(mComponent), True);
-        AState.Applied.AddOrSetValue(mName, True);
-      end
-      else if AState.Applied.ContainsKey(mName) then
-      begin
-        SetControlHidden(TControl(mComponent), False);
-        AState.Applied.Remove(mName);
-      end;
-      Continue;
-    end;
-    // Nichtvisuell: Symbol im Designer (nur auf Formularen und Frames).
-    if not (ARoot is TWinControl) then
-      Continue;
-    if mWanted then
-    begin
-      if not AState.Icons.TryGetValue(mName, mWindow) or not IsWindow(mWindow) then
-      begin
-        mWindow := IconWindow(TWinControl(ARoot), mComponent);
-        if mWindow = 0 then
-          Continue;
-        AState.Icons.AddOrSetValue(mName, mWindow);
-      end;
-      // Der Designer zeigt Symbole beim Verschieben und Neuzeichnen wieder: jeden Takt prüfen.
-      if IsWindowVisible(mWindow) then
-        ShowWindow(mWindow, SW_HIDE);
-    end
-    else if AState.Icons.TryGetValue(mName, mWindow) then
-    begin
-      if IsWindow(mWindow) then
-        ShowWindow(mWindow, SW_SHOWNA);
-      AState.Icons.Remove(mName);
+      mButton.Enabled := TCustomAction(mAction).Enabled;
+      mButton.Pressed := TCustomAction(mAction).Checked;
     end;
   end;
-end;
-
-procedure TDesignerBarState.Restore(ARoot: TComponent; AState: TFormState);
-begin
-  AState.Hidden.ShowAll;
-  if ARoot <> nil then
-    Apply(ARoot, AState);
-  AState.Applied.Clear;
-  AState.Icons.Clear;
-end;
-
-procedure TDesignerBarState.RestoreAll;
-var
-  mModules: IOTAModuleServices;
-  mModule: IOTAModule;
-  mEditor: IOTAFormEditor;
-  mModuleIndex, mFileIndex: Integer;
-  mState: TFormState;
-begin
-  // Nichts ausgeblendet: die Module nicht anfassen. Beim Beenden der IDE sind sie schon im Abbau, und
-  // ModuleFileEditors löste in coreide eine Zugriffsverletzung aus.
-  if not Restorable then
+  Result := Result + [mButton];
+  mButton := TAtlasDesignerButton.Create(IdParent, TAtlasToolbarIcon.SelectParent,
+    TAtlasStrings.Text(TAtlasTextId.DesignerBarParentHint));
+  mButton.GapBefore := True;
+  Result := Result + [mButton];
+  if mSettings.DesignerTabOrderClick then
+    mHint := TAtlasStrings.Text(TAtlasTextId.DesignerBarTabOrderClickHint)
+  else
+    mHint := TAtlasStrings.Text(TAtlasTextId.DesignerBarTabOrderHint);
+  mButton := TAtlasDesignerButton.Create(IdTabOrder, TAtlasToolbarIcon.TabOrder, mHint);
+  mButton.Pressed := FTabOrder;
+  Result := Result + [mButton];
+  if mSettings.DesignerAlign then
   begin
-    FPattern := '';
-    FHits := nil;
-    FHitIndex := -1;
-    Exit;
+    mButton := TAtlasDesignerButton.Create(IdAlign, TAtlasToolbarIcon.AlignControls,
+      TAtlasStrings.Fmt(TAtlasTextId.DesignerBarAlignHint, [AlignCaption(FLastAlign)]));
+    mButton.Menu := True;
+    Result := Result + [mButton];
   end;
-  if Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
-    for mModuleIndex := 0 to mModules.ModuleCount - 1 do
-    begin
-      mModule := mModules.Modules[mModuleIndex];
-      for mFileIndex := 0 to mModule.ModuleFileCount - 1 do
-        if Supports(mModule.ModuleFileEditors[mFileIndex], IOTAFormEditor, mEditor) and
-          FForms.TryGetValue(Key(mEditor.FileName), mState) then
-          Restore(TAtlasIdeDesignerView.RootOf(mEditor), mState);
-    end;
-  FForms.Clear;
-  FPattern := '';
-  FHits := nil;
-  FHitIndex := -1;
-end;
-
-/// <summary>Hat Atlas in einem Formular etwas ausgeblendet oder gesetzt, das zurück muss?</summary>
-function TDesignerBarState.Restorable: Boolean;
-var
-  mState: TFormState;
-begin
-  for mState in FForms.Values do
-    if mState.Hidden.Any or (mState.Applied.Count > 0) or (mState.Icons.Count > 0) then
-      Exit(True);
-  Result := False;
 end;
 
 procedure TDesignerBarState.UpdateBars;
 var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-  mHidden: Integer;
-  mIndex, mCount: Integer;
-  mState: TFormState;
+  mButtons: TArray<TAtlasDesignerButton>;
 begin
-  mHidden := 0;
-  // TryGetValue statt StateOf: Anzeigen legt keinen Zustand an.
-  if Current(mEditor, mRoot) and FForms.TryGetValue(Key(mEditor.FileName), mState) then
-    mHidden := mState.Hidden.CountIn(ItemsOf(mRoot));
-  mIndex := FHitIndex;
-  mCount := Length(FHits);
+  if FHost.Count = 0 then
+    Exit;
+  mButtons := Buttons;
   FHost.ForEach(
     procedure(ABar: TControl)
     begin
-      TAtlasDesignerBar(ABar).SetHiddenCount(mHidden);
-      TAtlasDesignerBar(ABar).SetHits(mIndex, mCount);
+      TAtlasDesignerBar(ABar).SetButtons(mButtons);
     end);
+end;
+
+procedure TDesignerBarState.UpdateKeyClient;
+var
+  mWanted: Boolean;
+begin
+  // Nur angemeldet, solange ein Designer gezeigt wird: sonst berührt Atlas keine Taste (TAtlasKeyHook).
+  mWanted := FHost.Guard and TAtlasIdeSettings.Current.EditorDesignerBar and
+    (TAtlasIdeSettings.Current.DesignerSearchKey <> 0) and (TAtlasIdeDesignerView.CurrentFormEditor <> nil);
+  if mWanted then
+    TAtlasKeyHook.Add(FKeyClient)
+  else
+    TAtlasKeyHook.Remove(FKeyClient);
 end;
 
 procedure TDesignerBarState.Tick(Sender: TObject);
 begin
-  // Sicherung ausgelöst: Leisten weg und alles wieder sichtbar, bis die Funktion wieder eingeschaltet ist.
+  // Sicherung ausgelöst: Leisten weg, bis die Funktion wieder eingeschaltet ist.
   if not FHost.Guard then
   begin
-    if Restorable then
-      RestoreAll;
+    TAtlasKeyHook.Remove(FKeyClient);
+    HideOverlay;
     Exit;
   end;
   if not TAtlasIdeSettings.Current.EditorDesignerBar then
   begin
-    if Restorable then
-      RestoreAll;
+    TAtlasKeyHook.Remove(FKeyClient);
+    HideOverlay;
     if FHost.Count > 0 then
       FHost.Clear;
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.DesignerBar,
     procedure
-    var
-      mEditor: IOTAFormEditor;
-      mRoot: TComponent;
-      mState: TFormState;
     begin
       FHost.Ensure;
-      if not Current(mEditor, mRoot) then
-        Exit;
-      if not SameText(mEditor.FileName, FFile) then
-      begin
-        // Anderes Formular: Treffer neu suchen, das Suchwort bleibt.
-        FFile := mEditor.FileName;
-        FHits := TArray<string>.Create();
-        FHitIndex := -1;
-        if FPattern <> '' then
-          Search(FPattern);
-      end;
-      if FForms.TryGetValue(Key(FFile), mState) then
-        Apply(mRoot, mState);
+      UpdateKeyClient;
+      UpdateBars;
+      UpdateOverlay;
+    end);
+end;
+
+procedure TDesignerBarState.Command(const AId: string);
+begin
+  if SameText(AId, IdSearch) then
+    OpenSearch
+  else if SameText(AId, IdNonVisual) then
+    ToggleNonVisual
+  else if SameText(AId, IdParent) then
+    SelectParent
+  else if SameText(AId, IdTabOrder) then
+    ToggleTabOrder
+  else if SameText(AId, IdAlign) then
+    AlignSelection(FLastAlign);
+  UpdateBars;
+end;
+
+procedure TDesignerBarState.ShowMenu(const AId: string; const APoint: TPoint);
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mKind: TAtlasAlignKind;
+  mItem: TMenuItem;
+  mCount: Integer;
+begin
+  if not SameText(AId, IdAlign) or not Current(mEditor, mRoot) then
+    Exit;
+  mCount := Length(Selection(mEditor, mRoot));
+  FAlignMenu.Items.Clear;
+  for mKind := Low(TAtlasAlignKind) to High(TAtlasAlignKind) do
+  begin
+    // Gruppen: Kanten, Mitten, im Elternelement, Größe, Abstände.
+    if mKind in [TAtlasAlignKind.CentersH, TAtlasAlignKind.CenterInParentH, TAtlasAlignKind.SameWidth,
+      TAtlasAlignKind.SpaceH] then
+    begin
+      mItem := TMenuItem.Create(FAlignMenu);
+      mItem.Caption := '-';
+      FAlignMenu.Items.Add(mItem);
+    end;
+    mItem := TMenuItem.Create(FAlignMenu);
+    mItem.Caption := AlignCaption(mKind);
+    mItem.Tag := Ord(mKind);
+    mItem.Enabled := TAtlasDesignerAlign.Applicable(mKind, mCount);
+    mItem.Checked := mKind = FLastAlign;
+    mItem.OnClick := AlignMenuClick;
+    FAlignMenu.Items.Add(mItem);
+  end;
+  FAlignMenu.Popup(APoint.X, APoint.Y);
+end;
+
+procedure TDesignerBarState.AlignMenuClick(Sender: TObject);
+var
+  mKind: TAtlasAlignKind;
+begin
+  mKind := TAtlasAlignKind(TMenuItem(Sender).Tag);
+  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+    procedure
+    begin
+      FLastAlign := mKind;
+      AlignSelection(mKind);
       UpdateBars;
     end);
 end;
 
-procedure TDesignerBarState.Search(const APattern: string);
+procedure TDesignerBarState.ToggleNonVisual;
 var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-  mItems: TArray<TAtlasDesignerItem>;
-  mIndex: Integer;
+  mAction: TContainedAction;
 begin
-  FPattern := APattern;
-  FHits := nil;
-  FHitIndex := -1;
-  if Current(mEditor, mRoot) and (APattern <> '') then
+  mAction := FindNonVisualAction;
+  if mAction = nil then
   begin
-    mItems := ItemsOf(mRoot);
-    for mIndex in TAtlasDesignerSearch.Find(mItems, APattern) do
-      FHits := FHits + [mItems[mIndex].Name];
-    if Length(FHits) > 0 then
-    begin
-      FHitIndex := 0;
-      Select(FHits[0]);
-    end;
+    Say(TAtlasStrings.Text(TAtlasTextId.DesignerBarNonVisualMissing));
+    Exit;
   end;
-  UpdateBars;
-end;
-
-procedure TDesignerBarState.Step(ADelta: Integer);
-begin
-  if FPattern = '' then
+  mAction.Update;
+  if (mAction is TCustomAction) and not TCustomAction(mAction).Enabled then
     Exit;
-  FHitIndex := TAtlasDesignerSearch.Step(FHitIndex, Length(FHits), ADelta);
-  if FHitIndex >= 0 then
-    Select(FHits[FHitIndex]);
-  UpdateBars;
-end;
-
-procedure TDesignerBarState.Select(const AName: string);
-var
-  mEditor: IOTAFormEditor;
-  mRoot, mComponent: TComponent;
-  mDesigner: IDesigner;
-  mState: TFormState;
-begin
-  if not Current(mEditor, mRoot) then
-    Exit;
-  mComponent := mRoot.FindComponent(AName);
-  mDesigner := DesignerOf(mEditor);
-  // Umbenannt oder gelöscht seit der Suche: neu suchen.
-  if (mComponent = nil) or (mDesigner = nil) then
-    Exit;
-  // Eine ausgeblendete Komponente zeigt sich, sobald sie gewählt wird.
-  if FForms.TryGetValue(Key(mEditor.FileName), mState) and
-    mState.Hidden.IsHidden(TAtlasDesignerItem.Create(mComponent.Name, mComponent.ClassName, mComponent is TControl))
-  then
-  begin
-    mState.Hidden.ShowName(mComponent.Name);
-    Apply(mRoot, mState);
-  end;
-  mDesigner.SelectComponent(mComponent);
+  mAction.Execute;
 end;
 
 function TDesignerBarState.Selection(const AEditor: IOTAFormEditor; ARoot: TComponent): TArray<TComponent>;
@@ -666,160 +645,372 @@ begin
   end;
 end;
 
-/// <summary>Ausgeblendetes ändern, anwenden und die Auswahl lösen (sonst stünden Griffe um Unsichtbares).</summary>
-procedure TDesignerBarState.Change(const AAction: TProc<TFormState, TArray<TComponent>>);
-var
-  mEditor: IOTAFormEditor;
-  mRoot: TComponent;
-  mState: TFormState;
-  mDesigner: IDesigner;
-begin
-  if not Current(mEditor, mRoot) then
-    Exit;
-  mState := StateOf(mEditor.FileName);
-  AAction(mState, Selection(mEditor, mRoot));
-  Apply(mRoot, mState);
-  mDesigner := DesignerOf(mEditor);
-  if mDesigner <> nil then
-    mDesigner.SelectComponent(mRoot);
-  if FKept > 0 then
-    Say(TAtlasStrings.Fmt(TAtlasTextId.DesignerBarKeptAligned, [FKept]));
-  UpdateBars;
-end;
-
-procedure TDesignerBarState.ShowMenu(const APoint: TPoint);
+procedure TDesignerBarState.SelectParent;
 var
   mEditor: IOTAFormEditor;
   mRoot: TComponent;
   mSelected: TArray<TComponent>;
-  mState: TFormState;
-  mItem: TMenuItem;
-  mClass: string;
+  mDesigner: IDesigner;
 begin
   if not Current(mEditor, mRoot) then
     Exit;
+  mDesigner := DesignerOf(mEditor);
   mSelected := Selection(mEditor, mRoot);
-  mState := StateOf(mEditor.FileName);
-  FMenu.Items.Clear;
-  mItem := TMenuItem.Create(FMenu);
-  mItem.Caption := TAtlasStrings.Text(TAtlasTextId.DesignerBarHideSelection);
-  mItem.Enabled := Length(mSelected) > 0;
-  mItem.OnClick := MenuHideSelection;
-  FMenu.Items.Add(mItem);
-  if Length(mSelected) > 0 then
+  if (mDesigner = nil) or (Length(mSelected) = 0) then
   begin
-    mItem := TMenuItem.Create(FMenu);
-    mItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.DesignerBarHideClass, [mSelected[0].ClassName]);
-    mItem.Hint := mSelected[0].ClassName;
-    mItem.OnClick := MenuHideClass;
-    FMenu.Items.Add(mItem);
+    Say(TAtlasStrings.Text(TAtlasTextId.DesignerBarNoSelection));
+    Exit;
   end;
-  mItem := TMenuItem.Create(FMenu);
-  mItem.Caption := TAtlasStrings.Text(TAtlasTextId.DesignerBarHideNonVisual);
-  mItem.Checked := mState.Hidden.NonVisual;
-  mItem.OnClick := MenuNonVisual;
-  FMenu.Items.Add(mItem);
-  for mClass in mState.Hidden.HiddenClasses do
+  if not (mSelected[0] is TControl) or (TControl(mSelected[0]).Parent = nil) then
   begin
-    mItem := TMenuItem.Create(FMenu);
-    mItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.DesignerBarShowClass, [mClass]);
-    mItem.Hint := mClass;
-    mItem.OnClick := MenuShowClass;
-    FMenu.Items.Add(mItem);
+    Say(TAtlasStrings.Text(TAtlasTextId.DesignerBarNoParent));
+    Exit;
   end;
-  mItem := TMenuItem.Create(FMenu);
-  mItem.Caption := '-';
-  FMenu.Items.Add(mItem);
-  mItem := TMenuItem.Create(FMenu);
-  mItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.DesignerBarShowAll, [mState.Hidden.CountIn(ItemsOf(mRoot))]);
-  mItem.Enabled := mState.Hidden.Any;
-  mItem.OnClick := MenuShowAll;
-  FMenu.Items.Add(mItem);
-  FMenu.Popup(APoint.X, APoint.Y);
+  mDesigner.SelectComponent(TControl(mSelected[0]).Parent);
 end;
 
-procedure TDesignerBarState.MenuHideSelection(Sender: TObject);
+procedure TDesignerBarState.ToggleTabOrder;
 begin
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
-    begin
-      Change(
-        procedure(AState: TFormState; ASelected: TArray<TComponent>)
-        var
-          mComponent: TComponent;
-        begin
-          if Length(ASelected) = 0 then
+  FTabOrder := not FTabOrder;
+  FTabClicks.Reset;
+  if FTabOrder then
+    UpdateOverlay
+  else
+    HideOverlay;
+end;
+
+procedure TDesignerBarState.HideOverlay;
+begin
+  if FOverlay <> nil then
+    FOverlay.HideOverlay;
+end;
+
+procedure TDesignerBarState.UpdateOverlay;
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mForm: TWinControl;
+  mIndex: Integer;
+  mComponent: TComponent;
+  mControl: TWinControl;
+  mStops: TArray<TAtlasTabStop>;
+  mOut: TArray<Boolean>;
+  mBadges: TArray<TAtlasTabBadge>;
+  mOrigin: TPoint;
+  mScreen, mVisible: TRect;
+  mHost: HWND;
+begin
+  if not FTabOrder or not Application.Active or not Current(mEditor, mRoot) or not (mRoot is TWinControl) or
+    not TWinControl(mRoot).HandleAllocated or not IsWindowVisible(TWinControl(mRoot).Handle) then
+  begin
+    HideOverlay;
+    Exit;
+  end;
+  mForm := TWinControl(mRoot);
+  // Anderes Formular: Klicks zählen wieder ab 0.
+  if not SameText(mEditor.FileName, FTabFile) then
+  begin
+    FTabFile := mEditor.FileName;
+    FTabClicks.Reset;
+  end;
+  mStops := nil;
+  for mIndex := 0 to mForm.ComponentCount - 1 do
+  begin
+    mComponent := mForm.Components[mIndex];
+    if not (mComponent is TWinControl) or (mComponent.Name = '') then
+      Continue;
+    mControl := TWinControl(mComponent);
+    if (mControl.Parent = nil) or not (mControl.TabStop or (csAcceptsControls in mControl.ControlStyle)) then
+      Continue;
+    mStops := mStops + [TAtlasTabStop.Create(mControl.Name, ParentNameOf(mControl, mForm), mControl.TabOrder,
+      BoundsInRoot(mControl, mForm))];
+  end;
+  mOut := TAtlasTabOrder.OutOfOrder(mStops);
+  // Nur der sichtbare Teil des Formulars (der Designer kann es abschneiden oder scrollen).
+  mOrigin := mForm.ClientToScreen(Point(0, 0));
+  mScreen := Rect(mOrigin.X, mOrigin.Y, mOrigin.X + mForm.ClientWidth, mOrigin.Y + mForm.ClientHeight);
+  mHost := GetParent(mForm.Handle);
+  mVisible := mScreen;
+  if (mHost <> 0) and GetWindowRect(mHost, mVisible) then
+    mVisible.Intersect(mScreen)
+  else
+    mVisible := mScreen;
+  if mVisible.IsEmpty then
+  begin
+    HideOverlay;
+    Exit;
+  end;
+  mBadges := nil;
+  for mIndex := 0 to High(mStops) do
+    mBadges := mBadges + [TAtlasTabBadge.Create(mStops[mIndex].Name, mStops[mIndex].TabOrder, mOut[mIndex],
+      Point(mStops[mIndex].Bounds.Left + mScreen.Left - mVisible.Left,
+      mStops[mIndex].Bounds.Top + mScreen.Top - mVisible.Top))];
+  if FOverlay = nil then
+  begin
+    FOverlay := TAtlasTabOrderOverlay.CreateOverlay(nil, Application.MainFormHandle, TAtlasIdeStyle.Colors);
+    FOverlay.OnBadgeClick :=
+      procedure(AName: string)
+      var
+        mName: string;
+      begin
+        mName := AName;
+        TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+          procedure
           begin
-            Say(TAtlasStrings.Text(TAtlasTextId.DesignerBarNoSelection));
-            Exit;
+            TabBadgeClicked(mName);
+          end);
+      end;
+  end;
+  FOverlay.Clickable := TAtlasIdeSettings.Current.DesignerTabOrderClick;
+  FOverlay.SetBadges(mBadges);
+  if not FOverlay.Shown or (FOverlay.BoundsRect <> mVisible) then
+    FOverlay.ShowAt(mVisible);
+end;
+
+procedure TDesignerBarState.TabBadgeClicked(const AName: string);
+var
+  mEditor: IOTAFormEditor;
+  mRoot, mComponent: TComponent;
+  mDesigner: IDesigner;
+  mOrder: Integer;
+begin
+  if not TAtlasIdeSettings.Current.DesignerTabOrderClick or not Current(mEditor, mRoot) then
+    Exit;
+  mComponent := mRoot.FindComponent(AName);
+  mDesigner := DesignerOf(mEditor);
+  if not (mComponent is TWinControl) or (mDesigner = nil) then
+    Exit;
+  mOrder := FTabClicks.Next(ParentNameOf(TWinControl(mComponent), mRoot));
+  // Der Setter der VCL schiebt die übrigen Geschwister weiter: Der Zähler je Elternelement genügt.
+  TWinControl(mComponent).TabOrder := mOrder;
+  mDesigner.Modified;
+  Say(TAtlasStrings.Fmt(TAtlasTextId.DesignerBarTabOrderSet, [AName, TWinControl(mComponent).TabOrder]));
+  UpdateOverlay;
+end;
+
+procedure TDesignerBarState.AlignSelection(AKind: TAtlasAlignKind);
+var
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mDesigner: IDesigner;
+  mSelected: TArray<TComponent>;
+  mControls: TArray<TControl>;
+  mRects, mNew: TArray<TRect>;
+  mComponent: TComponent;
+  mParent: TWinControl;
+  mIndex: Integer;
+begin
+  if not TAtlasIdeSettings.Current.DesignerAlign or not Current(mEditor, mRoot) then
+    Exit;
+  mDesigner := DesignerOf(mEditor);
+  if mDesigner = nil then
+    Exit;
+  mSelected := Selection(mEditor, mRoot);
+  mControls := nil;
+  mParent := nil;
+  for mComponent in mSelected do
+    if mComponent is TControl then
+    begin
+      if mParent = nil then
+        mParent := TControl(mComponent).Parent;
+      // Nur Geschwister: Lagen in verschiedenen Elternelementen sind nicht vergleichbar.
+      if TControl(mComponent).Parent = mParent then
+        mControls := mControls + [TControl(mComponent)];
+    end;
+  if (mParent = nil) or not TAtlasDesignerAlign.Applicable(AKind, Length(mControls)) then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.DesignerBarAlignNeeds));
+    Exit;
+  end;
+  SetLength(mRects, Length(mControls));
+  for mIndex := 0 to High(mControls) do
+    mRects[mIndex] := mControls[mIndex].BoundsRect;
+  mNew := TAtlasDesignerAlign.Apply(AKind, mRects, mParent.ClientRect);
+  for mIndex := 0 to High(mControls) do
+    if mNew[mIndex] <> mRects[mIndex] then
+      mControls[mIndex].BoundsRect := mNew[mIndex];
+  mDesigner.Modified;
+end;
+
+function TDesignerBarState.ItemsOf(ARoot: TComponent; const ADesigner: IDesigner): TArray<TAtlasDesignerItem>;
+var
+  mIndex, mProp, mCount: Integer;
+  mComponent: TComponent;
+  mItem: TAtlasDesignerItem;
+  mName, mText: string;
+  mList: PPropList;
+  mMethod: TMethod;
+begin
+  Result := nil;
+  for mIndex := 0 to ARoot.ComponentCount - 1 do
+  begin
+    mComponent := ARoot.Components[mIndex];
+    if mComponent.Name = '' then
+      Continue;
+    mItem := TAtlasDesignerItem.Create(mComponent.Name, mComponent.ClassName, mComponent is TControl);
+    if mComponent is TControl then
+    begin
+      mItem.Container := (mComponent is TWinControl) and
+        (csAcceptsControls in TControl(mComponent).ControlStyle);
+      mItem.ParentName := ParentNameOf(TControl(mComponent), ARoot);
+      if ARoot is TWinControl then
+        mItem.Bounds := BoundsInRoot(TControl(mComponent), TWinControl(ARoot));
+    end;
+    if PropText(mComponent, 'Caption', mText) or PropText(mComponent, 'Text', mText) then
+      mItem.Caption := mText;
+    for mName in PreviewProperties do
+      if PropText(mComponent, mName, mText) then
+      begin
+        // Vorgaben zeigen nichts Neues.
+        if (SameText(mName, 'Align') and SameText(mText, 'alNone')) or
+          ((SameText(mName, 'Visible') or SameText(mName, 'Enabled')) and SameText(mText, 'True')) then
+          Continue;
+        mItem.Properties := mItem.Properties + [mName + ' = ' + mText];
+      end;
+    if ADesigner <> nil then
+    begin
+      mCount := GetPropList(PTypeInfo(mComponent.ClassInfo), [tkMethod], nil);
+      if mCount > 0 then
+      begin
+        GetMem(mList, mCount * SizeOf(PPropInfo));
+        try
+          GetPropList(PTypeInfo(mComponent.ClassInfo), [tkMethod], mList);
+          for mProp := 0 to mCount - 1 do
+          begin
+            mMethod := GetMethodProp(mComponent, mList^[mProp]);
+            if mMethod.Code = nil then
+              Continue;
+            mText := ADesigner.GetMethodName(mMethod);
+            if mText <> '' then
+              mItem.Events := mItem.Events + [string(mList^[mProp]^.Name) + ' = ' + mText];
           end;
-          for mComponent in ASelected do
-            AState.Hidden.HideName(mComponent.Name);
-        end);
-    end);
+        finally
+          FreeMem(mList);
+        end;
+      end;
+    end;
+    Result := Result + [mItem];
+  end;
 end;
 
-procedure TDesignerBarState.MenuHideClass(Sender: TObject);
+procedure TDesignerBarState.OpenSearch;
 var
-  mClass: string;
+  mEditor: IOTAFormEditor;
+  mRoot: TComponent;
+  mDesigner: IDesigner;
+  mOptions: TAtlasComponentSearchOptions;
+  mSelected: TArray<TComponent>;
+  mArea: TRect;
+  mWindow: TAtlasComponentSearchWindow;
 begin
-  mClass := TMenuItem(Sender).Hint;
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+  if not Current(mEditor, mRoot) then
+  begin
+    Say(TAtlasStrings.Text(TAtlasTextId.DesignerSearchNoForm));
+    Exit;
+  end;
+  // Schon offen: neu aufbauen, das Formular kann ein anderes sein.
+  CloseSearch;
+  mDesigner := DesignerOf(mEditor);
+  mOptions := Default(TAtlasComponentSearchOptions);
+  mOptions.Compact := SameText(TAtlasIdeSettings.Current.DesignerSearchStyle,
+    TAtlasPluginSettings.DesignerSearchPopup);
+  mOptions.FormName := mRoot.Name;
+  if mRoot is TWinControl then
+    mOptions.FormBounds := Rect(0, 0, TWinControl(mRoot).ClientWidth, TWinControl(mRoot).ClientHeight);
+  mOptions.Kind := FSearchKind;
+  mOptions.Fields := FSearchFields;
+  mOptions.Grouping := FSearchGrouping;
+  mOptions.Preview := FSearchPreview;
+  mOptions.Bounds := FSearchBounds;
+  mSelected := Selection(mEditor, mRoot);
+  if Length(mSelected) > 0 then
+    mOptions.Current := mSelected[0].Name;
+  mWindow := TAtlasComponentSearchWindow.CreateSearch(nil, mOptions, ItemsOf(mRoot, mDesigner),
+    TAtlasIdeStyle.Colors);
+  FSearch := mWindow;
+  mWindow.OnAction :=
+    procedure(AAction: TAtlasComponentSearchAction; const AItem: TAtlasDesignerItem)
+    var
+      mItem: TAtlasDesignerItem;
+    begin
+      mItem := AItem;
+      if TAtlasIdeDesignerBar.FState = nil then
+        Exit;
+      TAtlasGuard.Run(TAtlasFeature.DesignerBar,
+        procedure
+        begin
+          State.SearchAction(AAction, mItem);
+        end);
+    end;
+  mWindow.OnClosed :=
     procedure
     begin
-      Change(
-        procedure(AState: TFormState; ASelected: TArray<TComponent>)
-        begin
-          AState.Hidden.HideClass(mClass);
-        end);
-    end);
+      if (TAtlasIdeDesignerBar.FState = nil) or (State.FSearch <> mWindow) then
+        Exit;
+      // Wahl merken bis zum Ende der Sitzung.
+      State.FSearchKind := mWindow.Kind;
+      State.FSearchFields := mWindow.Fields;
+      if not mOptions.Compact then
+      begin
+        State.FSearchGrouping := mWindow.Grouping;
+        State.FSearchPreview := mWindow.PreviewVisible;
+        State.FSearchBounds := mWindow.BoundsRect;
+      end;
+      State.FSearch := nil;
+    end;
+  mArea := Screen.WorkAreaRect;
+  if mRoot is TWinControl then
+    mArea := Screen.MonitorFromWindow(TWinControl(mRoot).Handle).WorkareaRect;
+  mWindow.ShowOver(mArea);
 end;
 
-procedure TDesignerBarState.MenuNonVisual(Sender: TObject);
-begin
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
-    begin
-      Change(
-        procedure(AState: TFormState; ASelected: TArray<TComponent>)
-        begin
-          AState.Hidden.NonVisual := not AState.Hidden.NonVisual;
-        end);
-    end);
-end;
-
-procedure TDesignerBarState.MenuShowClass(Sender: TObject);
+procedure TDesignerBarState.CloseSearch;
 var
-  mClass: string;
+  mWindow: TAtlasComponentSearchWindow;
 begin
-  mClass := TMenuItem(Sender).Hint;
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
-    begin
-      Change(
-        procedure(AState: TFormState; ASelected: TArray<TComponent>)
-        begin
-          AState.Hidden.ShowClass(mClass);
-        end);
-    end);
+  if FSearch = nil then
+    Exit;
+  mWindow := FSearch;
+  FSearch := nil;
+  mWindow.OnClosed := nil;
+  mWindow.OnAction := nil;
+  mWindow.Free;
 end;
 
-procedure TDesignerBarState.MenuShowAll(Sender: TObject);
+procedure TDesignerBarState.SearchAction(AAction: TAtlasComponentSearchAction; const AItem: TAtlasDesignerItem);
+var
+  mEditor: IOTAFormEditor;
+  mRoot, mComponent: TComponent;
+  mDesigner: IDesigner;
+  mEvent, mMethod: string;
+  mPos: Integer;
 begin
-  TAtlasGuard.Run(TAtlasFeature.DesignerBar,
-    procedure
-    begin
-      ShowAll;
-    end);
-end;
-
-procedure TDesignerBarState.ShowAll;
-begin
-  Change(
-    procedure(AState: TFormState; ASelected: TArray<TComponent>)
-    begin
-      AState.Hidden.ShowAll;
-    end);
+  if not Current(mEditor, mRoot) then
+    Exit;
+  mComponent := mRoot.FindComponent(AItem.Name);
+  mDesigner := DesignerOf(mEditor);
+  // Umbenannt oder gelöscht, seit das Fenster offen ist.
+  if (mComponent = nil) or (mDesigner = nil) then
+    Exit;
+  if AAction = TAtlasComponentSearchAction.Select then
+  begin
+    mDesigner.SelectComponent(mComponent);
+    Exit;
+  end;
+  if (AAction <> TAtlasComponentSearchAction.Event) or (Length(AItem.Events) = 0) then
+    Exit;
+  // OnClick, sonst das erste belegte Ereignis.
+  mEvent := AItem.Events[0];
+  for mMethod in AItem.Events do
+    if mMethod.StartsWith('OnClick ', True) then
+      mEvent := mMethod;
+  mPos := Pos(' = ', mEvent);
+  if mPos = 0 then
+    Exit;
+  mMethod := Copy(mEvent, mPos + 3, MaxInt);
+  mDesigner.SelectComponent(mComponent);
+  if mDesigner.MethodExists(mMethod) then
+    mDesigner.ShowMethod(mMethod);
 end;
 
 procedure TDesignerBarState.Later(const AAction: TProc);
