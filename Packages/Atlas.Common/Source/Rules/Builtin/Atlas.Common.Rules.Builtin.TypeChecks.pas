@@ -35,7 +35,9 @@
 //                     einen Zeichen-Parameter (wie E2354), eine Konstante, ein
 //                     const-Parameter, eine Property oder ein Funktionsergebnis
 //                     (wie E2197), eine Konstante an ein offenes Array (wie
-//                     E2192) oder ein Ausdruck (wie E2036) (#1037). Slice an
+//                     E2192) oder ein Ausdruck (wie E2036) (#1037); ebenso
+//                     @ vor einem Rechenausdruck wie @(mZahl + 1) (wie E2036,
+//                     Cm.E2036, #1380). Slice an
 //                     ein var- oder out-Open-Array übersetzt dcc (Spring4D
 //                     TArray.Sort<T>, IV1-IV4; dcc-Lauf vom 29.10.2026,
 //                     #1328): Slice übergibt den Speicher des Arrays. Nur bei
@@ -1363,6 +1365,22 @@ var
     end;
   end;
 
+  /// <summary>E2036 (#1380): @ vor einem Rechenausdruck; die Adresse gibt es nur von Variablen.</summary>
+  procedure CheckAddress(AAddress: TSyntaxNode);
+  var
+    mInner: TSyntaxNode;
+  begin
+    if AAddress.ChildCount <> 1 then
+      Exit;
+    mInner := AAddress[0];
+    while (mInner.Kind = TSyntaxKind.ParenExpr) and (mInner.ChildCount = 1) do
+      mInner := mInner[0];
+    if (mInner.Kind = TSyntaxKind.BinaryExpr) and MatchText(mInner.Name, ['+', '-', '*', '/', 'div', 'mod', 'and',
+      'or', 'xor', 'shl', 'shr']) then
+      AReport.Add(TTextRange.Create(AAddress.StartPos, AAddress.EndPos), Format('@ braucht eine Variable; %s ist ' +
+        'ein Ausdruck ohne Adresse (wie E2036).', [NodeText(AContext, AAddress[0])]), TRuleConfidence.High);
+  end;
+
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
     Exit;
@@ -1381,7 +1399,9 @@ begin
       Local := Resolver.ExtractedUnit(AContext.Tree, FileName);
       for Node in PreOrder(AContext.Tree.Root) do
         if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 1) then
-          CheckCall(Node);
+          CheckCall(Node)
+        else if Node.Kind = TSyntaxKind.AddressOf then
+          CheckAddress(Node);
     finally
       Resolver.UnpinTree;
     end;

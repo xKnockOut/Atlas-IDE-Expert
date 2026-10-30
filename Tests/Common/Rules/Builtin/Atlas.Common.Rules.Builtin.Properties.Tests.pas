@@ -310,6 +310,12 @@ begin
     '(wie E2461).', OnlyMessage(Types + '    property Laenge: Double read FPunkt.Laenge;'#10'  end;'#10 +
     'implementation'#10'end.'));
   Silent(Types + '    property Y: Integer read FPunkt.Y write FPunkt.Y;'#10'  end;'#10'implementation'#10'end.');
+  // Klassen-Properties: kein Feldselektor, auch über einen Record (Cm.E2459, #1380).
+  Assert.AreEqual('Die Klassen-Property X darf hinter read keinen Feldselektor haben; FMitte.X geht nur an ' +
+    'Instanz-Properties (wie E2459).', OnlyMessage(Types + '    class var FMitte: TPunkt;'#10 +
+    '    class property X: Integer read FMitte.X;'#10'  end;'#10'implementation'#10'end.'));
+  Silent(Types + '    class var FMitte: TPunkt;'#10'    class property Mitte: TPunkt read FMitte;'#10'  end;'#10 +
+    'implementation'#10'end.');
 end;
 
 procedure TPropertyRulesTests.AccessorAncestorsFromIndex;

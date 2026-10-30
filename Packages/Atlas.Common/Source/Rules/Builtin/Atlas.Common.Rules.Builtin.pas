@@ -68,7 +68,9 @@ uses
   Atlas.Common.Rules.Builtin.Platform,
   Atlas.Common.Rules.Builtin.Idioms,
   Atlas.Common.Rules.Builtin.Inlining,
+  Atlas.Common.Rules.Builtin.CompilerHints,
   Atlas.Common.Rules.Builtin.MethodDirectives,
+  Atlas.Common.Rules.Builtin.InvalidDeclarations,
   Atlas.Common.Rules.Builtin.Published,
   Atlas.Common.Rules.Builtin.Collections,
   Atlas.Common.Rules.Builtin.Visibility,
@@ -150,7 +152,9 @@ begin
     RegisterPlatformRules(Registry);
     RegisterIdiomRules(Registry);
     RegisterInliningRules(Registry);
+    RegisterCompilerHintRules(Registry);
     RegisterMethodDirectiveRules(Registry);
+    RegisterInvalidDeclarationRules(Registry);
     RegisterPublishedRules(Registry);
     RegisterCollectionRules(Registry);
     RegisterVisibilityRules(Registry);

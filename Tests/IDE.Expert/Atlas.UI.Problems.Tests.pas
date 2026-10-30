@@ -32,6 +32,9 @@ type
     procedure KeysOpenAndFix;
     [Test]
     procedure MenuOffersRuleActionsOnlyForRules;
+    /// <summary>#1352: „Alle sicheren Treffer von … korrigieren …“ nur mit fix.bulk, nur für Regeln.</summary>
+    [Test]
+    procedure MenuFixAllFollowsSettingAndRule;
     [Test]
     procedure ColumnsCanBeHiddenAndAreRemembered;
     [Test]
@@ -322,6 +325,60 @@ begin
     Assert.IsFalse(Item('Für diese Zeile unterdrücken').Enabled, 'Unterdrücken');
     Assert.IsFalse(Item('Regel abschalten').Enabled, 'Abschalten');
     Assert.IsTrue(Item('Gehe zu').Enabled, 'Gehe zu');
+  finally
+    Host.Free;
+  end;
+end;
+
+procedure TAtlasProblemsFrameTests.MenuFixAllFollowsSettingAndRule;
+var
+  Host: TForm;
+  Frame: TAtlasProblemsFrame;
+  Bulk: Boolean;
+  Fired: string;
+
+  function Item: TMenuItem;
+  var
+    Index: Integer;
+  begin
+    Result := nil;
+    for Index := 0 to Frame.Menu.Items.Count - 1 do
+      if StripHotkey(Frame.Menu.Items[Index].Caption).StartsWith('Alle sicheren Treffer von') then
+        Exit(Frame.Menu.Items[Index]);
+  end;
+
+begin
+  Host := TForm.CreateNew(nil);
+  try
+    Frame := NewFrame(Host);
+    Bulk := False;
+    Fired := '';
+    Frame.OnFixAll :=
+      procedure(const AFinding: TAtlasFinding)
+      begin
+        Fired := AFinding.Rule;
+      end;
+    Frame.CanFixAll :=
+      function: Boolean
+      begin
+        Result := Bulk;
+      end;
+    Frame.List.ItemIndex := 2;
+    Frame.Menu.OnPopup(Frame.Menu);
+    Assert.IsNotNull(Item);
+    Assert.IsFalse(Item.Visible, 'fix.bulk aus: kein Eintrag');
+    Bulk := True;
+    Frame.Menu.OnPopup(Frame.Menu);
+    Assert.IsTrue(Item.Visible);
+    Assert.IsTrue(Item.Enabled);
+    Item.Click;
+    Assert.AreNotEqual('', Fired);
+    Assert.IsTrue(Pos(Fired, StripHotkey(Item.Caption)) > 0, Item.Caption);
+    // Compilermeldung: keine Regel, also keine Sammelkorrektur.
+    Frame.List.ClearSelection;
+    Frame.List.ItemIndex := 4;
+    Frame.Menu.OnPopup(Frame.Menu);
+    Assert.IsFalse(Item.Enabled);
   finally
     Host.Free;
   end;

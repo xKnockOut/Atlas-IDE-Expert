@@ -1447,6 +1447,77 @@ Vorher: „Experimentelle Funktionen erlauben“ an, in `atlas.json` `"completio
 | AF9 | Code-Vorlagen aus (Seite Vervollständigung) | Zeilen ohne Platzhalter |
 | AF10 | `"assignAllFields": false` bzw. Hauptschalter aus | Kein Eintrag |
 
+## Nachteilung großer und loser Teilsysteme (#1364)
+
+Voraussetzung wie oben (#1118); ein großes Projekt, in dem ein Teilsystem mehr als ein Viertel aller Units hat (z. B. Atlas selbst: „Common“).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AN1 | Fenster „Atlas-Architektur“ öffnen | Kein Teilsystem mit mehr als einem Viertel aller Units (außer es ist in sich dicht); das frühere große Teilsystem erscheint als mehrere Teile mit unterscheidenden Namen (z. B. „Lsp“, „Rules“, „Index“) (**Abnahme**) |
+| AN2 | Karte ansehen | Die Teile liegen nebeneinander, in helleren und dunkleren Tönen derselben Farbe; hell und dunkel gut unterscheidbar |
+| AN3 | „Teilsysteme“ (Menü zum Aus- und Einblenden) öffnen | Überschrift „Common (nachgeteilt in n Teile)“ (nicht wählbar), darunter die Teile eingerückt; Klick auf ein Teil blendet nur dieses aus |
+| AN4 | Reiter *Teilsysteme* | Die Teile stehen beieinander mit „· Teil von Common“ |
+| AN5 | „Bericht speichern …“ als HTML und Markdown | HTML: Legende mit „Common (nachgeteilt)“ und eingerückten Teilen, Tabelle mit „(Teil von Common)“; Markdown: Überschriften „### Lsp (Teil von Common)“ |
+| AN6 | Claude Code: `get_architecture` mit `section: "subsystems"` | Zeilen wie „Lsp (Teil von Common): 40 Units, Zusammenhalt …“ |
+| AN7 | In `settings.json` unter `architecture.grouping` `"maxShare": 0, "minCohesion": 0`, „Neu berechnen“ | Ergebnis wie vor #1364 (ein großes Teilsystem, Farben wie bisher); danach Einträge wieder entfernen |
+| AN8 | „Stand speichern …“ mit ausgeschalteter Nachteilung (AN7), dann wieder an, „Vergleichen mit …“ | Teilsystemwechsel nur für die Units der übrigen Teile; ein alter Stand ohne `parent` lädt ohne Fehler |
+| AN9 | `"maxShare": 1` in settings.json | Problemmeldung „… muss eine Zahl von 0 bis 0,9 sein“, Vorgabe 0,25 gilt |
+| AN10 | Großes Projekt (≈ 2000 Units): Fenster öffnen | Rechendauer in der Statuszeile unter 2 s |
+
+## Fundament-Units (#1365)
+
+Voraussetzung wie oben (#1118); ein Projekt mit einer Logging-Unit, die von mehreren fachlich getrennten Teilen verwendet wird (z. B. Atlas: `Atlas.Common.Logging`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AFU1 | Fenster „Atlas-Architektur“ öffnen (Vorgabe `separate`) | Teilsystem „Fundament“ in der Mitte der Karte, neutral grau und gestrichelt, mit den übergreifenden Units (Logging, Json-Helfer …); Teilsysteme, die vorher nur über diese Units zusammenhingen, stehen getrennt (**Abnahme**) |
+| AFU2 | Kanten auf der Karte ansehen; Menü „Teilsysteme“ › „Kanten zum Fundament“ ab- und wieder anhaken | Kanten zum Fundament blass gepunktet; abgehakt verschwinden sie, die übrigen bleiben |
+| AFU3 | Reiter *Teilsysteme* und *Querverbindungen* | „Fundament (n Units, übergreifende Fundamente)“ ohne Zusammenhalt, darunter die Regel; keine Querverbindung von oder zum Fundament |
+| AFU4 | Eine Unit mit Rolle Fundament, die nur in ihrem Teilsystem verwendet wird (z. B. `Atlas.Common.Index.Types`) | Bleibt in ihrem Teilsystem |
+| AFU5 | „Bericht speichern …“ als HTML und Markdown | HTML: Fundament in der Legende mit Schalter „Kanten zum Fundament“ und der Regel darunter, Tabelle mit „–“ als Zusammenhalt; Markdown: Zeile „Fundament“ mit „–“ und Hinweis unter der Tabelle |
+| AFU6 | Claude Code: `get_architecture` mit `section: "subsystems"` | „Fundament: n Units, Zusammenhalt –“ und die Regel |
+| AFU7 | In `settings.json` unter `architecture.grouping` `"foundations": "attach"`, „Neu berechnen“ | Kein Teilsystem „Fundament“; Logging steht in dem Teilsystem mit den meisten Abhängigen |
+| AFU8 | `"foundations": "group"` | Ergebnis wie vor #1365 |
+| AFU9 | `"foundations": "Separate"` (falsche Schreibweise) | Problemmeldung „… muss "group", "attach" oder "separate" sein“, Vorgabe gilt |
+| AFU10 | Stand mit `group` speichern, auf `separate` umstellen, „Vergleichen mit …“; einen alten Stand ohne `foundation` laden | Teilsystemwechsel der Fundament-Units; der alte Stand lädt ohne Fehler |
+| AFU11 | Hell und dunkel, englische IDE-Sprache | Fundament gut erkennbar; „shared foundations“, „Edges to the foundation“ |
+
+## Zuordnung erklären (#1368)
+
+Voraussetzung wie oben (#1118); `architecture.explainAssignment` nicht gesetzt (Vorgabe an).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AZ1 | Fenster „Atlas-Architektur“, Maus über eine Unit auf der Karte halten | Hinweis neben der Unit: Name, „Teilsystem X, weil die meisten Kanten dorthin gehen:“, je Teilsystem Farbpunkt, `n × interface`, `n × impl.`, `= Summe`, absteigend (**Abnahme**) |
+| AZ2 | Maus von der Unit weg und aus der Karte heraus bewegen | Hinweis verschwindet; beim Ziehen der Karte steht kein Hinweis |
+| AZ3 | Unit anklicken | Unter der Karte derselbe Steckbrief; ohne gewählte Unit oder mit Weg (Umschalt+Klick) verschwindet er |
+| AZ4 | Eine Unit, die viele Kanten in ein zweites Teilsystem hat (Reiter *Teilsysteme* nach „knapp“ durchsuchen) | Zusatz „knapp, n Kanten fehlen zu Y“ hinter der Unit; Steckbrief mit Zeile in Warnfarbe „Knapp: Mit n weiteren Kanten zu Y läge sie dort.“ |
+| AZ5 | Unit mit Kante zu Logging (Teilsystem „Fundament“, #1365) | Zeile „Fundament“ mit „zählt nicht“ statt Summe, gedämpft |
+| AZ6 | Reiter *Teilsysteme*, Fragezeichen links oben, nochmals | Drei Sätze zu uses-Kanten, Gewichten und Louvain, dazu „Einstellungen: Feinheit 1,0 · nachteilen nach Größe ab 25 Prozent der Units · nach Zusammenhalt unter 0,3 · Fundamente getrennt.“; zweiter Klick zeigt wieder den kurzen Hinweis |
+| AZ7 | Feinheit auf 2,0 und `foundations` auf `attach` stellen, neu berechnen, Fragezeichen | Erklärung nennt die neuen Werte |
+| AZ8 | „Bericht speichern …“ als HTML, eine Unit anklicken | Steckbrief mit derselben Tabelle und Knapp-Zeile; unter „Teilsysteme“ zuerst die Erklärung, bei knappen Units „knapp → Y“ |
+| AZ9 | „Bericht speichern …“ als Markdown | Erklärung als Absatz unter der Tabelle „Teilsysteme“; je Teilsystem „Knapp zugeordnet:“ mit „Unit: Y erreicht 6 von 8, 3 Kanten fehlen zum Wechsel“ |
+| AZ10 | Claude Code: `get_architecture` mit `unit` | Block „Zuordnung“ mit den Spalten Teilsystem, interface, impl. und Summe, eigenes Teilsystem mit „(eigenes)“, bei knapper Zuordnung „knapp: …“ |
+| AZ11 | In `settings.json` `"architecture": {"explainAssignment": false}`, neu berechnen | Kein Hinweis, kein Steckbrief, kein „knapp“, kein Fragezeichen; Bericht und `get_architecture` ohne Tabelle und Block; Teilsysteme und Ausreißer unverändert |
+| AZ12 | Hell und dunkel, englische IDE-Sprache | Hinweis und Steckbrief gut lesbar, Farbpunkte wie auf der Karte; „Subsystem X, because most edges lead there:“, „does not count“, „Close: with 3 more edges …“ |
+
+## Farben und Namen der Teilsysteme halten (#1367)
+
+Voraussetzung wie oben (#1118); `architecture.grouping.keepPrevious` nicht gesetzt (Vorgabe an), kein `architecture.baseline`. Ein Projekt mit mehreren Teilsystemen, darunter zwei etwa gleich große.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AN1 | Fenster „Atlas-Architektur“ öffnen, Farben und Namen der Teilsysteme merken | Statuszeile ohne „angeglichen“ beim allerersten Lauf; danach liegt `%LOCALAPPDATA%\Atlas\Architektur\<Hash>\architecture-last.json` |
+| AN2 | In das kleinere der beiden gleich großen Teilsysteme eine neue Unit aufnehmen (uses auf zwei seiner Units), speichern, neu berechnen | Beide behalten Farbe und Namen, obwohl sich ihre Reihenfolge in den Tabellen tauscht; Statuszeile „Teilsysteme an Stand vom … angeglichen“ |
+| AN3 | IDE neu starten, Fenster öffnen | Farben und Namen wie vor dem Neustart (Stand aus dem Cache-Ordner) |
+| AN4 | Ein Teilsystem durch Entfernen von uses in zwei Teile zerfallen lassen, neu berechnen | Der größere Teil (mehr als die Hälfte) behält Farbe und Namen, der andere bekommt eine neue Farbe und einen neuen Namen (bei gleichem Namen mit Zusatz „2“) |
+| AN5 | *Teilsysteme ▾ › Teilsysteme neu benennen* | Rechnet einmal ohne Angleichung: Farben nach Reihenfolge, Namen wie ohne vorigen Stand, Statuszeile ohne „angeglichen“; der nächste Lauf gleicht an dieses Ergebnis an |
+| AN6 | „Stand speichern …“ als `stand.json`, in `atlas.json` `"architecture": {"baseline": "stand.json"}`, Teilsysteme verändern, neu berechnen | Angeglichen an den gespeicherten Stand; Statuszeile mit „(architecture.baseline)“; der Vergleich zeigt keine reinen Umbenennungen als Teilsystemwechsel |
+| AN7 | „Bericht speichern …“ als HTML und als Markdown | Kopf mit „Teilsysteme an Stand vom … angeglichen (…; n Teilsysteme behalten Farbe und Namen)“; die HTML-Karte färbt wie das Fenster, hell und dunkel |
+| AN8 | Claude Code: `get_architecture` | Zeile „Teilsysteme an Stand vom … angeglichen“ unter den Zahlen |
+| AN9 | `AtlasServer --architecture bericht.html` ohne Baseline, zweimal | Unter `Architektur` wird nichts geschrieben, beide Berichte bis auf Zeit und Dauer gleich, ohne „angeglichen“ |
+| AN10 | In `settings.json` `"architecture": {"grouping": {"keepPrevious": false}}`, Schritt AN2 wiederholen | Farben und Namen nach Reihenfolge wie vor #1367, Statuszeile ohne „angeglichen“; „Teilsysteme neu benennen“ ändert nichts |
+
 ## Minimap neben der Scrollleiste (#873, experimentell)
 
 Vorher: „Experimentelle Funktionen erlauben“ an, auf der Seite Editor „Minimap neben der Scrollleiste“ an. Eine Unit mit mehreren Klassen und Methoden, eine lange Unit (10 000 Zeilen).
@@ -7555,6 +7626,23 @@ Voraussetzung wie oben (#1118); Projekt unter Versionsverwaltung.
 | ARV10 | Claude Code: `get_architecture` mit `compareWith: "architektur.json"` | Die Abschnitte des Vergleichs; Pfad außerhalb des Projekts wird abgelehnt |
 | ARV11 | Hell und dunkel | Grün und Rot auf der Karte und im Reiter gut lesbar |
 
+## Feinheit der Teilsysteme (#1366)
+
+Voraussetzung wie oben (#1118); ein größeres Projekt (z. B. Atlas selbst) mit Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AF1 | Fenster „Atlas-Architektur“ öffnen | In der Werkzeugleiste nach „Bibliotheks-Units“ der Regler „Feinheit“ in der Mitte (1,0) und daneben „γ = 1,0 · n Teilsysteme“; Karte wie vor #1366 |
+| AF2 | Regler nach rechts ziehen und loslassen | Beim Ziehen zeigt die Beschriftung den Wert, die Karte bleibt; erst nach dem Loslassen rechnet der Server, die IDE bleibt bedienbar; danach mehr und kleinere Teilsysteme und „γ = … · n Teilsysteme“ mit größerem n (**Abnahme**) |
+| AF3 | Regler ganz nach links | Weniger und größere Teilsysteme |
+| AF4 | Doppelklick auf den Regler; dann Fokus auf den Regler und Pfeil rechts, Bild auf, Pos1 | Doppelklick: zurück auf 1,0 mit Neuberechnung; Tasten verschieben schrittweise, Pos1 an den Anfang |
+| AF5 | Regler auf 2,0 stellen, IDE neu starten, Fenster öffnen | Regler steht auf 2,0; in `%APPDATA%\Atlas\settings.json` steht `"architecture": {"grouping": {"resolution": 2}}` |
+| AF6 | „Bericht speichern …“ als HTML und Markdown mit γ = 2,0, dann mit 1,0 | Kopf mit „…, Feinheit γ = 2,0“; mit 1,0 kein Zusatz |
+| AF7 | „Stand speichern …“ mit γ = 1,0, Regler auf 2,0, „Vergleichen mit …“ den Stand | Reiter *Vergleich* und Infozeile weisen darauf hin, dass der Stand mit γ = 1,0 gerechnet wurde; in der HTML-Karte steht der Hinweis im Vergleichskasten |
+| AF8 | In `settings.json` `"showResolutionSlider": false` unter `architecture.grouping`, Fenster neu öffnen | Kein Regler und keine Beschriftung; die Teilsysteme folgen weiter `resolution` |
+| AF9 | Claude Code: `get_architecture` mit `resolution: 3`, dann `resolution: 9` | Text mit „Feinheit γ = 3,0“ im Kopf, Fenster unverändert; 9 wird abgelehnt („0,2 bis 5,0“) |
+| AF10 | Hell und dunkel, englische IDE-Sprache | Regler mit Mittelmarke gut lesbar; englisch „Granularity“ und „γ = … · n subsystems“ |
+
 ## Treffersicherheit der Verwendungen (#1119)
 
 Voraussetzung: Server läuft in der IDE mit Projekt und Index. Beispiel: `IKunde` mit `Speichern`, `TKunde = class(TBasis, IKunde)` überschreibt `TBasis.Speichern` (virtual); Aufrufe über `S: IKunde`, `B: TBasis`, `K: TKunde`, einer in `{$IFDEF DEBUG}` bei Release-Konfiguration, und `MethodAddress('Speichern')`.
@@ -8657,6 +8745,29 @@ Vorbereitung: Testprojekt `Tests/Compilermeldungen` (Fälle `Cm.E2008` bis `Cm.E
 | TM10 | `"type-mismatch": "off"`, `"group:compiler": "off"` bzw. `"group:compiler": {"typeLevel": "off"}` | Keine Meldung |
 | TM11 | Abgleich mit Delphi: `Tools/Build-Compilermeldungen.ps1` für die neuen Fälle `Cm.E2009b`, `Cm.E2010b` bis `Cm.E2010e`, `Cm.E2015b` bis `Cm.E2015d`, `Cm.E2033b`, `Cm.E2089b` | dcc meldet den Code im Dateinamen (für `Cm.E2010e` nichts), Atlas denselben; im Vergleich keine neuen „zusätzlich“ |
 
+## Sammelkorrektur (#1352)
+
+Vorbereitung: Kopie von `Tests/Referenzprojekt`; ein eigenes Projekt mit drei Units in UTF-8 mit BOM, UTF-8 ohne BOM und ANSI (CRLF) und je einem ungenutzten uses-Eintrag.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TBulkFixTests`, `TUnusedUsesTests`, `TLspBulkFixTests`, `TAtlasBulkFixPreviewTests`, `FixFindings*`, `ReadsSafeFix`, `ReadsFixMinConfidence`, `ReadsFixArguments`, `MenuFixAllFollowsSettingAndRule` grün (**Abnahme**) |
+| SK2 | `AtlasServer --check . --fix redundant-cast --fix-dry-run` im Referenzprojekt | Diff mit zwei Korrekturen in `Ref.Pruefung.Verstoesse.pas` auf stdout, stderr „Vorschau: 2 Korrekturen in 1 Dateien, nichts geschrieben“; keine Datei geändert |
+| SK3 | `AtlasServer --check . --fix unused-uses` im eigenen Projekt, danach `--check . --rules unused-uses` | Drei Dateien geschrieben, Kodierung (BOM, ohne BOM, ANSI) und CRLF erhalten; die zweite Prüfung meldet nichts |
+| SK4 | `--fix redundant-cast` mit `"fix": {"minConfidence": "high"}` und einem Treffer mittlerer Konfidenz (eigene Regel oder Profil) | Treffer bleibt, stderr zählt ihn unter „zu niedriger Konfidenz“ |
+| SK5 | `--fix` mit einer Korrektur, die einen Syntaxfehler erzeugen würde (z. B. `--fix all` auf einer Datei, deren Korrekturen sich gegenseitig zerstören) | Datei unverändert, stderr „Verworfen (die Korrekturen hätten Syntaxfehler erzeugt): …“ |
+| SK6 | `--fix unused-uses --changed-lines` nach Änderung einer einzigen uses-Zeile | Nur der Eintrag in der geänderten Zeile wird entfernt |
+| SK7 | `--fix unused-uses` mit `--baseline`, in der der Treffer steht | Eintrag bleibt |
+| SK8 | Claude Code: `fix_findings` mit `rules: ["unused-uses"]` ohne `dryRun` | Zusammenfassung und Diff, nichts geschrieben |
+| SK9 | `fix_findings` mit `dryRun: false` auf eine in der IDE offene, gespeicherte Unit | Änderung im Editor als ein Rückgängig-Schritt; Strg+Z nimmt sie ganz zurück |
+| SK10 | wie SK9 mit ungespeicherter Änderung in der Unit | Unit unberührt, Bericht „Nicht angefasst (ungespeicherte Änderungen im Editor)“; andere Dateien werden korrigiert |
+| SK11 | `fix_findings` mit `minConfidence: "medium"` bei `fix.minConfidence` hoch | Fehler „minConfidence "medium" liegt unter fix.minConfidence (hoch)“ |
+| SK12 | Fenster „Atlas-Prüfung“, Rechtsklick auf einen `redundant-cast`-Befund | Eintrag „Alle sicheren Treffer von redundant-cast korrigieren …“; bei Compilermeldungen gesperrt |
+| SK13 | Eintrag wählen | Vorschau: Zusammenfassung, Dateien mit Anzahl, Diff der markierten Datei; Auswahlzeile „n Korrekturen in m Dateien gewählt“ |
+| SK14 | Eine Datei abwählen, „Korrigieren“ | Nur die gewählten Dateien geändert, je Datei ein Rückgängig-Schritt; „Letzte Atlas-Änderung zurücknehmen“ nimmt alle zurück; Meldungsansicht „Sammelkorrektur redundant-cast: n Korrekturen in m Dateien (…)“ |
+| SK15 | Regel ohne sichere Korrektur (z. B. `empty-except`) wählen | Meldung „Keine sicheren Korrekturen für empty-except.“ mit Zusammenfassung, kein Dialog |
+| SK16 | Optionen › Prüfregeln › Prüffenster: „Sammelkorrektur im Fenster Atlas-Prüfung“ aus | Kein Kontextmenüeintrag; mit „Atlas-Prüfung“ aus ist der Schalter gesperrt |
+| SK17 | `mcp.disabledTools: ["fix_findings"]` | Werkzeug fehlt in der Liste und wird abgelehnt |
 ## Formatieren ohne IDE (#1358)
 
 Vorbereitung: Projekt mit `atlas.json` (`"format": {"indentSize": 2}`), Git-Arbeitskopie, `AtlasServer.exe` aus dem Build im Pfad; eine Unit in UTF-8 mit BOM, eine ohne BOM, eine in ANSI mit Umlauten.
@@ -8739,3 +8850,64 @@ Vorbereitung: Prep-v1.2.0 mit `feature/1379-compileranweisungen`, Delphi 12 und 
 | UW4 | `S := A;` mit `S: string; A: AnsiString`, Alt+Enter „Ausdrücklich in string umwandeln“ | Befund wie W1057, nach der Korrektur `S := string(A);` ohne Befund und ohne W1059 im Build |
 | UW5 | Vor der Zeile `{$WARN IMPLICIT_STRING_CAST OFF}`, danach `{$WARN IMPLICIT_STRING_CAST ERROR}` | Erst kein Befund, dann ein Fehler; der Build meldet wie Atlas nichts bzw. einen Fehler |
 | UW6 | `A := 'Schnee '#$2603;` mit `A: AnsiString` (deutsches Windows, Codepage 1252), dann in atlas.json `"string-conversion": {"ansiCodePage": 0}` | Befund „… (wie W1058 und W1062).“ wie im Build; mit 0 kein Befund |
+
+
+## Compilerhinweise zu RTTI, Initialize und Inline (#1381)
+
+Voraussetzung: Server läuft in der IDE mit Projekt; RTL und VCL im Index.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| CR1 | `TOhneRtti = class` mit `published procedure Machen;` (wie `Cm.W1055`) | Hinweis `compiler-hints` an `Machen`: „published schaltet für TOhneRtti RTTI ein ($M+) … (wie W1055).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| CR2 | Dieselbe Klasse als `class(TPersistent)`, als `TForm`-Nachfahr, mit `{$M+}` davor, mit `{$WARN TYPEINFO_IMPLICITLY_ADDED OFF}` davor | Keine Meldung; der Build meldet ebenfalls kein W1055 |
+| CR3 | Vorfahr in einer anderen Unit des Projekts unter `{$M+}`, Nachfahr mit published-Methode | Keine Meldung; ohne `{$M+}` am Vorfahren meldet der Nachfahr |
+| CR4 | `var Zahl: Integer; … Finalize(Zahl);` (wie `Cm.E2243`) | „Finalize(Zahl) hat keine Wirkung: Integer braucht kein Initialize/Finalize (wie H2243).“ |
+| CR5 | `procedure P(AZeiger: PString); begin Finalize(AZeiger); end;` (wie `Cm.H2244`), danach `Finalize(AZeiger^)` | Erst „… gemeint ist wohl AZeiger^ (wie H2244).“, danach keine Meldung |
+| CR6 | Eigene inline-Funktion `Rechne`, die `Doppelt` aus einer Unit im implementation-uses ruft; `Doppelt` verweist auf nichts außerhalb seiner Unit (wie `Cm.H2445`) | Hinweis `inline-not-expanded` „… steht nur im uses des implementation-Teils, und die aufrufende Routine ist selbst inline (wie H2445).“ (**Abnahme**) |
+| CR7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 30 in Server und Plugin, Datei `index-30.atlasidx`) |
+| CR8 | Abgleich mit Delphi 12 und 13: `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.W1055','Cm.E2243','Cm.H2244','Cm.H2445','Cm.W1055b','Cm.H2243b' -AtlasServer <exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | W1055, H2243, H2244 und H2445 „erkannt“, keine neuen Einträge unter „zusätzlich“ |
+
+## Fenster „Atlas-Server“ (#1356)
+
+Vorbereitung: Projektgruppe mit einigen Hundert Units, Index aufgebaut; für SRV7 und SRV9 der Server mit `--trace` (Einstellung `traceFile`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SRV1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasServerSnapshotTests`, `TAtlasServerDiagnosticsTests`, `TAtlasServerFrameTests`, `TServerStatusFileTests`, `TMcpStatusToolsTests`, `TCheckProfileTests`, `TServerPackageTests` grün |
+| SRV2 | *Atlas › Hilfe und Diagnose › Atlas-Server: Speicher und Laufzeiten* bzw. Befehlspalette `Atlas.ServerStatus` | Dockfenster „Atlas-Server“ mit Kopf „Prozess … · Version … · läuft seit … · bereit · Neustarts in dieser Sitzung: 0“, Warteschlange, Cache-Treffer und „Noch kein Prüflauf …“ bzw. dem letzten Lauf |
+| SRV3 | Statusfeld öffnen, auf die Zeile „Server“ klicken; in der Atlas-Statusleiste doppelt auf den Status klicken | Beide Male öffnet „Atlas-Server“; der Tooltip des Status nennt „Doppelklick: Fenster „Atlas-Server““ |
+| SRV4 | Projektgruppe prüfen lassen (Live-Prüfung „alle Units neu prüfen“), danach Fenster ansehen | „Letzter Prüflauf hh:nn: n Units in … s“; die 10 langsamsten Units und Regeln mit ms; die Summe der Unit-Zeiten liegt bei der Dauer des Laufs (**Abnahme**) |
+| SRV5 | Doppelklick auf eine Unit bzw. auf eine Regel | Die Unit öffnet im Editor; die Regel öffnet ihre Seite in den Projekt-Einstellungen (#909) |
+| SRV6 | Speicher mit Taskmanager vergleichen; `memoryBudgetMb` klein setzen (z. B. 200), Index neu aufbauen | Summe der Bereiche weicht höchstens 25 % vom Prozessspeicher ab (**Abnahme**); über dem Budget roter Strich, Balken „Prozess gesamt“ und „Verwendungen“ in Warnfarbe und der Hinweis „Budget überschritten: Verwendungen werden ausgelagert.“ |
+| SRV7 | Fenster schließen bzw. als Reiter in den Hintergrund legen; Trace des Servers (`--trace`) 30 s beobachten | Nur die Abfragen der Statuszeilen alle 5 s, keine zusätzlichen; sichtbar aktualisiert das Fenster alle 5 s, „Aktualisieren“ fragt sofort (**Abnahme**) |
+| SRV8 | „Index neu aufbauen“ | Meldung „Index wird neu aufgebaut“; Zustand „lädt“, Warteschlange zeigt den laufenden Aufbau |
+| SRV9 | „Diagnosepaket erstellen …“ mit `diagnostics.bugReport.anonymize` an, Server ohne bzw. mit `--trace` | Vorschau mit `fehlerbericht.md`, `server/status.json`, `server/protokoll.txt` (und mit Trace `server/trace.txt`); keine Projektpfade, Benutzer- oder Rechnernamen; gespeicherte ZIP enthält genau diese Dateien (**Abnahme**) |
+| SRV10 | Wie SRV9 mit Anonymisierung aus und einem Tracker-Token in den Einstellungen | Pfade lesbar, aber kein Token, Passwort oder `Authorization` in Status und Trace (`<geheim>`) |
+| SRV11 | Server über das Statusfenster neu starten, dann Fenster ansehen | „Neustarts in dieser Sitzung: 1“, neue Prozessnummer |
+| SRV12 | `server.statusWindow` aus (Optionen › Allgemein) | Menüeintrag, Palettenbefehl und Fenster fehlen; Klick auf „Server“ im Statusfenster tut nichts, Doppelklick in der Statusleiste nicht; der Klick auf den Status öffnet wie bisher das Statusfenster (**Abnahme**) |
+| SRV13 | `AtlasServer --check <Ordner> --timings profil.md`, dann `--timings profil.json`, dann ohne Datei; jeweils `> treffer.txt` | Markdown mit Indexzeit, Units, Regeln, Speicher bzw. JSON; ohne Datei die Tabellen auf stderr; `treffer.txt` jedes Mal gleich wie ohne `--timings` (**Abnahme**) |
+| SRV14 | Claude Code im Projektordner, während die IDE läuft: `get_server_status`, dann mit `format: json` | Erste Zeile „Quelle: Atlas-Server der IDE (Prozess …)“, dieselben Zahlen wie das Fenster (**Abnahme**); JSON mit `source`; IDE beendet: „Quelle: dieser MCP-Prozess …“ |
+| SRV15 | Einstellungsseite (Symbolindex) und Statuszeilen mit dem neuen Server | Wie vorher; ein älteres Plugin zeigt den Status des neuen Servers unverändert |
+
+## Hotspots (#1354)
+
+Vorbereitung: ein Projekt in einem Git-Repository mit mindestens einigen Dutzend Commits im letzten Jahr (etwa Atlas selbst), eine Unit, die per `git mv` umbenannt wurde; für HS12 eine SVN-Arbeitskopie desselben Projekts.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HS1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; Hotspot-Tests grün, `FiveThousandCommitsThousandUnits` (Kategorie Benchmark) unter 30 s, `Atlas.UI.Hotspots.Frame.Tests` grün (**Abnahme**) |
+| HS2 | *Ansicht › Atlas › Hotspots* | Fenster *Atlas-Hotspots* dockt neben der Projektverwaltung; zuerst „Lese den Verlauf …“, dann Blasendiagramm und Rangliste; die IDE bleibt bedienbar |
+| HS3 | Blase anklicken, dann Doppelklick | Zeile in der Liste gewählt, Tooltip mit Änderungen, Komplexität, Zeilen und Wert; Doppelklick öffnet die Unit |
+| HS4 | Ebene „Methoden“ | Liste der Methoden, die gewählte Unit bleibt gewählt; Doppelklick springt zur Methode |
+| HS5 | Kontextmenü „Verlauf zeigen“ auf einer Methode | Reiter *Verlauf* mit den Commits (Revision, Datum, Autor, Betreff, Zeilen); der Editor steht auf der Methode |
+| HS6 | Kontextmenü „Auswirkungen anzeigen“ auf einer Methode | Auswirkungen (#1120) der Methode öffnen sich |
+| HS7 | Reiter *Änderungskopplung* | Nur Paare ohne uses-Kante, keine .pas/.dfm-Paare, Anteil ≥ 70 %, gemeinsam ≥ `hotspots.coupling.minCommits` |
+| HS8 | Umbenannte Unit ansehen | Änderungen vor und nach der Umbenennung zählen zusammen unter dem heutigen Namen |
+| HS9 | Fenster schließen und wieder öffnen, dann einen Commit machen und „Neu berechnen“ | Ohne Commit sofort aus dem Speicher; nach dem Commit neu gerechnet |
+| HS10 | „Bericht speichern …“ als HTML, Markdown und JSON | HTML zeigt das Blasendiagramm ohne externe Verweise, Markdown die Tabellen, JSON die Daten |
+| HS11 | Projekt außerhalb jeder Versionsverwaltung öffnen | Hinweis „Keine Versionsverwaltung: …“ statt Daten |
+| HS12 | Dasselbe Projekt aus einer SVN-Arbeitskopie (`vcs.provider` = svn) | Dieselben Änderungen, Autoren und Kopplungen wie aus Git (**Abnahme**) |
+| HS13 | `hotspots.enabled` = false (Seite *Allgemein › Hotspots* oder Schnellschalter) | Menüeinträge und Fenster weg; MCP bietet `get_hotspots` nicht an; `AtlasServer.exe --hotspots h.md` endet mit Exit-Code 3 |
+| HS14 | `hotspots.months` auf 3 und `hotspots.coupling.minCommits` auf 2 setzen | Fenster rechnet neu; Kopfzeile nennt 3 Monate; mehr Kopplungen |
+| HS15 | `AtlasServer.exe --check <Projekt> --hotspots h.html` in einem Repository bzw. in einem Ordner ohne Versionsverwaltung | Exit-Code 0 und Bericht bzw. Exit-Code 3 mit Ursache |
+| HS16 | Claude Code: „Wo sind die Hotspots im Projekt?“ | Claude ruft `get_hotspots` und nennt dieselben Zahlen wie das Fenster |
