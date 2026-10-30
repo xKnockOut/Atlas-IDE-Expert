@@ -4,6 +4,7 @@
 // Compiler vorab), wie die Compilerwarnungen W1000–W1007:
 //   Symbol  deprecated W1000, library W1001, platform W1002, experimental W1003
 //   Unit    library W1004, platform W1005, deprecated W1006, experimental W1007
+// Dazu der veraltete Abschnitt automated einer Klasse (W1000, #1373).
 // Ein Bezeichner, der sich sicher auf eine Deklaration mit einem dieser
 // Hinweise auflöst, bekommt einen Treffer, bei Überladungen nur die vom
 // Aufruf gewählte; eine Unit im uses, deren Kopf einen
@@ -111,6 +112,8 @@ type
       const ADirectives: TArray<string>; const AReason, AReplacement: string; AUnitLevel: Boolean);
     procedure CheckUses;
     procedure CheckSymbols;
+    /// <summary>Abschnitte automated in Klassen (W1000 „Symbol 'AUTOMATED' ist veraltet“, #1373).</summary>
+    procedure CheckAutomated;
     procedure CheckNetDirectives;
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -489,6 +492,31 @@ begin
   end;
 end;
 
+procedure TDeprecatedCheck.CheckAutomated;
+var
+  mSections: TList<TSyntaxNode>;
+  mSection: TSyntaxNode;
+  mToken: Integer;
+begin
+  mSections := TList<TSyntaxNode>.Create;
+  try
+    FContext.Tree.Root.Walk(
+      function(ANode: TSyntaxNode): Boolean
+      begin
+        Result := True;
+        if (ANode.Kind = TSyntaxKind.Visibility) and (ANode.Name = 'automated') and (ANode.Parent <> nil) and
+          (ANode.Parent.Kind = TSyntaxKind.ClassType) then
+          mSections.Add(ANode);
+      end);
+    for mSection in mSections do
+      if FTokenIndex.TryGetValue(mSection.StartOffset, mToken) then
+        ReportKinds(TTextRange.Create(mSection.StartPos, mSection.EndPos), mToken, 'automated', ['deprecated'], '',
+          '', False);
+  finally
+    mSections.Free;
+  end;
+end;
+
 procedure TDeprecatedCheck.CheckNetDirectives;
 var
   mTokens: TArray<TPascalToken>;
@@ -528,6 +556,7 @@ begin
     FOwn := FResolver.ExtractedUnit(FContext.Tree, FContext.RelativePath);
     CheckUses;
     CheckSymbols;
+    CheckAutomated;
   finally
     FResolver.UnpinTree;
   end;

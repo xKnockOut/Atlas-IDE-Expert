@@ -472,6 +472,7 @@ contains
   Atlas.Common.Rules.Builtin.Collections in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Collections.pas',
   Atlas.Common.Rules.Builtin.Visibility in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Visibility.pas',
   Atlas.Common.Rules.Builtin.TypeDeclarations in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeDeclarations.pas',
+  Atlas.Common.Rules.Builtin.Automation in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Automation.pas',
   Atlas.Common.Rules.Builtin.TypedExpressions in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypedExpressions.pas',
   Atlas.Common.Rules.Builtin.StringConversions in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.StringConversions.pas',
   Atlas.Common.Rules.Builtin.TypeRestrictions in 'Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeRestrictions.pas',

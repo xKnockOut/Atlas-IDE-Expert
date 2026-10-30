@@ -74,6 +74,7 @@ uses
   Atlas.Common.Rules.Builtin.Collections,
   Atlas.Common.Rules.Builtin.Visibility,
   Atlas.Common.Rules.Builtin.TypeDeclarations,
+  Atlas.Common.Rules.Builtin.Automation,
   Atlas.Common.Rules.Builtin.TypedExpressions,
   Atlas.Common.Rules.Builtin.StringConversions,
   Atlas.Common.Rules.Builtin.TypeRestrictions,
@@ -158,6 +159,7 @@ begin
     RegisterCollectionRules(Registry);
     RegisterVisibilityRules(Registry);
     RegisterTypeDeclarationRules(Registry);
+    RegisterAutomationRules(Registry);
     RegisterTypedExpressionRules(Registry);
     RegisterStringConversionRules(Registry);
     RegisterTypeRestrictionRules(Registry);
