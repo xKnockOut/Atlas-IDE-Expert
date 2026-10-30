@@ -33,7 +33,8 @@
         "E2357",
         "E2372",
         "E2375"
-      ]
+      ],
+      "safeFix": true
     },
     {
       "id": "language-feature",
@@ -54,7 +55,8 @@
       "group": "internal",
       "description": "An lsp-ignore comment suppresses no finding and can be removed.",
       "bad": "// lsp-ignore: empty-except\nX := 1;",
-      "good": "X := 1;"
+      "good": "X := 1;",
+      "safeFix": true
     },
     {
       "id": "unknown-rule-id",
@@ -64,7 +66,8 @@
       "group": "internal",
       "description": "An lsp-ignore comment names a rule id that does not exist, so it suppresses nothing. The message suggests the most similar known id (typo); such a comment is not also reported as unused-suppression.",
       "bad": "// lsp-ignore: empty-exept\ntry X; except end;",
-      "good": "// lsp-ignore: empty-except\ntry X; except end;"
+      "good": "// lsp-ignore: empty-except\ntry X; except end;",
+      "safeFix": true
     },
     {
       "id": "unit-too-deep",
@@ -328,7 +331,8 @@
       "group": "threads",
       "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead.",
       "bad": "FWorker.Resume;",
-      "good": "FWorker.Start;"
+      "good": "FWorker.Start;",
+      "safeFix": true
     },
     {
       "id": "result-not-set",
@@ -1132,7 +1136,8 @@
       "group": "style",
       "description": "Free already checks for nil, so testing Assigned before Free or FreeAndNil is redundant.",
       "bad": "if Assigned(List) then\n  List.Free;",
-      "good": "List.Free;"
+      "good": "List.Free;",
+      "safeFix": true
     },
     {
       "id": "raise-in-finally",
@@ -1170,7 +1175,8 @@
           "default": true,
           "description": "Also report a class cast that only precedes Free (CastAndFree)."
         }
-      ]
+      ],
+      "safeFix": true
     },
     {
       "id": "redundant-begin-end",
@@ -1684,7 +1690,8 @@
       "group": "find-bugs",
       "description": "Obj.Destroy is called directly as a statement. If Obj is nil, the call crashes; Free checks for nil first and is the usual way to release an object. inherited Destroy and calls of a destructor with arguments are exempt. High confidence. Quick fix: Destroy becomes Free.",
       "bad": "Verbindung.Destroy;",
-      "good": "Verbindung.Free;"
+      "good": "Verbindung.Free;",
+      "safeFix": true
     },
     {
       "id": "managed-type-raw-memory",
@@ -2644,7 +2651,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "The header in the implementation section has different parameters (count, name, type, const/var/out), a different result type, procedure instead of function or a different calling convention than the declaration in the type (like E2037). With overloads the nearest declaration is compared (parameter count, then types, names and modifiers); if that is not unique, declared-not-implemented and implemented-not-declared report both sides instead. A body may omit the parameter list, the result type and the calling convention. Methods inside {$IF} blocks are skipped; with include files the confidence is medium. Quick fix: align the implementation header with the declaration, or, as the second action, the declaration with the implementation (default values stay in the declaration). Off with refactoring.syncSignatures = false only removes the quick fixes.",
+      "description": "The header in the implementation section has different parameters (count, name, type, const/var/out), a different result type, procedure instead of function or a different calling convention than the declaration in the type or, for a routine of the unit, in the interface section (like E2037). With overloads the nearest declaration is compared (parameter count, then types, names and modifiers); if that is not unique, declared-not-implemented and implemented-not-declared report both sides instead. Unit routines are compared only when the name is unique and neither overload, external nor forward is involved. A body may omit the parameter list, the result type and the calling convention. Methods inside {$IF} blocks are skipped; with include files the confidence is medium. Quick fix: align the implementation header with the declaration, or, as the second action, the declaration with the implementation (default values stay in the declaration). Off with refactoring.syncSignatures = false only removes the quick fixes.",
       "bad": "procedure Buchen(const Betrag: Currency; Datum: TDate);\n…\nprocedure TKonto.Buchen(Betrag: Currency; Datum: TDateTime);",
       "good": "procedure Buchen(const Betrag: Currency; Datum: TDate);\n…\nprocedure TKonto.Buchen(const Betrag: Currency; Datum: TDate);",
       "compilerCodes": [
@@ -2724,7 +2731,8 @@
       "compilerCodes": [
         "E2014"
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": true
     },
     {
       "id": "duplicate-case-label",
@@ -2778,7 +2786,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "An identifier is declared twice in the same scope (like E2004): a local variable, constant, type or label and a parameter of the routine, two fields, a field and a method or property of a type, two types, a constant and a variable of the unit across interface and implementation. Likewise a unit twice in uses or in the uses clauses of interface and implementation at once (option checkUses). Overloads and bodies of routines, a forward declaration and its type, TList next to TList<T> and declarations in different branches of the same {$IF} do not count. Quick fix: remove the second declaration (the whole var, const, type or label section when it was its only one; for uses the duplicate entry); none for parameters, methods and properties.",
+      "description": "An identifier is declared twice in the same scope (like E2004): a local variable, constant, type or label and a parameter of the routine, two fields, a field and a method or property of a type, two types, a constant and a variable of the unit across interface and implementation. Likewise a unit twice in uses or in the uses clauses of interface and implementation at once (option checkUses). Overloads and bodies of routines, a forward declaration and its type, TList next to TList<T> and declarations in different branches of the same {$IF} do not count. Quick fix: remove the second declaration (the whole var, const, type or label section when it was its only one; for uses the duplicate entry); none for parameters, methods and properties. Default array properties overloaded under the same name are checked by default-property-invalid (#1380).",
       "bad": "procedure TRechnung.Summieren(Betrag: Currency);\nvar\n  Betrag: Currency;\nbegin",
       "good": "procedure TRechnung.Summieren(Betrag: Currency);\nbegin",
       "compilerCodes": [
@@ -2792,7 +2800,8 @@
           "description": "Report duplicate entries in uses clauses."
         }
       ],
-      "level": "A"
+      "level": "A",
+      "safeFix": true
     },
     {
       "id": "conditional-directive-unbalanced",
@@ -2875,7 +2884,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "The name after read or write of a property does not fit: it is declared neither in the class nor in its ancestors, or it is a property (like E2168); the getter or setter has the wrong kind, parameters or types (like E2008 in Delphi 13, documented as E2234); the setter takes a var or out parameter (like E2282); the accessor is overloaded and no overload fits (like E2271); a class property uses an instance member or a class method without static (like E2355), or an instance property uses a class var or a static class method (like E2356); an array property uses a field (like E2008 in Delphi 13, documented as E2174, index with a field compiles); a field selector goes through a field that is no record (like E2459), names a member that is no field (like E2461) or a field the record lacks (like E2562). Names are looked up in the file and, for ancestors, in the symbol index; the rule stays silent when the ancestor chain breaks, the name only exists in an inactive branch, the class cannot see it or the class includes files. Types are compared only when both are built in or declared as types of their own. Quick fix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/write, completion.accessorSection).",
+      "description": "The name after read or write of a property does not fit: it is declared neither in the class nor in its ancestors, or it is a property (like E2168); the getter or setter has the wrong kind, parameters or types (like E2008 in Delphi 13, documented as E2234); the setter takes a var or out parameter (like E2282); the accessor is overloaded and no overload fits (like E2271); a class property uses an instance member or a class method without static (like E2355), or an instance property uses a class var or a static class method (like E2356); an array property uses a field (like E2008 in Delphi 13, documented as E2174, index with a field compiles); a field selector goes through a field that is no record or stands behind a class property (like E2459), names a member that is no field (like E2461) or a field the record lacks (like E2562). Names are looked up in the file and, for ancestors, in the symbol index; the rule stays silent when the ancestor chain breaks, the name only exists in an inactive branch, the class cannot see it or the class includes files. Types are compared only when both are built in or declared as types of their own. Quick fix for a missing F<Name>, Get<Name> or Set<Name>: create it (like the completion after read/write, completion.accessorSection).",
       "bad": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write SetName;\nend;",
       "good": "TKunde = class\nprivate\n  FName: string;\n  procedure SetName(const Value: string);\npublic\n  property Name: string read FName write SetName;\nend;",
       "compilerCodes": [
@@ -3173,7 +3182,8 @@
       "compilerCodes": [
         "W1040"
       ],
-      "level": "B"
+      "level": "B",
+      "safeFix": true
     },
     {
       "id": "file-encoding-unsupported",
@@ -3210,7 +3220,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A class operator in a record or class is declared in a way Delphi rejects: unknown operator name (like E2393), wrong number of parameters (E2517), own type missing from the parameters (E2518) or from parameters and result for Implicit/Explicit (E2521), Inc/Dec with a result type other than the first parameter (E2519), conversion to or from an ancestor (E2522, chain within the file) or Assign without var before the first parameter (E2464). Types count as equal when their names match without unit prefix and type arguments; aliases of the own type declared in the file keep the rule silent, and True, False and OnesComplement are accepted. Comparison operators with a result other than Boolean compile (Spring4D criteria) and stay silent. Quick fixes: nearest operator name, result like the first parameter, var before the first parameter, parameter list from the template; each in the declaration and the implementation.",
+      "description": "A class operator in a record or class is declared in a way Delphi rejects: unknown operator name (like E2393), wrong number of parameters (E2517), own type missing from the parameters (E2518) or from parameters and result for Implicit/Explicit (E2521), Inc/Dec with a result type other than the first parameter (E2519), conversion to or from an ancestor (E2522, chain within the file) or Assign whose first parameter is not a var parameter of the own type (E2464, E2617). Bodies of an unknown operator or of a class operator in a class match no declaration (E2037). Types count as equal when their names match without unit prefix and type arguments; aliases of the own type declared in the file keep the rule silent, and True, False and OnesComplement are accepted. Comparison operators with a result other than Boolean compile (Spring4D criteria) and stay silent. Quick fixes: nearest operator name, result like the first parameter, var before the first parameter, parameter list from the template; each in the declaration and the implementation.",
       "bad": "TGeld = record\n  class operator Inc(const A: TGeld): Integer;\nend;",
       "good": "TGeld = record\n  class operator Inc(const A: TGeld): TGeld;\nend;",
       "compilerCodes": [
@@ -3220,7 +3230,9 @@
         "E2518",
         "E2519",
         "E2521",
-        "E2522"
+        "E2522",
+        "E2617",
+        "E2037"
       ],
       "level": "A"
     },
@@ -3713,6 +3725,17 @@
       ]
     },
     {
+      "id": "unused-uses",
+      "name": "Unused unit in uses",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "style",
+      "description": "Nothing from the unit of a uses entry is used: no identifier outside the uses clauses matches one of its interface symbols (including members) or the last part of its name. Same analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep and entries in inactive {$IFDEF} branches stay. High confidence. Safe quick fix: remove the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where the same entries are dimmed, without a symbol index (--no-index) and with syntax errors.",
+      "bad": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils,\n  System.Classes;  // nothing from System.Classes is used\n\nfunction Titel(const AName: string): string;",
+      "good": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils;\n\nfunction Titel(const AName: string): string;",
+      "safeFix": true
+    },
+    {
       "id": "message-method-invalid",
       "name": "Message method declared incorrectly",
       "category": "bug",
@@ -3774,7 +3797,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "The compiler prescribes the calling convention here: constructors and destructors of a class only with register (like E2236), getters and setters of published properties as well (like E2270), and varargs only with cdecl (like E2277 for external routines, otherwise E2591). Explicit register is fine; class constructors, accessors outside published sections and inherited accessors stay silent. Quick fix: remove the convention in the declaration and in the method body of the same file, or set cdecl for varargs.",
+      "description": "The compiler prescribes the calling convention here: constructors and destructors of a class only with register (like E2236), getters and setters of published properties as well (like E2270), and varargs only with cdecl (like E2277 for external routines, otherwise E2591); without external, varargs is allowed on Win32 not at all (like E2277), which the rule reports only when the platform is known. Explicit register is fine; class constructors, accessors outside published sections and inherited accessors stay silent. Quick fix: remove the convention in the declaration and in the method body of the same file, or set cdecl for varargs.",
       "bad": "function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external 'msvcrt.dll';",
       "good": "function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external 'msvcrt.dll';",
       "compilerCodes": [
@@ -3808,7 +3831,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A method directive the compiler rejects: abstract without virtual, dynamic or override (like E2167), a body in the implementation section for an abstract method (like E2136), final on a method that is not virtual (like E2351), abstract together with final (like E2371), a class declared abstract sealed (like E2383, E2540) or static on an instance method or a virtual class method (like E2376). A body only counts for an abstract method when no non-abstract method of the same name in the same class is compiled with it (overloads, {$IFDEF} branches). Quick fixes: insert virtual; before abstract, remove the body.",
+      "description": "A method directive the compiler rejects: abstract without virtual, dynamic or override (like E2167), a body in the implementation section for an abstract method (like E2136), final on a method that is not virtual (like E2351), abstract together with final (like E2371), a class declared abstract sealed (like E2540), an abstract method in a sealed class (like E2383, E2540) or a sealed class that leaves an inherited abstract method open (like E2539, ancestors via the symbol index) or static on an instance method or a virtual class method (like E2376). A body only counts for an abstract method when no non-abstract method of the same name in the same class is compiled with it (overloads, {$IFDEF} branches). Quick fixes: insert virtual; before abstract, remove the body.",
       "bad": "TForm = class\n  function Flaeche: Double; abstract;\nend;",
       "good": "TForm = class\n  function Flaeche: Double; virtual; abstract;\nend;",
       "compilerCodes": [
@@ -3818,9 +3841,28 @@
         "E2371",
         "E2383",
         "E2540",
+        "E2539",
         "E2376"
       ],
       "level": "A"
+    },
+    {
+      "id": "declaration-invalid",
+      "name": "Declaration the compiler rejects",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "A declaration Delphi rejects for its form alone: packed before a type other than array, record, object, class, set, file or string (like E2006), a routine returning file (like E2024), a virtual constructor in an object type (like E2062), a property without read, write or index in an interface other than a dispinterface or in an automated section (like E2128), or two constructors with different names and the same parameter types when the project produces C++ output (DCC_CBuilderOutput or -J switch in the .dproj, like W1029). Property redeclarations without a type stay silent. No quick fix: the right correction depends on the intent.",
+      "bad": "type\n  TZahl = packed Integer;\n\nfunction Lesen: file;",
+      "good": "type\n  TZahl = Integer;\n\nprocedure Lesen(var F: file);",
+      "compilerCodes": [
+        "E2006",
+        "E2024",
+        "E2062",
+        "E2128",
+        "W1029"
+      ],
+      "level": "B"
     },
     {
       "id": "unsatisfied-forward",
@@ -3828,7 +3870,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A routine declared in the interface section or with forward has no body (like E2065), or a forward declaration TFoo = class; or IFoo = interface; is never completed in the same type section (like E2086, E2420). Methods are checked by declared-not-implemented. A body fits when it has the same name; with overload the number of parameters must match too. An external declaration in the implementation section counts as a body. Declarations inside a {$IFDEF} branch are skipped; with include files the rule does not check routines. Quick fix: create an empty body before initialization or the final end.",
+      "description": "A routine declared in the interface section or with forward has no body (like E2065), or a forward declaration TFoo = class; or IFoo = interface; is never completed in the same type section (like E2086, E2420). A record containing itself as a field and a class or interface using a type that is only declared forward as ancestor or in its interface list are incomplete types as well (like E2086). Methods are checked by declared-not-implemented. A body fits when it has the same name; with overload the number of parameters must match too. An external declaration in the implementation section counts as a body. Declarations inside a {$IFDEF} branch are skipped; with include files the rule does not check routines. Quick fix: create an empty body before initialization or the final end.",
       "bad": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nend.",
       "good": "interface\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\n\nimplementation\n\nfunction Pruefsumme(const Daten: TBytes): Cardinal;\nbegin\n  Result := 0;\nend;\n\nend.",
       "compilerCodes": [
@@ -3903,7 +3945,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "default; behind a property without index parameters (like E2132), a second default property of the same class with the same index types (like E2131; overloading by index type is allowed), or Obj[I] on a class that has no default property in its whole ancestor chain (like E2149). The type of Obj is resolved by name resolution; unresolvable types, broken ancestor chains and classes with a class helper in the unit stay silent. Property redeclarations without a type (property Items; default;) take the index from the ancestor and are not checked.",
+      "description": "default; behind a property without index parameters (like E2132), a second default property of the same class with another name or the same index types (like E2131; overloading by index type under the same name is allowed), or Obj[I] on a class that has no default property in its whole ancestor chain (like E2149). The type of Obj is resolved by name resolution; unresolvable types, broken ancestor chains and classes with a class helper in the unit stay silent. Property redeclarations without a type (property Items; default;) take the index from the ancestor and are not checked.",
       "bad": "TListe = class\n  property Name: string read FName; default;\nend;",
       "good": "TListe = class\n  property Items[I: Integer]: string read GetItem; default;\nend;",
       "compilerCodes": [
@@ -3943,6 +3985,23 @@
         "H2445",
         "H2456",
         "H2457"
+      ],
+      "level": "B",
+      "safeFix": true
+    },
+    {
+      "id": "compiler-hints",
+      "name": "Compiler hint without its own rule",
+      "category": "code-smell",
+      "severity": "hint",
+      "group": "compiler",
+      "description": "Hints and warnings of the compiler that belong to no other rule. published in a class without RTTI: the compiler switches on {$M+} for it (like W1055); reported once per class at the first member behind the first explicit published, silent with {$M+} or {$TYPEINFO ON} at the declaration, with an ancestor that has RTTI (known descendants of TPersistent, {$M+} at its declaration or own published members) and after {$WARN TYPEINFO_IMPLICITLY_ADDED OFF} or {$WARNINGS OFF}; an ancestor whose chain is not known up to TObject or whose file cannot be read keeps the rule silent, as do generic and nested classes. Initialize or Finalize with a variable of a built-in type without managed parts such as Integer, Double or Boolean, also through aliases (like H2243), or with a variable of a pointer to a managed type such as PString or PVariant, where P^ was probably meant (like H2244); only calls with one plain identifier whose type is known for sure, silent after {$HINTS OFF} and when Initialize or Finalize can mean an own routine or a member (with, method of a class with an unknown ancestor).",
+      "bad": "type\n  TEinstellung = class\n  published\n    property Wert: Integer read FWert;\n  end;",
+      "good": "type\n  TEinstellung = class(TPersistent)\n  published\n    property Wert: Integer read FWert;\n  end;",
+      "compilerCodes": [
+        "W1055",
+        "H2243",
+        "H2244"
       ],
       "level": "B"
     },
@@ -4422,7 +4481,7 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function result (like E2197), a constant for an open array (like E2192) or an expression (like E2036). Reported only for routines without overloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and write it back for string elements and properties with write.",
+      "description": "A var or out parameter receives something that is not a variable: a string element for a character parameter (like E2354), a constant, a const parameter, a property or a function result (like E2197), a constant for an open array (like E2192) or an expression (like E2036); @ before an arithmetic or logical expression is reported as well (like E2036). Reported only for routines without overloads whose header is known from the file or the index; built-in routines such as Inc or Move and untyped var parameters accept more and stay silent. Typed constants count as constants unless {$J+} is set. Quick fix: pass a local variable of the parameter type, and write it back for string elements and properties with write.",
       "bad": "procedure Erhoehen(var Zeichen: Char);\n…\nErhoehen(Zeile[1]);",
       "good": "Zeichen := Zeile[1];\nErhoehen(Zeichen);\nZeile[1] := Zeichen;",
       "compilerCodes": [

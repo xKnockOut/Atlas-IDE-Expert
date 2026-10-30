@@ -15,7 +15,8 @@
 // Methodenzuordnungen (E2257, E2264), implements außerhalb von Klassen
 // (E2258), stille Fälle und die Einstellungen.
 // calling-convention-required (#1078): Beispiel aus dem Issue mit Korrektur
-// (E2277), varargs ohne external (E2591), Konstruktoren und Destruktoren
+// (E2277), varargs ohne external nur unter Win32 (E2277, Cm.E2277, #1380),
+// Konstruktoren und Destruktoren
 // (E2236) und Accessoren von published-Properties (E2270) mit Korrektur in
 // Deklaration und Rumpf, stille Fälle und die Einstellungen.
 // dispinterface-invalid (#1374): die Fälle aus Tests/Compilermeldungen (E2228
@@ -86,6 +87,8 @@ type
   public
     [Test]
     procedure IssueExampleVarargsWithFix;
+    [Test]
+    procedure VarargsWithoutExternalOnWin32;
     [Test]
     procedure ConstructorsAndDestructors;
     [Test]
@@ -617,11 +620,9 @@ var
 begin
   Source := Druck('function Formatieren(Muster: PAnsiChar): Integer; stdcall; varargs; external ''msvcrt.dll'';'#10 +
     'function Zwei(Muster: PAnsiChar): Integer; varargs; external ''msvcrt.dll'';'#10 +
-    'function Drei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';'#10 +
-    'procedure Vier(Muster: PAnsiChar); stdcall; varargs;'#10, 'procedure Vier(Muster: PAnsiChar);'#10'begin'#10 +
-    'end;'#10);
+    'function Drei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';'#10, '');
   Found := ConventionFindings(Source);
-  Assert.AreEqual(3, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual(2, Integer(Length(Found)), Messages(Found));
   Assert.AreEqual('varargs ist nur mit cdecl erlaubt (wie E2277).', Found[0].Message);
   Assert.AreEqual(2, Found[0].Range.StartPos.Line);
   Assert.AreEqual(59, Found[0].Range.StartPos.Character);
@@ -632,10 +633,31 @@ begin
   Fixed := ApplyFix(Fixed, Found[1].Fixes[0]);
   Assert.IsTrue(Pos('function Zwei(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';', Fixed) > 0,
     Fixed);
-  Assert.AreEqual('varargs ist nur mit cdecl erlaubt (wie E2591).', Found[2].Message);
-  Assert.AreEqual(5, Found[2].Range.StartPos.Line);
-  Fixed := ApplyFix(Fixed, Found[2].Fixes[0]);
   Assert.AreEqual(0, Integer(Length(ConventionFindings(Fixed))), Fixed);
+end;
+
+procedure TCallingConventionRequiredTests.VarargsWithoutExternalOnWin32;
+var
+  mSource: string;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Cm.E2277: dcc meldet varargs ohne external unter Win32, auch mit cdecl; Win64 übersetzt es.
+  mSource := Druck('', 'procedure Fall(AWert: Integer); cdecl; varargs;'#10'begin'#10'end;'#10);
+  mFound := TRuleAssert.PlatformFindings(TCallingConventionRequiredRule.Create, mSource, 'Win32');
+  Assert.AreEqual(1, Integer(Length(mFound)), Messages(mFound));
+  Assert.AreEqual('varargs ist unter Win32 nur an external-Routinen mit cdecl erlaubt (wie E2277).',
+    mFound[0].Message);
+  Assert.AreEqual(3, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(0, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.PlatformFindings(TCallingConventionRequiredRule.Create,
+    Druck('', 'procedure Fall(AWert: Integer); stdcall; varargs;'#10'begin'#10'end;'#10), 'Win32'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PlatformFindings(TCallingConventionRequiredRule.Create, mSource,
+    'Win64'))));
+  // Ohne bekannte Plattform (Baum ohne Symbole) bleibt die Regel still.
+  Assert.AreEqual(0, Integer(Length(ConventionFindings(mSource))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.PlatformFindings(TCallingConventionRequiredRule.Create,
+    Druck('function Formatieren(Muster: PAnsiChar): Integer; cdecl; varargs; external ''msvcrt.dll'';'#10, ''),
+    'Win32'))));
 end;
 
 procedure TCallingConventionRequiredTests.ConstructorsAndDestructors;

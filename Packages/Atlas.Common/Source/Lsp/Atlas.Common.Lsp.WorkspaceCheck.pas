@@ -27,6 +27,11 @@
 //   Ausnahme, gilt sie mit leeren Befunden als geprüft (#1094); das Log nennt
 //   nur ihr anonymes Kennzeichen.
 //
+// Zeitprofil (#1356): Jeder Lauf führt ein TCheckProfiler mit der Dauer je
+// Unit (alle Versuche zusammen) und, über die Messung der Regel-Engine, je
+// Regel. Profile liefert die langsamsten, Queue die wartenden Dateien und die
+// älteste Wartezeit für das Fenster „Atlas-Server“.
+//
 // Ergebnis-Ids: "w<Sitzung>.<Nummer>:t<Zeitstempel>". Jede Berechnung bekommt
 // eine neue Nummer; eine unveränderte Datei (gleicher Zeitstempel, nicht
 // erzwungen) behält ihre Id und kostet nichts.
@@ -41,7 +46,8 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Index.Contract;
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Diagnostics.CheckProfile;
 
 type
   /// <summary>Dateien des Projekts, die die Projektprüfung kennt.</summary>
@@ -81,6 +87,16 @@ type
     function StateDiffers(const AOther: TWorkspaceCheckRun): Boolean;
   end;
 
+  /// <summary>Warteschlange der Projektprüfung für den Status (#1356).</summary>
+  TWorkspaceCheckQueue = record
+    /// <summary>Dateien, die noch drankommen.</summary>
+    Waiting: Integer;
+    /// <summary>1, während eine Datei geprüft wird, sonst 0.</summary>
+    Running: Integer;
+    /// <summary>Wartezeit der ältesten wartenden Datei; 0 ohne.</summary>
+    OldestWaitMs: Int64;
+  end;
+
   TLspWorkspaceCheck = class
   public const
     cDefaultFileLimitMs = 3000;
@@ -99,6 +115,8 @@ type
       Forced: Boolean;
       /// <summary>Zweiter Versuch nach abgelaufener Frist: ohne Frist, ohne Unterbrechung.</summary>
       Unlimited: Boolean;
+      /// <summary>Eingereiht zu diesem Zeitpunkt auf FClock (#1356); bleibt beim erneuten Einreihen.</summary>
+      Queued: Int64;
     end;
 
     TWorker = class(TThread)
@@ -152,6 +170,8 @@ type
     FInterrupt: Boolean;
     FComputed: Integer;
     FSkipped: Integer;
+    // Zeitprofil des Laufs (#1356); sperrt selbst.
+    FProfiler: TCheckProfiler;
     class function KeyOf(const AFileName: string): string; static;
     function Now_: Int64;
     procedure Changed;
@@ -199,6 +219,10 @@ type
     function WaitForChange(AChange: Integer; AWaitMs: Cardinal): Integer;
     function ChangeCount: Integer;
     function Run: TWorkspaceCheckRun;
+    /// <summary>Zeitprofil des laufenden bzw. letzten Laufs mit den ACount langsamsten Units und Regeln.</summary>
+    function Profile(ACount: Integer): TCheckRunProfile;
+    /// <summary>Wartende und laufende Datei, älteste Wartezeit.</summary>
+    function Queue: TWorkspaceCheckQueue;
     /// <summary>Wartet, bis die Schlange leer ist und kein Lauf mehr aktiv ist (Tests).</summary>
     function WaitIdle(ATimeoutMs: Cardinal): Boolean;
     /// <summary>Dateien unter AUnits, die von AFileName abhängen: bei .inc die einbindenden Units, sonst die
@@ -366,6 +390,7 @@ begin
   FIds := TDictionary<string, string>.Create;
   FStamps := TDictionary<string, Int64>.Create;
   FPauses := TDictionary<string, Int64>.Create;
+  FProfiler := TCheckProfiler.Create;
   FTypedAt := -1;
   // Ids einer früheren Sitzung sollen nie zufällig passen.
   FSession := Integer(TThread.GetTickCount64 and $7FFFFFFF);
@@ -385,6 +410,7 @@ begin
     FWorker.WaitFor;
     FWorker.Free;
   end;
+  FProfiler.Free;
   FPauses.Free;
   FStamps.Free;
   FIds.Free;
@@ -447,6 +473,7 @@ begin
   FRun.ElapsedMs := 0;
   FRunComputed := 0;
   FRunClock := TStopwatch.StartNew;
+  FProfiler.BeginRun(Now);
 end;
 
 function TLspWorkspaceCheck.FinishRunLocked: string;
@@ -456,6 +483,7 @@ begin
     Exit;
   FRun.Active := False;
   FRun.ElapsedMs := FRunClock.ElapsedMilliseconds;
+  FProfiler.FinishRun(FRun.ElapsedMs);
   Changed;
   Result := Format('Projektprüfung fertig: %d Units in %d ms, %d neu geprüft, %d übersprungen',
     [FRun.Total, FRun.ElapsedMs, FRunComputed, FRun.Skipped]);
@@ -489,6 +517,7 @@ begin
   mEntry := Default(TEntry);
   mEntry.FileName := AFileName;
   mEntry.Forced := AForced;
+  mEntry.Queued := Now_;
   FQueue.Add(mEntry);
   FQueued.Add(mKey, AForced);
   Inc(FRun.Total);
@@ -831,6 +860,8 @@ var
   mItems: TJSONArray;
   mRetry: TEntry;
   mLimit: Int64;
+  mPrevious: TCheckProfiler;
+  mWatch: TStopwatch;
 begin
   mUri := TDocumentUris.FromPath(AEntry.FileName);
   // Geöffnete Dateien prüft textDocument/diagnostic mit dem Editortext.
@@ -857,7 +888,16 @@ begin
     mLimit := 0;
   mToken := TCheckToken.Create(Self, mLimit, not AEntry.Unlimited);
   try
-    mItems := FDiagnose(mDocument, mToken);
+    // Zeitprofil (#1356): Die Engine meldet ihre Regelzeiten an den Profiler dieses Threads.
+    mPrevious := TCheckProfiler.Attach(FProfiler);
+    mWatch := TStopwatch.StartNew;
+    try
+      mItems := FDiagnose(mDocument, mToken);
+    finally
+      TCheckProfiler.Attach(mPrevious);
+      FProfiler.AddUnit(AEntry.FileName, TCheckProfiler.TicksToMicroseconds(mWatch.ElapsedTicks,
+        TStopwatch.Frequency));
+    end;
   except
     on EWorkspaceCheckInterrupted do
     begin
@@ -870,6 +910,7 @@ begin
       mRetry := AEntry;
       mRetry.Unlimited := True;
       mRetry.Forced := True;
+      mRetry.Queued := Now_;
       Requeue(mRetry, False);
       Exit;
     end;
@@ -975,6 +1016,41 @@ begin
     Result := FRun;
     if FRun.Active then
       Result.ElapsedMs := FRunClock.ElapsedMilliseconds;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TLspWorkspaceCheck.Profile(ACount: Integer): TCheckRunProfile;
+var
+  mRunning: Int64;
+begin
+  TMonitor.Enter(FLock);
+  try
+    mRunning := -1;
+    if FRun.Active then
+      mRunning := FRunClock.ElapsedMilliseconds;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+  Result := FProfiler.Snapshot(ACount, mRunning);
+end;
+
+function TLspWorkspaceCheck.Queue: TWorkspaceCheckQueue;
+var
+  mEntry: TEntry;
+  mNow: Int64;
+begin
+  Result := Default(TWorkspaceCheckQueue);
+  TMonitor.Enter(FLock);
+  try
+    mNow := Now_;
+    Result.Waiting := FQueue.Count;
+    if FCurrent <> '' then
+      Result.Running := 1;
+    for mEntry in FQueue do
+      if mNow - mEntry.Queued > Result.OldestWaitMs then
+        Result.OldestWaitMs := mNow - mEntry.Queued;
   finally
     TMonitor.Exit(FLock);
   end;

@@ -49,6 +49,12 @@ type
     /// <summary>Ohne Projektstufe (abgebrochen, Projekt entfernt) startet das Ende die Prüfung.</summary>
     [Test]
     procedure IndexGateRechecksAtEndWithoutProjectStage;
+    /// <summary>#1356: Zeitprofil des Laufs; eine Unit mit zwei Versuchen zählt mit beiden.</summary>
+    [Test]
+    procedure ProfileListsSlowestUnits;
+    /// <summary>#1356: wartende Dateien und älteste Wartezeit für das Fenster „Atlas-Server“.</summary>
+    [Test]
+    procedure QueueCountsWaitingFiles;
   end;
 
 implementation
@@ -64,7 +70,8 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Lsp.WorkspaceCheck;
+  Atlas.Common.Lsp.WorkspaceCheck,
+  Atlas.Common.Diagnostics.CheckProfile;
 
 const
   cFileA = 'C:\P\A.pas';
@@ -725,6 +732,58 @@ begin
     Assert.IsTrue(mGate.Recheck(True));
   finally
     mGate.Free;
+  end;
+end;
+
+
+procedure TLspWorkspaceCheckTests.ProfileListsSlowestUnits;
+var
+  mFixture: TFixture;
+  mProfile: TCheckRunProfile;
+begin
+  mFixture := TFixture.Create;
+  try
+    mFixture.Behavior.Add(cFileA, 'slow');
+    mFixture.Check.FileLimitMs := 50;
+    mFixture.Check.Want;
+    Assert.IsTrue(mFixture.Check.WaitIdle(cIdleMs));
+    mProfile := mFixture.Check.Profile(TCheckRunProfile.cTop);
+    Assert.AreEqual(1, mProfile.Serial);
+    Assert.IsFalse(mProfile.Active);
+    Assert.AreEqual(3, mProfile.Units);
+    Assert.AreEqual('A', mProfile.SlowUnits[0].Name);
+    // Erster Versuch bis zur Frist (50 ms) plus zweiter ohne Frist (300 ms).
+    Assert.IsTrue(mProfile.SlowUnits[0].Ms >= 340, FloatToStr(mProfile.SlowUnits[0].Ms));
+    // Die Units füllen den Lauf: ihre Summe liegt nicht über seiner Dauer.
+    Assert.IsTrue(mProfile.UnitMs <= mProfile.DurationMs + 1, Format('%f > %d',
+      [mProfile.UnitMs, mProfile.DurationMs]));
+  finally
+    mFixture.Free;
+  end;
+end;
+
+procedure TLspWorkspaceCheckTests.QueueCountsWaitingFiles;
+var
+  mFixture: TFixture;
+  mQueue: TWorkspaceCheckQueue;
+begin
+  mFixture := TFixture.Create;
+  try
+    mFixture.Check.Pause(TLspWorkspaceCheck.cPauseDebug, True);
+    mFixture.Check.Want;
+    Sleep(150);
+    mQueue := mFixture.Check.Queue;
+    Assert.AreEqual(3, mQueue.Waiting);
+    Assert.AreEqual(0, mQueue.Running);
+    Assert.IsTrue(mQueue.OldestWaitMs >= 100, IntToStr(mQueue.OldestWaitMs));
+    Assert.IsTrue(mFixture.Check.Profile(TCheckRunProfile.cTop).Active, 'Lauf hat begonnen');
+    mFixture.Check.Pause(TLspWorkspaceCheck.cPauseDebug, False);
+    Assert.IsTrue(mFixture.Check.WaitIdle(cIdleMs));
+    mQueue := mFixture.Check.Queue;
+    Assert.AreEqual(0, mQueue.Waiting);
+    Assert.AreEqual<Int64>(0, mQueue.OldestWaitMs);
+  finally
+    mFixture.Free;
   end;
 end;
 
