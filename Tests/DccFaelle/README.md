@@ -44,5 +44,7 @@ Plattform.
 | `DccAutomationAufrufGegen` | `automation-invalid` | AC1 Variant mit Record, AC2 OleVariant mit Pointer (welcher Code: E2160 oder E2281?), AC3 typisierter Zeiger, AC4 Kette über OleVariant, AC5 unbenannt nach benannt (E2166) |
 | `DccOperatoren` | `operator-declaration-invalid` | OP1–OP4 Vergleichsoperatoren ohne Boolean-Ergebnis, OP5 Benutzung |
 | `DccOperatorenGegen` | `operator-declaration-invalid` | OG1/OG2 falsche Parameterzahl |
+| `DccDeklarationen` | `declaration-invalid` und weitere (#1380) | DK1/DK2 packed vor array und record, DK3 Zeiger auf den eigenen Record, DK4 Vorfahr erst vorwärts und dann vollständig, DK5 sealed ohne offene abstrakte Methoden, DK6 überladene default-Property, DK7 Klassen-Property an class var, DK8 Konstruktoren mit gleichen Parametern ohne C++-Ausgabe, DK9 dispinterface-Property ohne read/write, DK10 external cdecl varargs, DK11 @ vor Array-Element |
+| `DccDeklarationenGegen` | `declaration-invalid` und weitere (#1380) | DG1/DG2 packed vor Byte und Klasse (E2006), DG3 Vorfahr nur vorwärts (E2086), DG4/DG5 Property ohne read/write in Interface und automated (E2128), DG6 stdcall varargs ohne external (E2277, Win32), DG7 @ vor Ausdruck (E2036) |
 | `DccKonstanten` | `typed-constant-modified` | TC1 `{$J+}`, TC2 `{$WRITEABLECONST ON}`, TC3 `{$J+}` aus einer Include-Datei |
 | `DccKonstantenGegen` | `typed-constant-modified` | KG1 `{$J-}` |

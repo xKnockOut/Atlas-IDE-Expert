@@ -232,10 +232,12 @@ var
   Finding: TRuleFinding;
   Text: string;
 begin
+  // Wie dcc ab Werk alle vier Arten (#1378).
   Findings := Run(UnitHaupt, '', True);
   Text := Messages(Findings);
   Assert.AreEqual('6:5 TAlt ist experimental (wie W1003).|8:2 Alt ist deprecated: Nutze Neu (wie W1000).|' +
-    '10:2 Ohne ist deprecated (wie W1000).|', Text);
+    '10:2 Ohne ist deprecated (wie W1000).|11:5 Grenze ist platform (wie W1002).|12:4 Bib ist library (wie W1001).|',
+    Text);
   for Finding in Findings do
     if Finding.Message.StartsWith('Alt ') then
     begin
@@ -301,7 +303,7 @@ begin
     '  (*$WARN SYMBOL_DEPRECATED OFF*)'#10 +
     '  Ohne;'#10), '', True);
   Assert.AreEqual('12:2 Ohne ist deprecated (wie W1000).|14:2 Alt ist deprecated: Nutze Neu (wie W1000).|' +
-    '16:16 Grenze ist platform (wie W1002).|', Messages(Findings));
+    '16:16 Grenze ist platform (wie W1002).|18:16 Grenze ist platform (wie W1002).|', Messages(Findings));
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[1].Severity));
 end;
@@ -337,11 +339,12 @@ begin
   Assert.AreEqual('platform', String.Join(',', UnitIndex.Directives));
   Source := Haupt('Werkzeug, Werk.Altlast, Werk.Windows', '');
   Assert.AreEqual('2:15 Unit Werk.Altlast ist deprecated: Nutze Werkzeug (wie W1006).|' +
-    '2:29 Unit Werk.Windows ist experimental (wie W1007).|', Messages(Run(Source, '', True)));
+    '2:29 Unit Werk.Windows ist experimental (wie W1007).|2:29 Unit Werk.Windows ist platform (wie W1005).|',
+    Messages(Run(Source, '', True)));
   Assert.AreEqual('2:29 Unit Werk.Windows ist platform (wie W1005).|',
     Messages(Run(Source, KindsConfig('"platform"'), True)));
   Assert.AreEqual(0, Integer(Length(Run(ReplaceStr(Source, 'uses ', '{$WARN UNIT_DEPRECATED OFF}'#10 +
-    '{$WARN UNIT_EXPERIMENTAL OFF}'#10'uses '), '', True))));
+    '{$WARN UNIT_EXPERIMENTAL OFF}'#10'{$WARN UNIT_PLATFORM OFF}'#10'uses '), '', True))));
 end;
 
 procedure TDeprecatedRulesTests.ReplacementFromKnownRoutine;

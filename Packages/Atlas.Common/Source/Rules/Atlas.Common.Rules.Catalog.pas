@@ -11,6 +11,9 @@
 // Stufe T lässt sich über "group:compiler": {"typeLevel": "off"} abschalten.
 // "overriddenBy" nennt Gegenregeln: Ist eine davon an, meldet die Regel nichts
 // (#1025, z. B. redundant-begin-end bei missing-begin-end); Rules.Engine.
+// "safeFix" (#1352) gibt die als sicher markierten Korrekturen der Regel für
+// die Sammelkorrektur frei (--fix, fix_findings, „Alle sicheren Treffer
+// korrigieren …“); ohne das Feld korrigiert sie nur einzeln.
 
 interface
 
@@ -64,6 +67,8 @@ type
     Level: string;
     /// <summary>Gegenregeln (#1025): Ist eine davon an, meldet diese Regel nichts; nil = keine.</summary>
     OverriddenBy: TArray<string>;
+    /// <summary>Sichere Korrekturen dürfen in die Sammelkorrektur (#1352, "safeFix").</summary>
+    SafeFix: Boolean;
   end;
 
   ERuleCatalog = class(Exception);
@@ -328,6 +333,11 @@ begin
       if (Entry.Level <> '') and (Entry.Level <> 'A') and (Entry.Level <> 'B') and (Entry.Level <> 'T') then
         raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat eine ungültige Stufe "%s"', [Entry.Id, Entry.Level]);
       Entry.OverriddenBy := OverriddenByOf(Item, Entry.Id);
+      Entry.SafeFix := False;
+      if Item.GetValue('safeFix') is TJSONBool then
+        Entry.SafeFix := TJSONBool(Item.GetValue('safeFix')).AsBoolean
+      else if Item.GetValue('safeFix') <> nil then
+        raise ERuleCatalog.CreateFmt('Regelkatalog: "%s" hat ein ungültiges "safeFix"', [Entry.Id]);
       FEntries.Add(Entry);
       if not FPositions.ContainsKey(LowerCase(Entry.Id)) then
         FPositions.Add(LowerCase(Entry.Id), FEntries.Count - 1);

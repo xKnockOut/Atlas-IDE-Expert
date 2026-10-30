@@ -221,3 +221,4 @@ loop-runs-at-most-once | Ref.Daten.Suche.pas | \nimplementation | \nimplementati
 format-args | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction Anzeige(const AName: string): string;\nbegin\n  Result := Format('Kunde %d', [AName]);\nend;
 compiler-directive-invalid | Ref.Sprache.Merkmale.pas | // Sprachmerkmale für Navigation, Hover und Prüfregeln. | // Sprachmerkmale für Navigation, Hover und Prüfregeln.\n{$MESSAGE HINT 'Mutation'}
 dispinterface-invalid | Ref.Sprache.Merkmale.pas | IFormatierer = interface | DAnzeige = dispinterface\n    procedure Anzeigen; stdcall; dispid 1;\n  end;\n  IFormatierer = interface
+string-conversion | Ref.Daten.Suche.pas | \nimplementation | \nimplementation\n\nfunction Schmal(const AText: string): AnsiString;\nbegin\n  Result := AText;\nend;
