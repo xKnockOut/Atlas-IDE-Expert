@@ -438,7 +438,7 @@ end;
 class function TAtlasWelcomeTestResultsFrame.ErrorText(AError: TAtlasCiFetchError): string;
 begin
   case AError of
-    TAtlasCiFetchError.Unauthorized:
+    TAtlasCiFetchError.Unauthorized, TAtlasCiFetchError.NoCredentials:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiUnauthorized);
     TAtlasCiFetchError.NotFound:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeTestsCiNotFound);

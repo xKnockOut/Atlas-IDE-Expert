@@ -380,6 +380,8 @@ begin
   case AError of
     TAtlasCiFetchError.Unauthorized:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesUnauthorized);
+    TAtlasCiFetchError.NoCredentials:
+      Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesNoToken);
     TAtlasCiFetchError.NotFound:
       Result := TAtlasStrings.Text(TAtlasTextId.WelcomeIssuesNotFound);
     TAtlasCiFetchError.Invalid:

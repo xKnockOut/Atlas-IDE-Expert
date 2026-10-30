@@ -22,6 +22,12 @@ type
     [Test]
     procedure LocatesFileInRepositoryRoot;
     [Test]
+    procedure LocatesFileInFolderBetweenProjectAndRoot;
+    [Test]
+    procedure LocatesFileInSubversionRoot;
+    [Test]
+    procedure LocatesFileNextToProjectGroup;
+    [Test]
     procedure NoFileWithoutRepositoryAbove;
     [Test]
     procedure RootIsRepositoryOrFolder;
@@ -113,12 +119,43 @@ begin
     ExistsIn(['\\srv\daten\Repo\.git', '\\srv\daten\Repo\.atlas'])), 'UNC');
 end;
 
+procedure TAtlasTeamFileTests.LocatesFileInFolderBetweenProjectAndRoot;
+begin
+  Assert.AreEqual('C:\Repo\Teil\.atlas', TAtlasTeamFile.Locate('C:\Repo\Teil\App',
+    ExistsIn(['C:\Repo\.git', 'C:\Repo\Teil\.atlas', 'C:\Repo\.atlas'])), 'nächster Ordner gewinnt');
+  Assert.AreEqual('C:\Repo\.atlas', TAtlasTeamFile.Locate('C:\Repo\Teil\App\',
+    ExistsIn(['C:\Repo\.git', 'C:\Repo\.atlas', 'C:\.atlas'])), 'nicht über die Wurzel hinaus');
+end;
+
+procedure TAtlasTeamFileTests.LocatesFileInSubversionRoot;
+begin
+  Assert.AreEqual('C:\Arbeit\.atlas', TAtlasTeamFile.Locate('C:\Arbeit\Quellen\App',
+    ExistsIn(['C:\Arbeit\.svn', 'C:\Arbeit\.atlas'])));
+  Assert.AreEqual('C:\Arbeit', TAtlasTeamFile.RootOf('C:\Arbeit\Quellen', ExistsIn(['C:\Arbeit\.svn'])),
+    'Wurzel einer SVN-Arbeitskopie');
+end;
+
+procedure TAtlasTeamFileTests.LocatesFileNextToProjectGroup;
+begin
+  Assert.AreEqual('C:\Gruppe\.atlas', TAtlasTeamFile.Locate('C:\Gruppe\Pakete\Kern', 'C:\Gruppe',
+    ExistsIn(['C:\Gruppe\.atlas'])), 'Gruppe über dem Projekt, ohne Repository');
+  Assert.AreEqual('C:\Gruppe\Pakete\.atlas', TAtlasTeamFile.Locate('C:\Gruppe\Pakete\Kern', 'C:\Gruppe\',
+    ExistsIn(['C:\Gruppe\.atlas', 'C:\Gruppe\Pakete\.atlas'])), 'nächster Ordner vor der Gruppe');
+  Assert.AreEqual('C:\Arbeit\.atlas', TAtlasTeamFile.Locate('C:\Arbeit\Repo\App', 'C:\Arbeit',
+    ExistsIn(['C:\Arbeit\Repo\.git', 'C:\Arbeit\.atlas'])), 'Gruppe außerhalb des Repositorys');
+  Assert.AreEqual('C:\Gruppen\.atlas', TAtlasTeamFile.Locate('C:\Repo\App', 'C:\Gruppen',
+    ExistsIn(['C:\Gruppen\.atlas'])), 'Gruppe neben dem Projekt');
+  Assert.AreEqual('C:\Repo\App\.atlas', TAtlasTeamFile.Locate('C:\Repo\App', 'C:\Repo',
+    ExistsIn(['C:\Repo\.atlas', 'C:\Repo\App\.atlas'])), 'Ordner der .dproj zuerst');
+  Assert.AreEqual('', TAtlasTeamFile.Locate('C:\Gruppe\App', 'C:\Gruppe', ExistsIn(['C:\.atlas'])),
+    'nicht über die Gruppe hinaus');
+end;
+
 procedure TAtlasTeamFileTests.NoFileWithoutRepositoryAbove;
 begin
   Assert.AreEqual('', TAtlasTeamFile.Locate('C:\Repo\App', ExistsIn(['C:\Repo\.atlas'])),
-    'ohne .git nur der Ordner der .dproj');
-  Assert.AreEqual('', TAtlasTeamFile.Locate('C:\Repo\Teil\App',
-    ExistsIn(['C:\Repo\.git', 'C:\Repo\Teil\.atlas'])), 'nur Ordner der .dproj und Wurzel');
+    'ohne .git, .svn und Gruppe nur der Ordner der .dproj');
+  Assert.AreEqual('', TAtlasTeamFile.Locate('C:\Repo\App', '', ExistsIn(['C:\Repo\.atlas'])), 'ohne Gruppe');
   Assert.AreEqual('', TAtlasTeamFile.Locate('C:\Repo\App', ExistsIn(['C:\Repo\.git'])));
   Assert.AreEqual('', TAtlasTeamFile.Locate('', ExistsIn(['\.atlas'])));
 end;
@@ -224,6 +261,13 @@ begin
   Assert.IsFalse(Team.Valid);
   Assert.IsTrue(Team.Exists);
   Assert.IsTrue(HasIssue(Team, TAtlasTeamIssueKind.Syntax, ''));
+  Assert.AreEqual<Integer>(1, Team.Issues[0].Line, 'Zeile der fehlerhaften Stelle');
+  Assert.AreEqual<Integer>(39, Team.Issues[0].Column, 'Spalte: Ende des Texts');
+  Team := Parsed('{'#13#10'  "version": 1'#13#10'  "tracker": {}'#13#10'}');
+  Assert.IsFalse(Team.Valid, 'fehlendes Komma');
+  Assert.AreEqual<Integer>(3, Team.Issues[0].Line);
+  Assert.AreEqual<Integer>(3, Team.Issues[0].Column);
+  Assert.AreEqual<Integer>(0, Parsed('[1, 2]').Issues[0].Line, 'gültiges JSON, aber kein Objekt: ohne Stelle');
   Assert.AreEqual('f_', TAtlasTeamFile.Prefix(Team, TAtlasNamingKind.Field, 'f_'));
   Assert.AreEqual(0, Integer(Length(TAtlasTeamFile.Values(Team))));
   Assert.IsFalse(Parsed('[1, 2]').Valid, 'kein Objekt');
