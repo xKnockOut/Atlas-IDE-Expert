@@ -219,6 +219,7 @@ begin
   Assert.AreEqual(11, Opened, 'Fenster „Atlas-Server“');
   FBar.OnStatusOpen := nil;
   // Klick auf die Live-Prüfung prüft alle Units neu (#1231).
+  P := Middle(FBar.PartRect(TAtlasStatusBarPart.LiveCheck));
   FBar.ClickAt(P.X, P.Y);
   Assert.AreEqual(1, Rechecked, 'Live-Prüfung');
 end;

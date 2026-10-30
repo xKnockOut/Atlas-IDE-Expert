@@ -1162,7 +1162,7 @@ end;
 
 procedure TAtlasArchitectureFrame.UpdateAssignment;
 var
-  mBitmap: TBitmap;
+  mBitmap: Vcl.Graphics.TBitmap;
   mSize: TSize;
 begin
   // Steckbrief (#1368): nur mit gewählter Unit, ohne Weg und mit Zuordnung vom Server.
@@ -1173,7 +1173,7 @@ begin
     Exit;
   end;
   // Messen ohne Fenster: auf einer Bitmap mit derselben Schrift.
-  mBitmap := TBitmap.Create;
+  mBitmap := Vcl.Graphics.TBitmap.Create;
   try
     mBitmap.Canvas.Font.Assign(Font);
     mSize := TAtlasArchitectureAssignment.Measure(mBitmap.Canvas, FModel, FMap.Selected, CurrentPPI);

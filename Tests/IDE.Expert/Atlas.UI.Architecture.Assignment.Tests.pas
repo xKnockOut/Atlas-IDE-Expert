@@ -16,6 +16,9 @@ type
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Erste Benutzung (Schriften, Grafik) ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -56,6 +59,17 @@ var
   mEnabled: Boolean;
 begin
   Assert.IsTrue(TAtlasArchitectureModel.Parse(AAnswer, Result, mEnabled));
+end;
+
+procedure TAtlasArchitectureAssignmentTests.WarmUpFirstUse;
+begin
+  SetUp;
+  try
+    MeasuresAndDraws;
+    MapShowsHoverAssignment;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TAtlasArchitectureAssignmentTests.SetUp;

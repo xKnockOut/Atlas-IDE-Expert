@@ -138,12 +138,16 @@ var
   Fields: TArray<TAtlasSettingField>;
   Field: TAtlasSettingField;
   Found: TDictionary<string, TAtlasSettingField>;
+  Key: string;
 begin
   Fields := TAtlasSettingsSchema.Fields(AtlasSchemaJson);
   Found := TDictionary<string, TAtlasSettingField>.Create;
   try
     for Field in Fields do
       Found.AddOrSetValue(Field.Path, Field);
+    for Key in TArray<string>.Create('compiler.onSave', 'language', 'format.indentSize', 'exclude', 'rules', 'overrides',
+      'sortUses', 'profile', 'mcp.globalSettings', 'mcp.disabledTools') do
+      Assert.IsTrue(Found.ContainsKey(Key), Format('%s fehlt (%d Felder)', [Key, Length(Fields)]));
     Assert.IsFalse(Found.ContainsKey('$schema'));
     Assert.IsTrue(Found['compiler.onSave'].Kind = TAtlasSettingKind.Boolean_);
     Assert.AreEqual('Compiler', Found['compiler.onSave'].Page);

@@ -195,7 +195,7 @@ begin
       TArray<string>.Create('Src/Kunde.pas', 'Src/Rechnung.pas'))];
   mCommits := mCommits + [CommitOf('x', 'anna', 7, TArray<string>.Create('Src/Kunde.pas'))];
   mPairs := THotspotAnalyzer.Coupling(TArray<THotspotUnit>.Create(UnitOf('Src/Kunde.pas'),
-    UnitOf('Src/Rechnung.pas')), mCommits, THotspotOptions.Default, NoEdges);
+    UnitOf('Src/Rechnung.pas')), mCommits, THotspotOptions.Default, NoEdges());
   Assert.AreEqual(1, Integer(Length(mPairs)));
   Assert.AreEqual('Src/Kunde.pas', mPairs[0].First.Path);
   Assert.AreEqual('Src/Rechnung.pas', mPairs[0].Second.Path);
@@ -254,16 +254,16 @@ begin
     mCommits := mCommits + [CommitOf('a' + IntToStr(mIndex), 'anna', 10 + mIndex, TArray<string>.Create('A.pas'))];
   // 5 gemeinsame von (11 + 5) / 2 = 8: 62 % < 70 %.
   mPairs := THotspotAnalyzer.Coupling(TArray<THotspotUnit>.Create(UnitOf('A.pas'), UnitOf('B.pas')), mCommits,
-    THotspotOptions.Default, NoEdges);
+    THotspotOptions.Default, NoEdges());
   Assert.AreEqual(0, Integer(Length(mPairs)));
   mOptions := THotspotOptions.Default;
   mOptions.MinCouplingRatio := 0.6;
   mPairs := THotspotAnalyzer.Coupling(TArray<THotspotUnit>.Create(UnitOf('A.pas'), UnitOf('B.pas')), mCommits,
-    mOptions, NoEdges);
+    mOptions, NoEdges());
   Assert.AreEqual(1, Integer(Length(mPairs)));
   mOptions.MinSharedCommits := 6;
   mPairs := THotspotAnalyzer.Coupling(TArray<THotspotUnit>.Create(UnitOf('A.pas'), UnitOf('B.pas')), mCommits,
-    mOptions, NoEdges);
+    mOptions, NoEdges());
   Assert.AreEqual(0, Integer(Length(mPairs)), 'hotspots.coupling.minCommits');
 end;
 

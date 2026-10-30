@@ -119,7 +119,7 @@ begin
   Assert.AreEqual(1, Integer(Length(FFrame.CouplingText)));
   Assert.AreEqual('App.Daten'#9'App.Form'#9'6'#9'92 %', FFrame.CouplingText[0]);
   Assert.AreEqual(3, Integer(Length(FFrame.Chart.Bubbles)));
-  Assert.IsTrue(FFrame.StatusLabel.Caption.Contains('42'), FFrame.StatusLabel.Caption);
+  Assert.IsTrue(string(FFrame.StatusLabel.Caption).Contains('42'), FFrame.StatusLabel.Caption);
 end;
 
 procedure TAtlasHotspotsFrameTests.SwitchesLevelAndKeepsUnit;
@@ -171,7 +171,7 @@ begin
   Assert.IsTrue(FFrame.HistoryText[0].StartsWith('0123456'#9'2026-10-20'#9'anna'#9'Rechnung'#9'+3'),
     FFrame.HistoryText[0]);
   Assert.IsTrue(FFrame.HistoryText[1].EndsWith(#9), 'Zeilen unbekannt');
-  Assert.IsTrue(FFrame.HistoryInfo.Caption.Contains('TKern.Rechne'));
+  Assert.IsTrue(string(FFrame.HistoryInfo.Caption).Contains('TKern.Rechne'));
   Assert.AreEqual(2, FFrame.Pages.ActivePageIndex, 'Reiter Verlauf');
   FFrame.ShowImpact(1);
   Assert.AreEqual('TDaten.Lade', FImpactMethod);
@@ -186,7 +186,7 @@ begin
   FFrame.SetMessage(TAtlasStrings.Fmt(TAtlasTextId.HotspotsNoVcs, ['kein Repository']), False);
   Assert.AreEqual(0, Integer(Length(FFrame.HotspotText)));
   Assert.IsFalse(FFrame.HasModel);
-  Assert.IsTrue(FFrame.StatusLabel.Caption.Contains('kein Repository'));
+  Assert.IsTrue(string(FFrame.StatusLabel.Caption).Contains('kein Repository'));
   Assert.AreEqual(0, Integer(Length(FFrame.Chart.Bubbles)));
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.HotspotsChartHint), FFrame.Chart.EmptyText);
 end;

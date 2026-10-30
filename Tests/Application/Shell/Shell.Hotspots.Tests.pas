@@ -105,9 +105,13 @@ begin
 end;
 
 procedure PutFile(const AFolder, APath, AText: string);
+var
+  mFileName: string;
 begin
-  TDirectory.CreateDirectory(ExtractFileDir(TPath.Combine(AFolder, APath)));
-  TFile.WriteAllText(TPath.Combine(AFolder, APath), AText, TEncoding.ASCII);
+  // Pfade wie 'Src/Alt.pas': ExtractFileDir trennt unter Windows nur an '\'.
+  mFileName := TPath.Combine(AFolder, APath.Replace('/', PathDelim));
+  TDirectory.CreateDirectory(ExtractFileDir(mFileName));
+  TFile.WriteAllText(mFileName, AText, TEncoding.ASCII);
 end;
 
 /// <summary>Einer der Schritte des gemeinsamen Verlaufs: 1 legt Alt und Andere an, 2 ändert Alt, 3 benennt Alt in

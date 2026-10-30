@@ -457,7 +457,8 @@ begin
   // Setzen aus den Einstellungen meldet nichts.
   FFrame.ResolutionValue := 0.5;
   Assert.AreEqual(2, mCount);
-  Assert.AreEqual(Double(0.5), FFrame.ResolutionValue, 0.01);
+  // Die Stellung rastet auf Schritte: 0,5 wird zum nächsten Schritt (0,49).
+  Assert.AreEqual(Double(0.5), FFrame.ResolutionValue, 0.02);
 end;
 
 procedure TAtlasArchitectureFrameTests.ResolutionSliderCanBeHidden;
@@ -503,10 +504,10 @@ begin
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemFamily, ['App', 2]),
     FFrame.SubsystemsMenu.Items[0].Caption);
   Assert.IsFalse(FFrame.SubsystemsMenu.Items[0].Enabled);
-  Assert.AreEqual(0, FFrame.SubsystemsMenu.Items[1].Tag);
-  Assert.AreEqual(mLast, FFrame.SubsystemsMenu.Items[2].Tag);
+  Assert.AreEqual(0, Integer(FFrame.SubsystemsMenu.Items[1].Tag));
+  Assert.AreEqual(mLast, Integer(FFrame.SubsystemsMenu.Items[2].Tag));
   Assert.IsTrue(StartsStr('      ', FFrame.SubsystemsMenu.Items[2].Caption));
-  Assert.AreEqual(1, FFrame.SubsystemsMenu.Items[3].Tag);
+  Assert.AreEqual(1, Integer(FFrame.SubsystemsMenu.Items[3].Tag));
   FFrame.SubsystemsMenu.Items[2].Click;
   Assert.IsFalse(FFrame.Map.SubsystemVisible[mLast]);
   // Reiter Teilsysteme: „… · Teil von App“, die Teile beieinander (erst das erste Teil mit seinen Units, dann das

@@ -505,7 +505,6 @@ begin
   Result.Lines := TBulkFixLineMap.Identity;
   mText := AText;
   mLines := TBulkFixLineMap.Identity;
-  mDeferred := 0;
   mCandidates := TList<TCandidate>.Create;
   mTaken := TList<TTextEdit>.Create;
   try

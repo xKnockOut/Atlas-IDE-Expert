@@ -32,6 +32,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Core.Lsp.WorkspaceEdits,
   Atlas.Core.Problems.Contract,

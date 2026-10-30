@@ -138,7 +138,7 @@ function DoubleXWithLowCheck: TBulkFixCheck;
 var
   mDouble: TBulkFixCheck;
 begin
-  mDouble := DoubleXCheck;
+  mDouble := DoubleXCheck();
   Result :=
     function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>
     begin
@@ -269,7 +269,7 @@ begin
   mResult := TBulkFix.Run('U.pas', 'aaa bbb ccc', Options(TRuleConfidence.High), FixedCheck(
     TArray<TRuleFinding>.Create(Finding(0, 0, 3, 'A', TRuleConfidence.High, True),
     Finding(0, 8, 11, 'CCCC', TRuleConfidence.High, True), Finding(0, 4, 7, 'B', TRuleConfidence.High, True))),
-    NoErrors);
+    NoErrors());
   Assert.AreEqual('A B CCCC', mResult.NewText);
   Assert.IsTrue(mResult.Changed);
   Assert.AreEqual(3, mResult.FixCount);
@@ -282,7 +282,7 @@ var
   mResult: TBulkFixFile;
 begin
   // "XXXX": XX an 0, 1, 2; von hinten genommen wird 2, 0 passt daneben, 1 überlappt und wartet.
-  mResult := TBulkFix.Run('U.pas', 'XXXX', Options(TRuleConfidence.High), DoubleXCheck, NoErrors);
+  mResult := TBulkFix.Run('U.pas', 'XXXX', Options(TRuleConfidence.High), DoubleXCheck(), NoErrors());
   Assert.AreEqual('X', mResult.NewText);
   Assert.AreEqual(2, mResult.Passes);
   Assert.AreEqual(3, mResult.FixCount);
@@ -296,7 +296,7 @@ begin
   // Dieselben überlappenden Treffer in jedem Durchgang: einer wird genommen, einer wartet bis zum Ende.
   mResult := TBulkFix.Run('U.pas', 'abcd', Options(TRuleConfidence.High), FixedCheck(
     TArray<TRuleFinding>.Create(Finding(0, 0, 2, 'ab', TRuleConfidence.High, True),
-    Finding(0, 1, 3, 'bc', TRuleConfidence.High, True))), NoErrors);
+    Finding(0, 1, 3, 'bc', TRuleConfidence.High, True))), NoErrors());
   Assert.AreEqual(TBulkFix.MaxPasses, mResult.Passes);
   Assert.AreEqual(1, mResult.Skipped[TBulkFixSkip.Conflict]);
   Assert.IsFalse(mResult.Changed);
@@ -306,7 +306,7 @@ procedure TBulkFixTests.SkippedCountsOnlyFirstPass;
 var
   mResult: TBulkFixFile;
 begin
-  mResult := TBulkFix.Run('U.pas', 'XXX', Options(TRuleConfidence.High), DoubleXWithLowCheck, NoErrors);
+  mResult := TBulkFix.Run('U.pas', 'XXX', Options(TRuleConfidence.High), DoubleXWithLowCheck(), NoErrors());
   Assert.AreEqual('X', mResult.NewText);
   Assert.AreEqual(2, mResult.Passes);
   Assert.AreEqual(1, mResult.Skipped[TBulkFixSkip.Confidence]);
@@ -319,10 +319,10 @@ var
 begin
   mFindings := TArray<TRuleFinding>.Create(Finding(0, 0, 1, 'A', TRuleConfidence.Medium, True),
     Finding(0, 2, 3, 'B', TRuleConfidence.High, True));
-  mResult := TBulkFix.Run('U.pas', 'a b', Options(TRuleConfidence.High), FixedCheck(mFindings), NoErrors);
+  mResult := TBulkFix.Run('U.pas', 'a b', Options(TRuleConfidence.High), FixedCheck(mFindings), NoErrors());
   Assert.AreEqual('a B', mResult.NewText);
   Assert.AreEqual(1, mResult.Skipped[TBulkFixSkip.Confidence]);
-  mResult := TBulkFix.Run('U.pas', 'a b', Options(TRuleConfidence.Medium), FixedCheck(mFindings), NoErrors);
+  mResult := TBulkFix.Run('U.pas', 'a b', Options(TRuleConfidence.Medium), FixedCheck(mFindings), NoErrors());
   Assert.AreEqual('A B', mResult.NewText);
   Assert.AreEqual(0, mResult.Skipped[TBulkFixSkip.Confidence]);
 end;
@@ -352,7 +352,7 @@ procedure TBulkFixTests.UnchangedTextIsNotChanged;
 var
   mResult: TBulkFixFile;
 begin
-  mResult := TBulkFix.Run('U.pas', 'abc', Options(TRuleConfidence.High), FixedCheck(nil), NoErrors);
+  mResult := TBulkFix.Run('U.pas', 'abc', Options(TRuleConfidence.High), FixedCheck(nil), NoErrors());
   Assert.IsFalse(mResult.Changed);
   Assert.AreEqual(0, mResult.Passes);
   Assert.AreEqual('', TBulkFix.Diff('U.pas', mResult));
@@ -421,7 +421,7 @@ begin
               Result := Result + [Finding(mLine, mIndex - 1, mIndex + 1, 'X', TRuleConfidence.High, True)];
             end;
         end;
-      end, NoErrors);
+      end, NoErrors());
     Assert.AreEqual('a'#10'X'#10'b', mResult.NewText);
     Assert.IsTrue(mSeen.Count >= 3);
     Assert.AreEqual(2, mSeen[mSeen.Count - 1], 'Treffer im zweiten Durchgang auf Zeile 2 des Ausgangstexts');
