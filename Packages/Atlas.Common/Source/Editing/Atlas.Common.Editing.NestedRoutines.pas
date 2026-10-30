@@ -245,7 +245,7 @@ var
   Local: TRoutineLocal;
   Captured: TArray<TCaptured>;
   Identifiers: TList<TSyntaxNode>;
-  Index, Found, Calls, FirstLine, LastLine, RemoveStart, RemoveEnd, InsertLine, NameFirst, NameLast: Integer;
+  Index, Found, Count, Calls, FirstLine, LastLine, RemoveStart, RemoveEnd, InsertLine, NameFirst, NameLast: Integer;
   ClassName, NewName, Name, Arguments, LineBreak, Indent, InnerIndent, Moved, Declaration, ConstLines,
     Mode: string;
   Parameters: TArray<TParameterText>;
@@ -299,7 +299,10 @@ begin
   Identifiers := TList<TSyntaxNode>.Create;
   try
     OuterLocals := Cache.Locals(Outer);
+    // Jede äußere Lokale höchstens einmal: Länge vorab, nach der Schleife auf Count kürzen.
     Captured := nil;
+    SetLength(Captured, Length(OuterLocals));
+    Count := 0;
     InnerEdits := nil;
     OuterEdits := nil;
     // Namen der lokalen Routine, die die äußere deklariert.
@@ -335,11 +338,11 @@ begin
         Continue;
       end;
       Index := 0;
-      while (Index <= High(Captured)) and not SameText(Captured[Index].Local.Name, OuterLocals[Found].Name) do
+      while (Index < Count) and not SameText(Captured[Index].Local.Name, OuterLocals[Found].Name) do
         Inc(Index);
-      if Index > High(Captured) then
+      if Index = Count then
       begin
-        SetLength(Captured, Length(Captured) + 1);
+        Inc(Count);
         Captured[Index].Local := OuterLocals[Found];
         Captured[Index].Written := False;
         Captured[Index].InAnonymous := False;
@@ -349,6 +352,7 @@ begin
       if TRoutineParts.InAnonymous(Node, Inner) then
         Captured[Index].InAnonymous := True;
     end;
+    SetLength(Captured, Count);
     // Lokale Typen der äußeren Routine auch in Typangaben.
     Identifiers.Clear;
     TRoutineLocals.CollectKind(Inner, TSyntaxKind.TypeReference, Identifiers);

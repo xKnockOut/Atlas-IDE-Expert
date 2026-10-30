@@ -47,6 +47,10 @@ type
     procedure ClassReferenceInLaterBlockIsReported;
     [Test]
     procedure ForwardOnlyForClassReferenceIsUnneeded;
+    /// <summary>TX = UnitY.TX weiter unten: Davor gilt UnitY.TX aus uses, die Verwendung übersetzt
+    /// (TAtlasResultEntry.Confidence in Atlas.Core.Results.Model).</summary>
+    [Test]
+    procedure SameNameAliasLaterIsSilent;
   end;
 
 implementation
@@ -334,6 +338,22 @@ begin
   mFindings := Analyze(UnitText('type'#10'  TA = class;'#10'  TAKlasse = class of TA;'#10'  TA = class'#10'  end;'#10));
   Assert.AreEqual(1, Integer(Length(mFindings)));
   Assert.IsTrue(mFindings[0].Issue = TForwardIssue.UnneededForward);
+end;
+
+procedure TForwardDeclarationsTests.SameNameAliasLaterIsSilent;
+var
+  mFindings: TArray<TForwardFinding>;
+begin
+  Assert.AreEqual(0, Integer(Length(Analyze(UnitText('type'#10'  TEintrag = record'#10 +
+    '    Sicherheit: TSicherheit;'#10'  end;'#10'  TSicherheit = Lsp.Contract.TSicherheit;'#10)))));
+  // Gegentest: Alias auf einen anders benannten Typ oder ein eigener Typ gleichen Namens.
+  mFindings := Analyze(UnitText('type'#10'  TEintrag = record'#10'    Sicherheit: TSicherheit;'#10'  end;'#10 +
+    '  TSicherheit = Lsp.Contract.TGewissheit;'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('TSicherheit', mFindings[0].TypeName);
+  mFindings := Analyze(UnitText('type'#10'  TEintrag = record'#10'    Sicherheit: TSicherheit;'#10'  end;'#10 +
+    '  TSicherheit = (Sicher, Erschlossen);'#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
 end;
 
 initialization

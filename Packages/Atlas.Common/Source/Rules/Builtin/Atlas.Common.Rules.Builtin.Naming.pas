@@ -16,9 +16,12 @@
 // einschaltet; ohne eingestellte Konvention bleibt sie still.
 //
 // Ausnahmen: Schleifenzähler aus einem Buchstaben (I, J, K), Parameter
-// Sender, Self und Result, Namen nach "ignore" (Muster mit * und ?), Felder im
-// published-Abschnitt und Felder vor dem ersten Sichtbarkeitsabschnitt eines
-// Formulars, Frames oder Datenmoduls (Komponenten), Parameter von Methoden
+// Sender, Self und Result, Namen nach "ignore" (Muster mit * und ?),
+// öffentliche Felder (public, published und Felder eines Records vor seinem
+// ersten Sichtbarkeitsabschnitt: Das F gilt nach Delphi-Konvention nur für
+// Felder hinter Properties, nicht für TPoint.X), Felder vor dem ersten
+// Sichtbarkeitsabschnitt eines Formulars, Frames oder Datenmoduls
+// (Komponenten), Parameter von Methoden
 // mit override oder message, von published-Methoden, von Ereignis-Handlern
 // (ein Parameter heißt Sender) und von Methoden, die eine Interface-Methode
 // erfüllen: Sie behalten die Namen ihrer Vorlage. Bleibt offen, ob eine
@@ -35,7 +38,7 @@
 // Konstanten der implementation die ganze Unit. Keine Korrektur, wenn der neue
 // Name in der Datei schon vorkommt, der Bereich with enthält, eine
 // verschachtelte Routine den Namen neu deklariert oder der Name außerhalb der
-// Datei sichtbar ist (öffentliche Felder, Konstanten im interface-Abschnitt).
+// Datei sichtbar ist (geschützte Felder, Konstanten im interface-Abschnitt).
 
 interface
 
@@ -808,9 +811,11 @@ var
 begin
   Methods := nil;
   Visibility := VisibilityOf(ABody, ADecl, Implicit);
-  // Komponenten und gestreamte Felder: Ihre Namen stehen in der Formulardatei.
-  if (AKind = TRuleNamingKind.Field) and (ABody.Kind = TSyntaxKind.ClassType) and
-    ((Visibility = 'published') or (Implicit and IsComponentHost(ABody))) then
+  // Öffentliche Felder (auch die eines Records ohne Abschnitt) tragen kein F; Komponenten vor dem ersten Abschnitt:
+  // Ihre Namen stehen in der Formulardatei.
+  if (AKind = TRuleNamingKind.Field) and ((Visibility = 'public') or (Visibility = 'published') or
+    (Implicit and (ABody.Kind = TSyntaxKind.RecordType)) or
+    (Implicit and (ABody.Kind = TSyntaxKind.ClassType) and IsComponentHost(ABody))) then
     Exit;
   if not Wanted(AKind, AName) then
     Exit;

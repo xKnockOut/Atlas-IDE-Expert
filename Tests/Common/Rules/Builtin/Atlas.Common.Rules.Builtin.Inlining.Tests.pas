@@ -2,15 +2,14 @@
 
 // Tests der Regel inline-not-expanded (#1017): fehlende Unit (H2443) bei
 // Aufruf, Property-Getter und for-in, die korrigierte Form und eine nicht
-// eingebettete Routine schweigen; strict private (H2444), inline-Aufrufer mit
+// eingebettete Routine schweigen; strict private schweigt (#1383), inline-Aufrufer mit
 // Unit nur im implementation-uses (H2445), direkter und indirekter Zyklus
 // (H2456, H2457); Schnellkorrektur; abschaltbar; die Verweise im Index;
 // Laufzeit bei vielen Aufrufen und langer uses-Kette (#1220); H2445 auch
 // bei inline-Routinen, deren Rumpf auf nichts außerhalb verweist (#1381).
 // Fehlalarme aus der Prüfung von Atlas und der RTL: Alias einer Deklaration
-// aus System (tkRecord in System.TypInfo, TList<T>.Add), strict private-
-// Methoden (TMonitor.Enter), Zyklus bei Rümpfen nur mit eingebauten Typen
-// und Intrinsics (THashFNV1a32.GetHashValue).
+// aus System (tkRecord in System.TypInfo, TList<T>.Add), Zyklus bei Rümpfen
+// nur mit eingebauten Typen und Intrinsics (THashFNV1a32.GetHashValue).
 
 interface
 
@@ -49,10 +48,6 @@ type
     /// Unit des Alias nicht; ein eigener Wert schon.</summary>
     [Test]
     procedure AliasOfSystemNeedsNoUnit;
-    /// <summary>Wie TMonitor.Enter: Der Rumpf ruft eine strict private-Methode, dcc bettet trotzdem ein.
-    /// </summary>
-    [Test]
-    procedure StrictPrivateMethodIsSilent;
     /// <summary>Wie THashFNV1a32.GetHashValue in System.Generics.Defaults: Der Rumpf benutzt nur eingebaute Typen
     /// und Intrinsics, der Zyklus bleibt stumm; ein Verweis auf eine andere Unit meldet ihn weiter.</summary>
     [Test]
@@ -290,9 +285,9 @@ end;
 
 procedure TInliningRulesTests.StrictPrivateMember;
 begin
-  Assert.AreEqual('8:9 Inline-Funktion TJsonFeld.Geheim wird nicht eingebettet: Zugriff auf TJsonFeld.FGeheim ' +
-    '(strict private) ist hier nicht möglich (wie H2444).|',
-    Messages(Findings(Haupt('Werk.Json', '  X := F.Geheim;'#10))));
+  // Delphi 13 bettet auch mit Zugriff auf strict private aus einer anderen Unit ohne H2444 ein (#1383,
+  // Cm.H2440b, Cm.H2444).
+  Assert.AreEqual('', Messages(Findings(Haupt('Werk.Json', '  X := F.Geheim;'#10))));
 end;
 
 procedure TInliningRulesTests.StrictPrivateInSameUnit;
@@ -323,18 +318,12 @@ const
     '  Result := Z.Stand;'#10 +
     'end;'#10 +
     'end.';
-  Expected = '22:14 Inline-Funktion TZaehler.Stand wird nicht eingebettet: Zugriff auf TZaehler.FStand ' +
-    '(strict private) ist hier nicht möglich (wie H2444).|';
 begin
-  // Auch in derselben Unit ist strict private außerhalb der Klasse unsichtbar; die Methode der Klasse
-  // selbst (Doppelt) bettet ein. Das gilt mit und ohne Projektindex.
-  Assert.AreEqual(Expected, Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, Source, nil, '',
+  // In derselben Unit ebenso still (#1383), mit und ohne Projektindex.
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, Source, nil, '',
     'Haupt.pas')));
-  Assert.AreEqual(Expected, Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, Source,
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, Source,
     TSymbolIndex.Create, '', 'Haupt.pas')));
-  // Ohne strict ist das Feld in der Unit sichtbar.
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create,
-    ReplaceStr(Source, 'strict private', 'private'), nil, '', 'Haupt.pas')));
 end;
 
 procedure TInliningRulesTests.InlineCallerWithImplementationUses;
@@ -474,54 +463,6 @@ begin
   Assert.AreEqual('9:11 Inline-Funktion TStapel.Eigen wird nicht eingebettet: Werk.Arten fehlt in uses ' +
     '(wie H2443).|', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '',
     'Haupt.pas')));
-end;
-
-procedure TInliningRulesTests.StrictPrivateMethodIsSilent;
-const
-  cWaechter =
-    'unit Werk.Waechter;'#10 +
-    'interface'#10 +
-    'type'#10 +
-    '  TWaechter = record'#10 +
-    '  strict private'#10 +
-    '    FStand: Integer;'#10 +
-    '    class procedure Pruefe; static; inline;'#10 +
-    '  public'#10 +
-    '    class procedure Betrete; static; inline;'#10 +
-    '    function Stand: Integer; inline;'#10 +
-    '  end;'#10 +
-    'implementation'#10 +
-    'class procedure TWaechter.Pruefe;'#10 +
-    'begin'#10 +
-    'end;'#10 +
-    'class procedure TWaechter.Betrete;'#10 +
-    'begin'#10 +
-    '  Pruefe;'#10 +
-    'end;'#10 +
-    'function TWaechter.Stand: Integer;'#10 +
-    'begin'#10 +
-    '  Result := FStand;'#10 +
-    'end;'#10 +
-    'end.';
-  cSource =
-    'unit Haupt;'#10 +
-    'interface'#10 +
-    'implementation'#10 +
-    'uses Werk.Waechter;'#10 +
-    'function Lauf(W: TWaechter): Integer;'#10 +
-    'begin'#10 +
-    '  TWaechter.Betrete;'#10 +
-    '  Result := W.Stand;'#10 +
-    'end;'#10 +
-    'end.';
-var
-  mIndex: ISymbolIndex;
-begin
-  mIndex := NewIndex;
-  mIndex.AddUnit(TIndexExtractor.ExtractText(cWaechter, 'C:\P\Werk.Waechter.pas', nil));
-  Assert.AreEqual('7:14 Inline-Funktion TWaechter.Stand wird nicht eingebettet: Zugriff auf TWaechter.FStand ' +
-    '(strict private) ist hier nicht möglich (wie H2444).|',
-    Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, cSource, mIndex, '', 'Haupt.pas')));
 end;
 
 procedure TInliningRulesTests.CycleWithBuiltinsOnlyIsSilent;

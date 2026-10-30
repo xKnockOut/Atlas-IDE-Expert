@@ -90,7 +90,8 @@ type
     // 28: Begründungen (// WHY: …) je Symbol und Unit (#1123).
     // 29: Prozedurtypen über mehrere Zeilen vollständig, Merkmal "of object"/"reference to" in Directives (#1326).
     // 30: inline-Routinen ohne Verweise tragen InlineWithoutRefs statt nil (#1381).
-    const FormatVersion = 30;
+    // 31: Typargumente je Vorfahr statt nur des ersten (class(TInterfacedObject, IComparer<TKunde>)).
+    const FormatVersion = 31;
     class function Serialize(const AUnits: TArray<TUnitIndex>): TBytes; static;
     /// <summary>Liest nur die Köpfe; bei falscher Version, falscher Prüfsumme oder fremdem Inhalt leer.</summary>
     class function ReadEntries(const AData: TBytes): TArray<TIndexCacheEntry>; overload; static;
@@ -446,7 +447,7 @@ begin
   WriteList(AWriter, ATable, ASymbol.Ancestors);
   AWriter.WriteVar(ATable.IndexOf(ASymbol.TypeName));
   AWriter.WriteVar(ATable.IndexOf(ASymbol.TypeArgs));
-  AWriter.WriteVar(ATable.IndexOf(ASymbol.AncestorArgs));
+  WriteList(AWriter, ATable, ASymbol.AncestorArgs);
   AWriter.WriteVar(ATable.IndexOf(ASymbol.TypeParams));
   AWriter.WriteVar(Ord(ASymbol.Visibility));
   AWriter.WriteInt(ASymbol.MinArgs);
@@ -656,7 +657,7 @@ begin
   Result.Ancestors := AReader.ReadList(AStrings);
   Result.TypeName := AReader.ReadString(AStrings);
   Result.TypeArgs := AReader.ReadString(AStrings);
-  Result.AncestorArgs := AReader.ReadString(AStrings);
+  Result.AncestorArgs := AReader.ReadList(AStrings);
   Result.TypeParams := AReader.ReadString(AStrings);
   Kind := AReader.ReadVar;
   if Kind > UInt64(Ord(High(TIndexVisibility))) then

@@ -2,8 +2,8 @@
 
 // Tests der Regel override-case-mismatch (#1021) aus Rules.Builtin.Inheritance:
 // Schreibweise überschriebener Methoden (H2365), geringere Sichtbarkeit
-// (H2269), Schreibweise von Getter und Setter (H2367), inline-Methoden mit
-// Zugriff auf weniger sichtbare Mitglieder (H2440), Korrekturen und
+// (H2269), Schreibweise von Getter und Setter, inline-Methoden mit
+// Zugriff auf weniger sichtbare Mitglieder (beide ohne Code, #1383), Korrekturen und
 // Einstellungen.
 
 interface
@@ -188,9 +188,9 @@ begin
     'procedure TKunde.SETNAME(const AWert: string);'#10'begin'#10'end;'#10);
   Found := Findings(Source);
   Assert.AreEqual(2, Integer(Length(Found)), Join(Found));
-  Assert.AreEqual('Die Zugriffsmethode TKunde.getName sollte TKunde.GetName geschrieben werden (wie H2367).',
+  Assert.AreEqual('Die Zugriffsmethode TKunde.getName sollte TKunde.GetName geschrieben werden.',
     Found[0].Message);
-  Assert.AreEqual('Die Zugriffsmethode TKunde.SETNAME sollte TKunde.SetName geschrieben werden (wie H2367).',
+  Assert.AreEqual('Die Zugriffsmethode TKunde.SETNAME sollte TKunde.SetName geschrieben werden.',
     Found[1].Message);
   Assert.AreEqual('In GetName umbenennen', Found[0].Fixes[0].Title);
   Fixed := ApplyFix(Source, Found[0].Fixes[0]);
@@ -216,20 +216,20 @@ begin
     'function TZaehler.Anzahl: Integer;'#10'begin'#10'  Result := FAnzahl + Intern + Self.FAnzahl;'#10'end;'#10 +
     'end.');
   Assert.AreEqual(2, Integer(Length(Found)), Join(Found));
-  Assert.AreEqual('Die inline-Methode TZaehler.Anzahl ist public, greift aber auf FAnzahl (private) zu; ' +
-    'außerhalb der Klasse setzt der Compiler sie nicht ein (wie H2440).', Found[0].Message);
+  Assert.AreEqual('Die inline-Methode TZaehler.Anzahl ist public, greift aber auf FAnzahl (private) zu.',
+    Found[0].Message);
   Assert.AreEqual(17, Found[0].Range.StartPos.Line);
   Assert.AreEqual(12, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('Die inline-Methode TZaehler.Anzahl ist public, greift aber auf Intern (private) zu; ' +
-    'außerhalb der Klasse setzt der Compiler sie nicht ein (wie H2440).', Found[1].Message);
+  Assert.AreEqual('Die inline-Methode TZaehler.Anzahl ist public, greift aber auf Intern (private) zu.',
+    Found[1].Message);
   // Auch in Records und für geerbte protected-Mitglieder.
-  Assert.AreEqual('Die inline-Methode TPunkt.Summe ist public, greift aber auf FX (private) zu; außerhalb der ' +
-    'Klasse setzt der Compiler sie nicht ein (wie H2440).', OnlyMessage('unit Punkte;'#10'interface'#10'type'#10 +
+  Assert.AreEqual('Die inline-Methode TPunkt.Summe ist public, greift aber auf FX (private) zu.',
+    OnlyMessage('unit Punkte;'#10'interface'#10'type'#10 +
     '  TPunkt = record'#10'  private'#10'    FX: Integer;'#10'  public'#10'    function Summe: Integer; inline;'#10 +
     '  end;'#10'implementation'#10'function TPunkt.Summe: Integer;'#10'begin'#10'  Result := FX;'#10'end;'#10 +
     'end.'));
-  Assert.AreEqual('Die inline-Methode TKunde.Lesen ist public, greift aber auf FWert (protected) zu; außerhalb ' +
-    'der Klasse setzt der Compiler sie nicht ein (wie H2440).', OnlyMessage(Kunden('  protected'#10 +
+  Assert.AreEqual('Die inline-Methode TKunde.Lesen ist public, greift aber auf FWert (protected) zu.',
+    OnlyMessage(Kunden('  protected'#10 +
     '    FWert: Integer;'#10, '  public'#10'    function Lesen: Integer; inline;'#10,
     'function TKunde.Lesen: Integer;'#10'begin'#10'  Result := FWert;'#10'end;'#10)));
 end;
