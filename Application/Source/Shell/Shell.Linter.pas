@@ -39,8 +39,30 @@
 // ganze Gruppe) und liest dabei den gemeinsamen Index-Cache (--index-cache,
 // sonst der Ordner des Servers), damit Regeln Typen aus anderen Units und der
 // RTL kennen. --no-index prüft wie früher jede Datei für sich.
+// Sammelkorrektur (#1352): --fix <Regeln|all> wendet je Datei die sicheren
+// Korrekturen dieser Regeln an (TBulkFix: Konfidenz ab fix.minConfidence,
+// Katalogfeld safeFix, bis zu drei Durchgänge, keine neuen Syntaxfehler) und
+// schreibt alle geänderten Dateien oder keine, in ihrer Kodierung und mit ihren
+// Zeilenenden; --fix-dry-run gibt stattdessen den vereinigten Diff aus. Es gelten
+// --units, --changed, --diff, --changed-lines (nur Treffer in geänderten Zeilen),
+// --baseline (deren Treffer bleiben) und --profile. Die Zusammenfassung (Regeln,
+// Dateien, Korrekturen je Regel, übersprungene Treffer) steht auf stderr.
+//
+// Mit --timings (#1356) misst der Lauf die Prüfung je Unit und, über die
+// Messung der Regel-Engine, je Regel (TCheckProfiler) und schreibt danach
+// das Zeitprofil mit Indexzeit und Speicher als Markdown bzw. JSON in die
+// Datei oder ohne Datei auf stderr. stdout und --output bleiben unverändert.
 // Exit-Code: 1, wenn ein Treffer --fail-on erreicht (Standard error: mindestens
 // ein Fehler; Baseline-Treffer zählen nie), sonst 0; 3 Aufruf- oder Lesefehler.
+// Mit --fix zählen die Treffer, die nach der Korrektur bleiben.
+// Formatieren ohne IDE (#1358): --format-check bzw. --format-write statt der
+// Regeln. Dieselben Dateien wie --check (Ziel, --units, --changed/--diff,
+// Ausschlüsse aus atlas.json), mit --changed-lines nur die geänderten Zeilen.
+// Formatregeln wie „Dokument formatieren“: format.* aus atlas.json über
+// .editorconfig über den Vorgaben (ohne die Einrückung der IDE-Optionen).
+// Geschrieben wird atomar über eine Nachbardatei; Kodierung und Zeilenenden
+// bleiben, außer format.endOfLine verlangt andere. Exit-Codes in
+// Atlas.Common.Rules.FormatOutput.
 
 interface
 
@@ -51,12 +73,20 @@ type
   TLinterShell = class
   public
     class function Run(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--fix (#1352): Sammelkorrektur statt Prüfung; Run ruft sie, sobald --fix angegeben ist.</summary>
+    class function Fix(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>--architecture (#1118): Architekturbericht des Ziels aus --check (sonst des aktuellen Ordners)
     /// als Markdown oder HTML nach der Endung der Datei, als .json der Stand für den Vergleich (#1121). Berichte
     /// vergleichen mit --compare, sonst mit architecture.baseline. Mit --compare steht der Text des Vergleichs auf
     /// stdout (bzw. in --output); Exit-Code 1, wenn eine Abweichung aus --fail-on (sonst architecture.failOn)
     /// vorkommt, sonst 0; bei Fehlern 3.</summary>
     class function Architecture(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--hotspots (#1354): Hotspots des Ziels aus --check (sonst des aktuellen Ordners) samt Methoden und
+    /// Änderungskopplung als Markdown, HTML oder JSON nach der Endung der Datei. Exit-Code 0; 3 ohne
+    /// Versionsverwaltung, mit hotspots.enabled = false und bei Fehlern.</summary>
+    class function Hotspots(const AOptions: TCommandLineOptions): Integer; static;
+    /// <summary>--format-check bzw. --format-write (#1358), siehe Kopf der Unit.</summary>
+    class function Formatting(const AOptions: TCommandLineOptions): Integer; static;
     /// <summary>--clear-cache: löscht alle Index-Caches, die keine laufende Instanz nutzt (#184).</summary>
     class function ClearCache: Integer; static;
   end;
@@ -68,6 +98,7 @@ uses
   System.Classes,
   System.IOUtils,
   System.Diagnostics,
+  System.JSON,
   System.Generics.Collections,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
@@ -98,6 +129,8 @@ uses
   Atlas.Common.Rules.Baseline,
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.ChangedFiles,
+  Atlas.Common.Rules.Catalog,
+  Atlas.Common.Rules.BulkFix,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.Contract,
@@ -115,8 +148,19 @@ uses
   Atlas.Common.Architecture.Report,
   Atlas.Common.Architecture.Snapshot,
   Atlas.Common.Architecture.Comparison,
+  Atlas.Common.Hotspots.Contract,
+  Atlas.Common.Hotspots.Analysis,
+  Atlas.Common.Hotspots.Service,
+  Atlas.Common.Hotspots.Report,
+  Atlas.Common.Diagnostics.CheckProfile,
+  Atlas.Common.Diagnostics.ShutdownLeaks,
+  Atlas.Common.Editing.FormatCheck,
+  Atlas.Common.Rules.FormatOutput,
+  Atlas.Common.Lsp.Formatting,
+  Atlas.Common.Editing.EditorConfig,
   Shell.Platform,
   Shell.VcsChanges,
+  Shell.Hotspots,
   Shell.Bootstrap;
 
 procedure WriteText(const AStream: TStream; const AText: string);
@@ -421,13 +465,75 @@ begin
     Result := ExcludeTrailingPathDelimiter(AConfigRoot);
 end;
 
+/// <summary>Projekt einer geprüften Datei: Package aus APackages, Formulare der Programme, Formulardatei daneben und
+/// mit AGroup Index und Projektdienste (#1112) wie im Server.</summary>
+function CheckProjectOf(const AFileName: string; const APackages: TArray<TPackageSource>;
+  const APrograms: TArray<string>; AGroup: TShellWorkspaceGroup): TCheckProject;
+var
+  mIndexed: TCheckProject;
+begin
+  Result := TFileChecker.PackageOf(APackages, ChangeFileExt(ExtractFileName(AFileName), ''));
+  if Result.Name = '' then
+    Result.AutoCreateForms := TFormAccessBeforeCreateRule.FormsOfProgram(APrograms,
+      ChangeFileExt(ExtractFileName(AFileName), ''));
+  // Formulardatei und Dateien neben der Unit wie im Server (form-resource-missing, #1054).
+  Result.FileName := TPath.GetFullPath(AFileName);
+  if AGroup = nil then
+    Exit;
+  // Index, Nachladen und Projekte der Gruppe auf demselben Weg wie Server und MCP (#1112); gehört die
+  // Datei zu einem geladenen Projekt, gelten dessen Anwendungsart und Formulare.
+  mIndexed := AGroup.RuleProject(Result.FileName);
+  Result.Services := mIndexed.Services;
+  if mIndexed.Application <> TRuleApplicationKind.Unknown then
+  begin
+    Result.Application := mIndexed.Application;
+    Result.Name := mIndexed.Name;
+    Result.AutoCreateForms := mIndexed.AutoCreateForms;
+    Result.ProjectMainSource := mIndexed.ProjectMainSource;
+  end;
+end;
+
+/// <summary>--timings (#1356): Zeitprofil in die Datei (Markdown, mit .json als JSON) oder auf stderr.</summary>
+procedure WriteTimings(const AOptions: TCommandLineOptions; const ATimings: TCheckTimings);
+var
+  mJson: TJSONObject;
+  mText: string;
+  mEncoding: TEncoding;
+begin
+  if TCheckTimings.IsJsonFile(AOptions.TimingsFile) then
+  begin
+    mJson := ATimings.ToJson;
+    try
+      mText := mJson.Format(2);
+    finally
+      mJson.Free;
+    end;
+  end
+  else
+    mText := ATimings.ToMarkdown;
+  if AOptions.TimingsFile = '' then
+  begin
+    WriteError(mText);
+    Exit;
+  end;
+  ForceDirectories(ExtractFileDir(TPath.GetFullPath(AOptions.TimingsFile)));
+  mEncoding := TUTF8Encoding.Create(False);
+  try
+    TFile.WriteAllText(AOptions.TimingsFile, mText, mEncoding);
+  finally
+    mEncoding.Free;
+  end;
+  WriteError(Format('Zeitprofil geschrieben: %s', [AOptions.TimingsFile]));
+end;
+
 const
   /// <summary>Höchstens so lange auf den Index warten; danach mit dem bis dahin aufgebauten prüfen.</summary>
   IndexTimeoutMs = 30 * 60 * 1000;
 
 /// <summary>Arbeitsbereiche mit Symbolindex für --check (#1112), wie im MCP-Modus; wartet auf den Index.
 /// </summary>
-function LoadIndex(const AOptions: TCommandLineOptions; const AConfigRoot: string): TShellWorkspaceGroup;
+function LoadIndex(const AOptions: TCommandLineOptions; const AConfigRoot: string;
+  var ATimings: TCheckTimings): TShellWorkspaceGroup;
 var
   LoggerImpl: TLogger;
   Logger: ILogger;
@@ -476,6 +582,12 @@ begin
       // Anzeige für Menschen auf stderr: Dezimaltrenner des Gebietsschemas.
       WriteError(Format('Symbolindex: %d Units in %.1f s', [Index.UnitCount, Watch.ElapsedMilliseconds / 1000],
         FormatSettings));
+    // Zeitprofil (#1356): Aufbau und Speicher des Index.
+    ATimings.IndexMs := Watch.ElapsedMilliseconds;
+    ATimings.IndexUnits := Index.UnitCount;
+    ATimings.ProjectBytes := Index.MemoryParts.ProjectBytes;
+    ATimings.LibraryBytes := Index.MemoryParts.LibraryBytes;
+    ATimings.UsageBytes := Index.MemoryParts.UsageBytes;
   except
     Result.Free;
     raise;
@@ -568,6 +680,10 @@ begin
         Request.Title := ExtractFileName(ExcludeTrailingPathDelimiter(TPath.GetFullPath(Target)))
       else
         Request.Title := ChangeFileExt(ExtractFileName(Target), '');
+      // Angleichung (#1367) nur an architecture.baseline; ohne PreviousFile liest und schreibt der Lauf keinen
+      // zuletzt berechneten Stand, damit CI-Läufe reproduzierbar bleiben.
+      Request.Baseline := TArchitectureComparer.ResolvePath(ConfigRoot, Settings.ArchitectureBaseline);
+      Request.PreviousFile := '';
       Overview := Service.Overview(Request);
     finally
       Service.Free;
@@ -623,6 +739,266 @@ begin
   end;
 end;
 
+class function TLinterShell.Hotspots(const AOptions: TCommandLineOptions): Integer;
+var
+  mTarget, mConfigRoot, mRoot, mFileName, mText, mWarning, mExtension, mError: string;
+  mSettings: TServerSettings;
+  mSources: TCheckSourceFunc;
+  mSource: TCheckSource;
+  mIndex: ISymbolIndex;
+  mService: THotspotService;
+  mRequest: THotspotRequest;
+  mResult: THotspotResult;
+  mFormat: TFileFormat;
+  mVcs: IHotspotVcs;
+begin
+  for mWarning in AOptions.Warnings do
+    WriteError(mWarning);
+  mExtension := LowerCase(ExtractFileExt(AOptions.HotspotsFile));
+  if (mExtension <> '.md') and (mExtension <> '.html') and (mExtension <> '.htm') and (mExtension <> '.json') then
+  begin
+    WriteError('--hotspots erwartet eine .md-, .html- oder .json-Datei');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  mTarget := AOptions.CheckTarget;
+  if mTarget = '' then
+    mTarget := GetCurrentDir;
+  if not (TFile.Exists(mTarget) or TDirectory.Exists(mTarget)) then
+  begin
+    WriteError(Format('Ziel "%s" nicht gefunden', [mTarget]));
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  try
+    if TDirectory.Exists(mTarget) then
+      mConfigRoot := TPath.GetFullPath(mTarget)
+    else
+      mConfigRoot := ExtractFileDir(TPath.GetFullPath(mTarget));
+    mSettings := LoadSettings(mConfigRoot);
+    if not mSettings.HotspotsEnabled then
+    begin
+      WriteError('Hotspots sind ausgeschaltet (hotspots.enabled in settings.json)');
+      Exit(TFindingsOutput.ExitFailure);
+    end;
+    if not TShellHotspotVcs.Detect(mConfigRoot, mSettings, mVcs, mError) then
+    begin
+      WriteError('Hotspots brauchen eine Versionsverwaltung: ' + mError);
+      Exit(TFindingsOutput.ExitFailure);
+    end;
+    TFileEncodingDefaults.SetFolder(mConfigRoot, mSettings.DefaultEncoding);
+    // Dieselben Dateien wie --check; der Index enthält nur das Projekt (keine Bibliothek).
+    mIndex := TSymbolIndex.Create;
+    for mFileName in CollectFiles(mTarget, mSettings, mRoot, mSources) do
+      try
+        mText := TFileEncoding.LoadFromFile(mFileName, mFormat);
+        mSource := mSources(mFileName);
+        mIndex.AddUnit(TIndexExtractor.ExtractText(mText, mFileName, mSource.Defines, mSource.ResolveInclude));
+      except
+        on E: Exception do
+          WriteError(Format('%s: %s', [mFileName, E.Message]));
+      end;
+    mService := THotspotService.Create(mIndex,
+      function(const AFileName: string; out AText: string): Boolean
+      var
+        mTextFormat: TFileFormat;
+      begin
+        try
+          AText := TFileEncoding.LoadFromFile(AFileName, mTextFormat);
+          Result := True;
+        except
+          AText := '';
+          Result := False;
+        end;
+      end);
+    try
+      mRequest := THotspotRequest.FromSettings(mSettings);
+      // Der Bericht zeigt beide Tabellen: Units und die Methoden der obersten Kandidaten.
+      mRequest.Level := THotspotLevel.Methods;
+      mRequest.Root := mRoot;
+      if TDirectory.Exists(mTarget) then
+        mRequest.Title := ExtractFileName(ExcludeTrailingPathDelimiter(TPath.GetFullPath(mTarget)))
+      else
+        mRequest.Title := ChangeFileExt(ExtractFileName(mTarget), '');
+      mResult := mService.Analyze(mRequest, mVcs);
+    finally
+      mService.Free;
+    end;
+    ForceDirectories(ExtractFileDir(TPath.GetFullPath(AOptions.HotspotsFile)));
+    TFile.WriteAllBytes(AOptions.HotspotsFile, TEncoding.UTF8.GetBytes(THotspotReport.ForFile(mResult,
+      AOptions.HotspotsFile)));
+    WriteError(Format('Hotspot-Bericht %s: %s, %d Units, %d Methoden, %d Kopplungen', [AOptions.HotspotsFile,
+      THotspotReport.RangeText(mResult), Length(mResult.Units), Length(mResult.Methods), Length(mResult.Coupling)]));
+    Result := TFindingsOutput.ExitClean;
+  except
+    on E: Exception do
+    begin
+      WriteError(E.Message);
+      Result := TFindingsOutput.ExitFailure;
+    end;
+  end;
+end;
+
+/// <summary>Schreibt AText atomar (#1358): erst eine Nachbardatei, dann in einem Schritt ersetzen. Kodierung aus
+/// AFormat, Zeilenumbrüche wie in AText.</summary>
+procedure WriteFormatted(const AFileName, AText: string; const AFormat: TFileFormat);
+var
+  mTemp: string;
+begin
+  if TFileEncoding.IsBinaryFormFile(AFileName) then
+    raise EFileEncodingError.Create('Binär gespeichertes Formular wird nicht geändert');
+  mTemp := AFileName + '.atlas-format.tmp';
+  TFile.WriteAllBytes(mTemp, TFileEncoding.EncodeKeepingLineBreaks(AText, AFormat));
+  if not TShellPlatform.MoveReplacing(mTemp, AFileName) then
+  begin
+    if TFile.Exists(mTemp) then
+      TFile.Delete(mTemp);
+    raise EInOutError.Create('Datei nicht ersetzbar (gesperrt oder schreibgeschützt)');
+  end;
+end;
+
+/// <summary>Geänderte Zeilen von AFileName als Bereiche des Formatierers; False ohne geänderte Zeile.</summary>
+function ChangedSpans(AGit: TVcsChanges; const AFileName: string; out ASpans: TArray<TFormatLineSpan>): Boolean;
+var
+  mLines: TChangedLines;
+  mSpan: TLineSpan;
+begin
+  ASpans := nil;
+  Result := TChangedFiles.LinesOf(AGit.Lines, AGit.RepoRoot, AFileName, mLines);
+  if not Result then
+    Exit;
+  for mSpan in mLines.Spans do
+    ASpans := ASpans + [TFormatLineSpan.Create(mSpan.First, mSpan.Last)];
+  Result := Length(ASpans) > 0;
+end;
+
+class function TLinterShell.Formatting(const AOptions: TCommandLineOptions): Integer;
+var
+  mWarning, mConfigRoot, mRoot, mFileName, mRelativePath, mText, mProblem: string;
+  mSettings: TServerSettings;
+  mFilter: TFindingFilter;
+  mSources: TCheckSourceFunc;
+  mCandidates: TArray<string>;
+  mFiles: TArray<TFormattedFile>;
+  mItem: TFormattedFile;
+  mFileFormat: TFileFormat;
+  mStyle: TFormatStyle;
+  mScope: TFormatScope;
+  mSpans: TArray<TFormatLineSpan>;
+  mGit: TVcsChanges;
+  mProcess: ICompilerProcess;
+  mKind: TFormatOutputKind;
+  mReadEditorConfig: TEditorConfigReadFile;
+begin
+  for mWarning in AOptions.Warnings do
+    WriteError(mWarning);
+  if AOptions.FormatCheck and AOptions.FormatWrite then
+  begin
+    WriteError('--format-check und --format-write schließen sich aus');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  if AOptions.Metrics or AOptions.Todos or AOptions.SuppressionStats or AOptions.UpdateBaseline then
+  begin
+    WriteError('--format-check und --format-write gehen nicht mit --metrics, --todos, --suppression-stats ' +
+      'oder --update-baseline');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  if AOptions.FormatDiff then
+    mKind := TFormatOutputKind.Diff
+  else if AOptions.CheckFormat = TFindingsFormat.Json then
+    mKind := TFormatOutputKind.Json
+  else if AOptions.CheckFormat = TFindingsFormat.Sarif then
+  begin
+    WriteError('--format-check und --format-write gibt es mit --format text, json oder diff');
+    Exit(TFindingsOutput.ExitFailure);
+  end
+  else
+    mKind := TFormatOutputKind.Text;
+  if not (TFile.Exists(AOptions.CheckTarget) or TDirectory.Exists(AOptions.CheckTarget)) then
+  begin
+    WriteError(Format('Ziel "%s" nicht gefunden', [AOptions.CheckTarget]));
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  mReadEditorConfig :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := FileExists(AFileName);
+      if Result then
+        AText := TFileEncoding.LoadText(AFileName);
+    end;
+  mGit := nil;
+  try
+    try
+      if TDirectory.Exists(AOptions.CheckTarget) then
+        mConfigRoot := TPath.GetFullPath(AOptions.CheckTarget)
+      else
+        mConfigRoot := ExtractFileDir(TPath.GetFullPath(AOptions.CheckTarget));
+      mSettings := LoadSettings(mConfigRoot);
+      TFileEncodingDefaults.SetFolder(mConfigRoot, mSettings.DefaultEncoding);
+      mFilter := Default(TFindingFilter);
+      mFilter.Units := AOptions.UnitFilter;
+      mCandidates := CollectFiles(AOptions.CheckTarget, mSettings, mRoot, mSources);
+      if AOptions.ChangedRef <> '' then
+      begin
+        // Über eine Variable halten: Detect gibt einen Probelauf frei, bevor es den nächsten startet.
+        mProcess := TProcessRunner.Create;
+        mGit := TVcsChanges.Detect(mProcess, mConfigRoot, mSettings.VcsProvider, mSettings.VcsGitPath,
+          mSettings.VcsSvnPath, mSettings.VcsTimeoutSeconds);
+        mCandidates := SelectChanged(AOptions, mCandidates, mGit);
+      end;
+      mFiles := nil;
+      for mFileName in mCandidates do
+      begin
+        mRelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(mRoot), mFileName);
+        if not mFilter.AcceptsFile(mRelativePath) or mSettings.IsExcluded(mRelativePath) then
+          Continue;
+        mScope := TFormatScope.All;
+        if (mGit <> nil) and AOptions.ChangedLines then
+        begin
+          // Nur über DFM oder Include-Datei ausgewählt: keine eigene geänderte Zeile, nichts zu formatieren.
+          if not ChangedSpans(mGit, mFileName, mSpans) then
+            Continue;
+          mScope := TFormatScope.Lines(mSpans);
+        end;
+        try
+          mText := TFileEncoding.LoadFromFile(mFileName, mFileFormat);
+        except
+          on E: Exception do
+          begin
+            WriteError(Format('%s: %s', [mFileName, E.Message]));
+            Continue;
+          end;
+        end;
+        mStyle := TLspFormatting.Resolve(nil, mFileName, mSettings.Formatting, mReadEditorConfig);
+        mItem := TFormattedFile.Create(mRelativePath, TFormatCheck.Run(mText, mStyle, mScope,
+          mSources(mFileName).Options));
+        if AOptions.FormatWrite and mItem.Outcome.Changed then
+          try
+            WriteFormatted(mFileName, mItem.Outcome.Formatted, mFileFormat);
+            mItem.Written := True;
+          except
+            on E: Exception do
+              mItem.Error := E.Message;
+          end;
+        mFiles := mFiles + [mItem];
+      end;
+    finally
+      mGit.Free;
+    end;
+    WriteOutput(AOptions, TFormatOutput.Render(mFiles, mKind, AOptions.FormatWrite));
+    // Beim Diff gehören Syntaxfehler und instabile Dateien nicht in den Diff.
+    if mKind = TFormatOutputKind.Diff then
+      for mProblem in TFormatOutput.Problems(mFiles) do
+        WriteError(mProblem);
+    WriteError(TFormatOutput.Summary(mFiles, AOptions.FormatWrite));
+    Result := TFormatOutput.ExitCode(mFiles, AOptions.FormatWrite);
+  except
+    on E: Exception do
+    begin
+      WriteError(Format('%s: %s', [E.ClassName, E.Message]));
+      Result := TFindingsOutput.ExitFailure;
+    end;
+  end;
+end;
+
 class function TLinterShell.ClearCache: Integer;
 begin
   try
@@ -672,12 +1048,25 @@ var
   TodoEntries: TArray<TTodoEntry>;
   Packages: TArray<TPackageSource>;
   Programs: TArray<string>;
-  Project, Indexed: TCheckProject;
+  Project: TCheckProject;
   CheckSources: TCheckSourceFunc;
   Group: TShellWorkspaceGroup;
+  mTimings: TCheckTimings;
+  mProfiler: TCheckProfiler;
+  mRunWatch, mUnitWatch: TStopwatch;
+  mPrevious: TCheckProfiler;
 begin
+  if AOptions.FixRules <> nil then
+    Exit(Fix(AOptions));
+  if AOptions.FormatCheck or AOptions.FormatWrite then
+    Exit(Formatting(AOptions));
   for Warning in AOptions.Warnings do
     WriteError(Warning);
+  if AOptions.FormatDiff then
+  begin
+    WriteError('--format diff gibt es nur mit --format-check oder --format-write');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
   if AOptions.Metrics and (AOptions.CheckFormat = TFindingsFormat.Sarif) then
   begin
     WriteError('--metrics gibt es nur mit --format text (Markdown) oder json');
@@ -760,12 +1149,21 @@ begin
     Todos := nil;
     Git := nil;
     Group := nil;
+    mTimings := Default(TCheckTimings);
+    mTimings.IndexMs := -1;
+    mProfiler := nil;
     Stats := TSuppressionStats.Create;
     CheckedPaths := TList<string>.Create;
     try
       // Metriken und TODOs brauchen keinen Index.
       if not (AOptions.NoIndex or AOptions.Metrics or AOptions.Todos) then
-        Group := LoadIndex(AOptions, ConfigRoot);
+        Group := LoadIndex(AOptions, ConfigRoot, mTimings);
+      if AOptions.Timings then
+      begin
+        mProfiler := TCheckProfiler.Create;
+        mProfiler.BeginRun(Now);
+      end;
+      mRunWatch := TStopwatch.StartNew;
       Candidates := CollectFiles(AOptions.CheckTarget, Settings, Root, CheckSources);
       Packages := ReadPackages(Candidates);
       Programs := ReadPrograms(Candidates);
@@ -808,28 +1206,19 @@ begin
             [rfReplaceAll]), TodoEntries)], TTodoFilter.Default);
           Continue;
         end;
-        Project := TFileChecker.PackageOf(Packages, ChangeFileExt(ExtractFileName(FileName), ''));
-        if Project.Name = '' then
-          Project.AutoCreateForms := TFormAccessBeforeCreateRule.FormsOfProgram(Programs,
-            ChangeFileExt(ExtractFileName(FileName), ''));
-        // Formulardatei und Dateien neben der Unit wie im Server (form-resource-missing, #1054).
-        Project.FileName := TPath.GetFullPath(FileName);
-        if Group <> nil then
-        begin
-          // Index, Nachladen und Projekte der Gruppe auf demselben Weg wie Server und MCP (#1112); gehört die
-          // Datei zu einem geladenen Projekt, gelten dessen Anwendungsart und Formulare.
-          Indexed := Group.RuleProject(Project.FileName);
-          Project.Services := Indexed.Services;
-          if Indexed.Application <> TRuleApplicationKind.Unknown then
-          begin
-            Project.Application := Indexed.Application;
-            Project.Name := Indexed.Name;
-            Project.AutoCreateForms := Indexed.AutoCreateForms;
-            Project.ProjectMainSource := Indexed.ProjectMainSource;
-          end;
+        Project := CheckProjectOf(FileName, Packages, Programs, Group);
+        // Zeitprofil (#1356): Die Engine meldet ihre Regelzeiten an den angehängten Profiler.
+        mPrevious := TCheckProfiler.Attach(mProfiler);
+        mUnitWatch := TStopwatch.StartNew;
+        try
+          Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, Project, CheckSources(FileName),
+            Scopes);
+        finally
+          TCheckProfiler.Attach(mPrevious);
+          if mProfiler <> nil then
+            mProfiler.AddUnit(FileName, TCheckProfiler.TicksToMicroseconds(mUnitWatch.ElapsedTicks,
+              TStopwatch.Frequency));
         end;
-        Findings := TFileChecker.CheckText(Rules, Settings, RelativePath, Text, Project, CheckSources(FileName),
-          Scopes);
         if AOptions.SuppressionStats then
           Stats.Add(Text, Findings);
         if AOptions.UpdateBaseline then
@@ -911,7 +1300,15 @@ begin
       else
         Output := TFindingsOutput.Render(Files, AOptions.CheckFormat, Descriptors,
           SourceRootOf(AOptions, ConfigRoot));
+      if mProfiler <> nil then
+      begin
+        mProfiler.FinishRun(mRunWatch.ElapsedMilliseconds);
+        mTimings.Profile := mProfiler.Snapshot(TCheckRunProfile.cTop);
+        mTimings.TotalBytes := TShutdownLeaks.AllocatedBytes;
+        WriteTimings(AOptions, mTimings);
+      end;
     finally
+      mProfiler.Free;
       if Group <> nil then
         Group.Stop;
       Group.Free;
@@ -924,6 +1321,203 @@ begin
       Result := TFindingsOutput.ExitClean
     else
       Result := TFindingsOutput.ExitCode(Files, AOptions.FailOn);
+  except
+    on E: Exception do
+    begin
+      WriteError(Format('%s: %s', [E.ClassName, E.Message]));
+      Result := TFindingsOutput.ExitFailure;
+    end;
+  end;
+end;
+
+/// <summary>Treffer einer Datei für die Sammelkorrektur und den Exit-Code: Regeln, Filter, Baseline (deren Treffer
+/// bleiben) und mit --changed-lines nur Treffer in geänderten Zeilen des Ausgangstexts. Eigene Routine, damit die
+/// anonyme Methode nur ihre Parameter einfängt.</summary>
+function FixCheckOf(const ARules: TArray<IRule>; const ASettings: TServerSettings; const ARelativePath,
+  AFileName: string; const AProject: TCheckProject; const ASource: TCheckSource; const ABaseline: IRuleBaseline;
+  const AFilter: TFindingFilter; AGit: TVcsChanges; AChangedLines: Boolean): TBulkFixCheck;
+begin
+  Result :=
+    function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>
+    var
+      mScopes: TFindingScopes;
+      mFindings: TArray<TRuleFinding>;
+      mFinding: TRuleFinding;
+      mChanged: TChangedLines;
+    begin
+      mFindings := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText, AProject, ASource, mScopes);
+      if ABaseline <> nil then
+        mFindings := NewFindings(ABaseline.Classify(ARelativePath, AText, mScopes, mFindings));
+      mFindings := AFilter.Apply(mFindings);
+      if (AGit = nil) or not AChangedLines then
+        Exit(mFindings);
+      Result := nil;
+      if not TChangedFiles.LinesOf(AGit.Lines, AGit.RepoRoot, AFileName, mChanged) then
+        Exit;
+      for mFinding in mFindings do
+        if mChanged.Contains(ALines.Original(mFinding.Range.StartPos.Line)) then
+          Result := Result + [mFinding];
+    end;
+end;
+
+/// <summary>Schreibt in der Kodierung und mit den Zeilenenden, mit denen die Datei gelesen wurde (#121).</summary>
+function FixWriterOf(const AFormats: TDictionary<string, TFileFormat>): TBulkFixWrite;
+begin
+  Result :=
+    procedure(const AFileName, AText: string)
+    begin
+      TFileEncoding.SaveToFile(AFileName, AText, AFormats[AFileName]);
+    end;
+end;
+
+class function TLinterShell.Fix(const AOptions: TCommandLineOptions): Integer;
+var
+  mRoot, mConfigRoot, mFileName, mRelativePath, mText, mWarning, mBaselinePath, mOutput, mChangedNames: string;
+  mSettings: TServerSettings;
+  mFilter: TFindingFilter;
+  mAllRules, mFixRules: TArray<IRule>;
+  mOptions: TBulkFixOptions;
+  mBaseline: IRuleBaseline;
+  mFormat: TFileFormat;
+  mFormats: TDictionary<string, TFileFormat>;
+  mRelative: TDictionary<string, string>;
+  mGit: TVcsChanges;
+  mProcess: ICompilerProcess;
+  mGroup: TShellWorkspaceGroup;
+  mCandidates, mPrograms: TArray<string>;
+  mPackages: TArray<TPackageSource>;
+  mSources: TCheckSourceFunc;
+  mProject: TCheckProject;
+  mSource: TCheckSource;
+  mResult: TBulkFixFile;
+  mResults: TArray<TBulkFixFile>;
+  mRemaining: TArray<TCheckedFile>;
+  mChecked: TCheckedFile;
+  mRemainingCheck: TBulkFixCheck;
+  mTimings: TCheckTimings;
+begin
+  for mWarning in AOptions.Warnings do
+    WriteError(mWarning);
+  if AOptions.Metrics or AOptions.Todos or AOptions.SuppressionStats or AOptions.UpdateBaseline then
+  begin
+    WriteError('--fix verträgt sich nicht mit --metrics, --todos, --suppression-stats und --update-baseline');
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  if not (TFile.Exists(AOptions.CheckTarget) or TDirectory.Exists(AOptions.CheckTarget)) then
+  begin
+    WriteError(Format('Ziel "%s" nicht gefunden', [AOptions.CheckTarget]));
+    Exit(TFindingsOutput.ExitFailure);
+  end;
+  try
+    if TDirectory.Exists(AOptions.CheckTarget) then
+      mConfigRoot := TPath.GetFullPath(AOptions.CheckTarget)
+    else
+      mConfigRoot := ExtractFileDir(TPath.GetFullPath(AOptions.CheckTarget));
+    mSettings := LoadSettings(mConfigRoot);
+    TFileEncodingDefaults.SetFolder(mConfigRoot, mSettings.DefaultEncoding);
+    if AOptions.Profile <> '' then
+      mSettings.Profile := AOptions.Profile
+    else if mSettings.CliProfile <> '' then
+      mSettings.Profile := mSettings.CliProfile;
+    mFilter := Default(TFindingFilter);
+    mFilter.Rules := AOptions.RuleFilter;
+    mFilter.Units := AOptions.UnitFilter;
+    mFilter.MinSeverity := AOptions.MinSeverity;
+    mAllRules := BuiltinRules;
+    mFixRules := TBulkFix.RulesFor(mAllRules, AOptions.FixRules);
+    mOptions := TBulkFixOptions.Create(AOptions.FixRules, mSettings.FixMinConfidence, TRuleCatalog.Shared.Entries);
+    // Baseline (#97): Ihre Treffer bleiben unberührt.
+    mBaselinePath := AOptions.BaselineFile;
+    if mBaselinePath = '' then
+      mBaselinePath := ExistingOrLegacyFile(mConfigRoot, BaselineFileName, LegacyBaselineFileName);
+    if TFile.Exists(mBaselinePath) then
+      mBaseline := TRuleBaseline.FromJson(TFileEncoding.LoadFromFile(mBaselinePath, mFormat))
+    else if AOptions.BaselineFile <> '' then
+    begin
+      WriteError(Format('Baseline "%s" nicht gefunden', [mBaselinePath]));
+      Exit(TFindingsOutput.ExitFailure);
+    end;
+    WriteError(Format('Sammelkorrektur: %s (Konfidenz ab %s)', [string.Join(', ', AOptions.FixRules),
+      TBulkFix.ConfidenceText(mOptions.MinConfidence)]));
+    mResults := nil;
+    mRemaining := nil;
+    mGit := nil;
+    mGroup := nil;
+    mFormats := TDictionary<string, TFileFormat>.Create;
+    mRelative := TDictionary<string, string>.Create;
+    try
+      // Die Sammelkorrektur misst nicht (--timings gilt nur für die Prüfung).
+      mTimings := Default(TCheckTimings);
+      if not AOptions.NoIndex then
+        mGroup := LoadIndex(AOptions, mConfigRoot, mTimings);
+      mCandidates := CollectFiles(AOptions.CheckTarget, mSettings, mRoot, mSources);
+      mPackages := ReadPackages(mCandidates);
+      mPrograms := ReadPrograms(mCandidates);
+      if AOptions.ChangedRef <> '' then
+      begin
+        mProcess := TProcessRunner.Create;
+        mGit := TVcsChanges.Detect(mProcess, mConfigRoot, mSettings.VcsProvider, mSettings.VcsGitPath,
+          mSettings.VcsSvnPath, mSettings.VcsTimeoutSeconds);
+        mCandidates := SelectChanged(AOptions, mCandidates, mGit);
+      end;
+      for mFileName in mCandidates do
+      begin
+        mRelativePath := ExtractRelativePath(IncludeTrailingPathDelimiter(mRoot), mFileName);
+        if not mFilter.AcceptsFile(mRelativePath) then
+          Continue;
+        try
+          mText := TFileEncoding.LoadFromFile(mFileName, mFormat);
+        except
+          on E: Exception do
+          begin
+            WriteError(Format('%s: %s', [mFileName, E.Message]));
+            Continue;
+          end;
+        end;
+        mProject := CheckProjectOf(mFileName, mPackages, mPrograms, mGroup);
+        mSource := mSources(mFileName);
+        mResult := TBulkFix.Run(mFileName, mText, mOptions, FixCheckOf(mFixRules, mSettings, mRelativePath, mFileName,
+          mProject, mSource, mBaseline, mFilter, mGit, AOptions.ChangedLines), TBulkFix.SyntaxErrorsWith(mSource));
+        mResults := mResults + [mResult];
+        mFormats.AddOrSetValue(mFileName, mFormat);
+        mRelative.AddOrSetValue(mFileName, StringReplace(mRelativePath, '\', '/', [rfReplaceAll]));
+        // Für den Exit-Code zählen alle Treffer, die nach der Korrektur bleiben.
+        mChecked := Default(TCheckedFile);
+        mChecked.Path := mRelativePath;
+        mChecked.FullPath := TPath.GetFullPath(mFileName);
+        mRemainingCheck := FixCheckOf(mAllRules, mSettings, mRelativePath, mFileName, mProject, mSource, mBaseline,
+          mFilter, mGit, AOptions.ChangedLines);
+        mChecked.Findings := mRemainingCheck(mResult.NewText, mResult.Lines);
+        mRemaining := mRemaining + [mChecked];
+      end;
+      mOutput := '';
+      mChangedNames := '';
+      for mResult in mResults do
+        if mResult.Changed then
+        begin
+          mOutput := mOutput + TBulkFix.Diff(mRelative[mResult.FileName], mResult);
+          if mChangedNames <> '' then
+            mChangedNames := mChangedNames + ', ';
+          mChangedNames := mChangedNames + mRelative[mResult.FileName];
+        end;
+      if AOptions.FixDryRun then
+        WriteOutput(AOptions, mOutput)
+      else
+        TBulkFix.WriteAll(mResults, FixWriterOf(mFormats));
+      WriteError(TBulkFix.Summary(mResults, AOptions.FixDryRun, sLineBreak));
+      if (mChangedNames <> '') and AOptions.FixDryRun then
+        WriteError('Betroffene Dateien: ' + mChangedNames)
+      else if mChangedNames <> '' then
+        WriteError('Geänderte Dateien: ' + mChangedNames);
+    finally
+      if mGroup <> nil then
+        mGroup.Stop;
+      mGroup.Free;
+      mGit.Free;
+      mRelative.Free;
+      mFormats.Free;
+    end;
+    Result := TFindingsOutput.ExitCode(mRemaining, AOptions.FailOn);
   except
     on E: Exception do
     begin

@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Lsp.Architecture.Tests;
 
 // Tests der Anfrage atlas/architecture und des Befehls
-// atlas.architecture.saveReport (#1118), Stand und Vergleich (#1121).
+// atlas.architecture.saveReport (#1118), Stand und Vergleich (#1121),
+// Feinheit "resolution" für einen Aufruf (#1366).
 
 interface
 
@@ -32,6 +33,10 @@ type
     procedure CommandAnswersLikeRequest;
     [Test]
     procedure SavesStateAndCompares;
+    [Test]
+    procedure ResolutionOverridesSettingForOneCall;
+    [Test]
+    procedure RejectsInvalidResolution;
   end;
 
 implementation
@@ -55,6 +60,8 @@ var
   /// <summary>architecture.baseline und Projektordner der Anfrage (#1121).</summary>
   BaselineSetting: string;
   ProjectRoot: string = 'C:\Projekt';
+  /// <summary>architecture.grouping.resolution der Einstellungen (#1366).</summary>
+  ResolutionSetting: Double = 1;
 
 function NewIndex: ISymbolIndex;
 begin
@@ -86,6 +93,7 @@ begin
       ASettings := TServerSettings.Default;
       ASettings.ArchitectureEnabled := Enabled;
       ASettings.ArchitectureBaseline := BaselineSetting;
+      ASettings.ArchitectureGroupingResolution := ResolutionSetting;
       ARequest := TArchitectureRequest.FromSettings(ASettings);
       ARequest.Title := 'Beispiel';
       ARequest.Root := ProjectRoot;
@@ -412,6 +420,111 @@ begin
     Later.Free;
     Lsp.Free;
     Service.Free;
+  end;
+end;
+
+function ResolutionIn(AAnswer: TJSONObject): Double;
+begin
+  Result := AAnswer.GetValue<TJSONObject>('data').GetValue<TJSONObject>('grouping').GetValue<Double>('resolution');
+end;
+
+procedure TLspArchitectureTests.ResolutionOverridesSettingForOneCall;
+var
+  mService: TArchitectureService;
+  mLsp: TLspArchitecture;
+  mAnswer: TJSONObject;
+  mValue: Double;
+  mFolder, mTarget: string;
+  mArguments: TJSONArray;
+  mOptions: TJSONObject;
+begin
+  Enabled := True;
+  ResolutionSetting := 1.5;
+  mService := NewService(NewIndex);
+  mLsp := NewLsp(mService);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-feinheit-' + IntToStr(Random(1000000)));
+  try
+    mAnswer := Ask(mLsp, '{}');
+    try
+      mValue := ResolutionIn(mAnswer);
+      Assert.AreEqual(Double(1.5), mValue, 1E-9, 'Einstellung');
+    finally
+      mAnswer.Free;
+    end;
+    mAnswer := Ask(mLsp, '{"resolution": 2}');
+    try
+      mValue := ResolutionIn(mAnswer);
+      Assert.AreEqual(Double(2), mValue, 1E-9, 'Anfrage');
+    finally
+      mAnswer.Free;
+    end;
+    // Die Einstellung bleibt; ein anderer Wert rechnet neu.
+    mAnswer := Ask(mLsp, '{}');
+    try
+      mValue := ResolutionIn(mAnswer);
+      Assert.AreEqual(Double(1.5), mValue, 1E-9, 'wieder die Einstellung');
+    finally
+      mAnswer.Free;
+    end;
+    Assert.AreEqual(3, mService.Computations);
+    mAnswer := Ask(mLsp, '{"format": "markdown", "resolution": 2}');
+    try
+      // Ohne γ verglichen: Der JSON-Leser unter FPC (Testlauf in der Cloud) liest Zeichen außerhalb Latin-1 falsch.
+      Assert.Contains(mAnswer.GetValue<string>('text'), ', Feinheit ');
+      Assert.Contains(mAnswer.GetValue<string>('text'), ' = 2,0');
+    finally
+      mAnswer.Free;
+    end;
+    // Bericht und Stand nehmen "resolution" aus den Optionen mit.
+    mTarget := TPath.Combine(mFolder, 'stand.json');
+    mArguments := TJSONArray.Create;
+    try
+      mArguments.Add('');
+      mArguments.Add(mTarget);
+      mOptions := TJSONObject.Create;
+      mOptions.AddPair('resolution', TJSONNumber.Create(3));
+      mArguments.AddElement(mOptions);
+      mLsp.SaveReport(mArguments).Free;
+    finally
+      mArguments.Free;
+    end;
+    Assert.Contains(TFile.ReadAllText(mTarget, TEncoding.UTF8), '"grouping": {"resolution": 3}');
+  finally
+    ResolutionSetting := 1;
+    if TDirectory.Exists(mFolder) then
+      TDirectory.Delete(mFolder, True);
+    mLsp.Free;
+    mService.Free;
+  end;
+end;
+
+procedure TLspArchitectureTests.RejectsInvalidResolution;
+var
+  mService: TArchitectureService;
+  mLsp: TLspArchitecture;
+begin
+  Enabled := True;
+  mService := NewService(NewIndex);
+  mLsp := NewLsp(mService);
+  try
+    Assert.WillRaise(
+      procedure
+      begin
+        Ask(mLsp, '{"resolution": 9}').Free;
+      end, EJsonRpcError);
+    Assert.WillRaise(
+      procedure
+      begin
+        Ask(mLsp, '{"resolution": 0.1}').Free;
+      end, EJsonRpcError);
+    Assert.WillRaise(
+      procedure
+      begin
+        Ask(mLsp, '{"resolution": "fein"}').Free;
+      end, EJsonRpcError);
+  finally
+    mLsp.Free;
+    mService.Free;
   end;
 end;
 

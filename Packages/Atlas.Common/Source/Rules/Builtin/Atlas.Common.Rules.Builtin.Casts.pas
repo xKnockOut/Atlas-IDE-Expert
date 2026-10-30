@@ -414,8 +414,9 @@ var
   begin
     mReplaced := ReplacedNode(ANode);
     mRange := TTextRange.Create(mReplaced.StartPos, mReplaced.EndPos);
+    // Sicher (#1352): Der Ausdruck hat denselben Typ wie vorher, auch in der Sammelkorrektur.
     AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, TRuleConfidence.High,
-      [TRuleFix.Create('Umwandlung entfernen', [TTextEdit.Create(mRange, mScope.Text(ASource))])]);
+      [TRuleFix.Create('Umwandlung entfernen', [TTextEdit.Create(mRange, mScope.Text(ASource))], True)]);
   end;
 
   /// <summary>Deklariert eine Klasse der Kette außer TObject ein eigenes Free?</summary>

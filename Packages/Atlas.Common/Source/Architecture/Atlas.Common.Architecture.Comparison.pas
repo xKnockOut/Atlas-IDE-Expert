@@ -15,7 +15,8 @@
 // - neue und entfernte Units.
 // Teilsysteme werden nicht über die Nummer zugeordnet, sondern über die
 // größte Überschneidung ihrer Units (bei Gleichstand gewinnt derselbe Name),
-// je ein altes zu höchstens einem neuen; übrige mit gleichem Namen danach.
+// je ein altes zu höchstens einem neuen; übrige mit gleichem Namen danach
+// (TSubsystemMatcher im Modus Überschneidung, #1367).
 // Eine Unit wechselt, wenn ihr neues Teilsystem einem anderen alten zugeordnet
 // ist als dem, in dem sie stand, oder keinem.
 // AddedEdges/DroppedEdges enthalten alle geänderten uses-Kanten für die Karte
@@ -23,7 +24,7 @@
 //
 // JSON (Json, in der Antwort von atlas.architecture unter "comparison" und in
 // den Daten des HTML-Berichts):
-//   {"baseline": {"title": "Projekt", "units": 12, "edges": 30},
+//   {"baseline": {"title": "Projekt", "units": 12, "edges": 30, "resolution": 1}, "resolution": 1,
 //    "kinds": ["newCycle"], "failOn": ["newCycle"], "failed": ["newCycle"],
 //    "newCycles": [{"interfaceOnly": false, "units": ["A", "B"]}], "removedCycles": [],
 //    "newCrossLinks": [{"source": "A", "target": "C", "section": "implementation",
@@ -34,6 +35,9 @@
 //    "newUnits": ["F"], "removedUnits": [],
 //    "addedEdges": [["A", "B", "i"]], "droppedEdges": [["B", "C", "m"]]}
 // "from"/"to": Teilsystem im neuen Stand (neue Kanten) bzw. im alten (entfernte).
+// Gruppierung (#1366): "baseline" nennt die Feinheit γ des gespeicherten Stands ("resolution"), "resolution"
+// die des aktuellen. Weichen sie ab, nennen Text, Markdown und HTML-Bericht das als Hinweis: Teilsystemwechsel
+// können dann allein daher kommen.
 
 interface
 
@@ -41,7 +45,8 @@ interface
 
 uses
   Atlas.Common.Architecture.Overview,
-  Atlas.Common.Architecture.Snapshot;
+  Atlas.Common.Architecture.Snapshot,
+  Atlas.Common.Architecture.Matching;
 
 type
   TArchitectureFailKind = (NewCycle, NewCrossLink, SubsystemChange, CentralGrowth);
@@ -74,16 +79,17 @@ type
     After: Integer;
   end;
 
-  /// <summary>Neues Teilsystem und das alte, dem es zugeordnet ist ('' = keinem).</summary>
-  TComparisonMatch = record
-    NewName: string;
-    OldName: string;
-  end;
+  /// <summary>Neues Teilsystem und das alte, dem es zugeordnet ist ('' = keinem; #1367: dieselbe Zuordnung wie
+  /// die Angleichung, Atlas.Common.Architecture.Matching).</summary>
+  TComparisonMatch = TSubsystemMatch;
 
   TArchitectureComparison = record
     BaselineTitle: string;
     BaselineUnits: Integer;
     BaselineEdges: Integer;
+    /// <summary>Gruppierung des gespeicherten bzw. des aktuellen Stands (#1366).</summary>
+    BaselineGrouping: TArchitectureGrouping;
+    Grouping: TArchitectureGrouping;
     NewCycles: TArray<TComparisonCycle>;
     RemovedCycles: TArray<TComparisonCycle>;
     NewCrossLinks: TArray<TComparisonEdge>;
@@ -105,6 +111,10 @@ type
     function IsEmpty: Boolean;
     /// <summary>Altes Teilsystem zum neuen ANewName; '' ohne Zuordnung.</summary>
     function MatchOf(const ANewName: string): string;
+    /// <summary>Die beiden Stände wurden mit verschiedener Feinheit γ gerechnet (#1366).</summary>
+    function ResolutionDiffers: Boolean;
+    /// <summary>Hinweis auf verschiedene Feinheit; '' bei gleicher.</summary>
+    function GroupingNote: string;
   end;
 
   TArchitectureComparer = class
@@ -180,6 +190,21 @@ begin
 end;
 
 { TArchitectureComparison }
+
+function TArchitectureComparison.ResolutionDiffers: Boolean;
+begin
+  Result := not TArchitectureGrouping.SameResolution(BaselineGrouping.Clamped.Resolution, Grouping.Clamped.Resolution);
+end;
+
+function TArchitectureComparison.GroupingNote: string;
+begin
+  Result := '';
+  if ResolutionDiffers then
+    Result := 'Hinweis: Der gespeicherte Stand wurde mit Feinheit γ = ' +
+      TArchitectureGrouping.ResolutionText(BaselineGrouping.Clamped.Resolution) + ' gerechnet, der aktuelle mit γ = ' +
+      TArchitectureGrouping.ResolutionText(Grouping.Clamped.Resolution) +
+      '; Teilsystemwechsel können daher kommen.';
+end;
 
 function TArchitectureComparison.Kinds: TArchitectureFailKinds;
 begin
@@ -266,146 +291,10 @@ begin
   Result := ParseKinds(AText.Split([',', ';', ' '], TStringSplitOptions.ExcludeEmpty), AKinds, AError);
 end;
 
-type
-  TMatchCandidate = record
-    NewIndex: Integer;
-    OldIndex: Integer;
-    Overlap: Integer;
-    SameName: Boolean;
-  end;
-
-/// <summary>Teilsystemnamen eines Stands mit ihren Units (klein geschrieben); Units ohne Eintrag in Subsystems
-/// zählen über ihr Feld Subsystem mit.</summary>
-function GroupsOf(const ASnapshot: TArchitectureSnapshot;
-  out ANames: TArray<string>): TArray<TDictionary<string, Boolean>>;
-var
-  Index, Group: Integer;
-  Item: TSnapshotUnit;
-  Lookup: TDictionary<string, Integer>;
-  Key: string;
-begin
-  ANames := nil;
-  Result := nil;
-  Lookup := TDictionary<string, Integer>.Create;
-  try
-    for Index := 0 to High(ASnapshot.Subsystems) do
-    begin
-      Key := LowerCase(ASnapshot.Subsystems[Index].Name);
-      if Lookup.ContainsKey(Key) then
-        Continue;
-      Lookup.Add(Key, Length(ANames));
-      ANames := ANames + [ASnapshot.Subsystems[Index].Name];
-      Result := Result + [TDictionary<string, Boolean>.Create];
-    end;
-    for Item in ASnapshot.Units do
-    begin
-      Key := LowerCase(Item.Subsystem);
-      if not Lookup.TryGetValue(Key, Group) then
-      begin
-        Group := Length(ANames);
-        Lookup.Add(Key, Group);
-        ANames := ANames + [Item.Subsystem];
-        Result := Result + [TDictionary<string, Boolean>.Create];
-      end;
-      Result[Group].AddOrSetValue(LowerCase(Item.Name), True);
-    end;
-  finally
-    Lookup.Free;
-  end;
-end;
-
-procedure FreeGroups(const AGroups: TArray<TDictionary<string, Boolean>>);
-var
-  Group: TDictionary<string, Boolean>;
-begin
-  for Group in AGroups do
-    Group.Free;
-end;
-
 class function TArchitectureComparer.MatchSubsystems(const AOld, ANew: TArchitectureSnapshot)
   : TArray<TComparisonMatch>;
-var
-  OldNames, NewNames: TArray<string>;
-  OldGroups, NewGroups: TArray<TDictionary<string, Boolean>>;
-  Candidates: TList<TMatchCandidate>;
-  Candidate: TMatchCandidate;
-  NewIndex, OldIndex, Overlap: Integer;
-  Key: string;
-  OldTaken: TArray<Boolean>;
-  Assigned_: TArray<Integer>;
 begin
-  OldGroups := GroupsOf(AOld, OldNames);
-  NewGroups := nil;
-  Candidates := nil;
-  try
-    NewGroups := GroupsOf(ANew, NewNames);
-    Candidates := TList<TMatchCandidate>.Create;
-    for NewIndex := 0 to High(NewGroups) do
-      for OldIndex := 0 to High(OldGroups) do
-      begin
-        Overlap := 0;
-        for Key in NewGroups[NewIndex].Keys do
-          if OldGroups[OldIndex].ContainsKey(Key) then
-            Inc(Overlap);
-        if Overlap = 0 then
-          Continue;
-        Candidate.NewIndex := NewIndex;
-        Candidate.OldIndex := OldIndex;
-        Candidate.Overlap := Overlap;
-        Candidate.SameName := SameText(NewNames[NewIndex], OldNames[OldIndex]);
-        Candidates.Add(Candidate);
-      end;
-    // Größte Überschneidung zuerst, bei Gleichstand derselbe Name, dann nach Namen (eindeutig).
-    Candidates.Sort(TComparer<TMatchCandidate>.Construct(
-      function(const ALeft, ARight: TMatchCandidate): Integer
-      begin
-        Result := ARight.Overlap - ALeft.Overlap;
-        if Result = 0 then
-          Result := Ord(ARight.SameName) - Ord(ALeft.SameName);
-        if Result = 0 then
-          Result := CompareNames(NewNames[ALeft.NewIndex], NewNames[ARight.NewIndex]);
-        if Result = 0 then
-          Result := CompareNames(OldNames[ALeft.OldIndex], OldNames[ARight.OldIndex]);
-      end));
-    SetLength(OldTaken, Length(OldGroups));
-    SetLength(Assigned_, Length(NewGroups));
-    for NewIndex := 0 to High(Assigned_) do
-      Assigned_[NewIndex] := -1;
-    for Candidate in Candidates do
-      if (Assigned_[Candidate.NewIndex] < 0) and not OldTaken[Candidate.OldIndex] then
-      begin
-        Assigned_[Candidate.NewIndex] := Candidate.OldIndex;
-        OldTaken[Candidate.OldIndex] := True;
-      end;
-    // Ohne gemeinsame Units: derselbe Name, wenn das alte Teilsystem noch frei ist.
-    for NewIndex := 0 to High(Assigned_) do
-      if Assigned_[NewIndex] < 0 then
-        for OldIndex := 0 to High(OldNames) do
-          if not OldTaken[OldIndex] and SameText(OldNames[OldIndex], NewNames[NewIndex]) then
-          begin
-            Assigned_[NewIndex] := OldIndex;
-            OldTaken[OldIndex] := True;
-            Break;
-          end;
-    SetLength(Result, Length(NewNames));
-    for NewIndex := 0 to High(NewNames) do
-    begin
-      Result[NewIndex].NewName := NewNames[NewIndex];
-      if Assigned_[NewIndex] >= 0 then
-        Result[NewIndex].OldName := OldNames[Assigned_[NewIndex]]
-      else
-        Result[NewIndex].OldName := '';
-    end;
-    TArray.Sort<TComparisonMatch>(Result, TComparer<TComparisonMatch>.Construct(
-      function(const ALeft, ARight: TComparisonMatch): Integer
-      begin
-        Result := CompareNames(ALeft.NewName, ARight.NewName);
-      end));
-  finally
-    Candidates.Free;
-    FreeGroups(OldGroups);
-    FreeGroups(NewGroups);
-  end;
+  Result := TSubsystemMatcher.Match(AOld, ANew, TSubsystemMatchMode.Overlap);
 end;
 
 function UnitMap(const ASnapshot: TArchitectureSnapshot): TDictionary<string, Integer>;
@@ -493,6 +382,8 @@ begin
   Result.BaselineTitle := AOld.Title;
   Result.BaselineUnits := Length(AOld.Units);
   Result.BaselineEdges := Length(AOld.Edges);
+  Result.BaselineGrouping := AOld.Grouping.Clamped;
+  Result.Grouping := ANew.Grouping.Clamped;
   Result.Matches := MatchSubsystems(AOld, ANew);
   OldUnits := UnitMap(AOld);
   NewUnits := UnitMap(ANew);
@@ -723,6 +614,8 @@ begin
   Result := 'Architekturvergleich mit dem Stand „' + AComparison.BaselineTitle + '“ (' +
     IntToStr(AComparison.BaselineUnits) + ' Units, ' + IntToStr(AComparison.BaselineEdges) + ' uses-Kanten)' +
     LineBreak;
+  if AComparison.GroupingNote <> '' then
+    Result := Result + AComparison.GroupingNote + LineBreak;
   Result := Result + Section('Neue Zyklen', CycleLines(AComparison.NewCycles), ALimit) +
     Section('Entfernte Zyklen', CycleLines(AComparison.RemovedCycles), ALimit) +
     Section('Neue Querverbindungen', LinkLines(AComparison.NewCrossLinks, True), ALimit) +
@@ -741,6 +634,11 @@ begin
   else
     Result := Result + 'Ergebnis: Abweichung ' + string.Join(', ', KindNames(Failed)) + ' (fail-on ' +
       string.Join(', ', KindNames(AFailOn)) + ')';
+end;
+
+function ResolutionJson(const AGrouping: TArchitectureGrouping): string;
+begin
+  Result := FormatFloat('0.###', AGrouping.Clamped.Resolution, TFormatSettings.Invariant);
 end;
 
 function Cell(const AText: string): string;
@@ -765,6 +663,8 @@ begin
   Result := '## Vergleich' + LineBreak + LineBreak + 'Mit dem gespeicherten Stand „' + AComparison.BaselineTitle +
     '“ (' + IntToStr(AComparison.BaselineUnits) + ' Units, ' + IntToStr(AComparison.BaselineEdges) +
     ' uses-Kanten).' + LineBreak + LineBreak;
+  if AComparison.GroupingNote <> '' then
+    Result := Result + AComparison.GroupingNote + LineBreak + LineBreak;
   if AComparison.IsEmpty then
     Result := Result + 'Keine Abweichung.' + LineBreak + LineBreak;
   Result := Result + MarkdownList('Neue Zyklen', CycleLines(AComparison.NewCycles)) +
@@ -888,7 +788,9 @@ begin
   end;
   Growth := Growth + ']';
   Result := '{"baseline":{"title":' + JsonText(AComparison.BaselineTitle) + ',"units":' +
-    IntToStr(AComparison.BaselineUnits) + ',"edges":' + IntToStr(AComparison.BaselineEdges) + '}' + LineBreak +
+    IntToStr(AComparison.BaselineUnits) + ',"edges":' + IntToStr(AComparison.BaselineEdges) + ',"resolution":' +
+    ResolutionJson(AComparison.BaselineGrouping) + '}' + LineBreak + ',"resolution":' +
+    ResolutionJson(AComparison.Grouping) + LineBreak +
     ',"kinds":' + JsonNames(KindNames(AComparison.Kinds)) + ',"failOn":' + JsonNames(KindNames(AFailOn)) +
     ',"failed":' + JsonNames(KindNames(AComparison.Kinds * AFailOn)) + LineBreak +
     ',"newCycles":' + CyclesJson(AComparison.NewCycles) + LineBreak +

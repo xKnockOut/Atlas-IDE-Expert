@@ -3,7 +3,9 @@
 // Fenster „Atlas-Architektur“ (#1118), Fensterinhalt: Tabellen und Bäume aus
 // den Daten des Servers, Sortieren per Spaltenklick, Filter, Öffnen von Unit
 // und uses-Eintrag, Hinweise, Umfang und Bibliotheks-Units, Treffer der
-// Karte; Reiter „Vergleich“ und Änderungen auf der Karte (#1121).
+// Karte; Reiter „Vergleich“ und Änderungen auf der Karte (#1121); Regler
+// „Feinheit“ mit Wert und Zahl der Teilsysteme (#1366); Zuordnung im
+// Steckbrief, knappe Units im Baum und Erklärung (#1368).
 
 interface
 
@@ -50,6 +52,23 @@ type
     procedure WithoutComparisonShowsHint;
     [Test]
     procedure RouteFromSymbolPath;
+    [Test]
+    procedure ResolutionSliderReportsOnRelease;
+    [Test]
+    procedure ResolutionSliderCanBeHidden;
+    [Test]
+    procedure ComparisonNamesDifferentResolution;
+    [Test]
+    procedure SplitSubsystemsGroupedInMenuAndTree;
+    [Test]
+    procedure FoundationInMenuAndTree;
+    [Test]
+    procedure AssignmentInProfileTreeAndExplanation;
+    [Test]
+    procedure WithoutAssignmentNothingExtra;
+    /// <summary>Angleichung (#1367): Statuszeile und „Teilsysteme neu benennen“ im Menü.</summary>
+    [Test]
+    procedure AlignedStatusAndRename;
   end;
 
 implementation
@@ -58,9 +77,11 @@ uses
   System.SysUtils,
   System.StrUtils,
   Vcl.Controls,
+  Vcl.Menus,
   Atlas.UI.Strings,
   Atlas.Core.Architecture.Model,
-  Atlas.Core.Architecture.Model.Tests;
+  Atlas.Core.Architecture.Model.Tests,
+  Atlas.UI.Architecture.Assignment;
 
 function Joined(const ALines: TArray<string>): string;
 begin
@@ -399,6 +420,198 @@ begin
   // Ungültige Nummern: kein Weg.
   FFrame.Map.ShowRoute(TArray<Integer>.Create(999), nil);
   Assert.AreEqual(-1, FFrame.Map.PathFrom);
+end;
+
+procedure TAtlasArchitectureFrameTests.ResolutionSliderReportsOnRelease;
+var
+  mReported: Double;
+  mCount: Integer;
+begin
+  mReported := 0;
+  mCount := 0;
+  FFrame.OnResolutionChanged :=
+    procedure(AValue: Double)
+    begin
+      mReported := AValue;
+      Inc(mCount);
+    end;
+  Assert.AreEqual(Double(1), FFrame.ResolutionValue, 1E-9);
+  // Mit dem Wert der Karte steht die Zahl der Teilsysteme daneben.
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionInfo,
+    [TAtlasArchResolution.Text(1, FormatSettings), FFrame.Model.SubsystemCount]), FFrame.ResolutionInfo.Caption);
+  // Ziehen zeigt nur den Wert, meldet aber noch nichts.
+  FFrame.ResolutionSlider.MoveTo(75, False);
+  Assert.AreEqual(0, mCount);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureResolutionValue,
+    [TAtlasArchResolution.Text(2.24, FormatSettings)]), FFrame.ResolutionInfo.Caption);
+  // Loslassen meldet den Wert einmal.
+  FFrame.ResolutionSlider.MoveTo(75, True);
+  Assert.AreEqual(1, mCount);
+  Assert.AreEqual(Double(2.24), mReported, 1E-9);
+  FFrame.ResolutionSlider.MoveTo(75, True);
+  Assert.AreEqual(1, mCount, 'gleiche Stellung meldet nicht erneut');
+  // Doppelklick setzt 1,0.
+  FFrame.ResolutionSlider.Reset;
+  Assert.AreEqual(2, mCount);
+  Assert.AreEqual(Double(1), mReported, 1E-9);
+  // Setzen aus den Einstellungen meldet nichts.
+  FFrame.ResolutionValue := 0.5;
+  Assert.AreEqual(2, mCount);
+  Assert.AreEqual(Double(0.5), FFrame.ResolutionValue, 0.01);
+end;
+
+procedure TAtlasArchitectureFrameTests.ResolutionSliderCanBeHidden;
+begin
+  Assert.IsTrue(FFrame.ShowResolution);
+  FFrame.ShowResolution := False;
+  Assert.IsFalse(FFrame.ResolutionSlider.Visible);
+  Assert.IsFalse(FFrame.ResolutionInfo.Visible);
+  FFrame.ShowResolution := True;
+  Assert.IsTrue(FFrame.ResolutionSlider.Visible);
+end;
+
+procedure TAtlasArchitectureFrameTests.ComparisonNamesDifferentResolution;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mNote: string;
+begin
+  mNote := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureComparisonResolution,
+    [TAtlasArchResolution.Text(1, FormatSettings), TAtlasArchResolution.Text(2, FormatSettings)]);
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleResolutionAnswer, mModel, mEnabled));
+  FFrame.SetModel(mModel);
+  Assert.IsTrue(ContainsStr(FFrame.ComparisonInfo.Caption, mNote), FFrame.ComparisonInfo.Caption);
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleComparisonAnswer, mModel, mEnabled));
+  FFrame.SetModel(mModel);
+  Assert.IsFalse(ContainsStr(FFrame.ComparisonInfo.Caption, mNote), FFrame.ComparisonInfo.Caption);
+end;
+
+procedure TAtlasArchitectureFrameTests.SplitSubsystemsGroupedInMenuAndTree;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mLast: Integer;
+  mFirst, mLine: string;
+  mLines: TArray<string>;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleSplitAnswer, mModel, mEnabled));
+  FFrame.SetModel(mModel);
+  mLast := High(mModel.Subsystems);
+  // Menü: Überschrift „App (nachgeteilt in 2 Teile)“, darunter die beiden Teile eingerückt.
+  FFrame.FillSubsystemsMenu;
+  Assert.AreEqual(Integer(Length(mModel.Subsystems)) + 3, FFrame.SubsystemsMenu.Items.Count);
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemFamily, ['App', 2]),
+    FFrame.SubsystemsMenu.Items[0].Caption);
+  Assert.IsFalse(FFrame.SubsystemsMenu.Items[0].Enabled);
+  Assert.AreEqual(0, FFrame.SubsystemsMenu.Items[1].Tag);
+  Assert.AreEqual(mLast, FFrame.SubsystemsMenu.Items[2].Tag);
+  Assert.IsTrue(StartsStr('      ', FFrame.SubsystemsMenu.Items[2].Caption));
+  Assert.AreEqual(1, FFrame.SubsystemsMenu.Items[3].Tag);
+  FFrame.SubsystemsMenu.Items[2].Click;
+  Assert.IsFalse(FFrame.Map.SubsystemVisible[mLast]);
+  // Reiter Teilsysteme: „… · Teil von App“, die Teile beieinander (erst das erste Teil mit seinen Units, dann das
+  // letzte Teilsystem).
+  mFirst := FFrame.SubsystemText[0];
+  Assert.IsTrue(EndsStr(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureSubsystemPart, ['', 'App']), mFirst), mFirst);
+  mLines := nil;
+  for mLine in FFrame.SubsystemText do
+    if not StartsStr(' ', mLine) then
+      mLines := mLines + [mLine];
+  Assert.IsTrue(StartsStr(mModel.Subsystems[mLast].Name + ' ', mLines[1]), mLines[1]);
+end;
+
+procedure TAtlasArchitectureFrameTests.FoundationInMenuAndTree;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mToggle: TMenuItem;
+  mIndex: Integer;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleFoundationAnswer, mModel, mEnabled));
+  FFrame.SetModel(mModel);
+  // Reiter: „Fundament (n Units, übergreifende Fundamente)“, darunter zuerst die Regel.
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureFoundationLine, ['Fundament',
+    Length(mModel.Subsystems[0].Units)]), FFrame.SubsystemText[0]);
+  Assert.AreEqual('  ' + TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationRule), FFrame.SubsystemText[1]);
+  // Menü: Schalter „Kanten zum Fundament“ vor „Alle einblenden“.
+  FFrame.FillSubsystemsMenu;
+  mToggle := nil;
+  for mIndex := 0 to FFrame.SubsystemsMenu.Items.Count - 1 do
+    if FFrame.SubsystemsMenu.Items[mIndex].Caption = TAtlasStrings.Text(TAtlasTextId.ArchitectureFoundationEdges) then
+      mToggle := FFrame.SubsystemsMenu.Items[mIndex];
+  Assert.IsNotNull(mToggle);
+  Assert.IsTrue(mToggle.Checked);
+  mToggle.Click;
+  Assert.IsFalse(FFrame.Map.ShowFoundationEdges);
+  Assert.IsFalse(mToggle.Checked);
+  mToggle.Click;
+  Assert.IsTrue(FFrame.Map.ShowFoundationEdges);
+end;
+
+procedure TAtlasArchitectureFrameTests.AssignmentInProfileTreeAndExplanation;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mMid: Integer;
+begin
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAssignmentAnswer, mModel, mEnabled));
+  FFrame.SetModel(mModel);
+  mMid := FFrame.Model.IndexOf('Z.Own.Mid');
+  // Reiter „Teilsysteme“: knappe Unit markiert, Fragezeichen mit Erklärung.
+  Assert.Contains(Joined(FFrame.SubsystemText), 'Z.Own.Mid — ' + TAtlasArchitectureAssignment.CloseMark(FFrame.Model,
+    mMid));
+  Assert.IsTrue(FFrame.ExplainButton.Parent.Visible);
+  FFrame.ExplainButton.Click;
+  Assert.AreEqual(TAtlasArchitectureAssignment.Explanation(FFrame.Model), FFrame.ExplanationLabel.Caption);
+  FFrame.ExplainButton.Click;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint), FFrame.ExplanationLabel.Caption);
+  // Steckbrief unter der Karte, sobald eine Unit gewählt ist.
+  Assert.IsFalse(FFrame.AssignmentBox.Visible);
+  FFrame.Map.SelectUnit(mMid, False);
+  FFrame.Map.OnSelect(mMid);
+  Assert.IsTrue(FFrame.AssignmentBox.Visible);
+  Assert.IsTrue(FFrame.AssignmentBox.Height > 0);
+  FFrame.AssignmentBox.Repaint;
+  FFrame.Map.SelectUnit(-1, False);
+  FFrame.Map.OnSelect(-1);
+  Assert.IsFalse(FFrame.AssignmentBox.Visible);
+end;
+
+procedure TAtlasArchitectureFrameTests.WithoutAssignmentNothingExtra;
+begin
+  // SampleAnswer kommt ohne architecture.explainAssignment.
+  Assert.IsFalse(FFrame.ExplainButton.Parent.Visible);
+  Assert.AreEqual(0, Pos(' — knapp', Joined(FFrame.SubsystemText)));
+  FFrame.Map.SelectUnit(0, False);
+  FFrame.Map.OnSelect(0);
+  Assert.IsFalse(FFrame.AssignmentBox.Visible);
+end;
+
+procedure TAtlasArchitectureFrameTests.AlignedStatusAndRename;
+var
+  mModel: TAtlasArchitectureModel;
+  mEnabled: Boolean;
+  mCount, mRenamed: Integer;
+begin
+  // Ohne Angleichung kein Zusatz.
+  Assert.AreEqual(0, Pos('angeglichen', FFrame.StatusLabel.Caption));
+  Assert.IsTrue(TAtlasArchitectureModel.Parse(SampleAlignedAnswer, mModel, mEnabled));
+  FFrame.SetModel(mModel);
+  Assert.IsTrue(Pos(TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusAlignedBaseline, ['2026-10-29 14:23']),
+    FFrame.StatusLabel.Caption) > 0, FFrame.StatusLabel.Caption);
+  mRenamed := 0;
+  FFrame.OnRenameSubsystems :=
+    procedure
+    begin
+      Inc(mRenamed);
+    end;
+  FFrame.FillSubsystemsMenu;
+  mCount := FFrame.SubsystemsMenu.Items.Count;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ArchitectureRenameSubsystems),
+    FFrame.SubsystemsMenu.Items[mCount - 1].Caption);
+  FFrame.SubsystemsMenu.Items[mCount - 1].Click;
+  Assert.AreEqual(1, mRenamed);
+  FFrame.OnRenameSubsystems := nil;
 end;
 
 initialization
