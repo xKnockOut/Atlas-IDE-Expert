@@ -5,7 +5,10 @@
 //                             (In-place-Vergrößerung), deshalb nur niedrige Konfidenz
 //   loop-invariant-call       teurer Aufruf in der Bedingung von while bzw. until, die bei
 //                             jedem Durchlauf neu ausgewertet wird (die Grenzen von for nicht)
-//   missing-begin-update      Items/Lines/Strings.Add in einer Schleife ohne BeginUpdate
+//   missing-begin-update      Items/Lines/Strings.Add in einer Schleife ohne BeginUpdate; still bei
+//                             Menüs (TMenuItem hat kein BeginUpdate) und bei for-Schleifen mit
+//                             höchstens FewIterations Durchläufen (feste Grenzen bzw. statisches
+//                             Array der Datei)
 // Standardmäßig an (#974):
 //   setlength-in-loop         SetLength(A, Length(A) + 1) in einer Schleife kopiert das
 //                             dynamische Array bei jedem Durchlauf; gemeldet wird nur, wenn A
@@ -128,12 +131,15 @@ begin
     AToken.IsKeyword('asm') or AToken.IsKeyword('repeat');
 end;
 
-/// <summary>Letztes Token der Anweisung ab AFirst: bis zum passenden end bzw. vor ; oder end.</summary>
+/// <summary>Letztes Token der Anweisung ab AFirst: bis zum passenden end bzw. vor ; oder end.
+/// Ein else gehört zur Anweisung, solange ein if davor noch keinen else-Zweig hat
+/// (if … then begin … end else …).</summary>
 function StatementEnd(const ATokens: TTokens; AFirst: Integer): Integer;
 var
-  Index, Depth: Integer;
+  Index, Depth, OpenIfs: Integer;
 begin
   Depth := 0;
+  OpenIfs := 0;
   Index := AFirst;
   Result := AFirst;
   while Index <= High(ATokens) do
@@ -147,10 +153,19 @@ begin
       if Depth = 0 then
         Exit;
       Dec(Depth);
-      if Depth = 0 then
+      // Beginnt die Anweisung selbst mit dem Block, endet sie mit seinem end.
+      if (Depth = 0) and OpensBlock(ATokens[AFirst]) then
         Exit(Index);
     end
-    else if (Depth = 0) and (ATokens[Index].IsSymbol(';') or ATokens[Index].IsKeyword('else')) then
+    else if (Depth = 0) and ATokens[Index].IsKeyword('if') then
+      Inc(OpenIfs)
+    else if (Depth = 0) and ATokens[Index].IsKeyword('else') then
+    begin
+      if OpenIfs = 0 then
+        Exit;
+      Dec(OpenIfs);
+    end
+    else if (Depth = 0) and ATokens[Index].IsSymbol(';') then
       Exit;
     if not IsTrivia(ATokens[Index]) then
       Result := Index;
@@ -347,6 +362,153 @@ end;
 
 { TMissingBeginUpdateRule }
 
+const
+  /// <summary>Bis zu so vielen Durchläufen lohnt BeginUpdate nicht.</summary>
+  FewIterations = 10;
+  /// <summary>Menüs: Items ist ein TMenuItem, das kein BeginUpdate kennt.</summary>
+  MenuTypes: array[0..3] of string = ('TMenu', 'TMainMenu', 'TPopupMenu', 'TMenuItem');
+
+/// <summary>Ganzzahl ab AIndex (mit Vorzeichen -); ALast = letztes Token.</summary>
+function IntegerAt(const ATokens: TTokens; AIndex: Integer; out AValue: Int64; out ALast: Integer): Boolean;
+var
+  Negative: Boolean;
+begin
+  Result := False;
+  AValue := 0;
+  ALast := AIndex;
+  if AIndex > High(ATokens) then
+    Exit;
+  Negative := ATokens[AIndex].IsSymbol('-');
+  if Negative then
+    ALast := NextCode(ATokens, AIndex + 1);
+  if (ALast > High(ATokens)) or (ATokens[ALast].Kind <> TPascalTokenKind.Number) or
+    not TryStrToInt64(ATokens[ALast].Text, AValue) then
+    Exit;
+  if Negative then
+    AValue := -AValue;
+  Result := True;
+end;
+
+/// <summary>Grenzen des statischen Arrays AName, das in der Datei als AName: array[A..B] steht.</summary>
+function StaticArrayBounds(const ATokens: TTokens; const AName: string; out ALow, AHigh: Int64): Boolean;
+var
+  Index, Next, Last: Integer;
+begin
+  ALow := 0;
+  AHigh := -1;
+  for Index := 0 to High(ATokens) - 1 do
+  begin
+    if (ATokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(ATokens[Index].Text, AName) then
+      Continue;
+    Next := NextCode(ATokens, Index + 1);
+    if (Next > High(ATokens)) or not ATokens[Next].IsSymbol(':') then
+      Continue;
+    Next := NextCode(ATokens, Next + 1);
+    if (Next > High(ATokens)) or not ATokens[Next].IsKeyword('array') then
+      Continue;
+    Next := NextCode(ATokens, Next + 1);
+    if (Next > High(ATokens)) or not ATokens[Next].IsSymbol('[') or
+      not IntegerAt(ATokens, NextCode(ATokens, Next + 1), ALow, Last) then
+      Continue;
+    Next := NextCode(ATokens, Last + 1);
+    if (Next > High(ATokens)) or not ATokens[Next].IsSymbol('..') or
+      not IntegerAt(ATokens, NextCode(ATokens, Next + 1), AHigh, Last) then
+      Continue;
+    Next := NextCode(ATokens, Last + 1);
+    if (Next <= High(ATokens)) and ATokens[Next].IsSymbol(']') then
+      Exit(True);
+  end;
+  Result := False;
+end;
+
+/// <summary>Grenze einer for-Schleife ab AIndex bis vor AStop: Zahl, Low(X) oder High(X) mit
+/// statischem Array X der Datei.</summary>
+function BoundAt(const ATokens: TTokens; AIndex, AStop: Integer; out AValue: Int64): Boolean;
+var
+  Last, Open, Name, Close: Integer;
+  First, Final: Int64;
+begin
+  if IntegerAt(ATokens, AIndex, AValue, Last) then
+    Exit(NextCode(ATokens, Last + 1) = AStop);
+  Result := False;
+  Open := NextCode(ATokens, AIndex + 1);
+  Name := NextCode(ATokens, Open + 1);
+  Close := NextCode(ATokens, Name + 1);
+  if (Close >= AStop) or (NextCode(ATokens, Close + 1) <> AStop) or not ATokens[Open].IsSymbol('(') or
+    (ATokens[Name].Kind <> TPascalTokenKind.Identifier) or not ATokens[Close].IsSymbol(')') or
+    not StaticArrayBounds(ATokens, ATokens[Name].Text, First, Final) then
+    Exit;
+  if SameText(ATokens[AIndex].Text, 'Low') then
+    AValue := First
+  else if SameText(ATokens[AIndex].Text, 'High') then
+    AValue := Final
+  else
+    Exit;
+  Result := True;
+end;
+
+/// <summary>Anzahl der Durchläufe einer for-Schleife mit festen Grenzen bzw. über ein statisches
+/// Array der Datei; -1 wenn unbekannt (while, repeat, Grenzen erst zur Laufzeit).</summary>
+function FixedIterations(const ATokens: TTokens; const ALoop: TLoop): Int64;
+var
+  Index, Stop, Bound: Integer;
+  First, Last: Int64;
+begin
+  Result := -1;
+  if not ATokens[ALoop.Keyword].IsKeyword('for') then
+    Exit;
+  Stop := FindKeyword(ATokens, ALoop.Keyword + 1, 'do');
+  Index := NextCode(ATokens, ALoop.Keyword + 1);
+  if (Index <= High(ATokens)) and ATokens[Index].IsKeyword('var') then
+    Index := NextCode(ATokens, Index + 1);
+  Index := NextCode(ATokens, Index + 1);
+  if (Stop < 0) or (Index >= Stop) then
+    Exit;
+  if ATokens[Index].IsKeyword('in') then
+  begin
+    // for X in Werte do: Werte ist ein statisches Array der Datei.
+    Index := NextCode(ATokens, Index + 1);
+    if (NextCode(ATokens, Index + 1) = Stop) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
+      StaticArrayBounds(ATokens, ATokens[Index].Text, First, Last) then
+      Result := Last - First + 1;
+    Exit;
+  end;
+  if not ATokens[Index].IsSymbol(':=') then
+    Exit;
+  Bound := Index + 1;
+  while (Bound < Stop) and not ATokens[Bound].IsKeyword('to') and not ATokens[Bound].IsKeyword('downto') do
+    Inc(Bound);
+  if (Bound >= Stop) or not BoundAt(ATokens, NextCode(ATokens, Index + 1), Bound, First) or
+    not BoundAt(ATokens, NextCode(ATokens, Bound + 1), Stop, Last) then
+    Exit;
+  if ATokens[Bound].IsKeyword('downto') then
+    Result := First - Last + 1
+  else
+    Result := Last - First + 1;
+  if Result < 0 then
+    Result := 0;
+end;
+
+/// <summary>Durchlaufen alle Schleifen um AIndex zusammen höchstens FewIterations Mal?</summary>
+function FewInLoops(const ATokens: TTokens; const ALoops: TArray<TLoop>; AIndex: Integer): Boolean;
+var
+  Loop: TLoop;
+  Total, Count: Int64;
+begin
+  Total := 1;
+  for Loop in ALoops do
+    if (AIndex >= Loop.BodyFirst) and (AIndex <= Loop.BodyLast) then
+    begin
+      Count := FixedIterations(ATokens, Loop);
+      if Count < 0 then
+        Exit(False);
+      Total := Total * Count;
+      if Total > FewIterations then
+        Exit(False);
+    end;
+  Result := True;
+end;
+
 function TMissingBeginUpdateRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('missing-begin-update', TRuleSeverity.Hint,
@@ -358,8 +520,9 @@ var
   Tokens: TTokens;
   Found: TArray<TLoop>;
   Updated, Reported: TArray<string>;
+  Types: TDeclaredTypes;
   Index, Last, Dot: Integer;
-  Text, Receiver, Method, Collection, ReceiverText: string;
+  Text, Receiver, Method, Collection, ReceiverText, Owner: string;
 begin
   if AContext.Tree = nil then
     Exit;
@@ -367,41 +530,55 @@ begin
   Found := Loops(Tokens);
   if Found = nil then
     Exit;
-  // Empfänger, für die irgendwo in der Datei BeginUpdate aufgerufen wird.
-  Updated := nil;
-  for Index := 0 to High(Tokens) do
-    if StartsDesignator(Tokens, Index) then
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    // Empfänger, für die irgendwo in der Datei BeginUpdate aufgerufen wird.
+    Updated := nil;
+    for Index := 0 to High(Tokens) do
+      if StartsDesignator(Tokens, Index) then
+      begin
+        Text := Chain(Tokens, Index, Last);
+        if EndsText('.beginupdate', Text) then
+          Updated := Updated + [Copy(Text, 1, Length(Text) - Length('.beginupdate'))];
+      end;
+    Reported := nil;
+    for Index := 0 to High(Tokens) do
     begin
+      if not StartsDesignator(Tokens, Index) or not InLoopBody(Found, Index) then
+        Continue;
       Text := Chain(Tokens, Index, Last);
-      if EndsText('.beginupdate', Text) then
-        Updated := Updated + [Copy(Text, 1, Length(Text) - Length('.beginupdate'))];
+      Dot := LastDelimiter('.', Text);
+      if Dot = 0 then
+        Continue;
+      Receiver := Copy(Text, 1, Dot - 1);
+      Method := Copy(Text, Dot + 1, MaxInt);
+      Collection := Copy(Receiver, LastDelimiter('.', Receiver) + 1, MaxInt);
+      // Nur sichtbare Listen: ListBox1.Items, Memo1.Lines, TreeView1.Items; Receiver hat mindestens zwei Glieder.
+      if (Pos('.', Receiver) = 0) or not MatchText(Collection, ['items', 'lines', 'strings']) or
+        not MatchText(Method, ['add', 'addobject', 'append', 'insert', 'addchild', 'addchildobject', 'addpair']) then
+        Continue;
+      if MatchText(Receiver, Updated) or MatchText(Copy(Receiver, 1, LastDelimiter('.', Receiver) - 1), Updated) or
+        MatchText(Receiver, Reported) then
+        Continue;
+      // Menu.Items ist ein TMenuItem ohne BeginUpdate.
+      Owner := Copy(Receiver, 1, LastDelimiter('.', Receiver) - 1);
+      if StartsText('self.', Owner) then
+        Owner := Copy(Owner, Length('self.') + 1, MaxInt);
+      if (Pos('.', Owner) = 0) and MatchText(Types.DeclaredType(Owner, Tokens[Index].StartPos), MenuTypes) then
+        Continue;
+      // Wenige Einträge: Das Neuzeichnen fällt nicht ins Gewicht.
+      if FewInLoops(Tokens, Found, Index) then
+        Continue;
+      Reported := Reported + [Receiver];
+      ReceiverText := Copy(AContext.Text, Tokens[Index].Offset + 1,
+        Tokens[PreviousCode(Tokens, Last)].Offset - Tokens[Index].Offset);
+      AReport.Add(RangeOf(Tokens, Index, Last), Format('Jedes %s in der Schleife zeichnet das Steuerelement neu; ' +
+        'die Schleife mit %s.BeginUpdate und try … finally %s.EndUpdate umschließen',
+        [Tokens[Last].Text, ReceiverText, ReceiverText]),
+        TRuleConfidence.Medium);
     end;
-  Reported := nil;
-  for Index := 0 to High(Tokens) do
-  begin
-    if not StartsDesignator(Tokens, Index) or not InLoopBody(Found, Index) then
-      Continue;
-    Text := Chain(Tokens, Index, Last);
-    Dot := LastDelimiter('.', Text);
-    if Dot = 0 then
-      Continue;
-    Receiver := Copy(Text, 1, Dot - 1);
-    Method := Copy(Text, Dot + 1, MaxInt);
-    Collection := Copy(Receiver, LastDelimiter('.', Receiver) + 1, MaxInt);
-    // Nur sichtbare Listen: ListBox1.Items, Memo1.Lines, TreeView1.Items; Receiver hat mindestens zwei Glieder.
-    if (Pos('.', Receiver) = 0) or not MatchText(Collection, ['items', 'lines', 'strings']) or
-      not MatchText(Method, ['add', 'addobject', 'append', 'insert', 'addchild', 'addchildobject', 'addpair']) then
-      Continue;
-    if MatchText(Receiver, Updated) or MatchText(Copy(Receiver, 1, LastDelimiter('.', Receiver) - 1), Updated) or
-      MatchText(Receiver, Reported) then
-      Continue;
-    Reported := Reported + [Receiver];
-    ReceiverText := Copy(AContext.Text, Tokens[Index].Offset + 1,
-      Tokens[PreviousCode(Tokens, Last)].Offset - Tokens[Index].Offset);
-    AReport.Add(RangeOf(Tokens, Index, Last), Format('Jedes %s in der Schleife zeichnet das Steuerelement neu; ' +
-      'die Schleife mit %s.BeginUpdate und try … finally %s.EndUpdate umschließen',
-      [Tokens[Last].Text, ReceiverText, ReceiverText]),
-      TRuleConfidence.Medium);
+  finally
+    Types.Free;
   end;
 end;
 
