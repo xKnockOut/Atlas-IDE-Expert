@@ -827,6 +827,20 @@ Vorbereitung: Formular mit Button `btnSave` und den Methoden `FormCreate(Sender:
 | WP16 | Mit offenem Projekt ein anderes Projekt öffnen; danach IDE mit offenem Projekt beenden | Kein Aufblitzen von „Atlas-Start“ beim Wechsel; beim Beenden öffnet es sich nicht und es gibt keinen Fehler beim Abbau |
 | WP17 | Optionen: „Öffnen, wenn kein Projekt mehr geladen ist“ aus, dann Projekt schließen | „Atlas-Start“ bleibt zu |
 
+### Scrollen (#1440)
+
+Auf release/1.1 gibt es Atlas nur im Fenster „Atlas-Start“; WS-SC2 gilt erst mit der Willkommensseite der IDE (#1347, ab v1.2).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| WS-SC1 | „Atlas-Start“ niedrig ziehen, Fokus im Code-Editor lassen. Mausrad über leerer Fläche, über einer Liste (z. B. „Projekte“), über einem Link bzw. einer Schaltfläche und über dem Kopf | Die Seite scrollt jedes Mal; der Code-Editor scrollt nicht mit. Strg+Rad und Umschalt+Rad scrollen die Seite nicht |
+| WS-SC2 | Dasselbe auf der Willkommensseite der IDE mit Bereich „Atlas“ und einzelnen Atlas-Bereichen (nur ab v1.2) | Wie WS-SC1 |
+| WS-SC3 | Fenster höher und niedriger ziehen | Senkrechte Scrollleiste nur bei Überlänge; Ziehen am Schieber scrollt mit |
+| WS-SC4 | „Neu in Atlas“ mit vielen Einträgen: Mausrad darüber nach unten, bis die Liste am Ende ist, weiterdrehen; dann nach oben | Erst scrollt die Liste, an ihrem Ende die Seite; nach oben ebenso erst die Liste bis zum Anfang |
+| WS-SC5 | Auf freie Fläche klicken, dann Bild ab, Bild auf, Ende, Pos1; danach ins Suchfeld klicken und Pos1/Ende drücken | Die Seite scrollt um eine Seite bzw. an Anfang und Ende; im Suchfeld bewegen die Tasten nur den Cursor |
+| WS-SC6 | „Seite anpassen“, Seite etwas nach unten scrollen, einen Bereich am Griff ziehen; mit dem Zeiger am unteren bzw. oberen Rand der Seite stehen bleiben; loslassen | Die Seite scrollt am Rand von selbst, umso schneller, je näher am Rand; Einfügelinie und Ziel stimmen dabei; der Bereich landet an der Linie. Zug aus der Leiste „Ausgeblendet“ startet kein Scrollen |
+| WS-SC7 | WS-SC1 bis WS-SC6 in Delphi 12 und 13, jeweils helles und dunkles Thema | Gleiches Verhalten |
+
 ### Suchfeld (#760)
 
 | Nr. | Schritte | Erwartet |

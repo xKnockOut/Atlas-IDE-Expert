@@ -675,9 +675,11 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Scroll.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.HostLayout.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Tests.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Scroll.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Welcome.Layouts.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.IndexFiles.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Expert\Source\Core\Welcome\Atlas.Core.Welcome.Search.pas"/>
