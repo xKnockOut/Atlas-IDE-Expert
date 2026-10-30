@@ -10,20 +10,25 @@
 // - Übersicht: „Einpassen“, „Namen“, „implementation-uses“, „Zyklen
 //   markieren“, „Änderungen zum Stand“ (nur mit Vergleich) und „Teilsysteme ▾“
 //   (ein- und ausblenden), die Karte (TAtlasArchitectureMap), darunter Angaben
-//   zur gewählten Unit bzw. der Weg nach Umschalt+Klick,
+//   zur gewählten Unit bzw. der Weg nach Umschalt+Klick; mit
+//   architecture.explainAssignment (#1368) dazu die Zuordnung der gewählten
+//   Unit als Tabelle (Steckbrief) und als Hinweis über der Karte,
 // - Zentrale Units: Tabelle, Klick auf eine Spalte sortiert (nochmals:
 //   umgekehrt); ShowCostRanking zeigt sie nach „gesamt abhängig“ absteigend,
 //   also die Units, deren interface-Änderung am meisten neu übersetzt
 //   (#554),
-// - Teilsysteme: Baum mit Zusammenhalt und Units, Ausreißer mit Grund,
+// - Teilsysteme: Baum mit Zusammenhalt und Units, Ausreißer mit Grund und
+//   knapp zugeordnete Units (#1368); das Fragezeichen darüber erklärt, wie
+//   die Teilsysteme entstehen,
 // - Zyklen: je Zyklus der Weg und die uses-Einträge mit Fundstelle,
 // - Querverbindungen: seltene Kanten und Kanten gegen die Hauptrichtung,
 // - Vergleich (#1121): gegen welchen Stand, „Vergleich aufheben“ und je
 //   Abschnitt (neue Zyklen, Querverbindungen, Kanten zwischen Teilsystemen,
 //   Wechsel, Wachstum, Units) die Einträge; ohne Vergleich ein Hinweis, bei
 //   unlesbarem Stand die Meldung.
-// Unten die Statuszeile (Zahlen, Index-Stand, Rechendauer und Ausschlüsse
-// bzw. ein Hinweis).
+// Unten die Statuszeile (Zahlen, Index-Stand, Rechendauer und Ausschlüsse,
+// „Teilsysteme an Stand vom … angeglichen“ (#1367) bzw. ein Hinweis). Das Menü
+// „Teilsysteme ▾“ bietet mit OnRenameSubsystems „Teilsysteme neu benennen“.
 // Doppelklick oder Enter öffnet die Unit (OnOpenUnit) bzw. springt zum
 // uses-Eintrag (OnOpenLocation, Zeile und Spalte ab 1); Strg+Doppelklick auf
 // eine Unit zeigt sie im Fenster „Unit-Beziehungen“ (OnUnitRelations, #593).
@@ -77,6 +82,11 @@ type
     FSubsystemsMenu: TPopupMenu;
     FMap: TAtlasArchitectureMap;
     FInfo: TLabel;
+    /// <summary>Zuordnung der gewählten Unit (#1368), unter der Karte.</summary>
+    FAssignment: TPaintBox;
+    FSubsystemsBar: TPanel;
+    FExplainButton: TButton;
+    FExplanation: TLabel;
     FCentral: TListView;
     FSubsystems: TTreeView;
     FCycles: TTreeView;
@@ -107,6 +117,7 @@ type
     FOnScopeChanged: TProc<string>;
     FOnLibraryChanged: TProc<Boolean>;
     FOnResolutionChanged: TProc<Double>;
+    FOnRenameSubsystems: TProc;
     FOnOpenUnit: TProc<string>;
     FOnOpenLocation: TProc<string, Integer, Integer>;
     FOnUnitRelations: TProc<string>;
@@ -130,6 +141,9 @@ type
     function ChangeCaption(AKind: TAtlasArchChangeKind; const AChange: TAtlasArchChange): string;
     procedure UpdateStatus;
     procedure UpdateInfo;
+    procedure UpdateAssignment;
+    procedure AssignmentPaint(Sender: TObject);
+    procedure ExplainClick(Sender: TObject);
     procedure RefreshClick(Sender: TObject);
     procedure SaveClick(Sender: TObject);
     procedure SaveStateClick(Sender: TObject);
@@ -147,6 +161,7 @@ type
     procedure SubsystemItemClick(Sender: TObject);
     procedure FoundationEdgesClick(Sender: TObject);
     procedure ShowAllClick(Sender: TObject);
+    procedure RenameSubsystemsClick(Sender: TObject);
     procedure CentralColumnClick(Sender: TObject; Column: TListColumn);
     procedure CentralDblClick(Sender: TObject);
     procedure CrossDblClick(Sender: TObject);
@@ -179,7 +194,8 @@ type
     procedure OpenUnit(AUnit: Integer);
     /// <summary>uses-Eintrag öffnen (OnOpenLocation), ohne Fundstelle die Unit, in der er steht.</summary>
     procedure OpenLink(const ALink: TAtlasArchLink);
-    /// <summary>Menü „Teilsysteme ▾“ neu aufbauen: je Teilsystem ein Haken, dazu „Alle einblenden“.</summary>
+    /// <summary>Menü „Teilsysteme ▾“ neu aufbauen: je Teilsystem ein Haken, dazu „Alle einblenden“ und mit
+    /// OnRenameSubsystems „Teilsysteme neu benennen“ (#1367).</summary>
     procedure FillSubsystemsMenu;
     /// <summary>Zeile eines Teilsystems in Menü und Reiter: Name, Units, Zusammenhalt (Fundament ohne, #1365).
     /// </summary>
@@ -210,6 +226,9 @@ type
     property CrossLinkList: TListView read FCrossLinks;
     property StatusLabel: TLabel read FStatus;
     property InfoLabel: TLabel read FInfo;
+    property AssignmentBox: TPaintBox read FAssignment;
+    property ExplainButton: TButton read FExplainButton;
+    property ExplanationLabel: TLabel read FExplanation;
     property FitButton: TButton read FFit;
     property NamesCheck: TCheckBox read FNames;
     property ImplementationCheck: TCheckBox read FImplementation;
@@ -238,6 +257,9 @@ type
     property OnLibraryChanged: TProc<Boolean> read FOnLibraryChanged write FOnLibraryChanged;
     /// <summary>Regler losgelassen, Doppelklick oder Taste: neue Feinheit (#1366).</summary>
     property OnResolutionChanged: TProc<Double> read FOnResolutionChanged write FOnResolutionChanged;
+    /// <summary>„Teilsysteme neu benennen“ im Menü „Teilsysteme ▾“ (#1367): einmal ohne Angleichung rechnen.
+    /// </summary>
+    property OnRenameSubsystems: TProc read FOnRenameSubsystems write FOnRenameSubsystems;
     property OnOpenUnit: TProc<string> read FOnOpenUnit write FOnOpenUnit;
     /// <summary>Absoluter Pfad, Zeile und Spalte ab 1.</summary>
     property OnOpenLocation: TProc<string, Integer, Integer> read FOnOpenLocation write FOnOpenLocation;
@@ -253,6 +275,10 @@ uses
   System.Math,
   System.Types,
   Vcl.Dialogs,
+  Vcl.Themes,
+  Atlas.Core.Style.Color,
+  Atlas.Core.Style.Palette,
+  Atlas.UI.Architecture.Assignment,
   Atlas.UI.Strings;
 
 {$R *.dfm}
@@ -405,6 +431,14 @@ begin
   FInfo.EllipsisPosition := epEndEllipsis;
   FInfo.Font.Color := clGrayText;
   FInfo.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureMapHint);
+  FAssignment := TPaintBox.Create(Self);
+  FAssignment.Parent := Sheet;
+  FAssignment.Align := alBottom;
+  FAssignment.AlignWithMargins := True;
+  // Über der Zeile mit den Angaben zur Unit.
+  FAssignment.Top := FInfo.Top - 1;
+  FAssignment.Visible := False;
+  FAssignment.OnPaint := AssignmentPaint;
   FMapBar := TPanel.Create(Self);
   FMapBar.Parent := Sheet;
   FMapBar.Align := alTop;
@@ -495,6 +529,31 @@ begin
   AddColumn(FCentral, TAtlasStrings.Text(TAtlasTextId.ArchitectureColRole), 100);
 
   Sheet := NewSheet(TAtlasStrings.Text(TAtlasTextId.ArchitectureTabSubsystems));
+  // Fragezeichen mit der Erklärung, wie die Teilsysteme entstehen (#1368); nur mit Zuordnung vom Server.
+  FSubsystemsBar := TPanel.Create(Self);
+  FSubsystemsBar.Parent := Sheet;
+  FSubsystemsBar.Align := alTop;
+  FSubsystemsBar.BevelOuter := bvNone;
+  FSubsystemsBar.ShowCaption := False;
+  FSubsystemsBar.AutoSize := True;
+  FSubsystemsBar.Visible := False;
+  FExplainButton := TButton.Create(Self);
+  FExplainButton.Parent := FSubsystemsBar;
+  FExplainButton.Align := alLeft;
+  FExplainButton.AlignWithMargins := True;
+  FExplainButton.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainButton);
+  FExplainButton.Hint := TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint);
+  FExplainButton.ShowHint := True;
+  FExplainButton.Width := 28;
+  FExplainButton.OnClick := ExplainClick;
+  FExplanation := TLabel.Create(Self);
+  FExplanation.Parent := FSubsystemsBar;
+  FExplanation.Align := alClient;
+  FExplanation.AlignWithMargins := True;
+  FExplanation.ShowAccelChar := False;
+  FExplanation.WordWrap := True;
+  FExplanation.Font.Color := clGrayText;
+  FExplanation.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint);
   FSubsystems := NewTree(Sheet);
 
   Sheet := NewSheet(TAtlasStrings.Text(TAtlasTextId.ArchitectureTabCycles));
@@ -750,6 +809,8 @@ end;
 procedure TAtlasArchitectureFrame.FillAll;
 begin
   FLinks := nil;
+  FSubsystemsBar.Visible := FModel.HasAssignment;
+  FExplanation.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint);
   FillCentral;
   FillSubsystems;
   FillCycles;
@@ -833,6 +894,9 @@ begin
         else if Outlier >= 0 then
             Line := Line + ' — ' + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureOutlierEdges,
             [FModel.SubsystemName(FModel.Outliers[Outlier].Suggested)]);
+        // Knapp zugeordnet (#1368).
+        if TAtlasArchitectureAssignment.CloseMark(FModel, Member) <> '' then
+          Line := Line + ' — ' + TAtlasArchitectureAssignment.CloseMark(FModel, Member);
         Node := FSubsystems.Items.AddChild(Group, Line);
         // Unit: negative Zahl (−1 − Nummer), uses-Eintrag: positive (Nummer in FLinks + 1).
         Node.Data := Pointer(NativeInt(-1 - Member));
@@ -1046,6 +1110,13 @@ begin
     if Length(FModel.Excludes) > 0 then
       FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusExcludes,
         [string.Join(', ', FModel.Excludes)]);
+    // Angleichung an einen vorigen Stand (#1367).
+    if FModel.AlignedSource = 'baseline' then
+      FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusAlignedBaseline,
+        [FModel.AlignedText])
+    else if FModel.AlignedSource <> '' then
+      FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusAlignedLast,
+        [FModel.AlignedText]);
     if FModel.Comparison.Present then
       FStatus.Caption := FStatus.Caption + TAtlasStrings.Fmt(TAtlasTextId.ArchitectureStatusComparison,
         [FModel.Comparison.Count])
@@ -1061,6 +1132,7 @@ procedure TAtlasArchitectureFrame.UpdateInfo;
 var
   Item: TAtlasArchUnit;
 begin
+  UpdateAssignment;
   if Length(FMap.Route) > 0 then
   begin
     // Fester Weg aus „Weg zwischen Symbolen“ (#1117).
@@ -1086,6 +1158,55 @@ begin
   Item := FModel.Units[FMap.Selected];
   FInfo.Caption := TAtlasStrings.Fmt(TAtlasTextId.ArchitectureUnitInfo, [Item.Name,
     FModel.SubsystemName(Item.Subsystem), Item.Direct, Item.Total, Item.Uses_]);
+end;
+
+procedure TAtlasArchitectureFrame.UpdateAssignment;
+var
+  mBitmap: TBitmap;
+  mSize: TSize;
+begin
+  // Steckbrief (#1368): nur mit gewählter Unit, ohne Weg und mit Zuordnung vom Server.
+  if (FMap.PathFrom >= 0) or (Length(FMap.Route) > 0) or
+    not TAtlasArchitectureAssignment.Available(FModel, FMap.Selected) then
+  begin
+    FAssignment.Visible := False;
+    Exit;
+  end;
+  // Messen ohne Fenster: auf einer Bitmap mit derselben Schrift.
+  mBitmap := TBitmap.Create;
+  try
+    mBitmap.Canvas.Font.Assign(Font);
+    mSize := TAtlasArchitectureAssignment.Measure(mBitmap.Canvas, FModel, FMap.Selected, CurrentPPI);
+  finally
+    mBitmap.Free;
+  end;
+  FAssignment.Height := mSize.cy + 1;
+  FAssignment.Visible := True;
+  FAssignment.Top := FInfo.Top - 1;
+  FAssignment.Invalidate;
+end;
+
+procedure TAtlasArchitectureFrame.AssignmentPaint(Sender: TObject);
+var
+  mColors: TAtlasColors;
+  mSize: TSize;
+begin
+  if not TAtlasArchitectureAssignment.Available(FModel, FMap.Selected) then
+    Exit;
+  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
+  FAssignment.Canvas.Font.Assign(Font);
+  mSize := TAtlasArchitectureAssignment.Measure(FAssignment.Canvas, FModel, FMap.Selected, CurrentPPI);
+  TAtlasArchitectureAssignment.Draw(FAssignment.Canvas, Rect(0, 0, Min(mSize.cx, FAssignment.Width), mSize.cy),
+    FModel, FMap.Selected, CurrentPPI, mColors);
+end;
+
+procedure TAtlasArchitectureFrame.ExplainClick(Sender: TObject);
+begin
+  // Erneut: wieder nur der kurze Hinweis.
+  if FExplanation.Caption = TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint) then
+    FExplanation.Caption := TAtlasArchitectureAssignment.Explanation(FModel)
+  else
+    FExplanation.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureExplainHint);
 end;
 
 procedure TAtlasArchitectureFrame.OpenUnit(AUnit: Integer);
@@ -1287,6 +1408,22 @@ begin
   Item.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureShowAll);
   Item.OnClick := ShowAllClick;
   FSubsystemsMenu.Items.Add(Item);
+  // Farben und Namen neu vergeben (#1367), nur wenn der Dienst es anbietet.
+  if Assigned(FOnRenameSubsystems) then
+  begin
+    Item := TMenuItem.Create(FSubsystemsMenu);
+    Item.Caption := TAtlasStrings.Text(TAtlasTextId.ArchitectureRenameSubsystems);
+    Item.Hint := TAtlasStrings.Text(TAtlasTextId.ArchitectureRenameHint);
+    Item.Tag := -1;
+    Item.OnClick := RenameSubsystemsClick;
+    FSubsystemsMenu.Items.Add(Item);
+  end;
+end;
+
+procedure TAtlasArchitectureFrame.RenameSubsystemsClick(Sender: TObject);
+begin
+  if Assigned(FOnRenameSubsystems) then
+    FOnRenameSubsystems();
 end;
 
 procedure TAtlasArchitectureFrame.SubsystemsClick(Sender: TObject);

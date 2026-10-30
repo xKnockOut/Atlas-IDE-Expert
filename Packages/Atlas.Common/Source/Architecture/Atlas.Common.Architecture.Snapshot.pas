@@ -26,9 +26,10 @@
 //    "central": ["A"],
 //    "subsystems": [{"name": "Kern", "units": ["A", "B"], "central": "A",
 //                    "inner": 2, "outer": 0, "cohesion": 1, "isolated": false,
-//                    "foundation": true, "parent": "Common"}],
+//                    "foundation": true, "parent": "Common", "color": 0, "shade": 0}],
 //                   ("foundation" nur am Teilsystem „Fundament“, #1365; "parent" nur bei
-//                    nachgeteilten Teilsystemen, #1364)
+//                    nachgeteilten Teilsystemen, #1364; "color"/"shade" Farbe der Karte für
+//                    die Angleichung, #1367, fehlen in älteren Ständen)
 //    "outliers": [{"unit": "C", "suggested": "Kern", "reason": "namespace"}],
 //    "cycles": [{"interfaceOnly": true, "units": ["A", "B"],
 //                "edges": [["A", "B", "interface"], ["B", "A", "interface"]]}],
@@ -80,6 +81,11 @@ type
     Parent: string;
     /// <summary>Teilsystem „Fundament“ (#1365); False in älteren Ständen.</summary>
     Foundation: Boolean;
+    /// <summary>Farbe und Farbton der Karte (#1367, TOverviewSubsystem.ColorSlot/Shade); nur mit HasColor.</summary>
+    ColorSlot: Integer;
+    Shade: Integer;
+    /// <summary>False in Ständen vor #1367 (ohne "color"): Die Angleichung vergibt dann neue Farben.</summary>
+    HasColor: Boolean;
   end;
 
   TSnapshotOutlier = record
@@ -305,6 +311,9 @@ begin
     Result.Subsystems[Index].Isolated := Subsystem.Isolated;
     Result.Subsystems[Index].Parent := Subsystem.Parent;
     Result.Subsystems[Index].Foundation := Subsystem.Foundation;
+    Result.Subsystems[Index].ColorSlot := Subsystem.ColorSlot;
+    Result.Subsystems[Index].Shade := Subsystem.Shade;
+    Result.Subsystems[Index].HasColor := True;
   end;
   SetLength(Result.Outliers, Length(AOverview.Outliers));
   for Index := 0 to High(AOverview.Outliers) do
@@ -511,6 +520,9 @@ begin
         Builder.Append(', "foundation": true');
       if Subsystem.Parent <> '' then
         Builder.Append(', "parent": ').Append(Text(Subsystem.Parent));
+      // Farbe für die Angleichung (#1367); ältere Stände ohne sie liest Parse weiter.
+      if Subsystem.HasColor then
+        Builder.Append(', "color": ').Append(Subsystem.ColorSlot).Append(', "shade": ').Append(Subsystem.Shade);
       Builder.Append('}');
     end;
     Builder.Append(LineBreak).Append('],').Append(LineBreak).Append('"outliers": [');
@@ -830,6 +842,9 @@ begin
       Result.Subsystems[Index].Isolated := FlagOf(Item, 'isolated');
       Result.Subsystems[Index].Parent := TextOf(Item, 'parent');
       Result.Subsystems[Index].Foundation := FlagOf(Item, 'foundation');
+      Result.Subsystems[Index].HasColor := Field(Item, 'color') is TJSONNumber;
+      Result.Subsystems[Index].ColorSlot := IntOf(Item, 'color');
+      Result.Subsystems[Index].Shade := IntOf(Item, 'shade');
     end;
   end;
   Items := ArrayOf(FData, 'outliers');

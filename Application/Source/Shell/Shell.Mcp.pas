@@ -11,7 +11,7 @@
 // schreibende Werkzeuge ab, schreibende Aufrufe stehen im Log. Ungespeicherte
 // Dateien der IDE meldet das Plugin in %LOCALAPPDATA%\Atlas\editor-dirty-<pid>.json.
 // Formatieren (format_code, #1358) mit den Formatregeln des Projekts, zu dem die Datei gehört.
-// Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action)
+// Prüfregeln (get_diagnostics, check_code, explain_finding, apply_code_action, fix_findings)
 // bekommen den Symbolindex und die Projektdienste über TShellWorkspaceGroup wie
 // im Server (#1112); solange der Index lädt, sagt get_diagnostics das dazu.
 // get_server_status (#1356) zeigt den Status des Atlas-Servers der IDE für den
@@ -113,6 +113,11 @@ uses
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.SymbolPath,
   Atlas.Common.Lsp.SymbolPath,
+  Atlas.Common.Hotspots.Contract,
+  Atlas.Common.Hotspots.Analysis,
+  Atlas.Common.Hotspots.Service,
+  Atlas.Common.Hotspots.Report,
+  Atlas.Common.Lsp.Hotspots,
   Atlas.Common.JsonRpc.CurrentRequest,
   Atlas.Common.Projects.Contract,
   Shell.Platform,
@@ -122,6 +127,7 @@ uses
   Shell.Workspace,
   Shell.WorkspaceGroup,
   Shell.Bootstrap,
+  Shell.Hotspots,
   Shell.Diagnostics;
 
 /// <summary>Datei des Plugins (editor-dirty-&lt;pid&gt;.json), UTF-8 mit oder ohne BOM. Über TFileEncoding: teilt
@@ -1048,6 +1054,43 @@ begin
       Result := AEdit.ApplyCodeAction(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, FileName, Line,
         TMcpServer.OptionalString(AArguments, 'title'), DryRunOf(AArguments));
     end, TMcpToolKind.Write);
+  AServer.AddTool('fix_findings',
+    'Sammelkorrektur (#1352): wendet die sicheren Korrekturen der genannten Regeln (oder "all") in einer Datei ' +
+    'oder im ganzen Projekt an, nur Treffer ab fix.minConfidence (Vorgabe hoch) und nur Regeln mit safeFix im ' +
+    'Katalog; bis zu drei Durchgänge, keine neuen Syntaxfehler. dryRun (Vorgabe true) zeigt nur Zusammenfassung ' +
+    'und Diff; dryRun=false schreibt alle Dateien oder keine. In der IDE offene Dateien ändert das Plugin als ' +
+    'einen Rückgängig-Schritt je Datei, ungespeicherte bleiben unberührt.',
+    '{"type":"object","properties":{' +
+      '"rules":{"type":"array","items":{"type":"string"},"description":"Regelkennungen, z. B. [\"redundant-cast\"]; [\"all\"] = alle"},' +
+      '"file":{"type":"string","description":"Pfad einer Unit; leer = alle Projektdateien"},' +
+      '"minConfidence":{"type":"string","enum":["medium","high"],"description":"Untergrenze der Konfidenz; nicht unter fix.minConfidence"},' +
+      '"dryRun":{"type":"boolean","default":true,"description":"Nur Vorschau, nichts schreiben"}},' +
+      '"required":["rules"]}',
+    function(const AArguments: TJSONObject): string
+    var
+      mFiles, mRules: TArray<string>;
+      mItems: TJSONArray;
+      mItem: TJSONValue;
+      mFile: string;
+    begin
+      mRules := nil;
+      if (AArguments <> nil) and (AArguments.GetValue('rules') is TJSONArray) then
+      begin
+        mItems := TJSONArray(AArguments.GetValue('rules'));
+        for mItem in mItems do
+          if (mItem is TJSONString) and (Trim(mItem.Value) <> '') then
+            mRules := mRules + [Trim(mItem.Value)];
+      end;
+      mFile := TMcpServer.OptionalString(AArguments, 'file');
+      if mFile <> '' then
+        mFiles := TArray<string>.Create(AGuard.Resolve(mFile))
+      else
+        mFiles := AGroup.Main.ProjectFiles;
+      if Length(mFiles) = 0 then
+        raise EMcpToolError.Create('Kein Projekt geladen; Datei angeben');
+      Result := AEdit.FixFindings(BuiltinRules, AGroup.Main.Configuration.Settings, ARoot, mFiles, mRules,
+        TMcpServer.OptionalString(AArguments, 'minConfidence'), DryRunOf(AArguments));
+    end, TMcpToolKind.Write);
   AServer.AddTool('format_code',
     'Formatiert eine Unit nach den Formatregeln des Projekts (#1358; format.* in atlas.json, .editorconfig) wie ' +
     '"Dokument formatieren" in der IDE, ganz oder nur startLine..endLine. Mit text wird geplanter Code statt der ' +
@@ -1220,6 +1263,79 @@ begin
     end);
 end;
 
+/// <summary>get_hotspots (#1354): derselbe Dienst wie atlas/hotspots und --hotspots.</summary>
+procedure RegisterHotspotTools(AServer: TMcpServer; AGroup: TShellWorkspaceGroup; AService: THotspotService;
+  const ARoot: string);
+begin
+  AServer.AddTool('get_hotspots',
+    'Hotspots (#1354): Units bzw. Methoden, die im Zeitraum oft geändert wurden und zugleich komplex sind ' +
+    '(Wert = normierte Änderungen × normierte kognitive Komplexität), mit Änderungen, Autoren, Zeilen, Trend ' +
+    'der Komplexität und letzter Änderung aus Git bzw. SVN (vcs.provider). Mit section "coupling" die ' +
+    'Änderungskopplung: Dateien, die fast immer zusammen geändert werden, ohne uses-Kante zwischen ihnen. ' +
+    'Zeitraum und Mindestzahl gemeinsamer Commits aus hotspots.* in atlas.json. Lesend.',
+    '{"type":"object","properties":{' +
+      '"level":{"type":"string","enum":["unit","method"],"description":"Ebene; Vorgabe unit"},' +
+      '"limit":{"type":"integer","minimum":1,"description":"Länge der Liste; Vorgabe 20"},' +
+      '"months":{"type":"integer","minimum":1,"maximum":60,"description":"Zeitraum in Monaten; Vorgabe ' +
+        'hotspots.months (12)"},' +
+      '"section":{"type":"string","enum":["hotspots","coupling"],"description":"Abschnitt; Vorgabe hotspots"},' +
+      '"format":{"type":"string","enum":["text","markdown","json"],"description":"text (Vorgabe), markdown ' +
+        'oder json"}}}',
+    function(const AArguments: TJSONObject): string
+    var
+      mSettings: TServerSettings;
+      mRequest: THotspotRequest;
+      mResult: THotspotResult;
+      mSection: THotspotSection;
+      mVcs: IHotspotVcs;
+      mFormat, mError: string;
+      mLimit: Integer;
+    begin
+      mSettings := AGroup.Main.Configuration.Settings;
+      if not mSettings.HotspotsEnabled then
+        raise EMcpToolError.Create('Hotspots sind ausgeschaltet (hotspots.enabled)');
+      if not THotspotReport.ParseSection(TMcpServer.OptionalString(AArguments, 'section'), mSection) then
+        raise EMcpToolError.Create('"section" ist hotspots oder coupling');
+      mFormat := TMcpServer.OptionalString(AArguments, 'format');
+      if (mFormat <> '') and not SameText(mFormat, 'text') and not SameText(mFormat, 'markdown') and
+        not SameText(mFormat, 'json') then
+        raise EMcpToolError.Create('"format" ist text, markdown oder json');
+      if not AArguments.TryGetValue<Integer>('limit', mLimit) then
+        mLimit := THotspotReport.TextLimit;
+      if mLimit < 1 then
+        raise EMcpToolError.Create('"limit" ist eine ganze Zahl ab 1');
+      mRequest := THotspotRequest.FromSettings(mSettings);
+      if not TLspHotspots.ApplyOptions(AArguments, mRequest, mError) then
+        raise EMcpToolError.Create(mError);
+      mRequest.Title := ExtractFileName(ARoot);
+      mRequest.Root := ARoot;
+      mRequest.Namespaces := AGroup.Main.Namespaces;
+      // Umfang wie get_architecture (architecture.scope).
+      if mSettings.ArchitectureScope = 'project' then
+        mRequest.Files := AGroup.Main.ProjectFiles
+      else
+        mRequest.Files := AGroup.AllFiles;
+      if Length(mRequest.Files) = 0 then
+        raise EMcpToolError.Create('Kein Projekt geladen');
+      // Ohne Versionsverwaltung ein Hinweis statt einer leeren Liste.
+      if not TShellHotspotVcs.Detect(ARoot, mSettings, mVcs, mError) then
+        Exit('Keine Hotspots: ' + mError + '. Hotspots brauchen ein Git-Repository oder eine SVN-Arbeitskopie.');
+      try
+        mResult := AService.Analyze(mRequest, mVcs);
+      except
+        on E: EHotspots do
+          raise EMcpToolError.Create(E.Message);
+      end;
+      // Der Text kürzt selbst und nennt die Gesamtzahl ("20 von 431").
+      if SameText(mFormat, 'json') then
+        Result := THotspotReport.Json(TLspHotspots.Limited(mResult, mLimit))
+      else if SameText(mFormat, 'markdown') then
+        Result := THotspotReport.Markdown(TLspHotspots.Limited(mResult, mLimit))
+      else
+        Result := THotspotReport.Text(mResult, mSection, mLimit);
+    end);
+end;
+
 /// <summary>Unit-Name oder Pfad → Datei, geprüft wie Pfadparameter (#99): Units außerhalb des Arbeitsbereichs
 /// und seiner Bibliothekspfade ergeben einen Fehler mit Begründung (#1357).</summary>
 function UnitFileOf(const AIndex: ISymbolIndex; AGroup: TShellWorkspaceGroup; AGuard: TMcpPathGuard):
@@ -1325,6 +1441,7 @@ begin
   try
     RegisterTools(Server, nil, nil, nil, '', nil, nil, nil, nil);
     RegisterDeadCodeTools(Server, nil, nil, '', nil);
+    RegisterHotspotTools(Server, nil, nil, '');
     RegisterStatusTools(Server, nil, '');
     Listed := Server.ListTools;
     try
@@ -1360,6 +1477,7 @@ var
   Anonymizer: ILogAnonymizer;
   AllFiles: TFunc<TArray<string>>;
   Architecture: TArchitectureService;
+  Hotspots: THotspotService;
   PathGraphs: TUsesGraphService;
   PathLocator: TUsesLocator;
   PathOptions: TUsesGraphOptions;
@@ -1473,6 +1591,12 @@ begin
       // Defines des Projekts, zu dem die Datei gehört (Projektgruppe, #1112).
       if not Group.WorkspaceOf(AFileName).Defines(Result) then
         Result := nil;
+    end);
+  // Hotspots (#1354): derselbe Dienst wie atlas/hotspots und --hotspots.
+  Hotspots := THotspotService.Create(Index,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
     end);
   // Weg zwischen Symbolen (#1117): eigener Uses-Graph samt Bibliotheks-Units (Start oder Ziel).
   PathOptions := TUsesGraphOptions.Default;
@@ -1596,6 +1720,9 @@ begin
           Request.Files := AllFiles();
         if Length(Request.Files) = 0 then
           raise EMcpToolError.Create('Kein Projekt geladen');
+        // Derselbe zuletzt berechnete Stand wie im LSP-Prozess (#1367).
+        Request.PreviousFile := TIndexCacheDirectory.ArchitectureFileFor(TIndexCacheDirectory.DefaultRoot,
+          Request.ScopeKey);
         Overview := Architecture.Overview(Request);
         if ACompareWith <> '' then
         begin
@@ -1611,6 +1738,7 @@ begin
           Result := TArchitectureReport.Text(Overview, ASection, TArchitectureReport.TextLimit);
       end, FindPathOf(Index, PathGraphs, PathLocator, Workspace, EnsureAny, Root));
     RegisterDeadCodeTools(Server, Group, Index, Root, Guard);
+    RegisterHotspotTools(Server, Group, Hotspots, Root);
     RegisterStatusTools(Server, Index, Root);
     // Sicherheit (#99).
     Server.Restricted := AOptions.Restricted;
@@ -1621,6 +1749,8 @@ begin
         // Abgeschaltete Funktion (#227): Werkzeug gar nicht anbieten.
         if not Workspace.Configuration.Settings.ArchitectureEnabled then
           Result := Result + ['get_architecture'];
+        if not Workspace.Configuration.Settings.HotspotsEnabled then
+          Result := Result + ['get_hotspots'];
         if not Workspace.Configuration.Settings.Navigation.SymbolPath then
           Result := Result + ['find_path'];
       end;
@@ -1703,6 +1833,7 @@ begin
     Code.Free;
     Tools.Free;
     Architecture.Free;
+    Hotspots.Free;
     PathLocator.Free;
     PathGraphs.Free;
     Group.Free;

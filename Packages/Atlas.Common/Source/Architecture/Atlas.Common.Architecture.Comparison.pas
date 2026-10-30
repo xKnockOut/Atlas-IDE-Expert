@@ -15,7 +15,8 @@
 // - neue und entfernte Units.
 // Teilsysteme werden nicht über die Nummer zugeordnet, sondern über die
 // größte Überschneidung ihrer Units (bei Gleichstand gewinnt derselbe Name),
-// je ein altes zu höchstens einem neuen; übrige mit gleichem Namen danach.
+// je ein altes zu höchstens einem neuen; übrige mit gleichem Namen danach
+// (TSubsystemMatcher im Modus Überschneidung, #1367).
 // Eine Unit wechselt, wenn ihr neues Teilsystem einem anderen alten zugeordnet
 // ist als dem, in dem sie stand, oder keinem.
 // AddedEdges/DroppedEdges enthalten alle geänderten uses-Kanten für die Karte
@@ -44,7 +45,8 @@ interface
 
 uses
   Atlas.Common.Architecture.Overview,
-  Atlas.Common.Architecture.Snapshot;
+  Atlas.Common.Architecture.Snapshot,
+  Atlas.Common.Architecture.Matching;
 
 type
   TArchitectureFailKind = (NewCycle, NewCrossLink, SubsystemChange, CentralGrowth);
@@ -77,11 +79,9 @@ type
     After: Integer;
   end;
 
-  /// <summary>Neues Teilsystem und das alte, dem es zugeordnet ist ('' = keinem).</summary>
-  TComparisonMatch = record
-    NewName: string;
-    OldName: string;
-  end;
+  /// <summary>Neues Teilsystem und das alte, dem es zugeordnet ist ('' = keinem; #1367: dieselbe Zuordnung wie
+  /// die Angleichung, Atlas.Common.Architecture.Matching).</summary>
+  TComparisonMatch = TSubsystemMatch;
 
   TArchitectureComparison = record
     BaselineTitle: string;
@@ -291,146 +291,10 @@ begin
   Result := ParseKinds(AText.Split([',', ';', ' '], TStringSplitOptions.ExcludeEmpty), AKinds, AError);
 end;
 
-type
-  TMatchCandidate = record
-    NewIndex: Integer;
-    OldIndex: Integer;
-    Overlap: Integer;
-    SameName: Boolean;
-  end;
-
-/// <summary>Teilsystemnamen eines Stands mit ihren Units (klein geschrieben); Units ohne Eintrag in Subsystems
-/// zählen über ihr Feld Subsystem mit.</summary>
-function GroupsOf(const ASnapshot: TArchitectureSnapshot;
-  out ANames: TArray<string>): TArray<TDictionary<string, Boolean>>;
-var
-  Index, Group: Integer;
-  Item: TSnapshotUnit;
-  Lookup: TDictionary<string, Integer>;
-  Key: string;
-begin
-  ANames := nil;
-  Result := nil;
-  Lookup := TDictionary<string, Integer>.Create;
-  try
-    for Index := 0 to High(ASnapshot.Subsystems) do
-    begin
-      Key := LowerCase(ASnapshot.Subsystems[Index].Name);
-      if Lookup.ContainsKey(Key) then
-        Continue;
-      Lookup.Add(Key, Length(ANames));
-      ANames := ANames + [ASnapshot.Subsystems[Index].Name];
-      Result := Result + [TDictionary<string, Boolean>.Create];
-    end;
-    for Item in ASnapshot.Units do
-    begin
-      Key := LowerCase(Item.Subsystem);
-      if not Lookup.TryGetValue(Key, Group) then
-      begin
-        Group := Length(ANames);
-        Lookup.Add(Key, Group);
-        ANames := ANames + [Item.Subsystem];
-        Result := Result + [TDictionary<string, Boolean>.Create];
-      end;
-      Result[Group].AddOrSetValue(LowerCase(Item.Name), True);
-    end;
-  finally
-    Lookup.Free;
-  end;
-end;
-
-procedure FreeGroups(const AGroups: TArray<TDictionary<string, Boolean>>);
-var
-  Group: TDictionary<string, Boolean>;
-begin
-  for Group in AGroups do
-    Group.Free;
-end;
-
 class function TArchitectureComparer.MatchSubsystems(const AOld, ANew: TArchitectureSnapshot)
   : TArray<TComparisonMatch>;
-var
-  OldNames, NewNames: TArray<string>;
-  OldGroups, NewGroups: TArray<TDictionary<string, Boolean>>;
-  Candidates: TList<TMatchCandidate>;
-  Candidate: TMatchCandidate;
-  NewIndex, OldIndex, Overlap: Integer;
-  Key: string;
-  OldTaken: TArray<Boolean>;
-  Assigned_: TArray<Integer>;
 begin
-  OldGroups := GroupsOf(AOld, OldNames);
-  NewGroups := nil;
-  Candidates := nil;
-  try
-    NewGroups := GroupsOf(ANew, NewNames);
-    Candidates := TList<TMatchCandidate>.Create;
-    for NewIndex := 0 to High(NewGroups) do
-      for OldIndex := 0 to High(OldGroups) do
-      begin
-        Overlap := 0;
-        for Key in NewGroups[NewIndex].Keys do
-          if OldGroups[OldIndex].ContainsKey(Key) then
-            Inc(Overlap);
-        if Overlap = 0 then
-          Continue;
-        Candidate.NewIndex := NewIndex;
-        Candidate.OldIndex := OldIndex;
-        Candidate.Overlap := Overlap;
-        Candidate.SameName := SameText(NewNames[NewIndex], OldNames[OldIndex]);
-        Candidates.Add(Candidate);
-      end;
-    // Größte Überschneidung zuerst, bei Gleichstand derselbe Name, dann nach Namen (eindeutig).
-    Candidates.Sort(TComparer<TMatchCandidate>.Construct(
-      function(const ALeft, ARight: TMatchCandidate): Integer
-      begin
-        Result := ARight.Overlap - ALeft.Overlap;
-        if Result = 0 then
-          Result := Ord(ARight.SameName) - Ord(ALeft.SameName);
-        if Result = 0 then
-          Result := CompareNames(NewNames[ALeft.NewIndex], NewNames[ARight.NewIndex]);
-        if Result = 0 then
-          Result := CompareNames(OldNames[ALeft.OldIndex], OldNames[ARight.OldIndex]);
-      end));
-    SetLength(OldTaken, Length(OldGroups));
-    SetLength(Assigned_, Length(NewGroups));
-    for NewIndex := 0 to High(Assigned_) do
-      Assigned_[NewIndex] := -1;
-    for Candidate in Candidates do
-      if (Assigned_[Candidate.NewIndex] < 0) and not OldTaken[Candidate.OldIndex] then
-      begin
-        Assigned_[Candidate.NewIndex] := Candidate.OldIndex;
-        OldTaken[Candidate.OldIndex] := True;
-      end;
-    // Ohne gemeinsame Units: derselbe Name, wenn das alte Teilsystem noch frei ist.
-    for NewIndex := 0 to High(Assigned_) do
-      if Assigned_[NewIndex] < 0 then
-        for OldIndex := 0 to High(OldNames) do
-          if not OldTaken[OldIndex] and SameText(OldNames[OldIndex], NewNames[NewIndex]) then
-          begin
-            Assigned_[NewIndex] := OldIndex;
-            OldTaken[OldIndex] := True;
-            Break;
-          end;
-    SetLength(Result, Length(NewNames));
-    for NewIndex := 0 to High(NewNames) do
-    begin
-      Result[NewIndex].NewName := NewNames[NewIndex];
-      if Assigned_[NewIndex] >= 0 then
-        Result[NewIndex].OldName := OldNames[Assigned_[NewIndex]]
-      else
-        Result[NewIndex].OldName := '';
-    end;
-    TArray.Sort<TComparisonMatch>(Result, TComparer<TComparisonMatch>.Construct(
-      function(const ALeft, ARight: TComparisonMatch): Integer
-      begin
-        Result := CompareNames(ALeft.NewName, ARight.NewName);
-      end));
-  finally
-    Candidates.Free;
-    FreeGroups(OldGroups);
-    FreeGroups(NewGroups);
-  end;
+  Result := TSubsystemMatcher.Match(AOld, ANew, TSubsystemMatchMode.Overlap);
 end;
 
 function UnitMap(const ASnapshot: TArchitectureSnapshot): TDictionary<string, Integer>;

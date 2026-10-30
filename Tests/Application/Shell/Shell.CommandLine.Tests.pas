@@ -52,6 +52,9 @@ type
     /// <summary>#1355: --replay nennt anfrage.json eines Absturzfalls.</summary>
     [Test]
     procedure ReadsReplayFile;
+    /// <summary>#1352: Sammelkorrektur.</summary>
+    [Test]
+    procedure ReadsFixArguments;
     /// <summary>#1358: --format-check, --format-write und --format diff.</summary>
     [Test]
     procedure ReadsFormatterArguments;
@@ -210,6 +213,12 @@ begin
   Options := TCommandLineOptions.Parse(['--architecture=Bericht.html']);
   Assert.AreEqual(0, Integer(Length(Options.Warnings)));
   Assert.AreEqual('Bericht.html', Options.ArchitectureFile, '--architecture (#1118)');
+  Assert.AreEqual('', Options.HotspotsFile);
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--hotspots', 'hotspots.html']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('hotspots.html', Options.HotspotsFile, '--hotspots (#1354)');
+  Assert.AreEqual('App.dproj', Options.CheckTarget);
+  Options := TCommandLineOptions.Parse(['--architecture=Bericht.html']);
   Assert.AreEqual('', Options.CheckTarget);
   // Vergleich (#1121): Abweichungsarten bei --fail-on ohne Warnung, der Wert bleibt für den Bericht.
   Options := TCommandLineOptions.Parse(['--architecture', 'neu.json', '--compare', 'alt.json', '--fail-on',
@@ -350,6 +359,23 @@ begin
   Assert.AreEqual<NativeInt>(0, Length(Options.Warnings));
   Options := TCommandLineOptions.Parse(['--stdio']);
   Assert.AreEqual('', Options.ReplayFile);
+end;
+
+procedure TCommandLineOptionsTests.ReadsFixArguments;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--fix', 'redundant-cast, unused-uses',
+    '--fix-dry-run']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('redundant-cast|unused-uses', string.Join('|', Options.FixRules));
+  Assert.IsTrue(Options.FixDryRun);
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--fix=all']);
+  Assert.AreEqual('all', string.Join('|', Options.FixRules));
+  Assert.IsFalse(Options.FixDryRun);
+  Assert.AreEqual(0, Integer(Length(TCommandLineOptions.Parse(['--check', 'App.dproj']).FixRules)));
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--fix', ',']);
+  Assert.AreEqual(1, Integer(Length(Options.Warnings)));
 end;
 
 procedure TCommandLineOptionsTests.ReadsFormatterArguments;
