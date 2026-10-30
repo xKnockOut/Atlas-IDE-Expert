@@ -5,7 +5,8 @@
 //   Symbol  deprecated W1000, library W1001, platform W1002, experimental W1003
 //   Unit    library W1004, platform W1005, deprecated W1006, experimental W1007
 // Ein Bezeichner, der sich sicher auf eine Deklaration mit einem dieser
-// Hinweise auflöst, bekommt einen Treffer; eine Unit im uses, deren Kopf einen
+// Hinweise auflöst, bekommt einen Treffer, bei Überladungen nur die vom
+// Aufruf gewählte; eine Unit im uses, deren Kopf einen
 // trägt, ebenso. Die LSP-Schicht streicht deprecated durch. Der Grund aus
 // deprecated 'Grund' steht in der Meldung. Nicht gemeldet werden die
 // Deklaration selbst und der Name im Kopf einer Implementierung.
@@ -428,10 +429,10 @@ var
   Tokens: TArray<TPascalToken>;
   Token: TPascalToken;
   Index, Previous: Integer;
-  Resolved: TResolvedSymbol;
-  OwnerUnit: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Hinted, Qualified: Boolean;
+  Resolved, Candidate: TResolvedSymbol;
+  OwnerUnit, CandidateUnit: TUnitIndex;
+  Symbol, CandidateSymbol: TIndexSymbol;
+  Hinted, Qualified, Unsure: Boolean;
 begin
   Tokens := FContext.Tree.Tokens;
   Candidates := TDictionary<string, Boolean>.Create;
@@ -459,11 +460,21 @@ begin
       end;
       if not Hinted then
         Continue;
-      Resolved := FResolver.Resolve(FContext.Tree, FContext.RelativePath, Token.StartPos);
-      if not Resolved.Found or (Resolved.SelectionRange.StartPos = Token.StartPos) and
+      // Bei Überladungen zählt die Überladung, die der Aufruf wählt (FileAge(Name, Alter) nicht die veraltete
+      // FileAge(Name)). Bleibt die Wahl offen, meldet die Regel nur, wenn alle Kandidaten den Hinweis tragen.
+      Resolved := Default(TResolvedSymbol);
+      Unsure := False;
+      for Candidate in FResolver.ResolveAll(FContext.Tree, FContext.RelativePath, Token.StartPos) do
+        if not SymbolOf(Candidate, CandidateUnit, CandidateSymbol) or not HasHint(CandidateSymbol.Directives) then
+          Unsure := True
+        else if not Resolved.Found then
+        begin
+          Resolved := Candidate;
+          OwnerUnit := CandidateUnit;
+          Symbol := CandidateSymbol;
+        end;
+      if Unsure or not Resolved.Found or (Resolved.SelectionRange.StartPos = Token.StartPos) and
         SameText(Resolved.FileName, FContext.RelativePath) then
-        Continue;
-      if not SymbolOf(Resolved, OwnerUnit, Symbol) or not HasHint(Symbol.Directives) then
         Continue;
       Previous := Index - 1;
       while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
