@@ -1935,9 +1935,9 @@ type
     procedure RefreshVcsProject;
     /// <summary>Fundort als Text: „PATH“, „bekannter Ordner“, „eigener Pfad“.</summary>
     class function VcsSourceText(ASource: TAtlasVcsToolSource): string; static;
-    /// <summary>Zustand ohne Prozess: „verwendet: <Pfad> (PATH)“, „fehlt“, „fehlt: <Pfad> …“.</summary>
+    /// <summary>Zustand ohne Prozess: „verwendet: &lt;Pfad&gt; (PATH)“, „fehlt“, „fehlt: &lt;Pfad&gt; …“.</summary>
     class function VcsLocationText(const ALocation: TAtlasVcsToolLocation): string; static;
-    /// <summary>Ergebnis von „Prüfen“: „gefunden · git version 2.47.1 · <Pfad> (PATH)“ usw.</summary>
+    /// <summary>Ergebnis von „Prüfen“: „gefunden · git version 2.47.1 · &lt;Pfad&gt; (PATH)“ usw.</summary>
     class function VcsCheckText(const ACheck: TAtlasVcsToolCheck): string; static;
     /// <summary>Gruppe „Aktuelles Projekt“: Projekt, Art, Wurzel, Branch bzw. SVN-Pfad, Revision, verfolgter
     /// Branch und woher die Art kommt; mehrere Zeilen.</summary>

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.CompilerFixesGolden;
+﻿unit Atlas.Common.Editing.CompilerFixesGolden; // lsp-ignore-file: unused-public-member -- Golden-Datei: Das Testprojekt übersetzt nur das Ergebnis der Aktion.
 
 // Golden-Datei für die Schnellkorrekturen an Compilermeldungen, Teil 2
 // (#549): genau das, was die Korrekturen aus dem Vorher-Text in

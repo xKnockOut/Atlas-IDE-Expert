@@ -235,8 +235,8 @@ begin
   Choices := TAtlasSettingChoices.DelphiVersions(TAtlasSettingChoices.KnownVersions);
   Assert.AreEqual(Integer(Length(TAtlasSettingChoices.KnownVersions)), Integer(Length(Choices)));
   Assert.AreEqual('Delphi 13 (37.0)', Choices[0].Caption);
-  Assert.IsTrue(TAtlasSettingChoices.IndexOf(Choices, '"23.0"') > 0);
-  Assert.IsTrue(TAtlasSettingChoices.IndexOf(Choices, '"20.0"') > 0);
+  Assert.IsTrue(TAtlasSettingChoices.IndexOf(Choices, '"23.0"') >= 0);
+  Assert.IsTrue(TAtlasSettingChoices.IndexOf(Choices, '"20.0"') >= 0);
 end;
 
 procedure TAtlasSettingsLayersTests.ReadsConfigsAndPlatformsFromDproj;

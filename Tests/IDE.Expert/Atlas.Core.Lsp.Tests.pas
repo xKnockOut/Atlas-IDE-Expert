@@ -1698,7 +1698,7 @@ const
 var
   Offset: Integer;
 begin
-  for Offset := 0 to Length(Text) do
+  for Offset := 0 to Length(Text) do // lsp-ignore: loop-off-by-one -- Offsets zwischen den Zeichen; Text[Offset] nur ab 1
     if (Offset = 0) or (Text[Offset] <> #13) or (Offset = Length(Text)) or (Text[Offset + 1] <> #10) then
       Assert.AreEqual(Offset, TLspTextChanges.OffsetOf(Text, TLspTextChanges.PositionOf(Text, Offset)),
         IntToStr(Offset));

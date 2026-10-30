@@ -1,4 +1,3 @@
-# Übergabe: Atlas IDE Expert – Stand 29.10.2026
 ﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
 ## Kontext
@@ -45,6 +44,13 @@
   - `GetValue<T>` direkt als Argument von `Assert`.
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
+
+## Atlas am eigenen Repo geprüft (30.10.2026, Branch `claude/project-thread-bigt17`)
+- Prüflauf: `Tools/Linux/Build-AtlasServer.sh`, dann `Output/Linux64/Bin/AtlasServer --check . --units 'Packages/**,Application/**,Setup/**,Tests/**,Tools/**' --format json --fail-on never --output … --index-cache …` (2843 Units, rund 18 Minuten; langsamste Regel `type-mismatch`, langsamste Unit `Atlas.UI.Settings.Page` mit 49 s). Ohne `Tests/Compilermeldungen`, `Referenzprojekt` und `DccFaelle` vorher 59 619 Befunde, davon 58 907 `missing-begin-end` (bleibt nach Marcos Entscheidung an).
+- Regelfehlalarme behoben (mit Tests): `component-missing-inherited` (TForm/TPaintBox nur mit OnPaint oder DFM), `component-fixed-pixels` (eigene Skalierungsmethoden), `thread-resume-suspend` (Typ ohne TThread), `deref-before-nil-check` (FreeAndNil, `Lese(X.Feld)`), `captured-loop-variable` (Variable in der anonymen Methode zugewiesen), `architecture-*` (Testunits), `dunitx-test-without-assert` (Assert in lokalen Routinen), `unused-unit` (`[TestFixture]` per RTTI). Echte Befunde im Code behoben, siehe CHANGELOG.
+- `lsp-ignore-file` in den Golden-Dateien (Zeile 1) gegen `unused-public-member`; die Vorher-Texte in den Tests von CompilerFixes, CodeActions und ClassActions wurden mitgezogen.
+- Offen und nur berichtet: 76 `uses-cycle`-Befunde über implementation-uses (SlashCommands ↔ *Commands, Rules.Checker/Baseline/Output, Lsp.DocumentSymbols ↔ Lsp.FormFiles, InlayHints/MethodWithoutSelf/PromoteVariable, ShortcutTips ↔ KeyMap, Settings.Page ↔ QueryDialog, IssueFrame ↔ CommentEditor, Lsp.WorkspaceEdits ↔ Lsp.Session), 28 `unused-parameter` (meist einheitliche Signaturen von Rückrufen), Datumsformate in Oberflächen (`format-without-settings`, gewollt nach Gebietsschema). Diese brauchen Umbauten und gehören in eigene Issues.
+- Plugin-Units (Atlas.IDE.Expert) sind nur unter FPC geprüft, nicht mit Delphi übersetzt.
 
 ## owned-field-free-unclear: besitzende Listen und TArray<T> (30.10.2026, Branch `claude/project-thread-cgk6mb`)
 - Anlass: Marco meldete `owned-field-free-unclear` an `FWatcher` in `Atlas.IDE.Build.CheckOnSave`, `OpenBuild` und `Runner` und an `FTaskNames` in `Atlas.UI.Welcome.QuickActions.Tests`. Kein Leck: `TAtlasCompileEvents.Add` legt den Teilnehmer in `FParticipants: TObjectList<TAtlasCompileParticipant>` (`Create(True)`), `FTaskNames` ist ein `TArray<string>`.

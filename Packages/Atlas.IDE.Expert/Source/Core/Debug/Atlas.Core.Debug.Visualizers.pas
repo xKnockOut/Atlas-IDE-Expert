@@ -112,8 +112,8 @@ type
   public
     /// <summary>Typnamen, für die sich der Visualisierer der Art beim Debugger anmeldet.</summary>
     class function SupportedTypes(AKind: TAtlasVisualizerKind): TArray<TAtlasVisualizerType>; static;
-    /// <summary>Name ohne Units in allen Teilen: „System.Generics.Collections.TList<Unit1.TKunde>“ →
-    /// „TList<TKunde>“.</summary>
+    /// <summary>Name ohne Units in allen Teilen: „System.Generics.Collections.TList&lt;Unit1.TKunde&gt;“ →
+    /// „TList&lt;TKunde&gt;“.</summary>
     class function ShortTypeName(const ATypeName: string): string; static;
     /// <summary>Grundname ohne Unit und ohne Typargumente: „TList“.</summary>
     class function BaseTypeName(const ATypeName: string): string; static;
@@ -121,8 +121,8 @@ type
     class function KindOf(const ATypeName: string; out AKind: TAtlasVisualizerKind): Boolean; static;
     /// <summary>Art des ersten Glieds einer Vererbungskette (Typ zuerst), das eine hat.</summary>
     class function KindOfChain(const ATypeNames: array of string; out AKind: TAtlasVisualizerKind): Boolean; static;
-    /// <summary>Typ aus der Deklaration im Hover: „var Kunden: TObjectList<TKunde>“ → „TObjectList<TKunde>“,
-    /// „property Items: TList<Integer> read FItems“ → „TList<Integer>“, „function F(A: Integer): TPoint“ → „TPoint“;
+    /// <summary>Typ aus der Deklaration im Hover: „var Kunden: TObjectList&lt;TKunde&gt;“ → „TObjectList&lt;TKunde&gt;“,
+    /// „property Items: TList&lt;Integer&gt; read FItems“ → „TList&lt;Integer&gt;“, „function F(A: Integer): TPoint“ → „TPoint“;
     /// '' ohne Typ.</summary>
     class function DeclaredType(const ADeclaration: string): string; static;
     /// <summary>Ersatztext für den Wert AExpression vom Typ ATypeName; AEvalResult ist der Text der IDE. '' = den

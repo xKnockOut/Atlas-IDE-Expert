@@ -103,7 +103,6 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.TextChanges;
 
 type

@@ -2624,7 +2624,7 @@ begin
         if Result then
         begin
           Inc(Reads);
-          AText := TFile.ReadAllText(AFileName);
+          AText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
         end;
       end;
     Completion.Attach(Dispatcher);

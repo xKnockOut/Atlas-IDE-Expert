@@ -121,7 +121,7 @@ type
     class function IssuesUrl(const ATarget: TAtlasTrackerTarget; AMax: Integer): string; static;
     /// <summary>Abfrage, wie sie an YouTrack geht (mit "project: …").</summary>
     class function FullQuery(const ATarget: TAtlasTrackerTarget): string; static;
-    /// <summary>Freitextsuche der Palette (#1270): "project: <Kürzel> <Text>" ohne die Abfrage der Einstellungen;
+    /// <summary>Freitextsuche der Palette (#1270): "project: &lt;Kürzel&gt; &lt;Text&gt;" ohne die Abfrage der Einstellungen;
     /// '' ohne Server oder Text.</summary>
     class function TextSearchUrl(const ATarget: TAtlasTrackerTarget; const AText: string; AMax: Integer): string;
       static;
@@ -135,7 +135,7 @@ type
     /// <summary>Adresse der Vorschau eines Issues; '' bei ungültiger Kennung oder ohne Server.</summary>
     class function DetailsUrl(const ATarget: TAtlasTrackerTarget; const AKey: string; AComments: Boolean): string;
       static;
-    /// <summary>Antwort von /api/issues/<Kennung>; False bei ungültigem JSON bzw. ohne Kennung.</summary>
+    /// <summary>Antwort von /api/issues/&lt;Kennung&gt;; False bei ungültigem JSON bzw. ohne Kennung.</summary>
     class function ParseDetails(const AJson: string; const ATarget: TAtlasTrackerTarget; AComments: Boolean;
       out ADetails: TAtlasTrackerDetails): Boolean; static;
     /// <summary>Name bzw. Wert für einen Befehl: mit Leerzeichen oder Klammern in geschweiften Klammern.</summary>
@@ -178,11 +178,11 @@ type
     /// samt Richtung ("80-1s", "81-2t"). Typen mit bekanntem Namen gehen vor. False ohne passenden Typ.</summary>
     class function ParseLinkType(const AJson: string; AKind: TAtlasTrackerLinkKind; out AId: string): Boolean;
       static;
-    /// <summary>Projekt-ID aus /api/issues/<Kennung>?fields=project(id); False ohne.</summary>
+    /// <summary>Projekt-ID aus /api/issues/&lt;Kennung&gt;?fields=project(id); False ohne.</summary>
     class function ParseProjectId(const AJson: string; out AId: string): Boolean; static;
     /// <summary>Inhalt für POST /api/issues.</summary>
     class function NewIssueBody(const AProjectId, ATitle, ADescription: string): string; static;
-    /// <summary>Inhalt für POST …/links/<Typ>/issues.</summary>
+    /// <summary>Inhalt für POST …/links/&lt;Typ&gt;/issues.</summary>
     class function LinkBody(const AKey: string): string; static;
     /// <summary>Kennung des angelegten Issues aus der Antwort von POST /api/issues; '' ohne.</summary>
     class function ParseCreatedKey(const AJson: string): string; static;

@@ -413,7 +413,7 @@ begin
   end;
   // Höhe ausdrücklich nachziehen: Nach DisableAlign/EnableAlign rechnet AutoSize sie nicht neu, der Editor
   // behielt seine alte Höhe und überdeckte die Felder darunter (DialogRuleEditorPushesFieldsDown).
-  TAtlasRulesBox(FDetails).AdjustSize;
+  FDetails.AdjustSize;
   AdjustSize;
 end;
 

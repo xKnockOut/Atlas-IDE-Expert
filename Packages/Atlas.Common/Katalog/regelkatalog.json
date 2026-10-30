@@ -187,7 +187,7 @@
       "category": "code-smell",
       "severity": "warning",
       "group": "architecture",
-      "description": "A uses entry violates the import matrix of the role concept (output artefact, feature, role: Contract, Internals, Providers, Adapters, Composition, Hosting). Off by default; switch it on in atlas.json with the option \"prefixes\". Approved exceptions go to \"allow\" as \"Source -> Target\" globs.",
+      "description": "A uses entry violates the import matrix of the role concept (output artefact, feature, role: Contract, Internals, Providers, Adapters, Composition, Hosting). Off by default; switch it on in atlas.json with the option \"prefixes\". Approved exceptions go to \"allow\" as \"Source -> Target\" globs. Test units (DUnitX, DUnit or TestInsight in the uses clause) are not checked.",
       "bad": "unit Atlas.Common.Logging.Contract;\ninterface\nuses Atlas.Common.Logging.Providers.Logger;",
       "good": "unit Atlas.Common.Logging.Contract;\ninterface\nuses System.SysUtils;",
       "options": [
@@ -223,7 +223,7 @@
       "category": "code-smell",
       "severity": "warning",
       "group": "architecture",
-      "description": "A contract unit declares a class in its interface section. Contracts hold only records, interfaces, enumerations and exceptions. Off by default; switch it on in atlas.json with the option \"prefixes\". Approved exceptions go to \"allow\" as \"Unit.Type\" globs.",
+      "description": "A contract unit declares a class in its interface section. Contracts hold only records, interfaces, enumerations and exceptions. Off by default; switch it on in atlas.json with the option \"prefixes\". Approved exceptions go to \"allow\" as \"Unit.Type\" globs. Test units are not checked.",
       "bad": "unit App.Orders.Contract;\ninterface\ntype\n  TOrderList = class\n  end;",
       "good": "unit App.Orders.Contract;\ninterface\ntype\n  IOrderList = interface\n  end;",
       "options": [
@@ -352,7 +352,7 @@
       "category": "code-smell",
       "severity": "warning",
       "group": "threads",
-      "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead.",
+      "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead. Silent when the receiver's declared type has a complete ancestor chain without TThread (own classes with Resume/Suspend methods).",
       "bad": "FWorker.Resume;",
       "good": "FWorker.Start;",
       "safeFix": true
@@ -538,7 +538,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "An anonymous method passed to a deferred API (TThread.Queue, TTask.Run, ...) captures a variable that changes before it runs, such as a for-in loop variable. Delphi captures the variable, not its value.",
+      "description": "An anonymous method passed to a deferred API (TThread.Queue, TTask.Run, ...) captures a variable that changes before it runs, such as a for-in loop variable. Delphi captures the variable, not its value. Silent when the anonymous method assigns the variable itself (event handlers that keep a state).",
       "bad": "for S in List do\n  TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);",
       "good": "function CaptureS(const AValue: string): TProc;\nbegin\n  Result := procedure begin Memo1.Lines.Add(AValue); end;\nend;\n...\nfor S in List do\n  TThread.Queue(nil, CaptureS(S));",
       "options": [
@@ -556,7 +556,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "components",
-      "description": "An overridden Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy or Paint of a component does not call inherited, so the VCL skips its own work there. Paint is reported only if an ancestor's Paint draws something itself (TCustomPanel, TCustomForm, TPaintBox, TImage, a grid or a class from the file or index that declares Paint), with medium confidence; TCustomControl.Paint and TGraphicControl.Paint are empty, so leaving out inherited there is normal.",
+      "description": "An overridden Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy or Paint of a component does not call inherited, so the VCL skips its own work there. Paint is reported only if an ancestor's Paint draws something itself (TCustomPanel, TImage, a grid or a class from the file or index that declares Paint), with medium confidence; TCustomForm and TPaintBox only fire OnPaint at run time, so a Paint without inherited is reported there only if the unit uses OnPaint or has a form file; TCustomControl.Paint and TGraphicControl.Paint are empty, so leaving out inherited there is normal.",
       "bad": "procedure TMyControl.Loaded;\nbegin\n  UpdateLayout;\nend;",
       "good": "procedure TMyControl.Loaded;\nbegin\n  inherited;\n  UpdateLayout;\nend;"
     },
@@ -596,7 +596,7 @@
       "category": "code-smell",
       "severity": "warning",
       "group": "components",
-      "description": "Paint or Resize uses fixed pixel values that are too small above 96 dpi. Values passed through ScaleValue or MulDiv, 0, 1 and -1, and factors of multiplications and divisions are not reported.",
+      "description": "Paint or Resize uses fixed pixel values that are too small above 96 dpi. Values passed through ScaleValue or MulDiv or through a method of the class that scales itself (calls ScaleValue, MulDiv or a Scale... routine), 0, 1 and -1, and factors of multiplications and divisions are not reported.",
       "bad": "Canvas.FillRect(Rect(0, 0, 16, 16));",
       "good": "Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));"
     },
@@ -1613,7 +1613,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "X is dereferenced (X.Field, X.Method, X^) and only afterwards checked with Assigned(X), X <> nil or X = nil. Either the check is superfluous or the access before it can crash. Reported only when every path to the check passes the access and X was not checked before; a new assignment, passing X to a routine and, for fields and global variables, any call in between end the path. Medium confidence. When the check is an if without else directly after the access in the same block, the quick fix moves the access into it.",
+      "description": "X is dereferenced (X.Field, X.Method, X^) and only afterwards checked with Assigned(X), X <> nil or X = nil. Either the check is superfluous or the access before it can crash. Reported only when every path to the check passes the access and X was not checked before; a new assignment, FreeAndNil(X), passing X or one of its fields or elements (X.Field, X[I]) to a routine and, for fields and global variables, any call in between end the path. Medium confidence. When the check is an if without else directly after the access in the same block, the quick fix moves the access into it.",
       "bad": "Titel := Kunde.Name;\nif Assigned(Kunde) then\n  Anzeigen(Kunde);",
       "good": "if Assigned(Kunde) then\nbegin\n  Titel := Kunde.Name;\n  Anzeigen(Kunde);\nend;"
     },
@@ -2357,7 +2357,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "packages",
-      "description": "A [Test] or [TestCase] method that calls no check, neither itself nor through methods of the same class or routines of the unit: it is always green. Calls matching assertPatterns (default Assert.*, WillRaise*, Check*), System.Assert and calls on classes with Assert in their name (TRuleAssert.Reports) count as checks. Tests with [WillRaise] or [Ignore] stay silent. High confidence. Quick fixes: insert Assert.Pass as a placeholder, or jump to the method.",
+      "description": "A [Test] or [TestCase] method that calls no check, neither itself nor through its local routines, methods of the same class or routines of the unit: it is always green. Calls matching assertPatterns (default Assert.*, WillRaise*, Check*), System.Assert and calls on classes with Assert in their name (TRuleAssert.Reports) count as checks. Tests with [WillRaise] or [Ignore] stay silent. High confidence. Quick fixes: insert Assert.Pass as a placeholder, or jump to the method.",
       "bad": "[Test]\nprocedure TImportTests.LeereDateiWirdGelesen;\nbegin\n  FImport.Laden('leer.csv');\nend;",
       "good": "[Test]\nprocedure TImportTests.LeereDateiWirdGelesen;\nbegin\n  FImport.Laden('leer.csv');\n  Assert.AreEqual(0, FImport.Anzahl);\nend;",
       "options": [
@@ -3754,7 +3754,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A unit of an application is used by no other unit of the uses graph: at most programs name it in their uses clause, and they use none of its identifiers outside the uses clause (Application.CreateForm(TForm1, Form1) counts as a use). Units with an initialization or finalization section (registrations, side effects at start-up) count as used. Medium confidence: code outside the project group, scripts or packages loaded at run time can still use the unit. Silent for units of packages and libraries (users outside the group) unless projectKinds allows them, without projects, while projects are loading or the index is incomplete, and for units the uses graph does not know. Reported at the unit name in the header.",
+      "description": "A unit of an application is used by no other unit of the uses graph: at most programs name it in their uses clause, and they use none of its identifiers outside the uses clause (Application.CreateForm(TForm1, Form1) counts as a use). Units with an initialization or finalization section (registrations, side effects at start-up) count as used, as do units with a [TestFixture] class that DUnitX finds through RTTI. Medium confidence: code outside the project group, scripts or packages loaded at run time can still use the unit. Silent for units of packages and libraries (users outside the group) unless projectKinds allows them, without projects, while projects are loading or the index is incomplete, and for units the uses graph does not know. Reported at the unit name in the header.",
       "bad": "program App;\nuses\n  Haupt,\n  AltExport;  // AltExport is used nowhere else",
       "good": "program App;\nuses\n  Haupt;",
       "options": [

@@ -755,7 +755,7 @@ begin
     Canvas.Font := Font;
     Canvas.Font.Color := ToColor(FColors.Muted);
     mText := TAtlasStrings.Fmt(TAtlasTextId.IssuePreviewImageLink, [FAlt]);
-    Canvas.TextOut(0, 2, mText);
+    Canvas.TextOut(0, ScaleValue(2), mText);
     Exit;
   end;
   mWidth := Min(FGraphic.Width, ClientWidth);

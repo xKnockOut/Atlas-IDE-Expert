@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.CodeActions.TryFinallyGolden;
+﻿unit Atlas.Common.Editing.CodeActions.TryFinallyGolden; // lsp-ignore-file: unused-public-member -- Golden-Datei: Das Testprojekt übersetzt nur das Ergebnis der Aktion.
 
 // Golden-Datei für "try/finally ergänzen" (#42): genau das, was die Aktion
 // aus den Routinen ohne try erzeugt. Der Test wendet die Aktion auf jede

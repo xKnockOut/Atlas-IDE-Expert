@@ -368,7 +368,7 @@ begin
     begin
       ASummary.Hidden := True;
     end));
-  Assert.AreEqual(2, TAtlasProjectSummaries.FormatOf(TFile.ReadAllText(FileName)));
+  Assert.AreEqual(2, TAtlasProjectSummaries.FormatOf(TFile.ReadAllText(FileName, TEncoding.UTF8)));
 end;
 
 procedure TAtlasProjectSummaryTests.UpdateCreatesAndChanges;

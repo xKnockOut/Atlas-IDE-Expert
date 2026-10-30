@@ -307,7 +307,7 @@ begin
     TDirectory.CreateDirectory(TPath.Combine(FFolder, 'atlas.2.log'));
     for Index := 1 to 10 do
       Log.Add('Zeile ' + IntToStr(Index));
-    Text := TFile.ReadAllText(Log.FileName);
+    Text := TFile.ReadAllText(Log.FileName, TEncoding.UTF8);
     Assert.Contains(Text, 'Zeile 10', 'trotz gescheitertem Rotieren angehängt');
     Assert.AreEqual(1, Occurrences(Text, 'Protokoll: Rotieren gescheitert'), 'Grund nur einmal');
     Assert.DoesNotContain(Text, FFolder, 'ohne Ordner (Benutzername)');
@@ -347,7 +347,7 @@ begin
     Assert.AreEqual('', Reports[1], 'wieder in Ordnung');
     Assert.AreEqual('', Log.LastError);
     Assert.AreEqual(3, Log.Lost, 'die Summe bleibt');
-    Text := TFile.ReadAllText(Log.FileName);
+    Text := TFile.ReadAllText(Log.FileName, TEncoding.UTF8);
     Assert.Contains(Text, 'Protokoll: 3 Zeilen nicht geschrieben');
     Assert.Contains(Text, 'vier');
     Assert.DoesNotContain(Text, 'eins');

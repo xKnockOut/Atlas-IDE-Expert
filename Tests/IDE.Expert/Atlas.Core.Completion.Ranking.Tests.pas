@@ -1101,8 +1101,8 @@ begin
     Assert.AreEqual(0, Integer(Usage.Count));
     Usage.Record_(Member('EndUpdate', 'TStrings', 1, 0));
     Assert.IsFalse(Usage.SaveToFile(FileName), 'beim Lesen gesperrt: nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(FileName), 'beginupdate');
-    Assert.DoesNotContain(TFile.ReadAllText(FileName), 'endupdate');
+    Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), 'beginupdate');
+    Assert.DoesNotContain(TFile.ReadAllText(FileName, TEncoding.UTF8), 'endupdate');
   finally
     Usage.Free;
     System.SysUtils.DeleteFile(FileName);

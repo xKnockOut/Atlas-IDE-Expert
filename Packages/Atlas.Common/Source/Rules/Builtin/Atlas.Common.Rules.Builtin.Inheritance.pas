@@ -3245,7 +3245,7 @@ begin
       Result := Result + [mRoutine];
 end;
 
-/// <summary>Klasse und Methode aus "TAussen.TKlasse<T>.Methode": TKlasse und Methode.</summary>
+/// <summary>Klasse und Methode aus "TAussen.TKlasse&lt;T&gt;.Methode": TKlasse und Methode.</summary>
 procedure SplitMethodName(const AName: string; out AClassName, AMethodName: string);
 var
   mParts: TArray<string>;

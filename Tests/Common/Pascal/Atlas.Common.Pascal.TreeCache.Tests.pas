@@ -228,7 +228,7 @@ begin
         Name := ExtractFileName(FileName);
         if SameText(Name, 'Atlas.Common.Pascal.Parser.pas') or SameText(Name, 'Atlas.Common.Pascal.TreeCache.pas') then
           Continue;
-        if Pos('TPascalParser.Parse', TFile.ReadAllText(FileName)) > 0 then
+        if Pos('TPascalParser.Parse', TFile.ReadAllText(FileName, TEncoding.UTF8)) > 0 then
           Offenders := Offenders + ' ' + Name;
       end;
   Assert.AreEqual('', Offenders, 'TPascalParser.Parse außerhalb des Caches');

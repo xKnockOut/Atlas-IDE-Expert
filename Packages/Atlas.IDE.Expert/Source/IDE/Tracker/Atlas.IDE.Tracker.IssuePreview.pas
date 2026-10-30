@@ -313,6 +313,15 @@ uses
   Atlas.UI.Tracker.LinkDialogs,
   Atlas.IDE.Tracker.IssueWindow;
 
+/// <summary>Ergebnis eines Abrufs fürs Log: "geladen" oder "nicht geladen (Fehlerkennung)".</summary>
+function LoadState(ASucceeded: Boolean; AError: TAtlasCiFetchError): string;
+begin
+  if ASucceeded then
+    Result := 'geladen'
+  else
+    Result := 'nicht geladen (' + TAtlasCiBuild.ErrorKey(AError) + ')';
+end;
+
 { TAtlasIdeIssuePreview }
 
 constructor TAtlasIdeIssuePreview.Create(const AHooks: TAtlasIssuePreviewHooks; const ACacheFolder: string);
@@ -997,8 +1006,7 @@ begin
     Exit;
   mProvider := ProviderOf(AEntry.Target);
   if mProvider <> nil then
-    TAtlasGuard.Log(Format('Issue-Vorschau: %s, %s', [mProvider.Name,
-      IfThen(ASucceeded, 'geladen', 'nicht geladen (' + TAtlasCiBuild.ErrorKey(AError) + ')')]));
+    TAtlasGuard.Log(Format('Issue-Vorschau: %s, %s', [mProvider.Name, LoadState(ASucceeded, AError)]));
   // Ein anderer Wunsch wartet: der zählt.
   if FHasPending then
   begin
@@ -1776,8 +1784,7 @@ begin
   else if AError = TAtlasCiFetchError.NotFound then
     FMissing.AddOrSetValue(AId, TThread.GetTickCount64);
   // Anonym: nie Kennung oder Titel.
-  TAtlasGuard.Log('Issue-Kennung: ' + IfThen(ASucceeded, 'geladen',
-    'nicht geladen (' + TAtlasCiBuild.ErrorKey(AError) + ')'));
+  TAtlasGuard.Log('Issue-Kennung: ' + LoadState(ASucceeded, AError));
   for mDone in mWaiting do
     Deliver(mDone, ASucceeded, mDetails, AError);
 end;

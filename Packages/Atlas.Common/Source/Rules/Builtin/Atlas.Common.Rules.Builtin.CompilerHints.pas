@@ -162,7 +162,7 @@ begin
     if (mToken.Kind = TPascalTokenKind.Directive) and (TPascalLexer.DirectiveName(mToken.Text) = 'HINTS') then
     begin
       mBody := TDirectiveNames.Body(mToken.Text);
-      Result := UpperCase(Trim(Copy(mBody, Length(TDirectiveNames.LeadingName(mBody)) + 1, MaxInt))) <> 'OFF';
+      Result := not SameText(Trim(Copy(mBody, Length(TDirectiveNames.LeadingName(mBody)) + 1, MaxInt)), 'OFF');
     end;
   end;
 end;

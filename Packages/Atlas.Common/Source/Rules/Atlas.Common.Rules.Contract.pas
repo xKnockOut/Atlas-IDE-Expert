@@ -363,7 +363,7 @@ type
     /// "SYMBOL_PLATFORM=false", "UNSAFE_CODE=true", "WARNINGS=false" (#1378); leer ohne Projekt. Regeln lesen sie
     /// über TRuleWarnSwitches.</summary>
     ProjectWarnings: TArray<string>;
-    /// <summary>Code-Abfragen des Arbeitsbereichs (#1351) für die Regeln query:<name>; nil = keine, gespeicherte
+    /// <summary>Code-Abfragen des Arbeitsbereichs (#1351) für die Regeln query:&lt;name&gt;; nil = keine, gespeicherte
     /// Abfragen mit failIfAny laufen dann nicht.</summary>
     Queries: ICodeQueries;
   end;
