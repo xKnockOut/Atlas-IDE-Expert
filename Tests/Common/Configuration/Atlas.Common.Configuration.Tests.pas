@@ -134,6 +134,9 @@ type
     procedure ReadsMinDelphiVersion;
     [Test]
     procedure ReadsSortUses;
+    /// <summary>#1352: Untergrenze der Sammelkorrektur.</summary>
+    [Test]
+    procedure ReadsFixMinConfidence;
   end;
 
 implementation
@@ -1919,6 +1922,24 @@ begin
   Assert.IsFalse(Parse('{}', Issues).SortUses);
   Assert.IsTrue(Parse('{"sortUses": true}', Issues).SortUses);
   Assert.AreEqual(0, Integer(Length(Issues)));
+end;
+
+procedure TServerSettingsTests.ReadsFixMinConfidence;
+var
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Parse('{}', Issues).FixMinConfidence));
+  Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Parse('{"fix": {"minConfidence": "medium"}}',
+    Issues).FixMinConfidence));
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  // Niedrige Konfidenz ist für Sammelkorrekturen nie erlaubt; die Vorgabe bleibt.
+  Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Parse('{"fix": {"minConfidence": "low"}}',
+    Issues).FixMinConfidence));
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Parse('{"fix": {"bulk": true}}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Parse('{"fix": "high"}', Issues);
+  Assert.AreEqual(1, Integer(Length(Issues)));
 end;
 
 initialization

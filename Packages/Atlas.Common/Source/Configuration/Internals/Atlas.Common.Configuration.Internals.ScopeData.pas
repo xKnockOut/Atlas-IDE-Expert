@@ -74,7 +74,7 @@ const
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..36] of string = (
+  ProjectSettingPaths: array[0..37] of string = (
     'minDelphiVersion',
     'encoding',
     'project',
@@ -107,6 +107,7 @@ const
     'memberOrder',
     'testUnits',
     'minConfidence',
+    'fix',
     'exclude',
     'mcp.globalSettings',
     'mcp.customPrompts',

@@ -97,6 +97,13 @@
         "dryRun": true
       }
     },
+    "fix_findings": {
+      "arguments": {
+        "rules": ["redundant-cast"],
+        "dryRun": true
+      },
+      "contains": "Vorschau"
+    },
     "get_last_build": {
       "arguments": {}
     },

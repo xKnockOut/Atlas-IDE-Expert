@@ -31,6 +31,13 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Sammelkorrektur #1352 (29.10.2026, Branch `feature/1352-fix-befunde`)
+- Kern `Atlas.Common.Rules.BulkFix` (TBulkFix): gemeinsam für `--fix` (Shell.Linter), MCP `fix_findings` (TMcpEditTools.FixFindings) und Plugin (Serverbefehl `atlas.server.fixFindings`, Atlas.Common.Lsp.BulkFix). Sicher = Konfidenz ab `fix.minConfidence`, Katalogfeld `safeFix`, genau eine Text-Korrektur mit `TRuleFix.Safe`, nicht Alternative, nur die eigene Datei. `TBulkFix.WriteAll` (alles oder nichts) nutzt jetzt auch `TMcpEditTools.Apply`.
+- Neue Regel `unused-uses` (DeadCode): schweigt Live (der Editor blendet die uses ab), ohne Index, bei Syntaxfehlern und in .dpr/.dpk. `TRuleContext.InactiveRanges` und `UsesKeep` neu (Checker bzw. Engine setzen sie).
+- Plugin: Kontextmenü im Frame (OnFixAll/CanFixAll), Modell `Atlas.Core.Problems.BulkFix`, Dialog `Atlas.UI.Problems.BulkFix`; Service bekommt die Haken FixFindings (300 s Frist) und ApplyEdit aus der CodeInsight-Composition (sonst Feature-Zyklus Problems ↔ Editor).
+- FPC-Harness: `Atlas.Common.Lsp.Implementations` braucht die von Convert-ForFpc umgeschriebene Fassung (verschachtelte Generics), sonst baut MCP-EditTools.Tests nicht. Ein Test (Umlaut im JSON) scheitert nur unter FPC.
+- Offen: Delphi-Bau und Handtests SK1–SK17.
+
 ## Farben und Namen halten (#1367, AG4, 29.10.2026, Branch `feature/1367-angleichen`)
 - Die Zuordnung der Teilsysteme ist aus `Comparison` nach `Atlas.Common.Architecture.Matching` gezogen (`TSubsystemMatcher.Match`, Modi `Overlap` für den Vergleich, unverändert, und `Majority` für die Angleichung: Überschneidung·2 > Größe neu und > Größe alt, ohne Rückfall auf den Namen). `TComparisonMatch` ist ein Alias von `TSubsystemMatch`.
 - `Atlas.Common.Architecture.Alignment` (`TArchitectureAlignment.Align`) läuft nach der Analyse auf der fertigen Übersicht: Familie = Farbnummer aus `AssignColors`; jede Familie nimmt die alte Farbe ihres größten zugeordneten Teils (falls frei), übrige die kleinste freie; Farbtöne zugeordneter Teile bleiben, sonst 0, +1, −1, … . Namen: zugeordnete den alten, Fundament und Sammelgruppe ihren festen, übrige `UniqueName` (Zusatz „ 2“ … nur bei Gleichheit). Danach `Assignments` neu, weil Gleichstände nach Namen gehen. Fundament und Sammelgruppe werden nur ihresgleichen zugeordnet.

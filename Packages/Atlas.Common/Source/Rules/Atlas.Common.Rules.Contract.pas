@@ -353,6 +353,11 @@ type
     /// TRuleEngine.Run.</summary>
     SortUses: Boolean;
     SortUsesByNamespace: Boolean;
+    /// <summary>usesKeep (#621): Units, die unused-uses nie meldet; setzt TRuleEngine.Run.</summary>
+    UsesKeep: TArray<string>;
+    /// <summary>Inaktive Zweige der bedingten Kompilierung in Text (#1352), z. B. für unused-uses; setzt
+    /// TFileChecker.CheckText. nil = keine bekannt.</summary>
+    InactiveRanges: TArray<TTextRange>;
     /// <summary>Warnungen der .dproj (aktive Konfiguration und Plattform) als "Bezeichner=Wert", z. B.
     /// "SYMBOL_PLATFORM=false", "UNSAFE_CODE=true", "WARNINGS=false" (#1378); leer ohne Projekt. Regeln lesen sie
     /// über TRuleWarnSwitches.</summary>

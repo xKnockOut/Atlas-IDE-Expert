@@ -8727,6 +8727,29 @@ Vorbereitung: Minimalfall F01 aus `berichte/fp-korpus-2026-10-28/faelle`; ein ei
 | VU6 | `X.Edit` ohne `Post` auf einem Record bzw. einer Klasse ohne TDataSet-Vorfahr; Gegenprobe auf `TFDQuery` | Nur die Gegenprobe meldet `dataset-edit-without-post` |
 | VU7 | Nach dem Update: Willkommensseite, Suchfeld über Symbole | Treffer aus dem Index wie vorher (Index-Cache Formatversion 29 in Server und Plugin) |
 
+## Sammelkorrektur (#1352)
+
+Vorbereitung: Kopie von `Tests/Referenzprojekt`; ein eigenes Projekt mit drei Units in UTF-8 mit BOM, UTF-8 ohne BOM und ANSI (CRLF) und je einem ungenutzten uses-Eintrag.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SK1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TBulkFixTests`, `TUnusedUsesTests`, `TLspBulkFixTests`, `TAtlasBulkFixPreviewTests`, `FixFindings*`, `ReadsSafeFix`, `ReadsFixMinConfidence`, `ReadsFixArguments`, `MenuFixAllFollowsSettingAndRule` grün (**Abnahme**) |
+| SK2 | `AtlasServer --check . --fix redundant-cast --fix-dry-run` im Referenzprojekt | Diff mit zwei Korrekturen in `Ref.Pruefung.Verstoesse.pas` auf stdout, stderr „Vorschau: 2 Korrekturen in 1 Dateien, nichts geschrieben“; keine Datei geändert |
+| SK3 | `AtlasServer --check . --fix unused-uses` im eigenen Projekt, danach `--check . --rules unused-uses` | Drei Dateien geschrieben, Kodierung (BOM, ohne BOM, ANSI) und CRLF erhalten; die zweite Prüfung meldet nichts |
+| SK4 | `--fix redundant-cast` mit `"fix": {"minConfidence": "high"}` und einem Treffer mittlerer Konfidenz (eigene Regel oder Profil) | Treffer bleibt, stderr zählt ihn unter „zu niedriger Konfidenz“ |
+| SK5 | `--fix` mit einer Korrektur, die einen Syntaxfehler erzeugen würde (z. B. `--fix all` auf einer Datei, deren Korrekturen sich gegenseitig zerstören) | Datei unverändert, stderr „Verworfen (die Korrekturen hätten Syntaxfehler erzeugt): …“ |
+| SK6 | `--fix unused-uses --changed-lines` nach Änderung einer einzigen uses-Zeile | Nur der Eintrag in der geänderten Zeile wird entfernt |
+| SK7 | `--fix unused-uses` mit `--baseline`, in der der Treffer steht | Eintrag bleibt |
+| SK8 | Claude Code: `fix_findings` mit `rules: ["unused-uses"]` ohne `dryRun` | Zusammenfassung und Diff, nichts geschrieben |
+| SK9 | `fix_findings` mit `dryRun: false` auf eine in der IDE offene, gespeicherte Unit | Änderung im Editor als ein Rückgängig-Schritt; Strg+Z nimmt sie ganz zurück |
+| SK10 | wie SK9 mit ungespeicherter Änderung in der Unit | Unit unberührt, Bericht „Nicht angefasst (ungespeicherte Änderungen im Editor)“; andere Dateien werden korrigiert |
+| SK11 | `fix_findings` mit `minConfidence: "medium"` bei `fix.minConfidence` hoch | Fehler „minConfidence "medium" liegt unter fix.minConfidence (hoch)“ |
+| SK12 | Fenster „Atlas-Prüfung“, Rechtsklick auf einen `redundant-cast`-Befund | Eintrag „Alle sicheren Treffer von redundant-cast korrigieren …“; bei Compilermeldungen gesperrt |
+| SK13 | Eintrag wählen | Vorschau: Zusammenfassung, Dateien mit Anzahl, Diff der markierten Datei; Auswahlzeile „n Korrekturen in m Dateien gewählt“ |
+| SK14 | Eine Datei abwählen, „Korrigieren“ | Nur die gewählten Dateien geändert, je Datei ein Rückgängig-Schritt; „Letzte Atlas-Änderung zurücknehmen“ nimmt alle zurück; Meldungsansicht „Sammelkorrektur redundant-cast: n Korrekturen in m Dateien (…)“ |
+| SK15 | Regel ohne sichere Korrektur (z. B. `empty-except`) wählen | Meldung „Keine sicheren Korrekturen für empty-except.“ mit Zusammenfassung, kein Dialog |
+| SK16 | Optionen › Prüfregeln › Prüffenster: „Sammelkorrektur im Fenster Atlas-Prüfung“ aus | Kein Kontextmenüeintrag; mit „Atlas-Prüfung“ aus ist der Schalter gesperrt |
+| SK17 | `mcp.disabledTools: ["fix_findings"]` | Werkzeug fehlt in der Liste und wird abgelehnt |
 ## Formatieren ohne IDE (#1358)
 
 Vorbereitung: Projekt mit `atlas.json` (`"format": {"indentSize": 2}`), Git-Arbeitskopie, `AtlasServer.exe` aus dem Build im Pfad; eine Unit in UTF-8 mit BOM, eine ohne BOM, eine in ANSI mit Umlauten.

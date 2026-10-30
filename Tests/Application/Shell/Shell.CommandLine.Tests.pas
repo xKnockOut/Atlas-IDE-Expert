@@ -49,6 +49,9 @@ type
     /// <summary>Alle Text- und Schalterparameter der Tabelle (S-02), auch mit Großbuchstaben.</summary>
     [Test]
     procedure ReadsTableOptions;
+    /// <summary>#1352: Sammelkorrektur.</summary>
+    [Test]
+    procedure ReadsFixArguments;
     /// <summary>#1358: --format-check, --format-write und --format diff.</summary>
     [Test]
     procedure ReadsFormatterArguments;
@@ -342,6 +345,23 @@ begin
   Assert.IsFalse(Options.Mcp or Options.Restricted);
   // --include-uncommitted ohne Ref: Standardbasis.
   Assert.AreEqual(TCommandLineOptions.DefaultChangedBase, Options.ChangedRef);
+end;
+
+procedure TCommandLineOptionsTests.ReadsFixArguments;
+var
+  Options: TCommandLineOptions;
+begin
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--fix', 'redundant-cast, unused-uses',
+    '--fix-dry-run']);
+  Assert.AreEqual(0, Integer(Length(Options.Warnings)));
+  Assert.AreEqual('redundant-cast|unused-uses', string.Join('|', Options.FixRules));
+  Assert.IsTrue(Options.FixDryRun);
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--fix=all']);
+  Assert.AreEqual('all', string.Join('|', Options.FixRules));
+  Assert.IsFalse(Options.FixDryRun);
+  Assert.AreEqual(0, Integer(Length(TCommandLineOptions.Parse(['--check', 'App.dproj']).FixRules)));
+  Options := TCommandLineOptions.Parse(['--check', 'App.dproj', '--fix', ',']);
+  Assert.AreEqual(1, Integer(Length(Options.Warnings)));
 end;
 
 procedure TCommandLineOptionsTests.ReadsFormatterArguments;
