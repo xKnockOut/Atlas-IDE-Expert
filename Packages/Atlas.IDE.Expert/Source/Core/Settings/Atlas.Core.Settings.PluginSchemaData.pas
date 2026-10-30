@@ -12,7 +12,7 @@ function AtlasPluginSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..4295] of string = (
+  Lines: array[0..4313] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Plugin-Einstellungen",',
@@ -107,6 +107,10 @@ const
     '    "editor.statusBar": {',
     '      "caption": "Atlas-Statusleiste",',
     '      "captionEn": "Atlas status bar"',
+    '    },',
+    '    "editor.designerBar": {',
+    '      "caption": "Designer-Leiste",',
+    '      "captionEn": "Designer bar"',
     '    },',
     '    "editor.stickyScroll": {',
     '      "caption": "Mitlaufender Kopf",',
@@ -3298,6 +3302,22 @@ const
     '      "x-caption": "Atlas-Statusleiste",',
     '      "x-captionEn": "Atlas status bar",',
     '      "x-issue": "#1155"',
+    '    },',
+    '    "EditorDesignerBar": {',
+    '      "description": "Designer-Leiste im Formular-Designer an Stelle von Brotkrumen und Editorleiste: Komponenten nach Teilen des Namens suchen und auswählen (Enter: nächster Treffer), einzelne Kompon' +
+      'enten, alle einer Klasse oder alle nichtvisuellen nur in der Anzeige aus- und wieder einblenden; die .dfm bleibt unverändert. Brotkrumen und Editorleiste stehen nur im Code-Editor, auch wenn diese Lei' +
+      'ste aus ist.",',
+    '      "type": "boolean",',
+    '      "default": true,',
+    '      "x-key": "editor.designerBar",',
+    '      "x-area": "editor",',
+    '      "x-feature": "DesignerBar",',
+    '      "x-page": "Editor",',
+    '      "x-node": "editor.designerBar",',
+    '      "x-quickToggle": true,',
+    '      "x-caption": "Designer-Leiste",',
+    '      "x-captionEn": "Designer bar",',
+    '      "x-issue": "#1442"',
     '    },',
     '    "EditorStatusBarItems": {',
     '      "type": "string",',

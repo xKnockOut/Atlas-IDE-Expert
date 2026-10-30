@@ -1189,6 +1189,32 @@ Vorbereitung: Git-Projekt `GitDemo` mit `.atlas` `"tracker": {"provider": "githu
 | MI23 | Karte „Atlas entdecken“ und „Neu in Atlas“ | Tipp „Issues aus dem Tracker beginnen“ mit Bild, „Ausprobieren“ öffnet den Zugangsdialog; „Neu in Atlas“ nennt die Funktion mit Schalter |
 | MI24 | IDE während einer laufenden Abfrage schließen (Server antwortet langsam) | IDE schließt ohne Hänger |
 
+## Designer-Leiste (#1442)
+
+Vorbereitung: Formular mit `btnOK`, `btnCancel` (TButton), `pnlTop` (TPanel, Align = alTop), `lblName` (TLabel), `edtName` (TEdit), `OKAction` (TAction in `ActionList1`), `qryKunden` (TFDQuery oder TDataSource) und einem Frame mit `pnl_ok`. Eingebetteter Designer an (Standard).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| DL1 | Unit öffnen, F12 drücken, dann wieder F12 | Im Designer verschwinden Brotkrumen und Editorleiste, oben steht die Designer-Leiste; zurück im Code ist es umgekehrt, ohne Flackern oder Springen des Editors |
+| DL2 | Reiter „Design“/„Code“ unten im Editorfenster statt F12; zweites Editorfenster mit einer anderen Unit im Code daneben | Wie DL1; das zweite Fenster behält Brotkrumen und Editorleiste |
+| DL3 | Im Suchfeld „ok“ tippen | `OKAction` ist im Designer und im Objektinspektor ausgewählt (gleicher Name zuerst, dann Name beginnt mit „ok“, dann `btnOK`, `pnl_ok`); Zähler „1/n“ |
+| DL4 | Enter, ↓ und „›“ drücken bzw. klicken; dann Umschalt+Enter, ↑ und „‹“ | Auswahl wandert durch die Treffer und läuft am Ende zum ersten zurück; rückwärts ebenso; der Objektinspektor folgt |
+| DL5 | „xyz“ tippen; dann Esc bzw. Suchfeld leeren | „kein Treffer“, keine Auswahl geändert; leer: Zähler und Pfeile verschwinden |
+| DL6 | `btnOK` und `lblName` wählen, „Ausblenden ▾“ → „Auswahl ausblenden“ | Beide verschwinden im Designer; „Alle einblenden (2)“ erscheint; das Formular ist nicht als geändert markiert (kein *) |
+| DL7 | `btnCancel` wählen, „Alle TButton ausblenden“; danach einen neuen TButton aufs Formular setzen | Alle Buttons weg; der neue Button verschwindet nach kurzer Zeit ebenfalls; im Menü steht „TButton wieder einblenden“ |
+| DL8 | „Nichtvisuelle ausblenden“ | Symbole von `ActionList1` und `qryKunden` verschwinden; nochmals klicken: sie erscheinen wieder. In `atlas.log` steht einmal die Fensterklasse eines Symbols |
+| DL9 | `pnlTop` (Align = alTop) wählen und ausblenden | `pnlTop` bleibt sichtbar; Meldungsansicht: „1 ausgerichtete Steuerelemente bleiben sichtbar …“ |
+| DL10 | Bei ausgeblendetem `btnOK` „btnok“ suchen | `btnOK` erscheint wieder und ist ausgewählt; der Zähler „Alle einblenden“ sinkt |
+| DL11 | Speichern (Strg+S) mit ausgeblendeten Komponenten, .dfm im Texteditor ansehen; Formular schließen und wieder öffnen | .dfm unverändert gegenüber vorher (gleiche Position, Visible, Reihenfolge); nach dem Öffnen ist wieder alles sichtbar oder wie zuvor ausgeblendet, aber nie verloren |
+| DL12 | „Alle einblenden (n)“ | Alles ist wieder sichtbar, Leiste ohne „Alle einblenden“ |
+| DL13 | Mit ausgeblendeten Komponenten unter Einstellungen → *Editor* „Designer-Leiste“ ausschalten; wieder einschalten | Leiste weg und alles wieder sichtbar; eingeschaltet kommt die Leiste zurück, nichts ist ausgeblendet |
+| DL14 | Schnellschalter „Designer-Leiste“ | Wie DL13 |
+| DL15 | Mit ausgeblendeten Komponenten Projekt schließen, Atlas-Package deinstallieren bzw. IDE beenden | Kein Fehler, keine Zugriffsverletzung; beim nächsten Öffnen ist alles sichtbar |
+| DL16 | Datenmodul im Designer öffnen | Designer-Leiste erscheint; Suche wählt Komponenten aus; Ausblenden nichtvisueller Komponenten wirkt auf ihre Symbole |
+| DL17 | Eingebetteten Designer ausschalten (Optionen → Formular-Designer), Formular öffnen | Das Editorfenster zeigt weiter Brotkrumen und Editorleiste; keine Designer-Leiste im Code |
+| DL18 | TPageControl mit einem TTabSheet, TabVisible = False; Designer-Leiste: „Alle einblenden“ | Das unsichtbare TabSheet bleibt so, wie die IDE es zeigt (Atlas setzt nur zurück, was es selbst gesetzt hat) |
+| DL19 | DL1 bis DL18 in Delphi 12 und 13, helles und dunkles Thema, 100 % und 150 % DPI | Gleiches Verhalten; Leiste in den Farben der Brotkrumen |
+
 ## Atlas-Symbol (#751)
 
 | Nr. | Schritte | Erwartet |

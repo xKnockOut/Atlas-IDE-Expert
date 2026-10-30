@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Designer-Leiste (#1442, 30.10.2026, release/1.1, Branch `feature/1442-designer-leiste`)
+- Erkennung: `TAtlasIdeDesignerView` (aktueller Editor des aktuellen Moduls ist `IOTAFormEditor`, Wurzel im Formular des Editorfensters; Datenmodul: vorderstes Editorfenster). Der Leisten-Host hat dafür `ShowIn` (`Any`, `Code`, `Designer`); Brotkrumen und Editorleiste stehen auf `Code`, die neue Leiste auf `Designer`. Schwebender Designer: Code-Leisten bleiben.
+- Modell ohne VCL in `Atlas.Core.Designer.Components` (Suche, Ausgeblendetes nach Namen und Klassen); IDE-Teil `Atlas.IDE.Designer.Bar`, Leiste `Atlas.UI.Designer.Bar` (Suchfeld wie die Suchleiste).
+- Ausblenden nur in der Anzeige: Steuerelemente über `csNoDesignVisible` (wird nicht gespeichert), Symbole nichtvisueller Komponenten über ihr Fenster (`ChildWindowFromPointEx` an `DesignInfo`; Fensterklasse steht einmal in `atlas.log`, für die Diagnose falls das in einer Delphi-Version nicht greift). Ausgerichtete Steuerelemente bleiben sichtbar (sonst änderte sich die .dfm).
+- Offen für Marco: Delphi-Build (Win32-Plugin, Win64-Tests) und Handtests DL1 bis DL19. Ungeprüft: ob die IDE beim Ausblenden über `csNoDesignVisible` das Modul als geändert markiert (DL6/DL11).
+
 ## release/1.1: v1.1.1-Issues gemergt (28.10.2026)
 - Gemergt in `release/1.1`: #1220, #1236, #1237, #1246, #1247, #1248, #1255, #1281, #1293, #1296, #1310 und PR 1258 (#1230). `claude/project-thread-iu1p9d` gehört zu v1.2 (auf main), `fix/parser-leeres-then` war schon enthalten und ist gelöscht.
 - Nacharbeit nach Rückmeldung von Marco: Plattform beim Bauen-beim-Öffnen als Auswahlliste; Regelseite (Memos wachsen, Beschriftungen über den Memos, Editorhöhe per `AdjustSize` nach `Restack`); Blocklinien laufen im mitlaufenden Kopf und am unteren Editorrand spitz aus (`TaperBelow` in StickyScroll, `PaintTaper` in Pairs); Lesezeichen-Spalte hinter den Haltepunkten und nach jeder Stufe gezeichnet (Delphi 13), Klick vergibt die kleinste freie Nummer, Vorschau beim Überfahren; Navigation zeigt offene Units statt sie neu zu öffnen (`ShowFile`).

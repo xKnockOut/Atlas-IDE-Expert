@@ -349,6 +349,7 @@ type
     FEditorToolbarLabels: TCheckBox;
     FEditorToolbarCustomize: TButton;
     FEditorStatusBar: TCheckBox;
+    FEditorDesignerBar: TCheckBox;
     FEditorStatusBarItems: TEdit;
     FOnToolbarCommands: TFunc<TArray<TAtlasToolbarCommandInfo>>;
     FGitGutter: TCheckBox;
@@ -1613,6 +1614,8 @@ begin
   // Atlas-Statusleiste unten im Editorfenster (#1155).
   FEditorStatusBar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBar));
   FEditorStatusBarItems := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsEditorStatusBarItems));
+  // Designer-Leiste im Formular-Designer (#1442).
+  FEditorDesignerBar := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorDesignerBar));
   // Mitlaufender Kopf (#506, experimentell).
   FStickyScroll := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScroll));
   FStickyScrollMaxLines := AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsStickyScrollMaxLines));
@@ -2771,6 +2774,7 @@ begin
   FMarks.Bind(FEditorToolbarReturnButton, ['EditorToolbarReturnButton']);
   FMarks.Bind(FEditorToolbarLabels, ['EditorToolbarLabels']);
   FMarks.Bind(FEditorStatusBar, ['EditorStatusBar']);
+  FMarks.Bind(FEditorDesignerBar, ['EditorDesignerBar']);
   FMarks.Bind(FEditorStatusBarItems, ['EditorStatusBarItems']);
   FMarks.Bind(FStickyScroll, ['StickyScroll']);
   FMarks.Bind(FStickyScrollMaxLines, ['StickyScrollMaxLines']);
@@ -4893,6 +4897,7 @@ begin
   FEditorToolbarReturnButton.Checked := ASettings.EditorToolbarReturnButton;
   FEditorToolbarLabels.Checked := ASettings.EditorToolbarLabels;
   FEditorStatusBar.Checked := ASettings.EditorStatusBar;
+  FEditorDesignerBar.Checked := ASettings.EditorDesignerBar;
   FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
   FStickyScroll.Checked := ASettings.StickyScroll;
   FStickyScrollMaxLines.Text := IntToStr(ASettings.StickyScrollMaxLines);
@@ -5318,6 +5323,7 @@ begin
   ASettings.EditorToolbarReturnButton := FEditorToolbarReturnButton.Checked;
   ASettings.EditorToolbarLabels := FEditorToolbarLabels.Checked;
   ASettings.EditorStatusBar := FEditorStatusBar.Checked;
+  ASettings.EditorDesignerBar := FEditorDesignerBar.Checked;
   ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
   ASettings.StickyScroll := FStickyScroll.Checked;
   ASettings.StickyScrollMaxLines := StrToIntDef(FStickyScrollMaxLines.Text, ASettings.StickyScrollMaxLines);

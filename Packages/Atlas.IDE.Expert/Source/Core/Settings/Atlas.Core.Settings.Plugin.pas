@@ -681,6 +681,9 @@ type
     /// <summary>Sichtbare Elemente in Reihenfolge: status, findings, liveCheck, method, durch Komma getrennt (#1155,
     /// editor.statusBar.items); leer = keine.</summary>
     EditorStatusBarItems: string;
+    /// <summary>Designer-Leiste im Formular-Designer statt Brotkrumen und Editorleiste (#1442,
+    /// editor.designerBar): Komponenten suchen, ein- und ausblenden.</summary>
+    EditorDesignerBar: Boolean;
     /// <summary>Schnelle Lesezeichen, nummeriert und unnummeriert (#1104, bookmarks.quick); Hauptschalter.</summary>
     QuickBookmarks: Boolean;
     /// <summary>Spalte links der Zeilennummern mit den Markern (#1104, bookmarks.quick.gutter).</summary>
@@ -1505,6 +1508,7 @@ begin
   Result.EditorToolbarLabels := False;
   Result.EditorStatusBar := True;
   Result.EditorStatusBarItems := TAtlasStatusBarItems.DefaultText;
+  Result.EditorDesignerBar := True;
   Result.QuickBookmarks := True;
   Result.QuickBookmarksGutter := True;
   Result.QuickBookmarksGutterClick := True;
@@ -2136,6 +2140,7 @@ begin
   EditorToolbarLabels := AStore.ReadInteger('EditorToolbarLabels', BoolValue(Default.EditorToolbarLabels)) <> 0;
   EditorStatusBar := AStore.ReadInteger('EditorStatusBar', BoolValue(Default.EditorStatusBar)) <> 0;
   EditorStatusBarItems := AStore.ReadString('EditorStatusBarItems', Default.EditorStatusBarItems);
+  EditorDesignerBar := AStore.ReadInteger('EditorDesignerBar', BoolValue(Default.EditorDesignerBar)) <> 0;
   QuickBookmarks := AStore.ReadInteger('QuickBookmarks', BoolValue(Default.QuickBookmarks)) <> 0;
   QuickBookmarksGutter := AStore.ReadInteger('QuickBookmarksGutter', BoolValue(Default.QuickBookmarksGutter)) <> 0;
   QuickBookmarksGutterClick := AStore.ReadInteger('QuickBookmarksGutterClick',
@@ -2573,6 +2578,7 @@ begin
   AStore.WriteInteger('EditorToolbarLabels', BoolValue(EditorToolbarLabels));
   AStore.WriteInteger('EditorStatusBar', BoolValue(EditorStatusBar));
   AStore.WriteString('EditorStatusBarItems', EditorStatusBarItems);
+  AStore.WriteInteger('EditorDesignerBar', BoolValue(EditorDesignerBar));
   AStore.WriteInteger('QuickBookmarks', BoolValue(QuickBookmarks));
   AStore.WriteInteger('QuickBookmarksGutter', BoolValue(QuickBookmarksGutter));
   AStore.WriteInteger('QuickBookmarksGutterClick', BoolValue(QuickBookmarksGutterClick));
