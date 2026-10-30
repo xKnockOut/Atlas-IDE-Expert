@@ -4,7 +4,14 @@
 // zur Signatur passen oder kein wohlgeformtes XML sind, wie die Compiler-
 // warnungen W1201 bis W1208 mit eingeschalteter XML-Dokumentation.
 //
-// Wohlgeformt (W1201 bis W1205): "<" oder "&" ohne gültiges Tag bzw. Entität,
+// Einen Code nennt die Meldung nur, wo dcc ihn meldet (#1383): nur für
+// Kommentare im interface-Teil einer Unit (nur die dokumentiert dcc) und nur
+// für Formen, die dcc dort beanstandet. Delphi 13 meldet ein fremdes Zeichen
+// hinter dem Tagnamen (W1205), unbekannte cref (W1206) und die Signatur
+// (W1207, W1208); "<" mit Leerzeichen, unbekannte Entitäten, leere
+// Attributwerte und offene Tags übersetzt es still (Tests/Compilermeldungen).
+//
+// Wohlgeformt: "<" oder "&" ohne gültiges Tag bzw. Entität,
 // unbekannte Entität, Attributwert ohne Anführungszeichen, nicht geschlossene
 // und überzählige Endtags. Korrektur: Zeichen maskieren, Anführungszeichen
 // setzen, Endtag ergänzen oder entfernen; ein Tag ohne Attribute und Inhalt
@@ -121,6 +128,8 @@ type
     Start: Integer;
     Stop: Integer;
     Message: string;
+    /// <summary>Code von dcc für diese Form (#1383); leer, wo dcc sie nicht meldet.</summary>
+    Code: string;
     FixTitle: string;
     Replacements: TArray<TDocReplacement>;
     /// <summary>Fehler im Aufbau (Tags); danach prüft die Regel den Block nicht weiter.</summary>
@@ -140,7 +149,7 @@ type
     function IsSpaceAt(AIndex: Integer): Boolean;
     function IsNameStartAt(AIndex: Integer): Boolean;
     function IsNameCharAt(AIndex: Integer): Boolean;
-    procedure AddFlaw(AStart, AStop: Integer; const AMessage, AFixTitle: string;
+    procedure AddFlaw(AStart, AStop: Integer; const AMessage, ACode, AFixTitle: string;
       const AReplacements: TArray<TDocReplacement>; AStructural: Boolean);
     procedure EscapeLess(AIndex: Integer; const ACode: string);
     procedure ScanEntity(var AIndex: Integer);
@@ -283,7 +292,7 @@ begin
   Result := IsNameStartAt(AIndex) or ((AIndex <= FLength) and CharInSet(FXml[AIndex], ['0'..'9', '-', '.']));
 end;
 
-procedure TDocScanner.AddFlaw(AStart, AStop: Integer; const AMessage, AFixTitle: string;
+procedure TDocScanner.AddFlaw(AStart, AStop: Integer; const AMessage, ACode, AFixTitle: string;
   const AReplacements: TArray<TDocReplacement>; AStructural: Boolean);
 var
   Flaw: TDocFlaw;
@@ -291,6 +300,7 @@ begin
   Flaw.Start := AStart;
   Flaw.Stop := AStop;
   Flaw.Message := 'Doku-Kommentar ist kein wohlgeformtes XML: ' + AMessage;
+  Flaw.Code := ACode;
   Flaw.FixTitle := AFixTitle;
   Flaw.Replacements := AReplacements;
   Flaw.Structural := AStructural;
@@ -301,7 +311,7 @@ end;
 
 procedure TDocScanner.EscapeLess(AIndex: Integer; const ACode: string);
 begin
-  AddFlaw(AIndex, AIndex + 1, Format('''<'' muss &lt; heißen (wie %s).', [ACode]), '''<'' als &lt; schreiben',
+  AddFlaw(AIndex, AIndex + 1, '''<'' muss &lt; heißen.', ACode, '''<'' als &lt; schreiben',
     [TDocReplacement.Create(AIndex, AIndex + 1, '&lt;')], False);
 end;
 
@@ -312,7 +322,7 @@ var
 
   procedure Escape(const AMessage: string);
   begin
-    AddFlaw(AIndex, AIndex + 1, AMessage, '''&'' als &amp; schreiben',
+    AddFlaw(AIndex, AIndex + 1, AMessage, '', '''&'' als &amp; schreiben',
       [TDocReplacement.Create(AIndex, AIndex + 1, '&amp;')], False);
   end;
 
@@ -320,7 +330,7 @@ begin
   Index := AIndex + 1;
   if (Index > FLength) or IsSpaceAt(Index) then
   begin
-    Escape('''&'' muss &amp; heißen (wie W1201).');
+    Escape('''&'' muss &amp; heißen.');
     Inc(AIndex);
     Exit;
   end;
@@ -340,14 +350,14 @@ begin
       AIndex := Index + 1
     else
     begin
-      Escape('''&'' muss &amp; heißen (wie W1205).');
+      Escape('''&'' muss &amp; heißen.');
       Inc(AIndex);
     end;
     Exit;
   end;
   if not IsNameStartAt(Index) then
   begin
-    Escape('''&'' muss &amp; heißen (wie W1203).');
+    Escape('''&'' muss &amp; heißen.');
     Inc(AIndex);
     Exit;
   end;
@@ -356,12 +366,12 @@ begin
   Name := Copy(FXml, AIndex + 1, Index - AIndex - 1);
   if (Index > FLength) or (FXml[Index] <> ';') then
   begin
-    Escape('''&'' muss &amp; heißen (wie W1205).');
+    Escape('''&'' muss &amp; heißen.');
     Inc(AIndex);
     Exit;
   end;
   if IndexText(Name, XmlEntities) < 0 then
-    Escape(Format('&%s; ist in XML nicht definiert (wie W1202).', [Name]));
+    Escape(Format('&%s; ist in XML nicht definiert.', [Name]));
   AIndex := Index + 1;
 end;
 
@@ -372,7 +382,7 @@ begin
   Close := PosEx(AClose, FXml, AIndex + Length(AOpen));
   if Close = 0 then
   begin
-    AddFlaw(AIndex, AIndex + Length(AOpen), Format('%s wird nicht mit %s geschlossen.', [AOpen, AClose]),
+    AddFlaw(AIndex, AIndex + Length(AOpen), Format('%s wird nicht mit %s geschlossen.', [AOpen, AClose]), '',
       Format('%s ergänzen', [AClose]), [TDocReplacement.Create(FLength + 1, FLength + 1, AClose)], True);
     AIndex := FLength + 1;
   end
@@ -390,13 +400,13 @@ var
 begin
   if (AIndex + 1 > FLength) or IsSpaceAt(AIndex + 1) then
   begin
-    EscapeLess(AIndex, 'W1201');
+    EscapeLess(AIndex, '');
     Inc(AIndex);
     Exit;
   end;
   if not IsNameStartAt(AIndex + 1) then
   begin
-    EscapeLess(AIndex, 'W1203');
+    EscapeLess(AIndex, '');
     Inc(AIndex);
     Exit;
   end;
@@ -406,7 +416,8 @@ begin
   NameStop := Index;
   if (Index <= FLength) and not IsSpaceAt(Index) and (FXml[Index] <> '>') and (FXml[Index] <> '/') then
   begin
-    EscapeLess(AIndex, 'W1204');
+    // dcc meldet hier W1205 ("'>' erwartet"), nicht W1204 (Cm.W1204).
+    EscapeLess(AIndex, 'W1205');
     Inc(AIndex);
     Exit;
   end;
@@ -421,7 +432,7 @@ begin
       Inc(Index);
     if Index > FLength then
     begin
-      EscapeLess(AIndex, 'W1205');
+      EscapeLess(AIndex, '');
       Inc(AIndex);
       Exit;
     end;
@@ -439,7 +450,7 @@ begin
     end;
     if not HadSpace or not IsNameStartAt(Index) then
     begin
-      EscapeLess(AIndex, 'W1205');
+      EscapeLess(AIndex, '');
       Inc(AIndex);
       Exit;
     end;
@@ -452,7 +463,7 @@ begin
       Inc(Index);
     if (Index > FLength) or (FXml[Index] <> '=') then
     begin
-      EscapeLess(AIndex, 'W1205');
+      EscapeLess(AIndex, '');
       Inc(AIndex);
       Exit;
     end;
@@ -466,8 +477,8 @@ begin
       Index := PosEx(Quote, FXml, ValueStart);
       if Index = 0 then
       begin
-        AddFlaw(ValueStart - 1, ValueStart, Format('Anführungszeichen hinter %s fehlt (wie W1205).',
-          [Attribute.Name]), '', nil, True);
+        AddFlaw(ValueStart - 1, ValueStart, Format('Anführungszeichen hinter %s fehlt.', [Attribute.Name]), '', '',
+          nil, True);
         AIndex := FLength + 1;
         Exit;
       end;
@@ -485,11 +496,11 @@ begin
         Inc(Index);
       if Index = ValueStart then
       begin
-        EscapeLess(AIndex, 'W1205');
+        EscapeLess(AIndex, '');
         Inc(AIndex);
         Exit;
       end;
-      AddFlaw(ValueStart, Index, Format('Wert von %s ohne Anführungszeichen (wie W1205).', [Attribute.Name]),
+      AddFlaw(ValueStart, Index, Format('Wert von %s ohne Anführungszeichen.', [Attribute.Name]), '',
         'Anführungszeichen setzen', [TDocReplacement.Create(ValueStart, ValueStart, '"'),
         TDocReplacement.Create(Index, Index, '"')], False);
       Attribute.Value := Copy(FXml, ValueStart, Index - ValueStart);
@@ -524,16 +535,16 @@ begin
   while (AInsertAt > Element.OpenStop) and IsSpaceAt(AInsertAt - 1) do
     Dec(AInsertAt);
   if SameText(Element.Name, 'br') then
-    AddFlaw(Element.Start, Element.OpenStop, '<br> wird nicht geschlossen.', '<br/> schreiben',
+    AddFlaw(Element.Start, Element.OpenStop, '<br> wird nicht geschlossen.', '', '<br/> schreiben',
       [TDocReplacement.Create(Element.OpenStop - 1, Element.OpenStop - 1, '/')], True)
   else if (Length(Element.Attributes) = 0) and not Element.HasChildren and
     ((IndexText(Element.Name, DocTags) < 0) or (IndexText(Element.Name, AttributeTags) >= 0)) then
     // Fremder Name oder Tag ohne sein Attribut, ohne Inhalt: gemeint ist Text wie TList<T>.
-    AddFlaw(Element.Start, Element.OpenStop, Format('<%s> wird nicht geschlossen.', [Element.Name]),
+    AddFlaw(Element.Start, Element.OpenStop, Format('<%s> wird nicht geschlossen.', [Element.Name]), '',
       Format('<%s> als Text schreiben', [Element.Name]), [TDocReplacement.Create(Element.Start, Element.Start + 1,
       '&lt;'), TDocReplacement.Create(Element.OpenStop - 1, Element.OpenStop, '&gt;')], True)
   else
-    AddFlaw(Element.Start, Element.OpenStop, Format('<%s> wird nicht geschlossen.', [Element.Name]),
+    AddFlaw(Element.Start, Element.OpenStop, Format('<%s> wird nicht geschlossen.', [Element.Name]), '',
       Format('</%s> ergänzen', [Element.Name]), [TDocReplacement.Create(AInsertAt, AInsertAt,
       Format('</%s>', [Element.Name]))], True);
 end;
@@ -547,7 +558,7 @@ begin
   Index := AIndex + 2;
   if not IsNameStartAt(Index) then
   begin
-    EscapeLess(AIndex, 'W1203');
+    EscapeLess(AIndex, '');
     Inc(AIndex);
     Exit;
   end;
@@ -558,7 +569,7 @@ begin
     Inc(Index);
   if (Index > FLength) or (FXml[Index] <> '>') then
   begin
-    EscapeLess(AIndex, 'W1205');
+    EscapeLess(AIndex, '');
     Inc(AIndex);
     Exit;
   end;
@@ -567,8 +578,8 @@ begin
     Dec(Level);
   if Level < 0 then
   begin
-    AddFlaw(AIndex, Index + 1, Format('</%s> hat kein öffnendes Tag.', [Name]), Format('</%s> entfernen', [Name]),
-      [TDocReplacement.Create(AIndex, Index + 1, '')], True);
+    AddFlaw(AIndex, Index + 1, Format('</%s> hat kein öffnendes Tag.', [Name]), '',
+      Format('</%s> entfernen', [Name]), [TDocReplacement.Create(AIndex, Index + 1, '')], True);
     AIndex := FLength + 1;
     Exit;
   end;
@@ -848,6 +859,31 @@ var
   FromUnit: TUnitIndex;
   CrefsKnown: Boolean;
   CrefLevel: TRuleConfidence;
+  // interface-Teil der Unit [Start, Stop); leer ohne (Programm, Paket).
+  InterfaceStart, InterfaceStop: Integer;
+
+  /// <summary>Dokumentiert dcc die Deklaration hinter ABlock (interface-Teil einer Unit)? Nur dann meldet es
+  /// W1201 bis W1208 (#1383).</summary>
+  function CompilerChecks(const ABlock: TDocBlock): Boolean;
+  var
+    Offset: Integer;
+  begin
+    Offset := Tokens[ABlock.FirstToken].Offset;
+    Result := (Offset >= InterfaceStart) and (Offset < InterfaceStop);
+  end;
+
+  /// <summary>AMessage mit "(wie ACode)" vor dem Schlusspunkt, wenn dcc den Block prüft; sonst unverändert.
+  /// </summary>
+  function WithCode(const ABlock: TDocBlock; const AMessage, ACode: string): string;
+  begin
+    Result := AMessage;
+    if (ACode = '') or not CompilerChecks(ABlock) then
+      Exit;
+    if EndsStr('.', Result) then
+      Result := Copy(Result, 1, Length(Result) - 1) + ' (wie ' + ACode + ').'
+    else
+      Result := Result + ' (wie ' + ACode + ')';
+  end;
 
   function TokenAt(AOffset: Integer): Integer;
   var
@@ -916,10 +952,10 @@ var
       for Replacement in Flaw.Replacements do
         Edits := Edits + [ReplacementEdit(ABlock, Replacement)];
       if Length(Edits) > 0 then
-        AReport.Add(XmlRange(ABlock, Flaw.Start, Flaw.Stop), Flaw.Message,
+        AReport.Add(XmlRange(ABlock, Flaw.Start, Flaw.Stop), WithCode(ABlock, Flaw.Message, Flaw.Code),
           [TRuleFix.Create(Flaw.FixTitle, Sorted(Edits))])
       else
-        AReport.Add(XmlRange(ABlock, Flaw.Start, Flaw.Stop), Flaw.Message);
+        AReport.Add(XmlRange(ABlock, Flaw.Start, Flaw.Stop), WithCode(ABlock, Flaw.Message, Flaw.Code));
     end;
   end;
 
@@ -997,12 +1033,12 @@ var
       Names := nil;
       for Position in Unknown do
         Names := Names + [Format('<param name="%s">', [ParamNames[Position]])];
-      Parts := Parts + [Joined(Names) + ' gibt es nicht'];
+      Parts := Parts + [WithCode(ABlock, Joined(Names) + ' gibt es nicht', 'W1207')];
     end;
     if Length(Missing) = 1 then
-      Parts := Parts + [Missing[0] + ' ist nicht beschrieben']
+      Parts := Parts + [WithCode(ABlock, Missing[0] + ' ist nicht beschrieben', 'W1208')]
     else if Length(Missing) > 1 then
-      Parts := Parts + [Joined(Missing) + ' sind nicht beschrieben'];
+      Parts := Parts + [WithCode(ABlock, Joined(Missing) + ' sind nicht beschrieben', 'W1208')];
     if StrayReturns then
       Parts := Parts + ['<returns> steht an einer Routine ohne Ergebnis'];
     if MissingReturns then
@@ -1206,7 +1242,7 @@ var
     end;
     Closest := TTextFuzzy.Closest(Tail, Candidates);
     Fixes := nil;
-    Message := Format('cref "%s" zeigt auf kein Symbol (wie W1206).', [AAttribute.Value]);
+    Message := WithCode(ABlock, Format('cref "%s" zeigt auf kein Symbol.', [AAttribute.Value]), 'W1206');
     if Closest <> '' then
     begin
       Replaced := Head + Closest;
@@ -1346,6 +1382,14 @@ begin
   Resolver := nil;
   try
     CollectDeclarations(AContext.Tree.Root, Declarations);
+    InterfaceStart := 0;
+    InterfaceStop := 0;
+    for Index := 0 to AContext.Tree.Root.ChildCount - 1 do
+      if AContext.Tree.Root[Index].Kind = TSyntaxKind.InterfaceSection then
+      begin
+        InterfaceStart := AContext.Tree.Root[Index].StartOffset;
+        InterfaceStop := AContext.Tree.Root[Index].EndOffset;
+      end;
     if CrefsKnown then
     begin
       Resolver := TNameResolver.Create(AContext.Index, AContext.EnsureUnit, AContext.TreeUnits);
