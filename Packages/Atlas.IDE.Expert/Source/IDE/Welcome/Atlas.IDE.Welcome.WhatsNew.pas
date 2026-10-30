@@ -2,7 +2,7 @@
 
 // Karte „Neu in Atlas“ in der IDE (#756): Quelle der Karte
 // (IAtlasWhatsNewSource) und Bereich atlas.news der Willkommensseite.
-// - whatsnew.json liegt neben den BPLs oder eine Ebene darüber (Installer:
+// - whatsnew.json liegt neben den BPLs oder eine Ebene darüber (Release-Paket:
 //   <Ziel>\Win32\…bpl, <Ziel>\whatsnew.json); Beispieldateien relativ dazu.
 // - Gesehene Version: WhatsNewSeen in den Plugin-Einstellungen (Registry).
 //   Beim ersten Start wird die aktuelle Version gemerkt, es gibt dann nichts

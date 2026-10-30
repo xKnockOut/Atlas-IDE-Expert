@@ -186,7 +186,7 @@ begin
     begin
       MapLoaded := True;
       Module := GetModuleName(HInstance);
-      // Neben der BPL unter ihrem Namen (Installer, Release), sonst wie der Linker sie nennt: ohne die
+      // Neben der BPL unter ihrem Namen (Release-Paket), sonst wie der Linker sie nennt: ohne die
       // Versionsendung von LIBSUFFIX AUTO (Atlas.IDE.Expert370.bpl → Atlas.IDE.Expert.map).
       Candidates := [ChangeFileExt(Module, '.map')];
       Name := TPath.GetFileNameWithoutExtension(Module);

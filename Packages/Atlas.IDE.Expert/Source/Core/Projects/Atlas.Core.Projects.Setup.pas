@@ -54,7 +54,7 @@ type
   public const
     ConfigName = 'atlas.json';
     LegacyConfigName = 'delphi-lsp.json';
-    /// <summary>Ordner der Vorlagen in der Installation (Setup.Core.Installer.TemplatesFolder).</summary>
+    /// <summary>Ordner der Vorlagen im Release-Paket (Setup/Vorlagen im Repository).</summary>
     TemplatesFolder = 'Vorlagen';
     /// <summary>$schema der Vorlagen, wie in docs/Konfiguration.md.</summary>
     SchemaUrl = 'https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json';
