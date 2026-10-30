@@ -211,6 +211,29 @@ begin
     TAtlasToolbarIcon.Gear:
       // Zahnkranz mit Loch; früher Kreis mit acht Strahlen, das sah aus wie eine Sonne.
       Result := [GearOutline(8, 8, 6.8, 5, 8), Circle(8, 8, 2.2, False)];
+    TAtlasToolbarIcon.ComponentSearch:
+      // Lupe über einem kleinen Rahmen (Komponente).
+      Result := [Outline([P(1.5, 9.5), P(6.5, 9.5), P(6.5, 14.5), P(1.5, 14.5)]), Circle(10, 6, 4, False),
+        Stroke([P(7.2, 8.8), P(5, 11)])];
+    TAtlasToolbarIcon.NonVisual:
+      // Kleines Symbolfeld (nichtvisuelle Komponente) mit Auge darin.
+      Result := [Outline([P(1.5, 2.5), P(14.5, 2.5), P(14.5, 13.5), P(1.5, 13.5)]),
+        Outline([P(3, 8), P(5.5, 5.6), P(8, 4.9), P(10.5, 5.6), P(13, 8), P(10.5, 10.4), P(8, 11.1), P(5.5, 10.4)]),
+        Circle(8, 8, 1.4, True)];
+    TAtlasToolbarIcon.SelectParent:
+      // Pfeil aus dem inneren Rahmen nach oben in den äußeren.
+      Result := [Outline([P(1.5, 1.5), P(14.5, 1.5), P(14.5, 14.5), P(1.5, 14.5)]),
+        Outline([P(5, 9), P(11, 9), P(11, 12.5), P(5, 12.5)]), Stroke([P(8, 9), P(8, 4)]),
+        Stroke([P(5.8, 6.2), P(8, 4), P(10.2, 6.2)])];
+    TAtlasToolbarIcon.TabOrder:
+      // Zwei nummerierte Felder mit Pfeil dazwischen.
+      Result := [Outline([P(1.5, 2), P(6.5, 2), P(6.5, 7), P(1.5, 7)]),
+        Outline([P(9.5, 9), P(14.5, 9), P(14.5, 14), P(9.5, 14)]), Stroke([P(4, 7), P(4, 11.5), P(9.5, 11.5)]),
+        Stroke([P(7.8, 9.8), P(9.5, 11.5), P(7.8, 13.2)])];
+    TAtlasToolbarIcon.AlignControls:
+      // Linke Kante mit zwei bündigen Balken.
+      Result := [Stroke([P(2, 1.5), P(2, 14.5)]), Outline([P(4.5, 3.5), P(13.5, 3.5), P(13.5, 6.5), P(4.5, 6.5)]),
+        Outline([P(4.5, 9.5), P(10, 9.5), P(10, 12.5), P(4.5, 12.5)])];
   else
     Result := nil;
   end;
