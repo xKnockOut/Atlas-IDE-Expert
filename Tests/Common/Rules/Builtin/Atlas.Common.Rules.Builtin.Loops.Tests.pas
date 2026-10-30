@@ -278,6 +278,10 @@ begin
   TRuleAssert.Silent(TForVariableAfterLoopRule.Create,
     Zeilen('  for I := 0 to 9 do'#10'    Ausgeben(I);'#10'  Ausgeben(I);'#10));
   TRuleAssert.Silent(TForVariableAfterLoopRule.Create, Zeilen('  J := I;'#10));
+  // Rumpf ist ein repeat: Das Lesen steht in der Schleife, nicht danach.
+  TRuleAssert.Silent(TForVariableAfterLoopRule.Create,
+    Zeilen('  for I := 0 to 1 do'#10'    repeat'#10'      if I = 1 then'#10'        J := 2;'#10 +
+    '    until J > 0;'#10));
 end;
 
 procedure TForVariableAfterLoopTests.OffAndExclude;

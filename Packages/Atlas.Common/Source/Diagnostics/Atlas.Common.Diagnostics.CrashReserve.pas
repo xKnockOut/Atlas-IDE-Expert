@@ -119,15 +119,19 @@ end;
 
 destructor TCrashReserve.Destroy;
 begin
-  System.TMonitor.Enter(FLock);
-  try
-    FStopping := True;
-    FStart.SetEvent;
-  finally
-    System.TMonitor.Exit(FLock);
+  // Wirft der Konstruktor (SetLength der Reserve, Thread anlegen), fehlt der Arbeiter.
+  if FWorker <> nil then
+  begin
+    System.TMonitor.Enter(FLock);
+    try
+      FStopping := True;
+      FStart.SetEvent;
+    finally
+      System.TMonitor.Exit(FLock);
+    end;
+    FWorker.WaitFor;
+    FWorker.Free;
   end;
-  FWorker.WaitFor;
-  FWorker.Free;
   FDone.Free;
   FStart.Free;
   FLock.Free;

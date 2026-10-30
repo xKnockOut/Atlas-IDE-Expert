@@ -146,6 +146,11 @@ begin
   // Korrigierte Form: beide Felder frei.
   TRuleAssert.Silent(TOwnedFieldNotFreedRule.Create, StringReplace(Import, '  FZeilen.Free;'#10,
     '  FZeilen.Free;'#10'  FFehler.Free;'#10, []));
+  // Freigabe über eine lokale Kopie (Writer := FWriter; FWriter := nil; Writer.Free).
+  TRuleAssert.Silent(TOwnedFieldNotFreedRule.Create, StringReplace(StringReplace(Import,
+    'destructor TImport.Destroy;'#10'begin'#10, 'destructor TImport.Destroy;'#10'var'#10'  Alt: TStringList;'#10 +
+    'begin'#10, []), '  FZeilen.Free;'#10, '  FZeilen.Free;'#10'  Alt := FFehler;'#10'  FFehler := nil;'#10 +
+    '  Alt.Free;'#10, []));
 end;
 
 procedure TFreeFieldRulesTests.OwnedComponentAndFreedFieldSilent;

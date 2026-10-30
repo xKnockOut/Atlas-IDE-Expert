@@ -240,7 +240,8 @@ begin
   // Erst abmelden, dann freigeben: Hook und Zeitgeber riefen sonst in freigegebene Objekte.
   TAtlasKeyHook.Remove(FKeys);
   FTimer.Free;
-  FController.Close;
+  if FController <> nil then
+    FController.Close;
   FController.Free;
   FPopup.Free;
   FProviderRef := nil;

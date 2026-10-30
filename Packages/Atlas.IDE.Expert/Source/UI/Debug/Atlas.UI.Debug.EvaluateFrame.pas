@@ -744,7 +744,7 @@ begin
   else if (Key = VK_F2) and (Shift = []) then
   begin
     Key := 0;
-    if FModify.Enabled then
+    if FModify.Enabled and Assigned(FOnModify) then
       FOnModify(Node);
   end;
 end;
@@ -790,7 +790,7 @@ end;
 
 procedure TAtlasDebugEvaluateFrame.ModifyClick(Sender: TObject);
 begin
-  if FModify.Enabled and (Selected <> nil) then
+  if FModify.Enabled and (Selected <> nil) and Assigned(FOnModify) then
     FOnModify(Selected);
 end;
 

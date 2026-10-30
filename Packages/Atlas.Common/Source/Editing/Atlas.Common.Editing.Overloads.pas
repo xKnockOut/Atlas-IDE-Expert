@@ -312,6 +312,7 @@ begin
     Exit;
   Count := 0;
   Single := nil;
+  SingleHeader := Default(TSignatureHeader);
   for Index := 0 to Section.ChildCount - 1 do
     if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AQualified) and
       (Section[Index].FindChild(TSyntaxKind.Block) <> nil) and

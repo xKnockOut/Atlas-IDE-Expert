@@ -674,6 +674,40 @@ var
     end;
   end;
 
+  // Führt ANext in den Rumpf von ALoop? Knoten ohne Syntax (Sprungziel am Anfang von repeat) bis zur ersten
+  // Anweisung verfolgen.
+  function EntersBody(ANext: TFlowNode; ALoop: TSyntaxNode): Boolean;
+  var
+    Node, Next: TFlowNode;
+    Pending: TStack<TFlowNode>;
+    Seen: TDictionary<TFlowNode, Boolean>;
+  begin
+    Result := False;
+    Pending := TStack<TFlowNode>.Create;
+    Seen := TDictionary<TFlowNode, Boolean>.Create;
+    try
+      Pending.Push(ANext);
+      while Pending.Count > 0 do
+      begin
+        Node := Pending.Pop;
+        if Seen.ContainsKey(Node) then
+          Continue;
+        Seen.Add(Node, True);
+        if Node.Syntax <> nil then
+        begin
+          if IsInside(Node.Syntax, ALoop) and (Node.Syntax <> ALoop) then
+            Exit(True);
+          Continue;
+        end;
+        for Next in Node.Successors do
+          Pending.Push(Next);
+      end;
+    finally
+      Seen.Free;
+      Pending.Free;
+    end;
+  end;
+
   procedure CheckLoop(ALoop: TSyntaxNode);
   var
     Condition, Node, Next: TFlowNode;
@@ -695,7 +729,8 @@ var
     try
       // Normaler Ausgang: Nachfolger der Bedingung außerhalb der Schleife.
       for Next in Condition.Successors do
-        if (Next <> Condition) and ((Next.Syntax = nil) or not IsInside(Next.Syntax, ALoop)) then
+        if (Next <> Condition) and (((Next.Syntax = nil) and not EntersBody(Next, ALoop)) or
+          ((Next.Syntax <> nil) and not IsInside(Next.Syntax, ALoop))) then
           Pending.Push(Next);
       while Pending.Count > 0 do
       begin

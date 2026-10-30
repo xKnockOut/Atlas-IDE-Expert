@@ -1079,7 +1079,7 @@ begin
   Canvas.Brush.Style := bsSolid;
 end;
 
-procedure TAtlasComponentSearchWindow.Paint;
+procedure TAtlasComponentSearchWindow.Paint; // lsp-ignore: component-missing-inherited -- zeichnet die ganze Fläche
 begin
   FAreas.Clear;
   Layout;

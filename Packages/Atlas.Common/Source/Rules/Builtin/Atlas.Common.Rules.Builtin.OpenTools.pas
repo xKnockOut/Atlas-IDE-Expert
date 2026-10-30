@@ -222,6 +222,10 @@ var
         Close := Matching(Position + 1);
         if (Close > Position + 2) and MatchText(Normalized(TextOf(Position + 2, Close - 1)), Names) then
           Exit(True);
+        // Verschobener Index: RemoveNotifier(FIndex - 1), wenn AddNotifier(…) + 1 gespeichert wurde.
+        for Stop := Position + 2 to Close - 1 do
+          if IsWord(Stop) and MatchText(Token(Stop).Text, Names) then
+            Exit(True);
       end;
     Result := False;
   end;

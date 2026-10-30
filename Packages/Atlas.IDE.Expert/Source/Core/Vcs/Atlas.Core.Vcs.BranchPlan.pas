@@ -1464,8 +1464,6 @@ class function TAtlasVcsBranchPlan.Execute(const ABranching: IAtlasVcsBranching;
       // Netz: Ein Rest im Temp-Ordner stört nicht; der nächste Lauf versucht es erneut.
       on EInOutError do
         ;
-      on EDirectoryNotFoundException do
-        ;
       on EOSError do
         ;
     end;
