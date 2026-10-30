@@ -21,7 +21,7 @@ type
   TAtlasSymbol = class
   public const
     SizeCount = 9;
-    /// <summary>Ressource des Programmsymbols (ICO) für Server und Installer.</summary>
+    /// <summary>Ressource des Programmsymbols (ICO) für den Server.</summary>
     MainIcon = 'MAINICON';
     /// <summary>Logische Größen: Menü und Statusfeld, Startbildschirm, Seitenkopf, Info-Dialog.</summary>
     MenuSize = 16;

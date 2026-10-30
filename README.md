@@ -25,7 +25,7 @@ Features and roadmap are tracked in the [issues](https://github.com/xKnockOut/At
 
 ## Quick start
 
-You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) page; releases 1.0.0 and 1.1.0 contain the plugin for Delphi 13 only. What is new in 1.1.0 is listed in the [changelog](CHANGELOG.md) (German).
+You need RAD Studio or Delphi 12 or later. Ready-made downloads are on the [releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) page; releases 1.0.0 to 1.2.0 contain the plugin for Delphi 13 only. What is new in 1.2.0 is listed in the [changelog](CHANGELOG.md) (German).
 
 **Option A – add the release package by hand:**
 
