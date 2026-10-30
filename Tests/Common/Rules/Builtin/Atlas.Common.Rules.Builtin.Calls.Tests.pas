@@ -33,6 +33,10 @@ type
     /// TMemoryStream-Nachfahren, Error in einem TStrings-Nachfahren); Gegenprobe mit vollständiger Kette.</summary>
     [Test]
     procedure UnknownAncestorMayHideName;
+    /// <summary>Create über eine Klassenreferenz (FError: ExceptClass) ist der Konstruktor der Zielklasse
+    /// (Exception.Create(const Msg: string)), nicht TObject.Create: raise FError.Create('…') bleibt still.</summary>
+    [Test]
+    procedure ClassReferenceConstructor;
     [Test]
     procedure SilentCases;
     [Test]
@@ -243,6 +247,38 @@ begin
     'procedure Test(AVerdeckt: TVerdeckt);'#10'begin'#10'  AVerdeckt.Trennen;'#10'end;'#10'end.', mIndex, '', '');
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.AreEqual('Trennen erwartet 1 Argument, übergeben ist keins; AMelden fehlt (wie E2035).', mFound[0].Message);
+end;
+
+procedure TCallRulesTests.ClassReferenceConstructor;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+begin
+  // Wie System und System.SysUtils: TObject.Create ohne, Exception.Create mit einem Parameter.
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Fehler;'#10'interface'#10'type'#10'  TObject = class'#10 +
+    '    constructor Create;'#10'  end;'#10'  Exception = class(TObject)'#10 +
+    '    constructor Create(const Msg: string);'#10'  end;'#10'  ExceptClass = class of Exception;'#10 +
+    '  TFehlerKlasse = ExceptClass;'#10'implementation'#10'end.', 'C:\Projekt\Fehler.pas', nil));
+  // Feld, Parameter und Alias einer Klassenreferenz aus dem Index.
+  mFound := TRuleAssert.IndexFindings(TArgumentCountMismatchRule.Create, 'unit Regeln;'#10'interface'#10'uses'#10 +
+    '  Fehler;'#10'type'#10'  TRegel = class'#10'  private'#10'    FError: ExceptClass;'#10'  public'#10 +
+    '    procedure Check(AKlasse: TFehlerKlasse);'#10'  end;'#10'implementation'#10 +
+    'procedure TRegel.Check(AKlasse: TFehlerKlasse);'#10'begin'#10'  if AKlasse = nil then'#10 +
+    '    raise AKlasse.Create(''Fehlt'');'#10'  raise FError.Create(''Regel gescheitert'');'#10 +
+    '  FError.Create;'#10'  raise AKlasse.Create(''a'', ''b'');'#10'end;'#10'end.', mIndex, '', '');
+  Assert.AreEqual(2, Integer(Length(mFound)));
+  Assert.AreEqual('Create erwartet 1 Argument, übergeben ist keins; Msg fehlt (wie E2035).', mFound[0].Message);
+  Assert.AreEqual(17, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('Create erwartet 1 Argument, übergeben sind 2 (wie E2034).', mFound[1].Message);
+  Assert.AreEqual(18, mFound[1].Range.StartPos.Line);
+  // Klassenreferenz in derselben Datei; über den Typ selbst (TFehler.Create) wie bisher.
+  Silent('unit Lokal;'#10'interface'#10'type'#10'  TObject = class'#10'    constructor Create;'#10'  end;'#10 +
+    '  TFehler = class(TObject)'#10'    constructor Create(const AText: string);'#10'  end;'#10 +
+    '  TFehlerKlasse = class of TFehler;'#10'implementation'#10'constructor TObject.Create;'#10'begin'#10'end;'#10 +
+    'constructor TFehler.Create(const AText: string);'#10'begin'#10'end;'#10 +
+    'procedure Test(AKlasse: TFehlerKlasse);'#10'begin'#10'  AKlasse.Create(''x'').Free;'#10 +
+    '  TFehler.Create(''y'');'#10'end;'#10'end.');
 end;
 
 procedure TCallRulesTests.UnknownAncestorMayHideName;
