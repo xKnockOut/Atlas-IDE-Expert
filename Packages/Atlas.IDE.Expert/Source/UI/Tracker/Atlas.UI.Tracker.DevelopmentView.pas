@@ -332,27 +332,32 @@ begin
   FBranches := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssueDevColumnBranch),
     TAtlasStrings.Text(TAtlasTextId.IssueDevColumnWhere), TAtlasStrings.Text(TAtlasTextId.IssueDevColumnState)),
     Length(FDevelopment.Branches));
-  for mBranch in FDevelopment.Branches do
-  begin
-    if mBranch.Local and mBranch.Remote then
-      mWhere := TAtlasStrings.Text(TAtlasTextId.IssueDevLocalRemote)
-    else if mBranch.Local then
-      mWhere := TAtlasStrings.Text(TAtlasTextId.IssueDevLocal)
-    else
-      mWhere := TAtlasStrings.Text(TAtlasTextId.IssueDevRemote);
-    mState := '';
-    if (mBranch.Base <> '') and (mBranch.Ahead >= 0) and (mBranch.Behind >= 0) then
-      mState := TAtlasStrings.Fmt(TAtlasTextId.IssueDevAheadBehind, [mBranch.Ahead, mBranch.Behind, mBranch.Base]);
-    if mBranch.Current then
+  FBranches.Items.BeginUpdate;
+  try
+    for mBranch in FDevelopment.Branches do
     begin
-      if mState <> '' then
-        mState := ', ' + mState;
-      mState := TAtlasStrings.Text(TAtlasTextId.IssueDevCurrent) + mState;
+      if mBranch.Local and mBranch.Remote then
+        mWhere := TAtlasStrings.Text(TAtlasTextId.IssueDevLocalRemote)
+      else if mBranch.Local then
+        mWhere := TAtlasStrings.Text(TAtlasTextId.IssueDevLocal)
+      else
+        mWhere := TAtlasStrings.Text(TAtlasTextId.IssueDevRemote);
+      mState := '';
+      if (mBranch.Base <> '') and (mBranch.Ahead >= 0) and (mBranch.Behind >= 0) then
+        mState := TAtlasStrings.Fmt(TAtlasTextId.IssueDevAheadBehind, [mBranch.Ahead, mBranch.Behind, mBranch.Base]);
+      if mBranch.Current then
+      begin
+        if mState <> '' then
+          mState := ', ' + mState;
+        mState := TAtlasStrings.Text(TAtlasTextId.IssueDevCurrent) + mState;
+      end;
+      mItem := FBranches.Items.Add;
+      mItem.Caption := mBranch.Name;
+      mItem.SubItems.Add(mWhere);
+      mItem.SubItems.Add(mState);
     end;
-    mItem := FBranches.Items.Add;
-    mItem.Caption := mBranch.Name;
-    mItem.SubItems.Add(mWhere);
-    mItem.SubItems.Add(mState);
+  finally
+    FBranches.Items.EndUpdate;
   end;
   FBranches.OnSelectItem := BranchesSelect;
   mTools := TPanel.Create(Self);
@@ -428,13 +433,18 @@ begin
     FChanges := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssueDevColumnCommit),
       TAtlasStrings.Text(TAtlasTextId.IssueDevColumnSubject), TAtlasStrings.Text(TAtlasTextId.IssueDevColumnAuthor),
       TAtlasStrings.Text(TAtlasTextId.IssueDevColumnTime)), Length(FDevelopment.Tracker.Changes));
-    for mChange in FDevelopment.Tracker.Changes do
-    begin
-      mItem := FChanges.Items.Add;
-      mItem.Caption := Copy(mChange.Version, 1, 10);
-      mItem.SubItems.Add(mChange.Text);
-      mItem.SubItems.Add(mChange.Author);
-      mItem.SubItems.Add(WhenText(mChange.Date));
+    FChanges.Items.BeginUpdate;
+    try
+      for mChange in FDevelopment.Tracker.Changes do
+      begin
+        mItem := FChanges.Items.Add;
+        mItem.Caption := Copy(mChange.Version, 1, 10);
+        mItem.SubItems.Add(mChange.Text);
+        mItem.SubItems.Add(mChange.Author);
+        mItem.SubItems.Add(WhenText(mChange.Date));
+      end;
+    finally
+      FChanges.Items.EndUpdate;
     end;
     if Length(FDevelopment.Tracker.Pulls) = 0 then
       Exit;
@@ -448,33 +458,38 @@ begin
   FPulls := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssueDevColumnNumber),
     TAtlasStrings.Text(TAtlasTextId.IssueDevColumnSubject), TAtlasStrings.Text(TAtlasTextId.IssueDevColumnState),
     TAtlasStrings.Text(TAtlasTextId.IssueDevColumnChecks)), Length(FDevelopment.Tracker.Pulls));
-  for mPull in FDevelopment.Tracker.Pulls do
-  begin
-    case mPull.State of
-      TAtlasTrackerPullState.Draft:
-        mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullDraft);
-      TAtlasTrackerPullState.Merged:
-        mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullMerged);
-      TAtlasTrackerPullState.Closed:
-        mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullClosed);
-    else
-      mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullOpen);
+  FPulls.Items.BeginUpdate;
+  try
+    for mPull in FDevelopment.Tracker.Pulls do
+    begin
+      case mPull.State of
+        TAtlasTrackerPullState.Draft:
+          mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullDraft);
+        TAtlasTrackerPullState.Merged:
+          mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullMerged);
+        TAtlasTrackerPullState.Closed:
+          mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullClosed);
+      else
+        mState := TAtlasStrings.Text(TAtlasTextId.IssueDevPullOpen);
+      end;
+      case mPull.Checks of
+        TAtlasTrackerChecks.Pending:
+          mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksPending);
+        TAtlasTrackerChecks.Success:
+          mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksSuccess);
+        TAtlasTrackerChecks.Failure:
+          mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksFailure);
+      else
+        mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksUnknown);
+      end;
+      mItem := FPulls.Items.Add;
+      mItem.Caption := '#' + IntToStr(mPull.Number);
+      mItem.SubItems.Add(mPull.Title);
+      mItem.SubItems.Add(mState);
+      mItem.SubItems.Add(mChecks);
     end;
-    case mPull.Checks of
-      TAtlasTrackerChecks.Pending:
-        mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksPending);
-      TAtlasTrackerChecks.Success:
-        mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksSuccess);
-      TAtlasTrackerChecks.Failure:
-        mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksFailure);
-    else
-      mChecks := TAtlasStrings.Text(TAtlasTextId.IssueDevChecksUnknown);
-    end;
-    mItem := FPulls.Items.Add;
-    mItem.Caption := '#' + IntToStr(mPull.Number);
-    mItem.SubItems.Add(mPull.Title);
-    mItem.SubItems.Add(mState);
-    mItem.SubItems.Add(mChecks);
+  finally
+    FPulls.Items.EndUpdate;
   end;
   FPulls.OnDblClick := PullsDblClick;
 end;

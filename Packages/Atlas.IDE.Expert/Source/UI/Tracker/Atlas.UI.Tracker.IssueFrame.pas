@@ -1401,14 +1401,19 @@ begin
         [Length(FDetails.Attachments)])), True).Font.Color := ToColor(FColors.Muted);
       FAttachments := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnName),
         TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnSize)));
-      for mAttachment in FDetails.Attachments do
-      begin
-        mItem := FAttachments.Items.Add;
-        mItem.Caption := mAttachment.Name;
-        if mAttachment.Size >= 0 then
-          mItem.SubItems.Add(FormatFloat('#,##0.0', mAttachment.Size / 1024) + ' KB')
-        else
-          mItem.SubItems.Add('–');
+      FAttachments.Items.BeginUpdate;
+      try
+        for mAttachment in FDetails.Attachments do
+        begin
+          mItem := FAttachments.Items.Add;
+          mItem.Caption := mAttachment.Name;
+          if mAttachment.Size >= 0 then
+            mItem.SubItems.Add(FormatFloat('#,##0.0', mAttachment.Size / 1024) + ' KB')
+          else
+            mItem.SubItems.Add('–');
+        end;
+      finally
+        FAttachments.Items.EndUpdate;
       end;
       FAttachments.Height := (Length(FDetails.Attachments) + 2) * MulDiv(20, CurrentPPI, 96);
       FAttachments.OnDblClick := AttachmentsDblClick;
@@ -1443,17 +1448,22 @@ begin
   FLinks := AddList(TArray<string>.Create(TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnKey),
     TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnTitle),
     TAtlasStrings.Text(TAtlasTextId.IssuePreviewColumnRelation)));
-  for mLink in FDetails.Links do
-  begin
-    mItem := FLinks.Items.Add;
-    mItem.Caption := mLink.Key;
-    mItem.SubItems.Add(mLink.Title);
-    if mLink.Relation = 'cross-referenced' then
-      mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRelationMentioned))
-    else if mLink.Relation = 'pull request' then
-      mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRelationPull))
-    else
-      mItem.SubItems.Add(mLink.Relation);
+  FLinks.Items.BeginUpdate;
+  try
+    for mLink in FDetails.Links do
+    begin
+      mItem := FLinks.Items.Add;
+      mItem.Caption := mLink.Key;
+      mItem.SubItems.Add(mLink.Title);
+      if mLink.Relation = 'cross-referenced' then
+        mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRelationMentioned))
+      else if mLink.Relation = 'pull request' then
+        mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.IssuePreviewRelationPull))
+      else
+        mItem.SubItems.Add(mLink.Relation);
+    end;
+  finally
+    FLinks.Items.EndUpdate;
   end;
   FLinks.Height := (Length(FDetails.Links) + 2) * MulDiv(20, CurrentPPI, 96);
   FLinks.OnClick := LinksClick;
