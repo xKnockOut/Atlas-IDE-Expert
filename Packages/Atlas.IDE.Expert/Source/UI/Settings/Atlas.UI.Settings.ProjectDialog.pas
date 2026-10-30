@@ -283,25 +283,30 @@ begin
   FPageTree.OnChange := PageTreeChange;
   FPages := TAtlasSettingsSchema.Pages(FModel.AllFields);
   SetLength(FPageNodes, Length(FPages));
-  for Index := 0 to High(FPages) do
-  begin
-    FPageNodes[Index] := FPageTree.Items.Add(nil, FPages[Index]);
-    FPageNodes[Index].Data := Pointer(NativeInt(Index));
-  end;
-  // Prüfregeln (#909): unter der Seite mit "rules" je Gruppe ein Knoten mit Hauptschalter und Tabelle.
-  if FRuleIndex >= 0 then
+  FPageTree.Items.BeginUpdate;
+  try
     for Index := 0 to High(FPages) do
-      if SameText(FPages[Index], FModel.Fields[FRuleIndex].Page) then
-      begin
-        for Group in TAtlasRuleTable.GroupIds do
+    begin
+      FPageNodes[Index] := FPageTree.Items.Add(nil, FPages[Index]);
+      FPageNodes[Index].Data := Pointer(NativeInt(Index));
+    end;
+    // Prüfregeln (#909): unter der Seite mit "rules" je Gruppe ein Knoten mit Hauptschalter und Tabelle.
+    if FRuleIndex >= 0 then
+      for Index := 0 to High(FPages) do
+        if SameText(FPages[Index], FModel.Fields[FRuleIndex].Page) then
         begin
-          Node := FPageTree.Items.AddChild(FPageNodes[Index], AtlasRuleGroupCaption(Group));
-          Node.Data := Pointer(NativeInt(GroupBase + Length(FGroups)));
-          FGroups := FGroups + [Group];
-          FGroupNodes := FGroupNodes + [Node];
+          for Group in TAtlasRuleTable.GroupIds do
+          begin
+            Node := FPageTree.Items.AddChild(FPageNodes[Index], AtlasRuleGroupCaption(Group));
+            Node.Data := Pointer(NativeInt(GroupBase + Length(FGroups)));
+            FGroups := FGroups + [Group];
+            FGroupNodes := FGroupNodes + [Node];
+          end;
+          FPageNodes[Index].Expand(False);
         end;
-        FPageNodes[Index].Expand(False);
-      end;
+  finally
+    FPageTree.Items.EndUpdate;
+  end;
 
   FBox := TScrollBox.Create(Self);
   FBox.Parent := Self;

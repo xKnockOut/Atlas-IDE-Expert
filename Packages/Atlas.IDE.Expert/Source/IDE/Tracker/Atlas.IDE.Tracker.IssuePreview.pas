@@ -171,7 +171,7 @@ type
     FHasPending: Boolean;
     FImageThread: TThread;
     FImageCancel: IAtlasCiCancel;
-    FWorkers: TList;
+    FWorkers: TList<TThread>;
     FGeneration: Integer;
     // Laufende Kurzabfragen (Tracker|Kennung → Rückrufe) und nicht gefundene Kennungen (→ Zeitpunkt).
     FLookups: TDictionary<string, TArray<TAtlasIssueLookupDone>>;
@@ -321,7 +321,7 @@ begin
   FHooks := AHooks;
   FHistory := TAtlasIssueHistory.Create;
   FCache := TAtlasTrackerIssueCache.Create(ACacheFolder);
-  FWorkers := TList.Create;
+  FWorkers := TList<TThread>.Create;
   FLookups := TDictionary<string, TArray<TAtlasIssueLookupDone>>.Create;
   FMissing := TDictionary<string, UInt64>.Create;
   FReadOnly := TStringList.Create;
@@ -477,13 +477,13 @@ begin
   begin
     mWait := nil;
     for mIndex := 0 to FWorkers.Count - 1 do
-      mWait := mWait + [TThread(FWorkers[mIndex])];
+      mWait := mWait + [FWorkers[mIndex]];
     if Length(mWait) > 0 then
       TAtlasShutdown.WaitForThreads(mWait);
   end;
   for mIndex := FWorkers.Count - 1 downto 0 do
   begin
-    mThread := TThread(FWorkers[mIndex]);
+    mThread := FWorkers[mIndex];
     if mThread.Finished then
     begin
       mThread.Free;

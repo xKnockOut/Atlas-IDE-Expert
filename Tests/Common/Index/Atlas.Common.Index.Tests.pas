@@ -59,6 +59,9 @@ type
     procedure ExtractsTypesMembersAndRoutines;
     [Test]
     procedure ExtractsAncestors;
+    /// <summary>Typargumente stehen je Vorfahr im Index und überstehen den Cache.</summary>
+    [Test]
+    procedure ExtractsAncestorArgsOfEveryAncestor;
     [Test]
     procedure ForwardDeclarationGivesWayToFullType;
     [Test]
@@ -558,6 +561,36 @@ begin
   Assert.AreEqual('IInterface', S.Ancestors[1]);
   Assert.IsTrue(FindSymbol(U, 'TBase', S));
   Assert.AreEqual<NativeInt>(0, Length(S.Ancestors));
+end;
+
+procedure TIndexExtractorTests.ExtractsAncestorArgsOfEveryAncestor;
+const
+  Text = 'unit G;'#10'interface'#10'type'#10 +
+    '  TVergleich = class(TInterfacedObject, IComparer<TKunde>, IMap<string, TArray<Integer>>)'#10'  end;'#10 +
+    '  TListe = class(TObjectList<TKunde>)'#10'  end;'#10 +
+    '  TEinfach = class(TObject, IInterface)'#10'  end;'#10 +
+    'implementation'#10'end.';
+var
+  U: TUnitIndex;
+  Loaded: TArray<TUnitIndex>;
+  S: TIndexSymbol;
+begin
+  U := Extract(Text);
+  Assert.IsTrue(FindSymbol(U, 'TVergleich', S));
+  Assert.AreEqual<NativeInt>(3, Length(S.AncestorArgs));
+  Assert.AreEqual('', S.AncestorArgs[0]);
+  Assert.AreEqual('TKunde', S.AncestorArgs[1]);
+  Assert.AreEqual('string,TArray<Integer>', StringReplace(S.AncestorArgs[2], ' ', '', [rfReplaceAll]));
+  Assert.IsTrue(FindSymbol(U, 'TListe', S));
+  Assert.AreEqual<NativeInt>(1, Length(S.AncestorArgs));
+  Assert.AreEqual('TKunde', S.AncestorArgs[0]);
+  // Ohne Typargumente bleibt die Liste leer.
+  Assert.IsTrue(FindSymbol(U, 'TEinfach', S));
+  Assert.AreEqual<NativeInt>(0, Length(S.AncestorArgs));
+  Loaded := TIndexCache.Deserialize(TIndexCache.Serialize([U]));
+  Assert.IsTrue(FindSymbol(Loaded[0], 'TVergleich', S));
+  Assert.AreEqual<NativeInt>(3, Length(S.AncestorArgs));
+  Assert.AreEqual('TKunde', S.AncestorArgs[1]);
 end;
 
 procedure TIndexExtractorTests.ForwardDeclarationGivesWayToFullType;

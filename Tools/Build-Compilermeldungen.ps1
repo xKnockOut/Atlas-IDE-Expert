@@ -32,6 +32,11 @@
     Ergebnis: Output/Compilermeldungen/dcc.tsv mit den Spalten Fall, Plattform, Ok, Datei, Zeile, Code, Art, Text.
     Ein Fall ohne dcc-Meldung steht mit leerem Code in der Tabelle.
 
+    Mit -Dcc übersetzt das Skript ohne IDE mit den Kommandozeilen-Compilern dcc32.exe und dcc64.exe der mit
+    -BdsVersion gewählten Delphi-Version (Vorgabe 37.0 = Delphi 13, 23.0 = Delphi 12); dann braucht es weder cc.ps1
+    noch ein Registry-Profil. Die Starter-Edition hat keine Kommandozeilen-Compiler. -ResultFile legt die Tabelle
+    an anderer Stelle ab, etwa für einen Lauf mit Delphi 12 neben dem mit Delphi 13 (#1383).
+
     Mit -AtlasServer prüft das Skript danach Tests/Compilermeldungen mit "AtlasServer --check" (Profile strict
     und standard) und legt die JSON-Ergebnisse daneben ab. Tools/Compare-Compilermeldungen.py vergleicht beides.
 
@@ -41,6 +46,8 @@
     pwsh Tools/Build-Compilermeldungen.ps1
     pwsh Tools/Build-Compilermeldungen.ps1 -Platforms Win32 -Cases 'Cm.W1*'
     pwsh Tools/Build-Compilermeldungen.ps1 -AtlasServer Output\Win64\Debug\Bin\AtlasServer.exe
+    pwsh Tools/Build-Compilermeldungen.ps1 -Dcc -BdsVersion 23.0 -ResultFile Output\Compilermeldungen\dcc-delphi12.tsv
+    pwsh Tools/Build-Compilermeldungen.ps1 -BdsVersion 23.0 -IdeProfile AtlasCm12 -ResultFile Output\Compilermeldungen\dcc-delphi12.tsv
 #>
 [CmdletBinding()]
 param(
@@ -52,6 +59,12 @@ param(
     # Eigenes Registry-Profil der Scratch-IDE (bds -r <Profil>), etwa 'AtlasCm'. cc.ps1 start kennt keine
     # Startargumente; mit Profil startet das Skript bds.exe selbst und öffnet das Projekt mit cc.ps1 open.
     [string] $IdeProfile = '',
+    # Delphi-Version als BDS-Nummer: 37.0 = Delphi 13, 23.0 = Delphi 12 (Registry-Pfad der IDE und der Compiler).
+    [string] $BdsVersion = '37.0',
+    # Ohne IDE mit dcc32.exe/dcc64.exe übersetzen (nicht in der Starter-Edition).
+    [switch] $Dcc,
+    # Ergebnistabelle; leer = Output/Compilermeldungen/dcc.tsv.
+    [string] $ResultFile = '',
     [int] $StartTimeoutSeconds = 300,
     [string] $AtlasServer = '',
     [switch] $SkipBuild,
@@ -70,10 +83,18 @@ $TestDir = Join-Path $Root 'Tests/Compilermeldungen'
 $CaseDir = Join-Path $TestDir 'Faelle'
 $OutDir = Join-Path $Root 'Output/Compilermeldungen'
 $ProjectDir = Join-Path $OutDir 'Projekte'
-$ResultFile = Join-Path $OutDir 'dcc.tsv'
+if (-not $ResultFile) { $ResultFile = Join-Path $OutDir 'dcc.tsv' }
+$ResultFile = [System.IO.Path]::GetFullPath($ResultFile)
 # "[dcc32 Fehler] Cm.E2003.pas(12): E2003 Undeklarierter Bezeichner: 'X'"
 $DccPattern = '\[dcc\w*\s+([^\]]+)\]\s*(?:([^\s(][^(]*)\((\d+)\))?:?\s*(?:([EWHFX]\d{4})\s+)?(.*)$'
+# Kommandozeile: "Cm.W1036.pas(14) Warnung: W1036 ..." bzw. "Fatal: F2613 ..." ohne Datei.
+$DccConsolePattern = '^(?:(.+?)\((\d+)\)\s+)?([^:()]+?):\s+([EWHFX]\d{4})\s+(.*)$'
+# Ausgabe von dcc32/dcc64 der Community Edition, die nicht auf der Kommandozeile übersetzt (Exit-Code 0).
+$DccUnsupportedPattern = 'does not support command line compiling'
 $CasePattern = '^Cm\.?[EWHF]\d{4}'
+# XML-Warnungen W1201-W1208 (DCC_XML_* in der .dproj, -W+XML_* auf der Kommandozeile).
+$XmlWarnings = @('WHITESPACE_NOT_ALLOWED', 'UNKNOWN_ENTITY', 'INVALID_NAME_START', 'INVALID_NAME', 'EXPECTED_CHARACTER',
+    'CREF_NO_RESOLVE', 'NO_PARM', 'NO_MATCHING_PARM')
 
 function Write-Step([string] $Text) {
     Write-Host "== $Text"
@@ -107,13 +128,16 @@ function Invoke-Cc([string[]] $Arguments) {
     [pscustomobject]@{ Output = $output; ExitCode = $LASTEXITCODE }
 }
 
+function Get-BdsRoot {
+    (Get-ItemProperty -Path "HKCU:\Software\Embarcadero\BDS\$BdsVersion" -Name RootDir).RootDir
+}
+
 # Startet bds.exe mit eigenem Profil. CLAUDE_COMPILE_OWNED erbt nur dieser Prozess; ohne die Marke beendet
 # cc.ps1 quit die IDE nicht. Liefert die pid, sobald das Plugin seinen Briefkasten angelegt hat.
 function Start-ProfileIde([string] $Group) {
-    $rootDir = (Get-ItemProperty -Path 'HKCU:\Software\Embarcadero\BDS\37.0' -Name RootDir).RootDir
-    $bds = Join-Path $rootDir 'bin\bds.exe'
-    if (-not (Test-Path "HKCU:\Software\Embarcadero\$IdeProfile\37.0\Known Packages")) {
-        throw "Registry-Profil $IdeProfile fehlt (HKCU\Software\Embarcadero\$IdeProfile\37.0)"
+    $bds = Join-Path (Get-BdsRoot) 'bin\bds.exe'
+    if (-not (Test-Path "HKCU:\Software\Embarcadero\$IdeProfile\$BdsVersion\Known Packages")) {
+        throw "Registry-Profil $IdeProfile fehlt (HKCU\Software\Embarcadero\$IdeProfile\$BdsVersion)"
     }
     $env:CLAUDE_COMPILE_OWNED = '1'
     try { $proc = Start-Process -FilePath $bds -ArgumentList @('-r', $IdeProfile) -PassThru }
@@ -203,9 +227,7 @@ end.
     $switches = ($switches -replace '(^|\s)--doc(?=\s|$)', '').Trim()
     # W1201-W1208 ausdrücklich als Warnung, unabhängig von den Vorgaben des Profils.
     $xmlWarnings = $(if ($xmlDoc -eq 'true') {
-        (@('WHITESPACE_NOT_ALLOWED', 'UNKNOWN_ENTITY', 'INVALID_NAME_START', 'INVALID_NAME', 'EXPECTED_CHARACTER',
-           'CREF_NO_RESOLVE', 'NO_PARM', 'NO_MATCHING_PARM') |
-            ForEach-Object { "        <DCC_XML_$_>true</DCC_XML_$_>" }) -join "`r`n"
+        ($XmlWarnings | ForEach-Object { "        <DCC_XML_$_>true</DCC_XML_$_>" }) -join "`r`n"
     } else { '' })
     $appType = $(if ($isPackage) { 'Package' } else { 'Console' })
     $projectType = $(if ($isPackage) { 'Package' } else { 'Application' })
@@ -296,6 +318,43 @@ function Get-BuildRows($Case, [string] $Platform, $Build) {
     $rows
 }
 
+# Übersetzt das Projekt eines Falls mit dcc32.exe/dcc64.exe (-Dcc) und liefert die Zeilen für dcc.tsv.
+function Invoke-DccBuild($Case, [string] $Platform, [string] $Dproj) {
+    $dir = Split-Path -Parent $Dproj
+    $main = Join-Path $dir ([xml] (Get-Content -Path $Dproj -Raw)).Project.PropertyGroup[0].MainSource
+    $exe = Join-Path (Get-BdsRoot) $(if ($Platform -eq 'Win64') { 'bin\dcc64.exe' } else { 'bin\dcc32.exe' })
+    $dcu = Join-Path $dir "Dcu\$Platform"
+    $bin = Join-Path $dir "Bin\$Platform"
+    New-Item -ItemType Directory -Force -Path $dcu, $bin | Out-Null
+    $arguments = @('-B', '-Q', '-NSSystem;Winapi', "-U$CaseDir", "-I$CaseDir", "-NU$dcu", "-E$bin", "-LE$bin", "-LN$dcu")
+    $switches = Get-CaseHeader $Case.Path 'Schalter'
+    if ($switches -match '(^|\s)--doc(\s|$)') {
+        $arguments += @('--doc') + @($XmlWarnings | ForEach-Object { "-W+XML_$_" })
+    }
+    $arguments += @(($switches -replace '(^|\s)--doc(?=\s|$)', '').Trim() -split '\s+' | Where-Object { $_ })
+    $output = @(& $exe @arguments $main 2>&1 | ForEach-Object { "$_" })
+    if (($output -join ' ') -match $DccUnsupportedPattern) {
+        throw "$exe übersetzt nicht auf der Kommandozeile (Community Edition)"
+    }
+    $ok = $LASTEXITCODE -eq 0
+    $rows = @()
+    foreach ($line in $output) {
+        if ($line -notmatch $DccConsolePattern) { continue }
+        $file = $(if ($Matches[1]) { Split-Path -Leaf $Matches[1].Trim() } else { '' })
+        $rows += [pscustomobject]@{
+            Fall = $Case.Stem; Plattform = $Platform; Ok = "$ok"; Datei = $file; Zeile = "$($Matches[2])"
+            Code = "$($Matches[4])"; Art = $Matches[3].Trim(); Text = $Matches[5].Trim()
+        }
+    }
+    if ($rows.Count -eq 0) {
+        $text = $(if ($ok) { '' } else { ($output | Where-Object { $_.Trim() -ne '' }) -join ' | ' })
+        $rows += [pscustomobject]@{
+            Fall = $Case.Stem; Plattform = $Platform; Ok = "$ok"; Datei = ''; Zeile = ''; Code = ''; Art = ''; Text = $text
+        }
+    }
+    $rows
+}
+
 function Invoke-Atlas([string] $RuleProfile) {
     $target = Join-Path $TestDir 'Compilermeldungen.dproj'
     $output = Join-Path $OutDir "atlas-$RuleProfile.json"
@@ -311,6 +370,25 @@ function Invoke-Atlas([string] $RuleProfile) {
         $extra += $single
     }
     Write-Host "  $output (+ $($extra.Count) Einzeldateien)"
+}
+
+# Schreibt die Zeilen nach $ResultFile; Nachlauf einzelner Fälle (-Cases): die Zeilen der übrigen Fälle aus dem
+# letzten Lauf bleiben stehen.
+function Write-Result($Rows) {
+    $header = "Fall`tPlattform`tOk`tDatei`tZeile`tCode`tArt`tText"
+    $lines = @($header) + @($Rows | ForEach-Object {
+        @($_.Fall, $_.Plattform, $_.Ok, $_.Datei, $_.Zeile, $_.Code, $_.Art, ($_.Text -replace "`t", ' ')) -join "`t"
+    })
+    if (($Cases -join ',') -ne '*' -and (Test-Path $ResultFile)) {
+        $built = @{}
+        foreach ($case in $caseFiles) { $built[$case.Stem] = $true }
+        $kept = @(Get-Content -Path $ResultFile -Encoding UTF8 | Select-Object -Skip 1 |
+            Where-Object { -not $built.ContainsKey(($_ -split "`t")[0]) })
+        $lines = @($header) + $kept + @($lines | Select-Object -Skip 1)
+    }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $ResultFile) | Out-Null
+    Set-Content -Path $ResultFile -Value $lines -Encoding UTF8
+    Write-Step "dcc-Ergebnis in $ResultFile ($(@($Rows).Count) neue Zeilen)"
 }
 
 foreach ($path in @($CaseDir)) {
@@ -333,7 +411,35 @@ $caseFiles = @(Get-ChildItem -Path $CaseDir -File |
     })
 
 $exitCode = 0
-if (-not $SkipBuild) {
+if (-not $SkipBuild -and $Dcc) {
+    foreach ($compiler in @('bin\dcc32.exe', 'bin\dcc64.exe')) {
+        $path = Join-Path (Get-BdsRoot) $compiler
+        if (-not (Test-Path $path)) {
+            Write-Error "Nicht gefunden: $path (Kommandozeilen-Compiler fehlen, etwa in der Starter-Edition)" -ErrorAction Continue
+            exit 3
+        }
+        # Community Edition (#1383): dcc32 meldet nur, dass es nicht auf der Kommandozeile übersetzt, und endet
+        # mit 0; ohne diese Prüfung stünde jeder Fall als übersetzt ohne Meldung in der Tabelle.
+        $probe = @(& $path 2>&1 | ForEach-Object { "$_" }) -join ' '
+        if ($probe -match $DccUnsupportedPattern) {
+            Write-Error "$path übersetzt nicht auf der Kommandozeile (Community Edition): $probe" -ErrorAction Continue
+            exit 3
+        }
+    }
+    Write-Step "$($caseFiles.Count) Fälle mit dcc (BDS $BdsVersion)"
+    $rows = @()
+    $number = 0
+    foreach ($case in $caseFiles) {
+        $number++
+        $dproj = New-CaseProject $case
+        $targets = $(if ($case.Plattform) { @($case.Plattform) } else { $Platforms })
+        foreach ($platform in $targets) {
+            Write-Step "[$number/$($caseFiles.Count)] $($case.Stem) ($platform)"
+            $rows += Invoke-DccBuild $case $platform $dproj
+        }
+    }
+    Write-Result $rows
+} elseif (-not $SkipBuild) {
     if (-not (Test-Path $CcScript)) {
         Write-Error "Nicht gefunden: $CcScript" -ErrorAction Continue
         exit 3
@@ -426,20 +532,7 @@ $targets
         }
     }
 
-    $header = "Fall`tPlattform`tOk`tDatei`tZeile`tCode`tArt`tText"
-    $lines = @($header) + @($rows | ForEach-Object {
-        @($_.Fall, $_.Plattform, $_.Ok, $_.Datei, $_.Zeile, $_.Code, $_.Art, ($_.Text -replace "`t", ' ')) -join "`t"
-    })
-    # Nachlauf einzelner Fälle (-Cases): die Zeilen der übrigen Fälle aus dem letzten Lauf behalten.
-    if (($Cases -join ',') -ne '*' -and (Test-Path $ResultFile)) {
-        $built = @{}
-        foreach ($case in $caseFiles) { $built[$case.Stem] = $true }
-        $kept = @(Get-Content -Path $ResultFile -Encoding UTF8 | Select-Object -Skip 1 |
-            Where-Object { -not $built.ContainsKey(($_ -split "`t")[0]) })
-        $lines = @($header) + $kept + @($lines | Select-Object -Skip 1)
-    }
-    Set-Content -Path $ResultFile -Value $lines -Encoding UTF8
-    Write-Step "dcc-Ergebnis in $ResultFile ($($rows.Count) neue Zeilen)"
+    Write-Result $rows
 }
 
 if ($AtlasServer) {
