@@ -425,6 +425,8 @@ Entspricht der Compilermeldung `E2023`, `E2025`, `E2029`, `E2031`, `E2049`, `E20
 
 Stufe A (Parser genügt).
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix syntax`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 Mit Treffer:
 
 ```pascal
@@ -474,6 +476,8 @@ if not (Sender is TButton) then
 
 Ein lsp-ignore-Kommentar unterdrückt keinen Treffer und kann entfernt werden.
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unused-suppression`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 Mit Treffer:
 
 ```pascal
@@ -493,6 +497,8 @@ X := 1;
 **Unbekannte Regelkennung** · Code Smell · Hinweis · Gruppe Atlas intern
 
 Ein lsp-ignore-Kommentar nennt eine Regelkennung, die es nicht gibt, und unterdrückt deshalb nichts. Die Meldung schlägt die ähnlichste bekannte Kennung vor (Tippfehler); ein solcher Kommentar zählt nicht zusätzlich als unused-suppression.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unknown-rule-id`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -885,6 +891,8 @@ end;
 **Veraltetes TThread.Resume/Suspend** · Code Smell · Warnung · Gruppe Threads
 
 TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix thread-resume-suspend`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -2544,6 +2552,8 @@ if Visible then
 
 Free prüft selbst auf nil, eine Assigned-Prüfung vor Free oder FreeAndNil ist überflüssig.
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix redundant-assigned-free`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 Mit Treffer:
 
 ```pascal
@@ -2611,6 +2621,8 @@ if Done then
 **Überflüssige Typumwandlung** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destruktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstanten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu deklariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix redundant-cast`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -3071,7 +3083,7 @@ end.
 
 **Typ vor seiner Deklaration benutzt** · Bug · Fehler · Gruppe Fehler finden
 
-Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber erst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet, ebenso wenig class of auf eine Klasse weiter unten im selben type-Block (das übersetzt dcc). Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund.
+Eine Klasse, ein Interface, ein Record oder ein anderer Typ wird in einer Typdeklaration (Feld, Parameter, Ergebnis, Property, generisches Argument, class of) benutzt, ist aber erst weiter unten im selben Gültigkeitsbereich deklariert (wie Compilerfehler E2003). Vorfahren, Aliase und Zeigertypen werden nicht gemeldet, ebenso wenig class of auf eine Klasse weiter unten im selben type-Block (das übersetzt dcc) und ein Name, der weiter unten nur als Alias des gleichnamigen Typs einer anderen Unit steht (TX = UnitY.TX: davor gilt UnitY.TX aus uses). Schnellkorrekturen: Forward-Deklaration am Anfang des type-Blocks ergänzen, type-Blöcke zusammenlegen (const-, var- und label-Abschnitte dazwischen wandern vor den ersten Block) oder einen Record vor seinen ersten Verwender verschieben; ohne sichere Korrektur nennt die Meldung den Grund.
 
 Mit Treffer:
 
@@ -3508,6 +3520,8 @@ Richtig:
 
 Obj.Destroy wird direkt als Anweisung aufgerufen. Ist Obj nil, knallt der Aufruf; Free prüft vorher auf nil und ist der übliche Weg, ein Objekt freizugeben. inherited Destroy und Aufrufe eines Destruktors mit Argumenten sind ausgenommen. Konfidenz hoch. Schnellkorrektur: aus Destroy wird Free.
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix destroy-called-directly`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 Mit Treffer:
 
 ```pascal
@@ -3926,7 +3940,7 @@ end;
 
 **Name ohne das Präfix seiner Art** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Einer lokalen Variable (auch Inline und for var), einem Feld (auch class var), einem Parameter oder einer Konstante (const, auch lokal, in Klassen und Inline; nicht resourcestring) fehlt das Präfix ihrer Art. Standard: lokal m, Feld F, Parameter A, Konstante c; hinter einem Präfix, das auf einen Buchstaben endet, folgt ein Großbuchstabe oder eine Ziffer (mIndex, nicht menu). Globale Variablen prüft die Regel nicht. Je Art kommt das Präfix aus der Option in atlas.json, sonst aus der Projektdatei .atlas (naming, auch constant), sonst der Standard; ein leerer Wert schaltet die Art ab. Standardmäßig aus: Die Regel läuft nur, wenn atlas.json sie einschaltet. Ausnahmen: Schleifenzähler aus einem Buchstaben, Sender, Self und Result, Namen nach ignore, published-Felder und Felder vor dem ersten Sichtbarkeitsabschnitt eines Formulars, Frames oder Datenmoduls (Komponenten), Parameter von Methoden mit override oder message, von published-Methoden, von Ereignis-Handlern (ein Parameter heißt Sender) und von Methoden, die eine Interface-Methode erfüllen (in der Datei oder im Symbolindex; unbekanntes Interface: still). Parameter werden nur an der Deklaration gemeldet. Schnellkorrektur: in den erwarteten Namen umbenennen, in der Routine bzw. im Block ab einer Inline-Deklaration, bei Parametern auch in Deklaration und Implementierung, bei privaten Feldern und Klassenkonstanten in der Klasse und ihren Methoden (auch Self.Name und TTyp.Name), bei Konstanten der implementation in der ganzen Unit. Keine Korrektur, wenn der neue Name dort schon vorkommt, wo umbenannt wird (Routine samt Parameterliste, bei Feldern die Klasse und ihre Methoden, bei Konstanten der implementation die Datei), der Bereich with enthält, eine verschachtelte Routine den Namen neu deklariert oder der Name außerhalb der Datei sichtbar ist. Läuft die Regel, bilden andere Korrekturen und Refactorings neue Namen mit diesen Präfixen (Konstante einführen → cNewConstant, Variable einführen und with auflösen → mValue, Parameter von „Methode anlegen“ → APreis), damit die Regel sie nicht gleich wieder meldet.
+Einer lokalen Variable (auch Inline und for var), einem Feld (auch class var), einem Parameter oder einer Konstante (const, auch lokal, in Klassen und Inline; nicht resourcestring) fehlt das Präfix ihrer Art. Standard: lokal m, Feld F, Parameter A, Konstante c; hinter einem Präfix, das auf einen Buchstaben endet, folgt ein Großbuchstabe oder eine Ziffer (mIndex, nicht menu). Globale Variablen prüft die Regel nicht. Je Art kommt das Präfix aus der Option in atlas.json, sonst aus der Projektdatei .atlas (naming, auch constant), sonst der Standard; ein leerer Wert schaltet die Art ab. Standardmäßig aus: Die Regel läuft nur, wenn atlas.json sie einschaltet. Ausnahmen: Schleifenzähler aus einem Buchstaben, Sender, Self und Result, Namen nach ignore, öffentliche Felder (public, published und Felder eines Records vor seinem ersten Sichtbarkeitsabschnitt: Das F gilt nur für Felder hinter Properties, nicht für TPoint.X), Felder vor dem ersten Sichtbarkeitsabschnitt eines Formulars, Frames oder Datenmoduls (Komponenten), Parameter von Methoden mit override oder message, von published-Methoden, von Ereignis-Handlern (ein Parameter heißt Sender) und von Methoden, die eine Interface-Methode erfüllen (in der Datei oder im Symbolindex; unbekanntes Interface: still). Parameter werden nur an der Deklaration gemeldet. Schnellkorrektur: in den erwarteten Namen umbenennen, in der Routine bzw. im Block ab einer Inline-Deklaration, bei Parametern auch in Deklaration und Implementierung, bei privaten Feldern und Klassenkonstanten in der Klasse und ihren Methoden (auch Self.Name und TTyp.Name), bei Konstanten der implementation in der ganzen Unit. Keine Korrektur, wenn der neue Name dort schon vorkommt, wo umbenannt wird (Routine samt Parameterliste, bei Feldern die Klasse und ihre Methoden, bei Konstanten der implementation die Datei), der Bereich with enthält, eine verschachtelte Routine den Namen neu deklariert oder der Name außerhalb der Datei sichtbar ist. Läuft die Regel, bilden andere Korrekturen und Refactorings neue Namen mit diesen Präfixen (Konstante einführen → cNewConstant, Variable einführen und with auflösen → mValue, Parameter von „Methode anlegen“ → APreis), damit die Regel sie nicht gleich wieder meldet.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -5285,6 +5299,8 @@ Entspricht der Compilermeldung `E2014`.
 
 Stufe A (Parser genügt).
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix comparison-as-statement`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 Mit Treffer:
 
 ```pascal
@@ -5393,6 +5409,8 @@ Ein Bezeichner ist im selben Gültigkeitsbereich zweimal deklariert (wie E2004):
 Entspricht der Compilermeldung `E2004`.
 
 Stufe A (Parser genügt).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix duplicate-declaration`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -6060,6 +6078,8 @@ Die Unit verwendet Variant oder OleVariant als Typ, ohne System.Variants in uses
 Entspricht der Compilermeldung `W1040`.
 
 Stufe B (Namensauflösung über Units).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix implicit-variants-unit`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -6766,6 +6786,8 @@ uses
 
 Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil ihres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern.
 
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unused-uses`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
 Mit Treffer:
 
 ```pascal
@@ -7171,6 +7193,8 @@ Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbe
 Entspricht der Compilermeldung `H2443`, `H2444`, `H2445`, `H2456`, `H2457`.
 
 Stufe B (Namensauflösung über Units).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix inline-not-expanded`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
