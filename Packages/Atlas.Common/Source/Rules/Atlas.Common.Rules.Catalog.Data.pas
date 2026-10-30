@@ -18,7 +18,7 @@ uses
   System.SysUtils;
 
 const
-  BaseLines: array[0..4756] of string = (
+  BaseLines: array[0..4776] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -80,6 +80,30 @@ const
     ' the Claude Code hook (hook_check). Code actions and slash commands do not generate features beyond the language level.",',
     '      "bad": "// minDelphiVersion \"12\"\nif Sender is not TButton then\n  Exit;",',
     '      "good": "if not (Sender is TButton) then\n  Exit;",',
+    '      "level": "A"',
+    '    },',
+    '    {',
+    '      "id": "asm-invalid",',
+    '      "name": "Invalid statement in inline assembler",',
+    '      "category": "bug",',
+    '      "severity": "error",',
+    '      "group": "compiler",',
+    '      "description": "Statements in asm blocks that dcc rejects: a missing operand (mov eax, ) and esp as an index register with a scale factor ([eax + esp * 2]) like E2105, two registers of different' +
+    ' size (mov al, ebx), lea with a number and a number as the target of mov like E2107 (dcc reports E2107 here instead of E2108 and E2116), db with a local variable of the routine like E2109, OFFSET a + ' +
+    'OFFSET b like E2111, a number beyond 64 bits like E2113, a string constant of more than 4 characters for a 32-bit register like E2114 and division by zero (/ 0, mod 0) like E2118. Only forms confirmed' +
+    ' with dcc are reported, at most one finding per statement. Statements with a compiler directive or a { } comment in the same line (Free Pascal writes ARM register lists that way), the other data direc' +
+    'tives, Win64 registers (rax, r8 …, which can be variable names under Win32) and files for Free Pascal ({$MODE …}, {$ASMMODE …}) stay silent.",',
+    '      "bad": "asm\n  mov al, ebx\nend;",',
+    '      "good": "asm\n  mov al, bl\nend;",',
+    '      "compilerCodes": [',
+    '        "E2105",',
+    '        "E2107",',
+    '        "E2109",',
+    '        "E2111",',
+    '        "E2113",',
+    '        "E2114",',
+    '        "E2118"',
+    '      ],',
     '      "level": "A"',
     '    },',
     '    {',
@@ -5583,7 +5607,7 @@ const
     '}',
     '');
 
-  OverlayLines_de: array[0..2175] of string = (
+  OverlayLines_de: array[0..2180] of string = (
     '{',
     '  "rules": [',
     '    {',
@@ -5607,6 +5631,15 @@ const
     ' aus delphiVersion und minDelphiVersion in atlas.json: minDelphiVersion nennt die älteste Delphi-Version, mit der das Projekt noch übersetzen muss (z. B. „12“ für Code, den Delphi 12 und 13 übersetzen' +
     '). Ohne beide Angaben meldet Atlas nichts. Inaktive Zweige {$IF CompilerVersion >= …} bleiben still, so kann Code für mehrere Versionen nebeneinander stehen. Gemeldet im Editor, von --check, check_cod' +
     'e und dem Claude-Code-Hook (hook_check). Code-Aktionen und Schnellbefehle erzeugen keine Merkmale über den Sprachstand hinaus."',
+    '    },',
+    '    {',
+    '      "id": "asm-invalid",',
+    '      "name": "Ungültige Anweisung im Inline-Assembler",',
+    '      "description": "Anweisungen in asm-Blöcken, die dcc ablehnt: fehlender Operand (mov eax, ) und esp als Indexregister mit Faktor ([eax + esp * 2]) wie E2105, zwei Register verschiedener Größe (mo' +
+    'v al, ebx), lea mit einer Zahl und eine Zahl als Ziel von mov wie E2107 (dcc meldet hier E2107 statt E2108 und E2116), db mit einer lokalen Variablen der Routine wie E2109, OFFSET a + OFFSET b wie E21' +
+    '11, eine Zahl über 64 Bit wie E2113, eine Stringkonstante mit mehr als 4 Zeichen an einem 32-Bit-Register wie E2114 und Division durch null (/ 0, mod 0) wie E2118. Gemeldet werden nur mit dcc bestätig' +
+    'te Formen, höchstens ein Befund je Anweisung. Anweisungen mit einer Compiler-Direktive oder einem { }-Kommentar in derselben Zeile (Free Pascal schreibt so ARM-Registerlisten), die übrigen Datenbefehl' +
+    'e, Register von Win64 (rax, r8 …, unter Win32 mögliche Variablennamen) und Dateien für Free Pascal ({$MODE …}, {$ASMMODE …}) bleiben still."',
     '    },',
     '    {',
     '      "id": "unused-suppression",',

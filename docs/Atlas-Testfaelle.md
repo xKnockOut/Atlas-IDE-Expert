@@ -8766,6 +8766,19 @@ Vorbereitung: Ordner mit `T.dproj` (`<ProjectVersion>20.3</ProjectVersion>`, `DC
 | DY5 | Nach dem Nachzug auf den dcc-Lauf vom 29.10.2026: `pwsh Tools/Build-DccFaelle.ps1` erneut | Alle Projekte ohne „Gegen“ übersetzen ohne Fehler und ohne Hinweis (auch die verschobenen Fälle IV4, TR8, TR9, ID3); die Gegen-Projekte melden SG3 (E2362) und, im eigenen Projekt `DccInlineKonstanteGegen`, TG4 (E2441); PG1–PG6 tragen ihre Marke. Lauf vom 29.10.2026 13:56: alles so bis auf TG4, das neben TG1 in derselben Unit stand (dcc meldet E2441 nur einmal je Unit) |
 | DY6 | In der IDE: `property Mitte: TPointF` und `property Liste: TArray<Integer>` unter published, `Inc(Zaehler)` einer typisierten Konstante nach `{$J+}`, `Slice(Feld, 2)` an einen out-Parameter, `TKnoten<Integer>.FNaechster` (protected) aus einer gewöhnlichen Funktion einer anderen Unit | Keine Meldung bei den ersten vier; beim letzten „… ist protected und hier nicht sichtbar (wie E2362).“ |
 
+## Inline-Assembler (#1375, Regel `asm-invalid`)
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| AQ1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAsmInvalidTests`, `TAsmStatementsTests` und `TConstantExpressionErrorTests` grün (**Abnahme**) |
+| AQ2 | `pwsh Tools/Build-Compilermeldungen.ps1 -Cases 'Cm.E21*' -AtlasServer <AtlasServer.exe>`, dann `python3 Tools/Compare-Compilermeldungen.py` | Cm.E2105, E2107, E2108, E2109, E2111, E2112, E2113, E2114, E2116 und E2118 stehen auf „erkannt“ mit `asm-invalid`, keine neuen Treffer unter „zusätzlich“ (**Abnahme**) |
+| AQ3 | `pwsh Tools/Build-DccFaelle.ps1 -Platforms Win32` | `DccAssembler` übersetzt ohne Fehler und Hinweis; `DccAssemblerGegen` meldet an AF1–AF12 den Code der Marke. Für AF13–AF18 die gemeldeten Codes im Issue notieren (Kandidaten für die Regel); meldet dcc an einer AF-Zeile nichts oder einen anderen Code, Regel nachziehen |
+| AQ4 | In der IDE in einer Win32-Unit `asm mov al, ebx end;` in eine Prozedur schreiben | Fehler `asm-invalid` an der Zeile: „Operandengröße stimmt nicht überein: al hat 1 Byte, ebx 4 Byte (wie E2107).“; im Fenster „Atlas-Prüfung“ unter „Compiler vorab“ |
+| AQ5 | `mov eax,`, `lea eax, 5`, `db mZahl` (lokale Variable), `mov eax, 1 / 0` | Je eine Meldung mit E2105, E2107, E2109 bzw. E2118 |
+| AQ6 | `{$IFDEF X86ASM} asm … {$ELSE} var … begin … {$ENDIF} end;` mit Pascal-Code über mehrere Zeilen im zweiten Zweig | Keine Meldung im Pascal-Zweig |
+| AQ7 | Gültiger Assembler aus FastMM4 oder der RTL (`System.pas` über „Gehe zu Deklaration“ öffnen) | Keine Meldung von `asm-invalid` |
+| AQ8 | `"asm-invalid": "off"` bzw. `"group:compiler": "off"` in atlas.json | Keine Meldung |
+
 ## Testprojekt Compilermeldungen (#1361)
 
 | Nr. | Schritt | Erwartung |

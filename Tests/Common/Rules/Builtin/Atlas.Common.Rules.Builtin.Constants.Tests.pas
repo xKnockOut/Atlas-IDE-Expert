@@ -478,6 +478,8 @@ begin
   Assert.IsFalse(TConstantExpressionErrorRule.TooLargeLiteral('99999999999999999999'));
   Assert.IsFalse(TConstantExpressionErrorRule.TooLargeLiteral('1.5e300'));
   Silent(Werte('const'#10'  Maske = $FFFFFFFFFFFFFFFF;'#10, ''));
+  // Im asm-Block meldet dcc E2113; das übernimmt asm-invalid (#1375).
+  Silent(Werte('', '  asm'#10'    mov eax, $1FFFFFFFFFFFFFFFF'#10'  end;'#10));
 end;
 
 procedure TConstantExpressionErrorTests.ConstantFromOtherUnit;

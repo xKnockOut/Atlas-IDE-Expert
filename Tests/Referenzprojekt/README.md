@@ -106,6 +106,7 @@ Fehlalarm.
 | `loop-runs-at-most-once` | Regel im Katalog (#1131), in `Ref.Pruefung.Verstoesse` |
 | `format-args` | Regel im Katalog (#56), in `Ref.Pruefung.Verstoesse` |
 | `forbidden-symbol` | Regel im Katalog (#1133), `ERWARTET-OPTION`, in `Ref.Pruefung.Verstoesse` |
+| `asm-invalid` | Regel im Katalog (#1375), nur in `mutationen.txt` (ein Fehler im asm-Block, das Referenzprojekt muss übersetzen) |
 
 Jede ID steht im Regelkatalog oder in `geplante-regeln.txt` mit dem
 offenen Issue, das sie in den Katalog übernimmt. Eine ID ohne Issue lässt

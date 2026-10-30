@@ -11,6 +11,11 @@
       "description": "Der Code nutzt ein Sprachmerkmal, das der Sprachstand des Projekts noch nicht kennt: Inline-Variable und -Konstante (Delphi 10.3), Managed Record mit class operator Initialize/Finalize (Delphi 10.4), Ziffern-Trennzeichen 1_000 und Binärliteral %1010 (Delphi 11), mehrzeiliger String ''' (Delphi 12), If-Ausdruck, „is not“ und „not in“ (Delphi 13). Der Sprachstand ist die ältere aus delphiVersion und minDelphiVersion in atlas.json: minDelphiVersion nennt die älteste Delphi-Version, mit der das Projekt noch übersetzen muss (z. B. „12“ für Code, den Delphi 12 und 13 übersetzen). Ohne beide Angaben meldet Atlas nichts. Inaktive Zweige {$IF CompilerVersion >= …} bleiben still, so kann Code für mehrere Versionen nebeneinander stehen. Gemeldet im Editor, von --check, check_code und dem Claude-Code-Hook (hook_check). Code-Aktionen und Schnellbefehle erzeugen keine Merkmale über den Sprachstand hinaus."
     },
     {
+      "id": "asm-invalid",
+      "name": "Ungültige Anweisung im Inline-Assembler",
+      "description": "Anweisungen in asm-Blöcken, die dcc ablehnt: fehlender Operand (mov eax, ) und esp als Indexregister mit Faktor ([eax + esp * 2]) wie E2105, zwei Register verschiedener Größe (mov al, ebx), lea mit einer Zahl und eine Zahl als Ziel von mov wie E2107 (dcc meldet hier E2107 statt E2108 und E2116), db mit einer lokalen Variablen der Routine wie E2109, OFFSET a + OFFSET b wie E2111, eine Zahl über 64 Bit wie E2113, eine Stringkonstante mit mehr als 4 Zeichen an einem 32-Bit-Register wie E2114 und Division durch null (/ 0, mod 0) wie E2118. Gemeldet werden nur mit dcc bestätigte Formen, höchstens ein Befund je Anweisung. Anweisungen mit einer Compiler-Direktive oder einem { }-Kommentar in derselben Zeile (Free Pascal schreibt so ARM-Registerlisten), die übrigen Datenbefehle, Register von Win64 (rax, r8 …, unter Win32 mögliche Variablennamen) und Dateien für Free Pascal ({$MODE …}, {$ASMMODE …}) bleiben still."
+    },
+    {
       "id": "unused-suppression",
       "name": "Ungenutzte Unterdrückung",
       "description": "Ein lsp-ignore-Kommentar unterdrückt keinen Treffer und kann entfernt werden."
