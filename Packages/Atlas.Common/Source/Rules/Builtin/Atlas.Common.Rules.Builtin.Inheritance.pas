@@ -106,6 +106,11 @@ type
     /// <summary>Feld oder Property AName in ATypeName oder einem Vorfahren, das dort sichtbar ist (#934).
     /// Bricht die Kette ab, steht in AUnresolved der Vorfahr, der weder in der Datei noch im Index steht.</summary>
     function FindMember(const ATypeName, AName: string; out AMember: TIndexSymbol; out AUnresolved: string): Boolean;
+      overload;
+    /// <summary>Wie oben; AUnitName nennt die Unit der Klasse, die das Mitglied deklariert ('' für diese Datei).
+    /// </summary>
+    function FindMember(const ATypeName, AName: string; out AMember: TIndexSymbol; out AUnresolved,
+      AUnitName: string): Boolean; overload;
     /// <summary>Vorfahren von ATypeName vom direkten an aufwärts (#997). AComplete: die Kette reicht bis TObject;
     /// AObjectMissing: TObject selbst steht weder in der Datei noch im Index.</summary>
     function Ancestors(const ATypeName: string; out AComplete, AObjectMissing: Boolean): TArray<TSymbolLocation>;
@@ -249,6 +254,7 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassActions,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Index.LibraryUnits,
   Atlas.Text.Fuzzy;
 
 function TMethodDecl.Has(const ADirective: string): Boolean;
@@ -1189,6 +1195,14 @@ const
 function TAncestry.FindMember(const ATypeName, AName: string; out AMember: TIndexSymbol;
   out AUnresolved: string): Boolean;
 var
+  mUnitName: string;
+begin
+  Result := FindMember(ATypeName, AName, AMember, AUnresolved, mUnitName);
+end;
+
+function TAncestry.FindMember(const ATypeName, AName: string; out AMember: TIndexSymbol; out AUnresolved,
+  AUnitName: string): Boolean;
+var
   Name: string;
   Location: TSymbolLocation;
   Symbols: TArray<TIndexSymbol>;
@@ -1199,6 +1213,7 @@ var
 begin
   AMember := Default(TIndexSymbol);
   AUnresolved := '';
+  AUnitName := '';
   Name := ATypeName;
   Depth := 0;
   while (Name <> '') and (Depth < 64) do
@@ -1225,6 +1240,8 @@ begin
         if Visible then
         begin
           AMember := Symbol;
+          if Location.FileName <> '' then
+            AUnitName := Location.UnitName;
           Exit(True);
         end;
       end;
@@ -1247,6 +1264,7 @@ var
   Ancestry: TAncestry;
   Ignore: TArray<string>;
   Tokens: TArray<TPascalToken>;
+  FrameworkMembers: Boolean;
 
   function SplitNames(const ANames: string): TArray<string>;
   var
@@ -1381,6 +1399,82 @@ var
     Result := False;
   end;
 
+  // Nächstes bzw. voriges Token ohne Kommentare und Direktiven; -1 ohne.
+  function Significant(AIndex, AStep: Integer): Integer;
+  begin
+    Result := AIndex + AStep;
+    while (Result >= 0) and (Result <= High(Tokens)) and
+      (Tokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+      Inc(Result, AStep);
+    if (Result < 0) or (Result > High(Tokens)) then
+      Result := -1;
+  end;
+
+  // Verwendung von AName in ARoutine außerhalb der Deklaration ADeclaration: AWrites zählt Zuweisungen
+  // (X := …, auch die Vorbelegung einer Inline-Variable), AReads reine Lesezugriffe, AUnclear alles, was beides
+  // sein kann (Argument eines Aufrufs, @X, X.Feld, X[I]).
+  procedure Usage(ARoutine, ADeclaration: TSyntaxNode; const AName: string; out AReads, AWrites,
+    AUnclear: Integer);
+  var
+    mIndex, mNext, mPrevious: Integer;
+  begin
+    AReads := 0;
+    AWrites := 0;
+    AUnclear := 0;
+    if ADeclaration.Kind = TSyntaxKind.InlineVar then
+      for mIndex := TSyntaxTree.FirstTokenOf(Tokens, ADeclaration.StartOffset) to High(Tokens) do
+      begin
+        if Tokens[mIndex].Offset >= ADeclaration.EndOffset then
+          Break;
+        if Tokens[mIndex].IsSymbol(':=') then
+        begin
+          Inc(AWrites);
+          Break;
+        end;
+      end;
+    for mIndex in NameTokens(ARoutine, AName) do
+    begin
+      if (Tokens[mIndex].Offset >= ADeclaration.StartOffset) and (Tokens[mIndex].Offset < ADeclaration.EndOffset) then
+        Continue;
+      mNext := Significant(mIndex, 1);
+      mPrevious := Significant(mIndex, -1);
+      if (mNext >= 0) and Tokens[mNext].IsSymbol(':=') then
+        Inc(AWrites)
+      else if ((mNext >= 0) and (Tokens[mNext].IsSymbol('.') or Tokens[mNext].IsSymbol('[') or
+        Tokens[mNext].IsSymbol('^'))) or ((mPrevious >= 0) and (Tokens[mPrevious].IsSymbol('(') or
+        Tokens[mPrevious].IsSymbol(',') or Tokens[mPrevious].IsSymbol('@'))) then
+        Inc(AUnclear)
+      else
+        Inc(AReads);
+    end;
+  end;
+
+  function HasDirective(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
+  var
+    mIndex: Integer;
+  begin
+    if AHeader <> nil then
+      for mIndex := 0 to AHeader.ChildCount - 1 do
+        if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and MatchText(AHeader[mIndex].Name, ANames) then
+          Exit(True);
+    Result := False;
+  end;
+
+  // class procedure/function: Felder und Properties der Instanz sind dort nicht erreichbar.
+  function IsClassMethod(ARoutine: TSyntaxNode): Boolean;
+  var
+    mHeader: TSyntaxNode;
+    mIndex: Integer;
+  begin
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    Result := False;
+    if mHeader <> nil then
+    begin
+      mIndex := TSyntaxTree.FirstTokenOf(Tokens, mHeader.StartOffset);
+      Result := (mIndex >= 0) and (mIndex <= High(Tokens)) and Tokens[mIndex].IsKeyword('class');
+    end;
+  end;
+
   procedure CheckName(ARoutine: TSyntaxNode; const AClassName, AName: string; AIsParameter: Boolean;
     ADeclaration: TSyntaxNode; AParamIndex: Integer);
   var
@@ -1392,47 +1486,91 @@ var
     Index: Integer;
     Edits: TArray<TRuleEdit>;
     Fixes: TArray<TRuleFix>;
+    mUnitName, mSuffix: string;
+    mFramework, mClassMethod: Boolean;
+    mReads, mWrites, mUnclear: Integer;
   begin
     for Pattern in Ignore do
       if MatchesWildcard(AName, Pattern) then
         Exit;
     Found := False;
+    mFramework := False;
     Kind := '';
     if AClassName <> '' then
     begin
-      Found := Ancestry.FindMember(AClassName, AName, Member, Unresolved);
-      if Found then
+      mClassMethod := IsClassMethod(ARoutine);
+      Found := Ancestry.FindMember(AClassName, AName, Member, Unresolved, mUnitName);
+      if Found and mClassMethod and not MatchText('class', Member.Directives) then
+        // In class-Methoden zählen nur class var und class property.
+        Found := False
+      else if Found then
       begin
+        mFramework := (mUnitName <> '') and TLibraryUnits.IsLibrary(AContext.Index, mUnitName);
         if Member.Kind = TIndexSymbolKind.Field then
           Kind := 'das Feld ' + AClassName + '.' + Member.Name
         else
           Kind := 'die Property ' + AClassName + '.' + Member.Name;
       end
-      else if (MatchText(Unresolved, ComponentClasses) or MatchText(Unresolved, ControlClasses)) and
-        MatchText(AName, ComponentMembers) then
+      // Die Mitglieder von TComponent und TControl gehören alle zur Instanz.
+      else if not mClassMethod and (MatchText(Unresolved, ComponentClasses) or
+        MatchText(Unresolved, ControlClasses)) and MatchText(AName, ComponentMembers) then
       begin
         Found := True;
+        mFramework := True;
         Kind := 'die Property ' + AClassName + '.' + AName;
       end
-      else if MatchText(Unresolved, ControlClasses) and MatchText(AName, ControlMembers) then
+      else if not mClassMethod and MatchText(Unresolved, ControlClasses) and MatchText(AName, ControlMembers) then
       begin
         Found := True;
+        mFramework := True;
         Kind := 'die Property ' + AClassName + '.' + AName;
       end;
     end;
     if not Found and GlobalVariable(ARoutine, AName) then
     begin
       Found := True;
+      mFramework := False;
       Kind := 'die globale Variable ' + AName;
     end;
     if not Found then
+      Exit;
+    Header := nil;
+    if AIsParameter and (AClassName <> '') then
+      Header := DeclarationHeader(AClassName, Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt),
+        AName, AParamIndex);
+    // override und message: Die Signatur gibt der Vorfahr bzw. die Botschaft vor, z. B.
+    // DoClose(var Action: TCloseAction).
+    if AIsParameter and (HasDirective(Header, ['override', 'message']) or
+      HasDirective(ARoutine.FindChild(TSyntaxKind.RoutineHeader), ['override', 'message'])) then
       Exit;
     if AIsParameter then
       What := 'Parameter'
     else
       What := 'Lokale Variable';
     Message := Format('%s %s verdeckt %s', [What, AName, Kind]);
-    if Assigned_(ARoutine, AName) then
+    mSuffix := '';
+    // Geerbt aus RTL, VCL oder einer anderen Bibliothek: Left, Text oder Name als Hilfsvariable sind
+    // dort üblich. Gemeldet wird nur, wo das Mitglied gemeint sein könnte: eine lokale Variable, die nur
+    // zugewiesen oder nur gelesen wird, ein Werteparameter, dem etwas zugewiesen wird.
+    if mFramework and not FrameworkMembers then
+    begin
+      Usage(ARoutine, ADeclaration, AName, mReads, mWrites, mUnclear);
+      if AIsParameter then
+      begin
+        if (ADeclaration.Modifier in [TParameterModifier.VarParam, TParameterModifier.OutParam]) or
+          (mWrites = 0) then
+          Exit;
+      end
+      else if mUnclear > 0 then
+        Exit
+      else if (mReads > 0) and (mWrites = 0) then
+        mSuffix := '; gelesen wird die lokale Variable, der nichts zugewiesen wird.'
+      else if (mReads > 0) or (mWrites = 0) then
+        Exit;
+    end;
+    if mSuffix <> '' then
+      Message := Message + mSuffix
+    else if Assigned_(ARoutine, AName) then
     begin
       if AIsParameter then
         Message := Message + '; die Zuweisung ändert nur den Parameter.'
@@ -1449,10 +1587,6 @@ var
       NewName := TNamingConvention.Expected(AName, NamingPrefixFor(AContext, TRuleNamingKind.Local, 'L'));
     Fixes := nil;
     Positions := NameTokens(ARoutine, AName);
-    Header := nil;
-    if AIsParameter and (AClassName <> '') then
-      Header := DeclarationHeader(AClassName, Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt),
-        AName, AParamIndex);
     if (NameTokens(ARoutine, NewName) = nil) and ((Header = nil) or (NameTokens(Header, NewName) = nil)) then
     begin
       Edits := nil;
@@ -1588,6 +1722,7 @@ begin
   for Name in ShadowDefaultIgnore do
     Defaults := Defaults + [Name];
   Ignore := TRuleOptions.Strings(AContext.Options, 'ignore', Defaults);
+  FrameworkMembers := TRuleOptions.Bool(AContext.Options, 'frameworkMembers', False);
   Tokens := AContext.Tree.Tokens;
   Cache := TRuleDerived.Open(AContext);
   Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));

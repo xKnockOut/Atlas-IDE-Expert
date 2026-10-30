@@ -165,10 +165,10 @@ end;
 
 procedure TManualScheduling.RunAll;
 var
-  Work: TProc;
+  mWork: TProc;
 begin
-  for Work in FWork.ToArray do
-    Work();
+  for mWork in FWork.ToArray do
+    mWork();
   FWork.Clear;
 end;
 
