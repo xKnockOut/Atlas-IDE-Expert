@@ -1,8 +1,9 @@
 ﻿unit Cm.W1009c;
 
 // W1009 Redeclaration hides a member in the base class
-// Erwartet: W1009
-// Vermutung (#1383): Feld verdeckt ein Feld des Vorfahren (Cm.W1009: Feld verdeckt Property, still).
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64, #1383). Geprüfte Vermutung: Feld verdeckt ein Feld des Vorfahren
+// (Cm.W1009: Feld verdeckt Property, still).
 
 interface
 
@@ -14,7 +15,7 @@ type
 
   TKind = class(TBasis)
   public
-    Wert: string; // <- W1009
+    Wert: string; // <- ohne Meldung
   end;
 
 implementation

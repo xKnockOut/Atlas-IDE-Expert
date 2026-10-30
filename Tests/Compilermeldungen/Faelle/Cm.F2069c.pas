@@ -2,7 +2,9 @@
 
 // F2069 Line too long (more than 1023 characters)
 // Erwartet: F2069
-// Vermutung (#1383): ein einzelnes Literal mit 5000 Zeichen; zeigt, ob die Grenze nur höher liegt.
+// Ein einzelnes Literal mit 5000 Zeichen (#1383). Delphi 13 meldet F2069; Zeilen mit 1132 bis 1222 Zeichen
+// übersetzt es in der IDE (Cm.F2069, Cm.F2069b, Cm.F2069d). Achtung: Die IDE kürzt die Zeile beim Bauen auf
+// 4096 Zeichen und speichert die Datei; danach mit git checkout zurücksetzen.
 
 interface
 

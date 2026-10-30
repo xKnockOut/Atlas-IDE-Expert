@@ -1996,7 +1996,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "Lines longer than the limit max (default 120 characters, matching the rulers from #710). Tabs count up to the next tab stop of format.indentSize. Lines that are only too long because of a string or, with ignoreComments, a comment are not reported. Lines over 1023 characters are always reported as an error regardless of max, because the compiler stops there (F2069). Off by default. Quick fix: Wrap line after commas or before binary operators, where the pieces then fit.",
+      "description": "Lines longer than the limit max (default 120 characters, matching the rulers from #710). Tabs count up to the next tab stop of format.indentSize. Lines that are only too long because of a string or, with ignoreComments, a comment are not reported. Lines over 1023 characters are always reported as a warning regardless of max, because depending on the Delphi version the compiler stops there; lines over 4095 characters as an error, because Delphi 13 stops there too (F2069). Off by default. Quick fix: Wrap line after commas or before binary operators, where the pieces then fit.",
       "bad": "Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel), Steuer.Satz(Land));",
       "good": "Ergebnis := Rechner.Berechne(Kunde.Rabattstufe, Bestellung.Positionen, Lager.Verfuegbarkeit(Artikel),\n  Steuer.Satz(Land));",
       "compilerCodes": [
@@ -3109,13 +3109,12 @@
       "category": "bug",
       "severity": "error",
       "group": "compiler",
-      "description": "An exports clause inside a routine (like E2191), the export of a threadvar or of a routine declared local (like E2276), of a variable, constant or type (like E2121), or the same entry or export name twice (like E2287). Names are only resolved against global declarations of the file; names from other units and names with a dot stay silent, as do two entries in mutually exclusive {$IF…} branches. Overloaded routines with different parameter lists or export names count as different entries. Complements dll-export-unsafe (#973). Quick fix: remove the duplicate entry.",
-      "bad": "exports\n  Initialisieren,\n  Berechnen,\n  Initialisieren;",
-      "good": "exports\n  Initialisieren,\n  Berechnen;",
+      "description": "An exports clause inside a routine (like E2191), the export of a threadvar, of a routine declared local, of a constant or of a type (like E2276), or the same export name twice via name '…' (like E2287). Variables and the same entry twice without name compile in Delphi 13 and are not reported. Names are only resolved against global declarations of the file; names from other units and names with a dot stay silent, as do two entries in mutually exclusive {$IF…} branches. Overloaded routines with different parameter lists or export names count as different entries. Complements dll-export-unsafe (#973). Quick fix: remove the duplicate entry.",
+      "bad": "exports\n  Initialisieren name 'Start',\n  Berechnen,\n  Berechnen name 'Start';",
+      "good": "exports\n  Initialisieren name 'Start',\n  Berechnen;",
       "compilerCodes": [
         "E2191",
         "E2276",
-        "E2121",
         "E2287"
       ],
       "level": "A"
@@ -3759,7 +3758,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "compiler",
-      "description": "A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of a non-virtual method of an ancestor. Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Republished properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors and class methods are not reported. Members the descendant cannot see (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class declaration and the bodies of its methods in this unit (FName becomes FKundeName).",
+      "description": "A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of a non-virtual method of an ancestor (the last two without a code: Delphi 13 compiles them silently). Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Republished properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors and class methods are not reported. Members the descendant cannot see (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class declaration and the bodies of its methods in this unit (FName becomes FKundeName).",
       "bad": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FName: string;\nend;",
       "good": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FKundeName: string;\nend;",
       "compilerCodes": [
@@ -3801,14 +3800,12 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "compiler",
-      "description": "An overriding method spells its name differently from the ancestor (destructor destroy, like H2365) or has a lower visibility than the overridden method (like H2269, only for classes in the interface section; visibilities are compared in tiers private, protected, public), a getter or setter is named Get<Property> or Set<Property> but spelled differently (like H2367), or an inline method accesses a member that is less visible than the method itself, so the compiler cannot expand it outside the class (like H2440). Matters for C++Builder users of the units and for consistent code. The docwiki lists H2269 and H2367 as X2269 and X2367 because their level can be changed; dcc reports them as hints by default. H2368 and H2369 are not covered, since it is not documented when dcc reports them. Off by default; switch it on in atlas.json. Quick fixes: adopt the ancestor's spelling, rename the accessor.",
+      "description": "An overriding method spells its name differently from the ancestor (destructor destroy, like H2365) or has a lower visibility than the overridden method (like H2269, only for classes in the interface section; visibilities are compared in tiers private, protected, public), a getter or setter is named Get<Property> or Set<Property> but spelled differently, or an inline method accesses a member that is less visible than the method itself (these two without a code: Delphi 13 reports neither H2367 nor H2440 there). Matters for C++Builder users of the units and for consistent code. The docwiki lists H2269 and H2367 as X2269 and X2367 because their level can be changed; dcc reports them as hints by default. H2368 and H2369 are not covered, since it is not documented when dcc reports them. Off by default; switch it on in atlas.json. Quick fixes: adopt the ancestor's spelling, rename the accessor.",
       "bad": "TKunde = class\n  destructor destroy; override;\nend;",
       "good": "TKunde = class\n  destructor Destroy; override;\nend;",
       "compilerCodes": [
         "H2365",
-        "H2440",
-        "H2269",
-        "H2367"
+        "H2269"
       ],
       "level": "B"
     },
@@ -3849,12 +3846,11 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "compiler",
-      "description": "A call of an inline routine from another unit that the compiler does not expand: its body needs a unit that is missing from uses here (like H2443, typically System.Generics.Collections for TJSONObject.Count), it accesses a strict private member and the call is not inside a method of that class (like H2444), the calling routine is inline itself and the unit of the callee is only in the implementation uses (like H2445), or the unit of the callee uses this unit directly (like H2456) or through other units (like H2457). Calls, properties with an inline getter or setter and for-in loops (GetEnumerator, MoveNext, Current) are checked. The index records what each inline body refers to; the rule only reports what it resolves for sure (unknown references and members inherited from other units stay silent). Silent with {$INLINE OFF} in the file. Quick fix: add the missing units to the uses clause of the section.",
+      "description": "A call of an inline routine from another unit that the compiler does not expand: its body needs a unit that is missing from uses here (like H2443, typically System.Generics.Collections for TJSONObject.Count), the calling routine is inline itself and the unit of the callee is only in the implementation uses (like H2445), or the unit of the callee uses this unit directly (like H2456) or through other units (like H2457). Calls, properties with an inline getter or setter and for-in loops (GetEnumerator, MoveNext, Current) are checked. The index records what each inline body refers to; the rule only reports what it resolves for sure (unknown references and members inherited from other units stay silent). Access to private or strict private members is not reported: Delphi 13 expands such calls. Silent with {$INLINE OFF} in the file. Quick fix: add the missing units to the uses clause of the section.",
       "bad": "uses\n  System.JSON;\n...\nfor Wert in Feld as TJSONArray do",
       "good": "uses\n  System.JSON, System.Generics.Collections;\n...\nfor Wert in Feld as TJSONArray do",
       "compilerCodes": [
         "H2443",
-        "H2444",
         "H2445",
         "H2456",
         "H2457"
@@ -4228,11 +4224,10 @@
       "category": "bug",
       "severity": "warning",
       "group": "compiler",
-      "description": "An assignment or an inline variable with a value whose type is wider than the target, without an explicit conversion: Int64 to Integer, NativeInt to Integer (Win64) and, via the option types, e.g. Double to Single or Extended to Double. Like W1071 (integers), W1072 (floating point) and W1066 (Extended to Double); the compiler shows W1071 only when switched on. Only reported when both types are known for certain (variables, fields, properties, function results, own aliases and integer arithmetic built from them); literals and explicit conversions stay silent. Off by default; medium confidence. Quick fixes: convert explicitly; widen the type of the target's declaration (single variable declared in the same file).",
+      "description": "An assignment or an inline variable with a value whose type is wider than the target, without an explicit conversion: Int64 to Integer, NativeInt to Integer (Win64) and, via the option types, e.g. Double to Single or Extended to Double. Like W1072 (floating point) and W1066 (Extended to Double); integers without a code, because Delphi 13 does not report W1071 even with {$WARN IMPLICIT_INTEGER_CAST_LOSS ON}. Only reported when both types are known for certain (variables, fields, properties, function results, own aliases and integer arithmetic built from them); literals and explicit conversions stay silent. Off by default; medium confidence. Quick fixes: convert explicitly; widen the type of the target's declaration (single variable declared in the same file).",
       "bad": "Anzahl := Strom.Size;  // Anzahl: Integer",
       "good": "Anzahl := Integer(Strom.Size);",
       "compilerCodes": [
-        "W1071",
         "W1072",
         "W1066"
       ],
@@ -4379,14 +4374,11 @@
       "id": "inherited-abstract-call",
       "name": "inherited calls an abstract method",
       "category": "bug",
-      "severity": "error",
+      "severity": "warning",
       "group": "compiler",
-      "description": "inherited with an explicit method name, such as inherited Zeichnen(C), although the method is abstract in the ancestor (like E2373). A bare inherited; is skipped silently by the compiler for abstract methods and is not reported. The method is resolved by name resolution including overloads; the rule only reports when every matching overload is abstract. Quick fix: remove the call when it is a statement of its own in a begin…end block.",
+      "description": "inherited with an explicit method name, such as inherited Zeichnen(C), although the method is abstract in the ancestor: the call raises EAbstractError at runtime. The compiler accepts it without an error. A bare inherited; is skipped silently by the compiler for abstract methods and is not reported. The method is resolved by name resolution including overloads; the rule only reports when every matching overload is abstract. Quick fix: remove the call when it is a statement of its own in a begin…end block.",
       "bad": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  inherited Zeichnen(C);\n  C.Ellipse(FRahmen);\nend;",
       "good": "procedure TKreis.Zeichnen(C: TCanvas);\nbegin\n  C.Ellipse(FRahmen);\nend;",
-      "compilerCodes": [
-        "E2373"
-      ],
       "level": "B"
     },
     {

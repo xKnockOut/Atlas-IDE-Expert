@@ -855,9 +855,9 @@ begin
   Source := Kreise('  inherited Zeichnen(C);'#10'  Inc(C);'#10);
   Findings := TRuleAssert.Findings(TInheritedAbstractCallRule.Create, Source);
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('TForm.Zeichnen ist abstrakt; der Aufruf über inherited ist nicht erlaubt (wie E2373).',
+  Assert.AreEqual('TForm.Zeichnen ist abstrakt; der Aufruf über inherited löst zur Laufzeit EAbstractError aus.',
     Findings[0].Message);
-  Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
+  Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual(20, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(2, Findings[0].Range.StartPos.Character);
@@ -888,7 +888,7 @@ begin
     'function TSumme.Berechnen(X: Integer): Integer;'#10'begin'#10'  Result := inherited Berechnen(X) + 1;'#10 +
     'end;'#10'end.', IndexWith([BasisSource]), '', 'U.pas');
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual('TRechner.Berechnen ist abstrakt; der Aufruf über inherited ist nicht erlaubt (wie E2373).',
+  Assert.AreEqual('TRechner.Berechnen ist abstrakt; der Aufruf über inherited löst zur Laufzeit EAbstractError aus.',
     Findings[0].Message);
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
   // Im Zweig einer if-Anweisung: Entfernen ließe ein leeres then zurück, also keine Korrektur.

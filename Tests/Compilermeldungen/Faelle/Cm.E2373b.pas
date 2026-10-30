@@ -1,8 +1,9 @@
 ﻿unit Cm.E2373b;
 
 // E2373 Call to abstract method %s.%s
-// Erwartet: E2373
-// Vermutung (#1383): inherited ohne Methodennamen (Cm.E2373 mit Namen bleibt still).
+// Erwartet: -
+// Delphi 13 meldet hier nichts (Win32 und Win64, #1383). Geprüfte Vermutung: inherited ohne Methodennamen (Cm.E2373
+// mit Namen bleibt still).
 
 interface
 
@@ -21,7 +22,7 @@ implementation
 
 procedure TKind.Machen;
 begin
-  inherited; // <- E2373
+  inherited; // <- ohne Meldung
 end;
 
 end.

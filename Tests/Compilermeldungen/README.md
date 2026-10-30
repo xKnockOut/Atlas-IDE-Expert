@@ -63,3 +63,15 @@ meldet (zusätzlich), und Fälle, in denen dcc den erwarteten Code nicht meldet
 Eine Datei `Faelle/Cm.<Code>.pas` mit Kopf und Marke anlegen und in
 `Compilermeldungen.dpr` und `Compilermeldungen.dproj` eintragen. Gibt es zu
 einem Code einen Fall, gehört er nicht mehr nach `ohne-fall.txt`.
+
+## Fallen beim Bauen
+
+- Die IDE kürzt Zeilen über 4096 Zeichen beim Bauen und speichert die Datei
+  (`Cm.F2069c`); danach den Fall mit `git checkout` zurücksetzen. Zeilen mit
+  1132 bis 1222 Zeichen übersetzt Delphi 13 in der IDE ohne F2069.
+- `-Dcc` braucht die Kommandozeilen-Compiler. `dcc32` der Community Edition
+  meldet nur, dass es nicht auf der Kommandozeile übersetzt, und endet mit 0;
+  das Skript bricht dann mit Exit-Code 3 ab, statt jeden Fall als still zu
+  zählen (#1383).
+- `Ergebnisse/dcc.tsv` enthält die Zusatzfälle aus #1383 (Delphi 13, 30.10.2026)
+  am Ende; `vergleich.md` und `vergleich.json` stammen noch vom ersten Lauf.

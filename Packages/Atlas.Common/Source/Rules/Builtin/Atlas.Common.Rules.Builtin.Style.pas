@@ -16,7 +16,8 @@
 //                            „Konstante einführen“ aus #50 (#937)
 //   line-length              Zeile über der Grenze "max" (Vorgabe 120, Tabs nach format.indentSize), Strings
 //                            und Kommentare abschaltbar ausgenommen (Standard aus); Korrektur bricht hinter
-//                            Kommas bzw. vor Operatoren um. Über 1023 Zeichen immer Error wie F2069 (#938)
+//                            Kommas bzw. vor Operatoren um. Über 1023 Zeichen immer eine Warnung, über 4095
+//                            Zeichen ein Error wie F2069 (#938, #1383)
 //   public-field             Feld im public- oder published-Abschnitt einer Klasse (Standard aus, #940);
 //                            Records nur mit includeRecords. Der Abschnitt ohne Sichtbarkeitswort zählt nur
 //                            bei Klassen ohne Vorfahren bzw. mit TObject: sonst stehen dort die Felder des
@@ -111,8 +112,12 @@ type
   TLineLengthRule = class(TInterfacedObject, IRule)
   public const
     DefaultMax = 120;
-    /// <summary>Längere Zeilen lehnt der Compiler ab (F2069).</summary>
+    /// <summary>Grenze aus dem Text von F2069. Delphi 13 übersetzt in der IDE auch Zeilen mit 1222 Zeichen
+    /// (#1383, Cm.F2069b/d); welche Version und welcher Aufruf hier abbricht, ist offen: darüber eine Warnung.
+    /// </summary>
     CompilerLimit = 1023;
+    /// <summary>Längere Zeilen lehnt auch Delphi 13 ab (F2069, Cm.F2069c).</summary>
+    HardLimit = 4095;
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1608,11 +1613,18 @@ var
     Fixes: TArray<TRuleFix>;
   begin
     Text := Lines[ALine];
-    if Length(Text) > CompilerLimit then
+    if Length(Text) > HardLimit then
     begin
       AReport.AddWithSeverity(TTextRange.Create(TTextPosition.Create(ALine, 0), TTextPosition.Create(ALine,
         Length(Text))), Format('Zeile mit %d Zeichen; der Compiler bricht über %d Zeichen ab (wie F2069).',
-        [Length(Text), CompilerLimit]), TRuleSeverity.Error, nil);
+        [Length(Text), HardLimit]), TRuleSeverity.Error, nil);
+      Exit;
+    end;
+    if Length(Text) > CompilerLimit then
+    begin
+      AReport.AddWithSeverity(TTextRange.Create(TTextPosition.Create(ALine, 0), TTextPosition.Create(ALine,
+        Length(Text))), Format('Zeile mit %d Zeichen; je nach Delphi-Version bricht der Compiler über %d ' +
+        'Zeichen ab.', [Length(Text), CompilerLimit]), TRuleSeverity.Warning, nil);
       Exit;
     end;
     ColumnsOfLine := Columns(Text);

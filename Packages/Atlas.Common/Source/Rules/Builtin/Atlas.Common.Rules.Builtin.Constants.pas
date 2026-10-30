@@ -34,8 +34,11 @@
 //   narrowing-assignment       Zuweisung mit möglichem Datenverlust (#1013,
 //                              standardmäßig aus): Quelltyp und Zieltyp bilden
 //                              ein Paar aus der Option types (Vorgabe
-//                              Int64>Integer und NativeInt>Integer), wie W1071,
-//                              bei Gleitkomma W1072, Extended>Double W1066.
+//                              Int64>Integer und NativeInt>Integer), bei
+//                              Gleitkomma wie W1072, Extended>Double W1066.
+//                              Ganzzahlen ohne Code: W1071 meldet Delphi 13
+//                              auch mit {$WARN IMPLICIT_INTEGER_CAST_LOSS ON}
+//                              nicht (#1383).
 //                              Zuweisungen und Inline-Variablen mit Wert;
 //                              Operanden und ganzzahlige Rechnungen mit sicher
 //                              bekanntem Typ. Korrekturen: ausdrücklich
@@ -1574,26 +1577,25 @@ var
   procedure Report(AValue: TSyntaxNode; const ATargetDisplay, ATargetCanonical: string;
     ATargetTypeNode: TSyntaxNode);
   var
-    SourceCanonical, SourceDisplay, ValueText, Code, Message: string;
+    SourceCanonical, SourceDisplay, ValueText, CodeSuffix, Message: string;
     Fixes: TArray<TRuleFix>;
   begin
     if not MaySource(AValue) or not ExpressionType(AValue, SourceCanonical, SourceDisplay) or
       not Pairs.ContainsKey(SourceCanonical + '>' + ATargetCanonical) then
       Exit;
+    CodeSuffix := '';
     if IsFloatName(ATargetCanonical) then
     begin
       if (SourceCanonical = 'extended') and (ATargetCanonical = 'double') then
-        Code := 'W1066'
+        CodeSuffix := ' (wie W1066)'
       else
-        Code := 'W1072';
-    end
-    else
-      Code := 'W1071';
+        CodeSuffix := ' (wie W1072)';
+    end;
     ValueText := NodeText(AValue);
     if (Length(ValueText) > MaxValueText) or (Pos(#10, ValueText) > 0) then
       ValueText := 'Der Wert';
-    Message := Format('%s ist %s; die Zuweisung an %s kann Daten verlieren (wie %s).',
-      [ValueText, SourceDisplay, ATargetDisplay, Code]);
+    Message := Format('%s ist %s; die Zuweisung an %s kann Daten verlieren%s.',
+      [ValueText, SourceDisplay, ATargetDisplay, CodeSuffix]);
     Fixes := [TRuleFix.Create('Ausdrücklich in ' + ATargetDisplay + ' umwandeln',
       [TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos),
       ATargetDisplay + '(' + NodeText(AValue) + ')')])];
