@@ -663,6 +663,8 @@ begin
 end;
 
 procedure TOverloadResolutionTests.UncertainArguments;
+var
+  mIndex: ISymbolIndex;
 begin
   OverloadSilent(NimmUnit('function Wert: Integer; overload;'#10'begin'#10'end;'#10 +
     'function Wert(AWert: Integer): Double; overload;'#10'begin'#10'end;'#10 +
@@ -675,6 +677,26 @@ begin
     'const'#10'  cZeichen = ''a'';'#10,
     '  Nimm(AWert);'#10'  Nimm(Wert(1));'#10'  Zeiger(''abc'');'#10'  Liste([1]);'#10'  Liste(1.5);'#10 +
     '  Zeichen(cZeichen);'));
+  // Zeichenkonstante als string-Argument neben einer Integer-Überladung (DrawSeparator in den Brotkrumen).
+  OverloadSilent(NimmUnit('procedure Trenne(ALeft: Integer; const AText: string); overload;'#10'begin'#10'end;'#10 +
+    'procedure Trenne(AIndex: Integer); overload;'#10'begin'#10'end;'#10 +
+    'const'#10'  cTrenner = ''›'';'#10,
+    '  Trenne(AWert, cTrenner);'));
+  // Freie Routine aus zwei Units im Argument: GetEnvironmentVariable aus Winapi.Windows (DWORD) und
+  // System.SysUtils (string); welche gilt, entscheidet dcc.
+  mIndex := SystemIndex;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Fenster;'#10'interface'#10 +
+    'function Umgebung(AName, APuffer: PChar; AGroesse: Cardinal): Cardinal; stdcall;'#10'implementation'#10 +
+    'function Umgebung(AName, APuffer: PChar; AGroesse: Cardinal): Cardinal;'#10'begin'#10'  Result := 0;'#10 +
+    'end;'#10'end.', 'C:\P\Fenster.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Werkzeug;'#10'interface'#10 +
+    'function Umgebung(const AName: string): string; overload;'#10'implementation'#10 +
+    'function Umgebung(const AName: string): string;'#10'begin'#10'  Result := AName;'#10'end;'#10'end.',
+    'C:\P\Werkzeug.pas', nil));
+  Assert.AreEqual(0, Integer(Length(OverloadFindings('unit Faelle;'#10'interface'#10'implementation'#10'uses'#10 +
+    '  Fenster,'#10'  Werkzeug;'#10'procedure Pfad(const A, B: string); overload;'#10'begin'#10'end;'#10 +
+    'procedure Pfad(A: Integer); overload;'#10'begin'#10'end;'#10'procedure Fall;'#10'begin'#10 +
+    '  Pfad(Umgebung(''X''), ''Atlas'');'#10'end;'#10'end.', mIndex))));
 end;
 
 procedure TOverloadResolutionTests.FitTable;

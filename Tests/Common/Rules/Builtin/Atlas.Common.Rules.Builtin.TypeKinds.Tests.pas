@@ -48,6 +48,10 @@ type
     procedure OffAndExclude;
     [Test]
     procedure RuleIsRegistered;
+    /// <summary>X.TryGetValue&lt;Integer&gt;(…) ist kein Punkt auf dem Boolean-Ergebnis (Fehlalarm in
+    /// Atlas.Common.Lsp.Positions).</summary>
+    [Test]
+    procedure GenericMethodCallIsNoDotOnResult;
   end;
 
 implementation
@@ -370,6 +374,15 @@ begin
     'Source/Typarten.pas'))));
   Assert.AreEqual(0, Integer(Length(Findings(mSource,
     '{"rules": {"type-kind-required": {"exclude": ["Source/*.pas"]}}}', 'Source/Typarten.pas'))));
+end;
+
+procedure TTypeKindRequiredTests.GenericMethodCallIsNoDotOnResult;
+begin
+  Assert.AreEqual(0, Integer(Length(Findings('unit Typarten;'#10'interface'#10'type'#10'  TJson = class'#10 +
+    '    function TryGetValue<T>(const AName: string; out AValue: T): Boolean;'#10'  end;'#10'implementation'#10 +
+    'function TJson.TryGetValue<T>(const AName: string; out AValue: T): Boolean;'#10'begin'#10 +
+    '  Result := False;'#10'end;'#10'procedure Lies(AJson: TObject);'#10'var'#10'  mZahl: Integer;'#10 +
+    'begin'#10'  if TJson(AJson).TryGetValue<Integer>(''n'', mZahl) then'#10'    Exit;'#10'end;'#10'end.'))));
 end;
 
 procedure TTypeKindRequiredTests.RuleIsRegistered;

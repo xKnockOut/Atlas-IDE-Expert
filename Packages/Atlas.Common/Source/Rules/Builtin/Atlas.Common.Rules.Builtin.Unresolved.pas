@@ -907,8 +907,9 @@ var
       ANode.StartPos.Character + Length(ANode.Name)));
     if Resolved.Found then
     begin
-      // Gefunden, aber kein Typ: Variable, Konstante, Routine.
-      if (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) and not Resolved.IsType and
+      // Gefunden, aber kein Typ: Variable, Konstante, Routine. Lokale Namen zählen nicht: In hWnd: HWND meint
+      // HWND den Typ, der Parametername gilt dort noch nicht (Watchdog, KeyHook).
+      if (Resolved.Kind = TResolvedKind.Symbol) and not Resolved.IsType and
         (Resolved.SymbolKind in [TIndexSymbolKind.EnumMember, TIndexSymbolKind.Constant, TIndexSymbolKind.Variable,
         TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
         TIndexSymbolKind.Routine]) then
