@@ -259,6 +259,14 @@ type
     function ExprCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
     function ExprSymbol(ANode: TSyntaxNode; out AResult: TResolvedSymbol): Boolean;
     function ArgTypes(ANode: TSyntaxNode; AFirst: Integer): TArray<string>;
+    /// <summary>Passt das Argument vom Typ AArgType zum Parameter AArg von ACandidate? ASame: gleiche Typfamilie.
+    /// Ein Parametertyp mit eigenem Namen (TDateTime = type Double) zählt wie sein Grundtyp, denn ArgTypes
+    /// verfolgt Aliase auch beim Argument.</summary>
+    function ParamFits(const ACandidate: TResolvedSymbol; AArg: Integer; const AArgType: string;
+      out ASame: Boolean): Boolean;
+    /// <summary>Wählt Überladungen nach Argumentzahl und -typen; AArgCount &lt; 0 = unbekannt.</summary>
+    function SelectOverloads(const ACandidates: TArray<TResolvedSymbol>; AArgCount: Integer;
+      const AArgTypes: TArray<string>): TArray<TResolvedSymbol>;
     function LookupWith(const AName: string; out AResults: TArray<TResolvedSymbol>; out AStop: Boolean): Boolean;
     function LookupWithOwner(const AName: string; out AResults: TArray<TResolvedSymbol>; out AStop: Boolean;
       out AWith: TSyntaxNode; out AElement: Integer): Boolean;
@@ -763,49 +771,6 @@ begin
     if SameSignature(Existing, ASymbol) then
       Exit;
   AList := AList + [ASymbol];
-end;
-
-/// <summary>Wählt Überladungen nach Argumentzahl und -typen; AArgCount &lt; 0 = unbekannt.</summary>
-function SelectOverloads(const ACandidates: TArray<TResolvedSymbol>; AArgCount: Integer;
-  const AArgTypes: TArray<string>): TArray<TResolvedSymbol>;
-var
-  Candidate: TResolvedSymbol;
-  Fitting: TArray<TResolvedSymbol>;
-  Scores: TArray<Integer>;
-  Index, Arg, Score, Best: Integer;
-begin
-  if (AArgCount < 0) or (Length(ACandidates) <= 1) then
-    Exit(ACandidates);
-  Fitting := nil;
-  Scores := nil;
-  for Candidate in ACandidates do
-  begin
-    if (Candidate.SymbolKind in RoutineKinds) and
-      ((AArgCount < Candidate.MinArgs) or (AArgCount > Candidate.MaxArgs)) then
-      Continue;
-    Score := 0;
-    for Arg := 0 to Min(AArgCount, Length(Candidate.ParamTypes)) - 1 do
-      if Arg <= High(AArgTypes) then
-        if not ArgFits(Candidate.ParamTypes[Arg], AArgTypes[Arg]) then
-        begin
-          Score := -1;
-          Break;
-        end
-        else if (AArgTypes[Arg] <> '') and SameFamily(Candidate.ParamTypes[Arg], AArgTypes[Arg]) then
-          Inc(Score);
-    if Score < 0 then
-      Continue;
-    Fitting := Fitting + [Candidate];
-    Scores := Scores + [Score];
-  end;
-  // Passt keine, lieber alle zeigen als eine falsche.
-  if Length(Fitting) = 0 then
-    Exit(ACandidates);
-  Best := MaxIntValue(Scores);
-  Result := nil;
-  for Index := 0 to High(Fitting) do
-    if Scores[Index] = Best then
-      Result := Result + [Fitting[Index]];
 end;
 
 { TResolvedSymbol }
@@ -2413,6 +2378,67 @@ begin
       Text := TypeInfo.Name;
     Result := Result + [Text];
   end;
+end;
+
+function TNameResolver.ParamFits(const ACandidate: TResolvedSymbol; AArg: Integer; const AArgType: string;
+  out ASame: Boolean): Boolean;
+var
+  mParam: string;
+  mOwner: TUnitIndex;
+  mDeclared, mBase: TResolvedSymbol;
+begin
+  mParam := ACandidate.ParamTypes[AArg];
+  Result := ArgFits(mParam, AArgType);
+  ASame := Result and (AArgType <> '') and SameFamily(mParam, AArgType);
+  if Result or IsBuiltinName(mParam) or not UnitOf(ACandidate, mOwner) or
+    not ResolveTypeText(mParam, mOwner, True, mDeclared) or not TypeOf(mDeclared, mBase) or
+    SameText(mBase.Name, mParam) then
+    Exit;
+  Result := ArgFits(mBase.Name, AArgType);
+  ASame := Result and SameFamily(mBase.Name, AArgType);
+end;
+
+function TNameResolver.SelectOverloads(const ACandidates: TArray<TResolvedSymbol>; AArgCount: Integer;
+  const AArgTypes: TArray<string>): TArray<TResolvedSymbol>;
+var
+  Candidate: TResolvedSymbol;
+  Fitting: TArray<TResolvedSymbol>;
+  Scores: TArray<Integer>;
+  Index, Arg, Score, Best: Integer;
+  mSame: Boolean;
+begin
+  if (AArgCount < 0) or (Length(ACandidates) <= 1) then
+    Exit(ACandidates);
+  Fitting := nil;
+  Scores := nil;
+  for Candidate in ACandidates do
+  begin
+    if (Candidate.SymbolKind in RoutineKinds) and
+      ((AArgCount < Candidate.MinArgs) or (AArgCount > Candidate.MaxArgs)) then
+      Continue;
+    Score := 0;
+    for Arg := 0 to Min(AArgCount, Length(Candidate.ParamTypes)) - 1 do
+      if Arg <= High(AArgTypes) then
+        if not ParamFits(Candidate, Arg, AArgTypes[Arg], mSame) then
+        begin
+          Score := -1;
+          Break;
+        end
+        else if mSame then
+          Inc(Score);
+    if Score < 0 then
+      Continue;
+    Fitting := Fitting + [Candidate];
+    Scores := Scores + [Score];
+  end;
+  // Passt keine, lieber alle zeigen als eine falsche.
+  if Length(Fitting) = 0 then
+    Exit(ACandidates);
+  Best := MaxIntValue(Scores);
+  Result := nil;
+  for Index := 0 to High(Fitting) do
+    if Scores[Index] = Best then
+      Result := Result + [Fitting[Index]];
 end;
 
 function TNameResolver.ExprCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;

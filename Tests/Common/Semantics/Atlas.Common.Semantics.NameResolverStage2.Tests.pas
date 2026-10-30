@@ -30,6 +30,8 @@ type
     [Test]
     procedure AmbiguousOverloadsGiveAllCandidates;
     [Test]
+    procedure ParameterTypeAliasFitsItsBaseType;
+    [Test]
     procedure SubstitutesGenericTypeArguments;
     [Test]
     procedure FollowsGenericAncestors;
@@ -82,6 +84,7 @@ const
     '  end;'#10 +
     '  IInterface = interface end;'#10 +
     '  TArray<T> = array of T;'#10 +
+    '  TDateTime = type Double;'#10 +
     'implementation'#10 +
     'constructor TObject.Create; begin end;'#10 +
     'end.';
@@ -102,6 +105,9 @@ const
     '  const AFormatSettings: TFormatSettings): string; overload;'#10 +
     'function IntToStr(Value: Integer): string; overload;'#10 +
     'function IntToStr(Value: Int64): string; overload;'#10 +
+    'function FileAge(const FileName: string): LongInt; overload; deprecated;'#10 +
+    'function FileAge(const FileName: string; out FileDateTime: TDateTime;'#10 +
+    '  FollowLink: Boolean = True): Boolean; overload;'#10 +
     'implementation'#10 +
     'end.';
 
@@ -174,6 +180,7 @@ const
     '  O: TObject;'#10 +
     '  FS: TFormatSettings;'#10 +
     '  Name: Integer;'#10 +
+    '  Alter: TDateTime;'#10 +
     'begin'#10;
   Tail =
     #10'end;'#10 +
@@ -271,6 +278,23 @@ begin
   // Integer passt genau, Int64 nur der Familie nach: beide gleich gut, also beide.
   Assert.AreEqual(2, Integer(Length(ResolveAllAt(Source, 'IntToStr(I)'))));
   Assert.IsTrue(ResolveAt(Source, 'IntToStr(I)').Found);
+end;
+
+procedure TNameResolverStage2Tests.ParameterTypeAliasFitsItsBaseType;
+const
+  Source = Head + '  if FileAge(S, Alter) then'#10'    I := FileAge(S);' + Tail;
+var
+  mResults: TArray<TResolvedSymbol>;
+begin
+  // Das Argument Alter: TDateTime zählt als Double (Alias verfolgt), der Parameter TDateTime ebenso. Vorher passte
+  // keine Überladung, und die erste (veraltete, ein Argument) stand vorn.
+  mResults := ResolveAllAt(Source, 'FileAge(S, Alter)');
+  Assert.AreEqual(1, Integer(Length(mResults)));
+  Assert.AreEqual(3, mResults[0].MaxArgs);
+  mResults := ResolveAllAt(Source, 'FileAge(S);');
+  Assert.AreEqual(1, Integer(Length(mResults)));
+  Assert.AreEqual(1, mResults[0].MaxArgs);
+  mResults := nil;
 end;
 
 procedure TNameResolverStage2Tests.SubstitutesGenericTypeArguments;
