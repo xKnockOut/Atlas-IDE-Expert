@@ -114,12 +114,6 @@ begin
     IsIdentifier(AName);
 end;
 
-/// <summary>"OnClick = Button1Click" → OnClick, Button1Click; False bei anderen Zeilen.</summary>
-function EventLine(const ALine: string; out AName, AValue: string): Boolean;
-begin
-  Result := PropertyLine(ALine, AName, AValue) and IsEventName(AName) and IsIdentifier(AValue);
-end;
-
 class function TAtlasFormChanges.ObjectName(const ALine: string; out AIsObject: Boolean): string;
 var
   Line, Keyword: string;
