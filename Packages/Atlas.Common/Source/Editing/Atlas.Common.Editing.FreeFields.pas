@@ -230,7 +230,12 @@ type
     FCreated: TArray<Integer>;
     /// <summary>Felder, die mit dem Argument False erzeugt werden (TObjectList.Create(False)).</summary>
     FNotOwning: TArray<Integer>;
+    /// <summary>Lokale Kopien von Feldern in der gerade durchsuchten Methode (Writer := FWriter).</summary>
+    FAliasNames: TArray<string>;
+    FAliasFields: TArray<Integer>;
     FCurrent: string;
+    /// <summary>Feld hinter ANode, auch über eine lokale Kopie; sonst -1.</summary>
+    function FreedRef(ANode: TSyntaxNode): Integer;
     function FieldIndex(const AName: string): Integer;
     function FieldRef(ANode: TSyntaxNode): Integer;
     /// <summary>ANode ist FFeld oder Self.FFeld mit einem Interface-Typ.</summary>
@@ -342,6 +347,17 @@ begin
     if SameText(FFields[Index].Name, AName) then
       Exit(Index);
   Result := -1;
+end;
+
+function TClassAnalyzer.FreedRef(ANode: TSyntaxNode): Integer;
+var
+  Index: Integer;
+begin
+  Result := FieldRef(ANode);
+  if (Result < 0) and (ANode <> nil) and (ANode.Kind = TSyntaxKind.Identifier) then
+    for Index := High(FAliasNames) downto 0 do
+      if SameText(FAliasNames[Index], ANode.Name) then
+        Exit(FAliasFields[Index]);
 end;
 
 function TClassAnalyzer.FieldRef(ANode: TSyntaxNode): Integer;
@@ -804,6 +820,8 @@ var
   Node: TSyntaxNode;
   Index: Integer;
 begin
+  FAliasNames := nil;
+  FAliasFields := nil;
   // Eigener Stapel statt Rekursion, damit tiefe Ausdrücke den Aufrufstapel nicht erschöpfen.
   Pending := TStack<TSyntaxNode>.Create;
   try
@@ -832,7 +850,7 @@ begin
     TSyntaxKind.MemberAccess:
       if (ANode.ChildCount >= 1) and MatchText(ANode.Name, FreeMethods) then
       begin
-        Field := FieldRef(ANode[0]);
+        Field := FreedRef(ANode[0]);
         if Field >= 0 then
           AFreed[Field] := True;
       end;
@@ -840,8 +858,8 @@ begin
       if (ANode.ChildCount = 2) and (ANode[0].Kind = TSyntaxKind.Identifier) then
       begin
         Field := FieldRef(ANode[1]);
-        if SameText(ANode[0].Name, 'FreeAndNil') and (Field >= 0) then
-          AFreed[Field] := True
+        if SameText(ANode[0].Name, 'FreeAndNil') and (FreedRef(ANode[1]) >= 0) then
+          AFreed[FreedRef(ANode[1])] := True
         else if SameText(ANode[0].Name, 'Exit') then
           SetUnclear(Field, Format('wird von %s zurückgegeben', [AMethod]));
       end
@@ -879,6 +897,12 @@ begin
         begin
           if (Target.Kind = TSyntaxKind.Identifier) and SameText(Target.Name, 'Result') then
             SetUnclear(Field, Format('wird von %s zurückgegeben', [AMethod]))
+          else if (Target.Kind = TSyntaxKind.Identifier) and (FieldRef(Target) < 0) then
+          begin
+            // Lokale Kopie: Gibt die Methode sie frei, ist das Feld freigegeben.
+            FAliasNames := FAliasNames + [Target.Name];
+            FAliasFields := FAliasFields + [Field];
+          end
           else if (Target.Kind = TSyntaxKind.MemberAccess) and (FieldRef(Target) < 0) then
             SetUnclear(Field, Format('wird in %s an %s übergeben', [AMethod, Collapse(NodeText(FText, Target))]));
         end;

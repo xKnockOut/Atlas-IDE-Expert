@@ -809,7 +809,6 @@ begin
     // Eine Datei ist noch offen (z. B. im Bildbetrachter): PruneStale räumt beim nächsten Start auf.
     on EInOutError do;
     on EOSError do;
-    on EDirectoryNotFoundException do;
   end;
   FFolder := '';
 end;

@@ -287,7 +287,7 @@ begin
   // veraltet und könnte den Entwurf löschen).
   if FAssist <> nil then
   begin
-    if FMemo.HandleAllocated then
+    if (FMemo <> nil) and FMemo.HandleAllocated then
       KeepDraft;
     FAssist.Cancel;
     FAssist := nil;

@@ -449,7 +449,7 @@ begin
 end;
 
 // Rekursion ohne Ende mit Platz auf dem Stapel: echter Stapelüberlauf für den Testschalter.
-function Deeper(ADepth: Integer): Integer; // lsp-ignore: unconditional-recursion (gewollt)
+function Deeper(ADepth: Integer): Integer; // lsp-ignore: unconditional-recursion -- gewollt
 var
   mPad: array[0..255] of Byte;
 begin

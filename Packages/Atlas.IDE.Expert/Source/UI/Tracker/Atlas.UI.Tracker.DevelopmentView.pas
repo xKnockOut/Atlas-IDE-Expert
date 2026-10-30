@@ -155,7 +155,8 @@ end;
 
 destructor TAtlasIssueDevelopmentView.Destroy;
 begin
-  FCommitTimer.Enabled := False;
+  if FCommitTimer <> nil then
+    FCommitTimer.Enabled := False;
   FParts.Free;
   inherited;
 end;

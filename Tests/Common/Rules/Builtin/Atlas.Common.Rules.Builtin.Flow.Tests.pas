@@ -560,6 +560,10 @@ begin
     '  while Knoten <> nil do'#10'  begin'#10'    Knoten.Pruefen;'#10'    Knoten := Knoten.Weiter;'#10'  end;',
     CheckHeader, CheckVars));
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
+    // X is T im selben Ausdruck schützt wie Assigned; der else-Zweig prüft danach auf nil.
+    '  if (Kunde is TKunde) and Kunde.Aktiv then'#10'    Anzeigen(Kunde)'#10'  else if Kunde <> nil then'#10 +
+    '    Melden;', CheckHeader, CheckVars));
+  TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Routine(
     // Übergabe dazwischen: die Routine kann den Wert ändern.
     '  Titel := Kunde.Name;'#10'  Ersetzen(Kunde);'#10'  if Assigned(Kunde) then'#10'    Anzeigen(Kunde);',
     CheckHeader, CheckVars));

@@ -1356,6 +1356,10 @@ begin
       if not Match.Success then
         Continue;
       MessageName := Match.Groups[1].Value;
+      // Eigene Nachricht der Unit (WM_ATLAS_X = WM_APP + 1): Windows und VCL kennen sie nicht (#1371).
+      if TRegEx.IsMatch(AContext.Text, '\b' + TRegEx.Escape(MessageName) + '\s*=\s*(WM_APP|WM_USER)\b',
+        [roIgnoreCase]) then
+        Continue;
       if MatchText(Copy(MessageName, LastDelimiter('.', MessageName) + 1, MaxInt), Swallow) or
         not Model.FindMethod(Info.Name, Header.Name, Method) or (Method.Block = nil) or
         Model.HasToken(Method.Block, ['inherited', 'DefaultHandler', 'DefWindowProc', 'CallWindowProc']) or

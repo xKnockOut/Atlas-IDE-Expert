@@ -529,7 +529,8 @@ begin
   // Laufende Aufgaben beenden (Job-Objekt) und auf ihre Threads warten.
   FreeAndNil(FJobs);
   FreeAndNil(FBatches);
-  FPreBuild.Abandon;
+  if FPreBuild <> nil then
+    FPreBuild.Abandon;
   ClearKeysAndStatus;
   FreeAndNil(FKeys);
   FreeAndNil(FNames);

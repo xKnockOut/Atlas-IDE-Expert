@@ -215,6 +215,11 @@ begin
     'unit U;'#10'interface'#10'implementation'#10 +
     'procedure TA.Start;'#10'begin'#10'  Self.FIndex := FModule.AddNotifier(TN.Create);'#10'end;'#10 +
     'procedure TA.Destroyed;'#10'begin'#10'  FModule.RemoveNotifier(FIndex);'#10'end;'#10'end.');
+  // Index + 1 gespeichert, damit 0 „nicht angemeldet“ heißt.
+  TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10 +
+    'procedure TA.Start;'#10'begin'#10'  FIndex := Services.AddNotifier(TN.Create) + 1;'#10'end;'#10 +
+    'procedure TA.Stop;'#10'begin'#10'  Services.RemoveNotifier(FIndex - 1);'#10'end;'#10'end.');
   // Feld eines anderen Objekts, abgemeldet über eine Kopie im Objekt selbst.
   TRuleAssert.Silent(TOtaNotifierNotRemovedRule.Create,
     'unit U;'#10'interface'#10'implementation'#10 +

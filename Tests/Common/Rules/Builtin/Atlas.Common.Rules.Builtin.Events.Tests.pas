@@ -187,6 +187,10 @@ begin
   TRuleAssert.Reports(TEventCallWithoutAssignedRule.Create,
     Zaehler('    FOk: Boolean;'#10, '  FOk := (FWert > 0) or Assigned(FOnChange);'#10'  if not FOk then'#10 +
     '    Exit;'#10'  FOnChange(Self);'#10));
+  // Merker als Glied einer or-Kette: "if not FOk or (FWert = 0) then Exit;".
+  TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create,
+    Zaehler('    FOk: Boolean;'#10, '  FOk := (FWert > 0) and Assigned(FOnChange);'#10 +
+    '  if not FOk or (FWert = 0) then'#10'    Exit;'#10'  FOnChange(Self);'#10));
   TRuleAssert.Silent(TEventCallWithoutAssignedRule.Create,
     Zaehler('    FOk: Boolean;'#10, '  FOk := (FWert > 0) and Assigned(FOnChange);'#10'  if FOk then'#10 +
     '    FOnChange(Self);'#10));

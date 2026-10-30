@@ -318,7 +318,8 @@ destructor TAtlasWelcomeBoardFrame.Destroy;
 begin
   // Zuerst: Nach dem Abbau der Bereiche darf keine Nachricht mehr hier ankommen.
   FreeAndNil(FEvents);
-  FEdgeTimer.Enabled := False;
+  if FEdgeTimer <> nil then
+    FEdgeTimer.Enabled := False;
   // Die Bereichs-Frames gehören dem Wörterbuch, nicht dem Frame.
   FreeAndNil(FViews);
   FSource := nil;

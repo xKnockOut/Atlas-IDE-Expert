@@ -1317,13 +1317,40 @@ begin
       Exit(True);
 end;
 
+/// <summary>Enthält E APath is TKlasse? Das ist für nil False und schützt wie Assigned (#1371).</summary>
+function ContainsIsCheck(ARoot: TSyntaxNode; const APath: string): Boolean;
+var
+  Index: Integer;
+  E: TSyntaxNode;
+  Pending: TStack<TSyntaxNode>;
+begin
+  Result := False;
+  Pending := TStack<TSyntaxNode>.Create;
+  try
+    Pending.Push(ARoot);
+    while Pending.Count > 0 do
+    begin
+      E := Pending.Pop;
+      if E.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl] then
+        Continue;
+      if (E.Kind = TSyntaxKind.BinaryExpr) and SameText(E.Name, 'is') and (E.ChildCount = 2) and
+        SameText(FreedPath(E[0]), APath) then
+        Exit(True);
+      for Index := E.ChildCount - 1 downto 0 do
+        Pending.Push(E[Index]);
+    end;
+  finally
+    Pending.Free;
+  end;
+end;
+
 function NodeHasNilCheck(ANode: TFlowNode; const APath: string): Boolean;
 var
   Part: TSyntaxNode;
 begin
   Result := False;
   for Part in OwnParts(ANode.Syntax) do
-    if ContainsNilCheck(Part, APath) then
+    if ContainsNilCheck(Part, APath) or ContainsIsCheck(Part, APath) then
       Exit(True);
 end;
 

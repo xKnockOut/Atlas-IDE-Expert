@@ -1038,7 +1038,8 @@ end;
 destructor TAtlasIssueFrame.Destroy;
 begin
   // Entwurf sichern, solange das Memo sein Fenster hat.
-  FComment.Unbind;
+  if FComment <> nil then
+    FComment.Unbind;
   if Assigned(FOnHidden) then
     FOnHidden();
   FOnHidden := nil;

@@ -225,9 +225,8 @@ begin
       Result := Result + [mFile];
   except
     // Ordner nicht lesbar: Verweise bleiben Text.
+    // EInOutError schließt EDirectoryNotFoundException ein.
     on EInOutError do
-      Result := nil;
-    on EDirectoryNotFoundException do
       Result := nil;
   end;
 end;

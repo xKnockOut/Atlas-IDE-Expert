@@ -620,6 +620,9 @@ begin
     Haupt('WM_SIZE', '  Msg.Result := DefWindowProc(Handle, Msg.Msg, 0, 0);'#10));
   // Vorgabe von swallow: WM_ERASEBKGND.
   TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, Haupt('WM_ERASEBKGND', '  Zeichnen;'#10));
+  // Eigene Nachricht der Unit: keine Standardbehandlung.
+  TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, StringReplace(Haupt('WM_EIGEN', '  Zeichnen;'#10),
+    'type'#10, 'const'#10'  WM_EIGEN = WM_APP + 7;'#10'type'#10, []));
   // Der Handler beantwortet die Nachricht selbst.
   TRuleAssert.Silent(TMessageHandlerWithoutInheritedRule.Create, Haupt('WM_MOUSEACTIVATE',
     '  Msg.Result := MA_NOACTIVATE;'#10));

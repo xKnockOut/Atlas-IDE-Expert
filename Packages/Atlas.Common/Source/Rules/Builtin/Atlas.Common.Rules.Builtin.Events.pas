@@ -433,7 +433,7 @@ var
   var
     Node, Parent, Branch: TSyntaxNode;
     Index: Integer;
-    Condition, Prefix: string;
+    Condition, Prefix, Term: string;
   begin
     Prefix := '';
     Node := NodeAt(ARoutine, AOffset);
@@ -500,6 +500,16 @@ var
           Exit(True);
         if StartsStr('not', Condition) and FlagFor(ARoutine, Node.StartOffset, Copy(Condition, 4, MaxInt), AName) then
           Exit(True);
+        // "if not CanAssign or (Name = '') then Exit;": jedes Glied der or-Kette verlässt die Routine (#1371).
+        for Term in TRegEx.Split(NodeText(Node[0]), '\bor\b', [roIgnoreCase]) do
+        begin
+          Condition := Normalized(Term);
+          while StartsStr('(', Condition) and EndsStr(')', Condition) do
+            Condition := Copy(Condition, 2, Length(Condition) - 2);
+          if StartsStr('not', Condition) and FlagFor(ARoutine, Node.StartOffset, Copy(Condition, 4, MaxInt),
+            AName) then
+            Exit(True);
+        end;
       end;
   end;
 
