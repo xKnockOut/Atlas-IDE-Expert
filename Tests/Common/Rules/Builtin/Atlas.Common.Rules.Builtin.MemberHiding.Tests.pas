@@ -101,7 +101,7 @@ begin
     '  TBasis(Self).FName := ''C'';'#10'end;'#10);
   Found := Findings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('FName verdeckt TBasis.FName (wie W1009).', Found[0].Message);
+  Assert.AreEqual('FName verdeckt TBasis.FName.', Found[0].Message);
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Found[0].Confidence));
   Assert.AreEqual(7, Found[0].Range.StartPos.Line);
   Assert.AreEqual(4, Found[0].Range.StartPos.Character);
@@ -118,7 +118,8 @@ procedure TMemberHidingRulesTests.PropertyHidesField;
 begin
   Assert.AreEqual('Wert verdeckt TBasis.Wert (wie W1009).', OnlyMessage(Kunden('    Wert: Integer;'#10,
     '  private'#10'    FText: string;'#10'  public'#10'    property Wert: string read FText;'#10, '')));
-  Assert.AreEqual('FAnzahl verdeckt TBasis.FAnzahl (wie W1009).', OnlyMessage(Kunden('  private'#10 +
+  // Feld über Property: gemeldet, aber ohne Code; Delphi 13 meldet W1009 nur für Property über Feld (#1383).
+  Assert.AreEqual('FAnzahl verdeckt TBasis.FAnzahl.', OnlyMessage(Kunden('  private'#10 +
     '    FZahl: Integer;'#10'  public'#10'    property FAnzahl: Integer read FZahl;'#10, '    FAnzahl: Integer;'#10,
     '')));
 end;
@@ -130,7 +131,7 @@ begin
   Found := Findings(Kunden('    procedure Speichern(const APfad: string);'#10,
     '    procedure Speichern(const APfad: string);'#10, ''));
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Speichern verdeckt TBasis.Speichern (wie W1009).', Found[0].Message);
+  Assert.AreEqual('Speichern verdeckt TBasis.Speichern.', Found[0].Message);
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Found[0].Confidence));
   Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
 end;
@@ -167,9 +168,9 @@ begin
   Found := TRuleAssert.IndexFindings(TMemberHidesAncestorRule.Create, Source, Index, '', '');
   // private einer anderen Unit sieht TKunde nicht; strict private nur mit ignoreStrictPrivate = false.
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('FWert verdeckt TFern.FWert (wie W1009).', Found[0].Message);
+  Assert.AreEqual('FWert verdeckt TFern.FWert.', Found[0].Message);
   // private derselben Unit ist sichtbar.
-  Assert.AreEqual('FGeheim verdeckt TBasis.FGeheim (wie W1009).', OnlyMessage(Kunden('  private'#10 +
+  Assert.AreEqual('FGeheim verdeckt TBasis.FGeheim.', OnlyMessage(Kunden('  private'#10 +
     '    FGeheim: Integer;'#10, '    FGeheim: Integer;'#10, '')));
   Silent(Kunden('  strict private'#10'    FStreng: Integer;'#10, '    FStreng: Integer;'#10, ''));
 end;
