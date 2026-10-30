@@ -810,6 +810,7 @@ var
   mFailOnMatch, mFound: Boolean;
   mGroup: TShellWorkspaceGroup;
   mResult: TQueryResult;
+  mTimings: TCheckTimings;
 begin
   for mWarning in AOptions.Warnings do
     WriteError(mWarning);
@@ -858,7 +859,9 @@ begin
         Exit(TFindingsOutput.ExitFailure);
       end;
     end;
-    mGroup := LoadIndex(AOptions, mConfigRoot);
+    // Die Abfrage misst nicht (--timings gilt nur für die Prüfung).
+    mTimings := Default(TCheckTimings);
+    mGroup := LoadIndex(AOptions, mConfigRoot, mTimings);
     try
       if Length(mGroup.AllFiles) > 0 then
         mResult := mGroup.Queries.Execute(TQueryRequest.Create(mText, 0))
