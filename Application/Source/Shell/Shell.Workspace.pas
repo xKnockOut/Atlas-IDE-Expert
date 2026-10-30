@@ -540,6 +540,8 @@ type
   private
     FLock: TObject;
     FKey: string;
+    // Zuletzt nach der Projektliste gefragt (TThread.GetTickCount64); 0 = nie.
+    FCheckedAt: UInt64;
     FOutputs: TArray<TUnitLookupGroupOutput>;
     FFiles: TFunc<TArray<string>>;
     FOwnFile: string;
@@ -584,10 +586,20 @@ begin
 end;
 
 function TGroupOutputCache.Current: TArray<TUnitLookupGroupOutput>;
+const
+  // Die Liste fragt die Komposition unter ihrer Sperre ab: nicht bei jeder fehlenden Unit.
+  cRecheckMs = 2000;
 var
   mFiles: TArray<string>;
   mKey: string;
 begin
+  System.TMonitor.Enter(FLock);
+  try
+    if (FCheckedAt <> 0) and (TThread.GetTickCount64 - FCheckedAt < cRecheckMs) then
+      Exit(FOutputs);
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
   mFiles := FFiles();
   mKey := AnsiUpperCase(string.Join(';', mFiles));
   System.TMonitor.Enter(FLock);
@@ -597,6 +609,7 @@ begin
       FOutputs := GroupOutputsFor(FOwnFile, mFiles, FOptions, FLogger);
       FKey := mKey;
     end;
+    FCheckedAt := TThread.GetTickCount64;
     Result := FOutputs;
   finally
     System.TMonitor.Exit(FLock);

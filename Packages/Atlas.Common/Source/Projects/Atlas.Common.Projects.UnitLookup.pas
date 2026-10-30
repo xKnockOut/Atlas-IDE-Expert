@@ -105,6 +105,9 @@ type
     FFolderAnswers: TDictionary<string, Boolean>;
     // Units (klein), die ein Projekt der Gruppe in einen der Projektordner übersetzt; nach dem Konstruktor nur gelesen.
     FGroupUnits: TDictionary<string, Boolean>;
+    // Wie FGroupUnits für GroupOutputsOf: neu gebaut, wenn der Rückruf eine andere Liste liefert. Unter FLock.
+    FLateOutputs: TArray<TUnitLookupGroupOutput>;
+    FLateUnits: TDictionary<string, Boolean>;
     function InProjectFolders(const AUnitName: string; const ANames: TArray<string>): Boolean;
     function Listing(const AFolder: string): TDictionary<string, string>;
     function InFolder(const AFolder, AName: string): Boolean;
@@ -201,6 +204,7 @@ begin
   FProjectUnits := TDictionary<string, Boolean>.Create;
   FFolderAnswers := TDictionary<string, Boolean>.Create;
   FGroupUnits := TDictionary<string, Boolean>.Create;
+  FLateUnits := TDictionary<string, Boolean>.Create;
   for mUnit in ASetup.Project.Units do
     FProjectUnits.AddOrSetValue(LowerCase(mUnit.Name), True);
   Folders := TList<string>.Create;
@@ -242,6 +246,7 @@ end;
 
 destructor TUnitLookup.Destroy;
 begin
+  FLateUnits.Free;
   FGroupUnits.Free;
   FFolderAnswers.Free;
   FProjectUnits.Free;
@@ -396,26 +401,38 @@ end;
 function TUnitLookup.BuiltByGroup(const ANames: TArray<string>): Boolean;
 var
   mName, mUnit, mFolder: string;
+  mOutputs: TArray<TUnitLookupGroupOutput>;
   mOutput: TUnitLookupGroupOutput;
-  mInPath: Boolean;
 begin
   Result := True;
   for mName in ANames do
     if FGroupUnits.ContainsKey(LowerCase(mName)) then
       Exit;
-  if Assigned(FSetup.GroupOutputsOf) then
-    for mOutput in FSetup.GroupOutputsOf() do
+  if not Assigned(FSetup.GroupOutputsOf) then
+    Exit(False);
+  mOutputs := FSetup.GroupOutputsOf();
+  TMonitor.Enter(FLock);
+  try
+    // Dieselbe Liste (der Rückruf merkt sie sich): das Wörterbuch gilt weiter.
+    if Pointer(mOutputs) <> Pointer(FLateOutputs) then
     begin
-      mInPath := False;
-      for mFolder in FProjectFolders do
-        if (mOutput.DcuFolder <> '') and SameFolder(mFolder, mOutput.DcuFolder) then
-          mInPath := True;
-      if mInPath then
-        for mUnit in mOutput.Units do
-          for mName in ANames do
-            if SameText(mUnit, mName) then
-              Exit;
+      FLateOutputs := mOutputs;
+      FLateUnits.Clear;
+      for mOutput in mOutputs do
+        for mFolder in FProjectFolders do
+          if (mOutput.DcuFolder <> '') and SameFolder(mFolder, mOutput.DcuFolder) then
+          begin
+            for mUnit in mOutput.Units do
+              FLateUnits.AddOrSetValue(LowerCase(mUnit), True);
+            Break;
+          end;
     end;
+    for mName in ANames do
+      if FLateUnits.ContainsKey(LowerCase(mName)) then
+        Exit;
+  finally
+    TMonitor.Exit(FLock);
+  end;
   Result := False;
 end;
 
