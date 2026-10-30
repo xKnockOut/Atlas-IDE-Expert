@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## owned-field-free-unclear: besitzende Listen und TArray<T> (30.10.2026, Branch `claude/project-thread-cgk6mb`)
+- Anlass: Marco meldete `owned-field-free-unclear` an `FWatcher` in `Atlas.IDE.Build.CheckOnSave`, `OpenBuild` und `Runner` und an `FTaskNames` in `Atlas.UI.Welcome.QuickActions.Tests`. Kein Leck: `TAtlasCompileEvents.Add` legt den Teilnehmer in `FParticipants: TObjectList<TAtlasCompileParticipant>` (`Create(True)`), `FTaskNames` ist ein `TArray<string>`.
+- **Ursache TArray:** `TClassAnalyzer.TypeGuess` fand im Index die (nicht generische) Klasse `TArray` aus `System.Generics.Collections` und hielt `TArray<string>` für eine Klasse, `TArray<string>.Create(…)` für eine Erzeugung. Jetzt passen Typen mit Typargumenten nur zu Indexsymbolen mit `TypeParams`, und `TArray<…>` ist immer ein dynamisches Array (`tgOther`).
+- **Ursache FWatcher:** Jede Übergabe an `Add…`/`Insert…` usw. galt als unklar. Jetzt übernimmt der Empfänger den Besitz (Grund `OwnedReason`, beide Regeln still), wenn er ein Feld vom Typ `TObjectList`/`TObjectStack`/`TObjectQueue`/`TComponentList` ist (nicht mit `False` erzeugt, `FNotOwning`) oder ein Feld, dessen Klasse laut Datei oder Index ein solches Feld für den Elementtyp hat (`ClassFieldTypes`, Elementtyp über `ComponentChain` des übergebenen Objekts). OwnsObjects einer fremden Liste sieht Atlas nicht, es gilt der Standard True. Parameter als Empfänger (`AEvents.Add(…)`) bleiben unklar.
+- Katalog en/de, `Catalog.Data.pas` (Python-Nachbau `werkzeuge/update-rulecatalog.py`, nur die Beschreibung) und `Regeln.md` von Hand; auf Windows `pwsh Tools/Update-RuleCatalog.ps1 -Check` laufen lassen. Tests: `HandOverToOwningListIsSilent`, `DynamicArrayIsNoObject`, `IndexedOwnerAndDynamicArrayAreSilent`; FPC-Harness 42/42 grün. Handtests FF14–FF16. Delphi-Build offen.
+
 ## unused-declaration-Befunde im eigenen Code (30.10.2026, Branch `claude/project-thread-3dbpsd`, PR #1424)
 - Sieben Befunde geprüft (andere Units, Include-Dateien, `{$IFDEF}`-Zweige, Konstantenausdrücke, RTTI, Tests): alle echt, kein False-Positive, Regel unverändert. Laut Historie nie benutzt.
 - Entfernt: `ChildOn` (MethodWithoutSelf), `BuiltinNames` (TypeAlias), lokales `IsKeyword` (Core.Editor.Pairs), `EventLine` (Core.Forms.Changes), `PositionBelow` (EditorToolbar.Service, unten ist der Fallback in `Place`), `SearchTimeoutMs` (Results.Commands), `Minute` (TimeLog-Test). Delphi-Build offen.
