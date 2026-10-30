@@ -1598,7 +1598,7 @@ begin
   try
     RegisterTools(Server, nil, nil, nil, '', nil, nil, nil, nil);
     RegisterDeadCodeTools(Server, nil, nil, '', nil);
-    RegisterAffectedTestsTool(Server, nil, '', nil,
+    RegisterAffectedTestsTool(Server, nil, '', nil);
     RegisterQueryTools(Server, nil);
     RegisterHotspotTools(Server, nil, nil, '');
     RegisterStatusTools(Server, nil, '');
@@ -1897,7 +1897,7 @@ begin
           Result := TArchitectureReport.Text(Overview, ASection, TArchitectureReport.TextLimit);
       end, FindPathOf(Index, PathGraphs, PathLocator, Workspace, EnsureAny, Root));
     RegisterDeadCodeTools(Server, Group, Index, Root, Guard);
-    RegisterAffectedTestsTool(Server, Group, Root, Code.ImpactOptionsFor,
+    RegisterAffectedTestsTool(Server, Group, Root, Code.ImpactOptionsFor);
     RegisterQueryTools(Server, Group);
     RegisterHotspotTools(Server, Group, Hotspots, Root);
     RegisterStatusTools(Server, Index, Root);

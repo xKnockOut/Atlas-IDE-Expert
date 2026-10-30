@@ -32,6 +32,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Configuration.Contract,

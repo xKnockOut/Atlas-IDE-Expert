@@ -1264,10 +1264,10 @@ type
     DesignerSearchGroupClass, DesignerSearchGroupFlat, DesignerSearchSelect, DesignerSearchEvent, DesignerSearchCopy,
     DesignerSearchCount, DesignerSearchKeys, DesignerSearchKeysPopup, DesignerSearchPosition,
     DesignerSearchProperties, DesignerSearchEvents, DesignerSearchNoEvents, DesignerSearchNonVisual,
-    DesignerSearchNoForm);
+    DesignerSearchNoForm,
     // Absturzfälle des Servers (#1355).
     CrashRestartedTitle, CrashCaseTitle, CrashCaseText, CrashOpenCase, CrashCreateIssue, CrashHide,
-    CrashSkipTitle, CrashSkipText, CrashSkipEnded, CrashRetry, CrashSkipProblem, AttachCrashCase);
+    CrashSkipTitle, CrashSkipText, CrashSkipEnded, CrashRetry, CrashSkipProblem, AttachCrashCase,
     // Betroffene Tests (#1353).
     TestsAffectedCommand, TestsAffectedRunning, TestsAffectedFound, TestsAffectedNone, TestsAffectedAll,
     TestsAffectedFailed, TestsAffectedOff, TestsAffectedNoProject, TestsAffectedHookForeign,

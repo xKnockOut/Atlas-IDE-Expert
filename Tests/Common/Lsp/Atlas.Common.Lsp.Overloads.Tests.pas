@@ -37,6 +37,7 @@ implementation
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   System.JSON,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
@@ -51,7 +52,7 @@ uses
 
 const
   LogFile = 'C:\P\Log.pas';
-  Log =
+  LogSource =
     'unit Log;'#10 +                                                         // 0
     'interface'#10 +                                                         // 1
     'type'#10 +                                                              // 2
@@ -78,7 +79,7 @@ const
 procedure TLspOverloadsTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
-  FIndex.AddUnit(TIndexExtractor.ExtractText(Log, LogFile, nil));
+  FIndex.AddUnit(TIndexExtractor.ExtractText(LogSource, LogFile, nil));
 end;
 
 procedure TLspOverloadsTests.TearDown;
@@ -90,9 +91,9 @@ function ActionsAt(ALine, ACharacter: Integer): TArray<TJSONObject>;
 var
   Tree: TSyntaxTree;
 begin
-  Tree := TPascalParser.Parse(Log);
+  Tree := TPascalParser.Parse(LogSource);
   try
-    Result := TLspOverloads.Actions(Tree, Log, TDocumentUris.FromPath(LogFile), TTextPosition.Create(ALine, ACharacter));
+    Result := TLspOverloads.Actions(Tree, LogSource, TDocumentUris.FromPath(LogFile), TTextPosition.Create(ALine, ACharacter));
   finally
     Tree.Free;
   end;
@@ -154,9 +155,9 @@ var
   Answer: TJSONObject;
   Placeholders: TJSONArray;
 begin
-  Tree := TPascalParser.Parse(Log);
+  Tree := TPascalParser.Parse(LogSource);
   try
-    Answer := TLspOverloads.Execute(Tree, LogFile, Log, TTextPosition.Create(12, 18), 'copy', nil);
+    Answer := TLspOverloads.Execute(Tree, LogFile, LogSource, TTextPosition.Create(12, 18), 'copy', nil);
     try
       Assert.IsTrue(Pos('procedure Write(const AText: string; ALevel: TLogLevel); overload;', Answer.ToJSON) > 0,
         Answer.ToJSON);
@@ -183,13 +184,13 @@ var
   Resolver: TNameResolver;
   Answer: TJSONObject;
 begin
-  Tree := TPascalParser.Parse(Log);
+  Tree := TPascalParser.Parse(LogSource);
   Resolver := TNameResolver.Create(AIndex);
   try
     Resolver.PinTree(Tree, LogFile);
     try
-      Answer := TLspOverloads.Execute(Tree, LogFile, Log, TTextPosition.Create(ALine, ACharacter), 'forward',
-        TLspOverloads.DefaultFunc(Resolver, AIndex, Tree, LogFile, Log));
+      Answer := TLspOverloads.Execute(Tree, LogFile, LogSource, TTextPosition.Create(ALine, ACharacter), 'forward',
+        TLspOverloads.DefaultFunc(Resolver, AIndex, Tree, LogFile, LogSource));
       try
         Result := Answer.ToJSON;
       finally
@@ -221,9 +222,9 @@ begin
     var
       Tree: TSyntaxTree;
     begin
-      Tree := TPascalParser.Parse(Log);
+      Tree := TPascalParser.Parse(LogSource);
       try
-        TLspOverloads.Execute(Tree, LogFile, Log, TTextPosition.Create(18, 18), 'copy', nil).Free;
+        TLspOverloads.Execute(Tree, LogFile, LogSource, TTextPosition.Create(18, 18), 'copy', nil).Free;
       finally
         Tree.Free;
       end;
@@ -233,9 +234,9 @@ begin
     var
       Tree: TSyntaxTree;
     begin
-      Tree := TPascalParser.Parse(Log);
+      Tree := TPascalParser.Parse(LogSource);
       try
-        TLspOverloads.Execute(Tree, LogFile, Log, TTextPosition.Create(12, 18), 'merge', nil).Free;
+        TLspOverloads.Execute(Tree, LogFile, LogSource, TTextPosition.Create(12, 18), 'merge', nil).Free;
       finally
         Tree.Free;
       end;
@@ -245,9 +246,9 @@ begin
     var
       Tree: TSyntaxTree;
     begin
-      Tree := TPascalParser.Parse(Log);
+      Tree := TPascalParser.Parse(LogSource);
       try
-        TLspOverloads.Execute(Tree, LogFile, Log, TTextPosition.Create(13, 2), 'copy', nil).Free;
+        TLspOverloads.Execute(Tree, LogFile, LogSource, TTextPosition.Create(13, 2), 'copy', nil).Free;
       finally
         Tree.Free;
       end;
