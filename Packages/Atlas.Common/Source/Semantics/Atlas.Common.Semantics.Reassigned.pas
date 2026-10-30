@@ -360,6 +360,8 @@ begin
           Loops.Add(ANode);
         TSyntaxKind.TypeDecl:
           Types.Add(ANode);
+      else
+        // Übrige Arten: nichts zu tun.
       end;
     end);
 end;
@@ -391,6 +393,7 @@ begin
       Inc(FSymbols[AIndex].LoopWrites);
     TReassignedWrite.MaybeWrite:
       Inc(FSymbols[AIndex].MaybeWrites);
+    TReassignedWrite.None: ;
   end;
   if (FSymbols[AIndex].Kind <> TReassignedKind.Field) or
     not (AWrite in [TReassignedWrite.Write, TReassignedWrite.LoopWrite]) or (AMethod = nil) then

@@ -1638,6 +1638,7 @@ begin
       end;
     TAtlasIssueFix.Retry:
       Refresh;
+    TAtlasIssueFix.None: ;
   end;
 end;
 

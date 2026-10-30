@@ -340,6 +340,8 @@ begin
             Exit(False);
         Exit(True);
       end;
+  else
+    // Übrige Arten: nichts zu tun.
   end;
   Result := False;
 end;

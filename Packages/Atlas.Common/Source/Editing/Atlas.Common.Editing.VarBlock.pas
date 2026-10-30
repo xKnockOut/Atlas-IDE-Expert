@@ -703,6 +703,7 @@ begin
         if Compared <> 0 then
           Exit(Compared < 0);
       end;
+    TVarBlockSort.None: ;
   end;
   Result := AItem.Order < ACandidate.Order;
 end;

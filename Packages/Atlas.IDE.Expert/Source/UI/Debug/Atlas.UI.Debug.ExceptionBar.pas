@@ -185,6 +185,9 @@ begin
       Result := FExplanation.EvaluateExpression <> '';
     TAtlasDebugBarAction.CopyExplanation:
       Result := FExplanation.CopyText <> '';
+    TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
+    TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
+    TAtlasDebugBarAction.Open: ;
   end;
 end;
 

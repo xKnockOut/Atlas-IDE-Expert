@@ -238,6 +238,8 @@ begin
     TSyntaxKind.IfExpr:
       if (Parent.ChildCount = 3) and (Parent[2] <> ANode) then
         Result := PrecedenceIfExpr + 1;
+  else
+    // Übrige Arten: nichts zu tun.
   end;
 end;
 
@@ -287,6 +289,8 @@ begin
           Result := TExpressionPart.Create('True', PrecedenceOperand);
         Exit;
       end;
+  else
+    // Übrige Arten: nichts zu tun.
   end;
   // Alles andere (Name, Aufruf, in, is, xor, bedingter Ausdruck): not vor den Operanden.
   Result := TExpressionPart.Create('not ' + Part(AText, Node).AtLeast(PrecedenceUnary), PrecedenceUnary);
@@ -354,6 +358,8 @@ begin
         end;
         TSyntaxKind.AnonymousMethod, TSyntaxKind.InheritedExpr, TSyntaxKind.Error:
           Result := TSyntaxSearchStep.Found;
+      else
+        // Übrige Arten: nichts zu tun.
       end;
     end) = nil;
 end;

@@ -676,6 +676,9 @@ begin
     TAtlasDebugBarAction.CopyExplanation:
       if FExplanation.CopyText <> '' then
         Clipboard.AsText := FExplanation.CopyText;
+    TAtlasDebugBarAction.None, TAtlasDebugBarAction.BreakHere, TAtlasDebugBarAction.Continue,
+    TAtlasDebugBarAction.IgnoreClass, TAtlasDebugBarAction.IgnoreLocation, TAtlasDebugBarAction.Copy,
+    TAtlasDebugBarAction.Open: ;
   end;
 end;
 

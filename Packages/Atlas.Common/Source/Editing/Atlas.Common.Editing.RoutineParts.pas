@@ -373,6 +373,8 @@ begin
         TSyntaxKind.VarSection, TSyntaxKind.ConstSection, TSyntaxKind.TypeSection:
           for Name in TRoutineParts.ChildNames(Child) do
             Result := Result + [Name];
+      else
+        // Übrige Arten: nichts zu tun.
       end;
     end;
   end;

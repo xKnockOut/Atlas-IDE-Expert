@@ -121,6 +121,8 @@ begin
             Parts := Parts + ' (' + ANode.Name + ')';
         TSyntaxKind.InitializationSection:
           Parts := Parts + ' init';
+      else
+        // Übrige Arten: nichts zu tun.
       end;
     end);
   Result := Trim(Parts);

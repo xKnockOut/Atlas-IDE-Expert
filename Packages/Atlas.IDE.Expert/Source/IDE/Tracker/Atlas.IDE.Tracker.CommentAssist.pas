@@ -518,6 +518,7 @@ begin
         ADone(Copy(FService.RecentOf(FTarget), 0, TAtlasCommentEditing.MaxSuggestions));
         Exit;
       end;
+    TAtlasIssueSearchKind.Key, TAtlasIssueSearchKind.Text: ;
   end;
   mProvider := FService.ProviderOf(FTarget);
   mTransport := FService.TransportOf(mProvider, FTarget);

@@ -4310,6 +4310,7 @@ begin
         mProvider := 'git';
       TAtlasVcsKind.Svn:
         mProvider := 'svn';
+      TAtlasVcsKind.None: ;
     end;
   VcsProjectAdd(mMatch, mProvider);
 end;

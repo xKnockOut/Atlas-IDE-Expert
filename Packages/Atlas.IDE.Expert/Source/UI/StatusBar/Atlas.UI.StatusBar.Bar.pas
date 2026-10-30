@@ -842,6 +842,7 @@ begin
     TAtlasStatusBarPart.Gear:
       BuildMenu.Popup(ClientToScreen(Point(FGearRect.Left, FGearRect.Top)).X,
         ClientToScreen(Point(FGearRect.Left, FGearRect.Top)).Y);
+    TAtlasStatusBarPart.None: ;
   end;
 end;
 

@@ -500,6 +500,7 @@ begin
     TAtlasDebugBarAction.WhereAssigned, TAtlasDebugBarAction.Evaluate, TAtlasDebugBarAction.CopyExplanation:
       if Assigned(FExplanationHandler) then
         FExplanationHandler(AAction);
+    TAtlasDebugBarAction.None: ;
   end;
 end;
 

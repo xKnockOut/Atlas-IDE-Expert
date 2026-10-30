@@ -180,6 +180,7 @@ begin
           for Index := 0 to Group.ProjectCount - 1 do
             AddProject(Group.Projects[Index], Result);
       end;
+    TAtlasSearchScope.UnitFile, TAtlasSearchScope.Method, TAtlasSearchScope.Selection: ;
   end;
 end;
 
