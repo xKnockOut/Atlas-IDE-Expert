@@ -145,7 +145,7 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Output;
 
 function Utf8Length(const AText: string): Integer;
@@ -280,7 +280,7 @@ var
   mSection: TSyntaxNode;
 begin
   Result := '';
-  mTree := TPascalParser.Parse(AText);
+  mTree := TSyntaxTreeCache.Parse(AText);
   try
     if (mTree = nil) or (mTree.Root = nil) then
       Exit;
@@ -345,7 +345,7 @@ begin
     mSection := nil;
     if AUnitText <> '' then
     begin
-      mTree := TPascalParser.Parse(AUnitText);
+      mTree := TSyntaxTreeCache.Parse(AUnitText);
       if (mTree <> nil) and (mTree.Root <> nil) then
         mSection := mTree.Root.FindChild(TSyntaxKind.ImplementationSection);
     end;

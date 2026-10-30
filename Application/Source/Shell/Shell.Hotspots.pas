@@ -104,7 +104,6 @@ var
 begin
   AVcs := nil;
   AError := '';
-  mKind := THotspotVcsKind.None;
   mExecutable := '';
   mProvider := AtlasVcsProviderOf(ASettings.VcsProvider);
   if mProvider = TAtlasVcsProvider.Off then

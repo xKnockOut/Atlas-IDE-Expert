@@ -236,13 +236,17 @@ begin
         Continue;
       Child := Pair.JsonValue;
       Children := TJSONObject(Child).GetValue('properties');
-      // Objekt mit einfachen Gliedern: Felder je Glied.
+      // Objekt mit mindestens einem einfachen Glied: Felder je Glied, komplexe Glieder als eigenes JSON-Feld
+      // (mcp.customPrompts darf mcp.globalSettings nicht verdecken).
       if (TypeOf(TJSONObject(Child)) = 'object') and (Children is TJSONObject) then
       begin
-        Simple := TJSONObject(Children).Count > 0;
+        Simple := False;
         for Sub in TJSONObject(Children) do
-          if not (Sub.JsonValue is TJSONObject) or
-            (KindOf(TJSONObject(Sub.JsonValue), Choices) = TAtlasSettingKind.Complex) then
+          if (Sub.JsonValue is TJSONObject) and
+            (KindOf(TJSONObject(Sub.JsonValue), Choices) <> TAtlasSettingKind.Complex) then
+            Simple := True;
+        for Sub in TJSONObject(Children) do
+          if not (Sub.JsonValue is TJSONObject) then
             Simple := False;
         if Simple then
         begin

@@ -75,6 +75,8 @@ type
     procedure RebuildClick(Sender: TObject);
     procedure PackageClick(Sender: TObject);
     procedure UpdateTexts;
+  protected
+    procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
     /// <summary>Stand zeigen. ARunning False: Server läuft nicht (Snapshot leer); ARestarts aus der IDE-Schicht.
@@ -210,6 +212,12 @@ begin
   UpdateTexts;
 end;
 
+procedure TAtlasServerFrame.CreateWnd;
+begin
+  inherited;
+  UpdateTexts;
+end;
+
 function TAtlasServerFrame.Scale(AValue: Integer): Integer;
 begin
   Result := MulDiv(AValue, CurrentPPI, 96);
@@ -324,9 +332,13 @@ begin
   end;
   FOverBudget.Visible := FRunning and FSnapshot.OverBudget;
   FOverBudget.Font.Color := ToColor(FColors.Warn);
-  FUnits.Items.Count := Length(FSnapshot.SlowUnits);
-  FRules.Items.Count := Length(FSnapshot.SlowRules);
-  FRequests.Items.Count := Length(FSnapshot.Requests);
+  // Die Anzahl der virtuellen Listen braucht ein Fenster; ohne Eltern setzt CreateWnd sie nach.
+  if HandleAllocated or (Parent <> nil) then
+  begin
+    FUnits.Items.Count := Length(FSnapshot.SlowUnits);
+    FRules.Items.Count := Length(FSnapshot.SlowRules);
+    FRequests.Items.Count := Length(FSnapshot.Requests);
+  end;
   FUnits.Invalidate;
   FRules.Invalidate;
   FRequests.Invalidate;

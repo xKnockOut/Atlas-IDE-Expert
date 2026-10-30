@@ -182,7 +182,7 @@ type
     property Tokens: TArray<TPascalToken> read FTokens;
     property Diagnostics: TArray<TSyntaxDiagnostic> read FDiagnostics;
     /// <summary>Zielplattform, für die der Baum gelesen wurde ("Win32", "Win64" …, #1380); setzt
-    /// TPascalParser.ParseActive aus den Symbolen. '' = unbekannt (Parse ohne Symbole, Baum aller Zweige):
+    /// ParseActive des Parsers aus den Symbolen. '' = unbekannt (Parse ohne Symbole, Baum aller Zweige):
     /// Regeln, die nur auf einer Plattform gelten, schweigen dann.</summary>
     property Platform: string read FPlatform write FPlatform;
   end;

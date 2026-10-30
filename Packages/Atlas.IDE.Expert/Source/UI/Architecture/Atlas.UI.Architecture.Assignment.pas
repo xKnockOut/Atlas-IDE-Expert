@@ -53,6 +53,8 @@ implementation
 
 uses
   System.Math,
+  System.UITypes,
+  Winapi.Windows,
   Atlas.UI.Strings;
 
 class function TAtlasArchitectureAssignment.Available(const AModel: TAtlasArchitectureModel;

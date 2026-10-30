@@ -107,12 +107,12 @@ begin
     mFrame.SetSnapshot(mSnapshot, True, 0);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ServerWindowOldServer), mFrame.Header.Caption);
     mFrame.SetSnapshot(Sample, True, 2);
-    Assert.IsTrue(mFrame.Header.Caption.Contains('4711'), mFrame.Header.Caption);
-    Assert.IsTrue(mFrame.Header.Caption.Contains('1 h 05 min'), mFrame.Header.Caption);
-    Assert.IsTrue(mFrame.Header.Caption.Contains('bereit'), mFrame.Header.Caption);
-    Assert.IsTrue(mFrame.Header.Caption.EndsWith(': 2'), mFrame.Header.Caption);
-    Assert.IsTrue(mFrame.QueueLine.Caption.Contains('90 %'), mFrame.QueueLine.Caption);
-    Assert.IsTrue(mFrame.CheckRunLine.Caption.Contains('3 Units'), mFrame.CheckRunLine.Caption);
+    Assert.IsTrue(string(mFrame.Header.Caption).Contains('4711'), mFrame.Header.Caption);
+    Assert.IsTrue(string(mFrame.Header.Caption).Contains('1 h 05 min'), mFrame.Header.Caption);
+    Assert.IsTrue(string(mFrame.Header.Caption).Contains('bereit'), mFrame.Header.Caption);
+    Assert.IsTrue(string(mFrame.Header.Caption).EndsWith(': 2'), mFrame.Header.Caption);
+    Assert.IsTrue(string(mFrame.QueueLine.Caption).Contains('90 %'), mFrame.QueueLine.Caption);
+    Assert.IsTrue(string(mFrame.CheckRunLine.Caption).Contains('3 Units'), mFrame.CheckRunLine.Caption);
     Assert.IsTrue(mFrame.RebuildButton.Enabled);
   finally
     mHost.Free;
