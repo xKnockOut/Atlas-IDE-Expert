@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3099] of string = (
+  Lines: array[0..3104] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2389,6 +2389,12 @@ const
     '          "x-page": "Prüfregeln",',
     '          "x-control": "Kontrollkästchen",',
     '          "x-issue": "#896"',
+    '        },',
+    '        "librarySources": {',
+    '          "type": "boolean",',
+    '          "default": false,',
+    '          "description": "Auch Units der Delphi-Installation ($(BDS), also RTL und VCL) und der Bibliothekspfade prüfen, die zu keinem Projekt der Gruppe gehören, etwa nach Strg+Klick in System.Classe' +
+      's.pas. false: In solchen Dateien zeigt der Editor keine Befunde der Prüfregeln; Dateien im Projektordner, DCCReference-Units und Units der Projekt-Suchpfade werden immer geprüft."',
     '        }',
     '      },',
     '      "x-scope": "global",',
