@@ -10,6 +10,9 @@ type
   [TestFixture]
   TFileEncodingTests = class
   public
+    /// <summary>#1358: EncodeKeepingLineBreaks lässt gemischte Umbrüche, Encode vereinheitlicht sie.</summary>
+    [Test]
+    procedure EncodeKeepingLineBreaksKeepsMixed;
     [Test]
     procedure DetectsBoms;
     [Test]
@@ -657,6 +660,20 @@ begin
   Assert.AreEqual(1, Integer(Length(mInvalid)));
   Assert.AreEqual(7, mInvalid[0].ByteOffset);
   Assert.AreEqual($DF, Integer(mInvalid[0].Value));
+end;
+
+procedure TFileEncodingTests.EncodeKeepingLineBreaksKeepsMixed;
+var
+  mFormat: TFileFormat;
+  mBytes: TBytes;
+begin
+  mFormat := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
+  mBytes := TFileEncoding.EncodeKeepingLineBreaks('a'#10'b'#13#10'ä', mFormat);
+  Assert.AreEqual(10, Integer(Length(mBytes)));
+  Assert.AreEqual(Integer($EF), Integer(mBytes[0]));
+  Assert.AreEqual(Integer(10), Integer(mBytes[4]));
+  Assert.AreEqual(Integer(13), Integer(mBytes[6]));
+  Assert.AreEqual(11, Integer(Length(TFileEncoding.Encode('a'#10'b'#13#10'ä', mFormat))));
 end;
 
 initialization
