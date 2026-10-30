@@ -280,6 +280,7 @@ var
   Disk: IIndexFileSystem;
   Missing: string;
   CacheLock: TStream;
+  Worker: TThread;
 begin
   Disk := TDiskIndexFileSystem.Create;
   Target := TPath.Combine(ARoot, 'index-00000001.json');
@@ -319,7 +320,7 @@ begin
         ;
     end;
   // Dasselbe in einem anderen Thread: Thread-lokale Daten der RTL legt jeder Thread selbst an.
-  with TThread.CreateAnonymousThread(
+  Worker := TThread.CreateAnonymousThread(
     procedure
     var
       ThreadLock: TFileStream;
@@ -330,12 +331,13 @@ begin
       finally
         ThreadLock.Free;
       end;
-    end) do
-  begin
-    FreeOnTerminate := False;
-    Start;
-    WaitFor;
-    Free;
+    end);
+  try
+    Worker.FreeOnTerminate := False;
+    Worker.Start;
+    Worker.WaitFor;
+  finally
+    Worker.Free;
   end;
 end;
 
