@@ -316,6 +316,12 @@ type
     /// <summary>Typ eines aufgelösten Namens, Aliase verfolgt (Typen sind ihr eigener Typ, TFoo.Create ein TFoo);
     /// im Rahmen der zuletzt vorbereiteten Stelle (#689 nutzt es für den Grundtyp eines Alias).</summary>
     function TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
+    /// <summary>Zielklasse aus dem Kopf einer Klassenreferenz ("ExceptClass = class of Exception" ergibt
+    /// "Exception"); '' ohne class of.</summary>
+    class function ClassRefTarget(const ASignature: string): string; static;
+    /// <summary>Klasse, auf die die Klassenreferenz AType zeigt (class of …), aufgelöst in der Unit von AType.
+    /// Der Index führt Klassenreferenzen als ClassType ohne Vorfahren; False bei anderen Typen.</summary>
+    function ClassRefTargetOf(const AType: TResolvedSymbol; out ATarget: TResolvedSymbol): Boolean;
     /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei Helfern.</summary>
     function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
     /// <summary>Vorfahr-Helfer eines Helfers (class helper (TBaseHelper) for T, #848); False ohne.</summary>
@@ -1423,6 +1429,37 @@ begin
   FAncestors.AddOrSetValue(Key, AAncestor);
 end;
 
+class function TNameResolver.ClassRefTarget(const ASignature: string): string;
+var
+  mWords: TArray<string>;
+  mIndex: Integer;
+begin
+  Result := '';
+  mWords := ASignature.Replace(';', ' ').Split([' ', #9, #10, #13, '='], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(mWords) - 2 do
+    if SameText(mWords[mIndex], 'class') and SameText(mWords[mIndex + 1], 'of') then
+      Exit(mWords[mIndex + 2]);
+end;
+
+function TNameResolver.ClassRefTargetOf(const AType: TResolvedSymbol; out ATarget: TResolvedSymbol): Boolean;
+var
+  mName: string;
+  mUnit: TUnitIndex;
+begin
+  Result := False;
+  ATarget := NoResult;
+  if AType.Builtin or (AType.SymbolKind <> TIndexSymbolKind.ClassType) or (Length(AType.Ancestors) > 0) then
+    Exit;
+  mName := ClassRefTarget(AType.Signature);
+  if (mName = '') or not UnitOf(AType, mUnit) then
+    Exit;
+  Result := ResolveTypeText(mName, mUnit, SameText(mUnit.FileName, FCurrent.FileName), ATarget) and
+    not ATarget.Builtin and (ATarget.SymbolKind = TIndexSymbolKind.ClassType) and
+    not SameText(ATarget.QualifiedName, AType.QualifiedName);
+  if not Result then
+    ATarget := NoResult;
+end;
+
 /// <summary>Stammt die Klasse von TCustomAttribute ab? Bricht die Kette an einem unbekannten Vorfahren ab,
 /// gilt sie als Attribut; endet sie bei TObject, nicht.</summary>
 function TNameResolver.IsAttributeClass(const AType: TResolvedSymbol): Boolean;
@@ -2417,7 +2454,7 @@ end;
 
 function TNameResolver.ExprCandidates(ANode: TSyntaxNode): TArray<TResolvedSymbol>;
 var
-  Owner, TypeInfo, Single: TResolvedSymbol;
+  Owner, TypeInfo, Single, Target: TResolvedSymbol;
   OwnerUnit: TUnitIndex;
   Consumed, SavedOffset, Index: Integer;
 begin
@@ -2447,6 +2484,17 @@ begin
         end
         else if TypeOf(Owner, TypeInfo) then
         begin
+          // Wert einer Klassenreferenz (FError: ExceptClass): Mitglieder der Zielklasse, FError.Create ist
+          // Exception.Create und liefert ein Exception. Die Referenz selbst hat im Index keine Vorfahren, ohne
+          // diesen Schritt fände FindMembers nur TObject.Create.
+          if not Owner.IsType and ClassRefTargetOf(TypeInfo, Target) then
+          begin
+            Result := FindMembers(Target, ANode.Name);
+            for Index := 0 to High(Result) do
+              if Result[Index].SymbolKind = TIndexSymbolKind.Constructor_ then
+                Result[Index].Constructed := [Target];
+            Exit;
+          end;
           Result := FindMembers(TypeInfo, ANode.Name);
           // TKunde.Create liefert TKunde, auch wenn Create aus TObject stammt.
           if Owner.IsType then
