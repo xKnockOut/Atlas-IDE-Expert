@@ -1911,7 +1911,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A parameter, local or inline variable has the same name as a field or property of the class (also inherited and visible there, resolved through the file and the symbol index) or as a global variable of the unit declared before the routine. Especially treacherous in form methods: Caption, Name, Tag, Left. If VCL is not in the index, the members of TComponent and TControl are known when the ancestor chain ends at a VCL base class. Parameters of event handlers (with Sender) are skipped because the event type dictates the signature. High confidence. Quick fix: rename to AName (parameter, also in the declaration) or LName (local variable) within the routine; with prefixes in the project file .atlas (naming) these are used instead, e.g. mName. Option ignore lists name patterns that are never reported (default Sender, Value).",
+      "description": "A parameter, local or inline variable has the same name as a field or property of the class (also inherited and visible there, resolved through the file and the symbol index) or as a global variable of the unit declared before the routine. Especially treacherous in form methods: Caption, Name, Tag, Left. If VCL is not in the index, the members of TComponent and TControl are known when the ancestor chain ends at a VCL base class. Members inherited from RTL, VCL or another library (unit from the library path) are only reported where they could be meant: a local variable that is only assigned or only read, a value parameter that is assigned. Helper variables such as Left, Text or Name that are read and written stay silent; option frameworkMembers reports them as before. Parameters of event handlers (with Sender) and of methods with override or message are skipped because the event type, the ancestor or the message dictates the signature. High confidence. Quick fix: rename to AName (parameter, also in the declaration) or LName (local variable) within the routine; with prefixes in the project file .atlas (naming) these are used instead, e.g. mName. Option ignore lists name patterns that are never reported (default Sender, Value).",
       "bad": "procedure TfrmKunde.Laden(const Caption: string);\nbegin\n  Caption := Caption + ' (geladen)';\nend;",
       "good": "procedure TfrmKunde.Laden(const ACaption: string);\nbegin\n  Caption := ACaption + ' (geladen)';\nend;",
       "options": [
@@ -1923,6 +1923,12 @@
             "Value"
           ],
           "description": "Name patterns (* and ?) that are never reported."
+        },
+        {
+          "name": "frameworkMembers",
+          "type": "boolean",
+          "default": false,
+          "description": "Report every local name that shadows a member inherited from RTL, VCL or another library, not only suspicious ones."
         }
       ]
     },

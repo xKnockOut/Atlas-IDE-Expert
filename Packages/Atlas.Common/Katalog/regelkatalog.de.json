@@ -963,11 +963,15 @@
     {
       "id": "shadowed-name",
       "name": "Lokaler Name verdeckt Feld oder Property",
-      "description": "Ein Parameter, eine lokale oder Inline-Variable heißt wie ein Feld oder eine Property der Klasse (auch geerbt und dort sichtbar, aufgelöst über die Datei und den Symbolindex) oder wie eine globale Variable der Unit, die vor der Routine deklariert ist. In Formularmethoden besonders tückisch: Caption, Name, Tag, Left. Steht die VCL nicht im Index, kennt die Regel die Mitglieder von TComponent und TControl, wenn die Vorfahrenkette an einer VCL-Grundklasse endet. Parameter von Ereignis-Handlern (mit Sender) bleiben außen vor, weil der Ereignistyp die Signatur vorgibt. Konfidenz hoch. Schnellkorrektur: in der Routine in AName (Parameter, auch in der Deklaration) bzw. LName (lokale Variable) umbenennen; setzt die Projektdatei .atlas Präfixe (naming), gelten diese, z. B. mName. Die Option ignore nennt Namensmuster, die nie gemeldet werden (Vorgabe Sender, Value).",
+      "description": "Ein Parameter, eine lokale oder Inline-Variable heißt wie ein Feld oder eine Property der Klasse (auch geerbt und dort sichtbar, aufgelöst über die Datei und den Symbolindex) oder wie eine globale Variable der Unit, die vor der Routine deklariert ist. In Formularmethoden besonders tückisch: Caption, Name, Tag, Left. Steht die VCL nicht im Index, kennt die Regel die Mitglieder von TComponent und TControl, wenn die Vorfahrenkette an einer VCL-Grundklasse endet. Mitglieder, die aus RTL, VCL oder einer anderen Bibliothek geerbt sind (Unit aus dem Bibliothekspfad), meldet die Regel nur, wo sie gemeint sein könnten: eine lokale Variable, die nur zugewiesen oder nur gelesen wird, ein Werteparameter, dem etwas zugewiesen wird. Hilfsvariablen wie Left, Text oder Name, die gelesen und geschrieben werden, bleiben still; die Option frameworkMembers meldet sie wie früher. Parameter von Ereignis-Handlern (mit Sender) und von Methoden mit override oder message bleiben außen vor, weil der Ereignistyp, der Vorfahr bzw. die Botschaft die Signatur vorgibt. Konfidenz hoch. Schnellkorrektur: in der Routine in AName (Parameter, auch in der Deklaration) bzw. LName (lokale Variable) umbenennen; setzt die Projektdatei .atlas Präfixe (naming), gelten diese, z. B. mName. Die Option ignore nennt Namensmuster, die nie gemeldet werden (Vorgabe Sender, Value).",
       "options": [
         {
           "name": "ignore",
           "description": "Namensmuster (* und ?), die nie gemeldet werden."
+        },
+        {
+          "name": "frameworkMembers",
+          "description": "Jeden lokalen Namen melden, der ein aus RTL, VCL oder einer Bibliothek geerbtes Mitglied verdeckt, nicht nur verdächtige."
         }
       ]
     },

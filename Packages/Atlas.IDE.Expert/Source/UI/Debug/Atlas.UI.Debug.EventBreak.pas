@@ -365,7 +365,7 @@ end;
 function TAtlasEventBreakBar.Layout(ADraw: Boolean): TSize;
 var
   X, Y, TextHeight, Width: Integer;
-  Text: string;
+  mText: string;
 
   procedure Link(const ACaption: string; AIndex: Integer; var ARect: TRect);
   begin
@@ -390,14 +390,14 @@ begin
     Canvas.Brush.Style := bsClear;
   X := Scale(Pad);
   Y := Scale(Pad);
-  Text := TAtlasStrings.Fmt(TAtlasTextId.EventBreakStopped, [FText]);
+  mText := TAtlasStrings.Fmt(TAtlasTextId.EventBreakStopped, [FText]);
   Canvas.Font.Style := [fsBold];
   if ADraw then
   begin
     Canvas.Font.Color := ToColor(Colors.Text);
-    Canvas.TextOut(X, Y, Text);
+    Canvas.TextOut(X, Y, mText);
   end;
-  Width := X + Canvas.TextWidth(Text);
+  Width := X + Canvas.TextWidth(mText);
   Canvas.Font.Style := [];
   Y := Y + TextHeight + Scale(Gap) * 2;
   Link(TAtlasStrings.Text(TAtlasTextId.EventBreakContinue), 0, FContinueRect);

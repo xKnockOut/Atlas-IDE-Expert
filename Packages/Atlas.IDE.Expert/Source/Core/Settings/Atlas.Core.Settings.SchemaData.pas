@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3104] of string = (
+  Lines: array[0..3109] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -579,6 +579,12 @@ const
     '                "type": "boolean",',
     '                "default": false,',
     '                "description": "Nur global-variable: auch die Formularvariablen des Designers melden (#941)."',
+    '              },',
+    '              "frameworkMembers": {',
+    '                "type": "boolean",',
+    '                "default": false,',
+    '                "description": "Nur shadowed-name: jeden lokalen Namen melden, der ein aus RTL, VCL oder einer Bibliothek geerbtes Mitglied verdeckt (Left, Text, Name …), nicht nur, wo das Mitglied ge' +
+      'meint sein könnte."',
     '              },',
     '              "includeFields": {',
     '                "type": "boolean",',

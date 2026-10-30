@@ -487,7 +487,7 @@ function TAtlasClassExtractionModel.RequestJson: TJSONObject;
 var
   List, Abstracts: TJSONArray;
   Member: TAtlasExtractionMember;
-  Name: string;
+  mName: string;
 begin
   Result := TJSONObject.Create;
   if not IsMove then
@@ -513,8 +513,8 @@ begin
   if not IsMove then
     Exit;
   List := TJSONArray.Create;
-  for Name in CheckedTargets do
-    List.Add(Name);
+  for mName in CheckedTargets do
+    List.Add(mName);
   Result.AddPair('targets', List);
   if FOptionKind <> '' then
     Result.AddPair('option', TJSONBool.Create(FOption));

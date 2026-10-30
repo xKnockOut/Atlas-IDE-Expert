@@ -591,7 +591,7 @@ var
   Visibility: TClassVisibility;
   Section: TClassSection;
   Member: TClassMember;
-  Head, Text, Names, TypeText: string;
+  Head, mText, Names, TypeText: string;
   GroupNames: TArray<string>;
   IsClassPrefix: Boolean;
 
@@ -725,8 +725,8 @@ begin
           Parameters := Child.FindChild(TSyntaxKind.Parameters);
           if Parameters <> nil then
           begin
-            Text := NodeText(Parameters);
-            Member.Parameters := CollapseSpace(Copy(Text, 2, Length(Text) - 2));
+            mText := NodeText(Parameters);
+            Member.Parameters := CollapseSpace(Copy(mText, 2, Length(mText) - 2));
             for Part := 0 to Parameters.ChildCount - 1 do
             begin
               Parameter := Parameters[Part];
