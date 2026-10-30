@@ -25,7 +25,7 @@ Funktionsumfang und Ausbaustufen stehen in den [Issues](https://github.com/xKnoc
 
 ## Schnellstart
 
-Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Fertige Pakete stehen unter [Releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); Die Releases 1.0.0 und 1.1.0 enthalten das Plugin nur für Delphi 13. Was mit 1.1.0 neu ist, steht im [Changelog](CHANGELOG.md).
+Voraussetzung ist RAD Studio bzw. Delphi ab Version 12. Fertige Pakete stehen unter [Releases](https://github.com/xKnockOut/Atlas-IDE-Expert/releases); Die Releases 1.0.0 bis 1.2.0 enthalten das Plugin nur für Delphi 13. Was mit 1.2.0 neu ist, steht im [Changelog](CHANGELOG.md).
 
 **Weg A – Release-Paket von Hand einbinden:**
 
