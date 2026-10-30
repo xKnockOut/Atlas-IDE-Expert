@@ -573,8 +573,6 @@ begin
   Result.Kind := TResolvedKind.None;
 end;
 
-/// <summary>Knoten mit Parametern und Ergebnistyp einer Routine: der Kopf einer benannten Routine,
-/// bei einer anonymen Methode der Knoten selbst; nil ohne Kopf.</summary>
 /// <summary>Hat die Deklaration ADeclared dieselben Parametertypen wie die Routine ARoutine des Baums? Dann ist
 /// sie dieselbe Routine und keine andere Überladung.</summary>
 function SameParamTypes(const ADeclared: TResolvedSymbol; ARoutine: TSyntaxNode): Boolean;
@@ -590,6 +588,8 @@ begin
         Exit(False);
 end;
 
+/// <summary>Knoten mit Parametern und Ergebnistyp einer Routine: der Kopf einer benannten Routine,
+/// bei einer anonymen Methode der Knoten selbst; nil ohne Kopf.</summary>
 function RoutineHeaderOf(ARoutine: TSyntaxNode): TSyntaxNode;
 begin
   if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
