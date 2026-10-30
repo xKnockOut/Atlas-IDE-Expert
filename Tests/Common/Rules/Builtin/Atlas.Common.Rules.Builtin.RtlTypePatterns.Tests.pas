@@ -28,6 +28,8 @@ type
     [Test]
     procedure FloatEquality;
     [Test]
+    procedure FloatEqualityInComparers;
+    [Test]
     procedure ConstructorOnInstance;
     [Test]
     procedure FormatWithoutSettings;
@@ -220,6 +222,23 @@ begin
     '  M := Max(R, Max(G, B));'#10'  if M = R then Save'#10'  else if G = M then Save;'));
   TRuleAssert.Reports(TFloatEqualityRule.Create, InRoutine('  R, G, B, M: Double;',
     '  M := Max(G, B);'#10'  if M = R then Save;'));
+end;
+
+procedure TRtlTypePatternRulesTests.FloatEqualityInComparers;
+const
+  // Wie System.Generics.Defaults: Equals muss zu GetHashCode passen, also exakt.
+  cComparers = 'unit U;'#10'interface'#10'type'#10'  TPunkt = record'#10'    X: Double;'#10 +
+    '    class operator Equal(const A, B: TPunkt): Boolean;'#10'  end;'#10'implementation'#10 +
+    'function Equals_Double(Inst: Pointer; const Left, Right: Double): Boolean;'#10'begin'#10 +
+    '  Result := Left = Right;'#10'end;'#10 +
+    'class operator TPunkt.Equal(const A, B: TPunkt): Boolean;'#10'var'#10'  L, R: Double;'#10'begin'#10 +
+    '  L := A.X;'#10'  R := B.X;'#10'  Result := L = R;'#10'end;'#10'end.';
+  cOther = 'unit U;'#10'interface'#10'implementation'#10 +
+    'function Pruefe(const Left, Right: Double): Boolean;'#10'begin'#10'  Result := Left = Right;'#10'end;'#10 +
+    'end.';
+begin
+  TRuleAssert.Silent(TFloatEqualityRule.Create, cComparers);
+  TRuleAssert.Reports(TFloatEqualityRule.Create, cOther);
 end;
 
 procedure TRtlTypePatternRulesTests.ConstructorOnInstance;

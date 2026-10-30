@@ -3713,6 +3713,9 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TOrderList = 
 | FF11 | `"refactoring": {"freeFieldsStyle": "freeAndNil"}` | `FreeAndNil(FIndex);` statt `FIndex.Free;` |
 | FF12 | Generische Klasse `TCache<T>` | Rumpf heißt `destructor TCache<T>.Destroy;` und kompiliert |
 | FF13 | `"refactoring": {"freeFields": false}` in atlas.json | Keine Meldungen und keine der Aktionen mehr (**Abnahme**) |
+| FF14 | `Atlas.IDE.Build.CheckOnSave.pas`, `Atlas.IDE.Build.OpenBuild.pas`, `Atlas.IDE.Build.Runner.pas` öffnen (FWatcher geht an `FEvents.Add`, `TAtlasCompileEvents` hält eine `TObjectList`) | Kein `owned-field-free-unclear` und kein `field-not-freed` an `FWatcher` |
+| FF15 | Feld `FListe: TObjectList<TFoo>` mit `FListe := TObjectList<TFoo>.Create(False)`, dann `FListe.Add(FObjekt)` für ein im Konstruktor erzeugtes `FObjekt` | Hinweis `owned-field-free-unclear` „… an FListe.Add übergeben“ bleibt; ohne `False` verschwindet er |
+| FF16 | `Atlas.UI.Welcome.QuickActions.Tests.pas` öffnen (`FTaskNames := TArray<string>.Create(…)`) | Kein Befund an `FTaskNames` |
 
 ## Boolean umkehren (#715)
 
@@ -8949,6 +8952,17 @@ Vorbereitung: ein Projekt in einem Git-Repository mit mindestens einigen Dutzend
 | HS14 | `hotspots.months` auf 3 und `hotspots.coupling.minCommits` auf 2 setzen | Fenster rechnet neu; Kopfzeile nennt 3 Monate; mehr Kopplungen |
 | HS15 | `AtlasServer.exe --check <Projekt> --hotspots h.html` in einem Repository bzw. in einem Ordner ohne Versionsverwaltung | Exit-Code 0 und Bericht bzw. Exit-Code 3 mit Ursache |
 | HS16 | Claude Code: „Wo sind die Hotspots im Projekt?“ | Claude ruft `get_hotspots` und nennt dieselben Zahlen wie das Fenster |
+
+## Fremde Quellen im Editor (diagnostics.librarySources)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FQ1 | Projekt öffnen, mit Strg+Klick auf `THTTPClient` nach `System.Net.HttpClient.pas` springen, ebenso `System.Generics.Defaults.pas` öffnen | Keine Befunde der Prüfregeln im Editor und in der Problemliste (vorher u. a. `boolean-assign-if` in Zeile 1537 und `float-equality` in den Vergleichern) (**Abnahme**) |
+| FQ2 | Eine Unit aus einem Bibliothekspfad einer Komponente (z. B. JVCL `run`) öffnen, die nicht im Projekt steht | Keine Befunde |
+| FQ3 | Dieselbe Komponenten-Unit per DCCReference ins Projekt aufnehmen oder ihren Ordner in die Projekt-Suchpfade | Befunde wie bei eigenen Units |
+| FQ4 | `diagnostics.librarySources` in settings.json auf `true`, RTL-Unit erneut öffnen | Befunde erscheinen wieder |
+| FQ5 | Eine eigene `.pas` außerhalb aller Projekte und Bibliothekspfade öffnen (z. B. `C:\Temp\Versuch.pas`) | Wird wie bisher geprüft |
+| FQ6 | `Atlas.Core.Editor.Conditionals.pas` öffnen | Kein `float-equality` an `Result = Right` bzw. `Result <> Right` (Unterdrückung mit Begründung) |
 
 ## Fehlalarme an Record-Feldern (Prep-v1.2.0)
 

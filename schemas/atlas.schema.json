@@ -2194,6 +2194,11 @@
           "x-page": "Prüfregeln",
           "x-control": "Kontrollkästchen",
           "x-issue": "#896"
+        },
+        "librarySources": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auch Units der Delphi-Installation ($(BDS), also RTL und VCL) und der Bibliothekspfade prüfen, die zu keinem Projekt der Gruppe gehören, etwa nach Strg+Klick in System.Classes.pas. false: In solchen Dateien zeigt der Editor keine Befunde der Prüfregeln; Dateien im Projektordner, DCCReference-Units und Units der Projekt-Suchpfade werden immer geprüft."
         }
       },
       "x-scope": "global",

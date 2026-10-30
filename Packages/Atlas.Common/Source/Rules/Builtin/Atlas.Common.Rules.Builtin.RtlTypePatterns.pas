@@ -5,7 +5,7 @@
 //   int32-mul-overflow       Int64 := Int32 * Int32 läuft vor der Zuweisung über
 //   sizeof-pointer           Move/FillChar mit SizeOf eines Zeigers, Strings oder dynamischen Arrays
 //   char-to-pchar            Cast eines Char nach PChar
-//   float-equality           Gleitkommavergleich mit = oder <> (nicht mit 0)
+//   float-equality           Gleitkommavergleich mit = oder <> (nicht mit 0, nicht in Equals-Vergleichern)
 //   constructor-on-instance  Konstruktor auf einer Variablen statt auf der Klasse
 //   format-without-settings  Format mit %f/%n/%m/%g/%e, FloatToStr, StrToDate … ohne TFormatSettings
 //                            (FormatDateTime/FormatFloat mit festem Bild nur, wenn es Trennzeichen
@@ -528,6 +528,23 @@ begin
   end;
 end;
 
+/// <summary>Steht AOffset im Rumpf eines Gleichheitsvergleichers (Equals, Equals_Double, class operator Equal,
+/// NotEqual, IsEqual)? Dort ist der exakte Vergleich Vertrag: Equals muss zu GetHashCode passen
+/// (System.Generics.Defaults), eine Toleranz wäre nicht transitiv.</summary>
+function InEqualityRoutine(ATree: TSyntaxTree; AOffset: Integer): Boolean;
+var
+  mRoutine: TSyntaxNode;
+  mName: string;
+begin
+  mRoutine := TRoutineBody.RoutineAt(ATree, AOffset);
+  if mRoutine = nil then
+    Exit(False);
+  mName := mRoutine.Name;
+  if Pos('.', mName) > 0 then
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+  Result := StartsText('Equal', mName) or MatchText(mName, ['NotEqual', 'IsEqual']);
+end;
+
 procedure TFloatEqualityRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TTokens;
@@ -564,7 +581,8 @@ begin
         ((Tokens[Right].Kind = TPascalTokenKind.Identifier) and
         IsInexact(Types.DeclaredType(Tokens[Right].Text, Tokens[Right].StartPos)));
       if not IsFloat or SelectedFrom(Tokens, Index, Tokens[Left].Text, Tokens[Right].Text) or
-        SelectedFrom(Tokens, Index, Tokens[Right].Text, Tokens[Left].Text) then
+        SelectedFrom(Tokens, Index, Tokens[Right].Text, Tokens[Left].Text) or
+        InEqualityRoutine(AContext.Tree, Tokens[Index].Offset) then
         Continue;
       Call := 'SameValue(' + Tokens[Left].Text + ', ' + Tokens[Right].Text + ')';
       if Tokens[Index].IsSymbol('<>') then
