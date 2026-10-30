@@ -31,6 +31,9 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## unused-declaration-Befunde im eigenen Code (30.10.2026, Branch `claude/project-thread-3dbpsd`, PR #1424)
+- Sieben Befunde geprüft (andere Units, Include-Dateien, `{$IFDEF}`-Zweige, Konstantenausdrücke, RTTI, Tests): alle echt, kein False-Positive, Regel unverändert. Laut Historie nie benutzt.
+- Entfernt: `ChildOn` (MethodWithoutSelf), `BuiltinNames` (TypeAlias), lokales `IsKeyword` (Core.Editor.Pairs), `EventLine` (Core.Forms.Changes), `PositionBelow` (EditorToolbar.Service, unten ist der Fallback in `Place`), `SearchTimeoutMs` (Results.Commands), `Minute` (TimeLog-Test). Delphi-Build offen.
 ## missing-begin-update im eigenen Code (30.10.2026, Branch `claude/project-thread-8pjit2`)
 - 17 Befunde aus Marcos Lauf geprüft. Falsch waren 4 Menüs (`TPopupMenu.Items` ist ein `TMenuItem`, das kein BeginUpdate hat) und `FSeverity` in `Settings.Rules` (feste 6 Werte). Die Regel fragt jetzt den deklarierten Typ des Besitzers ab (`TDeclaredTypes`, Menütypen still) und schweigt bei for-Schleifen mit höchstens `FewIterations` = 10 Durchläufen (Zahlen, `Low`/`High` bzw. `for … in` über ein statisches Array der Datei; verschachtelt zählt das Produkt).
 - Ursache im Schleifenrumpf: `StatementEnd` endete bei `if … then begin … end else …` am ersten end, der else-Zweig fiel aus dem Rumpf (dadurch fehlte z. B. `FTarget.Items` in ExtractMembers). Jetzt gehört ein else zur Anweisung, solange ein if davor offen ist.
