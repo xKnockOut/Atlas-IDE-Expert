@@ -34,7 +34,7 @@ $Utf8 = New-Object System.Text.UTF8Encoding($false)
 # Quelle (relativ zum Repository) → Seite im Ordner Doku, Titel im Inhaltsverzeichnis und eine Zeile dazu.
 $Pages = @(
     @{ Source = 'README_DE.md'; Target = 'Ueberblick.html'; Title = 'Überblick'; Text = 'Was Atlas kann und wie es aufgebaut ist.' },
-    @{ Source = 'docs/Installation.md'; Target = 'Installation.html'; Title = 'Installation'; Text = 'Installer, Aktualisierung und Deinstallation.' },
+    @{ Source = 'docs/Installation.md'; Target = 'Installation.html'; Title = 'Installation'; Text = 'Release-Paket, Aktualisierung und Deinstallation.' },
     @{ Source = 'docs/RAD-Studio.md'; Target = 'RAD-Studio.html'; Title = 'Atlas in RAD Studio'; Text = 'Alle Funktionen des Plugins in der IDE.' },
     @{ Source = 'docs/Einstellungen.md'; Target = 'Einstellungen.html'; Title = 'Einstellungen'; Text = 'Jede Einstellung mit Seite, Vorgabe und Ort.' },
     @{ Source = 'docs/Konfiguration.md'; Target = 'Konfiguration.html'; Title = 'Konfiguration (atlas.json)'; Text = 'Alle Schlüssel der Projektkonfiguration.' },

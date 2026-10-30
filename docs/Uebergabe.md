@@ -9,6 +9,15 @@
   - Am Ende jedes Vorgangs diese Datei aktualisieren.
   - Vor öffentlichen Schritten auf GitHub (Kommentare, Issues) fragen.
 
+## Release 1.2.0 vorbereitet (30.10.2026, Branch `claude/project-thread-s3nkro`)
+- Basis: Prep-v1.2.0 = main (5a22c4d7); kein PR mehr offen, main und release/1.1 vollständig enthalten.
+- Version 1.2.0 in `Atlas.Text.Product.Version`, `plugin.json`, `marketplace.json` (wie `Tools/Set-Version.ps1`, das in der Cloud mit pwsh 7.4 aus dem Scratchpad geprüft wurde: `Check-Version.ps1 -Expected 1.2.0` grün). CHANGELOG: `## [1.2.0] - 2026-10-30` unter einem leeren `[Unveröffentlicht]`; Datum beim Taggen anpassen, falls später.
+- Release-Notizen `docs/Release-Notizen/1.2.0.md` ergänzt: Server-Runde 77 (#1351, #1352, #1355–#1358), Teilsysteme #1364–#1368, Compilerregeln #1369–#1383, #674, #1440, #1442, `.atlas` neben der .groupproj, Fehlalarm-Korrekturen vom 30.10. `Get-ReleaseNotes.ps1` liefert rund 8500 Zeichen (Changelog-Abschnitt rund 200000).
+- Drei neue Karten „Neu in Atlas“: Hotspots, Fenster Atlas-Server, Designer-Leiste (jetzt 23 Einträge für 1.2.0).
+- Installer-Reste in Kommentaren (Version, WhatsNew, CodeInsight.Manager, Projects.Setup, Style.Symbol, StackCapture, Set-Version.ps1, Build-Docs.ps1) auf Release-Paket umgestellt.
+- CI „Package-Abhängigkeiten“ war auf main rot: `IsWordChar` in `Atlas.Core.Query.Model` (#1351) in `$AllowedLocal` begründet (Wortzeichen der Abfragesprache), zwei verrutschte XML-Doku-Kommentare (NameResolver `RoutineHeaderOf`, Shell.Mcp `RegisterDeadCodeTools`) an ihre Routinen zurückgesetzt.
+- Danach: Delphi-Build 0/0/0 (Win64-Gruppe, Win32-Plugin) und Tests, Prep-v1.2.0 nach main, `git tag v1.2.0` und `git push origin v1.2.0`; danach `release/1.2` vom Tag für Wartungsversionen anlegen (wie release/1.1).
+
 ## Fehlalarme von inline-not-expanded aus Marcos Befundliste (30.10.2026, Branch `claude/project-thread-li3obi`)
 - Liste: 1890 Befunde, alle `inline-not-expanded` (Atlas-Quellen und RTL). 1554 × „System.TypInfo fehlt“ (TList.Add, TStack.Push, TList.Clear …), 240 × H2444 an TMonitor.Enter (entfällt mit #1383, H2444 ganz aus), 32 × H2457 an THashFNV1a32.GetHashValue in System.Generics.Defaults: Fehlalarme, behoben. 56 × Posix.Unistd/Posix.Stdio an DeleteFile/RenameFile: nur mit POSIX-Defines möglich (DeleteFile ist nur unter POSIX inline), im Nachstellen mit Win32/Win64 still; Herkunft des Laufs offen. 8 × System.Generics.Collections bzw. System.NetConsts (TJSONArray.Count/Items, THTTPClient.Accept): wohl echt wie in CLAUDE.md beschrieben.
 - Ursachen: System.TypInfo deklariert `tkRecord = System.TTypeKind.tkRecord` (Alias); die Regel zählte die Unit des Alias. Zyklus: `Integer(...)`, `SizeOf`, `Length` galten als Verweis nach außen.

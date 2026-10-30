@@ -3,8 +3,8 @@
     Setzt die Version von Server und Claude-Code-Plugin (#83).
 
 .DESCRIPTION
-    Schreibt die Version in TAtlasVersion (Atlas.Text.Product.Version, gemeinsam für Server, IDE-Plugin
-    und Installer, ADR 0012), plugin.json und marketplace.json
+    Schreibt die Version in TAtlasVersion (Atlas.Text.Product.Version, gemeinsam für Server und IDE-Plugin,
+    ADR 0012), plugin.json und marketplace.json
     und benennt den Abschnitt "## [Unveröffentlicht]" in CHANGELOG.md in
     "## [<Version>] - <Datum>" um, mit neuem leeren Abschnitt darüber.
     Danach committen und das Tag v<Version> pushen; den Rest erledigt
@@ -28,7 +28,7 @@ if ($Version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
 $Utf8Bom = New-Object System.Text.UTF8Encoding($true)
 $Utf8 = New-Object System.Text.UTF8Encoding($false)
 
-# Eine Angabe für Server, IDE-Plugin und Installer (ADR 0012); TProductVersion und
+# Eine Angabe für Server und IDE-Plugin (ADR 0012); TProductVersion und
 # TAtlasPluginVersion verweisen auf TAtlasVersion.
 $Unit = Join-Path $Root 'Packages/Atlas.Text/Source/Product/Atlas.Text.Product.Version.pas'
 $Text = [IO.File]::ReadAllText($Unit) -replace "(Version\s*=\s*')[^']+(')", "`${1}$Version`${2}"

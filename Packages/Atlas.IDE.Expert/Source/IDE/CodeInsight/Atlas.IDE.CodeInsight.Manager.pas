@@ -595,7 +595,7 @@ begin
   Result := PluginDir + 'AtlasServer.exe';
   if FileExists(Result) then
     Exit;
-  // Installer (#495): BPL in <Ziel>\Win32 bzw. \Win64, der Server eine Ebene darüber.
+  // Release-Paket (#495, ADR 0016): BPL in <Ziel>\Win32 bzw. \Win64, der Server eine Ebene darüber.
   if FileExists(ExpandFileName(PluginDir + '..\AtlasServer.exe')) then
     Exit(ExpandFileName(PluginDir + '..\AtlasServer.exe'));
   // Ausgabeordner des Repos: Win64 bevorzugt, sonst ein Win32-Bau des Servers.
