@@ -2,7 +2,9 @@
 
 // Tests der Regel abstract-declaration-invalid (#998): abstract ohne virtual,
 // Rumpf zu abstrakten Methoden, final, abstract sealed, static, bedingte
-// Zweige, Korrekturen und Einstellungen.
+// Zweige, Korrekturen und Einstellungen; sealed mit offenen abstrakten
+// Methoden (#1380, E2383, E2539, E2540 wie dcc in Cm.E2383, Cm.E2539,
+// Cm.E2540).
 
 interface
 
@@ -25,6 +27,12 @@ type
     procedure FinalWithoutVirtual;
     [Test]
     procedure AbstractSealedClass;
+    [Test]
+    procedure SealedWithOwnAbstractMethod;
+    [Test]
+    procedure SealedInheritsAbstractMethod;
+    [Test]
+    procedure SealedImplementingAllIsSilent;
     [Test]
     procedure StaticOnInstanceOrVirtual;
     [Test]
@@ -69,6 +77,16 @@ end;
 procedure Silent(const ASource: string);
 begin
   TRuleAssert.Silent(TAbstractDeclarationInvalidRule.Create, ASource);
+end;
+
+/// <summary>Meldungen von AFound mit Zeile, eine je Zeile, in der Reihenfolge der Treffer.</summary>
+function Listed(const AFound: TArray<TRuleFinding>): string;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := '';
+  for mFinding in AFound do
+    Result := Result + IntToStr(mFinding.Range.StartPos.Line) + ': ' + mFinding.Message + #10;
 end;
 
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
@@ -190,15 +208,54 @@ procedure TMethodDirectiveRulesTests.AbstractSealedClass;
 var
   Found: TArray<TRuleFinding>;
 begin
+  // dcc meldet dazu E2540 an der Klasse (Cm.E2383).
   Found := Findings('unit Formen;'#10'interface'#10'type'#10'  TForm = class abstract sealed'#10'  end;'#10 +
     'implementation'#10'end.');
-  Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).', Found[0].Message);
+  Assert.AreEqual(2, Integer(Length(Found)), Listed(Found));
+  Assert.AreEqual('TForm ist abstract und kann deshalb nicht sealed sein (wie E2540).', Found[0].Message);
   Assert.AreEqual(3, Found[0].Range.StartPos.Line);
-  Assert.AreEqual(25, Found[0].Range.StartPos.Character);
-  Assert.AreEqual('Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).',
-    OnlyMessage('unit Formen;'#10'interface'#10'type'#10'  TForm = class sealed abstract(TObject)'#10'  end;'#10 +
-    'implementation'#10'end.'));
+  Assert.AreEqual(2, Found[0].Range.StartPos.Character);
+  Assert.AreEqual('Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).', Found[1].Message);
+  Assert.AreEqual(3, Found[1].Range.StartPos.Line);
+  Assert.AreEqual(25, Found[1].Range.StartPos.Character);
+  Found := Findings('unit Formen;'#10'interface'#10'type'#10'  TForm = class sealed abstract(TObject)'#10 +
+    '  end;'#10'implementation'#10'end.');
+  Assert.AreEqual('3: TForm ist abstract und kann deshalb nicht sealed sein (wie E2540).'#10 +
+    '3: Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).'#10, Listed(Found));
+end;
+
+procedure TMethodDirectiveRulesTests.SealedWithOwnAbstractMethod;
+begin
+  // Cm.E2540: E2383 an der Methode, E2539 und E2540 an der Klasse.
+  Assert.AreEqual('4: TKlasse ist sealed und implementiert die abstrakte Methode TKlasse.Machen nicht (wie E2539).'#10 +
+    '4: TKlasse hat abstrakte Methoden und kann deshalb nicht sealed sein; kein Nachfahre könnte sie ' +
+    'implementieren (wie E2540).'#10 +
+    '6: Machen ist abstract, die Klasse TKlasse aber sealed; abstract und sealed schließen sich aus (wie E2383).'#10,
+    Listed(Findings('unit Formen;'#10#10'interface'#10'type'#10'  TKlasse = class sealed'#10'  public'#10 +
+    '    procedure Machen; virtual; abstract;'#10'  end;'#10'implementation'#10'end.')));
+end;
+
+procedure TMethodDirectiveRulesTests.SealedInheritsAbstractMethod;
+begin
+  // Cm.E2539: Die geerbte abstrakte Methode bleibt offen.
+  Assert.AreEqual('8: TVersiegelt ist sealed und implementiert die abstrakte Methode TAbstrakt.Machen nicht ' +
+    '(wie E2539).'#10 +
+    '8: TVersiegelt hat abstrakte Methoden und kann deshalb nicht sealed sein; kein Nachfahre könnte sie ' +
+    'implementieren (wie E2540).'#10,
+    Listed(Findings('unit Formen;'#10'interface'#10'type'#10'  TAbstrakt = class'#10'  public'#10 +
+    '    procedure Machen; virtual; abstract;'#10'    procedure Zeigen(A: Integer); virtual; abstract;'#10 +
+    '  end;'#10'  TVersiegelt = class sealed(TAbstrakt)'#10'  public'#10 +
+    '    procedure Zeigen(A: Integer); override;'#10'  end;'#10'implementation'#10#10 +
+    'procedure TVersiegelt.Zeigen(A: Integer);'#10'begin'#10'end;'#10#10'end.')));
+end;
+
+procedure TMethodDirectiveRulesTests.SealedImplementingAllIsSilent;
+begin
+  Silent('unit Formen;'#10'interface'#10'type'#10'  TAbstrakt = class'#10'  public'#10 +
+    '    procedure Machen; virtual; abstract;'#10'  end;'#10'  TMitte = class(TAbstrakt)'#10'  public'#10 +
+    '    procedure Machen; override;'#10'  end;'#10'  TVersiegelt = class sealed(TMitte)'#10'  end;'#10 +
+    '  TFrei = class sealed'#10'    procedure Laufen; virtual;'#10'  end;'#10'implementation'#10#10 +
+    'procedure TMitte.Machen;'#10'begin'#10'end;'#10#10'procedure TFrei.Laufen;'#10'begin'#10'end;'#10#10'end.');
 end;
 
 procedure TMethodDirectiveRulesTests.StaticOnInstanceOrVirtual;

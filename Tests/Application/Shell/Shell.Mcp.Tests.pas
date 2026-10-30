@@ -17,6 +17,8 @@ type
     procedure ListsArchitectureTool;
     [Test]
     procedure ListsFindPathTool;
+    [Test]
+    procedure ListsHotspotsTool;
   end;
 
 implementation
@@ -43,6 +45,22 @@ begin
   Result := '';
 end;
 
+// Nur der Abschnitt „## Werkzeuge“: Die Tabellen der Ressourcen und Prompts (#1357) haben dieselbe Form.
+function ToolSection(const AText: string): string;
+var
+  mText: string;
+  mStart: Integer;
+  mEnd: Integer;
+begin
+  mText := AText.Replace(#13#10, #10);
+  mStart := Pos(#10'## Werkzeuge'#10, mText);
+  Assert.IsTrue(mStart > 0, 'Abschnitt „## Werkzeuge“ fehlt in docs\MCP.md');
+  Result := Copy(mText, mStart + 1, MaxInt);
+  mEnd := Pos(#10'## ', Result);
+  if mEnd > 0 then
+    Result := Copy(Result, 1, mEnd);
+end;
+
 procedure TMcpShellTests.ToolsListMatchesDocumentation;
 var
   Listed, Documented: TArray<string>;
@@ -53,7 +71,7 @@ begin
   FileName := DocumentationFile;
   Assert.IsTrue(FileName <> '', 'docs\MCP.md nicht gefunden');
   Documented := nil;
-  for Match in TRegEx.Matches(TFile.ReadAllText(FileName, TEncoding.UTF8), '^\| `(\w+)` \|', [roMultiLine]) do
+  for Match in TRegEx.Matches(ToolSection(TFile.ReadAllText(FileName, TEncoding.UTF8)), '^\| `(\w+)` \|', [roMultiLine]) do
     Documented := Documented + [Match.Groups[1].Value];
   Listed := TMcpShell.ToolNames;
   Assert.IsTrue(Length(Listed) >= 11, 'zu wenige Werkzeuge registriert');
@@ -84,6 +102,18 @@ begin
   for Name in TMcpShell.ToolNames do
     Found := Found or (Name = 'find_path');
   Assert.IsTrue(Found, 'find_path fehlt in tools/list');
+end;
+
+procedure TMcpShellTests.ListsHotspotsTool;
+var
+  Name: string;
+  Found: Boolean;
+begin
+  // Hotspots (#1354).
+  Found := False;
+  for Name in TMcpShell.ToolNames do
+    Found := Found or (Name = 'get_hotspots');
+  Assert.IsTrue(Found, 'get_hotspots fehlt in tools/list');
 end;
 
 initialization

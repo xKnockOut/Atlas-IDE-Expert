@@ -133,6 +133,10 @@ begin
     TextSetting('ArchitectureScope', 'architecture.scope'),
     Setting('ArchitectureIncludeLibraryUnits', 'architecture.includeLibraryUnits', True),
     Setting('ArchitectureCentralUnits', 'architecture.centralUnits', False),
+    // Hotspots (#1354): Server (Bericht, get_hotspots, atlas/hotspots) und Plugin lesen dieselben Werte.
+    Setting('HotspotsEnabled', 'hotspots.enabled', True),
+    Setting('HotspotsMonths', 'hotspots.months', False),
+    Setting('HotspotsCouplingMinCommits', 'hotspots.coupling.minCommits', False),
     // Treffersicherheit der Verwendungen (#1119).
     Setting('ReferencesInferred', 'references.inferred', True),
     Setting('ReferencesTextMatches', 'references.textMatches', True),

@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Lsp.TypeInfoClasses.Tests;
+﻿unit Atlas.Common.Semantics.TypeInfoClasses.Tests;
 
 // Standardsichtbarkeit published (#537): Schalter {$M+}/{$TYPEINFO} an einer
 // Stelle (auch in Listen, ohne inaktive Zweige, nicht die Stapelgröße),
@@ -48,7 +48,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Lsp.DocumentSymbols,
-  Atlas.Common.Lsp.TypeInfoClasses;
+  Atlas.Common.Semantics.TypeInfoClasses;
 
 const
   BaseFile = 'C:\P\Basis.pas';
