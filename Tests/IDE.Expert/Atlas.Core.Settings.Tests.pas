@@ -355,6 +355,7 @@ begin
   Assert.IsFalse(Settings.DiagnosticModeKeyPriority);
   // Prozesse am Projekt (#62).
   Assert.IsTrue(Settings.DiagnosticsProcesses);
+  Assert.IsTrue(Settings.ServerStatusWindow, 'Fenster „Atlas-Server“ (#1356) an');
   // Einrichtung mit Prüfliste (#625): beim Start zeigen, solange nicht alles grün ist; noch nie gesehen.
   Assert.IsTrue(Settings.SetupChecklist);
   Assert.IsFalse(Settings.SetupChecklistSeen);
@@ -468,6 +469,7 @@ begin
   Settings.DiagnosticModeKey := $6044;
   Settings.DiagnosticModeKeyPriority := True;
   Settings.DiagnosticsProcesses := False;
+  Settings.ServerStatusWindow := False;
   Settings.SetupChecklist := False;
   Settings.SetupChecklistSeen := True;
   Settings.KeyOverview := False;
@@ -574,6 +576,7 @@ begin
   Assert.AreEqual($6044, Loaded.DiagnosticModeKey);
   Assert.IsTrue(Loaded.DiagnosticModeKeyPriority);
   Assert.IsFalse(Loaded.DiagnosticsProcesses);
+  Assert.IsFalse(Loaded.ServerStatusWindow);
   Assert.IsFalse(Loaded.SetupChecklist);
   Assert.IsTrue(Loaded.SetupChecklistSeen);
   Assert.IsFalse(Loaded.KeyOverview);
@@ -2979,6 +2982,7 @@ begin
   Assert.IsTrue(Settings.ProblemsWindowFollowCursor);
   Assert.AreEqual($C050, Settings.ProblemsWindowKey, 'Strg+Alt+P');
   Assert.IsTrue(Settings.ProblemsLive);
+  Assert.IsTrue(Settings.FixBulk, 'Sammelkorrektur (#1352) an');
   Assert.IsTrue(Settings.HoverProblemActions);
   Assert.IsFalse(Settings.ProblemsList, 'Meldungsfenster-Gruppe seit dem Prüffenster aus');
   // Gruppe „Compiler vorab“ (#1024).
@@ -3005,6 +3009,7 @@ begin
   Settings.ProblemsWindowFollowCursor := False;
   Settings.ProblemsWindowKey := $C051;
   Settings.ProblemsLive := False;
+  Settings.FixBulk := False;
   Settings.HoverProblemActions := False;
   Settings.ProblemsList := True;
   Settings.ProblemsCompilerMerge := 'both';
@@ -3021,6 +3026,7 @@ begin
   Assert.IsFalse(Loaded.ProblemsWindowFollowCursor);
   Assert.AreEqual($C051, Loaded.ProblemsWindowKey);
   Assert.IsFalse(Loaded.ProblemsLive);
+  Assert.IsFalse(Loaded.FixBulk);
   Assert.IsFalse(Loaded.HoverProblemActions);
   Assert.AreEqual('both', Loaded.ProblemsCompilerMerge);
   Assert.IsFalse(Loaded.ProblemsShowCompilerCode);
