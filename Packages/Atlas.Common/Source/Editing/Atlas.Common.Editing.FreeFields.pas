@@ -20,6 +20,13 @@
 //     FFeld, Exit(FFeld)), an eine Property eines anderen Objekts oder an
 //     dessen Add…, Insert…, Register…, Attach…, Push oder Enqueue übergeben,
 //     auch ohne Create zugewiesen oder über "write FFeld" von außen gesetzt.
+//   - Übernommen (still): Add… usw. an ein Objekt, das seine Elemente
+//     besitzt: ein Feld vom Typ TObjectList, TObjectStack, TObjectQueue oder
+//     TComponentList (nicht mit False erzeugt) oder ein Feld einer Klasse, die
+//     eine solche Liste für den Elementtyp als Feld hat (Datei oder Index; ihr
+//     OwnsObjects sieht Atlas nicht, es gilt der Standard True).
+//   - TArray<T> ist ein dynamisches Array, auch wenn der Index nur die Klasse
+//     TArray aus System.Generics.Collections kennt.
 //   - Freigabe: vor dem ersten inherited im Destruktor, sonst vor dessen
 //     "end", in umgekehrter Erzeugungsreihenfolge, als FFeld.Free oder
 //     FreeAndNil(FFeld). Fehlt der Destruktor, kommt "destructor Destroy;
@@ -132,6 +139,10 @@ const
     'TStream', 'TStrings', 'TStringList', 'TList', 'TObjectList', 'TDictionary');
   /// <summary>Grund für Felder, die ein Interface-Feld übernimmt; sie werden nie gemeldet.</summary>
   InterfaceReason = 'interface';
+  /// <summary>Grund für Komponenten mit Owner und Objekte, die eine besitzende Liste übernimmt.</summary>
+  OwnedReason = 'owned';
+  /// <summary>Listen, die ihre Elemente standardmäßig freigeben (OwnsObjects = True).</summary>
+  OwningContainers: array[0..3] of string = ('TObjectList', 'TObjectStack', 'TObjectQueue', 'TComponentList');
 
 type
   TTypeGuess = (tgUnknown, tgClass, tgRecord, tgInterface, tgOther);
@@ -186,6 +197,20 @@ begin
     Result := Trim(Copy(Result, 1, Angle - 1));
 end;
 
+/// <summary>Erzeugung mit dem Argument False, z. B. TObjectList&lt;TFoo&gt;.Create(False).</summary>
+function CreatedWithFalse(AValue: TSyntaxNode): Boolean;
+var
+  Index: Integer;
+begin
+  Result := False;
+  if (AValue = nil) or (AValue.Kind <> TSyntaxKind.Call) then
+    Exit;
+  for Index := 1 to AValue.ChildCount - 1 do
+    if (AValue[Index].Kind in [TSyntaxKind.Identifier, TSyntaxKind.Literal]) and
+      SameText(AValue[Index].Name, 'False') then
+      Exit(True);
+end;
+
 { TClassAnalyzer }
 
 type
@@ -203,6 +228,8 @@ type
     FMethods: TArray<TSyntaxNode>;
     FVisited: TArray<string>;
     FCreated: TArray<Integer>;
+    /// <summary>Felder, die mit dem Argument False erzeugt werden (TObjectList.Create(False)).</summary>
+    FNotOwning: TArray<Integer>;
     FCurrent: string;
     function FieldIndex(const AName: string): Integer;
     function FieldRef(ANode: TSyntaxNode): Integer;
@@ -218,6 +245,11 @@ type
     function Creation(AValue: TSyntaxNode; out ATypeName: string; out AOwned: Boolean): Boolean;
     function IsCreation(AValue: TSyntaxNode): Boolean;
     function CalledPrivate(AStatement: TSyntaxNode): string;
+    /// <summary>Typen der Felder der Klasse AClassName aus Datei oder Index, samt Typargumenten.</summary>
+    function ClassFieldTypes(const AClassName: string): TArray<string>;
+    /// <summary>Übernimmt AReceiver.Add…(Feld AField) das Objekt? Ja, wenn AReceiver ein Feld ist, das selbst
+    /// eine besitzende Liste für den Typ von AField ist oder eine solche als Feld hat.</summary>
+    function TakesOver(AReceiver: TSyntaxNode; AField: Integer): Boolean;
     procedure ScanCreations(ANode: TSyntaxNode);
     procedure ScanUses(ANode: TSyntaxNode; const AMethod: string; var AFreed: TArray<Boolean>);
     procedure CheckUse(ANode: TSyntaxNode; const AMethod: string; var AFreed: TArray<Boolean>);
@@ -392,9 +424,15 @@ var
 
 var
   Alias: string;
+  Generic: Boolean;
 begin
   Base := BaseName(ATypeName);
   Result := tgUnknown;
+  // TArray<T> ist ein dynamisches Array aus System; die Klasse TArray (System.Generics.Collections) trägt
+  // keine Typparameter.
+  Generic := Pos('<', ATypeName) > 0;
+  if Generic and SameText(Base, 'TArray') then
+    Exit(tgOther);
   for Depth := 1 to 8 do
   begin
     if Base = '' then
@@ -405,7 +443,8 @@ begin
     Found := False;
     if (Alias = '') and (FIndex <> nil) then
       for Location in FIndex.FindSymbols(Base) do
-        if Location.Symbol.Container = '' then
+        // Mit Typargumenten zählen nur generische Typen gleichen Namens.
+        if (Location.Symbol.Container = '') and not (Generic and (Location.Symbol.TypeParams = '')) then
         begin
           case Location.Symbol.Kind of
             TIndexSymbolKind.ClassType:
@@ -428,6 +467,7 @@ begin
     if Alias = '' then
       Break;
     Base := BaseName(Alias);
+    Generic := Pos('<', Alias) > 0;
   end;
   if MatchText(Base, KnownRecords) then
     Result := tgRecord
@@ -585,6 +625,100 @@ begin
     Result := '';
 end;
 
+function TClassAnalyzer.ClassFieldTypes(const AClassName: string): TArray<string>;
+var
+  Found: TArray<string>;
+  Declared: Boolean;
+  Location: TSymbolLocation;
+  UnitIndex: TUnitIndex;
+  Symbol: TIndexSymbol;
+  TypeName: string;
+begin
+  // out- und Result-Werte lassen sich nicht in der anonymen Methode füllen.
+  Found := nil;
+  Declared := False;
+  FTree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      ClassNode, TypeRef: TSyntaxNode;
+      Index: Integer;
+    begin
+      Result := not Declared;
+      if not Result or (ANode.Kind <> TSyntaxKind.TypeDecl) or not SameText(ANode.Name, AClassName) then
+        Exit;
+      ClassNode := ANode.FindChild(TSyntaxKind.ClassType);
+      if ClassNode = nil then
+        Exit;
+      Declared := True;
+      for Index := 0 to ClassNode.ChildCount - 1 do
+        if ClassNode[Index].Kind = TSyntaxKind.Field then
+        begin
+          TypeRef := ClassNode[Index].FindChild(TSyntaxKind.TypeReference);
+          if TypeRef <> nil then
+            Found := Found + [Collapse(NodeText(FText, TypeRef))];
+        end;
+    end);
+  if not Declared and (FIndex <> nil) then
+    for Location in FIndex.FindSymbols(AClassName) do
+      if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') and
+        FIndex.FindUnit(Location.UnitName, UnitIndex) then
+      begin
+        for Symbol in UnitIndex.Symbols do
+          if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, AClassName) then
+          begin
+            TypeName := BaseName(Symbol.TypeName);
+            if Symbol.TypeArgs <> '' then
+              TypeName := TypeName + '<' + Symbol.TypeArgs + '>';
+            Found := Found + [TypeName];
+          end;
+        Break;
+      end;
+  Result := Found;
+end;
+
+function TClassAnalyzer.TakesOver(AReceiver: TSyntaxNode; AField: Integer): Boolean;
+var
+  Receiver, Index: Integer;
+  Elements: TArray<string>;
+  EndsKnown: Boolean;
+  FieldType: string;
+
+  // Besitzende Liste, deren Elementtyp AField aufnimmt (ohne Typargument: jedes Objekt).
+  function Owns(const AContainer: string): Boolean;
+  var
+    Args: string;
+  begin
+    Result := MatchText(BaseName(AContainer), OwningContainers);
+    if not Result or (Pos('<', AContainer) = 0) then
+      Exit;
+    Args := Copy(AContainer, Pos('<', AContainer) + 1, MaxInt);
+    if EndsText('>', Args) then
+      Args := Copy(Args, 1, Length(Args) - 1);
+    Result := MatchText(BaseName(Args), Elements);
+  end;
+
+begin
+  Result := False;
+  Receiver := FieldRef(AReceiver);
+  if (Receiver < 0) or (AField < 0) then
+    Exit;
+  FieldType := FFields[AField].CreatedType;
+  if FieldType = '' then
+    FieldType := FFields[AField].TypeName;
+  Elements := ComponentChain(FieldType, EndsKnown) + [BaseName(FFields[AField].TypeName), 'TObject'];
+  if Owns(FFields[Receiver].TypeName) then
+  begin
+    // TObjectList.Create(False) besitzt nichts.
+    for Index in FNotOwning do
+      if Index = Receiver then
+        Exit(False);
+    Exit(True);
+  end;
+  for FieldType in ClassFieldTypes(BaseName(FFields[Receiver].TypeName)) do
+    if Owns(FieldType) then
+      Exit(True);
+end;
+
 procedure TClassAnalyzer.ScanCreations(ANode: TSyntaxNode);
 var
   Pending: TStack<TCreationEntry>;
@@ -621,7 +755,9 @@ begin
           FCreated := FCreated + [Field];
           // Komponenten mit Owner gelten als erzeugt, aber nicht als eigen.
           if Owned then
-            FFields[Field].Reason := 'owned';
+            FFields[Field].Reason := OwnedReason;
+          if CreatedWithFalse(Node[1]) then
+            FNotOwning := FNotOwning + [Field];
         end;
       end;
       Next.Method := Entry.Method;
@@ -655,7 +791,7 @@ begin
   // Komponenten mit Owner und vom Interface übernommene Objekte gibt ein anderer frei,
   // gleich wohin sie die Klasse weiterreicht.
   if (AField >= 0) and (FFields[AField].State <> TOwnedFieldState.Unclear) and
-    (FFields[AField].Reason <> InterfaceReason) and (FFields[AField].Reason <> 'owned') then
+    (FFields[AField].Reason <> InterfaceReason) and (FFields[AField].Reason <> OwnedReason) then
   begin
     FFields[AField].State := TOwnedFieldState.Unclear;
     FFields[AField].Reason := AReason;
@@ -712,10 +848,18 @@ begin
       else if (ANode.ChildCount >= 2) and (ANode[0].Kind = TSyntaxKind.MemberAccess) and
         (ANode[0].ChildCount = 1) and not ((ANode[0][0].Kind = TSyntaxKind.Identifier) and
         SameText(ANode[0][0].Name, 'Self')) and HandsOver(ANode[0].Name) then
-        // Liste.Add(FFeld), Dienst.Register(FFeld): das andere Objekt kann es übernehmen (#918).
+        // Liste.Add(FFeld), Dienst.Register(FFeld): das andere Objekt kann es übernehmen (#918). Besitzt es
+        // seine Elemente (TObjectList oder eine Klasse mit einer), gibt es das Objekt frei.
         for Index := 1 to ANode.ChildCount - 1 do
-          SetUnclear(FieldRef(ANode[Index]), Format('wird in %s an %s übergeben',
-            [AMethod, Collapse(NodeText(FText, ANode[0]))]));
+          if TakesOver(ANode[0][0], FieldRef(ANode[Index])) then
+          begin
+            Field := FieldRef(ANode[Index]);
+            FFields[Field].State := TOwnedFieldState.NotFreed;
+            FFields[Field].Reason := OwnedReason;
+          end
+          else
+            SetUnclear(FieldRef(ANode[Index]), Format('wird in %s an %s übergeben',
+              [AMethod, Collapse(NodeText(FText, ANode[0]))]));
     TSyntaxKind.AssignStatement:
       if ANode.ChildCount >= 2 then
       begin
@@ -841,7 +985,7 @@ begin
         [Child.Name]));
   end;
   for Index in FCreated do
-    if not Freed[Index] and (FFields[Index].Reason <> 'owned') and (FFields[Index].Reason <> InterfaceReason) then
+    if not Freed[Index] and (FFields[Index].Reason <> OwnedReason) and (FFields[Index].Reason <> InterfaceReason) then
       Result := Result + [FFields[Index]];
 end;
 
