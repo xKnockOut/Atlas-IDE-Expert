@@ -245,6 +245,9 @@ begin
   Assert.AreEqual('Unbekannte Warnung SYMBOL_PLATFROM in {$WARN}; gemeint ist wohl SYMBOL_PLATFORM (wie E1030).',
     Found[0].Message);
   Assert.AreEqual(Dienst('{$WARN SYMBOL_PLATFORM OFF}'#10, ''), ApplyFix(Source, Found[0].Fixes[0]));
+  // Bezeichner, die Delphi 13 kennt, obwohl sie nur andere Plattformen betreffen (#1383, Cm.W1069).
+  TRuleAssert.Silent(TConditionalDirectiveUnbalancedRule.Create, Dienst('{$WARN MOBILE_DELPHI ON}'#10 +
+    '{$WARN UNSAFE_VOID_POINTER OFF}'#10, ''));
   // Ein Tippfehler in {$IFDEF} lässt das {$ENDIF} ohne Gegenstück.
   Found := Findings(Dienst('{$IFDEFF DEBUG}'#10'{$ENDIF}'#10, ''));
   Assert.AreEqual(2, Integer(Length(Found)));
