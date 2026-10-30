@@ -3,7 +3,7 @@
 // Namen der Compiler-Direktiven und der Bezeichner für {$WARN} (#989): Grundlage
 // für Hover und Vervollständigung in Direktiven (Lsp.CompilerDirectives, #102)
 // und für die Prüfregel conditional-directive-unbalanced, die unbekannte Namen
-// meldet (wie W1030). Die Listen enthalten alles, was Delphi 12 und 13 kennen,
+// meldet (wie E1030, vor Delphi 13 W1030). Die Listen enthalten alles, was Delphi 12 und 13 kennen,
 // auch Direktiven ohne Hovertext (C++-Ausgabe, PE-Kopf, Linux-Bibliotheken).
 //
 // Dazu die Direktiven nach Routinenköpfen (overload, virtual, stdcall …): Der

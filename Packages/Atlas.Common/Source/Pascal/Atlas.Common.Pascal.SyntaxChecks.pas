@@ -6,10 +6,12 @@
 //   E2025  procedure mit Ergebnistyp
 //   E2031  goto auf eine nicht deklarierte Marke
 //   E2049  label im interface-Teil
-//   E2058  object-Typ außerhalb des type-Abschnitts (var X: object … end)
-//   E2059  lokaler object-Typ in einer Routine
-//   E2060  Klassen- oder Interface-Typ außerhalb des type-Abschnitts
-//   E2061  lokaler Klassen- oder Interface-Typ
+//   E2058  Klassen-, Interface- oder object-Typ außerhalb des type-Abschnitts
+//          (var X: class … end), in einer Routine dazu E2059
+//   E2059  lokaler Klassen-, Interface- oder object-Typ in einer Routine
+//          (Delphi 13 meldet nicht mehr E2060 und E2061, #1382)
+//   E2123  class operator in einer Klasse, einem Interface oder object-Typ
+//          (Operatoren gibt es nur in Records, #1382)
 //   E2067  Wertparameter ohne Typ
 //   E2195  lokale Variable mit Anfangswert im var-Abschnitt
 //   E2196  mehrere Variablen mit einem Anfangswert
@@ -66,6 +68,7 @@ type
     procedure CheckVarDecl(ADecl: TSyntaxNode);
     procedure CheckFieldType(ADecl: TSyntaxNode);
     procedure CheckTypeDecl(ADecl: TSyntaxNode);
+    procedure CheckClassOperator(AHeader: TSyntaxNode);
     procedure CheckGoto(AGoto: TSyntaxNode);
     function LabelsOf(AScope: TSyntaxNode): TArray<string>;
   public
@@ -323,12 +326,15 @@ begin
   if ADecl.ChildCount = 0 then
     Exit;
   TypeNode := ADecl[0];
-  if TypeNode.Kind = TSyntaxKind.ObjectType then
-    Add('E2058', 'Klassen-, Interface- und Objekttypen sind nur im type-Abschnitt erlaubt', TypeNode.StartPos,
-      TypeNode.EndPos)
-  else if TypeNode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.InterfaceType] then
-    Add('E2060', 'Klassen- und Interface-Typen sind nur im type-Abschnitt erlaubt', TypeNode.StartPos,
-      TypeNode.EndPos);
+  if not (TypeNode.Kind in [TSyntaxKind.ObjectType, TSyntaxKind.ClassType, TSyntaxKind.InterfaceType]) then
+    Exit;
+  // Delphi 13 meldet für alle drei Arten E2058, in einer Routine zusätzlich E2059 (lokaler Typ). Zwei Meldungen
+  // an derselben Stelle fasst der Parser zusammen: E2059 steht deshalb am Namen.
+  Add('E2058', 'Klassen-, Interface- und Objekttypen sind nur im type-Abschnitt erlaubt', TypeNode.StartPos,
+    TypeNode.EndPos);
+  if InRoutine(ADecl) then
+    Add('E2059', 'Lokale Klassen-, Interface- und Objekttypen sind nicht erlaubt', ADecl.StartPos,
+      TypeNode.StartPos);
 end;
 
 procedure TTreeChecker.CheckTypeDecl(ADecl: TSyntaxNode);
@@ -347,10 +353,24 @@ begin
     end;
   if TypeNode = nil then
     Exit;
-  if TypeNode.Kind = TSyntaxKind.ObjectType then
-    Add('E2059', 'Lokale Klassen-, Interface- und Objekttypen sind nicht erlaubt', ADecl.StartPos, ADecl.EndPos)
-  else
-    Add('E2061', 'Lokale Klassen- und Interface-Typen sind nicht erlaubt', ADecl.StartPos, ADecl.EndPos);
+  Add('E2059', 'Lokale Klassen-, Interface- und Objekttypen sind nicht erlaubt', ADecl.StartPos, ADecl.EndPos);
+end;
+
+procedure TTreeChecker.CheckClassOperator(AHeader: TSyntaxNode);
+var
+  mIndex: Integer;
+begin
+  if (AHeader.Parent = nil) or not (AHeader.Parent.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType,
+    TSyntaxKind.InterfaceType]) then
+    Exit;
+  mIndex := IndexAt(AHeader.StartOffset);
+  if (mIndex < 0) or not FTokens[mIndex].IsKeyword('class') then
+    Exit;
+  mIndex := NextCode(mIndex);
+  if (mIndex < 0) or not SameText(FTokens[mIndex].Text, 'operator') then
+    Exit;
+  Add('E2123', Format('''procedure'', ''function'', ''property'' oder ''var'' erwartet, aber ''%s'' gefunden',
+    [FTokens[mIndex].Text]), FTokens[mIndex].StartPos, FTokens[mIndex].EndPos);
 end;
 
 function TTreeChecker.LabelsOf(AScope: TSyntaxNode): TArray<string>;
@@ -434,7 +454,10 @@ begin
         TSyntaxKind.RoutineHeader:
           if (ANode.Parent <> nil) and ((ANode.Parent.Kind = TSyntaxKind.RoutineDecl) or
             (ANode.Parent.Kind in TypeKinds)) then
+          begin
             CheckHeader(ANode);
+            CheckClassOperator(ANode);
+          end;
         TSyntaxKind.Parameter:
           CheckParameter(ANode);
         TSyntaxKind.VarDecl:

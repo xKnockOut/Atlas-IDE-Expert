@@ -4,7 +4,10 @@
 // aber ohne Compiler (Community Edition, Prüfung in der IDE aus). Nutzt die
 // vorsichtige Prüfung aus TUnresolvedNames: nur der erste Name einer Kette in
 // Anweisungen, with/asm/anonyme Methoden übersprungen, ohne Unit System im
-// Index keine Aussage. Ohne Index (Linter) schweigt die Regel.
+// Index keine Aussage. Ohne Index (Linter) schweigt die Regel. Alte
+// object-Syntax: fehlender Konstruktor in New(P, Init) wie E2601, fehlender
+// Destruktor in Dispose(P, Done) wie E2602, Fail außerhalb eines Konstruktors
+// wie E2078 (#1382).
 //
 // uses-unit-not-found (#1016, wie F2613, F1026, F1027, E2202, F2092): Units in
 // uses und contains, die der Compiler nicht findet (TRuleContext.Units, die
@@ -30,7 +33,10 @@
 //
 // unresolved-type (#1031, wie E2003, E2564, E2005): Ein Typname in einer
 // Deklaration (Feld, Parameter, Ergebnis, Vorfahr, Interface-Liste, Variable,
-// Typargument) lässt sich nicht auflösen bzw. bezeichnet keinen Typ. Dieselben
+// Typargument) lässt sich nicht auflösen bzw. bezeichnet keinen Typ. Der Code
+// folgt Delphi 13 (#1382): Mitglied hinter einem Punkt (TObject.Create) und
+// Variable wie E2005, Routine wie E2007, Konstante wie E2029 (dcc liest sie als
+// Anfang eines Teilbereichs und erwartet '..'). Dieselben
 // Vorbedingungen wie bei unresolved-attribute (System im Index, alle Units aus
 // uses bekannt, nicht in {$IF…}); außerdem still bei Typparametern, Namen, die
 // die Datei irgendwo als Typ deklariert (auch verschachtelt), und Namen, die der
@@ -113,6 +119,7 @@ uses
   Atlas.Common.Pascal.DirectiveNames,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.Attributes,
+  Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Semantics.UnresolvedNames;
 
 type
@@ -139,7 +146,9 @@ begin
   try
     Resolver.Namespaces := AContext.Namespaces;
     for Name in TUnresolvedNames.Find(Resolver, AContext.Tree, AContext.RelativePath) do
-      if Name.Suggestion <> '' then
+      if Name.Code <> '' then
+        AReport.Add(Name.Range, TUnresolvedNames.Describe(Name), TRuleConfidence.Medium)
+      else if Name.Suggestion <> '' then
         AReport.Add(Name.Range, Format('"%s" ist nicht deklariert; gemeint ist %s? ({$SCOPEDENUMS ON})',
           [Name.Name, Name.Suggestion]), TRuleConfidence.Medium)
       else
@@ -755,12 +764,23 @@ end;
 { TUnresolvedTypeRule }
 
 const
-  // Typen, die der Compiler kennt, ohne dass System.pas sie deklariert.
-  CompilerTypes: array[0..7] of string = ('ByteBool', 'WordBool', 'LongBool', 'Comp', 'Real48', 'OpenString',
-    'PShortString', 'Extended80');
   TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType, TIndexSymbolKind.EnumType,
     TIndexSymbolKind.TypeAlias];
+
+/// <summary>Meldung für einen Namen, der keinen Typ bezeichnet, mit dem Code von Delphi 13 (#1382).</summary>
+function NotATypeMessage(const AName: string; AQualified: Boolean; AKind: TIndexSymbolKind): string;
+begin
+  if AQualified then
+    Result := Format('%s ist kein Typ (wie E2005).', [AName])
+  else if AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine] then
+    Result := Format('%s ist eine Routine, kein Typ (wie E2007).', [AName])
+  else if AKind in [TIndexSymbolKind.EnumMember, TIndexSymbolKind.Constant] then
+    Result := Format('%s ist eine Konstante, kein Typ; der Compiler liest sie als Anfang eines Teilbereichs ' +
+      '%s..Ende (wie E2029).', [AName, AName])
+  else
+    Result := Format('%s ist kein Typ (wie E2005).', [AName]);
+end;
 
 function TUnresolvedTypeRule.Descriptor: TRuleDescriptor;
 begin
@@ -877,7 +897,8 @@ var
       Exit;
     Names := ANode.Name.Split(['.']);
     Bare := Names[High(Names)];
-    if TNameResolver.IsBuiltinTypeName(Bare) or MatchText(Bare, CompilerTypes) or
+    // Typen, die der Compiler kennt, ohne dass System.pas sie deklariert (TextFile, Real48 …, #1382).
+    if TNameResolver.IsBuiltinTypeName(Bare) or TSystemIntrinsics.IsType(Bare) or
       Declared.ContainsKey(LowerCase(Bare)) then
       Exit;
     Resolved := Resolver.ResolveChain(AContext.Tree, AContext.RelativePath, Names, ANode.StartOffset);
@@ -886,11 +907,12 @@ var
       ANode.StartPos.Character + Length(ANode.Name)));
     if Resolved.Found then
     begin
-      // Gefunden, aber kein Typ: Variable, Konstante, Routine (E2005).
+      // Gefunden, aber kein Typ: Variable, Konstante, Routine.
       if (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) and not Resolved.IsType and
-        (Resolved.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.Variable, TIndexSymbolKind.Field,
-        TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) then
-        AReport.Add(Range, Format('%s ist kein Typ (wie E2005).', [ANode.Name]), Level);
+        (Resolved.SymbolKind in [TIndexSymbolKind.EnumMember, TIndexSymbolKind.Constant, TIndexSymbolKind.Variable,
+        TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
+        TIndexSymbolKind.Routine]) then
+        AReport.Add(Range, NotATypeMessage(ANode.Name, Length(Names) > 1, Resolved.SymbolKind), Level);
       Exit;
     end;
     if Resolver.HasUnknownAncestor or Resolver.IsUnitPrefix(ANode.Name) or NestedSomewhere(Bare) then

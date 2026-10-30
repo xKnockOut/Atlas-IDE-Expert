@@ -10,7 +10,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Exceptions](#gruppe-exceptions) | 8 |
 | [Threads](#gruppe-threads) | 15 |
 | [Datenbank](#gruppe-database) | 5 |
-| [Compiler vorab](#gruppe-compiler) | 84 |
+| [Compiler vorab](#gruppe-compiler) | 85 |
 | [Robustheit und Muster](#gruppe-robustness) | 14 |
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
@@ -229,6 +229,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`for-in-not-enumerable`](#for-in-not-enumerable) | for-in über einen Typ ohne Enumerator | Bug | Fehler |
 | [`inherited-abstract-call`](#inherited-abstract-call) | inherited ruft eine abstrakte Methode auf | Bug | Warnung |
 | [`generic-constraint-violated`](#generic-constraint-violated) | Typargument verletzt eine Einschränkung | Bug | Fehler |
+| [`generic-inference-failed`](#generic-inference-failed) | Typargumente lassen sich nicht ableiten | Bug | Fehler |
 | [`unresolved-type`](#unresolved-type) | Typ in einer Deklaration nicht gefunden | Bug | Fehler |
 | [`class-reference-nonvirtual-constructor`](#class-reference-nonvirtual-constructor) | Konstruktor über Klassenreferenz nicht virtuell | Bug | Warnung |
 | [`jump-outside-allowed-scope`](#jump-outside-allowed-scope) | Break, Continue oder Exit an unzulässiger Stelle | Bug | Fehler |
@@ -418,13 +419,11 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 
 **Syntaxfehler** · Bug · Fehler · Gruppe Compiler vorab
 
-Der Quelltext lässt sich nicht lesen. Die Meldung nennt wie der Compiler, was erwartet und was gefunden wurde („';' erwartet, aber 'end' gefunden (wie E2029).“), und trägt den Compilercode: fehlendes ';' (E2066 zwischen Anweisungen, E2029 in Deklarationen), ';' vor else (E2153), offener String (E2052) oder Kommentar mit Startzeile (E2057), Anweisungen im interface-Teil (E2050), Bezeichner nach einem Punkt am Ende (E2372), strict ohne private oder protected (E2375), class vor etwas anderem als einer Routine (E2357), try ohne except oder finally (E2125), for ohne Variable (E2088). Prüfungen am fertigen Baum: procedure mit Ergebnistyp (E2025), Deklaration einer function ohne Ergebnistyp (E2023; die Kurzform der Implementierung ist erlaubt), Wertparameter ohne Typ (E2067), lokale Variable mit Anfangswert (E2195) oder mehrere Variablen mit einem Anfangswert (E2196), Klassen-, Interface- oder Objekttyp im var-Abschnitt (E2060, E2058) oder lokal in einer Routine (E2061, E2059), label im interface-Teil (E2049) und goto auf eine nicht deklarierte Marke (E2031; eine Marke der umgebenden Routine meldet label-misuse als E2093). Nach einem offenen String oder Kommentar fallen die Folgefehler weg, weil der Compiler dort abbricht. Inaktive {$IFDEF}-Zweige werden nicht gemeldet. Korrekturen: ';' vor else entfernen (sicher, auch beim Speichern), ';' ergänzen, String schließen, Kommentar am Ende seiner ersten Zeile schließen.
+Der Quelltext lässt sich nicht lesen. Die Meldung nennt wie der Compiler, was erwartet und was gefunden wurde („';' erwartet, aber 'end' gefunden (wie E2029).“), und trägt den Compilercode: fehlendes ';' (E2066 zwischen Anweisungen, E2029 in Deklarationen), ';' vor else (E2153), offener String (E2052) oder Kommentar mit Startzeile (E2057), Anweisungen im interface-Teil (E2050), Bezeichner nach einem Punkt am Ende (E2372), strict ohne private oder protected (E2375), class vor etwas anderem als einer Routine, var oder property (E2123), eine Zahl mit leerem Exponenten wie 1.5e (E2053), absolute mit einer Adresse statt einer Variablen (E2088), try ohne except oder finally (E2125), for ohne Variable (E2088). Prüfungen am fertigen Baum: procedure mit Ergebnistyp (E2025), Deklaration einer function ohne Ergebnistyp (E2023; die Kurzform der Implementierung ist erlaubt), Wertparameter ohne Typ (E2067), lokale Variable mit Anfangswert (E2195) oder mehrere Variablen mit einem Anfangswert (E2196), Klassen-, Interface- oder Objekttyp im var-Abschnitt (E2058, in einer Routine dazu E2059) oder lokal in einer Routine (E2059), class operator in einer Klasse, einem Interface oder object-Typ (E2123; Operatoren gibt es nur in Records). Die Codes folgen Delphi 13; ältere Versionen meldeten stattdessen E2357, E2060 und E2061, label im interface-Teil (E2049) und goto auf eine nicht deklarierte Marke (E2031; eine Marke der umgebenden Routine meldet label-misuse als E2093). Nach einem offenen String oder Kommentar fallen die Folgefehler weg, weil der Compiler dort abbricht. Inaktive {$IFDEF}-Zweige werden nicht gemeldet. Korrekturen: ';' vor else entfernen (sicher, auch beim Speichern), ';' ergänzen, String schließen, Kommentar am Ende seiner ersten Zeile schließen.
 
-Entspricht der Compilermeldung `E2023`, `E2025`, `E2029`, `E2031`, `E2049`, `E2050`, `E2052`, `E2057`, `E2058`, `E2059`, `E2060`, `E2061`, `E2066`, `E2067`, `E2088`, `E2125`, `E2153`, `E2195`, `E2196`, `E2357`, `E2372`, `E2375`.
+Entspricht der Compilermeldung `E2023`, `E2025`, `E2029`, `E2031`, `E2049`, `E2050`, `E2052`, `E2057`, `E2058`, `E2059`, `E2060`, `E2061`, `E2066`, `E2067`, `E2088`, `E2125`, `E2153`, `E2195`, `E2196`, `E2357`, `E2372`, `E2375`, `E2053`, `E2123`.
 
 Stufe A (Parser genügt).
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix syntax`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -475,8 +474,6 @@ if not (Sender is TButton) then
 
 Ein lsp-ignore-Kommentar unterdrückt keinen Treffer und kann entfernt werden.
 
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unused-suppression`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
-
 Mit Treffer:
 
 ```pascal
@@ -496,8 +493,6 @@ X := 1;
 **Unbekannte Regelkennung** · Code Smell · Hinweis · Gruppe Atlas intern
 
 Ein lsp-ignore-Kommentar nennt eine Regelkennung, die es nicht gibt, und unterdrückt deshalb nichts. Die Meldung schlägt die ähnlichste bekannte Kennung vor (Tippfehler); ein solcher Kommentar zählt nicht zusätzlich als unused-suppression.
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unknown-rule-id`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -890,8 +885,6 @@ end;
 **Veraltetes TThread.Resume/Suspend** · Code Smell · Warnung · Gruppe Threads
 
 TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten.
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix thread-resume-suspend`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -1875,7 +1868,9 @@ end;
 
 **Interface ohne GUID** · Bug · Warnung · Gruppe Fehler finden
 
-Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst niedrig. Die Schnellkorrektur fügt eine neue GUID ein. Ein dispinterface ohne GUID übersetzt nicht; das meldet dispinterface-invalid.
+Ein Interface deklariert keine GUID. Supports, as und QueryInterface brauchen eine. Die Konfidenz ist hoch, wenn das Interface in derselben Datei damit verwendet wird, sonst niedrig; mit einer solchen Verwendung meldet Delphi dort E2232 (wie E2232). Die Schnellkorrektur fügt eine neue GUID ein. Ein dispinterface ohne GUID übersetzt nicht; das meldet dispinterface-invalid.
+
+Entspricht der Compilermeldung `E2232`.
 
 Mit Treffer:
 
@@ -2549,8 +2544,6 @@ if Visible then
 
 Free prüft selbst auf nil, eine Assigned-Prüfung vor Free oder FreeAndNil ist überflüssig.
 
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix redundant-assigned-free`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
-
 Mit Treffer:
 
 ```pascal
@@ -2618,8 +2611,6 @@ if Done then
 **Überflüssige Typumwandlung** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 TStringList(Liste) mit Liste: TStringList, X as TFoo mit X: TFoo oder Integer(Anzahl) mit Anzahl: Integer ändern nichts. Ebenso TObject(Obj).Free: Free ruft den virtuellen Destruktor und braucht keine Umwandlung (Option checkFree). Gemeldet wird nur, wenn der Typ der Quelle sicher bekannt und genau mit dem Namen des Ziels deklariert ist; Aliase (TFarbIndex = Integer), Konstanten, Routinen ohne Aufruf, überladene Routinen als Quelle, Argumente überladener Aufrufe (die Umwandlung kann die Überladung wählen), as mit Interfaces (QueryInterface) und in der Klassenkette neu deklariertes Free bleiben still. Sicherheit hoch. Korrektur: die Umwandlung entfernen.
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix redundant-cast`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -2995,7 +2986,9 @@ RegisterComponents('Samples', [TMyButton]);
 
 **Nicht deklarierter Bezeichner** · Bug · Warnung · Gruppe Fehler finden
 
-Ein Bezeichner in einer Anweisung ist weder in der Unit noch in den eingebundenen Units deklariert (wie Compilerfehler E2003). Geprüft beim Tippen, ohne Compiler; with-Blöcke, asm und anonyme Methoden werden übersprungen.
+Ein Bezeichner in einer Anweisung ist weder in der Unit noch in den eingebundenen Units deklariert (wie Compilerfehler E2003). Geprüft beim Tippen, ohne Compiler; with-Blöcke, asm und anonyme Methoden werden übersprungen. Alte object-Syntax: In New(P, Init) und Dispose(P, Done) ist das zweite Argument ein Konstruktor bzw. Destruktor des object-Typs hinter P; fehlt er dort, meldet die Regel wie E2601 bzw. E2602, Fail außerhalb eines Konstruktors wie E2078.
+
+Entspricht der Compilermeldung `E2003`, `E2601`, `E2602`, `E2078`.
 
 Mit Treffer:
 
@@ -3242,7 +3235,9 @@ if Liste.Count = 0 then
 
 **Schleife läuft einen Schritt zu weit** · Bug · Warnung · Gruppe Fehler finden
 
-for I := 0 to Liste.Count oder to Length(A) über nullbasierte Listen und Arrays greift im letzten Durchlauf hinter das Ende, wenn der Rumpf Liste[I] bzw. A[I] liest. Bei einsbasierten Strings umgekehrt: S[0] und for I := 0 to Length(S) greifen vor das erste Zeichen; {$ZEROBASEDSTRINGS ON} wird beachtet. Schnellkorrektur: - 1 ergänzen bzw. High(A) verwenden, bei Strings Low(S) und High(S). Die Option countNames nennt die Namen, die eine Anzahl liefern.
+for I := 0 to Liste.Count oder to Length(A) über nullbasierte Listen und Arrays greift im letzten Durchlauf hinter das Ende, wenn der Rumpf Liste[I] bzw. A[I] liest. Bei einsbasierten Strings umgekehrt: S[0] (Delphi meldet E2157) und for I := 0 to Length(S) greifen vor das erste Zeichen; {$ZEROBASEDSTRINGS ON} wird beachtet. Schnellkorrektur: - 1 ergänzen bzw. High(A) verwenden, bei Strings Low(S) und High(S). Die Option countNames nennt die Namen, die eine Anzahl liefern.
+
+Entspricht der Compilermeldung `E2157`.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -3512,8 +3507,6 @@ Richtig:
 **Destroy statt Free aufgerufen** · Bug · Warnung · Gruppe Fehler finden
 
 Obj.Destroy wird direkt als Anweisung aufgerufen. Ist Obj nil, knallt der Aufruf; Free prüft vorher auf nil und ist der übliche Weg, ein Objekt freizugeben. inherited Destroy und Aufrufe eines Destruktors mit Argumenten sind ausgenommen. Konfidenz hoch. Schnellkorrektur: aus Destroy wird Free.
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix destroy-called-directly`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -5292,8 +5285,6 @@ Entspricht der Compilermeldung `E2014`.
 
 Stufe A (Parser genügt).
 
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix comparison-as-statement`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
-
 Mit Treffer:
 
 ```pascal
@@ -5403,8 +5394,6 @@ Entspricht der Compilermeldung `E2004`.
 
 Stufe A (Parser genügt).
 
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix duplicate-declaration`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
-
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
 | `checkUses` | boolean | `true` | Doppelte Einträge in uses-Klauseln melden. |
@@ -5430,9 +5419,9 @@ begin
 
 **Bedingte Direktiven unvollständig oder unbekannt** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein {$IFDEF}, {$IFNDEF}, {$IFOPT} oder {$IF}, das nie geschlossen wird, sodass der Rest der Datei an seiner Bedingung hängt (wie E2095, bei {$IF} E2280); {$ELSE}, {$ELSEIF}, {$ENDIF} oder {$IFEND} ohne passendes {$IF…} oder nach {$ELSE} (wie E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} oder {$UNDEF} ohne gültiges Symbol (wie E2173); eine unbekannte Direktive oder ein unbekannter {$WARN}-Bezeichner (wie W1030), mit dem nächstliegenden bekannten Namen als Korrektur; {$POPOPT} ohne {$PUSHOPT} (wie W1078) oder {$PUSHOPT} ohne {$POPOPT} (wie W1079); ein ungültiger Wert für {$ALIGN} bzw. {$A} (wie E2573). Unbekannte Namen prüft die Regel nicht in Zweigen, deren Bedingung FPC abfragt, {$PUSHOPT}/{$POPOPT} nur, wenn keines davon in einem bedingten Zweig steht. Korrekturen: {$ENDIF} vor der ersten Leerzeile hinter dem offenen Block ergänzen, überzählige Direktive entfernen, Tippfehler korrigieren.
+Ein {$IFDEF}, {$IFNDEF}, {$IFOPT} oder {$IF}, das nie geschlossen wird, sodass der Rest der Datei an seiner Bedingung hängt (wie E2095, bei {$IF} E2280); {$ELSE}, {$ELSEIF}, {$ENDIF} oder {$IFEND} ohne passendes {$IF…} oder nach {$ELSE} (wie E2279); {$IFDEF}, {$IFNDEF}, {$DEFINE} oder {$UNDEF} ohne gültiges Symbol (wie E2173); eine unbekannte Direktive oder ein unbekannter {$WARN}-Bezeichner (wie E1030, vor Delphi 13 W1030; der Code folgt delphiVersion), mit dem nächstliegenden bekannten Namen als Korrektur; {$POPOPT} ohne {$PUSHOPT} (wie W1078) oder {$PUSHOPT} ohne {$POPOPT} (wie W1079); ein ungültiger Wert für {$ALIGN} bzw. {$A} (wie E2573). Unbekannte Namen prüft die Regel nicht in Zweigen, deren Bedingung FPC abfragt, {$PUSHOPT}/{$POPOPT} nur, wenn keines davon in einem bedingten Zweig steht. Korrekturen: {$ENDIF} vor der ersten Leerzeile hinter dem offenen Block ergänzen, überzählige Direktive entfernen, Tippfehler korrigieren.
 
-Entspricht der Compilermeldung `E2095`, `E2280`, `E2279`, `E2173`, `W1030`, `W1078`, `W1079`, `E2573`.
+Entspricht der Compilermeldung `E2095`, `E2280`, `E2279`, `E2173`, `W1030`, `W1078`, `W1079`, `E2573`, `E1030`.
 
 Stufe A (Parser genügt).
 
@@ -5550,9 +5539,9 @@ Gesamt := Gesamt + Form.Flaeche;
 
 **Getter oder Setter einer Property ungültig** · Bug · Fehler · Gruppe Compiler vorab
 
-Der Name hinter read oder write einer Property passt nicht: Er ist weder in der Klasse noch in ihren Vorfahren deklariert oder ist eine Property (wie E2168); Getter oder Setter haben die falsche Art, Parameter oder Typen (wie E2234); der Setter nimmt einen var- oder out-Parameter (wie E2282); die Zugriffsmethode ist überladen, und keine Überladung passt (wie E2271); eine Klassen-Property nutzt ein Instanzmitglied oder eine Klassenmethode ohne static (wie E2355), eine Instanz-Property eine class var oder eine statische Klassenmethode (wie E2356); eine Array-Property nutzt ein Feld (wie E2174, index mit Feld übersetzt dcc); ein Feldselektor geht über ein Feld, das kein Record ist, oder steht hinter einer Klassen-Property (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Record fehlt (wie E2562). Namen sucht die Regel in der Datei und für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Klasse ihn nicht sieht oder Include-Dateien einbindet. Typen vergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: anlegen (wie die Vervollständigung hinter read/write, completion.accessorSection).
+Der Name hinter read oder write einer Property passt nicht: Er ist weder in der Klasse noch in ihren Vorfahren deklariert oder ist eine Property (wie E2168); Getter oder Setter haben die falsche Art, Parameter oder Typen (wie E2008, ältere Delphi-Versionen E2234); der Setter nimmt einen var- oder out-Parameter (wie E2282); die Zugriffsmethode ist überladen, und keine Überladung passt (wie E2250, ältere Delphi-Versionen E2271); eine Klassen-Property nutzt ein Instanzmitglied oder eine Klassenmethode ohne static (wie E2355), eine Instanz-Property eine class var oder eine statische Klassenmethode (wie E2356); eine Array-Property nutzt ein Feld (wie E2174, index mit Feld übersetzt dcc); ein Feldselektor geht über ein Feld, das kein Record ist, oder steht hinter einer Klassen-Property (wie E2459), nennt ein Mitglied, das kein Feld ist (wie E2461), oder ein Feld, das dem Record fehlt (wie E2562). Namen sucht die Regel in der Datei und für Vorfahren im Symbolindex; sie bleibt still, wenn die Kette der Vorfahren abbricht, der Name nur in einem inaktiven Zweig steht, die Klasse ihn nicht sieht oder Include-Dateien einbindet. Typen vergleicht sie nur, wenn beide eingebaut oder als eigener Typ deklariert sind. Korrektur für ein fehlendes F<Name>, Get<Name> oder Set<Name>: anlegen (wie die Vervollständigung hinter read/write, completion.accessorSection).
 
-Entspricht der Compilermeldung `E2168`, `E2234`, `E2282`, `E2271`, `E2355`, `E2356`, `E2174`, `E2459`, `E2461`, `E2562`.
+Entspricht der Compilermeldung `E2168`, `E2234`, `E2282`, `E2271`, `E2355`, `E2356`, `E2174`, `E2459`, `E2461`, `E2562`, `E2008`, `E2250`.
 
 Stufe B (Namensauflösung über Units).
 
@@ -5952,7 +5941,7 @@ end;
 
 **Unit-Name passt nicht zum Dateinamen** · Bug · Fehler · Gruppe Compiler vorab
 
-Der Name hinter unit weicht vom Dateinamen ab, meist nach dem Umbenennen der Datei außerhalb der IDE (wie E1038, W1038). Groß-/Kleinschreibung zählt nicht, Punkte im Namen schon. In Programmen, Bibliotheken und Packages wird außerdem ein Eintrag uses X in 'Datei.pas' gemeldet, dessen Datei eine andere Unit deklariert (wie E2085); die Regel liest dazu die Datei. Programme, Bibliotheken und Packages selbst vergleicht sie nicht mit dem Dateinamen, weil der Compiler das auch nicht tut. {$WARN UNIT_NAME_MISMATCH OFF} oder {$WARNINGS OFF} vor dem Unit-Namen schaltet die Regel wie den Compiler ab. Korrekturen: Unit-Namen an den Dateinamen anpassen (die Datei umbenennen bleibt Sache der IDE) bzw. den uses-Eintrag auf die Unit der Datei ändern.
+Der Name hinter unit weicht vom Dateinamen ab, meist nach dem Umbenennen der Datei außerhalb der IDE (wie E1038, W1038). Groß-/Kleinschreibung zählt nicht, Punkte im Namen schon. In Programmen, Bibliotheken und Packages wird außerdem ein Eintrag uses X in 'Datei.pas' gemeldet, dessen Datei eine andere Unit deklariert (wie E2085); die Regel liest dazu die Datei. Passt dort auch der Name der Unit nicht zu ihrer Datei, meldet Delphi 13 nur E1038 in der Unit, und der uses-Eintrag bleibt still. Programme, Bibliotheken und Packages selbst vergleicht sie nicht mit dem Dateinamen, weil der Compiler das auch nicht tut. {$WARN UNIT_NAME_MISMATCH OFF} oder {$WARNINGS OFF} vor dem Unit-Namen schaltet die Regel wie den Compiler ab. Korrekturen: Unit-Namen an den Dateinamen anpassen (die Datei umbenennen bleibt Sache der IDE) bzw. den uses-Eintrag auf die Unit der Datei ändern.
 
 Entspricht der Compilermeldung `E1038`, `W1038`, `E2085`.
 
@@ -6072,8 +6061,6 @@ Entspricht der Compilermeldung `W1040`.
 
 Stufe B (Namensauflösung über Units).
 
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix implicit-variants-unit`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
-
 Mit Treffer:
 
 ```pascal
@@ -6153,9 +6140,9 @@ end;
 
 **Operator falsch deklariert** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein class operator in einem Record oder einer Klasse ist so deklariert, wie Delphi es ablehnt: unbekannter Operatorname (wie E2393), falsche Parameterzahl (E2517), eigener Typ fehlt in den Parametern (E2518) bzw. bei Implicit/Explicit in Parametern und Ergebnis (E2521), Inc/Dec mit anderem Ergebnistyp als dem ersten Parameter (E2519), Umwandlung in oder aus einem Vorfahren (E2522, Kette innerhalb der Datei) oder Assign, dessen erster Parameter kein var-Parameter des eigenen Typs ist (E2464, E2617). Rümpfe eines unbekannten Operators oder eines class operator in einer Klasse passen zu keiner Deklaration (E2037). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und Typargumente übereinstimmen; Aliase des eigenen Typs in der Datei halten die Regel still, True, False und OnesComplement gelten als bekannt. Vergleichsoperatoren mit anderem Ergebnis als Boolean übersetzt dcc (Spring4D-Kriterien); sie bleiben still. Korrekturen: nächstliegender Operatorname, Ergebnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf.
+Ein class operator in einem Record ist so deklariert, wie Delphi es ablehnt: unbekannter Operatorname (wie E2393), falsche Parameterzahl (E2517), eigener Typ fehlt in den Parametern (E2518) bzw. bei Implicit/Explicit in Parametern und Ergebnis (E2521), Inc/Dec mit anderem Ergebnistyp als dem ersten Parameter (E2519) oder Assign, dessen erster Parameter kein var-Parameter des eigenen Typs ist (E2464, E2617). Rümpfe eines unbekannten Operators oder eines class operator in einer Klasse passen zu keiner Deklaration (E2037). In Klassen, Interfaces und object-Typen lehnt Delphi 13 jeden class operator ab; das meldet die Regel syntax (E2123). Typen gelten als gleich, wenn ihre Namen ohne Unit-Präfix und Typargumente übereinstimmen; Aliase des eigenen Typs in der Datei halten die Regel still, True, False und OnesComplement gelten als bekannt. Vergleichsoperatoren mit anderem Ergebnis als Boolean übersetzt dcc (Spring4D-Kriterien); sie bleiben still. Korrekturen: nächstliegender Operatorname, Ergebnis wie der erste Parameter, var vor dem ersten Parameter, Parameterliste nach Vorlage; jeweils in Deklaration und Rumpf.
 
-Entspricht der Compilermeldung `E2393`, `E2464`, `E2517`, `E2518`, `E2519`, `E2521`, `E2522`, `E2617`, `E2037`.
+Entspricht der Compilermeldung `E2393`, `E2464`, `E2517`, `E2518`, `E2519`, `E2521`, `E2617`, `E2037`.
 
 Stufe A (Parser genügt).
 
@@ -6180,11 +6167,11 @@ end;
 
 **Generische Deklaration unzulässig** · Bug · Fehler · Gruppe Compiler vorab
 
-Eine generische Deklaration, die Delphi ablehnt: Einschränkungen class und record zugleich (wie E2507), eine Einschränkung doppelt (E2603), record zusammen mit constructor (E2516), eine Klasse neben class bzw. record (E2552), zwei Klassen (E2553), ein Einschränkungstyp, der weder Klasse noch Interface ist (E2510); Typparameter an Aufzählung, Menge, Teilbereich, Zeiger, Klassenreferenz, Alias oder Helfer (E2508), an Destruktor oder Klassenkonstruktor (E2528), Operator (E2529), globaler Routine (E2530), virtueller, dynamischer, message- oder override-Methode (E2533) oder Interface-Methode (E2535); class of eines parametrisierten Typs (E2548), generische Klasse, die von TCustomAttribute erbt (E2549), parametrisierter Typ als Attribut (E2565); ein Typparameter, der einen des umgebenden Typs verdeckt (H2509); ein Aufruf mit einer Zahl Typargumente, die keine Überladung hat (E2551, Klassen und Records der Datei mit Vorfahren aus der Datei); eine Methode eines generischen Typs oder eine generische Methode aus dem interface-Teil, die ein Symbol des implementation-Teils verwendet (E2506; still in with und wenn die Vorfahrenkette nicht bekannt ist). Typen zählen nur, wenn sie eingebaut oder in der Datei deklariert sind; unbekannte Typen halten die Regel still. Lokale Prozeduren in generischen Methoden (E2570) meldet die Regel erst, wenn der Abgleich mit Delphi 12/13 bestätigt, dass sie noch abgelehnt werden.
+Eine generische Deklaration, die Delphi ablehnt: Einschränkungen class und record zugleich (wie E2507), eine Einschränkung doppelt (E2603), record zusammen mit constructor (E2516), eine Klasse neben class bzw. record (E2552), zwei Klassen (E2553), ein Einschränkungstyp, der weder Klasse noch Interface ist (E2510); Typparameter an Aufzählung, Menge, Teilbereich, Zeiger, Klassenreferenz, Alias oder Helfer (E2508), an Konstruktor einer Klasse, Destruktor oder Klassenkonstruktor (E2528), Operator (E2529), globaler Routine (E2530), virtueller, dynamischer, message- oder override-Methode (E2533) oder Interface-Methode (E2535); class of eines parametrisierten Typs (E2548), generische Klasse, die von TCustomAttribute erbt (E2549), parametrisierter Typ als Attribut (E2565); ein Typparameter, der einen des umgebenden Typs verdeckt (H2509); ein Aufruf mit einer Zahl Typargumente, die keine Überladung hat (E2551, Klassen und Records der Datei mit Vorfahren aus der Datei); eine Methode eines generischen Typs oder eine generische Methode aus dem interface-Teil, die ein Symbol des implementation-Teils verwendet (E2506; still in with und wenn die Vorfahrenkette nicht bekannt ist); eine lokale Routine in einer generischen Methode oder einer Methode eines generischen Typs (E2570); type vor einem instanziierten Typ wie type TList<Integer> (E2574, Korrektur: type entfernen und einen Alias deklarieren). Typen zählen, wenn sie eingebaut oder in der Datei deklariert sind und, bei Klassen als Einschränkung (E2552, E2553), auch aus dem Symbolindex; unbekannte Typen halten die Regel still.
 
-Entspricht der Compilermeldung `E2506`, `E2507`, `E2508`, `E2510`, `E2516`, `E2528`, `E2529`, `E2530`, `E2533`, `E2535`, `E2548`, `E2549`, `E2551`, `E2552`, `E2553`, `E2565`, `E2603`, `H2509`.
+Entspricht der Compilermeldung `E2506`, `E2507`, `E2508`, `E2510`, `E2516`, `E2528`, `E2529`, `E2530`, `E2533`, `E2535`, `E2548`, `E2549`, `E2551`, `E2552`, `E2553`, `E2565`, `E2570`, `E2574`, `E2603`, `H2509`.
 
-Stufe A (Parser genügt).
+Stufe B (Namensauflösung über Units).
 
 Mit Treffer:
 
@@ -6269,9 +6256,9 @@ end;
 
 **TypeInfo oder Default mit unzulässigem Argument** · Bug · Fehler · Gruppe Compiler vorab
 
-TypeInfo oder Default bekommt eine Variable statt eines Typs (wie E2133, E2537: Parameter, lokale, Inline- und Unit-Variablen, Felder, Properties, Result, for- und Ausnahmevariablen), TypeInfo einen Typ ohne RTTI (Aufzählung mit festen Werten, Dateityp, Text/TextFile; E2134) oder Default einen Dateityp (E2538). Namen werden von innen nach außen aufgelöst; in with, in Helfern, in Methoden von Typen außerhalb der Datei, bei Deklarationen in anderen bedingten Zweigen und wenn Datei oder Index ein eigenes TypeInfo bzw. Default deklarieren, bleibt die Regel still. Korrektur: den deklarierten Typ der Variablen einsetzen.
+TypeInfo oder Default bekommt eine Variable statt eines Typs (wie E2133, E2537: Parameter, lokale, Inline- und Unit-Variablen, Felder, Properties, Result, for- und Ausnahmevariablen), TypeInfo einen Typ ohne RTTI (Aufzählung mit festen Werten, Dateityp, Text/TextFile; E2134) oder Default einen Dateityp (E2538; Delphi 13 meldet zur Zuweisung zusätzlich E2015). Namen werden von innen nach außen aufgelöst; in with, in Helfern, in Methoden von Typen außerhalb der Datei, bei Deklarationen in anderen bedingten Zweigen und wenn Datei oder Index ein eigenes TypeInfo bzw. Default deklarieren, bleibt die Regel still. Korrektur: den deklarierten Typ der Variablen einsetzen.
 
-Entspricht der Compilermeldung `E2133`, `E2134`, `E2537`, `E2538`.
+Entspricht der Compilermeldung `E2133`, `E2134`, `E2537`, `E2538`, `E2015`.
 
 Stufe B (Namensauflösung über Units).
 
@@ -6779,8 +6766,6 @@ uses
 
 Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil ihres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern.
 
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unused-uses`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
-
 Mit Treffer:
 
 ```pascal
@@ -6867,9 +6852,9 @@ end;
 
 **implements-Klausel unzulässig** · Bug · Fehler · Gruppe Compiler vorab
 
-Eine Delegation mit implements verletzt eine ihrer festen Regeln: implements nur in Klassen (wie E2258), nur an Properties mit Klassen- oder Interface-Typ (wie E2259; gemeldet für eingebaute Typen, Records und Aufzählungen), nicht zusammen mit index (wie E2260), nur an lesbaren Properties (wie E2261), der Getter ohne andere Aufrufkonvention als register (wie E2262) und nicht dynamic oder message (wie E2263), jedes Interface nur über eine Property (wie E2257) und keine Methodenzuordnung für ein so umgesetztes Interface (wie E2264). Typen werden über die uses-Klauseln aufgelöst; unbekannte Typen, Aliase und Properties in bedingten Zweigen bleiben still.
+Eine Delegation mit implements verletzt eine ihrer festen Regeln: implements nur in Klassen (wie E2258), nur an Properties mit Klassen- oder Interface-Typ (wie E2259; gemeldet für eingebaute Typen, Records und Aufzählungen), nicht zusammen mit index (wie E2260), nur an lesbaren Properties (wie E2261), der Getter ohne andere Aufrufkonvention als register (wie E2262) und nicht dynamic oder message (wie E2263; Delphi 13 meldet zusätzlich E2148), jedes Interface nur über eine Property (wie E2257) und keine Methodenzuordnung für ein so umgesetztes Interface (wie E2264). Typen werden über die uses-Klauseln aufgelöst; unbekannte Typen, Aliase und Properties in bedingten Zweigen bleiben still.
 
-Entspricht der Compilermeldung `E2257`, `E2258`, `E2259`, `E2260`, `E2261`, `E2262`, `E2263`, `E2264`.
+Entspricht der Compilermeldung `E2257`, `E2258`, `E2259`, `E2260`, `E2261`, `E2262`, `E2263`, `E2264`, `E2148`.
 
 Stufe B (Namensauflösung über Units).
 
@@ -7186,8 +7171,6 @@ Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbe
 Entspricht der Compilermeldung `H2443`, `H2445`, `H2456`, `H2457`.
 
 Stufe B (Namensauflösung über Units).
-
-Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix inline-not-expanded`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 Mit Treffer:
 
@@ -8040,9 +8023,9 @@ end;
 
 **Integer und HRESULT vertauscht** · Bug · Warnung · Gruppe Compiler vorab
 
-Eine Klasse implementiert eine Interface-Methode mit HRESULT-Ergebnis über eine Methode mit Integer- (bzw. LongInt-) Ergebnis oder umgekehrt (wie X1008). Beide sind 32 Bit groß, deshalb fällt es nicht auf; die Bedeutung der Werte (S_FALSE als Erfolg) geht aber verloren; wichtig für COM- und OTA-Code. Zugeordnet wird über Name und Parametertypen samt Zuordnungen wie function IFoo.Bar = Baz; Interfaces samt ihren Vorfahren kommen aus der Datei bzw. dem Index. Stehen Varianten in bedingten Zweigen, meldet die Regel nur, wenn jede Variante abweicht. Korrektur: den Ergebnistyp in Deklaration und Implementierung an das Interface angleichen.
+Eine Klasse implementiert eine Interface-Methode mit HRESULT-Ergebnis über eine Methode mit Integer- (bzw. LongInt-) Ergebnis oder umgekehrt (wie W1008; die Delphi-Hilfe nennt X1008). Beide sind 32 Bit groß, deshalb fällt es nicht auf; die Bedeutung der Werte (S_FALSE als Erfolg) geht aber verloren; wichtig für COM- und OTA-Code. Zugeordnet wird über Name und Parametertypen samt Zuordnungen wie function IFoo.Bar = Baz; Interfaces samt ihren Vorfahren kommen aus der Datei bzw. dem Index. Stehen Varianten in bedingten Zweigen, meldet die Regel nur, wenn jede Variante abweicht. Korrektur: den Ergebnistyp in Deklaration und Implementierung an das Interface angleichen.
 
-Entspricht der Compilermeldung `X1008`.
+Entspricht der Compilermeldung `W1008`.
 
 Stufe B (Namensauflösung über Units).
 
@@ -8071,7 +8054,7 @@ end;
 
 **Ungültiges Argument für einen var- oder out-Parameter** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: eine Konstante, einen const-Parameter, eine Property oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192) oder einen Ausdruck (wie E2036); auch @ vor einem arithmetischen oder logischen Ausdruck meldet die Regel (wie E2036). Ein String-Element für einen Zeichen-Parameter (S[1]) ist für dcc eine Variable und bleibt still (E2354 gibt es nur unter .NET, #1383). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei Properties mit write mit Rückschreiben.
+Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: eine Konstante, einen konstanten Ausdruck wie cMax + 1, einen const-Parameter, eine Property oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192) oder einen Ausdruck (wie E2036); auch @ vor einem arithmetischen oder logischen Ausdruck meldet die Regel (wie E2036). Ein String-Element für einen Zeichen-Parameter (S[1]) ist für dcc eine Variable und bleibt still (E2354 gibt es nur unter .NET, #1383). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei Properties mit write mit Rückschreiben.
 
 Entspricht der Compilermeldung `E2197`, `E2192`, `E2036`.
 
@@ -8281,14 +8264,39 @@ Richtig:
   Result := T.Create;
 ```
 
+<a id="generic-inference-failed"></a>
+### generic-inference-failed
+
+**Typargumente lassen sich nicht ableiten** · Bug · Fehler · Gruppe Compiler vorab
+
+Ein Aufruf einer generischen Methode ohne Typargumente, deren Typparameter sich aus den Argumenten nicht ableiten lassen: ein Typparameter, der in keinem Parameter vorkommt, etwa nur im Ergebnis (wie E2531), oder Argumente verschiedener Art (Zahl, Zeichenkette, Boolean) für Parameter, deren Typ derselbe Typparameter ist (wie E2532). E2531 meldet die Regel als Anweisung, als Aufruf mit Klammern und auf der rechten Seite einer Zuweisung an einen Wert bekannten, nicht prozeduralen Typs, und nur, wenn jede Überladung einen solchen Typparameter hat. E2532 meldet sie nur bei genau einer Routine ohne overload; Argumente unbekannten Typs (Variant, Klassen, Ausdrücke) und Zahlen verschiedener Breite halten sie still. Wie argument-count-mismatch schweigt sie bei Deklarationen in bedingten Zweigen und bei Namen, die ein unbekannter Vorfahr verdecken kann.
+
+Entspricht der Compilermeldung `E2531`, `E2532`.
+
+Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
+
+Mit Treffer:
+
+```pascal
+Zahl := TFabrik.Neu;
+TFabrik.Paar(1, 'a');
+```
+
+Richtig:
+
+```pascal
+Zahl := TFabrik.Neu<Integer>;
+TFabrik.Paar<string>('1', 'a');
+```
+
 <a id="unresolved-type"></a>
 ### unresolved-type
 
 **Typ in einer Deklaration nicht gefunden** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein Typname in einer Deklaration (Feld, Parameter, Ergebnis, Vorfahr, Interface-Liste, Variable, Typargument) ist nicht deklariert (wie E2003, beim Ziel eines Zeigertyps wie E2564) oder kein Typ (wie E2005). Ergänzt unresolved-identifier, das nur Anweisungen prüft. Dieselben Vorbedingungen wie bei unresolved-attribute: System im Symbolindex, alle Units aus uses bekannt, nicht in {$IF…}-Blöcken. Typparameter, Namen, die die Datei irgendwo als Typ deklariert (auch verschachtelt), und Namen, die der Index als verschachtelten Typ kennt (geerbte innere Typen), meldet die Regel nicht. Korrektur: die Unit, die den Typ (mit gleich vielen Typparametern) deklariert, in uses aufnehmen.
+Ein Typname in einer Deklaration (Feld, Parameter, Ergebnis, Vorfahr, Interface-Liste, Variable, Typargument) ist nicht deklariert (wie E2003, beim Ziel eines Zeigertyps wie E2564) oder kein Typ: eine Variable oder ein Mitglied hinter einem Punkt wie E2005, eine Routine wie E2007, eine Konstante wie E2029 (Delphi liest sie als Anfang eines Teilbereichs und erwartet '..'). Typen, die der Compiler ohne Deklaration in System.pas kennt (Text, TextFile, Real48, OpenString …), gelten als deklariert. Ergänzt unresolved-identifier, das nur Anweisungen prüft. Dieselben Vorbedingungen wie bei unresolved-attribute: System im Symbolindex, alle Units aus uses bekannt, nicht in {$IF…}-Blöcken. Typparameter, Namen, die die Datei irgendwo als Typ deklariert (auch verschachtelt), und Namen, die der Index als verschachtelten Typ kennt (geerbte innere Typen), meldet die Regel nicht. Korrektur: die Unit, die den Typ (mit gleich vielen Typparametern) deklariert, in uses aufnehmen.
 
-Entspricht der Compilermeldung `E2564`, `E2563`, `E2005`, `E2003`.
+Entspricht der Compilermeldung `E2564`, `E2563`, `E2005`, `E2003`, `E2007`.
 
 Stufe B (Namensauflösung über Units).
 
@@ -8440,9 +8448,9 @@ end;
 
 **Schleifenvariable verändert oder nicht lokal** · Bug · Fehler · Gruppe Compiler vorab
 
-Der Variablen einer for-Schleife wird im Rumpf zugewiesen oder sie wird mit Inc/Dec verändert (wie E2081), sie wird als var- bzw. out-Parameter an eine Routine dieser Datei übergeben (wie W1015) oder sie ist keine einfache lokale Variable: Feld der eigenen Klasse, globale Variable der Unit oder lokale Variable der umgebenden Routine (wie E1019). Delphi meldet das erst beim Übersetzen. Parameter, unbekannte Namen und Schleifen in with-Anweisungen bleiben still, ebenso anonyme Methoden im Rumpf und Routinen mit Parserfehlern. Korrekturen: auf eine while-Schleife umstellen (nicht bei Continue im Rumpf) bzw. for var verwenden, wenn die Routine den Namen sonst nicht benutzt.
+Der Variablen einer for-Schleife wird im Rumpf zugewiesen oder sie wird mit Inc/Dec verändert (wie E2081), sie wird als var- bzw. out-Parameter an eine Routine dieser Datei übergeben (wie W1015) oder sie ist keine einfache lokale Variable: Feld der eigenen Klasse oder lokale Variable der umgebenden Routine (wie E1019) bzw. globale Variable der Unit (wie W1019, Delphi warnt nur). Delphi meldet das erst beim Übersetzen. Parameter, unbekannte Namen und Schleifen in with-Anweisungen bleiben still, ebenso anonyme Methoden im Rumpf und Routinen mit Parserfehlern. Korrekturen: auf eine while-Schleife umstellen (nicht bei Continue im Rumpf) bzw. for var verwenden, wenn die Routine den Namen sonst nicht benutzt.
 
-Entspricht der Compilermeldung `E2081`, `W1015`, `E1019`.
+Entspricht der Compilermeldung `E2081`, `W1015`, `E1019`, `W1019`.
 
 Stufe A (Parser genügt).
 

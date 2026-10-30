@@ -48,6 +48,9 @@ OHNE_CODE = {'missing-begin-end'}
 # ganzzahlige Zuweisung mit Datenverlust (W1071).
 NUR_MELDUNG = {'line-length', 'uses-cycle', 'unused-assignment', 'xmldoc-mismatch', 'member-hides-ancestor',
                'override-case-mismatch', 'narrowing-assignment'}
+# Regeln, die nur in einem Teil ihrer Treffer einem Compiler-Code entsprechen: Es zählen nur Codes,
+# die die Meldung selbst nennt (interface-guid: E2232 nur, wenn das Interface abgefragt wird).
+NUR_MIT_CODE = {'interface-guid'}
 ZUORDNUNG = {
     'result-not-set': ['W1035'],
     'possibly-uninitialized': ['W1036'],
@@ -128,7 +131,7 @@ def kind(code):
 
 def finding_codes(finding, codes_by_rule):
     own = set(CODE.findall(finding['message']))
-    if own:
+    if own or finding['rule'] in NUR_MIT_CODE:
         return own
     return codes_by_rule.get(finding['rule'], set())
 

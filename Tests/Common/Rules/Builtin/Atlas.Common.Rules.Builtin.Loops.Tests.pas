@@ -3,7 +3,7 @@
 // Tests der Regel for-variable-misuse (#1009): Beispiel aus dem Issue mit
 // Korrektur nach while, Zuweisung mit einzelner Anweisung als Rumpf, downto
 // und Continue ohne Korrektur, var-Parameter einer Routine der Datei (W1015),
-// Feld, globale Variable und Variable der umgebenden Routine (E1019) mit
+// Feld und Variable der umgebenden Routine (E1019), globale Variable (W1019) mit
 // Korrektur "for var", stille Fälle, Abschalten, Gruppe und Ausnahmen.
 // Tests der Regel for-variable-after-loop (#1010): Beispiel aus dem Issue mit
 // Korrektur nach while, Lesen erst nach weiteren Anweisungen und in einer
@@ -163,7 +163,8 @@ begin
   Assert.AreEqual('for var FIndex verwenden', Findings[0].Fixes[0].Title);
   Assert.AreEqual(Zeilen('  for var FIndex := 0 to 9 do'#10'    Zeilen.Add('''');'#10'  for GZaehler := 1 to 2 do'#10 +
     '    Zeilen.Add('''');'#10'  GZaehler := 0;'#10), TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
-  Assert.AreEqual('Schleifenvariable GZaehler ist eine globale Variable, keine einfache lokale Variable (wie E1019).',
+  // Eine globale Variable übersetzt Delphi 13 mit Warnung W1019 (Fall Cm.W1019, #1382).
+  Assert.AreEqual('Schleifenvariable GZaehler ist eine globale Variable, keine einfache lokale Variable (wie W1019).',
     Findings[1].Message);
   Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)), 'GZaehler wird nach der Schleife noch benutzt');
   // Lokale Prozedur mit der Variablen der umgebenden Routine.

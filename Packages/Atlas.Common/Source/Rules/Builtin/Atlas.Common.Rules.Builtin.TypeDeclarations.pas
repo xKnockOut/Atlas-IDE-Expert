@@ -36,7 +36,7 @@
 //                        Interface-Typ (wie E2259), nicht mit index (wie
 //                        E2260), nur mit read (wie E2261), Getter ohne
 //                        Aufrufkonvention außer register (wie E2262) und ohne
-//                        dynamic oder message (wie E2263), jedes Interface nur
+//                        dynamic oder message (wie E2263, dazu E2148), jedes Interface nur
 //                        einmal (wie E2257) und keine Methodenzuordnung für
 //                        ein so umgesetztes Interface (wie E2264).
 //   calling-convention-required
@@ -1019,7 +1019,7 @@ var
           'sein, nur register (wie E2262).', [Scan.Tokens[AGetter].Text, Name]), TRuleConfidence.High)
       else if (Name = 'dynamic') or (Name = 'message') then
         AReport.Add(Scan.TokenRange(AGetter), Format('Der Getter %s einer implements-Property darf nicht %s ' +
-          'sein (wie E2263).', [Scan.Tokens[AGetter].Text, Name]), TRuleConfidence.High);
+          'sein (wie E2263 und E2148).', [Scan.Tokens[AGetter].Text, Name]), TRuleConfidence.High);
     end;
   end;
 
