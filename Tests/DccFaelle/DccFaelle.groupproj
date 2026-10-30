@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{9A81DE57-5E03-5D40-9AF8-7A14560AB289}</ProjectGuid>
     </PropertyGroup>
@@ -18,6 +18,8 @@
         <Projects Include="DccInterfacesGegen.dproj"/>
         <Projects Include="DccOperatoren.dproj"/>
         <Projects Include="DccOperatorenGegen.dproj"/>
+        <Projects Include="DccDeklarationen.dproj"/>
+        <Projects Include="DccDeklarationenGegen.dproj"/>
         <Projects Include="DccKonstanten.dproj"/>
         <Projects Include="DccKonstantenGegen.dproj"/>
         <Projects Include="DccPublished.dproj"/>
@@ -77,6 +79,12 @@
     <Target Name="DccOperatorenGegen">
         <MSBuild Projects="DccOperatorenGegen.dproj"/>
     </Target>
+    <Target Name="DccDeklarationen">
+        <MSBuild Projects="DccDeklarationen.dproj"/>
+    </Target>
+    <Target Name="DccDeklarationenGegen">
+        <MSBuild Projects="DccDeklarationenGegen.dproj"/>
+    </Target>
     <Target Name="DccKonstanten">
         <MSBuild Projects="DccKonstanten.dproj"/>
     </Target>
@@ -96,6 +104,6 @@
         <MSBuild Projects="DccGenericsGegen.dproj"/>
     </Target>
     <Target Name="Build">
-        <CallTarget Targets="DccEigenschaften;DccEigenschaftenGegen;DccVarParameter;DccVarParameterGegen;DccSichtbarkeit;DccSichtbarkeitGegen;DccInline;DccInlineGegen;DccInlineKonstanteGegen;DccVorwaerts;DccVorwaertsGegen;DccInterfaces;DccInterfacesGegen;DccOperatoren;DccOperatorenGegen;DccKonstanten;DccKonstantenGegen;DccPublished;DccPublishedGegen;DccGenerics;DccGenericsGegen"/>
+        <CallTarget Targets="DccEigenschaften;DccEigenschaftenGegen;DccVarParameter;DccVarParameterGegen;DccSichtbarkeit;DccSichtbarkeitGegen;DccInline;DccInlineGegen;DccInlineKonstanteGegen;DccVorwaerts;DccVorwaertsGegen;DccInterfaces;DccInterfacesGegen;DccOperatoren;DccOperatorenGegen;DccDeklarationen;DccDeklarationenGegen;DccKonstanten;DccKonstantenGegen;DccPublished;DccPublishedGegen;DccGenerics;DccGenericsGegen"/>
     </Target>
 </Project>

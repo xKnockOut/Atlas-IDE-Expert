@@ -11,7 +11,11 @@
 //           subsystems, cycles, crossLinks (nur "text"), "unit": Name
 //           (nur "text": Steckbrief), "compareWith": gespeicherter Stand
 //           (#1121, Pfad oder file-URI, relativ zum Projekt), "compare":
-//           false schaltet den Vergleich mit architecture.baseline ab}
+//           false schaltet den Vergleich mit architecture.baseline ab,
+//           "resolution": Feinheit γ der Teilsysteme 0,2–5,0 (#1366;
+//           Vorgabe architecture.grouping.resolution, nur für diesen Aufruf),
+//           "renameSubsystems": true rechnet einmal ohne Angleichung an den
+//           vorigen Stand (#1367, Befehl „Teilsysteme neu benennen“)}
 //   Antwort {"enabled": true, "root": Projektordner, "format": "json",
 //   "data": {…}} mit den Daten aus TArchitectureReport.Json (samt Lage der
 //   Karte; Pfade relativ zu "root"), sonst {"enabled": true, "root": …,
@@ -30,7 +34,7 @@
 //   schreibt den Bericht nach der Endung (.md Markdown, .html/.htm HTML,
 //   .json den Stand für den Vergleich, #1121) und liefert {"file": …,
 //   "units": n}; Optionen wie bei der Anfrage (scope, includeLibraryUnits,
-//   compareWith, compare). Berichte vergleichen wie atlas.architecture.
+//   compareWith, compare, resolution). Berichte vergleichen wie atlas.architecture.
 
 interface
 
@@ -111,6 +115,25 @@ begin
     Result := TJSONBool(Value).AsBoolean;
 end;
 
+/// <summary>Feinheit γ aus "resolution" (#1366); AFound False ohne Angabe. Außerhalb 0,2–5,0 oder keine Zahl:
+/// Fehler InvalidParams.</summary>
+function ResolutionOf(const AObject: TJSONObject; out AFound: Boolean): Double;
+var
+  mValue: TJSONValue;
+begin
+  Result := 1;
+  AFound := False;
+  if AObject = nil then
+    Exit;
+  mValue := AObject.GetValue('resolution');
+  if mValue = nil then
+    Exit;
+  if not (mValue is TJSONNumber) or not TArchitectureGrouping.ValidResolution(TJSONNumber(mValue).AsDouble) then
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"resolution" ist eine Zahl von 0,2 bis 5,0');
+  AFound := True;
+  Result := TJSONNumber(mValue).AsDouble;
+end;
+
 /// <summary>Pfad aus einer file-URI oder unverändert, wenn AText schon ein Pfad ist.</summary>
 function PathOf(const AText: string): string;
 begin
@@ -163,6 +186,8 @@ function TLspArchitecture.OverviewFor(const AParams: TJSONObject; out AEnabled: 
 var
   FileName, Scope: string;
   Request: TArchitectureRequest;
+  mResolution: Double;
+  mFound: Boolean;
 begin
   Result := Default(TArchitectureOverview);
   ARoot := '';
@@ -172,6 +197,7 @@ begin
   Scope := StringOf(AParams, 'scope');
   if (Scope <> '') and (Scope <> 'project') and (Scope <> 'projectGroup') then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"scope" ist project oder projectGroup');
+  mResolution := ResolutionOf(AParams, mFound);
   if not (Assigned(FSourceFor) and FSourceFor(FileName, Scope, Request, ASettings)) then
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Projekt geladen');
   AEnabled := ASettings.ArchitectureEnabled;
@@ -179,6 +205,10 @@ begin
     Exit;
   ARoot := Request.Root;
   Request.IncludeLibrary := FlagOf(AParams, 'includeLibraryUnits', Request.IncludeLibrary);
+  // Nur für diesen Aufruf; die Einstellung bleibt (#1366).
+  if mFound then
+    Request.Grouping.Resolution := mResolution;
+  Request.Rename := FlagOf(AParams, 'renameSubsystems', False);
   Result := FService.Overview(Request);
 end;
 
@@ -351,6 +381,8 @@ begin
       for Name in TArray<string>.Create('includeLibraryUnits', 'compare') do
         if Options.GetValue(Name) is TJSONBool then
           Params.AddPair(Name, TJSONBool.Create(FlagOf(Options, Name, False)));
+      if Options.GetValue('resolution') <> nil then
+        Params.AddPair('resolution', TJSONValue(Options.GetValue('resolution').Clone));
     end;
     Overview := OverviewFor(Params, Enabled, Root, Settings);
     Baseline := '';

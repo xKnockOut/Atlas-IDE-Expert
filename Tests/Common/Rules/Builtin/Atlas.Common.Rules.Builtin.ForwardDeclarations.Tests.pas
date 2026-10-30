@@ -31,6 +31,8 @@ type
     [Test]
     procedure UnsatisfiedForwardTypes;
     [Test]
+    procedure IncompleteTypes;
+    [Test]
     procedure UnsatisfiedOptions;
   end;
 
@@ -215,6 +217,35 @@ begin
   // Kurzform mit Vorfahr ist vollständig.
   TRuleAssert.Silent(TUnsatisfiedForwardRule.Create, 'unit Pruef;'#10'interface'#10'type'#10 +
     '  EPruef = class(Exception);'#10'implementation'#10'end.');
+end;
+
+procedure TForwardDeclarationRulesTests.IncompleteTypes;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  // Cm.E2086: Record mit einem Feld seines eigenen Typs (#1380).
+  mFound := Unsatisfied('unit Pruef;'#10'interface'#10'type'#10'  TKreis = record'#10'    Innen: TKreis;'#10 +
+    '  end;'#10'implementation'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Der Record TKreis enthält sich selbst als Feld Innen; ein Typ ist erst nach seinem end ' +
+    'vollständig (wie E2086).', mFound[0].Message);
+  Assert.AreEqual(4, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual(11, mFound[0].Range.StartPos.Character);
+  // Cm.E2420: Interface-Liste vor der vollständigen Deklaration; ebenso ein Vorfahr.
+  Assert.AreEqual('IEins ist hier nur vorwärts deklariert; als Vorfahr oder in der Interface-Liste von TKlasse muss ' +
+    'der Typ schon vollständig sein (wie E2086).', OnlyUnsatisfied('unit Pruef;'#10'interface'#10'type'#10 +
+    '  IEins = interface;'#10'  TKlasse = class(TInterfacedObject, IEins)'#10'  end;'#10 +
+    '  IEins = interface'#10'  end;'#10'implementation'#10'end.'));
+  Assert.AreEqual('TBasis ist hier nur vorwärts deklariert; als Vorfahr oder in der Interface-Liste von TKind muss ' +
+    'der Typ schon vollständig sein (wie E2086).', OnlyUnsatisfied('unit Pruef;'#10'interface'#10'type'#10 +
+    '  TBasis = class;'#10'  TKind = class(TBasis)'#10'  end;'#10'  TBasis = class'#10'  end;'#10 +
+    'implementation'#10'end.'));
+  // Zeiger, Felder und Parameter dürfen den unvollständigen Typ nennen; danach ist er vollständig.
+  TRuleAssert.Silent(TUnsatisfiedForwardRule.Create, 'unit Pruef;'#10'interface'#10'type'#10 +
+    '  PKreis = ^TKreis;'#10'  TKreis = record'#10'    Innen: PKreis;'#10'    Weiter: ^TKreis;'#10'  end;'#10 +
+    '  TBasis = class;'#10'  TNutzer = class'#10'    FBasis: TBasis;'#10'    procedure Nimm(ABasis: TBasis);'#10 +
+    '  end;'#10'  TBasis = class'#10'  end;'#10'  TKind = class(TBasis)'#10'  end;'#10'implementation'#10#10 +
+    'procedure TNutzer.Nimm(ABasis: TBasis);'#10'begin'#10'end;'#10#10'end.');
 end;
 
 procedure TForwardDeclarationRulesTests.UnsatisfiedOptions;

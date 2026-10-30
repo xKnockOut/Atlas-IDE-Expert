@@ -523,6 +523,28 @@ type
     class function Default: TRefactoringSettings; static;
   end;
 
+  /// <summary>Argument eines eigenen MCP-Prompts (mcp.customPrompts, #1357).</summary>
+  TMcpCustomPromptArgument = record
+    Name: string;
+    Description: string;
+    Required: Boolean;
+  end;
+
+  /// <summary>Eigener MCP-Prompt aus mcp.customPrompts (#1357): Text mit Platzhaltern {argument} und
+  /// eingebettete Inhalte aus Include.</summary>
+  TMcpCustomPrompt = record
+    Name: string;
+    Description: string;
+    Arguments: TArray<TMcpCustomPromptArgument>;
+    Text: string;
+    /// <summary>Kennungen aus KnownIncludes, z. B. diagnostics oder metrics.</summary>
+    Include: TArray<string>;
+    /// <summary>Erlaubte Werte für include: outline, diagnostics, metrics, unused, todos, form, impact,
+    /// dependencies, conventions, lastBuild.</summary>
+    class function KnownIncludes: TArray<string>; static;
+    class function IsKnownInclude(const AName: string): Boolean; static;
+  end;
+
   TServerSettings = record
     /// <summary>Delphi-Version als BDS-Version der Registry, z. B. "37.0" (Produktnummern wie "12" werden
     /// beim Lesen umgerechnet, siehe BdsVersionOf); '' = passend zur ProjectVersion der .dproj, sonst neueste installierte (#47).</summary>
@@ -560,12 +582,20 @@ type
     MinConfidence: TRuleConfidence;
     /// <summary>"minConfidence" steht ausdrücklich in der Konfiguration und geht dem Profil vor (#146).</summary>
     MinConfidenceGiven: Boolean;
+    /// <summary>fix.minConfidence (#1352): Untergrenze der Konfidenz für Sammelkorrekturen; Vorgabe High.</summary>
+    FixMinConfidence: TRuleConfidence;
     /// <summary>Glob-Muster relativ zum Ordner der Konfiguration (*, **, ?).</summary>
     Exclude: TArray<string>;
     /// <summary>MCP-Werkzeuge, die der Server nicht anbietet (mcp.disabledTools, #99).</summary>
     McpDisabledTools: TArray<string>;
     /// <summary>MCP-Modus liest die globale settings.json (mcp.globalSettings, D-08); Vorgabe True.</summary>
     McpGlobalSettings: Boolean;
+    /// <summary>Prompts und Ressourcenvorlagen anbieten (mcp.prompts, #1357); Vorgabe True.</summary>
+    McpPrompts: Boolean;
+    /// <summary>Sprache der Anleitungen in den Prompts (mcp.promptLanguage): de (Vorgabe) oder en.</summary>
+    McpPromptLanguage: string;
+    /// <summary>Eigene Prompts des Projekts (mcp.customPrompts).</summary>
+    McpCustomPrompts: TArray<TMcpCustomPrompt>;
     /// <summary>Formatierungsstil als JSON-Objekt (Text), sonst ''.</summary>
     Format: string;
     /// <summary>Projektaufgaben (#900) als JSON-Liste (Text), sonst ''. Ausführen tut sie das Plugin; der Server
@@ -689,6 +719,29 @@ type
     /// (newCycle, newCrossLink, subsystemChange, centralGrowth; Vorgabe newCycle).</summary>
     ArchitectureBaseline: string;
     ArchitectureFailOn: TArray<string>;
+    /// <summary>Zuordnung jeder Unit erklären (#1368): Kanten je Teilsystem in Hinweis, Steckbrief, Bericht und
+    /// get_architecture, Spalte „knapp“ (architecture.explainAssignment, Vorgabe an).</summary>
+    ArchitectureExplainAssignment: Boolean;
+    /// <summary>Gruppierung der Teilsysteme (architecture.grouping): Auflösung γ des Louvain-Verfahrens (0,2–5,0,
+    /// Vorgabe 1, #1366) und ob das Fenster den Regler „Feinheit“ zeigt.</summary>
+    ArchitectureGroupingResolution: Double;
+    ArchitectureGroupingShowResolutionSlider: Boolean;
+    /// <summary>Nachteilung (#1364): ab diesem Anteil aller Units (0–0,9, Vorgabe 0,25; 0 = nie nach Größe) bzw.
+    /// unter diesem Zusammenhalt ab 30 Units (0–1, Vorgabe 0,3; 0 = nie) wird ein Teilsystem geteilt.</summary>
+    ArchitectureGroupingMaxShare: Double;
+    ArchitectureGroupingMinCohesion: Double;
+    /// <summary>Übergreifende Fundament-Units (#1365): "group" (mitgruppieren), "attach" (anhängen) oder
+    /// "separate" (eigenes Teilsystem „Fundament“, Vorgabe).</summary>
+    ArchitectureGroupingFoundations: string;
+    /// <summary>Farben und Namen der Teilsysteme an den vorigen Stand angleichen (#1367): architecture.baseline,
+    /// sonst den zuletzt berechneten (architecture.grouping.keepPrevious, Vorgabe an).</summary>
+    ArchitectureGroupingKeepPrevious: Boolean;
+    /// <summary>Hotspots (#1354): Hauptschalter (aus = kein Fenster, kein get_hotspots, --hotspots endet mit Exit-Code
+    /// 3), ausgewerteter Zeitraum in Monaten (1..60) und Mindestzahl gemeinsamer Commits für die Änderungskopplung
+    /// (2..1000).</summary>
+    HotspotsEnabled: Boolean;
+    HotspotsMonths: Integer;
+    HotspotsCouplingMinCommits: Integer;
     /// <summary>Protokoll (#265): Stufe (debug/info/warning/error), Logdatei und Mitschnitt.
     /// Der Server übernimmt sie nicht zur Laufzeit; der Client übergibt sie beim Start als
     /// --log-level, --log und --trace.</summary>
@@ -886,6 +939,24 @@ begin
     Pattern := Pattern + '**';
   Result := MatchAt(Pattern, 1, NormalizeSlashes(APath), 1) or
     ((Pos('*', Pattern) = 0) and (Pos('?', Pattern) = 0) and MatchAt(Pattern + '/**', 1, NormalizeSlashes(APath), 1));
+end;
+
+{ TMcpCustomPrompt }
+
+class function TMcpCustomPrompt.KnownIncludes: TArray<string>;
+begin
+  Result := TArray<string>.Create('outline', 'diagnostics', 'metrics', 'unused', 'todos', 'form', 'impact',
+    'dependencies', 'conventions', 'lastBuild');
+end;
+
+class function TMcpCustomPrompt.IsKnownInclude(const AName: string): Boolean;
+var
+  mName: string;
+begin
+  for mName in KnownIncludes do
+    if mName = AName then
+      Exit(True);
+  Result := False;
 end;
 
 { TInlayHintSettings }
@@ -1143,6 +1214,7 @@ begin
   Result.TestProfile := '';
   Result.MinConfidenceGiven := False;
   Result.MinConfidence := TRuleConfidence.Medium;
+  Result.FixMinConfidence := TRuleConfidence.High;
   Result.Exclude := nil;
   Result.Format := '';
   Result.Formatting := TFormatStyle.Default;
@@ -1189,6 +1261,9 @@ begin
   Result.DiagnosticsUsesCycleImplementation := False;
   Result.IndexProjectGroup := True;
   Result.McpGlobalSettings := True;
+  Result.McpPrompts := True;
+  Result.McpPromptLanguage := 'de';
+  Result.McpCustomPrompts := nil;
   Result.IndexSearchPaths := True;
   // Bibliothekspfade ganz zu indizieren dauert bei großen Installationen Minuten; nur auf Wunsch.
   Result.IndexLibraryPaths := False;
@@ -1207,6 +1282,16 @@ begin
   Result.ArchitectureExclude := nil;
   Result.ArchitectureBaseline := '';
   Result.ArchitectureFailOn := ['newCycle'];
+  Result.ArchitectureExplainAssignment := True;
+  Result.ArchitectureGroupingResolution := 1;
+  Result.ArchitectureGroupingShowResolutionSlider := True;
+  Result.ArchitectureGroupingMaxShare := 0.25;
+  Result.ArchitectureGroupingMinCohesion := 0.3;
+  Result.ArchitectureGroupingFoundations := 'separate';
+  Result.ArchitectureGroupingKeepPrevious := True;
+  Result.HotspotsEnabled := True;
+  Result.HotspotsMonths := 12;
+  Result.HotspotsCouplingMinCommits := 5;
   Result.LogLevel := 'info';
   Result.LogFile := '';
   Result.TraceFile := '';
