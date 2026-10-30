@@ -691,6 +691,9 @@ type
     /// <summary>Im Editor auch Zyklen mit implementation-Kante, als Hinweis (#896,
     /// diagnostics.usesCycleImplementation).</summary>
     DiagnosticsUsesCycleImplementation: Boolean;
+    /// <summary>Auch Units der Delphi-Installation und der Bibliothekspfade prüfen, die zu keinem Projekt gehören
+    /// (diagnostics.librarySources); aus = im Editor keine Befunde in RTL, VCL und Komponenten.</summary>
+    DiagnosticsLibrarySources: Boolean;
     /// <summary>Umfang des Index (#648): alle Projekte der Projektgruppe, alle Units der Projekt-Suchpfade und
     /// der Bibliotheks- und Suchpfade der Installation; False = nur über uses erreichbare (bisher).</summary>
     IndexProjectGroup: Boolean;
@@ -1259,6 +1262,7 @@ begin
   Result.DiagnosticsLogMapFile := False;
   Result.DiagnosticsUsesCycleLive := True;
   Result.DiagnosticsUsesCycleImplementation := False;
+  Result.DiagnosticsLibrarySources := False;
   Result.IndexProjectGroup := True;
   Result.McpGlobalSettings := True;
   Result.McpPrompts := True;

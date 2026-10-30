@@ -223,11 +223,6 @@ begin
   end;
 end;
 
-function IsKeyword(const AToken: TLexToken; const AWord: string): Boolean;
-begin
-  Result := AToken.IsWord and not AToken.Plain and SameText(AToken.Text, AWord);
-end;
-
 class function TAtlasPairs.Spans(const AText, ALine: string; const ALineTokens: TArray<TAtlasPairToken>;
   AOwners: Boolean): TArray<TAtlasPairSpan>;
 var

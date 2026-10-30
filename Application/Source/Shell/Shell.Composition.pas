@@ -593,6 +593,9 @@ type
     /// <summary>Formatstil mit .editorconfig, ohne Editor-Optionen (#43); für Schnellbefehle und try/finally.</summary>
     function ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
     function RuleContextFor(const AUri: string; out AContext: TRuleCheckContext): Boolean;
+    /// <summary>AFileName gehört zu keinem Projekt und liegt in der Delphi-Installation oder einem Bibliothekspfad
+    /// (diagnostics.librarySources). Nur unter FWorkspacesLock.</summary>
+    function IsLibrarySource(const AFileName: string): Boolean;
     /// <summary>Zielplattform und Konfiguration des Projekts zu AUri für den Hinweis inaktiver Zweige (#615).
     /// </summary>
     function BuildTargetFor(const AUri: string; out APlatform, AConfig: string): Boolean;
@@ -696,6 +699,7 @@ uses
   Atlas.Common.Rules.Builtin.FormatArgs,
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Rules.Checker,
+  Atlas.Common.Rules.LibrarySources,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.Parser,
@@ -3057,6 +3061,27 @@ begin
     FLogger.Info(Format('%s gehört zu %d Projekten; es gilt %s (%s)',
       [ExtractFileName(AFileName), Length(ACandidates), Result.Name, Reason]));
   end;
+end;
+
+function TServerComposition.IsLibrarySource(const AFileName: string): Boolean;
+var
+  mWorkspace: TShellWorkspace;
+  mRoots, mProjectRoots: TArray<string>;
+  mSources: TLibrarySources;
+begin
+  mRoots := nil;
+  mProjectRoots := nil;
+  for mWorkspace in FWorkspaces do
+  begin
+    if mWorkspace.ContainsFile(AFileName) then
+      Exit(False);
+    mProjectRoots := mProjectRoots + [mWorkspace.Root];
+    if mWorkspace.BdsRoot <> '' then
+      mRoots := mRoots + [mWorkspace.BdsRoot];
+    mRoots := mRoots + mWorkspace.LibraryPaths;
+  end;
+  mSources := TLibrarySources.Create(mRoots, mProjectRoots);
+  Result := mSources.IsLibraryFile(AFileName);
 end;
 
 function TServerComposition.PickWorkspace(const AFileName: string): TShellWorkspace;
@@ -6189,6 +6214,7 @@ var
   Projects: TArray<TProjectInfo>;
   RuleProject: TCheckProject;
   Pending: string;
+  mLibrary: Boolean;
 begin
   AContext := Default(TRuleCheckContext);
   FileName := TDocumentUris.ToPath(AUri);
@@ -6215,6 +6241,9 @@ begin
         if (Other <> Workspace) and Other.ContainsFile(FileName) and Other.Project(Project) then
           Projects := Projects + [Project];
     end;
+    // RTL, VCL und Komponenten außerhalb der Projekte (diagnostics.librarySources): Wer mit Strg+Klick in
+    // System.Net.HttpClient.pas springt, soll dort keine Befunde zu fremdem Code sehen.
+    mLibrary := not AContext.Settings.DiagnosticsLibrarySources and IsLibrarySource(FileName);
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
@@ -6227,8 +6256,12 @@ begin
     AContext.AutoCreateForms := RuleProject.AutoCreateForms;
     AContext.ProjectMainSource := RuleProject.ProjectMainSource;
   end;
-  // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen.
-  AContext.Rules := BuiltinRules;
+  // Neue Instanzen je Prüfung: Regeln dürfen so Zustand halten, ohne Threads zu teilen. Ohne Regeln bleibt die
+  // Datei still (TLspSyntaxDiagnostics.RuleFindings).
+  if mLibrary then
+    AContext.Rules := nil
+  else
+    AContext.Rules := BuiltinRules;
   // Der Server hält alle Ordner: ein Index, Nachladen über alle Ordner (auch für Dateien ohne Ordner) und die
   // Projekte der Gruppe für unused-public-member (#1102); still, solange Projekte laden oder der Index läuft.
   AContext.Services.Index := FIndex;

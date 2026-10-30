@@ -226,14 +226,6 @@ begin
     'UnicodeString']));
 end;
 
-/// <summary>Knoten unter AParent (ohne ihn), der ANode enthält; nil, wenn ANode nicht darunter liegt.</summary>
-function ChildOn(AParent, ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode;
-  while (Result <> nil) and (Result.Parent <> AParent) do
-    Result := Result.Parent;
-end;
-
 function Where(const AFileName: string; ALine: Integer): string;
 begin
   if AFileName = '' then

@@ -365,6 +365,12 @@ begin
   Source := InRoutine('  X: Boolean;', '  if A and B then'#10'    Exit(True);'#10'  Exit(False);');
   Assert.AreEqual(InRoutine('  X: Boolean;', '  Exit(A and B);'),
     Fixed(Source, TRuleAssert.Findings(TBooleanAssignIfRule.Create, Source)));
+  // Wie THTTPClient.CheckDownloadResume (System.Net.HttpClient): Kommentar hinter then, Meldung ohne Korrektur.
+  Findings := TRuleAssert.Findings(TBooleanAssignIfRule.Create, InRoutine('  LValue: string;',
+    '  if (LValue = '''') or SameText(LResponse.HeaderValue[sAcceptRanges], ''none'') then  // do not translate'#10 +
+    '    Result := False'#10'  else'#10'    Result := True;'));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
   // Kommentar im if: Meldung ohne Korrektur.
   Findings := TRuleAssert.Findings(TBooleanAssignIfRule.Create, InRoutine('  X: Boolean;',
     '  if A then X := True // wichtig'#10'  else X := False;'));

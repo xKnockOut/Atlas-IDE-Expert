@@ -434,6 +434,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.PaletteIcons.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Performance.Tests.pas"/>
         <DCCReference Include="Common\Rules\Atlas.Common.Rules.ChangedFiles.Tests.pas"/>
+        <DCCReference Include="Common\Rules\Atlas.Common.Rules.LibrarySources.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.RefactoringCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.ExpressionCommands.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.Modernizer.Tests.pas"/>
