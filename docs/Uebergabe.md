@@ -31,6 +31,12 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
+## Überladung mit Alias-Parametertyp (30.10.2026, Branch `claude/project-thread-s9y3tx`)
+- **Ursache:** `TNameResolver.ArgTypes` verfolgt beim Argument Aliase (`Age: TDateTime` wird `Double`), der Parametertyp der Überladung blieb `TDateTime`. `ArgFits('TDateTime', 'Double')` schlug fehl, keine Überladung passte, `SelectOverloads` gab alle zurück und `Resolve` nahm die erste. Folgen bei Marco: W1000 an `FileAge(AFileName, Age)` (nur `FileAge(string): LongInt` ist deprecated) und E2012 „LongInt, nicht Boolean“ an `if FileAge(AFileName, Age) then`.
+- **Fix:** `SelectOverloads` ist jetzt Methode des Resolvers; `ParamFits` löst einen nicht eingebauten Parametertyp, der nicht passt, in der Unit der Überladung auf, verfolgt Aliase (`TypeOf`) und vergleicht erneut.
+- **Zusätzlich (Regel):** `deprecated-symbol` nimmt `ResolveAll` und meldet nur, wenn alle verbleibenden Kandidaten einen Hinweis tragen.
+- Getestet unter FPC: Resolver, Regeln mit Überladungen, Golden-Korpus (248 Tests). Neue Tests scheitern ohne den Fix. Offen: Delphi-Build.
+
 ## Compilerregeln für Grenzen in konstanten Ausdrücken (#1372, 29.10.2026, Branch `feature/1372-konstante-grenzen`)
 - Regel `constant-expression-error` erweitert, alles aus den dcc-Ergebnissen von `Tests/Compilermeldungen`: konstanter Index außerhalb eines statischen Arrays der Datei (E1012; Variable, Feld, typisierte Konstante, auch über benannten Typ der Datei; still bei dynamischen und offenen Arrays, Strings, in `with` und bei Deklarationen in anderen `{$IFDEF}`-Zweigen), einzelne case-Marke außerhalb des eingebauten Ganzzahltyps des case-Ausdrucks (E1012), Menge über mehr als 256 Werte (E2028: Teilbereich, `set of Word` usw., benannter Teilbereich), Zahlen/Strings in der Sichtbarkeitsmenge von `{$RTTI}` (E2572, nur außerhalb bedingter Zweige), zu großes Hex-/Binärliteral an Int64 zusätzlich W1012.
 - **Ursache E1012 statt W1012:** Delphi 13 meldet `Byte := 300`, typisierte Konstanten und Teilbereiche als Fehler E1012. W1012 (Warnung) bleibt nur für Werte, die als gleich breite Zahl mit anderem Vorzeichen passen (`Integer := $FFFFFFFF`, `Cardinal := -1`); das ist eine Annahme, Fall `Cm.W1012b` prüft sie beim nächsten dcc-Lauf. `TConstantExpressionErrorRule.OutsideIsError` entscheidet; `comparison-always-constant` lässt einzelne Marken, die dort Fehler sind, aus (sonst doppelt). Ob dcc bei `-1` bzw. `256..300` für ein Byte W1018 oder E1012 meldet, zeigt `Cm.W1018b`.

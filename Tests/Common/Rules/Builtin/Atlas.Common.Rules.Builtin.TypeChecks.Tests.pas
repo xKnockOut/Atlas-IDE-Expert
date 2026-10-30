@@ -84,6 +84,8 @@ type
     [Test]
     procedure BooleansAndUnknownTypesAreSilent;
     [Test]
+    procedure OverloadChosenByAliasArgument;
+    [Test]
     procedure OffAndExclude;
   end;
 
@@ -771,6 +773,45 @@ begin
     '  if Liste.Leer then'#10'    Verarbeiten;'#10'  if not Liste.Leer then'#10'    Verarbeiten;'#10 +
     '  while (Liste.Count <> 0) and B do'#10'    Verarbeiten;'#10'  if Unbekannt then'#10'    Verarbeiten;'#10 +
     '  repeat'#10'    Verarbeiten;'#10'  until Liste.Count > 3;'#10)))));
+end;
+
+procedure TConditionNotBooleanTests.OverloadChosenByAliasArgument;
+const
+  // Wie FileAge der RTL: Die erste Überladung liefert LongInt, die mit out-Parameter vom Alias-Typ Boolean.
+  Source =
+    'unit Bedingungen;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TDatum = type Double;'#10 +
+    'function Alter(const AName: string): LongInt; overload;'#10 +
+    'function Alter(const AName: string; out ADatum: TDatum; AFolgen: Boolean = True): Boolean; overload;'#10 +
+    'implementation'#10 +
+    'function Alter(const AName: string): LongInt;'#10 +
+    'begin'#10 +
+    '  Result := 0;'#10 +
+    'end;'#10 +
+    'function Alter(const AName: string; out ADatum: TDatum; AFolgen: Boolean): Boolean;'#10 +
+    'begin'#10 +
+    '  ADatum := 0;'#10 +
+    '  Result := False;'#10 +
+    'end;'#10 +
+    'procedure Pruefen(const AName: string);'#10 +
+    'var'#10 +
+    '  Datum: TDatum;'#10 +
+    'begin'#10 +
+    '  if Alter(AName, Datum) then'#10 +
+    '    Datum := 1;'#10 +
+    '  if Alter(AName) then'#10 +
+    '    Datum := 2;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := ConditionFindings(Source);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.AreEqual('Die Bedingung ist LongInt, nicht Boolean (wie E2012).', Found[0].Message);
+  Assert.AreEqual(22, Found[0].Range.StartPos.Line);
 end;
 
 procedure TConditionNotBooleanTests.OffAndExclude;
