@@ -28,6 +28,9 @@ type
     function HoverParams: TJSONValue;
     function GuardRejects: Boolean;
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -64,6 +67,16 @@ uses
 const
   cUri = 'file:///C:/P/UI.Auftrag.pas';
   cHover = 'textDocument/hover';
+
+procedure TShellCrashCasesTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    CrashWritesCaseAndNotifies;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TShellCrashCasesTests.Setup;
 begin

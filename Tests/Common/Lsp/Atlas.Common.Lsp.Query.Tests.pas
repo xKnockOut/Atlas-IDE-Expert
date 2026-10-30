@@ -12,6 +12,9 @@ type
   [TestFixture]
   TLspQueryTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure RequestAnswersJsonRows;
     [Test]
@@ -121,6 +124,11 @@ begin
 end;
 
 { TLspQueryTests }
+
+procedure TLspQueryTests.WarmUpFirstUse;
+begin
+  CommandTakesUriAndOptions;
+end;
 
 procedure TLspQueryTests.RequestAnswersJsonRows;
 var

@@ -224,10 +224,12 @@ begin
   mFile := TPath.Combine(AFolder, RequestName);
   if not TFile.Exists(mFile) then
     Exit;
+  // Ohne Ausnahme parsen: mit RaiseExc = True lässt die RTL bei kaputtem JSON das halb gebaute Objekt liegen.
+  // Halb geschrieben oder von Hand verändert: kein Fall (nil).
   try
-    mRoot := TJSONValue.ParseJSONValue(TFile.ReadAllText(mFile, TEncoding.UTF8), False, True);
+    mRoot := TJSONValue.ParseJSONValue(TFile.ReadAllText(mFile, TEncoding.UTF8), False, False);
   except
-    // Halb geschrieben oder von Hand verändert: kein Fall.
+    // Nicht lesbar (Kodierung, Zugriff).
     on Exception do
       Exit;
   end;

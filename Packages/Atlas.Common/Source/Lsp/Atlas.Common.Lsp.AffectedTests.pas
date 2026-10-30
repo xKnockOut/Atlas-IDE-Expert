@@ -627,9 +627,10 @@ begin
     begin
       mMembers := mGroups[mKey];
       mTotal := ATotal(ATests[mMembers[0]]);
-      // Schon eine ganze Fixture (ganze Unit geändert) oder mehr als FixturePercent Prozent betroffen.
+      // Schon eine ganze Fixture (ganze Unit geändert) oder mehr als FixturePercent Prozent betroffen. Eine Fixture
+      // mit nur einem Test bleibt beim Methodennamen: zusammengefasst wäre es derselbe Test, nur ungenauer benannt.
       if (ATests[mMembers[0]].Method = '') or
-        ((mTotal > 0) and (mMembers.Count * 100 > mTotal * FixturePercent)) then
+        ((mTotal > 1) and (mMembers.Count * 100 > mTotal * FixturePercent)) then
       begin
         mWhole := ATests[mMembers[0]];
         mWhole.Method := '';

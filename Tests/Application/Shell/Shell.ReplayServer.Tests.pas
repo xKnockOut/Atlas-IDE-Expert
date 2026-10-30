@@ -29,6 +29,9 @@ type
   [TestFixture]
   TShellReplayServerTests = class
   public
+    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     /// <summary>Hover auf einer gesunden Unit stürzt nicht ab: „nicht reproduziert“, Exit-Code 0.</summary>
     [Test]
     procedure HealthyHoverIsNotReproduced;
@@ -78,6 +81,11 @@ begin
 end;
 
 { TShellReplayServerTests }
+
+procedure TShellReplayServerTests.WarmUpFirstUse;
+begin
+  HealthyHoverIsNotReproduced;
+end;
 
 procedure TShellReplayServerTests.HealthyHoverIsNotReproduced;
 var
