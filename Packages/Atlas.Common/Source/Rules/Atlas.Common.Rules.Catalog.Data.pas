@@ -1639,7 +1639,9 @@ const
     '      "severity": "hint",',
     '      "group": "find-bugs",',
     '      "description": "An object field created in the constructor and not freed is also returned (Result := FField, Exit(FField)), handed to a property of another object or to its Add…, Insert…, Regist' +
-    'er…, Attach…, Push or Enqueue, assigned without Create or writable through a property (write FField). Whether the class still owns the object is up to the developer, so there is no quick fix.",',
+    'er…, Attach…, Push or Enqueue, assigned without Create or writable through a property (write FField). Whether the class still owns the object is up to the developer, so there is no quick fix. Silent w' +
+    'hen the receiver owns its elements: a TObjectList, TObjectStack, TObjectQueue or TComponentList field not created with False, or a field whose class (from the file or the index) holds such a list for ' +
+    'the element type. TArray<T> fields are dynamic arrays and never reported.",',
     '      "bad": "function TCache.Take: TList;\nbegin\n  Result := FList;  // created in Create, never freed\nend;",',
     '      "good": "function TCache.Take: TList;\nbegin\n  Result := FList;\n  FList := nil;  // ownership passes to the caller\nend;"',
     '    },',
@@ -6456,7 +6458,8 @@ const
     '      "name": "Unklar, ob ein erzeugtes Feld freigegeben werden muss",',
     '      "description": "Ein im Konstruktor erzeugtes, nicht freigegebenes Objektfeld wird auch zurückgegeben (Result := FFeld, Exit(FFeld)), an eine Property eines anderen Objekts oder an dessen Add…, I' +
     'nsert…, Register…, Attach…, Push oder Enqueue übergeben, ohne Create zugewiesen oder ist über eine Property (write FFeld) schreibbar. Ob die Klasse das Objekt noch besitzt, entscheidet der Entwickler;' +
-    ' deshalb gibt es keine Schnellkorrektur."',
+    ' deshalb gibt es keine Schnellkorrektur. Still bleibt die Regel, wenn der Empfänger seine Elemente besitzt: ein Feld vom Typ TObjectList, TObjectStack, TObjectQueue oder TComponentList, das nicht mit ' +
+    'False erzeugt wird, oder ein Feld, dessen Klasse (aus der Datei oder dem Index) eine solche Liste für den Elementtyp hält. Felder vom Typ TArray<T> sind dynamische Arrays und werden nie gemeldet."',
     '    },',
     '    {',
     '      "id": "operator-precedence",',

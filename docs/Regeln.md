@@ -3175,7 +3175,7 @@ end;
 
 **Unklar, ob ein erzeugtes Feld freigegeben werden muss** · Bug · Hinweis · Gruppe Fehler finden
 
-Ein im Konstruktor erzeugtes, nicht freigegebenes Objektfeld wird auch zurückgegeben (Result := FFeld, Exit(FFeld)), an eine Property eines anderen Objekts oder an dessen Add…, Insert…, Register…, Attach…, Push oder Enqueue übergeben, ohne Create zugewiesen oder ist über eine Property (write FFeld) schreibbar. Ob die Klasse das Objekt noch besitzt, entscheidet der Entwickler; deshalb gibt es keine Schnellkorrektur.
+Ein im Konstruktor erzeugtes, nicht freigegebenes Objektfeld wird auch zurückgegeben (Result := FFeld, Exit(FFeld)), an eine Property eines anderen Objekts oder an dessen Add…, Insert…, Register…, Attach…, Push oder Enqueue übergeben, ohne Create zugewiesen oder ist über eine Property (write FFeld) schreibbar. Ob die Klasse das Objekt noch besitzt, entscheidet der Entwickler; deshalb gibt es keine Schnellkorrektur. Still bleibt die Regel, wenn der Empfänger seine Elemente besitzt: ein Feld vom Typ TObjectList, TObjectStack, TObjectQueue oder TComponentList, das nicht mit False erzeugt wird, oder ein Feld, dessen Klasse (aus der Datei oder dem Index) eine solche Liste für den Elementtyp hält. Felder vom Typ TArray<T> sind dynamische Arrays und werden nie gemeldet.
 
 Mit Treffer:
 
