@@ -148,6 +148,12 @@
 - Nicht mit dcc geprüft (nur aus der Erfahrung): RawByteString/UTF8String/WideString-Formen, Argumente, Inline-Variablen, W1062 bei einem einzelnen Literal ohne `+`. Dafür neue Fälle `Cm.W1050b`, `Cm.W1057b`, `Cm.W1058b`, `Cm.W1062b` und Gegenfall `Cm.W1057c` (Erwartet `-`); Handtests UW1–UW6. Meldet dcc dort anders, die Regel anpassen.
 - Cloud: `AtlasServer --check` (Linux, ohne RTL-Index) auf Tests/Compilermeldungen: alle sieben Codes der Issue-Fälle „erkannt“, keine Zusatztreffer, der Gegenfall still. RawByteString/UTF8String erkennt die Regel nur mit System im Index (unter Windows mit RTL-Quellen).
 
+## Fehlalarme an Record-Feldern (30.10.2026, Branch `claude/project-thread-w28uoe`)
+- Anlass: Bildschirmfoto von Marco, `TAtlasResultEntry` in `Atlas.Core.Results.Model` mit „Feld … ohne Präfix F“ an allen Feldern und „TAtlasConfidence wird in TAtlasResultEntry benutzt, bevor es deklariert ist“.
+- `naming-prefix`: Felder mit Sichtbarkeit public oder published und Felder eines Records vor seinem ersten Abschnitt (implizit public) bleiben still. Felder einer Klasse ohne Abschnitt prüft die Regel weiter (meist so geschrieben wie private Felder), Formulare wie bisher nicht. Geschützte Felder werden gemeldet, ohne Korrektur.
+- `type-used-before-declaration` (TForwardDeclarations): Ursache war der Alias `TAtlasConfidence = Atlas.Core.Lsp.Contract.TAtlasConfidence` weiter unten. Davor gilt der gleichnamige Typ aus uses, dcc übersetzt. `IsSameNameAlias` nimmt solche Ziele aus. Ein eigener gleichnamiger Typ weiter unten, der einen Typ aus uses verdeckt, wird ohne Index weiter gemeldet (dafür bräuchte die Analyse den Symbolindex).
+- Cloud: Linux-Server gebaut, `--check` auf `Atlas.Core.Results.Model.pas` ohne beide Meldungen; nicht mit Delphi gebaut. Handtests RE1–RE3. Nebenbei `docs/Regeln.md` neu erzeugt (war auf Prep veraltet: Sammelkorrektur-Zeilen).
+
 ## Testprojekt Compilermeldungen: erster dcc-Lauf mit Delphi 13 (29.10.2026, Branch `claude/project-thread-frcn5y`)
 - PR #1361 nach Prep-v1.2.0 gemergt (Marcos OK 29.10.2026, 3d518d1c). Doku nachgezogen: README/README_DE (Abschnitt Tests), CHANGELOG, Testfälle KM1–KM5.
 - Worktree `wt-cm`, Scratch-IDE im eigenen Registry-Profil `AtlasCm` (Kopie von `BDS\37.0` ohne Atlas): `pwsh -Command { & ./Tools/Build-Compilermeldungen.ps1 -IdeProfile AtlasCm -AtlasServer <exe> }`. Ergebnis in `C:\Projekte\BetterDelphiLSP\ergebnisse\compilermeldungen`.

@@ -8929,3 +8929,13 @@ Vorbereitung: ein Projekt in einem Git-Repository mit mindestens einigen Dutzend
 | HS14 | `hotspots.months` auf 3 und `hotspots.coupling.minCommits` auf 2 setzen | Fenster rechnet neu; Kopfzeile nennt 3 Monate; mehr Kopplungen |
 | HS15 | `AtlasServer.exe --check <Projekt> --hotspots h.html` in einem Repository bzw. in einem Ordner ohne Versionsverwaltung | Exit-Code 0 und Bericht bzw. Exit-Code 3 mit Ursache |
 | HS16 | Claude Code: „Wo sind die Hotspots im Projekt?“ | Claude ruft `get_hotspots` und nennt dieselben Zahlen wie das Fenster |
+
+## Fehlalarme an Record-Feldern (Prep-v1.2.0)
+
+Vorbereitung: Atlas-Repository auf Prep-v1.2.0 in der IDE, `naming-prefix` eingeschaltet (atlas.json des Repositorys), `Atlas.Core.Results.Model.pas` öffnen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RE1 | `TAtlasResultEntry` ansehen | Keine Meldung „Feld … ohne Präfix F“ an `FileName`, `Line`, `Character`, `Text`, `Detail`, `Confidence`; keine Meldung „TAtlasConfidence wird in TAtlasResultEntry benutzt, bevor es deklariert ist“ |
+| RE2 | In einer Testunit `TP = record private Wert: Integer; public property W: Integer read Wert; end;` und `TK = class public Alter: Integer; end;` | `Wert` gemeldet (erwartet: FWert), `Alter` nicht |
+| RE3 | `type TA = record S: TS; end; TS = (A, B);` | Weiterhin „TS wird in TA benutzt, bevor es deklariert ist“ |
