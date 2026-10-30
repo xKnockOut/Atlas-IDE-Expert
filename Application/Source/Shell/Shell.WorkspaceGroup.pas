@@ -185,6 +185,13 @@ begin
       end;
       FFinishedEvent.SetEvent;
     end;
+  // uses-unit-not-found: Was ein anderes Projekt der Gruppe in einen Suchpfad übersetzt, gibt es beim Bau der
+  // Gruppe (wie in der Komposition; hier für --check und MCP).
+  AWorkspace.OnGroupProjects :=
+    function: TArray<string>
+    begin
+      Result := TShellBootstrap.GroupProjects(FRoot, FLogger);
+    end;
 end;
 
 procedure TShellWorkspaceGroup.Load(const AGlobalSettings: string);

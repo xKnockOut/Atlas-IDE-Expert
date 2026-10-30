@@ -21,6 +21,8 @@ type
 
   TCrashReplayTest = class
   public
+    /// <summary>Protokoll des Servers beim letzten Replay (Warnungen und mehr).</summary>
+    class var LastLog: TArray<string>;
     /// <summary>Schreibt ARequest als anfrage.json und AFiles daneben und stellt den Fall isoliert mit dem
     /// vollständigen Server nach.</summary>
     class function Replay(const ARequest: string; const AFiles: TArray<TCrashReplayFile>): TReplayResult; static;
@@ -29,9 +31,6 @@ type
   [TestFixture]
   TShellReplayServerTests = class
   public
-    /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
-    [SetupFixture]
-    procedure WarmUpFirstUse;
     /// <summary>Hover auf einer gesunden Unit stürzt nicht ab: „nicht reproduziert“, Exit-Code 0.</summary>
     [Test]
     procedure HealthyHoverIsNotReproduced;
@@ -42,6 +41,9 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  Atlas.Common.Logging.Contract,
+  Atlas.Common.Logging.Providers.Logger,
+  Atlas.Common.Logging.Providers.RecentSink,
   Atlas.Common.Diagnostics.CrashCase,
   Shell.ReplayServer;
 
@@ -60,7 +62,12 @@ var
   mFolder, mError: string;
   mFile: TCrashReplayFile;
   mCase: TCrashCase;
+  mLoggerImpl: TLogger;
+  mLogger: ILogger;
+  mSink: TRecentLogSink;
+  mSinkRef: ILogSink;
 begin
+  LastLog := nil;
   mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasCrashReplay_' + TGUID.NewGuid.ToString);
   TDirectory.CreateDirectory(mFolder);
   try
@@ -74,18 +81,19 @@ begin
       Result.Detail := mError;
       Exit;
     end;
-    Result := TShellReplayServer.Run(mCase, TReplayPlace.Isolated, nil);
+    mLoggerImpl := TLogger.Create;
+    mLogger := mLoggerImpl;
+    mSink := TRecentLogSink.Create;
+    mSinkRef := mSink;
+    mLoggerImpl.AddSink(mSinkRef, TLogLevel.Debug);
+    Result := TShellReplayServer.Run(mCase, TReplayPlace.Isolated, mLogger);
+    LastLog := mSink.Lines;
   finally
     TDirectory.Delete(mFolder, True);
   end;
 end;
 
 { TShellReplayServerTests }
-
-procedure TShellReplayServerTests.WarmUpFirstUse;
-begin
-  HealthyHoverIsNotReproduced;
-end;
 
 procedure TShellReplayServerTests.HealthyHoverIsNotReproduced;
 var
@@ -102,6 +110,10 @@ begin
       'procedure Hallo;'#13#10'begin'#13#10'end;'#13#10'end.'#13#10)));
   Assert.IsTrue(mResult.Outcome = TReplayOutcome.NotReproduced, mResult.Text);
   Assert.AreEqual(TShellReplay.ExitNotReproduced, TShellReplay.ExitCodeOf(mResult));
+  // Sauber beendet: Liefen beim Ende noch Anfragen, gibt die Komposition ihre Objekte absichtlich nicht frei.
+  Assert.IsFalse(string.Join(#10, TCrashReplayTest.LastLog).Contains('liefen noch Anfragen'),
+    string.Join(#10, TCrashReplayTest.LastLog));
+  TCrashReplayTest.LastLog := nil;
 end;
 
 initialization

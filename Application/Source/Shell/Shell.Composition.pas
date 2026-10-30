@@ -1107,6 +1107,17 @@ begin
     end;
 end;
 
+/// <summary>Schreibt eine resourcestring-Unit (#473) über den Slash-Host AHost. Eigene Routine, damit die Closure
+/// nur AHost einfängt und nicht den Rahmen von WireEditing.</summary>
+function ResourceStringWriteFor(const AHost: ISlashHost): TResourceStringWrite;
+begin
+  Result :=
+    procedure(const AFileName, ANewText: string; const AEdit: TTextEdit)
+    begin
+      (AHost as TShellSlashHost).EditFile(TDocumentUris.FromPath(AFileName), AFileName, ANewText, AEdit);
+    end;
+end;
+
 procedure TServerComposition.WireEditing;
 var
   SlashHost: TShellSlashHost;
@@ -1248,13 +1259,10 @@ begin
   SlashHost.UsesContextOf := UsesContextFor;
   SlashHost.FindingsOf := SlashFindingsAt;
   FFormatting.SlashHost := SlashHost;
-  // resourcestring in eine andere Unit (#473): Die Schnittstelle hält den Host am Leben.
+  // resourcestring in eine andere Unit (#473): Die Schnittstelle hält den Host am Leben. Eigene Routine: Im Rahmen
+  // dieser Methode hielte die Closure den Host fest, der seinerseits Closures dieses Rahmens hält (Leck).
   KeepHost := SlashHost;
-  FResourceStringWrite :=
-    procedure(const AFileName, ANewText: string; const AEdit: TTextEdit)
-    begin
-      (KeepHost as TShellSlashHost).EditFile(TDocumentUris.FromPath(AFileName), AFileName, ANewText, AEdit);
-    end;
+  FResourceStringWrite := ResourceStringWriteFor(KeepHost);
   FFormatting.Attach(FDispatcher);
   // Erzeugen-Menü (#719): dieselben Schalter, Versionen und derselbe Host wie die Schnellbefehle nach Enter.
   FSlashMenu := TLspSlashMenu.Create(FDocuments);
