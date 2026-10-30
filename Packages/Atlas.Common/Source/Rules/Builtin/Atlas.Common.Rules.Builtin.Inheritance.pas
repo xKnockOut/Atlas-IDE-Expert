@@ -116,6 +116,10 @@ type
     function FindClass(const AName: string; out AType: TSymbolLocation): Boolean;
     /// <summary>Methoden, Konstruktoren und Destruktoren der Klasse AType (#997).</summary>
     function Methods(const AType: TSymbolLocation): TArray<TIndexSymbol>;
+    /// <summary>Abstrakte Methoden von AType und seinen Vorfahren, die keine nähere Stufe neu deklariert; AOwners
+    /// nennt je Methode die Klasse (W1020, #1380). Überladungen unterscheidet die Zahl der Parameter. Bricht die
+    /// Kette ab, fehlen nur die Methoden jenseits der Lücke.</summary>
+    function OpenAbstractMethods(const AType: TSymbolLocation; out AOwners: TArray<string>): TArray<TIndexSymbol>;
     /// <summary>Ist AName in der Datei oder im Index als Typalias deklariert (type TModus = Integer)?</summary>
     function IsTypeAlias(const AName: string): Boolean;
     /// <summary>Ist AName in der Datei oder im Index als eigener Typ deklariert (Klasse, Record, Aufzählung,
@@ -462,6 +466,38 @@ end;
 function TAncestry.KnownType(const AName: string): Boolean;
 begin
   Result := MatchText(CanonicalType(AName), BuiltinTypes) or IsDeclaredType(BareName(AName));
+end;
+
+function TAncestry.OpenAbstractMethods(const AType: TSymbolLocation; out AOwners: TArray<string>):
+  TArray<TIndexSymbol>;
+var
+  mChain: TArray<TSymbolLocation>;
+  mLocation: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+  mSeen, mLevel: TArray<string>;
+  mKey: string;
+  mComplete, mObjectMissing: Boolean;
+begin
+  Result := nil;
+  AOwners := nil;
+  mSeen := nil;
+  mChain := [AType] + Ancestors(AType.Symbol.Name, mComplete, mObjectMissing);
+  for mLocation in mChain do
+  begin
+    mLevel := nil;
+    for mSymbol in Methods(mLocation) do
+    begin
+      // Überladungen unterscheidet die Zahl der Parameter; gleich viele gelten als dieselbe Methode.
+      mKey := LowerCase(mSymbol.Name) + '/' + IntToStr(mSymbol.MaxArgs);
+      if mSymbol.HasDirective('abstract') and (IndexText(mKey, mSeen) < 0) then
+      begin
+        Result := Result + [mSymbol];
+        AOwners := AOwners + [mLocation.Symbol.Name];
+      end;
+      mLevel := mLevel + [mKey];
+    end;
+    mSeen := mSeen + mLevel;
+  end;
 end;
 
 function TAncestry.MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
@@ -2012,38 +2048,6 @@ var
   Tokens: TArray<TPascalToken>;
   Actions: TClassActionContext;
 
-  /// <summary>Abstrakte Methoden von AType und seinen Vorfahren, die keine nähere Stufe neu deklariert.</summary>
-  function OpenMethods(const AType: TSymbolLocation; out AOwners: TArray<string>): TArray<TIndexSymbol>;
-  var
-    Chain: TArray<TSymbolLocation>;
-    Location: TSymbolLocation;
-    Symbol: TIndexSymbol;
-    Seen, Level: TArray<string>;
-    Key: string;
-    Complete, ObjectMissing: Boolean;
-  begin
-    Result := nil;
-    AOwners := nil;
-    Seen := nil;
-    Chain := [AType] + Ancestry.Ancestors(AType.Symbol.Name, Complete, ObjectMissing);
-    for Location in Chain do
-    begin
-      Level := nil;
-      for Symbol in Ancestry.Methods(Location) do
-      begin
-        // Überladungen unterscheidet die Zahl der Parameter; gleich viele gelten als dieselbe Methode.
-        Key := LowerCase(Symbol.Name) + '/' + IntToStr(Symbol.MaxArgs);
-        if Symbol.HasDirective('abstract') and (IndexText(Key, Seen) < 0) then
-        begin
-          Result := Result + [Symbol];
-          AOwners := AOwners + [Location.Symbol.Name];
-        end;
-        Level := Level + [Key];
-      end;
-      Seen := Seen + Level;
-    end;
-  end;
-
   /// <summary>Klassenname vor ".Create" an Token AIndex (dem Punkt); -1 ohne.</summary>
   function ClassBefore(ADot: Integer): Integer;
   var
@@ -2098,7 +2102,7 @@ var
         '(wie E2402).', [Location.Symbol.Name]), TRuleConfidence.High);
       Exit;
     end;
-    Open := OpenMethods(Location, Owners);
+    Open := Ancestry.OpenAbstractMethods(Location, Owners);
     if Open = nil then
       Exit;
     Names := nil;

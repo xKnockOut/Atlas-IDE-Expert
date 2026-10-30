@@ -3143,14 +3143,18 @@ begin
   // Schnell: ohne bedingte Direktive und ohne $I gibt es nichts zu überspringen und zu melden.
   if not TPascalPreprocessor.HasConditionals(AText) and
     not (Assigned(AOptions.ResolveInclude) and TPascalPreprocessor.HasIncludes(AText)) then
-    Exit(Parse(AText, ACancellation));
-  AProcessed := TPascalPreprocessor.Process(AText, AOptions);
-  Parser := TParser.Create(AText, ACancellation, TPascalPreprocessor.MainInactive(AProcessed));
-  try
-    Result := Parser.Run;
-  finally
-    Parser.Free;
+    Result := Parse(AText, ACancellation)
+  else
+  begin
+    AProcessed := TPascalPreprocessor.Process(AText, AOptions);
+    Parser := TParser.Create(AText, ACancellation, TPascalPreprocessor.MainInactive(AProcessed));
+    try
+      Result := Parser.Run;
+    finally
+      Parser.Free;
+    end;
   end;
+  Result.Platform := TPascalPreprocessor.PlatformOf(AOptions.Defines);
 end;
 
 class function TPascalParser.ParseActive(const AText: string; const ADefines: TArray<string>): TSyntaxTree;
