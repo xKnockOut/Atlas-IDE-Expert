@@ -72,7 +72,7 @@ type
     FDrafts: TAtlasCommentDrafts;
     FDraftsLoaded: Boolean;
     FUsers: TDictionary<string, TCachedUsers>;
-    FWorkers: TList;
+    FWorkers: TList<TThread>;
     function DraftFile: string;
     procedure LoadDrafts;
     procedure SaveDrafts;
@@ -168,7 +168,7 @@ begin
   FStarted := True;
   FDrafts := TAtlasCommentDrafts.Create;
   FUsers := TDictionary<string, TCachedUsers>.Create;
-  FWorkers := TList.Create;
+  FWorkers := TList<TThread>.Create;
 end;
 
 destructor TAtlasIdeCommentService.Destroy;
@@ -211,13 +211,13 @@ begin
   begin
     mWait := nil;
     for mIndex := 0 to FWorkers.Count - 1 do
-      mWait := mWait + [TThread(FWorkers[mIndex])];
+      mWait := mWait + [FWorkers[mIndex]];
     if Length(mWait) > 0 then
       TAtlasShutdown.WaitForThreads(mWait);
   end;
   for mIndex := FWorkers.Count - 1 downto 0 do
   begin
-    mThread := TThread(FWorkers[mIndex]);
+    mThread := FWorkers[mIndex];
     if mThread.Finished then
     begin
       mThread.Free;

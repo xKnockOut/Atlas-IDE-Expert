@@ -63,6 +63,9 @@ type
     procedure InterfaceAssignmentIsSilent;
     [Test]
     procedure AssignmentBeforeFailingTryIsRead;
+    /// <summary>H2077 nur bei bekanntem, nicht verwaltetem Typ (#1383, Cm.E2056).</summary>
+    [Test]
+    procedure AssignmentCodeOnlyForUnmanagedTypes;
     [Test]
     procedure AssignmentReadLaterIsSilent;
     [Test]
@@ -356,6 +359,32 @@ begin
   Assert.AreEqual(2, Integer(Length(Findings)));
   Assert.AreEqual(7, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(9, Findings[1].Range.StartPos.Line);
+end;
+
+procedure TUnusedRulesTests.AssignmentCodeOnlyForUnmanagedTypes;
+const
+  // Verwaltete Typen: dcc meldet H2077 nicht.
+  ManagedTypes: array[0..4] of string = ('string', 'TArray<Integer>', 'Variant', 'TBytes', 'TMitText');
+var
+  Findings: TArray<TRuleFinding>;
+  TypeName: string;
+begin
+  Findings := TRuleAssert.Findings(TUnusedAssignmentRule.Create,
+    Routine('  I := 1;', 'procedure P;', 'var'#10'  I: Integer;'#10));
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.AreEqual('Der an "I" zugewiesene Wert wird nie gelesen (wie H2077)', Findings[0].Message);
+  for TypeName in ManagedTypes do
+  begin
+    Findings := TRuleAssert.Findings(TUnusedAssignmentRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
+      'type'#10'  TMitText = record'#10'    Text: string;'#10'  end;'#10'procedure P;'#10'var'#10'  X: ' + TypeName +
+      ';'#10'begin'#10'  X := Default(' + TypeName + ');'#10'end;'#10'end.');
+    Assert.AreEqual(1, Integer(Length(Findings)), TypeName);
+    Assert.AreEqual('Der an "X" zugewiesene Wert wird nie gelesen', Findings[0].Message, TypeName);
+  end;
+  // Inline-Variable ohne Typangabe: Typ unbekannt, also ohne Code.
+  Findings := TRuleAssert.Findings(TUnusedAssignmentRule.Create, Routine('  var I := 1;'#10'  I := 2;'));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+  Assert.AreEqual('Der an "I" zugewiesene Wert wird nie gelesen', Findings[0].Message);
 end;
 
 procedure TUnusedRulesTests.AssignmentReadLaterIsSilent;
