@@ -110,7 +110,7 @@ const
     'end;';
 
   TryFinallyBefore =
-    'unit Atlas.Common.Editing.CodeActions.TryFinallyGolden;'#13#10 +
+    'unit Atlas.Common.Editing.CodeActions.TryFinallyGolden; // lsp-ignore-file: unused-public-member -- Golden-Datei: Das Testprojekt übersetzt nur das Ergebnis der Aktion.'#13#10 +
     #13#10 +
     '// Golden-Datei für "try/finally ergänzen" (#42): genau das, was die Aktion'#13#10 +
     '// aus den Routinen ohne try erzeugt. Der Test wendet die Aktion auf jede'#13#10 +

@@ -85,7 +85,7 @@ begin
   TFile.WriteAllText(Target, 'alt');
   Assert.IsTrue(TShellPlatform.MoveReplacing(Source, Target), 'ersetzt');
   Assert.IsFalse(TFile.Exists(Source), 'Quelle weg');
-  Assert.AreEqual('neu', TFile.ReadAllText(Target));
+  Assert.AreEqual('neu', TFile.ReadAllText(Target, TEncoding.UTF8));
   Assert.IsFalse(TShellPlatform.MoveReplacing(Source, Target), 'fehlende Quelle');
 end;
 

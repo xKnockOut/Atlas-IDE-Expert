@@ -85,7 +85,7 @@ type
   public
     /// <summary>Name der Unit bzw. des Programms; '' ohne.</summary>
     class function UnitName(ATree: TSyntaxTree): string; static;
-    /// <summary>Name ohne Typargumente in jedem Teil: TList<T>.Add → TList.Add.</summary>
+    /// <summary>Name ohne Typargumente in jedem Teil: TList&lt;T&gt;.Add → TList.Add.</summary>
     class function PlainName(const AName: string): string; static;
     /// <summary>Filterbare Arten der Routine ARoutine (RoutineDecl mit Rumpf).</summary>
     class function Classify(ATree: TSyntaxTree; const AText: string; ARoutine: TSyntaxNode): TStepFilterKinds;

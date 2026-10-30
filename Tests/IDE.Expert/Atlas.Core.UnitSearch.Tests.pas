@@ -533,7 +533,7 @@ begin
     Assert.AreEqual(0, State.Width);
     State.Width := 400;
     Assert.IsFalse(State.SaveToFile(FileName), 'beim Lesen gesperrt: nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(FileName), '937');
+    Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), '937');
   finally
     State.Free;
     System.SysUtils.DeleteFile(FileName);

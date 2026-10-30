@@ -13,19 +13,19 @@ type
   [TestFixture]
   TParserGapsTests = class
   public
-    /// <summary>#1137 (Probe p05): &&op_Equality ohne Diagnose, Methode im Typ und im implementation-Teil.</summary>
+    /// <summary>#1137 (Probe p05): &amp;&amp;op_Equality ohne Diagnose, Methode im Typ und im implementation-Teil.</summary>
     [Test]
     procedure DoubleAmpersandParses;
-    /// <summary>#1137: Deklarationen hinter der Stelle bleiben im Index, der Name ohne &.</summary>
+    /// <summary>#1137: Deklarationen hinter der Stelle bleiben im Index, der Name ohne &amp;.</summary>
     [Test]
     procedure DoubleAmpersandKeepsIndex;
-    /// <summary>#1137: Gliederung nennt &op_Equality, Gehe zu führt von Rumpf und Aufruf zur Deklaration.</summary>
+    /// <summary>#1137: Gliederung nennt &amp;op_Equality, Gehe zu führt von Rumpf und Aufruf zur Deklaration.</summary>
     [Test]
     procedure DoubleAmpersandOutlineAndResolve;
-    /// <summary>#1137: Mitglied &Type wird über TFoo.&Type gefunden; Index und Gliederung nennen es Type.</summary>
+    /// <summary>#1137: Mitglied &amp;Type wird über TFoo.&amp;Type gefunden; Index und Gliederung nennen es Type.</summary>
     [Test]
     procedure EscapedMemberResolves;
-    /// <summary>#1137: PlainName nimmt genau ein Escape-& je Namensteil, SourceName setzt es wieder.</summary>
+    /// <summary>#1137: PlainName nimmt genau ein Escape-&amp; je Namensteil, SourceName setzt es wieder.</summary>
     [Test]
     procedure PlainAndSourceNames;
     /// <summary>#1138 (Probe p02): () an Unit-, Klassen- und lokalen Konstanten und Variablen ohne Diagnose.

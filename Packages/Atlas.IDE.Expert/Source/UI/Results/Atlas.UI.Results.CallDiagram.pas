@@ -83,7 +83,7 @@ type
     property Selected: Integer read FSelected;
     property ProjectOnly: Boolean read GetProjectOnly write SetProjectOnly;
     /// <summary>Gehört die Datei zu einem Projekt der Gruppe? Vor ShowRoots setzen; nil: alle.</summary>
-    property IsProjectFile: TFunc<string, Boolean> write SetIsProjectFile;
+    property IsProjectFile: TFunc<string, Boolean> write SetIsProjectFile; // lsp-ignore: write-only-property -- reicht nur an das Diagramm weiter
     property OnLoad: TAtlasCallLoad read FOnLoad write FOnLoad;
     property OnOpen: TAtlasCallOpen read FOnOpen write FOnOpen;
   end;
@@ -349,7 +349,7 @@ begin
   Back := Colors.Warn;
   for Index := 0 to High(FLayout.Edges) do
     DrawEdge(FLayout.Edges[Index], ToColor(Colors.Line), ToColor(Back));
-  Pad := Max(2, Px(8 * FView.Scale));
+  Pad := Max(ScaleValue(2), Px(8 * FView.Scale));
   for Index := 0 to High(FLayout.Boxes) do
   begin
     Box := FLayout.Boxes[Index];
@@ -389,7 +389,7 @@ begin
     if Box.Node = FSelected then
     begin
       Canvas.Pen.Color := ToColor(Colors.Accent);
-      Canvas.Pen.Width := 2;
+      Canvas.Pen.Width := ScaleValue(2);
     end;
     Canvas.RoundRect(R.Left, R.Top, R.Right, R.Bottom, Px(8 * FView.Scale), Px(8 * FView.Scale));
     if FView.Scale < MinTextScale then

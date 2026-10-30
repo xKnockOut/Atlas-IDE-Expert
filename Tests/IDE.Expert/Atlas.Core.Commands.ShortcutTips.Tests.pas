@@ -505,7 +505,7 @@ begin
       Usage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
       Assert.IsFalse(Usage.SaveToFile(FileName), 'neuere Fassung bleibt');
       Assert.IsFalse(Usage.Writable);
-      Assert.Contains(TFile.ReadAllText(FileName), '"format":2');
+      Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), '"format":2');
     finally
       System.SysUtils.DeleteFile(FileName);
     end;
@@ -761,8 +761,8 @@ begin
     Assert.IsTrue(Usage.CountsChanged, 'beim nächsten Speichern umziehen');
     Usage.SaveToFiles(TipsFile, UsageFile);
     Assert.IsTrue(TFile.Exists(UsageFile));
-    Assert.DoesNotContain(TFile.ReadAllText(TipsFile), 'mouse');
-    Assert.Contains(TFile.ReadAllText(UsageFile), '"mouse":2');
+    Assert.DoesNotContain(TFile.ReadAllText(TipsFile, TEncoding.UTF8), 'mouse');
+    Assert.Contains(TFile.ReadAllText(UsageFile, TEncoding.UTF8), '"mouse":2');
     Loaded.LoadFromFiles(TipsFile, UsageFile);
     Assert.AreEqual(3, Loaded.UseCount('Atlas.Rename'));
     Assert.IsTrue(Loaded.Entry('Atlas.Rename').Never);
@@ -846,7 +846,7 @@ begin
       Usage.Count('X', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
       Assert.IsFalse(Usage.SaveCountsToFile(FileName), 'neuere Fassung bleibt');
       Assert.IsFalse(Usage.CountsWritable);
-      Assert.Contains(TFile.ReadAllText(FileName), '"format":2');
+      Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), '"format":2');
     finally
       System.SysUtils.DeleteFile(FileName);
     end;
@@ -886,8 +886,8 @@ begin
     Assert.AreEqual(0, Usage.UseCount('X'));
     Usage.Count('Y', TAtlasCommandInput.Mouse, Moment(10, 0, 0));
     Assert.IsFalse(Usage.SaveCountsToFile(UsageFile), 'nicht überschreiben');
-    Assert.Contains(TFile.ReadAllText(UsageFile), '"X"');
-    Assert.DoesNotContain(TFile.ReadAllText(UsageFile), '"Y"');
+    Assert.Contains(TFile.ReadAllText(UsageFile, TEncoding.UTF8), '"X"');
+    Assert.DoesNotContain(TFile.ReadAllText(UsageFile, TEncoding.UTF8), '"Y"');
   finally
     Usage.Free;
     TDirectory.Delete(Folder, True);

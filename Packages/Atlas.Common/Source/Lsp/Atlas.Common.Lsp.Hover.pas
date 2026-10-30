@@ -204,7 +204,6 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Diagnostics.RequestScope,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Dfm.FormFiles,
   Atlas.Common.Editing.DataFieldNames,
   Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Lsp.Reassigned,

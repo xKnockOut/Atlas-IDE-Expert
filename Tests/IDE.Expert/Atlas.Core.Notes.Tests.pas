@@ -334,7 +334,7 @@ begin
   Book := TAtlasNoteBook.Create(Project);
   Book.Add(UnitFile, Code, 8, 'x', Now);
   Assert.IsFalse(TAtlasNotes.Save(FFolder, Book));
-  Assert.AreEqual(Newer, TFile.ReadAllText(FileName));
+  Assert.AreEqual(Newer, TFile.ReadAllText(FileName, TEncoding.UTF8));
 end;
 
 procedure TAtlasNoteStoreTests.LoadAllWithoutOpenProject;
@@ -405,8 +405,8 @@ begin
   Assert.AreEqual(FileName, Book.KeptFile);
   Book.Add(UnitFile, Code, 8, 'Ersatz', Now);
   Assert.IsFalse(TAtlasNotes.Save(FFolder, Book), 'beim Laden gesperrt: nicht überschreiben');
-  Assert.Contains(TFile.ReadAllText(FileName), 'Rundung');
-  Assert.DoesNotContain(TFile.ReadAllText(FileName), 'Ersatz');
+  Assert.Contains(TFile.ReadAllText(FileName, TEncoding.UTF8), 'Rundung');
+  Assert.DoesNotContain(TFile.ReadAllText(FileName, TEncoding.UTF8), 'Ersatz');
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;
 end;

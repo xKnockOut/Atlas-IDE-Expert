@@ -170,7 +170,7 @@ begin
   Assert.IsTrue(Load = TAtlasDataLoad.Renewed);
   Assert.IsTrue(TAtlasDataFile.Writable(Load));
   Assert.IsFalse(TFile.Exists(DataFile('favoriten.json')));
-  Assert.AreEqual('{kaputt', TFile.ReadAllText(DataFile('favoriten.json.defekt')));
+  Assert.AreEqual('{kaputt', TFile.ReadAllText(DataFile('favoriten.json.defekt'), TEncoding.UTF8));
   Log := LogText;
   Assert.Contains(Log, 'Datendatei Favoriten: kein gültiger Inhalt; beiseitegelegt als *.defekt');
   Assert.DoesNotContain(Log, ExtractFileName(FFolder), 'kein Pfad im Protokoll');
@@ -194,7 +194,7 @@ begin
   TAtlasDataFile.SetAside(DataFile('verlauf.json'), 'Verlauf', 'Test');
   TFile.WriteAllText(DataFile('verlauf.json'), 'neu');
   Assert.IsTrue(TAtlasDataFile.SetAside(DataFile('verlauf.json'), 'Verlauf', 'Test'));
-  Assert.AreEqual('neu', TFile.ReadAllText(DataFile('verlauf.json.defekt')));
+  Assert.AreEqual('neu', TFile.ReadAllText(DataFile('verlauf.json.defekt'), TEncoding.UTF8));
   Assert.IsFalse(TFile.Exists(DataFile('verlauf.json')));
 end;
 
@@ -214,7 +214,7 @@ begin
   Assert.IsTrue(TAtlasDataFile.Load(DataFile('lesezeichen.json'), 'Lesezeichen', Parse) = TAtlasDataLoad.Kept);
   Assert.IsFalse(TAtlasDataFile.Writable(TAtlasDataLoad.Kept));
   Assert.IsTrue(TAtlasDataFile.Load(DataFile('lesezeichen.json'), 'Lesezeichen', Parse) = TAtlasDataLoad.Kept);
-  Assert.AreEqual('{"geheimer Inhalt": 1}', TFile.ReadAllText(DataFile('lesezeichen.json')));
+  Assert.AreEqual('{"geheimer Inhalt": 1}', TFile.ReadAllText(DataFile('lesezeichen.json'), TEncoding.UTF8));
   Assert.IsFalse(TFile.Exists(DataFile('lesezeichen.json.defekt')));
   Log := LogText;
   Assert.AreEqual(1, Occurrences('Datendatei Lesezeichen: Fehler beim Lesen (EConvertError)', Log));
@@ -269,7 +269,7 @@ begin
   finally
     CloseHandle(Handle);
   end;
-  Assert.AreEqual('kaputt', TFile.ReadAllText(DataFile('wahl.json')));
+  Assert.AreEqual('kaputt', TFile.ReadAllText(DataFile('wahl.json'), TEncoding.UTF8));
   Assert.IsFalse(TFile.Exists(DataFile('wahl.json.defekt')));
   Assert.Contains(LogText, 'Datendatei Wahl des Testprojekts: kein gültiger Inhalt, lässt sich nicht beiseitelegen');
 end;

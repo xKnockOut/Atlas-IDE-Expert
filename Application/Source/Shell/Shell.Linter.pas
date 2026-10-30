@@ -1683,7 +1683,8 @@ begin
   Result :=
     procedure(const AFileName, AText: string)
     begin
-      TFileEncoding.SaveToFile(AFileName, AText, AFormats[AFileName]);
+      // Jede Datei der Ergebnisse steht in AFormats: Beide füllt dieselbe Schleife in RunFix.
+      TFileEncoding.SaveToFile(AFileName, AText, AFormats[AFileName]); // lsp-ignore: dictionary-get-without-check
     end;
 end;
 

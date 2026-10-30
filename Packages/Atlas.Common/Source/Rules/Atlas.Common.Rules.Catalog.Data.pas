@@ -233,7 +233,7 @@ const
     '      "severity": "warning",',
     '      "group": "architecture",',
     '      "description": "A uses entry violates the import matrix of the role concept (output artefact, feature, role: Contract, Internals, Providers, Adapters, Composition, Hosting). Off by default; swit' +
-    'ch it on in atlas.json with the option \"prefixes\". Approved exceptions go to \"allow\" as \"Source -> Target\" globs.",',
+    'ch it on in atlas.json with the option \"prefixes\". Approved exceptions go to \"allow\" as \"Source -> Target\" globs. Test units (DUnitX, DUnit or TestInsight in the uses clause) are not checked.",',
     '      "bad": "unit Atlas.Common.Logging.Contract;\ninterface\nuses Atlas.Common.Logging.Providers.Logger;",',
     '      "good": "unit Atlas.Common.Logging.Contract;\ninterface\nuses System.SysUtils;",',
     '      "options": [',
@@ -270,7 +270,7 @@ const
     '      "severity": "warning",',
     '      "group": "architecture",',
     '      "description": "A contract unit declares a class in its interface section. Contracts hold only records, interfaces, enumerations and exceptions. Off by default; switch it on in atlas.json with t' +
-    'he option \"prefixes\". Approved exceptions go to \"allow\" as \"Unit.Type\" globs.",',
+    'he option \"prefixes\". Approved exceptions go to \"allow\" as \"Unit.Type\" globs. Test units are not checked.",',
     '      "bad": "unit App.Orders.Contract;\ninterface\ntype\n  TOrderList = class\n  end;",',
     '      "good": "unit App.Orders.Contract;\ninterface\ntype\n  IOrderList = interface\n  end;",',
     '      "options": [',
@@ -408,7 +408,8 @@ const
     '      "category": "code-smell",',
     '      "severity": "warning",',
     '      "group": "threads",',
-    '      "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead.",',
+    '      "description": "TThread.Resume and Suspend are deprecated. Start a created thread with Start; Suspend has no safe replacement, wait with an event instead. Silent when the receiver''s declared typ' +
+    'e has a complete ancestor chain without TThread (own classes with Resume/Suspend methods).",',
     '      "bad": "FWorker.Resume;",',
     '      "good": "FWorker.Start;",',
     '      "safeFix": true',
@@ -607,7 +608,7 @@ const
     '      "severity": "warning",',
     '      "group": "find-bugs",',
     '      "description": "An anonymous method passed to a deferred API (TThread.Queue, TTask.Run, ...) captures a variable that changes before it runs, such as a for-in loop variable. Delphi captures the ' +
-    'variable, not its value.",',
+    'variable, not its value. Silent when the anonymous method assigns the variable itself (event handlers that keep a state).",',
     '      "bad": "for S in List do\n  TThread.Queue(nil, procedure begin Memo1.Lines.Add(S); end);",',
     '      "good": "function CaptureS(const AValue: string): TProc;\nbegin\n  Result := procedure begin Memo1.Lines.Add(AValue); end;\nend;\n...\nfor S in List do\n  TThread.Queue(nil, CaptureS(S));",',
     '      "options": [',
@@ -626,8 +627,9 @@ const
     '      "severity": "warning",',
     '      "group": "components",',
     '      "description": "An overridden Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy or Paint of a component does not call inherited, so the VCL skips its own work there. Paint is rep' +
-    'orted only if an ancestor''s Paint draws something itself (TCustomPanel, TCustomForm, TPaintBox, TImage, a grid or a class from the file or index that declares Paint), with medium confidence; TCustomCo' +
-    'ntrol.Paint and TGraphicControl.Paint are empty, so leaving out inherited there is normal.",',
+    'orted only if an ancestor''s Paint draws something itself (TCustomPanel, TImage, a grid or a class from the file or index that declares Paint), with medium confidence; TCustomForm and TPaintBox only fi' +
+    're OnPaint at run time, so a Paint without inherited is reported there only if the unit uses OnPaint or has a form file; TCustomControl.Paint and TGraphicControl.Paint are empty, so leaving out inheri' +
+    'ted there is normal.",',
     '      "bad": "procedure TMyControl.Loaded;\nbegin\n  UpdateLayout;\nend;",',
     '      "good": "procedure TMyControl.Loaded;\nbegin\n  inherited;\n  UpdateLayout;\nend;"',
     '    },',
@@ -669,8 +671,8 @@ const
     '      "category": "code-smell",',
     '      "severity": "warning",',
     '      "group": "components",',
-    '      "description": "Paint or Resize uses fixed pixel values that are too small above 96 dpi. Values passed through ScaleValue or MulDiv, 0, 1 and -1, and factors of multiplications and divisions are' +
-    ' not reported.",',
+    '      "description": "Paint or Resize uses fixed pixel values that are too small above 96 dpi. Values passed through ScaleValue or MulDiv or through a method of the class that scales itself (calls Sca' +
+    'leValue, MulDiv or a Scale... routine), 0, 1 and -1, and factors of multiplications and divisions are not reported.",',
     '      "bad": "Canvas.FillRect(Rect(0, 0, 16, 16));",',
     '      "good": "Canvas.FillRect(Rect(0, 0, ScaleValue(16), ScaleValue(16)));"',
     '    },',
@@ -1775,8 +1777,9 @@ const
     '      "severity": "warning",',
     '      "group": "find-bugs",',
     '      "description": "X is dereferenced (X.Field, X.Method, X^) and only afterwards checked with Assigned(X), X <> nil or X = nil. Either the check is superfluous or the access before it can crash. Re' +
-    'ported only when every path to the check passes the access and X was not checked before; a new assignment, passing X to a routine and, for fields and global variables, any call in between end the path' +
-    '. Medium confidence. When the check is an if without else directly after the access in the same block, the quick fix moves the access into it.",',
+    'ported only when every path to the check passes the access and X was not checked before; a new assignment, FreeAndNil(X), passing X or one of its fields or elements (X.Field, X[I]) to a routine and, f' +
+    'or fields and global variables, any call in between end the path. Medium confidence. When the check is an if without else directly after the access in the same block, the quick fix moves the access in' +
+    'to it.",',
     '      "bad": "Titel := Kunde.Name;\nif Assigned(Kunde) then\n  Anzeigen(Kunde);",',
     '      "good": "if Assigned(Kunde) then\nbegin\n  Titel := Kunde.Name;\n  Anzeigen(Kunde);\nend;"',
     '    },',
@@ -2660,9 +2663,9 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "packages",',
-    '      "description": "A [Test] or [TestCase] method that calls no check, neither itself nor through methods of the same class or routines of the unit: it is always green. Calls matching assertPatterns' +
-    ' (default Assert.*, WillRaise*, Check*), System.Assert and calls on classes with Assert in their name (TRuleAssert.Reports) count as checks. Tests with [WillRaise] or [Ignore] stay silent. High confid' +
-    'ence. Quick fixes: insert Assert.Pass as a placeholder, or jump to the method.",',
+    '      "description": "A [Test] or [TestCase] method that calls no check, neither itself nor through its local routines, methods of the same class or routines of the unit: it is always green. Calls mat' +
+    'ching assertPatterns (default Assert.*, WillRaise*, Check*), System.Assert and calls on classes with Assert in their name (TRuleAssert.Reports) count as checks. Tests with [WillRaise] or [Ignore] stay' +
+    ' silent. High confidence. Quick fixes: insert Assert.Pass as a placeholder, or jump to the method.",',
     '      "bad": "[Test]\nprocedure TImportTests.LeereDateiWirdGelesen;\nbegin\n  FImport.Laden(''leer.csv'');\nend;",',
     '      "good": "[Test]\nprocedure TImportTests.LeereDateiWirdGelesen;\nbegin\n  FImport.Laden(''leer.csv'');\n  Assert.AreEqual(0, FImport.Anzahl);\nend;",',
     '      "options": [',
@@ -4371,9 +4374,10 @@ const
     '      "severity": "hint",',
     '      "group": "style",',
     '      "description": "A unit of an application is used by no other unit of the uses graph: at most programs name it in their uses clause, and they use none of its identifiers outside the uses clause (' +
-    'Application.CreateForm(TForm1, Form1) counts as a use). Units with an initialization or finalization section (registrations, side effects at start-up) count as used. Medium confidence: code outside th' +
-    'e project group, scripts or packages loaded at run time can still use the unit. Silent for units of packages and libraries (users outside the group) unless projectKinds allows them, without projects, ' +
-    'while projects are loading or the index is incomplete, and for units the uses graph does not know. Reported at the unit name in the header.",',
+    'Application.CreateForm(TForm1, Form1) counts as a use). Units with an initialization or finalization section (registrations, side effects at start-up) count as used, as do units with a [TestFixture] c' +
+    'lass that DUnitX finds through RTTI. Medium confidence: code outside the project group, scripts or packages loaded at run time can still use the unit. Silent for units of packages and libraries (users' +
+    ' outside the group) unless projectKinds allows them, without projects, while projects are loading or the index is incomplete, and for units the uses graph does not know. Reported at the unit name in t' +
+    'he header.",',
     '      "bad": "program App;\nuses\n  Haupt,\n  AltExport;  // AltExport is used nowhere else",',
     '      "good": "program App;\nuses\n  Haupt;",',
     '      "options": [',
@@ -5823,7 +5827,8 @@ const
     '      "id": "architecture-role-import",',
     '      "name": "Import verletzt die Rollenmatrix",',
     '      "description": "Ein uses-Eintrag verletzt die Importmatrix des Rollenkonzepts (Ausgabeartefakt, Feature, Rolle: Contract, Internals, Providers, Adapters, Composition, Hosting). Standardmäßig aus' +
-    '; in atlas.json mit der Option \"prefixes\" einschalten. Genehmigte Ausnahmen stehen unter \"allow\" als \"Quelle -> Ziel\"-Globs.",',
+    '; in atlas.json mit der Option \"prefixes\" einschalten. Genehmigte Ausnahmen stehen unter \"allow\" als \"Quelle -> Ziel\"-Globs. Testunits (mit DUnitX, DUnit oder TestInsight im uses) prüft die Rege' +
+    'l nicht.",',
     '      "options": [',
     '        {',
     '          "name": "prefixes",',
@@ -5843,7 +5848,7 @@ const
     '      "id": "architecture-contract-content",',
     '      "name": "Klasse in einer Contract-Unit",',
     '      "description": "Eine Contract-Unit deklariert im interface eine Klasse. Contracts enthalten nur Records, Interfaces, Aufzählungen und Ausnahmen. Standardmäßig aus; in atlas.json mit der Option \' +
-    '"prefixes\" einschalten. Genehmigte Ausnahmen stehen unter \"allow\" als \"Unit.Typ\"-Globs.",',
+    '"prefixes\" einschalten. Genehmigte Ausnahmen stehen unter \"allow\" als \"Unit.Typ\"-Globs. Testunits prüft die Regel nicht.",',
     '      "options": [',
     '        {',
     '          "name": "prefixes",',
@@ -5909,7 +5914,8 @@ const
     '    {',
     '      "id": "thread-resume-suspend",',
     '      "name": "Veraltetes TThread.Resume/Suspend",',
-    '      "description": "TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten."',
+    '      "description": "TThread.Resume und Suspend sind veraltet. Einen erzeugten Thread mit Start starten; Suspend hat keinen sicheren Ersatz, stattdessen mit einem Ereignis warten. Still, wenn der dek' +
+    'larierte Typ des Empfängers eine vollständige Vorfahrenkette ohne TThread hat (eigene Klassen mit Methoden Resume/Suspend)."',
     '    },',
     '    {',
     '      "id": "result-not-set",',
@@ -6023,7 +6029,7 @@ const
     '      "id": "captured-loop-variable",',
     '      "name": "Erfasste Schleifenvariable",',
     '      "description": "Eine anonyme Methode, die an eine verzögert ausführende API (TThread.Queue, TTask.Run …) geht, erfasst eine Variable, die sich vor dem Aufruf noch ändert, etwa die Variable einer' +
-    ' for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert.",',
+    ' for-in-Schleife. Delphi erfasst die Variable, nicht ihren Wert. Still, wenn die anonyme Methode die Variable selbst zuweist (Ereignisse, die einen Zustand fortschreiben).",',
     '      "options": [',
     '        {',
     '          "name": "deferredApis",',
@@ -6035,8 +6041,9 @@ const
     '      "id": "component-missing-inherited",',
     '      "name": "Komponentenmethode ohne inherited",',
     '      "description": "Ein überschriebenes Loaded, CreateParams, CreateWnd, Notification, SetParent, Destroy oder Paint einer Komponente ruft inherited nicht auf; die VCL überspringt dann ihre eigene A' +
-    'rbeit. Paint wird nur gemeldet, wenn das Paint eines Vorfahren selbst zeichnet (TCustomPanel, TCustomForm, TPaintBox, TImage, ein Grid oder eine Klasse aus Datei oder Index, die Paint deklariert), mit' +
-    ' mittlerer Konfidenz; TCustomControl.Paint und TGraphicControl.Paint sind leer, dort ist ein Paint ohne inherited üblich."',
+    'rbeit. Paint wird nur gemeldet, wenn das Paint eines Vorfahren selbst zeichnet (TCustomPanel, TImage, ein Grid oder eine Klasse aus Datei oder Index, die Paint deklariert), mit mittlerer Konfidenz; TC' +
+    'ustomForm und TPaintBox lösen zur Laufzeit nur OnPaint aus, dort zählt ein Paint ohne inherited nur, wenn die Unit OnPaint benutzt oder eine Formulardatei hat; TCustomControl.Paint und TGraphicControl' +
+    '.Paint sind leer, dort ist ein Paint ohne inherited üblich."',
     '    },',
     '    {',
     '      "id": "component-default-mismatch",',
@@ -6058,8 +6065,8 @@ const
     '    {',
     '      "id": "component-fixed-pixels",',
     '      "name": "Feste Pixelwerte",',
-    '      "description": "Paint oder Resize verwenden feste Pixelwerte, die über 96 dpi zu klein sind. Werte über ScaleValue oder MulDiv, 0, 1 und -1 sowie Faktoren von Multiplikationen und Divisionen wer' +
-    'den nicht gemeldet."',
+    '      "description": "Paint oder Resize verwenden feste Pixelwerte, die über 96 dpi zu klein sind. Werte über ScaleValue oder MulDiv oder über eine Methode der Klasse, die selbst skaliert (ruft ScaleV' +
+    'alue, MulDiv oder eine Routine Scale… auf), 0, 1 und -1 sowie Faktoren von Multiplikationen und Divisionen werden nicht gemeldet."',
     '    },',
     '    {',
     '      "id": "component-hardcoded-color",',
@@ -6683,8 +6690,9 @@ const
     '      "id": "deref-before-nil-check",',
     '      "name": "Erst benutzt, dann auf nil geprüft",',
     '      "description": "X wird dereferenziert (X.Feld, X.Methode, X^) und erst danach mit Assigned(X), X <> nil oder X = nil geprüft. Entweder ist die Prüfung überflüssig oder der Zugriff davor kann kna' +
-    'llen. Gemeldet wird nur, wenn jeder Weg zur Prüfung durch den Zugriff führt und X vorher nicht geprüft wurde; eine neue Zuweisung, die Übergabe von X an eine Routine und bei Feldern und globalen Varia' +
-    'blen jeder Aufruf dazwischen beenden den Weg. Konfidenz mittel. Ist die Prüfung ein if ohne else direkt nach dem Zugriff im selben Block, zieht die Schnellkorrektur den Zugriff hinein."',
+    'llen. Gemeldet wird nur, wenn jeder Weg zur Prüfung durch den Zugriff führt und X vorher nicht geprüft wurde; eine neue Zuweisung, FreeAndNil(X), die Übergabe von X oder eines seiner Felder oder Eleme' +
+    'nte (X.Feld, X[I]) an eine Routine und bei Feldern und globalen Variablen jeder Aufruf dazwischen beenden den Weg. Konfidenz mittel. Ist die Prüfung ein if ohne else direkt nach dem Zugriff im selben ' +
+    'Block, zieht die Schnellkorrektur den Zugriff hinein."',
     '    },',
     '    {',
     '      "id": "field-free-without-nil",',
@@ -7235,9 +7243,9 @@ const
     '    {',
     '      "id": "dunitx-test-without-assert",',
     '      "name": "DUnitX-Test ohne Assert",',
-    '      "description": "Eine [Test]- oder [TestCase]-Methode, die keine Prüfung aufruft, weder selbst noch über Methoden derselben Klasse oder Routinen der Unit: Sie ist immer grün. Als Prüfung zählen A' +
-    'ufrufe nach assertPatterns (Vorgabe Assert.*, WillRaise*, Check*), System.Assert und Aufrufe an Klassen mit Assert im Namen (TRuleAssert.Reports). Tests mit [WillRaise] oder [Ignore] bleiben still. Si' +
-    'cherheit hoch. Korrekturen: Assert.Pass als Platzhalter einfügen oder zur Methode springen.",',
+    '      "description": "Eine [Test]- oder [TestCase]-Methode, die keine Prüfung aufruft, weder selbst noch über ihre lokalen Routinen, Methoden derselben Klasse oder Routinen der Unit: Sie ist immer grü' +
+    'n. Als Prüfung zählen Aufrufe nach assertPatterns (Vorgabe Assert.*, WillRaise*, Check*), System.Assert und Aufrufe an Klassen mit Assert im Namen (TRuleAssert.Reports). Tests mit [WillRaise] oder [Ig' +
+    'nore] bleiben still. Sicherheit hoch. Korrekturen: Assert.Pass als Platzhalter einfügen oder zur Methode springen.",',
     '      "options": [',
     '        {',
     '          "name": "assertPatterns",',
@@ -8135,9 +8143,10 @@ const
     '      "id": "unused-unit",',
     '      "name": "Unit wird von keiner anderen Unit verwendet",',
     '      "description": "Eine Unit einer Anwendung verwendet keine andere Unit des Uses-Graphen: Höchstens Programme nennen sie im uses, und sie verwenden außerhalb ihres uses keinen ihrer Bezeichner (Ap' +
-    'plication.CreateForm(TForm1, Form1) zählt als Verwendung). Units mit initialization- oder finalization-Abschnitt (Registrierungen, Seiteneffekte beim Start) gelten als verwendet. Konfidenz mittel: Cod' +
-    'e außerhalb der Projektgruppe, Skripte oder zur Laufzeit geladene Packages können die Unit trotzdem nutzen. Still bei Units von Packages und DLLs (Nutzer außerhalb der Gruppe), solange projectKinds si' +
-    'e nicht erlaubt, ohne Projekte, solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt. Gemeldet am Unit-Namen im Kopf.",',
+    'plication.CreateForm(TForm1, Form1) zählt als Verwendung). Units mit initialization- oder finalization-Abschnitt (Registrierungen, Seiteneffekte beim Start) gelten als verwendet, ebenso Units mit eine' +
+    'r Klasse [TestFixture], die DUnitX per RTTI findet. Konfidenz mittel: Code außerhalb der Projektgruppe, Skripte oder zur Laufzeit geladene Packages können die Unit trotzdem nutzen. Still bei Units von' +
+    ' Packages und DLLs (Nutzer außerhalb der Gruppe), solange projectKinds sie nicht erlaubt, ohne Projekte, solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nich' +
+    't kennt. Gemeldet am Unit-Namen im Kopf.",',
     '      "options": [',
     '        {',
     '          "name": "projectKinds",',

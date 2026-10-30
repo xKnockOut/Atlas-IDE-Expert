@@ -537,12 +537,12 @@ begin
     Subsystem := FModel.Subsystems[Index];
     X := Px(FView.ScreenX(Subsystem.X));
     Y := Px(FView.ScreenY(Subsystem.Y));
-    Radius := Max(2, Px(Subsystem.R * FView.Scale));
+    Radius := Max(ScaleValue(2), Px(Subsystem.R * FView.Scale));
     // Das Fundament (#1365) deutlicher gestrichelt.
     if Subsystem.Foundation then
     begin
       Canvas.Pen.Style := psDash;
-      Canvas.Pen.Width := 2;
+      Canvas.Pen.Width := ScaleValue(2);
     end
     else
     begin
@@ -556,7 +556,7 @@ begin
     TextSize := Canvas.TextExtent(Caption);
     Canvas.Font.Color := TColor(FModel.SubsystemColor(Index, Dark));
     Canvas.Font.Style := [fsBold];
-    Canvas.TextOut(X - TextSize.cx div 2, Y - Radius - TextSize.cy - 2, Caption);
+    Canvas.TextOut(X - TextSize.cx div 2, Y - Radius - TextSize.cy - ScaleValue(2), Caption);
     Canvas.Font.Style := [];
   end;
   // Kanten: zuerst die gewöhnlichen, darüber Zyklen, die Kanten der gewählten Unit und der Weg.
@@ -600,7 +600,7 @@ begin
     if not (OnCycle or Touches or Added) or (Pathing and FPathEdges[Index]) then
       Continue;
     Canvas.Pen.Style := psSolid;
-    Canvas.Pen.Width := 2;
+    Canvas.Pen.Width := ScaleValue(2);
     // Wie die HTML-Karte: Zyklus vor gewählt vor neu.
     if OnCycle then
       Canvas.Pen.Color := ToColor(Colors.Error)
@@ -629,7 +629,7 @@ begin
         Canvas.Pen.Style := psSolid
       else
         Canvas.Pen.Style := psDash;
-      Canvas.Pen.Width := 3;
+      Canvas.Pen.Width := ScaleValue(3);
       Canvas.Pen.Color := ToColor(Colors.Accent);
       DrawEdge(Edge);
     end;
@@ -642,7 +642,7 @@ begin
     Item := FModel.Units[Index];
     X := Px(FView.ScreenX(Item.X));
     Y := Px(FView.ScreenY(Item.Y));
-    Radius := Max(2, Px(FModel.NodeRadius(Index) * FView.Scale));
+    Radius := Max(ScaleValue(2), Px(FModel.NodeRadius(Index) * FView.Scale));
     if Pathing then
       Visible := FPathNodes[Index]
     else
@@ -656,17 +656,17 @@ begin
     Canvas.Pen.Color := ToColor(Colors.Surface);
     if Item.Outlier then
     begin
-      Canvas.Pen.Width := 2;
+      Canvas.Pen.Width := ScaleValue(2);
       Canvas.Pen.Color := ToColor(Colors.Warn);
     end;
     if FMarkCycles and Item.OnCycle then
     begin
-      Canvas.Pen.Width := 2;
+      Canvas.Pen.Width := ScaleValue(2);
       Canvas.Pen.Color := ToColor(Colors.Error);
     end;
     if (Index = FSelected) or (Pathing and ((Index = FPathFrom) or (Index = FPathTo))) then
     begin
-      Canvas.Pen.Width := 3;
+      Canvas.Pen.Width := ScaleValue(3);
       Canvas.Pen.Color := ToColor(Colors.Text);
     end;
     Canvas.Ellipse(X - Radius, Y - Radius, X + Radius + 1, Y + Radius + 1);

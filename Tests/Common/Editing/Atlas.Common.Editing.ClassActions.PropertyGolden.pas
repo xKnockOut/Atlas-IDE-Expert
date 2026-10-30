@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.ClassActions.PropertyGolden;
+﻿unit Atlas.Common.Editing.ClassActions.PropertyGolden; // lsp-ignore-file: unused-public-member -- Golden-Datei: Das Testprojekt übersetzt nur das Ergebnis der Aktion.
 
 // Golden-Datei für die Code-Aktion „Getter, Setter und Feld erzeugen“ (#42):
 // genau das, was die Aktion aus "property Name: string;" ohne read/write
