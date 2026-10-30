@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.Performance.Tests;
 
 // Tests für die Performance-Regeln (#278): je Regel ein positiver und ein negativer Fall.
+// missing-begin-update: still bei Menüs und wenigen festen Durchläufen, else-Zweig im Schleifenrumpf.
 // setlength-in-loop (#974): Beispiel des Issues samt Korrektur, Schleifen ohne bekannte Anzahl,
 // Strings und fremde Arrays, Korrektur nur bei frischer lokaler Variable, Abschalten.
 // managed-param-without-const (#975): Beispiel des Issues samt Korrektur in Deklaration und Rumpf,
@@ -29,6 +30,12 @@ type
     procedure MissingBeginUpdateReported;
     [Test]
     procedure BeginUpdatePresentSilent;
+    [Test]
+    procedure BeginUpdateMenuSilent;
+    [Test]
+    procedure BeginUpdateFewIterationsSilent;
+    [Test]
+    procedure BeginUpdateElseBranchInLoop;
     [Test]
     procedure SetLengthInLoopReportedWithCount;
     [Test]
@@ -155,6 +162,60 @@ begin
     '  Memo1.Lines.BeginUpdate;'#10'  try'#10'    for I := 1 to 100 do'#10'      Memo1.Lines.Add(''x'');'#10 +
     '  finally'#10'    Memo1.Lines.EndUpdate;'#10'  end;'#10'  ListBox1.Items.Add(''y'');'#10 +
     '  for I := 1 to 3 do'#10'    List.Add(I);')));
+end;
+
+procedure TPerformanceRulesTests.BeginUpdateMenuSilent;
+const
+  Source = 'unit U;'#10'interface'#10'uses Vcl.Menus;'#10'type'#10'  TF = class'#10'    FMenu: TPopupMenu;'#10 +
+    '    FList: TListBox;'#10'    procedure Fill(const ANames: TArray<string>);'#10'  end;'#10'implementation'#10 +
+    'procedure TF.Fill(const ANames: TArray<string>);'#10'var'#10'  Name: string;'#10'  Main: TMainMenu;'#10 +
+    'begin'#10'  for Name in ANames do'#10'  begin'#10 +
+    '    FMenu.Items.Add(NewItem(Name, 0, False, True, nil, 0, ''''));'#10 +
+    '    Self.FMenu.Items.Add(NewLine);'#10'    Main.Items.Add(NewLine);'#10'    FList.Items.Add(Name);'#10 +
+    '  end;'#10'end;'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // TMenuItem kennt kein BeginUpdate: nur die Liste wird gemeldet.
+  Findings := TRuleAssert.Findings(TMissingBeginUpdateRule.Create, Source, AllOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.Contains(Findings[0].Message, 'FList.Items.BeginUpdate');
+end;
+
+procedure TPerformanceRulesTests.BeginUpdateFewIterationsSilent;
+const
+  Values = '  Dummy: Integer;'#10'const'#10 +
+    '  Values: array[0..5] of string = (''a'', ''b'', ''c'', ''d'', ''e'', ''f'');'#10'var'#10;
+begin
+  // Feste Grenzen bzw. statisches Array der Datei mit höchstens zehn Durchläufen.
+  Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, InRoutine('  I: Integer;',
+    '  for I := 1 to 10 do'#10'    ListBox1.Items.Add(IntToStr(I));')));
+  Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, InRoutine('  I: Integer;',
+    '  for I := 3 downto -2 do'#10'    ListBox1.Items.Add(IntToStr(I));')));
+  Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, InRoutine(Values + '  Value: string;',
+    '  for Value in Values do'#10'    ComboBox1.Items.Add(Value);')));
+  Assert.AreEqual(0, Count(TMissingBeginUpdateRule.Create, InRoutine(Values + '  I: Integer;',
+    '  for I := Low(Values) to High(Values) do'#10'    ComboBox1.Items.Add(Values[I]);')));
+  // Mehr Durchläufe, verschachtelt mehr als zehn oder Grenze erst zur Laufzeit: gemeldet.
+  Assert.AreEqual(1, Count(TMissingBeginUpdateRule.Create, InRoutine('  I: Integer;',
+    '  for I := 0 to 10 do'#10'    ListBox1.Items.Add(IntToStr(I));')));
+  Assert.AreEqual(1, Count(TMissingBeginUpdateRule.Create, InRoutine(Values + '  I, J: Integer;',
+    '  for I := 1 to 2 do'#10'    for J := 0 to High(Values) do'#10'      ComboBox1.Items.Add(Values[J]);')));
+  Assert.AreEqual(1, Count(TMissingBeginUpdateRule.Create, InRoutine('  I: Integer;',
+    '  for I := 0 to High(Werte) do'#10'    ComboBox1.Items.Add(Werte[I]);')));
+  Assert.AreEqual(1, Count(TMissingBeginUpdateRule.Create, InRoutine('  Value: string;',
+    '  for Value in Werte do'#10'    ComboBox1.Items.Add(Value);')));
+end;
+
+procedure TPerformanceRulesTests.BeginUpdateElseBranchInLoop;
+begin
+  // Der else-Zweig nach begin … end gehört noch zum Schleifenrumpf.
+  Assert.AreEqual(2, Count(TMissingBeginUpdateRule.Create, InRoutine('  I: Integer;',
+    '  for I := 0 to N do'#10'    if Odd(I) then'#10'    begin'#10'      ListBox1.Items.Add(''a'');'#10'    end'#10 +
+    '    else'#10'      ListBox2.Items.Add(''b'');'#10'  ListBox3.Items.Add(''c'');')));
+  Assert.AreEqual(1, Count(TMissingBeginUpdateRule.Create, InRoutine('  I: Integer;',
+    '  if A then'#10'    for I := 0 to N do'#10'    begin'#10'      ListBox1.Items.Add(''a'');'#10'    end'#10 +
+    '  else'#10'    ListBox2.Items.Add(''b'');')));
 end;
 
 const
