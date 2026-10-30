@@ -3,7 +3,7 @@
 // Tests der Regel xmldoc-mismatch (#979): Beispiel aus dem Issue samt
 // Korrektur, <returns>, nicht wohlgeformtes XML (W1201 bis W1205) mit
 // Korrekturen, cref über den Index (W1206), requirePublic, checkReturns,
-// Parserprüfung der Optionen und Abschalten.
+// Parserprüfung der Optionen und Abschalten. Codes nur, wo dcc meldet (#1383).
 
 interface
 
@@ -32,6 +32,8 @@ type
     procedure RequirePublic;
     [Test]
     procedure Options;
+    [Test]
+    procedure CodesOnlyWhereDccReports;
   end;
 
 implementation
@@ -128,7 +130,8 @@ begin
     '    /// <param name="Nummer">Kundennummer</param>'#10 +
     '    function Suchen(const Id: Integer; Aktive: Boolean): TKunde;'#10);
   Found := OnlyFinding(Source);
-  Assert.AreEqual('<param name="Nummer"> gibt es nicht; Id und Aktive sind nicht beschrieben.', Found.Message);
+  Assert.AreEqual('<param name="Nummer"> gibt es nicht (wie W1207); Id und Aktive sind nicht beschrieben ' +
+    '(wie W1208).', Found.Message);
   Assert.AreEqual(6, Found.Range.StartPos.Line);
   Assert.AreEqual(8, Found.Range.StartPos.Character);
   Expected := Kunden('    /// <summary>Sucht einen Kunden.</summary>'#10 +
@@ -179,7 +182,7 @@ begin
     '    /// <param name="Anzahl"></param>'#10 +
     '    /// <param name="Ziel">nach</param>'#10 +
     '    procedure Kopieren(const Quelle: string; Anzahl: Integer; const Ziel: string);'#10),
-    Fixed(Source, 'Anzahl ist nicht beschrieben.', 'Doku an die Signatur anpassen'));
+    Fixed(Source, 'Anzahl ist nicht beschrieben (wie W1208).', 'Doku an die Signatur anpassen'));
   // Mehr unbekannte als fehlende: die übrigen entfallen samt Zeile.
   Source := Kunden('    /// <summary>Löscht.</summary>'#10 +
     '    /// <param name="Nummer">Kundennummer</param>'#10 +
@@ -188,7 +191,8 @@ begin
   Assert.AreEqual(Kunden('    /// <summary>Löscht.</summary>'#10 +
     '    /// <param name="Id">Kundennummer</param>'#10 +
     '    procedure Loeschen(const Id: Integer);'#10),
-    Fixed(Source, '<param name="Nummer"> und <param name="Grund"> gibt es nicht; Id ist nicht beschrieben.',
+    Fixed(Source, '<param name="Nummer"> und <param name="Grund"> gibt es nicht (wie W1207); Id ist nicht ' +
+    'beschrieben (wie W1208).',
     'Doku an die Signatur anpassen'));
 end;
 
@@ -239,27 +243,27 @@ var
 begin
   Source := Kunden('    /// <summary>Liefert True, wenn A < B.</summary>'#10'    function Kleiner: Boolean;'#10);
   Assert.AreEqual(StringReplace(Source, 'A < B', 'A &lt; B', []), Fixed(Source,
-    'Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen (wie W1201).', '''<'' als &lt; schreiben'));
+    'Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen.', '''<'' als &lt; schreiben'));
   Source := Kunden('    /// <summary>Wahr bei 1<2.</summary>'#10'    function Kleiner: Boolean;'#10);
   Assert.AreEqual(StringReplace(Source, '1<2', '1&lt;2', []), Fixed(Source,
-    'Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen (wie W1203).', '''<'' als &lt; schreiben'));
+    'Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen.', '''<'' als &lt; schreiben'));
   Source := Kunden('    /// <summary>Wahr bei a<b).</summary>'#10'    function Kleiner: Boolean;'#10);
   Assert.AreEqual(StringReplace(Source, 'a<b)', 'a&lt;b)', []), Fixed(Source,
-    'Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen (wie W1204).', '''<'' als &lt; schreiben'));
+    'Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen (wie W1205).', '''<'' als &lt; schreiben'));
   Source := Kunden('    /// <summary>Müller & Söhne</summary>'#10'    procedure Firma;'#10);
   Assert.AreEqual(StringReplace(Source, ' & ', ' &amp; ', []), Fixed(Source,
-    'Doku-Kommentar ist kein wohlgeformtes XML: ''&'' muss &amp; heißen (wie W1201).', '''&'' als &amp; schreiben'));
+    'Doku-Kommentar ist kein wohlgeformtes XML: ''&'' muss &amp; heißen.', '''&'' als &amp; schreiben'));
   Source := Kunden('    /// <summary>A&B Firma</summary>'#10'    procedure Firma;'#10);
-  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: ''&'' muss &amp; heißen (wie W1205).',
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: ''&'' muss &amp; heißen.',
     OnlyFinding(Source).Message);
   Source := Kunden('    /// <summary>A&nbsp;B</summary>'#10'    procedure Firma;'#10);
   Assert.AreEqual(StringReplace(Source, '&nbsp;', '&amp;nbsp;', []), Fixed(Source,
-    'Doku-Kommentar ist kein wohlgeformtes XML: &nbsp; ist in XML nicht definiert (wie W1202).',
+    'Doku-Kommentar ist kein wohlgeformtes XML: &nbsp; ist in XML nicht definiert.',
     '''&'' als &amp; schreiben'));
   Source := Kunden('    /// <summary>Sucht.</summary>'#10'    /// <param name=Id>Nummer</param>'#10 +
     '    procedure Suchen(Id: Integer);'#10);
   Assert.AreEqual(StringReplace(Source, 'name=Id', 'name="Id"', []), Fixed(Source,
-    'Doku-Kommentar ist kein wohlgeformtes XML: Wert von name ohne Anführungszeichen (wie W1205).',
+    'Doku-Kommentar ist kein wohlgeformtes XML: Wert von name ohne Anführungszeichen.',
     'Anführungszeichen setzen'));
   // Mehrere Zeichenfehler in einem Block: jeder für sich.
   Assert.AreEqual(2, Integer(Length(Findings(Kunden('    /// <summary>a < b und c < d</summary>'#10 +
@@ -278,7 +282,7 @@ begin
   Source := Kunden('    /// <summary>Ohne <param> nicht dokumentiert.</summary>'#10'    procedure Laden;'#10);
   Assert.AreEqual(StringReplace(Source, '<param>', '&lt;param&gt;', []), Fixed(Source,
     'Doku-Kommentar ist kein wohlgeformtes XML: <param> wird nicht geschlossen.', '<param> als Text schreiben'));
-  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen (wie W1203).',
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen.',
     OnlyFinding(Kunden('    /// <summary>Name<…> =</summary>'#10'    procedure Laden;'#10)).Message);
   // Vergessenes Endtag.
   Source := Kunden('    /// <summary>Lädt'#10'    /// <param name="A">Pfad</param>'#10 +
@@ -374,6 +378,51 @@ begin
     '{"rules": {"xmldoc-mismatch": {"exclude": ["Alt/**"]}}}', 'Alt/Kunden.pas'))));
   TConfigurationParser.Parse('{"rules": {"xmldoc-mismatch": {"requirePublic": "ja", "checkReturns": 1}}}', Issues);
   Assert.AreEqual(2, Integer(Length(Issues)));
+end;
+
+/// <summary>Meldungen aller Befunde, je Zeile eine (für Fehlermeldungen der Tests).</summary>
+function Messages(const AFound: TArray<TRuleFinding>): string;
+var
+  Finding: TRuleFinding;
+begin
+  Result := '';
+  for Finding in AFound do
+    Result := Result + Finding.Message + sLineBreak;
+end;
+
+procedure TXmlDocRuleTests.CodesOnlyWhereDccReports;
+const
+  // Formen aus Tests/Compilermeldungen (Cm.W1201 bis Cm.W1205), die Delphi 13 mit --doc still übersetzt.
+  Silent: array[0..3] of string = ('<summary>Offenes Element', '<summary>A &unbekannt; B</summary>',
+    '<summary>A < B</summary>', '<summary a=>Text</summary>');
+var
+  Found: TArray<TRuleFinding>;
+  Finding: TRuleFinding;
+  Text: string;
+  Source: string;
+begin
+  for Text in Silent do
+  begin
+    Found := Findings('unit U;'#10'interface'#10'/// ' + Text + #10'procedure Machen;'#10'implementation'#10 +
+      'procedure Machen;'#10'begin'#10'end;'#10'end.');
+    Assert.IsTrue(Length(Found) > 0, Text);
+    for Finding in Found do
+      Assert.IsFalse(Pos('(wie ', Finding.Message) > 0, Text + ': ' + Finding.Message);
+  end;
+  // Cm.W1204: dcc meldet W1205 einmal je Kommentar; das Endtag dahinter bleibt ohne Code.
+  Found := Findings('unit U;'#10'interface'#10'/// <sum(mary>Text</sum(mary>'#10'procedure Machen;'#10 +
+    'implementation'#10'procedure Machen;'#10'begin'#10'end;'#10'end.');
+  Assert.AreEqual(2, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen (wie W1205).', Found[0].Message);
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen.', Found[1].Message);
+  // Nur im implementation-Teil dokumentiert dcc nichts: Befund ohne Code.
+  Source := 'unit U;'#10'interface'#10'implementation'#10'/// <summary>Macht.</summary>'#10 +
+    '/// <param name="AFalsch">x</param>'#10'procedure Machen(AWert: Integer);'#10'begin'#10'end;'#10 +
+    '/// <sum(mary>Text</sum(mary>'#10'procedure Lassen;'#10'begin'#10'end;'#10'end.';
+  Found := Findings(Source);
+  Assert.AreEqual(3, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual('<param name="AFalsch"> gibt es nicht; AWert ist nicht beschrieben.', Found[0].Message);
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen.', Found[1].Message);
 end;
 
 initialization

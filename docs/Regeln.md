@@ -227,7 +227,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`invalid-var-argument`](#invalid-var-argument) | Ungültiges Argument für einen var- oder out-Parameter | Bug | Fehler |
 | [`condition-not-boolean`](#condition-not-boolean) | Bedingung ist kein Boolean | Bug | Fehler |
 | [`for-in-not-enumerable`](#for-in-not-enumerable) | for-in über einen Typ ohne Enumerator | Bug | Fehler |
-| [`inherited-abstract-call`](#inherited-abstract-call) | inherited ruft eine abstrakte Methode auf | Bug | Fehler |
+| [`inherited-abstract-call`](#inherited-abstract-call) | inherited ruft eine abstrakte Methode auf | Bug | Warnung |
 | [`generic-constraint-violated`](#generic-constraint-violated) | Typargument verletzt eine Einschränkung | Bug | Fehler |
 | [`generic-inference-failed`](#generic-inference-failed) | Typargumente lassen sich nicht ableiten | Bug | Fehler |
 | [`unresolved-type`](#unresolved-type) | Typ in einer Deklaration nicht gefunden | Bug | Fehler |
@@ -642,9 +642,9 @@ uses System.Classes;
 
 **Zirkuläre Unit-Referenz über uses** · Code Smell · Warnung · Gruppe Architektur
 
-Ein uses-Eintrag führt über die uses-Listen anderer Units zurück zur eigenen Unit. Liegt jede Kante des Zyklus im interface-Abschnitt, lehnt der Compiler ihn ab (wie F2047), und der Befund ist ein Fehler; Zyklen mit mindestens einer implementation-Kante erlaubt Delphi, sie koppeln die Units aber eng (Initialisierungsreihenfolge, Neuübersetzen, Testen) und erscheinen mit dem Schweregrad der Regel (Option implementation). Die Meldung zeigt den vollständigen kürzesten Pfad (A → B → C → A), der Befund-Hover jede Kante mit ihrem Abschnitt. Grundlage ist der gemeinsame Uses-Graph über den Symbolindex (#268), inaktive Zweige der bedingten Kompilierung ausgeblendet; die geprüfte Unit zählt mit ihrem Editor-Stand. Still ohne Projekte (Linter, Datei ohne Projekt), solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt.
+Ein uses-Eintrag führt über die uses-Listen anderer Units zurück zur eigenen Unit. Liegt jede Kante des Zyklus im interface-Abschnitt, lehnt der Compiler ihn ab (wie F2047; eine Unit, die sich selbst nennt, wie F2092), und der Befund ist ein Fehler; nur dann nennt die Meldung den Code (#1383); Zyklen mit mindestens einer implementation-Kante erlaubt Delphi, sie koppeln die Units aber eng (Initialisierungsreihenfolge, Neuübersetzen, Testen) und erscheinen mit dem Schweregrad der Regel (Option implementation). Die Meldung zeigt den vollständigen kürzesten Pfad (A → B → C → A), der Befund-Hover jede Kante mit ihrem Abschnitt. Grundlage ist der gemeinsame Uses-Graph über den Symbolindex (#268), inaktive Zweige der bedingten Kompilierung ausgeblendet; die geprüfte Unit zählt mit ihrem Editor-Stand. Still ohne Projekte (Linter, Datei ohne Projekt), solange Projekte laden oder der Index unvollständig ist, und für Units, die der Uses-Graph nicht kennt.
 
-Entspricht der Compilermeldung `F2047`.
+Entspricht der Compilermeldung `F2047`, `F2092`.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -1061,7 +1061,7 @@ end;
 
 **Zugewiesener Wert ungenutzt** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077. Variablen mit Interface-Typ sind ausgenommen: Die Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil).
+Ein einer lokalen Variable zugewiesener Wert wird überschrieben oder die Routine endet, bevor er gelesen wird. Wie Compilerhinweis H2077, den dcc nur für nicht verwaltete Typen gibt: Bei Strings, dynamischen Arrays, Variants und Records mit solchen Feldern sowie bei Variablen ohne Typangabe nennt die Meldung keinen Code (#1383). Variablen mit Interface-Typ sind ausgenommen: Die Zuweisung hält oder gibt eine Referenz frei (Bereichswächter, Writer := nil).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4044,7 +4044,7 @@ if Tage > Mahnfrist then
 
 **Zeile zu lang** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Zeilen über der Grenze max (Vorgabe 120 Zeichen, passend zu den Linealen aus #710). Tabs zählen bis zur nächsten Tabstelle nach format.indentSize. Zeilen, die nur wegen eines Strings oder, mit ignoreComments, eines Kommentars zu lang sind, werden nicht gemeldet. Zeilen über 1023 Zeichen meldet die Regel unabhängig von max immer als Fehler, weil der Compiler dort abbricht (F2069). Standard aus. Schnellkorrektur: Zeile umbrechen hinter Kommas bzw. vor zweistelligen Operatoren, wenn die Stücke danach passen.
+Zeilen über der Grenze max (Vorgabe 120 Zeichen, passend zu den Linealen aus #710). Tabs zählen bis zur nächsten Tabstelle nach format.indentSize. Zeilen, die nur wegen eines Strings oder, mit ignoreComments, eines Kommentars zu lang sind, werden nicht gemeldet. Zeilen über 1023 Zeichen meldet die Regel unabhängig von max immer als Warnung, weil der Compiler dort je nach Delphi-Version abbricht; Zeilen über 4095 Zeichen als Fehler, weil auch Delphi 13 dort abbricht (F2069). Standard aus. Schnellkorrektur: Zeile umbrechen hinter Kommas bzw. vor zweistelligen Operatoren, wenn die Stücke danach passen.
 
 Entspricht der Compilermeldung `F2069`.
 
@@ -4398,7 +4398,7 @@ property Passwort: string read FPasswort write SetPasswort;
 
 **XMLDoc passt nicht zur Signatur** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Ein ///-Kommentar passt nicht zu seiner Deklaration oder ist kein wohlgeformtes XML, wie die Compilerwarnungen W1201 bis W1208 mit eingeschalteter XML-Dokumentation. Gemeldet werden: <param> zu einem Parameter, den es nicht gibt; fehlende <param>, wenn der Block überhaupt Parameter beschreibt (wie W1208, „but other parameters do“); mit checkReturns <returns> an einer Routine ohne Ergebnis und fehlendes <returns> an einer Funktion, deren Block Parameter beschreibt. <inheritdoc/> ergänzt, was fehlt. Außerdem '<' und '&' außerhalb von Tags und Entitäten, unbekannte Entitäten, Attributwerte ohne Anführungszeichen, nicht geschlossene und überzählige Endtags sowie cref-Ziele, die es nicht gibt (W1206, nur mit Index und wenn jede Unit aus uses bekannt ist; generische Ziele, Unit-Namen und Typen mit unbekannten Vorfahren bleiben still). Mit requirePublic zusätzlich public- und published-Methoden und -Properties von Typen im interface ohne ///-Kommentar (nicht override, nicht Properties ohne Typ). Schnellkorrekturen: unbekannte <param> der Reihe nach auf die fehlenden umbenennen, die übrigen als leere Zeilen in Signaturreihenfolge ergänzen, überzählige <param> und <returns> an Prozeduren entfernen; Zeichen maskieren, Anführungszeichen setzen, Endtag ergänzen oder entfernen, ein fremdes leeres Tag wie TList<T> als Text schreiben; cref auf das ähnlichste Symbol setzen; Kommentargerüst erzeugen.
+Ein ///-Kommentar passt nicht zu seiner Deklaration oder ist kein wohlgeformtes XML, wie die Compilerwarnungen W1201 bis W1208 mit eingeschalteter XML-Dokumentation. Einen Code nennt die Meldung nur, wo dcc ihn meldet (#1383): bei Kommentaren im interface-Teil einer Unit (nur die dokumentiert dcc) und unter den XML-Fehlern nur bei einem fremden Zeichen hinter dem Tagnamen (W1205); '<' mit folgendem Leerzeichen, unbekannte Entitäten, leere Attributwerte und offene Tags übersetzt Delphi 13 ohne Warnung. Gemeldet werden: <param> zu einem Parameter, den es nicht gibt; fehlende <param>, wenn der Block überhaupt Parameter beschreibt (wie W1208, „but other parameters do“); mit checkReturns <returns> an einer Routine ohne Ergebnis und fehlendes <returns> an einer Funktion, deren Block Parameter beschreibt. <inheritdoc/> ergänzt, was fehlt. Außerdem '<' und '&' außerhalb von Tags und Entitäten, unbekannte Entitäten, Attributwerte ohne Anführungszeichen, nicht geschlossene und überzählige Endtags sowie cref-Ziele, die es nicht gibt (W1206, nur mit Index und wenn jede Unit aus uses bekannt ist; generische Ziele, Unit-Namen und Typen mit unbekannten Vorfahren bleiben still). Mit requirePublic zusätzlich public- und published-Methoden und -Properties von Typen im interface ohne ///-Kommentar (nicht override, nicht Properties ohne Typ). Schnellkorrekturen: unbekannte <param> der Reihe nach auf die fehlenden umbenennen, die übrigen als leere Zeilen in Signaturreihenfolge ergänzen, überzählige <param> und <returns> an Prozeduren entfernen; Zeichen maskieren, Anführungszeichen setzen, Endtag ergänzen oder entfernen, ein fremdes leeres Tag wie TList<T> als Text schreiben; cref auf das ähnlichste Symbol setzen; Kommentargerüst erzeugen.
 
 Entspricht der Compilermeldung `W1201`, `W1202`, `W1203`, `W1204`, `W1205`, `W1206`, `W1207`, `W1208`.
 
@@ -5532,9 +5532,9 @@ end;
 
 **Instanz einer Klasse mit abstrakten Methoden** · Bug · Warnung · Gruppe Compiler vorab
 
-Create auf einer Klasse, die abstrakte Methoden deklariert oder erbt, ohne sie zu überschreiben (wie W1020), oder auf einer als abstract deklarierten Klasse (wie E2402). Der Aufruf einer abstrakten Methode löst zur Laufzeit EAbstractError aus; die Meldung nennt die offenen Methoden. Klassen sucht die Regel in der Datei und im Symbolindex; Überladungen mit gleicher Parameterzahl gelten als eine Methode. Aufrufe über Klassenreferenzen, inherited Create und Konstruktor-Rümpfe prüft sie nicht. Korrektur für eine Klasse dieser Datei, die die abstrakten Methoden erbt: dort überschreiben (wie die Code-Aktion „überschreiben“).
+Create auf einer Klasse, die abstrakte Methoden deklariert oder erbt, ohne sie zu überschreiben (wie W1020). Eine als abstract deklarierte Klasse ohne abstrakte Methoden lässt sich erzeugen; dcc setzt "class abstract" nicht durch (E2402 gibt es nur unter .NET, #1383). Der Aufruf einer abstrakten Methode löst zur Laufzeit EAbstractError aus; die Meldung nennt die offenen Methoden. Klassen sucht die Regel in der Datei und im Symbolindex; Überladungen mit gleicher Parameterzahl gelten als eine Methode. Aufrufe über Klassenreferenzen, inherited Create und Konstruktor-Rümpfe prüft sie nicht. Korrektur für eine Klasse dieser Datei, die die abstrakten Methoden erbt: dort überschreiben (wie die Code-Aktion „überschreiben“).
 
-Entspricht der Compilermeldung `W1020`, `E2402`.
+Entspricht der Compilermeldung `W1020`.
 
 Stufe B (Namensauflösung über Units).
 
@@ -6018,9 +6018,9 @@ end.
 
 **exports-Klausel unzulässig** · Bug · Fehler · Gruppe Compiler vorab
 
-Eine exports-Klausel in einer Routine (wie E2191), der Export einer threadvar oder einer mit local deklarierten Routine (wie E2276), einer Variablen, Konstanten oder eines Typs (wie E2121) oder derselbe Eintrag bzw. Exportname zweimal (wie E2287). Namen löst die Regel nur gegen globale Deklarationen der Datei auf; Namen aus anderen Units und Namen mit Punkt bleiben still, ebenso zwei Einträge in sich ausschließenden {$IF…}-Zweigen. Überladene Routinen mit verschiedenen Parameterlisten oder Exportnamen gelten als verschiedene Einträge. Ergänzt dll-export-unsafe (#973). Schnellkorrektur: doppelten Eintrag entfernen.
+Eine exports-Klausel in einer Routine (wie E2191), der Export einer threadvar, einer mit local deklarierten Routine, einer Konstanten oder eines Typs (wie E2276) oder derselbe Exportname zweimal über name '…' (wie E2287). Variablen und denselben Eintrag zweimal ohne name übersetzt Delphi 13; die meldet die Regel nicht. Namen löst die Regel nur gegen globale Deklarationen der Datei auf; Namen aus anderen Units und Namen mit Punkt bleiben still, ebenso zwei Einträge in sich ausschließenden {$IF…}-Zweigen. Überladene Routinen mit verschiedenen Parameterlisten oder Exportnamen gelten als verschiedene Einträge. Ergänzt dll-export-unsafe (#973). Schnellkorrektur: doppelten Eintrag entfernen.
 
-Entspricht der Compilermeldung `E2191`, `E2276`, `E2121`, `E2287`.
+Entspricht der Compilermeldung `E2191`, `E2276`, `E2287`.
 
 Stufe A (Parser genügt).
 
@@ -6028,16 +6028,16 @@ Mit Treffer:
 
 ```pascal
 exports
-  Initialisieren,
+  Initialisieren name 'Start',
   Berechnen,
-  Initialisieren;
+  Berechnen name 'Start';
 ```
 
 Richtig:
 
 ```pascal
 exports
-  Initialisieren,
+  Initialisieren name 'Start',
   Berechnen;
 ```
 
@@ -7039,7 +7039,7 @@ end.
 
 **Member verdeckt einen Member des Vorfahren** · Bug · Warnung · Gruppe Compiler vorab
 
-Eine Property heißt wie ein Feld eines Vorfahren (wie W1009), ein Feld wie ein Feld oder eine Property eines Vorfahren oder eine nicht virtuelle Methode hat Namen und Parameter einer nicht virtuellen Methode eines Vorfahren. Code, der über den Vorfahrtyp zugreift, sieht weiter den alten Member. Virtuelle Methoden meldet hides-virtual, lokale Namen shadowed-name. Neu veröffentlichte Properties (property Caption;), Properties mit neuem Typ über einer Property des Vorfahren, overload, reintroduce, Konstruktoren und Klassenmethoden bleiben unbeanstandet. Member, die der Nachfahre nicht sieht (private einer anderen Unit, strict private mit ignoreStrictPrivate), zählen nicht; Vorfahren kommen aus der Datei und dem Symbolindex. Korrektur für Felder und Properties: den Member in der Klassendeklaration und in den Rümpfen ihrer Methoden in dieser Unit umbenennen (aus FName wird FKundeName).
+Eine Property heißt wie ein Feld eines Vorfahren (wie W1009), ein Feld wie ein Feld oder eine Property eines Vorfahren oder eine nicht virtuelle Methode hat Namen und Parameter einer nicht virtuellen Methode eines Vorfahren (die beiden letzten ohne Code: Delphi 13 übersetzt sie still). Code, der über den Vorfahrtyp zugreift, sieht weiter den alten Member. Virtuelle Methoden meldet hides-virtual, lokale Namen shadowed-name. Neu veröffentlichte Properties (property Caption;), Properties mit neuem Typ über einer Property des Vorfahren, overload, reintroduce, Konstruktoren und Klassenmethoden bleiben unbeanstandet. Member, die der Nachfahre nicht sieht (private einer anderen Unit, strict private mit ignoreStrictPrivate), zählen nicht; Vorfahren kommen aus der Datei und dem Symbolindex. Korrektur für Felder und Properties: den Member in der Klassendeklaration und in den Rümpfen ihrer Methoden in dieser Unit umbenennen (aus FName wird FKundeName).
 
 Entspricht der Compilermeldung `W1009`.
 
@@ -7105,9 +7105,9 @@ end;
 
 **Schreibweise oder Sichtbarkeit weicht vom Vorfahren ab** · Code Smell · Hinweis · Gruppe Compiler vorab
 
-Eine überschreibende Methode schreibt ihren Namen anders als der Vorfahr (destructor destroy, wie H2365) oder ist weniger sichtbar als die überschriebene Methode (wie H2269, nur für Klassen im interface-Teil; verglichen werden die Stufen privat, geschützt, öffentlich), ein Getter oder Setter heißt Get<Property> bzw. Set<Property>, ist aber anders geschrieben (wie H2367), oder eine inline-Methode greift auf ein Mitglied zu, das weniger sichtbar ist als sie selbst, sodass der Compiler sie außerhalb der Klasse nicht einsetzen kann (wie H2440). Wichtig für C++Builder-Nutzer der Units und für einheitlichen Code. Die Docwiki führt H2269 und H2367 als X2269 und X2367, weil sich ihre Stufe umstellen lässt; dcc meldet sie standardmäßig als Hinweis. H2368 und H2369 deckt die Regel nicht ab, weil nicht dokumentiert ist, wann dcc sie meldet. Standardmäßig aus; in atlas.json einschalten. Korrekturen: Schreibweise vom Vorfahr übernehmen, Zugriffsmethode umbenennen.
+Eine überschreibende Methode schreibt ihren Namen anders als der Vorfahr (destructor destroy, wie H2365) oder ist weniger sichtbar als die überschriebene Methode (wie H2269, nur für Klassen im interface-Teil; verglichen werden die Stufen privat, geschützt, öffentlich), ein Getter oder Setter heißt Get<Property> bzw. Set<Property>, ist aber anders geschrieben, oder eine inline-Methode greift auf ein Mitglied zu, das weniger sichtbar ist als sie selbst (diese beiden ohne Code: Delphi 13 meldet dort weder H2367 noch H2440). Wichtig für C++Builder-Nutzer der Units und für einheitlichen Code. Die Docwiki führt H2269 und H2367 als X2269 und X2367, weil sich ihre Stufe umstellen lässt; dcc meldet sie standardmäßig als Hinweis. H2368 und H2369 deckt die Regel nicht ab, weil nicht dokumentiert ist, wann dcc sie meldet. Standardmäßig aus; in atlas.json einschalten. Korrekturen: Schreibweise vom Vorfahr übernehmen, Zugriffsmethode umbenennen.
 
-Entspricht der Compilermeldung `H2365`, `H2440`, `H2269`, `H2367`.
+Entspricht der Compilermeldung `H2365`, `H2269`.
 
 Stufe B (Namensauflösung über Units).
 
@@ -7188,9 +7188,9 @@ end;
 
 **Inline-Funktion wird nicht eingebettet** · Code Smell · Hinweis · Gruppe Compiler vorab
 
-Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbettet: Ihr Rumpf braucht eine Unit, die hier in uses fehlt (wie H2443, typisch System.Generics.Collections bei TJSONObject.Count), er greift auf ein strict private-Mitglied zu und der Aufruf steht nicht in einer Methode dieser Klasse (wie H2444), die aufrufende Routine ist selbst inline und die Unit der gerufenen steht nur im uses des implementation-Teils (wie H2445), oder die Unit der gerufenen Routine verwendet diese Unit direkt (wie H2456) bzw. über andere Units (wie H2457). Geprüft werden Aufrufe, Properties mit inline-Getter bzw. -Setter und for-in (GetEnumerator, MoveNext, Current). Der Index merkt sich, worauf jeder inline-Rumpf verweist; die Regel meldet nur, was sie sicher auflöst (unbekannte Verweise und geerbte Mitglieder aus anderen Units bleiben stumm). Mit {$INLINE OFF} in der Datei schweigt sie. Korrektur: die fehlenden Units in das uses des Abschnitts aufnehmen.
+Aufruf einer inline-Routine aus einer anderen Unit, die der Compiler nicht einbettet: Ihr Rumpf braucht eine Unit, die hier in uses fehlt (wie H2443, typisch System.Generics.Collections bei TJSONObject.Count), die aufrufende Routine ist selbst inline und die Unit der gerufenen steht nur im uses des implementation-Teils (wie H2445), oder die Unit der gerufenen Routine verwendet diese Unit direkt (wie H2456) bzw. über andere Units (wie H2457). Geprüft werden Aufrufe, Properties mit inline-Getter bzw. -Setter und for-in (GetEnumerator, MoveNext, Current). Der Index merkt sich, worauf jeder inline-Rumpf verweist; die Regel meldet nur, was sie sicher auflöst (unbekannte Verweise und geerbte Mitglieder aus anderen Units bleiben stumm). Zugriffe auf private- oder strict private-Mitglieder meldet sie nicht: Delphi 13 bettet solche Aufrufe ein. Mit {$INLINE OFF} in der Datei schweigt sie. Korrektur: die fehlenden Units in das uses des Abschnitts aufnehmen.
 
-Entspricht der Compilermeldung `H2443`, `H2444`, `H2445`, `H2456`, `H2457`.
+Entspricht der Compilermeldung `H2443`, `H2445`, `H2456`, `H2457`.
 
 Stufe B (Namensauflösung über Units).
 
@@ -7903,9 +7903,9 @@ if Int64(Groesse) + Delta < Grenze then
 
 **Zuweisung mit möglichem Datenverlust** · Bug · Warnung · Gruppe Compiler vorab
 
-Eine Zuweisung oder Inline-Variable mit einem Wert, dessen Typ breiter ist als das Ziel, ohne ausdrückliche Umwandlung: Int64 an Integer, NativeInt an Integer (Win64) und über die Option types z. B. Double an Single oder Extended an Double. Wie W1071 (Ganzzahlen), W1072 (Gleitkomma) und W1066 (Extended an Double); der Compiler zeigt W1071 nur, wenn man es einschaltet. Gemeldet wird nur, wenn beide Typen sicher bekannt sind (Variablen, Felder, Properties, Funktionsergebnisse, eigene Aliase und ganzzahlige Rechnungen daraus); Literale und ausdrückliche Umwandlungen bleiben still. Standardmäßig aus; mittlere Konfidenz. Korrekturen: ausdrücklich umwandeln; den Typ der Deklaration des Ziels vergrößern (einzelne Variable aus derselben Datei).
+Eine Zuweisung oder Inline-Variable mit einem Wert, dessen Typ breiter ist als das Ziel, ohne ausdrückliche Umwandlung: Int64 an Integer, NativeInt an Integer (Win64) und über die Option types z. B. Double an Single oder Extended an Double. Wie W1072 (Gleitkomma) und W1066 (Extended an Double); Ganzzahlen ohne Code, weil Delphi 13 W1071 auch mit {$WARN IMPLICIT_INTEGER_CAST_LOSS ON} nicht meldet. Gemeldet wird nur, wenn beide Typen sicher bekannt sind (Variablen, Felder, Properties, Funktionsergebnisse, eigene Aliase und ganzzahlige Rechnungen daraus); Literale und ausdrückliche Umwandlungen bleiben still. Standardmäßig aus; mittlere Konfidenz. Korrekturen: ausdrücklich umwandeln; den Typ der Deklaration des Ziels vergrößern (einzelne Variable aus derselben Datei).
 
-Entspricht der Compilermeldung `W1071`, `W1072`, `W1066`.
+Entspricht der Compilermeldung `W1072`, `W1066`.
 
 Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
 
@@ -8078,26 +8078,25 @@ end;
 
 **Ungültiges Argument für einen var- oder out-Parameter** · Bug · Fehler · Gruppe Compiler vorab
 
-Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: ein String-Element für einen Zeichen-Parameter (wie E2354), eine Konstante, einen konstanten Ausdruck wie cMax + 1, einen const-Parameter, eine Property oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192) oder einen Ausdruck (wie E2036); auch @ vor einem arithmetischen oder logischen Ausdruck meldet die Regel (wie E2036). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei String-Elementen und Properties mit write mit Rückschreiben.
+Ein var- oder out-Parameter bekommt etwas, das keine Variable ist: eine Konstante, einen konstanten Ausdruck wie cMax + 1, einen const-Parameter, eine Property oder ein Funktionsergebnis (wie E2197), eine Konstante für ein offenes Array (wie E2192) oder einen Ausdruck (wie E2036); auch @ vor einem arithmetischen oder logischen Ausdruck meldet die Regel (wie E2036). Ein String-Element für einen Zeichen-Parameter (S[1]) ist für dcc eine Variable und bleibt still (E2354 gibt es nur unter .NET, #1383). Gemeldet nur für Routinen ohne Überladungen, deren Kopf aus der Datei oder dem Index bekannt ist; eingebaute Routinen wie Inc oder Move und untypisierte var-Parameter nehmen mehr an und bleiben still. Typisierte Konstanten zählen als Konstanten, außer mit {$J+}. Korrektur: eine lokale Variable vom Typ des Parameters übergeben, bei Properties mit write mit Rückschreiben.
 
-Entspricht der Compilermeldung `E2354`, `E2197`, `E2192`, `E2036`.
+Entspricht der Compilermeldung `E2197`, `E2192`, `E2036`.
 
 Stufe T (braucht Ausdruckstypen; mit "group:compiler": {"typeLevel": "off"} abschaltbar).
 
 Mit Treffer:
 
 ```pascal
-procedure Erhoehen(var Zeichen: Char);
+procedure Zaehlen(var Wert: Integer);
 …
-Erhoehen(Zeile[1]);
+Zaehlen(Liste.Count);
 ```
 
 Richtig:
 
 ```pascal
-Zeichen := Zeile[1];
-Erhoehen(Zeichen);
-Zeile[1] := Zeichen;
+Anzahl := Liste.Count;
+Zaehlen(Anzahl);
 ```
 
 <a id="condition-not-boolean"></a>
@@ -8151,11 +8150,9 @@ for F in Felder do
 <a id="inherited-abstract-call"></a>
 ### inherited-abstract-call
 
-**inherited ruft eine abstrakte Methode auf** · Bug · Fehler · Gruppe Compiler vorab
+**inherited ruft eine abstrakte Methode auf** · Bug · Warnung · Gruppe Compiler vorab
 
-inherited mit ausdrücklichem Methodennamen, etwa inherited Zeichnen(C), obwohl die Methode im Vorfahren abstract ist (wie E2373). Ein bloßes inherited; übergeht der Compiler bei abstrakten Methoden still; das meldet die Regel nicht. Die Methode löst die Namensauflösung samt Überladungen auf; gemeldet wird nur, wenn jede passende Überladung abstrakt ist. Korrektur: den Aufruf entfernen, wenn er als eigene Anweisung in einem begin…end steht.
-
-Entspricht der Compilermeldung `E2373`.
+inherited mit ausdrücklichem Methodennamen, etwa inherited Zeichnen(C), obwohl die Methode im Vorfahren abstract ist: Der Aufruf löst zur Laufzeit EAbstractError aus. Der Compiler übersetzt ihn ohne Fehler. Ein bloßes inherited; übergeht der Compiler bei abstrakten Methoden still; das meldet die Regel nicht. Die Methode löst die Namensauflösung samt Überladungen auf; gemeldet wird nur, wenn jede passende Überladung abstrakt ist. Korrektur: den Aufruf entfernen, wenn er als eigene Anweisung in einem begin…end steht.
 
 Stufe B (Namensauflösung über Units).
 
