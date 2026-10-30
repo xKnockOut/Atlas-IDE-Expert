@@ -9,7 +9,14 @@
 //                                  oder mit forward ohne Rumpf (E2065),
 //                                  TFoo = class; bzw. IFoo = interface; ohne
 //                                  vollständige Deklaration im selben
-//                                  type-Abschnitt (E2086, E2420)
+//                                  type-Abschnitt (E2086, E2420); Typ, der
+//                                  noch nicht vollständig ist (#1380, wie
+//                                  E2086): vorwärts deklarierte Klasse oder
+//                                  vorwärts deklariertes Interface als Vorfahr
+//                                  oder in der Interface-Liste vor der
+//                                  vollständigen Deklaration (Cm.E2420), ein
+//                                  Record mit einem Feld seines eigenen Typs
+//                                  (Cm.E2086)
 //
 // Erkennung und Korrekturen liefert TForwardDeclarations (Editing). Mit
 // refactoring.forwardDeclaration aus schweigen die ersten beiden Regeln.
@@ -405,6 +412,59 @@ var
     end;
   end;
 
+  /// <summary>E2086 (#1380): Ein Record enthält ein Feld seines eigenen Typs (TKreis = record Innen: TKreis).
+  /// </summary>
+  procedure CheckSelfContained(ADecl: TSyntaxNode);
+  var
+    mRecord, mField, mType: TSyntaxNode;
+    mIndex: Integer;
+  begin
+    mRecord := ADecl.FindChild(TSyntaxKind.RecordType);
+    if (mRecord = nil) or (Pos('<', ADecl.Name) > 0) or (PathOf(ADecl) <> '') then
+      Exit;
+    for mIndex := 0 to mRecord.ChildCount - 1 do
+    begin
+      mField := mRecord[mIndex];
+      if (mField.Kind <> TSyntaxKind.Field) or (mField.ChildCount = 0) then
+        Continue;
+      mType := mField[0];
+      if (mType.Kind = TSyntaxKind.TypeReference) and (mType.ChildCount = 0) and SameText(mType.Name, ADecl.Name) then
+        AReport.Add(TTextRange.Create(mType.StartPos, mType.EndPos), Format('Der Record %s enthält sich selbst als ' +
+          'Feld %s; ein Typ ist erst nach seinem end vollständig (wie E2086).', [ADecl.Name, mField.Name]),
+          TRuleConfidence.High);
+    end;
+  end;
+
+  /// <summary>E2086 (#1380): Klassen und Interfaces zwischen der Vorwärtsdeklaration ADecl und ihrer
+  /// Vervollständigung an AComplete, die den Typ als Vorfahr oder in der Interface-Liste nennen (Cm.E2420).
+  /// </summary>
+  procedure CheckIncompleteUse(ASection, ADecl: TSyntaxNode; AFirst, AComplete: Integer);
+  var
+    mIndex, mChild: Integer;
+    mUser, mBody, mType: TSyntaxNode;
+  begin
+    for mIndex := AFirst to AComplete - 1 do
+    begin
+      mUser := ASection[mIndex];
+      if (mUser.Kind <> TSyntaxKind.TypeDecl) or (PathOf(mUser) <> '') then
+        Continue;
+      mBody := mUser.FindChild(TSyntaxKind.ClassType);
+      if mBody = nil then
+        mBody := mUser.FindChild(TSyntaxKind.InterfaceType);
+      if mBody = nil then
+        Continue;
+      for mChild := 0 to mBody.ChildCount - 1 do
+      begin
+        mType := mBody[mChild];
+        if (mType.Kind = TSyntaxKind.TypeReference) and (mType.ChildCount = 0) and SameText(mType.Name, ADecl.Name)
+        then
+          AReport.Add(TTextRange.Create(mType.StartPos, mType.EndPos), Format('%s ist hier nur vorwärts deklariert; ' +
+            'als Vorfahr oder in der Interface-Liste von %s muss der Typ schon vollständig sein (wie E2086).',
+            [ADecl.Name, mUser.Name]), TRuleConfidence.High);
+      end;
+    end;
+  end;
+
   procedure CheckTypes(ASection: TSyntaxNode);
   var
     Index, Later: Integer;
@@ -417,6 +477,7 @@ var
       Decl := ASection[Index];
       if Decl.Kind <> TSyntaxKind.TypeDecl then
         Continue;
+      CheckSelfContained(Decl);
       Forward_ := Decl.FindChild(TSyntaxKind.ForwardType);
       if (Forward_ = nil) or (PathOf(Decl) <> '') then
         Continue;
@@ -429,6 +490,8 @@ var
           not TConditionalBranches.Exclusive(PathOf(Decl), PathOf(Other)) then
         begin
           Complete := True;
+          if PathOf(Other) = '' then
+            CheckIncompleteUse(ASection, Decl, Index + 1, Later);
           Break;
         end;
       end;

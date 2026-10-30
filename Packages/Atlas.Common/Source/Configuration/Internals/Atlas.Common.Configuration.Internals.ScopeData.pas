@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..59] of string = (
+  GlobalSettingPaths: array[0..62] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -51,6 +51,9 @@ const
     'architecture.scope',
     'architecture.includeLibraryUnits',
     'architecture.centralUnits',
+    'architecture.explainAssignment',
+    'architecture.grouping',
+    'hotspots',
     'requestTimeoutMs',
     'diagnostics.log',
     'diagnostics.logDays',
@@ -71,7 +74,7 @@ const
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..36] of string = (
+  ProjectSettingPaths: array[0..37] of string = (
     'minDelphiVersion',
     'encoding',
     'project',
@@ -104,6 +107,7 @@ const
     'memberOrder',
     'testUnits',
     'minConfidence',
+    'fix',
     'exclude',
     'mcp.globalSettings',
     'mcp.customPrompts',
