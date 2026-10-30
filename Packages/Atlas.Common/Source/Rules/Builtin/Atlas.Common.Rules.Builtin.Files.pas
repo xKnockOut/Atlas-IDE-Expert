@@ -21,7 +21,12 @@
 //                                  eine Seite aus ExtractFileName & Co., TPath,
 //                                  Application.ExeName oder einem Namen auf
 //                                  FileName, die andere kein Leertext und kein
-//                                  Literal ohne Buchstaben. Korrektur:
+//                                  Literal ohne Buchstaben. Still, wenn dieselbe
+//                                  Anweisung dieselben Seiten auch ohne Groß-/
+//                                  Kleinschreibung vergleicht (SameText & Co.,
+//                                  plattformabhängig etwa mit PathDelim = '\'),
+//                                  und in Test-Units (Testdoubles vergleichen
+//                                  mit selbst vergebenen Namen). Korrektur:
 //                                  SameFileName.
 
 interface
@@ -69,6 +74,10 @@ type
     /// <summary>Liefert ANode einen Datei- oder Pfadnamen (ExtractFileName, TPath.GetFileName,
     /// Application.ExeName, X.FileName …)?</summary>
     class function IsFileNameExpression(ANode: TSyntaxNode): Boolean; static;
+    /// <summary>Vergleicht die Anweisung um ACompare dieselben Seiten auch ohne Groß-/Kleinschreibung
+    /// (SameText, SameFileName, CompareText …)? Dann ist der genaue Vergleich gewollt, etwa nur außerhalb von
+    /// Windows.</summary>
+    class function ComparedIgnoringCase(const AText: string; ACompare: TSyntaxNode): Boolean; static;
   end;
 
 /// <summary>Name und Qualifizierer eines Aufrufs oder Bezeichners: TPath.GetDocumentsPath ergibt
@@ -592,6 +601,59 @@ begin
   Result := Derives(Unwrapped(ALeft), Unwrapped(ARight)) or Derives(Unwrapped(ARight), Unwrapped(ALeft));
 end;
 
+const
+  // Vergleiche ohne Groß-/Kleinschreibung aus System.SysUtils.
+  IgnoreCaseCompares: array[0..5] of string = ('SameText', 'AnsiSameText', 'CompareText', 'AnsiCompareText',
+    'SameFileName', 'AnsiCompareFileName');
+
+/// <summary>Gehört ANode noch zur selben Anweisung wie sein Kind? Ausdrücke, Zuweisungen, Aufrufe und
+/// Verzweigungen ja; der begin-end-Block eines Zweigs auch, Rumpf von Routine oder Schleife nicht.</summary>
+function SameStatement(ANode: TSyntaxNode): Boolean;
+begin
+  case ANode.Kind of
+    TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.IfExpr, TSyntaxKind.Call,
+    TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement,
+    TSyntaxKind.CaseItem, TSyntaxKind.CaseElse:
+      Result := True;
+    TSyntaxKind.Block:
+      Result := (ANode.Parent <> nil) and (ANode.Parent.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.CaseItem,
+        TSyntaxKind.CaseElse]);
+  else
+    Result := False;
+  end;
+end;
+
+class function TFilenameCompareCaseRule.ComparedIgnoringCase(const AText: string; ACompare: TSyntaxNode): Boolean;
+var
+  Scope: TSyntaxNode;
+  Left, Right: string;
+  Found: Boolean;
+begin
+  Scope := ACompare;
+  while (Scope.Parent <> nil) and SameStatement(Scope.Parent) do
+    Scope := Scope.Parent;
+  Left := SourceText(AText, Unwrapped(ACompare[0]));
+  Right := SourceText(AText, Unwrapped(ACompare[1]));
+  Found := False;
+  Scope.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    var
+      Name, Qualifier, First, Second: string;
+    begin
+      if not Found and (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and
+        CalleeName(ANode, Name, Qualifier) and ((Qualifier = '') or QualifierIs(Qualifier, 'SysUtils')) and
+        MatchText(Name, IgnoreCaseCompares) then
+      begin
+        First := SourceText(AText, Unwrapped(ANode[1]));
+        Second := SourceText(AText, Unwrapped(ANode[2]));
+        Found := (SameText(First, Left) and SameText(Second, Right)) or
+          (SameText(First, Right) and SameText(Second, Left));
+      end;
+      Result := not Found;
+    end);
+  Result := Found;
+end;
+
 procedure TFilenameCompareCaseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Compares: TArray<TSyntaxNode>;
@@ -601,7 +663,8 @@ var
   UsesEdit: TRuleEdit;
   NewText: string;
 begin
-  if AContext.Tree = nil then
+  // Testdoubles vergleichen mit Namen, die der Test selbst vergibt; dort ist der genaue Vergleich gewollt.
+  if (AContext.Tree = nil) or TRuleProfiles.IsTestUnit(AContext.Tree.Tokens) then
     Exit;
   Compares := nil;
   AContext.Tree.Root.Walk(
@@ -609,7 +672,8 @@ begin
     begin
       if (ANode.Kind = TSyntaxKind.BinaryExpr) and ((ANode.Name = '=') or (ANode.Name = '<>')) and
         (ANode.ChildCount = 2) and (IsFileNameExpression(ANode[0]) or IsFileNameExpression(ANode[1])) and
-        HasCase(ANode[0]) and HasCase(ANode[1]) and not DerivedFromOther(AContext.Text, ANode[0], ANode[1]) then
+        HasCase(ANode[0]) and HasCase(ANode[1]) and not DerivedFromOther(AContext.Text, ANode[0], ANode[1]) and
+        not ComparedIgnoringCase(AContext.Text, ANode) then
         Compares := Compares + [ANode];
       Result := True;
     end);
