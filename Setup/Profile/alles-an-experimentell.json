@@ -52,6 +52,8 @@
     "editor.smartPaste": "both",
     "completion.typeConversion": "helper",
     "completion.assignAllFields": true,
-    "editor.minimap": true
+    "editor.minimap": true,
+    "editor.designerBar.tabOrderClick": true,
+    "editor.designerBar.align": true
   }
 }
