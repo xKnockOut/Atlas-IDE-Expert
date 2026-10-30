@@ -6957,14 +6957,32 @@ Voraussetzung: Server läuft in der IDE mit Projekt.
 | GD2 | Als `class procedure Tauschen<T>(var A, B: T); static;` in `TTausch = record` verschieben | Keine Meldung |
 | GD3 | `TA<T: class, record>`, `TA<T: class, constructor, constructor>`, `TA<T: record, constructor>`, `TA<T: class, TBasis>` (TBasis Klasse der Unit), `TA<T: TEins, TZwei>`, `TA<T: Integer>`, `M<T: TPunkt>` (TPunkt Record) | Meldungen wie E2507, E2603, E2516, E2552, E2553 und zweimal E2510, jeweils an der Einschränkung |
 | GD4 | `TE<T> = (eA, eB);`, `TL<T> = TList<T>;`, `TZ<T> = ^Integer;`, `TM<T> = set of Byte;`, `TH<T> = class helper for TObject` | Je „Der Typ … darf keine Typparameter haben; …“ (wie E2508) am Typnamen |
-| GD5 | In einer Klasse `class operator Add<T>`, `destructor Destroy<T>;`, `class constructor Create<T>;`, `procedure Laden<T>; virtual;`, `procedure Lesen<T>(A: T); override;`; im Interface `procedure Schreiben<T>(A: T);` | Meldungen wie E2529, E2528 (zweimal), E2533 (an `virtual` bzw. `override`), E2535 |
+| GD5 | In einer Klasse `class operator Add<T>`, `destructor Destroy<T>;`, `class constructor Create<T>;`, `procedure Laden<T>; virtual;`, `procedure Lesen<T>(A: T); override;`, `constructor Create<T>(A: T);`; im Interface `procedure Schreiben<T>(A: T);` | Meldungen wie E2529, E2528 (dreimal, beim Konstruktor „Konstruktoren dürfen keine Typparameter haben (wie E2528).“, #1376), E2533 (an `virtual` bzw. `override`), E2535 |
 | GD6 | `TListeKlasse = class of TListe<Integer>;`, `TNamen<T> = class(TCustomAttribute)`, Attribut `[TMarke<Integer>]` | Meldungen wie E2548, E2549, E2565 |
 | GD7 | `TListe<T> = class procedure Hinzu<T>(A: T); end;` | „Der Typparameter T verdeckt den gleichnamigen Typparameter von TListe (wie H2509).“ |
 | GD8 | Klasse mit `F<T>` und `F<T, U>`, in einer Methode `F<Integer, string, Byte>(2)` bzw. `TA.F<Integer, Byte, Word>(1)` | „F hat keine Variante mit 3 Typparametern; deklariert: F<T>, F<T, U> (wie E2551).“; mit 1 oder 2 Typargumenten keine Meldung |
 | GD9 | `TListe<T> = class` im interface-Teil, im implementation-Teil `const Grenze = 10;` und `TListe<T>.Pruefen` verwendet `Grenze` | „TListe.Pruefen gehört zu einem generischen Typ …, darf Grenze aus dem implementation-Teil nicht verwenden (wie E2506).“; mit einem Feld `Grenze` in TListe, einer lokalen Variable `Grenze`, in `with` oder bei einer nicht generischen Klasse keine Meldung |
-| GD10 | Erlaubtes: `T: class, constructor`, `T: TComponent, IFoo, constructor`, `TArr<T> = array of T`, `TP<T> = reference to procedure(A: T)`, generischer Konstruktor, `class function Neu<T>: T; static;` | Keine Meldung |
+| GD10 | Erlaubtes: `T: class, constructor`, `T: TComponent, IFoo, constructor`, `TArr<T> = array of T`, `TP<T> = reference to procedure(A: T)`, Konstruktor ohne Typparameter in `TB<T> = class`, `class function Neu<T>: T; static;` | Keine Meldung |
 | GD11 | `"generic-declaration-invalid": "off"`, `"group:compiler": "off"` bzw. `exclude` | Keine Meldung |
-| GD12 | Abgleich mit Delphi: GD1 und GD3 bis GD9 übersetzen; zusätzlich eine lokale Prozedur in `TListe<T>.Pruefen` | dcc meldet dieselben Codes an denselben Stellen, für GD2 und GD10 nichts; meldet dcc für die lokale Prozedur E2570, ergänzt die Regel diesen Fall |
+| GD12 | Abgleich mit Delphi: GD1 und GD3 bis GD9 sowie GD13 bis GD15 übersetzen | dcc meldet dieselben Codes an denselben Stellen, für GD2, GD10 und GD16 nichts |
+| GD13 | `uses System.Classes;` und `TBehaelter<T: class, TStream> = class`, `TBehaelter<T: TStream, TComponent> = class` (Fälle Cm.E2552, Cm.E2553, #1376) | „Die Klasse TStream lässt sich nicht zusammen mit class bzw. record fordern (wie E2552).“ bzw. „Nur eine Klasse ist als Einschränkung erlaubt; TComponent ist die zweite (wie E2553).“, sobald der Index die RTL kennt |
+| GD14 | In `procedure TBehaelter<T>.Machen;` eine lokale `procedure Innen;`, ebenso in `function TWerkzeug.Neu<T>: Integer;` (Fall Cm.E2570) | „Die lokale Routine Innen ist in TBehaelter.Machen nicht erlaubt: …; als private Methode oder anonyme Methode schreiben (wie E2570).“ am Namen der lokalen Routine |
+| GD15 | `TEigen = type TBehaelter<Integer>;` (Fall Cm.E2574), Korrektur „type entfernen (Alias)“ | „Der instanziierte Typ TBehaelter<Integer> lässt sich nicht mit type als eigener Typ deklarieren (wie E2574).“; nach der Korrektur `TEigen = TBehaelter<Integer>;` ohne Meldung |
+| GD16 | Anonyme Methode in `TBehaelter<T>.Machen`, lokale Routine in einer normalen Methode, `TListe = TBehaelter<Integer>;`, `TZahl = type Integer;`, `T: TComponent, IZeigbar, constructor` | Keine Meldung |
+
+## Typargumente lassen sich nicht ableiten (#1376)
+
+Voraussetzung: Server läuft in der IDE mit Projekt.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| GI1 | `TKlasse` mit `class function Neu<T>: T;`, in einer Routine `mZahl := TKlasse.Neu;` (Fall Cm.E2531) | Fehler `generic-inference-failed` an `TKlasse.Neu`: „Neu braucht ausdrückliche Typargumente (Neu<…>): T kommt in keinem Parameter vor und lässt sich nicht ableiten (wie E2531).“; im Fenster „Atlas-Prüfung“ und im Befund-Hover (**Abnahme**) |
+| GI2 | `TKlasse.Neu;` als Anweisung und `mZahl := TKlasse.Neu();` | Je dieselbe Meldung |
+| GI3 | `class procedure Paar<T>(A, B: T);`, Aufruf `TKlasse.Paar(1, 'a');` (Fall Cm.E2532), dazu `TKlasse.Paar(mZahl, mText);` und `TKlasse.Paar(True, -1);` | „T von Paar lässt sich nicht ableiten: Die Argumente sind verschiedener Art (Zahl und Zeichenkette); …(wie E2532).“ am zweiten Argument, beim dritten Aufruf „Boolean und Zahl“ |
+| GI4 | `TKlasse.Neu<Integer>`, `TKlasse.Paar(1, 2)`, `TKlasse.Paar(mZahl, mWert)` (Integer und Double), `TKlasse.Paar(mVariant, 1)`, `mFunktion := TKlasse.Neu;` mit `mFunktion: TFunc<Integer>`, nicht generische Überladung `Neu: Integer` | Keine Meldung |
+| GI5 | Generische Methode in einer anderen Unit des Projekts | Meldungen wie GI1 und GI3 |
+| GI6 | `"generic-inference-failed": "off"`, `"group:compiler": "off"`, `"group:compiler": {"typeLevel": "off"}` bzw. `exclude` | Keine Meldung |
+| GI7 | Abgleich mit Delphi: `Tests/DccFaelle` mit `pwsh Tools/Build-DccFaelle.ps1` bauen | `DccGenerics` ohne Meldung, `DccGenericsGegen` meldet an jeder Marke GG1 bis GG6 den genannten Code; weicht dcc ab, Regel anpassen |
 
 ## Sprachregel für Records, Inline und Helfer verletzt (#994)
 
