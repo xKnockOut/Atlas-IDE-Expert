@@ -168,6 +168,7 @@ type
     constructor Create(const AKnown: TArray<string>; AUnknown: Boolean);
     function Find(const AUnitName, AInPath, AFromFile: string; ASources: TRuleUnitSources): TRuleUnitAnswer;
     function FindPackage(const APackage: string): TRuleUnitAnswer;
+    function FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
     function KnownUnits(ASources: TRuleUnitSources): TArray<string>;
     function FolderOutsidePaths(const AUnitName: string): string;
     function ReadProject(out AFileName, AText: string): Boolean;
@@ -193,6 +194,11 @@ begin
 end;
 
 function TFakeUnits.FindPackage(const APackage: string): TRuleUnitAnswer;
+begin
+  Result := TRuleUnitAnswer.Unknown;
+end;
+
+function TFakeUnits.FindFile(const AFileName, AFromFile: string): TRuleUnitAnswer;
 begin
   Result := TRuleUnitAnswer.Unknown;
 end;

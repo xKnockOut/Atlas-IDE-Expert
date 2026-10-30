@@ -6,7 +6,11 @@
 //   signature-mismatch         Rumpf und Deklaration gleichen Namens mit
 //                              abweichendem Kopf (#996, wie E2037): Parameter
 //                              (Anzahl, Name, Typ, const/var/out), Ergebnistyp,
-//                              procedure/function, Aufrufkonvention
+//                              procedure/function, Aufrufkonvention; ebenso
+//                              eine Routine im interface-Teil und ihr Rumpf
+//                              (#1380, Cm.E2037), wenn der Name eindeutig ist,
+//                              ohne overload und external, und der Rumpf nicht
+//                              die Kurzform ohne Parameter und Ergebnis hat
 //   interface-not-implemented  Klasse nennt ein Interface, dem Methoden fehlen
 //   field-after-method         Feld nach Methode oder Property im selben
 //                              Abschnitt (#986, wie E2169); Korrektur:
@@ -171,6 +175,7 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Common.Rules.Options,
+  Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.ManagedTypes,
   Atlas.Common.Semantics.OrdinalConstants,
   Atlas.Text.Lines;
@@ -765,14 +770,101 @@ var
   Index: Integer;
   Level: TRuleConfidence;
   mTypes: TSignatureTypes;
+  mCache: IRuleDerivedCache;
+
+  /// <summary>Routinen auf oberster Ebene von ASection namens AName.</summary>
+  function Routines(ASection: TSyntaxNode; const AName: string): TArray<TSyntaxNode>;
+  var
+    mIndex: Integer;
+  begin
+    Result := nil;
+    if ASection <> nil then
+      for mIndex := 0 to ASection.ChildCount - 1 do
+        if (ASection[mIndex].Kind = TSyntaxKind.RoutineDecl) and SameText(ASection[mIndex].Name, AName) then
+          Result := Result + [ASection[mIndex]];
+  end;
+
+  function HasDirective(ARoutine: TSyntaxNode; const ADirective: string): Boolean;
+  var
+    mHeader: TSyntaxNode;
+    mIndex: Integer;
+  begin
+    Result := False;
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    if mHeader <> nil then
+      for mIndex := 0 to mHeader.ChildCount - 1 do
+        if (mHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(mHeader[mIndex].Name, ADirective) then
+          Exit(True);
+  end;
+
+  /// <summary>Symbol der Routine ARoutine im Index der Datei.</summary>
+  function SymbolOf(const AUnit: TUnitIndex; ARoutine: TSyntaxNode; out ASymbol: TIndexSymbol): Boolean;
+  var
+    mSymbol: TIndexSymbol;
+  begin
+    for mSymbol in AUnit.Symbols do
+      if (mSymbol.Kind = TIndexSymbolKind.Routine) and (mSymbol.Container = '') and
+        SameText(mSymbol.Name, ARoutine.Name) and (mSymbol.Range.StartPos.Line = ARoutine.StartPos.Line) then
+      begin
+        ASymbol := mSymbol;
+        Exit(True);
+      end;
+    Result := False;
+  end;
+
+  /// <summary>Routine im interface-Teil mit ihrem Rumpf (#1380): dcc meldet E2037, wenn der Rumpf anders
+  /// aussieht und die Deklaration kein overload hat (Cm.E2037). Nur eindeutige Namen; Rümpfe in der Kurzform
+  /// ohne Parameter und Ergebnis übernehmen den Kopf. Mit Include-Dateien kann dort ein weiterer Rumpf stehen.
+  /// </summary>
+  function RoutinePairs: TArray<TSignaturePair>;
+  var
+    mInterface, mImplementation, mDecl: TSyntaxNode;
+    mBodies: TArray<TSyntaxNode>;
+    mIndex: Integer;
+    mUnit: TUnitIndex;
+    mPair: TSignaturePair;
+  begin
+    Result := nil;
+    if (AContext.Tree.Root = nil) or HasIncludes(AContext) then
+      Exit;
+    mInterface := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
+    mImplementation := AContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+    if (mInterface = nil) or (mImplementation = nil) then
+      Exit;
+    mUnit := TRuleDerived.UnitIndex(mCache, AContext);
+    for mIndex := 0 to mInterface.ChildCount - 1 do
+    begin
+      mDecl := mInterface[mIndex];
+      if (mDecl.Kind <> TSyntaxKind.RoutineDecl) or (Pos('.', mDecl.Name) > 0) or
+        (Length(Routines(mInterface, mDecl.Name)) <> 1) or HasDirective(mDecl, 'overload') or
+        HasDirective(mDecl, 'external') or HasDirective(mDecl, 'forward') then
+        Continue;
+      mBodies := Routines(mImplementation, mDecl.Name);
+      if (Length(mBodies) <> 1) or (mBodies[0].FindChild(TSyntaxKind.Block) = nil) then
+        Continue;
+      mPair := Default(TSignaturePair);
+      if not SymbolOf(mUnit, mDecl, mPair.Declaration.Symbol) or
+        not SymbolOf(mUnit, mBodies[0], mPair.Body.Symbol) or
+        not TClassCompletion.Shape(AContext.Tree, AContext.Text, mPair.Declaration.Symbol,
+        mPair.DeclarationShape) or
+        not TClassCompletion.Shape(AContext.Tree, AContext.Text, mPair.Body.Symbol, mPair.BodyShape) then
+        Continue;
+      if (mPair.BodyShape.Parameters = nil) and (mPair.BodyShape.ResultType = '') then
+        Continue;
+      mPair.Declaration.Declared := True;
+      Result := Result + [mPair];
+    end;
+  end;
+
 begin
   if AContext.Tree = nil then
     Exit;
   Lines := ConditionalLines(AContext);
   Level := Confidence(AContext);
+  mCache := TRuleDerived.Open(AContext);
   mTypes := TSignatureTypes.Create(AContext);
   try
-    for Pair in TClassCompletion.Pairs(AContext.Tree, AContext.Text) do
+    for Pair in TClassCompletion.Pairs(AContext.Tree, AContext.Text) + RoutinePairs do
     begin
       // Bedingte Übersetzung im Kopf ({$IFDEF} in der Parameterliste): Welche Parameter gelten, ist offen (#1324).
       if IsConditional(Lines, Pair.Declaration) or IsConditional(Lines, Pair.Body) or
@@ -1327,9 +1419,8 @@ type
     Token: Integer;
     Path: string;
     IsRoutine: Boolean;
-    /// <summary>Property mit Index (property Eintrag[I: Integer]); solche dürfen überladen werden (#1383).
-    /// </summary>
-    IsArrayProperty: Boolean;
+    /// <summary>Array-Property mit default: Sie darf unter demselben Namen überladen werden (#1380).</summary>
+    IsDefaultArray: Boolean;
   end;
 
 procedure TDuplicateDeclarationRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1472,9 +1563,26 @@ var
       AddSection(ANode[Index]);
   end;
 
+  // property Items[I: Integer]: T read Get; default;  "default" folgt auf ein Semikolon.
+  function DefaultArrayProperty(ANode: TSyntaxNode): Boolean;
+  var
+    Index: Integer;
+  begin
+    Result := False;
+    if ANode.FindChild(TSyntaxKind.Parameters) = nil then
+      Exit;
+    for Index := TokenAtOffset(Tokens, ANode.StartOffset) to High(Tokens) - 1 do
+    begin
+      if Tokens[Index].Offset >= ANode.EndOffset then
+        Break;
+      if Tokens[Index].IsSymbol(';') and SameText(Tokens[Index + 1].Text, 'default') then
+        Exit(True);
+    end;
+  end;
+
   procedure AddMembers(ABody: TSyntaxNode);
   var
-    Index, Inner: Integer;
+    Index, Inner, Count: Integer;
     Child: TSyntaxNode;
     Pending: TStack<TSyntaxNode>;
   begin
@@ -1493,10 +1601,10 @@ var
             AddName(Child, nil, Child.Name, 'Methode', 0, 1, NameToken(Child, Child.Name), True);
           TSyntaxKind.PropertyDecl:
             begin
+              Count := Length(Names);
               AddName(Child, nil, Child.Name, 'Property', 0, 1, NameToken(Child, Child.Name), False);
-              // Überladene Array-Properties übersetzt dcc (Cm.W1075, #1383).
-              if (Length(Names) > 0) and (Names[High(Names)].Node = Child) then
-                Names[High(Names)].IsArrayProperty := Child.FindChild(TSyntaxKind.Parameters) <> nil;
+              if Length(Names) > Count then
+                Names[High(Names)].IsDefaultArray := DefaultArrayProperty(Child);
             end;
           TSyntaxKind.VarSection:
             for Inner := 0 to Child.ChildCount - 1 do
@@ -1583,8 +1691,9 @@ var
   begin
     for Later := 1 to High(Names) do
       for Earlier := 0 to Later - 1 do
+        // Überladene default-Properties prüft default-property-invalid (wie E2131).
         if (Names[Earlier].Key = Names[Later].Key) and not (Names[Earlier].IsRoutine and Names[Later].IsRoutine) and
-          not (Names[Earlier].IsArrayProperty and Names[Later].IsArrayProperty) and
+          not (Names[Earlier].IsDefaultArray and Names[Later].IsDefaultArray) and
           TConditionalBranches.Implies(Names[Later].Path, Names[Earlier].Path) then
         begin
           Fixes := nil;

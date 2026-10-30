@@ -79,6 +79,8 @@ type
     [Test]
     procedure SignatureMismatchAliasesFromIndex;
     [Test]
+    procedure SignatureMismatchUnitRoutine;
+    [Test]
     procedure InterfaceIssueExample;
     [Test]
     procedure InterfaceImplementationsThatCount;
@@ -134,6 +136,8 @@ type
     procedure DuplicateDeclarationUses;
     [Test]
     procedure DuplicateDeclarationSilentCases;
+    [Test]
+    procedure DuplicateDeclarationOverloadedDefaultProperty;
     [Test]
     procedure DuplicateDeclarationOptions;
     [Test]
@@ -419,6 +423,40 @@ begin
     'procedure TKonto.Buchen(const A: Currency; const B: Currency);'#10'begin'#10'end;', 'TKonto = class'));
   TRuleAssert.Silent(TSignatureMismatchRule.Create, ClassUnit('    procedure Buchen(const A: Currency);',
     'procedure TKonto.Buchen;'#10'begin'#10'end;', 'TKonto = class'));
+end;
+
+procedure TDeclarationRulesTests.SignatureMismatchUnitRoutine;
+var
+  mFound: TArray<TRuleFinding>;
+
+  function UnitWith(const AInterface, AImplementation: string): string;
+  begin
+    Result := 'unit U;'#10'interface'#10 + AInterface + #10'implementation'#10#10 + AImplementation + #10'end.';
+  end;
+
+begin
+  // Cm.E2037: Routine im interface-Teil, Rumpf mit anderem Ergebnistyp (#1380).
+  mFound := TRuleAssert.Findings(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer;',
+    'function Liefere: string;'#10'begin'#10'  Result := '''';'#10'end;'));
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Liefere weicht von der Deklaration ab: Ergebnis string statt Integer (wie E2037).',
+    mFound[0].Message);
+  Assert.AreEqual(5, mFound[0].Range.StartPos.Line);
+  Assert.AreEqual('Nimm weicht von der Deklaration ab: B statt A (wie E2037).',
+    TRuleAssert.Findings(TSignatureMismatchRule.Create, UnitWith('procedure Nimm(A: Integer);',
+    'procedure Nimm(B: Integer);'#10'begin'#10'end;'))[0].Message);
+  // Kurzform, overload, external, gleiche Köpfe und eine zweite Implementierung bleiben still.
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere(A: Integer): Integer;',
+    'function Liefere;'#10'begin'#10'  Result := A;'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer; overload;',
+    'function Liefere: Integer;'#10'begin'#10'  Result := 0;'#10'end;'#10#10 +
+    'function Liefere(A: Integer): Integer; overload;'#10'begin'#10'  Result := A;'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer; overload;',
+    'function Liefere(A: Integer): Integer;'#10'begin'#10'  Result := A;'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere: Integer; external ''x.dll'';',
+    'function Andere: string;'#10'begin'#10'end;'));
+  TRuleAssert.Silent(TSignatureMismatchRule.Create, UnitWith('function Liefere(const A: string): Integer; stdcall;',
+    'function Liefere(const A: string): Integer;'#10'begin'#10'  Result := 0;'#10'end;'));
 end;
 
 procedure TDeclarationRulesTests.SignatureMismatchVariants;
@@ -1116,6 +1154,25 @@ begin
     'procedure Global;'#10'begin'#10'end;'#10'procedure TKunde.Setzen(FName: string);'#10'var'#10'  A: Integer;'#10 +
     'begin'#10'end;'#10'procedure TKunde.Setzen(A: Integer);'#10'begin'#10'end;'#10'{$IFDEF DEBUG}'#10'var'#10 +
     '  Stufe: Integer;'#10'{$ELSE}'#10'const'#10'  Stufe = 0;'#10'{$ENDIF}'#10'end.');
+end;
+
+procedure TDeclarationRulesTests.DuplicateDeclarationOverloadedDefaultProperty;
+const
+  cKopf = 'unit U;'#10'interface'#10'type'#10'  TListe = class'#10 +
+    '    function GetName(const AName: string): Integer;'#10'    function GetIndex(AIndex: Integer): Integer;'#10;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // #1380: default-Properties dürfen unter demselben Namen überladen werden (dcc-Fall DK6).
+  TRuleAssert.Silent(TDuplicateDeclarationRule.Create, cKopf +
+    '    property Eintrag[const AName: string]: Integer read GetName; default;'#10 +
+    '    property Eintrag[AIndex: Integer]: Integer read GetIndex; default;'#10'  end;'#10'implementation'#10'end.');
+  // Ohne default bleibt es eine doppelte Property.
+  mFindings := TRuleAssert.Findings(TDuplicateDeclarationRule.Create, cKopf +
+    '    property Eintrag[const AName: string]: Integer read GetName; default;'#10 +
+    '    property Eintrag[AIndex: Integer]: Integer read GetIndex;'#10'  end;'#10'implementation'#10'end.');
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(7, mFindings[0].Range.StartPos.Line);
 end;
 
 procedure TDeclarationRulesTests.DuplicateDeclarationOptions;

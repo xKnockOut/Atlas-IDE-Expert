@@ -206,6 +206,18 @@ begin
   P := Middle(FBar.PartRect(TAtlasStatusBarPart.LiveCheck));
   FBar.DoubleClickAt(P.X, P.Y);
   Assert.AreEqual(1, Opened, 'nur auf den Zählern');
+  // Doppelklick auf den Status öffnet das Fenster „Atlas-Server“ (#1356), ohne Hook nichts.
+  P := Middle(FBar.PartRect(TAtlasStatusBarPart.Status));
+  FBar.DoubleClickAt(P.X, P.Y);
+  Assert.AreEqual(1, Opened, 'Status öffnet nicht „Atlas-Prüfung“');
+  FBar.OnStatusOpen :=
+    procedure
+    begin
+      Inc(Opened, 10);
+    end;
+  FBar.DoubleClickAt(P.X, P.Y);
+  Assert.AreEqual(11, Opened, 'Fenster „Atlas-Server“');
+  FBar.OnStatusOpen := nil;
   // Klick auf die Live-Prüfung prüft alle Units neu (#1231).
   FBar.ClickAt(P.X, P.Y);
   Assert.AreEqual(1, Rechecked, 'Live-Prüfung');

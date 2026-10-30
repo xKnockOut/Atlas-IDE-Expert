@@ -11,6 +11,9 @@
 //          gerufenen steht nur im uses des implementation-Teils.
 //   H2456  Die Unit der Routine verwendet die übersetzte Unit (Zyklus).
 //   H2457  Ebenso über andere Units (indirekter Zyklus).
+//          Beide nur, wenn der Rumpf auf etwas außerhalb seiner Unit
+//          verweist: Sonst schweigt Delphi 13 je nach Reihenfolge der
+//          Übersetzung (Cm.H2456, Cm.H2457; #1381, #1383).
 //
 // Was der Rumpf braucht, merkt sich der Index je inline-Routine
 // (TIndexSymbol.InlineRefs); die Regel löst die Verweise im Bereich der
@@ -122,6 +125,12 @@ const
   EnumeratorMembers: array[0..1] of string = ('MoveNext', 'Current');
   /// <summary>Ergebnis von CycleOf, wenn die Unit die eigene direkt verwendet; kein gültiger Unit-Name.</summary>
   CycleDirect = '=';
+
+/// <summary>Einbettbare inline-Routine, deren Rumpf auf nichts außerhalb ihrer Unit verweist (#1381)?</summary>
+function IsWithoutRefs(const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := (Length(ASymbol.InlineRefs) = 1) and (ASymbol.InlineRefs[0] = TIndexSymbol.InlineWithoutRefs);
+end;
 
 function SplitName(const AQualified: string; out AContainer: string): string;
 var
@@ -504,8 +513,12 @@ begin
   // In derselben Unit sind uses, Zyklen und der implementation-Teil dieselben.
   if IsOwnUnit(ACallee.OwnerUnit.UnitName) then
     Exit;
-  // Zyklen zuerst: Dann bettet der Compiler gar nicht ein, gleich was in uses steht.
-  Cycle := CycleOf(ACallee.OwnerUnit);
+  // Zyklen zuerst: Dann bettet der Compiler gar nicht ein, gleich was in uses steht. Nur bei Rümpfen mit
+  // Verweisen wie vor #1381: Ob dcc H2456/H2457 meldet, hängt von der Reihenfolge der Übersetzung ab; bei
+  // Cm.H2456 und Cm.H2457 (Rumpf ohne Verweise, die Unit des Falls zuerst übersetzt) schweigt Delphi 13 (#1383).
+  Cycle := '';
+  if not IsWithoutRefs(ACallee.Symbol) then
+    Cycle := CycleOf(ACallee.OwnerUnit);
   if Cycle = CycleDirect then
   begin
     FReport.Add(ARange, Format('Inline-Funktion %s wird nicht eingebettet: %s verwendet die übersetzte Unit %s ' +
