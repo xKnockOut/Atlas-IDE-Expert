@@ -154,6 +154,7 @@
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Engine.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Profiles.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Checker.pas"/>
+        <DCCReference Include="Source\Rules\Atlas.Common.Rules.BulkFix.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.GoldenCorpus.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Filter.pas"/>
         <DCCReference Include="Source\Rules\Atlas.Common.Rules.Output.pas"/>
@@ -300,6 +301,8 @@
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.MapTemplate.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Snapshot.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Comparison.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Matching.pas"/>
+        <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Alignment.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Report.pas"/>
         <DCCReference Include="Source\Architecture\Atlas.Common.Architecture.Service.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Todos.pas"/>
@@ -307,6 +310,12 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Recursion.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Todos.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Architecture.pas"/>
+        <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.Contract.pas"/>
+        <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.History.pas"/>
+        <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.Analysis.pas"/>
+        <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.Service.pas"/>
+        <DCCReference Include="Source\Hotspots\Atlas.Common.Hotspots.Report.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Hotspots.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugDisplay.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.EventHandlers.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Recursion.pas"/>
@@ -317,6 +326,7 @@
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.BulkFix.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerBaseline.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DisableWarning.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerFixes.pas"/>

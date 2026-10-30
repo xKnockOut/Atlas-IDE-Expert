@@ -28,6 +28,12 @@
 //   0,2–5,0, Mitte = 1,0) und Wert, TAtlasArchitectureGroupingSettings liest
 //   und schreibt architecture.grouping in settings.json. Die Befehle nehmen
 //   "resolution" über TAtlasArchitectureOptions mit.
+// - Zuordnung (#1368): je Unit "assignment" (Kanten je Teilsystem) und
+//   "close" (knapp, fehlende Kanten), dazu "explanation"; fehlen mit
+//   architecture.explainAssignment = false, dann HasAssignment False.
+// - Angleichung (#1367): "aligned" (Herkunft, Zeitpunkt, behaltene
+//   Teilsysteme) für die Statuszeile; RenameSubsystems in den Optionen
+//   schickt "renameSubsystems" (einmal ohne Angleichung rechnen).
 // - TAtlasArchitectureView rechnet die Karte zwischen Lage (Koordinaten des
 //   Servers) und Bildpunkten um: Einpassen, Zoomen um einen Punkt,
 //   Verschieben, Treffer einer Unit.
@@ -39,6 +45,17 @@ uses
   System.JSON;
 
 type
+  /// <summary>Kanten einer Unit zu einem Teilsystem (#1368).</summary>
+  TAtlasArchAssignmentRow = record
+    Subsystem: Integer;
+    Interfaces: Integer;
+    Implementations: Integer;
+    /// <summary>False bei Kanten zum Teilsystem „Fundament“: zählen bei der Zuordnung nicht.</summary>
+    Counts: Boolean;
+    /// <summary>Gewichtete Summe wie TArchitectureAnalyzer: interface 2, implementation 1.</summary>
+    function Sum: Integer;
+  end;
+
   TAtlasArchUnit = record
     Name: string;
     /// <summary>Pfad relativ zu Root mit /.</summary>
@@ -58,6 +75,12 @@ type
     Outlier: Boolean;
     /// <summary>Gehört zu einem Zyklus.</summary>
     OnCycle: Boolean;
+    /// <summary>Kanten je Teilsystem, nach Summe absteigend (#1368); leer ohne explainAssignment.</summary>
+    Assignment: TArray<TAtlasArchAssignmentRow>;
+    /// <summary>Knapp zugeordnet; Missing: gewichtete Kanten, die zum Wechsel fehlen (0 = schon gleich viele).
+    /// </summary>
+    Close: Boolean;
+    Missing: Integer;
   end;
 
   TAtlasArchSubsystem = record
@@ -198,6 +221,20 @@ type
     Excludes: TArray<string>;
     /// <summary>Feinheit γ, mit der der Server gruppiert hat (#1366); 1 ohne Angabe.</summary>
     Resolution: Double;
+    /// <summary>Wie die Teilsysteme gebildet werden, mit den aktiven Einstellungen (#1368, Text des Berichts);
+    /// '' ohne explainAssignment.</summary>
+    Explanation: string;
+    /// <summary>Übrige Einstellungen der Gruppierung aus "grouping" (#1364, #1365) für die Erklärung im Fenster;
+    /// Vorgaben ohne Angabe.</summary>
+    MaxShare: Double;
+    MinCohesion: Double;
+    /// <summary>"group", "attach" oder "separate".</summary>
+    Foundations: string;
+    /// <summary>Angleichung an einen vorigen Stand (#1367, "aligned"): "baseline", "last" oder '' ohne; Zeitpunkt
+    /// des Stands wie "created" und Zahl der Teilsysteme, die Farbe und Namen behielten.</summary>
+    AlignedSource: string;
+    AlignedAt: string;
+    AlignedKept: Integer;
     Units: TArray<TAtlasArchUnit>;
     Edges: TArray<TAtlasArchEdge>;
     /// <summary>Zentrale Units, die zentralste zuerst.</summary>
@@ -253,6 +290,14 @@ type
     function TouchesFoundation(const AEdge: TAtlasArchEdge): Boolean;
     /// <summary>Es gibt ein Teilsystem „Fundament“.</summary>
     function HasFoundation: Boolean;
+    /// <summary>Der Server hat die Zuordnung mitgeschickt (architecture.explainAssignment, #1368).</summary>
+    function HasAssignment: Boolean;
+    /// <summary>Zeitpunkt der Angleichung (#1367) als „2026-10-29 14:23“; '' ohne.</summary>
+    function AlignedText: string;
+    /// <summary>Zeile des eigenen bzw. des stärksten anderen zählenden Teilsystems in Units[AUnit].Assignment;
+    /// -1 ohne.</summary>
+    function OwnRow(AUnit: Integer): Integer;
+    function RivalRow(AUnit: Integer): Integer;
     /// <summary>Reihenfolge der Legende: wie Subsystems, die Teile eines nachgeteilten Teilsystems (gleicher
     /// Parent) zusammen an der Stelle des ersten Teils.</summary>
     function LegendOrder: TArray<Integer>;
@@ -269,6 +314,8 @@ type
     Compare: Boolean;
     /// <summary>Feinheit γ für diesen Aufruf (#1366); 0 = architecture.grouping.resolution des Servers.</summary>
     Resolution: Double;
+    /// <summary>Einmal ohne Angleichung an den vorigen Stand rechnen (#1367, „Teilsysteme neu benennen“).</summary>
+    RenameSubsystems: Boolean;
     /// <summary>Umfang und Bibliotheks-Units, Vergleich mit architecture.baseline, Feinheit des Servers.</summary>
     class function Create(const AScope: string; AIncludeLibrary: Boolean): TAtlasArchitectureOptions; static;
   end;
@@ -514,6 +561,7 @@ var
   Cycle: TAtlasArchCycle;
   Link: TAtlasArchLink;
   Outlier: TAtlasArchOutlier;
+  mRow: TAtlasArchAssignmentRow;
 begin
   Result := False;
   for Item in AModel.Units do
@@ -544,7 +592,49 @@ begin
   for Outlier in AModel.Outliers do
     if not ValidUnit(AModel, Outlier.Unit_) then
       Exit;
+  for Item in AModel.Units do
+    for mRow in Item.Assignment do
+      if (mRow.Subsystem < 0) or (mRow.Subsystem >= Length(AModel.Subsystems)) then
+        Exit;
   Result := True;
+end;
+
+/// <summary>"assignment" und "close" einer Unit (#1368): [Teilsystem, interface, implementation(, 0)]. False bei
+/// ungültigem Aufbau.</summary>
+function AssignmentOf(AItem: TJSONObject; var AUnit: TAtlasArchUnit): Boolean;
+var
+  mRows, mRow: TJSONArray;
+  mIndex, mPart: Integer;
+  mValues: array[0..3] of Integer;
+begin
+  Result := True;
+  if AItem.GetValue('close') is TJSONNumber then
+  begin
+    AUnit.Close := True;
+    AUnit.Missing := TJSONNumber(AItem.GetValue('close')).AsInt;
+  end;
+  mRows := ArrayOf(AItem, 'assignment');
+  if mRows = nil then
+    Exit;
+  SetLength(AUnit.Assignment, mRows.Count);
+  for mIndex := 0 to mRows.Count - 1 do
+  begin
+    if not (mRows.Items[mIndex] is TJSONArray) then
+      Exit(False);
+    mRow := TJSONArray(mRows.Items[mIndex]);
+    if (mRow.Count < 3) or (mRow.Count > 4) then
+      Exit(False);
+    mValues[3] := 1;
+    for mPart := 0 to mRow.Count - 1 do
+      if mRow.Items[mPart] is TJSONNumber then
+        mValues[mPart] := TJSONNumber(mRow.Items[mPart]).AsInt
+      else
+        Exit(False);
+    AUnit.Assignment[mIndex].Subsystem := mValues[0];
+    AUnit.Assignment[mIndex].Interfaces := mValues[1];
+    AUnit.Assignment[mIndex].Implementations := mValues[2];
+    AUnit.Assignment[mIndex].Counts := mValues[3] <> 0;
+  end;
 end;
 
 function NamesOf(const AItems: TJSONArray): TArray<string>;
@@ -706,6 +796,13 @@ begin
   Result.DroppedEdges := MapEdgesOf(AModel, Data, 'droppedEdges');
 end;
 
+{ TAtlasArchAssignmentRow }
+
+function TAtlasArchAssignmentRow.Sum: Integer;
+begin
+  Result := Interfaces * 2 + Implementations;
+end;
+
 { TAtlasArchComparison }
 
 function TAtlasArchComparison.Present: Boolean;
@@ -766,8 +863,28 @@ begin
     AModel.DurationMs := IntOf(Data, 'durationMs', 0);
     AModel.Generation := Int64Of(Data, 'generation');
     AModel.Resolution := 1;
+    AModel.Explanation := TextOf(Data, 'explanation');
+    AModel.MaxShare := 0.25;
+    AModel.MinCohesion := 0.3;
+    AModel.Foundations := 'separate';
     if Data.GetValue('grouping') is TJSONObject then
-      AModel.Resolution := ResolutionOf(TJSONObject(Data.GetValue('grouping')));
+    begin
+      Item := TJSONObject(Data.GetValue('grouping'));
+      AModel.Resolution := ResolutionOf(Item);
+      if Item.GetValue('maxShare') is TJSONNumber then
+        AModel.MaxShare := TJSONNumber(Item.GetValue('maxShare')).AsDouble;
+      if Item.GetValue('minCohesion') is TJSONNumber then
+        AModel.MinCohesion := TJSONNumber(Item.GetValue('minCohesion')).AsDouble;
+      if TextOf(Item, 'foundations') <> '' then
+        AModel.Foundations := TextOf(Item, 'foundations');
+    end;
+    if Data.GetValue('aligned') is TJSONObject then
+    begin
+      Item := TJSONObject(Data.GetValue('aligned'));
+      AModel.AlignedSource := TextOf(Item, 'source');
+      AModel.AlignedAt := TextOf(Item, 'at');
+      AModel.AlignedKept := IntOf(Item, 'kept', 0);
+    end;
     if Data.GetValue('summary') is TJSONObject then
     begin
       Summary := TJSONObject(Data.GetValue('summary'));
@@ -793,6 +910,8 @@ begin
         AModel.Units[Index].Library_ := FlagOf(Item, 'library');
         AModel.Units[Index].X := FloatOf(Item, 'x');
         AModel.Units[Index].Y := FloatOf(Item, 'y');
+        if not AssignmentOf(Item, AModel.Units[Index]) then
+          Exit;
       end;
     end;
     Items := ArrayOf(Data, 'edges');
@@ -1201,6 +1320,48 @@ begin
       Exit(True);
 end;
 
+function TAtlasArchitectureModel.AlignedText: string;
+begin
+  Result := '';
+  if AlignedSource <> '' then
+    Result := Copy(StringReplace(AlignedAt, 'T', ' ', []), 1, 16);
+end;
+
+function TAtlasArchitectureModel.HasAssignment: Boolean;
+var
+  mUnit: TAtlasArchUnit;
+begin
+  Result := False;
+  for mUnit in Units do
+    if Length(mUnit.Assignment) > 0 then
+      Exit(True);
+end;
+
+function TAtlasArchitectureModel.OwnRow(AUnit: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  if (AUnit < 0) or (AUnit >= Length(Units)) then
+    Exit;
+  for mIndex := 0 to High(Units[AUnit].Assignment) do
+    if Units[AUnit].Assignment[mIndex].Subsystem = Units[AUnit].Subsystem then
+      Exit(mIndex);
+end;
+
+function TAtlasArchitectureModel.RivalRow(AUnit: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  if (AUnit < 0) or (AUnit >= Length(Units)) then
+    Exit;
+  for mIndex := 0 to High(Units[AUnit].Assignment) do
+    if (Units[AUnit].Assignment[mIndex].Subsystem <> Units[AUnit].Subsystem) and
+      Units[AUnit].Assignment[mIndex].Counts then
+      Exit(mIndex);
+end;
+
 function TAtlasArchitectureModel.LegendOrder: TArray<Integer>;
 var
   mIndex, mOther: Integer;
@@ -1240,6 +1401,7 @@ begin
   Result.CompareWith := '';
   Result.Compare := True;
   Result.Resolution := 0;
+  Result.RenameSubsystems := False;
 end;
 
 { TAtlasArchResolution }
@@ -1320,6 +1482,8 @@ begin
     Result.AddPair('compare', TJSONBool.Create(False));
   if AOptions.Resolution > 0 then
     Result.AddPair('resolution', TJSONNumber.Create(TAtlasArchResolution.Clamp(AOptions.Resolution)));
+  if AOptions.RenameSubsystems then
+    Result.AddPair('renameSubsystems', TJSONBool.Create(True));
 end;
 
 function ComparedOptions(const AScope: string; AIncludeLibrary: Boolean; const ACompareWith: string;

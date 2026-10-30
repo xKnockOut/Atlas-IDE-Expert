@@ -11,6 +11,12 @@
 //   Anfrage gleich bleiben; sonst wird neu gerechnet. Rechnen und Lesen
 //   laufen unter einer Sperre im Arbeitsthread des Aufrufers (Server), nie im
 //   Hauptthread der IDE.
+// - Angleichung (#1367, KeepPrevious): Nach dem Rechnen werden Farben und
+//   Namen der Teilsysteme an den vorigen Stand angeglichen: Baseline, falls
+//   gesetzt und ladbar, sonst PreviousFile (der zuletzt berechnete Stand).
+//   Mit PreviousFile schreibt jede Rechnung ihr Ergebnis dorthin; ohne
+//   (AtlasServer --architecture) bleibt die Platte unberührt. Rename rechnet
+//   einmal ohne vorigen Stand (Befehl „Teilsysteme neu benennen“).
 
 interface
 
@@ -36,10 +42,25 @@ type
     Files: TArray<string>;
     /// <summary>Einstellungen der Gruppierung (architecture.grouping).</summary>
     Grouping: TArchitectureGrouping;
+    /// <summary>Zuordnung der Units erklären (architecture.explainAssignment, #1368); ändert nur die Ausgabe,
+    /// nicht die Rechnung.</summary>
+    ExplainAssignment: Boolean;
+    /// <summary>Farben und Namen an den vorigen Stand angleichen (architecture.grouping.keepPrevious, #1367).
+    /// </summary>
+    KeepPrevious: Boolean;
+    /// <summary>Gespeicherter Stand (architecture.baseline), relativ zu Root oder absolut; '' = keiner.</summary>
+    Baseline: string;
+    /// <summary>Zuletzt berechneter Stand dieses Umfangs (TIndexCacheDirectory.ArchitectureFileFor); '' = weder
+    /// lesen noch schreiben.</summary>
+    PreviousFile: string;
+    /// <summary>Einmal ohne vorigen Stand rechnen (nicht im Schlüssel: rechnet immer neu).</summary>
+    Rename: Boolean;
     /// <summary>Werte aus den Einstellungen architecture.*.</summary>
     class function FromSettings(const ASettings: TServerSettings): TArchitectureRequest; static;
     /// <summary>Text, der die Anfrage eindeutig beschreibt (Schlüssel des Zwischenspeichers).</summary>
     function Key: string;
+    /// <summary>Umfang (Scope, Root, Title) für die Ablage des zuletzt berechneten Stands.</summary>
+    function ScopeKey: string;
   end;
 
   TArchitectureService = class
@@ -67,7 +88,65 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Common.Architecture.UsesGraph;
+  System.IOUtils,
+  Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Architecture.Snapshot,
+  Atlas.Common.Architecture.Comparison,
+  Atlas.Common.Architecture.Alignment;
+
+/// <summary>Stand aus AFileName, wenn die Datei existiert und lesbar ist; AAt = letzte Änderung der Datei.</summary>
+function TryLoad(const AFileName: string; out ASnapshot: TArchitectureSnapshot; out AAt: TDateTime): Boolean;
+var
+  mError: string;
+begin
+  AAt := 0;
+  Result := (AFileName <> '') and FileExists(AFileName) and TArchitectureSnapshots.Load(AFileName, ASnapshot, mError);
+  if Result then
+    AAt := TFile.GetLastWriteTime(AFileName);
+end;
+
+/// <summary>Angleichung an den vorigen Stand der Anfrage (#1367): Baseline vor PreviousFile.</summary>
+procedure AlignToPrevious(var AOverview: TArchitectureOverview; const ARequest: TArchitectureRequest);
+var
+  mPrevious: TArchitectureSnapshot;
+  mAt: TDateTime;
+begin
+  if TryLoad(TArchitectureComparer.ResolvePath(ARequest.Root, ARequest.Baseline), mPrevious, mAt) then
+    TArchitectureAlignment.Align(AOverview, mPrevious, TArchitectureAnalyzer.AlignedBaseline, mAt)
+  else if TryLoad(ARequest.PreviousFile, mPrevious, mAt) then
+    TArchitectureAlignment.Align(AOverview, mPrevious, TArchitectureAnalyzer.AlignedLast, mAt);
+end;
+
+/// <summary>Ergebnis als zuletzt berechneten Stand ablegen (#1367).</summary>
+procedure SavePrevious(const AOverview: TArchitectureOverview; const AFileName: string);
+begin
+  try
+    TArchitectureSnapshots.Save(AFileName, TArchitectureSnapshots.FromOverview(AOverview));
+  except
+    // Sicherheitsnetz: Der Stand dient nur der nächsten Angleichung. Ohne ihn (Platte voll, keine Rechte) rechnet
+    // der nächste Lauf wie ohne keepPrevious; die Übersicht selbst darf daran nicht scheitern.
+    on EInOutError do
+      ;
+    on EFileStreamError do
+      ;
+    on EOSError do
+      ;
+  end;
+end;
+
+/// <summary>Zeitpunkt des gespeicherten Stands für den Schlüssel: Ein neu gespeicherter Stand gleicht neu an.
+/// </summary>
+function BaselineStamp(const ARequest: TArchitectureRequest): string;
+var
+  mFileName: string;
+begin
+  Result := '';
+  if not ARequest.KeepPrevious then
+    Exit;
+  mFileName := TArchitectureComparer.ResolvePath(ARequest.Root, ARequest.Baseline);
+  if (mFileName <> '') and FileExists(mFileName) then
+    Result := FloatToStr(TFile.GetLastWriteTime(mFileName));
+end;
 
 { TArchitectureRequest }
 
@@ -78,6 +157,9 @@ begin
   Result.IncludeLibrary := ASettings.ArchitectureIncludeLibraryUnits;
   Result.CentralUnits := ASettings.ArchitectureCentralUnits;
   Result.Exclude := ASettings.ArchitectureExclude;
+  Result.ExplainAssignment := ASettings.ArchitectureExplainAssignment;
+  Result.KeepPrevious := ASettings.ArchitectureGroupingKeepPrevious;
+  Result.Baseline := ASettings.ArchitectureBaseline;
   Result.Grouping := TArchitectureGrouping.Default;
   Result.Grouping.Resolution := ASettings.ArchitectureGroupingResolution;
   Result.Grouping.MaxShare := ASettings.ArchitectureGroupingMaxShare;
@@ -96,7 +178,12 @@ begin
   TArray.Sort<string>(Files);
   Result := Title + #1 + Root + #1 + Scope + #1 + BoolToStr(IncludeLibrary, True) + #1 + IntToStr(CentralUnits) + #1 +
     string.Join(#2, Exclude) + #1 + string.Join(#2, Namespaces) + #1 + LowerCase(string.Join(#2, Files)) + #1 +
-    Grouping.Key;
+    Grouping.Key + #1 + BoolToStr(KeepPrevious, True) + #1 + Baseline + #1 + PreviousFile;
+end;
+
+function TArchitectureRequest.ScopeKey: string;
+begin
+  Result := Scope + #1 + Root + #1 + Title;
 end;
 
 { TArchitectureService }
@@ -167,6 +254,13 @@ begin
   Result.Title := ARequest.Title;
   Result.Scope := ARequest.Scope;
   Result.Generation := AGeneration;
+  if ARequest.KeepPrevious then
+  begin
+    if not ARequest.Rename then
+      AlignToPrevious(Result, ARequest);
+    if ARequest.PreviousFile <> '' then
+      SavePrevious(Result, ARequest.PreviousFile);
+  end;
 end;
 
 function TArchitectureService.Overview(const ARequest: TArchitectureRequest): TArchitectureOverview;
@@ -177,8 +271,9 @@ begin
   System.TMonitor.Enter(FLock);
   try
     Generation := FIndex.Generation;
-    Key := ARequest.Key;
-    if not FHasResult or (FGeneration <> Generation) or (FKey <> Key) then
+    Key := ARequest.Key + #1 + BaselineStamp(ARequest);
+    // Rename rechnet auf Wunsch neu, auch bei gleichem Index (#1367).
+    if not FHasResult or (FGeneration <> Generation) or (FKey <> Key) or ARequest.Rename then
     begin
       FResult := Compute(ARequest, Generation);
       FGeneration := Generation;
@@ -187,6 +282,8 @@ begin
       Inc(FComputations);
     end;
     Result := FResult;
+    // Nicht im Schlüssel: Ein- und Ausschalten braucht keine neue Rechnung.
+    Result.ExplainAssignment := ARequest.ExplainAssignment;
   finally
     System.TMonitor.Exit(FLock);
   end;

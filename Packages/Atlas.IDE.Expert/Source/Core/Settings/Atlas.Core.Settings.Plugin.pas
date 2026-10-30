@@ -424,6 +424,8 @@ type
     GotoImplementationKey: Integer;
     /// <summary>Laufende Prüfung beim Tippen (#909); aus = Prüfung der offenen Datei nur beim Speichern.</summary>
     ProblemsLive: Boolean;
+    /// <summary>„Alle sicheren Treffer korrigieren …“ im Fenster Atlas-Prüfung (#1352, fix.bulk).</summary>
+    FixBulk: Boolean;
     /// <summary>Aktionszeile im Befund-Hover (#909): Schnellkorrektur, für diese Zeile unterdrücken, Regel einstellen.
     /// </summary>
     HoverProblemActions: Boolean;
@@ -787,6 +789,17 @@ type
     /// <summary>Zustand: Das Fenster „Unit-Beziehungen“ (#593) wurde einmal rechts neben die Projektverwaltung
     /// gelegt (ui.unitRelationsWindowPlaced); danach gilt die Lage aus dem Desktop der IDE.</summary>
     UnitRelationsWindowPlaced: Boolean;
+    /// <summary>Hotspots (#1354, hotspots.enabled in settings.json): Fenster „Atlas-Hotspots“, Bericht
+    /// (--hotspots) und get_hotspots; Vorgabe an.</summary>
+    HotspotsEnabled: Boolean;
+    /// <summary>Ausgewerteter Zeitraum in Monaten (hotspots.months, 1–60, Vorgabe 12).</summary>
+    HotspotsMonths: Integer;
+    /// <summary>Mindestzahl gemeinsamer Commits der Änderungskopplung (hotspots.coupling.minCommits, 2–1000,
+    /// Vorgabe 5).</summary>
+    HotspotsCouplingMinCommits: Integer;
+    /// <summary>Zustand: Das Fenster „Atlas-Hotspots“ wurde einmal rechts neben die Projektverwaltung gelegt
+    /// (ui.hotspotsWindowPlaced); danach gilt die Lage aus dem Desktop der IDE.</summary>
+    HotspotsWindowPlaced: Boolean;
     /// <summary>Befehl „Weg zwischen Symbolen…“ mit Menü- und Kontextmenüeintrag (#1117, navigation.symbolPath in
     /// settings.json); Vorgabe an.</summary>
     SymbolPath: Boolean;
@@ -1915,6 +1928,7 @@ begin
   Result.GotoInterfaceKey := 0;
   Result.GotoImplementationKey := 0;
   Result.ProblemsLive := True;
+  Result.FixBulk := True;
   Result.HoverProblemActions := True;
   Result.InlineDiagnostics := 'errors';
   Result.ProblemsStatusCounter := True;
@@ -2042,6 +2056,11 @@ begin
   Result.ArchitectureCentralUnits := 15;
   Result.ArchitectureWindowPlaced := False;
   Result.UnitRelationsWindowPlaced := False;
+  // Wie die Vorgaben im Schema (atlas.schema.json, hotspots).
+  Result.HotspotsEnabled := True;
+  Result.HotspotsMonths := 12;
+  Result.HotspotsCouplingMinCommits := 5;
+  Result.HotspotsWindowPlaced := False;
   Result.SymbolPath := True;
   Result.ExperimentalEnabled := False;
   Result.SetupChecklist := True;
@@ -2401,6 +2420,8 @@ begin
   MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
   ArchitectureScope := Choice(ArchitectureScope, ['projectGroup', 'project']);
   ArchitectureCentralUnits := EnsureRange(ArchitectureCentralUnits, 5, 100);
+  HotspotsMonths := EnsureRange(HotspotsMonths, 1, 60);
+  HotspotsCouplingMinCommits := EnsureRange(HotspotsCouplingMinCommits, 2, 1000);
   // TShortCut ist ein Word.
   PaletteKey := EnsureRange(PaletteKey, 0, $FFFF);
   WelcomePageSearchKey := EnsureRange(WelcomePageSearchKey, 0, $FFFF);
@@ -2777,6 +2798,7 @@ begin
   GotoInterfaceKey := AStore.ReadInteger('GotoInterfaceKey', Default.GotoInterfaceKey);
   GotoImplementationKey := AStore.ReadInteger('GotoImplementationKey', Default.GotoImplementationKey);
   ProblemsLive := AStore.ReadInteger('ProblemsLive', BoolValue(Default.ProblemsLive)) <> 0;
+  FixBulk := AStore.ReadInteger('FixBulk', BoolValue(Default.FixBulk)) <> 0;
   HoverProblemActions := AStore.ReadInteger('HoverProblemActions', BoolValue(Default.HoverProblemActions)) <> 0;
   InlineDiagnostics := AStore.ReadString('InlineDiagnostics', Default.InlineDiagnostics);
   ProblemsStatusCounter := AStore.ReadInteger('ProblemsStatusCounter', BoolValue(Default.ProblemsStatusCounter)) <> 0;
@@ -2925,6 +2947,11 @@ begin
     BoolValue(Default.ArchitectureWindowPlaced)) <> 0;
   UnitRelationsWindowPlaced := AStore.ReadInteger('UnitRelationsWindowPlaced',
     BoolValue(Default.UnitRelationsWindowPlaced)) <> 0;
+  HotspotsEnabled := AStore.ReadInteger('HotspotsEnabled', BoolValue(Default.HotspotsEnabled)) <> 0;
+  HotspotsMonths := AStore.ReadInteger('HotspotsMonths', Default.HotspotsMonths);
+  HotspotsCouplingMinCommits := AStore.ReadInteger('HotspotsCouplingMinCommits',
+    Default.HotspotsCouplingMinCommits);
+  HotspotsWindowPlaced := AStore.ReadInteger('HotspotsWindowPlaced', BoolValue(Default.HotspotsWindowPlaced)) <> 0;
   SymbolPath := AStore.ReadInteger('SymbolPath', BoolValue(Default.SymbolPath)) <> 0;
   ExperimentalEnabled := AStore.ReadInteger('ExperimentalEnabled', BoolValue(Default.ExperimentalEnabled)) <> 0;
   SetupChecklist := AStore.ReadInteger('SetupChecklist', BoolValue(Default.SetupChecklist)) <> 0;
@@ -3398,6 +3425,7 @@ begin
   AStore.WriteInteger('GotoInterfaceKey', GotoInterfaceKey);
   AStore.WriteInteger('GotoImplementationKey', GotoImplementationKey);
   AStore.WriteInteger('ProblemsLive', BoolValue(ProblemsLive));
+  AStore.WriteInteger('FixBulk', BoolValue(FixBulk));
   AStore.WriteInteger('HoverProblemActions', BoolValue(HoverProblemActions));
   AStore.WriteString('InlineDiagnostics', InlineDiagnostics);
   AStore.WriteInteger('ProblemsStatusCounter', BoolValue(ProblemsStatusCounter));
@@ -3522,6 +3550,10 @@ begin
   AStore.WriteInteger('ArchitectureCentralUnits', ArchitectureCentralUnits);
   AStore.WriteInteger('ArchitectureWindowPlaced', BoolValue(ArchitectureWindowPlaced));
   AStore.WriteInteger('UnitRelationsWindowPlaced', BoolValue(UnitRelationsWindowPlaced));
+  AStore.WriteInteger('HotspotsEnabled', BoolValue(HotspotsEnabled));
+  AStore.WriteInteger('HotspotsMonths', HotspotsMonths);
+  AStore.WriteInteger('HotspotsCouplingMinCommits', HotspotsCouplingMinCommits);
+  AStore.WriteInteger('HotspotsWindowPlaced', BoolValue(HotspotsWindowPlaced));
   AStore.WriteInteger('SymbolPath', BoolValue(SymbolPath));
   AStore.WriteInteger('ExperimentalEnabled', BoolValue(ExperimentalEnabled));
   AStore.WriteInteger('SetupChecklist', BoolValue(SetupChecklist));

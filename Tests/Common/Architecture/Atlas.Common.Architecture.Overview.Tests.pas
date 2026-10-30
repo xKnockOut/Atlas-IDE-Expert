@@ -4,12 +4,14 @@
 // Zusammenhalt, Ausreißer, zentrale Units mit Rolle, Zyklen,
 // Querverbindungen mit Fundstelle, Steckbrief, Determinismus, Laufzeit;
 // Feinheit γ der Gruppierung (#1366); Nachteilung übergroßer und loser
-// Teilsysteme (#1364); Fundament-Units beim Gruppieren (#1365).
+// Teilsysteme (#1364); Fundament-Units beim Gruppieren (#1365); Zuordnung
+// einer Unit zu ihrem Teilsystem (#1368).
 
 interface
 
 uses
-  DUnitX.TestFramework;
+  DUnitX.TestFramework,
+  Atlas.Common.Index.Contract;
 
 type
   [TestFixture]
@@ -63,7 +65,26 @@ type
     procedure LocalFoundationStays;
     [Test]
     procedure FoundationsTextAndKey;
+    [Test]
+    procedure AssignmentListsEdgesPerSubsystem;
+    [Test]
+    procedure AssignmentTieSortedByName;
+    [Test]
+    procedure AssignmentCloseThreshold;
+    [Test]
+    procedure AssignmentFoundationDoesNotCount;
+    [Test]
+    procedure OutliersMatchAssignments;
+    [Test]
+    [Category('Benchmark')]
+    procedure AssignmentsAreCheap;
   end;
+
+/// <summary>Testgraph der Zuordnung (#1368): Z.Own.Mid mit Summe 8 im eigenen und 6 im anderen Teilsystem.
+/// </summary>
+function AssignmentProject: TArray<TUnitIndex>;
+/// <summary>Testgraph der Fundamente (#1365).</summary>
+function FoundationProject: TArray<TUnitIndex>;
 
 implementation
 
@@ -72,7 +93,6 @@ uses
   System.Math,
   System.Diagnostics,
   System.Generics.Collections,
-  Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Architecture.UsesLocator,
   Atlas.Common.Architecture.Overview,
@@ -789,6 +809,221 @@ begin
   mGrouping := TArchitectureGrouping.Default;
   mGrouping.Foundations := TArchitectureFoundations.Attach;
   Assert.AreNotEqual(TArchitectureGrouping.Default.Key, mGrouping.Key);
+end;
+
+/// <summary>Zwei Gruppen Z.Own und Z.Oth zu je fünf Units (Kette über interface, alle an U1); Z.Own.Mid verwendet drei Units
+/// von Own über interface und zwei über implementation, von Oth je zwei.</summary>
+function AssignmentProject: TArray<TUnitIndex>;
+var
+  mGroup: string;
+  mItem: Integer;
+begin
+  Result := nil;
+  for mGroup in TArray<string>.Create('Own', 'Oth') do
+  begin
+    Result := Result + [UsesUnit(Format('Z.%s.U1', [mGroup]), nil, nil),
+      UsesUnit(Format('Z.%s.U2', [mGroup]), [Format('Z.%s.U1', [mGroup])], nil)];
+    for mItem := 3 to 5 do
+      Result := Result + [UsesUnit(Format('Z.%s.U%d', [mGroup, mItem]), [Format('Z.%s.U%d', [mGroup, mItem - 1]),
+        Format('Z.%s.U1', [mGroup])], nil)];
+  end;
+  Result := Result + [UsesUnit('Z.Own.Mid', ['Z.Own.U1', 'Z.Own.U2', 'Z.Own.U3', 'Z.Oth.U1', 'Z.Oth.U2'],
+    ['Z.Own.U4', 'Z.Own.U5', 'Z.Oth.U3', 'Z.Oth.U4'])];
+end;
+
+function Row(ASubsystem, AInterfaces, AImplementations: Integer): TOverviewAssignmentRow;
+begin
+  Result := Default(TOverviewAssignmentRow);
+  Result.Subsystem := ASubsystem;
+  Result.Interfaces := AInterfaces;
+  Result.Implementations := AImplementations;
+  Result.Sum := AInterfaces * TArchitectureAnalyzer.InterfaceWeight +
+    AImplementations * TArchitectureAnalyzer.ImplementationWeight;
+  Result.Counts := True;
+end;
+
+procedure TOverviewTests.AssignmentListsEdgesPerSubsystem;
+var
+  mOverview: TArchitectureOverview;
+  mAssignment: TOverviewAssignment;
+  mOwn, mRival: TOverviewAssignmentRow;
+begin
+  mOverview := Analyze(AssignmentProject);
+  Assert.IsTrue(mOverview.ExplainAssignment);
+  Assert.AreEqual(Integer(Length(mOverview.Units)), Integer(Length(mOverview.Assignments)));
+  Assert.AreEqual('Own', SubsystemOf(mOverview, 'Z.Own.Mid'));
+  mAssignment := mOverview.Assignment(mOverview.IndexOf('Z.Own.Mid'));
+  Assert.AreEqual(2, Integer(Length(mAssignment.Rows)));
+  Assert.AreEqual(0, mAssignment.Own);
+  Assert.AreEqual(1, mAssignment.Rival);
+  mOwn := mAssignment.Rows[mAssignment.Own];
+  mRival := mAssignment.Rows[mAssignment.Rival];
+  Assert.AreEqual('Own', mOverview.Subsystems[mOwn.Subsystem].Name);
+  Assert.AreEqual(3, mOwn.Interfaces);
+  Assert.AreEqual(2, mOwn.Implementations);
+  Assert.AreEqual(8, mOwn.Sum);
+  Assert.AreEqual('Oth', mOverview.Subsystems[mRival.Subsystem].Name);
+  Assert.AreEqual(2, mRival.Interfaces);
+  Assert.AreEqual(2, mRival.Implementations);
+  Assert.AreEqual(6, mRival.Sum);
+  // 6 ≥ 75 % von 8: knapp, mit drei Kanten mehr hätte Oth die Mehrheit.
+  Assert.IsTrue(mAssignment.Close);
+  Assert.AreEqual(3, mAssignment.Missing);
+  Assert.AreEqual(1, mOverview.CloseCount);
+  // Eingehende Kanten zählen mit: Z.Own.U1 wird von U2..U5 und Mid verwendet.
+  mAssignment := mOverview.Assignment(mOverview.IndexOf('Z.Own.U1'));
+  Assert.AreEqual(1, Integer(Length(mAssignment.Rows)));
+  Assert.AreEqual(5, mAssignment.Rows[0].Interfaces);
+  Assert.IsFalse(mAssignment.Close);
+  Assert.AreEqual(-1, mAssignment.Rival);
+  // Außerhalb: keine Daten.
+  Assert.AreEqual(-1, mOverview.Assignment(-1).Own);
+  Assert.AreEqual(-1, mOverview.Assignment(Length(mOverview.Units)).Own);
+end;
+
+procedure TOverviewTests.AssignmentTieSortedByName;
+var
+  mAssignment: TOverviewAssignment;
+begin
+  // Gleiche Summe 4: Alpha vor Beta, unabhängig von der Nummer; das eigene Teilsystem 3 hat mehr.
+  mAssignment := TArchitectureAnalyzer.AssignmentOf(TArray<TOverviewAssignmentRow>.Create(Row(1, 2, 0), Row(2, 1, 2),
+    Row(3, 5, 0), Row(0, 0, 1)), 3, TArray<string>.Create('Gamma', 'Beta', 'Alpha', 'Eigen'));
+  Assert.AreEqual(4, Integer(Length(mAssignment.Rows)));
+  Assert.AreEqual(3, mAssignment.Rows[0].Subsystem);
+  Assert.AreEqual(2, mAssignment.Rows[1].Subsystem);
+  Assert.AreEqual(1, mAssignment.Rows[2].Subsystem);
+  Assert.AreEqual(0, mAssignment.Rows[3].Subsystem);
+  Assert.AreEqual(0, mAssignment.Own);
+  Assert.AreEqual(1, mAssignment.Rival);
+  // 4 von 10 sind unter 75 %.
+  Assert.IsFalse(mAssignment.Close);
+  Assert.AreEqual(0, mAssignment.Missing);
+end;
+
+procedure TOverviewTests.AssignmentCloseThreshold;
+var
+  mNames: TArray<string>;
+  mAssignment: TOverviewAssignment;
+begin
+  mNames := TArray<string>.Create('Eigen', 'Fremd');
+  // Genau 75 %: 3 von 4 (ganzzahlig, ohne Rundung).
+  mAssignment := TArchitectureAnalyzer.AssignmentOf(TArray<TOverviewAssignmentRow>.Create(Row(0, 2, 0),
+    Row(1, 1, 1)), 0, mNames);
+  Assert.IsTrue(mAssignment.Close);
+  Assert.AreEqual(2, mAssignment.Missing);
+  // Knapp darunter: 5 von 7 sind 71 %.
+  mAssignment := TArchitectureAnalyzer.AssignmentOf(TArray<TOverviewAssignmentRow>.Create(Row(0, 3, 1),
+    Row(1, 2, 1)), 0, mNames);
+  Assert.IsFalse(mAssignment.Close);
+  // Das andere hat schon mehr: knapp, es fehlt nichts.
+  mAssignment := TArchitectureAnalyzer.AssignmentOf(TArray<TOverviewAssignmentRow>.Create(Row(0, 1, 0),
+    Row(1, 1, 1)), 0, mNames);
+  Assert.AreEqual(1, mAssignment.Own);
+  Assert.AreEqual(0, mAssignment.Rival);
+  Assert.IsTrue(mAssignment.Close);
+  Assert.AreEqual(0, mAssignment.Missing);
+  // Ohne Kanten ins eigene Teilsystem nie knapp.
+  mAssignment := TArchitectureAnalyzer.AssignmentOf(TArray<TOverviewAssignmentRow>.Create(Row(0, 0, 0),
+    Row(1, 1, 0)), 0, mNames);
+  Assert.IsFalse(mAssignment.Close);
+end;
+
+procedure TOverviewTests.AssignmentFoundationDoesNotCount;
+var
+  mOverview: TArchitectureOverview;
+  mAssignment: TOverviewAssignment;
+  mRow: TOverviewAssignmentRow;
+  mFound: Boolean;
+begin
+  mOverview := FoundationsWith(TArchitectureFoundations.Separate);
+  // App.Ui.U2: interface zu Logging (Fundament, Summe 2), implementation zu U1 und von U3 (Ui, Summe 2).
+  mAssignment := mOverview.Assignment(mOverview.IndexOf('App.Ui.U2'));
+  mFound := False;
+  for mRow in mAssignment.Rows do
+    if mOverview.Subsystems[mRow.Subsystem].Foundation then
+    begin
+      mFound := True;
+      Assert.IsFalse(mRow.Counts);
+      Assert.AreEqual(1, mRow.Interfaces);
+    end
+    else
+      Assert.IsTrue(mRow.Counts);
+  Assert.IsTrue(mFound);
+  Assert.AreEqual(-1, mAssignment.Rival);
+  Assert.IsFalse(mAssignment.Close);
+  // Im Fundament zählen die eigenen Kanten; knapp ist eine Fundament-Unit nie, sie liegt nach der Regel dort.
+  mAssignment := mOverview.Assignment(mOverview.IndexOf('App.Common.Logging'));
+  Assert.IsTrue(mAssignment.Rows[mAssignment.Own].Counts);
+  Assert.IsFalse(mAssignment.Close);
+  // Mitgruppiert gibt es kein Fundament: alle Zeilen zählen.
+  mOverview := FoundationsWith(TArchitectureFoundations.Group);
+  for mAssignment in mOverview.Assignments do
+    for mRow in mAssignment.Rows do
+      Assert.IsTrue(mRow.Counts);
+end;
+
+procedure TOverviewTests.OutliersMatchAssignments;
+var
+  mOverview: TArchitectureOverview;
+  mOutlier: TOverviewOutlier;
+  mAssignment: TOverviewAssignment;
+  mRow: TOverviewAssignmentRow;
+  mInside, mToward: Integer;
+begin
+  // App.Ui.Export verwendet nur Data-Units (Ausreißer wie in MisplacedUnitIsOutlier): Die Zahlen des Ausreißers
+  // stammen aus der Zuordnung.
+  mOverview := Analyze(Project + [UsesUnit('App.Ui.Export', ['App.Data.Db', 'App.Data.Query', 'App.Data.Model'],
+    nil)]);
+  Assert.IsTrue(Length(mOverview.Outliers) > 0);
+  for mOutlier in mOverview.Outliers do
+  begin
+    mAssignment := mOverview.Assignment(mOutlier.Unit_);
+    mInside := 0;
+    mToward := 0;
+    for mRow in mAssignment.Rows do
+    begin
+      if mRow.Subsystem = mOverview.Units[mOutlier.Unit_].Subsystem then
+        mInside := mRow.Edges;
+      if mRow.Subsystem = mOutlier.Suggested then
+        mToward := mRow.Edges;
+    end;
+    Assert.AreEqual(mInside, mOutlier.Inside);
+    Assert.AreEqual(mToward, mOutlier.Toward);
+  end;
+end;
+
+procedure TOverviewTests.AssignmentsAreCheap;
+var
+  mUnits: TArray<TUnitIndex>;
+  mGroup, mItem, mIndex, mRound: Integer;
+  mWatch: TStopwatch;
+  mOverview: TArchitectureOverview;
+  mTotal, mAssign: Int64;
+begin
+  // Derselbe Graph wie TwoThousandUnitsAreFast; die Zuordnung darf höchstens 5 % der Übersicht kosten.
+  SetLength(mUnits, 2000);
+  for mIndex := 0 to High(mUnits) do
+  begin
+    mGroup := mIndex div 100;
+    mItem := mIndex mod 100;
+    mUnits[mIndex] := UsesUnit(Format('P.N%.2d.U%.3d', [mGroup, mItem]), [Format('P.N%.2d.U%.3d', [mGroup,
+      (mItem + 1) mod 100]), Format('P.N%.2d.U%.3d', [mGroup, (mItem * 7 + 3) mod 100])],
+      [Format('P.N%.2d.U%.3d', [mGroup, (mItem * 13 + 5) mod 100]), Format('P.N%.2d.U%.3d', [(mGroup + 1) mod 20,
+      mItem])]);
+  end;
+  mTotal := MaxInt;
+  mAssign := MaxInt;
+  for mRound := 1 to 3 do
+  begin
+    mWatch := TStopwatch.StartNew;
+    mOverview := Analyze(mUnits);
+    mTotal := Min(mTotal, mWatch.ElapsedTicks);
+    mWatch := TStopwatch.StartNew;
+    TArchitectureAnalyzer.Assignments(mOverview);
+    mAssign := Min(mAssign, mWatch.ElapsedTicks);
+  end;
+  Assert.AreEqual(2000, Integer(Length(mOverview.Assignments)));
+  Assert.IsTrue(mAssign * 100 < mTotal * 5, Format('Zuordnung %d, Übersicht %d Ticks', [mAssign, mTotal]));
 end;
 
 initialization

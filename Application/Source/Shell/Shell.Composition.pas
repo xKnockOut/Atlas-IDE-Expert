@@ -72,6 +72,9 @@ uses
   Atlas.Common.Lsp.Metrics,
   Atlas.Common.Lsp.Todos,
   Atlas.Common.Lsp.Architecture,
+  Atlas.Common.Lsp.Hotspots,
+  Atlas.Common.Hotspots.Contract,
+  Atlas.Common.Hotspots.Service,
   Atlas.Common.Lsp.UnitRelations,
   Atlas.Common.Lsp.SymbolPath,
   Atlas.Common.Architecture.Service,
@@ -91,6 +94,7 @@ uses
   Atlas.Common.Lsp.SlashMenu,
   Atlas.Common.Editing.SlashCommands,
   Atlas.Common.Lsp.Baseline,
+  Atlas.Common.Lsp.BulkFix,
   Atlas.Common.Lsp.CompilerBaseline,
   Atlas.Common.Lsp.DisableWarning,
   Atlas.Common.Lsp.CompilerFixes,
@@ -217,6 +221,10 @@ type
     /// atlas/architecture und Befehl atlas.architecture.saveReport.</summary>
     FArchitectureService: TArchitectureService;
     FArchitecture: TLspArchitecture;
+    /// <summary>Hotspots (#1354): Dienst mit Zwischenspeicher je Stand der Versionsverwaltung und Index-Generation,
+    /// Anfrage atlas/hotspots und Befehle atlas.hotspots und atlas.hotspots.saveReport.</summary>
+    FHotspotService: THotspotService;
+    FHotspots: TLspHotspots;
     /// <summary>Unit-Beziehungen (#593): eigener Uses-Graph mit Bibliotheks-Units, Anfrage atlas/unitRelations
     /// und Befehle zum Verschieben und Entfernen von uses-Einträgen.</summary>
     FUnitRelationsGraph: TUsesGraphService;
@@ -228,6 +236,7 @@ type
     FRecursion: TLspRecursion;
     /// <summary>Baseline für Altprojekte (#97): Befehl atlas.updateBaseline.</summary>
     FBaseline: TLspBaseline;
+    FBulkFix: TLspBulkFix;
     /// <summary>Compilermeldungen in der Baseline (#530).</summary>
     FCompilerBaseline: TLspCompilerBaseline;
     FSemanticTokens: TLspSemanticTokens;
@@ -564,6 +573,10 @@ type
     /// architecture.scope).</summary>
     function ArchitectureSourceFor(const AFileName, AScope: string; out ARequest: TArchitectureRequest;
       out ASettings: TServerSettings): Boolean;
+    /// <summary>Anfrage, Einstellungen und Versionsverwaltung für die Hotspots (#1354): Umfang wie die
+    /// Architekturübersicht mit architecture.scope.</summary>
+    function HotspotSourceFor(const AFileName: string; out ARequest: THotspotRequest; out ASettings: TServerSettings;
+      out AVcs: IHotspotVcs; out AError: string): Boolean;
     /// <summary>Einstellungen und Namensräume für den Weg zwischen Symbolen (#1117) zum Arbeitsbereich von
     /// AFileName.</summary>
     function SymbolPathSourceFor(const AFileName: string; out ASettings: TServerSettings;
@@ -692,6 +705,7 @@ uses
   Atlas.Common.Pascal.IncludeFiles,
   Shell.SlashHost,
   Shell.VcsChanges,
+  Shell.Hotspots,
   Shell.Bootstrap,
   Shell.Commands.Build,
   Shell.Commands.Index,
@@ -1530,6 +1544,14 @@ begin
     end);
   FArchitecture := TLspArchitecture.Create(FArchitectureService, ArchitectureSourceFor);
   FArchitecture.Attach(FDispatcher);
+  // Hotspots (#1354): Komplexität aus geöffneten Dokumenten bzw. der Platte, Verlauf über Shell.Hotspots.
+  FHotspotService := THotspotService.Create(FIndex,
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      Result := ReadSourceText(AFileName, AText);
+    end);
+  FHotspots := TLspHotspots.Create(FHotspotService, HotspotSourceFor);
+  FHotspots.Attach(FDispatcher);
   // Unit-Beziehungen (#593): Wurzel und Namensräume wie die Architektur; die uses-Analyse der Code-Aktionen
   // entsteht erst weiter unten, daher über UsesContextFor.
   FUnitRelationsGraph := TUsesGraphService.Create(FIndex, TUsesGraphOptions.Default);
@@ -1602,6 +1624,36 @@ begin
       // Der Arbeitsbereich liest die Datei beim nächsten Prüfen neu; offene Dokumente gleich neu prüfen.
       FSyntaxDiagnostics.RefreshLater;
     end;
+  // Sammelkorrektur für das Plugin (#1352): Text, Regeln, Projekt, Index und Baseline wie die Editor-Prüfung, aber
+  // nicht Live (unused-uses meldet sich nur außerhalb des Editors) und mit den Symbolen des Projekts wie der Linter.
+  FBulkFix := TLspBulkFix.Create(
+    function(const AFileName: string; out AInput: TLspBulkFixInput): Boolean
+    var
+      mContext: TRuleCheckContext;
+      mDefines: TArray<string>;
+      mUri: string;
+    begin
+      AInput := Default(TLspBulkFixInput);
+      mUri := TDocumentUris.FromPath(AFileName);
+      Result := ReadSourceText(AFileName, AInput.Text) and RuleContextFor(mUri, mContext);
+      if not Result then
+        Exit;
+      AInput.Rules := mContext.Rules;
+      AInput.Settings := mContext.Settings;
+      AInput.RelativePath := mContext.RelativePath;
+      if AInput.RelativePath = '' then
+        AInput.RelativePath := ExtractFileName(AFileName);
+      AInput.Baseline := mContext.Baseline;
+      AInput.Project.Application := mContext.Application;
+      AInput.Project.Name := mContext.ProjectName;
+      AInput.Project.AutoCreateForms := mContext.AutoCreateForms;
+      AInput.Project.ProjectMainSource := mContext.ProjectMainSource;
+      AInput.Project.FileName := AFileName;
+      AInput.Project.Services := mContext.Services;
+      if not DefinesFor(mUri, mDefines) then
+        mDefines := nil;
+      AInput.Source := TCheckSource.Create(AFileName, mDefines, IncludeResolverFor(mUri));
+    end);
   // Compilermeldungen in derselben Baseline (#530): Text wie im Editor, offene Dokumente vor der Platte.
   FCompilerBaseline := TLspCompilerBaseline.Create(MetricsSourceFor,
     function(const AFileName: string; out AText: string): Boolean
@@ -1980,6 +2032,17 @@ begin
     begin
       Result := FArchitecture.SaveReport(AArguments);
     end);
+  // Hotspots (#1354): nebenläufig; gerechnet wird im Hintergrund, die Antwort kommt sofort (sonst "pending").
+  FCommands.RegisterConcurrent(TLspHotspots.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FHotspots.Execute(AArguments);
+    end);
+  FCommands.RegisterConcurrent(TLspHotspots.SaveCommand,
+    function(const AArguments: TJSONArray): TJSONValue
+    begin
+      Result := FHotspots.SaveReport(AArguments);
+    end);
   FCommands.Register(TLspUnitRelations.Command,
     function(const AArguments: TJSONArray): TJSONValue
     begin
@@ -2070,6 +2133,22 @@ begin
           TJSONObject(Result).GetValue<Integer>('files', -1), TJSONObject(Result).GetValue<Integer>('added', -1),
           TJSONObject(Result).GetValue<Integer>('removed', -1),
           TJSONObject(Result).GetValue<Integer>('orphaned.count', -1), Watch.ElapsedMilliseconds]));
+    end);
+  FCommands.Register(TLspBulkFix.Command,
+    function(const AArguments: TJSONArray): TJSONValue
+    var
+      Watch: TStopwatch;
+      Summary: string;
+    begin
+      // Nur die Vorschau; geschrieben wird im Plugin. Ins Log nur Zahlen und Regeln, keine Pfade.
+      Watch := TStopwatch.StartNew;
+      Result := FBulkFix.Execute(AArguments);
+      if not (Result is TJSONObject) then
+        Exit;
+      Summary := TJSONObject(Result).GetValue<string>('summary', '');
+      if Pos(sLineBreak, Summary) > 0 then
+        Summary := Copy(Summary, 1, Pos(sLineBreak, Summary) - 1);
+      FLogger.Info(Format('Sammelkorrektur berechnet (%s), %d ms', [Summary, Watch.ElapsedMilliseconds]));
     end);
   FCommands.Register(TLspCompilerBaseline.AddCommand,
     function(const AArguments: TJSONArray): TJSONValue
@@ -2690,6 +2769,8 @@ begin
   FSymbolPath.Free;
   FArchitecture.Free;
   FArchitectureService.Free;
+  FHotspots.Free;
+  FHotspotService.Free;
   FUnitRelations.Free;
   FUnitRelationsGraph.Free;
   FDebugDisplay.Free;
@@ -2697,6 +2778,7 @@ begin
   FRecursion.Free;
   FCompilerBaseline.Free;
   FBaseline.Free;
+  FBulkFix.Free;
   FInlayHints.Free;
   FImplementations.Free;
   FImpact.Free;
@@ -5988,6 +6070,30 @@ begin
   finally
     TMonitor.Exit(FWorkspacesLock);
   end;
+  // Zuletzt berechneter Stand je Projekt bzw. Projektgruppe für die Angleichung (#1367).
+  ARequest.PreviousFile := TIndexCacheDirectory.ArchitectureFileFor(TIndexCacheDirectory.DefaultRoot,
+    ARequest.ScopeKey);
+end;
+
+function TServerComposition.HotspotSourceFor(const AFileName: string; out ARequest: THotspotRequest;
+  out ASettings: TServerSettings; out AVcs: IHotspotVcs; out AError: string): Boolean;
+var
+  mArchitecture: TArchitectureRequest;
+begin
+  ARequest := Default(THotspotRequest);
+  AVcs := nil;
+  AError := '';
+  Result := ArchitectureSourceFor(AFileName, '', mArchitecture, ASettings);
+  if not Result then
+    Exit;
+  ARequest := THotspotRequest.FromSettings(ASettings);
+  ARequest.Title := mArchitecture.Title;
+  ARequest.Root := mArchitecture.Root;
+  ARequest.Namespaces := mArchitecture.Namespaces;
+  ARequest.Files := mArchitecture.Files;
+  // Ohne Hotspots kein Prozess; ohne Arbeitskopie meldet die Antwort den Grund statt einer leeren Liste.
+  if ASettings.HotspotsEnabled then
+    TShellHotspotVcs.Detect(mArchitecture.Root, ASettings, AVcs, AError);
 end;
 
 function TServerComposition.UnitRelationsOptionsFor(const AFileName: string): TUsesGraphOptions;

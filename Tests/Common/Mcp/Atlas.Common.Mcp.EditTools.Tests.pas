@@ -2,7 +2,7 @@
 
 // Tests für die Sicherheit der MCP-Schicht (#99), schreibende Werkzeuge (#61),
 // Projektkonventionen als Ressource (#272), Befund an KI (#158) und
-// format_code (#1358).
+// Sammelkorrektur fix_findings (#1352) und format_code (#1358).
 
 interface
 
@@ -38,6 +38,13 @@ type
     procedure PromptHasRuleCodeAndExamples;
     [Test]
     procedure ConventionsListActiveRules;
+    /// <summary>fix_findings (#1352): Vorschau, Schreiben, ungespeicherte Dateien, Untergrenze.</summary>
+    [Test]
+    procedure FixFindingsPreviewsAndWrites;
+    [Test]
+    procedure FixFindingsSkipsDirtyFiles;
+    [Test]
+    procedure FixFindingsRefusesLowerConfidence;
     /// <summary>#1358: format_code mit Text liefert den formatierten Text und schreibt nichts.</summary>
     [Test]
     procedure FormatCodeWithTextWritesNothing;
@@ -526,6 +533,101 @@ begin
   Assert.Contains(Text, '## Aktive Regeln');
   Assert.IsFalse(Text.Contains('## Aktive Regeln (0)'), 'Standardprofil hat aktive Regeln');
   Assert.IsTrue(TRuleConventions.IsNamingRule('naming-convention'));
+end;
+
+const
+  cAssignedFree = 'unit U;'#10#10'interface'#10#10'uses'#10'  System.Classes;'#10#10'implementation'#10#10 +
+    'procedure Weg(AList: TStringList);'#10'begin'#10'  if Assigned(AList) then'#10'    AList.Free;'#10'end;'#10#10 +
+    'end.'#10;
+
+procedure TMcpEditToolsTests.FixFindingsPreviewsAndWrites;
+var
+  Files: TMemoryFiles;
+  Edit: TMcpEditTools;
+  Report, Audit: string;
+begin
+  Files := TMemoryFiles.Create;
+  Edit := Tools(Files);
+  try
+    Audit := '';
+    Edit.Audit :=
+      procedure(const AText: string)
+      begin
+        Audit := Audit + AText;
+      end;
+    Files.Files.Add('U.pas', cAssignedFree);
+    Report := Edit.FixFindings(BuiltinRules, TServerSettings.Default, '', ['U.pas'], ['redundant-assigned-free'], '',
+      True);
+    Assert.Contains(Report, 'Vorschau: 1 Korrekturen in 1 Dateien');
+    Assert.Contains(Report, '--- a/U.pas');
+    Assert.Contains(Report, '-  if Assigned(AList) then');
+    Assert.AreEqual(0, Files.Writes, 'Vorschau schreibt nichts');
+    Assert.AreEqual('', Audit);
+    Report := Edit.FixFindings(BuiltinRules, TServerSettings.Default, '', ['U.pas'], ['redundant-assigned-free'], '',
+      False);
+    Assert.Contains(Report, '1 Korrekturen in 1 Dateien geschrieben');
+    Assert.AreEqual(1, Files.Writes);
+    Assert.IsFalse(Pos('Assigned', Files.Files['U.pas']) > 0, Files.Files['U.pas']);
+    Assert.Contains(Audit, 'fix_findings (redundant-assigned-free)');
+    Assert.Contains(Audit, 'U.pas');
+  finally
+    Edit.Free;
+    Files.Free;
+  end;
+end;
+
+procedure TMcpEditToolsTests.FixFindingsSkipsDirtyFiles;
+var
+  Files: TMemoryFiles;
+  Edit: TMcpEditTools;
+  Report: string;
+begin
+  Files := TMemoryFiles.Create;
+  Edit := Tools(Files);
+  try
+    Edit.DirtyFiles :=
+      function: TArray<string>
+      begin
+        Result := ['u.pas'];
+      end;
+    Files.Files.Add('U.pas', cAssignedFree);
+    Files.Files.Add('V.pas', StringReplace(cAssignedFree, 'unit U;', 'unit V;', []));
+    Report := Edit.FixFindings(BuiltinRules, TServerSettings.Default, '', ['U.pas', 'V.pas'],
+      ['redundant-assigned-free'], '', False);
+    Assert.Contains(Report, 'Nicht angefasst (ungespeicherte Änderungen im Editor): U.pas');
+    Assert.AreEqual(cAssignedFree, Files.Files['U.pas']);
+    Assert.AreEqual(1, Files.Writes, 'V.pas geschrieben');
+  finally
+    Edit.Free;
+    Files.Free;
+  end;
+end;
+
+procedure TMcpEditToolsTests.FixFindingsRefusesLowerConfidence;
+var
+  Files: TMemoryFiles;
+  Edit: TMcpEditTools;
+begin
+  Files := TMemoryFiles.Create;
+  Edit := Tools(Files);
+  try
+    Files.Files.Add('U.pas', cAssignedFree);
+    Assert.WillRaise(
+      procedure
+      begin
+        Edit.FixFindings(BuiltinRules, TServerSettings.Default, '', ['U.pas'], ['redundant-assigned-free'], 'medium',
+          True);
+      end, EMcpToolError);
+    Assert.WillRaise(
+      procedure
+      begin
+        Edit.FixFindings(BuiltinRules, TServerSettings.Default, '', ['U.pas'], nil, '', True);
+      end, EMcpToolError);
+    Assert.AreEqual(0, Files.Writes);
+  finally
+    Edit.Free;
+    Files.Free;
+  end;
 end;
 
 const
