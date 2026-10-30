@@ -3713,6 +3713,9 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Unit mit `TOrderList = 
 | FF11 | `"refactoring": {"freeFieldsStyle": "freeAndNil"}` | `FreeAndNil(FIndex);` statt `FIndex.Free;` |
 | FF12 | Generische Klasse `TCache<T>` | Rumpf heißt `destructor TCache<T>.Destroy;` und kompiliert |
 | FF13 | `"refactoring": {"freeFields": false}` in atlas.json | Keine Meldungen und keine der Aktionen mehr (**Abnahme**) |
+| FF14 | `Atlas.IDE.Build.CheckOnSave.pas`, `Atlas.IDE.Build.OpenBuild.pas`, `Atlas.IDE.Build.Runner.pas` öffnen (FWatcher geht an `FEvents.Add`, `TAtlasCompileEvents` hält eine `TObjectList`) | Kein `owned-field-free-unclear` und kein `field-not-freed` an `FWatcher` |
+| FF15 | Feld `FListe: TObjectList<TFoo>` mit `FListe := TObjectList<TFoo>.Create(False)`, dann `FListe.Add(FObjekt)` für ein im Konstruktor erzeugtes `FObjekt` | Hinweis `owned-field-free-unclear` „… an FListe.Add übergeben“ bleibt; ohne `False` verschwindet er |
+| FF16 | `Atlas.UI.Welcome.QuickActions.Tests.pas` öffnen (`FTaskNames := TArray<string>.Create(…)`) | Kein Befund an `FTaskNames` |
 
 ## Boolean umkehren (#715)
 

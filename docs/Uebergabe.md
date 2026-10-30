@@ -31,11 +31,11 @@
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
 
-## Überladung mit Alias-Parametertyp (30.10.2026, Branch `claude/project-thread-s9y3tx`)
-- **Ursache:** `TNameResolver.ArgTypes` verfolgt beim Argument Aliase (`Age: TDateTime` wird `Double`), der Parametertyp der Überladung blieb `TDateTime`. `ArgFits('TDateTime', 'Double')` schlug fehl, keine Überladung passte, `SelectOverloads` gab alle zurück und `Resolve` nahm die erste. Folgen bei Marco: W1000 an `FileAge(AFileName, Age)` (nur `FileAge(string): LongInt` ist deprecated) und E2012 „LongInt, nicht Boolean“ an `if FileAge(AFileName, Age) then`.
-- **Fix:** `SelectOverloads` ist jetzt Methode des Resolvers; `ParamFits` löst einen nicht eingebauten Parametertyp, der nicht passt, in der Unit der Überladung auf, verfolgt Aliase (`TypeOf`) und vergleicht erneut.
-- **Zusätzlich (Regel):** `deprecated-symbol` nimmt `ResolveAll` und meldet nur, wenn alle verbleibenden Kandidaten einen Hinweis tragen.
-- Getestet unter FPC: Resolver, Regeln mit Überladungen, Golden-Korpus (248 Tests). Neue Tests scheitern ohne den Fix. Offen: Delphi-Build.
+## owned-field-free-unclear: besitzende Listen und TArray<T> (30.10.2026, Branch `claude/project-thread-cgk6mb`)
+- Anlass: Marco meldete `owned-field-free-unclear` an `FWatcher` in `Atlas.IDE.Build.CheckOnSave`, `OpenBuild` und `Runner` und an `FTaskNames` in `Atlas.UI.Welcome.QuickActions.Tests`. Kein Leck: `TAtlasCompileEvents.Add` legt den Teilnehmer in `FParticipants: TObjectList<TAtlasCompileParticipant>` (`Create(True)`), `FTaskNames` ist ein `TArray<string>`.
+- **Ursache TArray:** `TClassAnalyzer.TypeGuess` fand im Index die (nicht generische) Klasse `TArray` aus `System.Generics.Collections` und hielt `TArray<string>` für eine Klasse, `TArray<string>.Create(…)` für eine Erzeugung. Jetzt passen Typen mit Typargumenten nur zu Indexsymbolen mit `TypeParams`, und `TArray<…>` ist immer ein dynamisches Array (`tgOther`).
+- **Ursache FWatcher:** Jede Übergabe an `Add…`/`Insert…` usw. galt als unklar. Jetzt übernimmt der Empfänger den Besitz (Grund `OwnedReason`, beide Regeln still), wenn er ein Feld vom Typ `TObjectList`/`TObjectStack`/`TObjectQueue`/`TComponentList` ist (nicht mit `False` erzeugt, `FNotOwning`) oder ein Feld, dessen Klasse laut Datei oder Index ein solches Feld für den Elementtyp hat (`ClassFieldTypes`, Elementtyp über `ComponentChain` des übergebenen Objekts). OwnsObjects einer fremden Liste sieht Atlas nicht, es gilt der Standard True. Parameter als Empfänger (`AEvents.Add(…)`) bleiben unklar.
+- Katalog en/de, `Catalog.Data.pas` (Python-Nachbau `werkzeuge/update-rulecatalog.py`, nur die Beschreibung) und `Regeln.md` von Hand; auf Windows `pwsh Tools/Update-RuleCatalog.ps1 -Check` laufen lassen. Tests: `HandOverToOwningListIsSilent`, `DynamicArrayIsNoObject`, `IndexedOwnerAndDynamicArrayAreSilent`; FPC-Harness 42/42 grün. Handtests FF14–FF16. Delphi-Build offen.
 
 ## unused-declaration-Befunde im eigenen Code (30.10.2026, Branch `claude/project-thread-3dbpsd`, PR #1424)
 - Sieben Befunde geprüft (andere Units, Include-Dateien, `{$IFDEF}`-Zweige, Konstantenausdrücke, RTTI, Tests): alle echt, kein False-Positive, Regel unverändert. Laut Historie nie benutzt.
@@ -1803,3 +1803,9 @@ Jeder Branch baut auf dem vorigen auf. Nichts davon ist gebaut, getestet oder in
 - **boolean-assign-if** in HttpClient ist nach dem Muster richtig (`if … then Result := False else Result := True` mit Kommentar, darum ohne Korrektur); das Original ließ sich nicht nachlesen (kein Zugriff auf den Installationsordner), Test bildet den Fall aus dem Gedächtnis nach.
 - **float-equality** schweigt in Routinen `Equal…`, `NotEqual`, `IsEqual` (RTL-Vergleicher, `class operator Equal`): Equals muss zu GetHashCode passen. `Atlas.Core.Editor.Conditionals` (`$IF`-Auswertung) mit `// lsp-ignore: float-equality`, weil dcc dort exakt vergleicht.
 - Getestet: FPC-Harness (LibrarySources, RtlTypePatterns, Style, Configuration; die zwei `WritelnInGuiApp`-Fehler gibt es unter FPC schon auf Prep-v1.2.0), Linux-Server gebaut, alle Check-Skripte und `Update-ConfigDoc.ps1` mit pwsh. Offen: Delphi-Build, Handtests FQ1–FQ6.
+
+## Überladung mit Alias-Parametertyp (30.10.2026, Branch `claude/project-thread-s9y3tx`)
+- **Ursache:** `TNameResolver.ArgTypes` verfolgt beim Argument Aliase (`Age: TDateTime` wird `Double`), der Parametertyp der Überladung blieb `TDateTime`. `ArgFits('TDateTime', 'Double')` schlug fehl, keine Überladung passte, `SelectOverloads` gab alle zurück und `Resolve` nahm die erste. Folgen bei Marco: W1000 an `FileAge(AFileName, Age)` (nur `FileAge(string): LongInt` ist deprecated) und E2012 „LongInt, nicht Boolean“ an `if FileAge(AFileName, Age) then`.
+- **Fix:** `SelectOverloads` ist jetzt Methode des Resolvers; `ParamFits` löst einen nicht eingebauten Parametertyp, der nicht passt, in der Unit der Überladung auf, verfolgt Aliase (`TypeOf`) und vergleicht erneut.
+- **Zusätzlich (Regel):** `deprecated-symbol` nimmt `ResolveAll` und meldet nur, wenn alle verbleibenden Kandidaten einen Hinweis tragen.
+- Getestet unter FPC: Resolver, Regeln mit Überladungen, Golden-Korpus (248 Tests). Neue Tests scheitern ohne den Fix. Offen: Delphi-Build.
