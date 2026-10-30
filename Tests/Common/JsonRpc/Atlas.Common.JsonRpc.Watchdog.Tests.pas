@@ -28,6 +28,9 @@ type
     /// geschrieben ist (sonst ging sie beim Beenden der Verbindung verloren).</summary>
     [Test]
     procedure TimeoutAnswerCountsAsWork;
+    /// <summary>#1355: OnExpired bekommt id (als JSON-Text), Methode und Zeitlimit für den Absturzfall.</summary>
+    [Test]
+    procedure ExpiredEventGetsIdAndMethod;
   end;
 
 implementation
@@ -338,6 +341,58 @@ begin
     Watchdog := nil;
   finally
     Gate.Free;
+  end;
+end;
+
+
+procedure TJsonRpcWatchdogTests.ExpiredEventGetsIdAndMethod;
+var
+  mPending: IJsonRpcPendingRequests;
+  mWatchdog: TJsonRpcWatchdog;
+  mWatchdogRef: IJsonRpcWatchdog;
+  mId: TJSONValue;
+  mToken: IJsonRpcCancellationToken;
+  mSeen: string;
+  mLock: TObject;
+begin
+  mPending := TJsonRpcPendingRequests.Create;
+  mSeen := '';
+  mLock := TObject.Create;
+  try
+    mWatchdog := TJsonRpcWatchdog.Create(mPending, 20, nil);
+    mWatchdogRef := mWatchdog;
+    mWatchdog.OnExpired :=
+      procedure(const AId, AMethod: string; ATimeoutMs: Cardinal)
+      begin
+        System.TMonitor.Enter(mLock);
+        try
+          mSeen := Format('%s %s %d', [AId, AMethod, ATimeoutMs]);
+        finally
+          System.TMonitor.Exit(mLock);
+        end;
+      end;
+    mId := TJSONString.Create('abc');
+    try
+      mToken := mPending.Acquire(mId);
+      mWatchdog.Watch(mId, 'test/slow');
+      Assert.IsTrue(WaitUntil(
+        function: Boolean
+        begin
+          System.TMonitor.Enter(mLock);
+          try
+            Result := mSeen <> '';
+          finally
+            System.TMonitor.Exit(mLock);
+          end;
+        end, 2000));
+      Assert.AreEqual('"abc" test/slow 20', mSeen);
+      mPending.Release(mId, mToken);
+    finally
+      mId.Free;
+    end;
+    mWatchdogRef := nil;
+  finally
+    mLock.Free;
   end;
 end;
 

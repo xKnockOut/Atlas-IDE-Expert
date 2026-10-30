@@ -8920,6 +8920,29 @@ Vorbereitung: Testprojekt `Tests/Compilermeldungen` (Fälle `Cm.E2008` bis `Cm.E
 | TM10 | `"type-mismatch": "off"`, `"group:compiler": "off"` bzw. `"group:compiler": {"typeLevel": "off"}` | Keine Meldung |
 | TM11 | Abgleich mit Delphi: `Tools/Build-Compilermeldungen.ps1` für die neuen Fälle `Cm.E2009b`, `Cm.E2010b` bis `Cm.E2010e`, `Cm.E2015b` bis `Cm.E2015d`, `Cm.E2033b`, `Cm.E2089b` | dcc meldet den Code im Dateinamen (für `Cm.E2010e` nichts), Atlas denselben; im Vergleich keine neuen „zusätzlich“ |
 
+## Absturzfälle sichern, Neustartschleifen verhindern (#1355)
+
+Vorbereitung: Umgebungsvariable `ATLAS_CRASH_TEST` vor dem Start von Delphi setzen (Testschalter des Servers, nur für Handtests): `textDocument/hover` lässt jeden Hover künstlich abstürzen, `textDocument/hover:overflow` mit einem echten Stapelüberlauf. In `settings.json` einen Tracker-Token eintragen (`issueTracker`/`issues.connections`), damit AF8 prüfbar ist. Fälle liegen unter `%LOCALAPPDATA%\Atlas\crash`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| AF1 | Delphi 12 und 13: Gruppe Win64 und Plugin Win32 bauen, `Atlas.Tests.exe` | 0 Fehler, 0 Warnungen, 0 Hinweise; `TCrashCaseTests`, `TCrashSkipTests`, `TCrashReserveTests`, `TJsonRpcRecentMessagesTests`, `TShellCrashCasesTests`, `TShellReplayTests`, `TShellReplayServerTests`, `TAtlasCrashCasesTests` grün (**Abnahme**) |
+| AF2 | `ATLAS_CRASH_TEST=textDocument/hover`, Unit öffnen, über einem Bezeichner verweilen | Meldung „Absturzfall gesichert“ mit „textDocument/hover in <Unit>.pas:<Zeile> löste ECrashTest aus“; Ordner mit `anfrage.json`, Schnappschuss der Unit, `atlas.json`/`settings.json`, `stapel.txt`, `wiederholen.cmd` (**Abnahme**) |
+| AF3 | Im Fallordner `wiederholen.cmd` starten (Variable noch gesetzt) | „reproduziert“, Exit-Code 1; ohne die Variable „nicht reproduziert“, Exit-Code 0 (**Abnahme**) |
+| AF4 | `ATLAS_CRASH_TEST=textDocument/hover:overflow`, Hover zweimal | Je ein vollständiger Fall mit `EStackOverflow`; der Server läuft weiter (kein Neustart, Schutzseite wiederhergestellt) (**Abnahme**) |
+| AF5 | Zweiter Hover an derselben unveränderten Datei (AF2 oder AF4) | Meldung „Übersprungen nach Absturz“ mit „Erneut versuchen“; Statusleiste gelb mit „1 Anfrage übersprungen nach Absturz“; Prüffenster zeigt eine Warnung „Übersprungen nach Absturz …“ an der Datei; weiterer Hover antwortet mit dem Fehler statt abzustürzen; Log-Warnung mit Verweis auf den Fall (**Abnahme**) |
+| AF6 | Datei ändern (ein Zeichen) | Meldung „… wird wieder beantwortet“, Statusleiste wieder grün, Eintrag im Prüffenster weg; nächster Hover stürzt wieder ab (Testschalter) (**Abnahme**) |
+| AF7 | Nach AF5 „Erneut versuchen“ in der Meldung | Wie AF6 ohne Änderung der Datei |
+| AF8 | Inhalt aller Dateien eines Falls nach dem Token aus der Vorbereitung durchsuchen | Token nirgends, auch nicht in Adressen mit Benutzer und Kennwort (**Abnahme**) |
+| AF9 | Server im Task-Manager beenden, während ein Hover mit Überlauf läuft (oder einen Fall von Hand vor dem Ende anlegen lassen) | Nach dem Neustart „Atlas-Server neu gestartet: textDocument/hover in <Unit>.pas:<Zeile> löste … aus“ mit „Fall öffnen“, „Issue anlegen“, „Ausblenden“ (**Abnahme**) |
+| AF10 | „Fall öffnen“ | Explorer zeigt den Fallordner |
+| AF11 | „Issue anlegen“ (Tracker eingerichtet) | Dialog aus #1268 mit Titel „Absturz: …“ und Text mit Methode, Datei, Zeile, Ausnahme, Version und Stapel; nach „Anlegen“ öffnet „An Issue anhängen“ für das neue Issue mit „Absturzfall (n Dateien)“ vorgewählt, ohne `wiederholen.cmd` (**Abnahme**) |
+| AF12 | `"server": {"crashCases": false}` in `settings.json`, AF2 wiederholen | Kein Ordner, keine Meldung; das Überspringen zählt weiter |
+| AF13 | `"server": {"crashSkip": false}`, AF5 wiederholen | Kein Überspringen; jeder Hover erzeugt einen Fall |
+| AF14 | 25 Fälle erzeugen | Höchstens 20 Ordner, die ältesten sind weg |
+| AF15 | Delphi neu starten nach AF5 (ohne Änderung der Datei) | Statusleiste zeigt das Überspringen wieder (Merker `uebersprungen.json`) |
+| AF16 | `pwsh Tools/New-CrashTest.ps1 <Fallordner> -Name Probe` | `Tests/Application/Shell/CrashCases/Shell.CrashCase.Probe.Tests.pas` angelegt und in `Atlas.Tests.dpr`/`.dproj` eingetragen; baut ohne Hinweise; ohne Testschalter grün |
+| AF17 | Claude Code im MCP-Modus: Werkzeug mit unerwarteter Ausnahme (sonst überspringen) | Fall mit Methode `tools/call`, ohne Meldung im Plugin |
 ## Sammelkorrektur (#1352)
 
 Vorbereitung: Kopie von `Tests/Referenzprojekt`; ein eigenes Projekt mit drei Units in UTF-8 mit BOM, UTF-8 ohne BOM und ANSI (CRLF) und je einem ungenutzten uses-Eintrag.

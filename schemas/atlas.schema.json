@@ -2166,6 +2166,28 @@
       "x-control": "Zahlenfeld (ms)",
       "x-issue": "#283"
     },
+    "server": {
+      "type": "object",
+      "description": "Absturzfälle des Servers: Stürzt eine Anfrage mit einer unerwarteten Ausnahme ab oder bricht der Watchdog sie ab, sichert der Server einen nachstellbaren Fall unter %LOCALAPPDATA%\\Atlas\\crash (Anfrage, Schnappschuss der Datei, Einstellungen ohne Zugangsdaten, Aufrufstapel, wiederholen.cmd; höchstens 20). Kein Netzzugriff.",
+      "additionalProperties": false,
+      "properties": {
+        "crashCases": {
+          "type": "boolean",
+          "default": true,
+          "description": "Absturzfälle sichern und im Plugin melden (Fall öffnen, Issue anlegen). AtlasServer --replay <anfrage.json> stellt einen Fall nach."
+        },
+        "crashSkip": {
+          "type": "boolean",
+          "default": true,
+          "description": "Sicherheitsnetz, zusätzlich zur Behebung: Eine Anfrage, die an derselben unveränderten Datei zweimal abgestürzt ist, beantwortet der Server mit „Übersprungen nach Absturz“, bis sich die Datei ändert oder „Erneut versuchen“ gewählt wird. Statusleiste und Prüffenster zeigen das an."
+        }
+      },
+      "x-scope": "global",
+      "x-area": "general",
+      "x-page": "Robustheit",
+      "x-control": "Kontrollkästchen",
+      "x-issue": "#1355"
+    },
     "diagnostics": {
       "type": "object",
       "description": "Anonymisiertes Diagnoselog des Servers (je Anfrage Dauer, Ergebnis und Grundcode, je Lauf Start und Ende mit Grund). Es enthält keine Pfade, keine Projekt-, Unit- oder Bezeichnernamen und keinen Quelltext und lässt sich über „Diagnoselog exportieren“ weitergeben.",

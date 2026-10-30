@@ -11,7 +11,7 @@ function AtlasSchemaJson: string;
 implementation
 
 const
-  Lines: array[0..3115] of string = (
+  Lines: array[0..3137] of string = (
     '{',
     '  "$schema": "http://json-schema.org/draft-07/schema#",',
     '  "title": "Atlas-Konfiguration",',
@@ -2362,6 +2362,30 @@ const
     '      "x-page": "Robustheit",',
     '      "x-control": "Zahlenfeld (ms)",',
     '      "x-issue": "#283"',
+    '    },',
+    '    "server": {',
+    '      "type": "object",',
+    '      "description": "Absturzfälle des Servers: Stürzt eine Anfrage mit einer unerwarteten Ausnahme ab oder bricht der Watchdog sie ab, sichert der Server einen nachstellbaren Fall unter %LOCALAPPDATA' +
+      '%\\Atlas\\crash (Anfrage, Schnappschuss der Datei, Einstellungen ohne Zugangsdaten, Aufrufstapel, wiederholen.cmd; höchstens 20). Kein Netzzugriff.",',
+    '      "additionalProperties": false,',
+    '      "properties": {',
+    '        "crashCases": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Absturzfälle sichern und im Plugin melden (Fall öffnen, Issue anlegen). AtlasServer --replay <anfrage.json> stellt einen Fall nach."',
+    '        },',
+    '        "crashSkip": {',
+    '          "type": "boolean",',
+    '          "default": true,',
+    '          "description": "Sicherheitsnetz, zusätzlich zur Behebung: Eine Anfrage, die an derselben unveränderten Datei zweimal abgestürzt ist, beantwortet der Server mit „Übersprungen nach Absturz“, b' +
+      'is sich die Datei ändert oder „Erneut versuchen“ gewählt wird. Statusleiste und Prüffenster zeigen das an."',
+    '        }',
+    '      },',
+    '      "x-scope": "global",',
+    '      "x-area": "general",',
+    '      "x-page": "Robustheit",',
+    '      "x-control": "Kontrollkästchen",',
+    '      "x-issue": "#1355"',
     '    },',
     '    "diagnostics": {',
     '      "type": "object",',

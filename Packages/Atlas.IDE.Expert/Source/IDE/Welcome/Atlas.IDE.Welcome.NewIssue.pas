@@ -18,6 +18,9 @@
 //   Atlas am Code nichts.
 // - Protokoll anonym: Anbieter und Ergebnis, nie Adresse, Projekt, Titel,
 //   Text oder Token.
+// - Aus einem Absturzfall des Servers (#1355): Titel und Text (Stapel,
+//   Version) vom Plugin-Kern; nach dem Anlegen öffnet „An Issue anhängen“
+//   (#1276) mit den Dateien des Falls für das neue Issue.
 // Anbieter, Transport und „Beginnen“ kommen von TAtlasIdeIssues (Start).
 
 interface
@@ -25,6 +28,7 @@ interface
 uses
   System.SysUtils,
   Atlas.Core.Tracker.NewIssue,
+  Atlas.Core.Tracker.Attach,
   Atlas.IDE.Welcome.Issues;
 
 type
@@ -42,6 +46,9 @@ type
     class procedure FromEditor; static;
     /// <summary>Aus Befunden; mehrere ergeben ein Issue mit Liste.</summary>
     class procedure FromFindings(const AFindings: TArray<TAtlasNewIssueFinding>); static;
+    /// <summary>Aus einem Absturzfall (#1355): ATitle und ADescription vorgeschlagen, AFiles nach dem Anlegen
+    /// zum Anhängen vorgewählt.</summary>
+    class procedure FromCrash(const ATitle, ADescription: string; const AFiles: TArray<TAtlasAttachFile>); static;
   end;
 
 implementation
@@ -97,6 +104,8 @@ var
   IssuesRef: IInterface;
   Report: TProc<string>;
   Threads: TList<TThread>;
+  /// <summary>Tracker der letzten Sendung (Send): Dorthin gehen danach die Dateien eines Absturzfalls.</summary>
+  LastTarget: TAtlasTrackerTarget;
 
 function Labels: TAtlasNewIssueLabels;
 begin
@@ -329,6 +338,7 @@ begin
   end;
   mProvider := Issues.ProviderFor(ATarget.Provider);
   mTarget := ATarget;
+  LastTarget := ATarget;
   mDraft := ADraft;
   mDone := ADone;
   mResult := TAtlasNewIssueResult.Create(TAtlasNewIssueOutcome.Unreachable);
@@ -384,6 +394,22 @@ begin
     mThen('', '');
 end;
 
+/// <summary>Wie ShowDialog, danach „An Issue anhängen“ mit AFiles für das neue Issue (#1355).</summary>
+procedure ShowDialogWithFiles(const ASetup: TAtlasNewIssueSetup; const AFiles: TArray<TAtlasAttachFile>);
+var
+  mResult: TAtlasNewIssueResult;
+  mStartNow: Boolean;
+  mPlace: TEditorPlace;
+begin
+  // Aus einem Fall ändert Atlas den Code nicht.
+  mPlace := Default(TEditorPlace);
+  if not TAtlasNewIssueDialog.Execute(ASetup, LoadFields, Send, mResult, mStartNow) then
+    Exit;
+  Created(mResult, ASetup.Title, mPlace, mStartNow);
+  if (Length(AFiles) > 0) and (Issues <> nil) and (mResult.Key <> '') then
+    Issues.AttachFiles(LastTarget, mResult.Key, AFiles);
+end;
+
 function NewSetup(const AProject: string): TAtlasNewIssueSetup;
 begin
   Result := TAtlasNewIssueSetup.Empty;
@@ -418,6 +444,7 @@ begin
   Issues := nil;
   IssuesRef := nil;
   Report := nil;
+  LastTarget := Default(TAtlasTrackerTarget);
 end;
 
 class function TAtlasIdeNewIssue.Enabled: Boolean;
@@ -515,6 +542,30 @@ begin
         begin
           ShowDialog(mSetup, mPlace);
         end);
+    end);
+end;
+
+class procedure TAtlasIdeNewIssue.FromCrash(const ATitle, ADescription: string;
+  const AFiles: TArray<TAtlasAttachFile>);
+var
+  mProject, mTitle, mDescription: string;
+  mFiles: TArray<TAtlasAttachFile>;
+begin
+  if not Enabled then
+    Exit;
+  mTitle := ATitle;
+  mDescription := ADescription;
+  mFiles := AFiles;
+  mProject := TAtlasIdeTeamFile.ActiveProject;
+  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+    procedure
+    var
+      mSetup: TAtlasNewIssueSetup;
+    begin
+      mSetup := NewSetup(mProject);
+      mSetup.Title := mTitle;
+      mSetup.Description := mDescription;
+      ShowDialogWithFiles(mSetup, mFiles);
     end);
 end;
 

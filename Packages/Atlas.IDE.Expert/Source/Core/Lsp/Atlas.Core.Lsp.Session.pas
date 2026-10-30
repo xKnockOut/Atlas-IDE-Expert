@@ -144,6 +144,9 @@ type
   /// <summary>window/showMessage des Servers (#121); läuft im Lese-Thread. AType: 1 Fehler, 2 Warnung,
   /// 3 Information, 4 Protokoll.</summary>
   TLspShowMessageProc = reference to procedure(AType: Integer; const AMessage: string);
+  /// <summary>atlas/crashCase bzw. atlas/crashSkip des Servers (#1355); läuft im Lese-Thread, AParams gehört dem
+  /// Aufrufer.</summary>
+  TLspCrashNotificationProc = reference to procedure(const AMethod: string; const AParams: TJSONValue);
 
   TLspSession = class
   private type
@@ -170,6 +173,7 @@ type
     FSentContexts: TDictionary<string, string>;
     FOnApplyEdit: TLspApplyEditProc;
     FOnShowMessage: TLspShowMessageProc;
+    FOnCrashNotification: TLspCrashNotificationProc;
     FServerSettings: string;
     FServerVersion: string;
     procedure SyncLocked(const AFileName, AText: string);
@@ -250,6 +254,8 @@ type
     property OnApplyEdit: TLspApplyEditProc read FOnApplyEdit write FOnApplyEdit;
     /// <summary>Vor Initialize setzen (#121): Meldungen des Servers für den Benutzer.</summary>
     property OnShowMessage: TLspShowMessageProc read FOnShowMessage write FOnShowMessage;
+    /// <summary>Vor Initialize setzen (#1355): Absturzfälle und Überspringen des Servers.</summary>
+    property OnCrashNotification: TLspCrashNotificationProc read FOnCrashNotification write FOnCrashNotification;
     /// <summary>type und message aus den Parametern von window/showMessage; False ohne Text.</summary>
     class function ShowMessageParams(const AParams: TJSONValue; out AType: Integer;
       out AMessage: string): Boolean; static;
@@ -632,12 +638,14 @@ var
   Progress: ILspProgress;
   ApplyEdit: TLspApplyEditProc;
   ShowMessageProc: TLspShowMessageProc;
+  CrashProc: TLspCrashNotificationProc;
   Client: TLspClient;
 begin
   // Nur den Zähler einfangen, nicht die Sitzung: Der Lese-Thread kann die Sitzung überleben.
   Refresh := FRefresh;
   Progress := FProgress;
   ShowMessageProc := FOnShowMessage;
+  CrashProc := FOnCrashNotification;
   FClient.OnServerMessage :=
     procedure(const AMethod: string; const AParams: TJSONValue)
     var
@@ -650,7 +658,9 @@ begin
         Progress.Handle(AParams)
       else if (AMethod = 'window/showMessage') and Assigned(ShowMessageProc) and
         ShowMessageParams(AParams, MessageType, Text) then
-        ShowMessageProc(MessageType, Text);
+        ShowMessageProc(MessageType, Text)
+      else if ((AMethod = 'atlas/crashCase') or (AMethod = 'atlas/crashSkip')) and Assigned(CrashProc) then
+        CrashProc(AMethod, AParams);
     end;
   // Wie oben: Der Lese-Thread kennt nur Client und Empfänger, nicht die Sitzung.
   ApplyEdit := FOnApplyEdit;

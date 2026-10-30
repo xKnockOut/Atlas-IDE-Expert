@@ -52,6 +52,9 @@
 //                         --fail-on newCycle,newCrossLink,subsystemChange,centralGrowth
 //                         (Standard architecture.failOn, sonst newCycle)
 //
+// Absturzfall nachstellen (#1355):
+//   --replay <anfrage.json> Fall aus %LOCALAPPDATA%\Atlas\crash nachspielen: Exit-Code 1 =
+//                         reproduziert, 0 = nicht reproduziert, 2 = Fall nicht lesbar
 // Hotspots (#1354):
 //   --hotspots <Datei>    Hotspots des Ziels aus --check (Standard: aktueller Ordner) aus
 //                         Änderungshäufigkeit und Komplexität samt Methoden und
@@ -120,6 +123,8 @@ type
     HotspotsFile: string;
     /// <summary>--compare: gespeicherter Architekturstand für den Vergleich (#1121); '' = keiner.</summary>
     CompareFile: string;
+    /// <summary>--replay: anfrage.json eines Absturzfalls (#1355); '' = kein Nachstellen.</summary>
+    ReplayFile: string;
     /// <summary>Baseline-Datei (#97); '' = atlas-baseline.json neben atlas.json, falls vorhanden.</summary>
     BaselineFile: string;
     /// <summary>Baseline aus den aktuellen Treffern neu schreiben statt zu prüfen.</summary>
@@ -277,6 +282,7 @@ begin
     StringOption('--baseline', @Result.BaselineFile), StringOption('--root', @Result.McpRoot),
     StringOption('--index-cache', @Result.IndexCacheFolder),
     StringOption('--architecture', @Result.ArchitectureFile), StringOption('--compare', @Result.CompareFile),
+    StringOption('--replay', @Result.ReplayFile),
     StringOption('--hotspots', @Result.HotspotsFile)];
   Flags := [FlagOption('--log-names', @Result.LogNames), FlagOption('--mcp', @Result.Mcp),
     FlagOption('--restricted', @Result.Restricted), FlagOption('--clear-cache', @Result.ClearCache),

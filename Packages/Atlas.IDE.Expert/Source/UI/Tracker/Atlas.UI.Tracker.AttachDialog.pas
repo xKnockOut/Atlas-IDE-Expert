@@ -63,6 +63,9 @@ type
     ExceptionsText: string;
     ExceptionCount: Integer;
     MaxImageWidth: Integer;
+    /// <summary>Weitere Dateien, vorgewählt und gemeinsam abwählbar, etwa die eines Absturzfalls (#1355).
+    /// </summary>
+    Extra: TArray<TAtlasAttachFile>;
     class function Empty: TAtlasAttachDialogInput; static;
   end;
 
@@ -98,6 +101,7 @@ type
     FLogInfo: TLabel;
     FDebugNote: TCheckBox;
     FExceptions: TCheckBox;
+    FExtra: TCheckBox;
     FComment: TCheckBox;
     FCommentMemo: TMemo;
     FList: TListView;
@@ -280,7 +284,7 @@ begin
   mGroup := TGroupBox.Create(Self);
   mGroup.Parent := Self;
   mGroup.Caption := TAtlasStrings.Text(TAtlasTextId.AttachSources);
-  mGroup.SetBounds(Gap, mTop, DialogWidth - 2 * Gap, 222);
+  mGroup.SetBounds(Gap, mTop, DialogWidth - 2 * Gap, 248);
   mRow := 22;
   // Bildschirmfoto: Fenster des Programms, per Klick, markieren.
   FScreenshot := AddCheck(mGroup, mRow, TAtlasStrings.Text(TAtlasTextId.AttachScreenshot));
@@ -351,6 +355,12 @@ begin
     FExceptions := AddCheck(mGroup, mRow, TAtlasStrings.Text(TAtlasTextId.AttachExceptionsNone));
   FExceptions.Width := 600;
   FExceptions.Enabled := (FInput.ExceptionCount > 0) and (FInput.ExceptionsText <> '');
+  Inc(mRow, 26);
+  // Dateien eines Absturzfalls (#1355): vorgewählt, nur gemeinsam abwählbar.
+  FExtra := AddCheck(mGroup, mRow, TAtlasStrings.Fmt(TAtlasTextId.AttachCrashCase, [Length(FInput.Extra)]));
+  FExtra.Width := 600;
+  FExtra.Enabled := Length(FInput.Extra) > 0;
+  FExtra.Checked := FExtra.Enabled;
   Inc(mTop, mGroup.Height + Gap);
 
   FComment := AddCheck(Self, mTop, TAtlasStrings.Text(TAtlasTextId.AttachComment));
@@ -658,6 +668,8 @@ begin
     mFile.Caption := TAtlasStrings.Text(TAtlasTextId.AttachExceptionsCaption);
     mFiles := mFiles + [mFile];
   end;
+  if FExtra.Checked then
+    mFiles := mFiles + FInput.Extra;
   FFiles := TAtlasAttachFile.UniqueNames(mFiles);
   // Der Ordner des Laufs enthält genau diese Dateien.
   FPaths := nil;
