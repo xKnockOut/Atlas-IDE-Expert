@@ -18,7 +18,8 @@
 //   meldet OnStatus, ein Zähler OnFinding mit seiner Art, die Live-Prüfung
 //   OnLiveCheck (alle Units neu prüfen, #1231), die Methode OnMethod, das
 //   Zahnrad öffnet das Menü „Leiste anpassen“. Doppelklick auf
-//   die Zähler meldet OnFindingsOpen. Rechtsklick auf den Status meldet
+//   die Zähler meldet OnFindingsOpen, auf den Status OnStatusOpen (Fenster
+//   „Atlas-Server“, #1356). Rechtsklick auf den Status meldet
 //   OnStatusContext, sonst öffnet er das Menü. WM_CONTEXTMENU behandelt die
 //   Leiste selbst; es geht nicht an das Editorfenster der IDE weiter.
 // - Menü „Leiste anpassen“: jedes Element mit Haken (OnToggleItem), darunter
@@ -106,6 +107,7 @@ type
     FOnBadge: TProc<TPoint>;
     FOnFinding: TAtlasStatusBarKindEvent;
     FOnFindingsOpen: TProc;
+    FOnStatusOpen: TProc;
     FOnLiveCheck: TProc;
     FOnMethod: TProc;
     FOnToggleItem: TAtlasStatusBarItemEvent;
@@ -176,6 +178,8 @@ type
     property OnBadge: TProc<TPoint> read FOnBadge write FOnBadge;
     property OnFinding: TAtlasStatusBarKindEvent read FOnFinding write FOnFinding;
     property OnFindingsOpen: TProc read FOnFindingsOpen write FOnFindingsOpen;
+    /// <summary>Doppelklick auf den Status (#1356); nil = nichts.</summary>
+    property OnStatusOpen: TProc read FOnStatusOpen write FOnStatusOpen;
     /// <summary>Klick auf die Live-Prüfung: alle Units neu prüfen (#1231).</summary>
     property OnLiveCheck: TProc read FOnLiveCheck write FOnLiveCheck;
     property OnMethod: TProc read FOnMethod write FOnMethod;
@@ -758,7 +762,9 @@ begin
   inherited DblClick;
   Position := ScreenToClient(Mouse.CursorPos);
   if (ElementAt(Position.X, Position.Y) = TAtlasStatusBarPart.Findings) and Assigned(FOnFindingsOpen) then
-    FOnFindingsOpen();
+    FOnFindingsOpen()
+  else if (ElementAt(Position.X, Position.Y) = TAtlasStatusBarPart.Status) and Assigned(FOnStatusOpen) then
+    FOnStatusOpen();
 end;
 
 function TAtlasEditorStatusBar.KeyboardMenuPoint: TPoint;
@@ -798,7 +804,9 @@ end;
 procedure TAtlasEditorStatusBar.DoubleClickAt(X, Y: Integer);
 begin
   if (ElementAt(X, Y) = TAtlasStatusBarPart.Findings) and Assigned(FOnFindingsOpen) then
-    FOnFindingsOpen();
+    FOnFindingsOpen()
+  else if (ElementAt(X, Y) = TAtlasStatusBarPart.Status) and Assigned(FOnStatusOpen) then
+    FOnStatusOpen();
 end;
 
 procedure TAtlasEditorStatusBar.Fire(APart: TAtlasStatusBarPart; X, Y: Integer);

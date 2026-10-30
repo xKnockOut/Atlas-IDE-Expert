@@ -2,7 +2,9 @@
 
 // Feste Zeilen des Atlas-Statusfelds (#591) in der IDE:
 // - „Server“: Phase, mittlere Antwortzeit der letzten 50 Anfragen und Version
-//   vom Code Insight-Manager.
+//   vom Code Insight-Manager. Mit server.statusWindow öffnet ein Klick auf
+//   die Zeile das Fenster „Atlas-Server“ (#1356); QueryNow fragt für dessen
+//   Knopf „Aktualisieren“ sofort ab.
 // - „Index“: Fortschritt aus $/progress, Anzahl Units aus atlas.server.status.
 //   Alle 5 s fragt ein Hintergrund-Thread den Status ab (einzige Abfrage im
 //   Zeitgeber, liefert nebenbei die Antwortzeit), nur solange der Server läuft.
@@ -79,6 +81,9 @@ type
     FMenuFile: string;
     FActiveFile: string;
     procedure PollTick(Sender: TObject);
+    /// <summary>atlas.server.status im Hintergrund; ADone (oder nil) danach im Hauptthread. False ohne Abfrage.
+    /// </summary>
+    function StartQuery(const ADone: TProc): Boolean;
     procedure RefreshServer;
     procedure RefreshIndex;
     procedure RefreshFile;
@@ -91,6 +96,12 @@ type
   public
     constructor Create(const ARegistry: IAtlasStatusRegistry; const AServerInfo: TFunc<TAtlasServerInfo>;
       const AIndexing: TAtlasIndexingFunc; const AQuery: TAtlasStatusQueryFunc; const AReport: TProc<string>);
+      overload;
+    /// <summary>Mit Aktion der Zeile „Server“ (Fenster „Atlas-Server“, #1356), die nur gilt, solange
+    /// AServerActionEnabled True liefert.</summary>
+    constructor Create(const ARegistry: IAtlasStatusRegistry; const AServerInfo: TFunc<TAtlasServerInfo>;
+      const AIndexing: TAtlasIndexingFunc; const AQuery: TAtlasStatusQueryFunc; const AReport: TProc<string>;
+      const AServerAction: TProc; const AServerActionEnabled: TFunc<Boolean>); overload;
     destructor Destroy; override;
     /// <summary>Alle Zeilen nachführen (Hauptthread, vor jedem Zeichnen des Felds).</summary>
     procedure Refresh;
@@ -103,6 +114,10 @@ type
     /// <summary>Letzte Antwort von atlas.server.status als JSON; '' ohne laufenden Server oder vor der ersten
     /// Abfrage (Einrichtung, #625). Aus jedem Thread.</summary>
     function StatusJson: string;
+    /// <summary>Status sofort abfragen (Knopf „Aktualisieren“ im Fenster „Atlas-Server“, #1356); ADone danach
+    /// im Hauptthread, StatusJson hat dann die neue Antwort. False ohne laufenden Server oder während einer
+    /// Abfrage (die nächste Antwort kommt dann ohnehin).</summary>
+    function QueryNow(const ADone: TProc): Boolean;
   end;
 
 implementation
@@ -111,6 +126,7 @@ uses
   System.IOUtils,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Files.TextFile;
 
 { TAtlasIdeStatusLines }
@@ -134,6 +150,14 @@ constructor TAtlasIdeStatusLines.Create(const ARegistry: IAtlasStatusRegistry;
   const AServerInfo: TFunc<TAtlasServerInfo>; const AIndexing: TAtlasIndexingFunc;
   const AQuery: TAtlasStatusQueryFunc; const AReport: TProc<string>);
 begin
+  Create(ARegistry, AServerInfo, AIndexing, AQuery, AReport, nil, nil);
+end;
+
+constructor TAtlasIdeStatusLines.Create(const ARegistry: IAtlasStatusRegistry;
+  const AServerInfo: TFunc<TAtlasServerInfo>; const AIndexing: TAtlasIndexingFunc;
+  const AQuery: TAtlasStatusQueryFunc; const AReport: TProc<string>; const AServerAction: TProc;
+  const AServerActionEnabled: TFunc<Boolean>);
+begin
   inherited Create;
   FRegistry := ARegistry;
   FServerInfo := AServerInfo;
@@ -147,7 +171,8 @@ begin
   FTargets := TDictionary<string, TAtlasFileFormat>.Create;
   FIndexFile := TAtlasIndexStore.DefaultFile;
   FTracker := TAtlasIndexTracker.Create(TAtlasIndexStore.Load(FIndexFile));
-  FServer := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.ServerId, TAtlasStatusLines.ServerOrder);
+  FServer := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.ServerId, TAtlasStatusLines.ServerOrder,
+    AServerAction, AServerActionEnabled);
   FServerRef := FServer;
   FIndex := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.IndexId, TAtlasStatusLines.IndexOrder);
   FIndexRef := FIndex;
@@ -197,41 +222,59 @@ begin
 end;
 
 procedure TAtlasIdeStatusLines.PollTick(Sender: TObject);
-var
-  Units: TUnits;
-  Holder: IInterface;
-  Registry: IAtlasStatusRegistry;
 begin
   TAtlasGuard.Run(TAtlasFeature.Status,
     procedure
     begin
       // Antwortzeit und Units; ohne laufenden Server startet nichts.
-      Units := FUnits;
-      Holder := FUnitsRef;
-      Registry := FRegistry;
-      FQuery(
-        procedure(AJson: string)
-        var
-          Count: Integer;
-        begin
-          // Im Hintergrund-Thread; Holder hält das Ergebnis am Leben.
-          if Holder = nil then
-            Exit;
-          Count := TAtlasStatusLines.UnitsOf(AJson);
-          if Count >= 0 then
-            AtomicExchange(Units.Value, Count);
-          if AJson <> '' then
-          begin
-            TMonitor.Enter(Units);
-            try
-              Units.Json := AJson;
-            finally
-              TMonitor.Exit(Units);
-            end;
-          end;
-          Registry.Changed;
-        end);
+      StartQuery(nil);
       RefreshServer;
+    end);
+end;
+
+function TAtlasIdeStatusLines.QueryNow(const ADone: TProc): Boolean;
+begin
+  Result := StartQuery(ADone);
+end;
+
+function TAtlasIdeStatusLines.StartQuery(const ADone: TProc): Boolean;
+var
+  Units: TUnits;
+  Holder: IInterface;
+  Registry: IAtlasStatusRegistry;
+  Done: TProc;
+begin
+  Units := FUnits;
+  Holder := FUnitsRef;
+  Registry := FRegistry;
+  Done := ADone;
+  Result := FQuery(
+    procedure(AJson: string)
+    var
+      Count: Integer;
+    begin
+      // Im Hintergrund-Thread; Holder hält das Ergebnis am Leben.
+      if Holder = nil then
+        Exit;
+      Count := TAtlasStatusLines.UnitsOf(AJson);
+      if Count >= 0 then
+        AtomicExchange(Units.Value, Count);
+      if AJson <> '' then
+      begin
+        TMonitor.Enter(Units);
+        try
+          Units.Json := AJson;
+        finally
+          TMonitor.Exit(Units);
+        end;
+      end;
+      Registry.Changed;
+      if Assigned(Done) then
+        TAtlasMainThread.Queue(TAtlasFeature.Status,
+          procedure
+          begin
+            Done();
+          end);
     end);
 end;
 
