@@ -179,6 +179,8 @@ begin
           Result := Kind;
         end;
       end;
+  else
+    // Übrige Arten: nichts zu tun.
   end;
 end;
 

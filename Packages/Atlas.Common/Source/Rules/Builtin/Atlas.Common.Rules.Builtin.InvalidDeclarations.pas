@@ -371,6 +371,8 @@ var
               CheckProperties(mNode, False);
               CheckConstructors(mNode);
             end;
+        else
+          // Übrige Arten: nichts zu tun.
         end;
         if mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] then
           Continue;

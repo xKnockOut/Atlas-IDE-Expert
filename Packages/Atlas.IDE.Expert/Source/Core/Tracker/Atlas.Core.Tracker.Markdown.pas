@@ -1041,6 +1041,7 @@ begin
               end;
             TAtlasMarkdownTasks.Clickable:
               mRun.Target := TAtlasTrackerMarkdown.TaskTarget(ATaskIndex);
+            TAtlasMarkdownTasks.Boxes: ;
           end;
           Inc(ATaskIndex);
         end;
@@ -1216,6 +1217,7 @@ begin
             mRuns := mRuns + InlineRuns(mCell);
       TAtlasMarkdownBlockKind.Image:
         Result := Result + [TAtlasMarkdownLink.Create(mBlock.Text, mBlock.Info)];
+      TAtlasMarkdownBlockKind.Code, TAtlasMarkdownBlockKind.Rule: ;
     end;
     for mRun in mRuns do
       if mRun.Kind = TAtlasDocRunKind.Link then

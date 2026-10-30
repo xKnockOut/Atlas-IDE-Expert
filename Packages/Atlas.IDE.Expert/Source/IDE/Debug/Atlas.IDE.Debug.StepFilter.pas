@@ -366,6 +366,7 @@ begin
       // Der Empfänger (Origin Atlas) setzt FStepStop.
       if not TAtlasIdeDebugTrace.StepInto then
         FRun.Cancel;
+    TAtlasStepFilterAction.Keep: ;
   end;
 end;
 

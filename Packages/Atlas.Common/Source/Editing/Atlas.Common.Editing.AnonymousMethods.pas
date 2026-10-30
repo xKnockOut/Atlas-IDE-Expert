@@ -1049,6 +1049,7 @@ begin
         Exit(Fail('das Ziel ist ein prozeduraler Typ ohne reference to', AReason));
       TProcTypeKind.Unknown:
         Exit(Fail('Zieltyp unbekannt', AReason));
+      TProcTypeKind.Reference: ;
     end;
     Caller := TopRoutineOf(Reference);
     if (Caller = nil) or not SameText(TRoutineBody.QualifierOf(Caller.Name), ClassName) or

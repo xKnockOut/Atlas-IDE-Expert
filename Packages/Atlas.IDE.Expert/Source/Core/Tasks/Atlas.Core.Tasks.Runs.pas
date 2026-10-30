@@ -300,6 +300,7 @@ begin
       TAtlasTaskBeforeBuild.Warn:
         if Fails(Entry.Run) or (Entry.Run.Counts.Total > 0) then
           Result.Warnings := Result.Warnings + [Entry.Run];
+      TAtlasTaskBeforeBuild.Off: ;
     end;
   Result.Block := Length(Result.Blocking) > 0;
 end;

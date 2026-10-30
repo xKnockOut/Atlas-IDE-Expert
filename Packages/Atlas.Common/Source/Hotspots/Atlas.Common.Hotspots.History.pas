@@ -449,6 +449,7 @@ begin
               mNames.AddOrSetValue(LowerCase(mFile.OldPath), mCurrent);
           THotspotChangeKind.Added:
             mNames.AddOrSetValue(LowerCase(mFile.Path), cGone);
+          THotspotChangeKind.Modified, THotspotChangeKind.Deleted: ;
         end;
         mFiles.Add(THotspotFileChange.Make(mCurrent, mFile.OldPath, mFile.Kind, mFile.Added, mFile.Deleted));
       end;

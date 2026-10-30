@@ -202,6 +202,8 @@ begin
       AKind := 'integer';
     TFormatArgumentClass.Float:
       AKind := 'float';
+    TFormatArgumentClass.Unknown, TFormatArgumentClass.Bool, TFormatArgumentClass.Variant_, TFormatArgumentClass.Enum,
+    TFormatArgumentClass.Object_, TFormatArgumentClass.Pointer_: ;
   end;
 end;
 

@@ -308,6 +308,8 @@ begin
         Names := [Child.Name];
       TSyntaxKind.Field:
         Names := Child.Name.Split([',']);
+    else
+      // Übrige Arten: nichts zu tun.
     end;
     if IndexText(AName, TrimmedNames(Names)) < 0 then
       Continue;
@@ -342,6 +344,8 @@ begin
           ALevel := TMemberLevel.StaticLevel
         else
           ALevel := TMemberLevel.Instance;
+    else
+      // Übrige Arten: nichts zu tun.
     end;
     Exit;
   end;
@@ -781,6 +785,7 @@ begin
               TIndexVisibility.StrictProtected]) then
               StrictName := HeadName(Node.Name);
           end;
+        TMemberLevel.NotMember: ;
       end;
     end;
   finally
@@ -1063,6 +1068,7 @@ begin
       Exit(Fail(Where(AWork.FileName, Line) + ': Zugriffsmethode einer Property', AReason));
     TMethodUse.Unknown:
       Exit(Fail(Where(AWork.FileName, Line) + ': Verwendung nicht erkannt', AReason));
+    TMethodUse.Call, TMethodUse.Value, TMethodUse.Pointer: ;
   end;
   if AWork.Declaring and not TRoutineBody.Within(Callee, Plan.Routine) and (AOffset < FirstUse) then
     FirstUse := AOffset;
@@ -1119,6 +1125,7 @@ begin
         Edit := TOffsetEdit.Create(Call.StartOffset, Call.EndOffset, NewText);
         Changed := True;
       end;
+    TMethodConversion.ClassMethod: ;
   end;
   if Changed then
   begin
@@ -1582,6 +1589,7 @@ begin
       TMethodConversion.Helper:
         if Plan.Target.HelperReason <> '' then
           Exit(Fail(Plan.Target.HelperReason, AReason));
+      TMethodConversion.ClassMethod, TMethodConversion.ClassMethodCalls: ;
     end;
     Build.Conversion := AConversion;
     Build.StaticWanted := AStatic;

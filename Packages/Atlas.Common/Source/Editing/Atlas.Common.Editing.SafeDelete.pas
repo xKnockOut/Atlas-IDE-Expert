@@ -479,6 +479,7 @@ begin
           if ParameterText(AText, Routine) = Parameters then
             Result := Result + [TLineSpan.Create(FirstLineOf(Routine, Lines), Routine.EndPos.Line)];
       end;
+    TSafeDeleteKind.Unit_: ;
   end;
 end;
 
@@ -624,6 +625,7 @@ begin
           Partial := Partial + [TTextEdit.Create(TTextRange.Create(Target.Node.StartPos, Target.Node.EndPos), '')];
       TSafeDeleteKind.Routine:
         Spans := Spans + OwnLines(ATree, AText, Target);
+      TSafeDeleteKind.Method, TSafeDeleteKind.Field, TSafeDeleteKind.Property_, TSafeDeleteKind.Unit_: ;
     end;
   // Rümpfe gelöschter Klassen.
   for Target in ATargets do

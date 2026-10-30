@@ -106,6 +106,8 @@ begin
       TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
       TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias:
         Exit('Öffentlicher Typ');
+    else
+      // Übrige Arten: nichts zu tun.
     end;
   Neuter := ASymbol.Kind = TIndexSymbolKind.Field;
   case ASymbol.Kind of

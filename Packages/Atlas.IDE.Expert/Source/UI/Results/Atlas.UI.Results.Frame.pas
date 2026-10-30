@@ -1525,6 +1525,8 @@ begin
         Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginOutside);
     TAtlasDataFlowOrigin.Address:
       Result := Result + ' — ' + TAtlasStrings.Text(TAtlasTextId.DataFlowOriginAddress);
+    TAtlasDataFlowOrigin.None, TAtlasDataFlowOrigin.Input, TAtlasDataFlowOrigin.Output, TAtlasDataFlowOrigin.Use,
+    TAtlasDataFlowOrigin.Constant: ;
   end;
   if ANode.Unsafe then
     Result := Result + '  ⚠ ' + TAtlasStrings.Fmt(TAtlasTextId.DataFlowUnsafe, [UnsafeText(ANode.UnsafeReason)]);

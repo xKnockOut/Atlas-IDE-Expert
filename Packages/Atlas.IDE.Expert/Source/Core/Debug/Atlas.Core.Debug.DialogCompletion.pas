@@ -171,6 +171,7 @@ begin
         Result := TAtlasDebugField.FileName
       else if IsAny(Text, ['line number', 'line', 'zeilennummer', 'zeile']) then
         Result := TAtlasDebugField.LineNumber;
+    TAtlasDebugDialog.None: ;
   end;
 end;
 

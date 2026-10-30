@@ -407,6 +407,8 @@ begin
             else
               Result := BuiltinSize(Alias, FPointerSize);
           end;
+      else
+        // Übrige Arten: nichts zu tun.
       end;
   AAlign := Min(Max(Result, 1), 8);
   if Result = 2 * FPointerSize then
@@ -510,6 +512,8 @@ begin
           if IsPointerText(Text) then
             Exit(TAccessLinkKind.Pointer);
         end;
+    else
+      // Übrige Arten: nichts zu tun.
     end;
   Text := ASymbol.TypeName;
   if IsDynArrayText(Text) then
