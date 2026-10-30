@@ -89,6 +89,8 @@ $ResultFile = [System.IO.Path]::GetFullPath($ResultFile)
 $DccPattern = '\[dcc\w*\s+([^\]]+)\]\s*(?:([^\s(][^(]*)\((\d+)\))?:?\s*(?:([EWHFX]\d{4})\s+)?(.*)$'
 # Kommandozeile: "Cm.W1036.pas(14) Warnung: W1036 ..." bzw. "Fatal: F2613 ..." ohne Datei.
 $DccConsolePattern = '^(?:(.+?)\((\d+)\)\s+)?([^:()]+?):\s+([EWHFX]\d{4})\s+(.*)$'
+# Ausgabe von dcc32/dcc64 der Community Edition, die nicht auf der Kommandozeile übersetzt (Exit-Code 0).
+$DccUnsupportedPattern = 'does not support command line compiling'
 $CasePattern = '^Cm\.?[EWHF]\d{4}'
 # XML-Warnungen W1201-W1208 (DCC_XML_* in der .dproj, -W+XML_* auf der Kommandozeile).
 $XmlWarnings = @('WHITESPACE_NOT_ALLOWED', 'UNKNOWN_ENTITY', 'INVALID_NAME_START', 'INVALID_NAME', 'EXPECTED_CHARACTER',
@@ -331,6 +333,9 @@ function Invoke-DccBuild($Case, [string] $Platform, [string] $Dproj) {
     }
     $arguments += @(($switches -replace '(^|\s)--doc(?=\s|$)', '').Trim() -split '\s+' | Where-Object { $_ })
     $output = @(& $exe @arguments $main 2>&1 | ForEach-Object { "$_" })
+    if (($output -join ' ') -match $DccUnsupportedPattern) {
+        throw "$exe übersetzt nicht auf der Kommandozeile (Community Edition)"
+    }
     $ok = $LASTEXITCODE -eq 0
     $rows = @()
     foreach ($line in $output) {
@@ -411,6 +416,13 @@ if (-not $SkipBuild -and $Dcc) {
         $path = Join-Path (Get-BdsRoot) $compiler
         if (-not (Test-Path $path)) {
             Write-Error "Nicht gefunden: $path (Kommandozeilen-Compiler fehlen, etwa in der Starter-Edition)" -ErrorAction Continue
+            exit 3
+        }
+        # Community Edition (#1383): dcc32 meldet nur, dass es nicht auf der Kommandozeile übersetzt, und endet
+        # mit 0; ohne diese Prüfung stünde jeder Fall als übersetzt ohne Meldung in der Tabelle.
+        $probe = @(& $path 2>&1 | ForEach-Object { "$_" }) -join ' '
+        if ($probe -match $DccUnsupportedPattern) {
+            Write-Error "$path übersetzt nicht auf der Kommandozeile (Community Edition): $probe" -ErrorAction Continue
             exit 3
         }
     }

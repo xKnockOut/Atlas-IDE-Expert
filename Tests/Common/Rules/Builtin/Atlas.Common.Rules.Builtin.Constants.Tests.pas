@@ -689,7 +689,7 @@ end;
 
 procedure TNarrowingAssignmentTests.IssueExample;
 begin
-  Assert.AreEqual('Strom.Size ist Int64; die Zuweisung an Integer kann Daten verlieren (wie W1071).',
+  Assert.AreEqual('Strom.Size ist Int64; die Zuweisung an Integer kann Daten verlieren.',
     OnlyNarrowingMessage(Lesen('  Anzahl: Integer;'#10, '  Anzahl := Strom.Size;'#10)));
   // Korrigierte Formen: ausdrücklich umgewandelt oder passender Zieltyp.
   Assert.AreEqual(0, Integer(Length(NarrowingFindings(Lesen('  Anzahl: Integer;'#10'  Groesse: Int64;'#10,
@@ -718,11 +718,11 @@ end;
 
 procedure TNarrowingAssignmentTests.InlineVariablesAndArithmetic;
 begin
-  Assert.AreEqual('Strom.Size ist Int64; die Zuweisung an Integer kann Daten verlieren (wie W1071).',
+  Assert.AreEqual('Strom.Size ist Int64; die Zuweisung an Integer kann Daten verlieren.',
     OnlyNarrowingMessage(Lesen('', '  var Anzahl: Integer := Strom.Size;'#10)));
-  Assert.AreEqual('Strom.Size - Rest ist Int64; die Zuweisung an Integer kann Daten verlieren (wie W1071).',
+  Assert.AreEqual('Strom.Size - Rest ist Int64; die Zuweisung an Integer kann Daten verlieren.',
     OnlyNarrowingMessage(Lesen('  Anzahl, Rest: Integer;'#10, '  Anzahl := Strom.Size - Rest;'#10)));
-  Assert.AreEqual('(Strom.Size + 1) div 2 ist Int64; die Zuweisung an LongInt kann Daten verlieren (wie W1071).',
+  Assert.AreEqual('(Strom.Size + 1) div 2 ist Int64; die Zuweisung an LongInt kann Daten verlieren.',
     OnlyNarrowingMessage(Lesen('  Anzahl: LongInt;'#10, '  Anzahl := (Strom.Size + 1) div 2;'#10)));
   // Eigener Alias auf Int64 als Quelle und auf Integer als Ziel.
   Assert.AreEqual(1, Integer(Length(NarrowingFindings('unit Lesen;'#10'interface'#10'type'#10 +

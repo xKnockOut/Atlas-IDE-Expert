@@ -2,7 +2,7 @@
 
 // Tests der Regel inline-not-expanded (#1017): fehlende Unit (H2443) bei
 // Aufruf, Property-Getter und for-in, die korrigierte Form und eine nicht
-// eingebettete Routine schweigen; strict private (H2444), inline-Aufrufer mit
+// eingebettete Routine schweigen; strict private schweigt (#1383), inline-Aufrufer mit
 // Unit nur im implementation-uses (H2445), direkter und indirekter Zyklus
 // (H2456, H2457); Schnellkorrektur; abschaltbar; die Verweise im Index;
 // Laufzeit bei vielen Aufrufen und langer uses-Kette (#1220).
@@ -260,9 +260,9 @@ end;
 
 procedure TInliningRulesTests.StrictPrivateMember;
 begin
-  Assert.AreEqual('8:9 Inline-Funktion TJsonFeld.Geheim wird nicht eingebettet: Zugriff auf TJsonFeld.FGeheim ' +
-    '(strict private) ist hier nicht möglich (wie H2444).|',
-    Messages(Findings(Haupt('Werk.Json', '  X := F.Geheim;'#10))));
+  // Delphi 13 bettet auch mit Zugriff auf strict private aus einer anderen Unit ohne H2444 ein (#1383,
+  // Cm.H2440b, Cm.H2444).
+  Assert.AreEqual('', Messages(Findings(Haupt('Werk.Json', '  X := F.Geheim;'#10))));
 end;
 
 procedure TInliningRulesTests.StrictPrivateInSameUnit;
@@ -293,18 +293,12 @@ const
     '  Result := Z.Stand;'#10 +
     'end;'#10 +
     'end.';
-  Expected = '22:14 Inline-Funktion TZaehler.Stand wird nicht eingebettet: Zugriff auf TZaehler.FStand ' +
-    '(strict private) ist hier nicht möglich (wie H2444).|';
 begin
-  // Auch in derselben Unit ist strict private außerhalb der Klasse unsichtbar; die Methode der Klasse
-  // selbst (Doppelt) bettet ein. Das gilt mit und ohne Projektindex.
-  Assert.AreEqual(Expected, Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, Source, nil, '',
+  // In derselben Unit ebenso still (#1383), mit und ohne Projektindex.
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, Source, nil, '',
     'Haupt.pas')));
-  Assert.AreEqual(Expected, Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, Source,
+  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create, Source,
     TSymbolIndex.Create, '', 'Haupt.pas')));
-  // Ohne strict ist das Feld in der Unit sichtbar.
-  Assert.AreEqual('', Messages(TRuleAssert.IndexFindings(TInlineNotExpandedRule.Create,
-    ReplaceStr(Source, 'strict private', 'private'), nil, '', 'Haupt.pas')));
 end;
 
 procedure TInliningRulesTests.InlineCallerWithImplementationUses;

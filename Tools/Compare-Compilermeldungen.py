@@ -42,9 +42,12 @@ FOLGEMELDUNGEN = {'F2063', 'F2220'}
 # Regeln, deren Katalogeintrag keinen Code nennt.
 # Stilregeln, deren Beschreibung nur nebenbei einen Code nennt.
 OHNE_CODE = {'missing-begin-end'}
-# Regeln, deren Meldung den Code selbst nennt, wenn dcc ihn meldet (#1383): Stilmeldung zu langer Zeilen, Zyklus
-# über implementation, Wert nie gelesen bei verwalteten Typen, XML-Doku außerhalb des interface-Teils.
-NUR_MELDUNG = {'line-length', 'uses-cycle', 'unused-assignment', 'xmldoc-mismatch'}
+# Regeln, deren Meldung den Code selbst nennt, wenn dcc ihn meldet (#1383): Zeilen unter 4096 Zeichen, Zyklus
+# über implementation, Wert nie gelesen bei verwalteten Typen, XML-Doku außerhalb des interface-Teils, Feld oder
+# Methode verdeckt (nur Property über Feld ist W1009), Getter-Schreibweise und inline-Sichtbarkeit (H2367, H2440),
+# ganzzahlige Zuweisung mit Datenverlust (W1071).
+NUR_MELDUNG = {'line-length', 'uses-cycle', 'unused-assignment', 'xmldoc-mismatch', 'member-hides-ancestor',
+               'override-case-mismatch', 'narrowing-assignment'}
 ZUORDNUNG = {
     'result-not-set': ['W1035'],
     'possibly-uninitialized': ['W1036'],

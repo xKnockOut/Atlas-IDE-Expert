@@ -150,7 +150,8 @@ registry-hklm-write | Ref.Sprache.Merkmale.pas | Result := 0;\n  for var Wert in
 now-for-elapsed-time | Ref.Sprache.Merkmale.pas | Result := IntToStr(AWert); | Beginn := Now;\n  Result := FloatToStr(Now - Beginn);
 money-as-float | Ref.Daten.Verwendung.pas | function NeuerAuftrag(ANummer: Integer): TAuftrag;\nbegin | function NeuerAuftrag(ANummer: Integer): TAuftrag;\nvar\n  Brutto: Double;\nbegin
 string-if-chain | Ref.Sprache.Merkmale.pas | Result := Self = ''; | if Self = 'a' then Result := True\n  else if Self = 'b' then Result := True\n  else if Self = 'c' then Result := True\n  else if Self = 'd' then Result := True\n  else Result := Self = '';
-inline-not-expanded | Ref.Sprache.Merkmale.pas | function Zaehler: TZaehlerFunktion; // ERWARTET-PROJEKT: unused-public-member\n\nimplementation\n | function Zaehler: TZaehlerFunktion; // ERWARTET-PROJEKT: unused-public-member\n\ntype\n  TMerker = class\n  strict private\n    FWert: Integer;\n  public\n    function Wert: Integer; inline;\n  end;\n\nimplementation\n\nfunction TMerker.Wert: Integer;\nbegin\n  Result := FWert;\nend;\n\nfunction Gemerkt(AMerker: TMerker): Integer;\nbegin\n  Result := AMerker.Wert;\nend;\n
+# inline-not-expanded: keine Mutation mehr. strict private meldet die Regel nicht mehr (#1383, Delphi 13 bettet
+# ein); die übrigen Fälle brauchen eine inline-Routine in einer zweiten Unit, also mehr als eine Ersetzung.
 deprecated-symbol | Ref.Komponenten.Anzeige.pas | StandardBreite = 120; | StandardBreite = 120 deprecated 'Nutze Width';
 syntax | Ref.Daten.Suche.pas |     Result := FAnbieter(AName)\n  else |     Result := FAnbieter(AName);\n  else
 directive-typo | Ref.Komponenten.Anzeige.pas | procedure Paint; override; | procedure Paint; overide;
@@ -185,7 +186,7 @@ attribute-usage-invalid | Ref.Sprache.Merkmale.pas | FElemente: TList<T>; | FEle
 typeinfo-invalid | Ref.Sprache.Merkmale.pas | Result := 0;\n  for var Wert | Result := 0;\n  if TypeInfo(AWerte) = nil then\n    Exit;\n  for var Wert
 unit-name-mismatch | Ref.Daten.Suche.pas | unit Ref.Daten.Suche; | unit Ref.Daten.Suchen;
 text-after-final-end | Ref.Daten.Kunden.pas | \nend. | \nend.\n\nprocedure Nachtrag;\nbegin\nend;
-exports-invalid | Ref.Daten.Verwendung.pas | \nend. | \nexports\n  NeuerAuftrag,\n  NeuerAuftrag;\n\nend.
+exports-invalid | Ref.Daten.Verwendung.pas | \nend. | \nexports\n  NeuerAuftrag name 'Auftrag',\n  NeuerAuftrag name 'Auftrag';\n\nend.
 unit-name-conflict | Ref.Sprache.Merkmale.pas | unit Ref.Sprache.Merkmale; | unit SysInit;
 implicit-variants-unit | Ref.Daten.Verwendung.pas | \nimplementation\n | \nimplementation\n\nvar\n  Wert: Variant;\n
 file-encoding-unsupported | Ref.Formulare.Detail.pas | Anzeige.Beschriftung := 'Zeichen'; | Anzeige.Beschriftung := ‚Zeichen‘;
