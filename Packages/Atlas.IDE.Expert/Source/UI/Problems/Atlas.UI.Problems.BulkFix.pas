@@ -171,11 +171,16 @@ begin
     Exit;
   FUpdating := True;
   try
-    for mIndex := 0 to FPreview.Count - 1 do
-    begin
-      FFiles.Items.Add(FileCaption(mIndex));
-      FFiles.Checked[mIndex] := FPreview.Files[mIndex].Checked;
-      FFiles.ItemEnabled[mIndex] := FPreview.Files[mIndex].Checked;
+    FFiles.Items.BeginUpdate;
+    try
+      for mIndex := 0 to FPreview.Count - 1 do
+      begin
+        FFiles.Items.Add(FileCaption(mIndex));
+        FFiles.Checked[mIndex] := FPreview.Files[mIndex].Checked;
+        FFiles.ItemEnabled[mIndex] := FPreview.Files[mIndex].Checked;
+      end;
+    finally
+      FFiles.Items.EndUpdate;
     end;
   finally
     FUpdating := False;
