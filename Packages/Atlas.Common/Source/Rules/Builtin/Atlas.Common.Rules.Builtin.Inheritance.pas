@@ -1411,8 +1411,8 @@ var
   end;
 
   // Verwendung von AName in ARoutine außerhalb der Deklaration ADeclaration: AWrites zählt Zuweisungen
-  // (X := …, auch die Vorbelegung einer Inline-Variable), AReads reine Lesezugriffe, AUnclear alles, was beides
-  // sein kann (Argument eines Aufrufs, @X, X.Feld, X[I]).
+  // (X := …, for X in …, auch die Vorbelegung einer Inline-Variable), AReads reine Lesezugriffe, AUnclear
+  // alles, was beides sein kann (Argument eines Aufrufs, @X, X.Feld, X[I]).
   procedure Usage(ARoutine, ADeclaration: TSyntaxNode; const AName: string; out AReads, AWrites,
     AUnclear: Integer);
   var
@@ -1438,7 +1438,8 @@ var
         Continue;
       mNext := Significant(mIndex, 1);
       mPrevious := Significant(mIndex, -1);
-      if (mNext >= 0) and Tokens[mNext].IsSymbol(':=') then
+      if ((mNext >= 0) and Tokens[mNext].IsSymbol(':=')) or ((mPrevious >= 0) and Tokens[mPrevious].IsKeyword('for'))
+        then
         Inc(AWrites)
       else if ((mNext >= 0) and (Tokens[mNext].IsSymbol('.') or Tokens[mNext].IsSymbol('[') or
         Tokens[mNext].IsSymbol('^'))) or ((mPrevious >= 0) and (Tokens[mPrevious].IsSymbol('(') or

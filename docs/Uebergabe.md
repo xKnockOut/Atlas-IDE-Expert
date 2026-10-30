@@ -1,4 +1,4 @@
-﻿# Übergabe: Atlas IDE Expert – Stand 29.10.2026
+﻿# Übergabe: Atlas IDE Expert – Stand 30.10.2026
 
 ## Kontext
 - Repo: https://github.com/xKnockOut/Atlas-IDE-Expert.git, lokal unter `C:\Projekte\BetterDelphiLSP\repo`. Gearbeitet wird auf `main`.
@@ -30,6 +30,14 @@
   - `GetValue<T>` direkt als Argument von `Assert`.
   - Doppeltes BOM in einer Datei.
   - `DUnitX.ServiceLocator` statt `DUnitX.IoC`.
+
+## shadowed-name bei geerbten Bibliotheks-Mitgliedern (30.10.2026, Branch `claude/project-thread-zgz626`)
+- Anlass: rund 57 Befunde im eigenen Code, fast alle lokale Hilfsvariablen wie `Left`, `Top`, `Text`, `Name`, `Caption`, `Position` über VCL-Properties.
+- Regel (`TShadowedNameRule`): Mitglieder aus einer Bibliotheks-Unit (`TLibraryUnits.IsLibrary`, neue Überladung `TAncestry.FindMember` mit `AUnitName`) bzw. aus den eingebauten TComponent/TControl-Listen meldet sie nur noch, wo sie gemeint sein könnten: lokale Variable nur zugewiesen oder nur gelesen, Werteparameter mit Zuweisung. Zuweisung = `X :=`, `for X`, Vorbelegung einer Inline-Variable; unklar (zählt als beides) = Argument, `@X`, `X.`, `X[`, `X^`. Option `frameworkMembers` (Vorgabe false) stellt das alte Verhalten her. Eigene Felder und Properties unverändert.
+- Neu still: Parameter von Methoden mit `override` oder `message`; in `class`-Methoden alle Mitglieder außer `class var`/`class property` (Index-Direktive `class`).
+- Echte Funde umbenannt (m-Präfix): `TClassLayout.ReadMembers` (Text), `TWorkspaceChanges.ToJson` (Deleted), `TAtlasClassExtractionModel.RequestJson` (Name), `TManualScheduling.RunAll` (Work), `TAtlasEventBreakBar.Layout` und `TAtlasStatusField.DrawPanel` (Text, eigene Property).
+- Cloud-Selbstprüfung (AtlasServer --check über Packages, Application, Tests/Common): danach 0 Befunde `shadowed-name`. Ohne VCL im Cloud-Index greifen dort nur die eingebauten Listen; auf Windows mit VCL im Index nachprüfen.
+- Tests: `ShadowedNameFrameworkMembers`, `…FromIndex`, `…OverrideParameters`, `…ClassMethods` (FPC grün, 50/50 in der Unit). Handtests SN8–SN13. Offen: Delphi-Build 12/13.
 
 ## #1383 Meldungen, wo Delphi 13 schweigt (29.10.2026, Branch `feature/1383-ohne-dcc-befund`, Entwurfs-PR #1397)
 - Versionsunabhängig behoben: `class abstract` (E2402) und `S[1]` an var (E2354) gibt es nur unter .NET; überladene Array-Properties (W1075); `{$WARN MOBILE_DELPHI}`/`UNSAFE_VOID_POINTER` bekannt. Stilregeln nennen den Code nur, wo dcc meldet: `unused-assignment` H2077 nur bei nicht verwalteten Typen, `uses-cycle` F2047 nur bei reinen interface-Zyklen (Selbstverweis F2092), `xmldoc-mismatch` nur im interface-Teil und nur W1205 (fremdes Zeichen hinter dem Tagnamen). `Compare-Compilermeldungen.py` zählt diese vier Regeln nur über den Code in der Meldung (`NUR_MELDUNG`).

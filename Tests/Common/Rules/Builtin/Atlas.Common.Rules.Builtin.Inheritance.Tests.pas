@@ -540,6 +540,9 @@ begin
   Assert.AreEqual('Lokale Variable Width verdeckt die Property TForm1.Width; gelesen wird die lokale Variable, der ' +
     'nichts zugewiesen wird.', Findings[0].Message);
   Assert.AreEqual('In LWidth umbenennen', Findings[0].Fixes[0].Title);
+  // Schleifenvariable einer for-in-Schleife: zugewiesen und gelesen.
+  TRuleAssert.Silent(TShadowedNameRule.Create, Formular('  Left, Summe: Integer;',
+    '  Summe := 0;'#10'  for Left in Werte do'#10'    Summe := Summe + Left;'));
   // Inline-Variable mit Vorbelegung, danach gelesen: still.
   TRuleAssert.Silent(TShadowedNameRule.Create, Formular('  Mitte: Integer;',
     '  var Top := 5;'#10'  Mitte := Top;'));
