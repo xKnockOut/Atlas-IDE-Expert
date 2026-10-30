@@ -22,7 +22,7 @@
 //   hresult-integer-mix
 //                     Eine Klasse der Datei implementiert eine Interface-Methode
 //                     mit HRESULT-Ergebnis über eine Methode mit Integer-Ergebnis
-//                     oder umgekehrt (wie X1008, #1040). Zugeordnet wird über
+//                     oder umgekehrt (wie W1008, #1040; die Delphi-Hilfe nennt X1008). Zugeordnet wird über
 //                     Name und Parametertypen samt Zuordnungen "IFoo.Bar = Baz";
 //                     Interfaces samt ihren Vorfahren kommen aus Datei bzw. Index.
 //                     Stehen Varianten in bedingten Zweigen, meldet die Regel nur,
@@ -1062,7 +1062,7 @@ var
               if (Length(Expected) = 1) and (Length(Actual) = 1) and
                 AlignFix(AClass.Name, Method, Member.TypeName, Fix) then
                 Fixes := [Fix];
-              AReport.Add(Method.SelectionRange, Format('%s.%s liefert %s, die Implementierung %s (wie X1008).',
+              AReport.Add(Method.SelectionRange, Format('%s.%s liefert %s, die Implementierung %s (wie W1008).',
                 [Intf.Name, Member.Name, Member.TypeName, Method.TypeName]), TRuleConfidence.High, Fixes);
             end;
           end;
@@ -1169,6 +1169,43 @@ var
       (Decl.Modifier in [TParameterModifier.ConstParam, TParameterModifier.ConstRefParam]);
   end;
 
+  /// <summary>Besteht AExpression nur aus Literalen, untypisierten Konstanten und Aufzählungswerten (cGrenze + 1)?
+  /// Dann meldet dcc E2197 statt E2036 (VG3, #1382).</summary>
+  function IsConstantExpression(AExpression: TSyntaxNode): Boolean;
+  var
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mSymbol, mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
+    mIndex: Integer;
+  begin
+    Result := True;
+    mPending := TStack<TSyntaxNode>.Create;
+    try
+      mPending.Push(AExpression);
+      while Result and (mPending.Count > 0) do
+      begin
+        mNode := mPending.Pop;
+        case mNode.Kind of
+          TSyntaxKind.Literal:
+            Continue;
+          TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr:
+            Result := not MatchText(mNode.Name, ['as', 'is']) and (mNode.ChildCount > 0);
+          TSyntaxKind.Identifier:
+            Result := Resolver.NodeType(AContext.Tree, FileName, mNode, mSymbol, mTypeInfo, mTypeFound) and
+              (mSymbol.SymbolKind in [TIndexSymbolKind.Constant, TIndexSymbolKind.EnumMember]) and
+              not IsTypedConstant(mSymbol);
+        else
+          Result := False;
+        end;
+        for mIndex := 0 to mNode.ChildCount - 1 do
+          mPending.Push(mNode[mIndex]);
+      end;
+    finally
+      mPending.Free;
+    end;
+  end;
+
   /// <summary>Was ist AArgument für einen var- bzw. out-Parameter vom Typ AParamType? ADescription nennt es in
   /// der Meldung, AWriteBack: Die Korrektur schreibt den Wert zurück.</summary>
   function Classify(AArgument: TSyntaxNode; const AParamType: string; out ADescription: string;
@@ -1195,11 +1232,19 @@ var
           Result := TVarArgumentKind.OpenArrayConstant
         else
           Result := TVarArgumentKind.Expression;
-      TSyntaxKind.UnaryExpr, TSyntaxKind.AddressOf:
+      TSyntaxKind.AddressOf:
         Result := TVarArgumentKind.Expression;
-      TSyntaxKind.BinaryExpr:
-        // "X as TFoo" ist ein Typumwandlung; der Compiler meldet sie anders.
-        if not SameText(AArgument.Name, 'as') then
+      TSyntaxKind.UnaryExpr, TSyntaxKind.BinaryExpr, TSyntaxKind.ParenExpr:
+        // "X as TFoo" ist ein Typumwandlung; der Compiler meldet sie anders. Ein konstanter Ausdruck ist für dcc
+        // ein konstantes Objekt (E2197), sonst fehlt die Variable (E2036).
+        if (AArgument.Kind = TSyntaxKind.BinaryExpr) and SameText(AArgument.Name, 'as') then
+          Result := TVarArgumentKind.None
+        else if not OpenArray and IsConstantExpression(AArgument) then
+        begin
+          ADescription := Format('Der konstante Ausdruck %s', [ADescription]);
+          Result := TVarArgumentKind.ConstantObject;
+        end
+        else if AArgument.Kind <> TSyntaxKind.ParenExpr then
           Result := TVarArgumentKind.Expression;
       TSyntaxKind.IndexAccess:
         // S[I] mit S vom Typ string an einen Zeichen-Parameter: übersetzt dcc (#1383), erkannt nur, damit

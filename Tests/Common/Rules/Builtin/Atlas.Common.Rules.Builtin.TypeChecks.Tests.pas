@@ -335,7 +335,7 @@ begin
   Assert.AreEqual(1, Integer(Length(Found)));
   Assert.AreEqual(HresultIntegerMixRuleId, Found[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
-  Assert.AreEqual('IExport.Schreiben liefert HRESULT, die Implementierung Integer (wie X1008).', Found[0].Message);
+  Assert.AreEqual('IExport.Schreiben liefert HRESULT, die Implementierung Integer (wie W1008).', Found[0].Message);
   Assert.AreEqual(7, Found[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
   Assert.AreEqual('Ergebnistyp HRESULT wie im Interface', Found[0].Fixes[0].Title);
@@ -351,14 +351,14 @@ begin
   Found := MixFindings(Export('Integer').Replace('function Schreiben: HRESULT;', 'function Schreiben: Integer;')
     .Replace(': Integer; stdcall;'#10'  end;'#10'implementation', ': HResult; stdcall;'#10'  end;'#10'implementation'));
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('IExport.Schreiben liefert Integer, die Implementierung HResult (wie X1008).', Found[0].Message);
+  Assert.AreEqual('IExport.Schreiben liefert Integer, die Implementierung HResult (wie W1008).', Found[0].Message);
   // Zuordnung: Schreiben implementiert SchreibenIntern.
   Found := MixFindings('unit Export;'#10'interface'#10'type'#10'  IExport = interface'#10 +
     '    function Schreiben: HRESULT; stdcall;'#10'  end;'#10'  TExport = class(TInterfacedObject, IExport)'#10 +
     '    function IExport.Schreiben = SchreibenIntern;'#10'    function Schreiben: HRESULT; stdcall;'#10 +
     '    function SchreibenIntern: LongInt; stdcall;'#10'  end;'#10'implementation'#10'end.');
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('IExport.Schreiben liefert HRESULT, die Implementierung LongInt (wie X1008).', Found[0].Message);
+  Assert.AreEqual('IExport.Schreiben liefert HRESULT, die Implementierung LongInt (wie W1008).', Found[0].Message);
   Assert.AreEqual(9, Found[0].Range.StartPos.Line);
 end;
 
@@ -376,7 +376,7 @@ begin
     '  TExport = class(TInterfacedObject, IExport)'#10'    function Pruefen(const A: string): Integer; stdcall;'#10 +
     '    procedure Leeren;'#10'  end;'#10'implementation'#10'end.', Index);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual('IBasis.Pruefen liefert HRESULT, die Implementierung Integer (wie X1008).', Found[0].Message);
+  Assert.AreEqual('IBasis.Pruefen liefert HRESULT, die Implementierung Integer (wie W1008).', Found[0].Message);
 end;
 
 procedure THresultIntegerMixTests.MatchingAndConditionalVariantsAreSilent;
@@ -616,6 +616,13 @@ begin
     Found[3].Message);
   Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
   Assert.AreEqual(1, Integer(Length(Found[2].Fixes)));
+  // Ein konstanter Ausdruck ist für Delphi 13 ein konstantes Objekt (VG3 aus Tests/DccFaelle, #1382).
+  Found := VarFindings(Zeilen('  Zaehlen(Grenze + 1);'#10'  Zaehlen(-(Grenze * 2));'#10));
+  Assert.AreEqual(2, Integer(Length(Found)));
+  Assert.AreEqual('Der konstante Ausdruck Grenze + 1 ist keine Variable und kann nicht an einen var-Parameter ' +
+    'übergeben werden (wie E2197).', Found[0].Message);
+  Assert.AreEqual('Der konstante Ausdruck -(Grenze * 2) ist keine Variable und kann nicht an einen var-Parameter ' +
+    'übergeben werden (wie E2197).', Found[1].Message);
   // Slice an ein var-Open-Array übersetzt dcc (Spring4D, IV1-IV3, #1328).
   Assert.AreEqual(0, Integer(Length(VarFindings(Zeilen('  Fuellen(Slice(Feld, 2));'#10)))));
 end;
