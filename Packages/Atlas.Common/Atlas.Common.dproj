@@ -481,6 +481,7 @@
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Expressions.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Statements.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeChecks.pas"/>
+        <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.TypeKinds.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Constants.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.Database.pas"/>
         <DCCReference Include="Source\Rules\Builtin\Atlas.Common.Rules.Builtin.DllExports.pas"/>
@@ -571,6 +572,10 @@
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.LanguageFeatures.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.Preprocessor.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.XmlDoc.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.SystemIntrinsics.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeIdentity.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.TypeKinds.pas"/>
+        <DCCReference Include="Source\Semantics\Atlas.Common.Semantics.StepCalls.pas"/>
         <DCCReference Include="Source\Pascal\Atlas.Common.Pascal.CompilerSwitches.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.CompilerSwitches.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DebugUnavailable.pas"/>

@@ -4590,6 +4590,32 @@
       "level": "T"
     },
     {
+      "id": "type-kind-required",
+      "name": "Expression or declaration lacks the required kind of type",
+      "category": "bug",
+      "severity": "error",
+      "group": "compiler",
+      "description": "An operation needs a certain kind of type that the operand surely does not have: an index on a number, Boolean, character or enumeration (like E2016); ^ on such a value, a class, a record or an interface (like E2017); a dot or with on such a value (like E2018); an object type whose ancestor is not an object type, TypeOf on a simple value and Dispose with destructor on a pointer to a simple type (like E2019); a class whose ancestor is a record, class reference, enumeration or simple type (like E2021); a class helper whose ancestor is not a helper (like E2022); New with constructor on a pointer to a simple type (like E2467); a record helper for a class or interface (like E2474); a method without class called through the class type outside methods of that class and its descendants (like E2076); Slice outside an open array argument (like E2193); a record inside an array passed to array of const (like E2150); Write/Writeln or Read/Readln with a class, record or interface (like E2054, E2055). Reported only when the type is certain: unknown types, conditional declarations, visible helpers, units missing from the index, records with an Implicit operator and unknown ancestors stay silent. Quick fixes: remove ^ before a dot for classes, records and interfaces; write Object.ToString in Write/Writeln.",
+      "bad": "Kunde^.Name := 'A';\nWriteln(ErrOutput, Kunde);",
+      "good": "Kunde.Name := 'A';\nWriteln(ErrOutput, Kunde.ToString);",
+      "compilerCodes": [
+        "E2016",
+        "E2017",
+        "E2018",
+        "E2019",
+        "E2021",
+        "E2022",
+        "E2467",
+        "E2474",
+        "E2076",
+        "E2193",
+        "E2150",
+        "E2054",
+        "E2055"
+      ],
+      "level": "T"
+    },
+    {
       "id": "inherited-abstract-call",
       "name": "inherited calls an abstract method",
       "category": "bug",
