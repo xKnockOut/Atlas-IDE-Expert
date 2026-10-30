@@ -292,20 +292,25 @@ class function TAtlasBlameLinks.BlameRevisions(const ALines: TArray<TAtlasVcsBla
 var
   mSeen: TDictionary<string, Boolean>;
   mLine: TAtlasVcsBlameLine;
+  mCount: Integer;
 begin
+  // Höchstens eine Revision je Zeile: Länge vorab, am Ende kürzen.
   Result := nil;
+  SetLength(Result, Length(ALines));
+  mCount := 0;
   mSeen := TDictionary<string, Boolean>.Create;
   try
     for mLine in ALines do
       if not mLine.Uncommitted and not mSeen.ContainsKey(mLine.Revision) then
       begin
         mSeen.Add(mLine.Revision, True);
-        SetLength(Result, Length(Result) + 1);
-        Result[High(Result)] := mLine.Revision;
+        Result[mCount] := mLine.Revision;
+        Inc(mCount);
       end;
   finally
     mSeen.Free;
   end;
+  SetLength(Result, mCount);
 end;
 
 class function TAtlasBlameLinks.ShortRevision(AKind: TAtlasVcsKind; const ARevision: string): string;
